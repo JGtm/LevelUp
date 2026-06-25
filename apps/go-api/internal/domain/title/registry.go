@@ -54,6 +54,14 @@ const (
 	// agrégés par-joueur dans le carnage. Halo 5 only (Infinite ne les expose pas).
 	// Absente ⇒ le front masque les sections « assassinats / compétences spartiate ».
 	CapNativeKillMechanics Capability = "native_kill_mechanics"
+
+	// CapWeaponKills — le titre produit le détail des kills PAR ARME (pipeline
+	// film-decoder côté ingestion). Halo Infinite : oui (films) ; Halo 5 : non
+	// (pas de film-decoder weapon-per-kill). Sert le prédicat de complétude du
+	// snapshot (Phase 2) : un titre SANS cette cap n'EXIGE pas les weapon-kills
+	// pour qu'un match soit « complet ». À NE PAS confondre avec
+	// CapNativeKillMechanics (assassinats/ground-pound natifs, Halo-5-only).
+	CapWeaponKills Capability = "weapon_kills"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -208,6 +216,7 @@ func NewRegistry() *Registry {
 			CapMatchmaking, CapFirefight, CapForge,
 			CapMedia, CapRanked, CapCareer, CapSeasonPass, CapAssetImages,
 			CapAchievements, CapEngagement, CapLUSR, CapWorldLeaderboard,
+			CapWeaponKills,
 		},
 		IsDefault:        true,
 		XboxTitleID:      "2043073184",
@@ -360,6 +369,28 @@ func (p *PathResolver) WarehouseDir(titleSlug string) string {
 // Ex: data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb
 func (p *PathResolver) SharedDBPath(titleSlug string) string {
 	return filepath.Join(p.WarehouseDir(titleSlug), "shared_matches_v2.duckdb")
+}
+
+// SnapshotsDir retourne le répertoire racine des snapshots Parquet immuables
+// d'un titre (durabilité / lecture découplée des écritures, Phase 2).
+// Ex: data/titles/halo_infinite/warehouse/snapshots/
+func (p *PathResolver) SnapshotsDir(titleSlug string) string {
+	return filepath.Join(p.WarehouseDir(titleSlug), "snapshots")
+}
+
+// SnapshotVersionDir retourne le répertoire d'une version de snapshot. Le nom
+// est zéro-paddé pour que l'ordre lexicographique du système de fichiers
+// coïncide avec l'ordre chronologique des versions.
+// Ex: data/titles/halo_infinite/warehouse/snapshots/v00000000000000000042/
+func (p *PathResolver) SnapshotVersionDir(titleSlug string, version int64) string {
+	return filepath.Join(p.SnapshotsDir(titleSlug), fmt.Sprintf("v%020d", version))
+}
+
+// SnapshotCurrentManifestPath retourne le chemin du pointeur atomique CURRENT
+// désignant la version de snapshot active (flip via os.Rename).
+// Ex: data/titles/halo_infinite/warehouse/snapshots/CURRENT.json
+func (p *PathResolver) SnapshotCurrentManifestPath(titleSlug string) string {
+	return filepath.Join(p.SnapshotsDir(titleSlug), "CURRENT.json")
 }
 
 // GlobalXuidAliasesDBPath retourne le chemin de la base globale xbox aliases

@@ -317,3 +317,74 @@ nouveau match (complet → affiché) mesurée et bornée (~1 s) ; prédicat de c
 3. Si Phase 0 positive → **Phases 2 → 3 → 4** séquentielles, décision de rollout après Phase 3.
 
 Une seule branche, commits par phase (règle "1 tâche = 1 branche, N commits").
+
+---
+
+## 7. Mise à jour [2026-06-25] — passe d'implémentation (ultracode, branche refactor/durabilite-snapshot-immuable)
+
+Conception verrouillée par un swarm design + vérif-adversariale (9 agents) AVANT tout code.
+Corrections de cap importantes (le code est la source autoritaire — "carte datée, pas vérité") :
+
+- **Phase 0 (instrumentation) — LIVRÉE.** 5 signaux ajoutés au B-swap provider
+  (`internal/platform/duckdb/sharedprovider/`) : `shared_provider_reader_stall_ns_total`
+  (vrai stall lecteur côté `Get`, distinct du drain moteur `get_wait_ms_total`),
+  `…_reader_delayed_total`, `…_rw_window_ms` (fenêtre RW stricte, **avg/max** — l'infra
+  observability ne fait pas de p50/p95), `…_swap_failures_total{drain_timeout}`
+  (désambiguïsé d'`acquire_writer`). Exposés sur `/debug/vars` + `Snapshot()`. Test dédié
+  `reader_stall_metrics_test.go`. `go vet` clean, tests verts. C'est l'outil qui **gate
+  la décision Phases 2-4** (lire ces compteurs en prod).
+
+- **Phase 1.a (`dominance_flag` append-only) — ANNULÉE (tâche fantôme).** Prémisse FAUSSE :
+  `dominance_flag` n'est pas sur `shared.match_registry` mais sur `player_match_enrichment`
+  (player DB), **déjà append-only** depuis 2026-06-21 (`steps_player_append_only_match_enrichment.go`,
+  `stage='dominance'`). Aucune écriture UPDATE indexée sur shared pour ce flag. Rien à migrer.
+  (Le caveat "match_registry sauf dominance_flag" du présent plan est donc à ignorer.)
+
+- **Phase 1.b (invariant durable-avant-progrès) — DÉJÀ CORRECT, descopé en refactor optionnel.**
+  Seul vrai watermark cross-store = LUSR v2 (`player_skill_state_v2`), **déjà géré** par
+  `canonicalGate` (skill_v2_shadow.go, fix 2026-06-07, 2 tests e2e). Le chemin base-enrichment
+  (shared écrit avant player, 2 TX séparées) **n'est PAS une perte** : `ensurePlayerEnrichmentRows`
+  (étape -2 post-sync) re-crée la baseline de tout match orphelin depuis `shared.match_participants`
+  (correctif incident 2026-05-27) → **auto-réparant**. 1.b se réduit donc à extraire/nommer/tester
+  le pattern `canonicalGate` existant (clarté + garde anti-régression), PAS un bug fix, PAS de
+  consolidation de transaction cross-DB.
+
+- **Phase 0 inventory (lecture) confirmé** : >95% des lectures shared sont immuable-pur ;
+  meilleurs pilotes Phase 3 = MatchView / Home / Explorer.
+
+Reste : déployer Phase 0 + mesurer en prod pour trancher Phases 2-4 ; 1.b (refactor de clarté) optionnel.
+
+### Mise à jour [2026-06-25] — Phase 2 LIVRÉE en entier (sur directive utilisateur « faire le plan au complet »)
+
+L'utilisateur a explicitement écarté le gating Phase-0-d'abord et demandé la feature complète. Phase 2 = **readiness marker (étapes 1-6) + producteur + monitoring (étapes 7-13)** livrés sur la branche.
+
+- **Readiness marker** : `snapshot_ready_at`/`partial_reasons` append-only (stage `'snapshot'`) + prédicat pur `isMatchSnapshotReady` (10 cas) + `evaluateSnapshotReadiness` (post-sync étape 6, grâce 60j) + `CapWeaponKills`.
+- **Producteur** (`internal/ops/snapshot*.go`) : `ProduceSnapshot` versionné (`vNNN…/` + `CURRENT.json` flip os.Rename atomique + manifest checksummé + rétention). Lit shared + chaque player DB en RO via `OpenReadForQuery` (zéro ATTACH), filtre aux matchs `snapshot_ready_at IS NOT NULL`.
+- **Câblage** : Phase 6bis du cycle V2 (`v2.SnapshotProducer` + `WithSnapshotProducer`, nil-guard, best-effort), pont `sync.SnapshotCutter`, inconditionnel.
+- **Monitoring** : métriques cut (enum fermé via sentinelles `ops.ErrSnapshot*`) + gauges backlog global-par-titre + section `AdminMonitoringOverview.Snapshot` (zéro I/O DuckDB).
+
+**Déviations assumées vs §3 de ce plan** (documentées, justifiées échelle perso) :
+1. **Full re-export change-gated** au lieu d'incrémental par-batch → **pas de compaction** (`compactMonth` non écrit : aurait été du code mort).
+2. **Un fichier Parquet par table** (shared) / **par (table, joueur)** (dérivés) au lieu d'une **partition mensuelle** : à l'échelle perso (quelques milliers de matchs), le partitionnement mensuel ajoute de la complexité (globbing, comptage par fichier) pour un gain de pruning négligeable. Réintroductible en **Phase 3** si le profilage lecture le justifie.
+
+### Mise à jour [2026-06-25] — Phase 3 LIVRÉE (lecture sur snapshot, pilote MatchView)
+
+- **Couche de lecture** (`ops.OpenSnapshotForPlayer` / `OpenSnapshotShared`) : ouvre la version courante en DuckDB :memory: avec les vues read_parquet aux NOMS LIVE (faits shared + vues `v_gamertag_lookup` canonique / `v_match_full` / `v_killer_victim_full` / `v_weapon_kills` / `match_csrs_latest`). `ErrNoSnapshot` / `ErrSnapshotIncomplete` → fallback live. Producteur étendu (`xuid_aliases` + `weapon_kills` + `match_csrs`). **Test de fidélité** : snapshot == live.
+- **Reader** (`sync.SnapshotPreferredSharedReader`) : snapshot-préféré + fallback live (pas de flag), cache versionné (garde 3 queriers), métriques `snapshot_read_served/live_fallback_total`.
+- **Câblage = Option B SCOPED MatchView** (pilote du plan) : injecté uniquement sur `MatchViewRepo` (singleton par titre). Les 17 lectures shared de MatchView basculent sur le snapshot ; médias (SharedSocial) + lectures player (ReadDB) restent live. Câblage GLOBAL rejeté (audit exhaustif requis + risque de casse sans fallback). Métriques read dans `AdminMonitoringOverview.Snapshot`.
+
+### Mise à jour [2026-06-25] — Phase 4 LIVRÉE (cutover GLOBAL des lectures shared)
+
+Sur directive user « généralise direct ». Toutes les lectures shared de l'app sont désormais snapshot-préférées (fallback live), pas seulement MatchView.
+
+- **Schéma shared COMPLET reconstruit** : `OpenSnapshotShared` matérialise les 8 tables de base depuis les Parquet puis recrée TOUTES les vues via les fonctions canoniques (`migration.ApplyResolutionViews` + `ApplyMvPlayerMatchesView`, zéro divergence) + DDL inline v_weapon_kills/match_csrs_latest. Producteur étendu (`weapon_kills`/`match_csrs` en RAW). Sûr par construction : schéma complet OU `ErrSnapshotIncomplete` → fallback live global.
+- **Câblage GLOBAL** : `config.sharedReaderForTitle` enveloppe le SharedReader live de chaque titre via le hook `AppConfig.SnapshotReaderWrapper` (impl cmd/server, singleton par titre). Le pilote scoped MatchView (Phase 3) est reverté (subsumé).
+- **OpenAPI** : `MonitoringSnapshotSummary` documenté (drift test vert).
+
+### Mise à jour [2026-06-25] — vérification adversariale → GLOBAL REVERTÉ, scoped MatchView retenu
+
+Revue ultracode (28 findings confirmés) : le câblage GLOBAL casse le **classement mondial** (`world_csr_leaderboard_latest`/`world_player_season_stats_latest` lues via le même SharedReader, absentes du snapshot → Catalog Error sans fallback ; données mondiales non-match-immutables). → **global abandonné**, retour au **scoped MatchView** (lectures shared 100% match-immutables, fidélité-testées). Remédiation : dead code dérivé retiré, logging dédié `logs/snapshot.log` + échecs silencieux loggés (fallback/incomplete/force-ready, negative-cache), `rows.Err()` propagé (plus de set ready tronqué silencieux), tests ajoutés (change-gate re-cut, rétention, métriques, fallback-incomplet).
+
+**État livré** : **lecture-snapshot SCOPED MatchView** — sûre, monitorée, loggée. Un cutover GLOBAL sûr exigerait une reconstruction complete-by-construction de TOUT le schéma shared (export dynamique de toutes les tables shared + application des migrations sur la :memory) → phase future NON engagée.
+
+**Reste** : **déploiement prod = décision utilisateur** (downtime ; merge main = auto-deploy). Au deploy : producteur peuple les snapshots → MatchView bascule (fallback live avant), mesurable `snapshot_read_served/live_fallback_total` + `shared_provider_reader_stall_ns_total`. Revert = redéployer le binaire précédent (additif, zéro migration destructive). Suivi non bloquant : régénérer `apps/web` generated-types quand le front consommera la section snapshot du monitoring.

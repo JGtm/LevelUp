@@ -115,6 +115,11 @@ type providerImpl struct {
 	// un seul swap à la fois (dblease sérialise les writers).
 	swapBlockStart time.Time
 
+	// rwWindowStart marque l'instant où le handle passe RW (swapToRW). Lu au
+	// releaseWriter pour mesurer la fenêtre RW STRICTE (durée pendant laquelle
+	// les Get sont gatés en RW). Protégé par p.mu — un seul swap à la fois.
+	rwWindowStart time.Time
+
 	// readersWG track les Get en vol. Add(1) sous p.mu quand state=RO,
 	// Done() dans le release retourné. AcquireWriter Wait() avant le close
 	// du handle pour éviter "database is closed" côté caller.
@@ -168,6 +173,15 @@ func newClosedChan() chan struct{} {
 // Get implémente Provider.Get.
 func (p *providerImpl) Get(ctx context.Context) (*sql.DB, func(), error) {
 	deadline := time.Now().Add(p.readyTimeout)
+	// Phase 0 — stall lecteur réel : waitStart posé au 1er passage en attente
+	// (état non-RO) ; le defer ajoute la durée totale d'attente UNE fois à la
+	// sortie (évite le double-comptage entre itérations de la boucle).
+	var waitStart time.Time
+	defer func() {
+		if !waitStart.IsZero() {
+			readerStallNsTotal.Add(time.Since(waitStart).Nanoseconds())
+		}
+	}()
 	for {
 		p.mu.Lock()
 		s := State(p.state.Load())
@@ -199,6 +213,10 @@ func (p *providerImpl) Get(ctx context.Context) (*sql.DB, func(), error) {
 		}
 
 		// state ∈ {Draining, RW, Reopening} → attendre.
+		if waitStart.IsZero() {
+			waitStart = time.Now()
+			readerDelayedTotal.Add(1)
+		}
 		ready := p.ready
 		p.mu.Unlock()
 

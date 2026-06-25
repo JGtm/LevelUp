@@ -402,6 +402,19 @@ func (e *SyncEngine) runPostSyncPipeline(
 	r.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
 	clock.lap("achievements", 0)
 
+	// 6. Snapshot readiness (Phase 2) — marque les matchs complets (toutes
+	// dérivations terminales, ou terminalement-absentes / grâce dépassée) éligibles
+	// au snapshot immuable. Best-effort : n'interrompt pas le pipeline ; réévalué à
+	// chaque cycle convergent (aucun nouveau call site — runConditionalPostSync gère).
+	if n, err := evaluateSnapshotReadiness(ctx, playerDB, sharedDB, e.xuid, e.titleSlug); err != nil {
+		slog.WarnContext(ctx, "post-sync: snapshot readiness échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(&r, "snapshot readiness", err)
+	} else if n > 0 {
+		r.SnapshotReadyMarked = n
+		slog.InfoContext(ctx, "post-sync: snapshot readiness marqué", "gamertag", e.gamertag, "count", n)
+	}
+	clock.lap("snapshot_readiness", r.SnapshotReadyMarked)
+
 	return r
 }
 

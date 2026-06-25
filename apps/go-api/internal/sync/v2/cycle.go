@@ -44,6 +44,18 @@ type CycleOrchestratorImpl struct {
 	persister      CycleBatchPersister
 	postSyncRunner PostSyncRunner
 	cfg            CycleConfig
+	// snapshotProducer (optionnel) fige une version immuable en fin de cycle
+	// (Phase 6bis). nil = aucun snapshot émis (nil-guard explicite, jamais de panic —
+	// contrairement aux 6 dépendances obligatoires injectées par NewCycleOrchestrator).
+	snapshotProducer SnapshotProducer
+}
+
+// WithSnapshotProducer câble le producteur de snapshot (Phase 6bis), optionnel et
+// best-effort. Retourne l'orchestrator pour chaînage. Laisser non appelé désactive
+// proprement la production de snapshot.
+func (o *CycleOrchestratorImpl) WithSnapshotProducer(p SnapshotProducer) *CycleOrchestratorImpl {
+	o.snapshotProducer = p
+	return o
 }
 
 // NewCycleOrchestrator construit un orchestrator avec les 6 dépendances
@@ -251,6 +263,12 @@ func (o *CycleOrchestratorImpl) Run(
 		o.mergePostSyncOutcome(res.PerPlayer, slug, pr)
 	}
 
+	// ─── Phase 6bis — Cut snapshot immuable ─────────────────────────────
+	// Hors fenêtre RW (le write-lease shared est relâché à la fin de RunPostSync) →
+	// les COPY de lecture ne stallent jamais. Best-effort + inconditionnel : un échec
+	// de cut n'invalide pas le cycle, aucun flag ne laisse la feature à moitié OFF.
+	o.cutSnapshot(ctx, players)
+
 	res.Duration = time.Since(start)
 	observability.RecordDurationMST(ctxkeys.TitleSlug(ctx), "sync_v2_cycle_duration_ms", res.Duration.Milliseconds())
 	observability.IncCounterT(ctxkeys.TitleSlug(ctx), "sync_v2_cycle_success")
@@ -349,6 +367,28 @@ func (o *CycleOrchestratorImpl) mergePostSyncOutcome(
 		}
 	}
 	per[slug] = out
+}
+
+// cutSnapshot déclenche la Phase 6bis : production d'une version de snapshot immuable
+// pour le titre courant à partir des joueurs du cycle. nil-guard explicite (producteur
+// optionnel) ; échec loggé en WARN sans propagation (best-effort).
+func (o *CycleOrchestratorImpl) cutSnapshot(ctx context.Context, players []PlayerProfile) {
+	if o.snapshotProducer == nil {
+		return
+	}
+	slug := ctxkeys.TitleSlug(ctx)
+	gamertags := make([]string, 0, len(players))
+	for _, p := range players {
+		if p.Gamertag != "" {
+			gamertags = append(gamertags, p.Gamertag)
+		}
+	}
+	if err := o.snapshotProducer.CutSnapshot(ctx, slug, gamertags); err != nil {
+		// module=snapshot → logs/snapshot.log (diagnostic centralisé du sous-système,
+		// le package v2 routerait sinon vers logs/general.log).
+		slog.WarnContext(ctx, "sync.v2: cut snapshot échoué (best-effort)",
+			"module", "snapshot", "event", "sync.v2.snapshot.error", "err", err, "titleSlug", slug)
+	}
 }
 
 func errorMsg(err error) string {

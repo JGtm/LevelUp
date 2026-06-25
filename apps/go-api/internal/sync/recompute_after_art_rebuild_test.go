@@ -45,6 +45,7 @@ func openRecomputeDB(t *testing.T) *sql.DB {
 		CREATE TABLE match_registry (
 			match_id VARCHAR PRIMARY KEY,
 			start_time TIMESTAMPTZ,
+			start_time_utc TIMESTAMPTZ,
 			playlist_name VARCHAR,
 			pair_name VARCHAR,
 			is_ranked BOOLEAN DEFAULT FALSE,

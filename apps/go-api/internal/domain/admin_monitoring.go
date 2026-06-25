@@ -37,6 +37,34 @@ type AdminMonitoringOverview struct {
 
 	// Invariants : état du DERNIER run (gauges expvar) — pas de re-exécution.
 	Invariants MonitoringInvariantsSummary `json:"invariants"`
+
+	// Snapshot : état du substrat immuable (durabilité / lecture découplée du B-swap).
+	// Gauges = état courant (version, ready, backlog) ; cumuls = cuts depuis le boot.
+	Snapshot MonitoringSnapshotSummary `json:"snapshot"`
+}
+
+// MonitoringSnapshotSummary expose l'état du producteur de snapshot immuable (gauges +
+// cumuls expvar titrés, zéro I/O DuckDB). Posés en fin de cycle par le SnapshotCutter.
+type MonitoringSnapshotSummary struct {
+	// Version : numéro du snapshot courant (0 = aucun cut encore produit). GAUGE.
+	Version int64 `json:"version"`
+	// ReadyMatchCount : matchs inclus dans le dernier cut produit. GAUGE.
+	ReadyMatchCount int64 `json:"ready_match_count"`
+	// PendingTotal : matchs enrichis pas encore snapshot-ready (backlog). GAUGE.
+	PendingTotal int64 `json:"pending_total"`
+	// PartialTotal : matchs ready terminalement partiels (partial_reasons non vide). GAUGE.
+	PartialTotal int64 `json:"partial_total"`
+	// PendingOldestAgeSeconds : âge du plus vieux pending — alerte si dépasse un
+	// seuil (dérivation bloquée ; la grâce bornée finit par forcer). GAUGE.
+	PendingOldestAgeSeconds int64 `json:"pending_oldest_age_seconds"`
+	// CutsProduced / CutFailures / CutNoop : cumuls depuis le boot (perdus au reboot).
+	CutsProduced int64 `json:"cuts_produced"`
+	CutFailures  int64 `json:"cut_failures"`
+	CutNoop      int64 `json:"cut_noop"`
+	// ReadsServed / ReadsFallback : lectures shared MatchView servies depuis le snapshot
+	// vs repli live (pilote Phase 3). Cumuls depuis le boot — mesurent l'adoption réelle.
+	ReadsServed   int64 `json:"reads_served"`
+	ReadsFallback int64 `json:"reads_fallback"`
 }
 
 // MonitoringSchedulerSummary résume le dernier cycle auto-sync.

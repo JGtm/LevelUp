@@ -46,7 +46,7 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 		// retentera au prochain cycle.
 		p.rollbackFromDraining()
 		lease.Release()
-		swapFailuresTotal.Add(failReasonAcquireWriter, 1)
+		swapFailuresTotal.Add(failReasonDrainTimeout, 1)
 		slog.WarnContext(ctx, "provider: drain timeout, rollback vers RO",
 			"path", p.path, "drain_ms", time.Since(drainStart).Milliseconds(), "err", err)
 		return nil, fmt.Errorf("sharedprovider: drain inflight readers: %w", err)
@@ -173,6 +173,8 @@ func (p *providerImpl) swapToRW(ctx context.Context, swapStart time.Time) (*duck
 
 	p.state.Store(int32(StateRW))
 	recordStateTransition(StateDraining, StateRW)
+	// Phase 0 — début de la fenêtre RW stricte (sous p.mu), lue au releaseWriter.
+	p.rwWindowStart = time.Now()
 	swapTotal.Add(swapDirRoToRw, 1)
 	swapDurationMsTotal.Add(swapDirRoToRw, time.Since(swapStart).Milliseconds())
 	return rwHandle, nil
@@ -237,6 +239,13 @@ func (p *providerImpl) releaseWriter(ctx context.Context, rwHandle *duckdbpkg.DB
 
 	p.state.Store(int32(StateReopening))
 	recordStateTransition(prev, StateReopening)
+	// Phase 0 — fenêtre RW stricte : durée pendant laquelle le handle était RW
+	// (Get gatés), enregistrée à la sortie de l'état RW quel que soit le reopen.
+	if !p.rwWindowStart.IsZero() {
+		observability.RecordDurationMS("shared_provider_rw_window_ms",
+			time.Since(p.rwWindowStart).Milliseconds())
+		p.rwWindowStart = time.Time{}
+	}
 
 	if rwHandle != nil {
 		if err := rwHandle.Close(); err != nil {

@@ -20,8 +20,8 @@ func TestBatchComputeLUSRPreview_NoWrite(t *testing.T) {
 	db := openLUSRDB(t)
 	// 2 matchs sociaux (LUSR éligibles) pour xuid1, avec participants opposés.
 	if _, err := db.Exec(`INSERT INTO match_registry VALUES
-		('m1', '2025-01-01 10:00:00'::TIMESTAMPTZ, 'Quick Play', 'Slayer', FALSE, FALSE, 600),
-		('m2', '2025-01-02 10:00:00'::TIMESTAMPTZ, 'Quick Play', 'Slayer', FALSE, FALSE, 600)`); err != nil {
+		('m1', '2025-01-01 10:00:00'::TIMESTAMPTZ, NULL, 'Quick Play', 'Slayer', FALSE, FALSE, 600),
+		('m2', '2025-01-02 10:00:00'::TIMESTAMPTZ, NULL, 'Quick Play', 'Slayer', FALSE, FALSE, 600)`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec(`INSERT INTO match_participants
@@ -89,7 +89,7 @@ func TestBatchComputeLUSRPreview_EmptyData(t *testing.T) {
 func TestBatchComputeLUSRPreview_DetectsChanges(t *testing.T) {
 	db := openLUSRDB(t)
 	if _, err := db.Exec(`INSERT INTO match_registry VALUES
-		('m1', '2025-01-01 10:00:00'::TIMESTAMPTZ, 'Quick Play', 'Slayer', FALSE, FALSE, 600)`); err != nil {
+		('m1', '2025-01-01 10:00:00'::TIMESTAMPTZ, NULL, 'Quick Play', 'Slayer', FALSE, FALSE, 600)`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec(`INSERT INTO match_participants

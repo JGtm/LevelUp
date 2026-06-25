@@ -108,7 +108,7 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
 		return nil, nil //nolint:nilerr
 	}
