@@ -118,11 +118,6 @@ func main() {
 	}
 
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
-	// PMT-2 leg 5 : migre les tokens legacy AVANT d'écrire (sinon ce CLI pourrait créer le
-	// nouveau dossier vide et un futur boot ne migrerait plus — idempotent, non destructif).
-	if _, mErr := auth.MigrateWatcherTokens(pr.LegacyWatcherTokensDir(), pr.WatcherTokensDir()); mErr != nil {
-		fmt.Fprintf(os.Stderr, "token-capture: copy-migration tokens watcher échouée (legacy préservé): %v\n", mErr)
-	}
 	storeDir := pr.WatcherTokensDir()
 	store := auth.NewMultiUserTokenStore(storeDir)
 	if err := capturecli.PersistRefreshToken(store, xuid, resolvedGT, refreshToken, halo.InvalidateCachedPlayerTokens); err != nil {

@@ -85,4 +85,21 @@ describe('TitleSwitcher (PMT-8 / MT-22)', () => {
     fireEvent.click(screen.getByRole('menuitemradio', { name: 'Halo Infinite' }))
     expect(switchTitle).not.toHaveBeenCalled()
   })
+
+  // Revue UX H5 : « on met pas assez en valeur le titre actif ». Le titre courant
+  // porte l'emphase token primary (bg + texte) en plus de aria-checked ; les autres
+  // non.
+  it('le titre actif est mis en valeur (aria-checked + emphase token primary)', () => {
+    useAppShellStore.setState({ availableTitles: [HALO, OTHER], currentTitleSlug: 'halo_infinite' })
+    render(<TitleSwitcher />)
+
+    const current = screen.getByRole('menuitemradio', { name: 'Halo Infinite' })
+    expect(current).toHaveAttribute('aria-checked', 'true')
+    expect(current.className).toContain('text-primary')
+    expect(current.className).toContain('bg-primary/10')
+
+    const other = screen.getByRole('menuitemradio', { name: 'Halo 3' })
+    expect(other).toHaveAttribute('aria-checked', 'false')
+    expect(other.className).not.toContain('text-primary')
+  })
 })

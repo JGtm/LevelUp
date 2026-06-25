@@ -10,7 +10,7 @@ Cette ADR a longtemps documenté la conception V2 sans signaler que **le câblag
 
 Conséquence observée : tables `streak`, `record_history`, `player_records`, `milestone_earned` **restaient vides indéfiniment**. Page Ascension affichait "Aucun milestone configuré" pour tous les joueurs.
 
-Cf. [.ai/AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21.md](../../.ai/AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21.md) pour le diagnostic complet.
+Cf. [.ai/archive/stabilisation-2026-05-22/AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21.md](../../.ai/archive/stabilisation-2026-05-22/AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21.md) pour le diagnostic complet.
 
 **Fix appliqué (branche `feat/ascension-pipeline-v2-wiring`)** :
 - Interface `port.PostSyncRunner` (before/finalizer) — `internal/port/post_sync_runner.go`
@@ -45,7 +45,7 @@ Three options were evaluated for V2 (cf. `.ai/PLAN_*_ASCENSION.md`) :
    - **Records & Milestones** : célébrer la progression, paliers cumulatifs
    - **Coach proactif** : notifications sur opportunités, jamais sur faiblesses
 
-Plan reference : `.ai/PLAN_PROGRESSION_TRACKING_ASCENSION.md`.
+Plan reference : `.ai/V7/PLAN_PROGRESSION_TRACKING_ASCENSION.md`.
 
 ## Decision
 
@@ -217,8 +217,8 @@ warning, muted = neutral), tokens du design system (`bg-primary`,
 
 ## References
 
-- Plan retenu : `.ai/PLAN_PROGRESSION_TRACKING_ASCENSION.md`
-- Plan alternatif rejeté : `.ai/PLAN_SEASONS_ASCENSION.md` (DEPRECATED)
+- Plan retenu : `.ai/V7/PLAN_PROGRESSION_TRACKING_ASCENSION.md`
+- Plan alternatif rejeté : `.ai/V7/PLAN_SEASONS_ASCENSION.md` (DEPRECATED)
 - ADR 0004 : narrative engine (composantes consommées par le coach)
 - ADR 0006 : canonical indicators (`accuracy_delta`, `kills_vs_expected`, etc.
   référencés pour LOWESS futurs)

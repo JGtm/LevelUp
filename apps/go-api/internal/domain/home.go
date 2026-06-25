@@ -327,6 +327,18 @@ type HomeMatchCitationRaw struct {
 	Cumulative  int    // SUM(value) sur tous les matchs jusqu'à ce match inclus
 }
 
+// HomeMatchCommendationRaw est une commendation NATIVE progressée sur un match
+// (Halo 5 : shared.match_commendations ⨝ commendation_definitions). Sert à remplir
+// le slot TopCitations de la MatchCard pour les titres SANS moteur de citations
+// dérivé (citations.engine = not_exposed) mais AVEC commendations natives
+// (commendations.native = supported). Cf. enrichMatchesWithCommendations.
+type HomeMatchCommendationRaw struct {
+	ID      string // UUID natif de la commendation (= MatchCitationSnippet.Key)
+	Name    string // nom localisé (commendation_definitions, FR > EN)
+	IconURL string // URL icône CDN native (vide si définition absente)
+	Count   int    // progression gagnée CE match (Progress − PreviousProgress)
+}
+
 // ---------------------------------------------------------------------------
 // Résumé de session
 // ---------------------------------------------------------------------------

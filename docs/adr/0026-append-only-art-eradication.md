@@ -2,7 +2,7 @@
 
 - **Statut** : Accepté (campagne livrée 2026-06-21)
 - **Contexte technique** : DuckDB 1.5.x file-backed, driver CGO
-- **Remplace/complète** : `.ai/V7/PLAN_LUSR_ART_HOME_CRASH.md`, `.ai/HANDOFF_APPEND_ONLY_ART_CAMPAIGN.md`, ADR 0019 (Collect→Persist)
+- **Remplace/complète** : `.ai/V7/PLAN_LUSR_ART_HOME_CRASH.md`, `.ai/V7/HANDOFF_APPEND_ONLY_ART_CAMPAIGN.md`, ADR 0019 (Collect→Persist)
 
 ## Problème
 

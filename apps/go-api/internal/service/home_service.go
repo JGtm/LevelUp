@@ -368,15 +368,24 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	}
 
 	// Enrichissement mÃ©dailles + citations par liste en parallÃ¨le.
+	//
+	// TITLE-AGNOSTIC (P7) : citations dérivées D'ABORD, puis commendations NATIVES en
+	// fallback sur le MÊME slot TopCitations quand il reste vide. Halo Infinite remplit
+	// via les citations dérivées (LoadMatchCitations) ; Halo 5 — sans moteur de
+	// citations (citations.engine = not_exposed) mais avec commendations natives
+	// (commendations.native = supported) — voit ses commendations alimenter le slot.
+	// Aucun changement frontend/OpenAPI (réutilisation de MatchCitationSnippet).
 	enrichG, _ := errgroup.WithContext(ctx)
 	enrichG.Go(func() error {
 		enrichMatchesWithMedals(ctx, s.repo, recentMatches)
 		enrichMatchesWithCitations(ctx, s.repo, recentMatches)
+		enrichMatchesWithCommendations(ctx, s.repo, recentMatches)
 		return nil
 	})
 	enrichG.Go(func() error {
 		enrichMatchesWithMedals(ctx, s.repo, favoriteMatches)
 		enrichMatchesWithCitations(ctx, s.repo, favoriteMatches)
+		enrichMatchesWithCommendations(ctx, s.repo, favoriteMatches)
 		return nil
 	})
 	_ = enrichG.Wait()

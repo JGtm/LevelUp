@@ -185,27 +185,31 @@ func (r *ServiceRegistry) refreshTokensFromDB(ctx context.Context, pdb *duckdb.P
 
 // tryRefreshFromAuthStore tente un refresh via le MultiUserTokenStore.
 // MSAL cache prioritaire (silent refresh), puis OAuth RT avec persistance rotation.
+// Au succès, efface l'éventuel flag reauth_required (auto-guérison de la bannière
+// de reconnexion : un refresh par-joueur réussi prouve que le RT est vivant).
 func (r *ServiceRegistry) tryRefreshFromAuthStore(ctx context.Context, pdb *duckdb.PlayerDB, xuid string) *auth.ExchangeResult {
 	user, err := r.authStore.Load(xuid)
 	if err != nil || user == nil {
 		return nil
 	}
 
+	var result *auth.ExchangeResult
+
 	// MSAL cache → silent refresh
 	if user.MSALCacheJSON != "" {
 		accessToken, err := r.provider.TrySilentRefresh(ctx, user.MSALCacheJSON)
 		if err == nil && accessToken != "" {
-			if result, err := r.provider.Exchange(ctx, accessToken); err == nil && result != nil {
+			if res, xerr := r.provider.Exchange(ctx, accessToken); xerr == nil && res != nil {
 				slog.DebugContext(ctx, "halo_auth: tokens obtenus via MSAL cache (store)", "xuid", xuid)
-				return result
+				result = res
 			}
 		} else if err != nil {
 			slog.WarnContext(ctx, "halo_auth: MSAL silent refresh échoué (store)", "xuid", xuid, "err", err)
 		}
 	}
 
-	// OAuth RT → refresh + rotation persistée au store
-	if user.OAuthRefreshToken != "" {
+	// OAuth RT → refresh + rotation persistée au store (sauf si MSAL a déjà réussi)
+	if result == nil && user.OAuthRefreshToken != "" {
 		accessToken, rotatedRT, err := r.provider.TryOAuthRefreshWithRotation(ctx, user.OAuthRefreshToken)
 		if err == nil && accessToken != "" {
 			if rotatedRT != "" && rotatedRT != user.OAuthRefreshToken {
@@ -213,16 +217,25 @@ func (r *ServiceRegistry) tryRefreshFromAuthStore(ctx context.Context, pdb *duck
 					slog.WarnContext(ctx, "halo_auth: persistance RT rotaté store échouée", "xuid", xuid, "err", werr)
 				}
 			}
-			if result, err := r.provider.Exchange(ctx, accessToken); err == nil && result != nil {
+			if res, xerr := r.provider.Exchange(ctx, accessToken); xerr == nil && res != nil {
 				slog.DebugContext(ctx, "halo_auth: tokens obtenus via OAuth refresh (store)", "xuid", xuid)
-				return result
+				result = res
 			}
 		} else if err != nil {
 			slog.WarnContext(ctx, "halo_auth: OAuth refresh échoué (store)", "xuid", xuid, "err", err)
 		}
 	}
 
-	return nil
+	if result != nil {
+		// Refresh OK → l'éventuel flag reauth_required est obsolète : on l'efface
+		// (auto-guérison de la bannière, symétrique du clear côté CLI cli_refresh.go).
+		// Idempotent, best-effort, non bloquant. Un xuid au RT réellement mort
+		// n'atteint jamais ce point → son flag reste posé (pas de faux clear).
+		if cerr := r.authStore.ClearReauthRequired(xuid); cerr != nil {
+			slog.WarnContext(ctx, "halo_auth: clear reauth_required échoué (non-bloquant)", "xuid", xuid, "err", cerr)
+		}
+	}
+	return result
 }
 
 // tryRefreshFromLegacy tente un refresh via sync_meta DuckDB + env var.

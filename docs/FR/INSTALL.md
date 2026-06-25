@@ -75,10 +75,10 @@ commandes (le store de tokens est adressé par xuid). Les tokens vont directemen
 
 ```bash
 # Device Code Flow dans le navigateur, refresh token écrit dans le store
-go run ./apps/go-api/cmd/token-capture/ <Gamertag>
+cd apps/go-api && go run ./cmd/token-capture/ <Gamertag>
 
 # Ou importer un refresh token obtenu ailleurs (lu depuis stdin)
-go run ./apps/go-api/cmd/token-import/ <Gamertag>
+cd apps/go-api && go run ./cmd/token-import/ <Gamertag>
 ```
 
 Après capture/import, redémarrez le serveur : le Pool d'auth trouve le token dans le store et
@@ -91,7 +91,7 @@ Si vous forkez LevelUp, créez votre propre Azure App Registration (gratuite) et
 
 ```env
 # .env.local
-SPNKR_AZURE_CLIENT_ID=your_own_client_id
+LEVELUP_OAUTH_CLIENT_ID=your_own_client_id
 ```
 
 Voir [CONFIGURATION.md](CONFIGURATION.md) pour le déroulé complet de l'inscription Azure.
@@ -182,7 +182,7 @@ cd apps/web && npm run typecheck
 
 ### Tests
 
-Le driver DuckDB requiert CGO. Voir [testing.md](testing.md) pour la matrice complète
+Le driver DuckDB requiert CGO. Voir [testing.md](../testing.md) pour la matrice complète
 (chemin rapide CGO=0, ratchet de couverture, Windows MinGW).
 
 ```bash
@@ -282,7 +282,7 @@ cd apps/go-api && CGO_ENABLED=1 go test ./... -count=1
 
 Dans l'app → **Paramètres** → **Connexion Xbox** → **Reconnecter** (relance le flux Device Code
 et rafraîchit le token dans le store). Pour les joueurs headless, relancez
-`go run ./apps/go-api/cmd/token-capture/ <Gamertag>`. Le refresh token est persisté dans
+`cd apps/go-api && go run ./cmd/token-capture/ <Gamertag>`. Le refresh token est persisté dans
 `data/auth/watcher_tokens/{xuid}.json` (store de tokens unique, voir
 [ADR 0023](../adr/0023-auth-tokens-single-source.md)).
 
@@ -314,7 +314,7 @@ LevelUp/
 │       └── shared_matches_v2.duckdb # Matchs partagés (centralisé)
 ├── db_profiles.json                 # Profils joueurs (créé par le wizard)
 ├── app_settings.json                # Paramètres applicatifs
-└── .env.local                       # Config optionnelle (ex. SPNKR_AZURE_CLIENT_ID pour les forks)
+└── .env.local                       # Config optionnelle (ex. LEVELUP_OAUTH_CLIENT_ID pour les forks)
 ```
 
 ---

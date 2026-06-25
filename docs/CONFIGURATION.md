@@ -123,7 +123,7 @@ No `.env.local` editing required. Requires the OAuth client to be configured
 ### Mode 2 — `token-capture` (advanced, Device Code)
 
 ```bash
-go run ./apps/go-api/cmd/token-capture/ MyGamertag
+cd apps/go-api && go run ./cmd/token-capture/ MyGamertag
 ```
 
 Resolves the XUID from `db_profiles.json`, runs a Microsoft Device Code Flow
@@ -134,7 +134,7 @@ cache. Restart the server and it works immediately.
 ### Mode 3 — `token-import` (advanced, RT from elsewhere)
 
 ```bash
-cat token-mygt.txt | go run ./apps/go-api/cmd/token-import/ MyGamertag
+cat token-mygt.txt | (cd apps/go-api && go run ./cmd/token-import/ MyGamertag)
 ```
 
 Reads the refresh token from **stdin** (never argv, to keep it out of shell
@@ -252,7 +252,7 @@ cp app_settings.example.json app_settings.json
 
 ### Available settings
 
-Keys present in `app_settings.example.json` and read by the Go backend:
+Keys read by the Go backend from `app_settings.json` (some are not in the example template):
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
@@ -306,7 +306,7 @@ Microsoft refresh tokens rotate on each refresh and expire after ~90 days of
 inactivity. To re-provision a player, re-run:
 
 ```bash
-go run ./apps/go-api/cmd/token-capture/ MyGamertag
+cd apps/go-api && go run ./cmd/token-capture/ MyGamertag
 ```
 
 Never re-capture a healthy token unnecessarily: the store is the source of
@@ -327,7 +327,7 @@ The refresh token was already consumed or belongs to a stale store entry.
 Re-provision the affected player:
 
 ```bash
-go run ./apps/go-api/cmd/token-capture/ MyGamertag
+cd apps/go-api && go run ./cmd/token-capture/ MyGamertag
 ```
 
 If only some XUIDs fail with `AADSTS70000`, they are likely stale store entries

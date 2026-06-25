@@ -235,14 +235,20 @@ func TestAchievementsService_Categories(t *testing.T) {
 		}
 	}
 
-	// Titre sans mapping → catégorie vide sur toutes les entrées.
+	// Titre SANS mapping de catégories (slug absent de achievementCategoriesByTitle)
+	// → catégorie vide sur toutes les entrées : le front masque alors le filtre
+	// (dégradation gracieuse multi-titres).
+	//
+	// NB : halo_5 N'EST PLUS un exemple valide ici — il a reçu son mapping (73 succès,
+	// achievement_categories_halo_5.go, ajouté avec le titre). On utilise donc un slug
+	// réellement non mappé pour exercer le chemin "titre sans catégorisation".
 	svcNoMapping := NewAchievementsService(
 		&mockAchievementsRepo{rows: nil},
 		&mockMetadataAchievementsRepo{defs: defs},
-	).WithTitleSlug("halo_5")
+	).WithTitleSlug("title_without_category_mapping")
 	resp, err = svcNoMapping.GetAchievementsPage(context.Background())
 	if err != nil {
-		t.Fatalf("GetAchievementsPage (halo_5): %v", err)
+		t.Fatalf("GetAchievementsPage (sans mapping): %v", err)
 	}
 	for _, e := range resp.Achievements {
 		if e.Category != "" {

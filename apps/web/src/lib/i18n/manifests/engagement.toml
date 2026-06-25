@@ -140,6 +140,10 @@ en = " — based on the {recent} most recent matches out of {total}"
 fr = " — {total, plural, one {# match} other {# matchs}}"
 en = " — {total, plural, one {# match} other {# matches}}"
 
+[engagement.timeseries.error]
+fr = "Engagement momentanément indisponible"
+en = "Engagement temporarily unavailable"
+
 # ─── Engagement Coefficients (profil) ───────────────────────────────────────
 
 [engagement.coef.team_share_label]

@@ -163,7 +163,7 @@ Cet ADR rend Option A (extension canonical légère + adapter semantic plein) :
 - ADR 0002 — `canonical-player-match-row.md` (contrat initial)
 - ADR 0007 — `canonical-bigbang-migration.md` (plan migration)
 - ADR 0008 — `db-schema-multi-title-and-xuid-global.md` (isolation par chemin FS)
-- Plan : `.ai/review/2026-04-29/PLAN_ACTION.md` P4
-- Gap analysis : `.ai/review/2026-04-29/P4_GAP_ANALYSIS.md` (livré séparément, valide ou ajuste les hypothèses de cet ADR)
+- Plan : `.ai/V7/review/2026-04-29/PLAN_ACTION.md` P4
+- Gap analysis : `.ai/V7/review/2026-04-29/P4_GAP_ANALYSIS.md` (livré séparément, valide ou ajuste les hypothèses de cet ADR)
 - Code : `apps/go-api/internal/games/adapter.go` (3 interfaces définies, déjà en place)
 - Implémentations existantes : `apps/go-api/internal/games/halo_infinite/{adapter_data,adapter_semantic,adapter_asset_url}.go`

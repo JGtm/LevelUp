@@ -182,9 +182,9 @@ La bascule décrite ci-dessus est **effectuée**. Différences vs le plan initia
 ## Références
 
 - Herbrich, Minka, Graepel — TrueSkill: A Bayesian Skill Rating System (NIPS 2006)
-- Minka, Cleven, Zaykov — TrueSkill 2: An improved Bayesian skill rating system (MSR 2018) ([texte extrait](.ai/trueskill2.txt))
-- Menke (GDC) — Significantly Improving your Skill System with TrueSkill Through Time ([texte extrait](.ai/menke.txt))
+- Minka, Cleven, Zaykov — TrueSkill 2: An improved Bayesian skill rating system (MSR 2018) ([texte extrait](../../.ai/V7/LUSR%20v2/trueskill2.txt))
+- Menke (GDC) — Significantly Improving your Skill System with TrueSkill Through Time ([texte extrait](../../.ai/V7/LUSR%20v2/menke.txt))
 - Moserware/Skills (C#, BSD) — implémentation de référence des facteurs EP utilisée pour valider les formules
-- Rapport Phase 0 : [.ai/lusr_v2_phase0_metrics.md](../../.ai/lusr_v2_phase0_metrics.md)
-- Rapport Phase 1d : [.ai/lusr_v2_phase1d_replay.md](../../.ai/lusr_v2_phase1d_replay.md)
-- Rapport Phase 3d : [.ai/lusr_v2_phase3d_replay.md](../../.ai/lusr_v2_phase3d_replay.md)
+- Rapport Phase 0 : [.ai/V7/LUSR%20v2/lusr_v2_phase0_metrics.md](../../.ai/V7/LUSR%20v2/lusr_v2_phase0_metrics.md)
+- Rapport Phase 1d : [.ai/V7/LUSR%20v2/lusr_v2_phase1d_replay.md](../../.ai/V7/LUSR%20v2/lusr_v2_phase1d_replay.md)
+- Rapport Phase 3d : [.ai/V7/LUSR%20v2/lusr_v2_phase3d_replay.md](../../.ai/V7/LUSR%20v2/lusr_v2_phase3d_replay.md)

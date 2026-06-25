@@ -232,11 +232,11 @@ mapping label/route est déjà documenté in-code par les commentaires commit 8.
 
 ## References
 
-- Plan retenu : `.ai/PLAN_PLAYER_PROFILE_ASCENSION.md` (705 lignes, 10 commits cadrés)
+- Plan retenu : `.ai/V7/PLAN_PLAYER_PROFILE_ASCENSION.md` (705 lignes, 10 commits cadrés)
 - ADR 0004 : narrative engine (radar 6 axes + 8 rôles — consommé par
   `aggregateNarrative` commit 4)
 - ADR 0014 : Progression Tracking V2 (Streaks/Records/Milestones/Coach) qui
   attendait ce V1 pour ses 2 alertes campagne et ses 2 streaks perf-based
-- Plan rejeté : `.ai/PLAN_SEASONS_ASCENSION.md` (DEPRECATED, justification du
+- Plan rejeté : `.ai/V7/PLAN_SEASONS_ASCENSION.md` (DEPRECATED, justification du
   choix Campagne vs Saison dans §4.5.2 du plan V1)
 - thought_log entries `[2026-05-18] feat(player-profile-v1)(commit-{1..10})`

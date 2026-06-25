@@ -442,3 +442,100 @@ func TestEngagementHandler_GetSquadSession_FallbackEmptyDerivation(t *testing.T)
 		t.Errorf("labels = %d, want 0 (session vide propre)", len(resp.Labels))
 	}
 }
+
+// =============================================================================
+// POST /engagement/timeseries — décodage body permissif (null dates)
+// =============================================================================
+
+// TestEngagementHandler_Timeseries_NullDates_NotRejected : le front envoie
+// period.start_date/end_date = null. Le handler décode le corps BRUT à la main
+// (RawBody + json.Unmarshal) pour tolérer ce null, là où un Body typé Huma le
+// rejetterait en 422 (*time.Time optionnel mais NON nullable).
+//
+// Régression (2026-06-25) : l'endpoint avait été migré en Huma avec un Body
+// typé *EngagementTimeseriesRequest → 422 pour TOUS les titres → le bloc
+// Engagement de la page Timeseries affichait « Error » en prod. On vérifie 200,
+// jamais 422 — aligné sur le contournement des endpoints filtres (decodeFiltersBody).
+func TestEngagementHandler_Timeseries_NullDates_NotRejected(t *testing.T) {
+	repo := &engagementMockRepo{} // playerMatchesRepo nil → GetTimeseries dégrade en 200 vide
+	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+		return service.NewPlayerEngagementService(repo, "xuid-main", "MainGT"), nil
+	}
+
+	body := `{"filters":{"filter_mode":"period","period":{"start_date":null,"end_date":null},"sessions":{"gap_minutes":30},"cascade":{}},"limit":30}`
+	req := httptest.NewRequest(http.MethodPost,
+		"/players/test-player/engagement/timeseries", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	newEngagementRouter(factory).ServeHTTP(w, req)
+
+	if w.Code == http.StatusUnprocessableEntity {
+		t.Fatalf("422 : body avec period null rejeté par la validation Huma (régression). corps=%s", w.Body.String())
+	}
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.EngagementTimeseriesResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+}
+
+// TestEngagementHandler_Timeseries_EmptyBody_OK : un body absent équivaut à `{}`
+// (compat smoke / integration). Ne doit jamais renvoyer 4xx.
+func TestEngagementHandler_Timeseries_EmptyBody_OK(t *testing.T) {
+	repo := &engagementMockRepo{}
+	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+		return service.NewPlayerEngagementService(repo, "xuid-main", "MainGT"), nil
+	}
+
+	req := httptest.NewRequest(http.MethodPost,
+		"/players/test-player/engagement/timeseries", nil)
+	w := httptest.NewRecorder()
+	newEngagementRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 sur body vide, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+// TestEngagementHandler_Timeseries_InvalidFilters_400 : un filter_mode invalide est
+// rejeté en 400 invalid_filters (validation MÉTIER dans decodeEngagementTimeseriesBody),
+// jamais 422 (validation Huma) ni 500. Garantit que le décodage manuel applique bien
+// FilterContextInput.Validate.
+func TestEngagementHandler_Timeseries_InvalidFilters_400(t *testing.T) {
+	repo := &engagementMockRepo{}
+	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+		return service.NewPlayerEngagementService(repo, "xuid-main", "MainGT"), nil
+	}
+
+	body := `{"filters":{"filter_mode":"bogus"},"limit":10}`
+	req := httptest.NewRequest(http.MethodPost,
+		"/players/test-player/engagement/timeseries", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	newEngagementRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 invalid_filters, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+// TestEngagementHandler_Timeseries_MalformedJSON_400 : un body JSON malformé est
+// rejeté proprement en 400 invalid_body (pas de 500 ni de panic).
+func TestEngagementHandler_Timeseries_MalformedJSON_400(t *testing.T) {
+	repo := &engagementMockRepo{}
+	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+		return service.NewPlayerEngagementService(repo, "xuid-main", "MainGT"), nil
+	}
+
+	req := httptest.NewRequest(http.MethodPost,
+		"/players/test-player/engagement/timeseries", strings.NewReader(`{"filters":`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	newEngagementRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 invalid_body, got %d: %s", w.Code, w.Body.String())
+	}
+}

@@ -254,6 +254,10 @@ La sélection des matchs est pilotée par bitmask sur
 `1<<22` = no-film. Sans `--force`, les matchs ayant l'un de ces bits sont
 ignorés (`findMissingWeaponMatches`).
 
+> Chaque exécution traite au plus **30 matchs manquants par joueur** (`LIMIT 30`
+> dans `findMissingWeaponMatches`) et ne reboucle pas. Relancer la commande
+> jusqu'à `matches=0` pour vider un gros arriéré.
+
 Si `metadata.weapon_labels` est vide (certaines DB prébuilties), réparer-la
 (arrêter le serveur API d'abord — il tient metadata.duckdb en RW) :
 

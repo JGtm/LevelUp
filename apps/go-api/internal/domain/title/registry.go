@@ -74,6 +74,12 @@ type TitleDescriptor struct {
 	Capabilities []Capability `json:"capabilities"`
 	IsDefault    bool         `json:"is_default"` // halo_infinite = true
 
+	// IsInternal marque un titre INTERNE/TEST (fixture multi-titre comme
+	// synthetic_title_b) : découvert + enregistré + inspectable côté admin, mais
+	// JAMAIS exposé dans le switcher utilisateur (cf. PublicTitles). Évite qu'une
+	// fixture de test « fuite » dans l'UI prod. Défaut false (vrai titre).
+	IsInternal bool `json:"is_internal"`
+
 	// Identifiants plateforme pour le matching de présence (watcher)
 	XboxTitleID string `json:"xbox_title_id"` // ex: "1144039928" pour Halo Infinite
 	SteamAppID  string `json:"steam_app_id"`  // ex: "1336960" pour Halo Infinite (Steam)
@@ -278,6 +284,24 @@ func (r *Registry) NonArchived() []*TitleDescriptor {
 		if t.Status != StatusArchived {
 			out = append(out, t)
 		}
+	}
+	return out
+}
+
+// PublicTitles retourne les titres exposables dans le SWITCHER UTILISATEUR :
+// exclut les archived (titres retirés) ET les internal (fixtures de test comme
+// synthetic_title_b). C'est la vue user-facing — par opposition à NonArchived
+// (qui inclut les internes) et All (admin). Conserve les coming_soon non-internes
+// (badge « bientôt ») et leur Status. Cf. buildAvailableTitlesFrom.
+func (r *Registry) PublicTitles() []*TitleDescriptor {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*TitleDescriptor, 0, len(r.titles))
+	for _, t := range r.titles {
+		if t.Status == StatusArchived || t.IsInternal {
+			continue
+		}
+		out = append(out, t)
 	}
 	return out
 }
@@ -521,35 +545,13 @@ func (p *PathResolver) WatcherTokensPath() string {
 	return filepath.Join(p.repoRoot, "data", "auth", "watcher_tokens.json")
 }
 
-// WatcherTokensDir retourne le répertoire des tokens watcher multi-user (SSO Xbox)
-// du titre par DÉFAUT (halo_infinite). Signature inchangée → les ~20 appelants existants
-// (tous mono-titre Halo) obtiennent automatiquement le chemin namespacé titre sans churn.
-// Layout : data/titles/{slug}/auth/watcher_tokens/{xuid}.json (1 fichier par utilisateur).
+// WatcherTokensDir retourne le répertoire des tokens watcher multi-user (SSO Xbox).
+// Store GLOBAL title-agnostic : les tokens d'auth (refresh-token / XSTS) sont attachés
+// au compte Xbox (xuid), PAS à un jeu — un même compte donne accès à tous les titres.
+// Layout : data/auth/watcher_tokens/{xuid}.json (1 fichier par utilisateur).
 // Décision D4 (cf. SPRINT_XBOX_SSO §0bis) : source unique, write-to-temp + rename atomique,
 // perms 0600 sur fichiers / 0700 sur répertoire.
-//
-// Phase 1.5 PMT-2 leg 5 (store path cutover, MT-02) : le chemin est passé de
-// data/auth/watcher_tokens (legacy global) à data/titles/halo_infinite/auth/watcher_tokens
-// (namespacé titre). La copy-migration boot (auth.MigrateWatcherTokens) recopie les tokens
-// existants depuis le legacy au 1er démarrage → transparent, zéro perte (legacy préservé).
 func (p *PathResolver) WatcherTokensDir() string {
-	return p.WatcherTokensDirFor(DefaultSlug)
-}
-
-// WatcherTokensDirFor retourne le répertoire des tokens watcher d'un titre donné
-// (namespacé : data/titles/{slug}/auth/watcher_tokens). Point d'injection title-aware
-// pour le multi-titre (2e titre → ses tokens ne collisionnent pas avec ceux d'Halo).
-func (p *PathResolver) WatcherTokensDirFor(slug string) string {
-	if slug == "" {
-		slug = DefaultSlug
-	}
-	return filepath.Join(p.repoRoot, "data", "titles", slug, "auth", "watcher_tokens")
-}
-
-// LegacyWatcherTokensDir retourne l'ANCIEN répertoire global (data/auth/watcher_tokens),
-// pré-namespacing titre. Utilisé uniquement par la copy-migration boot
-// (auth.MigrateWatcherTokens) comme source. Ne pas écrire ici.
-func (p *PathResolver) LegacyWatcherTokensDir() string {
 	return filepath.Join(p.repoRoot, "data", "auth", "watcher_tokens")
 }
 

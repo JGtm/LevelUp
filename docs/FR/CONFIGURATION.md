@@ -11,9 +11,9 @@ Version anglaise : [../CONFIGURATION.md](../CONFIGURATION.md)
 - [Profils joueurs](#profils-joueurs)
 - [Stockage des tokens & onboarding](#stockage-des-tokens--onboarding)
 - [Variables d'environnement](#variables-denvironnement)
-- [Paramètres applicatifs](#parametres-applicatifs)
-- [Sécurité](#securite)
-- [Dépannage](#depannage)
+- [Paramètres applicatifs](#paramètres-applicatifs)
+- [Sécurité](#sécurité)
+- [Dépannage](#dépannage)
 
 ---
 
@@ -124,7 +124,7 @@ Aucune édition de `.env.local` nécessaire. Requiert le client OAuth configuré
 ### Mode 2 — `token-capture` (avancé, Device Code)
 
 ```bash
-go run ./apps/go-api/cmd/token-capture/ MonGamertag
+cd apps/go-api && go run ./cmd/token-capture/ MonGamertag
 ```
 
 Résout le XUID depuis `db_profiles.json`, lance un Device Code Flow Microsoft
@@ -135,7 +135,7 @@ le cache de tokens en mémoire. Redémarrer le serveur, c'est tout.
 ### Mode 3 — `token-import` (avancé, RT venu d'ailleurs)
 
 ```bash
-cat token-mongt.txt | go run ./apps/go-api/cmd/token-import/ MonGamertag
+cat token-mongt.txt | (cd apps/go-api && go run ./cmd/token-import/ MonGamertag)
 ```
 
 Lit le refresh token sur **stdin** (jamais en argv, pour le tenir hors de
@@ -253,7 +253,7 @@ cp app_settings.example.json app_settings.json
 
 ### Paramètres disponibles
 
-Clés présentes dans `app_settings.example.json` et lues par le backend Go :
+Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du template d'exemple) :
 
 | Paramètre | Type | Défaut | Description |
 |-----------|------|--------|-------------|
@@ -307,7 +307,7 @@ Les refresh tokens Microsoft tournent à chaque refresh et expirent après ~90
 jours d'inactivité. Pour re-provisionner un joueur, relancer :
 
 ```bash
-go run ./apps/go-api/cmd/token-capture/ MonGamertag
+cd apps/go-api && go run ./cmd/token-capture/ MonGamertag
 ```
 
 Ne jamais re-capturer inutilement un token sain : le store est la source de
@@ -329,7 +329,7 @@ Le refresh token a déjà été consommé ou appartient à une entrée périmée
 store. Re-provisionner le joueur concerné :
 
 ```bash
-go run ./apps/go-api/cmd/token-capture/ MonGamertag
+cd apps/go-api && go run ./cmd/token-capture/ MonGamertag
 ```
 
 Si seuls certains XUID échouent en `AADSTS70000`, ce sont probablement des

@@ -95,6 +95,7 @@ export function EngagementTimeseriesSection(props: EngagementTimeseriesSectionPr
       points={points}
       granularity="session"
       state={query.isLoading ? 'loading' : query.isError ? 'error' : 'ready'}
+      errorMessage={formatMessage(engagementManifest, 'engagement.timeseries.error', locale)}
       xFormatter={xFormatter}
     />
   )

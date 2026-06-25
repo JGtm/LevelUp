@@ -81,7 +81,7 @@ const t = {
   watcherPresenceEnabled: 'Détection automatique',
   watcherPresenceDescription: 'Description',
   watcherAuthButton: 'Connecter via Xbox',
-  watcherAuthReconnect: 'Reconnecter Xbox',
+  watcherAuthReconnect: 'Rafraîchir Xbox',
   watcherAuthInstructions: 'Rendez-vous sur {url}',
   watcherAuthCopyCode: 'Copier le code',
   watcherAuthOpenLink: 'Ouvrir le lien',
@@ -246,11 +246,11 @@ describe('WatcherCard', () => {
       }
     })
 
-    it('affiche "Jeton expiré" et le bouton Reconnecter', async () => {
+    it('affiche "Jeton expiré" et le bouton Rafraîchir', async () => {
       renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
       await waitFor(() => {
         expect(screen.getByText(/Jeton expiré/i)).toBeInTheDocument()
-        expect(screen.getByText('Reconnecter Xbox')).toBeInTheDocument()
+        expect(screen.getByText('Rafraîchir Xbox')).toBeInTheDocument()
       })
     })
   })

@@ -268,5 +268,5 @@ Conformité **I4** (Arc standard, IsPreset=false).
 - ADR 0020 — Coach proactif : pont vers Prestige (invariants I1-I5)
 - ADR 0005 — Prestige Phased Activation (`Template`, `Arc`, `CalculatePalier`)
 - ADR 0019 — Collect / Persist (pattern d'écriture)
-- `config/coach_advisor/tuning.toml` (seuils synthèse + composition)
+- Seuils synthèse + composition : `internal/progression/coach_advisor/service.go` (`DefaultTuning`) ; grammaire : `config/coach_advisor/synthesis_grammar.toml`
 - `config/coach_advisor/synthesis_grammar.toml` (allowlist)

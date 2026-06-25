@@ -2,7 +2,7 @@
 
 **Date** : 2026-05-22 (Phase 5 plan stabilisation)
 **Audience** : opérateurs/devs qui lancent les CLI `cmd/*` pendant que le serveur tourne
-**Référence** : [.ai/HANDOFF_db_open_audit_2026-05-20.md](../.ai/HANDOFF_db_open_audit_2026-05-20.md) §3
+**Référence** : [.ai/archive/stabilisation-2026-05-22/HANDOFF_db_open_audit_2026-05-20.md](../.ai/archive/stabilisation-2026-05-22/HANDOFF_db_open_audit_2026-05-20.md) §3
 
 ## Le problème
 
@@ -25,7 +25,6 @@ Les CLI suivants modifient des DBs **partagées** (metadata.duckdb, shared_match
 - `cmd/seed-rank-translations` — labels rangs
 - `cmd/seed-assists-model` — coefficients OLS
 - `cmd/migrate-static-maps` — UUIDs map_id
-- `cmd/migrate-static-paths` — UUIDs paths
 - `cmd/refresh-career-ranks` — career_ranks
 - `cmd/populate-career-rank-images` — assets images
 - `cmd/populate-playlists-catalog` — playlists_catalog

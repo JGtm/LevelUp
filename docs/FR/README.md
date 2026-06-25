@@ -305,7 +305,7 @@ Lancez simplement l'app, entrez votre gamertag, et authentifiez-vous via Device 
 ### Refresh token (avancé / headless)
 
 Si vous ne pouvez pas utiliser le wizard interactif (setup serveur/headless par exemple),
-ouvrez la page de connexion à `http://localhost:5173/auth/xbox` depuis n'importe quel
+ouvrez la page de connexion à `http://localhost:5173/auth/xbox/login` depuis n'importe quel
 navigateur sur le même réseau et suivez le Device Code Flow. Alternativement, configurez
 un URI de redirect via `LEVELUP_OAUTH_REDIRECT_URI` pour un flux entièrement navigateur.
 

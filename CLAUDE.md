@@ -11,8 +11,8 @@
 **AVANT TOUTE ACTION** : Consulter les fichiers `.ai/` :
 - `.ai/project_map.md` : Cartographie du projet
 - `.ai/thought_log.md` : Journal des décisions
-- `.ai/data_lineage.md` : Flux de données
-- `.ai/SPRINT_EXPLORATION.md` : Exploration codebase
+- `.ai/archive/v6.0/data_lineage.md` : Flux de données
+- `.ai/V7/SPRINT_EXPLORATION.md` : Exploration codebase
 
 **APRÈS CHAQUE MODIFICATION SIGNIFICATIVE** : Mettre à jour ces fichiers.
 
@@ -57,7 +57,7 @@ Ne pas sauter cette étape même pour des modifications « mineures ». L'absenc
 - `docs/adr/0022-shared-social-collect-persist.md` — écritures `shared_social` via Collect→Persist (`SharedSocialPersister`). H1 historique « ADR 0020 » corrigé ; les réfs code « ADR 0022 (SocialPersister) » désignent ce document.
 - `docs/adr/0023-auth-tokens-single-source.md` — MultiUserTokenStore source unique tokens auth (élimine env.local + sync_meta DuckDB comme credential store ; résout bug Madina invalid_grant sous Air hot-reload)
 - `docs/adr/0024-lusr-v2-trueskill2-with-counts.md` — LUSR v2 (TrueSkill2 + observations kills/deaths, Halo Infinite). Réfs code « ADR 0024 » LUSR/skill/rating.
-- `docs/adr/0025-title-agnostic-minimal-viable-window.md` — refactor title-agnostic, fenêtre minimale viable (Phases 0→3a) ; Phase 2 cible **canonical-typée** (FieldKey-map abandonné) ; OpenAPI absorbé dans Phase 3b (Huma). Master : `.ai/PLAN_TITLE_AGNOSTIC_REFACTORING.md` ; suivi traçable : `.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md`
+- `docs/adr/0025-title-agnostic-minimal-viable-window.md` — refactor title-agnostic, fenêtre minimale viable (Phases 0→3a) ; Phase 2 cible **canonical-typée** (FieldKey-map abandonné) ; OpenAPI absorbé dans Phase 3b (Huma). Master : `.ai/V7/PLAN_TITLE_AGNOSTIC_REFACTORING.md` ; suivi traçable : `.ai/V7/PLAN_TITLE_AGNOSTIC_TRACKER.md`
 - `docs/adr/0026-append-only-art-eradication.md` — tables d'état en append-only (éradication bug DuckDB ART #23046 par construction) ; 3 mécanismes (written_at / generation_id / stage merge-on-read) + helper unique `internal/migration/append_only_rebuild.go` (swap transactionnel + garde + recoverOrphan) ; exception PME ; recette d'ajout + pièges (`;` en commentaire SQL, lecture brute vs `_latest`)
 - `docs/adr/0027-sync-pipeline-v2-cycle-orchestrator.md` — Sync pipeline V2 (cycle orchestrator, parallélisation cross-player). Renuméroté depuis 0020 (collision) ; réfs code « ADR 0027 » = `pipeline V2`/`D6.x`/package `internal/sync/v2`.
 - `docs/adr/0028-template-synthesis.md` — synthèse dynamique de Template/Arc ad-hoc (`coach_advisor`). Renuméroté depuis 0021 (collision) ; réfs code « ADR 0028 » dans `internal/progression/coach_advisor/`.
@@ -80,7 +80,7 @@ Toute NOUVELLE écriture dans une DB partagée (shared, player, pve, metadata) s
 - **Live sync** : `submitMatchAsBatch` (activé par `LEVELUP_PERSIST_BATCH=1`, cf. `engine_batch_path.go`).
 - **Tables append-only (Phase 2 du refactor ART, 2026-05-24)** : `match_skill_rank`, `match_csrs`, `player_csr_snapshots`, `pve_match_stats` sont migrées en append-only (PK technique `id` + colonne `written_at`). Toute écriture est un INSERT pur ; la lecture courante passe par une vue `<table>_latest`. Garde-rail anti-régression dans `internal/sync/no_art_patterns_test.go` (allowlist explicite pour les sites tolérés).
 - **Hypothèse démentie** : la phrase historique "LUSR, citations, engagement peuvent rester UPDATE car non concernés par l'ART bug" est fausse — confirmé par crash prod 2026-05-24 20:41:04 sur `match_skill_rank` LUSR. Tout `INSERT ... ON CONFLICT DO UPDATE` est potentiellement à risque.
-- **Backfills CLI restants** : à auditer cas par cas via `.ai/audit_art_writes.md`. Les sites HTTP basse fréquence (streaks, records, prestige) restent en `ON CONFLICT` faute de pression concurrente, mais à migrer en pattern `SELECT-then-UPDATE-or-INSERT` quand opportun (cf. plan `.ai/PLAN_LUSR_ART_HOME_CRASH.md` Phase 4).
+- **Backfills CLI restants** : à auditer cas par cas via `.ai/V7/audit_art_writes.md`. Les sites HTTP basse fréquence (streaks, records, prestige) restent en `ON CONFLICT` faute de pression concurrente, mais à migrer en pattern `SELECT-then-UPDATE-or-INSERT` quand opportun (cf. plan `.ai/V7/PLAN_LUSR_ART_HOME_CRASH.md` Phase 4).
 - **Ajout d'enrichment local sur `player_match_enrichment`** : 3 étapes seulement (migration ALTER + champ pointer dans `EnrichmentRow` + 1 if-block dans `enrichmentFields()`). Cf. ADR 0019 + `internal/persist/doc.go`.
 
 **Skills agent** (à invoquer avant tout commit) : `.claude/skills/{arch-rules, canonical-types, color-tokens, foundations-usage, delivery-checklist, plan-review, halo-modes, db-schema, frontend-patterns, go-features}/SKILL.md`.
