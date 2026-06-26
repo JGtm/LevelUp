@@ -1,23 +1,25 @@
 /**
- * PalmaresRelationsPage — hub Communauté > Relations (Phase 1).
+ * PalmaresRelationsPage — hub Communauté > Relations (Phase 2).
  *
- * Consomme l'endpoint backend réel /pages/palmares/relations (forme {overview,
- * relations[]}). Hero (binôme / bête noire / noyau dur), chips de filtre CLIENT,
- * tableau unique (langage MatchEncountersTable) et section « Noyau dur » en
- * mini-cards flottantes. Phase 2 ajoutera la barre de segmentation serveur.
+ * Consomme l'endpoint backend réel POST /pages/palmares/relations (forme
+ * {overview, relations[]}). Barre de segmentation serveur (useLocalFilterBar :
+ * expérience / saison / période / playlist / mode / vue solo-escouade), hero
+ * (binôme / bête noire / noyau dur), chips de filtre CLIENT, tableau unique
+ * (langage MatchEncountersTable) et section « Noyau dur » en mini-cards flottantes.
  */
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 
 import { KpiCard } from '@/components/cards/KpiCard'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
+import { useLocalFilterBar } from '@/features/_shared/useLocalFilterBar'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatPercent } from '@/lib/formatters'
 import type { RelationRef } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { getPalmaresText, normalizePalmaresLocale, type PalmaresText } from './i18n'
+import { getPalmaresText, normalizePalmaresLocale, type PalmaresLocale, type PalmaresText } from './i18n'
 import { useRelationsPage } from './queries'
 import { RelationsTable } from './RelationsTable'
 import { coreRelations, filterRelations, type RelationFilter } from './relationsFilter'
@@ -166,7 +168,34 @@ export function PalmaresRelationsPage() {
   const rel = text.relations
   const navigate = useNavigate()
   const [filter, setFilter] = useState<RelationFilter>('all')
-  const { data, isLoading, isError, error, refetch } = useRelationsPage(playerSlug)
+
+  // Barre de segmentation serveur (Phase 2) : pending → committed + « Analyser »,
+  // counts cascade-aware via /filters/resolve. Inclut la vue solo/escouade.
+  const { committedFilterContext, committedHash, bar } = useLocalFilterBar({
+    playerSlug,
+    labels: {
+      experience: rel.filters.experience,
+      experienceAll: rel.filters.experienceAll,
+      experienceRanked: rel.filters.experienceRanked,
+      experienceUnranked: rel.filters.experienceUnranked,
+      playlists: rel.filters.playlists,
+      modes: rel.filters.modes,
+      reset: rel.filters.reset,
+      analyser: rel.filters.analyser,
+    },
+    viewLabels: {
+      view: rel.filters.view,
+      viewAll: rel.filters.viewAll,
+      viewSolo: rel.filters.viewSolo,
+      viewSquad: rel.filters.viewSquad,
+    },
+  })
+
+  const { data, isLoading, isError, error, refetch } = useRelationsPage(
+    playerSlug,
+    committedFilterContext,
+    committedHash,
+  )
 
   function goToExplorer(gamertag: string) {
     void navigate({
@@ -182,38 +211,62 @@ export function PalmaresRelationsPage() {
   )
   const coreRows = useMemo(() => (data ? coreRelations(data.relations) : []), [data])
 
+  // La barre reste montée dans tous les états (chargement / erreur / vide) pour
+  // permettre de changer la segmentation même quand la sélection courante est vide.
+  let body: ReactNode
   if (isLoading) {
-    return (
+    body = (
       <div className="flex items-center justify-center py-24">
         <Spinner size="lg" />
       </div>
     )
-  }
-
-  if (isError || !data) {
-    return (
-      <div className="flex flex-col gap-6 p-6">
-        <EmptyStateCard
-          title={rel.unavailableTitle}
-          description={error?.message ?? rel.unavailableDescription}
-          actionLabel={rel.retry}
-          onAction={() => refetch()}
-        />
-      </div>
+  } else if (isError || !data) {
+    body = (
+      <EmptyStateCard
+        title={rel.unavailableTitle}
+        description={error?.message ?? rel.unavailableDescription}
+        actionLabel={rel.retry}
+        onAction={() => refetch()}
+      />
     )
+  } else if (data.relations.length === 0) {
+    body = <EmptyStateCard title={rel.emptyTitle} description={rel.emptyDescription} />
+  } else {
+    body = <RelationsContent data={data} rel={rel} text={text} locale={locale} filter={filter} setFilter={setFilter} visibleRows={visibleRows} coreRows={coreRows} onPlayerClick={goToExplorer} />
   }
 
-  if (data.relations.length === 0) {
-    return (
-      <div className="flex flex-col gap-6 p-6">
-        <EmptyStateCard title={rel.emptyTitle} description={rel.emptyDescription} />
-      </div>
-    )
-  }
+  return (
+    <div className="flex flex-col">
+      {bar}
+      <div className="flex flex-col gap-6 p-6">{body}</div>
+    </div>
+  )
+}
 
+function RelationsContent({
+  data,
+  rel,
+  text,
+  locale,
+  filter,
+  setFilter,
+  visibleRows,
+  coreRows,
+  onPlayerClick,
+}: {
+  data: NonNullable<ReturnType<typeof useRelationsPage>['data']>
+  rel: RelationsText
+  text: PalmaresText
+  locale: PalmaresLocale
+  filter: RelationFilter
+  setFilter: (f: RelationFilter) => void
+  visibleRows: ReturnType<typeof filterRelations>
+  coreRows: ReturnType<typeof coreRelations>
+  onPlayerClick: (gamertag: string) => void
+}) {
   const ov = data.overview
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <>
       <div className="grid gap-4 lg:grid-cols-3" data-testid="palmares-relations-overview">
         <HeroRefCard
           title={rel.hero.topAllyTitle}
@@ -243,7 +296,7 @@ export function PalmaresRelationsPage() {
         rows={visibleRows}
         labels={rel}
         locale={locale}
-        onPlayerClick={goToExplorer}
+        onPlayerClick={onPlayerClick}
         emptyMessage={rel.filterEmptyDescription}
       />
 
@@ -252,8 +305,8 @@ export function PalmaresRelationsPage() {
           <h2 className="text-base font-semibold text-foreground">{rel.core.sectionTitle}</h2>
           <p className="text-sm text-muted-foreground">{rel.core.sectionDescription}</p>
         </div>
-        <CoreCards rows={coreRows} labels={rel} locale={text.intlLocale} onPlayerClick={goToExplorer} />
+        <CoreCards rows={coreRows} labels={rel} locale={text.intlLocale} onPlayerClick={onPlayerClick} />
       </section>
-    </div>
+    </>
   )
 }

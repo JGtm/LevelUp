@@ -2612,12 +2612,16 @@ paths:
   /players/{player_slug}/pages/palmares/relations:
     parameters:
       - $ref: "#/components/parameters/PlayerSlug"
-    get:
+    post:
       tags: [palmares]
-      operationId: getRelationsPage
-      summary: "Hub Communauté > Relations (joueurs récurrents : alliés, rivaux, noyau dur)"
+      operationId: postRelationsPage
+      summary: "Hub Communauté > Relations segmenté (filtres en body : expérience, saison/période, playlist/mode, vue solo/escouade)"
       responses:
         "200": { description: "Relations hub page" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   # Media (étendu)
   /media/feed-version:

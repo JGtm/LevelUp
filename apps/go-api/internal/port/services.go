@@ -38,8 +38,12 @@ type CareerService interface {
 
 // RelationsService construit la réponse du hub Communauté > Relations
 // (page transverse non gatée).
+//
+// Phase 2 : la segmentation serveur passe le FilterContextInput (expérience,
+// saison/période, playlist/mode, vue solo/escouade) reçu en body POST. Un input
+// zéro-valeur (corps absent) ⇒ comportement Phase 1 (tous les matchs).
 type RelationsService interface {
-	GetRelationsPage(ctx context.Context) (domain.RelationsPageResponse, error)
+	GetRelationsPage(ctx context.Context, input domain.FilterContextInput) (domain.RelationsPageResponse, error)
 }
 
 // CitationsService construit les réponses Citations et Commendations.

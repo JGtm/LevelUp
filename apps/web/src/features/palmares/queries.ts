@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
-import type { RelationsPageResponse, SeasonPassPageResponse } from '@/lib/api/types'
+import type { FilterContextInput, RelationsPageResponse, SeasonPassPageResponse } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
 
 export function useSeasonPassPage(playerSlug: string) {
@@ -15,14 +15,16 @@ export function useSeasonPassPage(playerSlug: string) {
 }
 
 // useRelationsPage : hub Communauté > Relations. Consomme l'endpoint backend
-// réel /pages/palmares/relations (forme {overview, relations[]}). Plus aucun
-// mapper local — la donnée riche (win rates, frags échangés, badges) est servie
-// par le service Go (internal/service/relations_service.go).
-export function useRelationsPage(playerSlug: string) {
+// réel POST /pages/palmares/relations (forme {overview, relations[]}). Phase 2 :
+// le FilterContextInput committed (expérience/classé, saison/période,
+// playlist/mode, vue solo/escouade) est envoyé en body ; le service Go restreint
+// l'agrégation au sous-ensemble de matchs. `hash` (hash stable du contexte
+// committed) participe à la queryKey → refetch au clic « Analyser ».
+export function useRelationsPage(playerSlug: string, filterContext: FilterContextInput, hash: string) {
   return useQuery<RelationsPageResponse>({
-    queryKey: queryKeys.palmaresRelations(playerSlug),
+    queryKey: [...queryKeys.palmaresRelations(playerSlug), hash],
     queryFn: () =>
-      api.get<RelationsPageResponse>(`/players/${playerSlug}/pages/palmares/relations`),
+      api.post<RelationsPageResponse>(`/players/${playerSlug}/pages/palmares/relations`, filterContext),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
   })

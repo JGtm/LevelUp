@@ -71,7 +71,7 @@ func TestCareerRepo_GetRelations(t *testing.T) {
 	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
 	repo := NewCareerRepo(pdb)
 
-	rows, err := repo.GetRelations(context.Background())
+	rows, err := repo.GetRelations(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("GetRelations: %v", err)
 	}
@@ -135,12 +135,91 @@ func TestCareerRepo_GetRelations_Empty(t *testing.T) {
 	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidUnknown"}
 	repo := NewCareerRepo(pdb)
 
-	rows, err := repo.GetRelations(context.Background())
+	rows, err := repo.GetRelations(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("GetRelations: %v", err)
 	}
 	if len(rows) != 0 {
 		t.Fatalf("expected 0 relations for unknown player, got %d", len(rows))
+	}
+}
+
+// ─── Phase 2 : scope match_id (segmentation serveur) ────────────────────────
+
+// Scope vide (non-nil) → court-circuit : aucune relation, aucune requête.
+func TestCareerRepo_GetRelations_EmptyScope(t *testing.T) {
+	db := openMemDB(t)
+	seedRelations(t, db)
+	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
+	repo := NewCareerRepo(pdb)
+
+	rows, err := repo.GetRelations(context.Background(), []string{})
+	if err != nil {
+		t.Fatalf("GetRelations empty scope: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Fatalf("empty scope must yield 0 relations, got %d", len(rows))
+	}
+}
+
+// Scope = {m1,m2} (les 2 matchs alliés) → seul Ally émerge (Foe hors scope) ;
+// kills/deaths restreints au scope (les frags m3/m4 vs Foe disparaissent).
+func TestCareerRepo_GetRelations_ScopedToAllyMatches(t *testing.T) {
+	db := openMemDB(t)
+	seedRelations(t, db)
+	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
+	repo := NewCareerRepo(pdb)
+
+	rows, err := repo.GetRelations(context.Background(), []string{"m1", "m2"})
+	if err != nil {
+		t.Fatalf("GetRelations scoped: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("scoped relations len=%d want 1 (Ally only)", len(rows))
+	}
+	if rows[0].Gamertag != "AllyPlayer" {
+		t.Fatalf("scoped relation=%q want AllyPlayer", rows[0].Gamertag)
+	}
+	if rows[0].TeammateCount != 2 {
+		t.Fatalf("Ally teammate count=%d want 2", rows[0].TeammateCount)
+	}
+}
+
+// Scope = {m3,m4} (les 2 matchs ennemis) → seul Foe émerge ; les frags/morts
+// échangés (m3+m4) sont conservés (scope inclut ces matchs).
+func TestCareerRepo_GetRelations_ScopedToFoeMatches(t *testing.T) {
+	db := openMemDB(t)
+	seedRelations(t, db)
+	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
+	repo := NewCareerRepo(pdb)
+
+	rows, err := repo.GetRelations(context.Background(), []string{"m3", "m4"})
+	if err != nil {
+		t.Fatalf("GetRelations scoped foe: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Gamertag != "FoePlayer" {
+		t.Fatalf("scoped foe rows=%+v want [FoePlayer]", rows)
+	}
+	// kills_dealt = 2 (m3), deaths_suffered = 6 (m3) + 4 (m4) = 10.
+	if rows[0].KillsDealt != 2 || rows[0].DeathsSuffered != 10 {
+		t.Fatalf("Foe duel kills=%d deaths=%d want 2/10", rows[0].KillsDealt, rows[0].DeathsSuffered)
+	}
+}
+
+// Scope qui restreint à un seul match commun avec Ally → tombe sous HAVING>=2
+// → Ally disparaît (relation non significative sur ce scope).
+func TestCareerRepo_GetRelations_ScopeDropsBelowHaving(t *testing.T) {
+	db := openMemDB(t)
+	seedRelations(t, db)
+	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
+	repo := NewCareerRepo(pdb)
+
+	rows, err := repo.GetRelations(context.Background(), []string{"m1"})
+	if err != nil {
+		t.Fatalf("GetRelations scope single: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Fatalf("single-match scope must drop all (HAVING>=2), got %d", len(rows))
 	}
 }
 

@@ -1,5 +1,5 @@
 /**
- * relationsFilter — filtrage CLIENT du tableau du hub Relations (Phase 1).
+ * relationsFilter — filtrage CLIENT (chips) du tableau du hub Relations.
  *
  * Aucun appel réseau : on filtre la liste `relations[]` déjà servie par le
  * backend. Le « noyau dur » lit le flag serveur `is_core` (source unique :
