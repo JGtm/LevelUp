@@ -22,33 +22,62 @@ export interface PalmaresText {
     retry: string
     unavailableTitle: string
     unavailableDescription: string
-    overview: {
-      distinctPlayers: string
-      frequentAllies: string
-      repeatRivals: string
-      closedCircle: string
-    }
-    sections: {
-      frequentAlliesTitle: string
-      frequentAlliesDescription: string
-      bestSynergiesTitle: string
-      bestSynergiesDescription: string
-      nemesesTitle: string
-      nemesesDescription: string
-      victimsTitle: string
-      victimsDescription: string
-      closedCircleTitle: string
-      closedCircleDescription: string
-    }
-    labels: {
-      with: string
-      against: string
-      winRate: string
-      avgKDA: string
-      lastSeen: string
-    }
     emptyTitle: string
     emptyDescription: string
+    hero: {
+      topAllyTitle: string
+      topAllyEmpty: string
+      topNemesisTitle: string
+      topNemesisEmpty: string
+      coreTitle: string
+      coreUnit: string
+      matchesPlayed: (count: string) => string
+    }
+    chips: {
+      all: string
+      core: string
+      allies: string
+      rivals: string
+      recent: string
+    }
+    table: {
+      player: string
+      link: string
+      encounters: string
+      winRateAlly: string
+      winRateEnemy: string
+      fragsDeaths: string
+      ratio: string
+      lastSeen: string
+      ratioTooltip: string
+    }
+    category: {
+      ally: string
+      enemy: string
+      mixed: string
+    }
+    relative: {
+      today: string
+      yesterday: string
+      daysAgo: (count: number) => string
+      weeksAgo: (count: number) => string
+      monthsAgo: (count: number) => string
+      yearsAgo: (count: number) => string
+    }
+    tooltip: {
+      matchesAlly: (count: string) => string
+      matchesEnemy: (count: string) => string
+      fragsDealt: (count: string) => string
+      deathsSuffered: (count: string) => string
+    }
+    core: {
+      sectionTitle: string
+      sectionDescription: string
+      empty: string
+      together: (count: string) => string
+    }
+    filterEmptyTitle: string
+    filterEmptyDescription: string
   }
   seasonPass: {
     retry: string
@@ -124,33 +153,72 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
       retry: t(loc, 'palmares.errors.retry'),
       unavailableTitle: t(loc, 'palmares.relations.unavailable_title'),
       unavailableDescription: t(loc, 'palmares.relations.unavailable_description'),
-      overview: {
-        distinctPlayers: t(loc, 'palmares.relations.overview.distinct_players'),
-        frequentAllies: t(loc, 'palmares.relations.overview.frequent_allies'),
-        repeatRivals: t(loc, 'palmares.relations.overview.repeat_rivals'),
-        closedCircle: t(loc, 'palmares.relations.overview.closed_circle'),
-      },
-      sections: {
-        frequentAlliesTitle: t(loc, 'palmares.relations.section.frequent_allies_title'),
-        frequentAlliesDescription: t(loc, 'palmares.relations.section.frequent_allies_description'),
-        bestSynergiesTitle: t(loc, 'palmares.relations.section.best_synergies_title'),
-        bestSynergiesDescription: t(loc, 'palmares.relations.section.best_synergies_description'),
-        nemesesTitle: t(loc, 'palmares.relations.section.nemeses_title'),
-        nemesesDescription: t(loc, 'palmares.relations.section.nemeses_description'),
-        victimsTitle: t(loc, 'palmares.relations.section.victims_title'),
-        victimsDescription: t(loc, 'palmares.relations.section.victims_description'),
-        closedCircleTitle: t(loc, 'palmares.relations.section.closed_circle_title'),
-        closedCircleDescription: t(loc, 'palmares.relations.section.closed_circle_description'),
-      },
-      labels: {
-        with: t(loc, 'palmares.relations.label.with'),
-        against: t(loc, 'palmares.relations.label.against'),
-        winRate: t(loc, 'palmares.relations.label.win_rate'),
-        avgKDA: t(loc, 'palmares.relations.label.avg_kda'),
-        lastSeen: t(loc, 'palmares.relations.label.last_seen'),
-      },
       emptyTitle: t(loc, 'palmares.relations.empty_title'),
       emptyDescription: t(loc, 'palmares.relations.empty_description'),
+      hero: {
+        topAllyTitle: t(loc, 'palmares.relations.hero.top_ally_title'),
+        topAllyEmpty: t(loc, 'palmares.relations.hero.top_ally_empty'),
+        topNemesisTitle: t(loc, 'palmares.relations.hero.top_nemesis_title'),
+        topNemesisEmpty: t(loc, 'palmares.relations.hero.top_nemesis_empty'),
+        coreTitle: t(loc, 'palmares.relations.hero.core_title'),
+        coreUnit: t(loc, 'palmares.relations.hero.core_unit'),
+        matchesPlayed: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.hero.matches_played', loc, { count }),
+      },
+      chips: {
+        all: t(loc, 'palmares.relations.chip.all'),
+        core: t(loc, 'palmares.relations.chip.core'),
+        allies: t(loc, 'palmares.relations.chip.allies'),
+        rivals: t(loc, 'palmares.relations.chip.rivals'),
+        recent: t(loc, 'palmares.relations.chip.recent'),
+      },
+      table: {
+        player: t(loc, 'palmares.relations.table.player'),
+        link: t(loc, 'palmares.relations.table.link'),
+        encounters: t(loc, 'palmares.relations.table.encounters'),
+        winRateAlly: t(loc, 'palmares.relations.table.win_rate_ally'),
+        winRateEnemy: t(loc, 'palmares.relations.table.win_rate_enemy'),
+        fragsDeaths: t(loc, 'palmares.relations.table.frags_deaths'),
+        ratio: t(loc, 'palmares.relations.table.ratio'),
+        lastSeen: t(loc, 'palmares.relations.table.last_seen'),
+        ratioTooltip: t(loc, 'palmares.relations.table.ratio_tooltip'),
+      },
+      category: {
+        ally: t(loc, 'palmares.relations.category.ally'),
+        enemy: t(loc, 'palmares.relations.category.enemy'),
+        mixed: t(loc, 'palmares.relations.category.mixed'),
+      },
+      relative: {
+        today: t(loc, 'palmares.relations.relative.today'),
+        yesterday: t(loc, 'palmares.relations.relative.yesterday'),
+        daysAgo: (count: number) =>
+          formatMessage(palmaresManifest, 'palmares.relations.relative.days_ago', loc, { count }),
+        weeksAgo: (count: number) =>
+          formatMessage(palmaresManifest, 'palmares.relations.relative.weeks_ago', loc, { count }),
+        monthsAgo: (count: number) =>
+          formatMessage(palmaresManifest, 'palmares.relations.relative.months_ago', loc, { count }),
+        yearsAgo: (count: number) =>
+          formatMessage(palmaresManifest, 'palmares.relations.relative.years_ago', loc, { count }),
+      },
+      tooltip: {
+        matchesAlly: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.tooltip.matches_ally', loc, { count }),
+        matchesEnemy: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.tooltip.matches_enemy', loc, { count }),
+        fragsDealt: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.tooltip.frags_dealt', loc, { count }),
+        deathsSuffered: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.tooltip.deaths_suffered', loc, { count }),
+      },
+      core: {
+        sectionTitle: t(loc, 'palmares.relations.core.section_title'),
+        sectionDescription: t(loc, 'palmares.relations.core.section_description'),
+        empty: t(loc, 'palmares.relations.core.empty'),
+        together: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.core.together', loc, { count }),
+      },
+      filterEmptyTitle: t(loc, 'palmares.relations.filter_empty_title'),
+      filterEmptyDescription: t(loc, 'palmares.relations.filter_empty_description'),
     },
     seasonPass: {
       retry: t(loc, 'palmares.errors.retry'),

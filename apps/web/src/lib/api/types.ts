@@ -1057,35 +1057,59 @@ export type SeasonPassTrackSummary = components['schemas']['SeasonPassTrackSumma
 
 export type SeasonPassPageResponse = components['schemas']['SeasonPassPageResponse']
 
+// RelationBadge : badge résolu côté serveur (analysis/relations). style "tinted"
+// = badges narratifs existants (NarrativeBadge teinté) ; "solid" = nouveaux
+// badges (fond plein + texte blanc côté front).
+export interface RelationBadge {
+  label_key: string
+  color_token: string
+  style: 'tinted' | 'solid'
+  detail?: Record<string, unknown> | null
+}
+
+// RelationInsight : une relation enrichie (un joueur récurrent >= 2 matchs).
+// Mirroir exact du JSON Go domain.RelationInsight.
 export interface RelationInsight {
   xuid: string
   gamertag: string
   total_matches: number
   teammate_matches: number
   teammate_wins: number
-  teammate_win_rate?: number | null
+  teammate_win_rate: number | null
   enemy_matches: number
   enemy_wins: number
-  enemy_win_rate?: number | null
-  avg_kda_with?: number | null
-  avg_kda_against?: number | null
-  last_seen_at?: string | null
+  enemy_win_rate: number | null
+  avg_kda_with: number | null
+  avg_kda_against: number | null
+  kills_dealt: number
+  deaths_suffered: number
+  duel_ratio: number | null
+  first_seen_at: string | null
+  last_seen_at: string | null
+  category: 'ally' | 'enemy' | 'mixed'
+  is_core: boolean
+  badges: RelationBadge[]
+}
+
+// RelationRef : référence légère (KPI hero binôme / bête noire).
+export interface RelationRef {
+  gamertag: string
+  win_rate: number | null
+  matches: number
 }
 
 export interface RelationsOverview {
   distinct_players: number
-  frequent_allies: number
-  repeat_rivals: number
-  closed_circle: number
+  allies_count: number
+  rivals_count: number
+  core_count: number
+  top_ally: RelationRef | null
+  top_nemesis: RelationRef | null
 }
 
 export interface RelationsPageResponse {
   overview: RelationsOverview
-  frequent_allies: RelationInsight[]
-  best_synergies: RelationInsight[]
-  nemeses: RelationInsight[]
-  favorite_victims: RelationInsight[]
-  closed_circle: RelationInsight[]
+  relations: RelationInsight[]
 }
 
 // ---------------------------------------------------------------------------

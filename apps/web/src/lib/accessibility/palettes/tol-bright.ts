@@ -109,6 +109,12 @@ export const tolBrightPalette: Palette = {
   'narrative-encounter-tough-enemy':  TOL_RED,    // K/D contre nous mauvais
   'narrative-encounter-coriace':      TOL_PURPLE, // winrate vs lui mauvais (Coriace)
   'narrative-encounter-ordinal':      TOL_CYAN,
+  // Badges « solid » du hub Relations : vert = positif, bleu/cyan = neutre.
+  'narrative-encounter-duo-gagnant':    TOL_GREEN,
+  'narrative-encounter-cameleon':       TOL_BLUE,
+  'narrative-encounter-de-longue-date': TOL_BLUE,
+  'narrative-encounter-recrue':         TOL_CYAN,
+  'narrative-encounter-proie-favorite': TOL_GREEN,
 
   // ── Heatmaps ────────────────────────────────────────────────────────────────
   'heatmap-cold':           TOL_RED,
