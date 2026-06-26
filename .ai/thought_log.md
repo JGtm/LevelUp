@@ -56,6 +56,34 @@
 
 ---
 
+## [2026-06-26] Sélecteur audio HLS Firefox — diagnostic (écho ≠ codec/amix) + fix « piste 0 = mix complet » + collapse clips redondants — COMPLÉTÉ (code + tests ; déployé)
+
+**Contexte** : sur Firefox, le toggle Jeu/Voix « ne change rien » et le clip récent a un écho / double son par défaut. Le fix codec récent (`aacUniformAction`) était déjà en prod et n'a pas résolu le ressenti.
+
+**Diagnostic (prod lecture seule + analyse ffmpeg locale) — deux hypothèses initiales RÉFUTÉES par la mesure** :
+- Pas un souci codec/migration : les renditions vivantes sont en AAC uniforme, hls.js 1.6.16. Firefox *peut* basculer.
+- Pas un doublage amix : `full = game + voices` exactement (`full − game` = `voices` ; `full − amix(game,voices)` ≈ silence).
+- **Vraie cause = config OBS de l'utilisateur** : piste 1 = « capture de sortie » = **mix complet** (jeu+micro+Discord), pistes 2-4 = composantes (Halo/micro/Discord). Le mapping HLS traitait la piste 0 (= mix complet) comme « le jeu » puis synthétisait `full = amix(toutes)` → ré-ajoutait le mix complet sur lui-même = **écho**. En solo (micro/Discord muets) piste0 ≈ piste1 → corrélation ~1 ; en session amis, vraie voix → corrélation basse.
+
+**Décision technique** :
+- **Détection à l'ingestion** (`internal/media/hls_audio_analyze.go`, neuf) : `track0IsFullMix` compare l'ENVELOPPE de loudness (RMS par trame 100 ms, PCM mono 8 kHz extrait par ffmpeg, corrélation de Pearson en Go pur) de la piste 0 à `amix(pistes 1..N)`. Seuil 0,80 + garde de variance (`minEnvelopeStdDevDB`=2,0) contre les faux positifs sur signaux quasi stationnaires.
+- **Mapping corrigé** (`hls.go` `planAudioRenditions` + `BuildHLS`) : si piste 0 = mix complet → `full` = `0:a:0` directement (plus d'amix doublé), `game` = `0:a:1`, `voices` = `amix(0:a:2..N)`. Sinon → comportement historique inchangé (non-régression). `planHLS` reste pur (décision IO faite par `BuildHLS`).
+- **Clips existants** (`hls_audio_collapse.go` + CLI `--collapse-redundant`, neuf) : sur un clip dont `game`≈`voices` (corr ≥ seuil), réécrit le master pour n'exposer que `game` (= piste 0 = copie propre du mix de sortie) → plus d'écho, plus de toggle trompeur. Réécriture master atomique (tmp+rename), pas de ré-encodage, réversible. Gardé par corrélation → ne touche pas un vrai clip jeu+voix.
+
+**Résultats observés** :
+- Go `go test ./internal/media/...` vert (CGO non requis pour ce package) ; `go vet` propre ; importeurs (handlers/ops/service) + CLI buildent (CGO ucrt64). Tests purs (`pearson`, `rmsFramesDB`, `collapseMasterToSingleAudio`, mapping fullmix) + intégration ffmpeg (détection positive/négative, collapse redondant/distinct).
+- **Dry-run sur la prod (133 clips)** : **5 clips redondants à collapser** (corr 0,805–0,994) ; **1 clip jeu+voix réel préservé** (`Replay 2026-06-09 22-12-24`, corr 0,459 → toggle conservé) ; 128 mono-audio ignorés. Le seuil 0,80 sépare proprement redondant (≥0,805) de vraie voix (0,459).
+
+**Suite (même session) — classement jeu/voix acoustique (option A, sur demande user « plus flexible, pas en dur »)** : le split jeu/voix restait positionnel (1ère composante = jeu). Remplacé par un classement ACOUSTIQUE indépendant de l'ordre des pistes : `analyzeAudioLayout` (fusionne détection mix complet + classement) + `classifyGameComponent`. `planHLS`/`planAudioRenditions`/`fullMixRenditions` prennent désormais un `audioLayout{Track0FullMix, GameComponent}` ; `voices` = amix des composantes HORS jeu.
+
+**Correctif critique (validation sur clips locaux réels fournis par l'user)** : 1ʳᵉ heuristique = « jeu = composante la plus corrélée au mix complet » → **INVERSÉE**. Mesure sur `22-12-24` réel : corr(voix,full)=0,896 > corr(jeu,full)=0,699 — la VOIX (intermittente) pilote l'enveloppe du mix, pas le jeu (continu). Le test synthétique m'avait trompé (jeu = élément dynamique dominant, irréaliste). **Bon discriminant = CONTINUITÉ** : `silenceRatio` = fraction de trames sous (p90 − 25 dB) de la piste ; le jeu est la composante au taux de silence le plus BAS (continu), la voix intermittente. Validé réel : jeu 9-13 % de silence vs voix 16-26 % sur `22-12-24`/`22-13-26`. Repli positionnel si égalité (marge < 0,05). Tests : `TestSilenceRatio`, `TestAnalyzeAudioLayout_GameClassifiedNotByOrder` (voix intermittente synthétique, jeu continu en 2ᵉ position bien classé). Leçon : valider le RE/heuristique sur données réelles, pas juste synthétiques.
+
+**Constat collapse prod** : 5 clips solo redondants collapsés (corr 0,805–0,994), **1 clip jeu+voix Discord réel préservé** (`22-12-24`, corr 0,46). User a confirmé sur Firefox : couper « Voix » enlève bien le micro ; le Discord d'un clip donné reste s'il était fondu dans la piste jeu à l'enregistrement (inséparable a posteriori — pas un bug, propriété de la capture).
+
+**Prochaine étape** : (sur autorisation) commit de la couche classifieur ; déploiement `main` (auto-deploy) pour que les futurs clips bénéficient du mapping + classement ; validation classifieur sur un clip source frais (ingestion réelle). Cf. [[reference_media_pipeline_needs_ffmpeg_runtime]], [[project_halo5_experimental_direction]].
+
+---
+
 ## [2026-06-26] Hardening H5 round 3 (suite) — #10 roster = RACINE de #6/#7b : reconstruction offline + re-fetch — COMPLÉTÉ (ops data locales)
 
 **Correction d'une erreur d'analyse (auto-critique)** : j'avais conclu à tort que LUSR/win-prob étaient réservés au classé et que 5d16ff8d (non classé) n'avait "par design" pas de LUSR. FAUX — l'utilisateur l'a corrigé : LUSR existe pour TOUS les matchs (il comble l'absence de CSR sur le non-classé) et la win-prob est universelle. Le vrai diagnostic, prouvé : **#6 (pas de LUSR) et #7b (pas de win-prob) sont une CASCADE de #10 (roster incomplet)**.

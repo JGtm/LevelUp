@@ -41,7 +41,7 @@ func TestPlanHLS_TwoTracksGameVoicesFull(t *testing.T) {
 		{CodecType: "audio", CodecName: "opus", Title: "Game", Language: "fra"},
 		{CodecType: "audio", CodecName: "opus", Title: "Mic"},
 	}
-	plan, err := planHLS(streams)
+	plan, err := planHLS(streams, audioLayout{})
 	if err != nil {
 		t.Fatalf("planHLS: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestPlanHLS_ThreeTracksVoicesAmix(t *testing.T) {
 		{CodecType: "audio", CodecName: "opus", Title: "Mic"},
 		{CodecType: "audio", CodecName: "opus", Title: "Discord"},
 	}
-	plan, err := planHLS(streams)
+	plan, err := planHLS(streams, audioLayout{})
 	if err != nil {
 		t.Fatalf("planHLS: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestPlanHLS_SingleAudioTrackLegacy(t *testing.T) {
 		{CodecType: "video", CodecName: "h264"},
 		{CodecType: "audio", CodecName: "vorbis", Title: "Game"},
 	}
-	plan, err := planHLS(streams)
+	plan, err := planHLS(streams, audioLayout{})
 	if err != nil {
 		t.Fatalf("planHLS: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestPlanHLS_MultiTrackUniformAAC(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			plan, err := planHLS(tc.streams)
+			plan, err := planHLS(tc.streams, audioLayout{})
 			if err != nil {
 				t.Fatalf("planHLS: %v", err)
 			}
@@ -202,10 +202,10 @@ func TestRenditionSlugs(t *testing.T) {
 }
 
 func TestPlanHLS_Errors(t *testing.T) {
-	if _, err := planHLS([]AVStreamDetail{{CodecType: "audio", CodecName: "opus"}}); err == nil {
+	if _, err := planHLS([]AVStreamDetail{{CodecType: "audio", CodecName: "opus"}}, audioLayout{}); err == nil {
 		t.Error("planHLS sans vidéo: erreur attendue")
 	}
-	if _, err := planHLS([]AVStreamDetail{{CodecType: "video", CodecName: "h264"}}); err == nil {
+	if _, err := planHLS([]AVStreamDetail{{CodecType: "video", CodecName: "h264"}}, audioLayout{}); err == nil {
 		t.Error("planHLS sans audio: erreur attendue")
 	}
 }
@@ -217,7 +217,7 @@ func TestPlanHLS_SingleVideoTrack(t *testing.T) {
 		{CodecType: "video", CodecName: "h264"},
 		{CodecType: "audio", CodecName: "opus"},
 	}
-	plan, err := planHLS(streams)
+	plan, err := planHLS(streams, audioLayout{})
 	if err != nil {
 		t.Fatalf("planHLS: %v", err)
 	}
