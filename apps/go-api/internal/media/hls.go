@@ -121,10 +121,10 @@ func countAudioStreams(streams []AVStreamDetail) int {
 // planHLS construit le plan de transcodage à partir des streams source.
 // Pure : aucune IO. Erreur si pas de piste vidéo ou audio exploitable.
 //
-// track0IsFullMix : décision IO calculée en amont par BuildHLS (cf.
-// hls_audio_analyze.go). Quand true, la piste 0 est le mix complet de sortie et
-// `full` la lit directement (pas d'amix doublé / écho).
-func planHLS(streams []AVStreamDetail, track0IsFullMix bool) (hlsPlan, error) {
+// layout : décision IO calculée en amont par BuildHLS (cf. hls_audio_analyze.go).
+// Quand layout.Track0FullMix, la piste 0 est le mix complet de sortie (`full` la lit
+// directement, pas d'amix doublé / écho) et layout.GameComponent désigne la piste jeu.
+func planHLS(streams []AVStreamDetail, layout audioLayout) (hlsPlan, error) {
 	var plan hlsPlan
 	hasVideo := false
 	var srcAudios []AVStreamDetail
@@ -146,7 +146,7 @@ func planHLS(streams []AVStreamDetail, track0IsFullMix bool) (hlsPlan, error) {
 	if len(srcAudios) == 0 {
 		return hlsPlan{}, fmt.Errorf("planHLS: aucune piste audio")
 	}
-	plan.Audios, plan.FilterComplex = planAudioRenditions(srcAudios, track0IsFullMix)
+	plan.Audios, plan.FilterComplex = planAudioRenditions(srcAudios, layout)
 	plan.VarStreamMap = buildVarStreamMap(plan)
 	return plan, nil
 }
@@ -154,21 +154,21 @@ func planHLS(streams []AVStreamDetail, track0IsFullMix bool) (hlsPlan, error) {
 // planAudioRenditions dérive les renditions de sortie des pistes source.
 //
 //   - mono-piste → 1 rendition directe (comportement historique, pas de toggle) ;
-//   - multipiste, piste 0 = mix complet (track0IsFullMix) → `full` lit la piste 0
-//     directement (pas d'amix doublé), `game`/`voices` = composantes (cf.
-//     fullMixRenditions) ;
+//   - multipiste, piste 0 = mix complet (layout.Track0FullMix) → `full` lit la piste 0
+//     directement (pas d'amix doublé), `game` = composante classée jeu, `voices` = le
+//     reste (cf. fullMixRenditions) ;
 //   - multipiste sinon → 3 renditions pré-mixées historiques game/voices/full.
 //
 // Le pré-mixage est nécessaire car les renditions HLS sont mutuellement exclusives
 // à la lecture (on ne peut pas additionner deux pistes côté navigateur). Les Display
 // valent les slugs machine (game/voices/full) : le lecteur les matche pour détecter
 // le layout 2-toggles ; sinon il retombe sur le sélecteur par-piste.
-func planAudioRenditions(src []AVStreamDetail, track0IsFullMix bool) ([]audioRendition, string) {
+func planAudioRenditions(src []AVStreamDetail, layout audioLayout) ([]audioRendition, string) {
 	if len(src) < 2 {
 		return []audioRendition{singleAudioRendition(src[0])}, ""
 	}
-	if track0IsFullMix {
-		return fullMixRenditions(src)
+	if layout.Track0FullMix {
+		return fullMixRenditions(src, layout.GameComponent)
 	}
 	return componentRenditions(src)
 }
@@ -207,28 +207,40 @@ func componentRenditions(src []AVStreamDetail) ([]audioRendition, string) {
 }
 
 // fullMixRenditions : piste 0 = mix complet de sortie. `full` = piste 0 directe (PAS
-// d'amix → pas de doublage/écho), `game` = piste 1 (1ʳᵉ composante), `voices` = mix
-// des pistes 2..N (micro + voix). Codec unique AAC. Si une seule composante (pas de
-// quoi séparer jeu/voix), on sert le mix complet seul (rendition unique).
-func fullMixRenditions(src []AVStreamDetail) ([]audioRendition, string) {
+// d'amix → pas de doublage/écho), `game` = la composante `gameComponent` (classée
+// acoustiquement, pas par position), `voices` = mix des AUTRES composantes (micro +
+// Discord). Codec unique AAC. Si une seule composante (pas de quoi séparer jeu/voix),
+// on sert le mix complet seul (rendition unique).
+func fullMixRenditions(src []AVStreamDetail, gameComponent int) ([]audioRendition, string) {
 	if len(src)-1 < 2 {
 		return []audioRendition{singleAudioRendition(src[0])}, ""
+	}
+	if gameComponent < 1 || gameComponent >= len(src) {
+		gameComponent = 1 // garde : index hors composantes → 1ère composante
 	}
 	full := audioRendition{
 		Slug: "full", Display: "full", MapSpec: "0:a:0",
 		Action: aacUniformAction(src[0].CodecName), Default: true,
 	}
 	game := audioRendition{
-		Slug: "game", Display: "game", MapSpec: "0:a:1",
-		Action: aacUniformAction(src[1].CodecName), Language: sanitizeLanguage(src[1].Language),
+		Slug: "game", Display: "game", MapSpec: fmt.Sprintf("0:a:%d", gameComponent),
+		Action:   aacUniformAction(src[gameComponent].CodecName),
+		Language: sanitizeLanguage(src[gameComponent].Language),
+	}
+	// voices = toutes les composantes (1..N-1) SAUF la composante jeu.
+	var voiceIdx []int
+	for i := 1; i < len(src); i++ {
+		if i != gameComponent {
+			voiceIdx = append(voiceIdx, i)
+		}
 	}
 	voices := audioRendition{Slug: "voices", Display: "voices", Action: actionReencode}
 	var fc string
-	if len(src) == 3 {
-		voices.MapSpec = "0:a:2"
-		voices.Action = aacUniformAction(src[2].CodecName)
+	if len(voiceIdx) == 1 {
+		voices.MapSpec = fmt.Sprintf("0:a:%d", voiceIdx[0])
+		voices.Action = aacUniformAction(src[voiceIdx[0]].CodecName)
 	} else {
-		fc = amixFilter(rangeIdx(2, len(src)), "voices")
+		fc = amixFilter(voiceIdx, "voices")
 		voices.MapSpec = "[voices]"
 	}
 	// Ordre game/voices/full conservé (le lecteur matche par slug ; full reste DEFAULT).
@@ -437,21 +449,22 @@ func BuildHLS(ctx context.Context, srcPath, outDir string, opts HLSOptions) (HLS
 		return HLSResult{}, err
 	}
 	// La piste 0 est-elle le mix complet de sortie (OBS « capture de sortie ») ? Si
-	// oui, `full` la lira directement au lieu d'un amix qui la doublerait (écho).
-	// Décision IO (décode l'audio) faite ici pour garder planHLS pur.
-	fullMix := false
+	// oui, `full` la lira directement (pas d'amix doublé = écho) et on classe quelle
+	// composante est le jeu. Décision IO (décode l'audio) faite ici pour garder planHLS pur.
+	var layout audioLayout
 	if n := countAudioStreams(streams); n >= 2 {
-		ok, corr, derr := track0IsFullMix(ctx, srcPath, n)
+		l, corr, derr := analyzeAudioLayout(ctx, srcPath, n)
 		if derr != nil {
-			slog.WarnContext(ctx, "BuildHLS: détection mix complet échouée, mapping par défaut",
+			slog.WarnContext(ctx, "BuildHLS: analyse pistes audio échouée, mapping par défaut",
 				"src", srcPath, "err", derr)
 		} else {
-			fullMix = ok
+			layout = l
 			slog.InfoContext(ctx, "BuildHLS: analyse pistes audio",
-				"src", srcPath, "audio_count", n, "track0_full_mix", ok, "envelope_corr", corr)
+				"src", srcPath, "audio_count", n, "track0_full_mix", l.Track0FullMix,
+				"game_component", l.GameComponent, "envelope_corr", corr)
 		}
 	}
-	plan, err := planHLS(streams, fullMix)
+	plan, err := planHLS(streams, layout)
 	if err != nil {
 		return HLSResult{}, err
 	}
