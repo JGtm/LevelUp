@@ -1,3 +1,7 @@
+## [2026-06-26] Fix tsc : AdminMonitoringOverview.snapshot manquant (2 fixtures admin) — COMPLÉTÉ
+
+Drift pré-existant (sur main/agent concurrent) : le champ `snapshot` (MonitoringSnapshotSummary) a été ajouté REQUIS à `AdminMonitoringOverview` (openapi/generated.ts), mais 2 fixtures de test (`diagnostics.test.ts`, `tabBadges.test.ts`) ne l'incluaient pas → `tsc -b` rouge (2 erreurs TS2741). Fix = ajout d'un snapshot SAIN (tous compteurs 0, version 1) aux 2 fixtures. Résultat : `tsc -b` 0 erreur, vitest 16/16 (les assertions « tout sain → aucune pastille » restent vertes). Hors périmètre H5 mais demandé par l'user avant merge.
+
 ## [2026-06-26] H5 bannière synthétisée (Home identity) — COMPLÉTÉ (code+test ; revue visuelle + commit pending)
 
 **Contexte** : le render full-body H5 (poussé dans `banner_image_url` par appearance_persist) servait de FOND plein cadre au bloc identité Home → pas une bannière (rejeté user). Alternative = bannière SYNTHÉTISÉE.
