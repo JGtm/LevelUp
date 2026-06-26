@@ -97,6 +97,15 @@ type TitleSummary struct {
 	// Résistance défensive (N/A) au lieu d'afficher 0 (trompeur : « résistance
 	// nulle »). Défaut true (Infinite, byte-identique).
 	ProvidesDamageTaken bool `json:"provides_damage_taken"`
+	// ProvidesTeamMMR : false si l'API du titre ne fournit PAS de MMR d'équipe/
+	// adverse par match (Halo 5). Le front MASQUE alors la colonne MMR du tableau
+	// Escouade (et d'Explorer) au lieu d'afficher 0 (trompeur). Défaut true (Infinite).
+	ProvidesTeamMMR bool `json:"provides_team_mmr"`
+	// ProvidesMaxKillingSpree : true si le titre SUPPORTE la « folie meurtrière max »
+	// par match — soit via sa valeur native (Infinite), soit en la CALCULANT depuis ses
+	// events kill/death horodatés (Halo 5, dérivé de la capability events-timeline). La
+	// série n'est MASQUÉE que pour un titre sans events horodatés (false). Défaut true.
+	ProvidesMaxKillingSpree bool `json:"provides_max_killing_spree"`
 }
 
 // BootstrapResponse est la réponse de GET /api/v1/bootstrap.

@@ -61,6 +61,14 @@ type DamageModelConstants struct {
 	// titre, repère de normalisation des barres/radars. 0 = non déclaré → défaut
 	// 0.90 (Infinite). h5 = 1.264 (calibré sur sa propre distribution, hp=115).
 	OffensiveConversionP80 float64
+	// NoTeamMMR = true → le titre ne fournit PAS de MMR d'équipe/adverse par match
+	// (Halo 5). La colonne MMR du tableau Escouade/Explorer est masquée (valeur nil)
+	// plutôt qu'affichée à 0 (trompeur). Défaut false (MMR fourni, Infinite).
+	NoTeamMMR bool
+	// NB — le support du max killing spree N'EST PAS un champ du modèle de dégâts : il
+	// est DÉRIVÉ de la capability events-timeline du titre (cf. games.ProvidesMaxKillingSpree).
+	// Un titre qui sert des kills horodatés peut calculer la spree (analysis.ComputeMaxKillingSpree)
+	// même quand la valeur native est absente (Halo 5 : match_participants.max_killing_spree NULL).
 }
 
 // NewEndpointSet construit un EndpointSet (utilisé par le loader et les tests).

@@ -225,6 +225,7 @@ func (s *SquadServiceV2) GetSquadPage(
 		squadHistorical: squadHistorical,
 		events:          events,
 		sharedMatches:   resp.SharedMatches,
+		provideSpree:    games.ProvidesMaxKillingSpree(slug),
 	})
 	resp.Tables = buildSquadTables(buildSquadTablesInput{
 		sharedMatches: resp.SharedMatches,

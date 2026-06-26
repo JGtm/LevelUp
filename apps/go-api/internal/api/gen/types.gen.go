@@ -1324,8 +1324,9 @@ type MatchCitationSnippet struct {
 
 // MatchCitationsTab defines model for MatchCitationsTab.
 type MatchCitationsTab struct {
-	Commendations *[]MatchCitation `json:"commendations"`
-	Medals        *[]MatchMedal    `json:"medals"`
+	Commendations       *[]MatchCitation           `json:"commendations"`
+	Medals              *[]MatchMedal              `json:"medals"`
+	NativeCommendations *[]MatchNativeCommendation `json:"native_commendations,omitempty"`
 }
 
 // MatchCombatTab defines model for MatchCombatTab.
@@ -1404,6 +1405,7 @@ type MatchExpectedStats struct {
 	HistAvgSpree         *float64 `json:"hist_avg_spree,omitempty"`
 	HistMatchCount       *int64   `json:"hist_match_count,omitempty"`
 	HistModeCategory     *string  `json:"hist_mode_category,omitempty"`
+	LocallyEstimated     *bool    `json:"locally_estimated,omitempty"`
 }
 
 // MatchHighlightEvent defines model for MatchHighlightEvent.
@@ -1534,6 +1536,20 @@ type MatchMediaTab struct {
 	MediaItems *[]MatchAssociatedMedia `json:"media_items"`
 }
 
+// MatchNativeCommendation defines model for MatchNativeCommendation.
+type MatchNativeCommendation struct {
+	Count           int64   `json:"count"`
+	Cumulative      *int64  `json:"cumulative,omitempty"`
+	IconUrl         *string `json:"icon_url,omitempty"`
+	Id              string  `json:"id"`
+	IsNewlyMastered *bool   `json:"is_newly_mastered,omitempty"`
+	Name            *string `json:"name,omitempty"`
+	NextTierTarget  *int64  `json:"next_tier_target,omitempty"`
+	ProgressPct     float64 `json:"progress_pct"`
+	TierCount       *int64  `json:"tier_count,omitempty"`
+	TierIndex       *int64  `json:"tier_index,omitempty"`
+}
+
 // MatchNemesisRow defines model for MatchNemesisRow.
 type MatchNemesisRow struct {
 	Gamertag string `json:"gamertag"`
@@ -1582,6 +1598,7 @@ type MatchRosterRow struct {
 // MatchScoreboardRow defines model for MatchScoreboardRow.
 type MatchScoreboardRow struct {
 	Accuracy            *float64                  `json:"accuracy,omitempty"`
+	AssassinationKills  *int64                    `json:"assassination_kills,omitempty"`
 	Assists             *int64                    `json:"assists,omitempty"`
 	AvgLifeSeconds      *float64                  `json:"avg_life_seconds,omitempty"`
 	DamageDealt         *float64                  `json:"damage_dealt,omitempty"`
@@ -1596,6 +1613,7 @@ type MatchScoreboardRow struct {
 	ExpectedKills       *float64                  `json:"expected_kills,omitempty"`
 	Gamertag            string                    `json:"gamertag"`
 	GrenadeKills        *int64                    `json:"grenade_kills,omitempty"`
+	GroundPoundKills    *int64                    `json:"ground_pound_kills,omitempty"`
 	HadBotTeammate      *bool                     `json:"had_bot_teammate,omitempty"`
 	HeadshotKills       *int64                    `json:"headshot_kills,omitempty"`
 	IsBot               *bool                     `json:"is_bot,omitempty"`
@@ -1605,6 +1623,7 @@ type MatchScoreboardRow struct {
 	Kda                 *float64                  `json:"kda,omitempty"`
 	Kills               *int64                    `json:"kills,omitempty"`
 	KillsStddev         *float64                  `json:"kills_stddev,omitempty"`
+	LocallyEstimated    *bool                     `json:"locally_estimated,omitempty"`
 	MaxKillingSpree     *int64                    `json:"max_killing_spree,omitempty"`
 	Medals              *[]PlayerMedalRow         `json:"medals,omitempty"`
 	MeleeKills          *int64                    `json:"melee_kills,omitempty"`
@@ -1617,6 +1636,7 @@ type MatchScoreboardRow struct {
 	Score               *int64                    `json:"score,omitempty"`
 	ShotsFired          *int64                    `json:"shots_fired,omitempty"`
 	ShotsHit            *int64                    `json:"shots_hit,omitempty"`
+	ShoulderBashKills   *int64                    `json:"shoulder_bash_kills,omitempty"`
 	SkillRank           *MatchScoreboardSkillRank `json:"skill_rank,omitempty"`
 	TeamSide            *string                   `json:"team_side,omitempty"`
 	TopWeaponId         *int64                    `json:"top_weapon_id,omitempty"`
@@ -1823,6 +1843,27 @@ type MediaPageResponse struct {
 	TotalMine       int            `json:"total_mine"`
 	TotalTeammates  int            `json:"total_teammates"`
 	TotalUnassigned int            `json:"total_unassigned"`
+}
+
+// NativeCommendationCategoryGroup defines model for NativeCommendationCategoryGroup.
+type NativeCommendationCategoryGroup struct {
+	Category string                     `json:"category"`
+	Items    *[]NativeCommendationTotal `json:"items"`
+}
+
+// NativeCommendationTotal defines model for NativeCommendationTotal.
+type NativeCommendationTotal struct {
+	Category string  `json:"category"`
+	IconUrl  *string `json:"icon_url,omitempty"`
+	Id       string  `json:"id"`
+	Name     string  `json:"name"`
+	Total    int64   `json:"total"`
+}
+
+// NativeCommendationsTotalsResponse defines model for NativeCommendationsTotalsResponse.
+type NativeCommendationsTotalsResponse struct {
+	Categories *[]NativeCommendationCategoryGroup `json:"categories"`
+	TotalCount int64                              `json:"total_count"`
 }
 
 // NormalizedPlayerStats defines model for NormalizedPlayerStats.
@@ -2123,13 +2164,23 @@ type TitlePurgeOutputBody struct {
 
 // TitleSummary defines model for TitleSummary.
 type TitleSummary struct {
-	Capabilities      []string           `json:"capabilities"`
-	EffectiveHpToKill float64            `json:"effective_hp_to_kill"`
-	IconUrl           *string            `json:"icon_url,omitempty"`
-	IsDefault         bool               `json:"is_default"`
-	Name              string             `json:"name"`
-	Slug              string             `json:"slug"`
-	Status            TitleSummaryStatus `json:"status"`
+	Capabilities           []string `json:"capabilities"`
+	EffectiveHpToKill      float64  `json:"effective_hp_to_kill"`
+	IconUrl                *string  `json:"icon_url,omitempty"`
+	IsDefault              bool     `json:"is_default"`
+	Name                   string   `json:"name"`
+	OffensiveConversionP80 *float64 `json:"offensive_conversion_p80,omitempty"`
+
+	// ProvidesDamageTaken false si l'API du titre ne fournit pas damage_taken (Halo 5) — le front neutralise la Résistance défensive (N/A) au lieu d'afficher 0.
+	ProvidesDamageTaken *bool `json:"provides_damage_taken,omitempty"`
+
+	// ProvidesMaxKillingSpree true si le titre supporte le max killing spree par match — valeur native (Infinite) ou calculée depuis les events kill/death horodatés (Halo 5). Le front masque la série « Folie meurtrière max » uniquement si false (titre sans events horodatés).
+	ProvidesMaxKillingSpree *bool `json:"provides_max_killing_spree,omitempty"`
+
+	// ProvidesTeamMmr false si l'API du titre ne fournit pas de MMR d'équipe/adverse par match (Halo 5) — le front masque la colonne MMR du tableau Escouade/Explorer au lieu d'afficher 0.
+	ProvidesTeamMmr *bool              `json:"provides_team_mmr,omitempty"`
+	Slug            string             `json:"slug"`
+	Status          TitleSummaryStatus `json:"status"`
 }
 
 // TitleSummaryStatus defines model for TitleSummary.Status.
@@ -2245,6 +2296,11 @@ type GetAdminMonitoringLogsTailParamsLevel string
 
 // GetAdminMonitoringOverviewParams defines parameters for GetAdminMonitoringOverview.
 type GetAdminMonitoringOverviewParams struct {
+	Title *string `form:"title,omitempty" json:"title,omitempty"`
+}
+
+// GetAdminMonitoringWeaponCoverageParams defines parameters for GetAdminMonitoringWeaponCoverage.
+type GetAdminMonitoringWeaponCoverageParams struct {
 	Title *string `form:"title,omitempty" json:"title,omitempty"`
 }
 

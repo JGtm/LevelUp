@@ -31,6 +31,14 @@ type damageModelTOML struct {
 	// offensive_conversion_p80 : frontière élite OC (80e percentile) du titre, repère
 	// de normalisation des barres/radars de rendement. 0/absent = défaut Infinite (0.90).
 	OffensiveConversionP80 float64 `toml:"offensive_conversion_p80"`
+	// no_team_mmr = true → le titre ne fournit PAS de MMR d'équipe/adverse par match
+	// (Halo 5). La colonne MMR du tableau Escouade/Explorer est masquée. Via
+	// games.ProvidesTeamMMR. Défaut false (MMR fourni, Infinite).
+	NoTeamMMR bool `toml:"no_team_mmr"`
+	// NB — pas de flag no_max_killing_spree : la « folie meurtrière max » est DÉRIVÉE
+	// (events kill/death horodatés → analysis.ComputeMaxKillingSpree) pour tout titre qui
+	// porte la capability events-timeline ; le support n'est donc pas un flag du modèle
+	// de dégâts mais une propriété de la capability. Cf. games.ProvidesMaxKillingSpree.
 }
 
 // allowedEndpointKeys est la liste exhaustive des clés d'endpoint admises (MT-01).
@@ -118,6 +126,7 @@ func LoadEndpointsFromBytes(path string, raw []byte) (*EndpointSet, error) {
 		NoNativeKDA:            doc.DamageModel.NoNativeKDA,
 		NoDamageTaken:          doc.DamageModel.NoDamageTaken,
 		OffensiveConversionP80: doc.DamageModel.OffensiveConversionP80,
+		NoTeamMMR:              doc.DamageModel.NoTeamMMR,
 	}
 	return NewEndpointSet(doc.Meta.TitleSlug, doc.Meta.SchemaVersion, gamePrefix, byKey).withDamageModel(dm), nil
 }

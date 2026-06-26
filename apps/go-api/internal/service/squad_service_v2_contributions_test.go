@@ -112,7 +112,7 @@ func TestBuildKillingSpreeMax_SmoothsValues(t *testing.T) {
 			mkPMRowContrib("main", base.Add(time.Duration(i)*time.Hour), 600, 0, 0, 0, 0, 0, i+1, 0),
 		)
 	}
-	out := BuildKillingSpreeMax(rows)
+	out := BuildKillingSpreeMax(rows, nil, nil)
 	if len(out) != 1 {
 		t.Fatalf("want 1 series, got %d", len(out))
 	}
@@ -134,9 +134,88 @@ func TestBuildKillingSpreeMax_SkipsNilSpree(t *testing.T) {
 	row := mkPMRowContrib("main", t0, 600, 0, 0, 0, 0, 0, 0, 0)
 	row.Self.MaxKillingSpree = nil
 	rows := map[string][]canonical.PlayerMatchRow{"main": {row}}
-	out := BuildKillingSpreeMax(rows)
+	// Sans events ni xuid map → la row sans native est skippée (pas de calcul possible).
+	out := BuildKillingSpreeMax(rows, nil, nil)
 	if len(out) != 0 {
-		t.Errorf("want 0 series (toutes rows sans spree), got %d", len(out))
+		t.Errorf("want 0 series (toutes rows sans spree, pas d'events), got %d", len(out))
+	}
+}
+
+// TestBuildKillingSpreeMax_ComputesFromEventsWhenNativeAbsent — quand la valeur native
+// est absente (Halo 5), la spree est CALCULÉE depuis les events kill/death du match
+// (analysis.ComputeMaxKillingSpree). La série n'est donc PAS masquée. 6 matchs pour
+// dépasser la fenêtre minimale du lissage (SpreeRollingMinWindow=5).
+func TestBuildKillingSpreeMax_ComputesFromEventsWhenNativeAbsent(t *testing.T) {
+	t.Parallel()
+	base := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	const xuid = "x_main"
+
+	var playerRows []canonical.PlayerMatchRow
+	var events []canonical.HighlightEvent
+	for i := 0; i < 6; i++ {
+		mid := "m" + string(rune('1'+i))
+		row := mkPMRowContrib("main", base.Add(time.Duration(i)*time.Hour), 600, 0, 0, 0, 0, 0, 0, 0)
+		row.Self.MaxKillingSpree = nil // native absente → doit être calculée
+		row.Summary.MatchID = mid
+		playerRows = append(playerRows, row)
+		// 3 kills d'affilée puis death → spree max = 3 sur ce match.
+		events = append(events,
+			canonical.HighlightEvent{MatchID: mid, EventType: string(canonical.EventKill), TimeMS: 1000, XUID: xuid},
+			canonical.HighlightEvent{MatchID: mid, EventType: string(canonical.EventKill), TimeMS: 2000, XUID: xuid},
+			canonical.HighlightEvent{MatchID: mid, EventType: string(canonical.EventKill), TimeMS: 3000, XUID: xuid},
+			canonical.HighlightEvent{MatchID: mid, EventType: string(canonical.EventDeath), TimeMS: 4000, XUID: xuid},
+		)
+	}
+	rows := map[string][]canonical.PlayerMatchRow{"main": playerRows}
+	squadXUIDs := map[string]string{"main": xuid}
+
+	out := BuildKillingSpreeMax(rows, events, squadXUIDs)
+	if len(out) != 1 {
+		t.Fatalf("want 1 series (spree calculée depuis events), got %d", len(out))
+	}
+	if len(out[0].Datapoints) == 0 {
+		t.Fatalf("want >0 datapoints")
+	}
+	// Toutes les valeurs valent 3 → la moyenne lissée vaut 3.
+	for _, dp := range out[0].Datapoints {
+		if dp.Y != 3 {
+			t.Errorf("spree calculée want 3, got %f", dp.Y)
+		}
+	}
+}
+
+// TestBuildKillingSpreeMax_NativeWinsNoRecompute — la valeur native (Infinite) fait foi
+// même quand des events sont présents : pas de recalcul (NO-OP Infinite garanti).
+func TestBuildKillingSpreeMax_NativeWinsNoRecompute(t *testing.T) {
+	t.Parallel()
+	base := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	const xuid = "x_main"
+
+	var playerRows []canonical.PlayerMatchRow
+	var events []canonical.HighlightEvent
+	for i := 0; i < 6; i++ {
+		mid := "m" + string(rune('1'+i))
+		// native = 7, mais les events suggèrent 3 → on doit retenir 7 (native fait foi).
+		row := mkPMRowContrib("main", base.Add(time.Duration(i)*time.Hour), 600, 0, 0, 0, 0, 0, 7, 0)
+		row.Summary.MatchID = mid
+		playerRows = append(playerRows, row)
+		events = append(events,
+			canonical.HighlightEvent{MatchID: mid, EventType: string(canonical.EventKill), TimeMS: 1000, XUID: xuid},
+			canonical.HighlightEvent{MatchID: mid, EventType: string(canonical.EventKill), TimeMS: 2000, XUID: xuid},
+			canonical.HighlightEvent{MatchID: mid, EventType: string(canonical.EventKill), TimeMS: 3000, XUID: xuid},
+		)
+	}
+	rows := map[string][]canonical.PlayerMatchRow{"main": playerRows}
+	squadXUIDs := map[string]string{"main": xuid}
+
+	out := BuildKillingSpreeMax(rows, events, squadXUIDs)
+	if len(out) != 1 || len(out[0].Datapoints) == 0 {
+		t.Fatalf("want 1 series avec datapoints")
+	}
+	for _, dp := range out[0].Datapoints {
+		if dp.Y != 7 {
+			t.Errorf("native doit faire foi (7), got %f (recalcul indu ?)", dp.Y)
+		}
 	}
 }
 
@@ -168,7 +247,7 @@ func TestBuildContributions_EmptyInputs(t *testing.T) {
 	if got := BuildFragsDeathsCombined(nil); len(got.Datapoints) != 0 {
 		t.Errorf("FragsDeathsCombined nil: want empty, got %d datapoints", len(got.Datapoints))
 	}
-	if got := BuildKillingSpreeMax(nil); got != nil {
+	if got := BuildKillingSpreeMax(nil, nil, nil); got != nil {
 		t.Errorf("KillingSpreeMax nil: want nil, got %v", got)
 	}
 	if got := BuildHsPkStacked(nil); len(got.Datapoints) != 0 {

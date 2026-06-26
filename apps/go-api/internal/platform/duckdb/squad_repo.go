@@ -295,6 +295,7 @@ func (r *SquadRepo) loadSquadMatchesShared(ctx context.Context, playerXUID, team
 			&row.PlaylistID,
 			&row.PairNameFR,
 			&row.PairID,
+			&row.GameVariantID,
 		); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
 		}
@@ -351,6 +352,16 @@ func (r *SquadRepo) LoadTeammateMatches(ctx context.Context, playerXUID, teammat
 
 // LoadImpactEvents charge les Ã©vÃ©nements highlight pour une liste de match_ids (Q32 dynamique).
 // matchIDs est la liste des identifiants â€” si vide, retourne nil directement.
+//
+// Title-agnostic (centralisé au niveau lecture) : highlight_events ne porte pas
+// forcément les kills selon le titre. Infinite y stocke kill/death/medal ; Halo 5
+// n'y stocke QUE des médailles, les kills horodatés vivant dans killer_victim_pairs.
+// Si le lot chargé ne contient AUCUN kill/death (HasCanonicalKillOrDeath==false),
+// on synthétise les kill/death depuis killer_victim_pairs (LoadKVPairs) via le
+// helper partagé analysis.SynthesizeKillEventsFromKVPairs (source unique de la
+// règle) et on les fusionne, triés par TimeMS. NO-OP sur Infinite (kills déjà
+// présents → fallback jamais pris). Évite que les 4 builders Escouade (first
+// events, intensité, matrice d'impact, squad V1) restent vides en H5.
 func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]domain.ImpactEventRow, error) {
 	if len(matchIDs) == 0 {
 		return nil, nil
@@ -394,7 +405,23 @@ func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]
 		}
 		result = append(result, row)
 	}
-	return result, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Fallback title-agnostic : kills/deaths absents → synthèse depuis kvPairs.
+	if !impactRowsHaveKillOrDeath(result) {
+		kvPairs, kvErr := r.loadKVPairsOn(ctx, db, matchIDs)
+		if kvErr != nil {
+			slog.WarnContext(ctx, "LoadImpactEvents: kv pairs fallback indisponible (best-effort)",
+				"err", kvErr.Error(), "n_matches", len(matchIDs))
+			return result, nil
+		}
+		if synth := synthesizeImpactRowsFromKVPairs(kvPairs); len(synth) > 0 {
+			result = mergeImpactRowsByTime(result, synth)
+		}
+	}
+	return result, nil
 }
 
 // LoadMainTeamParticipants charge tous les participants de l'équipe alliée

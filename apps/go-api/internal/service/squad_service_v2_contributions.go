@@ -124,25 +124,40 @@ func BuildFragsDeathsCombined(rowsByPlayer map[string][]canonical.PlayerMatchRow
 // represente le max_killing_spree lisse via RollingMeanAdaptive (fenetre
 // pct=10 du portage Python). Y = spree lisse, X = StartedAtUTC.
 //
-// Le brut max_killing_spree par match est dans MatchParticipant.MaxKillingSpree.
-// Les rows sans valeur sont skippees.
-func BuildKillingSpreeMax(rowsByPlayer map[string][]canonical.PlayerMatchRow) []domain.ChartSeries[domain.ChartPoint2D] {
+// Le brut max_killing_spree par match est dans MatchParticipant.MaxKillingSpree
+// (valeur NATIVE, cas Infinite). Quand elle est absente (Halo 5), on la CALCULE
+// depuis les events kill/death du match (analysis.ComputeMaxKillingSpree) — la
+// capability events-timeline du titre rend ce calcul possible. NO-OP Infinite :
+// native présente → pas de recalcul. `events` est la liste des events kill/death
+// (canonical, incl. synthèse kvPairs côté repo) ; `squadXUIDs` mappe gamertag→xuid
+// pour attribuer les events au bon joueur. Si events/squadXUIDs sont absents, seules
+// les valeurs natives sont tracées (rows sans native skippees).
+func BuildKillingSpreeMax(
+	rowsByPlayer map[string][]canonical.PlayerMatchRow,
+	events []canonical.HighlightEvent,
+	squadXUIDs map[string]string,
+) []domain.ChartSeries[domain.ChartPoint2D] {
 	if len(rowsByPlayer) == 0 {
 		return nil
 	}
 	gts := sortedGamertags(rowsByPlayer)
 
+	// Events kill/death groupes par match — pour le calcul-fallback (native absente).
+	eventsByMatch := groupKillEventsByMatch(events)
+
 	out := make([]domain.ChartSeries[domain.ChartPoint2D], 0, len(gts))
 	for _, gt := range gts {
 		sorted := sortedByStartedAt(rowsByPlayer[gt])
+		xuid := squadXUIDs[gt]
 
 		var rawValid []float64
 		var validRows []canonical.PlayerMatchRow
 		for _, r := range sorted {
-			if r.Self.MaxKillingSpree == nil {
+			spree, ok := resolveSpreeForRow(r, xuid, eventsByMatch)
+			if !ok {
 				continue
 			}
-			rawValid = append(rawValid, float64(*r.Self.MaxKillingSpree))
+			rawValid = append(rawValid, float64(spree))
 			validRows = append(validRows, r)
 		}
 		if len(rawValid) == 0 {
@@ -172,6 +187,41 @@ func BuildKillingSpreeMax(rowsByPlayer map[string][]canonical.PlayerMatchRow) []
 		})
 	}
 	return out
+}
+
+// groupKillEventsByMatch indexe les events kill/death par match_id. nil si aucun
+// event (le calcul-fallback est alors inopérant → seules les valeurs natives comptent).
+func groupKillEventsByMatch(events []canonical.HighlightEvent) map[string][]canonical.HighlightEvent {
+	if len(events) == 0 {
+		return nil
+	}
+	byMatch := make(map[string][]canonical.HighlightEvent)
+	for _, e := range events {
+		byMatch[e.MatchID] = append(byMatch[e.MatchID], e)
+	}
+	return byMatch
+}
+
+// resolveSpreeForRow retourne le max killing spree d'un row : la valeur NATIVE quand
+// elle existe (Infinite — fait foi, pas de recalcul), sinon la valeur CALCULÉE depuis
+// les events kill/death du match (Halo 5). ok=false quand ni l'une ni l'autre n'est
+// disponible (titre sans native ni events, ou xuid non résolu) → la row est skippée.
+func resolveSpreeForRow(
+	r canonical.PlayerMatchRow,
+	xuid string,
+	eventsByMatch map[string][]canonical.HighlightEvent,
+) (int, bool) {
+	if r.Self.MaxKillingSpree != nil {
+		return *r.Self.MaxKillingSpree, true
+	}
+	if xuid == "" || eventsByMatch == nil {
+		return 0, false
+	}
+	evs := eventsByMatch[r.Summary.MatchID]
+	if len(evs) == 0 {
+		return 0, false
+	}
+	return analysis.ComputeMaxKillingSpree(evs, xuid), true
 }
 
 // BuildHsPkStacked construit une serie de barres empilees Headshots +

@@ -159,14 +159,15 @@ func (s *TimeseriesService) GetPage(
 	// sert a enrichir le map_breakdown avec les references "Historique".
 	historicalSolo := filterStatsMatchRowsByContext(allMatches, req.Filters.MatchContext)
 
+	provideSpree := games.ProvidesMaxKillingSpree(s.titleSlug)
 	resp := domain.TimeseriesPageResponse{
 		TotalMatches: len(matches),
-		MatchRows:    buildMatchRows(matches),
+		MatchRows:    buildMatchRows(matches, provideSpree),
 		SummaryTab:   buildTimeseriesSummaryTab(matches),
 		CumulTab:     buildCumulTab(matches),
 
 		IntensityTab:     buildIntensityTab(matches),
-		DistributionsTab: buildDistributionsTab(matches),
+		DistributionsTab: buildDistributionsTab(matches, provideSpree),
 		OutcomesOverTime: buildOutcomesOverTime(matches),
 		MapBreakdown:     buildSoloMapBreakdown(matches, historicalSolo),
 		SoloSessionPerf:  buildSoloSessionPerf(historicalSolo),
@@ -227,7 +228,7 @@ func (s *TimeseriesService) GetPage(
 		resp.BriefingKPIs = &briefingKPIs
 		// Repartition des frags par type d'arme (donut Progression) : reutilise
 		// l'agregateur canonical de Synthesis sur le meme set filtre.
-		ds := buildSynthesisDetailedStatsFromCanonical(filtered)
+		ds := buildSynthesisDetailedStatsFromCanonical(filtered, provideSpree)
 		resp.DetailedStats = &ds
 	}
 
