@@ -100,6 +100,107 @@ func TestComputeScoreboardRowCombatYield_ZeroDeaths_NoDPD(t *testing.T) {
 	}
 }
 
+// TestComputeScoreboardRowCombatYield_DamageTakenNil_OCSetDRNil couvre le cas
+// title-agnostic Halo 5 : damage_dealt présent mais damage_taken absent. L'OC
+// (offensive_conversion) ne dépend que de damage_dealt → doit être calculé ; la
+// DR (defensive_resistance) exige damage_taken → reste N/A (nil), légitime.
+func TestComputeScoreboardRowCombatYield_DamageTakenNil_OCSetDRNil(t *testing.T) {
+	dd := 2000.0
+	s := domain.ScoreboardRaw{
+		Kills: 10, Deaths: 5, Assists: 3,
+		DamageDealt: &dd,
+		DamageTaken: nil, // Halo 5 : pas de damage_taken
+	}
+	oc, dr, dpk, dpd := computeScoreboardRowCombatYield(s, 225)
+	if oc == nil {
+		t.Fatal("OC doit etre non-nil quand damage_dealt est present (independant de damage_taken)")
+	}
+	// OC = 225 * (10 + 3/3) / 2000 = 225*11/2000 = 1.2375
+	if *oc < 1.2374 || *oc > 1.2376 {
+		t.Errorf("OC attendu ~1.2375, obtenu %f", *oc)
+	}
+	if dr != nil {
+		t.Errorf("DR doit etre nil sans damage_taken, obtenu %v", *dr)
+	}
+	if dpk == nil || *dpk != 200.0 {
+		t.Errorf("DamagePerKill attendu 200 (damage_dealt present), obtenu %v", dpk)
+	}
+	if dpd != nil {
+		t.Errorf("DamagePerDeath doit etre nil sans damage_taken, obtenu %v", *dpd)
+	}
+}
+
+// ---------- buildCombatTabFull : fallback synthétique kvPairs (#8/#3) ----------
+
+// TestBuildCombatTabFull_MedalsOnlyEvents_UsesKVPairsSynthetic couvre le cas H5 :
+// highlight_events ne porte que des médailles, mais killer_victim_pairs est
+// peuplé. Le combat tab doit alors synthétiser les events kill/death depuis les
+// paires → KD timeline, kill-feed, cadence et killer/victim non vides.
+func TestBuildCombatTabFull_MedalsOnlyEvents_UsesKVPairsSynthetic(t *testing.T) {
+	me := "ME"
+	enemy := "EN"
+	medalT := int64(2000)
+	medalX := me
+	events := []domain.EventRaw{
+		{EventType: "medal", TimeMS: &medalT, XUID: &medalX},
+	}
+	kvPairs := []domain.KVPairRaw{
+		{KillerXUID: me, VictimXUID: enemy, TimeMS: 1000, KillCount: 1},
+		{KillerXUID: me, VictimXUID: enemy, TimeMS: 3000, KillCount: 1},
+		{KillerXUID: enemy, VictimXUID: me, TimeMS: 5000, KillCount: 1},
+	}
+	scoreboard := []domain.ScoreboardRaw{
+		{XUID: me, Kills: 2, Deaths: 1, OutcomeCode: 2, TeamID: intPtr(0)},
+		{XUID: enemy, Kills: 1, Deaths: 2, OutcomeCode: 3, TeamID: intPtr(1)},
+	}
+	tab := buildCombatTabFull("m1", nil, events, nil, kvPairs, scoreboard, me, 60000)
+
+	// KD timeline du joueur : 2 kills + 1 death = 3 points.
+	if len(tab.KDTimeline) == 0 {
+		t.Fatal("KDTimeline vide alors que kvPairs porte les kills (fallback synthétique attendu)")
+	}
+	last := tab.KDTimeline[len(tab.KDTimeline)-1]
+	if last.Kills != 2 || last.Deaths != 1 {
+		t.Errorf("KD final attendu 2K/1D, obtenu %dK/%dD", last.Kills, last.Deaths)
+	}
+	// Kill-feed (HighlightEvents) : 1 médaille + 6 events synthétiques (3 paires
+	// × kill+death).
+	if len(tab.HighlightEvents) != 7 {
+		t.Errorf("HighlightEvents attendu 7 (1 médaille + 6 synthétiques), obtenu %d", len(tab.HighlightEvents))
+	}
+	if tab.Cadence == nil {
+		t.Error("Cadence nil alors que des kills synthétiques existent")
+	}
+	if len(tab.KillerVictim) == 0 {
+		t.Error("KillerVictim vide alors que kvPairs est peuplé")
+	}
+}
+
+// TestBuildCombatTabFull_RealKillEvents_NoSynthetic vérifie qu'avec des events
+// kill/death déjà présents (cas Infinite), le fallback n'est PAS déclenché : le
+// kill-feed ne contient QUE les events d'origine (aucun doublon synthétique).
+func TestBuildCombatTabFull_RealKillEvents_NoSynthetic(t *testing.T) {
+	me := "ME"
+	enemy := "EN"
+	kT := int64(1000)
+	events := []domain.EventRaw{
+		{EventType: "kill", TimeMS: &kT, XUID: &me},
+		{EventType: "death", TimeMS: &kT, XUID: &enemy},
+	}
+	kvPairs := []domain.KVPairRaw{
+		{KillerXUID: me, VictimXUID: enemy, TimeMS: 1000, KillCount: 1},
+	}
+	scoreboard := []domain.ScoreboardRaw{
+		{XUID: me, Kills: 1, Deaths: 0, OutcomeCode: 2, TeamID: intPtr(0)},
+		{XUID: enemy, Kills: 0, Deaths: 1, OutcomeCode: 3, TeamID: intPtr(1)},
+	}
+	tab := buildCombatTabFull("m1", nil, events, nil, kvPairs, scoreboard, me, 60000)
+	// Pas de synthèse : exactement les 2 events d'origine dans le kill-feed.
+	if len(tab.HighlightEvents) != 2 {
+		t.Errorf("HighlightEvents attendu 2 (events réels, pas de synthèse), obtenu %d", len(tab.HighlightEvents))
+	}
+}
+
 // ---------- convertTugBinsToDomain ----------
 
 func TestConvertTugBinsToDomain_SplitsAllyEnemy(t *testing.T) {

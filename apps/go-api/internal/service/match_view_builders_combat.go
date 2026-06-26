@@ -9,6 +9,8 @@
 package service
 
 import (
+	"sort"
+
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
@@ -39,6 +41,8 @@ func buildCombatTabFull(
 			KillCount:   w.Kills,
 		})
 	}
+
+	events, canonicalEvents = applyKVSynthesisIfNeeded(events, canonicalEvents, kvPairs, matchID)
 
 	evtList := make([]domain.MatchHighlightEvent, 0, len(events))
 	for _, e := range events {
@@ -105,6 +109,34 @@ func buildCombatTabFull(
 		ImpactRoles:     impactRoles,
 		Cadence:         cadence,
 	}
+}
+
+// applyKVSynthesisIfNeeded synthétise des events kill/death depuis les paires
+// killer→victim quand les events highlight ne portent AUCUN kill/death.
+//
+// Title-agnostic : certains titres (Halo 5) ne portent PAS les kills dans
+// highlight_events (= médailles seules) ; les kills horodatés vivent dans
+// killer_victim_pairs. Quand events ne contient AUCUN kill/death mais que
+// kvPairs est peuplé, on synthétise des events kill/death depuis les paires
+// pour alimenter le kill-feed, les badges d'impact, la cadence et les rôles.
+// Sur Infinite (kills dans highlight_events) ce chemin n'est jamais pris.
+//
+// Retourne (events, canonicalEvents) potentiellement modifiés : si la synthèse
+// a lieu, canonicalEvents est forcé à nil (chemin EventRaw, medals-only canonique
+// inutile ici). Sinon les entrées sont renvoyées inchangées.
+func applyKVSynthesisIfNeeded(
+	events []domain.EventRaw,
+	canonicalEvents []canonical.HighlightEvent,
+	kvPairs []domain.KVPairRaw,
+	matchID string,
+) ([]domain.EventRaw, []canonical.HighlightEvent) {
+	if !eventsHaveKillOrDeath(events) {
+		if synth := synthesizeEventRawFromKVPairs(kvPairs, matchID); len(synth) > 0 {
+			events = mergeEventRawByTime(events, synth)
+			canonicalEvents = nil // forcer le chemin EventRaw (medals-only canonique inutile ici)
+		}
+	}
+	return events, canonicalEvents
 }
 
 // buildKillerVictimPairs agrège les kvPairs par (killer_xuid, victim_xuid).
@@ -261,4 +293,72 @@ func buildKDEvents(kvPairs []domain.KVPairRaw, myXUID string) []analysis.KDEvent
 		}
 	}
 	return events
+}
+
+// eventsHaveKillOrDeath indique si la liste d'events bruts contient au moins un
+// kill ou death. Sert à décider du fallback synthétique kvPairs → events
+// (titres dont highlight_events ne porte que des médailles, ex. Halo 5).
+func eventsHaveKillOrDeath(events []domain.EventRaw) bool {
+	for _, e := range events {
+		if e.EventType == analysis.EventTypeKill || e.EventType == analysis.EventTypeDeath {
+			return true
+		}
+	}
+	return false
+}
+
+// synthesizeEventRawFromKVPairs reconstruit des EventRaw kill/death depuis les
+// paires killer→victim. La règle de synthèse (1 paire → 1 kill + 1 death, acteur
+// kill = tueur, acteur death = victime) est partagée avec les loaders engagement
+// via analysis.SynthesizeKillEventsFromKVPairs (source unique). On reconvertit
+// l'event canonique en EventRaw (XUID = acteur) pour les consommateurs legacy
+// (evtList kill-feed, buildImpactInput, BuildMatchCadenceChart/Roles8).
+func synthesizeEventRawFromKVPairs(kvPairs []domain.KVPairRaw, matchID string) []domain.EventRaw {
+	if len(kvPairs) == 0 {
+		return nil
+	}
+	inputs := make([]analysis.KVSyntheticInput, 0, len(kvPairs))
+	for _, kv := range kvPairs {
+		inputs = append(inputs, analysis.KVSyntheticInput{
+			KillerXUID: kv.KillerXUID,
+			VictimXUID: kv.VictimXUID,
+			TimeMS:     kv.TimeMS,
+			KillCount:  kv.KillCount,
+		})
+	}
+	canon := analysis.SynthesizeKillEventsFromKVPairs(inputs, matchID)
+	if len(canon) == 0 {
+		return nil
+	}
+	out := make([]domain.EventRaw, 0, len(canon))
+	for i := range canon {
+		t := canon[i].TimeMS
+		x := canon[i].XUID
+		out = append(out, domain.EventRaw{
+			EventType: canon[i].EventType,
+			TimeMS:    &t,
+			XUID:      &x,
+		})
+	}
+	return out
+}
+
+// mergeEventRawByTime fusionne deux listes d'EventRaw et les trie par TimeMS
+// croissant (nil TimeMS traité comme 0), stable. Aligne le kill-feed synthétique
+// sur l'ordre chronologique attendu côté front.
+func mergeEventRawByTime(a, b []domain.EventRaw) []domain.EventRaw {
+	out := make([]domain.EventRaw, 0, len(a)+len(b))
+	out = append(out, a...)
+	out = append(out, b...)
+	sort.SliceStable(out, func(i, j int) bool {
+		var ti, tj int64
+		if out[i].TimeMS != nil {
+			ti = *out[i].TimeMS
+		}
+		if out[j].TimeMS != nil {
+			tj = *out[j].TimeMS
+		}
+		return ti < tj
+	})
+	return out
 }

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
@@ -165,7 +166,58 @@ func (r *EngagementScoreRepo) LoadEventsForMatch(
 		}
 		out = append(out, ev)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Title-agnostic : si highlight_events ne porte aucun kill/death (ex. Halo 5
+	// = médailles seules), on synthétise les events kill/death depuis
+	// killer_victim_pairs (kills horodatés, time_ms relatif au match) et on les
+	// fusionne aux médailles, triés par TimeMS. Sans ça la courbe d'engagement
+	// mesurerait la cadence des médailles, pas celle des kills. Sur Infinite
+	// (kills dans highlight_events) ce chemin n'est jamais pris.
+	if !analysis.HasCanonicalKillOrDeath(out) {
+		synth, serr := r.loadSyntheticKillEvents(ctx, sharedDB, matchID)
+		if serr == nil && len(synth) > 0 {
+			out = analysis.MergeAndSortCanonicalEvents(out, synth)
+		}
+	}
+	return out, nil
+}
+
+// loadSyntheticKillEvents charge killer_victim_pairs d'un match et synthétise
+// des events canoniques kill/death (1 paire → 1 kill + 1 death) via le helper
+// partagé analysis.SynthesizeKillEventsFromKVPairs. Best-effort : retourne nil
+// sans erreur si la table/colonnes sont absentes.
+func (r *EngagementScoreRepo) loadSyntheticKillEvents(
+	ctx context.Context,
+	sharedDB *sql.DB,
+	matchID string,
+) ([]canonical.HighlightEvent, error) {
+	const q = `
+		SELECT COALESCE(killer_xuid, ''), COALESCE(victim_xuid, ''), COALESCE(time_ms, 0)
+		FROM killer_victim_pairs
+		WHERE match_id = ?
+		ORDER BY time_ms ASC
+	`
+	rows, err := sharedDB.QueryContext(ctx, q, matchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	inputs := make([]analysis.KVSyntheticInput, 0)
+	for rows.Next() {
+		var in analysis.KVSyntheticInput
+		if err := rows.Scan(&in.KillerXUID, &in.VictimXUID, &in.TimeMS); err != nil {
+			continue
+		}
+		inputs = append(inputs, in)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return analysis.SynthesizeKillEventsFromKVPairs(inputs, matchID), nil
 }
 
 // LoadTeamXUIDs charge les XUIDs des coequipiers humains (joueur cible exclu).
