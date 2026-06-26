@@ -526,8 +526,9 @@ export const handlers = [
     })
   }),
 
-  // Palmares — Relations (hub Communauté > Relations, forme {overview, relations[]})
-  http.get(p(`/players/${SLUG}/pages/palmares/relations`), () =>
+  // Palmares — Relations (hub Communauté > Relations, forme {overview, relations[]}).
+  // Phase 2 : POST avec FilterContextInput en body (segmentation serveur).
+  http.post(p(`/players/${SLUG}/pages/palmares/relations`), () =>
     HttpResponse.json({
       overview: {
         distinct_players: 42,

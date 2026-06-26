@@ -150,7 +150,12 @@ type CareerRepository interface {
 type RelationsRepository interface {
 	// GetRelations : tous les joueurs récurrents (>= 2 matchs communs) avec
 	// agrégats allié/ennemi, KDA moyens, duel et bornes temporelles.
-	GetRelations(ctx context.Context) ([]domain.RelationRawRow, error)
+	//
+	// scope restreint l'agrégation à un sous-ensemble de match_id (Phase 2,
+	// segmentation serveur). scope == nil ⇒ aucun filtre (tous les matchs,
+	// comportement Phase 1). scope non-nil et VIDE ⇒ aucun match en périmètre
+	// ⇒ retour ([]) sans requête (un filtre qui ne matche rien).
+	GetRelations(ctx context.Context, scope []string) ([]domain.RelationRawRow, error)
 }
 
 // FriendMatchExtras : enrichissement per-friend pour le panneau d'expander

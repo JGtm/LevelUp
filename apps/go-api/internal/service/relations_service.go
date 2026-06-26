@@ -16,13 +16,23 @@ import (
 
 // RelationsService orchestre le hub Relations.
 type RelationsService struct {
-	repo port.RelationsRepository
-	now  func() time.Time // injectable pour les tests (badges temporels)
+	repo    port.RelationsRepository
+	filters port.FiltersService // optionnel : résout le scope match_id (Phase 2). nil → pas de segmentation.
+	now     func() time.Time    // injectable pour les tests (badges temporels)
 }
 
 // NewRelationsService crée un RelationsService.
 func NewRelationsService(repo port.RelationsRepository) *RelationsService {
 	return &RelationsService{repo: repo, now: time.Now}
+}
+
+// WithFilters injecte le FiltersService qui résout le sous-ensemble de match_id
+// d'une sélection (expérience/classé, saison/période, playlist/mode, vue
+// solo/escouade), via le MÊME pipeline cascade que /filters/resolve. Sans cette
+// injection, la segmentation est inerte (tous les matchs).
+func (s *RelationsService) WithFilters(f port.FiltersService) *RelationsService {
+	s.filters = f
+	return s
 }
 
 // withNow injecte une horloge déterministe (tests des badges temporels).
@@ -33,8 +43,18 @@ func (s *RelationsService) withNow(now func() time.Time) *RelationsService {
 
 // GetRelationsPage construit la page complète : aperçu (compteurs + binôme +
 // bête noire) et liste des relations enrichies (badges + catégorie).
-func (s *RelationsService) GetRelationsPage(ctx context.Context) (domain.RelationsPageResponse, error) {
-	rawRows, err := s.repo.GetRelations(ctx)
+//
+// Phase 2 : `input` porte la segmentation serveur. Si la sélection est active
+// (filtre non trivial) ET qu'un FiltersService est injecté, le scope de match_id
+// est résolu en amont et passé au repo qui restreint l'agrégation. Un input
+// trivial (tout) court-circuite la résolution (scope nil) → coût Phase 1.
+func (s *RelationsService) GetRelationsPage(ctx context.Context, input domain.FilterContextInput) (domain.RelationsPageResponse, error) {
+	scope, err := s.resolveScope(ctx, input)
+	if err != nil {
+		return domain.RelationsPageResponse{}, fmt.Errorf("RelationsService.GetRelationsPage: scope: %w", err)
+	}
+
+	rawRows, err := s.repo.GetRelations(ctx, scope)
 	if err != nil {
 		return domain.RelationsPageResponse{}, fmt.Errorf("RelationsService.GetRelationsPage: %w", err)
 	}
@@ -54,6 +74,49 @@ func (s *RelationsService) GetRelationsPage(ctx context.Context) (domain.Relatio
 		Overview:  buildOverview(stats),
 		Relations: insights,
 	}, nil
+}
+
+// resolveScope retourne le sous-ensemble de match_id correspondant à `input` :
+//   - nil  → pas de segmentation (sélection triviale OU FiltersService absent)
+//     → le repo agrège sur tous les matchs (comportement Phase 1)
+//   - []   → sélection active mais aucun match en périmètre → le repo court-circuite
+//   - [..] → sélection active → le repo restreint l'agrégation à ce set
+func (s *RelationsService) resolveScope(ctx context.Context, input domain.FilterContextInput) ([]string, error) {
+	if s.filters == nil || !filterContextIsActive(input) {
+		return nil, nil
+	}
+	ids, err := s.filters.ResolveMatchIDs(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+	// ResolveMatchIDs renvoie nil pour une population vide ; on normalise vers
+	// un slice non-nil vide pour que le repo distingue "tout" (nil) de
+	// "rien en périmètre" (vide) sans ambiguïté.
+	if ids == nil {
+		return []string{}, nil
+	}
+	return ids, nil
+}
+
+// filterContextIsActive indique si `input` restreint réellement la population :
+// une période bornée, une session pickée, une cascade non vide, ou une vue
+// solo/escouade. Un input trivial (tout) court-circuite la résolution coûteuse.
+func filterContextIsActive(in domain.FilterContextInput) bool {
+	if in.Period.StartDate != nil || in.Period.EndDate != nil {
+		return true
+	}
+	if hasPickedSessions(in.Sessions) {
+		return true
+	}
+	c := in.Cascade
+	if len(c.ExperienceTypes) > 0 || len(c.Playlists) > 0 || len(c.Modes) > 0 || len(c.Maps) > 0 {
+		return true
+	}
+	switch in.MatchContext {
+	case domain.MatchContextSolo, domain.MatchContextSquad:
+		return true
+	}
+	return false
 }
 
 // relationStatsFromRaw projette la ligne brute repo en stats d'analyse (pur),

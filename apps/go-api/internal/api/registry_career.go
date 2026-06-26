@@ -96,7 +96,14 @@ func (r *ServiceRegistry) RelationsCtx(ctx context.Context, slug string) (port.R
 		return nil, err
 	}
 	repo := duckdb.NewCareerRepo(pdb)
-	return service.NewRelationsService(repo), nil
+	svc := service.NewRelationsService(repo)
+	// Phase 2 : segmentation serveur. Le FiltersService résout le sous-ensemble
+	// de match_id (expérience/classé, saison/période, playlist/mode, vue
+	// solo/escouade) via le MÊME pipeline cascade que /filters/resolve, en
+	// réutilisant le FiltersRepo (cross-DB : shared + player DB is_with_friends).
+	filtersSvc := service.NewFiltersService(duckdb.NewFiltersRepo(pdb))
+	svc = svc.WithFilters(filtersSvc)
+	return svc, nil
 }
 
 // buildFriendsXPLoader construit un loader d'historique XP pour tous les amis

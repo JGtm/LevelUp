@@ -40,6 +40,20 @@ export interface PalmaresText {
       rivals: string
       recent: string
     }
+    filters: {
+      experience: string
+      experienceAll: string
+      experienceRanked: string
+      experienceUnranked: string
+      playlists: string
+      modes: string
+      view: string
+      viewAll: string
+      viewSolo: string
+      viewSquad: string
+      analyser: string
+      reset: string
+    }
     table: {
       player: string
       link: string
@@ -171,6 +185,20 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         allies: t(loc, 'palmares.relations.chip.allies'),
         rivals: t(loc, 'palmares.relations.chip.rivals'),
         recent: t(loc, 'palmares.relations.chip.recent'),
+      },
+      filters: {
+        experience: t(loc, 'palmares.relations.filters.experience'),
+        experienceAll: t(loc, 'palmares.relations.filters.experience_all'),
+        experienceRanked: t(loc, 'palmares.relations.filters.experience_ranked'),
+        experienceUnranked: t(loc, 'palmares.relations.filters.experience_unranked'),
+        playlists: t(loc, 'palmares.relations.filters.playlists'),
+        modes: t(loc, 'palmares.relations.filters.modes'),
+        view: t(loc, 'palmares.relations.filters.view'),
+        viewAll: t(loc, 'palmares.relations.filters.view_all'),
+        viewSolo: t(loc, 'palmares.relations.filters.view_solo'),
+        viewSquad: t(loc, 'palmares.relations.filters.view_squad'),
+        analyser: t(loc, 'palmares.relations.filters.analyser'),
+        reset: t(loc, 'palmares.relations.filters.reset'),
       },
       table: {
         player: t(loc, 'palmares.relations.table.player'),

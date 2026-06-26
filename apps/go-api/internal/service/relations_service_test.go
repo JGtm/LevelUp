@@ -10,12 +10,34 @@ import (
 )
 
 type mockRelationsRepo struct {
-	rows []domain.RelationRawRow
-	err  error
+	rows      []domain.RelationRawRow
+	err       error
+	gotScope  []string // capture le scope reçu (assertions Phase 2)
+	scopeSeen bool
 }
 
-func (m *mockRelationsRepo) GetRelations(_ context.Context) ([]domain.RelationRawRow, error) {
+func (m *mockRelationsRepo) GetRelations(_ context.Context, scope []string) ([]domain.RelationRawRow, error) {
+	m.gotScope = scope
+	m.scopeSeen = true
 	return m.rows, m.err
+}
+
+// mockFiltersService renvoie un scope fixe et capture l'input reçu.
+type mockFiltersService struct {
+	ids      []string
+	err      error
+	gotInput domain.FilterContextInput
+	called   bool
+}
+
+func (m *mockFiltersService) Resolve(_ context.Context, _ domain.FilterContextInput) (domain.FilterContextResolved, error) {
+	return domain.FilterContextResolved{}, nil
+}
+
+func (m *mockFiltersService) ResolveMatchIDs(_ context.Context, in domain.FilterContextInput) ([]string, error) {
+	m.called = true
+	m.gotInput = in
+	return m.ids, m.err
 }
 
 func fixedNow() func() time.Time {
@@ -25,7 +47,7 @@ func fixedNow() func() time.Time {
 
 func TestGetRelationsPage_Empty(t *testing.T) {
 	svc := NewRelationsService(&mockRelationsRepo{}).withNow(fixedNow())
-	page, err := svc.GetRelationsPage(context.Background())
+	page, err := svc.GetRelationsPage(context.Background(), domain.FilterContextInput{})
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -45,7 +67,7 @@ func TestGetRelationsPage_Empty(t *testing.T) {
 
 func TestGetRelationsPage_Error(t *testing.T) {
 	svc := NewRelationsService(&mockRelationsRepo{err: errors.New("boom")})
-	if _, err := svc.GetRelationsPage(context.Background()); err == nil {
+	if _, err := svc.GetRelationsPage(context.Background(), domain.FilterContextInput{}); err == nil {
 		t.Fatal("expected error propagation")
 	}
 }
@@ -70,7 +92,7 @@ func TestGetRelationsPage_Enriched(t *testing.T) {
 		},
 	}
 	svc := NewRelationsService(&mockRelationsRepo{rows: rows}).withNow(func() time.Time { return now })
-	page, err := svc.GetRelationsPage(context.Background())
+	page, err := svc.GetRelationsPage(context.Background(), domain.FilterContextInput{})
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -127,5 +149,118 @@ func TestGetRelationsPage_Enriched(t *testing.T) {
 	// first_seen_at / last_seen_at present
 	if byGT["Ally"].FirstSeenAt == nil || byGT["Ally"].LastSeenAt == nil {
 		t.Fatal("Ally timestamps must be set")
+	}
+}
+
+// ─── Phase 2 : segmentation serveur (scope match_id) ────────────────────────
+
+// Input trivial (tout) → pas de résolution de scope, scope nil passé au repo.
+func TestGetRelationsPage_TrivialInput_NoScope(t *testing.T) {
+	repo := &mockRelationsRepo{}
+	fs := &mockFiltersService{ids: []string{"x"}}
+	svc := NewRelationsService(repo).WithFilters(fs).withNow(fixedNow())
+
+	if _, err := svc.GetRelationsPage(context.Background(), domain.FilterContextInput{}); err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if fs.called {
+		t.Fatal("FiltersService must NOT be called for a trivial input")
+	}
+	if !repo.scopeSeen || repo.gotScope != nil {
+		t.Fatalf("repo scope=%v want nil (Phase 1 path)", repo.gotScope)
+	}
+}
+
+// Input actif (cascade) → résolution → scope non-nil passé au repo.
+func TestGetRelationsPage_ActiveInput_ScopeResolved(t *testing.T) {
+	repo := &mockRelationsRepo{}
+	fs := &mockFiltersService{ids: []string{"m1", "m2"}}
+	svc := NewRelationsService(repo).WithFilters(fs).withNow(fixedNow())
+
+	in := domain.FilterContextInput{Cascade: domain.CascadeFilter{Playlists: []string{"Ranked Arena"}}}
+	if _, err := svc.GetRelationsPage(context.Background(), in); err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if !fs.called {
+		t.Fatal("FiltersService must be called for an active input")
+	}
+	if len(repo.gotScope) != 2 || repo.gotScope[0] != "m1" {
+		t.Fatalf("repo scope=%v want [m1 m2]", repo.gotScope)
+	}
+}
+
+// Vue solo/escouade seule → input actif → résolution.
+func TestGetRelationsPage_MatchContextActivatesScope(t *testing.T) {
+	repo := &mockRelationsRepo{}
+	fs := &mockFiltersService{ids: []string{"m1"}}
+	svc := NewRelationsService(repo).WithFilters(fs).withNow(fixedNow())
+
+	in := domain.FilterContextInput{MatchContext: domain.MatchContextSquad}
+	if _, err := svc.GetRelationsPage(context.Background(), in); err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if !fs.called || fs.gotInput.MatchContext != domain.MatchContextSquad {
+		t.Fatalf("expected squad context forwarded, got %+v called=%v", fs.gotInput.MatchContext, fs.called)
+	}
+}
+
+// Période bornée → input actif.
+func TestGetRelationsPage_PeriodActivatesScope(t *testing.T) {
+	repo := &mockRelationsRepo{}
+	fs := &mockFiltersService{ids: []string{"m1"}}
+	svc := NewRelationsService(repo).WithFilters(fs).withNow(fixedNow())
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	in := domain.FilterContextInput{Period: domain.PeriodInput{StartDate: &start}}
+	if _, err := svc.GetRelationsPage(context.Background(), in); err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if !fs.called {
+		t.Fatal("period filter must activate scope resolution")
+	}
+}
+
+// Résolution renvoyant 0 match → scope vide (non-nil) passé au repo (qui
+// court-circuite) → page vide.
+func TestGetRelationsPage_EmptyResolution_PassesEmptyScope(t *testing.T) {
+	repo := &mockRelationsRepo{}
+	fs := &mockFiltersService{ids: nil} // population vide
+	svc := NewRelationsService(repo).WithFilters(fs).withNow(fixedNow())
+
+	in := domain.FilterContextInput{MatchContext: domain.MatchContextSolo}
+	if _, err := svc.GetRelationsPage(context.Background(), in); err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if repo.gotScope == nil {
+		t.Fatal("empty resolution must pass a non-nil empty scope (not nil = tout)")
+	}
+	if len(repo.gotScope) != 0 {
+		t.Fatalf("scope=%v want empty", repo.gotScope)
+	}
+}
+
+// Erreur de résolution propagée.
+func TestGetRelationsPage_ResolveError(t *testing.T) {
+	fs := &mockFiltersService{err: errors.New("resolve boom")}
+	svc := NewRelationsService(&mockRelationsRepo{}).WithFilters(fs).withNow(fixedNow())
+	in := domain.FilterContextInput{Cascade: domain.CascadeFilter{Modes: []string{"Slayer"}}}
+	if _, err := svc.GetRelationsPage(context.Background(), in); err == nil {
+		t.Fatal("expected resolve error propagation")
+	}
+}
+
+// Sans FiltersService injecté, un input actif reste inerte (scope nil) :
+// dégradation gracieuse, jamais de panic.
+func TestGetRelationsPage_NoFiltersService_ScopeNil(t *testing.T) {
+	repo := &mockRelationsRepo{}
+	svc := NewRelationsService(repo).withNow(fixedNow())
+	in := domain.FilterContextInput{
+		Cascade:  domain.CascadeFilter{Playlists: []string{"X"}},
+		Sessions: domain.SessionsFilter{PickedSessionLabel: strPtr("s")},
+	}
+	if _, err := svc.GetRelationsPage(context.Background(), in); err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if repo.gotScope != nil {
+		t.Fatalf("scope=%v want nil (no filters service)", repo.gotScope)
 	}
 }

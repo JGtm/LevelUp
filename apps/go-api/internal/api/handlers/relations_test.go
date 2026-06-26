@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -16,11 +17,13 @@ import (
 )
 
 type mockRelationsService struct {
-	page domain.RelationsPageResponse
-	err  error
+	page     domain.RelationsPageResponse
+	err      error
+	gotInput domain.FilterContextInput
 }
 
-func (m *mockRelationsService) GetRelationsPage(_ context.Context) (domain.RelationsPageResponse, error) {
+func (m *mockRelationsService) GetRelationsPage(_ context.Context, in domain.FilterContextInput) (domain.RelationsPageResponse, error) {
+	m.gotInput = in
 	return m.page, m.err
 }
 
@@ -33,15 +36,19 @@ func newRelationsRouter(factory handlers.RelationsFactory) *chi.Mux {
 	return r
 }
 
+const relationsPath = "/players/" + testPlayerSlug + "/pages/palmares/relations"
+
+// Corps absent → 200, sélection zéro-valeur (= tout) transmise au service.
 func TestRelationsHandler_OK_Empty(t *testing.T) {
+	mock := &mockRelationsService{page: domain.RelationsPageResponse{Relations: []domain.RelationInsight{}}}
 	factory := func(_ context.Context, slug string) (port.RelationsService, error) {
 		if slug != testPlayerSlug {
 			t.Fatalf("unexpected slug %q", slug)
 		}
-		return &mockRelationsService{page: domain.RelationsPageResponse{Relations: []domain.RelationInsight{}}}, nil
+		return mock, nil
 	}
 	r := newRelationsRouter(factory)
-	req := httptest.NewRequest(http.MethodGet, "/players/"+testPlayerSlug+"/pages/palmares/relations", nil)
+	req := httptest.NewRequest(http.MethodPost, relationsPath, nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -55,6 +62,61 @@ func TestRelationsHandler_OK_Empty(t *testing.T) {
 	if resp.Overview.DistinctPlayers != 0 {
 		t.Fatalf("distinct=%d want 0", resp.Overview.DistinctPlayers)
 	}
+	if mock.gotInput.MatchContext != "" || len(mock.gotInput.Cascade.Playlists) != 0 {
+		t.Fatalf("empty body should yield zero-value input, got %+v", mock.gotInput)
+	}
+}
+
+// Corps avec FilterContextInput → décodé et transmis au service.
+func TestRelationsHandler_FilterBodyForwarded(t *testing.T) {
+	mock := &mockRelationsService{page: domain.RelationsPageResponse{Relations: []domain.RelationInsight{}}}
+	factory := func(_ context.Context, _ string) (port.RelationsService, error) { return mock, nil }
+	r := newRelationsRouter(factory)
+
+	body := `{"filter_mode":"period","match_context":"squad","cascade":{"playlists":["Ranked Arena"],"modes":["Slayer"]}}`
+	req := httptest.NewRequest(http.MethodPost, relationsPath, bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200 body=%s", w.Code, w.Body.String())
+	}
+	if mock.gotInput.MatchContext != "squad" {
+		t.Fatalf("match_context=%q want squad", mock.gotInput.MatchContext)
+	}
+	if len(mock.gotInput.Cascade.Playlists) != 1 || mock.gotInput.Cascade.Playlists[0] != "Ranked Arena" {
+		t.Fatalf("playlists=%v want [Ranked Arena]", mock.gotInput.Cascade.Playlists)
+	}
+}
+
+// JSON invalide → 400 invalid_body.
+func TestRelationsHandler_InvalidBody(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.RelationsService, error) {
+		return &mockRelationsService{}, nil
+	}
+	r := newRelationsRouter(factory)
+	req := httptest.NewRequest(http.MethodPost, relationsPath, bytes.NewBufferString("{not json"))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400 body=%s", w.Code, w.Body.String())
+	}
+}
+
+// match_context invalide → 400 (Validate).
+func TestRelationsHandler_InvalidMatchContext(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.RelationsService, error) {
+		return &mockRelationsService{}, nil
+	}
+	r := newRelationsRouter(factory)
+	req := httptest.NewRequest(http.MethodPost, relationsPath, bytes.NewBufferString(`{"match_context":"duo"}`))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400 body=%s", w.Code, w.Body.String())
+	}
 }
 
 func TestRelationsHandler_PlayerNotFound(t *testing.T) {
@@ -62,7 +124,7 @@ func TestRelationsHandler_PlayerNotFound(t *testing.T) {
 		return nil, errors.New("not found")
 	}
 	r := newRelationsRouter(factory)
-	req := httptest.NewRequest(http.MethodGet, "/players/"+testPlayerSlug+"/pages/palmares/relations", nil)
+	req := httptest.NewRequest(http.MethodPost, relationsPath, nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -76,7 +138,7 @@ func TestRelationsHandler_ServiceError(t *testing.T) {
 		return &mockRelationsService{err: errors.New("boom")}, nil
 	}
 	r := newRelationsRouter(factory)
-	req := httptest.NewRequest(http.MethodGet, "/players/"+testPlayerSlug+"/pages/palmares/relations", nil)
+	req := httptest.NewRequest(http.MethodPost, relationsPath, nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

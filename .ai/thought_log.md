@@ -1,3 +1,20 @@
+## [2026-06-26] Hub Communauté > Relations — Phase 2 segmentation serveur (branche feat/relations-hub)
+
+**Statut** : Complété (worktree, non committé à l'écriture — commit/push sur autorisation). Vérifié moi-même : Go build/vet/test (relations + api drift/contract) verts ; intégration cross-DB solo/escouade + playlist (:memory:) verts ; front typecheck + eslint (0 err) + vitest palmares 7/7 + knip 90/90 ; généré palmares.ts régénéré (12 clés filters.*).
+
+**Décision technique** :
+- Endpoint GET → **POST** /pages/palmares/relations, body `FilterContextInput` OPTIONNEL (corps absent = zéro-valeur = tous les matchs, byte-identique Phase 1). `match_context` solo/squad/all. 400 invalid_body / 404 player_not_found / 500 relations_error. Réponse RelationsPageResponse inchangée, recalculée sur le sous-ensemble filtré.
+- Service (0 SQL) : `resolveScope` court-circuite (nil) si input trivial → Q28 non scopée ; sinon `FiltersService.ResolveMatchIDs` (MÊME pipeline cascade que /filters/resolve, cross-DB shared+player `is_with_friends`) → set de match_id ; nil normalisé en slice vide (distingue « tout » de « rien en périmètre »).
+- SQL : `Q28RelationsScopedTpl` (2 clauses IN symétriques my_history + kv_stats, placeholders positionnels via buildRelationsQuery) ; outcomes title-aware conservés, timezone canonique. Aucun `is_ranked` en dur (expérience via filters_service).
+- Front : `useLocalFilterBar` (partagé) étendu additivement avec un `ViewDropdown` solo/escouade optionnel mappé sur `match_context` ; pending→committed + Analyser + reset ; counts cascade-aware via `useFiltersPreview` ; chips client conservés, orthogonaux. `useRelationsPage` → api.post, queryKey inclut le hash des filtres committés.
+- i18n : 12 clés `palmares.relations.filters.*` FR+EN (0 anglicisme), manifest régénéré. Couleurs via tokens.
+
+**Title-agnostic** : segmentation via l'infra cascade existante (pas de slug, pas de is_ranked en dur) ; cross-DB via handles existants ; lecture seule.
+
+**Findings revue (triés)** : « blocker » i18n du reviewer = FAUX (régénération faite, vérifiée) ; `go test -tags=integration ./internal/service/` échoue sur `TestAchievementsIntegration_*` (table xbox_achievement_definitions) = **pré-existant hors Phase 2** ; `generated.ts` retire des champs H5 (MatchNativeCommendation/MonitoringSnapshotSummary) = artefact de base ancienne, à régénérer au PR (pas de merge ici) ; nits corrigés (commentaires Q28 16→15 + buildRelationsQuery ; docstrings Phase 1→2). Fallback `?? 'Analyser'` laissé (hook partagé pré-existant).
+
+**Prochaine étape** : commit + push Phase 2 (sur autorisation) ; Phase 3 (badge cross-jeu « Aussi sur Halo 5 », heatmap agrégé, rivalités).
+
 ## [2026-06-26] Hub Communauté > Relations — FRONTEND Phase 1 (branche feat/relations-hub)
 
 **Statut** : Complété (frontend). Backend Go (endpoint `/pages/palmares/relations`, domain/analysis/repo/service/handler) déjà présent et vert dans le worktree à mon arrivée ; je l'ai validé (build/vet/test verts) sans le modifier.
