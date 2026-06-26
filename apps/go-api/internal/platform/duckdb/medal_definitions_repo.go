@@ -40,7 +40,11 @@ func medalLangCode(locale string) string {
 }
 
 // LookupByIDs résout les labels et descriptions localisés pour les IDs donnés.
-// Priorité : medal_translations[locale] → medal_translations[en-US] → medal_definitions.name_en.
+// Chaîne de priorité locale-aware (source unique : medalLabelDescCoalesceSQL) :
+//   - locale FR : mt_loc.name → md.name_fr → mt_en.name → md.name_en
+//     (description : md.description_fr → mt_loc.description → md.description_en) ;
+//   - locale EN : mt_loc.name → mt_en.name → md.name_en (jamais les colonnes FR).
+//
 // Retourne une map vide si la metadata DB est absente.
 func (r *MedalDefinitionsRepo) LookupByIDs(
 	ctx context.Context,
@@ -55,20 +59,19 @@ func (r *MedalDefinitionsRepo) LookupByIDs(
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	lang := medalLangCode(locale)
-
+	// Source unique de la chaîne label/description (locale-aware) : helper partagé
+	// medal_label_resolve.go. Corrige le COALESCE divergent qui omettait md.name_fr /
+	// md.description_fr (médailles non traduites sur Escouade/Explorer).
+	labelExpr, descExpr := medalLabelDescCoalesceSQL(locale)
 	q, args, ok := buildLookupQuery(
 		`SELECT md.medal_name_id,
-		        COALESCE(NULLIF(TRIM(mt_loc.name),''), NULLIF(TRIM(mt_en.name),''), NULLIF(TRIM(md.name_en),''), '') AS label,
-		        COALESCE(NULLIF(TRIM(mt_loc.description),''), NULLIF(TRIM(md.description_en),''), '') AS description,
+		        `+labelExpr+` AS label,
+		        `+descExpr+` AS description,
 		        COALESCE(NULLIF(TRIM(md.difficulty),''), 'Normal') AS difficulty,
 		        COALESCE(NULLIF(TRIM(md.medal_type),''), '') AS medal_type,
 		        COALESCE(md.personal_score, 0) AS personal_score
 		 FROM medal_definitions md
-		 LEFT JOIN medal_translations mt_loc
-		     ON mt_loc.medal_name_id = md.medal_name_id AND mt_loc.lang = '`+lang+`'
-		 LEFT JOIN medal_translations mt_en
-		     ON mt_en.medal_name_id = md.medal_name_id AND mt_en.lang = 'en-US'
+		 `+medalTranslationJoinsSQL(locale)+`
 		 WHERE md.medal_name_id IN (%s)`,
 		ids,
 	)

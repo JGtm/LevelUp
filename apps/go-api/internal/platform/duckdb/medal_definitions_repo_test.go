@@ -92,3 +92,79 @@ func TestMedalDefinitionsRepo_LookupByIDs_CitationFallback(t *testing.T) {
 		t.Errorf("medal 999 ne devrait pas être résolu, got %+v", row)
 	}
 }
+
+// TestMedalReaders_FRParity_LookupByIDs_vs_ListMedalsByTitle est le garde-rail
+// contre une 5e copie divergente du COALESCE médaille. Il vérifie que pour un même
+// medal_id, le lecteur Explorer/Squad (MedalDefinitionsRepo.LookupByIDs, locale fr)
+// et le lecteur du tab Assets (MetadataRepo.ListMedalsByTitle) renvoient le MÊME
+// label ET la MÊME description FR — les deux passant désormais par le helper unique
+// medalLabelDescCoalesceSQL.
+//
+// Régression couverte : avant centralisation, LookupByIDs OMETTAIT md.name_fr /
+// md.description_fr (médailles non traduites sur Escouade, sur H5 ET Infinite).
+// medal_translations est laissée VIDE ici : c'est la réalité prod (aucun INSERT Go),
+// donc la vraie source FR est medal_definitions.name_fr/description_fr.
+func TestMedalReaders_FRParity_LookupByIDs_vs_ListMedalsByTitle(t *testing.T) {
+	db := openMemDB(t)
+	seedMedalDefsSchema(t, db)
+	ctx := context.Background()
+
+	// 500 : FR + EN renseignés (name_fr/description_fr) — medal_translations VIDE.
+	if _, err := db.Exec(ctx,
+		`INSERT INTO medal_definitions
+		    (medal_name_id, name_en, name_fr, description_en, description_fr)
+		 VALUES (500, 'Perfect Kill', 'Tir Parfait', 'A flawless takedown', 'Une élimination sans faille')`,
+	); err != nil {
+		t.Fatalf("insert medal 500: %v", err)
+	}
+
+	lookup := NewMedalDefinitionsRepo(&PlayerDB{Metadata: db})
+	got, err := lookup.LookupByIDs(ctx, []int64{500}, "fr")
+	if err != nil {
+		t.Fatalf("LookupByIDs(fr): %v", err)
+	}
+
+	listRepo := NewMetadataRepoFromDB(db)
+	list, err := listRepo.ListMedalsByTitle(ctx, "halo_infinite", "")
+	if err != nil {
+		t.Fatalf("ListMedalsByTitle: %v", err)
+	}
+
+	var listMedal *canonicalAssetMetaShim
+	for i := range list {
+		if list[i].ID == "500" {
+			listMedal = &canonicalAssetMetaShim{
+				labelFR: list[i].NameFR,
+				descFR:  list[i].DescriptionFR,
+			}
+			break
+		}
+	}
+	if listMedal == nil {
+		t.Fatalf("ListMedalsByTitle: medal 500 absent du résultat")
+	}
+
+	// Le label/description résolus par LookupByIDs(fr) sont les valeurs FR.
+	if got[500].Label != "Tir Parfait" {
+		t.Errorf("LookupByIDs(fr) label = %q, want Tir Parfait", got[500].Label)
+	}
+	if got[500].Description != "Une élimination sans faille" {
+		t.Errorf("LookupByIDs(fr) description = %q, want Une élimination sans faille", got[500].Description)
+	}
+
+	// PARITÉ : ListMedalsByTitle expose les MÊMES valeurs FR (colonnes name_fr /
+	// description_fr de l'AssetMeta).
+	if listMedal.labelFR != got[500].Label {
+		t.Errorf("parité label FR : ListMedalsByTitle=%q, LookupByIDs=%q", listMedal.labelFR, got[500].Label)
+	}
+	if listMedal.descFR != got[500].Description {
+		t.Errorf("parité description FR : ListMedalsByTitle=%q, LookupByIDs=%q", listMedal.descFR, got[500].Description)
+	}
+}
+
+// canonicalAssetMetaShim isole les champs FR comparés dans le test de parité
+// (évite d'importer le package canonical dans ce fichier de test du package duckdb).
+type canonicalAssetMetaShim struct {
+	labelFR string
+	descFR  string
+}
