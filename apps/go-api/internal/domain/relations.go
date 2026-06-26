@@ -91,3 +91,73 @@ type RelationsPageResponse struct {
 	Overview  RelationsOverview `json:"overview"`
 	Relations []RelationInsight `json:"relations"`
 }
+
+// ---------------------------------------------------------------------------
+// Phase 3a — Moments & Rivalités (sous-endpoint dédié /relations/moments)
+// ---------------------------------------------------------------------------
+
+// RelationHeatmapRawRow : ligne brute du heatmap relation × tranche horaire
+// (top-N relations par matchs communs). Bucketing en day-part fait côté Go.
+type RelationHeatmapRawRow struct {
+	XUID     string
+	Gamertag string
+	Hour     int // 0..23 (UTC canonique)
+	Count    int // matchs communs sur cette heure
+}
+
+// RelationHeatmapCell : une cellule du heatmap agrégé « Quand tu les croises »
+// (une relation × une tranche horaire). Intensity = count de matchs communs.
+type RelationHeatmapCell struct {
+	XUID     string `json:"xuid"`
+	Gamertag string `json:"gamertag"`
+	Daypart  int    `json:"daypart"` // 0=Nuit … 5=Tard (cf. analysis/relations.Daypart)
+	Count    int    `json:"count"`
+}
+
+// RelationDuelRawRow : ligne brute de la timeline d'un rival (un match commun
+// joué en ennemi), ordonnée ancien→récent. Result est title-aware (1=win,
+// 2=loss, 0=autre), décidé en SQL via outcomeSQLEq (jamais 2/3 en dur).
+type RelationDuelRawRow struct {
+	MatchID       string
+	StartTime     time.Time
+	Result        int // 1=win, 2=loss, 0=non décisif (analysis/relations.Result*)
+	KillsOnRival  int
+	DeathsByRival int
+}
+
+// RelationDuelEntry : un duel exposé dans la frise (DTO JSON).
+type RelationDuelEntry struct {
+	MatchID       string  `json:"match_id"`
+	StartedAt     *string `json:"started_at"` // RFC3339 UTC (nil si start_time absent)
+	Outcome       string  `json:"outcome"`    // "win" | "loss" | "other"
+	KillsOnRival  int     `json:"kills_on_rival"`
+	DeathsByRival int     `json:"deaths_by_rival"`
+}
+
+// RelationRivalry : une carte revanche (bête noire + autres rivaux). Frise des
+// duels + taux de victoire glissant + KPIs (récent vs global, série en cours,
+// écart de frags cumulé).
+type RelationRivalry struct {
+	XUID         string `json:"xuid"`
+	Gamertag     string `json:"gamertag"`
+	EnemyMatches int    `json:"enemy_matches"`
+
+	Duels []RelationDuelEntry `json:"duels"` // ancien→récent
+
+	// RollingWinRate : un point par duel (ancien→récent), aligné sur Duels.
+	// nil ⇒ aucun duel décisif dans la fenêtre se terminant à ce point.
+	RollingWinRate []*float64 `json:"rolling_win_rate"`
+	RollingWindow  int        `json:"rolling_window"`
+
+	RecentWinRate *float64 `json:"recent_win_rate"`
+	GlobalWinRate *float64 `json:"global_win_rate"`
+	CurrentStreak int      `json:"current_streak"` // >0 victoires, <0 défaites
+	FragGap       int      `json:"frag_gap"`       // kills cumulés − morts cumulées
+}
+
+// RelationsMomentsResponse : réponse du sous-endpoint « Moments & Rivalités ».
+type RelationsMomentsResponse struct {
+	Heatmap      []RelationHeatmapCell `json:"heatmap"`
+	Rivalries    []RelationRivalry     `json:"rivalries"`
+	TopRelations int                   `json:"top_relations"` // N relations dans le heatmap
+}

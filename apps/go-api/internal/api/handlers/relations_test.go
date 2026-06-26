@@ -18,6 +18,7 @@ import (
 
 type mockRelationsService struct {
 	page     domain.RelationsPageResponse
+	moments  domain.RelationsMomentsResponse
 	err      error
 	gotInput domain.FilterContextInput
 }
@@ -25,6 +26,11 @@ type mockRelationsService struct {
 func (m *mockRelationsService) GetRelationsPage(_ context.Context, in domain.FilterContextInput) (domain.RelationsPageResponse, error) {
 	m.gotInput = in
 	return m.page, m.err
+}
+
+func (m *mockRelationsService) GetRelationsMoments(_ context.Context, in domain.FilterContextInput) (domain.RelationsMomentsResponse, error) {
+	m.gotInput = in
+	return m.moments, m.err
 }
 
 func newRelationsRouter(factory handlers.RelationsFactory) *chi.Mux {
@@ -130,6 +136,51 @@ func TestRelationsHandler_PlayerNotFound(t *testing.T) {
 
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("status=%d want 404", w.Code)
+	}
+}
+
+const relationsMomentsPath = "/players/" + testPlayerSlug + "/pages/palmares/relations/moments"
+
+// Sous-endpoint Moments : corps absent → 200, réponse {heatmap, rivalries}.
+func TestRelationsHandler_Moments_OK(t *testing.T) {
+	mock := &mockRelationsService{moments: domain.RelationsMomentsResponse{
+		Heatmap:      []domain.RelationHeatmapCell{{XUID: "x1", Gamertag: "Foe", Daypart: 4, Count: 7}},
+		Rivalries:    []domain.RelationRivalry{{XUID: "x1", Gamertag: "Foe", EnemyMatches: 12}},
+		TopRelations: 8,
+	}}
+	factory := func(_ context.Context, _ string) (port.RelationsService, error) { return mock, nil }
+	r := newRelationsRouter(factory)
+	req := httptest.NewRequest(http.MethodPost, relationsMomentsPath, nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200 body=%s", w.Code, w.Body.String())
+	}
+	var resp domain.RelationsMomentsResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Heatmap) != 1 || resp.Heatmap[0].Count != 7 {
+		t.Fatalf("heatmap=%+v", resp.Heatmap)
+	}
+	if len(resp.Rivalries) != 1 || resp.Rivalries[0].EnemyMatches != 12 {
+		t.Fatalf("rivalries=%+v", resp.Rivalries)
+	}
+}
+
+// Sous-endpoint Moments : corps invalide → 400.
+func TestRelationsHandler_Moments_InvalidBody(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.RelationsService, error) {
+		return &mockRelationsService{}, nil
+	}
+	r := newRelationsRouter(factory)
+	req := httptest.NewRequest(http.MethodPost, relationsMomentsPath, bytes.NewBufferString("{bad"))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400 body=%s", w.Code, w.Body.String())
 	}
 }
 

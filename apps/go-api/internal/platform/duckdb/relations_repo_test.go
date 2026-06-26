@@ -42,11 +42,13 @@ func seedRelations(t *testing.T, db *DB) {
 			('m3','xuidMe',0,3,0.8), ('m3','xuidFoe',1,2,2.5),
 			('m4','xuidMe',0,3,0.8), ('m4','xuidFoe',1,2,1.5),
 			('m5','xuidMe',0,2,1.0), ('m5','xuidOnce',0,2,1.0)`,
+		// Heures UTC distinctes pour exercer le bucketing day-parts du heatmap :
+		// m1=02h (Nuit), m2=09h (Matin), m3=19h (Soir), m4=20h (Soir), m5=14h.
 		`INSERT INTO match_registry VALUES
-			('m1', TIMESTAMPTZ '2026-01-10 14:00:00+00', NULL),
-			('m2', TIMESTAMPTZ '2026-02-10 14:00:00+00', NULL),
-			('m3', TIMESTAMPTZ '2026-03-10 14:00:00+00', NULL),
-			('m4', TIMESTAMPTZ '2026-04-10 14:00:00+00', NULL),
+			('m1', TIMESTAMPTZ '2026-01-10 02:00:00+00', NULL),
+			('m2', TIMESTAMPTZ '2026-02-10 09:00:00+00', NULL),
+			('m3', TIMESTAMPTZ '2026-03-10 19:00:00+00', NULL),
+			('m4', TIMESTAMPTZ '2026-04-10 20:00:00+00', NULL),
 			('m5', TIMESTAMPTZ '2026-05-10 14:00:00+00', NULL)`,
 		`INSERT INTO killer_victim_pairs VALUES
 			('m3','xuidMe','xuidFoe',2),
@@ -220,6 +222,149 @@ func TestCareerRepo_GetRelations_ScopeDropsBelowHaving(t *testing.T) {
 	}
 	if len(rows) != 0 {
 		t.Fatalf("single-match scope must drop all (HAVING>=2), got %d", len(rows))
+	}
+}
+
+// ─── Phase 3a : Moments & Rivalités ─────────────────────────────────────────
+
+// GetRelationsHeatmap : top-N relations × heure. Ally apparaît à 02h (m1) et
+// 09h (m2) ; Foe à 19h (m3) et 20h (m4). Once exclu (1 match < HAVING 2).
+func TestCareerRepo_GetRelationsHeatmap(t *testing.T) {
+	db := openMemDB(t)
+	seedRelations(t, db)
+	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
+	repo := NewCareerRepo(pdb)
+
+	rows, err := repo.GetRelationsHeatmap(context.Background(), nil, 8)
+	if err != nil {
+		t.Fatalf("GetRelationsHeatmap: %v", err)
+	}
+
+	type cell struct {
+		gt   string
+		hour int
+	}
+	got := map[cell]int{}
+	for _, r := range rows {
+		got[cell{r.Gamertag, r.Hour}] = r.Count
+	}
+	if got[cell{"AllyPlayer", 2}] != 1 || got[cell{"AllyPlayer", 9}] != 1 {
+		t.Fatalf("Ally hours wrong: %v", got)
+	}
+	if got[cell{"FoePlayer", 19}] != 1 || got[cell{"FoePlayer", 20}] != 1 {
+		t.Fatalf("Foe hours wrong: %v", got)
+	}
+	// Once (1 match) absent.
+	for c := range got {
+		if c.gt == "OncePlayer" {
+			t.Fatalf("OncePlayer should be excluded (HAVING>=2)")
+		}
+	}
+}
+
+// GetRelationsHeatmap : topN=1 ne garde que la relation la plus fréquente.
+// Ally et Foe ont chacun 2 matchs → tiebreak xuid ASC → "xuidAlly" < "xuidFoe".
+func TestCareerRepo_GetRelationsHeatmap_TopN(t *testing.T) {
+	db := openMemDB(t)
+	seedRelations(t, db)
+	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
+	repo := NewCareerRepo(pdb)
+
+	rows, err := repo.GetRelationsHeatmap(context.Background(), nil, 1)
+	if err != nil {
+		t.Fatalf("GetRelationsHeatmap topN=1: %v", err)
+	}
+	for _, r := range rows {
+		if r.Gamertag != "AllyPlayer" {
+			t.Fatalf("topN=1 should keep only AllyPlayer, got %q", r.Gamertag)
+		}
+	}
+	if len(rows) == 0 {
+		t.Fatal("expected at least one cell for AllyPlayer")
+	}
+}
+
+// GetRivalTimeline : Foe est un ennemi sur m3 (LOSS, me kills 2 / lui 6) et m4
+// (LOSS, lui 4). Ordre ancien→récent (m3 puis m4).
+func TestCareerRepo_GetRivalTimeline(t *testing.T) {
+	db := openMemDB(t)
+	seedRelations(t, db)
+	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
+	repo := NewCareerRepo(pdb)
+
+	rows, err := repo.GetRivalTimeline(context.Background(), "xuidFoe", nil, 20)
+	if err != nil {
+		t.Fatalf("GetRivalTimeline: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("timeline len=%d want 2 (%+v)", len(rows), rows)
+	}
+	// m3 (mars) avant m4 (avril).
+	if rows[0].MatchID != "m3" || rows[1].MatchID != "m4" {
+		t.Fatalf("order=%s,%s want m3,m4", rows[0].MatchID, rows[1].MatchID)
+	}
+	// my outcome LOSS → result code 2.
+	if rows[0].Result != 2 || rows[1].Result != 2 {
+		t.Fatalf("results=%d,%d want 2,2", rows[0].Result, rows[1].Result)
+	}
+	// m3 : me→Foe 2, Foe→me 6.
+	if rows[0].KillsOnRival != 2 || rows[0].DeathsByRival != 6 {
+		t.Fatalf("m3 frags kills=%d deaths=%d want 2/6", rows[0].KillsOnRival, rows[0].DeathsByRival)
+	}
+	// m4 : me→Foe 0, Foe→me 4.
+	if rows[1].KillsOnRival != 0 || rows[1].DeathsByRival != 4 {
+		t.Fatalf("m4 frags kills=%d deaths=%d want 0/4", rows[1].KillsOnRival, rows[1].DeathsByRival)
+	}
+}
+
+// GetRivalTimeline : un allié (toujours même équipe) n'a aucun duel ennemi.
+func TestCareerRepo_GetRivalTimeline_AllyNoDuel(t *testing.T) {
+	db := openMemDB(t)
+	seedRelations(t, db)
+	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
+	repo := NewCareerRepo(pdb)
+
+	rows, err := repo.GetRivalTimeline(context.Background(), "xuidAlly", nil, 20)
+	if err != nil {
+		t.Fatalf("GetRivalTimeline ally: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Fatalf("ally timeline len=%d want 0 (same team always)", len(rows))
+	}
+}
+
+// GetRivalTimeline : scope restreint à m4 → un seul duel.
+func TestCareerRepo_GetRivalTimeline_Scoped(t *testing.T) {
+	db := openMemDB(t)
+	seedRelations(t, db)
+	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
+	repo := NewCareerRepo(pdb)
+
+	rows, err := repo.GetRivalTimeline(context.Background(), "xuidFoe", []string{"m4"}, 20)
+	if err != nil {
+		t.Fatalf("GetRivalTimeline scoped: %v", err)
+	}
+	if len(rows) != 1 || rows[0].MatchID != "m4" {
+		t.Fatalf("scoped timeline=%+v want [m4]", rows)
+	}
+	if rows[0].DeathsByRival != 4 || rows[0].KillsOnRival != 0 {
+		t.Fatalf("m4 scoped frags kills=%d deaths=%d want 0/4", rows[0].KillsOnRival, rows[0].DeathsByRival)
+	}
+}
+
+// GetRivalTimeline : scope vide (non-nil) → court-circuit.
+func TestCareerRepo_GetRivalTimeline_EmptyScope(t *testing.T) {
+	db := openMemDB(t)
+	seedRelations(t, db)
+	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
+	repo := NewCareerRepo(pdb)
+
+	rows, err := repo.GetRivalTimeline(context.Background(), "xuidFoe", []string{}, 20)
+	if err != nil {
+		t.Fatalf("GetRivalTimeline empty scope: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Fatalf("empty scope must yield 0 duels, got %d", len(rows))
 	}
 }
 

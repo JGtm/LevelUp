@@ -1,3 +1,17 @@
+## [2026-06-26] Hub Communauté > Relations — Phase 3a Moments & Rivalités (branche feat/relations-hub)
+
+**Statut** : Complété (worktree). Vérifié moi-même : Go build/vet/test (relations/analysis/service/api) + intégration (GetRelationsHeatmap/GetRivalTimeline :memory:) verts ; front typecheck + eslint (0 err) + vitest palmares 8/8 + knip 90/90 ; généré palmares.ts régénéré (29 clés moments.*).
+
+**Décision** :
+- Sous-endpoint POST /pages/palmares/relations/moments (body FilterContextInput optionnel, segmentation Phase 2 héritée) → {heatmap, rivalries, top_relations}. Sous-endpoint (vs extension RelationInsight) pour garder la liste légère.
+- Heatmap : top-8 relations × 6 tranches horaires, intensité = matchs communs, aligné ExplorerActivityHeatmapChart (rampe heatmap-cold→hot). SQL Q29 (EXTRACT hour AT TIME ZONE 'UTC', top-N).
+- Rivalités : bête noire + top-3 rivaux ; frise duels (ancien→récent), WR glissant (fenêtre 5), série signée, écart de frags cumulé. SQL Q30 (timeline + frags directionnels killer_victim_pairs ; ORDER BY start_time, match_id déterministe). Métriques en analysis pur (rivalry.go/daypart.go), testées.
+- Title-agnostic : outcome via outcomeSQLEq/canonical (jamais 2/3 en dur), timezone canonique, bots exclus.
+
+**Findings revue (triés)** : « blocker » generated stale = FAUX (régénéré, vérifié 29 clés) ; gofmt 3 fichiers → corrigé ; Q30 tiebreak match_id → corrigé (déterminisme WR glissant) ; « pas d'intégration E2E » = inexact (Q29/Q30 testés :memory:) ; nits laissés.
+
+**Prochaine étape** : régler les 2 échecs d'intégration PRÉ-EXISTANTS (seed `xbox_achievement_definitions` + fixture `assassination_kills`) + dette (gofmt tree, sweep knip + abaisser plafonds) ; Phase 3b badge cross-jeu « Aussi sur Halo 5 ».
+
 ## [2026-06-26] Hub Communauté > Relations — Phase 2 segmentation serveur (branche feat/relations-hub)
 
 **Statut** : Complété (worktree, non committé à l'écriture — commit/push sur autorisation). Vérifié moi-même : Go build/vet/test (relations + api drift/contract) verts ; intégration cross-DB solo/escouade + playlist (:memory:) verts ; front typecheck + eslint (0 err) + vitest palmares 7/7 + knip 90/90 ; généré palmares.ts régénéré (12 clés filters.*).

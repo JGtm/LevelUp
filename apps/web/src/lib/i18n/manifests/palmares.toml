@@ -281,6 +281,124 @@ en = "No relation in this filter"
 fr = "Essaie un autre filtre pour voir d'autres joueurs récurrents."
 en = "Try another filter to see other recurring players."
 
+# ─── Relations - Moments & Rivalités (Phase 3a) ────────────────────────────
+
+[palmares.relations.moments.section_title]
+fr = "Moments & Rivalités"
+en = "Moments & Rivalries"
+
+[palmares.relations.moments.toggle_show]
+fr = "Afficher les moments et rivalités"
+en = "Show moments and rivalries"
+
+[palmares.relations.moments.toggle_hide]
+fr = "Masquer les moments et rivalités"
+en = "Hide moments and rivalries"
+
+[palmares.relations.moments.unavailable]
+fr = "Les moments et rivalités n'ont pas pu être chargés."
+en = "Moments and rivalries could not be loaded."
+
+[palmares.relations.moments.heatmap_title]
+fr = "Quand tu les croises"
+en = "When you cross paths"
+
+[palmares.relations.moments.heatmap_help]
+fr = "Vos rencontres les plus fréquentes par tranche horaire (limité aux relations les plus actives pour rester lisible)."
+en = "Your most frequent encounters by time of day (limited to the most active relations to stay readable)."
+
+[palmares.relations.moments.heatmap_empty]
+fr = "Pas encore assez de rencontres pour dresser une carte horaire."
+en = "Not enough encounters yet to build a time-of-day map."
+
+[palmares.relations.moments.heatmap_legend]
+fr = "Matchs communs"
+en = "Shared matches"
+
+[palmares.relations.moments.daypart_night]
+fr = "Nuit"
+en = "Night"
+
+[palmares.relations.moments.daypart_morning]
+fr = "Matin"
+en = "Morning"
+
+[palmares.relations.moments.daypart_noon]
+fr = "Midi"
+en = "Midday"
+
+[palmares.relations.moments.daypart_afternoon]
+fr = "Après-midi"
+en = "Afternoon"
+
+[palmares.relations.moments.daypart_evening]
+fr = "Soir"
+en = "Evening"
+
+[palmares.relations.moments.daypart_late]
+fr = "Tard"
+en = "Late"
+
+[palmares.relations.moments.rivalries_title]
+fr = "Revanche"
+en = "Rematch"
+
+[palmares.relations.moments.rivalries_empty]
+fr = "Aucune rivalité marquée pour l'instant (pas assez de matchs en adversaire)."
+en = "No standout rivalry yet (not enough matches as an opponent)."
+
+[palmares.relations.moments.enemy_matches]
+fr = "{count} matchs en adversaire"
+en = "{count} matches as opponent"
+
+[palmares.relations.moments.recent_win_rate]
+fr = "Taux de victoire récent"
+en = "Recent win rate"
+
+[palmares.relations.moments.global_win_rate]
+fr = "Taux de victoire global"
+en = "Overall win rate"
+
+[palmares.relations.moments.streak_wins]
+fr = "{count} victoires d'affilée"
+en = "{count} wins in a row"
+
+[palmares.relations.moments.streak_losses]
+fr = "{count} défaites d'affilée"
+en = "{count} losses in a row"
+
+[palmares.relations.moments.streak_none]
+fr = "Aucune série en cours"
+en = "No current streak"
+
+[palmares.relations.moments.frag_gap_ahead]
+fr = "Écart de frags : +{count} en ta faveur"
+en = "Frag gap: +{count} in your favor"
+
+[palmares.relations.moments.frag_gap_behind]
+fr = "Écart de frags : {count} en ta défaveur"
+en = "Frag gap: {count} against you"
+
+[palmares.relations.moments.frag_gap_even]
+fr = "Écart de frags : à égalité"
+en = "Frag gap: even"
+
+[palmares.relations.moments.rolling_title]
+fr = "Taux de victoire glissant"
+en = "Rolling win rate"
+
+[palmares.relations.moments.outcome_win]
+fr = "Victoire"
+en = "Win"
+
+[palmares.relations.moments.outcome_loss]
+fr = "Défaite"
+en = "Loss"
+
+[palmares.relations.moments.outcome_other]
+fr = "Nul"
+en = "Draw"
+
 # ─── Season pass - États ──────────────────────────────────────────────────
 
 [palmares.season_pass.unavailable_title]

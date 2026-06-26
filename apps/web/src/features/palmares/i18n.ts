@@ -92,6 +92,32 @@ export interface PalmaresText {
     }
     filterEmptyTitle: string
     filterEmptyDescription: string
+    moments: {
+      sectionTitle: string
+      toggleShow: string
+      toggleHide: string
+      unavailable: string
+      heatmapTitle: string
+      heatmapHelp: string
+      heatmapEmpty: string
+      heatmapLegend: string
+      dayparts: string[]
+      rivalriesTitle: string
+      rivalriesEmpty: string
+      enemyMatches: (count: string) => string
+      recentWinRate: string
+      globalWinRate: string
+      streakWins: (count: string) => string
+      streakLosses: (count: string) => string
+      streakNone: string
+      fragGapAhead: (count: string) => string
+      fragGapBehind: (count: string) => string
+      fragGapEven: string
+      rollingTitle: string
+      outcomeWin: string
+      outcomeLoss: string
+      outcomeOther: string
+    }
   }
   seasonPass: {
     retry: string
@@ -247,6 +273,44 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
       },
       filterEmptyTitle: t(loc, 'palmares.relations.filter_empty_title'),
       filterEmptyDescription: t(loc, 'palmares.relations.filter_empty_description'),
+      moments: {
+        sectionTitle: t(loc, 'palmares.relations.moments.section_title'),
+        toggleShow: t(loc, 'palmares.relations.moments.toggle_show'),
+        toggleHide: t(loc, 'palmares.relations.moments.toggle_hide'),
+        unavailable: t(loc, 'palmares.relations.moments.unavailable'),
+        heatmapTitle: t(loc, 'palmares.relations.moments.heatmap_title'),
+        heatmapHelp: t(loc, 'palmares.relations.moments.heatmap_help'),
+        heatmapEmpty: t(loc, 'palmares.relations.moments.heatmap_empty'),
+        heatmapLegend: t(loc, 'palmares.relations.moments.heatmap_legend'),
+        dayparts: [
+          t(loc, 'palmares.relations.moments.daypart_night'),
+          t(loc, 'palmares.relations.moments.daypart_morning'),
+          t(loc, 'palmares.relations.moments.daypart_noon'),
+          t(loc, 'palmares.relations.moments.daypart_afternoon'),
+          t(loc, 'palmares.relations.moments.daypart_evening'),
+          t(loc, 'palmares.relations.moments.daypart_late'),
+        ],
+        rivalriesTitle: t(loc, 'palmares.relations.moments.rivalries_title'),
+        rivalriesEmpty: t(loc, 'palmares.relations.moments.rivalries_empty'),
+        enemyMatches: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.moments.enemy_matches', loc, { count }),
+        recentWinRate: t(loc, 'palmares.relations.moments.recent_win_rate'),
+        globalWinRate: t(loc, 'palmares.relations.moments.global_win_rate'),
+        streakWins: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.moments.streak_wins', loc, { count }),
+        streakLosses: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.moments.streak_losses', loc, { count }),
+        streakNone: t(loc, 'palmares.relations.moments.streak_none'),
+        fragGapAhead: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.moments.frag_gap_ahead', loc, { count }),
+        fragGapBehind: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.moments.frag_gap_behind', loc, { count }),
+        fragGapEven: t(loc, 'palmares.relations.moments.frag_gap_even'),
+        rollingTitle: t(loc, 'palmares.relations.moments.rolling_title'),
+        outcomeWin: t(loc, 'palmares.relations.moments.outcome_win'),
+        outcomeLoss: t(loc, 'palmares.relations.moments.outcome_loss'),
+        outcomeOther: t(loc, 'palmares.relations.moments.outcome_other'),
+      },
     },
     seasonPass: {
       retry: t(loc, 'palmares.errors.retry'),

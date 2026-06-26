@@ -14,12 +14,31 @@ type mockRelationsRepo struct {
 	err       error
 	gotScope  []string // capture le scope reçu (assertions Phase 2)
 	scopeSeen bool
+
+	// Phase 3a : heatmap + timelines par rival.
+	heatmapRows    []domain.RelationHeatmapRawRow
+	heatmapTopN    int
+	timelineByXUID map[string][]domain.RelationDuelRawRow
+	timelineLimit  int
 }
 
 func (m *mockRelationsRepo) GetRelations(_ context.Context, scope []string) ([]domain.RelationRawRow, error) {
 	m.gotScope = scope
 	m.scopeSeen = true
 	return m.rows, m.err
+}
+
+func (m *mockRelationsRepo) GetRelationsHeatmap(_ context.Context, _ []string, topN int) ([]domain.RelationHeatmapRawRow, error) {
+	m.heatmapTopN = topN
+	return m.heatmapRows, m.err
+}
+
+func (m *mockRelationsRepo) GetRivalTimeline(_ context.Context, rivalXUID string, _ []string, limit int) ([]domain.RelationDuelRawRow, error) {
+	m.timelineLimit = limit
+	if m.timelineByXUID == nil {
+		return nil, m.err
+	}
+	return m.timelineByXUID[rivalXUID], m.err
 }
 
 // mockFiltersService renvoie un scope fixe et capture l'input reçu.
