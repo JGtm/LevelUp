@@ -526,22 +526,118 @@ export const handlers = [
     })
   }),
 
-  // Palmares — Relations
-  http.get(p(`/players/${SLUG}/pages/palmares/relations`), () =>
+  // Palmares — Relations (hub Communauté > Relations, forme {overview, relations[]}).
+  // Phase 2 : POST avec FilterContextInput en body (segmentation serveur).
+  http.post(p(`/players/${SLUG}/pages/palmares/relations`), () =>
     HttpResponse.json({
-      overview: { distinct_players: 42, frequent_allies: 5, repeat_rivals: 3, closed_circle: 2 },
-      frequent_allies: [
-        { xuid: '1', gamertag: 'DuoAlpha', total_matches: 80, teammate_matches: 60, teammate_wins: 40, enemy_matches: 20, enemy_wins: 10 },
-        { xuid: '2', gamertag: 'QueueGhost', total_matches: 50, teammate_matches: 45, teammate_wins: 30, enemy_matches: 5, enemy_wins: 2 },
+      overview: {
+        distinct_players: 42,
+        allies_count: 30,
+        rivals_count: 25,
+        core_count: 2,
+        top_ally: { gamertag: 'DuoAlpha', win_rate: 0.67, matches: 60 },
+        top_nemesis: { gamertag: 'NemesisBravo', win_rate: 0.2, matches: 35 },
+      },
+      relations: [
+        {
+          xuid: '1',
+          gamertag: 'DuoAlpha',
+          total_matches: 80,
+          teammate_matches: 60,
+          teammate_wins: 40,
+          teammate_win_rate: 0.67,
+          enemy_matches: 20,
+          enemy_wins: 10,
+          enemy_win_rate: 0.5,
+          avg_kda_with: 1.6,
+          avg_kda_against: 1.1,
+          kills_dealt: 30,
+          deaths_suffered: 18,
+          duel_ratio: 1.67,
+          first_seen_at: '2024-01-02T10:00:00Z',
+          last_seen_at: '2026-06-20T12:00:00Z',
+          category: 'mixed',
+          badges: [
+            { label_key: 'narrative.encounter.ordinal', color_token: 'narrative-encounter-ordinal', style: 'tinted', detail: { ordinal: 79 } },
+            { label_key: 'narrative.encounter.ally_plus', color_token: 'narrative-encounter-ally-plus', style: 'tinted', detail: null },
+            { label_key: 'narrative.encounter.duo_gagnant', color_token: 'narrative-encounter-duo-gagnant', style: 'solid', detail: { teammate_win_rate: 0.67 } },
+            { label_key: 'narrative.encounter.cross_game', color_token: 'narrative-encounter-cameleon', style: 'solid', detail: { game: 'Halo 5', matches_together: 7 } },
+          ],
+        },
+        {
+          xuid: '2',
+          gamertag: 'QueueGhost',
+          total_matches: 50,
+          teammate_matches: 45,
+          teammate_wins: 30,
+          teammate_win_rate: 0.67,
+          enemy_matches: 5,
+          enemy_wins: 2,
+          enemy_win_rate: 0.4,
+          avg_kda_with: 1.3,
+          avg_kda_against: 0.9,
+          kills_dealt: 8,
+          deaths_suffered: 6,
+          duel_ratio: 1.33,
+          first_seen_at: '2025-12-01T10:00:00Z',
+          last_seen_at: '2026-06-25T12:00:00Z',
+          category: 'mixed',
+          badges: [],
+        },
+        {
+          xuid: '4',
+          gamertag: 'NemesisBravo',
+          total_matches: 40,
+          teammate_matches: 5,
+          teammate_wins: 3,
+          teammate_win_rate: 0.6,
+          enemy_matches: 35,
+          enemy_wins: 28,
+          enemy_win_rate: 0.2,
+          avg_kda_with: 1.4,
+          avg_kda_against: 0.8,
+          kills_dealt: 12,
+          deaths_suffered: 40,
+          duel_ratio: 0.3,
+          first_seen_at: '2024-03-10T10:00:00Z',
+          last_seen_at: '2026-05-01T12:00:00Z',
+          category: 'mixed',
+          badges: [
+            { label_key: 'narrative.encounter.coriace', color_token: 'narrative-encounter-coriace', style: 'tinted', detail: null },
+          ],
+        },
       ],
-      best_synergies: [
-        { xuid: '3', gamertag: 'SynergyOne', total_matches: 30, teammate_matches: 30, teammate_wins: 25, enemy_matches: 0, enemy_wins: 0 },
+    }),
+  ),
+
+  // Palmares — Relations > Moments & Rivalités (Phase 3a, sous-endpoint).
+  http.post(p(`/players/${SLUG}/pages/palmares/relations/moments`), () =>
+    HttpResponse.json({
+      top_relations: 8,
+      heatmap: [
+        { xuid: '4', gamertag: 'NemesisBravo', daypart: 4, count: 12 },
+        { xuid: '4', gamertag: 'NemesisBravo', daypart: 0, count: 3 },
+        { xuid: '1', gamertag: 'DuoAlpha', daypart: 3, count: 9 },
+        { xuid: '1', gamertag: 'DuoAlpha', daypart: 1, count: 4 },
       ],
-      nemeses: [
-        { xuid: '4', gamertag: 'NemesisBravo', total_matches: 40, teammate_matches: 5, teammate_wins: 3, enemy_matches: 35, enemy_wins: 28 },
+      rivalries: [
+        {
+          xuid: '4',
+          gamertag: 'NemesisBravo',
+          enemy_matches: 35,
+          duels: [
+            { match_id: 'd1', started_at: '2026-05-01T19:00:00Z', outcome: 'loss', kills_on_rival: 2, deaths_by_rival: 7 },
+            { match_id: 'd2', started_at: '2026-05-02T20:00:00Z', outcome: 'loss', kills_on_rival: 3, deaths_by_rival: 6 },
+            { match_id: 'd3', started_at: '2026-05-03T19:00:00Z', outcome: 'win', kills_on_rival: 8, deaths_by_rival: 4 },
+          ],
+          rolling_win_rate: [0, 0, 0.33],
+          rolling_window: 5,
+          recent_win_rate: 0.33,
+          global_win_rate: 0.33,
+          current_streak: 1,
+          frag_gap: -4,
+        },
       ],
-      favorite_victims: [],
-      closed_circle: [],
     }),
   ),
 

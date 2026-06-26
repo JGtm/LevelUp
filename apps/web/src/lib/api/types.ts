@@ -1057,36 +1057,32 @@ export type SeasonPassTrackSummary = components['schemas']['SeasonPassTrackSumma
 
 export type SeasonPassPageResponse = components['schemas']['SeasonPassPageResponse']
 
-export interface RelationInsight {
-  xuid: string
-  gamertag: string
-  total_matches: number
-  teammate_matches: number
-  teammate_wins: number
-  teammate_win_rate?: number | null
-  enemy_matches: number
-  enemy_wins: number
-  enemy_win_rate?: number | null
-  avg_kda_with?: number | null
-  avg_kda_against?: number | null
-  last_seen_at?: string | null
-}
+// Hub Communauté > Relations — types DÉRIVÉS du contrat OpenAPI (source unique :
+// generated.ts), pas d'interface manuelle (garde-fou lint-contract-ratchet).
+// Note : les tableaux (relations, badges) sont nullable côté contrat (slices Go) ;
+// le service garantit non-nil, les consommateurs appliquent `?? []` / `?.`.
+// category = string côté contrat ("ally" | "enemy" | "mixed" en pratique).
+export type RelationBadge = components['schemas']['RelationBadge']
+export type RelationInsight = components['schemas']['RelationInsight']
+export type RelationRef = components['schemas']['RelationRef']
+export type RelationsOverview = components['schemas']['RelationsOverview']
+export type RelationsPageResponse = components['schemas']['RelationsPageResponse']
 
-export interface RelationsOverview {
-  distinct_players: number
-  frequent_allies: number
-  repeat_rivals: number
-  closed_circle: number
-}
+// ── Phase 3a : Moments & Rivalités (sous-endpoint /relations/moments) ────────
 
-export interface RelationsPageResponse {
-  overview: RelationsOverview
-  frequent_allies: RelationInsight[]
-  best_synergies: RelationInsight[]
-  nemeses: RelationInsight[]
-  favorite_victims: RelationInsight[]
-  closed_circle: RelationInsight[]
-}
+// RelationHeatmapCell : une cellule du heatmap agrégé « Quand tu les croises »
+// (une relation × une tranche horaire). daypart : 0=Nuit … 5=Tard.
+export type RelationHeatmapCell = components['schemas']['RelationHeatmapCell']
+
+// RelationDuelEntry : un duel (match commun en ennemi) de la frise revanche.
+// outcome : "win" | "loss" | "other".
+export type RelationDuelEntry = components['schemas']['RelationDuelEntry']
+
+// RelationRivalry : une carte revanche (bête noire + autres rivaux).
+export type RelationRivalry = components['schemas']['RelationRivalry']
+
+// RelationsMomentsResponse : réponse du sous-endpoint Moments & Rivalités.
+export type RelationsMomentsResponse = components['schemas']['RelationsMomentsResponse']
 
 // ---------------------------------------------------------------------------
 // Escouade / Coéquipiers (Slice 6)
