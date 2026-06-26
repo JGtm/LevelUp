@@ -3451,6 +3451,10 @@ export interface components {
             offensive_conversion_p80?: number;
             /** @description false si l'API du titre ne fournit pas damage_taken (Halo 5) — le front neutralise la Résistance défensive (N/A) au lieu d'afficher 0. */
             provides_damage_taken?: boolean;
+            /** @description false si l'API du titre ne fournit pas de MMR d'équipe/adverse par match (Halo 5) — le front masque la colonne MMR du tableau Escouade/Explorer au lieu d'afficher 0. */
+            provides_team_mmr?: boolean;
+            /** @description true si le titre supporte le max killing spree par match — valeur native (Infinite) ou calculée depuis les events kill/death horodatés (Halo 5). Le front masque la série « Folie meurtrière max » uniquement si false (titre sans events horodatés). */
+            provides_max_killing_spree?: boolean;
         };
         TitleSyncInputBody: {
             enabled: boolean;
@@ -4655,6 +4659,17 @@ export interface components {
             image_url: string;
             name_en: string;
             name_fr: string;
+            description?: string;
+            description_fr?: string;
+            sprite_sheet?: string;
+            /** Format: int64 */
+            sprite_left?: number;
+            /** Format: int64 */
+            sprite_top?: number;
+            /** Format: int64 */
+            sprite_width?: number;
+            /** Format: int64 */
+            sprite_height?: number;
         };
         WatcherAuthStartResponse: {
             attempt_id: string;
@@ -8006,7 +8021,7 @@ export interface components {
         };
         SynthesisDetailedStats: {
             /** Format: int64 */
-            max_killing_spree: number;
+            max_killing_spree?: number;
             /** Format: int64 */
             total_betrayals: number;
             /** Format: double */

@@ -32,6 +32,7 @@ import { getSquadText } from './i18n'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
+import { useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
 
 const PAGE_SIZE = 20
 const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
@@ -59,6 +60,10 @@ export function SquadMatchHistoryTable({ rows, playerSlug }: SquadMatchHistoryTa
   const { data: mappings } = useFieldMappings()
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const filterContext = useSquadFilterStore((s) => s.filterContext)
+  // Title-agnostic : la colonne MMR n'a de sens que si le titre courant fournit
+  // un MMR d'équipe par match (gating via capability, jamais via slug). Faux pour
+  // Halo 5 → on retire la colonne (pas juste la valeur).
+  const providesTeamMmr = useProvidesTeamMmr()
   // Backend envoie DESC (newest first) — on inverse pour oldest-first (chronologique).
   const sortedRows = useMemo(() => [...rows].reverse(), [rows])
   const allMatchIds = useMemo(() => sortedRows.map((r) => r.match_id), [sortedRows])
@@ -133,11 +138,16 @@ export function SquadMatchHistoryTable({ rows, playerSlug }: SquadMatchHistoryTa
         header: labels.perf,
         cell: (ctx) => fmtNumber(ctx.getValue<number | undefined>(), 1),
       },
-      {
-        accessorKey: 'team_mmr_avg',
-        header: labels.teamMmr,
-        cell: (ctx) => fmtNumber(ctx.getValue<number>(), 0),
-      },
+      // Colonne MMR équipe : insérée uniquement si le titre courant fournit le MMR.
+      ...(providesTeamMmr
+        ? [
+            {
+              accessorKey: 'team_mmr_avg',
+              header: labels.teamMmr,
+              cell: (ctx) => fmtNumber(ctx.getValue<number>(), 0),
+            } as ColumnDef<SquadMatchHistoryRow>,
+          ]
+        : []),
       {
         accessorKey: 'session_label',
         header: labels.session,
@@ -147,7 +157,7 @@ export function SquadMatchHistoryTable({ rows, playerSlug }: SquadMatchHistoryTa
     // mapAssets / playlistAssets / labels sont stables sur la durée du render —
     // memoize sur leur identité pour reconstruire si la locale ou les mappings changent.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [labels, mapAssets, playlistAssets, intlLocale],
+    [labels, mapAssets, playlistAssets, intlLocale, providesTeamMmr],
   )
 
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE })

@@ -221,7 +221,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                   openMatchLabel={openMatchLabel}
                 />
               )}
-              {detailedStats != null && (
+              {detailedStats?.max_killing_spree != null && (
                 <AccentCard
                   label={t('synthesis.kpi.killing_spree_max')}
                   value={detailedStats.max_killing_spree.toLocaleString('fr-FR')}
