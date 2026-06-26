@@ -117,3 +117,24 @@ func ProvidesDamageTakenFromResolver(res EndpointResolver, slug string) bool {
 	}
 	return true
 }
+
+// ProvidesMMR indique si le titre fournit un MMR (matchmaking rating) via son API.
+// Faux pour Halo 5 (no_mmr=true) : PreMatch/PostMatchRatings sont servis null partout
+// (vérifié 25/25 matchs, classés inclus — sonde 2026-06-26), aucun MMR brut. Les
+// surfaces qui en dépendent (team_mmr/enemy_mmr/delta_mmr du MatchSummary, highlight
+// « plus belle victoire underdog ») doivent l'OMETTRE plutôt que d'afficher du vide.
+// Défaut true (Infinite). Source = config, JAMAIS de slug== (règle title-agnostic).
+func ProvidesMMR(slug string) bool {
+	return ProvidesMMRFromResolver(DefaultEndpointResolver(), slug)
+}
+
+// ProvidesMMRFromResolver est la forme testable de ProvidesMMR. Défaut true si
+// resolver nil / sans extension / titre sans [damage_model].
+func ProvidesMMRFromResolver(res EndpointResolver, slug string) bool {
+	if dmr, ok := res.(DamageModelResolver); ok {
+		if dm, found := dmr.DamageModelFor(slug); found {
+			return !dm.NoMMR
+		}
+	}
+	return true
+}

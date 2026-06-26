@@ -59,3 +59,9 @@ no_native_kda = true
 # défensif du profil de combat, l'alerte coaching « fragile » et les milestones
 # endurance/excellence plutôt que d'afficher un DR=0 trompeur. Cf. games.ProvidesDamageTaken.
 no_damage_taken = true
+# no_mmr = true → Halo 5 ne fournit PAS de MMR (matchmaking rating) : PreMatch/
+# PostMatchRatings sont servis null partout (25/25 matchs, classés inclus — sonde
+# 2026-06-26). Le CSR par-playlist reste le seul signal de skill. Les surfaces MMR
+# (team_mmr/enemy_mmr/delta_mmr, highlight « plus belle victoire underdog ») sont
+# omises plutôt qu'affichées vides. Cf. games.ProvidesMMR.
+no_mmr = true

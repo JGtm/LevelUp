@@ -28,6 +28,11 @@ type damageModelTOML struct {
 	// no_damage_taken = true → le titre ne fournit PAS damage_taken (Halo 5). La
 	// résistance défensive et ses dérivés sont neutralisés. Via games.ProvidesDamageTaken.
 	NoDamageTaken bool `toml:"no_damage_taken"`
+	// no_mmr = true → le titre ne fournit PAS de MMR (matchmaking rating) via son API
+	// (Halo 5 : PreMatch/PostMatchRatings servis null partout — aucun MMR brut). Les
+	// surfaces MMR (team_mmr/enemy_mmr/delta_mmr, highlight « victoire underdog ») sont
+	// omises plutôt qu'affichées vides. Via games.ProvidesMMR.
+	NoMMR bool `toml:"no_mmr"`
 	// offensive_conversion_p80 : frontière élite OC (80e percentile) du titre, repère
 	// de normalisation des barres/radars de rendement. 0/absent = défaut Infinite (0.90).
 	OffensiveConversionP80 float64 `toml:"offensive_conversion_p80"`
@@ -117,6 +122,7 @@ func LoadEndpointsFromBytes(path string, raw []byte) (*EndpointSet, error) {
 		EffectiveHpToKill:      doc.DamageModel.EffectiveHpToKill,
 		NoNativeKDA:            doc.DamageModel.NoNativeKDA,
 		NoDamageTaken:          doc.DamageModel.NoDamageTaken,
+		NoMMR:                  doc.DamageModel.NoMMR,
 		OffensiveConversionP80: doc.DamageModel.OffensiveConversionP80,
 	}
 	return NewEndpointSet(doc.Meta.TitleSlug, doc.Meta.SchemaVersion, gamePrefix, byKey).withDamageModel(dm), nil

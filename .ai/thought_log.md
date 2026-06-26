@@ -1,3 +1,13 @@
+## [2026-06-26] H5 MMR marqué not_supported (flag no_mmr + games.ProvidesMMR) — COMPLÉTÉ (code ; commit pending)
+
+**Contexte** : sonde 2026-06-26 — Halo 5 ne fournit AUCUN MMR (PreMatch/PostMatchRatings servis null sur 25/25 matchs, classés inclus ; le CSR par-playlist reste le seul signal de skill). Demande user : marquer MMR not_supported pour H5.
+
+**Décision** : marquage par flag data-availability, mirror EXACT de `no_native_kda`/`no_damage_taken` (PAS de nouvelle capability — le MMR est un CHAMP `team_mmr`/`enemy_mmr`/`delta_mmr`, pas une méthode Load*). `no_mmr=true` dans `config/titles/halo_5/constants.toml [damage_model]` ; champ `NoMMR` dans `damageModelTOML` + `DamageModelConstants` + mapping ; helpers `games.ProvidesMMR(slug)` / `ProvidesMMRFromResolver` (défaut true = Infinite). Le highlight « plus belle victoire underdog » est DÉJÀ nil-safe H5 (TeamMMR/EnemyMMR nil → `bestMMRUnderdogWinCanonical` retourne nil → skippé) et `BuildHighlightsFromCanonical(rows)` n'a pas le slug → pas de threading disproportionné. `ProvidesMMR` = point de vérité canonique pour tout consommateur futur (gating front, exposition capability).
+
+**Résultats** : build `games` OK ; `TestProvidesMMR` + voisins (NativeKDA/DamageTaken) verts.
+
+**Suite** : commit pending (autorisation user). Exposition front (cacher l'UI MMR pour H5) = follow-up si désiré.
+
 ## [2026-06-26] H5 proficience par arme — ingestion (events WeaponDrop → shared.weapon_accuracy) — COMPLÉTÉ (code ; backfill pending)
 
 **Contexte** : l'exploration H5 (cf. `.ai/H5_EXPLORATION/`) a établi que la précision PAR ARME par joueur est reconstructible des events `WeaponDrop` (`ShotsFired`/`ShotsLanded`), validé EXACT contre le carnage `TotalShotsFired`/`TotalShotsLanded` (8/8 joueurs) — là où le carnage `WeaponStats[]` est servi VIDE par 343. L'« arme par kill » était déjà ingérée (`weapon_kills`) ; ce qui manquait = les TIRS par arme. (Le « manque de données arme » historiquement bloquant concernait Halo INFINITE/film, pas H5.) Branche `feat/h5-events-enrichment` (worktree `levelup-h5-events`, depuis main, qui inclut déjà le fix engagement synthétique `6cee3b1d3` d'un agent concurrent).
