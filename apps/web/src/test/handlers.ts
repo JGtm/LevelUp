@@ -561,6 +561,7 @@ export const handlers = [
             { label_key: 'narrative.encounter.ordinal', color_token: 'narrative-encounter-ordinal', style: 'tinted', detail: { ordinal: 79 } },
             { label_key: 'narrative.encounter.ally_plus', color_token: 'narrative-encounter-ally-plus', style: 'tinted', detail: null },
             { label_key: 'narrative.encounter.duo_gagnant', color_token: 'narrative-encounter-duo-gagnant', style: 'solid', detail: { teammate_win_rate: 0.67 } },
+            { label_key: 'narrative.encounter.cross_game', color_token: 'narrative-encounter-cameleon', style: 'solid', detail: { game: 'Halo 5', matches_together: 7 } },
           ],
         },
         {

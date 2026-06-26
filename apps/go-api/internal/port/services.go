@@ -50,6 +50,30 @@ type RelationsService interface {
 	GetRelationsMoments(ctx context.Context, input domain.FilterContextInput) (domain.RelationsMomentsResponse, error)
 }
 
+// CrossGameHit décrit la co-occurrence du joueur courant avec une relation sur
+// un AUTRE titre géré par l'app : nombre de matchs communs sur ce titre +
+// nom d'affichage résolu du titre (pour le libellé du badge cross-jeu).
+type CrossGameHit struct {
+	TitleDisplayName string // ex. "Halo 5" (résolu via TitleRegistry, jamais littéral)
+	MatchesTogether  int
+}
+
+// CrossGameCooccurrence calcule, pour un ensemble de xuid de relations, les
+// co-occurrences du joueur courant sur les AUTRES titres gérés par l'app.
+//
+// BEST-EFFORT / LECTURE SEULE / DÉFENSIF : l'implémentation énumère les titres
+// via le TitleRegistry (hors titre courant), lit le shared de chaque autre titre
+// (xuid global, ADR 0008), et compte les matchs communs par xuid. Toute erreur
+// d'accès (DB absente, lock, capability) est avalée (skip + log) — la map
+// retournée ne contient QUE les hits >= seuil. Une seule requête batch par
+// autre titre (jamais une DB par relation).
+type CrossGameCooccurrence interface {
+	// CooccurrencesByXUID retourne, pour chaque oppXUID croisé >= seuil sur un
+	// autre titre, le hit cross-jeu (titre le plus pertinent). map vide si aucun
+	// autre titre disponible / aucune co-occurrence — jamais d'erreur propagée.
+	CooccurrencesByXUID(ctx context.Context, oppXUIDs []string) map[string]CrossGameHit
+}
+
 // CitationsService construit les réponses Citations et Commendations.
 type CitationsService interface {
 	GetCitationsPage(ctx context.Context) (*domain.CitationsPageResponse, error)

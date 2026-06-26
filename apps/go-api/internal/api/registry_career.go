@@ -103,6 +103,13 @@ func (r *ServiceRegistry) RelationsCtx(ctx context.Context, slug string) (port.R
 	// réutilisant le FiltersRepo (cross-DB : shared + player DB is_with_friends).
 	filtersSvc := service.NewFiltersService(duckdb.NewFiltersRepo(pdb))
 	svc = svc.WithFilters(filtersSvc)
+	// Phase 3b (additif, best-effort) : badge cross-jeu. Énumère les autres
+	// titres actifs via le TitleRegistry et lit leur catalogue shared en RO.
+	// nil-safe : si la dépendance n'est pas constructible (config absente,
+	// joueur sans xuid), le badge reste inerte sans impacter /relations.
+	if cg := r.buildCrossGameCooccurrence(pdb); cg != nil {
+		svc = svc.WithCrossGame(cg)
+	}
 	return svc, nil
 }
 

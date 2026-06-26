@@ -28,6 +28,14 @@ function resolveOrdinal(detail: RelationBadge['detail']): number | undefined {
   return undefined
 }
 
+/** resolveGame — nom d'affichage de l'autre titre (badge cross-jeu, Phase 3b). */
+function resolveGame(detail: RelationBadge['detail']): string | undefined {
+  if (detail && typeof detail['game'] === 'string') {
+    return detail['game'] as string
+  }
+  return undefined
+}
+
 /** SolidBadge — badge à fond plein + texte blanc (nouveaux badges Phase 1). */
 function SolidBadge({ label, colorToken }: { label: string; colorToken: string }) {
   const bg = isSemanticToken(colorToken) ? tokenCssVar(colorToken as SemanticToken) : undefined
@@ -55,9 +63,13 @@ export function RelationBadges({
       {badges.map((badge, i) => {
         const key = badge.label_key as SquadManifestKey
         const ordinal = resolveOrdinal(badge.detail)
+        const game = resolveGame(badge.detail)
+        const vars: Record<string, unknown> = {}
+        if (ordinal !== undefined) vars['ordinal'] = ordinal
+        if (game !== undefined) vars['game'] = game
         const label =
-          ordinal !== undefined
-            ? formatMessage(squadManifest, key, locale, { ordinal })
+          Object.keys(vars).length > 0
+            ? formatMessage(squadManifest, key, locale, vars)
             : formatMessage(squadManifest, key, locale)
 
         if (badge.style === 'solid') {

@@ -66,6 +66,18 @@ describe('PalmaresRelationsPage', () => {
     expect(screen.getByText('Duo gagnant')).toBeInTheDocument()
   })
 
+  it('rend le badge cross-jeu en résolvant {game} depuis detail', async () => {
+    renderWithProviders(<PalmaresRelationsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('palmares-relations-overview')).toBeInTheDocument()
+    })
+
+    // narrative.encounter.cross_game = « Aussi sur {game} » ; le mock pose
+    // detail.game = "Halo 5" → le nom de l'autre titre est interpolé.
+    expect(screen.getByText('Aussi sur Halo 5')).toBeInTheDocument()
+  })
+
   it('rend la barre de segmentation serveur (Vue + Analyser)', async () => {
     renderWithProviders(<PalmaresRelationsPage />)
 

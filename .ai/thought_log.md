@@ -1,3 +1,26 @@
+## [2026-06-26] Hub Relations — Phase 3b badge cross-jeu « Aussi sur {game} » (branche feat/relations-hub)
+
+**Statut** : Complété (worktree, non committé). ADDITIF / BEST-EFFORT / LECTURE SEULE.
+
+**Décision technique principale** :
+- Le badge cross-jeu est un `RelationBadge{style:"solid"}` supplémentaire injecté APRÈS la construction des insights (impossible dans `ComputeBadges` qui est pur, 0 DB). Injection via dépendance optionnelle `port.CrossGameCooccurrence` (`WithCrossGame`, pattern `WithFilters`). `crossGame == nil` → chemin Phase 3a strictement inchangé.
+- Jointure cross-titre par **xuid** (global, ADR 0008) : vérifié que `match_participants` H5 stocke un xuid résolu (RESOLVE-OR-SKIP dans `halo_5/mapping_carnage.go`), donc xuid non-null en base — la crainte « H5 gamertag-keyé » du grounding-2 concerne le payload live MatchView, pas la table persistée. Join par xuid = plus simple et correct.
+- Énumération title-agnostic : `title.DefaultRegistry().Active()` privé du `pdb.TitleSlug` ; chemin via `PathResolver.SharedDBPath(otherSlug)` ; ouverture RO via `duckdb.OpenReadForQuery` (réutilise handle caché RW/RO, ADR 0016, mono-process safe). Libellé = `descriptor.Name` résolu (jamais un littéral « Halo 5 »).
+- Perf : UNE requête batch par autre titre (`CountCrossTitleCooccurrences`, `COUNT(DISTINCT match_id)` par opp_xuid, `HAVING >= 3`, bots `NOT LIKE 'bid(%'` exclus). Jamais une DB par relation. Timeout 10s.
+- Dégradation : toute erreur (DB absente/lock/requête) → skip titre + `slog.DebugContext`, map vide remontée, `/relations` jamais en échec.
+- Token couleur : réutilise `narrative-encounter-cameleon` (sémantique « joue les 2 jeux ») → zéro ajout palette/snapshot (grounding option A).
+- Front : `resolveGame(detail)` symétrique à `resolveOrdinal`, vars `{game}` passées à `formatMessage` ; clé `narrative.encounter.cross_game` (FR « Aussi sur {game} » / EN « Also on {game} ») + manifest régénéré (squad 106→107 clés). Rendu solid déjà géré par `RelationBadges`/`SolidBadge` → zéro composant neuf.
+
+**Fichiers** : port/services.go (+CrossGameHit, +CrossGameCooccurrence) ; service/relations_cross_game.go (+WithCrossGame, +appendCrossGameBadges) ; service/relations_service.go (champ crossGame + appel) ; analysis/relations/badges_cross_game.go (+CrossGameBadge pur, +seuil CrossGameMinMatchesTogether=3) ; platform/duckdb/cross_game_repo.go (+CountCrossTitleCooccurrences) ; api/registry_relations_cross_game.go (impl + buildCrossGameCooccurrence) ; api/registry_career.go (wiring) ; web RelationBadges.tsx + squad.toml + squad.ts généré ; 3 fichiers de test.
+
+**Vérifs (toutes vertes)** : go build ./... + go vet ./internal/... OK ; go test service/analysis/api/port OK ; integration TestCountCrossTitleCooccurrences (+EmptyInputs) OK ; service TestCrossGame_* (no-dep/>=seuil/<seuil/empty-hits/empty-name) OK ; analysis TestCrossGameBadge OK ; front typecheck 0 err ; eslint RelationBadges.tsx 0 ; vitest PalmaresRelationsPage 7/7 ; knip-ratchet 29/90/86 exit 0 (zéro code mort neuf) ; types.ts/generated.ts NON touchés (pas de risque contract-ratchet).
+
+**Contrat badge pour le front** : `RelationBadge{ label_key:"narrative.encounter.cross_game", color_token:"narrative-encounter-cameleon", style:"solid", detail:{ game:<nom titre résolu>, matches_together:<int> } }`.
+
+**Prochaine étape** : commit (sur autorisation) ; à terme valider en prod avec un joueur ayant des matchs HI + H5 (JGtm).
+
+**Reprise [2026-06-26, session vérif front]** : le front Phase 3b était déjà en place (RelationBadges.tsx `resolveGame`+vars `{game}`, clé manifest, squad.ts généré). Actions : (1) régénéré `build_i18n_manifests.mjs` → stable, 18 manifests / 2294 clés, squad 107 clés, zéro drift (squad.ts +1 ligne déjà présente) ; (2) ajouté la couverture front manquante du rendu du badge cross-jeu — fixture `narrative.encounter.cross_game` (game="Halo 5") dans `src/test/handlers.ts` + test `PalmaresRelationsPage.test.tsx` « rend le badge cross-jeu en résolvant {game} depuis detail » asserte `« Aussi sur Halo 5 »` (valide l'interpolation `{game}` bout-en-bout). Gates verts : typecheck 0 err ; eslint 0 error / 76 warnings (tous pré-existants, aucun dans RelationBadges.tsx) ; vitest palmares 9/9 (était 8) ; knip-ratchet 29/90/86 OK ; lint-contract-ratchet clean ; aucun hex/classe couleur en dur (token `narrative-encounter-cameleon` réutilisé).
+
 ## [2026-06-26] Fix 2 tests d'intégration pré-existants + 2 dettes mécaniques (branche feat/relations-hub)
 
 **Statut** : Complété (worktree, non committé). Aucun code de production touché — seulement setup de test + tooling + format.
