@@ -80,6 +80,21 @@ type WeaponKillInsert struct {
 	PlayerIndex     *int    `json:"player_index,omitempty"`
 }
 
+// WeaponAccuracyInsert — row pour shared.weapon_accuracy : agrégat par
+// (match_id, xuid, weapon_id) des tirs d'une arme sur un match. Reconstruit la
+// précision par arme là où le carnage ne la sert pas (Halo 5 : WeaponStats[]
+// servi vide → dérivé des events WeaponDrop ; la somme par joueur = carnage
+// TotalShotsFired/Landed, validé exact). INSERT pur (table sans index/PK —
+// ART-safe, idempotence via l'ancre match_registry comme killer_victim_pairs).
+type WeaponAccuracyInsert struct {
+	MatchID     string `json:"match_id"`
+	XUID        string `json:"xuid"`
+	WeaponID    uint64 `json:"weapon_id"`
+	ShotsFired  int    `json:"shots_fired"`
+	ShotsLanded int    `json:"shots_landed"`
+	Drops       int    `json:"drops"` // nb de WeaponDrop avec tirs agrégés (usage de l'arme)
+}
+
 // KillerVictimInsert — row pour shared.killer_victim_pairs (forme **par-kill**,
 // 1 row par kill event — cf. analysis.ComputeKillerVictimPairs).
 //

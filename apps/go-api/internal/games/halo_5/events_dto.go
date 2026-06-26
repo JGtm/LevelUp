@@ -46,6 +46,13 @@ type h5GameEvent struct {
 	MedalId       int64          `json:"MedalId"`
 	ImpulseId     int64          `json:"ImpulseId"`
 	WeaponStockId int64          `json:"WeaponStockId"`
+
+	// WeaponDrop : tirs comptabilisés pour l'arme lâchée → précision PAR ARME
+	// (Halo 5 natif). Somme par (joueur, arme) sur le match = TotalShotsFired/
+	// TotalShotsLanded du carnage (validé EXACT 8/8 joueurs) — là où le carnage
+	// WeaponStats[] est servi vide. 0 sur les autres EventName.
+	ShotsFired  int `json:"ShotsFired"`
+	ShotsLanded int `json:"ShotsLanded"`
 }
 
 // h5MatchEventsResponse — racine de /h5/matches/{id}/events.

@@ -76,6 +76,13 @@ func mapH5Events(resp *h5MatchEventsResponse, opts canonical.MatchEventOptions) 
 		case canonical.MatchEventWeaponPickup, canonical.MatchEventWeaponDrop:
 			ev.Player = h5EventIdentity(e.Player)
 			ev.Weapon = h5WeaponRef(e.WeaponStockId)
+			// WeaponDrop porte les tirs de l'arme lâchée (précision par arme).
+			// WeaponPickup ne les porte pas (toujours 0) → on ne les pose que sur drop.
+			if et == canonical.MatchEventWeaponDrop {
+				sf, sl := e.ShotsFired, e.ShotsLanded
+				ev.ShotsFired = &sf
+				ev.ShotsLanded = &sl
+			}
 		case canonical.MatchEventSpawn:
 			ev.Player = h5EventIdentity(e.Player)
 		case canonical.MatchEventRoundStart, canonical.MatchEventRoundEnd:

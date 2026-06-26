@@ -1,3 +1,17 @@
+## [2026-06-26] H5 proficience par arme — ingestion (events WeaponDrop → shared.weapon_accuracy) — COMPLÉTÉ (code ; backfill pending)
+
+**Contexte** : l'exploration H5 (cf. `.ai/H5_EXPLORATION/`) a établi que la précision PAR ARME par joueur est reconstructible des events `WeaponDrop` (`ShotsFired`/`ShotsLanded`), validé EXACT contre le carnage `TotalShotsFired`/`TotalShotsLanded` (8/8 joueurs) — là où le carnage `WeaponStats[]` est servi VIDE par 343. L'« arme par kill » était déjà ingérée (`weapon_kills`) ; ce qui manquait = les TIRS par arme. (Le « manque de données arme » historiquement bloquant concernait Halo INFINITE/film, pas H5.) Branche `feat/h5-events-enrichment` (worktree `levelup-h5-events`, depuis main, qui inclut déjà le fix engagement synthétique `6cee3b1d3` d'un agent concurrent).
+
+**Décision technique** : faire transiter les tirs jusqu'au canonical puis persister en INSERT-only (PAS le générationnel de `weapon_kills` — inutile ici ; idempotence par l'ancre `match_registry` comme `killer_victim_pairs`).
+- DTO `h5GameEvent` + canonical `MatchEvent` étendus de `ShotsFired`/`ShotsLanded` (nullable `*int`, weapon_drop only ; nil ailleurs → no-op autres titres). Mapper `events.go` les pose sur WeaponDrop (pas WeaponPickup).
+- Nouveau mapper PUR `ingest/weapon_accuracy.go::MapWeaponAccuracy` : agrège par (xuid, weapon_id) sur le match ; skip drops à 0 tir / arme 0 / sans joueur. Croisé read-time avec `weapon_kills` = proficience (tirs/touchés/précision/kills).
+- Persist : `WeaponAccuracyInsert` + `AddWeaponAccuracy` + `persistWeaponAccuracy` (INSERT pur ART-safe) + champ `SharedBatch`. Câblé dans `CollectMatchBatch`.
+- Migration shared `add_weapon_accuracy` (table sans index) + ajout à `migration.canonicalOrder` (exigé par `TestCanonicalCoversGlobalAndTitle`).
+
+**Résultats** : `build ./...` vert ; tests verts — mapper (agrégation + skips), `persist`, migrations (cycle end-to-end 57/57 + order), garde-rail ART (`no_art_patterns`), `canonical`, `halo_5` (ingest/livesync/migrations). Conformité `canonical-types` (nullable, title-agnostic) + `arch-rules` (mapper pur, INSERT-only, schéma shared, zéro branchement slug, fichiers <80/500L) vérifiée.
+
+**Caveat / prochaine étape** : peuplé seulement aux NOUVELLES collectes (live sync / `h5-sync` / `h5-backfill`) → backfill requis sur les matchs existants (même caveat que les colonnes kill-mechanics). RESTE non fait : read-path (adapter/service) + surface UI de la proficience (différé, non demandé). Commit en attente d'autorisation. Cf. [[reference_h5_events_impulses_inventory]], `.ai/H5_EXPLORATION/FINDINGS_weapon_accuracy.md`.
+
 ## [2026-06-26] Hardening H5 round 3 (suite) — #10 roster = RACINE de #6/#7b : reconstruction offline + re-fetch — COMPLÉTÉ (ops data locales)
 
 **Correction d'une erreur d'analyse (auto-critique)** : j'avais conclu à tort que LUSR/win-prob étaient réservés au classé et que 5d16ff8d (non classé) n'avait "par design" pas de LUSR. FAUX — l'utilisateur l'a corrigé : LUSR existe pour TOUS les matchs (il comble l'absence de CSR sur le non-classé) et la win-prob est universelle. Le vrai diagnostic, prouvé : **#6 (pas de LUSR) et #7b (pas de win-prob) sont une CASCADE de #10 (roster incomplet)**.

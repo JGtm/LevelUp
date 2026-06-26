@@ -109,7 +109,9 @@ type Vec3 struct {
 //   - medal         : Player, RefID (= medal id).
 //   - impulse       : Player, RefID (= impulse id : objectif/power-up mode-spécifique).
 //   - spawn         : Player.
-//   - weapon_pickup / weapon_drop : Player, Weapon.
+//   - weapon_pickup : Player, Weapon.
+//   - weapon_drop   : Player, Weapon, ShotsFired, ShotsLanded (tirs comptabilisés
+//     pour l'arme lâchée — Halo 5 natif ; nil pour les autres types/titres).
 //   - round_start / round_end     : Round (index).
 type MatchEvent struct {
 	Type MatchEventType `json:"type"`
@@ -132,6 +134,13 @@ type MatchEvent struct {
 	// medal, impulse id pour impulse). Générique pour rester extensible.
 	RefID *string `json:"ref_id,omitempty"`
 	Round *int    `json:"round,omitempty"` // round_start / round_end : index de round
+
+	// ShotsFired / ShotsLanded : tirs tirés / touchés pour l'arme lâchée, agrégés
+	// par le moteur au drop/swap (weapon_drop). Halo 5 natif (WeaponDrop) ; somme
+	// par (joueur, arme) = TotalShotsFired/Landed du carnage (validé exact). nil
+	// hors weapon_drop / titres sans cette donnée.
+	ShotsFired  *int `json:"shots_fired,omitempty"`  // weapon_drop
+	ShotsLanded *int `json:"shots_landed,omitempty"` // weapon_drop
 }
 
 // MatchEventTimeline est la surface (séparée, chargée ON-DEMAND par
