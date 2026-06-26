@@ -296,6 +296,19 @@ func captureMatchTimeline(ctx context.Context, src h5Source, matchID string, sta
 	return mapH5Events(resp, canonical.MatchEventOptions{}) // Types vide = tous les events
 }
 
+// FetchCanonicalEvents récupère la timeline d'events NATIVE d'un match (/h5/matches/
+// {id}/events) et la mappe en canonical (TOUS les types). Exporté pour les outils ops
+// hors paquet (backfill des surfaces dérivées d'events — weapon_accuracy + assists +
+// objectif) qui n'ont pas accès au mapper privé mapH5Events. Erreur de fetch →
+// (nil, err) : le caller décide (skip + compteur, retry ultérieur). NE persiste rien.
+func FetchCanonicalEvents(ctx context.Context, src CaptureSource, matchID string) ([]canonical.MatchEvent, error) {
+	resp, err := src.GetMatchEvents(ctx, matchID)
+	if err != nil {
+		return nil, err
+	}
+	return mapH5Events(resp, canonical.MatchEventOptions{}), nil
+}
+
 // captureParticipants fetch le carnage UNE FOIS + mappe le roster complet ET les
 // commendations natives (AXE B) depuis ce MÊME carnage (pas de 2e fetch).
 // Indisponibilité (404/410, token expiré, decode) -> (nil, nil) + CarnageFailed++ :
