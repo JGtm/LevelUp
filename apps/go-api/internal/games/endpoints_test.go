@@ -173,3 +173,143 @@ func TestEndpointResolver_NilSafe(t *testing.T) {
 		t.Error("registry nil devrait retourner ok=false")
 	}
 }
+
+// capabilitiesTOML — fixture capabilities valide (clés du vocabulaire produit
+// games.AllCapabilityKeys, statuts admis). Prouve que CapabilitiesFor convertit
+// VRAIMENT le set TOML en games.CapabilityMap typée.
+func capabilitiesTOML(slug string) string {
+	return `
+[meta]
+title_slug = "` + slug + `"
+schema_version = 1
+
+[capabilities]
+"match.history"        = "supported"
+"match.skill.snapshot" = "degraded"
+"analytics.timeseries" = "not_exposed"
+`
+}
+
+// invalidCapabilitiesTOML — fixture syntaxiquement valide mais portant une clé HORS
+// vocabulaire produit. Le set se charge (mappings est title-agnostic et ne valide
+// pas les clés), mais CapabilityMapFromMappings doit ÉCHOUER la conversion →
+// CapabilitiesFor dégrade en ok=false.
+func invalidCapabilitiesTOML(slug string) string {
+	return `
+[meta]
+title_slug = "` + slug + `"
+schema_version = 1
+
+[capabilities]
+"capability.totalement.inconnue" = "supported"
+`
+}
+
+// loadRegistryWithCapabilities écrit fields + constants + capabilities.toml dans un
+// temp dir et charge la vraie Registry (chemin file→loader→registry).
+func loadRegistryWithCapabilities(t *testing.T, slug, capsContent string) *mappings.Registry {
+	t.Helper()
+	tmp := t.TempDir()
+	mappingsDir := filepath.Join(tmp, "config", "titles", slug, "mappings")
+	titleDir := filepath.Join(tmp, "config", "titles", slug)
+	writeFile(t, mappingsDir, "fields.toml", minimalFieldsTOML(slug))
+	writeFile(t, titleDir, "constants.toml", syntheticConstantsTOML(slug))
+	writeFile(t, mappingsDir, "capabilities.toml", capsContent)
+
+	r := mappings.NewRegistry()
+	if errs := r.LoadFromConfigDir(tmp, []string{slug}, nil); len(errs) != 0 {
+		t.Fatalf("LoadFromConfigDir errs: %v", errs)
+	}
+	return r
+}
+
+// TestCapabilitiesFor_HappyPath : un titre déclarant une capabilities.toml valide
+// est résolu en games.CapabilityMap typée (chemin nominal Phase 1.7a).
+func TestCapabilitiesFor_HappyPath(t *testing.T) {
+	t.Parallel()
+	const slug = "synthetic_test_title"
+	reg := loadRegistryWithCapabilities(t, slug, capabilitiesTOML(slug))
+	res := NewMappingsEndpointResolver(reg, "halo_infinite")
+
+	caps, ok := res.CapabilitiesFor(slug)
+	if !ok {
+		t.Fatalf("CapabilitiesFor(%q) ok=false, want true", slug)
+	}
+	if got := caps[CapMatchHistory]; got != CapSupported {
+		t.Errorf("match.history = %q, want supported", got)
+	}
+	if got := caps[CapMatchSkillSnapshot]; got != CapDegraded {
+		t.Errorf("match.skill.snapshot = %q, want degraded", got)
+	}
+	if got := caps[CapTimeseries]; got != CapNotExposed {
+		t.Errorf("analytics.timeseries = %q, want not_exposed", got)
+	}
+	// Has() applique la sémantique supported/degraded → exposé, not_exposed → non.
+	if !caps.Has(CapMatchHistory) || !caps.Has(CapMatchSkillSnapshot) {
+		t.Errorf("Has() devrait être true pour supported/degraded")
+	}
+	if caps.Has(CapTimeseries) {
+		t.Errorf("Has(not_exposed) devrait être false")
+	}
+}
+
+// TestCapabilitiesFor_EmptySlugUsesDefault : un slug vide (ctx sans titre) route vers
+// le défaut, comme HostFor.
+func TestCapabilitiesFor_EmptySlugUsesDefault(t *testing.T) {
+	t.Parallel()
+	const slug = "synthetic_test_title"
+	reg := loadRegistryWithCapabilities(t, slug, capabilitiesTOML(slug))
+	res := NewMappingsEndpointResolver(reg, slug) // défaut = la fixture
+
+	caps, ok := res.CapabilitiesFor("")
+	if !ok {
+		t.Fatalf("CapabilitiesFor(\"\") devrait router vers le défaut, ok=false")
+	}
+	if caps[CapMatchHistory] != CapSupported {
+		t.Errorf("défaut: match.history = %q", caps[CapMatchHistory])
+	}
+}
+
+// TestCapabilitiesFor_Degradations couvre les chemins de dégradation : titre inconnu
+// (pas de set), conversion échouée (clé hors vocabulaire produit), resolver/registry
+// nil. Dans tous les cas → ok=false, jamais de panique ni de fallback cross-titre.
+func TestCapabilitiesFor_Degradations(t *testing.T) {
+	t.Parallel()
+
+	t.Run("slug_inconnu_du_registre", func(t *testing.T) {
+		t.Parallel()
+		reg := loadRegistryWithCapabilities(t, "synthetic_test_title", capabilitiesTOML("synthetic_test_title"))
+		res := NewMappingsEndpointResolver(reg, "halo_infinite")
+		if caps, ok := res.CapabilitiesFor("never_loaded_title"); ok || caps != nil {
+			t.Errorf("slug inconnu → (nil, false), got (%v, %v)", caps, ok)
+		}
+	})
+
+	t.Run("conversion_echouee_cle_hors_vocabulaire", func(t *testing.T) {
+		t.Parallel()
+		const slug = "synthetic_bad_caps"
+		reg := loadRegistryWithCapabilities(t, slug, invalidCapabilitiesTOML(slug))
+		res := NewMappingsEndpointResolver(reg, "halo_infinite")
+		// Le set existe (mappings ne valide pas les clés) MAIS CapabilityMapFromMappings
+		// échoue → CapabilitiesFor doit dégrader en (nil, false), pas paniquer.
+		if caps, ok := res.CapabilitiesFor(slug); ok || caps != nil {
+			t.Errorf("conversion échouée → (nil, false), got (%v, %v)", caps, ok)
+		}
+	})
+
+	t.Run("resolver_nil", func(t *testing.T) {
+		t.Parallel()
+		var nilRes *MappingsEndpointResolver
+		if caps, ok := nilRes.CapabilitiesFor("x"); ok || caps != nil {
+			t.Errorf("resolver nil → (nil, false) sans paniquer, got (%v, %v)", caps, ok)
+		}
+	})
+
+	t.Run("registry_nil", func(t *testing.T) {
+		t.Parallel()
+		res := NewMappingsEndpointResolver(nil, "halo_infinite")
+		if caps, ok := res.CapabilitiesFor("x"); ok || caps != nil {
+			t.Errorf("registry nil → (nil, false), got (%v, %v)", caps, ok)
+		}
+	})
+}
