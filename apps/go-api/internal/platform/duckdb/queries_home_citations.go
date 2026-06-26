@@ -406,12 +406,12 @@ LIMIT 3`
 // Robustesse multi-titre (fix S5) : un même match_id porte souvent plusieurs
 // lignes (Infinite : 1 CSR réel ; Halo 5 : CSR=0 placeholder + LUSR + LUSR_V2,
 // car la sync H5 écrit rating_value=0 pour respecter le NOT NULL). Deux gardes :
-//   1. on ignore les lignes `CSR AND rating_value=0` (placeholder inexploitable
-//      qui, sinon, écrasait la vraie valeur LUSR dans le map Go keyé par match_id) ;
-//   2. on ne garde qu'UNE ligne par match_id via ROW_NUMBER, priorité
-//      CSR(réel) > LUSR > LUSR_V2 — même ordre que la vue match_skill_rank_latest,
-//      mais débarrassé du placeholder CSR=0. Title-agnostique : sur Infinite,
-//      la seule ligne est le CSR réel → no-op.
+//  1. on ignore les lignes `CSR AND rating_value=0` (placeholder inexploitable
+//     qui, sinon, écrasait la vraie valeur LUSR dans le map Go keyé par match_id) ;
+//  2. on ne garde qu'UNE ligne par match_id via ROW_NUMBER, priorité
+//     CSR(réel) > LUSR > LUSR_V2 — même ordre que la vue match_skill_rank_latest,
+//     mais débarrassé du placeholder CSR=0. Title-agnostique : sur Infinite,
+//     la seule ligne est le CSR réel → no-op.
 const Q26gPlaylistPhaseAMSRTpl = `
 WITH exploitable AS (
 	SELECT
