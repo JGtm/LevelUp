@@ -167,14 +167,21 @@ func buildRivalry(rv domain.RelationRawRow, raw []domain.RelationDuelRawRow) dom
 	}
 }
 
+// Libellés canonical de duel exposés tels quels dans le DTO (contrat API).
+const (
+	duelLabelWin   = "win"
+	duelLabelLoss  = "loss"
+	duelLabelOther = "other"
+)
+
 // duelOutcomeLabel : libellé canonical du duel pour le DTO ("win"|"loss"|"other").
 func duelOutcomeLabel(d relations.DuelOutcome) string {
 	switch d {
 	case relations.DuelWin:
-		return "win"
+		return duelLabelWin
 	case relations.DuelLoss:
-		return "loss"
+		return duelLabelLoss
 	default:
-		return "other"
+		return duelLabelOther
 	}
 }

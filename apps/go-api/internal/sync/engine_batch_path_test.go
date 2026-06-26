@@ -211,8 +211,19 @@ func patchSharedSchemaForBatch(t *testing.T, sharedDB *sql.DB) {
 			t.Fatalf("patch match_registry %s: %v", col, err)
 		}
 	}
-	if _, err := sharedDB.Exec("ALTER TABLE match_participants ADD COLUMN IF NOT EXISTS backfill_bits INTEGER"); err != nil {
-		t.Fatalf("patch match_participants backfill_bits: %v", err)
+	// backfill_bits + colonnes mécaniques de kill natives Halo 5
+	// (add_h5_kill_mechanics_columns, steps_shared_core.go) : créées par migration
+	// title-owned mais absentes de sharedSchemaSQL statique. SharedPersister.Persist
+	// les écrit → sans ce patch : Binder Error "column assassination_kills".
+	for _, col := range []string{
+		"backfill_bits INTEGER",
+		"assassination_kills SMALLINT DEFAULT 0",
+		"ground_pound_kills SMALLINT DEFAULT 0",
+		"shoulder_bash_kills SMALLINT DEFAULT 0",
+	} {
+		if _, err := sharedDB.Exec("ALTER TABLE match_participants ADD COLUMN IF NOT EXISTS " + col); err != nil {
+			t.Fatalf("patch match_participants %s: %v", col, err)
+		}
 	}
 }
 

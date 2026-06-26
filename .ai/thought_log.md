@@ -30298,3 +30298,31 @@ Objectif : confirmer que les fixes de la passe 2 n'ont pas régressé + couvrir 
 
 **Leçon** : un déplacement de dossier (`.ai/`→V7) casse silencieusement toutes les références doc.
 Après ce genre de réorg, balayer `grep -r '\.ai/...\.md'` + tester l'existence des cibles.
+
+## [2026-06-27] Remise au vert CI (Go Coverage + Go Baseline + Go Lint) — Complété
+
+**Statut** : Complété. Branche `fix/ci-health` (rebasée sur main `95e677660`).
+
+**Contexte** : la CI de main était rouge (3 jobs), découvert en surveillant le déploiement du hub
+Relations. Échecs déterministes pré-existants, indépendants du comportement runtime.
+
+**Décision technique** :
+- `internal/ops` : `TestMain` posant `migration.SetTitleStepsProvider` → `RunForDB(TargetShared)`
+  crée les tables voie B (`match_registry`…). Fix des 4 `TestSeedDemo*` (« Catalog Error »).
+- `internal/sync` : `patchSharedSchemaForBatch` ajoute les colonnes mécaniques de kill Halo 5
+  (`assassination_kills`/`ground_pound_kills`/`shoulder_bash_kills`), absentes du schéma statique
+  de test → fix des 3 `TestE2ECollectPersist_*`. Retrait de l'entrée whitelist obsolète
+  `sync_handler.go` (migré vers `NewSyncEngineForTitle`, non scanné) dans `TestAssertProgressionDeps`.
+- `internal/service` : constantes goconst (libellés duel win/loss/other) — `golangci-lint only-new-issues`.
+- Baseline : rebaseline du floor de tests. Les 39 tests absents vs l'ancienne baseline (2026-05-30)
+  sont tous des renommages/relocalisations/suppressions volontaires du refactor title-agnostic
+  (vérifié par workflow adversarial : 0 perte réelle).
+
+**Résultats observés** : suite intégration complète verte (exit 0, 0 FAIL, 102 packages). Sur le
+nouveau main `95e677660 + fixes` : ops + sync (E2E + assertion) re-vérifiés verts. Seul hang observé =
+`TestStressUpsertParticipants` (flake DuckDB concurrence, Windows-local ; CI Linux : sync en 197s sans
+hang). Aucun changement de comportement runtime (test/CI-only + refactor de libellés byte-identiques).
+
+**Conclusion / prochaine étape** : merge dans main + déploiement prod. Suivi non-bloquant :
+`internal/persist` pose le provider dans des fonctions de test plutôt qu'un `TestMain` (risque latent
+d'ordre) ; le scanner de `TestAssertProgressionDeps` ne couvre pas encore `NewSyncEngineForTitle`.
