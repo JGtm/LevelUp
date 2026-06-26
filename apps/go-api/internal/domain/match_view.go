@@ -516,9 +516,36 @@ type MatchCitationsTab struct {
 // MatchNativeCommendation : commendation NATIVE (Halo 5) gagnée sur un match.
 // Donnée brute : Name vide → le front dégrade en « Commendation {ID} » ; IconURL
 // nil → pas d'icône (Phase 1, définitions natives = suite AXE B).
+//
+// PARITÉ Infinite (anneau de progression + masterisé doré) : les champs de tier
+// réutilisent les MÊMES noms JSON que MatchCitationSnippet (progress_pct,
+// tier_index, tier_count, next_tier_target, cumulative, is_newly_mastered) afin
+// que le front réutilise le composant CitationProgressRing SANS divergence de
+// contrat. Calculés read-time depuis Progress (cumul à vie) + tier_targets +
+// Count (delta du match) via analysis.ComputeTierProgression.
+//
+// Les commendations MASTERISÉES AVANT le match (palier final déjà franchi) ne sont
+// JAMAIS émises (filtrage backend = parité « masquage des pré-masterisées »
+// Infinite). Le front n'a donc qu'à distinguer : anneau de progression (cas normal)
+// vs anneau doré + check (IsNewlyMastered = masterisé PENDANT ce match).
 type MatchNativeCommendation struct {
 	ID      string  `json:"id"`
 	Name    string  `json:"name,omitempty"`
 	Count   int     `json:"count"`
 	IconURL *string `json:"icon_url,omitempty"`
+	// ProgressPct : pourcentage de progression vers le prochain palier (0..100),
+	// 100 si masterisé. Anneau de progression côté front (CitationProgressRing.pct).
+	ProgressPct float64 `json:"progress_pct"`
+	// IsNewlyMastered : le palier final a été franchi PENDANT ce match (anneau doré
+	// + check côté front). Faux pour une simple progression intermédiaire.
+	IsNewlyMastered bool `json:"is_newly_mastered,omitempty"`
+	// Cumulative : total absolu À VIE après ce match (= Progress). Affiché « cumul/seuil ».
+	Cumulative int `json:"cumulative,omitempty"`
+	// TierIndex : nombre de paliers atteints (0 = aucun, TierCount = maîtrisé).
+	TierIndex int `json:"tier_index,omitempty"`
+	// TierCount : nombre total de paliers (longueur de tier_targets). 0 → pas de
+	// paliers connus → le front masque l'anneau (dégradation : icône + count seuls).
+	TierCount int `json:"tier_count,omitempty"`
+	// NextTierTarget : seuil absolu du prochain palier (0 si maîtrisé).
+	NextTierTarget int `json:"next_tier_target,omitempty"`
 }
