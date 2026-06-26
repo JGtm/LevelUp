@@ -78,6 +78,10 @@ type SharedBatch struct {
 	// WeaponKills : attributions kills par arme depuis le film.
 	WeaponKills []WeaponKillInsert `json:"weapon_kills,omitempty"`
 
+	// WeaponAccuracy : tirs par arme agrégés par (match, joueur, arme) — précision
+	// par arme reconstruite des events WeaponDrop (Halo 5 ; carnage WeaponStats vide).
+	WeaponAccuracy []WeaponAccuracyInsert `json:"weapon_accuracy,omitempty"`
+
 	// KillerVictim : agrégats killer→victim pour le match.
 	KillerVictim []KillerVictimInsert `json:"killer_victim,omitempty"`
 

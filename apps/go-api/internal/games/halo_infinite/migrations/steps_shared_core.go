@@ -604,5 +604,21 @@ func sharedCoreSteps() []migration.Migration {
 				return migration.AddColumnIfMissing(db, "match_registry", "player_count", "SMALLINT DEFAULT 0")
 			},
 		},
+		{
+			Name:        "add_weapon_accuracy",
+			TargetDB:    migration.TargetShared,
+			Description: "Table weapon_accuracy : précision par arme par joueur par match (tirs/touchés/drops), reconstruite des events WeaponDrop (Halo 5 ; carnage WeaponStats[] vide). INSERT pur sans index — ART-safe (ADR 0026).",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS weapon_accuracy (
+						match_id VARCHAR NOT NULL,
+						xuid VARCHAR NOT NULL,
+						weapon_id UBIGINT NOT NULL,
+						shots_fired INTEGER DEFAULT 0,
+						shots_landed INTEGER DEFAULT 0,
+						drops INTEGER DEFAULT 0
+					)`)
+			},
+		},
 	}
 }

@@ -106,6 +106,9 @@ func (p *SharedPersister) Persist(ctx context.Context, batch *MatchBatch) error 
 	if err := persistWeaponKills(ctx, tx, s.WeaponKills); err != nil {
 		return err
 	}
+	if err := persistWeaponAccuracy(ctx, tx, s.WeaponAccuracy); err != nil {
+		return err
+	}
 	if err := persistKillerVictim(ctx, tx, s.KillerVictim); err != nil {
 		return err
 	}
@@ -288,6 +291,28 @@ func persistWeaponKills(ctx context.Context, tx *sql.Tx, rows []WeaponKillInsert
 		if err != nil {
 			return fmt.Errorf("persist: INSERT weapon_kills %s/%s/%d: %w",
 				r.MatchID, r.XUID, r.TimeMS, err)
+		}
+	}
+	return nil
+}
+
+func persistWeaponAccuracy(ctx context.Context, tx *sql.Tx, rows []WeaponAccuracyInsert) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	// INSERT pur (table sans index/PK — ART-safe, ADR 0026). Idempotence assurée
+	// par l'ancre match_registry : un 2e batch sur le même match est skippé en amont
+	// (cf. CollectMatchBatch), donc pas de doublon par re-collecte.
+	for _, r := range rows {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO weapon_accuracy
+				(match_id, xuid, weapon_id, shots_fired, shots_landed, drops)
+			VALUES (?, ?, CAST(? AS UBIGINT), ?, ?, ?)`,
+			r.MatchID, r.XUID, r.WeaponID, r.ShotsFired, r.ShotsLanded, r.Drops,
+		)
+		if err != nil {
+			return fmt.Errorf("persist: INSERT weapon_accuracy %s/%s/%d: %w",
+				r.MatchID, r.XUID, r.WeaponID, err)
 		}
 	}
 	return nil

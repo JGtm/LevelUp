@@ -75,6 +75,12 @@ func (b *BatchBuilder) AddWeaponKills(rows []WeaponKillInsert) *BatchBuilder {
 	return b
 }
 
+// AddWeaponAccuracy ajoute les rows weapon_accuracy (tirs par arme agrégés).
+func (b *BatchBuilder) AddWeaponAccuracy(rows []WeaponAccuracyInsert) *BatchBuilder {
+	b.batch.Shared.WeaponAccuracy = append(b.batch.Shared.WeaponAccuracy, rows...)
+	return b
+}
+
 // AddKillerVictim ajoute les rows killer_victim_pairs.
 func (b *BatchBuilder) AddKillerVictim(rows []KillerVictimInsert) *BatchBuilder {
 	b.batch.Shared.KillerVictim = append(b.batch.Shared.KillerVictim, rows...)
