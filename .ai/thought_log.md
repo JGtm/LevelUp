@@ -1,3 +1,17 @@
+## [2026-06-26] Engagement : pondération de la courbe (2 titres) — COMPLÉTÉ (code ; re-backfill requis)
+
+**Contexte** : passer du comptage BRUT (1 par event) à une pondération PAR TYPE, pour que la courbe « meneur vs en retrait » reflète l'action MENÉE (objectif > kill > assist > death) plutôt que la densité brute. Poids validés user.
+
+**RECENSEMENT (demandé par le user — « plusieurs courbes »)** : un SEUL point de comptage forme les paces = `buildEngagementCurve` (`countInWindow`). TOUT en dérive : résidu → score, ET `meansFromCurve` → coefficients (RatioSample via player_match_enrichment). Donc pondérer ce comptage SUFFIT et garantit la cohérence courbe↔coefficients (pas de double-pondération). Restent BRUTS volontairement : `MatchIntensity` (densité d'events = descripteur de chaos du match, pas du leadership) + `PlayerActivity` (K+A+D, filtre AFK). `EventsObjectifEstimes` = code mort (ignoré). Le path synthétique kvp (collègue) émet des kill/death → pondérés comme les autres.
+
+**Implémentation** : `engagementEventWeight(eventType)` (`analysis/temporal/engagement_weights.go`) : `mode` 1.5 / `assist` 0.5 / `death` 0.4 / défaut 1.0 (kill, medal ADDITIF = intensité, first_kill…). `extractTimes`/`countInWindow` → `extractWeightedPoints`/`sumWeightInWindow` (somme des poids dans la fenêtre). Chokepoint unique, partagé les 2 titres. ("mode" = string brute Infinite, pas de constante canonical.)
+
+**Impact INFINITE** : `death` (1.0→0.4) + objectif `mode` (1.0→1.5) reweightés ; `kill`/`medal` inchangés ; `assist` absent du timeline Infinite. → l'engagement Infinite BOUGE → **re-backfill des 2 titres + recompute des coefficients requis** (je ne lance PAS la prod). H5 : assists + objectif (#2) + kills synthétisés désormais pondérés.
+
+**Résultats** : tests verts — `engagementEventWeight` + somme pondérée (3.4 vs 4.0 non pondéré), TOUS les `ComputeEngagementScore` + consommateurs (service, coach, profil de combat, sync) inchangés (fixtures en kill/medal = poids 1.0). `build ./...` + vet verts.
+
+**Suite** : au déploiement → re-backfill engagement (2 titres) + recompute coefficients + sanity-check (les percentiles historiques se décalent). Commit pending.
+
 ## [2026-06-26] H5 tier CSR Champion (DesignationId 6) mappé — COMPLÉTÉ (code ; commit pending)
 
 **Contexte** : la sonde 2026-06-26 a capté un VRAI Champion H5 (DesignationId 6, Csr 1739, Rank #236) — le `csr_mapper` H5 s'arrêtait à Onyx (0..5) → tier VIDE pour les Champions (bug latent ; c'était le « TODO Phase 2 si un 6 réel apparaît »).

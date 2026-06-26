@@ -58,10 +58,10 @@ func buildEngagementCurve(p buildCurveParams) []domain.EngagementPoint {
 	// Pre-extraction des TimeMS de chaque slice pour eviter d'iterer sur les
 	// events complets a chaque echantillon. Tries en amont par defaut (les
 	// events sont stockes par ordre chronologique dans highlight_events).
-	playerTimes := extractTimes(p.PlayerEvents)
-	teamTimes := extractTimes(p.TeamEvents)
-	lobbyTimes := extractTimes(p.LobbyEvents)
-	denomTimes := extractTimes(p.DenominatorEvents)
+	playerPts := extractWeightedPoints(p.PlayerEvents)
+	teamPts := extractWeightedPoints(p.TeamEvents)
+	lobbyPts := extractWeightedPoints(p.LobbyEvents)
+	denomPts := extractWeightedPoints(p.DenominatorEvents)
 
 	windowMin := float64(p.WindowMS) / 60_000.0
 
@@ -70,9 +70,9 @@ func buildEngagementCurve(p buildCurveParams) []domain.EngagementPoint {
 		windowStart := t - halfWindow
 		windowEnd := t + halfWindow
 
-		paceJoueur := countInWindow(playerTimes, windowStart, windowEnd) / windowMin
-		paceTeamRaw := countInWindow(teamTimes, windowStart, windowEnd) / windowMin
-		paceLobbyRaw := countInWindow(lobbyTimes, windowStart, windowEnd) / windowMin
+		paceJoueur := sumWeightInWindow(playerPts, windowStart, windowEnd) / windowMin
+		paceTeamRaw := sumWeightInWindow(teamPts, windowStart, windowEnd) / windowMin
+		paceLobbyRaw := sumWeightInWindow(lobbyPts, windowStart, windowEnd) / windowMin
 
 		paceTeam := safePerPlayer(paceTeamRaw, p.NTeam)
 		paceLobby := safePerPlayer(paceLobbyRaw, p.NHumansLobby)
@@ -80,7 +80,7 @@ func buildEngagementCurve(p buildCurveParams) []domain.EngagementPoint {
 		// Pace attendu base sur le denominateur (team ou lobby selon mode).
 		var paceAttendu float64
 		if p.DenominatorN > 0 {
-			denomRaw := countInWindow(denomTimes, windowStart, windowEnd) / windowMin
+			denomRaw := sumWeightInWindow(denomPts, windowStart, windowEnd) / windowMin
 			paceAttendu = p.CoefForExpected * (denomRaw / float64(p.DenominatorN))
 		}
 
@@ -96,31 +96,39 @@ func buildEngagementCurve(p buildCurveParams) []domain.EngagementPoint {
 	return curve
 }
 
-// extractTimes recupere les TimeMS d'une liste d'events.
+// weightedPoint = un event réduit à (instant, poids d'engagement de son type).
+type weightedPoint struct {
+	t int64
+	w float64
+}
+
+// extractWeightedPoints réduit chaque event à (TimeMS, engagementEventWeight(type)).
 //
 // Note : les events arrivent normalement deja tries par TimeMS (convention de
 // l'ingestion highlight_events). On ne re-trie pas pour eviter le coût O(n
 // log n). Si l'invariant est viole en pratique, ajouter un sort.Slice ici.
-func extractTimes(events []canonical.HighlightEvent) []int64 {
-	times := make([]int64, len(events))
+func extractWeightedPoints(events []canonical.HighlightEvent) []weightedPoint {
+	pts := make([]weightedPoint, len(events))
 	for i, e := range events {
-		times[i] = e.TimeMS
+		pts[i] = weightedPoint{t: e.TimeMS, w: engagementEventWeight(e.EventType)}
 	}
-	return times
+	return pts
 }
 
-// countInWindow compte les events dont TimeMS appartient a [windowStart, windowEnd].
+// sumWeightInWindow somme les POIDS des events dont TimeMS ∈ [windowStart, windowEnd]
+// (rythme PONDÉRÉ ; cf. engagementEventWeight). Avant la pondération c'était un simple
+// comptage (poids 1 par event).
 //
 // Implementation lineaire (suffisante pour ~50-100 events/match). Si l'on
 // devait scaler a des matches massifs, basculer sur sort.Search pour O(log n).
-func countInWindow(times []int64, windowStart, windowEnd int64) float64 {
-	count := 0
-	for _, t := range times {
-		if t >= windowStart && t <= windowEnd {
-			count++
+func sumWeightInWindow(pts []weightedPoint, windowStart, windowEnd int64) float64 {
+	var sum float64
+	for _, p := range pts {
+		if p.t >= windowStart && p.t <= windowEnd {
+			sum += p.w
 		}
 	}
-	return float64(count)
+	return sum
 }
 
 // safePerPlayer divise un pace agrege par le nombre de joueurs, en gerant le
