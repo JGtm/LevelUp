@@ -156,6 +156,40 @@ no_native_kda = true
 	}
 }
 
+// TestProvidesMMR — un titre déclarant no_mmr=true (Halo 5) route false (MMR non
+// fourni → surfaces MMR omises) ; sans le flag / inconnu / resolver nil → true.
+func TestProvidesMMR(t *testing.T) {
+	t.Parallel()
+	const slug = "synthetic_nommr_title"
+
+	tmp := t.TempDir()
+	writeFile(t, filepath.Join(tmp, "config", "titles", slug, "mappings"), "fields.toml", minimalFieldsTOML(slug))
+	writeFile(t, filepath.Join(tmp, "config", "titles", slug), "constants.toml", `
+[meta]
+title_slug = "`+slug+`"
+schema_version = 1
+
+[endpoints]
+stats = "https://stats.example.test"
+
+[damage_model]
+effective_hp_to_kill = 115
+no_mmr = true
+`)
+	reg := mappings.NewRegistry()
+	if errs := reg.LoadFromConfigDir(tmp, []string{slug}, nil); len(errs) != 0 {
+		t.Fatalf("LoadFromConfigDir errs: %v", errs)
+	}
+	res := NewMappingsEndpointResolver(reg, "halo_infinite")
+
+	if ProvidesMMRFromResolver(res, slug) {
+		t.Errorf("ProvidesMMR(%q) = true, want false (no_mmr=true)", slug)
+	}
+	if !ProvidesMMRFromResolver(res, "never_loaded") {
+		t.Error("titre inconnu : ProvidesMMR devrait être true (défaut)")
+	}
+}
+
 // TestProvidesDamageTaken — un titre déclarant no_damage_taken=true (Halo 5) route
 // false (résistance défensive non calculable → surfaces DR neutralisées) ; sans le
 // flag / inconnu / resolver nil → true (défaut Infinite).

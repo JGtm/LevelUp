@@ -57,6 +57,10 @@ type DamageModelConstants struct {
 	// (profil de combat axe défensif, coaching « fragile », milestones endurance/
 	// excellence) sont neutralisés plutôt qu'affichés faux. Défaut false (Infinite).
 	NoDamageTaken bool
+	// NoMMR = true → le titre ne fournit PAS de MMR (Halo 5 : PreMatch/PostMatchRatings
+	// servis null partout). Les surfaces MMR (team/enemy/delta_mmr, highlight underdog)
+	// sont omises plutôt qu'affichées vides. Défaut false (Infinite). Via games.ProvidesMMR.
+	NoMMR bool
 	// OffensiveConversionP80 = frontière élite (80e percentile) du rendement OC du
 	// titre, repère de normalisation des barres/radars. 0 = non déclaré → défaut
 	// 0.90 (Infinite). h5 = 1.264 (calibré sur sa propre distribution, hp=115).
