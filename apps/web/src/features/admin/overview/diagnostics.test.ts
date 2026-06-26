@@ -28,6 +28,11 @@ function baseOverview(): AdminMonitoringOverview {
     jobs: { active_count: 0, recent: [] },
     invariants: { runs_total: 1, fail_last: 0, warn_last: 0 },
     tokens: { players: 3, ok: 3, expiring: 0, expired: 0, absent: 0, reauth: 0, with_auth_error: 0 },
+    snapshot: {
+      cut_failures: 0, cut_noop: 0, cuts_produced: 0, partial_total: 0,
+      pending_oldest_age_seconds: 0, pending_total: 0, reads_fallback: 0,
+      reads_served: 0, ready_match_count: 0, version: 1,
+    },
   }
 }
 
