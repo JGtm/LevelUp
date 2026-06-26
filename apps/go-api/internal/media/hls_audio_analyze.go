@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"math"
 	"os/exec"
+	"sort"
 	"strings"
 )
 
@@ -52,11 +53,17 @@ const (
 	envFrameSamples = 800
 )
 
-// gameClassifyMarginCorr : écart minimal de corrélation (au mix complet) entre la
-// meilleure composante « jeu » et la suivante pour faire confiance au classement
-// acoustique. En dessous (composantes trop proches, ex. deux sources équivalentes),
-// on retombe sur la convention positionnelle (1ère composante = jeu).
-const gameClassifyMarginCorr = 0.05
+// silenceDropDB : une trame est « silencieuse » si son RMS est plus de 25 dB sous le
+// niveau fort (90ᵉ centile) de SA piste. Capture la CONTINUITÉ indépendamment du
+// volume absolu : le son de jeu est continu (peu de trames silencieuses), la voix
+// (micro/Discord) est intermittente (beaucoup de silences entre les phrases).
+// Calibré sur clips réels (jeu 9-13 % de silence vs voix 16-26 %).
+const silenceDropDB = 25.0
+
+// gameClassifyMarginRatio : écart minimal de taux de silence entre la composante la
+// plus continue (jeu) et la suivante pour faire confiance au classement. En dessous
+// (égalité — deux pistes aussi continues), repli sur la convention positionnelle.
+const gameClassifyMarginRatio = 0.05
 
 // audioLayout décrit le rôle des pistes audio source, déduit à l'ingestion (IO).
 // Quand Track0FullMix, la piste 0 est le mix complet de sortie et GameComponent est
@@ -207,34 +214,52 @@ func analyzeAudioLayout(ctx context.Context, src string, nAudio int) (audioLayou
 		return layout, corr, nil
 	}
 	layout.Track0FullMix = true
-	layout.GameComponent = classifyGameComponent(ctx, src, nAudio, env0)
+	layout.GameComponent = classifyGameComponent(ctx, src, nAudio)
 	return layout, corr, nil
 }
 
+// silenceRatio retourne la fraction de trames dont le RMS est plus de silenceDropDB
+// sous le niveau fort (90ᵉ centile) de l'enveloppe — mesure de discontinuité. Pur.
+func silenceRatio(env []float64) float64 {
+	if len(env) < 5 {
+		return 0
+	}
+	sorted := append([]float64(nil), env...)
+	sort.Float64s(sorted)
+	thr := sorted[int(0.9*float64(len(sorted)))] - silenceDropDB
+	c := 0
+	for _, v := range env {
+		if v < thr {
+			c++
+		}
+	}
+	return float64(c) / float64(len(env))
+}
+
 // classifyGameComponent identifie la composante « jeu » parmi les pistes 1..N-1 : le
-// jeu est la plus grosse composante du mix de sortie → son enveloppe est la plus
-// corrélée à celle du mix complet (fullMixEnv). Indépendant de l'ordre des pistes.
-// Repli sur la 1ère composante (index 1) si le décodage échoue ou si les deux
-// meilleures sont trop proches (ambigu). IO ffmpeg (best-effort, n'échoue pas).
-func classifyGameComponent(ctx context.Context, src string, nAudio int, fullMixEnv []float64) int {
-	best := 1
-	bestCorr, secondCorr := -2.0, -2.0
+// son de jeu est CONTINU (taux de silence le plus bas), la voix (micro/Discord)
+// intermittente. Indépendant du volume ET de l'ordre des pistes. Repli sur la 1ère
+// composante (index 1) si le décodage échoue ou si les deux plus continues sont à
+// égalité (marge < gameClassifyMarginRatio). IO ffmpeg (best-effort, n'échoue pas).
+func classifyGameComponent(ctx context.Context, src string, nAudio int) int {
+	best, second := 1, -1
+	bestSil, secondSil := 2.0, 2.0
 	for i := 1; i < nAudio; i++ {
 		env, err := audioEnvelope(ctx, src, "", fmt.Sprintf("0:a:%d", i))
 		if err != nil {
 			continue
 		}
-		c := pearson(env, fullMixEnv)
+		sil := silenceRatio(env)
 		switch {
-		case c > bestCorr:
-			secondCorr = bestCorr
-			best, bestCorr = i, c
-		case c > secondCorr:
-			secondCorr = c
+		case sil < bestSil:
+			second, secondSil = best, bestSil
+			best, bestSil = i, sil
+		case sil < secondSil:
+			second, secondSil = i, sil
 		}
 	}
-	if bestCorr-secondCorr < gameClassifyMarginCorr {
-		return 1 // ambigu → convention positionnelle
+	if second != -1 && secondSil-bestSil < gameClassifyMarginRatio {
+		return 1 // égalité → convention positionnelle
 	}
 	return best
 }
