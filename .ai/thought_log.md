@@ -1,3 +1,13 @@
+## [2026-06-26] H5 bannière synthétisée (Home identity) — COMPLÉTÉ (code+test ; revue visuelle + commit pending)
+
+**Contexte** : le render full-body H5 (poussé dans `banner_image_url` par appearance_persist) servait de FOND plein cadre au bloc identité Home → pas une bannière (rejeté user). Alternative = bannière SYNTHÉTISÉE.
+
+**Implémentation (FRONT-ONLY, pas de backend, pas de re-enrich, reviewable immédiatement)** : `HomeSpartanIdentityBanner.tsx` — pour Halo 5 (gate slug `currentTitleSlug === 'halo_5'` ; précédent établi NavL1/NavL2/CareerSummaryCard ; TODO migrer vers une capability dédiée), on n'utilise PAS `banner_image_url` en fond ; backdrop GRADIENT via tokens sémantiques (`bg-gradient-to-br from-primary/25 via-muted/45 to-background` — pas de hex, conforme color-tokens) quand pas de bannière image. Emblème + gamertag + service tag + rang carrière + skill peaks INCHANGÉS. Le backdrop no-banner est title-AGNOSTIC (bénéficie aussi à tout joueur sans bannière). Le render full-body n'est plus affiché (= « rien » à l'emplacement bannière, choix user « alternative ou rien »).
+
+**Résultats** : typecheck (mon fichier CLEAN ; 2 erreurs tsc PRÉ-EXISTANTES dans admin/*.test — type `AdminMonitoringOverview.snapshot` manquant, drift hors périmètre, NON touché) + eslint + vitest verts (17 tests : nouveau test composant H5→backdrop synthétisé / non-H5→bannière image + HomePage inchangé).
+
+**Suite** : revue visuelle user (lancer l'app / au déploiement) — gradient v1 facile à ajuster (tokens). Commit+push pending. Note : npm ci fait dans le worktree (toolchain front prêt).
+
 ## [2026-06-26] Engagement : pondération de la courbe (2 titres) — COMPLÉTÉ (code ; re-backfill requis)
 
 **Contexte** : passer du comptage BRUT (1 par event) à une pondération PAR TYPE, pour que la courbe « meneur vs en retrait » reflète l'action MENÉE (objectif > kill > assist > death) plutôt que la densité brute. Poids validés user.
