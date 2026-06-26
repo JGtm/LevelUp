@@ -4288,9 +4288,20 @@ export interface components {
         MatchNativeCommendation: {
             /** Format: int64 */
             count: number;
+            /** Format: int64 */
+            cumulative?: number;
             icon_url?: string;
             id: string;
+            is_newly_mastered?: boolean;
             name?: string;
+            /** Format: int64 */
+            next_tier_target?: number;
+            /** Format: double */
+            progress_pct: number;
+            /** Format: int64 */
+            tier_count?: number;
+            /** Format: int64 */
+            tier_index?: number;
         };
         NativeCommendationCategoryGroup: {
             category: string;
@@ -4889,6 +4900,7 @@ export interface components {
             jobs: components["schemas"]["MonitoringJobsSummary"];
             scheduler: components["schemas"]["MonitoringSchedulerSummary"];
             server: components["schemas"]["MonitoringServerInfo"];
+            snapshot: components["schemas"]["MonitoringSnapshotSummary"];
             title_slug: string;
             tokens?: components["schemas"]["MonitoringTokensSummary"];
             tokens_error?: string;
@@ -6614,6 +6626,28 @@ export interface components {
             /** Format: int64 */
             uptime_s: number;
             version: string;
+        };
+        MonitoringSnapshotSummary: {
+            /** Format: int64 */
+            cut_failures: number;
+            /** Format: int64 */
+            cut_noop: number;
+            /** Format: int64 */
+            cuts_produced: number;
+            /** Format: int64 */
+            partial_total: number;
+            /** Format: int64 */
+            pending_oldest_age_seconds: number;
+            /** Format: int64 */
+            pending_total: number;
+            /** Format: int64 */
+            reads_fallback: number;
+            /** Format: int64 */
+            reads_served: number;
+            /** Format: int64 */
+            ready_match_count: number;
+            /** Format: int64 */
+            version: number;
         };
         MonitoringTokensSummary: {
             /** Format: int64 */

@@ -291,6 +291,93 @@ func (r *CitationsRepo) LoadMatchCitationsRich(ctx context.Context, matchID stri
 	return result, nil
 }
 
+// matchCommendationsRichQuery — toutes les commendations NATIVES gagnées par un
+// joueur (xuid) sur UN match. ART-safe (lecture pure sur match_commendations,
+// table INSERT-only keyée (match_id, xuid, commendation_id) : le `count` et le
+// `progress` par-match sont immuables, pas de _latest requis). `progress` =
+// cumul À VIE à ce match (nullable pré-migration → COALESCE 0). Ordre count DESC
+// (tie-break commendation_id) pour une sélection top-N déterministe côté service.
+const matchCommendationsRichQuery = `
+SELECT mc.commendation_id, mc.count, COALESCE(mc.progress, 0) AS progress
+FROM match_commendations mc
+WHERE mc.match_id = ? AND mc.xuid = ? AND mc.count > 0
+ORDER BY mc.count DESC, mc.commendation_id ASC`
+
+// LoadMatchCommendationsRich charge les commendations NATIVES (Halo 5) gagnées par
+// un joueur (xuid) sur UN match, enrichies nom + icône + tier_targets via
+// commendation_definitions (metadata). Match-scoped, toutes les commendations (pas
+// de top-N) : la sélection + le filtrage mastery sont faits au build côté service.
+//
+// Pattern split cross-DB (ADR 0016) : étape 1 sur SharedReader (match_commendations
+// vit dans shared_matches_v2), étape 2 sur pdb.Metadata (commendation_definitions).
+//
+// Dégradation silencieuse (contrat = slice possiblement vide, jamais d'erreur) :
+// SharedReader indisponible, table absente (Infinite / pré-migration), xuid vide.
+// Pour Halo Infinite la table est vide → slice vide → l'onglet citations de la Match
+// View reste alimenté par les citations dérivées (voie repo, NO-OP ici).
+func (r *CitationsRepo) LoadMatchCommendationsRich(ctx context.Context, matchID, xuid string) ([]domain.HomeMatchCommendationRaw, error) {
+	if r.pdb == nil || r.pdb.SharedReader == nil || strings.TrimSpace(matchID) == "" || strings.TrimSpace(xuid) == "" {
+		return nil, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, nil //nolint:nilerr // dégradation silencieuse côté contrat externe
+	}
+	rows, err := sharedDB.QueryContext(ctx, matchCommendationsRichQuery, matchID, xuid)
+	if err != nil {
+		release()
+		return nil, nil //nolint:nilerr // table absente (Infinite) ou autre erreur SQL → vide
+	}
+
+	type rawRow struct {
+		commID   string
+		count    int
+		progress int
+	}
+	var raws []rawRow
+	idSeen := make(map[string]struct{})
+	var commIDs []string
+	for rows.Next() {
+		var rr rawRow
+		if err := rows.Scan(&rr.commID, &rr.count, &rr.progress); err != nil {
+			continue
+		}
+		raws = append(raws, rr)
+		if _, ok := idSeen[rr.commID]; !ok {
+			idSeen[rr.commID] = struct{}{}
+			commIDs = append(commIDs, rr.commID)
+		}
+	}
+	rowsErr := rows.Err()
+	rows.Close()
+	release()
+	if rowsErr != nil || len(raws) == 0 {
+		return nil, nil
+	}
+
+	defs := loadCommendationDefsFromMetadata(ctx, r.pdb.Metadata, commIDs)
+	result := make([]domain.HomeMatchCommendationRaw, 0, len(raws))
+	for _, rr := range raws {
+		d := defs[rr.commID]
+		name := d.name
+		if name == "" {
+			name = rr.commID // dégradation : ID brut si la définition n'est pas seedée
+		}
+		result = append(result, domain.HomeMatchCommendationRaw{
+			ID:          rr.commID,
+			Name:        name,
+			IconURL:     d.iconURL,
+			Count:       rr.count,
+			Progress:    rr.progress,
+			TierTargets: d.tierTargets,
+		})
+	}
+	return result, nil
+}
+
 type citationMappingMeta struct {
 	display     string
 	imagePath   string

@@ -438,8 +438,25 @@ type commendationDef struct {
 // avant l'ajout de tier_targets), on retombe sur une requête sans tier_targets si le
 // SELECT échoue (table présente, colonne manquante).
 func (r *HomeRepo) loadCommendationDefs(ctx context.Context, ids []string) map[string]commendationDef {
+	if r.pdb == nil {
+		return map[string]commendationDef{}
+	}
+	return loadCommendationDefsFromMetadata(ctx, r.pdb.Metadata, ids)
+}
+
+// loadCommendationDefsFromMetadata résout nom (FR > EN) + icône CDN + tier_targets
+// pour un ensemble d'UUID de commendations depuis commendation_definitions
+// (metadata h5). Fonction libre partagée par HomeRepo (slot TopCitations de la
+// MatchCard) et CitationsRepo (onglet citations de la Match View). IDs inconnus
+// absents de la map. Dégradation : metadata nil / table absente → map vide.
+//
+// tier_targets est COALESCE'é vide : nullable + colonne possiblement absente sur une
+// DB pré-migration. Pour absorber le cas « colonne absente » (metadata h5 provisionnée
+// avant l'ajout de tier_targets), on retombe sur une requête sans tier_targets si le
+// SELECT échoue (table présente, colonne manquante).
+func loadCommendationDefsFromMetadata(ctx context.Context, metadata *DB, ids []string) map[string]commendationDef {
 	out := make(map[string]commendationDef, len(ids))
-	if len(ids) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+	if len(ids) == 0 || metadata == nil {
 		return out
 	}
 	placeholders := make([]string, len(ids))
@@ -455,7 +472,7 @@ func (r *HomeRepo) loadCommendationDefs(ctx context.Context, ids []string) map[s
 	                 COALESCE(tier_targets, '') AS tier_targets
 	          FROM commendation_definitions
 	          WHERE commendation_id IN (` + in + `)`
-	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
+	rows, err := metadata.Query(ctx, query, args...)
 	if err != nil {
 		// Colonne tier_targets absente (DB pré-migration) → retry sans elle (le
 		// progrès dégradera proprement en anneau vide).
@@ -464,7 +481,7 @@ func (r *HomeRepo) loadCommendationDefs(ctx context.Context, ids []string) map[s
 		                        COALESCE(icon_url, '') AS icon_url
 		                 FROM commendation_definitions
 		                 WHERE commendation_id IN (` + in + `)`
-		rows, err = r.pdb.Metadata.Query(ctx, queryNoTiers, args...)
+		rows, err = metadata.Query(ctx, queryNoTiers, args...)
 		if err != nil {
 			return out // dégradation : titre sans table commendation_definitions
 		}

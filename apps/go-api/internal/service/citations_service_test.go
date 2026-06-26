@@ -42,6 +42,9 @@ func (m *mockCitationsRepo) LoadMatchCitationsForView(_ context.Context, _ strin
 func (m *mockCitationsRepo) LoadMatchCitationsRich(_ context.Context, _ string) ([]domain.HomeMatchCitationRaw, error) {
 	return nil, nil
 }
+func (m *mockCitationsRepo) LoadMatchCommendationsRich(_ context.Context, _, _ string) ([]domain.HomeMatchCommendationRaw, error) {
+	return nil, nil
+}
 
 // --- tests ---
 

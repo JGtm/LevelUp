@@ -294,6 +294,102 @@ func TestBuildMatchViewFromCanonical_NativeCommendations(t *testing.T) {
 	}
 }
 
+// TestBuildCanonicalCitationsTab_MasteryFilterAndProgress : parité Infinite sur les
+// commendations natives — (a) MASQUAGE des commendations masterisées AVANT le match,
+// (b) IsNewlyMastered pour celles franchies PENDANT, (c) anneau de progression sinon.
+// Seuils réels : Sniper Rifle tier_targets="5,15,30,55,105" (validés sur les DB h5).
+func TestBuildCanonicalCitationsTab_MasteryFilterAndProgress(t *testing.T) {
+	const sniperTiers = "5,15,30,55,105"
+	comms := []canonical.Commendation{
+		// (a) masterisée AVANT (before=119-3=116 >= 105) → DOIT être masquée.
+		{ID: "already", Name: "Already", Count: 3, Progress: 119, TierTargets: sniperTiers},
+		// (b) masterisée PENDANT (before=100 < 105, progress=119 >= 105) → newly mastered.
+		{ID: "newly", Name: "Newly", Count: 19, Progress: 119, TierTargets: sniperTiers},
+		// (b') franchie pile (before=104 < 105, progress=105) → newly mastered, count=1.
+		{ID: "newly-edge", Name: "NewlyEdge", Count: 1, Progress: 105, TierTargets: sniperTiers},
+		// (c) en progression intermédiaire (progress=40, dans [30,55)) → anneau partiel.
+		{ID: "progressing", Name: "Progressing", Count: 10, Progress: 40, TierTargets: sniperTiers},
+		// (d) sans paliers connus → anneau vide (TierCount=0), jamais masquée.
+		{ID: "no-tiers", Name: "NoTiers", Count: 2, Progress: 7, TierTargets: ""},
+	}
+
+	tab, unavailable := buildCanonicalCitationsTab(comms)
+	if unavailable {
+		t.Fatalf("section ne doit pas être indisponible : %d commendations visibles attendues", 4)
+	}
+	got := tab.NativeCommendations
+
+	// (a) la commendation pré-masterisée est ABSENTE.
+	byID := make(map[string]domain.MatchNativeCommendation, len(got))
+	for _, c := range got {
+		byID[c.ID] = c
+	}
+	if _, present := byID["already"]; present {
+		t.Errorf("commendation masterisée AVANT le match doit être MASQUÉE, présente: %+v", byID["already"])
+	}
+	// 4 visibles : newly, newly-edge, progressing, no-tiers.
+	if len(got) != 4 {
+		t.Fatalf("NativeCommendations visibles = %d, want 4 — %+v", len(got), got)
+	}
+
+	// (b) franchies pendant → IsNewlyMastered + ProgressPct=100 + TierIndex==TierCount.
+	for _, id := range []string{"newly", "newly-edge"} {
+		c := byID[id]
+		if !c.IsNewlyMastered {
+			t.Errorf("%s: IsNewlyMastered attendu true, got %+v", id, c)
+		}
+		if c.ProgressPct != 100.0 {
+			t.Errorf("%s: ProgressPct attendu 100, got %v", id, c.ProgressPct)
+		}
+		if c.TierCount != 5 || c.TierIndex != 5 {
+			t.Errorf("%s: TierIndex/TierCount attendus 5/5, got %d/%d", id, c.TierIndex, c.TierCount)
+		}
+		if c.NextTierTarget != 0 {
+			t.Errorf("%s: NextTierTarget attendu 0 (maîtrisé), got %d", id, c.NextTierTarget)
+		}
+	}
+
+	// (c) en progression : pas newly, anneau partiel, prochain seuil = 55, tier 3/5.
+	p := byID["progressing"]
+	if p.IsNewlyMastered {
+		t.Errorf("progressing: IsNewlyMastered doit être false, got %+v", p)
+	}
+	if p.TierCount != 5 || p.TierIndex != 3 {
+		t.Errorf("progressing: TierIndex/TierCount attendus 3/5, got %d/%d", p.TierIndex, p.TierCount)
+	}
+	if p.NextTierTarget != 55 {
+		t.Errorf("progressing: NextTierTarget attendu 55, got %d", p.NextTierTarget)
+	}
+	if p.Cumulative != 40 {
+		t.Errorf("progressing: Cumulative attendu 40, got %d", p.Cumulative)
+	}
+	if !(p.ProgressPct > 0 && p.ProgressPct < 100) {
+		t.Errorf("progressing: ProgressPct attendu dans (0,100), got %v", p.ProgressPct)
+	}
+
+	// (d) sans paliers : anneau vide, jamais masquée.
+	nt := byID["no-tiers"]
+	if nt.TierCount != 0 || nt.IsNewlyMastered || nt.ProgressPct != 0 {
+		t.Errorf("no-tiers: anneau vide attendu (TierCount=0, !newly, pct=0), got %+v", nt)
+	}
+
+	// Tri count DESC : newly(19) avant progressing(10) avant no-tiers(2) avant newly-edge(1).
+	if got[0].ID != "newly" {
+		t.Errorf("tri count DESC attendu, got[0]=%s", got[0].ID)
+	}
+
+	// Toutes pré-masterisées → onglet vide + section signalée indisponible.
+	allMastered := []canonical.Commendation{
+		{ID: "m1", Count: 1, Progress: 200, TierTargets: sniperTiers},
+		{ID: "m2", Count: 2, Progress: 150, TierTargets: sniperTiers},
+	}
+	emptyTab, unavail := buildCanonicalCitationsTab(allMastered)
+	if !unavail || len(emptyTab.NativeCommendations) != 0 {
+		t.Errorf("toutes pré-masterisées → onglet vide + indisponible, got unavail=%v len=%d",
+			unavail, len(emptyTab.NativeCommendations))
+	}
+}
+
 func containsReason(reasons []string, want string) bool {
 	for _, r := range reasons {
 		if r == want {

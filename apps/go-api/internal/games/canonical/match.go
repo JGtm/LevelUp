@@ -101,6 +101,15 @@ type Commendation struct {
 	Name string
 	// IconURL = icône native si connue, sinon nil (Phase 1 : pas de définitions).
 	IconURL *string
+	// Progress = total cumulatif À VIE de la commendation À CE match (valeur absolue
+	// de 343, shared.match_commendations.progress). Permet de dériver le palier
+	// atteint + masterisé (parité Cumulative des citations Infinite). 0 si la donnée
+	// native ne le porte pas (lignes pré-migration / source live) → anneau vide.
+	Progress int
+	// TierTargets = CSV croissant des seuils de paliers de la commendation
+	// (commendation_definitions.tier_targets, ex. "5,15,30,55,105"). Vide → pas de
+	// paliers connus (Meta/Daily ou définition non seedée) → ProgressPct=0.
+	TierTargets string
 }
 
 // CommendationDefinition — référentiel natif (nom + icône CDN + catégorie) d'une

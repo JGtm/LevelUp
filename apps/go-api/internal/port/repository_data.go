@@ -102,6 +102,15 @@ type CitationsRepository interface {
 	// LoadMatchCitationsRich charge les citations riches d'un match (Q41) : delta + cumul + tiers.
 	// Utilisé par le Summary tab pour les progress rings et le filtrage mastery.
 	LoadMatchCitationsRich(ctx context.Context, matchID string) ([]domain.HomeMatchCitationRaw, error)
+
+	// LoadMatchCommendationsRich charge les commendations NATIVES (Halo 5) gagnées
+	// par un joueur (xuid) sur UN match : ID + nom + icône + count (delta) + progress
+	// (cumul à vie) + tier_targets. Match-scoped (toutes les commendations du match,
+	// PAS de top-N : le filtrage mastery + la sélection sont faits au build côté
+	// service). Source = shared.match_commendations ⨝ commendation_definitions.
+	// Dégradation silencieuse : titre sans table (Infinite) / SharedReader indispo →
+	// slice vide. Le viewer doit fournir son xuid (les commendations sont par joueur).
+	LoadMatchCommendationsRich(ctx context.Context, matchID, xuid string) ([]domain.HomeMatchCommendationRaw, error)
 }
 
 // MatchExclusionRepository gère le flag is_excluded dans player_match_enrichment.
@@ -237,6 +246,9 @@ func (n *noopCitationsRepo) LoadMatchCitationsForView(_ context.Context, _ strin
 	return nil, nil
 }
 func (n *noopCitationsRepo) LoadMatchCitationsRich(_ context.Context, _ string) ([]domain.HomeMatchCitationRaw, error) {
+	return nil, nil
+}
+func (n *noopCitationsRepo) LoadMatchCommendationsRich(_ context.Context, _, _ string) ([]domain.HomeMatchCommendationRaw, error) {
 	return nil, nil
 }
 

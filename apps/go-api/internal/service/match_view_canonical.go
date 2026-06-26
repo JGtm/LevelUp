@@ -129,7 +129,8 @@ func (s *MatchViewService) buildMatchViewFromCanonical(ctx context.Context, deta
 		return domain.MatchViewResponse{IsPartial: true}
 	}
 	self := canonicalSelfParticipant(ctx, detail.Participants)
-	citationsTab, citationsUnavailable := buildCanonicalCitationsTab(detail.Commendations)
+	comms := s.loadCanonicalCommendations(ctx, detail)
+	citationsTab, citationsUnavailable := buildCanonicalCitationsTab(comms)
 	return domain.MatchViewResponse{
 		Header:         s.buildCanonicalHeader(detail, self),
 		Rank:           buildCanonicalRank(detail.Skill),
@@ -141,27 +142,6 @@ func (s *MatchViewService) buildMatchViewFromCanonical(ctx context.Context, deta
 		IsPartial:      true,
 		PartialReasons: canonicalPartialReasons(citationsUnavailable),
 	}
-}
-
-// buildCanonicalCitationsTab projette les commendations NATIVES (Halo 5) du détail
-// canonique vers l'onglet Citations, affichées TELLES QUELLES (AXE B). Retourne
-// aussi un flag « indisponible » (aucune commendation native) qui pilote l'ajout
-// de partialReasonCitations : si des commendations existent, la section n'est plus
-// considérée comme manquante.
-func buildCanonicalCitationsTab(comms []canonical.Commendation) (domain.MatchCitationsTab, bool) {
-	if len(comms) == 0 {
-		return domain.MatchCitationsTab{}, true
-	}
-	native := make([]domain.MatchNativeCommendation, 0, len(comms))
-	for _, c := range comms {
-		native = append(native, domain.MatchNativeCommendation{
-			ID:      c.ID,
-			Name:    c.Name,
-			Count:   c.Count,
-			IconURL: c.IconURL,
-		})
-	}
-	return domain.MatchCitationsTab{NativeCommendations: native}, false
 }
 
 // canonicalSelfParticipant retrouve le participant du viewer (gamertag du ctx,
