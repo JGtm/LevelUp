@@ -59,6 +59,13 @@ type MatchRegistryRow struct {
 	// Cf. internal/migration/steps_engagement.go.
 	MatchIntensity *float64
 
+	// PlayerCount (SMALLINT) — TAILLE du roster reporté par l'API pour ce match
+	// (nb de joueurs dans le carnage/scoreboard), AVANT tout resolve-or-skip xuid.
+	// Oracle d'intégrité : roster attendu vs lignes match_participants réellement
+	// persistées (un écart = joueurs droppés faute de résolution xuid). 0 = inconnu
+	// (titre/chemin qui ne le renseigne pas) → la colonne reste à son DEFAULT 0.
+	PlayerCount int
+
 	// BackfillCompleted (INTEGER, bitmask) — état d'avancement du backfill pour
 	// ce match. En mode INSERT-only (Phase 1 refactor Collect→Persist), la
 	// valeur finale doit être calculée AVANT le Submit du batch (cumulative

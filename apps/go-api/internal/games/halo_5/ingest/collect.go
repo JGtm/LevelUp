@@ -33,6 +33,7 @@ func CollectMatchBatch(
 	participants []domain.MatchParticipantRow,
 	commendations []persist.CommendationInsert,
 	team0Score, team1Score *int,
+	playerCount int,
 	resolveXUID func(gamertag string) string,
 ) *persist.MatchBatch {
 	registry := MatchRegistryRowFromSummary(summary, viewer.Gamertag)
@@ -40,6 +41,10 @@ func CollectMatchBatch(
 	// porte pas ; renseigne dominance exacte + affichage du score. nil → laissés NULL.
 	registry.Team0Score = team0Score
 	registry.Team1Score = team1Score
+	// player_count = roster reporté par l'API (carnage), oracle d'intégrité vs les
+	// lignes match_participants réellement persistées. 0 (carnage indisponible) →
+	// laissé au DEFAULT 0 de la colonne (inconnu).
+	registry.PlayerCount = playerCount
 	medals, medalEvents := MapMedalEvents(summary.MatchID, timeline, resolveXUID)
 	pairs, weapons := MapKillEvents(summary.MatchID, timeline, resolveXUID)
 	positions := MapKillPositions(summary.MatchID, timeline, resolveXUID)

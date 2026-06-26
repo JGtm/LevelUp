@@ -78,11 +78,16 @@ func TestCollectMatchBatch_EndToEnd(t *testing.T) {
 		{MatchID: "m1", XUID: "xB", CommendationID: "uuid-2", Count: 1},
 	}
 
-	batch := CollectMatchBatch("halo_5", "h5_capture", viewer, s, timeline, participants, commendations, intptr(50), intptr(30), resolve)
+	batch := CollectMatchBatch("halo_5", "h5_capture", viewer, s, timeline, participants, commendations, intptr(50), intptr(30), 8, resolve)
 
 	if batch.Shared.Match == nil || batch.Shared.Match.Team0Score == nil || *batch.Shared.Match.Team0Score != 50 ||
 		batch.Shared.Match.Team1Score == nil || *batch.Shared.Match.Team1Score != 30 {
 		t.Fatalf("scores objectif d'équipe non posés sur le registry: %+v", batch.Shared.Match)
+	}
+	// player_count = roster API reporté (8), oracle d'intégrité vs les participants
+	// réellement persistés (2 ici → 6 droppés, signalés par l'écart).
+	if batch.Shared.Match.PlayerCount != 8 {
+		t.Errorf("player_count = %d, want 8 (roster API)", batch.Shared.Match.PlayerCount)
 	}
 
 	if batch.TitleSlug != "halo_5" || batch.Player != "Madina97294" || batch.XUID != "xA" {

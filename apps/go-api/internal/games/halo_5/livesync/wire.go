@@ -11,7 +11,6 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/persist"
-	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/worldenrich"
@@ -143,15 +142,17 @@ func halo5ResolverFactory(cfg *config.AppConfig, viewerGamertag, viewerXUID stri
 		// répartir les résolutions en round-robin sur tous les comptes tokenisés
 		// multiplie le quota effectif (le storm 429 venait d'un seul compte saturé).
 		// BuildMultiResolver ignore les comptes sans token → fallback single si aucun.
+		// Chaque résolveur est une chaîne PeopleHub→Profil Xbox (fallback universel
+		// hors graphe social, fix #10) — câblé dans worldenrich, transparent ici.
 		resolvers, _, err := worldenrich.BuildMultiResolver(cfg, allResolverGamertags(cfg, viewerGamertag))
 		if err != nil || len(resolvers) == 0 {
 			base, berr := worldenrich.BuildResolver(cfg, viewerGamertag)
 			if berr != nil {
-				logger.WarnContext(ctx, "h5 sync: resolver PeopleHub indisponible (xuid roster non résolus)",
+				logger.WarnContext(ctx, "h5 sync: resolver xuid indisponible (xuid roster non résolus)",
 					"viewer", viewerGamertag, "err", berr)
 				return nil
 			}
-			resolvers = []*auth.PeopleHubResolver{base}
+			resolvers = []worldenrich.XUIDResolver{base}
 		}
 		// Graine = mapping déjà connu (shared.xuid_aliases, écrit par les runs
 		// précédents) → on NE re-résout PAS les joueurs déjà vus via PeopleHub.
