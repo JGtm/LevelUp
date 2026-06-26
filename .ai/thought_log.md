@@ -1,3 +1,61 @@
+## [2026-06-26] Hardening H5 round 4 — page Escouade title-agnostic (6 retours) — COMPLÉTÉ (verts ; deploy pending)
+
+**Contexte** : 6 retours utilisateur sur la page Escouade, exigence "du solide qui tiendra pour un 3e jeu" (pas de rustines). Investigation (workflow 5 agents) → fil rouge : la page /squad est servie par un chemin LEGACY (TeammatesService/SquadRepo) qui court-circuite les adapters canoniques. DÉCISION ARCHI : **RETROFIT capability-gated, PAS migration v2** (la cause racine events est identique dans les deux voies — migrer ne corrige rien + gros chantier parité → rejeté).
+
+**6 fixes title-agnostic livrés** (détail dans les entrées par-LOT ci-dessous) :
+1. **Médailles non traduites (titre+desc, Escouade + tab assets, 2 titres)** : `medal_definitions_repo.go` COALESCE omettait `name_fr`/`description_fr`. Helper SQL centralisé locale-aware (`medal_label_resolve.go`) réutilisé par les lecteurs + `AssetMeta.Description` exposé. Data-driven, zéro capability.
+2. **Notes de version + changelog cassés (2 titres)** : `docs/` jamais copié dans l'image Docker → `COPY docs /app/docs` (Dockerfile). Cause = packaging, pas code.
+3. **Graphes vides (premier frag/mort, intensité, impact 1 badge)** : lisaient `highlight_events` en dur (vide H5). Fallback synthèse `SynthesizeKillEventsFromKVPairs` centralisé au niveau LECTURE (SquadRepo.LoadImpactEvents + HighlightEventsRepo.Load) → couvre Escouade + timeseries solo + v2. Presence-driven, no-op Infinite.
+4. **Folie meurtrière max** : était (à tort) marquée non-supportée ; CORRIGÉ sur directive user → CALCULÉE depuis la timeline kill/death (`analysis.ComputeMaxKillingSpree`), gate = capability events-timeline (H5 supporté). Native-ou-calculée (Infinite native inchangé).
+5. **Colonnes MMR (=0 trompeur)** : trait `provides_team_mmr` (miroir ProvidesDamageTaken) → colonne masquée (Squad + Explorer) + `TeamMMRAvg *float64` nil. MMR = vrai non-supporté (non calculable).
+6. **Mode absent du tableau** : H5 met PairMode=nil mais `game_variant_id` est stocké (3032/3032) + traductions seedées → fallback read-time `pair_name vide → nom game_variant` (5d16ff8d → "Capture du drapeau"). Zéro backfill. Les tuiles/match-view/v2 avaient déjà ce fallback.
+
+**Revue adversariale** : 1 bloquant trouvé+corrigé (crash SynthesisPage sur `max_killing_spree` *int nil non gardé) + drift contrat aligné (openapi `max_killing_spree` optionnel + AssetMeta description/sprites régénérés, shim retiré) + 2 fichiers Go redescendus < 500 L (squad_repo 560→430, weapons_perf 530→498).
+
+**Résultats** : build ./... + vet ./... verts ; tests Go (service/duckdb/games/analysis/api) verts ; ratchet anti-slug (TestNoNewSlugComparison) vert ; typecheck front (2 erreurs admin PRÉEXISTANTES) + lint + lint-contract-ratchet verts. ZÉRO slug==, NO-OP Infinite vérifié. **Deploy = CODE-ONLY** (aucune data op : médailles lisent les colonnes name_fr existantes, mode lit game_variant_id + asset_translations déjà en prod du round précédent). Le Dockerfile COPY docs exige le rebuild d'image (auto-deploy le fait).
+
+**Prochaine étape** : commit + push main (auto-deploy + rebuild image) sur autorisation. Cf. [[reference_squad_page_legacy_service_composition]], [[reference_asset_translations_fr]], [[reference_killfeed_deadstate_fields]].
+
+---
+
+## [2026-06-26] Vague 2 front — câblage title-agnostic des capabilities H5 (MMR / spree / description médaille) — COMPLÉTÉ (typecheck/lint verts)
+
+**Contexte** : le backend a exposé sur `TitleSummary` les flags `provides_team_mmr?` + `provides_max_killing_spree?` et sur `AssetMeta` les champs `description?` + `description_fr?` (médailles). Vague 2 = câbler le rendu front, gating UNIQUEMENT via les capabilities (jamais le slug).
+
+**Décision technique** :
+1. **2 hooks de capability** (`apps/web/src/lib/damage/effectiveHp.ts`, sur le modèle exact de `useProvidesDamageTaken`) : `useProvidesTeamMmr()` (lit `provides_team_mmr`, défaut `true`) et `useProvidesMaxKillingSpree()` (lit `provides_max_killing_spree`, défaut `true`). Défaut true = ne jamais masquer sur Infinite quand le champ est absent.
+2. **Colonne MMR Escouade** (`SquadMatchHistoryTable.tsx`) : colonne `team_mmr_avg` insérée conditionnellement via spread `...(providesTeamMmr ? [col] : [])` dans le `useMemo` des colonnes (deps + `providesTeamMmr`). Colonne RETIRÉE (pas valeur nulle) quand faux.
+3. **Colonnes MMR Explorer** (`ExplorerMatchesTable.tsx`) : les 3 colonnes `team_mmr` / `enemy_mmr` / `delta_mmr` gatées de même.
+4. **Série « Folie meurtrière max »** (`SquadPerformanceCharts.tsx`) : ChartCard `buildMaxSpree` rendu `{providesMaxSpree && (...)}`. Pour H5 le flag est désormais `true` (backend calcule la spree depuis les events) → série AFFICHÉE ; masquage seulement si flag false. La série se peuple bien : `extractValue(p, 'max_killing_spree')` → `p.max_killing_spree ?? null` → `rawData[idx]` non-null quand la valeur arrive (type `SquadPerformanceSeriesPoint.max_killing_spree?` confirmé dans generated.ts).
+5. **Description médaille** (`AssetCard.tsx`) : `description` locale-aware (`fr → description_fr` sinon `description`), rendue en sous-texte (`line-clamp-2`) + ajoutée au `title` (tooltip). Ne rien afficher si undefined (omitempty). Shim `AssetMeta` (`lib/api/types.ts`) étendu avec `description?` + `description_fr?` (même pattern que les sprites : le Go canonical les porte déjà, pas encore régénérés dans le contrat OpenAPI `AssetMeta`).
+6. **MedalDigest.tsx** : VÉRIFIÉ — consomme déjà `item.label` + `item.description` (via `medalTooltip`), aucune transformation front ne les écrase. Rien à faire (fix médaille 100% backend).
+
+**Résultats observés** : `npm run typecheck` = seules les 2 erreurs préexistantes (`diagnostics.test.ts` / `tabBadges.test.ts`), aucune nouvelle. `npm run lint` = 0 erreur, 74 warnings tous préexistants (les warnings `useReactTable` incompatible-library sur squad/explorer existaient déjà, appel inchangé). Gating 100% capability, zéro slug==. Aucun hex/Tailwind couleur en dur ajouté ; pas de nouvelle string i18n nécessaire (la description est du texte backend déjà localisé).
+
+**Prochaine étape** : commit sur autorisation.
+
+---
+
+## [2026-06-26] LOT D (correction) — max killing spree H5 : CALCULÉE, pas masquée — COMPLÉTÉ (build/vet/test/typecheck verts)
+
+**Correction de conception (sur directive user)** : j'avais marqué (à tort) la « folie meurtrière max » NON SUPPORTÉE pour H5 (flag statique `no_max_killing_spree=true` dans constants.toml + helper dérivé du modèle de dégâts). FAUX : la spree = nombre de kills d'affilée AVANT de mourir est CALCULABLE depuis la timeline kill/death horodatée que H5 fournit (killer_victim_pairs, synthétisés en canonical via `SynthesizeKillEventsFromKVPairs`). Nouvelle sémantique : **supportée dès que le titre porte des kills horodatés par match**.
+
+**Décision technique** :
+1. **REVERT** `no_max_killing_spree=true` (halo_5/constants.toml) ; suppression du champ `NoMaxKillingSpree` (mappings/endpoints.go + loader_endpoints.go). `provides_team_mmr` NON touché (MMR = vrai non-supporté, non calculable).
+2. **Redéfinition title-agnostic de `games.ProvidesMaxKillingSpree`** : ne dérive PLUS d'un flag damage_model mais de la **capability events-timeline** (`CapMatchEventsTimeline`), exactement le pattern `ProvidesLiveCareerProgressionFromResolver` (CapabilityResolver). true pour H5 (events supported) + Infinite (degraded, `Has()` couvre les deux) ; false UNIQUEMENT pour un titre déclarant ses caps SANS events-timeline ; défaut true (resolver nil/sans extension/sans caps). Zéro slug==.
+3. **Helper pur `analysis.ComputeMaxKillingSpree(events []canonical.HighlightEvent, xuid string) int`** (max_killing_spree.go, près de kv_synthetic_events.go) : tri stable par TimeMS (copie locale, ne mute pas l'input), kill du joueur (XUID==xuid) → compteur+1 + MAJ max, death du joueur → reset 0. Testé (3 kills→death→2 kills = 3 ; spree finale plus longue ; events non triés ; kills d'un autre ignorés ; aucun event = 0 ; xuid vide = 0 ; médaille ignorée ; non-mutation).
+4. **Valeur = native-ou-calculée (NO-OP Infinite garanti)** : la valeur native `match_participants.max_killing_spree` fait foi quand présente (Infinite, PAS de recalcul) ; sinon calcul depuis les events du match. Câblé sur 2 consommateurs qui ONT les events :
+   - **Squad legacy** (`buildSquadPerformanceSeries`, teammates) : threadé mainXUID+teammates ; nouveau `loadCanonicalKillEventsByMatch` (via `SquadRepo.LoadImpactEvents`, fallback kvPairs déjà câblé par un autre agent ce round → events H5 dispo). Calcul par (match, xuid) si native absente.
+   - **Squad V2** (`BuildKillingSpreeMax`) : reçoit `events []canonical.HighlightEvent` + `squadXUIDs` (déjà chargés via `HighlightEventsRepo.Load` qui a AUSSI le fallback kvPairs). Helpers `groupKillEventsByMatch` + `resolveSpreeForRow` (native→calcul→skip).
+
+**Consommateurs SANS events (laissés en native, SIGNALÉS pour câblage séparé)** : synthesis (`canonical.PlayerMatchRow`, pas d'events kill/death chargés), session_compare + session_page (`legacymatch.StatsMatchRow`), timeseries (`analysis.StatsMatchRow` depuis canonical). Tous opèrent sur la valeur native par match (nil pour H5 actuellement) — NON marqués "non supportés" statiquement (le flag global est désormais true) ; ils traceront la spree calculée quand le chargement d'events y sera ajouté.
+
+**Résultats observés** : `provides_max_killing_spree` H5 = **true** (était false) ; Infinite inchangé (native) ; titre sans events horodatés = false. Tests games (`TestProvidesMaxKillingSpree` réécrit capability-driven, `TestH5ProvidesTeamMMRAndMaxKillingSpree` : H5 spree true / team_mmr false) + analysis (`ComputeMaxKillingSpree`) + service (squad v2 contributions : calcul-depuis-events + native-fait-foi) verts. `CGO_ENABLED=1 go build ./...` + `go vet` (games/analysis/service/api) + `go test -gcflags=all=-d=checkptr=0` (games/analysis/service/api) verts. OpenAPI + types.gen.go + generated.ts régénérés (description `provides_max_killing_spree` mise à jour ; régen Go a aussi resync la dérive pré-existante déjà dans openapi.yaml — fichier généré, attendu) ; `tsc --noEmit` vert.
+
+**Prochaine étape** : commits (sur autorisation) ; câblage d'events vers synthesis/session/timeseries en passe séparée (chargement absent là-bas). Cf. [[project_halo5_experimental_direction]], [[reference_killfeed_deadstate_fields]], [[reference_squad_page_legacy_service_composition]].
+
+---
+
 ## [2026-06-26] Hardening H5 round 3 (suite) — #10 roster = RACINE de #6/#7b : reconstruction offline + re-fetch — COMPLÉTÉ (ops data locales)
 
 **Correction d'une erreur d'analyse (auto-critique)** : j'avais conclu à tort que LUSR/win-prob étaient réservés au classé et que 5d16ff8d (non classé) n'avait "par design" pas de LUSR. FAUX — l'utilisateur l'a corrigé : LUSR existe pour TOUS les matchs (il comble l'absence de CSR sur le non-classé) et la win-prob est universelle. Le vrai diagnostic, prouvé : **#6 (pas de LUSR) et #7b (pas de win-prob) sont une CASCADE de #10 (roster incomplet)**.

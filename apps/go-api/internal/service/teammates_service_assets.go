@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
@@ -21,18 +22,28 @@ func enrichSquadMatchAssets(ctx context.Context, repo port.SquadRepository, rows
 	mapIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.MapID })
 	playlistIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.PlaylistID })
 	pairIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.PairID })
+	gameVariantIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.GameVariantID })
 
-	mapFR, err := repo.LoadAssetTranslationsFR(ctx, "map", mapIDs)
+	mapFR, err := repo.LoadAssetTranslationsFR(ctx, games.AssetKindMap, mapIDs)
 	if err != nil {
 		slog.WarnContext(ctx, "teammates: LoadAssetTranslationsFR map failed", "err", err)
 	}
-	playlistFR, err := repo.LoadAssetTranslationsFR(ctx, "playlist", playlistIDs)
+	playlistFR, err := repo.LoadAssetTranslationsFR(ctx, games.AssetKindPlaylist, playlistIDs)
 	if err != nil {
 		slog.WarnContext(ctx, "teammates: LoadAssetTranslationsFR playlist failed", "err", err)
 	}
-	pairAssetFR, err := repo.LoadAssetTranslationsFR(ctx, "pair", pairIDs)
+	pairAssetFR, err := repo.LoadAssetTranslationsFR(ctx, games.AssetKindPair, pairIDs)
 	if err != nil {
 		slog.WarnContext(ctx, "teammates: LoadAssetTranslationsFR pair failed", "err", err)
+	}
+	// game_variant (FR) : source du mode pour les titres SANS pair_name (Halo 5).
+	// Le mode = nom de la variante de jeu résolu depuis game_variant_id. Même
+	// résolveur que map/playlist/pair (asset_translations) — read-time, zéro
+	// backfill. Title-agnostic : Infinite a pair_name → ce fallback n'est pas
+	// consulté (squadModeUI le préfère). Un 3e titre sans pair_name en bénéficie.
+	gameVariantFR, err := repo.LoadAssetTranslationsFR(ctx, games.AssetKindGameVariant, gameVariantIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "teammates: LoadAssetTranslationsFR game_variant failed", "err", err)
 	}
 	// mode_name_tr (FR) des modes EN normalisés — dérivés du pair_name brut ET
 	// des noms d'asset résolus, pour couvrir le cas pair_name=UUID. Même cascade
@@ -45,6 +56,9 @@ func enrichSquadMatchAssets(ctx context.Context, repo port.SquadRepository, rows
 		}
 		if fr := strings.TrimSpace(playlistFR[rows[i].PlaylistID]); fr != "" {
 			rows[i].PlaylistName = fr
+		}
+		if fr := strings.TrimSpace(gameVariantFR[rows[i].GameVariantID]); fr != "" {
+			rows[i].GameVariantNameFR = fr
 		}
 		// Résolution canonique du libellé FR du mode (source unique partagée avec
 		// home / historique / filtres). Gère pair_name brut, vide ou UUID.
@@ -110,10 +124,20 @@ func collectUniqueIDs(rows []domain.SquadMatchRow, idOf func(domain.SquadMatchRo
 // canonique, sinon EN brut), puis masque un éventuel UUID résiduel (trou de
 // metadata) pour ne JAMAIS afficher d'UUID — même garde que cleanAssetLabel
 // côté home. Retourne "" si rien d'exploitable (le front affiche alors "-").
+//
+// Fallback title-agnostic (presence-driven) : si la source pair_name/pair_name_fr
+// est vide (titre SANS pair_name — Halo 5), le mode retombe sur le nom de la
+// variante de jeu (GameVariantNameFR, résolu depuis game_variant_id via
+// asset_translations). Infinite (qui a pair_name) est inchangé : la source pair
+// est préférée. Aucun gating par titre — c'est une résolution de données.
 func squadModeUI(m domain.SquadMatchRow) string {
 	src := m.PairNameFR
 	if strings.TrimSpace(src) == "" {
 		src = m.PairName
+	}
+	if strings.TrimSpace(src) == "" {
+		// Titre sans pair_name : le mode = nom de la variante de jeu.
+		src = m.GameVariantNameFR
 	}
 	ui := analysis.NormalizeModeLabel(src, m.MapUI)
 	if analysis.IsRawAssetUUID(ui) {
@@ -181,7 +205,12 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 // mapWR : (wins, total) par MapID sur l'historique complet du joueur
 // principal — sert à injecter le taux historique par carte. Si nil ou clé
 // absente, WinRateHist reste nil (la cellule front affiche "—").
-func buildSquadMatchHistory(matches []domain.SquadMatchRow, mapWR map[string][2]int) []domain.SquadMatchHistoryRow {
+//
+// titleSlug : titre courant. Quand le titre ne fournit pas de MMR d'équipe
+// (games.ProvidesTeamMMR=false, ex. Halo 5), TeamMMRAvg reste nil (la colonne MMR
+// est masquée côté front) au lieu d'afficher un 0 trompeur.
+func buildSquadMatchHistory(matches []domain.SquadMatchRow, mapWR map[string][2]int, titleSlug string) []domain.SquadMatchHistoryRow {
+	provideTeamMMR := games.ProvidesTeamMMR(titleSlug)
 	seen := make(map[string]struct{}, len(matches))
 	rows := make([]domain.SquadMatchHistoryRow, 0, len(matches))
 	for _, m := range matches {
@@ -192,10 +221,18 @@ func buildSquadMatchHistory(matches []domain.SquadMatchRow, mapWR map[string][2]
 			continue
 		}
 		seen[m.MatchID] = struct{}{}
-		var deltaMMR *float64
-		if m.EnemyMMR != nil {
-			d := m.TeamMMR - *m.EnemyMMR
-			deltaMMR = &d
+		// MMR (équipe / adverse / delta) : nil quand le titre ne fournit pas de MMR
+		// d'équipe (Halo 5) → la colonne MMR est masquée côté front au lieu d'afficher
+		// un 0 trompeur. Les trois champs partent ensemble (delta dérive des deux).
+		var teamMMR, deltaMMR, enemyMMR *float64
+		if provideTeamMMR {
+			tm := m.TeamMMR
+			teamMMR = &tm
+			enemyMMR = m.EnemyMMR
+			if m.EnemyMMR != nil {
+				d := m.TeamMMR - *m.EnemyMMR
+				deltaMMR = &d
+			}
 		}
 		var scoreLabel string
 		if m.MyTeamScore != nil && m.EnemyTeamScore != nil {
@@ -233,8 +270,8 @@ func buildSquadMatchHistory(matches []domain.SquadMatchRow, mapWR map[string][2]
 			Assists:                 m.Assists,
 			Accuracy:                m.Accuracy,
 			PerformanceScore:        m.PerformanceScore,
-			TeamMMRAvg:              m.TeamMMR,
-			EnemyMMRAvg:             m.EnemyMMR,
+			TeamMMRAvg:              teamMMR,
+			EnemyMMRAvg:             enemyMMR,
 			DeltaMMR:                deltaMMR,
 			ScoreLabel:              scoreLabel,
 			DurationSeconds:         m.DurationSeconds,

@@ -39,6 +39,7 @@ import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
 import type { ContextDescriptor, MatchFilterSpec } from '@/lib/match-nav/navContext'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
+import { useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
@@ -178,6 +179,11 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   const playlistAssets = mappings?.assets?.['playlist']
   const labelOfMap = (mapUI: string) => mapAssets?.[mapUI]?.label ?? mapUI
   const labelOfPlaylist = (p?: string | null) => (p ? (playlistAssets?.[p]?.label ?? p) : '-')
+
+  // Title-agnostic : les 3 colonnes MMR n'ont de sens que si le titre courant
+  // fournit un MMR par match (gating via capability, jamais via slug). Faux pour
+  // Halo 5 → on retire les colonnes MMR équipe / MMR adv. / ΔMMR.
+  const providesTeamMmr = useProvidesTeamMmr()
 
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const filterContext = useSoloFilterStore((s) => s.filterContext)
@@ -471,32 +477,38 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
           return ctx.getValue<string | null | undefined>() ?? '-'
         },
       },
-      {
-        accessorKey: 'team_mmr',
-        header: () => renderTwoLineHeader(t('explorer.matches.col_team_mmr')),
-        cell: (ctx) => (
-          <span className="text-muted-foreground font-mono tabular-nums">
-            {fmtMmr(ctx.getValue<number | null | undefined>())}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'enemy_mmr',
-        header: () => renderTwoLineHeader(t('explorer.matches.col_enemy_mmr')),
-        cell: (ctx) => (
-          <span className="text-muted-foreground font-mono tabular-nums">
-            {fmtMmr(ctx.getValue<number | null | undefined>())}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'delta_mmr',
-        header: t('explorer.matches.col_delta_mmr'),
-        cell: (ctx) => fmtDeltaMMR(ctx.getValue<number | null | undefined>()),
-      },
+      // Colonnes MMR (équipe / adverse / Δ) : incluses uniquement si le titre
+      // courant fournit le MMR par match (Halo 5 → masquées).
+      ...(providesTeamMmr
+        ? [
+            {
+              accessorKey: 'team_mmr',
+              header: () => renderTwoLineHeader(t('explorer.matches.col_team_mmr')),
+              cell: (ctx) => (
+                <span className="text-muted-foreground font-mono tabular-nums">
+                  {fmtMmr(ctx.getValue<number | null | undefined>())}
+                </span>
+              ),
+            } as ColumnDef<ExplorerMatchRow>,
+            {
+              accessorKey: 'enemy_mmr',
+              header: () => renderTwoLineHeader(t('explorer.matches.col_enemy_mmr')),
+              cell: (ctx) => (
+                <span className="text-muted-foreground font-mono tabular-nums">
+                  {fmtMmr(ctx.getValue<number | null | undefined>())}
+                </span>
+              ),
+            } as ColumnDef<ExplorerMatchRow>,
+            {
+              accessorKey: 'delta_mmr',
+              header: t('explorer.matches.col_delta_mmr'),
+              cell: (ctx) => fmtDeltaMMR(ctx.getValue<number | null | undefined>()),
+            } as ColumnDef<ExplorerMatchRow>,
+          ]
+        : []),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [intlLocale, mapAssets, playlistAssets, locale, goToMatch],
+    [intlLocale, mapAssets, playlistAssets, locale, goToMatch, providesTeamMmr],
   )
 
   // Insère les colonnes injectées par le consommateur après `extraColumnsAfterId`

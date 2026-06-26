@@ -13,13 +13,17 @@ interface AssetCardProps {
 export function AssetCard({ asset, locale, kind }: AssetCardProps) {
   const label = locale === 'fr' && asset.name_fr ? asset.name_fr : asset.name_en
 
+  // Description médaille (locale-aware) : fr → description_fr sinon description.
+  // omitempty côté backend → undefined → on ne rend rien (maps/armes inclus).
+  const description = (locale === 'fr' && asset.description_fr ? asset.description_fr : asset.description) || undefined
+
   // Médailles Halo 5 : icône = découpe d'une feuille de sprites (background-position).
   const isSprite = kind === 'medals' && !!asset.sprite_sheet
 
   return (
     <div
       className="flex flex-col overflow-hidden rounded border border-border bg-card text-card-foreground"
-      title={label}
+      title={description ? `${label} — ${description}` : label}
     >
       <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-muted">
         {isSprite ? (
@@ -48,9 +52,17 @@ export function AssetCard({ asset, locale, kind }: AssetCardProps) {
           />
         )}
       </div>
-      <p className="truncate px-1.5 py-1 text-3xs leading-tight text-muted-foreground">
+      <p className="truncate px-1.5 pt-1 text-3xs leading-tight text-foreground/80">
         {label}
       </p>
+      {description && (
+        <p
+          className="line-clamp-2 px-1.5 pb-1 text-3xs leading-tight text-muted-foreground"
+          title={description}
+        >
+          {description}
+        </p>
+      )}
     </div>
   )
 }

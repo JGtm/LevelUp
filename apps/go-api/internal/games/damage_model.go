@@ -117,3 +117,62 @@ func ProvidesDamageTakenFromResolver(res EndpointResolver, slug string) bool {
 	}
 	return true
 }
+
+// ProvidesTeamMMR indique si le titre fournit un MMR d'équipe (et adverse) par
+// match via son API. Faux pour Halo 5 (no_team_mmr=true) : le carnage cryptum h5
+// ne porte pas de MMR d'équipe/adverse → la colonne MMR du tableau Escouade (et
+// d'Explorer) doit être MASQUÉE plutôt que d'afficher un « 0 » trompeur. Les
+// surfaces qui en dépendent neutralisent la valeur (nil) au lieu de la fabriquer.
+// Défaut true (Infinite). Source = config, JAMAIS de slug== (règle title-agnostic).
+func ProvidesTeamMMR(slug string) bool {
+	return ProvidesTeamMMRFromResolver(DefaultEndpointResolver(), slug)
+}
+
+// ProvidesTeamMMRFromResolver est la forme testable de ProvidesTeamMMR (point
+// d'injection du resolver). Défaut true si resolver nil / sans extension / titre
+// sans [damage_model].
+func ProvidesTeamMMRFromResolver(res EndpointResolver, slug string) bool {
+	if dmr, ok := res.(DamageModelResolver); ok {
+		if dm, found := dmr.DamageModelFor(slug); found {
+			return !dm.NoTeamMMR
+		}
+	}
+	return true
+}
+
+// ProvidesMaxKillingSpree indique si le titre SUPPORTE la « folie meurtrière max »
+// par match (nombre de kills d'affilée avant de mourir). Contrairement aux autres
+// traits du modèle de dégâts, ce n'est PAS un flag statique mais une DÉRIVATION de
+// la capability events-timeline (CapMatchEventsTimeline) du titre : dès que le titre
+// sert des kills HORODATÉS par match (events kill/death), la spree est CALCULABLE
+// (analysis.ComputeMaxKillingSpree) même si la valeur native est absente — Halo 5
+// (match_participants.max_killing_spree NULL) porte ses kills horodatés dans
+// killer_victim_pairs (capability supported) → la spree est calculée, pas masquée.
+//
+// Conséquence côté valeur : la valeur native fait foi quand elle existe (Infinite,
+// pas de recalcul) ; sinon on la calcule depuis les events du match. Seul un titre
+// déclarant ses capabilities SANS events-timeline retourne false (vraie absence de
+// substrat). Défaut true (Infinite) si aucune capability n'est déclarée. Source =
+// capability, JAMAIS de slug== (règle title-agnostic).
+func ProvidesMaxKillingSpree(slug string) bool {
+	return ProvidesMaxKillingSpreeFromResolver(DefaultEndpointResolver(), slug)
+}
+
+// ProvidesMaxKillingSpreeFromResolver est la forme testable de ProvidesMaxKillingSpree
+// (point d'injection du resolver). Dérive de la capability events-timeline du titre,
+// même pattern que ProvidesLiveCareerProgressionFromResolver. Défaut true (Infinite)
+// si le resolver est nil / ne supporte pas l'extension CapabilityResolver / le titre
+// n'a aucune capability déclarée — préserve les instances mono-titre et les tests qui
+// ne câblent pas de resolver de capabilities.
+func ProvidesMaxKillingSpreeFromResolver(res EndpointResolver, slug string) bool {
+	cr, ok := res.(CapabilityResolver)
+	if !ok {
+		return true
+	}
+	caps, found := cr.CapabilitiesFor(slug)
+	if !found {
+		// Titre sans capabilities déclarées : supposer Infinite (défaut sûr).
+		return true
+	}
+	return caps.Has(CapMatchEventsTimeline)
+}

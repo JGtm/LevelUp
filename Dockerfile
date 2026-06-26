@@ -88,6 +88,14 @@ COPY config /app/config
 # pas dans le conteneur → 404 sur tout /static/* (prod + demo).
 COPY static /app/static
 
+# Docs (RELEASE_NOTES.md, CHANGELOG.md, FR/) — lus au runtime par
+# release_notes_service.go (docs/FR/RELEASE_NOTES.md) et changelog.go
+# (docs/CHANGELOG.md). Sans ce COPY, /app/docs n'existe pas dans le conteneur →
+# la page "Notes de version" (/help) renvoie 500 et /changelog 404 (les deux
+# titres). Les images de docs/ sont strippées par .dockerignore (*.png/*.jpg) ;
+# seuls les .md (légers) sont embarqués. Source globale à l'app (pas par-titre).
+COPY docs /app/docs
+
 # Stubs de config — écrasés au runtime par les volumes bind-mount
 RUN echo '{"version":"2.1","warehouse_path":"data/warehouse","profiles":{}}' > /app/db_profiles.json \
     && echo '{}' > /app/app_settings.json

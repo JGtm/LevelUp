@@ -121,8 +121,12 @@ func topNByFuncCanonical(rows []canonical.PlayerMatchRow, n int, less func(a, b 
 // Combat : headshot/grenade/melee/power kills, max killing spree.
 // Tir : shots fired/hit.
 // Dégâts : damage dealt/taken.
-func buildSynthesisDetailedStatsFromCanonical(rows []canonical.PlayerMatchRow) domain.SynthesisDetailedStats {
+//
+// provideSpree : false quand le titre ne porte pas le max killing spree (Halo 5) →
+// MaxKillingSpree reste nil (le front masque la stat) au lieu d'exposer un 0.
+func buildSynthesisDetailedStatsFromCanonical(rows []canonical.PlayerMatchRow, provideSpree bool) domain.SynthesisDetailedStats {
 	stats := domain.SynthesisDetailedStats{}
+	var maxSpree int
 	for _, r := range rows {
 		if r.Self.HeadshotKills != nil {
 			stats.TotalHeadshotKills += *r.Self.HeadshotKills
@@ -149,8 +153,8 @@ func buildSynthesisDetailedStatsFromCanonical(rows []canonical.PlayerMatchRow) d
 		if r.Self.ShoulderBashKills != nil {
 			stats.TotalShoulderBashKills += *r.Self.ShoulderBashKills
 		}
-		if r.Self.MaxKillingSpree != nil && *r.Self.MaxKillingSpree > stats.MaxKillingSpree {
-			stats.MaxKillingSpree = *r.Self.MaxKillingSpree
+		if r.Self.MaxKillingSpree != nil && *r.Self.MaxKillingSpree > maxSpree {
+			maxSpree = *r.Self.MaxKillingSpree
 		}
 		if r.Self.ShotsFired != nil {
 			stats.TotalShotsFired += *r.Self.ShotsFired
@@ -167,6 +171,9 @@ func buildSynthesisDetailedStatsFromCanonical(rows []canonical.PlayerMatchRow) d
 		if r.Self.TimePlayed != nil {
 			stats.TotalTimePlayedSeconds += *r.Self.TimePlayed
 		}
+	}
+	if provideSpree {
+		stats.MaxKillingSpree = &maxSpree
 	}
 	return stats
 }

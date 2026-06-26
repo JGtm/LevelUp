@@ -29,7 +29,7 @@ func TestSquadModeResolution_ResolvesUUIDViaAssetAndModeNameTr(t *testing.T) {
 	}
 
 	enrichSquadMatchAssets(context.Background(), repo, rows)
-	hist := buildSquadMatchHistory(rows, nil)
+	hist := buildSquadMatchHistory(rows, nil, "halo_infinite")
 
 	if len(hist) != 1 {
 		t.Fatalf("want 1 row, got %d", len(hist))
@@ -58,10 +58,72 @@ func TestSquadModeResolution_GuardsResidualUUID(t *testing.T) {
 	repo := &mockSquadRepo{} // aucune trad
 
 	enrichSquadMatchAssets(context.Background(), repo, rows)
-	hist := buildSquadMatchHistory(rows, nil)
+	hist := buildSquadMatchHistory(rows, nil, "halo_infinite")
 
 	if hist[0].ModeUI != "" {
 		t.Errorf("ModeUI doit être vide (UUID masqué), got %q", hist[0].ModeUI)
+	}
+}
+
+// TestSquadModeResolution_GameVariantFallbackWhenNoPairName : titre SANS
+// pair_name (Halo 5 : pair_name/pair_id vides, game_variant_id peuplé). Le mode
+// doit retomber sur le nom de la variante de jeu résolu depuis game_variant_id
+// via asset_translations (asset_type='game_variant'). Régression : la colonne
+// "Mode" Escouade affichait "-" pour Halo 5.
+func TestSquadModeResolution_GameVariantFallbackWhenNoPairName(t *testing.T) {
+	const gvID = "a2949322-dc84-45ab-8454-cf94fb28c189"
+	rows := []domain.SquadMatchRow{
+		{
+			MatchID:       "5d16ff8d",
+			MapUI:         "Truth",
+			PairName:      "", // Halo 5 : pas de pair_name
+			PairID:        "",
+			GameVariantID: gvID,
+		},
+	}
+	repo := &mockSquadRepo{
+		assetFR: map[string]map[string]string{
+			// Résolution game_variant_id → nom FR (asset_translations).
+			"game_variant": {gvID: "Capture du drapeau"},
+		},
+	}
+
+	enrichSquadMatchAssets(context.Background(), repo, rows)
+	hist := buildSquadMatchHistory(rows, nil, "halo_5")
+
+	if len(hist) != 1 {
+		t.Fatalf("want 1 row, got %d", len(hist))
+	}
+	if hist[0].ModeUI != "Capture du drapeau" {
+		t.Errorf("ModeUI = %q, want \"Capture du drapeau\" (fallback game_variant)", hist[0].ModeUI)
+	}
+}
+
+// TestSquadModeResolution_PairNamePreferredOverGameVariant : title-agnostic —
+// quand pair_name est présent (Infinite), il prime sur le game_variant. Le
+// fallback game_variant ne doit JAMAIS écraser un mode déjà résolu via pair.
+func TestSquadModeResolution_PairNamePreferredOverGameVariant(t *testing.T) {
+	rows := []domain.SquadMatchRow{
+		{
+			MatchID:       "m1",
+			MapUI:         "Streets",
+			PairName:      "Arena:CTF on Streets",
+			PairID:        "pair-2",
+			GameVariantID: "gv-ignored",
+		},
+	}
+	repo := &mockSquadRepo{
+		assetFR: map[string]map[string]string{
+			// Un nom de game_variant divergent : NE DOIT PAS être utilisé.
+			"game_variant": {"gv-ignored": "Mode Variante Technique"},
+		},
+	}
+
+	enrichSquadMatchAssets(context.Background(), repo, rows)
+	hist := buildSquadMatchHistory(rows, nil, "halo_infinite")
+
+	if hist[0].ModeUI != "CTF" {
+		t.Errorf("ModeUI = %q, want \"CTF\" (pair_name prime sur game_variant)", hist[0].ModeUI)
 	}
 }
 
@@ -80,7 +142,7 @@ func TestSquadModeResolution_FallsBackToNormalizedEN(t *testing.T) {
 	repo := &mockSquadRepo{} // aucune trad FR
 
 	enrichSquadMatchAssets(context.Background(), repo, rows)
-	hist := buildSquadMatchHistory(rows, nil)
+	hist := buildSquadMatchHistory(rows, nil, "halo_infinite")
 
 	if hist[0].ModeUI != "CTF" {
 		t.Errorf("ModeUI = %q, want \"CTF\" (EN normalisé)", hist[0].ModeUI)

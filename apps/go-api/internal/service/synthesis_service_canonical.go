@@ -118,7 +118,7 @@ type synthesisBestRefs struct {
 
 // computeSynthesisBestRefs identifie le match record pour chaque métrique
 // exposée comme carte "Top X" / "Meilleur X" côté front (Synthesis page).
-func computeSynthesisBestRefs(rows []canonical.PlayerMatchRow) synthesisBestRefs {
+func computeSynthesisBestRefs(rows []canonical.PlayerMatchRow, provideSpree bool) synthesisBestRefs {
 	var trK, trKDA, trPerf, trAcc, trDmg, trSpree, trHS, trPS bestTracker
 	for _, r := range rows {
 		// « Meilleures stats » = records PvP exploitables : on exclut les matchs
@@ -146,7 +146,10 @@ func computeSynthesisBestRefs(rows []canonical.PlayerMatchRow) synthesisBestRefs
 		if r.Self.DamageDealt != nil {
 			trDmg.update(id, float64(*r.Self.DamageDealt))
 		}
-		if r.Self.MaxKillingSpree != nil {
+		// MaxKillingSpree : ignorée quand le titre ne la porte pas (Halo 5) → la carte
+		// « meilleur max killing spree » est masquée (killingSpree reste nil) plutôt
+		// que de fabriquer une valeur. Cf. games.ProvidesMaxKillingSpree.
+		if provideSpree && r.Self.MaxKillingSpree != nil {
 			trSpree.update(id, float64(*r.Self.MaxKillingSpree))
 		}
 		if r.Self.HeadshotKills != nil {
@@ -171,7 +174,7 @@ func computeSynthesisBestRefs(rows []canonical.PlayerMatchRow) synthesisBestRefs
 // buildSynthesisOverviewCanonical est la variante canonical de
 // buildSynthesisOverview. Lit Self.Kills/Deaths/Outcome/KDA depuis
 // canonical au lieu de SynthesisMatchRow.{Kills,Deaths,Outcome,KDA}.
-func buildSynthesisOverviewCanonical(rows []canonical.PlayerMatchRow, soloKPIs domain.SynthesisKPIs) domain.SynthesisOverview {
+func buildSynthesisOverviewCanonical(rows []canonical.PlayerMatchRow, soloKPIs domain.SynthesisKPIs, provideSpree bool) domain.SynthesisOverview {
 	var totalKills, totalDeaths, totalAssists, totalWins, totalLosses, totalTies, totalDNF int
 	var winStreak, maxStreak int
 
@@ -236,7 +239,7 @@ func buildSynthesisOverviewCanonical(rows []canonical.PlayerMatchRow, soloKPIs d
 		ov.AvgPerfScore = soloKPIs.PerformanceScore
 	}
 
-	applyBestRefsToOverview(&ov, computeSynthesisBestRefs(rows))
+	applyBestRefsToOverview(&ov, computeSynthesisBestRefs(rows, provideSpree))
 	return ov
 }
 

@@ -59,3 +59,17 @@ no_native_kda = true
 # défensif du profil de combat, l'alerte coaching « fragile » et les milestones
 # endurance/excellence plutôt que d'afficher un DR=0 trompeur. Cf. games.ProvidesDamageTaken.
 no_damage_taken = true
+# no_team_mmr = true → le carnage cryptum h5 ne porte PAS de MMR d'équipe/adverse par
+# match (seul le CSR natif est extrait, cf. reference_h5_csr_model). La colonne MMR du
+# tableau Escouade (et d'Explorer) est MASQUÉE plutôt qu'affichée à « 0 » (trompeur).
+# Cf. games.ProvidesTeamMMR.
+no_team_mmr = true
+# NB — max killing spree : PAS de flag no_max_killing_spree pour h5. Le carnage cryptum
+# ne porte pas la valeur native (match_participants.max_killing_spree NULL), mais la
+# « folie meurtrière max » = nombre de kills d'affilée AVANT de mourir est CALCULABLE
+# depuis les events kill/death horodatés (killer_victim_pairs h5, synthétisés en
+# canonical via analysis.SynthesizeKillEventsFromKVPairs). La capability events-timeline
+# (match.events.timeline, supported pour h5) est le discriminant : un titre qui sert des
+# kills horodatés peut DÉRIVER la spree via analysis.ComputeMaxKillingSpree. La valeur
+# native fait foi quand elle existe (Infinite, pas de recalcul) ; sinon on calcule.
+# Cf. games.ProvidesMaxKillingSpree (dérivé de CapMatchEventsTimeline, pas d'un flag).

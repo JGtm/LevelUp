@@ -191,8 +191,13 @@ type EventRaw struct {
 	Gamertag *string
 }
 
-// KVPairRaw : données brutes de Q20.
+// KVPairRaw : données brutes de Q20 (single-match, MatchID non peuplé) et du
+// loader batch SquadRepository.LoadKVPairs (Q32c, MatchID peuplé pour le
+// regroupement multi-match de la synthèse d'events kill/death title-agnostic).
 type KVPairRaw struct {
+	// MatchID : peuplé uniquement par les lectures batch (LoadKVPairs). Vide ("")
+	// pour le chemin single-match Q20 qui scope déjà la requête par match_id.
+	MatchID    string
 	KillerXUID string
 	KillerGT   string
 	VictimXUID string

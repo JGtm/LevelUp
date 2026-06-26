@@ -105,7 +105,7 @@ func TestBuildIntensityTab_SingleMatch(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBuildDistributionsTab_Empty(t *testing.T) {
-	tab := buildDistributionsTab(nil)
+	tab := buildDistributionsTab(nil, true)
 	if len(tab.KDABuckets) != 0 {
 		t.Errorf("expected empty KDABuckets, got %d", len(tab.KDABuckets))
 	}
@@ -124,7 +124,7 @@ func TestBuildDistributionsTab_CorrectBuckets(t *testing.T) {
 		{Kills: 15, Deaths: 5, KDA: &kda3, StartTime: time.Now()},
 		{Kills: 0, Deaths: 10, KDA: &kda4, StartTime: time.Now()},
 	}
-	tab := buildDistributionsTab(matches)
+	tab := buildDistributionsTab(matches, true)
 	if len(tab.KDABuckets) == 0 {
 		t.Fatal("expected non-empty KDABuckets")
 	}
@@ -296,7 +296,7 @@ func TestBuildMatchRows_Basic(t *testing.T) {
 			PlaylistName:      "Ranked Arena",
 		},
 	}
-	rows := buildMatchRows(matches)
+	rows := buildMatchRows(matches, true)
 	if len(rows) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(rows))
 	}

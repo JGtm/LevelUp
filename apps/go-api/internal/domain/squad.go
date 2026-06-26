@@ -39,18 +39,28 @@ type SquadMatchRow struct {
 	// cascade FR le re-résout via asset_translations[pair_id] + mode_name_tr).
 	PairNameFR string
 	// PairID : UUID de la paire mode/map (clé de résolution asset_translations).
-	PairID          string
-	PlaylistName    string
-	IsFirefight     bool
-	IsRanked        bool
-	Outcome         int
-	Kills           int
-	Deaths          int
-	Assists         int
-	KDA             *float64
-	Accuracy        *float64
-	TimePlayedSecs  int
-	DurationSeconds int
+	PairID string
+	// GameVariantID : UUID de la variante de jeu (game_variant_id de match_registry).
+	// Source du mode pour les titres SANS pair_name (ex. Halo 5 : pair_name vide
+	// mais game_variant_id peuplé). Résolu read-time via asset_translations
+	// (asset_type='game_variant') → GameVariantNameFR. Title-agnostic : Infinite
+	// (qui a pair_name) ignore ce fallback.
+	GameVariantID string
+	// GameVariantNameFR : nom localisé de la variante de jeu, résolu read-time
+	// depuis asset_translations[game_variant_id]. Alimente le fallback de mode
+	// (squadModeUI) quand pair_name/pair_name_fr sont vides.
+	GameVariantNameFR string
+	PlaylistName      string
+	IsFirefight       bool
+	IsRanked          bool
+	Outcome           int
+	Kills             int
+	Deaths            int
+	Assists           int
+	KDA               *float64
+	Accuracy          *float64
+	TimePlayedSecs    int
+	DurationSeconds   int
 	// GameplayDurationSeconds : durée réelle de gameplay (countdown retranché).
 	GameplayDurationSeconds int
 	// T0Ms : offset du countdown pré-match en ms (real_start_time − start_time_utc).

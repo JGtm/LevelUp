@@ -224,7 +224,7 @@ func TestBuildSquadPerformanceSeries_DistinctPointsPerPlayer(t *testing.T) {
 		{MatchID: "m1", StartTime: t0, Kills: 10, Deaths: 5},
 		{MatchID: "m1", StartTime: t0, Kills: 3, Deaths: 9},
 	}
-	got := svc.buildSquadPerformanceSeries(context.Background(), allSquadRows, "main", []string{"friend1"})
+	got := svc.buildSquadPerformanceSeries(context.Background(), allSquadRows, "main", "", []string{"friend1"}, nil)
 	if len(got) != 2 {
 		t.Fatalf("want 2 series (main + friend1), got %d", len(got))
 	}
@@ -248,7 +248,7 @@ func TestBuildSquadPerformanceSeries_NoSquadLoader_EmptyResult(t *testing.T) {
 		{MatchID: "m1", StartTime: t0},
 		{MatchID: "m1", StartTime: t0},
 	}
-	got := svc.buildSquadPerformanceSeries(context.Background(), allSquadRows, "main", []string{"friend1"})
+	got := svc.buildSquadPerformanceSeries(context.Background(), allSquadRows, "main", "", []string{"friend1"}, nil)
 	if got != nil {
 		t.Errorf("sans squadLoader : want nil, got %d entries", len(got))
 	}
@@ -272,7 +272,7 @@ func TestBuildSquadPerformanceSeries_PopulatesEfficiencyFields(t *testing.T) {
 	allSquadRows := []domain.SquadMatchRow{
 		{MatchID: "m1", StartTime: t0},
 	}
-	got := svc.buildSquadPerformanceSeries(context.Background(), allSquadRows, "main", []string{"friend1"})
+	got := svc.buildSquadPerformanceSeries(context.Background(), allSquadRows, "main", "", []string{"friend1"}, nil)
 	if got == nil {
 		t.Fatal("résultat nil inattendu")
 	}
@@ -313,7 +313,7 @@ func TestBuildSquadPerformanceSeries_PopulatesKillTypeBreakdown(t *testing.T) {
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader}
 	allSquadRows := []domain.SquadMatchRow{{MatchID: "m1", StartTime: t0}}
-	got := svc.buildSquadPerformanceSeries(context.Background(), allSquadRows, "main", []string{"friend1"})
+	got := svc.buildSquadPerformanceSeries(context.Background(), allSquadRows, "main", "", []string{"friend1"}, nil)
 	if got == nil {
 		t.Fatal("résultat nil inattendu")
 	}
@@ -1004,7 +1004,7 @@ func TestBuildSquadPerformanceSeries_DedupedInput_TwoTeammates(t *testing.T) {
 	allSquadRows := []domain.SquadMatchRow{
 		{MatchID: "m1", StartTime: t0, Kills: 10, Deaths: 5},
 	}
-	got := svc.buildSquadPerformanceSeries(context.Background(), allSquadRows, "main", []string{"friend1", "friend2"})
+	got := svc.buildSquadPerformanceSeries(context.Background(), allSquadRows, "main", "", []string{"friend1", "friend2"}, nil)
 	if len(got) != 3 {
 		t.Fatalf("want 3 series (main + 2 friends), got %d — régression heuristique occurrences", len(got))
 	}

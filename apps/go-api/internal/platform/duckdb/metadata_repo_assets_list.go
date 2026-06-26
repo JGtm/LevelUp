@@ -98,23 +98,39 @@ func (r *MetadataRepo) ListWeaponsByTitle(
 	return out, rows.Err()
 }
 
-// ListMedalsByTitle retourne les médailles (nom seul — le sprite h5 est chargé à
-// part par le boot loader de l'Asset Drawer). Sans colonnes sprite ici → sûr pour
-// TOUTE metadata.duckdb (HINF n'a pas ces colonnes). search filtre par nom EN/FR.
+// ListMedalsByTitle retourne les médailles (nom + description EN/FR — le sprite h5
+// est chargé à part par le boot loader de l'Asset Drawer). Sans colonnes sprite ici
+// → sûr pour TOUTE metadata.duckdb (HINF n'a pas ces colonnes). search filtre par
+// nom EN/FR.
+//
+// Le tab Assets est locale-neutre (le front choisit EN ou FR) : on expose donc les
+// quatre colonnes name_en/name_fr/description/description_fr. La résolution FR
+// (label + description) passe par le helper centralisé medalLabelDescCoalesceSQL
+// (source unique partagée avec LookupByIDs) pour ne pas redériver une 5e fois le
+// COALESCE FR qui avait dérivé (médailles non traduites). Les colonnes EN restent
+// les colonnes brutes EN (mt_en > md.name_en) — pas de risque de dérive FR.
+// LEFT JOIN medal_translations toléré vide (table jamais peuplée côté Go → on
+// retombe sur medal_definitions.name_fr/description_fr).
 func (r *MetadataRepo) ListMedalsByTitle(
 	ctx context.Context,
 	_ string,
 	search string,
 ) ([]canonical.AssetMeta, error) {
+	// mt_loc lié à fr-FR via medalTranslationJoinsSQL("fr") ; les expressions FR
+	// proviennent du helper, les expressions EN n'utilisent que mt_en + md.*.
+	labelFR, descFR := medalLabelDescCoalesceSQL("fr")
 	query := `
-		SELECT medal_name_id::VARCHAR AS id,
-		       name_en,
-		       COALESCE(name_fr, '')  AS name_fr
-		FROM medal_definitions
+		SELECT md.medal_name_id::VARCHAR AS id,
+		       COALESCE(NULLIF(TRIM(mt_en.name),''), NULLIF(TRIM(md.name_en),''), '')        AS name_en,
+		       ` + labelFR + `                                                              AS name_fr,
+		       COALESCE(NULLIF(TRIM(mt_en.description),''), NULLIF(TRIM(md.description_en),''), '') AS description_en,
+		       ` + descFR + `                                                               AS description_fr
+		FROM medal_definitions md
+		` + medalTranslationJoinsSQL("fr") + `
 		WHERE ? = ''
-		   OR lower(name_en)               LIKE lower('%' || ? || '%')
-		   OR lower(COALESCE(name_fr, '')) LIKE lower('%' || ? || '%')
-		ORDER BY name_en
+		   OR lower(COALESCE(md.name_en, ''))               LIKE lower('%' || ? || '%')
+		   OR lower(COALESCE(md.name_fr, ''))               LIKE lower('%' || ? || '%')
+		ORDER BY md.name_en
 	`
 	rows, err := r.meta.Query(ctx, query, search, search, search)
 	if err != nil {
@@ -125,7 +141,7 @@ func (r *MetadataRepo) ListMedalsByTitle(
 	var out []canonical.AssetMeta
 	for rows.Next() {
 		var m canonical.AssetMeta
-		if err := rows.Scan(&m.ID, &m.NameEN, &m.NameFR); err != nil {
+		if err := rows.Scan(&m.ID, &m.NameEN, &m.NameFR, &m.Description, &m.DescriptionFR); err != nil {
 			return nil, fmt.Errorf("ListMedalsByTitle scan: %w", err)
 		}
 		out = append(out, m)
