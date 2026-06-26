@@ -1,0 +1,245 @@
+package media
+
+import (
+	"context"
+	"encoding/binary"
+	"math"
+	"os/exec"
+	"path/filepath"
+	"testing"
+)
+
+// appendF32 encode un float32 en little-endian (PCM f32le) pour les tests purs.
+func appendF32(b []byte, v float32) []byte {
+	var tmp [4]byte
+	binary.LittleEndian.PutUint32(tmp[:], math.Float32bits(v))
+	return append(b, tmp[:]...)
+}
+
+func TestPearson(t *testing.T) {
+	cases := []struct {
+		name   string
+		xs, ys []float64
+		want   float64
+		tol    float64
+	}{
+		{"identiques", []float64{1, 2, 3, 4, 5, 6}, []float64{1, 2, 3, 4, 5, 6}, 1.0, 1e-9},
+		{"anti-corrélées", []float64{1, 2, 3, 4, 5, 6}, []float64{6, 5, 4, 3, 2, 1}, -1.0, 1e-9},
+		{"décalage constant", []float64{1, 2, 3, 4, 5, 6}, []float64{11, 12, 13, 14, 15, 16}, 1.0, 1e-9},
+		{"x constant → 0", []float64{2, 2, 2, 2, 2, 2}, []float64{1, 2, 3, 4, 5, 6}, 0.0, 1e-9},
+		{"trop court → 0", []float64{1, 2, 3}, []float64{1, 2, 3}, 0.0, 1e-9},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := pearson(tc.xs, tc.ys); math.Abs(got-tc.want) > tc.tol {
+				t.Errorf("pearson = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestPearson_TruncatesToCommonLength(t *testing.T) {
+	// Les enveloppes de deux pistes peuvent différer d'une trame ; pearson tronque.
+	xs := []float64{1, 2, 3, 4, 5, 6, 7}
+	ys := []float64{1, 2, 3, 4, 5, 6}
+	if got := pearson(xs, ys); math.Abs(got-1.0) > 1e-9 {
+		t.Errorf("pearson (longueurs ≠) = %v, want 1.0", got)
+	}
+}
+
+func TestRMSFramesDB(t *testing.T) {
+	// 800 échantillons à 0.5 (RMS=0.5 → −6,02 dB) puis 800 silencieux (→ plancher).
+	var raw []byte
+	for i := 0; i < 800; i++ {
+		raw = appendF32(raw, 0.5)
+	}
+	for i := 0; i < 800; i++ {
+		raw = appendF32(raw, 0.0)
+	}
+	got := rmsFramesDB(raw, 800)
+	if len(got) != 2 {
+		t.Fatalf("len = %d, want 2 trames", len(got))
+	}
+	if math.Abs(got[0]-(-6.0206)) > 0.01 {
+		t.Errorf("trame 0 = %v dB, want ~-6.02 (RMS 0.5)", got[0])
+	}
+	if got[1] != rmsFloorDB {
+		t.Errorf("trame 1 (silence) = %v, want plancher %v", got[1], rmsFloorDB)
+	}
+}
+
+func TestRMSFramesDB_PartialFrameIgnored(t *testing.T) {
+	// 1000 échantillons → 1 trame pleine de 800, les 200 restants ignorés.
+	var raw []byte
+	for i := 0; i < 1000; i++ {
+		raw = appendF32(raw, 0.5)
+	}
+	if got := rmsFramesDB(raw, 800); len(got) != 1 {
+		t.Errorf("len = %d, want 1 (trame partielle ignorée)", len(got))
+	}
+}
+
+func TestRestMixFilter(t *testing.T) {
+	if fc, m := restMixFilter(2); fc != "" || m != "0:a:1" {
+		t.Errorf(`restMixFilter(2) = (%q,%q), want ("", "0:a:1")`, fc, m)
+	}
+	fc, m := restMixFilter(4)
+	if fc != "[0:a:1][0:a:2][0:a:3]amix=inputs=3:normalize=0[mix]" || m != "[mix]" {
+		t.Errorf("restMixFilter(4) = (%q,%q)", fc, m)
+	}
+}
+
+func TestPlanAudioRenditions_FullMixFourTracks(t *testing.T) {
+	// OBS : piste 0 = capture de sortie (mix complet), 1 = jeu, 2 = micro, 3 = Discord.
+	src := []AVStreamDetail{
+		{CodecType: "audio", CodecName: "aac"}, // 0 = mix complet
+		{CodecType: "audio", CodecName: "aac"}, // 1 = jeu
+		{CodecType: "audio", CodecName: "aac"}, // 2 = micro
+		{CodecType: "audio", CodecName: "aac"}, // 3 = Discord
+	}
+	audios, fc := planAudioRenditions(src, true)
+	if len(audios) != 3 {
+		t.Fatalf("len = %d, want 3", len(audios))
+	}
+	g, v, f := audios[0], audios[1], audios[2]
+	// full lit la piste 0 DIRECTEMENT (pas d'amix → pas d'écho).
+	if f.Slug != "full" || f.MapSpec != "0:a:0" || !f.Default {
+		t.Errorf("full = (%q,%q,default=%v), want (full,0:a:0,true)", f.Slug, f.MapSpec, f.Default)
+	}
+	if g.Slug != "game" || g.MapSpec != "0:a:1" {
+		t.Errorf("game = (%q,%q), want (game,0:a:1)", g.Slug, g.MapSpec)
+	}
+	if v.Slug != "voices" || v.MapSpec != "[voices]" {
+		t.Errorf("voices = (%q,%q), want (voices,[voices])", v.Slug, v.MapSpec)
+	}
+	// voices = amix des pistes 2..3 (micro + Discord).
+	wantFC := "[0:a:2][0:a:3]amix=inputs=2:normalize=0:duration=longest[voices]"
+	if fc != wantFC {
+		t.Errorf("FilterComplex = %q, want %q", fc, wantFC)
+	}
+	// AAC partout → copy (groupe mono-codec, pas de SourceBuffer.changeType).
+	if g.Action != actionCopy || f.Action != actionCopy {
+		t.Errorf("game/full Action = %v/%v, want copy/copy (AAC)", g.Action, f.Action)
+	}
+}
+
+func TestPlanAudioRenditions_FullMixThreeTracks(t *testing.T) {
+	// 3 pistes : 0 = mix complet, 1 = jeu, 2 = voix → voices = map direct 0:a:2.
+	src := []AVStreamDetail{
+		{CodecType: "audio", CodecName: "aac"},
+		{CodecType: "audio", CodecName: "aac"},
+		{CodecType: "audio", CodecName: "aac"},
+	}
+	audios, fc := planAudioRenditions(src, true)
+	if len(audios) != 3 {
+		t.Fatalf("len = %d, want 3", len(audios))
+	}
+	if audios[1].MapSpec != "0:a:2" {
+		t.Errorf("voices MapSpec = %q, want 0:a:2 (map direct)", audios[1].MapSpec)
+	}
+	if fc != "" {
+		t.Errorf("FilterComplex = %q, want vide (pas d'amix)", fc)
+	}
+	if audios[2].MapSpec != "0:a:0" || !audios[2].Default {
+		t.Errorf("full = (%q,default=%v), want (0:a:0,true)", audios[2].MapSpec, audios[2].Default)
+	}
+}
+
+func TestPlanAudioRenditions_FullMixTwoTracksCollapses(t *testing.T) {
+	// Piste 0 = mix complet + 1 seule composante → rien à séparer → rendition unique.
+	src := []AVStreamDetail{
+		{CodecType: "audio", CodecName: "aac"},
+		{CodecType: "audio", CodecName: "aac"},
+	}
+	audios, fc := planAudioRenditions(src, true)
+	if len(audios) != 1 {
+		t.Fatalf("len = %d, want 1 (rendition unique)", len(audios))
+	}
+	if audios[0].Slug != "a0" || audios[0].MapSpec != "0:a:0" || !audios[0].Default {
+		t.Errorf("rendition = (%q,%q,default=%v), want (a0,0:a:0,true)", audios[0].Slug, audios[0].MapSpec, audios[0].Default)
+	}
+	if fc != "" {
+		t.Errorf("FilterComplex = %q, want vide", fc)
+	}
+}
+
+func TestPlanAudioRenditions_NotFullMixUnchanged(t *testing.T) {
+	// track0IsFullMix=false → mapping historique (game = piste 0, full = amix).
+	src := []AVStreamDetail{
+		{CodecType: "audio", CodecName: "aac"},
+		{CodecType: "audio", CodecName: "aac"},
+	}
+	audios, _ := planAudioRenditions(src, false)
+	if len(audios) != 3 || audios[0].MapSpec != "0:a:0" || audios[2].MapSpec != "[full]" {
+		t.Errorf("mapping historique attendu : game=0:a:0, full=[full] ; got %+v", audios)
+	}
+}
+
+// --- Intégration : détection track0IsFullMix (nécessite ffmpeg + ffprobe) ---
+
+func TestTrack0IsFullMix_Integration(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg absent du PATH")
+	}
+
+	dir := t.TempDir()
+
+	// POSITIF : piste 0 = amix(piste1, piste2) → la piste 0 EST le mix complet →
+	// détecté. Les sources ont une forte dynamique d'enveloppe (AM lente) pour
+	// passer la garde de variance, comme un vrai enregistrement de jeu.
+	mix := generateAudioMKV(t, dir, "mix.mkv",
+		"[0:a]asplit=2[t1a][t1b];[1:a]asplit=2[t2a][t2b];"+
+			"[t1a][t2a]amix=inputs=2:normalize=0[mix]",
+		[]string{"[mix]", "[t1b]", "[t2b]"})
+	ok, corr, err := track0IsFullMix(context.Background(), mix, 3)
+	if err != nil {
+		t.Fatalf("track0IsFullMix (positif): %v", err)
+	}
+	if !ok {
+		t.Errorf("piste 0 = amix(reste) : track0IsFullMix = false (corr=%.3f), want true", corr)
+	}
+
+	// NÉGATIF : piste 0 = signal indépendant (AM de rythme distinct), pistes 1/2
+	// autres → piste 0 ≠ mix des autres → non détecté.
+	indep := generateAudioMKV(t, dir, "indep.mkv",
+		"[0:a]anull[a0];[1:a]anull[a1];[2:a]anull[a2]",
+		[]string{"[a0]", "[a1]", "[a2]"})
+	ok, corr, err = track0IsFullMix(context.Background(), indep, 3)
+	if err != nil {
+		t.Fatalf("track0IsFullMix (négatif): %v", err)
+	}
+	if ok {
+		t.Errorf("piste 0 indépendante : track0IsFullMix = true (corr=%.3f), want false", corr)
+	}
+}
+
+// amExpr : porteuse sinusoïdale modulée en amplitude par un LFO lent (forte
+// dynamique d'enveloppe, comme un vrai mix de jeu).
+func amExpr(carrier, lfo string) string {
+	return "0.6*sin(2*PI*" + carrier + "*t)*(0.5+0.49*sin(2*PI*" + lfo + "*t))"
+}
+
+// generateAudioMKV produit un MKV vidéo synthétique + 3 pistes audio (sources AM à
+// porteuses/LFO distincts) recombinées via le filter_complex fourni, mappées dans
+// l'ordre maps.
+func generateAudioMKV(t *testing.T, dir, name, filter string, maps []string) string {
+	t.Helper()
+	out := filepath.Join(dir, name)
+	src := func(c, l string) []string {
+		return []string{"-f", "lavfi", "-i", "aevalsrc=" + amExpr(c, l) + ":d=3:s=8000"}
+	}
+	args := []string{"-hide_banner", "-loglevel", "error", "-y"}
+	args = append(args, src("440", "0.7")...)
+	args = append(args, src("880", "1.1")...)
+	args = append(args, src("660", "0.5")...)
+	args = append(args, "-f", "lavfi", "-i", "testsrc=size=320x240:rate=15:duration=3",
+		"-filter_complex", filter, "-map", "3:v")
+	for _, m := range maps {
+		args = append(args, "-map", m)
+	}
+	args = append(args, "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "libopus", out)
+	if o, err := exec.Command("ffmpeg", args...).CombinedOutput(); err != nil {
+		t.Fatalf("génération %s: %v\n%s", name, err, o)
+	}
+	return out
+}
