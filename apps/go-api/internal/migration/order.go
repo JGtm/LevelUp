@@ -218,6 +218,7 @@ var canonicalOrder = []string{
 	"shared_create_match_commendations",                        // shared (commendations natives par match, ref inter-titres, AXE B)
 	"shared_match_commendations_add_progress",                  // shared (total à vie absolu au match — totaux commendations)
 	"add_player_count_to_match_registry",                       // shared (roster API attendu — oracle d'intégrité, fix #10)
+	"add_weapon_accuracy",                                      // shared (précision par arme/joueur/match, dérivée des events WeaponDrop H5)
 }
 
 var canonicalIndex = func() map[string]int {

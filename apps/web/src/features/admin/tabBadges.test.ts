@@ -18,6 +18,11 @@ function baseOverview(): AdminMonitoringOverview {
     } as AdminMonitoringOverview['scheduler'],
     jobs: { active_count: 0, recent: [] } as AdminMonitoringOverview['jobs'],
     invariants: { runs_total: 1, fail_last: 0, warn_last: 0 } as AdminMonitoringOverview['invariants'],
+    snapshot: {
+      cut_failures: 0, cut_noop: 0, cuts_produced: 0, partial_total: 0,
+      pending_oldest_age_seconds: 0, pending_total: 0, reads_fallback: 0,
+      reads_served: 0, ready_match_count: 0, version: 1,
+    } as AdminMonitoringOverview['snapshot'],
   }
 }
 

@@ -67,6 +67,7 @@ func mapH5Events(resp *h5MatchEventsResponse, opts canonical.MatchEventOptions) 
 			ev.Weapon = h5WeaponRef(e.KillerWeaponStockId)
 			ev.KillerLoc = h5Vec3(e.KillerWorldLocation)
 			ev.VictimLoc = h5Vec3(e.VictimWorldLocation)
+			ev.Assists = h5Assistants(e.Assistants)
 		case canonical.MatchEventMedal:
 			ev.Player = h5EventIdentity(e.Player)
 			ev.RefID = h5IDString(e.MedalId)
@@ -76,6 +77,13 @@ func mapH5Events(resp *h5MatchEventsResponse, opts canonical.MatchEventOptions) 
 		case canonical.MatchEventWeaponPickup, canonical.MatchEventWeaponDrop:
 			ev.Player = h5EventIdentity(e.Player)
 			ev.Weapon = h5WeaponRef(e.WeaponStockId)
+			// WeaponDrop porte les tirs de l'arme lâchée (précision par arme).
+			// WeaponPickup ne les porte pas (toujours 0) → on ne les pose que sur drop.
+			if et == canonical.MatchEventWeaponDrop {
+				sf, sl := e.ShotsFired, e.ShotsLanded
+				ev.ShotsFired = &sf
+				ev.ShotsLanded = &sl
+			}
 		case canonical.MatchEventSpawn:
 			ev.Player = h5EventIdentity(e.Player)
 		case canonical.MatchEventRoundStart, canonical.MatchEventRoundEnd:
@@ -96,6 +104,25 @@ func h5EventIdentity(p *h5EventPlayer) *canonical.PlayerIdentity {
 		return nil
 	}
 	return &canonical.PlayerIdentity{Gamertag: p.Gamertag}
+}
+
+// h5Assistants convertit la liste d'assistants Halo 5 en []PlayerIdentity
+// (gamertag-keyé). Les entrées sans gamertag sont ignorées. nil si vide.
+func h5Assistants(list []h5EventPlayer) []canonical.PlayerIdentity {
+	if len(list) == 0 {
+		return nil
+	}
+	out := make([]canonical.PlayerIdentity, 0, len(list))
+	for _, p := range list {
+		if strings.TrimSpace(p.Gamertag) == "" {
+			continue
+		}
+		out = append(out, canonical.PlayerIdentity{Gamertag: p.Gamertag})
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // h5KillKind dérive la mécanique du kill des drapeaux Halo 5 (priorité : melee >
