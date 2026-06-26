@@ -44,6 +44,36 @@ func countCatalogRows(t *testing.T, db *sql.DB) int {
 	return n
 }
 
+// TestSeedPlaylistsCatalog_NoTableNoOp : sur une metadata SANS playlists_catalog
+// (cas halo_5, dont la metadata.duckdb est isolée des référentiels HINF), le seed
+// doit no-op proprement — ni panique, ni tentative d'UPDATE/INSERT (qui spammait un
+// WARN par playlist à chaque cycle de post-sync CSR). Régression 2026-06-26.
+func TestSeedPlaylistsCatalog_NoTableNoOp(t *testing.T) {
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open mem db: %v", err)
+	}
+	defer db.Close()
+	// Aucune table playlists_catalog créée (metadata h5 isolée).
+	csrs := []PlayerPlaylistCSR{
+		{PlaylistID: "bbbbbbbb-0000-0000-0000-000000000001", PlaylistName: "Arena classée"},
+	}
+	// Le guard (existence de table) doit court-circuiter avant tout accès à la table
+	// absente : aucune erreur SQL ne remonte, aucune panique.
+	seedPlaylistsCatalog(context.Background(), db, csrs, "halo_5")
+
+	// La table ne doit pas avoir été créée par effet de bord.
+	var n int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'playlists_catalog'`,
+	).Scan(&n); err != nil {
+		t.Fatalf("count tables: %v", err)
+	}
+	if n != 0 {
+		t.Errorf("playlists_catalog ne devrait pas exister (table absente, guard actif), got %d", n)
+	}
+}
+
 func TestSeedPlaylistsCatalog_InsertsNewPlaylists(t *testing.T) {
 	db := openCatalogMemDB(t)
 	defer db.Close()

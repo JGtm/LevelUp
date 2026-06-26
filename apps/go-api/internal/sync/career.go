@@ -264,6 +264,18 @@ func augmentWithActiveRankedCSRs(
 // dans playlists_catalog si elles n'y sont pas encore. Best-effort : les erreurs
 // sont loggées mais n'interrompent pas le sync.
 func seedPlaylistsCatalog(ctx context.Context, metaDB *sql.DB, csrs []PlayerPlaylistCSR, titleSlug string) {
+	// playlists_catalog est un référentiel OPTIONNEL par titre : présent pour
+	// halo_infinite, volontairement ABSENT pour halo_5 dont la metadata.duckdb est
+	// isolée des référentiels HINF (is_ranked y dérive de la présence CSR, pas du
+	// catalogue — cf. TestHalo5Metadata_IsolatedFromInfinite). Sans la table, no-op
+	// silencieux plutôt qu'un WARN par playlist à chaque cycle de sync (le post-sync
+	// CSR tourne pour tout titre fournissant des CSR, h5 inclus).
+	var hasCatalog int
+	if err := metaDB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'playlists_catalog'`,
+	).Scan(&hasCatalog); err != nil || hasCatalog == 0 {
+		return
+	}
 	now := time.Now().UTC()
 	var seeded int
 	for _, c := range csrs {
