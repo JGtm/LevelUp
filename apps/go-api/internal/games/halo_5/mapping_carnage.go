@@ -115,6 +115,17 @@ func mapCarnageParticipants(ctx context.Context, matchID string, carnage *H5Carn
 	return out
 }
 
+// MapCarnageParticipants est le point d'entrée EXPORTÉ du mapping carnage → roster
+// complet (cf. mapCarnageParticipants pour le détail des 30+ champs projetés). Délègue
+// SANS rien dupliquer : tout outil hors package (ex. cmd/h5-roster-refetch, qui top-up
+// les rosters incomplets en re-fetchant la carnage) réutilise EXACTEMENT le même mapping
+// de stats que le sync live, avec son propre résolveur xuid (resolve-or-skip identique :
+// un gamertag non résolu en xuid est SAUTÉ, cf. godoc de mapCarnageParticipants). dropped
+// (nullable) compte les joueurs sautés faute de résolution — même contrat d'observabilité.
+func MapCarnageParticipants(ctx context.Context, matchID string, carnage *H5CarnageResponse, resolveXUID func(gamertag string) string, dropped *int) []domain.MatchParticipantRow {
+	return mapCarnageParticipants(ctx, matchID, carnage, resolveXUID, dropped)
+}
+
 // winningTeamID retourne le TeamId de l'équipe au Rank 1, ou -1 si indéterminé.
 func winningTeamID(carnage *H5CarnageResponse) int {
 	for i := range carnage.TeamStats {
