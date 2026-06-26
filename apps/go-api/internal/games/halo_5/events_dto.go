@@ -40,12 +40,22 @@ type h5GameEvent struct {
 	KillerWeaponStockId int64            `json:"KillerWeaponStockId"`
 	KillerWorldLocation *h5WorldLocation `json:"KillerWorldLocation"`
 	VictimWorldLocation *h5WorldLocation `json:"VictimWorldLocation"`
+	// Assistants : joueurs ayant assisté le kill (natif Halo 5). Alimente le signal
+	// d'engagement « support » (event_type=assist dans highlight_events).
+	Assistants []h5EventPlayer `json:"Assistants"`
 
 	// Medal / Impulse / WeaponPickup / WeaponDrop / PlayerSpawn
 	Player        *h5EventPlayer `json:"Player"`
 	MedalId       int64          `json:"MedalId"`
 	ImpulseId     int64          `json:"ImpulseId"`
 	WeaponStockId int64          `json:"WeaponStockId"`
+
+	// WeaponDrop : tirs comptabilisés pour l'arme lâchée → précision PAR ARME
+	// (Halo 5 natif). Somme par (joueur, arme) sur le match = TotalShotsFired/
+	// TotalShotsLanded du carnage (validé EXACT 8/8 joueurs) — là où le carnage
+	// WeaponStats[] est servi vide. 0 sur les autres EventName.
+	ShotsFired  int `json:"ShotsFired"`
+	ShotsLanded int `json:"ShotsLanded"`
 }
 
 // h5MatchEventsResponse — racine de /h5/matches/{id}/events.

@@ -48,6 +48,9 @@ func CollectMatchBatch(
 	medals, medalEvents := MapMedalEvents(summary.MatchID, timeline, resolveXUID)
 	pairs, weapons := MapKillEvents(summary.MatchID, timeline, resolveXUID)
 	positions := MapKillPositions(summary.MatchID, timeline, resolveXUID)
+	weaponAcc := MapWeaponAccuracy(summary.MatchID, timeline, resolveXUID)
+	assistEvents := MapAssistEvents(summary.MatchID, timeline, resolveXUID)
+	objectiveEvents := MapObjectiveImpulseEvents(summary.MatchID, timeline, resolveXUID)
 
 	return persist.NewBatchBuilder(titleSlug, viewer.Gamertag, viewer.XUID, source).
 		SetMatch(&registry).
@@ -59,8 +62,15 @@ func CollectMatchBatch(
 		AddCommendations(commendations).
 		AddMedals(medals).
 		AddHighlightEvents(medalEvents).
+		// Assists → highlight_events (event_type=assist) : signal support de la courbe
+		// d'engagement (acteur=assistant, distinct du tueur → pas de double-comptage).
+		AddHighlightEvents(assistEvents).
+		// Impulses objectif (flag/KOTH/territoires…) → highlight_events (event_type=mode) :
+		// dimension objectif de l'engagement (parité Infinite). Allowlist curée, hors kills.
+		AddHighlightEvents(objectiveEvents).
 		AddKillerVictim(pairs).
 		AddWeaponKills(weapons).
+		AddWeaponAccuracy(weaponAcc).
 		AddKillPositions(positions).
 		Build()
 }

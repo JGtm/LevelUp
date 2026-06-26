@@ -1,3 +1,20 @@
+## [2026-06-26] Merge enrichissement events Halo 5 dans main + déploiement (backfill + recompute + copie DB prod) — COMPLÉTÉ
+
+**Tâche** : merger la branche `feat/h5-events-enrichment` (9 commits : proficience arme, discipline suicides/trahisons, engagement pondéré 2 titres, bannière synthétisée Home, CSR Champion, MMR not_supported) dans main + exécuter les ops de déploiement (backfill, recompute, copie bases vers prod).
+
+**Ops data (serveur local arrêté, DBs libres)** :
+- **Backfill discipline H5** (`cmd/h5-enrich` → `computeAndPersistH5DisciplineAwards`) : PSA suicides/trahisons calculées depuis `shared.killer_victim_pairs` + équipes, écrites par génération `psa_generation_seq` (append-only). 4 joueurs (JGtm/Chocoboflor/Madina97294/XxDaemonGamerxX).
+- **Recompute engagement pondéré** : H5 via `h5-enrich` ; Infinite via `levelup engagement-coefs --all --with-scores --force` (recompute scores depuis highlight_events + coefs, force = recalcule l'existant). 4 player DBs Infinite (JGtm 932, Madina 596, Chocoboflor 487, XxDaemon 31 scores) ; 5 joueurs auth-only sans DB locale skippés.
+- **Copie prod** : conteneur principal arrêté (`docker compose stop levelup`, demo conservée), 8 player DBs (H5 4 + Infinite 4) copiées via scp vers `lvelup:/opt/levelup/data/titles/.../players/`. Vérif data-loss : les 2 shared (H5 146550784 / Infinite 302788608) sont **byte-identiques** local==prod → prod n'a collecté aucun match exclusif (scheduler prod re-post-traite l'existant, personne ne joue H5) → copie sûre. Pas de `.wal` résiduel (checkpoint clean au shutdown).
+
+**Résolution de conflit clé (MMR)** : main avait introduit `ProvidesTeamMMR`/`no_team_mmr` (déjà câblé : bootstrap_service + masquage colonne MMR Escouade/Explorer) ; ma branche avait `ProvidesMMR`/`no_mmr` pour le même besoin (H5 = aucun MMR). Décision : **adopter la version de main, supprimer mon doublon** (`ProvidesMMR`/`ProvidesMMRFromResolver`/champ `NoMMR`/flag `no_mmr`/`TestProvidesMMR`) — mon `ProvidesMMR` n'avait AUCUN consommateur réel (seulement son test), le highlight underdog s'auto-omet sur MMR nil. Conflits `thought_log.md` (union) + `damage_model.go`/`constants.toml` (version main). Garde-fou diag prod relevé : conteneur unhealthy transitoire (/health time-out >5s pendant les cycles de sync) + bugs PRÉ-EXISTANTS hors périmètre (`playlists_catalog` inexistante, `snapshot_ready_at` absent des player DBs prod — la copie des DBs migrées corrige ce dernier).
+
+**Résultats** : `go build ./...` + `go vet` verts ; tests Go (games/canonical/halo_5/ingest/persist/migration/temporal) verts ; front `tsc -b` 0 erreur + lint 0 erreur + vitest 18/18. Caveat connu : weapon_accuracy/assist/objectif H5 ne se peuplent qu'aux NOUVELLES collectes (pas de backfill historique — le collect saute les matchs connus ; pas de read-path/UI dessus encore, donc inoffensif).
+
+**Prochaine étape** : push main (auto-deploy + rebuild image VPS sur les DBs copiées) → vérif prod /health + redémarrage serveur local. Cf. [[reference_h5_events_impulses_inventory]], [[project_go_live_deploy_topology]], [[reference_squad_page_legacy_service_composition]].
+
+---
+
 ## [2026-06-26] Hardening H5 round 4 — page Escouade title-agnostic (6 retours) — COMPLÉTÉ (verts ; deploy pending)
 
 **Contexte** : 6 retours utilisateur sur la page Escouade, exigence "du solide qui tiendra pour un 3e jeu" (pas de rustines). Investigation (workflow 5 agents) → fil rouge : la page /squad est servie par un chemin LEGACY (TeammatesService/SquadRepo) qui court-circuite les adapters canoniques. DÉCISION ARCHI : **RETROFIT capability-gated, PAS migration v2** (la cause racine events est identique dans les deux voies — migrer ne corrige rien + gros chantier parité → rejeté).
@@ -81,6 +98,93 @@
 **Constat collapse prod** : 5 clips solo redondants collapsés (corr 0,805–0,994), **1 clip jeu+voix Discord réel préservé** (`22-12-24`, corr 0,46). User a confirmé sur Firefox : couper « Voix » enlève bien le micro ; le Discord d'un clip donné reste s'il était fondu dans la piste jeu à l'enregistrement (inséparable a posteriori — pas un bug, propriété de la capture).
 
 **Prochaine étape** : (sur autorisation) commit de la couche classifieur ; déploiement `main` (auto-deploy) pour que les futurs clips bénéficient du mapping + classement ; validation classifieur sur un clip source frais (ingestion réelle). Cf. [[reference_media_pipeline_needs_ffmpeg_runtime]], [[project_halo5_experimental_direction]].
+
+---
+
+## [2026-06-26] Fix tsc : AdminMonitoringOverview.snapshot manquant (2 fixtures admin) — COMPLÉTÉ
+
+Drift pré-existant (sur main/agent concurrent) : le champ `snapshot` (MonitoringSnapshotSummary) a été ajouté REQUIS à `AdminMonitoringOverview` (openapi/generated.ts), mais 2 fixtures de test (`diagnostics.test.ts`, `tabBadges.test.ts`) ne l'incluaient pas → `tsc -b` rouge (2 erreurs TS2741). Fix = ajout d'un snapshot SAIN (tous compteurs 0, version 1) aux 2 fixtures. Résultat : `tsc -b` 0 erreur, vitest 16/16 (les assertions « tout sain → aucune pastille » restent vertes). Hors périmètre H5 mais demandé par l'user avant merge.
+
+## [2026-06-26] H5 bannière synthétisée (Home identity) — COMPLÉTÉ (code+test ; revue visuelle + commit pending)
+
+**Contexte** : le render full-body H5 (poussé dans `banner_image_url` par appearance_persist) servait de FOND plein cadre au bloc identité Home → pas une bannière (rejeté user). Alternative = bannière SYNTHÉTISÉE.
+
+**Implémentation (FRONT-ONLY, pas de backend, pas de re-enrich, reviewable immédiatement)** : `HomeSpartanIdentityBanner.tsx` — pour Halo 5 (gate slug `currentTitleSlug === 'halo_5'` ; précédent établi NavL1/NavL2/CareerSummaryCard ; TODO migrer vers une capability dédiée), on n'utilise PAS `banner_image_url` en fond ; backdrop GRADIENT via tokens sémantiques (`bg-gradient-to-br from-primary/25 via-muted/45 to-background` — pas de hex, conforme color-tokens) quand pas de bannière image. Emblème + gamertag + service tag + rang carrière + skill peaks INCHANGÉS. Le backdrop no-banner est title-AGNOSTIC (bénéficie aussi à tout joueur sans bannière). Le render full-body n'est plus affiché (= « rien » à l'emplacement bannière, choix user « alternative ou rien »).
+
+**Résultats** : typecheck (mon fichier CLEAN ; 2 erreurs tsc PRÉ-EXISTANTES dans admin/*.test — type `AdminMonitoringOverview.snapshot` manquant, drift hors périmètre, NON touché) + eslint + vitest verts (17 tests : nouveau test composant H5→backdrop synthétisé / non-H5→bannière image + HomePage inchangé).
+
+**Suite** : revue visuelle user (lancer l'app / au déploiement) — gradient v1 facile à ajuster (tokens). Commit+push pending. Note : npm ci fait dans le worktree (toolchain front prêt).
+
+## [2026-06-26] Engagement : pondération de la courbe (2 titres) — COMPLÉTÉ (code ; re-backfill requis)
+
+**Contexte** : passer du comptage BRUT (1 par event) à une pondération PAR TYPE, pour que la courbe « meneur vs en retrait » reflète l'action MENÉE (objectif > kill > assist > death) plutôt que la densité brute. Poids validés user.
+
+**RECENSEMENT (demandé par le user — « plusieurs courbes »)** : un SEUL point de comptage forme les paces = `buildEngagementCurve` (`countInWindow`). TOUT en dérive : résidu → score, ET `meansFromCurve` → coefficients (RatioSample via player_match_enrichment). Donc pondérer ce comptage SUFFIT et garantit la cohérence courbe↔coefficients (pas de double-pondération). Restent BRUTS volontairement : `MatchIntensity` (densité d'events = descripteur de chaos du match, pas du leadership) + `PlayerActivity` (K+A+D, filtre AFK). `EventsObjectifEstimes` = code mort (ignoré). Le path synthétique kvp (collègue) émet des kill/death → pondérés comme les autres.
+
+**Implémentation** : `engagementEventWeight(eventType)` (`analysis/temporal/engagement_weights.go`) : `mode` 1.5 / `assist` 0.5 / `death` 0.4 / défaut 1.0 (kill, medal ADDITIF = intensité, first_kill…). `extractTimes`/`countInWindow` → `extractWeightedPoints`/`sumWeightInWindow` (somme des poids dans la fenêtre). Chokepoint unique, partagé les 2 titres. ("mode" = string brute Infinite, pas de constante canonical.)
+
+**Impact INFINITE** : `death` (1.0→0.4) + objectif `mode` (1.0→1.5) reweightés ; `kill`/`medal` inchangés ; `assist` absent du timeline Infinite. → l'engagement Infinite BOUGE → **re-backfill des 2 titres + recompute des coefficients requis** (je ne lance PAS la prod). H5 : assists + objectif (#2) + kills synthétisés désormais pondérés.
+
+**Résultats** : tests verts — `engagementEventWeight` + somme pondérée (3.4 vs 4.0 non pondéré), TOUS les `ComputeEngagementScore` + consommateurs (service, coach, profil de combat, sync) inchangés (fixtures en kill/medal = poids 1.0). `build ./...` + vet verts.
+
+**Suite** : au déploiement → re-backfill engagement (2 titres) + recompute coefficients + sanity-check (les percentiles historiques se décalent). Commit pending.
+
+## [2026-06-26] H5 tier CSR Champion (DesignationId 6) mappé — COMPLÉTÉ (code ; commit pending)
+
+**Contexte** : la sonde 2026-06-26 a capté un VRAI Champion H5 (DesignationId 6, Csr 1739, Rank #236) — le `csr_mapper` H5 s'arrêtait à Onyx (0..5) → tier VIDE pour les Champions (bug latent ; c'était le « TODO Phase 2 si un 6 réel apparaît »).
+
+**Fix** : ajout de `"Champion"` à `h5DesignationTiersEN` (index 6) + sous-palier forcé à 0 (palier unique, comme Onyx). Couvre les DEUX chemins CSR (service record `csr_mapper` + per-match `csr_match.go`, tous deux via `h5DesignationTierEN`). Le rang mondial #N (`H5Csr.Rank`) n'est pas encore porté par `CSRRankSnapshot` → follow-up si on veut afficher « #N ».
+
+**Résultats** : build + test livesync verts (cas designation 6→"Champion", 7→"" hors borne). Commit pending.
+
+## [2026-06-26] H5 engagement enrichi : assists + impulses objectif → highlight_events — COMPLÉTÉ (code ; commit pending)
+
+**Contexte** : l'agent concurrent a réglé la courbe d'engagement de base (kills synthétisés des killer_victim_pairs). #2 = l'ENRICHIR avec le support (assists) + l'objectif (flag/KOTH/territoires) pour que la courbe capte le « meneur d'objectif » et le joueur de soutien, pas seulement les frags.
+
+**Décision** : collect-layer (highlight_events est SHARED, persisté au collect — contrairement au PSA player-DB de #3). Vérifié SÛR : les consommateurs de highlight_events filtrent par event_type (kill/first_kill/melee_kill…) ou testent la présence → ajouter des lignes assist/mode est additif, n'altère aucun affichage. La courbe d'engagement compte TOUS les types (c'est le but recherché). Zéro double-compte : assist acteur=assistant (≠ tueur) ; objectif = allowlist SANS les impulses kill-dérivés (qui doubleraient les kills synthétisés).
+- **#2a assists** : DTO `Assistants[]` + canonical `MatchEvent.Assists` + mapper events.go ; `ingest.MapAssistEvents` → highlight_events event_type=assist (acteur=assistant).
+- **#2b objectif** : `ingest.MapObjectiveImpulseEvents` → allowlist CURÉE de 11 ids objectif POSITIFS (flag captured/pulls/pickup/returned, KOTH Point Victories, Defender Wins, Warzone Base Captured / Core Destruction, Oddball Ball Held, Round Won, Player Protected) → highlight_events event_type=mode (parité objectif Infinite). EXCLUS (documentés) : kill-dérivés (double-compte), structurel (spawn/death/revived/suicides), score-tick (PlayerScoreImpulse), bonus PvE/Warzone.
+Les deux câblés dans `CollectMatchBatch` (AddHighlightEvents).
+
+**Résultats** : tests verts — MapAssistEvents (2 assists, vides ignorés), MapObjectiveImpulseEvents (objectif inclus, kill-dérivé/spawn/suicide exclus), collect end-to-end inchangé. `build ./...` + vet + garde-rails ART verts.
+
+**Caveat / suite** : peuplé aux NOUVELLES collectes → re-sync/backfill requis sur l'existant. La capability `engagement.score` reste `not_exposed` (le collègue a câblé la courbe combat-tab match-view hors capability) ; flipper la capability + recalibrer les coefficients PAR TITRE = étape ultérieure (à coupler avec #6 pondération). Commit pending.
+
+## [2026-06-26] H5 discipline (suicides/trahisons) → PSA via chemin enrich — COMPLÉTÉ (code ; commit pending)
+
+**Contexte** : parité Infinite — la synthèse « fun stats » (TotalSuicides/TotalBetrayals) lit `personal_score_awards` (award_name `self_destruction`/`betrayed_player`). Infinite les obtient de l'API PersonalScores ; H5 n'a PAS de PSA natif → à CALCULER.
+
+**Correction de layer (auto-critique)** : 1er essai au COLLECT (mapper events → PSA dans PlayerData) = MORT : le collect H5 est shared-only (ne persiste PAS PlayerData ; le player DB est écrit par l'enrich). Reverté proprement (mapper events `discipline.go` supprimé). Bon layer = `BackfillEnrichmentFromShared` (2 callers, TOUS H5 → pas de risque de double-compte Infinite).
+
+**Implémentation** : étape `sync.computeAndPersistH5DisciplineAwards(ctx, playerDB, sharedDB, xuid)` (H5-only, documenté ⚠️ ne jamais câbler pour un titre à PSA natif → double-compte). Calcul depuis le SHARED (pas besoin de `DeathDisposition`) : suicide = `killer_victim_pairs` `killer_xuid==victim_xuid==owner` ; trahison = `killer==owner`, victim≠owner, MÊME équipe (join `match_participants`). Écriture PSA `self_destruction`/`betrayed_player` (category `penalty`, score 0 — H5 n'a pas la contribution au score, seul le COMPTE). Idempotent + ART-safe : INSERT pur tagué d'une NOUVELLE génération (`psa_generation_seq`) → la vue `personal_score_awards_latest` supersède par (match,xuid). Self-skip si schéma PSA absent (player DB legacy). Câblée dans `BackfillEnrichmentFromShared` (étape 1.55) + `report.DisciplineAwards`.
+
+**Résultats** : tests verts — dataset hétérogène (suicide + trahison + kills propres + kills subis + suicide d'un AUTRE joueur → 1 self_destruction + 1 betrayed_player pour l'owner), idempotence re-run (`_latest` non doublé), self-skip schéma absent. Garde-rails ART/append-only verts ; `build ./...` + vet verts.
+
+**Caveat / suite** : peuplé au prochain enrich (`h5-enrich` / hook live) → re-enrich requis sur l'existant. La synthèse affiche DÉJÀ TotalSuicides/TotalBetrayals → zéro changement front. Commit pending (autorisation user).
+
+## [2026-06-26] H5 MMR marqué not_supported (flag no_mmr + games.ProvidesMMR) — COMPLÉTÉ (code ; commit pending)
+
+**Contexte** : sonde 2026-06-26 — Halo 5 ne fournit AUCUN MMR (PreMatch/PostMatchRatings servis null sur 25/25 matchs, classés inclus ; le CSR par-playlist reste le seul signal de skill). Demande user : marquer MMR not_supported pour H5.
+
+**Décision** : marquage par flag data-availability, mirror EXACT de `no_native_kda`/`no_damage_taken` (PAS de nouvelle capability — le MMR est un CHAMP `team_mmr`/`enemy_mmr`/`delta_mmr`, pas une méthode Load*). `no_mmr=true` dans `config/titles/halo_5/constants.toml [damage_model]` ; champ `NoMMR` dans `damageModelTOML` + `DamageModelConstants` + mapping ; helpers `games.ProvidesMMR(slug)` / `ProvidesMMRFromResolver` (défaut true = Infinite). Le highlight « plus belle victoire underdog » est DÉJÀ nil-safe H5 (TeamMMR/EnemyMMR nil → `bestMMRUnderdogWinCanonical` retourne nil → skippé) et `BuildHighlightsFromCanonical(rows)` n'a pas le slug → pas de threading disproportionné. `ProvidesMMR` = point de vérité canonique pour tout consommateur futur (gating front, exposition capability).
+
+**Résultats** : build `games` OK ; `TestProvidesMMR` + voisins (NativeKDA/DamageTaken) verts.
+
+**Suite** : commit pending (autorisation user). Exposition front (cacher l'UI MMR pour H5) = follow-up si désiré.
+
+## [2026-06-26] H5 proficience par arme — ingestion (events WeaponDrop → shared.weapon_accuracy) — COMPLÉTÉ (code ; backfill pending)
+
+**Contexte** : l'exploration H5 (cf. `.ai/H5_EXPLORATION/`) a établi que la précision PAR ARME par joueur est reconstructible des events `WeaponDrop` (`ShotsFired`/`ShotsLanded`), validé EXACT contre le carnage `TotalShotsFired`/`TotalShotsLanded` (8/8 joueurs) — là où le carnage `WeaponStats[]` est servi VIDE par 343. L'« arme par kill » était déjà ingérée (`weapon_kills`) ; ce qui manquait = les TIRS par arme. (Le « manque de données arme » historiquement bloquant concernait Halo INFINITE/film, pas H5.) Branche `feat/h5-events-enrichment` (worktree `levelup-h5-events`, depuis main, qui inclut déjà le fix engagement synthétique `6cee3b1d3` d'un agent concurrent).
+
+**Décision technique** : faire transiter les tirs jusqu'au canonical puis persister en INSERT-only (PAS le générationnel de `weapon_kills` — inutile ici ; idempotence par l'ancre `match_registry` comme `killer_victim_pairs`).
+- DTO `h5GameEvent` + canonical `MatchEvent` étendus de `ShotsFired`/`ShotsLanded` (nullable `*int`, weapon_drop only ; nil ailleurs → no-op autres titres). Mapper `events.go` les pose sur WeaponDrop (pas WeaponPickup).
+- Nouveau mapper PUR `ingest/weapon_accuracy.go::MapWeaponAccuracy` : agrège par (xuid, weapon_id) sur le match ; skip drops à 0 tir / arme 0 / sans joueur. Croisé read-time avec `weapon_kills` = proficience (tirs/touchés/précision/kills).
+- Persist : `WeaponAccuracyInsert` + `AddWeaponAccuracy` + `persistWeaponAccuracy` (INSERT pur ART-safe) + champ `SharedBatch`. Câblé dans `CollectMatchBatch`.
+- Migration shared `add_weapon_accuracy` (table sans index) + ajout à `migration.canonicalOrder` (exigé par `TestCanonicalCoversGlobalAndTitle`).
+
+**Résultats** : `build ./...` vert ; tests verts — mapper (agrégation + skips), `persist`, migrations (cycle end-to-end 57/57 + order), garde-rail ART (`no_art_patterns`), `canonical`, `halo_5` (ingest/livesync/migrations). Conformité `canonical-types` (nullable, title-agnostic) + `arch-rules` (mapper pur, INSERT-only, schéma shared, zéro branchement slug, fichiers <80/500L) vérifiée.
+
+**Caveat / prochaine étape** : peuplé seulement aux NOUVELLES collectes (live sync / `h5-sync` / `h5-backfill`) → backfill requis sur les matchs existants (même caveat que les colonnes kill-mechanics). RESTE non fait : read-path (adapter/service) + surface UI de la proficience (différé, non demandé). Commit en attente d'autorisation. Cf. [[reference_h5_events_impulses_inventory]], `.ai/H5_EXPLORATION/FINDINGS_weapon_accuracy.md`.
 
 ---
 
