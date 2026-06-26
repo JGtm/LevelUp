@@ -128,6 +128,9 @@ type MatchEvent struct {
 	Weapon    *AssetReference `json:"weapon,omitempty"`     // kill / pickup / drop
 	KillerLoc *Vec3           `json:"killer_loc,omitempty"` // kill (Halo 5 plein)
 	VictimLoc *Vec3           `json:"victim_loc,omitempty"` // kill (Halo 5 plein)
+	// Assists : assistants du kill (Halo 5 Death.Assistants[] — natif). Vide hors
+	// kill / titres sans assists au timeline (Infinite : assists hors timeline).
+	Assists []PlayerIdentity `json:"assists,omitempty"` // kill
 
 	Player *PlayerIdentity `json:"player,omitempty"` // medal / impulse / spawn / pickup / drop
 	// RefID : identifiant catalogue référencé, discriminé par Type (medal id pour

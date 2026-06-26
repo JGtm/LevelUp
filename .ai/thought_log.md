@@ -1,3 +1,16 @@
+## [2026-06-26] H5 engagement enrichi : assists + impulses objectif → highlight_events — COMPLÉTÉ (code ; commit pending)
+
+**Contexte** : l'agent concurrent a réglé la courbe d'engagement de base (kills synthétisés des killer_victim_pairs). #2 = l'ENRICHIR avec le support (assists) + l'objectif (flag/KOTH/territoires) pour que la courbe capte le « meneur d'objectif » et le joueur de soutien, pas seulement les frags.
+
+**Décision** : collect-layer (highlight_events est SHARED, persisté au collect — contrairement au PSA player-DB de #3). Vérifié SÛR : les consommateurs de highlight_events filtrent par event_type (kill/first_kill/melee_kill…) ou testent la présence → ajouter des lignes assist/mode est additif, n'altère aucun affichage. La courbe d'engagement compte TOUS les types (c'est le but recherché). Zéro double-compte : assist acteur=assistant (≠ tueur) ; objectif = allowlist SANS les impulses kill-dérivés (qui doubleraient les kills synthétisés).
+- **#2a assists** : DTO `Assistants[]` + canonical `MatchEvent.Assists` + mapper events.go ; `ingest.MapAssistEvents` → highlight_events event_type=assist (acteur=assistant).
+- **#2b objectif** : `ingest.MapObjectiveImpulseEvents` → allowlist CURÉE de 11 ids objectif POSITIFS (flag captured/pulls/pickup/returned, KOTH Point Victories, Defender Wins, Warzone Base Captured / Core Destruction, Oddball Ball Held, Round Won, Player Protected) → highlight_events event_type=mode (parité objectif Infinite). EXCLUS (documentés) : kill-dérivés (double-compte), structurel (spawn/death/revived/suicides), score-tick (PlayerScoreImpulse), bonus PvE/Warzone.
+Les deux câblés dans `CollectMatchBatch` (AddHighlightEvents).
+
+**Résultats** : tests verts — MapAssistEvents (2 assists, vides ignorés), MapObjectiveImpulseEvents (objectif inclus, kill-dérivé/spawn/suicide exclus), collect end-to-end inchangé. `build ./...` + vet + garde-rails ART verts.
+
+**Caveat / suite** : peuplé aux NOUVELLES collectes → re-sync/backfill requis sur l'existant. La capability `engagement.score` reste `not_exposed` (le collègue a câblé la courbe combat-tab match-view hors capability) ; flipper la capability + recalibrer les coefficients PAR TITRE = étape ultérieure (à coupler avec #6 pondération). Commit pending.
+
 ## [2026-06-26] H5 discipline (suicides/trahisons) → PSA via chemin enrich — COMPLÉTÉ (code ; commit pending)
 
 **Contexte** : parité Infinite — la synthèse « fun stats » (TotalSuicides/TotalBetrayals) lit `personal_score_awards` (award_name `self_destruction`/`betrayed_player`). Infinite les obtient de l'API PersonalScores ; H5 n'a PAS de PSA natif → à CALCULER.
