@@ -2015,17 +2015,10 @@ export interface WatcherAuthStatus {
 // Asset Drawer (Phase 2)
 // ---------------------------------------------------------------------------
 
-// Phase D — re-shim : contrat OpenAPI (AssetMeta auto-dérivé, migration Huma assets).
-// Champs sprite (médailles Halo 5) ajoutés à la main en attendant la régénération
-// OpenAPI (le Go AssetMeta les porte déjà, json sprite_*). Intersection → survit à
-// la régén. Optionnels : maps/armes n'ont pas de sprite.
-export type AssetMeta = components['schemas']['AssetMeta'] & {
-  sprite_sheet?: string
-  sprite_left?: number
-  sprite_top?: number
-  sprite_width?: number
-  sprite_height?: number
-}
+// AssetMeta — type contractuel régénéré. Les champs sprite (médailles Halo 5) et
+// description / description_fr sont désormais portés par le schéma OpenAPI (optionnels :
+// vides pour maps/armes), plus besoin de shim manuel.
+export type AssetMeta = components['schemas']['AssetMeta']
 
 // ---------------------------------------------------------------------------
 // Achievements Xbox (bilingues EN/FR)

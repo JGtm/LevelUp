@@ -50,3 +50,31 @@ export function useProvidesDamageTaken(): boolean {
       s.availableTitles.find((t) => t.slug === s.currentTitleSlug)?.provides_damage_taken ?? true,
   )
 }
+
+/**
+ * Vrai si l'API du titre courant fournit un MMR d'équipe/adverse par match.
+ * Faux pour Halo 5 (pas de MMR par match) → on retire les colonnes MMR des
+ * tableaux Escouade/Explorer au lieu d'afficher un 0/N-A trompeur.
+ * Défaut `true` (Halo Infinite inchangé), aligné sur le défaut backend du champ.
+ */
+export function useProvidesTeamMmr(): boolean {
+  return useAppShellStore(
+    (s) =>
+      s.availableTitles.find((t) => t.slug === s.currentTitleSlug)?.provides_team_mmr ?? true,
+  )
+}
+
+/**
+ * Vrai si le titre courant supporte le max killing spree par match — valeur
+ * native (Infinite) ou calculée depuis les events kill/death horodatés (Halo 5,
+ * où le flag est donc `true`). On masque la série « Folie meurtrière max »
+ * UNIQUEMENT pour un titre sans events horodatés (flag `false`).
+ * Défaut `true` (Halo Infinite inchangé), aligné sur le défaut backend du champ.
+ */
+export function useProvidesMaxKillingSpree(): boolean {
+  return useAppShellStore(
+    (s) =>
+      s.availableTitles.find((t) => t.slug === s.currentTitleSlug)?.provides_max_killing_spree ??
+      true,
+  )
+}

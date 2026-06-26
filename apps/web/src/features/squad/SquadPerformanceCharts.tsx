@@ -22,6 +22,7 @@
 import { useCallback, useMemo } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
+import { useProvidesMaxKillingSpree } from '@/lib/damage/effectiveHp'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import {
   buildHsPerfectOption,
@@ -76,6 +77,10 @@ export function SquadPerformanceCharts({
   emptyMessage,
 }: SquadPerformanceChartsProps) {
   const isMobile = useMediaQuery('(max-width: 768px)')
+  // Title-agnostic : la série « Folie meurtrière max » n'est masquée que pour un
+  // titre sans events horodatés (provides_max_killing_spree=false). Pour Halo 5
+  // le backend CALCULE la spree depuis les events → flag true → série affichée.
+  const providesMaxSpree = useProvidesMaxKillingSpree()
 
   // Cast helper — série sentinelle pour éviter l'empty-state de ChartCard.
   const series = useMemo<ChartSeries<SquadPerformanceSeriesPoint>[]>(() => {
@@ -326,14 +331,16 @@ export function SquadPerformanceCharts({
           emptyMessage={emptyMessage}
         />
       </div>
-      <div className={pairClass}>
-        <ChartCard
-          title={labels.maxSpreeTitle}
-          series={series}
-          buildOption={buildMaxSpree}
-          height={SUBCHART_HEIGHT}
-          emptyMessage={emptyMessage}
-        />
+      <div className={providesMaxSpree ? pairClass : (stacked ? 'space-y-4' : 'grid grid-cols-1 gap-4')}>
+        {providesMaxSpree && (
+          <ChartCard
+            title={labels.maxSpreeTitle}
+            series={series}
+            buildOption={buildMaxSpree}
+            height={SUBCHART_HEIGHT}
+            emptyMessage={emptyMessage}
+          />
+        )}
         <SquadToggleLegendChart
           title={labels.hsPerfectTitle}
           series={series}
