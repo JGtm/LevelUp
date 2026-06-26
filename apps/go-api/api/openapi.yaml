@@ -2609,6 +2609,34 @@ paths:
       responses:
         "200": { description: "Season pass page" }
 
+  /players/{player_slug}/pages/palmares/relations:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    post:
+      tags: [palmares]
+      operationId: postRelationsPage
+      summary: "Hub Communauté > Relations segmenté (filtres en body : expérience, saison/période, playlist/mode, vue solo/escouade)"
+      responses:
+        "200": { description: "Relations hub page" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /players/{player_slug}/pages/palmares/relations/moments:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    post:
+      tags: [palmares]
+      operationId: postRelationsMoments
+      summary: "Section Moments & Rivalités (heatmap relation x tranche horaire + cartes revanche), segmentée par les memes filtres en body"
+      responses:
+        "200": { description: "Relations moments (heatmap + rivalries)" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   # Media (étendu)
   /media/feed-version:
     get:
@@ -12891,6 +12919,279 @@ components:
               type: string
       required:
           - title
+      type: object
+    RelationBadge:
+      additionalProperties: false
+      properties:
+          color_token:
+              type: string
+          detail:
+              additionalProperties: {}
+              type: object
+          label_key:
+              type: string
+          style:
+              type: string
+      required:
+          - label_key
+          - color_token
+          - style
+      type: object
+    RelationInsight:
+      additionalProperties: false
+      properties:
+          avg_kda_against:
+              format: double
+              nullable: true
+              type: number
+          avg_kda_with:
+              format: double
+              nullable: true
+              type: number
+          badges:
+              items:
+                  $ref: '#/components/schemas/RelationBadge'
+              nullable: true
+              type: array
+          category:
+              type: string
+          deaths_suffered:
+              format: int64
+              type: integer
+          duel_ratio:
+              format: double
+              nullable: true
+              type: number
+          enemy_matches:
+              format: int64
+              type: integer
+          enemy_win_rate:
+              format: double
+              nullable: true
+              type: number
+          enemy_wins:
+              format: int64
+              type: integer
+          first_seen_at:
+              nullable: true
+              type: string
+          gamertag:
+              type: string
+          is_core:
+              type: boolean
+          kills_dealt:
+              format: int64
+              type: integer
+          last_seen_at:
+              nullable: true
+              type: string
+          teammate_matches:
+              format: int64
+              type: integer
+          teammate_win_rate:
+              format: double
+              nullable: true
+              type: number
+          teammate_wins:
+              format: int64
+              type: integer
+          total_matches:
+              format: int64
+              type: integer
+          xuid:
+              type: string
+      required:
+          - xuid
+          - gamertag
+          - total_matches
+          - teammate_matches
+          - teammate_wins
+          - teammate_win_rate
+          - enemy_matches
+          - enemy_wins
+          - enemy_win_rate
+          - avg_kda_with
+          - avg_kda_against
+          - kills_dealt
+          - deaths_suffered
+          - duel_ratio
+          - first_seen_at
+          - last_seen_at
+          - category
+          - is_core
+          - badges
+      type: object
+    RelationRef:
+      additionalProperties: false
+      properties:
+          gamertag:
+              type: string
+          matches:
+              format: int64
+              type: integer
+          win_rate:
+              format: double
+              nullable: true
+              type: number
+      required:
+          - gamertag
+          - win_rate
+          - matches
+      type: object
+    RelationsOverview:
+      additionalProperties: false
+      properties:
+          allies_count:
+              format: int64
+              type: integer
+          core_count:
+              format: int64
+              type: integer
+          distinct_players:
+              format: int64
+              type: integer
+          rivals_count:
+              format: int64
+              type: integer
+          top_ally:
+              $ref: '#/components/schemas/RelationRef'
+          top_nemesis:
+              $ref: '#/components/schemas/RelationRef'
+      required:
+          - distinct_players
+          - allies_count
+          - rivals_count
+          - core_count
+          - top_ally
+          - top_nemesis
+      type: object
+    RelationsPageResponse:
+      additionalProperties: false
+      properties:
+          overview:
+              $ref: '#/components/schemas/RelationsOverview'
+          relations:
+              items:
+                  $ref: '#/components/schemas/RelationInsight'
+              nullable: true
+              type: array
+      required:
+          - overview
+          - relations
+      type: object
+    RelationDuelEntry:
+      additionalProperties: false
+      properties:
+          deaths_by_rival:
+              format: int64
+              type: integer
+          kills_on_rival:
+              format: int64
+              type: integer
+          match_id:
+              type: string
+          outcome:
+              type: string
+          started_at:
+              nullable: true
+              type: string
+      required:
+          - match_id
+          - started_at
+          - outcome
+          - kills_on_rival
+          - deaths_by_rival
+      type: object
+    RelationHeatmapCell:
+      additionalProperties: false
+      properties:
+          count:
+              format: int64
+              type: integer
+          daypart:
+              format: int64
+              type: integer
+          gamertag:
+              type: string
+          xuid:
+              type: string
+      required:
+          - xuid
+          - gamertag
+          - daypart
+          - count
+      type: object
+    RelationRivalry:
+      additionalProperties: false
+      properties:
+          current_streak:
+              format: int64
+              type: integer
+          duels:
+              items:
+                  $ref: '#/components/schemas/RelationDuelEntry'
+              nullable: true
+              type: array
+          enemy_matches:
+              format: int64
+              type: integer
+          frag_gap:
+              format: int64
+              type: integer
+          gamertag:
+              type: string
+          global_win_rate:
+              format: double
+              nullable: true
+              type: number
+          recent_win_rate:
+              format: double
+              nullable: true
+              type: number
+          rolling_win_rate:
+              items:
+                  format: double
+                  nullable: true
+                  type: number
+              nullable: true
+              type: array
+          rolling_window:
+              format: int64
+              type: integer
+          xuid:
+              type: string
+      required:
+          - xuid
+          - gamertag
+          - enemy_matches
+          - duels
+          - rolling_win_rate
+          - rolling_window
+          - recent_win_rate
+          - global_win_rate
+          - current_streak
+          - frag_gap
+      type: object
+    RelationsMomentsResponse:
+      additionalProperties: false
+      properties:
+          heatmap:
+              items:
+                  $ref: '#/components/schemas/RelationHeatmapCell'
+              nullable: true
+              type: array
+          rivalries:
+              items:
+                  $ref: '#/components/schemas/RelationRivalry'
+              nullable: true
+              type: array
+          top_relations:
+              format: int64
+              type: integer
+      required:
+          - heatmap
+          - rivalries
+          - top_relations
       type: object
     SeasonPassPageResponse:
       additionalProperties: false

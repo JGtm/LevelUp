@@ -91,6 +91,12 @@ export const okabePalette: Palette = {
   'narrative-encounter-tough-enemy':  '#D55E00', // Vermillion     — ennemi dangereux (K/D contre nous mauvais)
   'narrative-encounter-coriace':      '#CC79A7', // Reddish Purple — winrate vs lui mauvais (Coriace)
   'narrative-encounter-ordinal':      '#56B4E9', // Sky Blue       — compteur rencontres
+  // Badges « solid » du hub Relations : bluish-green = positif, blue = neutre.
+  'narrative-encounter-duo-gagnant':    '#009E73', // Bluish Green — binôme gagnant
+  'narrative-encounter-cameleon':       '#0072B2', // Blue         — autant allié qu'ennemi
+  'narrative-encounter-de-longue-date': '#0072B2', // Blue         — relation ancienne
+  'narrative-encounter-recrue':         '#56B4E9', // Sky Blue     — relation récente
+  'narrative-encounter-proie-favorite': '#009E73', // Bluish Green — domination en duel
 
   // ── Heatmaps — axe blue/vermillion ────────────────────────────────────────
   'heatmap-cold':           '#D55E00', // Vermillion — mauvais

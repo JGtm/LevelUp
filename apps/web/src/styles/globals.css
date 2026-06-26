@@ -243,6 +243,12 @@
   --ac-narrative-encounter-ally-plus:    #10B981;
   --ac-narrative-encounter-tough-enemy:  #EF4444;
   --ac-narrative-encounter-ordinal:      #3B82F6;
+  /* Badges « solid » du hub Relations (Phase 1) */
+  --ac-narrative-encounter-duo-gagnant:    #10B981;
+  --ac-narrative-encounter-cameleon:       #3B82F6;
+  --ac-narrative-encounter-de-longue-date: #3B82F6;
+  --ac-narrative-encounter-recrue:         #3B82F6;
+  --ac-narrative-encounter-proie-favorite: #10B981;
   /* Heatmaps */
   --ac-heatmap-cold:           #EF4444;
   --ac-heatmap-hot:            #10B981;

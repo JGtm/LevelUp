@@ -200,6 +200,33 @@ en = "Tough opponent"
 fr = "×{ordinal}"
 en = "×{ordinal}"
 
+# Badges « solid » du hub Communauté > Relations (Phase 1).
+[narrative.encounter.duo_gagnant]
+fr = "Duo gagnant"
+en = "Winning duo"
+
+[narrative.encounter.cameleon]
+fr = "Caméléon"
+en = "Chameleon"
+
+[narrative.encounter.de_longue_date]
+fr = "De longue date"
+en = "Long-standing"
+
+[narrative.encounter.recrue]
+fr = "Recrue"
+en = "Newcomer"
+
+[narrative.encounter.proie_favorite]
+fr = "Proie favorite"
+en = "Favorite prey"
+
+# Badge cross-jeu (Phase 3b) : aussi croisé sur un AUTRE titre. {game} = nom
+# d'affichage résolu de l'autre titre (jamais un littéral).
+[narrative.encounter.cross_game]
+fr = "Aussi sur {game}"
+en = "Also on {game}"
+
 # ─── S7 : Contributions ─────────────────────────────────────────────────────
 
 [squad.contrib.section_title]

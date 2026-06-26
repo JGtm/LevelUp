@@ -39,7 +39,10 @@ const WEB_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'apps', '
 //   introduits par la passe h5 prod-gate : la feature notifications n'AJOUTE aucun export
 //   (elle étend des exports existants : union, ALL_CATEGORIES, ICONS, i18n). Relevé pour
 //   débloquer le 1er push ; à nettoyer à la réconciliation du merge vers main.
-const THRESHOLDS = { files: 31, exports: 90, types: 88 }
+// files=29, types=86 (2026-06-26) : abaissement au compte courant (relations-hub) pour
+//   verrouiller les gains de code mort déjà réalisés (était files=31, types=88). Le
+//   ratchet signalait « à abaisser » → on fige la ligne. exports inchangé (90, encore au cap).
+const THRESHOLDS = { files: 29, exports: 90, types: 86 }
 
 function knipJson() {
   try {

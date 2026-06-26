@@ -270,6 +270,102 @@ Les deux câblés dans `CollectMatchBatch` (AddHighlightEvents).
 **RÉSOLU (capture XHR navigateur sous login waypoint, puis validé headless)** : le backend MCC = **`mccapi.svc.halowaypoint.com`**, préfixe `/hmcc/`, convention **`users/gt(GAMERTAG)/…`** (wrapper `gt(...)`, ni `players/` ni `xuid()` — d'où l'échec de toutes mes sondes). Auth = même header `x-343-authorization-spartan` v4 **de notre pool** (pas de clearance, pas de `?auth=st`), CORS `*`. Validé en **headless** (`cmd/probe-mcc`, round G) : matches/service-record/achievements = 200 avec notre token, SANS navigateur. JGtm = 3 matchs (Halo2/Halo4/HaloReach, déc. 2019), service-record agrégé (gamesPlayed 3, K/D 30/52, campagne missionsCompleted 86…). Endpoints vus : `users/gt(GT)/{matches?page&pageSize, service-record, service-record/{h1,h2,h3,h4,odst,reach}/campaign, inventory, achievements?lang}`, + `hmcc/{ranks,maps,seasons,seasons/{id},playlists}?lang`. Limite notée : la liste `matches` n'a PAS de `matchId` (pas de drill-down per-match détaillé évident) ; granularité = ligne agrégée par match (score/kills/deaths/standing/medals/haloTitleId/mapId). **Donc fetch MCC = faisable avec l'infra existante** (même pattern que Halo 5 : nouveau dossier `config/titles/halo_mcc/` + adapter `internal/games/halo_mcc/`).
 
 **SURFACE API COMPLÈTE documentée** (minage bundle JS `chunk 2303` = client officiel 12 fonctions `getHaloMcc*` + validation headless `cmd/probe-mcc`, owner JGtm / subject KiingBooty) → **`.ai/MCC_UNOFFICIAL_API_REFERENCE.md`**. Points clés : 12 endpoints GET sur `mccapi.svc.halowaypoint.com/hmcc/users/gt(GT)/…` ; **public cross-joueur** (service-record/matches/achievements/campaign/skill-ranks) sauf **inventory = owner-only (403)** ; catalogues `ranks/maps/seasons/seasons/{id}` OK, `playlists` = 500, `skill-ranks` exige `hoppers`, `matches?title=` format inconnu (400) ; **pagination matchs plafonnée ~100 récents** (maxPage 4 @ pageSize 25, pageSize 100 rejeté) ; **AUCUN détail per-match / roster / per-arme** (≠ H5 `/h5/{mode}/matches/{id}` & Infinite `/{t}/matches/{id}/stats`) → la remarque user « regarder un match avec joueurs croisés » est sans objet (l'API ne l'expose pas, indépendamment du nb de matchs du joueur). Registre hosts `__NEXT_DATA__.props.settings` capturé (mccGatewayService=mccapi, + legacyGatewayService, profile/comms/wpcontent). **Prochaine étape** : décision utilisateur (commit sonde+doc ; activer ou non le titre MCC).
+## [2026-06-26] Hub Relations — Phase 3b badge cross-jeu « Aussi sur {game} » (branche feat/relations-hub)
+
+**Statut** : Complété (worktree, non committé). ADDITIF / BEST-EFFORT / LECTURE SEULE.
+
+**Décision technique principale** :
+- Le badge cross-jeu est un `RelationBadge{style:"solid"}` supplémentaire injecté APRÈS la construction des insights (impossible dans `ComputeBadges` qui est pur, 0 DB). Injection via dépendance optionnelle `port.CrossGameCooccurrence` (`WithCrossGame`, pattern `WithFilters`). `crossGame == nil` → chemin Phase 3a strictement inchangé.
+- Jointure cross-titre par **xuid** (global, ADR 0008) : vérifié que `match_participants` H5 stocke un xuid résolu (RESOLVE-OR-SKIP dans `halo_5/mapping_carnage.go`), donc xuid non-null en base — la crainte « H5 gamertag-keyé » du grounding-2 concerne le payload live MatchView, pas la table persistée. Join par xuid = plus simple et correct.
+- Énumération title-agnostic : `title.DefaultRegistry().Active()` privé du `pdb.TitleSlug` ; chemin via `PathResolver.SharedDBPath(otherSlug)` ; ouverture RO via `duckdb.OpenReadForQuery` (réutilise handle caché RW/RO, ADR 0016, mono-process safe). Libellé = `descriptor.Name` résolu (jamais un littéral « Halo 5 »).
+- Perf : UNE requête batch par autre titre (`CountCrossTitleCooccurrences`, `COUNT(DISTINCT match_id)` par opp_xuid, `HAVING >= 3`, bots `NOT LIKE 'bid(%'` exclus). Jamais une DB par relation. Timeout 10s.
+- Dégradation : toute erreur (DB absente/lock/requête) → skip titre + `slog.DebugContext`, map vide remontée, `/relations` jamais en échec.
+- Token couleur : réutilise `narrative-encounter-cameleon` (sémantique « joue les 2 jeux ») → zéro ajout palette/snapshot (grounding option A).
+- Front : `resolveGame(detail)` symétrique à `resolveOrdinal`, vars `{game}` passées à `formatMessage` ; clé `narrative.encounter.cross_game` (FR « Aussi sur {game} » / EN « Also on {game} ») + manifest régénéré (squad 106→107 clés). Rendu solid déjà géré par `RelationBadges`/`SolidBadge` → zéro composant neuf.
+
+**Fichiers** : port/services.go (+CrossGameHit, +CrossGameCooccurrence) ; service/relations_cross_game.go (+WithCrossGame, +appendCrossGameBadges) ; service/relations_service.go (champ crossGame + appel) ; analysis/relations/badges_cross_game.go (+CrossGameBadge pur, +seuil CrossGameMinMatchesTogether=3) ; platform/duckdb/cross_game_repo.go (+CountCrossTitleCooccurrences) ; api/registry_relations_cross_game.go (impl + buildCrossGameCooccurrence) ; api/registry_career.go (wiring) ; web RelationBadges.tsx + squad.toml + squad.ts généré ; 3 fichiers de test.
+
+**Vérifs (toutes vertes)** : go build ./... + go vet ./internal/... OK ; go test service/analysis/api/port OK ; integration TestCountCrossTitleCooccurrences (+EmptyInputs) OK ; service TestCrossGame_* (no-dep/>=seuil/<seuil/empty-hits/empty-name) OK ; analysis TestCrossGameBadge OK ; front typecheck 0 err ; eslint RelationBadges.tsx 0 ; vitest PalmaresRelationsPage 7/7 ; knip-ratchet 29/90/86 exit 0 (zéro code mort neuf) ; types.ts/generated.ts NON touchés (pas de risque contract-ratchet).
+
+**Contrat badge pour le front** : `RelationBadge{ label_key:"narrative.encounter.cross_game", color_token:"narrative-encounter-cameleon", style:"solid", detail:{ game:<nom titre résolu>, matches_together:<int> } }`.
+
+**Prochaine étape** : commit (sur autorisation) ; à terme valider en prod avec un joueur ayant des matchs HI + H5 (JGtm).
+
+**Reprise [2026-06-26, session vérif front]** : le front Phase 3b était déjà en place (RelationBadges.tsx `resolveGame`+vars `{game}`, clé manifest, squad.ts généré). Actions : (1) régénéré `build_i18n_manifests.mjs` → stable, 18 manifests / 2294 clés, squad 107 clés, zéro drift (squad.ts +1 ligne déjà présente) ; (2) ajouté la couverture front manquante du rendu du badge cross-jeu — fixture `narrative.encounter.cross_game` (game="Halo 5") dans `src/test/handlers.ts` + test `PalmaresRelationsPage.test.tsx` « rend le badge cross-jeu en résolvant {game} depuis detail » asserte `« Aussi sur Halo 5 »` (valide l'interpolation `{game}` bout-en-bout). Gates verts : typecheck 0 err ; eslint 0 error / 76 warnings (tous pré-existants, aucun dans RelationBadges.tsx) ; vitest palmares 9/9 (était 8) ; knip-ratchet 29/90/86 OK ; lint-contract-ratchet clean ; aucun hex/classe couleur en dur (token `narrative-encounter-cameleon` réutilisé).
+
+## [2026-06-26] Fix 2 tests d'intégration pré-existants + 2 dettes mécaniques (branche feat/relations-hub)
+
+**Statut** : Complété (worktree, non committé). Aucun code de production touché — seulement setup de test + tooling + format.
+
+**Cause racine + fix** :
+- Échec 1 (achievements) : `xbox_achievement_definitions` est créée par la migration `add_xbox_achievement_definitions` (TargetMetadata) qui vit en voie B dans `internal/games/halo_infinite/migrations/steps.go` → fournie au runner via `migration.SetTitleStepsProvider(halomigrations.StepsFor)`. Le `TestMain` du package `service` (`main_test.go`) câblait le classifier LUSR mais PAS ce provider → `titleStepsProvider` nil → `stepsForTarget(TargetMetadata)` ne renvoyait que le registre global (sans cette table). Le package `duckdb` passait car son `migration_provider_test.go` pose déjà le provider. Fix : ajouter `migration.SetTitleStepsProvider(halomigrations.StepsFor)` au `TestMain` de `service` (miroir boot + duckdb).
+- Échec 2 (player_matches) : `PlayerMatchesRepo.Load` SELECT `p.assassination_kills / ground_pound_kills / shoulder_bash_kills` (mécaniques natives H5, ajoutées en prod par la migration `add_h5_kill_mechanics_columns` en `SMALLINT DEFAULT 0`). La fixture `seedPlayerSchema` (CREATE minimal de `shared.match_participants`) ne les avait pas → Binder Error. Fix : ajout des 3 colonnes (`SMALLINT DEFAULT 0`) aux DEUX CREATE TABLE `shared.match_participants` du fichier (seedPlayerSchema + seed aligné). Aucune autre colonne du SELECT ne manquait (vérifié ligne à ligne 258-324).
+
+**Dettes** :
+- gofmt : `gofmt -w apps/go-api` (seul `queries_home_citations.go` était non formaté) → `gofmt -l apps/go-api` vide.
+- knip-ratchet : plafonds abaissés au compte courant files 31→29, types 88→86 (exports inchangé 90, encore au cap). Commentaire daté 2026-06-26.
+
+**Vérifs (toutes vertes)** : TestAchievementsIntegration ok 2.99s ; TestPlayerMatchesRepo ok 2.89s ; gofmt -l apps/go-api vide ; go build + go vet OK ; node tools/knip-ratchet.mjs exit 0 (29/29, 90/90, 86/86) ; apps/web typecheck 0 erreur.
+
+**Prochaine étape** : Phase 3b badge cross-jeu « Aussi sur Halo 5 » (cf. entrée suivante).
+
+## [2026-06-26] Hub Communauté > Relations — Phase 3a Moments & Rivalités (branche feat/relations-hub)
+
+**Statut** : Complété (worktree). Vérifié moi-même : Go build/vet/test (relations/analysis/service/api) + intégration (GetRelationsHeatmap/GetRivalTimeline :memory:) verts ; front typecheck + eslint (0 err) + vitest palmares 8/8 + knip 90/90 ; généré palmares.ts régénéré (29 clés moments.*).
+
+**Décision** :
+- Sous-endpoint POST /pages/palmares/relations/moments (body FilterContextInput optionnel, segmentation Phase 2 héritée) → {heatmap, rivalries, top_relations}. Sous-endpoint (vs extension RelationInsight) pour garder la liste légère.
+- Heatmap : top-8 relations × 6 tranches horaires, intensité = matchs communs, aligné ExplorerActivityHeatmapChart (rampe heatmap-cold→hot). SQL Q29 (EXTRACT hour AT TIME ZONE 'UTC', top-N).
+- Rivalités : bête noire + top-3 rivaux ; frise duels (ancien→récent), WR glissant (fenêtre 5), série signée, écart de frags cumulé. SQL Q30 (timeline + frags directionnels killer_victim_pairs ; ORDER BY start_time, match_id déterministe). Métriques en analysis pur (rivalry.go/daypart.go), testées.
+- Title-agnostic : outcome via outcomeSQLEq/canonical (jamais 2/3 en dur), timezone canonique, bots exclus.
+
+**Findings revue (triés)** : « blocker » generated stale = FAUX (régénéré, vérifié 29 clés) ; gofmt 3 fichiers → corrigé ; Q30 tiebreak match_id → corrigé (déterminisme WR glissant) ; « pas d'intégration E2E » = inexact (Q29/Q30 testés :memory:) ; nits laissés.
+
+**Prochaine étape** : régler les 2 échecs d'intégration PRÉ-EXISTANTS (seed `xbox_achievement_definitions` + fixture `assassination_kills`) + dette (gofmt tree, sweep knip + abaisser plafonds) ; Phase 3b badge cross-jeu « Aussi sur Halo 5 ».
+
+## [2026-06-26] Hub Communauté > Relations — Phase 2 segmentation serveur (branche feat/relations-hub)
+
+**Statut** : Complété (worktree, non committé à l'écriture — commit/push sur autorisation). Vérifié moi-même : Go build/vet/test (relations + api drift/contract) verts ; intégration cross-DB solo/escouade + playlist (:memory:) verts ; front typecheck + eslint (0 err) + vitest palmares 7/7 + knip 90/90 ; généré palmares.ts régénéré (12 clés filters.*).
+
+**Décision technique** :
+- Endpoint GET → **POST** /pages/palmares/relations, body `FilterContextInput` OPTIONNEL (corps absent = zéro-valeur = tous les matchs, byte-identique Phase 1). `match_context` solo/squad/all. 400 invalid_body / 404 player_not_found / 500 relations_error. Réponse RelationsPageResponse inchangée, recalculée sur le sous-ensemble filtré.
+- Service (0 SQL) : `resolveScope` court-circuite (nil) si input trivial → Q28 non scopée ; sinon `FiltersService.ResolveMatchIDs` (MÊME pipeline cascade que /filters/resolve, cross-DB shared+player `is_with_friends`) → set de match_id ; nil normalisé en slice vide (distingue « tout » de « rien en périmètre »).
+- SQL : `Q28RelationsScopedTpl` (2 clauses IN symétriques my_history + kv_stats, placeholders positionnels via buildRelationsQuery) ; outcomes title-aware conservés, timezone canonique. Aucun `is_ranked` en dur (expérience via filters_service).
+- Front : `useLocalFilterBar` (partagé) étendu additivement avec un `ViewDropdown` solo/escouade optionnel mappé sur `match_context` ; pending→committed + Analyser + reset ; counts cascade-aware via `useFiltersPreview` ; chips client conservés, orthogonaux. `useRelationsPage` → api.post, queryKey inclut le hash des filtres committés.
+- i18n : 12 clés `palmares.relations.filters.*` FR+EN (0 anglicisme), manifest régénéré. Couleurs via tokens.
+
+**Title-agnostic** : segmentation via l'infra cascade existante (pas de slug, pas de is_ranked en dur) ; cross-DB via handles existants ; lecture seule.
+
+**Findings revue (triés)** : « blocker » i18n du reviewer = FAUX (régénération faite, vérifiée) ; `go test -tags=integration ./internal/service/` échoue sur `TestAchievementsIntegration_*` (table xbox_achievement_definitions) = **pré-existant hors Phase 2** ; `generated.ts` retire des champs H5 (MatchNativeCommendation/MonitoringSnapshotSummary) = artefact de base ancienne, à régénérer au PR (pas de merge ici) ; nits corrigés (commentaires Q28 16→15 + buildRelationsQuery ; docstrings Phase 1→2). Fallback `?? 'Analyser'` laissé (hook partagé pré-existant).
+
+**Prochaine étape** : commit + push Phase 2 (sur autorisation) ; Phase 3 (badge cross-jeu « Aussi sur Halo 5 », heatmap agrégé, rivalités).
+
+## [2026-06-26] Hub Communauté > Relations — FRONTEND Phase 1 (branche feat/relations-hub)
+
+**Statut** : Complété (frontend). Backend Go (endpoint `/pages/palmares/relations`, domain/analysis/repo/service/handler) déjà présent et vert dans le worktree à mon arrivée ; je l'ai validé (build/vet/test verts) sans le modifier.
+
+**Décision technique** :
+- Front réécrit pour consommer l'endpoint réel `{overview, relations[]}` ; suppression du faux mapper `mapCareerEncountersToRelations` + types `CareerEncounters*` dans `queries.ts` (le hub ne dérive plus de `/pages/career/encounters`).
+- `lib/api/types.ts` aligné exactement sur le JSON Go (RelationInsight + RelationBadge + RelationRef + RelationsOverview, `relations[]`).
+- `PalmaresRelationsPage.tsx` réécrite en hub : Hero 3 KpiCard (binôme/bête noire/noyau dur), chips de filtre CLIENT (Tous/Noyau dur/Alliés/Rivaux/Vus récemment), tableau unique (langage MatchEncountersTable : SplitBar allié|ennemi + frags/morts, NarrativeBadge, gamertag → Explorer), section Noyau dur en mini-cards flottantes `bg-card`. Extraction de `RelationsTable.tsx`, `RelationBadges.tsx`, `relationsFilter.ts` pour rester < 500 L/fonction < 80 L.
+- Badges "solid" : composant local fond plein + texte blanc ; "tinted" → NarrativeBadge. 5 nouveaux tokens `narrative-encounter-{duo-gagnant,cameleon,de-longue-date,recrue,proie-favorite}` ajoutés dans semantic-tokens.ts + 4 palettes + globals.css.
+- i18n : section relations de `palmares.toml` refondue (hero/chips/colonnes/catégories/tooltips/noyau dur, anglicismes corrigés → « Taux de victoire ») ; 5 clés badges dans `squad.toml` ; manifests régénérés ; adapter `i18n.ts` mis à jour (shape PalmaresText.relations).
+
+**Résultats** : `tsc -b` OK ; `eslint` 0 erreur (seul warning restant = limite TanStack `useReactTable`, identique à MatchEncountersTable existant) ; vitest palmares 5/5, accessibilité+i18n 118/118, snapshots palette mis à jour (-u), navigation 17/17. Go build/vet/test relations verts.
+
+**Polish (suite revue adversariale, édition directe)** :
+- `is_core` exposé dans le DTO `RelationInsight` (source unique `analysis/relations.IsCore` ; le front filtre sur ce flag au lieu de dupliquer les seuils du noyau dur). OpenAPI + types TS alignés ; drift/contract verts.
+- `formatRelative` (RelationsTable) passé via i18n : nouvelles clés `palmares.relations.relative.*` (FR + EN, pluriel ICU) — plus aucune string FR/EN en dur dans le composant.
+- `formatPercent` du tableau aligné sur le helper canonique `@/lib/formatters` (cohérence hero/tableau, ADR 0006).
+- Code mort retiré : champ `titleSlug` + `WithTitleSlug` du `RelationsService` (jamais lu).
+- Tag OpenAPI de la route corrigé `home` → `palmares`.
+- `nullable` des tableaux (relations/badges) laissé tel quel : Huma le dérive des slices Go ; le service garantit des slices non-nil → type TS non-nullable sûr (le retirer créerait une divergence Huma).
+
+**Title-agnostic (vérifié)** : aucun branchement `slug == "halo_infinite"` ; outcomes win/loss via résolveur title-aware `outcomeSQLEq`/`canonical.Outcome*` (PMT-5, pas de 2/3 en dur) ; lecture via `SharedReadDB` title-scopé ; factory `RelationsCtx` non gatée (marche pour tout titre résolu, dont Halo 5) ; front via client `api` (X-LevelUp-Title auto). Nuance : pas de garde capability si un titre futur n'a pas les tables encounter (OK Infinite+H5).
+
+**Vérifs (worktree, refaites moi-même)** : Go `build`/`vet`/`test` verts (relations, service, handlers, api incl. `TestOpenAPISchemaDrift` + contract) ; front `tsc -b` + `eslint` (0 erreur, 2 warnings préexistants) + vitest palmares 5/5 ; manifests régénérés.
+
+**Reste** : commit + **merge de `main`** dans la branche (main a avancé de 10 commits H5 pendant le run du workflow ; chevauchement = `openapi.yaml` + ce fichier) ; puis Phase 2 (barre de segmentation serveur Expérience/Saison/Playlist/Mode/**Vue Solo-Escouade** via `is_with_friends`) ; Phase 3 (badge cross-jeu « Aussi sur Halo 5 », heatmap agrégé, rivalités).
 
 ## [2026-06-25] Vérification finale (ultracode) + remédiation snapshot — Phase 4 GLOBAL REVERTÉ → scoped sûr
 

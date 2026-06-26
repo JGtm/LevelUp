@@ -99,6 +99,13 @@ export const cividisPalette: Palette = {
   'narrative-encounter-tough-enemy':  SAFE_VERMILLION,
   'narrative-encounter-coriace':      CIVIDIS_T75, // ocre — winrate vs lui mauvais
   'narrative-encounter-ordinal':      CIVIDIS_T40,
+  // Badges « solid » du hub Relations : positif = SAFE_BLUE (axe « bon » Cividis),
+  // neutre = tons Cividis (pas de vert dans cette palette monochrome).
+  'narrative-encounter-duo-gagnant':    SAFE_BLUE,
+  'narrative-encounter-cameleon':       CIVIDIS_T40,
+  'narrative-encounter-de-longue-date': CIVIDIS_T25,
+  'narrative-encounter-recrue':         CIVIDIS_T60,
+  'narrative-encounter-proie-favorite': SAFE_BLUE,
 
   // ── Heatmaps — axe blue/vermillion ────────────────────────────────────────
   'heatmap-cold':           SAFE_VERMILLION,

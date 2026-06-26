@@ -61,11 +61,16 @@ export type SemanticToken =
   | 'narrative-debacle'
   | 'narrative-contre-remontada'
 
-  // ── Badges encounter (4) ───────────────────────────────────────────────────
+  // ── Badges encounter (4 + 5 solid hub Relations) ───────────────────────────
   | 'narrative-encounter-ally-plus'
   | 'narrative-encounter-tough-enemy'
   | 'narrative-encounter-coriace'
   | 'narrative-encounter-ordinal'
+  | 'narrative-encounter-duo-gagnant'
+  | 'narrative-encounter-cameleon'
+  | 'narrative-encounter-de-longue-date'
+  | 'narrative-encounter-recrue'
+  | 'narrative-encounter-proie-favorite'
 
   // ── Badges narratifs — texte (5) ───────────────────────────────────────────
   // Texte sur fond coloré — calculé pour assurer le contraste WCAG AA
@@ -115,6 +120,9 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'narrative-debacle-text', 'narrative-contre-remontada-text',
   'narrative-encounter-ally-plus', 'narrative-encounter-tough-enemy',
   'narrative-encounter-coriace', 'narrative-encounter-ordinal',
+  'narrative-encounter-duo-gagnant', 'narrative-encounter-cameleon',
+  'narrative-encounter-de-longue-date', 'narrative-encounter-recrue',
+  'narrative-encounter-proie-favorite',
   'heatmap-cold', 'heatmap-hot', 'heatmap-divergent-low', 'heatmap-divergent-high',
   'team-ally', 'team-enemy',
 ] as const

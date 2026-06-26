@@ -86,6 +86,33 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 	return svc, nil
 }
 
+// RelationsCtx retourne un RelationsService pour le joueur identifié par slug.
+// Page transverse (non gatée) : réutilise CareerRepo (méthode GetRelations,
+// lecture seule shared). Aucun adapter / friends nécessaire — le hub affiche
+// tous les joueurs récurrents.
+func (r *ServiceRegistry) RelationsCtx(ctx context.Context, slug string) (port.RelationsService, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	repo := duckdb.NewCareerRepo(pdb)
+	svc := service.NewRelationsService(repo)
+	// Phase 2 : segmentation serveur. Le FiltersService résout le sous-ensemble
+	// de match_id (expérience/classé, saison/période, playlist/mode, vue
+	// solo/escouade) via le MÊME pipeline cascade que /filters/resolve, en
+	// réutilisant le FiltersRepo (cross-DB : shared + player DB is_with_friends).
+	filtersSvc := service.NewFiltersService(duckdb.NewFiltersRepo(pdb))
+	svc = svc.WithFilters(filtersSvc)
+	// Phase 3b (additif, best-effort) : badge cross-jeu. Énumère les autres
+	// titres actifs via le TitleRegistry et lit leur catalogue shared en RO.
+	// nil-safe : si la dépendance n'est pas constructible (config absente,
+	// joueur sans xuid), le badge reste inerte sans impacter /relations.
+	if cg := r.buildCrossGameCooccurrence(pdb); cg != nil {
+		svc = svc.WithCrossGame(cg)
+	}
+	return svc, nil
+}
+
 // buildFriendsXPLoader construit un loader d'historique XP pour tous les amis
 // du joueur courant (joueurs référencés dans db_profiles.json, hors joueur
 // courant). Retourne nil si cfg est indisponible ou s'il n'y a aucun autre joueur.

@@ -72,6 +72,12 @@ export const defaultPalette: Palette = {
   'narrative-encounter-tough-enemy':  '#EF4444', // red-500     — K/D contre nous mauvais (Dur à cuire)
   'narrative-encounter-coriace':      '#F59E0B', // amber-500   — winrate vs lui mauvais (Coriace)
   'narrative-encounter-ordinal':      '#3B82F6', // blue-500    — compteur rencontres
+  // Badges « solid » du hub Relations (Phase 1) : vert = positif, bleu = neutre.
+  'narrative-encounter-duo-gagnant':    '#10B981', // emerald-500 — binôme gagnant
+  'narrative-encounter-cameleon':       '#3B82F6', // blue-500    — autant allié qu'ennemi
+  'narrative-encounter-de-longue-date': '#3B82F6', // blue-500    — relation ancienne
+  'narrative-encounter-recrue':         '#3B82F6', // blue-500    — relation récente
+  'narrative-encounter-proie-favorite': '#10B981', // emerald-500 — domination en duel
 
   // ── Heatmaps (source : timeseries-heatmap.tsx, heatmapChart.ts) ────────────
   'heatmap-cold':           '#EF4444', // mauvais — rouge
