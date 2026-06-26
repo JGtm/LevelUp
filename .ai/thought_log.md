@@ -30326,3 +30326,9 @@ hang). Aucun changement de comportement runtime (test/CI-only + refactor de libe
 **Conclusion / prochaine étape** : merge dans main + déploiement prod. Suivi non-bloquant :
 `internal/persist` pose le provider dans des fonctions de test plutôt qu'un `TestMain` (risque latent
 d'ordre) ; le scanner de `TestAssertProgressionDeps` ne couvre pas encore `NewSyncEngineForTitle`.
+
+**Correction post-merge** : Go Coverage + Go Lint verts en CI, mais Go Baseline rouge — la baseline
+ayant été capturée sous Windows contenait 3 sous-tests Windows-only
+(`TestFilePathToURL_SinglePlayerCapturesBase/{clip,clip_thumb,screenshot}` ; le test `t.Skip` si
+`GOOS != windows`), absents du run CI Linux. Retrait de ces 3 sous-tests du floor (parent conservé,
+émis en skip sur Linux). Leçon : capturer/filtrer la baseline pour l'OS du gate (Linux CI), pas Windows.

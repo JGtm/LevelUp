@@ -11041,18 +11041,6 @@
 {"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestParseNeighborsFilterSpec_WithPlayer_LengthLimit","Elapsed":0}
 {"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase"}
 {"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase","Output":"=== RUN   TestFilePathToURL_SinglePlayerCapturesBase\n"}
-{"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase/screenshot"}
-{"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase/screenshot","Output":"=== RUN   TestFilePathToURL_SinglePlayerCapturesBase/screenshot\n"}
-{"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase/screenshot","Output":"--- PASS: TestFilePathToURL_SinglePlayerCapturesBase/screenshot (0.00s)\n"}
-{"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase/screenshot","Elapsed":0}
-{"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase/clip_thumb"}
-{"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase/clip_thumb","Output":"=== RUN   TestFilePathToURL_SinglePlayerCapturesBase/clip_thumb\n"}
-{"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase/clip_thumb","Output":"--- PASS: TestFilePathToURL_SinglePlayerCapturesBase/clip_thumb (0.00s)\n"}
-{"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase/clip_thumb","Elapsed":0}
-{"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase/clip"}
-{"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase/clip","Output":"=== RUN   TestFilePathToURL_SinglePlayerCapturesBase/clip\n"}
-{"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase/clip","Output":"--- PASS: TestFilePathToURL_SinglePlayerCapturesBase/clip (0.00s)\n"}
-{"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase/clip","Elapsed":0}
 {"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase","Output":"--- PASS: TestFilePathToURL_SinglePlayerCapturesBase (0.00s)\n"}
 {"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_SinglePlayerCapturesBase","Elapsed":0}
 {"Time":"2026-06-26T23:45:38.9101878+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestFilePathToURL_MultiPlayerCapturesBaseWithSlug"}
