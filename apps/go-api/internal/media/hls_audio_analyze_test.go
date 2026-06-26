@@ -79,6 +79,29 @@ func TestRMSFramesDB_PartialFrameIgnored(t *testing.T) {
 	}
 }
 
+func TestSilenceRatio(t *testing.T) {
+	// Continu : toutes les trames au même niveau → 0 % de silence.
+	cont := make([]float64, 100)
+	for i := range cont {
+		cont[i] = -20
+	}
+	if r := silenceRatio(cont); r != 0 {
+		t.Errorf("continu : silenceRatio = %v, want 0", r)
+	}
+	// Intermittent : moitié forte (−10 dB), moitié silence (−91) → ~50 %.
+	interm := make([]float64, 100)
+	for i := range interm {
+		if i%2 == 0 {
+			interm[i] = -10
+		} else {
+			interm[i] = -91
+		}
+	}
+	if r := silenceRatio(interm); r < 0.4 || r > 0.6 {
+		t.Errorf("intermittent : silenceRatio = %v, want ~0.5", r)
+	}
+}
+
 func TestRestMixFilter(t *testing.T) {
 	if fc, m := restMixFilter(2); fc != "" || m != "0:a:1" {
 		t.Errorf(`restMixFilter(2) = (%q,%q), want ("", "0:a:1")`, fc, m)
@@ -291,17 +314,21 @@ func generateAudioMKV(t *testing.T, dir, name, filter string, maps []string) str
 }
 
 // generateGameVoiceMKV produit un MKV où la piste 0 = mix complet, la 1ʳᵉ composante
-// (0:a:1) = voix FAIBLE (AM lente, ~12 dB sous le jeu) et la 2ᵉ (0:a:2) = jeu FORT
-// (AM continue). Le jeu domine le mix → doit être classé `game` malgré sa position.
+// (0:a:1) = voix INTERMITTENTE (enveloppe cubée → salves + silences, fort taux de
+// silence) et la 2ᵉ (0:a:2) = jeu CONTINU (faible variation d'enveloppe, peu de
+// silence). Le jeu, plus continu, doit être classé `game` malgré sa position (2).
 func generateGameVoiceMKV(t *testing.T, dir string) string {
 	t.Helper()
 	out := filepath.Join(dir, "gamevoice.mkv")
-	game := "0.6*sin(2*PI*200*t)*(0.5+0.49*sin(2*PI*1.3*t))"    // fort, continu
-	voice := "0.15*sin(2*PI*350*t)*(0.5+0.49*sin(2*PI*0.35*t))" // faible
+	game := "0.4*sin(2*PI*200*t)*(0.75+0.2*sin(2*PI*1.3*t))" // continu (~5 dB de swing)
+	// voix : enveloppe (0.5+0.5*sin) AU CUBE (pas de virgule/pow → compatible lavfi -i)
+	// → reste près de 0 longtemps, salves brèves = intermittent.
+	burst := "(0.5+0.5*sin(2*PI*0.4*t))"
+	voice := "0.5*sin(2*PI*350*t)*" + burst + "*" + burst + "*" + burst
 	args := []string{"-hide_banner", "-loglevel", "error", "-y",
-		"-f", "lavfi", "-i", "aevalsrc=" + game + ":d=4:s=8000",
-		"-f", "lavfi", "-i", "aevalsrc=" + voice + ":d=4:s=8000",
-		"-f", "lavfi", "-i", "testsrc=size=320x240:rate=15:duration=4",
+		"-f", "lavfi", "-i", "aevalsrc=" + game + ":d=5:s=8000",
+		"-f", "lavfi", "-i", "aevalsrc=" + voice + ":d=5:s=8000",
+		"-f", "lavfi", "-i", "testsrc=size=320x240:rate=15:duration=5",
 		// piste 0 = amix(jeu, voix) ; 0:a:1 = voix ; 0:a:2 = jeu (jeu non premier).
 		"-filter_complex", "[0:a]asplit=2[ga][gb];[1:a]asplit=2[va][vb];" +
 			"[ga][va]amix=inputs=2:normalize=0[mix]",
