@@ -29,6 +29,7 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
@@ -318,16 +319,22 @@ func loadTeamSizes(ctx context.Context, sharedDB *sql.DB, matchID string, teamID
 
 // loadEventsForMatch charge les events highlight_events pour un match.
 //
-// Note SPNKr : Halo Infinite ne genere QUE 4 event_types (kill, death, medal,
-// mode) — confirme via spnkr/film/highlight_events.py. Le code aval
-// (engagement_score.go) checke aussi EventAssist, EventFinisher, EventClutch,
-// EventFirstKill — branches dead code pour ce titre, harmless (jamais
-// declenchees). On calcule donc tout ce que l'API permet.
+// Title-agnostic : selon le titre, highlight_events ne porte PAS forcément les
+// kills. Halo Infinite y stocke kill/death/medal/mode ; Halo 5 n'y stocke QUE
+// des médailles, les kills horodatés vivant dans killer_victim_pairs. Le code
+// aval (engagement_score.go) checke aussi EventAssist, EventFinisher, etc. —
+// branches inertes si le titre ne les produit pas (jamais déclenchées).
 //
-// Si la table est vide pour un match (ex. film 404 historique), retourne
-// nil sans erreur. L'engagement_score restera NULL pour ce match — pas de
-// fallback possible : killer_victim_pairs est derive de highlight_events,
-// donc toujours present/absent ensemble.
+// Quand highlight_events ne contient aucun kill/death, on synthétise les events
+// kill/death depuis killer_victim_pairs (kills horodatés, time_ms relatif au
+// match) et on les fusionne aux médailles existantes, triés par TimeMS — sinon
+// la courbe d'engagement mesurerait la cadence des médailles, pas des kills, et
+// PlayerActivity sous-compterait les morts (0 death). killer_victim_pairs est
+// dérivé du film comme highlight_events, mais les DEUX peuvent coexister avec
+// des contenus disjoints (médailles d'un côté, kills de l'autre).
+//
+// Si les deux tables sont vides (ex. film 404 historique), retourne nil sans
+// erreur ; l'engagement_score restera NULL pour ce match.
 func loadEventsForMatch(ctx context.Context, sharedDB *sql.DB, matchID string) ([]canonical.HighlightEvent, error) {
 	const q = `
 		SELECT match_id, event_type, COALESCE(time_ms, 0), COALESCE(xuid, '')
@@ -348,7 +355,45 @@ func loadEventsForMatch(ctx context.Context, sharedDB *sql.DB, matchID string) (
 		}
 		out = append(out, ev)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if !analysis.HasCanonicalKillOrDeath(out) {
+		synth, serr := loadSyntheticKillEventsForMatch(ctx, sharedDB, matchID)
+		if serr == nil && len(synth) > 0 {
+			out = analysis.MergeAndSortCanonicalEvents(out, synth)
+		}
+	}
+	return out, nil
+}
+
+// loadSyntheticKillEventsForMatch charge killer_victim_pairs et synthétise des
+// events canoniques kill/death via le helper partagé
+// analysis.SynthesizeKillEventsFromKVPairs (source unique de la règle). Best-effort.
+func loadSyntheticKillEventsForMatch(ctx context.Context, sharedDB *sql.DB, matchID string) ([]canonical.HighlightEvent, error) {
+	const q = `
+		SELECT COALESCE(killer_xuid, ''), COALESCE(victim_xuid, ''), COALESCE(time_ms, 0)
+		FROM killer_victim_pairs
+		WHERE match_id = ?
+		ORDER BY time_ms ASC
+	`
+	rows, err := sharedDB.QueryContext(ctx, q, matchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	inputs := make([]analysis.KVSyntheticInput, 0)
+	for rows.Next() {
+		var in analysis.KVSyntheticInput
+		if err := rows.Scan(&in.KillerXUID, &in.VictimXUID, &in.TimeMS); err != nil {
+			continue
+		}
+		inputs = append(inputs, in)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return analysis.SynthesizeKillEventsFromKVPairs(inputs, matchID), nil
 }
 
 // loadTeamXUIDs charge les XUIDs des coequipiers humains (joueur cible exclu).

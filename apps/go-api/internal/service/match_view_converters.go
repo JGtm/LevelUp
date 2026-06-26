@@ -71,16 +71,29 @@ func convertKDPointsToDomain(points []analysis.KDTimelinePoint) []domain.MatchKD
 // computeScoreboardRowCombatYield calcule les 4 pointeurs combat yield du
 // scoreboard row (offensive_conversion, defensive_resistance, damage_per_kill,
 // damage_per_death). Retourne nil pour les pointeurs dont les données source
-// (DamageDealt/Taken) sont absentes — semantically "non calculable".
+// sont absentes — semantically "non calculable".
+//
+// OC (offensive_conversion) ne dépend QUE de damage_dealt : on l'émet dès que
+// DamageDealt est présent (title-agnostic — Halo 5 porte damage_dealt mais pas
+// damage_taken). DR (defensive_resistance) exige damage_taken : reste N/A pour
+// les titres sans cette donnée (légitime). ComputeCombatYield est déjà découplé
+// (OC si damageDlt>0, DR si damageTkn>0 && deaths>0) → on passe damageTkn=0
+// quand DamageTaken est nil pour ne calculer que l'OC.
 func computeScoreboardRowCombatYield(s domain.ScoreboardRaw, effectiveHpToKill float64) (oc, dr, dpk, dpd *float64) {
-	if s.DamageDealt != nil && s.DamageTaken != nil {
-		cy := analysis.ComputeCombatYield(s.Kills, s.Assists, *s.DamageDealt, *s.DamageTaken, s.Deaths, effectiveHpToKill)
+	if s.DamageDealt != nil {
+		damageTkn := 0.0
+		if s.DamageTaken != nil {
+			damageTkn = *s.DamageTaken
+		}
+		cy := analysis.ComputeCombatYield(s.Kills, s.Assists, *s.DamageDealt, damageTkn, s.Deaths, effectiveHpToKill)
 		oc = &cy.OffensiveConversion
-		if s.Deaths == 0 {
-			inf := -1.0 // sentinel ∞ — jamais de valeur négative réelle
-			dr = &inf
-		} else {
-			dr = &cy.DefensiveResistance
+		if s.DamageTaken != nil {
+			if s.Deaths == 0 {
+				inf := -1.0 // sentinel ∞ — jamais de valeur négative réelle
+				dr = &inf
+			} else {
+				dr = &cy.DefensiveResistance
+			}
 		}
 	}
 	if s.DamageDealt != nil && s.Kills > 0 {
