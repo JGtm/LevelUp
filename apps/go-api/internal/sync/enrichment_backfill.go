@@ -42,6 +42,7 @@ type EnrichmentBackfillReport struct {
 	EngagementComputed  int                    // engagement_score calculés (0 si colonnes absentes)
 	CoefsUpdated        int                    // coefficients d'engagement recalculés
 	AssistsModes        int                    // modes du modèle d'assists calculés
+	DisciplineAwards    int                    // lignes PSA discipline (suicides/trahisons) écrites — H5
 	DominanceMatches    int                    // matchs traités par BackfillDominanceFlags
 	FriendsResult       FriendsRecomputeResult // is_with_friends
 	AggregatesCreated   int                    // vues mv_* (re)créées
@@ -136,6 +137,16 @@ func BackfillEnrichmentFromShared(
 		track("assists_model", err)
 	} else {
 		report.AssistsModes = n
+	}
+
+	// 1.55 Discipline (suicides/trahisons) → PSA self_destruction/betrayed_player,
+	// dérivés du shared (killer_victim_pairs + teams). Parité Infinite « fun stats ».
+	// H5-ONLY (cette fonction n'est appelée que par l'enrich H5) ; ne JAMAIS l'utiliser
+	// pour un titre à PSA natif (double-compte). Self-skip si schéma PSA absent.
+	if n, err := computeAndPersistH5DisciplineAwards(ctx, playerDB, sharedDB, xuid); err != nil {
+		track("discipline_awards", err)
+	} else {
+		report.DisciplineAwards = n
 	}
 
 	// 1.7 Dominance flags. Pas de mode "all" → on charge la liste des matchs du joueur.
