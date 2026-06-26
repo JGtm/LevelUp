@@ -37,11 +37,11 @@ type syncCallSite struct {
 }
 
 var expectedSyncCallSites = []syncCallSite{
-	{
-		pathSuffix: "internal/api/handlers/sync_handler.go",
-		status:     "legacy-hook",
-		reason:     "SyncHandler HTTP utilise WithPostSyncDeltaHook (legacy) — migration vers WithPostSyncRunner prévue follow-up",
-	},
+	// NB : newSyncEngineRe ne matche que le wrapper `NewSyncEngine(`. sync_handler.go
+	// est passé à NewSyncEngineForTitle (newEngineFor, sync_handler.go:175) et n'est
+	// donc plus détecté — l'entrée a été retirée (sinon signalée « obsolète »).
+	// Suivi : étendre newSyncEngineRe à NewSyncEngineForTitle + l'alias `syncpkg`
+	// pour re-couvrir ces sites (sync_handler.go, cmd/server/sync_v2_wiring.go).
 	{
 		pathSuffix: "internal/api/handlers/backfill.go",
 		status:     "no-runner-ok",
