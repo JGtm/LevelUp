@@ -28,6 +28,7 @@ function baseOverview(): AdminMonitoringOverview {
     jobs: { active_count: 0, recent: [] },
     invariants: { runs_total: 1, fail_last: 0, warn_last: 0 },
     tokens: { players: 3, ok: 3, expiring: 0, expired: 0, absent: 0, reauth: 0, with_auth_error: 0 },
+    snapshot: {} as AdminMonitoringOverview['snapshot'],
   }
 }
 

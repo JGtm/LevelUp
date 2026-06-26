@@ -43,12 +43,17 @@ func NewRelationsHandler(newSvc RelationsFactory) *RelationsHandler {
 	return &RelationsHandler{newSvc: newSvc}
 }
 
-// Mount enregistre la route via Huma sur le sous-routeur chi /players/{player_slug}.
+// Mount enregistre les routes via Huma sur le sous-routeur chi /players/{player_slug}.
 func (h *RelationsHandler) Mount(r chi.Router) {
 	api := humacore.NewAPI(r)
 	huma.Post(api, "/pages/palmares/relations", h.GetRelations)
 	// Body OPTIONNEL (décodé seulement si présent) — préserve le 200 sur corps absent.
 	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/palmares/relations")
+
+	// Phase 3a : section « Moments & Rivalités » (heatmap relation × tranche
+	// horaire + cartes revanche). Même FilterContextInput optionnel en body.
+	huma.Post(api, "/pages/palmares/relations/moments", h.GetMoments)
+	humacore.MarkRequestBodyOptional(api, http.MethodPost, "/pages/palmares/relations/moments")
 }
 
 // relationsInput : path param parent {player_slug} + corps brut décodé maison.
@@ -61,6 +66,29 @@ type relationsInput struct {
 
 type relationsOutput struct{ Body domain.RelationsPageResponse }
 
+type relationsMomentsOutput struct {
+	Body domain.RelationsMomentsResponse
+}
+
+// decodeFilterBody décode le corps brut optionnel en FilterContextInput. Corps
+// vide → input zéro-valeur (= tout). JSON invalide / filtre invalide → erreur
+// Huma 400 {invalid_body}. Mutualisé entre GetRelations et GetMoments.
+func decodeFilterBody(ctx context.Context, slug string, rawBody []byte) (domain.FilterContextInput, error) {
+	var input domain.FilterContextInput
+	if len(rawBody) == 0 {
+		return input, nil
+	}
+	if err := json.NewDecoder(bytes.NewReader(rawBody)).Decode(&input); err != nil {
+		slog.WarnContext(ctx, "relations.invalid_body", "player", slug, "err", err)
+		return input, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+	}
+	if err := input.Validate(); err != nil {
+		slog.WarnContext(ctx, "relations.invalid_filter", "player", slug, "err", err)
+		return input, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+	}
+	return input, nil
+}
+
 // GetRelations retourne le hub Relations, segmenté par le FilterContextInput du body.
 // POST /api/v1/players/{player_slug}/pages/palmares/relations
 // Body (optionnel) : FilterContextInput { experience/playlists/modes via cascade,
@@ -72,16 +100,9 @@ func (h *RelationsHandler) GetRelations(ctx context.Context, in *relationsInput)
 		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", "joueur introuvable")
 	}
 
-	var input domain.FilterContextInput
-	if len(in.RawBody) > 0 {
-		if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&input); err != nil {
-			slog.WarnContext(ctx, "relations.invalid_body", "player", in.PlayerSlug, "err", err)
-			return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
-		}
-		if err := input.Validate(); err != nil {
-			slog.WarnContext(ctx, "relations.invalid_filter", "player", in.PlayerSlug, "err", err)
-			return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
-		}
+	input, err := decodeFilterBody(ctx, in.PlayerSlug, in.RawBody)
+	if err != nil {
+		return nil, err
 	}
 
 	page, err := svc.GetRelationsPage(ctx, input)
@@ -91,4 +112,28 @@ func (h *RelationsHandler) GetRelations(ctx context.Context, in *relationsInput)
 	}
 
 	return &relationsOutput{Body: page}, nil
+}
+
+// GetMoments retourne la section « Moments & Rivalités » (heatmap relation ×
+// tranche horaire + cartes revanche), segmentée par le FilterContextInput.
+// POST /api/v1/players/{player_slug}/pages/palmares/relations/moments
+func (h *RelationsHandler) GetMoments(ctx context.Context, in *relationsInput) (*relationsMomentsOutput, error) {
+	svc, err := h.newSvc(ctx, in.PlayerSlug)
+	if err != nil {
+		slog.WarnContext(ctx, "relations.player_not_found", "player", in.PlayerSlug, "err", err)
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", "joueur introuvable")
+	}
+
+	input, err := decodeFilterBody(ctx, in.PlayerSlug, in.RawBody)
+	if err != nil {
+		return nil, err
+	}
+
+	moments, err := svc.GetRelationsMoments(ctx, input)
+	if err != nil {
+		slog.ErrorContext(ctx, "relations.moments_error", "player", in.PlayerSlug, "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "relations_error", "erreur chargement Moments & Rivalités")
+	}
+
+	return &relationsMomentsOutput{Body: moments}, nil
 }

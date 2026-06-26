@@ -44,6 +44,10 @@ type CareerService interface {
 // zéro-valeur (corps absent) ⇒ comportement Phase 1 (tous les matchs).
 type RelationsService interface {
 	GetRelationsPage(ctx context.Context, input domain.FilterContextInput) (domain.RelationsPageResponse, error)
+	// GetRelationsMoments construit la section « Moments & Rivalités » (Phase 3a) :
+	// heatmap agrégé relation × tranche horaire (top-N) + cartes revanche (top-3
+	// rivaux par matchs en ennemi). Hérite de la même segmentation serveur.
+	GetRelationsMoments(ctx context.Context, input domain.FilterContextInput) (domain.RelationsMomentsResponse, error)
 }
 
 // CitationsService construit les réponses Citations et Commendations.

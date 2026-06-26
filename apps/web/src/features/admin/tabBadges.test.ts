@@ -18,6 +18,7 @@ function baseOverview(): AdminMonitoringOverview {
     } as AdminMonitoringOverview['scheduler'],
     jobs: { active_count: 0, recent: [] } as AdminMonitoringOverview['jobs'],
     invariants: { runs_total: 1, fail_last: 0, warn_last: 0 } as AdminMonitoringOverview['invariants'],
+    snapshot: {} as AdminMonitoringOverview['snapshot'],
   }
 }
 

@@ -156,6 +156,16 @@ type RelationsRepository interface {
 	// comportement Phase 1). scope non-nil et VIDE ⇒ aucun match en périmètre
 	// ⇒ retour ([]) sans requête (un filtre qui ne matche rien).
 	GetRelations(ctx context.Context, scope []string) ([]domain.RelationRawRow, error)
+
+	// GetRelationsHeatmap : pour les TOP-N relations (les plus de matchs communs,
+	// bots exclus), le nombre de matchs communs par heure UTC. Bucketing en
+	// day-parts fait côté service. scope : même contrat que GetRelations.
+	GetRelationsHeatmap(ctx context.Context, scope []string, topN int) ([]domain.RelationHeatmapRawRow, error)
+
+	// GetRivalTimeline : séquence des `limit` derniers duels (matchs communs
+	// joués EN ENNEMI) contre rivalXUID, ordonnée ancien→récent, frags
+	// directionnels par match. scope : même contrat que GetRelations.
+	GetRivalTimeline(ctx context.Context, rivalXUID string, scope []string, limit int) ([]domain.RelationDuelRawRow, error)
 }
 
 // FriendMatchExtras : enrichissement per-friend pour le panneau d'expander

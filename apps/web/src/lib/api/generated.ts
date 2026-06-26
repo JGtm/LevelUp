@@ -2353,6 +2353,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/players/{player_slug}/pages/palmares/relations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hub Communauté > Relations segmenté (filtres en body : expérience, saison/période, playlist/mode, vue solo/escouade) */
+        post: operations["postRelationsPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/palmares/relations/moments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Section Moments & Rivalités (heatmap relation x tranche horaire + cartes revanche), segmentée par les memes filtres en body */
+        post: operations["postRelationsMoments"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/media/feed-version": {
         parameters: {
             query?: never;
@@ -4889,6 +4929,7 @@ export interface components {
             jobs: components["schemas"]["MonitoringJobsSummary"];
             scheduler: components["schemas"]["MonitoringSchedulerSummary"];
             server: components["schemas"]["MonitoringServerInfo"];
+            snapshot: components["schemas"]["MonitoringSnapshotSummary"];
             title_slug: string;
             tokens?: components["schemas"]["MonitoringTokensSummary"];
             tokens_error?: string;
@@ -6615,6 +6656,28 @@ export interface components {
             uptime_s: number;
             version: string;
         };
+        MonitoringSnapshotSummary: {
+            /** Format: int64 */
+            cut_failures: number;
+            /** Format: int64 */
+            cut_noop: number;
+            /** Format: int64 */
+            cuts_produced: number;
+            /** Format: int64 */
+            partial_total: number;
+            /** Format: int64 */
+            pending_oldest_age_seconds: number;
+            /** Format: int64 */
+            pending_total: number;
+            /** Format: int64 */
+            reads_fallback: number;
+            /** Format: int64 */
+            reads_served: number;
+            /** Format: int64 */
+            ready_match_count: number;
+            /** Format: int64 */
+            version: number;
+        };
         MonitoringTokensSummary: {
             /** Format: int64 */
             absent: number;
@@ -7162,6 +7225,111 @@ export interface components {
             item_type?: string;
             quality?: string;
             title: string;
+        };
+        RelationBadge: {
+            color_token: string;
+            detail?: {
+                [key: string]: unknown;
+            };
+            label_key: string;
+            style: string;
+        };
+        RelationInsight: {
+            /** Format: double */
+            avg_kda_against: number | null;
+            /** Format: double */
+            avg_kda_with: number | null;
+            badges: components["schemas"]["RelationBadge"][] | null;
+            category: string;
+            /** Format: int64 */
+            deaths_suffered: number;
+            /** Format: double */
+            duel_ratio: number | null;
+            /** Format: int64 */
+            enemy_matches: number;
+            /** Format: double */
+            enemy_win_rate: number | null;
+            /** Format: int64 */
+            enemy_wins: number;
+            first_seen_at: string | null;
+            gamertag: string;
+            is_core: boolean;
+            /** Format: int64 */
+            kills_dealt: number;
+            last_seen_at: string | null;
+            /** Format: int64 */
+            teammate_matches: number;
+            /** Format: double */
+            teammate_win_rate: number | null;
+            /** Format: int64 */
+            teammate_wins: number;
+            /** Format: int64 */
+            total_matches: number;
+            xuid: string;
+        };
+        RelationRef: {
+            gamertag: string;
+            /** Format: int64 */
+            matches: number;
+            /** Format: double */
+            win_rate: number | null;
+        };
+        RelationsOverview: {
+            /** Format: int64 */
+            allies_count: number;
+            /** Format: int64 */
+            core_count: number;
+            /** Format: int64 */
+            distinct_players: number;
+            /** Format: int64 */
+            rivals_count: number;
+            top_ally: components["schemas"]["RelationRef"];
+            top_nemesis: components["schemas"]["RelationRef"];
+        };
+        RelationsPageResponse: {
+            overview: components["schemas"]["RelationsOverview"];
+            relations: components["schemas"]["RelationInsight"][] | null;
+        };
+        RelationDuelEntry: {
+            /** Format: int64 */
+            deaths_by_rival: number;
+            /** Format: int64 */
+            kills_on_rival: number;
+            match_id: string;
+            outcome: string;
+            started_at: string | null;
+        };
+        RelationHeatmapCell: {
+            /** Format: int64 */
+            count: number;
+            /** Format: int64 */
+            daypart: number;
+            gamertag: string;
+            xuid: string;
+        };
+        RelationRivalry: {
+            /** Format: int64 */
+            current_streak: number;
+            duels: components["schemas"]["RelationDuelEntry"][] | null;
+            /** Format: int64 */
+            enemy_matches: number;
+            /** Format: int64 */
+            frag_gap: number;
+            gamertag: string;
+            /** Format: double */
+            global_win_rate: number | null;
+            /** Format: double */
+            recent_win_rate: number | null;
+            rolling_win_rate: (number | null)[] | null;
+            /** Format: int64 */
+            rolling_window: number;
+            xuid: string;
+        };
+        RelationsMomentsResponse: {
+            heatmap: components["schemas"]["RelationHeatmapCell"][] | null;
+            rivalries: components["schemas"]["RelationRivalry"][] | null;
+            /** Format: int64 */
+            top_relations: number;
         };
         SeasonPassPageResponse: {
             active_track_path?: string;
@@ -11885,6 +12053,52 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    postRelationsPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Relations hub page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postRelationsMoments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Relations moments (heatmap + rivalries) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
         };
     };
     getMediaFeedVersion: {

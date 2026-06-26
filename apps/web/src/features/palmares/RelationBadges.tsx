@@ -46,10 +46,10 @@ export function RelationBadges({
   badges,
   locale,
 }: {
-  badges: RelationBadge[]
+  badges: RelationBadge[] | null
   locale: 'fr' | 'en'
 }) {
-  if (!badges.length) return null
+  if (!badges?.length) return null
   return (
     <span className="ml-2 inline-flex flex-wrap gap-1 align-middle">
       {badges.map((badge, i) => {

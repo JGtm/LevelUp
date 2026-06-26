@@ -609,6 +609,37 @@ export const handlers = [
     }),
   ),
 
+  // Palmares — Relations > Moments & Rivalités (Phase 3a, sous-endpoint).
+  http.post(p(`/players/${SLUG}/pages/palmares/relations/moments`), () =>
+    HttpResponse.json({
+      top_relations: 8,
+      heatmap: [
+        { xuid: '4', gamertag: 'NemesisBravo', daypart: 4, count: 12 },
+        { xuid: '4', gamertag: 'NemesisBravo', daypart: 0, count: 3 },
+        { xuid: '1', gamertag: 'DuoAlpha', daypart: 3, count: 9 },
+        { xuid: '1', gamertag: 'DuoAlpha', daypart: 1, count: 4 },
+      ],
+      rivalries: [
+        {
+          xuid: '4',
+          gamertag: 'NemesisBravo',
+          enemy_matches: 35,
+          duels: [
+            { match_id: 'd1', started_at: '2026-05-01T19:00:00Z', outcome: 'loss', kills_on_rival: 2, deaths_by_rival: 7 },
+            { match_id: 'd2', started_at: '2026-05-02T20:00:00Z', outcome: 'loss', kills_on_rival: 3, deaths_by_rival: 6 },
+            { match_id: 'd3', started_at: '2026-05-03T19:00:00Z', outcome: 'win', kills_on_rival: 8, deaths_by_rival: 4 },
+          ],
+          rolling_win_rate: [0, 0, 0.33],
+          rolling_window: 5,
+          recent_win_rate: 0.33,
+          global_win_rate: 0.33,
+          current_streak: 1,
+          frag_gap: -4,
+        },
+      ],
+    }),
+  ),
+
   // Squad / Teammates
   http.post(p(`/players/${SLUG}/pages/teammates`), () => HttpResponse.json(teammatesFixture)),
 

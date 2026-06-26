@@ -16,11 +16,12 @@ import { Spinner } from '@/components/ui/spinner'
 import { useLocalFilterBar } from '@/features/_shared/useLocalFilterBar'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatPercent } from '@/lib/formatters'
-import type { RelationRef } from '@/lib/api/types'
+import type { FilterContextInput, RelationRef } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { getPalmaresText, normalizePalmaresLocale, type PalmaresLocale, type PalmaresText } from './i18n'
 import { useRelationsPage } from './queries'
+import { RelationsMomentsSection } from './RelationsMomentsSection'
 import { RelationsTable } from './RelationsTable'
 import { coreRelations, filterRelations, type RelationFilter } from './relationsFilter'
 
@@ -206,10 +207,10 @@ export function PalmaresRelationsPage() {
   }
 
   const visibleRows = useMemo(
-    () => (data ? filterRelations(data.relations, filter) : []),
+    () => (data ? filterRelations(data.relations ?? [], filter) : []),
     [data, filter],
   )
-  const coreRows = useMemo(() => (data ? coreRelations(data.relations) : []), [data])
+  const coreRows = useMemo(() => (data ? coreRelations(data.relations ?? []) : []), [data])
 
   // La barre reste montée dans tous les états (chargement / erreur / vide) pour
   // permettre de changer la segmentation même quand la sélection courante est vide.
@@ -229,10 +230,25 @@ export function PalmaresRelationsPage() {
         onAction={() => refetch()}
       />
     )
-  } else if (data.relations.length === 0) {
+  } else if ((data.relations?.length ?? 0) === 0) {
     body = <EmptyStateCard title={rel.emptyTitle} description={rel.emptyDescription} />
   } else {
-    body = <RelationsContent data={data} rel={rel} text={text} locale={locale} filter={filter} setFilter={setFilter} visibleRows={visibleRows} coreRows={coreRows} onPlayerClick={goToExplorer} />
+    body = (
+      <RelationsContent
+        data={data}
+        rel={rel}
+        text={text}
+        locale={locale}
+        filter={filter}
+        setFilter={setFilter}
+        visibleRows={visibleRows}
+        coreRows={coreRows}
+        onPlayerClick={goToExplorer}
+        playerSlug={playerSlug}
+        filterContext={committedFilterContext}
+        filterHash={committedHash}
+      />
+    )
   }
 
   return (
@@ -253,6 +269,9 @@ function RelationsContent({
   visibleRows,
   coreRows,
   onPlayerClick,
+  playerSlug,
+  filterContext,
+  filterHash,
 }: {
   data: NonNullable<ReturnType<typeof useRelationsPage>['data']>
   rel: RelationsText
@@ -263,6 +282,9 @@ function RelationsContent({
   visibleRows: ReturnType<typeof filterRelations>
   coreRows: ReturnType<typeof coreRelations>
   onPlayerClick: (gamertag: string) => void
+  playerSlug: string
+  filterContext: FilterContextInput
+  filterHash: string
 }) {
   const ov = data.overview
   return (
@@ -307,6 +329,13 @@ function RelationsContent({
         </div>
         <CoreCards rows={coreRows} labels={rel} locale={text.intlLocale} onPlayerClick={onPlayerClick} />
       </section>
+
+      <RelationsMomentsSection
+        playerSlug={playerSlug}
+        filterContext={filterContext}
+        filterHash={filterHash}
+        text={rel.moments}
+      />
     </>
   )
 }

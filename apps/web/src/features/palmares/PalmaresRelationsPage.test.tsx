@@ -78,6 +78,25 @@ describe('PalmaresRelationsPage', () => {
     expect(screen.getByRole('button', { name: 'Analyser' })).toBeInTheDocument()
   })
 
+  it('affiche la section Moments & Rivalités repliée puis la déplie au clic', async () => {
+    renderWithProviders(<PalmaresRelationsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('palmares-relations-moments')).toBeInTheDocument()
+    })
+
+    // Repliée : le titre de section revanche n'est pas monté tant que fermée.
+    expect(screen.queryByText('Revanche')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Afficher les moments et rivalités'))
+
+    // Dépliée : la donnée du mock arrive → titre Revanche + rival NemesisBravo.
+    await waitFor(() => {
+      expect(screen.getByText('Revanche')).toBeInTheDocument()
+    })
+    expect(screen.getAllByText('NemesisBravo').length).toBeGreaterThan(0)
+  })
+
   it('envoie un FilterContextInput segmenté (vue Escouade) après « Analyser »', async () => {
     const bodies: Array<Record<string, unknown>> = []
     server.use(
