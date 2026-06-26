@@ -5,6 +5,7 @@ export const squadManifest = {
   "narrative.encounter.ally_plus": { fr: "Allié+", en: "Ally+" },
   "narrative.encounter.cameleon": { fr: "Caméléon", en: "Chameleon" },
   "narrative.encounter.coriace": { fr: "Coriace", en: "Tough opponent" },
+  "narrative.encounter.cross_game": { fr: "Aussi sur {game}", en: "Also on {game}" },
   "narrative.encounter.de_longue_date": { fr: "De longue date", en: "Long-standing" },
   "narrative.encounter.duo_gagnant": { fr: "Duo gagnant", en: "Winning duo" },
   "narrative.encounter.ordinal": { fr: "×{ordinal}", en: "×{ordinal}" },

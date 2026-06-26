@@ -51,6 +51,10 @@ const (
 	// proie_favorite : domination nette en duel.
 	ProieFavoriteDuelRatioThreshold = 1.5
 	ProieFavoriteMinEnemyMatches    = 6
+
+	// cross_game : aussi croisé sur un AUTRE titre (best-effort, additif).
+	// Seuil minimal de matchs communs sur l'autre titre pour mériter le badge.
+	CrossGameMinMatchesTogether = 3
 )
 
 // Seuils des compteurs d'aperçu et de la sélection binôme/bête noire.

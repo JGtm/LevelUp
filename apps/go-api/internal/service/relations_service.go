@@ -16,9 +16,10 @@ import (
 
 // RelationsService orchestre le hub Relations.
 type RelationsService struct {
-	repo    port.RelationsRepository
-	filters port.FiltersService // optionnel : résout le scope match_id (Phase 2). nil → pas de segmentation.
-	now     func() time.Time    // injectable pour les tests (badges temporels)
+	repo      port.RelationsRepository
+	filters   port.FiltersService        // optionnel : résout le scope match_id (Phase 2). nil → pas de segmentation.
+	crossGame port.CrossGameCooccurrence // optionnel (Phase 3b) : badge cross-jeu. nil → inerte.
+	now       func() time.Time           // injectable pour les tests (badges temporels)
 }
 
 // NewRelationsService crée un RelationsService.
@@ -69,6 +70,11 @@ func (s *RelationsService) GetRelationsPage(ctx context.Context, input domain.Fi
 	for i := range rawRows {
 		insights = append(insights, buildRelationInsight(rawRows[i], stats[i], now))
 	}
+
+	// Phase 3b (ADDITIF, best-effort) : badge cross-jeu sur les relations aussi
+	// croisées sur un autre titre. No-op si crossGame non injecté ; toute erreur
+	// cross-titre est avalée en interne → aucune régression de /relations.
+	s.appendCrossGameBadges(ctx, insights)
 
 	return domain.RelationsPageResponse{
 		Overview:  buildOverview(stats),
