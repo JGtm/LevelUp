@@ -186,14 +186,27 @@ func seedPlaylists(db *sql.DB, key string) {
 	fmt.Printf("playlists: %d seedées (%d ranked) sur %d retournées\n", n, ranked, len(pls))
 }
 
-// fetchMeta récupère un type de métadonnée officiel (corps JSON brut).
+// fetchMeta récupère un type de métadonnée officiel (corps JSON brut) en EN
+// (langue par défaut de l'API). Conserve la signature historique des seeders EN.
 func fetchMeta(key, typ string) ([]byte, error) {
+	return fetchMetaLang(key, typ, "")
+}
+
+// fetchMetaLang récupère un type de métadonnée officiel avec un override de langue.
+// L'API Metadata Halo 5 honore l'en-tête HTTP `Accept-Language` (BCP-47, p.ex.
+// "fr-FR") et renvoie les noms localisés des assets (maps, playlists, modes,
+// armes, médailles, commendations). `lang` vide → en-tête NON posé (l'API sert
+// l'EN par défaut), comportement identique à l'ancien fetchMeta.
+func fetchMetaLang(key, typ, lang string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodGet, officialMetaBase+typ, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Ocp-Apim-Subscription-Key", key)
 	req.Header.Set("Accept", "application/json")
+	if strings.TrimSpace(lang) != "" {
+		req.Header.Set("Accept-Language", lang)
+	}
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -202,7 +215,7 @@ func fetchMeta(key, typ string) ([]byte, error) {
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d sur %s: %.200s", resp.StatusCode, typ, body)
+		return nil, fmt.Errorf("HTTP %d sur %s (lang=%q): %.200s", resp.StatusCode, typ, lang, body)
 	}
 	return body, nil
 }
@@ -507,20 +520,108 @@ type apiGameBaseVariant struct {
 //   - map          ← table maps_catalog (map_asset_id, name_canonical) [match.MapId]
 //   - game_variant ← API /game-base-variants (id, name)  [match.GameBaseVariantId]
 //
-// FR : seules les MAPS ont une source FR optionnelle (fr.Maps[name_en], section
-// [maps] du TOML — vide aujourd'hui → EN seul, dégradation propre). L'API Metadata
-// officielle NE localise PAS (tous les noms reviennent EN) et le TOML n'a ni section
-// playlists ni modes → playlists/modes seedés en EN seul (acceptable : le résolveur
-// retombe sur en-US via la cascade).
+// FR (deux sources complémentaires) :
+//  1. Overrides versionnés (section [maps] du TOML, fr.Maps[name_en]) — prioritaires.
+//  2. Pass FR via l'API officielle : l'API Metadata Halo 5 HONORE l'en-tête
+//     `Accept-Language` (info confirmée) et renvoie les noms localisés. On refetch
+//     /playlists, /maps, /game-base-variants en fr-FR et on seede lang='fr-FR'.
+//     Certains assets (noms propres de maps) ne sont pas localisés → l'API renvoie
+//     le même nom qu'en EN ; on seede quand même (la cascade prend fr-FR ; si == EN,
+//     dégradation propre) et on logge un compteur "!= EN" pour visibilité.
 //
 // Idempotent (INSERT OR REPLACE sur PK asset_id+asset_type+lang). Best-effort : une
-// insertion qui échoue est loguée et n'interrompt pas le seed.
+// insertion ou un endpoint FR qui échoue est logué et n'interrompt pas le pass EN.
 func seedAssetTranslations(db *sql.DB, key string, fr frLabels) {
 	n := 0
 	n += seedPlaylistTranslations(db)
 	n += seedMapTranslations(db, fr.Maps)
 	n += seedModeTranslations(db, key)
-	fmt.Printf("asset_translations: %d seedées\n", n)
+	fmt.Printf("asset_translations[en-US]: %d seedées\n", n)
+	// Pass FR (best-effort, ne casse pas le pass EN ci-dessus).
+	nfr := seedFrenchTranslations(db, key)
+	fmt.Printf("asset_translations[fr-FR]: %d seedées\n", nfr)
+}
+
+// frTransResult — bilan d'un pass FR par asset_type (visibilité du garde-fou
+// "fr-FR == en-US" décrit ci-dessus).
+type frTransResult struct {
+	seeded int // lignes fr-FR insérées
+	diff   int // dont nom FR strictement != nom EN connu
+	total  int // assets retournés par l'API en fr-FR
+}
+
+// seedFrenchTranslations refetch les endpoints localisables en fr-FR via
+// Accept-Language et seede asset_translations lang='fr-FR'. Pour chaque asset_type
+// on compare le nom FR au nom EN déjà seedé (lecture asset_translations en-US) afin
+// de tracer combien sont RÉELLEMENT localisés. Best-effort : un endpoint qui échoue
+// est logué et n'empêche pas les autres.
+func seedFrenchTranslations(db *sql.DB, key string) int {
+	enPlaylist := readENNames(db, "playlist")
+	enMap := readENNames(db, "map")
+	enVariant := readENNames(db, "game_variant")
+
+	pl := seedFrenchSimple(db, key, "playlists", "playlist", enPlaylist)
+	mp := seedFrenchSimple(db, key, "maps", "map", enMap)
+	gv := seedFrenchSimple(db, key, "game-base-variants", "game_variant", enVariant)
+
+	fmt.Printf("fr-FR localisés (!= en-US) : playlists %d/%d, maps %d/%d, modes %d/%d\n",
+		pl.diff, pl.total, mp.diff, mp.total, gv.diff, gv.total)
+	return pl.seeded + mp.seeded + gv.seeded
+}
+
+// readENNames relit les noms en-US déjà seedés pour un asset_type (clé = asset_id).
+// Sert de référence pour le compteur "fr != en". Erreur → map vide (le compteur
+// diff comptera alors 0, sans casser le seed FR).
+func readENNames(db *sql.DB, assetType string) map[string]string {
+	out := map[string]string{}
+	rows, err := db.Query(
+		`SELECT asset_id, name FROM asset_translations WHERE asset_type = ? AND lang = ?`,
+		assetType, langEN)
+	if err != nil {
+		fmt.Printf("asset_translations[%s]: read en-US ref %v\n", assetType, err)
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			continue
+		}
+		out[id] = name
+	}
+	return out
+}
+
+// seedFrenchSimple fetche un endpoint en fr-FR (shape {id,name} commune à playlists,
+// maps, game-base-variants) et seede asset_translations(asset_type, lang='fr-FR').
+// On compare au nom EN connu pour le compteur de localisation. Best-effort.
+func seedFrenchSimple(db *sql.DB, key, typ, assetType string, enNames map[string]string) frTransResult {
+	res := frTransResult{}
+	body, err := fetchMetaLang(key, typ, langFR)
+	if err != nil {
+		fmt.Printf("asset_translations[%s][fr-FR]: SKIP (%v)\n", assetType, err)
+		return res
+	}
+	// /maps expose l'id sous map_asset_id côté catalogue mais l'API le renvoie
+	// toujours dans le champ `id` (cf. apiMap/apiPlaylist/apiGameBaseVariant) → shape
+	// commune {id,name}.
+	var items []apiGameBaseVariant
+	if err := json.Unmarshal(body, &items); err != nil {
+		fmt.Printf("asset_translations[%s][fr-FR]: parse %v\n", assetType, err)
+		return res
+	}
+	res.total = len(items)
+	for _, it := range items {
+		nameFR := strings.TrimSpace(it.Name)
+		if !upsertAssetTranslation(db, it.ID, assetType, langFR, nameFR) {
+			continue
+		}
+		res.seeded++
+		if en, ok := enNames[it.ID]; ok && nameFR != strings.TrimSpace(en) {
+			res.diff++
+		}
+	}
+	return res
 }
 
 // upsertAssetTranslation insère/réécrit une ligne asset_translations. Best-effort.
