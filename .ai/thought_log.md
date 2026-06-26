@@ -1,3 +1,19 @@
+## [2026-06-26] Fix 2 tests d'intégration pré-existants + 2 dettes mécaniques (branche feat/relations-hub)
+
+**Statut** : Complété (worktree, non committé). Aucun code de production touché — seulement setup de test + tooling + format.
+
+**Cause racine + fix** :
+- Échec 1 (achievements) : `xbox_achievement_definitions` est créée par la migration `add_xbox_achievement_definitions` (TargetMetadata) qui vit en voie B dans `internal/games/halo_infinite/migrations/steps.go` → fournie au runner via `migration.SetTitleStepsProvider(halomigrations.StepsFor)`. Le `TestMain` du package `service` (`main_test.go`) câblait le classifier LUSR mais PAS ce provider → `titleStepsProvider` nil → `stepsForTarget(TargetMetadata)` ne renvoyait que le registre global (sans cette table). Le package `duckdb` passait car son `migration_provider_test.go` pose déjà le provider. Fix : ajouter `migration.SetTitleStepsProvider(halomigrations.StepsFor)` au `TestMain` de `service` (miroir boot + duckdb).
+- Échec 2 (player_matches) : `PlayerMatchesRepo.Load` SELECT `p.assassination_kills / ground_pound_kills / shoulder_bash_kills` (mécaniques natives H5, ajoutées en prod par la migration `add_h5_kill_mechanics_columns` en `SMALLINT DEFAULT 0`). La fixture `seedPlayerSchema` (CREATE minimal de `shared.match_participants`) ne les avait pas → Binder Error. Fix : ajout des 3 colonnes (`SMALLINT DEFAULT 0`) aux DEUX CREATE TABLE `shared.match_participants` du fichier (seedPlayerSchema + seed aligné). Aucune autre colonne du SELECT ne manquait (vérifié ligne à ligne 258-324).
+
+**Dettes** :
+- gofmt : `gofmt -w apps/go-api` (seul `queries_home_citations.go` était non formaté) → `gofmt -l apps/go-api` vide.
+- knip-ratchet : plafonds abaissés au compte courant files 31→29, types 88→86 (exports inchangé 90, encore au cap). Commentaire daté 2026-06-26.
+
+**Vérifs (toutes vertes)** : TestAchievementsIntegration ok 2.99s ; TestPlayerMatchesRepo ok 2.89s ; gofmt -l apps/go-api vide ; go build + go vet OK ; node tools/knip-ratchet.mjs exit 0 (29/29, 90/90, 86/86) ; apps/web typecheck 0 erreur.
+
+**Prochaine étape** : Phase 3b badge cross-jeu « Aussi sur Halo 5 » (cf. entrée suivante).
+
 ## [2026-06-26] Hub Communauté > Relations — Phase 3a Moments & Rivalités (branche feat/relations-hub)
 
 **Statut** : Complété (worktree). Vérifié moi-même : Go build/vet/test (relations/analysis/service/api) + intégration (GetRelationsHeatmap/GetRivalTimeline :memory:) verts ; front typecheck + eslint (0 err) + vitest palmares 8/8 + knip 90/90 ; généré palmares.ts régénéré (29 clés moments.*).

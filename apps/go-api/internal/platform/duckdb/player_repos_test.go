@@ -155,7 +155,13 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			avg_life_seconds DOUBLE,
 			shots_fired INTEGER, shots_hit INTEGER,
 			headshot_kills INTEGER, max_killing_spree INTEGER,
-			grenade_kills INTEGER, melee_kills INTEGER, power_weapon_kills INTEGER)`,
+			grenade_kills INTEGER, melee_kills INTEGER, power_weapon_kills INTEGER,
+			-- Mécaniques de kill natives Halo 5 (migration add_h5_kill_mechanics_columns) :
+			-- SMALLINT DEFAULT 0 en prod. PlayerMatchesRepo.Load les SELECT
+			-- inconditionnellement (p.assassination_kills/ground_pound/shoulder_bash) → requises ici.
+			assassination_kills SMALLINT DEFAULT 0,
+			ground_pound_kills SMALLINT DEFAULT 0,
+			shoulder_bash_kills SMALLINT DEFAULT 0)`,
 		// last_seen + source : colonnes attendues par certaines queries shared
 		// (squad_repo::LookupXUIDByGamertag fait ORDER BY last_seen DESC).
 		`CREATE TABLE shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR, last_seen TIMESTAMPTZ, source VARCHAR)`,
@@ -514,7 +520,13 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			avg_life_seconds DOUBLE,
 			shots_fired INTEGER, shots_hit INTEGER,
 			headshot_kills INTEGER, max_killing_spree INTEGER,
-			grenade_kills INTEGER, melee_kills INTEGER, power_weapon_kills INTEGER)`,
+			grenade_kills INTEGER, melee_kills INTEGER, power_weapon_kills INTEGER,
+			-- Mécaniques de kill natives Halo 5 (migration add_h5_kill_mechanics_columns) :
+			-- SMALLINT DEFAULT 0 en prod. PlayerMatchesRepo.Load les SELECT
+			-- inconditionnellement (p.assassination_kills/ground_pound/shoulder_bash) → requises ici.
+			assassination_kills SMALLINT DEFAULT 0,
+			ground_pound_kills SMALLINT DEFAULT 0,
+			shoulder_bash_kills SMALLINT DEFAULT 0)`,
 		// last_seen + source : colonnes attendues par certaines queries shared
 		// (squad_repo::LookupXUIDByGamertag fait ORDER BY last_seen DESC).
 		`CREATE TABLE shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR, last_seen TIMESTAMPTZ, source VARCHAR)`,
