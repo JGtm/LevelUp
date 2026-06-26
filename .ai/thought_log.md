@@ -1,3 +1,30 @@
+## [2026-06-26] Hub Communauté > Relations — FRONTEND Phase 1 (branche feat/relations-hub)
+
+**Statut** : Complété (frontend). Backend Go (endpoint `/pages/palmares/relations`, domain/analysis/repo/service/handler) déjà présent et vert dans le worktree à mon arrivée ; je l'ai validé (build/vet/test verts) sans le modifier.
+
+**Décision technique** :
+- Front réécrit pour consommer l'endpoint réel `{overview, relations[]}` ; suppression du faux mapper `mapCareerEncountersToRelations` + types `CareerEncounters*` dans `queries.ts` (le hub ne dérive plus de `/pages/career/encounters`).
+- `lib/api/types.ts` aligné exactement sur le JSON Go (RelationInsight + RelationBadge + RelationRef + RelationsOverview, `relations[]`).
+- `PalmaresRelationsPage.tsx` réécrite en hub : Hero 3 KpiCard (binôme/bête noire/noyau dur), chips de filtre CLIENT (Tous/Noyau dur/Alliés/Rivaux/Vus récemment), tableau unique (langage MatchEncountersTable : SplitBar allié|ennemi + frags/morts, NarrativeBadge, gamertag → Explorer), section Noyau dur en mini-cards flottantes `bg-card`. Extraction de `RelationsTable.tsx`, `RelationBadges.tsx`, `relationsFilter.ts` pour rester < 500 L/fonction < 80 L.
+- Badges "solid" : composant local fond plein + texte blanc ; "tinted" → NarrativeBadge. 5 nouveaux tokens `narrative-encounter-{duo-gagnant,cameleon,de-longue-date,recrue,proie-favorite}` ajoutés dans semantic-tokens.ts + 4 palettes + globals.css.
+- i18n : section relations de `palmares.toml` refondue (hero/chips/colonnes/catégories/tooltips/noyau dur, anglicismes corrigés → « Taux de victoire ») ; 5 clés badges dans `squad.toml` ; manifests régénérés ; adapter `i18n.ts` mis à jour (shape PalmaresText.relations).
+
+**Résultats** : `tsc -b` OK ; `eslint` 0 erreur (seul warning restant = limite TanStack `useReactTable`, identique à MatchEncountersTable existant) ; vitest palmares 5/5, accessibilité+i18n 118/118, snapshots palette mis à jour (-u), navigation 17/17. Go build/vet/test relations verts.
+
+**Polish (suite revue adversariale, édition directe)** :
+- `is_core` exposé dans le DTO `RelationInsight` (source unique `analysis/relations.IsCore` ; le front filtre sur ce flag au lieu de dupliquer les seuils du noyau dur). OpenAPI + types TS alignés ; drift/contract verts.
+- `formatRelative` (RelationsTable) passé via i18n : nouvelles clés `palmares.relations.relative.*` (FR + EN, pluriel ICU) — plus aucune string FR/EN en dur dans le composant.
+- `formatPercent` du tableau aligné sur le helper canonique `@/lib/formatters` (cohérence hero/tableau, ADR 0006).
+- Code mort retiré : champ `titleSlug` + `WithTitleSlug` du `RelationsService` (jamais lu).
+- Tag OpenAPI de la route corrigé `home` → `palmares`.
+- `nullable` des tableaux (relations/badges) laissé tel quel : Huma le dérive des slices Go ; le service garantit des slices non-nil → type TS non-nullable sûr (le retirer créerait une divergence Huma).
+
+**Title-agnostic (vérifié)** : aucun branchement `slug == "halo_infinite"` ; outcomes win/loss via résolveur title-aware `outcomeSQLEq`/`canonical.Outcome*` (PMT-5, pas de 2/3 en dur) ; lecture via `SharedReadDB` title-scopé ; factory `RelationsCtx` non gatée (marche pour tout titre résolu, dont Halo 5) ; front via client `api` (X-LevelUp-Title auto). Nuance : pas de garde capability si un titre futur n'a pas les tables encounter (OK Infinite+H5).
+
+**Vérifs (worktree, refaites moi-même)** : Go `build`/`vet`/`test` verts (relations, service, handlers, api incl. `TestOpenAPISchemaDrift` + contract) ; front `tsc -b` + `eslint` (0 erreur, 2 warnings préexistants) + vitest palmares 5/5 ; manifests régénérés.
+
+**Reste** : commit + **merge de `main`** dans la branche (main a avancé de 10 commits H5 pendant le run du workflow ; chevauchement = `openapi.yaml` + ce fichier) ; puis Phase 2 (barre de segmentation serveur Expérience/Saison/Playlist/Mode/**Vue Solo-Escouade** via `is_with_friends`) ; Phase 3 (badge cross-jeu « Aussi sur Halo 5 », heatmap agrégé, rivalités).
+
 ## [2026-06-25] Vérification finale (ultracode) + remédiation snapshot — Phase 4 GLOBAL REVERTÉ → scoped sûr
 
 **Contexte** : revue multi-dimension + vérif adversariale (workflow ultracode `w2kwzu2bk`, 44 agents, 6 dimensions : producteur/reader/wiring-concurrence/logging/tests/arch). 38 findings, **28 confirmés adversarialement**. + mes gates déterministes (build/vet/anti-ART/suite snapshot tous verts).

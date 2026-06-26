@@ -200,6 +200,27 @@ en = "Tough opponent"
 fr = "×{ordinal}"
 en = "×{ordinal}"
 
+# Badges « solid » du hub Communauté > Relations (Phase 1).
+[narrative.encounter.duo_gagnant]
+fr = "Duo gagnant"
+en = "Winning duo"
+
+[narrative.encounter.cameleon]
+fr = "Caméléon"
+en = "Chameleon"
+
+[narrative.encounter.de_longue_date]
+fr = "De longue date"
+en = "Long-standing"
+
+[narrative.encounter.recrue]
+fr = "Recrue"
+en = "Newcomer"
+
+[narrative.encounter.proie_favorite]
+fr = "Proie favorite"
+en = "Favorite prey"
+
 # ─── S7 : Contributions ─────────────────────────────────────────────────────
 
 [squad.contrib.section_title]

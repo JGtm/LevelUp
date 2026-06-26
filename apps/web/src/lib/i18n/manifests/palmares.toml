@@ -55,87 +55,181 @@ en = "No meaningful relationships yet"
 fr = "Il faut au moins quelques matchs répétés contre ou avec les mêmes joueurs pour faire émerger les liens."
 en = "You need a few repeated encounters with the same players before relationship patterns become useful."
 
-# ─── Relations - Overview KPIs ────────────────────────────────────────────
+# ─── Relations - Hero (binôme / bête noire / noyau dur) ─────────────────────
 
-[palmares.relations.overview.distinct_players]
-fr = "Joueurs recroisés"
-en = "Players re-encountered"
+[palmares.relations.hero.top_ally_title]
+fr = "Ton binôme"
+en = "Your duo partner"
 
-[palmares.relations.overview.frequent_allies]
-fr = "Alliés fréquents"
-en = "Frequent allies"
+[palmares.relations.hero.top_ally_empty]
+fr = "Pas encore de binôme"
+en = "No duo partner yet"
 
-[palmares.relations.overview.repeat_rivals]
-fr = "Rivaux suivis"
-en = "Tracked rivals"
+[palmares.relations.hero.top_nemesis_title]
+fr = "Ta bête noire"
+en = "Your nemesis"
 
-[palmares.relations.overview.closed_circle]
-fr = "Cercle fermé"
-en = "Closed circle"
+[palmares.relations.hero.top_nemesis_empty]
+fr = "Pas encore de bête noire"
+en = "No nemesis yet"
 
-# ─── Relations - Sections ─────────────────────────────────────────────────
+[palmares.relations.hero.core_title]
+fr = "Ton noyau dur"
+en = "Your inner circle"
 
-[palmares.relations.section.frequent_allies_title]
-fr = "Alliés fréquents"
-en = "Frequent allies"
+[palmares.relations.hero.core_unit]
+fr = "joueurs"
+en = "players"
 
-[palmares.relations.section.frequent_allies_description]
-fr = "Les joueurs qui reviennent le plus souvent à tes côtés, quel que soit le résultat."
-en = "The players you most often queue into on your side, regardless of result."
+[palmares.relations.hero.matches_played]
+fr = "{count} matchs"
+en = "{count} matches"
 
-[palmares.relations.section.best_synergies_title]
-fr = "Meilleures synergies"
-en = "Best synergies"
+# ─── Relations - Chips de filtre ──────────────────────────────────────────
 
-[palmares.relations.section.best_synergies_description]
-fr = "Les duos qui convertissent le mieux les matchs en victoires avec un KDA solide."
-en = "The pairings that convert matches into wins most efficiently."
+[palmares.relations.chip.all]
+fr = "Tous"
+en = "All"
 
-[palmares.relations.section.nemeses_title]
-fr = "Némésis"
-en = "Nemeses"
+[palmares.relations.chip.core]
+fr = "Noyau dur"
+en = "Inner circle"
 
-[palmares.relations.section.nemeses_description]
-fr = "Les adversaires qui reviennent souvent et contre qui tu lâches le plus de terrain."
-en = "Recurring opponents that tend to take the edge when they are on the other team."
+[palmares.relations.chip.allies]
+fr = "Alliés"
+en = "Allies"
 
-[palmares.relations.section.victims_title]
-fr = "Victimes favorites"
-en = "Favorite victims"
+[palmares.relations.chip.rivals]
+fr = "Rivaux"
+en = "Rivals"
 
-[palmares.relations.section.victims_description]
-fr = "Les visages récurrents que tu domines le plus souvent quand ils sont en face."
-en = "Recurring opponents you consistently beat when they are on the other side."
+[palmares.relations.chip.recent]
+fr = "Vus récemment"
+en = "Seen recently"
 
-[palmares.relations.section.closed_circle_title]
-fr = "Cercle fermé"
-en = "Closed circle"
+# ─── Relations - Tableau (en-têtes colonnes) ──────────────────────────────
 
-[palmares.relations.section.closed_circle_description]
-fr = "Le noyau dur de joueurs que tu retrouves parfois avec toi, parfois contre toi."
-en = "The small set of players you keep finding with you and against you."
+[palmares.relations.table.player]
+fr = "Joueur"
+en = "Player"
 
-# ─── Relations - Labels colonnes ──────────────────────────────────────────
+[palmares.relations.table.link]
+fr = "Lien"
+en = "Link"
 
-[palmares.relations.label.with]
-fr = "Avec"
-en = "With"
+[palmares.relations.table.encounters]
+fr = "Rencontres"
+en = "Encounters"
 
-[palmares.relations.label.against]
-fr = "Contre"
-en = "Against"
+[palmares.relations.table.win_rate_ally]
+fr = "Taux de victoire allié"
+en = "Win rate as ally"
 
-[palmares.relations.label.win_rate]
-fr = "Win rate"
-en = "Win rate"
+[palmares.relations.table.win_rate_enemy]
+fr = "Taux de victoire ennemi"
+en = "Win rate as enemy"
 
-[palmares.relations.label.avg_kda]
-fr = "KDA moyen"
-en = "Avg KDA"
+[palmares.relations.table.frags_deaths]
+fr = "Frags / Morts"
+en = "Frags / Deaths"
 
-[palmares.relations.label.last_seen]
-fr = "Dernière rencontre"
+[palmares.relations.table.ratio]
+fr = "Ratio"
+en = "Ratio"
+
+[palmares.relations.table.last_seen]
+fr = "Vu"
 en = "Last seen"
+
+[palmares.relations.table.ratio_tooltip]
+fr = "Ratio frags/morts : frags infligés ÷ morts subies sur l'ensemble des matchs communs"
+en = "Frags/deaths ratio: frags dealt ÷ deaths suffered across all shared matches"
+
+# ─── Relations - Catégorie de lien ─────────────────────────────────────────
+
+[palmares.relations.category.ally]
+fr = "Allié"
+en = "Ally"
+
+[palmares.relations.category.enemy]
+fr = "Ennemi"
+en = "Enemy"
+
+[palmares.relations.category.mixed]
+fr = "Mixte"
+en = "Mixed"
+
+# ─── Relations - Temps relatif (dernière rencontre) ────────────────────────
+
+[palmares.relations.relative.today]
+fr = "aujourd'hui"
+en = "today"
+
+[palmares.relations.relative.yesterday]
+fr = "hier"
+en = "yesterday"
+
+[palmares.relations.relative.days_ago]
+fr = "il y a {count} j"
+en = "{count, plural, one {# day ago} other {# days ago}}"
+
+[palmares.relations.relative.weeks_ago]
+fr = "il y a {count} sem."
+en = "{count, plural, one {# week ago} other {# weeks ago}}"
+
+[palmares.relations.relative.months_ago]
+fr = "il y a {count} mois"
+en = "{count, plural, one {# month ago} other {# months ago}}"
+
+[palmares.relations.relative.years_ago]
+fr = "il y a {count, plural, one {# an} other {# ans}}"
+en = "{count, plural, one {# year ago} other {# years ago}}"
+
+# ─── Relations - Tooltips encounters / frags ───────────────────────────────
+
+[palmares.relations.tooltip.matches_ally]
+fr = "{count} matchs en allié"
+en = "{count} matches as ally"
+
+[palmares.relations.tooltip.matches_enemy]
+fr = "{count} matchs en ennemi"
+en = "{count} matches as enemy"
+
+[palmares.relations.tooltip.frags_dealt]
+fr = "{count} frags infligés"
+en = "{count} frags dealt"
+
+[palmares.relations.tooltip.deaths_suffered]
+fr = "{count} morts subies"
+en = "{count} deaths suffered"
+
+# ─── Relations - Section noyau dur ─────────────────────────────────────────
+
+[palmares.relations.core.section_title]
+fr = "Noyau dur"
+en = "Inner circle"
+
+[palmares.relations.core.section_description]
+fr = "Les joueurs que tu retrouves le plus souvent, parfois avec toi, parfois en face."
+en = "The players you keep running into, sometimes with you, sometimes against you."
+
+[palmares.relations.core.empty]
+fr = "Aucun joueur ne remplit encore les critères du noyau dur."
+en = "No player meets the inner-circle criteria yet."
+
+[palmares.relations.core.together]
+fr = "{count} matchs ensemble"
+en = "{count} matches together"
+
+# ─── Relations - Filtre vide (chip sans résultat) ──────────────────────────
+
+[palmares.relations.filter_empty_title]
+fr = "Aucune relation dans ce filtre"
+en = "No relation in this filter"
+
+[palmares.relations.filter_empty_description]
+fr = "Essaie un autre filtre pour voir d'autres joueurs récurrents."
+en = "Try another filter to see other recurring players."
 
 # ─── Season pass - États ──────────────────────────────────────────────────
 
