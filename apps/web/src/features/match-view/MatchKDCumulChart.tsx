@@ -74,8 +74,13 @@ function formatMmSs(valueMs: number): string {
 }
 
 export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Props) {
+  // Le chart trace les frags cumulés par équipe : seuls les events `kill` le
+  // peuplent. `events` peut être non-vide (médailles, autres faits marquants)
+  // sans aucun kill → on force l'EmptyState plutôt qu'un canvas vide titré.
+  const hasKillEvents =
+    !!events && events.some((e) => (e.event_type ?? '').toLowerCase() === 'kill')
   const series: ChartSeries<MatchHighlightEvent>[] =
-    events && events.length > 0
+    hasKillEvents && events
       ? [{ key: 'match_view.combat.kd_cumul', datapoints: events }]
       : []
 

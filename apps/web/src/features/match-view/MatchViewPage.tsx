@@ -15,7 +15,6 @@ import { MatchTugOfWarChart } from './MatchTugOfWarChart'
 import { MatchCadenceChart } from './MatchCadenceChart'
 import { MatchNemesisCards } from './MatchNemesisCards'
 import { MatchScoreboard } from './MatchScoreboard'
-import { MatchKillFeed } from './MatchKillFeed'
 import { MatchEncountersTable } from './MatchEncountersTable'
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
@@ -355,7 +354,7 @@ export function MatchViewPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <MatchWeaponPieChart weaponKills={weaponData} t={t} />
-              {/* Halo 5 : donut « répartition des frags » du viewer (mécaniques natives
+              {/* Halo 5 : donut « Frags par technique » du viewer (mécaniques natives
                   incl. assassinats + compétences spartiate). Null hors h5 (capability). */}
               <MatchKillTypesDonut me={meRow} t={t} />
               <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
@@ -390,10 +389,6 @@ export function MatchViewPage() {
           </div>
         ) : (
           <>
-            {/* §0 — Kill-feed (timeline canonique d'events, on-demand). Section
-                autonome : se masque seule si la timeline est indisponible/vide. */}
-            <MatchKillFeed playerSlug={playerSlug} matchId={matchId} meXUID={meXUID} t={t} />
-
             {/* §1 — Déroulé du match (lecture chronologique) */}
             <DetailSection title={t.sectionFlow}>
               {/* Faits marquants | Frags cumulés */}

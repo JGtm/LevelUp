@@ -39,8 +39,16 @@ function movingAverage(values: number[], window = 3): number[] {
 }
 
 export function MatchCadenceChart({ cadence, scoreboard, meXUID, t }: Props) {
+  // La cadence ne se peuple qu'avec des kills (components = xuid→nb de frags par
+  // phase). Des datapoints sans aucun kill → EmptyState plutôt qu'un canvas vide
+  // titré (cas des matchs sans données de combat exploitables).
+  const hasKills =
+    !!cadence &&
+    cadence.datapoints.some((dp) =>
+      Object.values(dp.components ?? {}).some((c) => c > 0),
+    )
   const series: ChartSeries<unknown>[] =
-    cadence && cadence.datapoints.length > 0
+    cadence && cadence.datapoints.length > 0 && hasKills
       ? [{ key: cadence.key, datapoints: cadence.datapoints }]
       : []
 

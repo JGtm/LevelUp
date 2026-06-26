@@ -78,8 +78,6 @@ export const queryKeys = {
   gamertagSearch: (q: string) => ['gamertag-search', q] as const,
   matchView: (playerSlug: string, matchId: string) =>
     ['match-view', playerSlug, matchId] as const,
-  matchEvents: (playerSlug: string, matchId: string, typesKey: string) =>
-    ['match-events', playerSlug, matchId, typesKey] as const,
 
   // Engagement (Phase 4 plan engagement)
   engagementMatch: (playerSlug: string, matchId: string) =>
