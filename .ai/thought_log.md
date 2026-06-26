@@ -1,3 +1,19 @@
+## [2026-06-26] Fix playlists_catalog H5 + backfill historique des surfaces dérivées d'events — COMPLÉTÉ (local vérifié)
+
+**Tâche** (suite du merge events H5) : 2 demandes user. (1) Régler le bug pré-existant `playlists_catalog does not exist` (spam WARN post-sync CSR sur halo_5). (2) Backfiller weapon_accuracy + assists + objectif sur les matchs H5 EXISTANTS (le « new-matches-only » ne suffit pas : personne ne rejoue H5).
+
+**Fix playlists_catalog** : d'abord tenté de créer la table en metadata H5 — REFUSÉ par `TestHalo5Metadata_IsolatedFromInfinite` (la metadata H5 est volontairement isolée des référentiels HINF ; is_ranked H5 dérive de la présence CSR, pas d'un catalogue). Bon fix = **guard** dans `seedPlaylistsCatalog` (career.go) : no-op silencieux si la table est absente (check `information_schema.tables`), au lieu d'un WARN par playlist à chaque cycle. + test de régression `TestSeedPlaylistsCatalog_NoTableNoOp`.
+
+**Backfill events** : découverte clé — `GetMatchEvents(matchID)` frappe `/h5/matches/{id}/events`, endpoint PAR-MATCH → un seul token sain (JGtm) couvre TOUT l'historique partagé (pas de couverture partielle malgré 3/4 tokens H5 morts). Le collect normal saute les matchs connus (idempotence match_registry) → chemin dédié : `halo5.FetchCanonicalEvents` (wrapper exporté de mapH5Events) + `livesync.RunEventsBackfill` (énumère match_registry sans weapon_accuracy → re-fetch /events → mappers ingest → `WriteEventDerivedSurfaces` idempotent : DELETE-puis-INSERT CIBLÉ weapon_accuracy + highlight_events `event_type IN ('assist','mode')` SANS toucher médailles/kills) + CLI `cmd/h5-events-backfill` (template h5-teamscore-backfill : auth empruntée JGtm, provision schéma via RunForTitleDB, shared RW single-writer). resolveXUID depuis xuid_aliases (events H5 gamertag-keyés). 3 tests (write idempotent+médailles préservées, énumération+skip, end-to-end fake fetch).
+
+**Run local vérifié** : 3032 matchs, **2855 backfillés** (94 %), 146 531 lignes weapon_accuracy + 103 072 assists + 39 891 objectif ; **272 159 médailles préservées** (intactes) ; 0 corruption, idempotent. Restant 177 = 82 films 404 (expirés, re-runnables) + ~95 sans tir/assist/objectif. Mineur : 0,85 % de lignes weapon_accuracy à xuid vide (gamertags hors xuid_aliases) — non bloquant, améliorable via match_participants.
+
+**Résultats** : gofmt + `go build ./...` + `go vet` + tests (sync/migrations/livesync/ingest) verts. Surfaces écrites dans le SHARED H5 (pas player DBs).
+
+**Prochaine étape** : merge main + deploy (code : guard + CLI) + copie du shared H5 vers prod (146 Mo, conteneur arrêté) + redeploy. Cf. [[reference_h5_events_impulses_inventory]], [[reference_halo_api_xuid_format]], [[project_go_live_deploy_topology]].
+
+---
+
 ## [2026-06-26] Merge enrichissement events Halo 5 dans main + déploiement (backfill + recompute + copie DB prod) — COMPLÉTÉ
 
 **Tâche** : merger la branche `feat/h5-events-enrichment` (9 commits : proficience arme, discipline suicides/trahisons, engagement pondéré 2 titres, bannière synthétisée Home, CSR Champion, MMR not_supported) dans main + exécuter les ops de déploiement (backfill, recompute, copie bases vers prod).
