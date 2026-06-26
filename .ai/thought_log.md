@@ -1,3 +1,15 @@
+## [2026-06-26] H5 discipline (suicides/trahisons) → PSA via chemin enrich — COMPLÉTÉ (code ; commit pending)
+
+**Contexte** : parité Infinite — la synthèse « fun stats » (TotalSuicides/TotalBetrayals) lit `personal_score_awards` (award_name `self_destruction`/`betrayed_player`). Infinite les obtient de l'API PersonalScores ; H5 n'a PAS de PSA natif → à CALCULER.
+
+**Correction de layer (auto-critique)** : 1er essai au COLLECT (mapper events → PSA dans PlayerData) = MORT : le collect H5 est shared-only (ne persiste PAS PlayerData ; le player DB est écrit par l'enrich). Reverté proprement (mapper events `discipline.go` supprimé). Bon layer = `BackfillEnrichmentFromShared` (2 callers, TOUS H5 → pas de risque de double-compte Infinite).
+
+**Implémentation** : étape `sync.computeAndPersistH5DisciplineAwards(ctx, playerDB, sharedDB, xuid)` (H5-only, documenté ⚠️ ne jamais câbler pour un titre à PSA natif → double-compte). Calcul depuis le SHARED (pas besoin de `DeathDisposition`) : suicide = `killer_victim_pairs` `killer_xuid==victim_xuid==owner` ; trahison = `killer==owner`, victim≠owner, MÊME équipe (join `match_participants`). Écriture PSA `self_destruction`/`betrayed_player` (category `penalty`, score 0 — H5 n'a pas la contribution au score, seul le COMPTE). Idempotent + ART-safe : INSERT pur tagué d'une NOUVELLE génération (`psa_generation_seq`) → la vue `personal_score_awards_latest` supersède par (match,xuid). Self-skip si schéma PSA absent (player DB legacy). Câblée dans `BackfillEnrichmentFromShared` (étape 1.55) + `report.DisciplineAwards`.
+
+**Résultats** : tests verts — dataset hétérogène (suicide + trahison + kills propres + kills subis + suicide d'un AUTRE joueur → 1 self_destruction + 1 betrayed_player pour l'owner), idempotence re-run (`_latest` non doublé), self-skip schéma absent. Garde-rails ART/append-only verts ; `build ./...` + vet verts.
+
+**Caveat / suite** : peuplé au prochain enrich (`h5-enrich` / hook live) → re-enrich requis sur l'existant. La synthèse affiche DÉJÀ TotalSuicides/TotalBetrayals → zéro changement front. Commit pending (autorisation user).
+
 ## [2026-06-26] H5 MMR marqué not_supported (flag no_mmr + games.ProvidesMMR) — COMPLÉTÉ (code ; commit pending)
 
 **Contexte** : sonde 2026-06-26 — Halo 5 ne fournit AUCUN MMR (PreMatch/PostMatchRatings servis null sur 25/25 matchs, classés inclus ; le CSR par-playlist reste le seul signal de skill). Demande user : marquer MMR not_supported pour H5.
