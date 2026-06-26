@@ -228,7 +228,11 @@ type SynthesisDetailedStats struct {
 	TotalGroundPoundKills  int `json:"total_ground_pound_kills"`
 	TotalShoulderBashKills int `json:"total_shoulder_bash_kills"`
 
-	MaxKillingSpree int `json:"max_killing_spree"` // MAX sur le scope
+	// MaxKillingSpree : MAX du max killing spree sur le scope. nil quand le titre ne
+	// porte pas ce champ (Halo 5, games.ProvidesMaxKillingSpree=false) → le front
+	// masque la stat au lieu d'afficher un 0 trompeur. omitempty pour distinguer nil
+	// (masquer) de 0 (réel, aucun spree atteint).
+	MaxKillingSpree *int `json:"max_killing_spree,omitempty"` // MAX sur le scope
 
 	// Temps de jeu
 	TotalTimePlayedSeconds int `json:"total_time_played_seconds"`

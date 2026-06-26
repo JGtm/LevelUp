@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 )
@@ -91,7 +92,81 @@ func (r *HighlightEventsRepo) Load(
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("HighlightEventsRepo.Load: rows: %w", err)
 	}
+
+	// Fallback title-agnostic (centralisé au niveau lecture) : highlight_events ne
+	// porte pas forcément les kills selon le titre. Infinite y stocke
+	// kill/death/medal ; Halo 5 n'y stocke QUE des médailles, les kills horodatés
+	// vivant dans killer_victim_pairs. Si le lot ne contient AUCUN kill/death, on
+	// synthétise les kill/death depuis killer_victim_pairs (même DB shared) via le
+	// helper partagé analysis.SynthesizeKillEventsFromKVPairs (source unique) et on
+	// les fusionne, triés par TimeMS. NO-OP sur Infinite (kills déjà présents →
+	// fallback jamais pris). Couvre la timeseries solo (chart .11 first events +
+	// chart .21 intensité), tous deux vides en H5 sans ce fallback.
+	if !analysis.HasCanonicalKillOrDeath(out) {
+		synth := r.loadSyntheticKillEvents(ctx, db, filters.MatchIDs)
+		if len(synth) > 0 {
+			out = analysis.MergeAndSortCanonicalEvents(out, synth)
+		}
+	}
 	return out, nil
+}
+
+// loadSyntheticKillEvents charge killer_victim_pairs (batch sur matchIDs) et
+// synthétise des events canoniques kill/death via le helper partagé
+// analysis.SynthesizeKillEventsFromKVPairs (1 paire → 1 kill + 1 death, source
+// unique de la règle). Best-effort : matchIDs vide ou table absente → nil sans
+// erreur (l'absence de fallback dégrade en charts vides, pas en 500). Réutilise
+// la connexion shared déjà acquise par Load (pas de second Get).
+func (r *HighlightEventsRepo) loadSyntheticKillEvents(
+	ctx context.Context, db *sql.DB, matchIDs []string,
+) []canonical.HighlightEvent {
+	if len(matchIDs) == 0 {
+		return nil
+	}
+	placeholders := make([]string, len(matchIDs))
+	args := make([]any, len(matchIDs))
+	for i, id := range matchIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	q := fmt.Sprintf(`
+SELECT match_id, COALESCE(killer_xuid, ''), COALESCE(victim_xuid, ''),
+       COALESCE(kill_count, 1), COALESCE(time_ms, 0)
+FROM killer_victim_pairs
+WHERE match_id IN (%s)
+ORDER BY match_id, time_ms ASC`, strings.Join(placeholders, ","))
+
+	rows, err := db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+
+	// Regrouper par match (préserve l'ordre d'apparition) puis synthétiser par
+	// match — SynthesizeKillEventsFromKVPairs pose MatchID sur chaque event.
+	byMatch := make(map[string][]analysis.KVSyntheticInput)
+	order := make([]string, 0, len(matchIDs))
+	for rows.Next() {
+		var (
+			matchID string
+			in      analysis.KVSyntheticInput
+		)
+		if err := rows.Scan(&matchID, &in.KillerXUID, &in.VictimXUID, &in.KillCount, &in.TimeMS); err != nil {
+			continue
+		}
+		if _, seen := byMatch[matchID]; !seen {
+			order = append(order, matchID)
+		}
+		byMatch[matchID] = append(byMatch[matchID], in)
+	}
+	if err := rows.Err(); err != nil {
+		return nil
+	}
+	var out []canonical.HighlightEvent
+	for _, mid := range order {
+		out = append(out, analysis.SynthesizeKillEventsFromKVPairs(byMatch[mid], mid)...)
+	}
+	return out
 }
 
 // buildHighlightEventsQuery compose le SELECT et les WHERE dynamiques selon

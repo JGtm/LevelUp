@@ -472,15 +472,17 @@ func buildAvailableTitlesFrom(reg *titlePkg.Registry) []domain.TitleSummary {
 			caps[i] = string(c)
 		}
 		out = append(out, domain.TitleSummary{
-			Slug:                   t.Slug,
-			Name:                   t.Name,
-			IconURL:                t.IconURL,
-			Status:                 string(t.Status),
-			Capabilities:           caps,
-			IsDefault:              t.IsDefault,
-			EffectiveHpToKill:      games.EffectiveHpToKill(t.Slug),
-			OffensiveConversionP80: games.OffensiveConversionP80(t.Slug),
-			ProvidesDamageTaken:    games.ProvidesDamageTaken(t.Slug),
+			Slug:                    t.Slug,
+			Name:                    t.Name,
+			IconURL:                 t.IconURL,
+			Status:                  string(t.Status),
+			Capabilities:            caps,
+			IsDefault:               t.IsDefault,
+			EffectiveHpToKill:       games.EffectiveHpToKill(t.Slug),
+			OffensiveConversionP80:  games.OffensiveConversionP80(t.Slug),
+			ProvidesDamageTaken:     games.ProvidesDamageTaken(t.Slug),
+			ProvidesTeamMMR:         games.ProvidesTeamMMR(t.Slug),
+			ProvidesMaxKillingSpree: games.ProvidesMaxKillingSpree(t.Slug),
 		})
 	}
 	return out

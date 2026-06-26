@@ -103,9 +103,11 @@ func (s *SessionCompareService) Compare(
 	matchesA := filterBySession(matches, labelA)
 	matchesB := filterBySession(matches, labelB)
 
-	// 4. Calculer les entries et métriques.
-	entryA := buildCompareEntry(matchesA, labelA, hp)
-	entryB := buildCompareEntry(matchesB, labelB, hp)
+	// 4. Calculer les entries et métriques. provideSpree=false pour les titres sans
+	// max killing spree (Halo 5) → le radar « Folie meurtrière » est masqué.
+	provideSpree := games.ProvidesMaxKillingSpree(s.titleSlug)
+	entryA := buildCompareEntryWithObjectives(matchesA, labelA, nil, hp, provideSpree)
+	entryB := buildCompareEntryWithObjectives(matchesB, labelB, nil, hp, provideSpree)
 	metrics := buildCompareMetrics(matchesA, matchesB)
 
 	slog.InfoContext(ctx, "session_compare: comparaison terminée",
@@ -203,19 +205,24 @@ func filterBySession(matches []legacymatch.StatsMatchRow, label string) []legacy
 // ---------------------------------------------------------------------------
 
 // buildCompareEntry : variante sans scores PSA (axe Objective à 0). Conservée pour
-// les callers sans accès au loader PSA (SessionCompare, tests).
+// les callers sans accès au loader PSA (SessionCompare, tests). provideSpree=true
+// (défaut Infinite : le max killing spree est fourni).
 func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string, effectiveHpToKill float64) *domain.SessionCompareEntry {
-	return buildCompareEntryWithObjectives(matches, label, nil, effectiveHpToKill)
+	return buildCompareEntryWithObjectives(matches, label, nil, effectiveHpToKill, true)
 }
 
 // buildCompareEntryWithObjectives construit l'entry en alimentant les axes Objective
 // et Score (résiduel) du profil de participation avec les scores PSA "objective"
 // (match_id → score) ; objScores nil → dégradation gracieuse (Objective=0).
+//
+// provideSpree : false quand le titre ne porte pas le max killing spree (Halo 5) →
+// MaxKillingSpree reste nil (radar « Folie meurtrière » masqué) au lieu d'un 0.
 func buildCompareEntryWithObjectives(
 	matches []legacymatch.StatsMatchRow,
 	label string,
 	objScores map[string]int,
 	effectiveHpToKill float64,
+	provideSpree bool,
 ) *domain.SessionCompareEntry {
 	if len(matches) == 0 || label == "" {
 		return nil
@@ -334,7 +341,9 @@ func buildCompareEntryWithObjectives(
 			totalPK += *m.PerfectKills
 			hasPK = true
 		}
-		if m.MaxKillingSpree != nil {
+		// MaxKillingSpree ignorée quand le titre ne la porte pas (Halo 5) → spreePtr
+		// reste nil et le radar « Folie meurtrière » est masqué côté front.
+		if provideSpree && m.MaxKillingSpree != nil {
 			if *m.MaxKillingSpree > maxSpree {
 				maxSpree = *m.MaxKillingSpree
 			}

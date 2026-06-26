@@ -8,8 +8,10 @@ import (
 	"log/slog"
 	"sort"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 )
 
@@ -276,8 +278,9 @@ func (s *TeammatesService) buildSquadKillMechanics(
 func (s *TeammatesService) buildSquadPerformanceSeries(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
-	mainGamertag string,
+	mainGamertag, mainXUID string,
 	selectedGamertags []string,
+	teammates []domain.TeammateRow,
 ) map[string][]domain.SquadPerformanceSeriesPoint {
 	if len(allSquadRows) == 0 || len(selectedGamertags) == 0 {
 		return nil
@@ -319,6 +322,35 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 	}
 
 	out := make(map[string][]domain.SquadPerformanceSeriesPoint, 1+len(selectedGamertags))
+
+	// MaxKillingSpree : supportée dès que le titre fournit des kills HORODATÉS par
+	// match (events kill/death) — true pour Halo 5 (capability events-timeline). La
+	// valeur native (match_participants.max_killing_spree, cas Infinite) fait foi quand
+	// elle existe ; sinon on la CALCULE depuis les events du match (calcul title-agnostic
+	// analysis.ComputeMaxKillingSpree). NO-OP Infinite : native présent → pas de calcul.
+	provideSpree := games.ProvidesMaxKillingSpree(s.titleSlug)
+
+	// xuid par gamertag (main + coéquipiers résolus) — sert à attribuer les events
+	// kill/death d'un match au bon joueur pour le calcul-fallback de la spree.
+	xuidByGT := make(map[string]string, 1+len(teammates))
+	if mainXUID != "" {
+		xuidByGT[mainGamertag] = mainXUID
+	}
+	for _, tm := range teammates {
+		if tm.XUID != nil && *tm.XUID != "" {
+			xuidByGT[tm.Gamertag] = *tm.XUID
+		}
+	}
+
+	// Events kill/death par match (canonical), chargés une seule fois pour le calcul
+	// du max killing spree quand la valeur native est absente. Le squadLoader/repo
+	// applique déjà le fallback de synthèse kvPairs → kill/death pour les titres dont
+	// highlight_events ne porte pas les kills (Halo 5). Vide si provideSpree=false ou
+	// si aucun event (titre sans substrat) → on retombe alors sur la valeur native (nil).
+	var eventsByMatch map[string][]canonical.HighlightEvent
+	if provideSpree {
+		eventsByMatch = s.loadCanonicalKillEventsByMatch(ctx, sharedMatches)
+	}
 
 	// squadLoader.LoadFor résout les rows par gamertag (playerMatchesRepo est bound
 	// au main et ignore l'arg gt → toutes les séries affichaient les stats du main).
@@ -362,9 +394,18 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 				v := round2(*r.Enrichment.PerformanceScore)
 				pt.PerformanceScore = &v
 			}
-			if r.Self.MaxKillingSpree != nil {
-				v := *r.Self.MaxKillingSpree
-				pt.MaxKillingSpree = &v
+			if provideSpree {
+				if r.Self.MaxKillingSpree != nil {
+					// Valeur native (Infinite) — fait foi, PAS de recalcul.
+					v := *r.Self.MaxKillingSpree
+					pt.MaxKillingSpree = &v
+				} else if xuid := xuidByGT[gt]; xuid != "" {
+					// Native absente (Halo 5) — calcul depuis les events kill/death du match.
+					if evs := eventsByMatch[r.Summary.MatchID]; len(evs) > 0 {
+						v := analysis.ComputeMaxKillingSpree(evs, xuid)
+						pt.MaxKillingSpree = &v
+					}
+				}
 			}
 			if r.Self.HeadshotKills != nil {
 				v := *r.Self.HeadshotKills

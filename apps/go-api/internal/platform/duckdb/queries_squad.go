@@ -164,7 +164,12 @@ SELECT
     -- résolution du mode FR (asset_translations[pair] + mode_name_tr), comme
     -- l'historique des matchs. Sans eux, un pair_name=UUID fuirait à l'UI.
     COALESCE(r.pair_name_fr, '')                                         AS pair_name_fr,
-    COALESCE(r.pair_id, '')                                              AS pair_id
+    COALESCE(r.pair_id, '')                                              AS pair_id,
+    -- game_variant_id : source du mode pour les titres SANS pair_name (Halo 5 :
+    -- pair_name/pair_id vides mais game_variant_id peuplé). Résolu read-time via
+    -- asset_translations (asset_type='game_variant') → fallback de squadModeUI.
+    -- Title-agnostic : Infinite a pair_name → ce champ n'est pas consulté.
+    COALESCE(r.game_variant_id, '')                                     AS game_variant_id
 FROM match_participants p1
 JOIN v_match_full r ON r.match_id = p1.match_id
 JOIN match_participants p2
@@ -221,6 +226,30 @@ FROM highlight_events he
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = he.xuid
 WHERE he.match_id IN (%s)
 ORDER BY he.match_id, he.time_ms`
+
+// Q32cSquadKVPairsTemplate : lecture batch des paires killer→victim horodatées
+// (killer_victim_pairs) pour une liste de match_ids. Source du fallback
+// title-agnostic de synthèse d'events kill/death (LoadImpactEvents) quand
+// highlight_events ne porte aucun kill/death sur le lot (ex. Halo 5).
+//
+// killer_victim_pairs = table root-level dérivée du film (même topologie shared
+// que highlight_events). time_ms est relatif au match. On ne lit que les colonnes
+// nécessaires à la synthèse (killer/victim/kill_count/time_ms) — la résolution
+// gamertag n'est pas requise pour les events kill/death synthétiques (les
+// consommateurs squad résolvent le gamertag depuis le xuid en aval).
+//
+// Le '%s' positionnel est remplacé dynamiquement (IN-list de match_ids).
+// Ne PAS utiliser directement — passer par squad_repo.LoadKVPairs().
+const Q32cSquadKVPairsTemplate = `
+SELECT
+    kv.match_id,
+    COALESCE(kv.killer_xuid, '') AS killer_xuid,
+    COALESCE(kv.victim_xuid, '') AS victim_xuid,
+    COALESCE(kv.kill_count, 1)   AS kill_count,
+    COALESCE(kv.time_ms, 0)      AS time_ms
+FROM killer_victim_pairs kv
+WHERE kv.match_id IN (%s)
+ORDER BY kv.match_id, kv.time_ms`
 
 // Q32bMainTeamParticipantsTemplate : pour chaque match dans la liste, retourne
 // tous les participants de la même team_id que le joueur principal (le main

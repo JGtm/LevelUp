@@ -200,7 +200,11 @@ func buildIntensityTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesInt
 // ---------------------------------------------------------------------------
 
 // buildDistributionsTab construit les histogrammes KDA/kills et les corrÃ©lations.
-func buildDistributionsTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesDistributionsTab {
+//
+// provideSpree : false quand le titre ne porte pas le max killing spree (Halo 5) →
+// MaxKillingSpreeBuckets reste vide (l'histogramme « Folie meurtrière » est masqué)
+// au lieu de buckets fabriqués. Slice vide (jamais nil) pour ne pas crasher le front.
+func buildDistributionsTab(matches []legacymatch.StatsMatchRow, provideSpree bool) domain.TimeseriesDistributionsTab {
 	if len(matches) == 0 {
 		// Init [] plutôt que nil sur TOUS les champs slice : un slice nil
 		// sérialise en JSON `null` et crashe le front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
@@ -218,6 +222,12 @@ func buildDistributionsTab(matches []legacymatch.StatsMatchRow) domain.Timeserie
 		}
 	}
 
+	// MaxKillingSpree masqué (Halo 5) : buckets vides (jamais nil) au lieu de fabriquer
+	// un histogramme — le front n'affiche alors pas la série « Folie meurtrière ».
+	spreeBuckets := []domain.DistributionBucket{}
+	if provideSpree {
+		spreeBuckets = buildMaxKillingSpreeBuckets(matches)
+	}
 	return domain.TimeseriesDistributionsTab{
 		KDABuckets:             buildKDABuckets(matches),
 		KillsBuckets:           buildKillsBuckets(matches),
@@ -227,7 +237,7 @@ func buildDistributionsTab(matches []legacymatch.StatsMatchRow) domain.Timeserie
 		LifeBuckets:            buildLifeBuckets(matches),
 		PerfScoreBuckets:       buildPerfScoreBuckets(matches),
 		PersonalScoreBuckets:   buildPersonalScoreBuckets(matches),
-		MaxKillingSpreeBuckets: buildMaxKillingSpreeBuckets(matches),
+		MaxKillingSpreeBuckets: spreeBuckets,
 		CorrelationPoints:      buildCorrelationPoints(matches),
 	}
 }
@@ -400,12 +410,19 @@ func buildCorrelationPoints(matches []legacymatch.StatsMatchRow) []domain.Correl
 //
 // KDA et KDRatio sont calcules par P2.5 (revue 2026-04-29 ADR 0006) â€” debloque
 // la suppression du recompute K/D cote front (TimeseriesKdaBars.tsx:78, B3).
-func buildMatchRows(matches []legacymatch.StatsMatchRow) []domain.TimeseriesMatchRow {
+// provideSpree : false quand le titre ne porte pas le max killing spree (Halo 5)
+// → MaxKillingSpree reste nil par ligne (la série « Folie meurtrière max » est
+// masquée) au lieu de fabriquer une valeur.
+func buildMatchRows(matches []legacymatch.StatsMatchRow, provideSpree bool) []domain.TimeseriesMatchRow {
 	rows := make([]domain.TimeseriesMatchRow, 0, len(matches))
 	for i, m := range matches {
 		// KDR canonique calcule a partir des compteurs (analysis.KDR).
 		// Distinct du KDA pre-calcule cote sync (m.KDA inclut les assists).
 		kdr := analysis.KDR(m.Kills, m.Deaths)
+		maxSpree := m.MaxKillingSpree
+		if !provideSpree {
+			maxSpree = nil
+		}
 		rows = append(rows, domain.TimeseriesMatchRow{
 			MatchID:                   m.MatchID,
 			Index:                     i,
@@ -424,7 +441,7 @@ func buildMatchRows(matches []legacymatch.StatsMatchRow) []domain.TimeseriesMatc
 			Rank:                      m.Rank,
 			PlaylistName:              m.PlaylistName,
 			TimePlayedSeconds:         m.TimePlayedSeconds,
-			MaxKillingSpree:           m.MaxKillingSpree,
+			MaxKillingSpree:           maxSpree,
 			HeadshotKills:             m.HeadshotKills,
 			PerfectKills:              m.PerfectKills,
 			MapName:                   m.MapName,

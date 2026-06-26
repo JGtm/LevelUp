@@ -30,7 +30,18 @@ type SquadRepository interface {
 	LoadTeammateMatches(ctx context.Context, playerXUID, teammateXUID string) ([]domain.TeammateMatchRow, error)
 
 	// LoadImpactEvents charge les événements highlight pour une liste de match_ids (Q32).
+	//
+	// Title-agnostic : si highlight_events ne porte aucun kill/death sur le lot (ex.
+	// Halo 5 = médailles seules), l'implémentation synthétise les kill/death depuis
+	// killer_victim_pairs (LoadKVPairs) via analysis.SynthesizeKillEventsFromKVPairs
+	// et les fusionne, triés par TimeMS. NO-OP sur Infinite (kills déjà présents).
 	LoadImpactEvents(ctx context.Context, matchIDs []string) ([]domain.ImpactEventRow, error)
+
+	// LoadKVPairs charge les paires killer→victim horodatées (killer_victim_pairs)
+	// pour une liste de match_ids (lecture batch, shared DB). Source du fallback
+	// title-agnostic de synthèse d'events kill/death utilisé par LoadImpactEvents
+	// (et, côté solo, par HighlightEventsRepo). Retourne nil si matchIDs est vide.
+	LoadKVPairs(ctx context.Context, matchIDs []string) ([]domain.KVPairRaw, error)
 
 	// LoadMainTeamParticipants charge tous les participants de l'équipe alliée
 	// du joueur principal pour une liste de matchs (Q34, scoreboard impact
@@ -206,6 +217,9 @@ func (n *noopSquadRepo) LoadTeammateMatches(_ context.Context, _, _ string) ([]d
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domain.ImpactEventRow, error) {
+	return nil, nil
+}
+func (n *noopSquadRepo) LoadKVPairs(_ context.Context, _ []string) ([]domain.KVPairRaw, error) {
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
