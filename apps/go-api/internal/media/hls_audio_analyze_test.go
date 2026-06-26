@@ -97,7 +97,7 @@ func TestPlanAudioRenditions_FullMixFourTracks(t *testing.T) {
 		{CodecType: "audio", CodecName: "aac"}, // 2 = micro
 		{CodecType: "audio", CodecName: "aac"}, // 3 = Discord
 	}
-	audios, fc := planAudioRenditions(src, true)
+	audios, fc := planAudioRenditions(src, audioLayout{Track0FullMix: true, GameComponent: 1})
 	if len(audios) != 3 {
 		t.Fatalf("len = %d, want 3", len(audios))
 	}
@@ -130,7 +130,7 @@ func TestPlanAudioRenditions_FullMixThreeTracks(t *testing.T) {
 		{CodecType: "audio", CodecName: "aac"},
 		{CodecType: "audio", CodecName: "aac"},
 	}
-	audios, fc := planAudioRenditions(src, true)
+	audios, fc := planAudioRenditions(src, audioLayout{Track0FullMix: true, GameComponent: 1})
 	if len(audios) != 3 {
 		t.Fatalf("len = %d, want 3", len(audios))
 	}
@@ -151,7 +151,7 @@ func TestPlanAudioRenditions_FullMixTwoTracksCollapses(t *testing.T) {
 		{CodecType: "audio", CodecName: "aac"},
 		{CodecType: "audio", CodecName: "aac"},
 	}
-	audios, fc := planAudioRenditions(src, true)
+	audios, fc := planAudioRenditions(src, audioLayout{Track0FullMix: true, GameComponent: 1})
 	if len(audios) != 1 {
 		t.Fatalf("len = %d, want 1 (rendition unique)", len(audios))
 	}
@@ -164,20 +164,43 @@ func TestPlanAudioRenditions_FullMixTwoTracksCollapses(t *testing.T) {
 }
 
 func TestPlanAudioRenditions_NotFullMixUnchanged(t *testing.T) {
-	// track0IsFullMix=false → mapping historique (game = piste 0, full = amix).
+	// Track0FullMix=false → mapping historique (game = piste 0, full = amix).
 	src := []AVStreamDetail{
 		{CodecType: "audio", CodecName: "aac"},
 		{CodecType: "audio", CodecName: "aac"},
 	}
-	audios, _ := planAudioRenditions(src, false)
+	audios, _ := planAudioRenditions(src, audioLayout{})
 	if len(audios) != 3 || audios[0].MapSpec != "0:a:0" || audios[2].MapSpec != "[full]" {
 		t.Errorf("mapping historique attendu : game=0:a:0, full=[full] ; got %+v", audios)
 	}
 }
 
-// --- Intégration : détection track0IsFullMix (nécessite ffmpeg + ffprobe) ---
+func TestPlanAudioRenditions_FullMixGameNotFirst(t *testing.T) {
+	// Le jeu N'EST PAS la 1ère composante (GameComponent=2) → game = 0:a:2,
+	// voices = amix des autres composantes (0:a:1 + 0:a:3). Prouve l'indépendance
+	// à l'ordre des pistes (classement acoustique, pas positionnel).
+	src := []AVStreamDetail{
+		{CodecType: "audio", CodecName: "aac"}, // 0 = mix complet
+		{CodecType: "audio", CodecName: "aac"}, // 1 = voix
+		{CodecType: "audio", CodecName: "aac"}, // 2 = jeu
+		{CodecType: "audio", CodecName: "aac"}, // 3 = voix
+	}
+	audios, fc := planAudioRenditions(src, audioLayout{Track0FullMix: true, GameComponent: 2})
+	if len(audios) != 3 {
+		t.Fatalf("len = %d, want 3", len(audios))
+	}
+	if audios[0].Slug != "game" || audios[0].MapSpec != "0:a:2" {
+		t.Errorf("game = (%q,%q), want (game,0:a:2)", audios[0].Slug, audios[0].MapSpec)
+	}
+	wantFC := "[0:a:1][0:a:3]amix=inputs=2:normalize=0:duration=longest[voices]"
+	if fc != wantFC {
+		t.Errorf("FilterComplex = %q, want %q (voix = composantes hors jeu)", fc, wantFC)
+	}
+}
 
-func TestTrack0IsFullMix_Integration(t *testing.T) {
+// --- Intégration : analyse du layout audio (nécessite ffmpeg + ffprobe) ---
+
+func TestAnalyzeAudioLayout_Integration(t *testing.T) {
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
 		t.Skip("ffmpeg absent du PATH")
 	}
@@ -191,12 +214,12 @@ func TestTrack0IsFullMix_Integration(t *testing.T) {
 		"[0:a]asplit=2[t1a][t1b];[1:a]asplit=2[t2a][t2b];"+
 			"[t1a][t2a]amix=inputs=2:normalize=0[mix]",
 		[]string{"[mix]", "[t1b]", "[t2b]"})
-	ok, corr, err := track0IsFullMix(context.Background(), mix, 3)
+	layout, corr, err := analyzeAudioLayout(context.Background(), mix, 3)
 	if err != nil {
-		t.Fatalf("track0IsFullMix (positif): %v", err)
+		t.Fatalf("analyzeAudioLayout (positif): %v", err)
 	}
-	if !ok {
-		t.Errorf("piste 0 = amix(reste) : track0IsFullMix = false (corr=%.3f), want true", corr)
+	if !layout.Track0FullMix {
+		t.Errorf("piste 0 = amix(reste) : Track0FullMix = false (corr=%.3f), want true", corr)
 	}
 
 	// NÉGATIF : piste 0 = signal indépendant (AM de rythme distinct), pistes 1/2
@@ -204,12 +227,35 @@ func TestTrack0IsFullMix_Integration(t *testing.T) {
 	indep := generateAudioMKV(t, dir, "indep.mkv",
 		"[0:a]anull[a0];[1:a]anull[a1];[2:a]anull[a2]",
 		[]string{"[a0]", "[a1]", "[a2]"})
-	ok, corr, err = track0IsFullMix(context.Background(), indep, 3)
+	layout, corr, err = analyzeAudioLayout(context.Background(), indep, 3)
 	if err != nil {
-		t.Fatalf("track0IsFullMix (négatif): %v", err)
+		t.Fatalf("analyzeAudioLayout (négatif): %v", err)
 	}
-	if ok {
-		t.Errorf("piste 0 indépendante : track0IsFullMix = true (corr=%.3f), want false", corr)
+	if layout.Track0FullMix {
+		t.Errorf("piste 0 indépendante : Track0FullMix = true (corr=%.3f), want false", corr)
+	}
+}
+
+func TestAnalyzeAudioLayout_GameClassifiedNotByOrder(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg absent du PATH")
+	}
+	dir := t.TempDir()
+
+	// Source : jeu CONTINU (fort) en 2ᵉ composante, voix INTERMITTENTE (faible) en
+	// 1ʳᵉ. piste 0 = amix(jeu, voix). Le jeu domine le mix → enveloppe la plus
+	// corrélée au mix → classé `game` MALGRÉ sa position (2). Prouve que le split
+	// est acoustique, pas positionnel.
+	src := generateGameVoiceMKV(t, dir)
+	layout, _, err := analyzeAudioLayout(context.Background(), src, 3)
+	if err != nil {
+		t.Fatalf("analyzeAudioLayout: %v", err)
+	}
+	if !layout.Track0FullMix {
+		t.Fatal("Track0FullMix = false, want true")
+	}
+	if layout.GameComponent != 2 {
+		t.Errorf("GameComponent = %d, want 2 (le jeu est la 2ᵉ composante, classé par acoustique)", layout.GameComponent)
 	}
 }
 
@@ -240,6 +286,29 @@ func generateAudioMKV(t *testing.T, dir, name, filter string, maps []string) str
 	args = append(args, "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "libopus", out)
 	if o, err := exec.Command("ffmpeg", args...).CombinedOutput(); err != nil {
 		t.Fatalf("génération %s: %v\n%s", name, err, o)
+	}
+	return out
+}
+
+// generateGameVoiceMKV produit un MKV où la piste 0 = mix complet, la 1ʳᵉ composante
+// (0:a:1) = voix FAIBLE (AM lente, ~12 dB sous le jeu) et la 2ᵉ (0:a:2) = jeu FORT
+// (AM continue). Le jeu domine le mix → doit être classé `game` malgré sa position.
+func generateGameVoiceMKV(t *testing.T, dir string) string {
+	t.Helper()
+	out := filepath.Join(dir, "gamevoice.mkv")
+	game := "0.6*sin(2*PI*200*t)*(0.5+0.49*sin(2*PI*1.3*t))"    // fort, continu
+	voice := "0.15*sin(2*PI*350*t)*(0.5+0.49*sin(2*PI*0.35*t))" // faible
+	args := []string{"-hide_banner", "-loglevel", "error", "-y",
+		"-f", "lavfi", "-i", "aevalsrc=" + game + ":d=4:s=8000",
+		"-f", "lavfi", "-i", "aevalsrc=" + voice + ":d=4:s=8000",
+		"-f", "lavfi", "-i", "testsrc=size=320x240:rate=15:duration=4",
+		// piste 0 = amix(jeu, voix) ; 0:a:1 = voix ; 0:a:2 = jeu (jeu non premier).
+		"-filter_complex", "[0:a]asplit=2[ga][gb];[1:a]asplit=2[va][vb];" +
+			"[ga][va]amix=inputs=2:normalize=0[mix]",
+		"-map", "2:v", "-map", "[mix]", "-map", "[vb]", "-map", "[gb]",
+		"-c:v", "libx264", "-preset", "ultrafast", "-c:a", "libopus", out}
+	if o, err := exec.Command("ffmpeg", args...).CombinedOutput(); err != nil {
+		t.Fatalf("génération gamevoice.mkv: %v\n%s", err, o)
 	}
 	return out
 }

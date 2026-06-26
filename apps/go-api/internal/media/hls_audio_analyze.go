@@ -52,6 +52,21 @@ const (
 	envFrameSamples = 800
 )
 
+// gameClassifyMarginCorr : écart minimal de corrélation (au mix complet) entre la
+// meilleure composante « jeu » et la suivante pour faire confiance au classement
+// acoustique. En dessous (composantes trop proches, ex. deux sources équivalentes),
+// on retombe sur la convention positionnelle (1ère composante = jeu).
+const gameClassifyMarginCorr = 0.05
+
+// audioLayout décrit le rôle des pistes audio source, déduit à l'ingestion (IO).
+// Quand Track0FullMix, la piste 0 est le mix complet de sortie et GameComponent est
+// l'index audio (0:a:N) de la composante « jeu » (classée acoustiquement, pas par
+// position) ; les autres composantes sont la voix.
+type audioLayout struct {
+	Track0FullMix bool
+	GameComponent int // index audio de la composante jeu (≥1) quand Track0FullMix
+}
+
 // pearson retourne le coefficient de corrélation de Pearson des deux séries,
 // tronquées à leur longueur commune. Pur. Retourne 0 si trop peu d'échantillons ou
 // si une série est constante (variance nulle → corrélation indéfinie).
@@ -162,27 +177,64 @@ func restMixFilter(nAudio int) (string, string) {
 	return b.String(), "[mix]"
 }
 
-// track0IsFullMix indique si la piste audio 0 est le mix complet des pistes 1..N
-// (corrélation d'enveloppe ≥ seuil). Retourne aussi la corrélation mesurée pour le
-// log. IO ffmpeg. Hypothèse : nAudio ≥ 2 (sinon false, rien à comparer).
-func track0IsFullMix(ctx context.Context, src string, nAudio int) (bool, float64, error) {
+// analyzeAudioLayout déduit le rôle des pistes audio source (IO ffmpeg) :
+//  1. la piste 0 est-elle le mix complet des pistes 1..N (corrélation d'enveloppe
+//     ≥ seuil, gardée contre les signaux stationnaires) ;
+//  2. si oui, QUELLE composante est le jeu (classement acoustique, pas l'ordre).
+//
+// Retourne aussi la corrélation mix mesurée (log). Hypothèse : nAudio ≥ 2.
+func analyzeAudioLayout(ctx context.Context, src string, nAudio int) (audioLayout, float64, error) {
+	var layout audioLayout
 	if nAudio < 2 {
-		return false, 0, nil
+		return layout, 0, nil
 	}
 	env0, err := audioEnvelope(ctx, src, "", "0:a:0")
 	if err != nil {
-		return false, 0, err
+		return layout, 0, err
 	}
 	fc, mapSpec := restMixFilter(nAudio)
 	envRest, err := audioEnvelope(ctx, src, fc, mapSpec)
 	if err != nil {
-		return false, 0, err
+		return layout, 0, err
 	}
 	corr := pearson(env0, envRest)
 	// Enveloppe trop stationnaire (ton pur, signal constant) → corrélation non
 	// fiable → on ne classe pas en mix complet (repli mapping historique).
 	if stdDev(env0) < minEnvelopeStdDevDB || stdDev(envRest) < minEnvelopeStdDevDB {
-		return false, corr, nil
+		return layout, corr, nil
 	}
-	return corr >= fullMixEnvelopeCorrThreshold, corr, nil
+	if corr < fullMixEnvelopeCorrThreshold {
+		return layout, corr, nil
+	}
+	layout.Track0FullMix = true
+	layout.GameComponent = classifyGameComponent(ctx, src, nAudio, env0)
+	return layout, corr, nil
+}
+
+// classifyGameComponent identifie la composante « jeu » parmi les pistes 1..N-1 : le
+// jeu est la plus grosse composante du mix de sortie → son enveloppe est la plus
+// corrélée à celle du mix complet (fullMixEnv). Indépendant de l'ordre des pistes.
+// Repli sur la 1ère composante (index 1) si le décodage échoue ou si les deux
+// meilleures sont trop proches (ambigu). IO ffmpeg (best-effort, n'échoue pas).
+func classifyGameComponent(ctx context.Context, src string, nAudio int, fullMixEnv []float64) int {
+	best := 1
+	bestCorr, secondCorr := -2.0, -2.0
+	for i := 1; i < nAudio; i++ {
+		env, err := audioEnvelope(ctx, src, "", fmt.Sprintf("0:a:%d", i))
+		if err != nil {
+			continue
+		}
+		c := pearson(env, fullMixEnv)
+		switch {
+		case c > bestCorr:
+			secondCorr = bestCorr
+			best, bestCorr = i, c
+		case c > secondCorr:
+			secondCorr = c
+		}
+	}
+	if bestCorr-secondCorr < gameClassifyMarginCorr {
+		return 1 // ambigu → convention positionnelle
+	}
+	return best
 }

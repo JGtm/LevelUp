@@ -146,7 +146,7 @@ func buildLegacyHLSTree(t *testing.T, dir, name, src string) string {
 	if err != nil {
 		t.Fatalf("ProbeStreamsDetailed: %v", err)
 	}
-	plan, err := planHLS(streams, false)
+	plan, err := planHLS(streams, audioLayout{})
 	if err != nil {
 		t.Fatalf("planHLS: %v", err)
 	}
