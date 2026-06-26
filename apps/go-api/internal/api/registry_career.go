@@ -86,6 +86,19 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 	return svc, nil
 }
 
+// RelationsCtx retourne un RelationsService pour le joueur identifié par slug.
+// Page transverse (non gatée) : réutilise CareerRepo (méthode GetRelations,
+// lecture seule shared). Aucun adapter / friends nécessaire — le hub affiche
+// tous les joueurs récurrents.
+func (r *ServiceRegistry) RelationsCtx(ctx context.Context, slug string) (port.RelationsService, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	repo := duckdb.NewCareerRepo(pdb)
+	return service.NewRelationsService(repo), nil
+}
+
 // buildFriendsXPLoader construit un loader d'historique XP pour tous les amis
 // du joueur courant (joueurs référencés dans db_profiles.json, hors joueur
 // courant). Retourne nil si cfg est indisponible ou s'il n'y a aucun autre joueur.

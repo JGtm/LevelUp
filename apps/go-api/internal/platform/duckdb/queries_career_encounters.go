@@ -114,6 +114,104 @@ WHERE p.opp_xuid <> ?
 ORDER BY %s DESC, p.match_count DESC, p.opp_xuid ASC
 LIMIT 10`
 
+// Q28RelationsTpl : hub Communauté > Relations. Généralisation de Q26 — TOUS
+// les joueurs récurrents (HAVING count_together >= 2), sans LIMIT, avec en plus
+// MIN(start_time) AS first_seen et les KDA moyens en allié / en ennemi.
+//
+// Format string : 4 %s = winExpr, lossExpr, winExpr, lossExpr (title-aware,
+// fallback "e.my_outcome = 2/3" byte-identique Halo). PAS de clause d'exclusion
+// friends ni de LIMIT (le hub Relations affiche tout le monde).
+//
+// Placeholders ? (ordre, tous = xuid du joueur courant) :
+//
+//	?1 my_history.WHERE xuid = ?
+//	?2 encounters JOIN p.xuid <> ?
+//	?3 kv_stats CASE killer_xuid = ? → victim
+//	?4 kv_stats CASE killer_xuid = ? → kills_by_me
+//	?5 kv_stats CASE victim_xuid = ? → kills_by_them
+//	?6 kv_stats WHERE killer_xuid = ?
+//	?7 kv_stats WHERE OR victim_xuid = ?
+//
+// Colonnes SELECT (16, scannées dans cet ordre) : xuid, gamertag,
+// count_together, ally_count, enemy_count, wins_as_ally, losses_as_ally,
+// wins_vs_enemy, losses_vs_enemy, kills_dealt, deaths_suffered, avg_kda_with,
+// avg_kda_against, first_seen_at, last_seen_at.
+const Q28RelationsTpl = `
+WITH my_history AS (
+    SELECT match_id, team_id, outcome
+    FROM match_participants
+    WHERE xuid = ?
+),
+encounters AS (
+    SELECT
+        p.xuid,
+        p.match_id,
+        p.team_id  AS opp_team_id,
+        h.team_id  AS my_team_id,
+        h.outcome  AS my_outcome,
+        p.kda      AS opp_kda,
+        COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time
+    FROM my_history h
+    JOIN match_participants p
+        ON p.match_id = h.match_id
+       AND p.xuid <> ?
+       AND p.xuid NOT LIKE 'bid(%%'
+    LEFT JOIN match_registry r ON r.match_id = p.match_id
+),
+encounter_stats AS (
+    SELECT
+        e.xuid,
+        COUNT(DISTINCT e.match_id) AS count_together,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id  = e.my_team_id THEN e.match_id END) AS ally_count,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id THEN e.match_id END) AS enemy_count,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id  = e.my_team_id AND %s THEN e.match_id END) AS wins_as_ally,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id  = e.my_team_id AND %s THEN e.match_id END) AS losses_as_ally,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id AND %s THEN e.match_id END) AS wins_vs_enemy,
+        COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id AND %s THEN e.match_id END) AS losses_vs_enemy,
+        AVG(CASE WHEN e.opp_team_id  = e.my_team_id THEN e.opp_kda END) AS avg_kda_with,
+        AVG(CASE WHEN e.opp_team_id <> e.my_team_id THEN e.opp_kda END) AS avg_kda_against,
+        MIN(e.start_time) AS first_seen_at,
+        MAX(e.start_time) AS last_seen_at
+    FROM encounters e
+    GROUP BY e.xuid
+    HAVING COUNT(DISTINCT e.match_id) >= 2
+),
+kv_stats AS (
+    SELECT
+        opp_xuid AS xuid,
+        SUM(kills_by_me)   AS kills_dealt,
+        SUM(kills_by_them) AS deaths_suffered
+    FROM (
+        SELECT
+            CASE WHEN kv.killer_xuid = ? THEN kv.victim_xuid ELSE kv.killer_xuid END AS opp_xuid,
+            CASE WHEN kv.killer_xuid = ? THEN kv.kill_count   ELSE 0               END AS kills_by_me,
+            CASE WHEN kv.victim_xuid = ? THEN kv.kill_count   ELSE 0               END AS kills_by_them
+        FROM killer_victim_pairs kv
+        WHERE kv.killer_xuid = ? OR kv.victim_xuid = ?
+    ) t
+    GROUP BY opp_xuid
+)
+SELECT
+    es.xuid,
+    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(es.xuid, 4))) AS gamertag,
+    es.count_together,
+    es.ally_count,
+    es.enemy_count,
+    es.wins_as_ally,
+    es.losses_as_ally,
+    es.wins_vs_enemy,
+    es.losses_vs_enemy,
+    COALESCE(kv.kills_dealt, 0)    AS kills_dealt,
+    COALESCE(kv.deaths_suffered,0) AS deaths_suffered,
+    es.avg_kda_with,
+    es.avg_kda_against,
+    es.first_seen_at,
+    es.last_seen_at
+FROM encounter_stats es
+LEFT JOIN v_gamertag_lookup vg ON vg.xuid = es.xuid
+LEFT JOIN kv_stats kv ON kv.xuid = es.xuid
+ORDER BY es.count_together DESC, es.xuid ASC`
+
 // Q22 : Sessions — chargement des matchs pour le calcul des sessions.
 // Parametre : ?1 = xuid du joueur.
 // Retourne 6 colonnes : match_id, start_time, teammates_sig, is_ranked,

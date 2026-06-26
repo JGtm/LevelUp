@@ -36,6 +36,12 @@ type CareerService interface {
 	GetCareerCSRs(ctx context.Context, seasonID string) (domain.CareerCSRResponse, error)
 }
 
+// RelationsService construit la réponse du hub Communauté > Relations
+// (page transverse non gatée).
+type RelationsService interface {
+	GetRelationsPage(ctx context.Context) (domain.RelationsPageResponse, error)
+}
+
 // CitationsService construit les réponses Citations et Commendations.
 type CitationsService interface {
 	GetCitationsPage(ctx context.Context) (*domain.CitationsPageResponse, error)
