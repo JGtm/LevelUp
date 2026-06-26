@@ -1,0 +1,154 @@
+//go:build integration
+
+package duckdb
+
+import (
+	"context"
+	"testing"
+)
+
+// seedRelations crée le schéma minimal pour Q28RelationsTpl : match_participants
+// (avec team_id/outcome/kda), match_registry (start_time_utc + start_time),
+// killer_victim_pairs et la vue v_gamertag_lookup (root-level, contrat
+// SharedReader sans préfixe shared.).
+func seedRelations(t *testing.T, db *DB) {
+	t.Helper()
+	ctx := context.Background()
+	for _, ddl := range []string{
+		`CREATE TABLE match_participants (
+			match_id VARCHAR, xuid VARCHAR, team_id INTEGER, outcome INTEGER, kda DOUBLE)`,
+		`CREATE TABLE match_registry (
+			match_id VARCHAR, start_time_utc TIMESTAMPTZ, start_time TIMESTAMP)`,
+		`CREATE TABLE killer_victim_pairs (
+			match_id VARCHAR, killer_xuid VARCHAR, victim_xuid VARCHAR, kill_count INTEGER)`,
+		`CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
+		`CREATE VIEW v_gamertag_lookup AS SELECT xuid, gamertag FROM xuid_aliases`,
+	} {
+		if _, err := db.Exec(ctx, ddl); err != nil {
+			t.Fatalf("seedRelations DDL: %v\nSQL: %s", err, ddl)
+		}
+	}
+
+	// Joueur courant = xuidMe.
+	// m1 : me + Ally (team 0, WIN=2)
+	// m2 : me + Ally (team 0, WIN=2)
+	// m3 : me (team 0) vs Foe (team 1, my outcome LOSS=3)
+	// m4 : me (team 0) vs Foe (team 1, my outcome LOSS=3)
+	// Once : me + Once (un seul match commun → exclu par HAVING >= 2)
+	for _, ins := range []string{
+		`INSERT INTO match_participants VALUES
+			('m1','xuidMe',0,2,1.5), ('m1','xuidAlly',0,2,2.0),
+			('m2','xuidMe',0,2,1.5), ('m2','xuidAlly',0,2,3.0),
+			('m3','xuidMe',0,3,0.8), ('m3','xuidFoe',1,2,2.5),
+			('m4','xuidMe',0,3,0.8), ('m4','xuidFoe',1,2,1.5),
+			('m5','xuidMe',0,2,1.0), ('m5','xuidOnce',0,2,1.0)`,
+		`INSERT INTO match_registry VALUES
+			('m1', TIMESTAMPTZ '2026-01-10 14:00:00+00', NULL),
+			('m2', TIMESTAMPTZ '2026-02-10 14:00:00+00', NULL),
+			('m3', TIMESTAMPTZ '2026-03-10 14:00:00+00', NULL),
+			('m4', TIMESTAMPTZ '2026-04-10 14:00:00+00', NULL),
+			('m5', TIMESTAMPTZ '2026-05-10 14:00:00+00', NULL)`,
+		`INSERT INTO killer_victim_pairs VALUES
+			('m3','xuidMe','xuidFoe',2),
+			('m3','xuidFoe','xuidMe',6),
+			('m4','xuidFoe','xuidMe',4)`,
+		`INSERT INTO xuid_aliases VALUES
+			('xuidMe','MePlayer'),
+			('xuidAlly','AllyPlayer'),
+			('xuidFoe','FoePlayer'),
+			('xuidOnce','OncePlayer')`,
+	} {
+		if _, err := db.Exec(ctx, ins); err != nil {
+			t.Fatalf("seedRelations INSERT: %v\nSQL: %s", err, ins)
+		}
+	}
+}
+
+func TestCareerRepo_GetRelations(t *testing.T) {
+	db := openMemDB(t)
+	seedRelations(t, db)
+
+	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
+	repo := NewCareerRepo(pdb)
+
+	rows, err := repo.GetRelations(context.Background())
+	if err != nil {
+		t.Fatalf("GetRelations: %v", err)
+	}
+
+	byGT := map[string]bool{}
+	for _, r := range rows {
+		byGT[r.Gamertag] = true
+	}
+	// OncePlayer (1 match commun) doit être exclu par HAVING >= 2.
+	if byGT["OncePlayer"] {
+		t.Fatal("OncePlayer should be excluded (only 1 common match)")
+	}
+	if !byGT["AllyPlayer"] || !byGT["FoePlayer"] {
+		t.Fatalf("expected AllyPlayer + FoePlayer, got %v", byGT)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("relations len=%d want 2", len(rows))
+	}
+
+	var ally, foe *RelationRowFixture
+	for i := range rows {
+		switch rows[i].Gamertag {
+		case "AllyPlayer":
+			ally = toFixture(rows[i].TotalMatches, rows[i].TeammateCount, rows[i].EnemyCount,
+				rows[i].TeammateWins, rows[i].EnemyWins, rows[i].KillsDealt, rows[i].DeathsSuffered)
+			if rows[i].AvgKDAWith == nil || *rows[i].AvgKDAWith != 2.5 {
+				t.Fatalf("AllyPlayer avg_kda_with=%v want 2.5", rows[i].AvgKDAWith)
+			}
+			if rows[i].FirstSeen.IsZero() {
+				t.Fatal("AllyPlayer first_seen must be set")
+			}
+		case "FoePlayer":
+			foe = toFixture(rows[i].TotalMatches, rows[i].TeammateCount, rows[i].EnemyCount,
+				rows[i].TeammateWins, rows[i].EnemyWins, rows[i].KillsDealt, rows[i].DeathsSuffered)
+			// kills dealt to foe = 2 (m3) ; deaths suffered = 6+4 = 10
+			if rows[i].KillsDealt != 2 {
+				t.Fatalf("FoePlayer kills_dealt=%d want 2", rows[i].KillsDealt)
+			}
+			if rows[i].DeathsSuffered != 10 {
+				t.Fatalf("FoePlayer deaths_suffered=%d want 10", rows[i].DeathsSuffered)
+			}
+		}
+	}
+	if ally == nil || foe == nil {
+		t.Fatal("missing ally/foe rows")
+	}
+	// AllyPlayer : 2 matchs alliés, 2 victoires alliées, 0 ennemi.
+	if ally.total != 2 || ally.teammate != 2 || ally.teammateWins != 2 || ally.enemy != 0 {
+		t.Fatalf("AllyPlayer agg=%+v", ally)
+	}
+	// FoePlayer : 2 matchs ennemis, 0 victoire ennemie (les 2 sont des LOSS).
+	if foe.total != 2 || foe.enemy != 2 || foe.enemyWins != 0 || foe.teammate != 0 {
+		t.Fatalf("FoePlayer agg=%+v", foe)
+	}
+}
+
+func TestCareerRepo_GetRelations_Empty(t *testing.T) {
+	db := openMemDB(t)
+	seedRelations(t, db)
+
+	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidUnknown"}
+	repo := NewCareerRepo(pdb)
+
+	rows, err := repo.GetRelations(context.Background())
+	if err != nil {
+		t.Fatalf("GetRelations: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Fatalf("expected 0 relations for unknown player, got %d", len(rows))
+	}
+}
+
+// RelationRowFixture : agrégats clés pour assertions concises.
+type RelationRowFixture struct {
+	total, teammate, enemy, teammateWins, enemyWins, kills, deaths int
+}
+
+func toFixture(total, teammate, enemy, teammateWins, enemyWins, kills, deaths int) *RelationRowFixture {
+	return &RelationRowFixture{total, teammate, enemy, teammateWins, enemyWins, kills, deaths}
+}

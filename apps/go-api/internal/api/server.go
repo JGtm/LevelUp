@@ -1428,6 +1428,10 @@ func NewRouter(
 			seasonPass := handlers.NewSeasonPassHandler(reg.SeasonPassCtxWithAuth)
 			seasonPass.Mount(r)
 
+			// Relations (hub Communauté > Relations) — page transverse non gatée.
+			relations := handlers.NewRelationsHandler(reg.RelationsCtx)
+			relations.Mount(r)
+
 			// Sprint 12 : Escouade | Sprint 55 D1 : Synthèse → handler autonome
 			squad := handlers.NewSquadHandler(reg.SquadCtx)
 			squad.Mount(r)

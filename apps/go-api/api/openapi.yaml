@@ -2609,6 +2609,16 @@ paths:
       responses:
         "200": { description: "Season pass page" }
 
+  /players/{player_slug}/pages/palmares/relations:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [palmares]
+      operationId: getRelationsPage
+      summary: "Hub Communauté > Relations (joueurs récurrents : alliés, rivaux, noyau dur)"
+      responses:
+        "200": { description: "Relations hub page" }
+
   # Media (étendu)
   /media/feed-version:
     get:
@@ -12849,6 +12859,165 @@ components:
               type: string
       required:
           - title
+      type: object
+    RelationBadge:
+      additionalProperties: false
+      properties:
+          color_token:
+              type: string
+          detail:
+              additionalProperties: {}
+              type: object
+          label_key:
+              type: string
+          style:
+              type: string
+      required:
+          - label_key
+          - color_token
+          - style
+      type: object
+    RelationInsight:
+      additionalProperties: false
+      properties:
+          avg_kda_against:
+              format: double
+              nullable: true
+              type: number
+          avg_kda_with:
+              format: double
+              nullable: true
+              type: number
+          badges:
+              items:
+                  $ref: '#/components/schemas/RelationBadge'
+              nullable: true
+              type: array
+          category:
+              type: string
+          deaths_suffered:
+              format: int64
+              type: integer
+          duel_ratio:
+              format: double
+              nullable: true
+              type: number
+          enemy_matches:
+              format: int64
+              type: integer
+          enemy_win_rate:
+              format: double
+              nullable: true
+              type: number
+          enemy_wins:
+              format: int64
+              type: integer
+          first_seen_at:
+              nullable: true
+              type: string
+          gamertag:
+              type: string
+          is_core:
+              type: boolean
+          kills_dealt:
+              format: int64
+              type: integer
+          last_seen_at:
+              nullable: true
+              type: string
+          teammate_matches:
+              format: int64
+              type: integer
+          teammate_win_rate:
+              format: double
+              nullable: true
+              type: number
+          teammate_wins:
+              format: int64
+              type: integer
+          total_matches:
+              format: int64
+              type: integer
+          xuid:
+              type: string
+      required:
+          - xuid
+          - gamertag
+          - total_matches
+          - teammate_matches
+          - teammate_wins
+          - teammate_win_rate
+          - enemy_matches
+          - enemy_wins
+          - enemy_win_rate
+          - avg_kda_with
+          - avg_kda_against
+          - kills_dealt
+          - deaths_suffered
+          - duel_ratio
+          - first_seen_at
+          - last_seen_at
+          - category
+          - is_core
+          - badges
+      type: object
+    RelationRef:
+      additionalProperties: false
+      properties:
+          gamertag:
+              type: string
+          matches:
+              format: int64
+              type: integer
+          win_rate:
+              format: double
+              nullable: true
+              type: number
+      required:
+          - gamertag
+          - win_rate
+          - matches
+      type: object
+    RelationsOverview:
+      additionalProperties: false
+      properties:
+          allies_count:
+              format: int64
+              type: integer
+          core_count:
+              format: int64
+              type: integer
+          distinct_players:
+              format: int64
+              type: integer
+          rivals_count:
+              format: int64
+              type: integer
+          top_ally:
+              $ref: '#/components/schemas/RelationRef'
+          top_nemesis:
+              $ref: '#/components/schemas/RelationRef'
+      required:
+          - distinct_players
+          - allies_count
+          - rivals_count
+          - core_count
+          - top_ally
+          - top_nemesis
+      type: object
+    RelationsPageResponse:
+      additionalProperties: false
+      properties:
+          overview:
+              $ref: '#/components/schemas/RelationsOverview'
+          relations:
+              items:
+                  $ref: '#/components/schemas/RelationInsight'
+              nullable: true
+              type: array
+      required:
+          - overview
+          - relations
       type: object
     SeasonPassPageResponse:
       additionalProperties: false

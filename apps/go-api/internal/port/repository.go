@@ -145,6 +145,14 @@ type CareerRepository interface {
 	AvailableCSRSeasons(ctx context.Context) ([]domain.CSRSeasonOption, error)
 }
 
+// RelationsRepository fournit les agrégats du hub Communauté > Relations.
+// Implémenté par platform/duckdb.CareerRepo (méthode GetRelations).
+type RelationsRepository interface {
+	// GetRelations : tous les joueurs récurrents (>= 2 matchs communs) avec
+	// agrégats allié/ennemi, KDA moyens, duel et bornes temporelles.
+	GetRelations(ctx context.Context) ([]domain.RelationRawRow, error)
+}
+
 // FriendMatchExtras : enrichissement per-friend pour le panneau d'expander
 // scoreboard (port 1:1 du Python `match_view_scoreboard_detail.py` section
 // "Local"). Chargé depuis la player DB de l'ami (pas du joueur principal),
