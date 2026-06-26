@@ -104,6 +104,7 @@ type CaptureStats struct {
 	EventsFailed     int  // matchs dont la timeline n'a pu être fetchée (batch registry-only)
 	CarnageFailed    int  // matchs dont le carnage n'a pu être fetché (batch sans participants)
 	ExcludedWarzone  int  // matchs Warzone écartés à la collecte (cf. isExcludedH5GameMode)
+	RosterDropped    int  // player-rows droppées (gamertag non résolu en xuid) — perte de roster TRACÉE (fix #10)
 }
 
 // h5GameModeWarzone est le GameMode des matchs Warzone Halo 5 (rosters 24 joueurs).
@@ -252,8 +253,8 @@ func capturePage(
 			continue
 		}
 		timeline := captureMatchTimeline(ctx, src, s.MatchID, stats)
-		participants, commendations, team0, team1 := captureParticipants(ctx, src, s.MatchID, h5GameModeSegment(resp.Results[i].Id.GameMode), resolveXUID, stats)
-		batches = append(batches, ingest.CollectMatchBatch(TitleSlug, source, viewer, s, timeline, participants, commendations, team0, team1, resolveXUID))
+		participants, commendations, team0, team1, playerCount := captureParticipants(ctx, src, s.MatchID, h5GameModeSegment(resp.Results[i].Id.GameMode), resolveXUID, stats)
+		batches = append(batches, ingest.CollectMatchBatch(TitleSlug, source, viewer, s, timeline, participants, commendations, team0, team1, playerCount, resolveXUID))
 		stats.MatchesCollected++
 		if maxMatches > 0 && stats.MatchesCollected >= maxMatches {
 			return batches, false, nil // cap MaxMatches (live)
@@ -301,15 +302,20 @@ func captureMatchTimeline(ctx context.Context, src h5Source, matchID string, sta
 // le match est TOUT DE MÊME collecté (sans participants ni commendations) — squad/
 // rencontres dégradent pour ce match seul, et un futur passage le re-tentera
 // (match_registry idempotent).
-func captureParticipants(ctx context.Context, src CaptureSource, matchID, mode string, resolveXUID func(string) string, stats *CaptureStats) ([]domain.MatchParticipantRow, []persist.CommendationInsert, *int, *int) {
+func captureParticipants(ctx context.Context, src CaptureSource, matchID, mode string, resolveXUID func(string) string, stats *CaptureStats) ([]domain.MatchParticipantRow, []persist.CommendationInsert, *int, *int, int) {
 	carnage, err := src.GetMatchCarnage(ctx, matchID, mode)
 	if err != nil {
 		stats.CarnageFailed++
 		slog.WarnContext(ctx, "h5 capture: carnage indisponible (sans participants)", "match_id", matchID, "err", err)
-		return nil, nil, nil, nil
+		return nil, nil, nil, nil, 0
 	}
 	team0, team1 := carnageTeamScores(carnage)
-	return mapCarnageParticipants(matchID, carnage, resolveXUID), mapCarnageCommendations(matchID, carnage, resolveXUID), team0, team1
+	// playerCount = TAILLE du roster reporté par l'API (carnage.PlayerStats), AVANT
+	// le resolve-or-skip → oracle d'intégrité (roster attendu vs persisté). Renseigné
+	// sur le registry par CollectMatchBatch (le batch porte les participants mappés).
+	playerCount := len(carnage.PlayerStats)
+	participants := mapCarnageParticipants(ctx, matchID, carnage, resolveXUID, &stats.RosterDropped)
+	return participants, mapCarnageCommendations(matchID, carnage, resolveXUID), team0, team1, playerCount
 }
 
 // carnageTeamScores extrait les scores objectif d'équipe (TeamStats[].Score = score

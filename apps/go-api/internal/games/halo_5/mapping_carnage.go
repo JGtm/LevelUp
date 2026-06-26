@@ -19,6 +19,9 @@ package halo_5
 // la métrique /games). Infinite garde son KDA d'API (jamais calculé).
 
 import (
+	"context"
+	"log/slog"
+
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/halo/duration"
 )
@@ -45,17 +48,34 @@ func h5GameModeSegment(gameMode int) string {
 // (killer_victim_pairs, sans PK) garde lui le gamertag. Best-effort : joueur rare
 // absent du roster d'un match (le viewer, seedé, résout toujours).
 // Outcome dérivé du rang d'ÉQUIPE (jeu d'équipe) ou individuel (FFA).
-func mapCarnageParticipants(matchID string, carnage *H5CarnageResponse, resolveXUID func(gamertag string) string) []domain.MatchParticipantRow {
+//
+// OBSERVABILITÉ (fix #10) : tout joueur droppé est COMPTÉ (dropped++ si non-nil) ET
+// loggé (WARN). Historiquement le drop était SILENCIEUX → ~5225 player-rows perdues
+// sur 84% des matchs 4v4 (adversaires matchmaking hors graphe social PeopleHub). On
+// ne perd plus muettement : la perte est traçable (compteur CaptureStats.RosterDropped
+// + oracle player_count vs roster persisté) et un résolveur universel (profil Xbox)
+// vise à la combler en amont.
+func mapCarnageParticipants(ctx context.Context, matchID string, carnage *H5CarnageResponse, resolveXUID func(gamertag string) string, dropped *int) []domain.MatchParticipantRow {
 	if carnage == nil || len(carnage.PlayerStats) == 0 {
 		return nil
 	}
 	winTeam := winningTeamID(carnage)
 	out := make([]domain.MatchParticipantRow, 0, len(carnage.PlayerStats))
+	droppedHere := 0
 	for i := range carnage.PlayerStats {
 		p := &carnage.PlayerStats[i]
 		xuid := resolveXUID(p.Player.Gamertag)
 		if xuid == "" {
-			continue // resolve-or-skip (cf. godoc : PK xuid="" collisionnerait)
+			// resolve-or-skip (cf. godoc : PK xuid="" collisionnerait). Drop COMPTÉ +
+			// loggé en DEBUG par joueur (un récap WARN unique est émis par match en
+			// fin de boucle pour ne pas inonder les logs sur un backfill historique).
+			if dropped != nil {
+				*dropped++
+			}
+			droppedHere++
+			slog.DebugContext(ctx, "h5 roster: joueur non résolu droppé",
+				"match_id", matchID, "gamertag", p.Player.Gamertag)
+			continue
 		}
 		out = append(out, domain.MatchParticipantRow{
 			MatchID:          matchID,
@@ -86,6 +106,11 @@ func mapCarnageParticipants(matchID string, carnage *H5CarnageResponse, resolveX
 			KDA: h5NetFDA(p.TotalKills, p.TotalAssists, p.TotalDeaths),
 			// Accuracy / DamageTaken : non fournis par l'API h5 → nil (jamais fabriqués).
 		})
+	}
+	if droppedHere > 0 {
+		// Récap WARN unique par match (le détail par joueur est en DEBUG ci-dessus).
+		slog.WarnContext(ctx, "h5 roster: joueur(s) non résolu(s) droppé(s)",
+			"match_id", matchID, "count", droppedHere)
 	}
 	return out
 }

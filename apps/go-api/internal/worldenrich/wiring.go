@@ -215,9 +215,10 @@ func BuildMultiHaloSource(cfg *config.AppConfig, rps int, eager bool) (service.W
 	return &multiHaloSource{sources: sources}, ok, nil
 }
 
-// BuildResolver construit le résolveur xuid PeopleHub. Le header RTA est dérivé du
-// MÊME compte (access_token store-first → AcquireXSTSForRTA), mémoïsé (TTL).
-func BuildResolver(cfg *config.AppConfig, tokenGamertag string) (*auth.PeopleHubResolver, error) {
+// BuildResolver construit le résolveur xuid single-compte : CHAÎNE PeopleHub→Profil
+// Xbox (fix #10 — fallback universel hors graphe social), partageant le MÊME header
+// XSTS dérivé du compte (access_token store-first → AcquireXSTSForRTA), mémoïsé (TTL).
+func BuildResolver(cfg *config.AppConfig, tokenGamertag string) (XUIDResolver, error) {
 	xuid, err := xuidForGamertag(cfg, tokenGamertag)
 	if err != nil {
 		return nil, err
@@ -236,7 +237,10 @@ func BuildResolver(cfg *config.AppConfig, tokenGamertag string) (*auth.PeopleHub
 		}
 		return fmt.Sprintf("XBL3.0 x=%s;%s", rta.UserHash, rta.Token), nil
 	})
-	return auth.NewPeopleHubResolver(nil, hp.Header), nil
+	return chainResolver{resolvers: []XUIDResolver{
+		auth.NewPeopleHubResolver(nil, hp.Header),
+		auth.NewXboxProfileResolver(nil, hp.Header),
+	}}, nil
 }
 
 // xuidForGamertag résout l'xuid d'un gamertag depuis db_profiles.json.

@@ -12,15 +12,60 @@ import (
 	"levelup/go-api/internal/platform/auth"
 )
 
-// BuildMultiResolver construit un résolveur PeopleHub PAR compte token résolu.
-// La limite de débit PeopleHub porte sur l'endpoint /users/me/... (donc PAR compte) :
-// répartir les résolutions xuid sur N comptes donne ~N× le quota. Mirroir de
-// BuildMultiHaloSource côté fetch de matchs. Les comptes sans token résolu sont
-// sautés (warn) ; erreur seulement si AUCUN compte n'est résolu.
-func BuildMultiResolver(cfg *config.AppConfig, tokenGamertags []string) ([]*auth.PeopleHubResolver, []string, error) {
+// XUIDResolver — résout un gamertag en xuid numérique. Satisfait par
+// *auth.PeopleHubResolver, *auth.XboxProfileResolver et chainResolver. Interface
+// locale (duck-typing) pour chaîner des résolveurs hétérogènes sans coupler
+// CachingResolver à une implémentation unique.
+type XUIDResolver interface {
+	ResolveXUID(ctx context.Context, gamertag string) (string, error)
+}
+
+// chainResolver essaie une liste ORDONNÉE de résolveurs et retourne le 1er succès.
+// Usage (fix #10) : PeopleHub d'ABORD (graphe social, rapide quand le joueur y est)
+// puis l'endpoint profil Xbox en FALLBACK (universel — résout TOUT gamertag public,
+// y compris les adversaires de matchmaking hors graphe social). Sur échec NON-429
+// d'un résolveur (ex. "gamertag absent des résultats peoplehub"), on continue vers
+// le suivant ; sur 429, on continue aussi (le profil a une limite distincte). Si
+// AUCUN ne résout, on propage la dernière erreur — en préservant un marqueur "429"
+// si tous ont throttle (pour que le round-robin du CachingResolver rote de compte).
+type chainResolver struct {
+	resolvers []XUIDResolver
+}
+
+func (c chainResolver) ResolveXUID(ctx context.Context, gamertag string) (string, error) {
+	var lastErr error
+	allThrottled := true
+	for _, r := range c.resolvers {
+		x, err := r.ResolveXUID(ctx, gamertag)
+		if err == nil {
+			return x, nil
+		}
+		if !strings.Contains(err.Error(), "429") {
+			allThrottled = false
+		}
+		lastErr = err
+	}
+	if lastErr == nil {
+		return "", fmt.Errorf("chain resolver: aucun résolveur configuré")
+	}
+	if allThrottled {
+		// Tous throttlés → garder "429" en surface pour que le round-robin rote.
+		return "", fmt.Errorf("chain resolver throttled (429): %w", lastErr)
+	}
+	return "", lastErr
+}
+
+// BuildMultiResolver construit un résolveur xuid PAR compte token résolu. Chaque
+// résolveur est une CHAÎNE PeopleHub→Profil Xbox partageant le MÊME header XSTS
+// (audience http://xboxlive.com) : PeopleHub pour le graphe social, l'endpoint
+// profil en fallback UNIVERSEL (fix #10 — adversaires de matchmaking hors graphe).
+// La limite de débit porte PAR COMPTE : répartir les résolutions sur N comptes donne
+// ~N× le quota. Miroir de BuildMultiHaloSource côté fetch de matchs. Les comptes sans
+// token résolu sont sautés (warn) ; erreur seulement si AUCUN compte n'est résolu.
+func BuildMultiResolver(cfg *config.AppConfig, tokenGamertags []string) ([]XUIDResolver, []string, error) {
 	provider := auth.NewMSALProvider()
 	store := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	var resolvers []*auth.PeopleHubResolver
+	var resolvers []XUIDResolver
 	var ok []string
 	for _, gt := range tokenGamertags {
 		xuid, err := xuidForGamertag(cfg, gt)
@@ -41,7 +86,12 @@ func BuildMultiResolver(cfg *config.AppConfig, tokenGamertags []string) ([]*auth
 			}
 			return fmt.Sprintf("XBL3.0 x=%s;%s", rta.UserHash, rta.Token), nil
 		})
-		resolvers = append(resolvers, auth.NewPeopleHubResolver(nil, hp.Header))
+		// Même headerFn (XSTS xboxlive.com) pour les DEUX endpoints — le projet sait
+		// déjà produire ce token (cf. AcquireXSTSForRTA), aucune nouvelle chaîne requise.
+		resolvers = append(resolvers, chainResolver{resolvers: []XUIDResolver{
+			auth.NewPeopleHubResolver(nil, hp.Header),
+			auth.NewXboxProfileResolver(nil, hp.Header),
+		}})
 		ok = append(ok, gt)
 	}
 	if len(resolvers) == 0 {
@@ -61,7 +111,7 @@ func BuildMultiResolver(cfg *config.AppConfig, tokenGamertags []string) ([]*auth
 type CachingResolver struct {
 	mu        sync.Mutex
 	cache     map[string]string // lower(gamertag) -> xuid
-	resolvers []*auth.PeopleHubResolver
+	resolvers []XUIDResolver
 	next      int
 	persist   func(gamertag, xuid string) // nil = pas de persistance
 	hits      int
@@ -70,7 +120,7 @@ type CachingResolver struct {
 
 // NewCachingResolver — seed : associations déjà connues (n'importe quelle casse de
 // gamertag). persist : appelé pour chaque NOUVELLE résolution (nil = aucune).
-func NewCachingResolver(resolvers []*auth.PeopleHubResolver, seed map[string]string, persist func(gamertag, xuid string)) *CachingResolver {
+func NewCachingResolver(resolvers []XUIDResolver, seed map[string]string, persist func(gamertag, xuid string)) *CachingResolver {
 	c := &CachingResolver{
 		cache:     make(map[string]string, len(seed)),
 		resolvers: resolvers,

@@ -1,6 +1,7 @@
 package halo_5
 
 import (
+	"context"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -19,7 +20,7 @@ func TestMapCarnageParticipants_TeamOutcomeAndNoFabrication(t *testing.T) {
 				TotalKills: 9, TotalDeaths: 3, TotalAssists: 1},
 		},
 	}
-	rows := mapCarnageParticipants("m1", c, func(gt string) string {
+	rows := mapCarnageParticipants(context.Background(), "m1", c, func(gt string) string {
 		switch gt {
 		case "Win":
 			return "xW"
@@ -27,7 +28,7 @@ func TestMapCarnageParticipants_TeamOutcomeAndNoFabrication(t *testing.T) {
 			return "xL"
 		}
 		return ""
-	})
+	}, nil)
 	if len(rows) != 2 {
 		t.Fatalf("rows = %d, want 2", len(rows))
 	}
@@ -88,7 +89,7 @@ func TestMapCarnageParticipants_KillMechanics(t *testing.T) {
 				TotalShoulderBashKills: 1},
 		},
 	}
-	rows := mapCarnageParticipants("m1", c, func(string) string { return "xA" })
+	rows := mapCarnageParticipants(context.Background(), "m1", c, func(string) string { return "xA" }, nil)
 	if len(rows) != 1 {
 		t.Fatalf("rows = %d, want 1", len(rows))
 	}
@@ -112,12 +113,13 @@ func TestMapCarnageParticipants_ResolveOrSkip(t *testing.T) {
 			{Player: H5PlayerRef{Gamertag: "Unresolved"}, Rank: 2},
 		},
 	}
-	rows := mapCarnageParticipants("m1", c, func(gt string) string {
+	var dropped int
+	rows := mapCarnageParticipants(context.Background(), "m1", c, func(gt string) string {
 		if gt == "Known" {
 			return "xK"
 		}
 		return "" // non résolu → DOIT être sauté (sinon collision PK xuid="")
-	})
+	}, &dropped)
 	if len(rows) != 1 || rows[0].XUID != "xK" {
 		t.Fatalf("resolve-or-skip : rows=%d (want 1, seul Known), xuid0=%q", len(rows), func() string {
 			if len(rows) > 0 {
@@ -125,6 +127,10 @@ func TestMapCarnageParticipants_ResolveOrSkip(t *testing.T) {
 			}
 			return ""
 		}())
+	}
+	// Le drop n'est plus muet : 1 joueur (Unresolved) compté.
+	if dropped != 1 {
+		t.Errorf("dropped = %d, want 1 (Unresolved compté, plus de perte muette)", dropped)
 	}
 }
 
@@ -137,7 +143,7 @@ func TestMapCarnageParticipants_FFAandDNF(t *testing.T) {
 			{Player: H5PlayerRef{Gamertag: "Quitter"}, Rank: 8, DNF: true},
 		},
 	}
-	rows := mapCarnageParticipants("m1", c, func(gt string) string { return "x_" + gt }) // tous résolus
+	rows := mapCarnageParticipants(context.Background(), "m1", c, func(gt string) string { return "x_" + gt }, nil) // tous résolus
 	if len(rows) != 3 {
 		t.Fatalf("rows = %d, want 3 (tous résolus)", len(rows))
 	}
@@ -153,10 +159,10 @@ func TestMapCarnageParticipants_FFAandDNF(t *testing.T) {
 }
 
 func TestMapCarnageParticipants_NilEmpty(t *testing.T) {
-	if mapCarnageParticipants("m1", nil, nil) != nil {
+	if mapCarnageParticipants(context.Background(), "m1", nil, nil, nil) != nil {
 		t.Error("carnage nil → nil")
 	}
-	if mapCarnageParticipants("m1", &H5CarnageResponse{}, func(string) string { return "" }) != nil {
+	if mapCarnageParticipants(context.Background(), "m1", &H5CarnageResponse{}, func(string) string { return "" }, nil) != nil {
 		t.Error("carnage vide → nil")
 	}
 }

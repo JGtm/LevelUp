@@ -57,7 +57,7 @@ func sharedCoreSteps() []migration.Migration {
 						team_1_score INTEGER,
 						team_0_ps_score INTEGER,
 						team_1_ps_score INTEGER,
-						player_count INTEGER,
+						player_count SMALLINT DEFAULT 0,
 						first_sync_by VARCHAR,
 						first_sync_at TIMESTAMP,
 						last_updated_at TIMESTAMP,
@@ -595,6 +595,14 @@ func sharedCoreSteps() []migration.Migration {
 			TargetDB:    migration.TargetShared,
 			Description: "v_gamertag_lookup : re-deploy (vue ré-écrasée par version simplifiée pré-fix schema.go)",
 			ApplySchema: migration.ApplyResolutionViews,
+		},
+		{
+			Name:        "add_player_count_to_match_registry",
+			TargetDB:    migration.TargetShared,
+			Description: "Ajoute player_count (roster API attendu) à match_registry pour les shared préexistants (idempotent) — oracle d'intégrité roster (fix #10)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.AddColumnIfMissing(db, "match_registry", "player_count", "SMALLINT DEFAULT 0")
+			},
 		},
 	}
 }
