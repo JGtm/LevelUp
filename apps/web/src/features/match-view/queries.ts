@@ -4,7 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
-import type { MatchEventTimeline, MatchViewResponse } from '@/lib/api/types'
+import type { MatchViewResponse } from '@/lib/api/types'
 
 export function useMatchView(playerSlug: string, matchId: string) {
   return useQuery({
@@ -13,35 +13,6 @@ export function useMatchView(playerSlug: string, matchId: string) {
       api.get<MatchViewResponse>(`/players/${playerSlug}/matches/${matchId}`),
     enabled: !!playerSlug && !!matchId,
     staleTime: 10 * 60 * 1000,
-  })
-}
-
-/**
- * useMatchEvents — timeline canonique d'events d'un match (kill-feed / timeline),
- * chargée on-demand. `types` filtre par type d'event côté serveur (ex. ['kill']
- * pour un kill-feed) ; vide = tous.
- *
- * Dégradation : un titre sans timeline d'events répond 503 → la query passe en
- * erreur ; le consommateur masque la section (pas de throw remontant à l'UI).
- * Lazy par construction : le hook n'est monté que quand la section est rendue
- * (onglet Détails actif) ; `enabled` couvre le cas slug/matchId manquant.
- */
-export function useMatchEvents(
-  playerSlug: string,
-  matchId: string,
-  types?: string[],
-) {
-  const typesKey = types && types.length > 0 ? types.join(',') : ''
-  const qs = typesKey ? `?types=${encodeURIComponent(typesKey)}` : ''
-  return useQuery({
-    queryKey: queryKeys.matchEvents(playerSlug, matchId, typesKey),
-    queryFn: () =>
-      api.get<MatchEventTimeline>(
-        `/players/${playerSlug}/matches/${matchId}/events${qs}`,
-      ),
-    enabled: !!playerSlug && !!matchId,
-    staleTime: 10 * 60 * 1000,
-    retry: false,
   })
 }
 

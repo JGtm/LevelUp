@@ -92,8 +92,13 @@ function hexToRgba(hex: string, alpha: number): string {
 }
 
 export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, t }: Props) {
+  // Les bars de dominance sont recalculées depuis les events `kill` : sans bin
+  // ET sans kill, la dominance n'a pas de sens → EmptyState plutôt qu'un canvas
+  // vide titré (cas des matchs sans données de combat exploitables).
+  const hasKillEvents =
+    !!events && events.some((e) => (e.event_type ?? '').toLowerCase() === 'kill')
   const series: ChartSeries<MatchTugOfWarBin>[] =
-    bins && bins.length > 0
+    bins && bins.length > 0 && hasKillEvents
       ? [{ key: 'match_view.combat.tug_of_war', datapoints: bins }]
       : []
 

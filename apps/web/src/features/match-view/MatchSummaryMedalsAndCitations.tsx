@@ -109,10 +109,12 @@ interface MatchNativeCommendationsSectionProps {
 }
 
 // MatchNativeCommendationsSection rend les commendations NATIVES (Halo 5) gagnées
-// sur le match, affichées TELLES QUELLES (pas le moteur de citations dérivé
-// d'Infinite). Calquée sur MatchMedalsSection : icône (si définition connue) +
-// libellé + compte. Sans définition (name vide), on dégrade sur un préfixe d'ID
-// court pour distinguer les commendations entre elles en attendant les définitions.
+// sur le match. Parité EXACTE avec les citations dérivées d'Infinite
+// (MatchCitationsSection) : on réutilise CitationProgressRing — anneau de
+// progression (pct = progress_pct), doré + check si is_newly_mastered, et
+// l'indicateur de palier tier_index/tier_count (X/Y). Les commendations déjà
+// masterisées AVANT le match sont filtrées côté backend (non émises).
+// Sans définition (name vide), on dégrade sur un préfixe d'ID court.
 export function MatchNativeCommendationsSection({
   commendations,
   t,
@@ -126,32 +128,47 @@ export function MatchNativeCommendationsSection({
       {commendations.map((comm) => {
         const label =
           comm.name && comm.name.trim() !== '' ? comm.name : `#${comm.id.slice(0, 8)}`
+        const tierCount = comm.tier_count ?? 0
+        const tierIndex = comm.tier_index ?? 0
+        const cumulative = comm.cumulative ?? 0
+        const nextTarget = comm.next_tier_target ?? 0
+        const showTier = tierCount > 0
+        const isMastered = showTier && tierIndex >= tierCount
         return (
           <div
             key={comm.id}
             title={label}
-            className="flex flex-col items-center gap-1 cursor-default w-[74px]"
+            className="flex flex-col items-center gap-1 cursor-default w-[81px]"
           >
-            {comm.icon_url ? (
-              <MedalIcon
-                imageUrl={comm.icon_url}
-                label={label}
-                size={50}
-                className="object-contain"
-              />
-            ) : (
-              <div className="w-[50px] h-[50px] rounded bg-muted flex items-center justify-center px-1">
-                <span className="text-3xs text-muted-foreground text-center leading-none break-all">
-                  {label}
-                </span>
-              </div>
-            )}
-            <span className="text-3xs text-muted-foreground leading-tight text-center w-full truncate">
+            <CitationProgressRing
+              pct={comm.progress_pct}
+              imageUrl={comm.icon_url ?? undefined}
+              isNewlyMastered={comm.is_newly_mastered}
+              size={56}
+            />
+            <span className="text-[12px] text-muted-foreground leading-tight text-center w-full truncate">
               {label}
             </span>
-            <span className="text-3xs font-semibold text-foreground/80 leading-none">
-              ×{comm.count}
-            </span>
+            {showTier && (
+              <span className="text-[12px] font-semibold text-foreground/80 leading-none">
+                {tierIndex}/{tierCount}
+              </span>
+            )}
+            <div className="flex items-baseline justify-center gap-1.5 leading-none">
+              {showTier && !isMastered && (
+                <span className="text-3xs text-muted-foreground">
+                  {cumulative}/{nextTarget}
+                </span>
+              )}
+              <span className="text-[12px] font-semibold text-info">
+                ×{comm.count}
+              </span>
+            </div>
+            {comm.is_newly_mastered && (
+              <span className="text-3xs font-bold text-warning leading-none">
+                {t.newlyMastered}
+              </span>
+            )}
           </div>
         )
       })}
