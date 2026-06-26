@@ -421,7 +421,7 @@ func TestComputeSynthesisBestRefs_PicksWinningMatchPerMetric(t *testing.T) {
 		makeCanonicalBestRow("m-spree", 22, 8, 1800, 12, 2.5, 1600, 0.50),
 	}
 
-	refs := computeSynthesisBestRefs(rows)
+	refs := computeSynthesisBestRefs(rows, true)
 
 	cases := []struct {
 		name    string
@@ -455,7 +455,7 @@ func TestComputeSynthesisBestRefs_TieKeepsFirstSeen(t *testing.T) {
 		makeCanonicalBestRow("first", 10, 5, 0, 0, 2.5, 0, 0),
 		makeCanonicalBestRow("second", 10, 5, 0, 0, 2.5, 0, 0), // égalité parfaite
 	}
-	refs := computeSynthesisBestRefs(rows)
+	refs := computeSynthesisBestRefs(rows, true)
 	if refs.kills == nil || refs.kills.MatchID != "first" {
 		t.Errorf("kills tie: want first, got %+v", refs.kills)
 	}
@@ -474,7 +474,7 @@ func TestComputeSynthesisBestRefs_NilFieldsYieldNilRef(t *testing.T) {
 			},
 		},
 	}
-	refs := computeSynthesisBestRefs(rows)
+	refs := computeSynthesisBestRefs(rows, true)
 	if refs.accuracy != nil {
 		t.Errorf("accuracy: want nil ref when Self.Accuracy nil, got %+v", refs.accuracy)
 	}
@@ -509,7 +509,7 @@ func TestComputeSynthesisBestRefs_HeadshotsAndPersonalScore(t *testing.T) {
 			Self:    canonical.MatchParticipant{HeadshotKills: &hs3, PersonalScore: &ps3},
 		},
 	}
-	refs := computeSynthesisBestRefs(rows)
+	refs := computeSynthesisBestRefs(rows, true)
 	if refs.headshots == nil || refs.headshots.MatchID != "m2" || refs.headshots.Value != 14 {
 		t.Errorf("headshots: want m2/14, got %+v", refs.headshots)
 	}
@@ -532,7 +532,7 @@ func TestComputeSynthesisBestRefs_ExcludesDNFAndPvE(t *testing.T) {
 
 	clean := makeCanonicalBestRow("m-clean", 25, 5, 1200, 4, 3.0, 1500, 0.50)
 
-	refs := computeSynthesisBestRefs([]canonical.PlayerMatchRow{dnf, pve, clean})
+	refs := computeSynthesisBestRefs([]canonical.PlayerMatchRow{dnf, pve, clean}, true)
 
 	if refs.kills == nil || refs.kills.MatchID != "m-clean" || refs.kills.Value != 25 {
 		t.Errorf("kills: want m-clean/25 (DNF+PvE exclus), got %+v", refs.kills)
@@ -552,7 +552,7 @@ func TestComputeSynthesisBestRefs_AllZeroSkipsRef(t *testing.T) {
 		makeCanonicalBestRow("m1", 0, 0, 0, 0, 0, 0, 0),
 		makeCanonicalBestRow("m2", 0, 0, 0, 0, 0, 0, 0),
 	}
-	refs := computeSynthesisBestRefs(rows)
+	refs := computeSynthesisBestRefs(rows, true)
 	if refs.kills != nil {
 		t.Errorf("kills: want nil when all zero, got %+v", refs.kills)
 	}

@@ -26,6 +26,10 @@ type buildSquadChartsInput struct {
 	squadHistorical map[string]domain.MapSquadStats
 	events          []canonical.HighlightEvent
 	sharedMatches   []domain.SquadSharedMatch
+	// provideSpree : false quand le titre ne porte pas le max killing spree (Halo 5)
+	// → la série KillingSpreeMax est omise (nil) plutôt que fabriquée. Cf.
+	// games.ProvidesMaxKillingSpree.
+	provideSpree bool
 }
 
 // buildSquadCharts assemble tous les ChartSeries de la page V2.
@@ -87,7 +91,11 @@ func buildSquadCharts(in buildSquadChartsInput) *domain.SquadCharts {
 		hsPk := BuildHsPkStacked(in.rowsByPlayer)
 		out.HsPkStacked = &hsPk
 
-		out.KillingSpreeMax = BuildKillingSpreeMax(in.rowsByPlayer)
+		if in.provideSpree {
+			// Native (Infinite) ou calculée depuis les events kill/death (Halo 5) — la
+			// capability events-timeline du titre rend le calcul-fallback possible.
+			out.KillingSpreeMax = BuildKillingSpreeMax(in.rowsByPlayer, in.events, in.squadXUIDs)
+		}
 		out.AssistsTimeseries = BuildAssistsChart(in.rowsByPlayer)
 		out.KDATimeseries = BuildKDAChart(in.rowsByPlayer)
 		out.AccuracyTimeseries = BuildAccuracyChart(in.rowsByPlayer)

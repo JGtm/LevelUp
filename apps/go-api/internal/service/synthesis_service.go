@@ -152,7 +152,8 @@ func (s *SynthesisService) GetSynthesisPage(
 	squadKPIs := analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, true, hp)
 	topWeeks := analysis.ComputeSynthesisTopWeeksFromCanonical(filteredCanon)
 	heatmap := analysis.ComputeTemporalHeatmapFromCanonical(filteredCanon)
-	overview := buildSynthesisOverviewCanonical(filteredCanon, soloKPIs)
+	provideSpree := games.ProvidesMaxKillingSpree(s.titleSlug)
+	overview := buildSynthesisOverviewCanonical(filteredCanon, soloKPIs, provideSpree)
 	slog.DebugContext(ctx, "synthesis: best refs detected",
 		"player_xuid", playerXUID,
 		"matches", len(filteredCanon),
@@ -176,7 +177,7 @@ func (s *SynthesisService) GetSynthesisPage(
 	breakdowns := buildBreakdownsFromCanonical(filteredCanon)
 
 	// P9 : stats détaillées (combat, tir, dégâts, fun)
-	detailedStats := buildSynthesisDetailedStatsFromCanonical(filteredCanon)
+	detailedStats := buildSynthesisDetailedStatsFromCanonical(filteredCanon, provideSpree)
 
 	// P9 : fun stats depuis personal_score_awards (requete separee, erreur non fatale)
 	s.applyFunStatsToDetailedStats(ctx, &detailedStats, filteredCanon)
