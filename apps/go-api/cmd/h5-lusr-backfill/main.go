@@ -101,13 +101,13 @@ func main() {
 	// ctx porteur du titre h5 → seam classifier h5 + garde capability.
 	runCtx := ctxkeys.WithTitleSlug(ctx, halo5.TitleSlug)
 
-	if _, err := shared.ExecContext(runCtx, `DELETE FROM player_skill_state_v2 WHERE xuid = ?`, xuid); err != nil {
-		fmt.Printf("reset state (non bloquant): %v\n", err)
-	}
-
-	processed, err := lusync.RunLUSRV2ShadowOwnerOnly(runCtx, playerDB, shared, xuid)
+	// Reset watermark + replay via le helper canonique : INSERT sentinelle
+	// is_reset=TRUE (append-only #23046), JAMAIS le DELETE WHERE xuid qui est le
+	// vecteur ART sur idx_pssv2 (cf. ADR 0026 + RecomputeLUSRCanonicalForPlayer).
+	// Owner-only : ne touche que l'état de ce joueur.
+	processed, err := lusync.RecomputeLUSRCanonicalForPlayer(runCtx, playerDB, shared, xuid)
 	if err != nil {
-		fatal("RunLUSRV2ShadowOwnerOnly: %v", err)
+		fatal("RecomputeLUSRCanonicalForPlayer: %v", err)
 	}
 	fmt.Printf("BACKFILL LUSR h5 : %d matchs traités (canonical) pour %s (xuid=%s)\n", processed, gt, xuid)
 
