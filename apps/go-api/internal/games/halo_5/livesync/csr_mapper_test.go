@@ -98,7 +98,8 @@ func TestMapH5ArenaToPlaylistCSRs_DesignationLabels(t *testing.T) {
 		{3, "Platinum"},
 		{4, "Diamond"},
 		{5, "Onyx"},
-		{6, ""}, // Champion natif absent du DTO → non mappé (TODO Phase 2).
+		{6, "Champion"}, // Champion confirmé live (Rank #236) → mappé.
+		{7, ""},         // hors borne → vide
 		{-1, ""},
 	}
 	for _, tc := range cases {

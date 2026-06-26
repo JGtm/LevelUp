@@ -1,3 +1,11 @@
+## [2026-06-26] H5 tier CSR Champion (DesignationId 6) mappé — COMPLÉTÉ (code ; commit pending)
+
+**Contexte** : la sonde 2026-06-26 a capté un VRAI Champion H5 (DesignationId 6, Csr 1739, Rank #236) — le `csr_mapper` H5 s'arrêtait à Onyx (0..5) → tier VIDE pour les Champions (bug latent ; c'était le « TODO Phase 2 si un 6 réel apparaît »).
+
+**Fix** : ajout de `"Champion"` à `h5DesignationTiersEN` (index 6) + sous-palier forcé à 0 (palier unique, comme Onyx). Couvre les DEUX chemins CSR (service record `csr_mapper` + per-match `csr_match.go`, tous deux via `h5DesignationTierEN`). Le rang mondial #N (`H5Csr.Rank`) n'est pas encore porté par `CSRRankSnapshot` → follow-up si on veut afficher « #N ».
+
+**Résultats** : build + test livesync verts (cas designation 6→"Champion", 7→"" hors borne). Commit pending.
+
 ## [2026-06-26] H5 engagement enrichi : assists + impulses objectif → highlight_events — COMPLÉTÉ (code ; commit pending)
 
 **Contexte** : l'agent concurrent a réglé la courbe d'engagement de base (kills synthétisés des killer_victim_pairs). #2 = l'ENRICHIR avec le support (assists) + l'objectif (flag/KOTH/territoires) pour que la courbe capte le « meneur d'objectif » et le joueur de soutien, pas seulement les frags.

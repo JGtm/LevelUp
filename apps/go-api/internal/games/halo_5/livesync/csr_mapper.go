@@ -26,11 +26,13 @@ import (
 // TitleDescriptor.CSRSeasonID alimenté par config/titles/halo_5/title.toml).
 const h5LifetimeSeasonID = "h5-lifetime"
 
-// h5DesignationTiersEN mappe DesignationId (palier CSR majeur Halo 5, 0..5) vers le
+// h5DesignationTiersEN mappe DesignationId (palier CSR majeur Halo 5, 0..6) vers le
 // libellé de tier EN CAPITALISÉ attendu par les consommateurs (badge builder
 // canonicalHomeSkillTierName, front). Ordre officiel : Bronze < Silver < Gold <
-// Platinum < Diamond < Onyx. DesignationId 6 (Champion) n'existe PAS dans le DTO h5
-// confirmé → non mappé (TODO Phase 2 si un 6 réel apparaît).
+// Platinum < Diamond < Onyx < Champion. DesignationId 6 (Champion) CONFIRMÉ live
+// (sonde 2026-06-26 : joueur réel en Champion, Csr 1739, Rank #236) → mappé. Le rang
+// mondial #N (H5Csr.Rank) du Champion n'est PAS encore porté par le snapshot canonique
+// (CSRRankSnapshot sans champ rang) → follow-up si on veut afficher « #N ».
 var h5DesignationTiersEN = []string{
 	"Bronze",
 	"Silver",
@@ -38,6 +40,7 @@ var h5DesignationTiersEN = []string{
 	"Platinum",
 	"Diamond",
 	"Onyx",
+	"Champion",
 }
 
 // h5DesignationTierEN retourne le libellé EN capitalisé d'un DesignationId, ""
@@ -114,8 +117,8 @@ func h5CsrSnapshot(c *halo5.H5Csr) syncpkg.CSRRankSnapshot {
 	}
 	tier := h5DesignationTierEN(c.DesignationId)
 	subTier := c.Tier
-	if strings.EqualFold(tier, "Onyx") {
-		subTier = 0 // Onyx = palier unique, pas de sous-palier.
+	if strings.EqualFold(tier, "Onyx") || strings.EqualFold(tier, "Champion") {
+		subTier = 0 // Onyx/Champion = paliers uniques, sans sous-palier.
 	}
 	return syncpkg.CSRRankSnapshot{
 		Value:   float64(c.Csr),
