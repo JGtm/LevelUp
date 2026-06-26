@@ -37,7 +37,14 @@ export function HomeSpartanIdentityBanner({
   const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
   const spartanText = getSpartanIdentityText(locale)
 
-  const activeBannerUrl = spartanIdentity.banner_image_url ?? null
+  // Halo 5 n'a PAS de nameplate/bannière : ce qui arrivait en banner_image_url est le
+  // RENDER full-body du Spartan (pas une bannière). On ne l'utilise donc PAS en fond
+  // plein cadre → bannière SYNTHÉTISÉE (backdrop gradient via tokens sémantiques,
+  // emblème + identité + rang conservés). Branche par slug : précédent établi
+  // (NavL1/NavL2/CareerSummaryCard) ; TODO migrer vers une capability dédiée.
+  const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const synthesizeBanner = currentTitleSlug === 'halo_5'
+  const activeBannerUrl = synthesizeBanner ? null : (spartanIdentity.banner_image_url ?? null)
   const labels = spartanText.labels
 
   const careerRank = spartanIdentity.career_rank ?? null
@@ -74,6 +81,16 @@ export function HomeSpartanIdentityBanner({
           {activeBannerUrl && (
             <div
               className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/30 via-background/10 to-background/40"
+              aria-hidden="true"
+            />
+          )}
+          {!activeBannerUrl && (
+            // Backdrop synthétisé (pas d'image de bannière) : dégradé sémantique via
+            // tokens (utilitaires Tailwind tokenisés, pas de hex) plutôt que muted plat.
+            // Title-agnostic : couvre H5 ET tout joueur sans bannière.
+            <div
+              data-testid="home-spartan-synthesized-backdrop"
+              className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/25 via-muted/45 to-background"
               aria-hidden="true"
             />
           )}
