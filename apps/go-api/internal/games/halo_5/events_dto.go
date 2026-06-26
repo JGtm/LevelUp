@@ -40,6 +40,9 @@ type h5GameEvent struct {
 	KillerWeaponStockId int64            `json:"KillerWeaponStockId"`
 	KillerWorldLocation *h5WorldLocation `json:"KillerWorldLocation"`
 	VictimWorldLocation *h5WorldLocation `json:"VictimWorldLocation"`
+	// Assistants : joueurs ayant assisté le kill (natif Halo 5). Alimente le signal
+	// d'engagement « support » (event_type=assist dans highlight_events).
+	Assistants []h5EventPlayer `json:"Assistants"`
 
 	// Medal / Impulse / WeaponPickup / WeaponDrop / PlayerSpawn
 	Player        *h5EventPlayer `json:"Player"`
