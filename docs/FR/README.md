@@ -23,7 +23,7 @@ Refonte majeure. LevelUp quitte Streamlit pour une app **React 19 + Go API** ave
 - **Navigation à deux niveaux** — barre L1 (Accueil / Synthèse / Explorer / Escouade / Communauté / Ascension / Médias / Aide / Paramètres) plus onglets L2 contextuels ; tout est à un clic, plus de sidebar qui défile
 - **Interactions modernes** — transitions de page, deep-links (`?session=`, match précédent/suivant), survols, drawers latéraux, retours visuels sur chaque action, UI responsive
 - **Backend Go API** — bascule Python → Go pour un serveur plus léger, un démarrage plus rapide et une empreinte mémoire réduite
-- **Support multi-titres** — l'app gère désormais plusieurs jeux Halo (Infinite et au-delà) via un **TitleSwitcher** dans la barre de navigation ; commande CLI `levelup add-title` pour enregistrer un nouveau titre
+- **Support multi-titres** — l'app gère désormais plusieurs jeux Halo (Halo 5 : Guardians, Infinite et au-delà) via un **TitleSwitcher** dans la barre de navigation ; commande CLI `levelup add-title` pour enregistrer un nouveau titre
 - **Page d'aide intégrée** — Notes de version (changelog consultable dans l'app) et Glossaire des termes Halo, avec cache local 24 h pour lecture hors-ligne
 
 **Accueil « Mission Control » — entièrement redessiné**
