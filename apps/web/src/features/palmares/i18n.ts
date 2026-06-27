@@ -53,6 +53,7 @@ export interface PalmaresText {
       viewSquad: string
       analyser: string
       reset: string
+      includeFriends: string
     }
     table: {
       player: string
@@ -64,6 +65,8 @@ export interface PalmaresText {
       ratio: string
       lastSeen: string
       ratioTooltip: string
+      previous: string
+      next: string
     }
     category: {
       ally: string
@@ -225,6 +228,7 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         viewSquad: t(loc, 'palmares.relations.filters.view_squad'),
         analyser: t(loc, 'palmares.relations.filters.analyser'),
         reset: t(loc, 'palmares.relations.filters.reset'),
+        includeFriends: t(loc, 'palmares.relations.filters.include_friends'),
       },
       table: {
         player: t(loc, 'palmares.relations.table.player'),
@@ -236,6 +240,8 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         ratio: t(loc, 'palmares.relations.table.ratio'),
         lastSeen: t(loc, 'palmares.relations.table.last_seen'),
         ratioTooltip: t(loc, 'palmares.relations.table.ratio_tooltip'),
+        previous: t(loc, 'palmares.relations.table.previous'),
+        next: t(loc, 'palmares.relations.table.next'),
       },
       category: {
         ally: t(loc, 'palmares.relations.category.ally'),
