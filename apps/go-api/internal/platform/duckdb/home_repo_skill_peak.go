@@ -313,29 +313,29 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 	// Phase 6 : threshold de la saison courante pour les calculs CSR.
 	threshold := r.csrThreshold(r.currentCSRSID)
 
-	var value sql.NullFloat64
-	var tier sql.NullString
-	var subTier sql.NullInt16
-	if err := r.pdb.ReadDB().QueryRow(ctx, Q26csrAlltimePeak).Scan(&value, &tier, &subTier); err == nil && value.Valid {
-		peak := &domain.HomeSkillPeakRow{RatingValue: value.Float64}
-		tierStr := optionalNullStringValue(tier)
-		subTierInt := optionalNullInt16Value(subTier)
+	// Sélection du pic EN GO via l'ordinal canonique analysis.CSRTierOrdinal
+	// (palier → sous-palier → valeur de départage). Q26csrAlltimePeak renvoie tous
+	// les snapshots éligibles (palier renseigné OU valeur > 0) → couvre les titres
+	// tier-only (valeur=0, ex. H5 "Diamant V") sans dupliquer l'ordre des paliers.
+	if bestTier, bestSub, bestVal, ok := r.pickBestCSRAlltime(ctx); ok {
+		peak := &domain.HomeSkillPeakRow{RatingValue: bestVal}
 		// Tier+subTier bruts conservés pour la bande ordinale (analysis.SkillTierBand).
-		peak.Tier = tierStr
-		peak.SubTier = subTierInt
-		peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(tierStr, "", subTierInt, r.titleSlug(), 0, threshold)
+		peak.Tier = bestTier
+		peak.SubTier = bestSub
+		peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(bestTier, "", bestSub, r.titleSlug(), 0, threshold)
 		// Palier all-time CSR : libellé FR + sous-palier romain ("Diamant III"),
 		// au lieu du tier brut anglais sans sous-palier. FR-first comme tous les
 		// libellés CSR (sync.formatCSRTierLabel). Partagé Home + Explorer.
-		if tierStr != "" {
+		if bestTier != "" {
 			var subPtr *int
-			if st := int(subTierInt); st >= 1 && st <= 6 {
-				subPtr = &st
+			if bestSub >= 1 && bestSub <= 6 {
+				s := bestSub
+				subPtr = &s
 			}
-			if lbl := analysis.BuildCSRTierLabelFromEN(tierStr, subPtr, true); lbl != nil {
+			if lbl := analysis.BuildCSRTierLabelFromEN(bestTier, subPtr, true); lbl != nil {
 				peak.TierLabel = lbl
 			} else {
-				peak.TierLabel = stringPtr(tierStr)
+				peak.TierLabel = stringPtr(bestTier)
 			}
 		}
 		zero := 0
@@ -370,6 +370,44 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 	totalCopy := threshold
 	peak.PlacementTotal = &totalCopy
 	return peak
+}
+
+// pickBestCSRAlltime parcourt les snapshots candidats (Q26csrAlltimePeak) et
+// retourne le meilleur pic via l'ordinal canonique analysis.CSRTierOrdinal —
+// départage : palier, puis sous-palier, puis valeur. ok=false si aucun candidat.
+// Title-agnostic : un titre tier-only (valeur=0) reste classé par son palier ;
+// un titre à valeur (Infinite) départage les ex-aequo de palier/sous-palier par
+// la valeur. Pas de CASE SQL : l'ordre des paliers a UNE seule source (Go).
+func (r *HomeRepo) pickBestCSRAlltime(ctx context.Context) (tier string, sub int, val float64, ok bool) {
+	rows, err := r.pdb.ReadDB().Query(ctx, Q26csrAlltimePeak)
+	if err != nil {
+		return "", 0, 0, false
+	}
+	defer func() { _ = rows.Close() }()
+	bestOrd := -1
+	for rows.Next() {
+		var v sql.NullFloat64
+		var t sql.NullString
+		var st sql.NullInt16
+		if err := rows.Scan(&v, &t, &st); err != nil {
+			continue
+		}
+		cTier := optionalNullStringValue(t)
+		cSub := optionalNullInt16Value(st)
+		cVal := 0.0
+		if v.Valid {
+			cVal = v.Float64
+		}
+		cOrd := analysis.CSRTierOrdinal(cTier)
+		better := !ok ||
+			cOrd > bestOrd ||
+			(cOrd == bestOrd && cSub > sub) ||
+			(cOrd == bestOrd && cSub == sub && cVal > val)
+		if better {
+			tier, sub, val, bestOrd, ok = cTier, cSub, cVal, cOrd, true
+		}
+	}
+	return tier, sub, val, ok
 }
 
 // unrankedBadgeURL retourne l'URL du badge unranked_N.png pour un placement à
