@@ -344,7 +344,10 @@ func (c *WorldLeaderboardCron) scrapeAll(ctx context.Context, season string, pla
 		// traité comme un glitch (page tronquée / markup) et ignoré — on ne persiste
 		// pas un snapshot partiel, les données précédentes restent affichées.
 		if len(entries) > 0 && len(entries) < c.minEntries {
-			slog.WarnContext(ctx, "world_leaderboard_cron: snapshot playlist trop court — ignoré (glitch probable, snapshot précédent conservé)",
+			// Auto-réparé : on ne persiste pas, le snapshot précédent reste affiché.
+			// INFO (pas WARN) — c'est un comportement nominal de robustesse, pas une
+			// anomalie à investiguer.
+			slog.InfoContext(ctx, "world_leaderboard_cron: snapshot playlist trop court — ignoré (glitch probable, snapshot précédent conservé)",
 				"module", logging.ModuleLeaderboard, "season", season, "playlist", pl,
 				"entries", len(entries), "min", c.minEntries)
 			continue

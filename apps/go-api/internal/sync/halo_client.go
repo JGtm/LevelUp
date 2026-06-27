@@ -51,6 +51,9 @@ const (
 	maxRetries = 4
 	// retryBaseDelay est le délai de base pour le backoff exponentiel.
 	retryBaseDelay = 800 * time.Millisecond
+	// backoffCeiling borne le délai d'un retry in-client : au-delà, c'est le
+	// cooldown global du pool (OnHTTPError) qui prend le relais.
+	backoffCeiling = 10 * time.Second
 	// matchCountMax est le nombre maximum de matchs par page d'historique (API Halo).
 	matchCountMax = 25
 )
