@@ -1,3 +1,15 @@
+## [2026-06-27] Démo Halo 5 — Phase 3b : career H5 (CSR+SR) lu DuckDB en démo
+
+**Tâche** : servir le RANG Halo 5 (CSR + Spartan Rank) au home/career de la démo, sans token (l'API cryptum live échoue hors-ligne). Suite directe des Phases 1-2-3a.
+
+**Cycle d'import** : `internal/platform/duckdb` ne peut PAS importer `internal/games/halo_5` (cycle via `internal/games`). Comme l'historique h5 (Halo5MatchHistorySource → canonical), la source DuckDB renvoie un DTO d'un paquet NEUTRE : nouveau `domain.H5CareerLocal` (CSR palier EN + sous-palier + valeur Onyx ; SR + XP total). La PROJECTION canonique (libellés FR, bornes SR 152) reste côté halo_5.
+
+**Implémentation** : (1) `duckdb.Halo5CareerSource{pdb}` lit la player DB — meilleur CSR à vie (`player_csr_snapshots.alltime_*`, ordre Bronze<…<Onyx via CASE = h5Designations) + dernier SR VALIDE (`career_progression WHERE rank IS NOT NULL ORDER BY recorded_at DESC` — la dernière row peut avoir rank NULL : re-fetch vide / identité empruntée). (2) interface `halo_5.CareerLocalSource` + `WithCareerSource` + `localCareerSnapshot`/`applyLocalCSR` (réutilisent `applyDefaultSpartanRankBounds`, `applySpartanRank`, `h5Designations` — parité `mapCareerSnapshot`). (3) `LoadCareerSnapshot` PRÉFÈRE la source locale si injectée (sinon live). (4) builder `registerHalo5Adapters` : `WithCareerSource` GATÉ `reg.cfg.DemoMode` → prod h5 reste live (inchangé).
+
+**Résultats (serveur démo local)** : GET /players/demo-player/pages/career sous Halo 5 → rank_number=147 (SR 147), rank_name_raw="Diamant 5", rank_tier="Diamant", current_xp/xp_for_next/xp_total + progress_pct=29.06, total_ranks=152 (jamais 272), is_max_rank=false. Build+vet module verts. Changement isolé (adapter h5 + gate démo) → Infinite/prod inchangés.
+
+**Statut** : Complété + vérifié. RESTE Phase 3c (détail de match + kill-feed h5 DuckDB, gatés démo), Phase 4 (vidéos), Phase 5 (deploy + nettoyage bruit boot).
+
 ## [2026-06-27] Démo multi-titre Halo 5 — Phases 1-2 (seed + résolution) + fix metadata H5 démo
 
 **Tâche** : rendre la démo VPS (`demo.lvelup.info`, aujourd'hui Infinite-only) compatible Halo 5 — mêmes échantillons anonymisés (solo + escouade, ~50/titre), pour que les visiteurs voient et testent les 2 titres. Branche worktree `worktree-demo-halo5`.
