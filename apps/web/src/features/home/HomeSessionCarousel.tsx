@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { SessionSummaryItem } from '@/lib/api/types'
 import { tokenCssVar } from '@/lib/accessibility'
-import { kdScale } from '@/lib/accessibility/scales'
+import { kdaDivergentScale } from '@/lib/accessibility/scales'
 import { getPerfColor } from '@/lib/perf-color'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
@@ -256,7 +256,7 @@ export function HomeSessionCarousel({
               {session.avg_kda != null && (
                 <span>
                   FDA{' '}
-                  <span style={{ color: tokenCssVar(kdScale(session.avg_kda)) }}>
+                  <span style={{ color: tokenCssVar(kdaDivergentScale(session.avg_kda)) }}>
                     {session.avg_kda.toFixed(2)}
                   </span>
                 </span>

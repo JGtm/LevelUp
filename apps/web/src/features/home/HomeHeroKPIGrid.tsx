@@ -15,7 +15,7 @@
  */
 import type { HeroKPIs } from '@/lib/api/types'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
-import { kdScale, accuracyScale } from '@/lib/accessibility/scales'
+import { kdaDivergentScale, accuracyScale } from '@/lib/accessibility/scales'
 import type { getKPIText } from './kpi.i18n'
 import { KpiCard } from '@/components/cards/KpiCard'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
@@ -79,7 +79,7 @@ export function HomeHeroKPIGrid({
   const kda = kpis.avg_kda
   // Accents dynamiques (sentiment) : KDA/précision via les échelles perf-tier,
   // taux de victoire au seuil 50 %. Fallback neutre (perf-tier-3) si donnée absente.
-  const kdaAccent: SemanticToken = kda != null ? kdScale(kda) : 'perf-tier-3'
+  const kdaAccent: SemanticToken = kda != null ? kdaDivergentScale(kda) : 'perf-tier-3'
   const wins = kpis.wins
   const losses = kpis.losses
   const draws = kpis.draws ?? 0

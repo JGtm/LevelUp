@@ -25,7 +25,6 @@ const FEATURE_LABEL: Record<TitleCapability, { fr: string; en: string }> = {
   native_kill_mechanics: { fr: 'les assassinats et compétences Spartan', en: 'assassinations and Spartan abilities' },
   team_mmr: { fr: 'le MMR par match', en: 'per-match MMR' },
   damage_taken: { fr: 'les dégâts subis', en: 'damage taken' },
-  native_kda: { fr: 'le ratio KDA natif', en: 'native KDA ratio' },
 }
 
 interface FeatureUnavailableProps {
