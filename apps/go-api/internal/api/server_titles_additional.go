@@ -189,6 +189,13 @@ func registerHalo5Adapters(
 			// gamertag) — match_commendations.xuid = l'xuid Xbox résolu au sync.
 			da = da.WithCommendationTotals(
 				platform_duckdb.NewHalo5CommendationTotalsSource(pdb.SharedReadDB(), pdb.XUID))
+			// Career LOCAL (DuckDB) — gaté DÉMO : sert le rang CSR/SR hors-ligne (aucun
+			// token en démo → l'API cryptum live échouerait). En prod, career reste live
+			// (comportement inchangé). La donnée vient de la player DB synchronisée
+			// (player_csr_snapshots + career_progression).
+			if reg.cfg.DemoMode {
+				da = da.WithCareerSource(platform_duckdb.NewHalo5CareerSource(pdb))
+			}
 		}
 		if commDefs != nil {
 			da = da.WithCommendationDefs(commDefs)

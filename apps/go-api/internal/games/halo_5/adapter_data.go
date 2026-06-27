@@ -111,6 +111,11 @@ type DataAdapter struct {
 	// LoadCommendationTotals dégrade en ErrCapabilityNotSupported. Injecté via
 	// WithCommendationTotals au builder player-scoped (AXE B totaux).
 	commendationTotals CommendationTotalsSource
+	// careerLocal (optionnel) — career lu depuis le DuckDB synchronisé (meilleur CSR +
+	// SR). Quand injecté, LoadCareerSnapshot le PRÉFÈRE à l'API live (sert le rang
+	// hors-ligne en démo, aucun token). nil → voie live inchangée. Injecté via
+	// WithCareerSource au builder player-scoped (gaté DemoMode).
+	careerLocal CareerLocalSource
 }
 
 var _ games.TitleDataAdapter = (*DataAdapter)(nil)
@@ -170,6 +175,15 @@ func (a *DataAdapter) WithCommendationDefs(s CommendationDefSource) *DataAdapter
 // -> LoadCommendationTotals dégrade en ErrCapabilityNotSupported. Chainable.
 func (a *DataAdapter) WithCommendationTotals(s CommendationTotalsSource) *DataAdapter {
 	a.commendationTotals = s
+	return a
+}
+
+// WithCareerSource injecte la source de career LOCAL (DuckDB synchronisé). Quand
+// présente, LoadCareerSnapshot la PRÉFÈRE à l'API cryptum live (rang servi hors-ligne
+// en démo, où aucun token n'est disponible). nil (défaut) -> voie live inchangée.
+// Chainable.
+func (a *DataAdapter) WithCareerSource(s CareerLocalSource) *DataAdapter {
+	a.careerLocal = s
 	return a
 }
 
@@ -269,6 +283,17 @@ func (a *DataAdapter) LoadPlayerStats(ctx context.Context, xuid string, _ canoni
 // seuls le palier CSR (RankTier/RankName) et la valeur Onyx sont alimentes.
 func (a *DataAdapter) LoadCareerSnapshot(ctx context.Context, xuid string, _ canonical.CareerOptions) (*canonical.CareerSnapshot, error) {
 	gamertag := xuid
+	// Source LOCALE (DuckDB synchronisé) prioritaire si injectée : sert le rang
+	// hors-ligne (démo, aucun token → l'API live échouerait). Dégrade vers le live
+	// uniquement si la lecture DB échoue ET qu'une source live existe.
+	if a.careerLocal != nil {
+		if snap := a.localCareerSnapshot(ctx, gamertag); snap != nil {
+			return snap, nil
+		}
+		if a.newSource == nil {
+			return &canonical.CareerSnapshot{Player: h5Identity(gamertag)}, nil
+		}
+	}
 	src, err := a.resolveSource(ctx)
 	if err != nil {
 		return nil, games.ErrCapabilityNotSupported
