@@ -249,7 +249,7 @@ func TestDTOs_NoNilSlicesOnEmptyInput(t *testing.T) {
 	t.Run("ExplorerService.GetCommonMatches", func(t *testing.T) {
 		repo := &mockExplorerRepo{xuid: "target-xuid", matches: []domain.CommonMatchRaw{}}
 		svc := NewExplorerService(repo, "my-xuid")
-		resp, err := svc.GetCommonMatches(context.Background(), "Target", 1)
+		resp, err := svc.GetCommonMatches(context.Background(), "Target", "", 1)
 		if err != nil {
 			t.Fatalf("error: %v", err)
 		}

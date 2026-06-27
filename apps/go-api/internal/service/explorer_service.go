@@ -277,14 +277,22 @@ func killerVictimFromCanonical(c canonical.CrossKillTally) domain.KillerVictimAg
 func (s *ExplorerService) GetCommonMatches(
 	ctx context.Context,
 	otherGamertag string,
+	otherXUID string,
 	page int,
 ) (domain.ExplorerPlayerQueryResponse, error) {
 	s.logCapabilityIfMissing(ctx, games.CapMatchHistory, "explorer_service.GetCommonMatches")
 
-	otherXUID, err := s.repo.ResolveXUIDByGamertag(ctx, otherGamertag)
-	if err != nil {
-		return domain.ExplorerPlayerQueryResponse{},
-			fmt.Errorf("ExplorerService: résolution gamertag %q: %w", otherGamertag, err)
+	// xuid déjà connu (ex. ligne du Classement) → on saute la résolution
+	// gamertag→xuid locale, qui échouerait pour un joueur absent des données
+	// locales. Le profil live (buildTargetProfile) reste servi pour tout xuid ;
+	// l'intersection « matchs communs » sera simplement vide pour un inconnu.
+	if otherXUID == "" {
+		resolved, err := s.repo.ResolveXUIDByGamertag(ctx, otherGamertag)
+		if err != nil {
+			return domain.ExplorerPlayerQueryResponse{},
+				fmt.Errorf("ExplorerService: résolution gamertag %q: %w", otherGamertag, err)
+		}
+		otherXUID = resolved
 	}
 
 	rawMatches, kv, err := s.loadPlayerIntersection(ctx, otherXUID)

@@ -49,13 +49,20 @@ export function useExplorerMatches(
 
 export function useExplorerPlayer(playerSlug: string, request: ExplorerPlayerQueryRequest) {
   return useQuery({
-    queryKey: queryKeys.explorerPlayer(playerSlug, request.target_gamertag, request.page ?? 1),
+    queryKey: queryKeys.explorerPlayer(
+      playerSlug,
+      request.target_gamertag,
+      request.target_xuid ?? '',
+      request.page ?? 1,
+    ),
     queryFn: () =>
       api.post<ExplorerPlayerQueryResponse>(
         `/players/${playerSlug}/pages/explorer/player-query`,
         request,
       ),
-    enabled: !!playerSlug && !!request.target_gamertag,
+    // Activée si on a un gamertag OU un xuid (le Classement transmet le xuid pour
+    // un joueur non résoluble localement).
+    enabled: !!playerSlug && (!!request.target_gamertag || !!request.target_xuid),
     staleTime: 5 * 60 * 1000,
     placeholderData: keepPreviousData,
   })

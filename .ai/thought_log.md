@@ -1,3 +1,19 @@
+## [2026-06-27] Classement — mise en forme MVP/LVP par colonne + fix clic gamertag → Explorer — COMPLÉTÉ + vérifié (commit en attente)
+
+**Tâche** : 2 améliorations page Classement (`apps/web/src/features/leaderboard/`).
+
+**A — Highlight best/worst par colonne (parité scoreboard)** : remplacement du highlight « meilleur seul » (`BEST_CLS = text-primary`) par best (vert `outcome-win`) ET worst (rouge `outcome-loss`) via réutilisation de `cellState`/`cellStyle` (MatchScoreboard.logic — pas de 3e copie). Logique pure extraite dans `LeaderboardBlock.highlight.ts` : `computeColumnExtremes` (extrêmes {min,max} par colonne sur entrées enrichies, garde `< 2` → neutre) + `columnHighlightStyle`, registre `HL_INVERTED`/`hlExtract` (Morts & Dégâts/frag inversés). Taux de victoire rendu UNIFORME (décision user) : seuil ≥55/≤45 % (`winRateColor`) supprimé → seuls best/worst colorent, comme les autres colonnes. Aucune pill MVP/LVP (demande user). Highlight comparé sur valeur brute (=== exact préservé).
+
+**B — Clic gamertag → Explorer « aucune info »** : cause = `GetCommonMatches` appelait `ResolveXUIDByGamertag` (lookup local `v_gamertag_lookup`) AVANT tout → `sql.ErrNoRows` → 500 pour un joueur du classement mondial jamais croisé. Fix (décision user « profil live ») = threading du xuid (déjà connu de la ligne) de bout en bout : front `goToExplorer(gt, xuid)` → search `targetXuid` → `useExplorerPlayer({target_xuid})` (gate `enabled` gt OU xuid, xuid dans queryKey) ; Go `ExplorerPlayerQueryRequest.TargetXUID` + `GetCommonMatches(ctx, gt, xuid, page)` saute la résolution si xuid fourni. Le profil live (`buildTargetProfile`, identité/carrière/combat — déjà compatible xuid arbitraire) est alors servi ; l'intersection « matchs communs » reste vide pour un inconnu (correct). Recherche manuelle par gamertag → `targetXuid` vidé (repasse par la résolution locale).
+
+**Fichiers** : front — LeaderboardBlock.tsx, +LeaderboardBlock.highlight.ts(+test), ExplorerPage.tsx, queries.ts, explorerScope.ts, lib/query/keys.ts, lib/api/types.ts ; Go — domain/explorer.go, service/explorer_service.go, port/services.go, handlers/explorer.go (+mocks/tests : ~32 appels test +arg `""` via sed, +1 test xuid-skip-resolve) ; contrat — openapi.yaml + generated.ts (ajout ciblé `target_xuid`, ordre de propriétés préservé, sans régénération complète pour ne pas écraser le WIP).
+
+**Vérif** : gofmt clean ; go vet domain/port/handlers/service ; go test domain/handlers/service(Explorer) OK ; tsc 0 erreur (tout le projet) ; eslint 0 erreur (1 warning `set-state-in-effect` PRÉEXISTANT sur ExplorerPage l.158, hors de mon ajout) ; vitest 19/19 (highlight + LeaderboardBlock).
+
+**Statut** : Complété, commit/branche EN ATTENTE accord user. NB : working tree porte du WIP non lié (relations/auth/sync + openapi.yaml/generated.ts déjà modifiés par un autre travail) ; mes édits openapi/generated sont chirurgicales (schéma `ExplorerPlayerQueryRequest` seul) et disjointes du WIP. Branche dédiée à créer au commit (la courante `fix/boot-warns-and-429-backoff` est un autre sujet).
+
+---
+
 ## [2026-06-27] Relations v3 — cards enrichies + revanche narrative + filtres (6 remarques) — COMPLÉTÉ + vérifié
 
 **Tâche** : 6 retouches Communauté > Relations suite remarques utilisateur.

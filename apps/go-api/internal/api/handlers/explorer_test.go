@@ -23,8 +23,8 @@ type mockExplorerService struct {
 	err  error
 }
 
-func (m *mockExplorerService) GetCommonMatches(_ context.Context, _ string, _ int) (domain.ExplorerPlayerQueryResponse, error) {
-	return m.resp, m.err // page ignoré dans le mock
+func (m *mockExplorerService) GetCommonMatches(_ context.Context, _, _ string, _ int) (domain.ExplorerPlayerQueryResponse, error) {
+	return m.resp, m.err // gamertag/xuid/page ignorés dans le mock
 }
 
 // mockMatchHistoryForExplorer implémente port.MatchHistoryService pour l'explorer.
