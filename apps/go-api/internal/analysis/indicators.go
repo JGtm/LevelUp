@@ -1,9 +1,10 @@
 // Package analysis — indicators.go : helpers canoniques pour les indicateurs
-// produit (KDA, KDR, WinRate, Accuracy, KillsPerGame, DeathsPerGame, PerfTier).
+// produit (CombatEfficiency, KDR, WinRate, Accuracy, KillsPerGame,
+// DeathsPerGame, PerfTier).
 //
 // ADR 0006 (canonical-indicators-and-units) acte les formules et l'unité
 // canonique côté API : toutes les fonctions retournent des ratios 0..1
-// (sauf KDA/KDR qui sont des ratios sub-unitaires non bornés). Le formatage
+// (sauf CombatEfficiency/KDR qui sont des ratios non bornés). Le formatage
 // `*100` + arrondi décimal se fait UNIQUEMENT à l'affichage côté front via
 // `formatPercent(ratio, decimals)`.
 //
@@ -11,10 +12,15 @@
 // (tests Vitest table-driven sur perfScale).
 package analysis
 
-// KDA retourne le ratio canonique (kills + assists) / max(1, deaths).
-// Convention produit documentée dans apps/web/src/features/help/i18n.ts et
-// reprise par le sync au calcul initial. Renvoie 0 si k+a == 0.
-func KDA(kills, assists, deaths int) float64 {
+// CombatEfficiency retourne (kills + assists) / max(1, deaths) — une efficacité
+// de combat (division par les morts, toujours >= 0).
+//
+// ATTENTION : ce N'EST PAS le KDA affiché. Le KDA per-match est un NET
+// ((Kills + Assists/3) − Deaths, possiblement négatif) lu tel quel depuis l'API
+// (Infinite) ou le FDA natif (Halo 5) — jamais un quotient par les morts. Cette
+// fonction est une métrique INTERNE au perf score uniquement ; ne pas l'utiliser
+// pour produire ou afficher un KDA. Renvoie 0 si k+a == 0.
+func CombatEfficiency(kills, assists, deaths int) float64 {
 	d := deaths
 	if d < 1 {
 		d = 1

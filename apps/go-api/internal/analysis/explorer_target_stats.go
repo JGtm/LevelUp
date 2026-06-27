@@ -18,17 +18,16 @@ import "levelup/go-api/internal/domain"
 //
 // Retourne nil quand sampleSize ≤ 0 ou agg == nil — l'encart masque alors la
 // section "Sur N matchs joués ensemble".
-// nativeQuotientKDA indique si le titre expose un KDA d'API en QUOTIENT (Infinite :
-// agrégat (k+a/3)/d sur les sommes). Sinon (Halo 5) le KDA est le FDA NET figé à
-// l'ingestion : l'agrégat est la MOYENNE ((k+a/3)−d)/N — identique à la moyenne des
-// kda par match stockés, peut être négatif — JAMAIS le quotient Infinite. Résolu par
-// le caller via games.ProvidesNativeKDA(slug). KDR (k/d) reste toujours calculé.
+//
+// Le KDA per-match est NET ((k + a/3) − d, peut être négatif) pour TOUS les titres
+// (Infinite : valeur CoreStats "KDA" d'API ; Halo 5 : FDA NET native). L'agrégat est
+// donc la MOYENNE NETTE ((Σk + Σa/3) − Σd)/N, identique pour tous les titres —
+// JAMAIS le quotient (k+a/3)/d (qui serait un BUG). KDR (k/d) reste toujours calculé.
 func BuildSampleStats(
 	agg *domain.ParticipantStatsAggregate,
 	medals *domain.MedalCountsAggregate,
 	sampleSize int,
 	effectiveHpToKill float64,
-	nativeQuotientKDA bool,
 ) *domain.ExplorerTargetSampleStats {
 	if agg == nil || sampleSize <= 0 {
 		return nil
@@ -63,18 +62,12 @@ func BuildSampleStats(
 		kdr := float64(agg.Kills) / float64(agg.Deaths)
 		stats.KDR = &kdr
 	}
-	// KDA agrégé title-aware (le KDA par match est figé à l'ingestion ; on agrège,
-	// on ne refabrique pas la forme par match).
-	switch {
-	case nativeQuotientKDA && agg.Deaths > 0:
-		// Infinite : quotient (k + a/3)/d sur les sommes.
-		kda := (float64(agg.Kills) + float64(agg.Assists)/3.0) / float64(agg.Deaths)
-		stats.KDA = &kda
-	case !nativeQuotientKDA:
-		// Halo 5 : FDA NET moyen ((k + a/3) − d)/N (sampleSize > 0 garanti ci-dessus).
-		kda := (float64(agg.Kills) + float64(agg.Assists)/3.0 - float64(agg.Deaths)) / float64(sampleSize)
-		stats.KDA = &kda
-	}
+	// KDA agrégé = moyenne NETTE pour TOUS les titres (le KDA par match est figé à
+	// l'ingestion et NET ; on agrège, on ne refabrique pas la forme par match).
+	// ((k + a/3) − d)/N (sampleSize > 0 garanti ci-dessus), peut être négatif —
+	// JAMAIS le quotient (k+a/3)/d.
+	kda := (float64(agg.Kills) + float64(agg.Assists)/3.0 - float64(agg.Deaths)) / float64(sampleSize)
+	stats.KDA = &kda
 
 	// WinRate = wins / (wins + losses + draws). On exclut les DNF du
 	// dénominateur — convention alignée sur le reste du produit (cf. compare).

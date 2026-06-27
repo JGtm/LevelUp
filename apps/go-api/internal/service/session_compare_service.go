@@ -273,9 +273,11 @@ func buildCompareEntryWithObjectives(
 		}
 	}
 
+	// KDA = agrégat NET par match : ((Σkills + Σassists/3) − Σdeaths) / nb_matchs.
+	// JAMAIS un quotient par les morts (le KDA est net, pas un ratio).
 	var kda *float64
-	if totalDeaths > 0 {
-		v := math.Round(float64(totalKills)/float64(totalDeaths)*100) / 100
+	if len(matches) > 0 {
+		v := math.Round((float64(totalKills)+float64(totalAssists)/3.0-float64(totalDeaths))/float64(len(matches))*100) / 100
 		kda = &v
 	}
 

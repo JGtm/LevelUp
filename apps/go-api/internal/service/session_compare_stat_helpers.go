@@ -60,17 +60,14 @@ func averagePerformanceScore(matches []legacymatch.StatsMatchRow) *float64 {
 	return &value
 }
 
-// effectiveKDA retourne le KDA pré-calculé ou le dérive de kills/deaths.
+// effectiveKDA retourne le KDA pré-calculé ou, à défaut, le dérive en FDA NET
+// per-match ((kills + assists/3) − deaths) — JAMAIS un quotient par les morts.
 // Utilisé par session_compare_service et session_page_service.
 func effectiveKDA(match legacymatch.StatsMatchRow) *float64 {
 	if match.KDA != nil {
 		return match.KDA
 	}
-	if match.Deaths == 0 {
-		value := float64(match.Kills)
-		return &value
-	}
-	value := math.Round((float64(match.Kills)/float64(match.Deaths))*100) / 100
+	value := math.Round((float64(match.Kills)+float64(match.Assists)/3.0-float64(match.Deaths))*100) / 100
 	return &value
 }
 

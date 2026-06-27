@@ -195,8 +195,9 @@ func computeNormalizedMetrics(row legacymatch.StatsMatchRow) normalizedMetrics {
 	dur := resolveDuration(row)
 	mins := dur / 60.0
 
-	// KDA canonique (ADR 0006) â€” fallback si row.KDA absent.
-	kda := KDA(row.Kills, row.Assists, row.Deaths)
+	// Efficacité de combat (métrique interne du perf score, PAS le KDA affiché)
+	// — fallback si row.KDA absent.
+	kda := CombatEfficiency(row.Kills, row.Assists, row.Deaths)
 	if row.KDA != nil {
 		kda = *row.KDA
 	}
@@ -390,20 +391,21 @@ func computeKDAFallback(row legacymatch.StatsMatchRow, allMatches []legacymatch.
 		v := 50.0
 		return &v
 	}
-	// KDA canonique (ADR 0006) â€” fallback si row.KDA absent.
+	// Efficacité de combat (métrique interne du perf score, PAS le KDA affiché)
+	// — fallback si row.KDA absent.
 	kdas := make([]float64, 0, len(allMatches))
 	for _, m := range allMatches {
 		if m.KDA != nil {
 			kdas = append(kdas, *m.KDA)
 		} else {
-			kdas = append(kdas, KDA(m.Kills, m.Assists, m.Deaths))
+			kdas = append(kdas, CombatEfficiency(m.Kills, m.Assists, m.Deaths))
 		}
 	}
 	var currentKDA float64
 	if row.KDA != nil {
 		currentKDA = *row.KDA
 	} else {
-		currentKDA = KDA(row.Kills, row.Assists, row.Deaths)
+		currentKDA = CombatEfficiency(row.Kills, row.Assists, row.Deaths)
 	}
 	sorted := make([]float64, len(kdas))
 	copy(sorted, kdas)

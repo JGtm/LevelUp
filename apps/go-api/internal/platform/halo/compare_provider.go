@@ -115,8 +115,10 @@ func (p *HaloProvider) fetchServiceRecordOnce(ctx context.Context, gamertag, tit
 		stats.DamageTakenPerGame = cs.DamageTaken / n
 		if cs.Deaths > 0 {
 			stats.KDR = float64(cs.Kills) / float64(cs.Deaths)
-			stats.KDA = (float64(cs.Kills) + 0.33*float64(cs.Assists)) / float64(cs.Deaths)
 		}
+		// KDA = agrégat NET par match : ((Σkills + Σassists/3) − Σdeaths) / nb_matchs.
+		// JAMAIS un quotient par les morts (le KDA est net, pas un ratio).
+		stats.KDA = (float64(cs.Kills) + float64(cs.Assists)/3.0 - float64(cs.Deaths)) / n
 		if cs.ShotsFired > 0 {
 			stats.Accuracy = cs.ShotsHit / cs.ShotsFired
 		}
