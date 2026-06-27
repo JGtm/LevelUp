@@ -26,13 +26,13 @@ func ComputeCounts(rels []RelationStats) Counts {
 	return c
 }
 
-// IsCore : "noyau dur" — total>=20 ET teammate>=3 ET enemy>=3. Exporté : source
-// unique consommée aussi par le service (flag is_core du DTO) pour que le front
-// n'ait pas à dupliquer les seuils.
+// IsCore : "noyau dur" — total>=20 ET teammate>=3. Le seuil enemy>=3 a été retiré
+// (il excluait les duo-partenaires, joués surtout à tes côtés et presque jamais
+// affrontés — soit justement le cœur du réseau). Exporté : source unique consommée
+// aussi par le service (flag is_core du DTO) pour que le front n'ait pas à dupliquer.
 func IsCore(s RelationStats) bool {
 	return s.TotalMatches >= CoreMinTotalMatches &&
-		s.TeammateMatches >= CoreMinTeammate &&
-		s.EnemyMatches >= CoreMinEnemy
+		s.TeammateMatches >= CoreMinTeammate
 }
 
 // TopRef : référence binôme/bête noire (sortie de SelectTopAlly/SelectTopNemesis).
