@@ -196,6 +196,25 @@ func applyMigrationsOnPath(dbPath string, target migration.TargetDB) error {
 	return nil
 }
 
+// applyTitleMigrationsOnPath applique les migrations d'un TITRE (RunForTitleDB) — pour
+// les schémas dont les RACINES sont enregistrées PAR TITRE et non globalement. C'est le
+// cas de shared_social : `create_base_shared_social_schema` (table media_files,
+// media_match_associations) vit dans les steps du titre (halo_infinite/migrations) et
+// n'est PAS exécutée par RunForDB (global) → une shared_social démo migrée via RunForDB
+// n'a pas de media_files (insert démo échoue). On force donc le set de migrations du
+// titre par défaut (schéma shared_social title-agnostique).
+func applyTitleMigrationsOnPath(dbPath, slug string, target migration.TargetDB) error {
+	db, err := sql.Open("duckdb", dbPath)
+	if err != nil {
+		return fmt.Errorf("open %s for title migrations: %w", dbPath, err)
+	}
+	defer db.Close()
+	if err := migration.RunForTitleDB(db, slug, target); err != nil {
+		return fmt.Errorf("title migrations %s/%s (%s): %w", slug, target, dbPath, err)
+	}
+	return nil
+}
+
 // SeedDemo exécute le pipeline complet.
 func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error) {
 	start := time.Now()
@@ -236,7 +255,19 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	if rkErr != nil {
 		slog.WarnContext(ctx, "seed-demo: matchs classés indisponibles", "err", rkErr)
 	}
-	matchIDs := unionMatchIDs(recentMatches, squadMatches, rankedMatches)
+	// Matchs ANCRÉS aux clips média (Halo 5) : les captures du joueur sont anciennes
+	// (hors fenêtre « récents ») mais déjà associées à leur match par index-media. On
+	// ajoute ces matchs au corpus pour que les clips aient une cible dans la démo.
+	var mediaMatches []string
+	if opts.IncludeMedia {
+		srcSocialDB := filepath.Join(filepath.Dir(opts.SourceSharedDB), "shared_social.duckdb")
+		if mm, mmErr := selectMediaAnchoredMatchIDs(ctx, srcSocialDB, opts.MaxMedia); mmErr != nil {
+			slog.WarnContext(ctx, "seed-demo: corpus média-ancré indisponible", "err", mmErr)
+		} else {
+			mediaMatches = mm
+		}
+	}
+	matchIDs := unionMatchIDs(recentMatches, squadMatches, rankedMatches, mediaMatches)
 	if len(matchIDs) == 0 {
 		return res, fmt.Errorf("seed-demo: aucun match trouvé pour xuid=%s dans %s",
 			opts.SourceXUID, opts.SourceSharedDB)
@@ -335,19 +366,28 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		slog.InfoContext(ctx, "seed-demo: player seedée", "dir", demoDir, "gamertag", m.DemoGamertag, "rows", rows)
 	}
 
-	// 6. Médias (DemoPlayer principal). Copie les vraies vidéos HLS "Halo Infinite" du
-	// joueur source (data/media/{gamertag}/{hls,thumbs}) vers la démo + media_files au
-	// schéma canonique shared_social. player_slug = SLUG de route du main (la page Média
-	// filtre par auteur = slug courant). Attribution grossière aux matchs du corpus.
+	// 6. Médias (DemoPlayer principal). Les FICHIERS vont dans le dir média PLAT
+	// (OutDir/players/DEMO/media = base dir unique servie par ServeMediaFile) ; le
+	// shared_social est title-scopé (lu par resolveDemoPlayer pour le titre courant).
+	// player_slug = SLUG de route du main (la page Média filtre par auteur = slug courant).
+	//   - titre par défaut (Infinite) : flux HLS, attribution par carte (extractDemoMedia) ;
+	//   - titre additionnel (Halo 5)  : clips mp4 servis direct, association RÉELLE indexée
+	//     (extractDemoMediaH5).
 	if opts.IncludeMedia {
-		mediaDir := filepath.Join(titleOut, "players", DefaultDemoGamertag, "media")
+		flatMediaDir := filepath.Join(opts.OutDir, "players", DefaultDemoGamertag, "media")
 		outSocial := filepath.Join(titleOut, "warehouse", "shared_social.duckdb")
-		srcMediaDir := filepath.Join(opts.RepoRoot, "data", "media", opts.SourceLabel)
 		// shared_social SOURCE (prod) : même dossier warehouse que shared_matches_v2.
-		// Porte les associations média→match RÉELLES (vraie carte de chaque vidéo).
 		srcSocialDB := filepath.Join(filepath.Dir(opts.SourceSharedDB), "shared_social.duckdb")
-		mediaCount, mediaErr := extractDemoMedia(ctx, srcMediaDir, opts.SourceSharedDB, srcSocialDB,
-			outSocial, mediaDir, matchIDs, DefaultDemoMainSlug, opts.MaxMedia)
+		var mediaCount int
+		var mediaErr error
+		if opts.TitleSlug == titlePkg.DefaultSlug {
+			srcMediaDir := filepath.Join(opts.RepoRoot, "data", "media", opts.SourceLabel)
+			mediaCount, mediaErr = extractDemoMedia(ctx, srcMediaDir, opts.SourceSharedDB, srcSocialDB,
+				outSocial, flatMediaDir, matchIDs, DefaultDemoMainSlug, opts.MaxMedia)
+		} else {
+			mediaCount, mediaErr = extractDemoMediaH5(ctx, srcSocialDB, outSocial, flatMediaDir,
+				matchIDs, DefaultDemoMainSlug, opts.MaxMedia)
+		}
 		if mediaErr != nil {
 			slog.WarnContext(ctx, "seed-demo: extraction média partielle", "err", mediaErr, "copied", mediaCount)
 		}

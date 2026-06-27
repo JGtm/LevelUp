@@ -54,6 +54,12 @@ func main() {
 	// `seed rank-translations` via ops.SeedRankTranslations en dépend).
 	migration.SetCareerRankTranslationsProvider(halomigrations.CareerRankTranslations)
 
+	// Steps de migration title-owned (parité cmd/server). SANS ça, les RACINES
+	// shared_social (create_base_shared_social_schema → table media_files / associations)
+	// ne sont PAS exécutées par RunForDB/RunForTitleDB dans la CLI → seed-demo média
+	// échoue (media_files absente). index-media et seed-demo en dépendent.
+	migration.SetTitleStepsProvider(halomigrations.StepsFor)
+
 	subcmd := os.Args[1]
 	args := os.Args[2:]
 

@@ -234,18 +234,18 @@ func runSeedDemo(cfg *config.AppConfig, args []string) error {
 		}
 	}
 
-	// Spec par titre. L'extraction média HLS est aujourd'hui spécifique au titre par
-	// défaut (captures "Halo Infinite …" déjà transcodées en HLS) — les autres titres
-	// (ex. Halo 5, captures mp4 non indexées) sont seedés SANS média pour l'instant.
+	// Spec par titre. Le média est extrait pour CHAQUE titre : Infinite via flux HLS
+	// (captures "Halo Infinite …"), Halo 5 via clips mp4 servis direct (captures
+	// "Halo_5_Guardians-…" indexées par index-media --title halo_5). Chaque titre lit
+	// les associations de SON shared_social ; absence de clips → 0 média (best-effort).
 	titleSpecs := make([]ops.TitleSeedSpec, 0, len(slugs))
 	for _, slug := range slugs {
-		isDefault := slug == title.DefaultSlug
 		titleSpecs = append(titleSpecs, ops.TitleSeedSpec{
 			Slug:         slug,
 			Gamertag:     *gamertag,
 			MaxMatches:   *maxMatches,
 			MaxMedia:     *maxMedia,
-			IncludeMedia: isDefault && !*noMedia,
+			IncludeMedia: !*noMedia,
 		})
 	}
 

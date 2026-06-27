@@ -1,3 +1,22 @@
+## [2026-06-27] Démo Halo 5 — Phase 4 : vidéos H5 (indexation + extraction démo)
+
+**Tâche** : intégrer des clips Halo 5 dans la démo (échantillons « solo avec vidéos »). Captures locales `C:\Users\Guillaume\Videos\Captures\JGtm` (2018-2019, 86 fichiers `Halo_5_Guardians-*.mp4`).
+
+**Validations préalables** : (1) les captures 2018 correspondent à de VRAIS matchs H5 (capture 2018-10-08 22h08 Paris=20:08 UTC → match à 20:06 UTC ; 1149 matchs H5 en 2018) ; (2) `index-media --title halo_5` est DÉJÀ title-aware (associe par timestamp à shared_social h5) — 7/7 captures associées (delta 48-507 s) ; (3) les captures sont du **mp4 H.264/AAC mono-piste = WEB-NATIF** (ffprobe) → servies en DIRECT, **AUCUN transcodage HLS** (transcode_status=NULL). ffmpeg confirmé sur le VPS (indexation y tournera).
+
+**3 bugs de plomberie corrigés** (latents, masqués car démo Infinite locale = 0 média) :
+1. `media_files` absente après migration démo : la racine `create_base_shared_social_schema` vient du `titleStepsProvider`, NON posé dans `cmd/levelup` → ajout de `migration.SetTitleStepsProvider(halomigrations.StepsFor)` (parité cmd/server) + helper `applyTitleMigrationsOnPath` (RunForTitleDB).
+2. `media_match_associations.media_file_id` est BIGINT (insertDemoMediaRow CAST), or l'ID démo = nom de fichier → `numericMediaID` (FNV-1a stable).
+3. Base dir média démo = unique global (`ServeMediaFile`) → les fichiers H5 vont dans le dir PLAT `data/demo/players/DEMO/media` (pas title-scopé) ; le shared_social reste title-scopé.
+
+**Implémentation** : `extractDemoMediaH5` (copie mp4+webp servi direct + media_files + association RÉELLE indexée) ; `selectMediaAnchoredMatchIDs` ajoute au corpus les matchs des clips (anciens, hors fenêtre récents) ; SeedDemo branche par titre (défaut→HLS extractDemoMedia, additionnel→mp4 extractDemoMediaH5) ; CLI active le média pour tous les titres.
+
+**Résultats (serveur démo local)** : seed → `[halo_5] 46 matchs (40+6 ancrés), 6 médias`. Galerie média H5 = 6 clips ; onglet média du match view = clip associé ; serving mp4 = 200 video/mp4 (48.6 MB), miniature = 200 image/webp. Build/vet/tests ops verts.
+
+**Données modifiées (local, demandé « indexer en local »)** : copie de 7 captures dans `data/media/JGtm` + `index-media --title halo_5` a écrit media_files/associations dans `data/titles/halo_5/warehouse/shared_social.duckdb` (prod). Pour le VPS : exécuter `index-media --title halo_5` (captures déjà présentes + ffmpeg) avant le regen démo.
+
+**Statut** : Phase 4 Complétée + vérifiée. RESTE Phase 5 (deploy.yml : index-media h5 au regen VPS ; nettoyage bruit boot ; docs).
+
 ## [2026-06-27] Démo Halo 5 — Phase 3c : kill-feed H5 lu DuckDB (+ match view déjà OK)
 
 **Correction d'une erreur** : j'avais conclu (à tort) que le kill-feed H5 était « live-only » en regardant seulement `highlight_events` (medal/assist/mode). FAUX. Le kill-feed natif h5 est PERSISTÉ sur 3 tables alignées par `(match_id, killer_xuid, time_ms)` : `killer_victim_pairs` (killer→victim gamertags + time_ms, 268k kills), `weapon_kills` (weapon_id natif par kill, confidence='native'), `kill_positions` (positions killer/victim par kill). La jointure produit le kill-feed COMPLET « qui tue qui, avec quelle arme, quand, où » — sans live.
