@@ -31,28 +31,65 @@ var ErrPlayerNotFound = fmt.Errorf("joueur introuvable")
 //     (byte-identique, aucune nouvelle conn DuckDB ouverte).
 //   - Mode legacy / kill-switch (SharedManager == nil) : fallback direct sur
 //     cfg.SharedProvider (nil-safe — le pool repasse alors en mode legacy).
-//   - Mode démo : le shared démo est mono-titre (HINF) et déjà ouvert par le
-//     provider boot ; on conserve cfg.SharedProvider (le path démo réécrit au
-//     boot ne correspond pas toujours à SharedDBPath title-aware).
+//   - Mode démo : le shared du titre PAR DÉFAUT est celui ouvert au boot (provider
+//     boot, byte-identique) ; un titre ADDITIONNEL (Halo 5…) résout le provider de
+//     SON shared démo title-scopé (data/demo/titles/{slug}/warehouse/…).
 //   - Échec d'ouverture per-titre (fichier shared du titre absent) : fallback
 //     cfg.SharedProvider + warn. Le pool tolère un SharedReader pointant le
 //     mauvais titre mieux qu'un crash de résolution (lecture vide vs panique).
 func (cfg *AppConfig) sharedReaderForTitle(titleSlug string) duckdb.SharedReader {
-	// Mode legacy/kill-switch ou démo : pas de routage per-titre.
-	if cfg.SharedManager == nil || cfg.DemoMode {
+	// Mode legacy/kill-switch : pas de routage per-titre.
+	if cfg.SharedManager == nil {
 		return cfg.SharedProvider
 	}
 	if titleSlug == "" {
 		titleSlug = title.DefaultSlug
 	}
-	path := title.NewPathResolver(cfg.RepoRoot).SharedDBPath(titleSlug)
+	// Démo : titre par défaut = provider boot (shared démo plat, byte-identique) ;
+	// titre additionnel = provider du shared démo title-scopé.
+	if cfg.DemoMode {
+		if titleSlug == title.DefaultSlug {
+			return cfg.SharedProvider
+		}
+		return cfg.sharedProviderForPath(titleSlug, demoSharedDBPath(cfg, titleSlug))
+	}
+	return cfg.sharedProviderForPath(titleSlug, title.NewPathResolver(cfg.RepoRoot).SharedDBPath(titleSlug))
+}
+
+// sharedProviderForPath résout (via le Manager, caché par path) le SharedReader d'un
+// shared à un chemin donné. Fallback cfg.SharedProvider + warn si l'ouverture échoue.
+func (cfg *AppConfig) sharedProviderForPath(titleSlug, path string) duckdb.SharedReader {
 	provider, err := cfg.SharedManager.For(path, cfg.UserTimezone)
 	if err != nil {
-		slog.Warn("sharedReaderForTitle: ouverture provider per-titre échouée, fallback Infinite",
+		slog.Warn("sharedReaderForTitle: ouverture provider per-titre échouée, fallback défaut",
 			"title", titleSlug, "path", path, "err", err)
 		return cfg.SharedProvider
 	}
 	return provider
+}
+
+// demoTitleDir retourne le sous-répertoire démo d'un titre. Titre par défaut (ou
+// slug vide) → fixturesDir plat (byte-identique mono-titre) ; titre additionnel →
+// fixturesDir/titles/{slug}/ (miroir du PathResolver prod, cf. ops.demoTitleSubdir).
+func demoTitleDir(fixturesDir, titleSlug string) string {
+	if titleSlug == "" || titleSlug == title.DefaultSlug {
+		return fixturesDir
+	}
+	return filepath.Join(fixturesDir, "titles", titleSlug)
+}
+
+// demoSharedDBPath / demoMetaDBPath / demoSharedSocialPath : chemins title-scopés des
+// DB démo d'un titre (cf. demoTitleDir).
+func demoSharedDBPath(cfg *AppConfig, titleSlug string) string {
+	return filepath.Join(demoTitleDir(cfg.DemoFixturesDir, titleSlug), "warehouse", "shared_matches_v2.duckdb")
+}
+
+func demoMetaDBPath(cfg *AppConfig, titleSlug string) string {
+	return filepath.Join(demoTitleDir(cfg.DemoFixturesDir, titleSlug), "warehouse", "metadata.duckdb")
+}
+
+func demoSharedSocialPath(cfg *AppConfig, titleSlug string) string {
+	return filepath.Join(demoTitleDir(cfg.DemoFixturesDir, titleSlug), "warehouse", "shared_social.duckdb")
 }
 
 // ResolvePlayer traduit un slug joueur en PlayerDB prêt à l'emploi.
@@ -109,19 +146,26 @@ func demoDefForSlug(slug string) demoPlayerDef {
 // En cas de fixture absente, retourne une erreur explicite avec la commande
 // pour regénérer (go run ./cmd/levelup seed-demo).
 func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug string) (*duckdb.PlayerDB, error) {
+	if titleSlug == "" {
+		titleSlug = title.DefaultSlug
+	}
 	dir := cfg.DemoFixturesDir
+	// titleDir : sous-arbre démo du titre (default → plat ; additionnel → titles/{slug}/).
+	titleDir := demoTitleDir(dir, titleSlug)
 	def := demoDefForSlug(slug) // DemoPlayer (main) ou un coéquipier DemoPlayer2/3
 
 	// Résolution du chemin stats.duckdb : structure seed-demo (par joueur du
-	// roster) d'abord, plate (fixtures legacy, main only) ensuite.
-	statsPath := filepath.Join(dir, "players", def.Dir, "stats.duckdb")
-	sharedPath := filepath.Join(dir, "warehouse", "shared_matches_v2.duckdb")
-	metaPath := filepath.Join(dir, "warehouse", "metadata.duckdb")
+	// roster, title-scopée) d'abord, plate (fixtures legacy, main only) ensuite.
+	statsPath := filepath.Join(titleDir, "players", def.Dir, "stats.duckdb")
+	sharedPath := demoSharedDBPath(cfg, titleSlug)
+	metaPath := demoMetaDBPath(cfg, titleSlug)
 	xuidBytes := def.XUID
 	gamertag := def.Gamertag
 
-	if _, err := os.Stat(statsPath); os.IsNotExist(err) {
-		// Fallback : structure plate (fixtures commitées dans tests/) — main only.
+	// Fallback structure plate (fixtures commitées dans tests/) — RÉSERVÉ au titre
+	// par défaut (un titre additionnel sans fixture ne doit JAMAIS retomber sur les
+	// DB du titre par défaut : on préfère l'erreur explicite ci-dessous).
+	if _, err := os.Stat(statsPath); os.IsNotExist(err) && titleSlug == title.DefaultSlug {
 		statsPath = filepath.Join(dir, "stats.duckdb")
 		sharedPath = filepath.Join(dir, "shared_matches_v2.duckdb")
 		metaPath = filepath.Join(dir, "metadata.duckdb")
@@ -133,18 +177,18 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 
 	if _, err := os.Stat(statsPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf(
-			"resolveDemoPlayer: fixture démo manquante (%s). "+
+			"resolveDemoPlayer: fixture démo manquante (%s, titre=%s). "+
 				"Générer avec : go run ./cmd/levelup seed-demo --gamertag JGtm (sortie dans data/demo). "+
 				"Puis définir LEVELUP_DEMO_FIXTURES_DIR=data/demo.",
-			statsPath,
+			statsPath, titleSlug,
 		)
 	}
 
-	// SharedSocial démo : seed-demo produit data/demo/warehouse/shared_social.duckdb
-	// au schéma canonique (migrations TargetSharedSocial). Le pipeline média EXIGE un
+	// SharedSocial démo (title-scopé) : seed-demo produit shared_social.duckdb au
+	// schéma canonique (migrations TargetSharedSocial). Le pipeline média EXIGE un
 	// SharedSocial non-nil (sinon 0 média, pas de fallback Player DB — cf.
-	// media_repo_q37_pipeline.go). Vide si la fixture est absente (démo legacy).
-	sharedSocialPath := filepath.Join(dir, "warehouse", "shared_social.duckdb")
+	// media_repo_q37_pipeline.go). Vide si la fixture est absente (titre sans média).
+	sharedSocialPath := demoSharedSocialPath(cfg, titleSlug)
 	if _, err := os.Stat(sharedSocialPath); os.IsNotExist(err) {
 		sharedSocialPath = ""
 	}
@@ -206,15 +250,29 @@ func buildPoolConfig(cfg *AppConfig, p *domain.PlayerSummary, titleSlug string) 
 }
 
 // SharedDBPath retourne le chemin vers la base DuckDB partagée.
-// titleSlug : titre courant, vide = halo_infinite.
+// titleSlug : titre courant, vide = halo_infinite. En démo, le chemin est
+// title-scopé (data/demo/warehouse pour le titre par défaut, data/demo/titles/{slug}/
+// warehouse pour un titre additionnel) — aligné sur le layout produit par seed-demo.
 func SharedDBPath(cfg *AppConfig, titleSlug string) string {
 	if titleSlug == "" {
 		titleSlug = title.DefaultSlug
 	}
 	if cfg.DemoMode {
-		return filepath.Join(cfg.DemoFixturesDir, "shared_matches_v2.duckdb")
+		return demoSharedDBPath(cfg, titleSlug)
 	}
 	return title.NewPathResolver(cfg.RepoRoot).SharedDBPath(titleSlug)
+}
+
+// MetadataDBPath retourne le chemin vers la metadata.duckdb d'un titre. En démo,
+// title-scopé (cf. SharedDBPath) ; DemoFixturesDir vide → repli sur le chemin prod.
+func MetadataDBPath(cfg *AppConfig, titleSlug string) string {
+	if titleSlug == "" {
+		titleSlug = title.DefaultSlug
+	}
+	if cfg.DemoMode && cfg.DemoFixturesDir != "" {
+		return demoMetaDBPath(cfg, titleSlug)
+	}
+	return title.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titleSlug)
 }
 
 // PlayerDBPath retourne le chemin vers la base DuckDB stats d'un joueur.

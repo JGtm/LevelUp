@@ -111,6 +111,16 @@ type DataAdapter struct {
 	// LoadCommendationTotals dégrade en ErrCapabilityNotSupported. Injecté via
 	// WithCommendationTotals au builder player-scoped (AXE B totaux).
 	commendationTotals CommendationTotalsSource
+	// careerLocal (optionnel) — career lu depuis le DuckDB synchronisé (meilleur CSR +
+	// SR). Quand injecté, LoadCareerSnapshot le PRÉFÈRE à l'API live (sert le rang
+	// hors-ligne en démo, aucun token). nil → voie live inchangée. Injecté via
+	// WithCareerSource au builder player-scoped (gaté DemoMode).
+	careerLocal CareerLocalSource
+	// eventsLocal (optionnel) — kill-feed lu depuis le DuckDB synchronisé
+	// (killer_victim_pairs + weapon_kills + kill_positions). Quand injecté,
+	// LoadMatchEvents le PRÉFÈRE à l'API /events live (timeline hors-ligne en démo).
+	// nil → voie live inchangée. Injecté via WithMatchEventsSource (gaté DemoMode).
+	eventsLocal MatchEventsLocalSource
 }
 
 var _ games.TitleDataAdapter = (*DataAdapter)(nil)
@@ -170,6 +180,23 @@ func (a *DataAdapter) WithCommendationDefs(s CommendationDefSource) *DataAdapter
 // -> LoadCommendationTotals dégrade en ErrCapabilityNotSupported. Chainable.
 func (a *DataAdapter) WithCommendationTotals(s CommendationTotalsSource) *DataAdapter {
 	a.commendationTotals = s
+	return a
+}
+
+// WithCareerSource injecte la source de career LOCAL (DuckDB synchronisé). Quand
+// présente, LoadCareerSnapshot la PRÉFÈRE à l'API cryptum live (rang servi hors-ligne
+// en démo, où aucun token n'est disponible). nil (défaut) -> voie live inchangée.
+// Chainable.
+func (a *DataAdapter) WithCareerSource(s CareerLocalSource) *DataAdapter {
+	a.careerLocal = s
+	return a
+}
+
+// WithMatchEventsSource injecte la source de kill-feed LOCAL (DuckDB synchronisé).
+// Quand présente, LoadMatchEvents la PRÉFÈRE à l'API /events live (timeline servie
+// hors-ligne en démo). nil (défaut) -> voie live inchangée. Chainable.
+func (a *DataAdapter) WithMatchEventsSource(s MatchEventsLocalSource) *DataAdapter {
+	a.eventsLocal = s
 	return a
 }
 
@@ -269,6 +296,17 @@ func (a *DataAdapter) LoadPlayerStats(ctx context.Context, xuid string, _ canoni
 // seuls le palier CSR (RankTier/RankName) et la valeur Onyx sont alimentes.
 func (a *DataAdapter) LoadCareerSnapshot(ctx context.Context, xuid string, _ canonical.CareerOptions) (*canonical.CareerSnapshot, error) {
 	gamertag := xuid
+	// Source LOCALE (DuckDB synchronisé) prioritaire si injectée : sert le rang
+	// hors-ligne (démo, aucun token → l'API live échouerait). Dégrade vers le live
+	// uniquement si la lecture DB échoue ET qu'une source live existe.
+	if a.careerLocal != nil {
+		if snap := a.localCareerSnapshot(ctx, gamertag); snap != nil {
+			return snap, nil
+		}
+		if a.newSource == nil {
+			return &canonical.CareerSnapshot{Player: h5Identity(gamertag)}, nil
+		}
+	}
 	src, err := a.resolveSource(ctx)
 	if err != nil {
 		return nil, games.ErrCapabilityNotSupported
@@ -502,6 +540,19 @@ func (a *DataAdapter) LoadHighlightEvents(_ context.Context, _ string) ([]canoni
 func (a *DataAdapter) LoadMatchEvents(ctx context.Context, matchID string, opts canonical.MatchEventOptions) (*canonical.MatchEventTimeline, error) {
 	if strings.TrimSpace(matchID) == "" {
 		return nil, games.ErrCapabilityNotSupported
+	}
+	// Source LOCALE (DuckDB synchronisé) prioritaire si injectée : kill-feed servi
+	// hors-ligne (démo, aucun token → l'API /events live échouerait). Dégrade vers le
+	// live uniquement si la lecture DB échoue ET qu'une source live existe.
+	if a.eventsLocal != nil {
+		if tl, lerr := a.eventsLocal.GetMatchEvents(ctx, matchID, opts); lerr == nil && tl != nil {
+			return tl, nil
+		} else if lerr != nil {
+			a.logger.DebugContext(ctx, "h5 kill-feed local: lecture échouée (dégradation)", "match_id", matchID, "err", lerr)
+		}
+		if a.newSource == nil {
+			return &canonical.MatchEventTimeline{MatchID: matchID}, nil
+		}
 	}
 	src, err := a.resolveSource(ctx)
 	if err != nil {

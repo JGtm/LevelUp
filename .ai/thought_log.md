@@ -147,6 +147,76 @@ Vérif : `go test ./internal/scheduler/...` + `go test ./internal/api/ -run HasC
 **Résultats** : WCAG test étendu (10 tokens × 4 palettes sur blanc ≥ 4.5) VERT ; snapshot coverage mis à jour (-u) ; typecheck OK ; vitest full 2030/0 ; Go relations OK ; PalmaresRelationsPage 8/8 (assertion cross-game alignée sur « Halo 5 »).
 
 **Statut** : Complété. Rebasé sur main (post-merge escouade KDA NET fc607d512), re-vérifié, puis mergé + déployé prod le 2026-06-27.
+## [2026-06-27] Démo Halo 5 — Phase 5 : déploiement + asset drawer H5 demo-aware
+
+**deploy.yml** : ajout d'une étape `index-media --title halo_5 --buffer-min 10` au regen démo VPS (fenêtre prod stoppée, best-effort + idempotent), AVANT seed-demo — sinon les associations média H5 n'existent pas sur le VPS et seed-demo n'extrait aucun clip. ffmpeg présent sur le VPS (confirmé user). seed-demo seede désormais tous les titres (multi-titre via la CLI).
+
+**Asset drawer / CSR badge H5 demo-aware** : `loadTitleAssetDrawerData` et `loadCSRBadgeResolver` (server.go) ouvraient `pr.MetadataDBPath(slug)` = chemin PROD → en démo, échec (7 erreurs boot) ET surtout maps/icônes d'armes (kill-feed !)/badges CSR H5 ABSENTS. Signature changée pour prendre le chemin metadata résolu via `config.MetadataDBPath(cfg, slug)` (demo-aware). Boot démo désormais propre (0 erreur) ; les visuels H5 chargent depuis la metadata démo. (`loadTitleRankImageURLs` déjà demo-gated, inchangé.)
+
+**Vérifié** : boot serveur démo = 0 erreur metadata h5 ; asset_metadata_handler_ready OK. Build verts.
+
+**Livraison VPS (reste à faire par l'utilisateur)** : merger la branche + déployer ; au regen, index-media h5 tourne (captures déjà sur le VPS) puis seed-demo extrait les clips. Données locales modifiées pendant le dev (indexation locale demandée) : 7 captures copiées dans data/media/JGtm + associations écrites dans data/titles/halo_5/warehouse/shared_social.duckdb (prod local).
+
+**Statut** : Phases 1-5 Complètes. Démo H5 = home/rang + historique + match view + kill-feed + commendations + vidéos, anonymisé, hors-ligne (DuckDB), prod H5 inchangé (tout gaté DemoMode).
+
+## [2026-06-27] Démo Halo 5 — Phase 4 : vidéos H5 (indexation + extraction démo)
+
+**Tâche** : intégrer des clips Halo 5 dans la démo (échantillons « solo avec vidéos »). Captures locales `C:\Users\Guillaume\Videos\Captures\JGtm` (2018-2019, 86 fichiers `Halo_5_Guardians-*.mp4`).
+
+**Validations préalables** : (1) les captures 2018 correspondent à de VRAIS matchs H5 (capture 2018-10-08 22h08 Paris=20:08 UTC → match à 20:06 UTC ; 1149 matchs H5 en 2018) ; (2) `index-media --title halo_5` est DÉJÀ title-aware (associe par timestamp à shared_social h5) — 7/7 captures associées (delta 48-507 s) ; (3) les captures sont du **mp4 H.264/AAC mono-piste = WEB-NATIF** (ffprobe) → servies en DIRECT, **AUCUN transcodage HLS** (transcode_status=NULL). ffmpeg confirmé sur le VPS (indexation y tournera).
+
+**3 bugs de plomberie corrigés** (latents, masqués car démo Infinite locale = 0 média) :
+1. `media_files` absente après migration démo : la racine `create_base_shared_social_schema` vient du `titleStepsProvider`, NON posé dans `cmd/levelup` → ajout de `migration.SetTitleStepsProvider(halomigrations.StepsFor)` (parité cmd/server) + helper `applyTitleMigrationsOnPath` (RunForTitleDB).
+2. `media_match_associations.media_file_id` est BIGINT (insertDemoMediaRow CAST), or l'ID démo = nom de fichier → `numericMediaID` (FNV-1a stable).
+3. Base dir média démo = unique global (`ServeMediaFile`) → les fichiers H5 vont dans le dir PLAT `data/demo/players/DEMO/media` (pas title-scopé) ; le shared_social reste title-scopé.
+
+**Implémentation** : `extractDemoMediaH5` (copie mp4+webp servi direct + media_files + association RÉELLE indexée) ; `selectMediaAnchoredMatchIDs` ajoute au corpus les matchs des clips (anciens, hors fenêtre récents) ; SeedDemo branche par titre (défaut→HLS extractDemoMedia, additionnel→mp4 extractDemoMediaH5) ; CLI active le média pour tous les titres.
+
+**Résultats (serveur démo local)** : seed → `[halo_5] 46 matchs (40+6 ancrés), 6 médias`. Galerie média H5 = 6 clips ; onglet média du match view = clip associé ; serving mp4 = 200 video/mp4 (48.6 MB), miniature = 200 image/webp. Build/vet/tests ops verts.
+
+**Données modifiées (local, demandé « indexer en local »)** : copie de 7 captures dans `data/media/JGtm` + `index-media --title halo_5` a écrit media_files/associations dans `data/titles/halo_5/warehouse/shared_social.duckdb` (prod). Pour le VPS : exécuter `index-media --title halo_5` (captures déjà présentes + ffmpeg) avant le regen démo.
+
+**Statut** : Phase 4 Complétée + vérifiée. RESTE Phase 5 (deploy.yml : index-media h5 au regen VPS ; nettoyage bruit boot ; docs).
+
+## [2026-06-27] Démo Halo 5 — Phase 3c : kill-feed H5 lu DuckDB (+ match view déjà OK)
+
+**Correction d'une erreur** : j'avais conclu (à tort) que le kill-feed H5 était « live-only » en regardant seulement `highlight_events` (medal/assist/mode). FAUX. Le kill-feed natif h5 est PERSISTÉ sur 3 tables alignées par `(match_id, killer_xuid, time_ms)` : `killer_victim_pairs` (killer→victim gamertags + time_ms, 268k kills), `weapon_kills` (weapon_id natif par kill, confidence='native'), `kill_positions` (positions killer/victim par kill). La jointure produit le kill-feed COMPLET « qui tue qui, avec quelle arme, quand, où » — sans live.
+
+**Implémentation kill-feed (3c-1)** : `duckdb.Halo5MatchEventsSource{shared}` jointe les 3 tables (LEFT JOIN sur v_weapon_kills = dernière génération append-only + kill_positions) → `canonical.MatchEventTimeline` (Type=kill, Killer/Victim identités, Weapon AssetReference, KillerLoc/VictimLoc Vec3, TimeMs). `kind`/headshot non persistés par kill → KillKindWeapon par défaut (dégradation propre). Interface `halo_5.MatchEventsLocalSource` (retour canonical, pas de cycle) + `WithMatchEventsSource` + `LoadMatchEvents` préfère le local. Builder : injecté GATÉ DemoMode (prod = live inchangé).
+
+**Match view (3c-2) DÉJÀ OK** : `handleGetMatchView` passe par le service `GetMatchView` → `MatchViewRepo` (DuckDB title-agnostic), PAS l'adapter live. Le scoreboard H5 (header outcome/score/dominance/performance + participants anonymisés) marche déjà en démo via le shared h5 synchronisé — aucun nouveau code.
+
+**Résultats (serveur démo)** : GET /players/demo-player/matches/{id}/events sous Halo 5 → 167 kills anonymisés (killer DemoPlayer → victim Player N, weapon.ID=stock natif, positions). GET /matches/{id} → match view complet anonymisé (86 KB). Build/vet/tests halo_5 verts. Isolé adapter h5 + gate démo → prod inchangé.
+
+**Statut** : Phase 3 COMPLÈTE (rang + historique + match view + kill-feed + commendations, anonymisés, DuckDB). RESTE Phase 4 (vidéos H5 : captures 2018 à indexer + seed fenêtre + extraction), Phase 5 (deploy + nettoyage bruit boot).
+
+## [2026-06-27] Démo Halo 5 — Phase 3b : career H5 (CSR+SR) lu DuckDB en démo
+
+**Tâche** : servir le RANG Halo 5 (CSR + Spartan Rank) au home/career de la démo, sans token (l'API cryptum live échoue hors-ligne). Suite directe des Phases 1-2-3a.
+
+**Cycle d'import** : `internal/platform/duckdb` ne peut PAS importer `internal/games/halo_5` (cycle via `internal/games`). Comme l'historique h5 (Halo5MatchHistorySource → canonical), la source DuckDB renvoie un DTO d'un paquet NEUTRE : nouveau `domain.H5CareerLocal` (CSR palier EN + sous-palier + valeur Onyx ; SR + XP total). La PROJECTION canonique (libellés FR, bornes SR 152) reste côté halo_5.
+
+**Implémentation** : (1) `duckdb.Halo5CareerSource{pdb}` lit la player DB — meilleur CSR à vie (`player_csr_snapshots.alltime_*`, ordre Bronze<…<Onyx via CASE = h5Designations) + dernier SR VALIDE (`career_progression WHERE rank IS NOT NULL ORDER BY recorded_at DESC` — la dernière row peut avoir rank NULL : re-fetch vide / identité empruntée). (2) interface `halo_5.CareerLocalSource` + `WithCareerSource` + `localCareerSnapshot`/`applyLocalCSR` (réutilisent `applyDefaultSpartanRankBounds`, `applySpartanRank`, `h5Designations` — parité `mapCareerSnapshot`). (3) `LoadCareerSnapshot` PRÉFÈRE la source locale si injectée (sinon live). (4) builder `registerHalo5Adapters` : `WithCareerSource` GATÉ `reg.cfg.DemoMode` → prod h5 reste live (inchangé).
+
+**Résultats (serveur démo local)** : GET /players/demo-player/pages/career sous Halo 5 → rank_number=147 (SR 147), rank_name_raw="Diamant 5", rank_tier="Diamant", current_xp/xp_for_next/xp_total + progress_pct=29.06, total_ranks=152 (jamais 272), is_max_rank=false. Build+vet module verts. Changement isolé (adapter h5 + gate démo) → Infinite/prod inchangés.
+
+**Statut** : Complété + vérifié. RESTE Phase 3c (détail de match + kill-feed h5 DuckDB, gatés démo), Phase 4 (vidéos), Phase 5 (deploy + nettoyage bruit boot).
+
+## [2026-06-27] Démo multi-titre Halo 5 — Phases 1-2 (seed + résolution) + fix metadata H5 démo
+
+**Tâche** : rendre la démo VPS (`demo.lvelup.info`, aujourd'hui Infinite-only) compatible Halo 5 — mêmes échantillons anonymisés (solo + escouade, ~50/titre), pour que les visiteurs voient et testent les 2 titres. Branche worktree `worktree-demo-halo5`.
+
+**Constat d'architecture** : la démo lit un layout PLAT mono-titre (`data/demo/{warehouse,players/DEMO}`) via 5 points qui IGNORENT le titre (`resolveDemoPlayer`, `sharedReaderForTitle`, `SharedDBPath`, `metadataDBPathFor`, `LoadPlayers`). Halo 5 est déjà `status=active` (switcher OK), données title-agnostic riches sur disque (`data/titles/halo_5/` : 3032 matchs, xuid 16 chiffres réels → anonymisation xuid réutilisable telle quelle). Serving H5 HYBRIDE : historique + commendations = DuckDB local (marchent hors-ligne) ; career/détail/kill-feed = API cryptum LIVE (vides en démo, aucun token).
+
+**Phase 1 (seed multi-titre)** : `SeedDemoMulti` (orchestrateur `seed_demo_multititle.go`) boucle sur les titres dérivés de db_profiles (`TitlesForGamertag`), seede chacun dans `demoTitleSubdir` (défaut → PLAT byte-identique ; additionnel → `titles/{slug}/`), puis écrit UNE fois `db_profiles.json` v3 + `app_settings`. `SeedDemoOptions` reçoit `TitleSlug`+`SkipConfigs` ; tables H5-spécifiques ajoutées (`match_commendations`/`kill_positions`/`weapon_accuracy`, best-effort via `errIsMissingTable`, anonymisées) ; corpus squad rendu title-robuste (fallback « sessions les plus fournies » car table `sessions` vide côté H5). Validé sur données réelles : halo_infinite (48) + halo_5 (40), 3 player DB/titre, anonymisation gamertag+xuid complète.
+
+**Phase 2 (résolution demo-mode title-aware)** : helpers `demoTitleDir/demoSharedDBPath/demoMetaDBPath/demoSharedSocialPath` (config) ; `sharedReaderForTitle` route le provider H5 démo title-scopé via `SharedManager.For` (défaut → provider boot byte-identique) ; `resolveDemoPlayer`/`SharedDBPath`/`MetadataDBPath`/`LoadPlayers` (roster gaté par fixtures du titre) lisent le bon sous-arbre. Fallback plat réservé au titre par défaut. Tests config/api/ops verts (+ `TestSharedReaderForTitle_DemoPerTitle`).
+
+**Phase 3 (amorce)** : `registerHalo5Adapters` ouvrait la metadata H5 au chemin PROD → `config.MetadataDBPath` (demo-aware). Commendation defs OK en démo.
+
+**Résultats (serveur démo local, 2 titres)** : boot propre, `available_titles` = {halo_infinite, halo_5}, adapters chargés. POST match-history `demo-player` sous `X-LevelUp-Title: halo_5` → 40 matchs H5 anonymisés (playlists/maps FR, classé/non classé classifiés) ; sous `halo_infinite` → données Infinite. Switch de titre bout-à-bout OK. Résidu non-fatal : 7 erreurs boot `OpenReadWriteShared` sur metadata H5 chemin prod (site annexe à demo-gater, n'empêche pas le serving).
+
+**Statut** : Phases 1-2 Complétées + vérifiées (édits posés, NON commités — attente autorisation). RESTE : Phase 3 sources DuckDB H5 career (CSR via `player_csr_snapshots`/`match_skill_rank` filtré CSR + SR `career_progression.rank`) → détail → kill-feed (`highlight_events`), gatées DemoMode ; Phase 4 vidéos H5 (indexer captures `Halo_5_Guardians-*` → shared_social + HLS) ; Phase 5 maj `deploy.yml` regen (déjà multi-titre via CLI) + conteneur démo.
 
 ## [2026-06-27] HomeHeroBanner — élargissement rotation Infinite + ajout titre halo_5
 

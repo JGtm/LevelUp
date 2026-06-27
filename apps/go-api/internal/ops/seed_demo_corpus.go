@@ -49,6 +49,13 @@ type seededDemoPlayer struct {
 // escouade (is_with_friends) les plus récentes du joueur source, lues depuis sa
 // player DB. Fallback : si aucune session squad, retourne les matchs récents
 // classiques (selectRecentMatchIDs côté caller).
+//
+// Title-robuste : la requête primaire ordonne les sessions par récence via la
+// table `sessions` (peuplée côté Halo Infinite). Certains titres (Halo 5) ont des
+// session_id dans player_match_enrichment_latest mais une table `sessions` VIDE
+// (gap de sync) → la primaire renverrait 0. On bascule alors sur les nSessions
+// sessions escouade les plus FOURNIES (nombre de matchs, proxy de « vraies »
+// sessions), sans dépendre de la table `sessions`.
 func selectSquadSessionCorpus(ctx context.Context, sourcePlayerDBPath string, nSessions int) ([]string, error) {
 	db, err := sql.Open("duckdb", sourcePlayerDBPath+"?access_mode=READ_ONLY")
 	if err != nil {
@@ -56,6 +63,19 @@ func selectSquadSessionCorpus(ctx context.Context, sourcePlayerDBPath string, nS
 	}
 	defer db.Close()
 
+	out, err := querySquadCorpusRecent(ctx, db, nSessions)
+	if err != nil {
+		return nil, err
+	}
+	if len(out) > 0 {
+		return out, nil
+	}
+	// Fallback title-robuste : table `sessions` vide (ex. Halo 5).
+	return querySquadCorpusBiggest(ctx, db, nSessions)
+}
+
+// querySquadCorpusRecent : sessions escouade les plus RÉCENTES (via table sessions).
+func querySquadCorpusRecent(ctx context.Context, db *sql.DB, nSessions int) ([]string, error) {
 	rows, err := db.QueryContext(ctx, `
 		WITH squad AS (
 			SELECT DISTINCT session_id
@@ -74,6 +94,31 @@ func selectSquadSessionCorpus(ctx context.Context, sourcePlayerDBPath string, nS
 	if err != nil {
 		return nil, fmt.Errorf("query squad corpus: %w", err)
 	}
+	return scanMatchIDColumn(rows)
+}
+
+// querySquadCorpusBiggest : sessions escouade les plus FOURNIES (sans table sessions).
+func querySquadCorpusBiggest(ctx context.Context, db *sql.DB, nSessions int) ([]string, error) {
+	rows, err := db.QueryContext(ctx, `
+		WITH squad AS (
+			SELECT session_id, COUNT(*) AS n
+			FROM player_match_enrichment_latest
+			WHERE is_with_friends = TRUE AND session_id IS NOT NULL
+			GROUP BY session_id
+			ORDER BY n DESC
+			LIMIT ?
+		)
+		SELECT pme.match_id
+		FROM player_match_enrichment_latest pme
+		WHERE pme.session_id IN (SELECT session_id FROM squad)`, nSessions)
+	if err != nil {
+		return nil, fmt.Errorf("query squad corpus (fallback biggest): %w", err)
+	}
+	return scanMatchIDColumn(rows)
+}
+
+// scanMatchIDColumn lit une colonne unique de match_id en []string.
+func scanMatchIDColumn(rows *sql.Rows) ([]string, error) {
 	defer rows.Close()
 	var out []string
 	for rows.Next() {
@@ -292,6 +337,12 @@ func applyUniversalAnonymization(ctx context.Context, dst *sql.DB, roster []demo
 		{"weapon_kills", [][2]string{{"xuid", ""}}},
 		{"highlight_events", [][2]string{{"xuid", ""}}},
 		{"killer_victim_pairs", [][2]string{{"killer_xuid", "killer_gamertag"}, {"victim_xuid", "victim_gamertag"}}},
+		// Tables Halo 5-spécifiques (absentes côté Infinite → tolérées : table
+		// inexistante = skip, cf. errIsMissingTable). Anonymise leur(s) colonne(s)
+		// d'identité pour qu'aucun vrai xuid ne fuite.
+		{"match_commendations", [][2]string{{"xuid", ""}}},
+		{"kill_positions", [][2]string{{"killer_xuid", ""}}},
+		{"weapon_accuracy", [][2]string{{"xuid", ""}}},
 	}
 	for _, t := range targets {
 		for _, p := range t.pairs {
@@ -304,6 +355,10 @@ func applyUniversalAnonymization(ctx context.Context, dst *sql.DB, roster []demo
 				`UPDATE %s SET %s FROM _xuid_map m WHERE %s.%s = m.old_xuid`,
 				t.table, set, t.table, xuidCol)
 			if _, err := dst.ExecContext(ctx, stmt); err != nil {
+				if errIsMissingTable(err) {
+					// Table H5-spécifique absente de cette démo (titre Infinite) → skip.
+					continue
+				}
 				return fmt.Errorf("anonymize %s.%s: %w", t.table, xuidCol, err)
 			}
 		}
