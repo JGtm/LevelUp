@@ -24,6 +24,14 @@ func forgeRegistry() *titlePkg.Registry {
 	return reg
 }
 
+// catalogPresentForInfinite est un CatalogAdapterChecker de test : seul halo_infinite
+// a un catalog adapter résolvable (équivalent de Catalog(slug) == nil) ; tout autre
+// titre (ex. title_no_forge) renvoie false (équivalent ErrTitleNotResolved). C'est le
+// gate RÉEL injecté qui remplace le proxy CapForge.
+func catalogPresentForInfinite(titleSlug string) bool {
+	return titleSlug == "halo_infinite"
+}
+
 func TestCatalogRefreshCron_RunOnce_CallsRunner(t *testing.T) {
 	called := 0
 	gotTitle := ""
@@ -31,35 +39,56 @@ func TestCatalogRefreshCron_RunOnce_CallsRunner(t *testing.T) {
 		called++
 		gotTitle = titleSlug
 		return domain.CatalogUGCDrainResult{Playlists: 3, Maps: 5}, nil
-	}, "halo_infinite", 0)
+	}, "halo_infinite", 0).WithCatalogAdapterCheck(catalogPresentForInfinite)
 	c.registry = forgeRegistry()
 
 	c.RunOnce(context.Background())
 
 	if called != 1 {
-		t.Fatalf("runner appelé %d fois, want 1 (seul halo_infinite a CapForge)", called)
+		t.Fatalf("runner appelé %d fois, want 1 (seul halo_infinite a un catalog adapter)", called)
 	}
 	if gotTitle != "halo_infinite" {
 		t.Errorf("titre = %q, want halo_infinite", gotTitle)
 	}
 }
 
-// TestCatalogRefreshCron_RunOnce_SkipsTitleWithoutForge vérifie la brique
-// title-aware : un titre actif SANS CapForge (modèle Halo 5, catalogue résolu
+// TestCatalogRefreshCron_RunOnce_SkipsTitleWithoutCatalogAdapter vérifie le gate
+// RÉEL (injecté) : un titre actif dont le catalog adapter n'est PAS résolvable
+// (équivalent Catalog(slug) == ErrTitleNotResolved, modèle Halo 5 résolu
 // metadata-side) est skippé proprement — aucun drain lancé pour lui — tandis que
-// halo_infinite (avec la cap) reste traité.
-func TestCatalogRefreshCron_RunOnce_SkipsTitleWithoutForge(t *testing.T) {
+// halo_infinite (adapter présent) reste traité. C'est le test « présence d'adapter »
+// qui remplace le proxy CapForge.
+func TestCatalogRefreshCron_RunOnce_SkipsTitleWithoutCatalogAdapter(t *testing.T) {
 	var drained []string
 	c := NewCatalogRefreshCron(func(_ context.Context, titleSlug string) (domain.CatalogUGCDrainResult, error) {
 		drained = append(drained, titleSlug)
 		return domain.CatalogUGCDrainResult{}, nil
-	}, "", 0)
+	}, "", 0).WithCatalogAdapterCheck(catalogPresentForInfinite)
 	c.registry = forgeRegistry()
 
 	c.RunOnce(context.Background())
 
 	if len(drained) != 1 || drained[0] != "halo_infinite" {
-		t.Fatalf("titres drainés = %v, want [halo_infinite] uniquement (title_no_forge skippé)", drained)
+		t.Fatalf("titres drainés = %v, want [halo_infinite] uniquement (title sans adapter skippé)", drained)
+	}
+}
+
+// TestCatalogRefreshCron_RunOnce_FallbackCapForge vérifie le fallback rétro-compat :
+// sans checker injecté (hasCatalogAdapter nil), le gate retombe sur le proxy CapForge.
+// Comportement prod identique (halo_infinite a CapForge → drainé ; title_no_forge ne
+// l'a pas → skippé).
+func TestCatalogRefreshCron_RunOnce_FallbackCapForge(t *testing.T) {
+	var drained []string
+	c := NewCatalogRefreshCron(func(_ context.Context, titleSlug string) (domain.CatalogUGCDrainResult, error) {
+		drained = append(drained, titleSlug)
+		return domain.CatalogUGCDrainResult{}, nil
+	}, "", 0) // pas de WithCatalogAdapterCheck → fallback CapForge
+	c.registry = forgeRegistry()
+
+	c.RunOnce(context.Background())
+
+	if len(drained) != 1 || drained[0] != "halo_infinite" {
+		t.Fatalf("titres drainés (fallback CapForge) = %v, want [halo_infinite] uniquement", drained)
 	}
 }
 

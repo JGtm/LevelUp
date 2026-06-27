@@ -13,7 +13,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	gosync "sync"
 
 	"levelup/go-api/internal/domain"
@@ -73,7 +72,7 @@ func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug stri
 	// 3. Chaîne de résolution (fidèle au CLI populate-playlists-catalog).
 	provider := halo.NewHaloProvider().WithRateLimit(catalogDrainRateLimit).WithTokens(tokens)
 	fetcher := halo.NewCatalogFetcher(provider)
-	rulesPath := filepath.Join(r.cfg.RepoRoot, "config", "titles", titleSlug, "catalog", "experience_rules.toml")
+	rulesPath := r.catalogExperienceRulesPath(titleSlug)
 	adapter, err := halo_games.NewCatalogAdapter(fetcher, rulesPath)
 	if err != nil {
 		return res, fmt.Errorf("init catalog adapter: %w", err)

@@ -15,35 +15,54 @@ func TestAssetNameSweepCron_RunOnce_CallsRunner(t *testing.T) {
 		called++
 		gotTitle = titleSlug
 		return assetnames.Result{Requested: 4, Resolved: 3, Skipped: 1}, nil
-	}, "halo_infinite", 0)
+	}, "halo_infinite", 0).WithCatalogAdapterCheck(catalogPresentForInfinite)
 	c.registry = forgeRegistry()
 
 	c.RunOnce(context.Background())
 
 	if called != 1 {
-		t.Fatalf("runner appelé %d fois, want 1 (seul halo_infinite a CapForge)", called)
+		t.Fatalf("runner appelé %d fois, want 1 (seul halo_infinite a un catalog adapter)", called)
 	}
 	if gotTitle != "halo_infinite" {
 		t.Errorf("titre = %q, want halo_infinite", gotTitle)
 	}
 }
 
-// TestAssetNameSweepCron_RunOnce_SkipsTitleWithoutForge vérifie la brique
-// title-aware : un titre actif SANS CapForge (modèle Halo 5, noms résolus
-// metadata-side via cmd/h5-metadata-fetch) est skippé proprement — aucun sweep
-// lancé pour lui — tandis que halo_infinite (avec la cap) reste traité.
-func TestAssetNameSweepCron_RunOnce_SkipsTitleWithoutForge(t *testing.T) {
+// TestAssetNameSweepCron_RunOnce_SkipsTitleWithoutCatalogAdapter vérifie le gate
+// RÉEL (injecté) : un titre actif dont le catalog adapter n'est PAS résolvable
+// (équivalent Catalog(slug) == ErrTitleNotResolved, modèle Halo 5, noms résolus
+// metadata-side via cmd/h5-metadata-fetch) est skippé proprement — aucun sweep lancé
+// pour lui — tandis que halo_infinite (adapter présent) reste traité.
+func TestAssetNameSweepCron_RunOnce_SkipsTitleWithoutCatalogAdapter(t *testing.T) {
 	var swept []string
 	c := NewAssetNameSweepCron(func(_ context.Context, titleSlug string) (assetnames.Result, error) {
 		swept = append(swept, titleSlug)
 		return assetnames.Result{Requested: 1, Resolved: 1}, nil
-	}, "", 0)
+	}, "", 0).WithCatalogAdapterCheck(catalogPresentForInfinite)
 	c.registry = forgeRegistry()
 
 	c.RunOnce(context.Background())
 
 	if len(swept) != 1 || swept[0] != "halo_infinite" {
-		t.Fatalf("titres balayés = %v, want [halo_infinite] uniquement (title_no_forge skippé)", swept)
+		t.Fatalf("titres balayés = %v, want [halo_infinite] uniquement (title sans adapter skippé)", swept)
+	}
+}
+
+// TestAssetNameSweepCron_RunOnce_FallbackCapForge vérifie le fallback rétro-compat :
+// sans checker injecté, le gate retombe sur le proxy CapForge (halo_infinite balayé,
+// title_no_forge skippé).
+func TestAssetNameSweepCron_RunOnce_FallbackCapForge(t *testing.T) {
+	var swept []string
+	c := NewAssetNameSweepCron(func(_ context.Context, titleSlug string) (assetnames.Result, error) {
+		swept = append(swept, titleSlug)
+		return assetnames.Result{Requested: 1, Resolved: 1}, nil
+	}, "", 0) // pas de WithCatalogAdapterCheck → fallback CapForge
+	c.registry = forgeRegistry()
+
+	c.RunOnce(context.Background())
+
+	if len(swept) != 1 || swept[0] != "halo_infinite" {
+		t.Fatalf("titres balayés (fallback CapForge) = %v, want [halo_infinite] uniquement", swept)
 	}
 }
 

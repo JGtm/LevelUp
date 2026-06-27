@@ -1051,7 +1051,13 @@ func main() {
 		// NB : le balayage des NOMS d'assets (asset_translations) vit dans
 		// asset_name_sweep_cron (découplé, gaté LEVELUP_SYNC_RESOLVE_ASSETS).
 		return reg.RunCatalogUGCDrain(cctx, ts)
-	}, "", 0)
+	}, "", 0).
+		// Gate RÉEL (remplace le proxy CapForge) : ne draine QUE les titres dont le
+		// catalog adapter discovery-infiniteugc est résolvable (rules TOML +
+		// halo_infinite.NewCatalogAdapter). HINF → adapter présent → run ; Halo 5 →
+		// pas d'experience_rules.toml → skip propre. Comportement prod identique au
+		// proxy, signal précis.
+		WithCatalogAdapterCheck(reg.HasCatalogAdapter)
 	schedulerWG.Add(1)
 	go func() {
 		defer schedulerWG.Done()
@@ -1067,7 +1073,10 @@ func main() {
 	if halo.AssetNameResolutionEnabled() {
 		sweepCron := scheduler.NewAssetNameSweepCron(func(cctx context.Context, ts string) (assetnames.Result, error) {
 			return reg.ResolveUnresolvedAssetNames(cctx, ts, autoSyncPool)
-		}, "", 0)
+		}, "", 0).
+			// Même gate RÉEL que le drain catalogue : le sweep de noms passe par le
+			// même fetcher /hi/ hardcodé, donc même critère (catalog adapter résolvable).
+			WithCatalogAdapterCheck(reg.HasCatalogAdapter)
 		schedulerWG.Add(1)
 		go func() {
 			defer schedulerWG.Done()
