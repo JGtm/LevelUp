@@ -178,6 +178,9 @@ data/titles/halo_5/warehouse/*.wal
 data/titles/halo_infinite/players/
 data/titles/halo_5/players/
 data/titles/halo_5/warehouse/*.duckdb
+# Snapshots runtime (dumps DuckDB ponctuels écrits par les outils/crons snapshot) —
+# état local volumineux, jamais versionné. Tous titres.
+data/titles/*/warehouse/snapshots/
 # Tokens d'auth runtime (OAuth/MSAL par joueur) — JAMAIS versionner (secrets).
 data/auth/
 # Restic (repo de backup local + mot de passe) sur le VPS — JAMAIS versionner.

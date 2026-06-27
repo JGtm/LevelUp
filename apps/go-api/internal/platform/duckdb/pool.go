@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"levelup/go-api/internal/migration"
 
@@ -207,7 +208,7 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		return nil, fmt.Errorf("pool: migrate player db %s: %w", cfg.Gamertag, err)
 	}
 
-	playerDB, err := OpenReadWrite(cfg.PlayerDBPath, cfg.UserTimezone)
+	playerDB, err := openPlayerRWWithLockRetry(cfg.PlayerDBPath, cfg.UserTimezone)
 	if err != nil {
 		return nil, fmt.Errorf("pool: open player db %s: %w", cfg.Gamertag, err)
 	}
@@ -330,10 +331,41 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	}, nil
 }
 
+// playerOpenAttempts / playerOpenDelay : retry borné de l'ouverture RW d'une player
+// DB sur contention fichier. Même cause que le boot metadata (cmd/server/main.go
+// metaOpenAttempts) : sur Windows, air force-kill le serveur au hot-reload (TASKKILL
+// /F, send_interrupt non supporté → pas de shutdown gracieux) puis relance ; l'OS met
+// ~1-2 s à libérer les HANDLEs DuckDB de l'ancien process. Le pool ouvre les player DB
+// en lazy (spartan_cron, world-enrich…) APRÈS le boot metadata, donc tombe dans la même
+// fenêtre sans bénéficier du retry de main.go. 12×500 ms = 6 s (aligné metaOpenAttempts).
+const (
+	playerOpenAttempts = 12
+	playerOpenDelay    = 500 * time.Millisecond
+)
+
+// openPlayerRWWithLockRetry ouvre une player DB en RW en retentant brièvement sur
+// IsFileLockError (handle non encore libéré par l'ancien process après un TASKKILL air).
+// Si le lock persiste au-delà de la fenêtre (vraie 2e instance / CLI backfill), rend
+// l'erreur d'origine — toujours classée IsFileLockError → agrégée par spartan_cron.
+func openPlayerRWWithLockRetry(path string, timezone ...string) (*DB, error) {
+	var db *DB
+	var err error
+	for attempt := range playerOpenAttempts {
+		db, err = OpenReadWrite(path, timezone...)
+		if err == nil || !IsFileLockError(err) || attempt == playerOpenAttempts-1 {
+			return db, err
+		}
+		slog.Debug("pool: player DB verrouillée (handle non libéré par l'ancien process ?) — nouvelle tentative",
+			"path", path, "attempt", attempt+1, "max", playerOpenAttempts)
+		time.Sleep(playerOpenDelay)
+	}
+	return db, err
+}
+
 func ensurePlayerDBMigrations(path string) error {
 	_ = migration.All()
 
-	rwDB, err := OpenReadWrite(path)
+	rwDB, err := openPlayerRWWithLockRetry(path)
 	if err != nil {
 		if IsFileLockError(err) {
 			// Cause opérationnelle, pas une corruption : un AUTRE process tient
