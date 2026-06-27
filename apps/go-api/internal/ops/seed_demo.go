@@ -71,6 +71,17 @@ type SeedDemoOptions struct {
 	// démo mono-joueur (pas de player DB coéquipier).
 	ProfilesPath string
 	RepoRoot     string
+
+	// TitleSlug : titre seedé (défaut → title.DefaultSlug). Détermine le
+	// sous-répertoire de sortie : le titre par défaut écrit au layout PLAT legacy
+	// (OutDir/warehouse, OutDir/players/DEMO — byte-identique à la démo mono-titre) ;
+	// un titre additionnel écrit sous OutDir/titles/{slug}/ (miroir du PathResolver
+	// prod). Cf. demoTitleSubdir.
+	TitleSlug string
+	// SkipConfigs : ne pas écrire db_profiles.json/app_settings.json à la fin (true
+	// quand l'orchestrateur multi-titre les écrit une seule fois, en v3, après tous
+	// les titres). Faux (défaut) → écrit les configs mono-titre v2.1 comme avant.
+	SkipConfigs bool
 }
 
 // SeedDemoResult résume l'exécution.
@@ -83,6 +94,10 @@ type SeedDemoResult struct {
 	MediaCopied    int
 	ConfigsWritten bool
 	Duration       time.Duration
+	// SeededPlayers : player DB démo effectivement seedées pour ce titre (DemoPlayer
+	// + coéquipiers). Agrégées par l'orchestrateur multi-titre pour écrire db_profiles
+	// v3 (une entrée par couple titre × gamertag démo).
+	SeededPlayers []seededDemoPlayer
 }
 
 // Constantes par défaut.
@@ -134,6 +149,12 @@ var sharedTablesWhere = []extractTable{
 	{name: "killer_victim_pairs", where: matchIDInClause},
 	{name: "xuid_aliases", where: "xuid IN (SELECT DISTINCT xuid FROM match_participants WHERE match_id IN (%s))"},
 	{name: "match_csrs", where: matchIDInClause, appendOnly: true},
+	// Tables Halo 5-spécifiques (absentes côté Infinite → extraction best-effort, la
+	// table source manquante est ignorée par extractSharedTables). Toutes filtrées
+	// par match_id et non append-only (cf. probe schéma 2026-06-27).
+	{name: "match_commendations", where: matchIDInClause}, // commendations natives par match (xuid)
+	{name: "kill_positions", where: matchIDInClause},      // positions monde du kill (killer_xuid)
+	{name: "weapon_accuracy", where: matchIDInClause},     // précision par arme par match (xuid)
 }
 
 // Tables player à extraire. sessions/career_progression/player_csr_snapshots
@@ -184,11 +205,16 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		return res, fmt.Errorf("seed-demo: %w", err)
 	}
 
+	// titleOut : sous-répertoire de sortie title-scopé. Titre par défaut → OutDir
+	// plat (byte-identique mono-titre) ; titre additionnel → OutDir/titles/{slug}/.
+	titleOut := demoTitleSubdir(opts.OutDir, opts.TitleSlug)
+
 	slog.InfoContext(ctx, "seed-demo: démarrage",
+		"title_slug", opts.TitleSlug,
 		"source_gamertag", opts.SourceLabel,
 		"source_xuid", opts.SourceXUID,
 		"max_matches", opts.MaxMatches,
-		"out_dir", opts.OutDir,
+		"out_dir", titleOut,
 		"include_media", opts.IncludeMedia,
 	)
 
@@ -228,7 +254,7 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	slog.InfoContext(ctx, "seed-demo: roster démo construit", "participants", len(roster))
 
 	// 2. Copie metadata.duckdb
-	outMeta := filepath.Join(opts.OutDir, "warehouse", "metadata.duckdb")
+	outMeta := filepath.Join(titleOut, "warehouse", "metadata.duckdb")
 	if err := copyMetadataFile(opts.SourceMetaDB, outMeta); err != nil {
 		return res, fmt.Errorf("seed-demo: copy metadata: %w", err)
 	}
@@ -236,7 +262,7 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	slog.InfoContext(ctx, "seed-demo: metadata copiée", "out", outMeta)
 
 	// 3. Extraction shared
-	outShared := filepath.Join(opts.OutDir, "warehouse", "shared_matches_v2.duckdb")
+	outShared := filepath.Join(titleOut, "warehouse", "shared_matches_v2.duckdb")
 	sharedRows, err := extractSharedTables(ctx, opts.SourceSharedDB, outShared, matchIDs,
 		opts.SourceXUID, opts.DemoXUID)
 	if err != nil {
@@ -269,16 +295,19 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	for i, m := range mains {
 		srcPlayerDB := opts.SourcePlayerDB
 		if i > 0 {
-			rel, found, rerr := resolvePlayerDBByXUID(opts.ProfilesPath, m.SourceXUID)
+			// Title-aware : on veut la player DB du coéquipier POUR LE TITRE courant
+			// (ses stats H5 quand on seede H5), pas une autre (il peut exister sous
+			// plusieurs titres). Fallback tous-titres si absent du titre courant.
+			rel, found, rerr := resolvePlayerDBByXUIDForTitle(opts.ProfilesPath, opts.TitleSlug, m.SourceXUID)
 			if rerr != nil || !found {
-				slog.WarnContext(ctx, "seed-demo: player DB coéquipier introuvable, skip",
-					"xuid", m.SourceXUID, "gamertag", m.DemoGamertag, "err", rerr)
+				slog.WarnContext(ctx, "seed-demo: player DB coéquipier introuvable pour ce titre, skip",
+					"title", opts.TitleSlug, "xuid", m.SourceXUID, "gamertag", m.DemoGamertag, "err", rerr)
 				continue
 			}
 			srcPlayerDB = filepath.Join(opts.RepoRoot, rel)
 		}
 		demoDir := demoDirForIndex(i)
-		outP := filepath.Join(opts.OutDir, "players", demoDir, "stats.duckdb")
+		outP := filepath.Join(titleOut, "players", demoDir, "stats.duckdb")
 		rows, perr := extractPlayerTables(ctx, srcPlayerDB, outP, matchIDs, m.SourceXUID, m.DemoXUID)
 		if perr != nil {
 			if i == 0 {
@@ -311,8 +340,8 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 	// schéma canonique shared_social. player_slug = SLUG de route du main (la page Média
 	// filtre par auteur = slug courant). Attribution grossière aux matchs du corpus.
 	if opts.IncludeMedia {
-		mediaDir := filepath.Join(opts.OutDir, "players", DefaultDemoGamertag, "media")
-		outSocial := filepath.Join(opts.OutDir, "warehouse", "shared_social.duckdb")
+		mediaDir := filepath.Join(titleOut, "players", DefaultDemoGamertag, "media")
+		outSocial := filepath.Join(titleOut, "warehouse", "shared_social.duckdb")
 		srcMediaDir := filepath.Join(opts.RepoRoot, "data", "media", opts.SourceLabel)
 		// shared_social SOURCE (prod) : même dossier warehouse que shared_matches_v2.
 		// Porte les associations média→match RÉELLES (vraie carte de chaque vidéo).
@@ -325,11 +354,16 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		res.MediaCopied = mediaCount
 	}
 
-	// 7. Configs (db_profiles avec les 3 profils démo + app_settings).
-	if err := writeDemoConfigsMulti(opts.OutDir, seeded, opts.ServiceTag, res.MediaCopied > 0); err != nil {
-		return res, fmt.Errorf("seed-demo: write configs: %w", err)
+	res.SeededPlayers = seeded
+
+	// 7. Configs (db_profiles avec les 3 profils démo + app_settings). SKIP quand
+	// l'orchestrateur multi-titre les écrira une fois (v3) après tous les titres.
+	if !opts.SkipConfigs {
+		if err := writeDemoConfigsMulti(opts.OutDir, seeded, opts.ServiceTag, res.MediaCopied > 0); err != nil {
+			return res, fmt.Errorf("seed-demo: write configs: %w", err)
+		}
+		res.ConfigsWritten = true
 	}
-	res.ConfigsWritten = true
 
 	res.Duration = time.Since(start)
 	slog.InfoContext(ctx, "seed-demo: terminé",
@@ -362,6 +396,9 @@ func validateSeedDemoOpts(opts *SeedDemoOptions) error {
 	}
 	if opts.MaxMedia <= 0 {
 		opts.MaxMedia = DefaultMaxMedia
+	}
+	if opts.TitleSlug == "" {
+		opts.TitleSlug = titlePkg.DefaultSlug
 	}
 	for _, p := range []string{opts.SourcePlayerDB, opts.SourceSharedDB, opts.SourceMetaDB} {
 		if _, err := os.Stat(p); err != nil {
@@ -484,6 +521,19 @@ func copyMetadataFile(src, dst string) error {
 		return fmt.Errorf("copy: %w", err)
 	}
 	return nil
+}
+
+// errIsMissingTable signale qu'une erreur DuckDB est due à une table source/cible
+// absente (ex. table Halo 5-spécifique manquante côté démo Infinite). Utilisé pour
+// rendre l'extraction et l'anonymisation best-effort sur le sur-ensemble de tables
+// multi-titre.
+func errIsMissingTable(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "does not exist") ||
+		strings.Contains(msg, "Table with name") // "Catalog Error: Table with name X does not exist"
 }
 
 // formatIDsLiteral retourne "'id1', 'id2', ..." pour interpolation SQL.

@@ -1,3 +1,19 @@
+## [2026-06-27] Démo multi-titre Halo 5 — Phases 1-2 (seed + résolution) + fix metadata H5 démo
+
+**Tâche** : rendre la démo VPS (`demo.lvelup.info`, aujourd'hui Infinite-only) compatible Halo 5 — mêmes échantillons anonymisés (solo + escouade, ~50/titre), pour que les visiteurs voient et testent les 2 titres. Branche worktree `worktree-demo-halo5`.
+
+**Constat d'architecture** : la démo lit un layout PLAT mono-titre (`data/demo/{warehouse,players/DEMO}`) via 5 points qui IGNORENT le titre (`resolveDemoPlayer`, `sharedReaderForTitle`, `SharedDBPath`, `metadataDBPathFor`, `LoadPlayers`). Halo 5 est déjà `status=active` (switcher OK), données title-agnostic riches sur disque (`data/titles/halo_5/` : 3032 matchs, xuid 16 chiffres réels → anonymisation xuid réutilisable telle quelle). Serving H5 HYBRIDE : historique + commendations = DuckDB local (marchent hors-ligne) ; career/détail/kill-feed = API cryptum LIVE (vides en démo, aucun token).
+
+**Phase 1 (seed multi-titre)** : `SeedDemoMulti` (orchestrateur `seed_demo_multititle.go`) boucle sur les titres dérivés de db_profiles (`TitlesForGamertag`), seede chacun dans `demoTitleSubdir` (défaut → PLAT byte-identique ; additionnel → `titles/{slug}/`), puis écrit UNE fois `db_profiles.json` v3 + `app_settings`. `SeedDemoOptions` reçoit `TitleSlug`+`SkipConfigs` ; tables H5-spécifiques ajoutées (`match_commendations`/`kill_positions`/`weapon_accuracy`, best-effort via `errIsMissingTable`, anonymisées) ; corpus squad rendu title-robuste (fallback « sessions les plus fournies » car table `sessions` vide côté H5). Validé sur données réelles : halo_infinite (48) + halo_5 (40), 3 player DB/titre, anonymisation gamertag+xuid complète.
+
+**Phase 2 (résolution demo-mode title-aware)** : helpers `demoTitleDir/demoSharedDBPath/demoMetaDBPath/demoSharedSocialPath` (config) ; `sharedReaderForTitle` route le provider H5 démo title-scopé via `SharedManager.For` (défaut → provider boot byte-identique) ; `resolveDemoPlayer`/`SharedDBPath`/`MetadataDBPath`/`LoadPlayers` (roster gaté par fixtures du titre) lisent le bon sous-arbre. Fallback plat réservé au titre par défaut. Tests config/api/ops verts (+ `TestSharedReaderForTitle_DemoPerTitle`).
+
+**Phase 3 (amorce)** : `registerHalo5Adapters` ouvrait la metadata H5 au chemin PROD → `config.MetadataDBPath` (demo-aware). Commendation defs OK en démo.
+
+**Résultats (serveur démo local, 2 titres)** : boot propre, `available_titles` = {halo_infinite, halo_5}, adapters chargés. POST match-history `demo-player` sous `X-LevelUp-Title: halo_5` → 40 matchs H5 anonymisés (playlists/maps FR, classé/non classé classifiés) ; sous `halo_infinite` → données Infinite. Switch de titre bout-à-bout OK. Résidu non-fatal : 7 erreurs boot `OpenReadWriteShared` sur metadata H5 chemin prod (site annexe à demo-gater, n'empêche pas le serving).
+
+**Statut** : Phases 1-2 Complétées + vérifiées (édits posés, NON commités — attente autorisation). RESTE : Phase 3 sources DuckDB H5 career (CSR via `player_csr_snapshots`/`match_skill_rank` filtré CSR + SR `career_progression.rank`) → détail → kill-feed (`highlight_events`), gatées DemoMode ; Phase 4 vidéos H5 (indexer captures `Halo_5_Guardians-*` → shared_social + HLS) ; Phase 5 maj `deploy.yml` regen (déjà multi-titre via CLI) + conteneur démo.
+
 ## [2026-06-27] HomeHeroBanner — élargissement rotation Infinite + ajout titre halo_5
 
 **Tâche** : (1) ajouter à la rotation des images de couverture de l'accueil les 4 visuels Halo Infinite présents dans `public/titles/halo_infinite/` mais non référencés ; (2) ajouter une image de couverture pour Halo 5.

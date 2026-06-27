@@ -108,11 +108,15 @@ func familyXUIDResolver(groupStore *groupstore.GroupStore, users authz.UserLooku
 // les référentiels (rangs, maps, armes, saisons, catalogue) vivent dans la metadata
 // des fixtures démo (data/demo/warehouse/metadata.duckdb, copiée intégralement de la
 // prod par seed-demo). Sans cette redirection, ces référentiels sont vides en démo.
+// Délègue à config.MetadataDBPath (source unique de la redirection démo title-scopée).
 func metadataDBPathFor(cfg *config.AppConfig) string {
-	if cfg.DemoMode && cfg.DemoFixturesDir != "" {
-		return filepath.Join(cfg.DemoFixturesDir, "warehouse", "metadata.duckdb")
-	}
-	return titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
+	return metadataDBPathForTitle(cfg, titlePkg.DefaultSlug)
+}
+
+// metadataDBPathForTitle : variante title-aware (un titre additionnel comme Halo 5
+// lit SA metadata démo title-scopée data/demo/titles/{slug}/warehouse/metadata.duckdb).
+func metadataDBPathForTitle(cfg *config.AppConfig, titleSlug string) string {
+	return config.MetadataDBPath(cfg, titleSlug)
 }
 
 // NewRouter construit le routeur chi avec tous les endpoints.

@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"path/filepath"
 
+	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/classification"
@@ -157,7 +158,11 @@ func registerHalo5Adapters(
 	// pour fermeture au shutdown, cf. TrackMetadataHandle). Best-effort : échec
 	// d'ouverture → commendations laissées brutes (ID + count, le front dégrade).
 	var commDefs halo5.CommendationDefSource
-	metaPath := titlePkg.NewPathResolver(reg.cfg.RepoRoot).MetadataDBPath(td.Slug)
+	// config.MetadataDBPath = source unique de la redirection démo (en démo, lit la
+	// metadata h5 title-scopée data/demo/titles/halo_5/warehouse/metadata.duckdb ;
+	// sinon le chemin prod data/titles/halo_5/…). Sans ça, en démo l'ouverture vise
+	// le chemin prod absent → commendations brutes.
+	metaPath := config.MetadataDBPath(reg.cfg, td.Slug)
 	if metaDB, err := platform_duckdb.OpenReadWriteShared(metaPath); err != nil {
 		slog.Warn("h5_commendation_defs_open_failed", "title_slug", td.Slug, "err", err.Error())
 	} else {
