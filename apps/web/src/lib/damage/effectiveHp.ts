@@ -64,21 +64,6 @@ export function useProvidesTeamMmr(): boolean {
 }
 
 /**
- * Vrai si le titre courant déclare la capability `native_kda` — donc s'il expose
- * un ratio KDA per-match lisible tel quel (quotient positif ~0..4). `false` ⇒ le
- * titre expose une FDA brute `((k + a/3) − d) / 1`, potentiellement NÉGATIVE (Halo
- * 5), PAS le quotient KDA : la colonne n'est PAS masquée (la valeur reste affichée,
- * négatif autorisé) mais l'échelle de couleur (calibrée pour un quotient positif)
- * et le libellé/tooltip doivent s'adapter à cette forme native. Délègue à
- * {@link useCapability} (source unique de masquage) : fail-open `true` tant que le
- * bootstrap n'est pas chargé / titre introuvable, d'où zéro régression Halo
- * Infinite (qui déclare la capability).
- */
-export function useProvidesNativeKda(): boolean {
-  return useCapability('native_kda')
-}
-
-/**
  * Vrai si le titre courant supporte le max killing spree par match — valeur
  * native (Infinite) ou calculée depuis les events kill/death horodatés (Halo 5,
  * où le flag est donc `true`). On masque la série « Folie meurtrière max »

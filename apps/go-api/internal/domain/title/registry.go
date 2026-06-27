@@ -85,20 +85,6 @@ const (
 	// source projetée dans le DTO bootstrap (availableTitles[].providesDamageTaken) ;
 	// cette cap est le pendant déclaratif dans availableTitles[].capabilities.
 	CapDamageTaken Capability = "damage_taken"
-
-	// CapNativeKDA — le titre fournit NATIVEMENT un ratio KDA per-match via son
-	// API (donc lisible/affichable tel quel). Forme title-level (capability dans
-	// le descripteur) du signal scalaire games.ProvidesNativeKDA(slug) : un titre
-	// déclare cette cap SSI ProvidesNativeKDA(slug)==true. Halo Infinite : oui ;
-	// Halo 5 : non (sa forme native = FDA NET ((k+a/3)−d)/1, potentiellement
-	// négative, distincte du quotient KDA → no_native_kda=true). Absente ⇒ les
-	// surfaces qui affichent la colonne KDA NE la masquent PAS (la FDA reste
-	// affichée, négatif autorisé) mais adaptent l'échelle de couleur (calibrée pour
-	// un quotient positif ~0..4) et le libellé/tooltip à la forme native du titre.
-	// Le flag scalaire ProvidesNativeKDA reste la source projetée dans le DTO
-	// bootstrap ; cette cap est le pendant déclaratif dans
-	// availableTitles[].capabilities.
-	CapNativeKDA Capability = "native_kda"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -255,9 +241,9 @@ func NewRegistry() *Registry {
 			CapAchievements, CapEngagement, CapLUSR, CapWorldLeaderboard,
 			CapWeaponKills,
 			// Miroir title-level des flags scalaires : Halo Infinite fournit
-			// nativement le MMR d'équipe, le dégât subi ET le ratio KDA per-match
-			// (ProvidesTeamMMR / ProvidesDamageTaken / ProvidesNativeKDA == true).
-			CapTeamMMR, CapDamageTaken, CapNativeKDA,
+			// nativement le MMR d'équipe et le dégât subi
+			// (ProvidesTeamMMR / ProvidesDamageTaken == true).
+			CapTeamMMR, CapDamageTaken,
 		},
 		IsDefault:        true,
 		XboxTitleID:      "2043073184",
