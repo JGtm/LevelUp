@@ -30410,3 +30410,25 @@ Docker utilise le snapshotter containerd -> stockage reel dans `/var/lib/contain
 
 **Prochaine etape** : commit branche `ops/vps-disk-guardrails` (apres autorisation) + merge/deploy
 pour rendre le fix durable. Option future : bascule build CI + registry ghcr.io (descopee ici).
+
+## [2026-06-27] Refonte v2 page Communauté > Relations (remarques utilisateur) — Complété (9/10)
+
+**Statut** : Complété 9/10 points. Branche `feat/relations-v2` (rebasée sur main).
+
+**Décisions techniques** (paliers committés) :
+- #2 `IsCore` : retrait du seuil `enemy>=3` (les duo-partenaires comptent dans le noyau dur).
+- #5 badges de joueur uniformisés en **solid + texte blanc** : token `--color-badge-on-solid`,
+  prop `solid` sur `NarrativeBadge`, propagation Relations/Explorer/Match View/Compare ;
+  dominance + rôles d'impact + badges de match-narratif (Career/match-card) NON touchés.
+- #7 Moments & Rivalités affiché en permanence (toggle + lazy-load retirés).
+- #10 légende WR glissant traduite (`seriesNameResolver`) au lieu de la clé de série `rolling`.
+- #3 cards hero enrichies (WR/ratio/frags-morts/badges/volume via la ligne RelationInsight).
+- #6 noyau dur dédoublonné (card hero = résumé qualitatif ; section = liste détaillée).
+- #4 segmented control (charte) ; #1 tableau paginé (top 25) ; #9 toggle « Inclure les amis ».
+
+**Résultats** : go test relations+service vert ; vitest complet 1990/0 ; typecheck + build verts.
+Baseline mise à jour (rename test `TestTintedBadgesReused`→`TestEncounterBadgesReused`).
+
+**Prochaine étape** : #8 (heatmap jour-de-semaine, option C) — backend Q29 dow + DTO + OpenAPI +
+toggle tranche/jour front — reste à faire (item le plus lourd, tentatif). Mock v2 :
+`.ai/mocks/relations/relations-mockups-v2.html`.
