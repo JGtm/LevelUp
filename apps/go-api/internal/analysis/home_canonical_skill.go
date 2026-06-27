@@ -164,9 +164,29 @@ func SkillTierBand(tierEN string, subTier int) (progressPct float64, ok bool) {
 	return float64(subTier) / float64(csrSubTiersPerTier) * 100, true
 }
 
-// csrTierOrderEN : ordre des paliers Halo, pour déterminer le palier suivant
-// quand on sort d'un sous-palier VI. Ordinal → indépendant de l'échelle CSR/LUSR.
-var csrTierOrderEN = []string{"Bronze", "Silver", "Gold", "Platinum", "Diamond", "Onyx"}
+// csrTierOrderEN : ordre canonique des paliers Halo (ordinal croissant). SOURCE
+// UNIQUE de l'ordre des paliers — utilisée pour le palier suivant (nextTierEN) ET
+// la sélection du meilleur CSR (CSRTierOrdinal, cf. home_repo_skill_peak). Champion
+// = sommet H5 ("Champion #N", au-dessus d'Onyx) ; absent d'Infinite mais inclus
+// pour ranker un pic Champion. Ordinal → indépendant de l'échelle de valeur : un
+// titre tier-only (qui ne fournit PAS la valeur numérique CSR) reste classable par
+// palier. nextTierEN(Onyx)→Champion est inoffensif : NextSubTierLabel court-circuite
+// déjà Onyx→nil en amont.
+var csrTierOrderEN = []string{"Bronze", "Silver", "Gold", "Platinum", "Diamond", "Onyx", "Champion"}
+
+// CSRTierOrdinal : rang ordinal du palier EN (Bronze=1 … Champion=7 ; 0 si vide/
+// inconnu). Source UNIQUE pour comparer/sélectionner des paliers CSR, y compris
+// pour les titres tier-only où la valeur numérique est absente (sélection par
+// palier puis sous-palier). Insensible à la casse.
+func CSRTierOrdinal(tierEN string) int {
+	t := strings.TrimSpace(tierEN)
+	for i, name := range csrTierOrderEN {
+		if strings.EqualFold(name, t) {
+			return i + 1
+		}
+	}
+	return 0
+}
 
 // NextSubTierLabel : libellé localisé du SOUS-PALIER suivant (extrémité droite de
 // la barre). Intelligent en sortie de palier :

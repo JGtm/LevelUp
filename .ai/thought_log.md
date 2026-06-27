@@ -1,3 +1,25 @@
+## [2026-06-27] Accueil H5 — bannière d'identité : barre XP vide + Meilleur CSR erroné — COMPLÉTÉ + vérifié (data réelle JGtm)
+
+**Tâche** : 2 symptômes persistants sur la bannière d'identité Spartan de l'accueil (joueur JGtm, Halo 5), signalés 5×. Le 3e symptôme (backdrop synthétisé) est déjà livré sur `main` (synthèse `HomeSpartanIdentityBanner.tsx`) → hors-scope ici.
+
+**Vérification data D'ABORD (discipline imposée par l'utilisateur)** : serveur dev arrêté, lecture RO (`cmd/diag_exec`) de `data/titles/halo_5/players/JGtm/stats.duckdb`. Findings réels :
+- `career_progression` contient la bonne carrière (rang 147, `current_xp=857331`, `xp_for_next_rank=2950000`) MAIS une ligne *appearance-only* (recorded_at 2026-06-25, `rank=NULL`, `current_xp=0`, emblem/banner/tag set) écrite par le backfill d'apparence est la plus récente → `ARG_MAX(current_xp, recorded_at)` la pickait → 0. **Ce n'était PAS de la contamination Infinite** (mon hypothèse initiale), mais mon propre backfill d'apparence.
+- `match_skill_rank` : 1024 matchs Diamond / 870 Platinum / 116 Gold, **tous `rating_value=0`** (l'API H5 ne fournit pas la valeur numérique CSR, seulement DesignationId→tier + sub_tier). `player_csr_snapshots` : pic = `alltime_tier=Diamond, alltime_sub_tier=5, alltime_value=0` (Diamant V). Le widget exigeait `value > 0` → masquait un pic pourtant réel.
+
+**Fix 1 — barre XP (lecture title-agnostic)** : `FILTER (WHERE rank IS NOT NULL)` sur TOUS les champs carrière (rank/rank_name/rank_tier/current_xp/xp_for_next_rank/xp_total/is_max_rank) dans `qLoadLastCareerRank` (chemin prod `CareerLiveService.GetSpartanIdentity`) ET `Q26cHomeSpartanIdentity` (fallback). L'identité carrière lit donc la dernière vraie ligne carrière en ignorant les lignes d'apparence ; les champs d'apparence gardent leur propre FILTER. Pas de DELETE (table ART-sensible) — filtre de lecture.
+
+**Fix 2 — Meilleur CSR (canonique, tier-only-safe)** : ordinal de palier unique en Go `CSRTierOrdinal` (Bronze=1…Champion=7) + ordre canonique `csrTierOrderEN` (ajout "Champion"). `Q26csrAlltimePeak` retourne désormais TOUS les candidats (tier non-vide OU value>0, plus de `WHERE value>0`), la sélection du meilleur se fait en Go (`pickBestCSRAlltime` : ordinal palier → sous-palier → value en tie-break). Un titre tier-only (valeur CSR absente) reste classable par palier. Front inchangé (affiche déjà tier_label + "—" pour value 0).
+
+**Title-agnostic** : zéro `slug ==`. XP = filtre sur la sémantique de ligne (rank présent), pas le titre. CSR = sélection ordinale par palier, fonctionne pour Infinite (value présente) comme H5 (tier-only). Tient pour un 3e jeu.
+
+**Résultat vérifié (data réelle JGtm, code à jour)** : XP `cur=857331 / nxt=2950000 → 29.1%` (était 0) ; CSR pic = Diamant V (sélectionné par ordinal Diamond, value 0 toléré). Build/vet vert, tests de ma zone verts (`TestCSRTierOrdinal` ajouté).
+
+**Note recovery** : fixes ré-appliqués sur worktree frais `fix/h5-home-csr-xp` depuis `origin/main abb673500` (la branche précédente `fix/h5-prod-symptoms` était 64 commits en retard, abandonnée). 2 échecs de tests pré-existants sur `origin/main` (NON miens) : `TestNoNewSlugComparison` (config_players.go/player_resolver.go, ajoutés par feat(demo) 20a72304c) + `TestNoUnauthorizedSharedSocialMention` — dette des autres commits.
+
+**Prochaine étape** : commit + déploiement (merge main + push = auto-deploy). Re-transfert prod inutile (fix = lecture seule, pas de re-backfill).
+
+---
+
 ## [2026-06-27] Classement — mise en forme MVP/LVP par colonne + fix clic gamertag → Explorer — COMPLÉTÉ + vérifié (commit en attente)
 
 **Tâche** : 2 améliorations page Classement (`apps/web/src/features/leaderboard/`).
