@@ -1,3 +1,20 @@
+## [2026-06-27] Capabilities title-level team_mmr + damage_taken (miroir des flags scalaires) — FONDATION BACKEND
+
+**Tâche** : exposer 2 nouvelles capabilities title-level (`team_mmr`, `damage_taken`) dans le descripteur de titre, en miroir DÉCLARATIF des flags scalaires `games.ProvidesTeamMMR(slug)` / `games.ProvidesDamageTaken(slug)`. Additif pur : les flags scalaires `provides_*` (domain/bootstrap.go, projetés dans availableTitles[].providesTeamMMR/providesDamageTaken) RESTENT inchangés ; on ajoute le pendant dans availableTitles[].capabilities ([]string projeté depuis t.Capabilities).
+
+**Règle de miroir appliquée** (un titre déclare la cap SSI Provides*==true) :
+- halo_infinite (built-in NewRegistry, pas de [damage_model] no_* → défaut true/true) → déclare LES DEUX (CapTeamMMR, CapDamageTaken).
+- halo_5 (constants.toml no_team_mmr=true + no_damage_taken=true → false/false) → déclare AUCUNE.
+- synthetic_title_b (pas de no_* → défaut true/true) → déclare LES DEUX (11 → 13 caps).
+
+**Édits** : (1) registry.go = constantes `CapTeamMMR="team_mmr"` + `CapDamageTaken="damage_taken"` + ajout au descripteur halo_infinite. (2) config_loader.go = ajout au set `knownCapabilities` (sinon TOML rejeté). (3) config/titles/synthetic_title_b/title.toml = +2 strings. (4) tests : skeleton_test.go H5 (asserte les 2 NON déclarées), skeleton_test.go synthetic (11→13 + asserte les 2 présentes). halo_5/title.toml inchangé (déclare déjà aucune). capabilities_parity_test.go / adapter_data_test.go NON touchés (ils testent la CapabilityMap fine de capabilities.toml — namespace distinct des caps title-level []Capability).
+
+**Vérif lecture seule** : `RequireCapability` n'est câblé que sur CapCareer/CapAchievements/CapEngagement/CapMedia/CapForge — aucune route ne gate sur team_mmr/damage_taken (strings neuves = safe). types.gen.go / openapi non touchés (DTO inchangé, capabilities est déjà []string).
+
+**Statut** : Complété (édits posés ; build/test centralisés par l'orchestrateur). Prochaine étape : agents de zone consomment HasCapability(CapTeamMMR/CapDamageTaken) côté surfaces si besoin (en parallèle des flags scalaires).
+
+---
+
 ## [2026-06-26] Fix playlists_catalog H5 + backfill historique des surfaces dérivées d'events — COMPLÉTÉ (local vérifié)
 
 **Tâche** (suite du merge events H5) : 2 demandes user. (1) Régler le bug pré-existant `playlists_catalog does not exist` (spam WARN post-sync CSR sur halo_5). (2) Backfiller weapon_accuracy + assists + objectif sur les matchs H5 EXISTANTS (le « new-matches-only » ne suffit pas : personne ne rejoue H5).
@@ -30332,3 +30349,64 @@ ayant été capturée sous Windows contenait 3 sous-tests Windows-only
 (`TestFilePathToURL_SinglePlayerCapturesBase/{clip,clip_thumb,screenshot}` ; le test `t.Skip` si
 `GOOS != windows`), absents du run CI Linux. Retrait de ces 3 sous-tests du floor (parent conservé,
 émis en skip sur Linux). Leçon : capturer/filtrer la baseline pour l'OS du gate (Linux CI), pas Windows.
+
+---
+
+## [2026-06-27] Unification capabilities — masquage zone session-detail (MMR + degats subis)
+
+**Statut** : Complete (zone session-detail uniquement).
+
+**Decision technique** : retrait silencieux par capability (decision produit verrouillee), pas de
+placeholder ni de carte titree vide.
+- `SessionChartStack.tsx` : carte MMR (`SessionMmrDumbbell`) montee conditionnellement via
+  `useCapability('team_mmr')`. `team_mmr===false` (Halo 5) -> `mmr = null`, non montee en layout
+  dense (React skip le null) ni en grille (le couple MMR/OC-DR devient OC-DR pleine largeur).
+- `SessionDamageComposite.tsx` : ajout `showTaken` (defaut true) au builder `buildSessionDamageOption` ;
+  pilote par `useProvidesDamageTaken()` (= `useCapability('damage_taken')`). false -> serie « subis »,
+  son entree de legende et sa ligne de tooltip omises ; la moitie « infliges » (valide) reste. Calque
+  sur `SessionOcdrBars` (flag `showDr`).
+- `SessionMmrDumbbell.tsx` : le warn « Dumbbell MMR vide ... session social ? » est gate par
+  `useProvidesTeamMmr()` -> inoffensif pour un titre sans team_mmr (vide attendu, pas un signal).
+
+**Resultats** : tsc --noEmit vert, eslint vert sur les 3 fichiers, `SessionNewCharts.test.tsx`
+12/12 (les tests appellent `buildSessionDamageOption` avec les 2 labels = chemin showTaken par defaut).
+
+**Prochaine etape** : la colonne FDA de `SessionMatchesTable` reste intacte (etape suivante separee,
+FDA negative legitime). Accuracy = data-gate hors de cette zone.
+
+---
+
+## [2026-06-27] Saturation disque VPS — diagnostic + garde-fous (B+C) + fix backup H5
+
+**Statut** : Complete (VPS applique ; repo sur branche `ops/vps-disk-guardrails`, commit en attente).
+
+**Diagnostic** : `/` a 84% (64G/79G). Cause racine = le VPS builde les images Docker en
+prod (`docker compose up --build` dans deploy.sh) et rien ne purge le cache BuildKit ->
+33,6 Go de build cache accumule (365 couches) + 1,8 Go de journal systemd. Piege d'analyse :
+Docker utilise le snapshotter containerd -> stockage reel dans `/var/lib/containerd` (pas
+`/var/lib/docker`, qui ne fait que 61 Mo) ; `du -x` sur `/var/lib/docker` induit en erreur.
+
+**Decision technique** :
+- Nettoyage immediat : `docker buildx prune -af` + `journalctl --vacuum-size=200M`.
+  ~32 Go recuperes (84% -> 40%).
+- Choix utilisateur : pas de registry (build reste sur le VPS) -> garde-fous B+C au lieu de
+  la bascule CI/registry.
+- B (borner le cache) : `docker buildx prune -f --keep-storage=5GB` ajoute en fin de
+  deploy.sh (3b) + cron hebdo `/etc/cron.d/levelup-docker-prune` (docker system prune
+  dimanche 04:30).
+- C (garde-fous) : drop-in journald `SystemMaxUse=200M` ; `/etc/docker/daemon.json`
+  rotation logs conteneurs (max-size 10m, max-file 3, effet au prochain restart daemon) ;
+  alerte disque horaire `/usr/local/bin/levelup-disk-check.sh` -> journald si > 80%.
+- Fix backup H5 : restic-backup.sh ne sauvegardait que `data/titles/halo_infinite` ->
+  halo_5 (`data/titles/halo_5`, 235 Mo) hors perimetre. Elargi a `data/titles` (couvre
+  tous les titres presents et futurs). Applique sur le VPS (couvert des 04:00) ET dans le
+  repo (durable : deploy.sh fait `git reset --hard`, donc une edition VPS-seule serait
+  ecrasee au prochain deploy).
+- Menage D : suppression des `_h5_backup_*` manuels dates (~314 Mo) — autorise, l'utilisateur
+  a un filet local.
+
+**Resultats** : `/` 30G/47G/39%. Garde-fous actifs (test alerte disque silencieux a 42%).
+2 fichiers repo modifies (scripts/deploy.sh, scripts/restic-backup.sh).
+
+**Prochaine etape** : commit branche `ops/vps-disk-guardrails` (apres autorisation) + merge/deploy
+pour rendre le fix durable. Option future : bascule build CI + registry ghcr.io (descopee ici).
