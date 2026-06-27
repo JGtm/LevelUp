@@ -73,6 +73,13 @@ docker compose up -d --build
 echo "[deploy] Nettoyage des images obsolètes..."
 docker image prune -f
 
+# 3b. Borner le cache de build BuildKit. Sans ça il croît sans limite à chaque
+# deploy (chaque build empile ses couches) et finit par saturer le disque du VPS
+# — incident disque 2026-06-27 : 33 Go de cache accumulé. On garde 5 Go de cache
+# récent pour des builds incrémentaux rapides ; au-delà, BuildKit évince le plus ancien.
+echo "[deploy] Bornage du cache de build Docker (keep 5GB)..."
+docker buildx prune -f --keep-storage=5GB || true
+
 # Helper : attendre qu'un endpoint HTTP réponde (retry jusqu'à max_seconds)
 _wait_for_http() {
     local url="$1" label="$2" max_seconds="${3:-90}"
