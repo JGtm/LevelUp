@@ -19,6 +19,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
@@ -88,6 +89,9 @@ func newTestCron(provider sharedprovider.Provider, scraper LeaderboardScraperPor
 	c := NewWorldLeaderboardCron(provider, scraper, 0)
 	c.playlists = func() []string { return []string{"pl-a", "pl-b"} } // 2 playlists déterministes
 	c.minEntries = 1                                                  // neutralise le plancher (testé séparément)
+	// Registre frais (halo_infinite seul, avec CapWorldLeaderboard) : isole les
+	// tests d'un éventuel SetDefaultRegistry global posé par un autre test.
+	c.registry = titlePkg.NewRegistry()
 	return c
 }
 
@@ -175,4 +179,67 @@ func TestWorldLeaderboardCron_SanityFloor(t *testing.T) {
 func TestWorldLeaderboardCron_NilGuards(t *testing.T) {
 	(&WorldLeaderboardCron{}).RunOnce(context.Background())
 	NewWorldLeaderboardCron(nil, nil, 0).RunOnce(context.Background())
+}
+
+// TestWorldLeaderboardCron_CapabilityGated vérifie la brique title-aware (PMT-7) :
+// le cron itère les titres actifs et ne produit un snapshot QUE pour ceux qui
+// déclarent CapWorldLeaderboard. Un titre actif SANS la cap (ex. Halo 5) est
+// skippé proprement — aucun scrape, aucun InsertWorldCSRSnapshot pour lui —
+// tandis que halo_infinite (avec la cap) reste traité normalement.
+func TestWorldLeaderboardCron_CapabilityGated(t *testing.T) {
+	provider, db := newSharedProviderForTest(t)
+	scraper := &stubScraper{
+		season: "csrseason13-2",
+		entries: []domain.LeaderboardEntry{
+			{Rank: 1, Gamertag: "Alpha", CSRValue: 1800, Tier: "Onyx", FetchedAt: time.Now().UTC()},
+			{Rank: 2, Gamertag: "Bravo", CSRValue: 1700, Tier: "Diamond", FetchedAt: time.Now().UTC()},
+		},
+	}
+	c := newTestCron(provider, scraper)
+
+	// Registre à 2 titres ACTIFS : halo_infinite (built-in, a CapWorldLeaderboard)
+	// + un titre sans la cap (modèle Halo 5 : pas de classement mondial scrapable).
+	reg := titlePkg.NewRegistry() // halo_infinite déjà enregistré avec la cap
+	reg.Register(&titlePkg.TitleDescriptor{
+		Slug:         "title_no_leaderboard",
+		Name:         "Title Sans Classement",
+		Provider:     "title_no_leaderboard",
+		Status:       titlePkg.StatusActive,
+		Capabilities: []titlePkg.Capability{titlePkg.CapMatchmaking}, // pas de CapWorldLeaderboard
+	})
+	c.registry = reg
+
+	c.RunOnce(context.Background())
+
+	// Le titre avec la cap a été scrapé une fois par playlist (2) → 2 fetchs ;
+	// le titre sans la cap ne déclenche aucun fetch supplémentaire.
+	if scraper.fetchCalls != 2 {
+		t.Errorf("FetchCSRLeaderboard attendu 2× (halo_infinite seul), got %d", scraper.fetchCalls)
+	}
+	// La saison n'est découverte qu'une fois (titre avec cap), pas pour le capless.
+	if scraper.activeCalls != 1 {
+		t.Errorf("FetchActiveSeason attendu 1× (halo_infinite seul), got %d", scraper.activeCalls)
+	}
+
+	// halo_infinite traité : 2 playlists × 2 entrées = 4 lignes sous son slug.
+	if got := countSnapshotsForTitle(t, db, "halo_infinite", "csrseason13-2"); got != 4 {
+		t.Fatalf("halo_infinite : %d lignes, attendu 4", got)
+	}
+	// Aucun snapshot pour le titre sans la cap (ni sous son slug, ni global).
+	if got := countSnapshotsForTitle(t, db, "title_no_leaderboard", "csrseason13-2"); got != 0 {
+		t.Errorf("titre sans CapWorldLeaderboard : %d lignes, attendu 0 (skippé)", got)
+	}
+}
+
+// countSnapshotsForTitle compte les snapshots d'une saison filtrés par title_slug.
+func countSnapshotsForTitle(t *testing.T, db *sql.DB, titleSlug, season string) int {
+	t.Helper()
+	var n int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM world_csr_leaderboard_snapshots WHERE title_slug = ? AND season_id = ?`,
+		titleSlug, season,
+	).Scan(&n); err != nil {
+		t.Fatalf("count snapshots by title: %v", err)
+	}
+	return n
 }

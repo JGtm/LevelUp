@@ -265,6 +265,21 @@ func countSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB
 	return missing
 }
 
+// CountSharedMatchesMissingEnrichment est le wrapper EXPORTÉ de
+// countSharedMatchesMissingEnrichment, pour les pipelines de sync DÉDIÉS hors du
+// package sync (runner live Halo 5 — internal/games/halo_5/livesync). Même
+// sémantique title-agnostic : nombre de matchs présents en shared.match_participants
+// pour ce xuid mais SANS row player_match_enrichment.
+//
+// Sert de garde bon-marché « backlog d'enrichment à 0 insert » : un match du titre
+// inséré en shared par le sync d'un coéquipier (delta-skip chez ce joueur) n'est
+// jamais enrichi tant qu'aucun cycle ne déclenche le reconcile full-shared
+// (BackfillEnrichmentFromShared). > 0 → le runner doit relancer son hook post-score
+// même à matchesInserted=0 (mirroir de hasConvergenceBacklog côté Infinite).
+func CountSharedMatchesMissingEnrichment(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) int {
+	return countSharedMatchesMissingEnrichment(ctx, playerDB, sharedDB, xuid)
+}
+
 // convergeEvents re-fetch les highlight events des matchs events_loaded=false
 // (matchs insérés par le watcher d'un teammate, ou film pas encore propagé au
 // 1er passage). Idempotent : un match events_loaded=true n'est jamais

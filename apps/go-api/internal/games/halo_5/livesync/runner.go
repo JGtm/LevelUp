@@ -64,6 +64,23 @@ type Deps struct {
 	// d'un cmd/h5-enrich/h5-csr-match manuel après chaque sync). Best-effort : une
 	// erreur n'avorte JAMAIS le cycle. nil → runner unit-testable sans player DB.
 	PostScore func(ctx context.Context, src halo5.CaptureSource, insertedMatchIDs []string) error
+	// HasEnrichmentBacklog : sonde OPTIONNELLE « reste-t-il des matchs en shared SANS
+	// enrichment par-joueur ? » (CountSharedMatchesMissingEnrichment côté sync,
+	// title-agnostic). Sert le FILET DE CONVERGENCE à 0 insert : un match du titre
+	// inséré en shared par le sync d'un coéquipier (delta-skip chez ce joueur) doit
+	// quand même déclencher PostScore — BackfillEnrichmentFromShared est un reconcile
+	// full-shared (ensurePlayerEnrichmentRows). Mirroir de hasConvergenceBacklog
+	// Infinite (engine_postsync.go). Garde bon-marché : appelée UNIQUEMENT à 0 insert.
+	// nil → comportement strict insert>0 (runner unit-testable sans DuckDB).
+	HasEnrichmentBacklog func(ctx context.Context) bool
+	// RunAchievements : hook OPTIONNEL post-sync (best-effort) qui synchronise les
+	// achievements Xbox du joueur pour ce titre — équivalent du runAchievementsSync
+	// Infinite (engine_postsync.go), appelé à CHAQUE post-sync (les achievements ne
+	// dépendent pas de l'insertion de matchs). RÉUTILISE le chemin title-aware
+	// existant (SyncEngineForTitle.RunAchievementsOnly), gaté sur la capability
+	// achievements du titre au CÂBLAGE (hook nil si absente). Best-effort : une
+	// erreur n'avorte JAMAIS le cycle. nil → runner unit-testable sans réseau Xbox.
+	RunAchievements func(ctx context.Context) error
 	// NotifyFirstSync : hook OPTIONNEL (MT-19 / axe E) appelé APRÈS persist quand le
 	// titre a des matchs (1er sync OU steady-state). Best-effort, HORS pipeline
 	// progression/prestige (qui reste Infinite-only). L'idempotence DURABLE (une
@@ -149,13 +166,32 @@ func (r *Runner) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.
 	}
 
 	// Hook post-score : enrichment PAR JOUEUR (+ LUSR) des matchs nouvellement
-	// persistés, en incrémental. Best-effort (n'avorte jamais le cycle). Skip si rien
-	// d'inséré (rien de nouveau à enrichir).
-	if r.deps.PostScore != nil && res.MatchesInserted > 0 {
+	// persistés, en incrémental. Best-effort (n'avorte jamais le cycle).
+	//
+	// FILET DE CONVERGENCE à 0 insert : on déclenche AUSSI quand un backlog
+	// d'enrichment existe (matchs du titre insérés en shared par le sync d'un
+	// coéquipier, delta-skippés chez ce joueur → jamais enrichis). Sans ça, le strict
+	// insert>0 laissait ces matchs sans enrichment à durée indéterminée. La sonde
+	// HasEnrichmentBacklog (CountSharedMatchesMissingEnrichment, title-agnostic) n'est
+	// consultée qu'à 0 insert (garde bon-marché). Mirroir de hasConvergenceBacklog
+	// Infinite + du pattern NotifyFirstSync ci-dessous (away-case).
+	if r.deps.PostScore != nil && shouldRunPostScore(ctx, res.MatchesInserted, r.deps.HasEnrichmentBacklog) {
 		if err := r.deps.PostScore(ctx, src, res.InsertedMatchIDs); err != nil {
 			r.logger.WarnContext(ctx, "h5 sync: post-score enrichment échoué (non bloquant)",
 				"gamertag", r.deps.Viewer.Gamertag, "err", err)
 			res.AddError("h5 post-score: " + err.Error())
+		}
+	}
+
+	// Achievements Xbox post-sync (parité Infinite : runAchievementsSync à CHAQUE
+	// post-sync, gate capability au câblage). Indépendant de l'insertion de matchs
+	// (les achievements évoluent hors match). Best-effort : une erreur n'avorte pas
+	// le cycle. RÉUTILISE le chemin title-aware (SyncEngineForTitle.RunAchievementsOnly).
+	if r.deps.RunAchievements != nil {
+		if err := r.deps.RunAchievements(ctx); err != nil {
+			r.logger.WarnContext(ctx, "h5 sync: achievements échoué (non bloquant)",
+				"gamertag", r.deps.Viewer.Gamertag, "err", err)
+			res.AddError("h5 achievements: " + err.Error())
 		}
 	}
 
@@ -199,4 +235,16 @@ func tallyResult(res *domain.SyncResult, done []*persist.MatchBatch, stats halo5
 // de connu → collecte complète).
 func mapContains(known map[string]bool) func(string) bool {
 	return func(id string) bool { return known[id] }
+}
+
+// shouldRunPostScore décide si le hook post-score (enrichment par-joueur) doit
+// tourner ce cycle. Pure (testable sans DuckDB) : déclenche dès qu'au moins un
+// match a été inséré ; à 0 insert, consulte la sonde de backlog (filet de
+// convergence — matchs insérés en shared par un coéquipier, jamais enrichis chez
+// ce joueur). Sonde nil OU faux à 0 insert → ne rien faire (comportement strict).
+func shouldRunPostScore(ctx context.Context, inserted int, hasBacklog func(context.Context) bool) bool {
+	if inserted > 0 {
+		return true
+	}
+	return hasBacklog != nil && hasBacklog(ctx)
 }

@@ -11,6 +11,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/worldenrich"
@@ -119,17 +120,67 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 			}
 			return nil
 		},
-		// Notif « titre prêt » (MT-19 / axe E) : délègue au notifier injecté au boot
-		// (cfg.TitleReadyNotifier, = api.BuildTitleReadyNotifier). nil en CLI/tests →
-		// no-op. Le titre (halo5.TitleSlug) et le joueur voyagent en arguments ; toute
-		// la logique (watermark idempotent + Emit dans le flux du titre par défaut)
-		// vit côté api, hors de la couche sync (zéro cycle d'import).
-		NotifyFirstSync: func(ctx context.Context, inserted int) {
-			if cfg.TitleReadyNotifier != nil {
-				cfg.TitleReadyNotifier(ctx, halo5.TitleSlug, gamertag, xuid, inserted)
-			}
+		// Filet de convergence à 0 insert : sonde « reste-t-il des matchs en shared
+		// SANS enrichment par-joueur ? » (parité avec hasConvergenceBacklog Infinite).
+		// Réutilise le helper title-agnostic CountSharedMatchesMissingEnrichment, via
+		// les mêmes acquisitions que loadKnownMatchIDs (handle player + shared coordonné
+		// B-swap). Consultée UNIQUEMENT à 0 insert (cf. shouldRunPostScore). Erreur
+		// d'ouverture → false : on ne force pas un PostScore sur une DB inaccessible.
+		HasEnrichmentBacklog: func(ctx context.Context) bool {
+			return h5HasEnrichmentBacklog(ctx, sharedProvider, playerPath, sharedPath, xuid)
 		},
+		// Achievements Xbox post-sync (parité Infinite). Gaté sur la capability du
+		// titre AU CÂBLAGE (hook nil si absente → jamais appelé). Réutilise le chemin
+		// title-aware SyncEngineForTitle.RunAchievementsOnly (lease player DB + gate
+		// capability interne + provider MSAL). Best-effort côté runner.
+		RunAchievements: buildAchievementsHook(cfg, gamertag, xuid),
 	}, logger)
+}
+
+// buildAchievementsHook construit le hook de sync des achievements Xbox du titre
+// Halo 5, ou nil si le titre ne déclare PAS la capability achievements (gate
+// title-agnostic AU CÂBLAGE, jamais slug==literal — archlint). Réutilise le chemin
+// title-aware existant (SyncEngineForTitle.RunAchievementsOnly), qui gère le lease
+// player DB, le gate capability interne et l'ouverture metadata. RunAchievementsOnly
+// retourne false sur erreur (déjà loggée) — on la remonte en err best-effort pour
+// que le runner la trace dans le SyncResult.
+func buildAchievementsHook(cfg *config.AppConfig, gamertag, xuid string) func(ctx context.Context) error {
+	desc := titlePkg.DefaultRegistry().Get(halo5.TitleSlug)
+	if desc == nil || !desc.HasCapability(titlePkg.CapAchievements) {
+		return nil
+	}
+	return func(ctx context.Context) error {
+		// Provider MSAL config-only (zéro dépendance injectée), comme le CLI
+		// sync-achievements (cmd_sync_achievements.go). NewSyncEngineForTitle résout
+		// tous les chemins DB via PathResolver + titleSlug.
+		engine := syncpkg.NewSyncEngineForTitle(cfg.RepoRoot, halo5.TitleSlug, gamertag, xuid, nil, auth.NewMSALProvider())
+		if !engine.RunAchievementsOnly(ctx) {
+			return fmt.Errorf("RunAchievementsOnly a échoué (voir logs)")
+		}
+		return nil
+	}
+}
+
+// h5HasEnrichmentBacklog ouvre player+shared (mêmes helpers que loadKnownMatchIDs /
+// PostScore — handle player RW ref-compté + shared via le provider B-swap) et compte
+// les matchs présents en shared.match_participants pour le xuid mais SANS row
+// player_match_enrichment (CountSharedMatchesMissingEnrichment, title-agnostic).
+// > 0 → un coéquipier a inséré des matchs du titre que ce joueur n'a jamais enrichis.
+// Erreur d'ouverture (player DB pas encore créée au tout 1er run, shared verrouillé)
+// → false : on ne force pas un reconcile sur une DB inaccessible (best-effort). Sonde
+// consultée UNIQUEMENT à 0 insert (cf. shouldRunPostScore), donc hors-cycle nominal.
+func h5HasEnrichmentBacklog(ctx context.Context, sharedProvider sharedprovider.Provider, playerPath, sharedPath, xuid string) bool {
+	playerDB, err := syncpkg.OpenPlayerDB(playerPath)
+	if err != nil {
+		return false
+	}
+	defer playerDB.Close()
+	shared, release, err := syncpkg.AcquireSharedWriterStandalone(ctx, sharedProvider, sharedPath)
+	if err != nil {
+		return false
+	}
+	defer release()
+	return syncpkg.CountSharedMatchesMissingEnrichment(ctx, playerDB.SQLDb(), shared, xuid) > 0
 }
 
 // halo5ResolverFactory retourne un factory LAZY : construit (à RunDelta) un
