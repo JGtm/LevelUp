@@ -2,8 +2,9 @@
 // les indicateurs canoniques (ADR 0006).
 //
 // Politique transverse : tests de non-régression nominatifs. Toute modification
-// d'un seuil métier (PerfTier) ou d'une formule (KDA/KDR/WinRate/Accuracy)
-// requiert ré-évaluation de ce fichier ET du miroir front (instances.test.ts).
+// d'un seuil métier (PerfTier) ou d'une formule (CombatEfficiency/KDR/WinRate/
+// Accuracy) requiert ré-évaluation de ce fichier ET du miroir front
+// (instances.test.ts).
 package analysis
 
 import (
@@ -17,9 +18,11 @@ func almostEqual(a, b float64) bool {
 	return math.Abs(a-b) < epsilon
 }
 
-// ─── KDA ────────────────────────────────────────────────────────────────
+// ─── CombatEfficiency ───────────────────────────────────────────────────
 
-func TestKDA(t *testing.T) {
+// CombatEfficiency = (kills+assists)/max(1,deaths) — métrique interne du perf
+// score, PAS le KDA affiché (qui est un net (k+a/3)−d, possiblement négatif).
+func TestCombatEfficiency(t *testing.T) {
 	cases := []struct {
 		name    string
 		k, a, d int
@@ -35,9 +38,9 @@ func TestKDA(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := KDA(tc.k, tc.a, tc.d)
+			got := CombatEfficiency(tc.k, tc.a, tc.d)
 			if !almostEqual(got, tc.want) {
-				t.Errorf("KDA(%d,%d,%d) = %v, want %v", tc.k, tc.a, tc.d, got, tc.want)
+				t.Errorf("CombatEfficiency(%d,%d,%d) = %v, want %v", tc.k, tc.a, tc.d, got, tc.want)
 			}
 		})
 	}

@@ -1,3 +1,39 @@
+## [2026-06-27] Éradication du quotient KDA (formule nette partout + coloration divergente + retrait capability native_kda) — COMPLÉTÉ + vérifié
+
+**Fait pivot (confirmé code/test)** : le KDA per-match est NET `(k + a/3) − d` (peut être négatif) pour LES DEUX titres — Infinite : champ API CoreStats « KDA » (transforms_extract_test 8.67=15+5/3−8, −6.0=8+1−15) ; Halo 5 : FDA native. Le quotient `(k+a/3)/morts` était LE bug à éradiquer. Agrégat (tout titre) = `((Σk + Σa/3) − Σd)/matchs` = `AVG(kda per-match net)`. Les sites « moyenne de KDA per-match » (home/squad/relations) sont donc DÉJÀ corrects (non touchés).
+
+**1. Agrégats quotient → net** : `compare_provider.go`, `leaderboard_world_repo.go`, `session_compare_service.go` + `session_compare_stat_helpers.go`, `compare_repo.go` + `explorer_target_stats.go` (suppression du **branchement** `ProvidesNativeKDA` ; param `nativeQuotientKDA`/arg retirés). Tests recalibrés aux valeurs nettes.
+
+**2. Rename** : `analysis.KDA` (=`(k+a)/morts`, efficacité combat, PAS le KDA affiché) → `CombatEfficiency` + callers (`performance_score.go`, `sync/performance.go`) + commentaire trompeur `domain/explorer.go`. `analysis.KDR` (kills/deaths) intact.
+
+**3. Coloration front + retrait capability `native_kda`** (corrige la boulette FDA d'hier : le KDA Infinite n'est PAS un quotient → échelle divergente pour les 2 titres) : `kdaDivergentScale` INCONDITIONNELLE sur toutes les valeurs KDA (ExplorerMatchesTable, match-card, HomeHeroKPIGrid, HomeSessionCarousel) ; `kdScale` réservé aux ratios K/D. Capability `native_kda` SUPPRIMÉE front (TITLE_CAPABILITIES, FeatureUnavailable, hook) + Go (registry, config_loader, skeleton tests à 13 caps, synthetic_b title.toml). Accesseur scalaire `games.ProvidesNativeKDA`/`no_native_kda` CONSERVÉ (sémantiquement valide, consommé par cmd/h5-read-smoke ; seul son branchement agrégat était à retirer).
+
+**Incident process** : workflow d'éradication à 4 agents parallèles → l'agent front a travaillé sur une vue git incohérente (fausse lecture HEAD/concurrence) et n'a RIEN persisté ; front refait à la main. Leçon : ne pas faire éditer front+Go par des agents parallèles dans le même worktree.
+
+**Vérif worktree** : `go build ./...` OK + `go test` (title/games/analysis/service/platform halo+duckdb) VERT ; `tsc` + `eslint` (0 err) + `vitest --pool=forks` 227/227 (1969 tests) ; grep `CapNativeKDA`/cap `native_kda` = 0.
+
+---
+
+## [2026-06-27] KDA NET universel — unification des 2 agrégats Explorer/Compare (teardown ProvidesNativeKDA BLOQUÉ) — COMPLÉTÉ
+
+**Décision technique** : le KDA per-match est NET ((k + a/3) − d, peut être négatif) pour LES DEUX titres (Infinite : valeur CoreStats "KDA" d'API ; Halo 5 : FDA NET native h5NetFDA). Donc l'agrégat correct = moyenne nette ((Σk + Σa/3) − Σd)/N == AVG(kda per-match stocké). Toute division par les morts pour un KDA est le bug à éradiquer.
+
+**Sites unifiés sur le NET (la branche H5 était déjà correcte)** :
+- `platform/duckdb/compare_repo.go` GetLocalStats : supprimé le branchement `if games.ProvidesNativeKDA(titleSlug)` qui produisait `AVG(k+0.33a)/NULLIF(AVG(d),0)` (quotient + 0.33≠1/3). `kdaExpr` = `AVG(mp.kda)` pour tous les titres. Import `games` retiré (devenu inutilisé).
+- `analysis/explorer_target_stats.go` BuildSampleStats : supprimé le paramètre `nativeQuotientKDA bool` et le `switch`. KDA = `((k + a/3) − d)/sampleSize` pour tous. Caller `service/explorer_service_target.go` : retiré l'argument `games.ProvidesNativeKDA(slug)` (l'appel `games.EffectiveHpToKill` garde l'import).
+
+**Tests mis à jour vers le NET** : `explorer_target_stats_test.go` — StandardCase KDA 2.2→6.0 ; DeathsZero KDA n'est plus nil (= 5.5, KDR reste nil) ; NetFDA renommé `_Universal` (drop bool) ; tous les appels perdent le dernier arg bool.
+
+**Teardown de la distinction (part 2) — NON EFFECTUÉ, BLOQUÉ** : après retrait de mes usages, `ProvidesNativeKDA`/`native_kda`/`CapNativeKDA` ont encore des usages HORS de mes fichiers → garde-fou de la directive respecté (ne pas supprimer l'accesseur/capability, signaler) :
+1. Front-end (apps/web, géré par un autre agent) consomme la capability : `lib/damage/effectiveHp.ts:78` `useCapability('native_kda')`, registre `lib/capabilities/capabilities.ts:30`, label `FeatureUnavailable.tsx:28`.
+2. `cmd/h5-read-smoke/main.go:52` : usage Go NON-test diagnostique `games.ProvidesNativeKDA`.
+Conservés intacts : accesseur damage_model.go, CapNativeKDA registry.go (+ déclaration halo_infinite), config_loader.go knownCapabilities, constants.toml no_native_kda (h5), synthetic_title_b/title.toml native_kda, skeleton_test (h5/synthetic_title_b), damage_model_test TestProvidesNativeKDA.
+
+**Résultat** : pas de go build/test lancé (vérif centralisée demandée). Per-match net → moyenne == net carrière, donc les sites AVG(kda) déjà corrects non touchés.
+**Prochaine étape** : un agent front pourra retirer la dépendance `native_kda` côté apps/web ; une fois le front + cmd/h5-read-smoke nettoyés, le teardown de la capability/accesseur devient possible.
+
+---
+
 ## [2026-06-27] Point 3 — Gate catalog/asset sur présence réelle d'un catalog adapter (remplace le proxy CapForge) — COMPLÉTÉ + vérifié
 
 Resserrement du gate des crons `catalog_refresh` + `asset_name_sweep` : remplacé le proxy `CapForge` par le test RÉEL « ce titre a-t-il un catalog adapter discovery-infiniteugc résolvable ? ». Nouveau `CatalogAdapterChecker func(slug) bool` injecté via `WithCatalogAdapterCheck`, câblé sur `(*api.ServiceRegistry).HasCatalogAdapter` (construit l'adapter via le MÊME chemin que le drain — `experience_rules.toml` + `halo_infinite.NewCatalogAdapter`, fetcher nil = zéro réseau — et teste `resolver.Catalog(slug)==nil`). HINF a `experience_rules.toml` → résolvable → run ; H5 n'a que `ranked_hoppers.toml` → non résolvable → skip propre (slog Debug). Fallback rétro-compat `CapForge` si aucun checker injecté. DRY : `catalogExperienceRulesPath` partagé drain/checker. Wiring `main.go` aux 2 sites. Tests : 3 (HasCatalogAdapter présent/absent/nil-safe) + 2 FallbackCapForge + skip basculé sur le checker injecté.

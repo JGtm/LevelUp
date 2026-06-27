@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -34,15 +33,13 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 	// shared-only via SharedReader (root-level naming). PMT-5 : win_rate title-aware
 	// (fallback "mp.outcome = 2" byte-identique Halo).
 	winExpr := outcomeSQLEqSlug(titleSlug, "mp.outcome", canonical.OutcomeWin, "mp.outcome = 2")
-	// KDA title-aware, SANS recalcul de la forme par match (règle : le KDA par match
-	// est figé à l'ingestion). Titres à KDA natif d'API (Infinite) : quotient agrégé
-	// historique (k + a/3)/d sur les sommes. Halo 5 : KDA = FDA NET stocké à
-	// l'ingestion → moyenne des valeurs par match (= FDA NET carrière, peut être
-	// négatif), AUCUNE refabrication du quotient.
+	// KDA agrégé = moyenne des KDA par match, SANS recalcul de la forme par match
+	// (règle : le KDA par match est figé à l'ingestion). Le KDA per-match est NET
+	// ((k + a/3) − d, peut être négatif) pour TOUS les titres (Infinite : valeur
+	// CoreStats "KDA" d'API ; Halo 5 : FDA NET native). Donc AVG(mp.kda) ==
+	// ((Σk + Σa/3) − Σd)/N : c'est l'agrégat NET carrière correct, identique pour
+	// tous les titres. AUCUNE division par les morts (le quotient serait un BUG).
 	kdaExpr := "AVG(mp.kda)"
-	if games.ProvidesNativeKDA(titleSlug) {
-		kdaExpr = "AVG(COALESCE(mp.kills, 0) + 0.33 * COALESCE(mp.assists, 0)) / NULLIF(AVG(COALESCE(mp.deaths, 0)), 0)"
-	}
 	q := `
 		SELECT
 			mp.xuid,

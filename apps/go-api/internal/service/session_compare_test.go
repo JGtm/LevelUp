@@ -222,15 +222,23 @@ func TestSessionCompareService_Compare_WithFilterAndSingleSession(t *testing.T) 
 }
 
 func TestEffectiveKDA(t *testing.T) {
+	// Chemin nominal : le KDA stocké est rendu tel quel.
 	precomputed := 1.75
 	if got := effectiveKDA(legacymatch.StatsMatchRow{KDA: &precomputed}); got == nil || *got != precomputed {
 		t.Fatalf("expected precomputed KDA, got %#v", got)
 	}
+	// Fallback = FDA NET per-match ((kills + assists/3) − deaths), JAMAIS un quotient.
+	// 9 kills, 0 assist, 0 mort → 9 + 0/3 − 0 = 9.
 	if got := effectiveKDA(legacymatch.StatsMatchRow{Kills: 9, Deaths: 0}); got == nil || *got != 9 {
-		t.Fatalf("expected kills fallback, got %#v", got)
+		t.Fatalf("expected net fallback 9, got %#v", got)
 	}
-	if got := effectiveKDA(legacymatch.StatsMatchRow{Kills: 9, Deaths: 4}); got == nil || *got != 2.25 {
-		t.Fatalf("expected computed fallback, got %#v", got)
+	// 9 kills, 0 assist, 4 morts → 9 + 0/3 − 4 = 5 (et NON 9/4 = 2.25).
+	if got := effectiveKDA(legacymatch.StatsMatchRow{Kills: 9, Deaths: 4}); got == nil || *got != 5 {
+		t.Fatalf("expected net fallback 5, got %#v", got)
+	}
+	// 10 kills, 6 assists, 8 morts → 10 + 6/3 − 8 = 4 (vérifie le terme assists/3).
+	if got := effectiveKDA(legacymatch.StatsMatchRow{Kills: 10, Assists: 6, Deaths: 8}); got == nil || *got != 4 {
+		t.Fatalf("expected net fallback 4 with assists, got %#v", got)
 	}
 }
 
@@ -275,6 +283,11 @@ func TestBuildCompareEntry_DerivedMetrics(t *testing.T) {
 	}
 	if entry.KillsPerMatch != 8 { // 16 kills / 2 matchs
 		t.Fatalf("KillsPerMatch: want 8, got %v", entry.KillsPerMatch)
+	}
+	// KDA de session = agrégat NET par match ((Σk + Σa/3) − Σd) / nb_matchs.
+	// (16 + 0/3 − 10) / 2 = 3.0 — JAMAIS Σk/Σd = 1.6.
+	if entry.KDA == nil || *entry.KDA != 3.0 {
+		t.Fatalf("KDA: want net 3.0, got %v", entry.KDA)
 	}
 }
 

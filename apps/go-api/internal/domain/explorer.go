@@ -367,7 +367,9 @@ type ExplorerMatchesRow struct {
 	TeamMMR *float64 `json:"team_mmr,omitempty"`
 	// EnemyMMR : MMR moyen de l'équipe adverse sur ce match (nil si non rankée).
 	EnemyMMR *float64 `json:"enemy_mmr,omitempty"`
-	// KDA : ratio (Kills + Assists/3) / Deaths — calculé côté backend.
+	// KDA per-match : valeur API native (Infinite) ou FDA net (k+a/3)-d
+	// (Halo 5), nette (peut être négative), lue telle quelle ; jamais un
+	// quotient/deaths.
 	KDA *float64 `json:"kda,omitempty"`
 	// DurationSeconds : durée du match en secondes (nil si manquante).
 	DurationSeconds *int `json:"duration_seconds,omitempty"`

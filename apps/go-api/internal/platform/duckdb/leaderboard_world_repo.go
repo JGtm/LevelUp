@@ -422,7 +422,7 @@ var statMetrics = map[domain.LeaderboardCategory]statMetric{
 	domain.LeaderboardAssists:       {"SUM(mp.assists)", ""},
 	domain.LeaderboardKillsPerGame:  {"SUM(mp.kills) * 1.0 / COUNT(DISTINCT mp.match_id)", ""},
 	domain.LeaderboardKDR:           {"SUM(mp.kills) * 1.0 / GREATEST(SUM(mp.deaths), 1)", ""},
-	domain.LeaderboardKDA:           {"(SUM(mp.kills) + SUM(mp.assists) / 3.0) / GREATEST(SUM(mp.deaths), 1)", ""},
+	domain.LeaderboardKDA:           {"((SUM(mp.kills) + SUM(mp.assists) / 3.0) - SUM(mp.deaths)) / GREATEST(COUNT(DISTINCT mp.match_id), 1)", ""},
 	domain.LeaderboardAccuracy:      {"SUM(mp.shots_hit) * 100.0 / NULLIF(SUM(mp.shots_fired), 0)", "%"},
 	domain.LeaderboardDamage:        {"SUM(mp.damage_dealt)", ""},
 	domain.LeaderboardDamagePerGame: {"SUM(mp.damage_dealt) * 1.0 / COUNT(DISTINCT mp.match_id)", ""},
