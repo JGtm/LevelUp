@@ -192,6 +192,11 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
   // par la capability du titre (masquée pour Infinite qui ne les fournit pas).
   const hasKillMechanics = useCapability('native_kill_mechanics')
 
+  // Dégâts reçus : indispo pour Halo 5 (total_damage_taken non-nullable = 0 →
+  // afficherait un « 0 » trompeur). Capability-gated → retrait silencieux de la
+  // carte quand le titre ne fournit pas la donnée.
+  const hasDamageTaken = useCapability('damage_taken')
+
   return (
     <section className="space-y-3">
       <header><h3 className="text-base font-semibold text-foreground">Vue d'ensemble</h3></header>
@@ -394,7 +399,9 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                   <div>
                     <div className="grid grid-cols-2 gap-2">
                       <AccentCard label={fieldMappings?.fields['damage_dealt']?.label ?? 'Dégâts infligés'} value={Math.round(detailedStats.total_damage_dealt).toLocaleString('fr-FR')} accent="outcome-win" />
-                      <AccentCard label="Dégâts reçus"    value={Math.round(detailedStats.total_damage_taken).toLocaleString('fr-FR')} accent="outcome-loss" />
+                      {hasDamageTaken && (
+                        <AccentCard label="Dégâts reçus"    value={Math.round(detailedStats.total_damage_taken).toLocaleString('fr-FR')} accent="outcome-loss" />
+                      )}
                     </div>
                   </div>
 

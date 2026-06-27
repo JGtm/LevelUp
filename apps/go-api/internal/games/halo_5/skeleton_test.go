@@ -46,6 +46,10 @@ func TestHalo5_Manifest(t *testing.T) {
 	}
 	for _, c := range []title.Capability{
 		title.CapFirefight, title.CapForge, title.CapWorldLeaderboard,
+		// team_mmr / damage_taken = miroir title-level des flags scalaires :
+		// Halo 5 déclare no_team_mmr / no_damage_taken (constants.toml) donc
+		// ProvidesTeamMMR/ProvidesDamageTaken == false → AUCUNE des deux caps.
+		title.CapTeamMMR, title.CapDamageTaken,
 	} {
 		if desc.HasCapability(c) {
 			t.Errorf("coarse capability %q ne devrait PAS être déclarée pour Halo 5", c)

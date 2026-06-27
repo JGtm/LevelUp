@@ -22,6 +22,7 @@ import {
 import { TimeseriesSessionPerformance } from './TimeseriesSquadAdapted'
 import { WinRateVsHistoryBulletChart } from '@/features/squad/WinRateVsHistoryBulletChart'
 import { MapPerfVsHistoryChart } from '@/features/squad/MapPerfVsHistoryChart'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import type { FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import type { TimeseriesPageResponse } from '@/lib/api/types'
 import type { TimeseriesManifestKey } from '@/lib/i18n/generated/timeseries'
@@ -57,6 +58,9 @@ export function TimeseriesSummaryTab({
   mapLabelOf,
 }: TimeseriesSummaryTabProps) {
   const emptyMsg = t('timeseries.empty.no_data_description')
+  // MMR par match indisponible (titre sans `team_mmr`, ex. Halo 5) → la série MMR
+  // de « Performance par session » est retirée (data + axe + légende).
+  const hasTeamMmr = useCapability('team_mmr')
   const soloPerf = data.solo_session_perf
   const soloGranularity: 'session' | 'week' | 'month' =
     soloPerf?.granularity === 'week' || soloPerf?.granularity === 'month'
@@ -182,6 +186,7 @@ export function TimeseriesSummaryTab({
           t('timeseries.summary.win_rate_label')
         }
         mmrLabel={fieldMappings?.fields['team_mmr']?.label ?? 'MMR équipe'}
+        showMmr={hasTeamMmr}
       />
 
       {/* Taux de victoire (gauche) | Performance par carte (droite) —

@@ -121,6 +121,17 @@ export function SquadPerformanceCharts({
     [playerOrder, rowsByPlayer],
   )
 
+  // DATA-GATE accuracy : pas de capability dédiée → on regarde la donnée. Si
+  // aucun point n'a d'accuracy (tout null, cas Halo 5), on NE MONTE PAS la carte
+  // « Précision » (pas de carte titrée vide). Reste affichée pour Infinite.
+  const hasAccuracy = useMemo(
+    () =>
+      Object.values(rowsByPlayer).some((pts) =>
+        pts.some((p) => p.accuracy != null),
+      ),
+    [rowsByPlayer],
+  )
+
   const stacked = isMobile || xMatchLabels.length >= PAIR_LAYOUT_THRESHOLD
   const pairClass = stacked ? 'space-y-4' : 'grid grid-cols-1 md:grid-cols-2 gap-4'
 
@@ -283,14 +294,16 @@ export function SquadPerformanceCharts({
           emptyMessage={emptyMessage}
         />
       </div>
-      <div className={pairClass}>
-        <ChartCard
-          title={labels.accuracyTitle}
-          series={series}
-          buildOption={buildAccuracy}
-          height={SUBCHART_HEIGHT}
-          emptyMessage={emptyMessage}
-        />
+      <div className={hasAccuracy ? pairClass : (stacked ? 'space-y-4' : 'grid grid-cols-1 gap-4')}>
+        {hasAccuracy && (
+          <ChartCard
+            title={labels.accuracyTitle}
+            series={series}
+            buildOption={buildAccuracy}
+            height={SUBCHART_HEIGHT}
+            emptyMessage={emptyMessage}
+          />
+        )}
         <ChartCard
           title={labels.fragBreakdownTitle}
           series={series}

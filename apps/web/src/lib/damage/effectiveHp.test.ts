@@ -17,46 +17,29 @@ describe('substituteHpToken', () => {
   })
 })
 
-// Mirror de useEffectiveHpToKill : lecture title-aware depuis appShellStore, défaut
-// Infinite (provides_damage_taken ?? true). Garantit que la Résistance défensive est
-// neutralisée (N/A) pour les titres sans damage_taken (Halo 5) sans toucher Infinite.
+// useProvidesDamageTaken délègue désormais à useCapability('damage_taken') (source
+// unique de masquage booléen). La Résistance défensive est neutralisée (N/A) pour
+// les titres qui ne DÉCLARENT PAS la capability damage_taken (Halo 5), sans toucher
+// Infinite (qui la déclare). Fail-open : true tant que le titre courant est inconnu
+// / le bootstrap non chargé (cf. useCapability).
 describe('useProvidesDamageTaken', () => {
   const base = {
     name: '',
     status: 'active' as const,
-    capabilities: [],
     is_default: false,
     effective_hp_to_kill: 225,
   }
-  const title = (slug: string, provides?: boolean): TitleSummary => ({
+  const title = (slug: string, hasDamageTaken: boolean): TitleSummary => ({
     ...base,
     slug,
-    ...(provides === undefined ? {} : { provides_damage_taken: provides }),
+    capabilities: hasDamageTaken ? ['damage_taken'] : [],
   })
 
   afterEach(() => {
     useAppShellStore.setState({ availableTitles: [], currentTitleSlug: 'halo_infinite' })
   })
 
-  it('défaut true quand le titre courant omet provides_damage_taken (Infinite inchangé)', () => {
-    useAppShellStore.setState({
-      availableTitles: [title('halo_infinite')],
-      currentTitleSlug: 'halo_infinite',
-    })
-    const { result } = renderHook(() => useProvidesDamageTaken())
-    expect(result.current).toBe(true)
-  })
-
-  it('false quand le titre courant déclare provides_damage_taken=false (Halo 5)', () => {
-    useAppShellStore.setState({
-      availableTitles: [title('halo_infinite'), title('halo_5', false)],
-      currentTitleSlug: 'halo_5',
-    })
-    const { result } = renderHook(() => useProvidesDamageTaken())
-    expect(result.current).toBe(false)
-  })
-
-  it('true quand le titre courant déclare provides_damage_taken=true', () => {
+  it('true quand le titre courant déclare la capability damage_taken (Infinite)', () => {
     useAppShellStore.setState({
       availableTitles: [title('halo_infinite', true)],
       currentTitleSlug: 'halo_infinite',
@@ -65,7 +48,16 @@ describe('useProvidesDamageTaken', () => {
     expect(result.current).toBe(true)
   })
 
-  it('défaut true quand le slug courant est introuvable', () => {
+  it('false quand le titre courant ne déclare pas damage_taken (Halo 5)', () => {
+    useAppShellStore.setState({
+      availableTitles: [title('halo_infinite', true), title('halo_5', false)],
+      currentTitleSlug: 'halo_5',
+    })
+    const { result } = renderHook(() => useProvidesDamageTaken())
+    expect(result.current).toBe(false)
+  })
+
+  it('fail-open true quand le slug courant est introuvable', () => {
     useAppShellStore.setState({
       availableTitles: [title('halo_5', false)],
       currentTitleSlug: 'inconnu',

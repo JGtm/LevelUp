@@ -35,7 +35,11 @@ import {
   defensiveDamageGradient,
   offensiveDamageGradient,
 } from '@/lib/charts/oneLifeDamageGradient'
-import { useEffectiveHpToKill, substituteHpToken } from '@/lib/damage/effectiveHp'
+import {
+  useEffectiveHpToKill,
+  substituteHpToken,
+  useProvidesDamageTaken,
+} from '@/lib/damage/effectiveHp'
 import { buildMatchCategories } from './matchLabels'
 
 interface RenderProps {
@@ -66,6 +70,10 @@ export interface TimeseriesSessionPerformanceProps {
   perfLabel: string
   winRateLabel: string
   mmrLabel: string
+  /** `false` (titre sans `team_mmr`, ex. Halo 5) → la série MMR, son entrée de
+   *  légende et le suffixe « / MMR équipe » de l'axe Y2 sont retirés (pas de
+   *  ligne fantôme). Défaut `true` (Halo Infinite inchangé). */
+  showMmr?: boolean
 }
 
 export function TimeseriesSessionPerformance({
@@ -77,6 +85,7 @@ export function TimeseriesSessionPerformance({
   perfLabel,
   winRateLabel,
   mmrLabel,
+  showMmr = true,
 }: TimeseriesSessionPerformanceProps) {
   const themeVersion = useThemeVersion()
 
@@ -129,7 +138,8 @@ export function TimeseriesSessionPerformance({
         {
           ...getAxisBase(tc),
           type: 'value',
-          name: `${winRateLabel} / ${mmrLabel}`,
+          // Sans MMR (Halo 5) : l'axe Y2 ne porte plus que le taux de victoire.
+          name: showMmr ? `${winRateLabel} / ${mmrLabel}` : winRateLabel,
           scale: true,
           nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
           splitLine: { show: false },
@@ -156,21 +166,27 @@ export function TimeseriesSessionPerformance({
           itemStyle: { color: colWR },
           z: 5,
         },
-        {
-          type: 'line',
-          name: mmrLabel,
-          yAxisIndex: 1,
-          data: mmr,
-          showSymbol: false,
-          smooth: false,
-          connectNulls: true,
-          lineStyle: { color: colMMR, width: 1.5, type: 'dashed' },
-          z: 4,
-        },
+        // Ligne MMR équipe + son entrée de légende retirées quand le titre ne
+        // fournit pas de MMR par match (data + axe restant déjà nettoyés).
+        ...(showMmr
+          ? [
+              {
+                type: 'line' as const,
+                name: mmrLabel,
+                yAxisIndex: 1,
+                data: mmr,
+                showSymbol: false,
+                smooth: false,
+                connectNulls: true,
+                lineStyle: { color: colMMR, width: 1.5, type: 'dashed' as const },
+                z: 4,
+              },
+            ]
+          : []),
       ],
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [points, granularity, perfLabel, winRateLabel, mmrLabel, themeVersion])
+  }, [points, granularity, perfLabel, winRateLabel, mmrLabel, showMmr, themeVersion])
   return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 
@@ -238,6 +254,9 @@ export function TimeseriesEfficiency({
 }: TimeseriesEfficiencyProps) {
   const themeVersion = useThemeVersion()
   const hp = useEffectiveHpToKill() // barème PV-pour-tuer du titre courant (225 Infinite, 115 h5)
+  // false (Halo 5 : API sans damage_taken) → « Dégâts / mort » non calculable :
+  // on retire entièrement la courbe + son entrée de légende (pas de ligne vide).
+  const providesDamageTaken = useProvidesDamageTaken()
 
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (rows.length === 0) return null
@@ -246,7 +265,9 @@ export function TimeseriesEfficiency({
 
     const categories = buildMatchCategories(rows)
     const dmgKill = rows.map((r) => damagePerKill(r.damage_dealt, r.kills))
-    const dmgDeath = rows.map((r) => damagePerDeath(r.damage_taken, r.deaths))
+    const dmgDeath = providesDamageTaken
+      ? rows.map((r) => damagePerDeath(r.damage_taken, r.deaths))
+      : []
     const bounds = damageAxisBounds([...dmgKill, ...dmgDeath], hp)
 
     return {
@@ -300,18 +321,28 @@ export function TimeseriesEfficiency({
             data: [{ yAxis: hp }],
           },
         },
-        {
-          type: 'line',
-          name: resistanceLabel,
-          data: dmgDeath,
-          showSymbol: false,
-          smooth: false,
-          connectNulls: true,
-          lineStyle: { color: defensiveDamageGradient(dmgDeath, hp), width: 2, type: 'dashed' },
-        },
+        // Série « Résistance » (Dégâts / mort) + son entrée de légende retirées
+        // quand le titre ne fournit pas damage_taken (Halo 5).
+        ...(providesDamageTaken
+          ? [
+              {
+                type: 'line' as const,
+                name: resistanceLabel,
+                data: dmgDeath,
+                showSymbol: false,
+                smooth: false,
+                connectNulls: true,
+                lineStyle: {
+                  color: defensiveDamageGradient(dmgDeath, hp),
+                  width: 2,
+                  type: 'dashed' as const,
+                },
+              },
+            ]
+          : []),
       ],
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, rendementLabel, resistanceLabel, refLabel, themeVersion, hp])
+  }, [rows, rendementLabel, resistanceLabel, refLabel, themeVersion, hp, providesDamageTaken])
   return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
