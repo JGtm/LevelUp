@@ -71,6 +71,7 @@ export type SemanticToken =
   | 'narrative-encounter-de-longue-date'
   | 'narrative-encounter-recrue'
   | 'narrative-encounter-proie-favorite'
+  | 'narrative-encounter-cross-game'
 
   // ── Badges narratifs — texte (5) ───────────────────────────────────────────
   // Texte sur fond coloré — calculé pour assurer le contraste WCAG AA
@@ -122,7 +123,7 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'narrative-encounter-coriace', 'narrative-encounter-ordinal',
   'narrative-encounter-duo-gagnant', 'narrative-encounter-cameleon',
   'narrative-encounter-de-longue-date', 'narrative-encounter-recrue',
-  'narrative-encounter-proie-favorite',
+  'narrative-encounter-proie-favorite', 'narrative-encounter-cross-game',
   'heatmap-cold', 'heatmap-hot', 'heatmap-divergent-low', 'heatmap-divergent-high',
   'team-ally', 'team-enemy',
 ] as const

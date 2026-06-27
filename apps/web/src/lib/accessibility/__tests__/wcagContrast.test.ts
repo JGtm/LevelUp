@@ -48,3 +48,31 @@ describe.each(Object.entries(PALETTES))('palette "%s" — WCAG AA narratif', (_n
     },
   )
 })
+
+// Badges de relation (Communauté > Relations + Explorer/Match View/Compare) :
+// rendus SOLIDES + texte blanc (--color-badge-on-solid) dans toutes les palettes
+// → la couleur de fond doit garantir AA sur blanc (cf. _encounterColors.ts).
+const ENCOUNTER_TOKENS: SemanticToken[] = [
+  'narrative-encounter-ally-plus',
+  'narrative-encounter-tough-enemy',
+  'narrative-encounter-coriace',
+  'narrative-encounter-ordinal',
+  'narrative-encounter-duo-gagnant',
+  'narrative-encounter-cameleon',
+  'narrative-encounter-de-longue-date',
+  'narrative-encounter-recrue',
+  'narrative-encounter-proie-favorite',
+  'narrative-encounter-cross-game',
+]
+
+const BADGE_TEXT_WHITE = '#FFFFFF'
+
+describe.each(Object.entries(PALETTES))('palette "%s" — WCAG AA badges relation (texte blanc)', (_name, palette) => {
+  it.each(ENCOUNTER_TOKENS)('badge %s sur blanc ≥ 4.5:1', (token) => {
+    const ratio = contrastRatio(palette[token], BADGE_TEXT_WHITE)
+    expect(
+      ratio,
+      `contraste insuffisant pour ${token} sur blanc: ${ratio.toFixed(2)} < ${WCAG_AA_NORMAL}`,
+    ).toBeGreaterThanOrEqual(WCAG_AA_NORMAL)
+  })
+})
