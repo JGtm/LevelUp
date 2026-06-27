@@ -37,12 +37,19 @@ func NewCareerLiveRepo(pdb *PlayerDB) *CareerLiveRepo {
 // xp_total et adornment_path. La table contient potentiellement plusieurs
 // xuids historiques (cas rare), on filtre explicitement.
 //
-// `xp_for_next_rank` porte un FILTER WHERE NOT NULL explicite : les lignes
-// "partial" (career_progression_partial.go) omettent cette colonne (laissée
-// NULL) et les snapshots des titres sans catalogue de rangs de carrière ne la
-// remplissent jamais. Sans le FILTER, COALESCE(ARG_MAX(..), 0) pouvait surfacer
-// un 0 (barre de progression vide) à partir d'une ligne partielle alors qu'une
-// ligne antérieure portait une valeur valide (défense en profondeur S1).
+// Les champs CARRIÈRE (rank, rank_name, rank_tier, current_xp, xp_for_next_rank,
+// xp_total, is_max_rank) portent TOUS un FILTER WHERE rank IS NOT NULL. Raison :
+// career_progression mélange deux types de lignes — les snapshots CARRIÈRE
+// (rank renseigné, écrits par le sync de rang) ET les lignes APPEARANCE-ONLY
+// (spartan_id/emblem/banner renseignés, rank/current_xp/xp_* = NULL/0 — écrites
+// par le backfill d'apparence H5, cf. appearance_persist). Sans ce FILTER,
+// ARG_MAX(current_xp, recorded_at) pickait la ligne appearance la PLUS RÉCENTE
+// (current_xp=0, mais rank=NULL ignoré par ARG_MAX → rank correct) → barre XP
+// vide alors que la vraie ligne carrière portait l'XP. Le FILTER lit les champs
+// carrière depuis la dernière ligne RÉELLEMENT carrière, indépendamment des
+// lignes appearance. (Couvre aussi l'ancien cas "partial" : xp_for_next_rank
+// NULL → ARG_MAX le saute de toute façon.) Les champs APPEARANCE gardent leur
+// propre FILTER (dernière ligne non vide). Défense en profondeur S1.
 //
 // Note `xuid || ”` : workaround d'une corruption d'index ART connue sur
 // player_db (cf. docs/INCIDENT_2026-05-20_match_participants_index.md ET
@@ -57,13 +64,13 @@ func NewCareerLiveRepo(pdb *PlayerDB) *CareerLiveRepo {
 // ces régressions d'index, cf. duckdb/duckdb#9999 et apparentés).
 const qLoadLastCareerRank = `
 SELECT
-    COALESCE(ARG_MAX(rank,              recorded_at), 0)                                                    AS rank,
-    NULLIF(TRIM(ARG_MAX(rank_name,      recorded_at)), '')                                                  AS rank_name,
-    NULLIF(TRIM(ARG_MAX(rank_tier,      recorded_at)), '')                                                  AS rank_tier,
-    COALESCE(ARG_MAX(current_xp,        recorded_at), 0)                                                    AS current_xp,
-    COALESCE(ARG_MAX(xp_for_next_rank,  recorded_at) FILTER (WHERE xp_for_next_rank IS NOT NULL), 0)         AS xp_for_next_rank,
-    COALESCE(ARG_MAX(xp_total,          recorded_at), 0)                                                    AS xp_total,
-    COALESCE(ARG_MAX(is_max_rank,       recorded_at), FALSE)                                                AS is_max_rank,
+    COALESCE(ARG_MAX(rank,              recorded_at) FILTER (WHERE rank IS NOT NULL), 0)                     AS rank,
+    NULLIF(TRIM(ARG_MAX(rank_name,      recorded_at) FILTER (WHERE rank IS NOT NULL)), '')                  AS rank_name,
+    NULLIF(TRIM(ARG_MAX(rank_tier,      recorded_at) FILTER (WHERE rank IS NOT NULL)), '')                  AS rank_tier,
+    COALESCE(ARG_MAX(current_xp,        recorded_at) FILTER (WHERE rank IS NOT NULL), 0)                    AS current_xp,
+    COALESCE(ARG_MAX(xp_for_next_rank,  recorded_at) FILTER (WHERE rank IS NOT NULL), 0)                    AS xp_for_next_rank,
+    COALESCE(ARG_MAX(xp_total,          recorded_at) FILTER (WHERE rank IS NOT NULL), 0)                    AS xp_total,
+    COALESCE(ARG_MAX(is_max_rank,       recorded_at) FILTER (WHERE rank IS NOT NULL), FALSE)                AS is_max_rank,
     ARG_MAX(spartan_id,         recorded_at) FILTER (WHERE NULLIF(TRIM(spartan_id),         '') IS NOT NULL) AS spartan_id,
     ARG_MAX(banner_image_url,   recorded_at) FILTER (WHERE NULLIF(TRIM(banner_image_url),   '') IS NOT NULL) AS banner_image_url,
     ARG_MAX(emblem_image_url,   recorded_at) FILTER (WHERE NULLIF(TRIM(emblem_image_url),   '') IS NOT NULL) AS emblem_image_url,

@@ -181,13 +181,13 @@ SELECT COUNT(*) FROM match_participants WHERE xuid = ?`
 // ParamÃ¨tre : aucun.
 const Q26cHomeSpartanIdentity = `
 SELECT
-    ARG_MAX(rank,             recorded_at)                                                                  AS rank,
-    COALESCE(ARG_MAX(current_xp,      recorded_at), 0)                                                     AS current_xp,
-    COALESCE(ARG_MAX(xp_for_next_rank, recorded_at), 0)                                                    AS xp_for_next_rank,
-    COALESCE(ARG_MAX(is_max_rank,     recorded_at), FALSE)                                                  AS is_max_rank,
+    ARG_MAX(rank,             recorded_at) FILTER (WHERE rank IS NOT NULL)                                  AS rank,
+    COALESCE(ARG_MAX(current_xp,      recorded_at) FILTER (WHERE rank IS NOT NULL), 0)                     AS current_xp,
+    COALESCE(ARG_MAX(xp_for_next_rank, recorded_at) FILTER (WHERE rank IS NOT NULL), 0)                    AS xp_for_next_rank,
+    COALESCE(ARG_MAX(is_max_rank,     recorded_at) FILTER (WHERE rank IS NOT NULL), FALSE)                  AS is_max_rank,
     ARG_MAX(spartan_id,       recorded_at) FILTER (WHERE NULLIF(TRIM(spartan_id),       '') IS NOT NULL)    AS spartan_id,
-    NULLIF(TRIM(ARG_MAX(rank_name,    recorded_at)), '')                                                    AS rank_name,
-    NULLIF(TRIM(ARG_MAX(rank_tier,    recorded_at)), '')                                                    AS rank_tier,
+    NULLIF(TRIM(ARG_MAX(rank_name,    recorded_at) FILTER (WHERE rank IS NOT NULL)), '')                    AS rank_name,
+    NULLIF(TRIM(ARG_MAX(rank_tier,    recorded_at) FILTER (WHERE rank IS NOT NULL)), '')                    AS rank_tier,
     ARG_MAX(banner_image_url,  recorded_at) FILTER (WHERE NULLIF(TRIM(banner_image_url),  '') IS NOT NULL)  AS banner_image_url,
     ARG_MAX(emblem_image_url,  recorded_at) FILTER (WHERE NULLIF(TRIM(emblem_image_url),  '') IS NOT NULL)  AS emblem_image_url,
     ARG_MAX(backdrop_image_url, recorded_at) FILTER (WHERE NULLIF(TRIM(backdrop_image_url),'') IS NOT NULL) AS backdrop_image_url,
