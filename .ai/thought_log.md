@@ -1,3 +1,15 @@
+## [2026-06-27] Démo Halo 5 — Phase 3c : kill-feed H5 lu DuckDB (+ match view déjà OK)
+
+**Correction d'une erreur** : j'avais conclu (à tort) que le kill-feed H5 était « live-only » en regardant seulement `highlight_events` (medal/assist/mode). FAUX. Le kill-feed natif h5 est PERSISTÉ sur 3 tables alignées par `(match_id, killer_xuid, time_ms)` : `killer_victim_pairs` (killer→victim gamertags + time_ms, 268k kills), `weapon_kills` (weapon_id natif par kill, confidence='native'), `kill_positions` (positions killer/victim par kill). La jointure produit le kill-feed COMPLET « qui tue qui, avec quelle arme, quand, où » — sans live.
+
+**Implémentation kill-feed (3c-1)** : `duckdb.Halo5MatchEventsSource{shared}` jointe les 3 tables (LEFT JOIN sur v_weapon_kills = dernière génération append-only + kill_positions) → `canonical.MatchEventTimeline` (Type=kill, Killer/Victim identités, Weapon AssetReference, KillerLoc/VictimLoc Vec3, TimeMs). `kind`/headshot non persistés par kill → KillKindWeapon par défaut (dégradation propre). Interface `halo_5.MatchEventsLocalSource` (retour canonical, pas de cycle) + `WithMatchEventsSource` + `LoadMatchEvents` préfère le local. Builder : injecté GATÉ DemoMode (prod = live inchangé).
+
+**Match view (3c-2) DÉJÀ OK** : `handleGetMatchView` passe par le service `GetMatchView` → `MatchViewRepo` (DuckDB title-agnostic), PAS l'adapter live. Le scoreboard H5 (header outcome/score/dominance/performance + participants anonymisés) marche déjà en démo via le shared h5 synchronisé — aucun nouveau code.
+
+**Résultats (serveur démo)** : GET /players/demo-player/matches/{id}/events sous Halo 5 → 167 kills anonymisés (killer DemoPlayer → victim Player N, weapon.ID=stock natif, positions). GET /matches/{id} → match view complet anonymisé (86 KB). Build/vet/tests halo_5 verts. Isolé adapter h5 + gate démo → prod inchangé.
+
+**Statut** : Phase 3 COMPLÈTE (rang + historique + match view + kill-feed + commendations, anonymisés, DuckDB). RESTE Phase 4 (vidéos H5 : captures 2018 à indexer + seed fenêtre + extraction), Phase 5 (deploy + nettoyage bruit boot).
+
 ## [2026-06-27] Démo Halo 5 — Phase 3b : career H5 (CSR+SR) lu DuckDB en démo
 
 **Tâche** : servir le RANG Halo 5 (CSR + Spartan Rank) au home/career de la démo, sans token (l'API cryptum live échoue hors-ligne). Suite directe des Phases 1-2-3a.
