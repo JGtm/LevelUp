@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   perfScale, accuracyScale, kdScale, progressScale,
-  mmrDeltaScale, skillDeltaScale, outcomeScale, narrativeScale,
+  mmrDeltaScale, skillDeltaScale, kdaDivergentScale, outcomeScale, narrativeScale,
 } from '../instances'
 
 describe('instances — snapshot des seuils', () => {
@@ -46,6 +46,12 @@ describe('instances — snapshot des seuils', () => {
     expect(skillDeltaScale(0.001)).toBe('divergent-pos')
     expect(skillDeltaScale(0)).toBe('divergent-neutral')
     expect(skillDeltaScale(-0.001)).toBe('divergent-neg')
+  })
+
+  it('kdaDivergentScale — FDA signée native (Halo 5), strict zéro', () => {
+    expect(kdaDivergentScale(2.33)).toBe('divergent-pos')  // FDA positive = bon
+    expect(kdaDivergentScale(0)).toBe('divergent-neutral') // pile neutre
+    expect(kdaDivergentScale(-1.5)).toBe('divergent-neg')  // FDA négative = mauvais (légitime)
   })
 
   it('cohérence croisée — kdScale(1.0) et perfScale(80) retournent le même tier', () => {

@@ -13,8 +13,9 @@ import { getMatchCardOutcomeStyle, getMatchNarrativeBadgeMeta } from './match-ca
 import { CitationProgressRing } from './citation-progress-ring'
 import { CombatYieldDisplay } from './combat-yield-display'
 import { MedalIcon } from './MedalIcon'
-import { skillDeltaScale, kdScale, mmrDeltaScale } from '@/lib/accessibility/scales'
+import { skillDeltaScale, kdScale, kdaDivergentScale, mmrDeltaScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
+import { useProvidesNativeKda } from '@/lib/damage/effectiveHp'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import { formatMessage } from '@/lib/i18n/format'
 import { effectiveDmgPerFrag } from '@/lib/formatters'
@@ -64,6 +65,9 @@ function buildMatchHeading(match: RecentMatchItem, locale: 'fr' | 'en'): string 
 export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, onToggleFavorite, favoriteDisabled }: MatchCardProps) {
   const heading = buildMatchHeading(m, locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  // FDA native (Halo 5) potentiellement negative -> echelle divergente autour de 0
+  // au lieu de kdScale (calibree pour un quotient positif). Infinite garde kdScale.
+  const providesNativeKda = useProvidesNativeKda()
   const outcomeStyle = getMatchCardOutcomeStyle(m.outcome_tone)
   const scoreLabel = m.score_label?.trim() ?? ''
   const narrativeBadges = m.narrative_badges ?? []
@@ -336,7 +340,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                     <div className="flex flex-col items-center gap-0.5 px-3">
                       <span
                         className="text-2xl font-black leading-none"
-                        style={{ color: tokenCssVar(kdScale(m.kda)) }}
+                        style={{ color: tokenCssVar(providesNativeKda ? kdScale(m.kda) : kdaDivergentScale(m.kda)) }}
                       >
                         {m.kda.toFixed(2)}
                       </span>

@@ -416,6 +416,10 @@ en = "Dominance"
 fr = "FDA"
 en = "KDA"
 
+[explorer.matches.col_kda_tooltip]
+fr = "FDA = (Frags + Assists/3) − Morts ; peut être négatif"
+en = "KDA = (Kills + Assists/3) − Deaths; can be negative"
+
 [explorer.matches.col_duration]
 fr = "Durée"
 en = "Duration"

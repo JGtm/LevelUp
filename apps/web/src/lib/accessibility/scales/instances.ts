@@ -76,6 +76,21 @@ export const skillDeltaScale = makeDivergentScale({
   neutralBand: [0, 0],
 })
 
+/**
+ * FDA brute signée — titres SANS la capability `native_kda` (Halo 5), où la
+ * colonne « FDA » n'est PAS le quotient KDA positif mais la forme native
+ * `((k + a/3) − d) / 1`, qui peut être NÉGATIVE (légitime). L'échelle ordinale
+ * positive `kdScale` (calibrée pour un quotient ~0..4) colorierait à tort le
+ * négatif ; on diverge donc autour de 0 strict : >0 bon, =0 neutre, <0 mauvais.
+ * Halo Infinite (native_kda=true) garde `kdScale` inchangé.
+ */
+export const kdaDivergentScale = makeDivergentScale({
+  positive: 'divergent-pos',
+  neutral: 'divergent-neutral',
+  negative: 'divergent-neg',
+  neutralBand: [0, 0],
+})
+
 // ── Catégorielles ──────────────────────────────────────────────────────────────
 
 /** Outcome numérique Halo : 2=win, 1=draw, 3=loss, 0/default=dnf. */

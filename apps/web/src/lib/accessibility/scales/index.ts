@@ -10,6 +10,7 @@ export {
   progressScale,
   mmrDeltaScale,
   skillDeltaScale,
+  kdaDivergentScale,
   outcomeScale,
   narrativeScale,
 } from './instances'

@@ -1,3 +1,34 @@
+## [2026-06-27] Lot FDA (native_kda) — COMPLÉTÉ + vérifié (worktree)
+
+**Récap** : capability `native_kda` (miroir `games.ProvidesNativeKDA` : halo_infinite + synthetic_title_b OUI, halo_5 NON) → échelle de couleur DIVERGENTE (`kdaDivergentScale`, réutilise `makeDivergentScale`, tokens `--ac-divergent-*`) sur les colonnes KDA/FDA PAR-MATCH quand `native_kda===false`. La colonne n'est JAMAIS masquée (FDA négative légitime `((k+a/3)−d)/1`), seul le coloriage + un tooltip i18n (`explorer.matches.col_kda_tooltip` FR/EN) changent.
+
+**Sites couleur par-match traités** : `ExplorerMatchesTable` (fix direct) ; `SessionMatchesTable` (transitif, rend ExplorerMatchesTable) ; `MatchScoreboard` (déjà OK, coloriage relatif lobby best/worst) ; **+ `match-card.tsx`** (ajouté par l'orchestrateur — `m.kda` par-match, très visible).
+
+**Suivi documenté (NON fait, marginal)** : surfaces KDA AGRÉGÉES `avg_kda` (HomeHeroKPIGrid, HomeSessionCarousel) gardent `kdScale` ; certaines sont backend-gated par ProvidesNativeKDA, et `kdScale` colore déjà un négatif en perf-tier-5 (worst) → pas de bug, juste moins fin que la divergente. KpiGrid/MatchStatCards/SessionSummaryCard = KD/KDR (ratio ≥0) → non concernés.
+
+**Régén i18n** : `generated/explorer.ts` régénéré via `apps/web/scripts/build_i18n_manifests.mjs` (le hand-edit de l'agent avait +1 ligne de drift → corrigé).
+
+**Vérifs (worktree)** : `tsc -b` propre ; `eslint` 0 erreur ; `go test ./internal/domain/title/... ./internal/games/... ./internal/config/...` vert ; `vitest run --pool=forks` = **227/227, 1969 tests, 0 échec** (+1 = test kdaDivergentScale). Détail d'application ci-dessous.
+
+---
+
+## [2026-06-27] Application FDA — échelle de couleur divergente sur la colonne KDA/FDA quand native_kda=false (H5) — COMPLÉTÉ (édits, vérif centralisée)
+
+**Contexte** : suite de la fondation `native_kda` (capability + `useProvidesNativeKda()` délègue à `useCapability('native_kda')`, depuis `@/lib/damage/effectiveHp`). `native_kda===false` (Halo 5) ⇒ la colonne « FDA » porte la forme native signée `((k + a/3) − d)/1`, potentiellement NÉGATIVE (légitime, voulu). On NE masque PAS la colonne ; on corrige uniquement la COULEUR (l'échelle ordinale `kdScale` est calibrée pour un quotient positif ~0..4 → mauvaise couleur sur négatif) et un libellé/tooltip.
+
+**Décision technique** :
+- Périmètre réel réduit à 1 vrai site couleur. Les 3 colonnes citées :
+  - `ExplorerMatchesTable.tsx` = SEUL site avec une échelle positive (`kdScale`) sur la cellule KDA → corrigé.
+  - `SessionMatchesTable.tsx` = wrapper mince qui REND `ExplorerMatchesTable` (adapter de lignes) → la colonne KDA n'y est PAS redéfinie ⇒ corrigée transitivement, zéro édit.
+  - `MatchScoreboard.tsx` = coloration RELATIVE best/worst-au-lobby (`cellState`/`cellStyle`, value-agnostic) + `v.toFixed(2)` ⇒ le négatif est DÉJÀ traité correctement (plus bas du lobby = « worst ») ⇒ aucun changement couleur nécessaire.
+- Échelle divergente : réutilise le helper existant `makeDivergentScale` (PAS de nouveau helper, PAS de hex). Ajout d'une instance nommée `kdaDivergentScale` dans `scales/instances.ts` (source unique des seuils), miroir de `skillDeltaScale` (`neutralBand: [0,0]`, strict zéro : >0 `divergent-pos`, =0 `divergent-neutral`, <0 `divergent-neg`). Exportée via `scales/index.ts` ; test ajouté dans `instances.test.ts`.
+- Sélection par capability dans la cellule Explorer : `providesNativeKda ? kdScale(v) : kdaDivergentScale(v)` (jamais sur slug). `providesNativeKda` ajouté aux deps du `useMemo` baseColumns. Infinite (`native_kda=true`, et fail-open `true` au bootstrap/test) ⇒ `kdScale` + en-tête texte nu STRICTEMENT inchangés.
+- Tooltip (trivial, i18n-propre) : clé `explorer.matches.col_kda_tooltip` (FR « FDA = (Frags + Assists/3) − Morts ; peut être négatif » / EN) ajoutée à `explorer.toml` ET au généré `generated/explorer.ts` (générateur non lancé — règle de vérif centralisée) ; rendu via `title={t(...)}` sur l'en-tête UNIQUEMENT quand `native_kda=false`.
+
+**Hors périmètre / risque noté** : tooltip MatchScoreboard omis (non trivial : `hlDef` est un helper d'en-tête générique partagé par ~20 colonnes ; l'ajouter forcerait un cas particulier + une clé dans l'interface `MatchViewText` FR/EN + le hook capability câblé dans ce composant). Valeur déjà correcte (`toFixed(2)`, négatif autorisé) et couleur déjà value-agnostic → pas de régression visuelle.
+
+**Vérif** : centralisée (consigne : ne pas lancer build/test ici). Édits minimaux par fichier ; chemin Infinite (`native_kda=true`) inchangé.
+
 ## [2026-06-27] Lot A — Unification du signal de capabilities + retrait silencieux des fuites H5 — COMPLÉTÉ (local vérifié)
 
 **Contexte** : refactor multi-agent (worktree `refactor/h5-capability-unification-masking`) suite à l'audit parité/masquage H5 (workflow ws9tudwrk). Objectif : unifier les 3 systèmes de masquage front et généraliser le masquage MMR (commencé par l'user) aux autres stats non supportées par H5, en RETRAIT SILENCIEUX (décision produit verrouillée : retirer colonne/série/carte, jamais de placeholder/0/-).

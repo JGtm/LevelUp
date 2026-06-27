@@ -79,6 +79,7 @@ export const explorerManifest = {
   "explorer.matches.col_enemy_mmr": { fr: "MMR adv.", en: "Enemy MMR" },
   "explorer.matches.col_fda": { fr: "FDA", en: "KDA" },
   "explorer.matches.col_kda": { fr: "FDA", en: "KDA" },
+  "explorer.matches.col_kda_tooltip": { fr: "FDA = (Frags + Assists/3) − Morts ; peut être négatif", en: "KDA = (Kills + Assists/3) − Deaths; can be negative" },
   "explorer.matches.col_kills": { fr: "F", en: "K" },
   "explorer.matches.col_kills_long": { fr: "Frags", en: "Kills" },
   "explorer.matches.col_map_mode": { fr: "Carte / Mode", en: "Map / Mode" },
