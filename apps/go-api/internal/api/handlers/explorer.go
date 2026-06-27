@@ -89,11 +89,11 @@ func (h *ExplorerHandler) handleQueryPlayer(ctx context.Context, in *explorerQue
 	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
-	if req.TargetGamertag == "" {
-		return nil, humacore.NewError(http.StatusBadRequest, "missing_gamertag", "target_gamertag est requis")
+	if req.TargetGamertag == "" && req.TargetXUID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_target", "target_gamertag ou target_xuid est requis")
 	}
 
-	resp, err := svc.GetCommonMatches(enrichedCtx, req.TargetGamertag, req.Page)
+	resp, err := svc.GetCommonMatches(enrichedCtx, req.TargetGamertag, req.TargetXUID, req.Page)
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "explorer_error", err.Error())
 	}

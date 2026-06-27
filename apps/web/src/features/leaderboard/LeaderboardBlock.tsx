@@ -14,6 +14,13 @@ import type { ReactNode } from 'react'
 
 import { useLeaderboard, useLeaderboardCatalog } from './queries'
 import { SEASONS } from './seasons.i18n'
+import {
+  columnHighlightStyle,
+  computeColumnExtremes,
+  dmgPerKill,
+  dmgPerDeath,
+  type ColumnExtremes,
+} from './LeaderboardBlock.highlight'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -33,9 +40,6 @@ const CSR_WORLD = 'csr-world'
 // précision/rendement/Δrang dès `lg`. Mêmes classes appliquées en-tête ET cellules.
 const COL_HIDE_SM = 'hidden sm:table-cell'
 const COL_HIDE_LG = 'hidden lg:table-cell'
-
-// Mise en valeur du meilleur de chaque colonne (token sémantique primary, pas de hex).
-const BEST_CLS = 'font-semibold text-primary'
 
 /**
  * Playlists classées (asset IDs stables) — FALLBACK si le catalogue dynamique
@@ -118,21 +122,6 @@ function MetricWithTrend({ text, trend, tooltip }: { text: string; trend?: strin
 const fmtPct = (v: number, locale: string): string =>
   `${(v * 100).toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
 
-// Couleur du taux de victoire (tokens sémantiques) : >=55% succès, <=45% défaite, sinon neutre.
-const winRateColor = (wr: number): string | undefined =>
-  wr >= 0.55 ? tokenCssVar('success') : wr <= 0.45 ? tokenCssVar('destructive') : undefined
-
-// dmgPerKill / dmgPerDeath : dégâts infligés par frag (k + a/3) et dégâts subis par
-// mort, depuis les compteurs bruts agrégés. Affichage en 2 colonnes chiffrées (les
-// barres composites Rendement/Résistance ont été retirées). null si dénominateur nul.
-function dmgPerKill(e: LeaderboardEntry): number | null {
-  const eff = (e.kills ?? 0) + (e.assists ?? 0) / 3
-  return e.damage_dealt != null && eff > 0 ? e.damage_dealt / eff : null
-}
-function dmgPerDeath(e: LeaderboardEntry): number | null {
-  return e.damage_taken != null && e.deaths ? e.damage_taken / e.deaths : null
-}
-
 export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
@@ -198,11 +187,15 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
     limit: 100,
   })
 
-  function goToExplorer(gamertag: string) {
+  function goToExplorer(gamertag: string, xuid: string) {
     void navigate({
       to: '/players/$playerSlug/explorer',
       params: { playerSlug },
-      search: { mode: 'player', target: gamertag },
+      // On transmet le xuid (connu de la ligne) pour que l'Explorer affiche le
+      // profil live même si le joueur n'est pas dans les données locales (sinon
+      // ResolveXUIDByGamertag échoue côté backend pour un joueur du classement
+      // mondial jamais croisé).
+      search: { mode: 'player', target: gamertag, targetXuid: xuid || undefined },
     })
   }
 
@@ -255,32 +248,9 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
   // (sinon table CSR historique inchangée). Calculé une fois pour aligner en-tête + cellules.
   const hasEnrichment = isWorld && entries.some((e) => e.match_count != null)
 
-  // Meilleure valeur par colonne (mise en valeur). "Meilleur" = max, SAUF Morts (min).
-  // FDA/Précision comparés sur leur valeur PAR MATCH (même calcul que l'affichage → ===
-  // exact). null si aucune entrée enrichie.
-  const best = useMemo(() => {
-    const en = entries.filter((e) => e.match_count != null)
-    if (en.length === 0) return null
-    const pick = (f: (e: LeaderboardEntry) => number | null | undefined, min = false) =>
-      en.reduce<number | null>((acc, e) => {
-        const v = f(e)
-        if (v == null) return acc
-        if (acc == null) return v
-        return (min ? v < acc : v > acc) ? v : acc
-      }, null)
-    const perMatch = (e: LeaderboardEntry, v?: number | null) => (v != null && e.match_count ? v / e.match_count : null)
-    return {
-      csr: pick((e) => e.csr_value),
-      kills: pick((e) => e.kills),
-      deaths: pick((e) => e.deaths, true),
-      assists: pick((e) => e.assists),
-      winRate: pick((e) => e.win_rate),
-      fda: pick((e) => perMatch(e, e.kda)),
-      accuracy: pick((e) => perMatch(e, e.accuracy)),
-      dmgKill: pick(dmgPerKill, true), // moins de dégâts/frag = mieux
-      dmgDeath: pick(dmgPerDeath), // plus de dégâts/mort encaissés = mieux
-    }
-  }, [entries])
+  // Extrêmes {min,max} par colonne pour la mise en valeur best/worst (parité
+  // scoreboard : meilleur en vert, pire en rouge ; cf. LeaderboardBlock.highlight).
+  const extremes = useMemo(() => computeColumnExtremes(entries), [entries])
 
   const sortIcon = (key: string): string => (sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '')
 
@@ -390,7 +360,7 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
                   entry={entry}
                   isWorld={isWorld}
                   hasEnrichment={hasEnrichment}
-                  best={best}
+                  extremes={extremes}
                   localLabel={t('common.leaderboard.local_badge')}
                   trendTooltip={t('common.leaderboard.trend_tooltip')}
                   rankDeltaTooltip={t('common.leaderboard.rank_delta_tooltip')}
@@ -420,24 +390,12 @@ function SortableTh({ label, className, onClick, suffix }: { label: string; clas
   )
 }
 
-type BestValues = {
-  csr: number | null
-  kills: number | null
-  deaths: number | null
-  assists: number | null
-  winRate: number | null
-  fda: number | null
-  accuracy: number | null
-  dmgKill: number | null
-  dmgDeath: number | null
-}
-
 /** Ligne du classement. */
 function LeaderboardRow({
   entry,
   isWorld,
   hasEnrichment,
-  best,
+  extremes,
   localLabel,
   trendTooltip,
   rankDeltaTooltip,
@@ -448,32 +406,31 @@ function LeaderboardRow({
   entry: LeaderboardEntry
   isWorld: boolean
   hasEnrichment: boolean
-  best: BestValues | null
+  extremes: ColumnExtremes
   localLabel: string
   trendTooltip: string
   rankDeltaTooltip: string
   locale: string
   onHover?: (gamertag: string) => void
-  onGamertagClick: (gamertag: string) => void
+  onGamertagClick: (gamertag: string, xuid: string) => void
 }) {
   const intl = locale === 'en' ? 'en-US' : 'fr-FR'
   // Accent podium : top-3 en gras (tokens foreground/muted, pas de hex).
   const isPodium = entry.rank <= 3
   const rankClass = isPodium ? 'font-bold text-primary' : 'text-muted-foreground'
-  // Valeurs PAR MATCH (FDA/Précision) — mêmes calculs que l'affichage pour comparer au best.
+  // Valeurs PAR MATCH (FDA/Précision) — mêmes calculs que l'affichage (égalité ===
+  // exacte avec les extrêmes pour le highlight best/worst).
   const fda = entry.kda != null && entry.match_count ? entry.kda / entry.match_count : null
   const acc = entry.accuracy != null && entry.match_count ? entry.accuracy / entry.match_count : null
   const dpk = dmgPerKill(entry)
   const dpd = dmgPerDeath(entry)
-  // Classe de cellule numérique : centrée ; meilleure valeur de la colonne mise en valeur.
-  const cell = (isBest: boolean) => `text-center font-mono ${isBest ? BEST_CLS : 'text-foreground'}`
 
   const playerCell: ReactNode = (
     <span className="inline-flex items-center gap-2">
       <button
         type="button"
         className="transition-colors hover:text-primary hover:underline"
-        onClick={() => onGamertagClick(entry.gamertag)}
+        onClick={() => onGamertagClick(entry.gamertag, entry.xuid)}
         title={`Explorer : ${entry.gamertag}`}
       >
         {entry.gamertag}
@@ -503,26 +460,44 @@ function LeaderboardRow({
               loading="lazy"
             />
           </td>
-          <td className={`px-3 py-2 ${cell(best?.csr === entry.csr_value)}`}>{entry.csr_value.toLocaleString(intl)}</td>
+          <td
+            className="px-3 py-2 text-center font-mono text-foreground"
+            style={columnHighlightStyle('csr', entry.csr_value, extremes)}
+          >
+            {entry.csr_value.toLocaleString(intl)}
+          </td>
           {hasEnrichment && (
             <>
-              <td className={`px-3 py-2 ${COL_HIDE_SM} ${cell(fda != null && best?.fda === fda)}`}>
+              <td
+                className={`px-3 py-2 text-center font-mono text-foreground ${COL_HIDE_SM}`}
+                style={columnHighlightStyle('fda', fda, extremes)}
+              >
                 {fda != null ? <MetricWithTrend text={fda.toFixed(2)} trend={entry.kda_trend} tooltip={trendTooltip} /> : '—'}
               </td>
-              <td className={`px-3 py-2 ${COL_HIDE_SM} ${cell(entry.kills != null && best?.kills === entry.kills)}`}>
+              <td
+                className={`px-3 py-2 text-center font-mono text-foreground ${COL_HIDE_SM}`}
+                style={columnHighlightStyle('kills', entry.kills ?? null, extremes)}
+              >
                 {entry.kills?.toLocaleString(intl) ?? '—'}
               </td>
-              <td className={`px-3 py-2 ${COL_HIDE_SM} ${cell(entry.deaths != null && best?.deaths === entry.deaths)}`}>
+              <td
+                className={`px-3 py-2 text-center font-mono text-foreground ${COL_HIDE_SM}`}
+                style={columnHighlightStyle('deaths', entry.deaths ?? null, extremes)}
+              >
                 {entry.deaths?.toLocaleString(intl) ?? '—'}
               </td>
-              <td className={`px-3 py-2 ${COL_HIDE_SM} ${cell(entry.assists != null && best?.assists === entry.assists)}`}>
+              <td
+                className={`px-3 py-2 text-center font-mono text-foreground ${COL_HIDE_SM}`}
+                style={columnHighlightStyle('assists', entry.assists ?? null, extremes)}
+              >
                 {entry.assists?.toLocaleString(intl) ?? '—'}
               </td>
-              <td className={`px-3 py-2 ${COL_HIDE_SM} ${cell(entry.win_rate != null && best?.winRate === entry.win_rate)}`}>
+              <td
+                className={`px-3 py-2 text-center font-mono text-foreground ${COL_HIDE_SM}`}
+                style={columnHighlightStyle('winRate', entry.win_rate ?? null, extremes)}
+              >
                 {entry.win_rate != null ? (
-                  <span style={{ color: winRateColor(entry.win_rate) }}>
-                    <MetricWithTrend text={fmtPct(entry.win_rate, locale)} trend={entry.win_rate_trend} tooltip={trendTooltip} />
-                  </span>
+                  <MetricWithTrend text={fmtPct(entry.win_rate, locale)} trend={entry.win_rate_trend} tooltip={trendTooltip} />
                 ) : (
                   '—'
                 )}
@@ -530,13 +505,22 @@ function LeaderboardRow({
               <td className={`px-3 py-2 text-center font-mono text-muted-foreground ${COL_HIDE_LG}`}>
                 {(entry.cumulative_match_count ?? entry.match_count)?.toLocaleString(intl) ?? '—'}
               </td>
-              <td className={`px-3 py-2 ${COL_HIDE_LG} ${cell(acc != null && best?.accuracy === acc)}`}>
+              <td
+                className={`px-3 py-2 text-center font-mono text-foreground ${COL_HIDE_LG}`}
+                style={columnHighlightStyle('accuracy', acc, extremes)}
+              >
                 {acc != null ? `${acc.toLocaleString(intl, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%` : '—'}
               </td>
-              <td className={`px-3 py-2 ${COL_HIDE_LG} ${cell(dpk != null && best?.dmgKill === dpk)}`}>
+              <td
+                className={`px-3 py-2 text-center font-mono text-foreground ${COL_HIDE_LG}`}
+                style={columnHighlightStyle('dmgKill', dpk, extremes)}
+              >
                 {dpk != null ? Math.round(dpk).toLocaleString(intl) : '—'}
               </td>
-              <td className={`px-3 py-2 ${COL_HIDE_LG} ${cell(dpd != null && best?.dmgDeath === dpd)}`}>
+              <td
+                className={`px-3 py-2 text-center font-mono text-foreground ${COL_HIDE_LG}`}
+                style={columnHighlightStyle('dmgDeath', dpd, extremes)}
+              >
                 {dpd != null ? Math.round(dpd).toLocaleString(intl) : '—'}
               </td>
               <td className={`px-3 py-2 text-center font-mono ${COL_HIDE_LG}`}>

@@ -87,8 +87,12 @@ type CommendationTotalsService interface {
 }
 
 // ExplorerService orchestre les requêtes de l'Explorer (matchs communs).
+//
+// otherXUID est optionnel : s'il est fourni, le service l'utilise directement et
+// saute la résolution gamertag→xuid locale (cas du Classement, où le xuid est
+// déjà connu et où le joueur peut être absent des données locales).
 type ExplorerService interface {
-	GetCommonMatches(ctx context.Context, otherGamertag string, page int) (domain.ExplorerPlayerQueryResponse, error)
+	GetCommonMatches(ctx context.Context, otherGamertag, otherXUID string, page int) (domain.ExplorerPlayerQueryResponse, error)
 }
 
 // FiltersService résout le contexte de filtres d'un joueur.

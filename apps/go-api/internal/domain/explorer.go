@@ -19,7 +19,11 @@ const PageSizeCommonMatches = 20
 // ExplorerPlayerQueryRequest : corps de la requête POST player-query.
 type ExplorerPlayerQueryRequest struct {
 	TargetGamertag string `json:"target_gamertag"`
-	Page           int    `json:"page,omitempty"` // 1-indexé, défaut 1
+	// TargetXUID (optionnel) : quand fourni (ex. ligne du Classement), le service
+	// l'utilise directement et saute la résolution gamertag→xuid locale — qui
+	// échouerait pour un joueur absent des données locales.
+	TargetXUID string `json:"target_xuid,omitempty"`
+	Page       int    `json:"page,omitempty"` // 1-indexé, défaut 1
 }
 
 // CommonMatchRow : un match en commun entre 2 joueurs.

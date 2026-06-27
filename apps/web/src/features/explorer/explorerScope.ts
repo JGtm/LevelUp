@@ -120,6 +120,9 @@ export function decodeExplorerScope(raw: Partial<EncodedExplorerScope>): Explore
 export const explorerSearchSchema = z.object({
   mode: z.enum(['matches', 'player']).optional(),
   target: z.string().optional(),
+  // xuid optionnel transmis par le Classement : permet à l'Explorer de servir le
+  // profil live d'un joueur absent des données locales (cf. goToExplorer).
+  targetXuid: z.string().optional(),
   start: z.string().optional(),
   end: z.string().optional(),
   scope: z.enum(['solo', 'squad']).optional(),

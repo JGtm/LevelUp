@@ -73,8 +73,8 @@ export const queryKeys = {
       sortField, sortDir,
       matchFiltersKey,
     ] as const,
-  explorerPlayer: (playerSlug: string, targetGamertag: string, page: number) =>
-    ['explorer-player', playerSlug, targetGamertag, page] as const,
+  explorerPlayer: (playerSlug: string, targetGamertag: string, targetXuid: string, page: number) =>
+    ['explorer-player', playerSlug, targetGamertag, targetXuid, page] as const,
   gamertagSearch: (q: string) => ['gamertag-search', q] as const,
   matchView: (playerSlug: string, matchId: string) =>
     ['match-view', playerSlug, matchId] as const,

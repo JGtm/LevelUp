@@ -749,6 +749,8 @@ export interface ExplorerMatchesQueryRequest {
 
 export interface ExplorerPlayerQueryRequest {
   target_gamertag: string
+  /** xuid optionnel : court-circuite la résolution gamertag→xuid locale (joueur du Classement). */
+  target_xuid?: string
   page?: number
 }
 

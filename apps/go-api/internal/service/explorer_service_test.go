@@ -34,7 +34,7 @@ func TestExplorerService_PlayerIntersection_DataAdapterParity(t *testing.T) {
 	kv := domain.KillerVictimAggregate{KillsDealt: 7, DeathsSuffered: 3}
 
 	legacy, err := NewExplorerService(&mockExplorerRepo{xuid: "target-x", matches: matches, kv: kv}, "self").
-		GetCommonMatches(context.Background(), "TargetGT", 1)
+		GetCommonMatches(context.Background(), "TargetGT", "", 1)
 	if err != nil {
 		t.Fatalf("legacy: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestExplorerService_PlayerIntersection_DataAdapterParity(t *testing.T) {
 	repoAdapter := &mockExplorerRepo{xuid: "target-x", matches: matches, kv: kv}
 	adapter := halo_games.NewDataAdapter(nil, slog.New(slog.NewJSONHandler(io.Discard, nil))).WithCrossPlayerSource(repoAdapter)
 	viaAdapter, err := NewExplorerService(repoAdapter, "self").WithDataAdapter(adapter).
-		GetCommonMatches(context.Background(), "TargetGT", 1)
+		GetCommonMatches(context.Background(), "TargetGT", "", 1)
 	if err != nil {
 		t.Fatalf("adapter: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestExplorerService_PlayerIntersection_AdapterFallbackOnUnsupported(t *test
 	repo := &mockExplorerRepo{xuid: "target-x", matches: matches}
 	adapter := halo_games.NewDataAdapter(nil, slog.New(slog.NewJSONHandler(io.Discard, nil))) // pas de CrossPlayerSource
 	resp, err := NewExplorerService(repo, "self").WithDataAdapter(adapter).
-		GetCommonMatches(context.Background(), "TargetGT", 1)
+		GetCommonMatches(context.Background(), "TargetGT", "", 1)
 	if err != nil {
 		t.Fatalf("fallback devrait être silencieux, got %v", err)
 	}
@@ -228,7 +228,7 @@ func TestExplorerService_GetCommonMatches_OK(t *testing.T) {
 	}
 	svc := NewExplorerService(repo, "my-xuid")
 
-	resp, err := svc.GetCommonMatches(context.Background(), "OtherPlayer", 1)
+	resp, err := svc.GetCommonMatches(context.Background(), "OtherPlayer", "", 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -253,7 +253,7 @@ func TestExplorerService_GetCommonMatches_Empty(t *testing.T) {
 	}
 	svc := NewExplorerService(repo, "my-xuid")
 
-	resp, err := svc.GetCommonMatches(context.Background(), "Player", 1)
+	resp, err := svc.GetCommonMatches(context.Background(), "Player", "", 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -266,9 +266,30 @@ func TestExplorerService_GetCommonMatches_ResolveError(t *testing.T) {
 	repo := &mockExplorerRepo{xuidErr: errors.New("not found")}
 	svc := NewExplorerService(repo, "my-xuid")
 
-	_, err := svc.GetCommonMatches(context.Background(), "Unknown", 1)
+	_, err := svc.GetCommonMatches(context.Background(), "Unknown", "", 1)
 	if err == nil {
 		t.Error("expected error")
+	}
+}
+
+// TestExplorerService_GetCommonMatches_XUIDProvidedSkipsResolve : quand le xuid
+// est fourni (cas du Classement), la résolution gamertag→xuid locale est sautée —
+// même si elle échouerait — et la réponse part avec le xuid fourni (le profil live
+// reste servi, l'intersection est simplement vide pour un inconnu).
+func TestExplorerService_GetCommonMatches_XUIDProvidedSkipsResolve(t *testing.T) {
+	// xuidErr forcé : si ResolveXUIDByGamertag était appelé, le test échouerait.
+	repo := &mockExplorerRepo{xuidErr: errors.New("not found locally"), matches: []domain.CommonMatchRaw{}}
+	svc := NewExplorerService(repo, "my-xuid")
+
+	resp, err := svc.GetCommonMatches(context.Background(), "WorldStranger", "stranger-xuid", 1)
+	if err != nil {
+		t.Fatalf("xuid fourni → résolution locale sautée attendue, got %v", err)
+	}
+	if resp.TargetXUID != "stranger-xuid" {
+		t.Errorf("TargetXUID = %q, want stranger-xuid", resp.TargetXUID)
+	}
+	if resp.TargetGamertag != "WorldStranger" {
+		t.Errorf("TargetGamertag = %q, want WorldStranger", resp.TargetGamertag)
 	}
 }
 
@@ -276,7 +297,7 @@ func TestExplorerService_GetCommonMatches_QueryError(t *testing.T) {
 	repo := &mockExplorerRepo{xuid: "other", matchErr: errors.New("db fail")}
 	svc := NewExplorerService(repo, "my-xuid")
 
-	_, err := svc.GetCommonMatches(context.Background(), "Player", 1)
+	_, err := svc.GetCommonMatches(context.Background(), "Player", "", 1)
 	if err == nil {
 		t.Error("expected error")
 	}
@@ -305,7 +326,7 @@ func TestExplorerService_GetCommonMatches_WithStats(t *testing.T) {
 	}
 	svc := NewExplorerService(repo, "my-xuid")
 
-	resp, err := svc.GetCommonMatches(context.Background(), "EnemyPlayer", 1)
+	resp, err := svc.GetCommonMatches(context.Background(), "EnemyPlayer", "", 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -344,7 +365,7 @@ func TestExplorerService_GetCommonMatches_DifferentTeams(t *testing.T) {
 	}
 	svc := NewExplorerService(repo, "my-xuid")
 
-	resp, err := svc.GetCommonMatches(context.Background(), "Enemy", 1)
+	resp, err := svc.GetCommonMatches(context.Background(), "Enemy", "", 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -370,7 +391,7 @@ func TestExplorerService_GetCommonMatches_Pagination(t *testing.T) {
 	repo := &mockExplorerRepo{xuid: "other", matches: matches}
 	svc := NewExplorerService(repo, "my-xuid")
 
-	p1, err := svc.GetCommonMatches(context.Background(), "Player", 1)
+	p1, err := svc.GetCommonMatches(context.Background(), "Player", "", 1)
 	if err != nil {
 		t.Fatalf("page 1: %v", err)
 	}
@@ -384,7 +405,7 @@ func TestExplorerService_GetCommonMatches_Pagination(t *testing.T) {
 		t.Errorf("Page = %d, want 1", p1.Page)
 	}
 
-	p2, err := svc.GetCommonMatches(context.Background(), "Player", 2)
+	p2, err := svc.GetCommonMatches(context.Background(), "Player", "", 2)
 	if err != nil {
 		t.Fatalf("page 2: %v", err)
 	}
@@ -408,7 +429,7 @@ func TestExplorerService_GetCommonMatches_AllyPlusBadge(t *testing.T) {
 	repo := &mockExplorerRepo{xuid: "ally-xuid", matches: matches}
 	svc := NewExplorerService(repo, "my-xuid")
 
-	resp, err := svc.GetCommonMatches(context.Background(), "AllyPlayer", 1)
+	resp, err := svc.GetCommonMatches(context.Background(), "AllyPlayer", "", 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -509,7 +530,7 @@ func TestExplorerService_TargetProfile_LocalTargetAllSources(t *testing.T) {
 	svc := NewExplorerService(repo, "my-xuid").
 		WithTargetProfileProviders(ExplorerTargetProfileDeps{LocalIdentity: idRes, RemoteStats: remoteProv, TitleSlug: "halo_infinite"})
 
-	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "TargetPlayer", 1)
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "TargetPlayer", "", 1)
 	if err != nil {
 		t.Fatalf("GetCommonMatches: %v", err)
 	}
@@ -563,7 +584,7 @@ func TestExplorerService_TargetProfile_NoTokens(t *testing.T) {
 	svc := NewExplorerService(repo, "my-xuid").
 		WithTargetProfileProviders(ExplorerTargetProfileDeps{LocalIdentity: idRes, RemoteStats: remoteProv, TitleSlug: "halo_infinite"})
 
-	resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "TargetPlayer", 1)
+	resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "TargetPlayer", "", 1)
 	if err != nil {
 		t.Fatalf("GetCommonMatches: %v", err)
 	}
@@ -608,7 +629,7 @@ func TestExplorerService_TargetProfile_CareerFetchError(t *testing.T) {
 	svc := NewExplorerService(repo, "my-xuid").
 		WithTargetProfileProviders(ExplorerTargetProfileDeps{LocalIdentity: idRes, RemoteStats: remoteProv, TitleSlug: "halo_infinite"})
 
-	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "SomePlayer", 1)
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "SomePlayer", "", 1)
 	if err != nil {
 		t.Fatalf("GetCommonMatches: %v", err)
 	}
@@ -645,7 +666,7 @@ func TestExplorerService_TargetProfile_NoProviders(t *testing.T) {
 	}
 	svc := NewExplorerService(repo, "my-xuid")
 
-	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Player", 1)
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Player", "", 1)
 	if err != nil {
 		t.Fatalf("GetCommonMatches: %v", err)
 	}
@@ -686,7 +707,7 @@ func TestExplorerService_TargetProfile_OpponentLiveIdentity(t *testing.T) {
 			LocalIdentity: local, LiveIdentity: live, TitleSlug: "halo_infinite",
 		})
 
-	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Opponent", 1)
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Opponent", "", 1)
 	if err != nil {
 		t.Fatalf("GetCommonMatches: %v", err)
 	}
@@ -730,7 +751,7 @@ func TestExplorerService_TargetProfile_LiveIdentityError(t *testing.T) {
 			LocalIdentity: local, LiveIdentity: live, TitleSlug: "halo_infinite",
 		})
 
-	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Opponent", 1)
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Opponent", "", 1)
 	if err != nil {
 		t.Fatalf("GetCommonMatches ne doit pas échouer sur erreur live: %v", err)
 	}
@@ -765,7 +786,7 @@ func TestExplorerService_TargetProfile_CombatProfile(t *testing.T) {
 	t.Run("peuplé quand le repo fournit", func(t *testing.T) {
 		repo := &mockExplorerRepo{xuid: "target-xuid", matches: matches, recentMatches: recent}
 		svc := NewExplorerService(repo, "my-xuid")
-		resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "TargetPlayer", 1)
+		resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "TargetPlayer", "", 1)
 		if err != nil {
 			t.Fatalf("GetCommonMatches: %v", err)
 		}
@@ -788,7 +809,7 @@ func TestExplorerService_TargetProfile_CombatProfile(t *testing.T) {
 	t.Run("nil quand le repo échoue (best-effort)", func(t *testing.T) {
 		repo := &mockExplorerRepo{xuid: "target-xuid", matches: matches, recentErr: errors.New("db down")}
 		svc := NewExplorerService(repo, "my-xuid")
-		resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "TargetPlayer", 1)
+		resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "TargetPlayer", "", 1)
 		if err != nil {
 			t.Fatalf("GetCommonMatches ne doit pas échouer sur erreur combat profile: %v", err)
 		}
@@ -830,7 +851,7 @@ func TestExplorerService_TargetProfile_IdentitySerializesAsDTO(t *testing.T) {
 	svc := NewExplorerService(repo, "my-xuid").
 		WithTargetProfileProviders(ExplorerTargetProfileDeps{LocalIdentity: idRes, TitleSlug: "halo_infinite"})
 
-	resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "TargetPlayer", 1)
+	resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "TargetPlayer", "", 1)
 	if err != nil {
 		t.Fatalf("GetCommonMatches: %v", err)
 	}
@@ -901,7 +922,7 @@ func TestExplorerService_TargetProfile_DeterministicBannerFallback(t *testing.T)
 			LocalBannerPool: func(_ context.Context) []string { poolCalls++; return pool },
 		})
 
-	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Opponent", 1)
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Opponent", "", 1)
 	if err != nil {
 		t.Fatalf("GetCommonMatches: %v", err)
 	}
@@ -949,7 +970,7 @@ func TestExplorerService_CombatProfile_LiveIsDefault(t *testing.T) {
 	svc := NewExplorerService(repo, "my-xuid").
 		WithTargetProfileProviders(ExplorerTargetProfileDeps{RecentMatches: live, TitleSlug: "halo_infinite"})
 
-	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Opponent", 1)
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Opponent", "", 1)
 	if err != nil {
 		t.Fatalf("GetCommonMatches: %v", err)
 	}
@@ -979,7 +1000,7 @@ func TestExplorerService_CombatProfile_BothSources(t *testing.T) {
 	svc := NewExplorerService(repo, "my-xuid").
 		WithTargetProfileProviders(ExplorerTargetProfileDeps{RecentMatches: live, TitleSlug: "halo_infinite"})
 
-	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Target", 1)
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Target", "", 1)
 	if err != nil {
 		t.Fatalf("GetCommonMatches: %v", err)
 	}
@@ -1017,7 +1038,7 @@ func TestExplorerService_TargetProfile_BannerFallback_NoIdentity(t *testing.T) {
 		})
 
 	// hasAuth=false → aucun fetch live ; sans le fix, Identity serait nil.
-	resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "Opponent", 1)
+	resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "Opponent", "", 1)
 	if err != nil {
 		t.Fatalf("GetCommonMatches: %v", err)
 	}
@@ -1051,7 +1072,7 @@ func TestExplorerService_TargetProfile_NoBanner_NoPool(t *testing.T) {
 			TitleSlug:     "halo_infinite",
 		})
 
-	resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "Opponent", 1)
+	resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "Opponent", "", 1)
 	if err != nil {
 		t.Fatalf("GetCommonMatches: %v", err)
 	}
@@ -1084,7 +1105,7 @@ func TestExplorerService_TargetProfile_BannerPoolOverridesLiveNameplate(t *testi
 			LocalBannerPool: func(_ context.Context) []string { return pool },
 		})
 
-	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Opponent", 1)
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Opponent", "", 1)
 	if err != nil {
 		t.Fatalf("GetCommonMatches: %v", err)
 	}

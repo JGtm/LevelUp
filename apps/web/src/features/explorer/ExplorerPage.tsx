@@ -58,6 +58,7 @@ export function ExplorerPage() {
   const search = useSearch({ from: '/players/$playerSlug/explorer/' }) as {
     mode?: SearchMode
     target?: string
+    targetXuid?: string
   }
 
   const locale = useAppShellStore((s) => s.locale)
@@ -67,6 +68,10 @@ export function ExplorerPage() {
 
   const [mode, setMode] = useState<SearchMode>(search.mode ?? 'matches')
   const [targetGamertag, setTargetGamertag] = useState(search.target ?? '')
+  // xuid optionnel (transmis par le Classement) : court-circuite la résolution
+  // gamertag→xuid locale côté backend. Vidé dès qu'une recherche manuelle (par
+  // gamertag) est lancée.
+  const [targetXuid, setTargetXuid] = useState(search.targetXuid ?? '')
 
   // ─── Scope filtres (URL = source de vérité + miroir localStorage) ────────────
   const scopeParams = useMemo(() => ({ playerSlug }), [playerSlug])
@@ -152,6 +157,7 @@ export function ExplorerPage() {
   useEffect(() => {
     if (search.mode) setMode(search.mode)
     if (search.target) setTargetGamertag(search.target)
+    if (search.targetXuid) setTargetXuid(search.targetXuid)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -166,10 +172,13 @@ export function ExplorerPage() {
 
   function selectTarget(gamertag: string) {
     setTargetGamertag(gamertag)
+    // Recherche manuelle par gamertag → pas de xuid connu : on repasse par la
+    // résolution locale côté backend (et on purge un éventuel xuid hérité du Classement).
+    setTargetXuid('')
     void navigate({
       to: '/players/$playerSlug/explorer',
       params: { playerSlug },
-      search: (prev) => ({ ...prev, mode: 'player', target: gamertag }),
+      search: (prev) => ({ ...prev, mode: 'player', target: gamertag, targetXuid: undefined }),
     })
   }
 
@@ -216,6 +225,7 @@ export function ExplorerPage() {
 
   const playerQuery = useExplorerPlayer(playerSlug, {
     target_gamertag: targetGamertag,
+    target_xuid: targetXuid || undefined,
   })
 
   // Mode Joueur : extraction des match_ids communs séparés par rôle

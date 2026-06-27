@@ -4959,6 +4959,8 @@ components:
       properties:
         target_gamertag:
           type: string
+        target_xuid:
+          type: string
         filters:
           nullable: true
           allOf:

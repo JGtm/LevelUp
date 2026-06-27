@@ -3944,6 +3944,7 @@ export interface components {
         };
         ExplorerPlayerQueryRequest: {
             target_gamertag: string;
+            target_xuid?: string;
             filters?: components["schemas"]["FilterContextInput"] | null;
         };
         ExplorerPlayerQueryResponse: {
