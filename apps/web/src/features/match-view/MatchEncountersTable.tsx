@@ -109,7 +109,7 @@ function EncounterBadgesInline({
           ? tokenVar(badge.color_token as SemanticToken)
           : undefined
         const tooltip = ENCOUNTER_BADGE_TOOLTIPS[badge.label_key]?.[locale]
-        const badgeEl = <NarrativeBadge label={label} colorVar={colorVar} size="sm" />
+        const badgeEl = <NarrativeBadge label={label} colorVar={colorVar} solid size="sm" />
         return tooltip ? (
           <Tooltip key={i} content={tooltip}>
             {badgeEl}
