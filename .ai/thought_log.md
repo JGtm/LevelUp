@@ -1,3 +1,29 @@
+## [2026-06-27] HomeHeroBanner — élargissement rotation Infinite + ajout titre halo_5
+
+**Tâche** : (1) ajouter à la rotation des images de couverture de l'accueil les 4 visuels Halo Infinite présents dans `public/titles/halo_infinite/` mais non référencés ; (2) ajouter une image de couverture pour Halo 5.
+
+**Décision** : `HEADER_IMAGES_BY_TITLE` (HomeHeroBanner.tsx) est la source unique slug→liste d'images. halo_infinite passe de 3 → 7 entrées (ajout HINF-S2_Fracture_Entrenched, Halo-infinite-dlc-reach, halo-infinite-dlc-combined-arms, infinite_fractures_tenrai). Nouveau slug `halo_5` (cf. lusr-chains/CareerSummaryCard) avec 1 visuel copié dans `public/titles/halo_5/wallpaper_halo_5_guardians_01.png` (source Downloads, nom raccourci).
+
+**Garde 1-image** : `pickOther()` renvoie `undefined` si la liste n'a qu'une image → couche cross-fade vide → bannière noire toutes les 45s. Ajout d'un early-return `if (images.length < 2) return` après le set initial : une seule image reste affichée fixe (cas halo_5).
+
+**Résultats** : typecheck OK ; HomePage.test 15/15 vert (le test ne fige que le testid + l'absence de balise `<img>`, pas la liste).
+
+**Statut** : Complété (édits posés, non commités — attente autorisation). Prochaine étape : ajouter d'autres visuels H5 quand dispo.
+
+## [2026-06-27] Crons catalog_refresh + asset_name_sweep title-aware (skip H5 propre via CapForge)
+
+**Tâche** : rendre `CatalogRefreshCron` et `AssetNameSweepCron` (internal/scheduler) title-aware avec SKIP H5 propre, sans construire d'adapter catalogue H5 (décision produit : différé). Calque sur `world_leaderboard_cron` (déjà livré ce sprint).
+
+**Décision de gating** : le drain catalogue (`registry_catalog_drain.go` → `halo_infinite.NewCatalogAdapter`, fetcher discovery-infiniteugc préfixe `/hi/` HARDCODÉ) et le sweep de noms (`ResolveUnresolvedAssetNames`, même fetcher `/hi/`) sont STRUCTURELLEMENT Infinite-only. Le cron n'a pas de resolver `games.*` injecté (l'injecter toucherait main.go = hors scope). Donc gate = capability `CapForge` ("UGC HINF-shaped" : playlists/map-mode pairs/maps/ugcGameVariants) — H5 l'exclut EXPLICITEMENT (title.toml: "forge (UGC HINF-shaped)" ; skeleton_test asserte son absence). Pas de slug littéral.
+
+**Implémentation** : champ `titleSlug` unique → remplacé par `registry *titlePkg.Registry` (défaut `DefaultRegistry()`, comme world_leaderboard). `RunOnce` itère `reg.Active()`, gate `desc.HasCapability(CapForge)`, skip propre (slog Debug 'no catalog adapter for title' / 'no discovery-infiniteugc resolver for title', titleSlug, JAMAIS d'erreur), sinon `runOnceForTitle(slug)` (best-effort, une erreur n'interrompt pas l'itération). Signature des constructeurs INCHANGÉE (param titleSlug `_` ignoré pour rétro-compat de l'appel main.go). Comportement HINF identique.
+
+**Tests** : ajout `*_SkipsTitleWithoutForge` (registre 2 titres actifs : halo_infinite avec CapForge drainé + `title_no_forge` sans la cap skippé → seul halo_infinite traité). `_Defaults` mis à jour (assert `registry != nil` au lieu de `titleSlug != ""`). Helper `forgeRegistry()` partagé entre les 2 fichiers de test.
+
+**Investigation UGC H5** (rendue) : `cmd/h5-metadata-fetch/main.go` = STRICTEMENT CLI (`package main`, toutes fonctions unexportées, env-driven `LEVELUP_HALOAPI_KEY`, seed one-shot). Source = API officielle `www.haloapi.com/metadata/h5/` (Ocp-Apim-Subscription-Key APIM), PAS discovery-infiniteugc. Peuple `asset_translations` metadata-side. Aucun package appelable → câbler H5 dans ce cron = VRAI sous-projet adapter (extraire la logique seed en package + client APIM + résolveur), pas un quick-wire.
+
+**Statut** : Complété (édits posés ; build/test CGO centralisés par l'orchestrateur). Fonctions <=80L, fichiers <=500L.
+
 ## [2026-06-27] Capabilities title-level team_mmr + damage_taken (miroir des flags scalaires) — FONDATION BACKEND
 
 **Tâche** : exposer 2 nouvelles capabilities title-level (`team_mmr`, `damage_taken`) dans le descripteur de titre, en miroir DÉCLARATIF des flags scalaires `games.ProvidesTeamMMR(slug)` / `games.ProvidesDamageTaken(slug)`. Additif pur : les flags scalaires `provides_*` (domain/bootstrap.go, projetés dans availableTitles[].providesTeamMMR/providesDamageTaken) RESTENT inchangés ; on ajoute le pendant dans availableTitles[].capabilities ([]string projeté depuis t.Capabilities).
@@ -30432,3 +30458,35 @@ Baseline mise à jour (rename test `TestTintedBadgesReused`→`TestEncounterBadg
 **Prochaine étape** : #8 (heatmap jour-de-semaine, option C) — backend Q29 dow + DTO + OpenAPI +
 toggle tranche/jour front — reste à faire (item le plus lourd, tentatif). Mock v2 :
 `.ai/mocks/relations/relations-mockups-v2.html`.
+
+## [2026-06-27] SpartanCustomizationCron title-aware + PersistAppearance H5 en fond — Complété
+
+**Statut** : Complété. Branche `refactor/h5-capability-unification-masking` (worktree).
+
+**Décision technique** : refonte du cron de customisation Spartan en title-aware sans
+coupler le scheduler à un titre concret (interdiction archlint scheduler→halo_5).
+- Abstraction `CustomizationRefresher func(ctx, p domain.PlayerSummary) error` : le ctx
+  porte déjà l'auth du joueur (posée par le cron via ctxkeys.WithHaloAuth) ; le refresher
+  ne fait QUE l'appel métier propre au titre.
+- Le cron tient un `map[titleSlug]CustomizationRefresher` ; `RunOnce` itère
+  `registry.Active()` (parité world_leaderboard_cron) → `runOnceForTitle` charge
+  `LoadPlayers(slug)` et délègue ; titre sans refresher = skip propre (slog Debug).
+- Séquence COMMUNE (pool.HasPlayer, lease pinned, ctx auth, timeout 30s, diagnostic
+  agrégé file-lock) conservée dans `refreshOne`.
+- HINF : `careerIdentityRefresher` adapte le `CareerLiveServiceProvider` existant
+  (svcProvider→GetSpartanIdentity) — comportement identique à l'historique.
+- H5 : wiring dans cmd/server/main.go (importe déjà scheduler + halo5/livesync) via
+  `spartanCron.WithRefresher(halo5.TitleSlug, closure)` : la closure construit
+  `halo5.NewAppearanceSource(ctx)` (lit l'auth du ctx) puis appelle
+  `livesync.PersistAppearance(ctx, src, playerDBPath, cacheRoot, gt, xuid)`. Deps au
+  boot : `pr` (PathResolver, ligne 356) pour PlayerDBPath + RepoRoot/data/cache.
+- Méthodes ajoutées : `WithRegistry` (testabilité + registre config-driven),
+  `WithRefresher` (chaînables, nil-safe).
+
+**Résultats** : scheduler n'importe AUCUN package de titre ; aucun slug==literal
+(map keyé par slug, idiome runnerBuilders). 3 tests cron ajoutés (routage HINF+H5,
+skip titre sans refresher, WithRefresher nil-safe). Tests existants préservés
+(constructeur inchangé). Non buildé/testé localement (CGO ; vérif centralisée).
+
+**Prochaine étape** : vérif build/test CGO centralisée ; un joueur H5 qui n'ouvre
+jamais l'app aura sa bannière/identité rafraîchie toutes les 8h en fond.
