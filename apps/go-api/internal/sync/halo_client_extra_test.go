@@ -5,6 +5,7 @@ import (
 	"compress/zlib"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -216,7 +217,7 @@ func TestBackoff_Short(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	start := time.Now()
-	c.backoff(ctx, 0) // 2^0 * retryBaseDelay
+	c.backoff(ctx, 0, 0) // 2^0 * retryBaseDelay, sans Retry-After
 	elapsed := time.Since(start)
 	// Should complete quickly (base delay is small)
 	if elapsed > 3*time.Second {
@@ -229,7 +230,7 @@ func TestBackoff_CancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // already cancelled
 	start := time.Now()
-	c.backoff(ctx, 5)
+	c.backoff(ctx, 5, 0)
 	if time.Since(start) > 100*time.Millisecond {
 		t.Fatal("backoff should return immediately on cancelled context")
 	}
@@ -310,6 +311,44 @@ func TestDoGet_ServerError_Retry(t *testing.T) {
 	}
 	if calls < 3 {
 		t.Fatalf("expected at least 3 calls, got %d", calls)
+	}
+}
+
+// TestDoGet_429_NoInClientRetry vérifie qu'un 429 (rate limit) n'est PAS retenté
+// en interne : doGet rend immédiatement l'HTTPError (avec Retry-After parsé) après
+// UN seul appel, pour laisser le cooldown global du pool temporiser. Évite le
+// stampede de 429 au boot (4 hits/requête → 1).
+func TestDoGet_429_NoInClientRetry(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		w.Header().Set("Retry-After", "30")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+
+	c := &HaloAPIClient{
+		http:           srv.Client(),
+		spartanToken:   "s",
+		clearanceToken: "c",
+		limiter:        fastLimiter(),
+	}
+	_, err := c.doGet(context.Background(), srv.URL+"/test")
+	if err == nil {
+		t.Fatal("expected error on 429")
+	}
+	if calls != 1 {
+		t.Fatalf("expected exactly 1 call (no in-client retry on 429), got %d", calls)
+	}
+	var httpErr *HTTPError
+	if !errors.As(err, &httpErr) {
+		t.Fatalf("expected *HTTPError, got %T", err)
+	}
+	if httpErr.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("expected status 429, got %d", httpErr.StatusCode)
+	}
+	if httpErr.RetryAfter != 30*time.Second {
+		t.Fatalf("expected RetryAfter 30s (parsé), got %v", httpErr.RetryAfter)
 	}
 }
 

@@ -80,9 +80,11 @@ func (c *HaloAPIClient) doGet(ctx context.Context, rawURL string) ([]byte, error
 		resp, err := c.http.Do(req)
 		if err != nil {
 			lastErr = err
-			slog.WarnContext(ctx, "halo_api: GET échec réseau",
+			// Échec réseau transitoire : retry silencieux (DEBUG). L'abandon après
+			// maxRetries est loggé une seule fois en ERROR plus bas.
+			slog.DebugContext(ctx, "halo_api: GET échec réseau (retry)",
 				"url", rawURL, "attempt", attempt+1, "err", err)
-			c.backoff(ctx, attempt)
+			c.backoff(ctx, attempt, 0)
 			continue
 		}
 
@@ -102,15 +104,28 @@ func (c *HaloAPIClient) doGet(ctx context.Context, rawURL string) ([]byte, error
 			return nil, &HTTPError{StatusCode: resp.StatusCode, URL: rawURL, Err: errors.New("ressource absente")}
 		}
 		if resp.StatusCode != http.StatusOK {
-			lastErr = &HTTPError{StatusCode: resp.StatusCode, URL: rawURL, Err: fmt.Errorf("HTTP %d", resp.StatusCode), RetryAfter: parseRetryAfter(resp.Header.Get("Retry-After"), time.Now())}
-			slog.WarnContext(ctx, "halo_api: GET HTTP error",
+			retryAfter := parseRetryAfter(resp.Header.Get("Retry-After"), time.Now())
+			httpErr := &HTTPError{StatusCode: resp.StatusCode, URL: rawURL, Err: fmt.Errorf("HTTP %d", resp.StatusCode), RetryAfter: retryAfter}
+			// 429 (rate limit) : NE PAS retenter en interne. Re-taper l'API sous 10s
+			// alors qu'on est rate-limité ne fait qu'ajouter des 429 et noyer les logs.
+			// On rend l'HTTPError immédiatement : le PooledHaloClient déclenche le
+			// cooldown GLOBAL du pool (OnHTTPError, dedup) et le caller retentera au
+			// cycle suivant, fenêtre Retry-After respectée. Cf. boot stampede 2026-06-27.
+			if resp.StatusCode == http.StatusTooManyRequests {
+				slog.DebugContext(ctx, "halo_api: GET 429 (rate limit) — abandon immédiat, cooldown pool",
+					"url", rawURL, "retry_after_s", retryAfter.Seconds())
+				return nil, httpErr
+			}
+			lastErr = httpErr
+			// Autres erreurs (ex: 503) : retry borné, en respectant Retry-After si fourni.
+			slog.DebugContext(ctx, "halo_api: GET HTTP error (retry)",
 				"url", rawURL, "status", resp.StatusCode, "attempt", attempt+1)
-			c.backoff(ctx, attempt)
+			c.backoff(ctx, attempt, retryAfter)
 			continue
 		}
 		if readErr != nil {
 			lastErr = readErr
-			c.backoff(ctx, attempt)
+			c.backoff(ctx, attempt, 0)
 			continue
 		}
 		slog.DebugContext(ctx, "halo_api: GET succès",
@@ -131,11 +146,17 @@ func (c *HaloAPIClient) rateWait(ctx context.Context) {
 	_ = c.limiter.Wait(ctx)
 }
 
-// backoff attend un délai exponentiel avant de retenter.
-func (c *HaloAPIClient) backoff(ctx context.Context, attempt int) {
+// backoff attend avant de retenter. Délai de base exponentiel
+// (retryBaseDelay·2^attempt) ; si le serveur a fourni un Retry-After (retryAfter>0),
+// on respecte AU MOINS cette fenêtre. Borné à backoffCeiling pour ne pas bloquer une
+// requête de fond : les fenêtres plus longues sont gérées par le cooldown global du pool.
+func (c *HaloAPIClient) backoff(ctx context.Context, attempt int, retryAfter time.Duration) {
 	delay := retryBaseDelay * (1 << attempt)
-	if delay > 10*time.Second {
-		delay = 10 * time.Second
+	if retryAfter > delay {
+		delay = retryAfter
+	}
+	if delay > backoffCeiling {
+		delay = backoffCeiling
 	}
 	select {
 	case <-ctx.Done():

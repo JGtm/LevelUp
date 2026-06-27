@@ -112,7 +112,10 @@ func (pc *PooledHaloClient) notifyPoolOnError(lease *pool.Lease, err error) {
 		if httpErr.StatusCode == 503 {
 			msg = "service_unavailable"
 		}
-		slog.WarnContext(context.Background(), "pooled: pool global cooldown triggered",
+		// Le pool logue lui-même le cooldown UNE fois par transition (dedup dans
+		// OnHTTPError → "pool: cooldown global déclenché"). Ici on est appelé PAR
+		// REQUÊTE : DEBUG pour éviter N doublons par cycle pendant un boot stampede.
+		slog.DebugContext(context.Background(), "pooled: cooldown pool signalé",
 			"statusCode", httpErr.StatusCode, "reason", msg,
 			"retry_after_s", httpErr.RetryAfter.Seconds())
 		pc.p.OnHTTPError(httpErr.StatusCode, httpErr.RetryAfter)

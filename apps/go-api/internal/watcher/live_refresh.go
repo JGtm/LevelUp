@@ -39,9 +39,8 @@ type PlayerLiveRefresher struct {
 	notifier       port.SessionNotifier // nil si non configuré
 	tokenRefresher func(ctx context.Context, xuid string) (*domain.HaloTokens, error)
 
-	notifierWarnOnce sync.Once // log Warn une seule fois si notifier nil
-	cancelMu         sync.Mutex
-	cancel           context.CancelFunc
+	cancelMu sync.Mutex
+	cancel   context.CancelFunc
 }
 
 // NewPlayerLiveRefresher crée un refresher pour un joueur.
@@ -79,14 +78,13 @@ func (r *PlayerLiveRefresher) WithTokenRefresher(fn func(ctx context.Context, xu
 // OnPresenceActive démarre le ticker de rafraîchissement.
 // Sans effet si le ticker tourne déjà.
 func (r *PlayerLiveRefresher) OnPresenceActive(ctx context.Context) {
-	// Notifier avant le ticker pour que le TTL réduit soit effectif dès le démarrage.
+	// Notifier (si configuré) avant le ticker pour que le TTL réduit soit effectif
+	// dès le démarrage. notifier nil est un état NORMAL — le HomeService n'est créé
+	// qu'à l'ouverture de la page Home, et SetSessionActive est de toute façon un
+	// no-op aujourd'hui : pas de WARN. L'état est tracé dans le log "ticker démarré"
+	// ci-dessous via notifier_configured.
 	if r.notifier != nil {
 		r.notifier.SetSessionActive(true)
-	} else {
-		r.notifierWarnOnce.Do(func() {
-			slog.WarnContext(ctx, "live_refresh: aucun SessionNotifier configuré — TTL dynamique inactif",
-				"gamertag", r.gamertag)
-		})
 	}
 
 	r.cancelMu.Lock()
