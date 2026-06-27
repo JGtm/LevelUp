@@ -66,11 +66,15 @@ function RivalryCard({ rivalry, t, locale }: { rivalry: RelationRivalry; t: Mome
   }
   const tapePoints = useMemo(() => toTapePoints(rivalry, locale), [rivalry, locale])
 
-  // Écart de frags cumulé (Σ frags − Σ morts) par duel, ancien→récent. Somme
-  // préfixe sans mutation (n ≤ momentsTimelineLimit, coût négligeable).
-  const cumulativeFrags = useMemo(() => {
-    const deltas = (rivalry.duels ?? []).map((d) => d.kills_on_rival - d.deaths_by_rival)
-    return deltas.map((_, i) => deltas.slice(0, i + 1).reduce((a, b) => a + b, 0))
+  // Écart de frags cumulé (Σ frags − Σ morts) par duel, ancien→récent, + l'issue
+  // du duel (couleur du symbole). Somme préfixe sans mutation (n ≤ 20).
+  const cumulativePoints = useMemo(() => {
+    const duels = rivalry.duels ?? []
+    const deltas = duels.map((d) => d.kills_on_rival - d.deaths_by_rival)
+    return duels.map((d, i) => ({
+      cumulative: deltas.slice(0, i + 1).reduce((a, b) => a + b, 0),
+      outcome: d.outcome,
+    }))
   }, [rivalry])
 
   return (
@@ -95,10 +99,10 @@ function RivalryCard({ rivalry, t, locale }: { rivalry: RelationRivalry; t: Mome
         <div className="col-span-2 text-muted-foreground">{fragGapLabel(rivalry.frag_gap, t)}</div>
       </div>
 
-      {cumulativeFrags.length > 0 && (
+      {cumulativePoints.length > 0 && (
         <div className="flex flex-col gap-1">
           <p className="text-xs text-muted-foreground">{t.cumulativeFragTitle}</p>
-          <CumulativeFragGapChart values={cumulativeFrags} height={120} />
+          <CumulativeFragGapChart points={cumulativePoints} height={120} />
         </div>
       )}
     </div>

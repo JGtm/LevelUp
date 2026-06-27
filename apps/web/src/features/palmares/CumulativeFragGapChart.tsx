@@ -1,14 +1,21 @@
 /**
  * CumulativeFragGapChart — écart de frags cumulé contre un rival, duel par duel
- * (ancien → récent). Ligne colorée PAR LE SIGNE : vert quand le cumul est
- * positif (tu mènes), rouge quand négatif (tu es derrière) — via un visualMap
- * piecewise autour de 0. Référence de lecture : ligne pointillée à y=0.
+ * (ancien → récent). Aire + courbe DIVERGENTES colorées par le SIGNE du cumul :
+ * dégradé vert (`divergent-pos`) au-dessus de 0 / rouge (`divergent-neg`) en
+ * dessous, à bascule EXACTE sur 0 (aire ancrée à 0 via `areaStyle.origin`).
  *
- * Aucune couleur hex directe : outcomeColor() → resolveToken().
+ * PAS de visualMap : sur une série `line` à données scalaires + axe catégoriel,
+ * il laissait la courbe invisible (cf. SessionNetScoreArea). Le dégradé est
+ * calculé depuis la boîte englobante de l'aire ancrée à 0 (`zeroRatio`).
+ *
+ * Chaque point porte un SYMBOLE coloré par l'issue du duel (win/loss/neutre) →
+ * l'issue se lit match par match, indépendamment du signe du cumul.
+ * Aucune couleur hex directe : `resolveToken()` + `outcomeColor()`.
  */
 import { Suspense, lazy, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
+import { resolveToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 
 import { CHART_BG, getEChartsThemeColors, getTooltipBase, outcomeColor } from '@/components/charts/_utils'
@@ -17,24 +24,61 @@ const ReactECharts = lazy(() =>
   import('echarts-for-react').then((m) => ({ default: m.default ?? m })),
 )
 
+export interface CumulativeFragPoint {
+  cumulative: number
+  /** "win" | "loss" | "other" — pilote la couleur du symbole. */
+  outcome: string
+}
+
 interface CumulativeFragGapChartProps {
-  /** Cumul net (Σ frags − Σ morts) par duel, ancien → récent. */
-  values: number[]
+  points: CumulativeFragPoint[]
   height?: number
 }
 
-export function CumulativeFragGapChart({ values, height = 120 }: CumulativeFragGapChartProps) {
+// outcome backend ("win"|"loss"|"other") → clé OutcomeValue pour outcomeColor().
+function outcomeKey(o: string): 'win' | 'loss' | 'tie' {
+  return o === 'win' ? 'win' : o === 'loss' ? 'loss' : 'tie'
+}
+
+export function CumulativeFragGapChart({ points, height = 120 }: CumulativeFragGapChartProps) {
   const themeVersion = useThemeVersion()
 
   const option = useMemo((): EChartsCoreOption => {
-    if (values.length === 0) return {}
+    if (points.length === 0) return {}
     const tc = getEChartsThemeColors()
-    const positive = outcomeColor('win')
-    const negative = outcomeColor('loss')
+    const posColor = resolveToken('divergent-pos')
+    const negColor = resolveToken('divergent-neg')
+
+    // Dégradé divergent vert/rouge à bascule EXACTE sur 0, sans visualMap. L'aire
+    // ancrée à 0 → boîte [min(données,0), max(données,0)] ; 0 tombe à zeroRatio.
+    const values = points.map((p) => p.cumulative)
+    const top = Math.max(...values, 0)
+    const bot = Math.min(...values, 0)
+    const span = top - bot
+    const zeroRatio = span > 0 ? Math.min(1, Math.max(0, top / span)) : 1
+    const divergentColor = {
+      type: 'linear' as const,
+      x: 0,
+      y: 0,
+      x2: 0,
+      y2: 1,
+      colorStops: [
+        { offset: 0, color: posColor },
+        { offset: zeroRatio, color: posColor },
+        { offset: zeroRatio, color: negColor },
+        { offset: 1, color: negColor },
+      ],
+    }
+
+    const data = points.map((p) => ({
+      value: p.cumulative,
+      itemStyle: { color: outcomeColor(outcomeKey(p.outcome)) },
+    }))
+
     return {
       backgroundColor: CHART_BG,
       grid: { top: 16, bottom: 16, left: 28, right: 8 },
-      xAxis: { type: 'category', show: false, data: values.map((_, i) => i + 1) },
+      xAxis: { type: 'category', show: false, data: points.map((_, i) => i + 1) },
       yAxis: { type: 'value', scale: true },
       tooltip: {
         trigger: 'axis',
@@ -46,24 +90,16 @@ export function CumulativeFragGapChart({ values, height = 120 }: CumulativeFragG
           return `${v > 0 ? '+' : ''}${v}`
         },
       },
-      visualMap: {
-        show: false,
-        type: 'piecewise',
-        dimension: 1,
-        seriesIndex: 0,
-        pieces: [
-          { gte: 0, color: positive },
-          { lt: 0, color: negative },
-        ],
-      },
       series: [
         {
           type: 'line',
-          data: values,
+          data,
           smooth: true,
-          showSymbol: false,
-          lineStyle: { width: 2 },
-          areaStyle: { opacity: 0.08 },
+          showSymbol: true,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { width: 2, color: divergentColor },
+          areaStyle: { color: divergentColor, opacity: 0.14, origin: 0 },
           markLine: {
             silent: true,
             symbol: 'none',
@@ -76,9 +112,9 @@ export function CumulativeFragGapChart({ values, height = 120 }: CumulativeFragG
     }
     // themeVersion force le recalcul de l'option au changement de thème.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values, themeVersion])
+  }, [points, themeVersion])
 
-  if (values.length === 0) return null
+  if (points.length === 0) return null
 
   return (
     <Suspense fallback={null}>

@@ -1,3 +1,18 @@
+## [2026-06-27] Relations v3 — 3 correctifs post-déploiement (graphe cumulé, FDA, mémorisation boutons) — COMPLÉTÉ + vérifié
+
+**Tâche** : 3 retouches suite remarques sur Relations v3 (déjà en prod).
+
+**Décisions** :
+- **Graphe « Écart de frags cumulé » invisible** : cause = `visualMap dimension:1` sur série `line` scalaire + axe catégoriel (la valeur est en dim 0 → visualMap ne classe rien → courbe sans couleur). Fix = dégradé divergent vert/rouge à bascule EXACTE sur 0 (`colorStops` + `zeroRatio`, aire ancrée `origin:0`), **sans visualMap** — motif prouvé copié de `SessionNetScoreArea`. Bonus narration : symbole de chaque point coloré par l'issue du duel. Prop `values:number[]` → `points:{cumulative,outcome}[]`.
+- **« KDA » FR → « FDA »** : convention app (`fields.toml [fields.kda]` fr="FDA"/en="KDA"). Corrigé `palmares.relations.table.kda_together` fr="FDA ensemble" (en="KDA together"), manifest régénéré.
+- **Mémorisation des boutons** : nouveau store Zustand persisté `stores/relationsPrefsStore.ts` (`persist`, name `levelup-relations-prefs`, portée globale) pour `filter` (chips) + `includeFriends` + `heatmapMode` ; câblé à la place des `useState` (PalmaresRelationsPage + RelationsMomentsSection). Barre de segmentation (`useLocalFilterBar`) NON persistée (commit-based, hors périmètre — choix user).
+
+**Vérif** : typecheck, vitest 2017/0, eslint (0 mes fichiers), lint colors/fields, knip sous plafonds. Aucune modif backend.
+
+**Statut** : Complété sur `feat/relations-v3-fixes`. Prochaine étape : push + merge main + déploiement (sur accord user).
+
+---
+
 ## [2026-06-27] Classement — mise en forme MVP/LVP par colonne + fix clic gamertag → Explorer — COMPLÉTÉ + vérifié (commit en attente)
 
 **Tâche** : 2 améliorations page Classement (`apps/web/src/features/leaderboard/`).
