@@ -157,8 +157,8 @@ func TestSharedReaderForTitle_PerTitle_Selection(t *testing.T) {
 	}
 }
 
-// TestSharedReaderForTitle_Fallbacks : Manager nil (kill-switch) et démo →
-// cfg.SharedProvider, sans routage per-titre.
+// TestSharedReaderForTitle_Fallbacks : Manager nil (kill-switch) → cfg.SharedProvider ;
+// démo titre par DÉFAUT → cfg.SharedProvider (provider boot, byte-identique).
 func TestSharedReaderForTitle_Fallbacks(t *testing.T) {
 	// Provider sentinel in-memory (identité comparable, pas de fichier).
 	mem, err := sql.Open("duckdb", "")
@@ -173,11 +173,59 @@ func TestSharedReaderForTitle_Fallbacks(t *testing.T) {
 	if got := cfg.sharedReaderForTitle(halo5.TitleSlug); got != duckdb.SharedReader(sentinel) {
 		t.Errorf("Manager nil : attendu fallback SharedProvider")
 	}
-	// Démo → fallback SharedProvider (mono-titre démo), même avec un Manager.
+	// Démo + titre par DÉFAUT → provider boot (cfg.SharedProvider), sans routage.
 	mgr := sharedprovider.NewManager()
 	defer func() { _ = mgr.Close() }()
 	cfgDemo := &AppConfig{RepoRoot: t.TempDir(), DemoMode: true, SharedProvider: sentinel, SharedManager: mgr}
-	if got := cfgDemo.sharedReaderForTitle(halo5.TitleSlug); got != duckdb.SharedReader(sentinel) {
-		t.Errorf("démo : attendu fallback SharedProvider")
+	if got := cfgDemo.sharedReaderForTitle(titlePkg.DefaultSlug); got != duckdb.SharedReader(sentinel) {
+		t.Errorf("démo défaut : attendu provider boot (cfg.SharedProvider)")
+	}
+}
+
+// TestSharedReaderForTitle_DemoPerTitle : en démo, un titre ADDITIONNEL résout le
+// provider de SON shared démo title-scopé (data/demo/titles/{slug}/warehouse/…),
+// DISTINCT du provider boot du titre par défaut.
+func TestSharedReaderForTitle_DemoPerTitle(t *testing.T) {
+	fixtures := t.TempDir()
+	const h5Match = "h5-demo-match-9999"
+
+	// Shared démo H5 title-scopé : fixtures/titles/halo_5/warehouse/shared_matches_v2.duckdb.
+	h5Dir := filepath.Join(fixtures, "titles", halo5.TitleSlug, "warehouse")
+	if err := os.MkdirAll(h5Dir, 0o755); err != nil {
+		t.Fatalf("mkdir h5 demo warehouse: %v", err)
+	}
+	h5Path := filepath.Join(h5Dir, "shared_matches_v2.duckdb")
+	h5db, err := duckdb.OpenReadWrite(h5Path)
+	if err != nil {
+		t.Fatalf("OpenReadWrite h5 demo shared: %v", err)
+	}
+	ctx := context.Background()
+	if _, err := h5db.SQLDb().ExecContext(ctx,
+		`CREATE TABLE IF NOT EXISTS match_registry (match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP NOT NULL)`); err != nil {
+		t.Fatalf("create match_registry: %v", err)
+	}
+	if _, err := h5db.SQLDb().ExecContext(ctx,
+		"INSERT INTO match_registry (match_id, start_time) VALUES (?, CURRENT_TIMESTAMP)", h5Match); err != nil {
+		t.Fatalf("insert h5 match: %v", err)
+	}
+	_ = h5db.Close()
+
+	mem, err := sql.Open("duckdb", "")
+	if err != nil {
+		t.Fatalf("open in-memory duckdb: %v", err)
+	}
+	defer func() { _ = mem.Close() }()
+	sentinel := sharedprovider.FromInMemoryDB(mem, "boot")
+
+	mgr := sharedprovider.NewManager()
+	defer func() { _ = mgr.Close() }()
+	cfg := &AppConfig{DemoMode: true, DemoFixturesDir: fixtures, SharedProvider: sentinel, SharedManager: mgr}
+
+	h5Reader := cfg.sharedReaderForTitle(halo5.TitleSlug)
+	if h5Reader == duckdb.SharedReader(sentinel) {
+		t.Fatalf("démo H5 : doit résoudre un provider DISTINCT du provider boot")
+	}
+	if ok, err := readMatchExists(t, h5Reader, h5Match); err != nil || !ok {
+		t.Errorf("démo H5 : le reader doit voir %q (ok=%v err=%v)", h5Match, ok, err)
 	}
 }

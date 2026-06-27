@@ -201,61 +201,75 @@ func runIndexMedia(cfg *config.AppConfig, args []string) error {
 func runSeedDemo(cfg *config.AppConfig, args []string) error {
 	fs := flag.NewFlagSet("seed-demo", flag.ExitOnError)
 	gamertag := fs.String("gamertag", "JGtm", "Gamertag source (lu depuis db_profiles.json)")
-	maxMatches := fs.Int("max-matches", ops.DefaultMaxMatches, "Nombre de matchs à extraire")
+	maxMatches := fs.Int("max-matches", ops.DefaultMaxMatches, "Nombre de matchs à extraire par titre")
 	outDir := fs.String("out", "data/demo", "Répertoire de sortie (relatif au repo root)")
 	serviceTag := fs.String("service-tag", "SPTA", "Spartan ID affiché sous le gamertag DEMO")
-	maxMedia := fs.Int("max-media", ops.DefaultMaxMedia, "Nombre max de fichiers média à extraire")
+	maxMedia := fs.Int("max-media", ops.DefaultMaxMedia, "Nombre max de fichiers média à extraire (titre par défaut)")
 	noMedia := fs.Bool("no-media", false, "Désactiver l'extraction média")
+	titlesFlag := fs.String("titles", "", "Titres à seeder (CSV de slugs ; vide = tous les titres où le gamertag a des données)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
-	// Résoudre le xuid source depuis db_profiles.json.
 	profilesPath := cfg.DBProfilesPath
 	if profilesPath == "" {
 		profilesPath = filepath.Join(cfg.RepoRoot, "db_profiles.json")
 	}
-	sourceXUID, srcPlayerRel, err := ops.ResolveSourceXUIDFromProfiles(profilesPath, *gamertag)
-	if err != nil {
-		return fmt.Errorf("seed-demo: resolve xuid: %w", err)
+
+	// Titres à seeder : flag CSV explicite, sinon dérivés de db_profiles (titres où
+	// le gamertag source a un profil = titres avec données). Le titre par défaut est
+	// placé en tête par TitlesForGamertag.
+	var slugs []string
+	if strings.TrimSpace(*titlesFlag) != "" {
+		for _, s := range strings.Split(*titlesFlag, ",") {
+			if s = strings.TrimSpace(s); s != "" {
+				slugs = append(slugs, s)
+			}
+		}
+	} else {
+		var terr error
+		slugs, terr = ops.TitlesForGamertag(profilesPath, *gamertag)
+		if terr != nil {
+			return fmt.Errorf("seed-demo: titres pour %q: %w", *gamertag, terr)
+		}
 	}
 
-	pr := title.NewPathResolver(cfg.RepoRoot)
-	sourcePlayerDB := filepath.Join(cfg.RepoRoot, srcPlayerRel)
-	opts := ops.SeedDemoOptions{
-		SourcePlayerDB: sourcePlayerDB,
-		SourceSharedDB: pr.SharedDBPath(title.DefaultSlug),
-		SourceMetaDB:   pr.MetadataDBPath(title.DefaultSlug),
-		SourceXUID:     sourceXUID,
-		OutDir:         filepath.Join(cfg.RepoRoot, *outDir),
-		MaxMatches:     *maxMatches,
-		SourceLabel:    *gamertag,
-		ServiceTag:     *serviceTag,
-		IncludeMedia:   !*noMedia,
-		MaxMedia:       *maxMedia,
-		// Racine des player DBs (…/players) pour emprunter une identité Spartan.
-		SourcePlayersDir: filepath.Dir(filepath.Dir(sourcePlayerDB)),
-		// db_profiles + repo root : pour seeder les player DB des coéquipiers
-		// principaux (DemoPlayer2/3) résolus par xuid.
-		ProfilesPath: profilesPath,
-		RepoRoot:     cfg.RepoRoot,
+	// Spec par titre. Le média est extrait pour CHAQUE titre : Infinite via flux HLS
+	// (captures "Halo Infinite …"), Halo 5 via clips mp4 servis direct (captures
+	// "Halo_5_Guardians-…" indexées par index-media --title halo_5). Chaque titre lit
+	// les associations de SON shared_social ; absence de clips → 0 média (best-effort).
+	titleSpecs := make([]ops.TitleSeedSpec, 0, len(slugs))
+	for _, slug := range slugs {
+		titleSpecs = append(titleSpecs, ops.TitleSeedSpec{
+			Slug:         slug,
+			Gamertag:     *gamertag,
+			MaxMatches:   *maxMatches,
+			MaxMedia:     *maxMedia,
+			IncludeMedia: !*noMedia,
+		})
 	}
 
 	ctx := context.Background()
-	res, err := ops.SeedDemo(ctx, opts)
+	res, err := ops.SeedDemoMulti(ctx, ops.SeedDemoMultiOptions{
+		RepoRoot:     cfg.RepoRoot,
+		OutDir:       filepath.Join(cfg.RepoRoot, *outDir),
+		ProfilesPath: profilesPath,
+		ServiceTag:   *serviceTag,
+		Titles:       titleSpecs,
+	})
 	if err != nil {
 		return err
 	}
 
 	fmt.Printf("✅ Données démo générées dans %s\n", res.OutDir)
-	fmt.Printf("   - %d matchs extraits\n", len(res.MatchIDs))
-	fmt.Printf("   - metadata.duckdb: copiée\n")
-	fmt.Printf("   - shared_matches_v2.duckdb: %v\n", res.SharedRows)
-	fmt.Printf("   - stats.duckdb: %v\n", res.PlayerRows)
-	if res.MediaCopied > 0 {
-		fmt.Printf("   - %d fichiers média copiés\n", res.MediaCopied)
+	for slug, tr := range res.PerTitle {
+		fmt.Printf("   [%s] %d matchs, %d player DB, %d médias\n",
+			slug, len(tr.MatchIDs), len(tr.SeededPlayers), tr.MediaCopied)
 	}
-	fmt.Printf("   - db_profiles.json + app_settings.json: écrits\n")
+	if len(res.Skipped) > 0 {
+		fmt.Printf("   ⚠️  titres ignorés (gamertag non configuré): %s\n", strings.Join(res.Skipped, ", "))
+	}
+	fmt.Printf("   - db_profiles.json (v3) + app_settings.json: écrits\n")
 	fmt.Printf("   Durée: %s\n", res.Duration.Round(time.Millisecond))
 	return nil
 }

@@ -108,11 +108,15 @@ func familyXUIDResolver(groupStore *groupstore.GroupStore, users authz.UserLooku
 // les référentiels (rangs, maps, armes, saisons, catalogue) vivent dans la metadata
 // des fixtures démo (data/demo/warehouse/metadata.duckdb, copiée intégralement de la
 // prod par seed-demo). Sans cette redirection, ces référentiels sont vides en démo.
+// Délègue à config.MetadataDBPath (source unique de la redirection démo title-scopée).
 func metadataDBPathFor(cfg *config.AppConfig) string {
-	if cfg.DemoMode && cfg.DemoFixturesDir != "" {
-		return filepath.Join(cfg.DemoFixturesDir, "warehouse", "metadata.duckdb")
-	}
-	return titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titlePkg.DefaultSlug)
+	return metadataDBPathForTitle(cfg, titlePkg.DefaultSlug)
+}
+
+// metadataDBPathForTitle : variante title-aware (un titre additionnel comme Halo 5
+// lit SA metadata démo title-scopée data/demo/titles/{slug}/warehouse/metadata.duckdb).
+func metadataDBPathForTitle(cfg *config.AppConfig, titleSlug string) string {
+	return config.MetadataDBPath(cfg, titleSlug)
 }
 
 // NewRouter construit le routeur chi avec tous les endpoints.
@@ -129,8 +133,8 @@ func metadataDBPathFor(cfg *config.AppConfig) string {
 // (référentiel). Peuplé par cmd/h5-metadata-fetch (API Metadata officielle :
 // maps_catalog.image_url + weapon_labels.icon_url). Best-effort : DB absente / tables
 // vides → slices nil (le titre n'apparaît simplement pas dans le drawer).
-func loadTitleAssetDrawerData(pr *titlePkg.PathResolver, slug string) (maps, weapons, medals []canonical.AssetMeta) {
-	metaDB, err := platform_duckdb.OpenReadWriteShared(pr.MetadataDBPath(slug))
+func loadTitleAssetDrawerData(metaPath, slug string) (maps, weapons, medals []canonical.AssetMeta) {
+	metaDB, err := platform_duckdb.OpenReadWriteShared(metaPath)
 	if err != nil {
 		return nil, nil, nil
 	}
@@ -181,8 +185,8 @@ func loadTitleAssetDrawerData(pr *titlePkg.PathResolver, slug string) (maps, wea
 // additionnel depuis sa metadata (csr_designations → icon_url par designation+tier,
 // URLs CDN officielles). Retourne nil si la DB est absente / vide ; le résolveur ne
 // répond QUE pour `slug` (autres titres → "" → chemin HINF inchangé).
-func loadCSRBadgeResolver(pr *titlePkg.PathResolver, slug string) func(string, string, int) string {
-	metaDB, err := platform_duckdb.OpenReadWriteShared(pr.MetadataDBPath(slug))
+func loadCSRBadgeResolver(metaPath, slug string) func(string, string, int) string {
+	metaDB, err := platform_duckdb.OpenReadWriteShared(metaPath)
 	if err != nil {
 		return nil
 	}
@@ -734,7 +738,7 @@ func NewRouter(
 			// Metadata officielle). Title-aware via WithTitle ; les URLs DB priment sur
 			// les builders HINF (cf. AssetService : ImageURL non vide conservée).
 			h5Maps, h5Weapons, h5Medals := loadTitleAssetDrawerData(
-				titlePkg.NewPathResolver(cfg.RepoRoot), halo5.TitleSlug)
+				config.MetadataDBPath(cfg, halo5.TitleSlug), halo5.TitleSlug)
 			assetMetaHandler = handlers.NewAssetMetadataHandler(
 				service.NewAssetService(
 					service.NewStaticAssetMetaRepo(maps, weapons).
@@ -765,7 +769,7 @@ func NewRouter(
 	// (buildHomeSkillPeakBadgeURL). nil si pas de seed → HINF strictement inchangé.
 	// Chargé UNE fois et réutilisé par l'adapter TitleAssetURLAdapter h5 ci-dessous.
 	h5CSRResolver := loadCSRBadgeResolver(
-		titlePkg.NewPathResolver(cfg.RepoRoot), halo5.TitleSlug)
+		config.MetadataDBPath(cfg, halo5.TitleSlug), halo5.TitleSlug)
 	platform_duckdb.SetCSRBadgeResolver(h5CSRResolver)
 
 	// C0 / G1 : TitleAssetURLAdapter pour Halo 5. Sans lui,
@@ -775,7 +779,7 @@ func NewRouter(
 	// la metadata h5 DÉJÀ chargée (aucun accès DB dans l'adapter).
 	{
 		h5Maps, h5Weapons, h5Medals := loadTitleAssetDrawerData(
-			titlePkg.NewPathResolver(cfg.RepoRoot), halo5.TitleSlug)
+			config.MetadataDBPath(cfg, halo5.TitleSlug), halo5.TitleSlug)
 		if h5CSRResolver != nil || len(h5Maps) > 0 || len(h5Weapons) > 0 {
 			h5AssetURL := halo5.NewAssetURLAdapter().
 				WithMaps(h5Maps).

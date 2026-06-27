@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"path/filepath"
 
+	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/classification"
@@ -157,7 +158,11 @@ func registerHalo5Adapters(
 	// pour fermeture au shutdown, cf. TrackMetadataHandle). Best-effort : échec
 	// d'ouverture → commendations laissées brutes (ID + count, le front dégrade).
 	var commDefs halo5.CommendationDefSource
-	metaPath := titlePkg.NewPathResolver(reg.cfg.RepoRoot).MetadataDBPath(td.Slug)
+	// config.MetadataDBPath = source unique de la redirection démo (en démo, lit la
+	// metadata h5 title-scopée data/demo/titles/halo_5/warehouse/metadata.duckdb ;
+	// sinon le chemin prod data/titles/halo_5/…). Sans ça, en démo l'ouverture vise
+	// le chemin prod absent → commendations brutes.
+	metaPath := config.MetadataDBPath(reg.cfg, td.Slug)
 	if metaDB, err := platform_duckdb.OpenReadWriteShared(metaPath); err != nil {
 		slog.Warn("h5_commendation_defs_open_failed", "title_slug", td.Slug, "err", err.Error())
 	} else {
@@ -184,6 +189,15 @@ func registerHalo5Adapters(
 			// gamertag) — match_commendations.xuid = l'xuid Xbox résolu au sync.
 			da = da.WithCommendationTotals(
 				platform_duckdb.NewHalo5CommendationTotalsSource(pdb.SharedReadDB(), pdb.XUID))
+			// Career + kill-feed LOCAUX (DuckDB) — gatés DÉMO : servent le rang CSR/SR et
+			// la timeline de kills hors-ligne (aucun token en démo → les API cryptum live
+			// échoueraient). En prod, ces surfaces restent live (comportement inchangé).
+			// Données = player DB (career) + shared synchronisé (kill-feed : killer_victim_pairs
+			// ⨝ weapon_kills ⨝ kill_positions).
+			if reg.cfg.DemoMode {
+				da = da.WithCareerSource(platform_duckdb.NewHalo5CareerSource(pdb))
+				da = da.WithMatchEventsSource(platform_duckdb.NewHalo5MatchEventsSource(pdb.SharedReadDB()))
+			}
 		}
 		if commDefs != nil {
 			da = da.WithCommendationDefs(commDefs)
