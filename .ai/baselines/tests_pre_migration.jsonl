@@ -7205,10 +7205,10 @@
 {"Time":"2026-06-26T23:45:12.9985653+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestSelectTopNemesis_TiebreakDuelRatio","Output":"=== RUN   TestSelectTopNemesis_TiebreakDuelRatio\n"}
 {"Time":"2026-06-26T23:45:12.9985653+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestSelectTopNemesis_TiebreakDuelRatio","Output":"=== PAUSE TestSelectTopNemesis_TiebreakDuelRatio\n"}
 {"Time":"2026-06-26T23:45:12.9985653+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis/relations","Test":"TestSelectTopNemesis_TiebreakDuelRatio"}
-{"Time":"2026-06-26T23:45:12.9985653+02:00","Action":"run","Package":"levelup/go-api/internal/analysis/relations","Test":"TestTintedBadgesReused"}
-{"Time":"2026-06-26T23:45:12.9985653+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestTintedBadgesReused","Output":"=== RUN   TestTintedBadgesReused\n"}
-{"Time":"2026-06-26T23:45:12.9985653+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestTintedBadgesReused","Output":"=== PAUSE TestTintedBadgesReused\n"}
-{"Time":"2026-06-26T23:45:12.9985653+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis/relations","Test":"TestTintedBadgesReused"}
+{"Time":"2026-06-26T23:45:12.9985653+02:00","Action":"run","Package":"levelup/go-api/internal/analysis/relations","Test":"TestEncounterBadgesReused"}
+{"Time":"2026-06-26T23:45:12.9985653+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestEncounterBadgesReused","Output":"=== RUN   TestEncounterBadgesReused\n"}
+{"Time":"2026-06-26T23:45:12.9985653+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestEncounterBadgesReused","Output":"=== PAUSE TestEncounterBadgesReused\n"}
+{"Time":"2026-06-26T23:45:12.9985653+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis/relations","Test":"TestEncounterBadgesReused"}
 {"Time":"2026-06-26T23:45:12.9985653+02:00","Action":"run","Package":"levelup/go-api/internal/analysis/relations","Test":"TestComputeRivalryMetrics_FragGapAndStreak"}
 {"Time":"2026-06-26T23:45:12.9985653+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestComputeRivalryMetrics_FragGapAndStreak","Output":"=== RUN   TestComputeRivalryMetrics_FragGapAndStreak\n"}
 {"Time":"2026-06-26T23:45:12.9985653+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestComputeRivalryMetrics_FragGapAndStreak","Output":"--- PASS: TestComputeRivalryMetrics_FragGapAndStreak (0.00s)\n"}
@@ -7337,8 +7337,8 @@
 {"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/relations","Test":"TestCategorize/only_ally","Elapsed":0}
 {"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis/relations","Test":"TestCategorize/enemy_dominates_but_no_teammate"}
 {"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestCategorize/enemy_dominates_but_no_teammate","Output":"=== CONT  TestCategorize/enemy_dominates_but_no_teammate\n"}
-{"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis/relations","Test":"TestTintedBadgesReused"}
-{"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestTintedBadgesReused","Output":"=== CONT  TestTintedBadgesReused\n"}
+{"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis/relations","Test":"TestEncounterBadgesReused"}
+{"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestEncounterBadgesReused","Output":"=== CONT  TestEncounterBadgesReused\n"}
 {"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"run","Package":"levelup/go-api/internal/analysis/relations","Test":"TestRecrueBadge/no_first_seen"}
 {"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestRecrueBadge/no_first_seen","Output":"=== RUN   TestRecrueBadge/no_first_seen\n"}
 {"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestRecrueBadge/no_first_seen","Output":"=== PAUSE TestRecrueBadge/no_first_seen\n"}
@@ -7349,8 +7349,8 @@
 {"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestDeLongueDateBadge/recent_but_many_matches","Output":"=== RUN   TestDeLongueDateBadge/recent_but_many_matches\n"}
 {"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis/relations","Test":"TestRecrueBadge/old"}
 {"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestRecrueBadge/old","Output":"=== CONT  TestRecrueBadge/old\n"}
-{"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestTintedBadgesReused","Output":"--- PASS: TestTintedBadgesReused (0.00s)\n"}
-{"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/relations","Test":"TestTintedBadgesReused","Elapsed":0}
+{"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestEncounterBadgesReused","Output":"--- PASS: TestEncounterBadgesReused (0.00s)\n"}
+{"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/relations","Test":"TestEncounterBadgesReused","Elapsed":0}
 {"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestDeLongueDateBadge/recent_but_many_matches","Output":"=== PAUSE TestDeLongueDateBadge/recent_but_many_matches\n"}
 {"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis/relations","Test":"TestDeLongueDateBadge/recent_but_many_matches"}
 {"Time":"2026-06-26T23:45:12.9990893+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/relations","Test":"TestRecrueBadge/recent_enough_matches","Output":"--- PASS: TestRecrueBadge/recent_enough_matches (0.00s)\n"}
