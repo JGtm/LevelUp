@@ -1,33 +1,48 @@
 /**
- * RelationsRivalryCards — cartes « Revanche » (Phase 3a).
+ * RelationsRivalryCards — cartes « Revanche » (Phase 3a / v3).
  *
  * Pour chaque rival (bête noire + autres), une carte :
- *   - frise des duels (OutcomeSequenceTape, ancien→récent, tokens outcome-*)
- *   - taux de victoire glissant (TimeseriesLineChart, 1 série, lissée)
- *   - KPIs : récent vs global, série en cours, écart de frags cumulé.
+ *   - frise des duels (OutcomeSequenceTape, ancien→récent) ; au survol, chaque
+ *     duel affiche date · mode · map — frags/morts (plus d'UUID brut).
+ *   - écart de frags cumulé (CumulativeFragGapChart) coloré par le signe :
+ *     vert quand tu mènes, rouge quand tu es derrière.
+ *   - KPIs : récent vs global, série en cours, écart de frags total.
  *
- * Aucune couleur hex : tokens outcome-* (via OutcomeSequenceTape) +
- * colorToken 'outcome-win' (courbe). Strings via palmares.toml (FR/EN).
+ * Aucune couleur hex : tokens outcome-* (via les wrappers chart).
  */
 import { useMemo } from 'react'
 
-import { OutcomeSequenceTape, type OutcomePoint, type OutcomeSequenceLabels } from '@/components/charts/OutcomeSequenceTape'
-import { TimeseriesLineChart, type ChartPoint2D } from '@/components/charts/TimeseriesLineChart'
-import type { ChartSeries } from '@/components/charts/ChartCard'
+import {
+  OutcomeSequenceTape,
+  type OutcomePoint,
+  type OutcomeSequenceLabels,
+} from '@/components/charts/OutcomeSequenceTape'
 import { formatPercent } from '@/lib/formatters'
 import type { RelationRivalry } from '@/lib/api/types'
+import { useAppShellStore } from '@/stores/appShellStore'
 
-import type { PalmaresText } from './i18n'
+import { CumulativeFragGapChart } from './CumulativeFragGapChart'
+import { normalizePalmaresLocale, type PalmaresText } from './i18n'
 
 type MomentsText = PalmaresText['relations']['moments']
 
-// outcome backend "win"|"loss"|"other" → clé OutcomeSequenceTape ("other"→tie,
-// couleur neutre via outcome-draw token, déjà câblé dans le wrapper).
-function toTapePoints(rivalry: RelationRivalry): OutcomePoint[] {
-  return (rivalry.duels ?? []).map((d) => ({
-    outcome: d.outcome === 'win' ? 'win' : d.outcome === 'loss' ? 'loss' : 'tie',
-    matchId: d.match_id,
-  }))
+// toTapePoints : duels backend → points de frise. Le tooltip d'un duel affiche un
+// libellé pré-formaté (date · mode · map — frags/morts) au lieu de l'UUID.
+function toTapePoints(rivalry: RelationRivalry, locale: 'fr' | 'en'): OutcomePoint[] {
+  return (rivalry.duels ?? []).map((d) => {
+    const date = d.started_at
+      ? new Date(d.started_at).toLocaleDateString(locale, { day: 'numeric', month: 'short' })
+      : ''
+    const parts = [date, d.mode, d.map_name].filter((s): s is string => !!s)
+    const label = `${parts.join(' · ')} — ${d.kills_on_rival}/${d.deaths_by_rival}`
+    return {
+      outcome: d.outcome === 'win' ? 'win' : d.outcome === 'loss' ? 'loss' : 'tie',
+      matchId: d.match_id,
+      mode: d.mode || undefined,
+      map: d.map_name || undefined,
+      label,
+    }
+  })
 }
 
 function streakLabel(streak: number, t: MomentsText): string {
@@ -42,23 +57,20 @@ function fragGapLabel(gap: number, t: MomentsText): string {
   return t.fragGapEven
 }
 
-function RivalryCard({ rivalry, t }: { rivalry: RelationRivalry; t: MomentsText }) {
+function RivalryCard({ rivalry, t, locale }: { rivalry: RelationRivalry; t: MomentsText; locale: 'fr' | 'en' }) {
   const tapeLabels: OutcomeSequenceLabels = {
     win: t.outcomeWin,
     loss: t.outcomeLoss,
     tie: t.outcomeOther,
     dnf: t.outcomeOther,
   }
-  const tapePoints = useMemo(() => toTapePoints(rivalry), [rivalry])
+  const tapePoints = useMemo(() => toTapePoints(rivalry, locale), [rivalry, locale])
 
-  // WR glissant : un point par duel (index), valeur en % (0..100). Les points
-  // nuls (fenêtre sans duel décisif) sont omis.
-  const rollingSeries: ChartSeries<ChartPoint2D>[] = useMemo(() => {
-    const dp: ChartPoint2D[] = []
-    ;(rivalry.rolling_win_rate ?? []).forEach((v, i) => {
-      if (v != null) dp.push({ x: i + 1, y: Math.round(v * 1000) / 10 })
-    })
-    return dp.length > 0 ? [{ key: 'rolling', colorToken: 'outcome-win', datapoints: dp }] : []
+  // Écart de frags cumulé (Σ frags − Σ morts) par duel, ancien→récent. Somme
+  // préfixe sans mutation (n ≤ momentsTimelineLimit, coût négligeable).
+  const cumulativeFrags = useMemo(() => {
+    const deltas = (rivalry.duels ?? []).map((d) => d.kills_on_rival - d.deaths_by_rival)
+    return deltas.map((_, i) => deltas.slice(0, i + 1).reduce((a, b) => a + b, 0))
   }, [rivalry])
 
   return (
@@ -83,29 +95,25 @@ function RivalryCard({ rivalry, t }: { rivalry: RelationRivalry; t: MomentsText 
         <div className="col-span-2 text-muted-foreground">{fragGapLabel(rivalry.frag_gap, t)}</div>
       </div>
 
-      {rollingSeries.length > 0 && (
-        <TimeseriesLineChart
-          series={rollingSeries}
-          seriesNameResolver={() => t.rollingTitle}
-          xAxisType="category"
-          outcomeMarkers={false}
-          showSymbol={false}
-          smooth
-          height={120}
-        />
+      {cumulativeFrags.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <p className="text-xs text-muted-foreground">{t.cumulativeFragTitle}</p>
+          <CumulativeFragGapChart values={cumulativeFrags} height={120} />
+        </div>
       )}
     </div>
   )
 }
 
 export function RelationsRivalryCards({ rivalries, t }: { rivalries: RelationRivalry[]; t: MomentsText }) {
+  const locale = normalizePalmaresLocale(useAppShellStore((s) => s.locale))
   if (rivalries.length === 0) {
     return <p className="text-sm text-muted-foreground">{t.rivalriesEmpty}</p>
   }
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {rivalries.map((r) => (
-        <RivalryCard key={r.xuid} rivalry={r} t={t} />
+        <RivalryCard key={r.xuid} rivalry={r} t={t} locale={locale} />
       ))}
     </div>
   )

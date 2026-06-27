@@ -91,8 +91,8 @@ ORDER BY e.xuid ASC, e.hour_utc ASC`
 //
 // On garde les N derniers duels (ORDER BY start_time DESC LIMIT N dans la
 // sous-requête) puis on les ré-ordonne ancien→récent pour la frise et le WR
-// glissant. Colonnes SELECT (5) : match_id, start_time, result,
-// kills_on_rival, deaths_by_rival.
+// glissant. Colonnes SELECT (7) : match_id, start_time, result,
+// kills_on_rival, deaths_by_rival, mode (pair_name), map_name.
 const Q30RivalTimelineTpl = `
 WITH duel AS (
     SELECT
@@ -110,7 +110,9 @@ recent AS (
         COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
         CASE WHEN %s THEN 1 WHEN %s THEN 2 ELSE 0 END AS result,
         COALESCE(d.kills_on_rival, 0)  AS kills_on_rival,
-        COALESCE(d.deaths_by_rival, 0) AS deaths_by_rival
+        COALESCE(d.deaths_by_rival, 0) AS deaths_by_rival,
+        COALESCE(r.pair_name, '')               AS mode,
+        COALESCE(r.map_name_fr, r.map_name, '') AS map_name
     FROM match_registry r
     JOIN match_participants p1 ON r.match_id = p1.match_id AND p1.xuid = ?
     JOIN match_participants p2 ON r.match_id = p2.match_id AND p2.xuid = ?
@@ -119,6 +121,6 @@ recent AS (
     ORDER BY start_time DESC, match_id DESC
     LIMIT ?
 )
-SELECT match_id, start_time, result, kills_on_rival, deaths_by_rival
+SELECT match_id, start_time, result, kills_on_rival, deaths_by_rival, mode, map_name
 FROM recent
 ORDER BY start_time ASC, match_id ASC`

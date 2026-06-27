@@ -54,6 +54,7 @@ export interface PalmaresText {
       analyser: string
       reset: string
       includeFriends: string
+      friendsIncluded: string
     }
     table: {
       player: string
@@ -63,6 +64,7 @@ export interface PalmaresText {
       winRateEnemy: string
       fragsDeaths: string
       ratio: string
+      kdaTogether: string
       lastSeen: string
       ratioTooltip: string
       previous: string
@@ -120,6 +122,7 @@ export interface PalmaresText {
       fragGapBehind: (count: string) => string
       fragGapEven: string
       rollingTitle: string
+      cumulativeFragTitle: string
       outcomeWin: string
       outcomeLoss: string
       outcomeOther: string
@@ -232,6 +235,7 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         analyser: t(loc, 'palmares.relations.filters.analyser'),
         reset: t(loc, 'palmares.relations.filters.reset'),
         includeFriends: t(loc, 'palmares.relations.filters.include_friends'),
+        friendsIncluded: t(loc, 'palmares.relations.filters.friends_included'),
       },
       table: {
         player: t(loc, 'palmares.relations.table.player'),
@@ -241,6 +245,7 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         winRateEnemy: t(loc, 'palmares.relations.table.win_rate_enemy'),
         fragsDeaths: t(loc, 'palmares.relations.table.frags_deaths'),
         ratio: t(loc, 'palmares.relations.table.ratio'),
+        kdaTogether: t(loc, 'palmares.relations.table.kda_together'),
         lastSeen: t(loc, 'palmares.relations.table.last_seen'),
         ratioTooltip: t(loc, 'palmares.relations.table.ratio_tooltip'),
         previous: t(loc, 'palmares.relations.table.previous'),
@@ -327,6 +332,7 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
           formatMessage(palmaresManifest, 'palmares.relations.moments.frag_gap_behind', loc, { count }),
         fragGapEven: t(loc, 'palmares.relations.moments.frag_gap_even'),
         rollingTitle: t(loc, 'palmares.relations.moments.rolling_title'),
+        cumulativeFragTitle: t(loc, 'palmares.relations.moments.cumulative_frag_title'),
         outcomeWin: t(loc, 'palmares.relations.moments.outcome_win'),
         outcomeLoss: t(loc, 'palmares.relations.moments.outcome_loss'),
         outcomeOther: t(loc, 'palmares.relations.moments.outcome_other'),

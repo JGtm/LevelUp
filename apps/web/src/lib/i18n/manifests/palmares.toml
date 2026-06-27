@@ -58,24 +58,24 @@ en = "You need a few repeated encounters with the same players before relationsh
 # ─── Relations - Hero (binôme / bête noire / noyau dur) ─────────────────────
 
 [palmares.relations.hero.top_ally_title]
-fr = "Ton binôme"
-en = "Your duo partner"
+fr = "Binôme"
+en = "Duo partner"
 
 [palmares.relations.hero.top_ally_empty]
 fr = "Pas encore de binôme"
 en = "No duo partner yet"
 
 [palmares.relations.hero.top_nemesis_title]
-fr = "Ta bête noire"
-en = "Your nemesis"
+fr = "Bête noire"
+en = "Nemesis"
 
 [palmares.relations.hero.top_nemesis_empty]
 fr = "Pas encore de bête noire"
 en = "No nemesis yet"
 
 [palmares.relations.hero.core_title]
-fr = "Ton noyau dur"
-en = "Your inner circle"
+fr = "Noyau dur"
+en = "Inner circle"
 
 [palmares.relations.hero.core_unit]
 fr = "joueurs"
@@ -134,12 +134,12 @@ fr = "Modes"
 en = "Modes"
 
 [palmares.relations.filters.view]
-fr = "Vue"
-en = "View"
+fr = "Contexte"
+en = "Context"
 
 [palmares.relations.filters.view_all]
-fr = "Les deux"
-en = "Both"
+fr = "Toutes"
+en = "All"
 
 [palmares.relations.filters.view_solo]
 fr = "Solo"
@@ -160,6 +160,10 @@ en = "Reset"
 [palmares.relations.filters.include_friends]
 fr = "Inclure les amis"
 en = "Include friends"
+
+[palmares.relations.filters.friends_included]
+fr = "Amis inclus"
+en = "Friends included"
 
 [palmares.relations.table.previous]
 fr = "Précédent"
@@ -198,6 +202,10 @@ en = "Frags / Deaths"
 [palmares.relations.table.ratio]
 fr = "Ratio"
 en = "Ratio"
+
+[palmares.relations.table.kda_together]
+fr = "KDA ensemble"
+en = "KDA together"
 
 [palmares.relations.table.last_seen]
 fr = "Vu"
@@ -398,6 +406,10 @@ en = "Frag gap: even"
 [palmares.relations.moments.rolling_title]
 fr = "Taux de victoire glissant"
 en = "Rolling win rate"
+
+[palmares.relations.moments.cumulative_frag_title]
+fr = "Écart de frags cumulé"
+en = "Cumulative frag gap"
 
 [palmares.relations.moments.outcome_win]
 fr = "Victoire"
