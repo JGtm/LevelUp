@@ -30,15 +30,20 @@ tmp_dir = "tmp"
   # Délai avant rebuild (évite les rebuilds en rafale lors de sauvegardes multiples)
   delay = 500 # ms
 
-  # Tuer le processus en cours avant de relancer
-  kill_delay = "1000ms"
-  # Signal d'arrêt (SIGTERM)
+  # Arrêt du process avant relance.
+  #
+  # ATTENTION Windows : air NE supporte PAS send_interrupt sur Windows — il fait un
+  # `TASKKILL /F /T` (force-kill de l'arbre de process, cf. air runner/util_windows.go).
+  # Le shutdown gracieux Go (signal handler → duckdb.CloseAll) n'est donc JAMAIS appelé
+  # ici, et kill_delay est ignoré. Conséquence : au hot-reload, l'OS met ~1-2 s à libérer
+  # les HANDLEs DuckDB de l'ancien process tué de force, et le nouveau peut les trouver
+  # encore verrouillés. La mitigation est côté ouverture DB (retry borné sur lock) :
+  #   - metadata/shared : cmd/server/main.go (metaOpenAttempts, 12×500 ms)
+  #   - player DB        : internal/platform/duckdb/pool.go (openPlayerRWWithLockRetry)
+  # send_interrupt + kill_delay ci-dessous ne servent donc QUE sur Linux (deploy/CI), où
+  # air envoie bien SIGTERM et attend kill_delay → le shutdown gracieux Go s'exécute.
   send_interrupt = true
-  # Arrêt forcé après ce délai (ms).
-  # Doit être >= shutdown gracieux Go (srv.Shutdown 15s + scheduler/watcher
-  # Wait ~3s = ~18s) sinon air SIGKILL avant la libération des handles DuckDB
-  # → fichier metadata.duckdb verrouillé au prochain démarrage sur Windows.
-  stop_timeout = 20000 # ms
+  kill_delay = "5s"
 
   # Afficher les logs du binaire dans le terminal
   log = "build-errors.log"
