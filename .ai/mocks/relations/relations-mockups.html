@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Relations — mockups (LevelUp)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+:root, html[data-theme='dark']{
+  --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0); --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0); --accent: oklch(0.371 0 0); --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0); --card: oklch(0.205 0 0); --border: oklch(0.275 0 0);
+  --input: oklch(0.325 0 0); --success: oklch(0.65 0.17 145); --warning: oklch(0.75 0.15 85);
+  --destructive: oklch(0.704 0.191 22.216); --info: oklch(0.70 0.12 220); --radius: 0.5rem;
+  /* Teintes badges : bright = couleur d'origine app (ally_plus/tough_enemy/ordinal) */
+  --h-pos:#10B981; --h-neg:#EF4444; --h-neu:#3B82F6;
+  /* Pleins saturés assez foncés pour texte blanc (nouveaux badges) */
+  --h-pos-solid: oklch(0.50 0.13 162); --h-neg-solid: oklch(0.50 0.20 25); --h-neu-solid: oklch(0.50 0.16 255);
+  /* Rampe heatmap Explorer : cold(faible)=rouge → hot(fort)=vert */
+  --heat-cold:#EF4444; --heat-hot:#10B981;
+}
+html[data-theme='light']{
+  --background: oklch(0.985 0.004 255); --foreground: oklch(0.255 0.02 255);
+  --primary: oklch(0.56 0.22 262); --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.95 0.01 255); --accent: oklch(0.92 0.02 255); --muted: oklch(0.96 0.008 255);
+  --muted-foreground: oklch(0.52 0.015 255); --card: oklch(0.995 0.002 255); --border: oklch(0.9 0.01 255);
+  --input: oklch(0.93 0.01 255); --success: oklch(0.58 0.17 145); --warning: oklch(0.7 0.15 85);
+  --destructive: oklch(0.637 0.208 25.331); --info: oklch(0.62 0.12 220);
+  --h-pos-solid: oklch(0.52 0.14 162); --h-neg-solid: oklch(0.52 0.20 25); --h-neu-solid: oklch(0.52 0.16 255);
+}
+*{ box-sizing:border-box; border-color:var(--border); }
+body{ margin:0; font-family:'Roboto',system-ui,sans-serif; background:var(--background); color:var(--foreground); -webkit-font-smoothing:antialiased; }
+.app{ max-width:1320px; margin:0 auto; padding:0 24px 64px; }
+.muted{ color:var(--muted-foreground); } .mono{ font-variant-numeric:tabular-nums; }
+.text-xs{ font-size:12px; } .text-lg{ font-size:18px; } .semib{ font-weight:600; } .bold{ font-weight:700; }
+
+.toolbar{ position:sticky; top:0; z-index:30; backdrop-filter:blur(8px); background:color-mix(in oklab,var(--background) 86%,transparent);
+  border-bottom:1px solid var(--border); display:flex; flex-wrap:wrap; gap:16px; align-items:center; padding:10px 24px; margin-bottom:8px; }
+.toolbar .lbl{ font-size:11px; text-transform:uppercase; letter-spacing:.14em; color:var(--muted-foreground); margin-right:6px; }
+.seg{ display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.seg button{ font:inherit; font-size:12px; padding:6px 12px; background:transparent; color:var(--muted-foreground); border:0; border-right:1px solid var(--border); cursor:pointer; white-space:nowrap; }
+.seg button:last-child{ border-right:0; }
+.seg button[aria-pressed='true']{ background:var(--accent); color:var(--foreground); font-weight:600; }
+
+.l2{ display:flex; gap:6px; padding:14px 0 18px; border-bottom:1px solid var(--border); margin-bottom:20px; align-items:center; }
+.l2 .crumb{ font-size:13px; color:var(--muted-foreground); margin-right:14px; }
+.l2 .tab{ font-size:13px; padding:6px 12px; border-radius:8px; color:var(--muted-foreground); }
+.l2 .tab.active{ background:var(--secondary); color:var(--foreground); font-weight:600; }
+.page-head{ margin-bottom:18px; } .page-head h1{ font-size:22px; font-weight:700; margin:0 0 4px; }
+.page-head p{ margin:0; font-size:13px; color:var(--muted-foreground); max-width:780px; }
+
+.kpi{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+.kpi .accent{ height:3px; } .kpi .body{ padding:14px 16px; }
+.eyebrow{ font-size:11px; text-transform:uppercase; letter-spacing:.18em; color:var(--muted-foreground); }
+.grid{ display:grid; gap:16px; } .cols-3{ grid-template-columns:repeat(3,1fr); } .cols-2{ grid-template-columns:repeat(2,1fr); }
+@media (max-width:900px){ .cols-3,.cols-2{ grid-template-columns:1fr; } }
+.section-title{ font-size:14px; font-weight:600; margin:0; }
+.section-row{ display:flex; align-items:baseline; gap:12px; margin-bottom:12px; }
+.section-row .hint{ font-size:12px; color:var(--muted-foreground); }
+/* Sous-titre type 6 (SectionSubtitle de Synthèse) */
+.subtitle{ display:flex; flex-direction:column; gap:8px; margin:22px 0 14px; }
+.subtitle .t{ font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.18em; color:color-mix(in oklab,var(--foreground) 90%,transparent); }
+.subtitle .rule{ height:1px; width:100%; border-radius:9999px; background:var(--border); }
+.gt{ font-weight:600; color:var(--info); cursor:pointer; } .gt:hover{ text-decoration:underline; }
+
+/* ===== Badges : .exist (teinté, style NarrativeBadge actuel) / .new (plein + blanc) ===== */
+.pill{ display:inline-flex; align-items:center; gap:6px; border-radius:9999px; padding:2px 10px; font-size:11px; font-weight:600; line-height:1.55; white-space:nowrap; border:1px solid transparent; }
+.pill.exist.pos{ background:color-mix(in oklab,var(--h-pos) 32%,transparent); color:var(--h-pos); border-color:color-mix(in oklab,var(--h-pos) 48%,transparent); }
+.pill.exist.neg{ background:color-mix(in oklab,var(--h-neg) 32%,transparent); color:var(--h-neg); border-color:color-mix(in oklab,var(--h-neg) 48%,transparent); }
+.pill.exist.neu{ background:color-mix(in oklab,var(--h-neu) 32%,transparent); color:var(--h-neu); border-color:color-mix(in oklab,var(--h-neu) 48%,transparent); }
+.pill.new.pos{ background:var(--h-pos-solid); color:#fff; }
+.pill.new.neg{ background:var(--h-neg-solid); color:#fff; }
+.pill.new.neu{ background:var(--h-neu-solid); color:#fff; }
+.role{ font-size:10.5px; padding:1px 9px; }
+.legend{ display:flex; gap:18px; flex-wrap:wrap; font-size:11px; color:var(--muted-foreground); margin:10px 0 0; align-items:center; }
+
+.split{ display:inline-flex; align-items:center; gap:6px; font-variant-numeric:tabular-nums; }
+.split .bar{ display:inline-flex; height:8px; width:48px; border:1px solid var(--border); overflow:hidden; }
+.split .l{ height:100%; } .split .r{ height:100%; flex:1; }
+.val-pos{ color:var(--success); } .val-neg{ color:var(--destructive); }
+
+table.enc{ width:100%; border-collapse:collapse; font-size:12px; }
+table.enc th, table.enc td{ border:1px solid var(--border); padding:6px 8px; }
+table.enc th{ color:var(--muted-foreground); font-weight:600; border-bottom-width:2px; font-size:11px; text-align:right; vertical-align:bottom; }
+table.enc th:first-child, table.enc td:first-child{ text-align:left; }
+table.enc td{ text-align:right; }
+table.enc tr:hover td{ background:color-mix(in oklab,var(--accent) 40%,transparent); }
+.pct-ok{ color:var(--success); font-weight:700; } .pct-warn{ color:var(--warning); font-weight:700; }
+
+/* ===== Barre filtres façon Synthèse ===== */
+.filterbar{ border-bottom:1px solid var(--border); margin:0 -24px 18px; padding:0 24px; }
+.filterbar .row{ display:flex; min-height:40px; align-items:center; gap:6px; padding:6px 0; flex-wrap:wrap; }
+.fpill{ display:inline-flex; align-items:center; gap:8px; border:1px solid var(--input); border-radius:6px; padding:6px 10px; font-size:12px; background:color-mix(in oklab,var(--card) 70%,transparent); cursor:pointer; }
+.fpill .k{ color:var(--muted-foreground); } .fpill .v{ font-weight:600; } .fpill .car{ color:var(--muted-foreground); font-size:10px; }
+.fpill.active{ border-color:color-mix(in oklab,var(--primary) 60%,var(--input)); }
+.analyser{ border:0; border-radius:6px; padding:7px 14px; font:inherit; font-size:12px; font-weight:600; cursor:pointer; background:var(--primary); color:var(--primary-foreground); }
+.reset{ background:none; border:0; color:var(--muted-foreground); cursor:pointer; font-size:15px; }
+.segcap{ font-size:12px; color:var(--muted-foreground); margin:0 0 14px; }
+.filters{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px; }
+.chip{ font-size:12px; padding:5px 12px; border-radius:9999px; border:1px solid var(--border); color:var(--muted-foreground); background:transparent; cursor:pointer; }
+.chip.on{ background:var(--secondary); color:var(--foreground); font-weight:600; }
+
+/* relation rows / noyau dur */
+.relrow{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; border:1px solid color-mix(in oklab,var(--border) 70%,transparent); border-radius:14px; background:var(--card); padding:12px 14px; }
+.relrow + .relrow{ margin-top:10px; }
+.relrow .ctx{ font-size:13px; color:var(--muted-foreground); margin-top:3px; } .relrow .met{ font-size:11px; color:var(--muted-foreground); margin-top:3px; }
+.badges{ display:inline-flex; gap:6px; flex-wrap:wrap; }
+.tag{ display:inline-flex; align-items:center; padding:2px 8px; border-radius:6px; font-size:10.5px; border:1px solid var(--border); color:var(--muted-foreground); }
+/* Noyau dur : cards flottantes gris foncé, AUCUN bloc parent */
+.coregrid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+@media (max-width:900px){ .coregrid{ grid-template-columns:repeat(2,1fr); } }
+.corecard{ background:var(--card); border-radius:12px; padding:12px 14px; }
+.corecard .gt{ font-size:13px; }
+
+/* heatmap alignée Explorer */
+.hm{ width:100%; border-collapse:separate; border-spacing:3px; font-size:12px; }
+.hm th{ font-size:10.5px; color:var(--muted-foreground); font-weight:600; padding:2px 4px; text-align:center; }
+.hm th:first-child{ text-align:left; }
+.hm td:first-child{ text-align:left; font-size:12px; white-space:nowrap; padding-right:8px; }
+.hcell{ height:28px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:11px; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.7); }
+.hempty{ height:28px; border-radius:3px; background:color-mix(in oklab,var(--foreground) 5%,transparent); }
+.hmlegend{ display:flex; align-items:center; gap:8px; font-size:11px; color:var(--muted-foreground); margin-top:10px; }
+.hmramp{ height:10px; width:120px; border-radius:3px; background:linear-gradient(90deg,var(--heat-cold),var(--heat-hot)); }
+
+/* rivalités */
+.tcard{ border:1px solid var(--border); border-radius:12px; background:var(--card); padding:16px; }
+.tape{ display:inline-flex; gap:3px; flex-wrap:wrap; }
+.cell{ width:14px; height:14px; border-radius:3px; }
+.cw{ background:var(--success); } .cl{ background:var(--destructive); }
+.rivkpi{ display:flex; gap:22px; flex-wrap:wrap; margin-bottom:14px; }
+.rivkpi .k{ font-size:11px; color:var(--muted-foreground); text-transform:uppercase; letter-spacing:.1em; }
+.rivkpi .v{ font-size:22px; font-weight:700; margin-top:2px; }
+.stack > * + *{ margin-top:14px; }
+.minitape{ display:flex; align-items:center; justify-content:space-between; gap:14px; padding:8px 0; border-top:1px solid color-mix(in oklab,var(--border) 60%,transparent); }
+
+.note{ border:1px dashed color-mix(in oklab,var(--foreground) 18%,transparent); border-radius:12px; padding:14px 16px; background:color-mix(in oklab,var(--card) 60%,transparent); font-size:13px; color:var(--muted-foreground); margin:18px 0; }
+.note b{ color:var(--foreground); }
+.panel{ display:none; } .panel.on{ display:block; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <div><span class="lbl">Proposition</span>
+    <div class="seg" id="panelSeg" style="display:inline-flex">
+      <button data-panel="p1" aria-pressed="true">1 · Hub segmentable</button>
+      <button data-panel="p2" aria-pressed="false">2 · Portrait relationnel</button>
+      <button data-panel="p3" aria-pressed="false">3 · Moments &amp; rivalités</button>
+    </div>
+  </div>
+  <div><span class="lbl">Thème</span>
+    <div class="seg" id="themeSeg" style="display:inline-flex">
+      <button data-theme="dark" aria-pressed="true">Sombre</button>
+      <button data-theme="light" aria-pressed="false">Clair</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <div class="l2"><span class="crumb">Communauté</span><span class="tab">Classements</span><span class="tab active">Relations</span><span class="tab">Face-à-face</span></div>
+
+  <!-- ===== P1 — HUB SEGMENTABLE ===== -->
+  <section class="panel on" id="p1">
+    <div class="page-head"><h1>Relations</h1>
+      <p>Ton réseau de jeu, segmentable. Carrière donne le total tous-temps ; ici tu filtres par expérience, saison, playlist ou solo/escouade. Clique un joueur pour le détail (Explorer).</p></div>
+
+    <div class="grid cols-3" style="margin-bottom:18px">
+      <div class="kpi"><div class="accent" style="background:var(--h-pos-solid)"></div><div class="body">
+        <div class="eyebrow">Ton binôme</div><div class="text-lg semib" style="margin:6px 0 2px"><span class="gt">Madina97294</span></div>
+        <div class="text-xs muted">73 % de victoires ensemble · 28 matchs côte à côte</div></div></div>
+      <div class="kpi"><div class="accent" style="background:var(--h-neg-solid)"></div><div class="body">
+        <div class="eyebrow">Ta bête noire</div><div class="text-lg semib" style="margin:6px 0 2px"><span class="gt">xTryHardx</span></div>
+        <div class="text-xs muted">31 % de victoires contre lui · il t'a fragué 63 fois</div></div></div>
+      <div class="kpi"><div class="accent" style="background:var(--h-neu-solid)"></div><div class="body">
+        <div class="eyebrow">Ton noyau dur</div><div class="text-lg semib" style="margin:6px 0 2px">8 habitués</div>
+        <div class="text-xs muted">revus 20 fois et plus, avec toi comme contre toi</div></div></div>
+    </div>
+
+    <!-- Barre filtres calquée sur Synthèse : Expérience / Saison / Playlist / Mode / Vue + Analyser -->
+    <div class="filterbar"><div class="row">
+      <span class="fpill"><span class="k">Expérience</span><span class="v">Toutes</span><span class="car">&#9662;</span></span>
+      <span class="fpill"><span class="k">Saison</span><span class="v">Toutes</span><span class="car">&#9662;</span></span>
+      <span class="fpill"><span class="k">Playlist</span><span class="v">Toutes</span><span class="car">&#9662;</span></span>
+      <span class="fpill"><span class="k">Mode</span><span class="v">Tous</span><span class="car">&#9662;</span></span>
+      <span class="fpill active"><span class="k">Vue</span><span class="v">Solo + Escouade</span><span class="car">&#9662;</span></span>
+      <span style="flex:1"></span>
+      <button class="analyser">Analyser</button>
+      <button class="reset" title="Réinitialiser">&#8634;</button>
+    </div></div>
+    <p class="segcap">Carrière ne distingue ni expérience, ni saison, ni playlist, ni solo/escouade. C'est ce filtre qui révèle, par ex., qu'un joueur n'est ta bête noire <b>qu'en Classé</b>. (Mode = filtre secondaire optionnel.)</p>
+
+    <div class="filters">
+      <button class="chip on">Tous · 47</button><button class="chip">Noyau dur · 8</button>
+      <button class="chip">Alliés · 21</button><button class="chip">Rivaux · 18</button><button class="chip">Vus récemment</button>
+    </div>
+
+    <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--card)"><div style="overflow-x:auto">
+      <table class="enc"><thead><tr>
+        <th>Joueur</th><th>Lien</th><th>Rencontres<br>allié | ennemi</th>
+        <th>Taux de victoire<br>(allié)</th><th>Taux de victoire<br>(ennemi)</th><th>Frags / Morts</th><th>Ratio &#9662;</th><th>Vu</th>
+      </tr></thead><tbody>
+        <tr><td><span class="gt">GeleJugefi</span> <span class="badges"><span class="pill exist neu">Total 54×</span> <span class="pill exist pos">Allié+</span> <span class="pill new neu">Caméléon</span> <span class="pill new neu">Aussi sur Halo 5</span></span></td>
+          <td><span class="pill exist neu role">mixte</span></td>
+          <td><span class="split"><span class="val-pos">32</span><span class="bar"><span class="l" style="width:59%;background:var(--success)"></span><span class="r" style="background:var(--destructive)"></span></span><span class="val-neg">22</span></span></td>
+          <td><span class="pct-ok mono">66 %</span></td><td><span class="pct-warn mono">45 %</span></td>
+          <td><span class="split"><span class="val-pos">88</span><span class="bar"><span class="l" style="width:55%;background:var(--success)"></span><span class="r" style="background:var(--destructive)"></span></span><span class="val-neg">71</span></span></td>
+          <td class="mono bold" style="color:var(--success)">1.24</td><td class="muted text-xs">il y a 2 j</td></tr>
+        <tr><td><span class="gt">Madina97294</span> <span class="badges"><span class="pill exist pos">Allié+</span> <span class="pill new pos">Duo gagnant</span></span></td>
+          <td><span class="pill exist pos role">allié</span></td>
+          <td><span class="split"><span class="val-pos">28</span><span class="bar"><span class="l" style="width:100%;background:var(--success)"></span></span><span class="muted">—</span></span></td>
+          <td><span class="pct-ok mono">73 %</span></td><td class="muted">—</td><td class="muted">—</td><td class="mono bold muted">—</td><td class="muted text-xs">hier</td></tr>
+        <tr><td><span class="gt">QuiteSiren8545</span> <span class="badges"><span class="pill new pos">Duo gagnant</span></span></td>
+          <td><span class="pill exist pos role">allié</span></td>
+          <td><span class="split"><span class="val-pos">18</span><span class="bar"><span class="l" style="width:100%;background:var(--success)"></span></span><span class="muted">—</span></span></td>
+          <td><span class="pct-ok mono">72 %</span></td><td class="muted">—</td><td class="muted">—</td><td class="mono bold muted">—</td><td class="muted text-xs">il y a 3 j</td></tr>
+        <tr><td><span class="gt">xTryHardx</span> <span class="badges"><span class="pill exist neg">Coriace</span> <span class="pill exist neg">Dur à cuire</span></span></td>
+          <td><span class="pill exist neg role">ennemi</span></td>
+          <td class="muted">—</td><td><span class="pct-warn mono">31 %</span></td>
+          <td><span class="split"><span class="val-pos">41</span><span class="bar"><span class="l" style="width:39%;background:var(--success)"></span><span class="r" style="background:var(--destructive)"></span></span><span class="val-neg">63</span></span></td>
+          <td class="mono bold" style="color:var(--destructive)">0.65</td><td class="muted text-xs">il y a 5 j</td></tr>
+        <tr><td><span class="gt">NoobSlayerFR</span> <span class="badges"><span class="pill new pos">Proie favorite</span> <span class="pill new neu">Aussi sur Halo 5</span></span></td>
+          <td><span class="pill exist neg role">ennemi</span></td>
+          <td class="muted">—</td><td><span class="pct-ok mono">67 %</span></td>
+          <td><span class="split"><span class="val-pos">58</span><span class="bar"><span class="l" style="width:71%;background:var(--success)"></span><span class="r" style="background:var(--destructive)"></span></span><span class="val-neg">24</span></span></td>
+          <td class="mono bold" style="color:var(--success)">2.42</td><td class="muted text-xs">il y a 8 j</td></tr>
+        <tr><td><span class="gt">TrimButton1352</span> <span class="badges"><span class="pill exist pos">Allié+</span> <span class="pill new neu">De longue date</span></span></td>
+          <td><span class="pill exist pos role">allié</span></td>
+          <td><span class="split"><span class="val-pos">21</span><span class="bar"><span class="l" style="width:86%;background:var(--success)"></span><span class="r" style="background:var(--destructive)"></span></span><span class="val-neg">3</span></span></td>
+          <td><span class="pct-ok mono">62 %</span></td><td><span class="pct-warn mono">33 %</span></td>
+          <td><span class="split"><span class="val-pos">9</span><span class="bar"><span class="l" style="width:60%;background:var(--success)"></span><span class="r" style="background:var(--destructive)"></span></span><span class="val-neg">6</span></span></td>
+          <td class="mono bold" style="color:var(--success)">1.50</td><td class="muted text-xs">il y a 1 sem.</td></tr>
+        <tr><td><span class="gt">DankerGlue1131</span> <span class="badges"><span class="pill new neu">Recrue</span></span></td>
+          <td><span class="pill exist pos role">allié</span></td>
+          <td><span class="split"><span class="val-pos">6</span><span class="bar"><span class="l" style="width:100%;background:var(--success)"></span></span><span class="muted">—</span></span></td>
+          <td><span class="pct-ok mono">83 %</span></td><td class="muted">—</td><td class="muted">—</td><td class="mono bold muted">—</td><td class="muted text-xs">il y a 2 h</td></tr>
+      </tbody></table>
+    </div></div>
+    <div class="legend">
+      <span><span class="pill exist pos" style="pointer-events:none">Allié+</span> &nbsp;badges <b>déjà dans l'app</b> (teintés, identiques à Explorer/Match)</span>
+      <span><span class="pill new pos" style="pointer-events:none">Duo gagnant</span> &nbsp;<b>nouveaux</b> badges (plein + texte blanc)</span>
+    </div>
+  </section>
+
+  <!-- ===== P2 — PORTRAIT RELATIONNEL ===== -->
+  <section class="panel" id="p2">
+    <div class="page-head"><h1>Relations</h1>
+      <p>Pas un nième tableau (Carrière et Explorer en ont déjà) : un portrait. Le noyau dur d'abord, parce que c'est ce qui te ressemble.</p></div>
+
+    <div class="grid cols-3" style="margin-bottom:8px">
+      <div class="kpi"><div class="accent" style="background:var(--h-pos-solid)"></div><div class="body">
+        <div class="eyebrow">Ton binôme</div><div class="text-lg semib" style="margin:6px 0 2px"><span class="gt">Madina97294</span></div>
+        <div class="text-xs muted">73 % ensemble · KDA 1.8 · 28 matchs</div></div></div>
+      <div class="kpi"><div class="accent" style="background:var(--h-neg-solid)"></div><div class="body">
+        <div class="eyebrow">Ta bête noire</div><div class="text-lg semib" style="margin:6px 0 2px"><span class="gt">xTryHardx</span></div>
+        <div class="text-xs muted">31 % contre lui · il t'a fragué 63 fois</div></div></div>
+      <div class="kpi"><div class="accent" style="background:var(--h-neu-solid)"></div><div class="body">
+        <div class="eyebrow">Ta proie favorite</div><div class="text-lg semib" style="margin:6px 0 2px"><span class="gt">NoobSlayerFR</span></div>
+        <div class="text-xs muted">ratio 2.42 · 58 frags pour 24 morts</div></div></div>
+    </div>
+
+    <!-- Noyau dur : sous-titre + mini-cards FLOTTANTES gris foncé, sans bloc parent -->
+    <div class="subtitle"><span class="t">Noyau dur — tes habitués, avec toi et contre toi</span><span class="rule"></span></div>
+    <div class="coregrid" style="margin-bottom:8px">
+      <div class="corecard"><span class="gt">GeleJugefi</span><div class="text-xs muted" style="margin-top:4px">54 matchs · 32 alliés / 22 ennemis</div><div class="badges" style="margin-top:8px"><span class="pill new neu">Caméléon</span></div></div>
+      <div class="corecard"><span class="gt">TrimButton1352</span><div class="text-xs muted" style="margin-top:4px">24 matchs · 21 alliés / 3 ennemis</div><div class="badges" style="margin-top:8px"><span class="pill exist pos">Allié+</span></div></div>
+      <div class="corecard"><span class="gt">UppedJoker1176</span><div class="text-xs muted" style="margin-top:4px">31 matchs · 12 alliés / 19 ennemis</div><div class="badges" style="margin-top:8px"><span class="pill new neu">Caméléon</span></div></div>
+      <div class="corecard"><span class="gt">QuiteSiren8545</span><div class="text-xs muted" style="margin-top:4px">22 matchs · 18 alliés / 4 ennemis</div><div class="badges" style="margin-top:8px"><span class="pill new pos">Duo gagnant</span></div></div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:22px">
+      <div><div class="section-row"><h2 class="section-title">Alliés fréquents</h2></div>
+        <div class="relrow"><div><span class="gt">Madina97294</span> <span class="badges"><span class="pill exist pos">Allié+</span></span><div class="ctx">28 matchs ensemble · 73 % de victoires</div><div class="met">KDA 1.8 en duo · vu hier</div></div></div>
+        <div class="relrow"><div><span class="gt">TrimButton1352</span> <span class="badges"><span class="pill exist pos">Allié+</span> <span class="pill new neu">De longue date</span></span><div class="ctx">21 matchs ensemble · 62 % de victoires</div><div class="met">premier match il y a 8 mois · vu il y a 1 sem.</div></div></div>
+      </div>
+      <div><div class="section-row"><h2 class="section-title">Meilleures synergies</h2></div>
+        <div class="relrow"><div><span class="gt">QuiteSiren8545</span> <span class="badges"><span class="pill new pos">Duo gagnant</span></span><div class="ctx">18 matchs · 72 % de victoires</div><div class="met">KDA 2.1 en duo · vu il y a 3 j</div></div></div>
+        <div class="relrow"><div><span class="gt">DankerGlue1131</span> <span class="badges"><span class="pill new neu">Recrue</span></span><div class="ctx">6 matchs · 83 % de victoires</div><div class="met">première rencontre il y a 9 j · vu il y a 2 h</div></div></div>
+      </div>
+      <div><div class="section-row"><h2 class="section-title">Rivaux</h2></div>
+        <div class="relrow"><div><span class="gt">xTryHardx</span> <span class="badges"><span class="pill exist neg">Coriace</span> <span class="pill exist neg">Dur à cuire</span></span><div class="ctx">16 matchs contre lui · 31 % de victoires</div><div class="met">il t'a fragué 63 fois, tu l'as eu 41 fois</div></div></div>
+      </div>
+      <div><div class="section-row"><h2 class="section-title">Proies favorites</h2></div>
+        <div class="relrow"><div><span class="gt">NoobSlayerFR</span> <span class="badges"><span class="pill new pos">Proie favorite</span></span><div class="ctx">12 matchs contre lui · 67 % de victoires</div><div class="met">tu l'as fragué 58 fois, il t'a eu 24 fois</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== P3 — MOMENTS & RIVALITÉS ===== -->
+  <section class="panel" id="p3">
+    <div class="page-head"><h1>Relations</h1>
+      <p>L'angle que personne n'occupe : <b>quand</b> tu les croises, et comment la rivalité <b>évolue</b>.</p></div>
+
+    <div class="subtitle"><span class="t">Quand tu les croises — 8 habitués × moment de la journée</span><span class="rule"></span></div>
+    <table class="hm">
+      <thead><tr><th>Joueur</th><th>Nuit</th><th>Matin</th><th>Midi</th><th>Après-midi</th><th>Soir</th><th>Tard</th></tr></thead>
+      <tbody id="hmbody"></tbody>
+    </table>
+    <div class="hmlegend"><span>moins</span><span class="hmramp"></span><span>plus</span><span style="margin-left:14px">Style aligné sur le heatmap par-joueur d'Explorer (rampe rouge&#8594;vert, libellé du nombre).</span></div>
+    <div class="note" style="margin-top:14px"><b>Ta réserve est juste.</b> Le heatmap par joueur existe déjà dans Explorer. En agrégat, ça ne « parle » que plafonné (8 joueurs + tranches larges). Lecture ici : tes alliés (Madina, QuiteSiren) le soir ; ton rival xTryHardx l'après-midi.</div>
+
+    <div class="subtitle"><span class="t">Rivalités — ta revanche en cours</span><span class="rule"></span></div>
+    <div class="tcard" style="margin-bottom:14px">
+      <div class="section-row"><h2 class="section-title">Contre <span class="gt">xTryHardx</span></h2><span class="hint">vos 20 derniers duels</span></div>
+      <div class="rivkpi">
+        <div><div class="k">Taux de victoire récent</div><div class="v" style="color:var(--success)">44 %</div><div class="text-xs muted">vs 18 % au global &#8594; tu remontes</div></div>
+        <div><div class="k">Série en cours</div><div class="v">3 victoires</div><div class="text-xs muted">ta plus longue contre lui</div></div>
+        <div><div class="k">Écart de frags comblé</div><div class="v">&#8722;22 &#8594; &#8722;8</div><div class="text-xs muted">sur les 10 derniers matchs</div></div>
+      </div>
+      <div class="text-xs muted" style="margin-bottom:6px">Séquence des duels (ancien &#8594; récent)</div>
+      <div class="tape" id="rivtape"></div>
+      <svg width="100%" height="70" viewBox="0 0 600 70" preserveAspectRatio="none" style="margin-top:12px">
+        <line x1="0" y1="35" x2="600" y2="35" stroke="var(--border)" stroke-width="1" stroke-dasharray="3 3"/>
+        <polyline fill="none" stroke="var(--h-neu-solid)" stroke-width="2.5" points="0,58 66,55 132,57 198,48 264,44 330,34 396,28 462,22 528,18 600,14"/>
+        <circle cx="600" cy="14" r="4" fill="var(--success)"/>
+      </svg>
+      <div class="text-xs muted" style="margin-top:4px">Taux de victoire glissant (fenêtre 5 matchs) — la courbe monte vers la ligne d'équilibre.</div>
+    </div>
+
+    <div class="subtitle"><span class="t">Autres rivalités à suivre</span><span class="rule"></span></div>
+    <div class="tcard">
+      <div class="minitape" style="border-top:0"><div><span class="gt">SweatLordX</span> <span class="pill new neg">Rival émergent</span><div class="text-xs muted" style="margin-top:2px">0 &#8594; 9 matchs ce mois · 22 % de victoires</div></div><span class="tape" data-seq="LLLWLLWLL"></span></div>
+      <div class="minitape"><div><span class="gt">GeleJugefi</span> <span class="pill new neu">Caméléon</span><div class="text-xs muted" style="margin-top:2px">à égalité : 10-12 quand ennemi</div></div><span class="tape" data-seq="WLWLLWLWLW"></span></div>
+      <div class="minitape"><div><span class="gt">ProSniper404</span><div class="text-xs muted" style="margin-top:2px">stable · 48 % depuis 3 mois</div></div><span class="tape" data-seq="WLWLWLWL"></span></div>
+    </div>
+  </section>
+</div>
+
+<script>
+  const $=(s,r=document)=>r.querySelector(s); const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+  function press(seg,attr,val){ $$('button',seg).forEach(b=>b.setAttribute('aria-pressed', String(b.getAttribute(attr)===val))); }
+  $('#panelSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return; const p=b.dataset.panel;
+    $$('.panel').forEach(x=>x.classList.toggle('on',x.id===p)); press($('#panelSeg'),'data-panel',p); window.scrollTo({top:0,behavior:'smooth'});});
+  $('#themeSeg').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b)return; const t=b.dataset.theme;
+    document.documentElement.setAttribute('data-theme',t); press($('#themeSeg'),'data-theme',t);});
+  $$('.chip').forEach(c=>c.addEventListener('click',()=>{ $$('.chip').forEach(x=>x.classList.remove('on')); c.classList.add('on'); }));
+
+  // Heatmap : rampe rouge->vert par intensité (max=16), comme Explorer
+  const HM=[['Madina97294',[0,0,3,7,16,6]],['QuiteSiren8545',[0,0,1,4,12,3]],['TrimButton1352',[0,2,5,8,5,0]],
+    ['GeleJugefi',[1,0,4,10,13,7]],['xTryHardx',[0,0,5,11,3,0]],['NoobSlayerFR',[0,2,6,5,2,0]]];
+  const MAX=16;
+  $('#hmbody').innerHTML = HM.map(([name,row])=>{
+    const tds = row.map(c=>{
+      if(c===0) return '<td><div class="hempty"></div></td>';
+      const p=Math.round(c/MAX*100);
+      return `<td><div class="hcell" style="background:color-mix(in oklab,var(--heat-hot) ${p}%,var(--heat-cold))">${c}</div></td>`;
+    }).join('');
+    return `<tr><td><span class="gt">${name}</span></td>${tds}</tr>`;
+  }).join('');
+
+  // Outcome tapes
+  function tape(seq){ return [...seq].map(c=>`<span class="cell ${c==='W'?'cw':'cl'}"></span>`).join(''); }
+  $('#rivtape').innerHTML = tape('LLWLLLWLWLLWWLWWLWWW');
+  $$('.tape[data-seq]').forEach(el=>{ el.innerHTML = tape(el.dataset.seq); });
+</script>
+</body>
+</html>
