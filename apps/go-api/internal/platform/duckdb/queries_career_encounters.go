@@ -465,14 +465,21 @@ WHERE title_slug = ?
   AND is_ranked = TRUE
 ORDER BY name_canonical`
 
-// Q26csrAlltimePeak : récupère le meilleur CSR alltime toutes playlists confondues.
+// Q26csrAlltimePeak : CANDIDATS du meilleur CSR alltime, toutes playlists.
 // Utilisé par la home page pour remplacer la lecture depuis match_skill_rank.
+//
+// Renvoie TOUS les snapshots éligibles (palier renseigné OU valeur > 0) ; la
+// SÉLECTION du pic est faite EN GO (pickBestCSRAlltime) via l'ordinal canonique
+// analysis.CSRTierOrdinal — source UNIQUE de l'ordre des paliers (pas de CASE SQL
+// dupliqué). Raison : certains titres (Halo 5) exposent le palier (DesignationId →
+// "Diamond", sub_tier) mais une valeur numérique = 0 (l'API ne la fournit pas).
+// Exiger value > 0 masquait un vrai pic (ex. Diamant V) → "Non classé" erroné.
+// Title-agnostic : titre avec valeur (Infinite, départage) ET tier-only (H5).
 const Q26csrAlltimePeak = `
 SELECT
     alltime_value,
     alltime_tier,
     alltime_sub_tier
 FROM player_csr_snapshots_latest
-WHERE alltime_value IS NOT NULL AND alltime_value > 0
-ORDER BY alltime_value DESC
-LIMIT 1`
+WHERE (alltime_tier IS NOT NULL AND TRIM(alltime_tier) != '')
+   OR (alltime_value IS NOT NULL AND alltime_value > 0)`

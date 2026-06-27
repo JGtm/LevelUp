@@ -217,6 +217,34 @@ func TestBuildCanonicalSkillBadge_SubTier6Allowed(t *testing.T) {
 	}
 }
 
+// ─── CSRTierOrdinal ────────────────────────────────────────────────────────
+
+func TestCSRTierOrdinal(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		tier string
+		want int
+	}{
+		{"Bronze", 1}, {"Silver", 2}, {"Gold", 3}, {"Platinum", 4},
+		{"Diamond", 5}, {"Onyx", 6}, {"Champion", 7},
+		{"diamond", 5},          // insensible à la casse
+		{"  Onyx  ", 6},         // trim
+		{"", 0}, {"Inconnu", 0}, // vide / inconnu → 0
+	}
+	for _, c := range cases {
+		if got := CSRTierOrdinal(c.tier); got != c.want {
+			t.Errorf("CSRTierOrdinal(%q) = %d, want %d", c.tier, got, c.want)
+		}
+	}
+	// Ordre strictement croissant (source unique de sélection du pic) : Champion
+	// (H5) doit dépasser Onyx ; un titre tier-only se classe par cet ordinal.
+	if !(CSRTierOrdinal("Champion") > CSRTierOrdinal("Onyx") &&
+		CSRTierOrdinal("Onyx") > CSRTierOrdinal("Diamond") &&
+		CSRTierOrdinal("Diamond") > CSRTierOrdinal("Platinum")) {
+		t.Error("ordre des paliers non strictement croissant")
+	}
+}
+
 // ─── BuildCSRTierLabelFromEN ───────────────────────────────────────────────
 
 func TestBuildCSRTierLabelFromEN(t *testing.T) {
