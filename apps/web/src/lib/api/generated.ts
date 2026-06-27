@@ -7333,6 +7333,14 @@ export interface components {
             gamertag: string;
             xuid: string;
         };
+        RelationHeatmapDowCell: {
+            /** Format: int64 */
+            count: number;
+            /** Format: int64 */
+            day_of_week: number;
+            gamertag: string;
+            xuid: string;
+        };
         RelationRivalry: {
             /** Format: int64 */
             current_streak: number;
@@ -7353,6 +7361,7 @@ export interface components {
         };
         RelationsMomentsResponse: {
             heatmap: components["schemas"]["RelationHeatmapCell"][] | null;
+            heatmap_dow: components["schemas"]["RelationHeatmapDowCell"][] | null;
             rivalries: components["schemas"]["RelationRivalry"][] | null;
             /** Format: int64 */
             top_relations: number;

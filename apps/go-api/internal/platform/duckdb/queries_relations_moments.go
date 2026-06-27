@@ -25,7 +25,7 @@ package duckdb
 //	?  encounters JOIN p.xuid <> ?
 //	?  topN (LIMIT)
 //
-// Colonnes SELECT (4) : xuid, gamertag, hour, count.
+// Colonnes SELECT (5) : xuid, gamertag, hour, dow (0=dimanche…6=samedi UTC), count.
 const Q29RelationsHeatmapTpl = `
 WITH my_history AS (
     SELECT match_id, team_id
@@ -36,7 +36,8 @@ encounters AS (
     SELECT
         p.xuid,
         p.match_id,
-        EXTRACT(hour FROM (COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'))::INTEGER AS hour_utc
+        EXTRACT(hour FROM (COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'))::INTEGER AS hour_utc,
+        EXTRACT(dow FROM (COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'))::INTEGER AS dow_utc
     FROM my_history h
     JOIN match_participants p
         ON p.match_id = h.match_id
@@ -56,12 +57,13 @@ SELECT
     e.xuid,
     COALESCE(vg.gamertag, ('Joueur ' || RIGHT(e.xuid, 4))) AS gamertag,
     e.hour_utc AS hour,
+    e.dow_utc AS dow,
     COUNT(DISTINCT e.match_id) AS cnt
 FROM encounters e
 JOIN top_xuids t ON t.xuid = e.xuid
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = e.xuid
 WHERE e.hour_utc IS NOT NULL
-GROUP BY e.xuid, gamertag, e.hour_utc
+GROUP BY e.xuid, gamertag, e.hour_utc, e.dow_utc
 ORDER BY e.xuid ASC, e.hour_utc ASC`
 
 // Q30RivalTimelineTpl : timeline d'un rival (matchs communs joués EN ENNEMI),

@@ -42,7 +42,7 @@ func (r *CareerRepo) GetRelationsHeatmap(ctx context.Context, scope []string, to
 	var out []domain.RelationHeatmapRawRow
 	for rows.Next() {
 		var row domain.RelationHeatmapRawRow
-		if err := rows.Scan(&row.XUID, &row.Gamertag, &row.Hour, &row.Count); err != nil {
+		if err := rows.Scan(&row.XUID, &row.Gamertag, &row.Hour, &row.Dow, &row.Count); err != nil {
 			return nil, fmt.Errorf("CareerRepo.GetRelationsHeatmap scan: %w", err)
 		}
 		out = append(out, row)
