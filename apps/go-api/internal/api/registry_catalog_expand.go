@@ -75,7 +75,10 @@ func (r *ServiceRegistry) ExpandPlaylistChildren(ctx context.Context, titleSlug 
 		cfg, ferr := client.GetPlaylistConfig(ctx, p.id, p.ver)
 		if ferr != nil {
 			failed++
-			slog.WarnContext(ctx, "catalog_expand: config playlist échouée (best-effort)",
+			// Best-effort par-playlist : DEBUG. Le total est remonté une fois en fin
+			// de cycle (WARN si failed>0), pas N WARN ici. Un fetch raté au boot est
+			// souvent un simple 429 transitoire (cf. cooldown pool).
+			slog.DebugContext(ctx, "catalog_expand: config playlist échouée (best-effort)",
 				"module", logging.ModuleCatalog, "playlist", p.id, "err", ferr)
 			continue
 		}
@@ -107,8 +110,15 @@ func (r *ServiceRegistry) ExpandPlaylistChildren(ctx context.Context, titleSlug 
 		}
 	}
 	observability.IncCounter("catalog_playlist_expand_total")
-	slog.InfoContext(ctx, "catalog_expand: terminé", "module", logging.ModuleCatalog,
-		"playlists", len(playlists), "children_enqueued", enqueued, "playlists_failed", failed)
+	// Résumé unique de fin de cycle : WARN si au moins une playlist a échoué
+	// (signal agrégé visible), INFO sinon.
+	if failed > 0 {
+		slog.WarnContext(ctx, "catalog_expand: terminé avec échecs", "module", logging.ModuleCatalog,
+			"playlists", len(playlists), "children_enqueued", enqueued, "playlists_failed", failed)
+	} else {
+		slog.InfoContext(ctx, "catalog_expand: terminé", "module", logging.ModuleCatalog,
+			"playlists", len(playlists), "children_enqueued", enqueued, "playlists_failed", failed)
+	}
 	return enqueued, nil
 }
 

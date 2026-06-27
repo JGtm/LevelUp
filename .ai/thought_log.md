@@ -30733,3 +30733,68 @@ skip titre sans refresher, WithRefresher nil-safe). Tests existants préservés
 
 **Prochaine étape** : vérif build/test CGO centralisée ; un joueur H5 qui n'ouvre
 jamais l'app aura sa bannière/identité rafraîchie toutes les 8h en fond.
+
+## [2026-06-27] Hygiène logs de boot + backoff 429 anti-stampede — Complété
+
+**Statut** : Complété. Branche `fix/boot-warns-and-429-backoff`.
+
+**Contexte** : au boot, le terminal était noyé sous des WARN — rafale `halo_api: GET ...
+status=429` pendant ~6 min, `spartan_cron: refresher failed ... open rw`, `live_refresh:
+aucun SessionNotifier configuré`, `catalog_expand: config playlist échouée`,
+`world_leaderboard_cron: snapshot trop court`. Diagnostic ciblé (pas de demote aveugle) :
+chaque WARN tracé jusqu'à sa cause réelle dans le code.
+
+**Décisions techniques** :
+- **429 (santé + bruit)** : `doGet` ne retente PLUS le 429 en interne (retournait 4 hits
+  + 4 WARN par requête avant que le cooldown pool ne s'arme). Sur 429 → retour immédiat de
+  l'`HTTPError` (Retry-After parsé) ; le `PooledHaloClient` déclenche le cooldown GLOBAL du
+  pool (`OnHTTPError`, déjà dédupliqué une fois/transition) et le caller retente au cycle
+  suivant. `backoff` devient Retry-After-aware (503), borné par const `backoffCeiling=10s`
+  (remplace magic 10s). Logs par-tentative (réseau, HTTP) WARN→DEBUG. WARN redondant
+  par-appel `pooled: pool global cooldown triggered`→DEBUG (le pool logue déjà la transition).
+  Source de la rafale = watcher de présence (`halo_match_fetcher` type=all) sur tous les
+  joueurs au boot, via le pool.
+- **spartan_cron** : la cause n'était PAS un manque de gestion (le code DEBUG + agrège déjà
+  les file-locks en 1 ERROR) mais `IsFileLockError` qui ratait le libellé Windows/DuckDB.
+  Vraie erreur (logs/duckdb.log) : `IO Error: Cannot open file ... File is already open in
+  ...tmp/server.exe (PID N)` = un `server.exe` résiduel d'un reload Air tient le fichier.
+  Fix : `IsFileLockError` reconnaît le marqueur EN locale-indépendant `File is already open
+  in` → bascule dans l'agrégation existante (N WARN/joueur → 1 ERROR). Cause racine (zombie
+  Air) = environnementale, signalée à l'utilisateur, hors-code.
+- **live_refresh** : `SetSessionActive` est un no-op (TTL dynamique vestigial) et l'état est
+  déjà loggé en INFO (`notifier_configured`) → suppression du WARN + champ `notifierWarnOnce`.
+- **catalog_expand** : échec par-playlist WARN→DEBUG (best-effort, souvent un 429 transitoire) ;
+  résumé de fin WARN si `failed>0`, INFO sinon (un seul signal agrégé).
+- **world_leaderboard** : snapshot trop court WARN→INFO (robustesse nominale, snapshot
+  précédent conservé).
+
+**Résultats** : build CGO + `go vet` verts (sync, duckdb, watcher, api, scheduler). Tests :
+sync OK (incl. nouveau `TestDoGet_429_NoInClientRetry` = 1 seul appel sur 429), watcher OK,
+scheduler OK, api OK, nouveau `TestIsFileLockError` OK (couvre le libellé Windows réel).
+Échec préexistant hors-scope : `TestNoUnauthorizedSharedSocialMention` (3 fichiers du merge
+démo H5 — cmd_data.go, cmd/levelup/main.go, seed_demo_media_h5.go — non whitelistés ;
+échouerait pareil sur main).
+
+**Addendum — cause racine du lock player DB au boot (point 1) RÉSOLUE** :
+investigation de la source air-verse/air : sur **Windows, air NE supporte PAS
+`send_interrupt`** — il fait un `TASKKILL /F /T` (runner/util_windows.go, log
+« send_interrupt is not supported on Windows, using TASKKILL instead »). Donc le
+shutdown gracieux Go (`duckdb.CloseAll`) n'est JAMAIS invoqué au hot-reload, `kill_delay`
+et l'ex-`stop_timeout` (clé d'ailleurs INVALIDE pour air) sont ignorés. Le nouveau
+`server.exe` redémarre pendant que l'OS n'a pas fini de libérer les HANDLEs DuckDB de
+l'ancien process tué de force → lock transitoire. main.go gère DÉJÀ ce cas pour
+metadata/shared (`metaOpenAttempts` 12×500 ms) ; le pool des player DB (ouvertes en lazy
+par spartan_cron/world-enrich APRÈS le boot metadata) ne l'avait pas. Fix : helper
+`openPlayerRWWithLockRetry` (pool.go) appliqué à `ensurePlayerDBMigrations` +
+`openPlayerDB` (12×500 ms, DEBUG/tentative, échec final classé `IsFileLockError` →
+agrégé par spartan_cron). `.air.toml` : clé invalide `stop_timeout` retirée + commentaire
+corrigé (Windows = TASKKILL, le retry boot est la mitigation ; send_interrupt/kill_delay
+ne valent que sur Linux/deploy). `.gitignore` : `data/titles/*/warehouse/snapshots/`.
+Build serveur + duckdb verts (seul échec = `TestNoUnauthorizedSharedSocialMention`
+préexistant).
+
+**Prochaine étape** : leviers optionnels non faits — étaler le 1er tick des crons de boot
+(stagger) + réduire la concurrence du watcher au démarrage si la rafale 429 persiste ;
+whitelister les 3 fichiers H5 du test shared_social (commit séparé). Fichiers relations-v3
+/ palmares.toml / generated.ts / openapi.yaml dans l'arbre = WIP utilisateur concurrent
+(IDE), NON inclus dans ce commit.

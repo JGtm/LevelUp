@@ -356,7 +356,14 @@ func IsFileLockError(err error) bool {
 	s := err.Error()
 	return strings.Contains(s, "Could not set lock on file") ||
 		strings.Contains(s, "Conflicting lock is held") ||
-		strings.Contains(s, "different configuration")
+		strings.Contains(s, "different configuration") ||
+		// Windows/DuckDB : un autre détenteur (process distinct OU instance in-process
+		// avec une config différente) tient déjà le fichier. DuckDB ajoute toujours ce
+		// marqueur EN — "File is already open in <exe> (PID N)" — indépendamment de la
+		// locale OS (le message Win FR "utilisé par un autre processus" varie, pas lui).
+		// Sans ça, le boot Air laissant un tmp/server.exe résiduel produit un WARN
+		// par-joueur dans spartan_cron au lieu de l'ERROR agrégée. Cf. 2026-06-27.
+		strings.Contains(s, "File is already open in")
 }
 
 // Reopen ferme la connexion actuelle et en ouvre une nouvelle avec les
