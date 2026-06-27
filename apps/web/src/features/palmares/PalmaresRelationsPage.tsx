@@ -15,13 +15,15 @@ import { EmptyStateCard } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocalFilterBar } from '@/features/_shared/useLocalFilterBar'
 import { tokenCssVar } from '@/lib/accessibility'
+import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { formatPercent } from '@/lib/formatters'
-import type { FilterContextInput, RelationInsight } from '@/lib/api/types'
+import type { FilterContextInput, RelationDuelEntry, RelationInsight } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { getPalmaresText, normalizePalmaresLocale, type PalmaresLocale, type PalmaresText } from './i18n'
-import { useRelationsPage } from './queries'
+import { useRelationsMoments, useRelationsPage } from './queries'
 import { RelationBadges } from './RelationBadges'
+import { RelationSplitBar } from './RelationSplitBar'
 import { RelationsMomentsSection } from './RelationsMomentsSection'
 import { RelationsTable } from './RelationsTable'
 import { coreRelations, filterRelations, type RelationFilter } from './relationsFilter'
@@ -53,6 +55,39 @@ function formatRatio(v: number | null | undefined): string {
   return v.toFixed(2)
 }
 
+// kdaColor : le KDA est un NET signé (peut être négatif) — vert si positif,
+// rouge si négatif, neutre à 0 (cohérent avec kdaDivergentScale).
+function kdaColor(v: number | null | undefined): string | undefined {
+  if (v == null || !Number.isFinite(v)) return undefined
+  if (v > 0) return tokenCssVar('outcome-win')
+  if (v < 0) return tokenCssVar('outcome-loss')
+  return tokenCssVar('outcome-draw')
+}
+
+// duelOutcomeToken : couleur d'un carré de la mini-frise (win/loss/neutre).
+function duelOutcomeToken(outcome: string): SemanticToken {
+  if (outcome === 'win') return 'outcome-win'
+  if (outcome === 'loss') return 'outcome-loss'
+  return 'outcome-draw'
+}
+
+// DuelMiniTape : frise compacte des derniers duels (ancien→récent), un carré
+// coloré par duel. Décorative (le détail au survol vit dans la section Revanche).
+function DuelMiniTape({ duels }: { duels: RelationDuelEntry[] }) {
+  const recent = duels.slice(-14)
+  return (
+    <span className="inline-flex shrink-0 gap-0.5" aria-hidden="true">
+      {recent.map((d, i) => (
+        <span
+          key={`${d.match_id}-${i}`}
+          className="h-3.5 w-1.5 rounded-sm"
+          style={{ backgroundColor: tokenCssVar(duelOutcomeToken(d.outcome)) }}
+        />
+      ))}
+    </span>
+  )
+}
+
 /**
  * HeroRelationCard — carte hero enrichie : binôme (mode ally) ou bête noire
  * (mode enemy). Affiche gamertag cliquable + badges + WR + ratio + frags/morts +
@@ -67,6 +102,7 @@ function HeroRelationCard({
   labels,
   locale,
   onPlayerClick,
+  duels,
 }: {
   title: string
   emptyLabel: string
@@ -76,6 +112,7 @@ function HeroRelationCard({
   labels: RelationsText
   locale: 'fr' | 'en'
   onPlayerClick: (gamertag: string) => void
+  duels?: RelationDuelEntry[]
 }) {
   if (!relation) {
     return (
@@ -90,6 +127,7 @@ function HeroRelationCard({
   const wr = mode === 'ally' ? relation.teammate_win_rate : relation.enemy_win_rate
   const matches = mode === 'ally' ? relation.teammate_matches : relation.enemy_matches
   const wrLabel = mode === 'ally' ? labels.table.winRateAlly : labels.table.winRateEnemy
+  const avgKda = mode === 'ally' ? relation.avg_kda_with : relation.avg_kda_against
   return (
     <KpiCard accent={accent} className="flex h-full flex-col">
       <div className="flex flex-1 flex-col p-4">
@@ -112,18 +150,56 @@ function HeroRelationCard({
             <span className="ml-1 text-xs text-muted-foreground">{wrLabel}</span>
           </div>
           <div>
-            <span className="font-mono text-lg font-semibold" style={{ color: ratioColor(relation.duel_ratio) }}>
-              {formatRatio(relation.duel_ratio)}
-            </span>
-            <span className="ml-1 text-xs text-muted-foreground">{labels.table.ratio}</span>
+            {mode === 'ally' && avgKda != null && Number.isFinite(avgKda) ? (
+              <>
+                <span className="font-mono text-lg font-semibold" style={{ color: kdaColor(avgKda) }}>
+                  {formatRatio(avgKda)}
+                </span>
+                <span className="ml-1 text-xs text-muted-foreground">{labels.table.kdaTogether}</span>
+              </>
+            ) : (
+              <>
+                <span className="font-mono text-lg font-semibold" style={{ color: ratioColor(relation.duel_ratio) }}>
+                  {formatRatio(relation.duel_ratio)}
+                </span>
+                <span className="ml-1 text-xs text-muted-foreground">{labels.table.ratio}</span>
+              </>
+            )}
           </div>
         </div>
-        <div className="mt-2 flex items-center gap-2 font-mono text-xs">
-          <span style={{ color: tokenCssVar('outcome-win') }}>{relation.kills_dealt}</span>
-          <span className="text-muted-foreground">/</span>
-          <span style={{ color: tokenCssVar('outcome-loss') }}>{relation.deaths_suffered}</span>
-          <span className="ml-1 text-muted-foreground">{labels.hero.matchesPlayed(matches.toLocaleString(locale))}</span>
+        <div className="mt-3">
+          {mode === 'ally' ? (
+            <RelationSplitBar
+              label={labels.table.encounters}
+              leftValue={relation.teammate_matches}
+              rightValue={relation.enemy_matches}
+              leftToken="team-ally"
+              rightToken="team-enemy"
+              locale={locale}
+            />
+          ) : (
+            <RelationSplitBar
+              label={labels.table.fragsDeaths}
+              leftValue={relation.kills_dealt}
+              rightValue={relation.deaths_suffered}
+              leftToken="outcome-win"
+              rightToken="outcome-loss"
+              locale={locale}
+            />
+          )}
         </div>
+        {mode === 'enemy' && duels && duels.length > 0 ? (
+          <div className="mt-3 flex items-center gap-2">
+            <DuelMiniTape duels={duels} />
+            <span className="text-xs text-muted-foreground">
+              {labels.hero.matchesPlayed(matches.toLocaleString(locale))}
+            </span>
+          </div>
+        ) : (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {labels.hero.matchesPlayed(matches.toLocaleString(locale))}
+          </p>
+        )}
       </div>
     </KpiCard>
   )
@@ -270,18 +346,33 @@ function CoreCards({
           <p className="mt-1 text-xs text-muted-foreground">
             {labels.core.together(r.total_matches.toLocaleString(locale))}
           </p>
-          <div className="mt-2 flex items-center gap-3 font-mono text-xs">
-            <span style={{ color: tokenCssVar('team-ally') }}>{r.teammate_matches}</span>
-            <span className="text-muted-foreground">·</span>
-            <span style={{ color: tokenCssVar('team-enemy') }}>{r.enemy_matches}</span>
-            {r.teammate_win_rate != null && Number.isFinite(r.teammate_win_rate) && (
-              <>
-                <span className="text-muted-foreground">·</span>
-                <span className="font-bold" style={{ color: winLossColor(r.teammate_win_rate) }}>
-                  {formatPercent(r.teammate_win_rate, 0)}
+          <div className="mt-2 flex flex-col gap-1.5">
+            <RelationSplitBar
+              label={labels.table.encounters}
+              leftValue={r.teammate_matches}
+              rightValue={r.enemy_matches}
+              leftToken="team-ally"
+              rightToken="team-enemy"
+              locale={locale}
+            />
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs">
+              {r.teammate_win_rate != null && Number.isFinite(r.teammate_win_rate) && (
+                <span>
+                  <span className="font-bold" style={{ color: winLossColor(r.teammate_win_rate) }}>
+                    {formatPercent(r.teammate_win_rate, 0)}
+                  </span>{' '}
+                  <span className="text-muted-foreground">{labels.table.winRateAlly}</span>
                 </span>
-              </>
-            )}
+              )}
+              {r.avg_kda_with != null && Number.isFinite(r.avg_kda_with) && (
+                <span>
+                  <span className="font-bold" style={{ color: kdaColor(r.avg_kda_with) }}>
+                    {formatRatio(r.avg_kda_with)}
+                  </span>{' '}
+                  <span className="text-muted-foreground">{labels.table.kdaTogether}</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
       ))}
@@ -419,6 +510,14 @@ function RelationsContent({
   const relations = data.relations ?? []
   const allyRelation = findRelation(relations, ov.top_ally?.gamertag)
   const nemesisRelation = findRelation(relations, ov.top_nemesis?.gamertag)
+  // Frise du hero « Bête noire » : réutilise la donnée Moments (même queryKey →
+  // dédupliquée par TanStack Query, pas d'appel réseau supplémentaire).
+  const { data: momentsData } = useRelationsMoments(playerSlug, filterContext, filterHash, true)
+  const nemesisDuels = useMemo<RelationDuelEntry[] | undefined>(() => {
+    if (!momentsData || !nemesisRelation) return undefined
+    const riv = (momentsData.rivalries ?? []).find((r) => r.xuid === nemesisRelation.xuid)
+    return riv?.duels ?? undefined
+  }, [momentsData, nemesisRelation])
   return (
     <>
       <div className="grid gap-4 lg:grid-cols-3" data-testid="palmares-relations-overview">
@@ -441,6 +540,7 @@ function RelationsContent({
           labels={rel}
           locale={locale}
           onPlayerClick={onPlayerClick}
+          duels={nemesisDuels}
         />
         <CoreSummaryCard
           title={rel.hero.coreTitle}
@@ -458,11 +558,13 @@ function RelationsContent({
           type="button"
           aria-pressed={includeFriends}
           onClick={() => setIncludeFriends(!includeFriends)}
-          className={`rounded-lg border border-border px-3 py-1 text-sm font-medium transition-colors ${
-            includeFriends ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+          className={`rounded-lg border px-3 py-1 text-sm font-medium transition-colors ${
+            includeFriends
+              ? 'border-info text-foreground'
+              : 'border-border text-muted-foreground hover:text-foreground'
           }`}
         >
-          {rel.filters.includeFriends}
+          {includeFriends ? rel.filters.friendsIncluded : rel.filters.includeFriends}
         </button>
       </div>
 

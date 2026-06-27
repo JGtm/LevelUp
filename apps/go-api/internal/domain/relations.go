@@ -133,6 +133,8 @@ type RelationDuelRawRow struct {
 	Result        int // 1=win, 2=loss, 0=non décisif (analysis/relations.Result*)
 	KillsOnRival  int
 	DeathsByRival int
+	Mode          string // pair_name du match (mode), '' si absent
+	MapName       string // map (FR si dispo, sinon EN), '' si absent
 }
 
 // RelationDuelEntry : un duel exposé dans la frise (DTO JSON).
@@ -142,6 +144,8 @@ type RelationDuelEntry struct {
 	Outcome       string  `json:"outcome"`    // "win" | "loss" | "other"
 	KillsOnRival  int     `json:"kills_on_rival"`
 	DeathsByRival int     `json:"deaths_by_rival"`
+	Mode          string  `json:"mode"`     // mode du match (pair_name), '' si absent
+	MapName       string  `json:"map_name"` // map du match (FR si dispo), '' si absent
 }
 
 // RelationRivalry : une carte revanche (bête noire + autres rivaux). Frise des

@@ -34,8 +34,8 @@ describe('PalmaresRelationsPage', () => {
     })
 
     // Hero : binôme + bête noire (gamertags issus de l'overview du mock).
-    expect(screen.getByText('Ton binôme')).toBeInTheDocument()
-    expect(screen.getByText('Ta bête noire')).toBeInTheDocument()
+    expect(screen.getByText('Binôme')).toBeInTheDocument()
+    expect(screen.getByText('Bête noire')).toBeInTheDocument()
 
     // Tableau : toutes les relations récurrentes.
     expect(screen.getAllByText('DuoAlpha').length).toBeGreaterThan(0)

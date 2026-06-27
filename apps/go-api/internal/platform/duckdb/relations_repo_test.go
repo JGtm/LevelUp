@@ -18,7 +18,7 @@ func seedRelations(t *testing.T, db *DB) {
 		`CREATE TABLE match_participants (
 			match_id VARCHAR, xuid VARCHAR, team_id INTEGER, outcome INTEGER, kda DOUBLE)`,
 		`CREATE TABLE match_registry (
-			match_id VARCHAR, start_time_utc TIMESTAMPTZ, start_time TIMESTAMP)`,
+			match_id VARCHAR, start_time_utc TIMESTAMPTZ, start_time TIMESTAMP, pair_name VARCHAR, map_name VARCHAR, map_name_fr VARCHAR)`,
 		`CREATE TABLE killer_victim_pairs (
 			match_id VARCHAR, killer_xuid VARCHAR, victim_xuid VARCHAR, kill_count INTEGER)`,
 		`CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
@@ -45,11 +45,11 @@ func seedRelations(t *testing.T, db *DB) {
 		// Heures UTC distinctes pour exercer le bucketing day-parts du heatmap :
 		// m1=02h (Nuit), m2=09h (Matin), m3=19h (Soir), m4=20h (Soir), m5=14h.
 		`INSERT INTO match_registry VALUES
-			('m1', TIMESTAMPTZ '2026-01-10 02:00:00+00', NULL),
-			('m2', TIMESTAMPTZ '2026-02-10 09:00:00+00', NULL),
-			('m3', TIMESTAMPTZ '2026-03-10 19:00:00+00', NULL),
-			('m4', TIMESTAMPTZ '2026-04-10 20:00:00+00', NULL),
-			('m5', TIMESTAMPTZ '2026-05-10 14:00:00+00', NULL)`,
+			('m1', TIMESTAMPTZ '2026-01-10 02:00:00+00', NULL, 'Slayer', 'Aquarius', NULL),
+			('m2', TIMESTAMPTZ '2026-02-10 09:00:00+00', NULL, 'Slayer', 'Aquarius', NULL),
+			('m3', TIMESTAMPTZ '2026-03-10 19:00:00+00', NULL, 'Capture the Flag', 'Bazaar', NULL),
+			('m4', TIMESTAMPTZ '2026-04-10 20:00:00+00', NULL, 'Capture the Flag', 'Bazaar', NULL),
+			('m5', TIMESTAMPTZ '2026-05-10 14:00:00+00', NULL, 'Oddball', 'Live Fire', NULL)`,
 		`INSERT INTO killer_victim_pairs VALUES
 			('m3','xuidMe','xuidFoe',2),
 			('m3','xuidFoe','xuidMe',6),
@@ -314,6 +314,10 @@ func TestCareerRepo_GetRivalTimeline(t *testing.T) {
 	// m4 : me→Foe 0, Foe→me 4.
 	if rows[1].KillsOnRival != 0 || rows[1].DeathsByRival != 4 {
 		t.Fatalf("m4 frags kills=%d deaths=%d want 0/4", rows[1].KillsOnRival, rows[1].DeathsByRival)
+	}
+	// mode/map résolus depuis match_registry (pair_name + map_name).
+	if rows[0].Mode != "Capture the Flag" || rows[0].MapName != "Bazaar" {
+		t.Fatalf("m3 mode/map = %q/%q want \"Capture the Flag\"/\"Bazaar\"", rows[0].Mode, rows[0].MapName)
 	}
 }
 

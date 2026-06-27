@@ -7321,6 +7321,8 @@ export interface components {
             deaths_by_rival: number;
             /** Format: int64 */
             kills_on_rival: number;
+            map_name: string;
+            mode: string;
             match_id: string;
             outcome: string;
             started_at: string | null;

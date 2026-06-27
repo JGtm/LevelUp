@@ -182,6 +182,8 @@ func buildRivalry(rv domain.RelationRawRow, raw []domain.RelationDuelRawRow) dom
 			MatchID:       d.MatchID,
 			StartedAt:     formatRFC3339(d.StartTime),
 			Outcome:       duelOutcomeLabel(dom),
+			Mode:          d.Mode,
+			MapName:       d.MapName,
 			KillsOnRival:  d.KillsOnRival,
 			DeathsByRival: d.DeathsByRival,
 		})

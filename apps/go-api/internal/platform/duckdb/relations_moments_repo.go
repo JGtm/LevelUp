@@ -103,7 +103,7 @@ func (r *CareerRepo) GetRivalTimeline(ctx context.Context, rivalXUID string, sco
 			row       domain.RelationDuelRawRow
 			startTime sql.NullTime
 		)
-		if err := rows.Scan(&row.MatchID, &startTime, &row.Result, &row.KillsOnRival, &row.DeathsByRival); err != nil {
+		if err := rows.Scan(&row.MatchID, &startTime, &row.Result, &row.KillsOnRival, &row.DeathsByRival, &row.Mode, &row.MapName); err != nil {
 			return nil, fmt.Errorf("CareerRepo.GetRivalTimeline scan: %w", err)
 		}
 		if startTime.Valid {

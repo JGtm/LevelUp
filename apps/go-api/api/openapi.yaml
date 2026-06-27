@@ -13088,6 +13088,10 @@ components:
           kills_on_rival:
               format: int64
               type: integer
+          map_name:
+              type: string
+          mode:
+              type: string
           match_id:
               type: string
           outcome:
@@ -13101,6 +13105,8 @@ components:
           - outcome
           - kills_on_rival
           - deaths_by_rival
+          - mode
+          - map_name
       type: object
     RelationHeatmapCell:
       additionalProperties: false

@@ -27,6 +27,8 @@ export interface OutcomePoint {
   matchId: string
   map?: string
   mode?: string
+  /** Libellé pré-formaté pour le tooltip (ex. « 12 mars · Slayer · Aquarius — 14/9 »). */
+  label?: string
 }
 
 export interface OutcomeSequenceLabels {
@@ -97,7 +99,9 @@ export function OutcomeSequenceTape({
           const label = labels[r.outcome]
           const lines = r.matches
             .slice(0, 5)
-            .map((m) => `· ${m.map ?? m.matchId}${m.mode ? ` (${m.mode})` : ''}`)
+            .map((m) =>
+              m.label ? `· ${m.label}` : `· ${m.map ?? m.matchId}${m.mode ? ` (${m.mode})` : ''}`,
+            )
           if (r.matches.length > 5) lines.push(`+${r.matches.length - 5}`)
           return [`<b>${r.count}× ${label}</b>`, ...lines].join('<br/>')
         },

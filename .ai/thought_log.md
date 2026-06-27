@@ -1,3 +1,26 @@
+## [2026-06-27] Relations v3 — cards enrichies + revanche narrative + filtres (6 remarques) — COMPLÉTÉ + vérifié
+
+**Tâche** : 6 retouches Communauté > Relations suite remarques utilisateur.
+
+**Décisions** :
+- #1 filtre « Vue »→« Contexte », option « Les deux »→« Toutes » (i18n).
+- #2 cards hero : `RelationSplitBar` composite libellée (Frags/morts ou Rencontres) remplace le « 34/78 » illisible + KDA ensemble (binôme) + mini-frise des duels sur la bête noire (réutilise la donnée Moments via query dédupliquée — zéro appel réseau en plus).
+- #3 retrait possessifs : Binôme / Bête noire / Noyau dur.
+- #4 cards Noyau dur enrichies : SplitBar Rencontres + WR ensemble + KDA ensemble (`avg_kda_with`, jamais exploité).
+- #5 Revanche : tooltip de la frise = date · mode · map — frags/morts (mode/map ajoutés au backend Q30 : `pair_name` + `map_name`) ; WR glissant remplacé par `CumulativeFragGapChart` (écart de frags cumulé, ligne colorée par le signe via visualMap : vert ≥0 / rouge <0).
+- #6 bouton amis : label dynamique « Amis inclus » (actif) ↔ « Inclure les amis ».
+- Différé : delta « vs ta moyenne » (`player_win_rate`) — churn interface repo/mocks pour 1 KPI ; `avg_kda_with` + WR couvrent déjà l'axe « comment tu performes ».
+
+**Backend** : `RelationDuelRawRow`/`RelationDuelEntry` += Mode/MapName ; Q30 joint `match_registry` (pair_name + COALESCE map_name_fr/map_name) ; openapi + generated.ts régénérés ; seed integration (relations_repo_test) ajusté + assertion mode/map.
+
+**Réponse user** : noyau dur = pas de plafond (seuil ≥20 communs ET ≥3 coéquipier ; `GetRelations` sans LIMIT ; toutes les relations `is_core` affichées).
+
+**Vérif** : typecheck, vitest 2009/0, go vet, go test relations/service/duckdb (+ `-tags integration`), contracttest/api/handlers, eslint (0 erreur mes fichiers), lint colors/fields/cross-feature, knip sous plafonds. gofmt clean.
+
+**Statut** : Complété sur `feat/relations-v3-cards-narration`. Prochaine étape : rebase sur main courant + merge + déploiement (en attente accord). NB session : WIP auth/sync d'un autre agent committé entre-temps sur `fix/boot-warns-and-429-backoff` ; mes fichiers relations restent disjoints.
+
+---
+
 ## [2026-06-27] Éradication du quotient KDA (formule nette partout + coloration divergente + retrait capability native_kda) — COMPLÉTÉ + vérifié
 
 **Fait pivot (confirmé code/test)** : le KDA per-match est NET `(k + a/3) − d` (peut être négatif) pour LES DEUX titres — Infinite : champ API CoreStats « KDA » (transforms_extract_test 8.67=15+5/3−8, −6.0=8+1−15) ; Halo 5 : FDA native. Le quotient `(k+a/3)/morts` était LE bug à éradiquer. Agrégat (tout titre) = `((Σk + Σa/3) − Σd)/matchs` = `AVG(kda per-match net)`. Les sites « moyenne de KDA per-match » (home/squad/relations) sont donc DÉJÀ corrects (non touchés).
