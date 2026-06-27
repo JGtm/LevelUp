@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -66,7 +67,9 @@ func extractDemoMedia(
 	// Linux, unlink d'un fichier tenu par le conteneur démo est sûr (inode survit).
 	_ = os.Remove(outSocialDB)
 	_ = os.Remove(outSocialDB + ".wal")
-	if err := applyMigrationsOnPath(outSocialDB, migration.TargetSharedSocial); err != nil {
+	// Migrations PAR TITRE : la racine create_base_shared_social_schema (table
+	// media_files) est title-enregistrée, pas globale (cf. applyTitleMigrationsOnPath).
+	if err := applyTitleMigrationsOnPath(outSocialDB, titlePkg.DefaultSlug, migration.TargetSharedSocial); err != nil {
 		return 0, fmt.Errorf("migrations shared_social démo: %w", err)
 	}
 
