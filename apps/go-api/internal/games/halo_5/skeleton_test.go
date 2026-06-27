@@ -46,10 +46,13 @@ func TestHalo5_Manifest(t *testing.T) {
 	}
 	for _, c := range []title.Capability{
 		title.CapFirefight, title.CapForge, title.CapWorldLeaderboard,
-		// team_mmr / damage_taken = miroir title-level des flags scalaires :
-		// Halo 5 déclare no_team_mmr / no_damage_taken (constants.toml) donc
-		// ProvidesTeamMMR/ProvidesDamageTaken == false → AUCUNE des deux caps.
-		title.CapTeamMMR, title.CapDamageTaken,
+		// team_mmr / damage_taken / native_kda = miroir title-level des flags
+		// scalaires : Halo 5 déclare no_team_mmr / no_damage_taken / no_native_kda
+		// (constants.toml) donc ProvidesTeamMMR/ProvidesDamageTaken/ProvidesNativeKDA
+		// == false → AUCUNE des trois caps. (native_kda absente n'implique PAS de
+		// masquer la colonne KDA : la FDA NET h5 reste affichée, négatif autorisé ;
+		// seules l'échelle de couleur et le libellé s'adaptent.)
+		title.CapTeamMMR, title.CapDamageTaken, title.CapNativeKDA,
 	} {
 		if desc.HasCapability(c) {
 			t.Errorf("coarse capability %q ne devrait PAS être déclarée pour Halo 5", c)

@@ -10,8 +10,8 @@ import (
 
 // TestSkeleton_TitleManifestComplete : le squelette 2e titre porte un title.toml
 // valide, découvrable par le registre piloté par config, en coming_soon avec les
-// 13 capabilities (« même niveau d'information que Halo » : 11 produit + team_mmr
-// + damage_taken, miroir des flags scalaires Provides*).
+// 14 capabilities (« même niveau d'information que Halo » : 11 produit + team_mmr
+// + damage_taken + native_kda, miroir des flags scalaires Provides*).
 func TestSkeleton_TitleManifestComplete(t *testing.T) {
 	t.Parallel()
 	desc, err := title.LoadTitleManifest(repoRoot(t), TitleSlug)
@@ -24,15 +24,16 @@ func TestSkeleton_TitleManifestComplete(t *testing.T) {
 	if desc.Status != title.StatusComingSoon {
 		t.Errorf("status = %q, want coming_soon (squelette non servi en prod)", desc.Status)
 	}
-	if got := len(desc.Capabilities); got != 13 {
-		t.Errorf("capabilities = %d, want 13 (11 produit + team_mmr + damage_taken)", got)
+	if got := len(desc.Capabilities); got != 14 {
+		t.Errorf("capabilities = %d, want 14 (11 produit + team_mmr + damage_taken + native_kda)", got)
 	}
 	if !desc.HasCapability(title.CapLUSR) || !desc.HasCapability(title.CapWorldLeaderboard) {
 		t.Errorf("capabilities incomplètes: %v", desc.Capabilities)
 	}
 	// Miroir title-level des flags scalaires (squelette = défaut true comme Halo).
-	if !desc.HasCapability(title.CapTeamMMR) || !desc.HasCapability(title.CapDamageTaken) {
-		t.Errorf("team_mmr/damage_taken manquantes: %v", desc.Capabilities)
+	if !desc.HasCapability(title.CapTeamMMR) || !desc.HasCapability(title.CapDamageTaken) ||
+		!desc.HasCapability(title.CapNativeKDA) {
+		t.Errorf("team_mmr/damage_taken/native_kda manquantes: %v", desc.Capabilities)
 	}
 	if desc.IsDefault {
 		t.Error("le squelette ne doit pas être is_default")

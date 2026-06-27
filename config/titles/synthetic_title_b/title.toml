@@ -31,9 +31,10 @@ icon_url = ""
 xbox_title_id = "999000111"
 steam_app_id = ""
 # Même niveau d'information que Halo : les capabilities produit déclarées.
-# team_mmr / damage_taken = miroir title-level des flags scalaires
-# ProvidesTeamMMR / ProvidesDamageTaken (défaut true, comme Halo Infinite — le
-# squelette n'a pas de [damage_model] no_team_mmr/no_damage_taken).
+# team_mmr / damage_taken / native_kda = miroir title-level des flags scalaires
+# ProvidesTeamMMR / ProvidesDamageTaken / ProvidesNativeKDA (défaut true, comme
+# Halo Infinite — le squelette n'a pas de [damage_model]
+# no_team_mmr/no_damage_taken/no_native_kda).
 capabilities = [
   "matchmaking",
   "firefight",
@@ -48,4 +49,5 @@ capabilities = [
   "world.leaderboard",
   "team_mmr",
   "damage_taken",
+  "native_kda",
 ]

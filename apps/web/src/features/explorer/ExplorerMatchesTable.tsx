@@ -32,14 +32,14 @@ import type { ExplorerMatchRow } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
-import { mmrDeltaScale, kdScale } from '@/lib/accessibility/scales'
+import { mmrDeltaScale, kdScale, kdaDivergentScale } from '@/lib/accessibility/scales'
 import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
 import { formatDate, formatDurationMMSS, displayRatingLabel } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
 import type { ContextDescriptor, MatchFilterSpec } from '@/lib/match-nav/navContext'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
-import { useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
+import { useProvidesTeamMmr, useProvidesNativeKda } from '@/lib/damage/effectiveHp'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
@@ -184,6 +184,11 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   // fournit un MMR par match (gating via capability, jamais via slug). Faux pour
   // Halo 5 → on retire les colonnes MMR équipe / MMR adv. / ΔMMR.
   const providesTeamMmr = useProvidesTeamMmr()
+  // native_kda=false (Halo 5) → la colonne FDA porte la forme native signée
+  // ((k + a/3) − d)/1, potentiellement négative : on diverge la couleur autour de
+  // 0 au lieu de l'échelle ordinale positive kdScale (calibrée pour un quotient).
+  // On NE masque PAS la colonne ; la valeur reste affichée (toFixed(2), négatif OK).
+  const providesNativeKda = useProvidesNativeKda()
 
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const filterContext = useSoloFilterStore((s) => s.filterContext)
@@ -388,14 +393,27 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       },
       {
         accessorKey: 'kda',
-        header: t('explorer.matches.col_kda'),
+        // Sur un titre à FDA native signée (Halo 5), on clarifie la formule via un
+        // tooltip natif (peut être négatif). Infinite (quotient positif) : en-tête
+        // texte nu inchangé.
+        header: () =>
+          providesNativeKda ? (
+            t('explorer.matches.col_kda')
+          ) : (
+            <span title={t('explorer.matches.col_kda_tooltip')}>
+              {t('explorer.matches.col_kda')}
+            </span>
+          ),
         cell: (ctx) => {
           const v = ctx.getValue<number | null | undefined>()
           if (v == null) return '-'
+          // Infinite (native_kda) : échelle ordinale positive inchangée.
+          // Halo 5 (FDA native signée) : échelle divergente autour de 0.
+          const colorToken = providesNativeKda ? kdScale(v) : kdaDivergentScale(v)
           return (
             <span
               className="font-mono tabular-nums font-semibold"
-              style={{ color: tokenCssVar(kdScale(v)) }}
+              style={{ color: tokenCssVar(colorToken) }}
             >
               {fmtKDA(v)}
             </span>
@@ -508,7 +526,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         : []),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [intlLocale, mapAssets, playlistAssets, locale, goToMatch, providesTeamMmr],
+    [intlLocale, mapAssets, playlistAssets, locale, goToMatch, providesTeamMmr, providesNativeKda],
   )
 
   // Insère les colonnes injectées par le consommateur après `extraColumnsAfterId`

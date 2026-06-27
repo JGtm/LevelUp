@@ -27,6 +27,7 @@ export const TITLE_CAPABILITIES = [
   'native_kill_mechanics',
   'team_mmr',
   'damage_taken',
+  'native_kda',
 ] as const
 
 export type TitleCapability = (typeof TITLE_CAPABILITIES)[number]
