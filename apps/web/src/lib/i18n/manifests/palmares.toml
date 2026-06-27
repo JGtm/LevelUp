@@ -411,6 +411,42 @@ en = "Loss"
 fr = "Nul"
 en = "Draw"
 
+[palmares.relations.moments.heatmap_by_daypart]
+fr = "Par tranche horaire"
+en = "By time of day"
+
+[palmares.relations.moments.heatmap_by_day]
+fr = "Par jour"
+en = "By day"
+
+[palmares.relations.moments.day_0]
+fr = "Dim"
+en = "Sun"
+
+[palmares.relations.moments.day_1]
+fr = "Lun"
+en = "Mon"
+
+[palmares.relations.moments.day_2]
+fr = "Mar"
+en = "Tue"
+
+[palmares.relations.moments.day_3]
+fr = "Mer"
+en = "Wed"
+
+[palmares.relations.moments.day_4]
+fr = "Jeu"
+en = "Thu"
+
+[palmares.relations.moments.day_5]
+fr = "Ven"
+en = "Fri"
+
+[palmares.relations.moments.day_6]
+fr = "Sam"
+en = "Sat"
+
 # ─── Season pass - États ──────────────────────────────────────────────────
 
 [palmares.season_pass.unavailable_title]

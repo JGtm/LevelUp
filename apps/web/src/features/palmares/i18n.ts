@@ -105,6 +105,9 @@ export interface PalmaresText {
       heatmapEmpty: string
       heatmapLegend: string
       dayparts: string[]
+      heatmapByDaypart: string
+      heatmapByDay: string
+      dayLabels: string[]
       rivalriesTitle: string
       rivalriesEmpty: string
       enemyMatches: (count: string) => string
@@ -295,6 +298,17 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
           t(loc, 'palmares.relations.moments.daypart_afternoon'),
           t(loc, 'palmares.relations.moments.daypart_evening'),
           t(loc, 'palmares.relations.moments.daypart_late'),
+        ],
+        heatmapByDaypart: t(loc, 'palmares.relations.moments.heatmap_by_daypart'),
+        heatmapByDay: t(loc, 'palmares.relations.moments.heatmap_by_day'),
+        dayLabels: [
+          t(loc, 'palmares.relations.moments.day_0'),
+          t(loc, 'palmares.relations.moments.day_1'),
+          t(loc, 'palmares.relations.moments.day_2'),
+          t(loc, 'palmares.relations.moments.day_3'),
+          t(loc, 'palmares.relations.moments.day_4'),
+          t(loc, 'palmares.relations.moments.day_5'),
+          t(loc, 'palmares.relations.moments.day_6'),
         ],
         rivalriesTitle: t(loc, 'palmares.relations.moments.rivalries_title'),
         rivalriesEmpty: t(loc, 'palmares.relations.moments.rivalries_empty'),

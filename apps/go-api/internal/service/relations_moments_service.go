@@ -36,7 +36,7 @@ func (s *RelationsService) GetRelationsMoments(ctx context.Context, input domain
 		return domain.RelationsMomentsResponse{}, fmt.Errorf("RelationsService.GetRelationsMoments: scope: %w", err)
 	}
 
-	heatmap, err := s.buildHeatmap(ctx, scope)
+	heatmap, heatmapDow, err := s.buildHeatmap(ctx, scope)
 	if err != nil {
 		return domain.RelationsMomentsResponse{}, err
 	}
@@ -46,19 +46,20 @@ func (s *RelationsService) GetRelationsMoments(ctx context.Context, input domain
 	}
 	return domain.RelationsMomentsResponse{
 		Heatmap:      heatmap,
+		HeatmapDow:   heatmapDow,
 		Rivalries:    rivalries,
 		TopRelations: momentsHeatmapTopN,
 	}, nil
 }
 
-// buildHeatmap récupère les comptes relation × heure (top-N) et les agrège en
-// tranches horaires (day-parts) via analysis/relations.
-func (s *RelationsService) buildHeatmap(ctx context.Context, scope []string) ([]domain.RelationHeatmapCell, error) {
+// buildHeatmap récupère les comptes relation × (heure, jour) (top-N) et les agrège
+// en deux vues : tranches horaires (day-parts) ET jours de semaine.
+func (s *RelationsService) buildHeatmap(ctx context.Context, scope []string) ([]domain.RelationHeatmapCell, []domain.RelationHeatmapDowCell, error) {
 	raw, err := s.repo.GetRelationsHeatmap(ctx, scope, momentsHeatmapTopN)
 	if err != nil {
-		return nil, fmt.Errorf("RelationsService.GetRelationsMoments: heatmap: %w", err)
+		return nil, nil, fmt.Errorf("RelationsService.GetRelationsMoments: heatmap: %w", err)
 	}
-	return aggregateHeatmapDayparts(raw), nil
+	return aggregateHeatmapDayparts(raw), aggregateHeatmapDow(raw), nil
 }
 
 // aggregateHeatmapDayparts replie les comptes par heure en 6 tranches par
@@ -89,6 +90,39 @@ func aggregateHeatmapDayparts(raw []domain.RelationHeatmapRawRow) []domain.Relat
 			return out[i].Gamertag < out[j].Gamertag
 		}
 		return out[i].Daypart < out[j].Daypart
+	})
+	return out
+}
+
+// aggregateHeatmapDow replie les comptes par JOUR DE SEMAINE (0=dimanche … 6=samedi)
+// par relation, depuis les mêmes lignes brutes. Cellules vides omises. Tri stable
+// (gamertag, jour).
+func aggregateHeatmapDow(raw []domain.RelationHeatmapRawRow) []domain.RelationHeatmapDowCell {
+	type key struct {
+		xuid string
+		dow  int
+	}
+	agg := map[key]int{}
+	meta := map[string]string{} // xuid → gamertag
+	for _, r := range raw {
+		k := key{xuid: r.XUID, dow: r.Dow}
+		agg[k] += r.Count
+		meta[r.XUID] = r.Gamertag
+	}
+	out := make([]domain.RelationHeatmapDowCell, 0, len(agg))
+	for k, count := range agg {
+		out = append(out, domain.RelationHeatmapDowCell{
+			XUID:      k.xuid,
+			Gamertag:  meta[k.xuid],
+			DayOfWeek: k.dow,
+			Count:     count,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Gamertag != out[j].Gamertag {
+			return out[i].Gamertag < out[j].Gamertag
+		}
+		return out[i].DayOfWeek < out[j].DayOfWeek
 	})
 	return out
 }
