@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -361,7 +362,16 @@ func verifyConfigsWritten(t *testing.T, outDir, sourceGamertag, serviceTag strin
 	}
 	// Profils démo keyés par GAMERTAG (multi-roster) : le main = DefaultDemoMainGamertag
 	// ("DemoPlayer"), distinct du répertoire DB "DEMO" (cf. demoDirForIndex / DemoRoster[0]).
-	demoProfile, _ := profiles["profiles"].(map[string]any)[DefaultDemoMainGamertag].(map[string]any)
+	// Résolution version-aware : v3 (profiles.{titleSlug}.{gamertag}, écrit par la CLI
+	// multi-titre) puis v2.1 (profiles.{gamertag}, écrit par SeedDemo direct).
+	profMap, _ := profiles["profiles"].(map[string]any)
+	var demoProfile map[string]any
+	if byTitle, ok := profMap[titlePkg.DefaultSlug].(map[string]any); ok {
+		demoProfile, _ = byTitle[DefaultDemoMainGamertag].(map[string]any)
+	}
+	if demoProfile == nil {
+		demoProfile, _ = profMap[DefaultDemoMainGamertag].(map[string]any)
+	}
 	if demoProfile == nil {
 		t.Fatalf("profile %q absent", DefaultDemoMainGamertag)
 	}
