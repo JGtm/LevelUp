@@ -108,6 +108,21 @@ jobs:
             # la metadata prod = cause de l'échec historique de ce job.
             echo "[regen] Stop prod (libère les locks des DB source)..."
             docker compose stop levelup
+
+            # Indexation des captures Halo 5 (mp4 web-natifs servis en direct) : associe
+            # chaque clip à son match h5 par timestamp et écrit media_files/associations
+            # dans shared_social h5 — lues ensuite par seed-demo pour extraire des clips
+            # démo (extractDemoMediaH5). Best-effort + IDEMPOTENT (re-association). Requiert
+            # ffmpeg (miniatures) — présent sur le VPS. Prod stoppée → DB source libres.
+            # buffer-min 10 : les captures Game Bar sont prises en FIN de match (delta jusqu'à
+            # ~8 min vs start_time). captures-dir = {media base}/JGtm (résolu par la CLI).
+            echo "[regen] Index media Halo 5 (captures → associations)..."
+            docker compose run --rm levelup \
+              levelup index-media --gamertag JGtm --title halo_5 --buffer-min 10 \
+              || echo "[regen] ⚠️ index-media halo_5 a échoué (pas de clip H5 ce regen)"
+
+            # seed-demo seede désormais TOUS les titres où JGtm a des données (dérivés de
+            # db_profiles) : halo_infinite (flux HLS) + halo_5 (clips mp4 indexés ci-dessus).
             docker compose run --rm levelup \
               levelup seed-demo --gamertag JGtm --service-tag SPTA --out data/demo --max-media 12 \
               || echo "[regen] ⚠️ seed-demo a échoué — démo inchangée (prod va être redémarrée)"

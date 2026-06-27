@@ -1,3 +1,15 @@
+## [2026-06-27] Démo Halo 5 — Phase 5 : déploiement + asset drawer H5 demo-aware
+
+**deploy.yml** : ajout d'une étape `index-media --title halo_5 --buffer-min 10` au regen démo VPS (fenêtre prod stoppée, best-effort + idempotent), AVANT seed-demo — sinon les associations média H5 n'existent pas sur le VPS et seed-demo n'extrait aucun clip. ffmpeg présent sur le VPS (confirmé user). seed-demo seede désormais tous les titres (multi-titre via la CLI).
+
+**Asset drawer / CSR badge H5 demo-aware** : `loadTitleAssetDrawerData` et `loadCSRBadgeResolver` (server.go) ouvraient `pr.MetadataDBPath(slug)` = chemin PROD → en démo, échec (7 erreurs boot) ET surtout maps/icônes d'armes (kill-feed !)/badges CSR H5 ABSENTS. Signature changée pour prendre le chemin metadata résolu via `config.MetadataDBPath(cfg, slug)` (demo-aware). Boot démo désormais propre (0 erreur) ; les visuels H5 chargent depuis la metadata démo. (`loadTitleRankImageURLs` déjà demo-gated, inchangé.)
+
+**Vérifié** : boot serveur démo = 0 erreur metadata h5 ; asset_metadata_handler_ready OK. Build verts.
+
+**Livraison VPS (reste à faire par l'utilisateur)** : merger la branche + déployer ; au regen, index-media h5 tourne (captures déjà sur le VPS) puis seed-demo extrait les clips. Données locales modifiées pendant le dev (indexation locale demandée) : 7 captures copiées dans data/media/JGtm + associations écrites dans data/titles/halo_5/warehouse/shared_social.duckdb (prod local).
+
+**Statut** : Phases 1-5 Complètes. Démo H5 = home/rang + historique + match view + kill-feed + commendations + vidéos, anonymisé, hors-ligne (DuckDB), prod H5 inchangé (tout gaté DemoMode).
+
 ## [2026-06-27] Démo Halo 5 — Phase 4 : vidéos H5 (indexation + extraction démo)
 
 **Tâche** : intégrer des clips Halo 5 dans la démo (échantillons « solo avec vidéos »). Captures locales `C:\Users\Guillaume\Videos\Captures\JGtm` (2018-2019, 86 fichiers `Halo_5_Guardians-*.mp4`).
