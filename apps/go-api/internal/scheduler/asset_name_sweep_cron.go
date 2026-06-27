@@ -34,26 +34,32 @@ type AssetNameSweepRunner func(ctx context.Context, titleSlug string) (assetname
 // Gaté séparément par LEVELUP_SYNC_RESOLVE_ASSETS — le même interrupteur que la
 // résolution in-sync (halo.AssetNameResolutionEnabled). La résorption des noms reste
 // donc autonome même catalogue coupé.
+//
+// Title-aware : itère les titres ACTIFS du registre et ne sweep QUE ceux dont la
+// résolution de NOMS passe par le fetcher discovery-infiniteugc, signalé par CapForge
+// (même mécanisme UGC « HINF-shaped » que le drain catalogue). Un titre actif SANS
+// cette cap (ex. Halo 5, dont les noms sont résolus metadata-side via l'API officielle
+// — cf. cmd/h5-metadata-fetch, HORS de ce cron) est SKIPPÉ proprement (slog Debug,
+// jamais d'erreur) : on ne lance JAMAIS le fetcher /hi/ hardcodé sur ses GUIDs.
 type AssetNameSweepCron struct {
 	run       AssetNameSweepRunner
-	titleSlug string
+	registry  *titlePkg.Registry // titres actifs à itérer (capability-gated)
 	interval  time.Duration
 	bootDelay time.Duration
 	log       *slog.Logger // module=sync → logs/sync.log (cohérent avec la résolution in-sync)
 }
 
 // NewAssetNameSweepCron construit le cron. interval <= 0 → hebdomadaire ;
-// titleSlug == "" → titre par défaut. Le logger est tagué module=sync.
-func NewAssetNameSweepCron(run AssetNameSweepRunner, titleSlug string, interval time.Duration) *AssetNameSweepCron {
+// titleSlug == "" → titre par défaut, conservé pour rétro-compat de la signature
+// (le ciblage des titres se fait désormais via le registre + CapForge). Le logger est
+// tagué module=sync.
+func NewAssetNameSweepCron(run AssetNameSweepRunner, _ string, interval time.Duration) *AssetNameSweepCron {
 	if interval <= 0 {
 		interval = DefaultAssetNameSweepInterval
 	}
-	if titleSlug == "" {
-		titleSlug = titlePkg.DefaultSlug
-	}
 	return &AssetNameSweepCron{
 		run:       run,
-		titleSlug: titleSlug,
+		registry:  titlePkg.DefaultRegistry(),
 		interval:  interval,
 		bootDelay: assetSweepBootDelay,
 		log:       slog.Default().With("module", logging.ModuleSync),
@@ -68,7 +74,7 @@ func (c *AssetNameSweepCron) Run(ctx context.Context) {
 		return
 	}
 	c.log.InfoContext(ctx, "asset_name_sweep_cron: started",
-		"interval", c.interval, "boot_delay", c.bootDelay, "title", c.titleSlug)
+		"interval", c.interval, "boot_delay", c.bootDelay)
 
 	select {
 	case <-ctx.Done():
@@ -93,19 +99,46 @@ func (c *AssetNameSweepCron) Run(ctx context.Context) {
 // RunOnce exécute un balayage. Best-effort, idempotent (skip-fresh +
 // ops.UpsertAssetTranslation ART-safe). Exporté pour les tests / un éventuel
 // endpoint admin force-sweep.
+//
+// Title-aware : itère les titres ACTIFS et ne sweep QUE ceux déclarant CapForge
+// (résolution de noms via discovery-infiniteugc). Un titre sans la cap est skippé
+// proprement (slog Debug, pas d'erreur) — voir la doc du type.
 func (c *AssetNameSweepCron) RunOnce(ctx context.Context) {
 	if c == nil || c.run == nil {
 		return
 	}
+	reg := c.registry
+	if reg == nil {
+		reg = titlePkg.DefaultRegistry()
+	}
+	for _, desc := range reg.Active() {
+		if desc == nil {
+			continue
+		}
+		if !desc.HasCapability(titlePkg.CapForge) {
+			// Dégradation gracieuse : titre actif mais dont les noms ne se résolvent
+			// pas via discovery-infiniteugc (ex. Halo 5 → metadata-side, hors de ce
+			// cron). On le saute, ce n'est PAS une erreur.
+			c.log.DebugContext(ctx, "asset_name_sweep_cron: no discovery-infiniteugc resolver for title — skip",
+				"titleSlug", desc.Slug)
+			continue
+		}
+		c.runOnceForTitle(ctx, desc.Slug)
+	}
+}
+
+// runOnceForTitle exécute le balayage de noms pour UN titre déclarant CapForge.
+// Best-effort : une erreur n'interrompt pas l'itération sur les autres titres.
+func (c *AssetNameSweepCron) runOnceForTitle(ctx context.Context, titleSlug string) {
 	start := time.Now()
-	res, err := c.run(ctx, c.titleSlug)
+	res, err := c.run(ctx, titleSlug)
 	if err != nil {
 		c.log.WarnContext(ctx, "asset_name_sweep_cron: balayage échoué (best-effort)",
-			"err", err, "duration", time.Since(start))
+			"titleSlug", titleSlug, "err", err, "duration", time.Since(start))
 		return
 	}
 	if res.Requested > 0 {
-		c.log.InfoContext(ctx, "asset_name_sweep_cron: balayage terminé",
+		c.log.InfoContext(ctx, "asset_name_sweep_cron: balayage terminé", "titleSlug", titleSlug,
 			"requested", res.Requested, "resolved", res.Resolved, "skipped", res.Skipped,
 			"capped", res.Capped, "errors", res.Errors, "duration", time.Since(start))
 	}

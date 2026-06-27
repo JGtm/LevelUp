@@ -1151,6 +1151,24 @@ func main() {
 		spartanCron := scheduler.NewSpartanCustomizationCron(
 			cfg, autoSyncPool, provider, titleSlug, 0,
 		)
+		// Title-aware (refactor h5-capability-unification) : enregistre le refresher
+		// de customisation des AUTRES titres (Halo 5+). Le scheduler n'importe AUCUN
+		// package de titre — c'est ICI (boot, qui importe déjà halo5/livesync) que la
+		// closure title-spécifique est injectée. halo_5 → livesync.PersistAppearance
+		// (fetch /h5/profiles/{gt}/{appearance,spartan,emblem} + persist service tag /
+		// rendu Spartan / emblème dans career_progression h5, append-only). Le ctx
+		// porte déjà l'auth du joueur (posée par le cron) → NewAppearanceSource la lit.
+		// Best-effort : un échec source/fetch est remonté en err (loggé par le cron).
+		spartanCron.WithRefresher(halo5.TitleSlug, func(rctx context.Context, p domain.PlayerSummary) error {
+			src, err := halo5.NewAppearanceSource(rctx)
+			if err != nil {
+				return err
+			}
+			playerDBPath := pr.PlayerDBPath(halo5.TitleSlug, p.Gamertag)
+			cacheRoot := filepath.Join(pr.RepoRoot(), "data", "cache")
+			_, err = livesync.PersistAppearance(rctx, src, playerDBPath, cacheRoot, p.Gamertag, p.XUID)
+			return err
+		})
 		schedulerWG.Add(1)
 		go func() {
 			defer schedulerWG.Done()

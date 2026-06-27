@@ -1,3 +1,16 @@
+## [2026-06-27] Lot B (sous-lot 2) — Crons périphériques title-aware (spartan + catalog/asset, skip H5 propre) — COMPLÉTÉ + vérifié
+
+**spartan_customization** (`internal/scheduler/spartan_customization_cron.go`) : remplacé le `titleSlug` unique par un registre `map[slug]CustomizationRefresher` injecté. `RunOnce` itère `registry.Active()` → `runOnceForTitle` charge `LoadPlayers(slug)` + délègue au refresher du titre (skip Debug si absent). HINF = `careerIdentityRefresher` (svcProvider, inchangé). H5 = closure câblée dans `cmd/server/main.go` (`WithRefresher(halo5.TitleSlug, ...)`) : `NewAppearanceSource` + `livesync.PersistAppearance` (pr.PlayerDBPath halo5 + cacheRoot). ZÉRO import de titre dans le scheduler (wiring dans main.go, idiome runner factory). Comble le gap « bannière H5 jamais auto-rafraîchie pour joueur inactif ».
+
+**catalog_refresh + asset_name_sweep** : `titleSlug` unique → registre injecté (défaut `DefaultRegistry()`), `RunOnce` itère `reg.Active()` et ne draine/sweep QUE les titres déclarant **CapForge** (gate title-agnostic, pas de slug littéral). H5 (sans CapForge) skippé proprement (slog Debug) ; le drain HINF `/hi/` hardcodé n'est jamais lancé sur des GUIDs H5. Signature des constructeurs inchangée (2e param `titleSlug` ignoré) → pas de modif main.go pour ces 2 crons.
+- Gate CapForge = proxy : un peu plus large que « a un catalog adapter », mais corrélation exacte pour les 2 titres réels (HINF a CapForge ET l'adapter ; H5 ni l'un ni l'autre). Tightening futur = injecter un `games.Resolver` et gater sur `Catalog(slug)!=ErrTitleNotResolved` (toucherait main.go).
+
+**Investigation UGC H5 (résolue)** : la résolution des noms d'assets UGC H5 = `cmd/h5-metadata-fetch`, STRICTEMENT CLI (fonctions unexported, auth `LEVELUP_HALOAPI_KEY` env, source API OFFICIELLE `www.haloapi.com/metadata/h5/` ≠ `discovery-infiniteugc` interne). Câbler ça dans le cron = VRAI sous-projet adapter, PAS un quick-wire. Décision produit : différé (skip H5 propre retenu).
+
+**Vérif worktree** : `go test ./internal/scheduler/...` vert (incl. tests skip-sans-forge spartan/catalog/asset) ; `go build ./...` OK (wiring main.go spartan compile).
+
+---
+
 ## [2026-06-27] Lot B (sous-lot 1) — Parité backend H5 : runner (achievements auto + convergence 0-insert) + crons title-aware — COMPLÉTÉ + vérifié
 
 **Runner H5** (`internal/games/halo_5/livesync/`) :
