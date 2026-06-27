@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Relations — mock v2 (remarques)</title>
+<style>
+  /* Tokens approximatifs du thème sombre LUI (illustratif — au build, via tokenCssVar). */
+  :root{
+    --bg:#0b0e14; --card:#151a23; --card-2:#1b212c; --border:#252c39;
+    --fg:#e6e9ef; --muted:#8b93a3; --info:#5aa0ff;
+    --ally:#2d7dd2; --enemy:#c24230; --win:#15876a; --loss:#c24230; --draw:#4a5568;
+    /* Palette pills Halo-inspirée, SOLIDE, texte blanc (contraste AA visé) */
+    --p-allie:#0f766e;        /* jade — Allié+ */
+    --p-duo:#15876a;          /* menthe — Duo gagnant */
+    --p-duracuire:#c24230;    /* vermillon — Dur à cuire */
+    --p-coriace:#a23e5a;      /* amarante — Coriace */
+    --p-ordinal:#2457c5;      /* cobalt — Nᵉ rencontre */
+    --p-cameleon:#7c4dbc;     /* améthyste — Caméléon */
+    --p-longuedate:#2d6fb0;   /* azur profond — De longue date */
+    --p-recrue:#2d7dd2;       /* azur clair — Recrue */
+    --p-proie:#b7791f;        /* or/ambre — Proie favorite */
+    --p-crossgame:#4a5568;    /* ardoise — Aussi sur (autre jeu) */
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 -apple-system,Segoe UI,Roboto,sans-serif;padding:28px}
+  h1{font-size:18px;margin:0 0 4px} h2{font-size:15px;margin:28px 0 10px}
+  .sub{color:var(--muted);font-size:12px;margin:0 0 18px}
+  .note{color:var(--muted);font-size:12px;margin:6px 0 0}
+  .uplabel{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .grid3{display:grid;gap:14px;grid-template-columns:repeat(3,1fr)}
+  .grid-cards{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+  /* PILLS — toutes SOLID + texte blanc */
+  .pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;color:#fff;line-height:1.4}
+  .pill.allie{background:var(--p-allie)} .pill.duo{background:var(--p-duo)}
+  .pill.duracuire{background:var(--p-duracuire)} .pill.coriace{background:var(--p-coriace)}
+  .pill.ordinal{background:var(--p-ordinal)} .pill.cameleon{background:var(--p-cameleon)}
+  .pill.longuedate{background:var(--p-longuedate)} .pill.recrue{background:var(--p-recrue)}
+  .pill.proie{background:var(--p-proie)} .pill.crossgame{background:var(--p-crossgame)}
+  /* TOGGLE segmenté (aligné charte : 1 piste, rail discret, segment actif plein) */
+  .seg{display:inline-flex;background:var(--card-2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px}
+  .seg button{appearance:none;border:0;background:transparent;color:var(--muted);font:inherit;font-weight:600;
+    padding:6px 14px;border-radius:7px;cursor:pointer}
+  .seg button[aria-selected="true"]{background:var(--info);color:#0b0e14}
+  /* CARDS enrichies */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px}
+  .card.dark{background:var(--card-2)}
+  .gt{font-weight:600;color:var(--info);font-size:15px;text-decoration:none}
+  .cardhead{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+  .kpi{display:flex;gap:16px;margin-top:10px}
+  .kpi .v{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+  .kpi .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .delta-up{color:var(--win)} .delta-down{color:var(--loss)}
+  /* SplitBar (allié|ennemi, frags|morts) — repris du tableau */
+  .split{display:inline-flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;font-size:12px}
+  .bar{display:inline-flex;height:6px;width:64px;border:1px solid var(--border);border-radius:3px;overflow:hidden}
+  .badrow{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+  .ctx{font-size:11px;color:var(--muted);margin-top:8px;border-top:1px solid var(--border);padding-top:8px}
+  .tape{display:inline-flex;gap:2px;margin-top:8px}
+  .tape i{width:9px;height:14px;border-radius:2px;display:inline-block}
+  .legend{font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<h1>Communauté · Relations — mock v2</h1>
+<p class="sub">Réponses aux remarques : cards enrichies (#3), pills homogènes solid+blanc palette Halo (#5), toggles charte (#4), dédoublonnage noyau dur (#6).</p>
+
+<!-- ============ 1. PILLS HOMOGÈNES ============ -->
+<h2>1 · Pills — toutes solides, texte blanc, palette Halo accessible</h2>
+<p class="note">Mêmes pills existantes (Allié+, Dur à cuire, Coriace, Nᵉ) <b>désormais solides comme les nouvelles</b>. À répercuter sur <code>NarrativeBadge</code> (Carrière / Match View / Escouade).</p>
+<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+  <span class="pill allie">Allié+</span>
+  <span class="pill duo">Duo gagnant</span>
+  <span class="pill longuedate">De longue date</span>
+  <span class="pill recrue">Recrue</span>
+  <span class="pill cameleon">Caméléon</span>
+  <span class="pill duracuire">Dur à cuire</span>
+  <span class="pill coriace">Coriace</span>
+  <span class="pill proie">Proie favorite</span>
+  <span class="pill ordinal">5ᵉ plus croisé</span>
+  <span class="pill crossgame">Aussi sur Halo 5</span>
+</div>
+<p class="note">jade · menthe · azur profond · azur · améthyste · vermillon · amarante · or · cobalt · ardoise — toutes ≥ AA sur texte blanc (à confirmer via le test de contraste des palettes ; variantes okabe-ito / cividis déjà fournies).</p>
+
+<!-- ============ 2. TOGGLES ============ -->
+<h2>2 · Filtres — segmented control (charte) au lieu des pills bordées</h2>
+<div class="seg" role="tablist">
+  <button role="tab" aria-selected="true">Tous</button>
+  <button role="tab" aria-selected="false">Noyau dur</button>
+  <button role="tab" aria-selected="false">Alliés</button>
+  <button role="tab" aria-selected="false">Rivaux</button>
+  <button role="tab" aria-selected="false">Vus récemment</button>
+</div>
+<p class="note">Une seule piste, rail discret, segment actif plein (token info). Remplace les 5 boutons <code>rounded-full border</code> hétérogènes.</p>
+
+<!-- ============ 3. CARDS ENRICHIES ============ -->
+<h2>3 · Cards enrichies — Binôme · Bête noire · Noyau dur</h2>
+<div class="grid3">
+
+  <!-- BINÔME -->
+  <div class="card">
+    <p class="uplabel">Binôme</p>
+    <div class="cardhead" style="margin-top:6px">
+      <a class="gt" href="#">Chocoboflor</a>
+      <span class="split"><b style="color:var(--win)">68 %</b></span>
+    </div>
+    <div class="kpi">
+      <div><div class="v" style="color:var(--win)">68 %</div><div class="k">WR ensemble</div></div>
+      <div><div class="v delta-up">+11 pts</div><div class="k">vs ton WR solo</div></div>
+    </div>
+    <div style="margin-top:10px" class="split">
+      <span class="legend">Rencontres</span>
+      <span class="bar"><span style="width:90%;background:var(--ally)"></span><span style="flex:1;background:var(--enemy)"></span></span>
+      <span style="color:var(--ally)">112</span><span class="legend">·</span><span style="color:var(--enemy)">12</span>
+    </div>
+    <div class="badrow">
+      <span class="pill duo">Duo gagnant</span><span class="pill longuedate">De longue date</span>
+    </div>
+    <p class="ctx">Série en cours : 4 victoires ensemble · vu il y a 2 j</p>
+  </div>
+
+  <!-- BÊTE NOIRE -->
+  <div class="card">
+    <p class="uplabel">Bête noire</p>
+    <div class="cardhead" style="margin-top:6px">
+      <a class="gt" href="#">Madina97294</a>
+      <span class="split"><b style="color:var(--loss)">0.62</b></span>
+    </div>
+    <div class="kpi">
+      <div><div class="v" style="color:var(--loss)">37 %</div><div class="k">WR contre lui</div></div>
+      <div><div class="v">0.62</div><div class="k">ratio de duel</div></div>
+    </div>
+    <div style="margin-top:10px" class="split">
+      <span class="legend">Frags / morts</span>
+      <span class="bar"><span style="width:38%;background:var(--win)"></span><span style="flex:1;background:var(--loss)"></span></span>
+      <span style="color:var(--win)">23</span><span class="legend">·</span><span style="color:var(--loss)">37</span>
+    </div>
+    <div class="tape" title="duels récents (ancien → récent)">
+      <i style="background:var(--loss)"></i><i style="background:var(--loss)"></i><i style="background:var(--win)"></i>
+      <i style="background:var(--loss)"></i><i style="background:var(--loss)"></i><i style="background:var(--draw)"></i>
+      <i style="background:var(--loss)"></i><i style="background:var(--win)"></i>
+    </div>
+    <div class="badrow"><span class="pill duracuire">Dur à cuire</span><span class="pill coriace">Coriace</span></div>
+    <p class="ctx">Écart de frags cumulé : −14 · vu il y a 5 j</p>
+  </div>
+
+  <!-- NOYAU DUR (résumé qualitatif, PAS un simple compte) -->
+  <div class="card dark">
+    <p class="uplabel">Noyau dur</p>
+    <p style="margin:6px 0 0;font-size:13px">Tes <b>8 fidèles</b> — joués ≥ 20 fois, surtout à tes côtés.</p>
+    <div class="kpi">
+      <div><div class="v">8</div><div class="k">joueurs</div></div>
+      <div><div class="v" style="color:var(--win)">61 %</div><div class="k">WR avec eux</div></div>
+      <div><div class="v">724</div><div class="k">parties</div></div>
+    </div>
+    <div class="badrow">
+      <a class="gt" style="font-size:12px" href="#">Chocoboflor</a>
+      <a class="gt" style="font-size:12px" href="#">GeleJugefi</a>
+      <a class="gt" style="font-size:12px" href="#">+6</a>
+    </div>
+    <p class="ctx">↓ détail complet dans la section « Noyau dur » ci-dessous</p>
+  </div>
+</div>
+<p class="note">#6 — La <b>card</b> Noyau dur devient un <b>résumé qualitatif</b> (combien + WR + parties + 2-3 noms) ; la <b>section</b> dédiée garde la liste détaillée. Plus de doublon « compte seul » vs « liste ».</p>
+
+<!-- ============ 4. SECTION NOYAU DUR (mini-cards détaillées) ============ -->
+<h2>4 · Section « Noyau dur » — mini-cards détaillées (gris foncé, hors bloc parent)</h2>
+<div class="grid-cards">
+  <div class="card dark">
+    <div class="cardhead"><a class="gt" href="#">GeleJugefi</a><span class="legend">142 parties</span></div>
+    <div style="margin-top:8px" class="split">
+      <span class="bar"><span style="width:80%;background:var(--ally)"></span><span style="flex:1;background:var(--enemy)"></span></span>
+      <span style="color:var(--ally)">114</span><span class="legend">allié</span>
+      <span style="color:var(--enemy)">28</span><span class="legend">ennemi</span>
+    </div>
+    <div class="kpi" style="gap:14px">
+      <div><div class="v" style="font-size:16px;color:var(--win)">64 %</div><div class="k">WR ensemble</div></div>
+      <div><div class="v" style="font-size:16px">1.18</div><div class="k">ratio duel</div></div>
+    </div>
+    <div class="badrow"><span class="pill duo">Duo gagnant</span><span class="pill longuedate">De longue date</span></div>
+  </div>
+  <div class="card dark" style="opacity:.55;display:flex;align-items:center;justify-content:center;min-height:150px">
+    <span class="legend">… 7 autres fidèles</span>
+  </div>
+</div>
+<p class="note">#1 — Le <b>tableau</b> (au-dessus) sera limité (top 25 + pagination / « voir plus ») au lieu de tout lister.</p>
+
+<!-- ============ 5. MOMENTS & RIVALITÉS ============ -->
+<h2>5 · Moments &amp; Rivalités — affiché en permanence (#7)</h2>
+<p class="note">Plus de toggle « Afficher / Masquer » : la section est rendue directement (data chargée d'office). #10 — légende du chart « rolling » → « Taux de victoire glissant » (clé de série renommée). #8 — heatmap : voir question jours de semaine.</p>
+
+<p class="note" style="margin-top:18px;color:#5aa0ff">Décisions ouvertes : #8 jours de semaine (heatmap), #9 affichage des amis/alliés, portée de l'uniformisation des pills (#5). Voir message.</p>
+
+</body>
+</html>
