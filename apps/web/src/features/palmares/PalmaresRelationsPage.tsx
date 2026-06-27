@@ -7,7 +7,7 @@
  * enrichi (binôme / bête noire / noyau dur), segmented control + toggle « amis »,
  * tableau paginé (langage MatchEncountersTable) et section « Noyau dur » détaillée.
  */
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 
 import { KpiCard } from '@/components/cards/KpiCard'
@@ -19,6 +19,7 @@ import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { formatPercent } from '@/lib/formatters'
 import type { FilterContextInput, RelationDuelEntry, RelationInsight } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useRelationsPrefsStore } from '@/stores/relationsPrefsStore'
 
 import { getPalmaresText, normalizePalmaresLocale, type PalmaresLocale, type PalmaresText } from './i18n'
 import { useRelationsMoments, useRelationsPage } from './queries'
@@ -386,8 +387,10 @@ export function PalmaresRelationsPage() {
   const text = getPalmaresText(locale)
   const rel = text.relations
   const navigate = useNavigate()
-  const [filter, setFilter] = useState<RelationFilter>('all')
-  const [includeFriends, setIncludeFriends] = useState(true)
+  const filter = useRelationsPrefsStore((s) => s.filter)
+  const setFilter = useRelationsPrefsStore((s) => s.setFilter)
+  const includeFriends = useRelationsPrefsStore((s) => s.includeFriends)
+  const setIncludeFriends = useRelationsPrefsStore((s) => s.setIncludeFriends)
 
   const { committedFilterContext, committedHash, bar } = useLocalFilterBar({
     playerSlug,

@@ -6,10 +6,9 @@
  * croises » avec toggle tranche horaire / jour de semaine (#8). Frises + WR
  * glissant via wrappers existants. Strings via palmares.toml (FR/EN).
  */
-import { useState } from 'react'
-
 import { Spinner } from '@/components/ui/spinner'
 import type { FilterContextInput } from '@/lib/api/types'
+import { useRelationsPrefsStore } from '@/stores/relationsPrefsStore'
 
 import type { PalmaresText } from './i18n'
 import { useRelationsMoments } from './queries'
@@ -23,11 +22,10 @@ interface Props {
   text: PalmaresText['relations']['moments']
 }
 
-type HeatmapMode = 'daypart' | 'day'
-
 export function RelationsMomentsSection({ playerSlug, filterContext, filterHash, text }: Props) {
   const { data, isLoading, isError } = useRelationsMoments(playerSlug, filterContext, filterHash, true)
-  const [mode, setMode] = useState<HeatmapMode>('daypart')
+  const mode = useRelationsPrefsStore((s) => s.heatmapMode)
+  const setMode = useRelationsPrefsStore((s) => s.setHeatmapMode)
 
   // Mapping vers la cellule générique (bucket) selon le mode du toggle.
   const cells: HeatmapBucketCell[] =

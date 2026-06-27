@@ -92,7 +92,7 @@ export const palmaresManifest = {
   "palmares.relations.relative.yesterday": { fr: "hier", en: "yesterday" },
   "palmares.relations.table.encounters": { fr: "Rencontres", en: "Encounters" },
   "palmares.relations.table.frags_deaths": { fr: "Frags / Morts", en: "Frags / Deaths" },
-  "palmares.relations.table.kda_together": { fr: "KDA ensemble", en: "KDA together" },
+  "palmares.relations.table.kda_together": { fr: "FDA ensemble", en: "KDA together" },
   "palmares.relations.table.last_seen": { fr: "Vu", en: "Last seen" },
   "palmares.relations.table.link": { fr: "Lien", en: "Link" },
   "palmares.relations.table.next": { fr: "Suivant", en: "Next" },

@@ -204,7 +204,7 @@ fr = "Ratio"
 en = "Ratio"
 
 [palmares.relations.table.kda_together]
-fr = "KDA ensemble"
+fr = "FDA ensemble"
 en = "KDA together"
 
 [palmares.relations.table.last_seen]
