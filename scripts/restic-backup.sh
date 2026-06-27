@@ -5,8 +5,9 @@
 # restaurables), snapshot restic, redemarrage des que le snapshot est fait, puis prune
 # (app deja relancee). Un trap garantit le redemarrage meme si le backup plante.
 #
-# Perimetre : DuckDB du titre (titles/halo_infinite) + tokens OAuth (data/auth) +
-# config JSON. MEDIAS EXCLUS (volumineux, peu sujets a corruption, disque VPS serre).
+# Perimetre : DuckDB de TOUS les titres (titles/*, incl. halo_5) + tokens OAuth
+# (data/auth) + config JSON. MEDIAS EXCLUS (volumineux, peu sujets a corruption,
+# disque VPS serre).
 #
 # Installation (VPS, one-shot) :
 #   apt-get install -y restic
@@ -33,10 +34,10 @@ trap restart_app EXIT   # filet de securite : redemarre meme si plantage
 # 1. Arret bref pour coherence DuckDB.
 docker compose stop levelup >/dev/null 2>&1 || true
 
-# 2. Snapshot : DuckDB du titre + tokens auth + config (medias/cache/logs exclus).
+# 2. Snapshot : DuckDB de tous les titres + tokens auth + config (medias/cache/logs exclus).
 rc=0
 restic backup --tag auto --host levelup-vps \
-  data/titles/halo_infinite \
+  data/titles \
   data/auth \
   db_profiles.json app_settings.json .env.local || rc=$?
 

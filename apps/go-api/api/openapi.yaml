@@ -13121,6 +13121,25 @@ components:
           - daypart
           - count
       type: object
+    RelationHeatmapDowCell:
+      additionalProperties: false
+      properties:
+          count:
+              format: int64
+              type: integer
+          day_of_week:
+              format: int64
+              type: integer
+          gamertag:
+              type: string
+          xuid:
+              type: string
+      required:
+          - xuid
+          - gamertag
+          - day_of_week
+          - count
+      type: object
     RelationRivalry:
       additionalProperties: false
       properties:
@@ -13180,6 +13199,11 @@ components:
                   $ref: '#/components/schemas/RelationHeatmapCell'
               nullable: true
               type: array
+          heatmap_dow:
+              items:
+                  $ref: '#/components/schemas/RelationHeatmapDowCell'
+              nullable: true
+              type: array
           rivalries:
               items:
                   $ref: '#/components/schemas/RelationRivalry'
@@ -13190,6 +13214,7 @@ components:
               type: integer
       required:
           - heatmap
+          - heatmap_dow
           - rivalries
           - top_relations
       type: object

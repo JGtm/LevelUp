@@ -4,8 +4,8 @@
  * Consomme l'endpoint backend réel POST /pages/palmares/relations (forme
  * {overview, relations[]}). Barre de segmentation serveur (useLocalFilterBar :
  * expérience / saison / période / playlist / mode / vue solo-escouade), hero
- * (binôme / bête noire / noyau dur), chips de filtre CLIENT, tableau unique
- * (langage MatchEncountersTable) et section « Noyau dur » en mini-cards flottantes.
+ * enrichi (binôme / bête noire / noyau dur), segmented control + toggle « amis »,
+ * tableau paginé (langage MatchEncountersTable) et section « Noyau dur » détaillée.
  */
 import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from '@tanstack/react-router'
@@ -16,11 +16,12 @@ import { Spinner } from '@/components/ui/spinner'
 import { useLocalFilterBar } from '@/features/_shared/useLocalFilterBar'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatPercent } from '@/lib/formatters'
-import type { FilterContextInput, RelationRef } from '@/lib/api/types'
+import type { FilterContextInput, RelationInsight } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { getPalmaresText, normalizePalmaresLocale, type PalmaresLocale, type PalmaresText } from './i18n'
 import { useRelationsPage } from './queries'
+import { RelationBadges } from './RelationBadges'
 import { RelationsMomentsSection } from './RelationsMomentsSection'
 import { RelationsTable } from './RelationsTable'
 import { coreRelations, filterRelations, type RelationFilter } from './relationsFilter'
@@ -29,49 +30,132 @@ type RelationsText = PalmaresText['relations']
 
 const FILTER_CHIPS: RelationFilter[] = ['all', 'core', 'allies', 'rivals', 'recent']
 
-function HeroRefCard({
+/** findRelation — retrouve la ligne complète (RelationInsight) d'une référence hero. */
+function findRelation(relations: RelationInsight[], gamertag: string | undefined | null): RelationInsight | null {
+  if (!gamertag) return null
+  return relations.find((r) => r.gamertag === gamertag) ?? null
+}
+
+function winLossColor(v: number | null | undefined): string | undefined {
+  if (v == null || !Number.isFinite(v)) return undefined
+  return v >= 0.5 ? tokenCssVar('outcome-win') : tokenCssVar('outcome-loss')
+}
+
+function ratioColor(v: number | null | undefined): string | undefined {
+  if (v == null || !Number.isFinite(v)) return undefined
+  if (v > 1) return tokenCssVar('outcome-win')
+  if (v < 1) return tokenCssVar('outcome-loss')
+  return tokenCssVar('outcome-draw')
+}
+
+function formatRatio(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return '—'
+  return v.toFixed(2)
+}
+
+/**
+ * HeroRelationCard — carte hero enrichie : binôme (mode ally) ou bête noire
+ * (mode enemy). Affiche gamertag cliquable + badges + WR + ratio + frags/morts +
+ * volume, depuis la ligne RelationInsight complète (pas seulement la référence).
+ */
+function HeroRelationCard({
   title,
   emptyLabel,
   accent,
   relation,
-  matchesPlayed,
+  mode,
+  labels,
+  locale,
+  onPlayerClick,
 }: {
   title: string
   emptyLabel: string
   accent: Parameters<typeof KpiCard>[0]['accent']
-  relation: RelationRef | null
-  matchesPlayed: (count: string) => string
+  relation: RelationInsight | null
+  mode: 'ally' | 'enemy'
+  labels: RelationsText
+  locale: 'fr' | 'en'
+  onPlayerClick: (gamertag: string) => void
 }) {
+  if (!relation) {
+    return (
+      <KpiCard accent={accent} className="flex h-full flex-col">
+        <div className="flex flex-1 flex-col p-4">
+          <p className="text-xs uppercase tracking-label-md text-muted-foreground">{title}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{emptyLabel}</p>
+        </div>
+      </KpiCard>
+    )
+  }
+  const wr = mode === 'ally' ? relation.teammate_win_rate : relation.enemy_win_rate
+  const matches = mode === 'ally' ? relation.teammate_matches : relation.enemy_matches
+  const wrLabel = mode === 'ally' ? labels.table.winRateAlly : labels.table.winRateEnemy
   return (
     <KpiCard accent={accent} className="flex h-full flex-col">
       <div className="flex flex-1 flex-col p-4">
         <p className="text-xs uppercase tracking-label-md text-muted-foreground">{title}</p>
-        {relation ? (
-          <>
-            <p className="mt-2 truncate text-2xl font-semibold text-foreground">{relation.gamertag}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {formatPercent(relation.win_rate, 0)} · {matchesPlayed(relation.matches.toLocaleString())}
-            </p>
-          </>
-        ) : (
-          <p className="mt-2 text-sm text-muted-foreground">{emptyLabel}</p>
-        )}
+        <span className="mt-1 whitespace-nowrap">
+          <button
+            type="button"
+            className="text-left text-2xl font-semibold text-info hover:underline"
+            onClick={() => onPlayerClick(relation.gamertag)}
+          >
+            {relation.gamertag}
+          </button>
+          <RelationBadges badges={relation.badges} locale={locale} />
+        </span>
+        <div className="mt-3 flex items-baseline gap-5">
+          <div>
+            <span className="font-mono text-2xl font-bold" style={{ color: winLossColor(wr) }}>
+              {formatPercent(wr, 0)}
+            </span>
+            <span className="ml-1 text-xs text-muted-foreground">{wrLabel}</span>
+          </div>
+          <div>
+            <span className="font-mono text-lg font-semibold" style={{ color: ratioColor(relation.duel_ratio) }}>
+              {formatRatio(relation.duel_ratio)}
+            </span>
+            <span className="ml-1 text-xs text-muted-foreground">{labels.table.ratio}</span>
+          </div>
+        </div>
+        <div className="mt-2 flex items-center gap-2 font-mono text-xs">
+          <span style={{ color: tokenCssVar('outcome-win') }}>{relation.kills_dealt}</span>
+          <span className="text-muted-foreground">/</span>
+          <span style={{ color: tokenCssVar('outcome-loss') }}>{relation.deaths_suffered}</span>
+          <span className="ml-1 text-muted-foreground">{labels.hero.matchesPlayed(matches.toLocaleString(locale))}</span>
+        </div>
       </div>
     </KpiCard>
   )
 }
 
-function CoreHeroCard({
+/**
+ * CoreSummaryCard — résumé qualitatif du noyau dur (#6) : compte + WR moyen avec
+ * eux + volume + 2 noms cliquables. La LISTE détaillée vit dans la section dédiée
+ * ci-dessous (plus de doublon « compte seul » vs « liste »).
+ */
+function CoreSummaryCard({
   title,
   unit,
-  count,
+  coreRows,
+  labels,
   locale,
+  onPlayerClick,
 }: {
   title: string
   unit: string
-  count: number
-  locale: string
+  coreRows: RelationInsight[]
+  labels: RelationsText
+  locale: 'fr' | 'en'
+  onPlayerClick: (gamertag: string) => void
 }) {
+  const count = coreRows.length
+  const wrs = coreRows
+    .map((r) => r.teammate_win_rate)
+    .filter((v): v is number => v != null && Number.isFinite(v))
+  const avgWr = wrs.length > 0 ? wrs.reduce((a, b) => a + b, 0) / wrs.length : null
+  const totalGames = coreRows.reduce((a, r) => a + r.total_matches, 0)
+  const topNames = coreRows.slice(0, 2)
   return (
     <KpiCard accent="info" className="flex h-full flex-col">
       <div className="flex flex-1 flex-col p-4">
@@ -79,12 +163,41 @@ function CoreHeroCard({
         <p className="mt-2 text-2xl font-semibold text-foreground">
           {count.toLocaleString(locale)} <span className="text-base font-normal text-muted-foreground">{unit}</span>
         </p>
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-xs">
+          {avgWr != null && (
+            <span>
+              <span className="font-mono font-bold" style={{ color: winLossColor(avgWr) }}>
+                {formatPercent(avgWr, 0)}
+              </span>{' '}
+              <span className="text-muted-foreground">{labels.table.winRateAlly}</span>
+            </span>
+          )}
+          <span className="text-muted-foreground">{labels.hero.matchesPlayed(totalGames.toLocaleString(locale))}</span>
+        </div>
+        {topNames.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+            {topNames.map((r) => (
+              <button
+                key={r.xuid}
+                type="button"
+                className="truncate font-semibold text-info hover:underline"
+                onClick={() => onPlayerClick(r.gamertag)}
+              >
+                {r.gamertag}
+              </button>
+            ))}
+            {count > topNames.length && (
+              <span className="text-xs text-muted-foreground">+{count - topNames.length}</span>
+            )}
+          </div>
+        )}
       </div>
     </KpiCard>
   )
 }
 
-function FilterChips({
+/** SegmentedFilter — segmented control (charte) : une piste, segment actif plein. */
+function SegmentedFilter({
   active,
   onChange,
   labels,
@@ -101,18 +214,20 @@ function FilterChips({
     recent: labels.recent,
   }
   return (
-    <div className="flex flex-wrap gap-2" data-testid="palmares-relations-chips">
+    <div
+      className="inline-flex flex-wrap rounded-lg border border-border bg-card p-0.5"
+      data-testid="palmares-relations-chips"
+    >
       {FILTER_CHIPS.map((chip) => {
         const isActive = chip === active
         return (
           <button
             key={chip}
             type="button"
+            aria-pressed={isActive}
             onClick={() => onChange(chip)}
-            className={`rounded-full border px-3 py-1 text-sm transition-colors ${
-              isActive
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border text-muted-foreground hover:text-foreground'
+            className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+              isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {text[chip]}
@@ -123,15 +238,16 @@ function FilterChips({
   )
 }
 
+/** CoreCards — section détaillée du noyau dur (mini-cards gris foncé). */
 function CoreCards({
   rows,
   labels,
   locale,
   onPlayerClick,
 }: {
-  rows: ReturnType<typeof coreRelations>
+  rows: RelationInsight[]
   labels: RelationsText
-  locale: string
+  locale: 'fr' | 'en'
   onPlayerClick: (gamertag: string) => void
 }) {
   if (rows.length === 0) {
@@ -141,13 +257,16 @@ function CoreCards({
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {rows.map((r) => (
         <div key={r.xuid} className="rounded-lg bg-card p-4">
-          <button
-            type="button"
-            className="truncate text-sm font-semibold text-info hover:underline"
-            onClick={() => onPlayerClick(r.gamertag)}
-          >
-            {r.gamertag}
-          </button>
+          <span className="whitespace-nowrap">
+            <button
+              type="button"
+              className="truncate text-sm font-semibold text-info hover:underline"
+              onClick={() => onPlayerClick(r.gamertag)}
+            >
+              {r.gamertag}
+            </button>
+            <RelationBadges badges={r.badges} locale={locale} />
+          </span>
           <p className="mt-1 text-xs text-muted-foreground">
             {labels.core.together(r.total_matches.toLocaleString(locale))}
           </p>
@@ -155,6 +274,14 @@ function CoreCards({
             <span style={{ color: tokenCssVar('team-ally') }}>{r.teammate_matches}</span>
             <span className="text-muted-foreground">·</span>
             <span style={{ color: tokenCssVar('team-enemy') }}>{r.enemy_matches}</span>
+            {r.teammate_win_rate != null && Number.isFinite(r.teammate_win_rate) && (
+              <>
+                <span className="text-muted-foreground">·</span>
+                <span className="font-bold" style={{ color: winLossColor(r.teammate_win_rate) }}>
+                  {formatPercent(r.teammate_win_rate, 0)}
+                </span>
+              </>
+            )}
           </div>
         </div>
       ))}
@@ -169,9 +296,8 @@ export function PalmaresRelationsPage() {
   const rel = text.relations
   const navigate = useNavigate()
   const [filter, setFilter] = useState<RelationFilter>('all')
+  const [includeFriends, setIncludeFriends] = useState(true)
 
-  // Barre de segmentation serveur (Phase 2) : pending → committed + « Analyser »,
-  // counts cascade-aware via /filters/resolve. Inclut la vue solo/escouade.
   const { committedFilterContext, committedHash, bar } = useLocalFilterBar({
     playerSlug,
     labels: {
@@ -206,14 +332,14 @@ export function PalmaresRelationsPage() {
     })
   }
 
-  const visibleRows = useMemo(
-    () => (data ? filterRelations(data.relations ?? [], filter) : []),
-    [data, filter],
-  )
+  // Filtre segment (client) + toggle « amis » : sans les amis, on masque les
+  // relations purement coéquipières (jamais affrontées).
+  const visibleRows = useMemo(() => {
+    const base = data ? filterRelations(data.relations ?? [], filter) : []
+    return includeFriends ? base : base.filter((r) => r.enemy_matches > 0)
+  }, [data, filter, includeFriends])
   const coreRows = useMemo(() => (data ? coreRelations(data.relations ?? []) : []), [data])
 
-  // La barre reste montée dans tous les états (chargement / erreur / vide) pour
-  // permettre de changer la segmentation même quand la sélection courante est vide.
   let body: ReactNode
   if (isLoading) {
     body = (
@@ -237,10 +363,11 @@ export function PalmaresRelationsPage() {
       <RelationsContent
         data={data}
         rel={rel}
-        text={text}
         locale={locale}
         filter={filter}
         setFilter={setFilter}
+        includeFriends={includeFriends}
+        setIncludeFriends={setIncludeFriends}
         visibleRows={visibleRows}
         coreRows={coreRows}
         onPlayerClick={goToExplorer}
@@ -262,10 +389,11 @@ export function PalmaresRelationsPage() {
 function RelationsContent({
   data,
   rel,
-  text,
   locale,
   filter,
   setFilter,
+  includeFriends,
+  setIncludeFriends,
   visibleRows,
   coreRows,
   onPlayerClick,
@@ -275,44 +403,68 @@ function RelationsContent({
 }: {
   data: NonNullable<ReturnType<typeof useRelationsPage>['data']>
   rel: RelationsText
-  text: PalmaresText
   locale: PalmaresLocale
   filter: RelationFilter
   setFilter: (f: RelationFilter) => void
-  visibleRows: ReturnType<typeof filterRelations>
-  coreRows: ReturnType<typeof coreRelations>
+  includeFriends: boolean
+  setIncludeFriends: (v: boolean) => void
+  visibleRows: RelationInsight[]
+  coreRows: RelationInsight[]
   onPlayerClick: (gamertag: string) => void
   playerSlug: string
   filterContext: FilterContextInput
   filterHash: string
 }) {
   const ov = data.overview
+  const relations = data.relations ?? []
+  const allyRelation = findRelation(relations, ov.top_ally?.gamertag)
+  const nemesisRelation = findRelation(relations, ov.top_nemesis?.gamertag)
   return (
     <>
       <div className="grid gap-4 lg:grid-cols-3" data-testid="palmares-relations-overview">
-        <HeroRefCard
+        <HeroRelationCard
           title={rel.hero.topAllyTitle}
           emptyLabel={rel.hero.topAllyEmpty}
           accent="outcome-win"
-          relation={ov.top_ally}
-          matchesPlayed={rel.hero.matchesPlayed}
+          relation={allyRelation}
+          mode="ally"
+          labels={rel}
+          locale={locale}
+          onPlayerClick={onPlayerClick}
         />
-        <HeroRefCard
+        <HeroRelationCard
           title={rel.hero.topNemesisTitle}
           emptyLabel={rel.hero.topNemesisEmpty}
           accent="outcome-loss"
-          relation={ov.top_nemesis}
-          matchesPlayed={rel.hero.matchesPlayed}
+          relation={nemesisRelation}
+          mode="enemy"
+          labels={rel}
+          locale={locale}
+          onPlayerClick={onPlayerClick}
         />
-        <CoreHeroCard
+        <CoreSummaryCard
           title={rel.hero.coreTitle}
           unit={rel.hero.coreUnit}
-          count={ov.core_count}
-          locale={text.intlLocale}
+          coreRows={coreRows}
+          labels={rel}
+          locale={locale}
+          onPlayerClick={onPlayerClick}
         />
       </div>
 
-      <FilterChips active={filter} onChange={setFilter} labels={rel.chips} />
+      <div className="flex flex-wrap items-center gap-3">
+        <SegmentedFilter active={filter} onChange={setFilter} labels={rel.chips} />
+        <button
+          type="button"
+          aria-pressed={includeFriends}
+          onClick={() => setIncludeFriends(!includeFriends)}
+          className={`rounded-lg border border-border px-3 py-1 text-sm font-medium transition-colors ${
+            includeFriends ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          {rel.filters.includeFriends}
+        </button>
+      </div>
 
       <RelationsTable
         rows={visibleRows}
@@ -327,7 +479,7 @@ function RelationsContent({
           <h2 className="text-base font-semibold text-foreground">{rel.core.sectionTitle}</h2>
           <p className="text-sm text-muted-foreground">{rel.core.sectionDescription}</p>
         </div>
-        <CoreCards rows={coreRows} labels={rel} locale={text.intlLocale} onPlayerClick={onPlayerClick} />
+        <CoreCards rows={coreRows} labels={rel} locale={locale} onPlayerClick={onPlayerClick} />
       </section>
 
       <RelationsMomentsSection

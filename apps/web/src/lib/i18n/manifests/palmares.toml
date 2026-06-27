@@ -157,6 +157,18 @@ en = "Analyze"
 fr = "Réinitialiser"
 en = "Reset"
 
+[palmares.relations.filters.include_friends]
+fr = "Inclure les amis"
+en = "Include friends"
+
+[palmares.relations.table.previous]
+fr = "Précédent"
+en = "Previous"
+
+[palmares.relations.table.next]
+fr = "Suivant"
+en = "Next"
+
 # ─── Relations - Tableau (en-têtes colonnes) ──────────────────────────────
 
 [palmares.relations.table.player]
@@ -398,6 +410,42 @@ en = "Loss"
 [palmares.relations.moments.outcome_other]
 fr = "Nul"
 en = "Draw"
+
+[palmares.relations.moments.heatmap_by_daypart]
+fr = "Par tranche horaire"
+en = "By time of day"
+
+[palmares.relations.moments.heatmap_by_day]
+fr = "Par jour"
+en = "By day"
+
+[palmares.relations.moments.day_0]
+fr = "Dim"
+en = "Sun"
+
+[palmares.relations.moments.day_1]
+fr = "Lun"
+en = "Mon"
+
+[palmares.relations.moments.day_2]
+fr = "Mar"
+en = "Tue"
+
+[palmares.relations.moments.day_3]
+fr = "Mer"
+en = "Wed"
+
+[palmares.relations.moments.day_4]
+fr = "Jeu"
+en = "Thu"
+
+[palmares.relations.moments.day_5]
+fr = "Ven"
+en = "Fri"
+
+[palmares.relations.moments.day_6]
+fr = "Sam"
+en = "Sat"
 
 # ─── Season pass - États ──────────────────────────────────────────────────
 

@@ -146,6 +146,7 @@
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-badge-on-solid: oklch(1 0 0); /* texte blanc des badges solid (toujours, indep. du thème) */
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent);

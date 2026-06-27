@@ -9,6 +9,7 @@ import {
   type ColumnDef,
   flexRender,
   getCoreRowModel,
+  getPaginationRowModel,
   useReactTable,
 } from '@tanstack/react-table'
 import { useMemo } from 'react'
@@ -22,6 +23,10 @@ import { RelationBadges } from './RelationBadges'
 import type { PalmaresText } from './i18n'
 
 type RelationsLabels = PalmaresText['relations']
+
+// Le tableau liste tout le réseau ; on borne l'affichage par pages pour rester
+// lisible (binôme / bête noire / noyau dur restent en tête de page).
+const RELATIONS_PAGE_SIZE = 25
 
 function percentColor(v: number | null | undefined): string | undefined {
   if (v == null || !Number.isFinite(v)) return undefined
@@ -237,6 +242,8 @@ export function RelationsTable({
     data: rows,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: { pagination: { pageSize: RELATIONS_PAGE_SIZE } },
   })
 
   if (rows.length === 0) {
@@ -244,37 +251,64 @@ export function RelationsTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-card">
-      <table className="w-full border-collapse text-xs">
-        <thead>
-          {table.getHeaderGroups().map((hg) => (
-            <tr key={hg.id} className="text-muted-foreground">
-              {hg.headers.map((h, idx) => (
-                <th
-                  key={h.id}
-                  className={`border border-border border-b-2 px-2 pb-1 pt-1 ${idx === 0 ? 'text-left' : 'text-right'}`}
-                >
-                  {flexRender(h.column.columnDef.header, h.getContext())}
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="hover:bg-accent/40 transition-colors">
-              {row.getVisibleCells().map((cell, idx) => (
-                <td
-                  key={cell.id}
-                  className={`border border-border px-2 py-1.5 ${idx === 0 ? 'text-left' : 'text-right'}`}
-                >
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="flex flex-col gap-2">
+      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id} className="text-muted-foreground">
+                {hg.headers.map((h, idx) => (
+                  <th
+                    key={h.id}
+                    className={`border border-border border-b-2 px-2 pb-1 pt-1 ${idx === 0 ? 'text-left' : 'text-right'}`}
+                  >
+                    {flexRender(h.column.columnDef.header, h.getContext())}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map((row) => (
+              <tr key={row.id} className="hover:bg-accent/40 transition-colors">
+                {row.getVisibleCells().map((cell, idx) => (
+                  <td
+                    key={cell.id}
+                    className={`border border-border px-2 py-1.5 ${idx === 0 ? 'text-left' : 'text-right'}`}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {table.getPageCount() > 1 && (
+        <div className="flex items-center justify-end gap-2 px-1 text-xs text-muted-foreground">
+          <button
+            type="button"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+            aria-label={labels.table.previous}
+            className="rounded border border-border px-2 py-1 leading-none transition-colors hover:text-foreground disabled:opacity-40"
+          >
+            &lsaquo;
+          </button>
+          <span className="tabular-nums">
+            {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+          </span>
+          <button
+            type="button"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+            aria-label={labels.table.next}
+            className="rounded border border-border px-2 py-1 leading-none transition-colors hover:text-foreground disabled:opacity-40"
+          >
+            &rsaquo;
+          </button>
+        </div>
+      )}
     </div>
   )
 }

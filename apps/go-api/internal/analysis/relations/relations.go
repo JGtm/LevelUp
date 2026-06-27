@@ -6,8 +6,8 @@
 //
 // Les badges "existants" (ally_plus / tough_enemy / coriace / ordinal) sont
 // délégués à internal/analysis/narrative.ComputeEncounterBadges pour rester
-// alignés sur la page Carrière et la Match View. Les nouveaux badges (style
-// "solid") sont calculés ici.
+// alignés sur la page Carrière et la Match View. Tous les badges de RELATION
+// (existants + nouveaux) sont rendus en style "solid" (homogénéité front).
 package relations
 
 import (
@@ -59,10 +59,9 @@ const (
 
 // Seuils des compteurs d'aperçu et de la sélection binôme/bête noire.
 const (
-	// CoreMinTotalMatches / CoreMinTeammate / CoreMinEnemy : "noyau dur".
+	// CoreMinTotalMatches / CoreMinTeammate : "noyau dur" (seuil enemy retiré, cf. IsCore).
 	CoreMinTotalMatches = 20
 	CoreMinTeammate     = 3
-	CoreMinEnemy        = 3
 
 	// TopAllyMinTeammateMatches : seuil pour candidater au binôme.
 	TopAllyMinTeammateMatches = 8
@@ -114,19 +113,21 @@ func Categorize(s RelationStats) string {
 }
 
 // ComputeBadges retourne les badges applicables à une relation : d'abord les
-// badges narratifs existants (style tinted), puis les nouveaux (style solid),
-// dans un ordre stable.
+// badges de rencontre existants (ally_plus / tough_enemy / coriace / ordinal),
+// puis les nouveaux, dans un ordre stable. Tous en style solid (badges de joueur).
 func ComputeBadges(s RelationStats, now time.Time) []Badge {
 	out := make([]Badge, 0, 8)
-	out = append(out, tintedBadges(s)...)
+	out = append(out, encounterBadges(s)...)
 	out = append(out, solidBadges(s, now)...)
 	return out
 }
 
-// tintedBadges délègue aux badges narratifs (ordinal / ally_plus / tough_enemy /
-// coriace) via narrative.ComputeEncounterBadges, en réutilisant LabelKey +
-// ColorToken d'origine.
-func tintedBadges(s RelationStats) []Badge {
+// encounterBadges délègue aux badges narratifs de RENCONTRE (ordinal / ally_plus /
+// tough_enemy / coriace) via narrative.ComputeEncounterBadges, en réutilisant
+// LabelKey + ColorToken d'origine. Rendus en style solid (badges de joueur,
+// homogènes avec les nouveaux). NB : dominance + rôles d'impact ne passent PAS
+// par ici et restent teintés.
+func encounterBadges(s RelationStats) []Badge {
 	ordinal := s.TotalMatches - 1
 	if ordinal < 0 {
 		ordinal = 0
@@ -148,7 +149,7 @@ func tintedBadges(s RelationStats) []Badge {
 		out = append(out, Badge{
 			LabelKey:   b.LabelKey,
 			ColorToken: b.ColorToken,
-			Style:      BadgeStyleTinted,
+			Style:      BadgeStyleSolid,
 			Detail:     b.Detail,
 		})
 	}

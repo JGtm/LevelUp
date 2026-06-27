@@ -1,13 +1,12 @@
 /**
  * RelationsMomentsHeatmap — heatmap agrégé « Quand tu les croises » (Phase 3a).
  *
- * Variante relation × tranche horaire de ExplorerActivityHeatmapChart : la
- * couleur reflète le `count` (matchs communs) via la rampe sémantique
- * heatmap-cold → heatmap-hot. Axe X = 6 tranches horaires (day-parts), axe Y =
- * top-N relations. Plafonné (top-N × 6 tranches) pour rester lisible.
- *
- * Aligné sur ExplorerActivityHeatmapChart : même visualMap cold→hot, count
- * affiché dans la cellule, tooltip, légende. Strings via palmares.toml (FR/EN).
+ * Générique : relation × bucket (tranche horaire OU jour de semaine selon le
+ * toggle du parent, #8). La couleur reflète le `count` (matchs communs) via la
+ * rampe sémantique heatmap-cold → heatmap-hot. Axe X = buckets (labels fournis),
+ * axe Y = top-N relations. Aligné sur ExplorerActivityHeatmapChart : même
+ * visualMap cold→hot, count dans la cellule, tooltip, légende. Strings via
+ * palmares.toml (FR/EN).
  */
 import { useCallback, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
@@ -15,11 +14,18 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, getEChartsThemeColors } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
-import type { RelationHeatmapCell } from '@/lib/api/types'
+
+/** Cellule générique : bucket = index de tranche horaire OU de jour de semaine. */
+export interface HeatmapBucketCell {
+  xuid: string
+  gamertag: string
+  bucket: number
+  count: number
+}
 
 interface Props {
-  cells: RelationHeatmapCell[]
-  daypartLabels: string[] // 6 tranches, index = daypart
+  cells: HeatmapBucketCell[]
+  bucketLabels: string[] // index = bucket (tranche horaire ou jour)
   title?: string
   legendLabel: string
   emptyMessage: string
@@ -28,8 +34,8 @@ interface Props {
 }
 
 function buildOption(
-  cells: RelationHeatmapCell[],
-  daypartLabels: string[],
+  cells: HeatmapBucketCell[],
+  bucketLabels: string[],
   legendLabel: string,
   matchesLabel: (count: number) => string,
 ): EChartsCoreOption {
@@ -48,15 +54,15 @@ function buildOption(
   const lookup = new Map<string, number>()
   let maxCount = 0
   for (const c of cells) {
-    lookup.set(`${c.xuid}-${c.daypart}`, c.count)
+    lookup.set(`${c.xuid}-${c.bucket}`, c.count)
     if (c.count > maxCount) maxCount = c.count
   }
 
   const data: { value: [number, number, number | null] }[] = []
-  for (let dp = 0; dp < daypartLabels.length; dp++) {
+  for (let b = 0; b < bucketLabels.length; b++) {
     for (const xuid of rowOrder) {
-      const count = lookup.get(`${xuid}-${dp}`)
-      data.push({ value: [dp, rowIndex.get(xuid) ?? 0, count != null && count > 0 ? count : null] })
+      const count = lookup.get(`${xuid}-${b}`)
+      data.push({ value: [b, rowIndex.get(xuid) ?? 0, count != null && count > 0 ? count : null] })
     }
   }
 
@@ -71,9 +77,9 @@ function buildOption(
       borderColor: tc.tooltipBorder,
       textStyle: { color: tc.text },
       formatter: (params: { data: { value: [number, number, number | null] } }) => {
-        const [dp, row, count] = params.data.value
+        const [b, row, count] = params.data.value
         const who = rowLabels[row] ?? ''
-        const when = daypartLabels[dp] ?? ''
+        const when = bucketLabels[b] ?? ''
         if (count == null || count === 0) return `${who} · ${when}`
         return `${who} · ${when}<br>${matchesLabel(count)}`
       },
@@ -81,7 +87,7 @@ function buildOption(
     legend: false as unknown as undefined,
     xAxis: {
       type: 'category',
-      data: daypartLabels,
+      data: bucketLabels,
       splitLine: { show: true, lineStyle: { color: tc.splitLine } },
       axisLabel: { color: tc.axisLabel, fontSize: 11 },
     },
@@ -128,11 +134,11 @@ function buildOption(
   }
 }
 
-type Pt = { xuid: string; daypart: number }
+type Pt = { xuid: string; bucket: number }
 
 export function RelationsMomentsHeatmap({
   cells,
-  daypartLabels,
+  bucketLabels,
   title,
   legendLabel,
   emptyMessage,
@@ -141,16 +147,16 @@ export function RelationsMomentsHeatmap({
 }: Props) {
   const series: ChartSeries<Pt>[] =
     cells.length > 0
-      ? [{ key: 'heatmap', datapoints: cells.map((c) => ({ xuid: c.xuid, daypart: c.daypart })) }]
+      ? [{ key: 'heatmap', datapoints: cells.map((c) => ({ xuid: c.xuid, bucket: c.bucket })) }]
       : []
 
   const cellsKey = useMemo(() => JSON.stringify(cells), [cells])
-  const daypartsKey = useMemo(() => daypartLabels.join('|'), [daypartLabels])
+  const bucketsKey = useMemo(() => bucketLabels.join('|'), [bucketLabels])
   const build = useCallback(
-    () => buildOption(cells, daypartLabels, legendLabel, matchesLabel),
-    // cells/daypartLabels capturés via clés stables (cellsKey/daypartsKey).
+    () => buildOption(cells, bucketLabels, legendLabel, matchesLabel),
+    // cells/bucketLabels capturés via clés stables (cellsKey/bucketsKey).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [cellsKey, daypartsKey, legendLabel, matchesLabel],
+    [cellsKey, bucketsKey, legendLabel, matchesLabel],
   )
 
   return (
