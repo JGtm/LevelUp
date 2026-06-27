@@ -102,7 +102,8 @@ type RelationHeatmapRawRow struct {
 	XUID     string
 	Gamertag string
 	Hour     int // 0..23 (UTC canonique)
-	Count    int // matchs communs sur cette heure
+	Dow      int // 0=dimanche … 6=samedi (UTC canonique)
+	Count    int // matchs communs sur cette (heure, jour)
 }
 
 // RelationHeatmapCell : une cellule du heatmap agrégé « Quand tu les croises »
@@ -112,6 +113,15 @@ type RelationHeatmapCell struct {
 	Gamertag string `json:"gamertag"`
 	Daypart  int    `json:"daypart"` // 0=Nuit … 5=Tard (cf. analysis/relations.Daypart)
 	Count    int    `json:"count"`
+}
+
+// RelationHeatmapDowCell : variante par JOUR DE SEMAINE du heatmap « Quand tu
+// les croises » (une relation × un jour). DayOfWeek : 0=dimanche … 6=samedi (UTC).
+type RelationHeatmapDowCell struct {
+	XUID      string `json:"xuid"`
+	Gamertag  string `json:"gamertag"`
+	DayOfWeek int    `json:"day_of_week"`
+	Count     int    `json:"count"`
 }
 
 // RelationDuelRawRow : ligne brute de la timeline d'un rival (un match commun
@@ -157,7 +167,8 @@ type RelationRivalry struct {
 
 // RelationsMomentsResponse : réponse du sous-endpoint « Moments & Rivalités ».
 type RelationsMomentsResponse struct {
-	Heatmap      []RelationHeatmapCell `json:"heatmap"`
-	Rivalries    []RelationRivalry     `json:"rivalries"`
-	TopRelations int                   `json:"top_relations"` // N relations dans le heatmap
+	Heatmap      []RelationHeatmapCell    `json:"heatmap"`
+	HeatmapDow   []RelationHeatmapDowCell `json:"heatmap_dow"` // même top-N, agrégé par jour de semaine
+	Rivalries    []RelationRivalry        `json:"rivalries"`
+	TopRelations int                      `json:"top_relations"` // N relations dans le heatmap
 }

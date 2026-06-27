@@ -178,22 +178,23 @@ func TestComputeCounts(t *testing.T) {
 	t.Parallel()
 	rels := []RelationStats{
 		{TotalMatches: 25, TeammateMatches: 12, EnemyMatches: 13}, // core
-		{TotalMatches: 5, TeammateMatches: 5},                     // ally only
+		{TotalMatches: 22, TeammateMatches: 20, EnemyMatches: 2},  // core : duo-partenaire (enemy<3 OK depuis retrait du seuil)
+		{TotalMatches: 5, TeammateMatches: 5},                     // ally only, pas core (total<20)
 		{TotalMatches: 5, EnemyMatches: 5},                        // enemy only
-		{TotalMatches: 20, TeammateMatches: 2, EnemyMatches: 18},  // not core (teammate<3)
+		{TotalMatches: 20, TeammateMatches: 2, EnemyMatches: 18},  // pas core (teammate<3)
 	}
 	c := ComputeCounts(rels)
-	if c.DistinctPlayers != 4 {
-		t.Fatalf("distinct=%d want 4", c.DistinctPlayers)
+	if c.DistinctPlayers != 5 {
+		t.Fatalf("distinct=%d want 5", c.DistinctPlayers)
 	}
-	if c.AlliesCount != 3 {
-		t.Fatalf("allies=%d want 3", c.AlliesCount)
+	if c.AlliesCount != 4 {
+		t.Fatalf("allies=%d want 4", c.AlliesCount)
 	}
-	if c.RivalsCount != 3 {
-		t.Fatalf("rivals=%d want 3", c.RivalsCount)
+	if c.RivalsCount != 4 {
+		t.Fatalf("rivals=%d want 4", c.RivalsCount)
 	}
-	if c.CoreCount != 1 {
-		t.Fatalf("core=%d want 1", c.CoreCount)
+	if c.CoreCount != 2 {
+		t.Fatalf("core=%d want 2 (inclut le duo-partenaire enemy<3)", c.CoreCount)
 	}
 }
 
@@ -245,17 +246,17 @@ func TestSelectTopNemesis_TiebreakDuelRatio(t *testing.T) {
 	}
 }
 
-func TestTintedBadgesReused(t *testing.T) {
+func TestEncounterBadgesReused(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
-	// ally_plus : win rate >= 0.65, ally >= 2
+	// ally_plus : win rate >= 0.65, ally >= 2. Badge de rencontre → désormais solid.
 	s := RelationStats{TotalMatches: 5, TeammateMatches: 5, TeammateWinRate: ratePtr(0.8)}
 	b := findBadge(ComputeBadges(s, now), "narrative.encounter.ally_plus")
 	if b == nil {
-		t.Fatal("expected ally_plus tinted badge")
+		t.Fatal("expected ally_plus encounter badge")
 	}
-	if b.Style != BadgeStyleTinted {
-		t.Fatalf("ally_plus style=%q want tinted", b.Style)
+	if b.Style != BadgeStyleSolid {
+		t.Fatalf("ally_plus style=%q want solid", b.Style)
 	}
 	if b.ColorToken != "narrative-encounter-ally-plus" {
 		t.Fatalf("ally_plus color_token=%q", b.ColorToken)

@@ -27,6 +27,13 @@ export interface NarrativeBadgeProps {
   /** Inverse le contraste (rôles négatifs : LastCasualty, FalseBrother…). */
   inverted?: boolean
 
+  /**
+   * Rendu plein : fond couleur saturée + texte blanc. Réservé aux badges de
+   * joueur/relation (Allié+, Dur à cuire, Duo gagnant…). Dominance + rôles
+   * d'impact n'utilisent PAS solid (restent teintés).
+   */
+  solid?: boolean
+
   /** Détail à afficher en suffixe (ex. "(5×)" pour ordinal). */
   detailSuffix?: string
 
@@ -55,6 +62,7 @@ export function NarrativeBadge({
   label,
   colorVar,
   inverted = false,
+  solid = false,
   detailSuffix,
   size = 'md',
   title,
@@ -62,7 +70,11 @@ export function NarrativeBadge({
 }: NarrativeBadgeProps) {
   const style: CSSProperties = {}
   if (colorVar) {
-    if (inverted) {
+    if (solid) {
+      // Badge de joueur/relation : fond plein saturé + texte blanc (text-badge-on-solid).
+      style.backgroundColor = `var(${colorVar})`
+      style.borderColor = 'transparent'
+    } else if (inverted) {
       // Mode inversé : background tinté faible + texte couleur pleine.
       style.backgroundColor = `color-mix(in oklab, var(${colorVar}) 18%, transparent)`
       style.color = `var(${colorVar})`
@@ -76,10 +88,11 @@ export function NarrativeBadge({
   }
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border font-medium leading-none ${SIZE_CLASSES[size]} ${className}`}
+      className={`inline-flex items-center gap-1 rounded-full border font-medium leading-none ${solid ? 'text-badge-on-solid' : ''} ${SIZE_CLASSES[size]} ${className}`}
       style={style}
       data-testid="narrative-badge"
       data-inverted={inverted ? 'true' : 'false'}
+      data-solid={solid ? 'true' : 'false'}
       title={title}
     >
       <span data-testid="narrative-badge-label">{label}</span>

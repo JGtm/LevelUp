@@ -63,7 +63,10 @@ describe('PalmaresRelationsPage', () => {
       expect(screen.getByTestId('palmares-relations-overview')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('Duo gagnant')).toBeInTheDocument()
+    // Le badge apparaît dans la card hero enrichie + le tableau ; tous en style solid.
+    const badges = screen.getAllByText('Duo gagnant')
+    expect(badges.length).toBeGreaterThan(0)
+    expect(badges[0].closest('[data-testid="narrative-badge"]')?.getAttribute('data-solid')).toBe('true')
   })
 
   it('rend le badge cross-jeu en résolvant {game} depuis detail', async () => {
@@ -75,7 +78,7 @@ describe('PalmaresRelationsPage', () => {
 
     // narrative.encounter.cross_game = « Aussi sur {game} » ; le mock pose
     // detail.game = "Halo 5" → le nom de l'autre titre est interpolé.
-    expect(screen.getByText('Aussi sur Halo 5')).toBeInTheDocument()
+    expect(screen.getAllByText('Aussi sur Halo 5').length).toBeGreaterThan(0)
   })
 
   it('rend la barre de segmentation serveur (Vue + Analyser)', async () => {
@@ -90,19 +93,14 @@ describe('PalmaresRelationsPage', () => {
     expect(screen.getByRole('button', { name: 'Analyser' })).toBeInTheDocument()
   })
 
-  it('affiche la section Moments & Rivalités repliée puis la déplie au clic', async () => {
+  it('affiche la section Moments & Rivalités en permanence', async () => {
     renderWithProviders(<PalmaresRelationsPage />)
 
     await waitFor(() => {
       expect(screen.getByTestId('palmares-relations-moments')).toBeInTheDocument()
     })
 
-    // Repliée : le titre de section revanche n'est pas monté tant que fermée.
-    expect(screen.queryByText('Revanche')).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('Afficher les moments et rivalités'))
-
-    // Dépliée : la donnée du mock arrive → titre Revanche + rival NemesisBravo.
+    // Permanent (plus de toggle) : la donnée du mock arrive d'office → titre Revanche + rival.
     await waitFor(() => {
       expect(screen.getByText('Revanche')).toBeInTheDocument()
     })
