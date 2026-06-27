@@ -45,7 +45,7 @@ function renderEncounterBadges(badges: MatchEncounterBadge[], locale: string) {
     const colorVar = isEncounterSemanticToken(badge.color_token)
       ? tokenVar(badge.color_token as SemanticToken)
       : undefined
-    return <NarrativeBadge key={i} label={label} colorVar={colorVar} size="lg" />
+    return <NarrativeBadge key={i} label={label} colorVar={colorVar} solid size="lg" />
   })
 }
 

@@ -226,7 +226,7 @@ function EncounterBadgesInline({ badges, locale }: { badges?: MatchEncounterBadg
         const label = ordinal !== undefined ? formatMessage(squadManifest, labelKey, locale, { ordinal }) : formatMessage(squadManifest, labelKey, locale)
         const colorVar = isSemanticToken(badge.color_token) ? tokenVar(badge.color_token as SemanticToken) : undefined
         const tooltip = ENCOUNTER_BADGE_TOOLTIPS[badge.label_key]?.[locale]
-        const badgeEl = <NarrativeBadge label={label} colorVar={colorVar} size="md" />
+        const badgeEl = <NarrativeBadge label={label} colorVar={colorVar} solid size="md" />
         return tooltip ? (
           <Tooltip key={i} content={tooltip}>{badgeEl}</Tooltip>
         ) : (
