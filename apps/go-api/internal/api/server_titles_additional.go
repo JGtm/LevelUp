@@ -189,12 +189,14 @@ func registerHalo5Adapters(
 			// gamertag) — match_commendations.xuid = l'xuid Xbox résolu au sync.
 			da = da.WithCommendationTotals(
 				platform_duckdb.NewHalo5CommendationTotalsSource(pdb.SharedReadDB(), pdb.XUID))
-			// Career LOCAL (DuckDB) — gaté DÉMO : sert le rang CSR/SR hors-ligne (aucun
-			// token en démo → l'API cryptum live échouerait). En prod, career reste live
-			// (comportement inchangé). La donnée vient de la player DB synchronisée
-			// (player_csr_snapshots + career_progression).
+			// Career + kill-feed LOCAUX (DuckDB) — gatés DÉMO : servent le rang CSR/SR et
+			// la timeline de kills hors-ligne (aucun token en démo → les API cryptum live
+			// échoueraient). En prod, ces surfaces restent live (comportement inchangé).
+			// Données = player DB (career) + shared synchronisé (kill-feed : killer_victim_pairs
+			// ⨝ weapon_kills ⨝ kill_positions).
 			if reg.cfg.DemoMode {
 				da = da.WithCareerSource(platform_duckdb.NewHalo5CareerSource(pdb))
+				da = da.WithMatchEventsSource(platform_duckdb.NewHalo5MatchEventsSource(pdb.SharedReadDB()))
 			}
 		}
 		if commDefs != nil {
