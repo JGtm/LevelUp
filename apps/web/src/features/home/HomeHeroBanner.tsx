@@ -11,7 +11,12 @@ const HEADER_IMAGES_BY_TITLE: Record<string, string[]> = {
     '/titles/halo_infinite/echoes-within-header.webp',
     '/titles/halo_infinite/Infinite.png',
     '/titles/halo_infinite/LoneWolves.png',
+    '/titles/halo_infinite/HINF-S2_Fracture_Entrenched.png',
+    '/titles/halo_infinite/Halo-infinite-dlc-reach.png',
+    '/titles/halo_infinite/halo-infinite-dlc-combined-arms.png',
+    '/titles/halo_infinite/infinite_fractures_tenrai.png',
   ],
+  halo_5: ['/titles/halo_5/wallpaper_halo_5_guardians_01.png'],
 }
 
 const ROTATION_INTERVAL_MS = 45_000
@@ -53,6 +58,10 @@ export function HomeHeroBanner() {
     const initial = images[Math.floor(Math.random() * images.length)] ?? ''
     setSrcs([initial, ''])
     setActiveIdx(0)
+
+    // Une seule image : on l'affiche fixe, pas de rotation (pickOther renverrait
+    // undefined → couche vide → bannière noire toutes les 45s).
+    if (images.length < 2) return
 
     const timer = setInterval(() => {
       const currentActive = activeIdxRef.current
