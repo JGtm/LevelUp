@@ -7,12 +7,14 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/scheduler"
 )
@@ -56,6 +58,29 @@ func writeTestProfiles(t *testing.T, repoRoot, gamertag, xuid string) {
 	json := `{"version":"3.0","profiles":{"halo_infinite":{"` + gamertag +
 		`":{"db_path":"unused","xuid":"` + xuid + `","waypoint_player":"` + gamertag + `"}}}}`
 	if err := os.WriteFile(profilesPath, []byte(json), 0o644); err != nil {
+		t.Fatalf("write profiles: %v", err)
+	}
+}
+
+// writeTestProfilesMultiTitle écrit un db_profiles.json v3 avec un joueur PAR
+// titre (le slug est la clé de premier niveau). Permet de vérifier le routage
+// title-aware du cron (chaque titre charge SES joueurs).
+func writeTestProfilesMultiTitle(t *testing.T, repoRoot string, byTitle map[string][2]string) {
+	t.Helper()
+	profilesPath := filepath.Join(repoRoot, "db_profiles.json")
+	var sb strings.Builder
+	sb.WriteString(`{"version":"3.0","profiles":{`)
+	first := true
+	for slug, gtXuid := range byTitle {
+		if !first {
+			sb.WriteString(",")
+		}
+		first = false
+		sb.WriteString(`"` + slug + `":{"` + gtXuid[0] +
+			`":{"db_path":"unused","xuid":"` + gtXuid[1] + `","waypoint_player":"` + gtXuid[0] + `"}}`)
+	}
+	sb.WriteString(`}}`)
+	if err := os.WriteFile(profilesPath, []byte(sb.String()), 0o644); err != nil {
 		t.Fatalf("write profiles: %v", err)
 	}
 }
@@ -150,4 +175,98 @@ func TestSpartanCron_RunOnce_AcquireFails(t *testing.T) {
 	if fetcher.calls.Load() != 0 {
 		t.Errorf("fetcher should not be called when acquire fails: %d", fetcher.calls.Load())
 	}
+}
+
+// twoTitleRegistry construit un registre avec halo_infinite (built-in) + un titre
+// supplémentaire actif (ex. halo_5) pour les tests title-aware.
+func twoTitleRegistry(extraSlug string) *titlePkg.Registry {
+	reg := titlePkg.NewRegistry() // halo_infinite seul par défaut
+	reg.Register(&titlePkg.TitleDescriptor{
+		Slug:   extraSlug,
+		Name:   extraSlug,
+		Status: titlePkg.StatusActive,
+	})
+	return reg
+}
+
+// TestSpartanCron_TitleAware_RoutesToPerTitleRefresher : un joueur HINF et un
+// joueur H5 sont chacun rafraîchis par LEUR refresher (routage title-aware), et
+// jamais par celui de l'autre titre.
+func TestSpartanCron_TitleAware_RoutesToPerTitleRefresher(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeTestProfilesMultiTitle(t, repoRoot, map[string][2]string{
+		"halo_infinite": {"InfGT", "1111111111111111"},
+		"halo_5":        {"H5GT", "2222222222222222"},
+	})
+	cfg := &config.AppConfig{RepoRoot: repoRoot, DBProfilesPath: filepath.Join(repoRoot, "db_profiles.json")}
+
+	fetcher := &mockSpartanFetcher{} // refresher HINF (chemin career identity)
+	provider := func(_ context.Context, _ string) (scheduler.SpartanIdentityFetcher, error) {
+		return fetcher, nil
+	}
+
+	var h5Calls atomic.Int32
+	var h5Gamertags []string
+	h5Refresher := func(_ context.Context, p domain.PlayerSummary) error {
+		h5Calls.Add(1)
+		h5Gamertags = append(h5Gamertags, p.Gamertag)
+		return nil
+	}
+
+	pl := &fakeCronPool{
+		hasPlayerMap: map[string]bool{"InfGT": true, "H5GT": true},
+		leaseTokens:  &domain.HaloTokens{SpartanToken: "fake-token"},
+	}
+	cron := scheduler.NewSpartanCustomizationCron(cfg, pl, provider, "halo_infinite", 0).
+		WithRegistry(twoTitleRegistry("halo_5")).
+		WithRefresher("halo_5", h5Refresher)
+	cron.RunOnce(context.Background())
+
+	if fetcher.calls.Load() != 1 {
+		t.Errorf("HINF refresher: got %d calls, want 1", fetcher.calls.Load())
+	}
+	if h5Calls.Load() != 1 {
+		t.Errorf("H5 refresher: got %d calls, want 1", h5Calls.Load())
+	}
+	if len(h5Gamertags) != 1 || h5Gamertags[0] != "H5GT" {
+		t.Errorf("H5 refresher reçu les mauvais joueurs: %v (want [H5GT])", h5Gamertags)
+	}
+}
+
+// TestSpartanCron_TitleAware_SkipsTitleWithoutRefresher : un titre actif SANS
+// refresher enregistré est ignoré proprement (pas de panic, pas d'appel), même
+// s'il a des joueurs configurés.
+func TestSpartanCron_TitleAware_SkipsTitleWithoutRefresher(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeTestProfilesMultiTitle(t, repoRoot, map[string][2]string{
+		"halo_infinite": {"InfGT", "1111111111111111"},
+		"halo_5":        {"H5GT", "2222222222222222"},
+	})
+	cfg := &config.AppConfig{RepoRoot: repoRoot, DBProfilesPath: filepath.Join(repoRoot, "db_profiles.json")}
+
+	fetcher := &mockSpartanFetcher{}
+	provider := func(_ context.Context, _ string) (scheduler.SpartanIdentityFetcher, error) {
+		return fetcher, nil
+	}
+	pl := &fakeCronPool{
+		hasPlayerMap: map[string]bool{"InfGT": true, "H5GT": true},
+		leaseTokens:  &domain.HaloTokens{SpartanToken: "fake-token"},
+	}
+	// halo_5 actif dans le registre mais AUCUN refresher H5 enregistré → skip propre.
+	cron := scheduler.NewSpartanCustomizationCron(cfg, pl, provider, "halo_infinite", 0).
+		WithRegistry(twoTitleRegistry("halo_5"))
+	cron.RunOnce(context.Background()) // no panic
+
+	if fetcher.calls.Load() != 1 {
+		t.Errorf("seul HINF doit être rafraîchi: got %d calls, want 1", fetcher.calls.Load())
+	}
+}
+
+// TestSpartanCron_WithRefresher_NilSafe : WithRefresher ignore slug vide / refresher
+// nil sans paniquer ni enregistrer une entrée fantôme.
+func TestSpartanCron_WithRefresher_NilSafe(t *testing.T) {
+	cron := scheduler.NewSpartanCustomizationCron(nil, nil, nil, "halo_infinite", 0)
+	cron.WithRefresher("", func(context.Context, domain.PlayerSummary) error { return nil })
+	cron.WithRefresher("halo_5", nil)
+	cron.RunOnce(context.Background()) // cfg nil → no-op, no panic
 }
