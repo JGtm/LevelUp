@@ -78,6 +78,7 @@ type WorldLeaderboardCron struct {
 	scraper    LeaderboardScraperPort
 	enricher   WorldStatsEnricherPort // optionnel (Phase C) ; nil → pas d'enrichissement
 	playlists  func() []string        // asset IDs des playlists classées à scraper
+	registry   *titlePkg.Registry     // titres actifs à itérer (PMT-7 write-path, capability-gated)
 	interval   time.Duration
 	freshness  time.Duration
 	limit      int
@@ -110,6 +111,7 @@ func NewWorldLeaderboardCron(
 		provider:   provider,
 		scraper:    scraper,
 		playlists:  activeRankedPlaylistIDs,
+		registry:   titlePkg.DefaultRegistry(),
 		interval:   interval,
 		freshness:  defaultWorldLeaderboardFreshness,
 		limit:      defaultWorldLeaderboardLimit,
@@ -157,16 +159,46 @@ func (c *WorldLeaderboardCron) Run(ctx context.Context) {
 // RunOnce exécute un cycle complet. Exporté pour un éventuel endpoint admin
 // (force-refresh) et les tests. Best-effort : une playlist en échec n'interrompt
 // pas le cycle. Le writer n'est acquis qu'après le scraping (fenêtre RW minimale).
+//
+// Title-aware (PMT-7) : itère sur les titres ACTIFS du registre et ne produit un
+// snapshot QUE pour ceux qui DÉCLARENT CapWorldLeaderboard. Un titre sans la cap
+// (ex. Halo 5 : pas de classement mondial scrapable) est SKIPPÉ proprement (slog
+// debug, jamais d'erreur). La source de données (provider/scraper/playlists)
+// reste Infinite-spécifique par construction : la brique itère mais n'invente
+// aucune source pour un titre qui n'a pas la capability.
 func (c *WorldLeaderboardCron) RunOnce(ctx context.Context) {
 	if c == nil || c.provider == nil || c.scraper == nil {
 		return
 	}
+	reg := c.registry
+	if reg == nil {
+		reg = titlePkg.DefaultRegistry()
+	}
+	for _, desc := range reg.Active() {
+		if desc == nil {
+			continue
+		}
+		if !desc.HasCapability(titlePkg.CapWorldLeaderboard) {
+			// Dégradation gracieuse : titre actif mais sans classement mondial
+			// (aucune source scrapable). On le saute, ce n'est PAS une erreur.
+			slog.DebugContext(ctx, "world_leaderboard_cron: titre sans world.leaderboard — skip",
+				"module", logging.ModuleLeaderboard, "titleSlug", desc.Slug)
+			continue
+		}
+		c.runOnceForTitle(ctx, desc.Slug)
+	}
+}
+
+// runOnceForTitle exécute le cycle scrape+persist+enrich pour UN titre déclarant
+// CapWorldLeaderboard. Best-effort : une erreur ici n'interrompt pas l'itération
+// sur les autres titres (déjà isolée par les early-return de chaque étape).
+func (c *WorldLeaderboardCron) runOnceForTitle(ctx context.Context, titleSlug string) {
 	start := time.Now()
 
 	playlists := c.playlists()
 	if len(playlists) == 0 {
 		slog.WarnContext(ctx, "world_leaderboard_cron: aucune playlist classée active — cycle ignoré",
-			"module", logging.ModuleLeaderboard)
+			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug)
 		return
 	}
 
@@ -174,14 +206,14 @@ func (c *WorldLeaderboardCron) RunOnce(ctx context.Context) {
 	season, err := c.scraper.FetchActiveSeason(ctx, playlists[0])
 	if err != nil {
 		slog.ErrorContext(ctx, "world_leaderboard_cron: découverte saison active échouée — cycle ignoré",
-			"module", logging.ModuleLeaderboard, "err", err)
+			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "err", err)
 		return
 	}
 
 	// 2. Garde-fou fraîcheur (lecture RO, sans lease writer).
 	if c.snapshotIsFresh(ctx, season) {
 		slog.InfoContext(ctx, "world_leaderboard_cron: snapshot récent présent — cycle ignoré",
-			"module", logging.ModuleLeaderboard, "season", season, "freshness", c.freshness)
+			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "season", season, "freshness", c.freshness)
 		return
 	}
 
@@ -189,20 +221,20 @@ func (c *WorldLeaderboardCron) RunOnce(ctx context.Context) {
 	entries, scraped := c.scrapeAll(ctx, season, playlists)
 	if len(entries) == 0 {
 		slog.WarnContext(ctx, "world_leaderboard_cron: aucune entrée scrapée — rien à persister",
-			"module", logging.ModuleLeaderboard, "season", season)
+			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "season", season)
 		return
 	}
 
 	// 4. Acquérir le writer brièvement et insérer (fenêtre RW minimale).
-	inserted, err := c.persist(ctx, entries)
+	inserted, err := c.persist(ctx, titleSlug, entries)
 	if err != nil {
 		slog.ErrorContext(ctx, "world_leaderboard_cron: persistance échouée",
-			"module", logging.ModuleLeaderboard, "season", season, "err", err)
+			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "season", season, "err", err)
 		return
 	}
 
 	slog.InfoContext(ctx, "world_leaderboard_cron: cycle terminé",
-		"module", logging.ModuleLeaderboard, "season", season,
+		"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "season", season,
 		"playlists", len(playlists), "scraped", scraped, "inserted", inserted,
 		"duration", time.Since(start))
 
@@ -323,14 +355,14 @@ func (c *WorldLeaderboardCron) scrapeAll(ctx context.Context, season string, pla
 	return all, total
 }
 
-// persist acquiert le writer shared et insère les entrées en append-only.
-func (c *WorldLeaderboardCron) persist(ctx context.Context, entries []domain.LeaderboardEntry) (int, error) {
+// persist acquiert le writer shared et insère les entrées en append-only sous le
+// slug du titre courant (PMT-7 write-path : capability-gated par l'appelant
+// runOnceForTitle — seuls les titres déclarant CapWorldLeaderboard arrivent ici).
+func (c *WorldLeaderboardCron) persist(ctx context.Context, titleSlug string, entries []domain.LeaderboardEntry) (int, error) {
 	wh, err := c.provider.AcquireWriter(ctx)
 	if err != nil {
 		return 0, err
 	}
 	defer wh.Release()
-	// Cron mono-titre (la saison active scrappée est celle du titre par défaut) ;
-	// un déploiement multi-titre itérera les titres actifs ici (PMT-7 write-path).
-	return duckdb.InsertWorldCSRSnapshot(ctx, wh.DB(), titlePkg.DefaultSlug, entries)
+	return duckdb.InsertWorldCSRSnapshot(ctx, wh.DB(), titleSlug, entries)
 }

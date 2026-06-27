@@ -1,3 +1,20 @@
+## [2026-06-27] Lot B (sous-lot 1) — Parité backend H5 : runner (achievements auto + convergence 0-insert) + crons title-aware — COMPLÉTÉ + vérifié
+
+**Runner H5** (`internal/games/halo_5/livesync/`) :
+- Achievements auto : hook `Deps.RunAchievements` appelé à chaque post-sync de `RunDelta` (best-effort), câblé dans `wire.go` via `buildAchievementsHook` (gate `CapAchievements` AU câblage → nil si absente), réutilise le chemin title-aware `NewSyncEngineForTitle`+`RunAchievementsOnly` (zéro logique dupliquée). Parité avec `runAchievementsSync` Infinite.
+- Convergence 0-insert : gate PostScore extrait en fonction PURE `shouldRunPostScore(inserted, hasBacklog)` ; nouvelle sonde `Deps.HasEnrichmentBacklog` (`h5HasEnrichmentBacklog`) consultée UNIQUEMENT à 0 insert, réutilise le helper title-agnostic `CountSharedMatchesMissingEnrichment` (nouveau wrapper exporté de `convergence.go`) avec les mêmes acquisitions que `loadKnownMatchIDs` (B-swap respecté). Comble le gap « match inséré par coéquipier jamais enrichi ». Miroir du pattern `NotifyFirstSync`.
+
+**Crons title-aware** (`internal/scheduler/`) :
+- `data_health_check` : `runCycle` itère `DefaultRegistry().All()` (au lieu de DefaultSlug), audite shared+player DBs de CHAQUE titre via PathResolver, agrège dans le même `DataHealthCheckResult`, skip gracieux si shared DB absente (slog Debug), early-return si 0 titre auditable (pas de faux vert). Helpers `auditTitle`/`auditPlayerBanners` (<80L).
+- `world_leaderboard` : `RunOnce` itère `reg.Active()`, ne snapshot QUE les titres déclarant `CapWorldLeaderboard` (H5 skippé proprement) ; `persist(titleSlug)` au lieu du hardcode DefaultSlug. Source reste Infinite-spécifique sous le gate.
+
+**Aucun câblage `main.go`** (tout via `DefaultRegistry` peuplé au boot).
+**Tests** : 5 livesync (gate pur + convergence 0-insert + achievements gated, zéro DuckDB) + 2 scheduler E2E `data_health` multi-titre + 1 `world_leaderboard` capability-gated.
+**Vérif worktree** : `go test ./internal/games/halo_5/livesync/... ./internal/scheduler/...` vert (E2E DuckDB incl.) ; `go vet ./internal/sync/...` propre ; `go build ./...` OK.
+**Reste Lot B (sous-lot 2)** : `spartan_customization` (title-aware + wire `PersistAppearance` H5) + `catalog_refresh` + `asset_name_sweep` (résolution UGC H5 via API metadata — plus profond).
+
+---
+
 ## [2026-06-27] Lot FDA (native_kda) — COMPLÉTÉ + vérifié (worktree)
 
 **Récap** : capability `native_kda` (miroir `games.ProvidesNativeKDA` : halo_infinite + synthetic_title_b OUI, halo_5 NON) → échelle de couleur DIVERGENTE (`kdaDivergentScale`, réutilise `makeDivergentScale`, tokens `--ac-divergent-*`) sur les colonnes KDA/FDA PAR-MATCH quand `native_kda===false`. La colonne n'est JAMAIS masquée (FDA négative légitime `((k+a/3)−d)/1`), seul le coloriage + un tooltip i18n (`explorer.matches.col_kda_tooltip` FR/EN) changent.

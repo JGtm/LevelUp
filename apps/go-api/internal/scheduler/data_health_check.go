@@ -126,79 +126,28 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	res := &DataHealthCheckResult{}
 
 	// Chemins via PathResolver (jamais de filepath.Join("data","titles",...) en
-	// dur — règle multi-titres). Reste mono-titre (DefaultSlug) ; l'itération sur
-	// registry.All() est différée (changerait la structure du résultat).
+	// dur — règle multi-titres). On itère sur TOUS les titres enregistrés
+	// (registry.All(), comme ops.RunHealthcheck) et on AGRÈGE les compteurs dans
+	// le même résultat : un titre par-titre conserve des invariants identiques, on
+	// boucle juste sur les slugs. Mono-titre (halo_infinite seul) ⇒ une seule
+	// itération, sortie inchangée. Un titre dont la shared DB est absente est skippé
+	// proprement (slog debug, pas de panic) — cas normal pour un titre live-only
+	// pas encore backfillé.
 	pr := titlePkg.NewPathResolver(s.repoRoot)
-	slug := titlePkg.DefaultSlug
-	sharedPath := pr.SharedDBPath(slug)
-
-	if _, err := os.Stat(sharedPath); err != nil {
-		slog.DebugContext(ctx, "data_health: shared DB absente — skip", "err", err)
-		return res
-	}
-
-	db, err := openDBShared(sharedPath)
-	if err != nil {
-		slog.WarnContext(ctx, "data_health: ouverture shared DB échouée", "err", err)
-		return res
-	}
-	defer db.Close() //nolint:errcheck // ref-count : best-effort
-
-	// 1. UUIDs bruts résiduels (map_name + pair_name)
-	const uuidPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`
-	var mapUUIDs, pairUUIDs int
-	_ = db.QueryRow(ctx, `SELECT COUNT(*) FROM match_registry WHERE map_name ~ ?`, uuidPattern).Scan(&mapUUIDs)
-	_ = db.QueryRow(ctx, `SELECT COUNT(*) FROM match_registry WHERE pair_name ~ ?`, uuidPattern).Scan(&pairUUIDs)
-	res.UUIDsRawCount = mapUUIDs + pairUUIDs
-
-	// 2. Bits menteurs
-	const mbitEvents = 1 << 16
-	const mbitWeaponKills = 1 << 21
-	_ = db.QueryRow(ctx, fmt.Sprintf(`
-		SELECT COUNT(*) FROM match_registry r
-		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
-		  AND NOT EXISTS (SELECT 1 FROM highlight_events h WHERE h.match_id = r.match_id)
-	`, mbitEvents)).Scan(&res.LyingBitsEvents)
-	_ = db.QueryRow(ctx, fmt.Sprintf(`
-		SELECT COUNT(*) FROM match_registry r
-		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
-		  AND NOT EXISTS (SELECT 1 FROM weapon_kills w WHERE w.match_id = r.match_id)
-	`, mbitWeaponKills)).Scan(&res.LyingBitsWeaponKills)
-
-	// 3. xuids orphelins (alias absent shared)
-	_ = db.QueryRow(ctx, `
-		SELECT COUNT(DISTINCT mp.xuid)
-		FROM match_participants mp
-		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
-		WHERE mp.xuid NOT LIKE 'bid(%'
-		  AND (xa.xuid IS NULL OR xa.gamertag IS NULL OR xa.gamertag = '')
-	`).Scan(&res.OrphanXUIDs)
-
-	// 4. Banner garbage URLs (toutes les player DBs)
-	playersDir := filepath.Join(pr.TitleDataDir(slug), "players")
-	if entries, err := os.ReadDir(playersDir); err == nil {
-		for _, e := range entries {
-			if !e.IsDir() {
-				continue
-			}
-			playerPath := filepath.Join(playersDir, e.Name(), "stats.duckdb")
-			if _, err := os.Stat(playerPath); err != nil {
-				continue
-			}
-			pdb, err := openDBShared(playerPath)
-			if err != nil {
-				continue
-			}
-			var n int
-			_ = pdb.QueryRow(ctx, `
-				SELECT COUNT(*) FROM career_progression
-				WHERE banner_image_url LIKE '%/Waypoint/file/images/%'
-				   OR emblem_image_url LIKE '%/Waypoint/file/images/%'
-				   OR backdrop_image_url LIKE '%/Waypoint/file/images/%'
-			`).Scan(&n)
-			res.GarbageBannerURLs += n
-			_ = pdb.Close() //nolint:errcheck // ref-count : best-effort
+	auditedTitles := 0
+	for _, td := range titlePkg.DefaultRegistry().All() {
+		if s.auditTitle(ctx, pr, td.Slug, res) {
+			auditedTitles++
 		}
+	}
+
+	// Aucune shared DB lisible sur AUCUN titre ⇒ cycle avorté : on ne mémorise pas
+	// (sinon « tout vert » trompeur écraserait le dernier signal réel, cf. doc de
+	// lastResult). Identique au comportement mono-titre historique (early-return
+	// quand la shared était absente), généralisé à N titres.
+	if auditedTitles == 0 {
+		slog.DebugContext(ctx, "data_health: aucune shared DB lisible — cycle avorté")
+		return res
 	}
 
 	res.WarningsTotal = res.UUIDsRawCount + res.LyingBitsEvents + res.LyingBitsWeaponKills + res.GarbageBannerURLs
@@ -230,6 +179,110 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	s.storeLastResult(res)
 
 	return res
+}
+
+// auditTitle exécute les invariants data-health (UUIDs bruts, bits menteurs
+// MBitEvents/MBitWeaponKills, xuids orphelins, banner garbage URLs) sur la shared
+// DB ET les player DBs d'UN titre, et AGRÈGE les compteurs dans res. Les
+// invariants sont identiques quel que soit le titre — on boucle juste sur les
+// slugs (cf. runCycle). Retourne true si la shared DB du titre a pu être auditée
+// (sert à runCycle pour distinguer un cycle réel d'un cycle avorté).
+//
+// Dégradation gracieuse : si la shared DB du titre est absente (titre live-only
+// pas encore backfillé, ou jamais synchronisé), on skippe proprement (slog debug,
+// pas de panic, retourne false) ; les requêtes individuelles ignorent déjà leurs
+// erreurs (table manquante ⇒ compteur reste à 0), donc un schéma partiel ne casse
+// pas le cycle.
+func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResolver, slug string, res *DataHealthCheckResult) bool {
+	sharedPath := pr.SharedDBPath(slug)
+	if _, err := os.Stat(sharedPath); err != nil {
+		slog.DebugContext(ctx, "data_health: shared DB absente — skip titre",
+			"titleSlug", slug, "err", err)
+		return false
+	}
+
+	db, err := openDBShared(sharedPath)
+	if err != nil {
+		slog.WarnContext(ctx, "data_health: ouverture shared DB échouée",
+			"titleSlug", slug, "err", err)
+		return false
+	}
+	defer db.Close() //nolint:errcheck // ref-count : best-effort
+
+	// 1. UUIDs bruts résiduels (map_name + pair_name)
+	const uuidPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`
+	var mapUUIDs, pairUUIDs int
+	_ = db.QueryRow(ctx, `SELECT COUNT(*) FROM match_registry WHERE map_name ~ ?`, uuidPattern).Scan(&mapUUIDs)
+	_ = db.QueryRow(ctx, `SELECT COUNT(*) FROM match_registry WHERE pair_name ~ ?`, uuidPattern).Scan(&pairUUIDs)
+	res.UUIDsRawCount += mapUUIDs + pairUUIDs
+
+	// 2. Bits menteurs
+	const mbitEvents = 1 << 16
+	const mbitWeaponKills = 1 << 21
+	var lyingEvents, lyingWeapons int
+	_ = db.QueryRow(ctx, fmt.Sprintf(`
+		SELECT COUNT(*) FROM match_registry r
+		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
+		  AND NOT EXISTS (SELECT 1 FROM highlight_events h WHERE h.match_id = r.match_id)
+	`, mbitEvents)).Scan(&lyingEvents)
+	_ = db.QueryRow(ctx, fmt.Sprintf(`
+		SELECT COUNT(*) FROM match_registry r
+		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
+		  AND NOT EXISTS (SELECT 1 FROM weapon_kills w WHERE w.match_id = r.match_id)
+	`, mbitWeaponKills)).Scan(&lyingWeapons)
+	res.LyingBitsEvents += lyingEvents
+	res.LyingBitsWeaponKills += lyingWeapons
+
+	// 3. xuids orphelins (alias absent shared)
+	var orphans int
+	_ = db.QueryRow(ctx, `
+		SELECT COUNT(DISTINCT mp.xuid)
+		FROM match_participants mp
+		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
+		WHERE mp.xuid NOT LIKE 'bid(%'
+		  AND (xa.xuid IS NULL OR xa.gamertag IS NULL OR xa.gamertag = '')
+	`).Scan(&orphans)
+	res.OrphanXUIDs += orphans
+
+	// 4. Banner garbage URLs (toutes les player DBs du titre)
+	res.GarbageBannerURLs += s.auditPlayerBanners(ctx, pr, slug)
+
+	return true
+}
+
+// auditPlayerBanners parcourt les player DBs d'un titre et compte les URLs de
+// bannière/emblème/backdrop « garbage » (chemins /Waypoint/file/images/ résiduels).
+// Une player DB absente ou inouvrable est ignorée silencieusement (best-effort).
+func (s *HealthScheduler) auditPlayerBanners(ctx context.Context, pr *titlePkg.PathResolver, slug string) int {
+	playersDir := filepath.Join(pr.TitleDataDir(slug), "players")
+	entries, err := os.ReadDir(playersDir)
+	if err != nil {
+		return 0
+	}
+	total := 0
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		playerPath := pr.PlayerDBPath(slug, e.Name())
+		if _, err := os.Stat(playerPath); err != nil {
+			continue
+		}
+		pdb, err := openDBShared(playerPath)
+		if err != nil {
+			continue
+		}
+		var n int
+		_ = pdb.QueryRow(ctx, `
+			SELECT COUNT(*) FROM career_progression
+			WHERE banner_image_url LIKE '%/Waypoint/file/images/%'
+			   OR emblem_image_url LIKE '%/Waypoint/file/images/%'
+			   OR backdrop_image_url LIKE '%/Waypoint/file/images/%'
+		`).Scan(&n)
+		total += n
+		_ = pdb.Close() //nolint:errcheck // ref-count : best-effort
+	}
+	return total
 }
 
 // storeLastResult mémorise le dernier audit complet (thread-safe).
