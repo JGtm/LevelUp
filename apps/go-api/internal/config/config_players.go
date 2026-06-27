@@ -50,12 +50,15 @@ func (c *AppConfig) LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, 
 			titleSlug = titleFilter[0]
 		}
 		// Stack démo : DemoPlayer + les 2 coéquipiers (DemoPlayer2/3) dont la
-		// player DB a été seedée. Permet à la page Escouade de résoudre un
-		// coéquipier vers SA player DB (perf/LUSR) via resolveByGT.
+		// player DB a été seedée POUR CE TITRE. Permet à la page Escouade de résoudre
+		// un coéquipier vers SA player DB (perf/LUSR) via resolveByGT. Title-aware :
+		// un roster peut différer par titre (un titre additionnel a son propre sous-arbre
+		// data/demo/titles/{slug}/players/).
+		titleDir := demoTitleDir(c.DemoFixturesDir, titleSlug)
 		var out []domain.PlayerSummary
 		for _, d := range DemoRoster {
-			if _, err := os.Stat(filepath.Join(c.DemoFixturesDir, "players", d.Dir, "stats.duckdb")); err != nil {
-				continue // coéquipier non seedé
+			if _, err := os.Stat(filepath.Join(titleDir, "players", d.Dir, "stats.duckdb")); err != nil {
+				continue // coéquipier non seedé pour ce titre
 			}
 			out = append(out, domain.PlayerSummary{
 				PlayerSlug:     d.Slug,
@@ -67,8 +70,8 @@ func (c *AppConfig) LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, 
 				SyncEnabled:    true,
 			})
 		}
-		if len(out) == 0 {
-			// Fallback (fixtures plates legacy) : au moins le main.
+		if len(out) == 0 && titleSlug == title.DefaultSlug {
+			// Fallback (fixtures plates legacy, titre par défaut) : au moins le main.
 			out = append(out, domain.PlayerSummary{
 				PlayerSlug: "demo-player", Gamertag: "DemoPlayer", XUID: DemoRoster[0].XUID,
 				WaypointPlayer: "DemoPlayer", IsDemo: true, TitleSlug: titleSlug, SyncEnabled: true,
