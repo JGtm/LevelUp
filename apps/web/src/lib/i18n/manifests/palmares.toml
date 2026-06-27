@@ -157,6 +157,18 @@ en = "Analyze"
 fr = "Réinitialiser"
 en = "Reset"
 
+[palmares.relations.filters.include_friends]
+fr = "Inclure les amis"
+en = "Include friends"
+
+[palmares.relations.table.previous]
+fr = "Précédent"
+en = "Previous"
+
+[palmares.relations.table.next]
+fr = "Suivant"
+en = "Next"
+
 # ─── Relations - Tableau (en-têtes colonnes) ──────────────────────────────
 
 [palmares.relations.table.player]
