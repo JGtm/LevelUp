@@ -1,3 +1,10 @@
+## [2026-06-27] Point 3 — Gate catalog/asset sur présence réelle d'un catalog adapter (remplace le proxy CapForge) — COMPLÉTÉ + vérifié
+
+Resserrement du gate des crons `catalog_refresh` + `asset_name_sweep` : remplacé le proxy `CapForge` par le test RÉEL « ce titre a-t-il un catalog adapter discovery-infiniteugc résolvable ? ». Nouveau `CatalogAdapterChecker func(slug) bool` injecté via `WithCatalogAdapterCheck`, câblé sur `(*api.ServiceRegistry).HasCatalogAdapter` (construit l'adapter via le MÊME chemin que le drain — `experience_rules.toml` + `halo_infinite.NewCatalogAdapter`, fetcher nil = zéro réseau — et teste `resolver.Catalog(slug)==nil`). HINF a `experience_rules.toml` → résolvable → run ; H5 n'a que `ranked_hoppers.toml` → non résolvable → skip propre (slog Debug). Fallback rétro-compat `CapForge` si aucun checker injecté. DRY : `catalogExperienceRulesPath` partagé drain/checker. Wiring `main.go` aux 2 sites. Tests : 3 (HasCatalogAdapter présent/absent/nil-safe) + 2 FallbackCapForge + skip basculé sur le checker injecté.
+Vérif : `go test ./internal/scheduler/...` + `go test ./internal/api/ -run HasCatalogAdapter` verts ; `go build ./...` OK.
+
+---
+
 ## [2026-06-27] Lot B (sous-lot 2) — Crons périphériques title-aware (spartan + catalog/asset, skip H5 propre) — COMPLÉTÉ + vérifié
 
 **spartan_customization** (`internal/scheduler/spartan_customization_cron.go`) : remplacé le `titleSlug` unique par un registre `map[slug]CustomizationRefresher` injecté. `RunOnce` itère `registry.Active()` → `runOnceForTitle` charge `LoadPlayers(slug)` + délègue au refresher du titre (skip Debug si absent). HINF = `careerIdentityRefresher` (svcProvider, inchangé). H5 = closure câblée dans `cmd/server/main.go` (`WithRefresher(halo5.TitleSlug, ...)`) : `NewAppearanceSource` + `livesync.PersistAppearance` (pr.PlayerDBPath halo5 + cacheRoot). ZÉRO import de titre dans le scheduler (wiring dans main.go, idiome runner factory). Comble le gap « bannière H5 jamais auto-rafraîchie pour joueur inactif ».
