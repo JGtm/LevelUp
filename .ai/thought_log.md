@@ -136,6 +136,18 @@ Vérif : `go test ./internal/scheduler/...` + `go test ./internal/api/ -run HasC
 
 ---
 
+## [2026-06-27] Relations — pills couleurs distinctes par badge (AA-blanc) + labels Ancien/{jeu} + token cross-game dédié
+
+**Tâche** : suite remarque pills (#5 affiné) — couleurs DISTINCTES par badge de relation (le set v2 solid avait trop de teintes identiques), en gardant l'accessibilité ; + renommer « De longue date » → « Ancien » et « Aussi sur {jeu} » → « {jeu} ».
+
+**Décision couleurs** : nouveau module `palettes/_encounterColors.ts` = `ENCOUNTER_BADGE_COLORS` (10 hex SOMBRES distincts, 1 par pill), spreadé dans les 4 palettes (default/okabe-ito/tol-bright/cividis) → PALETTE-INVARIANT. Raison : ces badges sont SOLIDES + texte blanc (`--color-badge-on-solid`), or les palettes daltonisme (Okabe/Tol) sont des teintes CLAIRES (texte noir) où le blanc échouait l'AA. On fixe un set sombre garanti AA-blanc partout ; la distinction daltonien repose sur le LABEL (WCAG 1.4.1, jamais la couleur seule). Token DÉDIÉ `narrative-encounter-cross-game` (ardoise) ajouté (union + ALL_TOKENS) ; backend `colorTokenCrossGame` ne réutilise plus cameleon.
+
+**Labels** : `squad.toml` de_longue_date fr « Ancien » ; cross_game fr+en « {game} » (manifest regénéré → squad.ts).
+
+**Résultats** : WCAG test étendu (10 tokens × 4 palettes sur blanc ≥ 4.5) VERT ; snapshot coverage mis à jour (-u) ; typecheck OK ; vitest full 2030/0 ; Go relations OK ; PalmaresRelationsPage 8/8 (assertion cross-game alignée sur « Halo 5 »).
+
+**Statut** : Complété. Rebasé sur main (post-merge escouade KDA NET fc607d512), re-vérifié, puis mergé + déployé prod le 2026-06-27.
+
 ## [2026-06-27] HomeHeroBanner — élargissement rotation Infinite + ajout titre halo_5
 
 **Tâche** : (1) ajouter à la rotation des images de couverture de l'accueil les 4 visuels Halo Infinite présents dans `public/titles/halo_infinite/` mais non référencés ; (2) ajouter une image de couverture pour Halo 5.

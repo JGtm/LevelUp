@@ -18,6 +18,7 @@
  *     c'est sa raison d'être. Ne jamais importer ce fichier depuis un composant.
  */
 import type { Palette } from '../semantic-tokens'
+import { ENCOUNTER_BADGE_COLORS } from './_encounterColors'
 
 // Échantillons Cividis aux positions t = 0.00, 0.10, 0.25, 0.40, 0.50, 0.60, 0.75, 0.90, 1.00
 // Source : nuñez/cividis lookup table (PLOS ONE 2018, supplément S1)
@@ -95,17 +96,9 @@ export const cividisPalette: Palette = {
   'narrative-contre-remontada-text': '#000000',
 
   // ── Badges encounter — axe blue/vermillion ────────────────────────────────
-  'narrative-encounter-ally-plus':    SAFE_BLUE,
-  'narrative-encounter-tough-enemy':  SAFE_VERMILLION,
-  'narrative-encounter-coriace':      CIVIDIS_T75, // ocre — winrate vs lui mauvais
-  'narrative-encounter-ordinal':      CIVIDIS_T40,
-  // Badges « solid » du hub Relations : positif = SAFE_BLUE (axe « bon » Cividis),
-  // neutre = tons Cividis (pas de vert dans cette palette monochrome).
-  'narrative-encounter-duo-gagnant':    SAFE_BLUE,
-  'narrative-encounter-cameleon':       CIVIDIS_T40,
-  'narrative-encounter-de-longue-date': CIVIDIS_T25,
-  'narrative-encounter-recrue':         CIVIDIS_T60,
-  'narrative-encounter-proie-favorite': SAFE_BLUE,
+  // (set sombre distinct AA-blanc, palette-invariant — cf. _encounterColors.ts ;
+  //  labels disambiguent pour les daltoniens)
+  ...ENCOUNTER_BADGE_COLORS,
 
   // ── Heatmaps — axe blue/vermillion ────────────────────────────────────────
   'heatmap-cold':           SAFE_VERMILLION,

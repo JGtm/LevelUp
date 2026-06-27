@@ -1,9 +1,9 @@
 package relations
 
-// colorTokenCrossGame : token couleur du badge cross-jeu. Réutilise
-// narrative-encounter-cameleon (sémantiquement « joue les deux jeux » =
-// caméléon cross-titre) → zéro ajout de token, zéro churn palette / snapshot.
-const colorTokenCrossGame = colorTokenCameleon
+// colorTokenCrossGame : token couleur du badge cross-jeu. Token DÉDIÉ
+// narrative-encounter-cross-game (ardoise), distinct des autres pills de relation
+// (chaque pill a sa couleur propre — cf. _encounterColors.ts côté front).
+const colorTokenCrossGame = "narrative-encounter-cross-game"
 
 // CrossGameBadge construit le badge « Aussi sur {game} » (style solid) si la
 // co-occurrence sur l'autre titre atteint le seuil. Pur, testable : retourne nil

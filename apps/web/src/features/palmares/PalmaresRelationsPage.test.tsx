@@ -76,9 +76,9 @@ describe('PalmaresRelationsPage', () => {
       expect(screen.getByTestId('palmares-relations-overview')).toBeInTheDocument()
     })
 
-    // narrative.encounter.cross_game = « Aussi sur {game} » ; le mock pose
-    // detail.game = "Halo 5" → le nom de l'autre titre est interpolé.
-    expect(screen.getAllByText('Aussi sur Halo 5').length).toBeGreaterThan(0)
+    // narrative.encounter.cross_game = « {game} » ; le mock pose
+    // detail.game = "Halo 5" → le label EST le nom de l'autre titre.
+    expect(screen.getAllByText('Halo 5').length).toBeGreaterThan(0)
   })
 
   it('rend la barre de segmentation serveur (Vue + Analyser)', async () => {

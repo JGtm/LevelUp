@@ -25,6 +25,7 @@
  *     c'est sa raison d'être. Ne jamais importer ce fichier depuis un composant.
  */
 import type { Palette } from '../semantic-tokens'
+import { ENCOUNTER_BADGE_COLORS } from './_encounterColors'
 
 // Tol Bright — catégorielles
 const TOL_BLUE   = '#4477AA'
@@ -105,16 +106,9 @@ export const tolBrightPalette: Palette = {
   'narrative-contre-remontada-text': '#000000',
 
   // ── Badges encounter ───────────────────────────────────────────────────────
-  'narrative-encounter-ally-plus':    TOL_BLUE,
-  'narrative-encounter-tough-enemy':  TOL_RED,    // K/D contre nous mauvais
-  'narrative-encounter-coriace':      TOL_PURPLE, // winrate vs lui mauvais (Coriace)
-  'narrative-encounter-ordinal':      TOL_CYAN,
-  // Badges « solid » du hub Relations : vert = positif, bleu/cyan = neutre.
-  'narrative-encounter-duo-gagnant':    TOL_GREEN,
-  'narrative-encounter-cameleon':       TOL_BLUE,
-  'narrative-encounter-de-longue-date': TOL_BLUE,
-  'narrative-encounter-recrue':         TOL_CYAN,
-  'narrative-encounter-proie-favorite': TOL_GREEN,
+  // (set sombre distinct AA-blanc, palette-invariant — cf. _encounterColors.ts ;
+  //  labels disambiguent pour les daltoniens)
+  ...ENCOUNTER_BADGE_COLORS,
 
   // ── Heatmaps ────────────────────────────────────────────────────────────────
   'heatmap-cold':           TOL_RED,

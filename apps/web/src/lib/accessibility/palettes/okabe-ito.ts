@@ -21,6 +21,7 @@
  *     c'est sa raison d'être. Ne jamais importer ce fichier depuis un composant.
  */
 import type { Palette } from '../semantic-tokens'
+import { ENCOUNTER_BADGE_COLORS } from './_encounterColors'
 
 export const okabePalette: Palette = {
   // ── Perf tiers — ordinal 5 niveaux, ramp divergent bleu→jaune→vermillion ──
@@ -87,16 +88,9 @@ export const okabePalette: Palette = {
   'narrative-contre-remontada-text': '#000000', // noir sur orange
 
   // ── Badges encounter — axe blue/vermillion daltonisme-safe ────────────────
-  'narrative-encounter-ally-plus':    '#0072B2', // Blue           — allié positif
-  'narrative-encounter-tough-enemy':  '#D55E00', // Vermillion     — ennemi dangereux (K/D contre nous mauvais)
-  'narrative-encounter-coriace':      '#CC79A7', // Reddish Purple — winrate vs lui mauvais (Coriace)
-  'narrative-encounter-ordinal':      '#56B4E9', // Sky Blue       — compteur rencontres
-  // Badges « solid » du hub Relations : bluish-green = positif, blue = neutre.
-  'narrative-encounter-duo-gagnant':    '#009E73', // Bluish Green — binôme gagnant
-  'narrative-encounter-cameleon':       '#0072B2', // Blue         — autant allié qu'ennemi
-  'narrative-encounter-de-longue-date': '#0072B2', // Blue         — relation ancienne
-  'narrative-encounter-recrue':         '#56B4E9', // Sky Blue     — relation récente
-  'narrative-encounter-proie-favorite': '#009E73', // Bluish Green — domination en duel
+  // (set sombre distinct AA-blanc, palette-invariant — cf. _encounterColors.ts ;
+  //  les teintes Okabe claires échouaient le texte blanc ; labels disambiguent)
+  ...ENCOUNTER_BADGE_COLORS,
 
   // ── Heatmaps — axe blue/vermillion ────────────────────────────────────────
   'heatmap-cold':           '#D55E00', // Vermillion — mauvais
