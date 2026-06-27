@@ -84,17 +84,15 @@ function RivalryCard({ rivalry, t }: { rivalry: RelationRivalry; t: MomentsText 
       </div>
 
       {rollingSeries.length > 0 && (
-        <div>
-          <p className="mb-1 text-xs text-muted-foreground">{t.rollingTitle}</p>
-          <TimeseriesLineChart
-            series={rollingSeries}
-            xAxisType="category"
-            outcomeMarkers={false}
-            showSymbol={false}
-            smooth
-            height={120}
-          />
-        </div>
+        <TimeseriesLineChart
+          series={rollingSeries}
+          seriesNameResolver={() => t.rollingTitle}
+          xAxisType="category"
+          outcomeMarkers={false}
+          showSymbol={false}
+          smooth
+          height={120}
+        />
       )}
     </div>
   )
