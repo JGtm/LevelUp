@@ -25,6 +25,8 @@ export const TITLE_CAPABILITIES = [
   'lusr',
   'world.leaderboard',
   'native_kill_mechanics',
+  'team_mmr',
+  'damage_taken',
 ] as const
 
 export type TitleCapability = (typeof TITLE_CAPABILITIES)[number]

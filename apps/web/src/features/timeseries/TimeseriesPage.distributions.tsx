@@ -6,6 +6,7 @@
  */
 import { TimeseriesDistributionHistogram } from './TimeseriesDistributionHistogram'
 import { TimeseriesScatterWithTrend } from './TimeseriesScatterWithTrend'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import type { FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import type { TimeseriesDistributionsTab } from '@/lib/api/types'
 import type { TimeseriesManifestKey } from '@/lib/i18n/generated/timeseries'
@@ -25,6 +26,17 @@ export function TimeseriesDistributionsTabView({
   outcomeLabels,
 }: TimeseriesDistributionsTabProps) {
   const emptyMsg = t('timeseries.empty.no_data_description')
+  // MMR par match indisponible (titre sans `team_mmr`, ex. Halo 5) → on ne rend
+  // pas la carte scatter MMR équipe/adverse du tout (pas de carte titrée vide).
+  const hasTeamMmr = useCapability('team_mmr')
+  // DATA-GATE précision : aucune capability dédiée. Pour Halo 5 l'accuracy est
+  // nil → buckets vides ET aucun correlation point `accuracy`. On retire alors
+  // l'histogramme « Précision » et le scatter accuracy↔FDA (pas de carte vide).
+  const hasAccuracyBuckets =
+    (distributions_tab.accuracy_buckets ?? []).reduce((s, b) => s + b.count, 0) > 0
+  const hasAccuracyPoints = (distributions_tab.correlation_points ?? []).some(
+    (p) => p.metric_x_key === 'accuracy',
+  )
   return (
     <div className="space-y-8">
       <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -34,6 +46,8 @@ export function TimeseriesDistributionsTabView({
           Performance utilise un coloring par tier (perf-tier-1..5). */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {([
+          // `hidden: true` (accuracy nil, ex. Halo 5) → entrée filtrée plus bas,
+          // l'histogramme « Précision » n'est jamais monté (pas de carte vide).
           {
             buckets: distributions_tab.accuracy_buckets ?? [],
             title:
@@ -41,6 +55,7 @@ export function TimeseriesDistributionsTabView({
             colorToken: 'chart-series-2' as const,
             xAxisLabel: t('timeseries.distributions.accuracy_axis_x'),
             colorTokenByBucket: undefined,
+            hidden: !hasAccuracyBuckets,
           },
           {
             buckets: distributions_tab.kills_buckets ?? [],
@@ -49,6 +64,7 @@ export function TimeseriesDistributionsTabView({
             colorToken: 'chart-series-1' as const,
             xAxisLabel: fieldMappings?.fields['kills']?.label ?? 'Frags',
             colorTokenByBucket: undefined,
+            hidden: false,
           },
           {
             buckets: distributions_tab.life_buckets ?? [],
@@ -56,6 +72,7 @@ export function TimeseriesDistributionsTabView({
             colorToken: 'chart-series-3' as const,
             xAxisLabel: t('timeseries.distributions.seconds'),
             colorTokenByBucket: undefined,
+            hidden: false,
           },
           {
             buckets: distributions_tab.personal_score_buckets ?? [],
@@ -64,6 +81,7 @@ export function TimeseriesDistributionsTabView({
             colorToken: 'chart-series-5' as const,
             xAxisLabel: fieldMappings?.fields['personal_score']?.label ?? 'Score personnel',
             colorTokenByBucket: undefined,
+            hidden: false,
           },
           {
             buckets: distributions_tab.perf_score_buckets ?? [],
@@ -81,6 +99,7 @@ export function TimeseriesDistributionsTabView({
               if (mid < 80) return 'perf-tier-4' as const
               return 'perf-tier-5' as const
             }),
+            hidden: false,
           },
           {
             buckets: distributions_tab.max_killing_spree_buckets ?? [],
@@ -89,8 +108,11 @@ export function TimeseriesDistributionsTabView({
             colorToken: 'chart-series-6' as const,
             xAxisLabel: t('timeseries.distributions.spree_axis'),
             colorTokenByBucket: undefined,
+            hidden: false,
           },
-        ]).map((cfg, i) => (
+        ])
+          .filter((cfg) => !cfg.hidden)
+          .map((cfg, i) => (
           <TimeseriesDistributionHistogram
             key={i}
             title={cfg.title}
@@ -142,7 +164,11 @@ export function TimeseriesDistributionsTabView({
             yLabel:
               fieldMappings?.fields['deaths']?.label ?? 'Morts',
           },
-        ] as const).map((cfg) => (
+        ] as const)
+          // DATA-GATE : le scatter accuracy↔FDA est retiré quand aucun point
+          // accuracy n'existe (Halo 5, accuracy nil) — pas de carte vide.
+          .filter((cfg) => cfg.metricXKey !== 'accuracy' || hasAccuracyPoints)
+          .map((cfg) => (
           <TimeseriesScatterWithTrend
             key={`${cfg.metricXKey}_${cfg.metricYKey}`}
             title={cfg.title}
@@ -159,19 +185,22 @@ export function TimeseriesDistributionsTabView({
         ))}
       </div>
 
-      {/* MMR équipe / adverse — seul sur sa propre ligne. */}
-      <TimeseriesScatterWithTrend
-        title={t('timeseries.distributions.mmr_title')}
-        emptyMessage={emptyMsg}
-        points={distributions_tab.correlation_points ?? []}
-        metricXKey="mmr_team"
-        metricYKey="mmr_enemy"
-        xAxisLabel={fieldMappings?.fields['team_mmr']?.label ?? 'MMR équipe'}
-        yAxisLabel={fieldMappings?.fields['enemy_mmr']?.label ?? 'MMR adverse'}
-        outcomeLabels={outcomeLabels}
-        trendLabel={t('timeseries.summary.trend')}
-        height={320}
-      />
+      {/* MMR équipe / adverse — seul sur sa propre ligne. Retiré entièrement
+          quand le titre ne fournit pas de MMR par match (Halo 5). */}
+      {hasTeamMmr && (
+        <TimeseriesScatterWithTrend
+          title={t('timeseries.distributions.mmr_title')}
+          emptyMessage={emptyMsg}
+          points={distributions_tab.correlation_points ?? []}
+          metricXKey="mmr_team"
+          metricYKey="mmr_enemy"
+          xAxisLabel={fieldMappings?.fields['team_mmr']?.label ?? 'MMR équipe'}
+          yAxisLabel={fieldMappings?.fields['enemy_mmr']?.label ?? 'MMR adverse'}
+          outcomeLabels={outcomeLabels}
+          trendLabel={t('timeseries.summary.trend')}
+          height={320}
+        />
+      )}
     </div>
   )
 }

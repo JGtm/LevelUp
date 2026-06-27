@@ -12,6 +12,7 @@ import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
+import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
 import { sessionMatchAxisLabel } from './_shared'
@@ -26,6 +27,8 @@ interface DamagePoint {
 interface DamageOpts {
   dealtLabel: string
   takenLabel: string
+  /** false (titre sans damage_taken, ex. Halo 5) → segment + légende « subis » retirés. */
+  showTaken?: boolean
 }
 
 const fmtInt = (n: number) => Math.round(n).toLocaleString('fr-FR')
@@ -35,6 +38,7 @@ export function buildSessionDamageOption(
   series: ChartSeries<DamagePoint>[],
   opts: DamageOpts,
 ): EChartsCoreOption {
+  const showTaken = opts.showTaken ?? true
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 
@@ -67,15 +71,16 @@ export function buildSessionDamageOption(
         const idx = (arr[0] as { dataIndex: number }).dataIndex
         const p = points[idx]
         if (!p) return ''
-        return [
+        const lines = [
           `<strong>${p.label.replace('\n', ' · ')}</strong>`,
           `${opts.dealtLabel}: <b>${fmtInt(p.dealt)}</b>`,
-          `${opts.takenLabel}: <b>${fmtInt(p.taken)}</b>`,
-        ].join('<br/>')
+        ]
+        if (showTaken) lines.push(`${opts.takenLabel}: <b>${fmtInt(p.taken)}</b>`)
+        return lines.join('<br/>')
       },
     },
     legend: {
-      data: [opts.dealtLabel, opts.takenLabel],
+      data: showTaken ? [opts.dealtLabel, opts.takenLabel] : [opts.dealtLabel],
       textStyle: { color: tc.axisLabel },
       bottom: 0,
       itemWidth: 10,
@@ -93,15 +98,19 @@ export function buildSessionDamageOption(
         barMaxWidth: 18,
         label: segLabel,
       },
-      {
-        name: opts.takenLabel,
-        type: 'bar',
-        stack: 'dmg',
-        data: points.map((p) => p.taken),
-        itemStyle: { color: takenColor },
-        barMaxWidth: 18,
-        label: segLabel,
-      },
+      // Segment « dégâts subis » retiré si la donnée n'est pas fournie (h5) : sinon
+      // toutes les barres « subis » seraient à 0 + une entrée de légende permanente.
+      ...(showTaken
+        ? [{
+            name: opts.takenLabel,
+            type: 'bar' as const,
+            stack: 'dmg',
+            data: points.map((p) => p.taken),
+            itemStyle: { color: takenColor },
+            barMaxWidth: 18,
+            label: segLabel,
+          }]
+        : []),
     ],
   }
 }
@@ -115,6 +124,9 @@ interface Props {
 export function SessionDamageComposite({ title, matches, height = 280 }: Props) {
   const { data: fieldMappings } = useFieldMappings()
   const fields = fieldMappings?.fields
+  // false (Halo 5) → dégâts subis non fournis : segment + légende « subis » retirés
+  // (cf. buildSessionDamageOption). Source unique de masquage via useCapability.
+  const providesDamageTaken = useProvidesDamageTaken()
 
   const series = useMemo<ChartSeries<DamagePoint>[]>(() => {
     const sorted = [...matches]
@@ -155,6 +167,7 @@ export function SessionDamageComposite({ title, matches, height = 280 }: Props) 
         buildSessionDamageOption(s, {
           dealtLabel: fields?.damage_dealt?.label ?? 'damage_dealt',
           takenLabel: fields?.damage_taken?.label ?? 'damage_taken',
+          showTaken: providesDamageTaken,
         })
       }
     />

@@ -62,6 +62,29 @@ const (
 	// pour qu'un match soit « complet ». À NE PAS confondre avec
 	// CapNativeKillMechanics (assassinats/ground-pound natifs, Halo-5-only).
 	CapWeaponKills Capability = "weapon_kills"
+
+	// CapTeamMMR — le titre fournit NATIVEMENT un MMR d'équipe (et adverse) par
+	// match via son API. Forme title-level (capability dans le descripteur) du
+	// signal scalaire games.ProvidesTeamMMR(slug) : un titre déclare cette cap
+	// SSI ProvidesTeamMMR(slug)==true. Halo Infinite : oui ; Halo 5 : non (le
+	// carnage cryptum ne porte pas de MMR équipe/adverse → no_team_mmr=true).
+	// Absente ⇒ les surfaces (colonne MMR du tableau Escouade / Explorer)
+	// neutralisent la valeur plutôt que d'afficher un « 0 » trompeur. Le flag
+	// scalaire ProvidesTeamMMR reste la source projetée dans le DTO bootstrap
+	// (availableTitles[].providesTeamMMR) ; cette cap est le pendant déclaratif
+	// dans availableTitles[].capabilities.
+	CapTeamMMR Capability = "team_mmr"
+
+	// CapDamageTaken — le titre fournit NATIVEMENT le dégât subi par joueur par
+	// match via son API. Forme title-level (capability dans le descripteur) du
+	// signal scalaire games.ProvidesDamageTaken(slug) : un titre déclare cette
+	// cap SSI ProvidesDamageTaken(slug)==true. Halo Infinite : oui ; Halo 5 :
+	// non (l'API carnage h5 ne sert pas damage_taken → no_damage_taken=true).
+	// Absente ⇒ les surfaces dérivées (defensive resistance, OCDR) masquent ou
+	// neutralisent la valeur. Le flag scalaire ProvidesDamageTaken reste la
+	// source projetée dans le DTO bootstrap (availableTitles[].providesDamageTaken) ;
+	// cette cap est le pendant déclaratif dans availableTitles[].capabilities.
+	CapDamageTaken Capability = "damage_taken"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -217,6 +240,10 @@ func NewRegistry() *Registry {
 			CapMedia, CapRanked, CapCareer, CapSeasonPass, CapAssetImages,
 			CapAchievements, CapEngagement, CapLUSR, CapWorldLeaderboard,
 			CapWeaponKills,
+			// Miroir title-level des flags scalaires : Halo Infinite fournit
+			// nativement le MMR d'équipe ET le dégât subi (ProvidesTeamMMR /
+			// ProvidesDamageTaken == true).
+			CapTeamMMR, CapDamageTaken,
 		},
 		IsDefault:        true,
 		XboxTitleID:      "2043073184",

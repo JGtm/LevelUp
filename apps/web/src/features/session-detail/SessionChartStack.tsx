@@ -31,6 +31,7 @@ import { SessionMmrDumbbell } from './SessionMmrDumbbell'
 import { SessionPerfTrend } from './SessionPerfTrend'
 import { SessionEngagementChart } from './SessionEngagementChart'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { SessionDamageComposite } from './SessionDamageComposite'
 import { SessionOcdrBars } from './SessionOcdrBars'
 
@@ -57,6 +58,9 @@ export function SessionChartStack({
 }: Props) {
   const t = useSessionT()
   const locale = useAppShellStore((s) => s.locale)
+  // Masquage par capability (décision produit : retrait silencieux, pas de carte vide).
+  // team_mmr absent (Halo 5) → la carte « challenge MMR » disparaît entièrement.
+  const hasTeamMmr = useCapability('team_mmr')
 
   const outcomeDonut = (
     <SessionOutcomeDonut title={t('session.detail.chart_outcomes_title')} matches={matches} compact={compact} />
@@ -109,7 +113,9 @@ export function SessionChartStack({
       yDomain={scale?.netScore}
     />
   )
-  const mmr = <SessionMmrDumbbell title={t('session.detail.chart_mmr_title')} matches={matches} />
+  const mmr = hasTeamMmr ? (
+    <SessionMmrDumbbell title={t('session.detail.chart_mmr_title')} matches={matches} />
+  ) : null
   const perf = <SessionPerfTrend title={t('session.detail.chart_perf_title')} matches={matches} />
   const engagement = (
     <FeatureGate capability="engagement">
@@ -174,10 +180,14 @@ export function SessionChartStack({
         {fdaBars}
       </div>
       {participation}
-      <div className="grid gap-6 xl:grid-cols-2">
-        {mmr}
-        {ocdr}
-      </div>
+      {mmr ? (
+        <div className="grid gap-6 xl:grid-cols-2">
+          {mmr}
+          {ocdr}
+        </div>
+      ) : (
+        ocdr
+      )}
       {perf}
       {engagement}
       {damage}

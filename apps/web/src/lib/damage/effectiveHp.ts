@@ -8,6 +8,7 @@
  * (games.DefaultEffectiveHpToKill).
  */
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { ONE_LIFE_DAMAGE } from '@/lib/charts/oneLifeDamageGradient'
 
 /** PV-pour-tuer du titre courant, défaut Infinite (ONE_LIFE_DAMAGE). */
@@ -39,29 +40,27 @@ export function useOffensiveConversionP80(): number {
 }
 
 /**
- * Vrai si l'API du titre courant fournit `damage_taken` — donc si la Résistance
- * défensive (DR = dégâts_subis / (PV × morts)) est calculable. Faux pour Halo 5
- * (DR vaut 0 partout faute de donnée → on affiche « N/A » au lieu d'un 0 trompeur).
- * Défaut `true` (Halo Infinite inchangé), aligné sur le défaut backend du champ.
+ * Vrai si le titre courant déclare la capability `damage_taken` — donc si la
+ * Résistance défensive (DR = dégâts_subis / (PV × morts)) est calculable. Faux
+ * pour Halo 5 (DR vaut 0 partout faute de donnée → on affiche « N/A » au lieu
+ * d'un 0 trompeur). Délègue à {@link useCapability} (source unique de masquage) :
+ * fail-open `true` tant que le bootstrap n'est pas chargé / titre introuvable,
+ * d'où zéro régression Halo Infinite (qui déclare la capability).
  */
 export function useProvidesDamageTaken(): boolean {
-  return useAppShellStore(
-    (s) =>
-      s.availableTitles.find((t) => t.slug === s.currentTitleSlug)?.provides_damage_taken ?? true,
-  )
+  return useCapability('damage_taken')
 }
 
 /**
- * Vrai si l'API du titre courant fournit un MMR d'équipe/adverse par match.
- * Faux pour Halo 5 (pas de MMR par match) → on retire les colonnes MMR des
- * tableaux Escouade/Explorer au lieu d'afficher un 0/N-A trompeur.
- * Défaut `true` (Halo Infinite inchangé), aligné sur le défaut backend du champ.
+ * Vrai si le titre courant déclare la capability `team_mmr` — donc s'il fournit
+ * un MMR d'équipe/adverse par match. Faux pour Halo 5 (pas de MMR par match) → on
+ * retire les colonnes MMR des tableaux Escouade/Explorer au lieu d'afficher un
+ * 0/N-A trompeur. Délègue à {@link useCapability} (source unique de masquage) :
+ * fail-open `true` tant que le bootstrap n'est pas chargé / titre introuvable,
+ * d'où zéro régression Halo Infinite (qui déclare la capability).
  */
 export function useProvidesTeamMmr(): boolean {
-  return useAppShellStore(
-    (s) =>
-      s.availableTitles.find((t) => t.slug === s.currentTitleSlug)?.provides_team_mmr ?? true,
-  )
+  return useCapability('team_mmr')
 }
 
 /**

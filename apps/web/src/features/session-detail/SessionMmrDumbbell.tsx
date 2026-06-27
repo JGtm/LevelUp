@@ -13,6 +13,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
+import { useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
 import { sessionMatchAxisLabel, useSessionT } from './_shared'
@@ -135,6 +136,9 @@ interface Props {
 
 export function SessionMmrDumbbell({ title, matches, height = 280 }: Props) {
   const t = useSessionT()
+  // Le warn « MMR vide » ne vise que les sessions social d'un titre QUI fournit le MMR
+  // (Infinite). Pour un titre sans team_mmr (Halo 5), le vide est attendu → pas de warn.
+  const providesTeamMmr = useProvidesTeamMmr()
 
   const series = useMemo<ChartSeries<MmrPoint>[]>(() => {
     const sorted = [...matches]
@@ -159,7 +163,8 @@ export function SessionMmrDumbbell({ title, matches, height = 280 }: Props) {
   const rows = series[0]?.datapoints.length ?? 0
 
   // Observabilité : dumbbell vide alors qu'il y a des matchs = pas de MMR (social ?).
-  if (matches.length > 0 && rows === 0) {
+  // Inoffensif si le titre ne fournit pas le MMR (h5) : vide attendu, pas un signal.
+  if (providesTeamMmr && matches.length > 0 && rows === 0) {
     log.warn(
       `mmr_missing:${matches[0]?.session_label ?? ''}`,
       'Dumbbell MMR vide : aucun match de la session n\'a de MMR équipe/adverse (session social ?)',

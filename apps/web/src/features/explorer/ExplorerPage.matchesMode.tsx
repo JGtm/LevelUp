@@ -5,6 +5,7 @@
  * Contenu : barre de filtres + tableau résultats + tri/export.
  * Tous les états (filtres, sort, dates) sont contrôlés par le parent.
  */
+import { useEffect } from 'react'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
@@ -321,6 +322,17 @@ function ExplorerMatchesResultsBlock({
   matchesContextDescriptor,
   matchesFilterSpec,
 }: ResultsBlockProps) {
+  // Le tri ΔMMR n'a de sens que si le titre fournit un MMR équipe (colonnes MMR
+  // affichées). Pour un titre sans MMR (Halo 5 → useCapability('team_mmr')===false),
+  // on retire l'option de tri et on retombe sur le tri par défaut si la valeur
+  // courante pointait sur une colonne désormais invisible (no-op trompeur).
+  const hasTeamMmr = useCapability('team_mmr')
+  useEffect(() => {
+    if (!hasTeamMmr && sortKey.startsWith('delta_mmr')) {
+      onSortKeyChange('start_time:desc')
+    }
+  }, [hasTeamMmr, sortKey, onSortKeyChange])
+
   if (matchesQuery.isLoading) {
     return (
       <div className="flex justify-center py-16">
@@ -378,7 +390,9 @@ function ExplorerMatchesResultsBlock({
               <option value="performance_score_relative:asc">{t('explorer.sort.perf_asc')}</option>
               <option value="kda:desc">{t('explorer.sort.kda_desc')}</option>
               <option value="kills:desc">{t('explorer.sort.kills_desc')}</option>
-              <option value="delta_mmr:desc">{t('explorer.sort.delta_mmr_desc')}</option>
+              {hasTeamMmr && (
+                <option value="delta_mmr:desc">{t('explorer.sort.delta_mmr_desc')}</option>
+              )}
               <option value="outcome:desc">{t('explorer.sort.outcome')}</option>
             </select>
           </div>

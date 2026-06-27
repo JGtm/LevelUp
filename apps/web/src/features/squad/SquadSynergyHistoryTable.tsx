@@ -22,6 +22,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { tokenCssVar } from '@/lib/accessibility'
 import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
 import { formatDate, formatDurationMinSec } from '@/lib/formatters'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { getSquadText } from './i18n'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 
@@ -62,6 +63,10 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
   const intlLocale = t.intlLocale
   const labels = t.history
   const navigateToMatch = useNavigateToMatch(playerSlug)
+  // Title-agnostic : les 3 colonnes MMR (équipe / adverse / écart) n'ont de sens
+  // que si le titre courant fournit un MMR par match. Faux pour Halo 5 → on
+  // RETIRE silencieusement les colonnes (pas de cellule "-" ni de colonne vide).
+  const providesTeamMmr = useCapability('team_mmr')
   // Backend envoie DESC (newest first) — on inverse pour oldest-first (chronologique).
   const sortedRows = useMemo(() => [...rows].reverse(), [rows])
   const allMatchIds = useMemo(() => sortedRows.map((r) => r.match_id), [sortedRows])
@@ -212,32 +217,38 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           </span>
         ),
       },
-      {
-        accessorKey: 'team_mmr_avg',
-        header: labels.teamMmr,
-        cell: (ctx) => (
-          <span className="text-muted-foreground font-mono tabular-nums">
-            {fmtMmr(ctx.getValue<number>())}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'enemy_mmr_avg',
-        header: labels.enemyMmr,
-        cell: (ctx) => (
-          <span className="text-muted-foreground font-mono tabular-nums">
-            {fmtMmr(ctx.getValue<number | undefined>())}
-          </span>
-        ),
-      },
-      {
-        accessorKey: 'delta_mmr',
-        header: labels.deltaMMR,
-        cell: (ctx) => fmtDeltaMMR(ctx.getValue<number | undefined>()),
-      },
+      // Colonnes MMR (équipe / adverse / écart) : incluses uniquement si le titre
+      // courant fournit le MMR par match (Halo 5 → masquées).
+      ...(providesTeamMmr
+        ? [
+            {
+              accessorKey: 'team_mmr_avg',
+              header: labels.teamMmr,
+              cell: (ctx) => (
+                <span className="text-muted-foreground font-mono tabular-nums">
+                  {fmtMmr(ctx.getValue<number>())}
+                </span>
+              ),
+            } as ColumnDef<SquadMatchHistoryRow>,
+            {
+              accessorKey: 'enemy_mmr_avg',
+              header: labels.enemyMmr,
+              cell: (ctx) => (
+                <span className="text-muted-foreground font-mono tabular-nums">
+                  {fmtMmr(ctx.getValue<number | undefined>())}
+                </span>
+              ),
+            } as ColumnDef<SquadMatchHistoryRow>,
+            {
+              accessorKey: 'delta_mmr',
+              header: labels.deltaMMR,
+              cell: (ctx) => fmtDeltaMMR(ctx.getValue<number | undefined>()),
+            } as ColumnDef<SquadMatchHistoryRow>,
+          ]
+        : []),
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [labels, intlLocale, playerSlug, waypointBase, goToSynergyMatch],
+    [labels, intlLocale, playerSlug, waypointBase, goToSynergyMatch, providesTeamMmr],
   )
 
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE })

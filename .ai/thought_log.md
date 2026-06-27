@@ -1,3 +1,37 @@
+## [2026-06-27] Lot A — Unification du signal de capabilities + retrait silencieux des fuites H5 — COMPLÉTÉ (local vérifié)
+
+**Contexte** : refactor multi-agent (worktree `refactor/h5-capability-unification-masking`) suite à l'audit parité/masquage H5 (workflow ws9tudwrk). Objectif : unifier les 3 systèmes de masquage front et généraliser le masquage MMR (commencé par l'user) aux autres stats non supportées par H5, en RETRAIT SILENCIEUX (décision produit verrouillée : retirer colonne/série/carte, jamais de placeholder/0/-).
+
+**Fondation (source unique = capability)** :
+- Backend : 2 capabilities title-level `team_mmr` + `damage_taken` (`title.CapTeamMMR`/`CapDamageTaken`, `registry.go` + `config_loader.go` knownCapabilities). Règle de miroir : déclarées SSI `games.ProvidesTeamMMR`/`ProvidesDamageTaken`==true → halo_infinite + synthetic_title_b OUI, halo_5 NON. Additif pur (provides_* scalaires conservés, zéro changement DTO/openapi). `skeleton_test.go` (halo_5 + synthetic_title_b) ajustés.
+- Front : `team_mmr`/`damage_taken` ajoutés à `TITLE_CAPABILITIES` ; `useProvidesTeamMmr`/`useProvidesDamageTaken` délèguent à `useCapability(...)` (signature inchangée → 0 appelant cassé). `FeatureUnavailable` Record complété.
+
+**Retrait silencieux (6 zones)** : Squad (3 colonnes MMR `SquadSynergyHistoryTable` + carte Précision data-gatée + suppression composant MORT `SquadMatchHistoryTable`+test) ; Session-detail (carte MMR non montée + warn neutralisé + segment « Dégâts subis » omis) ; Timeseries (série/axe/légende MMR summary + scatter MMR + précision data-gate + ligne Dégâts/mort) ; Explorer (option tri `delta_mmr` retirée) ; Synthesis (AccentCard « Dégâts reçus » retirée) ; Cleanup (suppression du 3e système ORPHELIN `gap_modes.ts` + `CapabilityGap` + tests).
+
+**Hors périmètre (étapes suivantes)** : FDA/colonne KDA = valeur négative LÉGITIME `((k+a/3)−d)/1` (pas un leak) → capability `native_kda` + échelle divergente, lot séparé. Lot B (parité jobs/runner Go : crons title-aware, achievements auto, convergence 0-insert) à suivre.
+
+**Fixes orchestrateur post-agents** : (1) complété `FeatureUnavailable.tsx` Record (oubli fondation, cassait tsc) ; (2) réaligné `effectiveHp.test.ts` sur la nouvelle source (capability au lieu de `provides_damage_taken`) — mêmes résultats réels.
+
+**Vérifs (worktree)** : `tsc -b` propre ; `eslint` 0 erreur (warnings pré-existants) ; `go test ./internal/domain/title/... ./internal/games/... ./internal/config/...` vert ; `vitest run --pool=forks` = **227/227 fichiers, 1968 tests, 0 échec**. NOTE infra : vitest échoue avec le pool `threads` par défaut dans ce worktree headless (« Cannot read properties of undefined (reading 'config') ») → utiliser `--pool=forks`. Process : 3 agents ont écrit en parallèle ce thought_log → clobber (seule l'entrée Timeseries ci-dessous a survécu) ; entrée consolidée ci-dessus.
+
+---
+
+## [2026-06-27] Unification capabilities H5 — masquage zone Timeseries (MMR + résistance + précision) — COMPLÉTÉ (local vérifié)
+
+**Tâche** (lot d'un refactor multi-agent « capability-unification-masking ») : retrait SILENCIEUX des surfaces non disponibles pour Halo 5 dans `apps/web/src/features/timeseries/`, en s'appuyant sur la fondation `useCapability('team_mmr'/'damage_taken')`. Décision produit verrouillée : quand la capability/donnée est absente, on RETIRE série + axe + légende (jamais de placeholder/0/carte titrée vide).
+
+**4 fuites corrigées** :
+1. Série MMR du chart « Performance par session » (`TimeseriesSquadAdapted.TimeseriesSessionPerformance`) : nouveau prop `showMmr` (défaut `true`), câblé depuis `TimeseriesPage.summary.tsx` via `useCapability('team_mmr')`. `false` → série MMR + entrée de légende retirées (spread conditionnel) + suffixe « / MMR équipe » supprimé du nom d'axe Y2 (calque `squadSessionTimelineChart.ts` flag `hasMmr`).
+2. Scatter MMR équipe/adverse de l'onglet Distributions (`TimeseriesPage.distributions.tsx`) : enveloppé `{hasTeamMmr && (...)}` → carte entière non montée pour H5.
+3. DATA-GATE précision (pas de capability dédiée) : histogramme « Précision » filtré quand `sum(accuracy_buckets.count) === 0` ; scatter accuracy↔FDA filtré quand aucun `correlation_points` avec `metric_x_key==='accuracy'`. Pour H5 (accuracy nil) → les 2 cartes disparaissent ; Infinite inchangé.
+4. Ligne « Dégâts / mort » (résistance) de `TimeseriesEfficiency` : `useProvidesDamageTaken()` (calque `TimeseriesCombatYield.tsx`) → série résistance + sa légende retirées (spread conditionnel), `dmgDeath=[]` pour ne pas appeler le gradient à vide. Série rendement conservée.
+
+**Hors périmètre respecté** : FDA/colonne KDA non touchée (FDA négative légitime, étape séparée). Aucun texte UI ajouté → pas de changement i18n. Couleurs via tokens (inchangées).
+
+**Vérifs** : `tsc -b` propre sur les 3 fichiers de la zone (seule erreur résiduelle = `lib/capabilities/FeatureUnavailable.tsx`, pré-existante, dûe à la fondation qui a ajouté `team_mmr`/`damage_taken` à `TITLE_CAPABILITIES` sans compléter son `Record` — responsabilité fondation, hors zone). `eslint` propre. `vitest run src/features/timeseries` = 40/40 passent. **Prochaine étape** : agent fondation doit compléter le `Record` de `FeatureUnavailable.tsx` ; FDA négative = lot suivant.
+
+---
+
 ## [2026-06-26] Fix playlists_catalog H5 + backfill historique des surfaces dérivées d'events — COMPLÉTÉ (local vérifié)
 
 **Tâche** (suite du merge events H5) : 2 demandes user. (1) Régler le bug pré-existant `playlists_catalog does not exist` (spam WARN post-sync CSR sur halo_5). (2) Backfiller weapon_accuracy + assists + objectif sur les matchs H5 EXISTANTS (le « new-matches-only » ne suffit pas : personne ne rejoue H5).
