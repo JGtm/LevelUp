@@ -14,8 +14,11 @@ import {
 
 const SPARTAN_BASE = '/titles/halo_5/spartan'
 
+type BrowseTab = 'emblem' | 'nameplate'
+
 interface SpartanCatalog {
-  ids?: string[]
+  emblem_ids?: string[]
+  nameplate_ids?: string[]
 }
 
 /** Ligne de sélection de couleur (palette de pastilles). */
@@ -62,20 +65,28 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
   const saved = useSpartanAppearanceStore((s) => s.appearance)
   const setAppearance = useSpartanAppearanceStore((s) => s.setAppearance)
 
-  const [ids, setIds] = useState<string[]>([])
+  const [emblemIds, setEmblemIds] = useState<string[]>([])
+  const [nameplateIds, setNameplateIds] = useState<string[]>([])
   const [draft, setDraft] = useState<SpartanAppearance>(saved)
+  const [tab, setTab] = useState<BrowseTab>('emblem')
 
-  // Catalogue d'emblèmes (asset statique same-origin)
+  // Catalogue (asset statique same-origin) — listes distinctes emblèmes / bannières.
   useEffect(() => {
     let cancelled = false
     fetch(`${SPARTAN_BASE}/spartan-catalog.json`)
       .then((r) => r.json() as Promise<SpartanCatalog>)
       .then((cat) => {
         if (cancelled) return
-        const list = cat.ids ?? []
-        setIds(list)
-        // Présélection si aucun emblème encore choisi.
-        setDraft((d) => (d.emblemId ? d : { ...d, emblemId: list[0] ?? null }))
+        const eIds = cat.emblem_ids ?? []
+        const nIds = cat.nameplate_ids ?? []
+        setEmblemIds(eIds)
+        setNameplateIds(nIds)
+        // Présélection si rien encore choisi (emblème et bannière indépendants).
+        setDraft((d) => ({
+          ...d,
+          emblemId: d.emblemId ?? eIds[0] ?? null,
+          nameplateId: d.nameplateId ?? nIds[0] ?? null,
+        }))
       })
       .catch(() => {
         /* catalogue indisponible → grille vide, modale reste utilisable */
@@ -99,11 +110,28 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
     secondary: draft.secondary,
     tertiary: draft.tertiary,
   }
-  const selectedId = draft.emblemId
+
+  const isEmblemTab = tab === 'emblem'
+  const browseIds = isEmblemTab ? emblemIds : nameplateIds
+  const browseActiveId = isEmblemTab ? draft.emblemId : draft.nameplateId
+  const thumbDir = isEmblemTab ? 'emblems_thumb_colored' : 'nameplates_thumb_colored'
+
+  function pickItem(id: string) {
+    setDraft((d) => (isEmblemTab ? { ...d, emblemId: id } : { ...d, nameplateId: id }))
+  }
 
   function handleSave() {
     setAppearance(draft)
     onClose()
+  }
+
+  function tabClass(active: boolean) {
+    return [
+      '-mb-px border-b-2 px-3 py-1.5 text-sm font-medium transition-colors',
+      active
+        ? 'border-primary text-foreground'
+        : 'border-transparent text-muted-foreground hover:text-foreground',
+    ].join(' ')
   }
 
   return (
@@ -139,29 +167,28 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {/* Aperçu : emblème + nameplate côte à côte (non collés) */}
+        {/* Aperçu : emblème (emblemId) + bannière (nameplateId) — choix indépendants */}
         <div className="flex flex-wrap items-center justify-center gap-8 border-b border-border bg-muted/30 px-5 py-5">
-          {selectedId ? (
-            <>
-              <RecoloredMask
-                src={`${SPARTAN_BASE}/emblems/${selectedId}.png`}
-                colors={colors}
-                alt={t('home.spartan_customizer.emblem_preview')}
-                className="h-28 w-28 object-contain"
-              />
-              <RecoloredMask
-                src={`${SPARTAN_BASE}/nameplates/${selectedId}.png`}
-                colors={colors}
-                alt={t('home.spartan_customizer.nameplate_preview')}
-                className="h-28 w-auto max-w-full object-contain"
-              />
-            </>
-          ) : (
-            <div className="h-28" />
+          {draft.emblemId && (
+            <RecoloredMask
+              src={`${SPARTAN_BASE}/emblems/${draft.emblemId}.png`}
+              colors={colors}
+              alt={t('home.spartan_customizer.emblem_preview')}
+              className="h-28 w-28 object-contain"
+            />
           )}
+          {draft.nameplateId && (
+            <RecoloredMask
+              src={`${SPARTAN_BASE}/nameplates/${draft.nameplateId}.png`}
+              colors={colors}
+              alt={t('home.spartan_customizer.nameplate_preview')}
+              className="h-28 w-auto max-w-full object-contain"
+            />
+          )}
+          {!draft.emblemId && !draft.nameplateId && <div className="h-28" />}
         </div>
 
-        {/* Corps : couleurs + grille d'emblèmes */}
+        {/* Corps : couleurs + onglets (Emblème / Bannière) + grille */}
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
           <div className="grid gap-3 sm:grid-cols-3">
             <ColorRow
@@ -182,26 +209,53 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <div>
-            <p className="mb-2 text-sm font-medium">
-              {t('home.spartan_customizer.choose_emblem')}
-            </p>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-2">
-              {ids.map((id) => {
-                const active = selectedId === id
+            <div role="tablist" className="mb-3 flex gap-1 border-b border-border">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={isEmblemTab}
+                onClick={() => setTab('emblem')}
+                className={tabClass(isEmblemTab)}
+              >
+                {t('home.spartan_customizer.tab_emblem')}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!isEmblemTab}
+                onClick={() => setTab('nameplate')}
+                className={tabClass(!isEmblemTab)}
+              >
+                {t('home.spartan_customizer.tab_nameplate')}
+              </button>
+            </div>
+
+            <div
+              className={
+                isEmblemTab
+                  ? 'grid grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-2'
+                  : 'grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2'
+              }
+            >
+              {browseIds.map((id) => {
+                const active = browseActiveId === id
                 return (
                   <button
                     key={id}
                     type="button"
-                    onClick={() => setDraft((d) => ({ ...d, emblemId: id }))}
+                    onClick={() => pickItem(id)}
                     aria-pressed={active}
                     aria-label={`#${id}`}
                     className={[
-                      'aspect-square overflow-hidden rounded-lg border bg-muted/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      active ? 'border-primary ring-2 ring-ring' : 'border-border hover:border-primary/60',
+                      'overflow-hidden rounded-lg border bg-muted/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      isEmblemTab ? 'aspect-square' : 'aspect-[200/42]',
+                      active
+                        ? 'border-primary ring-2 ring-ring'
+                        : 'border-border hover:border-primary/60',
                     ].join(' ')}
                   >
                     <img
-                      src={`${SPARTAN_BASE}/emblems_thumb_colored/${id}.png`}
+                      src={`${SPARTAN_BASE}/${thumbDir}/${id}.png`}
                       alt={`#${id}`}
                       loading="lazy"
                       decoding="async"
@@ -219,7 +273,11 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={() =>
-              setDraft((d) => ({ ...DEFAULT_SPARTAN_APPEARANCE, emblemId: d.emblemId }))
+              setDraft((d) => ({
+                ...DEFAULT_SPARTAN_APPEARANCE,
+                emblemId: d.emblemId,
+                nameplateId: d.nameplateId,
+              }))
             }
             className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >

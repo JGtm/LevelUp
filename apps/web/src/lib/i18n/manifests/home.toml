@@ -73,6 +73,14 @@ en = "Pick an emblem and your colors. The preview updates live."
 fr = "Emblème"
 en = "Emblem"
 
+[home.spartan_customizer.tab_emblem]
+fr = "Emblème"
+en = "Emblem"
+
+[home.spartan_customizer.tab_nameplate]
+fr = "Bannière"
+en = "Nameplate"
+
 [home.spartan_customizer.primary]
 fr = "Couleur primaire"
 en = "Primary color"
@@ -86,7 +94,7 @@ fr = "Couleur tertiaire"
 en = "Tertiary color"
 
 [home.spartan_customizer.nameplate_preview]
-fr = "Nameplate"
+fr = "Bannière"
 en = "Nameplate"
 
 [home.spartan_customizer.emblem_preview]

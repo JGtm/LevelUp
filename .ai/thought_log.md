@@ -33,7 +33,34 @@ tsc/eslint/build OK + mockup visuel validé (`_diag_canaux/banner_mockup_home.pn
 
 Cas dégradé Explorer (identity==null) couvert pour H5 : bandeau par défaut (emblème + nameplate #160 + gamertag + note « indisponible ») au lieu du placeholder vide. Vérif : tsc/eslint OK, 70 tests verts (explorer + spartan).
 
-**Statut** : Complété sur worktree `feat/h5-spartan-customizer` (sibling `LevelUp-h5-spartan-customizer`). PAS de commit sans accord. Restes possibles : vérif visuelle réelle (dev server worktree) ; full vitest suite ; relocaliser le worktree vers `.claude/worktrees/` ; persistance backend cross-device.
+**Sélection indépendante emblème/bannière — itération** : suite retour user (« je peux pas choisir de
+nameplate »), emblème et « Bannière » (= nameplate, libellé FR retenu « Bannière ») sont désormais des
+choix INDÉPENDANTS. Modale à 2 onglets (Emblème / Bannière) ; `nameplateId` séparé d'`emblemId` dans le
+store ; bannières home/explorer composent emblème(emblemId) + nameplate(nameplateId) ; vignettes
+`nameplates_thumb_colored/` ajoutées (grille Bannière). Vérif : tsc/eslint/vitest 16/16/build verts.
+
+**Bug « nameplates noires ≥183 » — cause racine + correctif (2026-06-28)** : la cause n'était PAS
+l'upscale IA (hypothèse intermédiaire fausse, corrigée) mais un **convert intermédiaire corrompu** :
+`nameplate_raw_v2/380` = 1,4 Ko (PNG déjà noir) → l'IA upscalait fidèlement noir→noir. Preuve : sur
+entrée fraîchement reconvertie, les **7 modèles Upscayl** (digital-art, ultrasharp, remacri, high-fidelity…)
+préservent TOUS les aplats #250/#380 (`_diag_canaux/model_compare.png`). Diagnostic décisif = compositer
+chaque étape **sur fond sombre** + tracer les tailles intermédiaires (System.Drawing/GDI+ peu fiable sur
+ces TIFF Reclaimer → `x/image/tiff`). **Détour CatmullRom** : un 1er correctif a remplacé l'IA par un
+upscale **mathématique** (`x/image/draw` CatmullRom) — 0 noire mais **rendu trop mou, rejeté par le user**
+(`_diag_canaux/ai_vs_math_350.png` : hearts nets IA vs flous math). **Correctif final** : pipeline
+`_aipipe/main.go` (prep/finalize) = TIFF natif `x/image/tiff` → masques natifs **opaques** → **Upscayl IA
+×4 `digital-art-4x`** → alpha forcé 255 (front recalcule `alpha=max(R,G,B)`, cf. recolor.ts) + vignettes
+recolorisées 200×42. Résultat : **375 nameplates valides** (exclus : #184/#185 vides, #013/#324 TIFF
+tronqués EOF), **0 noire** (`_diag_canaux/np_contact_ai.png`), piqué IA. Emblèmes : downscalés 512²→256²
+(jamais upscalés IA) donc **déjà sains** (379, 0 noire) → intacts. Catalogue **scindé**
+`{emblem_ids:379, nameplate_ids:375}` ; `SpartanCustomizerModal` lit les 2 listes (onglets indépendants).
+**Vignettes nameplates ajoutées au suivi git** (0 dans HEAD avant → grille cassée même mergée).
+**Dédoublonnage** (user, validé) : nameplates 375→**308**, emblèmes 379→**320** ; vignettes resync
+(`synthumbs` régénère les vignettes nameplates + purge orphelins ; emblèmes = **prune-only**, look validé
+préservé) + catalogue reconstruit `{emblem_ids:320, nameplate_ids:308}` (sans BOM). Cohérence vérifiée
+(catalogue ⊆ masques ∩ vignettes, défaut #160 présent). Vérif finale : tsc/eslint/vitest 6/6 OK.
+
+**Statut** : LIVRÉ sur worktree `feat/h5-spartan-customizer`. Bug nameplates noires RÉSOLU (upscale IA propre sur entrée saine, PAS le math CatmullRom rejeté) + dédoublonnage user validé + resync vignettes/catalogue. Commit autorisé par le user (ce tour). Restes possibles : persistance backend cross-device ; relocaliser le worktree vers `.claude/worktrees/`.
 
 ---
 
