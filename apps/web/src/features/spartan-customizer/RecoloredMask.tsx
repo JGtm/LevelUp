@@ -11,19 +11,40 @@ interface RecoloredMaskProps {
 }
 
 /**
- * Affiche un masque Spartan recolorisé en direct via canvas (modèle additif,
- * cf. recolor.ts). L'image est chargée quand `src` change ; le canvas est
- * (re)dessiné quand l'image est prête OU quand une couleur change. Le canvas est
- * rendu à la taille native du masque ; la taille d'affichage est pilotée par
- * `className` (CSS).
+ * Affiche un masque Spartan recolorisé en direct via canvas (modèle additif, cf.
+ * recolor.ts). LAZY : l'image n'est chargée/dessinée que lorsque le canvas approche le
+ * viewport (IntersectionObserver) — indispensable pour la grille de la modale (300+
+ * masques recolorisés en direct). Fallback eager si IntersectionObserver est indisponible
+ * (jsdom/tests). Le canvas est rendu à la taille native du masque ; la taille d'affichage
+ * vient de `className` (CSS). (Re)dessin à la disponibilité de l'image OU au changement
+ * de couleur.
  */
 export function RecoloredMask({ src, colors, alt, className }: RecoloredMaskProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [img, setImg] = useState<HTMLImageElement | null>(null)
+  // Lazy : visible d'emblée si IntersectionObserver est indisponible (jsdom/SSR),
+  // sinon on attend l'entrée dans le viewport (init paresseux → pas de setState en effet).
+  const [visible, setVisible] = useState(() => typeof IntersectionObserver === 'undefined')
   const { primary, secondary, tertiary } = colors
 
-  // Chargement de l'image (déclenché par src)
+  // Observe l'entrée dans le viewport tant que pas encore visible.
   useEffect(() => {
+    if (visible) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setVisible(true)
+      },
+      { rootMargin: '200px' },
+    )
+    io.observe(canvas)
+    return () => io.disconnect()
+  }, [visible])
+
+  // Chargement de l'image (une fois visible, ou quand src change)
+  useEffect(() => {
+    if (!visible) return
     let cancelled = false
     const image = new Image()
     image.onload = () => {
@@ -33,7 +54,7 @@ export function RecoloredMask({ src, colors, alt, className }: RecoloredMaskProp
     return () => {
       cancelled = true
     }
-  }, [src])
+  }, [src, visible])
 
   // (Re)dessin : à la disponibilité de l'image et à chaque changement de couleur
   useEffect(() => {

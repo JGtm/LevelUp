@@ -38,9 +38,14 @@ export const SPARTAN_PALETTE: readonly SpartanColor[] = [
   { id: 'charcoal', hex: '#343a40' },
 ]
 
-/** Préselection par défaut : rouge (primaire) / bleu (secondaire) / blanc (tertiaire). */
+/**
+ * Préselection par défaut : rouge (primaire) / bleu (secondaire) / or (tertiaire).
+ * La tertiaire est la teinte de la PLAQUE sur la plupart des nameplates → un or visible
+ * (et non un blanc délavé) pour que les vignettes et la bannière par défaut ne soient
+ * pas « toutes blanches ». Le joueur reste libre de choisir blanc/argent.
+ */
 export const SPARTAN_DEFAULT_COLORS = {
   primary: '#d62828',
   secondary: '#1971c2',
-  tertiary: '#f1f3f5',
+  tertiary: '#f0a500',
 } as const

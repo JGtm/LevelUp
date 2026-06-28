@@ -11,7 +11,7 @@ import type { HomeSkillPeakSummary, HomeSpartanIdentity } from '@/lib/api/types'
 import { getSpartanIdentityText } from './spartanIdentity.i18n'
 import { HomeSkillPeakCard, resolveSkillPeakState } from './HomeSkillPeakCard'
 import { RecoloredMask } from '@/features/spartan-customizer/RecoloredMask'
-import { useSpartanAppearanceStore } from '@/features/spartan-customizer/store'
+import { useSpartanAppearance } from '@/features/spartan-customizer/store'
 
 interface HomeSpartanIdentityBannerProps {
   spartanIdentity: HomeSpartanIdentity
@@ -45,16 +45,14 @@ export function HomeSpartanIdentityBanner({
   const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
   const spartanText = getSpartanIdentityText(locale)
 
-  // Halo 5 n'a PAS de nameplate/bannière : ce qui arrivait en banner_image_url est le
-  // RENDER full-body du Spartan (pas une bannière). On ne l'utilise donc PAS en fond
-  // plein cadre → bannière SYNTHÉTISÉE (backdrop gradient via tokens sémantiques,
-  // emblème + identité + rang conservés). Branche par slug : précédent établi
-  // (NavL1/NavL2/CareerSummaryCard) ; TODO migrer vers une capability dédiée.
+  // Bannière SYNTHÉTISÉE (emblème + nameplate recolorisés) pour les titres déclarant la
+  // capability `spartan_customizer` : leur banner_image_url n'est pas une vraie bannière
+  // (Halo 5 = render full-body du Spartan). Gating par CAPABILITY, pas par slug.
   const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const synthesizeBanner = currentTitleSlug === 'halo_5'
-  // Halo 5 : apparence Spartan (emblème + couleurs) choisie-ou-défaut (#160) → sert à
-  // composer le bandeau (emblème carré + nameplate recolorisés). Jamais vide.
-  const spartanApp = useSpartanAppearanceStore((s) => s.appearance)
+  const synthesizeBanner = useCapability('spartan_customizer')
+  // Apparence Spartan (emblème + couleurs) choisie-ou-défaut (#160), PAR TITRE → sert à
+  // composer le bandeau. Jamais vide.
+  const spartanApp = useSpartanAppearance(currentTitleSlug)
   const spartanColors = {
     primary: spartanApp.primary,
     secondary: spartanApp.secondary,
@@ -126,7 +124,7 @@ export function HomeSpartanIdentityBanner({
             // + un scrim sémantique à gauche pour la lisibilité du gamertag/rang par-dessus.
             <>
               <RecoloredMask
-                src={`/titles/halo_5/spartan/nameplates/${spartanNameplateId}.png`}
+                src={`/titles/${currentTitleSlug}/spartan/nameplates/${spartanNameplateId}.png`}
                 colors={spartanColors}
                 alt=""
                 className="pointer-events-none absolute inset-0 h-full w-full object-cover"
@@ -167,7 +165,7 @@ export function HomeSpartanIdentityBanner({
                 // Halo 5 : emblème carré recolorisé (forme d'origine, PAS rond), collé
                 // visuellement au nameplate de fond.
                 <RecoloredMask
-                  src={`/titles/halo_5/spartan/emblems/${spartanEmblemId}.png`}
+                  src={`/titles/${currentTitleSlug}/spartan/emblems/${spartanEmblemId}.png`}
                   colors={spartanColors}
                   alt={`Emblème ${playerName}`}
                   className="h-20 w-20 shrink-0 object-contain drop-shadow-[0_2px_6px_rgba(8,15,28,0.5)] sm:h-24 sm:w-24"
