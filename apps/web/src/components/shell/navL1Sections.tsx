@@ -84,7 +84,7 @@ export const L1_SECTIONS: L1Section[] = [
     defaultPath: '/players/$playerSlug/stats/timeseries',
     matchPathname: (p) => /\/players\/[^/]+\/(stats\/|synthesis)/.test(p),
     tabs: [
-      { key: 'synthesis', label: 'Synthèse', path: '/players/$playerSlug/synthesis' },
+      { key: 'synthesis', label: 'Synthèse', path: '/players/$playerSlug/stats/synthesis' },
       { key: 'timeseries', label: 'Séries temporelles', path: '/players/$playerSlug/stats/timeseries' },
       { key: 'sessions', label: 'Sessions', path: '/players/$playerSlug/stats/sessions' },
     ],
@@ -107,7 +107,7 @@ export const L1_SECTIONS: L1Section[] = [
     matchPathname: (p) => /\/players\/[^/]+\/(career|citations|profile)/.test(p),
     tabs: [
       { key: 'progression', label: 'Progression', path: '/players/$playerSlug/career' },
-      { key: 'citations', label: 'Citations', path: '/players/$playerSlug/citations' },
+      { key: 'citations', label: 'Citations', path: '/players/$playerSlug/career/citations' },
       {
         key: 'season-pass',
         label: 'Pass saisonnier',

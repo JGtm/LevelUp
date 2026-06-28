@@ -27,7 +27,7 @@ const COMMUNITY_LEADERBOARD_PATH = '/players/$playerSlug/community'
 
 const CAREER_TABS = [
   { label: 'Progression', path: '/players/$playerSlug/career' },
-  { label: 'Citations', path: '/players/$playerSlug/citations' },
+  { label: 'Citations', path: '/players/$playerSlug/career/citations' },
   { label: 'Pass saisonnier', path: '/players/$playerSlug/career/season-pass' },
 ] as const
 
@@ -43,7 +43,7 @@ const CAREER_TABS_H5 = [
   { label: 'Progression', path: '/players/$playerSlug/career' },
   // Halo 5 : commendations natives, libellé FR « Citations » (terme officiel Halo
   // FR, cohérent avec Infinite et l'onglet L1).
-  { label: 'Citations', path: '/players/$playerSlug/commendations' },
+  { label: 'Citations', path: '/players/$playerSlug/career/commendations' },
 ] as const
 
 // Communauté : aligné sur le dropdown L1 (NavL1 section 'community'). Face-à-face
@@ -63,6 +63,8 @@ const PERSONAL_STATS_RE = /\/players\/[^/]+\/stats\/(summary|maps-modes|distribu
 
 function detectSection(pathname: string): ActiveSection {
   if (PERSONAL_STATS_RE.test(pathname)) return null
+  // Synthèse gère sa propre barre de filtres (PeriodePill/SaisonPill) → pas de NavL2.
+  if (/\/players\/[^/]+\/stats\/synthesis/.test(pathname)) return null
   if (/\/players\/[^/]+\/stats\//.test(pathname)) return 'stats'
   if (/\/players\/[^/]+\/squad/.test(pathname)) return 'squad'
   if (/\/players\/[^/]+\/(career|citations|commendations)/.test(pathname)) return 'career'
