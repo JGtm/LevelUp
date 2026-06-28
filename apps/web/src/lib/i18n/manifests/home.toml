@@ -187,6 +187,32 @@ en = "No highlight available"
 fr = "Le backend n'a renvoyé aucun highlight exploitable pour cette période."
 en = "Backend returned no exploitable highlight for this period."
 
+# ─── Section Citations bientôt terminées ──────────────────────────────────
+
+[home.near_completion.section_title]
+fr = "Citations bientôt terminées"
+en = "Citations nearing completion"
+
+[home.near_completion.section_tooltip]
+fr = "Citations les plus proches de leur prochain palier — celles à franchir en priorité pour progresser."
+en = "Citations closest to their next tier — the ones to push over the line first."
+
+[home.near_completion.remaining]
+fr = "Plus que {count} avant le palier"
+en = "{count} to next tier"
+
+[home.near_completion.final_tier]
+fr = "Maîtrise proche"
+en = "Mastery close"
+
+[home.near_completion.tier_progress]
+fr = "Palier {index}/{count}"
+en = "Tier {index}/{count}"
+
+[home.near_completion.view_all]
+fr = "Voir toutes les citations"
+en = "View all citations"
+
 # ─── Section Matchs récents/favoris ───────────────────────────────────────
 
 [home.matches.recent_title]
