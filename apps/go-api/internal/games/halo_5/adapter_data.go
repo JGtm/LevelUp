@@ -291,41 +291,57 @@ func (a *DataAdapter) LoadPlayerStats(ctx context.Context, xuid string, _ canoni
 	return &canonical.PlayerStats{Identity: h5Identity(gamertag)}, nil
 }
 
-// LoadCareerSnapshot projette le pic CSR natif (service record) vers CareerSnapshot.
-// `xuid` = GAMERTAG. Halo 5 n'a pas de progression XP facon rang carriere HINF :
-// seuls le palier CSR (RankTier/RankName) et la valeur Onyx sont alimentes.
+// LoadCareerSnapshot projette la carrière Halo 5 (palier CSR + rang XP « SR ») vers
+// CareerSnapshot. `xuid` = GAMERTAG. Stratégie LIVE-FIRST → FALLBACK LOCAL : on tente
+// d'abord le live (rang FRAIS, token du joueur) ; s'il est indisponible — token du
+// joueur mort (RT révoqué), démo (aucun token), ou panne gracieuse — on sert le rang
+// PERSISTÉ depuis le DuckDB synchronisé (title-agnostic, sans dépendre du token du
+// joueur consulté). Ainsi la carrière d'un joueur SUIVI par l'app ne disparaît jamais
+// parce que SON refresh_token est mort.
 func (a *DataAdapter) LoadCareerSnapshot(ctx context.Context, xuid string, _ canonical.CareerOptions) (*canonical.CareerSnapshot, error) {
 	gamertag := xuid
-	// Source LOCALE (DuckDB synchronisé) prioritaire si injectée : sert le rang
-	// hors-ligne (démo, aucun token → l'API live échouerait). Dégrade vers le live
-	// uniquement si la lecture DB échoue ET qu'une source live existe.
+	if snap, ok := a.liveCareerSnapshot(ctx, gamertag); ok {
+		return snap, nil
+	}
 	if a.careerLocal != nil {
 		if snap := a.localCareerSnapshot(ctx, gamertag); snap != nil {
 			return snap, nil
 		}
-		if a.newSource == nil {
-			return &canonical.CareerSnapshot{Player: h5Identity(gamertag)}, nil
-		}
 	}
-	src, err := a.resolveSource(ctx)
-	if err != nil {
+	// Aucune source exploitable : si même la voie live n'est pas câblée (builder
+	// global live-only, newSource nil) ET pas de local → capability indisponible
+	// (le caller masque). Sinon snapshot d'identité minimal (live câblé mais vide).
+	if a.newSource == nil && a.careerLocal == nil {
 		return nil, games.ErrCapabilityNotSupported
 	}
-	ctx, cancel := context.WithTimeout(ctx, h5RequestTimeout)
-	defer cancel()
-
-	resp, err := src.GetServiceRecords(ctx, gamertag, h5RecordModeArena)
-	if err != nil {
-		if a.degradeUnavailable(ctx, err, gamertag, "LoadCareerSnapshot") {
-			return &canonical.CareerSnapshot{Player: h5Identity(gamertag)}, nil
-		}
-		return nil, fmt.Errorf("h5 LoadCareerSnapshot(%s): %w", gamertag, err)
-	}
-	if snap := mapCareerSnapshot(resp, gamertag, a.placementTotal); snap != nil {
-		a.enrichSpartanRank(ctx, src, gamertag, snap) // best-effort (rang XP/SR)
-		return snap, nil
-	}
 	return &canonical.CareerSnapshot{Player: h5Identity(gamertag)}, nil
+}
+
+// liveCareerSnapshot tente la voie LIVE (CSR service record + SR carnage du dernier
+// match). (snap, true) si une source live a répondu et produit un snapshot ;
+// (nil, false) si la source/token est absente ou l'appel échoue — gracieux
+// (401/403/404, signal re-auth) OU panne dure (réseau/5xx/décodage), tous deux logués
+// et NON propagés : le fallback local peut couvrir. Le caller bascule alors dessus.
+func (a *DataAdapter) liveCareerSnapshot(ctx context.Context, gamertag string) (*canonical.CareerSnapshot, bool) {
+	src, err := a.resolveSource(ctx)
+	if err != nil {
+		return nil, false
+	}
+	rctx, cancel := context.WithTimeout(ctx, h5RequestTimeout)
+	defer cancel()
+	resp, err := src.GetServiceRecords(rctx, gamertag, h5RecordModeArena)
+	if err != nil {
+		if !a.degradeUnavailable(rctx, err, gamertag, "LoadCareerSnapshot") {
+			a.logger.WarnContext(rctx, "h5 career live: échec dur (fallback local)", "player", gamertag, "err", err)
+		}
+		return nil, false
+	}
+	snap := mapCareerSnapshot(resp, gamertag, a.placementTotal)
+	if snap == nil {
+		return nil, false
+	}
+	a.enrichSpartanRank(rctx, src, gamertag, snap)
+	return snap, true
 }
 
 // enrichSpartanRank ajoute le rang XP (SR) au CareerSnapshot, lu dans la carnage du

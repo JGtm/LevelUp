@@ -61,6 +61,26 @@ Cas dégradé Explorer (identity==null) couvert pour H5 : bandeau par défaut (e
 
 ---
 
+## [2026-06-28] H5 rang/XP (SR) absent pour les joueurs au RT mort — dé-pin pool + serve-persisted + backfill — COMPLÉTÉ + vérifié
+
+**Symptôme** : le rang/XP Halo 5 de Chocoboflor/Madina97294/XxDaemonGamerxX (les 3 joueurs au refresh_token mort, cf. bandeau reauth) ne s'affiche pas. L'utilisateur note à raison que ces stats ne sont PAS gatées derrière le token du joueur.
+
+**Diagnostic (vérifié code + 4 DB H5 copiées en local)** :
+- Le SR (Spartan Rank 1..152 + XP) vient du `XpInfo` de la **carnage** (`dto_carnage.go` — l'API renvoie `SpartanRank` ET `TotalXP` directement, confirmé sur `.ai/H5_EXPLORATION/03_carnage_ranked_SAMPLE.json`). Public, récupérable par matchID avec n'importe quel token.
+- MAIS le code pinne le token du joueur à 2 endroits : sync (`acquire.go` `PolicyPinnedPlayer`, strict — `ErrNoTokenForPlayer` si RT mort, pas de fallback) et live serving (`LoadCareerSnapshot` → ctx token du joueur). Pour les 3 RT morts → rien.
+- `career_progression` avait **0 ligne SR pour les 4 joueurs** (JGtm inclus) : `writeCareerSR` jamais déclenché (backfill jamais lancé + pas de nouveaux matchs H5). En prod, `WithCareerSource` était **gaté DÉMO** → carrière H5 servie 100% live.
+
+**Fix livré (3 parties, branche `fix/h5-career-rank-xp-pool-fallback`)** :
+1. **Serve-persisted** : `LoadCareerSnapshot` passé en **live-first → fallback local** (+ helper `liveCareerSnapshot`) ; `WithCareerSource` dé-gaté prod (kill-feed reste démo). → la carrière d'un joueur au RT mort ne disparaît plus. 2 tests.
+2. **Dé-pin sync** : `acquire.go` `PolicyPinnedPlayer` → fallback `PolicyAnyPublic` si le RT du joueur est mort (achievements échoue best-effort, inchangé). 3 tests. → futurs matchs des RT morts persistent CSR+SR via le pool.
+3. **Backfill SR historique (one-shot prod)** : `cmd/h5-csr-match-backfill` + `LEVELUP_H5_AUTH_AS=JGtm` (token emprunté sain → carnage publique des 3 joueurs), exécuté dans un conteneur `golang:1.26` jetable (binaire pré-build app en ligne ; coupure ~25 s pour le run, app stoppée → zéro contention lock DuckDB mono-process/B-swap). maxMatches=15 (matchs récents = SR courant). Résultat : SR écrits Chocoboflor=14 / Madina=15 / XxDaemon=15 / JGtm=15. Vérifié : Chocoboflor 0→14 lignes SR, **SR 122** (~4,7M XP, dernier match avril 2023).
+
+**Reste** : commit 1+2 + merge main → deploy (la prod sert live-only tant que le dé-gate n'est pas déployé → le SR backfillé ne s'affiche qu'après deploy).
+
+**Note durable** : tout chemin public H5 (stats/carnage) devrait à terme préférer le pool ; le live serving reste pinné (hors scope, couvert par le fallback local persisté). Helper `srFromTotalXP` évoqué, non implémenté (l'API fournit déjà le SR).
+
+---
+
 ## [2026-06-28] Accueil — section « Citations bientôt terminées » (au-dessus des tuiles de matchs) — COMPLÉTÉ + vérifié
 
 **Tâche** : ajouter sur l'accueil un bloc des citations les plus proches de leur prochain palier, juste au-dessus des tuiles de matchs (option « A » ; la réorganisation libre de l'accueil « B/C » a été chiffrée mais écartée comme spéculative — YAGNI).

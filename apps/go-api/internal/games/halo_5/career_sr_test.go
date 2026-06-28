@@ -2,8 +2,10 @@ package halo_5
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -192,5 +194,65 @@ func TestBuildSpartanRankCatalog(t *testing.T) {
 	}
 	if e, _ := cat.Get(h5MaxSpartanRank); e.XPRequired != 0 {
 		t.Errorf("Get(%d).XPRequired = %d, want 0 (max, pas de rang suivant)", h5MaxSpartanRank, e.XPRequired)
+	}
+}
+
+// fakeCareerLocal implémente CareerLocalSource (substrat DuckDB synchronisé) sans DB.
+type fakeCareerLocal struct {
+	data *domain.H5CareerLocal
+	err  error
+}
+
+func (f fakeCareerLocal) GetLatestCareer(context.Context) (*domain.H5CareerLocal, error) {
+	return f.data, f.err
+}
+
+// TestLoadCareerSnapshot_LiveFails_FallbackLocalSR : quand le live échoue (token du
+// joueur mort — RT révoqué), LoadCareerSnapshot sert le rang SR + l'XP PERSISTÉS depuis
+// la source locale. Résilience clé : la carrière d'un joueur SUIVI ne disparaît pas
+// parce que SON refresh_token est mort (le rang/XP ne dépend pas du token du joueur).
+func TestLoadCareerSnapshot_LiveFails_FallbackLocalSR(t *testing.T) {
+	live := &fakeSource{srErr: errors.New("token mort (RT révoqué)")} // voie live KO
+	local := fakeCareerLocal{data: &domain.H5CareerLocal{
+		HasCSR: true, CSRTier: "Diamond", CSRSubTier: 5,
+		SpartanRank: 111, TotalXP: 3908120,
+	}}
+	a := NewDataAdapter(srcFactory(live), nil).WithCareerSource(local)
+
+	snap, err := a.LoadCareerSnapshot(context.Background(), "JGtm", canonical.CareerOptions{})
+	if err != nil {
+		t.Fatalf("LoadCareerSnapshot: %v", err)
+	}
+	if snap == nil {
+		t.Fatal("snapshot nil — le fallback local aurait dû servir le rang persisté")
+	}
+	if snap.RankNumber != 111 {
+		t.Errorf("RankNumber (SR) = %d, want 111 (servi depuis le local après échec live)", snap.RankNumber)
+	}
+	if snap.XPTotal == nil || *snap.XPTotal != 3908120 {
+		t.Errorf("XPTotal = %v, want 3908120 (TotalXP local)", snap.XPTotal)
+	}
+	if snap.RankTier == nil || *snap.RankTier == "" {
+		t.Error("RankTier (CSR) devrait être posé depuis le local")
+	}
+}
+
+// TestLoadCareerSnapshot_LiveOK_PrefersLive : quand le live répond, on le sert (frais)
+// SANS toucher au local — pas de régression de fraîcheur pour un joueur au token sain.
+func TestLoadCareerSnapshot_LiveOK_PrefersLive(t *testing.T) {
+	live := &fakeSource{
+		sr:      mustServiceRecord(t),
+		matches: &H5MatchesResponse{Results: nil}, // pas de match → SR live non enrichi
+	}
+	// Local renvoie un SR ARBITRAIRE différent : il NE doit PAS être servi si le live marche.
+	local := fakeCareerLocal{data: &domain.H5CareerLocal{SpartanRank: 1, TotalXP: 1}}
+	a := NewDataAdapter(srcFactory(live), nil).WithCareerSource(local)
+
+	snap, err := a.LoadCareerSnapshot(context.Background(), "JGtm", canonical.CareerOptions{})
+	if err != nil {
+		t.Fatalf("LoadCareerSnapshot: %v", err)
+	}
+	if snap.RankNumber == 1 {
+		t.Error("le local (SR1) a été servi alors que le live répondait — live-first violé")
 	}
 }

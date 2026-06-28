@@ -189,13 +189,14 @@ func registerHalo5Adapters(
 			// gamertag) — match_commendations.xuid = l'xuid Xbox résolu au sync.
 			da = da.WithCommendationTotals(
 				platform_duckdb.NewHalo5CommendationTotalsSource(pdb.SharedReadDB(), pdb.XUID))
-			// Career + kill-feed LOCAUX (DuckDB) — gatés DÉMO : servent le rang CSR/SR et
-			// la timeline de kills hors-ligne (aucun token en démo → les API cryptum live
-			// échoueraient). En prod, ces surfaces restent live (comportement inchangé).
-			// Données = player DB (career) + shared synchronisé (kill-feed : killer_victim_pairs
-			// ⨝ weapon_kills ⨝ kill_positions).
+			// Career LOCAL (DuckDB synchronisé) : servi en FALLBACK du live (LoadCareerSnapshot
+			// est live-first → local). Désormais injecté EN PROD aussi : garantit que le rang/XP
+			// d'un joueur SUIVI ne disparaît pas quand SON refresh_token est mort (le live échoue,
+			// le persisté couvre). Données = player DB (career_progression SR + player_csr_snapshots).
+			da = da.WithCareerSource(platform_duckdb.NewHalo5CareerSource(pdb))
+			// Kill-feed LOCAL : reste gaté DÉMO (timeline hors-ligne sans token ; en prod la
+			// voie /events live est conservée — hors scope de ce fix).
 			if reg.cfg.DemoMode {
-				da = da.WithCareerSource(platform_duckdb.NewHalo5CareerSource(pdb))
 				da = da.WithMatchEventsSource(platform_duckdb.NewHalo5MatchEventsSource(pdb.SharedReadDB()))
 			}
 		}
