@@ -53,6 +53,7 @@ export function ExplorerTargetIdentityBanner({
     tertiary: spartanApp.tertiary,
   }
   const spartanEmblemId = spartanApp.emblemId ?? '160'
+  const spartanNameplateId = spartanApp.nameplateId ?? '160'
 
   const monogram = gamertag.trim().slice(0, 1).toUpperCase() || 'S'
   const bannerUrl = identity?.banner_image_url ?? null
@@ -77,7 +78,7 @@ export function ExplorerTargetIdentityBanner({
         <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="relative overflow-hidden">
             <RecoloredMask
-              src={`/titles/halo_5/spartan/nameplates/${spartanEmblemId}.png`}
+              src={`/titles/halo_5/spartan/nameplates/${spartanNameplateId}.png`}
               colors={spartanColors}
               alt=""
               className="pointer-events-none absolute inset-0 h-full w-full object-cover"
@@ -148,7 +149,7 @@ export function ExplorerTargetIdentityBanner({
           {synthesizeBanner && (
             <>
               <RecoloredMask
-                src={`/titles/halo_5/spartan/nameplates/${spartanEmblemId}.png`}
+                src={`/titles/halo_5/spartan/nameplates/${spartanNameplateId}.png`}
                 colors={spartanColors}
                 alt=""
                 className="pointer-events-none absolute inset-0 h-full w-full object-cover"
