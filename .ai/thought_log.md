@@ -1,3 +1,32 @@
+## [2026-06-28] Spartan customizer title-agnostic + grille recolorisée en direct — COMPLÉTÉ + vérifié
+
+**Tâche** : (1) rendre le personnalisateur Spartan réutilisable au max (pas Halo-5-en-dur) ; (2) fixer les vignettes de la grille « quasi toutes blanches ».
+
+**Title-agnostic** :
+- **Gating par CAPABILITY, pas par slug** : `synthesizeBanner = useCapability('spartan_customizer')` dans `HomeSpartanIdentityBanner` + `ExplorerTargetIdentityBanner` (remplace `currentTitleSlug === 'halo_5'`). La capability n'est déclarée que dans `config/titles/halo_5/title.toml` → comportement inchangé mais extensible.
+- **Chemin d'assets dérivé du slug actif** : `` `/titles/${currentTitleSlug}/spartan` `` (modale `base` + 2 bannières) — plus de `/titles/halo_5/spartan` en dur.
+- **Store clé par titre** : `byTitle[slug]` + hook `useSpartanAppearance(slug)` + `setAppearance(slug, a)`. Migration persist v2 (ancien `{appearance}` global → `byTitle.halo_5`). Chaque titre garde son apparence (ids emblème/bannière title-specific).
+- Reste assumé : défaut `#160` (un titre doit fournir un asset id 160, sinon la modale resélectionne le 1er id du catalogue).
+
+**Grille recolorisée en direct (fix vignettes blanches)** :
+- Cause : vignettes `*_thumb_colored` cuites avec la tertiaire **blanche** par défaut → plaques blanches indistinctes (l'aperçu, lui, recolorisait en direct = correct).
+- Fix : la grille utilise `RecoloredMask` (recolor live, couleurs du brouillon) sur des **mini-masques bruts** `*_thumb_raw` (nameplates 160×34, emblèmes 80×80, opaques) générés par `_aipipe rawthumbs`. Les `*_thumb_colored` figées sont supprimées. Bonus réutilisabilité : plus d'étape « cuire des vignettes colorisées par titre ».
+- `RecoloredMask` rendu **lazy** (IntersectionObserver + fallback eager si indispo/jsdom) → grille de 300+ masques fluide.
+- Limite inhérente : beaucoup de nameplates Halo 5 sont des plaques quasi unies → restent proches entre elles.
+
+**UX clarté (retour user « je comprends pas comment colorer / lequel est sélectionné »)** :
+- Défaut tertiaire blanc `#f1f3f5` → **or** `#f0a500` : la tertiaire est la teinte de la plaque sur la plupart des nameplates → défaut plus « tout blanc » (joueur libre de reprendre blanc/argent).
+- **Indication de sélection** renforcée dans la grille : bordure primaire épaisse + ring + **badge ✓** sur l'élément choisi (tokens sémantiques `primary`).
+- Description modale clarifiée : « Choisis un emblème et une bannière (onglets), puis tes couleurs — elles s'appliquent aux deux » (i18n FR+EN régénéré). Les 3 lignes de couleurs s'appliquent à l'emblème ET à la bannière (pas de sélection par-item).
+
+**Tests** : 4 tests bannière/HomePage étaient **périmés** (assertaient l'ancien comportement Halo-5 + ne posaient pas `availableTitles` → `useCapability` fail-open=true → synthèse inattendue). Corrigés : `availableTitles` déterministe (titre avec/sans `spartan_customizer` ; HomePage = toutes caps SAUF customizer pour garder les skill peaks). **Piège** : `useCapability` fail-open → tout test rendant ces bannières DOIT poser `availableTitles`.
+
+**Vérif** : tsc OK ; eslint 0 (fichiers touchés) ; vitest 106/106 (spartan-customizer + home + explorer). Assets : 308 nameplates / 320 emblèmes, `*_thumb_raw` 308/320.
+
+**Statut** : COMPLÉTÉ sur branche `feat/spartan-customizer-title-agnostic` (worktree). PAS de commit sans accord. Suite : commit + flow git (push branche + merge `main` local sans push).
+
+---
+
 ## [2026-06-28] Cohérence navigation — Phase 1 : rename /palmares → /community (+ Face-à-face) — COMPLÉTÉ + vérifié
 
 **Tâche** : refonte cohérence nav (plan 3 phases, `.ai/plans` zany-growing-marble). Phase 1 = aligner l'URL sur le libellé « Communauté ».

@@ -2,11 +2,12 @@
  * Tests ExplorerTargetIdentityBanner — rendu emblème / bannière / adornment
  * (parité visuelle Home) + cas dégradé identity=null.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, beforeEach, afterEach } from 'vitest'
 import { screen } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
-import type { HomeSpartanIdentity } from '@/lib/api/types'
+import { useAppShellStore } from '@/stores/appShellStore'
+import type { HomeSpartanIdentity, TitleSummary } from '@/lib/api/types'
 
 import { ExplorerTargetIdentityBanner } from './ExplorerTargetIdentityBanner'
 
@@ -40,6 +41,27 @@ function render(identity: HomeSpartanIdentity | null) {
 }
 
 describe('ExplorerTargetIdentityBanner', () => {
+  // Titre courant SANS spartan_customizer → bandeau normal (emblème <img>, pas la
+  // synthèse). Sinon useCapability fail-open (availableTitles vide) → synthèse Halo 5.
+  beforeEach(() => {
+    useAppShellStore.setState({
+      currentTitleSlug: 'halo_infinite',
+      availableTitles: [
+        {
+          slug: 'halo_infinite',
+          name: 'Halo Infinite',
+          status: 'active',
+          capabilities: [],
+          is_default: true,
+          effective_hp_to_kill: 225,
+        } as unknown as TitleSummary,
+      ],
+    })
+  })
+  afterEach(() => {
+    useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', availableTitles: [] })
+  })
+
   it('rend emblème, bannière, rang et adornment quand tout est fourni', () => {
     render(IDENTITY_FULL)
 

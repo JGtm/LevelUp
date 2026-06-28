@@ -10,6 +10,8 @@ import type { ReactNode } from 'react'
 import { renderWithProviders } from '@/test/render-utils'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { TITLE_CAPABILITIES } from '@/lib/capabilities/capabilities'
+import type { TitleSummary } from '@/lib/api/types'
 import { HomePage } from './HomePage'
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -46,7 +48,24 @@ describe('HomePage', () => {
   it('affiche le Spartan ID et le rang carrière localisé dans Performance globale', async () => {
     const previousLocale = useAppShellStore.getState().locale
     act(() => {
-      useAppShellStore.setState({ locale: 'en' })
+      // Titre courant SANS spartan_customizer → bandeau d'identité normal (emblème <img>),
+      // pas la synthèse Halo 5 (useCapability fail-open si availableTitles vide).
+      useAppShellStore.setState({
+        locale: 'en',
+        currentTitleSlug: 'halo_infinite',
+        availableTitles: [
+          {
+            slug: 'halo_infinite',
+            name: 'Halo Infinite',
+            status: 'active',
+            // Toutes les capabilities SAUF spartan_customizer → bandeau normal (emblème
+            // <img>) + panneau skill peaks (ranked/lusr) visible.
+            capabilities: TITLE_CAPABILITIES.filter((c) => c !== 'spartan_customizer'),
+            is_default: true,
+            effective_hp_to_kill: 225,
+          } as unknown as TitleSummary,
+        ],
+      })
     })
 
     server.use(
@@ -136,7 +155,7 @@ describe('HomePage', () => {
       expect(screen.getByTestId('home-career-rank-progress-fill')).toHaveStyle({ width: '50%' })
     } finally {
       act(() => {
-        useAppShellStore.setState({ locale: previousLocale })
+        useAppShellStore.setState({ locale: previousLocale, availableTitles: [] })
       })
     }
   })

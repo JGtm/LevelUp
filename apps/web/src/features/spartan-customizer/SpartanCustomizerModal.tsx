@@ -8,11 +8,10 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { RecoloredMask } from './RecoloredMask'
 import {
   DEFAULT_SPARTAN_APPEARANCE,
+  useSpartanAppearance,
   useSpartanAppearanceStore,
   type SpartanAppearance,
 } from './store'
-
-const SPARTAN_BASE = '/titles/halo_5/spartan'
 
 type BrowseTab = 'emblem' | 'nameplate'
 
@@ -60,9 +59,12 @@ function ColorRow({
 
 export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
   const locale = useAppShellStore((s) => s.locale)
+  const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const t = (key: HomeManifestKey) => formatMessage(homeManifest, key, locale)
 
-  const saved = useSpartanAppearanceStore((s) => s.appearance)
+  // Chemin d'assets dérivé du titre actif (title-agnostic) — pas de slug en dur.
+  const base = `/titles/${currentTitleSlug}/spartan`
+  const saved = useSpartanAppearance(currentTitleSlug)
   const setAppearance = useSpartanAppearanceStore((s) => s.setAppearance)
 
   const [emblemIds, setEmblemIds] = useState<string[]>([])
@@ -73,7 +75,7 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
   // Catalogue (asset statique same-origin) — listes distinctes emblèmes / bannières.
   useEffect(() => {
     let cancelled = false
-    fetch(`${SPARTAN_BASE}/spartan-catalog.json`)
+    fetch(`${base}/spartan-catalog.json`)
       .then((r) => r.json() as Promise<SpartanCatalog>)
       .then((cat) => {
         if (cancelled) return
@@ -94,7 +96,7 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [base])
 
   // Fermeture au clavier
   useEffect(() => {
@@ -114,14 +116,16 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
   const isEmblemTab = tab === 'emblem'
   const browseIds = isEmblemTab ? emblemIds : nameplateIds
   const browseActiveId = isEmblemTab ? draft.emblemId : draft.nameplateId
-  const thumbDir = isEmblemTab ? 'emblems_thumb_colored' : 'nameplates_thumb_colored'
+  // Grille recolorisée EN DIRECT (mini-masques bruts) avec les couleurs du brouillon —
+  // les motifs ressortent dans la palette choisie (vs vignettes figées blanches).
+  const rawThumbDir = isEmblemTab ? 'emblems_thumb_raw' : 'nameplates_thumb_raw'
 
   function pickItem(id: string) {
     setDraft((d) => (isEmblemTab ? { ...d, emblemId: id } : { ...d, nameplateId: id }))
   }
 
   function handleSave() {
-    setAppearance(draft)
+    setAppearance(currentTitleSlug, draft)
     onClose()
   }
 
@@ -171,7 +175,7 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
         <div className="flex flex-wrap items-center justify-center gap-8 border-b border-border bg-muted/30 px-5 py-5">
           {draft.emblemId && (
             <RecoloredMask
-              src={`${SPARTAN_BASE}/emblems/${draft.emblemId}.png`}
+              src={`${base}/emblems/${draft.emblemId}.png`}
               colors={colors}
               alt={t('home.spartan_customizer.emblem_preview')}
               className="h-28 w-28 object-contain"
@@ -179,7 +183,7 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
           )}
           {draft.nameplateId && (
             <RecoloredMask
-              src={`${SPARTAN_BASE}/nameplates/${draft.nameplateId}.png`}
+              src={`${base}/nameplates/${draft.nameplateId}.png`}
               colors={colors}
               alt={t('home.spartan_customizer.nameplate_preview')}
               className="h-28 w-auto max-w-full object-contain"
@@ -247,20 +251,27 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
                     aria-pressed={active}
                     aria-label={`#${id}`}
                     className={[
-                      'overflow-hidden rounded-lg border bg-muted/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      'relative overflow-hidden rounded-lg border-2 bg-muted/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       isEmblemTab ? 'aspect-square' : 'aspect-[200/42]',
                       active
-                        ? 'border-primary ring-2 ring-ring'
+                        ? 'border-primary ring-2 ring-primary'
                         : 'border-border hover:border-primary/60',
                     ].join(' ')}
                   >
-                    <img
-                      src={`${SPARTAN_BASE}/${thumbDir}/${id}.png`}
+                    <RecoloredMask
+                      src={`${base}/${rawThumbDir}/${id}.png`}
+                      colors={colors}
                       alt={`#${id}`}
-                      loading="lazy"
-                      decoding="async"
                       className="h-full w-full object-contain"
                     />
+                    {active && (
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow"
+                      >
+                        ✓
+                      </span>
+                    )}
                   </button>
                 )
               })}
