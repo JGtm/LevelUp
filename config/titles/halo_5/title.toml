@@ -49,4 +49,7 @@ capabilities = [
   "lusr",
   "media",
   "native_kill_mechanics",
+  # Personnalisateur Spartan (modale home) : masques emblèmes/nameplates recolorisables
+  # côté client. Halo-5-only (masques extraits du jeu). Cf. .ai/PLAN_H5_SPARTAN_CUSTOMIZER.md
+  "spartan_customizer",
 ]

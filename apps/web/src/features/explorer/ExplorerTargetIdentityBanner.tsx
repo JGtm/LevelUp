@@ -18,6 +18,8 @@ import { HomeSkillPeakCard, resolveSkillPeakState } from '@/features/home/HomeSk
 import { getSpartanIdentityText } from '@/features/home/spartanIdentity.i18n'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { HomeSpartanIdentity } from '@/lib/api/types'
+import { RecoloredMask } from '@/features/spartan-customizer/RecoloredMask'
+import { useSpartanAppearanceStore } from '@/features/spartan-customizer/store'
 
 interface ExplorerTargetIdentityBannerProps {
   identity: HomeSpartanIdentity | null
@@ -40,6 +42,17 @@ export function ExplorerTargetIdentityBanner({
   // Labels localisés réutilisés du Home (source unique : home.spartan.*) :
   // « Meilleur CSR/LUSR », « Rang max », « Progression vers … ».
   const { labels } = getSpartanIdentityText(locale)
+  // Halo 5 : bandeau composé (emblème carré + nameplate recolorisés, apparence
+  // choisie-ou-défaut #160) — parité avec HomeSpartanIdentityBanner.
+  const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const synthesizeBanner = currentTitleSlug === 'halo_5'
+  const spartanApp = useSpartanAppearanceStore((s) => s.appearance)
+  const spartanColors = {
+    primary: spartanApp.primary,
+    secondary: spartanApp.secondary,
+    tertiary: spartanApp.tertiary,
+  }
+  const spartanEmblemId = spartanApp.emblemId ?? '160'
 
   const monogram = gamertag.trim().slice(0, 1).toUpperCase() || 'S'
   const bannerUrl = identity?.banner_image_url ?? null
@@ -57,6 +70,42 @@ export function ExplorerTargetIdentityBanner({
 
   // Cas dégradé : aucune identité.
   if (identity == null) {
+    // Halo 5 : même sans identité (nouveau joueur), on affiche le bandeau par défaut
+    // (emblème + nameplate recolorisés #160) plutôt qu'un placeholder vide.
+    if (synthesizeBanner) {
+      return (
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="relative overflow-hidden">
+            <RecoloredMask
+              src={`/titles/halo_5/spartan/nameplates/${spartanEmblemId}.png`}
+              colors={spartanColors}
+              alt=""
+              className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+            />
+            <div
+              className="pointer-events-none absolute inset-0 bg-gradient-to-r from-background/85 via-background/40 to-background/15"
+              aria-hidden="true"
+            />
+            <div className="relative z-[2] flex min-h-[7rem] items-center gap-4 px-5 py-5">
+              <RecoloredMask
+                src={`/titles/halo_5/spartan/emblems/${spartanEmblemId}.png`}
+                colors={spartanColors}
+                alt=""
+                className="h-16 w-16 shrink-0 object-contain drop-shadow-[0_2px_6px_rgba(8,15,28,0.5)] sm:h-20 sm:w-20"
+              />
+              <div className="flex min-w-0 flex-col">
+                <h2 className="truncate text-2xl font-bold text-foreground text-shadow-adaptive sm:text-3xl">
+                  {gamertag}
+                </h2>
+                <p className="text-sm font-semibold text-muted-foreground">
+                  {identityUnavailableLabel}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="overflow-hidden rounded-2xl border border-dashed border-border bg-muted/30 px-5 py-6">
         <div className="flex items-center gap-4">
@@ -96,6 +145,20 @@ export function ExplorerTargetIdentityBanner({
             arrondis de l'outer → liseré/trou à gauche sur certaines nameplates
             (régression récurrente du fork dégradé du banner Home). */}
         <div className="relative overflow-hidden">
+          {synthesizeBanner && (
+            <>
+              <RecoloredMask
+                src={`/titles/halo_5/spartan/nameplates/${spartanEmblemId}.png`}
+                colors={spartanColors}
+                alt=""
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+              />
+              <div
+                className="pointer-events-none absolute inset-0 bg-gradient-to-r from-background/85 via-background/40 to-background/15"
+                aria-hidden="true"
+              />
+            </>
+          )}
           {bannerUrl && (
             <div
               className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/30 via-background/10 to-background/50"
@@ -129,7 +192,14 @@ export function ExplorerTargetIdentityBanner({
           >
             {/* Emblem */}
             <div className="relative z-[2] flex-shrink-0">
-              {emblemUrl ? (
+              {synthesizeBanner ? (
+                <RecoloredMask
+                  src={`/titles/halo_5/spartan/emblems/${spartanEmblemId}.png`}
+                  colors={spartanColors}
+                  alt=""
+                  className="h-16 w-16 object-contain drop-shadow-[0_2px_6px_rgba(8,15,28,0.5)] sm:h-20 sm:w-20"
+                />
+              ) : emblemUrl ? (
                 <img
                   data-testid="explorer-target-emblem"
                   src={emblemUrl}

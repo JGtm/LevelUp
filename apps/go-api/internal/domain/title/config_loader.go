@@ -45,6 +45,7 @@ var knownCapabilities = map[Capability]struct{}{
 	CapWeaponKills:         {},
 	CapTeamMMR:             {},
 	CapDamageTaken:         {},
+	CapSpartanCustomizer:   {},
 }
 
 func knownStatus(s Status) bool {

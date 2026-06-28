@@ -155,6 +155,19 @@ export const homeManifest = {
   "home.spartan.max_rank": { fr: "Rang max", en: "Max rank" },
   "home.spartan.progress_towards_rank": { fr: "Progression vers {name}", en: "Progress towards {name}" },
   "home.spartan.rank_prefix": { fr: "Rang", en: "Rank" },
+  "home.spartan_customizer.cancel": { fr: "Annuler", en: "Cancel" },
+  "home.spartan_customizer.choose_emblem": { fr: "Emblème", en: "Emblem" },
+  "home.spartan_customizer.close": { fr: "Fermer", en: "Close" },
+  "home.spartan_customizer.description": { fr: "Choisis un emblème et tes couleurs. L'aperçu se met à jour en direct.", en: "Pick an emblem and your colors. The preview updates live." },
+  "home.spartan_customizer.emblem_preview": { fr: "Emblème", en: "Emblem" },
+  "home.spartan_customizer.nameplate_preview": { fr: "Nameplate", en: "Nameplate" },
+  "home.spartan_customizer.open_aria": { fr: "Personnaliser l'identité Spartan", en: "Customize Spartan identity" },
+  "home.spartan_customizer.primary": { fr: "Couleur primaire", en: "Primary color" },
+  "home.spartan_customizer.reset": { fr: "Réinitialiser", en: "Reset" },
+  "home.spartan_customizer.save": { fr: "Enregistrer", en: "Save" },
+  "home.spartan_customizer.secondary": { fr: "Couleur secondaire", en: "Secondary color" },
+  "home.spartan_customizer.tertiary": { fr: "Couleur tertiaire", en: "Tertiary color" },
+  "home.spartan_customizer.title": { fr: "Personnalisation Spartan", en: "Spartan customization" },
 } as const
 
 export type HomeManifestKey = keyof typeof homeManifest
