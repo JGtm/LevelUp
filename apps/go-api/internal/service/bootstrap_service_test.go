@@ -180,10 +180,11 @@ func TestBuild_HaloLinkedNoProfile(t *testing.T) {
 	}
 }
 
-// TestBuild_ReauthRequired_NoCurrentPlayer_False : sans joueur courant, le flag
-// reauth_required reste false même si le checker retournerait true (garde PR-B).
-func TestBuild_ReauthRequired_NoCurrentPlayer_False(t *testing.T) {
-	cfg := &config.AppConfig{} // 0 joueur → currentPlayer nil
+// TestBuild_ReauthRequired_NoOwnIdentity_False : sans identité propre en session
+// (ni username ni identité Halo liée), le flag reauth_required reste false même
+// si le checker retournerait true (garde PR-B / scope compte).
+func TestBuild_ReauthRequired_NoOwnIdentity_False(t *testing.T) {
+	cfg := &config.AppConfig{}
 	svc := NewBootstrapService(cfg, &mockBootRepo{}).
 		WithReauthChecker(func(string) bool { return true })
 
@@ -192,7 +193,57 @@ func TestBuild_ReauthRequired_NoCurrentPlayer_False(t *testing.T) {
 		t.Fatalf("Build: %v", err)
 	}
 	if resp.ReauthRequired {
-		t.Error("reauth_required doit être false sans joueur courant (garde)")
+		t.Error("reauth_required doit être false sans identité propre (garde)")
+	}
+}
+
+// TestBuild_ReauthRequired_ScopedToOwnAccount : un admin dont le RT est sain ne
+// doit JAMAIS voir le bandeau, même quand d'autres joueurs (qu'il peut consulter)
+// ont un refresh_token mort. Le flag est scopé à SON propre xuid, pas au joueur
+// courant affiché.
+func TestBuild_ReauthRequired_ScopedToOwnAccount(t *testing.T) {
+	const ownXUID = "2533274823110022" // JGtm, RT sain
+	admin := &domain.User{Username: "jgtm_xbox", XUID: ownXUID, Role: domain.RoleAdmin}
+	lookup := fakeBootstrapLookup{
+		byName: map[string]*domain.User{"jgtm_xbox": admin},
+		byXUID: map[string]*domain.User{ownXUID: admin},
+	}
+	// Checker "mort pour tout le monde SAUF le compte propre" : simule
+	// Chocoboflor/Madina/XxDaemon morts, JGtm vivant.
+	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{}).
+		WithUserLookup(lookup).
+		WithReauthChecker(func(xuid string) bool { return xuid != ownXUID })
+
+	username := "jgtm_xbox"
+	resp, err := svc.Build(context.Background(), &domain.SessionData{Username: &username})
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if resp.ReauthRequired {
+		t.Error("admin au RT sain : reauth_required doit être false (scope compte, pas joueur courant)")
+	}
+}
+
+// TestBuild_ReauthRequired_OwnAccountDead_True : un user dont SON propre RT est
+// mort voit bien le bandeau (il peut, lui, se reconnecter via le SSO Xbox).
+func TestBuild_ReauthRequired_OwnAccountDead_True(t *testing.T) {
+	const ownXUID = "2535469190789936" // Chocoboflor, RT mort
+	user := &domain.User{Username: "chocoboflor", XUID: ownXUID, Role: domain.RoleUser}
+	lookup := fakeBootstrapLookup{
+		byName: map[string]*domain.User{"chocoboflor": user},
+		byXUID: map[string]*domain.User{ownXUID: user},
+	}
+	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{}).
+		WithUserLookup(lookup).
+		WithReauthChecker(func(xuid string) bool { return xuid == ownXUID })
+
+	username := "chocoboflor"
+	resp, err := svc.Build(context.Background(), &domain.SessionData{Username: &username})
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if !resp.ReauthRequired {
+		t.Error("user au RT mort : reauth_required doit être true (il peut se reconnecter)")
 	}
 }
 

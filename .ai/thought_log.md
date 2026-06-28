@@ -1,3 +1,27 @@
+## [2026-06-28] Bandeau reauth « connexion Xbox expirée » — scope au compte connecté — COMPLÉTÉ + vérifié
+
+**Tâche** : l'utilisateur (JGtm, admin) voit en permanence le bandeau « Ta connexion Xbox a expiré » sur le VPS alors que SON RT est valide. Investiguer (lecture seule VPS via `ssh lvelup`) puis corriger.
+
+**Diagnostic (vérifié sur VPS + code)** : le bandeau front lit `bootstrap.reauth_required`, calculé serveur-side sur **`currentPlayer.XUID`** (le joueur AFFICHÉ), via `reauthStore.IsReauthRequired`. Or :
+- JGtm (`2533274823110022`) est sain : `reauth_required` absent, `oauth_refresh: échange OK` dans `auth.log` aujourd'hui.
+- **3 autres joueurs ont un RT réellement mort depuis le 13/06** (Chocoboflor `…789936`, Madina97294 `…283686`, XxDaemonGamerxX `…178266`) : flag `reauth_required:true` + `cli_auth: refresh_token mort` à chaque cycle (AADSTS70000 × 2256). Confirme la mémoire `feedback_token_model_rt_never_recapture` (ces 3 = comptes à re-capturer par leurs propriétaires).
+- L'utilisateur se connecte en `jgtm_xbox` (**role admin**) → `authz.CanAccessPlayer` admin = voit les 4 joueurs. Le joueur courant par défaut = `ownedPlayers[0]`, et `LoadPlayers` **itère une map Go sans tri** (ordre non-déterministe) → tombe ~3 fois sur 4 sur un joueur mort → bandeau. Un admin ne peut RIEN faire pour le RT d'un tiers (seul le propriétaire se reconnecte) → bandeau trompeur.
+
+**Décision (validée utilisateur)** : scoper le bandeau au **compte connecté**, pas au joueur affiché. (Ordre non-déterministe de `LoadPlayers` + nommage du joueur dans le message = hors-scope, notés comme dette latente — deviennent sans effet sur le bandeau une fois scopé.)
+
+**Implémentation** (`internal/service/bootstrap_service.go`, 1 couche) :
+- `bootstrap.go:205` : `ReauthRequired` = nouveau `resolveReauthRequired(ctx, sess)` (au lieu de `…currentPlayer.XUID…`).
+- helper `ownXUID(sess)` : `authz.CurrentUser(sess, userLookup).XUID` (résout `jgtm_xbox` → xuid JGtm via users.json), fallback `ResolveLinkedIdentity(sess).XUID` si pas de userLookup (mono-user), `""` sinon (password sans lien Halo → pas de bandeau).
+- `slog.DebugContext` quand le flag est positif (traçabilité ops). Câblage `WithReauthChecker(reauthStore.IsReauthRequired)` inchangé ; aucun changement frontend/i18n (le message générique devient exact). Title-agnostic (store auth global).
+
+**Tests** (`bootstrap_service_test.go`) : `…NoCurrentPlayer_False` réorienté → `…NoOwnIdentity_False` ; **2 nouveaux** : `…ScopedToOwnAccount` (admin RT sain, checker « mort sauf soi » → false = cœur du fix) et `…OwnAccountDead_True` (RT propre mort → true).
+
+**Vérif** : `go test ./internal/service/` OK (6.3s, dont 5 reauth/has_password verts) ; `go vet` OK ; `go build ./cmd/server/` OK. Aucune opération VPS (lecture seule). Aucune modif de schéma/auth/store.
+
+**Statut** : Complété. Branche `fix/reauth-banner-scope-own-account`. Prochaine étape : commit (en attente d'accord utilisateur) puis merge `main` → deploy auto. Les 3 comptes morts : action côté propriétaires (re-capture SSO), hors de ce fix.
+
+---
+
 ## [2026-06-28] Accueil — section « Citations bientôt terminées » (au-dessus des tuiles de matchs) — COMPLÉTÉ + vérifié
 
 **Tâche** : ajouter sur l'accueil un bloc des citations les plus proches de leur prochain palier, juste au-dessus des tuiles de matchs (option « A » ; la réorganisation libre de l'accueil « B/C » a été chiffrée mais écartée comme spéculative — YAGNI).
