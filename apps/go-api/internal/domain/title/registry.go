@@ -85,6 +85,13 @@ const (
 	// source projetée dans le DTO bootstrap (availableTitles[].providesDamageTaken) ;
 	// cette cap est le pendant déclaratif dans availableTitles[].capabilities.
 	CapDamageTaken Capability = "damage_taken"
+
+	// CapSpartanCustomizer — le titre fournit des masques d'emblèmes/nameplates
+	// recolorisables côté client (personnalisation Spartan : choix d'emblème + couleurs
+	// primaire/secondaire/tertiaire, rendu live). Halo 5 only (masques extraits du jeu ;
+	// Halo Infinite n'expose pas ces masques recolorisables). Absente ⇒ le front ne
+	// propose pas la modale de personnalisation depuis la bannière d'identité.
+	CapSpartanCustomizer Capability = "spartan_customizer"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
