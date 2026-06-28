@@ -57,7 +57,7 @@ export const PLAYER_SECONDARY_NAV_ITEMS: ShellNavItem[] = [
     description: 'Approfondir, filtrer et descendre dans le détail.',
   },
   {
-    to: '/players/$playerSlug/synthesis',
+    to: '/players/$playerSlug/stats/synthesis',
     label: 'Synthèse',
     eyebrow: 'Recap',
     description: 'Vue consolidée et transversale.',

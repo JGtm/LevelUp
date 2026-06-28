@@ -1,14 +1,8 @@
-/**
- * Route /players/$playerSlug/citations — page Citations dédiée.
- */
-import { createFileRoute } from '@tanstack/react-router'
-import { UnifiedCitationsPage } from '@/features/citations/UnifiedCitationsPage'
-import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
+// Redirection legacy : Citations est passé sous la section Carrière (/career/citations).
 export const Route = createFileRoute('/players/$playerSlug/citations')({
-  component: () => (
-    <RouteCapabilityGate capability="career">
-      <UnifiedCitationsPage source="infinite" />
-    </RouteCapabilityGate>
-  ),
+  beforeLoad: ({ params }) => {
+    throw redirect({ to: '/players/$playerSlug/career/citations', params, replace: true })
+  },
 })

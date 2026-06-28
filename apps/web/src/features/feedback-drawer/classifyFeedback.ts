@@ -98,7 +98,7 @@ export function classifyFeedback(
 }
 
 const AREA_PATTERNS: Array<[RegExp, FeedbackArea]> = [
-  [/\/players\/[^/]+\/synthesis(\/|$|\?)/, 'synthesis'],
+  [/\/players\/[^/]+\/(stats\/)?synthesis(\/|$|\?)/, 'synthesis'],
   [/\/players\/[^/]+\/explorer(\/|$|\?)/, 'explorer'],
   [/\/players\/[^/]+\/squad(\/|$|\?)/, 'squad'],
   [/\/players\/[^/]+\/stats\/sessions(\/|$|\?)/, 'sessions'],
@@ -107,7 +107,7 @@ const AREA_PATTERNS: Array<[RegExp, FeedbackArea]> = [
   [/\/players\/[^/]+\/(community|palmares)/, 'palmares'],
   [/\/players\/[^/]+\/home(\/|$|\?)/, 'player_home'],
   [/\/players\/[^/]+\/media(\/|$|\?)/, 'media'],
-  [/\/players\/[^/]+\/citations(\/|$|\?)/, 'citations'],
+  [/\/players\/[^/]+\/(career\/)?citations(\/|$|\?)/, 'citations'],
   [/\/players\/[^/]+\/career(\/|$|\?)/, 'career'],
   [/\/players\/[^/]+\/notifications(\/|$|\?)/, 'notifications'],
   [/\/players\/[^/]+\/(objectifs|ascension)(\/|$|\?)/, 'objectifs'],

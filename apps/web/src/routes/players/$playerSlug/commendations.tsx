@@ -1,16 +1,8 @@
-/**
- * Route /players/$playerSlug/commendations — page Totaux des commendations natives
- * (Halo 5, AXE B). Réponse vide (état vide) pour les titres sans commendations
- * natives → dégradation gracieuse, pas de gating par slug.
- */
-import { createFileRoute } from '@tanstack/react-router'
-import { UnifiedCitationsPage } from '@/features/citations/UnifiedCitationsPage'
-import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
+// Redirection legacy : Commendations est passé sous la section Carrière (/career/commendations).
 export const Route = createFileRoute('/players/$playerSlug/commendations')({
-  component: () => (
-    <RouteCapabilityGate capability="career">
-      <UnifiedCitationsPage source="native" />
-    </RouteCapabilityGate>
-  ),
+  beforeLoad: ({ params }) => {
+    throw redirect({ to: '/players/$playerSlug/career/commendations', params, replace: true })
+  },
 })
