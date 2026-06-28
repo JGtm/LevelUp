@@ -18,8 +18,8 @@ export const PLAYER_PRIMARY_NAV_ITEMS: ShellNavItem[] = [
     description: 'Briefing, signaux chauds et accès prioritaires.',
   },
   {
-    to: '/players/$playerSlug/palmares',
-    label: 'Palmarès',
+    to: '/players/$playerSlug/community',
+    label: 'Communauté',
     eyebrow: 'Prestige',
     description: 'Classements, relations et face-à-face joueur à joueur.',
   },
@@ -78,11 +78,14 @@ export const GLOBAL_SHELL_LINKS: ShellUtilityLink[] = [
  * sous-onglets) pour garder les deux navs synchronisées.
  */
 export function isCommunityPath(pathname: string): boolean {
-  const palmares =
-    /\/players\/[^/]+\/palmares(?:\/|$)/.test(pathname) &&
-    !/\/palmares\/season-pass/.test(pathname)
-  const compare = /\/players\/[^/]+\/compare/.test(pathname)
-  return palmares || compare
+  const community = /\/players\/[^/]+\/community(?:\/|$)/.test(pathname)
+  // Legacy : ancien /palmares (hors season-pass passé sous Carrière) + ancien /compare,
+  // encore surlignés Communauté le temps que les redirections vers /community s'appliquent.
+  const legacy =
+    (/\/players\/[^/]+\/palmares(?:\/|$)/.test(pathname) &&
+      !/\/palmares\/season-pass/.test(pathname)) ||
+    /\/players\/[^/]+\/compare(?:\/|$)/.test(pathname)
+  return community || legacy
 }
 
 export function buildPlayerDestination(

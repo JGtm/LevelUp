@@ -287,7 +287,7 @@ function MirrorHeader({
 export function ComparePage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const navigate = useNavigate()
-  const search = useSearch({ from: '/players/$playerSlug/compare' }) as {
+  const search = useSearch({ from: '/players/$playerSlug/community/compare' }) as {
     target?: string
     target2?: string
     from?: 'explorer'
@@ -323,7 +323,7 @@ export function ComparePage() {
 
   function handleComboChange(values: string[]) {
     void navigate({
-      to: '/players/$playerSlug/compare',
+      to: '/players/$playerSlug/community/compare',
       params: { playerSlug },
       search: {
         target: values[0] ?? undefined,

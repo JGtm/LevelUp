@@ -57,7 +57,7 @@ export function resolveTarget(notif: Notification, playerSlug: string): NotifTar
         search: notif.params?.id ? { selectedChallengeId: String(notif.params.id) } : undefined,
       }
     case 'season_pass_level':
-      return { to: `/players/${playerSlug}/palmares/season-pass` }
+      return { to: `/players/${playerSlug}/career/season-pass` }
     case 'app_release':
       return { to: '/changelog' }
     case 'sync_error':

@@ -21,7 +21,7 @@ import { useCapability } from '@/lib/capabilities/capabilities'
 import { isCommunityPath } from './shellNavigation'
 
 // Onglet « Classements » de la section Communauté (gaté sur world.leaderboard).
-const COMMUNITY_LEADERBOARD_PATH = '/players/$playerSlug/palmares'
+const COMMUNITY_LEADERBOARD_PATH = '/players/$playerSlug/community'
 
 // ─── Sous-onglets de la section Carrière ──────────────────────────────────────
 
@@ -49,9 +49,9 @@ const CAREER_TABS_H5 = [
 // Communauté : aligné sur le dropdown L1 (NavL1 section 'community'). Face-à-face
 // pointe vers /compare (hors /palmares), d'où des chemins absolus par onglet.
 const COMMUNITY_TABS = [
-  { label: 'Classements', path: '/players/$playerSlug/palmares' },
-  { label: 'Relations', path: '/players/$playerSlug/palmares/relations' },
-  { label: 'Face-à-face', path: '/players/$playerSlug/compare' },
+  { label: 'Classements', path: '/players/$playerSlug/community' },
+  { label: 'Relations', path: '/players/$playerSlug/community/relations' },
+  { label: 'Face-à-face', path: '/players/$playerSlug/community/compare' },
 ] as const
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
