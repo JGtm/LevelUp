@@ -126,6 +126,8 @@ describe('matchArea — toutes les routes', () => {
     ['/players/Foo/palmares/prestige', 'palmares'],
     ['/players/Foo/palmares/relations', 'palmares'],
     ['/players/Foo/palmares/season-pass', 'palmares'],
+    ['/players/Foo/community', 'palmares'],
+    ['/players/Foo/community/relations', 'palmares'],
     ['/players/Foo/home', 'player_home'],
     ['/players/Foo/media', 'media'],
     ['/players/Foo/career', 'career'],

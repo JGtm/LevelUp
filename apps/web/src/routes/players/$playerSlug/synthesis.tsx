@@ -1,9 +1,8 @@
-/**
- * Route /players/$playerSlug/synthesis — page Synthèse.
- */
-import { createFileRoute } from '@tanstack/react-router'
-import { SynthesisPage } from '@/features/synthesis/SynthesisPage'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
+// Redirection legacy : la Synthèse est passée sous la section Solo (/stats/synthesis).
 export const Route = createFileRoute('/players/$playerSlug/synthesis')({
-  component: SynthesisPage,
+  beforeLoad: ({ params }) => {
+    throw redirect({ to: '/players/$playerSlug/stats/synthesis', params, replace: true })
+  },
 })

@@ -84,7 +84,7 @@ export const L1_SECTIONS: L1Section[] = [
     defaultPath: '/players/$playerSlug/stats/timeseries',
     matchPathname: (p) => /\/players\/[^/]+\/(stats\/|synthesis)/.test(p),
     tabs: [
-      { key: 'synthesis', label: 'Synthèse', path: '/players/$playerSlug/synthesis' },
+      { key: 'synthesis', label: 'Synthèse', path: '/players/$playerSlug/stats/synthesis' },
       { key: 'timeseries', label: 'Séries temporelles', path: '/players/$playerSlug/stats/timeseries' },
       { key: 'sessions', label: 'Sessions', path: '/players/$playerSlug/stats/sessions' },
     ],
@@ -107,7 +107,7 @@ export const L1_SECTIONS: L1Section[] = [
     matchPathname: (p) => /\/players\/[^/]+\/(career|citations|profile)/.test(p),
     tabs: [
       { key: 'progression', label: 'Progression', path: '/players/$playerSlug/career' },
-      { key: 'citations', label: 'Citations', path: '/players/$playerSlug/citations' },
+      { key: 'citations', label: 'Citations', path: '/players/$playerSlug/career/citations' },
       {
         key: 'season-pass',
         label: 'Pass saisonnier',
@@ -135,7 +135,7 @@ export const L1_SECTIONS: L1Section[] = [
   {
     key: 'community',
     label: 'Communauté',
-    defaultPath: '/players/$playerSlug/palmares',
+    defaultPath: '/players/$playerSlug/community',
     matchPathname: isCommunityPath,
     // Section transverse non gatée (Relations / Face-à-face dérivent des matchs) ;
     // seul l'onglet « Classements » dépend de `world.leaderboard`.
@@ -143,11 +143,11 @@ export const L1_SECTIONS: L1Section[] = [
       {
         key: 'leaderboard',
         label: 'Classements',
-        path: '/players/$playerSlug/palmares',
+        path: '/players/$playerSlug/community',
         capability: 'world.leaderboard',
       },
-      { key: 'relations', label: 'Relations', path: '/players/$playerSlug/palmares/relations' },
-      { key: 'compare', label: 'Face-à-face', path: '/players/$playerSlug/compare' },
+      { key: 'relations', label: 'Relations', path: '/players/$playerSlug/community/relations' },
+      { key: 'compare', label: 'Face-à-face', path: '/players/$playerSlug/community/compare' },
     ],
   },
   {
