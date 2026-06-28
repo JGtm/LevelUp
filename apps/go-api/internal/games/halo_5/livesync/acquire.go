@@ -3,6 +3,7 @@ package livesync
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
@@ -28,9 +29,24 @@ func AcquireRunner(ctx context.Context, tokenPool pool.Pool, cfg *config.AppConf
 	if tokenPool == nil {
 		return nil, ctx, noop, fmt.Errorf("pool absent (auth %s indisponible)", slug)
 	}
+	// Token PINNÉ sur le joueur d'abord (sync complet : inclut les hooks owner-
+	// spécifiques comme les achievements Xbox, qui résolvent leur propre token MSAL).
+	// Si le joueur n'a pas de token SAIN (RT Microsoft mort/révoqué → slot pool absent
+	// ou malsain), on RETOMBE sur un token du POOL (PolicyAnyPublic) : les stats Halo 5
+	// (matchs, carnage, service-record → CSR/SR) ne sont PAS gatées derrière le token du
+	// joueur — n'importe quel compte sain les lit. Ainsi le rang/XP d'un joueur au RT
+	// mort continue de se synchroniser (le hook achievements échoue best-effort, comme
+	// aujourd'hui). Le SpartanToken vit dans le ctx (l'adapter le lit), tagué avec le
+	// xuid du joueur CONSULTÉ (la collecte fetche bien ses stats, pas celles du compte pool).
 	lease, err := tokenPool.Acquire(ctx, pool.PolicyPinnedPlayer, gamertag)
 	if err != nil {
-		return nil, ctx, noop, fmt.Errorf("acquire token pool (%s): %w", gamertag, err)
+		fallback, ferr := tokenPool.Acquire(ctx, pool.PolicyAnyPublic, "")
+		if ferr != nil {
+			return nil, ctx, noop, fmt.Errorf("acquire token (%s): pinned=%v ; pool=%w", gamertag, err, ferr)
+		}
+		slog.WarnContext(ctx, "h5 sync: token joueur indisponible → fallback pool (stats publiques)",
+			"slug", slug, "gamertag", gamertag, "xuid", xuid, "pinned_err", err)
+		lease = fallback
 	}
 	r := RunnerForTitle(slug, cfg, gamertag, xuid)
 	if r == nil {
