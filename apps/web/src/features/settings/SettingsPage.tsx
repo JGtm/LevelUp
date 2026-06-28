@@ -112,7 +112,7 @@ export function SettingsPage() {
               { id: 'appearance', label: t.tabAppearance },
               { id: 'titles', label: t.tabTitles },
               { id: 'analyse', label: t.tabAnalyse },
-              { id: 'notifications', label: locale === 'en' ? 'Notifications' : 'Notifications' },
+              { id: 'notifications', label: t.tabNotifications },
               { id: 'data', label: t.tabData },
               { id: 'account', label: t.tabAccount },
               // « Sauvegarde » a migré vers Admin · Système ; « Synchronisation » et

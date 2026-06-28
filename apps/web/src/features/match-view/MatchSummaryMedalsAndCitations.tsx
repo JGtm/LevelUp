@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { MatchMedal, MatchCitationSnippet, MatchNativeCommendation } from '@/lib/api/types'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
+import { citationMastery } from '@/lib/citations/mastery'
 import { MedalIcon } from '@/components/ui/MedalIcon'
 import type { MatchViewText } from './i18n'
 
@@ -133,7 +134,7 @@ export function MatchNativeCommendationsSection({
         const cumulative = comm.cumulative ?? 0
         const nextTarget = comm.next_tier_target ?? 0
         const showTier = tierCount > 0
-        const isMastered = showTier && tierIndex >= tierCount
+        const isMastered = citationMastery(comm)
         return (
           <div
             key={comm.id}
@@ -143,6 +144,7 @@ export function MatchNativeCommendationsSection({
             <CitationProgressRing
               pct={comm.progress_pct}
               imageUrl={comm.icon_url ?? undefined}
+              isMastered={isMastered}
               isNewlyMastered={comm.is_newly_mastered}
               size={56}
             />
@@ -195,7 +197,7 @@ export function MatchCitationsSection({ citations, t }: MatchCitationsSectionPro
         const cumulative = cit.cumulative ?? 0
         const nextTarget = cit.next_tier_target ?? 0
         const showTier = tierCount > 0
-        const isMastered = showTier && tierIndex >= tierCount
+        const isMastered = citationMastery(cit)
         return (
           <div
             key={cit.key}
@@ -205,6 +207,7 @@ export function MatchCitationsSection({ citations, t }: MatchCitationsSectionPro
             <CitationProgressRing
               pct={cit.progress_pct}
               imageUrl={cit.image_url ?? undefined}
+              isMastered={isMastered}
               isNewlyMastered={cit.is_newly_mastered}
               size={56}
             />

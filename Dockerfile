@@ -11,6 +11,17 @@ WORKDIR /build/web
 COPY apps/web/package.json apps/web/package-lock.json apps/web/.npmrc ./
 RUN npm ci --prefer-offline
 
+# Garde-fou binaire natif lightningcss : il est livré en dépendance OPTIONNELLE
+# (optionalDependencies, os/cpu-gated). Combiné à legacy-peer-deps (.npmrc),
+# `npm ci` saute silencieusement le binaire natif linux → `npm run build` plante
+# en MODULE_NOT_FOUND (.../lightningcss/node/index.js). On vérifie que le binaire
+# charge et, au besoin, on installe le paquet de la plateforme à la version EXACTE
+# de lightningcss, sans toucher au lockfile ni à package.json. Idempotent (no-op si
+# déjà présent). Cf. npm/cli legacy-peer-deps + optional-deps cross-platform.
+RUN node -e "require('lightningcss')" 2>/dev/null \
+ || npm install --no-save --no-package-lock \
+      "lightningcss-linux-x64-gnu@$(node -p "require('lightningcss/package.json').version")"
+
 # Code source
 COPY apps/web/ ./
 

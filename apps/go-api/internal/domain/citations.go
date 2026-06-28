@@ -210,6 +210,17 @@ type NativeCommendationTotal struct {
 	Category string  `json:"category"`
 	Total    int     `json:"total"`
 	IconURL  *string `json:"icon_url,omitempty"`
+	// Progression à vie (paliers) — parité avec MatchNativeCommendation pour réutiliser
+	// le même rendu d'anneau côté front (CitationProgressRing). Calculés depuis Total +
+	// tier_targets via analysis.ComputeTierProgression. tier_count=0 → front masque
+	// l'anneau (commendation sans paliers connus / définition non seedée).
+	ProgressPct    float64 `json:"progress_pct"`               // 0..100, 100 si maîtrisé
+	TierIndex      int     `json:"tier_index,omitempty"`       // nb de paliers atteints
+	TierCount      int     `json:"tier_count,omitempty"`       // nb total de paliers
+	NextTierTarget int     `json:"next_tier_target,omitempty"` // seuil du prochain palier (0 si maîtrisé)
+	// IsMastered : palier final franchi (état À VIE) — distinct de is_newly_mastered
+	// (notion par-match) qui n'a pas de sens sur une vitrine de totaux.
+	IsMastered bool `json:"is_mastered,omitempty"`
 }
 
 // NativeCommendationCategoryGroup regroupe les commendations natives par catégorie

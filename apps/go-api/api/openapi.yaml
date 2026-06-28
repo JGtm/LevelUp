@@ -5878,8 +5878,22 @@ components:
               type: string
           id:
               type: string
+          is_mastered:
+              type: boolean
           name:
               type: string
+          next_tier_target:
+              format: int64
+              type: integer
+          progress_pct:
+              format: double
+              type: number
+          tier_count:
+              format: int64
+              type: integer
+          tier_index:
+              format: int64
+              type: integer
           total:
               format: int64
               type: integer
@@ -5888,6 +5902,7 @@ components:
           - name
           - category
           - total
+          - progress_pct
       type: object
     NativeCommendationsTotalsResponse:
       additionalProperties: false

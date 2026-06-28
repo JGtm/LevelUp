@@ -22,6 +22,7 @@ import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/com
 import { assetDrawerManifest } from '@/lib/i18n/generated/asset_drawer'
 import { feedbackDrawerManifest } from '@/lib/i18n/generated/feedback_drawer'
 import { ThemeToggle } from './ThemeToggle'
+import { TitleSwitcher } from './TitleSwitcher'
 import { log } from './_logger'
 import type { SettingsTab } from '@/features/settings/tabs'
 
@@ -136,6 +137,11 @@ export function NavL1MobileActions({ settingsTabs, pathname, isAdmin }: NavL1Mob
         <div className="flex-1 overflow-y-auto py-2">
           {/* ── Compte ───────────────────────────────────────────────── */}
           <SectionLabel>{t('common.shell.nav_account')}</SectionLabel>
+
+          {/* Sélecteur de jeu (titre) — parité avec le dropdown desktop (NavL1).
+              S'auto-masque en mono-titre ; visible dès qu'un 2e titre est présent
+              (ex. Demo). Corrige son absence en mobile. */}
+          <TitleSwitcher onSwitched={() => setOpen(false)} />
 
           <div className="flex items-center justify-between px-5 py-2">
             <span className="text-sm text-sidebar-foreground/80">{t('common.shell.nav_theme')}</span>
