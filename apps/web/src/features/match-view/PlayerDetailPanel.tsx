@@ -8,6 +8,7 @@
  */
 import { useState } from 'react'
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
+import { citationMastery } from '@/lib/citations/mastery'
 import { tokenCssVar } from '@/lib/accessibility'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import { displayPlayerName } from '@/lib/players/displayName'
@@ -160,24 +161,28 @@ function CitationsSection({ citations, t }: { citations: MatchCitationSnippet[];
   return (
     <SectionGroup title={t.sectionCitations}>
       <div className="flex items-start gap-3 flex-wrap">
-        {top.map((c) => (
-          <div key={c.key} className="flex flex-col items-center gap-0.5 max-w-[52px]" title={c.description ?? c.name}>
-            <CitationProgressRing
-              pct={c.progress_pct}
-              imageUrl={c.image_url ?? undefined}
-              isNewlyMastered={c.is_newly_mastered}
-              size={44}
-            />
-            <span className="font-mono text-2xs font-semibold" style={{ color: c.is_newly_mastered ? tokenCssVar('perf-tier-3') : tokenCssVar('perf-tier-2') }}>
-              +{c.delta}
-            </span>
-            {c.is_newly_mastered && (
-              <span className="text-[9px] font-bold leading-none" style={{ color: tokenCssVar('perf-tier-3') }}>
-                {t.newlyMastered}
+        {top.map((c) => {
+          const isMastered = citationMastery(c)
+          return (
+            <div key={c.key} className="flex flex-col items-center gap-0.5 max-w-[52px]" title={c.description ?? c.name}>
+              <CitationProgressRing
+                pct={c.progress_pct}
+                imageUrl={c.image_url ?? undefined}
+                isMastered={isMastered}
+                isNewlyMastered={c.is_newly_mastered}
+                size={44}
+              />
+              <span className="font-mono text-2xs font-semibold" style={{ color: isMastered ? tokenCssVar('perf-tier-3') : tokenCssVar('perf-tier-2') }}>
+                +{c.delta}
               </span>
-            )}
-          </div>
-        ))}
+              {isMastered && (
+                <span className="text-[9px] font-bold leading-none" style={{ color: tokenCssVar('perf-tier-3') }}>
+                  {t.newlyMastered}
+                </span>
+              )}
+            </div>
+          )
+        })}
       </div>
     </SectionGroup>
   )

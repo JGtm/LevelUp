@@ -12,7 +12,7 @@ fr = "Distribution"
 en = "Distribution"
 
 [citations.section.commendations]
-fr = "Commendations"
+fr = "Citations"
 en = "Commendations"
 
 [citations.section.medals_summary]
@@ -66,7 +66,7 @@ fr = "Palier"
 en = "Tier"
 
 [citations.commendations.no_data]
-fr = "Aucune commendation à afficher pour cette sélection."
+fr = "Aucune citation à afficher pour cette sélection."
 en = "No commendation to display for this selection."
 
 # ─── Medals summary ────────────────────────────────────────────────────────

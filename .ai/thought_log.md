@@ -1,3 +1,67 @@
+## [2026-06-28] Accueil — section « Citations bientôt terminées » (au-dessus des tuiles de matchs) — COMPLÉTÉ + vérifié
+
+**Tâche** : ajouter sur l'accueil un bloc des citations les plus proches de leur prochain palier, juste au-dessus des tuiles de matchs (option « A » ; la réorganisation libre de l'accueil « B/C » a été chiffrée mais écartée comme spéculative — YAGNI).
+
+**Décision d'archi — FRONT-ONLY (zéro plomberie backend)** : le endpoint `/pages/citations` existait déjà et le front possède une frontière title-agnostic (`CitationDisplayItem` via `normalizeInfinitePage`/`normalizeNativeTotals`), où `pct` est exactement la progression INTRA-palier (proximité au prochain palier, cf. `analysis.computeTierProgress` Go). Donc pas de nouveau champ `HomePageResponse`, pas d'OpenAPI/generated.ts, pas de repo plumbing. Couvre Infinite ET H5 natif par construction (même view-model).
+
+**Algo retenu** (`lib/citations/nearCompletion.ts`, pur + testé) : candidats = tierés, entamés, non maîtrisés, avec un prochain palier devant (`nextTierTarget > total`) ET `pct >= 70` (proximité PROPORTIONNELLE, robuste quelle que soit l'échelle des paliers). Tri : `pct` desc → dernier-palier d'abord (franchir = maîtriser) → moins d'unités restantes → nom. Top 6. Expose `remaining` (« plus que N ») + `isFinalTier` (badge « Maîtrise proche »).
+
+**Implémentation** :
+- `lib/citations/nearCompletion.ts` + `.test.ts` (8 tests : filtres, tri multi-critères, limite, couverture source native).
+- `features/home/HomeCitationsNearCompletion.tsx` : **DEUX sources** façon `UnifiedCitationsPage` (un data-hook par sous-composant → règles des hooks). Le slug courant est le SEUL signal front pour distinguer h5 (même règle que NavL1/NavL2 ; aucune capability coarse) : `currentTitleSlug === 'halo_5'` → `useCommendationTotals` + `normalizeNativeTotals` (deep-link `/commendations`), sinon → `useCitationsPage(playerSlug, {filters: DEFAULT_FILTER_CONTEXT}, 'home-near-completion')` (bornes nulles + cascade vide → totaux à vie) + `normalizeInfinitePage` (deep-link `/citations`). Rendu partagé : tuiles cliquables (anneau `CitationProgressRing` + nom + « plus que N » + palier / badge « Maîtrise proche ») + lien discret « Voir toutes les citations » dans le header. **Self-hide** (return null) tant que ça charge ou si liste vide → pas de carte vide.
+- i18n : section `home.near_completion.*` (dont `view_all`) dans `home.toml` + manifest régénéré (`build_i18n_manifests.mjs`).
+- `HomePage.tsx` : import + `<HomeCitationsNearCompletion>` inséré juste avant la section Matchs récents/Favoris.
+
+**Couleurs** : uniquement des tokens sémantiques (`text-foreground`/`text-muted-foreground`/`text-primary`/`bg-card`/`bg-muted`/`border`) — conforme règle 20.
+
+**Vérif** : `tsc -b` OK, eslint 0 (fichiers touchés), `lint:fields` aucune violation, vitest citations 20/20 (dont 8 nouveaux). Aucune modif backend. Pas de test de rendu HomePage existant (aucune régression de montage).
+
+**Statut** : Complété (Infinite + Halo 5 natif + lien « Voir toutes les citations »). Working tree sur `fix/h5-citations-highlights-i18n-titleswitcher` (qui porte déjà du travail H5 non committé) — PAS de commit sans accord. Prochaine étape à valider avec l'utilisateur : branche dédiée + commit.
+
+---
+
+## [2026-06-28] Citations/Commendations — durcissement title-agnostic (chokepoint + page unifiée) — COMPLÉTÉ + vérifié
+
+**Tâche** : suite à la question utilisateur « pourquoi ça revient à chaque fois / vais-je galérer pour Halo 7 ? » — supprimer la fragilité structurelle (UI dupliquée + décision de maîtrise dupliquée sur 5+ surfaces). Ultracode : workflow de design (3 perspectives → synthèse), implémentation, puis workflow de review adversarial.
+
+**Architecture livrée (synthèse design « halo7-proof »)** :
+- **Chokepoint unique** `apps/web/src/lib/citations/mastery.ts` `citationMastery(MasteryInput)` — entrée en noms de champs BRUTS (snake_case) → les surfaces passent leur objet tel quel, zéro mise en forme. Réconcilie les synonymes Infinite (earned_tiers/mastery_pct) vs H5 (tier_index/progress_pct/is_mastered). `is_newly_mastered` reste séparé (notion par-match).
+- **View-model normalisé** `lib/citations/types.ts` (`CitationDisplayItem`/`CitationCategoryView`/`CitationsViewModel`) + `lib/citations/normalize.ts` (normalizeInfinitePage, normalizeNativeTotals — seuls appelants de citationMastery pour les pages).
+- **UI partagée** : `UnifiedCitationsPage` (prop `source` fixée par la ROUTE → routes/nav inchangées, pas de fetch filtre inutile côté natif ; 2 sous-composants source, 1 data-hook chacun) + `CitationsView` + `CitationCard`. Les 2 routes (/citations infinite, /commendations native) pointent dessus.
+- **Suppressions** : CitationsPage.tsx, CommendationTotalsPage.tsx, commendations/i18n.ts. **Les 3 surfaces de match** (match-card, MatchSummaryMedalsAndCitations ×2, PlayerDetailPanel) appellent désormais `citationMastery()` (plus d'inline).
+
+**Review adversarial (workflow, 12 agents)** : 4 régressions low confirmées vs originaux, TOUTES corrigées : (1) badge ✓ des maîtrisées perdu sur la page → anneau ✓ piloté par `mastered` (pas `isNewlyMastered` seul) ; (2) titre d'onglet EN natif « Citations »→« Commendations » (titleKey source-aware) ; (3) total à vie natif non localisé → `toLocaleString(locale)` threadé ; (4) citation Infinite sans palier rendait une icône 52px au lieu de l'anneau 68px → `showRing = source infinite || hasTiers`.
+
+**Halo 7** : ajouter un titre = 1 normaliseur (+ éventuellement 1 OR-clause dans citationMastery) + câbler source/route. CitationsView/CitationCard/CitationProgressRing/les 5 surfaces : intouchés.
+
+**Vérif** : `tsc -b` OK, eslint 0 erreur (74 warnings pré-existants), vitest suite complète verte avant fixes (2033) + 142 sur la zone citations/match après fixes, knip ne flague aucun nouvel export. Tests ajoutés : mastery.test, normalize.test, CitationCard.test.
+
+**Statut** : Complété sur `fix/h5-citations-highlights-i18n-titleswitcher`. Pas encore commité (attente accord). Note : `Dockerfile` modifié hors-scope (garde-fou lightningcss, pas de moi) toujours présent.
+
+---
+
+## [2026-06-27] Halo 5 — 6 correctifs (Faits marquants pleine largeur, citations maîtrisées, FR Citations, page Citations à paliers, Settings EN, switcher titre mobile) — COMPLÉTÉ + vérifié
+
+**Tâche** : lot de défauts H5 récurrents signalés par l'utilisateur (passé en « ultracode »). Audit multi-agents exhaustif des surfaces citations/commendations AVANT d'éditer (37 findings, 7 défauts confirmés, couverture prouvée) pour ne plus rater de surface.
+
+**Cause racine citations « affichées en progression alors que maîtrisées »** : `CitationProgressRing` colorait l'anneau (doré perf-tier-3 vs argent perf-tier-2) et affichait le ✓ UNIQUEMENT sur `isNewlyMastered`. Pour Infinite, les déjà-maîtrisées sont filtrées (`BuildCitationSnippets` skip `AlreadyMastered`) → cas jamais vu. Pour H5, `buildCommendationSnippets` NE filtre PAS (volontaire : anneau plein voulu) → une commendation maîtrisée de longue date arrive `progress_pct=100, tier_index>=tier_count, is_newly_mastered=false` → anneau argent « en cours ». 
+
+**Décisions** :
+- **Anneau (fix transverse)** : `CitationProgressRing` gagne une prop `isMastered` ; doré + ✓ dès que `isMastered || isNewlyMastered`. Propagé sur les **5 surfaces** (audit-vérifié) : match-card tuiles, MatchCitationsSection, MatchNativeCommendationsSection, PlayerDetailPanel scoreboard, CitationsPage. `isNewlyMastered` conservé pour le libellé « nouvellement maîtrisée ».
+- **Faits marquants pleine largeur** : grille desktop 20-col à spans fixes → flex-wrap avec `flex-grow`/`flex-basis` ∝ poids (HomeHighlightTile). `final_width ∝ poids` → largeurs relatives conservées ET ligne remplie quel que soit le sous-ensemble (H5 sans tuile MMR/skill).
+- **FR « Commendations » → « Citations »** (terme officiel Halo FR, EN reste « Commendations ») : NavL1 (suppression de l'override de label h5, on garde « Citations » de l'onglet d'origine), NavL2 CAREER_TABS_H5, commendations/i18n.ts pageTitle, citations.toml (clés mortes corrigées aussi).
+- **Page Citations H5 = paliers/maîtrises/compteurs (parité UI Infinite, réutilisation exacte de CitationProgressRing/CitationCard)** : chaîne `tier_targets` bout-en-bout — `canonical.CommendationDefinition`/`CommendationTotal` (+TierTargets), SELECT defs h5 (+tier_targets), enrich, `groupNativeCommendations` calcule la progression à vie via `ParseTierTargets`+`ComputeTierProgression(Total,0,tiers)` (sans filtrer les maîtrisées — vitrine), `domain.NativeCommendationTotal` (+progress_pct/tier_index/tier_count/next_tier_target/is_mastered), OpenAPI + generated.ts régénérés. Front `CommendationTotalsPage` : anneau + paliers quand `tier_count>0`, sinon dégradation sur icône + total brut.
+- **Menu Settings EN** : `settingsTabs` via `getSettingsText(locale)` (+`tabNotifications` ajouté FR/EN), « Thème » → `t('common.shell.nav_theme')`, aria/title « Paramètres » → `t('common.shell.nav_settings')`, SettingsPage tautologie notifications → `t.tabNotifications`.
+- **Switcher de titre mobile** : `<TitleSwitcher>` ajouté à `NavL1MobileActions` (section Compte) — parité desktop, s'auto-masque en mono-titre (apparaît sur la Demo ≥2 titres).
+
+**DATA-DEP — RÉSOLUE (seed lancé 2026-06-28)** : `cmd/h5-metadata-fetch` exécuté (air bouncé autour du seed pour éviter le 2e writer → corruption metadata FATAL). Résultat : 121 commendations seedées, **105 avec tier_targets** (16 Meta/Daily sans levels → dégradation propre icône+total). FR overrides préservés (config root = repo passé en arg1 : 26 armes, 184 médailles). Vérifié via `cmd/diag_exec` (ex. "And Stay Off" = `5,15,30,55,105`). air relancé proprement (aucun FATAL invalidated). Les anneaux/paliers de la page Citations H5 sont donc maintenant alimentés.
+
+**Vérif** : front `tsc -b` OK, eslint 0 erreur (75 warnings pré-existants hors mes fichiers), vitest 51/51 sur les composants touchés ; Go build/vet OK, tests service/analysis/games/halo_5 verts (+`TestCommendationTotalsService_TierProgression` ajouté). i18n + types régénérés. SEUL échec Go = `TestNoUnauthorizedSharedSocialMention` **PRÉ-EXISTANT sur HEAD** (drift whitelist sur cmd/levelup/*, ops/seed_demo_media_h5.go — fichiers non touchés par moi).
+
+**Statut** : Complété sur `fix/h5-citations-highlights-i18n-titleswitcher`. tier_targets seedé. Prochaine étape : push/merge (sur accord user).
+
+---
+
 ## [2026-06-27] Relations v3 — 3 correctifs post-déploiement (graphe cumulé, FDA, mémorisation boutons) — COMPLÉTÉ + vérifié
 
 **Tâche** : 3 retouches suite remarques sur Relations v3 (déjà en prod).

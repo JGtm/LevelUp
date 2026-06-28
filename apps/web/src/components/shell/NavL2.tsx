@@ -41,7 +41,9 @@ const CAREER_TABS = [
 // remplacement n'est câblée → pas d'onglet « Pass saisonnier » pour h5.
 const CAREER_TABS_H5 = [
   { label: 'Progression', path: '/players/$playerSlug/career' },
-  { label: 'Commendations', path: '/players/$playerSlug/commendations' },
+  // Halo 5 : commendations natives, libellé FR « Citations » (terme officiel Halo
+  // FR, cohérent avec Infinite et l'onglet L1).
+  { label: 'Citations', path: '/players/$playerSlug/commendations' },
 ] as const
 
 // Communauté : aligné sur le dropdown L1 (NavL1 section 'community'). Face-à-face

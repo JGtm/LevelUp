@@ -121,6 +121,11 @@ type CommendationDefinition struct {
 	Name     string
 	IconURL  string
 	Category string // ex. "MULTIPLAYER", "GAME MODE" (groupe d'affichage des totaux)
+	// TierTargets = CSV croissant des seuils de paliers (commendation_definitions.
+	// tier_targets, ex. "5,15,30,55,105"). Vide → pas de paliers connus → anneau
+	// masqué côté front. Format identique à citation_mappings.tier_targets (Infinite)
+	// → réutilise analysis.ParseTierTargets/ComputeTierProgression.
+	TierTargets string
 }
 
 // CommendationTotal — total À VIE d'une commendation NATIVE pour un joueur : le
@@ -132,6 +137,11 @@ type CommendationTotal struct {
 	Category string
 	Total    int
 	IconURL  *string
+	// TierTargets = CSV croissant des seuils de paliers, propagé depuis la définition
+	// (CommendationDefinition.TierTargets). Permet au service de calculer la
+	// progression à vie (paliers atteints / prochain seuil / maîtrisé). Vide → pas
+	// de paliers → anneau masqué côté front.
+	TierTargets string
 }
 
 // MatchParticipant représente un joueur d'un match dans le canonique.
