@@ -33,6 +33,7 @@ export interface SettingsText {
   tabAppearance: string
   tabData: string
   tabAccount: string
+  tabNotifications: string
 
   // Sync manuelle
   manualSyncTitle: string
@@ -297,6 +298,7 @@ const FR_TEXT: SettingsText = {
   tabAppearance: 'Apparence & Accessibilité',
   tabData: 'Données & Médias',
   tabAccount: 'Compte',
+  tabNotifications: 'Notifications',
 
   manualSyncTitle: 'Synchronisation manuelle',
   manualSyncButton: '↻ Synchroniser tous les joueurs',
@@ -582,6 +584,7 @@ const EN_TEXT: SettingsText = {
   tabAppearance: 'Appearance & Accessibility',
   tabData: 'Data & Media',
   tabAccount: 'Account',
+  tabNotifications: 'Notifications',
 
   manualSyncTitle: 'Manual synchronisation',
   manualSyncButton: '↻ Synchronise all players',

@@ -11,6 +11,7 @@ import type { RecentMatchItem } from '@/lib/api/types'
 import { getPerfColor } from '@/lib/perf-color'
 import { getMatchCardOutcomeStyle, getMatchNarrativeBadgeMeta } from './match-card-presentation'
 import { CitationProgressRing } from './citation-progress-ring'
+import { citationMastery } from '@/lib/citations/mastery'
 import { CombatYieldDisplay } from './combat-yield-display'
 import { MedalIcon } from './MedalIcon'
 import { skillDeltaScale, kdaDivergentScale, mmrDeltaScale } from '@/lib/accessibility/scales'
@@ -467,32 +468,40 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                 data-testid="match-card-citations"
                 className="px-3 pb-3 pt-2.5 flex justify-center gap-3 border-t border-border/40 mt-3"
               >
-                {m.top_citations.map((cit) => (
-                  <div
-                    key={cit.key}
-                    title={cit.description ?? cit.name}
-                    className="flex flex-col items-center gap-0.5 cursor-default"
-                  >
-                    <CitationProgressRing
-                      pct={cit.progress_pct}
-                      imageUrl={cit.image_url ?? undefined}
-                      isNewlyMastered={cit.is_newly_mastered}
-                    />
-                    {cit.name && (
-                      <span className="text-[9px] text-muted-foreground/80 leading-tight text-center max-w-[40px] truncate">
-                        {cit.name}
+                {m.top_citations.map((cit) => {
+                  // Maîtrisée = palier final franchi (cette partie OU avant), sinon
+                  // anneau plein 100 %. Doit s'afficher en doré/✓ et non « en cours »
+                  // même pour une maîtrise antérieure (cas commendations natives H5).
+                  // Décision via le chokepoint partagé (titre-agnostic).
+                  const isMastered = citationMastery(cit)
+                  return (
+                    <div
+                      key={cit.key}
+                      title={cit.description ?? cit.name}
+                      className="flex flex-col items-center gap-0.5 cursor-default"
+                    >
+                      <CitationProgressRing
+                        pct={cit.progress_pct}
+                        imageUrl={cit.image_url ?? undefined}
+                        isMastered={isMastered}
+                        isNewlyMastered={cit.is_newly_mastered}
+                      />
+                      {cit.name && (
+                        <span className="text-[9px] text-muted-foreground/80 leading-tight text-center max-w-[40px] truncate">
+                          {cit.name}
+                        </span>
+                      )}
+                      <span className="text-[9px] font-semibold text-info leading-none">
+                        +{cit.delta}
                       </span>
-                    )}
-                    <span className="text-[9px] font-semibold text-info leading-none">
-                      +{cit.delta}
-                    </span>
-                    {cit.is_newly_mastered && (
-                      <span className="text-[8px] font-bold text-warning leading-none">
-                        {t('common.match_card.mastered')}
-                      </span>
-                    )}
-                  </div>
-                ))}
+                      {isMastered && (
+                        <span className="text-[8px] font-bold text-warning leading-none">
+                          {t('common.match_card.mastered')}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
