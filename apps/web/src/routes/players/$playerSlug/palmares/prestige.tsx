@@ -1,9 +1,8 @@
-/**
- * Route /players/$playerSlug/palmares/prestige — Leaderboard PP (Communauté).
- */
-import { createFileRoute } from '@tanstack/react-router'
-import { LeaderboardPPPage } from '@/features/prestige/LeaderboardPPPage'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
+// Redirection legacy : Leaderboard PP est passé de /palmares à /community.
 export const Route = createFileRoute('/players/$playerSlug/palmares/prestige')({
-  component: LeaderboardPPPage,
+  beforeLoad: ({ params }) => {
+    throw redirect({ to: '/players/$playerSlug/community/prestige', params, replace: true })
+  },
 })

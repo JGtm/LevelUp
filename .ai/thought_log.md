@@ -1,3 +1,19 @@
+## [2026-06-28] Cohérence navigation — Phase 1 : rename /palmares → /community (+ Face-à-face) — COMPLÉTÉ + vérifié
+
+**Tâche** : refonte cohérence nav (plan 3 phases, `.ai/plans` zany-growing-marble). Phase 1 = aligner l'URL sur le libellé « Communauté ».
+
+**Phase 1** :
+- Routes `routes/.../palmares/{index,relations,prestige}.tsx` + `compare.tsx` → `community/{index,relations,prestige,compare}.tsx` (URLs `/community/*`).
+- Anciennes URLs préservées par routes redirect (`beforeLoad → throw redirect`).
+- Callsites : `isCommunityPath` (matche /community + legacy), navL1Sections (defaultPath + onglets), NavL2 (COMMUNITY_*), pageTitle, classifyFeedback, deep-links Explorer/Career → /community/compare, PLAYER_PRIMARY_NAV_ITEMS (label Palmarès → Communauté). Fix en passant : notif `season_pass_level` → /career/season-pass (était /palmares, stale).
+- Backend inchangé (API /pages/palmares/* découplée). routeTree.gen.ts régénéré (vite build).
+
+**Vérif** : build OK, typecheck, vitest 2048 pass (seul échec = `HomeSpartanIdentityBanner`, PRÉ-EXISTANT — commit Spartan d'un autre agent, hors de mon changeset), eslint 0 err, lint colors/fields/cross-feature + knip sous plafonds.
+
+**Suite (plan)** : Phase 2 re-nesting (/synthesis→/stats/synthesis, /citations+commendations→/career/) ; Phase 3 onglets `?tab=` → segments de route (Timeseries, Match View). Convention : sous-vue = route, query-param = filtres, store = toggles.
+
+---
+
 ## [2026-06-28] Personnalisateur Spartan (emblèmes/nameplates Halo 5) — modale home + recolor live — COMPLÉTÉ + vérifié
 
 **Tâche** : feature Halo-5-only. Clic sur la bannière d'identité de l'accueil → modale (sans navigation) pour parcourir les emblèmes, choisir des couleurs (rouge/bleu présélectionnés), voir le nameplate + l'emblème recolorisés EN DIRECT côte à côte (non collés), puis Enregistrer/Annuler. Plan : `.ai/PLAN_H5_SPARTAN_CUSTOMIZER.md`.
