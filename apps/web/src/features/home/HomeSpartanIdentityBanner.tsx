@@ -10,6 +10,8 @@ import { useCapability } from '@/lib/capabilities/capabilities'
 import type { HomeSkillPeakSummary, HomeSpartanIdentity } from '@/lib/api/types'
 import { getSpartanIdentityText } from './spartanIdentity.i18n'
 import { HomeSkillPeakCard, resolveSkillPeakState } from './HomeSkillPeakCard'
+import { RecoloredMask } from '@/features/spartan-customizer/RecoloredMask'
+import { useSpartanAppearanceStore } from '@/features/spartan-customizer/store'
 
 interface HomeSpartanIdentityBannerProps {
   spartanIdentity: HomeSpartanIdentity
@@ -21,6 +23,10 @@ interface HomeSpartanIdentityBannerProps {
   hasPrivacyWarning: boolean
   /** Texte fourni par le manifest home.identity.unavailable. */
   identityUnavailableLabel: string
+  /** Halo 5 only : ouvre la modale de personnalisation Spartan. Absent ⇒ bannière non cliquable. */
+  onSpartanClick?: () => void
+  /** aria-label de la bannière cliquable (manifest home.spartan_customizer.open_aria). */
+  spartanCustomizeLabel?: string
 }
 
 export function HomeSpartanIdentityBanner({
@@ -32,6 +38,8 @@ export function HomeSpartanIdentityBanner({
   hasUnrankedHistory,
   hasPrivacyWarning,
   identityUnavailableLabel,
+  onSpartanClick,
+  spartanCustomizeLabel,
 }: HomeSpartanIdentityBannerProps) {
   const locale = useAppShellStore((s) => s.locale)
   const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
@@ -44,6 +52,15 @@ export function HomeSpartanIdentityBanner({
   // (NavL1/NavL2/CareerSummaryCard) ; TODO migrer vers une capability dédiée.
   const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const synthesizeBanner = currentTitleSlug === 'halo_5'
+  // Halo 5 : apparence Spartan (emblème + couleurs) choisie-ou-défaut (#160) → sert à
+  // composer le bandeau (emblème carré + nameplate recolorisés). Jamais vide.
+  const spartanApp = useSpartanAppearanceStore((s) => s.appearance)
+  const spartanColors = {
+    primary: spartanApp.primary,
+    secondary: spartanApp.secondary,
+    tertiary: spartanApp.tertiary,
+  }
+  const spartanEmblemId = spartanApp.emblemId ?? '160'
   const activeBannerUrl = synthesizeBanner ? null : (spartanIdentity.banner_image_url ?? null)
   const labels = spartanText.labels
 
@@ -71,8 +88,27 @@ export function HomeSpartanIdentityBanner({
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,19.5rem)] lg:items-stretch">
       <div
         data-testid="home-spartan-banner-surface"
-        className="overflow-hidden rounded-2xl border border-border bg-muted/60 bg-cover bg-center shadow-sm"
+        className={[
+          'overflow-hidden rounded-2xl border border-border bg-muted/60 bg-cover bg-center shadow-sm',
+          onSpartanClick
+            ? 'cursor-pointer transition-shadow hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+            : '',
+        ].join(' ')}
         style={activeBannerUrl ? { backgroundImage: `url('${activeBannerUrl}')` } : undefined}
+        role={onSpartanClick ? 'button' : undefined}
+        tabIndex={onSpartanClick ? 0 : undefined}
+        aria-label={onSpartanClick ? spartanCustomizeLabel : undefined}
+        onClick={onSpartanClick}
+        onKeyDown={
+          onSpartanClick
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onSpartanClick()
+                }
+              }
+            : undefined
+        }
       >
         <div
           data-testid="home-spartan-identity-banner"
@@ -84,16 +120,30 @@ export function HomeSpartanIdentityBanner({
               aria-hidden="true"
             />
           )}
-          {!activeBannerUrl && (
-            // Backdrop synthétisé (pas d'image de bannière) : dégradé sémantique via
-            // tokens (utilitaires Tailwind tokenisés, pas de hex) plutôt que muted plat.
-            // Title-agnostic : couvre H5 ET tout joueur sans bannière.
+          {synthesizeBanner ? (
+            // Halo 5 : le nameplate recolorisé (apparence choisie-ou-défaut) sert de fond,
+            // + un scrim sémantique à gauche pour la lisibilité du gamertag/rang par-dessus.
+            <>
+              <RecoloredMask
+                src={`/titles/halo_5/spartan/nameplates/${spartanEmblemId}.png`}
+                colors={spartanColors}
+                alt=""
+                className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+              />
+              <div
+                data-testid="home-spartan-nameplate-scrim"
+                className="pointer-events-none absolute inset-0 bg-gradient-to-r from-background/85 via-background/40 to-background/15"
+                aria-hidden="true"
+              />
+            </>
+          ) : !activeBannerUrl ? (
+            // Backdrop synthétisé (titre non-H5 sans image de bannière) : dégradé sémantique.
             <div
               data-testid="home-spartan-synthesized-backdrop"
               className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/25 via-muted/45 to-background"
               aria-hidden="true"
             />
-          )}
+          ) : null}
           {careerAdornmentUrl && (
             <div className="pointer-events-none absolute right-2 top-0 z-[1] flex h-full items-start">
               <img
@@ -112,24 +162,35 @@ export function HomeSpartanIdentityBanner({
             className="text-shadow-adaptive relative flex flex-col gap-6 pt-1 pb-5 pl-5 pr-28 text-foreground sm:pl-6 sm:pr-32 lg:min-h-[9rem] lg:flex-row lg:items-start lg:justify-between"
           >
             <div className="flex min-w-0 items-center gap-4 lg:self-center">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-primary/60 bg-card/80 shadow-[0_0_0_4px_rgba(8,15,28,0.35)] sm:h-24 sm:w-24">
-                {spartanIdentity.emblem_image_url ? (
-                  <img
-                    data-testid="home-spartan-emblem-image"
-                    src={spartanIdentity.emblem_image_url}
-                    alt={`Emblème ${playerName}`}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                ) : (
-                  <span
-                    className="text-3xl font-semibold tracking-label-md text-primary-foreground"
-                  >
-                    {identityMonogram}
-                  </span>
-                )}
-              </div>
+              {synthesizeBanner ? (
+                // Halo 5 : emblème carré recolorisé (forme d'origine, PAS rond), collé
+                // visuellement au nameplate de fond.
+                <RecoloredMask
+                  src={`/titles/halo_5/spartan/emblems/${spartanEmblemId}.png`}
+                  colors={spartanColors}
+                  alt={`Emblème ${playerName}`}
+                  className="h-20 w-20 shrink-0 object-contain drop-shadow-[0_2px_6px_rgba(8,15,28,0.5)] sm:h-24 sm:w-24"
+                />
+              ) : (
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-primary/60 bg-card/80 shadow-[0_0_0_4px_rgba(8,15,28,0.35)] sm:h-24 sm:w-24">
+                  {spartanIdentity.emblem_image_url ? (
+                    <img
+                      data-testid="home-spartan-emblem-image"
+                      src={spartanIdentity.emblem_image_url}
+                      alt={`Emblème ${playerName}`}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <span
+                      className="text-3xl font-semibold tracking-label-md text-primary-foreground"
+                    >
+                      {identityMonogram}
+                    </span>
+                  )}
+                </div>
+              )}
 
               <div className="min-w-0">
                 <p
