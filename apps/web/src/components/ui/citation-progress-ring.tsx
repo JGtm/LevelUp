@@ -3,19 +3,24 @@ import { resolveToken } from '@/lib/accessibility'
 interface CitationProgressRingProps {
   pct: number
   imageUrl?: string
+  /** Maîtrisée (palier final franchi), que ce soit ce match ou avant. */
+  isMastered?: boolean
+  /** Maîtrisée POUR LA PREMIÈRE FOIS sur ce match (sert au libellé distinctif). */
   isNewlyMastered?: boolean
   size?: number
 }
 
 /**
- * Anneau SVG de progression pour une citation (commendation Halo 5G).
+ * Anneau SVG de progression pour une citation (commendation Halo 5).
  * - Arc coloré proportionnel à pct (0–100), couleur via resolveToken
- * - Anneau doré + pastille ✓ si isNewlyMastered
+ * - Anneau doré + pastille ✓ dès que la citation est maîtrisée (isMastered ou
+ *   isNewlyMastered) — une maîtrise antérieure ne doit PAS s'afficher « en cours ».
  * - Image de la citation centrée (si imageUrl défini)
  */
 export function CitationProgressRing({
   pct,
   imageUrl,
+  isMastered = false,
   isNewlyMastered = false,
   size = 36,
 }: CitationProgressRingProps) {
@@ -25,8 +30,9 @@ export function CitationProgressRing({
   const clampedPct = Math.min(100, Math.max(0, pct))
   const dashOffset = circumference * (1 - clampedPct / 100)
 
+  const mastered = isMastered || isNewlyMastered
   const trackColor = 'var(--border)'
-  const arcColor = isNewlyMastered ? resolveToken('perf-tier-3') : resolveToken('perf-tier-2')
+  const arcColor = mastered ? resolveToken('perf-tier-3') : resolveToken('perf-tier-2')
   const imageSize = Math.round(size * 0.58)
   const center = size / 2
 
@@ -82,8 +88,9 @@ export function CitationProgressRing({
         />
       )}
 
-      {/* Badge ✓ si nouvellement masterisée */}
-      {isNewlyMastered && (
+      {/* Badge ✓ dès que maîtrisée (nouvellement OU de longue date) — cohérent avec
+          l'anneau doré, qui suit la même condition. */}
+      {mastered && (
         <div
           className="absolute bottom-0 right-0 flex items-center justify-center rounded-full bg-warning text-warning-foreground"
           style={{ width: 12, height: 12, fontSize: 7, fontWeight: 700 }}

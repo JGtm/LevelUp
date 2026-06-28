@@ -20,6 +20,7 @@ import { NavL1MobileActions, type SettingsTabItem } from './NavL1MobileActions'
 import { L1_SECTIONS, type L1Section, type L1Tab } from './navL1Sections'
 import { useTitleCapabilities, hasCapabilityIn } from '@/lib/capabilities/capabilities'
 import { useSettings } from '@/features/settings/queries'
+import { getSettingsText } from '@/features/settings/i18n'
 import { NotificationsBell } from '@/features/notifications/NotificationsBell'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
@@ -146,8 +147,8 @@ function SettingsSplitButton({ tabs, isActive, isAdmin }: SettingsSplitButtonPro
           to="/settings"
           search={{ tab: 'appearance' }}
           className="px-2 py-1.5"
-          aria-label="Paramètres"
-          title="Paramètres"
+          aria-label={t('common.shell.nav_settings')}
+          title={t('common.shell.nav_settings')}
           aria-current={isActive ? 'page' : undefined}
         >
           <svg
@@ -196,7 +197,7 @@ function SettingsSplitButton({ tabs, isActive, isAdmin }: SettingsSplitButtonPro
               titre est configuré (PMT-8/MT-22). Placé avant le toggle de thème. */}
           <TitleSwitcher onSwitched={() => setOpen(false)} />
           <div className="flex items-center justify-between gap-4 px-3 py-1.5">
-            <span className="text-sm text-popover-foreground">Thème</span>
+            <span className="text-sm text-popover-foreground">{t('common.shell.nav_theme')}</span>
             <ThemeToggle variant="menu" />
           </div>
           <div role="separator" className="my-1 h-px bg-foreground/20" />
@@ -269,9 +270,11 @@ export function NavL1() {
       const tabs = s.tabs.filter(tabVisible).map((tab) =>
         currentTitleSlug === 'halo_5' && tab.key === 'citations'
           ? {
+              // Halo 5 : commendations natives, mais libellé FR = « Citations »
+              // (terme officiel Halo FR, cohérent Infinite) — on conserve donc le
+              // label d'origine de l'onglet et on ne change QUE la clé + le chemin.
               ...tab,
               key: 'commendations',
-              label: 'Commendations',
               path: '/players/$playerSlug/commendations',
             }
           : tab,
@@ -288,12 +291,15 @@ export function NavL1() {
   // et le menu compte/outils mobile.
   // « Synchronisation » et « Utilisateurs » ont migré vers la page Admin
   // (lien « Administration » ci-dessous, gardé pour les admins).
+  // Libellés localisés (FR/EN) via le bundle Settings partagé — alimentent à la
+  // fois le dropdown desktop et le drawer mobile.
+  const st = getSettingsText(locale)
   const settingsTabs: SettingsTabItem[] = [
-    { key: 'appearance', label: 'Apparence', tab: 'appearance' },
-    { key: 'analyse', label: 'Analyse', tab: 'analyse' },
-    { key: 'notifications', label: 'Notifications', tab: 'notifications' },
-    { key: 'data', label: 'Données', tab: 'data' },
-    { key: 'account', label: 'Compte', tab: 'account' },
+    { key: 'appearance', label: st.tabAppearance, tab: 'appearance' },
+    { key: 'analyse', label: st.tabAnalyse, tab: 'analyse' },
+    { key: 'notifications', label: st.tabNotifications, tab: 'notifications' },
+    { key: 'data', label: st.tabData, tab: 'data' },
+    { key: 'account', label: st.tabAccount, tab: 'account' },
   ]
 
   function resolvePath(templatePath: string): string {

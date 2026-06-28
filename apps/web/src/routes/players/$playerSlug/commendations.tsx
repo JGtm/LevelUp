@@ -4,13 +4,13 @@
  * natives → dégradation gracieuse, pas de gating par slug.
  */
 import { createFileRoute } from '@tanstack/react-router'
-import { CommendationTotalsPage } from '@/features/commendations/CommendationTotalsPage'
+import { UnifiedCitationsPage } from '@/features/citations/UnifiedCitationsPage'
 import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
 
 export const Route = createFileRoute('/players/$playerSlug/commendations')({
   component: () => (
     <RouteCapabilityGate capability="career">
-      <CommendationTotalsPage />
+      <UnifiedCitationsPage source="native" />
     </RouteCapabilityGate>
   ),
 })

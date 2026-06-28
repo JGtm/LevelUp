@@ -25,6 +25,7 @@ import { HomeSpartanIdentityBanner } from './HomeSpartanIdentityBanner'
 import { HomeHeroKPIGrid } from './HomeHeroKPIGrid'
 import { HomePrestigeSection } from './HomePrestigeSection'
 import { HomeAscensionWidget } from './HomeAscensionWidget'
+import { HomeCitationsNearCompletion } from './HomeCitationsNearCompletion'
 import { useHomePage, useSeasonPassPreview } from './queries'
 import { useSettings } from '@/features/settings/queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
@@ -401,7 +402,7 @@ export function HomePage() {
             <InfoTooltip content={<p>{getHighlightText(locale).section.tooltipIntro}</p>} />
           </header>
           {highlights.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:[grid-template-columns:repeat(20,minmax(0,1fr))]">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:flex-wrap">
                 {highlights.map((h, i) => (
                   <HomeHighlightTile key={i} h={h} locale={locale} />
                 ))}
@@ -443,6 +444,10 @@ export function HomePage() {
               />
           </section>
         )}
+
+        {/* Citations bientôt terminées — juste au-dessus des tuiles de matchs.
+            Self-hide si rien à montrer (cf. HomeCitationsNearCompletion). */}
+        <HomeCitationsNearCompletion playerSlug={playerSlug} />
 
         {/* Matchs récents / Favoris — titre + contenu sortis de la carte ; toggles
             conservés à droite dans le header de section (cf. demande user). */}

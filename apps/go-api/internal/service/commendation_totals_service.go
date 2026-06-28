@@ -8,6 +8,7 @@ import (
 	"errors"
 	"sort"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -64,8 +65,19 @@ func groupNativeCommendations(totals []canonical.CommendationTotal) *domain.Nati
 		if cat == "" {
 			cat = "AUTRE"
 		}
+		// Progression À VIE : delta=0 (vitrine, pas un gain de match). On NE filtre
+		// PAS les maîtrisées (à l'inverse des snippets de match) — une commendation
+		// maîtrisée doit s'afficher pleine/dorée. tier_targets vide → tier_count=0 →
+		// front masque l'anneau (dégradation propre).
+		tiers := analysis.ParseTierTargets(t.TierTargets)
+		tp := analysis.ComputeTierProgression(t.Total, 0, tiers)
 		byCat[cat] = append(byCat[cat], domain.NativeCommendationTotal{
 			ID: t.ID, Name: t.Name, Category: cat, Total: t.Total, IconURL: t.IconURL,
+			ProgressPct:    tp.ProgressPct,
+			TierIndex:      tp.TierIndex,
+			TierCount:      tp.TierCount,
+			NextTierTarget: tp.NextTierTarget,
+			IsMastered:     tp.TierCount > 0 && tp.TierIndex >= tp.TierCount,
 		})
 	}
 	cats := make([]string, 0, len(byCat))

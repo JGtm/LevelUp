@@ -4356,7 +4356,16 @@ export interface components {
             category: string;
             icon_url?: string;
             id: string;
+            is_mastered?: boolean;
             name: string;
+            /** Format: int64 */
+            next_tier_target?: number;
+            /** Format: double */
+            progress_pct: number;
+            /** Format: int64 */
+            tier_count?: number;
+            /** Format: int64 */
+            tier_index?: number;
             /** Format: int64 */
             total: number;
         };

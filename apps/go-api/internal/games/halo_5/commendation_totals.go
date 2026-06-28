@@ -67,6 +67,7 @@ func (a *DataAdapter) enrichCommendationTotals(ctx context.Context, totals []can
 			totals[i].Name = d.Name
 		}
 		totals[i].Category = d.Category
+		totals[i].TierTargets = d.TierTargets
 		if d.IconURL != "" {
 			icon := d.IconURL
 			totals[i].IconURL = &icon

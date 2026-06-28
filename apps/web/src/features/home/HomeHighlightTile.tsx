@@ -11,13 +11,31 @@ import { KpiCard } from '@/components/cards/KpiCard'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { resolveTitle, resolveLabel, resolveDetail, resolveColSpan, resolveUnit } from './highlights.i18n'
 
-// Grille fine de 20 sous-unités sur lg+. Tailwind v4 arbitrary values.
-const HIGHLIGHT_SPAN_CLASS: Record<number, string> = {
-  1: 'lg:[grid-column:span_1/span_1]',
-  2: 'lg:[grid-column:span_2/span_2]',
-  3: 'lg:[grid-column:span_3/span_3]',
-  4: 'lg:[grid-column:span_4/span_4]',
-  5: 'lg:[grid-column:span_5/span_5]',
+// Rangée flex sur lg+ : chaque tuile grandit proportionnellement à son poids
+// (flex-grow) avec une largeur de base proportionnelle (flex-basis ≈ poids/20).
+// final_width ∝ poids → largeurs relatives conservées ET la ligne remplit 100 %
+// quel que soit le sous-ensemble de tuiles (ex. H5 sans la case MMR/skill).
+// Classes LITTÉRALES (pas de template dynamique) pour être détectées par le JIT.
+const HIGHLIGHT_GROW_CLASS: Record<number, string> = {
+  1: 'lg:grow-[1]',
+  2: 'lg:grow-[2]',
+  3: 'lg:grow-[3]',
+  4: 'lg:grow-[4]',
+  5: 'lg:grow-[5]',
+}
+const HIGHLIGHT_BASIS_CLASS: Record<number, string> = {
+  1: 'lg:basis-[5%]',
+  2: 'lg:basis-[10%]',
+  3: 'lg:basis-[15%]',
+  4: 'lg:basis-[20%]',
+  5: 'lg:basis-[25%]',
+}
+
+function highlightFlexClass(titleKey: string | undefined): string {
+  const weight = resolveColSpan(titleKey)
+  const grow = HIGHLIGHT_GROW_CLASS[weight] ?? 'lg:grow'
+  const basis = HIGHLIGHT_BASIS_CLASS[weight] ?? 'lg:basis-[10%]'
+  return `${grow} ${basis} lg:min-w-0`
 }
 
 // Mapping unique sentiment → token sémantique. Sert à la FOIS la couleur de la
@@ -109,7 +127,7 @@ interface HomeHighlightTileProps {
 
 export function HomeHighlightTile({ h, locale }: HomeHighlightTileProps) {
   const title = h.title_key ? resolveTitle(locale, h.title_key) : (h.title ?? '')
-  const spanClass = HIGHLIGHT_SPAN_CLASS[resolveColSpan(h.title_key)] ?? ''
+  const spanClass = highlightFlexClass(h.title_key)
   if (h.slides && h.slides.length > 0) {
     return <SerieTile title={title} slides={h.slides} locale={locale} className={spanClass} />
   }
