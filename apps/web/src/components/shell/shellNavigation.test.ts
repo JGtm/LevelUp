@@ -29,10 +29,10 @@ describe('buildPlayerDestination', () => {
     )
   })
 
-  it('place Palmarès avant Carrière dans le parcours principal', () => {
+  it('place Communauté avant Carrière dans le parcours principal', () => {
     const labels = PLAYER_PRIMARY_NAV_ITEMS.map((item) => item.label)
 
-    expect(labels.indexOf('Palmarès')).toBeGreaterThanOrEqual(0)
-    expect(labels.indexOf('Palmarès')).toBeLessThan(labels.indexOf('Carrière'))
+    expect(labels.indexOf('Communauté')).toBeGreaterThanOrEqual(0)
+    expect(labels.indexOf('Communauté')).toBeLessThan(labels.indexOf('Carrière'))
   })
 })

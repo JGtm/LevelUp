@@ -184,7 +184,7 @@ export function ExplorerPage() {
 
   function openHeadToHead(gamertag: string) {
     void navigate({
-      to: '/players/$playerSlug/compare',
+      to: '/players/$playerSlug/community/compare',
       params: { playerSlug },
       search: { target: gamertag, from: 'explorer' },
     })

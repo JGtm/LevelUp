@@ -1,12 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
-import { PalmaresLeaderboardPage } from '@/features/palmares/PalmaresLeaderboardPage'
-import { RouteCapabilityGate } from '@/lib/capabilities/RouteCapabilityGate'
-
+// Redirection legacy : Classements/Communauté est passé de /palmares à /community.
 export const Route = createFileRoute('/players/$playerSlug/palmares/')({
-  component: () => (
-    <RouteCapabilityGate capability="world.leaderboard">
-      <PalmaresLeaderboardPage />
-    </RouteCapabilityGate>
-  ),
+  beforeLoad: ({ params }) => {
+    throw redirect({ to: '/players/$playerSlug/community', params, replace: true })
+  },
 })

@@ -58,7 +58,7 @@ describe('NavL1', () => {
   })
 
   it('marque Communauté actif sur les sous-routes du hub', () => {
-    mockPathname = '/players/test-player/palmares/relations'
+    mockPathname = '/players/test-player/community/relations'
 
     renderWithProviders(<NavL1 />)
 

@@ -135,7 +135,7 @@ export const L1_SECTIONS: L1Section[] = [
   {
     key: 'community',
     label: 'Communauté',
-    defaultPath: '/players/$playerSlug/palmares',
+    defaultPath: '/players/$playerSlug/community',
     matchPathname: isCommunityPath,
     // Section transverse non gatée (Relations / Face-à-face dérivent des matchs) ;
     // seul l'onglet « Classements » dépend de `world.leaderboard`.
@@ -143,11 +143,11 @@ export const L1_SECTIONS: L1Section[] = [
       {
         key: 'leaderboard',
         label: 'Classements',
-        path: '/players/$playerSlug/palmares',
+        path: '/players/$playerSlug/community',
         capability: 'world.leaderboard',
       },
-      { key: 'relations', label: 'Relations', path: '/players/$playerSlug/palmares/relations' },
-      { key: 'compare', label: 'Face-à-face', path: '/players/$playerSlug/compare' },
+      { key: 'relations', label: 'Relations', path: '/players/$playerSlug/community/relations' },
+      { key: 'compare', label: 'Face-à-face', path: '/players/$playerSlug/community/compare' },
     ],
   },
   {

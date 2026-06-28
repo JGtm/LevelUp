@@ -77,7 +77,7 @@ export function CareerPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => void navigate({ to: '/players/$playerSlug/compare', params: { playerSlug } })}
+            onClick={() => void navigate({ to: '/players/$playerSlug/community/compare', params: { playerSlug } })}
           >
             {t('career.actions.compare')}
           </Button>

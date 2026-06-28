@@ -46,6 +46,7 @@ import { Route as PlayersPlayerSlugSquadIndexRouteImport } from './routes/player
 import { Route as PlayersPlayerSlugPalmaresIndexRouteImport } from './routes/players/$playerSlug/palmares/index'
 import { Route as PlayersPlayerSlugObjectifsIndexRouteImport } from './routes/players/$playerSlug/objectifs/index'
 import { Route as PlayersPlayerSlugExplorerIndexRouteImport } from './routes/players/$playerSlug/explorer/index'
+import { Route as PlayersPlayerSlugCommunityIndexRouteImport } from './routes/players/$playerSlug/community/index'
 import { Route as PlayersPlayerSlugAscensionIndexRouteImport } from './routes/players/$playerSlug/ascension/index'
 import { Route as PlayersPlayerSlugStatsTimeseriesRouteImport } from './routes/players/$playerSlug/stats/timeseries'
 import { Route as PlayersPlayerSlugStatsSessionsRouteImport } from './routes/players/$playerSlug/stats/sessions'
@@ -54,6 +55,9 @@ import { Route as PlayersPlayerSlugSquadContributionsRouteImport } from './route
 import { Route as PlayersPlayerSlugPalmaresRelationsRouteImport } from './routes/players/$playerSlug/palmares/relations'
 import { Route as PlayersPlayerSlugPalmaresPrestigeRouteImport } from './routes/players/$playerSlug/palmares/prestige'
 import { Route as PlayersPlayerSlugMatchesMatchIdRouteImport } from './routes/players/$playerSlug/matches/$matchId'
+import { Route as PlayersPlayerSlugCommunityRelationsRouteImport } from './routes/players/$playerSlug/community/relations'
+import { Route as PlayersPlayerSlugCommunityPrestigeRouteImport } from './routes/players/$playerSlug/community/prestige'
+import { Route as PlayersPlayerSlugCommunityCompareRouteImport } from './routes/players/$playerSlug/community/compare'
 import { Route as PlayersPlayerSlugCareerSeasonPassRouteImport } from './routes/players/$playerSlug/career/season-pass'
 import { Route as PlayersPlayerSlugAscensionRealisationsRouteImport } from './routes/players/$playerSlug/ascension/realisations'
 import { Route as PlayersPlayerSlugAscensionCoachingRouteImport } from './routes/players/$playerSlug/ascension/coaching'
@@ -255,6 +259,12 @@ const PlayersPlayerSlugExplorerIndexRoute =
     path: '/explorer/',
     getParentRoute: () => PlayersPlayerSlugRoute,
   } as any)
+const PlayersPlayerSlugCommunityIndexRoute =
+  PlayersPlayerSlugCommunityIndexRouteImport.update({
+    id: '/community/',
+    path: '/community/',
+    getParentRoute: () => PlayersPlayerSlugRoute,
+  } as any)
 const PlayersPlayerSlugAscensionIndexRoute =
   PlayersPlayerSlugAscensionIndexRouteImport.update({
     id: '/',
@@ -301,6 +311,24 @@ const PlayersPlayerSlugMatchesMatchIdRoute =
   PlayersPlayerSlugMatchesMatchIdRouteImport.update({
     id: '/matches/$matchId',
     path: '/matches/$matchId',
+    getParentRoute: () => PlayersPlayerSlugRoute,
+  } as any)
+const PlayersPlayerSlugCommunityRelationsRoute =
+  PlayersPlayerSlugCommunityRelationsRouteImport.update({
+    id: '/community/relations',
+    path: '/community/relations',
+    getParentRoute: () => PlayersPlayerSlugRoute,
+  } as any)
+const PlayersPlayerSlugCommunityPrestigeRoute =
+  PlayersPlayerSlugCommunityPrestigeRouteImport.update({
+    id: '/community/prestige',
+    path: '/community/prestige',
+    getParentRoute: () => PlayersPlayerSlugRoute,
+  } as any)
+const PlayersPlayerSlugCommunityCompareRoute =
+  PlayersPlayerSlugCommunityCompareRouteImport.update({
+    id: '/community/compare',
+    path: '/community/compare',
     getParentRoute: () => PlayersPlayerSlugRoute,
   } as any)
 const PlayersPlayerSlugCareerSeasonPassRoute =
@@ -364,6 +392,9 @@ export interface FileRoutesByFullPath {
   '/players/$playerSlug/ascension/coaching': typeof PlayersPlayerSlugAscensionCoachingRoute
   '/players/$playerSlug/ascension/realisations': typeof PlayersPlayerSlugAscensionRealisationsRoute
   '/players/$playerSlug/career/season-pass': typeof PlayersPlayerSlugCareerSeasonPassRoute
+  '/players/$playerSlug/community/compare': typeof PlayersPlayerSlugCommunityCompareRoute
+  '/players/$playerSlug/community/prestige': typeof PlayersPlayerSlugCommunityPrestigeRoute
+  '/players/$playerSlug/community/relations': typeof PlayersPlayerSlugCommunityRelationsRoute
   '/players/$playerSlug/matches/$matchId': typeof PlayersPlayerSlugMatchesMatchIdRouteWithChildren
   '/players/$playerSlug/palmares/prestige': typeof PlayersPlayerSlugPalmaresPrestigeRoute
   '/players/$playerSlug/palmares/relations': typeof PlayersPlayerSlugPalmaresRelationsRoute
@@ -372,6 +403,7 @@ export interface FileRoutesByFullPath {
   '/players/$playerSlug/stats/sessions': typeof PlayersPlayerSlugStatsSessionsRoute
   '/players/$playerSlug/stats/timeseries': typeof PlayersPlayerSlugStatsTimeseriesRoute
   '/players/$playerSlug/ascension/': typeof PlayersPlayerSlugAscensionIndexRoute
+  '/players/$playerSlug/community/': typeof PlayersPlayerSlugCommunityIndexRoute
   '/players/$playerSlug/explorer/': typeof PlayersPlayerSlugExplorerIndexRoute
   '/players/$playerSlug/objectifs/': typeof PlayersPlayerSlugObjectifsIndexRoute
   '/players/$playerSlug/palmares/': typeof PlayersPlayerSlugPalmaresIndexRoute
@@ -412,6 +444,9 @@ export interface FileRoutesByTo {
   '/players/$playerSlug/ascension/coaching': typeof PlayersPlayerSlugAscensionCoachingRoute
   '/players/$playerSlug/ascension/realisations': typeof PlayersPlayerSlugAscensionRealisationsRoute
   '/players/$playerSlug/career/season-pass': typeof PlayersPlayerSlugCareerSeasonPassRoute
+  '/players/$playerSlug/community/compare': typeof PlayersPlayerSlugCommunityCompareRoute
+  '/players/$playerSlug/community/prestige': typeof PlayersPlayerSlugCommunityPrestigeRoute
+  '/players/$playerSlug/community/relations': typeof PlayersPlayerSlugCommunityRelationsRoute
   '/players/$playerSlug/matches/$matchId': typeof PlayersPlayerSlugMatchesMatchIdRouteWithChildren
   '/players/$playerSlug/palmares/prestige': typeof PlayersPlayerSlugPalmaresPrestigeRoute
   '/players/$playerSlug/palmares/relations': typeof PlayersPlayerSlugPalmaresRelationsRoute
@@ -420,6 +455,7 @@ export interface FileRoutesByTo {
   '/players/$playerSlug/stats/sessions': typeof PlayersPlayerSlugStatsSessionsRoute
   '/players/$playerSlug/stats/timeseries': typeof PlayersPlayerSlugStatsTimeseriesRoute
   '/players/$playerSlug/ascension': typeof PlayersPlayerSlugAscensionIndexRoute
+  '/players/$playerSlug/community': typeof PlayersPlayerSlugCommunityIndexRoute
   '/players/$playerSlug/explorer': typeof PlayersPlayerSlugExplorerIndexRoute
   '/players/$playerSlug/objectifs': typeof PlayersPlayerSlugObjectifsIndexRoute
   '/players/$playerSlug/palmares': typeof PlayersPlayerSlugPalmaresIndexRoute
@@ -464,6 +500,9 @@ export interface FileRoutesById {
   '/players/$playerSlug/ascension/coaching': typeof PlayersPlayerSlugAscensionCoachingRoute
   '/players/$playerSlug/ascension/realisations': typeof PlayersPlayerSlugAscensionRealisationsRoute
   '/players/$playerSlug/career/season-pass': typeof PlayersPlayerSlugCareerSeasonPassRoute
+  '/players/$playerSlug/community/compare': typeof PlayersPlayerSlugCommunityCompareRoute
+  '/players/$playerSlug/community/prestige': typeof PlayersPlayerSlugCommunityPrestigeRoute
+  '/players/$playerSlug/community/relations': typeof PlayersPlayerSlugCommunityRelationsRoute
   '/players/$playerSlug/matches/$matchId': typeof PlayersPlayerSlugMatchesMatchIdRouteWithChildren
   '/players/$playerSlug/palmares/prestige': typeof PlayersPlayerSlugPalmaresPrestigeRoute
   '/players/$playerSlug/palmares/relations': typeof PlayersPlayerSlugPalmaresRelationsRoute
@@ -472,6 +511,7 @@ export interface FileRoutesById {
   '/players/$playerSlug/stats/sessions': typeof PlayersPlayerSlugStatsSessionsRoute
   '/players/$playerSlug/stats/timeseries': typeof PlayersPlayerSlugStatsTimeseriesRoute
   '/players/$playerSlug/ascension/': typeof PlayersPlayerSlugAscensionIndexRoute
+  '/players/$playerSlug/community/': typeof PlayersPlayerSlugCommunityIndexRoute
   '/players/$playerSlug/explorer/': typeof PlayersPlayerSlugExplorerIndexRoute
   '/players/$playerSlug/objectifs/': typeof PlayersPlayerSlugObjectifsIndexRoute
   '/players/$playerSlug/palmares/': typeof PlayersPlayerSlugPalmaresIndexRoute
@@ -517,6 +557,9 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/ascension/coaching'
     | '/players/$playerSlug/ascension/realisations'
     | '/players/$playerSlug/career/season-pass'
+    | '/players/$playerSlug/community/compare'
+    | '/players/$playerSlug/community/prestige'
+    | '/players/$playerSlug/community/relations'
     | '/players/$playerSlug/matches/$matchId'
     | '/players/$playerSlug/palmares/prestige'
     | '/players/$playerSlug/palmares/relations'
@@ -525,6 +568,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/stats/sessions'
     | '/players/$playerSlug/stats/timeseries'
     | '/players/$playerSlug/ascension/'
+    | '/players/$playerSlug/community/'
     | '/players/$playerSlug/explorer/'
     | '/players/$playerSlug/objectifs/'
     | '/players/$playerSlug/palmares/'
@@ -565,6 +609,9 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/ascension/coaching'
     | '/players/$playerSlug/ascension/realisations'
     | '/players/$playerSlug/career/season-pass'
+    | '/players/$playerSlug/community/compare'
+    | '/players/$playerSlug/community/prestige'
+    | '/players/$playerSlug/community/relations'
     | '/players/$playerSlug/matches/$matchId'
     | '/players/$playerSlug/palmares/prestige'
     | '/players/$playerSlug/palmares/relations'
@@ -573,6 +620,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/stats/sessions'
     | '/players/$playerSlug/stats/timeseries'
     | '/players/$playerSlug/ascension'
+    | '/players/$playerSlug/community'
     | '/players/$playerSlug/explorer'
     | '/players/$playerSlug/objectifs'
     | '/players/$playerSlug/palmares'
@@ -616,6 +664,9 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/ascension/coaching'
     | '/players/$playerSlug/ascension/realisations'
     | '/players/$playerSlug/career/season-pass'
+    | '/players/$playerSlug/community/compare'
+    | '/players/$playerSlug/community/prestige'
+    | '/players/$playerSlug/community/relations'
     | '/players/$playerSlug/matches/$matchId'
     | '/players/$playerSlug/palmares/prestige'
     | '/players/$playerSlug/palmares/relations'
@@ -624,6 +675,7 @@ export interface FileRouteTypes {
     | '/players/$playerSlug/stats/sessions'
     | '/players/$playerSlug/stats/timeseries'
     | '/players/$playerSlug/ascension/'
+    | '/players/$playerSlug/community/'
     | '/players/$playerSlug/explorer/'
     | '/players/$playerSlug/objectifs/'
     | '/players/$playerSlug/palmares/'
@@ -909,6 +961,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayersPlayerSlugExplorerIndexRouteImport
       parentRoute: typeof PlayersPlayerSlugRoute
     }
+    '/players/$playerSlug/community/': {
+      id: '/players/$playerSlug/community/'
+      path: '/community'
+      fullPath: '/players/$playerSlug/community/'
+      preLoaderRoute: typeof PlayersPlayerSlugCommunityIndexRouteImport
+      parentRoute: typeof PlayersPlayerSlugRoute
+    }
     '/players/$playerSlug/ascension/': {
       id: '/players/$playerSlug/ascension/'
       path: '/'
@@ -963,6 +1022,27 @@ declare module '@tanstack/react-router' {
       path: '/matches/$matchId'
       fullPath: '/players/$playerSlug/matches/$matchId'
       preLoaderRoute: typeof PlayersPlayerSlugMatchesMatchIdRouteImport
+      parentRoute: typeof PlayersPlayerSlugRoute
+    }
+    '/players/$playerSlug/community/relations': {
+      id: '/players/$playerSlug/community/relations'
+      path: '/community/relations'
+      fullPath: '/players/$playerSlug/community/relations'
+      preLoaderRoute: typeof PlayersPlayerSlugCommunityRelationsRouteImport
+      parentRoute: typeof PlayersPlayerSlugRoute
+    }
+    '/players/$playerSlug/community/prestige': {
+      id: '/players/$playerSlug/community/prestige'
+      path: '/community/prestige'
+      fullPath: '/players/$playerSlug/community/prestige'
+      preLoaderRoute: typeof PlayersPlayerSlugCommunityPrestigeRouteImport
+      parentRoute: typeof PlayersPlayerSlugRoute
+    }
+    '/players/$playerSlug/community/compare': {
+      id: '/players/$playerSlug/community/compare'
+      path: '/community/compare'
+      fullPath: '/players/$playerSlug/community/compare'
+      preLoaderRoute: typeof PlayersPlayerSlugCommunityCompareRouteImport
       parentRoute: typeof PlayersPlayerSlugRoute
     }
     '/players/$playerSlug/career/season-pass': {
@@ -1088,11 +1168,15 @@ interface PlayersPlayerSlugRouteChildren {
   PlayersPlayerSlugSquadRoute: typeof PlayersPlayerSlugSquadRouteWithChildren
   PlayersPlayerSlugSynthesisRoute: typeof PlayersPlayerSlugSynthesisRoute
   PlayersPlayerSlugCareerSeasonPassRoute: typeof PlayersPlayerSlugCareerSeasonPassRoute
+  PlayersPlayerSlugCommunityCompareRoute: typeof PlayersPlayerSlugCommunityCompareRoute
+  PlayersPlayerSlugCommunityPrestigeRoute: typeof PlayersPlayerSlugCommunityPrestigeRoute
+  PlayersPlayerSlugCommunityRelationsRoute: typeof PlayersPlayerSlugCommunityRelationsRoute
   PlayersPlayerSlugMatchesMatchIdRoute: typeof PlayersPlayerSlugMatchesMatchIdRouteWithChildren
   PlayersPlayerSlugPalmaresPrestigeRoute: typeof PlayersPlayerSlugPalmaresPrestigeRoute
   PlayersPlayerSlugPalmaresRelationsRoute: typeof PlayersPlayerSlugPalmaresRelationsRoute
   PlayersPlayerSlugStatsSessionsRoute: typeof PlayersPlayerSlugStatsSessionsRoute
   PlayersPlayerSlugStatsTimeseriesRoute: typeof PlayersPlayerSlugStatsTimeseriesRoute
+  PlayersPlayerSlugCommunityIndexRoute: typeof PlayersPlayerSlugCommunityIndexRoute
   PlayersPlayerSlugExplorerIndexRoute: typeof PlayersPlayerSlugExplorerIndexRoute
   PlayersPlayerSlugObjectifsIndexRoute: typeof PlayersPlayerSlugObjectifsIndexRoute
   PlayersPlayerSlugPalmaresIndexRoute: typeof PlayersPlayerSlugPalmaresIndexRoute
@@ -1112,6 +1196,12 @@ const PlayersPlayerSlugRouteChildren: PlayersPlayerSlugRouteChildren = {
   PlayersPlayerSlugSynthesisRoute: PlayersPlayerSlugSynthesisRoute,
   PlayersPlayerSlugCareerSeasonPassRoute:
     PlayersPlayerSlugCareerSeasonPassRoute,
+  PlayersPlayerSlugCommunityCompareRoute:
+    PlayersPlayerSlugCommunityCompareRoute,
+  PlayersPlayerSlugCommunityPrestigeRoute:
+    PlayersPlayerSlugCommunityPrestigeRoute,
+  PlayersPlayerSlugCommunityRelationsRoute:
+    PlayersPlayerSlugCommunityRelationsRoute,
   PlayersPlayerSlugMatchesMatchIdRoute:
     PlayersPlayerSlugMatchesMatchIdRouteWithChildren,
   PlayersPlayerSlugPalmaresPrestigeRoute:
@@ -1120,6 +1210,7 @@ const PlayersPlayerSlugRouteChildren: PlayersPlayerSlugRouteChildren = {
     PlayersPlayerSlugPalmaresRelationsRoute,
   PlayersPlayerSlugStatsSessionsRoute: PlayersPlayerSlugStatsSessionsRoute,
   PlayersPlayerSlugStatsTimeseriesRoute: PlayersPlayerSlugStatsTimeseriesRoute,
+  PlayersPlayerSlugCommunityIndexRoute: PlayersPlayerSlugCommunityIndexRoute,
   PlayersPlayerSlugExplorerIndexRoute: PlayersPlayerSlugExplorerIndexRoute,
   PlayersPlayerSlugObjectifsIndexRoute: PlayersPlayerSlugObjectifsIndexRoute,
   PlayersPlayerSlugPalmaresIndexRoute: PlayersPlayerSlugPalmaresIndexRoute,
