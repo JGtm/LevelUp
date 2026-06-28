@@ -14,6 +14,8 @@ import { SPARTAN_DEFAULT_COLORS } from '@/lib/accessibility/palettes/spartan'
 export interface SpartanAppearance {
   /** id d'emblème (clé de spartan-catalog.json), null = aucun choix. */
   emblemId: string | null
+  /** id de bannière (nameplate) — INDÉPENDANT de l'emblème ; null = aucun choix. */
+  nameplateId: string | null
   /** Couleur zone primaire (hex). */
   primary: string
   /** Couleur zone secondaire (hex). */
@@ -26,6 +28,7 @@ export const DEFAULT_SPARTAN_APPEARANCE: SpartanAppearance = {
   // Emblème par défaut (#160, insigne neutre) → la bannière d'identité n'est jamais
   // vide pour un nouveau joueur. Cf. .ai/PLAN_H5_SPARTAN_CUSTOMIZER.md.
   emblemId: '160',
+  nameplateId: '160',
   ...SPARTAN_DEFAULT_COLORS,
 }
 
