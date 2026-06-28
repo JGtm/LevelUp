@@ -202,13 +202,49 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		AuthMode:             s.cfg.AuthMode,
 		RegistrationMode:     s.cfg.RegistrationMode,
 		InstanceLocked:       s.cfg.InstanceLocked || getBoolSetting(appSettings, "instance_locked", false),
-		ReauthRequired:       s.reauthCheck != nil && currentPlayer != nil && currentPlayer.XUID != "" && s.reauthCheck(currentPlayer.XUID),
+		ReauthRequired:       s.resolveReauthRequired(ctx, sess),
 		HasPassword:          s.currentUserHasPassword(sess),
 		IsAdmin:              sess != nil && sess.Role != nil && *sess.Role == "admin",
 		CurrentUsername:      resolveUsername(sess),
 		FirstLaunch:          s.isFirstLaunch(),
 		OAuthCodeFlowEnabled: s.cfg.AuthMode == "xbox" && s.cfg.OAuthRedirectURI != "",
 	}, nil
+}
+
+// resolveReauthRequired indique si le user CONNECTÉ doit re-passer le SSO Xbox
+// (son refresh_token Microsoft est mort). Scopé à SON propre joueur via ownXUID,
+// PAS au joueur courant affiché : un admin qui consulte un autre joueur ne doit
+// pas hériter du bandeau d'un tiers — il ne peut rien faire pour le RT d'autrui,
+// seul le propriétaire du compte peut se reconnecter. Retourne false sans checker
+// câblé (PR-B) ou sans identité propre (compte password sans lien Halo).
+func (s *BootstrapService) resolveReauthRequired(ctx context.Context, sess *domain.SessionData) bool {
+	if s.reauthCheck == nil {
+		return false
+	}
+	xuid := s.ownXUID(sess)
+	if xuid == "" {
+		return false
+	}
+	if s.reauthCheck(xuid) {
+		slog.DebugContext(ctx, "bootstrap: reauth_required pour le compte connecté", "xuid", xuid)
+		return true
+	}
+	return false
+}
+
+// ownXUID résout le xuid du joueur PROPRE au user de session (son compte Xbox
+// lié), indépendamment du joueur courant affiché. Priorité au user persisté
+// (authz.CurrentUser → username puis identité liée), fallback sur l'identité Halo
+// de session quand aucun userLookup n'est câblé (mono-utilisateur). "" si aucune
+// identité propre.
+func (s *BootstrapService) ownXUID(sess *domain.SessionData) string {
+	if u := authz.CurrentUser(sess, s.userLookup); u != nil && u.XUID != "" {
+		return u.XUID
+	}
+	if id := ResolveLinkedIdentity(sess); id != nil {
+		return id.XUID
+	}
+	return ""
 }
 
 // currentUserHasPassword indique si l'utilisateur connecté a défini un mot de
