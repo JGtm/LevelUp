@@ -1,3 +1,42 @@
+## [2026-06-28] Personnalisateur Spartan (emblèmes/nameplates Halo 5) — modale home + recolor live — COMPLÉTÉ + vérifié
+
+**Tâche** : feature Halo-5-only. Clic sur la bannière d'identité de l'accueil → modale (sans navigation) pour parcourir les emblèmes, choisir des couleurs (rouge/bleu présélectionnés), voir le nameplate + l'emblème recolorisés EN DIRECT côte à côte (non collés), puis Enregistrer/Annuler. Plan : `.ai/PLAN_H5_SPARTAN_CUSTOMIZER.md`.
+
+**Reverse-engineering couleurs** : les masques extraits du jeu encodent les zones coloriables dans les canaux R/G/B (primaire/secondaire/tertiaire), confirmé via le Lua compilé `nameplatemanager.lua` (moteur Anubis UI). Rendu ADDITIF : `out = primary*R + secondary*G + tertiary*B`, `alpha = max(R,G,B)`. Le mode « canal dominant » écrasait le design (rejeté).
+
+**Pré-P0 — pipeline d'assets** : extraction Reclaimer (TIFF) → masques. Upscale piloté EN CLI via le binaire bundlé Upscayl `resources/bin/upscayl-bin.exe` (realesrgan-ncnn-vulkan), modèle `digital-art-4x` (moins de bavures inter-canaux que `standard` sur graphismes plats) — le GUI plantait. Nameplates 324×68 → 1296×272 ; emblèmes detail 512² suffisants. Placeholders (texte debug, ex #200) exclus du catalogue.
+
+**Décisions d'archi** :
+- Gating par CAPABILITY `spartan_customizer` (pas slug) : const Go `registry.go` + `knownCapabilities` `config_loader.go` + `config/titles/halo_5/title.toml` (PAS Infinite) + TS `capabilities.ts`. Miroir de `native_kill_mechanics`. UI gated par `useCapability`.
+- Persistance v1 = localStorage (store dédié `spartan-customizer/store.ts` ; précédent = couleurs d'équipe de `settingsDraftStore`). Backend append-only `shared_social` = follow-up.
+- Assets statiques same-origin `apps/web/public/titles/halo_5/spartan/` (canvas getImageData sans CORS) : `nameplates/` (1296×272), `emblems/` (256²), `emblems_thumb_colored/` (96², rouge/bleu par défaut pour la grille) + `spartan-catalog.json` (378 ids).
+- Recolor canvas 2D ; grille = vignettes pré-colorisées (`<img>`, léger) ; aperçu = `RecoloredMask` live (2 canvas).
+
+**Implémentation** :
+- Pur + testé : `features/spartan-customizer/recolor.ts` (+ recolor.test.ts, 6 tests) ; palette `lib/accessibility/palettes/spartan.ts` (exception couleurs-données documentée, comme `rarity.ts`).
+- `RecoloredMask.tsx` (canvas, image en state — pas d'accès ref en render) ; `store.ts` (zustand persist) ; `SpartanCustomizerModal.tsx` (modale maison role=dialog + Escape + backdrop, calquée sur `BattlePassRewardLightbox` : aperçu + 3 lignes palette + grille 378 + Enregistrer/Annuler/Réinitialiser).
+- Câblage : `HomeSpartanIdentityBanner` (prop `onSpartanClick` + surface cliquable role=button + clavier) ; `HomePage` (useCapability + state + rendu modale gated).
+- i18n : section `home.spartan_customizer.*` dans `home.toml` + manifest régénéré.
+- Drift type rattrapé par `tsc` : entrée `spartan_customizer` ajoutée au Record `FeatureUnavailable.tsx`.
+
+**Vérif** : `tsc -b` OK ; eslint 0 (fichiers feature) ; vitest 16/16 (recolor 6 + capabilities) ; `go test ./internal/domain/title/...` OK ; `vite build` OK.
+
+**Consommation (bandeau d'identité) — addendum 2026-06-28** : l'apparence (choisie-ou-défaut) est
+désormais AFFICHÉE, pas seulement enregistrée. Pour H5, `HomeSpartanIdentityBanner` +
+`ExplorerTargetIdentityBanner` rendent l'**emblème carré recolorisé** (forme d'origine, PAS rond,
+à gauche) + le **nameplate recolorisé en fond** (object-cover) + scrim sémantique gauche pour la
+lisibilité du gamertag/rang par-dessus. Défaut `emblemId='160'` (insigne neutre) + rouge/bleu/blanc
+→ **jamais vide** pour un nouveau joueur (anti-vide demandé). Hébergement assets : **gardés en
+`public/titles/halo_5/spartan/`** (~33 Mo, non commités) — résolution 240px requise (affichage Spartan ID),
+repo solo, précédent wallpapers ; LFS/static-Go jugés superflus à cette échelle. Vérif consommation :
+tsc/eslint/build OK + mockup visuel validé (`_diag_canaux/banner_mockup_home.png`).
+
+Cas dégradé Explorer (identity==null) couvert pour H5 : bandeau par défaut (emblème + nameplate #160 + gamertag + note « indisponible ») au lieu du placeholder vide. Vérif : tsc/eslint OK, 70 tests verts (explorer + spartan).
+
+**Statut** : Complété sur worktree `feat/h5-spartan-customizer` (sibling `LevelUp-h5-spartan-customizer`). PAS de commit sans accord. Restes possibles : vérif visuelle réelle (dev server worktree) ; full vitest suite ; relocaliser le worktree vers `.claude/worktrees/` ; persistance backend cross-device.
+
+---
+
 ## [2026-06-28] Accueil — section « Citations bientôt terminées » (au-dessus des tuiles de matchs) — COMPLÉTÉ + vérifié
 
 **Tâche** : ajouter sur l'accueil un bloc des citations les plus proches de leur prochain palier, juste au-dessus des tuiles de matchs (option « A » ; la réorganisation libre de l'accueil « B/C » a été chiffrée mais écartée comme spéculative — YAGNI).

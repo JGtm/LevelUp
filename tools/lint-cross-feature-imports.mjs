@@ -144,6 +144,11 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'synthesis=>explorer',
   // TimeseriesSkillProgression réutilise le contexte rating Carrière (LUSR/CSR).
   'timeseries=>career',
+  // Accueil + Explorer affichent le bandeau d'identité Spartan (emblème + nameplate
+  // recolorisés) de la feature spartan-customizer (Halo 5) — dépendance durable,
+  // analogue à home=>prestige / explorer=>home.
+  'home=>spartan-customizer',
+  'explorer=>spartan-customizer',
 ])
 
 // Fichiers shell autorisés à importer @/features/ (orchestration globale).
