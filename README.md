@@ -67,11 +67,10 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **V7 scoreboard** — higher info density: expected stats, skill rank, linked media, citations
 - **Session comparison** — dedicated A/B page: pick any two sessions and compare KDA, performance score, Offensive Conversion / Defensive Resistance, outcome distribution and dominant playlist side by side
 
-**Rebuilt authentication**
-- **SISU/PoP provider** — new Xbox authentication with Proof-of-Possession for more stable sessions and fewer reconnects
-- **OAuth redirect flow** — browser-based Xbox login (`/auth/xbox/login` → Microsoft → callback) as an alternative to Device Code; configurable via `LEVELUP_OAUTH_REDIRECT_URI`
-- **Local auth** — username/password mode for single-user / LAN deployments
-- **Invitation-based registration** — new `/register` page; account creation requires a server-issued invitation code (`?code=` query param); invalid or expired codes are rejected before the account is written
+**Authentication**
+- **Xbox sign-in (standard)** — the standard way to use LevelUp: browser-based Xbox SSO (`/auth/xbox/login` → Microsoft → callback), using SISU/Proof-of-Possession for stable sessions. Device Code is available as an alternative transport, and the redirect URI is configurable via `LEVELUP_OAUTH_REDIRECT_URI`. No registration step — your Xbox account is your identity.
+- **Admin login (password)** — the instance administrator has a username/password account, created with the `admin` CLI (`create-admin` / `reset-password`). In Xbox mode, password login is reserved for admins.
+- **Optional per-player local login** — non-standard: a specific player can be granted a username/password account (invitation-based registration via `/register`, or an opt-in password on an existing SSO account) for deployments that need it. This is not part of the standard flow.
 
 **Xbox achievements & match events**
 - **Xbox achievements sync** — your Xbox achievements are pulled automatically from the Halo API on every sync
