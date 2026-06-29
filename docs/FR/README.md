@@ -66,11 +66,10 @@ Refonte majeure. LevelUp quitte Streamlit pour une app **React 19 + Go API** ave
 - **Scoreboard V7** — densité d'info accrue : expected stats, skill rank, média liée, citations
 - **Comparaison de sessions** — page A/B dédiée : choisissez deux sessions et comparez KDA, score de performance, Taux de Conversion Offensif / Résistance Défensive, distribution des résultats et playlist dominante côte à côte
 
-**Authentification repensée**
-- **Provider SISU/PoP** — nouvelle authentification Xbox avec Proof-of-Possession pour des sessions plus stables et moins de reconnexions
-- **Flux OAuth redirect** — connexion Xbox via navigateur (`/auth/xbox/login` → Microsoft → callback) comme alternative au Device Code
-- **Auth locale** — mode nom d'utilisateur/mot de passe pour déploiements mono-utilisateur / LAN
-- **Inscription par invitation** — nouvelle page `/register` : créez votre compte LevelUp uniquement via un lien d'invitation envoyé par l'administrateur ; les codes expirés ou déjà utilisés sont refusés avec un message clair
+**Authentification**
+- **Connexion Xbox (standard)** — la façon standard d'utiliser LevelUp : SSO Xbox via navigateur (`/auth/xbox/login` → Microsoft → callback), avec SISU/Proof-of-Possession pour des sessions stables. Le Device Code reste un transport alternatif, et l'URI de redirection est configurable via `LEVELUP_OAUTH_REDIRECT_URI`. Aucune inscription : votre compte Xbox est votre identité.
+- **Connexion admin (mot de passe)** — l'administrateur de l'instance dispose d'un compte nom d'utilisateur/mot de passe, créé via le CLI `admin` (`create-admin` / `reset-password`). En mode Xbox, la connexion par mot de passe est réservée aux admins.
+- **Connexion locale par joueur (option)** — non standard : un joueur précis peut recevoir un compte nom d'utilisateur/mot de passe (inscription par invitation via `/register`, ou mot de passe opt-in sur un compte SSO existant) pour les déploiements qui le nécessitent. Hors flux standard.
 
 **Achievements Xbox & événements de match**
 - **Sync des achievements Xbox** — vos succès Xbox sont récupérés automatiquement depuis l'API Halo à chaque sync
