@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useAppShellStore, buildTitleSwitcherEntries } from '@/stores/appShellStore'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { formatMessage } from '@/lib/i18n/format'
+import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 
 interface TitleSwitcherProps {
   /** Appelé après le déclenchement d'un switch (ex: fermer le menu parent). */
@@ -82,10 +83,11 @@ export function TitleSwitcher({ onSwitched }: TitleSwitcherProps) {
               <span className="flex items-center gap-1.5">
                 {e.isCurrent && (
                   // Pastille « actif » : indicateur non-couleur (a11y) en plus de
-                  // l'emphase token, conforme à aria-checked. bg-current hérite de
-                  // text-primary (pas de couleur brute).
+                  // l'emphase token, conforme à aria-checked. Couleur verte via le
+                  // token sémantique `success` (jeu actif).
                   <span
-                    className="size-1.5 shrink-0 rounded-full bg-current"
+                    className="size-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: tokenCssVar('success') }}
                     aria-hidden="true"
                   />
                 )}
