@@ -629,8 +629,8 @@ export function SynthesisPage() {
       {/* ─── Barre filtres (cascade locale) ─────────────────────────────────── */}
       {/* Ordre : Expérience → Saison → Période → Playlist → Mode. Counts cascade-aware
           calculés via /filters/resolve (useFiltersPreview). Commit atomique au clic Analyser. */}
-      <div className="sticky top-0 z-20 border-b border-border" style={{ background: 'var(--background)' }}>
-        <div className="flex min-h-10 items-center gap-1.5 px-4 py-1.5 flex-wrap">
+      <div className="sticky top-0 z-20 px-6" style={{ background: 'var(--background)' }}>
+        <div className="flex min-h-10 items-center gap-1.5 border-b border-border py-1.5 flex-wrap">
           <ExperienceDropdown
             value={pendingExperience}
             onChange={setPendingExperience}

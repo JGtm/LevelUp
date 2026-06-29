@@ -85,6 +85,33 @@ en = "players"
 fr = "{count} matchs"
 en = "{count} matches"
 
+# Qualificatifs de taux de victoire (carte binôme / bête noire) — explicitent
+# que le % est un taux de victoire.
+[palmares.relations.hero.win_qual_ally]
+fr = "de victoires ensemble"
+en = "wins together"
+
+[palmares.relations.hero.win_qual_enemy]
+fr = "de victoires face à lui"
+en = "wins vs them"
+
+# Série en cours (chip de la carte bête noire) — « de suite » (pas « d'affilée »).
+[palmares.relations.hero.streak_wins]
+fr = "{count} victoires de suite"
+en = "{count} wins in a row"
+
+[palmares.relations.hero.streak_losses]
+fr = "{count} défaites de suite"
+en = "{count} losses in a row"
+
+[palmares.relations.hero.duels]
+fr = "{count} duels"
+en = "{count} duels"
+
+[palmares.relations.hero.recent_duels]
+fr = "Derniers duels"
+en = "Recent duels"
+
 # ─── Relations - Chips de filtre ──────────────────────────────────────────
 
 [palmares.relations.chip.all]
@@ -138,7 +165,7 @@ fr = "Contexte"
 en = "Context"
 
 [palmares.relations.filters.view_all]
-fr = "Toutes"
+fr = "Tous"
 en = "All"
 
 [palmares.relations.filters.view_solo]
@@ -204,8 +231,8 @@ fr = "Ratio"
 en = "Ratio"
 
 [palmares.relations.table.kda_together]
-fr = "FDA ensemble"
-en = "KDA together"
+fr = "FDA à tes côtés"
+en = "KDA at your side"
 
 [palmares.relations.table.last_seen]
 fr = "Vu"
@@ -291,6 +318,36 @@ en = "No player meets the inner-circle criteria yet."
 fr = "{count} matchs ensemble"
 en = "{count} matches together"
 
+# ─── Relations - Carte résumé noyau dur (KPI) ──────────────────────────────
+
+[palmares.relations.core.with_them]
+fr = "de victoires avec eux"
+en = "wins with them"
+
+[palmares.relations.core.lift_points]
+fr = "pts vs moy. perso. historique"
+en = "pts vs hist. avg"
+
+[palmares.relations.core.lift_tooltip]
+fr = "Écart entre ton taux de victoire avec le noyau dur et ta moyenne personnelle."
+en = "Gap between your win rate with the inner circle and your personal average."
+
+[palmares.relations.core.seen_this_week]
+fr = "{count} vus cette semaine"
+en = "{count} seen this week"
+
+[palmares.relations.core.recent_form]
+fr = "Derniers matchs ensemble"
+en = "Recent matches together"
+
+[palmares.relations.core.show_others]
+fr = "voir les {count} autres"
+en = "show {count} more"
+
+[palmares.relations.core.collapse]
+fr = "réduire"
+en = "collapse"
+
 # ─── Relations - Filtre vide (chip sans résultat) ──────────────────────────
 
 [palmares.relations.filter_empty_title]
@@ -304,8 +361,8 @@ en = "Try another filter to see other recurring players."
 # ─── Relations - Moments & Rivalités (Phase 3a) ────────────────────────────
 
 [palmares.relations.moments.section_title]
-fr = "Moments & Rivalités"
-en = "Moments & Rivalries"
+fr = "Rythme des rencontres"
+en = "Encounter rhythm"
 
 [palmares.relations.moments.toggle_show]
 fr = "Afficher les moments et rivalités"
@@ -318,14 +375,6 @@ en = "Hide moments and rivalries"
 [palmares.relations.moments.unavailable]
 fr = "Les moments et rivalités n'ont pas pu être chargés."
 en = "Moments and rivalries could not be loaded."
-
-[palmares.relations.moments.heatmap_title]
-fr = "Quand tu les croises"
-en = "When you cross paths"
-
-[palmares.relations.moments.heatmap_help]
-fr = "Vos rencontres les plus fréquentes par tranche horaire (limité aux relations les plus actives pour rester lisible)."
-en = "Your most frequent encounters by time of day (limited to the most active relations to stay readable)."
 
 [palmares.relations.moments.heatmap_empty]
 fr = "Pas encore assez de rencontres pour dresser une carte horaire."
@@ -360,8 +409,8 @@ fr = "Tard"
 en = "Late"
 
 [palmares.relations.moments.rivalries_title]
-fr = "Revanche"
-en = "Rematch"
+fr = "Rivaux"
+en = "Rivals"
 
 [palmares.relations.moments.rivalries_empty]
 fr = "Aucune rivalité marquée pour l'instant (pas assez de matchs en adversaire)."
@@ -371,37 +420,21 @@ en = "No standout rivalry yet (not enough matches as an opponent)."
 fr = "{count} matchs en adversaire"
 en = "{count} matches as opponent"
 
-[palmares.relations.moments.recent_win_rate]
-fr = "Taux de victoire récent"
-en = "Recent win rate"
+[palmares.relations.moments.recent_short]
+fr = "récent"
+en = "recent"
 
-[palmares.relations.moments.global_win_rate]
-fr = "Taux de victoire global"
-en = "Overall win rate"
+[palmares.relations.moments.global_short]
+fr = "global"
+en = "overall"
 
 [palmares.relations.moments.streak_wins]
-fr = "{count} victoires d'affilée"
+fr = "{count} victoires de suite"
 en = "{count} wins in a row"
 
 [palmares.relations.moments.streak_losses]
-fr = "{count} défaites d'affilée"
+fr = "{count} défaites de suite"
 en = "{count} losses in a row"
-
-[palmares.relations.moments.streak_none]
-fr = "Aucune série en cours"
-en = "No current streak"
-
-[palmares.relations.moments.frag_gap_ahead]
-fr = "Écart de frags : +{count} en ta faveur"
-en = "Frag gap: +{count} in your favor"
-
-[palmares.relations.moments.frag_gap_behind]
-fr = "Écart de frags : {count} en ta défaveur"
-en = "Frag gap: {count} against you"
-
-[palmares.relations.moments.frag_gap_even]
-fr = "Écart de frags : à égalité"
-en = "Frag gap: even"
 
 [palmares.relations.moments.rolling_title]
 fr = "Taux de victoire glissant"

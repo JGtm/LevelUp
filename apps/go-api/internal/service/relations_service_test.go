@@ -20,6 +20,14 @@ type mockRelationsRepo struct {
 	heatmapTopN    int
 	timelineByXUID map[string][]domain.RelationDuelRawRow
 	timelineLimit  int
+
+	// Carte Noyau dur : WR perso (lift) + frise forme récente.
+	coreEngagement domain.CoreEngagement
+	gotCoreXUIDs   []string
+
+	// Carte binôme : forme récente du top-allié.
+	topAllyForm    []string
+	gotTopAllyXUID string
 }
 
 func (m *mockRelationsRepo) GetRelations(_ context.Context, scope []string) ([]domain.RelationRawRow, error) {
@@ -39,6 +47,16 @@ func (m *mockRelationsRepo) GetRivalTimeline(_ context.Context, rivalXUID string
 		return nil, m.err
 	}
 	return m.timelineByXUID[rivalXUID], m.err
+}
+
+func (m *mockRelationsRepo) GetCoreEngagement(_ context.Context, coreXUIDs []string, _ []string, _ int) (domain.CoreEngagement, error) {
+	m.gotCoreXUIDs = coreXUIDs
+	return m.coreEngagement, nil
+}
+
+func (m *mockRelationsRepo) GetRelationRecentForm(_ context.Context, xuid string, _ []string, _ int) ([]string, error) {
+	m.gotTopAllyXUID = xuid
+	return m.topAllyForm, nil
 }
 
 // mockFiltersService renvoie un scope fixe et capture l'input reçu.

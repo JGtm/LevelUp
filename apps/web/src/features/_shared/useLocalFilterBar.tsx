@@ -142,7 +142,7 @@ function ViewDropdown({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`rounded border px-2 py-1 text-sm bg-background flex items-center gap-1 whitespace-nowrap transition-colors ${
+        className={`rounded border px-2 py-1 text-xs bg-background flex items-center gap-1 whitespace-nowrap transition-colors ${
           isActive ? 'border-primary text-primary' : 'border-input text-muted-foreground hover:border-foreground'
         }`}
       >
@@ -295,12 +295,13 @@ export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFi
   }
 
   const bar = (
-    <div className="sticky top-0 z-20 border-b border-border" style={{ background: 'var(--background)' }}>
-      <div className="flex min-h-10 items-center gap-1.5 px-4 py-1.5 flex-wrap">
+    <div className="sticky top-0 z-20 px-6" style={{ background: 'var(--background)' }}>
+      <div className="flex min-h-10 items-center gap-1.5 border-b border-border py-1.5 flex-wrap">
         <ExperienceDropdown
           value={pendingExperience}
           onChange={setPendingExperience}
           counts={experienceCounts}
+          dense
           labels={{
             placeholder: labels.experience,
             all: labels.experienceAll,
@@ -339,6 +340,7 @@ export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFi
           }}
           placeholder={labels.playlists}
           alwaysShow
+          dense
           disabled={playlistOptions.length === 0 && pendingPlaylists.size === 0}
         />
         <MultiSelectFilter
@@ -354,6 +356,7 @@ export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFi
           }}
           placeholder={labels.modes}
           alwaysShow
+          dense
           disabled={modeOptions.length === 0 && pendingModes.size === 0}
         />
         {viewLabels && (

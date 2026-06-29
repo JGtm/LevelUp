@@ -372,6 +372,96 @@ func TestCareerRepo_GetRivalTimeline_EmptyScope(t *testing.T) {
 	}
 }
 
+// GetCoreEngagement : WR HISTORIQUE (lift) + frise forme récente jouée À CÔTÉ
+// d'un membre. me = 3 victoires (m1,m2,m5) / 2 défaites (m3,m4) → WR historique
+// 0.6 (constant, non scopé). Avec xuidAlly : coéquipier sur m1,m2 (2 WIN) →
+// frise ["win","win"].
+func TestCareerRepo_GetCoreEngagement(t *testing.T) {
+	db := openMemDB(t)
+	seedRelations(t, db)
+	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
+	repo := NewCareerRepo(pdb)
+	ctx := context.Background()
+
+	eng, err := repo.GetCoreEngagement(ctx, []string{"xuidAlly"}, nil, 25)
+	if err != nil {
+		t.Fatalf("GetCoreEngagement: %v", err)
+	}
+	if eng.PlayerWinRate == nil || *eng.PlayerWinRate < 0.59 || *eng.PlayerWinRate > 0.61 {
+		t.Fatalf("PlayerWinRate=%v want ~0.6", eng.PlayerWinRate)
+	}
+	if len(eng.RecentForm) != 2 || eng.RecentForm[0] != "win" || eng.RecentForm[1] != "win" {
+		t.Fatalf("RecentForm=%v want [win win]", eng.RecentForm)
+	}
+
+	// Un rival (toujours équipe adverse) n'est jamais coéquipier → frise vide.
+	// WR historique inchangé.
+	engFoe, err := repo.GetCoreEngagement(ctx, []string{"xuidFoe"}, nil, 25)
+	if err != nil {
+		t.Fatalf("GetCoreEngagement foe: %v", err)
+	}
+	if len(engFoe.RecentForm) != 0 {
+		t.Fatalf("RecentForm (foe as core)=%v want empty", engFoe.RecentForm)
+	}
+	if engFoe.PlayerWinRate == nil {
+		t.Fatal("PlayerWinRate must still be computed with non-teammate core")
+	}
+
+	// Scope = {m1} : 1 match avec l'allié → frise ["win"]. Le WR reste HISTORIQUE
+	// (0.6), pas scopé.
+	engScoped, err := repo.GetCoreEngagement(ctx, []string{"xuidAlly"}, []string{"m1"}, 25)
+	if err != nil {
+		t.Fatalf("GetCoreEngagement scoped: %v", err)
+	}
+	if engScoped.PlayerWinRate == nil || *engScoped.PlayerWinRate < 0.59 || *engScoped.PlayerWinRate > 0.61 {
+		t.Fatalf("scoped PlayerWinRate=%v want ~0.6 (historique, non scopé)", engScoped.PlayerWinRate)
+	}
+	if len(engScoped.RecentForm) != 1 || engScoped.RecentForm[0] != "win" {
+		t.Fatalf("scoped RecentForm=%v want [win]", engScoped.RecentForm)
+	}
+
+	// Scope vide (non-nil) → court-circuit : aucun agrégat.
+	engEmpty, err := repo.GetCoreEngagement(ctx, []string{"xuidAlly"}, []string{}, 25)
+	if err != nil {
+		t.Fatalf("GetCoreEngagement empty scope: %v", err)
+	}
+	if engEmpty.PlayerWinRate != nil || len(engEmpty.RecentForm) != 0 {
+		t.Fatalf("empty scope must yield zero engagement, got %+v", engEmpty)
+	}
+}
+
+// GetRelationRecentForm : forme récente jouée à côté d'un seul allié (binôme).
+// xuidAlly coéquipier sur m1,m2 (2 WIN) → ["win","win"] ; rival jamais coéquipier
+// → vide ; xuid vide → nil.
+func TestCareerRepo_GetRelationRecentForm(t *testing.T) {
+	db := openMemDB(t)
+	seedRelations(t, db)
+	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
+	repo := NewCareerRepo(pdb)
+	ctx := context.Background()
+
+	form, err := repo.GetRelationRecentForm(ctx, "xuidAlly", nil, 25)
+	if err != nil {
+		t.Fatalf("GetRelationRecentForm: %v", err)
+	}
+	if len(form) != 2 || form[0] != "win" || form[1] != "win" {
+		t.Fatalf("form=%v want [win win]", form)
+	}
+
+	foe, err := repo.GetRelationRecentForm(ctx, "xuidFoe", nil, 25)
+	if err != nil {
+		t.Fatalf("GetRelationRecentForm foe: %v", err)
+	}
+	if len(foe) != 0 {
+		t.Fatalf("foe form=%v want empty (jamais coéquipier)", foe)
+	}
+
+	empty, err := repo.GetRelationRecentForm(ctx, "", nil, 25)
+	if err != nil || empty != nil {
+		t.Fatalf("empty xuid: form=%v err=%v want nil/nil", empty, err)
+	}
+}
+
 // RelationRowFixture : agrégats clés pour assertions concises.
 type RelationRowFixture struct {
 	total, teammate, enemy, teammateWins, enemyWins, kills, deaths int

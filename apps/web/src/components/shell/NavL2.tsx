@@ -87,11 +87,11 @@ function NavTabBar({
 }) {
   return (
     <div
-      className="sticky top-0 z-30 shrink-0 border-b border-border bg-background"
+      className="sticky top-0 z-30 shrink-0 bg-background px-6"
       role="navigation"
       aria-label={ariaLabel}
     >
-      <div className="flex items-center gap-0 px-4">
+      <div className="flex items-center gap-0 border-b border-border">
         {tabs.map((tab) => {
           const resolved = resolvePath(tab.path)
           const isActive = pathname === resolved
@@ -179,7 +179,7 @@ export function NavL2() {
   const isSessionsPage = /\/players\/[^/]+\/stats\/sessions/.test(pathname)
   return (
     <div
-      className="sticky top-0 z-30 shrink-0 border-b border-border bg-background"
+      className="sticky top-0 z-30 shrink-0 bg-background px-6"
       role="navigation"
       aria-label={t('common.shell.nav_analytics_aria')}
     >

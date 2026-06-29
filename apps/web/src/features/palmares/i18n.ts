@@ -32,6 +32,12 @@ export interface PalmaresText {
       coreTitle: string
       coreUnit: string
       matchesPlayed: (count: string) => string
+      winQualAlly: string
+      winQualEnemy: string
+      streakWins: (count: string) => string
+      streakLosses: (count: string) => string
+      duels: (count: string) => string
+      recentDuels: string
     }
     chips: {
       all: string
@@ -94,6 +100,13 @@ export interface PalmaresText {
       sectionDescription: string
       empty: string
       together: (count: string) => string
+      withThem: string
+      liftPoints: string
+      liftTooltip: string
+      seenThisWeek: (count: string) => string
+      recentForm: string
+      showOthers: (count: string) => string
+      collapse: string
     }
     filterEmptyTitle: string
     filterEmptyDescription: string
@@ -102,8 +115,6 @@ export interface PalmaresText {
       toggleShow: string
       toggleHide: string
       unavailable: string
-      heatmapTitle: string
-      heatmapHelp: string
       heatmapEmpty: string
       heatmapLegend: string
       dayparts: string[]
@@ -113,14 +124,10 @@ export interface PalmaresText {
       rivalriesTitle: string
       rivalriesEmpty: string
       enemyMatches: (count: string) => string
-      recentWinRate: string
-      globalWinRate: string
+      recentShort: string
+      globalShort: string
       streakWins: (count: string) => string
       streakLosses: (count: string) => string
-      streakNone: string
-      fragGapAhead: (count: string) => string
-      fragGapBehind: (count: string) => string
-      fragGapEven: string
       rollingTitle: string
       cumulativeFragTitle: string
       outcomeWin: string
@@ -213,6 +220,15 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         coreUnit: t(loc, 'palmares.relations.hero.core_unit'),
         matchesPlayed: (count: string) =>
           formatMessage(palmaresManifest, 'palmares.relations.hero.matches_played', loc, { count }),
+        winQualAlly: t(loc, 'palmares.relations.hero.win_qual_ally'),
+        winQualEnemy: t(loc, 'palmares.relations.hero.win_qual_enemy'),
+        streakWins: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.hero.streak_wins', loc, { count }),
+        streakLosses: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.hero.streak_losses', loc, { count }),
+        duels: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.hero.duels', loc, { count }),
+        recentDuels: t(loc, 'palmares.relations.hero.recent_duels'),
       },
       chips: {
         all: t(loc, 'palmares.relations.chip.all'),
@@ -284,6 +300,15 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         empty: t(loc, 'palmares.relations.core.empty'),
         together: (count: string) =>
           formatMessage(palmaresManifest, 'palmares.relations.core.together', loc, { count }),
+        withThem: t(loc, 'palmares.relations.core.with_them'),
+        liftPoints: t(loc, 'palmares.relations.core.lift_points'),
+        liftTooltip: t(loc, 'palmares.relations.core.lift_tooltip'),
+        seenThisWeek: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.core.seen_this_week', loc, { count }),
+        recentForm: t(loc, 'palmares.relations.core.recent_form'),
+        showOthers: (count: string) =>
+          formatMessage(palmaresManifest, 'palmares.relations.core.show_others', loc, { count }),
+        collapse: t(loc, 'palmares.relations.core.collapse'),
       },
       filterEmptyTitle: t(loc, 'palmares.relations.filter_empty_title'),
       filterEmptyDescription: t(loc, 'palmares.relations.filter_empty_description'),
@@ -292,8 +317,6 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         toggleShow: t(loc, 'palmares.relations.moments.toggle_show'),
         toggleHide: t(loc, 'palmares.relations.moments.toggle_hide'),
         unavailable: t(loc, 'palmares.relations.moments.unavailable'),
-        heatmapTitle: t(loc, 'palmares.relations.moments.heatmap_title'),
-        heatmapHelp: t(loc, 'palmares.relations.moments.heatmap_help'),
         heatmapEmpty: t(loc, 'palmares.relations.moments.heatmap_empty'),
         heatmapLegend: t(loc, 'palmares.relations.moments.heatmap_legend'),
         dayparts: [
@@ -319,18 +342,12 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         rivalriesEmpty: t(loc, 'palmares.relations.moments.rivalries_empty'),
         enemyMatches: (count: string) =>
           formatMessage(palmaresManifest, 'palmares.relations.moments.enemy_matches', loc, { count }),
-        recentWinRate: t(loc, 'palmares.relations.moments.recent_win_rate'),
-        globalWinRate: t(loc, 'palmares.relations.moments.global_win_rate'),
+        recentShort: t(loc, 'palmares.relations.moments.recent_short'),
+        globalShort: t(loc, 'palmares.relations.moments.global_short'),
         streakWins: (count: string) =>
           formatMessage(palmaresManifest, 'palmares.relations.moments.streak_wins', loc, { count }),
         streakLosses: (count: string) =>
           formatMessage(palmaresManifest, 'palmares.relations.moments.streak_losses', loc, { count }),
-        streakNone: t(loc, 'palmares.relations.moments.streak_none'),
-        fragGapAhead: (count: string) =>
-          formatMessage(palmaresManifest, 'palmares.relations.moments.frag_gap_ahead', loc, { count }),
-        fragGapBehind: (count: string) =>
-          formatMessage(palmaresManifest, 'palmares.relations.moments.frag_gap_behind', loc, { count }),
-        fragGapEven: t(loc, 'palmares.relations.moments.frag_gap_even'),
         rollingTitle: t(loc, 'palmares.relations.moments.rolling_title'),
         cumulativeFragTitle: t(loc, 'palmares.relations.moments.cumulative_frag_title'),
         outcomeWin: t(loc, 'palmares.relations.moments.outcome_win'),
