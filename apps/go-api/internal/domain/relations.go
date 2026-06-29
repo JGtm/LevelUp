@@ -83,6 +83,33 @@ type RelationsOverview struct {
 	CoreCount       int          `json:"core_count"`
 	TopAlly         *RelationRef `json:"top_ally"`
 	TopNemesis      *RelationRef `json:"top_nemesis"`
+
+	// PlayerWinRate : taux de victoire HISTORIQUE (tout-temps) du joueur, 0..1,
+	// nil si aucun match décisif. Référence stable du « lift » de la carte Noyau
+	// dur (WR ensemble − moyenne perso historique). Volontairement NON scopé :
+	// le lift mesure l'écart à la moyenne de carrière, pas à la fenêtre filtrée.
+	PlayerWinRate *float64 `json:"player_win_rate"`
+
+	// CoreRecentForm : issue (« win » | « loss » | « other ») des N derniers
+	// matchs du joueur joués À CÔTÉ d'au moins un membre du noyau dur, ordonnés
+	// ancien→récent. Frise unifiée (pas par joueur) : gère le fait que les
+	// fidèles ne se croisent pas forcément. Vide si pas de noyau / pas de donnée.
+	CoreRecentForm []string `json:"core_recent_form"`
+
+	// TopAllyRecentForm : même chose mais pour le SEUL binôme (top_ally),
+	// alimente la sparkline de la carte binôme. Vide si pas de binôme / pas de
+	// donnée. Enrichissement additif (best-effort).
+	TopAllyRecentForm []string `json:"top_ally_recent_form"`
+}
+
+// CoreEngagement : agrégats joueur-centriques de la carte résumé du noyau dur,
+// renvoyés en un seul appel repo (limite la surface d'interface) :
+//   - PlayerWinRate : WR historique (tout-temps) du joueur — référence du lift.
+//   - RecentForm : issues des N derniers matchs joués avec un membre du noyau
+//     (ancien→récent, « win » | « loss » | « other »).
+type CoreEngagement struct {
+	PlayerWinRate *float64
+	RecentForm    []string
 }
 
 // RelationsPageResponse : réponse complète de

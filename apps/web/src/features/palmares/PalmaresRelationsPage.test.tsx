@@ -100,9 +100,9 @@ describe('PalmaresRelationsPage', () => {
       expect(screen.getByTestId('palmares-relations-moments')).toBeInTheDocument()
     })
 
-    // Permanent (plus de toggle) : la donnée du mock arrive d'office → titre Revanche + rival.
+    // Permanent (plus de toggle) : la donnée du mock arrive d'office → titre Rivaux + rival.
     await waitFor(() => {
-      expect(screen.getByText('Revanche')).toBeInTheDocument()
+      expect(screen.getByText('Rivaux')).toBeInTheDocument()
     })
     expect(screen.getAllByText('NemesisBravo').length).toBeGreaterThan(0)
   })

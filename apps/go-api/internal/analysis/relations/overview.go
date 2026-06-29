@@ -36,7 +36,10 @@ func IsCore(s RelationStats) bool {
 }
 
 // TopRef : référence binôme/bête noire (sortie de SelectTopAlly/SelectTopNemesis).
+// XUID est conservé en interne (non exposé dans le DTO RelationRef) pour permettre
+// au service de requêter la forme récente du binôme.
 type TopRef struct {
+	XUID     string
 	Gamertag string
 	WinRate  *float64
 	Matches  int
@@ -59,7 +62,7 @@ func SelectTopAlly(rels []RelationStats) *TopRef {
 	if best == nil {
 		return nil
 	}
-	return &TopRef{Gamertag: best.Gamertag, WinRate: best.TeammateWinRate, Matches: best.TeammateMatches}
+	return &TopRef{XUID: best.XUID, Gamertag: best.Gamertag, WinRate: best.TeammateWinRate, Matches: best.TeammateMatches}
 }
 
 // allyBetter : a est un meilleur binôme que b (taux de victoire allié plus
@@ -91,7 +94,7 @@ func SelectTopNemesis(rels []RelationStats) *TopRef {
 	if worst == nil {
 		return nil
 	}
-	return &TopRef{Gamertag: worst.Gamertag, WinRate: worst.EnemyWinRate, Matches: worst.EnemyMatches}
+	return &TopRef{XUID: worst.XUID, Gamertag: worst.Gamertag, WinRate: worst.EnemyWinRate, Matches: worst.EnemyMatches}
 }
 
 // nemesisWorse : a est une pire bête noire que b (taux de victoire ennemi plus

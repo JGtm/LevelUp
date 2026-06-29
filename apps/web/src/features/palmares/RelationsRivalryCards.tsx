@@ -17,6 +17,7 @@ import {
   type OutcomePoint,
   type OutcomeSequenceLabels,
 } from '@/components/charts/OutcomeSequenceTape'
+import { tokenCssVar } from '@/lib/accessibility'
 import { formatPercent } from '@/lib/formatters'
 import type { RelationRivalry } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -25,6 +26,32 @@ import { CumulativeFragGapChart } from './CumulativeFragGapChart'
 import { normalizePalmaresLocale, type PalmaresText } from './i18n'
 
 type MomentsText = PalmaresText['relations']['moments']
+
+// wrColor : vert si WR >= 50 %, rouge sinon (undefined si inconnu).
+function wrColor(v: number | null | undefined): string | undefined {
+  if (v == null || !Number.isFinite(v)) return undefined
+  return v >= 0.5 ? tokenCssVar('outcome-win') : tokenCssVar('outcome-loss')
+}
+
+// streakChip : pastille compacte « N victoires/défaites de suite » (>0 victoires,
+// <0 défaites). Masquée si |série| < 2 (pas une vraie série).
+function streakChip(streak: number, t: MomentsText) {
+  if (streak >= 2) {
+    return (
+      <span className="font-mono font-bold" style={{ color: tokenCssVar('outcome-win') }}>
+        {t.streakWins(String(streak))}
+      </span>
+    )
+  }
+  if (streak <= -2) {
+    return (
+      <span className="font-mono font-bold" style={{ color: tokenCssVar('outcome-loss') }}>
+        {t.streakLosses(String(-streak))}
+      </span>
+    )
+  }
+  return null
+}
 
 // toTapePoints : duels backend → points de frise. Le tooltip d'un duel affiche un
 // libellé pré-formaté (date · mode · map — frags/morts) au lieu de l'UUID.
@@ -43,18 +70,6 @@ function toTapePoints(rivalry: RelationRivalry, locale: 'fr' | 'en'): OutcomePoi
       label,
     }
   })
-}
-
-function streakLabel(streak: number, t: MomentsText): string {
-  if (streak > 0) return t.streakWins(String(streak))
-  if (streak < 0) return t.streakLosses(String(-streak))
-  return t.streakNone
-}
-
-function fragGapLabel(gap: number, t: MomentsText): string {
-  if (gap > 0) return t.fragGapAhead(String(gap))
-  if (gap < 0) return t.fragGapBehind(String(gap))
-  return t.fragGapEven
 }
 
 function RivalryCard({ rivalry, t, locale }: { rivalry: RelationRivalry; t: MomentsText; locale: 'fr' | 'en' }) {
@@ -86,17 +101,21 @@ function RivalryCard({ rivalry, t, locale }: { rivalry: RelationRivalry; t: Mome
 
       <OutcomeSequenceTape matches={tapePoints} labels={tapeLabels} height={64} />
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-        <div>
-          <span className="text-muted-foreground">{t.recentWinRate} : </span>
-          <span className="font-mono text-foreground">{formatPercent(rivalry.recent_win_rate, 0)}</span>
-        </div>
-        <div>
-          <span className="text-muted-foreground">{t.globalWinRate} : </span>
-          <span className="font-mono text-foreground">{formatPercent(rivalry.global_win_rate, 0)}</span>
-        </div>
-        <div className="col-span-2 text-muted-foreground">{streakLabel(rivalry.current_streak, t)}</div>
-        <div className="col-span-2 text-muted-foreground">{fragGapLabel(rivalry.frag_gap, t)}</div>
+      {/* compact : récent vs global + série (écart de frags total retiré = fin du graphe) */}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
+        <span>
+          <span className="text-muted-foreground">{t.recentShort} </span>
+          <span className="font-mono font-bold" style={{ color: wrColor(rivalry.recent_win_rate) }}>
+            {formatPercent(rivalry.recent_win_rate, 0)}
+          </span>
+        </span>
+        <span>
+          <span className="text-muted-foreground">{t.globalShort} </span>
+          <span className="font-mono font-bold" style={{ color: wrColor(rivalry.global_win_rate) }}>
+            {formatPercent(rivalry.global_win_rate, 0)}
+          </span>
+        </span>
+        {streakChip(rivalry.current_streak, t)}
       </div>
 
       {cumulativePoints.length > 0 && (
