@@ -55,6 +55,7 @@ import (
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/watcher"
+	"levelup/go-api/internal/worldenrich"
 	"levelup/go-api/pkg/duckdbbackup"
 )
 
@@ -617,7 +618,21 @@ func NewRouter(
 	// reste un LegacySharedReader wrappant le handle global — comportement
 	// identique au pre-sprint.
 	if cfg.SharedProvider != nil {
-		gamertagSvc = platform_duckdb.NewGamertagRepo(cfg.SharedProvider)
+		local := platform_duckdb.NewGamertagRepo(cfg.SharedProvider)
+		// Fallback live (joueur JAMAIS croisé) : résolveur PeopleHub→profil Xbox
+		// construit depuis le pool de tokens (db_profiles). OFF en démo/offline (pas
+		// de tokens) → recherche purement locale. Instance partagée avec
+		// Explorer/Compare via reg (cache mutualisé).
+		var liveResolver service.GamertagXUIDResolver
+		if !cfg.DemoMode {
+			if dr, derr := worldenrich.BuildDirectoryResolver(cfg); derr != nil {
+				slog.Warn("directory live resolver indisponible — recherche live désactivée", "err", derr)
+			} else {
+				liveResolver = dr
+				reg.WithLiveGamertagResolver(dr)
+			}
+		}
+		gamertagSvc = service.NewLiveFallbackGamertagSearch(local, liveResolver)
 	} else {
 		slog.Warn("shared DB unavailable for gamertag search — cfg.SharedProvider nil")
 	}

@@ -5,6 +5,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -123,6 +124,11 @@ type ExplorerService struct {
 	// TargetProfileDeps). Une dépendance nil laisse la sous-section à nil ;
 	// sample_stats (local) reste toujours produit. Aucune privacy n'est fetchée.
 	deps ExplorerTargetProfileDeps
+
+	// liveResolver (optionnel) : résout gamertag→xuid via l'API Halo/Xbox quand la
+	// résolution locale (v_gamertag_lookup) échoue pour un joueur JAMAIS croisé. nil
+	// (démo/offline) → comportement d'origine (erreur dure sur joueur inconnu).
+	liveResolver GamertagXUIDResolver
 }
 
 // ExplorerTargetProfileDeps regroupe les dépendances de l'encart "Profil joueur
@@ -188,6 +194,13 @@ func (s *ExplorerService) WithDataAdapter(a games.TitleDataAdapter) *ExplorerSer
 // cible". Retourne le service pour chainer.
 func (s *ExplorerService) WithTargetProfileProviders(deps ExplorerTargetProfileDeps) *ExplorerService {
 	s.deps = deps
+	return s
+}
+
+// WithLiveGamertagResolver injecte le résolveur live gamertag→xuid (fallback pour
+// un joueur jamais croisé). nil → no-op. Retourne le service pour chainer.
+func (s *ExplorerService) WithLiveGamertagResolver(r GamertagXUIDResolver) *ExplorerService {
+	s.liveResolver = r
 	return s
 }
 
@@ -288,11 +301,25 @@ func (s *ExplorerService) GetCommonMatches(
 	// l'intersection « matchs communs » sera simplement vide pour un inconnu.
 	if otherXUID == "" {
 		resolved, err := s.repo.ResolveXUIDByGamertag(ctx, otherGamertag)
-		if err != nil {
+		switch {
+		case err == nil:
+			otherXUID = resolved
+		case errors.Is(err, sql.ErrNoRows) && s.liveResolver != nil:
+			// Joueur JAMAIS croisé (absent de v_gamertag_lookup) : fallback live
+			// (PeopleHub→profil Xbox). Sur succès, le profil cible PUBLIC est servi
+			// (buildTargetProfile fonctionne pour tout xuid) ; l'intersection « matchs
+			// communs » est simplement vide.
+			live, lerr := s.liveResolver.ResolveXUID(ctx, otherGamertag)
+			if lerr != nil {
+				return domain.ExplorerPlayerQueryResponse{},
+					fmt.Errorf("ExplorerService: gamertag %q introuvable (local + live): %w", otherGamertag, lerr)
+			}
+			otherXUID = live
+			slog.DebugContext(ctx, "explorer_gamertag_resolved_live", "gamertag", otherGamertag, "xuid", live)
+		default:
 			return domain.ExplorerPlayerQueryResponse{},
 				fmt.Errorf("ExplorerService: résolution gamertag %q: %w", otherGamertag, err)
 		}
-		otherXUID = resolved
 	}
 
 	rawMatches, kv, err := s.loadPlayerIntersection(ctx, otherXUID)

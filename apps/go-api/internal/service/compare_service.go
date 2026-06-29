@@ -32,6 +32,7 @@ type CompareService struct {
 	csr             ExplorerTargetCSRProvider      // optionnel : CSR saison courante live (A et B)
 	currentSeasonID string                         // saison CSR courante (pour le fetch CSR)
 	ranks           *mappings.RankCatalog          // optionnel : titres de rang carrière (même catalogue que l'Explorer)
+	liveResolver    GamertagXUIDResolver           // optionnel : résout gamertag→xuid live pour un B jamais croisé (enrichit rang/CSR)
 	xuidA           string
 	titleSlug       string
 }
@@ -47,6 +48,14 @@ func NewCompareService(repo port.CompareRepository, provider port.PlayerStatsPro
 // reste "N/A" pour les non-locaux (comportement historique).
 func (s *CompareService) WithLiveIdentity(p ExplorerTargetIdentityProvider) *CompareService {
 	s.liveIdentity = p
+	return s
+}
+
+// WithLiveGamertagResolver injecte le résolveur live gamertag→xuid : permet, pour
+// un joueur B JAMAIS croisé (absent localement), de récupérer son xuid et donc
+// d'enrichir rang carrière + CSR (sinon B reste sans rang/CSR). nil → no-op.
+func (s *CompareService) WithLiveGamertagResolver(r GamertagXUIDResolver) *CompareService {
+	s.liveResolver = r
 	return s
 }
 
@@ -236,6 +245,18 @@ func logBestEffortErr(ctx context.Context, msg string, err error, kv ...any) {
 // fallback Waypoint. Renvoie aussi le xuid résolu (vide si pas de match local).
 func (s *CompareService) loadPlayerB(ctx context.Context, targetGamertag string) (*domain.NormalizedPlayerStats, string, error) {
 	xuidB, _ := s.repo.ResolveXUID(ctx, targetGamertag)
+	if xuidB == "" && s.liveResolver != nil {
+		// Joueur B JAMAIS croisé : résolution live (PeopleHub→profil Xbox) pour
+		// disposer de son xuid et enrichir rang carrière + CSR (le service record
+		// Waypoint seul ne les fournit pas). Best-effort : sur échec, on garde le
+		// fallback Waypoint gamertag-only (B s'affiche sans rang/CSR).
+		if live, lerr := s.liveResolver.ResolveXUID(ctx, targetGamertag); lerr == nil && live != "" {
+			xuidB = live
+			slog.DebugContext(ctx, "compare_player_b_resolved_live", "gamertag", targetGamertag, "xuid", live)
+		} else if lerr != nil {
+			logBestEffortErr(ctx, "CompareService: résolution live joueur B", lerr, "gamertag", targetGamertag)
+		}
+	}
 	if xuidB != "" {
 		if local, err := s.repo.GetLocalStats(ctx, xuidB, s.titleSlug); err == nil && local != nil {
 			s.enrichLocalPlayerB(ctx, local)

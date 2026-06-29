@@ -243,6 +243,30 @@ func BuildResolver(cfg *config.AppConfig, tokenGamertag string) (XUIDResolver, e
 	}}, nil
 }
 
+// BuildDirectoryResolver construit le résolveur live gamertag→xuid pour la
+// recherche annuaire (Explorer + Face-à-face) : multi-comptes (round-robin
+// anti-throttle, cf. BuildMultiResolver) enveloppé d'un cache process-wide
+// (CachingResolver). LAZY : aucune I/O token au build (la résolution token est
+// différée au 1er usage). Retourne une erreur si aucun compte db_profiles n'est
+// exploitable (offline/démo) → le caller dégrade en recherche purement locale.
+func BuildDirectoryResolver(cfg *config.AppConfig) (XUIDResolver, error) {
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		return nil, fmt.Errorf("BuildDirectoryResolver: chargement db_profiles.json: %w", err)
+	}
+	gts := make([]string, 0, len(players))
+	for _, p := range players {
+		gts = append(gts, p.Gamertag)
+	}
+	resolvers, ok, err := BuildMultiResolver(cfg, gts)
+	if err != nil {
+		return nil, err
+	}
+	slog.InfoContext(context.Background(), "directory live resolver construit (recherche joueur)",
+		"comptes_resolus", len(ok))
+	return NewCachingResolver(resolvers, nil, nil), nil
+}
+
 // xuidForGamertag résout l'xuid d'un gamertag depuis db_profiles.json.
 func xuidForGamertag(cfg *config.AppConfig, gamertag string) (string, error) {
 	players, err := cfg.LoadPlayers()

@@ -367,6 +367,8 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 		LocalBannerPool: r.newExplorerLocalBannerPool(pdb.TitleSlug),
 		TitleSlug:       pdb.TitleSlug,
 	})
+	// Fallback live gamertag→xuid (joueur jamais croisé) — nil-safe (no-op en démo).
+	svc = svc.WithLiveGamertagResolver(r.liveGamertagResolver)
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
 }
@@ -801,7 +803,8 @@ func (r *ServiceRegistry) Compare(ctx context.Context, slug string) (port.Compar
 		r.remoteStats,
 		pdb.XUID,
 		pdb.TitleSlug,
-	).WithLiveIdentity(r.newCareerLiveService(pdb, r.newHomeRepo(pdb)))
+	).WithLiveIdentity(r.newCareerLiveService(pdb, r.newHomeRepo(pdb))).
+		WithLiveGamertagResolver(r.liveGamertagResolver) // nil-safe (no-op en démo)
 	csrSeasonID := ""
 	if r.cfg != nil {
 		csrSeasonID = r.cfg.CSRSeasonIDForTitle(ctx, pdb.TitleSlug, nil)

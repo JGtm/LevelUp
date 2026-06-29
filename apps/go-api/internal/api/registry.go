@@ -76,6 +76,7 @@ type ServiceRegistry struct {
 	careerLiveCache      *service.CareerLiveCache             // cache TTL process-level XP (5 min) + customisation (6 h)
 	remoteStats          *service.CachedStatsProvider         // cache TTL process-level stats carrière remote (5 min), partagé Explorer/Compare
 	recentMatches        *service.CachedRecentMatchesProvider // cache TTL process-level 20 derniers matchs live (20 min), partagé Explorer/Compare (cibles non-locales)
+	liveGamertagResolver service.GamertagXUIDResolver         // nil (démo/offline) → pas de fallback live ; résout gamertag→xuid pour un joueur jamais croisé (partagé Explorer/Compare + recherche)
 	settingsStore        *settings_platform.Store             // nil → services qui dépendent des settings (TeammatesService friend filter) tournent en mode legacy
 	seasonsCatalog       *service.SeasonsCatalog              // nil → FiltersService.Resolve ne renvoie pas SeasonCounts (dégradation gracieuse)
 	rankCatalog          *mappings.RankCatalog                // nil → CareerService.next_rank_name reste vide
@@ -304,6 +305,14 @@ func (r *ServiceRegistry) WithSettingsStore(store *settings_platform.Store) *Ser
 // "saisons sans counts" sans folding, dégradation gracieuse).
 func (r *ServiceRegistry) WithSeasonsCatalog(catalog *service.SeasonsCatalog) *ServiceRegistry {
 	r.seasonsCatalog = catalog
+	return r
+}
+
+// WithLiveGamertagResolver attache le résolveur live gamertag→xuid (recherche d'un
+// joueur jamais croisé). Partagé par l'Explorer et le Face-à-face (instance unique
+// → cache mutualisé). nil (démo/offline) → fallback live désactivé.
+func (r *ServiceRegistry) WithLiveGamertagResolver(resolver service.GamertagXUIDResolver) *ServiceRegistry {
+	r.liveGamertagResolver = resolver
 	return r
 }
 

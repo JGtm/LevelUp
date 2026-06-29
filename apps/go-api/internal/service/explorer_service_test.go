@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -290,6 +291,42 @@ func TestExplorerService_GetCommonMatches_XUIDProvidedSkipsResolve(t *testing.T)
 	}
 	if resp.TargetGamertag != "WorldStranger" {
 		t.Errorf("TargetGamertag = %q, want WorldStranger", resp.TargetGamertag)
+	}
+}
+
+// TestExplorerService_GetCommonMatches_LiveFallbackResolves : joueur jamais croisé
+// (résolution locale → sql.ErrNoRows) mais résolveur live câblé → on continue avec
+// le xuid résolu, l'intersection est vide, la réponse part en 200 (le profil cible
+// public est servi pour ce xuid).
+func TestExplorerService_GetCommonMatches_LiveFallbackResolves(t *testing.T) {
+	repo := &mockExplorerRepo{
+		xuidErr: fmt.Errorf("ResolveXUIDByGamertag: %w", sql.ErrNoRows),
+		matches: []domain.CommonMatchRaw{},
+	}
+	res := &stubResolver{xuid: "live-xuid-123"}
+	svc := NewExplorerService(repo, "my-xuid").WithLiveGamertagResolver(res)
+
+	resp, err := svc.GetCommonMatches(context.Background(), "NeverCrossed", "", 1)
+	if err != nil {
+		t.Fatalf("fallback live attendu, got %v", err)
+	}
+	if res.calls != 1 {
+		t.Fatalf("résolveur live attendu 1 appel, got %d", res.calls)
+	}
+	if resp.TargetXUID != "live-xuid-123" {
+		t.Errorf("TargetXUID = %q, want live-xuid-123", resp.TargetXUID)
+	}
+}
+
+// TestExplorerService_GetCommonMatches_LiveFallbackAlsoFails : local ET live
+// échouent → erreur (gamertag réellement introuvable).
+func TestExplorerService_GetCommonMatches_LiveFallbackAlsoFails(t *testing.T) {
+	repo := &mockExplorerRepo{xuidErr: fmt.Errorf("ResolveXUIDByGamertag: %w", sql.ErrNoRows)}
+	res := &stubResolver{err: errors.New("xbox profile: aucun profil")}
+	svc := NewExplorerService(repo, "my-xuid").WithLiveGamertagResolver(res)
+
+	if _, err := svc.GetCommonMatches(context.Background(), "Ghost", "", 1); err == nil {
+		t.Error("erreur attendue quand local ET live échouent")
 	}
 }
 
