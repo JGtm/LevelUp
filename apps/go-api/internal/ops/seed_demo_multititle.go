@@ -61,15 +61,21 @@ type SeedDemoMultiOptions struct {
 	ProfilesPath string          // db_profiles.json source (résout (slug,gamertag)→xuid,db_path)
 	ServiceTag   string          // Spartan ID affiché sous le gamertag DEMO
 	Titles       []TitleSeedSpec // titres à seeder (le 1er DOIT être le titre par défaut)
+	// EmitManifest : au lieu de seeder, écrire un manifeste figé PAR TITRE sous
+	// config/demo/<gamertag>/<slug>.json (sélection dynamique gelée, à curer + committer).
+	EmitManifest bool
+	// IgnoreManifest : forcer la sélection dynamique même si un manifeste existe.
+	IgnoreManifest bool
 }
 
 // SeedDemoMultiResult résume l'exécution multi-titre.
 type SeedDemoMultiResult struct {
-	OutDir    string
-	PerTitle  map[string]SeedDemoResult
-	Skipped   []string // titres ignorés (gamertag non configuré / source absente)
-	Duration  time.Duration
-	ConfigsOK bool
+	OutDir           string
+	PerTitle         map[string]SeedDemoResult
+	Skipped          []string // titres ignorés (gamertag non configuré / source absente)
+	EmittedManifests []string // chemins des manifestes écrits (mode EmitManifest)
+	Duration         time.Duration
+	ConfigsOK        bool
 }
 
 // SeedDemoMulti seede tous les titres dans le même arbre démo puis écrit les configs
@@ -122,6 +128,23 @@ func SeedDemoMulti(ctx context.Context, opts SeedDemoMultiOptions) (SeedDemoMult
 			ProfilesPath:     opts.ProfilesPath,
 			RepoRoot:         opts.RepoRoot,
 			SkipConfigs:      true, // configs écrites une fois en fin d'orchestration
+			IgnoreManifest:   opts.IgnoreManifest,
+		}
+
+		// Mode émission : geler la sélection dynamique du titre en manifeste, sans seeder.
+		if opts.EmitManifest {
+			manPath := pr.DemoManifestPath(ts.Gamertag, slug)
+			if _, eerr := EmitDemoManifest(ctx, sopts, manPath); eerr != nil {
+				if isDefault {
+					return res, fmt.Errorf("seed-demo multi: emit-manifest titre défaut %q: %w", slug, eerr)
+				}
+				slog.WarnContext(ctx, "seed-demo multi: emit-manifest titre additionnel échoué, ignoré",
+					"title", slug, "err", eerr)
+				res.Skipped = append(res.Skipped, slug)
+				continue
+			}
+			res.EmittedManifests = append(res.EmittedManifests, manPath)
+			continue
 		}
 
 		tres, terr := SeedDemo(ctx, sopts)
@@ -141,6 +164,14 @@ func SeedDemoMulti(ctx context.Context, opts SeedDemoMultiOptions) (SeedDemoMult
 		}
 		slog.InfoContext(ctx, "seed-demo multi: titre seedé",
 			"title", slug, "matches", len(tres.MatchIDs), "players", len(tres.SeededPlayers), "media", tres.MediaCopied)
+	}
+
+	// Mode émission : pas de seed ni de configs — on a écrit les manifestes, fin.
+	if opts.EmitManifest {
+		res.Duration = time.Since(start)
+		slog.InfoContext(ctx, "seed-demo multi: manifestes émis",
+			"count", len(res.EmittedManifests), "skipped", len(res.Skipped))
+		return res, nil
 	}
 
 	if len(byTitle) == 0 {

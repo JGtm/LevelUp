@@ -13,6 +13,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 )
 
@@ -64,13 +65,16 @@ func selectSquadSessionCorpus(ctx context.Context, sourcePlayerDBPath string, nS
 	defer db.Close()
 
 	out, err := querySquadCorpusRecent(ctx, db, nSessions)
-	if err != nil {
-		return nil, err
-	}
-	if len(out) > 0 {
+	if err == nil && len(out) > 0 {
 		return out, nil
 	}
-	// Fallback title-robuste : table `sessions` vide (ex. Halo 5).
+	if err != nil {
+		// La requête primaire (jointure table `sessions`) échoue sur certains titres
+		// (ex. Halo 5 : session_id VARCHAR côté enrichment vs INTEGER côté `sessions`) →
+		// on bascule sur le fallback title-robuste au lieu de renvoyer 0 session escouade.
+		slog.WarnContext(ctx, "seed-demo: squad corpus primaire échoué, fallback biggest", "err", err)
+	}
+	// Fallback title-robuste : table `sessions` vide/incompatible (ex. Halo 5).
 	return querySquadCorpusBiggest(ctx, db, nSessions)
 }
 

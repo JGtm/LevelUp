@@ -207,6 +207,8 @@ func runSeedDemo(cfg *config.AppConfig, args []string) error {
 	maxMedia := fs.Int("max-media", ops.DefaultMaxMedia, "Nombre max de fichiers média à extraire (titre par défaut)")
 	noMedia := fs.Bool("no-media", false, "Désactiver l'extraction média")
 	titlesFlag := fs.String("titles", "", "Titres à seeder (CSV de slugs ; vide = tous les titres où le gamertag a des données)")
+	emitManifest := fs.Bool("emit-manifest", false, "Émettre les manifestes figés (config/demo/<gamertag>/<slug>.json) depuis la sélection dynamique, sans seeder — à curer puis committer")
+	ignoreManifest := fs.Bool("ignore-manifest", false, "Forcer la sélection dynamique même si un manifeste figé existe")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -251,14 +253,29 @@ func runSeedDemo(cfg *config.AppConfig, args []string) error {
 
 	ctx := context.Background()
 	res, err := ops.SeedDemoMulti(ctx, ops.SeedDemoMultiOptions{
-		RepoRoot:     cfg.RepoRoot,
-		OutDir:       filepath.Join(cfg.RepoRoot, *outDir),
-		ProfilesPath: profilesPath,
-		ServiceTag:   *serviceTag,
-		Titles:       titleSpecs,
+		RepoRoot:       cfg.RepoRoot,
+		OutDir:         filepath.Join(cfg.RepoRoot, *outDir),
+		ProfilesPath:   profilesPath,
+		ServiceTag:     *serviceTag,
+		Titles:         titleSpecs,
+		EmitManifest:   *emitManifest,
+		IgnoreManifest: *ignoreManifest,
 	})
 	if err != nil {
 		return err
+	}
+
+	if *emitManifest {
+		fmt.Printf("✅ Manifestes démo émis (%d) :\n", len(res.EmittedManifests))
+		for _, p := range res.EmittedManifests {
+			fmt.Printf("   - %s\n", p)
+		}
+		if len(res.Skipped) > 0 {
+			fmt.Printf("   ⚠️  titres ignorés: %s\n", strings.Join(res.Skipped, ", "))
+		}
+		fmt.Printf("   → Curez les listes de match_ids (solo/squad/ranked/media), puis committez sous config/demo/.\n")
+		fmt.Printf("   Durée: %s\n", res.Duration.Round(time.Millisecond))
+		return nil
 	}
 
 	fmt.Printf("✅ Données démo générées dans %s\n", res.OutDir)

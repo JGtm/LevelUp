@@ -443,6 +443,19 @@ func (p *PathResolver) MetadataDBPath(titleSlug string) string {
 	return filepath.Join(p.WarehouseDir(titleSlug), "metadata.duckdb")
 }
 
+// DemoManifestPath retourne le chemin du manifeste démo FIGÉ d'un couple (gamertag
+// source, titre). Committé sous config/ (config curée, ≠ data/demo généré et
+// volume-monté), il gèle la sélection de matchs de la démo pour que `seed-demo`
+// produise un corpus reproductible (médias associés + sessions représentatives
+// préservés à chaque regen).
+// Ex: config/demo/JGtm/halo_infinite.json
+func (p *PathResolver) DemoManifestPath(gamertag, titleSlug string) string {
+	if titleSlug == "" {
+		titleSlug = DefaultSlug
+	}
+	return filepath.Join(p.repoRoot, "config", "demo", gamertag, titleSlug+".json")
+}
+
 // SharedPVEDBPath retourne le chemin de la base PvE partagée d'un titre.
 // Ex: data/titles/halo_infinite/warehouse/shared_pve.duckdb
 func (p *PathResolver) SharedPVEDBPath(titleSlug string) string {

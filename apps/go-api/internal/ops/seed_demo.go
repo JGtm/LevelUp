@@ -82,6 +82,10 @@ type SeedDemoOptions struct {
 	// quand l'orchestrateur multi-titre les écrit une seule fois, en v3, après tous
 	// les titres). Faux (défaut) → écrit les configs mono-titre v2.1 comme avant.
 	SkipConfigs bool
+	// IgnoreManifest : forcer la sélection dynamique même si un manifeste figé existe
+	// (config/demo/<gamertag>/<slug>.json). Faux (défaut) → manifeste auto-détecté et
+	// utilisé s'il est présent (corpus reproductible).
+	IgnoreManifest bool
 }
 
 // SeedDemoResult résume l'exécution.
@@ -93,6 +97,7 @@ type SeedDemoResult struct {
 	PlayerRows     map[string]int
 	MediaCopied    int
 	ConfigsWritten bool
+	Frozen         bool // true si le corpus vient d'un manifeste figé (vs sélection dynamique)
 	Duration       time.Duration
 	// SeededPlayers : player DB démo effectivement seedées pour ce titre (DemoPlayer
 	// + coéquipiers). Agrégées par l'orchestrateur multi-titre pour écrire db_profiles
@@ -237,48 +242,51 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		"include_media", opts.IncludeMedia,
 	)
 
-	// 1. Corpus = matchs récents (solo inclus, pour l'historique/home du DemoPlayer)
-	// UNION les 3 dernières sessions en escouade (pour la page Escouade). Dédupliqué.
-	// L'union garantit que le DemoPlayer garde un historique solo riche tout en
-	// disposant d'un vrai corpus 3-stack pour les coéquipiers.
-	recentMatches, rErr := selectRecentMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, opts.MaxMatches)
-	if rErr != nil {
-		slog.WarnContext(ctx, "seed-demo: matchs récents indisponibles", "err", rErr)
-	}
-	squadMatches, sErr := selectSquadSessionCorpus(ctx, opts.SourcePlayerDB, DefaultSquadSessions)
-	if sErr != nil {
-		slog.WarnContext(ctx, "seed-demo: corpus squad indisponible", "err", sErr)
-	}
-	// Matchs classés récents : font apparaître les playlists classées (+ CSR) dans
-	// recent_playlist_ranks (le corpus solo+squad est 100% Partie rapide non classé).
-	rankedMatches, rkErr := selectRecentRankedMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, DefaultRankedMatches)
-	if rkErr != nil {
-		slog.WarnContext(ctx, "seed-demo: matchs classés indisponibles", "err", rkErr)
-	}
-	// Matchs ANCRÉS aux clips média (Halo 5) : les captures du joueur sont anciennes
-	// (hors fenêtre « récents ») mais déjà associées à leur match par index-media. On
-	// ajoute ces matchs au corpus pour que les clips aient une cible dans la démo.
-	var mediaMatches []string
-	if opts.IncludeMedia {
-		srcSocialDB := filepath.Join(filepath.Dir(opts.SourceSharedDB), "shared_social.duckdb")
-		if mm, mmErr := selectMediaAnchoredMatchIDs(ctx, srcSocialDB, opts.MaxMedia); mmErr != nil {
-			slog.WarnContext(ctx, "seed-demo: corpus média-ancré indisponible", "err", mmErr)
-		} else {
-			mediaMatches = mm
+	// 0. Manifeste figé (optionnel) : si config/demo/<gamertag>/<slug>.json existe, le
+	// corpus est lu depuis lui au lieu des requêtes dynamiques « N plus récents » →
+	// démo reproductible (médias associés + sessions représentatives préservés).
+	var manifest *DemoManifest
+	if !opts.IgnoreManifest && opts.RepoRoot != "" && opts.SourceLabel != "" {
+		mp := titlePkg.NewPathResolver(opts.RepoRoot).DemoManifestPath(opts.SourceLabel, opts.TitleSlug)
+		m, found, mErr := LoadDemoManifest(mp)
+		if mErr != nil {
+			return res, fmt.Errorf("seed-demo: %w", mErr)
+		}
+		if found {
+			manifest = m
+			res.Frozen = true
+			slog.InfoContext(ctx, "seed-demo: manifeste figé chargé", "path", mp, "corpus", len(m.CorpusMatchIDs()))
 		}
 	}
-	matchIDs := unionMatchIDs(recentMatches, squadMatches, rankedMatches, mediaMatches)
+
+	// 1. Corpus = solo (historique/home) ∪ squad (page Escouade) ∪ ranked (CSR/playlists
+	// classées) ∪ media-anchored (clips). Figé (manifeste) ou dynamique (« N récents »).
+	// L'union préserve l'ordre solo→squad→ranked→media (dédupliqué).
+	var dc dynamicCorpus
+	if manifest != nil {
+		dc = dynamicCorpus{
+			solo:   manifest.Corpus.SoloMatchIDs,
+			squad:  manifest.Corpus.SquadMatchIDs,
+			ranked: manifest.Corpus.RankedMatchIDs,
+			media:  manifest.Corpus.MediaMatchIDs,
+		}
+	} else {
+		dc = selectDynamicCorpus(ctx, opts)
+	}
+	matchIDs := unionMatchIDs(dc.solo, dc.squad, dc.ranked, dc.media)
 	if len(matchIDs) == 0 {
 		return res, fmt.Errorf("seed-demo: aucun match trouvé pour xuid=%s dans %s",
 			opts.SourceXUID, opts.SourceSharedDB)
 	}
 	res.MatchIDs = matchIDs
 	slog.InfoContext(ctx, "seed-demo: corpus sélectionné",
-		"total", len(matchIDs), "recent", len(recentMatches), "squad", len(squadMatches), "ranked", len(rankedMatches))
+		"frozen", manifest != nil, "total", len(matchIDs),
+		"solo", len(dc.solo), "squad", len(dc.squad), "ranked", len(dc.ranked), "media", len(dc.media))
 
-	// 1b. Roster démo : source + coéquipiers principaux (classés sur le corpus
-	// escouade) + autres participants, mappés vers des identités démo stables.
-	roster, err := buildDemoRoster(ctx, opts.SourceSharedDB, squadMatches, matchIDs, opts.SourceXUID, 2)
+	// 1b. Roster démo : source + coéquipiers principaux (classés sur le corpus escouade)
+	// + autres participants, mappés vers des identités démo stables. Dérivé du corpus
+	// (figé ⇒ déterministe + couverture complète des xuids réels = aucune fuite).
+	roster, err := buildDemoRoster(ctx, opts.SourceSharedDB, dc.squad, matchIDs, opts.SourceXUID, 2)
 	if err != nil {
 		return res, fmt.Errorf("seed-demo: build roster: %w", err)
 	}
@@ -539,6 +547,43 @@ func selectRecentMatchIDs(ctx context.Context, sharedDBPath, xuid string, limit 
 		out = append(out, id)
 	}
 	return out, rows.Err()
+}
+
+// dynamicCorpus regroupe les 4 sous-listes de la sélection démo (solo/squad/ranked/
+// media), avant union. Partagé par SeedDemo (chemin dynamique) et EmitDemoManifest.
+type dynamicCorpus struct {
+	solo, squad, ranked, media []string
+}
+
+// selectDynamicCorpus exécute la sélection dynamique « N plus récents » (comportement
+// historique). Chaque source est best-effort : un échec logge un warn et laisse la
+// sous-liste vide (l'union reste exploitable tant qu'au moins une source répond).
+func selectDynamicCorpus(ctx context.Context, opts SeedDemoOptions) dynamicCorpus {
+	var dc dynamicCorpus
+	if r, err := selectRecentMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, opts.MaxMatches); err != nil {
+		slog.WarnContext(ctx, "seed-demo: matchs récents indisponibles", "err", err)
+	} else {
+		dc.solo = r
+	}
+	if s, err := selectSquadSessionCorpus(ctx, opts.SourcePlayerDB, DefaultSquadSessions); err != nil {
+		slog.WarnContext(ctx, "seed-demo: corpus squad indisponible", "err", err)
+	} else {
+		dc.squad = s
+	}
+	if rk, err := selectRecentRankedMatchIDs(ctx, opts.SourceSharedDB, opts.SourceXUID, DefaultRankedMatches); err != nil {
+		slog.WarnContext(ctx, "seed-demo: matchs classés indisponibles", "err", err)
+	} else {
+		dc.ranked = rk
+	}
+	if opts.IncludeMedia {
+		srcSocialDB := filepath.Join(filepath.Dir(opts.SourceSharedDB), "shared_social.duckdb")
+		if mm, err := selectMediaAnchoredMatchIDs(ctx, srcSocialDB, opts.MaxMedia); err != nil {
+			slog.WarnContext(ctx, "seed-demo: corpus média-ancré indisponible", "err", err)
+		} else {
+			dc.media = mm
+		}
+	}
+	return dc
 }
 
 // copyMetadataFile copie src→dst (file copy bit-à-bit, équivalent shutil.copy2).
