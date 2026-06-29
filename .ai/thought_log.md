@@ -1,3 +1,37 @@
+## [2026-06-29] Spartan customizer — picker de couleur collant au scroll — COMPLÉTÉ + vérifié
+
+**Tâche** (retour user) : la grille de la modale (300+ vignettes) défile beaucoup ; le picker de couleur disparaissait au scroll. Le rendre collant pour ajuster les couleurs tout en parcourant les motifs.
+
+**Décision** : dans `SpartanCustomizerModal.tsx`, le corps défilant est scindé en (1) un **en-tête collant** `sticky top-0 z-10 bg-card` regroupant les 3 lignes de couleurs + les onglets Emblème/Bannière, et (2) la **grille** dans un wrapper défilant qui passe dessous. L'aperçu (emblème+bannière) restait déjà fixe au-dessus. `bg-card` = token sémantique (color-tokens OK, masque la grille au scroll). Aucune logique JS modifiée (recolor live/sélection/onglets inchangés).
+
+**Vérif** : tsc OK ; eslint 0 ; vitest 6/6 (spartan-customizer).
+
+**Statut** : COMPLÉTÉ sur branche `feat/spartan-customizer-sticky-picker` (dans le dossier principal). Mergé dans `main` local ; partira au prochain push `main` (pas de deploy dédié).
+
+---
+
+## [2026-06-29] Accueil « Citations bientôt terminées » — une seule ligne + message tout-complété + traduction des noms de commendations H5 — COMPLÉTÉ (front vérifié ; re-seed metadata H5 requis)
+
+**Tâche** (retours user sur la section accueil) : (1) tuiles sur une seule ligne (5 doivent passer) ; (2) message quand le joueur a déjà tout complété ; (3) texte FR « Plus que X avant le **prochain** palier » ; (4) « le titre des citations elles-mêmes n'est pas traduit ».
+
+**Front (`HomeCitationsNearCompletion` + `lib/citations/nearCompletion`)** :
+- Grille `sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5` + `NEAR_COMPLETION_DEFAULT_LIMIT` 6 → **5** (une seule ligne sur grand écran).
+- Helper pur `allCitationsMastered(items)` (≥1 citation tiérée ET toutes maîtrisées). Le caller (Infinite + natif H5) rend la section si `near.length>0` OU `allDone`, sinon self-hide. Message « tout complété » via le composant maison `EmptyStateNotice` — **pas d'icône** : le projet n'a aucune lib d'icônes (`lucide-react` ajouté par erreur → typecheck cassé → retiré).
+- 2 clés i18n `home.near_completion.all_complete_{title,description}` (FR+EN) ; `home.near_completion.remaining` FR → ajout « prochain » ; manifest régénéré.
+- Tests : +5 (`allCitationsMastered`, limite par défaut 5) → 13/13 ; tsc OK ; eslint clean (fichiers touchés).
+
+**Traduction des noms — root cause** :
+- Citations **Infinite** : `name_display` = `citation_mappings.citation_name_display`, seedé en FR (`seed_citation_data.go`) → déjà traduit.
+- Commendations **Halo 5** (`/commendations/totals` → `NativeCommendationTotal.name`) : le lecteur `halo5_commendation_defs.go` fait `COALESCE(NULLIF(name_fr,''), name_en)`, MAIS `cmd/h5-metadata-fetch` ne peuplait `name_fr` que depuis l'override TOML `asset_labels_fr.toml` (vide pour les commendations) → `name_fr` = EN → **titres anglais** = le défaut signalé (joueur sur le titre H5).
+
+**Fix fetcher (`cmd/h5-metadata-fetch/main.go`)** : l'API Metadata Halo 5 honore `Accept-Language: fr-FR` (déjà exploité par `seedFrenchSimple` pour playlists/maps/modes). `seedCommendations` refetch désormais `/commendations` en fr-FR (`fetchCommendationsFR`, index UUID→nom/desc) et alimente `name_fr`/`description_fr` depuis l'API. Précédence centralisée dans `chooseFR(override, en, apiFR)` : override TOML > API FR > EN ; `frOr` délègue (medals/weapons inchangés). Log « N localisées FR ». Tests `chooseFR`/`frOr` ; build + vet + test OK (CGO duckdb).
+
+**Reste (user)** : re-exécuter le seeder pour matérialiser les noms FR — `LEVELUP_HALOAPI_KEY=<clé> go run ./cmd/h5-metadata-fetch` (écrit `metadata.duckdb` H5 en RW → le serveur ne doit pas tenir la DB). À confirmer : titre réellement affiché (si Infinite et non H5, les noms sont déjà FR → autre piste à creuser).
+
+**Statut** : front COMPLÉTÉ + vérifié ; fix backend livré (code), effet conditionné au re-seed. Pas de commit sans accord.
+
+---
+
 ## [2026-06-28] Spartan customizer title-agnostic + grille recolorisée en direct — COMPLÉTÉ + vérifié
 
 **Tâche** : (1) rendre le personnalisateur Spartan réutilisable au max (pas Halo-5-en-dur) ; (2) fixer les vignettes de la grille « quasi toutes blanches ».

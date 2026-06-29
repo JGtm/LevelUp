@@ -192,28 +192,30 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
           {!draft.emblemId && !draft.nameplateId && <div className="h-28" />}
         </div>
 
-        {/* Corps : couleurs + onglets (Emblème / Bannière) + grille */}
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <ColorRow
-              label={t('home.spartan_customizer.primary')}
-              value={draft.primary}
-              onPick={(hex) => setDraft((d) => ({ ...d, primary: hex }))}
-            />
-            <ColorRow
-              label={t('home.spartan_customizer.secondary')}
-              value={draft.secondary}
-              onPick={(hex) => setDraft((d) => ({ ...d, secondary: hex }))}
-            />
-            <ColorRow
-              label={t('home.spartan_customizer.tertiary')}
-              value={draft.tertiary}
-              onPick={(hex) => setDraft((d) => ({ ...d, tertiary: hex }))}
-            />
-          </div>
+        {/* Corps : en-tête collant (couleurs + onglets) + grille défilante */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {/* En-tête collant : le picker de couleur + les onglets restent visibles
+              quand on fait défiler la grille (elle passe dessous, bg-card opaque). */}
+          <div className="sticky top-0 z-10 space-y-3 border-b border-border bg-card px-5 pb-3 pt-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <ColorRow
+                label={t('home.spartan_customizer.primary')}
+                value={draft.primary}
+                onPick={(hex) => setDraft((d) => ({ ...d, primary: hex }))}
+              />
+              <ColorRow
+                label={t('home.spartan_customizer.secondary')}
+                value={draft.secondary}
+                onPick={(hex) => setDraft((d) => ({ ...d, secondary: hex }))}
+              />
+              <ColorRow
+                label={t('home.spartan_customizer.tertiary')}
+                value={draft.tertiary}
+                onPick={(hex) => setDraft((d) => ({ ...d, tertiary: hex }))}
+              />
+            </div>
 
-          <div>
-            <div role="tablist" className="mb-3 flex gap-1 border-b border-border">
+            <div role="tablist" className="flex gap-1 border-b border-border">
               <button
                 type="button"
                 role="tab"
@@ -233,7 +235,9 @@ export function SpartanCustomizerModal({ onClose }: { onClose: () => void }) {
                 {t('home.spartan_customizer.tab_nameplate')}
               </button>
             </div>
+          </div>
 
+          <div className="px-5 py-4">
             <div
               className={
                 isEmblemTab
