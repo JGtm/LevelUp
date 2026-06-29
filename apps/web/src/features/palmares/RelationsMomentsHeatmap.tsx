@@ -70,7 +70,7 @@ function buildOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { left: 110, right: 130, top: 30, bottom: 40, containLabel: false },
+    grid: { left: 110, right: 20, top: 30, bottom: 40, containLabel: false },
     tooltip: {
       trigger: 'item',
       backgroundColor: tc.tooltipBg,
@@ -103,7 +103,7 @@ function buildOption(
           min: 0,
           max: maxCount,
           calculable: false,
-          show: true,
+          show: false,
           orient: 'vertical',
           right: 30,
           top: 'center',

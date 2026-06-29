@@ -315,6 +315,50 @@ LEFT JOIN v_gamertag_lookup vg ON vg.xuid = es.xuid
 LEFT JOIN kv_stats kv ON kv.xuid = es.xuid
 ORDER BY es.count_together DESC, es.xuid ASC`
 
+// QRelationsPlayerWinRateTpl : WR HISTORIQUE (tout-temps) du joueur — référence
+// du « lift » de la carte Noyau dur. Décisifs uniquement (win OU loss ; nuls/dnf
+// exclus). NON scopé volontairement (moyenne de carrière). Title-aware via
+// outcomeSQLEq (fallback "outcome = 2/3" Halo).
+//
+// Format string (3 %s) : winExpr, winExpr, lossExpr. Placeholder ? : ?1 = xuid joueur.
+const QRelationsPlayerWinRateTpl = `
+SELECT
+    COUNT(*) FILTER (WHERE %s)            AS wins,
+    COUNT(*) FILTER (WHERE (%s) OR (%s))  AS decided
+FROM match_participants
+WHERE xuid = ?`
+
+// QRelationsCoreFormTpl : issues des derniers matchs du joueur joués AVEC au
+// moins un membre du noyau dur (même équipe), ordonnées récent→ancien (le repo
+// inverse en ancien→récent pour la frise). DISTINCT par match (un match avec 2
+// fidèles ne compte qu'une fois). Title-aware via outcomeSQLEq.
+//
+// Format string (4 %s) : scopeIn (my_matches, " AND mp.match_id IN (…)"),
+// coreIn (placeholders du noyau), winExpr, lossExpr (sur la colonne `outcome`).
+// Placeholders ? : ?1 = xuid joueur (my_matches), puis scope, puis ?= xuid joueur
+// (exclusion self dans with_core), puis les xuid du noyau, puis ?= limit.
+const QRelationsCoreFormTpl = `
+WITH my_matches AS (
+    SELECT mp.match_id, mp.team_id, mp.outcome AS outcome,
+           COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time
+    FROM match_participants mp
+    LEFT JOIN match_registry r ON r.match_id = mp.match_id
+    WHERE mp.xuid = ?%s
+),
+with_core AS (
+    SELECT DISTINCT h.match_id, h.outcome AS outcome, h.start_time
+    FROM my_matches h
+    JOIN match_participants c
+        ON c.match_id = h.match_id
+       AND c.team_id  = h.team_id
+       AND c.xuid <> ?
+       AND c.xuid IN (%s)
+)
+SELECT CASE WHEN %s THEN 'win' WHEN %s THEN 'loss' ELSE 'other' END AS outcome_label
+FROM with_core
+ORDER BY start_time DESC NULLS LAST
+LIMIT ?`
+
 // Q22 : Sessions — chargement des matchs pour le calcul des sessions.
 // Parametre : ?1 = xuid du joueur.
 // Retourne 6 colonnes : match_id, start_time, teammates_sig, is_ranked,

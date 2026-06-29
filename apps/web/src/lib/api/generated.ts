@@ -7315,11 +7315,15 @@ export interface components {
             allies_count: number;
             /** Format: int64 */
             core_count: number;
+            core_recent_form: string[] | null;
             /** Format: int64 */
             distinct_players: number;
+            /** Format: double */
+            player_win_rate: number | null;
             /** Format: int64 */
             rivals_count: number;
             top_ally: components["schemas"]["RelationRef"];
+            top_ally_recent_form: string[] | null;
             top_nemesis: components["schemas"]["RelationRef"];
         };
         RelationsPageResponse: {

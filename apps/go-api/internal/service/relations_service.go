@@ -6,6 +6,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -13,6 +14,10 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
+
+// coreRecentFormLimit : nombre de matchs de la frise « Derniers ensemble » de la
+// carte Noyau dur (derniers matchs joués à tes côtés avec un fidèle).
+const coreRecentFormLimit = 25
 
 // RelationsService orchestre le hub Relations.
 type RelationsService struct {
@@ -76,10 +81,46 @@ func (s *RelationsService) GetRelationsPage(ctx context.Context, input domain.Fi
 	// cross-titre est avalée en interne → aucune régression de /relations.
 	s.appendCrossGameBadges(ctx, insights)
 
+	overview := buildOverview(stats)
+	s.appendCoreEngagement(ctx, &overview, stats, scope)
+
 	return domain.RelationsPageResponse{
-		Overview:  buildOverview(stats),
+		Overview:  overview,
 		Relations: insights,
 	}, nil
+}
+
+// appendCoreEngagement enrichit l'aperçu avec le WR perso de référence (lift de
+// la carte Noyau dur) et la frise « forme récente » jouée avec un membre du
+// noyau. ADDITIF / best-effort : toute erreur est loggée et avalée — un échec de
+// cet enrichissement ne doit jamais faire échouer /relations.
+func (s *RelationsService) appendCoreEngagement(
+	ctx context.Context, overview *domain.RelationsOverview, stats []relations.RelationStats, scope []string,
+) {
+	coreXUIDs := make([]string, 0)
+	for i := range stats {
+		if relations.IsCore(stats[i]) {
+			coreXUIDs = append(coreXUIDs, stats[i].XUID)
+		}
+	}
+	eng, err := s.repo.GetCoreEngagement(ctx, coreXUIDs, scope, coreRecentFormLimit)
+	if err != nil {
+		slog.WarnContext(ctx, "RelationsService: enrich core engagement failed", "err", err)
+		return
+	}
+	overview.PlayerWinRate = eng.PlayerWinRate
+	overview.CoreRecentForm = eng.RecentForm
+
+	// Forme récente du binôme (top_ally) pour sa sparkline — best-effort, séparé
+	// (le binôme n'est pas forcément dans le noyau).
+	if ally := relations.SelectTopAlly(stats); ally != nil {
+		form, formErr := s.repo.GetRelationRecentForm(ctx, ally.XUID, scope, coreRecentFormLimit)
+		if formErr != nil {
+			slog.WarnContext(ctx, "RelationsService: enrich top-ally form failed", "err", formErr)
+		} else {
+			overview.TopAllyRecentForm = form
+		}
+	}
 }
 
 // resolveScope retourne le sous-ensemble de match_id correspondant à `input` :

@@ -33,6 +33,8 @@ interface Props {
   title?: string
   /** Si true, désactive le bouton entier. */
   disabled?: boolean
+  /** Taille de police compacte (text-xs) du trigger — pour aligner sur les pills text-xs. */
+  dense?: boolean
 }
 
 export function MultiSelectFilter({
@@ -43,6 +45,7 @@ export function MultiSelectFilter({
   alwaysShow,
   title,
   disabled,
+  dense,
 }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -69,7 +72,7 @@ export function MultiSelectFilter({
         onClick={() => !disabled && setOpen((o) => !o)}
         disabled={disabled}
         title={title}
-        className={`rounded border px-2 py-1 text-sm bg-background flex items-center gap-1 whitespace-nowrap transition-colors ${
+        className={`rounded border px-2 py-1 ${dense ? 'text-xs' : 'text-sm'} bg-background flex items-center gap-1 whitespace-nowrap transition-colors ${
           disabled
             ? 'cursor-not-allowed opacity-40 border-border text-muted-foreground'
             : selected.size > 0
