@@ -13064,14 +13064,28 @@ components:
           core_count:
               format: int64
               type: integer
+          core_recent_form:
+              items:
+                  type: string
+              nullable: true
+              type: array
           distinct_players:
               format: int64
               type: integer
+          player_win_rate:
+              format: double
+              nullable: true
+              type: number
           rivals_count:
               format: int64
               type: integer
           top_ally:
               $ref: '#/components/schemas/RelationRef'
+          top_ally_recent_form:
+              items:
+                  type: string
+              nullable: true
+              type: array
           top_nemesis:
               $ref: '#/components/schemas/RelationRef'
       required:
@@ -13081,6 +13095,9 @@ components:
           - core_count
           - top_ally
           - top_nemesis
+          - player_win_rate
+          - core_recent_form
+          - top_ally_recent_form
       type: object
     RelationsPageResponse:
       additionalProperties: false

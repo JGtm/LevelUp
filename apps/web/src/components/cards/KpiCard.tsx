@@ -18,23 +18,29 @@ import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 
 interface KpiCardProps {
   /**
-   * Token de la barre d'accent 3px en haut. Fixe (par métrique, type 2) ou
-   * calculé selon le contenu (type 4). Omis ⇒ pas de barre.
+   * Token de la barre d'accent 3px. Fixe (par métrique, type 2) ou calculé selon
+   * le contenu (type 4). Omis ⇒ pas d'accent.
    */
   accent?: SemanticToken
+  /** Côté de la barre d'accent : `top` (défaut) ou `left` (bordure gauche 3px). */
+  accentSide?: 'top' | 'left'
   /** Classes sur la carte racine (ex. `flex h-full flex-col` pour une cellule grid). */
   className?: string
   children: ReactNode
   testId?: string
 }
 
-export function KpiCard({ accent, className = '', children, testId }: KpiCardProps) {
+export function KpiCard({ accent, accentSide = 'top', className = '', children, testId }: KpiCardProps) {
+  const leftAccent = accent != null && accentSide === 'left'
   return (
     <div
       className={`overflow-hidden rounded-lg border border-border bg-card ${className}`}
+      style={leftAccent ? { borderLeftWidth: '3px', borderLeftColor: tokenCssVar(accent) } : undefined}
       data-testid={testId}
     >
-      {accent && <div className="h-[3px] flex-none" style={{ backgroundColor: tokenCssVar(accent) }} />}
+      {accent && accentSide === 'top' && (
+        <div className="h-[3px] flex-none" style={{ backgroundColor: tokenCssVar(accent) }} />
+      )}
       {children}
     </div>
   )

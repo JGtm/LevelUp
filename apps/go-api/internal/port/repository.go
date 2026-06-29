@@ -166,6 +166,19 @@ type RelationsRepository interface {
 	// joués EN ENNEMI) contre rivalXUID, ordonnée ancien→récent, frags
 	// directionnels par match. scope : même contrat que GetRelations.
 	GetRivalTimeline(ctx context.Context, rivalXUID string, scope []string, limit int) ([]domain.RelationDuelRawRow, error)
+
+	// GetCoreEngagement : agrégats joueur-centriques de la carte résumé du
+	// noyau dur — WR global du joueur (lift) + issues des `limit` derniers
+	// matchs joués avec un membre du noyau (coreXUIDs). coreXUIDs vide ⇒
+	// RecentForm vide (le WR reste calculé). scope : même contrat que
+	// GetRelations (nil = tous ; vide = court-circuit).
+	GetCoreEngagement(ctx context.Context, coreXUIDs []string, scope []string, limit int) (domain.CoreEngagement, error)
+
+	// GetRelationRecentForm : issues ("win"|"loss"|"other") des `limit` derniers
+	// matchs joués À CÔTÉS du joueur `xuid` (même équipe), ordonnées ancien→récent.
+	// Pour la sparkline « Derniers matchs ensemble » de la carte binôme. xuid vide
+	// ⇒ nil. scope : même contrat que GetRelations.
+	GetRelationRecentForm(ctx context.Context, xuid string, scope []string, limit int) ([]string, error)
 }
 
 // FriendMatchExtras : enrichissement per-friend pour le panneau d'expander

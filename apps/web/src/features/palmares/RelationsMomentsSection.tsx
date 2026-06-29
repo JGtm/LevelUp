@@ -40,9 +40,10 @@ export function RelationsMomentsSection({ playerSlug, filterContext, filterHash,
   const bucketLabels = mode === 'daypart' ? text.dayparts : text.dayLabels
 
   return (
-    <section className="flex flex-col gap-3" data-testid="palmares-relations-moments">
-      <h2 className="text-base font-semibold text-foreground">{text.sectionTitle}</h2>
-      <div className="flex flex-col gap-6">
+    <>
+      {/* Section « Rythme des rencontres » : heatmap relation × créneau */}
+      <section className="flex flex-col gap-3" data-testid="palmares-relations-moments">
+        <h2 className="text-base font-semibold text-foreground">{text.sectionTitle}</h2>
         {isLoading && (
           <div className="flex items-center justify-center py-12">
             <Spinner size="md" />
@@ -52,44 +53,43 @@ export function RelationsMomentsSection({ playerSlug, filterContext, filterHash,
           <p className="text-sm text-muted-foreground">{text.unavailable}</p>
         )}
         {!isLoading && data && (
-          <>
-            <div className="flex flex-col gap-2">
-              <div
-                className="inline-flex self-start rounded-lg border border-border bg-card p-0.5"
-                data-testid="palmares-heatmap-mode"
-              >
-                {(['daypart', 'day'] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    aria-pressed={mode === m}
-                    onClick={() => setMode(m)}
-                    className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                      mode === m ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {m === 'daypart' ? text.heatmapByDaypart : text.heatmapByDay}
-                  </button>
-                ))}
-              </div>
-              <RelationsMomentsHeatmap
-                cells={cells}
-                bucketLabels={bucketLabels}
-                title={text.heatmapTitle}
-                legendLabel={text.heatmapLegend}
-                emptyMessage={text.heatmapEmpty}
-                matchesLabel={(count) => `${text.heatmapLegend} : ${count}`}
-              />
-              <p className="text-xs text-muted-foreground">{text.heatmapHelp}</p>
+          <div className="flex flex-col gap-2">
+            <div
+              className="inline-flex self-start rounded-lg border border-border bg-card p-0.5"
+              data-testid="palmares-heatmap-mode"
+            >
+              {(['daypart', 'day'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  aria-pressed={mode === m}
+                  onClick={() => setMode(m)}
+                  className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                    mode === m ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {m === 'daypart' ? text.heatmapByDaypart : text.heatmapByDay}
+                </button>
+              ))}
             </div>
-
-            <div className="flex flex-col gap-3">
-              <h3 className="text-sm font-semibold text-foreground">{text.rivalriesTitle}</h3>
-              <RelationsRivalryCards rivalries={data.rivalries ?? []} t={text} />
-            </div>
-          </>
+            <RelationsMomentsHeatmap
+              cells={cells}
+              bucketLabels={bucketLabels}
+              legendLabel={text.heatmapLegend}
+              emptyMessage={text.heatmapEmpty}
+              matchesLabel={(count) => `${text.heatmapLegend} : ${count}`}
+            />
+          </div>
         )}
-      </div>
-    </section>
+      </section>
+
+      {/* Section « Rivaux » : cartes de rivaux (sœur de la précédente) */}
+      {!isLoading && data && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-base font-semibold text-foreground">{text.rivalriesTitle}</h2>
+          <RelationsRivalryCards rivalries={data.rivalries ?? []} t={text} />
+        </section>
+      )}
+    </>
   )
 }

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Relations — 3 cartes hero unifiées</title>
+<style>
+  :root{
+    --bg:#0b0e14; --card:#11151d; --border:#262d3a;
+    --fg:#e6eaf2; --muted:#8b95a8; --muted-2:#5f6878;
+    --win:#22c55e; --loss:#ef4444; --draw:#3b82f6; --info:#60a5fa;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,Segoe UI,system-ui,sans-serif;padding:28px;line-height:1.4}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 22px;max-width:860px}
+  .row3{display:grid;grid-template-columns:repeat(3,minmax(280px,1fr));gap:16px;align-items:start}
+  .mono{font-variant-numeric:tabular-nums}
+  .win{color:var(--win)} .loss{color:var(--loss)} .info{color:var(--info)} .muted{color:var(--muted)}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;border-left:3px solid var(--info)}
+  .card.ally{border-left-color:var(--win)}
+  .card.enemy{border-left-color:var(--loss)}
+  .uplabel{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 8px}
+
+  /* tête identité (hero) */
+  .who{font-size:22px;font-weight:700;color:var(--info);line-height:1.1}
+  .badge{display:inline-block;font-size:10px;border:1px solid var(--border);border-radius:6px;padding:1px 6px;color:var(--muted);margin-left:6px;vertical-align:middle}
+
+  /* tête % (noyau) */
+  .big{font-size:30px;font-weight:800;line-height:1}
+
+  /* ligne métrique commune : % + qualificatif + chip */
+  .metric{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .pct{font-size:20px;font-weight:800}
+  .qual{font-size:12px;color:var(--muted)}
+  .chip{font-size:12px;font-weight:700}
+  .chip.up{color:var(--win)} .chip.down{color:var(--loss)} .chip.neutral{color:var(--muted)}
+
+  /* barre composite frags/morts (bête noire) */
+  .splitbar-wrap{margin-top:12px}
+  .splitbar-lbl{display:flex;justify-content:space-between;font-size:10px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+  .splitbar{display:flex;height:7px;border:1px solid var(--border);border-radius:4px;overflow:hidden}
+  .splitbar i{display:block;height:100%}
+
+  /* sparkline commune */
+  .spark-wrap{margin-top:12px}
+  .spark-lbl{font-size:10px;color:var(--muted-2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+  .spark{display:flex;gap:2px;align-items:flex-end;height:20px}
+  .spark i{width:6px;border-radius:1px;display:block}
+
+  /* footer détail (1 ligne muted) */
+  .foot{margin-top:12px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .foot b{color:var(--fg)}
+
+  /* mini-classement (noyau) */
+  .sep{height:1px;background:var(--border);margin:12px 0 10px}
+  .rank{display:flex;flex-direction:column;gap:7px}
+  .rank .r{display:flex;justify-content:space-between;align-items:baseline;font-size:13px}
+  .rank .r .n{color:var(--info);font-weight:600}
+  .rank .r .n .pos{color:var(--muted-2);font-weight:700;margin-right:6px;font-size:11px}
+  .more{margin-top:10px;font-size:12px;color:var(--info);font-weight:600}
+
+  .tag{display:inline-block;font-size:10px;border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:var(--muted);margin-left:6px}
+  .tag.no{color:var(--win);border-color:#234a2c}
+  .tag.be{color:#d9a441;border-color:#5a4a22}
+  .legend{font-size:12px;color:var(--muted);max-width:860px;margin:18px 0 0}
+  .legend li{margin:4px 0}
+</style>
+</head>
+<body>
+<h1>Relations — 3 cartes hero unifiées (grammaire commune)</h1>
+<p class="sub">Même squelette pour les 3 : <b>uplabel</b> → <b>tête</b> (identité pour binôme/bête noire, % pour le noyau) →
+<b>ligne métrique</b> (% + qualificatif + chip) → <b>sparkline labellée</b> (même composant) → <b>footer détail</b> (1 ligne).
+Chrome KpiCard + accent gauche identiques. <span class="tag no">zéro backend</span> · <span class="tag be">petit backend</span></p>
+
+<div class="row3">
+
+  <!-- BINÔME -->
+  <div class="card ally">
+    <p class="uplabel">Binôme</p>
+    <div class="who">GeleJugefi <span class="badge">Duo gagnant</span></div>
+    <div class="metric">
+      <span class="pct win mono">63 %</span><span class="qual">ensemble</span>
+      <span class="chip up">+11 pts</span>
+    </div>
+    <div class="spark-wrap">
+      <div class="spark-lbl">Derniers matchs ensemble <span class="tag be" style="margin:0">backend</span></div>
+      <div class="spark">
+        <i style="height:60%;background:var(--win)"></i><i style="height:45%;background:var(--loss)"></i>
+        <i style="height:80%;background:var(--win)"></i><i style="height:90%;background:var(--win)"></i>
+        <i style="height:50%;background:var(--loss)"></i><i style="height:100%;background:var(--win)"></i>
+        <i style="height:70%;background:var(--win)"></i><i style="height:55%;background:var(--win)"></i>
+      </div>
+    </div>
+    <p class="foot"><b class="win">1.42</b> FDA ensemble · 98 matchs</p>
+  </div>
+
+  <!-- BÊTE NOIRE -->
+  <div class="card enemy">
+    <p class="uplabel">Bête noire</p>
+    <div class="who">RivalSpartan <span class="badge">Coriace</span></div>
+    <div class="metric">
+      <span class="pct loss mono">38 %</span><span class="qual">contre</span>
+      <span class="chip down">3 défaites d'affilée</span>
+    </div>
+    <div class="splitbar-wrap">
+      <div class="splitbar-lbl"><span>frags / morts</span><span class="mono">62 / 88</span></div>
+      <div class="splitbar" title="frags infligés vs morts subies face à lui">
+        <i style="width:41%;background:var(--win)"></i><i style="flex:1;background:var(--loss)"></i>
+      </div>
+    </div>
+    <div class="spark-wrap">
+      <div class="spark-lbl">Derniers duels <span class="tag no" style="margin:0">existant</span></div>
+      <div class="spark">
+        <i style="height:50%;background:var(--loss)"></i><i style="height:80%;background:var(--win)"></i>
+        <i style="height:45%;background:var(--loss)"></i><i style="height:55%;background:var(--loss)"></i>
+        <i style="height:90%;background:var(--win)"></i><i style="height:40%;background:var(--loss)"></i>
+        <i style="height:48%;background:var(--loss)"></i><i style="height:42%;background:var(--loss)"></i>
+      </div>
+    </div>
+    <p class="foot"><b class="loss">0.82</b> ratio frags · 41 duels</p>
+  </div>
+
+  <!-- NOYAU DUR (existant, déjà dans la grammaire) -->
+  <div class="card">
+    <p class="uplabel">Noyau dur</p>
+    <div class="metric" style="margin-top:2px">
+      <span class="big win mono">61 %</span><span class="qual">avec eux</span>
+      <span class="chip up">+9 pts</span>
+    </div>
+    <p class="foot" style="margin-top:8px"><b class="win">5</b> vus cette semaine</p>
+    <div class="spark-wrap">
+      <div class="spark-lbl">Derniers matchs ensemble</div>
+      <div class="spark">
+        <i style="height:55%;background:var(--win)"></i><i style="height:40%;background:var(--loss)"></i>
+        <i style="height:70%;background:var(--win)"></i><i style="height:85%;background:var(--win)"></i>
+        <i style="height:45%;background:var(--loss)"></i><i style="height:90%;background:var(--win)"></i>
+        <i style="height:100%;background:var(--win)"></i><i style="height:50%;background:var(--loss)"></i>
+      </div>
+    </div>
+    <div class="sep"></div>
+    <div class="rank">
+      <div class="r"><span class="n"><span class="pos">1</span>Chocoboflor</span><span class="mono"><span class="muted">124 matchs · </span><b class="win">68 %</b></span></div>
+      <div class="r"><span class="n"><span class="pos">2</span>GeleJugefi</span><span class="mono"><span class="muted">98 matchs · </span><b class="win">63 %</b></span></div>
+      <div class="r"><span class="n"><span class="pos">3</span>QuiteSiren8545</span><span class="mono"><span class="muted">76 matchs · </span><b class="win">59 %</b></span></div>
+    </div>
+    <div class="more">voir les 5 autres fidèles</div>
+  </div>
+</div>
+
+<ul class="legend">
+  <li><b>Tête</b> : binôme/bête noire gardent le <b>gamertag en tête</b> (c'est leur raison d'être) ; le noyau garde le <b>% en tête</b> (pas de joueur unique). La cohérence vient des <b>éléments partagés</b>, pas d'un même élément de tête (= Direction 2, recommandée). Alternative <b>Direction 1</b> : tout mener par le % (gamertag en 2e ligne sur les hero) — plus uniforme mais enterre l'identité.</li>
+  <li><b>Chip</b> (slot commun, contenu adapté) : <span class="win">lift +X pts</span> pour binôme &amp; noyau (réutilise <code>player_win_rate</code>, zéro backend) ; <span class="loss">série en cours</span> pour la bête noire (depuis les duels existants).</li>
+  <li><b>Sparkline</b> (même composant) : bête noire « Derniers duels » <span class="tag no" style="margin:0">existant</span> (restyle de l'actuel DuelMiniTape) ; noyau existant ; binôme « Derniers matchs ensemble » <span class="tag be" style="margin:0">petit backend</span> (forme récente par relation).</li>
+  <li><b>Niveau 1 (zéro backend)</b> : chrome + typo + chip lift binôme + restyle sparkline bête noire. Le binôme garde sa barre allié/ennemi au lieu d'une sparkline.<br><b>Niveau 2 (+ petit backend)</b> : ajoute la sparkline « ensemble » du binôme → les 3 cartes partagent exactement le même slot.</li>
+</ul>
+</body>
+</html>

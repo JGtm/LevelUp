@@ -1,3 +1,58 @@
+## [2026-06-28] Section Rivaux (ex-« Revanche ») — allègement texte des cartes — COMPLÉTÉ + vérifié
+
+**Tâche** : retours user sur la section Moments/Rivalités. (1) Label `rivalries_title` « Revanche » → **« Rivaux »** (choix user ; test MAJ). (2) Phrase d'aide heatmap (`heatmap_help` « Vos rencontres les plus fréquentes… ») **supprimée** (+ clé i18n morte retirée). (3) Cartes rival : le pavé de 4 lignes texte (récent/global WR, série, écart de frags) jugé trop textuel + redondant avec les 2 graphiques → **version compacte** : header `gamertag · N duels` → outcome sequence (intacte) → 1 ligne `récent X% · global Y%` + chip série (`N déf./vict. de suite`, si série ≥ 2) → graphe cumulé (intact). Écart de frags total retiré (= fin du graphe cumulé). i18n : `streak_*` repassées en « de suite », ajout `recent_short`/`global_short`, retrait `global_win_rate`/`frag_gap_*`.
+
+**Process** : 1er essai j'avais supprimé tout le bloc sans proposer → recadré par l'user (il demandait des suggestions). Choix re-soumis via options, retenu « compact sans le redondant ». Leçon : pour un changement de contenu visible, PROPOSER avant de couper.
+
+**Suite (même session)** : (a) **KPI cards** (Binôme/Bête noire/Noyau dur) : accent passé **à gauche** (`KpiCard` gagne `accentSide?: 'top'|'left'`, défaut top) + **nom sorti de la carte** en titre `h3` au-dessus (cards passent de `h-full`→`flex-1`, cellule grid = titre + carte). (b) **Heatmap** : titre « Quand tu les croises » + **légende couleur retirés** (visualMap `show:false`, marge droite récupérée 130→20 ; nombres restent en case ; clé `heatmap_title` morte supprimée). (c) **Scission en 2 sections sœurs** : « Moments & Rivalités » → **« Rythme des rencontres »** (heatmap) + **« Rivaux »** promu de `h3` en section `h2` (cartes rivaux). RelationsMomentsSection rend désormais un fragment de 2 `<section>`. Vérif : typecheck + eslint + vitest 9/9 + lint couleurs OK.
+
+**Vérif** : front typecheck + eslint 0 err + vitest palmares 9/9 + lint couleurs clean. Regen manifeste OK. (Backend non touché.)
+
+**En attente** (décisions user) : alignement barre de filtre `px-4→px-6` ; revue/commit ; branche.
+
+---
+
+## [2026-06-28] Cartes hero Relations (binôme / bête noire) — uniformisation grammaire — COMPLÉTÉ + vérifié
+
+**Tâche** : aligner les cartes binôme & bête noire sur la nouvelle carte Noyau dur (cohérence). Mock : `.ai/mocks/relations/hero-cards-unified.html`. Direction 2 (gamertag en tête sur les hero, % en tête sur le noyau) + Niveau 2 (sparkline binôme = backend).
+
+**Grammaire commune** : uplabel → gamertag (identité) → ligne métrique (`% de victoires` + qualificatif explicite + chip) → [barre Frags/morts pour la bête noire] → sparkline labellée → footer 1 ligne.
+- **Binôme** : chip = **lift** (réutilise `player_win_rate`) ; sparkline « Derniers matchs ensemble » ; footer « FDA à tes côtés · matchs ».
+- **Bête noire** : chip = **série en cours** (`N défaites/victoires de suite`, depuis `current_streak` des rivalités, déjà chargé) ; **barre Frags/morts conservée** ; sparkline « Derniers duels » ; footer « ratio · duels ».
+- Helpers extraits et partagés : `OutcomeSparkline`, `SparklineSection`, `LiftChip` (la carte Noyau dur les réutilise aussi ; `DuelMiniTape` supprimé).
+
+**Libellés (clarté « taux de victoire »)** : qualificatifs `hero.win_qual_ally` « de victoires ensemble » / `win_qual_enemy` « de victoires face à lui » ; `core.with_them` « avec eux » → « de victoires avec eux » (noyau, texte seul) ; `table.kda_together` « FDA ensemble » → « FDA à tes côtés » ; chips `hero.streak_wins/losses` « de suite » (≠ Moments « d'affilée », non touché) ; `hero.duels`, `hero.recent_duels`.
+
+**Backend Niveau 2** : `relations.TopRef.XUID` ajouté (SelectTopAlly/Nemesis) ; nouvelle méthode repo `GetRelationRecentForm(xuid, scope, limit)` (réutilise `queryCoreRecentForm` à 1 xuid) ; `RelationsOverview.top_ally_recent_form` ; service `appendCoreEngagement` calcule le binôme via SelectTopAlly (best-effort, séparé). openapi + regen.
+
+**Vérif** : backend `go build` + `go vet` + `go test ./internal/service ./internal/analysis/relations` + intégration `TestCareerRepo_GetCoreEngagement` & `TestCareerRepo_GetRelationRecentForm` verts. Front typecheck + eslint 0 err + vitest palmares 9/9 + lints colors/fields clean. Regen openapi + manifeste OK.
+
+**En attente** (décisions user) : alignement barre de filtre `px-4→px-6` (Relations+Citations+Sessions) ; revue/commit ; branche.
+
+---
+
+## [2026-06-28] Carte « Noyau dur » enrichie (hub Relations) — narration condensée 5-en-1 — COMPLÉTÉ + vérifié
+
+**Tâche** : la KPI card `CoreSummaryCard` (résumé du noyau dur, page Relations) était trop descriptive (compte + WR + 2 noms). Retours user sur 8 mockups → fusionner 5 éléments en UNE carte compacte (mock `.ai/mocks/relations/noyau-dur-combined.html`, états replié/déplié).
+
+**Contenu de la carte** : (1) WR moyen ensemble + **lift** vs la moyenne perso (pastille `+N pts` colorée) ; (3) `compte · parties · N vus cette semaine` ; (4) **barre composite** de répartition du volume (mono-teinte `team-ally`, opacité dégressive + reste agrégé) ; (7) **mini-classement** top 3 par WR + bouton « voir les N autres » (replié par défaut) ; (8) **sparkline forme récente** des 12 derniers matchs joués AVEC un fidèle (frise unifiée, pas par joueur → règle le fait que les fidèles ne se croisent pas).
+
+**Décision archi** : lift + forme récente = enrichissements joueur-centriques ⇒ **1 seule méthode repo** `GetCoreEngagement(coreXUIDs, scope, limit) → {PlayerWinRate, RecentForm}` (limite la surface d'interface ; 2 requêtes internes title-aware via `outcomeSQLEq`). Branché **best-effort** dans le service (`appendCoreEngagement`, erreur loggée+avalée → jamais de régression /relations). DTO : `RelationsOverview.player_win_rate` (0..1, nil) + `core_recent_form` ([]string). Front : props optionnelles, lift/sparkline rendus seulement si la donnée est présente (absence gérée, pas de trou).
+
+**Garde-fous respectés** : couleurs via `tokenCssVar` (aucun hex/Tailwind) ; i18n FR+EN dans `palmares.toml` (regen manifeste) ; `Date.now()` (vus 7j) extrait en helper hors composant (règle `react-hooks/purity`, pattern `relationsFilter.ts`).
+
+**Itération 2 (retours user)** : (#1) **bug de comptage** — sommer `total_matches` par fidèle double-compte les matchs partagés (peut dépasser le total du joueur) → remplacé par un COUNT DISTINCT backend `core_matches` (parties où ≥1 fidèle présent, ≤ total joueur ; query `QRelationsCoreMatchCountTpl`). (#2) **couleurs barre** — opacité mono-teinte (illisible) → couleurs DISTINCTES par fidèle (`chart-series-*`, cycle) + tooltip `gamertag · N matchs` ; label « Parties par fidèle ». (#3) **lift** — référence passée en WR **historique tout-temps** (non scopé, `queryPlayerWinRate` sans scope) + libellé « pts vs moy. perso. historique ». (#4) **classement** — format `XX matchs · XX%` (matchs d'abord).
+
+**Itération 3 (retours user)** : barre composite **supprimée** (redondante avec le mini-classement nommé + tooltip natif inutilisable sur 6px). Sparkline relibellée « Derniers matchs ensemble » (statique, sans compteur) et fenêtre **12 → 25** matchs. **Ligne « X joueurs · Y matchs ensemble » supprimée** (sur demande) → seul « X vus cette semaine » reste (et seulement si > 0). Conséquence : le champ backend `core_matches` (ajouté pour cette ligne) devient mort → **supprimé entièrement** (domain + query `QRelationsCoreMatchCountTpl` + `queryCoreMatchCount` + openapi + test), pas de requête DB inutile. Reste du backend : `player_win_rate` (lift, WR historique) + `core_recent_form` (sparkline, à-tes-côtés). Clés i18n `match_share` supprimée, `recent_form` statique. Carte finale = WR+lift / vus cette semaine / sparkline / mini-classement nommé.
+
+**Vérif** : backend `go build ./...` OK + `go vet` clean + `go test ./internal/service` (relations) + test intégration `TestCareerRepo_GetCoreEngagement` (WR historique 0.6 constant ; frise [win,win] ally / vide foe / [win] scope{m1} ; scope vide→court-circuit) verts. Front typecheck OK, eslint 0 err, vitest palmares 9/9, lints colors/fields clean. Regen openapi + manifeste OK.
+
+**Note layout repérée (hors carte)** : barre de filtres locale (`useLocalFilterBar`) en `px-4` vs corps de page `p-6`/`px-6` → la barre paraît « dépasser » le corps (perception, pas de scroll). Décision périmètre en attente (aligner la barre partagée sur px-6 toucherait Relations + Citations + Sessions ; NavL2 reste px-4).
+
+**Suite** : décision branche + commit (sur accord). NON poussé/déployé. Reste en parallèle (parké) : refactor nav Phase 3 + le commit étranger `fb43e242c` à réconcilier.
+
+---
+
 ## [2026-06-28] Cohérence navigation — Phase 1 : rename /palmares → /community (+ Face-à-face) — COMPLÉTÉ + vérifié
 
 **Tâche** : refonte cohérence nav (plan 3 phases, `.ai/plans` zany-growing-marble). Phase 1 = aligner l'URL sur le libellé « Communauté ».

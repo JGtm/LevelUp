@@ -22,9 +22,11 @@ interface ExperienceDropdownProps {
   onChange: (next: Experience) => void
   counts: ExperienceCount[]
   labels: { placeholder: string; all: string; ranked: string; unranked: string }
+  /** Taille de police compacte (text-xs) du trigger — pour aligner sur les pills text-xs. */
+  dense?: boolean
 }
 
-export function ExperienceDropdown({ value, onChange, counts, labels }: ExperienceDropdownProps) {
+export function ExperienceDropdown({ value, onChange, counts, labels, dense }: ExperienceDropdownProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -53,7 +55,7 @@ export function ExperienceDropdown({ value, onChange, counts, labels }: Experien
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`rounded border px-2 py-1 text-sm bg-background flex items-center gap-1 whitespace-nowrap transition-colors ${
+        className={`rounded border px-2 py-1 ${dense ? 'text-xs' : 'text-sm'} bg-background flex items-center gap-1 whitespace-nowrap transition-colors ${
           isActive
             ? 'border-primary text-primary'
             : 'border-input text-muted-foreground hover:border-foreground'
