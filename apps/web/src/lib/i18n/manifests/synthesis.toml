@@ -12,6 +12,40 @@
 fr = "Vue d'ensemble"
 en = "Overview"
 
+# ─── Profil de combat ───────────────────────────────────────────────────────
+
+[synthesis.combat_profile.title]
+fr = "Profil de combat"
+en = "Combat profile"
+
+[synthesis.combat_profile.matches_analyzed]
+fr = "matchs analysés"
+en = "matches analysed"
+
+[synthesis.combat_profile.yield_resistance]
+fr = "Rendement / Résistance"
+en = "Yield / Resistance"
+
+[synthesis.combat_profile.incidents]
+fr = "Incidents"
+en = "Incidents"
+
+[synthesis.combat_profile.betrayals]
+fr = "trahisons"
+en = "betrayals"
+
+[synthesis.combat_profile.suicides]
+fr = "suicides"
+en = "suicides"
+
+[synthesis.combat_profile.perfect_kills]
+fr = "Frags parfaits"
+en = "Perfect kills"
+
+[synthesis.combat_profile.hijacks]
+fr = "Hijacks"
+en = "Hijacks"
+
 [synthesis.section.top_stats]
 fr = "Meilleures stats"
 en = "Best stats"
