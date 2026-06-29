@@ -22,11 +22,16 @@
  */
 import { useNavigate } from '@tanstack/react-router'
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useCitationsPage } from '@/features/citations/queries'
 import { useCommendationTotals } from '@/features/commendations/queries'
 import { normalizeInfinitePage, normalizeNativeTotals } from '@/lib/citations/normalize'
-import { selectNearCompletion, type NearCompletionItem } from '@/lib/citations/nearCompletion'
+import {
+  allCitationsMastered,
+  selectNearCompletion,
+  type NearCompletionItem,
+} from '@/lib/citations/nearCompletion'
 import { DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
@@ -55,13 +60,16 @@ function InfiniteNearCompletion({ playerSlug }: { playerSlug: string }) {
     HOME_NEAR_COMPLETION_HASH,
   )
   if (isLoading || !data) return null
-  const near = selectNearCompletion(
-    normalizeInfinitePage(data).categories.flatMap((c) => c.items),
-  )
-  if (near.length === 0) return null
+  const items = normalizeInfinitePage(data).categories.flatMap((c) => c.items)
+  const near = selectNearCompletion(items)
+  const allDone = allCitationsMastered(items)
+  // On rend la section si une citation est en approche OU si tout est maîtrisé
+  // (message de félicitations) ; sinon rien à montrer → self-hide.
+  if (near.length === 0 && !allDone) return null
   return (
     <NearCompletionSection
       near={near}
+      allDone={allDone}
       onSeeAll={() => void navigate({ to: '/players/$playerSlug/citations', params: { playerSlug } })}
     />
   )
@@ -73,13 +81,14 @@ function NativeNearCompletion({ playerSlug }: { playerSlug: string }) {
   const navigate = useNavigate()
   const { data, isLoading } = useCommendationTotals(playerSlug)
   if (isLoading || !data) return null
-  const near = selectNearCompletion(
-    normalizeNativeTotals(data).categories.flatMap((c) => c.items),
-  )
-  if (near.length === 0) return null
+  const items = normalizeNativeTotals(data).categories.flatMap((c) => c.items)
+  const near = selectNearCompletion(items)
+  const allDone = allCitationsMastered(items)
+  if (near.length === 0 && !allDone) return null
   return (
     <NearCompletionSection
       near={near}
+      allDone={allDone}
       onSeeAll={() => void navigate({ to: '/players/$playerSlug/commendations', params: { playerSlug } })}
     />
   )
@@ -89,9 +98,11 @@ function NativeNearCompletion({ playerSlug }: { playerSlug: string }) {
 
 function NearCompletionSection({
   near,
+  allDone,
   onSeeAll,
 }: {
   near: NearCompletionItem[]
+  allDone: boolean
   onSeeAll: () => void
 }) {
   const locale = useAppShellStore((s) => s.locale)
@@ -115,11 +126,19 @@ function NearCompletionSection({
           {t('home.near_completion.view_all')}
         </button>
       </header>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {near.map((n) => (
-          <NearCompletionTile key={n.item.key} entry={n} locale={locale} t={t} onClick={onSeeAll} />
-        ))}
-      </div>
+      {near.length > 0 ? (
+        // Une seule ligne sur grand écran (jusqu'à 5 tuiles, cf. NEAR_COMPLETION_DEFAULT_LIMIT).
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+          {near.map((n) => (
+            <NearCompletionTile key={n.item.key} entry={n} locale={locale} t={t} onClick={onSeeAll} />
+          ))}
+        </div>
+      ) : allDone ? (
+        <EmptyStateNotice
+          title={t('home.near_completion.all_complete_title')}
+          description={t('home.near_completion.all_complete_description')}
+        />
+      ) : null}
     </section>
   )
 }

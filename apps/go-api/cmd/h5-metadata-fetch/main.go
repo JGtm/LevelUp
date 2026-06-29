@@ -79,7 +79,25 @@ func loadFRLabels(path string) frLabels {
 
 // frOr retourne la traduction FR si présente, sinon l'EN (fallback = la clé).
 func frOr(m map[string]string, en string) string {
-	return lookupOr(m, en, en)
+	return chooseFR(m, en, "")
+}
+
+// chooseFR choisit le nom FR à persister pour un asset, par ordre de priorité :
+//  1. override TOML versionné (corrections manuelles, clé = nom EN exact) ;
+//  2. nom FR localisé par l'API Metadata (Accept-Language: fr-FR) ;
+//  3. le nom EN (dégradation propre — on ne stocke JAMAIS de name_fr vide).
+//
+// Un asset non localisé fait renvoyer par l'API le MÊME nom qu'en EN → on le stocke
+// tel quel (cascade fr-FR == en-US, cf. seedFrenchSimple). apiFR vide reproduit
+// exactement l'ancien comportement de frOr (override sinon EN).
+func chooseFR(override map[string]string, en, apiFR string) string {
+	if v, ok := override[en]; ok && strings.TrimSpace(v) != "" {
+		return strings.TrimSpace(v)
+	}
+	if strings.TrimSpace(apiFR) != "" {
+		return strings.TrimSpace(apiFR)
+	}
+	return en
 }
 
 // lookupOr retourne m[key] si non vide, sinon fallback (ex. description_fr : FR si
@@ -438,12 +456,46 @@ func tierTargetsCSV(levels []struct {
 	return strings.Join(parts, ",")
 }
 
+// commFR — nom + description FR d'une commendation (Accept-Language: fr-FR), indexés
+// par UUID pour alimenter name_fr / description_fr au seed.
+type commFR struct {
+	name string
+	desc string
+}
+
+// fetchCommendationsFR refetch /commendations en fr-FR (l'API Metadata HONORE
+// Accept-Language, cf. fetchMetaLang) et indexe nom+description par UUID. Best-effort :
+// endpoint FR en échec ou parse KO → map vide ; chooseFR retombera alors sur l'EN.
+func fetchCommendationsFR(key string) map[string]commFR {
+	out := map[string]commFR{}
+	body, err := fetchMetaLang(key, "commendations", langFR)
+	if err != nil {
+		fmt.Printf("commendations[fr-FR]: SKIP (%v)\n", err)
+		return out
+	}
+	var comms []apiCommendation
+	if err := json.Unmarshal(body, &comms); err != nil {
+		fmt.Printf("commendations[fr-FR]: parse %v\n", err)
+		return out
+	}
+	for _, c := range comms {
+		if c.ID == "" {
+			continue
+		}
+		out[c.ID] = commFR{name: strings.TrimSpace(c.Name), desc: strings.TrimSpace(c.Description)}
+	}
+	return out
+}
+
 // seedCommendations peuple commendation_definitions depuis l'API Metadata officielle
 // (/commendations) → nom/description/icône CDN + type + catégorie, par UUID. La clé
 // `id` est exactement le ProgressiveCommendationDeltas[].Id du carnage (jointure
 // read-time pour peupler canonical.Commendation Name/IconURL). Tous les types
-// (Progressive/Meta/Daily) sont seedés. name_fr = override FR sinon EN. Les noms de
-// l'API portent des espaces parasites en fin → TrimSpace.
+// (Progressive/Meta/Daily) sont seedés.
+//
+// name_fr / description_fr : la localisation FR vient de l'API elle-même (pass fr-FR
+// via fetchCommendationsFR), les overrides TOML restant prioritaires (cf. chooseFR).
+// Les noms de l'API portent des espaces parasites en fin → TrimSpace.
 func seedCommendations(db *sql.DB, key string, fr map[string]string) {
 	body, err := fetchMeta(key, "commendations")
 	if err != nil {
@@ -455,23 +507,27 @@ func seedCommendations(db *sql.DB, key string, fr map[string]string) {
 		fmt.Printf("commendations: parse %v\n", err)
 		return
 	}
+	// Pass FR : noms/descriptions localisés par l'API, indexés par UUID.
+	frByID := fetchCommendationsFR(key)
 	// Idempotent : garantit la colonne tier_targets même si la DB a été provisionnée
 	// avant l'ajout de la migration (parité ALTER idempotent côté schéma).
 	if _, err := db.Exec(`ALTER TABLE commendation_definitions ADD COLUMN IF NOT EXISTS tier_targets VARCHAR`); err != nil {
 		fmt.Printf("commendations: ensure tier_targets column: %v\n", err)
 	}
-	n, withTiers := 0, 0
+	n, withTiers, localized := 0, 0, 0
 	for _, c := range comms {
 		if c.ID == "" {
 			continue // pas de clé naturelle → ignoré
 		}
 		nameEN := strings.TrimSpace(c.Name)
+		apiFR := frByID[c.ID]
+		nameFR := chooseFR(fr, nameEN, apiFR.name)
 		tierTargets := tierTargetsCSV(c.Levels)
 		_, err := db.Exec(`INSERT OR REPLACE INTO commendation_definitions
 			(commendation_id, name_en, name_fr, description_en, description_fr,
 			 commendation_type, category, icon_url, tier_targets)
 			VALUES (?,?,?,?,?,?,?,?,?)`,
-			c.ID, nameEN, frOr(fr, nameEN), strings.TrimSpace(c.Description), "",
+			c.ID, nameEN, nameFR, strings.TrimSpace(c.Description), apiFR.desc,
 			c.Type, c.Category.Name, c.IconImageURL, tierTargets)
 		if err != nil {
 			fmt.Printf("commendations: insert %s: %v\n", c.ID, err)
@@ -481,8 +537,12 @@ func seedCommendations(db *sql.DB, key string, fr map[string]string) {
 		if tierTargets != "" {
 			withTiers++
 		}
+		if nameFR != nameEN {
+			localized++
+		}
 	}
-	fmt.Printf("commendations: %d seedées (sur %d, %d avec paliers)\n", n, len(comms), withTiers)
+	fmt.Printf("commendations: %d seedées (sur %d, %d avec paliers, %d localisées FR)\n",
+		n, len(comms), withTiers, localized)
 }
 
 // langEN / langFR — codes de langue attendus par le résolveur de noms

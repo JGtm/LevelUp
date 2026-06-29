@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { selectNearCompletion, NEAR_COMPLETION_MIN_PCT } from './nearCompletion'
+import {
+  allCitationsMastered,
+  selectNearCompletion,
+  NEAR_COMPLETION_DEFAULT_LIMIT,
+  NEAR_COMPLETION_MIN_PCT,
+} from './nearCompletion'
 import type { CitationDisplayItem } from './types'
 
 /** Fabrique un CitationDisplayItem tieré avec des défauts « entamé, non maîtrisé ». */
@@ -75,11 +80,51 @@ describe('selectNearCompletion', () => {
     expect(selectNearCompletion(many, 0)).toHaveLength(0)
   })
 
+  it('plafonne à 5 tuiles par défaut (une seule ligne)', () => {
+    expect(NEAR_COMPLETION_DEFAULT_LIMIT).toBe(5)
+    const many = Array.from({ length: 10 }, (_, i) => item({ key: `c${i}`, pct: 70 + i }))
+    expect(selectNearCompletion(many)).toHaveLength(5)
+  })
+
   it('couvre la source native H5 (mêmes champs view-model)', () => {
     const res = selectNearCompletion([
       item({ key: 'h5', source: 'native', pct: 88, tierIndex: 3, tierCount: 5, total: 440, nextTierTarget: 500 }),
     ])
     expect(res).toHaveLength(1)
     expect(res[0].remaining).toBe(60)
+  })
+})
+
+describe('allCitationsMastered', () => {
+  it('vrai quand toutes les citations tiérées sont maîtrisées', () => {
+    expect(
+      allCitationsMastered([
+        item({ key: 'a', isMastered: true }),
+        item({ key: 'b', isMastered: true }),
+      ]),
+    ).toBe(true)
+  })
+
+  it('faux dès qu’une citation tiérée reste en cours', () => {
+    expect(
+      allCitationsMastered([
+        item({ key: 'a', isMastered: true }),
+        item({ key: 'b', isMastered: false }),
+      ]),
+    ).toBe(false)
+  })
+
+  it('ignore les citations non tiérées (tierCount 0) pour juger la maîtrise', () => {
+    expect(
+      allCitationsMastered([
+        item({ key: 'tiered', isMastered: true }),
+        item({ key: 'untiered', tierCount: 0, isMastered: false }),
+      ]),
+    ).toBe(true)
+  })
+
+  it('faux quand aucune citation tiérée n’existe (rien à célébrer)', () => {
+    expect(allCitationsMastered([])).toBe(false)
+    expect(allCitationsMastered([item({ key: 'untiered', tierCount: 0 })])).toBe(false)
   })
 })

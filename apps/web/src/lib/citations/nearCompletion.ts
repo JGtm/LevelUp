@@ -22,8 +22,8 @@ import type { CitationDisplayItem } from './types'
  */
 export const NEAR_COMPLETION_MIN_PCT = 70
 
-/** Nombre de tuiles affichées par défaut dans la section accueil. */
-export const NEAR_COMPLETION_DEFAULT_LIMIT = 6
+/** Nombre de tuiles affichées par défaut dans la section accueil (une seule ligne). */
+export const NEAR_COMPLETION_DEFAULT_LIMIT = 5
 
 export interface NearCompletionItem {
   item: CitationDisplayItem
@@ -68,4 +68,18 @@ export function selectNearCompletion(
   })
 
   return candidates.slice(0, Math.max(0, limit))
+}
+
+/**
+ * allCitationsMastered — vrai si le joueur a TOUT maîtrisé : au moins une citation
+ * tiérée existe et toutes les citations tiérées sont maîtrisées. Pilote le message
+ * « tout complété » de l'accueil quand `selectNearCompletion` ne retourne rien parce
+ * qu'il ne reste plus aucun palier à franchir (et non parce que rien n'est proche).
+ *
+ * Les citations non tiérées (`tierCount === 0` → pas d'anneau de progression) sont
+ * ignorées : elles n'ont pas de notion de maîtrise par palier.
+ */
+export function allCitationsMastered(items: CitationDisplayItem[]): boolean {
+  const tiered = items.filter((i) => i.tierCount > 0)
+  return tiered.length > 0 && tiered.every((i) => i.isMastered)
 }
