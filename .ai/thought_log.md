@@ -1,3 +1,15 @@
+## [2026-06-28] Alignement des barres sticky sur le corps (shell-wide) — COMPLÉTÉ + vérifié (visuel à confirmer)
+
+**Tâche** : retour user — la barre de filtres locale (puis la barre d'onglets NavL2) « dépassait » la largeur du corps. Diagnostic : dans `AppShell`, les pages vivent dans `app-shell-width mx-auto`, et chaque barre sticky est une **bande pleine largeur** (border-b + bg) tandis que les corps sont en `p-6` → la bande dépasse de 24px de chaque côté. `px` interne ne corrigeait rien (déplace le contenu, pas la bande).
+
+**Audit** : motif présent partout (design existant des toolbars full-bleed) — NavL2 (onglets NavTabBar + FilterOmnibar/PeriodSessionRail, sur Stats/Carrière/Communauté), barre Synthèse, barre Escouade, + la barre locale (Relations/Citations/Sessions). User a choisi « aligner toutes les barres ».
+
+**Fix** (motif commun) : l'outer sticky reçoit `px-6` (garde un fond pleine largeur invisible = couleur de page, pour couvrir le scroll), la bordure visible passe sur l'inner (donc inset à 24px = alignée au corps), et le `px-4` interne des barres simples est retiré (contenu à 24px). Touché : `useLocalFilterBar`, `NavL2` (NavTabBar + chemin stats), `SynthesisPage`, `SquadLayout`. FilterOmnibar/PeriodSessionRail laissés tels quels (le `px-6` de l'outer NavL2 les inset déjà — bandes alignées, pills légèrement en retrait).
+
+**Vérif** : typecheck OK, vitest 419 passés/14 skipped (shell + synthesis + squad + palmares + _shared), lint couleurs clean. **Rendu visuel à confirmer par l'user** (changement CSS non visible en test). Pas encore commité.
+
+---
+
 ## [2026-06-28] Section Rivaux (ex-« Revanche ») — allègement texte des cartes — COMPLÉTÉ + vérifié
 
 **Tâche** : retours user sur la section Moments/Rivalités. (1) Label `rivalries_title` « Revanche » → **« Rivaux »** (choix user ; test MAJ). (2) Phrase d'aide heatmap (`heatmap_help` « Vos rencontres les plus fréquentes… ») **supprimée** (+ clé i18n morte retirée). (3) Cartes rival : le pavé de 4 lignes texte (récent/global WR, série, écart de frags) jugé trop textuel + redondant avec les 2 graphiques → **version compacte** : header `gamertag · N duels` → outcome sequence (intacte) → 1 ligne `récent X% · global Y%` + chip série (`N déf./vict. de suite`, si série ≥ 2) → graphe cumulé (intact). Écart de frags total retiré (= fin du graphe cumulé). i18n : `streak_*` repassées en « de suite », ajout `recent_short`/`global_short`, retrait `global_win_rate`/`frag_gap_*`.

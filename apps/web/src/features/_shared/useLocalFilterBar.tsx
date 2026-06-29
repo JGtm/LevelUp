@@ -295,8 +295,8 @@ export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFi
   }
 
   const bar = (
-    <div className="sticky top-0 z-20 border-b border-border" style={{ background: 'var(--background)' }}>
-      <div className="flex min-h-10 items-center gap-1.5 px-6 py-1.5 flex-wrap">
+    <div className="sticky top-0 z-20 px-6" style={{ background: 'var(--background)' }}>
+      <div className="flex min-h-10 items-center gap-1.5 border-b border-border py-1.5 flex-wrap">
         <ExperienceDropdown
           value={pendingExperience}
           onChange={setPendingExperience}
