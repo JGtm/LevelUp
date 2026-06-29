@@ -101,6 +101,60 @@ func TestCompareService_PlayerBNotFound(t *testing.T) {
 	}
 }
 
+// TestCompareService_loadPlayerB_LiveResolveFillsXUID : un joueur B jamais croisé
+// (ResolveXUID local vide) est résolu live → xuidB renseigné (permet l'enrichissement
+// rang/CSR), tout en servant ses stats Waypoint.
+func TestCompareService_loadPlayerB_LiveResolveFillsXUID(t *testing.T) {
+	// xuidErr → ResolveXUID local renvoie "" (B jamais croisé) ; bErr → pas de stats
+	// locales pour le xuid résolu live → fallback Waypoint.
+	repo := &mockCompareRepoAB{
+		a:       &domain.NormalizedPlayerStats{Gamertag: "A"},
+		bErr:    errors.New("no local B"),
+		xuidErr: errors.New("not found"),
+	}
+	provider := &mockStatsProvider{stats: &domain.NormalizedPlayerStats{Gamertag: "B"}}
+	res := &stubResolver{xuid: "live-b-xuid"}
+	svc := NewCompareService(repo, provider, "xuid-a", "hi").WithLiveGamertagResolver(res)
+
+	stats, xuidB, err := svc.loadPlayerB(context.Background(), "NeverCrossedB")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if res.calls != 1 {
+		t.Fatalf("résolveur live attendu 1 appel, got %d", res.calls)
+	}
+	if xuidB != "live-b-xuid" {
+		t.Errorf("xuidB = %q, want live-b-xuid", xuidB)
+	}
+	if stats == nil || stats.Gamertag != "B" {
+		t.Errorf("stats B (Waypoint) attendues, got %+v", stats)
+	}
+}
+
+// TestCompareService_loadPlayerB_LocalSkipsLiveResolver : si B est résolu
+// localement, le résolveur live n'est pas consulté.
+func TestCompareService_loadPlayerB_LocalSkipsLiveResolver(t *testing.T) {
+	repo := &mockCompareRepoAB{
+		a:    &domain.NormalizedPlayerStats{Gamertag: "A"},
+		b:    &domain.NormalizedPlayerStats{Gamertag: "B"},
+		xuid: "local-b",
+	}
+	provider := &mockStatsProvider{statsErr: errors.New("not needed")}
+	res := &stubResolver{xuid: "should-not-be-used"}
+	svc := NewCompareService(repo, provider, "xuid-a", "hi").WithLiveGamertagResolver(res)
+
+	_, xuidB, err := svc.loadPlayerB(context.Background(), "LocalB")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if res.calls != 0 {
+		t.Fatalf("résolveur live ne doit pas être appelé si B local (calls=%d)", res.calls)
+	}
+	if xuidB != "local-b" {
+		t.Errorf("xuidB = %q, want local-b", xuidB)
+	}
+}
+
 // TestBuildMetrics_AvailabilityRemoteB vérifie que les métriques locale-only
 // (ATH, max_killing_spree, etc.) sont marquées indisponibles côté B quand B
 // est remote, et que les métriques fournies par Waypoint restent disponibles.
