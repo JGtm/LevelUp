@@ -85,36 +85,39 @@ function SectionSubtitle({ children }: { children: ReactNode }) {
 
 // Libellés des descripteurs : source unique @/features/_shared/combatProfileLabels.
 
-function CombatProfileInlineRow({ combatProfile }: { combatProfile: CombatProfileBlock }) {
+function CombatProfileInlineRow({ combatProfile, locale }: { combatProfile: CombatProfileBlock; locale: ManifestLocale }) {
+  const t = (key: keyof typeof synthesisManifest) => synthesisManifest[key][locale]
   const hasStyles =
     combatProfile.style_offensive != null ||
     combatProfile.style_defensive != null ||
     combatProfile.style_activity != null
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-      <span className="text-xs text-muted-foreground shrink-0">{combatProfile.match_count} matchs analysés</span>
+      <span className="text-xs text-muted-foreground shrink-0">
+        {combatProfile.match_count} {t('synthesis.combat_profile.matches_analyzed')}
+      </span>
       {hasStyles && (
         <>
           {combatProfile.style_offensive && (
             <Badge variant="outline" className="text-xs">
-              {offensiveLabel(combatProfile.style_offensive)}
+              {offensiveLabel(combatProfile.style_offensive, locale)}
             </Badge>
           )}
           {combatProfile.style_defensive && (
             <Badge variant="outline" className="text-xs">
-              {defensiveLabel(combatProfile.style_defensive)}
+              {defensiveLabel(combatProfile.style_defensive, locale)}
             </Badge>
           )}
           {combatProfile.style_activity && (
             <Badge variant="secondary" className="text-xs">
-              {activityLabel(combatProfile.style_activity)}
+              {activityLabel(combatProfile.style_activity, locale)}
             </Badge>
           )}
         </>
       )}
       <CombatYieldDisplay
         className="ml-auto w-full sm:max-w-[560px]"
-        label="Rendement / Résistance"
+        label={t('synthesis.combat_profile.yield_resistance')}
         offensiveConversion={combatProfile.avg_oc}
         defensiveResistance={combatProfile.avg_dr}
         dmgPerKill={combatProfile.dmg_per_kill}
@@ -199,14 +202,14 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
 
   return (
     <section className="space-y-3">
-      <header><h3 className="text-base font-semibold text-foreground">Vue d'ensemble</h3></header>
+      <header><h3 className="text-base font-semibold text-foreground">{t('synthesis.section.overview')}</h3></header>
 
         {/* Profil de combat — sous-titre (type 6) + card pleine largeur. */}
         {combatProfile != null && (
           <div className="space-y-2">
-            <SectionSubtitle>Profil de combat</SectionSubtitle>
+            <SectionSubtitle>{t('synthesis.combat_profile.title')}</SectionSubtitle>
             <div className="rounded-lg border border-border bg-card p-4">
-              <CombatProfileInlineRow combatProfile={combatProfile} />
+              <CombatProfileInlineRow combatProfile={combatProfile} locale={locale} />
             </div>
           </div>
         )}
@@ -342,7 +345,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                   {/* Incidents */}
                   {hasIncidents && (
                     <div className="flex-1 flex flex-col items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-center">
-                      <p className="text-xs text-muted-foreground">Incidents</p>
+                      <p className="text-xs text-muted-foreground">{t('synthesis.combat_profile.incidents')}</p>
                       <div className="mt-1.5 w-full">
                         <ProportionalBar segments={[
                           { value: detailedStats.total_betrayals, color: 'warning' },
@@ -351,10 +354,10 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                       </div>
                       <div className="mt-1 flex justify-center gap-2 text-xs font-semibold tabular-nums">
                         {detailedStats.total_betrayals > 0 && (
-                          <span style={{ color: tokenCssVar('warning') }}>{detailedStats.total_betrayals} trahisons</span>
+                          <span style={{ color: tokenCssVar('warning') }}>{detailedStats.total_betrayals} {t('synthesis.combat_profile.betrayals')}</span>
                         )}
                         {detailedStats.total_suicides > 0 && (
-                          <span style={{ color: tokenCssVar('outcome-dnf') }}>{detailedStats.total_suicides} suicides</span>
+                          <span style={{ color: tokenCssVar('outcome-dnf') }}>{detailedStats.total_suicides} {t('synthesis.combat_profile.suicides')}</span>
                         )}
                       </div>
                     </div>
@@ -371,7 +374,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                   )}
 
                   <div className="grid grid-cols-2 gap-2">
-                    <AccentCard label="Frags parfaits" value={detailedStats.total_perfect_kills.toLocaleString('fr-FR')} accent="perf-tier-3" />
+                    <AccentCard label={t('synthesis.combat_profile.perfect_kills')} value={detailedStats.total_perfect_kills.toLocaleString('fr-FR')} accent="perf-tier-3" />
                     <AccentCard label={fieldMappings?.fields['headshot_kills']?.label ?? 'Tirs à la tête'} value={detailedStats.total_headshot_kills.toLocaleString('fr-FR')} accent="perf-tier-2" />
                   </div>
 
@@ -400,7 +403,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                     <div className="grid grid-cols-2 gap-2">
                       <AccentCard label={fieldMappings?.fields['damage_dealt']?.label ?? 'Dégâts infligés'} value={Math.round(detailedStats.total_damage_dealt).toLocaleString('fr-FR')} accent="outcome-win" />
                       {hasDamageTaken && (
-                        <AccentCard label="Dégâts reçus"    value={Math.round(detailedStats.total_damage_taken).toLocaleString('fr-FR')} accent="outcome-loss" />
+                        <AccentCard label={fieldMappings?.fields['damage_taken']?.label ?? 'Dégâts reçus'} value={Math.round(detailedStats.total_damage_taken).toLocaleString('fr-FR')} accent="outcome-loss" />
                       )}
                     </div>
                   </div>
@@ -425,7 +428,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                           <AccentCard label={t('synthesis.kpi.vehicles_destroyed')} value={detailedStats.total_vehicles_destroyed.toLocaleString('fr-FR')} accent="warning" />
                         )}
                         {detailedStats.total_hijacks > 0 && (
-                          <AccentCard label="Hijacks" value={detailedStats.total_hijacks.toLocaleString('fr-FR')} accent="chart-series-4" />
+                          <AccentCard label={t('synthesis.combat_profile.hijacks')} value={detailedStats.total_hijacks.toLocaleString('fr-FR')} accent="chart-series-4" />
                         )}
                       </div>
                     </div>

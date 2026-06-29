@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { PlayerScoreCard, KPIStats } from '../types'
 import { offensiveLabel, defensiveLabel, activityLabel } from '@/features/_shared/combatProfileLabels'
+import { useAppShellStore } from '@/stores/appShellStore'
+import type { ManifestLocale } from '@/lib/i18n/format'
 
 export interface SquadCombatProfileRowProps {
   playerCards: PlayerScoreCard[]
@@ -16,6 +18,7 @@ export interface SquadCombatProfileRowProps {
 }
 
 export function SquadCombatProfileRow({ playerCards, kpisByXuid }: SquadCombatProfileRowProps) {
+  const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const playersWithProfile = playerCards.filter(
     (p) => kpisByXuid[p.xuid]?.combat_profile != null,
   )
@@ -46,17 +49,17 @@ export function SquadCombatProfileRow({ playerCards, kpisByXuid }: SquadCombatPr
                 <div className="flex flex-wrap gap-1">
                   {profile.style_offensive && (
                     <Badge variant="outline" className="text-xs">
-                      {offensiveLabel(profile.style_offensive)}
+                      {offensiveLabel(profile.style_offensive, locale)}
                     </Badge>
                   )}
                   {profile.style_defensive && (
                     <Badge variant="outline" className="text-xs">
-                      {defensiveLabel(profile.style_defensive)}
+                      {defensiveLabel(profile.style_defensive, locale)}
                     </Badge>
                   )}
                   {profile.style_activity && (
                     <Badge variant="secondary" className="text-xs">
-                      {activityLabel(profile.style_activity)}
+                      {activityLabel(profile.style_activity, locale)}
                     </Badge>
                   )}
                 </div>
