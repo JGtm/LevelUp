@@ -31137,3 +31137,46 @@ préexistant).
 whitelister les 3 fichiers H5 du test shared_social (commit séparé). Fichiers relations-v3
 / palmares.toml / generated.ts / openapi.yaml dans l'arbre = WIP utilisateur concurrent
 (IDE), NON inclus dans ce commit.
+
+---
+
+## [2026-06-29] Correctifs démo + recherche joueur + i18n + README — COMPLÉTÉ (regen démo en attente)
+
+**Contexte** : 5 points relevés en essayant la démo (worktree dédié `fix/demo-search-readme-i18n`
+créé depuis `main`).
+
+**Décisions techniques** :
+- **Démo non figée + recherche cassée après anonymisation** (même racine) : `seed-demo`
+  reconstruisait le corpus depuis les derniers matchs live à chaque regen. Ajout d'un
+  **manifeste figé** committé sous `config/demo/<gamertag>/<slug>.json` (4 sous-listes de
+  match_ids : solo/squad/ranked/media). Geler le CORPUS suffit : le roster anonymisé
+  (`buildDemoRoster`, ordre `n DESC, xuid`) et l'association des médias sont des fonctions
+  du corpus + des données source immuables → déterministes ; dériver le roster garantit la
+  couverture complète des xuids (aucune fuite). `PathResolver.DemoManifestPath`, nouveaux
+  `seed_demo_manifest.go`/`seed_demo_emit.go`, branche dans `SeedDemo`, flags CLI
+  `--emit-manifest`/`--ignore-manifest`. Tests unitaires + intégration
+  `TestSeedDemo_FrozenCorpusIsByteStable` (corpus stable malgré drift source + anti-fuite).
+- **Recherche d'un joueur jamais croisé (prod + démo)** : la recherche était bornée à
+  `xuid_aliases` (local). Décorateur `service.LiveFallbackGamertagSearch` + résolveur
+  `worldenrich.BuildDirectoryResolver` (réutilise la chaîne PeopleHub→profil Xbox existante,
+  XSTS `xboxlive.com`, lazy, multi-comptes + cache). Fallback resolve-time dans
+  `ExplorerService.GetCommonMatches` (sur `sql.ErrNoRows`) et `CompareService.loadPlayerB`.
+  Câblé dans `server.go`, **OFF en démo** (`cfg.DemoMode` → résolveur nil) ; cache mémoire
+  seul (aucune écriture `xuid_aliases`). Couvre Explorer + Face-à-face (même endpoint).
+- **« Profil de combat » hardcodée FR** : `combatProfileLabels.ts` rendu locale-aware
+  (FR+EN, param `ManifestLocale`) ; 8 clés ajoutées à `synthesis.toml` + regen ;
+  `SynthesisPage.tsx` + `SquadCombatProfileRow.tsx` passent la locale / utilisent `t()`.
+- **README section auth trompeuse** : réécrite (EN + FR) au modèle réel — 1 méthode standard
+  (SSO Xbox), login/mdp réservé admin (mode xbox), connexion locale par joueur = exception
+  non standard.
+
+**Résultats observés** : Go `go vet` clean + tests verts (service, worldenrich, ops
+non-intégration + intégration manifeste, api, domain/title) ; front `typecheck` + `lint`
+(0 erreur) + vitest synthesis/squad verts ; module entier compile.
+
+**Prochaine étape** : (1) **regen locale de `data/demo` BLOQUÉE** — `server.exe` tient en lock
+exclusif la player DB JGtm + `shared_social` → la sélection squad/média échoue (manifestes
+émis = `squad=0/media=0`, supprimés car geler l'état cassé est pire). À refaire serveur
+arrêté : `levelup seed-demo --gamertag JGtm --emit-manifest` → curer/committer les manifestes
+→ `levelup seed-demo --gamertag JGtm` (regen anonymisée) → valider. (2) commits par lot +
+push à la demande de l'utilisateur.
