@@ -260,12 +260,21 @@ fr = "Citations les plus proches de leur prochain palier — celles à franchir 
 en = "Citations closest to their next tier — the ones to push over the line first."
 
 [home.near_completion.remaining]
-fr = "Plus que {count} avant le palier"
+fr = "Plus que {count} avant le prochain palier"
 en = "{count} to next tier"
 
 [home.near_completion.final_tier]
 fr = "Maîtrise proche"
 en = "Mastery close"
+
+# Affiché quand le joueur a maîtrisé TOUTES ses citations tiérées (aucune en approche).
+[home.near_completion.all_complete_title]
+fr = "Toutes tes citations sont maîtrisées"
+en = "All citations mastered"
+
+[home.near_completion.all_complete_description]
+fr = "Bravo ! Aucune citation en cours — reviens après de nouveaux matchs."
+en = "Well done! No citation in progress — check back after new matches."
 
 [home.near_completion.tier_progress]
 fr = "Palier {index}/{count}"
