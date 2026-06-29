@@ -227,6 +227,13 @@ To do.txt
 # Logs locaux (non trackés)
 data/logs/*
 /migrate-static-maps-dry.log
+
+# Manifestes démo figés : config CURÉE committée (corpus reproductible de la démo).
+# Override les patterns gamertag larges ci-dessus (`Madina97294`/`Chocoboflor`/`JGtm`)
+# qui matchent aussi `config/demo/<gamertag>/`.
+!config/demo/
+!config/demo/**/
+!config/demo/**
 /populate-maps.log
 /unmatched_maps.csv
 
