@@ -1,3 +1,15 @@
+## [2026-06-29] Spartan customizer — picker de couleur collant au scroll — COMPLÉTÉ + vérifié
+
+**Tâche** (retour user) : la grille de la modale (300+ vignettes) défile beaucoup ; le picker de couleur disparaissait au scroll. Le rendre collant pour ajuster les couleurs tout en parcourant les motifs.
+
+**Décision** : dans `SpartanCustomizerModal.tsx`, le corps défilant est scindé en (1) un **en-tête collant** `sticky top-0 z-10 bg-card` regroupant les 3 lignes de couleurs + les onglets Emblème/Bannière, et (2) la **grille** dans un wrapper défilant qui passe dessous. L'aperçu (emblème+bannière) restait déjà fixe au-dessus. `bg-card` = token sémantique (color-tokens OK, masque la grille au scroll). Aucune logique JS modifiée (recolor live/sélection/onglets inchangés).
+
+**Vérif** : tsc OK ; eslint 0 ; vitest 6/6 (spartan-customizer).
+
+**Statut** : COMPLÉTÉ sur branche `feat/spartan-customizer-sticky-picker` (dans le dossier principal). Mergé dans `main` local ; partira au prochain push `main` (pas de deploy dédié).
+
+---
+
 ## [2026-06-29] Accueil « Citations bientôt terminées » — une seule ligne + message tout-complété + traduction des noms de commendations H5 — COMPLÉTÉ (front vérifié ; re-seed metadata H5 requis)
 
 **Tâche** (retours user sur la section accueil) : (1) tuiles sur une seule ligne (5 doivent passer) ; (2) message quand le joueur a déjà tout complété ; (3) texte FR « Plus que X avant le **prochain** palier » ; (4) « le titre des citations elles-mêmes n'est pas traduit ».
