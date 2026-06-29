@@ -514,8 +514,8 @@ export function SquadLayout() {
       }}
     >
       {/* ─── Barre de filtres unifiée (sticky top-12, remplace NavL2/FilterOmnibar) ─── */}
-      <div className="sticky top-0 z-30 border-b border-border" style={{ background: 'var(--background)' }}>
-        <div className="flex min-h-10 items-center gap-1.5 overflow-visible px-4 py-1.5">
+      <div className="sticky top-0 z-30 px-6" style={{ background: 'var(--background)' }}>
+        <div className="flex min-h-10 items-center gap-1.5 overflow-visible border-b border-border py-1.5">
 
           {/* Joueur actif (pill de tête non-supprimable) + coéquipiers (multi-select
               compact inline, jusqu'à 3). La pill du joueur actif est rendue DANS le
