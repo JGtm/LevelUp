@@ -705,6 +705,16 @@ func Steps() []migration.Migration {
 			},
 		},
 		{
+			Name:        "add_citation_name_display_en",
+			TargetDB:    migration.TargetMetadata,
+			Description: "citation_mappings : ajout citation_name_display_en (nom anglais ; citations Infinite = copies de commendations H5, seul le calcul diffère). Servi locale-aware au read ; NULL → fallback FR.",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS citation_name_display_en VARCHAR;
+				`)
+			},
+		},
+		{
 			// Downstream de la famille citation (data-fix). DOIT rester title-owned
 			// avec la chaîne : il UPDATE citation_mappings, absente en run global-only.
 			Name:        "fix_citation_image_paths_double_encoded",

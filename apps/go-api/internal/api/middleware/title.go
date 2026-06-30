@@ -9,20 +9,37 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
 
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
 )
 
-// TitleExtractor lit le titre courant depuis le header X-LevelUp-Title
-// ou depuis la session et l'injecte dans le contexte.
+// TitleExtractor lit le titre courant depuis le header X-LevelUp-Title (ou la
+// session) ET la locale UI depuis le header X-LevelUp-Locale, et les injecte dans
+// le contexte. La locale alimente les lectures localisées (noms de commendations,
+// etc.) qui résolvent via ctxkeys.Locale sans threader la locale dans chaque
+// signature (utile pour les chemins canoniques ID-keyés, ex. LoadMatchDetail).
 func TitleExtractor(registry *titlePkg.Registry) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			slug := resolveTitleSlug(r, registry)
 			ctx := ctxkeys.WithTitleSlug(r.Context(), slug)
+			ctx = ctxkeys.WithLocale(ctx, resolveLocale(r))
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
+	}
+}
+
+// resolveLocale lit la locale UI depuis le header X-LevelUp-Locale (posé par le
+// front sur toutes les requêtes, cf. setApiLocale). Normalise vers "fr"/"en" ;
+// valeur vide ou inconnue → "fr" (cohérent avec le défaut de ctxkeys.Locale).
+func resolveLocale(r *http.Request) string {
+	switch strings.ToLower(strings.TrimSpace(r.Header.Get("X-LevelUp-Locale"))) {
+	case "en", "en-us", "en_us":
+		return "en"
+	default:
+		return "fr"
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -32,12 +33,15 @@ func (r *CitationsRepo) LoadCitationMappings(ctx context.Context) ([]domain.Cita
 	}
 	defer rows.Close()
 
+	enLocale := ctxkeys.Locale(ctx) == "en"
 	var result []domain.CitationMappingRow
 	for rows.Next() {
 		var row domain.CitationMappingRow
+		var displayEN string // citation_name_display_en (COALESCE '' si NULL)
 		if err := rows.Scan(
 			&row.NameNorm,
 			&row.NameDisplay,
+			&displayEN,
 			&row.MappingType,
 			&row.Category,
 			&row.ImagePath,
@@ -46,6 +50,12 @@ func (r *CitationsRepo) LoadCitationMappings(ctx context.Context) ([]domain.Cita
 			&row.CompositeChildren,
 		); err != nil {
 			return nil, fmt.Errorf("LoadCitationMappings scan: %w", err)
+		}
+		// Locale-aware : en UI anglaise, le nom anglais prime (sinon fallback FR).
+		// Les citations Infinite étant copiées de H5, leur EN vient du seed
+		// (citation_name_display_en) — cf. ops.citationDisplayEN.
+		if enLocale && displayEN != "" {
+			row.NameDisplay = displayEN
 		}
 		result = append(result, row)
 	}

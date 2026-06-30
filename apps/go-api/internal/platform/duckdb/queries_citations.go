@@ -9,6 +9,7 @@ const Q34CitationMappings = `
 SELECT
     citation_name_norm,
     citation_name_display,
+    COALESCE(citation_name_display_en, '') AS citation_name_display_en,
     mapping_type,
     COALESCE(category, 'misc')    AS category,
     image_path,
