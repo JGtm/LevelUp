@@ -97,7 +97,7 @@ function MedalChip({ item }: { item: MedalDigestItem }) {
           textAlign: 'center',
         }}
       >
-        {item.total_count}
+        ×{item.total_count}
       </span>
     </span>
   )
@@ -140,7 +140,7 @@ function MedalIconTile({ item }: { item: MedalDigestItem }) {
           textAlign: 'center',
         }}
       >
-        {item.total_count}
+        ×{item.total_count}
       </span>
     </span>
   )

@@ -158,13 +158,27 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
 
     set({ isTitleSwitching: true })
     try {
-      // 1. Informer le backend du changement de titre
+      // 1. Commit le titre côté serveur. Le backend résout le titre par
+      // priorité header X-LevelUp-Title > session (cf. middleware TitleExtractor).
+      // Pour le titre PAR DÉFAUT (halo_infinite) le front N'ENVOIE PAS de header
+      // (cf. getTitleHeader) → c'est la session qui fait autorité : il FAUT donc
+      // que ce POST soit commité avant de relancer la moindre requête, sinon un
+      // refetch « retour à Infinite » lirait encore l'ancien titre de session.
       await api.post('/session/context', { title_slug: titleSlug })
-      // 2. Mettre à jour le client API
+      // 2. Basculer le client API + le store sur le nouveau titre AVANT tout
+      // refetch : à partir d'ici chaque requête porte le nouveau titre (header
+      // pour un titre non-défaut ; session déjà commitée ci-dessus pour le défaut).
       setApiTitleSlug(titleSlug)
-      // 3. Re-bootstrap pour obtenir les données du nouveau titre
+      set({ currentTitleSlug: titleSlug })
+      // 3. Annuler les requêtes EN VOL (potentiellement parties avec l'ancien
+      // titre pendant l'await du POST) PUIS purger tout le cache. Fait APRÈS le
+      // commit du titre (étapes 1-2) : aucune donnée de l'ancien titre ne peut
+      // survivre ni se re-peupler ensuite. clear() vide toutes les clés (y
+      // compris les clés inline hors fabrique queryKeys).
+      await queryClient.cancelQueries()
+      queryClient.clear()
+      // 4. Re-bootstrap pour obtenir les données du nouveau titre + réhydrater.
       const bootstrap = await api.get<BootstrapResponse>('/bootstrap')
-      // 4. Réhydrater le store avec les nouvelles données
       get().hydrateFromBootstrap(bootstrap)
       // 5. Filet de sécurité : si le re-bootstrap n'a pas désigné de joueur
       // courant alors que des joueurs existent pour ce titre, sélectionner le
@@ -174,12 +188,6 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
       if (get().currentPlayer == null && get().availablePlayers.length > 0) {
         get().setCurrentPlayer(get().availablePlayers[0])
       }
-      // 6. Purger le cache TanStack Query : toutes les requêtes sont scopées par
-      // titre (header X-LevelUp-Title). Sans clear, matchview/timeseries/session
-      // du titre précédent fuiteraient jusqu'à expiration du staleTime. clear()
-      // > invalidateQueries ici : garantit qu'aucune donnée d'un autre titre
-      // n'est rendue, même brièvement, après le switch.
-      queryClient.clear()
     } catch {
       // Rollback silencieux : restaurer l'ancien titre
       setApiTitleSlug(current)

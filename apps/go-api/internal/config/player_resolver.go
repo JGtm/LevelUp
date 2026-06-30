@@ -48,7 +48,7 @@ func (cfg *AppConfig) sharedReaderForTitle(titleSlug string) duckdb.SharedReader
 	// Démo : titre par défaut = provider boot (shared démo plat, byte-identique) ;
 	// titre additionnel = provider du shared démo title-scopé.
 	if cfg.DemoMode {
-		if titleSlug == title.DefaultSlug {
+		if title.IsDefaultSlug(titleSlug) {
 			return cfg.SharedProvider
 		}
 		return cfg.sharedProviderForPath(titleSlug, demoSharedDBPath(cfg, titleSlug))
@@ -72,7 +72,7 @@ func (cfg *AppConfig) sharedProviderForPath(titleSlug, path string) duckdb.Share
 // slug vide) → fixturesDir plat (byte-identique mono-titre) ; titre additionnel →
 // fixturesDir/titles/{slug}/ (miroir du PathResolver prod, cf. ops.demoTitleSubdir).
 func demoTitleDir(fixturesDir, titleSlug string) string {
-	if titleSlug == "" || titleSlug == title.DefaultSlug {
+	if title.IsDefaultSlug(titleSlug) {
 		return fixturesDir
 	}
 	return filepath.Join(fixturesDir, "titles", titleSlug)
@@ -165,7 +165,7 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 	// Fallback structure plate (fixtures commitées dans tests/) — RÉSERVÉ au titre
 	// par défaut (un titre additionnel sans fixture ne doit JAMAIS retomber sur les
 	// DB du titre par défaut : on préfère l'erreur explicite ci-dessous).
-	if _, err := os.Stat(statsPath); os.IsNotExist(err) && titleSlug == title.DefaultSlug {
+	if _, err := os.Stat(statsPath); os.IsNotExist(err) && title.IsDefaultSlug(titleSlug) {
 		statsPath = filepath.Join(dir, "stats.duckdb")
 		sharedPath = filepath.Join(dir, "shared_matches_v2.duckdb")
 		metaPath = filepath.Join(dir, "metadata.duckdb")

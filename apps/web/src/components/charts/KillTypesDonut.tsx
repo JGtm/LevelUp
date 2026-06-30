@@ -27,7 +27,9 @@ function fmtInt(value: number, locale: string): string {
 }
 
 // Géométrie du donut. Repère angulaire : 0 = midi, sens horaire.
-const DONUT = { w: 300, h: 152, cx: 150, cy: 74, rOuter: 46, stroke: 16, yTop: 16, yBot: 132 }
+// rOuter agrandi (~38 % de la largeur) pour un donut nettement plus lisible ;
+// la largeur est élargie en conséquence pour préserver la marge des labels.
+const DONUT = { w: 320, h: 184, cx: 160, cy: 92, rOuter: 60, stroke: 20, yTop: 18, yBot: 166, labelMargin: 86 }
 
 interface Leader {
   slice: DonutSlice
@@ -69,7 +71,7 @@ function computeLeaders(slices: DonutSlice[], total: number, circ: number): Lead
       const labelY = side.length === 1
         ? Math.min(Math.max(r.elbowY, DONUT.yTop), DONUT.yBot)
         : DONUT.yTop + (k * (DONUT.yBot - DONUT.yTop)) / (side.length - 1)
-      const textX = right ? DONUT.w - 92 : 92
+      const textX = right ? DONUT.w - DONUT.labelMargin : DONUT.labelMargin
       out.push({
         slice: r.slice, startFrac: r.startFrac, dashLen: r.dashLen,
         edgeX: r.edgeX, edgeY: r.edgeY, elbowX: r.elbowX, elbowY: r.elbowY,
@@ -111,10 +113,10 @@ export function KillTypesDonut({ slices, locale }: { slices: DonutSlice[]; local
             points={`${l.edgeX},${l.edgeY} ${l.elbowX},${l.elbowY} ${l.kneeX},${l.labelY}`}
             fill="none" stroke={tokenCssVar(l.slice.token)} strokeWidth="1" opacity="0.55"
           />
-          <text x={l.textX} y={l.labelY - 1} textAnchor={l.anchor} className="fill-foreground" opacity="0.8" style={{ fontSize: '8px' }}>
+          <text x={l.textX} y={l.labelY - 1} textAnchor={l.anchor} className="fill-foreground" opacity="0.8" style={{ fontSize: '9px' }}>
             {l.slice.label}
           </text>
-          <text x={l.textX} y={l.labelY + 9} textAnchor={l.anchor} style={{ fill: tokenCssVar(l.slice.token), fontSize: '9px', fontWeight: 600 }}>
+          <text x={l.textX} y={l.labelY + 10} textAnchor={l.anchor} style={{ fill: tokenCssVar(l.slice.token), fontSize: '10px', fontWeight: 600 }}>
             {`${fmtInt(l.slice.count, locale)} · ${fmtPctRatio(l.slice.count / total, locale)}`}
           </text>
         </g>

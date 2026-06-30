@@ -48,6 +48,16 @@ func (r *StaticAssetMetaRepo) WithTitle(titleID string, maps, weapons, medals []
 	return r
 }
 
+// WithFallbackMedals câble les médailles du titre PAR DÉFAUT (Halo Infinite), servies
+// via le fallback (le constructeur ne prend que maps+weapons, hérité du mono-titre).
+// Sans ça, le tab « Médailles » de l'Asset Drawer est VIDE pour Infinite (les médailles
+// ne sont jamais chargées au boot — seuls les titres additionnels via WithTitle en ont).
+// Chainable.
+func (r *StaticAssetMetaRepo) WithFallbackMedals(medals []canonical.AssetMeta) *StaticAssetMetaRepo {
+	r.fallback.medals = medals
+	return r
+}
+
 // setFor retourne le jeu d'assets d'un titre (override si présent, sinon fallback).
 func (r *StaticAssetMetaRepo) setFor(titleID string) assetSet {
 	if s, ok := r.byTitle[titleID]; ok {

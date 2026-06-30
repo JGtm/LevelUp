@@ -164,15 +164,21 @@ func loadTitleAssetDrawerData(metaPath, slug string) (maps, weapons, medals []ca
 		}
 		_ = rows.Close()
 	}
-	// Médailles : icône SPRITE (feuille + offset) depuis medal_definitions.
+	// Médailles : icône SPRITE (feuille + offset) depuis medal_definitions + noms et
+	// descriptions FR/EN. Le name_fr EST peuplé par cmd/h5-metadata-fetch (Accept-Language:
+	// fr-FR, jamais vide). Sans le sélectionner ici, le drawer affichait les médailles h5
+	// en ANGLAIS (name_fr vide → AssetCard retombe sur name_en). La cascade locale finale
+	// est faite côté front (AssetCard : fr → name_fr sinon name_en).
 	if rows, qerr := metaDB.Query(ctx,
-		`SELECT medal_name_id::VARCHAR, name_en, COALESCE(sprite_sheet_url, ''),
+		`SELECT medal_name_id::VARCHAR, name_en, COALESCE(name_fr, ''),
+		        COALESCE(description_en, ''), COALESCE(description_fr, ''),
+		        COALESCE(sprite_sheet_url, ''),
 		        COALESCE(sprite_left, 0), COALESCE(sprite_top, 0),
 		        COALESCE(sprite_width, 0), COALESCE(sprite_height, 0)
 		 FROM medal_definitions ORDER BY name_en`); qerr == nil {
 		for rows.Next() {
 			var m canonical.AssetMeta
-			if rows.Scan(&m.ID, &m.NameEN, &m.SpriteSheet,
+			if rows.Scan(&m.ID, &m.NameEN, &m.NameFR, &m.Description, &m.DescriptionFR, &m.SpriteSheet,
 				&m.SpriteLeft, &m.SpriteTop, &m.SpriteWidth, &m.SpriteHeight) == nil && m.NameEN != "" {
 				medals = append(medals, m)
 			}
@@ -743,10 +749,22 @@ func NewRouter(
 			loadCtx := context.Background()
 			maps, errM := liveRepo.ListMapsByTitle(loadCtx, titlePkg.DefaultSlug, "")
 			weapons, errW := liveRepo.ListWeaponsByTitle(loadCtx, titlePkg.DefaultSlug, "")
+			// Médailles Infinite : sans ce chargement, le tab « Médailles » du drawer
+			// reste VIDE pour Infinite (le constructeur ne prend que maps+weapons). Les
+			// noms FR/EN viennent de medal_definitions (déjà complet) ; l'icône est un
+			// PNG /static/medals/halo_infinite/{id}.png (résolu via static.MedalImage).
+			medals, errMed := liveRepo.ListMedalsByTitle(loadCtx, titlePkg.DefaultSlug, "")
 			_ = metaDB.Close() // relâche le lock Windows immédiatement après chargement
-			if errM != nil || errW != nil {
-				slog.Warn("asset_metadata_load_failed", "err_maps", errM, "err_weapons", errW)
+			if errM != nil || errW != nil || errMed != nil {
+				slog.Warn("asset_metadata_load_failed", "err_maps", errM, "err_weapons", errW, "err_medals", errMed)
 				continue
+			}
+			for i := range medals {
+				if id, perr := strconv.ParseInt(medals[i].ID, 10, 64); perr == nil {
+					if png, _ := static.MedalImage(titlePkg.DefaultSlug, id); png != "" {
+						medals[i].ImageURL = png
+					}
+				}
 			}
 			// Titres additionnels (ex. Halo 5) : maps/armes + URLs d'image viennent de
 			// leur metadata.duckdb isolée (seedée par cmd/h5-metadata-fetch depuis l'API
@@ -757,6 +775,7 @@ func NewRouter(
 			assetMetaHandler = handlers.NewAssetMetadataHandler(
 				service.NewAssetService(
 					service.NewStaticAssetMetaRepo(maps, weapons).
+						WithFallbackMedals(medals).
 						WithTitle(halo5.TitleSlug, h5Maps, h5Weapons, h5Medals)).
 					WithMapImageURL(func(_ string, nameEN string) string {
 						return hiAssetURL.MapImageURL(nameEN)
@@ -773,6 +792,7 @@ func NewRouter(
 				"title", titlePkg.DefaultSlug,
 				"maps", len(maps),
 				"weapons", len(weapons),
+				"medals", len(medals),
 				"attempt", attempt+1,
 			)
 			break

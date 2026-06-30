@@ -466,6 +466,29 @@ func Steps() []migration.Migration {
 				`)
 			},
 		},
+		{
+			// Médaille custom « Vengeur » (id 9000000001) : native Halo 5, ré-exposée
+			// pour Halo Infinite (LevelUp la calcule via citation_mappings). Sans cette
+			// ligne, elle n'apparaît pas dans le catalogue médailles (tab Asset Drawer)
+			// d'Infinite. INSERT idempotent (ON CONFLICT DO NOTHING) ; NE repeuple PAS
+			// le reste du catalogue Infinite (déjà complet via refresh-metadata).
+			Name:        "seed_custom_vengeur_medal",
+			TargetDB:    migration.TargetMetadata,
+			Description: "medal_definitions : seed médaille custom Vengeur (9000000001) pour Halo Infinite (native H5)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					INSERT INTO medal_definitions
+						(medal_name_id, name_fr, name_en, description_fr, description_en,
+						 is_custom, difficulty_index, type_index, difficulty, medal_type, personal_score)
+					VALUES
+						(9000000001, 'Vengeur', 'Avenger',
+						 'Tuez l''ennemi responsable de votre mort précédente.',
+						 'Kill the enemy responsible for your previous death.',
+						 TRUE, 0, 4, 'Normal', 'skill', 0)
+					ON CONFLICT (medal_name_id) DO NOTHING;
+				`)
+			},
+		},
 		// Famille xbox_achievement_definitions (base + 4 ALTER/DELETE) → migrée ATOMIQUEMENT (b8).
 		{
 			Name:        "add_xbox_achievement_definitions",

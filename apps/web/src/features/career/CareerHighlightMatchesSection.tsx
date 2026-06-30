@@ -126,6 +126,7 @@ export function CareerHighlightMatchesSection() {
             value={experience}
             onChange={setExperience}
             counts={experienceCounts}
+            dense
             labels={{
               placeholder: t('career.highlight_matches.filter_experience'),
               all: t('career.highlight_matches.experience_all'),
@@ -146,6 +147,7 @@ export function CareerHighlightMatchesSection() {
             }}
             placeholder={t('career.highlight_matches.filter_seasons')}
             alwaysShow
+            dense
           />
           <MultiSelectFilter
             options={playlistOptions}
@@ -160,6 +162,7 @@ export function CareerHighlightMatchesSection() {
             }}
             placeholder={t('career.highlight_matches.filter_playlists')}
             alwaysShow
+            dense
             disabled={playlistOptions.length === 0 && selectedPlaylists.size === 0}
           />
           <MultiSelectFilter
@@ -175,6 +178,7 @@ export function CareerHighlightMatchesSection() {
             }}
             placeholder={t('career.highlight_matches.filter_modes')}
             alwaysShow
+            dense
             disabled={modeOptions.length === 0 && selectedModes.size === 0}
           />
           {hasActiveFilters && (

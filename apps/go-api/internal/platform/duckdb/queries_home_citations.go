@@ -178,7 +178,14 @@ SELECT COUNT(*) FROM match_participants WHERE xuid = ?`
 
 // Q26c : Home -- identitÃ© record compacte depuis career_progression.
 // Un seul scan via ARG_MAX â€” remplace les 5 sous-requÃªtes corrÃ©lÃ©es de l'ancienne version.
-// ParamÃ¨tre : aucun.
+//
+// FILTRE PAR XUID (?1) : career_progression est dans la player DB mais peut, en cas
+// de contamination de sync historique, contenir des rows d'un AUTRE joueur. Sans ce
+// filtre, ARG_MAX remontait l'identité (emblème/bannière/rang) du mauvais xuid si sa
+// row était plus récente — symptôme observé (Chocoboflor affichait l'identité de JGtm).
+// Concaténer xuid à une chaîne vide défait le pushdown sur l'index PK (cf.
+// career_live_repo.go : index DuckDB connu corrompu, table-scan complet, < 1k rows/joueur).
+// ParamÃ¨tre : ?1 = xuid du joueur.
 const Q26cHomeSpartanIdentity = `
 SELECT
     ARG_MAX(rank,             recorded_at) FILTER (WHERE rank IS NOT NULL)                                  AS rank,
@@ -192,7 +199,8 @@ SELECT
     ARG_MAX(emblem_image_url,  recorded_at) FILTER (WHERE NULLIF(TRIM(emblem_image_url),  '') IS NOT NULL)  AS emblem_image_url,
     ARG_MAX(backdrop_image_url, recorded_at) FILTER (WHERE NULLIF(TRIM(backdrop_image_url),'') IS NOT NULL) AS backdrop_image_url,
     ARG_MAX(adornment_path,   recorded_at) FILTER (WHERE NULLIF(TRIM(adornment_path),   '') IS NOT NULL)    AS adornment_path
-FROM career_progression`
+FROM career_progression
+WHERE xuid || '' = ?`
 
 // Q26d : Home -- assets visuels du rang carriÃ¨re courant depuis metadata.duckdb.
 //
@@ -239,9 +247,15 @@ LIMIT 1`
 //
 // Le CASE de classification CSR/LUSR garde le fallback heuristique sur
 // playlist_name/pair_name (régression historique is_ranked=FALSE non corrigée).
-// Q26ePeakPhaseAPlayer : Phase A (player-only) — match_skill_rank brut.
+// Q26ePeakPhaseAPlayer : Phase A (player-only) — rating courant par match.
 // Sprint P7 / ADR 0016 (2026-05-20) : exécutée via pdb.Player, sans
 // shared. Classification CSR/LUSR faite côté Go après Phase B.
+//
+// LIT match_skill_rank_LATEST (jamais la table brute) : le substrat est
+// append-only (ADR 0026) et contient des rows périmées + des rows d'audit
+// LUSR_V2. Lire le brut faisait remonter un pic faux (ex. Onyx fantôme sur un
+// joueur Or : valeur LUSR_V2/périmée masquée par la vue). La vue applique la
+// priorité CSR > LUSR > LUSR_V2 + most-recent par match_id.
 const Q26ePeakPhaseAPlayer = `
 SELECT
 	msr.match_id,
@@ -252,7 +266,7 @@ SELECT
 	msr.sub_tier,
 	msr.tier_label,
 	COALESCE(msr.updated_at, msr.start_time, msr.created_at) AS recency
-FROM match_skill_rank msr
+FROM match_skill_rank_latest msr
 WHERE msr.rating_value IS NOT NULL`
 
 // Q26ePeakPhaseBRegistryTpl : Phase B (shared-only) — registry pour

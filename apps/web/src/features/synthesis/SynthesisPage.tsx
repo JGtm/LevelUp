@@ -463,7 +463,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
 // ─── Page principale ──────────────────────────────────────────────────────────
 
 export function SynthesisPage() {
-  const { playerSlug } = useParams({ from: '/players/$playerSlug/synthesis' })
+  const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const t = (key: keyof typeof synthesisManifest) => synthesisManifest[key][locale]
 
