@@ -129,7 +129,10 @@ func extractDemoMedia(
 			captureStart = v.CaptureStart
 		}
 		row := demoMediaRow{
-			ID:            v.Name,
+			// ID NUMÉRIQUE stable : media_match_associations(_history).media_file_id est
+			// BIGINT (insertDemoMediaRow CAST l'ID). Un ID = nom de fichier échouerait le
+			// CAST (cf. extractDemoMediaH5). Le nom HLS reste dans file_path/file_stem.
+			ID:            numericMediaID(v.Name),
 			PlayerSlug:    playerSlug,
 			FilePath:      v.Name + "/master.m3u8",
 			FileName:      v.Name,

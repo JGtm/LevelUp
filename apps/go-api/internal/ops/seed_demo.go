@@ -393,8 +393,11 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 			mediaCount, mediaErr = extractDemoMedia(ctx, srcMediaDir, opts.SourceSharedDB, srcSocialDB,
 				outSocial, flatMediaDir, matchIDs, DefaultDemoMainSlug, opts.MaxMedia)
 		} else {
+			// mediaBaseDir = racine média (parent du dir par gamertag) pour réancrer les
+			// file_path relatifs stockés par index-media (ex. "JGtm/clip.mp4" en prod).
+			mediaBaseDir := filepath.Join(opts.RepoRoot, "data", "media")
 			mediaCount, mediaErr = extractDemoMediaH5(ctx, srcSocialDB, outSocial, flatMediaDir,
-				matchIDs, DefaultDemoMainSlug, opts.MaxMedia)
+				matchIDs, DefaultDemoMainSlug, opts.MaxMedia, mediaBaseDir)
 		}
 		if mediaErr != nil {
 			slog.WarnContext(ctx, "seed-demo: extraction média partielle", "err", mediaErr, "copied", mediaCount)

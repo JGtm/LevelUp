@@ -135,12 +135,25 @@ func loadH5MediaAssociations(ctx context.Context, srcSocialDB string, maxMedia i
 // média PLAT démo et insère les media_files (schéma canonique shared_social) + leur
 // association au match ancré. Seuls les clips dont le match associé est dans le corpus
 // (matchIDs) sont retenus. Retourne le nombre de clips importés.
+// resolveMediaPath résout un chemin média source : tel quel si absolu ou si pas de
+// base, sinon joint à mediaBaseDir. media_files.file_path peut être stocké RELATIF à
+// la racine média ("JGtm/clip.mp4") — le seed tourne avec un CWD différent et doit donc
+// le réancrer, sinon fileExists échoue alors que le clip existe (bug prod « source mp4
+// absente »).
+func resolveMediaPath(mediaBaseDir, p string) string {
+	if p == "" || mediaBaseDir == "" || filepath.IsAbs(p) {
+		return p
+	}
+	return filepath.Join(mediaBaseDir, p)
+}
+
 func extractDemoMediaH5(
 	ctx context.Context,
 	srcSocialDB, outSocialDB, outMediaDir string,
 	matchIDs []string,
 	playerSlug string,
 	maxMedia int,
+	mediaBaseDir string, // racine média (RepoRoot/data/media) pour réancrer les file_path relatifs
 ) (int, error) {
 	if !fileExists(srcSocialDB) {
 		slog.InfoContext(ctx, "seed-demo h5 media: shared_social source absent — pas de clip", "src", srcSocialDB)
@@ -187,18 +200,20 @@ func extractDemoMediaH5(
 			ext = extMP4
 		}
 		// Copier le mp4 (servi DIRECT) vers le dir plat sous son nom de fichier.
-		if !fileExists(a.FilePath) {
-			slog.WarnContext(ctx, "seed-demo h5 media: source mp4 absente, skip", "path", a.FilePath)
+		// file_path peut être relatif à la racine média → réancrer sur mediaBaseDir.
+		srcMP4 := resolveMediaPath(mediaBaseDir, a.FilePath)
+		if !fileExists(srcMP4) {
+			slog.WarnContext(ctx, "seed-demo h5 media: source mp4 absente, skip", "path", srcMP4)
 			continue
 		}
-		if err := copyFile(a.FilePath, filepath.Join(outMediaDir, a.FileName)); err != nil {
+		if err := copyFile(srcMP4, filepath.Join(outMediaDir, a.FileName)); err != nil {
 			slog.WarnContext(ctx, "seed-demo h5 media: copie mp4 échouée", "name", a.FileName, "err", err)
 			continue
 		}
 		thumbnail := ""
-		if a.ThumbPath != "" && fileExists(a.ThumbPath) {
+		if srcThumb := resolveMediaPath(mediaBaseDir, a.ThumbPath); srcThumb != "" && fileExists(srcThumb) {
 			tn := stem + ".webp"
-			if err := copyFile(a.ThumbPath, filepath.Join(outMediaDir, tn)); err == nil {
+			if err := copyFile(srcThumb, filepath.Join(outMediaDir, tn)); err == nil {
 				thumbnail = tn
 			}
 		}
