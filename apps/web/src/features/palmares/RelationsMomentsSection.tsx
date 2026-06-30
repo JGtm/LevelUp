@@ -32,16 +32,21 @@ export function RelationsMomentsSection({ playerSlug, filterContext, filterHash,
   const setMode = useRelationsPrefsStore((s) => s.setHeatmapMode)
 
   // Mapping vers la cellule générique (bucket) selon le mode du toggle.
+  // Mode jour : le back-end renvoie day_of_week avec 0=dimanche … 6=samedi. On
+  // décale en lundi-first pour l'affichage (lundi→0 … dimanche→6) et on fait
+  // tourner les labels d'un cran en miroir, pour garder données et étiquettes
+  // alignées (text.dayLabels reste en ordre back-end 0=Dim … 6=Sam).
   const cells: HeatmapBucketCell[] =
     mode === 'hour'
       ? (data?.heatmap ?? []).map((c) => ({ xuid: c.xuid, gamertag: c.gamertag, bucket: c.hour, count: c.count }))
       : (data?.heatmap_dow ?? []).map((c) => ({
           xuid: c.xuid,
           gamertag: c.gamertag,
-          bucket: c.day_of_week,
+          bucket: (c.day_of_week + 6) % 7,
           count: c.count,
         }))
-  const bucketLabels = mode === 'hour' ? HOUR_LABELS : text.dayLabels
+  const bucketLabels =
+    mode === 'hour' ? HOUR_LABELS : [...text.dayLabels.slice(1), text.dayLabels[0]]
 
   return (
     <>

@@ -125,8 +125,6 @@ export interface PalmaresText {
       enemyMatches: (count: string) => string
       recentShort: string
       globalShort: string
-      streakWins: (count: string) => string
-      streakLosses: (count: string) => string
       rollingTitle: string
       cumulativeFragTitle: string
       outcomeWin: string
@@ -335,10 +333,6 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
           formatMessage(palmaresManifest, 'palmares.relations.moments.enemy_matches', loc, { count }),
         recentShort: t(loc, 'palmares.relations.moments.recent_short'),
         globalShort: t(loc, 'palmares.relations.moments.global_short'),
-        streakWins: (count: string) =>
-          formatMessage(palmaresManifest, 'palmares.relations.moments.streak_wins', loc, { count }),
-        streakLosses: (count: string) =>
-          formatMessage(palmaresManifest, 'palmares.relations.moments.streak_losses', loc, { count }),
         rollingTitle: t(loc, 'palmares.relations.moments.rolling_title'),
         cumulativeFragTitle: t(loc, 'palmares.relations.moments.cumulative_frag_title'),
         outcomeWin: t(loc, 'palmares.relations.moments.outcome_win'),
