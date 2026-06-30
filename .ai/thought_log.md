@@ -31214,3 +31214,22 @@ exclusif la player DB JGtm + `shared_social` → la sélection squad/média éch
 arrêté : `levelup seed-demo --gamertag JGtm --emit-manifest` → curer/committer les manifestes
 → `levelup seed-demo --gamertag JGtm` (regen anonymisée) → valider. (2) commits par lot +
 push à la demande de l'utilisateur.
+
+**Addendum — regen locale FAITE + passe de vérification** :
+- **Regen locale faite** : serveur dev arrêté (le lock ne portait que sur le titre ACTIF,
+  Infinite ; H5 lisible serveur up). Manifestes émis depuis les vraies données (Infinite
+  solo=50/squad=6/ranked=8 ; H5 solo=50/squad=81/ranked=15/media=5), committés sous
+  `config/demo/JGtm/` (négation `.gitignore` ajoutée car le pattern large `JGtm` les masquait).
+  `data/demo` régénéré `frozen=true`, DemoPlayer/2/3 seedés. Serveur dev auto-relancé par l'IDE.
+- **Fix H5 squad** : `selectSquadSessionCorpus` bascule sur le fallback biggest sur **erreur**
+  (pas seulement liste vide) — la requête primaire échoue sur H5 (session_id VARCHAR vs INTEGER).
+  Sans ce fix, H5 squad=0. Test de régression `TestSelectSquadSessionCorpus_FallbackOnError`.
+- **Logging renforcé** : résolution live d'un joueur jamais croisé en `Info` (visible dans
+  `logs/service.log`, routage auto par package), throttle 429 en `Warn`, miss en `Debug`.
+- **Tests ajoutés** : `combatProfileLabels.test.ts` (FR/EN) + le test H5 ci-dessus.
+- **i18n Escouade** : `SquadCombatProfileRow` « Profil de combat » routé via `squad.toml`
+  (corrige un warning lint hardcoded-strings + la fuite FR pour les users EN).
+- **Vérif finale verte** : Go build/vet/tests (service/ops/worldenrich/api/domain-title +
+  intégration), front typecheck/lint (0 warning)/vitest (49 passed).
+- **Branche mergée avec `origin/main`** (4 commits amont, 0 conflit code). `main` NON touchée :
+  pas de déploiement prod sans accord explicite.

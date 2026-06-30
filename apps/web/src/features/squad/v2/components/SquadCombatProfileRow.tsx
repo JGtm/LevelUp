@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { PlayerScoreCard, KPIStats } from '../types'
 import { offensiveLabel, defensiveLabel, activityLabel } from '@/features/_shared/combatProfileLabels'
 import { useAppShellStore } from '@/stores/appShellStore'
-import type { ManifestLocale } from '@/lib/i18n/format'
+import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
+import { squadManifest } from '@/lib/i18n/generated/squad'
 
 export interface SquadCombatProfileRowProps {
   playerCards: PlayerScoreCard[]
@@ -28,7 +29,7 @@ export function SquadCombatProfileRow({ playerCards, kpisByXuid }: SquadCombatPr
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Profil de combat</CardTitle>
+        <CardTitle className="text-base">{formatMessage(squadManifest, 'squad.combat_profile.title', locale)}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
