@@ -105,6 +105,8 @@ export const cividisPalette: Palette = {
   'heatmap-hot':            SAFE_BLUE,
   'heatmap-divergent-low':  SAFE_VERMILLION,
   'heatmap-divergent-high': SAFE_BLUE,
+  'heatmap-freq-low':       '#00204D', // fréquence faible — navy cividis (séquentiel CVD-safe)
+  'heatmap-freq-high':      '#FFEA46', // fréquence forte  — jaune cividis (séquentiel CVD-safe)
 
   // ── Équipes — axe blue/vermillion CVD-safe ─────────────────────────────────
   'team-ally':  SAFE_BLUE,       // overridable via settings accessibilité

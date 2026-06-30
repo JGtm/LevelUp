@@ -13148,17 +13148,17 @@ components:
           count:
               format: int64
               type: integer
-          daypart:
-              format: int64
-              type: integer
           gamertag:
               type: string
+          hour:
+              format: int64
+              type: integer
           xuid:
               type: string
       required:
           - xuid
           - gamertag
-          - daypart
+          - hour
           - count
       type: object
     RelationHeatmapDowCell:

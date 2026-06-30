@@ -111,19 +111,3 @@ func TestResultToDuel(t *testing.T) {
 		t.Fatal("0 → DuelOther")
 	}
 }
-
-func TestDaypartFromHour(t *testing.T) {
-	cases := map[int]Daypart{
-		0: DaypartNight, 5: DaypartNight,
-		6: DaypartMorning, 10: DaypartMorning,
-		11: DaypartNoon, 13: DaypartNoon,
-		14: DaypartAfternoon, 17: DaypartAfternoon,
-		18: DaypartEvening, 21: DaypartEvening,
-		22: DaypartLateNight, 23: DaypartLateNight,
-	}
-	for hour, want := range cases {
-		if got := DaypartFromHour(hour); got != want {
-			t.Errorf("DaypartFromHour(%d)=%d want %d", hour, got, want)
-		}
-	}
-}

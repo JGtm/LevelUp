@@ -123,22 +123,22 @@ type RelationsPageResponse struct {
 // Phase 3a — Moments & Rivalités (sous-endpoint dédié /relations/moments)
 // ---------------------------------------------------------------------------
 
-// RelationHeatmapRawRow : ligne brute du heatmap relation × tranche horaire
-// (top-N relations par matchs communs). Bucketing en day-part fait côté Go.
+// RelationHeatmapRawRow : ligne brute du heatmap relation × heure
+// (top-N relations par matchs communs). Heure/jour en fuseau utilisateur (session).
 type RelationHeatmapRawRow struct {
 	XUID     string
 	Gamertag string
-	Hour     int // 0..23 (UTC canonique)
-	Dow      int // 0=dimanche … 6=samedi (UTC canonique)
+	Hour     int // 0..23 (fuseau utilisateur, session DuckDB)
+	Dow      int // 0=dimanche … 6=samedi (fuseau utilisateur)
 	Count    int // matchs communs sur cette (heure, jour)
 }
 
 // RelationHeatmapCell : une cellule du heatmap agrégé « Quand tu les croises »
-// (une relation × une tranche horaire). Intensity = count de matchs communs.
+// (une relation × une heure 0..23). Intensity = count de matchs communs.
 type RelationHeatmapCell struct {
 	XUID     string `json:"xuid"`
 	Gamertag string `json:"gamertag"`
-	Daypart  int    `json:"daypart"` // 0=Nuit … 5=Tard (cf. analysis/relations.Daypart)
+	Hour     int    `json:"hour"` // 0..23 (fuseau utilisateur)
 	Count    int    `json:"count"`
 }
 

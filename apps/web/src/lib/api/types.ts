@@ -1073,7 +1073,7 @@ export type RelationsPageResponse = components['schemas']['RelationsPageResponse
 // ── Phase 3a : Moments & Rivalités (sous-endpoint /relations/moments) ────────
 
 // RelationHeatmapCell : une cellule du heatmap agrégé « Quand tu les croises »
-// (une relation × une tranche horaire). daypart : 0=Nuit … 5=Tard.
+// (une relation × une heure). hour : 0..23 (fuseau utilisateur).
 export type RelationHeatmapCell = components['schemas']['RelationHeatmapCell']
 
 // RelationDuelEntry : un duel (match commun en ennemi) de la frise revanche.

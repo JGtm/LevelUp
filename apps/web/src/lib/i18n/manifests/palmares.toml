@@ -384,30 +384,6 @@ en = "Not enough encounters yet to build a time-of-day map."
 fr = "Matchs communs"
 en = "Shared matches"
 
-[palmares.relations.moments.daypart_night]
-fr = "Nuit"
-en = "Night"
-
-[palmares.relations.moments.daypart_morning]
-fr = "Matin"
-en = "Morning"
-
-[palmares.relations.moments.daypart_noon]
-fr = "Midi"
-en = "Midday"
-
-[palmares.relations.moments.daypart_afternoon]
-fr = "Après-midi"
-en = "Afternoon"
-
-[palmares.relations.moments.daypart_evening]
-fr = "Soir"
-en = "Evening"
-
-[palmares.relations.moments.daypart_late]
-fr = "Tard"
-en = "Late"
-
 [palmares.relations.moments.rivalries_title]
 fr = "Rivaux"
 en = "Rivals"
@@ -456,9 +432,9 @@ en = "Loss"
 fr = "Nul"
 en = "Draw"
 
-[palmares.relations.moments.heatmap_by_daypart]
-fr = "Par tranche horaire"
-en = "By time of day"
+[palmares.relations.moments.heatmap_by_hour]
+fr = "Par heure"
+en = "By hour"
 
 [palmares.relations.moments.heatmap_by_day]
 fr = "Par jour"

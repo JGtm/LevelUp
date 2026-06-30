@@ -7344,9 +7344,9 @@ export interface components {
         RelationHeatmapCell: {
             /** Format: int64 */
             count: number;
-            /** Format: int64 */
-            daypart: number;
             gamertag: string;
+            /** Format: int64 */
+            hour: number;
             xuid: string;
         };
         RelationHeatmapDowCell: {

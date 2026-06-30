@@ -13,8 +13,8 @@ import (
 )
 
 // GetRelationsHeatmap retourne, pour les TOP-N relations (les plus de matchs
-// communs, bots exclus), le nombre de matchs communs par heure UTC. Le
-// bucketing en day-parts est fait côté service (analysis/relations.Daypart).
+// communs, bots exclus), le nombre de matchs communs par heure (fuseau
+// utilisateur). Le bucketing par heure est fait côté service (aggregateHeatmapHours).
 //
 // scope (Phase 2) : nil → tous les matchs ; vide → court-circuit ([], nil) ;
 // non-vide → clause IN injectée dans my_history.

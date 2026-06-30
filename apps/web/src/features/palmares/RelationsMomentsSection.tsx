@@ -15,6 +15,10 @@ import { useRelationsMoments } from './queries'
 import { RelationsMomentsHeatmap, type HeatmapBucketCell } from './RelationsMomentsHeatmap'
 import { RelationsRivalryCards } from './RelationsRivalryCards'
 
+// Libellés des 24 créneaux horaires (index = heure 0..23). Neutres FR/EN
+// (« 00h »…« 23h »), donc hors i18n — aligné sur ExplorerActivityHeatmapChart.
+const HOUR_LABELS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}h`)
+
 interface Props {
   playerSlug: string
   filterContext: FilterContextInput
@@ -29,15 +33,15 @@ export function RelationsMomentsSection({ playerSlug, filterContext, filterHash,
 
   // Mapping vers la cellule générique (bucket) selon le mode du toggle.
   const cells: HeatmapBucketCell[] =
-    mode === 'daypart'
-      ? (data?.heatmap ?? []).map((c) => ({ xuid: c.xuid, gamertag: c.gamertag, bucket: c.daypart, count: c.count }))
+    mode === 'hour'
+      ? (data?.heatmap ?? []).map((c) => ({ xuid: c.xuid, gamertag: c.gamertag, bucket: c.hour, count: c.count }))
       : (data?.heatmap_dow ?? []).map((c) => ({
           xuid: c.xuid,
           gamertag: c.gamertag,
           bucket: c.day_of_week,
           count: c.count,
         }))
-  const bucketLabels = mode === 'daypart' ? text.dayparts : text.dayLabels
+  const bucketLabels = mode === 'hour' ? HOUR_LABELS : text.dayLabels
 
   return (
     <>
@@ -58,7 +62,7 @@ export function RelationsMomentsSection({ playerSlug, filterContext, filterHash,
               className="inline-flex self-start rounded-lg border border-border bg-card p-0.5"
               data-testid="palmares-heatmap-mode"
             >
-              {(['daypart', 'day'] as const).map((m) => (
+              {(['hour', 'day'] as const).map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -68,7 +72,7 @@ export function RelationsMomentsSection({ playerSlug, filterContext, filterHash,
                     mode === m ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {m === 'daypart' ? text.heatmapByDaypart : text.heatmapByDay}
+                  {m === 'hour' ? text.heatmapByHour : text.heatmapByDay}
                 </button>
               ))}
             </div>
