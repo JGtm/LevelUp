@@ -31488,3 +31488,106 @@ front typecheck OK, lint 0 erreur, vitest 2063 passed + 14 skipped (236 fichiers
 
 **Prochaine étape** : commit (en attente d'autorisation). Vérif live #3/#5 nécessite
 rebuild+restart serveur dev (port 8000) — non fait sans accord.
+
+---
+
+## [2026-06-30] Halo 5 — 8 ajustements UI/données (parité Infinite, sans régression)
+
+**Statut** : Complété (code + tests + review). Vérif live EN ATTENTE (serveur dev stale).
+**Branche** : `fix/h5-ui-adjustments-batch`.
+
+**Diagnostic préalable (outil read-only jetable, supprimé)** — DB H5 réelles :
+- `asset_translations` H5 EST peuplé (game_variant/map/playlist EN+FR) et résout le match
+  exemple. Issue #3 = NON un problème de seed ; le câblage lecture existe déjà.
+- Campagne = `game_variant_id` `00000003-…` (Campaign, 265 matchs) + `67ffc2ff-…` (Campaign
+  Score Attack). `match_registry` n'a PAS de colonne `match_type`.
+- `match_skill_rank` (H5 ET Infinite) porte LUSR + LUSR_V2 (valeurs identiques, LUSR_V2 =
+  label audit) + CSR. `career_progression` H5 = 1349 lignes XP. `killer_victim_pairs` H5 a
+  killer_xuid/victim_xuid réels.
+- **Serveur dev STALE** : `air` échoue à rebuild depuis le 29/06 (CGO/gcc absent de son env →
+  `tmp/build-errors.log` plein de `exit status 1`) ; `tmp/server.exe` date du 29/06 et précède
+  l'activation H5 → ignore le header `X-LevelUp-Title: halo_5` (tout retombe sur Infinite). Les
+  curls « H5 » testaient donc Infinite. Vérif live impossible sans rebuild+restart (CGO_ENABLED=1
+  + `/c/msys64/ucrt64/bin` au PATH).
+
+**Décisions techniques par issue** :
+1. Campagne (GameMode 2) ajoutée à `isExcludedH5GameMode` (collecte) + filtre LECTURE
+   `excludedVariantClause` (nouveau `match_read_exclusions.go`, map titre→variant_ids), appliqué
+   dans `player_matches_repo.buildSharedQuery` (alias `r`) et `halo5_match_history_source` (h5-only).
+   Shared DB isolé par titre → zéro impact Infinite.
+2. `HomeSkillPeakCard` : `isTierOnlyRating` (state value + rating 0 + tier_label) ⇒ pas de `—`
+   (CSR H5 par paliers). Placement Infinite garde `—` (test inchangé).
+4. `buildCommendationSnippets` : filtre `tp.AlreadyMastered` AVANT la borne `limit` (parité
+   stricte `analysis.BuildCitationSnippets`). **Bug introduit puis corrigé** : 1er jet filtrait
+   APRÈS troncature (review l'a confirmé) → perte de snippets ; corrigé + test de non-régression.
+5. Folie meurtrière (Distributions) : fallback `enrichMatchesMaxKillingSpree` calculé via
+   `analysis.ComputeMaxKillingSpree` sur events synthétisés (KV pairs, XUID acteur réel), events
+   chargés UNE fois AVANT `resp` (sinon buckets vides). NO-OP Infinite (valeur native conservée).
+6. `TimeseriesPage.progression` : `KillTypesDonutCard` gaté `!native_kill_mechanics` (évite le
+   doublon « Répartition des frags » H5 ; Infinite, sans la capability, garde son donut).
+7. `MatchStatCards` : card MMR gatée par `useProvidesTeamMmr()` (H5 = no_team_mmr).
+8a. XP : `LoadCareerSnapshot` (H5) respecte `opts.IncludeHistory` (était ignoré) + `GetXPHistory`
+    ajouté à `CareerLocalSource` (impl `Halo5CareerSource` réutilise `CareerRepo.GetXPHistory`) +
+    `projectH5CareerHistory`.
+8b. LUSR/CSR : `Q8LUSRHistoryPlayer` exclut `rating_type='LUSR_V2'` + `QUALIFY ROW_NUMBER()`
+    latest par (match_id, rating_type) — append-only-correct, garde 1 série LUSR + 1 CSR (parité
+    Infinite, fin du doublon LUSR_V2).
+
+**Review adversariale** (workflow 4 dimensions → vérif par finding, 11 agents) : 1 CONFIRMED
+(ordre filtre/troncature #4, corrigé) + 6 false positives. SQL/spree/regression/frontend OK.
+
+**Résultats** : `go build ./...` OK ; `go test` halo_5/service/analysis/duckdb OK ; `go vet`
+clean ; front `typecheck` OK, `eslint` 0 erreur, vitest ciblés (home/timeseries/match-view) +
+nouveau test commendations = verts.
+
+**Prochaine étape** : (1) rebuild+restart serveur dev (CGO) → vérif live des 8 issues + confirmer
+issue #3 (modes) sur données H5 réelles ; (2) commit par issue + push (en attente d'autorisation).
+
+---
+
+## [2026-07-01] Halo 5 — vérification finale 8 signalements : audit Opus + corrections gaps
+
+**Statut** : Complété (code + tests + logging). Vérif live toujours en attente (serveur dev stale).
+
+**Audit final adversarial** (workflow 5 agents Opus : complétude par signalement + couverture
+tests + logging) → a trouvé que 2 signalements étaient **partiellement** adressés et plusieurs
+trous tests/logging. Corrections apportées :
+
+- **#3 (mode H5) — VRAI GAP corrigé** : la conclusion « data présente, rien à coder » était
+  fausse pour la voie **liste Explorer/Historique** (MatchHistoryRepo / Q5SharedHistory), qui
+  résolvait le mode UNIQUEMENT depuis pair_name (NULL en H5) et jamais game_variant. Fix :
+  ajout GameVariantID/Name(+FR) à `domain.MatchHistoryRawRow` + projection dans Q5SharedHistory
+  + résolution `asset_translations` (game_variant, FR+EN) dans `applyMatchHistoryFRTranslations`
+  + fallback `ResolveModeUI(pair) SINON ResolveModeUI(game_variant)` dans enrichRow. Test unitaire
+  `TestEnrichRow_ModeFallbackToGameVariant`. (Home/matchs-récents résolvaient déjà via modeLabels.)
+- **#2 (CSR tier-only) — surfaces manquées corrigées** : SessionCompareSkillHeader (n'affiche
+  plus « 0 » trompeur si rating<=0), MatchScoreboard (affiche le palier au lieu de « — » si
+  badge absent mais tier connu), CareerRankingBlock colonne LUSR (garde > 0 comme la colonne CSR).
+  Graphes de progression skill : décision = NON modifiés (H5 y trace son LUSR non nul ; cas CSR=0
+  hors placement noté mais bas risque).
+- **#8 (Q8 LUSR_V2)** : la version QUALIFY (written_at/id) cassait le schéma de test integration
+  `match_skill_rank` (sans id/written_at) → simplifiée en `WHERE rating_type <> 'LUSR_V2'` seul
+  (le cœur du fix ; la dédup append-only relève de la vue _latest). Test integration
+  `TestCareerRepo_GetLUSRHistory_ExcludesLUSRV2` (vérifié `-tags integration`).
+- **Logging** : `ExcludedCampaign` câblé dans BackfillStats + log « h5 backfill: terminé » +
+  log « h5 sync: cycle terminé » (clé `campaign`, à côté de `warzone`). Debug log quand
+  `provideSpree && events vides` (donut Folie meurtrière vide diagnostiquable).
+- **Tests ajoutés** : exclusion campagne capture (`TestCollectRecentMatches_ExcludesCampaignAndWarzone`),
+  fallback spree (`TestEnrichMatchesMaxKillingSpree` + guards), tier-only CSR Home
+  (`HomeRankingStates`), `excludedVariantClause`, XP history attach
+  (`TestLoadCareerSnapshot_AttachesXPHistory` + erreur gracieuse), filtre AlreadyMastered
+  (`TestBuildCommendationSnippets_FilterBeforeTruncate`), mode fallback, LUSR_V2 exclusion.
+- **Commentaire adapter LUSR clarifié** : ErrCapabilityNotSupported = « pas servi par l'adapter
+  live », PAS « H5 n'a pas de LUSR » (le LUSR h5_arena existe + est lu via repo fallback).
+
+**Gaps documentés (non bloquants)** : (a) tests de gate purement front MMR/donut (#6/#7) différés —
+gates triviaux `{cond && X}`, vérifiés par typecheck + suite complète, test full-component brittle
+(pas de testid, requête sur texte i18n) ⇒ ROI négatif ; (b) colonne CSR du bloc Classements H5
+(catalogue ranked + saison) à confirmer en LIVE — dépend de ranked_hoppers.toml + season_id H5,
+hors diff ; le « foireux » côté LUSR_V2 est, lui, corrigé.
+
+**Validation finale VERTE** : `go build ./...` OK ; `go vet ./...` clean ; `go test ./...` (full)
+sans échec ; front `typecheck` OK, `eslint` 0 erreur (warnings pré-existants), `vitest` 2067 passed
++ 14 skipped (236 fichiers).
+
+**Prochaine étape** : rebuild+restart serveur dev (CGO) → vérif live ; commit + push (autorisation).
