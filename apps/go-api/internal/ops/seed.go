@@ -291,6 +291,9 @@ func SeedCitationMappings(ctx context.Context, opts SeedOptions) (SeedResult, er
 		-- PAS d'index sur medal_id/mapping_type : mutés par SeedCitationMappings
 		-- (SELECT-then-write) → surface ART. Drop DBs existantes : drop_metadata_art_surface_indexes_v4.
 		CREATE INDEX IF NOT EXISTS idx_citation_mappings_norm ON citation_mappings(citation_name_norm);
+			-- Nom anglais des citations (Infinite = copies de commendations H5 ; seul le
+			-- calcul diffère). Locale-aware au read via ctxkeys.Locale. NULL → fallback FR.
+			ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS citation_name_display_en VARCHAR;
 	`); err != nil {
 		return SeedResult{Component: componentCitationMappings}, fmt.Errorf("create schema: %w", err)
 	}
@@ -317,14 +320,14 @@ func SeedCitationMappings(ctx context.Context, opts SeedOptions) (SeedResult, er
 	// drop_metadata_art_surface_indexes_v4. metadata.duckdb = blast-radius MAX même au seed.
 	const insertQ = `
 		INSERT INTO citation_mappings (
-			citation_name_norm, citation_name_display, mapping_type,
+			citation_name_norm, citation_name_display, citation_name_display_en, mapping_type,
 			medal_id, medal_ids, stat_name, award_name, award_category,
 			custom_function, composite_children, enabled,
 			image_path, category, description, tier_targets, subcategory
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	const updateQ = `
 		UPDATE citation_mappings SET
-			citation_name_display = ?, mapping_type = ?, medal_id = ?, medal_ids = ?,
+			citation_name_display = ?, citation_name_display_en = ?, mapping_type = ?, medal_id = ?, medal_ids = ?,
 			stat_name = ?, award_name = ?, award_category = ?, custom_function = ?,
 			composite_children = ?, enabled = ?, image_path = ?, category = ?,
 			description = ?, tier_targets = ?, subcategory = ?
@@ -341,14 +344,14 @@ func SeedCitationMappings(ctx context.Context, opts SeedOptions) (SeedResult, er
 		var execErr error
 		if present {
 			_, execErr = db.ExecContext(ctx, updateQ,
-				m.Display, m.MappingType, medalArg, nullStr(m.MedalIDs),
+				m.Display, citationDisplayENOr(m.Norm, m.Display), m.MappingType, medalArg, nullStr(m.MedalIDs),
 				nullStr(m.StatName), nullStr(m.AwardName), nullStr(m.AwardCategory),
 				nullStr(m.CustomFunction), nullStr(m.CompositeChildren), m.Enabled,
 				nullStr(m.ImagePath), m.Category, m.Description,
 				nullStr(m.TierTargets), nullStr(m.Subcategory), m.Norm)
 		} else {
 			_, execErr = db.ExecContext(ctx, insertQ,
-				m.Norm, m.Display, m.MappingType,
+				m.Norm, m.Display, citationDisplayENOr(m.Norm, m.Display), m.MappingType,
 				medalArg, nullStr(m.MedalIDs), nullStr(m.StatName),
 				nullStr(m.AwardName), nullStr(m.AwardCategory),
 				nullStr(m.CustomFunction), nullStr(m.CompositeChildren), m.Enabled,
@@ -377,6 +380,20 @@ func nullStr(s string) interface{} {
 		return nil
 	}
 	return s
+}
+
+// citationDisplayENOr retourne le nom EN d'une citation (map citationDisplayEN, clé =
+// norm) ou, à défaut, le libellé FR fourni — on ne stocke jamais de NULL/vide pour
+// citation_name_display_en quand un FR existe, afin que la cascade locale-aware
+// retombe proprement sur le FR plutôt que sur du vide.
+func citationDisplayENOr(norm, fallbackFR string) interface{} {
+	if en, ok := citationDisplayEN[norm]; ok && en != "" {
+		return en
+	}
+	if fallbackFR == "" {
+		return nil
+	}
+	return fallbackFR
 }
 
 // defaultCitationMappings — 88 règles citations portées de

@@ -13,6 +13,8 @@ import (
 	"database/sql"
 	"testing"
 
+	"levelup/go-api/internal/ctxkeys"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -27,7 +29,8 @@ func seedCommendationDefs(t *testing.T, db *sql.DB) {
 		description_fr    VARCHAR DEFAULT '',
 		commendation_type VARCHAR,
 		category          VARCHAR,
-		icon_url          VARCHAR
+		icon_url          VARCHAR,
+		tier_targets      VARCHAR
 	)`); err != nil {
 		t.Fatalf("ddl: %v", err)
 	}
@@ -82,6 +85,44 @@ func TestHalo5CommendationDefs_LookupResolvesNameIconFallback(t *testing.T) {
 	}
 	if _, ok := got["uuid-unknown"]; ok {
 		t.Error("uuid-unknown ne doit pas être dans le résultat")
+	}
+}
+
+// TestHalo5CommendationDefs_LocaleAware verrouille la résolution par locale : EN →
+// name_en, FR (défaut) → name_fr, avec repli sur l'autre langue si vide. C'est le
+// correctif du bug "titres FR en UI anglaise" (le reader servait toujours name_fr).
+func TestHalo5CommendationDefs_LocaleAware(t *testing.T) {
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	seedCommendationDefs(t, db)
+	src := NewHalo5CommendationDefSource(db)
+	ids := []string{"uuid-1", "uuid-2", "uuid-3"}
+
+	// FR (contexte par défaut) : name_fr prioritaire ; uuid-2 fr vide → fallback EN.
+	fr, err := src.LookupCommendations(context.Background(), ids)
+	if err != nil {
+		t.Fatalf("lookup FR: %v", err)
+	}
+	if fr["uuid-1"].Name != "Tueur de Spartans" {
+		t.Errorf("FR uuid-1 = %q, want 'Tueur de Spartans'", fr["uuid-1"].Name)
+	}
+	if fr["uuid-2"].Name != "Headshot Honcho" {
+		t.Errorf("FR uuid-2 = %q, want fallback EN 'Headshot Honcho'", fr["uuid-2"].Name)
+	}
+
+	// EN : name_en prioritaire (uuid-1 anglais malgré un name_fr non vide).
+	en, err := src.LookupCommendations(ctxkeys.WithLocale(context.Background(), "en"), ids)
+	if err != nil {
+		t.Fatalf("lookup EN: %v", err)
+	}
+	if en["uuid-1"].Name != "Spartan Slayer" {
+		t.Errorf("EN uuid-1 = %q, want 'Spartan Slayer'", en["uuid-1"].Name)
+	}
+	if en["uuid-3"].Name != "No Icon" {
+		t.Errorf("EN uuid-3 = %q, want 'No Icon'", en["uuid-3"].Name)
 	}
 }
 
