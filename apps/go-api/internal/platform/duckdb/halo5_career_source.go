@@ -90,3 +90,12 @@ func (s *Halo5CareerSource) GetLatestCareer(ctx context.Context) (*domain.H5Care
 
 	return out, nil
 }
+
+// GetXPHistory retourne l'historique XP (career_progression) du joueur, pour le graphe
+// « Historique XP » de la page Carrière. Réutilise la requête partagée Q7
+// (CareerRepo.GetXPHistory) : le schéma career_progression est identique inter-titres
+// et le sync h5 (livesync / cmd/h5-career-rank-xp) l'alimente. Vide si aucun
+// checkpoint (le graphe se masque, dégradation propre).
+func (s *Halo5CareerSource) GetXPHistory(ctx context.Context) ([]domain.XPHistoryPoint, error) {
+	return NewCareerRepo(s.pdb).GetXPHistory(ctx)
+}

@@ -8,17 +8,25 @@ import (
 
 // MatchHistoryRawRow est le type de transfert entre platform/duckdb et les services.
 type MatchHistoryRawRow struct {
-	MatchID            string
-	StartTime          *time.Time
-	MapName            *string
-	MapNameFR          *string
-	PairName           *string
-	PairNameFR         *string
-	PlaylistName       *string // FR si dispo (COALESCE), sinon EN
-	PlaylistNameEN     *string // EN brut (pour comparer EN==FR et déclencher translate)
-	MapID              *string // UUID asset, clé de lookup asset_translations
-	PairID             *string // UUID asset
-	PlaylistID         *string // UUID asset
+	MatchID        string
+	StartTime      *time.Time
+	MapName        *string
+	MapNameFR      *string
+	PairName       *string
+	PairNameFR     *string
+	PlaylistName   *string // FR si dispo (COALESCE), sinon EN
+	PlaylistNameEN *string // EN brut (pour comparer EN==FR et déclencher translate)
+	MapID          *string // UUID asset, clé de lookup asset_translations
+	PairID         *string // UUID asset
+	PlaylistID     *string // UUID asset
+	// GameVariant* : source de mode ALTERNATIVE au pair_name. Halo 5 n'a pas de
+	// pair_name (PairMode nil au mapping) ; son mode vient du GameBaseVariantId
+	// (game_variant_id). Le nom EN/registry est souvent NULL → résolu depuis
+	// metadata.asset_translations (asset_type='game_variant'). Sert de FALLBACK au
+	// mode_ui quand le pair est absent (cf. analysis.modeLabels, parité home).
+	GameVariantID      *string
+	GameVariantName    *string // EN (registry ou asset_translations) — souvent NULL en H5
+	GameVariantNameFR  *string // FR résolu depuis asset_translations
 	SeasonID           *string // ex. "CsrSeason13-1" — utilisé pour résoudre le threshold de placement CSR (5 ou 10 selon saison)
 	IsFirefight        bool
 	IsRanked           bool

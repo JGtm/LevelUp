@@ -32,6 +32,33 @@ func TestCareerRepo_GetLUSRHistory_WithData(t *testing.T) {
 	}
 }
 
+// TestCareerRepo_GetLUSRHistory_ExcludesLUSRV2 : signalement #8 — la row 'LUSR_V2'
+// (étiquette d'audit interne) NE DOIT PAS remonter (sinon série fantôme dupliquée dans
+// le graphe « Évolution LUSR / CSR »). On ajoute une row LUSR_V2 au seed (m1 CSR + m2
+// LUSR) et on vérifie qu'elle est filtrée par Q8.
+func TestCareerRepo_GetLUSRHistory_ExcludesLUSRV2(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	if _, err := pdb.Player.Exec(context.Background(),
+		`INSERT INTO match_skill_rank (match_id, rating_type, rating_value, tier, tier_label, playlist_group, start_time)
+		 VALUES ('m3_v2', 'LUSR_V2', 1500, 'Diamond', 'Diamant', 'h5_arena', NOW())`); err != nil {
+		t.Fatalf("seed LUSR_V2: %v", err)
+	}
+	repo := NewCareerRepo(pdb)
+	history, err := repo.GetLUSRHistory(context.Background())
+	if err != nil {
+		t.Fatalf("GetLUSRHistory: %v", err)
+	}
+	// Toujours 2 (m1 CSR + m2 LUSR) — la row LUSR_V2 est exclue.
+	if len(history) != 2 {
+		t.Fatalf("attendu 2 (CSR + LUSR, LUSR_V2 exclu), obtenu %d", len(history))
+	}
+	for _, cp := range history {
+		if cp.RatingType == "LUSR_V2" {
+			t.Errorf("LUSR_V2 ne doit jamais apparaître dans l'historique: %+v", cp)
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // CitationsRepo — LoadMedalCitationMappings (Q36b, sur pdb.Metadata)
 // ---------------------------------------------------------------------------

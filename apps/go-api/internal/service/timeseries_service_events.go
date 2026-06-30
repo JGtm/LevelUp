@@ -10,12 +10,47 @@ import (
 	"sort"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
+
+// enrichMatchesMaxKillingSpree calcule la folie meurtrière max PAR MATCH depuis les
+// events kill/death (analysis.ComputeMaxKillingSpree) et la pose sur les StatsMatchRow
+// dont la valeur native est ABSENTE (nil). Sert les titres sans max_killing_spree
+// natif dans le carnage (Halo 5) : les kills horodatés vivent dans killer_victim_pairs
+// et sont synthétisés en events (XUID = acteur réel) par le HighlightEventsRepo.
+//
+// NO-OP pour les titres à valeur native (Infinite) : on n'écrase JAMAIS une valeur
+// déjà présente. La spree est order-based (invariante par décalage T0), donc calculée
+// sur les events BRUTS (non T0-corrigés), comme le fallback escouade.
+func enrichMatchesMaxKillingSpree(
+	matches []legacymatch.StatsMatchRow,
+	events []canonical.HighlightEvent,
+	playerXUID string,
+) {
+	if playerXUID == "" || len(events) == 0 {
+		return
+	}
+	byMatch := make(map[string][]canonical.HighlightEvent, len(matches))
+	for _, ev := range events {
+		byMatch[ev.MatchID] = append(byMatch[ev.MatchID], ev)
+	}
+	for i := range matches {
+		if matches[i].MaxKillingSpree != nil {
+			continue // valeur native déjà présente → ne pas écraser
+		}
+		evs := byMatch[matches[i].MatchID]
+		if len(evs) == 0 {
+			continue
+		}
+		spree := analysis.ComputeMaxKillingSpree(evs, playerXUID)
+		matches[i].MaxKillingSpree = &spree
+	}
+}
 
 // ---------------------------------------------------------------------------
 // First events distribution (chart .11)

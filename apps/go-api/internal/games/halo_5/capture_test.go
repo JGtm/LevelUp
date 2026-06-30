@@ -15,13 +15,18 @@ import (
 // --- fixtures -------------------------------------------------------------
 
 // matchJSON construit un H5MatchResult minimal (self = JGtm vainqueur) au shape réel.
-func matchJSON(id string) string {
-	return fmt.Sprintf(`{"Id":{"MatchId":%q,"GameMode":1},"HopperId":"h0","MapId":"m0",`+
+// GameMode 1 = arène (le mode collecté).
+func matchJSON(id string) string { return matchJSONMode(id, 1) }
+
+// matchJSONMode : variante de matchJSON avec GameMode paramétrable
+// (1=arène, 2=campagne, 4=Warzone) — sert à tester l'exclusion à la collecte.
+func matchJSONMode(id string, gameMode int) string {
+	return fmt.Sprintf(`{"Id":{"MatchId":%q,"GameMode":%d},"HopperId":"h0","MapId":"m0",`+
 		`"GameBaseVariantId":"g0","MatchDuration":"PT5M0S",`+
 		`"MatchCompletedDate":{"ISO8601Date":"2023-04-05T00:00:00Z"},`+
 		`"Teams":[{"Id":1,"Score":3,"Rank":1}],`+
 		`"Players":[{"Player":{"Gamertag":"JGtm","Xuid":null},"TeamId":1,"Rank":1,"Result":3,`+
-		`"TotalKills":5,"TotalDeaths":3,"TotalAssists":2}],"IsTeamGame":true,"SeasonId":""}`, id)
+		`"TotalKills":5,"TotalDeaths":3,"TotalAssists":2}],"IsTeamGame":true,"SeasonId":""}`, id, gameMode)
 }
 
 func mustMatches(t *testing.T, ids ...string) *H5MatchesResponse {
@@ -122,6 +127,40 @@ func TestCollectRecentMatches_HappyPath(t *testing.T) {
 		if b == nil {
 			t.Errorf("batch %d nil", i)
 		}
+	}
+}
+
+// TestCollectRecentMatches_ExcludesCampaignAndWarzone : les matchs Campagne (GameMode 2)
+// et Warzone (GameMode 4) sont écartés AVANT carnage/events ; seul l'arène (1) est collecté.
+// Compteurs ExcludedCampaign / ExcludedWarzone incrémentés (cf. isExcludedH5GameMode).
+func TestCollectRecentMatches_ExcludesCampaignAndWarzone(t *testing.T) {
+	raw := fmt.Sprintf(`{"Start":0,"Count":3,"ResultCount":3,"Results":[%s,%s,%s]}`,
+		matchJSONMode("arena1", 1), matchJSONMode("camp1", 2), matchJSONMode("wz1", 4))
+	var page H5MatchesResponse
+	if err := json.Unmarshal([]byte(raw), &page); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	src := &fakeH5Source{
+		pages:  map[int]*H5MatchesResponse{0: &page},
+		events: map[string]*h5MatchEventsResponse{"arena1": killEvents()},
+	}
+	batches, stats, err := CollectRecentMatches(context.Background(), src, jgtmViewer(), idResolver, nil,
+		CaptureOptions{PageSize: 25})
+	if err != nil {
+		t.Fatalf("CollectRecentMatches: %v", err)
+	}
+	if len(batches) != 1 || stats.MatchesCollected != 1 {
+		t.Fatalf("batches=%d collected=%d, want 1/1 (arène seule)", len(batches), stats.MatchesCollected)
+	}
+	if stats.ExcludedCampaign != 1 {
+		t.Errorf("ExcludedCampaign=%d, want 1", stats.ExcludedCampaign)
+	}
+	if stats.ExcludedWarzone != 1 {
+		t.Errorf("ExcludedWarzone=%d, want 1", stats.ExcludedWarzone)
+	}
+	// 3 résumés parcourus, mais campagne + warzone écartés AVANT toute collecte coûteuse.
+	if stats.MatchesSeen != 3 {
+		t.Errorf("MatchesSeen=%d, want 3", stats.MatchesSeen)
 	}
 }
 

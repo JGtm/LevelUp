@@ -210,7 +210,8 @@ func (r *Runner) RunDelta(ctx context.Context, opts domain.SyncOptions) (domain.
 		"gamertag", r.deps.Viewer.Gamertag,
 		"seen", stats.MatchesSeen, "collected", stats.MatchesCollected, "inserted", res.MatchesInserted,
 		"skipped", res.MatchesSkipped, "events_failed", stats.EventsFailed,
-		"carnage_failed", stats.CarnageFailed, "roster_dropped", stats.RosterDropped, "status", res.Status())
+		"carnage_failed", stats.CarnageFailed, "roster_dropped", stats.RosterDropped,
+		"warzone", stats.ExcludedWarzone, "campaign", stats.ExcludedCampaign, "status", res.Status())
 	return res, nil
 }
 

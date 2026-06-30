@@ -152,7 +152,9 @@ SELECT
     p.time_played_seconds,
     p.team_id,
     r.team_0_score,
-    r.team_1_score
+    r.team_1_score,
+    r.game_variant_id,
+    r.game_variant_name
 FROM v_match_full r
 JOIN match_participants p ON r.match_id = p.match_id
 WHERE p.xuid = ?
@@ -237,6 +239,13 @@ ORDER BY cp.recorded_at ASC`
 // Q8LUSRHistoryPlayerTpl : Phase A de Q8 — partie player (match_skill_rank)
 // exécutée sur pdb.Player. Le tri start_time + le LAG rating_delta sont
 // calculés côté Go après merge avec match_registry (Phase B).
+//
+// 'LUSR_V2' est l'étiquette d'AUDIT interne (valeur identique à 'LUSR', le label
+// user-facing) : on l'exclut pour ne pas projeter une série fantôme dupliquée dans le
+// graphe « Évolution LUSR / CSR » (cf. reference_lusr_v2_readers_latest_view). Résultat
+// pour H5 : une série LUSR + une série CSR par match (au lieu de LUSR+LUSR_V2+CSR) —
+// parité avec Halo Infinite. (La dédup append-only par written_at relève de la vue
+// _latest, hors de ce graphe d'évolution qui veut TOUS les checkpoints.)
 const Q8LUSRHistoryPlayer = `
 SELECT
     msr.match_id,
@@ -246,7 +255,8 @@ SELECT
     msr.playlist_group,
     NULLIF(TRIM(COALESCE(msr.tier, '')), '')               AS tier,
     COALESCE(msr.sub_tier, 0)                              AS sub_tier
-FROM match_skill_rank msr`
+FROM match_skill_rank msr
+WHERE msr.rating_type <> 'LUSR_V2'`
 
 // Q8LUSRHistoryRegistryTpl : Phase B de Q8 — start_time + playlist depuis
 // match_registry pour les match_ids résultants de Phase A. Exécutée via
