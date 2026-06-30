@@ -5,16 +5,18 @@ package duckdb
 // match_registry + killer_victim_pairs + v_gamertag_lookup) via SharedReader.
 //
 // Deux requêtes :
-//   - Q29RelationsHeatmap : top-N relations (par matchs communs) × heure UTC
-//     canonique, pour le heatmap agrégé « Quand tu les croises ». Le bucketing
-//     en day-parts (6 tranches) est fait côté Go (analysis/relations.Daypart).
+//   - Q29RelationsHeatmap : top-N relations (par matchs communs) × heure en
+//     fuseau utilisateur, pour le heatmap agrégé « Quand tu les croises ». Le
+//     bucketing par heure (0..23) est fait côté Go (aggregateHeatmapHours).
 //   - Q30RivalTimeline : timeline d'un rival (matchs communs joués en ennemi),
 //     avec frags directionnels moi↔lui par match. Result décidé title-aware.
 
 // Q29RelationsHeatmapTpl : heatmap relation × heure. Restreint aux TOP-N
 // relations (les plus de matchs communs, bots exclus) puis compte les matchs
-// communs par (xuid, heure UTC). Le filtre top-N est fait par une sous-requête
-// classée par count_together DESC (plafonné pour la lisibilité du heatmap).
+// communs par (xuid, heure locale). L'instant UTC stocké est extrait dans le
+// fuseau de session DuckDB (SET TimeZone = cfg.UserTimezone), donc EXTRACT(hour)
+// rend l'heure locale de l'utilisateur. Le filtre top-N est fait par une
+// sous-requête classée par count_together DESC (plafonné pour la lisibilité).
 //
 // Format string : %s = inClause my_history (segmentation Phase 2, ou vide).
 //
@@ -25,7 +27,7 @@ package duckdb
 //	?  encounters JOIN p.xuid <> ?
 //	?  topN (LIMIT)
 //
-// Colonnes SELECT (5) : xuid, gamertag, hour, dow (0=dimanche…6=samedi UTC), count.
+// Colonnes SELECT (5) : xuid, gamertag, hour (0..23 local), dow (0=dimanche…6=samedi local), count.
 const Q29RelationsHeatmapTpl = `
 WITH my_history AS (
     SELECT match_id, team_id
@@ -36,8 +38,8 @@ encounters AS (
     SELECT
         p.xuid,
         p.match_id,
-        EXTRACT(hour FROM (COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'))::INTEGER AS hour_utc,
-        EXTRACT(dow FROM (COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'))::INTEGER AS dow_utc
+        EXTRACT(hour FROM (COALESCE(r.start_time_utc, r.start_time) AT TIME ZONE 'UTC'))::INTEGER AS hour_local,
+        EXTRACT(dow FROM (COALESCE(r.start_time_utc, r.start_time) AT TIME ZONE 'UTC'))::INTEGER AS dow_local
     FROM my_history h
     JOIN match_participants p
         ON p.match_id = h.match_id
@@ -56,15 +58,15 @@ top_xuids AS (
 SELECT
     e.xuid,
     COALESCE(vg.gamertag, ('Joueur ' || RIGHT(e.xuid, 4))) AS gamertag,
-    e.hour_utc AS hour,
-    e.dow_utc AS dow,
+    e.hour_local AS hour,
+    e.dow_local AS dow,
     COUNT(DISTINCT e.match_id) AS cnt
 FROM encounters e
 JOIN top_xuids t ON t.xuid = e.xuid
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = e.xuid
-WHERE e.hour_utc IS NOT NULL
-GROUP BY e.xuid, gamertag, e.hour_utc, e.dow_utc
-ORDER BY e.xuid ASC, e.hour_utc ASC`
+WHERE e.hour_local IS NOT NULL
+GROUP BY e.xuid, gamertag, e.hour_local, e.dow_local
+ORDER BY e.xuid ASC, e.hour_local ASC`
 
 // Q30RivalTimelineTpl : timeline d'un rival (matchs communs joués EN ENNEMI),
 // ordonnée ancien→récent. Joint match_registry ↔ p1 (moi) ↔ p2 (rival), ne

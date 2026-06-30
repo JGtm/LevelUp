@@ -1,3 +1,19 @@
+## [2026-06-30] Relations « Rythme des rencontres » : tranches 1h + fuseau utilisateur + couleur neutre — COMPLÉTÉ local (à commiter)
+
+**Tâche** (retour user) : sur Communauté > Relations, la heatmap « Rythme des rencontres » regroupait les matchs en 6 grandes tranches (Nuit/Matin/Midi/…). Demande : passer à des **tranches de 1 heure (24 créneaux 0h→23h)**. Puis deux ajouts user : utiliser **le fuseau de l'utilisateur** (pas l'UTC) ; et changer la **couleur** (la rampe rouge→vert sous-entendait « mauvais » alors que c'est juste de la fréquence) — avec compatibilité accessibilité.
+
+**Décisions techniques** :
+- **Renommage propre `daypart` → `hour`** de bout en bout (domain Go `RelationHeatmapCell.Hour json:"hour"`, service, OpenAPI manuel, types TS régénérés). Suppression de `internal/analysis/relations/daypart.go` (enum + `DaypartFromHour` devenus code mort) et du test associé. Bucketing direct par heure dans `aggregateHeatmapHours`.
+- **Fuseau utilisateur** : le reader shared a déjà sa session `SET TimeZone = cfg.UserTimezone`. Le SQL `Q29` forçait `AT TIME ZONE 'UTC'` ; remplacé par un instant TIMESTAMPTZ (`COALESCE(start_time_utc, start_time) AT TIME ZONE 'UTC'`) laissé à `EXTRACT(hour/dow)` → heure/jour locaux de session. Aucune injection de string. La vue « par jour » devient locale aussi (cohérent).
+- **Front** : heatmap déjà générique (`bucketLabels`) → 0 refonte du composant ; 24 `HOUR_LABELS` (« 00h »…« 23h », neutres FR/EN, hors i18n, alignés sur `ExplorerActivityHeatmapChart`). Toggle mode `'daypart'` → `'hour'` (label i18n `heatmap_by_hour` « Par heure »/« By hour »), store `relationsPrefsStore` avec micro-migration persist v0→v1 (ancien `'daypart'` → `'hour'`). Suppression des 6 clés `daypart_*` du TOML + du type `PalmaresText`.
+- **Couleur neutre + accessibilité** : nouvelle paire de tokens sémantiques `heatmap-freq-low/high` (rampe **mono-teinte** d'intensité, sans bien/mal), définie dans les 4 palettes — chacune CVD-safe par construction (rampe à teinte unique variant en luminosité ; **cividis** = séquentiel natif navy→jaune). `RelationsMomentsHeatmap` consomme ces tokens via `resolveToken`. `heatmap-cold/hot` (rouge/vert) conservés pour les heatmaps de perf/win-rate. Snapshot de couverture des tokens régénéré (test garantit que chaque palette définit les nouveaux tokens).
+
+**Résultats observés** : Go `build ./...` OK ; `go test` service+analysis/relations+handlers OK ; `go vet` OK. Front `tsc -b` OK ; eslint 0 erreur ; vitest accessibilité 147/147 (4 snapshots MAJ) + palmares 9/9. Mock MSW `test/handlers.ts` mis à jour (`hour`).
+
+**Statut** : COMPLÉTÉ local sur branche `fix/corrections-globales-app`. Pas encore commité (attente autorisation user). Reste : vérif manuelle visuelle (24 colonnes, heure locale cohérente, rampe neutre, toggle persisté). Suivi possible : `ExplorerActivityHeatmapChart` a la même rampe rouge/vert et pourrait adopter `heatmap-freq-*`.
+
+---
+
 ## [2026-06-30] Harmoniser la recherche de joueur Explorer ↔ Face à Face (joueur inconnu) — COMPLÉTÉ + vérifié
 
 **Tâche** (retour user) : sur Explorer (« Recherche par joueur »), taper un gamertag inconnu puis Entrée sélectionnait une suggestion fuzzy → impossible de chercher un joueur absent des listes. Face à Face (`GamertagCombobox`) gère déjà ce cas via un bouton « Ajouter XXXX » (`canAddFree`). Objectif : doter Explorer du même mécanisme et aligner la touche Entrée.

@@ -77,6 +77,8 @@ export const defaultPalette: Palette = {
   'heatmap-hot':            '#10B981', // bon     — vert
   'heatmap-divergent-low':  '#FF4B4B', // K/D bas
   'heatmap-divergent-high': '#00DC82', // K/D haut
+  'heatmap-freq-low':       '#1E3A5F', // fréquence faible — bleu sombre (neutre)
+  'heatmap-freq-high':      '#60A5FA', // fréquence forte  — bleu vif   (neutre)
 
   // ── Équipes — défauts "Red vs Blue" classique Halo ─────────────────────────
   'team-ally':  '#3B82F6', // bleu  — overridable via settings accessibilité

@@ -115,6 +115,8 @@ export const tolBrightPalette: Palette = {
   'heatmap-hot':            TOL_BLUE,
   'heatmap-divergent-low':  TOL_RED,
   'heatmap-divergent-high': TOL_BLUE,
+  'heatmap-freq-low':       '#1A3550', // fréquence faible — bleu sombre (neutre, mono-teinte)
+  'heatmap-freq-high':      TOL_CYAN, // fréquence forte  — cyan Tol Bright (neutre)
 
   // ── Équipes — axe Blue/Red Tol Bright ─────────────────────────────────────
   'team-ally':  TOL_BLUE, // overridable via settings accessibilité

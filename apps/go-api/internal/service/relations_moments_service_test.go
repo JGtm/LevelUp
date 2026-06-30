@@ -9,10 +9,10 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-func TestGetRelationsMoments_HeatmapDayparts(t *testing.T) {
-	// 2 relations, comptes par heure repliés en tranches.
-	// Foe : 02h (Nuit) ×3, 03h (Nuit) ×2 → Nuit=5 ; 19h (Soir) ×4 → Soir=4.
-	// Ally : 09h (Matin) ×6 → Matin=6.
+func TestGetRelationsMoments_HeatmapHours(t *testing.T) {
+	// 2 relations, comptes agrégés par heure (0..23). Deux lignes sur la même
+	// heure (Foe à 02h ×3 et... non) : ici une ligne par (xuid, heure).
+	// Foe : 02h ×3, 03h ×2, 19h ×4. Ally : 09h ×6.
 	repo := &mockRelationsRepo{
 		heatmapRows: []domain.RelationHeatmapRawRow{
 			{XUID: "x1", Gamertag: "Foe", Hour: 2, Count: 3},
@@ -33,18 +33,21 @@ func TestGetRelationsMoments_HeatmapDayparts(t *testing.T) {
 		t.Fatalf("TopRelations=%d want %d", out.TopRelations, momentsHeatmapTopN)
 	}
 
-	got := map[string]int{} // "gamertag/daypart" → count
+	got := map[string]int{} // "gamertag/hour" → count
 	for _, c := range out.Heatmap {
-		got[c.Gamertag+"/"+itoa(c.Daypart)] = c.Count
+		got[c.Gamertag+"/"+itoa(c.Hour)] = c.Count
 	}
-	if got["Foe/"+itoa(int(relations.DaypartNight))] != 5 {
-		t.Fatalf("Foe Nuit=%d want 5 (heatmap=%+v)", got["Foe/"+itoa(int(relations.DaypartNight))], out.Heatmap)
+	if got["Foe/2"] != 3 {
+		t.Fatalf("Foe 02h=%d want 3 (heatmap=%+v)", got["Foe/2"], out.Heatmap)
 	}
-	if got["Foe/"+itoa(int(relations.DaypartEvening))] != 4 {
-		t.Fatalf("Foe Soir=%d want 4", got["Foe/"+itoa(int(relations.DaypartEvening))])
+	if got["Foe/3"] != 2 {
+		t.Fatalf("Foe 03h=%d want 2", got["Foe/3"])
 	}
-	if got["Ally/"+itoa(int(relations.DaypartMorning))] != 6 {
-		t.Fatalf("Ally Matin=%d want 6", got["Ally/"+itoa(int(relations.DaypartMorning))])
+	if got["Foe/19"] != 4 {
+		t.Fatalf("Foe 19h=%d want 4", got["Foe/19"])
+	}
+	if got["Ally/9"] != 6 {
+		t.Fatalf("Ally 09h=%d want 6", got["Ally/9"])
 	}
 }
 

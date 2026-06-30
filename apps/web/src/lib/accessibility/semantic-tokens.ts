@@ -81,11 +81,16 @@ export type SemanticToken =
   | 'narrative-debacle-text'
   | 'narrative-contre-remontada-text'
 
-  // ── Heatmaps (4) ──────────────────────────────────────────────────────────
+  // ── Heatmaps (6) ──────────────────────────────────────────────────────────
+  // cold/hot + divergent : rampes À CONNOTATION (win-rate, K/D → bien/mal).
+  // freq-low/high : rampe NEUTRE mono-teinte pour les heatmaps de FRÉQUENCE
+  // (intensité d'activité, sans jugement bien/mal). Cf. RelationsMomentsHeatmap.
   | 'heatmap-cold'
   | 'heatmap-hot'
   | 'heatmap-divergent-low'
   | 'heatmap-divergent-high'
+  | 'heatmap-freq-low'
+  | 'heatmap-freq-high'
 
   // ── Équipes (2) — couleurs configurables via les settings d'accessibilité ─
   // Correspondent aux couleurs d'outline choisies par l'utilisateur in-game.
@@ -125,5 +130,6 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'narrative-encounter-de-longue-date', 'narrative-encounter-recrue',
   'narrative-encounter-proie-favorite', 'narrative-encounter-cross-game',
   'heatmap-cold', 'heatmap-hot', 'heatmap-divergent-low', 'heatmap-divergent-high',
+  'heatmap-freq-low', 'heatmap-freq-high',
   'team-ally', 'team-enemy',
 ] as const

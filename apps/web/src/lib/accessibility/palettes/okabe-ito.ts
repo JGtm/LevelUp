@@ -97,6 +97,8 @@ export const okabePalette: Palette = {
   'heatmap-hot':            '#0072B2', // Blue       — bon
   'heatmap-divergent-low':  '#D55E00', // K/D bas
   'heatmap-divergent-high': '#0072B2', // K/D haut
+  'heatmap-freq-low':       '#013A63', // fréquence faible — bleu sombre (neutre, mono-teinte)
+  'heatmap-freq-high':      '#56B4E9', // fréquence forte  — Sky Blue    (neutre, mono-teinte)
 
   // ── Équipes — axe Blue/Vermillion daltonisme-safe ──────────────────────────
   'team-ally':  '#0072B2', // Blue       — overridable via settings accessibilité

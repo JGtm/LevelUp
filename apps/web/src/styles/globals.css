@@ -255,6 +255,8 @@
   --ac-heatmap-hot:            #10B981;
   --ac-heatmap-divergent-low:  #FF4B4B;
   --ac-heatmap-divergent-high: #00DC82;
+  --ac-heatmap-freq-low:       #1E3A5F;
+  --ac-heatmap-freq-high:      #60A5FA;
 }
 
 /* ─── Base styles ───────────────────────────────────────────────────────────── */

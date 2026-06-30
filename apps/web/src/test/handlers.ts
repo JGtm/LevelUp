@@ -615,10 +615,10 @@ export const handlers = [
     HttpResponse.json({
       top_relations: 8,
       heatmap: [
-        { xuid: '4', gamertag: 'NemesisBravo', daypart: 4, count: 12 },
-        { xuid: '4', gamertag: 'NemesisBravo', daypart: 0, count: 3 },
-        { xuid: '1', gamertag: 'DuoAlpha', daypart: 3, count: 9 },
-        { xuid: '1', gamertag: 'DuoAlpha', daypart: 1, count: 4 },
+        { xuid: '4', gamertag: 'NemesisBravo', hour: 19, count: 12 },
+        { xuid: '4', gamertag: 'NemesisBravo', hour: 2, count: 3 },
+        { xuid: '1', gamertag: 'DuoAlpha', hour: 14, count: 9 },
+        { xuid: '1', gamertag: 'DuoAlpha', hour: 9, count: 4 },
       ],
       rivalries: [
         {

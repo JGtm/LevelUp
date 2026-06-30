@@ -1,12 +1,12 @@
 /**
  * RelationsMomentsHeatmap — heatmap agrégé « Quand tu les croises » (Phase 3a).
  *
- * Générique : relation × bucket (tranche horaire OU jour de semaine selon le
+ * Générique : relation × bucket (heure 0..23 OU jour de semaine selon le
  * toggle du parent, #8). La couleur reflète le `count` (matchs communs) via la
- * rampe sémantique heatmap-cold → heatmap-hot. Axe X = buckets (labels fournis),
- * axe Y = top-N relations. Aligné sur ExplorerActivityHeatmapChart : même
- * visualMap cold→hot, count dans la cellule, tooltip, légende. Strings via
- * palmares.toml (FR/EN).
+ * rampe NEUTRE de fréquence heatmap-freq-low → heatmap-freq-high (mono-teinte,
+ * sans connotation bien/mal — c'est de l'intensité de rencontre). Axe X =
+ * buckets (labels fournis), axe Y = top-N relations. Strings via palmares.toml
+ * (FR/EN).
  */
 import { useCallback, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
@@ -109,7 +109,9 @@ function buildOption(
           top: 'center',
           itemWidth: 12,
           itemHeight: 140,
-          inRange: { color: [resolveToken('heatmap-cold'), resolveToken('heatmap-hot')] },
+          // Rampe NEUTRE de fréquence (mono-teinte) : ce heatmap mesure
+          // l'intensité de rencontre, pas une perf → pas de rouge « mauvais ».
+          inRange: { color: [resolveToken('heatmap-freq-low'), resolveToken('heatmap-freq-high')] },
           formatter: (val: number) => `${Math.round(val)}`,
           text: [legendLabel, ''],
           textStyle: { color: tc.axisLabel, fontSize: 10 },

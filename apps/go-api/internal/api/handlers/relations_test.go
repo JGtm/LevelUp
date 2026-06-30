@@ -144,7 +144,7 @@ const relationsMomentsPath = "/players/" + testPlayerSlug + "/pages/palmares/rel
 // Sous-endpoint Moments : corps absent → 200, réponse {heatmap, rivalries}.
 func TestRelationsHandler_Moments_OK(t *testing.T) {
 	mock := &mockRelationsService{moments: domain.RelationsMomentsResponse{
-		Heatmap:      []domain.RelationHeatmapCell{{XUID: "x1", Gamertag: "Foe", Daypart: 4, Count: 7}},
+		Heatmap:      []domain.RelationHeatmapCell{{XUID: "x1", Gamertag: "Foe", Hour: 19, Count: 7}},
 		Rivalries:    []domain.RelationRivalry{{XUID: "x1", Gamertag: "Foe", EnemyMatches: 12}},
 		TopRelations: 8,
 	}}

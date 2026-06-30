@@ -53,26 +53,26 @@ func (s *RelationsService) GetRelationsMoments(ctx context.Context, input domain
 }
 
 // buildHeatmap récupère les comptes relation × (heure, jour) (top-N) et les agrège
-// en deux vues : tranches horaires (day-parts) ET jours de semaine.
+// en deux vues : par heure (0..23) ET par jour de semaine.
 func (s *RelationsService) buildHeatmap(ctx context.Context, scope []string) ([]domain.RelationHeatmapCell, []domain.RelationHeatmapDowCell, error) {
 	raw, err := s.repo.GetRelationsHeatmap(ctx, scope, momentsHeatmapTopN)
 	if err != nil {
 		return nil, nil, fmt.Errorf("RelationsService.GetRelationsMoments: heatmap: %w", err)
 	}
-	return aggregateHeatmapDayparts(raw), aggregateHeatmapDow(raw), nil
+	return aggregateHeatmapHours(raw), aggregateHeatmapDow(raw), nil
 }
 
-// aggregateHeatmapDayparts replie les comptes par heure en 6 tranches par
-// relation. Cellules vides omises. Tri stable (gamertag, daypart).
-func aggregateHeatmapDayparts(raw []domain.RelationHeatmapRawRow) []domain.RelationHeatmapCell {
+// aggregateHeatmapHours replie les comptes par heure (0..23) par relation.
+// Cellules vides omises. Tri stable (gamertag, hour).
+func aggregateHeatmapHours(raw []domain.RelationHeatmapRawRow) []domain.RelationHeatmapCell {
 	type key struct {
-		xuid    string
-		daypart relations.Daypart
+		xuid string
+		hour int
 	}
 	agg := map[key]int{}
 	meta := map[string]string{} // xuid → gamertag
 	for _, r := range raw {
-		k := key{xuid: r.XUID, daypart: relations.DaypartFromHour(r.Hour)}
+		k := key{xuid: r.XUID, hour: r.Hour}
 		agg[k] += r.Count
 		meta[r.XUID] = r.Gamertag
 	}
@@ -81,7 +81,7 @@ func aggregateHeatmapDayparts(raw []domain.RelationHeatmapRawRow) []domain.Relat
 		out = append(out, domain.RelationHeatmapCell{
 			XUID:     k.xuid,
 			Gamertag: meta[k.xuid],
-			Daypart:  int(k.daypart),
+			Hour:     k.hour,
 			Count:    count,
 		})
 	}
@@ -89,7 +89,7 @@ func aggregateHeatmapDayparts(raw []domain.RelationHeatmapRawRow) []domain.Relat
 		if out[i].Gamertag != out[j].Gamertag {
 			return out[i].Gamertag < out[j].Gamertag
 		}
-		return out[i].Daypart < out[j].Daypart
+		return out[i].Hour < out[j].Hour
 	})
 	return out
 }
