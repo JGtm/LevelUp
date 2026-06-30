@@ -1,3 +1,22 @@
+## [2026-06-30] Page Escouade : réparer « Enregistrer cette compo » + encart guichet unique — COMPLÉTÉ local (à commiter)
+
+**Tâche** (retour user) : sur la page Escouade, (1) remonter l'encart « Cap d'escouade » (« Enregistrer cette compo comme escouade ») AU-DESSUS des onglets Synergies/Contributions ; (2) le clic « Enregistrer » ne faisait rien du tout → réparer ; (3) workflow complet de bout en bout. Placement de la gestion tranché avec le user : ni section Settings (page de préférences, pas de données), ni page/onglet dédié (doublon avec le menu déroulant du sélecteur qui liste déjà toutes les escouades) → l'encart se suffit à lui-même.
+
+**Constat clé (cause racine)** : l'action d'enregistrement n'avait AUCUN retour visuel. `useCreateSquad` (useSquads.ts) n'a qu'un `onSuccess` (invalidation), pas de `onError`, et aucun point d'appel n'affichait de toast. Le handler Go `CreateSquad` (prestige.go) peut échouer de 5 façons (invalid_body, missing_fields, authorizeActor 403, directory_error 500, unknown_creator 400) — toutes invisibles. En cas de succès, le seul signal était une bascule discrète de l'encart, elle-même fragile : `findSquadByRoster` (squadRoster.ts) comparait `m.user_id !== playerSlug` sensible à la casse → un écart de casse laissait l'encart bloqué sur « Enregistrer » (apparence « rien ne se passe » + risque de doublon append-only). Côté backend, `xuidBySlug[body.CreatedBy]` était un match exact de slug → unknown_creator silencieux sur casse différente. Le backend (routes CRUD /squads, persistance append-only, xuid renvoyé par /pages/teammates) était par ailleurs complet et fonctionnel.
+
+**Décisions techniques** :
+- **Déplacement** (`SquadLayout.tsx`) : `<SquadFocusStrip />` remonté avant le bloc « Navigation onglets » (il était juste après).
+- **Retour visuel** (`SquadFocusStrip.tsx` + `useSquadPresets.tsx`) : toasts `sonner` succès/erreur sur les deux points d'entrée d'enregistrement (`onSave` de l'encart + `handleSave` du footer du sélecteur), via le helper existant `apiErrorMessage`. Garde anti-doublon `if (matched) return` dans `onSave`.
+- **Bascule fiable** (`squadRoster.ts`) : comparaison de slug insensible à la casse `(m.user_id ?? '').toLowerCase() !== playerSlug.toLowerCase()` (source unique → corrige encart + footer). Même cohérence appliquée au filtre membres de `useSquadPresets`.
+- **Encart guichet unique** (`SquadFocusStrip.tsx`) : nouveau composant `SquadManageActions` dans le panneau « Gérer » (renommé de « Gérer les objectifs ») — renommer (input inline) + supprimer (confirm au 2e clic), câblés aux hooks existants `useRenameSquad`/`useDeleteSquad`, avec toasts. Suppression → mySquads invalidé → l'encart repasse à « Enregistrer ». Clés i18n FR/EN ajoutées (saveSuccess, saveError, renameCta, deleteCta, confirmDelete, ok, renamed, deleted).
+- **Durcissement backend** (`prestige.go`) : `xuidBySlug` indexé en slug minuscule + lookup `strings.ToLower(body.CreatedBy)` → élimine la classe unknown_creator sur casse. `slugByXUID` garde le slug canonique ; `authorizeActor` (ownership) intouché. `xuidBySlug` n'étant consommé qu'au lookup CreateSquad, aucun autre appelant impacté.
+
+**Résultats observés** : front `tsc -b` 0 erreur ; eslint 0 erreur (70 warnings préexistants hors périmètre) ; vitest `src/features/squad` 34 fichiers / 247 tests OK (dont `squadRoster.test.ts` + `SquadLayout.deeplink.test.tsx`). Go `test ./internal/api/handlers/...` OK dont nouveau `TestPrestigeHandler_CreateSquad_CreatorSlugCaseInsensitive` (created_by « ALICE » → 201) ; `go vet` clean. Reste : vérif visuelle/manuelle (clic → toast + bascule « Escouade «…» » au-dessus des onglets ; Gérer → renommer/supprimer).
+
+**Statut** : COMPLÉTÉ local sur branche `fix/squad-save-composition` (créée depuis `main` à jour à la demande du user). Non commité (attente autorisation). Prochaine étape : vérif manuelle dans l'app + commit.
+
+---
+
 ## [2026-06-30] Relations : heatmap semaine lundi-first + cartes Rivaux (capitalisation + retrait série) — COMPLÉTÉ local (à commiter)
 
 **Tâche** (retour user) : sur Communauté > Relations, (1) la heatmap « par jour » commençait par dimanche → la faire commencer par lundi ; (2) dans les cartes « Rivaux », mettre une majuscule à « récent »/« global » et retirer le texte de série « X défaites/victoires de suite ».

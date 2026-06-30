@@ -324,6 +324,31 @@ func TestPrestigeHandler_CreateSquad_UnknownCreator_400(t *testing.T) {
 	}
 }
 
+func TestPrestigeHandler_CreateSquad_CreatorSlugCaseInsensitive(t *testing.T) {
+	mock := &mockPrestigeService{}
+	r := newRouter(mock)
+	// Slug créateur en casse différente de db_profiles ("alice") → doit résoudre
+	// quand même, sinon unknown_creator 400 silencieux côté UI (clic « Enregistrer »
+	// sans effet).
+	body := `{"name":"Trio","created_by":"ALICE","members":[{"xuid":"xBob"}]}`
+	req := httptest.NewRequest(http.MethodPost, "/squads", bytes.NewBufferString(body))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("status=%d, want 201 (slug créateur insensible à la casse); body=%s", w.Code, w.Body.String())
+	}
+	hasCreator := false
+	for _, m := range mock.lastCreateSquad.Members {
+		if m.Xuid == "xAlice" && m.UserID == "alice" {
+			hasCreator = true
+		}
+	}
+	if !hasCreator {
+		t.Errorf("créateur xAlice/alice absent du roster: %+v", mock.lastCreateSquad.Members)
+	}
+}
+
 func TestPrestigeHandler_AddSquadMember_TagsAndForwards(t *testing.T) {
 	mock := &mockPrestigeService{}
 	r := newRouter(mock)

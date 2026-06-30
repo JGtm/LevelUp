@@ -14,7 +14,9 @@
  * générique et SquadLayout lisible.
  */
 import { useState } from 'react'
+import { toast } from 'sonner'
 import type { ComboboxPresetGroup } from '@/components/ui/GamertagCombobox'
+import { apiErrorMessage } from '@/lib/api/client'
 import {
   useMySquads,
   useCreateSquad,
@@ -163,7 +165,7 @@ export function useSquadPresets({
 
   const squadOptions = sortedSquads.map((sm) => {
     const gamertags = sm.members
-      .filter((m) => m.user_id !== playerSlug)
+      .filter((m) => (m.user_id ?? '').toLowerCase() !== slugLower)
       .map((m) => m.gamertag ?? '')
       .filter((g) => g && g.toLowerCase() !== slugLower)
     return {
@@ -205,7 +207,13 @@ export function useSquadPresets({
       .map((r) => ({ xuid: r.xuid as string, gamertag: r.gamertag }))
     if (members.length === 0) return
     const name = selectedRows.map((r) => r.gamertag).join(' + ')
-    createSquad.mutate({ name, created_by: playerSlug, members })
+    createSquad.mutate(
+      { name, created_by: playerSlug, members },
+      {
+        onSuccess: () => toast.success(t.saveSuccess),
+        onError: (err) => toast.error(apiErrorMessage(err) ?? t.saveError),
+      },
+    )
   }
   const saveLabel = createSquad.isPending ? t.saving : alreadySaved ? t.saved : t.save
 

@@ -688,6 +688,10 @@ export function SquadLayout() {
             return <SessionBriefing kpis={toContractKpis(soloKpis)} squad={briefingSquad} />
           })()}
 
+          {/* « Cap d'escouade » (Enregistrer cette compo) — remonté AU-DESSUS de la
+              barre d'onglets L3, commun aux deux onglets (Synergies / Contributions). */}
+          <SquadFocusStrip />
+
           {/* Navigation onglets */}
           <div className="border-b">
             <nav className="flex gap-0">
@@ -707,10 +711,6 @@ export function SquadLayout() {
               </Link>
             </nav>
           </div>
-
-          {/* « Cap d'escouade » (Enregistrer cette compo) — remonté juste sous la
-              barre d'onglets L3, commun aux deux onglets (Synergies / Contributions). */}
-          <SquadFocusStrip />
 
           <Outlet />
         </div>

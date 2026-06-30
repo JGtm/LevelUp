@@ -19,9 +19,16 @@ export function findSquadByRoster(
 ): SquadWithMembers | null {
   if (!squads || selectionXuids.length === 0) return null
   const sel = new Set(selectionXuids)
+  // Comparaison de slug insensible à la casse : le slug d'URL et le user_id
+  // persisté (db_profiles) peuvent différer de casse → sinon le créateur n'est
+  // pas exclu, la taille ne matche pas, et l'escouade enregistrée n'est jamais
+  // retrouvée (encart bloqué sur « Enregistrer » + risque de doublon append-only).
+  const slug = playerSlug.toLowerCase()
   return (
     squads.find((sm) => {
-      const others = sm.members.filter((m) => m.user_id !== playerSlug).map((m) => m.xuid)
+      const others = sm.members
+        .filter((m) => (m.user_id ?? '').toLowerCase() !== slug)
+        .map((m) => m.xuid)
       return others.length === sel.size && others.every((x) => sel.has(x))
     }) ?? null
   )
