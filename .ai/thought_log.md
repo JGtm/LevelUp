@@ -1,3 +1,25 @@
+## [2026-06-30] Harmoniser la recherche de joueur Explorer ↔ Face à Face (joueur inconnu) — COMPLÉTÉ + vérifié
+
+**Tâche** (retour user) : sur Explorer (« Recherche par joueur »), taper un gamertag inconnu puis Entrée sélectionnait une suggestion fuzzy → impossible de chercher un joueur absent des listes. Face à Face (`GamertagCombobox`) gère déjà ce cas via un bouton « Ajouter XXXX » (`canAddFree`). Objectif : doter Explorer du même mécanisme et aligner la touche Entrée.
+
+**Constat** : les deux champs partagent déjà le hook `useGamertagSuggestions`. Explorer = `GamertagSearchInput` (mono-sélection) ; Face à Face/Escouade/Réglages = `GamertagCombobox` (multi). Correctif purement **additif**, aucun refactor du composant partagé, aucune lib tierce.
+
+**Décisions (confirmées user)** :
+- Touche Entrée : si le texte tapé n'est **exactement** dans aucune suggestion → Entrée recherche le **texte exact**. Appliqué à Explorer ET au combobox (donc aussi Escouade/Réglages, par partage) pour rester harmonisé. Trade-off accepté : préfixe partiel + Entrée cherche le préfixe littéral ; cliquer une suggestion pour la prendre.
+- Libellé bouton Explorer : « Rechercher "XXXX" » (plus apte qu'« Ajouter » pour une page de consultation). Combobox garde « Ajouter ».
+
+**Implémentation** :
+- i18n : nouvelle clé `explorer.search.search_for` (FR/EN) dans `manifests/explorer.toml` → régénération `node apps/web/scripts/build_i18n_manifests.mjs` (clé typée dans `generated/explorer.ts`).
+- `GamertagSearchInput.tsx` : `allSuggestedGts` + `canSearchFree` (miroir de `canAddFree`), ajout à `showDropdown`, bouton « Rechercher » en pied (tokens sémantiques, pas de hex), Enter → `canSearchFree ? pick(trimmed) : pick(first)`.
+- `GamertagCombobox.tsx` : Enter aligné → `canAddFree ? add(trimmed) : add(first)`.
+- Tests : 2 cas Explorer (bouton présent + clic → onSelect ; Entrée texte inconnu → onSelect) + 1 cas combobox (Entrée hors suggestions → ajout texte exact).
+
+**Vérif** : `tsc -b` OK ; eslint 0 sur les 4 fichiers ; vitest 13/13 (fichiers ciblés) puis **483/483** sur explorer+compare+squad+settings+ui (aucune régression sur les consommateurs du combobox).
+
+**Statut** : COMPLÉTÉ sur branche `fix/explorer-search-unknown-player` (depuis main). Pas encore commité (attente autorisation user). Reste : vérif manuelle FR/EN sur `/players/{slug}/explorer` + commit/merge.
+
+---
+
 ## [2026-06-30] Citations/Commendations bilingues selon la locale (H5 + Infinite) — COMPLÉTÉ local ; code à déployer + data prod Infinite à peupler
 
 **Contexte** : suite au re-seed H5 (29/06) qui a peuplé `commendation_definitions.name_fr` en vrai français, les titres s'affichaient en FR **même en UI anglaise**. Cause : lecteurs de noms **pas locale-aware** (`COALESCE(name_fr, name_en)` figé). `ctxkeys.WithLocale` existait mais n'était **jamais câblé** → `ctxkeys.Locale` retournait toujours "fr".

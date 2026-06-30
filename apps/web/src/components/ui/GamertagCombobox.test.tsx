@@ -149,4 +149,17 @@ describe('GamertagCombobox', () => {
     expect(input.disabled).toBe(true)
     expect(screen.getByText('1/1')).toBeInTheDocument()
   })
+
+  it('Entrée ajoute le texte exact tapé quand il est hors suggestions', () => {
+    let result: string[] | null = null
+    renderWithProviders(
+      <GamertagCombobox selected={[]} onChange={(v) => { result = v }} />,
+    )
+    const input = screen.getByPlaceholderText(/Rechercher un gamertag/i)
+    fireEvent.focus(input)
+    // 'UnknownGuy' n'est dans aucune suggestion (configurés Alpha/Bravo) → saisie libre.
+    fireEvent.change(input, { target: { value: 'UnknownGuy' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(result).toEqual(['UnknownGuy'])
+  })
 })

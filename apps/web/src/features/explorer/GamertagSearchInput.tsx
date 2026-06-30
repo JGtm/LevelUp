@@ -54,6 +54,14 @@ export function GamertagSearchInput({
   }, [])
 
   const trimmed = query.trim()
+  // Gamertag tapé absent de toutes les suggestions → propose la recherche libre
+  // (même logique que canAddFree dans GamertagCombobox).
+  const allSuggestedGts = new Set([
+    ...configured.map((c) => c.gamertag),
+    ...frequent.map((f) => f.gamertag),
+    ...remote.map((r) => r.gamertag),
+  ])
+  const canSearchFree = trimmed.length > 0 && !allSuggestedGts.has(trimmed)
   const showEmpty = trimmed.length > 0 && remoteAttempted && !isRemoteLoading && !hasAnyResult
   const showDropdown =
     open &&
@@ -62,7 +70,8 @@ export function GamertagSearchInput({
       frequent.length > 0 ||
       remote.length > 0 ||
       isRemoteLoading ||
-      showEmpty)
+      showEmpty ||
+      canSearchFree)
 
   function pick(gt: string) {
     onSelect(gt)
@@ -73,10 +82,15 @@ export function GamertagSearchInput({
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       e.preventDefault()
-      const first =
-        configured[0]?.gamertag ?? frequent[0]?.gamertag ?? remote[0]?.gamertag
-      const target = first ?? trimmed
-      if (target) pick(target)
+      // Texte tapé hors suggestions → recherche le texte exact (joueur inconnu).
+      // Sinon, prend la 1re suggestion priorisée (configured > frequent > remote).
+      if (canSearchFree) {
+        pick(trimmed)
+      } else {
+        const first =
+          configured[0]?.gamertag ?? frequent[0]?.gamertag ?? remote[0]?.gamertag
+        if (first) pick(first)
+      }
     } else if (e.key === 'Escape') {
       setOpen(false)
     }
@@ -153,6 +167,17 @@ export function GamertagSearchInput({
             <div className="px-4 py-2 text-sm text-muted-foreground">
               {t('explorer.search.no_results', { query: trimmed })}
             </div>
+          )}
+
+          {canSearchFree && (
+            <button
+              type="button"
+              onClick={() => pick(trimmed)}
+              className="flex w-full items-center gap-2 px-4 py-2 text-sm text-left hover:bg-primary/10 transition-colors border-t border-border/50"
+            >
+              <span className="text-muted-foreground">+</span>
+              <span>{t('explorer.search.search_for', { query: trimmed })}</span>
+            </button>
           )}
         </div>
       )}

@@ -546,6 +546,10 @@ en = "Searching…"
 fr = "Aucun joueur trouvé pour \"{query}\""
 en = "No player found for \"{query}\""
 
+[explorer.search.search_for]
+fr = "Rechercher \"{query}\""
+en = "Search \"{query}\""
+
 [explorer.search.badge_exact]
 fr = "Exact"
 en = "Exact"
