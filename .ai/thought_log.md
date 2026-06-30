@@ -1,3 +1,20 @@
+## [2026-06-30] Relations : heatmap semaine lundi-first + cartes Rivaux (capitalisation + retrait série) — COMPLÉTÉ local (à commiter)
+
+**Tâche** (retour user) : sur Communauté > Relations, (1) la heatmap « par jour » commençait par dimanche → la faire commencer par lundi ; (2) dans les cartes « Rivaux », mettre une majuscule à « récent »/« global » et retirer le texte de série « X défaites/victoires de suite ».
+
+**Constat clé** : le back-end renvoie `day_of_week` en convention 0=dimanche…6=samedi (`EXTRACT(dow)` local — `domain/relations.go:146` + `queries_relations_moments.go:30`). Le heatmap place une cellule à `X=bucket` et l'étiquette via `dayLabels[bucket]` ; les labels (day_0=Dim) étaient déjà alignés sur la donnée → affichage dimanche-first. Les clés `recent_short`/`global_short` et `moments.streak_*` ne servent QUE dans les cartes Rivaux ; le `hero.streak_*` de la bannière némésis (`PalmaresRelationsPage.tsx`) est distinct → conservé.
+
+**Décisions techniques** :
+- **Heatmap lundi-first** (un seul fichier `RelationsMomentsSection.tsx`) : décalage simultané du bucket `(day_of_week + 6) % 7` (lundi→0…dimanche→6) ET rotation des labels d'un cran `[...text.dayLabels.slice(1), text.dayLabels[0]]` → colonnes Lun…Dim, chaque jour sous son étiquette. `text.dayLabels` reste en ordre back-end (0=Dim) consommé en ordre tournant localement → aucune modif manifest/i18n.ts/regen pour ce point. Mode « heure » inchangé.
+- **Capitalisation** : édition à la source du manifest `recent_short` (Récent/Recent) + `global_short` (Global/Overall), FR et EN (clés non réutilisées ailleurs).
+- **Retrait série Rivaux** (suppression propre, pas de code mort) : retrait de `streakChip` + son appel (`RelationsRivalryCards.tsx`), des entrées `moments.streakWins/streakLosses` (type + builder, `i18n.ts`) et des clés `moments.streak_wins/streak_losses` du manifest. Docstring + commentaire inline de la carte mis à jour.
+
+**Résultats observés** : regen i18n OK (`build_i18n_manifests.mjs`, palmares 155 clés, -2 streak ; `Récent`/`Global` capitalisés ; `hero.streak_*` préservés). Front `tsc -b` 0 erreur ; eslint 0 erreur (2 warnings préexistants hors périmètre : BattlePassRewardCarousel, RelationsTable) ; vitest `PalmaresRelationsPage` 8/8. Alignement heatmap vérifié par construction (Lun→col 0 … Dim→col 6).
+
+**Statut** : COMPLÉTÉ local, working tree de la branche courante `feat/h5-weapon-accuracy-synthesis` (cohabite avec le WIP weapon-accuracy non commité ; pas de switch de branche ni de stash — règles projet). Non commité (attente autorisation user). Reste : vérif visuelle (colonnes Lun→Dim alignées, cartes « Récent/Global » sans série, bannière némésis inchangée).
+
+---
+
 ## [2026-06-30] Graphe « Précision par arme » (Halo 5) sur la page Synthèse — COMPLÉTÉ local (à commiter)
 
 **Tâche** (retour user) : ajouter un graphe « Précision par arme » sur la page Synthèse pour Halo 5, et déclarer côté capabilities le besoin de cette donnée (dérivable des tirs tirés/touchés par arme, ou d'une précision directe si un titre la fournit). Précision « user » validée : afficher **toutes les armes tirées** (pas de seuil de volume), pourcentage = tirs au but / tirs tirés.

@@ -6,7 +6,7 @@
  *     duel affiche date · mode · map — frags/morts (plus d'UUID brut).
  *   - écart de frags cumulé (CumulativeFragGapChart) coloré par le signe :
  *     vert quand tu mènes, rouge quand tu es derrière.
- *   - KPIs : récent vs global, série en cours, écart de frags total.
+ *   - KPIs : taux de victoire récent vs global.
  *
  * Aucune couleur hex : tokens outcome-* (via les wrappers chart).
  */
@@ -31,26 +31,6 @@ type MomentsText = PalmaresText['relations']['moments']
 function wrColor(v: number | null | undefined): string | undefined {
   if (v == null || !Number.isFinite(v)) return undefined
   return v >= 0.5 ? tokenCssVar('outcome-win') : tokenCssVar('outcome-loss')
-}
-
-// streakChip : pastille compacte « N victoires/défaites de suite » (>0 victoires,
-// <0 défaites). Masquée si |série| < 2 (pas une vraie série).
-function streakChip(streak: number, t: MomentsText) {
-  if (streak >= 2) {
-    return (
-      <span className="font-mono font-bold" style={{ color: tokenCssVar('outcome-win') }}>
-        {t.streakWins(String(streak))}
-      </span>
-    )
-  }
-  if (streak <= -2) {
-    return (
-      <span className="font-mono font-bold" style={{ color: tokenCssVar('outcome-loss') }}>
-        {t.streakLosses(String(-streak))}
-      </span>
-    )
-  }
-  return null
 }
 
 // toTapePoints : duels backend → points de frise. Le tooltip d'un duel affiche un
@@ -101,7 +81,7 @@ function RivalryCard({ rivalry, t, locale }: { rivalry: RelationRivalry; t: Mome
 
       <OutcomeSequenceTape matches={tapePoints} labels={tapeLabels} height={64} />
 
-      {/* compact : récent vs global + série (écart de frags total retiré = fin du graphe) */}
+      {/* compact : taux de victoire récent vs global */}
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
         <span>
           <span className="text-muted-foreground">{t.recentShort} </span>
@@ -115,7 +95,6 @@ function RivalryCard({ rivalry, t, locale }: { rivalry: RelationRivalry; t: Mome
             {formatPercent(rivalry.global_win_rate, 0)}
           </span>
         </span>
-        {streakChip(rivalry.current_streak, t)}
       </div>
 
       {cumulativePoints.length > 0 && (

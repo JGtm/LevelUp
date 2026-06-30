@@ -397,20 +397,12 @@ fr = "{count} matchs en adversaire"
 en = "{count} matches as opponent"
 
 [palmares.relations.moments.recent_short]
-fr = "récent"
-en = "recent"
+fr = "Récent"
+en = "Recent"
 
 [palmares.relations.moments.global_short]
-fr = "global"
-en = "overall"
-
-[palmares.relations.moments.streak_wins]
-fr = "{count} victoires de suite"
-en = "{count} wins in a row"
-
-[palmares.relations.moments.streak_losses]
-fr = "{count} défaites de suite"
-en = "{count} losses in a row"
+fr = "Global"
+en = "Overall"
 
 [palmares.relations.moments.rolling_title]
 fr = "Taux de victoire glissant"
