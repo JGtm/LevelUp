@@ -9,6 +9,8 @@ package duckdb
 import (
 	"context"
 	"testing"
+
+	"levelup/go-api/internal/ctxkeys"
 )
 
 // ---------------------------------------------------------------------------
@@ -147,6 +149,29 @@ func TestCitationsRepo_LoadCitationMappings_WithData(t *testing.T) {
 	}
 	if len(rows) != 1 {
 		t.Errorf("attendu 1, obtenu %d", len(rows))
+	}
+}
+
+// Le nom de citation est résolu selon la locale du contexte : EN →
+// citation_name_display_en, FR (défaut) → citation_name_display. Câble la
+// traduction des citations Infinite (copies de commendations H5).
+func TestCitationsRepo_LoadCitationMappings_LocaleAware(t *testing.T) {
+	repo := NewCitationsRepo(newTestPlayerDB(t))
+
+	fr, err := repo.LoadCitationMappings(context.Background())
+	if err != nil || len(fr) != 1 {
+		t.Fatalf("FR: err=%v n=%d", err, len(fr))
+	}
+	if fr[0].NameDisplay != "Killing Spree" {
+		t.Errorf("FR NameDisplay = %q, want 'Killing Spree'", fr[0].NameDisplay)
+	}
+
+	en, err := repo.LoadCitationMappings(ctxkeys.WithLocale(context.Background(), "en"))
+	if err != nil || len(en) != 1 {
+		t.Fatalf("EN: err=%v n=%d", err, len(en))
+	}
+	if en[0].NameDisplay != "Killing Spree (EN)" {
+		t.Errorf("EN NameDisplay = %q, want 'Killing Spree (EN)'", en[0].NameDisplay)
 	}
 }
 
