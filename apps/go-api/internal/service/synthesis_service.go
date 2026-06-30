@@ -57,6 +57,10 @@ type SynthesisService struct {
 	// weaponKillsRepo : charge les kills agrégés par arme depuis shared.weapon_kills.
 	// Quand nil, le champ TopWeaponKills est omis de la réponse.
 	weaponKillsRepo port.WeaponKillsRepository
+	// weaponAccuracyRepo : charge la précision agrégée par arme depuis la table
+	// weapon_accuracy (Halo 5 natif). Quand nil OU titre sans table (Infinite),
+	// le champ WeaponAccuracy est omis de la réponse.
+	weaponAccuracyRepo port.WeaponAccuracyRepository
 	// titleSlug est nécessaire pour appeler PlayerMatchesRepo.LoadPlayerMatches.
 	// Si "" et playerMatchesRepo != nil, fallback sur le repo legacy.
 	titleSlug  string
@@ -103,6 +107,12 @@ func (s *SynthesisService) WithPersonalScoreAwardsRepo(
 // WithWeaponKillsRepo injecte le loader pour le classement frags par arme.
 func (s *SynthesisService) WithWeaponKillsRepo(repo port.WeaponKillsRepository) *SynthesisService {
 	s.weaponKillsRepo = repo
+	return s
+}
+
+// WithWeaponAccuracyRepo injecte le loader pour le classement précision par arme.
+func (s *SynthesisService) WithWeaponAccuracyRepo(repo port.WeaponAccuracyRepository) *SynthesisService {
+	s.weaponAccuracyRepo = repo
 	return s
 }
 
@@ -185,6 +195,10 @@ func (s *SynthesisService) GetSynthesisPage(
 	// Frags par arme + par rôle (registre) : best-effort, ignoré si repo absent.
 	topWeaponKills, killsByRole := s.loadTopWeaponKills(ctx, filteredCanon)
 
+	// Précision par arme (Halo 5 natif) : best-effort, nil si repo absent ou
+	// titre sans table weapon_accuracy (Infinite) → champ omis.
+	weaponAccuracy := s.loadWeaponAccuracy(ctx, filteredCanon)
+
 	scope := domain.SynthesisScope{
 		Period:         period,
 		MatchCount:     matchCount,
@@ -217,6 +231,7 @@ func (s *SynthesisService) GetSynthesisPage(
 		DetailedStats:     detailedStats,
 		TopWeaponKills:    topWeaponKills,
 		KillsByRole:       killsByRole,
+		WeaponAccuracy:    weaponAccuracy,
 		CombatProfile:     combatProfile,
 	}, nil
 }
@@ -304,6 +319,39 @@ func (s *SynthesisService) loadTopWeaponKills(
 		return nil, nil
 	}
 	return buildTopWeaponKills(rows, 20), buildKillsByRole(rows)
+}
+
+// loadWeaponAccuracy agrège, sur le scope filtré, la précision par arme (toutes
+// les armes tirées). Calqué sur loadTopWeaponKills. Best-effort : nil si repo
+// absent, gamertag/scope vide, ou capability manquante (titre sans table
+// weapon_accuracy, ex. Infinite).
+func (s *SynthesisService) loadWeaponAccuracy(
+	ctx context.Context, filteredCanon []canonical.PlayerMatchRow,
+) []domain.SynthesisWeaponAccuracyEntry {
+	if s.weaponAccuracyRepo == nil || s.gamertag == "" || len(filteredCanon) == 0 {
+		return nil
+	}
+	matchIDs := make([]string, 0, len(filteredCanon))
+	for _, r := range filteredCanon {
+		matchIDs = append(matchIDs, r.Summary.MatchID)
+	}
+	wf := port.WeaponAccuracyFilters{MatchIDs: matchIDs, Gamertag: s.gamertag}
+	rows, err := s.weaponAccuracyRepo.LoadWeaponAccuracyAggregated(ctx, s.titleSlug, wf)
+	if err != nil {
+		// ErrCapabilityNotSupported = légitime (titre sans table weapon_accuracy,
+		// ex. Infinite) → Debug. Toute autre erreur = anomalie → Warn (parité avec
+		// loadTopWeaponKills, pour ne pas masquer un futur bug SQL/conn).
+		if errors.Is(err, games.ErrCapabilityNotSupported) {
+			slog.DebugContext(ctx, "synthesis: weapon accuracy capability absente",
+				"title", s.titleSlug, "gamertag", s.gamertag)
+		} else {
+			slog.WarnContext(ctx, "synthesis: weapon accuracy query failed (best-effort, fallback nil)",
+				"title", s.titleSlug, "gamertag", s.gamertag,
+				"match_count", len(matchIDs), "err", err)
+		}
+		return nil
+	}
+	return buildWeaponAccuracy(rows)
 }
 
 // =============================================================================

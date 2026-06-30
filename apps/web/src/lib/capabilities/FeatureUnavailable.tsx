@@ -25,6 +25,7 @@ const FEATURE_LABEL: Record<TitleCapability, { fr: string; en: string }> = {
   native_kill_mechanics: { fr: 'les assassinats et compétences Spartan', en: 'assassinations and Spartan abilities' },
   team_mmr: { fr: 'le MMR par match', en: 'per-match MMR' },
   damage_taken: { fr: 'les dégâts subis', en: 'damage taken' },
+  weapon_accuracy: { fr: 'la précision par arme', en: 'accuracy by weapon' },
   spartan_customizer: { fr: 'la personnalisation Spartan', en: 'Spartan customization' },
 }
 

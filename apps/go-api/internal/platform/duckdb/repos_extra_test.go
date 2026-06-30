@@ -73,7 +73,7 @@ func TestCompareRepo_GetLocalStats(t *testing.T) {
 			outcome INTEGER, accuracy DOUBLE, damage_dealt DOUBLE,
 			damage_taken DOUBLE DEFAULT 0, max_killing_spree SMALLINT DEFAULT 0,
 			avg_life_seconds DOUBLE DEFAULT 0, headshot_kills SMALLINT DEFAULT 0,
-			team_id INTEGER DEFAULT 0
+			kda DOUBLE, team_id INTEGER DEFAULT 0
 		)`,
 		`CREATE TABLE IF NOT EXISTS shared.medals_earned (
 			match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT, count INTEGER
@@ -173,7 +173,7 @@ func TestCompareRepo_GetLocalStats_NotFound(t *testing.T) {
 			outcome INTEGER, accuracy DOUBLE, damage_dealt DOUBLE,
 			damage_taken DOUBLE DEFAULT 0, max_killing_spree SMALLINT DEFAULT 0,
 			avg_life_seconds DOUBLE DEFAULT 0, headshot_kills SMALLINT DEFAULT 0,
-			team_id INTEGER DEFAULT 0
+			kda DOUBLE, team_id INTEGER DEFAULT 0
 		)`,
 		`CREATE TABLE IF NOT EXISTS shared.medals_earned (
 			match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT, count INTEGER

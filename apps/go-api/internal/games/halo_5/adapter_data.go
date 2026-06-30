@@ -253,6 +253,9 @@ func fallbackCapabilities() games.CapabilityMap {
 		games.CapMatchEventsTimeline:  games.CapSupported,
 		games.CapMatchKillfeedPerKill: games.CapSupported,
 		games.CapMatchEventsSpatial:   games.CapSupported,
+		// Précision par arme : CÂBLÉ. ShotsFired/ShotsLanded natifs des events
+		// weapon_drop → table weapon_accuracy (cf. ingest/weapon_accuracy.go).
+		games.CapWeaponAccuracy: games.CapSupported,
 	}
 }
 

@@ -28,6 +28,7 @@ func AllCapabilityKeys() []CapabilityKey {
 		CapMatchKillfeedPerKill,
 		CapMatchEventsSpatial,
 		CapCommendationsNative,
+		CapWeaponAccuracy,
 	}
 }
 

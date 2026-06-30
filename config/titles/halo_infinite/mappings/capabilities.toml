@@ -56,3 +56,7 @@ schema_version = 1
 "match.events.timeline"  = "degraded"
 "match.killfeed.per_kill" = "degraded"
 "match.events.spatial"   = "not_exposed"
+# Précision par arme : pas d'events weapon_drop dans la timeline reconstruite
+# (highlight_events ne porte ni pickup/drop ni shots par arme) → table
+# weapon_accuracy non peuplée pour Infinite.
+"match.weapon.accuracy"  = "not_exposed"

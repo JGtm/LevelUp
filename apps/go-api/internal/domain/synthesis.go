@@ -135,6 +135,11 @@ type SynthesisPageV2Response struct {
 	// registre n'a rien résolu (titre sans registre, ou aucune arme mappée).
 	KillsByRole []SynthesisRoleKillEntry `json:"kills_by_role,omitempty"`
 
+	// Bloc précision par arme (toutes les armes tirées, pourcentage = tirs au but
+	// / tirs tirés). Alimenté par la table weapon_accuracy (Halo 5 natif). Omis
+	// (nil → absent) pour les titres qui ne peuplent pas cette donnée (Infinite).
+	WeaponAccuracy []SynthesisWeaponAccuracyEntry `json:"weapon_accuracy,omitempty"`
+
 	// Bloc profil combat (OC + DR + descripteurs) — nil si < 15 matchs dans le scope.
 	// Ref : PLAN_COMBAT_PROFILE_WIRING.md Phase 1.
 	CombatProfile *CombatProfileBlock `json:"combat_profile,omitempty"`
@@ -151,6 +156,16 @@ type SynthesisWeaponKillEntry struct {
 type SynthesisRoleKillEntry struct {
 	Role  string `json:"role"`
 	Kills int    `json:"kills"`
+}
+
+// SynthesisWeaponAccuracyEntry est une ligne du classement précision par arme.
+// Accuracy = ShotsLanded / ShotsFired, en unité 0..1 (convention API canonique,
+// cf. ADR 0006) ; le front multiplie par 100 pour l'affichage en pourcentage.
+type SynthesisWeaponAccuracyEntry struct {
+	Label       string  `json:"label"`
+	ShotsFired  int     `json:"shots_fired"`
+	ShotsLanded int     `json:"shots_landed"`
+	Accuracy    float64 `json:"accuracy"`
 }
 
 // ---------------------------------------------------------------------------

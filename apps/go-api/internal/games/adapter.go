@@ -58,6 +58,14 @@ const (
 	// DISTINCTE de citations.engine (moteur de citations DÉRIVÉ d'Infinite) :
 	// affichage NATIF tel quel, pas de reconstruction par tier/composite.
 	CapCommendationsNative CapabilityKey = "commendations.native"
+
+	// CapWeaponAccuracy — précision PAR ARME : tirs au but / tirs tirés par arme.
+	// Dérivée des compteurs ShotsFired/ShotsLanded (Halo 5 natif, events
+	// weapon_drop → table weapon_accuracy, somme par (xuid, weapon_id)) OU d'une
+	// précision directe par arme si un titre la fournit telle quelle. Infinite :
+	// not_exposed (pas d'events drop dans la timeline reconstruite → table non
+	// peuplée).
+	CapWeaponAccuracy CapabilityKey = "match.weapon.accuracy"
 )
 
 // CapabilityMap décrit l'état des capabilities produit d'un adapter à un instant T.

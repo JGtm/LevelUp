@@ -15,6 +15,7 @@ import { ProportionalBar } from '@/components/ui/proportional-bar'
 import { SynthesisKillTypesDonut } from './SynthesisKillTypesDonut'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { SynthesisWeaponKillsChart } from './SynthesisWeaponKillsChart'
+import { SynthesisWeaponAccuracyChart } from './SynthesisWeaponAccuracyChart'
 import { SynthesisRoleKillsDonut } from './SynthesisRoleKillsDonut'
 import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
@@ -41,6 +42,7 @@ import type {
   SynthesisQueryRequest,
   SynthesisRoleKillEntry,
   SynthesisWeaponKillEntry,
+  SynthesisWeaponAccuracyEntry,
 } from '@/lib/api/types'
 
 // ─── Mapping experience → cascade.experience_types ──────────────────────────
@@ -166,10 +168,11 @@ interface SynthesisOverviewSectionProps {
   detailedStats?: SynthesisDetailedStats
   topWeaponKills?: SynthesisWeaponKillEntry[]
   killsByRole?: SynthesisRoleKillEntry[]
+  weaponAccuracy?: SynthesisWeaponAccuracyEntry[]
   combatProfile?: CombatProfileBlock | null
   playerSlug: string
 }
-function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, killsByRole, combatProfile, playerSlug }: SynthesisOverviewSectionProps) {
+function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, killsByRole, weaponAccuracy, combatProfile, playerSlug }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
@@ -199,6 +202,10 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
   // afficherait un « 0 » trompeur). Capability-gated → retrait silencieux de la
   // carte quand le titre ne fournit pas la donnée.
   const hasDamageTaken = useCapability('damage_taken')
+
+  // Précision par arme : Halo 5 natif (table weapon_accuracy). Capability-gated →
+  // le graphe est masqué pour les titres qui ne fournissent pas la donnée (Infinite).
+  const hasWeaponAccuracy = useCapability('weapon_accuracy')
 
   return (
     <section className="space-y-3">
@@ -441,6 +448,13 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                 <div className="flex-1 min-w-0 flex flex-col">
                   <SynthesisWeaponKillsChart weapons={topWeaponKills ?? []} fillHeight />
                 </div>
+                {/* Précision par arme (Halo 5 natif) — masqué pour les titres sans
+                    la capability weapon_accuracy (Infinite). */}
+                {hasWeaponAccuracy && (
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <SynthesisWeaponAccuracyChart weapons={weaponAccuracy ?? []} fillHeight />
+                  </div>
+                )}
               </div>
 
               {/* Frags par rôle de combat (registre d'armes) — premier consommateur
@@ -726,6 +740,7 @@ export function SynthesisPage() {
           detailedStats={data.detailed_stats}
           topWeaponKills={data.top_weapon_kills}
           killsByRole={data.kills_by_role}
+          weaponAccuracy={data.weapon_accuracy}
           combatProfile={data.combat_profile}
           playerSlug={playerSlug}
         />

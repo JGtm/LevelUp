@@ -1,3 +1,27 @@
+## [2026-06-30] Graphe « Précision par arme » (Halo 5) sur la page Synthèse — COMPLÉTÉ local (à commiter)
+
+**Tâche** (retour user) : ajouter un graphe « Précision par arme » sur la page Synthèse pour Halo 5, et déclarer côté capabilities le besoin de cette donnée (dérivable des tirs tirés/touchés par arme, ou d'une précision directe si un titre la fournit). Précision « user » validée : afficher **toutes les armes tirées** (pas de seuil de volume), pourcentage = tirs au but / tirs tirés.
+
+**Constat clé** : la donnée existe DÉJÀ. La table partagée `weapon_accuracy` (`match_id, xuid, weapon_id, shots_fired, shots_landed, drops`) est peuplée pour Halo 5 (ingest `halo_5/ingest/weapon_accuracy.go` depuis les events `weapon_drop` natifs). Vérif DuckDB Go (`cmd/diag_exec` read-only) : 146 531 rows / 2 855 matchs / 57 armes ; les 3 joueurs de validation (Madina97294, JGtm, Chocoboflor) ont ~53 armes, ~43 % global. Halo Infinite ne peuple PAS cette table (pas d'events drop dans la timeline reconstruite). Il ne manquait que la lecture agrégée → service → API → chart + la capability.
+
+**Décisions techniques** :
+- **Capability à 2 niveaux** (choix user) : data-level `match.weapon.accuracy` (`games.CapWeaponAccuracy`, commentaire sur la double source tirs/précision-directe ; H5=supported, Infinite=not_exposed dans les 2 capabilities.toml + fallbacks hardcodés des adapters + compteur `AllCapabilityKeys` 16→17 + tests skeleton/parity MAJ) ; title-level `weapon_accuracy` (`title.CapWeaponAccuracy`, `knownCapabilities`, `halo_5/title.toml`, miroir TS `TITLE_CAPABILITIES` + label `FeatureUnavailable`). NE PAS confondre avec `weapon_kills` (complétude snapshot) déjà existant.
+- **Lecture** : nouveau `port.WeaponAccuracyRepository` + `WeaponAccuracyFilters` (garde anti scan-complet) calqués sur `weapon_kills`. Repo DuckDB `WeaponAccuracyRepo` : `SUM(shots_fired)/SUM(shots_landed) GROUP BY xuid, weapon_id`, réutilise `appendXUIDFilter` (projection sur WeaponKillFilters), `UBigint` (IDs filmshell hors INT64), `resolveWeaponMeta` (label EN/FR), `isTableNotFoundErr` → `ErrCapabilityNotSupported` (Infinite dégrade en nil). Lecture via `SharedReadDB()` (pas de préfixe `shared.`, ADR 0016).
+- **Service** : `buildWeaponAccuracy` (toutes armes avec label+tirs, accuracy=landed/fired en 0..1, tri précision desc) + `loadWeaponAccuracy` (best-effort, mêmes gardes/logs que `loadTopWeaponKills`) ; champ DTO `WeaponAccuracy` (omitempty) + wiring DI `WithWeaponAccuracyRepo` dans `registry_pages.go`.
+- **Front** : OpenAPI manuel + types régénérés ; `SynthesisWeaponAccuracyChart.tsx` (bar horizontale ECharts via ChartCard, `accuracy*100` en %, tooltip landed/fired, `resolveToken('chart-series-1')`) ; clé i18n `synthesis.charts.weapon_accuracy_title` (FR « Précision par arme » / EN « Accuracy by weapon ») + manifests régénérés ; montage gaté par `useCapability('weapon_accuracy')` (masqué pour Infinite).
+
+**Résultats observés** : Go `build ./...` OK ; tests unitaires games/service/port/domain/api OK (dont nouveaux `buildWeaponAccuracy`/`Validate`) ; intégration DuckDB nouveaux `TestWeaponAccuracyRepo_*` OK (agrégation SQL réelle, résolution gamertag→xuid, label, capability absente). Front `tsc -b` OK, eslint 0 erreur. Piège résolu côté fixture test : le repo lit `weapon_accuracy` sans préfixe → il fallait une vue bridge top-level `CREATE VIEW weapon_accuracy AS SELECT * FROM shared.weapon_accuracy` (comme `weapon_kills`/`v_weapon_kills`), sinon « Table does not exist » (le harness simule le main du fichier partagé via des vues bridge sur le schéma `shared`).
+
+**Statut** : COMPLÉTÉ local sur branche `feat/h5-weapon-accuracy-synthesis`. Pas encore commité (attente autorisation user).
+
+**Correction des 10 échecs d'intégration PRÉ-EXISTANTS** (demande user « corrige les preexistants », confirmés indépendants de la feature en les rejouant sur le fixture de base) — tous = schema-drift des fixtures de test `internal/platform/duckdb`, queries prod correctes :
+- **8x HomeRepo LoadSpartanIdentity + GetXPHistory** : les queries `Q26cHomeSpartanIdentity` et `Q7CareerXPHistory` filtrent `WHERE xuid || '' = ?` (isolation multi-joueur), mais les 2 inserts `career_progression` du fixture (base `seedPlayerSchema` + test FallsBack) omettaient la colonne `xuid` (NULL → 0 row match → `ARG_MAX(rank)` NULL → scan int crash / 0 row XP). Fix : seed `xuid=pTestXUID`. (`Q6CareerLatestRank` n'a pas ce filtre → ses tests passaient déjà.)
+- **CompareRepo GetLocalStats** : la query sélectionne `AVG(mp.kda)` mais le fixture local `shared.match_participants` (repos_extra_test.go) n'avait pas la colonne `kda` → Binder Error. Fix : ajout `kda DOUBLE` au schéma fixture (2 occurrences).
+
+Suite intégration DuckDB complète : `ok` (0 échec). Gate standard service/games/domain/duckdb : `ok`.
+
+---
+
 ## [2026-06-30] Relations « Rythme des rencontres » : tranches 1h + fuseau utilisateur + couleur neutre — COMPLÉTÉ local (à commiter)
 
 **Tâche** (retour user) : sur Communauté > Relations, la heatmap « Rythme des rencontres » regroupait les matchs en 6 grandes tranches (Nuit/Matin/Midi/…). Demande : passer à des **tranches de 1 heure (24 créneaux 0h→23h)**. Puis deux ajouts user : utiliser **le fuseau de l'utilisateur** (pas l'UTC) ; et changer la **couleur** (la rampe rouge→vert sous-entendait « mauvais » alors que c'est juste de la fréquence) — avec compatibilité accessibilité.
