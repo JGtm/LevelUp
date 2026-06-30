@@ -1,3 +1,24 @@
+## [2026-06-30] Citations/Commendations bilingues selon la locale (H5 + Infinite) — COMPLÉTÉ local ; code à déployer + data prod Infinite à peupler
+
+**Contexte** : suite au re-seed H5 (29/06) qui a peuplé `commendation_definitions.name_fr` en vrai français, les titres s'affichaient en FR **même en UI anglaise**. Cause : lecteurs de noms **pas locale-aware** (`COALESCE(name_fr, name_en)` figé). `ctxkeys.WithLocale` existait mais n'était **jamais câblé** → `ctxkeys.Locale` retournait toujours "fr".
+
+**Infra locale (racine)** : middleware `TitleExtractor` lit aussi `X-LevelUp-Locale` (header déjà posé par le front via `setApiLocale`) → `ctxkeys.WithLocale`. Couvre les chemins canoniques ID-keyés (`LoadMatchDetail`) sans threader la locale dans chaque signature.
+
+**H5 commendations** : `Halo5CommendationDefSource.LookupCommendations` lit `ctxkeys.Locale` → EN=name_en, FR=name_fr (fallback croisé). Tests FR/EN + test middleware.
+
+**Infinite citations** (= copies de commendations H5, seul le calcul diffère — confirmé user) :
+- Colonne `citation_mappings.citation_name_display_en` (migration `add_citation_name_display_en` + ALTER seed). Lecteur `LoadCitationMappings` (Q34) locale-aware (EN→display_en, fallback FR).
+- EN rempli via analyse réelle (jointure citations↔commendations H5 par nom FR + médailles Infinite) : **38** officiels H5, **24** maîtrises d'armes « <arme EN> Mastery », **3** composites, reste dérivé du `Norm` (encode déjà l'anglais). Map `citationDisplayEN` (88) + `citationDisplayENOr` au seed. FR user validé (les écarts = spécifiques Infinite, pas erreurs de trad).
+- Re-seed local OK : `levelup seed citation-mappings` → 88 MAJ.
+
+**Vérif** : `go build ./...` (CGO) + `go vet` clean ; tests intégration citations (FR/EN) + middleware + H5 verts.
+
+**Reste / prudence prod** : (1) déployer le code (merge main) ; (2) **data prod Infinite** SURGICALE (NE PAS écraser tout le metadata.duckdb Infinite — il a `asset_translations` UGC runtime) → `levelup seed citation-mappings` en conteneur one-off, serveur arrêté. H5 data déjà uploadée le 29/06. Lecteur retombe sur FR tant que display_en vide → déploiement code sans régression. (3) vérifier démo (H5) + prod (Infinite) EN/FR.
+
+**Note** : main avait avancé (travail parallèle : spartan-customizer picker, demo, search, i18n) ; mes 11 fichiers sont basés proprement sur ce main, sans chevauchement.
+
+---
+
 ## [2026-06-29] Spartan customizer — picker de couleur collant au scroll — COMPLÉTÉ + vérifié
 
 **Tâche** (retour user) : la grille de la modale (300+ vignettes) défile beaucoup ; le picker de couleur disparaissait au scroll. Le rendre collant pour ajuster les couleurs tout en parcourant les motifs.
