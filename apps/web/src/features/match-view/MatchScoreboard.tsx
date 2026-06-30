@@ -280,7 +280,16 @@ function TeamScoreboard({
       cell: (ctx) => {
         const url = ctx.row.original.skill_rank?.icon_url
         const label = ctx.row.original.skill_rank?.tier_label
-        if (!url) return <span className="font-mono text-muted-foreground">—</span>
+        // Pas d'icône mais un palier connu (CSR Halo 5 sans badge résolu) → afficher le
+        // libellé de palier plutôt qu'un « — » (cf. signalement #2). « — » réservé au cas
+        // sans icône NI palier.
+        if (!url) {
+          return label ? (
+            <span className="font-mono text-2xs">{label}</span>
+          ) : (
+            <span className="font-mono text-muted-foreground">—</span>
+          )
+        }
         return (
           <img
             src={url}
