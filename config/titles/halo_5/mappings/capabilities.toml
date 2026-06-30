@@ -37,3 +37,6 @@ schema_version = 1
 "match.events.timeline"  = "supported" # natif /h5/matches/{id}/events
 "match.killfeed.per_kill" = "supported" # KillerWeaponStockId par event de kill
 "match.events.spatial"   = "supported" # KillerWorldLocation/VictimWorldLocation x,y,z
+# Précision par arme : ShotsFired/ShotsLanded natifs des events weapon_drop,
+# agrégés par (xuid, weapon_id) dans la table weapon_accuracy (somme = carnage).
+"match.weapon.accuracy"  = "supported" # natif weapon_drop → table weapon_accuracy

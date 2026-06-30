@@ -15660,6 +15660,11 @@ components:
                   $ref: '#/components/schemas/SynthesisRoleKillEntry'
               type: array
               nullable: true
+          weapon_accuracy:
+              items:
+                  $ref: '#/components/schemas/SynthesisWeaponAccuracyEntry'
+              type: array
+              nullable: true
           top_weeks:
               items:
                   $ref: '#/components/schemas/TopWeekEntry'
@@ -15717,6 +15722,26 @@ components:
       required:
           - role
           - kills
+      type: object
+    SynthesisWeaponAccuracyEntry:
+      additionalProperties: false
+      properties:
+          accuracy:
+              format: double
+              type: number
+          label:
+              type: string
+          shots_fired:
+              format: int64
+              type: integer
+          shots_landed:
+              format: int64
+              type: integer
+      required:
+          - label
+          - shots_fired
+          - shots_landed
+          - accuracy
       type: object
     SynthesisWeaponKillEntry:
       additionalProperties: false

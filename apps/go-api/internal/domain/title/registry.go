@@ -86,6 +86,15 @@ const (
 	// cette cap est le pendant déclaratif dans availableTitles[].capabilities.
 	CapDamageTaken Capability = "damage_taken"
 
+	// CapWeaponAccuracy — le titre fournit la PRÉCISION PAR ARME (tirs au but /
+	// tirs tirés par arme). Halo 5 : oui (ShotsFired/ShotsLanded natifs des events
+	// weapon_drop → table weapon_accuracy) ; Halo Infinite : non (pas d'events
+	// drop, table non peuplée). Absente ⇒ le front masque le graphe « Précision
+	// par arme » de la page Synthèse. Pendant title-level de la capability
+	// data-level games.CapWeaponAccuracy ("match.weapon.accuracy"). À NE PAS
+	// confondre avec CapWeaponKills (kills par arme, complétude snapshot).
+	CapWeaponAccuracy Capability = "weapon_accuracy"
+
 	// CapSpartanCustomizer — le titre fournit des masques d'emblèmes/nameplates
 	// recolorisables côté client (personnalisation Spartan : choix d'emblème + couleurs
 	// primaire/secondaire/tertiaire, rendu live). Halo 5 only (masques extraits du jeu ;

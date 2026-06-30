@@ -27,6 +27,7 @@ export const TITLE_CAPABILITIES = [
   'native_kill_mechanics',
   'team_mmr',
   'damage_taken',
+  'weapon_accuracy',
   'spartan_customizer',
 ] as const
 

@@ -8372,6 +8372,7 @@ export interface components {
             squad_kpis: components["schemas"]["SynthesisKPIs"];
             top_weapon_kills?: components["schemas"]["SynthesisWeaponKillEntry"][] | null;
             kills_by_role?: components["schemas"]["SynthesisRoleKillEntry"][] | null;
+            weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
             top_weeks: components["schemas"]["TopWeekEntry"][] | null;
         };
         SynthesisScope: {
@@ -8388,6 +8389,15 @@ export interface components {
             /** Format: int64 */
             kills: number;
             role: string;
+        };
+        SynthesisWeaponAccuracyEntry: {
+            /** Format: double */
+            accuracy: number;
+            label: string;
+            /** Format: int64 */
+            shots_fired: number;
+            /** Format: int64 */
+            shots_landed: number;
         };
         SynthesisWeaponKillEntry: {
             /** Format: int64 */

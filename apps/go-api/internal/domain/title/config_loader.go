@@ -43,6 +43,7 @@ var knownCapabilities = map[Capability]struct{}{
 	CapWorldLeaderboard:    {},
 	CapNativeKillMechanics: {},
 	CapWeaponKills:         {},
+	CapWeaponAccuracy:      {},
 	CapTeamMMR:             {},
 	CapDamageTaken:         {},
 	CapSpartanCustomizer:   {},

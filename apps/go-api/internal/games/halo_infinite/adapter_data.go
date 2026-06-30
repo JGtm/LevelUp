@@ -187,6 +187,9 @@ func fallbackCapabilities() games.CapabilityMap {
 		games.CapMatchEventsTimeline:  games.CapDegraded,
 		games.CapMatchKillfeedPerKill: games.CapDegraded,
 		games.CapMatchEventsSpatial:   games.CapNotExposed,
+		// Précision par arme : pas d'events weapon_drop dans la timeline
+		// reconstruite → table weapon_accuracy non peuplée (cf. capabilities.toml).
+		games.CapWeaponAccuracy: games.CapNotExposed,
 	}
 }
 

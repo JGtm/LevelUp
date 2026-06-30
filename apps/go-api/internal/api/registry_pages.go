@@ -841,7 +841,8 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 	svc := service.NewSynthesisService(duckdb.NewSynthesisRepo(pdb)).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithPersonalScoreAwardsRepo(duckdb.NewPersonalScoreAwardsRepo(pdb), pdb.XUID).
-		WithWeaponKillsRepo(duckdb.NewWeaponKillsRepo(pdb))
+		WithWeaponKillsRepo(duckdb.NewWeaponKillsRepo(pdb)).
+		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}

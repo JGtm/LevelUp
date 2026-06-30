@@ -227,6 +227,36 @@ func buildKillsByRole(rows []port.WeaponKillRow) []domain.SynthesisRoleKillEntry
 	return out
 }
 
+// buildWeaponAccuracy construit le classement précision par arme : TOUTES les
+// armes effectivement tirées (Label résolu ET ShotsFired > 0 — aucun seuil de
+// volume, conformément à la demande utilisateur). Accuracy = landed / fired en
+// unité 0..1. Tri par précision décroissante (tie-break Label alpha pour un ordre
+// stable). nil si aucune arme valide (→ champ omis de la réponse).
+func buildWeaponAccuracy(rows []port.WeaponAccuracyRow) []domain.SynthesisWeaponAccuracyEntry {
+	out := make([]domain.SynthesisWeaponAccuracyEntry, 0, len(rows))
+	for _, r := range rows {
+		if r.Label == "" || r.ShotsFired <= 0 {
+			continue
+		}
+		out = append(out, domain.SynthesisWeaponAccuracyEntry{
+			Label:       r.Label,
+			ShotsFired:  r.ShotsFired,
+			ShotsLanded: r.ShotsLanded,
+			Accuracy:    float64(r.ShotsLanded) / float64(r.ShotsFired),
+		})
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Accuracy != out[j].Accuracy {
+			return out[i].Accuracy > out[j].Accuracy
+		}
+		return out[i].Label < out[j].Label
+	})
+	return out
+}
+
 // buildCombatProfileFromCanonical agrège OC + DR depuis les rows canoniques filtrés
 // et construit le CombatProfileBlock (descripteurs gérés par ClassifyCombatProfile).
 // Retourne nil si aucun row valide (matchCount == 0).

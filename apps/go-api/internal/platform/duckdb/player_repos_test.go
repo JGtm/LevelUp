@@ -180,6 +180,11 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			SELECT match_id, xuid, weapon_id, kills,
 			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM shared.weapon_kills`,
+		// weapon_accuracy : précision par arme (Halo 5 natif). Schéma aligné sur
+		// la migration prod steps_shared_core.go (WeaponAccuracyRepo).
+		`CREATE TABLE shared.weapon_accuracy (
+			match_id VARCHAR NOT NULL, xuid VARCHAR NOT NULL, weapon_id UBIGINT NOT NULL,
+			shots_fired INTEGER DEFAULT 0, shots_landed INTEGER DEFAULT 0, drops INTEGER DEFAULT 0)`,
 		`CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
 		`CREATE VIEW shared.v_killer_victim_full AS
 			SELECT match_id, xuid::VARCHAR AS killer_xuid, gamertag::VARCHAR AS killer_gamertag,
@@ -211,6 +216,9 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 		// (et autres queries SharedReader) ciblent weapon_kills sans préfixe
 		// shared. Sans cette vue, "Table with name weapon_kills does not exist".
 		`CREATE VIEW weapon_kills AS SELECT * FROM shared.weapon_kills`,
+		// Bridge top-level pour WeaponAccuracyRepo (lit weapon_accuracy sans préfixe
+		// shared, comme en prod où la table vit dans le main du fichier partagé).
+		`CREATE VIEW weapon_accuracy AS SELECT * FROM shared.weapon_accuracy`,
 		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
 		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
 		`CREATE VIEW highlight_events AS SELECT * FROM shared.highlight_events`,
@@ -352,9 +360,9 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			VALUES (?,?,?,?,?,?,?)`,
 			[]interface{}{"m1", 85.5, 1, "Session 1", 3, false, false}},
 		{`INSERT INTO career_progression
-			(rank,current_xp,recorded_at,rank_name,rank_tier,xp_for_next_rank,xp_total,is_max_rank,adornment_path,spartan_id,banner_image_url,emblem_image_url,backdrop_image_url)
-			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-			[]interface{}{25, 5000, "2025-01-10 12:00:00+00",
+			(xuid,rank,current_xp,recorded_at,rank_name,rank_tier,xp_for_next_rank,xp_total,is_max_rank,adornment_path,spartan_id,banner_image_url,emblem_image_url,backdrop_image_url)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			[]interface{}{pTestXUID, 25, 5000, "2025-01-10 12:00:00+00",
 				"Platinum 1", "Platinum", 10000, 50000, false, "Progression/RewardTracks/CareerRanks/platinum1-adornment.png", "JGTM", "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/progression/Nameplates/test-banner.png", "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/progression/Emblems/test-emblem.png", "https://gamecms-hacs.svc.halowaypoint.com/hi/Waypoint/file/images/backdrops/test-backdrop.png"}},
 		{`INSERT INTO match_skill_rank VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			[]interface{}{"m1", "CSR", 1250.5, 50.0, "Gold", "Or", 3, "Gold 3", nil, "ranked", nil, "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00"}},
@@ -547,6 +555,11 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			SELECT match_id, xuid, weapon_id, kills,
 			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM shared.weapon_kills`,
+		// weapon_accuracy : précision par arme (Halo 5 natif). Schéma aligné sur
+		// la migration prod steps_shared_core.go (WeaponAccuracyRepo).
+		`CREATE TABLE shared.weapon_accuracy (
+			match_id VARCHAR NOT NULL, xuid VARCHAR NOT NULL, weapon_id UBIGINT NOT NULL,
+			shots_fired INTEGER DEFAULT 0, shots_landed INTEGER DEFAULT 0, drops INTEGER DEFAULT 0)`,
 		// shared.killer_victim_pairs utilisée par Q26 (top encounters) et Q27
 		// (rivals). (ADR 0016) : ajouté pour SharedReader migration.
 		`CREATE TABLE shared.killer_victim_pairs (
@@ -578,6 +591,9 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 		// (et autres queries SharedReader) ciblent weapon_kills sans préfixe
 		// shared. Sans cette vue, "Table with name weapon_kills does not exist".
 		`CREATE VIEW weapon_kills AS SELECT * FROM shared.weapon_kills`,
+		// Bridge top-level pour WeaponAccuracyRepo (lit weapon_accuracy sans préfixe
+		// shared, comme en prod où la table vit dans le main du fichier partagé).
+		`CREATE VIEW weapon_accuracy AS SELECT * FROM shared.weapon_accuracy`,
 		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
 		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
 		`CREATE VIEW highlight_events AS SELECT * FROM shared.highlight_events`,
@@ -977,9 +993,9 @@ func TestHomeRepo_LoadSpartanIdentity_FallsBackToLatestNonEmptyIdentityAssets(t 
 	ctx := context.Background()
 	if _, err := pdb.Player.Exec(ctx, `
 		INSERT INTO career_progression
-			(rank,current_xp,recorded_at,rank_name,rank_tier,xp_for_next_rank,xp_total,is_max_rank,adornment_path,spartan_id,banner_image_url,emblem_image_url,backdrop_image_url)
-		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-	`, 26, 6400, "2025-01-11 12:00:00+00", "Platinum 2", "Platinum", 12000, 62000, false, "", "", "", "", ""); err != nil {
+			(xuid,rank,current_xp,recorded_at,rank_name,rank_tier,xp_for_next_rank,xp_total,is_max_rank,adornment_path,spartan_id,banner_image_url,emblem_image_url,backdrop_image_url)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+	`, pTestXUID, 26, 6400, "2025-01-11 12:00:00+00", "Platinum 2", "Platinum", 12000, 62000, false, "", "", "", "", ""); err != nil {
 		t.Fatalf("INSERT newer career_progression: %v", err)
 	}
 

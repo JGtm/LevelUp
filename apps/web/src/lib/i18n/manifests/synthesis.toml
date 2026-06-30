@@ -230,6 +230,10 @@ en = "Kills by weapon"
 fr = "Frags par type d'arme"
 en = "Kills by weapon role"
 
+[synthesis.charts.weapon_accuracy_title]
+fr = "Précision par arme"
+en = "Accuracy by weapon"
+
 [synthesis.charts.role_automatic]
 fr = "Automatique"
 en = "Automatic"

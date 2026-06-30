@@ -1345,11 +1345,17 @@ export interface SynthesisPageResponse {
   top_weapon_kills?: SynthesisWeaponKillEntry[]
   // Frags par rôle de combat (registre d'armes) — title-agnostic
   kills_by_role?: SynthesisRoleKillEntry[]
+  // Précision par arme (Halo 5 natif) — toutes les armes tirées, accuracy 0..1.
+  // Omis pour les titres qui ne peuplent pas weapon_accuracy (Infinite).
+  weapon_accuracy?: SynthesisWeaponAccuracyEntry[]
   // PLAN_COMBAT_PROFILE_WIRING Phase 1
   combat_profile?: CombatProfileBlock | null
 }
 
 export type SynthesisWeaponKillEntry = components['schemas']['SynthesisWeaponKillEntry']
+
+// Précision par arme — accuracy en unité 0..1 (le composant multiplie par 100).
+export type SynthesisWeaponAccuracyEntry = components['schemas']['SynthesisWeaponAccuracyEntry']
 
 // Frags par rôle de combat (registre d'armes). Shimé sur le contrat OpenAPI
 // (le schéma SynthesisRoleKillEntry y est désormais présent). role ∈
