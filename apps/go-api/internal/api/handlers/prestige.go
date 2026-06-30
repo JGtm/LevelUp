@@ -620,7 +620,10 @@ func (h *PrestigeHandler) playerDirectory(ctx context.Context) (slugByXUID, xuid
 			}
 		}
 		if p.PlayerSlug != "" {
-			xuidBySlug[p.PlayerSlug] = p.XUID
+			// Clé normalisée minuscule : le slug d'URL (body.CreatedBy) peut différer
+			// de casse du slug db_profiles → sinon la résolution du créateur échoue en
+			// unknown_creator silencieux (cf. lookup CreateSquad).
+			xuidBySlug[strings.ToLower(p.PlayerSlug)] = p.XUID
 		}
 	}
 	return slugByXUID, xuidBySlug, gamertagByXUID, nil
@@ -672,7 +675,7 @@ func (h *PrestigeHandler) CreateSquad(ctx context.Context, in *rawBodyInput) (*s
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "directory_error", err.Error())
 	}
-	creatorXUID := xuidBySlug[body.CreatedBy]
+	creatorXUID := xuidBySlug[strings.ToLower(body.CreatedBy)]
 	if creatorXUID == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "unknown_creator",
 			"created_by introuvable parmi les joueurs de l'app")
