@@ -97,3 +97,35 @@ func TestTitleExtractor_ComingSoonHeader_Resolved(t *testing.T) {
 			"futur_titre", captured)
 	}
 }
+
+// La locale UI est extraite du header X-LevelUp-Locale et placée dans le contexte
+// (ctxkeys.Locale) — alimente les lectures localisées (noms de commendations H5).
+func TestTitleExtractor_LocaleFromHeader(t *testing.T) {
+	cases := []struct {
+		header string
+		want   string
+	}{
+		{"en", "en"},
+		{"en-US", "en"},
+		{"fr", "fr"},
+		{"fr-FR", "fr"},
+		{"", "fr"},   // absent → défaut fr
+		{"de", "fr"}, // inconnue → défaut fr
+	}
+	mw := middleware.TitleExtractor(titlePkg.NewRegistry())
+	for _, c := range cases {
+		var captured string
+		handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			captured = ctxkeys.Locale(r.Context())
+			w.WriteHeader(http.StatusOK)
+		}))
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		if c.header != "" {
+			req.Header.Set("X-LevelUp-Locale", c.header)
+		}
+		handler.ServeHTTP(httptest.NewRecorder(), req)
+		if captured != c.want {
+			t.Errorf("X-LevelUp-Locale=%q → locale %q, want %q", c.header, captured, c.want)
+		}
+	}
+}

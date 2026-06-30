@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"strings"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -28,8 +29,11 @@ func NewHalo5CommendationDefSource(meta *sql.DB) *Halo5CommendationDefSource {
 }
 
 // LookupCommendations résout nom + icône pour les UUID demandés (dédupliqués). Les
-// IDs inconnus sont absents de la map retournée. Le nom préfère la traduction FR
-// (name_fr, = name_en tant qu'aucun override FR n'est seedé) puis l'EN.
+// IDs inconnus sont absents de la map retournée. Le nom est résolu selon la LOCALE
+// du contexte (header X-LevelUp-Locale → ctxkeys.Locale, posé par le middleware
+// TitleExtractor) : EN → name_en (fallback name_fr) ; FR/défaut → name_fr (fallback
+// name_en). Sans ce câblage locale-aware, les noms seedés en FR par l'API
+// (cf. cmd/h5-metadata-fetch) s'afficheraient en français même en UI anglaise.
 func (s *Halo5CommendationDefSource) LookupCommendations(ctx context.Context, ids []string) (map[string]canonical.CommendationDefinition, error) {
 	out := make(map[string]canonical.CommendationDefinition)
 	if s == nil || s.meta == nil || len(ids) == 0 {
@@ -52,8 +56,14 @@ func (s *Halo5CommendationDefSource) LookupCommendations(ctx context.Context, id
 	if len(args) == 0 {
 		return out, nil
 	}
+	// Expression de nom locale-aware : EN privilégie name_en, FR (défaut) name_fr,
+	// avec repli sur l'autre langue si la colonne préférée est vide.
+	nameExpr := `COALESCE(NULLIF(name_fr, ''), name_en)`
+	if ctxkeys.Locale(ctx) == "en" {
+		nameExpr = `COALESCE(NULLIF(name_en, ''), name_fr)`
+	}
 	q := `SELECT commendation_id,
-	             COALESCE(NULLIF(name_fr, ''), name_en) AS name,
+	             ` + nameExpr + ` AS name,
 	             COALESCE(icon_url, '') AS icon_url,
 	             COALESCE(category, '') AS category,
 	             COALESCE(tier_targets, '') AS tier_targets
