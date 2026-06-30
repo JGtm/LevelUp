@@ -31233,3 +31233,21 @@ push à la demande de l'utilisateur.
   intégration), front typecheck/lint (0 warning)/vitest (49 passed).
 - **Branche mergée avec `origin/main`** (4 commits amont, 0 conflit code). `main` NON touchée :
   pas de déploiement prod sans accord explicite.
+
+**Addendum 2 — déploiement prod FAIT + 2 bugs média corrigés** :
+- **Déployé** (push `main`) : 3 jobs verts ; la regen prod a chargé le manifeste figé
+  (`frozen=true`, Infinite 58 / H5 136, DemoPlayer/2/3 seedés). Démo prod figée + anonymisée.
+- **Bug média A (Infinite)** : `extractDemoMedia` posait `media_files.id = nom de fichier`
+  (string) → `insertDemoMediaRow` CAST l'id en BIGINT pour `media_match_associations_history`
+  → échec « convert string to INT64 » → 0 média Infinite. Fix : `id = numericMediaID(v.Name)`
+  (comme H5). Régression du refactor média append-only (mergé depuis main), pas du présent lot.
+- **Bug média B (H5)** : `extractDemoMediaH5` traitait `media_files.file_path` comme ABSOLU
+  (`fileExists(file_path)`), mais la prod le stocke RELATIF (`JGtm/clip.mp4`) → « source mp4
+  absente » alors que les 84 clips existent dans `/opt/levelup/data/media/JGtm/`. Fix :
+  `resolveMediaPath(mediaBaseDir, file_path)` (réancrage sur `RepoRoot/data/media` si relatif ;
+  absolu inchangé → rétrocompat local). Vérifié via ssh : clips présents au bon chemin.
+- **Tests** : `TestResolveMediaPath`, `TestNumericMediaID_BigintCastable` (unit) +
+  `TestExtractDemoMediaH5_RelativePathAndNumericID` (intégration, valide les 2 fixes
+  bout-en-bout sur le vrai schéma de sortie).
+- **Prochaine étape** : redéployer → vérifier que la regen prod copie média > 0 (Infinite +
+  H5). Les clips H5 sont déjà sur le VPS ; aucun upload requis.

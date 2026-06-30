@@ -7,12 +7,66 @@ package ops
 import (
 	"context"
 	"database/sql"
+	"os"
 	"path/filepath"
 	"sort"
 	"testing"
 
 	titlePkg "levelup/go-api/internal/domain/title"
 )
+
+// TestExtractDemoMediaH5_RelativePathAndNumericID valide les DEUX fixes média :
+//   - Fix B : file_path RELATIF ("JGtm/clip.mp4", cas prod) réancré sur mediaBaseDir →
+//     le clip est trouvé et copié (avant : « source mp4 absente »).
+//   - Fix A : insertDemoMediaRow écrit dans le shared_social de SORTIE (vrai schéma,
+//     media_match_associations_history.media_file_id BIGINT) avec un id NUMÉRIQUE
+//     (numericMediaID) → le CAST AS BIGINT réussit (avant côté Infinite : id = nom → échec).
+func TestExtractDemoMediaH5_RelativePathAndNumericID(t *testing.T) {
+	dir := t.TempDir()
+	mediaBase := filepath.Join(dir, "media")
+	clipName := "Halo_5_Guardians-2018-08-08_22h33.mp4"
+	clipRel := filepath.ToSlash(filepath.Join("JGtm", clipName)) // file_path stocké relatif
+	clipAbs := filepath.Join(mediaBase, "JGtm", clipName)
+	if err := os.MkdirAll(filepath.Dir(clipAbs), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(clipAbs, []byte("fake-mp4"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Source shared_social : 1 clip H5 associé au match "m-h5", file_path RELATIF.
+	ssSrc := filepath.Join(dir, "ss_src.duckdb")
+	ss, err := sql.Open("duckdb", ssSrc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mustExec(t, ss, `CREATE TABLE media_files (id VARCHAR, file_name VARCHAR, file_path VARCHAR, thumbnail_path VARCHAR, capture_start_utc TIMESTAMP)`)
+	mustExec(t, ss, `CREATE SEQUENCE mmah_seq START 1`)
+	mustExec(t, ss, `CREATE TABLE media_match_associations_history (
+		id BIGINT PRIMARY KEY DEFAULT nextval('mmah_seq'), media_file_id VARCHAR NOT NULL,
+		match_id VARCHAR NOT NULL, is_active BOOLEAN NOT NULL DEFAULT TRUE)`)
+	mustExec(t, ss, `CREATE VIEW media_match_associations_latest AS
+		SELECT media_file_id, match_id FROM media_match_associations_history WHERE is_active`)
+	mustExec(t, ss, `INSERT INTO media_files (id, file_name, file_path, thumbnail_path, capture_start_utc)
+		VALUES ('mf1', '`+clipName+`', '`+clipRel+`', '', NULL)`)
+	mustExec(t, ss, `INSERT INTO media_match_associations_history (media_file_id, match_id) VALUES ('mf1', 'm-h5')`)
+	_ = ss.Close()
+
+	outSocial := filepath.Join(dir, "ss_out.duckdb")
+	outMedia := filepath.Join(dir, "out_media")
+
+	n, err := extractDemoMediaH5(context.Background(), ssSrc, outSocial, outMedia,
+		[]string{"m-h5"}, "demo-player", 5, mediaBase)
+	if err != nil {
+		t.Fatalf("extractDemoMediaH5: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("clips copiés = %d, want 1 (chemin relatif réancré + insert numérique OK)", n)
+	}
+	if !fileExists(filepath.Join(outMedia, clipName)) {
+		t.Error("le clip doit être copié dans outMediaDir")
+	}
+}
 
 // TestSeedDemo_FrozenCorpusIsByteStable : avec un manifeste figé sur {m2, m3}, le
 // corpus reste {m2, m3} — même quand m1 est plus récent ET même après insertion d'un
