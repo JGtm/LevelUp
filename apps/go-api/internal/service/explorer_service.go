@@ -315,7 +315,7 @@ func (s *ExplorerService) GetCommonMatches(
 					fmt.Errorf("ExplorerService: gamertag %q introuvable (local + live): %w", otherGamertag, lerr)
 			}
 			otherXUID = live
-			slog.DebugContext(ctx, "explorer_gamertag_resolved_live", "gamertag", otherGamertag, "xuid", live)
+			slog.InfoContext(ctx, "explorer_gamertag_resolved_live", "gamertag", otherGamertag, "xuid", live)
 		default:
 			return domain.ExplorerPlayerQueryResponse{},
 				fmt.Errorf("ExplorerService: résolution gamertag %q: %w", otherGamertag, err)

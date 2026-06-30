@@ -73,6 +73,31 @@ func TestSeedDemo_FrozenCorpusIsByteStable(t *testing.T) {
 	assertSameSet(t, "run B (après drift)", res2.MatchIDs, []string{"m2", "m3"})
 }
 
+// TestSelectSquadSessionCorpus_FallbackOnError : si la requête primaire (jointure
+// table `sessions`) ÉCHOUE — cas Halo 5 où session_id est VARCHAR côté enrichment vs
+// INTEGER côté `sessions`, simulé ici en supprimant la table `sessions` — on bascule
+// sur le fallback biggest au lieu de renvoyer 0 session escouade (régression du fix H5).
+func TestSelectSquadSessionCorpus_FallbackOnError(t *testing.T) {
+	_, srcPlayer, _, _ := seedSourceDBs(t)
+
+	db, err := sql.Open("duckdb", srcPlayer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Marque des sessions escouade puis casse la requête primaire (drop `sessions`).
+	mustExec(t, db, `UPDATE player_match_enrichment SET is_with_friends = TRUE WHERE session_id = 'sess1'`)
+	mustExec(t, db, `DROP TABLE IF EXISTS sessions`)
+	_ = db.Close()
+
+	out, err := selectSquadSessionCorpus(context.Background(), srcPlayer, 3)
+	if err != nil {
+		t.Fatalf("le fallback doit absorber l'échec de la requête primaire, got %v", err)
+	}
+	if len(out) == 0 {
+		t.Error("fallback biggest attendu : doit retourner les matchs des sessions escouade")
+	}
+}
+
 // TestSeedDemo_NoManifest_StaysDynamic : sans manifeste, le comportement historique
 // (sélection « N récents ») est préservé — res.Frozen reste false.
 func TestSeedDemo_NoManifest_StaysDynamic(t *testing.T) {

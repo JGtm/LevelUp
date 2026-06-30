@@ -252,7 +252,7 @@ func (s *CompareService) loadPlayerB(ctx context.Context, targetGamertag string)
 		// fallback Waypoint gamertag-only (B s'affiche sans rang/CSR).
 		if live, lerr := s.liveResolver.ResolveXUID(ctx, targetGamertag); lerr == nil && live != "" {
 			xuidB = live
-			slog.DebugContext(ctx, "compare_player_b_resolved_live", "gamertag", targetGamertag, "xuid", live)
+			slog.InfoContext(ctx, "compare_player_b_resolved_live", "gamertag", targetGamertag, "xuid", live)
 		} else if lerr != nil {
 			logBestEffortErr(ctx, "CompareService: résolution live joueur B", lerr, "gamertag", targetGamertag)
 		}

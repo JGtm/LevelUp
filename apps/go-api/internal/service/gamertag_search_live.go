@@ -97,7 +97,9 @@ func (s *LiveFallbackGamertagSearch) Search(ctx context.Context, query string) (
 	if hasXUID(results, xuid) {
 		return results, nil // déjà présent localement sous un autre libellé
 	}
-	slog.DebugContext(ctx, "gamertag_live_fallback_hit", "q", q, "xuid", xuid)
+	// Info : événement rare (gaté) et notable — un joueur JAMAIS croisé résolu via
+	// l'API live. Visible dans logs/service.log (observabilité de la feature + usage API).
+	slog.InfoContext(ctx, "gamertag_live_fallback_hit", "q", q, "xuid", xuid)
 	return append(results, domain.GamertagSearchResult{
 		Gamertag:   q,
 		XUID:       xuid,
