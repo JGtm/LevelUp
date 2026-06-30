@@ -207,10 +207,15 @@ export function GamertagCombobox({
     }
     if (e.key === 'Enter') {
       e.preventDefault()
-      const first =
-        configured[0]?.gamertag ?? frequent[0]?.gamertag ?? remote[0]?.gamertag
-      if (first) add(first)
-      else if (canAddFree) add(trimmed)
+      // Texte tapé hors suggestions → ajoute le texte exact (saisie libre).
+      // Sinon, prend la 1re suggestion priorisée (configured > frequent > remote).
+      if (canAddFree) {
+        add(trimmed)
+      } else {
+        const first =
+          configured[0]?.gamertag ?? frequent[0]?.gamertag ?? remote[0]?.gamertag
+        if (first) add(first)
+      }
       return
     }
     if (e.key === 'Backspace' && query === '' && selected.length > 0) {

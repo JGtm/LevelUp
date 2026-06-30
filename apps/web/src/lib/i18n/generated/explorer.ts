@@ -144,6 +144,7 @@ export const explorerManifest = {
   "explorer.search.loading": { fr: "Recherche…", en: "Searching…" },
   "explorer.search.no_results": { fr: "Aucun joueur trouvé pour \"{query}\"", en: "No player found for \"{query}\"" },
   "explorer.search.placeholder": { fr: "Rechercher un joueur…", en: "Search a player…" },
+  "explorer.search.search_for": { fr: "Rechercher \"{query}\"", en: "Search \"{query}\"" },
   "explorer.sort.delta_mmr_desc": { fr: "Delta MMR (plus haut)", en: "MMR delta (highest)" },
   "explorer.sort.kda_desc": { fr: "FDA (meilleur)", en: "KDA (best)" },
   "explorer.sort.kills_desc": { fr: "Frags (plus)", en: "Kills (most)" },

@@ -72,4 +72,30 @@ describe('GamertagSearchInput', () => {
       { timeout: 2000 },
     )
   })
+
+  // ─── Harmonisation Face à Face : recherche d'un joueur inconnu ───────────────
+
+  it('affiche le bouton "Rechercher" pour un gamertag hors suggestions, et appelle onSelect au clic', () => {
+    const onSelect = vi.fn()
+    renderWithProviders(<GamertagSearchInput onSelect={onSelect} />)
+    const input = screen.getByPlaceholderText(/Rechercher un joueur/i)
+    fireEvent.focus(input)
+    // 'Zz' ne correspond à aucun joueur configuré (Alpha/Bravo) → saisie libre.
+    fireEvent.change(input, { target: { value: 'Zz' } })
+
+    const button = screen.getByText(/Rechercher "Zz"/)
+    expect(button).toBeInTheDocument()
+    fireEvent.click(button)
+    expect(onSelect).toHaveBeenCalledWith('Zz')
+  })
+
+  it('Entrée recherche le texte exact quand le joueur est inconnu', () => {
+    const onSelect = vi.fn()
+    renderWithProviders(<GamertagSearchInput onSelect={onSelect} />)
+    const input = screen.getByPlaceholderText(/Rechercher un joueur/i)
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'Zz' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(onSelect).toHaveBeenCalledWith('Zz')
+  })
 })
