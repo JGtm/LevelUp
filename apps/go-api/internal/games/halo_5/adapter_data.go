@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/classification"
@@ -301,13 +302,15 @@ func (a *DataAdapter) LoadPlayerStats(ctx context.Context, xuid string, _ canoni
 // PERSISTÉ depuis le DuckDB synchronisé (title-agnostic, sans dépendre du token du
 // joueur consulté). Ainsi la carrière d'un joueur SUIVI par l'app ne disparaît jamais
 // parce que SON refresh_token est mort.
-func (a *DataAdapter) LoadCareerSnapshot(ctx context.Context, xuid string, _ canonical.CareerOptions) (*canonical.CareerSnapshot, error) {
+func (a *DataAdapter) LoadCareerSnapshot(ctx context.Context, xuid string, opts canonical.CareerOptions) (*canonical.CareerSnapshot, error) {
 	gamertag := xuid
 	if snap, ok := a.liveCareerSnapshot(ctx, gamertag); ok {
+		a.attachH5XPHistory(ctx, snap, opts)
 		return snap, nil
 	}
 	if a.careerLocal != nil {
 		if snap := a.localCareerSnapshot(ctx, gamertag); snap != nil {
+			a.attachH5XPHistory(ctx, snap, opts)
 			return snap, nil
 		}
 	}
@@ -318,6 +321,44 @@ func (a *DataAdapter) LoadCareerSnapshot(ctx context.Context, xuid string, _ can
 		return nil, games.ErrCapabilityNotSupported
 	}
 	return &canonical.CareerSnapshot{Player: h5Identity(gamertag)}, nil
+}
+
+// attachH5XPHistory peuple snap.History depuis career_progression quand
+// opts.IncludeHistory est demandé et qu'une source locale est câblée. Parité avec
+// Halo Infinite (adapter_data.projectCareerHistory) : le rang COURANT vient de la voie
+// live/local, l'historique XP vient TOUJOURS du substrat DuckDB synchronisé (le carnage
+// h5 ne porte pas l'historique). Best-effort : une lecture échouée laisse l'historique
+// vide (le graphe « Historique XP » se masque) sans casser la page Carrière.
+func (a *DataAdapter) attachH5XPHistory(ctx context.Context, snap *canonical.CareerSnapshot, opts canonical.CareerOptions) {
+	if snap == nil || !opts.IncludeHistory || a.careerLocal == nil {
+		return
+	}
+	hist, err := a.careerLocal.GetXPHistory(ctx)
+	if err != nil {
+		a.logger.DebugContext(ctx, "h5 career: GetXPHistory échouée (historique XP vide)", "err", err)
+		return
+	}
+	snap.History = projectH5CareerHistory(hist)
+}
+
+// projectH5CareerHistory projette l'historique XP domaine → canonique (parité stricte
+// avec halo_infinite.projectCareerHistory). nil si vide (le service ré-initialise
+// nil→[] après projection).
+func projectH5CareerHistory(rows []domain.XPHistoryPoint) []canonical.CareerHistoryEntry {
+	if len(rows) == 0 {
+		return nil
+	}
+	out := make([]canonical.CareerHistoryEntry, 0, len(rows))
+	for _, p := range rows {
+		cur, tot := p.CurrentXP, p.XPTotal
+		out = append(out, canonical.CareerHistoryEntry{
+			RecordedAt: p.RecordedAt,
+			RankNumber: p.Rank,
+			CurrentXP:  &cur,
+			XPTotal:    &tot,
+		})
+	}
+	return out
 }
 
 // liveCareerSnapshot tente la voie LIVE (CSR service record + SR carnage du dernier
@@ -518,7 +559,12 @@ func (a *DataAdapter) LoadEncounters(_ context.Context, _ string) ([]canonical.E
 	return nil, games.ErrCapabilityNotSupported
 }
 
-// LoadLUSRHistory : Halo 5 n'a pas de rating LUSR (CSR natif via service record).
+// LoadLUSRHistory : la voie LIVE Halo 5 ne sert PAS d'historique LUSR (le service
+// record cryptum ne porte que le CSR). Le LUSR Halo 5 EXISTE néanmoins — il est CALCULÉ
+// (chaîne unique h5_arena, cf. lusr_chain.go) et stocké dans match_skill_rank ; il est
+// donc lu via le FALLBACK repo.GetLUSRHistory côté service (career_service.loadLUSRHistory),
+// pas par cet adapter. ErrCapabilityNotSupported = « pas servi par l'adapter live », PAS
+// « le titre n'a pas de LUSR ».
 func (a *DataAdapter) LoadLUSRHistory(_ context.Context, _ string) ([]canonical.LUSRCheckpoint, error) {
 	return nil, games.ErrCapabilityNotSupported
 }

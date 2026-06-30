@@ -31,14 +31,21 @@ func applyMatchHistoryFRTranslations(ctx context.Context, pdb *PlayerDB, rows []
 	mapIDs := collectDistinctIDs(rows, func(r domain.MatchHistoryRawRow) *string { return r.MapID })
 	pairIDs := collectDistinctIDs(rows, func(r domain.MatchHistoryRawRow) *string { return r.PairID })
 	playlistIDs := collectDistinctIDs(rows, func(r domain.MatchHistoryRawRow) *string { return r.PlaylistID })
+	variantIDs := collectDistinctIDs(rows, func(r domain.MatchHistoryRawRow) *string { return r.GameVariantID })
 
 	// Lookup bulk via MetadataRepo (même chemin que home_repo).
 	metaRepo := NewMetadataRepoFromDB(pdb.Metadata)
 	langs := PreferredLangsForLocale("fr")
+	langsEN := PreferredLangsForLocale("en")
 
 	mapNames, _ := metaRepo.ResolveAssetNamesBulk(ctx, "map", mapIDs, langs)
 	pairNames, _ := metaRepo.ResolveAssetNamesBulk(ctx, "pair", pairIDs, langs)
 	playlistNames, _ := metaRepo.ResolveAssetNamesBulk(ctx, "playlist", playlistIDs, langs)
+	// game_variant : source de MODE pour les titres sans pair_name (Halo 5). Résolu en
+	// FR (cascade fr→en) ET EN (registry NULL en H5) — parité avec le fallback
+	// GameVariant de la home (analysis.modeLabels).
+	variantNamesFR, _ := metaRepo.ResolveAssetNamesBulk(ctx, "game_variant", variantIDs, langs)
+	variantNamesEN, _ := metaRepo.ResolveAssetNamesBulk(ctx, "game_variant", variantIDs, langsEN)
 
 	// Lookup mode_name_tr (FR) pour les modes normalisés EN — gère les sous-modes
 	// (ex: "Slayer" → "Assassin"). Cohérent avec home_repo.loadHomeModeNameTranslations.
@@ -59,20 +66,44 @@ func applyMatchHistoryFRTranslations(ctx context.Context, pdb *PlayerDB, rows []
 	}
 	modeFR := loadModeFRBatch(ctx, pdb, modeENSet)
 
-	applyMatchHistoryFRRow(rows, mapNames, pairNames, playlistNames, modeFR)
+	applyMatchHistoryFRRow(rows, mapNames, pairNames, playlistNames, variantNamesFR, variantNamesEN, modeFR)
 }
 
-// applyMatchHistoryFRRow applique les traductions FR (map, pair, playlist) à chaque row.
-// Extraction pour réduire la complexité de applyMatchHistoryFRTranslations.
+// applyMatchHistoryFRRow applique les traductions FR (map, pair, playlist, game_variant)
+// à chaque row. Extraction pour réduire la complexité de applyMatchHistoryFRTranslations.
 func applyMatchHistoryFRRow(
 	rows []domain.MatchHistoryRawRow,
-	mapNames, pairNames, playlistNames map[string]string,
+	mapNames, pairNames, playlistNames, variantNamesFR, variantNamesEN map[string]string,
 	modeFR map[string]string,
 ) {
 	for i := range rows {
 		applyMatchHistoryMapFR(&rows[i], mapNames)
 		applyMatchHistoryPairFR(&rows[i], pairNames, modeFR)
 		applyMatchHistoryPlaylistFR(&rows[i], playlistNames)
+		applyMatchHistoryGameVariant(&rows[i], variantNamesFR, variantNamesEN)
+	}
+}
+
+// applyMatchHistoryGameVariant résout le nom du game_variant (FR + EN) depuis
+// asset_translations. Sert de source de MODE aux titres sans pair_name (Halo 5) : le
+// nom registry est souvent NULL → on remplit GameVariantName (EN) et GameVariantNameFR.
+// N'écrase pas une valeur registry déjà présente.
+func applyMatchHistoryGameVariant(row *domain.MatchHistoryRawRow, variantNamesFR, variantNamesEN map[string]string) {
+	if row.GameVariantID == nil {
+		return
+	}
+	id := strings.TrimSpace(*row.GameVariantID)
+	if id == "" {
+		return
+	}
+	if fr := strings.TrimSpace(variantNamesFR[id]); fr != "" {
+		row.GameVariantNameFR = &fr
+	}
+	// EN : ne remplir que si le registry n'a pas déjà un nom (NULL/vide en H5).
+	if strings.TrimSpace(derefString(row.GameVariantName)) == "" {
+		if en := strings.TrimSpace(variantNamesEN[id]); en != "" {
+			row.GameVariantName = &en
+		}
 	}
 }
 

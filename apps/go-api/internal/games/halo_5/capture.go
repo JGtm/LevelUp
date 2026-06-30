@@ -103,18 +103,30 @@ type CaptureStats struct {
 	StoppedOnKnown   bool // delta-stop atteint (1er match déjà connu, mode StopOnKnown)
 	EventsFailed     int  // matchs dont la timeline n'a pu être fetchée (batch registry-only)
 	CarnageFailed    int  // matchs dont le carnage n'a pu être fetché (batch sans participants)
+	ExcludedCampaign int  // matchs Campaign écartés à la collecte (cf. isExcludedH5GameMode)
 	ExcludedWarzone  int  // matchs Warzone écartés à la collecte (cf. isExcludedH5GameMode)
 	RosterDropped    int  // player-rows droppées (gamertag non résolu en xuid) — perte de roster TRACÉE (fix #10)
 }
 
-// h5GameModeWarzone est le GameMode des matchs Warzone Halo 5 (rosters 24 joueurs).
-const h5GameModeWarzone = 4
+// GameMode Halo 5 (cf. mapping_carnage.h5GameModeSegment + sonde) :
+//   - 1 = Arena (PvP 2-équipes, le mode collecté) ;
+//   - 2 = Campaign (solo/coop PvE, NON jouable côté app) ;
+//   - 3 = Custom ;
+//   - 4 = Warzone (PvP 24 joueurs).
+const (
+	h5GameModeCampaign = 2
+	h5GameModeWarzone  = 4
+)
 
-// isExcludedH5GameMode : modes Halo 5 NON ingérés. Warzone (GameMode 4) est exclu —
-// décision produit (pas géré côté app) ET il évite de marteler PeopleHub à la
-// résolution de rosters géants (24 joueurs/match). Arena (2-équipes) reste collecté.
+// isExcludedH5GameMode : modes Halo 5 NON ingérés à la collecte. Sont exclus :
+//   - Campaign (GameMode 2) : campagne PvE, hors scope de l'app (pas de surface UI) ;
+//   - Warzone (GameMode 4) : décision produit (pas géré côté app) + évite de marteler
+//     PeopleHub à la résolution de rosters géants (24 joueurs/match).
+//
+// Arena (GameMode 1, 2-équipes) reste collecté. Les matchs campagne déjà présents en
+// base sont, eux, masqués à la LECTURE (cf. filtre read-side, game_variant campagne).
 func isExcludedH5GameMode(gameMode int) bool {
-	return gameMode == h5GameModeWarzone
+	return gameMode == h5GameModeCampaign || gameMode == h5GameModeWarzone
 }
 
 // CollectRecentMatches récupère les matchs h5 récents du viewer et retourne UN
@@ -246,10 +258,14 @@ func capturePage(
 			stats.MatchesSkipped++
 			continue // backfill : sauter le connu, mais continuer à paginer plus profond
 		}
-		// Warzone exclu de la collecte (produit + anti-storm PeopleHub) : on saute
-		// AVANT carnage/events/rosters — aucun appel coûteux pour ces matchs.
-		if isExcludedH5GameMode(resp.Results[i].Id.GameMode) {
-			stats.ExcludedWarzone++
+		// Campagne + Warzone exclus de la collecte (produit + anti-storm PeopleHub) :
+		// on saute AVANT carnage/events/rosters — aucun appel coûteux pour ces matchs.
+		if gm := resp.Results[i].Id.GameMode; isExcludedH5GameMode(gm) {
+			if gm == h5GameModeCampaign {
+				stats.ExcludedCampaign++
+			} else {
+				stats.ExcludedWarzone++
+			}
 			continue
 		}
 		timeline := captureMatchTimeline(ctx, src, s.MatchID, stats)

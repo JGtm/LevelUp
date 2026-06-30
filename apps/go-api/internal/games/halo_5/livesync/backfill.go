@@ -38,6 +38,7 @@ type BackfillStats struct {
 	EventsFailed  int // timelines indisponibles (batch registry-only)
 	CarnageFailed int // carnages indisponibles (batch sans participants)
 	Warzone       int // matchs Warzone écartés
+	Campaign      int // matchs Campagne écartés (non jouables côté app)
 	PersistErrors int // erreurs de persistance (page-level)
 }
 
@@ -144,7 +145,7 @@ func RunBackfill(ctx context.Context, deps BackfillDeps, pageSize int, logger *s
 		"gamertag", deps.Viewer.Gamertag, "pages", stats.Pages,
 		"seen", stats.MatchesSeen, "inserted", stats.Inserted, "skipped", stats.Skipped,
 		"events_failed", stats.EventsFailed, "carnage_failed", stats.CarnageFailed,
-		"warzone", stats.Warzone, "persist_errors", stats.PersistErrors)
+		"warzone", stats.Warzone, "campaign", stats.Campaign, "persist_errors", stats.PersistErrors)
 	return stats, nil
 }
 
@@ -177,6 +178,7 @@ func finalizeStats(stats *BackfillStats, cum halo5.CaptureStats) {
 	stats.EventsFailed = cum.EventsFailed
 	stats.CarnageFailed = cum.CarnageFailed
 	stats.Warzone = cum.ExcludedWarzone
+	stats.Campaign = cum.ExcludedCampaign
 }
 
 // oldestStart retourne la date de début du match le plus ancien de la page (le dernier

@@ -125,6 +125,12 @@ func (s *Halo5MatchHistorySource) loadRows(ctx context.Context, matchIDs []strin
 
 	query := h5MatchSummarySelect
 	args := []any{s.gamertag}
+	// Masquage read-side des modes Campagne (cf. match_read_exclusions). Source
+	// h5-only → titre fixe "halo_5". Alias "r" = match_registry dans le SELECT.
+	if clause, exArgs := excludedVariantClause("halo_5", "r"); clause != "" {
+		query += clause
+		args = append(args, exArgs...)
+	}
 	if len(matchIDs) > 0 {
 		query += fmt.Sprintf(" AND p.match_id IN (%s)", Placeholders(len(matchIDs)))
 		args = append(args, ToAnySlice(matchIDs)...)

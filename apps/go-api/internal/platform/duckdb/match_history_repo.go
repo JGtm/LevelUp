@@ -130,6 +130,8 @@ func (r *MatchHistoryRepo) loadSharedHistory(ctx context.Context) ([]domain.Matc
 			&teamID,
 			&team0,
 			&team1,
+			&m.GameVariantID,
+			&m.GameVariantName,
 		); err != nil {
 			return nil, nil, nil, fmt.Errorf("scan: %w", err)
 		}

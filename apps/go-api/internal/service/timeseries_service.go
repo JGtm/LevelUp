@@ -160,6 +160,42 @@ func (s *TimeseriesService) GetPage(
 	historicalSolo := filterStatsMatchRowsByContext(allMatches, req.Filters.MatchContext)
 
 	provideSpree := games.ProvidesMaxKillingSpree(s.titleSlug)
+
+	// Events kill/death (chart .11 first events, chart .21 intensité, ET fallback
+	// folie meurtrière) : UNE seule charge, réutilisée plus bas. Le repo synthétise
+	// depuis killer_victim_pairs pour les titres sans kills natifs dans
+	// highlight_events (Halo 5). Chargé AVANT la construction de resp pour que le
+	// fallback spree (ci-dessous) soit visible des buckets Distributions + MatchRows.
+	var (
+		highlightEvents []canonical.HighlightEvent
+		matchIDs        []string
+	)
+	if s.highlightEventsRepo != nil && s.playerXUID != "" && len(matches) > 0 {
+		matchIDs = make([]string, 0, len(matches))
+		for _, m := range matches {
+			matchIDs = append(matchIDs, m.MatchID)
+		}
+		if evs, err := s.loadHighlightEvents(ctx, matchIDs); err != nil {
+			slog.WarnContext(ctx, "timeseries: highlight events load failed", "err", err)
+		} else {
+			highlightEvents = evs
+		}
+	}
+	// Fallback folie meurtrière (Halo 5) : la valeur native est absente du carnage →
+	// on la calcule depuis les events. Gate par provideSpree (capability). NO-OP pour
+	// les titres à valeur native (Infinite) — enrichMatchesMaxKillingSpree n'écrase
+	// jamais une valeur déjà présente.
+	if provideSpree {
+		// Observabilité : un titre qui ANNONCE la spree (capability) mais sans events
+		// (synthèse killer_victim_pairs infructueuse) laisse le donut « Folie meurtrière »
+		// vide — exactement le symptôme à diagnostiquer. On le trace (≠ "titre sans spree").
+		if len(highlightEvents) == 0 && len(matches) > 0 {
+			slog.DebugContext(ctx, "timeseries: spree fallback sans events (donut Folie meurtrière vide)",
+				"titleSlug", s.titleSlug, "player", s.gamertag, "matches", len(matches))
+		}
+		enrichMatchesMaxKillingSpree(matches, highlightEvents, s.playerXUID)
+	}
+
 	resp := domain.TimeseriesPageResponse{
 		TotalMatches: len(matches),
 		MatchRows:    buildMatchRows(matches, provideSpree),
@@ -197,27 +233,17 @@ func (s *TimeseriesService) GetPage(
 		}
 	}
 
-	// First events distribution (chart .11) + Intensity heatmap : degradation
-	// gracieuse si repo nil ou xuid manquant. Une seule charge events.
-	if s.highlightEventsRepo != nil && s.playerXUID != "" && len(matches) > 0 {
-		matchIDs := make([]string, 0, len(matches))
-		for _, m := range matches {
-			matchIDs = append(matchIDs, m.MatchID)
-		}
-		events, err := s.loadHighlightEvents(ctx, matchIDs)
-		if err != nil {
-			slog.WarnContext(ctx, "timeseries: highlight events load failed", "err", err)
-		} else if len(events) > 0 {
-			// Correction chronologie T0 : ramène les TimeMS au référentiel
-			// gameplay (Phase 1 : T0=0, identité). Point unique amont — les
-			// builders en aval restent agnostiques.
-			timelines := timeline.BuildTimelinesFromPlayerMatches(canonicalRows)
-			events = timeline.CorrectEvents(events, timelines)
-			resp.FirstEvents = buildFirstEventsDistribution(
-				narrative.ComputeFirstEventsPerMatch(events, s.playerXUID, matchIDs),
-			)
-			resp.IntensityRows = buildIntensityRows(events, matches, s.playerXUID, timeline.GameplayDurationsMS(timelines))
-		}
+	// First events distribution (chart .11) + Intensity heatmap : RÉUTILISE les events
+	// déjà chargés (highlightEvents). Correction chronologie T0 ici (ramène les TimeMS
+	// au référentiel gameplay) — distincte du fallback spree, qui reste order-based sur
+	// les events bruts (invariant par décalage T0).
+	if len(highlightEvents) > 0 {
+		timelines := timeline.BuildTimelinesFromPlayerMatches(canonicalRows)
+		corrected := timeline.CorrectEvents(highlightEvents, timelines)
+		resp.FirstEvents = buildFirstEventsDistribution(
+			narrative.ComputeFirstEventsPerMatch(corrected, s.playerXUID, matchIDs),
+		)
+		resp.IntensityRows = buildIntensityRows(corrected, matches, s.playerXUID, timeline.GameplayDurationsMS(timelines))
 	}
 
 	// BriefingKPIs : KPIs sur les rows canoniques filtres (memes match_ids que

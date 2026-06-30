@@ -19,6 +19,9 @@ import (
 // aucun import croisé → pas de cycle ; même pattern que MatchHistorySource).
 type CareerLocalSource interface {
 	GetLatestCareer(ctx context.Context) (*domain.H5CareerLocal, error)
+	// GetXPHistory : historique XP (career_progression) pour le graphe « Historique
+	// XP » de la page Carrière. Vide si aucun checkpoint (graphe masqué côté front).
+	GetXPHistory(ctx context.Context) ([]domain.XPHistoryPoint, error)
 }
 
 // localCareerSnapshot projette le career local en CareerSnapshot canonique, avec la

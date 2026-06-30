@@ -171,24 +171,30 @@ func enrichMatchesWithCommendations(ctx context.Context, repo port.HomeRepositor
 // mécanique pure que les citations Infinite (analysis.ComputeTierProgression) à partir
 // du cumul à vie (Progress) + paliers (TierTargets) + delta du match (Count).
 func buildCommendationSnippets(rows []domain.HomeMatchCommendationRaw, limit int) []domain.MatchCitationSnippet {
-	if len(rows) == 0 {
+	if len(rows) == 0 || limit <= 0 {
 		return nil
 	}
 	sorted := make([]domain.HomeMatchCommendationRaw, len(rows))
 	copy(sorted, rows)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Count > sorted[j].Count })
-	if len(sorted) > limit {
-		sorted = sorted[:limit]
-	}
-	out := make([]domain.MatchCitationSnippet, 0, len(sorted))
+	// Masquage des commendations déjà maîtrisées AVANT ce match — parité STRICTE avec
+	// les citations Halo Infinite (analysis.BuildCitationSnippets) et la match-view
+	// (match_view_canonical_citations). Le filtre AlreadyMastered s'applique AVANT la
+	// borne `limit` (sinon une commendation maîtrisée occuperait un slot du top-N et
+	// évincerait une commendation valide au-delà de la borne). On ne montre que celles
+	// progressées/nouvellement maîtrisées CE match.
+	out := make([]domain.MatchCitationSnippet, 0, limit)
 	for _, r := range sorted {
+		tiers := analysis.ParseTierTargets(r.TierTargets)
+		tp := analysis.ComputeTierProgression(r.Progress, r.Count, tiers)
+		if tp.AlreadyMastered {
+			continue
+		}
 		var imgURL *string
 		if r.IconURL != "" {
 			u := r.IconURL
 			imgURL = &u
 		}
-		tiers := analysis.ParseTierTargets(r.TierTargets)
-		tp := analysis.ComputeTierProgression(r.Progress, r.Count, tiers)
 		out = append(out, domain.MatchCitationSnippet{
 			Key:             r.ID,
 			Name:            r.Name,
@@ -200,10 +206,10 @@ func buildCommendationSnippets(rows []domain.HomeMatchCommendationRaw, limit int
 			TierIndex:       tp.TierIndex,
 			TierCount:       tp.TierCount,
 			NextTierTarget:  tp.NextTierTarget,
-			// Pas de filtrage AlreadyMastered ici (contrairement aux citations) : sur
-			// une tuile de match natif Halo 5, afficher une commendation maîtrisée de
-			// longue date reste pertinent (l'anneau plein = 100% est l'info voulue).
 		})
+		if len(out) >= limit {
+			break // borne appliquée APRÈS le filtre (parité Infinite)
+		}
 	}
 	return out
 }

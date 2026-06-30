@@ -68,6 +68,12 @@ func enrichRows(rows []domain.MatchHistoryRawRow, mapWR map[string][2]int, waypo
 
 func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint string) domain.MatchHistoryRow {
 	modeUI := analysis.ResolveModeUI(r.PairName, r.PairNameFR)
+	// Fallback game_variant : les titres sans pair_name (Halo 5) portent leur mode dans
+	// le game_variant. Sans ce repli, mode_ui resterait vide sur la liste Explorer/
+	// Historique pour H5 (parité home/matchs-récents : analysis.modeLabels PairMode→GameVariant).
+	if modeUI == nil {
+		modeUI = analysis.ResolveModeUI(r.GameVariantName, r.GameVariantNameFR)
+	}
 	mapU := coalesce(r.MapNameFR, r.MapName)
 	playlist := coalesce(r.PlaylistName, nil)
 

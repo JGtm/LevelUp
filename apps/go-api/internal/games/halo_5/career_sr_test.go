@@ -199,12 +199,18 @@ func TestBuildSpartanRankCatalog(t *testing.T) {
 
 // fakeCareerLocal implémente CareerLocalSource (substrat DuckDB synchronisé) sans DB.
 type fakeCareerLocal struct {
-	data *domain.H5CareerLocal
-	err  error
+	data    *domain.H5CareerLocal
+	err     error
+	history []domain.XPHistoryPoint
+	histErr error
 }
 
 func (f fakeCareerLocal) GetLatestCareer(context.Context) (*domain.H5CareerLocal, error) {
 	return f.data, f.err
+}
+
+func (f fakeCareerLocal) GetXPHistory(context.Context) ([]domain.XPHistoryPoint, error) {
+	return f.history, f.histErr
 }
 
 // TestLoadCareerSnapshot_LiveFails_FallbackLocalSR : quand le live échoue (token du
@@ -254,5 +260,56 @@ func TestLoadCareerSnapshot_LiveOK_PrefersLive(t *testing.T) {
 	}
 	if snap.RankNumber == 1 {
 		t.Error("le local (SR1) a été servi alors que le live répondait — live-first violé")
+	}
+}
+
+// TestLoadCareerSnapshot_AttachesXPHistory : signalement #8 (Historique XP). Avec
+// opts.IncludeHistory=true, snap.History est peuplé depuis careerLocal.GetXPHistory
+// (parité Infinite) ; sans l'option, l'historique n'est PAS chargé.
+func TestLoadCareerSnapshot_AttachesXPHistory(t *testing.T) {
+	live := &fakeSource{srErr: errors.New("token mort")} // force le fallback local
+	hist := []domain.XPHistoryPoint{
+		{Rank: 100, CurrentXP: 5000, XPTotal: 1000000},
+		{Rank: 101, CurrentXP: 6000, XPTotal: 1006000},
+	}
+	local := fakeCareerLocal{
+		data:    &domain.H5CareerLocal{SpartanRank: 101, TotalXP: 1006000},
+		history: hist,
+	}
+	a := NewDataAdapter(srcFactory(live), nil).WithCareerSource(local)
+
+	snap, err := a.LoadCareerSnapshot(context.Background(), "JGtm", canonical.CareerOptions{IncludeHistory: true})
+	if err != nil {
+		t.Fatalf("LoadCareerSnapshot: %v", err)
+	}
+	if len(snap.History) != 2 {
+		t.Fatalf("History len = %d, want 2 (peuplé depuis GetXPHistory)", len(snap.History))
+	}
+	if snap.History[1].RankNumber != 101 || snap.History[1].XPTotal == nil || *snap.History[1].XPTotal != 1006000 {
+		t.Errorf("History[1] mal projeté: %+v", snap.History[1])
+	}
+
+	snap2, _ := a.LoadCareerSnapshot(context.Background(), "JGtm", canonical.CareerOptions{})
+	if len(snap2.History) != 0 {
+		t.Errorf("History sans IncludeHistory = %d, want 0 (pas de chargement)", len(snap2.History))
+	}
+}
+
+// TestLoadCareerSnapshot_XPHistoryError_Graceful : une erreur de lecture de l'historique
+// XP ne casse PAS le snapshot (dégradation propre — le graphe se masque, la carrière reste).
+func TestLoadCareerSnapshot_XPHistoryError_Graceful(t *testing.T) {
+	live := &fakeSource{srErr: errors.New("token mort")}
+	local := fakeCareerLocal{
+		data:    &domain.H5CareerLocal{SpartanRank: 50, TotalXP: 1},
+		histErr: errors.New("lecture career_progression échouée"),
+	}
+	a := NewDataAdapter(srcFactory(live), nil).WithCareerSource(local)
+
+	snap, err := a.LoadCareerSnapshot(context.Background(), "JGtm", canonical.CareerOptions{IncludeHistory: true})
+	if err != nil {
+		t.Fatalf("histErr ne doit PAS casser le snapshot: %v", err)
+	}
+	if len(snap.History) != 0 {
+		t.Errorf("History sur histErr = %d, want 0 (dégradation propre)", len(snap.History))
 	}
 }
