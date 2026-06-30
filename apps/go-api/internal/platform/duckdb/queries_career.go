@@ -216,6 +216,11 @@ FROM career_progression`
 //
 // Pas de fallback rank * 1000 : il sous-estimait massivement la vraie valeur
 // historique (un Diamant à 5M XP voyait 300_000 quand xp_total devenait NULL).
+//
+// FILTRE PAR XUID (?1) : comme Q26c, career_progression peut contenir des rows
+// d'un autre joueur (contamination de sync historique). Sans filtre, la courbe XP
+// mélangeait les historiques. Concaténer xuid à une chaîne vide défait le pushdown
+// index (cf. Q26c). Paramètre : ?1 = xuid du joueur.
 const Q7CareerXPHistory = `
 SELECT
     cp.recorded_at,
@@ -226,7 +231,7 @@ SELECT
         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
     ) AS xp_total_cumulative
 FROM career_progression cp
-WHERE cp.xp_total IS NOT NULL AND cp.xp_total > 0
+WHERE cp.xuid || '' = ? AND cp.xp_total IS NOT NULL AND cp.xp_total > 0
 ORDER BY cp.recorded_at ASC`
 
 // Q8LUSRHistoryPlayerTpl : Phase A de Q8 — partie player (match_skill_rank)

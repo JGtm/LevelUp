@@ -8,9 +8,10 @@
  * calculés depuis l'étendue [min,max] des données de la courbe — donc alignés
  * sur sa boîte englobante de rendu. Couleurs via tokens sémantiques.
  *
- * Sémantique des deux courbes (validée produit) :
- *   - dégâts/frag  : au plus PROCHE de 225, au plus efficace → divergent centré
- *     225 (vert au repère, rouge en s'en éloignant : dégâts gaspillés).
+ * Sémantique des deux courbes :
+ *   - dégâts/frag  : au plus BAS, au plus efficace → monotone (vert sous le
+ *     repère 225 = positif : moins d'une vie par frag ; rouge au-dessus =
+ *     dégâts gaspillés ; 225 = bascule neutre).
  *   - dégâts/mort  : au plus LOIN au-dessus de 225, meilleure résistance →
  *     ascendant (vert vers le haut, rouge sous le repère).
  */
@@ -61,22 +62,28 @@ function gradient(colorStops: Array<{ offset: number; color: string }>): LinearG
 }
 
 /**
- * Dégradé "dégâts/frag" — divergent centré sur 225 : vert au repère, rouge en
- * s'en éloignant des deux côtés. Cas dégénérés (repère hors étendue) → bicolore.
+ * Dégradé "dégâts/frag" — monotone : vert quand les dégâts/frag sont FAIBLES
+ * (sous 225 = moins d'une vie par frag = efficace = positif), rouge quand ils
+ * sont ÉLEVÉS (gaspillage), 225 = bascule neutre. Miroir structurel de
+ * `defensiveDamageGradient`. Cas dégénérés (repère hors étendue) → bicolore.
  */
 export function offensiveDamageGradient(
   values: Array<number | null>,
   oneLife: number = ONE_LIFE_DAMAGE,
 ): LinearGradient {
   const pos = resolveToken('divergent-pos')
+  const neutral = resolveToken('divergent-neutral')
   const neg = resolveToken('divergent-neg')
   const r = offsetOf(values, oneLife)
-  if (r <= 0) return gradient([{ offset: 0, color: pos }, { offset: 1, color: neg }])
-  if (r >= 1) return gradient([{ offset: 0, color: neg }, { offset: 1, color: pos }])
+  // r = position verticale du repère 225 (0 = haut/max, 1 = bas/min).
+  // Toutes sous 225 → entièrement positif (du neutre au repère vers le vert) ;
+  // toutes au-dessus → entièrement gaspillage (du rouge vers le neutre au repère).
+  if (r <= 0) return gradient([{ offset: 0, color: neutral }, { offset: 1, color: pos }])
+  if (r >= 1) return gradient([{ offset: 0, color: neg }, { offset: 1, color: neutral }])
   return gradient([
     { offset: 0, color: neg },
-    { offset: r, color: pos },
-    { offset: 1, color: neg },
+    { offset: r, color: neutral },
+    { offset: 1, color: pos },
   ])
 }
 

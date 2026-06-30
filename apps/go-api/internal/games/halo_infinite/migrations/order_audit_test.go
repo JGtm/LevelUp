@@ -117,6 +117,20 @@ func TestTitleStepsRunEndToEnd_Metadata(t *testing.T) {
 			t.Errorf("challenge_template.%s absente — ALTER title-owned non appliqué", col)
 		}
 	}
+
+	// Médaille custom Vengeur (9000000001) seedée pour Infinite (native H5) —
+	// step seed_custom_vengeur_medal. Sans elle, elle n'apparaît pas dans le
+	// catalogue médailles du tab Asset Drawer d'Infinite.
+	var nameFR, nameEN string
+	var isCustom bool
+	if err := db.QueryRow(
+		`SELECT name_fr, name_en, is_custom FROM medal_definitions WHERE medal_name_id = 9000000001`,
+	).Scan(&nameFR, &nameEN, &isCustom); err != nil {
+		t.Fatalf("Vengeur medal absent de medal_definitions: %v", err)
+	}
+	if nameFR != "Vengeur" || nameEN != "Avenger" || !isCustom {
+		t.Errorf("Vengeur medal = {fr:%q en:%q custom:%v}, want {Vengeur Avenger true}", nameFR, nameEN, isCustom)
+	}
 }
 
 // TestTitleStepsRunEndToEnd_Player : les CONSOMMATEURS player title-owned (b15 :

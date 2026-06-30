@@ -28,11 +28,13 @@ var canonicalOrder = []string{
 	"add_citation_mappings",                                 // metadata
 	"add_citation_mappings_pk",                              // metadata
 	"add_citation_mappings_v2_fields",                       // metadata
+	"add_citation_name_display_en",                          // metadata
 	"add_xbox_achievement_definitions",                      // metadata
 	"add_career_rank_translations",                          // metadata
 	"medal_definitions_add_indices",                         // metadata
 	"enrich_medal_definitions_v2",                           // metadata
 	"medal_definitions_add_personal_score",                  // metadata
+	"seed_custom_vengeur_medal",                             // metadata
 	"fix_super_fiesta_fr_label",                             // metadata
 	"seed_playlist_fr_translations",                         // metadata
 	"add_title_id_to_xbox_achievement_definitions",          // metadata

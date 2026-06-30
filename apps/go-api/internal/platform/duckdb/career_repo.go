@@ -163,7 +163,7 @@ func (r *CareerRepo) GetXPHistory(ctx context.Context) ([]domain.XPHistoryPoint,
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q7CareerXPHistory)
+	rows, err := r.pdb.ReadDB().Query(ctx, Q7CareerXPHistory, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("CareerRepo.GetXPHistory: %w", err)
 	}

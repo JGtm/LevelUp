@@ -42,23 +42,23 @@ const COL_HIDE_SM = 'hidden sm:table-cell'
 const COL_HIDE_LG = 'hidden lg:table-cell'
 
 /**
- * Playlists classées (asset IDs stables) — FALLBACK si le catalogue dynamique
- * (snapshots réellement en base) est vide. Sert aussi de table de libellés
- * localisés : un id présent ici prime sur le display_name renvoyé par l'API.
+ * Playlists classées (asset IDs stables) — FALLBACK bilingue si le catalogue
+ * dynamique (snapshots réellement en base) est vide. Dès que le catalogue est
+ * présent, on s'appuie sur `display_name` renvoyé par l'API (déjà résolu selon la
+ * locale via le header X-LevelUp-Locale côté backend).
  */
-const PLAYLISTS: { id: string; label: string }[] = [
-  { id: 'edfef3ac-9cbe-4fa2-b949-8f29deafd483', label: 'Arène classée' },
-  { id: 'dcb2e24e-05fb-4390-8076-32a0cdb4326e', label: 'Assassin classé' },
-  { id: 'fa5aa2a3-2428-4912-a023-e1eeea7b877c', label: 'Duo classé' },
-  { id: '6233381c-fc96-40b9-b1ff-f6a4de72dd7a', label: 'Snipers classés' },
-  { id: '57e417dd-7366-4dda-9bdd-2802151d5e81', label: 'Tactique classé' },
-  { id: '71734db4-4b8e-4682-9206-62b6eff92582', label: 'Chacun pour soi classé' },
+const PLAYLISTS: { id: string; fr: string; en: string }[] = [
+  { id: 'edfef3ac-9cbe-4fa2-b949-8f29deafd483', fr: 'Arène classée', en: 'Ranked Arena' },
+  { id: 'dcb2e24e-05fb-4390-8076-32a0cdb4326e', fr: 'Assassin classé', en: 'Ranked Slayer' },
+  { id: 'fa5aa2a3-2428-4912-a023-e1eeea7b877c', fr: 'Duo classé', en: 'Ranked Doubles' },
+  { id: '6233381c-fc96-40b9-b1ff-f6a4de72dd7a', fr: 'Snipers classés', en: 'Ranked Snipers' },
+  { id: '57e417dd-7366-4dda-9bdd-2802151d5e81', fr: 'Tactique classé', en: 'Ranked Tactical' },
+  { id: '71734db4-4b8e-4682-9206-62b6eff92582', fr: 'Chacun pour soi classé', en: 'Ranked FFA' },
 ]
 
 // SEASONS (libellés de saison) déplacé dans ./seasons.i18n.ts — dict i18n local
 // (whitelist du linter no-hardcoded-fields ; noms propres de saison sans source catalogue).
 
-const KNOWN_PLAYLIST_LABEL: Record<string, string> = Object.fromEntries(PLAYLISTS.map((p) => [p.id, p.label]))
 const KNOWN_SEASON_LABEL: Record<string, string> = Object.fromEntries(SEASONS.map((s) => [s.id, s.label]))
 
 type SelectorOption = { value: string; label: string; enriched?: boolean }
@@ -157,12 +157,13 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
   const playlistOptions: SelectorOption[] = useMemo(
     () =>
       catalog?.playlists?.length
-        ? // Phase F : le backend renvoie le nom du catalogue mutualise (cascade
-          // asset_translations[fr] > rankedplaylists FR > catalogue EN). On le prefere
-          // au libelle code en dur (KNOWN_*), garde en fallback ultime.
-          catalog.playlists.map((p) => ({ value: p.id, label: p.display_name || KNOWN_PLAYLIST_LABEL[p.id] || p.id }))
-        : PLAYLISTS.map((p) => ({ value: p.id, label: p.label })),
-    [catalog],
+        ? // Le backend renvoie un display_name DÉJÀ localisé (header X-LevelUp-Locale :
+          // cascade asset_translations[locale] > rankedplaylists locale > canonique > id).
+          // On l'utilise directement, sans table FR codée en dur.
+          catalog.playlists.map((p) => ({ value: p.id, label: p.display_name || p.id }))
+        : // Catalogue vide (avant le 1er snapshot) : fallback bilingue local.
+          PLAYLISTS.map((p) => ({ value: p.id, label: locale === 'en' ? p.en : p.fr })),
+    [catalog, locale],
   )
 
   // Sélection effective dérivée au rendu (pas de setState dans un effet) : si le

@@ -335,6 +335,10 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/migration/order.go":                       "ordre de migration (cible TargetSharedSocial dans la liste)",
 	"internal/persist/shared_social_persister_batch.go": "batch SocialPersister (accès shared_social via persister canonique)",
 	"internal/platform/duckdb/queries_match_detail.go":  "Q24 matchs media shared_social (commentaire)",
+	// Ajoutés 2026-06-30
+	"cmd/levelup/cmd_data.go":            "CLI unifiée levelup data : commentaire doc (associations média du shared_social du joueur, best-effort)",
+	"cmd/levelup/main.go":                "CLI unifiée levelup : commentaire doc sur le schéma shared_social (media_files/associations)",
+	"internal/ops/seed_demo_media_h5.go": "seed démo média H5 : lit le shared_social SOURCE (prod) en read-only pour ancrer les clips démo (variante H5 de seed_demo_media.go) — pas d'ATTACH/INSERT sur RW",
 }
 
 // listForbiddenSharedSocialMentions retourne la liste des fichiers Go non-test

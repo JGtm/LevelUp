@@ -31272,3 +31272,121 @@ push à la demande de l'utilisateur.
   bout-en-bout sur le vrai schéma de sortie).
 - **Prochaine étape** : redéployer → vérifier que la regen prod copie média > 0 (Infinite +
   H5). Les clips H5 sont déjà sur le VPS ; aucun upload requis.
+
+---
+
+## [2026-06-30] Corrections globales sur l'app (10 points) — Complété
+
+**Branche** : `fix/corrections-globales-app` (depuis `main`). 10 anomalies relevées par
+l'utilisateur, investiguées par fan-out d'agents Explore + vérif directe.
+
+**Frontend (apps/web)** :
+- **#1 Synthèse crash "Invariant failed"** : `SynthesisPage` faisait `useParams({ from:
+  '/players/$playerSlug/synthesis' })` (route legacy) alors que montée sous
+  `/stats/synthesis` → invariant TanStack Router. Fix : `useParams({ strict: false })`
+  (pattern des autres pages /stats/).
+- **#2 Police filtres "Matchs marquants" (Carrière)** : `ExperienceDropdown` + 3
+  `MultiSelectFilter` rendus sans `dense` (→ text-sm au lieu de text-xs comme la barre
+  Relations). Ajout de `dense`.
+- **#9 Compteur médailles Escouade** : `MedalDigest` (MedalChip + MedalIconTile) rendait
+  `{total_count}` nu → préfixe `×` (convention PlayerDetailPanel).
+- **#6 Axe "Win rate" FR** : clé `timeseries.summary.win_rate_label` = "Win rate" pour fr ET
+  en → fr = "Taux de victoire" (regen manifests).
+- **#8 Donut "Répartition des frags" trop petit** : `KillTypesDonut` SVG géométrie figée
+  (rOuter 46/viewBox 300×152). Agrandi (rOuter 60, w 320, h 184, fontes +1px).
+- **#7 Dégradé Rendement faux** : `offensiveDamageGradient` était divergent centré 225 (rouge
+  sous 225 = bug, car efficace = positif). Rendu MONOTONE (vert bas/efficace, rouge
+  haut/gaspillage, 225 neutre — miroir de defensiveDamageGradient). Résistance vérifiée :
+  déjà correcte, inchangée. Tests mis à jour.
+- **#10 Switcher de titre (données périmées)** : `switchTitle` clear()ait APRÈS le bootstrap ;
+  la fenêtre POST/bootstrap laissait des refetch partir avec l'ancien titre. Le backend
+  résout le titre par header X-LevelUp-Title > session (confirmé middleware TitleExtractor).
+  Fix : committer le titre (POST session + setApiTitleSlug + store) AVANT, puis
+  `cancelQueries()` + `clear()` AVANT le re-bootstrap → aucune requête ni cache de l'ancien
+  titre ne survit. Pas de refactor des query keys (clés inline existent ; clear() vide tout).
+- **#4 Playlists Classement hardcodées FR** : `LeaderboardBlock` avait `PLAYLISTS` labels FR en
+  dur. Front : utilise `display_name` (locale-aware backend) + fallback bilingue local.
+  Backend : `GetWorldLeaderboardCatalog` lit `ctxkeys.Locale` ; `playlistName` locale-aware
+  (cascade EN: asset_translations[en] > rankedplaylists EN > canonical > FR ; FR inversé) ;
+  `resolvePlaylistNamesFromCatalog` retourne en plus `enMap`.
+
+**Backend (apps/go-api)** :
+- **#5 Médailles tiroir (AssetDrawer)** : le tiroir est DÉJÀ locale-aware (ListMedalsByTitle
+  renvoie name_en+name_fr, AssetCard préfère FR). L'anglais = data gap (name_fr manquant pour
+  certaines médailles d'un titre). Sur consigne user : NE PAS repeupler Infinite (complet).
+  Ajouté seed migration `seed_custom_vengeur_medal` (id 9000000001, Vengeur/Avenger,
+  is_custom) dans medal_definitions Infinite (native H5). Audit FR coverage différé (metadata
+  DB tenue RW par le serveur dev).
+- **#3 Chocoboflor identité/LUSR Onyx** : AUDIT read-only (DB locale, server dev tournant) :
+  career_progression = 1 SEUL xuid (Chocoboflor, 803 rows) → AUCUNE contamination (user avait
+  raison). La vraie cause : `Q26ePeakPhaseAPlayer` lisait `match_skill_rank` BRUT → exposait
+  les rows périmées + LUSR_V2 (4628 rows à 2000=Onyx). RAW max LUSR=2000 (Onyx) vs LATEST
+  max=1732.6 (Platine II). Fix : lire `match_skill_rank_latest` (priorité CSR>LUSR>LUSR_V2,
+  most-recent). Résout le pic Onyx fantôme ET le "rang identique à JGtm" (même badge Onyx).
+  Filtre xuid ajouté à Q26c (identité) + Q7 (XP history) en DÉFENSE (harmless car DB propre,
+  aligné career_live_repo). AUCUNE écriture BDD requise.
+
+**Décision tech principale** : la plupart des bugs étaient des régressions de lecture
+(query/route/locale), pas des problèmes de données. Le seul "data" (#3 Onyx) = lecture brute
+vs vue _latest (règle connue : readers rating → _latest). Confirmé par audit, zéro remediation
+data nécessaire.
+
+**Vérif** : front typecheck OK, lint 0 erreur (70 warnings pré-existants hors fichiers
+touchés), vitest 469 passed (57 fichiers, dont gradient 14). Go build/vet ./... OK, migrations
++ migration packages verts (ajout des 2 steps manquants à canonicalOrder : seed_custom_vengeur_medal
++ add_citation_name_display_en pré-existant), duckdb tests ciblés (Home/Career/SkillPeak/
+PlaylistName/migrations) verts. Seul échec restant = `TestNoUnauthorizedSharedSocialMention`
+PRÉ-EXISTANT (cmd/levelup/*, seed_demo_media_h5.go — non touchés par ce lot).
+
+**Prochaine étape** : commit (en attente d'autorisation user). Vérif live #3 (Chocoboflor →
+Platine au lieu d'Onyx) nécessite rebuild+restart du serveur dev (port 8000 actif) — non fait
+sans accord. Audit FR médailles #5 à compléter serveur arrêté si l'anglais persiste.
+
+---
+
+## [2026-06-30] Corrections globales — Vérification finale + #5 complété + échecs pré-existants réglés
+
+**Vérification demandée par l'utilisateur** : exhaustivité (aucun signalement ignoré
+partiellement/totalement), couverture logging + tests. Revue adverse via fan-out (1 agent
+Explore par signalement, lecture du diff réel) → 9/10 FULLY_ADDRESSED ; #10 flaggé
+PARTIALLY (test manquant) = obsolète (test ajouté depuis).
+
+**#5 ÉTAIT PARTIELLEMENT IGNORÉ — corrigé**. Audit live via l'API (serveur dev tournant,
+endpoints `/api/v1/assets/{title}/medals`) :
+- `/assets/halo_infinite/medals` renvoyait `[]` (tab médailles VIDE sur Infinite). Cause :
+  les médailles Infinite n'étaient JAMAIS chargées au boot (`NewStaticAssetMetaRepo` ne prend
+  que maps+weapons ; seul h5 chargeait des médailles via `WithTitle`). Fix : `server.go` charge
+  les médailles Infinite via `ListMedalsByTitle` + URL PNG `static.MedalImage` + nouvelle
+  méthode `StaticAssetMetaRepo.WithFallbackMedals`. (Le catalogue medal_definitions Infinite
+  EST complet — confirmé user — il n'était juste pas câblé au drawer ; ZÉRO repeuplement data.)
+- `/assets/halo_5/medals` renvoyait `name_fr:""` (médailles en ANGLAIS). Cause : la requête de
+  `loadTitleAssetDrawerData` ne SÉLECTIONNAIT pas `name_fr` (alors que cmd/h5-metadata-fetch le
+  peuple en fr-FR). Fix : SELECT name_fr/description_fr/description_en.
+- Vengeur (#5c) : migration `seed_custom_vengeur_medal` (déjà faite) — apparaît désormais via
+  le fix Infinite.
+- Tests ajoutés : `TestStaticAssetMetaRepo_FallbackMedals` + `_MedalsEmptyWithoutFallback`
+  (service), check Vengeur dans `TestTitleStepsRunEndToEnd_Metadata` (migrations).
+
+**Tests ajoutés (couverture)** : #10 `appShellStore.switchTitle.test.ts` (ordre header→cancel→
+clear→bootstrap), #9 `MedalDigest.test.tsx` (×9), #5 ci-dessus, #7/#4 déjà mis à jour.
+
+**Logging** : `asset_metadata_handler_ready` logge le compteur médailles ; log catalogue
+classement enrichi (titleSlug, locale, noms_fr/en). Tout passe par les fichiers logs/ par
+catégorie (leaderboard.log, etc.).
+
+**Échecs PRÉ-EXISTANTS réglés (demande user)** — aucun n'était causé par ce lot :
+1. `TestNoUnauthorizedSharedSocialMention` (duckdb) : 3 fichiers (cmd/levelup/cmd_data.go,
+   cmd/levelup/main.go, internal/ops/seed_demo_media_h5.go) mentionnaient 'shared_social'
+   (commentaires + lecture read-only de la SOURCE démo) hors whitelist → ajoutés à
+   `sharedSocialFilesWhitelist` avec justification.
+2. `TestNoNewSlugComparison` (archlint) : 4 comparaisons `titleSlug == DefaultSlug` dans
+   config/ (résolution de LAYOUT FS démo/fixtures, pas du gating de feature ADR 0025) → helper
+   canonique `title.IsDefaultSlug()` + remplacement des 4 sites (player_resolver.go ×3,
+   config_players.go ×1).
+3. `add_citation_name_display_en` + `seed_custom_vengeur_medal` ajoutés à `canonicalOrder`.
+
+**Vérif finale VERTE** : `go test ./...` = 103 packages OK, 0 échec ; `go vet ./...` clean ;
+front typecheck OK, lint 0 erreur, vitest 2063 passed + 14 skipped (236 fichiers).
+
+**Prochaine étape** : commit (en attente d'autorisation). Vérif live #3/#5 nécessite
+rebuild+restart serveur dev (port 8000) — non fait sans accord.

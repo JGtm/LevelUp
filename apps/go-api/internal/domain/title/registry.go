@@ -160,6 +160,16 @@ type Registry struct {
 // DefaultSlug est le slug du titre par défaut (Halo Infinite).
 const DefaultSlug = "halo_infinite"
 
+// IsDefaultSlug indique si `titleID` désigne le titre par défaut (slug vide normalisé
+// inclus). Helper canonique pour la résolution de LAYOUT FS / fixtures (structure
+// plate legacy du titre par défaut vs sous-arbre title-scopé). NB : ce n'est PAS un
+// gating de FEATURE par slug (interdit par ADR 0025 → passer par une capability) ;
+// c'est une décision d'agencement disque, centralisée ici plutôt que dispersée en
+// comparaisons brutes `slug == DefaultSlug`.
+func IsDefaultSlug(titleID string) bool {
+	return titleID == "" || titleID == DefaultSlug
+}
+
 // defaultRegistry : registre PARTAGÉ par les helpers package-level (XboxTitleIDFor)
 // et les call-sites de service qui n'ont pas d'instance sous la main. Lazy par
 // défaut (built-in halo_infinite), mais REMPLAÇABLE au boot par un registre piloté

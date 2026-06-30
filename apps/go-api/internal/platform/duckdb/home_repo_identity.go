@@ -31,7 +31,7 @@ func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartan
 	var backdropImageURL sql.NullString
 	var adornmentImagePath sql.NullString
 
-	err := r.pdb.ReadDB().QueryRow(ctx, Q26cHomeSpartanIdentity).Scan(
+	err := r.pdb.ReadDB().QueryRow(ctx, Q26cHomeSpartanIdentity, r.pdb.XUID).Scan(
 		&row.RankNumber,
 		&row.CurrentXP,
 		&row.XPForNextRank,

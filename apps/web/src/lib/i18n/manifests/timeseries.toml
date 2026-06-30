@@ -397,7 +397,7 @@ fr = "Performance"
 en = "Performance"
 
 [timeseries.summary.win_rate_label]
-fr = "Win rate"
+fr = "Taux de victoire"
 en = "Win rate"
 
 [timeseries.summary.winrate_vs_history_title]

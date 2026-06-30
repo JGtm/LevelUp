@@ -70,7 +70,7 @@ func (c *AppConfig) LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, 
 				SyncEnabled:    true,
 			})
 		}
-		if len(out) == 0 && titleSlug == title.DefaultSlug {
+		if len(out) == 0 && title.IsDefaultSlug(titleSlug) {
 			// Fallback (fixtures plates legacy, titre par défaut) : au moins le main.
 			out = append(out, domain.PlayerSummary{
 				PlayerSlug: "demo-player", Gamertag: "DemoPlayer", XUID: DemoRoster[0].XUID,
