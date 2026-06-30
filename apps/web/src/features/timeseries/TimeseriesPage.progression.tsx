@@ -83,6 +83,11 @@ export function TimeseriesProgressionTab({
   const hasRanked = useCapability('ranked')
   const hasLusr = useCapability('lusr')
   const hasSkillRating = hasRanked || hasLusr
+  // « Répartition des frags » : sur les titres à mécaniques natives (Halo 5), ce
+  // donut est DÉJÀ rendu dans l'onglet Summary (TimeseriesKillTypesDonut). On évite
+  // le doublon en ne le rendant ici (Progression) que pour les titres SANS cette
+  // capability (Halo Infinite), où il n'apparaît pas ailleurs.
+  const hasKillMechanics = useCapability('native_kill_mechanics')
   return (
     <div className="space-y-8">
       {/* timeseries.11 — Premier événement (gauche) | timeseries.14 — Par minute (droite) */}
@@ -136,7 +141,7 @@ export function TimeseriesProgressionTab({
           étroite pour laisser respirer la time-series ; sinon la progression
           reprend toute la largeur. */}
       {hasSkillRating &&
-        (data.detailed_stats ? (
+        (data.detailed_stats && !hasKillMechanics ? (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
             <KillTypesDonutCard
               title={t('timeseries.progression.kill_types_title')}

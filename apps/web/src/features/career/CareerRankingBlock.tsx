@@ -188,8 +188,12 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
                       <p className="text-xs text-muted-foreground">
                         {cp
                           ? cp.tier_label
-                            ? `${cp.tier_label} · ${Math.round(cp.rating_value).toLocaleString()}`
-                            : Math.round(cp.rating_value).toLocaleString()
+                            ? cp.rating_value > 0
+                              ? `${cp.tier_label} · ${Math.round(cp.rating_value).toLocaleString()}`
+                              : cp.tier_label
+                            : cp.rating_value > 0
+                              ? Math.round(cp.rating_value).toLocaleString()
+                              : t('career.ranking.unranked')
                           : t('career.ranking.unranked')}
                       </p>
                     </div>

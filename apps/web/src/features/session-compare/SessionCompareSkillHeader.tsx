@@ -24,7 +24,9 @@ function SkillRatingCell({
 }) {
   const colorClass = side === 'a' ? 'text-compare-a' : 'text-compare-b'
 
-  if (!entry || entry.last_skill_rating == null) {
+  // rating <= 0 = pas de valeur numérique (CSR par paliers Halo 5) → on n'affiche PAS
+  // un « 0 » trompeur (cf. signalement #2). Le LUSR/CSR chiffré réel est toujours > 0.
+  if (!entry || entry.last_skill_rating == null || entry.last_skill_rating <= 0) {
     return <td className="py-3 px-4 text-center text-muted-foreground text-sm">—</td>
   }
 
@@ -60,7 +62,9 @@ export function SessionCompareSkillHeader({
   sessionB,
   labels,
 }: SessionCompareSkillHeaderProps) {
-  const hasData = (sessionA?.last_skill_rating != null) || (sessionB?.last_skill_rating != null)
+  const hasData =
+    (sessionA?.last_skill_rating != null && sessionA.last_skill_rating > 0) ||
+    (sessionB?.last_skill_rating != null && sessionB.last_skill_rating > 0)
 
   if (!hasData) {
     return (

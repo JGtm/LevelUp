@@ -30,6 +30,13 @@ export function HomeSkillPeakCard({
 }: HomeSkillPeakCardProps) {
   const isPlacement = state === 'placement'
   const showRatingValue = state === 'value' && peak !== null && peak.rating_value > 0
+  // Rang « par paliers » sans valeur numérique (CSR Halo 5 : tier seul, pas
+  // d'échelle chiffrée) : on AFFICHE le palier (ligne principale) mais on NE
+  // montre PAS le tiret « — » placeholder (qui n'a de sens qu'en placement /
+  // non classé). Cf. issue user : ne pas afficher « — » quand le titre n'expose
+  // pas de CSR chiffré.
+  const isTierOnlyRating =
+    state === 'value' && peak !== null && peak.rating_value <= 0 && !!peak.tier_label
 
   // Barre de progression à DROITE du rating. Progression ORDINALE via le
   // sous-palier (backend analysis.SkillTierBand) : Onyx → pleine, placement /
@@ -87,12 +94,14 @@ export function HomeSkillPeakCard({
                 {isPlacement ? detail : (peak?.tier_label ?? detail)}
               </p>
             )}
-            <p
-              data-testid={`${testIdPrefix}-value`}
-              className="text-xs font-medium text-muted-foreground"
-            >
-              {showRatingValue ? peak!.rating_value.toLocaleString(numberLocale, { maximumFractionDigits: 0 }) : '—'}
-            </p>
+            {isTierOnlyRating ? null : (
+              <p
+                data-testid={`${testIdPrefix}-value`}
+                className="text-xs font-medium text-muted-foreground"
+              >
+                {showRatingValue ? peak!.rating_value.toLocaleString(numberLocale, { maximumFractionDigits: 0 }) : '—'}
+              </p>
+            )}
           </div>
 
           {/* Barre CENTRÉE verticalement (items-center de la rangée) + sous-palier

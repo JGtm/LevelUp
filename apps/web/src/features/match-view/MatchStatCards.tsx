@@ -23,7 +23,7 @@ import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { formatMessage } from '@/lib/i18n/format'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
+import { useProvidesDamageTaken, useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
 
 /** Libellé universel (FR=EN) quand la Résistance n'est pas calculable faute de
  *  damage_taken (Halo 5). Aligné sur `notAvailable: 'N/A'` du module compare. */
@@ -396,6 +396,10 @@ export function MatchSummaryCardsSection({
   // (au lieu de 0% trompeur), sans sous-valeur dégâts/mort ni accent rouge.
   // Défaut true (Infinite) → carte Résistance inchangée.
   const providesDamageTaken = useProvidesDamageTaken()
+  // Capability MMR d'équipe : Halo 5 ne porte PAS de MMR (carnage cryptum sans
+  // MMR équipe/adverse → no_team_mmr). On masque entièrement la card MMR pour
+  // les titres sans la capability (au lieu d'afficher une card vide/à tiret).
+  const providesTeamMmr = useProvidesTeamMmr()
 
   // Dégâts/frag (Rendement) et dégâts/mort (Résistance), arrondis comme l'Explorer
   // et la hero KPI de l'accueil. Affichés en sous-valeur sous le pourcentage.
@@ -428,16 +432,18 @@ export function MatchSummaryCardsSection({
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
-      <MatchVsStatCard
-        label={t('match_view.cards.mmr_team_vs_enemy')}
-        primary={kpis.team_mmr ?? null}
-        secondary={kpis.enemy_mmr ?? null}
-        primaryLabel={t('match_view.cards.label_ally')}
-        secondaryLabel={t('match_view.cards.label_enemy')}
-        delta={kpis.delta_mmr ?? null}
-        lowerIsBetter={false}
-        precision={0}
-      />
+      {providesTeamMmr && (
+        <MatchVsStatCard
+          label={t('match_view.cards.mmr_team_vs_enemy')}
+          primary={kpis.team_mmr ?? null}
+          secondary={kpis.enemy_mmr ?? null}
+          primaryLabel={t('match_view.cards.label_ally')}
+          secondaryLabel={t('match_view.cards.label_enemy')}
+          delta={kpis.delta_mmr ?? null}
+          lowerIsBetter={false}
+          precision={0}
+        />
+      )}
       <MatchVsStatCard
         label={t('match_view.cards.frags_vs_expected')}
         primary={kpis.kills ?? null}

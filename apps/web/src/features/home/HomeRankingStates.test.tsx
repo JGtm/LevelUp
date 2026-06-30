@@ -216,6 +216,34 @@ describe('Home ranking states', () => {
     expect(screen.getByTestId('home-highest-csr-tier')).toHaveTextContent('Onyx')
   })
 
+  // Issue Halo 5 #2 : CSR « par paliers » sans valeur numérique (rating_value=0 mais tier
+  // présent, matured) → on affiche le palier MAIS PAS le tiret « — » placeholder.
+  it('CSR tier-only (Halo 5) : affiche le palier sans tiret « — »', async () => {
+    const response = buildHomeResponse()
+    response.spartan_identity = {
+      ...response.spartan_identity!,
+      highest_csr: {
+        rating_value: 0,
+        tier_label: 'Diamant 5',
+        badge_image_url: '/static/ranks/halo_infinite/120px-HINF-CSR_Diamond5.png',
+        measurement_matches_remaining: 0,
+      },
+    }
+    response.has_ranked_history = true
+
+    server.use(
+      http.get('/api/v1/players/:playerSlug/pages/home', () => HttpResponse.json(response)),
+    )
+
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home-highest-csr-tier')).toHaveTextContent('Diamant 5')
+    })
+    // La ligne de valeur (et son « — ») n'est PAS rendue quand le CSR est tier-only.
+    expect(screen.queryByTestId('home-highest-csr-value')).toBeNull()
+  })
+
   it('affiche la barre (sous-palier) + extrémités (rating gauche, sous-palier suivant droite) en CSR matured', async () => {
     const response = buildHomeResponse()
     response.spartan_identity = {
