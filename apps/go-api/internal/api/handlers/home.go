@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -29,6 +30,7 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/domain"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 )
@@ -144,6 +146,16 @@ func (h *HomeHandler) handleGetHomePage(ctx context.Context, in *homePageInput) 
 				http.Header{"Retry-After": []string{"5"}},
 			)
 		}
+		// Contention de swap : le shared reader n'a pas pu être obtenu dans le budget
+		// user-facing (un sync tient le writer RW). 503 Retry-After court plutôt qu'un
+		// 500 opaque — la lecture est idempotente et repassera dès le retour en RO.
+		if isSharedSwapContention(err) {
+			return nil, huma.ErrorWithHeaders(
+				humacore.NewError(http.StatusServiceUnavailable, "home_page_db_busy",
+					"page d'accueil temporairement indisponible — base occupée par une synchronisation"),
+				http.Header{"Retry-After": []string{"2"}},
+			)
+		}
 		return nil, humacore.NewError(http.StatusInternalServerError, "home_page_error", "erreur chargement page d'accueil")
 	}
 
@@ -186,6 +198,16 @@ func isHandleClosedOrInvalidated(err error) bool {
 		return true
 	}
 	return strings.Contains(err.Error(), "database is closed")
+}
+
+// isSharedSwapContention reconnaît les erreurs du SharedDBProvider signalant que
+// la base partagée est momentanément indisponible car un sync tient le writer RW
+// (swap en cours ou provider en récupération). Elles justifient un 503 + Retry-After
+// court : la lecture est idempotente et repassera dès le retour en steady state RO.
+func isSharedSwapContention(err error) bool {
+	return errors.Is(err, sharedprovider.ErrSwapTimeout) ||
+		errors.Is(err, sharedprovider.ErrSwapFailed) ||
+		errors.Is(err, sharedprovider.ErrProviderClosed)
 }
 
 // handleGetBattlePass retourne les informations Battle Pass (best-effort, migré Huma).

@@ -111,7 +111,7 @@ func TestGetStringSetting_WrongType(t *testing.T) {
 
 func TestResolveSetupState_NoPlayers(t *testing.T) {
 	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{matchCount: 0})
-	got := svc.resolveSetupState(context.Background(), nil, nil)
+	got := svc.resolveSetupState(context.Background(), nil, "halo_infinite", nil)
 	if got != "no_halo_link" {
 		t.Errorf("expected no_halo_link, got %s", got)
 	}
@@ -125,7 +125,7 @@ func TestResolveSetupState_HaloLinkedNoProfile(t *testing.T) {
 		LinkedHaloIdentity: &domain.HaloIdentity{Gamertag: "GT", XUID: "123"},
 	}
 	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{matchCount: 0})
-	got := svc.resolveSetupState(context.Background(), sess, nil)
+	got := svc.resolveSetupState(context.Background(), sess, "halo_infinite", nil)
 	if got != "halo_linked_no_profile" {
 		t.Errorf("expected halo_linked_no_profile, got %s", got)
 	}
@@ -134,7 +134,7 @@ func TestResolveSetupState_HaloLinkedNoProfile(t *testing.T) {
 func TestResolveSetupState_WithPlayers(t *testing.T) {
 	players := []domain.PlayerSummary{{Gamertag: "GT"}}
 	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{matchCount: 0})
-	got := svc.resolveSetupState(context.Background(), nil, players)
+	got := svc.resolveSetupState(context.Background(), nil, "halo_infinite", players)
 	if got != "profile_ready_no_sync" {
 		t.Errorf("expected profile_ready_no_sync, got %s", got)
 	}
@@ -143,9 +143,68 @@ func TestResolveSetupState_WithPlayers(t *testing.T) {
 func TestResolveSetupState_WithMatchesReady(t *testing.T) {
 	players := []domain.PlayerSummary{{Gamertag: "GT"}}
 	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{matchCount: 42})
-	got := svc.resolveSetupState(context.Background(), nil, players)
+	got := svc.resolveSetupState(context.Background(), nil, "halo_infinite", players)
 	if got != "ready" {
 		t.Errorf("expected ready, got %s", got)
+	}
+}
+
+// Le résolveur title-aware doit être préféré au bootRepo (figé Infinite) et
+// recevoir le titre COURANT — sinon un switch Halo 5 compterait le mauvais shared.
+func TestResolveSetupState_UsesTitleAwareResolver(t *testing.T) {
+	players := []domain.PlayerSummary{{Gamertag: "GT"}}
+	var gotTitle string
+	// bootRepo renvoie 0 (Infinite vide) ; le résolveur renvoie 3 pour halo_5.
+	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{matchCount: 0}).
+		WithMatchCountResolver(func(_ context.Context, titleSlug string) (int, error) {
+			gotTitle = titleSlug
+			return 3, nil
+		})
+	got := svc.resolveSetupState(context.Background(), nil, "halo_5", players)
+	if got != "ready" {
+		t.Errorf("expected ready (résolveur title-aware), got %s", got)
+	}
+	if gotTitle != "halo_5" {
+		t.Errorf("expected resolver appelé avec halo_5, got %s", gotTitle)
+	}
+}
+
+// Un échec du décompte (provider contendu, erreur) dégrade proprement en
+// profile_ready_no_sync sans jamais faire échouer le bootstrap.
+func TestResolveSetupState_ResolverErrorDegrades(t *testing.T) {
+	players := []domain.PlayerSummary{{Gamertag: "GT"}}
+	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{matchCount: 99}).
+		WithMatchCountResolver(func(_ context.Context, _ string) (int, error) {
+			return 0, context.DeadlineExceeded
+		})
+	got := svc.resolveSetupState(context.Background(), nil, "halo_infinite", players)
+	if got != "profile_ready_no_sync" {
+		t.Errorf("expected profile_ready_no_sync (dégradation), got %s", got)
+	}
+}
+
+// Raison d'être de la feature : un décompte qui DÉPASSE le budget (provider
+// contendu par un sync) ne doit JAMAIS faire pendre le bootstrap — il dégrade en
+// profile_ready_no_sync sous ~setupCountBudget. Couvre la branche timeout
+// (case <-cctx.Done()) de matchCountForSetup.
+func TestResolveSetupState_CountTimeoutDegrades(t *testing.T) {
+	players := []domain.PlayerSummary{{Gamertag: "GT"}}
+	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{matchCount: 5}).
+		WithMatchCountResolver(func(ctx context.Context, _ string) (int, error) {
+			<-ctx.Done() // bloque jusqu'à l'expiration du budget (respecte le ctx)
+			return 0, ctx.Err()
+		})
+
+	start := time.Now()
+	got := svc.resolveSetupState(context.Background(), nil, "halo_infinite", players)
+	elapsed := time.Since(start)
+
+	if got != "profile_ready_no_sync" {
+		t.Errorf("un décompte au-delà du budget doit dégrader en profile_ready_no_sync, got %s", got)
+	}
+	// Le budget (setupCountBudget=2s) borne l'attente — pas de blocage indéfini.
+	if elapsed > 4*time.Second {
+		t.Errorf("resolveSetupState doit rendre la main sous ~budget, pris %v", elapsed)
 	}
 }
 
