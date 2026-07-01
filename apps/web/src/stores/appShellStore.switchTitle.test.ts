@@ -37,6 +37,9 @@ vi.mock('@/app/queryClient', () => ({
 }))
 
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useSoloFilterStore } from '@/stores/soloFilterStore'
+import { useSquadFilterStore } from '@/stores/squadFilterStore'
+import { DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
 
 const PLAYER = {
   player_slug: 'p1', gamertag: 'P1', xuid: '1', waypoint_player: 'P1', is_demo: false, sync_enabled: true,
@@ -65,10 +68,23 @@ const BOOTSTRAP_H5 = {
 describe('switchTitle (correction #10)', () => {
   beforeEach(() => {
     calls.length = 0
+    vi.restoreAllMocks()
     useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', currentPlayer: PLAYER, availablePlayers: [PLAYER] })
+    // Repartir de filtres propres avant chaque test.
+    useSoloFilterStore.getState().resetFilters()
+    useSquadFilterStore.getState().resetFilters()
   })
 
-  it('committe le titre AVANT le clear, et purge le cache AVANT le re-bootstrap', async () => {
+  it('committe le titre AVANT le clear, reset les filtres solo/squad, et purge le cache AVANT le re-bootstrap', async () => {
+    // Instrumenter l'ordre du reset filtres (sans exécuter le vrai reset ici :
+    // l'assertion de contenu est couverte par le test dédié ci-dessous).
+    vi.spyOn(useSoloFilterStore.getState(), 'resetFilters').mockImplementation(() => {
+      calls.push('resetSolo')
+    })
+    vi.spyOn(useSquadFilterStore.getState(), 'resetFilters').mockImplementation(() => {
+      calls.push('resetSquad')
+    })
+
     await useAppShellStore.getState().switchTitle('halo_5')
 
     // Le store reflète le nouveau titre.
@@ -77,19 +93,42 @@ describe('switchTitle (correction #10)', () => {
     // Ordre load-bearing.
     const iPost = calls.indexOf('post')
     const iSet = calls.indexOf('setApiTitleSlug:halo_5')
+    const iResetSolo = calls.indexOf('resetSolo')
+    const iResetSquad = calls.indexOf('resetSquad')
     const iCancel = calls.indexOf('cancelQueries')
     const iClear = calls.indexOf('clear')
     const iGet = calls.indexOf('get')
 
     expect(iPost).toBeGreaterThanOrEqual(0)
     expect(iSet).toBeGreaterThan(iPost) // header committé après le POST session
-    expect(iCancel).toBeGreaterThan(iSet) // annulation après le commit du titre
-    expect(iClear).toBeGreaterThan(iCancel) // clear après cancel
+    expect(iResetSolo).toBeGreaterThan(iSet) // filtres reset APRÈS le commit du titre
+    expect(iResetSquad).toBeGreaterThan(iSet)
+    expect(iCancel).toBeGreaterThan(iResetSolo) // cancel/clear APRÈS le reset filtres
+    expect(iCancel).toBeGreaterThan(iResetSquad)
+    expect(iClear).toBeGreaterThan(iCancel)
     expect(iGet).toBeGreaterThan(iClear) // re-bootstrap APRÈS le clear (pas avant)
   })
 
-  it('no-op si le titre est déjà courant', async () => {
+  it('réinitialise les filtres solo/squad pollués au switch', async () => {
+    // Polluer les deux stores avec un contexte propre au titre courant.
+    useSoloFilterStore.getState().setSessions({ picked_sessions: ['28/06/2026 (5)'], gap_minutes: 120 })
+    useSquadFilterStore.getState().setCascade({ experience_types: [], playlists: [], modes: ['m-infinite'], maps: [] })
+    expect(useSoloFilterStore.getState().filterContext).not.toEqual(DEFAULT_FILTER_CONTEXT)
+    expect(useSquadFilterStore.getState().filterContext).not.toEqual(DEFAULT_FILTER_CONTEXT)
+
+    await useAppShellStore.getState().switchTitle('halo_5')
+
+    expect(useSoloFilterStore.getState().filterContext).toEqual(DEFAULT_FILTER_CONTEXT)
+    expect(useSquadFilterStore.getState().filterContext).toEqual(DEFAULT_FILTER_CONTEXT)
+  })
+
+  it('no-op si le titre est déjà courant (filtres intacts)', async () => {
+    useSoloFilterStore.getState().setSessions({ picked_sessions: ['garde-moi'], gap_minutes: 120 })
+    const polluted = useSoloFilterStore.getState().filterContext
+
     await useAppShellStore.getState().switchTitle('halo_infinite')
+
     expect(calls).toHaveLength(0)
+    expect(useSoloFilterStore.getState().filterContext).toEqual(polluted)
   })
 })
