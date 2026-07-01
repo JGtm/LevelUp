@@ -12,6 +12,8 @@ import { create } from 'zustand'
 import type { BootstrapResponse, CapabilityMap, HaloIdentitySummary, PlayerSummary, TitleSummary } from '@/lib/api/types'
 import { api, setApiTitleSlug, setApiLocale } from '@/lib/api/client'
 import { queryClient } from '@/app/queryClient'
+import { useSoloFilterStore } from '@/stores/soloFilterStore'
+import { useSquadFilterStore } from '@/stores/squadFilterStore'
 
 interface AppShellState {
   // Joueur courant
@@ -170,6 +172,16 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
       // pour un titre non-défaut ; session déjà commitée ci-dessus pour le défaut).
       setApiTitleSlug(titleSlug)
       set({ currentTitleSlug: titleSlug })
+      // 2bis. Réinitialiser les filtres contextuels (solo/squad). Leur state
+      // (picked_sessions, cascade modes/maps/playlists) référence des labels/IDs
+      // du titre PRÉCÉDENT qui n'ont aucun sens sur le nouveau titre — même
+      // catégorie de state « lié à l'ancien titre » que le cache TanStack purgé
+      // juste après. resetFilters() réécrit aussi l'URL (?f=) et le localStorage,
+      // donc synchrone ici : un F5 pendant la fenêtre [titre changé / filtre pas
+      // encore reset] ne relira pas un ?f= obsolète. Les deux stores sont globaux
+      // (non scopés par titre), d'où le reset explicite au switch.
+      useSoloFilterStore.getState().resetFilters()
+      useSquadFilterStore.getState().resetFilters()
       // 3. Annuler les requêtes EN VOL (potentiellement parties avec l'ancien
       // titre pendant l'await du POST) PUIS purger tout le cache. Fait APRÈS le
       // commit du titre (étapes 1-2) : aucune donnée de l'ancien titre ne peut
