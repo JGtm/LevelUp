@@ -1997,7 +1997,11 @@ func startWatcherDaemon(
 			sink := duckdb.NewPersistSink(wMetaPath, wPlayerPath, xuid, titleSlug)
 			// resolver nil : le watcher ne pré-chauffe pas les définitions BP.
 			// Les définitions sont chargées à la demande via l'endpoint HTTP (resolver HTTP).
+			// WithTitleSlug : gate capability des surfaces live-service (BP/Challenges).
+			// Un titre qui ne les expose pas (Halo 5) ⇒ ticker no-op non démarré,
+			// plus de sondes economy/decks 404 toutes les 5 min.
 			refresher := watcher.NewPlayerLiveRefresher(gamertag, xuid, sink, nil).
+				WithTitleSlug(titleSlug).
 				WithTokenRefresher(tokenRefresher)
 			if getNotifier != nil {
 				if n := getNotifier(xuid); n != nil {

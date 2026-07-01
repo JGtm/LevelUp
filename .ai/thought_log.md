@@ -1,3 +1,40 @@
+## [2026-07-01] Live-refresh watcher : gate capability des surfaces BP/Challenges (fin des sondes 404 Halo 5) — COMPLÉTÉ local
+
+**Tâche** : supprimer les WARN récurrents `halo_provider: battle_pass fetch failed ... /h5/.../rewardtracks/operations HTTP 404` et `challenges fetch failed ... /h5/.../decks HTTP 404` observés toutes les 5 min pendant une session Halo 5. H5 n'expose ni Battle Pass ni Challenges — on ne devait même pas tenter le fetch.
+
+**Cause racine** : le modèle de capabilities est correct (`halo_5/adapter_data.go` + `capabilities.toml` déclarent `battlepass.progression`/`challenges.surface` = `not_exposed`), MAIS le ticker de live-refresh (`internal/watcher/live_refresh.go` `PlayerLiveRefresher.refresh`) appelait `GetBattlePassWithRaw`/`GetChallengesWithRaw` **inconditionnellement**, sans jamais consulter la capability du titre. Écrit pour Infinite, jamais rendu title-aware. Le ctx du ticker portant le slug `halo_5` (via `ctxkeys.TitleSlug`), le provider construisait des URLs `/h5/...` → 404.
+
+**Décision technique (solution propre, title-agnostic, pas de comparaison de slug)** :
+- Nouveaux helpers package-level `games.ProvidesBattlePass(slug)` / `games.ProvidesChallenges(slug)` (+ formes `*FromResolver` testables) dans `internal/games/live_service_source.go`, calqués EXACTEMENT sur `career_progression_source.go` : dérivent des capabilities `CapBattlePass`/`CapChallenges` via le `DefaultEndpointResolver()` partagé posé au boot ; défaut `true` (byte-identique Infinite) si resolver nil / sans extension `CapabilityResolver` / titre sans capabilities déclarées.
+- `PlayerLiveRefresher` : champ `titleSlug` + builder `WithTitleSlug` (source du gating = titre PROPRE du joueur, pas le slug du ctx entrant — évite la contamination par broadcast de présence, même raisonnement que `player_watcher.startPoller`). `OnPresenceActive` ne démarre PAS le ticker si `!bp && !ch` (H5 ⇒ ticker pur no-op non lancé, ni notifier). `refresh()` pose `ctxkeys.WithTitleSlug(ctx, r.titleSlug)` puis gate chaque fetch par surface (filet + cas mixte 1/2 supportée).
+- `cmd/server/main.go` : la factory `LiveRefreshFactory` câble `.WithTitleSlug(titleSlug)` (déjà normalisé vers `title.DefaultSlug`).
+
+**Résultats observés** :
+- Tests : `internal/games` (6 nouveaux tests helpers) + `internal/watcher` (2 nouveaux : titre sans surface → ticker non démarré ; titre avec surface → ticker démarré) VERTS. Log témoin du gate : `live_refresh: titre sans surface live-service, ticker non démarré title_slug=halo_5`.
+- `go build ./...` OK ; `go vet` (watcher/games/server) clean ; `internal/api`, `internal/service`, `internal/archlint` (garde `no_slug_comparison`) verts. Aucune régression des tests existants du refresher (titleSlug="" → défaut true → comportement Infinite inchangé, byte-identique).
+
+**Conclusion / prochaine étape** : le trou title-agnostic du live-refresh est fermé — plus de sondes economy/decks 404 pour H5, charge et bruit de logs supprimés. Non traité (séparé, hors scope) : les autres lignes du log de départ — `world-enrich: token non résolu (invalid_grant)` (RT périmés), `mediaStoredPathToURL: path legacy hors layout` (médias H5), `duckdb OpenReadWriteShared` sur metadata H5. Commit + push : en attente d'autorisation.
+
+## [2026-07-01] Diagnostic Axe 4/5 — switch de titre bloqué par GetMatchCount contendu au bootstrap — INVESTIGATION (pas de code)
+
+**Tâche** : investiguer pourquoi le switch de titre front (appShellStore.switchTitle → POST /session/context puis GET /bootstrap) échoue silencieusement quand le sync sature le backend. Log témoin : `bootstrap: erreur GetMatchCount pour setup_state err=GetMatchCount: context deadline exceeded title=halo_infinite`.
+
+**Cause racine (mécanisme précis)** :
+- `bootRepo` (`cmd/server/main.go:623` `NewBootstrapRepo(sharedReader, metaDB)`) est câblé une fois au boot sur le provider du shared d'`title.DefaultSlug` (`main.go:358` `sharedPath := pr.SharedDBPath(titleSlug)` avec `titleSlug := title.DefaultSlug` = Infinite, `registry.go:170`). `BootstrapRepository.GetMatchCount(ctx)` (`port/repository.go:50`) est **title-agnostic** : aucun paramètre titre. Donc même après switch vers H5, `resolveSetupState` (`bootstrap_service.go:416`) fait un `SELECT COUNT(*) FROM match_registry` sur la base **Infinite** — exactement le provider saturé par le sync Infinite.
+- Les bases sont pourtant isolées par fichier (`SharedDBPath` → `data/titles/{slug}/warehouse/shared_matches_v2.duckdb`, `registry.go:423`). La contention n'est PAS DuckDB file-level inter-titre ; c'est un **couplage de câblage process** (le bootRepo pointe le mauvais provider).
+- Le blocage vient du B-swap : pendant un swap RW (states Draining/RW/Reopening), `providerImpl.Get` gate les lecteurs sur `p.ready` jusqu'à `readyTimeout=30s` (`provider.go:174-239`). La fenêtre RW dure tant que le sync tient le writer (`engine_acquire.go` → `AcquireSharedWriter`). `GetMatchCount` a un timeout interne de 5s (`bootstrap_repo.go:44`) → il expire pendant la fenêtre → `context deadline exceeded`.
+
+**Deux surfaces d'échec (honnêteté sur la sévérité)** :
+1. **Soft (bénin sur instance configurée)** : `GetMatchCount` expire à 5s → `resolveSetupState` renvoie `profile_ready_no_sync` (dégradation déjà en place, `bootstrap_service.go:417-419`), bootstrap renvoie 200. Le wizard n'est PAS forcé car la route `/setup` est gatée par `setupRequired = !DemoMode && len(players)==0` (`__root.tsx:122`), indépendant du count. Donc peu d'impact fonctionnel si des joueurs existent.
+2. **Hard (vraie cause du rollback silencieux)** : si `/bootstrap` throw (WriteTimeout serveur 30s `main.go:1248` ; ou provider en StateError → retryReopenLoop jusqu'à ~31s `provider_writer.go:322-354` ; ou requête qui dépasse la patience client — pas de timeout côté client `lib/api/client.ts`), le `catch` de `switchTitle` (`appShellStore.ts:191-194`) restaure l'ancien titre → « le titre ne change pas ».
+
+**Fix durable proposé (backend, pas de rustine catch front)** :
+- (a) Rendre `GetMatchCount` du bootstrap **title-aware** via `cfg.SharedManager.For(SharedDBPath(currentTitleSlug))` (le Manager existe déjà, `manager.go`) → le count H5 tape la base H5, jamais le provider Infinite saturé.
+- (b) **Découpler le chemin critique du switch d'une ressource lourde** : le count ne sert qu'à distinguer `ready` vs `profile_ready_no_sync`, un signal cosmétique du wizard. Le remplacer par une source non contendue : dernier `last_sync_at`/watermark en mémoire (déjà tenu par le pipeline), un flag `initial_sync_done` par joueur (existe : `PlayerRepository.GetInitialSyncDone`), ou un cache TTL du count. Timeout court (1-2s) → défaut `profile_ready_no_sync` sans jamais faire échouer le bootstrap.
+- (c) Optionnel : faire le count en best-effort non bloquant (goroutine + select timeout comme `fetchPrivacyNonBlocking` `bootstrap_service.go:296`) pour garantir un bootstrap borné même en pathologie provider.
+
+**Résultat visé** : un switch de titre qui réussit toujours car son chemin critique ne dépend d'aucune lecture lourde sur le provider shared contendu. Reste : implémentation (non faite ici, tâche d'investigation).
+
 ## [2026-06-30] Page Escouade : réparer « Enregistrer cette compo » + encart guichet unique — COMPLÉTÉ local (à commiter)
 
 **Tâche** (retour user) : sur la page Escouade, (1) remonter l'encart « Cap d'escouade » (« Enregistrer cette compo comme escouade ») AU-DESSUS des onglets Synergies/Contributions ; (2) le clic « Enregistrer » ne faisait rien du tout → réparer ; (3) workflow complet de bout en bout. Placement de la gestion tranché avec le user : ni section Settings (page de préférences, pas de données), ni page/onglet dédié (doublon avec le menu déroulant du sélecteur qui liste déjà toutes les escouades) → l'encart se suffit à lui-même.
