@@ -422,20 +422,25 @@ func (s *AutoSyncScheduler) WithCycleOrchestrator(o syncv2.CycleOrchestrator) *A
 	return s
 }
 
-// shouldUseV2 retourne true si le pipeline V2 doit être tenté pour le
-// prochain cycle. Conditions :
-//   - LEVELUP_SYNC_PIPELINE == "v2" (insensible à la casse)
-//   - cycleOrchestrator non-nil (câblé par main.go)
+// shouldUseV2 retourne true si le pipeline V2 (ADR 0027) doit être tenté pour le
+// prochain cycle. V2 est désormais le pipeline PAR DÉFAUT : il isole la fenêtre
+// d'écriture (Discovery/Fetch en RO, Persist writer court) et supprime la
+// contention qui gelait les lectures user-facing pendant un sync V1 (le writer RW
+// shared était tenu pendant tout le fetch réseau — cf. .ai/PLAN_CONTENTION_SYNC_SERVICE.md).
 //
-// Le dispatch effectif vers V2 (avec fallback V1 sur ErrNotImplemented ou
-// échec) est ajouté dans RunOnce en D6 du plan ADR 0027. En D0 cette
-// fonction est exposée uniquement pour les tests contract.
+// Conditions :
+//   - cycleOrchestrator non-nil (câblé par main.go, parity-complete)
+//   - LEVELUP_SYNC_PIPELINE != "v1" (échappatoire de rollback : forcer le legacy V1)
+//
+// Le dispatch conserve un fallback V1 automatique sur ErrNotImplemented ou échec
+// global (runOnceV2 → V1), donc l'activation par défaut ne peut pas casser un cycle.
 func (s *AutoSyncScheduler) shouldUseV2() bool {
 	if s.cycleOrchestrator == nil {
 		return false
 	}
+	// V2 par défaut ; seul un opt-out explicite "v1" repasse en legacy.
 	v := strings.ToLower(strings.TrimSpace(os.Getenv("LEVELUP_SYNC_PIPELINE")))
-	return v == "v2"
+	return v != "v1"
 }
 
 // Snapshot retourne un cliché thread-safe du dernier cycle de sync, incluant
