@@ -620,5 +620,13 @@ func sharedCoreSteps() []migration.Migration {
 					)`)
 			},
 		},
+		{
+			Name:        "add_events_empty_to_match_registry",
+			TargetDB:    migration.TargetShared,
+			Description: "Ajoute events_empty : statut DISTINCT de events_loaded pour « chunk film récupéré, parse OK, mais 0 event (légitimement vide) ». Sort le match du retry set des events SANS mentir sur events_loaded (qui reste FALSE — aucun event chargé). Fin de la boucle de re-fetch/re-parse du parse_anomaly (idempotent).",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.AddColumnIfMissing(db, "match_registry", "events_empty", "BOOLEAN DEFAULT FALSE")
+			},
+		},
 	}
 }

@@ -168,6 +168,39 @@ func (p *EventsCompletionPersister) MarkNoFilmDefinitive(ctx context.Context, ma
 	return nil
 }
 
+// MarkEventsEmptyDefinitive marque un match dont le chunk film a bien été récupéré
+// ET parsé sans erreur, mais qui ne contient AUCUN highlight event (vide LÉGITIME,
+// ex. chunk minuscule sans marqueur). Statut DISTINCT de events_loaded (qui reste
+// FALSE — aucun event n'a été chargé, on ne ment pas) : on pose events_empty=TRUE +
+// backfill_completed |= eventsBit pour SORTIR le match du retry set (fin de la boucle
+// parse_anomaly re-fetch/re-parse à chaque cycle). Les matchs events_empty=TRUE
+// restent identifiables/auditables (SELECT ... WHERE events_empty) et re-processables
+// via un backfill --force si un fix parser arrive plus tard. Writer RW, hors db.Exec direct.
+//
+// eventsBit = sync.MBitEvents (passé par le caller, persist n'importe pas sync).
+func (p *EventsCompletionPersister) MarkEventsEmptyDefinitive(ctx context.Context, matchID string, eventsBit int64) error {
+	if matchID == "" {
+		return errors.New("persist: MarkEventsEmptyDefinitive: matchID vide")
+	}
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("persist: MarkEventsEmptyDefinitive BeginTx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE match_registry
+		SET backfill_completed = COALESCE(backfill_completed, 0) | ?,
+		    events_empty = TRUE
+		WHERE match_id = ?`, eventsBit, matchID); err != nil {
+		return fmt.Errorf("persist: MarkEventsEmptyDefinitive update %s: %w", matchID, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("persist: MarkEventsEmptyDefinitive Commit %s: %w", matchID, err)
+	}
+	return nil
+}
+
 // insertCompletionHighlightEvents insère les highlight_events du match en
 // INSERT-only (pas de DELETE — table ART-indexée, cf. en-tête). La colonne id
 // est auto-générée (seq). Retourne le nombre de rows effectivement insérées.

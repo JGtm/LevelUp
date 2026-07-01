@@ -307,7 +307,18 @@ func (cfg EventsConvergenceConfig) processChunk(ctx context.Context, chunk []str
 				*eventMatchIDs = append(*eventMatchIDs, f.matchID)
 			}
 		case f.found:
-			res.Skipped++ // anomalie : chunk non-vide, 0 event parsé → repris
+			// Anomalie : chunk non-vide, 0 event parsé. Définitif (vieux) →
+			// events_empty (sort du retry set sans mentir sur events_loaded) ;
+			// récent → repris (film peut-être encore instable).
+			if isNoFilmDefinitive(ctx, sharedDB, f.matchID) {
+				if e := persister.MarkEventsEmptyDefinitive(ctx, f.matchID, MBitEvents); e != nil {
+					res.Skipped++
+				} else {
+					res.NoFilmFinal++ // définitivement résolu : aucun event exploitable
+				}
+			} else {
+				res.Skipped++
+			}
 		default: // film absent (404)
 			if isNoFilmDefinitive(ctx, sharedDB, f.matchID) {
 				if e := persister.MarkNoFilmDefinitive(ctx, f.matchID, MBitEvents); e != nil {

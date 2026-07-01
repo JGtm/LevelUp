@@ -160,6 +160,21 @@ func hasBackfillCompletedColumn(ctx context.Context, db *sql.DB) bool {
 	return count > 0
 }
 
+// hasEventsEmptyColumn : la colonne events_empty (statut distinct « chunk récupéré,
+// 0 event légitime ») est ajoutée par migration. Sur une DB pas encore migrée (ou un
+// schéma de test minimal), on dégrade le gate events sur events_loaded seul.
+func hasEventsEmptyColumn(ctx context.Context, db *sql.DB) bool {
+	row := db.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM information_schema.columns "+
+			"WHERE table_name = 'match_registry' AND column_name = 'events_empty'",
+	)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return false
+	}
+	return count > 0
+}
+
 // doneGuard retourne une clause SQL excluant les matchs déjà traités
 // via mr.backfill_completed pour un flag global au match.
 func doneGuard(flagName string, hasBFCol bool) string {
@@ -242,10 +257,14 @@ func findMatchesInSharedAll(
 			"mp.match_id NOT IN (SELECT DISTINCT match_id FROM medals_earned WHERE xuid = ?)")
 	}
 
-	// Events — mr.events_loaded (source de vérité)
+	// Events — mr.events_loaded (source de vérité). events_empty=TRUE sort le match
+	// du retry set (chunk récupéré, 0 event légitime) SANS prétendre à events_loaded.
+	// Colonne conditionnelle : dégradation propre sur une DB non encore migrée.
 	if scope.Events {
 		if scope.ForceEvents {
 			conditions = append(conditions, "1=1")
+		} else if hasEventsEmptyColumn(ctx, sharedDB) {
+			conditions = append(conditions, "mr.events_loaded = false AND COALESCE(mr.events_empty, false) = false")
 		} else {
 			conditions = append(conditions, "mr.events_loaded = false")
 		}
