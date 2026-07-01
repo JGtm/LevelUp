@@ -426,6 +426,193 @@ func TestPoolOnHTTPError_429(t *testing.T) {
 	}
 }
 
+// TestPoolOn429ForToken_PerTokenNotGlobal vérifie qu'un 429 imputé à UN token met
+// CE token en cooldown (skippé à l'acquisition) SANS toucher les autres — fini le
+// scorched-earth où un 429 isolé mettait tout le pool en pause.
+func TestPoolOn429ForToken_PerTokenNotGlobal(t *testing.T) {
+	sources := testSlotEnv(3) // A, B, C
+	resolver := &testResolver{resolved: make(map[string]*ResolvedTokens)}
+
+	p, err := NewPool(context.Background(), resolver, sources, PoolOptions{MaxSize: 0, PerTokenRPS: 1})
+	if err != nil {
+		t.Fatalf("NewPool failed: %v", err)
+	}
+	defer p.Close()
+
+	// Mettre "A" en cooldown 429 (long) — les autres restent servables.
+	p.On429ForToken("A", 30*time.Second)
+
+	ctx := context.Background()
+	seen := map[string]int{}
+	for i := 0; i < 12; i++ {
+		lease, aerr := p.Acquire(ctx, PolicyAnyPublic, "")
+		if aerr != nil {
+			t.Fatalf("Acquire %d a échoué alors que B et C sont sains: %v", i, aerr)
+		}
+		seen[lease.Gamertag]++
+		lease.Release()
+	}
+
+	if seen["A"] != 0 {
+		t.Errorf("A rate-limité aurait dû être skippé, servi %d fois", seen["A"])
+	}
+	if seen["B"] == 0 || seen["C"] == 0 {
+		t.Errorf("B et C sains auraient dû servir, vu B=%d C=%d", seen["B"], seen["C"])
+	}
+}
+
+// TestPoolOn429ForToken_AutoRecovers vérifie qu'un token rate-limité redevient
+// acquérable seul à l'expiration du cooldown, SANS re-exchange.
+func TestPoolOn429ForToken_AutoRecovers(t *testing.T) {
+	sources := testSlotEnv(1) // A seulement
+	resolver := &testResolver{resolved: make(map[string]*ResolvedTokens)}
+
+	p, err := NewPool(context.Background(), resolver, sources, PoolOptions{MaxSize: 0, PerTokenRPS: 1})
+	if err != nil {
+		t.Fatalf("NewPool failed: %v", err)
+	}
+	defer p.Close()
+
+	ctx := context.Background()
+
+	// Cooldown très court sur l'unique token.
+	p.On429ForToken("A", 80*time.Millisecond)
+
+	// Immédiatement : indisponible.
+	if _, aerr := p.Acquire(ctx, PolicyAnyPublic, ""); aerr == nil {
+		t.Fatal("Acquire aurait dû échouer pendant le cooldown 429")
+	}
+
+	// Après le cooldown : re-disponible sans intervention (pas de re-exchange).
+	time.Sleep(150 * time.Millisecond)
+	lease, aerr := p.Acquire(ctx, PolicyAnyPublic, "")
+	if aerr != nil {
+		t.Fatalf("Acquire aurait dû réussir après cooldown: %v", aerr)
+	}
+	lease.Release()
+}
+
+// TestPoolOnHTTPError_FloorAtGlobalCooldown : un 429 avec un Retry-After court ne
+// doit PAS descendre sous le plancher globalCooldown (fin du thrash-loop 1s).
+func TestPoolOnHTTPError_FloorAtGlobalCooldown(t *testing.T) {
+	resolver := &testResolver{resolved: make(map[string]*ResolvedTokens)}
+	p, err := NewPool(context.Background(), resolver, testSlotEnv(2),
+		PoolOptions{MaxSize: 0, PerTokenRPS: 1, GlobalCooldown: 30 * time.Second})
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer p.Close()
+
+	p.OnHTTPError(429, 1*time.Second) // Retry-After=1s
+	if got := lastCooldownSeconds.Value(); got < 30 {
+		t.Errorf("cooldown planché attendu >= 30s (globalCooldown), got %ds — Retry-After 1s ne doit pas passer sous le plancher", got)
+	}
+}
+
+// TestPoolOnHTTPError_BackoffSurvivesRetryAfter : le backoff exponentiel n'est PLUS
+// neutralisé par un Retry-After (ancien bug : Retry-After=1s remettait le compteur
+// à 0 -> thrash-loop 1s à vie).
+func TestPoolOnHTTPError_BackoffSurvivesRetryAfter(t *testing.T) {
+	resolver := &testResolver{resolved: make(map[string]*ResolvedTokens)}
+	p, err := NewPool(context.Background(), resolver, testSlotEnv(2),
+		PoolOptions{MaxSize: 0, PerTokenRPS: 1, GlobalCooldown: 30 * time.Second})
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer p.Close()
+	pi := p.(*poolImpl)
+
+	// Simuler 2 incidents antérieurs (backoff déjà escaladé), hors cooldown actif.
+	pi.cooldownMu.Lock()
+	pi.consecutive429 = 2
+	pi.coolingDown = false
+	pi.cooldownMu.Unlock()
+
+	// Un 429 avec Retry-After=1s : le backoff 30s<<2 = 120s doit primer (pas 1s).
+	pi.OnHTTPError(429, 1*time.Second)
+	if got := lastCooldownSeconds.Value(); got < 120 {
+		t.Errorf("le backoff doit survivre au Retry-After : attendu >= 120s, got %ds", got)
+	}
+}
+
+// TestPoolOn429ForToken_UnknownGamertagDoesNotNukePool : un 429 sur un gamertag
+// hors pool ne doit PAS mettre tout le pool en cooldown (no-op).
+func TestPoolOn429ForToken_UnknownGamertagDoesNotNukePool(t *testing.T) {
+	resolver := &testResolver{resolved: make(map[string]*ResolvedTokens)}
+	p, err := NewPool(context.Background(), resolver, testSlotEnv(2), PoolOptions{MaxSize: 0, PerTokenRPS: 1})
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer p.Close()
+
+	p.On429ForToken("Inconnu", time.Second)
+	lease, aerr := p.Acquire(context.Background(), PolicyAnyPublic, "")
+	if aerr != nil {
+		t.Fatalf("un gamertag inconnu ne doit PAS nuke le pool: %v", aerr)
+	}
+	lease.Release()
+}
+
+// TestPoolOn429ForToken_EmptyGamertagFallbackGlobal : sans token identifiable, on
+// retombe sur le filet global (cooldown) plutôt que d'ignorer le signal.
+func TestPoolOn429ForToken_EmptyGamertagFallbackGlobal(t *testing.T) {
+	resolver := &testResolver{resolved: make(map[string]*ResolvedTokens)}
+	p, err := NewPool(context.Background(), resolver, testSlotEnv(2),
+		PoolOptions{MaxSize: 0, PerTokenRPS: 1, GlobalCooldown: 30 * time.Second})
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer p.Close()
+
+	p.On429ForToken("", time.Second) // gamertag vide -> filet global
+	if _, aerr := p.Acquire(context.Background(), PolicyAnyPublic, ""); aerr == nil {
+		t.Fatal("gamertag vide -> filet global attendu (pool en cooldown)")
+	}
+}
+
+// TestPool_ConcurrentAcquireAndUpdate_Race verrouille la correction de la data race
+// sur slot.resolved / p.slots : Acquire (lecture) + AddOrUpdateSource (réassigne
+// resolved + append) + On429ForToken (écrit rateLimitedUntil) en parallèle. À lancer
+// avec -race — l'ancien code (lecture hors verrou) échouait.
+func TestPool_ConcurrentAcquireAndUpdate_Race(t *testing.T) {
+	resolver := &testResolver{resolved: make(map[string]*ResolvedTokens)}
+	p, err := NewPool(context.Background(), resolver, testSlotEnv(3), PoolOptions{MaxSize: 0, PerTokenRPS: 100000})
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer p.Close()
+	ctx := context.Background()
+
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 200; j++ {
+				if lease, aerr := p.Acquire(ctx, PolicyAnyPublic, ""); aerr == nil {
+					_ = lease.Tokens
+					lease.Release()
+				}
+			}
+		}()
+	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for j := 0; j < 100; j++ {
+			_ = p.AddOrUpdateSource(ctx, CredentialSource{Gamertag: "A", XUID: "1000", Source: "test"})
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for j := 0; j < 200; j++ {
+			p.On429ForToken("B", 10*time.Millisecond)
+		}
+	}()
+	wg.Wait()
+}
+
 // TestPoolOnHTTPError_503 teste le backoff global sur 503.
 func TestPoolOnHTTPError_503(t *testing.T) {
 	sources := testSlotEnv(2)

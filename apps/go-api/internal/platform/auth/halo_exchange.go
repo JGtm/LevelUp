@@ -33,6 +33,30 @@ const (
 	// vers title.AuthDescriptor (MT-02) — source : title.DefaultHaloAuthDescriptor().
 )
 
+// xblUserAuthMaxConcurrent borne le nombre d'appels SIMULTANÉS vers
+// user.auth.xboxlive.com (endpoint XBL user-token). Xbox Live throttle cet
+// endpoint sur la CONCURRENCE (429 « currentRequests/maxRequests »). Sans borne,
+// le refresher du pool (jusqu'à N refresh parallèles après un cooldown) ET le
+// chemin user-facing (refreshTokensFromDB) tapaient l'endpoint en même temps →
+// 429 auto-infligé, sans aucune coordination entre les deux chemins. Un sémaphore
+// process-wide sérialise TOUS les appelants de l'échange XBL, éliminant ce 429.
+const xblUserAuthMaxConcurrent = 2
+
+// xblUserAuthSem est le sémaphore process-wide gardant les appels XBL user-token.
+var xblUserAuthSem = make(chan struct{}, xblUserAuthMaxConcurrent)
+
+// acquireXBLUserAuthSlot prend un slot du sémaphore XBL user-token (bloquant, mais
+// annulable par ctx). Retourne la fonction de libération (à defer). Tous les
+// appelants de l'échange XBL passent par ici → concurrence bornée globalement.
+func acquireXBLUserAuthSlot(ctx context.Context) (func(), error) {
+	select {
+	case xblUserAuthSem <- struct{}{}:
+		return func() { <-xblUserAuthSem }, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
 // ExchangeResult regroupe les tokens Halo ET l'identité extraite de la réponse XSTS.
 type ExchangeResult struct {
 	Tokens   *domain.HaloTokens
@@ -125,6 +149,14 @@ func ExchangeXSTSForHaloTokensWithDescriptor(ctx context.Context, xstsToken stri
 
 // requestUserToken obtient un User Token XBL depuis un access_token Microsoft.
 func requestUserToken(ctx context.Context, client *http.Client, accessToken string) (string, error) {
+	// Concurrence bornée sur l'endpoint XBL user-token (anti-429 « currentRequests »).
+	// Sérialise le refresher du pool ET le chemin user-facing sur le même sémaphore.
+	release, err := acquireXBLUserAuthSlot(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer release()
+
 	body := map[string]any{
 		xboxFieldRelyingParty: "http://auth.xboxlive.com",
 		xboxFieldTokenType:    "JWT",

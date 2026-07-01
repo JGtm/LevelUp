@@ -41,6 +41,7 @@ func (p *acqPool) Size() int                                                    
 func (p *acqPool) HasPlayer(string) bool                                          { return true }
 func (p *acqPool) MarkUnhealthy(string, error)                                    {}
 func (p *acqPool) OnHTTPError(int, time.Duration)                                 {}
+func (p *acqPool) On429ForToken(string, time.Duration)                            {}
 func (p *acqPool) AddOrUpdateSource(context.Context, pool.CredentialSource) error { return nil }
 func (p *acqPool) Close()                                                         {}
 

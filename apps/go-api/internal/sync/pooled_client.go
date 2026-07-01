@@ -90,7 +90,9 @@ func isAuthError(err error) bool {
 }
 
 // notifyPoolOnError signale au pool les erreurs HTTP qui nécessitent une action :
-//   - 429/503 → cooldown GLOBAL (OnHTTPError) — tout le pool est en pause.
+//   - 429 → cooldown PER-TOKEN (On429ForToken) sur le SLOT fautif (lease.Gamertag)
+//     — les autres tokens continuent de servir (fini le scorched-earth global).
+//   - 503 → cooldown GLOBAL (OnHTTPError) — signal serveur, tout le pool en pause.
 //   - 401/403 → le SLOT fautif (lease.Gamertag) est marqué unhealthy
 //     (MarkUnhealthy déclenche un Resolver.Refresh async) et le pool le skip.
 //
@@ -107,18 +109,22 @@ func (pc *PooledHaloClient) notifyPoolOnError(lease *pool.Lease, err error) {
 		return
 	}
 	switch httpErr.StatusCode {
-	case 429, 503:
-		msg := "rate_limit_exceeded"
-		if httpErr.StatusCode == 503 {
-			msg = "service_unavailable"
+	case 429:
+		// Rate-limit imputable AU token courant (lease.Gamertag) → cooldown
+		// per-token, PAS de scorched-earth global. Les autres tokens continuent.
+		// Sans gamertag (rare), On429ForToken retombe sur le filet global.
+		gt := ""
+		if lease != nil {
+			gt = lease.Gamertag
 		}
-		// Le pool logue lui-même le cooldown UNE fois par transition (dedup dans
-		// OnHTTPError → "pool: cooldown global déclenché"). Ici on est appelé PAR
-		// REQUÊTE : DEBUG pour éviter N doublons par cycle pendant un boot stampede.
-		slog.DebugContext(context.Background(), "pooled: cooldown pool signalé",
-			"statusCode", httpErr.StatusCode, "reason", msg,
+		slog.DebugContext(context.Background(), "pooled: 429 signalé (cooldown per-token)",
+			"gamertag", gt, "retry_after_s", httpErr.RetryAfter.Seconds())
+		pc.p.On429ForToken(gt, httpErr.RetryAfter)
+	case 503:
+		// 503 = signal SERVEUR (indisponibilité globale) → cooldown global légitime.
+		slog.DebugContext(context.Background(), "pooled: 503 signalé (cooldown global)",
 			"retry_after_s", httpErr.RetryAfter.Seconds())
-		pc.p.OnHTTPError(httpErr.StatusCode, httpErr.RetryAfter)
+		pc.p.OnHTTPError(503, httpErr.RetryAfter)
 	case 401, 403:
 		gt := ""
 		if lease != nil {

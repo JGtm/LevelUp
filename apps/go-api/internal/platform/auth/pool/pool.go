@@ -63,6 +63,30 @@ type slot struct {
 	mu          sync.RWMutex
 	healthy     bool // faux après 401/403, remis vrai après Refresh réussi
 	lastRefresh time.Time
+	// rateLimitedUntil : le token a pris un 429 (rate-limit d'API, PAS un échec
+	// d'auth) — il reste VALIDE mais est skippé par l'acquisition jusqu'à cette
+	// date. Auto-résorption temporelle, SANS re-exchange (un 429 ne justifie pas
+	// de refaire la chaîne XBL/XSTS). Distinct de healthy (401/403 = token mort).
+	rateLimitedUntil time.Time
+	// lastAttempt : dernière tentative de refresh (réactive ou proactive), pour
+	// throttler le refresh proactif near-expiry.
+	lastAttempt time.Time
+}
+
+// leaseData retourne, sous UN SEUL RLock, si le slot est acquérable MAINTENANT
+// (sain — pas de 401/403 — ET hors cooldown de rate-limit 429) et les données
+// nécessaires à un Lease capturées de façon COHÉRENTE. Capturer resolved/limiter
+// ici (et non hors verrou comme avant) élimine la data race avec le refresher
+// async et AddOrUpdateSource, qui réassignent slot.resolved sous slot.mu. Le
+// *ResolvedTokens pointé est immuable après création (le refresher REMPLACE le
+// pointeur, ne le mute pas), donc lire resolved.Tokens après le RUnlock est sûr.
+func (s *slot) leaseData(now time.Time) (resolved *ResolvedTokens, gamertag string, limiter *rate.Limiter, ok bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if !s.healthy || now.Before(s.rateLimitedUntil) {
+		return nil, "", nil, false
+	}
+	return s.resolved, s.gamertag, s.limiter, true
 }
 
 // gtKey construit la clé composite (titleSlug, gamertag) du registre de slots
@@ -200,24 +224,27 @@ func (p *poolImpl) acquireAnyPublic(ctx context.Context) (*Lease, error) {
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		select {
 		case slotIdx := <-p.anyPublicChan:
+			// Lire p.slots sous slotMu : AddOrUpdateSource peut append (réalloc du
+			// backing array) concurremment (re-scan Discovery 15min).
+			p.slotMu.RLock()
 			slot := p.slots[slotIdx]
+			p.slotMu.RUnlock()
 
-			// Vérifier que le slot est sain.
-			slot.mu.RLock()
-			healthy := slot.healthy
-			slot.mu.RUnlock()
-
-			if !healthy {
-				// Slot malsain, remettre dans le canal et essayer le suivant.
+			// Sain ET hors cooldown 429 ? Sinon remettre dans le canal et tenter
+			// le suivant. Un slot rate-limité (429 sur SON token) est skippé sans
+			// pénaliser les autres — fini le scorched-earth d'un 429 isolé. La
+			// capture des tokens/limiter est cohérente (sous un seul RLock).
+			resolved, gamertag, limiter, ok := slot.leaseData(time.Now())
+			if !ok {
 				p.anyPublicChan <- slotIdx
 				continue
 			}
 
 			// Slot sain, créer un Lease.
 			return &Lease{
-				Tokens:   slot.resolved.Tokens,
-				Gamertag: slot.gamertag,
-				Limiter:  slot.limiter,
+				Tokens:   resolved.Tokens,
+				Gamertag: gamertag,
+				Limiter:  limiter,
 				Release: func() {
 					// Remettre le slot dans le canal.
 					p.anyPublicChan <- slotIdx
@@ -239,29 +266,31 @@ func (p *poolImpl) acquireAnyPublic(ctx context.Context) (*Lease, error) {
 //
 //nolint:unparam // ctx maintenu pour cohérence avec l'interface caller (Acquire(ctx))
 func (p *poolImpl) acquirePinnedPlayer(ctx context.Context, gamertag string) (*Lease, error) {
+	// Capturer l'index ET le pointeur de slot sous slotMu (append concurrent possible).
 	p.slotMu.RLock()
 	slotIdx, ok := p.slotsByKey[gtKey(p.titleSlug, gamertag)]
+	var slot *slot
+	if ok {
+		slot = p.slots[slotIdx]
+	}
 	p.slotMu.RUnlock()
 
 	if !ok {
 		return nil, fmt.Errorf("pool: %q n'a pas de token pinné", gamertag)
 	}
 
-	slot := p.slots[slotIdx]
-
-	// Vérifier l'état de santé du slot.
-	slot.mu.RLock()
-	healthy := slot.healthy
-	slot.mu.RUnlock()
-
-	if !healthy {
-		return nil, fmt.Errorf("pool: token %q est malsain (401/403), en refresh", gamertag)
+	// Sain ET hors cooldown 429 ? Un token rate-limité (429) est momentanément
+	// indisponible sans être marqué mort — le caller réessaiera. Capture cohérente
+	// des tokens/limiter sous un seul RLock (anti-race refresher).
+	resolved, _, limiter, acq := slot.leaseData(time.Now())
+	if !acq {
+		return nil, fmt.Errorf("pool: token %q indisponible (auth invalide ou rate-limité), réessayer", gamertag)
 	}
 
 	return &Lease{
-		Tokens:   slot.resolved.Tokens,
+		Tokens:   resolved.Tokens,
 		Gamertag: gamertag,
-		Limiter:  slot.limiter,
+		Limiter:  limiter,
 		Release:  func() {}, // No-op pour PolicyPinnedPlayer.
 	}, nil
 }
@@ -388,6 +417,22 @@ const (
 	maxCooldown     = 5 * time.Minute
 )
 
+// Cooldown per-token sur 429 (rate-limit d'API imputable à UN token précis).
+const (
+	// perToken429BaseCooldown : durée par défaut de mise à l'écart d'un token
+	// rate-limité quand le serveur ne fournit pas de Retry-After.
+	perToken429BaseCooldown = 2 * time.Second
+	// perToken429MaxCooldown : plafond d'un cooldown per-token.
+	perToken429MaxCooldown = 60 * time.Second
+)
+
+// Refresh proactif near-expiry : la sonde de fond rafraîchit un token SAIN dont
+// l'expiry approche, pour qu'aucune requête ne DÉCOUVRE l'expiration par un échec.
+const (
+	proactiveRefreshThreshold   = 15 * time.Minute
+	proactiveRefreshMinInterval = 60 * time.Second
+)
+
 // OnHTTPError signale une erreur HTTP (429/503) et déclenche un cooldown global.
 // Non-bloquant : tous les tokens sont marqués malsains et le refresher est suspendu.
 // retryAfter > 0 = durée du header Retry-After (prioritaire) ; sinon backoff
@@ -401,23 +446,34 @@ func (p *poolImpl) OnHTTPError(statusCode int, retryAfter time.Duration) {
 	p.cooldownMu.Lock()
 	defer p.cooldownMu.Unlock()
 
-	// Durée de cooldown : Retry-After prioritaire, sinon backoff exponentiel.
-	var dur time.Duration
-	honored := false
-	switch {
-	case retryAfter > 0:
-		dur = retryAfter
+	// Si le cooldown précédent a EXPIRÉ, on en est sortis sainement → repartir du
+	// palier de base (ne pas dépendre du seul tick 10s du refresher pour reset le
+	// backoff). Sans ça, un 429 frais juste après l'expiration réutiliserait un
+	// consecutive429 gonflé → cooldown de 5min au lieu de ~30s.
+	if p.coolingDown && !time.Now().Before(p.cooldownUntil) {
+		p.coolingDown = false
 		p.consecutive429 = 0
-		honored = true
-	case statusCode == 429:
-		shift := p.consecutive429
-		if shift > maxBackoffShift {
-			shift = maxBackoffShift
-		}
-		dur = p.globalCooldown << shift
-		p.consecutive429++
-	default:
-		dur = p.globalCooldown
+	}
+
+	// Durée de cooldown : max(Retry-After, backoff exponentiel), planchée à
+	// globalCooldown. Le backoff N'EST PLUS neutralisé par la présence d'un
+	// Retry-After (ancien bug : Retry-After=1s remettait consecutive429=0 → thrash
+	// loop d'1s à vie). Des rate-errors répétées escaladent donc toujours, même
+	// quand le serveur renvoie un petit Retry-After. NB : consecutive429 n'est
+	// incrémenté QUE dans les branches qui posent/prolongent réellement le cooldown
+	// (pas dans la branche « ignoré pendant un cooldown plus long ») — sinon un
+	// burst de 429 concurrents sur-escaladerait le backoff jusqu'à maxCooldown.
+	honored := retryAfter > 0
+	shift := p.consecutive429
+	if shift > maxBackoffShift {
+		shift = maxBackoffShift
+	}
+	dur := p.globalCooldown << shift
+	if retryAfter > dur {
+		dur = retryAfter
+	}
+	if dur < p.globalCooldown {
+		dur = p.globalCooldown // plancher : jamais sous le cooldown de base
 	}
 	if dur > maxCooldown {
 		dur = maxCooldown
@@ -432,6 +488,7 @@ func (p *poolImpl) OnHTTPError(statusCode int, retryAfter time.Duration) {
 	if p.coolingDown && time.Now().Before(p.cooldownUntil) {
 		if newUntil.After(p.cooldownUntil) {
 			p.cooldownUntil = newUntil
+			p.consecutive429++ // escalade uniquement quand on prolonge réellement
 			cooldownExtendedTotal.Add(1)
 			recordCooldownMetrics(statusCode, honored)
 			lastCooldownSeconds.Set(int64(dur.Seconds()))
@@ -447,21 +504,67 @@ func (p *poolImpl) OnHTTPError(statusCode int, retryAfter time.Duration) {
 	// Déclencher le cooldown global.
 	p.coolingDown = true
 	p.cooldownUntil = newUntil
+	p.consecutive429++ // escalade uniquement quand on déclenche réellement
 	recordCooldownMetrics(statusCode, honored)
 	lastCooldownSeconds.Set(int64(dur.Seconds()))
 
 	slog.WarnContext(context.Background(), "pool: cooldown global déclenché",
 		"status", statusCode, "cooldown_s", dur.Seconds(), "retry_after_honored", honored)
 
-	// Marquer tous les tokens comme malsains (non-bloquant).
-	for _, slot := range p.slots {
+	// Marquer tous les tokens comme malsains (non-bloquant). Snapshot de p.slots
+	// sous slotMu (append concurrent possible) — ordre cooldownMu→slotMu, sans cycle.
+	p.slotMu.RLock()
+	slots := p.slots
+	p.slotMu.RUnlock()
+	for _, slot := range slots {
 		slot.mu.Lock()
 		slot.healthy = false
 		slot.mu.Unlock()
 	}
 
 	slog.InfoContext(context.Background(), "pool: tous les tokens marqués malsains (cooldown)",
-		"count", len(p.slots))
+		"count", len(slots))
+}
+
+// On429ForToken implémente Pool.On429ForToken : cooldown TEMPOREL borné sur le seul
+// token fautif, sans cooldown global ni re-exchange. Le token reste valide (un 429
+// est un throttle d'API, pas un échec d'auth) — il est juste skippé par l'acquisition
+// jusqu'à expiration du cooldown, puis redevient acquérable seul. Les autres tokens
+// continuent de servir : fini le scorched-earth où un 429 isolé mettait les 7 en pause.
+func (p *poolImpl) On429ForToken(gamertag string, retryAfter time.Duration) {
+	if gamertag == "" {
+		// Sans token identifiable, filet global borné plutôt qu'ignorer le signal.
+		p.OnHTTPError(429, retryAfter)
+		return
+	}
+	p.slotMu.RLock()
+	slotIdx, ok := p.slotsByKey[gtKey(p.titleSlug, gamertag)]
+	p.slotMu.RUnlock()
+	if !ok {
+		// Gamertag hors pool (source retirée) : ne PAS nuke le pool, juste tracer.
+		slog.DebugContext(context.Background(), "pool: On429ForToken gamertag inconnu, ignoré",
+			"gamertag", gamertag)
+		return
+	}
+
+	cooldown := retryAfter
+	if cooldown <= 0 {
+		cooldown = perToken429BaseCooldown
+	}
+	if cooldown > perToken429MaxCooldown {
+		cooldown = perToken429MaxCooldown
+	}
+	until := time.Now().Add(cooldown)
+
+	slot := p.slots[slotIdx]
+	slot.mu.Lock()
+	if until.After(slot.rateLimitedUntil) {
+		slot.rateLimitedUntil = until
+	}
+	slot.mu.Unlock()
+
+	slog.WarnContext(context.Background(), "pool: token rate-limité (429) — cooldown per-token",
+		"gamertag", gamertag, "cooldown_s", cooldown.Seconds())
 }
 
 // Close implémente Pool.Close().
@@ -503,15 +606,47 @@ func (p *poolImpl) refresherLoop(baseCtx context.Context) {
 			}
 			p.cooldownMu.Unlock()
 
-			// Parcourir les slots et refresh les malsains.
-			for i, slot := range p.slots {
-				slot.mu.RLock()
-				healthy := slot.healthy
-				slot.mu.RUnlock()
+			// Snapshot de p.slots sous RLock : AddOrUpdateSource peut append
+			// (réalloc du backing array) concurremment (re-scan Discovery 15min).
+			p.slotMu.RLock()
+			slots := p.slots
+			p.slotMu.RUnlock()
 
-				if !healthy {
-					// Asynchronously refresh sans bloquer la loop.
-					go func(slotIdx int, gt string) {
+			// Parcourir les slots : refresh les malsains (réactif) ET, PROACTIVEMENT,
+			// les tokens sains dont l'expiry approche — pour qu'aucune requête ne
+			// découvre l'expiration par un échec (sonde de santé de fond).
+			for _, sl := range slots {
+				sl.mu.RLock()
+				healthy := sl.healthy
+				lastAttempt := sl.lastAttempt
+				var expiresAt time.Time
+				if sl.resolved != nil {
+					expiresAt = sl.resolved.ExpiresAt
+				}
+				sl.mu.RUnlock()
+
+				// Proactif : token SAIN proche de l'expiry, throttlé pour ne pas
+				// re-exchanger en boucle si l'échange échoue.
+				nearExpiry := !expiresAt.IsZero() && time.Until(expiresAt) < proactiveRefreshThreshold
+				proactive := healthy && nearExpiry && time.Since(lastAttempt) > proactiveRefreshMinInterval
+
+				if !healthy || proactive {
+					// reason distingue le refresh réactif (token 401/403 mort) du refresh
+					// PROACTIF de la sonde de fond — pour qu'un opérateur voie dans logs/
+					// que la sonde tourne (répond à la demande « savoir en background si
+					// un token est sain »).
+					reason := "reactive"
+					if proactive {
+						reason = "proactive"
+						slog.DebugContext(baseCtx, "pool: sonde santé — refresh proactif near-expiry déclenché",
+							"gamertag", sl.gamertag, "expires_in_s", time.Until(expiresAt).Seconds())
+					}
+					sl.mu.Lock()
+					sl.lastAttempt = time.Now()
+					sl.mu.Unlock()
+					// Asynchronously refresh sans bloquer la loop. On passe le *slot
+					// capturé (pas d'index) → aucune lecture de p.slots hors lock.
+					go func(s *slot, gt, reason string) {
 						ctx, cancel := context.WithTimeout(baseCtx, 10*time.Second)
 						defer cancel()
 
@@ -522,25 +657,24 @@ func (p *poolImpl) refresherLoop(baseCtx context.Context) {
 							// a déjà été émis par le resolver).
 							if errors.Is(err, ErrPermanentAuthFailure) {
 								slog.DebugContext(ctx, "pool: refresh court-circuité (échec permanent récent)",
-									"gamertag", gt)
+									"gamertag", gt, "reason", reason)
 								return
 							}
 							slog.ErrorContext(ctx, "pool: refresh échoué",
-								"gamertag", gt, "err", err)
+								"gamertag", gt, "reason", reason, "err", err)
 							return
 						}
 
-						// Mettre à jour le slot.
-						slot := p.slots[slotIdx]
-						slot.mu.Lock()
-						slot.resolved = refreshed
-						slot.healthy = true
-						slot.lastRefresh = time.Now()
-						slot.mu.Unlock()
+						// Mettre à jour le slot (pointeur capturé, pas de p.slots hors lock).
+						s.mu.Lock()
+						s.resolved = refreshed
+						s.healthy = true
+						s.lastRefresh = time.Now()
+						s.mu.Unlock()
 
 						slog.InfoContext(ctx, "pool: token rafraîchi avec succès",
-							"gamertag", gt)
-					}(i, slot.gamertag)
+							"gamertag", gt, "reason", reason)
+					}(sl, sl.gamertag, reason)
 				}
 			}
 		}

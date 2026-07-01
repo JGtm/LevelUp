@@ -47,10 +47,11 @@ type fakePool struct {
 func (m *fakePool) Acquire(_ context.Context, _ pool.AcquirePolicy, _ string) (*pool.Lease, error) {
 	return nil, nil
 }
-func (m *fakePool) Size() int                          { return m.size }
-func (m *fakePool) HasPlayer(gt string) bool           { return m.hasPlayerMap[gt] }
-func (m *fakePool) MarkUnhealthy(_ string, _ error)    {}
-func (m *fakePool) OnHTTPError(_ int, _ time.Duration) {}
+func (m *fakePool) Size() int                               { return m.size }
+func (m *fakePool) HasPlayer(gt string) bool                { return m.hasPlayerMap[gt] }
+func (m *fakePool) MarkUnhealthy(_ string, _ error)         {}
+func (m *fakePool) OnHTTPError(_ int, _ time.Duration)      {}
+func (m *fakePool) On429ForToken(_ string, _ time.Duration) {}
 func (m *fakePool) AddOrUpdateSource(_ context.Context, _ pool.CredentialSource) error {
 	return nil
 }
