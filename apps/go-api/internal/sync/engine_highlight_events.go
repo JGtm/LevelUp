@@ -180,21 +180,32 @@ func insertHighlightEventsFromData(
 		return fmt.Errorf("ParseHighlightEvents: %w", err)
 	}
 	if len(events) == 0 {
-		// Anomalie : on a téléchargé un chunk non-vide mais le parser
-		// n'a rien extrait. Avant le fix bit-aligné (mai 2026), ce cas
-		// était silencieusement loggé en DEBUG et faisait perdre tout
-		// l'historique highlight events. Désormais : WARN + compteur
-		// expvar pour qu'une regression soit immédiatement visible.
+		// Anomalie : on a téléchargé un chunk non-vide mais le parser n'a rien
+		// extrait. Deux cas distincts :
+		//  - match RÉCENT (film peut-être encore instable / cache stale) → on RETENTE
+		//    (events_loaded reste FALSE) pour ne pas masquer une régression parser ;
+		//  - vide DÉFINITIF (match hors fenêtre de retry) → events_empty=TRUE, statut
+		//    DISTINCT de events_loaded (qui reste FALSE), pour SORTIR du retry set et
+		//    stopper la boucle de re-fetch/re-parse à chaque cycle (fin du bruit 770x).
 		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_anomaly_total")
 		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_stale_cache")
+		definitive := isNoFilmDefinitive(ctx, sharedDB, matchID)
 		slog.WarnContext(ctx, "highlight_events parse_anomaly: chunk non-vide mais 0 events extraits",
 			"match_id", matchID,
 			"film_version", filmMajorVersion,
 			"data_size", len(data),
+			"definitive", definitive,
 		)
+		if definitive && sharedDB != nil {
+			if markErr := persist.NewEventsCompletionPersister(sharedDB).
+				MarkEventsEmptyDefinitive(ctx, matchID, MBitEvents); markErr != nil {
+				slog.DebugContext(ctx, "MarkEventsEmptyDefinitive échoué (parse_anomaly)",
+					"match_id", matchID, "err", markErr)
+			}
+		}
 		if result != nil {
 			result.Warnings = append(result.Warnings,
-				fmt.Sprintf("highlight_events parse_anomaly %s: chunk %d bytes v%d → 0 events", matchID, len(data), filmMajorVersion))
+				fmt.Sprintf("highlight_events parse_anomaly %s: chunk %d bytes v%d → 0 events (definitive=%v)", matchID, len(data), filmMajorVersion, definitive))
 		}
 		return nil
 	}
@@ -266,18 +277,29 @@ func ProcessHighlightEvents(
 		return fmt.Errorf("ParseHighlightEvents: %w", err)
 	}
 	if len(events) == 0 {
-		// Anomalie : chunk téléchargé non-vide mais 0 event parsé.
-		// Voir insertHighlightEventsFromData pour la justification.
+		// Anomalie : chunk téléchargé non-vide mais 0 event parsé. Voir
+		// insertHighlightEventsFromData pour la justification : définitif (vieux) →
+		// events_empty (sort du retry set sans mentir sur events_loaded) ; récent →
+		// on retente (events_loaded reste FALSE).
 		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_anomaly_total")
 		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_stale_cache")
+		definitive := isNoFilmDefinitive(ctx, sharedDB, matchID)
 		slog.WarnContext(ctx, "highlight_events parse_anomaly: chunk non-vide mais 0 events extraits",
 			"match_id", matchID,
 			"film_version", filmMajorVersion,
 			"data_size", len(data),
+			"definitive", definitive,
 		)
+		if definitive && sharedDB != nil {
+			if markErr := persist.NewEventsCompletionPersister(sharedDB).
+				MarkEventsEmptyDefinitive(ctx, matchID, MBitEvents); markErr != nil {
+				slog.DebugContext(ctx, "MarkEventsEmptyDefinitive échoué (parse_anomaly)",
+					"match_id", matchID, "err", markErr)
+			}
+		}
 		if result != nil {
 			result.Warnings = append(result.Warnings,
-				fmt.Sprintf("highlight_events parse_anomaly %s: chunk %d bytes v%d → 0 events", matchID, len(data), filmMajorVersion))
+				fmt.Sprintf("highlight_events parse_anomaly %s: chunk %d bytes v%d → 0 events (definitive=%v)", matchID, len(data), filmMajorVersion, definitive))
 		}
 		return nil
 	}

@@ -59,7 +59,8 @@ func openCompletionTestDB(t *testing.T) *sql.DB {
 		`CREATE TABLE match_registry (
 			match_id VARCHAR PRIMARY KEY,
 			backfill_completed BIGINT DEFAULT 0,
-			events_loaded BOOLEAN DEFAULT FALSE
+			events_loaded BOOLEAN DEFAULT FALSE,
+			events_empty BOOLEAN DEFAULT FALSE
 		)`,
 	}
 	for _, ddl := range schema {
@@ -231,6 +232,41 @@ func TestEventsCompletionPersister_MarkNoFilmDefinitive(t *testing.T) {
 	}
 	if bits&testBitEvents == 0 {
 		t.Errorf("MBitEvents non positionné: bits=%d", bits)
+	}
+}
+
+// TestEventsCompletionPersister_MarkEventsEmptyDefinitive : un chunk récupéré mais
+// 0 event légitime pose events_empty=TRUE + le bit events, SANS mentir sur
+// events_loaded (qui reste FALSE — aucun event chargé). Sort le match du retry set
+// tout en restant honnête et auditable.
+func TestEventsCompletionPersister_MarkEventsEmptyDefinitive(t *testing.T) {
+	ctx := context.Background()
+	db := openCompletionTestDB(t)
+	matchID := "m-empty-001"
+	seedCompletionRegistry(t, db, matchID)
+
+	if err := NewEventsCompletionPersister(db).MarkEventsEmptyDefinitive(ctx, matchID, testBitEvents); err != nil {
+		t.Fatalf("MarkEventsEmptyDefinitive: %v", err)
+	}
+	if got := countCompletionRows(t, db, "highlight_events", matchID); got != 0 {
+		t.Errorf("highlight_events = %d, want 0 (vide)", got)
+	}
+
+	var eventsEmpty, eventsLoaded sql.NullBool
+	var bits int64
+	if err := db.QueryRowContext(ctx,
+		`SELECT backfill_completed, events_loaded, events_empty FROM match_registry WHERE match_id = ?`, matchID).
+		Scan(&bits, &eventsLoaded, &eventsEmpty); err != nil {
+		t.Fatalf("read registry: %v", err)
+	}
+	if !eventsEmpty.Bool {
+		t.Error("events_empty = false, want true (chunk vide définitif)")
+	}
+	if eventsLoaded.Bool {
+		t.Error("events_loaded = true, want false — on ne doit PAS mentir : aucun event chargé")
+	}
+	if bits&testBitEvents == 0 {
+		t.Errorf("MBitEvents non positionné (sortie du retry set): bits=%d", bits)
 	}
 }
 
