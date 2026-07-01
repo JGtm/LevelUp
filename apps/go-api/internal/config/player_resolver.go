@@ -17,6 +17,14 @@ import (
 // ErrPlayerNotFound est retourné quand le slug ne correspond à aucun joueur configuré.
 var ErrPlayerNotFound = fmt.Errorf("joueur introuvable")
 
+// SharedReaderForTitle est le wrapper exporté de sharedReaderForTitle : résout le
+// SharedReader RO (B-swap) du shared du titre courant. Utilisé au composition root
+// pour un décompte de matchs title-aware (bootstrap) sans que le package service
+// n'importe platform/duckdb. DefaultSlug → byte-identique à cfg.SharedProvider.
+func (cfg *AppConfig) SharedReaderForTitle(titleSlug string) duckdb.SharedReader {
+	return cfg.sharedReaderForTitle(titleSlug)
+}
+
 // sharedReaderForTitle résout le SharedReader (provider RO B-swap) du shared
 // d'un titre donné, pour injection dans un PlayerPoolConfig.
 //

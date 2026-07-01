@@ -172,7 +172,16 @@ func newClosedChan() chan struct{} {
 
 // Get implémente Provider.Get.
 func (p *providerImpl) Get(ctx context.Context) (*sql.DB, func(), error) {
-	deadline := time.Now().Add(p.readyTimeout)
+	// Fenêtre d'attente d'un swap : readyTimeout par défaut (robuste aux swaps
+	// légitimes côté sync). Un caller user-facing peut poser un budget plus court
+	// via WithSwapWaitBudget → fail-fast (503 Retry-After) au lieu de pendre 30s
+	// quand un sync tient le writer RW. On ne borne QUE l'attente du swap, pas
+	// l'exécution des requêtes (le db retourné garde le ctx du caller).
+	swapWait := p.readyTimeout
+	if b, ok := swapWaitBudget(ctx); ok && b < swapWait {
+		swapWait = b
+	}
+	deadline := time.Now().Add(swapWait)
 	// Phase 0 — stall lecteur réel : waitStart posé au 1er passage en attente
 	// (état non-RO) ; le defer ajoute la durée totale d'attente UNE fois à la
 	// sortie (évite le double-comptage entre itérations de la boucle).

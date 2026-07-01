@@ -622,7 +622,14 @@ func main() {
 	// --- 4. Repositories + services ---
 	bootRepo := duckdb.NewBootstrapRepo(sharedReader, metaDB)
 	bootSvc := service.NewBootstrapService(cfg, bootRepo).
-		WithPrivacyProvider(halo.DefaultHaloProvider)
+		WithPrivacyProvider(halo.DefaultHaloProvider).
+		// Décompte de matchs TITLE-AWARE : compte le shared du titre COURANT (pas
+		// celui figé Infinite du boot). Un switch Halo 5 n'attend plus le provider
+		// Infinite tenu par le sync Infinite. Manager.For est caché par path →
+		// DefaultSlug retourne le MÊME provider que sharedReader (aucune conn en plus).
+		WithMatchCountResolver(func(ctx context.Context, titleSlug string) (int, error) {
+			return duckdb.NewBootstrapRepo(cfg.SharedReaderForTitle(titleSlug), metaDB).GetMatchCount(ctx)
+		})
 
 	// Auth locale : user store partagé — filtrage ownership des joueurs (ADR 0029,
 	// modes password + xbox) et check "first launch" (mode password).
@@ -1128,7 +1135,7 @@ func main() {
 		})
 		if v2Orch != nil {
 			autoScheduler.WithCycleOrchestrator(v2Orch)
-			slog.Info("sync.v2: orchestrator câblé parity-complete (activation via LEVELUP_SYNC_PIPELINE=v2)")
+			slog.Info("sync.v2: orchestrator câblé parity-complete (V2 par défaut ; rollback via LEVELUP_SYNC_PIPELINE=v1)")
 		}
 	}
 

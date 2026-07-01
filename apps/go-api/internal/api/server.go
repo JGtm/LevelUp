@@ -1395,6 +1395,13 @@ func NewRouter(
 			// plus fondamental que l'appartenance du joueur.
 			r.Use(middleware.RequireActiveTitle(titleRegistry))
 
+			// Budget d'attente court des lectures shared user-facing : une page échoue
+			// vite (503 Retry-After) au lieu de pendre jusqu'à 30s quand un sync tient
+			// le writer RW. Ne borne QUE l'attente d'un swap, pas l'exécution des
+			// requêtes (cf. sharedprovider.WithSwapWaitBudget). Chokepoint unique des
+			// routes player-scoped, donc couvre toutes les pages.
+			r.Use(middleware.UserFacingReadBudget(0))
+
 			// Couche A (ADR 0029) : garde de propriété joueur. Chokepoint unique —
 			// 403 player_forbidden si l'utilisateur courant ne possède pas le slug.
 			// Transparent en mode demo / auth non activée. Toute route player-scoped
