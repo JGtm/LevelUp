@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
@@ -33,6 +34,7 @@ const liveRefreshInterval = 5 * time.Minute
 type PlayerLiveRefresher struct {
 	gamertag       string
 	xuid           string
+	titleSlug      string // titre configuré du joueur ("" ⇒ halo_infinite). Source du gating capability.
 	interval       time.Duration
 	provider       *halo.HaloProvider
 	sink           *duckdb.PersistSink
@@ -60,6 +62,24 @@ func NewPlayerLiveRefresher(gamertag, xuid string, sink *duckdb.PersistSink, res
 	}
 }
 
+// WithTitleSlug fixe le titre configuré du joueur. Source du gating capability
+// des surfaces live-service (BP/Challenges) : on lit la capability du titre, pas
+// son slug, et on ne dépend PAS du slug porté par le ctx entrant (contaminable
+// par un broadcast de présence d'un autre joueur — cf. player_watcher.startPoller).
+// "" ⇒ halo_infinite (défaut byte-identique). Retourne le refresher (chaînage).
+func (r *PlayerLiveRefresher) WithTitleSlug(slug string) *PlayerLiveRefresher {
+	r.titleSlug = slug
+	return r
+}
+
+// liveSurfaces indique quelles surfaces live-service le titre du joueur expose,
+// résolu via les capabilities (games.ProvidesBattlePass/Challenges → resolver
+// partagé de boot). Défaut true/true si aucun resolver n'est câblé (mono-titre,
+// tests). Halo 5 (BP/Challenges not_exposed) → false/false.
+func (r *PlayerLiveRefresher) liveSurfaces() (battlePass, challenges bool) {
+	return games.ProvidesBattlePass(r.titleSlug), games.ProvidesChallenges(r.titleSlug)
+}
+
 // WithSessionNotifier configure le notifier de présence (implémente port.SessionNotifier).
 // Retourne le refresher pour permettre le chaînage.
 func (r *PlayerLiveRefresher) WithSessionNotifier(n port.SessionNotifier) *PlayerLiveRefresher {
@@ -78,6 +98,17 @@ func (r *PlayerLiveRefresher) WithTokenRefresher(fn func(ctx context.Context, xu
 // OnPresenceActive démarre le ticker de rafraîchissement.
 // Sans effet si le ticker tourne déjà.
 func (r *PlayerLiveRefresher) OnPresenceActive(ctx context.Context) {
+	// Gate title-agnostic : le ticker n'existe QUE pour re-fetcher Battle Pass +
+	// Challenges. Un titre qui n'expose ni l'un ni l'autre (ex. Halo 5 — sonder
+	// ses endpoints economy/decks renvoie 404) ⇒ ticker pur no-op : on ne le
+	// démarre pas (ni notifier : pas de cache BP/Challenges à accélérer). Décision
+	// prise sur la capability du titre, jamais sur son slug.
+	if bp, ch := r.liveSurfaces(); !bp && !ch {
+		slog.InfoContext(ctx, "live_refresh: titre sans surface live-service, ticker non démarré",
+			"gamertag", r.gamertag, "title_slug", r.titleSlug)
+		return
+	}
+
 	// Notifier (si configuré) avant le ticker pour que le TTL réduit soit effectif
 	// dès le démarrage. notifier nil est un état NORMAL — le HomeService n'est créé
 	// qu'à l'ouverture de la page Home, et SetSessionActive est de toute façon un
@@ -140,7 +171,9 @@ func (r *PlayerLiveRefresher) runTicker(ctx context.Context) {
 
 // refresh re-fetche Battle Pass et Challenges si des tokens valides sont disponibles.
 // Tente d'abord le cache process ; si expiré, utilise tokenRefresher (MSAL / OAuth v2 via DB).
-// Si aucun token n'est disponible, la fonction est un no-op.
+// Si aucun token n'est disponible, la fonction est un no-op. Chaque surface n'est
+// fetchée que si le titre du joueur la déclare (capability) — un titre sans BP ni
+// Challenges (Halo 5) n'atteint jamais ce point (ticker non démarré, cf. OnPresenceActive).
 func (r *PlayerLiveRefresher) refresh(ctx context.Context) {
 	tokens := halo.GetCachedPlayerTokens(r.xuid)
 	if tokens == nil && r.tokenRefresher != nil {
@@ -159,24 +192,43 @@ func (r *PlayerLiveRefresher) refresh(ctx context.Context) {
 	}
 
 	ctx = ctxkeys.WithHaloAuth(ctx, tokens, r.xuid)
+	// Route le fetch + persist sur le titre PROPRE du joueur (host economy/decks
+	// + game-prefix résolus via ctxkeys), indépendamment du slug éventuellement
+	// porté par le ctx entrant (broadcast de présence). "" ⇒ ctx inchangé ⇒
+	// halo_infinite (byte-identique).
+	if r.titleSlug != "" {
+		ctx = ctxkeys.WithTitleSlug(ctx, r.titleSlug)
+	}
 
-	bpResp, bpRaw := r.provider.GetBattlePassWithRaw(ctx)
-	if bpResp.Available && bpResp.RewardTrack != nil && len(bpRaw) > 0 {
-		// W6 : variantes SYNC — l'écriture s'exécute DANS la goroutine du ticker
-		// (liée à ctx, annulée à OnPresenceInactive / shutdown) au lieu d'un
-		// goroutine détaché en context.Background() qui pouvait écrire après
-		// duckdb.CloseAll().
-		if err := r.sink.PersistBattlePassSync(ctx, *bpResp.RewardTrack, bpRaw); err != nil {
-			slog.WarnContext(ctx, "live_refresh: battlepass persist échoué",
-				"gamertag", r.gamertag, "err", err)
+	// Gate par surface : ne fetch QUE ce que le titre expose (cf. OnPresenceActive
+	// — au moins une des deux est vraie ici, sinon le ticker n'aurait pas démarré).
+	bpEnabled, chEnabled := r.liveSurfaces()
+
+	var bpResp domain.BattlePassResponse
+	if bpEnabled {
+		bpResp2, bpRaw := r.provider.GetBattlePassWithRaw(ctx)
+		bpResp = bpResp2
+		if bpResp.Available && bpResp.RewardTrack != nil && len(bpRaw) > 0 {
+			// W6 : variantes SYNC — l'écriture s'exécute DANS la goroutine du ticker
+			// (liée à ctx, annulée à OnPresenceInactive / shutdown) au lieu d'un
+			// goroutine détaché en context.Background() qui pouvait écrire après
+			// duckdb.CloseAll().
+			if err := r.sink.PersistBattlePassSync(ctx, *bpResp.RewardTrack, bpRaw); err != nil {
+				slog.WarnContext(ctx, "live_refresh: battlepass persist échoué",
+					"gamertag", r.gamertag, "err", err)
+			}
 		}
 	}
 
-	cResp, cRaw := r.provider.GetChallengesWithRaw(ctx)
-	if cResp.Available && len(cRaw) > 0 {
-		if err := r.sink.PersistChallengesSync(ctx, cRaw, cResp.Items); err != nil {
-			slog.WarnContext(ctx, "live_refresh: challenges persist échoué",
-				"gamertag", r.gamertag, "err", err)
+	var cResp domain.ChallengesResponse
+	if chEnabled {
+		cResp2, cRaw := r.provider.GetChallengesWithRaw(ctx)
+		cResp = cResp2
+		if cResp.Available && len(cRaw) > 0 {
+			if err := r.sink.PersistChallengesSync(ctx, cRaw, cResp.Items); err != nil {
+				slog.WarnContext(ctx, "live_refresh: challenges persist échoué",
+					"gamertag", r.gamertag, "err", err)
+			}
 		}
 	}
 
