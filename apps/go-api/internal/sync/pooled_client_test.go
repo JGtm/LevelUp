@@ -21,6 +21,7 @@ type mockPool struct {
 	lastRetryAfter   time.Duration // dernier retryAfter passé à OnHTTPError
 	slotLimiter      *rate.Limiter // Si non-nil, populé dans Lease.Limiter (Option 2)
 	markUnhealthy    []string      // gamertags passés à MarkUnhealthy (RC-1 401/403)
+	on429Gamertags   []string      // gamertags passés à On429ForToken (429 per-token)
 }
 
 func (m *mockPool) Acquire(ctx context.Context, policy pool.AcquirePolicy, pinnedGamertag string) (*pool.Lease, error) {
@@ -78,6 +79,11 @@ func (m *mockPool) MarkUnhealthy(gamertag string, reason error) {
 
 func (m *mockPool) OnHTTPError(statusCode int, retryAfter time.Duration) {
 	m.onHTTPErrorCalls = append(m.onHTTPErrorCalls, statusCode)
+	m.lastRetryAfter = retryAfter
+}
+
+func (m *mockPool) On429ForToken(gamertag string, retryAfter time.Duration) {
+	m.on429Gamertags = append(m.on429Gamertags, gamertag)
 	m.lastRetryAfter = retryAfter
 }
 
@@ -238,7 +244,9 @@ func TestPooledHaloClientInterface(t *testing.T) {
 	var _ HaloClient = client
 }
 
-// TestPooledHaloClientNotifyHTTPError_429 teste que 429 signal le pool.
+// TestPooledHaloClientNotifyHTTPError_429 teste qu'un 429 route un cooldown
+// PER-TOKEN (On429ForToken sur le gamertag du lease fautif), PAS un cooldown
+// global (OnHTTPError) — fini le scorched-earth.
 func TestPooledHaloClientNotifyHTTPError_429(t *testing.T) {
 	mp := &mockPool{
 		tokens: map[string]*domain.HaloTokens{
@@ -248,20 +256,20 @@ func TestPooledHaloClientNotifyHTTPError_429(t *testing.T) {
 	}
 	client := NewPooledHaloClient(mp, "test", "xuid_test", 0)
 
-	// Simuler un 429 HTTP error.
+	// Simuler un 429 HTTP error sur le token "Alice".
 	err := &HTTPError{
 		StatusCode: 429,
 		URL:        "https://example.com/api",
 		Err:        errors.New("rate limited"),
 	}
-	client.notifyPoolOnError(nil, err)
+	client.notifyPoolOnError(&pool.Lease{Gamertag: "Alice"}, err)
 
-	// Vérifier que pool.OnHTTPError a été appelée avec 429.
-	if len(mp.onHTTPErrorCalls) != 1 {
-		t.Errorf("expected 1 OnHTTPError call, got %d", len(mp.onHTTPErrorCalls))
+	// Cooldown PER-TOKEN sur Alice, aucun cooldown global.
+	if len(mp.on429Gamertags) != 1 || mp.on429Gamertags[0] != "Alice" {
+		t.Errorf("expected On429ForToken(Alice), got %v", mp.on429Gamertags)
 	}
-	if len(mp.onHTTPErrorCalls) > 0 && mp.onHTTPErrorCalls[0] != 429 {
-		t.Errorf("expected statusCode 429, got %d", mp.onHTTPErrorCalls[0])
+	if len(mp.onHTTPErrorCalls) != 0 {
+		t.Errorf("expected 0 OnHTTPError (global) call sur un 429 par-token, got %d", len(mp.onHTTPErrorCalls))
 	}
 }
 

@@ -52,18 +52,25 @@ type PlayerSummary struct {
 }
 
 // SyncablePlayers retourne les couples (joueur, titre) dont le sync est ACTIF
-// (sync_enabled != false). C'est le filtre CANONIQUE des CHEMINS SYNC (scheduler,
-// watcher, fan-out, recompute amis) : un titre « en pause » ne doit plus être
-// rafraîchi, mais ses données restent sur disque.
+// (sync_enabled != false) ET qui sont de VRAIS joueurs suivis (pas AuthOnly).
+// C'est le filtre CANONIQUE des CHEMINS SYNC (scheduler auto_sync, watcher daemon,
+// fan-out, recompute amis) : un titre « en pause » ne doit plus être rafraîchi
+// (données conservées sur disque), et un profil AuthOnly n'a PAS de DB joueur
+// (db_path vide) — le synchroniser échoue systématiquement (duckdb.OpenReadOnly
+// sur chemin inexistant) et pollue les cycles de sync à chaque tick sans jamais
+// pouvoir aboutir. Les profils AuthOnly existent uniquement pour fournir des
+// refresh tokens au pool ; ils restent visibles des chemins AUTH (pool discovery,
+// worldenrich) mais jamais des chemins SYNC.
 //
 // NE PAS l'appliquer aux chemins UI/LECTURE (bootstrap, liste /players,
 // résolution d'un joueur pour servir une page) : un titre en pause doit y rester
 // VISIBLE, sinon réactivation impossible (404 ErrPlayerNotFound) et disparition
-// des réglages.
+// des réglages. Les profils AuthOnly y ont leur propre filtre dédié
+// (excludeAuthOnly côté BootstrapService), à ne pas confondre avec celui-ci.
 func SyncablePlayers(players []PlayerSummary) []PlayerSummary {
 	out := make([]PlayerSummary, 0, len(players))
 	for _, p := range players {
-		if p.SyncEnabled {
+		if p.SyncEnabled && !p.AuthOnly {
 			out = append(out, p)
 		}
 	}

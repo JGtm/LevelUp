@@ -140,12 +140,20 @@ type Pool interface {
 	// Après un delai GlobalCooldown, l'appel Refresh() remettra le token en circulation (si succès).
 	MarkUnhealthy(gamertag string, reason error)
 
-	// OnHTTPError signale une erreur HTTP (429/503) et déclenche un cooldown global.
-	// Marque tous les tokens comme malsains et suspend le refresher.
+	// OnHTTPError signale une erreur HTTP GLOBALE (503, ou 429 sans token
+	// identifiable) et déclenche un cooldown global : marque tous les tokens
+	// malsains et suspend le refresher. À réserver aux signaux SERVEUR (503) ou
+	// aux 429 non imputables à un token précis — sinon préférer On429ForToken.
 	// retryAfter : durée demandée par le header HTTP Retry-After (0 = absent →
-	// politique par défaut : globalCooldown + backoff exponentiel sur 429 répétés).
-	// Non-bloquant : ignore les autres codes d'erreur.
+	// backoff exponentiel planché à globalCooldown). Non-bloquant.
 	OnHTTPError(statusCode int, retryAfter time.Duration)
+
+	// On429ForToken signale un rate-limit (429) imputable à UN token précis
+	// (gamertag du lease fautif). Met CE token en cooldown temporel borné et le
+	// skippe à l'acquisition, SANS cooldown global ni re-exchange (le token reste
+	// valide). Les autres tokens continuent de servir. gamertag vide → filet
+	// global (OnHTTPError). C'est la voie normale d'un 429 en round-robin.
+	On429ForToken(gamertag string, retryAfter time.Duration)
 
 	// AddOrUpdateSource (E.v2, 2026-05-24) — hot-add ou refresh d'un slot par
 	// gamertag. Si le gamertag existe déjà dans le pool : re-Resolve et update

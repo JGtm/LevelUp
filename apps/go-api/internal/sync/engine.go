@@ -40,6 +40,13 @@ import (
 const (
 	// historyPageSize est le nombre de matchs demandés par page API.
 	historyPageSize = 25
+
+	// syncFetchParallelism borne le nombre de fetchMatchData simultanés dans la
+	// Phase 2 d'un cycle joueur. Volontairement < taille de pool typique (~7)
+	// pour laisser des slots au trafic user-facing et éviter que N joueurs
+	// synchronisés en parallèle ne saturent le pool + les exchanges XBL. Le pool
+	// reste le plafond dur de la concurrence API réelle ; ceci lisse le burst.
+	syncFetchParallelism = 4
 )
 
 // SyncEngine orchestre la synchronisation des données Halo d'un joueur.
@@ -419,7 +426,12 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 			var mu sync.Mutex
 
 			eg, egCtx := errgroup.WithContext(ctx)
-			// Pas de SetLimit ici — RPS limité par HaloAPIClient.rateWait()
+			// Borne la concurrence du fan-out fetch : sans SetLimit, une page delta
+			// initiale lançait une goroutine PAR match inconnu (des dizaines/centaines
+			// d'un coup). Le pool cappe déjà l'API concurrente à sa taille, mais on
+			// évite ici l'explosion de goroutines et on lisse la pression (pool +
+			// exchanges XBL) pour laisser de la marge au trafic user-facing.
+			eg.SetLimit(syncFetchParallelism)
 			for i, matchID := range toFetch {
 				i, matchID := i, matchID // Capturer pour closure
 				eg.Go(func() error {

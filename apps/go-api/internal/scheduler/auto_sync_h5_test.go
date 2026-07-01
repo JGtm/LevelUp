@@ -30,6 +30,7 @@ func (p *h5FakePool) Size() int                                                 
 func (p *h5FakePool) HasPlayer(gt string) bool                                       { return p.has[gt] }
 func (p *h5FakePool) MarkUnhealthy(string, error)                                    {}
 func (p *h5FakePool) OnHTTPError(int, time.Duration)                                 {}
+func (p *h5FakePool) On429ForToken(string, time.Duration)                            {}
 func (p *h5FakePool) AddOrUpdateSource(context.Context, pool.CredentialSource) error { return nil }
 func (p *h5FakePool) Close()                                                         {}
 

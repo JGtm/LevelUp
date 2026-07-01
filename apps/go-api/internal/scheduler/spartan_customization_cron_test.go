@@ -42,10 +42,11 @@ func (m *fakeCronPool) Acquire(_ context.Context, _ pool.AcquirePolicy, _ string
 	}
 	return &pool.Lease{Tokens: m.leaseTokens, Release: func() {}}, nil
 }
-func (m *fakeCronPool) Size() int                          { return len(m.hasPlayerMap) }
-func (m *fakeCronPool) HasPlayer(gt string) bool           { return m.hasPlayerMap[gt] }
-func (m *fakeCronPool) MarkUnhealthy(_ string, _ error)    {}
-func (m *fakeCronPool) OnHTTPError(_ int, _ time.Duration) {}
+func (m *fakeCronPool) Size() int                               { return len(m.hasPlayerMap) }
+func (m *fakeCronPool) HasPlayer(gt string) bool                { return m.hasPlayerMap[gt] }
+func (m *fakeCronPool) MarkUnhealthy(_ string, _ error)         {}
+func (m *fakeCronPool) OnHTTPError(_ int, _ time.Duration)      {}
+func (m *fakeCronPool) On429ForToken(_ string, _ time.Duration) {}
 func (m *fakeCronPool) AddOrUpdateSource(_ context.Context, _ pool.CredentialSource) error {
 	return nil
 }
