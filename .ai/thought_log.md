@@ -1,3 +1,17 @@
+## [2026-07-01] Médias Halo 5 : chemins absolus legacy → relatifs portables (fin du warn mediaStoredPathToURL) — COMPLÉTÉ local
+
+**Tâche** : supprimer les WARN `mediaStoredPathToURL: aucun mapping trouvé (path legacy absolu hors layout) slug=JGtm abs_path=…\data\media\JGtm\Halo_5_Guardians\…`. Les chemins média H5 étaient stockés en ABSOLU Windows → non portables (local Windows ↔ VPS Debian) + média non servi.
+
+**Cause racine (prouvée)** : l'infra de stockage relatif existe déjà (`insertMediaFile` → `MediaPathStore.ToRel` → `{slug}/{rel}`, base = `media_captures_base_dir`). Mais les 7 lignes média H5 de JGtm avaient été indexées depuis `…\data\media\JGtm\…` (copie interne obsolète du repo), PAS depuis le dossier configuré `C:\Users\Guillaume\Videos\Captures`. Hors base → `ToRel` échoue → fallback chemin absolu stocké. Les mêmes fichiers existent aussi dans `Videos\Captures\JGtm\` (le vrai dossier). Infinite était déjà propre (217 lignes relatives).
+
+**Décision technique — 2 volets** :
+1. **Data (hors git)** : `go run ./cmd/migrate-media-paths --db data/titles/halo_5/warehouse/shared_social.duckdb --captures-base "…\Videos\Captures"` (serveur dev arrêté). Résultat : file_path 7/7 convertis, thumbnail 7/7 convertis (0 cassé), 0 absolu résiduel. Les relatifs `JGtm/…` résolvent contre `Videos\Captures\JGtm\…` (fichiers présents) → portable Debian (résolution contre le `media_captures_base_dir` du VPS). Infinite : 0 absolu, non touché.
+2. **Code (committable, bas risque)** : durcissement du read-side `mediaStoredPathToURL` (`internal/api/handlers/media_paths.go`) — nouveau filet `relFromSlugMarker` qui extrait `{slug}/{rel}` d'un path absolu résiduel via le marqueur `/{slug}/` (même heuristique que `cmd/migrate-media-paths.convertPath`). Portable inter-OS (ignore le préfixe absolu Windows/POSIX). Sert les lignes non encore migrées (ex. VPS avant migration) au lieu d'un warn + média cassé. **Pas de write au boot** (rejeté : `shared_social` a la discipline SocialPersister/CHECKPOINT ADR 0022, un write de boot y serait risqué).
+
+**Résultats observés** : migration H5 idempotente confirmée (re-dry-run = 0 absolu / 7 relatif). Tests handlers verts : nouveau `TestRelFromSlugMarker` (6 cas, PORTABLE non Windows-only) + `TestFilePathToURL_AbsoluteLegacyPosix_UsesSlugMarker` (POSIX, skip Windows) ; tests existants (`OutsideAnyBase` etc.) inchangés (le cas `D:\unrelated\` n'a pas de marqueur `/slug/` → toujours pass-through). `go vet` + build package handlers OK.
+
+**Conclusion / prochaine étape** : chemins média H5 portables, warn supprimé localement. À faire côté déploiement : lancer la même migration `migrate-media-paths` sur le `shared_social.duckdb` du VPS (Debian) une fois, avec son `media_captures_base_dir` — mais le filet read-side sert déjà les paths absolus résiduels en attendant. Doublon mort `data/media/JGtm` (copie interne) supprimable séparément. Sujet CITATIONS (contention DuckDB `OpenReadWriteShared` sur metadata H5) : NON traité — délicat, en attente du texte d'erreur DuckDB exact avant tout patch (diagnostic consigné).
+
 ## [2026-07-01] Live-refresh watcher : gate capability des surfaces BP/Challenges (fin des sondes 404 Halo 5) — COMPLÉTÉ local
 
 **Tâche** : supprimer les WARN récurrents `halo_provider: battle_pass fetch failed ... /h5/.../rewardtracks/operations HTTP 404` et `challenges fetch failed ... /h5/.../decks HTTP 404` observés toutes les 5 min pendant une session Halo 5. H5 n'expose ni Battle Pass ni Challenges — on ne devait même pas tenter le fetch.

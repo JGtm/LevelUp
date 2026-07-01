@@ -95,6 +95,52 @@ func TestFilePathToURL_OutsideAnyBase(t *testing.T) {
 	}
 }
 
+// TestRelFromSlugMarker vérifie le filet portable d'extraction {slug}/{rel} d'un
+// path absolu legacy. Portable (pas de t.Skip Windows) : inputs en slash avant
+// pour tourner identiquement sur le CI Linux et en local Windows.
+func TestRelFromSlugMarker(t *testing.T) {
+	cases := []struct {
+		name    string
+		in      string
+		slug    string
+		wantRel string
+		wantOK  bool
+	}{
+		{"posix absolu avec marqueur", "/srv/levelup/data/media/JGtm/clip.mp4", "JGtm", "JGtm/clip.mp4", true},
+		{"marqueur en milieu profond", "/x/y/data/media/JGtm/thumbs/foo.webp", "JGtm", "JGtm/thumbs/foo.webp", true},
+		{"deja prefixe slug", "JGtm/clip.mp4", "JGtm", "JGtm/clip.mp4", true},
+		{"pas de marqueur", "/x/y/other/clip.mp4", "JGtm", "", false},
+		{"slug vide", "/x/y/JGtm/clip.mp4", "", "", false},
+		{"slug sous-chaine non segmentee", "/x/JGtmXX/clip.mp4", "JGtm", "", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rel, ok := relFromSlugMarker(tc.in, tc.slug)
+			if ok != tc.wantOK || rel != tc.wantRel {
+				t.Errorf("relFromSlugMarker(%q, %q) = (%q, %v), want (%q, %v)",
+					tc.in, tc.slug, rel, ok, tc.wantRel, tc.wantOK)
+			}
+		})
+	}
+}
+
+// TestFilePathToURL_AbsoluteLegacyPosix_UsesSlugMarker : sur un OS POSIX, un path
+// absolu legacy hors des bases connues est servi via l'heuristique {slug}/{rel}
+// (VPS Debian avant migration). Gardé POSIX-only : filepath.IsAbs d'un chemin
+// « /… » diffère sur Windows (déjà couvert par les tests Windows ci-dessus).
+func TestFilePathToURL_AbsoluteLegacyPosix_UsesSlugMarker(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("chemins absolus POSIX — couvert par les tests Windows dédiés")
+	}
+	h := &MediaHandler{}
+	in := "/mnt/old/data/media/JGtm/Halo_5_Guardians-2018.mp4"
+	want := "/api/v1/players/JGtm/media/files/JGtm/Halo_5_Guardians-2018.mp4"
+	got := h.filePathToURL("JGtm", in, "/mnt/captures")
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
 // TestRelIfWithin vérifie le helper utilisé par filePathToURL.
 func TestRelIfWithin(t *testing.T) {
 	if runtime.GOOS != "windows" {

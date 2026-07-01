@@ -146,9 +146,41 @@ func mediaStoredPathToURL(slug, storedPath, capturesBase, repoRoot string) strin
 		}
 	}
 
+	// Filet portable inter-OS (Windows local ↔ Debian VPS) : un path absolu
+	// legacy hors des bases connues conserve toujours le segment reconnaissable
+	// "/{slug}/…" (ex. C:\…\data\media\JGtm\clip.mp4 ou /srv/…/data/media/JGtm/
+	// clip.mp4). On en extrait {slug}/{rel} — même heuristique que
+	// cmd/migrate-media-paths.convertPath — pour servir le média au format
+	// canonique au lieu d'un warning + média cassé, indépendamment du préfixe
+	// absolu. Couvre aussi les lignes non encore converties côté DB (ex. VPS
+	// avant passage de la migration).
+	if rel, ok := relFromSlugMarker(clean, slug); ok {
+		return "/api/v1/players/" + slug + "/media/files/" + rel
+	}
+
 	slog.Warn("mediaStoredPathToURL: aucun mapping trouvé (path legacy absolu hors layout)",
 		"slug", slug, "abs_path", storedPath, "captures_base", capturesBase)
 	return storedPath
+}
+
+// relFromSlugMarker extrait le sous-chemin relatif {slug}/{rest} d'un path absolu
+// legacy en cherchant le marqueur "/{slug}/" (ou un préfixe "{slug}/" déjà en
+// tête). Portable inter-OS : normalise via filepath.ToSlash puis ignore
+// entièrement le préfixe absolu (lettre de lecteur Windows OU racine POSIX).
+// Miroir de l'heuristique cmd/migrate-media-paths.convertPath, pour que le read
+// serve les paths absolus résiduels au format canonique {owner_slug}/{rel}.
+func relFromSlugMarker(cleanPath, slug string) (string, bool) {
+	if slug == "" {
+		return "", false
+	}
+	normalized := filepath.ToSlash(cleanPath)
+	if idx := strings.Index(normalized, "/"+slug+"/"); idx >= 0 {
+		return normalized[idx+1:], true // depuis "{slug}/…"
+	}
+	if strings.HasPrefix(normalized, slug+"/") {
+		return normalized, true
+	}
+	return "", false
 }
 
 // relIfWithin retourne (rel, true) si target est sous base.
