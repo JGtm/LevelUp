@@ -132,20 +132,37 @@ scraper au cron les playlists réellement actives (7) découvertes sur Waypoint.
 
 ---
 
-## Étape A3 — Une seule source de vérité `active` + CSR sur catalogue dynamique
+## Étape A3 — Source active dynamique côté consommateurs (CONÇUE, à exécuter)
 
-**Périmètre fermé** :
-- [ ] Page classement : le sélecteur de playlists lit `playlists_catalog.is_active` (issu de
-      A2), plus les snapshots comme données affichées — pas l'inverse
-      (leaderboard_world_repo.go:267 ne doit plus être la source de la liste).
-- [ ] Post-sync CSR (career.go:242) : itérer sur `rankedplaylists.Active()` → **actives du
-      catalogue dynamique** (pas les 4 en dur).
-- [ ] Paralléliser la boucle CSR par-playlist via le pool (rate limiter par token déjà là) ;
-      borner la concurrence. Erreur par-playlist = log + continue (pas d'abort global).
+**Valeur marginale RÉELLE (mesurée sur pièces)** : FAIBLE. La page player affiche DÉJÀ les
+rangs de toutes les playlists JOUÉES via `GetPlayerCSRs` (career.go:204). L'augment
+(career.go:242) n'ajoute que les playlists actives NON-JOUÉES (prompts « Non classé »).
+A3 n'améliore donc que ces prompts. La page classement (A2) était le vrai gain.
 
-**Gate** :
+**Conception validée (source active dynamique SANS contention metadata)** :
+- Le cron (A2) écrit déjà les playlists actives réelles dans `world_csr_leaderboard_latest`
+  (shared). C'est LA source dynamique à lire — PAS `playlists_catalog` (metadata.duckdb =
+  writer mono-process, contention avec la sync ; ADR 0013/0016). Écrire is_active depuis le
+  cron = À ÉVITER.
+- Helper `activeRankedPlaylists(ctx, sharedReader, titleSlug, seasonID)` :
+  `SELECT DISTINCT playlist_id FROM world_csr_leaderboard_latest WHERE title_slug=? AND season_id=?`
+  → `rankedplaylists.Lookup(id)` pour nom/queue/input ; **fallback `rankedplaylists.Active()`**
+  si reader nil / vide / erreur (sûr par construction).
+- Threader un reader shared (nil-safe) : `SyncEngine` a `sharedProvider`/`sharedDBPath` ;
+  `runCSRSnapshotSync` (2 call-sites engine_postsync.go:101 & :453) → `syncPlayerCSRs` →
+  `augmentWithActiveRankedCSRs`. Signature élargie d'un `sharedReader`.
+
+**Périmètre fermé (à exécuter en session dédiée — chemin CSR critique)** :
+- [!] Non exécuté ici. Raison : changement transverse sur le chemin CSR post-sync (alimente
+      home/player rankings), 2 call-sites, à faire avec contexte frais (pas au tail d'une
+      longue session). Valeur marginale faible (cf. supra). Conception ci-dessus prête.
+- [~] Sélecteur page classement lit une source dynamique : DÉJÀ le cas (dérive des snapshots
+      `world_csr_leaderboard_latest` que A2 remplit avec les 7 actives). Rien à changer.
+- [ ] (optionnel) Paralléliser la boucle CSR par-playlist via le pool.
+
+**Gate (quand exécuté)** :
 - `cd apps/go-api && go test ./internal/sync/ -run 'CSR|Playlist|Career'`
-- grep : plus aucune itération CSR ne référence un littéral de 4 playlists en dur.
+- Test : augment lit les IDs du snapshot quand présents, fallback `Active()` sinon.
 
 ---
 
@@ -234,8 +251,11 @@ saison correct + placement « saison précédente » nommé.
 ## Protocole de reprise de session
 
 - Avancement = cases cochées de ce fichier + entrées `.ai/thought_log.md`.
-- Ordre RÉVISÉ : B1 [x, commité d58528501] → A2 (A1 replié dedans : Waypoint FetchCatalog,
-  plus de manifest) → B2 → A3 → C1 → C2. Reprendre à A2.
+- État : B1 [x commité d58528501] · A2 [x commité dfce681f4] · A3 [conçue, différée —
+  faible valeur + chemin CSR critique] · B2 [infra `FetchSeasonServiceRecord` existe, forme
+  API par-playlist à vérifier] · C1/C2 [non commencées ; C2 = persister seasons Waypoint].
+- Reprendre en session FRAÎCHE par B2 (meilleur rapport valeur/risque restant) ou C2.
+  Éviter A3 sauf besoin explicite (valeur marginale faible mesurée).
 - Avant de coder une étape : rouvrir les fichiers cibles (le code a pu bouger).
 
 ## Statut de clôture
