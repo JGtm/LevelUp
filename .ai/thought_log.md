@@ -1,3 +1,35 @@
+## [2026-07-02] A2 classement : le cron découvre les playlists ACTIVES réelles (7 vs 4) — COMPLÉTÉ (worktree)
+
+**Tâche** : étape A2 du plan. Cause de « peu de playlists actives sur la page classement » :
+la page dérive sa liste des SNAPSHOTS (`DISTINCT playlist_id FROM world_csr_leaderboard_latest`)
+et le cron ne scrapait que `rankedplaylists.Active()` (4 en dur) → 4 playlists avec snapshots
+→ page à 4. Pivot A1 acté : le manifest de build a un `PlaylistLinks` VIDE (OpenSpartan wiki) ;
+la source directe des playlists actives est **déjà scrapée** dans le `__NEXT_DATA__` Waypoint
+(champ `playlists` = 7 playlists : Snipers, Doubles, Slayer, Legacy, Arena, Tactical, 1v1).
+
+**Décision technique** :
+- `LeaderboardScraper.FetchActivePlaylists(ctx, ref)` mappe la portion `playlists` de la
+  méthode existante `FetchCatalog` en `[]domain.WorldPlaylistRef{AssetID, DisplayName}`.
+- Port `LeaderboardScraperPort.FetchActivePlaylists` + `WorldLeaderboardCron.discoverActivePlaylists` :
+  découverte à chaque cycle, **fallback sur la liste statique** si erreur/vide (jamais scraper
+  zéro playlist sur un hoquet de page). `runOnceForTitle` scrape les playlists découvertes.
+- Multi-titre : hérite du gate `CapWorldLeaderboard` de `RunOnce`.
+- DIFFÉRÉ (→ A3) : MAJ `playlists_catalog.is_active` (metadata) — la page ne lit pas le
+  catalogue (dérive des snapshots), le cron n'a pas de writer metadata, et le seul
+  consommateur du flag (FiltersService) relève de la migration consommateurs A3. Contrainte
+  ART notée : `playlists_catalog` sans index secondaire (ratchet) → UPDATE-or-INSERT only.
+
+**Résultats — gate** : `go build ./...` OK ; `gofmt -l` propre ; `go test ./internal/scheduler/
+./internal/platform/halo/` vert, dont `TestWorldLeaderboardCron_DiscoversActivePlaylists`
+(le cron scrape les 3 playlists découvertes du stub, pas les 2 statiques → 3 snapshots) et
+`TestWorldLeaderboardCron_FallbackStaticPlaylists` (erreur découverte → fallback 2 statiques).
+
+**Conclusion / reste** : effet utilisateur = toutes les playlists classées actives finissent
+avec des snapshots → la page classement les affiche toutes (au prochain cycle du cron).
+Minor connu : la découverte fait un fetch page-1 en plus de FetchActiveSeason (2 petits
+fetches/cycle quotidien, acceptable). Prochaine étape : A3 (consommateurs lisent le catalogue
++ CSR post-sync sur playlists dynamiques) puis B2 (service-record), C1/C2.
+
 ## [2026-07-02] B1 leaderboard mondial : persister le xuid Waypoint, court-circuiter PeopleHub — COMPLÉTÉ (worktree, non commité)
 
 **Tâche** : étape B1 du plan `.ai/V7/PLAN_PLAYLISTS_CATALOG_ET_LEADERBOARD.md` (comparaison LeafApp_Infinite). Les « trous » du classement mondial (joueurs enrichis vides) venaient de la Phase C qui re-résout gamertag→xuid via PeopleHub (single-token, ~1,6 s/joueur, fragile 429) ALORS que le scraper Waypoint parse déjà le xuid — mais le persister le jetait (table sans colonne xuid, commentaire inversé prétendant « Waypoint ne publie pas de xuid »). Worktree `feat+leaderboard-catalogue` créé depuis main local (3aef23396).
