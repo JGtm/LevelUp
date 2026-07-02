@@ -11,7 +11,43 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-func (e *SyncEngine) runScoringSteps(ctx context.Context, playerDB, sharedDB *sql.DB, r *domain.PostSyncResult) {
+func (e *SyncEngine) runScoringSteps(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, r *domain.PostSyncResult) {
+	// Étape 1 contention : les 6 étapes de scoring LISENT shared (les écritures
+	// vont dans la player DB) — un seul segment Read couvre le bloc. La SEULE
+	// écriture shared (match_intensity, engagement) est accumulée pendant le
+	// compute et flushée en burst court APRÈS le release du Read (garde
+	// anti-deadlock : jamais de Write pendant un Read en vol).
+	var intensities []matchIntensityUpdate
+
+	sharedDB, releaseRead, rerr := shared.Read(ctx)
+	if rerr != nil {
+		slog.WarnContext(ctx, "post-sync: scoring — lecture shared indisponible, bloc skippé",
+			"gamertag", e.gamertag, "err", rerr)
+		trackFatalErr(r, "scoring shared read", rerr)
+		return
+	}
+	func() {
+		defer releaseRead()
+		e.runScoringStepsWithDB(ctx, playerDB, sharedDB, r, &intensities)
+	}()
+
+	// Burst d'écriture court : flush des intensités accumulées (best-effort,
+	// même sémantique que l'ancien write inline).
+	if len(intensities) > 0 {
+		wdb, releaseWrite, werr := shared.Write(ctx, "engagement_intensity")
+		if werr != nil {
+			slog.WarnContext(ctx, "post-sync: burst match_intensity indisponible — flush skippé (retenté au prochain cycle)",
+				"gamertag", e.gamertag, "count", len(intensities), "err", werr)
+			return
+		}
+		defer releaseWrite()
+		persistMatchIntensities(ctx, wdb, intensities)
+	}
+}
+
+// runScoringStepsWithDB : corps historique du bloc scoring, inchangé — reçoit un
+// handle shared de LECTURE et le collecteur d'intensités (write différé).
+func (e *SyncEngine) runScoringStepsWithDB(ctx context.Context, playerDB, sharedDB *sql.DB, r *domain.PostSyncResult, intensities *[]matchIntensityUpdate) {
 	// -0.3 had_bot_teammate — dérivé des participants (cheap SQL, pas d'API).
 	// Idempotent : skip les rows déjà à TRUE.
 	if n, err := computeAndPersistHadBotTeammate(ctx, playerDB, sharedDB, e.xuid); err != nil {
@@ -53,14 +89,19 @@ func (e *SyncEngine) runScoringSteps(ctx context.Context, playerDB, sharedDB *sq
 	}
 
 	// 1.5 Engagement scores (Phase 3 plan engagement) — best-effort,
-	// skip silencieux si migration Phase 2 non appliquee.
+	// skip silencieux si migration Phase 2 non appliquee. Les écritures
+	// match_intensity (shared) sont ACCUMULÉES et flushées par le caller
+	// en burst court après ce bloc de lecture.
 	slog.DebugContext(ctx, "post-sync: calcul engagement scores", "gamertag", e.gamertag)
-	if n, err := batchComputeEngagementScores(ctx, playerDB, sharedDB, e.xuid, false); err != nil {
+	if n, ups, err := batchComputeEngagementScores(ctx, playerDB, sharedDB, e.xuid, false); err != nil {
 		slog.WarnContext(ctx, "post-sync: engagement scores échoué", "gamertag", e.gamertag, "err", err)
 		trackFatalErr(r, "engagement scores", err)
-	} else if n > 0 {
-		r.EngagementScoresComputed = n
-		slog.DebugContext(ctx, "post-sync: engagement scores calculés", "gamertag", e.gamertag, "count", n)
+	} else {
+		*intensities = append(*intensities, ups...)
+		if n > 0 {
+			r.EngagementScoresComputed = n
+			slog.DebugContext(ctx, "post-sync: engagement scores calculés", "gamertag", e.gamertag, "count", n)
+		}
 	}
 
 	// 1.5.b Recompute des engagement coefficients depuis la mediane glissante
@@ -91,7 +132,23 @@ func (e *SyncEngine) runScoringSteps(ctx context.Context, playerDB, sharedDB *sq
 // title.CapLUSR (gate sur e.titleSlug, autoritatif côté engine) — un titre sans
 // CapLUSR saute proprement. Best-effort : chaque sous-étape logue + trackFatalErr
 // sur erreur sans interrompre le reste (idempotent).
-func (e *SyncEngine) runSkillRatingSteps(ctx context.Context, playerDB, sharedDB *sql.DB, r *domain.PostSyncResult) {
+func (e *SyncEngine) runSkillRatingSteps(ctx context.Context, playerDB *sql.DB, shared *SharedAccess, r *domain.PostSyncResult) {
+	// Étape 1 contention : LUSR LIT shared (repos SkillV2/SquadOffset) et écrit
+	// la PLAYER DB (match_skill_rank, skill_v2_shadow.go:69) — segment Read.
+	sharedDB, releaseRead, rerr := shared.Read(ctx)
+	if rerr != nil {
+		slog.WarnContext(ctx, "post-sync: LUSR — lecture shared indisponible, bloc skippé",
+			"gamertag", e.gamertag, "err", rerr)
+		trackFatalErr(r, "lusr shared read", rerr)
+		return
+	}
+	defer releaseRead()
+	e.runSkillRatingStepsWithDB(ctx, playerDB, sharedDB, r)
+}
+
+// runSkillRatingStepsWithDB : corps historique du bloc LUSR, inchangé — reçoit
+// un handle shared de LECTURE.
+func (e *SyncEngine) runSkillRatingStepsWithDB(ctx context.Context, playerDB, sharedDB *sql.DB, r *domain.PostSyncResult) {
 	lusrEnabled := slugHasLUSR(e.titleSlug)
 	if !lusrEnabled {
 		slog.DebugContext(ctx, "post-sync: LUSR skippé — capability absente",

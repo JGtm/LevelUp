@@ -67,24 +67,25 @@ func batchComputeEngagementScores(
 	playerDB, sharedDB *sql.DB,
 	xuid string,
 	force bool,
-) (int, error) {
+) (int, []matchIntensityUpdate, error) {
 	if !engagementColumnsAvailable(ctx, playerDB) {
 		slog.WarnContext(ctx, "engagement: colonnes manquantes, migration Phase 2 a appliquer",
 			"xuid", xuid)
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	matches, err := loadMatchesForEngagement(ctx, sharedDB, xuid)
 	if err != nil {
-		return 0, fmt.Errorf("batchComputeEngagementScores: load matches: %w", err)
+		return 0, nil, fmt.Errorf("batchComputeEngagementScores: load matches: %w", err)
 	}
 	if len(matches) == 0 {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	existing := loadExistingEngagementScores(ctx, playerDB)
 	historyByMode := make(map[string][]domain.HistoricalEngagementBrut)
 	updated := 0
+	var intensities []matchIntensityUpdate
 	now := time.Now().UTC()
 
 	// Phase 3 du refactor ART : seul le batch path est conservé (le legacy
@@ -164,9 +165,13 @@ func batchComputeEngagementScores(
 			buildEngagementUpdate(m.MatchID, modeCategory, result, now, hasPaces))
 		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_score_computed_total")
 
-		// Persist match_intensity dans shared.match_registry (best-effort).
+		// match_intensity (shared.match_registry) : accumulé et flushé par le
+		// CALLER (burst court étape 1 contention — plus d'écriture shared inline
+		// pendant le compute ; le sharedDB reçu peut être un lecteur RO).
 		if result.MatchIntensity > 0 {
-			_ = persistMatchIntensity(ctx, sharedDB, m.MatchID, result.MatchIntensity)
+			intensities = append(intensities, matchIntensityUpdate{
+				matchID: m.MatchID, intensity: result.MatchIntensity,
+			})
 		}
 
 		// Met a jour l'historique en memoire pour les matchs suivants
@@ -185,11 +190,11 @@ func batchComputeEngagementScores(
 			slog.ErrorContext(ctx, "engagement: BatchUpdateMulti échoué",
 				"batch_size", len(pendingUpdates), "err", err)
 			observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_persist_error_total")
-			return 0, fmt.Errorf("engagement batch flush: %w", err)
+			return 0, nil, fmt.Errorf("engagement batch flush: %w", err)
 		}
 	}
 
-	return updated, nil
+	return updated, intensities, nil
 }
 
 // buildEngagementUpdate construit une EnrichmentMultiColumnUpdate pour 1 match.
@@ -525,6 +530,14 @@ func pacesColumnsAvailable(ctx context.Context, playerDB *sql.DB) bool {
 	return err == nil && count > 0
 }
 
+// matchIntensityUpdate : écriture shared différée (match_registry.match_intensity),
+// accumulée pendant le compute engagement et flushée par le caller en burst court
+// (étape 1 contention — le compute ne tient plus le writer shared).
+type matchIntensityUpdate struct {
+	matchID   string
+	intensity float64
+}
+
 // persistMatchIntensity met a jour shared.match_registry.match_intensity.
 func persistMatchIntensity(ctx context.Context, sharedDB *sql.DB, matchID string, intensity float64) error {
 	_, err := sharedDB.ExecContext(ctx, `
@@ -532,6 +545,15 @@ func persistMatchIntensity(ctx context.Context, sharedDB *sql.DB, matchID string
 		WHERE match_id = ?
 	`, intensity, matchID)
 	return err
+}
+
+// persistMatchIntensities flushe un lot d'intensités accumulées (best-effort,
+// même sémantique que l'ancien write inline : les erreurs sont ignorées une à
+// une). SQL inchangé — seul le MOMENT de l'écriture change (burst caller).
+func persistMatchIntensities(ctx context.Context, sharedDB *sql.DB, ups []matchIntensityUpdate) {
+	for _, u := range ups {
+		_ = persistMatchIntensity(ctx, sharedDB, u.matchID, u.intensity)
+	}
 }
 
 // normalizeModeCategoryFromFlags retourne la categorie de mode normalisee

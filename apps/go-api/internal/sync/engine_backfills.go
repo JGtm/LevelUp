@@ -90,10 +90,13 @@ func (e *SyncEngine) RunBackfillEngagementScores(ctx context.Context, force bool
 	}
 	defer releaseShared()
 
-	n, err := batchComputeEngagementScores(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, force)
+	n, intensities, err := batchComputeEngagementScores(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, force)
 	if err != nil {
 		return n, err
 	}
+	// Writer déjà tenu (backfill) : flush direct — même sémantique qu'avant le
+	// split 4a (le write était inline dans le compute).
+	persistMatchIntensities(ctx, sharedDB, intensities)
 	// Recompute des coefficients en queue : on a possiblement ajoute des
 	// paces en DB, donc la mediane est a rafraichir.
 	if nCoefs, errCoefs := batchRecomputeCoefficients(ctx, playerHandle.SQLDb(), e.xuid); errCoefs != nil {

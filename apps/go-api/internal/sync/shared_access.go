@@ -23,11 +23,20 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"sync"
 	"sync/atomic"
 
 	"levelup/go-api/internal/ctxkeys"
 )
+
+// PostSyncBurstEnabled : le post-sync utilise les bursts paresseux (défaut ON).
+// LEVELUP_POSTSYNC_BURST=0 est l'ÉCHAPPATOIRE DE ROLLBACK vers le mode pinned
+// historique (writer tenu pendant tout le pipeline) — à RETIRER après validation
+// en prod (règle projet : pas de flag qui laisse une feature OFF).
+func PostSyncBurstEnabled() bool {
+	return os.Getenv("LEVELUP_POSTSYNC_BURST") != "0"
+}
 
 // SharedAccess arbitre les accès shared du pipeline post-sync.
 type SharedAccess struct {
@@ -90,6 +99,12 @@ func (a *SharedAccess) Read(ctx context.Context) (*sql.DB, func(), error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	if db == nil {
+		if release != nil {
+			release()
+		}
+		return nil, nil, fmt.Errorf("SharedAccess.Read: shared indisponible (handle nil)")
+	}
 	a.outstandingReads.Add(1)
 	return db, sync.OnceFunc(func() {
 		a.outstandingReads.Add(-1)
@@ -122,6 +137,14 @@ func (a *SharedAccess) Write(ctx context.Context, step string) (*sql.DB, func(),
 	db, release, err := a.acquire(wctx)
 	if err != nil {
 		return nil, nil, err
+	}
+	if db == nil {
+		// Parité avec l'ancien skip `sharedDB == nil` du runner : un acquirer qui
+		// retourne un handle nil = shared indisponible → l'étape dégrade.
+		if release != nil {
+			release()
+		}
+		return nil, nil, fmt.Errorf("SharedAccess.Write(%s): shared indisponible (handle nil)", step)
 	}
 	a.probeOnce.Do(func() { a.probeErr = assertSharedWritable(ctx, db) })
 	if a.probeErr != nil {

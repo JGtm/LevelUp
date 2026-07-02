@@ -42,6 +42,14 @@ const (
 	// historyPageSize est le nombre de matchs demandés par page API.
 	historyPageSize = 25
 
+	// postsyncEventsBurstChunk / postsyncWeaponsBurstChunk : taille des chunks de
+	// bursts Write du post-sync (étape 1 contention). Le fetch film reste dans le
+	// burst (sémantique intouchée) mais le writer est relâché entre chunks →
+	// fenêtre RW bornée ~au coût du chunk (film ~300-500ms/match ; weapons plus
+	// lourd → chunk plus petit). Cible : burst < 1500ms.
+	postsyncEventsBurstChunk  = 3
+	postsyncWeaponsBurstChunk = 2
+
 	// syncFetchParallelism borne le nombre de fetchMatchData simultanés dans la
 	// Phase 2 d'un cycle joueur. Volontairement < taille de pool typique (~7)
 	// pour laisser des slots au trafic user-facing et éviter que N joueurs
@@ -511,6 +519,10 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// réconciliation post-Drain (le bloc `if e.batchQueue != nil` se ferme AVANT
 	// le pipeline post-sync, donc un `:=` interne ne serait pas visible).
 	var drainErr error
+	// postShared : accès shared du pipeline post-sync (étape 1 contention).
+	// Posé par le post-drain (bursts par défaut, pinned en rollback/legacy) ;
+	// chemin non-batch → pinned sur le writer primaire (voir plus bas).
+	var postShared *SharedAccess
 	if e.batchQueue != nil {
 		// Libérer les write leases AVANT Drain — le Worker (CombinedPersister)
 		// doit acquérir ces mêmes leases pour persister. Sans release ici,
@@ -553,33 +565,51 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		} else {
 			defer postPH.Close()
 			playerDB = postPH.SQLDb()
-			leaseStart := time.Now()
-			// Étape 0 attribution : le post-sync V1 (14 étapes, weapon-kills réseau
-			// inclus) est un détenteur LONG identifié — label dédié.
-			postSDB, postRls, sErr := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "sync_v1_postsync"))
-			leaseWaitMs := time.Since(leaseStart).Milliseconds()
-			if sErr != nil {
-				slog.WarnContext(ctx, "sync: post-drain acquireSharedWriter echoue — post-sync skippe",
-					"gamertag", e.gamertag, "err", sErr,
-					"lease_wait_ms", leaseWaitMs)
-				playerDB = nil
-			} else {
-				defer postRls()
-				sharedDB = postSDB
-				// Phase 7C : log explicite si attente > 1s (serialisation
-				// notable). Au-dessus de 30s = goulot post-sync confirme.
-				if leaseWaitMs > 1000 {
-					slog.WarnContext(ctx, "sync: post-drain shared lease wait > 1s — serialisation post-sync",
-						"gamertag", e.gamertag, "lease_wait_ms", leaseWaitMs)
-				} else {
-					slog.DebugContext(ctx, "sync: post-drain shared lease acquis",
-						"gamertag", e.gamertag, "lease_wait_ms", leaseWaitMs)
-				}
+			if PostSyncBurstEnabled() && e.sharedProvider != nil {
+				// Étape 1 contention (défaut) : PAS d'acquisition writer upfront —
+				// le pipeline post-sync ouvre des segments Read RO et des bursts
+				// Write courts (labels sync_v1_postsync/<étape>). Fenêtre RW ~0 en
+				// stationnaire ; fin de la sérialisation post-sync inter-joueurs.
+				postShared = NewBurstSharedAccess(
+					func(c context.Context) (*sql.DB, func(), error) { return e.acquireSharedWriter(c) },
+					e.sharedProvider.Get,
+					"sync_v1_postsync")
 				if wp, wpErr := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer); wpErr == nil {
 					defer wp.Release()
 				} else {
 					slog.WarnContext(ctx, "sync: post-drain AcquireWriterCtx echoue",
 						"gamertag", e.gamertag, "err", wpErr)
+				}
+			} else {
+				// ROLLBACK (LEVELUP_POSTSYNC_BURST=0) ou mode legacy sans provider :
+				// chemin pinned historique (writer tenu pendant tout le post-sync).
+				leaseStart := time.Now()
+				// Étape 0 attribution : détenteur LONG identifié — label dédié.
+				postSDB, postRls, sErr := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "sync_v1_postsync"))
+				leaseWaitMs := time.Since(leaseStart).Milliseconds()
+				if sErr != nil {
+					slog.WarnContext(ctx, "sync: post-drain acquireSharedWriter echoue — post-sync skippe",
+						"gamertag", e.gamertag, "err", sErr,
+						"lease_wait_ms", leaseWaitMs)
+					playerDB = nil
+				} else {
+					defer postRls()
+					sharedDB = postSDB
+					// Phase 7C : log explicite si attente > 1s (serialisation
+					// notable). Au-dessus de 30s = goulot post-sync confirme.
+					if leaseWaitMs > 1000 {
+						slog.WarnContext(ctx, "sync: post-drain shared lease wait > 1s — serialisation post-sync",
+							"gamertag", e.gamertag, "lease_wait_ms", leaseWaitMs)
+					} else {
+						slog.DebugContext(ctx, "sync: post-drain shared lease acquis",
+							"gamertag", e.gamertag, "lease_wait_ms", leaseWaitMs)
+					}
+					if wp, wpErr := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer); wpErr == nil {
+						defer wp.Release()
+					} else {
+						slog.WarnContext(ctx, "sync: post-drain AcquireWriterCtx echoue",
+							"gamertag", e.gamertag, "err", wpErr)
+					}
 				}
 			}
 		}
@@ -593,16 +623,31 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// film) sur des matchs fantômes. Lecture seule (anti-ART). Les WAL non-ACKés
 	// restent sur disque et seront rejoués au prochain boot (RecoverPending).
 	if e.batchQueue != nil && drainErr != nil {
-		reconcileInsertedAgainstRegistry(ctx, sharedDB, &result, e.gamertag)
+		if sharedDB != nil {
+			reconcileInsertedAgainstRegistry(ctx, sharedDB, &result, e.gamertag)
+		} else if postShared != nil {
+			// Mode bursts : lecture seule via un segment Read court (le writer
+			// n'est plus tenu à ce stade).
+			if roDB, roRel, roErr := postShared.Read(ctx); roErr == nil {
+				reconcileInsertedAgainstRegistry(ctx, roDB, &result, e.gamertag)
+				roRel()
+			} else {
+				slog.WarnContext(ctx, "sync: reconcile post-drain — lecture shared indisponible",
+					"gamertag", e.gamertag, "err", roErr)
+			}
+		}
 	}
 
 	// ─── Pipeline post-sync ─────────────────────────────────────────────────────
+	// Étape 1 contention : postShared est posé par le post-drain (bursts par
+	// défaut, pinned en rollback/legacy). Chemin non-batch : le writer primaire
+	// est encore tenu → pinned (byte-identique).
+	if postShared == nil && sharedDB != nil {
+		postShared = NewPinnedSharedAccess(sharedDB)
+	}
 	var postResult domain.PostSyncResult
-	if playerDB != nil && sharedDB != nil {
-		// Incrément 2 (transitoire) : le writer est déjà tenu (primaire ou
-		// post-drain) → pinned, byte-identique. L'incrément 5 bascule ce
-		// chemin en bursts (SharedAccess burst, writer relâché entre étapes).
-		postResult = e.runConditionalPostSync(ctx, playerDB, NewPinnedSharedAccess(sharedDB), client, result.MatchesInserted, result.InsertedMatchIDs)
+	if playerDB != nil && postShared != nil {
+		postResult = e.runConditionalPostSync(ctx, playerDB, postShared, client, result.MatchesInserted, result.InsertedMatchIDs)
 	} else if e.batchQueue != nil {
 		slog.WarnContext(ctx, "sync: post-sync skippe — DBs indisponibles apres drain async",
 			"gamertag", e.gamertag)

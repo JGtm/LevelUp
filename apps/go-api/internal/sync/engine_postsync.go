@@ -171,29 +171,34 @@ func (e *SyncEngine) runPostSyncPipeline(
 	clock := newPostSyncClock(&r, e.titleSlug)
 	defer clock.finish()
 
-	// Étape 1 contention (incrément 2, transitoire) : matérialisation UNIQUE du
-	// handle shared pour tout le pipeline. En mode pinned (V1) c'est le handle
-	// déjà tenu (no-op, byte-identique) ; en mode burst ce sera remplacé par des
-	// bursts par étape aux incréments 3-4 — ce point d'entrée unique est le
-	// pivot de la migration.
-	sharedDB, releaseShared, serr := shared.Write(ctx, "pipeline")
-	if serr != nil {
-		slog.ErrorContext(ctx, "post-sync: acquisition shared échouée — pipeline abandonné",
-			"gamertag", e.gamertag, "err", serr)
-		trackFatalErr(&r, "shared acquire", serr)
-		return r
+	// Étape 1 contention (incrément 3) : plus AUCUNE matérialisation upfront du
+	// writer — chaque étape ouvre le segment dont elle a besoin : Read RO court
+	// (lectures shared, majorité des étapes) ou burst Write court (les 4 seules
+	// écritures shared : intensity/events/weapons/psa). En mode pinned (V1),
+	// Read/Write retournent le handle déjà tenu → comportement identique.
+	//
+	// Probe RC-A : en pinned uniquement (parité historique — le pipeline CONTINUE
+	// en dégradé sur read-only). En burst, SharedAccess.Write sonde par burst et
+	// échoue proprement étape par étape.
+	if shared.isPinned {
+		if err := assertSharedWritable(ctx, shared.pinned); err != nil {
+			slog.ErrorContext(ctx, "post-sync: shared attaché en read-only (RC-A) — écritures shared vont échouer",
+				"gamertag", e.gamertag, "err", err)
+			trackFatalErr(&r, "shared read-only", err)
+		}
 	}
-	defer releaseShared()
-
-	// Fail-fast RC-A (defense-in-depth) : le post-sync écrit encore shared
-	// (LUSR match_skill_rank, dominance match_registry). Si le handle reçu est
-	// attaché en read-only (régression du bug RC-A 2026-06-01), on le détecte
-	// immédiatement et on logue au lieu de laisser chaque étape échouer en
-	// silence. Best-effort : nil/erreur de sonde n'interrompt pas le pipeline.
-	if err := assertSharedWritable(ctx, sharedDB); err != nil {
-		slog.ErrorContext(ctx, "post-sync: shared attaché en read-only (RC-A) — écritures shared vont échouer",
-			"gamertag", e.gamertag, "err", err)
-		trackFatalErr(&r, "shared read-only", err)
+	// withSharedRead : segment de LECTURE court par étape. Échec d'acquisition →
+	// WARN + trackFatalErr, l'étape est skippée (best-effort ; pinned n'échoue jamais).
+	withSharedRead := func(step string, fn func(sharedDB *sql.DB)) {
+		roDB, release, aerr := shared.Read(ctx)
+		if aerr != nil {
+			slog.WarnContext(ctx, "post-sync: lecture shared indisponible — étape skippée",
+				"gamertag", e.gamertag, "step", step, "err", aerr)
+			trackFatalErr(&r, step+" shared read", aerr)
+			return
+		}
+		defer release()
+		fn(roDB)
 	}
 
 	// -2 Ensure player_match_enrichment rows exist for all matches where the
@@ -208,17 +213,19 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// Idempotent : 0 row créée pour un joueur dont tous les enrichments
 	// existent déjà (cas stationnaire JGtm post-sync).
 	enrichRows := 0
-	if n, err := ensurePlayerEnrichmentRows(ctx, playerDB, sharedDB, e.xuid); err != nil {
-		slog.WarnContext(ctx, "post-sync: ensure enrichment rows échoué",
-			"gamertag", e.gamertag, "err", err)
-		// Best-effort : on continue le pipeline même si ça échoue (les UPDATE
-		// resteront no-op pour les matchs sans row, mais le reste du pipeline
-		// peut quand même tourner pour les matchs qui ont déjà leurs rows).
-	} else if n > 0 {
-		enrichRows = n
-		slog.InfoContext(ctx, "post-sync: enrichment rows créées",
-			"gamertag", e.gamertag, "rows_created", n)
-	}
+	withSharedRead("enrichment_rows", func(sharedDB *sql.DB) {
+		if n, err := ensurePlayerEnrichmentRows(ctx, playerDB, sharedDB, e.xuid); err != nil {
+			slog.WarnContext(ctx, "post-sync: ensure enrichment rows échoué",
+				"gamertag", e.gamertag, "err", err)
+			// Best-effort : on continue le pipeline même si ça échoue (les UPDATE
+			// resteront no-op pour les matchs sans row, mais le reste du pipeline
+			// peut quand même tourner pour les matchs qui ont déjà leurs rows).
+		} else if n > 0 {
+			enrichRows = n
+			slog.InfoContext(ctx, "post-sync: enrichment rows créées",
+				"gamertag", e.gamertag, "rows_created", n)
+		}
+	})
 	clock.lap("enrichment_rows", enrichRows)
 
 	// HEALS DÉCOMMISSIONNÉS (2026-06-01) — stats / skill / events / weapon.
@@ -238,7 +245,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// -0.3 had_bot, 0 sessions, 1 perf, 1.5 engagement, 1.5.b coefs, 1.52 assists —
 	// bloc de scoring enrichment (player DB), extrait pour réduire la taille de
 	// runPostSyncPipeline (cf. revue D7-3).
-	e.runScoringSteps(ctx, playerDB, sharedDB, &r)
+	e.runScoringSteps(ctx, playerDB, shared, &r)
 	clock.lap("scoring", r.EngagementScoresComputed)
 
 	// 1.54 Convergence events — re-fetch des highlight_events des matchs
@@ -248,18 +255,37 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// décommission du heal (2026-06-01). Idempotent (un match events_loaded=true
 	// n'est pas resélectionné) + terminal no-film 30j. DOIT précéder weapon kills
 	// (qui dérivent de highlight_events). Cf. convergence.go.
-	eventsWork := selectMatchesMissingEvents(ctx, playerDB, sharedDB, e.xuid)
+	var eventsWork []string
+	withSharedRead("events_select", func(sharedDB *sql.DB) {
+		eventsWork = selectMatchesMissingEvents(ctx, playerDB, sharedDB, e.xuid)
+	})
 	// Jauge "roue de secours" : en régime stationnaire ces compteurs doivent
 	// PLAFONNER (convergence = filet exceptionnel). S'ils croissent en continu,
 	// c'est que le 1er passage laisse des trous récurrents → durcir l'ingestion.
 	// Lisibles sur /debug/vars (expvar "levelup").
 	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_events_pending_total", int64(len(eventsWork)))
 	if len(eventsWork) > 0 {
-		n := convergeEvents(ctx, sharedDB, client, eventsWork)
-		r.ConvergedEvents = n
-		observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_events_processed_total", int64(n))
+		// Bursts CHUNKÉS (4c) : le fetch film reste dans ProcessHighlightEvents
+		// (sémantique par match intouchée — zéro risque data), mais le writer est
+		// relâché/ré-acquis tous les postsyncEventsBurstChunk matchs → fenêtre RW
+		// bornée par construction, les lecteurs passent entre les chunks.
+		total := 0
+		for start := 0; start < len(eventsWork); start += postsyncEventsBurstChunk {
+			end := min(start+postsyncEventsBurstChunk, len(eventsWork))
+			wdb, releaseW, werr := shared.Write(ctx, "events")
+			if werr != nil {
+				slog.WarnContext(ctx, "post-sync: burst events indisponible — reste du backlog reporté",
+					"gamertag", e.gamertag, "remaining", len(eventsWork)-start, "err", werr)
+				trackFatalErr(&r, "events burst", werr)
+				break
+			}
+			total += convergeEvents(ctx, wdb, client, eventsWork[start:end])
+			releaseW()
+		}
+		r.ConvergedEvents = total
+		observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_events_processed_total", int64(total))
 		slog.InfoContext(ctx, "post-sync: convergence events",
-			"gamertag", e.gamertag, "selected", len(eventsWork), "processed", n)
+			"gamertag", e.gamertag, "selected", len(eventsWork), "processed", total)
 	}
 	clock.lap("convergence_events", r.ConvergedEvents)
 
@@ -268,21 +294,43 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// fait APRÈS la convergence events pour que highlight_events soit peuplé.
 	// Best-effort : films absents (404/410) normaux pour les vieux matchs. Garde
 	// bit-honnête préservée (MBitWeaponKills posé seulement si ≥1 ligne insérée).
-	weaponBacklog := selectMatchesMissingWeapons(ctx, playerDB, sharedDB, e.xuid)
+	var weaponBacklog []string
+	withSharedRead("weapons_select", func(sharedDB *sql.DB) {
+		weaponBacklog = selectMatchesMissingWeapons(ctx, playerDB, sharedDB, e.xuid)
+	})
 	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_weapons_pending_total", int64(len(weaponBacklog)))
 	weaponWork := mergeUniqMatchIDs(insertedIDs, weaponBacklog)
 	if len(weaponWork) > 0 {
-		done, noFilm, werr := processWeaponKillsInline(ctx, sharedDB, client, e.xuid, weaponWork)
-		if werr != nil {
-			slog.WarnContext(ctx, "post-sync: weapon kills échoué", "gamertag", e.gamertag, "err", werr)
-			trackFatalErr(&r, "weapon kills", werr)
+		// Bursts CHUNKÉS (4d) : le download film reste dans BackfillWeaponKillsForMatch
+		// (sémantique intouchée — c'était l'étape la plus risquée à scinder), mais le
+		// writer est relâché/ré-acquis tous les postsyncWeaponsBurstChunk matchs →
+		// fenêtre RW bornée, les lecteurs passent entre les chunks.
+		totalDone, totalNoFilm := 0, 0
+		for start := 0; start < len(weaponWork); start += postsyncWeaponsBurstChunk {
+			end := min(start+postsyncWeaponsBurstChunk, len(weaponWork))
+			wdb, releaseW, werr := shared.Write(ctx, "weapons")
+			if werr != nil {
+				slog.WarnContext(ctx, "post-sync: burst weapons indisponible — reste du backlog reporté",
+					"gamertag", e.gamertag, "remaining", len(weaponWork)-start, "err", werr)
+				trackFatalErr(&r, "weapons burst", werr)
+				break
+			}
+			done, noFilm, werr2 := processWeaponKillsInline(ctx, wdb, client, e.xuid, weaponWork[start:end])
+			releaseW()
+			totalDone += done
+			totalNoFilm += noFilm
+			if werr2 != nil {
+				slog.WarnContext(ctx, "post-sync: weapon kills échoué", "gamertag", e.gamertag, "err", werr2)
+				trackFatalErr(&r, "weapon kills", werr2)
+				break
+			}
 		}
-		r.WeaponKillsProcessed = done
-		r.WeaponKillsNoFilm = noFilm
-		observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_weapons_processed_total", int64(done))
-		if done > 0 || noFilm > 0 {
+		r.WeaponKillsProcessed = totalDone
+		r.WeaponKillsNoFilm = totalNoFilm
+		observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_weapons_processed_total", int64(totalDone))
+		if totalDone > 0 || totalNoFilm > 0 {
 			slog.InfoContext(ctx, "post-sync: weapon kills",
-				"gamertag", e.gamertag, "done", done, "no_film", noFilm)
+				"gamertag", e.gamertag, "done", totalDone, "no_film", totalNoFilm)
 		}
 	}
 	clock.lap("weapon_kills", r.WeaponKillsProcessed)
@@ -295,7 +343,18 @@ func (e *SyncEngine) runPostSyncPipeline(
 	psaWork := selectMatchesMissingPSA(ctx, playerDB)
 	observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_psa_pending_total", int64(len(psaWork)))
 	if len(psaWork) > 0 {
-		n := convergePSA(ctx, playerDB, sharedDB, client, e.xuid, psaWork)
+		// Split 4b : fetch réseau + écritures PLAYER hors de tout lease shared ;
+		// seul le flush des alias (shared.xuid_aliases) passe en burst court.
+		n, pairs := convergePSACollect(ctx, playerDB, client, e.xuid, psaWork)
+		if len(pairs) > 0 {
+			if wdb, releaseW, werr := shared.Write(ctx, "psa_aliases"); werr != nil {
+				slog.WarnContext(ctx, "post-sync: burst psa_aliases indisponible — alias non flushés (retentés au prochain cycle)",
+					"gamertag", e.gamertag, "count", len(pairs), "err", werr)
+			} else {
+				flushAliasPairs(ctx, wdb, e.xuid, pairs)
+				releaseW()
+			}
+		}
 		r.ConvergedPSA = n
 		observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_psa_processed_total", int64(n))
 		slog.InfoContext(ctx, "post-sync: convergence PSA",
@@ -315,23 +374,30 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// CatalogRefreshFromRegistry est désormais ART-safe (SELECT-then-write), plus de
 	// flag LEVELUP_CATALOG_REFRESH. V2 gère le catalogue dans son persister (et son
 	// engine post-sync n'a pas de metaDB → skip propre ici). Best-effort.
-	if e.assetPool != nil && e.metaDB != nil && sharedDB != nil && len(insertedIDs) > 0 {
-		if _, cerr := ops.CatalogRefreshFromRegistry(ctx, e.metaDB, sharedDB, e.titleSlug); cerr != nil {
-			slog.WarnContext(ctx, "post-sync: refresh catalogue non-bloquant",
-				"gamertag", e.gamertag, "err", cerr)
-		}
+	if e.assetPool != nil && e.metaDB != nil && len(insertedIDs) > 0 {
+		withSharedRead("catalog_refresh", func(sharedDB *sql.DB) {
+			if sharedDB == nil {
+				return // parité avec l'ancien gate sharedDB != nil
+			}
+			if _, cerr := ops.CatalogRefreshFromRegistry(ctx, e.metaDB, sharedDB, e.titleSlug); cerr != nil {
+				slog.WarnContext(ctx, "post-sync: refresh catalogue non-bloquant",
+					"gamertag", e.gamertag, "err", cerr)
+			}
+		})
 	}
 
 	// 1.6 Citations — pipeline primaire, pas un heal. Traite tous les matchs
 	// absents de match_citations (LEFT JOIN IS NULL). Le sentinel "_processed"
 	// (fix citations.go) empêche les matchs à 0 delta d'être re-traités.
-	if n, err := e.runPostSyncCitations(ctx, playerDB, sharedDB); err != nil {
-		slog.WarnContext(ctx, "post-sync: citations échoué", "gamertag", e.gamertag, "err", err)
-		trackFatalErr(&r, "citations", err)
-	} else if n > 0 {
-		r.CitationsComputed = n
-		slog.InfoContext(ctx, "post-sync: citations calculées", "gamertag", e.gamertag, "count", n)
-	}
+	withSharedRead("citations", func(sharedDB *sql.DB) {
+		if n, err := e.runPostSyncCitations(ctx, playerDB, sharedDB); err != nil {
+			slog.WarnContext(ctx, "post-sync: citations échoué", "gamertag", e.gamertag, "err", err)
+			trackFatalErr(&r, "citations", err)
+		} else if n > 0 {
+			r.CitationsComputed = n
+			slog.InfoContext(ctx, "post-sync: citations calculées", "gamertag", e.gamertag, "count", n)
+		}
+	})
 	clock.lap("citations", r.CitationsComputed)
 
 	// 1.7 Dominance flags — matchs nouvellement insérés + backlog (dominance_flag IS NULL).
@@ -345,15 +411,19 @@ func (e *SyncEngine) runPostSyncPipeline(
 		}
 		allDominanceIDs := mergeUniqMatchIDs(insertedIDs, missingIDs)
 		if len(allDominanceIDs) > 0 {
-			if err := BackfillDominanceFlags(ctx, sharedDB, playerDB, e.xuid, allDominanceIDs); err != nil {
-				slog.WarnContext(ctx, "post-sync: dominance flags échoué",
-					"gamertag", e.gamertag, "err", err, "count", len(allDominanceIDs))
-				trackFatalErr(&r, "dominance flags", err)
-			} else {
-				r.DominanceFlagsComputed = len(allDominanceIDs)
-				slog.InfoContext(ctx, "post-sync: dominance flags calculés",
-					"gamertag", e.gamertag, "count", r.DominanceFlagsComputed)
-			}
+			// Lecture shared (courbe score depuis highlight_events) ; écriture via
+			// PostSyncEnrichmentPersister(playerDB) — segment Read suffit.
+			withSharedRead("dominance", func(sharedDB *sql.DB) {
+				if err := BackfillDominanceFlags(ctx, sharedDB, playerDB, e.xuid, allDominanceIDs); err != nil {
+					slog.WarnContext(ctx, "post-sync: dominance flags échoué",
+						"gamertag", e.gamertag, "err", err, "count", len(allDominanceIDs))
+					trackFatalErr(&r, "dominance flags", err)
+				} else {
+					r.DominanceFlagsComputed = len(allDominanceIDs)
+					slog.InfoContext(ctx, "post-sync: dominance flags calculés",
+						"gamertag", e.gamertag, "count", r.DominanceFlagsComputed)
+				}
+			})
 		}
 	}
 	clock.lap("dominance", r.DominanceFlagsComputed)
@@ -361,7 +431,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// 2 / 2.5 / 2.6 — bloc LUSR (v1 + v2 shadow + sentinelle dual-row), extrait
 	// pour réduire la taille de runPostSyncPipeline (cf. revue D7-3). Self-gate
 	// sur la capability title.CapLUSR.
-	e.runSkillRatingSteps(ctx, playerDB, sharedDB, &r)
+	e.runSkillRatingSteps(ctx, playerDB, shared, &r)
 	clock.lap("skill_rating", r.LUSRUpdated)
 
 	// 3. Career rank — DÉCOUPLÉ du post-sync depuis 2026-05-14.
@@ -394,17 +464,19 @@ func (e *SyncEngine) runPostSyncPipeline(
 			trackFatalErr(&r, "friends loader", ferr)
 		} else if len(friends) > 0 {
 			slog.DebugContext(ctx, "post-sync: friends recompute", "gamertag", e.gamertag, "friends_count", len(friends))
-			fres, err := RecomputeIsWithFriendsCore(ctx, playerDB, sharedDB, e.xuid, friends, false)
-			if err != nil {
-				slog.WarnContext(ctx, "post-sync: friends recompute échoué", "gamertag", e.gamertag, "err", err)
-				trackFatalErr(&r, "friends recompute", err)
-			} else if fres.MatchesPromoted > 0 {
-				r.MatchesPromotedFriends = fres.MatchesPromoted
-				slog.InfoContext(ctx, "post-sync: matchs reclasses comme escouade-amis",
-					"gamertag", e.gamertag,
-					"promoted", fres.MatchesPromoted,
-				)
-			}
+			withSharedRead("friends", func(sharedDB *sql.DB) {
+				fres, err := RecomputeIsWithFriendsCore(ctx, playerDB, sharedDB, e.xuid, friends, false)
+				if err != nil {
+					slog.WarnContext(ctx, "post-sync: friends recompute échoué", "gamertag", e.gamertag, "err", err)
+					trackFatalErr(&r, "friends recompute", err)
+				} else if fres.MatchesPromoted > 0 {
+					r.MatchesPromotedFriends = fres.MatchesPromoted
+					slog.InfoContext(ctx, "post-sync: matchs reclasses comme escouade-amis",
+						"gamertag", e.gamertag,
+						"promoted", fres.MatchesPromoted,
+					)
+				}
+			})
 		}
 	}
 	clock.lap("friends", int(r.MatchesPromotedFriends))
@@ -432,13 +504,15 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// dérivations terminales, ou terminalement-absentes / grâce dépassée) éligibles
 	// au snapshot immuable. Best-effort : n'interrompt pas le pipeline ; réévalué à
 	// chaque cycle convergent (aucun nouveau call site — runConditionalPostSync gère).
-	if n, err := evaluateSnapshotReadiness(ctx, playerDB, sharedDB, e.xuid, e.titleSlug); err != nil {
-		slog.WarnContext(ctx, "post-sync: snapshot readiness échoué", "gamertag", e.gamertag, "err", err)
-		trackFatalErr(&r, "snapshot readiness", err)
-	} else if n > 0 {
-		r.SnapshotReadyMarked = n
-		slog.InfoContext(ctx, "post-sync: snapshot readiness marqué", "gamertag", e.gamertag, "count", n)
-	}
+	withSharedRead("snapshot_readiness", func(sharedDB *sql.DB) {
+		if n, err := evaluateSnapshotReadiness(ctx, playerDB, sharedDB, e.xuid, e.titleSlug); err != nil {
+			slog.WarnContext(ctx, "post-sync: snapshot readiness échoué", "gamertag", e.gamertag, "err", err)
+			trackFatalErr(&r, "snapshot readiness", err)
+		} else if n > 0 {
+			r.SnapshotReadyMarked = n
+			slog.InfoContext(ctx, "post-sync: snapshot readiness marqué", "gamertag", e.gamertag, "count", n)
+		}
+	})
 	clock.lap("snapshot_readiness", r.SnapshotReadyMarked)
 
 	return r
