@@ -295,12 +295,31 @@ func (cfg EventsConvergenceConfig) processChunk(ctx context.Context, chunk []str
 		return
 	}
 	defer release()
+	// Anti-TOCTOU multi-joueurs : le fetch a eu lieu HORS lease — un post-sync
+	// parallèle (coéquipier partageant le match) a pu converger ces events entre
+	// la sélection et ce burst. Re-check sous le burst (sérialisé par dblease),
+	// sinon persistCombatCompletion dupliquerait les highlight_events (INSERT
+	// OR IGNORE = no-op de dédup en prod).
+	var fetchedIDs []string
+	for _, f := range fetched {
+		if f.err == nil && f.found && len(f.events) > 0 {
+			fetchedIDs = append(fetchedIDs, f.matchID)
+		}
+	}
+	still := make(map[string]bool, len(fetchedIDs))
+	for _, mid := range filterEventsStillMissing(ctx, sharedDB, fetchedIDs) {
+		still[mid] = true
+	}
 	persister := persist.NewEventsCompletionPersister(sharedDB)
 	for _, f := range fetched {
 		switch {
 		case f.err != nil:
 			res.Skipped++ // réseau/parse → events_loaded reste false → repris
 		case f.found && len(f.events) > 0:
+			if !still[f.matchID] {
+				res.Skipped++ // convergé par un sync parallèle entre fetch et burst
+				continue
+			}
 			if _, e := persistCombatCompletion(ctx, sharedDB, f.matchID, f.events); e != nil {
 				res.Skipped++
 			} else {

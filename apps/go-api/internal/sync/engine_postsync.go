@@ -279,7 +279,10 @@ func (e *SyncEngine) runPostSyncPipeline(
 				trackFatalErr(&r, "events burst", werr)
 				break
 			}
-			total += convergeEvents(ctx, wdb, client, eventsWork[start:end])
+			// Anti-TOCTOU multi-joueurs : re-filtrer le chunk SOUS le burst — un
+			// post-sync parallèle (coéquipier partageant le match) a pu converger
+			// ces events entre notre sélection RO et ce burst.
+			total += convergeEvents(ctx, wdb, client, filterEventsStillMissing(ctx, wdb, eventsWork[start:end]))
 			releaseW()
 		}
 		r.ConvergedEvents = total
