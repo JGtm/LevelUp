@@ -5,6 +5,14 @@ package domain
 
 import "time"
 
+// WorldPlayerRef identifie un joueur du classement mondial : son gamertag et, quand
+// il est connu (scrapé du snapshot Waypoint), son xuid. XUID vide = à résoudre via
+// PeopleHub (lignes de snapshot antérieures à la persistance du xuid, cf. B1).
+type WorldPlayerRef struct {
+	Gamertag string
+	XUID     string
+}
+
 // LeaderboardEntry est une entrée du classement.
 //
 // Le classement est multi-catégories (cf. LeaderboardCategory). Pour la

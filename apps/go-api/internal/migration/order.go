@@ -216,6 +216,7 @@ var canonicalOrder = []string{
 	"create_world_csr_leaderboard_snapshots",                   // shared
 	"world_csr_leaderboard_latest_by_batch",                    // shared
 	"add_title_slug_to_world_csr_leaderboard",                  // shared (PMT-7)
+	"add_xuid_to_world_csr_leaderboard",                        // shared (B1)
 	"shared_create_kill_positions",                             // shared (positions monde par kill, ref inter-titres)
 	"shared_create_match_commendations",                        // shared (commendations natives par match, ref inter-titres, AXE B)
 	"shared_match_commendations_add_progress",                  // shared (total à vie absolu au match — totaux commendations)

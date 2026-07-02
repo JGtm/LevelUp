@@ -146,6 +146,29 @@ func NewWorldStatsAggregator(src WorldMatchSource, resolver WorldXUIDResolver, c
 	}
 }
 
+// SeedKnownXUIDs pré-remplit le cache gamertag->xuid avec des correspondances DÉJÀ
+// connues (typiquement les xuid scrapés du snapshot Waypoint, cf. B1). Court-circuite
+// la résolution PeopleHub dans PrepareWorldPlayers ET AggregatePlayer : le résolveur
+// n'est appelé QUE pour les gamertags sans xuid connu (lignes de snapshot antérieures
+// à la persistance du xuid). Les entrées vides sont ignorées ; une correspondance déjà
+// présente n'est pas écrasée. Retourne le nombre de xuid effectivement seedés.
+func (a *WorldStatsAggregator) SeedKnownXUIDs(byGamertag map[string]string) int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	n := 0
+	for gt, xuid := range byGamertag {
+		if gt == "" || xuid == "" {
+			continue
+		}
+		if _, ok := a.xuidByGamertag[gt]; ok {
+			continue
+		}
+		a.xuidByGamertag[gt] = xuid
+		n++
+	}
+	return n
+}
+
 // PrepareWorldPlayers résout EN AMONT les xuid de tous les gamertags cibles (warm-up
 // OPTIONNEL). L'extraction d'un match récupère désormais TOUS ses participants, donc
 // l'attribution ne dépend plus d'un ensemble pré-résolu : ce batch n'est plus requis

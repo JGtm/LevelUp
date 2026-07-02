@@ -48,7 +48,7 @@ type LeaderboardScraperPort interface {
 // Satisfait par *service.WorldStatsEnricher. Optionnel : si nil, le cron se limite
 // au scrape CSR (comportement historique). Best-effort par joueur.
 type WorldStatsEnricherPort interface {
-	EnrichSeason(ctx context.Context, season string, gamertags []string) ([]domain.WorldPlayerSeasonStats, []error)
+	EnrichSeason(ctx context.Context, season string, players []domain.WorldPlayerRef) ([]domain.WorldPlayerSeasonStats, []error)
 }
 
 const (
@@ -255,23 +255,23 @@ func (c *WorldLeaderboardCron) enrich(ctx context.Context, season string) {
 	}
 	start := time.Now()
 
-	gamertags, err := c.seasonGamertags(ctx, season)
+	players, err := c.seasonPlayers(ctx, season)
 	if err != nil {
-		slog.ErrorContext(ctx, "world_leaderboard_cron: lecture gamertags saison échouée — enrichissement ignoré",
+		slog.ErrorContext(ctx, "world_leaderboard_cron: lecture joueurs saison échouée — enrichissement ignoré",
 			"module", logging.ModuleLeaderboard, "season", season, "err", err)
 		return
 	}
-	if len(gamertags) == 0 {
-		slog.InfoContext(ctx, "world_leaderboard_cron: aucun gamertag à enrichir",
+	if len(players) == 0 {
+		slog.InfoContext(ctx, "world_leaderboard_cron: aucun joueur à enrichir",
 			"module", logging.ModuleLeaderboard, "season", season)
 		return
 	}
 
-	stats, errs := c.enricher.EnrichSeason(ctx, season, gamertags)
+	stats, errs := c.enricher.EnrichSeason(ctx, season, players)
 	if len(errs) > 0 {
 		slog.WarnContext(ctx, "world_leaderboard_cron: enrichissement partiel (erreurs par joueur)",
 			"module", logging.ModuleLeaderboard, "season", season,
-			"players", len(gamertags), "failures", len(errs), "first_err", errs[0])
+			"players", len(players), "failures", len(errs), "first_err", errs[0])
 	}
 	if len(stats) == 0 {
 		slog.WarnContext(ctx, "world_leaderboard_cron: aucune stat agrégée — rien à persister",
@@ -287,11 +287,11 @@ func (c *WorldLeaderboardCron) enrich(ctx context.Context, season string) {
 	}
 	slog.InfoContext(ctx, "world_leaderboard_cron: enrichissement terminé",
 		"module", logging.ModuleLeaderboard, "season", season,
-		"players", len(gamertags), "rows", inserted, "duration", time.Since(start))
+		"players", len(players), "rows", inserted, "duration", time.Since(start))
 }
 
-// seasonGamertags lit les gamertags distincts de la saison (reader RO).
-func (c *WorldLeaderboardCron) seasonGamertags(ctx context.Context, season string) ([]string, error) {
+// seasonPlayers lit les joueurs distincts de la saison (gamertag + xuid, reader RO).
+func (c *WorldLeaderboardCron) seasonPlayers(ctx context.Context, season string) ([]domain.WorldPlayerRef, error) {
 	db, release, err := c.provider.Get(ctx)
 	if err != nil {
 		return nil, err
@@ -299,7 +299,7 @@ func (c *WorldLeaderboardCron) seasonGamertags(ctx context.Context, season strin
 	defer release()
 	// Top N par playlist = profondeur affichée : l'enrichissement auto ne fetch pas
 	// les rangs jamais montrés (cf. duckdb.WorldLeaderboardTopN).
-	return duckdb.WorldSeasonGamertags(ctx, db, season, duckdb.WorldLeaderboardTopN)
+	return duckdb.WorldSeasonPlayers(ctx, db, season, duckdb.WorldLeaderboardTopN)
 }
 
 // persistStats acquiert le writer shared et insère les stats agrégées (append-only).

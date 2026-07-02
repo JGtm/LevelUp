@@ -1,3 +1,17 @@
+## [2026-07-02] B1 leaderboard mondial : persister le xuid Waypoint, court-circuiter PeopleHub — COMPLÉTÉ (worktree, non commité)
+
+**Tâche** : étape B1 du plan `.ai/V7/PLAN_PLAYLISTS_CATALOG_ET_LEADERBOARD.md` (comparaison LeafApp_Infinite). Les « trous » du classement mondial (joueurs enrichis vides) venaient de la Phase C qui re-résout gamertag→xuid via PeopleHub (single-token, ~1,6 s/joueur, fragile 429) ALORS que le scraper Waypoint parse déjà le xuid — mais le persister le jetait (table sans colonne xuid, commentaire inversé prétendant « Waypoint ne publie pas de xuid »). Worktree `feat+leaderboard-catalogue` créé depuis main local (3aef23396).
+
+**Décision technique** :
+- Migration `add_xuid_to_world_csr_leaderboard` : `ALTER TABLE world_csr_leaderboard_snapshots ADD COLUMN xuid VARCHAR` (nullable, non indexé/non-PK → aucun risque ART) + recréation de la vue `world_csr_leaderboard_latest` (DuckDB fige l'expansion de `s.*` à la création → reconstruction obligatoire pour exposer la colonne). Enregistrée dans `canonicalOrder` + la liste `wanted` du helper de test.
+- `InsertWorldCSRSnapshot` persiste `e.XUID` (déjà parsé par le scraper, jamais stocké). Read display `GetCSRWorldLeaderboard` : `'' AS xuid` → `COALESCE(xuid,'')` → débloque `isLocalXUID` (mise en évidence du joueur courant) sur le classement mondial. Commentaire inversé corrigé.
+- `WorldSeasonGamertags` ([]string) → `WorldSeasonPlayers` ([]domain.WorldPlayerRef = gamertag+xuid), dédup `GROUP BY gamertag` avec `MAX(xuid)` (préfère un xuid non-NULL). Callers migrés : cron `seasonPlayers` + CLI backfill (dérive `gamertags` pour garder la logique checkpoint intacte). Ancien nom supprimé (0 référence).
+- Agrégateur : `SeedKnownXUIDs(map)` pré-remplit `xuidByGamertag` → PeopleHub court-circuité dans `PrepareWorldPlayers` ET `AggregatePlayer` ; le résolveur n'est appelé QUE pour les gamertags sans xuid (lignes pré-migration, auto-remplies au prochain scrape). Enricher + CLI seedent avant le run. Compteur expvar `world_enrich.xuid_from_snapshot` + log DebugContext.
+
+**Résultats — gate** : `go build ./...` OK ; `gofmt -l` propre (12 fichiers) ; tests verts — `internal/migration`, `internal/games/halo_infinite/migrations` (valide le step + ordering), `internal/scheduler`, `internal/platform/duckdb` (unit + `-tags=integration` : INSERT anti-ART + vue), `internal/service` (dont nouveau `TestEnrichSeason_SeededXUIDSkipsResolver` = résolveur appelé 0 fois quand xuid pré-seedé). Diff : 12 fichiers, +234/-59.
+
+**Conclusion / prochaine étape** : B1 complet et gaté, NON commité (attente feu vert utilisateur). Résiduel attendu = comptes à historique privé (403) : CSR/rang affichés, stats riches absentes (limite confidentialité, pas un bug ; sera encore réduit par B2 service-record). Étape suivante du plan : A1 (énumérateur de manifest) — nécessite une sonde live contre l'API Halo (tokens watcher valides).
+
 ## [2026-07-02] Aperçus de liens sociaux (Open Graph) — injection serveur, cartes dynamiques par page — COMPLÉTÉ (non poussé)
 
 **Tâche** : question user — pas d'aperçu quand il partage la demo sur Reddit/Facebook/WhatsApp. Cause : SPA React/Vite → le HTML servi est une coquille vide, et les robots d'aperçu (facebookexternalhit, Twitterbot, redditbot, Discordbot…) n'exécutent pas le JS → aucune balise `og:*` lue. Choix produit validé : cartes **dynamiques par page** (texte) + image de marque = capture Chrome de la demo.

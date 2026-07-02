@@ -913,6 +913,37 @@ func Steps() []migration.Migration {
 			},
 		},
 		{
+			// B1 (leaderboard sans trous) : le scraper Waypoint parse DÉJÀ le xuid de
+			// chaque joueur (leaderboard_scraper.go) mais il était jeté à la persistance
+			// (table sans colonne xuid). On l'ajoute (nullable — les lignes pré-migration
+			// restent NULL, le prochain scrape les remplit) pour alimenter l'enrichissement
+			// mondial SANS re-résolution PeopleHub, et pour activer la mise en évidence du
+			// joueur courant (isLocalXUID) sur le classement mondial. Colonne non indexée /
+			// non-PK → aucun risque ART. La vue _latest est recréée : DuckDB fige
+			// l'expansion de `s.*` à la création, il faut donc la reconstruire pour exposer
+			// la nouvelle colonne.
+			Name:        "add_xuid_to_world_csr_leaderboard",
+			TargetDB:    migration.TargetShared,
+			Description: "B1 : colonne xuid sur world_csr_leaderboard_snapshots (déjà scrapé de Waypoint) + vue _latest exposant xuid",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE world_csr_leaderboard_snapshots
+						ADD COLUMN IF NOT EXISTS xuid VARCHAR;
+
+					CREATE OR REPLACE VIEW world_csr_leaderboard_latest AS
+						SELECT s.*
+						FROM world_csr_leaderboard_snapshots s
+						WHERE s.fetched_at = (
+							SELECT max(s2.fetched_at)
+							FROM world_csr_leaderboard_snapshots s2
+							WHERE s2.title_slug = s.title_slug
+							  AND s2.season_id = s.season_id
+							  AND s2.playlist_id = s.playlist_id
+						);
+				`)
+			},
+		},
+		{
 			Name:        "shared_create_player_squad_offset",
 			TargetDB:    migration.TargetShared,
 			Description: "LUSR v2 Sprint 1.C — player_squad_offset (append-only) + vue _latest : offset synergie par paire de coéquipiers",
