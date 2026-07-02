@@ -79,3 +79,32 @@ NewBurstSharedAccess(acquire, read, label) *SharedAccess
 2. Stale read inter-bursts (weapons lit events du burst précédent) → release synchrone + test visibilité.
 3. Multiplication des swaps sous PostSyncParallelism (post_sync.go:104-126) → paresseux (0 en
    stationnaire), ≤4-6 bursts/joueur, monitoring swapTotal + watchdog 2s conservés.
+
+## Notes d'exécution (incr 3-4a, vérifié code 2026-07-02)
+
+CLASSIFICATIONS VÉRIFIÉES (usages sharedDB dans engine_postsync.go, lignes post-incr-2) :
+- :193 probe RC-A → garder UNIQUEMENT en pinned (en burst, Read RO ferait faux-positif read-only ;
+  SharedAccess.Write probe déjà par burst).
+- :211 ensurePlayerEnrichmentRows → READ (write=player). :241 runScoringSteps → READ sauf
+  match_intensity (voir 4a). :251 selectMatchesMissingEvents → READ. :258 convergeEvents → WRITE burst
+  "events". :271 selectMatchesMissingWeapons → READ. :275 processWeaponKillsInline → WRITE burst
+  "weapons". :298 convergePSA → WRITE burst "psa". :318-319 CatalogRefreshFromRegistry → READ
+  (write=metaDB). :328 runPostSyncCitations → READ (writes=player+meta). :348 BackfillDominanceFlags →
+  READ VÉRIFIÉ (computeMatchDominanceFlag lit shared ; write via PostSyncEnrichmentPersister(playerDB),
+  comeback_postsync_persist.go:31-56). :364 runSkillRatingSteps → READ VÉRIFIÉ (SkillV2Repo/
+  SquadOffsetRepo = lecture ; write match_skill_rank = PLAYER DB, skill_v2_shadow.go:69/:321).
+  :397 RecomputeIsWithFriendsCore → READ. :435 evaluateSnapshotReadiness → READ.
+- Segments Read TIGHT par étape (un RO tenu bloque le drain des writers concurrents).
+
+4a ENGAGEMENT (fait en même temps que 3) : batchComputeEngagementScores (engagement.go:65) — l'inline
+persistMatchIntensity(:168-170, UPDATE shared match_registry.match_intensity) sort de la boucle ;
+accumuler (matchID, intensity), nouvelle valeur de retour ; les 3 CALLERS à adapter :
+engine_postsync_scoring.go:58 (burst Write "engagement_intensity" APRÈS release du Read scoring),
+engine_backfills.go:93 (tient déjà le writer backfill_engagement → écrire direct),
+enrichment_backfill.go:122 (vérifier le handle dispo à ce call-site).
+
+runScoringSteps/runSkillRatingSteps : signature → (ctx, playerDB, shared *SharedAccess, r) ;
+scoring = 1 Read segment pour les 6 étapes + burst intensity après release ;
+skill = 1 Read segment. Pipeline : chaque étape ci-dessus = son segment/burst ; supprimer la
+matérialisation Write("pipeline") (:179) au moment du passage — les tests pinned e2e passent car
+pinned Read/Write = même handle no-op.
