@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/config"
 	title "levelup/go-api/internal/domain/title"
 	auth "levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/ratebudget"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
 )
@@ -156,7 +157,14 @@ func BuildHaloSource(cfg *config.AppConfig, gamertag string, rps int, eager bool
 			if exch.Tokens == nil || strings.TrimSpace(exch.Tokens.SpartanToken) == "" {
 				return nil, fmt.Errorf("aucun Spartan token pour %s", gamertag)
 			}
-			return syncpkg.NewHaloAPIClient(exch.Tokens.SpartanToken, exch.Tokens.ClearanceToken, rps), nil
+			// Sujet 2 T1 : budget PAR COMPTE partagé — world-enrich round-robine
+			// sur les MÊMES comptes que le pool de sync ; sans limiteur partagé,
+			// le pool ne voyait jamais cette pression (429 « surprises »).
+			client := syncpkg.NewHaloAPIClient(exch.Tokens.SpartanToken, exch.Tokens.ClearanceToken, rps)
+			if xuid != "" {
+				client = client.WithLimiter(ratebudget.ForXUID(xuid, float64(rps)))
+			}
+			return client, nil
 		},
 	}
 	if eager {
