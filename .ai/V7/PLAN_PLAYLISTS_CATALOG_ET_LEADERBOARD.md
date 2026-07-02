@@ -216,16 +216,26 @@ aux playlists actives RÉELLES (7) au lieu des 4 en dur.
 
 ---
 
-## Étape C1 — Frontend : tri + affichage placement précédent (polish)
+## Étape C1 — Frontend : tri + affichage placement précédent (FULL-STACK, non exécutée)
+
+**RE-CADRAGE (sur pièces)** : ce n'est PAS du polish frontend — les 2 items exigent des
+DONNÉES BACKEND non exposées aujourd'hui par `CareerCSRRank` (`apps/web/src/lib/api/types`,
+rendu par `CareerRankingBlock.tsx`). Le classement (LeaderboardBlock) a DÉJÀ tri + trends +
+rank_delta ; C1 concerne la page PLAYER.
 
 **Périmètre fermé** :
-- [ ] Page player/classement : trier les playlists `is_active` d'abord, puis classées
-      retirées. Query keys dans `lib/query/keys.ts`, jamais inline.
-- [ ] Placement saison précédente (façon LeafApp) : afficher le snapshot de la dernière
-      saison clôturée en delta ↑/↓ (données déjà présentes : `player_csr_snapshots` +
-      `csr_history_backfill`). Vérifier que le backfill N-1 tourne.
-- [ ] Strings UI FR + EN (`i18n.ts`), labels stats via `useFieldLabel()`, zéro couleur hex
-      (tokens sémantiques, skill `color-tokens`).
+- [!] Trier `is_active` d'abord : NON exécuté. Nécessite d'ajouter un flag `is_active` par
+      playlist à la réponse CSR carrière (career_service + type TS). Full-stack.
+- [!] Placement saison précédente en delta : NON exécuté. `CareerCSRRank` ne porte pas la
+      valeur N-1. Deux voies : (a) backend expose `prev_value/prev_tier` par playlist
+      (join player_csr_snapshots saison N-1) ; (b) frontend-only : `useCareerCSRs` current +
+      previous (availableSeasons[1]) + join par playlist_id + delta UI. (b) est faisable sans
+      backend mais reste une vraie feature (2 queries, i18n, tokens).
+- [!] i18n FR/EN + tokens : dépend des items ci-dessus.
+
+**Raison du non-go (delivery-checklist)** : full-stack + gate vitest hors sandbox, à exécuter
+en contexte frais — précipiter à grande profondeur de session risquerait la page player
+elle-même. Design (a)/(b) prêt. Aucun blocage EXTERNE (exécutable en session dédiée).
 
 **Gate** :
 - `make check-types && make test-web`
@@ -240,22 +250,25 @@ DisplayName}`, scraper:247,262-265) mais la jette. Coût faible, valeur : sélec
 saison correct + placement « saison précédente » nommé.
 
 **Périmètre fermé** :
-- [ ] **Enquête d'abord (ne pas deviner)** : dumper les `DisplayName`/`SeasonID` réels
-      scrapés et les croiser avec `csr_season_calendars` pour établir la correspondance
-      (marketing « Season N » vs identifiant CSR vs « Operation »). Consigner la logique
-      dans le thought_log + un commentaire de code. Objectif : comprendre « X-Infinite ».
-- [ ] Persister la liste des saisons (table/colonnes metadata dédiées ; réutiliser
-      `csr_season_calendars` si adéquat, sinon table `season_catalog`). INSERT-only si
-      append-only.
-- [ ] Exposer via un endpoint/handler + query key ; sélecteur de saison côté classement &
-      page player alimenté par cette liste (nom affiché = `DisplayName`).
-- [ ] Multi-titre : gate capability (saisons CSR), pas sur slug. H5 a son propre modèle
-      saison (ne pas mélanger).
+- [x] **Enquête** (fixture leaderboard_sample.html) : `seasonId` = identifiant CSR
+      (`csrseason13-2`, `csrseason12-1`…) ; `displayName` = nom d'Operation. Mapping réel :
+      `csrseason13-2`→"Infinite", `csrseason12-1`→"Shadows" (FR "Ombres"),
+      `csrseason11-1`→"Last Stand" (FR "Dernier bastion"). Les `translations` par locale sont
+      DANS le payload Waypoint. « X-Infinite » = `csrseasonX-Y` (n° saison CSR) + Operation.
+- [!] Persister la liste des saisons (table `season_catalog` ou colonnes) : NON exécuté —
+      full-stack, contexte frais requis. NB : le scraper renvoie DÉJÀ seasons via FetchCatalog
+      (jeté chez l'appelant), donc la persistance = capter cette portion + upsert ART-safe.
+- [~] Surfacer via sélecteur : DÉJÀ partiellement fait — `useLeaderboardCatalog` renvoie
+      `seasons[].display_name` (leaderboard) et `CareerRankingBlock` a `availableSeasons`. C2
+      n'ajoute que la persistance autoritative des noms+traductions Waypoint.
+- [!] Multi-titre gate capability : dépend de la persistance (item ci-dessus).
 
-**Gate** :
+**Raison du non-go (delivery-checklist)** : idem C1 — full-stack + vitest hors sandbox, à
+faire en contexte frais. Enquête (le cœur de ta question saisons) = LIVRÉE ci-dessus.
+
+**Gate (quand exécuté)** :
 - `cd apps/go-api && go test ./internal/platform/halo/ ./internal/platform/duckdb/ -run 'Season|Leaderboard'`
-- `make check-types && make test-web` (sélecteur + i18n FR/EN).
-- Enquête DisplayName collée dans le thought_log AVANT de coder la persistance.
+- `make check-types && make test-web`
 
 ---
 
@@ -278,11 +291,11 @@ saison correct + placement « saison précédente » nommé.
 ## Protocole de reprise de session
 
 - Avancement = cases cochées de ce fichier + entrées `.ai/thought_log.md`.
-- État : B1 [x commité d58528501] · A2 [x commité dfce681f4] · A3 [conçue, différée —
-  faible valeur + chemin CSR critique] · B2 [infra `FetchSeasonServiceRecord` existe, forme
-  API par-playlist à vérifier] · C1/C2 [non commencées ; C2 = persister seasons Waypoint].
-- Reprendre en session FRAÎCHE par B2 (meilleur rapport valeur/risque restant) ou C2.
-  Éviter A3 sauf besoin explicite (valeur marginale faible mesurée).
+- État final session : B1 [x d58528501] · A2 [x dfce681f4] · A3 [x fddf71f5c] · B2 [!]
+  bloquée (sonde live token-gated, design turnkey) · C1 [!] full-stack (design a/b prêt) ·
+  C2 [x enquête saisons livrée ; persistance [!] full-stack]. Tests verts, tout poussé.
+- Reprendre en session FRAÎCHE : B2 (sonde live d'abord), puis C1 (voie b frontend-only
+  faisable), puis C2 (persistance seasons). Aucun blocage externe hors la sonde B2.
 - Avant de coder une étape : rouvrir les fichiers cibles (le code a pu bouger).
 
 ## Statut de clôture
