@@ -599,7 +599,10 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// ─── Pipeline post-sync ─────────────────────────────────────────────────────
 	var postResult domain.PostSyncResult
 	if playerDB != nil && sharedDB != nil {
-		postResult = e.runConditionalPostSync(ctx, playerDB, sharedDB, client, result.MatchesInserted, result.InsertedMatchIDs)
+		// Incrément 2 (transitoire) : le writer est déjà tenu (primaire ou
+		// post-drain) → pinned, byte-identique. L'incrément 5 bascule ce
+		// chemin en bursts (SharedAccess burst, writer relâché entre étapes).
+		postResult = e.runConditionalPostSync(ctx, playerDB, NewPinnedSharedAccess(sharedDB), client, result.MatchesInserted, result.InsertedMatchIDs)
 	} else if e.batchQueue != nil {
 		slog.WarnContext(ctx, "sync: post-sync skippe — DBs indisponibles apres drain async",
 			"gamertag", e.gamertag)

@@ -58,29 +58,40 @@ func trackFatalErr(r *domain.PostSyncResult, stepName string, err error) {
 // sinon rafraîchit au moins la carrière pour mettre à jour le snapshot joueur.
 func (e *SyncEngine) runConditionalPostSync(
 	ctx context.Context,
-	playerDB, sharedDB *sql.DB,
+	playerDB *sql.DB,
+	shared *SharedAccess,
 	client HaloClient,
 	matchesInserted int,
 	insertedIDs []string,
 ) domain.PostSyncResult {
 	if matchesInserted > 0 {
 		slog.InfoContext(ctx, "sync: lancement pipeline post-sync", "gamertag", e.gamertag)
-		return e.runPostSyncPipeline(ctx, playerDB, sharedDB, client, insertedIDs)
+		return e.runPostSyncPipeline(ctx, playerDB, shared, client, insertedIDs)
 	}
 
 	// Pas de nouveaux matchs : heal skill décommissionné (2026-06-01, cf.
 	// runPostSyncPipeline). On se contente de détecter les matchs avec scores
 	// manquants (engagement/perf NULL) pour relancer le recalcul post-sync —
-	// pur calcul dérivé, aucune écriture API/shared concurrente.
-	needsScoreRefresh, _ := hasMatchesNeedingScoreRefresh(ctx, playerDB, sharedDB, e.xuid)
-	// Convergence : même sans nouveau match, le sync n'a pas "fini" tant qu'il
-	// reste des matchs events/weapons incomplets (ex. matchs joués en escouade
-	// insérés par le watcher d'un teammate). On lance le pipeline complet qui
-	// les convergera (étapes 1.54/1.55). Idempotent + borné.
-	if needsScoreRefresh || hasConvergenceBacklog(ctx, playerDB, sharedDB, e.xuid) {
+	// pur calcul dérivé, aucune écriture API/shared concurrente. Les pré-checks
+	// sont des LECTURES : shared.Read (RO en mode burst, handle pinné sinon),
+	// relâché AVANT le pipeline (garde anti-deadlock des bursts Write).
+	needsScoreRefresh := false
+	backlog := false
+	if roDB, roRelease, roErr := shared.Read(ctx); roErr == nil {
+		needsScoreRefresh, _ = hasMatchesNeedingScoreRefresh(ctx, playerDB, roDB, e.xuid)
+		// Convergence : même sans nouveau match, le sync n'a pas "fini" tant qu'il
+		// reste des matchs events/weapons incomplets (ex. matchs joués en escouade
+		// insérés par le watcher d'un teammate). Idempotent + borné.
+		backlog = needsScoreRefresh || hasConvergenceBacklog(ctx, playerDB, roDB, e.xuid)
+		roRelease()
+	} else {
+		slog.WarnContext(ctx, "sync: pré-checks post-sync — lecture shared indisponible, chemin léger",
+			"gamertag", e.gamertag, "err", roErr)
+	}
+	if backlog {
 		slog.InfoContext(ctx, "sync: aucun match inséré — backlog scores/convergence → post-sync complet",
 			"gamertag", e.gamertag, "needs_score_refresh", needsScoreRefresh)
-		return e.runPostSyncPipeline(ctx, playerDB, sharedDB, client, nil)
+		return e.runPostSyncPipeline(ctx, playerDB, shared, client, nil)
 	}
 	slog.DebugContext(ctx, "sync: aucun match inséré — refresh CSR + achievements seul (carrière live découplé)", "gamertag", e.gamertag)
 	// Carrière (XP + Spartan ID) retirée du post-sync : service.CareerLiveService
@@ -123,7 +134,8 @@ func hasMatchesNeedingScoreRefresh(ctx context.Context, playerDB, sharedDB *sql.
 // 4. Aggregates (materialized views)
 func (e *SyncEngine) runPostSyncPipeline(
 	ctx context.Context,
-	playerDB, sharedDB *sql.DB,
+	playerDB *sql.DB,
+	shared *SharedAccess,
 	client HaloClient,
 	insertedIDs []string,
 ) (r domain.PostSyncResult) {
@@ -158,6 +170,20 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// (r est un named return).
 	clock := newPostSyncClock(&r, e.titleSlug)
 	defer clock.finish()
+
+	// Étape 1 contention (incrément 2, transitoire) : matérialisation UNIQUE du
+	// handle shared pour tout le pipeline. En mode pinned (V1) c'est le handle
+	// déjà tenu (no-op, byte-identique) ; en mode burst ce sera remplacé par des
+	// bursts par étape aux incréments 3-4 — ce point d'entrée unique est le
+	// pivot de la migration.
+	sharedDB, releaseShared, serr := shared.Write(ctx, "pipeline")
+	if serr != nil {
+		slog.ErrorContext(ctx, "post-sync: acquisition shared échouée — pipeline abandonné",
+			"gamertag", e.gamertag, "err", serr)
+		trackFatalErr(&r, "shared acquire", serr)
+		return r
+	}
+	defer releaseShared()
 
 	// Fail-fast RC-A (defense-in-depth) : le post-sync écrit encore shared
 	// (LUSR match_skill_rank, dominance match_registry). Si le handle reçu est
