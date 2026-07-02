@@ -18,7 +18,9 @@ package service
 import (
 	"context"
 	"errors"
+	"expvar"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -30,6 +32,11 @@ import (
 	"levelup/go-api/internal/domain"
 	syncpkg "levelup/go-api/internal/sync"
 )
+
+// worldEnrichMatchSkipped compte les matchs ignorés (erreur persistante GetMatchStats
+// après retries) SANS perdre le reste des stats du joueur (B2 : hardening par-match).
+// Exposé sur /debug/vars pour mesurer l'attrition résiduelle.
+var worldEnrichMatchSkipped = expvar.NewInt("world_enrich.match_skipped")
 
 const worldMatchPageSize = 25 // plafond API Halo GetMatchHistory
 
@@ -295,9 +302,16 @@ func (a *WorldStatsAggregator) collectPlayerMatches(ctx context.Context, xuid st
 	if !a.cfg.SeasonStart.IsZero() && !a.cfg.SeasonEnd.IsZero() {
 		off, err := a.findWindowStartOffset(ctx, player, a.cfg.MaxPages*worldMatchPageSize)
 		if err != nil {
-			return collected, err
+			if ctx.Err() != nil {
+				return collected, ctx.Err()
+			}
+			// B2 hardening : la dichotomie a échoué (API) — on retombe sur le scan
+			// linéaire (startPage=0) au lieu de perdre tout le joueur.
+			slog.DebugContext(ctx, "collectPlayerMatches: dichotomie offset échouée — scan linéaire",
+				"xuid", xuid, "err", err)
+		} else {
+			startPage = off / worldMatchPageSize
 		}
-		startPage = off / worldMatchPageSize
 	}
 	for page := startPage; page < a.cfg.MaxPages; page++ {
 		if err := ctx.Err(); err != nil {
@@ -310,6 +324,18 @@ func (a *WorldStatsAggregator) collectPlayerMatches(ctx context.Context, xuid st
 			return e
 		})
 		if err != nil {
+			if ctx.Err() != nil {
+				return collected, ctx.Err()
+			}
+			// B2 hardening : erreur d'historique (après retries 429/503). Si on a DÉJÀ
+			// collecté des matchs, on arrête la pagination mais on CONSERVE le partiel
+			// (une page en échec n'annule plus les précédentes). Si rien n'a été collecté
+			// (échec dès la 1re page tentée), on remonte l'erreur — signal préservé.
+			if len(collected) > 0 {
+				slog.WarnContext(ctx, "collectPlayerMatches: GetMatchHistory échoué — pagination arrêtée, stats partielles conservées",
+					"xuid", xuid, "page", page, "err", err)
+				break
+			}
 			return collected, fmt.Errorf("match history xuid(%s) page %d: %w", xuid, page, err)
 		}
 		if len(hist) == 0 {
@@ -342,7 +368,16 @@ func (a *WorldStatsAggregator) collectPlayerMatches(ctx context.Context, xuid st
 			}
 			cm, err := a.getMatch(ctx, h.MatchID)
 			if err != nil {
-				return collected, err
+				if ctx.Err() != nil {
+					return collected, ctx.Err()
+				}
+				// B2 hardening : un match illisible (403/404/timeout après retries) est
+				// IGNORÉ — on n'annule plus tout le joueur pour un seul match. C'est LE
+				// fix des trous d'enrichissement (un 403 ne fait plus perdre 366 matchs).
+				worldEnrichMatchSkipped.Add(1)
+				slog.DebugContext(ctx, "collectPlayerMatches: getMatch échoué — match ignoré",
+					"match", h.MatchID, "err", err)
+				continue
 			}
 			if len(a.cfg.TargetSeasons) > 0 && !a.cfg.TargetSeasons[cm.season] {
 				nonTarget++
