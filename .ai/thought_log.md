@@ -1,3 +1,18 @@
+## [2026-07-02] Étape 1 contention : post-sync en bursts paresseux — COMPLÉTÉ + GATE VALIDÉ LIVE
+
+**Tâche** : éradiquer le détenteur unique de la fenêtre RW mesuré à l'étape 0 (`sync_v2_postsync` : 13 017 ms avg/joueur, 99% du cycle, même à 0 nouveau match). Plan `.ai/PLAN_POSTSYNC_BURST_LEASE.md`, 5 incréments committables, consigne user : zéro régression.
+
+**Décision technique** : type `SharedAccess` (internal/sync/shared_access.go) — mode `pinned` (handle tenu, byte-identique V1 non-batch) / mode `burst` paresseux (`Read` RO via provider.Get, `Write` court labellisé `sync_v{1,2}_postsync/<étape>`), garde anti-deadlock (Write refusé si Read en vol), garde nil-db, probe RC-A par burst (pinned garde le probe historique qui CONTINUE en dégradé). Pipeline post-sync : plus de matérialisation upfront — segments Read par étape (12 usages shared vérifiés lectures : dominance et LUSR écrivent la PLAYER DB) + 4 vraies écritures shared en bursts courts : engagement `match_intensity` accumulé→flush burst (3 callers adaptés), PSA fetch-hors-lease + alias bufferisés→1 burst, events/weapons en bursts CHUNKÉS (3/2 matchs par burst — fetch film DANS le burst, sémantique par match intouchée = zéro risque data, writer relâché entre chunks). Flip : runner V2 + post-drain V1 batch ne pré-acquièrent plus (NewBurstSharedAccess + reader RO câblé au wiring) ; V1 non-batch reste pinned ; rollback `LEVELUP_POSTSYNC_BURST=0` (défaut ON, à retirer après validation). SQL d'écriture INCHANGÉ partout (zéro risque ART).
+
+**Résultats — tests** : build/vet verts (default + tags integration) ; suites sync (unit + intégration PostSync/Convergence/E2E/Fixture/Engagement), sync/v2 (RCA inclus), scheduler vertes ; nouveau test central `TestRunPostSyncPipeline_StationaryBurst_NoWriterAcquire` (stationnaire = ZÉRO acquisition writer) + 6 tests unit SharedAccess. Fixture tests adaptés (retour intensities), fakes sur DuckDB in-memory (probe RC-A panique sur sql.DB zéro-valeur).
+
+**Résultats — MESURE LIVE (2026-07-02 19:18, cycle forcé 8 joueurs, même environnement throttle Xbox que la baseline)** :
+- fenêtre RW max : **21 909 ms → 255 ms** (gate < 1 500 ms VALIDÉ, marge ×6) ;
+- acquisitions writer : **8 → 1** (l'unique writer du cycle = `world_leaderboard_snapshot` 255 ms ; `sync_v2_postsync/*` n'apparaît PLUS — 0 burst en stationnaire, propriété prouvée live) ;
+- watchdog : **6 → 0** ; durée du cycle : **105 s → 11 s** (fin de la sérialisation inter-joueurs sur le lease post-sync).
+
+**Conclusion / prochaine étape** : l'invariant « le sync ne tient jamais le writer pendant ses I/O » est réalisé ET auto-surveillé (watchdog + ventilation par détenteur). Commits : incr 1-2 (`refactor(sync): SharedAccess + plomberie`), incr 3-5 (`refactor(sync): post-sync en bursts paresseux`). Reste (follow-ups tracés) : retirer `LEVELUP_POSTSYNC_BURST` après quelques jours de validation ; optionnel = split fetch-hors-lease complet events/weapons (4c/4d « vrais splits ») si un backlog massif rendait les bursts chunkés trop nombreux ; sujet distinct = throttling Xbox (unification budget par compte, cf. PLAN_CONTENTION_SYNC_SERVICE §2 throttling).
+
 ## [2026-07-02] Étape 0 contention : attribution par-détenteur de la fenêtre RW + watchdog — COMPLÉTÉ local
 
 **Tâche** : la fenêtre RW moyenne reste ~13,5s (writers background hors-sync) après la campagne V2. AVANT toute chirurgie, rendre la contention ATTRIBUABLE : qui tient le writer, combien de temps, à quelle fréquence — avec un garde-fou permanent. Discovery multi-agents (3 agents : 30+ call-sites exhaustifs, plomberie metrics Phase 0, conventions de test).
@@ -31726,7 +31741,94 @@ globale : Moyen sur les 4 axes (perf N+1 : Bon). Points saillants :
 - Contrat : internal/api/gen mort (0 importeur, spec périmée), 22 schémas OpenAPI DIVERGENT
   passent la CI.
 
-**Conclusion / prochaine étape** : rapport livré en conversation (résumé exécutif, findings par
-sévérité, TOP 10, recommandations). Prochaine étape suggérée : passer les lectures rating sur les
+**Conclusion / prochaine étape** : rapport complet sauvegardé dans
+`.ai/AUDIT_ARCHI_GO_API_2026-07.md` (résumé exécutif, 173 findings par sévérité avec fichier:ligne,
+TOP 10, recommandations) — sert de checklist de résorption. Prochaine étape suggérée : passer les lectures rating sur les
 vues _latest (quick win user-visible), router l'import OpenSpartan vers persist, corriger la regex
 archlint + nouveaux ratchets (SQL dans api/, filepath.Join data), extraire post_sync de api/.
+
+---
+
+## [2026-07-02] Revue de code qualité/maintenabilité/réutilisation — go-api internal/ + web src/
+
+**Statut** : Complété (livrable = rapport de revue, aucune correction appliquée)
+
+**Décision technique principale** : audit ciblé qualité/lisibilité/duplication/conformité
+checklist CLAUDE.md (complémentaire de l'audit archi 2026-07 ci-dessus) : 4 agents parallèles
+(architecture Go, composants React, i18n, duplication/code mort) + scans mécaniques awk/grep
+(tailles fichiers/fonctions, couleurs, query keys, sql.Open, os.Getenv). Chaque finding vérifié
+sur le code réel ; les 2 claims centraux de code mort (feature session-compare, cluster home
+legacy) revalidés indépendamment au grep.
+
+**Résultats observés** : 4 Critiques, 20 Majeurs, ~20 Mineurs. Points saillants :
+- 2 bugs utilisateur actifs : échelle perf-tier INVERSÉE sur le tab Forme (copie locale de
+  perfScale dans TimeseriesFormCharts.tsx:51 — pires matchs en vert) ; badges outcome de
+  CareerTopMatchesTable décidés par includes('victoire') → tous gris en locale EN.
+- 1 risque intégrité : RunBackfillLUSR (v1, « jamais utiliser ») toujours câblé en HTTP
+  (handlers/backfill.go:334) et CLI, en concurrence avec RecomputeLUSRCanonicalForPlayer (v2).
+- Docs inversées sur 2 kill-switches anti-ART : LEVELUP_PERSIST_BATCH documenté « défaut OFF »
+  (réel : ON depuis Phase 4.5) et sync/v2/doc.go « défaut v1 » (réel : v2 depuis ADR 0027).
+- ~40 fichiers de code mort vérifié : cluster analysis/home_* legacy (10 exports, prod = variantes
+  *FromCanonical uniquement, doc de home_canonical.go mensongère), feature session-compare
+  entière (17 fichiers front sans route + endpoint/service/domain Go zombies), SquadV2RouteHost/
+  SquadV2Page, chaîne NotifyNewMedia (notify/notifiers.go, testée mais jamais appelée, RW direct
+  hors lease), upsertLUSRRatingsLegacy, 2 charts session-detail jamais montés.
+- Non-repropagation systémique : COALESCE timezone copié 87x/33 fichiers (jamais ajouté à
+  sql_fragments.go), SQLIsBot centralisé puis 36 littéraux résiduels (dette x4 APRÈS
+  centralisation), SynthesisPage jamais migrée sur useLocalFilterBar (extrait d'elle-même),
+  4 formatters date/percent dupliqués, icône SVG open-match x9.
+- Gouvernance : .golangci.yml a neutralisé funlen/gocyclo par répertoire entier (sync/, analysis/,
+  service/, handlers/) + argument-limit tué par exclusion texte — 168 fonctions >80L hors
+  migrations sans ratchet (contrairement au size_baseline.txt Python).
+- i18n : structurellement bon (parité FR/EN par typage) mais chemins d'erreur auth/setup/
+  onboarding FR monolingues, 9 colonnes scoreboard hardcodées FR, heatmap Explorer FR-only,
+  anglicisme « streak » dans les valeurs FR (notifications, ascension).
+
+**Conclusion / prochaine étape** : rapport complet sauvegardé dans
+`.ai/V7/CODE_REVIEW_2026-07-02.md` (résumé exécutif, conformité checklist item par item,
+findings C1-C4/A1-A20/mineurs avec fichier:ligne, TOP 10 priorisé impact x effort,
+recommandations). TOP 4 quick wins (< 2h cumulées) : fix perf-tier inversé, fix badges outcome EN,
+rerouter RunBackfillLUSR v1 → v2, corriger les 4 docs de flags inversées. Le chantier
+NewRouter/engine.run est volontairement hors TOP 10 (à planifier via plan-review).
+
+---
+
+## [2026-07-02] Audit dette technique & documentation — repo entier
+
+**Statut** : Complété (livrable = rapport `.ai/AUDIT_DETTE_DOC_2026-07.md`, aucune correction appliquée au code)
+
+**Décision technique principale** : audit complémentaire des trois revues du même jour (archi,
+sécu/qualité, code review) sur deux axes qu'elles ne couvraient pas : qualité de la documentation
+(READMEs, réfs ADR, docs/FR, invariants in-code) et durabilité (guards/flags sans expiration,
+angles morts multi-titre hors registre MT-01..26, dette silencieuse schéma). 7 passes
+d'exploration parallèles + contre-vérification manuelle de chaque finding porteur ; 5 faux
+positifs d'agents éliminés sur pièces (dont « V1 sync encore défaut » — réel : V2 défaut via
+shouldUseV2(), ce sont les commentaires main.go:1108/doc.go:17 qui sont inversés, recoupe
+CODE_REVIEW_2026-07-02).
+
+**Résultats observés** : TOP 10 dans le rapport. Saillants :
+- CLAUDE.md ~60% obsolète (monde Python supprimé : src/ et .venv inexistants, 3 .py restants ;
+  chemins « data/warehouse » faux vs data/titles/{slug}/ réel ; commandes scripts/sync.py etc.
+  inexistantes ; warn log legacy_source_used documenté mais 0 occurrence dans le code).
+  project_map.md gelé au 2026-04-28 avec claims démentis ; thought_log 31,8 k lignes sans rotation.
+- Guards forever : LEVELUP_PERSIST_BATCH=0 réactive le chemin UPSERT pré-fix-ART (5+ semaines
+  après bascule, sans date) ; V1 sync entretenu comme opt-out sans critère de retrait ;
+  ADR 0023 Phase 5 en retard ~4 semaines sur son propre critère (~28 fichiers de fallbacks).
+- ADR 0005/Prestige en dérive : ADR dit défaut OFF + ré-éval avant 2026-09-30 ; code = défaut ON
+  via 2 gates divergents (sync_hook env-only vs config_settings settings.json).
+- Réf ADR fantôme : sharedprovider/doc.go:23 pointe « adr/0014-shared-db-provider-b-swap.md
+  (à créer) » — existe sous 0016. Sinon discipline ADR excellente (1 092 réfs cohérentes).
+- Angles morts multi-titre non tracés : pipeline film/armes Infinite entier dans
+  internal/analysis/ (extraction type MT-15 jamais faite pour le film), goldens non paramétrés
+  par titre, scaffolding halo_5 dupliqué sans template (livesync INSERT direct hors persist/).
+- docs/FR : règle n°18 sans enforcement (CITATIONS EN figé 2026-02-26 vs FR 2026-06-25,
+  COMMENDATIONS sans FR, 2/29 ADRs traduites). 2 colonnes mortes player_match_enrichment
+  (known_teammates_count, friends_xuids). 513 TODO dont ~95% sans date.
+- Confirmés sains : EndpointResolver câblé, damage model per-title livré, OpenAPI drift-detector
+  strict, mv_* vues simples, colonnes auth sync_meta = fallback intentionnel.
+
+**Conclusion / prochaine étape** : rapport complet avec TOP 10, recommandations et faux positifs
+consignés dans `.ai/AUDIT_DETTE_DOC_2026-07.md`. Quick wins (<1 j cumulé) : corriger les 3 docs
+de kill-switch inversées, les 2 pointeurs 0014->0016, réécrire CLAUDE.md. Chantiers à dater :
+retrait V1 sync (ADR 0027), Phase 5 ADR 0023 (implémenter legacy_source_used d'abord), décision
+Prestige avant 2026-09-30.
