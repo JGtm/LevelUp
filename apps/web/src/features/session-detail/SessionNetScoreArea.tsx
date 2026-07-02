@@ -19,6 +19,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
   CHART_BG,
+  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getTooltipBase,
@@ -100,8 +101,8 @@ export function buildSessionNetScoreOption(
         const swatch = `<span style="display:inline-block;width:9px;height:9px;border-radius:9px;background:${outcomeColor(
           p.outcomeKey ?? undefined,
         )};margin-right:5px;vertical-align:middle"></span>`
-        const outcomeRow = p.outcomeLabel ? `<br/>${swatch}${p.outcomeLabel}` : ''
-        return `${p.label.replace('\n', ' · ')}<br/>${opts.seriesLabel}: <b>${vStr}</b>${outcomeRow}`
+        const outcomeRow = p.outcomeLabel ? `<br/>${swatch}${escapeHtml(p.outcomeLabel)}` : ''
+        return `${escapeHtml(p.label.replace('\n', ' · '))}<br/>${opts.seriesLabel}: <b>${vStr}</b>${outcomeRow}`
       },
     },
     xAxis: {

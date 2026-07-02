@@ -18,6 +18,7 @@ import {
   getTooltipBase,
   getLegendBase,
   CHART_BG,
+  escapeHtml,
 } from '@/components/charts/_utils'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { careerManifest } from '@/lib/i18n/generated/career'
@@ -275,7 +276,7 @@ function buildXpHistoryOption(series: ChartSeries<[string, number]>[], locale: M
         const m = metaByIdx.get(p.seriesIndex as number)
         const typeLabel = m ? XP_TYPE_LABELS[m.lineType] : ''
         const name = m?.playerName ?? p.seriesName
-        return `${p.marker as string} <b>${name}</b> — ${typeLabel} : ${fmtXp(p.value[1] as number)}`
+        return `${p.marker as string} <b>${escapeHtml(name ?? '')}</b> — ${typeLabel} : ${fmtXp(p.value[1] as number)}`
       })
     return `${date}<br/>${lines.join('<br/>')}`
   }

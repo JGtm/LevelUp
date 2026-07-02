@@ -179,31 +179,33 @@ func (e *SyncEngine) RunFormulaSim(ctx context.Context, lastN int) (*FormulaSimR
 	return RunFormulaSim(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, medalMap, lastN)
 }
 
-// RunBackfillLUSR recalcule le LUSR TrueSkill 2 pour tous les matchs du joueur.
-// force=true : recalcule depuis zéro même si les matchs ont déjà un rating.
-// Les poids des médailles (medal_exploit) sont chargés depuis la metadata DB (best-effort).
-func (e *SyncEngine) RunBackfillLUSR(ctx context.Context, force bool) (int, error) {
+// RecomputeLUSRCanonical recalcule le LUSR v2 canonique (TrueSkill2, ADR 0024)
+// pour tous les matchs du joueur : reset watermark + replay complet via
+// RecomputeLUSRCanonicalForPlayer. Remplace l'ancien RunBackfillLUSR v1 (CR C3 :
+// deux chemins concurrents écrivaient match_skill_rank — v1 supprimé). Le replay
+// v2 est toujours complet : il n'y a plus de paramètre `force`.
+func (e *SyncEngine) RecomputeLUSRCanonical(ctx context.Context) (int, error) {
 	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
-		return 0, fmt.Errorf("RunBackfillLUSR lease player: %w", err)
+		return 0, fmt.Errorf("RecomputeLUSRCanonical lease player: %w", err)
 	}
 	defer writerPlayer.Release()
 
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
-		return 0, fmt.Errorf("RunBackfillLUSR OpenPlayerDB: %w", err)
+		return 0, fmt.Errorf("RecomputeLUSRCanonical OpenPlayerDB: %w", err)
 	}
 	defer playerHandle.Close()
 
-	// Sprint B1 commit 11b : acquireSharedWriter centralise lease + open.
+	// acquireSharedWriter centralise lease + open : RecomputeLUSRCanonicalForPlayer
+	// écrit une row sentinelle dans player_skill_state_v2 (shared DB).
 	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_lusr"))
 	if err != nil {
-		return 0, fmt.Errorf("RunBackfillLUSR: %w", err)
+		return 0, fmt.Errorf("RecomputeLUSRCanonical: %w", err)
 	}
 	defer releaseShared()
 
-	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
-	return batchComputeLUSR(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, medalMap, force)
+	return RecomputeLUSRCanonicalForPlayer(ctx, playerHandle.SQLDb(), sharedDB, e.xuid)
 }
 
 // RunBackfillCSR ré-importe les CSR par-match depuis l'API Halo skill pour

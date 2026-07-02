@@ -127,8 +127,10 @@ func (e *SyncEngine) WithCSRSeasonID(id string) *SyncEngine {
 // Sans WithBatchQueue : chemin synchrone (direct Persister.Persist, sans WAL).
 // Avec WithBatchQueue : chemin async (queue.Submit + worker, WAL durable).
 //
-// Activé par le serveur quand LEVELUP_PERSIST_BATCH=1. Par défaut désactivé
-// → comportement strictement identique au pre-refactor.
+// Serveur, scheduler et CLI l'activent PAR DÉFAUT (LEVELUP_PERSIST_BATCH != "0").
+// LEVELUP_PERSIST_BATCH=0 = kill-switch de rollback qui réactive le chemin legacy
+// insertFetchedMatch (UPSERT ART-unsafe) — à ne jamais laisser posé en prod.
+// Retrait du flag et de la branche legacy planifié (lot D1b, audit 2026-07).
 func (e *SyncEngine) WithBatchPersistMode(enabled bool) *SyncEngine {
 	e.batchMode = enabled
 	return e

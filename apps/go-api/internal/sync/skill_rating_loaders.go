@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"math"
 	"time"
 )
@@ -226,105 +225,6 @@ func upsertLUSRRatings(
 	// upsertLUSRRatingsBatch route via AppendOnlyLUSRPersister.Persist
 	// (INSERT pur, bug ART impossible par construction).
 	return upsertLUSRRatingsBatch(ctx, playerDB, results, existingCSR, existingLUSR, seedRatings)
-}
-
-//nolint:unused // chemin legacy gardé pour les tests existants — sera supprimé en Phase 6.
-func upsertLUSRRatingsLegacy(
-	ctx context.Context,
-	playerDB *sql.DB,
-	results []lusrResult,
-	existingCSR, existingLUSR map[string]bool,
-	seedRatings map[string]float64,
-) (int, error) {
-
-	now := time.Now().UTC()
-	prevRating := make(map[string]float64)
-	for pg, r := range seedRatings {
-		prevRating[pg] = r
-	}
-
-	var (
-		updated      int
-		skippedByCSR int // matchs CSR pré-existants skippés par la garde Go
-		execErrors   int // erreurs Exec (logguées, on continue)
-	)
-	for _, r := range results {
-		if existingCSR[r.MatchID] {
-			skippedByCSR++
-			continue
-		}
-		if existingLUSR[r.MatchID] {
-			continue
-		}
-
-		ratingValue := r.RatingValue
-		var delta *float64
-		if prev, ok := prevRating[r.PlaylistGroup]; ok {
-			rawDelta := ratingValue - prev
-			if math.Abs(rawDelta) > LUSRMaxDelta {
-				if rawDelta > 0 {
-					rawDelta = LUSRMaxDelta
-				} else {
-					rawDelta = -LUSRMaxDelta
-				}
-				ratingValue = prev + rawDelta
-			}
-			delta = &rawDelta
-		}
-		prevRating[r.PlaylistGroup] = ratingValue
-
-		tier, sub := GetTierForRating(ratingValue)
-		var tierName, tierFR, tierLabel *string
-		if tier != nil {
-			tierName = &tier.Name
-			tierFR = &tier.NameFR
-			label := FormatTierLabel(ratingValue)
-			tierLabel = &label
-		}
-
-		// Sémantique append-only (Phase 2.E refactor ART) : INSERT pur, jamais
-		// de DELETE/UPDATE. La garde "LUSR n'écrase pas CSR" est portée par :
-		//   1. Le filtre Go amont (existingCSR map) qui évite l'INSERT physique
-		//      si un CSR existe déjà.
-		//   2. La vue match_skill_rank_latest qui priorise CSR > LUSR si les
-		//      deux coexistent physiquement (garde-fou si le filtre Go a sauté).
-		//
-		// L'ancien ON CONFLICT + clause WHERE déclenchait le bug ART DuckDB.
-		_, err := playerDB.ExecContext(ctx, `
-			INSERT INTO match_skill_rank
-				(match_id, rating_type, rating_value, rating_deviation,
-				 tier, tier_fr, sub_tier, tier_label,
-				 rating_delta, playlist_group, created_at, updated_at)
-			VALUES (?, 'LUSR', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			r.MatchID, ratingValue, r.RatingDeviation,
-			tierName, tierFR, sub, tierLabel,
-			delta, r.PlaylistGroup, now, now)
-		if err != nil {
-			execErrors++
-			slog.Warn("upsertLUSRRatings: exec LUSR insert failed",
-				"match_id", r.MatchID, "playlist_group", r.PlaylistGroup, "err", err)
-			continue
-		}
-		updated++
-
-		// V2 §1 : persister le breakdown des 8 composantes en parallèle du
-		// match_skill_rank. Best-effort — un échec n'empêche pas la mise à
-		// jour du rating principal.
-		if len(r.Components) > 0 {
-			if err := writeLUSRComponentHistory(ctx, playerDB, r.MatchID, r.Components, now); err != nil {
-				slog.Warn("upsertLUSRRatings: lusr_component_history write failed",
-					"match_id", r.MatchID, "err", err)
-			}
-		}
-	}
-	if updated > 0 || skippedByCSR > 0 || execErrors > 0 {
-		slog.Info("upsertLUSRRatings: batch terminé",
-			"updated", updated,
-			"skipped_by_csr_filter", skippedByCSR,
-			"exec_errors", execErrors,
-			"total_candidates", len(results))
-	}
-	return updated, nil
 }
 
 // writeLUSRComponentHistory persiste les 8 composantes d'un match dans

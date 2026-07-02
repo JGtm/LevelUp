@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, getEChartsThemeColors } from '@/components/charts/_utils'
+import { CHART_BG, escapeHtml, getEChartsThemeColors } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import type { SynthesisWeaponAccuracyEntry } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
@@ -37,7 +37,7 @@ function buildWeaponAccuracyOption(series: ChartSeries<AccuracyPoint>[]): EChart
       formatter: (params: { name: string; value: number; dataIndex: number }[]) => {
         const p = params[0]
         const d = data[p.dataIndex]
-        return `${p.name}<br/><b>${p.value.toFixed(1)} %</b><br/>${d.shotsLanded.toLocaleString('fr-FR')} / ${d.shotsFired.toLocaleString('fr-FR')} tirs`
+        return `${escapeHtml(p.name ?? '')}<br/><b>${p.value.toFixed(1)} %</b><br/>${d.shotsLanded.toLocaleString('fr-FR')} / ${d.shotsFired.toLocaleString('fr-FR')} tirs`
       },
     },
     xAxis: { type: 'value', show: false, max: 100 },

@@ -14,7 +14,9 @@
 // garantit la cross-player dedup correcte (visibilité immédiate des writes
 // avant le prochain loadKnown).
 //
-// Activation : LEVELUP_SYNC_PIPELINE=v2 (défaut v1, rollback instantané).
+// Activation : V2 PAR DÉFAUT (shouldUseV2 = LEVELUP_SYNC_PIPELINE != "v1").
+// LEVELUP_SYNC_PIPELINE=v1 = kill-switch de rollback vers le legacy V1 (retrait
+// planifié lot D1c). Rollback instantané.
 // Coexistence : V1 et V2 partagent les Persisters, le schéma DB et le WAL.
 //
 // Tests anti-régression critiques : cf. tests/integration/sync_v2/ et

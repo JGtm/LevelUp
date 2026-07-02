@@ -22,7 +22,7 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import { useCallback } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, getEChartsThemeColors, getLegendBase, getTooltipBase } from '@/components/charts/_utils'
+import { CHART_BG, escapeHtml, getEChartsThemeColors, getLegendBase, getTooltipBase } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import { displayPlayerName } from '@/lib/players/displayName'
 import type {
@@ -351,7 +351,7 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, t }: Prop
             yAxisIndex: 0,
             tooltip: {
               formatter: (p: { name?: string; value?: number; dataIndex?: number }) =>
-                `${p.name ?? ''}<br/>${t.combatTeamLabel} : <b>${p.value ?? 0} %</b> (${teamCounts[p.dataIndex ?? 0]} kills)`,
+                `${escapeHtml(p.name ?? '')}<br/>${t.combatTeamLabel} : <b>${p.value ?? 0} %</b> (${teamCounts[p.dataIndex ?? 0]} kills)`,
             },
             markPoint: { silent: true, data: cumulMarkPoints },
             markLine: {
@@ -373,7 +373,7 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, t }: Prop
             yAxisIndex: 0,
             tooltip: {
               formatter: (p: { name?: string; value?: number; dataIndex?: number }) =>
-                `${p.name ?? ''}<br/>${t.combatEnemyLabel} : <b>${p.value ?? 0} %</b> (${enemyCounts[p.dataIndex ?? 0]} kills)`,
+                `${escapeHtml(p.name ?? '')}<br/>${t.combatEnemyLabel} : <b>${p.value ?? 0} %</b> (${enemyCounts[p.dataIndex ?? 0]} kills)`,
             },
           },
           // Lane alliée (top grid) — repère visuel du kill feed

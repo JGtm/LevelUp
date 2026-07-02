@@ -136,8 +136,8 @@ type SyncEngine struct {
 	// batchMode (Phase 2.3 refactor Collect→Persist) — si true, la boucle
 	// d'insertion utilise `submitMatchAsBatch` (chemin INSERT-only via
 	// persist.SharedPersister + persist.PlayerPersister) au lieu de
-	// `insertFetchedMatch` legacy (UPSERT direct). Feature-flag opt-in
-	// activé par WithBatchPersistMode.
+	// `insertFetchedMatch` legacy (UPSERT direct). ACTIVÉ PAR DÉFAUT côté serveur/
+	// scheduler/CLI (LEVELUP_PERSIST_BATCH != "0") ; =0 = kill-switch ART-unsafe.
 	batchMode bool
 
 	// batchQueue (Phase 3 refactor Collect→Persist) — si non-nil ET batchMode,

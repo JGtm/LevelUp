@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { CareerTopMatch } from '@/lib/api/types'
 import { tokenCssVar } from '@/lib/accessibility'
+import { outcomeKey } from '@/lib/outcome-color'
+import { formatDate } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { formatMessage } from '@/lib/i18n/format'
 import { careerManifest, type CareerManifestKey } from '@/lib/i18n/generated/career'
@@ -37,11 +39,27 @@ function MatchBadge({ type }: { type: string | null }) {
   )
 }
 
+/**
+ * Variante de badge (pill) selon le CODE d'outcome — jamais sur le label
+ * localisé (CR C2 : `includes('victoire')` cassait tous les badges en EN).
+ */
+function outcomeBadgeVariant(code: number | null | undefined): 'success' | 'destructive' | 'secondary' {
+  switch (outcomeKey(code ?? 0)) {
+    case 'win':
+      return 'success'
+    case 'loss':
+      return 'destructive'
+    default:
+      return 'secondary'
+  }
+}
+
 export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugProp }: Props) {
   const params = useParams({ strict: false }) as { playerSlug?: string }
   const playerSlug = slugProp ?? params.playerSlug ?? ''
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const locale = useAppShellStore((s) => s.locale)
+  const intlLocale = locale === 'en' ? 'en-US' : 'fr-FR'
   const t = (key: CareerManifestKey) => formatMessage(careerManifest, key, locale)
 
   const filtered = variant ? items.filter((m) => m.variant === variant) : items
@@ -95,9 +113,7 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
                 >
                   <td className="py-1.5 text-muted-foreground font-mono text-xs">{idx + 1}</td>
                   <td className="py-1.5 text-muted-foreground whitespace-nowrap">
-                    {m.start_time
-                      ? new Date(m.start_time).toLocaleDateString('fr-FR')
-                      : '—'}
+                    {formatDate(m.start_time, intlLocale, { dateStyle: 'short' }, '—')}
                   </td>
                   <td className="py-1.5">
                     <span className="font-medium text-foreground">{m.map_ui ?? '—'}</span>
@@ -120,15 +136,7 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
                   <td className="py-1.5 text-right text-muted-foreground">{m.score_label ?? '—'}</td>
                   <td className="py-1.5 text-right">
                     {m.outcome_label && (
-                      <Badge
-                        variant={
-                          m.outcome_label.toLowerCase().includes('victoire')
-                            ? 'success'
-                            : m.outcome_label.toLowerCase().includes('défaite')
-                            ? 'destructive'
-                            : 'secondary'
-                        }
-                      >
+                      <Badge variant={outcomeBadgeVariant(m.outcome_code)}>
                         {m.outcome_label}
                       </Badge>
                     )}

@@ -13,6 +13,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import {
   CHART_BG,
+  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getLegendBase,
@@ -279,7 +280,7 @@ export function TimeseriesEfficiency({
         formatter: (params: Array<{ seriesName: string; value: number | null; marker: string }>) =>
           params
             .filter((p) => p.value != null)
-            .map((p) => `${p.marker}${p.seriesName}: <b>${Math.round(p.value as number)}</b>`)
+            .map((p) => `${p.marker}${escapeHtml(p.seriesName ?? '')}: <b>${Math.round(p.value as number)}</b>`)
             .join('<br/>'),
       },
       // Pastille de légende élargie (itemWidth 30 vs 12) : à 12px le pointillé

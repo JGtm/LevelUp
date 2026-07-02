@@ -1105,10 +1105,11 @@ func main() {
 		autoScheduler.WithPostSyncRunner(postSyncRunner)
 	}
 
-	// ADR 0027 D6.5 — câblage pipeline V2 (dormant tant que
-	// LEVELUP_SYNC_PIPELINE=v2 n'est pas positionné). En l'absence d'env
-	// var, scheduler.shouldUseV2() retourne false et le flow runtime reste
-	// 100% V1 — aucun changement de comportement.
+	// ADR 0027 D6.5 — câblage pipeline V2. Une fois l'orchestrator câblé
+	// (bloc ci-dessous), scheduler.shouldUseV2() retourne true PAR DÉFAUT
+	// (LEVELUP_SYNC_PIPELINE != "v1") : le flow runtime passe en V2. Le
+	// kill-switch LEVELUP_SYNC_PIPELINE=v1 force le rollback vers le legacy V1.
+	// Retrait de V1 + du flag planifié (lot D1c, DEC-2).
 	//
 	// Pré-requis : autoSyncPool non-nil + autoBatchQueue non-nil. Si l'un
 	// manque, on skip le câblage : V2 sera indisponible mais V1 fonctionne.
