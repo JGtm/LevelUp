@@ -743,6 +743,40 @@ func TestSyncOptions_Validation(t *testing.T) {
 
 // ── PostSync pipeline tests ─────────────────────────────────────────────────
 
+// TestRunPostSyncPipeline_StationaryBurst_NoWriterAcquire : étape 1 contention —
+// en régime stationnaire (0 nouveau match, 0 backlog events/weapons/psa, 0
+// intensité engagement), le pipeline en mode BURST n'acquiert JAMAIS le writer
+// shared : uniquement des segments de lecture RO. C'est la propriété centrale
+// du refactor (fenêtre RW nulle quand il n'y a rien à écrire) — la mesure
+// étape 0 montrait 13s/joueur tenues pour rien dans ce régime exact.
+func TestRunPostSyncPipeline_StationaryBurst_NoWriterAcquire(t *testing.T) {
+	playerDB, sharedDB := newInMemoryDBs(t)
+	mock := &mockHaloClient{}
+
+	e := &SyncEngine{gamertag: "TestPlayer", xuid: "1234567890123456"}
+
+	var writeAcquires, readAcquires int
+	shared := NewBurstSharedAccess(
+		func(ctx context.Context) (*sql.DB, func(), error) {
+			writeAcquires++
+			return sharedDB, func() {}, nil
+		},
+		func(ctx context.Context) (*sql.DB, func(), error) {
+			readAcquires++
+			return sharedDB, func() {}, nil
+		},
+		"test_postsync")
+
+	_ = e.runPostSyncPipeline(context.Background(), playerDB, shared, mock, nil)
+
+	if writeAcquires != 0 {
+		t.Errorf("writer shared acquis %d fois en stationnaire, want 0 (fenêtre RW nulle)", writeAcquires)
+	}
+	if readAcquires == 0 {
+		t.Error("aucun segment Read ouvert — le pipeline n'a pas lu shared ?")
+	}
+}
+
 func TestRunPostSyncPipeline_NoError(t *testing.T) {
 	playerDB, sharedDB := newInMemoryDBs(t)
 

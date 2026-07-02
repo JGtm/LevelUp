@@ -129,8 +129,23 @@ func selectMatchesMissingPSA(ctx context.Context, playerDB *sql.DB) []string {
 // ce chemin convergent en est l'alimentation principale, avec
 // match_participants/killer_victim_pairs (lus par v_gamertag_lookup).
 func convergePSA(ctx context.Context, playerDB, sharedDB *sql.DB, client HaloClient, xuid string, ids []string) int {
+	done, pairs := convergePSACollect(ctx, playerDB, client, xuid, ids)
+	flushAliasPairs(ctx, sharedDB, xuid, pairs)
+	return done
+}
+
+// aliasPair : upsert shared.xuid_aliases différé (étape 1 contention — le fetch
+// réseau PSA ne tient plus le writer shared ; les alias sont bufferisés puis
+// flushés en burst court par le caller).
+type aliasPair struct{ xuid, gamertag string }
+
+// convergePSACollect : phase fetch + écritures PLAYER de la convergence PSA.
+// AUCUNE écriture shared — les alias extraits des JSONs sont RETOURNÉS pour un
+// flush en burst par le caller. Sémantique par match inchangée (best-effort,
+// stamp terminal psa_checked_at côté player).
+func convergePSACollect(ctx context.Context, playerDB *sql.DB, client HaloClient, xuid string, ids []string) (int, []aliasPair) {
 	done := 0
-	aliases := 0
+	var pairs []aliasPair
 	for _, mid := range ids {
 		if ctx.Err() != nil {
 			break
@@ -140,7 +155,7 @@ func convergePSA(ctx context.Context, playerDB, sharedDB *sql.DB, client HaloCli
 			slog.WarnContext(ctx, "convergence: PSA fetch échoué", "match_id", mid, "err", err)
 			continue
 		}
-		aliases += upsertAliasesFromMatchJSON(ctx, sharedDB, matchJSON)
+		pairs = append(pairs, extractAliasPairsFromMatchJSON(matchJSON)...)
 		awards := ExtractPersonalScoreAwards(matchJSON, mid, xuid)
 		if len(awards) > 0 {
 			if err := InsertPersonalScoreAwards(ctx, playerDB, mid, xuid, awards); err != nil {
@@ -157,13 +172,28 @@ func convergePSA(ctx context.Context, playerDB, sharedDB *sql.DB, client HaloCli
 		}
 		done++
 	}
+	return done, pairs
+}
+
+// flushAliasPairs upserte les alias bufferisés dans shared.xuid_aliases (burst
+// court, SQL UpsertXUIDAlias INCHANGÉ). Best-effort — même sémantique que
+// l'ancien upsert inline (erreurs individuelles ignorées, sharedDB nil = no-op).
+func flushAliasPairs(ctx context.Context, sharedDB *sql.DB, xuid string, pairs []aliasPair) {
+	if sharedDB == nil || len(pairs) == 0 {
+		return
+	}
+	aliases := 0
+	for _, p := range pairs {
+		if err := UpsertXUIDAlias(ctx, sharedDB, p.xuid, p.gamertag); err == nil {
+			aliases++
+		}
+	}
 	if aliases > 0 {
 		// Cumul boot-level pour le dashboard monitoring (rattrapage convergence).
 		observability.AddIntT(ctxkeys.TitleSlug(ctx), "convergence_aliases_upserted_total", int64(aliases))
 		slog.InfoContext(ctx, "convergence: alias upsertés depuis les JSONs PSA",
 			"xuid", xuid, "aliases", aliases)
 	}
-	return done
 }
 
 // upsertAliasesFromMatchJSON upserte un alias xuid→gamertag dans
@@ -174,8 +204,21 @@ func upsertAliasesFromMatchJSON(ctx context.Context, sharedDB *sql.DB, matchJSON
 	if sharedDB == nil {
 		return 0
 	}
-	players, _ := matchJSON["Players"].([]any)
 	n := 0
+	for _, p := range extractAliasPairsFromMatchJSON(matchJSON) {
+		if err := UpsertXUIDAlias(ctx, sharedDB, p.xuid, p.gamertag); err == nil {
+			n++
+		}
+	}
+	return n
+}
+
+// extractAliasPairsFromMatchJSON extrait les paires (xuid, gamertag) des
+// participants d'un JSON match — parsing PUR, aucune écriture (étape 1
+// contention : la phase collect n'a pas besoin du writer shared).
+func extractAliasPairsFromMatchJSON(matchJSON map[string]any) []aliasPair {
+	players, _ := matchJSON["Players"].([]any)
+	var out []aliasPair
 	for _, p := range players {
 		player, ok := p.(map[string]any)
 		if !ok {
@@ -189,11 +232,9 @@ func upsertAliasesFromMatchJSON(ctx context.Context, sharedDB *sql.DB, matchJSON
 		if pid == "" || gt == "" {
 			continue
 		}
-		if err := UpsertXUIDAlias(ctx, sharedDB, pid, gt); err == nil {
-			n++
-		}
+		out = append(out, aliasPair{xuid: pid, gamertag: gt})
 	}
-	return n
+	return out
 }
 
 // countSharedMatchesMissingEnrichment compte les matchs présents dans

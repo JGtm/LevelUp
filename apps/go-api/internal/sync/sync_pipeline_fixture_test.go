@@ -970,7 +970,8 @@ func TestPipelineFixture_Citations_NoMedals(t *testing.T) {
 func TestPipelineFixture_EngagementScore(t *testing.T) {
 	f := buildPipelineFixture(t)
 
-	n, err := batchComputeEngagementScores(context.Background(), f.player, f.shared, fixXUID, false)
+	n, ups, err := batchComputeEngagementScores(context.Background(), f.player, f.shared, fixXUID, false)
+	persistMatchIntensities(context.Background(), f.shared, ups)
 	if err != nil {
 		t.Fatalf("batchComputeEngagementScores: %v", err)
 	}
@@ -1007,7 +1008,8 @@ func TestPipelineFixture_EngagementScore(t *testing.T) {
 func TestPipelineFixture_EngagementScore_Idempotent(t *testing.T) {
 	f := buildPipelineFixture(t)
 
-	n1, err := batchComputeEngagementScores(context.Background(), f.player, f.shared, fixXUID, false)
+	n1, ups1, err := batchComputeEngagementScores(context.Background(), f.player, f.shared, fixXUID, false)
+	persistMatchIntensities(context.Background(), f.shared, ups1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1022,7 +1024,8 @@ func TestPipelineFixture_EngagementScore_Idempotent(t *testing.T) {
 	// TOUS les matchs déjà tentés, Y COMPRIS m1 (ranked, score=NULL insufficient_history).
 	// Sans cela, m1 serait ré-INSÉRÉ à chaque cycle → croissance non bornée (bug audit
 	// 2026-06-21). n2 == 0 ET la table ne grossit PAS.
-	n2, err := batchComputeEngagementScores(context.Background(), f.player, f.shared, fixXUID, false)
+	n2, ups2, err := batchComputeEngagementScores(context.Background(), f.player, f.shared, fixXUID, false)
+	persistMatchIntensities(context.Background(), f.shared, ups2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1137,7 +1140,7 @@ func TestPipelineFixture_FullSequence(t *testing.T) {
 	}
 
 	// Étape 6 — engagement_score
-	if _, err := batchComputeEngagementScores(ctx, f.player, f.shared, fixXUID, false); err != nil {
+	if _, _, err := batchComputeEngagementScores(ctx, f.player, f.shared, fixXUID, false); err != nil {
 		t.Fatalf("[étape 6] engagement_score: %v", err)
 	}
 

@@ -38,7 +38,7 @@ func TestSharedAccess_WriteLabelsStep(t *testing.T) {
 		func(ctx context.Context) (*sql.DB, func(), error) {
 			acquires++
 			seenLabel = ctxkeys.DBWriterLabel(ctx)
-			return nil, func() {}, nil
+			return testSharedAccessDB(t), func() {}, nil
 		},
 		nil, "sync_v2_postsync")
 
@@ -63,10 +63,13 @@ func TestSharedAccess_WriteLabelsStep(t *testing.T) {
 func TestSharedAccess_ReadUsesROPath(t *testing.T) {
 	var acquires, reads, releases int
 	a := NewBurstSharedAccess(
-		func(ctx context.Context) (*sql.DB, func(), error) { acquires++; return nil, func() {}, nil },
+		func(ctx context.Context) (*sql.DB, func(), error) {
+			acquires++
+			return testSharedAccessDB(t), func() {}, nil
+		},
 		func(ctx context.Context) (*sql.DB, func(), error) {
 			reads++
-			return nil, func() { releases++ }, nil
+			return testSharedAccessDB(t), func() { releases++ }, nil
 		},
 		"sync_v2_postsync")
 
@@ -88,8 +91,8 @@ func TestSharedAccess_ReadUsesROPath(t *testing.T) {
 // pendant un Read en vol est refusé ; après release, il passe.
 func TestSharedAccess_WriteRefusedDuringRead(t *testing.T) {
 	a := NewBurstSharedAccess(
-		func(ctx context.Context) (*sql.DB, func(), error) { return nil, func() {}, nil },
-		func(ctx context.Context) (*sql.DB, func(), error) { return nil, func() {}, nil },
+		func(ctx context.Context) (*sql.DB, func(), error) { return testSharedAccessDB(t), func() {}, nil },
+		func(ctx context.Context) (*sql.DB, func(), error) { return testSharedAccessDB(t), func() {}, nil },
 		"lbl")
 
 	_, releaseRead, err := a.Read(context.Background())
@@ -112,7 +115,10 @@ func TestSharedAccess_WriteRefusedDuringRead(t *testing.T) {
 func TestSharedAccess_LegacyReadFallsBackToWrite(t *testing.T) {
 	var acquires int
 	a := NewBurstSharedAccess(
-		func(ctx context.Context) (*sql.DB, func(), error) { acquires++; return nil, func() {}, nil },
+		func(ctx context.Context) (*sql.DB, func(), error) {
+			acquires++
+			return testSharedAccessDB(t), func() {}, nil
+		},
 		nil, "lbl")
 	_, release, err := a.Read(context.Background())
 	if err != nil {
@@ -134,4 +140,16 @@ func TestSharedAccess_AcquireErrorPropagates(t *testing.T) {
 	if _, _, err := a.Write(context.Background(), "s"); !errors.Is(err, boom) {
 		t.Fatalf("err = %v, want boom", err)
 	}
+}
+
+// testSharedAccessDB ouvre une DuckDB in-memory jetable (probe RC-A des bursts —
+// un *sql.DB zéro-valeur paniquerait dans QueryRowContext).
+func testSharedAccessDB(t *testing.T) *sql.DB {
+	t.Helper()
+	db, err := sql.Open("duckdb", "")
+	if err != nil {
+		t.Fatalf("open duckdb in-memory: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	return db
 }

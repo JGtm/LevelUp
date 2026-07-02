@@ -167,7 +167,14 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		postSyncRunner = &dryRunPostSyncRunner{}
 	} else {
 		engineFactory := buildSyncEngineFactoryParityComplete(deps)
-		postSyncRunner = syncv2.NewPostSyncRunner(engineFactory, playerDBOpenerRW, acquireSharedRW, clientFactory)
+		runner := syncv2.NewPostSyncRunner(engineFactory, playerDBOpenerRW, acquireSharedRW, clientFactory)
+		// Étape 1 contention : lecteur RO du shared (provider.Get, avec release)
+		// pour les segments Read du pipeline en mode bursts. Sans provider
+		// (legacy), les lectures retombent sur des bursts Write.
+		if deps.Cfg.SharedProvider != nil {
+			runner = runner.WithSharedReader(deps.Cfg.SharedProvider.Get)
+		}
+		postSyncRunner = runner
 	}
 
 	// Phase 6bis — producteur de snapshot immuable (durabilité / lecture découplée du

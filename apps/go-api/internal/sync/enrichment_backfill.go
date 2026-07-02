@@ -119,10 +119,13 @@ func BackfillEnrichmentFromShared(
 	}
 
 	// 1.5 Engagement scores — self-skip si colonnes engagement absentes du schéma.
-	if n, err := batchComputeEngagementScores(ctx, playerDB, sharedDB, xuid, force); err != nil {
+	if n, intensities, err := batchComputeEngagementScores(ctx, playerDB, sharedDB, xuid, force); err != nil {
 		track("engagement", err)
 	} else {
 		report.EngagementComputed = n
+		// Handle shared déjà tenu par ce backfill : flush direct (sémantique
+		// identique à l'ancien write inline du compute).
+		persistMatchIntensities(ctx, sharedDB, intensities)
 	}
 
 	// 1.5.b Coefficients d'engagement (sinon coef figé à 1.0 → courbes superposées).

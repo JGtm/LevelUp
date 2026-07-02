@@ -47,6 +47,17 @@ type postSyncRunnerV2 struct {
 	openPlayerDB   PlayerDBOpener
 	acquireSharedW SharedDBAcquirer // RW writer pour les heals (cf. SharedDBAcquirer)
 	clientFactory  HaloClientFactory
+	// readSharedRO (optionnel, étape 1 contention) : lecteur RO du shared
+	// (provider.Get + release) pour les segments Read du pipeline en mode bursts.
+	// nil → SharedAccess retombe sur des bursts Write pour les lectures (legacy).
+	readSharedRO SharedDBAcquirer
+}
+
+// WithSharedReader câble le lecteur RO du shared (mode bursts, étape 1
+// contention). Optionnel — sans lui, les lectures passent par des bursts Write.
+func (r *postSyncRunnerV2) WithSharedReader(read SharedDBAcquirer) *postSyncRunnerV2 {
+	r.readSharedRO = read
+	return r
 }
 
 // NewPostSyncRunner construit un PostSyncRunner V2.
@@ -88,9 +99,34 @@ func (r *postSyncRunnerV2) RunPostSync(ctx context.Context, p PlayerProfile, ins
 	}
 	defer releasePlayer()
 
-	// RC-A fix : acquérir le shared en READ-WRITE (writer provider), pas le handle
-	// RO caché. Les heals events/skill/weapon/registry écrivent dans shared ; un
-	// handle RO faisait échouer toutes ces écritures "attached in read-only mode".
+	var client syncpkg.HaloClient
+	if r.clientFactory != nil {
+		if c := r.clientFactory(p.Gamertag, p.XUID); c != nil {
+			// c est notre HaloClient narrow (v2) — il satisfait aussi sync.HaloClient
+			// si le wrapper runtime renvoie un *sync.PooledHaloClient (qui implémente
+			// les deux). On le passe tel quel.
+			if cs, ok := c.(syncpkg.HaloClient); ok {
+				client = cs
+			}
+		}
+	}
+
+	// Étape 1 contention (défaut) : mode BURSTS PARESSEUX — le runner n'acquiert
+	// PLUS le writer upfront ; le pipeline ouvre des segments Read RO et des
+	// bursts Write courts par écriture shared (fenêtre RW ~0 en stationnaire,
+	// mesure étape 0 : 13s/joueur tenues pour rien). L'échec d'acquisition est
+	// géré PAR ÉTAPE dans le pipeline (dégradation, plus de skip global).
+	if syncpkg.PostSyncBurstEnabled() {
+		shared := syncpkg.NewBurstSharedAccess(
+			func(c context.Context) (*sql.DB, func(), error) { return r.acquireSharedW(c) },
+			readFnOrNil(r.readSharedRO),
+			"sync_v2_postsync")
+		v1Res := engine.RunPostSyncForV2Shared(ctx, playerDB, shared, client, insertedIDs)
+		return mapV1PostSyncResult(p.PlayerSlug, v1Res), nil
+	}
+
+	// ROLLBACK (LEVELUP_POSTSYNC_BURST=0) : chemin pinned historique — RC-A fix :
+	// acquérir le shared en READ-WRITE (writer provider), pas le handle RO caché.
 	sharedDB, releaseShared, err := r.acquireSharedW(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "sync.v2 post-sync: acquisition shared RW échouée — skip",
@@ -107,21 +143,18 @@ func (r *postSyncRunnerV2) RunPostSync(ctx context.Context, p PlayerProfile, ins
 	}
 	defer releaseShared()
 
-	var client syncpkg.HaloClient
-	if r.clientFactory != nil {
-		if c := r.clientFactory(p.Gamertag, p.XUID); c != nil {
-			// c est notre HaloClient narrow (v2) — il satisfait aussi sync.HaloClient
-			// si le wrapper runtime renvoie un *sync.PooledHaloClient (qui implémente
-			// les deux). On le passe tel quel.
-			if cs, ok := c.(syncpkg.HaloClient); ok {
-				client = cs
-			}
-		}
-	}
-
 	v1Res := engine.RunPostSyncForV2(ctx, playerDB, sharedDB, client, insertedIDs)
 
 	return mapV1PostSyncResult(p.PlayerSlug, v1Res), nil
+}
+
+// readFnOrNil convertit le SharedDBAcquirer RO optionnel en closure pour
+// NewBurstSharedAccess (nil reste nil → fallback legacy dans SharedAccess).
+func readFnOrNil(read SharedDBAcquirer) func(context.Context) (*sql.DB, func(), error) {
+	if read == nil {
+		return nil
+	}
+	return func(c context.Context) (*sql.DB, func(), error) { return read(c) }
 }
 
 // mapV1PostSyncResult transforme un domain.PostSyncResult (V1) en
