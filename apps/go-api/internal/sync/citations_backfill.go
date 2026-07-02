@@ -18,6 +18,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
@@ -42,7 +43,7 @@ func (e *SyncEngine) RunBackfillCitations(ctx context.Context, force bool) (int,
 	defer playerHandle.Close()
 
 	// Sprint B1 commit 13a : acquireSharedWriter centralise lease + open.
-	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_citations"))
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillCitations: %w", err)
 	}

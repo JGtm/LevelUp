@@ -24,7 +24,8 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 		return nil, ErrProviderClosed
 	}
 
-	slog.InfoContext(ctx, "provider: AcquireWriter démarré", "path", p.path)
+	slog.InfoContext(ctx, "provider: AcquireWriter démarré",
+		"path", p.path, "label", ctxkeys.DBWriterLabel(ctx))
 	lease, err := dblease.AcquireWriterCtx(ctx, nil, p.path, dblease.KindSharedMatches)
 	if err != nil {
 		swapFailuresTotal.Add(failReasonAcquireWriter, 1)
@@ -175,9 +176,47 @@ func (p *providerImpl) swapToRW(ctx context.Context, swapStart time.Time) (*duck
 	recordStateTransition(StateDraining, StateRW)
 	// Phase 0 — début de la fenêtre RW stricte (sous p.mu), lue au releaseWriter.
 	p.rwWindowStart = time.Now()
+	// Étape 0 attribution : capture du label de détenteur (posé par le caller via
+	// ctxkeys.WithDBWriterLabel à l'entrée de son sous-système) + armement du
+	// watchdog. Le callback du timer ne prend AUCUN lock (valeurs capturées) et
+	// fire UNE fois par acquisition — il attrape aussi un writer jamais release,
+	// qu'un check passif au release raterait.
+	p.rwHolderLabel = ctxkeys.DBWriterLabel(ctx)
+	p.armRWWatchdogLocked()
 	swapTotal.Add(swapDirRoToRw, 1)
 	swapDurationMsTotal.Add(swapDirRoToRw, time.Since(swapStart).Milliseconds())
 	return rwHandle, nil
+}
+
+// armRWWatchdogLocked arme le timer de surveillance de détention du writer.
+// Doit être appelé avec p.mu tenu, juste après la pose de rwWindowStart et
+// rwHolderLabel. No-op si le seuil est <= 0 (désactivation explicite).
+func (p *providerImpl) armRWWatchdogLocked() {
+	if p.rwHoldWatchdog <= 0 {
+		return
+	}
+	label, path, threshold, start := p.rwHolderLabel, p.path, p.rwHoldWatchdog, p.rwWindowStart
+	p.rwWatchdog = time.AfterFunc(threshold, func() {
+		watchdogFiredTotal.Add(1)
+		recordHolderWatchdog(label)
+		slog.Warn("sharedprovider: writer RW tenu au-delà du seuil — lectures gatées pendant ce temps",
+			"label", label, "path", path,
+			"threshold_ms", threshold.Milliseconds(),
+			"held_ms", time.Since(start).Milliseconds())
+	})
+}
+
+// disarmRWWatchdogLocked stoppe le watchdog et efface le label du détenteur.
+// Doit être appelé avec p.mu tenu (releaseWriter, y compris le chemin Close).
+// Retourne le label qui était actif (pour l'attribution/les logs du release).
+func (p *providerImpl) disarmRWWatchdogLocked() string {
+	label := p.rwHolderLabel
+	if p.rwWatchdog != nil {
+		p.rwWatchdog.Stop()
+		p.rwWatchdog = nil
+	}
+	p.rwHolderLabel = ""
+	return label
 }
 
 // waitForDrain attend que tous les readers en vol fassent leur release().
@@ -230,6 +269,9 @@ func (p *providerImpl) releaseWriter(ctx context.Context, rwHandle *duckdbpkg.DB
 
 	prev := State(p.state.Load())
 	if prev == StateClosed {
+		// Désarmer le watchdog même sur ce chemin — sinon il firerait un WARN
+		// fantôme après la fermeture du provider.
+		p.disarmRWWatchdogLocked()
 		p.mu.Unlock()
 		if rwHandle != nil {
 			_ = rwHandle.Close()
@@ -241,9 +283,13 @@ func (p *providerImpl) releaseWriter(ctx context.Context, rwHandle *duckdbpkg.DB
 	recordStateTransition(prev, StateReopening)
 	// Phase 0 — fenêtre RW stricte : durée pendant laquelle le handle était RW
 	// (Get gatés), enregistrée à la sortie de l'état RW quel que soit le reopen.
+	// Étape 0 attribution : la même fenêtre est ventilée PAR DÉTENTEUR (label
+	// capturé au swapToRW) et le watchdog est désarmé.
+	holderLabel := p.disarmRWWatchdogLocked()
 	if !p.rwWindowStart.IsZero() {
-		observability.RecordDurationMS("shared_provider_rw_window_ms",
-			time.Since(p.rwWindowStart).Milliseconds())
+		heldMs := time.Since(p.rwWindowStart).Milliseconds()
+		observability.RecordDurationMS("shared_provider_rw_window_ms", heldMs)
+		recordHolderWindow(holderLabel, heldMs)
 		p.rwWindowStart = time.Time{}
 	}
 
@@ -268,7 +314,8 @@ func (p *providerImpl) releaseWriter(ctx context.Context, rwHandle *duckdbpkg.DB
 		close(p.ready)
 		p.mu.Unlock()
 		slog.InfoContext(ctx, "provider: swap RW→RO terminé",
-			"path", p.path, "total_ms", time.Since(swapStart).Milliseconds())
+			"path", p.path, "label", holderLabel,
+			"total_ms", time.Since(swapStart).Milliseconds())
 		// IMPORTANT : notify HORS du lock — les Subscribers peuvent appeler
 		// Get/AcquireWriter (qui prennent p.mu) sans deadlock.
 		//

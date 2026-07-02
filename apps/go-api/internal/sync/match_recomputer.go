@@ -30,6 +30,7 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
@@ -88,7 +89,7 @@ func (r *MatchRecomputer) RecomputeAfterExclusion(ctx context.Context, matchID s
 	defer playerHandle.Close()
 
 	// Sprint B1 commit 13b : helper standalone (Provider en B-swap, legacy sinon).
-	sharedSQL, releaseShared, err := AcquireSharedWriterStandalone(ctx, r.sharedProvider, r.sharedDBPath)
+	sharedSQL, releaseShared, err := AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "match_exclusion_recompute"), r.sharedProvider, r.sharedDBPath)
 	if err != nil {
 		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion: %w", err)
 	}

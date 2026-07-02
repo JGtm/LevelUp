@@ -83,6 +83,10 @@ func initMetrics() {
 		for _, r := range []string{failReasonReopenRO, failReasonAcquireWriter, failReasonDrainTimeout, failReasonPanic} {
 			swapFailuresTotal.Add(r, 0)
 		}
+
+		// Étape 0 attribution : ventilation rw_window par détenteur + watchdog.
+		// Publié ici (sous metricsOnce) — expvar.Publish panique sur duplicat.
+		initHolderMetrics()
 	})
 }
 

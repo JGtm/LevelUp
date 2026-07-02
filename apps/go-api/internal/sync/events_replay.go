@@ -29,6 +29,7 @@ import (
 	"log/slog"
 	"sort"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -253,7 +254,7 @@ func (e *SyncEngine) BackfillEventsForMatches(
 
 	// Sprint B1 commit 13a : acquireSharedWriter centralise lease + open
 	// (Provider en B-swap coordonne avec les readers HTTP).
-	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_events_replay"))
 	if err != nil {
 		return ReplayResult{}, fmt.Errorf("BackfillEventsForMatches: %w", err)
 	}

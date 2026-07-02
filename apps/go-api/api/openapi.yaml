@@ -8549,6 +8549,34 @@ components:
           - api_ms
           - persist_write_ms
       type: object
+    DBContentionHolder:
+      additionalProperties: false
+      properties:
+          avg_ms:
+              format: int64
+              type: integer
+          count:
+              format: int64
+              type: integer
+          label:
+              type: string
+          max_ms:
+              format: int64
+              type: integer
+          total_ms:
+              format: int64
+              type: integer
+          watchdog_fired:
+              format: int64
+              type: integer
+      required:
+          - label
+          - count
+          - total_ms
+          - avg_ms
+          - max_ms
+          - watchdog_fired
+      type: object
     DBContentionResponse:
       additionalProperties: false
       properties:
@@ -8561,12 +8589,22 @@ components:
           avg_release_ms:
               format: int64
               type: integer
+          avg_rw_window_ms:
+              format: int64
+              type: integer
           drain_ms_total:
               format: int64
               type: integer
           generated_at:
               type: string
+          holders:
+              items:
+                  $ref: '#/components/schemas/DBContentionHolder'
+              type: array
           max_blocked_ms:
+              format: int64
+              type: integer
+          max_rw_window_ms:
               format: int64
               type: integer
           readers_in_use:
@@ -8583,6 +8621,9 @@ components:
           swaps:
               format: int64
               type: integer
+          watchdog_fired:
+              format: int64
+              type: integer
       required:
           - generated_at
           - state
@@ -8595,6 +8636,10 @@ components:
           - swap_failures
           - avg_blocked_ms
           - max_blocked_ms
+          - avg_rw_window_ms
+          - max_rw_window_ms
+          - watchdog_fired
+          - holders
       type: object
     DatabaseStatus:
       additionalProperties: false

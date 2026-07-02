@@ -32,6 +32,12 @@ type SwapSnapshot struct {
 	RWWindowMaxMs      int64 // durée max de la fenêtre RW stricte
 	RWWindowCount      int64 // nb de fenêtres RW mesurées
 	DrainTimeouts      int64 // échecs de drain (rollback), désambiguïsés d'acquire_writer
+	// Étape 0 attribution — ventilation de la fenêtre RW PAR DÉTENTEUR (label
+	// ctxkeys.DBWriterLabel), triée TotalMs décroissant, + watchdog (writer tenu
+	// au-delà du seuil). C'est la donnée qui désigne les cibles du refactor
+	// « writer non tenu pendant I/O ».
+	RWWindowByHolder []HolderWindowStat
+	WatchdogFired    int64
 }
 
 // Snapshot lit les compteurs expvar du package et retourne une capture typée.
@@ -61,6 +67,8 @@ func Snapshot() SwapSnapshot {
 		RWWindowMaxMs:      rwMax,
 		RWWindowCount:      rwCount,
 		DrainTimeouts:      mapInt(swapFailuresTotal, failReasonDrainTimeout),
+		RWWindowByHolder:   holderSnapshot(),
+		WatchdogFired:      intVal(watchdogFiredTotal),
 	}
 }
 

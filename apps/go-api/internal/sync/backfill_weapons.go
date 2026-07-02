@@ -23,6 +23,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 )
 
 // weaponBackfillParallelism plafonne les matchs traités en parallèle par
@@ -309,7 +310,7 @@ func (e *SyncEngine) BackfillWeaponKillsForMatches(
 ) (done, noFilm int, err error) {
 	// Sprint B1 commit 13a : acquireSharedWriter centralise lease + open
 	// (Provider en B-swap pour coordonner avec les readers HTTP en cours).
-	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_weapon_kills"))
 	if err != nil {
 		return 0, 0, fmt.Errorf("BackfillWeaponKillsForMatches: %w", err)
 	}

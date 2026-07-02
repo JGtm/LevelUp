@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	syncpkg "levelup/go-api/internal/sync"
@@ -19,7 +20,7 @@ import (
 // coordonnés → "different configuration"). provider == nil → fallback legacy
 // (mode kill-switch / Manager absent).
 func loadKnownMatchIDs(ctx context.Context, provider sharedprovider.Provider, sharedDBPath string) (map[string]bool, error) {
-	db, release, err := syncpkg.AcquireSharedWriterStandalone(ctx, provider, sharedDBPath)
+	db, release, err := syncpkg.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "h5_livesync_known"), provider, sharedDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("h5 known-set: acquire shared: %w", err)
 	}
@@ -47,7 +48,7 @@ func loadKnownMatchIDs(ctx context.Context, provider sharedprovider.Provider, sh
 // re-résoudre tout le roster à chaque run). Best-effort : toute erreur → graine vide.
 func loadXUIDAliasesSeed(ctx context.Context, provider sharedprovider.Provider, sharedDBPath string) map[string]string {
 	seed := make(map[string]string, 1024)
-	db, release, err := syncpkg.AcquireSharedWriterStandalone(ctx, provider, sharedDBPath)
+	db, release, err := syncpkg.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "h5_livesync_aliases_seed"), provider, sharedDBPath)
 	if err != nil {
 		return seed
 	}
@@ -75,7 +76,7 @@ func persistBatches(ctx context.Context, provider sharedprovider.Provider, share
 	if len(batches) == 0 {
 		return nil, nil
 	}
-	db, release, err := syncpkg.AcquireSharedWriterStandalone(ctx, provider, sharedDBPath)
+	db, release, err := syncpkg.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "h5_livesync_persist"), provider, sharedDBPath)
 	if err != nil {
 		return nil, []string{fmt.Sprintf("h5 persist: acquire shared: %v", err)}
 	}

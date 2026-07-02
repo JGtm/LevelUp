@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/assets"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/persist"
@@ -263,7 +264,8 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 
 	// Commit 8i : route via Provider en mode B-swap (coordonne avec le pool
 	// joueur via Subscribe). Fallback OpenSharedDB direct si Provider nil.
-	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	// Étape 0 attribution : label du détenteur pour la ventilation rw_window.
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "sync_v1_run"))
 	if err != nil {
 		slog.ErrorContext(ctx, "sync: ouverture shared DB échouée", "gamertag", e.gamertag, "db", e.sharedDBPath, "err", err)
 		return result, fmt.Errorf("run acquireSharedWriter: %w", err)
@@ -552,7 +554,9 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 			defer postPH.Close()
 			playerDB = postPH.SQLDb()
 			leaseStart := time.Now()
-			postSDB, postRls, sErr := e.acquireSharedWriter(ctx)
+			// Étape 0 attribution : le post-sync V1 (14 étapes, weapon-kills réseau
+			// inclus) est un détenteur LONG identifié — label dédié.
+			postSDB, postRls, sErr := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "sync_v1_postsync"))
 			leaseWaitMs := time.Since(leaseStart).Milliseconds()
 			if sErr != nil {
 				slog.WarnContext(ctx, "sync: post-drain acquireSharedWriter echoue — post-sync skippe",

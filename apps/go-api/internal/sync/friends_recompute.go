@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
@@ -73,7 +74,7 @@ func RecomputeIsWithFriends(
 
 	// Sprint B1 commit 13b : helper standalone (Provider en B-swap, dblease +
 	// OpenSharedDB en legacy).
-	sharedDB, releaseShared, err := AcquireSharedWriterStandalone(ctx, provider, sharedDBPath)
+	sharedDB, releaseShared, err := AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "friends_recompute"), provider, sharedDBPath)
 	if err != nil {
 		return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends: %w", err)
 	}

@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/persist"
@@ -151,6 +152,11 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 	// AcquireSharedWriterStandalone route via deps.Cfg.SharedProvider.AcquireWriter
 	// (B-swap) ou OpenSharedDB legacy. Le release rend le writer (RW→RO).
 	acquireSharedRW := func(ctx context.Context) (*sql.DB, func(), error) {
+		// Étape 0 attribution : SUSPECT PRINCIPAL de la fenêtre RW longue — le
+		// post-sync V2 tient le writer pendant les 14 étapes (weapon-kills réseau
+		// inclus) alors que la phase persist V2 est sub-seconde. Le label rend ce
+		// détenteur mesurable (carte admin + watchdog) avant son refactor.
+		ctx = ctxkeys.WithDBWriterLabel(ctx, "sync_v2_postsync")
 		return syncpkg.AcquireSharedWriterStandalone(ctx, deps.Cfg.SharedProvider, sharedPath)
 	}
 

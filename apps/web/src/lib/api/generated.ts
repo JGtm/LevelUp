@@ -5446,6 +5446,19 @@ export interface components {
             total: number;
             trigger: string;
         };
+        DBContentionHolder: {
+            /** Format: int64 */
+            avg_ms: number;
+            /** Format: int64 */
+            count: number;
+            label: string;
+            /** Format: int64 */
+            max_ms: number;
+            /** Format: int64 */
+            total_ms: number;
+            /** Format: int64 */
+            watchdog_fired: number;
+        };
         DBContentionResponse: {
             /** Format: int64 */
             avg_acquire_ms: number;
@@ -5454,10 +5467,15 @@ export interface components {
             /** Format: int64 */
             avg_release_ms: number;
             /** Format: int64 */
+            avg_rw_window_ms: number;
+            /** Format: int64 */
             drain_ms_total: number;
             generated_at: string;
+            holders: components["schemas"]["DBContentionHolder"][];
             /** Format: int64 */
             max_blocked_ms: number;
+            /** Format: int64 */
+            max_rw_window_ms: number;
             /** Format: int64 */
             readers_in_use: number;
             /** Format: int64 */
@@ -5467,6 +5485,8 @@ export interface components {
             swap_failures: number;
             /** Format: int64 */
             swaps: number;
+            /** Format: int64 */
+            watchdog_fired: number;
         };
         DatabaseStatus: {
             error?: string;

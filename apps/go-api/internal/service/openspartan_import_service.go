@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/openspartan"
 	"levelup/go-api/internal/openspartan/mapper"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
@@ -149,7 +150,7 @@ func (s *OpenSpartanImportService) acquireShared(ctx context.Context, dryRun boo
 		// ne dereferencent pas le handle sur le code path dryRun.
 		return nil, func() {}, nil
 	}
-	return sync.AcquireSharedWriterStandalone(ctx, s.provider, s.sharedDBPath)
+	return sync.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "openspartan_import"), s.provider, s.sharedDBPath)
 }
 
 // Import is the entry point. expectedOwnerXUID comes from the caller's SSO

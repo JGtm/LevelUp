@@ -35,6 +35,13 @@ const defaultDrainTimeout = 5 * time.Second
 // fermeture du handle plutôt que de bloquer indéfiniment.
 const defaultCloseDrainTimeout = 3 * time.Second
 
+// defaultRWHoldWatchdog est le seuil au-delà duquel un writer RW encore tenu
+// déclenche un WARN + compteur (étape 0 attribution contention). 2s : les
+// fenêtres saines (batch persist) sont sub-seconde, et le budget user-facing
+// fail-fast est de 3s — le watchdog pré-alerte donc AVANT l'impact utilisateur.
+// Fire par ACQUISITION (une fois), pas en boucle : pas de spam.
+const defaultRWHoldWatchdog = 2 * time.Second
+
 // Provider est le contrat exposé aux consommateurs. Une implémentation owne
 // le handle DuckDB pour un chemin donné et arbitre l'accès lecture/écriture.
 //
@@ -120,6 +127,16 @@ type providerImpl struct {
 	// les Get sont gatés en RW). Protégé par p.mu — un seul swap à la fois.
 	rwWindowStart time.Time
 
+	// rwHolderLabel : label du DÉTENTEUR courant du writer (ctxkeys.DBWriterLabel),
+	// capturé au swapToRW, consommé au releaseWriter pour ventiler la fenêtre RW
+	// par détenteur (étape 0 attribution). Protégé par p.mu.
+	rwHolderLabel string
+	// rwWatchdog : timer armé au passage RW — WARN + compteur si le writer est
+	// tenu au-delà de rwHoldWatchdog (les lectures sont gatées pendant ce temps).
+	// Désarmé au releaseWriter. Protégé par p.mu ; le callback du timer ne prend
+	// AUCUN lock (valeurs capturées) — pas de deadlock possible.
+	rwWatchdog *time.Timer
+
 	// readersWG track les Get en vol. Add(1) sous p.mu quand state=RO,
 	// Done() dans le release retourné. AcquireWriter Wait() avant le close
 	// du handle pour éviter "database is closed" côté caller.
@@ -128,6 +145,7 @@ type providerImpl struct {
 	readyTimeout     time.Duration
 	retryBaseBackoff time.Duration
 	drainTimeout     time.Duration
+	rwHoldWatchdog   time.Duration
 
 	failNextReopen atomic.Bool
 
@@ -158,6 +176,7 @@ func New(path string, timezone ...string) (Provider, error) {
 		readyTimeout:     defaultReadyTimeout,
 		retryBaseBackoff: defaultRetryBaseBackoff,
 		drainTimeout:     defaultDrainTimeout,
+		rwHoldWatchdog:   defaultRWHoldWatchdog,
 	}
 	p.state.Store(int32(StateRO))
 	recordStateTransition(StateRO, StateRO)
