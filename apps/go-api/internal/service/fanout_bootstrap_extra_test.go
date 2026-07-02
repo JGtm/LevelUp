@@ -205,7 +205,7 @@ func TestBootstrapService_BuildPlayersList_Empty(t *testing.T) {
 	cfg := newTestAppConfig(t)
 	svc := NewBootstrapService(cfg, nil)
 
-	resp, err := svc.BuildPlayersList(context.Background())
+	resp, err := svc.BuildPlayersList(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}
@@ -240,7 +240,7 @@ func TestBootstrapService_BuildPlayersList_WithPlayer(t *testing.T) {
 	}
 	svc := NewBootstrapService(cfg, nil)
 
-	resp, err := svc.BuildPlayersList(context.Background())
+	resp, err := svc.BuildPlayersList(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}

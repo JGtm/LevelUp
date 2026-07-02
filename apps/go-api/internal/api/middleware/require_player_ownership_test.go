@@ -97,10 +97,15 @@ func TestRequirePlayerOwnership_NoSession_PassThrough(t *testing.T) {
 	}
 }
 
-func TestRequirePlayerOwnership_UnknownSlug_PassThrough(t *testing.T) {
-	// Slug inconnu → laissé passer (le handler répondra 404 player_not_found).
-	if rr := runOwnership(false, "password", "ghost", userSession("alice")); rr.Code != http.StatusOK {
-		t.Errorf("unknown slug: status = %d, want 200", rr.Code)
+func TestRequirePlayerOwnership_UnknownSlug_403(t *testing.T) {
+	// Lot S (audit A1-m1) : slug inconnu AVEC session + enforcement actif → 403
+	// (fail-closed anti-énumération), plus de pass-through vers un 404.
+	rr := runOwnership(false, "password", "ghost", userSession("alice"))
+	if rr.Code != http.StatusForbidden {
+		t.Errorf("unknown slug (fail-closed): status = %d, want 403", rr.Code)
+	}
+	if body := rr.Body.String(); !contains(body, "player_forbidden") {
+		t.Errorf("corps attendu avec player_forbidden, obtenu %s", body)
 	}
 }
 
