@@ -1,3 +1,16 @@
+## [2026-07-02] Merge branches Dependabot (2026-07-01) : go-toml + npm mergées, actions/checkout ÉCARTÉE (downgrade) — COMPLÉTÉ local
+
+**Tâche** : évaluer le risque de merge des 3 branches Dependabot créées le 2026-07-01, puis merger les sûres dans main local (aucun push — push main = deploy prod auto).
+
+**Décision — vérif sur pièces (build/tests réels, pas sur les labels semver)** :
+- **go-toml/v2 2.4.1→2.4.2 (patch)** → MERGÉE. `merge-tree` clean ; `go build ./...` OK, `go vet` clean, tests des 8 packages consommateurs TOML verts (title/games/mappings/prestige/progression).
+- **npm group (12 bumps minor/patch, dont vite 8.0→8.1, eslint 10.5→10.6, react-query 5.101.2)** → MERGÉE. `merge-tree` clean (lockfile sans conflit) ; `npm ci` + typecheck OK, lint 0 erreur (70 warnings = baseline, script `eslint .` sans `--max-warnings`, CI sans gate warning), build vite 8.1 (rolldown) OK, **2068 tests vitest verts** (14 skip).
+- **actions/checkout → v6.0.3** → ÉCARTÉE. main courant DÉJÀ sur `actions/checkout@v7` ; branche coupée d'un main antérieur → DOWNGRADE v7→v6.0.3 sur ~10 workflows. Merge SANS conflit = régression silencieuse (le piège). À laisser ; Dependabot la régénérera sur la bonne base.
+
+**Résultats** : local main = origin/main (`f4b6ef522`, poussé par l'utilisateur en parallèle) + 2 merges Dependabot = 4 commits d'avance, ZÉRO divergence (`main..origin/main`=0, fast-forward propre). node_modules aligné sur la nouvelle lock (vite@8.1.2 dédupé).
+
+**Conclusion / prochaine étape** : go-toml + npm prêts et NON poussés (attente feu vert — push main = deploy prod). Fermer la PR actions/checkout côté GitHub. Les autres branches Dependabot du 2026-06-22 sont probablement aussi périmées (à trier séparément).
+
 ## [2026-07-02] Sujet 2 throttling Xbox : budget par compte unifié + AIMD — COMPLÉTÉ + VALIDÉ LIVE ; garde anti-TOCTOU multi-joueurs
 
 **Tâche** : (a) question user « la logique multi-joueurs matchs partagés est-elle préservée ? » → audit ; (b) sujet 2 throttling (T1 unification, T2 AIMD).
