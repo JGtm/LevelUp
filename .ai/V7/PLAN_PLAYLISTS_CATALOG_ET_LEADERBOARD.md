@@ -209,9 +209,23 @@ aux playlists actives RÉELLES (7) au lieu des 4 en dur.
    si MatchesCompleted>0. Supprimer `collectPlayerMatches`/`getMatch`/cache/singleflight
    (code mort). Réécrire les fakes des 4 tests (fakeMatchSource→fakeServiceRecordSource).
 
+**Progrès session (2026-07-02)** :
+- [x] Étape 1 du design LIVRÉE : `domain.WorldServiceRecord` + `HaloAPIClient.GetSeasonPlaylistServiceRecord`
+      (halo_service_record.go) + `parseSeasonPlaylistServiceRecord` + test unitaire (build/gofmt/test verts).
+- [x] Sonde live `cmd/probe-service-record` écrite + exécutée (token JGtm). AUTH OK.
+- **FINDING sonde** : `seasonId` au format Waypoint (`csrseason13-2`) → **nil** (404). L'endpoint
+      service-record veut le **chemin CMS** (cf. compare : `Seasons/Season7.json`), PAS le format
+      Waypoint des snapshots. → il faut résoudre le CsrSeasonFilePath courant (csr_season_calendars /
+      CsrSeasonCalendar.json) avant de re-sonder. `playlistAssetId` reste donc NON validé (jamais
+      atteint avec le bon format saison).
+- **INCIDENT TOKEN (corrigé)** : la 1re version de la sonde omettait de persister le RT roté
+      (`store.Upsert`) → RT de JGtm roté-non-sauvé (possiblement périmé, à vérifier au prochain sync).
+      Sonde corrigée (persistance anti-churn ajoutée, cf. ADR 0023).
+- [!] Étapes 2-4 (mapping + interface source + refonte agrégateur + tests) : PENDING la validation
+      live du bon format saison × playlistAssetId.
+
 **Gate (quand exécuté)** :
-- Sonde live : 1 appel `GetSeasonPlaylistServiceRecord` sur 1 joueur classé connu → confirmer
-  CoreStats non nuls par playlist. Sortie collée au thought_log.
+- Sonde live avec le CsrSeasonFilePath CMS courant → confirmer CoreStats non nuls par playlist.
 - `cd apps/go-api && go test ./internal/sync/ ./internal/service/ ./internal/analysis/ -run 'World|ServiceRecord|Aggregat'`
 
 ---

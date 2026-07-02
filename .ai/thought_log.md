@@ -1,3 +1,22 @@
+## [2026-07-02] B2 étape 1 (endpoint service-record) + sonde live : finding format saison + INCIDENT token — worktree
+
+**Livré** : `domain.WorldServiceRecord` + `HaloAPIClient.GetSeasonPlaylistServiceRecord`
+(endpoint `/hi/players/xuid(N)/Matchmade/servicerecord?seasonId=&playlistAssetId=`) +
+`parseSeasonPlaylistServiceRecord` + test unitaire (build/gofmt/test verts). CLI de sonde
+live `cmd/probe-service-record`.
+
+**Finding sonde live (JGtm)** : auth OK ; `seasonId` au format Waypoint `csrseason13-2`
+renvoie nil (404) → le service-record veut le **chemin CMS** (cf. compare `Seasons/Season7.json`),
+pas le format des snapshots. `playlistAssetId` NON validé (jamais atteint avec le bon format).
+Reste à résoudre le CsrSeasonFilePath courant (csr_season_calendars) avant re-sonde.
+
+**INCIDENT TOKEN (mon erreur, corrigé)** : ma 1re version de la sonde a OMIS `store.Upsert`
+après `ExchangeRefreshTokenWithRotation` → le RT roté de JGtm n'a pas été persisté (RT à usage
+unique → le RT stocké est probablement périmé). Reproduit exactement l'incident probe 2026-06-10.
+Sonde corrigée (persistance du RT roté ajoutée). **À vérifier** : l'auth de JGtm au prochain sync
+(bannière reauth_required possible) ; si mort, diagnostiquer AVANT re-capture (ADR 0023), ne pas
+re-capturer par réflexe (les autres RT du store restent valides).
+
 ## [2026-07-02] A3 (page player CSR) exécutée + B2 statuée bloquée (validation live) — worktree
 
 **A3 — EXÉCUTÉE** : l'augment CSR post-sync (career.go) itérait `rankedplaylists.Active()`
