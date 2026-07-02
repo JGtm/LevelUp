@@ -169,7 +169,7 @@ SELECT
     NULLIF(TRIM(COALESCE(rating_type, '')), '')      AS skill_rating_type,
     NULLIF(TRIM(COALESCE(tier_label, '')), '')       AS skill_tier_label,
     expected_win_prob
-FROM match_skill_rank
+FROM match_skill_rank_latest
 WHERE match_id IN (%s)`
 
 // (Q5MatchHistory supprimée en P7-5 — code mort, aucun caller. Le pipeline

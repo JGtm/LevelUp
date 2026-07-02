@@ -31,7 +31,7 @@ func NewHalo5CareerSource(pdb *PlayerDB) *Halo5CareerSource {
 // puis sous-palier puis valeur. Ignore les lignes sans palier (alltime_tier vide).
 const h5BestCSRQuery = `
 SELECT alltime_tier, COALESCE(alltime_sub_tier, 0), COALESCE(alltime_value, 0)
-FROM player_csr_snapshots
+FROM player_csr_snapshots_latest
 WHERE NULLIF(TRIM(alltime_tier), '') IS NOT NULL
 ORDER BY
   (CASE LOWER(alltime_tier)

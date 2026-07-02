@@ -98,6 +98,10 @@ func familyXUIDResolver(groupStore *groupstore.GroupStore, users authz.UserLooku
 		}
 		co, err := groupStore.CoMemberXUIDs(user.XUID)
 		if err != nil {
+			// Lot B (audit #8) : ne pas dégrader en owner-only SANS trace — un
+			// groups.json corrompu supprimerait silencieusement tous les grants
+			// famille (ADR 0029) → 403 inexplicables. Loguer AVANT le repli sûr.
+			slog.ErrorContext(ctx, "family resolver: lecture groups.json échouée — accès cross-membre dégradé en owner-only", "xuid", user.XUID, "err", err)
 			return nil
 		}
 		return co

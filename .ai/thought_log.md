@@ -1,3 +1,17 @@
+## [2026-07-02] LOT B (audit 2026-07) : éradication lectures rating brutes → vues _latest (ADR 0026) + garde-rail + robustesse — MILESTONE (B13/B15/B16 restants)
+
+**Tâche** : 3e lot du PLAN_TRAITEMENT_AUDITS_2026-07, branche refactor/audits-2026-07. Vérif sur pièces (workflow 3 agents) puis implémentation. Correctness-critique : une table append-only lue brute sert des lignes périmées (rating non déterministe).
+
+**Décisions techniques** :
+- **B1-B7** : lectures rating migrées vers les vues _latest (match_skill_rank_latest / match_csrs_latest / player_csr_snapshots_latest) — queries_home_citations (Q26/B1), queries_career (Q5/B2), compare_repo (2 ATH/B3), leaderboard (B4), patterns (B5), player_matches (match_csrs/B7), halo5_career (player_csr_snapshots/B7), csr_coverage (B7). B2 : suppression du workaround winProb (mort avec 1 ligne/match). **Q26g (H5)** : gardé RAW (le filtre placeholder CSR=0 doit s'appliquer AVANT le choix de ligne, non réplicable par la vue) + tie-break written_at/id → latest manuel déterministe. B7-squad (MAX winProb IS NOT NULL) laissé tel quel (stale-safe, documenté).
+- **B8** garde-rail : `no_raw_rating_reads_test.go` — scanne les couches de LECTURE (platform/duckdb, api, service, analysis), interdit `FROM/JOIN <table>` brut hors `_latest` ; allowlist datée (Q8 checkpoints, Q24/Q26f sémantique LUSR, squad MAX, season DISTINCT, Q26g H5). Writers/migrations/cmd hors scan.
+- **B6** post_sync snapshot → _latest + tiebreak (start_time, match_id). **B9** registry_notifications fan-out : `OpenReadOnly` → `OpenReadForQuery` (anti "different configuration", incident 2026-06-01).
+- **B10** worldenrich : RT roté non persisté → log+retry (audit #3, chaîne auth morte). **B11** engagement : history en erreur → skip match, pas de score faux persisté (audit #6, intégrité). **B12** family resolver : groups.json corrompu → log avant dégradation owner-only (audit #8). **B14** classifier LUSR : `ValidateLUSRChainClassifierWired()` fail-fast au boot (au lieu du panic au 1er match live).
+
+**Résultats** : `go build ./...` + `go test ./...` VERTS (suite complète) ; garde-rail B8 vert ; seed patterns_repo_db_test adapté (vue _latest pass-through).
+
+**Reste (B tail)** : B13 (data_health_check — sondes en erreur remontent 'unhealthy'), B15 (helper central MapCapabilityError + garde-rail), B16 (dette logging ~42 slog.Error→ErrorContext). Découvertes §7 : Q24/Q26f (sémantique LUSR vs CSR à trancher). Réconcilier plan/journal S+A+B au merge.
+
 ## [2026-07-02] LOT A (audit 2026-07) : bugs UI actifs + intégrité LUSR v1 + docs flags + XSS tooltips — COMPLÉTÉ (commit à suivre)
 
 **Tâche** : 2e lot du PLAN_TRAITEMENT_AUDITS_2026-07, branche refactor/audits-2026-07 (depuis main ; le LOT S vit sur fix/security-unauth-endpoints, commit 0c5982111). Vérif sur pièces via workflow multi-agents (A1-A5) puis implémentation.

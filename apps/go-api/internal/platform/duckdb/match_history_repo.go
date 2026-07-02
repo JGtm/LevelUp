@@ -204,13 +204,10 @@ func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []do
 		if err := dbRows.Scan(&mid, &s.tier, &s.tierFR, &s.rating, &s.tierLabel, &s.winProb); err != nil {
 			return fmt.Errorf("skill_rank scan: %w", err)
 		}
-		// match_skill_rank est append-only (N versions par match_id, CSR + LUSR).
-		// La dernière version scannée gagne pour le tier ; mais expected_win_prob
-		// n'est posé que sur les rows LUSR — on préserve toute valeur non-nil pour
-		// ne pas l'effacer si une row CSR (winProb nil) est scannée après.
-		if prev, ok := ranks[mid]; ok && s.winProb == nil {
-			s.winProb = prev.winProb
-		}
+		// Q5 lit désormais match_skill_rank_latest : 1 ligne/match (priorité
+		// CSR>LUSR), plus de N versions à fusionner. Sur un match ranked la ligne
+		// gagnante est CSR → expected_win_prob NULL (convention _latest déjà en
+		// vigueur : Q22a, playerMatchesSkillRankTpl).
 		ranks[mid] = s
 	}
 	if err := dbRows.Err(); err != nil {

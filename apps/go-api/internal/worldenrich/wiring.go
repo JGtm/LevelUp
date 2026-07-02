@@ -62,7 +62,17 @@ func resolveAccessToken(ctx context.Context, provider auth.TokenProvider, store 
 			at, rot, e := provider.TryOAuthRefreshWithRotation(ctx, rt)
 			if e == nil && at != "" {
 				if persist && rot != "" && rot != rt {
-					_ = store.UpdateOAuthRefreshToken(xuid, rot)
+					if uerr := store.UpdateOAuthRefreshToken(xuid, rot); uerr != nil {
+						// Lot B (audit #3) : ne plus avaler l'échec. Retry une fois
+						// (écriture fichier watcher_tokens/{xuid}.json) ; si échec
+						// persistant, LOGUER — sans le RT roté persisté, le prochain
+						// resolveAccessToken relit l'ancien RT mort (invalid_grant) →
+						// chaîne auth du joueur morte. On retourne quand même `at`
+						// (valide pour CE run) après le log.
+						if uerr = store.UpdateOAuthRefreshToken(xuid, rot); uerr != nil {
+							slog.ErrorContext(ctx, "world-enrich: persistance du refresh token roté échouée — chaîne auth à risque au prochain refresh", "xuid", xuid, "err", uerr)
+						}
+					}
 				}
 				return at
 			}

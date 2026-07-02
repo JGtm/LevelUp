@@ -156,14 +156,15 @@ func loadParticipantXUIDs(ctx context.Context, sharedMatchesDBPath string, match
 	if len(matchIDs) == 0 {
 		return nil, nil
 	}
-	// OpenReadOnly partagé avec main.go::sharedDB et openPlayerDB — voir
-	// commentaire dans cmd/server/main.go. Le mode RW exclusif cassait
-	// l'ATTACH des player DBs.
-	db, err := duckdb.OpenReadOnly(sharedMatchesDBPath)
+	// OpenReadForQuery réutilise le handle en cache (RO ou RW) s'il existe et ne
+	// retombe sur OpenReadOnly que si rien n'est en cache → évite l'échec DuckDB
+	// "different configuration" quand le shared est déjà tenu RW ailleurs
+	// (incident 2026-06-01, cf. db.go). Fan-out best-effort.
+	sqlDB, release, err := duckdb.OpenReadForQuery(sharedMatchesDBPath)
 	if err != nil {
 		return nil, err
 	}
-	defer db.Close() //nolint:errcheck // ref-count : best-effort
+	defer release()
 	placeholders := make([]string, len(matchIDs))
 	args := make([]any, len(matchIDs))
 	for i, id := range matchIDs {
@@ -174,7 +175,7 @@ func loadParticipantXUIDs(ctx context.Context, sharedMatchesDBPath string, match
 		`SELECT DISTINCT xuid FROM match_participants WHERE match_id IN (%s) LIMIT 50`,
 		joinComma(placeholders),
 	)
-	rows, err := db.Query(ctx, q, args...)
+	rows, err := sqlDB.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -242,7 +242,7 @@ func (r *PatternsRepo) loadSkillRanks(ctx context.Context, matchIDs []string) (m
 	ph := Placeholders(len(matchIDs))
 	q := fmt.Sprintf(`
 SELECT match_id, rating_value, rating_type
-FROM match_skill_rank
+FROM match_skill_rank_latest
 WHERE match_id IN (%s)`, ph)
 
 	sqlRows, err := r.pdb.Player.Query(ctx, q, ToAnySlice(matchIDs)...)

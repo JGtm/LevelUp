@@ -69,6 +69,9 @@ func newPatternsTestPDB(t *testing.T) *PlayerDB {
 	mustExec(t, playerSQL, `INSERT INTO match_skill_rank VALUES
 		('m1', 1550, 'LUSR'),
 		('m2', 1500, 'LUSR')`)
+	// Lot B (ADR 0026) : le repo lit désormais la vue _latest. Le seed n'a qu'une
+	// version par match → pass-through suffit (pas de colonnes id/written_at ici).
+	mustExec(t, playerSQL, `CREATE VIEW match_skill_rank_latest AS SELECT * FROM match_skill_rank`)
 	_ = ctx
 
 	return &PlayerDB{

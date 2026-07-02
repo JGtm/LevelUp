@@ -60,7 +60,7 @@ func (r *CSRCoverageRepo) GetCoverage(ctx context.Context, playerSlug, xuid stri
 			COUNT(*),
 			SUM(CASE WHEN tier IS NOT NULL AND tier <> '' AND tier <> 'Placement' THEN 1 ELSE 0 END),
 			SUM(CASE WHEN tier = 'Placement' THEN 1 ELSE 0 END)
-		FROM match_skill_rank
+		FROM match_skill_rank_latest
 		WHERE rating_type = 'CSR'
 	`); row != nil {
 		var total, matured, placement sql.NullInt64

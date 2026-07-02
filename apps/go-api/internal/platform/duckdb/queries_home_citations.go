@@ -97,7 +97,7 @@ SELECT
     msr.rating_delta,
     msr.playlist_group
 FROM player_match_enrichment_latest pme
-LEFT JOIN match_skill_rank msr ON msr.match_id = pme.match_id
+LEFT JOIN match_skill_rank_latest msr ON msr.match_id = pme.match_id
 WHERE pme.match_id IN (%s)`
 
 // Q27HomeSessionsPlayerPart : Phase A de Q27 — sessions du joueur depuis
@@ -443,8 +443,13 @@ WITH exploitable AS (
 				WHEN 'LUSR' THEN 1
 				WHEN 'LUSR_V2' THEN 2
 				ELSE 3
-			END
+			END, written_at DESC, id DESC
 		) AS rn
+	-- Lecture BRUTE volontaire (allowlist B8) : le filtre H5 NOT (CSR AND
+	-- rating_value=0) (placeholder Halo 5) doit s'appliquer AVANT le choix de la
+	-- ligne ; la vue match_skill_rank_latest a deja tranche (CSR>LUSR) et
+	-- masquerait la vraie LUSR. Le tie-break written_at/id rend ce latest manuel
+	-- deterministe (anti-ADR-0026).
 	FROM match_skill_rank
 	WHERE match_id IN (%s)
 	  AND rating_value IS NOT NULL

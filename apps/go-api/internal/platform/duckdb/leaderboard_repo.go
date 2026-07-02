@@ -62,7 +62,7 @@ func (r *LeaderboardRepo) GetLocalLeaderboard(ctx context.Context, titleSlug, se
 		SELECT match_id, rating_value, tier, tier_label, COALESCE(sub_tier, 0),
 		       COALESCE(rating_type, ''), COALESCE(playlist_group, ''),
 		       start_time, updated_at, created_at
-		FROM match_skill_rank
+		FROM match_skill_rank_latest
 		WHERE rating_value > 0`
 	rows, err := r.pdb.Player.Query(ctx, qMSR)
 	if err != nil {
