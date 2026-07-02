@@ -185,9 +185,8 @@ SELECT
     match_id,
     season_id,
     measurement_matches_remaining
-FROM match_csrs
-WHERE match_id IN (%s) AND xuid = ?
-QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id ORDER BY written_at DESC, id DESC) = 1`
+FROM match_csrs_latest
+WHERE match_id IN (%s) AND xuid = ?`
 
 // loadMatchCSRMetaForMatches récupère season_id + measurement_matches_remaining
 // depuis match_csrs (shared DB) pour la liste de match_ids du joueur courant

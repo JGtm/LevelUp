@@ -1514,6 +1514,11 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 	// les autres titres gardent le défaut Infinite. Sans ça, h5 collapserait tous
 	// ses modes dans arena_slayer (classifier Infinite sur pair_name vide).
 	syncpkg.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)
+	// Lot B (audit robustesse) : fail-fast au boot si le classifier LUSR par
+	// défaut n'a pas été posé, au lieu du panic tardif au 1er match live.
+	if err := syncpkg.ValidateLUSRChainClassifierWired(); err != nil {
+		return fmt.Errorf("boot: %w", err)
+	}
 
 	// 1. metadata.duckdb
 	metaDB, err := duckdb.OpenReadWrite(metaPath)

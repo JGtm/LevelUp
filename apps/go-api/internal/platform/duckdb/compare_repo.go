@@ -126,7 +126,7 @@ func (r *CompareRepo) GetPlayerATH(ctx context.Context) (*domain.PlayerATH, erro
 				(SELECT MAX(pme.performance_score) FROM player_match_enrichment_latest pme),
 				0.0) AS perf_ath,
 			COALESCE(
-				(SELECT MAX(msr.rating_value) FROM match_skill_rank msr
+				(SELECT MAX(msr.rating_value) FROM match_skill_rank_latest msr
 				 WHERE msr.rating_type = 'LUSR'),
 				0.0) AS lusr_ath`
 
@@ -167,7 +167,7 @@ func (r *CompareRepo) GetPlayerATHFor(ctx context.Context, gamertag, titleSlug s
 				(SELECT MAX(pme.performance_score) FROM player_match_enrichment_latest pme),
 				0.0) AS perf_ath,
 			COALESCE(
-				(SELECT MAX(msr.rating_value) FROM match_skill_rank msr
+				(SELECT MAX(msr.rating_value) FROM match_skill_rank_latest msr
 				 WHERE msr.rating_type = 'LUSR'),
 				0.0) AS lusr_ath`
 

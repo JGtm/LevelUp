@@ -19,6 +19,8 @@ package sync
 // diag_lusr_player, lusr_v2_phase0, lusr_v2_squad_estimate, lusr_v2_ttt_batch) +
 // les TestMain des packages dont les tests atteignent GetLUSRChain (sync, service).
 
+import "errors"
+
 // lusrChainClassifier est le classifier PAR DÉFAUT (Halo Infinite + titres sans
 // classifier dédié). nil tant que SetLUSRChainClassifier n'a pas été appelé
 // (→ panic à l'appel de GetLUSRChain).
@@ -61,4 +63,15 @@ func GetLUSRChainForTitle(titleSlug, pairName string) string {
 		panic("sync: classifier LUSR non câblé — appeler sync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain) au boot")
 	}
 	return lusrChainClassifier(pairName)
+}
+
+// ValidateLUSRChainClassifierWired vérifie au BOOT que le classifier LUSR par
+// défaut a été posé (Lot B, audit robustesse). Transforme le panic tardif au 1er
+// match live (GetLUSRChainForTitle) en refus de démarrage propre : le caller boot
+// (cmd/server) échoue AVANT de servir. Le panic FAIL-LOUD reste le filet ultime.
+func ValidateLUSRChainClassifierWired() error {
+	if lusrChainClassifier == nil {
+		return errors.New("sync: classifier LUSR par défaut non câblé — appeler SetLUSRChainClassifier(skillchain.ClassifyLUSRChain) au boot")
+	}
+	return nil
 }

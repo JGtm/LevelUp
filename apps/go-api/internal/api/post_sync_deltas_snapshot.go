@@ -147,8 +147,8 @@ func SnapshotPlayerState(
 				rating_type,
 				tier,
 				sub_tier,
-				ROW_NUMBER() OVER (PARTITION BY playlist_group ORDER BY start_time DESC) AS rn
-			FROM match_skill_rank
+				ROW_NUMBER() OVER (PARTITION BY playlist_group ORDER BY start_time DESC, match_id DESC) AS rn
+			FROM match_skill_rank_latest
 			WHERE playlist_group IS NOT NULL AND tier IS NOT NULL
 		) WHERE rn = 1
 	`)
