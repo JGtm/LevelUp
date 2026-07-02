@@ -314,11 +314,13 @@ faire en contexte frais. Enquête (le cœur de ta question saisons) = LIVRÉE ci
 ## Protocole de reprise de session
 
 - Avancement = cases cochées de ce fichier + entrées `.ai/thought_log.md`.
-- État final session : B1 [x d58528501] · A2 [x dfce681f4] · A3 [x fddf71f5c] · B2 [!]
-  bloquée (sonde live token-gated, design turnkey) · C1 [!] full-stack (design a/b prêt) ·
-  C2 [x enquête saisons livrée ; persistance [!] full-stack]. Tests verts, tout poussé.
-- Reprendre en session FRAÎCHE : B2 (sonde live d'abord), puis C1 (voie b frontend-only
-  faisable), puis C2 (persistance seasons). Aucun blocage externe hors la sonde B2.
+- État final session : B1 [x d58528501] · A2 [x dfce681f4] · A3 [x fddf71f5c] · B2 [x
+  7a49ab0a0 — pivot hardening après sonde live prouvant playlistAssetId non supporté] ·
+  C1 [!] frontend (voie b : 2e query + delta + NOUVELLE clé i18n regen + vitest) ·
+  C2 [x enquête saisons ; persistance [!] full-stack]. Tests verts, tout poussé.
+- Reprendre en session FRAÎCHE (toolchain web) : C1 (voie b, previous-delta page player —
+  nécessite édition career.toml + regénération i18n + vitest hors sandbox), puis C2
+  (persistance seasons Waypoint). Aucun blocage externe ; friction = toolchain frontend.
 - Avant de coder une étape : rouvrir les fichiers cibles (le code a pu bouger).
 
 ## Statut de clôture
