@@ -63,7 +63,7 @@ func ContractValidate(next http.Handler) http.Handler {
 				"path", r.URL.Path,
 				"method", r.Method,
 				"status", cw.status,
-				"err", err.Error(),
+				"err", err,
 			)
 			return
 		}

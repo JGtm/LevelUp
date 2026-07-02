@@ -55,7 +55,7 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 		fieldsPath := filepath.Join(mappingsDir, "fields.toml")
 		fset, err := LoadFieldsFromFile(fieldsPath)
 		if err != nil {
-			logger.Error("mappings_validation_failed", "title_slug", slug, "path", fieldsPath, "err", err.Error())
+			logger.Error("mappings_validation_failed", "title_slug", slug, "path", fieldsPath, "err", err)
 			errs = append(errs, fmt.Errorf("load fields %s: %w", slug, err))
 			continue
 		}
@@ -72,7 +72,7 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 		// assets.toml — optionnel
 		assetsPath := filepath.Join(mappingsDir, "assets.toml")
 		if aset, loadErr := loadAssetsIfExists(assetsPath); loadErr != nil {
-			logger.Error("mappings_validation_failed", "title_slug", slug, "path", assetsPath, "err", loadErr.Error())
+			logger.Error("mappings_validation_failed", "title_slug", slug, "path", assetsPath, "err", loadErr)
 			errs = append(errs, fmt.Errorf("load assets %s: %w", slug, loadErr))
 		} else if aset != nil {
 			r.mu.Lock()
@@ -89,7 +89,7 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 		// outcomes.toml — optionnel
 		outcomesPath := filepath.Join(mappingsDir, "outcomes.toml")
 		if oset, loadErr := loadOutcomesIfExists(outcomesPath); loadErr != nil {
-			logger.Error("mappings_validation_failed", "title_slug", slug, "path", outcomesPath, "err", loadErr.Error())
+			logger.Error("mappings_validation_failed", "title_slug", slug, "path", outcomesPath, "err", loadErr)
 			errs = append(errs, fmt.Errorf("load outcomes %s: %w", slug, loadErr))
 		} else if oset != nil {
 			r.mu.Lock()
@@ -106,7 +106,7 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 		// capabilities.toml — optionnel (Phase 1.7a)
 		capsPath := filepath.Join(mappingsDir, "capabilities.toml")
 		if cset, loadErr := loadCapabilitiesIfExists(capsPath); loadErr != nil {
-			logger.Error("mappings_validation_failed", "title_slug", slug, "path", capsPath, "err", loadErr.Error())
+			logger.Error("mappings_validation_failed", "title_slug", slug, "path", capsPath, "err", loadErr)
 			errs = append(errs, fmt.Errorf("load capabilities %s: %w", slug, loadErr))
 		} else if cset != nil {
 			r.mu.Lock()
@@ -125,7 +125,7 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 		// documentaire existant.
 		endpointsPath := filepath.Join(titleDir, "constants.toml")
 		if eset, loadErr := loadEndpointsIfExists(endpointsPath); loadErr != nil {
-			logger.Error("mappings_validation_failed", "title_slug", slug, "path", endpointsPath, "err", loadErr.Error())
+			logger.Error("mappings_validation_failed", "title_slug", slug, "path", endpointsPath, "err", loadErr)
 			errs = append(errs, fmt.Errorf("load endpoints %s: %w", slug, loadErr))
 		} else if eset != nil {
 			r.mu.Lock()

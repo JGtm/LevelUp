@@ -137,7 +137,7 @@ func upsertLUSRRatingsBatch(
 	for _, r := range componentsPending {
 		if len(r.Components) > 0 {
 			if err := writeLUSRComponentHistory(ctx, playerDB, r.MatchID, r.Components, now); err != nil {
-				slog.Warn("upsertLUSRRatingsBatch: lusr_component_history write failed",
+				slog.WarnContext(ctx, "upsertLUSRRatingsBatch: lusr_component_history write failed",
 					"match_id", r.MatchID, "err", err)
 			}
 		}

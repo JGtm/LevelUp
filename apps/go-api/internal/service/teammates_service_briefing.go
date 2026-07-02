@@ -46,7 +46,7 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 	teammateRows, err := s.loadTeammatesCanonicalParallel(ctx, selectedGamertags)
 	if err != nil {
 		slog.WarnContext(ctx, "teammates_briefing.load_failed",
-			"err", err.Error(), "selected_count", len(selectedGamertags))
+			"err", err, "selected_count", len(selectedGamertags))
 		// Degradation : juste SoloKPIs.
 		if len(mainFiltered) == 0 {
 			return nil

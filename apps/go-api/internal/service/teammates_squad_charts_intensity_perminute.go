@@ -57,7 +57,7 @@ func (s *TeammatesService) buildSquadIntensityProfile(
 	events, err := s.repo.LoadImpactEvents(ctx, matchOrder)
 	if err != nil || len(events) == 0 {
 		if err != nil {
-			slog.WarnContext(ctx, "teammates_intensity_events_load_failed", "err", err.Error())
+			slog.WarnContext(ctx, "teammates_intensity_events_load_failed", "err", err)
 		}
 		return nil
 	}
@@ -283,7 +283,7 @@ func (s *TeammatesService) buildSquadPerMinuteStats(
 		)
 		if err != nil {
 			slog.WarnContext(ctx, "teammates_per_minute_load_failed",
-				"gamertag", gt, "err", err.Error())
+				"gamertag", gt, "err", err)
 			entries = append(entries, domain.SquadPerMinuteEntry{Player: gt})
 			continue
 		}

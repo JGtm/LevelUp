@@ -70,7 +70,7 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 		allies, err := s.repo.LoadMainTeamParticipants(ctx, mainXUID, matchIDOrder)
 		if err != nil {
 			slog.WarnContext(ctx, "teammates_impact_load_team_failed",
-				"main_xuid", mainXUID, "err", err.Error())
+				"main_xuid", mainXUID, "err", err)
 		}
 		for _, a := range allies {
 			allyByMatch[a.MatchID] = append(allyByMatch[a.MatchID], a)
@@ -287,7 +287,7 @@ func (s *TeammatesService) buildSquadFirstEvents(
 	events, err := s.repo.LoadImpactEvents(ctx, matchIDs)
 	if err != nil || len(events) == 0 {
 		if err != nil {
-			slog.WarnContext(ctx, "teammates_first_events_load_failed", "err", err.Error())
+			slog.WarnContext(ctx, "teammates_first_events_load_failed", "err", err)
 		}
 		return nil
 	}

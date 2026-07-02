@@ -127,7 +127,7 @@ func (h *UserAuthHandler) handleLogin(ctx context.Context, in *authBodyInput) (*
 			slog.Warn("auth: login échoué", "username", req.Username)
 			return nil, humacore.NewError(http.StatusUnauthorized, "invalid_credentials", "identifiants incorrects")
 		}
-		slog.Error("auth: erreur authenticate", "username", req.Username, "err", err)
+		slog.ErrorContext(ctx, "auth: erreur authenticate", "username", req.Username, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "auth_error", "erreur d'authentification")
 	}
 
@@ -151,7 +151,7 @@ func (h *UserAuthHandler) handleLogin(ctx context.Context, in *authBodyInput) (*
 	sess.Role = &role
 	h.autoSelectPlayer(sess, user)
 	if err := h.sessionStore.Save(sess); err != nil {
-		slog.Error("auth: échec save session login", "username", user.Username, "err", err)
+		slog.ErrorContext(ctx, "auth: échec save session login", "username", user.Username, "err", err)
 	}
 
 	slog.Info("auth: login réussi", "username", user.Username, "role", user.Role)
@@ -226,7 +226,7 @@ func (h *UserAuthHandler) handleRegister(ctx context.Context, in *authBodyInput)
 	// Consommer le code d'invitation si utilisé.
 	if req.InviteCode != "" && !empty {
 		if err := h.invites.Consume(req.InviteCode, user.Username); err != nil {
-			slog.Error("auth: échec consume invite", "code", req.InviteCode, "username", user.Username, "err", err)
+			slog.ErrorContext(ctx, "auth: échec consume invite", "code", req.InviteCode, "username", user.Username, "err", err)
 		}
 	}
 
@@ -237,7 +237,7 @@ func (h *UserAuthHandler) handleRegister(ctx context.Context, in *authBodyInput)
 		roleStr := string(user.Role)
 		sess.Role = &roleStr
 		if err := h.sessionStore.Save(sess); err != nil {
-			slog.Error("auth: échec save session register", "username", user.Username, "err", err)
+			slog.ErrorContext(ctx, "auth: échec save session register", "username", user.Username, "err", err)
 		}
 	}
 
@@ -261,7 +261,7 @@ func (h *UserAuthHandler) handleLogout(ctx context.Context, _ *struct{}) (*authN
 		sess.Username = nil
 		sess.Role = nil
 		if err := h.sessionStore.Save(sess); err != nil {
-			slog.Error("auth: échec save session logout", "err", err)
+			slog.ErrorContext(ctx, "auth: échec save session logout", "err", err)
 		}
 		slog.Info("auth: logout", "username", username)
 	}
@@ -289,7 +289,7 @@ func (h *UserAuthHandler) handleSetPassword(ctx context.Context, in *authBodyInp
 		case errors.Is(err, userstore.ErrUserNotFound):
 			return nil, humacore.NewError(http.StatusNotFound, "user_not_found", "utilisateur introuvable")
 		default:
-			slog.Error("auth: échec set password", "username", *sess.Username, "err", err)
+			slog.ErrorContext(ctx, "auth: échec set password", "username", *sess.Username, "err", err)
 			return nil, humacore.NewError(http.StatusInternalServerError, "set_password_error", "erreur lors de la définition du mot de passe")
 		}
 	}

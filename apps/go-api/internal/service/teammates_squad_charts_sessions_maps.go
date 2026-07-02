@@ -315,7 +315,7 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 		)
 		if err != nil {
 			slog.WarnContext(ctx, "teammates_heatmap_load_failed",
-				"gamertag", gt, "err", err.Error())
+				"gamertag", gt, "err", err)
 			for _, mapUI := range mapsTop {
 				cells = append(cells, domain.SquadMapHeatmapCell{Player: gt, MapUI: mapUI})
 			}

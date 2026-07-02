@@ -199,7 +199,7 @@ func (b *PrestigeBundle) RunPostSync(ctx context.Context, playerSlug, titleSlug 
 	svc, err := b.ServiceForPlayer(ctx, playerSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "prestige_post_sync_resolve_failed",
-			"player_slug", playerSlug, "err", err.Error())
+			"player_slug", playerSlug, "err", err)
 		return
 	}
 	prestige.RunPostSyncHook(ctx, svc, playerSlug, titleSlug)

@@ -106,7 +106,7 @@ func (s *PlayerEngagementService) GetMatchEngagement(
 				"n_team_events", len(input.TeamEvents),
 				"n_lobby_events", len(input.LobbyEvents),
 				"n_team", mctx.NTeam, "target_team_id", mctx.TargetTeamID,
-				"reason", err.Error())
+				"reason", err)
 			return nil, ErrEngagementInsufficient
 		}
 		return nil, fmt.Errorf("PlayerEngagementService: compute: %w", err)

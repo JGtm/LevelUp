@@ -44,20 +44,20 @@ func BackfillMatchCitations(
 		return fmt.Errorf("BackfillMatchCitations: mappings: %w", err)
 	}
 	if len(mappings) == 0 {
-		slog.Info("BackfillMatchCitations: aucun mapping — skip")
+		slog.InfoContext(ctx, "BackfillMatchCitations: aucun mapping — skip")
 		return nil
 	}
 
 	weaponNames, err := loadWeaponNames(ctx, metadataDB)
 	if err != nil {
-		slog.Warn("BackfillMatchCitations: weapon_names non chargés", "err", err)
+		slog.WarnContext(ctx, "BackfillMatchCitations: weapon_names non chargés", "err", err)
 		weaponNames = map[uint64]string{}
 	}
 
 	// Tri chrono pour que le cumulPre soit correct entre les matchs du batch.
 	sorted, err := sortMatchIDsChrono(ctx, sharedDB, matchIDs)
 	if err != nil {
-		slog.Warn("BackfillMatchCitations: sort chrono failed, ordre non garanti", "err", err)
+		slog.WarnContext(ctx, "BackfillMatchCitations: sort chrono failed, ordre non garanti", "err", err)
 		sorted = matchIDs
 	}
 
@@ -76,7 +76,7 @@ func BackfillMatchCitations(
 	for _, matchID := range sorted {
 		citCtx, err := buildCitationContext(ctx, sharedDB, playerDB, weaponNames, xuid, matchID)
 		if err != nil {
-			slog.Warn("BackfillMatchCitations: context", "match_id", matchID, "err", err)
+			slog.WarnContext(ctx, "BackfillMatchCitations: context", "match_id", matchID, "err", err)
 			skipped++
 			continue
 		}
@@ -108,7 +108,7 @@ func BackfillMatchCitations(
 		}
 
 		if err := writeCitations(ctx, playerDB, matchID, deltas); err != nil {
-			slog.Warn("BackfillMatchCitations: write", "match_id", matchID, "err", err)
+			slog.WarnContext(ctx, "BackfillMatchCitations: write", "match_id", matchID, "err", err)
 			skipped++
 			continue
 		}
@@ -144,7 +144,7 @@ func buildCitationContext(
 
 	weaponKills, err := loadWeaponKills(ctx, sharedDB, weaponNames, matchID, xuid)
 	if err != nil {
-		slog.Warn("BackfillMatchCitations: weapon_kills", "match_id", matchID, "err", err)
+		slog.WarnContext(ctx, "BackfillMatchCitations: weapon_kills", "match_id", matchID, "err", err)
 	}
 	for k, v := range weaponKills {
 		stats["weapon_kills:"+k] = float64(v)
@@ -152,13 +152,13 @@ func buildCitationContext(
 
 	awards, err := loadAwards(ctx, playerDB, matchID, xuid)
 	if err != nil {
-		slog.Warn("BackfillMatchCitations: awards", "match_id", matchID, "err", err)
+		slog.WarnContext(ctx, "BackfillMatchCitations: awards", "match_id", matchID, "err", err)
 		awards = map[string]int{}
 	}
 
 	events, err := loadHighlightEvents(ctx, sharedDB, matchID)
 	if err != nil {
-		slog.Warn("BackfillMatchCitations: events", "match_id", matchID, "err", err)
+		slog.WarnContext(ctx, "BackfillMatchCitations: events", "match_id", matchID, "err", err)
 		events = nil
 	}
 

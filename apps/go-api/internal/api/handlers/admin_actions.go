@@ -141,7 +141,7 @@ func (h *AdminActionsHandler) handleRunSyncCycle(ctx context.Context, _ *struct{
 func (h *AdminActionsHandler) runForcedCycle(ctx context.Context, jobID string) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			slog.Error("admin_actions: panic pendant le cycle forcé", "job_id", jobID, "panic", rec)
+			slog.ErrorContext(ctx, "admin_actions: panic pendant le cycle forcé", "job_id", jobID, "panic", rec)
 			h.jobs.Update(jobID, func(j *domain.AsyncJobStatus) {
 				j.Error = &domain.JobErrorDetail{Code: "panic", Message: "cycle interrompu par une erreur interne", Retryable: true}
 			})

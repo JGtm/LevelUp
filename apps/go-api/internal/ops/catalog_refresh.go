@@ -275,10 +275,14 @@ func refreshPairsCatalog(ctx context.Context, metadataDB, sharedDB *sql.DB, titl
 		}
 		n++
 		if name != "" {
-			_ = upsertPairLabel(ctx, metadataDB, titleSlug, id, "en", name)
+			if lblErr := upsertPairLabel(ctx, metadataDB, titleSlug, id, "en", name); lblErr != nil {
+				slog.WarnContext(ctx, "upsert pair label (en)", "id", id, "err", lblErr)
+			}
 		}
 		if nameFR.Valid && nameFR.String != "" {
-			_ = upsertPairLabel(ctx, metadataDB, titleSlug, id, "fr", nameFR.String)
+			if lblErr := upsertPairLabel(ctx, metadataDB, titleSlug, id, "fr", nameFR.String); lblErr != nil {
+				slog.WarnContext(ctx, "upsert pair label (fr)", "id", id, "err", lblErr)
+			}
 		}
 	}
 	return n, rows.Err()

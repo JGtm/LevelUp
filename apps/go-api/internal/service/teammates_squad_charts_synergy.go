@@ -97,7 +97,7 @@ func (s *TeammatesService) loadSynergyMateAxes(
 	}
 	rows, err := s.squadLoader.LoadFor(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
 	if err != nil {
-		slog.WarnContext(ctx, "teammates_radar_load_failed", "gamertag", gt, "err", err.Error())
+		slog.WarnContext(ctx, "teammates_radar_load_failed", "gamertag", gt, "err", err)
 		return raw
 	}
 

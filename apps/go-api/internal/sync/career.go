@@ -133,9 +133,13 @@ func saveCareerRank(ctx context.Context, db *sql.DB, data *CareerRankData) error
 		return fmt.Errorf("saveCareerRank: %w", err)
 	}
 
-	// Mettre à jour sync_meta
-	_ = SetSyncMeta(ctx, db, "last_career_sync_at", now.Format(time.RFC3339))
-	_ = SetSyncMeta(ctx, db, "current_rank", fmt.Sprintf("%d", data.CurrentRank))
+	// Mettre à jour sync_meta (best-effort : le snapshot est déjà persisté ci-dessus).
+	if err := SetSyncMeta(ctx, db, "last_career_sync_at", now.Format(time.RFC3339)); err != nil {
+		slog.WarnContext(ctx, "saveCareerRank: SetSyncMeta last_career_sync_at échoué (best-effort)", "err", err)
+	}
+	if err := SetSyncMeta(ctx, db, "current_rank", fmt.Sprintf("%d", data.CurrentRank)); err != nil {
+		slog.WarnContext(ctx, "saveCareerRank: SetSyncMeta current_rank échoué (best-effort)", "err", err)
+	}
 
 	return nil
 }

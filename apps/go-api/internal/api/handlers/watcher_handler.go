@@ -323,7 +323,7 @@ func (h *WatcherHandler) pollWatcherAuth(attemptID string, flow auth_platform.De
 	tokens.XSTSExpiresAt = time.Now().Add(24 * time.Hour) // durée standard XSTS Xbox Live
 
 	if err := h.tokenStore.Save(tokens); err != nil {
-		slog.Error("watcher_handler: impossible de sauvegarder les tokens XSTS", "err", err)
+		slog.ErrorContext(ctx, "watcher_handler: impossible de sauvegarder les tokens XSTS", "err", err)
 	}
 
 	// Mettre à jour le daemon si actif
