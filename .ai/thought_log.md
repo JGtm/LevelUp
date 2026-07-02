@@ -1,3 +1,16 @@
+## [2026-07-02] Aperçus de liens sociaux (Open Graph) — injection serveur, cartes dynamiques par page — COMPLÉTÉ (non poussé)
+
+**Tâche** : question user — pas d'aperçu quand il partage la demo sur Reddit/Facebook/WhatsApp. Cause : SPA React/Vite → le HTML servi est une coquille vide, et les robots d'aperçu (facebookexternalhit, Twitterbot, redditbot, Discordbot…) n'exécutent pas le JS → aucune balise `og:*` lue. Choix produit validé : cartes **dynamiques par page** (texte) + image de marque = capture Chrome de la demo.
+
+**Décision technique** :
+- Package pur `internal/ogmeta` (0 dépendance HTTP/DB, testable) : `Meta`, `DefaultMeta`/`PlayerMeta` (textes FR/EN, `WinRate` 0..1 ×100, KDR = `Hero.KPIs.GlobalRatio`), `RenderTags` (HTML-escape systématique), `Render` (remplace le bloc `<!-- og:start -->…<!-- og:end -->`), `IsCrawler` (allowlist UA), `ParseLocale` (Accept-Language, défaut FR).
+- Injection serveur `internal/api/og_inject.go` (`ServiceRegistry.serveIndexWithOG`) câblée dans le catch-all SPA de `server.go` (remplace `http.ServeFile`). Origine reconstruite via `X-Forwarded-Proto`/`Host` → `og:url`/`og:image` corrects demo **et** prod. Humains/routes non-joueur : carte générique (coût nul, juste l'origine réécrite). Enrichissement (gamertag + KPIs via `HomeCtx`→`GetHomePage`, services existants réutilisés) **uniquement crawler + `cfg.DemoMode`** : les pages joueur réelles sont ownership-gated, exposer leurs KPIs à un crawler anonyme serait une fuite + un aperçu trompeur → prod = carte générique. Timeout 3s + repli `DefaultMeta` sur toute erreur (jamais d'échec de page). Pas de feature flag (le repli rend l'injecteur sûr par construction).
+- Bloc marqueur + valeurs par défaut dans `apps/web/index.html` ; image `apps/web/public/og-default.png` (1200×630, 521 Ko) = capture Chrome de `demo.lvelup.info/players/demo-player/home` (hero + rang + CSR/LUSR + KPIs).
+
+**Résultats — tests** : `internal/ogmeta` 9 tests verts (escaping, FR/EN, KPIs manquants, remplacement de bloc, ParseLocale) ; `internal/api` suite complète verte (10,3 s) incl. injecteur (carte par défaut, réécriture d'origine demo, garde no-DB sur route non-joueur) ; `go build ./...` + `go vet` propres. **Build Vite réel** : les marqueurs `<!-- og:start/end -->` et les balises OG survivent au build (risque de strip écarté), `og-default.png` copié dans `dist/`.
+
+**Conclusion / reste** : code complet, non poussé (attente feu vert — push main = deploy prod). Vérif post-déploiement à faire : Facebook Sharing Debugger (« Scrape Again ») + coller un lien demo dans Discord/WhatsApp (les plateformes cachent l'OG → re-scrape manuel). Extensions Phase 2 possibles : carte spécifique au match (`/matches/{id}`), enrichissement prod derrière un flag public/consenti, image par joueur (asset auto-hébergé).
+
 ## [2026-07-02] Merge branches Dependabot (2026-07-01) : go-toml + npm mergées, actions/checkout ÉCARTÉE (downgrade) — COMPLÉTÉ local
 
 **Tâche** : évaluer le risque de merge des 3 branches Dependabot créées le 2026-07-01, puis merger les sûres dans main local (aucun push — push main = deploy prod auto).
