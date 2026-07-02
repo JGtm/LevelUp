@@ -35,34 +35,6 @@
 
 ---
 
-### [Multi-titre] Couche canonique `weapon_family` cross-titres — ⏸️ GARDÉ DE CÔTÉ
-
-> ⏸️ **Gardé de côté** (2026-06-09) : conservé volontairement, bloqué sur l'arrivée d'un 2e titre réel. Même déclencheur que `[coach/prestige] Cross-titre arcs`.
-
-**Noté le** : 2026-04-26 | **Priorité** : Basse — bloqué par arrivée d'un second titre réel
-
-**Contexte** : Plan complet documenté dans `.ai/PLAN_WEAPON_FAMILY_CANONICAL.md` (référentiel `weapon_families` global + colonne `family_key` sur `weapon_labels` par-titre + TOML source-de-vérité). L'audit `.ai/AUDIT_WEAPONS_2026-04-25.md` a validé la faisabilité sur HI : 42 weapon_id seedés, 88 % mappables vers ~17 familles canoniques, ~32 familles totales prévues pour couvrir Halo CE→Infinite. Effort estimé : 2.5–3j en 3 phases (référentiel global + mapping HI + adapter/endpoint).
-
-**Ce qui doit être fait** :
-1. Phase 1 — créer `data/warehouse/canonical_metadata.duckdb` avec tables `weapon_families` + `weapon_family_translations` ; créer `config/canonical/weapon_families.toml` (~32 familles) ; script `tools/seed-weapon-families.go`.
-2. Phase 2 — `ALTER TABLE weapon_labels ADD COLUMN family_key VARCHAR` côté HI ; créer `config/titles/halo_infinite/mappings/weapon_families.toml` (~37 lignes) ; seeder via `tools/seed-weapon-families-mapping.go`.
-3. Phase 3 — étendre `TitleSemanticAdapter` avec `WeaponFamilies()` + `WeaponFamilyOf(weaponID)` ; handler `/api/v1/weapon-families` derrière flag `WEAPON_FAMILIES_API_ENABLED=false`.
-
-**Ajustements vs plan d'origine** (cf. AUDIT §7.1) :
-- compléter l'annexe §10 du plan avec 6 familles HI manquantes (`shock_rifle`, `stalker_rifle`, `heatwave`, `sentinel_beam`, `ravager`, `mutilator`) → passe de 26 à ~32 familles ;
-- expliciter `family_key = NULL` comme valide pour les sentinelles (Grenade/Melee/Vehicle) et easter-eggs ;
-- relever le seuil de couverture du test CI de 60 % à 85 % (HI réel à 88 %).
-
-**Conditions de déblocage** :
-1. ✅ Phase A multi-titres terminée (commit `aaccbe12`+) ;
-2. ❌ second titre réel (Halo 5, MCC, ODST…) validé en pipeline produit.
-
-**Documents liés** :
-- `.ai/PLAN_WEAPON_FAMILY_CANONICAL.md` (plan complet)
-- `.ai/AUDIT_WEAPONS_2026-04-25.md` (audit du référentiel HI)
-
----
-
 ### [Migration] Cible desktop Tauri web-first, sans réécriture Rust métier — ⏸️ GARDÉ DE CÔTÉ
 
 > ⏸️ **Gardé de côté** (2026-06-09) : conservé pour distribution desktop néophyte future. Note : le cutover Go étant fait, le « backend Python local packagé » ci-dessous doit se lire **backend Go local** — à re-cadrer si réactivé.
