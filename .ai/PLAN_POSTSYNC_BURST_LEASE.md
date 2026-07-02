@@ -1,6 +1,6 @@
 # Plan — Étape 1 contention : post-sync en bursts paresseux (writer non tenu pendant I/O)
 
-Statut : EN COURS (incrément 1)
+Statut : COMPLÉTÉ — GATE VALIDÉ LIVE 2026-07-02 (rw_window_max 21909ms → 255ms ; swaps 8→1 ; watchdog 6→0 ; cycle 105s→11s)
 Date : 2026-07-02 · Branche : fix/h5-ui-adjustments-batch (rester dessus)
 Mesure de référence (étape 0, live) : `sync_v2_postsync` = 8/8 swaps, 104,1s/105s de cycle,
 avg 13 017 ms, max 21 909 ms, watchdog 6/8 — détenteur UNIQUE de la fenêtre RW.
