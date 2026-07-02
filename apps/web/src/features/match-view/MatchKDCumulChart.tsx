@@ -19,7 +19,7 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import { useCallback } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase } from '@/components/charts/_utils'
+import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import type { MatchHighlightEvent, MatchImpactBadge, MatchScoreboardRow } from '@/lib/api/types'
 import { displayPlayerName } from '@/lib/players/displayName'
@@ -264,7 +264,7 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
               if (expected.has(p.seriesName) && !seen.has(p.seriesName)) seen.set(p.seriesName, p)
             }
             if (seen.size === 0) return ''
-            const rows = [...seen.values()].map(p => `${p.marker} ${p.seriesName}: <b>${p.value[1]}</b>`).join('<br/>')
+            const rows = [...seen.values()].map(p => `${p.marker} ${escapeHtml(p.seriesName ?? '')}: <b>${p.value[1]}</b>`).join('<br/>')
             return `${formatMmSs(params[0].axisValue)}<br/>${rows}`
           },
         },

@@ -15,6 +15,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken } from '@/lib/accessibility'
 import {
   CHART_BG,
+  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getTooltipBase,
@@ -59,7 +60,7 @@ export function buildCadenceBarsOption(
         const arr = Array.isArray(params) ? params : []
         if (arr.length === 0) return ''
         const p = arr[0] as { name?: string; value?: number }
-        return `${p.name ?? ''} : <strong>${fmt(Math.abs(p.value ?? 0))}</strong>`
+        return `${escapeHtml(p.name ?? '')} : <strong>${fmt(Math.abs(p.value ?? 0))}</strong>`
       },
     },
     xAxis: {

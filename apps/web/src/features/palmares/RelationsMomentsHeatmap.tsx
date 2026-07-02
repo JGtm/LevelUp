@@ -12,7 +12,7 @@ import { useCallback, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, getEChartsThemeColors } from '@/components/charts/_utils'
+import { CHART_BG, escapeHtml, getEChartsThemeColors } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 
 /** Cellule générique : bucket = index de tranche horaire OU de jour de semaine. */
@@ -78,7 +78,7 @@ function buildOption(
       textStyle: { color: tc.text },
       formatter: (params: { data: { value: [number, number, number | null] } }) => {
         const [b, row, count] = params.data.value
-        const who = rowLabels[row] ?? ''
+        const who = escapeHtml(rowLabels[row] ?? '')
         const when = bucketLabels[b] ?? ''
         if (count == null || count === 0) return `${who} · ${when}`
         return `${who} · ${when}<br>${matchesLabel(count)}`

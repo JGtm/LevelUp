@@ -14,6 +14,7 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import {
   CHART_BG,
+  escapeHtml,
   getEChartsThemeColors,
   getLegendBase,
   getTooltipBase,
@@ -59,8 +60,8 @@ export function buildSquadSynergyRadarOption(
     tooltip: {
       ...getTooltipBase(tc),
       formatter: (params: { name: string; value: number[] }) => {
-        const lines = axes.map((a, i) => `${a.name}: <b>${params.value[i].toFixed(0)}</b>`)
-        return `<b>${params.name}</b><br/>${lines.join('<br/>')}`
+        const lines = axes.map((a, i) => `${escapeHtml(a.name ?? '')}: <b>${params.value[i].toFixed(0)}</b>`)
+        return `<b>${escapeHtml(params.name ?? '')}</b><br/>${lines.join('<br/>')}`
       },
     },
     legend: { ...getLegendBase(tc), data: data.map((d) => d.name) },

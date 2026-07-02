@@ -23,6 +23,7 @@ import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { ChartCard, type ChartSeries } from './ChartCard'
 import {
   CHART_BG,
+  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getLegendBase,
@@ -249,7 +250,7 @@ export function buildTimeseriesLineOption(
       ...(xAxisLabelFormatter ? {
         formatter: (params: Array<{ axisValue: number | string; marker: string; seriesName: string; value: [number, number] }>) => {
           if (!Array.isArray(params) || !params.length) return ''
-          const rows = params.map(p => `${p.marker} ${p.seriesName}: <b>${p.value[1]}</b>`).join('<br/>')
+          const rows = params.map(p => `${p.marker} ${escapeHtml(p.seriesName)}: <b>${p.value[1]}</b>`).join('<br/>')
           return `${xAxisLabelFormatter(params[0].axisValue)}<br/>${rows}`
         },
       } : {}),

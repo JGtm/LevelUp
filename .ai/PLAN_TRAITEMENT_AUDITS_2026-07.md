@@ -145,21 +145,21 @@ grep de contrôle : aucun `Mount(r)` nu restant sans justification dans le table
 
 Objectif : ce qui est faux À L'ÉCRAN aujourd'hui + le risque d'intégrité immédiat.
 
-- [ ] A1 — CR C1 : supprimer le `perfTier()` local inversé de
+- [x] A1 — CR C1 : supprimer le `perfTier()` local inversé de
   `TimeseriesFormCharts.tsx:51-57`, importer `perfScale`
   (`lib/accessibility/scales/instances.ts`). Vérification visuelle du tab Forme.
-- [ ] A2 — CR C2 : `CareerTopMatchesTable.tsx:124-129` — badges outcome par code/`outcomeKey`
+- [x] A2 — CR C2 : `CareerTopMatchesTable.tsx:124-129` — badges outcome par code/`outcomeKey`
   + `getOutcomeColor` (modèle `ExplorerMatchesTable.tsx:317-327`) ; corriger aussi le
   `toLocaleDateString('fr-FR')` figé (l.99).
-- [ ] A3 — CR C3 : rerouter le backfill LUSR v1 → `RecomputeLUSRCanonicalForPlayer` (v2)
+- [x] A3 — CR C3 : rerouter le backfill LUSR v1 → `RecomputeLUSRCanonicalForPlayer` (v2)
   dans `handlers/backfill.go:334` et `cmd/levelup/cmd_backfill.go:411,431` ; supprimer
   `RunBackfillLUSR` (`engine_backfills.go:182`) et `upsertLUSRRatingsLegacy`
   (`skill_rating_loaders.go:232`).
-- [ ] A4 — CR C4 + DETTE TOP2 : réécrire les 5 docs inversées des flags :
+- [x] A4 — CR C4 + DETTE TOP2 : réécrire les 5 docs inversées des flags :
   `engine_options.go:130-131`, `engine.go:128-133`, `engine_batch_path.go:16`,
   `sync/v2/doc.go:17`, `cmd/server/main.go:1108-1111` — défaut réel (ON / V2), `=0`/`=v1`
   = kill-switch. (Le RETRAIT des flags est en D1 ; ici on rend la doc vraie.)
-- [ ] A5 — QUALITE XSS (#9) : promouvoir `escapeHtml()` dans `apps/web/src/components/charts/_utils.ts`
+- [x] A5 — QUALITE XSS (#9) : promouvoir `escapeHtml()` dans `apps/web/src/components/charts/_utils.ts`
   et l'appliquer à toute interpolation non constante des formatters tooltip ECharts
   (~40 sites ; les 7 à contenu tiers en premier : `squadMapHeatmapChart.ts:78`,
   `squadEfficiencyChart.ts:88`, `OutcomeSequenceTape.tsx:103`,
@@ -805,8 +805,47 @@ Format par entrée :
 - Mesures/notes : ...
 ```
 
-(vide — le plan n'est pas démarré)
+```
+[2026-07-02] LOT A — CLOS (branche refactor/audits-2026-07 ; commit à suivre)
+- NOTE BRANCHES : LOT S est livré sur sa branche dédiée fix/security-unauth-endpoints
+  (plan + journal S marqués là-bas, commit 0c5982111). Cette branche part de main → le
+  plan y est vierge côté S ; RÉCONCILIER le journal/les cases au merge des deux branches.
+- Items [x] : 5 (A1-A5) / [~] : 0 / [!] : 0.
+- Gate A : go build ./... OK ; go test ./internal/sync/... ./internal/api/... ./cmd/levelup/... OK ;
+  go test -tags=integration ./internal/sync/... ./internal/persist/... OK (anti-ART, A3 touche sync/) ;
+  grep RunBackfillLUSR( → 0 ; cd apps/web : typecheck OK, lint OK (0 err, 70 warn baseline),
+  vitest OK (2070 passed, +2 = escapeHtml fonctionnel + garde-rail).
+- A1 : perfTier local inversé supprimé → perfScale canonique ; import `type SemanticToken` retiré (inutilisé).
+- A2 : badge outcome piloté par outcomeKey(outcome_code). Badge (pill) CONSERVÉ (préférence UI « pills
+  pleines ») plutôt que le span coloré du modèle Explorer — décision consignée. Date via formatDate
+  locale-dynamique. Le type front CareerTopMatch n'exposait pas outcome_code → ajouté au schéma openapi.yaml
+  + `make generate-types` (TopMatchDTO Go le peuple déjà au runtime).
+- A3 : chemin LUSR v1 supprimé. RunBackfillLUSR (v1→batchComputeLUSR) renommé RecomputeLUSRCanonical
+  (reroute v2 RecomputeLUSRCanonicalForPlayer, param force retiré) — le scaffolding lease+OpenPlayerDB+
+  acquireSharedWriter est conservé, donc rename+reroute plutôt que suppression brute. upsertLUSRRatingsLegacy
+  (dead code, 0 caller vérifié) supprimé + import slog orphelin retiré. 3 callers adaptés. RunBackfillLUSRDryRun
+  (read-only, ne WRITE pas) CONSERVÉ (hors scope C3). ForceLUSR reste câblé (flag/scope/tests) mais n'est plus
+  consommé par le backfill (replay v2 toujours complet). batchComputeLUSR CONSERVÉ (post-sync + fallback).
+- A4 : 5 docs corrigées (engine_options, engine, engine_batch_path, sync/v2/doc, cmd/server/main :1108) —
+  PERSIST_BATCH défaut ON (=0 kill-switch ART-unsafe), SYNC_PIPELINE défaut V2 (=v1 kill-switch). Retrait des
+  flags eux-mêmes = lots D1b/D1c.
+- A5 : escapeHtml promu dans components/charts/_utils.ts (+ échappement apostrophe absent de la version locale) ;
+  BarStackedChart refactoré ; garde-rail escapeHtml.test.ts (interdit toute redéfinition locale + test
+  fonctionnel) ; ~30 sites de formatters tooltip enveloppés (sweep 4 agents), dont les 8 à contenu tiers
+  (gamertags / cartes UGC) confirmés ; MatchWeaponCharts string-template {b} converti en formatter fonction.
+  SessionPlacementBreakdown skippé (label = '#'+entier, sûr).
+```
 
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
 
-(vide)
+- [LOT A / A2] Dette de type front pré-existante : `CareerTopMatchesResponse` hand-written
+  (`types.ts:516`) = `{ items: CareerTopMatch[] }` ne correspond PAS à la réponse réelle du
+  backend `{ best_matches, worst_matches: TopMatchDTO[] }` ; et `data.top_matches_preview`
+  (lu par CareerPage.tsx) n'existe pas dans le `CareerPageResponse` Go. Conséquence :
+  `fullTopMatches.items` / `data.top_matches_preview` sont `undefined` au runtime sur ces
+  chemins. Hors scope A2 (le fix badge/date fonctionne car getOutcomeColor dégrade
+  proprement sur outcome_code absent). À traiter : aligner les types front sur le contrat
+  réel (openapi) + corriger le flux de données CareerPage.
+- [LOT A / A5] MatchWeaponCharts.tsx : string-template ECharts `{b}` converti en formatter
+  fonction avec escapeHtml — vérifier visuellement que l'affichage (nom d'arme + valeur +
+  pourcentage) est préservé lors d'une revue UI.

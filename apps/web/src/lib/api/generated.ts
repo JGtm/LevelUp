@@ -3653,6 +3653,8 @@ export interface components {
             performance_score?: number | null;
             badge_type?: string | null;
             score_label?: string | null;
+            /** Format: int64 */
+            outcome_code?: number | null;
             outcome_label?: string | null;
             kills?: number | null;
             deaths?: number | null;

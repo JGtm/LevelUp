@@ -9,13 +9,13 @@
 //   - Synchrone : pas de queue ni worker async. Phase 3 ajoutera la couche
 //     queue+worker pour découpler la persistance du fetch.
 //
-// **Activation** : via WithBatchPersistMode(true) sur le SyncEngine —
-// l'orchestrateur cmd/server / scheduler peut activer le flag selon
-// LEVELUP_PERSIST_BATCH=1 ou tout autre critère.
+// **Activation** : via WithBatchPersistMode(true) sur le SyncEngine. Serveur,
+// scheduler et CLI l'activent PAR DÉFAUT (LEVELUP_PERSIST_BATCH != "0").
 //
-// **Coexistence** : tant que batchMode=false (défaut), le chemin legacy
-// insertFetchedMatch reste utilisé. submitOrInsertMatch est le point de
-// branchement unique.
+// **Coexistence** : le champ batchMode vaut false en zéro-valeur, mais il est ON
+// par défaut en pratique. Le chemin legacy insertFetchedMatch ne tourne plus que
+// sous le kill-switch LEVELUP_PERSIST_BATCH=0 (rollback ART-unsafe, retrait lot
+// D1b). submitOrInsertMatch est le point de branchement unique.
 
 package sync
 

@@ -4246,6 +4246,10 @@ components:
         score_label:
           type: string
           nullable: true
+        outcome_code:
+          type: integer
+          format: int64
+          nullable: true
         outcome_label:
           type: string
           nullable: true

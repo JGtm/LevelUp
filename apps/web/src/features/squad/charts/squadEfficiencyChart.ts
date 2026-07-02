@@ -14,6 +14,7 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import {
   CHART_BG,
+  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getLegendBase,
@@ -88,7 +89,7 @@ export function buildSquadEfficiencyTrackOption(
         const label = xLabels[items[0].dataIndex] ?? `#${items[0].dataIndex + 1}`
         const lines = items
           .filter((it) => it.value !== null)
-          .map((it) => `${it.marker} ${it.seriesName}: <b>${Math.round(it.value as number)}</b>`)
+          .map((it) => `${it.marker} ${escapeHtml(it.seriesName ?? '')}: <b>${Math.round(it.value as number)}</b>`)
         return `<div style="font-size:11px">${label}<br/>${lines.join('<br/>')}</div>`
       },
     },
@@ -221,7 +222,7 @@ export function buildSquadRendementMultiOption(
         const label = xLabels[items[0].dataIndex] ?? `#${items[0].dataIndex + 1}`
         const lines = items
           .filter((it) => it.value !== null && it.value !== undefined)
-          .map((it) => `${it.marker} ${it.seriesName}: <b>${Math.round(it.value as number)}</b>`)
+          .map((it) => `${it.marker} ${escapeHtml(it.seriesName ?? '')}: <b>${Math.round(it.value as number)}</b>`)
         return `<div style="font-size:11px">${label}<br/>${lines.join('<br/>')}</div>`
       },
     },

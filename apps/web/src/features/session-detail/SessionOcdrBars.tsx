@@ -13,7 +13,7 @@ import { useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
+import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 import { useOffensiveConversionP80, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
@@ -83,7 +83,7 @@ export function buildSessionOcdrBarsOption(
         const p = points[idx]
         if (!p) return ''
         const lines = [
-          `<strong>${p.label.replace('\n', ' · ')}</strong>`,
+          `<strong>${escapeHtml(p.label.replace('\n', ' · '))}</strong>`,
           `${opts.ocLabel} : <b>${p.ocRaw.toFixed(2)}</b> (${p.ocNorm.toFixed(0)}% P80)`,
         ]
         if (showDr) lines.push(`${opts.drLabel} : <b>${p.drRaw.toFixed(2)}</b> (${p.drNorm.toFixed(0)}% P80)`)

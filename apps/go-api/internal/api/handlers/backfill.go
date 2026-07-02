@@ -324,14 +324,17 @@ func (h *BackfillHandler) handleStartBackfill(ctx context.Context, in *backfillS
 			}
 		}
 
-		// ── Phase 3 : LUSR (TrueSkill 2 + poids médailles v5) ────────────
+		// ── Phase 3 : LUSR v2 canonique (TrueSkill2, ADR 0024) ───────────
+		// CR C3 : le backfill emprunte le chemin v2 (RecomputeLUSRCanonical),
+		// jamais le legacy v1. scope.ForceLUSR n'est plus consommé ici : le
+		// replay v2 est toujours complet.
 		lusrUpdated := 0
 		if scope.LUSR {
 			lusrStep := "Backfill LUSR"
 			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
 				j.CurrentStep = &lusrStep
 			})
-			n, lusrErr := engine.RunBackfillLUSR(context.Background(), scope.ForceLUSR)
+			n, lusrErr := engine.RecomputeLUSRCanonical(context.Background())
 			if lusrErr != nil {
 				h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
 					j.Warnings = append(j.Warnings,

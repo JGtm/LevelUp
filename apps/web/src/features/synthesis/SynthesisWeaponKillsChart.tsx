@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, getEChartsThemeColors } from '@/components/charts/_utils'
+import { CHART_BG, escapeHtml, getEChartsThemeColors } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import type { SynthesisWeaponKillEntry } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
@@ -31,7 +31,7 @@ function buildWeaponKillsOption(series: ChartSeries<WeaponPoint>[]): EChartsCore
       axisPointer: { type: 'shadow' },
       formatter: (params: { name: string; value: number }[]) => {
         const p = params[0]
-        return `${p.name}<br/><b>${p.value.toLocaleString('fr-FR')}</b> frags`
+        return `${escapeHtml(p.name ?? '')}<br/><b>${p.value.toLocaleString('fr-FR')}</b> frags`
       },
     },
     xAxis: { type: 'value', show: false },

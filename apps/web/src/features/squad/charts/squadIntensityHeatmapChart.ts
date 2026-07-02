@@ -12,6 +12,7 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import {
   CHART_BG,
+  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getTooltipBase,
@@ -72,7 +73,7 @@ export function buildSquadIntensityHeatmapOption(
         const d = point?.data
         if (!d) return ''
         const [xi, yi, v] = d
-        return `${fullLabels[yi]}<br/>${PHASE_LABELS[xi]}<br/>${opts.zLabel}: <b>${(v * 100).toFixed(0)}%</b>`
+        return `${escapeHtml(fullLabels[yi] ?? '')}<br/>${PHASE_LABELS[xi]}<br/>${opts.zLabel}: <b>${(v * 100).toFixed(0)}%</b>`
       },
     },
     xAxis: {

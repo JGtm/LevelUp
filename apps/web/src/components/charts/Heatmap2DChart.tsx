@@ -20,7 +20,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken } from '@/lib/accessibility'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
-import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase } from './_utils'
+import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from './_utils'
 
 export interface ChartPointHeatmap {
   x: string
@@ -133,7 +133,7 @@ export function buildHeatmap2DOption(
       formatter: (params: { data: [number, number, number, Record<string, unknown>?] }) => {
         const [xi, yi, v, detail] = params.data
         const count = detail?.count ?? 0
-        return `${ys[yi]} × ${xs[xi]}<br/>Win Rate: <b>${(v * 100).toFixed(1)}%</b><br/>Matchs: <b>${count}</b>`
+        return `${escapeHtml(ys[yi])} × ${escapeHtml(xs[xi])}<br/>Win Rate: <b>${(v * 100).toFixed(1)}%</b><br/>Matchs: <b>${count}</b>`
       },
     },
     xAxis: { ...axis, type: 'category', data: xs, splitArea: { show: true } },

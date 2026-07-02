@@ -14,6 +14,7 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import {
   CHART_BG,
+  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getLegendBase,
@@ -114,9 +115,9 @@ export function buildFragBreakdownOption(
         const lines = arr.map((p) => {
           const v = typeof p.value === 'number' ? p.value : 0
           total += v
-          return `${p.marker} ${p.seriesName} : <b>${v}</b>`
+          return `${p.marker} ${escapeHtml(p.seriesName ?? '')} : <b>${v}</b>`
         })
-        return `${arr[0].name}<br/>${lines.join('<br/>')}<br/>Total : <b>${total}</b>`
+        return `${escapeHtml(arr[0].name ?? '')}<br/>${lines.join('<br/>')}<br/>Total : <b>${total}</b>`
       },
     },
     legend: { ...getLegendBase(tc), data: SEGMENTS.map((s) => labelOf[s.key]) },

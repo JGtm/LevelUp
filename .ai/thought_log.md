@@ -1,3 +1,18 @@
+## [2026-07-02] LOT A (audit 2026-07) : bugs UI actifs + intégrité LUSR v1 + docs flags + XSS tooltips — COMPLÉTÉ (commit à suivre)
+
+**Tâche** : 2e lot du PLAN_TRAITEMENT_AUDITS_2026-07, branche refactor/audits-2026-07 (depuis main ; le LOT S vit sur fix/security-unauth-endpoints, commit 0c5982111). Vérif sur pièces via workflow multi-agents (A1-A5) puis implémentation.
+
+**Décisions techniques** :
+- **A1** perfTier local inversé (score<20→tier vert, seuils divergents) supprimé → perfScale canonique (instances.ts, protégé par snapshot CI) ; seul call-site l.186 ; import `type SemanticToken` retiré (devenu inutilisé).
+- **A2** badge outcome : plus de logique sur label FR (`includes('victoire')`, cassé en EN car backend renvoie Victory/Defeat). Piloté par outcomeKey(outcome_code). Badge/pill CONSERVÉ (préférence UI « pills pleines ») au lieu du span coloré Explorer. outcome_code absent du type front CareerTopMatch → ajouté au schéma openapi.yaml + `make generate-types` (TopMatchDTO Go le peuple déjà). Date figée fr-FR → formatDate locale-dynamique.
+- **A3** intégrité LUSR : deux chemins concurrents écrivaient match_skill_rank. RunBackfillLUSR v1 (→batchComputeLUSR) renommé RecomputeLUSRCanonical (reroute v2 RecomputeLUSRCanonicalForPlayer, param force retiré, scaffolding lease+OpenPlayerDB+acquireSharedWriter conservé) ; upsertLUSRRatingsLegacy (dead code, 0 caller) supprimé + import slog orphelin retiré ; 3 callers adaptés. Gate grep RunBackfillLUSR( → 0. RunBackfillLUSRDryRun (read-only) et batchComputeLUSR (post-sync) conservés.
+- **A4** 5 docs de flags inversées corrigées (engine_options, engine, engine_batch_path, sync/v2/doc, cmd/server/main:1108) : PERSIST_BATCH défaut ON (=0 kill-switch ART-unsafe), SYNC_PIPELINE défaut V2 (=v1 kill-switch). Retrait des flags = D1b/D1c.
+- **A5** XSS : escapeHtml promu (source unique components/charts/_utils.ts, + échappement apostrophe) + garde-rail escapeHtml.test.ts ; BarStackedChart refactoré ; ~30 formatters tooltip enveloppés (sweep 4 agents), 8 sites à contenu tiers (gamertags/cartes UGC) confirmés ; MatchWeaponCharts {b}→formatter fonction.
+
+**Résultats** : Go build + go test (sync/api/handlers/cmd) + go test -tags=integration (sync/persist anti-ART) VERTS ; grep RunBackfillLUSR( → 0 ; front typecheck + lint (0 err) + vitest 2070 passed (+2 escapeHtml/garde-rail).
+
+**Conclusion / prochaine étape** : LOT A clos côté code. Découvertes §7 : dette de type CareerTopMatchesResponse (front≠backend), revue visuelle MatchWeaponCharts. Réconcilier plan/journal S+A au merge des 2 branches. Ensuite : LOT B (lectures rating _latest + robustesse avalements).
+
 ## [2026-07-02] Aperçus de liens sociaux (Open Graph) — injection serveur, cartes dynamiques par page — COMPLÉTÉ (non poussé)
 
 **Tâche** : question user — pas d'aperçu quand il partage la demo sur Reddit/Facebook/WhatsApp. Cause : SPA React/Vite → le HTML servi est une coquille vide, et les robots d'aperçu (facebookexternalhit, Twitterbot, redditbot, Discordbot…) n'exécutent pas le JS → aucune balise `og:*` lue. Choix produit validé : cartes **dynamiques par page** (texte) + image de marque = capture Chrome de la demo.
