@@ -1702,10 +1702,10 @@ func NewRouter(
 					fileServer.ServeHTTP(w, req)
 					return
 				}
-				// Route client-side / dossier / fichier absent → index.html. no-cache
-				// pour que l'index ne masque pas un nouveau build après redéploiement.
-				w.Header().Set("Cache-Control", "no-cache")
-				http.ServeFile(w, req, indexPath)
+				// Route client-side / dossier / fichier absent → index.html, avec
+				// injection des balises Open Graph (apercus de liens sociaux).
+				// no-cache géré dans serveIndexWithOG.
+				reg.serveIndexWithOG(w, req, indexPath)
 			})
 			slog.InfoContext(serverCtx, "SPA: front React servi depuis le dist", "dir", dist)
 		} else {
