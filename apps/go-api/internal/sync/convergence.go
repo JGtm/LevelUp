@@ -46,6 +46,41 @@ func selectMatchesMissingEvents(ctx context.Context, playerDB, sharedDB *sql.DB,
 	return ids
 }
 
+// filterEventsStillMissing re-vérifie, SOUS le burst writer (sérialisé par
+// dblease), que chaque match du chunk a toujours besoin d'une convergence events
+// (events_loaded=false et events_empty=false). Ferme la fenêtre TOCTOU ouverte
+// par l'étape 1 contention : les post-syncs de joueurs tournent désormais en
+// parallèle SANS être sérialisés par un lease global — la work-list du joueur B
+// (sélectionnée en RO) peut contenir un match partagé que le joueur A vient de
+// converger. Sans ce re-check, B re-fetcherait le film ET dupliquerait les
+// highlight_events (INSERT OR IGNORE = no-op de dédup en prod, PK auto-seq).
+// Weapons n'a pas besoin de l'équivalent : DELETE-then-INSERT auto-réparant.
+func filterEventsStillMissing(ctx context.Context, sharedDB *sql.DB, ids []string) []string {
+	if len(ids) == 0 || sharedDB == nil {
+		return ids
+	}
+	cond := "COALESCE(events_loaded, FALSE) = FALSE"
+	if hasEventsEmptyColumn(ctx, sharedDB) {
+		cond += " AND COALESCE(events_empty, FALSE) = FALSE"
+	}
+	out := make([]string, 0, len(ids))
+	for _, mid := range ids {
+		var still bool
+		err := sharedDB.QueryRowContext(ctx,
+			"SELECT "+cond+" FROM match_registry WHERE match_id = ?", mid).Scan(&still)
+		if err != nil {
+			// Best-effort : match absent du registry ou probe indisponible →
+			// laisser passer (ProcessHighlightEvents gère les cas terminaux).
+			out = append(out, mid)
+			continue
+		}
+		if still {
+			out = append(out, mid)
+		}
+	}
+	return out
+}
+
 // selectMatchesMissingWeapons : idem pour weapon_kills (bits MBitWeaponKills /
 // MBitWeaponKillsNoFilm non posés). À appeler APRÈS convergeEvents.
 func selectMatchesMissingWeapons(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) []string {
