@@ -1,3 +1,19 @@
+## [2026-07-02] Sujet 2 throttling Xbox : budget par compte unifié + AIMD — COMPLÉTÉ + VALIDÉ LIVE ; garde anti-TOCTOU multi-joueurs
+
+**Tâche** : (a) question user « la logique multi-joueurs matchs partagés est-elle préservée ? » → audit ; (b) sujet 2 throttling (T1 unification, T2 AIMD).
+
+**(a) Audit multi-joueurs → 1 vrai fix** : dédup cross-joueurs V2 (discovery/dedup/fetch_shared) VÉRIFIÉE intacte (aucun commit étape 1 ne touche ces fichiers) ; stats perso toujours per-joueur (player DB) ; `ensurePlayerEnrichmentRows` (cas escouade) conservé. MAIS l'ancien lease writer sérialisait DE FACTO les post-syncs — en les dé-sérialisant, l'étape 1 ouvrait une fenêtre TOCTOU : la work-list events du joueur B pouvait contenir un match partagé déjà convergé par A → re-fetch film + DOUBLONS highlight_events (INSERT OR IGNORE = no-op en prod). **Fix committé** : `filterEventsStillMissing` — re-check des flags autoritaires (events_loaded/events_empty) SOUS le burst (sérialisé dblease), appliqué aux 2 chemins (chunk pipeline + persist backfill). Weapons auto-réparant (DELETE-then-INSERT), PSA/intensity per-joueur/idempotents — pas concernés.
+
+**(b) Sujet 2 — discovery (1 agent, carte exhaustive)** : 3 familles de limiteurs INDÉPENDANTS par compte — pool (par-slot PerTokenRPS=5), career_live (local par-requête), worldenrich (local par-source) ; watcher/crons/h5 passent déjà par le pool. Le pool ne voyait jamais la vraie pression → 429 « surprises ».
+- **T1 unification** : package feuille `internal/platform/ratebudget` — registre process-wide de rate.Limiter PAR XUID (`ForXUID`, rps de création conservé ensuite). Câblé aux 3 : pool (NewPool + AddOrUpdateSource), career_live (via ctxkeys.HaloXUID, fallback local sans xuid), worldenrich (xuid de la closure resolve). Tous les consommateurs d'un compte attendent sur le MÊME token bucket.
+- **T2 AIMD** : `On429ForToken` → `HalveRPS(xuid)` (÷2, plancher 1 RPS) appliqué instantanément à tous les consommateurs ; restauration additive au tick refresher (+0,1 RPS/10s, comptes sains hors cooldown, plafonnée au nominal). Auto-calibrage sur la vraie limite Xbox.
+- **T3 (façonnage demande) : NON JUSTIFIÉ par les données** — cycle 11s, 429 gérés per-token+AIMD, 0 contention → pas de code superflu.
+
+**Résultats — tests** : ratebudget unit (partage par construction, halve/restore/plancher/plafond) ; pool AIMD + suite pool **avec -race** ; service/worldenrich/sync verts ; build complet OK.
+**Résultats — LIVE (cycle forcé 8 joueurs, même env throttle)** : AIMD a fire en réel (1× 429 → `rps_after_halve=2.5`), **0 cooldown global**, synced 3/failed 1 (vs 2/2 baseline), durée 11,2s ; contention : **rw_window_max=0ms, watchdog=0, holders=aucun** (le writer n'a JAMAIS été acquis du cycle — propriété stationnaire confirmée une 2e fois).
+
+**Conclusion / reste** : chantier contention + throttling TERMINÉS côté code. Restent uniquement : (1) retirer les 2 échappatoires (`LEVELUP_POSTSYNC_BURST`, `LEVELUP_SYNC_PIPELINE=v1`) après quelques jours d'usage réel ; (2) levier opérationnel si besoin : comptes auth_only supplémentaires (le budget unifié les rend pleinement efficaces) ; (3) le résidu 429 (1 joueur failed) = quota Microsoft par compte, condition d'environnement que l'AIMD absorbe désormais en douceur.
+
 ## [2026-07-02] Étape 1 contention : post-sync en bursts paresseux — COMPLÉTÉ + GATE VALIDÉ LIVE
 
 **Tâche** : éradiquer le détenteur unique de la fenêtre RW mesuré à l'étape 0 (`sync_v2_postsync` : 13 017 ms avg/joueur, 99% du cycle, même à 0 nouveau match). Plan `.ai/PLAN_POSTSYNC_BURST_LEASE.md`, 5 incréments committables, consigne user : zéro régression.
@@ -31832,3 +31848,33 @@ consignés dans `.ai/AUDIT_DETTE_DOC_2026-07.md`. Quick wins (<1 j cumulé) : co
 de kill-switch inversées, les 2 pointeurs 0014->0016, réécrire CLAUDE.md. Chantiers à dater :
 retrait V1 sync (ADR 0027), Phase 5 ADR 0023 (implémenter legacy_source_used d'abord), décision
 Prestige avant 2026-09-30.
+
+## [2026-07-02] Plan de traitement exhaustif des 4 audits du 2026-07-02
+
+**Statut** : Complété (plan rédigé — exécution non démarrée)
+
+**Décision technique principale** : consolidation des 4 audits du jour (ARCHI, DETTE_DOC,
+QUALITE_SECURITE, CODE_REVIEW) en un plan d'exécution unique
+`.ai/V7/PLAN_TRAITEMENT_AUDITS_2026-07.md`, structuré en 17 lots ordonnés (S, A, B, C, D1,
+E, G, F, H, I, J, K, L, M, N, D2 différé) avec un contrat d'exécution strict conçu pour un
+exécutant (Opus) sujet au traitement partiel/non séquentiel : ordre des lots bloquant,
+statuts obligatoires par item ([x]/[~]/[!] justifié), gates en commandes exactes par lot,
+tracker et journal dans le fichier plan lui-même, matrice de couverture audits->lots,
+interdiction des fixes opportunistes hors lot (section Découvertes dédiée).
+
+**Résultats observés** :
+- Priorisation : sécurité bloquante d'abord (2 endpoints mutants sans auth, branche dédiée
+  déployable), puis bugs utilisateur actifs, correctness _latest, docs d'orientation,
+  flags/guards, ART résiduel, purge code mort AVANT les migrations de masse, title-agnosticism,
+  duplication, i18n, perf, structure (le plus gros), gouvernance/ratchets, tests, bonus front.
+- 8 décisions produit actées par défaut avec droit de veto utilisateur avant le lot concerné
+  (session-compare supprimé, retrait fallback V1, suppression PERSIST_BATCH, Prestige acté ON,
+  docs/FR EN-only pour ADRs/runbooks, drop colonnes mortes, suppression charts session-detail,
+  livesync H5 routé via persist).
+- D2 (ADR 0023 Phase 5) volontairement différé >=7 j après mise en prod du log
+  legacy_source_used (D1a) — la suppression aveugle sans télémétrie est interdite par le plan.
+- Effort total estimé ~22-28 j-h.
+
+**Conclusion / prochaine étape** : faire valider les 8 décisions par défaut (§2 du plan) et le
+séquencement par l'utilisateur, puis lancer le LOT S sur `fix/security-unauth-endpoints` une
+fois le chantier burst-lease en cours commité/landé (pré-requis P1).
