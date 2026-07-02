@@ -1,3 +1,26 @@
+## [2026-07-02] B2 : service-record par-playlist NON VIABLE (prouvé live) → pivot hardening par-match EXÉCUTÉ — worktree
+
+**Finding décisif (sonde live JGtm)** : format saison service-record = chemin CMS
+`Csr/Seasons/CsrSeason13-2.json` (367 matchs, CoreStats OK). MAIS `playlistAssetId` NON
+supporté : AUCUNE des 16 playlists ne renvoie de données malgré 367 matchs saison → le
+service-record ne donne que l'agrégat par SAISON, pas par playlist. Impossible de peupler
+`world_player_season_stats` (saison×playlist) via cet endpoint → hypothèse B2 originale
+(1 SR/(joueur,playlist)) INVALIDÉE.
+
+**Pivot exécuté** : la seule source par-playlist reste l'agrégation par-match ; on la
+DURCIT. `collectPlayerMatches` : (a) un match illisible (403/404/timeout après retries) est
+IGNORÉ (continue) au lieu d'annuler tout le joueur — LE fix des trous ; (b) erreur historique
+après collecte partielle → conserver le partiel (avant : return nil,err jetait tout) ; échec
+dès la 1re page → erreur remontée (signal préservé) ; (c) dichotomie en échec → scan linéaire.
+Compteur expvar `world_enrich.match_skipped`. Test `TestAggregate_SkipsUnreadableMatch`.
+
+**Code mort supprimé (règle 7)** : endpoint `GetSeasonPlaylistServiceRecord`,
+`domain.WorldServiceRecord`, `cmd/probe-service-record` (artefacts de la sonde) retirés — le
+finding est préservé ici + dans git (commit 3c2fe84b7).
+
+**Incident token JGtm résolu** : la 1re sonde omettait la persistance du RT roté ; vérifié
+ensuite que JGtm auth reste OK (RT survécu) ; persistance corrigée avant suppression. RAS.
+
 ## [2026-07-02] B2 étape 1 (endpoint service-record) + sonde live : finding format saison + INCIDENT token — worktree
 
 **Livré** : `domain.WorldServiceRecord` + `HaloAPIClient.GetSeasonPlaylistServiceRecord`
