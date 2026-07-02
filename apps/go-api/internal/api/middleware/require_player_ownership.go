@@ -34,7 +34,8 @@ type FamilyXUIDResolver func(ctx context.Context) map[string]bool
 // désactivé (mode demo / auth non activée).
 //
 //   - session absente (contexte non-HTTP, jamais le cas derrière RequireAuth) → laisse passer ;
-//   - slug inconnu → laisse passer (le handler répondra 404 player_not_found) ;
+//   - slug inconnu (session présente, enforcement actif) → 403 player_forbidden
+//     (fail-closed, audit A1-m1 : pas d'énumération de slugs) ;
 //   - profil possédé OU membre de la même famille → laisse passer ;
 //   - sinon → 403 player_forbidden.
 //
@@ -55,7 +56,12 @@ func RequirePlayerOwnership(demoMode bool, authMode string, resolveXUID PlayerXU
 			slug := chi.URLParam(r, "player_slug")
 			profileXUID, found := resolveXUID(r.Context(), slug)
 			if !found {
-				next.ServeHTTP(w, r)
+				// Lot S (audit A1-m1) : fail-closed. Enforcement actif + session
+				// présente + slug inconnu → 403 (et non pass-through vers un 404).
+				// Défense en profondeur multi-titre + évite l'énumération de slugs.
+				slog.WarnContext(r.Context(), "authz: slug joueur inconnu refusé",
+					"slug", slug, "path", r.URL.Path, "ip", r.RemoteAddr)
+				writePlayerForbidden(w)
 				return
 			}
 			var familyXUIDs map[string]bool

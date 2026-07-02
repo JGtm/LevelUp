@@ -343,7 +343,11 @@ func (s *BootstrapService) fetchPrivacyNonBlocking(ctx context.Context, xuid str
 }
 
 // BuildPlayersList construit la liste des joueurs pour GET /api/v1/players.
-func (s *BootstrapService) BuildPlayersList(ctx context.Context) (*domain.PlayersListResponse, error) {
+// Lot S (audit M2) : la liste est restreinte aux profils possédés par
+// l'utilisateur courant (les siens + ses co-membres de groupe), comme
+// available_players dans Build. En demo/single-user, filterOwnedPlayers no-ope
+// (liste complète) — l'invariant d'onboarding est préservé.
+func (s *BootstrapService) BuildPlayersList(ctx context.Context, sess *domain.SessionData) (*domain.PlayersListResponse, error) {
 	titleSlug := ctxkeys.TitleSlug(ctx)
 	players, err := s.cfg.LoadPlayers(titleSlug)
 	if err != nil {
@@ -352,6 +356,10 @@ func (s *BootstrapService) BuildPlayersList(ctx context.Context) (*domain.Player
 	// Exclure les profils auth-only : cette liste alimente les mêmes surfaces
 	// front-facing que available_players (favoris gamertag, sélecteur joueur).
 	players = excludeAuthOnly(players)
+	// Couche A (ADR 0029) : restreindre aux profils accessibles par l'utilisateur.
+	// defaultSlug est calculé APRÈS filtrage → ne pointe jamais sur un profil non possédé.
+	familyXUIDs := s.resolveCoMembers(sess)
+	players = s.filterOwnedPlayers(sess, players, familyXUIDs)
 	var defaultSlug *string
 	if len(players) > 0 {
 		slug := players[0].PlayerSlug

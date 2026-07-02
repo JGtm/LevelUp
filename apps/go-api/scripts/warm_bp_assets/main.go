@@ -173,7 +173,8 @@ func main() {
 		}
 	}
 	haloTokens := result.Tokens
-	slog.Info("auth: spartan token OK", "prefix", safePrefix(haloTokens.SpartanToken, 10))
+	// Audit S9 : ne jamais logger de fragment de token (même tronqué). Signal binaire seul.
+	slog.Info("auth: spartan token OK")
 
 	// 4. Asset resolver (FS + DuckDB index + GameCMS).
 	tokenFn := assets.TokenProvider(func(_ context.Context) (*domain.HaloTokens, error) {
@@ -882,11 +883,4 @@ func nullStr(s string) any {
 		return nil
 	}
 	return s
-}
-
-func safePrefix(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n] + "..."
 }
