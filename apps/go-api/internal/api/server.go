@@ -347,7 +347,7 @@ func NewRouter(
 		multiTitleSlugs = []string{titlePkg.DefaultSlug}
 	}
 	for _, err := range fieldMappingsRegistry.LoadFromConfigDir(cfg.RepoRoot, multiTitleSlugs, slog.Default()) {
-		slog.Warn("field_mappings_load_warning", "err", err.Error())
+		slog.Warn("field_mappings_load_warning", "err", err)
 	}
 
 	// PMT-1 / MT-01 : câble le resolver d'hosts d'ingestion title-aware partagé.
@@ -375,14 +375,14 @@ func NewRouter(
 			}
 			for _, e := range errs {
 				if m, ok := e.(mappings.MissingRequiredTOML); ok {
-					slog.Error("required_toml_missing",
+					slog.ErrorContext(serverCtx, "required_toml_missing",
 						"title", td.Slug, "path", m.Path, "required_by", m.RequiredBy)
 				} else {
-					slog.Error("required_toml_missing", "title", td.Slug, "err", e.Error())
+					slog.ErrorContext(serverCtx, "required_toml_missing", "title", td.Slug, "err", e)
 				}
 			}
 			if td.IsActive() {
-				slog.Error("boot_validation_failed", "title", td.Slug, "errors_count", len(errs))
+				slog.ErrorContext(serverCtx, "boot_validation_failed", "title", td.Slug, "errors_count", len(errs))
 				os.Exit(1)
 			}
 		}
@@ -414,19 +414,19 @@ func NewRouter(
 				hiRanks = catalog
 				slog.Info("rank_catalog_loaded", "title_slug", titlePkg.DefaultSlug, "ranks", catalog.Len())
 			} else {
-				slog.Warn("rank_catalog_load_failed", "err", err.Error())
+				slog.Warn("rank_catalog_load_failed", "err", err)
 			}
 			if imgs, err := platform_duckdb.LoadCareerRankImageURLs(context.Background(), metaDB, titlePkg.DefaultSlug); err == nil {
 				rankImageURLsByTitle[titlePkg.DefaultSlug] = imgs
 				slog.Info("rank_image_urls_loaded", "title_slug", titlePkg.DefaultSlug, "images", len(imgs))
 			} else {
-				slog.Warn("rank_image_urls_load_failed", "err", err.Error())
+				slog.Warn("rank_image_urls_load_failed", "err", err)
 			}
 			if closeErr := metaDB.Close(); closeErr != nil {
-				slog.Warn("rank_catalog_meta_db_close_failed", "err", closeErr.Error())
+				slog.Warn("rank_catalog_meta_db_close_failed", "err", closeErr)
 			}
 		} else {
-			slog.Warn("rank_catalog_meta_db_open_failed", "err", err.Error())
+			slog.Warn("rank_catalog_meta_db_open_failed", "err", err)
 		}
 		hiAssets, _ := fieldMappingsRegistry.GetAssets(titlePkg.DefaultSlug)
 		hiOutcomes, _ := fieldMappingsRegistry.GetOutcomes(titlePkg.DefaultSlug)
@@ -442,7 +442,7 @@ func NewRouter(
 				"ranks_count", hiRanks.Len(),
 			)
 		} else {
-			slog.Error("adapter_load_failed",
+			slog.ErrorContext(serverCtx, "adapter_load_failed",
 				"title_slug", titlePkg.DefaultSlug,
 				"kind", "semantic",
 				"reason", "fields_mapping_set_nil",
@@ -489,7 +489,7 @@ func NewRouter(
 		if caps, err := games.CapabilityMapFromMappings(cset); err == nil {
 			hiCaps = caps
 		} else {
-			slog.Warn("capabilities_convert_failed", "title_slug", titlePkg.DefaultSlug, "err", err.Error())
+			slog.Warn("capabilities_convert_failed", "title_slug", titlePkg.DefaultSlug, "err", err)
 		}
 	}
 
@@ -588,7 +588,7 @@ func NewRouter(
 	// config au démarrage.
 	var prestigeBundle *PrestigeBundle
 	if pb, err := NewPrestigeBundle(cfg.RepoRoot, reg.resolve, cfg.PrestigeEnabled); err != nil {
-		slog.Warn("prestige_bundle_init_failed", "err", err.Error())
+		slog.Warn("prestige_bundle_init_failed", "err", err)
 	} else {
 		prestigeBundle = pb.WithSquadProfile(newSquadPerfProfileProvider(
 			func() ([]domain.PlayerSummary, error) { return cfg.LoadPlayers() },
@@ -678,7 +678,7 @@ func NewRouter(
 	}
 	assetResolver, err := assets.New(assetCfg)
 	if err != nil {
-		slog.Error("assets resolver non disponible — arrêt du serveur", "err", err)
+		slog.ErrorContext(serverCtx, "assets resolver non disponible — arrêt du serveur", "err", err)
 		os.Exit(1)
 	}
 	assetHandler := handlers.NewAssetHandler(assetResolver)
@@ -1591,7 +1591,7 @@ func NewRouter(
 			// Absence du fichier ou erreur de parse : log + fallback V1 silencieux.
 			awardsPath := filepath.Join(cfg.RepoRoot, "config", "titles", titlePkg.DefaultSlug, "mappings", "awards.toml")
 			if awardSet, err := mappings.LoadAwardsFromFile(awardsPath); err != nil {
-				slog.Warn("player_profile_awards_load_failed", "path", awardsPath, "err", err.Error())
+				slog.Warn("player_profile_awards_load_failed", "path", awardsPath, "err", err)
 			} else {
 				slog.Info("player_profile_awards_loaded",
 					"path", awardsPath, "awards_count", len(awardSet.All()))

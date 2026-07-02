@@ -64,7 +64,7 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 			slog.WarnContext(ctx, "teammates_gamertag_lookup_failed",
 				"player_xuid", playerXUID,
 				"gamertag", gamertag,
-				"err", err.Error(),
+				"err", err,
 			)
 			return nil, nil, nil, nil
 		}
@@ -85,7 +85,7 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 	if err != nil {
 		slog.ErrorContext(ctx, "teammates_load_squad_matches_failed",
 			"player_xuid", playerXUID, "teammate_xuid", teammateXUID,
-			"gamertag", gamertag, "err", err.Error())
+			"gamertag", gamertag, "err", err)
 		return nil, nil, nil, fmt.Errorf("buildTeammateRowWithMatches LoadSquadMatches: %w", err)
 	}
 

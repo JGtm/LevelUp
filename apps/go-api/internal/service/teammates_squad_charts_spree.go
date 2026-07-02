@@ -29,7 +29,7 @@ func (s *TeammatesService) loadCanonicalKillEventsByMatch(
 	rows, err := s.repo.LoadImpactEvents(ctx, matchIDs)
 	if err != nil {
 		slog.WarnContext(ctx, "teammates_perf_spree_events_load_failed",
-			"err", err.Error(), "n_matches", len(matchIDs))
+			"err", err, "n_matches", len(matchIDs))
 		return nil
 	}
 	out := make(map[string][]canonical.HighlightEvent, len(matchIDs))

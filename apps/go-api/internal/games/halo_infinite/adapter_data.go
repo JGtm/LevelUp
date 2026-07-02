@@ -546,8 +546,8 @@ func (a *DataAdapter) LoadPlayerIntersection(ctx context.Context, selfXUID, othe
 	}
 	kv, kvErr := a.cross.GetKillerVictimBetween(ctx, selfXUID, otherXUID)
 	if kvErr != nil {
-		a.logger.Warn("explorer_kv_between_failed",
-			"xuid1", selfXUID, "xuid2", otherXUID, "err", kvErr.Error())
+		a.logger.WarnContext(ctx, "explorer_kv_between_failed",
+			"xuid1", selfXUID, "xuid2", otherXUID, "err", kvErr)
 		kv = domain.KillerVictimAggregate{} // gracieux : badges non calculés
 	}
 
@@ -651,8 +651,8 @@ func (a *DataAdapter) LoadMatchEvents(ctx context.Context, matchID string, opts 
 	if err != nil {
 		// T0 indisponible ne doit pas casser la timeline : on dégrade en T0=0
 		// (events non corrigés du countdown) plutôt que d'échouer durement.
-		a.logger.Warn("match_timeline_unavailable",
-			"title_slug", a.TitleSlug(), "match_id", matchID, "err", err.Error())
+		a.logger.WarnContext(ctx, "match_timeline_unavailable",
+			"title_slug", a.TitleSlug(), "match_id", matchID, "err", err)
 		tl = domain.MatchTimeline{}
 	}
 

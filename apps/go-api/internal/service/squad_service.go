@@ -71,7 +71,7 @@ func (s *SquadService) GetSquadPage(
 		// Best-effort : l'impact est optionnel (ComputeImpactSummary dégrade en
 		// Available:false), mais on trace l'échec au lieu de l'avaler (était `_`).
 		slog.WarnContext(ctx, "squad_impact_events_load_failed",
-			"err", err.Error(), "teammate_xuid", teammateXUID)
+			"err", err, "teammate_xuid", teammateXUID)
 	}
 	// T0 (§4.A-bis) : cohérence avec le système Match Timeline — events ramenés
 	// au référentiel gameplay avant ComputeImpactSummary. Sans effet observable

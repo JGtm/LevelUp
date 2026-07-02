@@ -101,7 +101,7 @@ func (h *AdminCatalogDrainHandler) handleRun(ctx context.Context, in *catalogDra
 func (h *AdminCatalogDrainHandler) runDrain(ctx context.Context, jobID, titleSlug string) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			slog.Error("admin_actions: panic pendant le drain UGC", "job_id", jobID, "panic", rec)
+			slog.ErrorContext(ctx, "admin_actions: panic pendant le drain UGC", "job_id", jobID, "panic", rec)
 			h.jobs.Update(jobID, func(j *domain.AsyncJobStatus) {
 				j.Error = &domain.JobErrorDetail{Code: "panic", Message: "drain interrompu par une erreur interne", Retryable: true}
 			})

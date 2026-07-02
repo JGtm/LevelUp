@@ -43,7 +43,10 @@ type DataHealthCheckResult struct {
 	OrphanXUIDs          int
 	GarbageBannerURLs    int
 	WarningsTotal        int
-	Duration             time.Duration
+	// ProbeErrors (Lot B, audit #10) : nombre de sondes SQL qui ont échoué ce
+	// cycle. > 0 → le cycle n'a pas tout mesuré et NE DOIT PAS passer pour « sain ».
+	ProbeErrors int
+	Duration    time.Duration
 }
 
 // HealthScheduler orchestre l'audit santé DB périodique. N'émet pas de
@@ -158,15 +161,23 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	// orphan_xuids est TOUJOURS loggé (même cycle propre) : c'est le signal
 	// data-quality derrière les gamertags masqués "Joueur ####" (fix XUID
 	// 2026-05-30). Reste informatif — hors WarningsTotal par décision.
-	if res.WarningsTotal == 0 {
+	// Lot B (audit #10) : un cycle avec des sondes en échec (ProbeErrors > 0) est
+	// loggué en WARN — il n'a pas pu tout mesurer et ne doit pas passer pour « sain ».
+	logHealth := slog.InfoContext
+	if res.ProbeErrors > 0 {
+		logHealth = slog.WarnContext
+	}
+	if res.WarningsTotal == 0 && res.ProbeErrors == 0 {
 		slog.InfoContext(ctx, "data_health: cycle terminé",
 			"warnings_total", 0,
+			"probe_errors", 0,
 			"orphan_xuids", res.OrphanXUIDs,
 			"duration", res.Duration.Round(time.Millisecond),
 		)
 	} else {
-		slog.InfoContext(ctx, "data_health: cycle terminé",
+		logHealth(ctx, "data_health: cycle terminé",
 			"warnings_total", res.WarningsTotal,
+			"probe_errors", res.ProbeErrors,
 			"uuids_raw", res.UUIDsRawCount,
 			"lying_bits_events", res.LyingBitsEvents,
 			"lying_bits_weapons", res.LyingBitsWeaponKills,
@@ -211,41 +222,34 @@ func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResol
 
 	// 1. UUIDs bruts résiduels (map_name + pair_name)
 	const uuidPattern = `^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`
-	var mapUUIDs, pairUUIDs int
-	_ = db.QueryRow(ctx, `SELECT COUNT(*) FROM match_registry WHERE map_name ~ ?`, uuidPattern).Scan(&mapUUIDs)
-	_ = db.QueryRow(ctx, `SELECT COUNT(*) FROM match_registry WHERE pair_name ~ ?`, uuidPattern).Scan(&pairUUIDs)
-	res.UUIDsRawCount += mapUUIDs + pairUUIDs
+	res.UUIDsRawCount += scanCount(ctx, db, slug, "uuids_map_name", `SELECT COUNT(*) FROM match_registry WHERE map_name ~ ?`, &res.ProbeErrors, uuidPattern)
+	res.UUIDsRawCount += scanCount(ctx, db, slug, "uuids_pair_name", `SELECT COUNT(*) FROM match_registry WHERE pair_name ~ ?`, &res.ProbeErrors, uuidPattern)
 
 	// 2. Bits menteurs
 	const mbitEvents = 1 << 16
 	const mbitWeaponKills = 1 << 21
-	var lyingEvents, lyingWeapons int
-	_ = db.QueryRow(ctx, fmt.Sprintf(`
+	res.LyingBitsEvents += scanCount(ctx, db, slug, "lying_bits_events", fmt.Sprintf(`
 		SELECT COUNT(*) FROM match_registry r
 		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
 		  AND NOT EXISTS (SELECT 1 FROM highlight_events h WHERE h.match_id = r.match_id)
-	`, mbitEvents)).Scan(&lyingEvents)
-	_ = db.QueryRow(ctx, fmt.Sprintf(`
+	`, mbitEvents), &res.ProbeErrors)
+	res.LyingBitsWeaponKills += scanCount(ctx, db, slug, "lying_bits_weapons", fmt.Sprintf(`
 		SELECT COUNT(*) FROM match_registry r
 		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
 		  AND NOT EXISTS (SELECT 1 FROM weapon_kills w WHERE w.match_id = r.match_id)
-	`, mbitWeaponKills)).Scan(&lyingWeapons)
-	res.LyingBitsEvents += lyingEvents
-	res.LyingBitsWeaponKills += lyingWeapons
+	`, mbitWeaponKills), &res.ProbeErrors)
 
 	// 3. xuids orphelins (alias absent shared)
-	var orphans int
-	_ = db.QueryRow(ctx, `
+	res.OrphanXUIDs += scanCount(ctx, db, slug, "orphan_xuids", `
 		SELECT COUNT(DISTINCT mp.xuid)
 		FROM match_participants mp
 		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
 		WHERE mp.xuid NOT LIKE 'bid(%'
 		  AND (xa.xuid IS NULL OR xa.gamertag IS NULL OR xa.gamertag = '')
-	`).Scan(&orphans)
-	res.OrphanXUIDs += orphans
+	`, &res.ProbeErrors)
 
 	// 4. Banner garbage URLs (toutes les player DBs du titre)
-	res.GarbageBannerURLs += s.auditPlayerBanners(ctx, pr, slug)
+	res.GarbageBannerURLs += s.auditPlayerBanners(ctx, pr, slug, &res.ProbeErrors)
 
 	return true
 }
@@ -253,7 +257,7 @@ func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResol
 // auditPlayerBanners parcourt les player DBs d'un titre et compte les URLs de
 // bannière/emblème/backdrop « garbage » (chemins /Waypoint/file/images/ résiduels).
 // Une player DB absente ou inouvrable est ignorée silencieusement (best-effort).
-func (s *HealthScheduler) auditPlayerBanners(ctx context.Context, pr *titlePkg.PathResolver, slug string) int {
+func (s *HealthScheduler) auditPlayerBanners(ctx context.Context, pr *titlePkg.PathResolver, slug string, probeErrors *int) int {
 	playersDir := filepath.Join(pr.TitleDataDir(slug), "players")
 	entries, err := os.ReadDir(playersDir)
 	if err != nil {
@@ -272,17 +276,27 @@ func (s *HealthScheduler) auditPlayerBanners(ctx context.Context, pr *titlePkg.P
 		if err != nil {
 			continue
 		}
-		var n int
-		_ = pdb.QueryRow(ctx, `
+		total += scanCount(ctx, pdb, slug, "garbage_banner_urls", `
 			SELECT COUNT(*) FROM career_progression
 			WHERE banner_image_url LIKE '%/Waypoint/file/images/%'
 			   OR emblem_image_url LIKE '%/Waypoint/file/images/%'
 			   OR backdrop_image_url LIKE '%/Waypoint/file/images/%'
-		`).Scan(&n)
-		total += n
+		`, probeErrors)
 		_ = pdb.Close() //nolint:errcheck // ref-count : best-effort
 	}
 	return total
+}
+
+// scanCount exécute une sonde COUNT(*) data-health. Sur erreur, la LOGGUE (Warn)
+// et incrémente *probeErrors (Lot B, audit #10 : plus de sonde avalée en silence
+// → un cycle qui n'a rien pu mesurer ne passe plus pour « sain »). Retourne 0.
+func scanCount(ctx context.Context, db *duckdb.DB, slug, label, query string, probeErrors *int, args ...any) int {
+	var n int
+	if err := db.QueryRow(ctx, query, args...).Scan(&n); err != nil {
+		slog.WarnContext(ctx, "data_health: sonde échouée", "probe", label, "titleSlug", slug, "err", err)
+		*probeErrors++
+	}
+	return n
 }
 
 // storeLastResult mémorise le dernier audit complet (thread-safe).

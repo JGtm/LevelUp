@@ -176,40 +176,40 @@ Objectif : plus aucune lecture brute de `match_skill_rank` sur un chemin de lect
 aucun avalement silencieux à impact durable.
 
 Famille _latest (piège ADR 0026) :
-- [ ] B1 — ARCHI 39 : `queries_home_citations.go:100` (Q26) → join `match_skill_rank_latest`.
-- [ ] B2 — ARCHI 40 : `queries_career.go:172` (Q5) → `_latest` ; retirer le bricolage
+- [x] B1 — ARCHI 39 : `queries_home_citations.go:100` (Q26) → join `match_skill_rank_latest`.
+- [x] B2 — ARCHI 40 : `queries_career.go:172` (Q5) → `_latest` ; retirer le bricolage
   winProb de `mergeHistorySkillRanks` devenu inutile.
-- [ ] B3 — ARCHI 41 : `compare_repo.go:129` et `:170` (ATH LUSR) → `_latest`.
-- [ ] B4 — ARCHI 42 : `leaderboard_repo.go:65` → `_latest`.
-- [ ] B5 — ARCHI 43 : `patterns_repo.go:245` (`loadSkillRanks`) → `_latest`.
-- [ ] B6 — ARCHI 2 (partie lecture) : `post_sync_deltas_snapshot.go:142-153` → `_latest`
+- [x] B3 — ARCHI 41 : `compare_repo.go:129` et `:170` (ATH LUSR) → `_latest`.
+- [x] B4 — ARCHI 42 : `leaderboard_repo.go:65` → `_latest`.
+- [x] B5 — ARCHI 43 : `patterns_repo.go:245` (`loadSkillRanks`) → `_latest`.
+- [x] B6 — ARCHI 2 (partie lecture) : `post_sync_deltas_snapshot.go:142-153` → `_latest`
   + tiebreak déterministe à `start_time` égal dans le détecteur de transition (l.151).
   (L'extraction en `PlayerSnapshotRepo` part en K1a — ne pas la faire ici.)
-- [ ] B7 — ARCHI mineurs « ré-implémentations du latest » (5 sites) :
+- [x] B7 — ARCHI mineurs « ré-implémentations du latest » (5 sites) :
   `queries_home_citations.go:448` (Q26g), `player_matches_loaders.go:190` (match_csrs),
   `queries_squad.go:10` (MAX expected_win_prob), `halo5_career_source.go:34`,
   `csr_coverage_repo.go:63`.
-- [ ] B8 — Garde-rail : test grep interdisant `FROM match_skill_rank` (et `match_csrs`,
+- [x] B8 — Garde-rail : test grep interdisant `FROM match_skill_rank` (et `match_csrs`,
   `player_csr_snapshots`, `pve_match_stats`) hors vues `_latest`, writers persist et
   allowlist explicite datée (modèle `no_art_patterns_test.go`).
-- [ ] B9 — ARCHI 45 : fan-out notifications `registry_notifications.go:162` →
+- [x] B9 — ARCHI 45 : fan-out notifications `registry_notifications.go:162` →
   `OpenReadForQuery` (incident 2026-06-01 documenté dans db.go).
 
 Robustesse (QUALITE Axe 3) :
-- [ ] B10 — QUALITE #3 : `worldenrich/wiring.go:64` — ne plus avaler l'échec de persistance
+- [x] B10 — QUALITE #3 : `worldenrich/wiring.go:64` — ne plus avaler l'échec de persistance
   du RT roté : `slog.ErrorContext` + compteur expvar + retry simple. (Classe d'incident
   ADR 0023 « auth morte définitivement ».)
-- [ ] B11 — QUALITE #6 : `sync/engagement.go:470-483` — erreur de requête historique →
+- [x] B11 — QUALITE #6 : `sync/engagement.go:470-483` — erreur de requête historique →
   logger + échouer le calcul du match (pas de score faux persisté) ; vérifier `rows.Err()`.
-- [ ] B12 — QUALITE #8 : `api/server.go:99-103` — `familyXUIDResolver` : logger le fichier
+- [x] B12 — QUALITE #8 : `api/server.go:99-103` — `familyXUIDResolver` : logger le fichier
   groups corrompu au lieu de retourner nil muet.
-- [ ] B13 — QUALITE #10 : `scheduler/data_health_check.go:215-283` — les sondes en erreur
+- [x] B13 — QUALITE #10 : `scheduler/data_health_check.go:215-283` — les sondes en erreur
   remontent en « unhealthy » (ou au minimum loggées + compteur), plus de `continue` muet.
-- [ ] B14 — QUALITE : `sync/skill_chain_provider.go:61` — valider les classifiers de titre
+- [x] B14 — QUALITE : `sync/skill_chain_provider.go:61` — valider les classifiers de titre
   au boot (fail-fast) au lieu du panic au 1er match.
-- [ ] B15 — QUALITE : mapper HTTP central pour `ErrCapabilityNotSupported` (middleware/helper
+- [x] B15 — QUALITE : mapper HTTP central pour `ErrCapabilityNotSupported` (middleware/helper
   Huma → 503/204) ; brancher les handlers existants dessus.
-- [ ] B16 — QUALITE dette logging (mineurs, mécanique) : ~42 `slog.Error` → `ErrorContext` ;
+- [x] B16 — QUALITE dette logging (mineurs, mécanique) : ~42 `slog.Error` → `ErrorContext` ;
   15 sites `"err", err.Error()` → error brute ; params HTTP invalides défaultés → log warn
   (`notifications.go:320`, `catalog.go:107,140`) ; best-effort journalisés
   (`sync/career.go:137`, `sync/backfill_weapons.go:57,149`, `sync/engagement.go:169`,
@@ -836,6 +836,28 @@ Format par entrée :
   SessionPlacementBreakdown skippé (label = '#'+entier, sûr).
 ```
 
+```
+[2026-07-02] LOT B — CLOS (branche refactor/audits-2026-07 ; 2 commits)
+- Items [x] : 16 (B1-B16) / [~] : 0 / [!] : 0. (B7-squad : MAX winProb IS NOT NULL laissé tel
+  quel — stale-safe, documenté + allowlisté ; pas un site ADR-0026.)
+- Gate B : go build ./... OK ; go test ./... OK (suite complète) ; garde-rail B8 vert
+  (no_raw_rating_reads_test) ; garde-rail B15 vert (no_capability_error_dup_test) ;
+  golangci --new-from-rev = 0 issue ; seed patterns_repo_db_test adapté (vue _latest).
+- B1-B9 (famille _latest) : lectures rating (match_skill_rank/match_csrs/player_csr_snapshots)
+  → vues _latest ; Q26g gardé RAW (filtre H5 CSR=0 non réplicable par la vue) + tie-break
+  written_at déterministe ; B2 retire le workaround winProb mort ; B6 snapshot + tiebreak ;
+  B9 fan-out OpenReadForQuery.
+- B10-B15 (robustesse) : RT roté log+retry (B10) ; engagement skip si history en erreur, pas de
+  score faux (B11) ; family resolver log (B12) ; data_health sondes → ProbeErrors + cycle WARN
+  (B13) ; ValidateLUSRChainClassifierWired fail-fast boot (B14) ; MapCapabilityError central +
+  2 sites migrés + garde-rail (B15).
+- B16 (dette logging) : sweep 3 agents — slog.Error→ErrorContext (où ctx dispo), err.Error()→err,
+  best-effort journalisés (career.go SetSyncMeta, backfill_weapons MarkWeaponKillsDone, catalog.go
+  only_played invalide). Sites sans ctx laissés (documentés).
+- 2 commits : 0077142bb (partie 1 : B1-B12/B14 + garde-rail B8) + le commit de clôture (B13/B15/B16).
+- RÉCONCILIER plan/journal S+A+B au merge (S sur sa branche ; A+B sur refactor/audits-2026-07).
+```
+
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
 
 - [LOT A / A2] Dette de type front pré-existante : `CareerTopMatchesResponse` hand-written
@@ -849,3 +871,8 @@ Format par entrée :
 - [LOT A / A5] MatchWeaponCharts.tsx : string-template ECharts `{b}` converti en formatter
   fonction avec escapeHtml — vérifier visuellement que l'affichage (nom d'arme + valeur +
   pourcentage) est préservé lors d'une revue UI.
+- [LOT B / B7] Lectures rating brutes VOLONTAIRES à sémantique nuancée (allowlistées dans
+  `no_raw_rating_reads_test`) : `queries_career_encounters.go` Q24 (LUSR enemy strength) et
+  `queries_home_citations.go` Q26f (effective_type CSR/LUSR) — une migration `_latest`
+  (priorité CSR>LUSR) changerait la valeur LUSR sur les matchs ranked. À trancher (décision
+  produit LUSR vs CSR) avant toute migration.

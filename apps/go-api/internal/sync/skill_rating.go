@@ -74,7 +74,7 @@ func batchComputeLUSR(ctx context.Context, playerDB, sharedDB *sql.DB, xuid stri
 			filtered = append(filtered, m)
 		}
 		matches = filtered
-		slog.Debug("batchComputeLUSR: matchs exclus filtrés",
+		slog.DebugContext(ctx, "batchComputeLUSR: matchs exclus filtrés",
 			"xuid", xuid, "filtered", before-len(matches), "remaining", len(matches))
 		if len(matches) == 0 {
 			return 0, nil

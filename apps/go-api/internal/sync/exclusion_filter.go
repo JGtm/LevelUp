@@ -30,7 +30,7 @@ func loadExcludedMatchIDs(ctx context.Context, playerDB *sql.DB) (map[string]boo
 		`SELECT match_id FROM player_match_enrichment_latest WHERE COALESCE(is_excluded, FALSE) = TRUE`)
 	if err != nil {
 		if isSchemaMissingErr(err) {
-			slog.Debug("loadExcludedMatchIDs: schéma absent — aucun match exclu pris en compte",
+			slog.DebugContext(ctx, "loadExcludedMatchIDs: schéma absent — aucun match exclu pris en compte",
 				"err", err)
 			return result, nil
 		}

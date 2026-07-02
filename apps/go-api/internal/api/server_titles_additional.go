@@ -107,7 +107,7 @@ func registerHalo5Adapters(
 		if c, err := games.CapabilityMapFromMappings(cset); err == nil {
 			caps = c
 		} else {
-			slog.Warn("capabilities_convert_failed", "title_slug", td.Slug, "err", err.Error())
+			slog.Warn("capabilities_convert_failed", "title_slug", td.Slug, "err", err)
 		}
 	}
 
@@ -124,7 +124,7 @@ func registerHalo5Adapters(
 	hoppersPath := filepath.Join(reg.cfg.RepoRoot, "config", "titles", td.Slug, "catalog", "ranked_hoppers.toml")
 	if c, err := classification.LoadSetClassifier(hoppersPath); err != nil {
 		slog.Warn("h5_ranked_classifier_load_failed",
-			"title_slug", td.Slug, "path", hoppersPath, "err", err.Error())
+			"title_slug", td.Slug, "path", hoppersPath, "err", err)
 	} else {
 		rankedClassifier = c
 	}
@@ -164,7 +164,7 @@ func registerHalo5Adapters(
 	// le chemin prod absent → commendations brutes.
 	metaPath := config.MetadataDBPath(reg.cfg, td.Slug)
 	if metaDB, err := platform_duckdb.OpenReadWriteShared(metaPath); err != nil {
-		slog.Warn("h5_commendation_defs_open_failed", "title_slug", td.Slug, "err", err.Error())
+		slog.Warn("h5_commendation_defs_open_failed", "title_slug", td.Slug, "err", err)
 	} else {
 		reg.TrackMetadataHandle(metaDB)
 		commDefs = platform_duckdb.NewHalo5CommendationDefSource(metaDB.SQLDb())

@@ -74,7 +74,7 @@ func (s *TeammatesService) buildSquadWeaponKills(
 	})
 	if err != nil {
 		slog.WarnContext(ctx, "teammates_weapon_kills_load_failed",
-			"err", err.Error(),
+			"err", err,
 			"matches", len(sharedMatches),
 			"xuids", len(xuids))
 		return nil
@@ -204,7 +204,7 @@ func (s *TeammatesService) buildSquadKillMechanics(
 		XUIDs:    xuids,
 	})
 	if err != nil {
-		slog.DebugContext(ctx, "teammates_kill_mechanics_skipped", "err", err.Error())
+		slog.DebugContext(ctx, "teammates_kill_mechanics_skipped", "err", err)
 		return nil
 	}
 	if len(rows) == 0 {
@@ -360,7 +360,7 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 		}
 		rows, err := s.squadLoader.LoadFor(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
 		if err != nil {
-			slog.WarnContext(ctx, "teammates_perf_series_load_failed", "gamertag", gt, "err", err.Error())
+			slog.WarnContext(ctx, "teammates_perf_series_load_failed", "gamertag", gt, "err", err)
 			return nil
 		}
 		series := make([]domain.SquadPerformanceSeriesPoint, 0, len(sharedMatches))

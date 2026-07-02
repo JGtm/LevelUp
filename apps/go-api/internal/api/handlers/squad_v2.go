@@ -19,7 +19,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -32,7 +31,6 @@ import (
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
@@ -124,10 +122,8 @@ func (h *SquadV2Handler) GetSquadPage(ctx context.Context, in *squadV2PageInput)
 
 	resp, err := svc.GetSquadPage(ctx, titleSlug, gamertag, teammates, period, experienceTypes, playlists, maps, modes)
 	if err != nil {
-		if errors.Is(err, games.ErrCapabilityNotSupported) {
-			slog.WarnContext(ctx, "squad_v2: capability match.history absente",
-				"player", gamertag, "title_slug", titleSlug, "err", err)
-			return nil, humacore.NewError(http.StatusServiceUnavailable, "capability_not_supported", err.Error())
+		if mapped, ok := MapCapabilityError(ctx, err, "squad.page"); ok {
+			return nil, mapped
 		}
 		slog.ErrorContext(ctx, "squad_v2: erreur service",
 			"player", gamertag, "title_slug", titleSlug, "err", err)

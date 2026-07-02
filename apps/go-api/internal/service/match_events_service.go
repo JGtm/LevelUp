@@ -83,7 +83,7 @@ func (s *MatchEventsService) enrichGamertags(ctx context.Context, tl *canonical.
 	gamertags, err := s.resolver.ResolveGamertags(ctx, xuids)
 	if err != nil {
 		s.logger.WarnContext(ctx, "match_events_gamertag_resolve_failed",
-			"match_id", tl.MatchID, "xuids", len(xuids), "err", err.Error())
+			"match_id", tl.MatchID, "xuids", len(xuids), "err", err)
 		return
 	}
 	forEachMatchEventIdentity(tl, func(id *canonical.PlayerIdentity) {

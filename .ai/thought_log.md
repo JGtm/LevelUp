@@ -1,4 +1,18 @@
-## [2026-07-02] LOT B (audit 2026-07) : éradication lectures rating brutes → vues _latest (ADR 0026) + garde-rail + robustesse — MILESTONE (B13/B15/B16 restants)
+## [2026-07-02] Dette logging Go (audit QUALITE Axe 3) — slog Context + err natif dans api/** et service/** — Complété
+
+**Tâche** : mineurs mécanique du logging sur `internal/api/**` (handlers inclus) et `internal/service/**`. Deux transformations sûres, plus 2 sites de params HTTP défaultés silencieusement à tracer. Vérification sur pièces de la portée de `ctx` avant chaque conversion.
+
+**Décisions techniques** : (1) `slog.Error(...)` → `slog.ErrorContext(ctx, ...)` uniquement quand un ctx est en portée : 13 sites convertis (admin.go x5, admin_actions{,_catalog_drain,_convergence}.go x3, assets.go x2, setup.go, user_auth.go x5, watcher_handler.go, server.go x5 via `serverCtx` param de NewRouter). (2) `"err"/"reason", X.Error()` → `X` dans les appels slog (l'error se logge nativement, plus riche) : ~40 sites dans api/ + service/. (3) Ajout `slog.WarnContext` sur `only_played` invalide dans catalog.go (handlePlaylists ~l.108 + handleMaps ~l.140), gardé par `!= ""` pour rester silencieux sur le cas normal (défaut false inchangé) + ajout import `log/slog`.
+
+**Sites SKIP (documentés)** : `server_titles_additional.go` (2 slog.Error), `helpers.go:writeJSON` (1), `openspartan_import.go:recordFailure` (1) — aucun ctx en portée (fonctions sans param ctx, threader un ctx = changement de signature hors scope). notifications.go ~l.320 (`atoi(s string) int`, appelé par player_profile.go:89) : SKIP — helper string→int sans ctx, le défaut 0 sur `window_days` invalide est un design intentionnel documenté (commentaire player_profile.go:69), pas une conversion sûre sans signature.
+
+**Résultats observés** : `go build` + `go vet` sur `./internal/api/...` et `./internal/service/...` = clean (aucune sortie). Aucun changement de comportement au-delà du logging.
+
+**Conclusion / prochaine étape** : lot mécanique terminé. Aucun commit (pas d'autorisation demandée dans ce tour).
+
+## [2026-07-02] LOT B (audit 2026-07) : éradication lectures rating brutes → vues _latest (ADR 0026) + garde-rail + robustesse — COMPLÉTÉ (B1-B16)
+
+_(NB : l'entrée « Dette logging Go » ci-dessus est le sous-détail du sweep B16 api/service, ajouté par un agent du workflow ; le présent récit couvre l'ensemble du LOT B.)_
 
 **Tâche** : 3e lot du PLAN_TRAITEMENT_AUDITS_2026-07, branche refactor/audits-2026-07. Vérif sur pièces (workflow 3 agents) puis implémentation. Correctness-critique : une table append-only lue brute sert des lignes périmées (rating non déterministe).
 
@@ -10,7 +24,7 @@
 
 **Résultats** : `go build ./...` + `go test ./...` VERTS (suite complète) ; garde-rail B8 vert ; seed patterns_repo_db_test adapté (vue _latest pass-through).
 
-**Reste (B tail)** : B13 (data_health_check — sondes en erreur remontent 'unhealthy'), B15 (helper central MapCapabilityError + garde-rail), B16 (dette logging ~42 slog.Error→ErrorContext). Découvertes §7 : Q24/Q26f (sémantique LUSR vs CSR à trancher). Réconcilier plan/journal S+A+B au merge.
+**B tail — LIVRÉ (2e commit)** : B13 (data_health : sondes → champ ProbeErrors + helper scanCount + cycle loggué WARN si sondes en échec), B15 (MapCapabilityError central + 2 sites migrés match_events/squad_v2 + garde-rail no_capability_error_dup_test), B16 (sweep logging 3 agents : slog.Error→ErrorContext où ctx dispo, err.Error()→err, best-effort journalisés career.go/backfill_weapons/catalog.go ; sites sans ctx laissés, documentés). Gate final : go build ./... + go test ./... (suite complète) + golangci --new-from-rev = 0 issue. Découvertes §7 : Q24/Q26f (sémantique LUSR vs CSR à trancher). Réconcilier plan/journal S+A+B au merge.
 
 ## [2026-07-02] LOT A (audit 2026-07) : bugs UI actifs + intégrité LUSR v1 + docs flags + XSS tooltips — COMPLÉTÉ (commit à suivre)
 

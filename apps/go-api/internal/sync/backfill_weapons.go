@@ -54,7 +54,9 @@ func BackfillWeaponKillsForMatch(
 		return false, fmt.Errorf("BackfillWeaponKillsForMatch film(%s): %w", matchID, err)
 	}
 	if !found {
-		_ = MarkWeaponKillsDone(ctx, sharedDB, matchID, true)
+		if err := MarkWeaponKillsDone(ctx, sharedDB, matchID, true); err != nil {
+			slog.WarnContext(ctx, "backfill_weapons: MarkWeaponKillsDone (film absent) failed", "match_id", matchID, "err", err)
+		}
 		return false, nil
 	}
 
@@ -146,7 +148,9 @@ func BackfillWeaponKillsForMatchAll(
 		return false, fmt.Errorf("BackfillWeaponKillsForMatchAll film(%s): %w", matchID, err)
 	}
 	if !found {
-		_ = MarkWeaponKillsDone(ctx, sharedDB, matchID, true)
+		if err := MarkWeaponKillsDone(ctx, sharedDB, matchID, true); err != nil {
+			slog.WarnContext(ctx, "backfill_weapons: MarkWeaponKillsDone (film absent) failed", "match_id", matchID, "err", err)
+		}
 		return false, nil
 	}
 

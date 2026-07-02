@@ -57,7 +57,7 @@ func (s *TeammatesService) loadImpactEventsByMatch(
 	rows, err := s.repo.LoadImpactEvents(ctx, matchIDs)
 	if err != nil {
 		slog.WarnContext(ctx, "teammates_impact_events_load_failed",
-			"err", err.Error(), "n_matches", len(matchIDs))
+			"err", err, "n_matches", len(matchIDs))
 		return out
 	}
 	rows = correctSquadImpactEvents(ctx, "teammates.07", rows, timelines)
@@ -110,7 +110,7 @@ func (s *TeammatesService) buildMedalDigest(
 	})
 	if err != nil || len(rows) == 0 {
 		if err != nil {
-			slog.WarnContext(ctx, "teammates_medal_digest_load_failed", "err", err.Error())
+			slog.WarnContext(ctx, "teammates_medal_digest_load_failed", "err", err)
 		}
 		return nil
 	}
@@ -184,7 +184,7 @@ func resolveMedalDigestDefs(
 	}
 	defs, err := repo.LookupByIDs(ctx, ids, locale)
 	if err != nil {
-		slog.WarnContext(ctx, "teammates_medal_digest_defs_failed", "err", err.Error())
+		slog.WarnContext(ctx, "teammates_medal_digest_defs_failed", "err", err)
 		return nil
 	}
 	return defs
