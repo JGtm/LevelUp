@@ -1,456 +1,288 @@
 # CLAUDE.md - Instructions pour agents IA
 
 > Ce fichier est lu par Claude Code et autres agents IA au début de chaque session.
+> Réécrit le 2026-07-02 (purge du monde Python supprimé, chemins v7 multi-titre, règles
+> d'exécution des plans). Si une affirmation de ce fichier contredit le code : le code fait
+> foi, corriger ce fichier dans le même commit.
 
 ## Contexte Projet
 
-**LevelUp** - Dashboard de statistiques Halo Infinite avec architecture DuckDB v6 (shared matches + SQL views).
+**LevelUp** — Dashboard de statistiques multi-titres Halo (Halo Infinite + Halo 5, extensible) :
+
+| Composant | Stack | Emplacement |
+|---|---|---|
+| API + sync + analyse | **Go** (chi + Huma, slog, DuckDB) | `apps/go-api/` |
+| Frontend | **React/TypeScript** (Vite, TanStack Router/Query/Table, ECharts) | `apps/web/` |
+| Stockage | **DuckDB** par titre + Parquet (archives) | `data/titles/{slug}/` |
+| Config | JSON + TOML | `db_profiles.json`, `app_settings.json`, `.env.local`, `config/titles/` |
+
+La migration Python→Go est **terminée** : `src/` et `.venv` n'existent plus. Il reste 3
+scripts `.py` utilitaires (2 générateurs de fixtures sous `apps/go-api/tests/`, 1 analyse
+ponctuelle sous `scripts/`). **Ne pas écrire de nouveau Python** : tout code applicatif est
+en Go ou TypeScript. **SQLite interdit** : DuckDB uniquement.
 
 ## Workflow Agentique
 
-**AVANT TOUTE ACTION** : Consulter les fichiers `.ai/` :
-- `.ai/project_map.md` : Cartographie du projet
-- `.ai/thought_log.md` : Journal des décisions
-- `.ai/archive/v6.0/data_lineage.md` : Flux de données
-- `.ai/V7/SPRINT_EXPLORATION.md` : Exploration codebase
+**AVANT TOUTE ACTION** :
+- `.ai/thought_log.md` — journal des décisions (lire les entrées récentes)
+- Le plan actif du chantier en cours (`.ai/V7/PLAN_*.md`) s'il existe
+- `docs/ARCHITECTURE_V6.md` + `docs/FOUNDATIONS_GUIDE.md` (onboarding)
+- `.ai/project_map.md` — cartographie (vérifier la date : doctrine RE-VÉRIFIER, les
+  documents `.ai/` rotent plus vite qu'ils ne sont maintenus)
 
-**APRÈS CHAQUE MODIFICATION SIGNIFICATIVE** : Mettre à jour ces fichiers.
+**APRÈS CHAQUE MODIFICATION SIGNIFICATIVE** : mettre à jour ces fichiers.
 
-**THOUGHT LOG — RÈGLE OBLIGATOIRE** :
-Avant tout commit (ou à défaut avant de rendre la main à l'utilisateur), ajouter une entrée dans `.ai/thought_log.md` avec :
-- La date `[YYYY-MM-DD]`
-- Le titre de la tâche
-- Le statut (En cours / Complété)
-- La décision technique principale
-- Les résultats observés
-- La conclusion / prochaine étape
+**THOUGHT LOG — RÈGLE OBLIGATOIRE** : avant tout commit (ou à défaut avant de rendre la
+main), ajouter une entrée dans `.ai/thought_log.md` avec : date `[YYYY-MM-DD]`, titre,
+statut (En cours / Complété), décision technique principale, résultats observés,
+conclusion / prochaine étape. L'absence d'entrée = tâche non terminée. Rotation
+trimestrielle vers `.ai/archive/`.
 
-Ne pas sauter cette étape même pour des modifications « mineures ». L'absence d'entrée thought_log = tâche non terminée.
+**Skills agent** (`.claude/skills/*/SKILL.md`) — invoquer le skill AVANT d'agir dans son domaine :
 
-**Documentation architecture** : `docs/ARCHITECTURE_V6.md`
-**Plans archivés** : `.ai/archive/v5.0/` (plans, audits, rapports de migration)
+| Skill | Quand |
+|---|---|
+| `plan-execution` | Dès qu'on exécute un plan multi-étapes (OBLIGATOIRE — anti-partiel, anti-report) |
+| `plan-review` | Avant de finaliser un plan d'implémentation |
+| `delivery-checklist` | Avant tout commit / PR / « c'est livré » |
+| `arch-rules` | Code Go (couches, ports, multi-titre, logging) |
+| `canonical-types` | Types inter-titres (`internal/games/canonical/`) |
+| `db-schema` | Requêtes / schéma DuckDB |
+| `go-features` | Avant d'implémenter un algo (vérifier l'existant) |
+| `frontend-patterns` | Code React/TS |
+| `color-tokens` | Toute couleur côté web |
+| `foundations-usage` | Nouvelle page ou nouveau chart |
+| `halo-modes` | Normalisation modes Halo Infinite |
 
-**Onboarding nouveau dev / nouvelle page** : `docs/FOUNDATIONS_GUIDE.md` (EN) + `docs/FR/FOUNDATIONS_GUIDE.md` — guide consolidé sur les 4 fondations transverses (canonical types + adapters + i18n manifests + ECharts wrappers).
+## Exécution des plans — règle critique
 
-**Décisions architecturales (ADRs)** :
-- `docs/adr/0001-charts-stack-echarts.md` — pourquoi ECharts (vs Plotly/Recharts)
-- `docs/adr/0002-canonical-player-match-row.md` — pourquoi `canonical.*` cross-titres
-- `docs/adr/0003-i18n-manifest-and-linter.md` — pourquoi TOML manifests + lint custom
-- `docs/adr/0004-narrative-engine.md` — pourquoi 8 rôles + radar 6 axes
-- `docs/adr/0005-prestige-phased-activation.md` — activation phasée Prestige (staging → prod, expire Q3 2026)
-- `docs/adr/0006-canonical-indicators-and-units.md` — formules KDA/KDR/WinRate/Accuracy/PerfTier + unité 0..1 côté API
-- `docs/adr/0007-canonical-bigbang-migration.md` — pourquoi big-bang (15-16 services en 1 PR feature branch)
-- `docs/adr/0008-db-schema-multi-title-and-xuid-global.md` — isolation par chemin FS (pas `title_id` colonne) + xuid_aliases globalisé
-- `docs/adr/0009-expvar-monitoring-multi-user.md` — pourquoi expvar stdlib (pas Prometheus) en multi-user
-- `docs/adr/0010-timeseries-binning-server-side.md` — pourquoi binning Go (pas front)
-- `docs/adr/0011-canonical-vs-semantic-adapter-separation.md` — frontière canonical (data brute) vs TitleSemanticAdapter (i18n) vs TitleAssetURLAdapter (URLs)
-- `docs/adr/0012-halo-only-adapters-extraction.md` — extraction des adapters Halo-only (frontière `internal/games/halo_infinite/`)
-- `docs/adr/0013-leased-writer-enforcement.md` — enforcement LeasedWriter/dblease (un seul writer RW par DB)
-- `docs/adr/0014-progression-tracking-v2-ascension.md` — couches Streaks + Records & Milestones + Coach proactif (V2 Ascension)
-- `docs/adr/0015-player-profile-ascension-v1.md` — V1 PlayerProfile partiel (3/10 commits livrés, 7 reportés)
-- `docs/adr/0016-shared-db-provider-b-swap.md` — SharedDBProvider RO↔RW swap (élimine conflit auto_sync "different configuration")
-- `docs/adr/0017-rebuild-art-corruption-pattern.md` — CLOSED (superseded par 0019) ; pattern de rebuild post-corruption ART (outil `cmd/force_rebuild_art`)
-- `docs/adr/0018-concurrent-write-model.md` — CLOSED (superseded par 0019) ; cartographie des writers concurrents + issues DuckDB amont
-- `docs/adr/0019-collect-persist-architecture.md` — refactor Collect→Persist anti-corruption ART DuckDB (INSERT-only sur shared, fix le bug `Failed to delete all rows from index`)
-- `docs/adr/0020-coach-prestige-bridge.md` — Coach proactif → pont Prestige (génération/acceptation de propositions). Réfs code « ADR 0020 » côté coach.
-- `docs/adr/0021-shared-social-wal-recovery.md` — recovery auto d'un WAL orphelin sur `shared_social`. Réfs code « ADR 0021 » Gap/WAL/forensic/SocialPersister.
-- `docs/adr/0022-shared-social-collect-persist.md` — écritures `shared_social` via Collect→Persist (`SharedSocialPersister`). H1 historique « ADR 0020 » corrigé ; les réfs code « ADR 0022 (SocialPersister) » désignent ce document.
-- `docs/adr/0023-auth-tokens-single-source.md` — MultiUserTokenStore source unique tokens auth (élimine env.local + sync_meta DuckDB comme credential store ; résout bug Madina invalid_grant sous Air hot-reload)
-- `docs/adr/0024-lusr-v2-trueskill2-with-counts.md` — LUSR v2 (TrueSkill2 + observations kills/deaths, Halo Infinite). Réfs code « ADR 0024 » LUSR/skill/rating.
-- `docs/adr/0025-title-agnostic-minimal-viable-window.md` — refactor title-agnostic, fenêtre minimale viable (Phases 0→3a) ; Phase 2 cible **canonical-typée** (FieldKey-map abandonné) ; OpenAPI absorbé dans Phase 3b (Huma). Master : `.ai/V7/PLAN_TITLE_AGNOSTIC_REFACTORING.md` ; suivi traçable : `.ai/V7/PLAN_TITLE_AGNOSTIC_TRACKER.md`
-- `docs/adr/0026-append-only-art-eradication.md` — tables d'état en append-only (éradication bug DuckDB ART #23046 par construction) ; 3 mécanismes (written_at / generation_id / stage merge-on-read) + helper unique `internal/migration/append_only_rebuild.go` (swap transactionnel + garde + recoverOrphan) ; exception PME ; recette d'ajout + pièges (`;` en commentaire SQL, lecture brute vs `_latest`)
-- `docs/adr/0027-sync-pipeline-v2-cycle-orchestrator.md` — Sync pipeline V2 (cycle orchestrator, parallélisation cross-player). Renuméroté depuis 0020 (collision) ; réfs code « ADR 0027 » = `pipeline V2`/`D6.x`/package `internal/sync/v2`.
-- `docs/adr/0028-template-synthesis.md` — synthèse dynamique de Template/Arc ad-hoc (`coach_advisor`). Renuméroté depuis 0021 (collision) ; réfs code « ADR 0028 » dans `internal/progression/coach_advisor/`.
-- `docs/adr/0029-multi-user-player-ownership.md` — contrôle d'accès ownership joueur + middleware `RequirePlayerOwnership` + « Couche A/B » participation. Renuméroté depuis 0024 (collision) ; réfs code « ADR 0029 » ownership/Couche B.
+Tout plan multi-étapes s'exécute sous le contrat du skill `plan-execution`. Le résumé
+tient en 5 règles (le skill fait foi) :
 
-**Règle auth tokens (ADR 0023)** :
+1. **Ordre strict, une étape à la fois** — ne jamais commencer l'étape N+1 tant que
+   l'étape N n'est pas terminée ET vérifiée (gate passé).
+2. **Ne jamais différer une étape exécutable maintenant.** « Je ferai X plus tard », un
+   TODO, ou une étape sautée « pour avancer » = tâche non terminée. Les seuls reports
+   valides : dépendance explicite du plan, blocage nécessitant l'utilisateur, délai
+   d'observation prescrit (soak).
+3. **Statuer chaque item** : fait `[x]` / couvert ailleurs `[~]` (référence) / non traité
+   `[!]` (justification écrite). Aucun item sans statut à la clôture.
+4. **Vérifier sur pièces** avant de coder et avant de cocher (rouvrir le fichier/la ligne
+   cible — le code a pu bouger).
+5. **Zéro fix opportuniste hors périmètre** : noter la découverte, ne pas la traiter.
 
-- **Source unique** : `data/auth/watcher_tokens/{xuid}.json` via `*auth.MultiUserTokenStore`. Contient `OAuthRefreshToken` + `MSALCacheJSON` par joueur (clé xuid).
-- **Onboarding normal** : SSO Xbox web → callback `/auth/xbox/callback` persiste le RT automatiquement.
-- **Onboarding advanced** : `go run ./cmd/token-capture/ <Gamertag>` écrit direct dans le store, ZÉRO manipulation `.env.local`. Variante `go run ./cmd/token-import/ <Gamertag>` lit le RT sur stdin (pour utilisateurs ayant un RT venu d'ailleurs).
-- **Pré-requis** : le joueur doit être déclaré dans `db_profiles.json` (avec `xuid`) avant `token-capture` / `token-import`.
-- **Sources legacy tolérées en transition** : `sync_meta.oauth_refresh_token` / `sync_meta.msal_token_cache` (DuckDB) + env var `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` sont encore lus en fallback avec warn log (`legacy_source_used`). Migration boot-time (`auth.MigrateLegacyTokens`) les copie au store au premier démarrage. Phase 5 du refactor (différée pending stabilisation) supprimera ces lectures.
-- **Pas de logique métier dans le package `auth`** : pas de dépendance DuckDB. Le caller fournit les valeurs legacy déjà lues via `LegacyAuthInputs`. Helper canonique pour les CLI : `auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, gamertag, legacy)`.
-- **Cache process** (`halo.GetCachedPlayerTokens`) : `halo.InvalidateCachedPlayerTokens(xuid)` à appeler quand une rotation externe injecte un nouveau RT (cf. token-capture, token-import) — sinon le cache 50min sert encore les Spartan tokens dérivés de l'ancien RT chain.
+## Architecture des Données (v7 — isolation par titre, ADR 0008)
 
-**Règle architecture écritures DB (Phase 3 du refactor Collect→Persist en cours)** :
+Tous les chemins passent par `PathResolver` (`internal/domain/title/registry.go`).
+**Jamais** de `filepath.Join(..., "data", ...)` à la main.
 
-Toute NOUVELLE écriture dans une DB partagée (shared, player, pve, metadata) sur un chemin per-match passe par `internal/persist/BatchBuilder.Submit()` → `persist.*Persister.Persist()`. Plus de UPSERT/UPDATE concurrents sur les tables critiques (`shared.match_registry`, `shared.match_participants`, `shared.medals_earned`, `player_match_enrichment`, etc.) — sinon le bug ART DuckDB ressurgit.
+| Donnée | Chemin |
+|---|---|
+| Matchs partagés (tous joueurs) | `data/titles/{slug}/warehouse/shared_matches_v2.duckdb` |
+| Référentiels (modes, armes, rangs) | `data/titles/{slug}/warehouse/metadata.duckdb` |
+| Stats PvE Firefight | `data/titles/halo_infinite/warehouse/shared_pve.duckdb` |
+| Social (followers, activité) | `data/titles/{slug}/warehouse/shared_social.duckdb` |
+| Enrichissements joueur | `data/titles/{slug}/players/{gamertag}/stats.duckdb` |
+| Aliases Xbox globaux | `data/global/xbox_aliases.duckdb` |
+| Tokens auth (source unique) | `data/auth/watcher_tokens/{xuid}.json` |
+| Sessions HTTP | `data/sessions/` |
+| Manifests par titre | `config/titles/{slug}/title.toml` + `mappings/{fields,assets,outcomes,capabilities}.toml` |
 
-- **Live sync** : `submitMatchAsBatch` (activé par `LEVELUP_PERSIST_BATCH=1`, cf. `engine_batch_path.go`).
-- **Tables append-only (Phase 2 du refactor ART, 2026-05-24)** : `match_skill_rank`, `match_csrs`, `player_csr_snapshots`, `pve_match_stats` sont migrées en append-only (PK technique `id` + colonne `written_at`). Toute écriture est un INSERT pur ; la lecture courante passe par une vue `<table>_latest`. Garde-rail anti-régression dans `internal/sync/no_art_patterns_test.go` (allowlist explicite pour les sites tolérés).
-- **Hypothèse démentie** : la phrase historique "LUSR, citations, engagement peuvent rester UPDATE car non concernés par l'ART bug" est fausse — confirmé par crash prod 2026-05-24 20:41:04 sur `match_skill_rank` LUSR. Tout `INSERT ... ON CONFLICT DO UPDATE` est potentiellement à risque.
-- **Backfills CLI restants** : à auditer cas par cas via `.ai/V7/audit_art_writes.md`. Les sites HTTP basse fréquence (streaks, records, prestige) restent en `ON CONFLICT` faute de pression concurrente, mais à migrer en pattern `SELECT-then-UPDATE-or-INSERT` quand opportun (cf. plan `.ai/V7/PLAN_LUSR_ART_HOME_CRASH.md` Phase 4).
-- **Ajout d'enrichment local sur `player_match_enrichment`** : 3 étapes seulement (migration ALTER + champ pointer dans `EnrichmentRow` + 1 if-block dans `enrichmentFields()`). Cf. ADR 0019 + `internal/persist/doc.go`.
+Détail des tables : skill `db-schema`. Slugs actifs : `halo_infinite` (défaut), `halo_5`.
 
-**Skills agent** (à invoquer avant tout commit) : `.claude/skills/{arch-rules, canonical-types, color-tokens, foundations-usage, delivery-checklist, plan-review, halo-modes, db-schema, frontend-patterns, go-features}/SKILL.md`.
+## Règles critiques — écritures DuckDB (anti-corruption ART)
 
-**READMEs catalogues** :
-- `apps/go-api/internal/analysis/{temporal, breakdown, narrative}/README.md` — exports + exemples + consumers
-- `apps/web/src/components/charts/README.md` — catalogue des 11 wrappers ECharts
+Contexte : le bug DuckDB ART #23046 (`Failed to delete all rows from index`) a corrompu
+des DBs en prod. L'éradication (ADR 0019/0026) repose sur des invariants NON NÉGOCIABLES :
 
-## Architecture des Données (v5)
+1. **Toute écriture per-match sur une DB partagée** (shared, player, pve, metadata) passe
+   par `internal/persist/BatchBuilder.Submit()` → `persist.*Persister.Persist()`
+   (INSERT-only). Jamais d'UPSERT/`ON CONFLICT DO UPDATE` concurrent sur les tables
+   critiques.
+2. **Tables append-only** (`match_skill_rank`, `match_csrs`, `player_csr_snapshots`,
+   `pve_match_stats`, ...) : écriture = INSERT pur avec `written_at` ; **lecture = vue
+   `<table>_latest` UNIQUEMENT** (une lecture brute sert des lignes périmées — piège
+   documenté ADR 0026). Recette d'ajout d'une table : ADR 0026 +
+   `internal/migration/append_only_rebuild.go`.
+3. **Garde-rails** : `internal/sync/no_art_patterns_test.go` (allowlist explicite) — ne
+   jamais allowlister sans justification datée.
+4. **Un seul process writer par DB** (ADR 0013 dblease + ADR 0016 B-swap) : RO et RW sur
+   le même fichier dans deux process = interdit. Pour lire une DB potentiellement tenue
+   RW : `OpenReadForQuery` (jamais `OpenReadOnly` forcé). Écritures `sync_meta` : sous
+   `AcquirePlayerWriterTimeout`.
+5. **shared_social** : écritures via `SharedSocialPersister` + `CHECKPOINT` (ADR 0022 —
+   sans CHECKPOINT le WAL peut être perdu).
+6. Piège : `CREATE TABLE IF NOT EXISTS` n'ajoute jamais une PK à une table existante →
+   `ON CONFLICT` échoue. Player DBs legacy sans contraintes : pattern
+   `SELECT-then-UPDATE-or-INSERT`.
+7. **Ajout d'un enrichment local** sur `player_match_enrichment` : 3 étapes (migration
+   ALTER + champ pointer dans `EnrichmentRow` + if-block dans `enrichmentFields()`) —
+   ADR 0019 + `internal/persist/doc.go`.
 
-| Type | Stockage | Chemin |
-|------|----------|--------|
-| Référentiels | DuckDB | `data/warehouse/metadata.duckdb` |
-| Matchs partagés | DuckDB | `data/warehouse/shared_matches_v2.duckdb` |
-| Stats PvE Firefight | DuckDB | `data/warehouse/shared_pve.duckdb` |
-| Enrichissements joueur | DuckDB | `data/players/{gamertag}/stats.duckdb` |
-| Archives | Parquet | `data/players/{gamertag}/archive/` |
-| Config | JSON | `db_profiles.json`, `app_settings.json`, `.env.local` |
+## Règle auth tokens (ADR 0023)
 
-## Tables DuckDB Principales
+- **Source unique** : `data/auth/watcher_tokens/{xuid}.json` via `*auth.MultiUserTokenStore`
+  (`OAuthRefreshToken` + `MSALCacheJSON` par xuid).
+- **JAMAIS de re-capture de token** pour « réparer » une auth : un refresh token valide se
+  rafraîchit ; s'il est mort, diagnostiquer la cause (rotation perdue, mauvais xuid) avant
+  tout. `AADSTS70000` = vieille app / RT étranger, pas une raison de re-capturer.
+- **Onboarding** : SSO web (`/auth/xbox/callback`) ; avancé : `go run ./cmd/token-capture/ <GT>`
+  ou `token-import` (RT sur stdin). Pré-requis : joueur déclaré dans `db_profiles.json`.
+- **Cache process** : après rotation externe d'un RT, appeler
+  `halo.InvalidateCachedPlayerTokens(xuid)` (sinon le cache 50 min sert l'ancien chain).
+- **Fallbacks legacy en transition** (`sync_meta.*`, `SPNKR_OAUTH_REFRESH_TOKEN_*`) :
+  encore lus ; la télémétrie `legacy_source_used` puis leur suppression (Phase 5) sont
+  planifiées (plan audits, lots D1a/D2). Aucune logique métier dans le package `auth`.
+- Helper canonique CLI : `auth.RefreshHaloTokensViaStoreFirst(...)`.
 
-### metadata.duckdb (référentiels)
+## Multi-titre — title-agnostic (règle transverse)
 
-| Table | Description |
-|-------|-------------|
-| `career_ranks` | Paliers et noms des rangs Halo |
-| `citation_mappings` | Mappings médaille→citation |
-| `mode_lang_settings` | Paramètres de langue par mode |
-| `mode_name_tr` | Traductions des noms de modes |
-| `mode_pair_overrides` | Surcharges de paires map/mode |
-| `mode_prefix_names` | Préfixes canoniques de modes |
-| `weapon_labels` | Labels EN/FR par weapon_id filmshell (UBIGINT) — **v5.4** |
-
-### shared_matches_v2.duckdb (centralisée)
-
-| Table | Description |
-|-------|-------------|
-| `match_registry` | Registre central (1 ligne par match unique) |
-| `match_participants` | Stats de tous les joueurs de tous les matchs (31 colonnes, incl. MMR) |
-| `highlight_events` | Événements filmés de tous les matchs |
-| `medals_earned` | Médailles de tous les joueurs |
-| `killer_victim_pairs` | Paires killer→victim de tous les matchs |
-| `xuid_aliases` | Mapping global xuid→gamertag |
-
-### shared_pve.duckdb (stats Firefight) — v5.2
-
-| Table | Description |
-|-------|-------------|
-| `pve_match_stats` | Stats par joueur par match Firefight (waves, boss, kills par type d'ennemi : Grunt/Elite/Jackal/Brute/Hunter/Skimmer/Crawler/Soldier/Knight/Warden) |
-
-### stats.duckdb (par joueur) — v5.1 allégée
-
-> **8 tables supprimées** lors du cleanup v5.1 : `match_stats`, `match_participants`,
-> `highlight_events`, `medals_earned`, `killer_victim_pairs`, `player_match_stats`,
-> `xuid_aliases`, `teammates_aggregate` — données centralisées dans shared.
-
-| Table | Description |
-|-------|-------------|
-| `player_match_enrichment` | performance_score, session_id, is_with_friends — **SEULE table match** |
-| `personal_score_awards` | Awards objectifs (PersonalScores API) |
-| `match_citations` | Citations calculées par match |
-| `career_progression` | Historique rangs |
-| `media_files` | Fichiers médias indexés |
-| `media_match_associations` | Associations médias↔matchs |
-| `sessions` | Sessions groupées |
-| `sync_meta` | Métadonnées sync |
-| `match_skill_rank` | Rating LUSR ou CSR par match (PK=match_id, exclusif) — **v5.3** |
-| `mv_*` | Vues matérialisées (mv_player_matches, mv_map_stats, etc.) |
-
-## Environnement Python
-
-**IMPORTANT : Utiliser le `.venv` à la racine du repo (Python 3.12.10 Windows natif)**
-
-### Configuration officielle
-
-- **Interpreter** : `.venv` à la racine du repo
-- **Python** : 3.12.10
-- **Commande canonique** : toujours préférer `python -m ...` (ex: `python -m pytest`)
-
-### Packages vérifiés
-
-- `pytest==9.0.2`
-- `duckdb==1.4.4`
-- `polars==1.38.1`
-- `pyarrow==23.0.0`
-- `pandas==2.3.3` (uniquement pour compatibilité Streamlit/Plotly, interdit dans le code métier)
-- `numpy==2.4.2`
-
-### Activation selon shell
-
-- **PowerShell** : `./.venv/Scripts/Activate.ps1`
-- **cmd.exe** : `.venv\\Scripts\\activate.bat`
-- **Git Bash** : `source .venv/Scripts/activate`
-
-### Commandes tests
-
-```bash
-# Suite stable hors intégration
-python -m pytest -q --ignore=tests/integration
-
-# Suite complète
-python -m pytest
-
-# Healthcheck environnement
-python scripts/check_env.py
-```
-
-### Règles strictes
-
-1. **Ne pas installer/mettre à jour** des packages sans motivation documentée
-2. **Ne pas utiliser le Python MSYS2/MinGW** — source de conflits DLL
-3. **Ne pas modifier le `PATH`** — utiliser `.venv` + `python -m pytest`
+- Brancher sur **capabilities** (`HasCapability`, `CapabilityMap`, clés fines
+  `capabilities.toml`), **jamais** sur `slug == "..."` (ratchet
+  `no_slug_comparison_test.go`).
+- Libellés/assets/outcomes via `TitleSemanticAdapter` + TOML `config/titles/{slug}/mappings/`
+  — jamais de label FR/EN en dur côté Go.
+- Dégradation gracieuse : `ErrCapabilityNotSupported` → réponse partielle/503 propre,
+  jamais de panic ni de données d'un autre titre.
+- Détail : skill `arch-rules` (adapters, PathResolver, TitleRegistry).
 
 ## Commandes Utiles
 
 ```bash
-# Synchronisation
-python scripts/sync.py --delta --gamertag MonGamertag
+# Backend (depuis la racine)
+make go-api-test            # tests Go rapides (domain/analysis/contracttest)
+cd apps/go-api && go test ./...                      # suite complète
+cd apps/go-api && go test -tags=integration ./...    # inclut les tests persist anti-ART (OBLIGATOIRE avant livraison sync/persist)
+make go-api-lint            # golangci-lint
 
-# Backup/Restore
-python scripts/backup_player.py --gamertag MonGamertag
-python scripts/restore_player.py --gamertag MonGamertag --backup ./backups/
+# Frontend
+make check-types            # tsc
+make test-web               # vitest
+make generate-types         # openapi.yaml -> src/lib/api/generated.ts
 
-# Backfill sessions (session_id, session_label dans match_stats)
-python scripts/backfill_data.py --player MonGT --sessions
-python scripts/backfill_data.py --all --sessions
+# Dev servers
+make dev                    # go-api (air) + vite
+# Redémarrage du serveur air local : Start-Process détaché, puis vérifier le port 8000
 
-# Backfill shots_fired/shots_hit (match_stats et match_participants)
-python scripts/backfill_data.py --player MonGT --shots
-python scripts/backfill_data.py --player MonGT --shots --force-shots
-python scripts/backfill_data.py --player MonGT --participants-shots
-python scripts/backfill_data.py --player MonGT --participants-shots --force-participants-shots
+# Requêtes DuckDB ad hoc (pas de Python)
+duckdb data/titles/halo_infinite/warehouse/metadata.duckdb "SELECT ..."
+go run apps/go-api/cmd/inspect_bp/main.go            # outil Go (CGO : gcc msys64)
 
-# Tests
-.venv/Scripts/python.exe -m pytest tests/ -v
+# CLI principal
+go run ./apps/go-api/cmd/levelup --help              # sync, backfill, diag
 ```
+
+Référence complète des commandes : `docs/COMMANDS.md`. Déploiement : `docs/RUNBOOK_GO_LIVE*`
+— **push sur `main` = déploiement prod automatique** : prévenir l'utilisateur avant.
 
 ## Règles
 
-1. Répondre en français
-2. Utiliser Pydantic v2 pour valider les données
-3. **Backfill** : Pour tout backfill ou création de nouvelles fonctions de backfill, utiliser `scripts/backfill_data.py`. Ne pas créer de scripts backfill séparés ; ajouter une option dédiée (ex. `--sessions`, `--killer-victim`) dans `backfill_data.py`.
-4. **Pandas est PROSCRIT** - Utiliser **Polars** uniquement pour les DataFrames et séries (voir § Pandas interdit ci-dessous)
-5. Utiliser DuckDBRepository pour l'accès aux données
-6. **Documenter les décisions dans `.ai/thought_log.md` — OBLIGATOIRE avant de rendre la main** (voir § Workflow Agentique pour le format)
-7. **SQLite est PROSCRIT** - Aucun fallback SQLite, tout le code doit utiliser DuckDB uniquement
-8. **Streamlit** : Ne jamais utiliser `use_container_width=True` (déprécié). Utiliser `width="stretch"` à la place (`width="content"` si besoin). Pour `st.button`, `st.image`, `st.plotly_chart`, etc.
-9. **Plotly** : Tout `st.plotly_chart` doit inclure `config=` (utiliser `PLOTLY_CLEAN_CONFIG` ou `PLOTLY_STATIC_CONFIG` de `src/ui/streamlit_modern.py`)
-10. **Fragments** : Préférer `@fragment_if_available` (de `src/ui/streamlit_modern.py`) pour les sections interactives multi-charts
-11. **Coéquipiers** : Charger les stats coéquipiers depuis `shared.match_participants` (pas les DBs individuelles)
-12. **SyncScope** : Ne jamais passer 30+ kwargs individuels aux fonctions backfill/sync. Toujours construire un `SyncScope` et le passer via `scope=`. Les kwargs legacy sont marqués `LEGACY` et seront supprimés.
-13. **Taille max fonctions** : 80 lignes (docstring incluse). Au-delà → extraire une sous-fonction nommée. Pas d'exception sans `# noqa: PLR0915` + commentaire justificatif. Violations existantes dans `scripts/size_baseline.txt` (dette documentée).
-14. **Taille max modules** : 500 lignes. Whitelist dans `scripts/check_code_size.py` (`src/ui/i18n/`, `src/data/sync/migrations.py`). Si un module approche 500L → créer un sous-module **avant** d'atteindre la limite.
-15. **Arguments max** : 5 par fonction. Au-delà → `dataclass`, `TypedDict` ou `SyncScope`. Violations existantes annotées `# noqa: PLR0913`.
-19. **Typage structuré** — règle de décision :
-    - `BaseModel` (Pydantic v2) → données qui traversent une frontière externe (API, JSON, CSV) et nécessitent validation/coercion
-    - `@dataclass(frozen=True)` → structures internes entre modules avec types explicites et immuabilité souhaitée (contextes UI, paramètres de page, résultats d'analyse)
-    - `TypedDict` → uniquement pour annoter des dicts dont la structure est imposée par une lib externe (plotly layout, kwargs d'API tierce…)
-    - Dict nu → uniquement dans du code throwaway ou des fonctions locales < 10L
-16. **Complexité cyclomatique** : max 12 (McCabe C901, enforced via Ruff). Violations existantes annotées `# noqa: C901`. Chaque `# noqa` restant = dette à réduire.
-17. **Responsabilité unique** : le nom d'une fonction doit tenir en 1 verbe + 1 complément. `render_and_compute_X()` → 2 responsabilités → diviser en `compute_X()` + `render_X()`. Indicateurs suspects : `_and_`, `_with_`, `_then_` dans un nom de fonction. Test automatique : `tests/test_code_quality.py::test_no_srp_violation_in_function_names`.
-18. **docs/FR/ — règle de synchronisation** : tout commit qui modifie un fichier dans `docs/` doit inclure la mise à jour du fichier correspondant dans `docs/FR/` si ce fichier existe. Les deux commits peuvent être séparés mais doivent être dans le même PR.
-20. **Couleurs dans `apps/web/`** — Aucun hex (`#RRGGBB`) ni classe Tailwind de couleur (`text-red-*`, `bg-green-*`, etc.) dans `apps/web/src/features/` ou `apps/web/src/components/` sauf exceptions justifiées par commentaire. Toute couleur sémantique doit passer par `tokenCssVar(token)` (JSX), `resolveToken(token)` (Plotly/SVG) ou `getSeriesColors(n, tokens[])` (séries). Les palettes brutes sont centralisées dans `apps/web/src/lib/accessibility/palettes/`. Exceptions tolérées : couleurs de rareté Halo (Battlepass, `rarity.ts`), couleurs structurelles de layout SVG (fond de piste, bordure), couleurs UI génériques sans signification métier (liked/rose, warning/amber dans les badges d'état système).
+1. **Répondre en français.** UI : FR sans anglicismes (« série » pas « streak »,
+   « Taux de victoire » pas « WR ») ; toute string UI en FR **et** EN (`i18n.ts`,
+   parité par typage `Record<Locale, T>`).
+2. **Go/TS uniquement.** Pas de nouveau Python, pas de SQLite, pas de Pandas/Polars (morts
+   avec la migration).
+3. **Logging Go** : `slog.InfoContext/ErrorContext(ctx, "...", "err", err)` structuré.
+   Jamais `fmt.Println`/`log.Printf`. Jamais d'erreur avalée en silence : logger AVANT
+   toute dégradation best-effort.
+4. **Pas d'emojis dans les fichiers versionnés.**
+5. **Seuils** : fichier ≤ 500 L, fonction ≤ 80 L, ≤ 5 paramètres, complexité ≤ 12.
+   Au-delà : extraire (mixins/sous-fichiers/sous-fonctions) ou exemption justifiée par
+   commentaire. Dette existante gelée par baseline lint — ne pas l'accroître.
+6. **≤ 2 copies d'un même pattern** : à la 3e, centraliser dans un helper ET ajouter un
+   garde-rail (test grep) qui interdit l'ancien littéral — une factorisation sans
+   garde-rail re-diverge (leçon : prédicat bot passé de 8 à 36 copies après
+   centralisation).
+7. **0 code mort** : ce qu'on débranche du routing/des callers, on le supprime avec ses
+   tests et imports. Pas de « au cas où » — git garde l'historique.
+8. **Timezone canonique** : `COALESCE(x.start_time_utc, x.start_time AT TIME ZONE 'UTC')`
+   via le fragment SQL partagé — jamais `start_time` brut dans un filtre/tri temporel.
+9. **KDA/KDR (ADR 0006)** : KDA n'est JAMAIS le quotient. Per-match = valeur API native ;
+   agrégat = `((frags + assists/3) − morts) / nb_matchs`. KDR = frags/morts, distinct.
+   Réutiliser les KPI dérivés existants, ne pas recalculer ad hoc.
+10. **Ratings** : lecteurs → vues `_latest` uniquement (règle ART n°2). LUSR : chemin v2
+    canonique (`RecomputeLUSRCanonicalForPlayer`) — v1 est mort.
+11. **Feature flags** : pas de flag qui laisse une feature OFF « pour plus tard » —
+    corriger la cause et livrer actif. Tout kill-switch porte en commentaire : date du
+    basculement de défaut + date cible de retrait + critère mesurable (modèle :
+    `platform/duckdb/shared_reader_legacy.go`).
+12. **Couleurs web** : aucune valeur hex ni classe Tailwind couleur dans `features/` /
+    `components/` — tokens sémantiques uniquement (skill `color-tokens`).
+13. **Tableaux interactifs** : TanStack Table. **Query keys** : `lib/query/keys.ts`,
+    jamais inline. **Routes** : file-based, ne jamais éditer `routeTree.gen.ts`.
+14. **Vérifier l'existant avant d'implémenter** : `internal/analysis/` + skill
+    `go-features` + grep des exports. Beaucoup d'algos existent déjà.
+15. **docs/FR — politique** : guides majeurs (`FOUNDATIONS_GUIDE`, `COMMANDS`,
+    `SYNC_GUIDE`, `ARCHITECTURE_V6`) = bilingues, toute modif EN inclut la MAJ FR dans le
+    même PR. **ADRs et runbooks = EN-only** (pas de traduction à créer ni maintenir).
+16. **Git** : jamais `git stash` (commit WIP à la place) ; demander avant tout commit ;
+    jamais travailler sur `main` ; ne pas changer de branche si un travail est en cours.
 
-## ⛔ Pandas interdit (règle critique)
+## Diagnostic de revue de code — anti-patterns interdits
 
-- **Aucun** `import pandas` ni `import pandas as pd` dans le code applicatif (analyse, UI, sync, repositories, scripts).
-- **Polars uniquement** : `import polars as pl` ; utiliser `pl.DataFrame`, `pl.Series`, `pl.LazyFrame`.
-- À la frontière avec des librairies qui exigent du NumPy/Pandas (ex. certains composants Streamlit/Plotly), convertir au dernier moment avec `.to_pandas()` ou `.to_numpy()` et ne pas faire remonter du Pandas dans les modules métier.
-
-## ⛔ SQLite interdit (règle critique)
-
-- **Aucun** `import sqlite3` ni `sqlite3.connect()` dans le code applicatif (UI, sync, repositories, loaders).
-- **Aucun** fallback sur une base `.db` (SQLite) : si une base est attendue, elle doit être `.duckdb`.
-- **Aucun** usage de `sqlite_master` : utiliser `information_schema.tables` (DuckDB).
-- **Seules exceptions** : les scripts de **migration** qui lisent l’ancien SQLite pour alimenter DuckDB (`recover_from_sqlite.py`, `migrate_player_to_duckdb.py`). Ils restent les seuls autorisés à ouvrir un fichier `.db`.
-
-
-## Architecture Multi-Joueurs (v5.1)
-
-Chaque joueur a sa propre DB : `data/players/{gamertag}/stats.duckdb` (enrichissements uniquement).
-
-**Données partagées** : Toutes les stats de matchs, médailles, events, killer/victim et xuid_aliases sont dans `shared_matches_v2.duckdb`.
-
-**Pour afficher les stats d'un coéquipier** sur des matchs communs :
-1. Identifier les `match_id` communs via `shared.match_participants`
-2. Charger les stats du coéquipier depuis `shared.match_participants` avec son xuid
-3. Le sync écrit dans player DBs : `player_match_enrichment` + `personal_score_awards` uniquement
-
-## Stack Technique
-
-| Composant | Usage |
-|-----------|-------|
-| **DuckDB** | Moteur de requêtes OLAP |
-| **Polars** | DataFrames et séries (Pandas interdit) |
-| **Pydantic v2** | Validation des données |
-| **Streamlit** | Interface utilisateur |
-| **SPNKr** | API Halo Infinite |
-| **SyncScope** | Flags sync/backfill centralisés (`src/data/sync/scope.py`) |
-| **RAG / MCP** | Recherche sémantique dans la doc + serveur MCP pour Cursor (`src/ai/`) |
-
-## Couche `src/ai/` (outillage développeur)
-
-| Fichier | Rôle |
-|---------|------|
-| `rag.py` | `HaloKnowledgeBase` — indexation + recherche sémantique (ChromaDB) |
-| `_rag_models.py` | Modèles Pydantic : `RAGConfig`, `Document`, `SearchResult` |
-| `_rag_chunker.py` | `TextChunker` — découpage de docs en chunks |
-| `_rag_github.py` | `GitHubIndexer` — indexation de repos GitHub |
-| `mcp_server.py` | Serveur MCP (protocole Model Context Protocol) pour Cursor |
-
-**Règle** : `src/ai/` est réservé à l'**outillage développeur** (RAG docs, MCP). Aucune logique métier Halo ne doit y résider. Pas d'import de `src.data` ni de `src.ui` dans ce module.
-
-## Règle `src/analysis/` vs `src/data/services/`
-
-| Package | Rôle | Règle |
-|---------|------|-------|
-| `src/analysis/` | **Algorithmes purs** — transformations stateless | Entrée : `pl.DataFrame` / listes · Sortie : résultats calculés · **0 accès DB**, 0 Streamlit |
-| `src/data/services/` | **Orchestration** — combine accès repo + algos | Prend un `DuckDBRepository` + paramètres · délègue les calculs à `analysis/` · retourne dataclasses ou `pl.DataFrame` |
-
-**Règle de décision** : si la fonction n'a pas besoin de toucher la DB → `analysis/`. Si elle doit interroger le repo ET calculer → `services/`.
-
-## SyncScope (`src/data/sync/scope.py`)
-
-Dataclass centralisant **tous les flags de données** partagés entre sync et backfill.
-
-### Usage recommandé
-
-```python
-from src.data.sync.scope import SyncScope
-
-# Construction depuis CLI
-scope = SyncScope.from_cli_args(args)
-
-# Tout activer
-scope = SyncScope.make_all(max_matches=100)
-
-# Sélection fine
-scope = SyncScope(medals=True, force_medals=True)
-scope.resolve()
-
-# Passer aux fonctions
-await backfill_player_data(gamertag, scope=scope)
-```
-
-### Pour ajouter un nouveau type de données
-
-1. Ajouter le champ dans `SyncScope` + registres (`_ALL_DATA_FIELDS`, `_FORCE_MAP`, `_REQUESTED_TYPE_MAP`)
-2. Ajouter l'argument CLI dans `scripts/backfill/cli.py`
-3. Implémenter la logique métier dans l'orchestrateur / engine
-
-### Legacy
-
-Les fonctions `backfill_player_data`, `backfill_all_players`, `_backfill_with_api` et
-`find_matches_missing_data` conservent les 30+ kwargs individuels marqués `LEGACY` dans le code.
-**Nouveau code : toujours passer `scope=SyncScope(...)`.**
-
-## 🔍 Diagnostic de revue de code
-
-Avant d'écrire ou modifier du code, l'agent IA doit vérifier que ses changements ne réintroduisent pas les anti-patterns éliminés lors du refactoring v5.
-
-### Seuils obligatoires
-
-| Métrique | Seuil max | Action si dépassé |
-|----------|:---------:|-------------------|
-| **Lignes par fichier** | **500 L** | Découper en modules (mixins, `*_logic.py`, `*_data.py`) |
-| **Lignes par fonction** | **80 L** | Extraire des sous-fonctions nommées |
-| **Copies d'un même pattern** | **≤ 2** | Centraliser dans un helper/constante |
-| **Magic numbers/strings** | **0** | Utiliser des enums (`Outcome.WIN`) ou constantes nommées |
-| **Fonctions/modules morts** | **0** | Supprimer immédiatement avec leurs tests et imports |
-| **Connexions DB bare** | **0** | Toujours via context manager (`duckdb_read_only()` / `duckdb_read_write()`) |
-
-### Anti-patterns interdits
-
-1. **"Dead code museum"** — Conserver du code mort "au cas où" (fonctions retournant `[]`, `None`, `False`, modules entiers inutilisés)
-2. **"Compatibility guard forever"** — Garder des branches `if POLARS_AVAILABLE:` ou `if SQLITE_MODE:` après migration ; toute guard de compatibilité doit avoir une **date d'expiration** en commentaire
-3. **"God file"** — Fichier >500L mélangeant des responsabilités distinctes → découper en mixins ou modules séparés
-4. **"Swiss-army function"** — Fonction qui fait init + logique + IO + render → extraire en fonctions à responsabilité unique
-5. **"Copy-paste config"** — Même dict/string copié dans 3+ endroits → constante centralisée (ex: `PLOTLY_CLEAN_CONFIG`, `DATE_FORMAT_FR`)
-6. **"Bare connect"** — `duckdb.connect()` sans `with` → fuite de ressource
-7. **"Manual coercion dataclass"** — `@dataclass` + parsing JSON ad hoc 160L → Pydantic v2 `model_validate()`
-8. **"Magic integer"** — `outcome == 2` sans contexte → `Outcome.WIN`  
-9. **"Logique métier dans l'UI"** — Calculs purs mélangés aux appels Streamlit → séparer en `*_logic.py` testable sans Streamlit
-10. **"Alias inutile"** — `_func = func` en tête de fichier sans raison → import direct
-11. **"God __init__"** — `__init__.py` qui importe massivement ses propres sous-modules → `KeyError: 'src.xxx'` lors des hot-reloads Streamlit. Règle : un `__init__.py` ne doit **jamais** importer depuis ses propres sous-modules (sauf si des dizaines de callers existants utilisent déjà `from src.pkg import X` — dans ce cas les imports lazy depuis les fonctions sont tolérés, mais les imports module-level dans `streamlit_app.py` doivent pointer vers le sous-module direct). Test : `tests/test_imports.py`.
-
-### Patterns à appliquer
-
-| Situation | Pattern recommandé | Exemple dans le projet |
-|-----------|-------------------|------------------------|
-| God class >500L | **Mixins MRO** | `engine.py` → 8 mixins + `_protocol.py` (`_shared_writes`, `_performance`, `_skill_rating`, `_career`, `_aggregates`, `_match_processing`, `_engine_connections`, `_engine_schema`) |
-| God function >80L | **Extract method** | `main()` 582L → `_initialize_app()`, `_load_and_filter_data()`, etc. |
-| Page Streamlit avec logique | **Séparation UI/logique** | `session_compare.py` + `session_compare_logic.py` |
-| Config/parsing complexe | **Pydantic v2** | `AppSettings(BaseModel)` avec `model_validate()` |
-| Codes numériques | **IntEnum** | `Outcome(IntEnum): WIN=2, LOSS=3, TIE=1, DNF=4` |
-| Connexions DB | **Context manager** | `duckdb_read_only(path)`, `duckdb_read_write(path)` |
-| Constantes répétées | **Module dédié** | `PLOTLY_CLEAN_CONFIG`, `DATE_FORMAT_FR`, `CORE_STAT_COLUMNS` |
-| Rendu chart avec error handling | **Context manager** | `safe_chart_render()` dans `src/ui/chart_utils.py` |
-
-### Checklist de revue automatique
-
-Avant chaque commit, l'agent doit vérifier :
-
-- [ ] Aucun fichier créé/modifié ne dépasse **500 lignes**
-- [ ] Aucune fonction ne dépasse **80 lignes**
-- [ ] Pas de pattern dupliqué dans **3+ endroits** → centraliser
-- [ ] Pas de **magic number** → enum ou constante
-- [ ] Toute connexion DuckDB utilise un **context manager**
-- [ ] Tout `st.plotly_chart` inclut `config=PLOTLY_CLEAN_CONFIG` ou `PLOTLY_STATIC_CONFIG`
-- [ ] Pas de `import pandas` (sauf `.to_pandas()` à la frontière Streamlit/Plotly)
-- [ ] Pas de `import sqlite3` (sauf scripts de migration)
-- [ ] Logique métier testable **sans Streamlit** (pas de `st.*` dans les fonctions de calcul)
-- [ ] Code mort supprimé (pas de fonctions retournant toujours `None`/`[]`/`False`)
-- [ ] Guards de compatibilité retirés si la migration est terminée
-
----
+1. **Dead code museum** — conserver du code mort « au cas où » (le pire : avec des tests
+   verts qui entretiennent l'illusion).
+2. **Compatibility guard forever** — flag/branche legacy sans date d'expiration.
+3. **God file / god function** — > 500 L / > 80 L mêlant des responsabilités.
+4. **Copy-paste config** — même littéral en 3+ endroits → constante + garde-rail.
+5. **Bare connect** — ouverture DuckDB hors provider/lease (viole le modèle mono-process).
+6. **Magic number** — `outcome == 2` → constante/enum ; seuils nommés.
+7. **Logique métier dans un handler HTTP ou un composant React** — extraire
+   (service/analysis côté Go ; hook/`*_logic.ts` côté web).
+8. **Factorisation abandonnée** — créer le helper canonique sans migrer les copies ni
+   poser le garde-rail (la dette re-croît).
+9. **Doc inversée** — commentaire qui décrit l'ancien défaut d'un flag ; la doc d'un
+   kill-switch se met à jour dans le commit qui bascule le défaut.
+10. **Swallowed error** — `_ = f()` / `continue` sur erreur sans log ni compteur.
 
 ## Stratégie de branches Git
 
 ### Règle fondamentale : 1 tâche = 1 branche, N commits
 
 ```
-# ✅ Correct — phases séquentielles = commits sur une branche
+# Correct — phases séquentielles = commits sur une branche
 git checkout -b refactor/cleanup-all
-git commit -m "refactor(phase1): dead code cleanup"
-git commit -m "refactor(phase2): DRY violations"
-git commit -m "refactor(phase3): split god classes"
-git commit -m "refactor(phase4): quality patterns"
+git commit -m "refactor(phase1): ..."
+git commit -m "refactor(phase2): ..."
 
-# ❌ Interdit — phases séquentielles = branches séparées
-git checkout -b refactor/phase1-dead-code-cleanup  # puis
-git checkout -b refactor/phase2-dry-violations      # puis
-git checkout -b refactor/phase3-god-class-splits    # puis
-git checkout -b refactor/phase4-quality-patterns    # → oblige une rebase/merge manuelle
+# Interdit — une branche par phase séquentielle (oblige rebase/merge manuels)
 ```
 
-### Quand créer plusieurs branches ?
+1. Vérifier la branche courante avant de committer : `git branch --show-current`
+2. **JAMAIS travailler sur `main`** — aucune exception (push main = deploy prod auto)
+3. Nouvelle feature/fix → nouvelle branche depuis la branche appropriée
+4. Ne jamais changer de branche si un travail différent est en cours — informer l'utilisateur
+5. Pas de nom fourni → en proposer un avant de créer
+6. Entre sessions : `git log --oneline -10` pour reprendre au bon endroit
+7. Plusieurs branches uniquement pour des tâches réellement indépendantes/parallèles
 
-Uniquement si les tâches sont **indépendantes et parallélisables** (ex : deux features sans dépendance). Si les tâches sont séquentielles, tout va sur **une seule branche** avec plusieurs commits.
+## Décisions architecturales (ADRs) — `docs/adr/`
 
-### Règles d'application
+- `0001` charts ECharts · `0002` canonical PlayerMatchRow · `0003` i18n manifests + lint ·
+  `0004` narrative engine · `0005` Prestige activation phasée · `0006` indicateurs
+  canoniques KDA/KDR/WinRate/Accuracy + unité 0..1 · `0007` migration canonical big-bang ·
+  `0008` isolation par chemin FS + xuid global · `0009` monitoring expvar ·
+  `0010` binning serveur · `0011` frontière canonical vs semantic vs asset-URL adapters ·
+  `0012` extraction adapters Halo-only (`internal/games/halo_infinite/`) ·
+  `0013` LeasedWriter/dblease (un seul writer RW) · `0014` progression V2 Ascension ·
+  `0015` PlayerProfile V1 partiel · `0016` SharedDBProvider B-swap RO↔RW ·
+  `0017`/`0018` CLOSED (supersedés par 0019) · `0019` **Collect→Persist anti-ART** ·
+  `0020` coach→pont Prestige · `0021` recovery WAL shared_social ·
+  `0022` shared_social Collect→Persist · `0023` **tokens source unique** ·
+  `0024` LUSR v2 TrueSkill2 · `0025` refactor title-agnostic (master :
+  `.ai/V7/PLAN_TITLE_AGNOSTIC_REFACTORING.md`) · `0026` **append-only ART eradication**
+  (+ vues `_latest`) · `0027` sync pipeline V2 cycle orchestrator ·
+  `0028` template synthesis coach · `0029` ownership joueur multi-user.
 
-1. **Toujours vérifier la branche courante** avant de committer : `git branch --show-current`
-2. **⛔ JAMAIS travailler sur `main`** — sans aucune exception. Si la branche courante est `main`, créer une branche de travail avant toute modification.
-3. **Toute nouvelle fonction/feature/fix** → créer une nouvelle branche depuis la branche courante (`git checkout -b <type>/<nom>`), jamais travailler directement sur la branche parente.
-4. **⛔ Ne jamais changer de branche** si un travail différent est déjà en cours sur la branche courante — interrompre la tâche et informer l'utilisateur pour éviter tout conflit entre agents.
-5. **Si aucun nom de branche n'est spécifié** par l'utilisateur, demander ou proposer un nom avant de créer
-6. **Entre sessions** : relire les commits existants (`git log --oneline -10`) pour reprendre sur la bonne branche
-7. **Résumé** : une branche pour le sujet, des commits pour les étapes — pas l'inverse
+READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
+`apps/web/src/components/charts/README.md` (wrappers ECharts).
 
----
+## Serveurs MCP disponibles
 
-## Modules Supprimés (v4.1)
+**duckdb** — SQL direct sur les données :
+```sql
+ATTACH 'data/titles/halo_infinite/warehouse/metadata.duckdb' AS meta (READ_ONLY);
+```
+Attention au modèle mono-process : ne jamais ouvrir en RW une DB que le serveur tient.
 
-Les anciens modules legacy ont été supprimés lors de la migration v4.1 :
-- `src/db/loaders.py` — supprimé, remplacé par `DuckDBRepository`
-- `src/db/loaders_cached.py` — supprimé
-- `src/data/repositories/legacy.py` — supprimé
-- `src/data/repositories/shadow.py` — supprimé
-- `src/data/repositories/hybrid.py` — supprimé
-
-**Tout le code doit utiliser `DuckDBRepository`** (`src/data/repositories/duckdb_repo.py`).
-
-## Serveurs MCP Disponibles
-
-Si les MCPs sont configurés, les utiliser :
-
-**duckdb** :
-- Exécuter SQL directement sur les données Halo
-- `ATTACH 'data/warehouse/metadata.duckdb' AS meta`
-
-**browser** (cursor-ide-browser) :
-- Tester l'app Streamlit visuellement
+**browser** — tester l'app visuellement (dev local sur :8000 / vite).
