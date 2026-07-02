@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
@@ -40,7 +41,7 @@ func (e *SyncEngine) RunBackfill(ctx context.Context, scope *SyncScope) ([]strin
 
 	// Sprint B1 commit 11b : acquireSharedWriter centralise lease + open
 	// (Provider en B-swap, dblease+OpenSharedDB en legacy).
-	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_missing_data"))
 	if err != nil {
 		return nil, fmt.Errorf("RunBackfill: %w", err)
 	}
@@ -83,7 +84,7 @@ func (e *SyncEngine) RunBackfillEngagementScores(ctx context.Context, force bool
 	defer playerHandle.Close()
 
 	// Sprint B1 commit 11b : acquireSharedWriter centralise lease + open.
-	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_engagement"))
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillEngagementScores: %w", err)
 	}
@@ -146,7 +147,7 @@ func (e *SyncEngine) RunBackfillLUSRDryRun(ctx context.Context) (*LUSRDryRunRepo
 	defer playerHandle.Close()
 
 	// shared DB en read-only suffit pour le dry-run.
-	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_lusr_dryrun"))
 	if err != nil {
 		return nil, fmt.Errorf("RunBackfillLUSRDryRun: %w", err)
 	}
@@ -165,7 +166,7 @@ func (e *SyncEngine) RunFormulaSim(ctx context.Context, lastN int) (*FormulaSimR
 	}
 	defer playerHandle.Close()
 
-	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_formula_sim"))
 	if err != nil {
 		return nil, fmt.Errorf("RunFormulaSim: %w", err)
 	}
@@ -192,7 +193,7 @@ func (e *SyncEngine) RunBackfillLUSR(ctx context.Context, force bool) (int, erro
 	defer playerHandle.Close()
 
 	// Sprint B1 commit 11b : acquireSharedWriter centralise lease + open.
-	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_lusr"))
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillLUSR: %w", err)
 	}
@@ -233,7 +234,7 @@ func (e *SyncEngine) RunBackfillCSR(ctx context.Context, force bool) (CSRBackfil
 	// shared DB en read-only suffit : on ne fait que SELECT match_registry.
 	// Sprint B1 commit 11b : passe par acquireSharedWriter pour cohérence
 	// (Provider en B-swap, dblease+OpenSharedDB en legacy).
-	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_csr"))
 	if err != nil {
 		return empty, fmt.Errorf("RunBackfillCSR: %w", err)
 	}
@@ -284,7 +285,7 @@ func (e *SyncEngine) RunBackfillSharedCSR(ctx context.Context, opts SharedCSRBac
 	slog.InfoContext(ctx, "RunBackfillSharedCSR: démarrage",
 		"gamertag", e.gamertag, "xuid", e.xuid, "force", opts.Force, "dry_run", opts.DryRun)
 
-	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_shared_csr"))
 	if err != nil {
 		return empty, fmt.Errorf("RunBackfillSharedCSR: %w", err)
 	}
@@ -336,7 +337,7 @@ func (e *SyncEngine) RunBackfillPerf(ctx context.Context, force bool) (int, erro
 	defer playerHandle.Close()
 
 	// Sprint B1 commit 11b : acquireSharedWriter centralise lease + open.
-	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_perf"))
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillPerf: %w", err)
 	}
@@ -399,7 +400,7 @@ func (e *SyncEngine) RunBackfillComebackBadges(ctx context.Context, forceAll boo
 	defer playerHandle.Close()
 
 	// Sprint B1 commit 11b : acquireSharedWriter centralise lease + open.
-	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_comeback"))
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillComebackBadges: %w", err)
 	}

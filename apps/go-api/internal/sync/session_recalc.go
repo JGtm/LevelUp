@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
@@ -136,7 +137,7 @@ func RecalculatePlayerSessions(
 	defer playerHandle.Close()
 
 	// Sprint B1 commit 13b : helper standalone (Provider en B-swap, legacy sinon).
-	sharedDB, releaseShared, err := AcquireSharedWriterStandalone(ctx, provider, sharedDBPath)
+	sharedDB, releaseShared, err := AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "sessions_recalc"), provider, sharedDBPath)
 	if err != nil {
 		return 0, fmt.Errorf("RecalculatePlayerSessions: %w", err)
 	}

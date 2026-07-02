@@ -20,6 +20,7 @@ import (
 	"math"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
 )
@@ -338,7 +339,7 @@ func (e *SyncEngine) RunBackfillAssistsModel(ctx context.Context, force bool) (i
 
 	// Sprint B1 commit 13a : acquireSharedWriter centralise lease + open
 	// (Provider en B-swap, dblease + OpenSharedDB en legacy).
-	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctxkeys.WithDBWriterLabel(ctx, "backfill_assists_model"))
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillAssistsModel: %w", err)
 	}

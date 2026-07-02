@@ -17,6 +17,7 @@ const (
 	requestIDKey      contextKey = "request_id"
 	eventIDKey        contextKey = "event_id"
 	localeKey         contextKey = "locale"
+	dbWriterLabelKey  contextKey = "db_writer_label"
 )
 
 // WithLocale place la locale UI ("fr"/"en") dans le contexte. Utilisée par les
@@ -143,4 +144,35 @@ func WithEventID(ctx context.Context, id string) context.Context {
 func EventID(ctx context.Context) string {
 	v, _ := ctx.Value(eventIDKey).(string)
 	return v
+}
+
+// DBWriterLabelUnlabeled est le label par défaut d'une acquisition de writer
+// DB partagée dont le caller n'a pas posé de label — sa présence dans les
+// métriques signale un call-site à instrumenter, pas une catégorie métier.
+const DBWriterLabelUnlabeled = "unlabeled"
+
+// WithDBWriterLabel place le label du DÉTENTEUR d'un writer DB partagé dans le
+// contexte (attribution de la fenêtre RW, étape 0 contention). Posé par chaque
+// sous-système à l'ENTRÉE de son acquisition (sync_v1_run, sync_v2_postsync,
+// persist_worker, world_leaderboard_snapshot, backfill_*, …), lu par
+// sharedprovider.AcquireWriter pour ventiler shared_provider_rw_window_ms par
+// détenteur et étiqueter le watchdog. Même classe de donnée cross-cutting
+// qu'event_id : capturée à l'acquisition, consommée au Release.
+//
+// Labels = constantes compile-time UNIQUEMENT (cardinalité bornée, ADR 0009 —
+// jamais de gamertag/match_id/chemin dans un label).
+func WithDBWriterLabel(ctx context.Context, label string) context.Context {
+	if label == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, dbWriterLabelKey, label)
+}
+
+// DBWriterLabel extrait le label de détenteur du writer DB partagé.
+// Retourne DBWriterLabelUnlabeled si absent (call-site non instrumenté).
+func DBWriterLabel(ctx context.Context) string {
+	if v, ok := ctx.Value(dbWriterLabelKey).(string); ok && v != "" {
+		return v
+	}
+	return DBWriterLabelUnlabeled
 }

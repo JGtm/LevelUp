@@ -541,6 +541,42 @@ en = "In-flight readers"
 fr = "État courant"
 en = "Current state"
 
+[common.admin.contention_rw_avg]
+fr = "Détention writer moy."
+en = "Avg writer hold"
+
+[common.admin.contention_rw_max]
+fr = "Détention writer max"
+en = "Max writer hold"
+
+[common.admin.contention_watchdog]
+fr = "Watchdog (> seuil)"
+en = "Watchdog (> threshold)"
+
+[common.admin.contention_holders_title]
+fr = "Détenteurs du writer (fenêtre RW par label)"
+en = "Writer holders (RW window by label)"
+
+[common.admin.contention_holder_label]
+fr = "Détenteur"
+en = "Holder"
+
+[common.admin.contention_holder_count]
+fr = "Nb"
+en = "Count"
+
+[common.admin.contention_holder_total]
+fr = "Total"
+en = "Total"
+
+[common.admin.contention_holder_avg]
+fr = "Moy."
+en = "Avg"
+
+[common.admin.contention_holder_max]
+fr = "Max"
+en = "Max"
+
 [common.admin.tokens_section]
 fr = "Santé des tokens"
 en = "Token health"

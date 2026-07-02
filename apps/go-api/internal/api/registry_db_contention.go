@@ -26,6 +26,17 @@ func (r *ServiceRegistry) DBContention(_ context.Context) domain.DBContentionRes
 		SwapFailures:  s.SwapFailures,
 		AvgBlockedMs:  s.BlockedWindowAvgMs,
 		MaxBlockedMs:  s.BlockedWindowMaxMs,
+		// Étape 0 attribution : détention writer (agrégat + par détenteur + watchdog).
+		AvgRWWindowMs: s.RWWindowAvgMs,
+		MaxRWWindowMs: s.RWWindowMaxMs,
+		WatchdogFired: s.WatchdogFired,
+		Holders:       make([]domain.DBContentionHolder, 0, len(s.RWWindowByHolder)),
+	}
+	for _, h := range s.RWWindowByHolder {
+		resp.Holders = append(resp.Holders, domain.DBContentionHolder{
+			Label: h.Label, Count: h.Count, TotalMs: h.TotalMs,
+			AvgMs: h.AvgMs, MaxMs: h.MaxMs, WatchdogFired: h.WatchdogFired,
+		})
 	}
 	if s.SwapsToRW > 0 {
 		resp.AvgAcquireMs = s.AcquireMsTotal / s.SwapsToRW

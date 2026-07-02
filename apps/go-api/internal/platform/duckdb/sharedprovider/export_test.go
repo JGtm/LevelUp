@@ -35,3 +35,11 @@ func SetFailNextReopenForTest(p Provider, fail bool) {
 func SetDrainTimeoutForTest(p Provider, d time.Duration) {
 	p.(*providerImpl).drainTimeout = d
 }
+
+// SetRWHoldWatchdogForTest configure le seuil du watchdog de détention du
+// writer RW. Par défaut 2s (defaultRWHoldWatchdog) — réduit à ~50ms en tests
+// pour valider le fire sans allonger la suite. À appeler AVANT AcquireWriter
+// (le timer s'arme à l'acquisition). d <= 0 désactive le watchdog.
+func SetRWHoldWatchdogForTest(p Provider, d time.Duration) {
+	p.(*providerImpl).rwHoldWatchdog = d
+}

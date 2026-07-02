@@ -38,6 +38,7 @@ import (
 	"levelup/go-api/internal/api"
 	"levelup/go-api/internal/assetnames"
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
@@ -755,6 +756,8 @@ func main() {
 			// Arrêt naturel via autoBatchQueue.Close() (channel close) au shutdown.
 			combinedP := persist.NewCombinedPersister(
 				func(workerCtx context.Context) (*sql.DB, func(), error) {
+					// Étape 0 attribution : fenêtre RW courte de référence (1 batch/TX).
+					workerCtx = ctxkeys.WithDBWriterLabel(workerCtx, "persist_worker")
 					return syncpkg.AcquireSharedWriterStandalone(workerCtx, cfg.SharedProvider, sharedPath)
 				},
 				// titleSlug vient du batch (batch.TitleSlug) — chaque batch route vers

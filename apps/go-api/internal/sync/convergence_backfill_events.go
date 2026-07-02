@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/persist"
 )
 
@@ -178,7 +179,7 @@ func (cfg EventsConvergenceConfig) computeDominance(ctx context.Context, matchID
 	if len(matchIDs) == 0 || cfg.PlayerDB == nil {
 		return
 	}
-	sharedDB, release, err := cfg.AcquireShared(ctx)
+	sharedDB, release, err := cfg.AcquireShared(ctxkeys.WithDBWriterLabel(ctx, "events_convergence_dominance"))
 	if err != nil {
 		cfg.log.WarnContext(ctx, "convergence backfill events: acquire shared pour dominance échoué",
 			"gamertag", cfg.Gamertag, "err", err)
@@ -236,7 +237,7 @@ func convergenceEnvInt(key string) int {
 // detectIncomplete liste les matchs sans events (events_loaded=false), récent→vieux,
 // via le détecteur existant. Fenêtre shared courte (lecture).
 func (cfg EventsConvergenceConfig) detectIncomplete(ctx context.Context) ([]string, error) {
-	sharedDB, release, err := cfg.AcquireShared(ctx)
+	sharedDB, release, err := cfg.AcquireShared(ctxkeys.WithDBWriterLabel(ctx, "events_convergence_detect"))
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +287,7 @@ func (cfg EventsConvergenceConfig) processChunk(ctx context.Context, chunk []str
 	}
 
 	// ── Persist le lot en fenêtre RW courte ──
-	sharedDB, release, err := cfg.AcquireShared(ctx)
+	sharedDB, release, err := cfg.AcquireShared(ctxkeys.WithDBWriterLabel(ctx, "events_convergence_write"))
 	if err != nil {
 		res.Skipped += len(fetched)
 		cfg.log.WarnContext(ctx, "convergence backfill events: acquire shared échoué (lot reporté)",

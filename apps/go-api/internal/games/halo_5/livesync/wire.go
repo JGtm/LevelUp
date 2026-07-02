@@ -85,7 +85,9 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 		// Tient le shared (writer coordonné) + la player DB RW le temps du recompute
 		// incrémental (force=false → seuls les matchs neufs) : court.
 		PostScore: func(ctx context.Context, src halo5.CaptureSource, inserted []string) error {
-			runCtx := ctxkeys.WithTitleSlug(ctx, halo5.TitleSlug)
+			// Étape 0 attribution : détenteur identifié « réseau sous writer »
+			// (PersistPerMatchRatings = 1 fetch carnage par nouveau match).
+			runCtx := ctxkeys.WithDBWriterLabel(ctxkeys.WithTitleSlug(ctx, halo5.TitleSlug), "h5_livesync_postscore")
 			playerDB, err := syncpkg.OpenPlayerDB(playerPath)
 			if err != nil {
 				return fmt.Errorf("open player DB: %w", err)
@@ -175,7 +177,7 @@ func h5HasEnrichmentBacklog(ctx context.Context, sharedProvider sharedprovider.P
 		return false
 	}
 	defer playerDB.Close()
-	shared, release, err := syncpkg.AcquireSharedWriterStandalone(ctx, sharedProvider, sharedPath)
+	shared, release, err := syncpkg.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "h5_livesync_backlog_probe"), sharedProvider, sharedPath)
 	if err != nil {
 		return false
 	}

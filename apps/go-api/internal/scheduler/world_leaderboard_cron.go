@@ -27,6 +27,7 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
@@ -303,7 +304,7 @@ func (c *WorldLeaderboardCron) seasonGamertags(ctx context.Context, season strin
 
 // persistStats acquiert le writer shared et insère les stats agrégées (append-only).
 func (c *WorldLeaderboardCron) persistStats(ctx context.Context, stats []domain.WorldPlayerSeasonStats) (int, error) {
-	wh, err := c.provider.AcquireWriter(ctx)
+	wh, err := c.provider.AcquireWriter(ctxkeys.WithDBWriterLabel(ctx, "world_enrich_stats"))
 	if err != nil {
 		return 0, err
 	}
@@ -362,7 +363,7 @@ func (c *WorldLeaderboardCron) scrapeAll(ctx context.Context, season string, pla
 // slug du titre courant (PMT-7 write-path : capability-gated par l'appelant
 // runOnceForTitle — seuls les titres déclarant CapWorldLeaderboard arrivent ici).
 func (c *WorldLeaderboardCron) persist(ctx context.Context, titleSlug string, entries []domain.LeaderboardEntry) (int, error) {
-	wh, err := c.provider.AcquireWriter(ctx)
+	wh, err := c.provider.AcquireWriter(ctxkeys.WithDBWriterLabel(ctx, "world_leaderboard_snapshot"))
 	if err != nil {
 		return 0, err
 	}

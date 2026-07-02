@@ -17,6 +17,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/sync"
@@ -111,7 +112,7 @@ func (s *OpenSpartanPostImportService) Run(
 func (s *OpenSpartanPostImportService) recomputeCSR(
 	ctx context.Context, playerDB *sql.DB, sharedDBPath, xuid string, result *PostImportResult,
 ) {
-	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctx, s.cfg.SharedProvider, sharedDBPath)
+	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "openspartan_post_import"), s.cfg.SharedProvider, sharedDBPath)
 	if err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "csr_acquire", Err: err.Error()})
 		s.log.Warn("post_import_csr_acquire_failed", "xuid", xuid, "err", err)
@@ -133,7 +134,7 @@ func (s *OpenSpartanPostImportService) recomputeCSR(
 func (s *OpenSpartanPostImportService) recomputeLUSR(
 	ctx context.Context, playerDB *sql.DB, sharedDBPath, xuid string, result *PostImportResult,
 ) {
-	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctx, s.cfg.SharedProvider, sharedDBPath)
+	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "openspartan_post_import"), s.cfg.SharedProvider, sharedDBPath)
 	if err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "lusr_acquire", Err: err.Error()})
 		s.log.Warn("post_import_lusr_acquire_failed", "xuid", xuid, "err", err)
@@ -231,7 +232,7 @@ func (s *OpenSpartanPostImportService) recomputeSessions(
 func (s *OpenSpartanPostImportService) recomputePerfScores(
 	ctx context.Context, playerDB *sql.DB, sharedDBPath, xuid string, force bool, result *PostImportResult,
 ) {
-	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctx, s.cfg.SharedProvider, sharedDBPath)
+	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "openspartan_post_import"), s.cfg.SharedProvider, sharedDBPath)
 	if err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "perf_scores_acquire", Err: err.Error()})
 		s.log.Warn("post_import_perf_scores_acquire_failed", "xuid", xuid, "err", err)
@@ -270,7 +271,7 @@ func (s *OpenSpartanPostImportService) recomputeCitations(
 		return
 	}
 	defer releaseMeta()
-	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctx, s.cfg.SharedProvider, sharedDBPath)
+	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "openspartan_post_import"), s.cfg.SharedProvider, sharedDBPath)
 	if err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "citations_acquire", Err: err.Error()})
 		s.log.Warn("post_import_citations_acquire_failed", "xuid", xuid, "err", err)

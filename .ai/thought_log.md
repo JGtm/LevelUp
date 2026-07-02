@@ -1,3 +1,21 @@
+## [2026-07-02] Étape 0 contention : attribution par-détenteur de la fenêtre RW + watchdog — COMPLÉTÉ local
+
+**Tâche** : la fenêtre RW moyenne reste ~13,5s (writers background hors-sync) après la campagne V2. AVANT toute chirurgie, rendre la contention ATTRIBUABLE : qui tient le writer, combien de temps, à quelle fréquence — avec un garde-fou permanent. Discovery multi-agents (3 agents : 30+ call-sites exhaustifs, plomberie metrics Phase 0, conventions de test).
+
+**Découvertes discovery** : (1) le SUSPECT PRINCIPAL des 13,5s est `sync_v2_postsync` (closure `acquireSharedRW` de sync_v2_wiring — le post-sync V2 tient le writer pendant les 14 étapes, weapon-kills réseau inclus, alors que la phase persist V2 est sub-seconde) ; (2) le soupçon « world-enrich long holder » est INFIRMÉ (réseau hors lease, seul l'INSERT est sous writer) ; (3) career_live n'acquiert JAMAIS le writer shared (dblease player/metadata) ; (4) autres violateurs « réseau sous writer » : sync_v1_run/postsync, h5_livesync_postscore (fetch carnage), openspartan_import, backfills films (weapon_kills/events_replay).
+
+**Décisions techniques** :
+- **Label porté par le contexte** (`ctxkeys.WithDBWriterLabel`/`DBWriterLabel`, défaut `unlabeled`) — PAS de changement de signature `AcquireWriter` (~40 fichiers épargnés, mocks intacts). Écart assumé vs la reco de l'agent (writer_label.go dans sharedprovider) : ctxkeys évite d'importer `platform/` depuis service/scheduler, et le provider lit déjà `ctxkeys.EventID`. Labels = constantes compile-time (cardinalité bornée ADR 0009).
+- **Collecteur par-détenteur** `sharedprovider/holder_metrics.go` : map bornée (cap 32, éviction least-active copiée de player_api_collector) sous mutex ; expvar `shared_provider_rw_window_by_holder` (count/total/avg/max/watchdog par label) + `shared_provider_rw_watchdog_fired_total` ; publication sous `metricsOnce`.
+- **Watchdog** : `time.AfterFunc(2s)` armé dans `swapToRW` (sous p.mu, à côté de rwWindowStart), callback SANS lock (valeurs capturées) → WARN `writer RW tenu au-delà du seuil` (label, path, held_ms) + compteurs ; désarmé dans `releaseWriter` (y compris chemin StateClosed — pas de WARN fantôme post-Close). Seuil 2s = pré-alerte avant le budget user-facing 3s ; fire UNE fois par acquisition (pas de spam). `SetRWHoldWatchdogForTest` dans export_test.go.
+- **Attribution de la fenêtre** : `releaseWriter` ventile le même `heldMs` que `shared_provider_rw_window_ms` vers le label capturé ; le log `swap RW→RO terminé` porte désormais le label.
+- **~30 call-sites labellisés** (sync_v1_run/postsync, sync_v2_postsync, persist_worker, events_convergence_{detect,write,dominance}, world_{enrich_stats,leaderboard_snapshot}, admin_{registry_names,lying_bits_reset}, friends_recompute, sessions_recalc, match_exclusion_recompute, openspartan_{import,post_import}, h5_livesync_{known,aliases_seed,persist,postscore,backlog_probe}, backfill_* ×13). Les CLIs hors-serveur restent `unlabeled` (défaut).
+- **Exposition** : `Snapshot()` → `RWWindowByHolder`+`WatchdogFired` → DTO `DBContentionResponse` (avg/max rw_window ENFIN exposés + holders[] + watchdog_fired) → **openapi.yaml manuel mis à jour** (additionalProperties:false aurait cassé la validation de contrat — internal/api a échoué puis reverdi après le patch) → `generate-types` régénéré → carte admin DBContentionSection : 3 tuiles (détention moy/max avec alerte ≥2s, watchdog) + table des détenteurs (i18n FR/EN, 9 clés, manifests régénérés).
+
+**Résultats** : build/vet/gofmt verts ; unit tests collecteur (stats par-label, tri, éviction cap, roundtrip ctx) verts ; **intégration watchdog verte AVEC `-race`** (fires >seuil, désarmé par release, label défaut, concurrent 4 goroutines) ; suite sharedprovider intégration complète verte avec -race ; front typecheck+eslint verts ; internal/api vert après mise à jour du contrat.
+
+**Conclusion / prochaine étape** : la contention est désormais attribuable en continu (carte admin + /debug/vars + WARN watchdog dans logs/provider.log) et l'invariant « writer tenu court » est auto-surveillé. Étape 1 = lire les chiffres réels sur un cycle de sync live, puis refactorer le PIRE détenteur mesuré (attendu : sync_v2_postsync — sortir les fetches réseau du lease, pattern V2 Persist) avec le gate `rw_window_max < 1500ms` par détenteur. Commit sur autorisation.
+
 ## [2026-07-01] Contention sync↔service + switch de titre bugué : campagne A→D + activation V2 — COMPLÉTÉ local (soak fait)
 
 **Tâche** : « le switch de titre bug toujours » (parfois ne change pas) + lenteur générale. Diagnostic multi-agents (5 axes, `.ai/PLAN_CONTENTION_SYNC_SERVICE.md` + `.ai/PLAN_TITLE_SWITCH_FILTER_LEAK.md`).
@@ -31671,3 +31689,41 @@ sans échec ; front `typecheck` OK, `eslint` 0 erreur (warnings pré-existants),
 + 14 skipped (236 fichiers).
 
 **Prochaine étape** : rebuild+restart serveur dev (CGO) → vérif live ; commit + push (autorisation).
+
+---
+
+## [2026-07-02] Audit d'architecture complet apps/go-api/internal/ (revue seule, zéro modification de code)
+
+**Statut** : Complété (livrable = rapport de revue, aucune correction appliquée)
+
+**Décision technique principale** : audit mené par workflow multi-agent (27 agents, ~3,75M tokens) :
+10 dimensions en parallèle (couches x4, structure x2, title-agnosticism x2, perf DuckDB x2) + 3
+dimensions complémentaires issues d'un critique de complétude (contrat HTTP/OpenAPI, cohérence
+capabilities coarse/fine, modèle de connexions), chaque lot contre-vérifié adversarialement à la
+ligne près (17 faux positifs éliminés, sévérités recalibrées). Le vérificateur de la dimension
+capabilities a échoué (erreur API) → 4 claims clés re-vérifiés manuellement au grep (confirmés).
+
+**Résultats observés** : 173 findings confirmés — 0 Bloquant, 55 Majeurs, 118 Mineurs. Santé
+globale : Moyen sur les 4 axes (perf N+1 : Bon). Points saillants :
+- Couches : handlers/ et middleware/ sains ; la racine api/ (39 fichiers, ~9,5k L) est devenue une
+  2e couche service de facto (SQL inline dans 9 fichiers, pipeline post-sync, runners admin,
+  cascade auth ADR 0023 dupliquée) ; 3 foyers dans service/ (catalog_fetcher SQL ~200L,
+  career_live→types sync, HomeService→CareerLiveService concret).
+- ART : dernier chemin prod ON CONFLICT per-match sur shared = import OpenSpartan (sérialisé sous
+  writer lease, downgradé Majeur) + bulk UPDATE nu sur match_registry (backfill_registry_names via
+  action admin HTTP) hors couverture du tripwire.
+- Title-agnosticism : socle solide (archlint, registres par slug) mais fuites actives bloquant H5 :
+  classification modes HINF dans MediaRepo pour tous titres, providers CSR Explorer/Compare câblés
+  HINF, WaypointURL halo-infinite en dur, fields.toml halo_5 squelette (5/59 FieldKeys), regex du
+  ratchet no_slug_comparison contournée par l'alias titlePkg., auth.toml jamais consommé en prod,
+  contradiction coarse/fine engagement H5.
+- Perf : 8+ lecteurs de match_skill_rank BRUT (piège _latest documenté) dont Home/historique/
+  compare/leaderboard ; LoadAll full-history sans LIMIT à chaque hit ; player DB = handle RW
+  1 connexion partagé HTTP+sync sans métrique ; aucune config memory_limit/threads DuckDB.
+- Contrat : internal/api/gen mort (0 importeur, spec périmée), 22 schémas OpenAPI DIVERGENT
+  passent la CI.
+
+**Conclusion / prochaine étape** : rapport livré en conversation (résumé exécutif, findings par
+sévérité, TOP 10, recommandations). Prochaine étape suggérée : passer les lectures rating sur les
+vues _latest (quick win user-visible), router l'import OpenSpartan vers persist, corriger la regex
+archlint + nouveaux ratchets (SQL dans api/, filepath.Join data), extraire post_sync de api/.

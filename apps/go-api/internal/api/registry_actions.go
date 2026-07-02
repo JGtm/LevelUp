@@ -75,7 +75,7 @@ func (r *ServiceRegistry) RunRegistryNamesBackfill(ctx context.Context, titleSlu
 
 	acquireCtx, cancel := context.WithTimeout(ctx, acquireWriterTimeout)
 	defer cancel()
-	writer, err := r.cfg.SharedProvider.AcquireWriter(acquireCtx)
+	writer, err := r.cfg.SharedProvider.AcquireWriter(ctxkeys.WithDBWriterLabel(acquireCtx, "admin_registry_names"))
 	if err != nil {
 		return res, fmt.Errorf("acquisition writer shared (sync en cours ?): %w", err)
 	}
@@ -137,7 +137,7 @@ func (r *ServiceRegistry) RunLyingBitsReset(ctx context.Context, titleSlug strin
 	}
 	acquireCtx, cancel := context.WithTimeout(ctx, acquireWriterTimeout)
 	defer cancel()
-	writer, err := r.cfg.SharedProvider.AcquireWriter(acquireCtx)
+	writer, err := r.cfg.SharedProvider.AcquireWriter(ctxkeys.WithDBWriterLabel(acquireCtx, "admin_lying_bits_reset"))
 	if err != nil {
 		return res, fmt.Errorf("acquisition writer shared (sync en cours ?): %w", err)
 	}
