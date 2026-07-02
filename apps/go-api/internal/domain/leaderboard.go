@@ -13,6 +13,15 @@ type WorldPlayerRef struct {
 	XUID     string
 }
 
+// WorldPlaylistRef identifie une playlist classée ACTIVE découverte sur la page
+// classement Waypoint (menu déroulant `__NEXT_DATA__.playlists`) : asset id + nom
+// affiché. Source directe autoritative des playlists actives (le manifest de build
+// renvoie un PlaylistLinks vide) — cf. A1/A2.
+type WorldPlaylistRef struct {
+	AssetID     string
+	DisplayName string
+}
+
 // LeaderboardEntry est une entrée du classement.
 //
 // Le classement est multi-catégories (cf. LeaderboardCategory). Pour la

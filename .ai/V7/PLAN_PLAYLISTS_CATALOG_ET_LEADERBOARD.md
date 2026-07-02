@@ -72,58 +72,63 @@ scrape quotidien les remplit ; entre-temps fallback PeopleHub. Acceptable.
 
 ---
 
-## Étape A1 — Énumérateur de manifest (sonde + implémentation)
+## Étape A1 — RÉVISÉE : source = Waypoint FetchCatalog (manifest ABANDONNÉ)
 
-**Pourquoi** : source directe autoritative des playlists actives = les `PlaylistLinks` du
-manifest de build (`discovery-infiniteugc`). L'auth Spartan+clearance et le host sont déjà
-câblés ([discovery_client.go:23,226-231](../../apps/go-api/internal/platform/halo/discovery_client.go)).
+**DÉCOUVERTE 2026-07-02 (recherche offline AVANT toute sonde live)** : l'approche manifest
+est INVALIDE — `discovery-infiniteugc/hi/manifests/builds/{build}/game` renvoie
+maps/modes/variants mais son `PlaylistLinks` est **VIDE** (source : OpenSpartan wiki). Aucune
+sonde live nécessaire ; le blocker « tokens watcher » disparaît.
 
-**Décision produit tranchée** : `active` = présent dans le manifest de build courant ;
-`ranked` = la config playlist (déjà fetchable via `GetPlaylistConfig`) porte le flag, à
-défaut = CSR endpoint non-null. On NE dérive PAS des matchs (règle actée du package
-`rankedplaylists`).
+**Source directe autoritative TROUVÉE, déjà scrapée** : le `__NEXT_DATA__` de la page
+classement Waypoint expose `playlists` = le menu déroulant des playlists CLASSÉES ACTIVES
+(**7** dans la fixture : Snipers, Doubles, Slayer, Legacy, Arena, Tactical, 1v1 Showdown —
+vs **4** flaggées actives en dur = CAUSE RACINE confirmée), avec `playlistId` +
+`displayName` + date de rotation. `LeaderboardScraper.FetchCatalog` (leaderboard_scraper.go:186)
+renvoie DÉJÀ `(seasons, playlists []WaypointRef{ID,DisplayName})` — mais `playlists` est JETÉE
+par son unique appelant (snapshot-world-leaderboard:147 `refs, _, err`). Idem `seasons` (→ C2).
+
+**Décision produit tranchée** : `is_active` = présent dans `FetchCatalog().playlists` ;
+`is_ranked` = TRUE (dropdown Waypoint = classé par construction). Playlists de
+`rankedplaylists.All()` ABSENTES du dropdown → `is_active=FALSE` (retirées, conservées pour
+l'historique CSR). Zéro dérivation depuis les matchs, zéro manifest, zéro réseau nouveau
+(FetchCatalog est déjà appelé par le cron leaderboard).
 
 **Périmètre fermé** :
-- [ ] **Sonde read-only d'abord** : `cmd/probe-playlist-manifest/main.go` (CLI testée, PAS
-      de sonde jetable) qui fetch le manifest de build courant et dump les `PlaylistLinks`
-      (AssetId, VersionId) + tente `GetPlaylistConfig` sur 1 playlist. But : valider la
-      forme JSON exacte (endpoint `hi/manifests/builds/{build}/game` — à confirmer par la
-      sonde ; le numéro de build vient de gamecms/discovery, à identifier dans la sonde).
-- [ ] Consigner la forme validée dans le docstring (pattern « validé contre l'API
-      {date} », comme le reste du package halo).
-- [ ] `HaloProvider.FetchActivePlaylists(ctx) []PlaylistRef{AssetID, VersionID}` +
-      `parseGameManifest` pur (testable sans réseau, fixture JSON).
-- [ ] Tests : `parseGameManifest` sur fixture (cas nominal + manifest vide).
+- [~] Sonde/manifest : ABANDONNÉ (source déjà validée par la fixture leaderboard_sample.html).
+      Toute l'implémentation passe en A2.
 
-**Gate** :
-- Sonde exécutée, sortie collée dans le thought_log (forme JSON réelle).
-- `cd apps/go-api && go test ./internal/platform/halo/ -run 'Manifest|Playlist'`
-
-**Blocker documenté** : la sonde nécessite des tokens Spartan valides (compte watcher). Si
-tokens morts → diagnostiquer (ADR 0023), JAMAIS re-capturer. C'est le seul point réseau.
+**Blocker** : AUCUN.
 
 ---
 
-## Étape A2 — Rafraîchissement du catalogue depuis le manifest
+## Étape A2 — Le cron découvre les playlists ACTIVES réelles (fix page classement)
+
+**RE-CADRAGE (sur pièces)** : la page classement dérive sa liste de playlists des SNAPSHOTS
+(`SELECT DISTINCT playlist_id FROM world_csr_leaderboard_latest`, leaderboard_world_repo.go:267),
+PAS de `playlists_catalog`. Or le cron ne scrapait que `rankedplaylists.Active()` (4 en dur)
+→ seules 4 playlists avaient des snapshots → la page n'en montrait que 4. LE fix = faire
+scraper au cron les playlists réellement actives (7) découvertes sur Waypoint.
 
 **Périmètre fermé** :
-- [ ] `internal/ops/catalog_refresh.go` (existant) OU service dédié : pour chaque
-      `PlaylistRef` du manifest → `GetPlaylistConfig` (nom localisé + ranked) → upsert
-      `playlists_catalog(uuid, name, is_active=TRUE, is_ranked, version_id)`. Les playlists
-      absentes du manifest → `is_active=FALSE` (retirées du matchmaking, conservées pour
-      l'historique CSR).
-- [ ] Le slice hardcodé `rankedplaylists.all` devient un **fallback/seed initial**, plus la
-      source de vérité runtime. `IsRanked()` lit le catalogue rafraîchi (ne pas casser les
-      callers migration : garder la fonction, changer la source).
-- [ ] Cron : rafraîchir à chaque démarrage + 1×/jour (réutiliser le scheduler existant).
-      Kill-switch documenté (date bascule + critère retrait, règle CLAUDE.md n°11).
-- [ ] Multi-titre : gate sur capability (`ranked_playlists` / discovery UGC), pas sur
-      `slug=="halo_infinite"`. Titre sans discovery → no-op propre (log), pas de panic.
+- [x] `LeaderboardScraper.FetchActivePlaylists(ctx, ref)` → mappe la portion `playlists` de
+      `FetchCatalog` en `[]domain.WorldPlaylistRef{AssetID, DisplayName}` (halo).
+- [x] Port `LeaderboardScraperPort.FetchActivePlaylists` + `WorldLeaderboardCron.discoverActivePlaylists`
+      (fallback statique si erreur/vide → jamais zéro playlist). `runOnceForTitle` scrape les
+      playlists découvertes, plus les 4 en dur.
+- [x] Rafraîchi à chaque cycle du cron (déjà quotidien). Multi-titre : hérite du gate
+      `CapWorldLeaderboard` de `RunOnce` (titre sans cap → skip ; fallback statique sinon).
+- [!] MAJ `playlists_catalog.is_active` (metadata) depuis Waypoint : DIFFÉRÉ. Justification :
+      la page classement ne lit PAS le catalogue (elle dérive des snapshots) ; le cron n'a
+      pas de writer metadata.duckdb ; le seul consommateur de `playlists_catalog.is_active`
+      (FiltersService/catalog_repo) est traité en A3 (migration des consommateurs). Pas requis
+      pour le fix utilisateur. Contrainte ART notée pour A3 : `playlists_catalog` sans index
+      secondaire (ratchet `playlists_catalog_no_index_test.go`) → UPDATE-or-INSERT only.
+- [!] `IsRanked()`/`Active()` lisent le catalogue : DIFFÉRÉ → A3 (migration consommateurs).
 
-**Gate** :
-- `cd apps/go-api && go test ./internal/ops/ ./internal/migration/ -run 'Catalog|Playlist|Ranked'`
-- `go test -tags=integration ./internal/platform/duckdb/ -run 'Catalog'` (upsert anti-ART).
-- Vérif manuelle : après refresh, `duckdb .../metadata.duckdb "SELECT name,is_active,is_ranked FROM playlists_catalog WHERE title_slug='halo_infinite' AND is_active"` liste > 4 playlists si le jeu en a plus.
+**Gate (passé)** :
+- `go build ./...` OK ; `gofmt -l` propre ; `go test ./internal/scheduler/ ./internal/platform/halo/`
+  vert, dont `TestWorldLeaderboardCron_DiscoversActivePlaylists` (scrape les découvertes, pas
+  les statiques) + `TestWorldLeaderboardCron_FallbackStaticPlaylists`.
 
 ---
 
@@ -215,14 +220,22 @@ saison correct + placement « saison précédente » nommé.
 - **Doc inversée** (leaderboard_world_repo.go:57-58) : commentaire « Waypoint ne publie pas
   de xuid » contredit par scraper:117 qui le parse. Traité DANS B1 (même code).
 - **Seasons Waypoint déjà scrapées mais inexploitées** : `parseLeaderboardPage` capture
-  `Seasons []{SeasonID, DisplayName}` (scraper:247,262-265) — la liste numéro + nom de
-  sous-saison (« X-Infinite ») que LeafApp affiche. Aujourd'hui non persistée/non surfacée.
-  Ouvert comme étape C2 (validé utilisateur 2026-07-02).
+  `Seasons []{SeasonID, DisplayName, translations}` (scraper:247,262-265). La fixture
+  montre `csrseason13-2` → DisplayName « Infinite » + traductions FR complètes (Ombres,
+  Dernier bastion…) : « X-Infinite » = n° saison CSR + nom d'Operation. Ouvert en C2.
+- **Manifest ABANDONNÉ (A1 pivot, 2026-07-02)** : `discovery-infiniteugc/.../game`
+  PlaylistLinks VIDE (OpenSpartan wiki). Remplacé par `FetchCatalog().playlists` déjà scrapé
+  (7 playlists actives vs 4 en dur = cause racine). A1/A2 révisées. Aucun réseau nouveau.
+- **`FetchCatalog().playlists` jeté** (snapshot-world-leaderboard:147 `refs, _, err`) : la
+  liste autoritative des playlists classées actives est fetchée puis ignorée. Traité en A2.
+- **`playlists_catalog` sans index secondaire** (ratchet `playlists_catalog_no_index_test.go`)
+  : UPDATE OK sans index ; ne JAMAIS recréer idx_playlists_catalog_active (corruption ART).
 
 ## Protocole de reprise de session
 
 - Avancement = cases cochées de ce fichier + entrées `.ai/thought_log.md`.
-- Reprendre à la 1re étape non close (dans l'ordre B1 → A1 → A2 → B2 → A3 → C1).
+- Ordre RÉVISÉ : B1 [x, commité d58528501] → A2 (A1 replié dedans : Waypoint FetchCatalog,
+  plus de manifest) → B2 → A3 → C1 → C2. Reprendre à A2.
 - Avant de coder une étape : rouvrir les fichiers cibles (le code a pu bouger).
 
 ## Statut de clôture

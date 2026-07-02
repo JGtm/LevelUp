@@ -210,6 +210,25 @@ func (s *LeaderboardScraper) FetchCatalog(
 	return seasons, playlists, nil
 }
 
+// FetchActivePlaylists retourne les playlists CLASSÉES ACTIVES exposées par le menu
+// déroulant de la page classement Waypoint (portion `playlists` de FetchCatalog) :
+// c'est la source directe autoritative des playlists actives (le manifest de build
+// renvoie un PlaylistLinks vide). `refPlaylistID` = une playlist connue servant de
+// graine pour charger la page. Renvoie asset id + nom affiché de chaque playlist.
+func (s *LeaderboardScraper) FetchActivePlaylists(ctx context.Context, refPlaylistID string) ([]domain.WorldPlaylistRef, error) {
+	_, playlists, err := s.FetchCatalog(ctx, refPlaylistID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.WorldPlaylistRef, 0, len(playlists))
+	for _, pl := range playlists {
+		if id := strings.TrimSpace(pl.ID); id != "" {
+			out = append(out, domain.WorldPlaylistRef{AssetID: id, DisplayName: pl.DisplayName})
+		}
+	}
+	return out, nil
+}
+
 // fetchPageBytes récupère le HTML brut d'une page du classement.
 func (s *LeaderboardScraper) fetchPageBytes(ctx context.Context, seasonID, playlistID string, page int) ([]byte, error) {
 	url := fmt.Sprintf("%s/halo-infinite/leaderboards/%s/%s?page=%d",

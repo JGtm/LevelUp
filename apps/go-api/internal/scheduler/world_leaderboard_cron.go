@@ -42,6 +42,10 @@ type LeaderboardScraperPort interface {
 	FetchActiveSeason(ctx context.Context, refPlaylistID string) (string, error)
 	// FetchCSRLeaderboard scrape le classement d'une playlist pour une saison.
 	FetchCSRLeaderboard(ctx context.Context, seasonID, playlistID string, limit int) ([]domain.LeaderboardEntry, error)
+	// FetchActivePlaylists découvre les playlists classées ACTIVES du menu déroulant
+	// de la page (source directe autoritative — le manifest de build a un PlaylistLinks
+	// vide). refPlaylistID = graine pour charger la page.
+	FetchActivePlaylists(ctx context.Context, refPlaylistID string) ([]domain.WorldPlaylistRef, error)
 }
 
 // WorldStatsEnricherPort agrège les stats des joueurs d'une saison (Phase C).
@@ -196,12 +200,16 @@ func (c *WorldLeaderboardCron) RunOnce(ctx context.Context) {
 func (c *WorldLeaderboardCron) runOnceForTitle(ctx context.Context, titleSlug string) {
 	start := time.Now()
 
-	playlists := c.playlists()
-	if len(playlists) == 0 {
+	static := c.playlists()
+	if len(static) == 0 {
 		slog.WarnContext(ctx, "world_leaderboard_cron: aucune playlist classée active — cycle ignoré",
 			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug)
 		return
 	}
+	// Découvrir les playlists classées ACTIVES sur la page Waypoint (7 réelles) au lieu
+	// de se limiter à la liste statique (historiquement 4) — sinon seules les playlists
+	// scrapées ont des snapshots, donc la page classement n'en affiche qu'une poignée.
+	playlists := c.discoverActivePlaylists(ctx, static)
 
 	// 1. Découvrir la saison active (autonome) via une playlist de référence.
 	season, err := c.scraper.FetchActiveSeason(ctx, playlists[0])
@@ -243,6 +251,32 @@ func (c *WorldLeaderboardCron) runOnceForTitle(ctx context.Context, titleSlug st
 	// saison active et les persister. Best-effort, après le snapshot CSR — un échec
 	// ici ne compromet pas le classement déjà persisté.
 	c.enrich(ctx, season)
+}
+
+// discoverActivePlaylists découvre les playlists classées ACTIVES exposées par le menu
+// déroulant de la page Waypoint (via une playlist de référence statique comme graine).
+// Fallback sur la liste statique si la découverte échoue OU revient vide : on ne scrape
+// jamais zéro playlist à cause d'un hoquet de page (résilience). C'est ce qui remplace la
+// limite historique aux ~4 playlists en dur par les playlists réellement actives (7+).
+func (c *WorldLeaderboardCron) discoverActivePlaylists(ctx context.Context, static []string) []string {
+	refs, err := c.scraper.FetchActivePlaylists(ctx, static[0])
+	if err != nil || len(refs) == 0 {
+		slog.WarnContext(ctx, "world_leaderboard_cron: découverte playlists actives échouée — fallback statique",
+			"module", logging.ModuleLeaderboard, "static", len(static), "err", err)
+		return static
+	}
+	ids := make([]string, 0, len(refs))
+	for _, r := range refs {
+		if id := r.AssetID; id != "" {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		return static
+	}
+	slog.InfoContext(ctx, "world_leaderboard_cron: playlists actives découvertes (Waypoint)",
+		"module", logging.ModuleLeaderboard, "discovered", len(ids), "static", len(static))
+	return ids
 }
 
 // enrich agrège les stats des joueurs de la saison active (via l'enricher
