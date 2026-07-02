@@ -22,6 +22,21 @@ type WorldPlaylistRef struct {
 	DisplayName string
 }
 
+// WorldServiceRecord = agrégat CoreStats du service record matchmade d'un joueur,
+// filtré par (saison[, playlist]). Une seule requête donne la saison×playlist
+// complète (B2 — remplace l'agrégation par-match du classement mondial). Champs bruts
+// (sommes natives du jeu) ; la dérivation en WorldPlayerSeasonStats est faite par
+// analysis.WorldStatsFromServiceRecord.
+type WorldServiceRecord struct {
+	MatchesCompleted         int
+	Wins, Losses             int
+	TimePlayedSec            int64
+	Kills, Deaths, Assists   int64
+	ShotsFired, ShotsHit     float64
+	DamageDealt, DamageTaken float64
+	MedalCount               int64
+}
+
 // LeaderboardEntry est une entrée du classement.
 //
 // Le classement est multi-catégories (cf. LeaderboardCategory). Pour la
