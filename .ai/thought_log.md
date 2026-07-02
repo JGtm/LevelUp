@@ -1,3 +1,16 @@
+## [2026-07-02] LOT S (audit sécurité 2026-07) : endpoints /api/v1 non authentifiés fermés — COMPLÉTÉ (commit en attente autorisation)
+
+**Tâche** : premier lot du PLAN_TRAITEMENT_AUDITS_2026-07 (contrat §0 strict, skill plan-execution). Fermer les 2 Bloquants + majeurs sécurité de l'audit QUALITE. Branche dédiée `fix/security-unauth-endpoints`. Vérif sur pièces de chaque item AVANT édition (workflow multi-agents lecture-seule : cartographie routing/middleware + confirmation des 9 findings sur lignes courantes).
+
+**Décision technique** : tous les middlewares d'auth (`RequireAuth`/`RequireAdmin`/`RequirePlayerOwnership`) no-opent en DemoMode/AuthMode=none → l'ajout de gardes ne casse PAS l'onboarding demo/single-user (invariant vérifié sur pièces). Approche `r.With(mw...)` par ligne (moins fragile qu'un gros bloc).
+- **S1** /settings (PATCH + 4 POST) → `RequireAuth+RequireAdmin` (settings globaux d'instance). **S2** /_admin/progression/backfill/{slug} → idem (écriture + recompute sur joueur arbitraire). **S6** health/home + diag csr/progression → idem (sondes ops/dev ; ownership inapplicable au query-param `?player=` → admin, plus fort et cohérent avec S5 ; ÉCART documenté vs le « + ownership » du plan). **S8** /setup/* → `RequireAuth` SEUL (self-provision préservé). **S5** /_diag/auto-sync : +RequireAdmin au groupe LoopbackOnly ET retrait de `refresh_token_head/tail` du payload probe (fingerprintToken → sha-only). **S3** cause racine : tableau route→garde exhaustif (`.ai/V7/LOT_S_ROUTE_GUARD_TABLE.md`) + garde `RequireAuth` sur la mutation POST /import/openspartan surfacée.
+- **S4** GET /players : fix côté SERVICE (BuildPlayersList applique `filterOwnedPlayers`+session, defaultSlug post-filtrage) — aligne sur /bootstrap, corrige la fuite d'identité pour les users authentifiés (RequireAuth seul ne l'aurait pas corrigée). Signature propagée (handler + interface port + 3 tests).
+- **S7** `RequirePlayerOwnership` : fail-open → fail-closed (slug inconnu + session + enforcement → 403 anti-énumération). **S9** logs CLI : warm_bp_assets ne logge plus de préfixe de SpartanToken (+ safePrefix mort supprimé) ; get-token porte un avertissement « ne jamais capturer cette sortie ».
+
+**Résultats** : `go build ./...` OK ; `go test ./internal/api/... ./internal/service/...` verts ; `golangci-lint --new-from-rev=HEAD` = 0 issue nouvelle (52 baseline pré-existantes, hors fichiers touchés). Tests neufs : `handlers/security_lot_s_test.go` (401 anonyme sur S1/S2/S6/S8 + admin/demo no-op + probe sans head/tail), S7 (403 slug inconnu), S4 (filtrage + invariant demo).
+
+**Conclusion / prochaine étape** : LOT S clos côté code, non commité (attente feu vert user + décision push main = deploy prod auto, à faire VITE car 2 Bloquants exploitables). Découvertes §7 : GET /jobs/{id} + annuaire gamertag non gardés (borderline, hors findings audit). Ensuite : LOT A (bugs UI actifs + XSS + docs flags) sur branche `refactor/audits-2026-07`.
+
 ## [2026-07-02] Merge branches Dependabot (2026-07-01) : go-toml + npm mergées, actions/checkout ÉCARTÉE (downgrade) — COMPLÉTÉ local
 
 **Tâche** : évaluer le risque de merge des 3 branches Dependabot créées le 2026-07-01, puis merger les sûres dans main local (aucun push — push main = deploy prod auto).
