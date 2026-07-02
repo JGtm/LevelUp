@@ -57,10 +57,10 @@ documenté de traitement non séquentiel et partiel. Toute dérogation = tâche 
 
 ## 1. Pré-requis et branches
 
-- [ ] P1 — Le chantier en cours sur `fix/h5-ui-adjustments-batch` (burst-lease, fichiers
+- [x] P1 — Le chantier en cours sur `fix/h5-ui-adjustments-batch` (burst-lease, fichiers
   sync modifiés) est commité/landé AVANT de démarrer ce plan. Ce plan ne se démarre pas
   avec un working tree sale d'un autre sujet.
-- [ ] P2 — Partir de `main` à jour.
+- [x] P2 — Partir de `main` à jour.
 - Branches (règle « 1 tâche = 1 branche, N commits ») :
   - **Lot S** : branche dédiée `fix/security-unauth-endpoints` — à merger/déployer vite
     (2 Bloquants exploitables). PRÉVENIR l'utilisateur avant le push main (auto-deploy).
@@ -116,25 +116,25 @@ Effort total estimé : ~23-30 jours-homme. Chaque lot est livrable indépendamme
 Objectif : plus aucun endpoint mutant ou révélateur d'identité accessible sans auth.
 Done : chaque route sous /api/v1 a une garde documentée ; tests httptest 401/403 neufs verts.
 
-- [ ] S1 — QUALITE B1 : envelopper `settingsHandler.Mount` sous `RequireAuth`+`RequireAdmin`
+- [x] S1 — QUALITE B1 : envelopper `settingsHandler.Mount` sous `RequireAuth`+`RequireAdmin`
   (`server.go:1271`, `handlers/settings.go:103-114`). Test httptest : PATCH /settings
   anonyme → 401 ; les 4 POST associés idem.
-- [ ] S2 — QUALITE B2 : déplacer `NewProgressionBackfillHandler` sous le groupe `/admin`
+- [x] S2 — QUALITE B2 : déplacer `NewProgressionBackfillHandler` sous le groupe `/admin`
   (RequireAuth+RequireAdmin) (`server.go:972`). Test 401 anonyme.
-- [ ] S3 — QUALITE « cause racine » : revue EXHAUSTIVE de tous les `Mount`/`r.Get`/`r.Post`
+- [x] S3 — QUALITE « cause racine » : revue EXHAUSTIVE de tous les `Mount`/`r.Get`/`r.Post`
   montés sous /api/v1 hors groupe protégé. Produire un tableau route→garde (dans le message
   de commit ou un doc court). Vérifier que le no-op demo/single-user est préservé.
-- [ ] S4 — QUALITE M2 : `GET /players` filtré par `filterOwnedPlayers` (comme /bootstrap)
+- [x] S4 — QUALITE M2 : `GET /players` filtré par `filterOwnedPlayers` (comme /bootstrap)
   ou gated RequireAuth (`bootstrap_service.go:346`, `server.go:947`).
-- [ ] S5 — QUALITE M3 : `/_diag/auto-sync/probe` → ajouter `RequireAdmin`, retirer
+- [x] S5 — QUALITE M3 : `/_diag/auto-sync/probe` → ajouter `RequireAdmin`, retirer
   `refresh_token_head`/`tail` (garder le sha) (`handlers/admin_auto_sync.go:106-146`).
-- [ ] S6 — QUALITE M4 : diagnostics par joueur (`HealthHome`, `DiagCSR`, `DiagProgression`,
+- [x] S6 — QUALITE M4 : diagnostics par joueur (`HealthHome`, `DiagCSR`, `DiagProgression`,
   `server.go:953-965`) → RequireAuth + ownership.
-- [ ] S7 — QUALITE A1-m1 : `RequirePlayerOwnership` — slug inconnu avec session existante →
+- [x] S7 — QUALITE A1-m1 : `RequirePlayerOwnership` — slug inconnu avec session existante →
   403 au lieu de fail-open (`require_player_ownership.go:56-60`) + test.
-- [ ] S8 — QUALITE A4-m2 : `/setup/players` & `/setup/smoke-test` → RequireAuth par
+- [x] S8 — QUALITE A4-m2 : `/setup/players` & `/setup/smoke-test` → RequireAuth par
   cohérence (gardes internes conservées) (`server.go:1280`).
-- [ ] S9 — QUALITE mineurs tokens : `scripts/warm_bp_assets/main.go:176` → logger « OK »
+- [x] S9 — QUALITE mineurs tokens : `scripts/warm_bp_assets/main.go:176` → logger « OK »
   sans préfixe de token ; `cmd/get-token` → commentaire d'avertissement (sortie à ne
   jamais capturer) ou build tag dev.
 
@@ -805,8 +805,49 @@ Format par entrée :
 - Mesures/notes : ...
 ```
 
-(vide — le plan n'est pas démarré)
+```
+[2026-07-02] LOT S — CLOS (commit en attente d'autorisation utilisateur)
+- Branche : fix/security-unauth-endpoints (depuis main). P1 [x] (burst-lease mergée), P2 [x].
+- Items [x] : 9 (S1-S9) / [~] : 0 / [!] : 0.
+- Gate : go build ./... OK ; go test ./internal/api/... ./internal/service/... OK ;
+  golangci-lint --new-from-rev=HEAD = 0 issue nouvelle (52 issues baseline pré-existantes,
+  hors fichiers touchés) ; tableau route→garde produit dans .ai/V7/LOT_S_ROUTE_GUARD_TABLE.md.
+- Fichiers source : api/server.go (S1/S2/S5-B/S6/S8/S3-openspartan), handlers/admin_auto_sync.go
+  (S5-A payload sans head/tail + fingerprintToken sha-only), handlers/bootstrap.go (S4),
+  service/bootstrap_service.go (S4 BuildPlayersList+session), port/services.go (signature),
+  middleware/require_player_ownership.go (S7 fail-closed), scripts/warm_bp_assets/main.go (S9-a),
+  cmd/get-token/main.go (S9-b).
+- Tests neufs : handlers/security_lot_s_test.go (S1/S2/S5/S6/S8 : 401 anonyme + admin/demo no-op
+  + probe sans fragment RT) ; middleware/require_player_ownership_test.go (S7 : 403 slug inconnu) ;
+  service/bootstrap_ownership_test.go (S4 : filtrage ownership + invariant demo).
+- Décisions consignées (contrat §3, micro-décisions tranchées) :
+  * S6 : les 3 diagnostics gardés RequireAuth+RequireAdmin (le plan disait « + ownership » ;
+    ownership inapplicable au query-param ?player= de health/home ; sondes ops/dev = admin,
+    plus fort et cohérent avec S5). Écart documenté, pas de blocage.
+  * S1 : bloc /settings entier admin-gated (GET inclus, page admin d'instance).
+  * S8 : RequireAuth SEUL (self-provisioning d'un nouvel utilisateur préservé).
+  * S4 : fix côté service (BuildPlayersList applique filterOwnedPlayers, defaultSlug post-filtrage),
+    pas au routing — aligne le contrat sur /bootstrap et corrige la fuite pour users authentifiés.
+  * S3 : mutation POST /import/openspartan (write-path surfacé) gardée RequireAuth ; endpoints
+    read-only publics documentés ; 2 borderline (GET /jobs/{id}, annuaire gamertag) en Découvertes §7.
+- Invariant demo/single-user préservé (vérifié sur pièces : require_auth.go:31, require_admin.go:18,
+  authz.Enforced) — tous les middlewares no-opent en DemoMode/AuthMode=none.
+- DEPLOY : push sur main = deploy prod auto. Les 2 Bloquants (B1/B2) sont exploitables →
+  À DÉPLOYER VITE, mais PRÉVENIR/valider avec l'utilisateur avant le push main.
+```
 
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
 
-(vide)
+- [LOT S / S3] `GET /jobs/{job_id}` non authentifié — statut de job par UUID opaque. En
+  multi-user, si un UUID fuit, lecture du statut/erreur du job d'un tiers. Risque faible
+  (UUID non devinable). Candidat `RequireAuth` défense-en-profondeur. Non traité (hors
+  findings audit B1/B2/M2/M4).
+- [LOT S / S3] `MOUNT gamertag directory (?q=)` non authentifié — annuaire de recherche
+  gamertag, énumération possible (gamertags Xbox semi-publics). Candidat `RequireAuth`.
+  Non traité (hors findings audit).
+- [LOT S / S3] `field-mappings` / `capabilities` / `features` / `catalog` (derrière
+  `MULTI_TITLE_API_ENABLED`) exposent la config titre (référentiel TOML) sans auth —
+  read-only, pas d'identité/mutation. Acceptable public tant que le flag reste OFF ; à
+  revoir si activé en prod. (Détails : `.ai/V7/LOT_S_ROUTE_GUARD_TABLE.md`.)
+- [tree] Fichier non suivi `.ai/V7/PLAN_PLAYLISTS_CATALOG_ET_LEADERBOARD.md` présent dans
+  le working tree au démarrage du plan (autre sujet) — laissé intact, non commité par le Lot S.

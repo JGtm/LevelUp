@@ -261,7 +261,7 @@ type TimeseriesService interface {
 // BootstrapService construit le bootstrap et la liste des joueurs.
 type BootstrapService interface {
 	Build(ctx context.Context, sess *domain.SessionData) (*domain.BootstrapResponse, error)
-	BuildPlayersList(ctx context.Context) (*domain.PlayersListResponse, error)
+	BuildPlayersList(ctx context.Context, sess *domain.SessionData) (*domain.PlayersListResponse, error)
 }
 
 // GamertagSearchService cherche des gamertags dans la base partagée.

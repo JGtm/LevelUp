@@ -950,26 +950,33 @@ func NewRouter(
 		// CSR/LUSR, playlists récentes, arme favorite) et renvoie 503 si une
 		// section est vide sans raison. Pensé pour CI post-backfill et alerte
 		// dev. Cf. handlers/health_home.go.
-		handlers.NewHealthHomeHandler(reg.HomeCtxWithAuth).Mount(r.With(middleware.NoStore))
+		// Lot S (sécurité, audit M4) : les 3 diagnostics par joueur (health/home,
+		// csr-coverage, progression) sont des sondes ops/dev → RequireAuth+RequireAdmin
+		// (RequirePlayerOwnership inapplicable : health/home lit le slug en query param).
+		// No-op en demo/single-user. NoStore conservé.
+		handlers.NewHealthHomeHandler(reg.HomeCtxWithAuth).Mount(r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode), middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode)))
 
 		// Phase 9 du plan pipeline CSR : diagnostic coverage CSR pour un joueur.
 		// Permet de vérifier en 1 ligne si le pipeline a bien capturé les CSR
 		// (matured + placement) ou s'il faut lancer un backfill.
-		handlers.NewDiagCSRHandler(reg.CSRCoverageProvider).Mount(r.With(middleware.NoStore))
+		handlers.NewDiagCSRHandler(reg.CSRCoverageProvider).Mount(r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode), middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode)))
 
 		// Phase 4 plan stabilisation 2026-05-22 : diagnostic progression V2
 		// (Ascension). Compte les rows dans streak/player_records/record_history/
 		// milestone_earned + milestone_catalog. Permet de vérifier que
 		// EvaluateProgressionAfterSync tourne bien sur l'auto-sync (avant Phase 4
 		// ces tables restaient vides — cf. AUDIT_ASCENSION_PIPELINE_DISCONNECTED).
-		handlers.NewDiagProgressionHandler(reg.ProgressionDiagProvider).Mount(r.With(middleware.NoStore))
+		handlers.NewDiagProgressionHandler(reg.ProgressionDiagProvider).Mount(r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode), middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode)))
 
 		// Fix 2026-05-30 : backfill progression V2 in-process. Force une
 		// évaluation idempotente (streaks/records/milestones) pour un joueur
 		// dont l'historique existe mais dont le pipeline post-sync n'avait
 		// jamais abouti (incident timeout shared reader). Renvoie le diag
 		// post-exécution.
-		handlers.NewProgressionBackfillHandler(reg.ProgressionBackfillProvider).Mount(r.With(middleware.NoStore))
+		// Lot S (sécurité, audit B2) : backfill progression = écriture + recompute
+		// lourd sur un joueur arbitraire (slug dans le path) → RequireAuth+RequireAdmin
+		// comme /sync/* et /backfill/start. No-op en demo/single-user. NoStore conservé.
+		handlers.NewProgressionBackfillHandler(reg.ProgressionBackfillProvider).Mount(r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode), middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode)))
 
 		// Phase A multi-titres : exposition des field mappings TOML.
 		// Derrière MULTI_TITLE_API_ENABLED.
@@ -1250,7 +1257,11 @@ func NewRouter(
 			autoSyncH := handlers.NewAdminAutoSyncHandler(autoSyncScheduler, cfg, tokenProvider)
 			r.Route("/_diag/auto-sync", func(r chi.Router) {
 				r.Use(middleware.LoopbackOnly)
-				autoSyncH.Mount(r) // /snapshot, /run, /probe (sous LoopbackOnly)
+				// Lot S (sécurité, audit M3) : en plus du loopback, exiger admin — le
+				// probe expose une empreinte du refresh token. No-op en demo/single-user.
+				r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
+				r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+				autoSyncH.Mount(r) // /snapshot, /run, /probe (LoopbackOnly + admin)
 			})
 		}
 
@@ -1268,7 +1279,13 @@ func NewRouter(
 			WithFriendsOrchestrator(friendsOrchestrator).
 			WithNotificationsEmitter(reg.NotificationsEmitter).
 			WithBackupScheduler(backupScheduler)
-		settingsHandler.Mount(r) // /settings + /settings/{media,sessions,backup}/...
+		// Lot S (sécurité, audit B1) : les settings sont globaux à l'instance
+		// (webhook Discord, friend_gamertags, backup) → RequireAuth+RequireAdmin.
+		// No-op en demo/single-user (middlewares transparents si DemoMode||AuthMode==none).
+		settingsHandler.Mount(r.With(
+			middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode),
+			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode),
+		)) // /settings + /settings/{media,sessions,backup}/...
 
 		// ProfileService PARTAGÉ : writer UNIQUE de db_profiles.json. Le store
 		// porte un verrou process par-instance → toutes les écritures (onboarding
@@ -1277,7 +1294,10 @@ func NewRouter(
 		profileService := service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot).
 			WithDBEvictor(func(playerDBPath string) { platform_duckdb.EvictAndCloseCached(playerDBPath) })
 		setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, profileService)
-		setupHandler.Mount(r) // /setup/players, /setup/smoke-test
+		// Lot S (sécurité, audit A4-m2) : onboarding self-provision sous RequireAuth
+		// (PAS RequireAdmin — un nouvel utilisateur crée son propre profil). Gardes
+		// internes conservées (can_self_provision, instance_locked, identity_mismatch).
+		setupHandler.Mount(r.With(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))) // /setup/players, /setup/smoke-test
 
 		// Sprint 17 : Jobs longs persistants + sync initiale.
 		// GET /jobs/{job_id} migré vers Huma (Phase 3b, shape path-param).
@@ -1351,7 +1371,10 @@ func NewRouter(
 				osCfg.Convergence = autoSyncScheduler
 			}
 			osImportH := handlers.NewOpenSpartanImportHandler(osCfg)
-			r.Post("/import/openspartan", osImportH.StartImport)
+			// Lot S (sécurité, audit S3 « cause racine ») : import = mutation sur
+			// l'instance (comme /setup) → RequireAuth. Onboarding post-SSO : la session
+			// existe déjà. No-op si AuthMode==none.
+			r.With(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)).Post("/import/openspartan", osImportH.StartImport)
 		}
 
 		// Galerie médias — version de flux pour polling léger
