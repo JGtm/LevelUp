@@ -1,0 +1,323 @@
+{
+    "version": "1.0",
+    "skills": {
+        "halo-modes": {
+            "priority": "high",
+            "description": "Normalisation modes Halo (pair_name, 2 niveaux, catégories custom)",
+            "promptTriggers": {
+                "keywords": [
+                    "pair_name",
+                    "mode_label",
+                    "mode_category",
+                    "mode_name_tr",
+                    "normalisa",
+                    "normaliz",
+                    "catégorie",
+                    "categorie",
+                    "sous-mode",
+                    "Arena:",
+                    "BTB:",
+                    "Ranked:",
+                    "Fiesta:",
+                    "Firefight:",
+                    "Assassin",
+                    "InferModeCategory",
+                    "NormalizeModeLabel",
+                    "mode_prefix",
+                    "prefix_to_category",
+                    "translate_pair"
+                ],
+                "intentPatterns": [
+                    "(normaliser|normaliser|normalize).*?mode",
+                    "mode.*?(catégorie|categorie|filtre|filter|label|affich)",
+                    "(comment|quelle).*?(catégorie|categorie).*?mode",
+                    "mode.*?(pair_name|prefix|sous)"
+                ]
+            }
+        },
+        "color-tokens": {
+            "priority": "high",
+            "description": "Système de couleurs sémantiques (tokenCssVar, resolveToken, palettes)",
+            "promptTriggers": {
+                "keywords": [
+                    "tokenCssVar",
+                    "resolveToken",
+                    "getSeriesColors",
+                    "couleur",
+                    "color",
+                    "palette",
+                    "hex",
+                    "#",
+                    "tailwind",
+                    "bg-",
+                    "text-red",
+                    "text-green",
+                    "text-blue",
+                    "text-yellow",
+                    "text-amber",
+                    "semantic-tokens",
+                    "applyPalette",
+                    "useColor",
+                    "rarity"
+                ],
+                "intentPatterns": [
+                    "(ajouter|changer|modifier|choisir).*?couleur",
+                    "couleur.*?(chart|graphe|composant|badge|tag|icon)",
+                    "(quelle|comment).*?couleur",
+                    "color.*?(token|theme|palette|scale)"
+                ]
+            }
+        },
+        "db-schema": {
+            "priority": "high",
+            "description": "Schéma DuckDB — tables, colonnes, quelle DB contient quoi",
+            "promptTriggers": {
+                "keywords": [
+                    "match_participants",
+                    "match_registry",
+                    "medals_earned",
+                    "highlight_events",
+                    "killer_victim_pairs",
+                    "xuid_aliases",
+                    "player_match_enrichment",
+                    "match_skill_rank",
+                    "pve_match_stats",
+                    "weapon_labels",
+                    "citation_mappings",
+                    "career_ranks",
+                    "mode_name_tr",
+                    "shared_matches",
+                    "shared_pve",
+                    "metadata.duckdb",
+                    "stats.duckdb",
+                    "quelle table",
+                    "quelle db",
+                    "quelle base"
+                ],
+                "intentPatterns": [
+                    "(quelle|où|dans quelle).*?(table|colonne|base|db|duckdb)",
+                    "(chercher|trouver|récupérer).*?(médaille|medal|kill|weapon|arme|rank|rang)",
+                    "schéma.*?(base|table|db)",
+                    "(table|colonne).*?(existe|contient|stocke)"
+                ]
+            }
+        },
+        "go-features": {
+            "priority": "high",
+            "description": "Features Go existantes dans internal/analysis — vérifier avant de réimplémenter",
+            "promptTriggers": {
+                "keywords": [
+                    "internal/analysis",
+                    "réimplémenter",
+                    "reimplémenter",
+                    "reimpleménter",
+                    "porter en go",
+                    "port go",
+                    "existe déjà",
+                    "existe en go",
+                    "squad_score",
+                    "squad_profiles",
+                    "skill_rating",
+                    "performance_score",
+                    "combat_yield",
+                    "kd_timeline",
+                    "match_impact",
+                    "tug_of_war",
+                    "comeback",
+                    "medal_exploit",
+                    "citations.go",
+                    "sessions.go",
+                    "killer_victim.go",
+                    "weapon_parser"
+                ],
+                "intentPatterns": [
+                    "(implémenter|ajouter|créer|écrire).*?go.*(calcul|algo|analyse|score|stat)",
+                    "(calcul|algo|score|stat).*?(go|backend|api)",
+                    "(déjà|existe).*(go|backend|analysis)",
+                    "porter.*?(python|algo|calcul).*?go"
+                ]
+            }
+        },
+        "plan-review": {
+            "priority": "critical",
+            "description": "Grille de revue d'un plan — architecture, multi-titres, tests, logging, livraison",
+            "promptTriggers": {
+                "keywords": [
+                    "plan",
+                    "PLAN_",
+                    "respecte",
+                    "conforme",
+                    "cohérent",
+                    "revue",
+                    "review",
+                    "audit",
+                    "valide",
+                    "valider",
+                    "vérifie",
+                    "vérifier",
+                    "bon plan",
+                    "ce plan",
+                    "portage",
+                    "phase",
+                    "phases"
+                ],
+                "intentPatterns": [
+                    "(ce plan|le plan|mon plan).*(bon|correct|complet|respecte|cohérent|ok|valide)",
+                    "(valider|vérifier|auditer|reviewer|revoir).*(plan|architecture|implémentation)",
+                    "(est-ce que|est ce que).*(plan|implémentation).*(correct|bon|respecte|conforme)",
+                    "(quoi|qu'est-ce qui).*(manque|oublié|manquant).*(plan|implémentation)",
+                    "plan.*(archi|architecture|multi.titre|adapter|canonical)"
+                ]
+            }
+        },
+        "delivery-checklist": {
+            "priority": "critical",
+            "description": "Go/no-go avant livraison — tests, logging, multi-titres, thought_log",
+            "promptTriggers": {
+                "keywords": [
+                    "livrer",
+                    "livraison",
+                    "terminer",
+                    "terminé",
+                    "c'est bon",
+                    "c'est fini",
+                    "prêt",
+                    "PR",
+                    "pull request",
+                    "merge",
+                    "ship",
+                    "déployer",
+                    "checklist",
+                    "vérification",
+                    "valider"
+                ],
+                "intentPatterns": [
+                    "(c'est|je suis|on est|tout est).*(bon|fini|terminé|prêt|done)",
+                    "(créer|ouvrir|faire).*(PR|pull request|merge)",
+                    "(vérifier|checker|valider).*(tout|feature|impl|code)",
+                    "on peut.*(livrer|merger|shipper|deployer)"
+                ]
+            }
+        },
+        "frontend-patterns": {
+            "priority": "high",
+            "description": "React/TypeScript apps/web — structure features, API client, TanStack Query, i18n, routing",
+            "promptTriggers": {
+                "keywords": [
+                    "useQuery",
+                    "useMutation",
+                    "queryKeys",
+                    "api.get",
+                    "api.post",
+                    "TanStack",
+                    "i18n.ts",
+                    "fieldMappings",
+                    "useFieldLabel",
+                    "useOutcomeLabel",
+                    "routeTree",
+                    "playerSlug",
+                    "$playerSlug",
+                    "features/",
+                    "mutations.ts",
+                    "queries.ts",
+                    "appShellStore",
+                    "locale"
+                ],
+                "intentPatterns": [
+                    "(créer|ajouter|modifier).*?(page|composant|feature|hook)",
+                    "(appeler|appel|fetch|requête).*?(api|backend|endpoint)",
+                    "(traduction|i18n|label|libellé).*?(feature|composant|page)",
+                    "(route|routage|navigation|lien).*?(joueur|player|page)",
+                    "(comment|où|structure).*?(feature|composant|hook).*?(web|react|frontend)"
+                ]
+            }
+        },
+        "canonical-types": {
+            "priority": "high",
+            "description": "Types canoniques inter-titres (internal/games/canonical/) — MatchSummary, PlayerStats, etc.",
+            "promptTriggers": {
+                "keywords": [
+                    "canonical",
+                    "MatchSummary",
+                    "MatchDetail",
+                    "MatchParticipant",
+                    "PlayerStats",
+                    "PlayerIdentity",
+                    "CareerSnapshot",
+                    "EncounterRow",
+                    "AssetReference",
+                    "StatsScope",
+                    "TimeseriesQuery",
+                    "FieldKey",
+                    "CareerOptions",
+                    "OutcomeWin",
+                    "OutcomeLoss",
+                    "MatchTypeRanked",
+                    "LoadMatchSummaries",
+                    "LoadMatchDetail",
+                    "LoadPlayerStats",
+                    "LoadCareerSnapshot"
+                ],
+                "intentPatterns": [
+                    "(quel|comment|quel type).*(retourne|retourner|renvoie).*(adapter|service)",
+                    "(type|struct).*(match|joueur|player|career|canonical)",
+                    "(implémenter|porter|écrire).*(adapter|TitleDataAdapter)"
+                ]
+            }
+        },
+        "arch-rules": {
+            "priority": "high",
+            "description": "Architecture Go — couches, port pattern, séparation responsabilités, testabilité, logging",
+            "promptTriggers": {
+                "keywords": [
+                    "port/",
+                    "ServiceFactory",
+                    "couche",
+                    "testable",
+                    "mock",
+                    "slog",
+                    "log/slog",
+                    "feature flag",
+                    "refactor",
+                    "découper",
+                    "responsabilité",
+                    "testabilité",
+                    "modularité",
+                    "logging",
+                    "PathResolver",
+                    "TitleRegistry",
+                    "TitleDescriptor",
+                    "HasCapability",
+                    "multi-titre",
+                    "multi-titres",
+                    "title_slug",
+                    "X-LevelUp-Title",
+                    "CapFirefight",
+                    "CapRanked",
+                    "TitleDataAdapter",
+                    "TitleSemanticAdapter",
+                    "Resolver",
+                    "adapter",
+                    "ErrCapabilityNotSupported",
+                    "CapabilityMap",
+                    "CapabilityKey",
+                    "fields.toml",
+                    "assets.toml",
+                    "outcomes.toml",
+                    "canonical",
+                    "FieldMappingSet",
+                    "OutcomeMappingSet"
+                ],
+                "intentPatterns": [
+                    "(où|dans quel).*(package|fichier|couche|dossier).*(mettre|placer|écrire|ajouter)",
+                    "(refactor|découper|diviser|trop long).*(fichier|fonction|service|handler)",
+                    "(comment|faut-il|doit-on).*(tester|mocker|logger)",
+                    "(handler|service|analysis|domain|platform).*(différence|rôle|responsabilité)",
+                    "port.*(interface|pattern|découplage)",
+                    "(ajouter|supporter|gérer|nouveau).*(titre|jeu|game)",
+                    "multi.*(titre|jeu|game)"
+                ]
+            }
+        }
+    }
+}

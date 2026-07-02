@@ -31878,3 +31878,31 @@ interdiction des fixes opportunistes hors lot (section Découvertes dédiée).
 **Conclusion / prochaine étape** : faire valider les 8 décisions par défaut (§2 du plan) et le
 séquencement par l'utilisateur, puis lancer le LOT S sur `fix/security-unauth-endpoints` une
 fois le chantier burst-lease en cours commité/landé (pré-requis P1).
+
+## [2026-07-02] Décisions plan audits validées + refonte CLAUDE.md et skills
+
+**Statut** : Complété
+
+**Décision technique principale** : (1) les 8 décisions produit du plan
+`.ai/V7/PLAN_TRAITEMENT_AUDITS_2026-07.md` §2 ont été validées par l'utilisateur via
+questionnaire interactif — toutes les recommandations retenues SAUF DEC-2 amendée :
+**suppression complète du pipeline sync V1 dans le chantier** (pas seulement le fallback
+auto) ; D1c réécrit avec méthode en 4 temps (cartographier V1-only vs partagé V2, commits
+séparés, gate integration + sync live local, MAJ ADR 0027) et repli autorisé si couplage
+V1/V2 bloquant. (2) CLAUDE.md entièrement réécrit (pré-exécution de l'item C1 du plan) :
+purge du monde Python supprimé, chemins v7 `data/titles/{slug}/`, règles ART/_latest/
+auth 0023/multi-titre condensées, 16 règles Go/TS, section « Exécution des plans ».
+(3) Nouveau skill `plan-execution` (contrat anti-partiel/anti-report/anti-désordre en 10
+règles + auto-contrôle avant « terminé ») ; delivery-checklist enrichie (section 0
+Complétude, -tags=integration obligatoire persist/sync, garde-rails non affaiblis) ;
+plan-review enrichie (section 9 exécutabilité par un agent) ; db-schema, arch-rules,
+go-features, foundations-usage rafraîchis (chemins, persist/, _latest, film pipeline).
+
+**Résultats observés** : vérifications sur disque avant réécriture (src/ et .venv absents,
+3 .py restants, layout data/titles confirmé, cibles Makefile, scripts npm). Items G16 et
+L6 du plan pré-exécutés et annotés. canonical-types, color-tokens, frontend-patterns,
+halo-modes vérifiés à jour sans correction.
+
+**Conclusion / prochaine étape** : commit de l'ensemble (plan + CLAUDE.md + skills) après
+accord utilisateur, puis démarrage du LOT S (sécurité) une fois le chantier burst-lease
+de la branche courante landé (pré-requis P1 du plan).
