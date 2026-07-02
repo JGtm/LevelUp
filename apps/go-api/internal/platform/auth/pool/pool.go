@@ -11,6 +11,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/platform/ratebudget"
 )
 
 // poolImpl implémente Pool avec round-robin PolicyAnyPublic et pinned PolicyPinnedPlayer.
@@ -159,10 +160,13 @@ func NewPool(
 
 		slotsByKey[gtKey(poolTitle, src.Gamertag)] = len(slots)
 		slots = append(slots, &slot{
-			gamertag:    src.Gamertag,
-			xuid:        src.XUID,
-			resolved:    resolved,
-			limiter:     rate.NewLimiter(rate.Limit(opts.PerTokenRPS), 1),
+			gamertag: src.Gamertag,
+			xuid:     src.XUID,
+			resolved: resolved,
+			// Budget PAR COMPTE partagé process-wide (sujet 2 T1) : tous les
+			// consommateurs du même xuid (pool, career_live, worldenrich)
+			// attendent sur le MÊME token bucket — le pool voit la vraie pression.
+			limiter:     ratebudget.ForXUID(src.XUID, float64(opts.PerTokenRPS)),
 			healthy:     true,
 			lastRefresh: time.Now(),
 		})
@@ -360,10 +364,11 @@ func (p *poolImpl) AddOrUpdateSource(ctx context.Context, src CredentialSource) 
 	}
 
 	newSlot := &slot{
-		gamertag:    src.Gamertag,
-		xuid:        src.XUID,
-		resolved:    resolved,
-		limiter:     rate.NewLimiter(rate.Limit(p.perTokenRPS), 1),
+		gamertag: src.Gamertag,
+		xuid:     src.XUID,
+		resolved: resolved,
+		// Budget PAR COMPTE partagé (sujet 2 T1) — cf. NewPool.
+		limiter:     ratebudget.ForXUID(src.XUID, float64(p.perTokenRPS)),
 		healthy:     true,
 		lastRefresh: time.Now(),
 	}
@@ -432,6 +437,26 @@ const (
 	proactiveRefreshThreshold   = 15 * time.Minute
 	proactiveRefreshMinInterval = 60 * time.Second
 )
+
+// aimdRestorePerTick : pas de restauration additive du débit d'un compte sain
+// par tick du refresher (10s) → ~+0,6 RPS/min, plafonné au nominal (ratebudget).
+// Lent volontairement : après un 429, on re-teste la limite en douceur.
+const aimdRestorePerTick = 0.1
+
+// acquirableForRestore : le compte du slot mérite une restauration AIMD —
+// sain (pas de 401/403) ET hors cooldown 429.
+func (s *slot) acquirableForRestore() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.healthy && !time.Now().Before(s.rateLimitedUntil)
+}
+
+// xuidSnapshot lit le xuid sous lock (AddOrUpdateSource peut le réécrire).
+func (s *slot) xuidSnapshot() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.xuid
+}
 
 // OnHTTPError signale une erreur HTTP (429/503) et déclenche un cooldown global.
 // Non-bloquant : tous les tokens sont marqués malsains et le refresher est suspendu.
@@ -556,15 +581,25 @@ func (p *poolImpl) On429ForToken(gamertag string, retryAfter time.Duration) {
 	}
 	until := time.Now().Add(cooldown)
 
+	p.slotMu.RLock()
 	slot := p.slots[slotIdx]
+	p.slotMu.RUnlock()
 	slot.mu.Lock()
 	if until.After(slot.rateLimitedUntil) {
 		slot.rateLimitedUntil = until
 	}
+	xuid := slot.xuid
 	slot.mu.Unlock()
 
-	slog.WarnContext(context.Background(), "pool: token rate-limité (429) — cooldown per-token",
-		"gamertag", gamertag, "cooldown_s", cooldown.Seconds())
+	// AIMD (sujet 2 T2) : multiplicative decrease — le débit du COMPTE est
+	// divisé par 2 (plancher ratebudget.minRPS). Comme le limiteur est partagé
+	// par-xuid (T1), le ralentissement s'applique immédiatement à TOUS les
+	// consommateurs du compte (pool, career_live, worldenrich). La restauration
+	// additive se fait au tick du refresher (comptes sains uniquement).
+	newRPS := ratebudget.HalveRPS(xuid)
+
+	slog.WarnContext(context.Background(), "pool: token rate-limité (429) — cooldown per-token + AIMD",
+		"gamertag", gamertag, "cooldown_s", cooldown.Seconds(), "rps_after_halve", newRPS)
 }
 
 // Close implémente Pool.Close().
@@ -615,6 +650,14 @@ func (p *poolImpl) refresherLoop(baseCtx context.Context) {
 			// Parcourir les slots : refresh les malsains (réactif) ET, PROACTIVEMENT,
 			// les tokens sains dont l'expiry approche — pour qu'aucune requête ne
 			// découvre l'expiration par un échec (sonde de santé de fond).
+			// AIMD (sujet 2 T2) : restauration additive du débit des comptes SAINS
+			// et hors cooldown 429 (+aimdRestorePerTick par tick 10s, plafonnée au
+			// nominal par ratebudget).
+			for _, sl := range slots {
+				if sl.acquirableForRestore() {
+					ratebudget.RestoreStep(sl.xuidSnapshot(), aimdRestorePerTick)
+				}
+			}
 			for _, sl := range slots {
 				sl.mu.RLock()
 				healthy := sl.healthy

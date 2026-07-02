@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/ratebudget"
 )
 
 // testSlotEnv crée un set de sources pour les tests.
@@ -458,6 +459,27 @@ func TestPoolOn429ForToken_PerTokenNotGlobal(t *testing.T) {
 	}
 	if seen["B"] == 0 || seen["C"] == 0 {
 		t.Errorf("B et C sains auraient dû servir, vu B=%d C=%d", seen["B"], seen["C"])
+	}
+}
+
+// TestPoolOn429ForToken_AIMDHalvesAccountBudget : un 429 imputé à un token divise
+// le débit du COMPTE par 2 dans le registre partagé (sujet 2 T2) — visible par
+// tous les consommateurs du même xuid.
+func TestPoolOn429ForToken_AIMDHalvesAccountBudget(t *testing.T) {
+	sources := []CredentialSource{{Gamertag: "AimdGT", XUID: "xuid-aimd-pool-1", MSALCache: "c", Source: "test"}}
+	resolver := &testResolver{resolved: make(map[string]*ResolvedTokens)}
+	p, err := NewPool(context.Background(), resolver, sources, PoolOptions{MaxSize: 0, PerTokenRPS: 4})
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer p.Close()
+
+	if got := ratebudget.CurrentRPS("xuid-aimd-pool-1"); got != 4 {
+		t.Fatalf("budget initial = %v, want 4", got)
+	}
+	p.On429ForToken("AimdGT", time.Second)
+	if got := ratebudget.CurrentRPS("xuid-aimd-pool-1"); got != 2 {
+		t.Errorf("budget après 429 = %v, want 2 (AIMD ÷2)", got)
 	}
 }
 

@@ -22,6 +22,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/platform/ratebudget"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
@@ -147,7 +148,15 @@ func CareerFetcherFactoryFromTokens(requestsPerSecond int) CareerFetcherFactory 
 		if tokens == nil || tokens.SpartanToken == "" {
 			return nil
 		}
-		return syncpkg.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, requestsPerSecond)
+		client := syncpkg.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, requestsPerSecond)
+		// Sujet 2 T1 : budget PAR COMPTE partagé — le fetch career live dépense
+		// le quota du même compte Xbox que le pool de sync ; sans limiteur
+		// partagé, le pool ne voyait jamais cette pression (429 « surprises »).
+		// xuid absent du ctx → limiteur local (comportement historique).
+		if xuid := ctxkeys.HaloXUID(ctx); xuid != "" {
+			client = client.WithLimiter(ratebudget.ForXUID(xuid, float64(requestsPerSecond)))
+		}
+		return client
 	}
 }
 
