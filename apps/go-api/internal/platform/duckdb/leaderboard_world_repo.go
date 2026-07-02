@@ -54,12 +54,13 @@ func (r *LeaderboardRepo) GetCSRWorldLeaderboard(
 	}
 	defer release()
 
-	// NB : le snapshot Halo Waypoint ne publie pas de xuid (seulement gamertag) —
-	// la table world_csr_leaderboard_snapshots n'a donc pas de colonne xuid.
-	// On sélectionne '' pour rester compatible avec le scan (xuid vide → is_local
-	// toujours false sur ce classement mondial, attendu).
+	// Le snapshot Halo Waypoint EXPOSE le xuid de chaque joueur (parsé du bloc
+	// __NEXT_DATA__ par le scraper, persisté depuis B1) : on le sélectionne pour
+	// activer is_local (mise en évidence du joueur courant sur ce classement mondial).
+	// Les lignes scrapées AVANT l'ajout de la colonne xuid restent à NULL → COALESCE ''
+	// → is_local false, jusqu'au prochain scrape qui les remplit.
 	const q = `
-		SELECT rank, COALESCE(gamertag, ''), '' AS xuid, csr_value
+		SELECT rank, COALESCE(gamertag, ''), COALESCE(xuid, '') AS xuid, csr_value
 		FROM world_csr_leaderboard_latest
 		WHERE title_slug = ? AND season_id = ? AND playlist_id = ?
 		ORDER BY rank ASC
@@ -628,11 +629,11 @@ func InsertWorldCSRSnapshot(ctx context.Context, db *sql.DB, titleSlug string, e
 
 	const ins = `
 		INSERT INTO world_csr_leaderboard_snapshots
-			(title_slug, season_id, playlist_id, rank, gamertag, csr_value, tier_derived, fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+			(title_slug, season_id, playlist_id, rank, gamertag, csr_value, tier_derived, fetched_at, xuid)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	for _, e := range entries {
 		if _, err := tx.ExecContext(ctx, ins,
-			titleSlug, e.Season, e.Playlist, e.Rank, e.Gamertag, e.CSRValue, e.Tier, e.FetchedAt,
+			titleSlug, e.Season, e.Playlist, e.Rank, e.Gamertag, e.CSRValue, e.Tier, e.FetchedAt, e.XUID,
 		); err != nil {
 			return 0, fmt.Errorf("InsertWorldCSRSnapshot (rank %d): %w", e.Rank, err)
 		}

@@ -255,9 +255,20 @@ func backfillSeason(
 	resolver service.WorldXUIDResolver, season string, f cliFlags, cp *checkpoint,
 	seasonWindows map[string][2]time.Time,
 ) error {
-	gamertags, err := duckdb.WorldSeasonGamertags(ctx, db, season, f.topN)
+	players, err := duckdb.WorldSeasonPlayers(ctx, db, season, f.topN)
 	if err != nil {
 		return err
+	}
+	// Dérive les gamertags (logique de checkpoint inchangée) et la table des xuid
+	// déjà connus (scrapés du snapshot Waypoint) pour pré-seeder l'agrégateur →
+	// résolution PeopleHub court-circuitée pour ces joueurs (cf. B1).
+	gamertags := make([]string, 0, len(players))
+	knownXUIDs := make(map[string]string, len(players))
+	for _, p := range players {
+		gamertags = append(gamertags, p.Gamertag)
+		if p.XUID != "" {
+			knownXUIDs[p.Gamertag] = p.XUID
+		}
 	}
 	pending := cp.remaining(season, gamertags, f.limit, f.retryFailed)
 	already := cp.doneCount(season, gamertags)
@@ -300,6 +311,10 @@ func backfillSeason(
 			season, w[0].Format("2006-01-02"), w[1].Format("2006-01-02"))
 	}
 	agg := service.NewWorldStatsAggregator(pooled, resolver, cfg)
+	if n := agg.SeedKnownXUIDs(knownXUIDs); n > 0 {
+		fmt.Printf("[%s] %d/%d xuid pré-seedés depuis le snapshot (PeopleHub court-circuité)\n",
+			season, n, len(gamertags))
+	}
 
 	// Résolution xuid PARESSEUSE : chaque worker résout le xuid de SON joueur juste
 	// avant de fetcher ses matchs (pour fetcher X il suffit du xuid de X). On ne bloque

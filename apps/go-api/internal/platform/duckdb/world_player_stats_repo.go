@@ -76,33 +76,37 @@ func InsertPlayerSeasonStats(ctx context.Context, db *sql.DB, stats []domain.Wor
 // avec le display si la profondeur change.
 const WorldLeaderboardTopN = 100
 
-// WorldSeasonGamertags retourne les gamertags distincts présents dans les
-// snapshots CSR mondiaux d'une saison, restreints au top `topN` PAR playlist
+// WorldSeasonPlayers retourne les joueurs distincts (gamertag + xuid) présents dans
+// les snapshots CSR mondiaux d'une saison, restreints au top `topN` PAR playlist
 // (rank <= topN ; topN <= 0 = aucun cap, toutes playlists confondues). Sert à
-// alimenter l'enrichissement (un joueur fetché une fois couvre toutes ses
-// playlists — cf. insight Phase A/C). `db` est un lecteur shared. Triés pour un
-// ordre déterministe.
-func WorldSeasonGamertags(ctx context.Context, db *sql.DB, season string, topN int) ([]string, error) {
-	q := `SELECT DISTINCT gamertag FROM world_csr_leaderboard_latest
+// alimenter l'enrichissement (un joueur fetché une fois couvre toutes ses playlists —
+// cf. insight Phase A/C). Le xuid vient du snapshot Waypoint (parsé par le scraper) :
+// MAX(xuid) par gamertag préfère une valeur non-NULL quand certaines lignes de la
+// saison sont antérieures à la persistance du xuid (B1). XUID vide = aucune ligne ne
+// le portait → l'enrichissement retombera sur PeopleHub. `db` est un lecteur shared.
+// Triés pour un ordre déterministe.
+func WorldSeasonPlayers(ctx context.Context, db *sql.DB, season string, topN int) ([]domain.WorldPlayerRef, error) {
+	q := `SELECT gamertag, COALESCE(MAX(xuid), '') AS xuid
+		FROM world_csr_leaderboard_latest
 		WHERE season_id = ? AND gamertag <> ''`
 	args := []any{season}
 	if topN > 0 {
 		q += ` AND rank <= ?`
 		args = append(args, topN)
 	}
-	q += ` ORDER BY gamertag`
+	q += ` GROUP BY gamertag ORDER BY gamertag`
 	rows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
-		return nil, fmt.Errorf("WorldSeasonGamertags(%s): %w", season, err)
+		return nil, fmt.Errorf("WorldSeasonPlayers(%s): %w", season, err)
 	}
 	defer rows.Close()
-	var out []string
+	var out []domain.WorldPlayerRef
 	for rows.Next() {
-		var gt string
-		if err := rows.Scan(&gt); err != nil {
-			return nil, fmt.Errorf("WorldSeasonGamertags scan: %w", err)
+		var ref domain.WorldPlayerRef
+		if err := rows.Scan(&ref.Gamertag, &ref.XUID); err != nil {
+			return nil, fmt.Errorf("WorldSeasonPlayers scan: %w", err)
 		}
-		out = append(out, gt)
+		out = append(out, ref)
 	}
 	return out, rows.Err()
 }

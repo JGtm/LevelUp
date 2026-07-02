@@ -23,6 +23,7 @@ func applyWorldLeaderboardMigration(t *testing.T, db *sql.DB) {
 		"create_world_csr_leaderboard_snapshots",
 		"world_csr_leaderboard_latest_by_batch",
 		"add_title_slug_to_world_csr_leaderboard",
+		"add_xuid_to_world_csr_leaderboard",
 		"create_world_player_season_stats",
 	}
 	byName := map[string]migration.Migration{}
