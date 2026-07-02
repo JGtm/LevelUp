@@ -196,6 +196,7 @@ func syncPlayerCSRs(
 	client HaloClient,
 	db *sql.DB,
 	xuid, seasonID string,
+	activePlaylists []rankedplaylists.Playlist,
 ) ([]PlayerPlaylistCSR, error) {
 	if strings.TrimSpace(seasonID) == "" {
 		return nil, nil
@@ -211,7 +212,9 @@ func syncPlayerCSRs(
 	// 2. Compléter avec les playlists classées ACTIVES manquantes via l'endpoint
 	//    par-playlist (/hi/playlist/{id}/csrs) — garantit la couverture de toutes
 	//    les playlists classées de la saison sans dériver de l'historique.
-	csrs = augmentWithActiveRankedCSRs(ctx, client, xuid, seasonID, csrs)
+	//    `activePlaylists` = actives découvertes par le cron (dynamique) ; vide →
+	//    fallback rankedplaylists.Active() dans l'augment.
+	csrs = augmentWithActiveRankedCSRs(ctx, client, xuid, seasonID, csrs, activePlaylists)
 	if len(csrs) == 0 {
 		return nil, nil
 	}
@@ -234,12 +237,18 @@ func augmentWithActiveRankedCSRs(
 	client HaloClient,
 	xuid, seasonID string,
 	csrs []PlayerPlaylistCSR,
+	activePlaylists []rankedplaylists.Playlist,
 ) []PlayerPlaylistCSR {
+	// activePlaylists vide → fallback sur la référence statique (comportement
+	// historique + titres sans cron classement). Sinon = actives dynamiques.
+	if len(activePlaylists) == 0 {
+		activePlaylists = rankedplaylists.Active()
+	}
 	seen := make(map[string]struct{}, len(csrs))
 	for _, c := range csrs {
 		seen[strings.ToLower(strings.TrimSpace(c.PlaylistID))] = struct{}{}
 	}
-	for _, pl := range rankedplaylists.Active() {
+	for _, pl := range activePlaylists {
 		if _, ok := seen[strings.ToLower(pl.AssetID)]; ok {
 			continue
 		}

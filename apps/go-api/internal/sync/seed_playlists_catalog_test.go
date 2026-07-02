@@ -234,7 +234,7 @@ func TestSyncPlayerCSRs_ReturnsCsrsOnSuccess(t *testing.T) {
 		{PlaylistID: "aaaaaaaa-0000-0000-0000-000000000002", PlaylistName: "Ranked Snipers"},
 	}}
 
-	got, err := syncPlayerCSRs(context.Background(), mock, db, "xuid(123)", "CsrSeason13-1")
+	got, err := syncPlayerCSRs(context.Background(), mock, db, "xuid(123)", "CsrSeason13-1", nil)
 	if err != nil {
 		t.Fatalf("syncPlayerCSRs: %v", err)
 	}
@@ -245,7 +245,7 @@ func TestSyncPlayerCSRs_ReturnsCsrsOnSuccess(t *testing.T) {
 
 func TestSyncPlayerCSRs_ReturnsNilOnEmptySeason(t *testing.T) {
 	mock := &mockCSRClient{}
-	got, err := syncPlayerCSRs(context.Background(), mock, nil, "xuid(123)", "")
+	got, err := syncPlayerCSRs(context.Background(), mock, nil, "xuid(123)", "", nil)
 	if err != nil {
 		t.Fatalf("erreur inattendue: %v", err)
 	}

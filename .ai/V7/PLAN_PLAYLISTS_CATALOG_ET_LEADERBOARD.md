@@ -132,12 +132,12 @@ scraper au cron les playlists réellement actives (7) découvertes sur Waypoint.
 
 ---
 
-## Étape A3 — Source active dynamique côté consommateurs (CONÇUE, à exécuter)
+## Étape A3 — Source active dynamique côté consommateurs (EXÉCUTÉE)
 
-**Valeur marginale RÉELLE (mesurée sur pièces)** : FAIBLE. La page player affiche DÉJÀ les
-rangs de toutes les playlists JOUÉES via `GetPlayerCSRs` (career.go:204). L'augment
-(career.go:242) n'ajoute que les playlists actives NON-JOUÉES (prompts « Non classé »).
-A3 n'améliore donc que ces prompts. La page classement (A2) était le vrai gain.
+**Valeur marginale RÉELLE (mesurée sur pièces)** : FAIBLE mais livrée. La page player affiche
+DÉJÀ les rangs de toutes les playlists JOUÉES via `GetPlayerCSRs` (career.go:204). L'augment
+n'ajoute que les playlists actives NON-JOUÉES (prompts « Non classé »). A3 étend cet augment
+aux playlists actives RÉELLES (7) au lieu des 4 en dur.
 
 **Conception validée (source active dynamique SANS contention metadata)** :
 - Le cron (A2) écrit déjà les playlists actives réelles dans `world_csr_leaderboard_latest`
@@ -152,17 +152,24 @@ A3 n'améliore donc que ces prompts. La page classement (A2) était le vrai gain
   `runCSRSnapshotSync` (2 call-sites engine_postsync.go:101 & :453) → `syncPlayerCSRs` →
   `augmentWithActiveRankedCSRs`. Signature élargie d'un `sharedReader`.
 
-**Périmètre fermé (à exécuter en session dédiée — chemin CSR critique)** :
-- [!] Non exécuté ici. Raison : changement transverse sur le chemin CSR post-sync (alimente
-      home/player rankings), 2 call-sites, à faire avec contexte frais (pas au tail d'une
-      longue session). Valeur marginale faible (cf. supra). Conception ci-dessus prête.
+**Périmètre fermé** :
+- [x] `SyncEngine.activeRankedPlaylists(ctx)` : lit les playlists du DERNIER batch de
+      `world_csr_leaderboard_snapshots` (season-agnostic — le format saison Waypoint diffère
+      de `e.csrSeasonID`) via `e.sharedProvider` (RO) ; `rankedplaylists.Lookup` pour le
+      libellé, playlist hors référence conservée (catalogue-first complète). **Fallback
+      `Active()`** si provider nil / table vide / erreur (nil-safe, jamais < historique).
+- [x] Threadé : `runCSRSnapshotSync` → `syncPlayerCSRs` → `augmentWithActiveRankedCSRs`
+      (param `activePlaylists`; vide → `Active()`). 3 call-sites de test mis à jour.
 - [~] Sélecteur page classement lit une source dynamique : DÉJÀ le cas (dérive des snapshots
-      `world_csr_leaderboard_latest` que A2 remplit avec les 7 actives). Rien à changer.
-- [ ] (optionnel) Paralléliser la boucle CSR par-playlist via le pool.
+      que A2 remplit avec les 7 actives). Rien à changer.
+- [!] Paralléliser la boucle CSR par-playlist : NON traité (optionnel, hors périmètre du fix ;
+      la boucle est best-effort séquentielle, N≈7 playlists → coût négligeable). Optimisation
+      pure, à ouvrir séparément si besoin.
 
-**Gate (quand exécuté)** :
-- `cd apps/go-api && go test ./internal/sync/ -run 'CSR|Playlist|Career'`
-- Test : augment lit les IDs du snapshot quand présents, fallback `Active()` sinon.
+**Gate (passé)** :
+- `go build ./...` OK ; `gofmt -l` propre ; `go test ./internal/sync/ -run 'CSR|Playlist|Career|Augment|SeedPlaylists'` vert,
+  dont `TestAugmentWithActiveRankedCSRs_UsesProvidedList` (l'augment interroge la liste fournie,
+  playlist hors référence incluse) + tests existants (fallback `Active()` via `nil`).
 
 ---
 
@@ -172,20 +179,40 @@ A3 n'améliore donc que ces prompts. La page classement (A2) était le vrai gain
 (history + match-stats). Approche LeafApp `serviceRecord`.
 
 **Périmètre fermé** :
-- [ ] **Vérifier l'existant AVANT d'implémenter** (règle CLAUDE.md n°14) :
-      `rg -n "service.?record|ServiceRecord" apps/go-api/internal/service apps/go-api/internal/platform/halo`
-      — `compare_service`/`remote_stats_cache`/`privacy_provider` fetchent probablement déjà
-      le service-record de joueurs arbitraires (feature Comparaison). Réutiliser, ne pas
-      dupliquer.
-- [ ] Remplacer `collectPlayerMatches`/`getMatch` (aggregator) par un fetch service-record
-      par xuid (saison courante), mappé vers `world_player_season_stats`.
-- [ ] 403 (historique privé) = joueur gardé avec CSR/rang (Phase A), stats vides + flag
-      `stats_private` ; log `slog.InfoContext` (pas d'erreur), compteur expvar dédié.
-- [ ] Erreur par-joueur = non-fatale (skip ce joueur, continue les autres).
+- [x] **Vérifier l'existant** : `platform/halo/compare_provider.go` fetche déjà le service
+      record (`FetchServiceRecord` lifetime, `FetchSeasonServiceRecord` saison→count). Endpoint
+      `/hi/players/{p}/Matchmade/servicerecord?seasonId=[&isRanked=]`. La réponse porte des
+      Subqueries `PlaylistAssetIds` → un filtre `playlistAssetId` existe (parité SPNKr).
+- [!] Remplacer `collectPlayerMatches`/`getMatch` par un fetch service-record par (saison,
+      playlist). **BLOQUÉ (règle 3 — validation live token-gated requise, PAS un report
+      momentum)** : `FetchSeasonServiceRecord` ne lit AUJOURD'HUI que `MatchesCompleted` ; la
+      forme complète du service-record FILTRÉ PAR `playlistAssetId` (CoreStats par playlist)
+      n'est **pas prouvée** contre l'API. Bâtir tout l'agrégateur de STATS sur une forme non
+      vérifiée = imprudent → sonde live d'abord (compte watcher, endpoint public). Design
+      turnkey ci-dessous ; agrégateur/tests intacts tant que non validé.
+- [!] 403 (privé) = joueur gardé + stats vides + flag ; erreur par-joueur non-fatale.
+      Dépend de l'item ci-dessus (même refonte agrégateur). NB : le non-fatal par-JOUEUR
+      existe déjà (Run/errgroup) ; c'est le non-fatal par-MATCH qui manque, mooté par le swap.
 
-**Gate** :
-- `cd apps/go-api && go test ./internal/service/ -run 'World|ServiceRecord|Aggregat'`
-- Mesure avant/après du taux d'enrichissement sur 1 playlist (loggé dans thought_log).
+**Design validé (turnkey pour session dédiée, après sonde live)** :
+1. `sync.HaloAPIClient.GetSeasonPlaylistServiceRecord(ctx, xuid, seasonID, playlistID)` →
+   GET `{haloStatsHost}/hi/players/xuid(N)/Matchmade/servicerecord?seasonId=&playlistAssetId=`
+   (mirroir `GetPlaylistCsr`), parse CoreStats → `domain.WorldServiceRecord`. 404/403→(nil,nil).
+2. `PooledHaloClient.GetSeasonPlaylistServiceRecord` via `doPublic`.
+3. `analysis.WorldStatsFromServiceRecord(...)` → `WorldPlayerSeasonStats`. **Mapping validé** :
+   KDA = Kills+Assists/3−Deaths (Σ per-match = linéaire, exact) ; Accuracy =
+   (ShotsHit/ShotsFired)×MatchCount (approx de Σ per-match% ; la lecture passe kda/accuracy
+   BRUTS, sans ÷match_count — vérifié worldPlayerStatsQuery) ; tie/dnf=0 (non fournis) ;
+   kills/deaths/assists/damage/playtime/medals = agrégat (= sommes, exact).
+4. Nouvelle interface source `WorldServiceRecordSource` (remplace `WorldMatchSource`) ;
+   `AggregatePlayer` boucle sur `cfg.RankedPlaylists` : 1 SR/(joueur,playlist), émet une ligne
+   si MatchesCompleted>0. Supprimer `collectPlayerMatches`/`getMatch`/cache/singleflight
+   (code mort). Réécrire les fakes des 4 tests (fakeMatchSource→fakeServiceRecordSource).
+
+**Gate (quand exécuté)** :
+- Sonde live : 1 appel `GetSeasonPlaylistServiceRecord` sur 1 joueur classé connu → confirmer
+  CoreStats non nuls par playlist. Sortie collée au thought_log.
+- `cd apps/go-api && go test ./internal/sync/ ./internal/service/ ./internal/analysis/ -run 'World|ServiceRecord|Aggregat'`
 
 ---
 

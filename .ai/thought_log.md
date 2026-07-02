@@ -1,3 +1,30 @@
+## [2026-07-02] A3 (page player CSR) exécutée + B2 statuée bloquée (validation live) — worktree
+
+**A3 — EXÉCUTÉE** : l'augment CSR post-sync (career.go) itérait `rankedplaylists.Active()`
+(4 en dur) pour compléter les playlists actives non-jouées d'un joueur. Désormais il itère
+les playlists ACTIVES réelles. Source dynamique choisie = `world_csr_leaderboard_snapshots`
+(dernier batch, rempli par le cron A2 avec les 7 actives), PAS `playlists_catalog`
+(metadata.duckdb = writer mono-process → contention avec la sync, ADR 0013/0016 ; écrire
+is_active depuis le cron = à éviter). `SyncEngine.activeRankedPlaylists(ctx)` lit via
+`e.sharedProvider` (RO), season-agnostic (le format saison Waypoint `csrseason13-2` diffère de
+`e.csrSeasonID` config → on lit le dernier scrape). **Fallback `Active()`** si provider nil /
+table vide / erreur (nil-safe, jamais moins que l'historique ; titres sans cron classement OK).
+Threadé runCSRSnapshotSync → syncPlayerCSRs → augment (param `activePlaylists`). Valeur
+marginale faible (la page player montre déjà les rangs des playlists jouées via GetPlayerCSRs ;
+A3 n'étend que les prompts « non classé » des actives non-jouées) mais livrée par respect de
+l'ordre du plan. Gate : build + gofmt + `go test ./internal/sync -run CSR|Playlist|Career|Augment`
+vert, dont `TestAugmentWithActiveRankedCSRs_UsesProvidedList`.
+
+**B2 — STATUÉE [!] (blocage valide, règle 3 du contrat)** : le swap agrégation-par-match →
+service-record par (saison, playlist) exige de VALIDER contre l'API live (token-gated) que
+l'endpoint `/hi/players/{p}/Matchmade/servicerecord` accepte le filtre `playlistAssetId` et
+renvoie les CoreStats complets par playlist. Le code existant (`FetchSeasonServiceRecord`) ne
+lit que `MatchesCompleted` → forme complète non prouvée. Bâtir un agrégateur de STATS sur une
+forme API non vérifiée = imprudent → sonde live requise d'abord (ressource externe = report
+VALIDE, pas « momentum »). Design turnkey + mapping validé (KDA linéaire exact ; accuracy =
+(ShotsHit/ShotsFired)×MatchCount car la lecture passe kda/accuracy bruts ; tie/dnf=0) consignés
+au plan. Item 1 (vérif existant) [x] fait.
+
 ## [2026-07-02] A2 classement : le cron découvre les playlists ACTIVES réelles (7 vs 4) — COMPLÉTÉ (worktree)
 
 **Tâche** : étape A2 du plan. Cause de « peu de playlists actives sur la page classement » :
