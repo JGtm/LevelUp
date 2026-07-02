@@ -760,7 +760,7 @@ func TestRunPostSyncPipeline_NoError(t *testing.T) {
 		xuid:     "1234567890123456",
 	}
 
-	r := e.runPostSyncPipeline(context.Background(), playerDB, sharedDB, mock, nil)
+	r := e.runPostSyncPipeline(context.Background(), playerDB, NewPinnedSharedAccess(sharedDB), mock, nil)
 
 	// Post-sync should complete without panic.
 	// Carrière (XP + Spartan ID) découplée du post-sync depuis 2026-05-14 :
@@ -839,7 +839,7 @@ func TestRunConditionalPostSync_NoInsertedMatches_DoesNotSyncCareer(t *testing.T
 
 	e := &SyncEngine{gamertag: "TestPlayer", xuid: "1234567890123456"}
 
-	r := e.runConditionalPostSync(context.Background(), playerDB, sharedDB, mock, 0, nil)
+	r := e.runConditionalPostSync(context.Background(), playerDB, NewPinnedSharedAccess(sharedDB), mock, 0, nil)
 
 	if r.CareerSynced {
 		t.Fatal("CareerSynced doit rester false : carrière découplée du post-sync")
@@ -870,7 +870,7 @@ func TestRunPostSyncPipeline_CareerError(t *testing.T) {
 
 	e := &SyncEngine{gamertag: "TestPlayer", xuid: "1234567890123456"}
 
-	r := e.runPostSyncPipeline(context.Background(), playerDB, sharedDB, mock, nil)
+	r := e.runPostSyncPipeline(context.Background(), playerDB, NewPinnedSharedAccess(sharedDB), mock, nil)
 
 	if r.CareerSynced {
 		t.Error("CareerSynced doit rester false : carrière découplée du post-sync")
@@ -885,7 +885,7 @@ func TestRunPostSyncPipeline_NilCareerData(t *testing.T) {
 
 	e := &SyncEngine{gamertag: "TestPlayer", xuid: "1234567890123456"}
 
-	r := e.runPostSyncPipeline(context.Background(), playerDB, sharedDB, mock, nil)
+	r := e.runPostSyncPipeline(context.Background(), playerDB, NewPinnedSharedAccess(sharedDB), mock, nil)
 
 	if r.CareerSynced {
 		t.Error("CareerSynced doit rester false : carrière découplée du post-sync")

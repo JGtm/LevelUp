@@ -35,7 +35,22 @@ func (e *SyncEngine) RunPostSyncForV2(
 	client HaloClient,
 	insertedIDs []string,
 ) domain.PostSyncResult {
-	return e.runPostSyncPipeline(ctx, playerDB, sharedDB, client, insertedIDs)
+	// Compat V2 actuelle : le runner tient déjà le writer → pinned (byte-identique).
+	// L'incrément 5 basculera le runner sur RunPostSyncForV2Shared (bursts).
+	return e.runPostSyncPipeline(ctx, playerDB, NewPinnedSharedAccess(sharedDB), client, insertedIDs)
+}
+
+// RunPostSyncForV2Shared est la variante bursts paresseux (étape 1 contention) :
+// le caller ne tient PAS de writer — le pipeline acquiert des bursts courts par
+// écriture shared via le SharedAccess fourni. Cible du flip V2 (incrément 5).
+func (e *SyncEngine) RunPostSyncForV2Shared(
+	ctx context.Context,
+	playerDB *sql.DB,
+	shared *SharedAccess,
+	client HaloClient,
+	insertedIDs []string,
+) domain.PostSyncResult {
+	return e.runPostSyncPipeline(ctx, playerDB, shared, client, insertedIDs)
 }
 
 // BuildBatchFromRawForV2 construit un *persist.MatchBatch à partir des
