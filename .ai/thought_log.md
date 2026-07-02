@@ -14,7 +14,10 @@
 
 **Résultats** : build/vet/gofmt verts ; unit tests collecteur (stats par-label, tri, éviction cap, roundtrip ctx) verts ; **intégration watchdog verte AVEC `-race`** (fires >seuil, désarmé par release, label défaut, concurrent 4 goroutines) ; suite sharedprovider intégration complète verte avec -race ; front typecheck+eslint verts ; internal/api vert après mise à jour du contrat.
 
-**Conclusion / prochaine étape** : la contention est désormais attribuable en continu (carte admin + /debug/vars + WARN watchdog dans logs/provider.log) et l'invariant « writer tenu court » est auto-surveillé. Étape 1 = lire les chiffres réels sur un cycle de sync live, puis refactorer le PIRE détenteur mesuré (attendu : sync_v2_postsync — sortir les fetches réseau du lease, pattern V2 Persist) avec le gate `rw_window_max < 1500ms` par détenteur. Commit sur autorisation.
+**MESURE LIVE (2026-07-02 08:06, cycle auto-sync forcé, 8 joueurs, 105s)** — attribution SANS AMBIGUÏTÉ :
+`sync_v2_postsync` = **8/8 swaps, 104 140 ms tenus sur un cycle de 105 s (~99%), avg 13 017 ms (= exactement la moyenne historique ~13,5s), max 21 909 ms, watchdog 6/8**. Aucun autre détenteur n'apparaît (persist_worker : 0 acquisition — 0 nouveau match ce cycle ; crons leaderboard/world-enrich : pas dans la fenêtre). **L'hypothèse « les 13,5s viennent des writers background (world-enrich/career/leaderboard) » est RÉFUTÉE par la donnée : le détenteur unique est le post-sync V2** (14 étapes sous writer, weapon-kills réseau inclus), conformément au suspect n°1 de la discovery. WARN watchdog vérifiés dans logs/provider.log (label+held_ms) ; releases étiquetés ; 0 lecture 503 pendant le cycle (pas de trafic front concurrent). Serveur arrêté après mesure.
+
+**Conclusion / prochaine étape** : la contention est attribuable en continu (carte admin + /debug/vars + WARN watchdog) et l'invariant « writer tenu court » est auto-surveillé. **Étape 1 (cible unique, chiffrée) : refactorer `sync_v2_postsync`** — sortir les fetches réseau du lease (pattern Collect→Persist déjà appliqué au chemin primaire V2), gate de succès `rw_window_max(sync_v2_postsync) < 1500 ms` sur un cycle réel. Étape 0 committée (`feat(contention)`).
 
 ## [2026-07-01] Contention sync↔service + switch de titre bugué : campagne A→D + activation V2 — COMPLÉTÉ local (soak fait)
 
