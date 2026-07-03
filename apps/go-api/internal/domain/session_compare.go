@@ -1,24 +1,13 @@
-// Package domain — session_compare.go : types pour la comparaison de sessions.
+// Package domain — session_compare.go : types de RÉSUMÉ de session PARTAGÉS.
 //
-// Sprint 33 :
-//
-//	POST /api/v1/players/{slug}/pages/session-compare → SessionCompareResponse
+// NB (G3, 2026-07-03, DEC-1) : la feature « comparaison de sessions » (endpoint
+// POST /pages/session-compare + front features/session-compare) a été SUPPRIMÉE.
+// Les types ci-dessous SURVIVENT car ils sont désormais consommés par la page
+// SESSION-DETAIL (session_page) : SessionCompareEntry (résumé d'une session),
+// SessionCompareMetricRow (ligne de métrique), SessionParticipationAxis et
+// SessionMatchPoint (agrégats embarqués dans SessionCompareEntry). Les types
+// compare-only (Request/Response/MapRow/ModeRow) ont été retirés avec la feature.
 package domain
-
-// ---------------------------------------------------------------------------
-// Requête
-// ---------------------------------------------------------------------------
-
-// SessionCompareRequest est le corps de POST /pages/session-compare.
-type SessionCompareRequest struct {
-	Filters  FilterContextInput `json:"filters"`
-	SessionA *string            `json:"session_a,omitempty"`
-	SessionB *string            `json:"session_b,omitempty"`
-}
-
-// ---------------------------------------------------------------------------
-// Réponse
-// ---------------------------------------------------------------------------
 
 // SessionParticipationAxis est un axe du profil de participation normalisé 0..100.
 // Le nom correspond aux constantes narrative.Axis* ("combat", "survival", etc.).
@@ -103,34 +92,4 @@ type SessionMatchPoint struct {
 	PerfScore       *float64 `json:"perf_score,omitempty"`       // performance_score computé du match
 	SkillRating     *float64 `json:"skill_rating,omitempty"`     // LUSR ou CSR après ce match
 	EngagementScore *float64 `json:"engagement_score,omitempty"` // résidu brut d'engagement du match
-}
-
-// SessionCompareMapRow est une ligne du tableau par carte.
-type SessionCompareMapRow struct {
-	MapName  string `json:"map_name"`
-	AMatches int    `json:"a_matches"`
-	AWins    int    `json:"a_wins"`
-	ALosses  int    `json:"a_losses"`
-	BMatches int    `json:"b_matches"`
-	BWins    int    `json:"b_wins"`
-	BLosses  int    `json:"b_losses"`
-}
-
-// SessionCompareModeRow est une ligne du tableau par mode.
-type SessionCompareModeRow struct {
-	ModeName string `json:"mode_name"`
-	AMatches int    `json:"a_matches"`
-	AWins    int    `json:"a_wins"`
-	BMatches int    `json:"b_matches"`
-	BWins    int    `json:"b_wins"`
-}
-
-// SessionCompareResponse est la réponse de POST /pages/session-compare.
-type SessionCompareResponse struct {
-	SessionA          *SessionCompareEntry      `json:"session_a"`
-	SessionB          *SessionCompareEntry      `json:"session_b"`
-	AvailableSessions []string                  `json:"available_sessions"`
-	Metrics           []SessionCompareMetricRow `json:"metrics"`
-	MapsTable         []SessionCompareMapRow    `json:"maps_table"`
-	ModesTable        []SessionCompareModeRow   `json:"modes_table"`
 }

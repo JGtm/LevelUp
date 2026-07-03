@@ -221,19 +221,6 @@ func (r *ServiceRegistry) playerMatchesAdapterFor(pdb *duckdb.PlayerDB) port.Pla
 	return duckdb.NewPlayerMatchesAdapter(pmRepo, pdb.TitleSlug, pdb.Gamertag)
 }
 
-// SessionCompare retourne un SessionCompareService pour le joueur.
-func (r *ServiceRegistry) SessionCompare(ctx context.Context, slug string) (port.SessionCompareService, error) {
-	pdb, err := r.resolve(ctx, slug)
-	if err != nil {
-		return nil, err
-	}
-	sessionsRepo := duckdb.NewSessionsRepo(pdb)
-	statsRepo := duckdb.NewStatsRepo(pdb)
-	svc := service.NewSessionCompareService(sessionsRepo, statsRepo).
-		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag)
-	return svc, nil
-}
-
 // SessionPage retourne un SessionPageService pour le joueur.
 func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.SessionPageService, error) {
 	pdb, err := r.resolve(ctx, slug)

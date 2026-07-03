@@ -202,18 +202,6 @@ func TestDTOs_NoNilSlicesOnEmptyInput(t *testing.T) {
 		testutil.RequireNoNilSlicesWithoutOmitempty(t, resp)
 	})
 
-	t.Run("SessionCompareService.Compare", func(t *testing.T) {
-		sessRepo := &mockSessionCompareSessionsRepo{rows: []domain.SessionMatchRow{}}
-		statsRepo := &mockSessionCompareStatsRepo{matches: []legacymatch.StatsMatchRow{}}
-		svc := NewSessionCompareService(sessRepo, statsRepo).
-			WithPlayerMatchesRepo(newStatsMockFromRows(nil, nil), "halo_infinite", "Test")
-		resp, err := svc.Compare(context.Background(), domain.SessionCompareRequest{})
-		if err != nil {
-			t.Fatalf("error: %v", err)
-		}
-		testutil.RequireNoNilSlicesWithoutOmitempty(t, resp)
-	})
-
 	t.Run("CompareService.GetPage", func(t *testing.T) {
 		repo := &mockCompareRepoAB{a: &domain.NormalizedPlayerStats{Gamertag: "A"}, b: &domain.NormalizedPlayerStats{Gamertag: "B"}}
 		provider := &mockStatsProvider{}

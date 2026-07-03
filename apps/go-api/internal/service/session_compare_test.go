@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -169,55 +168,6 @@ func TestBuildCompareMetrics_TwoSessions(t *testing.T) {
 	metrics := buildCompareMetrics(a, b)
 	if len(metrics) < 4 {
 		t.Fatalf("expected >=4 metrics, got %d", len(metrics))
-	}
-}
-
-func TestSessionCompareService_Compare_AutoSelectsLatestSessions(t *testing.T) {
-	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
-	svc := NewSessionCompareService(nil, repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
-
-	resp, err := svc.Compare(context.Background(), domain.SessionCompareRequest{})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.SessionA == nil || resp.SessionA.SessionLabel != "2026-04-21 19h30" {
-		t.Fatalf("unexpected session A: %#v", resp.SessionA)
-	}
-	if resp.SessionB == nil || resp.SessionB.SessionLabel != "2026-04-21 18h" {
-		t.Fatalf("unexpected session B: %#v", resp.SessionB)
-	}
-	if len(resp.Metrics) == 0 {
-		t.Fatal("expected comparison metrics")
-	}
-	assertSessionMetricPresent(t, resp.Metrics, "score")
-}
-
-func TestSessionCompareService_Compare_WithFilterAndSingleSession(t *testing.T) {
-	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
-	svc := NewSessionCompareService(nil, repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
-	start := time.Date(2026, 4, 21, 19, 0, 0, 0, time.UTC)
-	end := time.Date(2026, 4, 21, 21, 0, 0, 0, time.UTC)
-
-	resp, err := svc.Compare(context.Background(), domain.SessionCompareRequest{
-		Filters: domain.FilterContextInput{
-			FilterMode: "period",
-			Period: domain.PeriodInput{
-				StartDate: &start,
-				EndDate:   &end,
-			},
-		},
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(resp.AvailableSessions) != 1 {
-		t.Fatalf("expected one filtered session, got %v", resp.AvailableSessions)
-	}
-	if resp.SessionA != nil || resp.SessionB != nil {
-		t.Fatalf("expected no compare entries when fewer than two sessions remain, got %#v %#v", resp.SessionA, resp.SessionB)
-	}
-	if len(resp.Metrics) != 0 {
-		t.Fatalf("expected no metrics, got %d", len(resp.Metrics))
 	}
 }
 

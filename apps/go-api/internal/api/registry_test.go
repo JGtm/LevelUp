@@ -62,14 +62,6 @@ func TestServiceRegistry_Sessions_ResolveError(t *testing.T) {
 	}
 }
 
-func TestServiceRegistry_SessionCompare_ResolveError(t *testing.T) {
-	reg := &ServiceRegistry{resolve: failResolver}
-	_, err := reg.SessionCompare(context.Background(), "x")
-	if !errors.Is(err, errResolve) {
-		t.Fatalf("expected resolve error, got %v", err)
-	}
-}
-
 func TestServiceRegistry_Stats_ResolveError(t *testing.T) {
 	reg := &ServiceRegistry{resolve: failResolver}
 	_, err := reg.Stats(context.Background(), "x")
