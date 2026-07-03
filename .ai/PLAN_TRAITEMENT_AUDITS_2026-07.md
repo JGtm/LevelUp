@@ -587,9 +587,14 @@ traiter AVANT les refactors structurels.)
 - [ ] F9 — ARCHI 35 : les 5-6 handlers Ascension épinglés DefaultSlug
   (`server.go:1554,1579,1584,1588,1609,1614`) → `ctxkeys.TitleSlug(ctx)` ou a minima
   `RequireCapability` → 503 propre. (Débloque MT-19 / Phase 1b.)
-- [ ] F10 — ARCHI 30 : élargir la regex du ratchet `no_slug_comparison_test.go:35`
-  (`(?:\w+\.)?DefaultSlug` + cas `TitleSlug(ctx)`) ; allowlister les sites détectés
-  (`sync/comeback.go:34/95`, `sync/coordinator.go:316`) avec justification datée.
+- [x] F10 — ARCHI 30 : regex ratchet élargie (`(?:\w+\.)?DefaultSlug` + forme d'appel
+  `TitleSlug(ctx)`), FERME le trou d'un feature-gate `TitleSlug(ctx) == "halo_infinite"`.
+  PÉRIMÈTRE : l'audit citait 3 sites (comeback:34/95, coordinator:316) mais l'élargissement
+  en détecte **11** (+ `api/server.go:461`, `ops/seed_demo_multititle.go` ×6, `ops/seed_demo.go:391`)
+  — tous vérifiés = gardes de PARITÉ de base (défaut HINF byte-identique) et NON des feature-gates.
+  Grandfathered dans l'allowlist (par fichier, justif datée catégorisée ; comeback:34 suivi F15-15).
+  Test de sanité positif ajouté (regex attrape les formes élargies, pas l'égalité slug↔slug).
+  Gate : `go test ./internal/archlint/... -run Slug` VERT (ratchet + sanité).
 - [ ] F11 — ARCHI 38 : titre par défaut hors TOML — WARN explicite au boot si un
   `title.toml` infinite existe (skip muet `config_loader.go:185`), ou parity-test
   built-in vs TOML versionné. Trancher et documenter dans ADR 0025.
