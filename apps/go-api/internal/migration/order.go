@@ -223,6 +223,7 @@ var canonicalOrder = []string{
 	"add_player_count_to_match_registry",                       // shared (roster API attendu — oracle d'intégrité, fix #10)
 	"add_weapon_accuracy",                                      // shared (précision par arme/joueur/match, dérivée des events WeaponDrop H5)
 	"add_events_empty_to_match_registry",                       // shared (statut distinct « chunk récupéré, 0 event légitime » — fin boucle parse_anomaly)
+	"create_season_catalog",                                    // shared (C2 : noms+traductions des saisons CSR Waypoint, source scrape)
 }
 
 var canonicalIndex = func() map[string]int {

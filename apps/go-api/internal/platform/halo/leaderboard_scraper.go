@@ -148,6 +148,11 @@ func (s *LeaderboardScraper) FetchCSRLeaderboard(
 type WaypointRef struct {
 	ID          string
 	DisplayName string
+	// Translations : nom localisé par locale BCP-47 (ex "fr-FR" → "Ombres"),
+	// tel qu'exposé par le payload Waypoint. Renseigné pour les SAISONS
+	// uniquement (les playlists n'en exposent pas) ; nil sinon. DisplayName
+	// reste le nom EN canonique (la page est requêtée en en-US).
+	Translations map[string]string
 }
 
 // seedSeasonID est la saison « graine » utilisée pour bootstrapper la requête de
@@ -199,7 +204,7 @@ func (s *LeaderboardScraper) FetchCatalog(
 	}
 	for _, se := range parsed.Seasons {
 		if id := strings.TrimSpace(se.SeasonID); id != "" {
-			seasons = append(seasons, WaypointRef{ID: id, DisplayName: se.DisplayName})
+			seasons = append(seasons, WaypointRef{ID: id, DisplayName: se.DisplayName, Translations: se.Translations})
 		}
 	}
 	for _, pl := range parsed.Playlists {
@@ -227,6 +232,38 @@ func (s *LeaderboardScraper) FetchActivePlaylists(ctx context.Context, refPlayli
 		}
 	}
 	return out, nil
+}
+
+// FetchSeasons retourne la liste des saisons CSR exposées par le menu déroulant de
+// la page classement Waypoint (portion `seasons` de FetchCatalog), dans l'ordre de
+// la page (récentes d'abord). Chaque entrée porte le nom EN (DisplayName) et sa
+// traduction FR résolue (fr-FR, fallback EN). Source autoritative pour season_catalog
+// (C2). `refPlaylistID` = une playlist classée quelconque servant de graine.
+func (s *LeaderboardScraper) FetchSeasons(ctx context.Context, refPlaylistID string) ([]domain.WorldSeasonRef, error) {
+	seasons, _, err := s.FetchCatalog(ctx, refPlaylistID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.WorldSeasonRef, 0, len(seasons))
+	for _, se := range seasons {
+		if id := strings.TrimSpace(se.ID); id != "" {
+			out = append(out, domain.WorldSeasonRef{SeasonID: id, DisplayName: se.DisplayName, NameFR: se.FrenchName()})
+		}
+	}
+	return out, nil
+}
+
+// FrenchName retourne la traduction fr-FR de la saison (insensible à la casse de la
+// clé locale), sinon le DisplayName EN en secours.
+func (r WaypointRef) FrenchName() string {
+	for k, v := range r.Translations {
+		if strings.EqualFold(strings.TrimSpace(k), "fr-FR") {
+			if fr := strings.TrimSpace(v); fr != "" {
+				return fr
+			}
+		}
+	}
+	return r.DisplayName
 }
 
 // fetchPageBytes récupère le HTML brut d'une page du classement.
@@ -279,8 +316,9 @@ type waypointLBEntry struct {
 // waypointSeasonRef / waypointPlaylistRef : listes exposées par la page (utiles
 // pour peupler les sélecteurs côté job/UI).
 type waypointSeasonRef struct {
-	SeasonID    string `json:"seasonId"`
-	DisplayName string `json:"displayName"`
+	SeasonID     string            `json:"seasonId"`
+	DisplayName  string            `json:"displayName"`
+	Translations map[string]string `json:"translations"`
 }
 
 type waypointPlaylistRef struct {

@@ -944,6 +944,41 @@ func Steps() []migration.Migration {
 			},
 		},
 		{
+			// C2 (saisons) : la page classement Waypoint expose la liste des saisons CSR
+			// avec leur nom d'Operation (displayName EN + translations par locale, ex
+			// fr-FR "Ombres"). Le scraper les parse (FetchCatalog) ; on les persiste ici
+			// pour un libellé autoritatif "Saison N · Nom" dans les sélecteurs (page
+			// classement + page player), au lieu du "Saison N" dérivé du seul season_id.
+			//
+			// TargetShared (et non metadata) : la SOURCE est le scrape Waypoint et le
+			// SEUL writer sanctionné détenu par world_leaderboard_cron est le writer
+			// shared (provider.AcquireWriter). Écrire dans metadata depuis ce cron
+			// contredirait le writer mono-process (contention avec la sync — cf. A3).
+			// Co-localisé avec world_csr_leaderboard_snapshots (même cron, même scrape).
+			Name:        "create_season_catalog",
+			TargetDB:    migration.TargetShared,
+			Description: "C2 : season_catalog (noms + traduction FR des saisons CSR Waypoint)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS season_catalog (
+						title_slug       VARCHAR NOT NULL,
+						season_id        VARCHAR NOT NULL,
+						display_name     VARCHAR,
+						name_fr          VARCHAR,
+						season_major     INTEGER,
+						season_minor     INTEGER,
+						first_seen_at    TIMESTAMP,
+						last_fetched_at  TIMESTAMP,
+						PRIMARY KEY (title_slug, season_id)
+					);
+					-- AUCUN index secondaire : display_name/name_fr sont MUTÉS par l'upsert
+					-- (SELECT-then-write, ops.RefreshSeasonCatalog). PK-only → l'UPDATE ne
+					-- touche pas d'index secondaire (surface ART #23046). Table minuscule
+					-- (≤ ~15 saisons) → scan séquentiel instantané.
+				`)
+			},
+		},
+		{
 			Name:        "shared_create_player_squad_offset",
 			TargetDB:    migration.TargetShared,
 			Description: "LUSR v2 Sprint 1.C — player_squad_offset (append-only) + vue _latest : offset synergie par paire de coéquipiers",

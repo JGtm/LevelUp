@@ -22,6 +22,16 @@ type WorldPlaylistRef struct {
 	DisplayName string
 }
 
+// WorldSeasonRef identifie une saison CSR exposée par le menu déroulant de la page
+// classement Waypoint : season_id (ex "csrseason13-2"), nom d'Operation EN
+// (DisplayName) et sa traduction FR déjà résolue (NameFR, fallback EN). Persisté
+// dans season_catalog pour un libellé autoritatif "Saison N · Nom" (C2).
+type WorldSeasonRef struct {
+	SeasonID    string
+	DisplayName string
+	NameFR      string
+}
+
 // LeaderboardEntry est une entrée du classement.
 //
 // Le classement est multi-catégories (cf. LeaderboardCategory). Pour la
