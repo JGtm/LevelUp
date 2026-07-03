@@ -380,8 +380,18 @@ Objectif : plus aucun chemin prod du pattern déclencheur ART #23046 ; tripwire 
   cohérent avec le scan (`stripGoComments`). Entrée `internal/persist/doc.go` retirée
   (ses seuls patterns étaient en commentaire → morte). `internal/sync/writes.go` conservée
   (ON CONFLICT réel en code, l.68/133). Gate : allowlist + scan principal + tripwire verts.
-- [ ] E5 — ARCHI mineur : `progression/profile/queries.go:40` — SQL de lecture HTTP →
+- [x] E5 — ARCHI mineur : `progression/profile/queries.go:40` — SQL de lecture HTTP →
   platform/duckdb + filtre temporel canonique (COALESCE timezone, croisé H1).
+  FAIT (filtre canonique) : les 5 sites `start_time` bruts (count/radar/awards-PhaseA/FKFD/
+  engagement) passent au fragment timezone-canonique. Helper EXPORTÉ
+  `duckdb.StartTimeCanonicalSQL(alias)` créé (const existante refactorée pour le réutiliser →
+  source unique côté platform/duckdb, rule 6). [~] pour le déplacement des LITTÉRAUX SQL vers
+  un repo platform/duckdb : les 5 méthodes sont de l'ORCHESTRATION cross-DB (Phase A shared +
+  Phase B player + mapping awards) dont la CONNEXION passe déjà par le SharedReader (ADR 0016,
+  couche correcte) ; l'extraction pure-repo chevauche H1 (refactor read-layer timezone) → à
+  faire en H1 pour éviter double-travail. `analysis/match_filter.go` garde sa copie inline
+  (analysis ne peut importer platform/duckdb) → unification H1. Gate : build+vet OK, profile +
+  platform/duckdb `-tags=integration -p 1` verts.
 - [ ] E6 — ARCHI mineur : bare connects RO sur player DB potentiellement tenue RW :
   `worldenrich/wiring.go:33`, `platform/auth/pool/discovery.go:229` → pattern
   `OpenReadForQuery` / provider.

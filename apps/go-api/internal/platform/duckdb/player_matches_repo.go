@@ -141,12 +141,24 @@ func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string,
 	return sb.String(), args, hints, nil
 }
 
-// startTimeCanonicalSQL est l'expression canonique du timestamp de début de match
-// (pattern TZ projet : préférer start_time_utc, sinon interpréter start_time naïf
-// comme UTC). Utilisée pour la projection, le filtre Period et l'ORDER BY afin
-// d'éviter le décalage de fuseau (cf. reference_timezone_canonical_pattern, aligné
-// sur Q26HomeMatchesSharedPart).
-const startTimeCanonicalSQL = `COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')`
+// StartTimeCanonicalSQL retourne l'expression canonique du timestamp de début de
+// match pour un alias de table donné (pattern TZ projet : préférer start_time_utc,
+// sinon interpréter start_time naïf comme UTC). `alias == ""` → colonnes nues
+// (table sans alias). Source unique du fragment timezone côté platform/duckdb —
+// réutilisée par les repos de lecture (E5) pour éviter la divergence
+// (cf. reference_timezone_canonical_pattern). NB : analysis/match_filter.go garde
+// une copie inline (analysis ne peut importer platform/duckdb) — unification H1.
+func StartTimeCanonicalSQL(alias string) string {
+	prefix := ""
+	if alias != "" {
+		prefix = alias + "."
+	}
+	return "COALESCE(" + prefix + "start_time_utc, " + prefix + "start_time AT TIME ZONE 'UTC')"
+}
+
+// startTimeCanonicalSQL : expression canonique pour l'alias `r` (projection,
+// filtre Period, ORDER BY de player_matches_repo). Source unique via le helper.
+var startTimeCanonicalSQL = StartTimeCanonicalSQL("r")
 
 // appendPlayerMatchScalarFilters ajoute les filtres scalaires (Period, IsFirefight,
 // IsRanked, MinTimePlayedSeconds, BTBExcluded).
