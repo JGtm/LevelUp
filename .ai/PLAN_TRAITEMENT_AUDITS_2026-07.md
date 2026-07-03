@@ -339,9 +339,18 @@ main/cmd bootstrap).
 
 Objectif : plus aucun chemin prod du pattern déclencheur ART #23046 ; tripwire étendu.
 
-- [ ] E1 — ARCHI 15 : router `writeOneMatch` de l'import OpenSpartan
+- [x] E1 — ARCHI 15 : router `writeOneMatch` de l'import OpenSpartan
   (`openspartan_import_service.go:318`) vers `persist.SharedPersister` (INSERT-only +
   pre-check registry), comme le livesync H5. Retirer l'entrée allowlist du tripwire.
+  FAIT : `writeOneMatch` construit un `persist.MatchBatch` (SetMatch+AddParticipants+
+  AddMedals+AddMatchCSRs) et appelle `NewSharedPersister(sharedDB).Persist` — 1 transaction
+  INSERT-only atomique + idempotence (skip si match_id existe), remplace les 4 appels
+  `sync.Insert*/Upsert*` per-helper (dont ON CONFLICT). Converter `SharedCSRRowToMatchCSRInsert`
+  exporté (réutilisé, pas dupliqué). Entrée allowlist : SANS OBJET (les ON CONFLICT vivent dans
+  `writes.go`, allowlisté là ; openspartan n'avait pas d'entrée). Fixture test complétée
+  (colonnes batch match_intensity/backfill_completed/backfill_bits/kill-mechanics). Gate :
+  `TestOpenSpartanImport_EndToEnd_WritesAllRowFamilies` vert ; `-tags=integration -p 1`
+  persist/sync/service vert.
 - [ ] E2 — ARCHI 16 : `backfill_registry_names.go:98` — convertir l'UPDATE bulk multi-row
   nu sur match_registry en row-by-row par match_id (ou réserver au CLI serveur-arrêté,
   décision au code) ; ÉTENDRE la regex du tripwire aux UPDATE multi-row nus sur les
@@ -980,6 +989,13 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
 
+- [LOT E / E1 — code mort transitif] Après E1, `sync.InsertRegistryIfNotExists`,
+  `sync.InsertParticipants`, `sync.InsertMedals` n'ont PLUS aucun caller prod (openspartan
+  était le dernier) — seulement des tests (dont `concurrent_upsert_*_test.go` qui caractérisent
+  le comportement ART de l'ancien UPSERT). Dead-code-museum (diagnostic #1). Candidat suppression
+  LOT G (retirer fn + tests + entrée allowlist `writes.go` si le pattern ON CONFLICT disparaît
+  avec). NON traité en E1 (règle 7). `sync.UpsertSharedCSRs` reste vivant (backfill CSR
+  `csr_shared_backfill.go:149`).
 - [LOT A / A2] Dette de type front pré-existante : `CareerTopMatchesResponse` hand-written
   (`types.ts:516`) = `{ items: CareerTopMatch[] }` ne correspond PAS à la réponse réelle du
   backend `{ best_matches, worst_matches: TopMatchDTO[] }` ; et `data.top_matches_preview`

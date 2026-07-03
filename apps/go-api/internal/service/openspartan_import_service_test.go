@@ -185,6 +185,26 @@ func setupSharedDB(t *testing.T) *sql.DB {
 	`); err != nil {
 		t.Fatalf("create highlight_events: %v", err)
 	}
+	// Colonnes ajoutées par migration title-owned (match_intensity/backfill_completed
+	// sur match_registry ; backfill_bits + mécaniques de kill Halo 5 sur
+	// match_participants), absentes de sharedSchemaSQL statique mais écrites par
+	// persist.SharedPersister.Persist (E1 route l'import via ce persister). Sans ce
+	// mirroring : Binder Error "column ..." — même patch que sync/patchSharedSchemaForBatch.
+	for _, col := range []string{"match_intensity DOUBLE", "backfill_completed BIGINT DEFAULT 0"} {
+		if _, err := db.Exec("ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS " + col); err != nil {
+			t.Fatalf("patch match_registry %s: %v", col, err)
+		}
+	}
+	for _, col := range []string{
+		"backfill_bits INTEGER",
+		"assassination_kills SMALLINT DEFAULT 0",
+		"ground_pound_kills SMALLINT DEFAULT 0",
+		"shoulder_bash_kills SMALLINT DEFAULT 0",
+	} {
+		if _, err := db.Exec("ALTER TABLE match_participants ADD COLUMN IF NOT EXISTS " + col); err != nil {
+			t.Fatalf("patch match_participants %s: %v", col, err)
+		}
+	}
 	return db
 }
 
