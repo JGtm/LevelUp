@@ -362,8 +362,17 @@ Objectif : plus aucun chemin prod du pattern déclencheur ART #23046 ; tripwire 
   lient tous match_id=?). Signature précise (seul le bare set-based n'a aucun `?`).
   `TestBareBulkUpdateDetection_Sanity` valide les 2 sens. Gate : tripwire + backfill_registry
   vert, `-tags=integration -p 1 ./internal/sync/...` = exit 0.
-- [ ] E3 — ARCHI mineur : `no_art_patterns_test.go:184` — retirer l'exclusion `ops/`
+- [x] E3 — ARCHI mineur : `no_art_patterns_test.go:184` — retirer l'exclusion `ops/`
   (hypothèse « exécuté hors serveur » fausse : plomberie média ops tourne in-process).
+  FAIT : exclusion `ops/` retirée des 3 tests tripwire + 3 commentaires de justification
+  corrigés (doc-inversion). DÉCOUVERTE MATÉRIELLE : retirer l'exclusion exposait un VRAI
+  risque ART que E2 venait de rendre détectable — `ops/lying_bits_reset.go` faisait 3 bulk
+  UPDATE multi-row nus sur match_registry (bits inlinés `%d`, aucun `?`), IN-PROCESS (action
+  admin data-quality), avec un commentaire affirmant à tort « pas de risque ART ». Convertis
+  en row-by-row par match_id (SELECT match_ids → UPDATE `WHERE match_id = ?`). Vérif
+  empirique : lying_bits était la SEULE exposition (catalog_refresh = SELECT-then-write tables
+  non protégées ; seed/archive/restore = non protégées/dynamiques) → aucune allowlist ajoutée.
+  Gate : `TestResetLyingBits` vert (comportement préservé), tripwire complet + ops verts, vet OK.
 - [ ] E4 — DETTE §2.5 : `TestAllowlistJustifiesEverything` passe de warning à erreur.
 - [ ] E5 — ARCHI mineur : `progression/profile/queries.go:40` — SQL de lecture HTTP →
   platform/duckdb + filtre temporel canonique (COALESCE timezone, croisé H1).
