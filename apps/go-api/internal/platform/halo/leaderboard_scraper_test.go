@@ -3,6 +3,7 @@ package halo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -107,6 +108,27 @@ func TestFetchCSRLeaderboard_EmptyPage1Counter(t *testing.T) {
 	}
 	if got := observability.LoadCounter("leaderboard_empty_page1"); got != before+1 {
 		t.Errorf("compteur leaderboard_empty_page1 = %d, attendu %d", got, before+1)
+	}
+}
+
+// TestFetchCSRLeaderboard_404Sentinel : un 404 (playlist non classée cette saison)
+// renvoie une erreur qui matche ErrLeaderboardPageNotFound via errors.Is — l'appelant
+// (backfill multi-saisons) skippe alors en silence au lieu de logger une ERROR.
+func TestFetchCSRLeaderboard_404Sentinel(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	scraper := NewLeaderboardScraper(0)
+	scraper.host = srv.URL
+
+	_, err := scraper.FetchCSRLeaderboard(context.Background(), "csrseason3-1", "absente", 0)
+	if err == nil {
+		t.Fatal("attendu une erreur sur 404")
+	}
+	if !errors.Is(err, ErrLeaderboardPageNotFound) {
+		t.Errorf("erreur = %v, attendu errors.Is(ErrLeaderboardPageNotFound)", err)
 	}
 }
 

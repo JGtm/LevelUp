@@ -22,6 +22,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -107,7 +108,15 @@ func main() {
 			}
 			entries, ferr := scraper.FetchCSRLeaderboard(ctx, s, pl, *limit)
 			if ferr != nil {
-				log.ErrorContext(ctx, "scrape playlist échoué", "season", s, "playlist", pl, "err", ferr)
+				// 404 = playlist non classée cette saison : skip NOMINAL d'un backfill
+				// multi-saisons × toutes playlists (pas une erreur). Les vraies erreurs
+				// (429, 5xx, réseau) restent en ERROR.
+				if errors.Is(ferr, halo.ErrLeaderboardPageNotFound) {
+					fmt.Printf("  %s : —  (non classée cette saison)\n", pl)
+					log.InfoContext(ctx, "playlist non classée cette saison — ignorée", "season", s, "playlist", pl)
+				} else {
+					log.ErrorContext(ctx, "scrape playlist échoué", "season", s, "playlist", pl, "err", ferr)
+				}
 				continue
 			}
 			rows += len(entries)
