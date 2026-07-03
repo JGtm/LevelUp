@@ -6088,8 +6088,6 @@ components:
           type: boolean
         discord_notify_new_version:
           type: boolean
-        discord_notify_new_media:
-          type: boolean
         spnkr_auto_sync_enabled:
           type: boolean
         spnkr_auto_sync_interval_hours:

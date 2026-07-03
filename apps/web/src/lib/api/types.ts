@@ -409,7 +409,6 @@ export interface SettingsResponse {
   discord_notify_sync: boolean
   discord_notify_backfill: boolean
   discord_notify_new_version: boolean
-  discord_notify_new_media: boolean
   discord_notify_friends: boolean
   spnkr_auto_sync_enabled: boolean
   spnkr_auto_sync_interval_hours: number

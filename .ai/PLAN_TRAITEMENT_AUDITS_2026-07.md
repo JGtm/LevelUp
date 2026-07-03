@@ -482,9 +482,24 @@ openapi/migrations associées, puis build+tests.
   reste vivant). FAIT : 2 pages orphelines (0 importeur, 0 route) supprimées ; `squad/v2/types.ts`
   (consommé par SessionBriefing/SquadVerdict) + les autres composants squad/v2 (HistoryTable,
   MedalsGallery, WeaponsTable…) conservés. Gate : front typecheck vert.
-- [ ] G5 — CR A9 + ARCHI mineur : chaîne `NotifyNewMedia` → `queryUnnotifiedMedia` →
-  `markMediaNotified` (`notify/notifiers.go:88-190`) + la migration de colonne
-  `discord_notified_at` qui ne vit que pour elle + tests.
+- [x] G5 — CR A9 + ARCHI mineur : chaîne `NotifyNewMedia`. **PÉRIMÈTRE ÉLARGI vs plan**
+  (signalé) : la fonctionnalité était câblée END-TO-END jusqu'à un toggle réglages
+  user-facing (`discord_notify_new_media`) MAIS sans AUCUN déclencheur (0 caller de
+  `NotifyNewMedia`) — une demi-feature morte (toggle qui ne déclenche rien). Laisser le
+  backend supprimé + le toggle vivant aurait violé la règle 11 (pas de toggle no-op). Donc
+  suppression COMPLÈTE full-stack :
+  - Go : `NotifyNewMedia` + helpers uniques (`queryUnnotifiedMedia`, `markMediaNotified`,
+    `buildMediaEmbed`, `mediaRow`, `mediaKindVideo`, `min`), imports `database/sql`+driver
+    duckdb devenus morts, `NotifyConfig.NotifyNewMedia` + ligne loader, clés i18n Go
+    `discord_media_*`, champ `domain.Settings.DiscordNotifyNewMedia` (+ patch struct) +
+    store (3 sites) + migration `add_media_discord_notified` (steps_player_base + order.go)
+    + colonne CREATE TABLE `discord_notified_at` (shared_social) + addIfMissing/backfill.
+    Tests supprimés : `media_notify_test.go`, `notifiers_extra_test.go` (100% média) +
+    bloc `TestMin`/`TestBuildMediaEmbed` de `embeds_test.go`.
+  - Front : toggle `_settingsCards.tsx`, i18n settings (type+FR+EN), `types.ts`,
+    `openapi.yaml` + `generated.ts` régénéré, fixtures (handlers/AddFriendFlow/WatcherCard).
+  Gate : go build+vet + notify/settings/migration tests verts ; front typecheck+build+vitest
+  (42) verts ; intégration `-p 1` (voir journal).
 - [x] G6 — ARCHI mineur : `ReassociateMedia` (`media_service.go:338`) — méthode + interface
   + types (route supprimée 2026-04-29). FAIT : méthode `MediaService.ReassociateMedia`, entrée
   interface `port`, types `domain.ReassociateRequest/Result`, test + mock supprimés (prod-orphelin :
@@ -1257,3 +1272,9 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
   (phase 1b, cf. `HANDOFF` multi-titre), pas de la campagne d'audits. D1d a
   documenté son cycle de vie (critère de bascule + renvoi règle 11 pour le retrait) sans changer
   le défaut.
+- [LOT G / G5 — colonne `discord_notified` bool orpheline transitive] La suppression de
+  G5 a retiré le backfill `discord_notified` (bool legacy) → `discord_notified_at`. La
+  colonne `discord_notified` (bool) n'a plus qu'un rôle de schéma : listée dans les rebuild
+  `media_files` (`steps_shared_social_media_files_drop_filepath_unique.go:221`, `ops/media_store.go`)
+  + un test persister. Aucun lecteur/writer applicatif. Candidat DROP (recette ADR 0026
+  comme G14) — NON traité en G5 (règle 7, hors cible nommée `discord_notified_at`).

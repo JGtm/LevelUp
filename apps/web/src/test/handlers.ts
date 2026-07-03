@@ -162,7 +162,6 @@ const settingsFixture = {
   discord_notify_sync: false,
   discord_notify_backfill: false,
   discord_notify_new_version: false,
-  discord_notify_new_media: false,
   discord_notify_friends: false,
   spnkr_auto_sync_enabled: false,
   spnkr_auto_sync_interval_hours: 0,
