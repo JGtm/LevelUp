@@ -13,8 +13,8 @@
   (branche feature → AUCUN déploiement ; seul un push sur `main` déploie).
 - **WIP séparé intact** : le repo principal est sur `fix/security-unauth-endpoints` (chantier
   sécurité non lié) — ne pas y toucher.
-- **Reprendre par C1** (frontend), puis **C2** (saisons). Ordre canonique du plan :
-  B1→A2→A3→B2 [tous FAITS] → **C1 → C2** [restants].
+- **Reprendre par C1** (frontend), puis **C2** (saisons), puis **C3** (backfill saisons passées,
+  basse priorité). Ordre : B1→A2→A3→B2 [FAITS] → **C1 → C2 → C3** [restants].
 - **Contrat d'exécution** : skill `plan-execution` (ordre strict, pas de report d'action
   exécutable, statuer chaque item, gate + thought_log + commit par étape).
 
@@ -56,6 +56,27 @@ Gate systématique : `go build ./...` + `gofmt` + go-vet hook + tests unitaires/
   (jeté chez l'appelant `snapshot-world-leaderboard:147`). Surfaçage DÉJÀ partiel :
   `useLeaderboardCatalog` (leaderboard) + `availableSeasons` (career) exposent `display_name`.
   C2 n'ajoute que la persistance autoritative noms+traductions. Multi-titre : gate capability, pas slug.
+
+### C3 — Backfill des saisons PASSÉES (à faire ; basse priorité, fenêtre dédiée)
+Les corrections (A2 : 3 playlists en plus ; B1 : xuid ; B2 : hardening) s'auto-appliquent à la
+saison COURANTE via le cron, mais les saisons PASSÉES sont figées → backfill manuel pour combler
+les mêmes trous rétroactivement. **2 étapes, serveur ARRÊTÉ + tokens frais** (les CLI ouvrent la
+shared DB en RW direct) :
+
+1. **Re-scraper les leaderboards** des (saison passée × playlists nouvellement actives) via
+   `cmd/snapshot-world-leaderboard` — scrape HTML public, **pas de token**. Uniquement pour les
+   playlists qui avaient un classement classé à cette saison (sinon rien à scraper).
+2. **Re-lancer l'enrichissement** par saison via `cmd/backfill-world-player-stats` — **utilise
+   DÉJÀ le pool de tokens partagés** (`worldenrich.BuildMultiHaloSource` + `BuildMultiResolver`,
+   PolicyAnyPublic round-robin) et **embarque déjà** les corrections : lit les joueurs via
+   `WorldSeasonPlayers` (xuid B1 pré-seedé → PeopleHub court-circuité) et construit l'agrégateur
+   durci (B2, `NewWorldStatsAggregator` l.313). → « **faut juste l'adapter** » = surtout s'assurer
+   que l'étape 1 a peuplé les snapshots des nouvelles playlists ; l'enrichissement couvre ensuite
+   toutes les playlists jouées automatiquement (agrégation par-match). Vérifier les flags saison
+   (`--season`, checkpoint) et, si besoin, le format saison CMS validé (`Csr/Seasons/CsrSeasonX-Y.json`).
+
+Non bloquant (les gens regardent surtout la saison courante) ; à faire APRÈS C1/C2. Préparer les
+commandes exactes (chemins CMS de saison validés) au moment de lancer.
 
 ## 3. B2 — ce qui a été prouvé (NE PAS refaire l'erreur)
 
