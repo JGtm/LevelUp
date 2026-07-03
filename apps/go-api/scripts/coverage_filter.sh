@@ -6,7 +6,6 @@
 # BLOQUANT « couverture mensongère ») :
 #
 # A) Exclusions LÉGITIMES (boilerplate / CGO non-mockable / wiring) :
-#   - internal/api/gen/       : code généré par oapi-codegen
 #   - cmd/msal-poc/           : POC jetable
 #   - cmd/levelup/, cmd/server/ : main() + flag parsing, pas de logique
 #   - internal/port/          : interfaces pures (noop compile checks)
@@ -35,7 +34,6 @@ INPUT="${1:?usage: $0 <profile.out.raw>}"
 
 # A — Légitimes (CGO/boilerplate)
 EXCLUDE_LEGITIMATE=(
-  'go-api/internal/api/gen/'
   'go-api/cmd/'              # tous les CLI/diag tools (56 sous-dirs : diag_*,
                              # backfill_*, check_*, audit_*, regen_*, etc.) —
                              # flag parsing + duckdb queries ad hoc, pas de

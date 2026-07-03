@@ -65,7 +65,6 @@ bash scripts/coverage_check.sh coverage.out coverage_baseline.txt
 
 | Package | Raison |
 |---------|--------|
-| `internal/api/gen/` | Code généré par oapi-codegen — ne pas modifier ni tester |
 | `cmd/msal-poc/` | POC jetable — remplacé par `platform/auth` |
 
 ### Seuils CI (ratchet progressif Phase 10)

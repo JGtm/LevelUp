@@ -438,8 +438,15 @@ Objectif : 0 module mort (règle projet) ; exécuté AVANT F/H pour réduire la 
 migrations suivantes. Chaque suppression : retirer code + tests + imports + entrées
 openapi/migrations associées, puis build+tests.
 
-- [ ] G1 — ARCHI 26 : supprimer `internal/api/gen` (2 536 L, 0 importeur) + cible make +
+- [x] G1 — ARCHI 26 : supprimer `internal/api/gen` (2 536 L, 0 importeur) + cible make +
   3 exclusions tooling + corriger le message du drift-test (`make gen` → chaîne Huma).
+  FAIT : `internal/api/gen/types.gen.go` (0 importeur, confirmé carto) + sa config génératrice
+  `api/oapi-codegen-types.yaml` supprimés ; Makefile (var OAPI_CODEGEN + cible `gen` + exclusion
+  `api/gen` du test-unit), `.golangci.yml` (exclusion lll/revive), `scripts/coverage_filter.sh`
+  (comment + exclusion), `docs/testing.md` (ligne tableau), allowlist `no_attach_on_social_test.go`
+  nettoyés ; message drift-test corrigé (`make gen`→ Huma dérive le contrat). NB : `internal/ln/`
+  (output stale de l'ancienne config oapi, dir absent) = Découverte §7, hors périmètre G1. Gate :
+  build+vet OK, 0 ref `api/gen` Go, tests no_attach + drift verts.
 - [ ] G2 — CR A7 : cluster home legacy — supprimer les 10 exports morts (`ComputeKPIs`,
   `ComputeTrend`, `BuildHeroCard`, `BuildHighlights`, `BuildSessionSummaries`,
   `BuildRecentMatches*` x4) + tiles legacy transitifs + leurs tests ; CONSERVER

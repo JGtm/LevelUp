@@ -159,12 +159,6 @@ linters:
           - ineffassign
           - staticcheck
 
-      # Fichiers generes par oapi-codegen : pas de lint
-      - path: "internal/api/gen/"
-        linters:
-          - lll
-          - revive
-
       # Moteur de sync : fonctions algorithmiques complexes (portage Python -> Go fidele)
       - path: "internal/sync/"
         linters:
