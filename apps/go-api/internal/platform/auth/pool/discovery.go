@@ -236,16 +236,19 @@ func (d *discoveryImpl) adoptLegacySyncMeta(
 // readLegacyDuckDB lit msal+oauth depuis sync_meta. Ne logue PAS : c'est le
 // caller (adoptLegacySyncMeta) qui warn, et uniquement si une valeur est adoptée.
 func (d *discoveryImpl) readLegacyDuckDB(ctx context.Context, player domain.PlayerSummary, playerDBPath string) (msal, oauth string, ok bool) {
-	playerDB, dbErr := duckdb.OpenReadOnly(playerDBPath)
+	// OpenReadForQuery (jamais OpenReadOnly nu) : réutilise un handle en cache si la
+	// player DB est déjà tenue RW dans le process, au lieu de doubler l'ouverture RO
+	// (erreur « different configuration », incident 2026-06-01) — E6, ADR 0016.
+	playerDB, release, dbErr := duckdb.OpenReadForQuery(playerDBPath)
 	if dbErr != nil {
 		slog.DebugContext(ctx, "pool: PlayerDB introuvable — fallback sources externes",
 			"gamertag", player.Gamertag, "db", playerDBPath)
 		return "", "", false
 	}
-	defer func() { _ = playerDB.Close() }()
+	defer release()
 
-	msal, _ = duckdb.ReadMSALCacheJSON(ctx, playerDB)
-	oauth, _ = duckdb.ReadOAuthRefreshToken(ctx, playerDB)
+	msal, _ = duckdb.ReadMSALCacheJSONFromSQL(ctx, playerDB)
+	oauth, _ = duckdb.ReadOAuthRefreshTokenFromSQL(ctx, playerDB)
 	return msal, oauth, true
 }
 
