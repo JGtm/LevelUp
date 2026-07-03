@@ -106,6 +106,56 @@ func (p *PlayerPersister) Persist(ctx context.Context, batch *MatchBatch) error 
 	return nil
 }
 
+// PersistPerMatchRating écrit un rating PAR MATCH HORS du flux batch principal :
+// le CSR post-match (`match_skill_rank`, append-only) et/ou un snapshot de rang
+// carrière (`career_progression`). INSERT-only, 1 transaction.
+//
+// Contrairement à Persist(), AUCUNE ancre d'idempotence sur player_match_enrichment :
+// ces écritures sont POST-SCORE (l'enrichment 'live' du match existe déjà → Persist()
+// skipperait tout le sous-batch). Idempotence PAR TABLE : match_skill_rank est
+// append-only (lu via _latest) ; career_progression (non append-only) est dédupliqué
+// ICI par (xuid, recorded_at). Retourne les booléens d'écriture effective (compteurs
+// caller). Chemin canonique des écritures per-match livesync H5 (E8, DEC-8) — remplace
+// les ExecContext directs hors couche persist (invariant ADR 0019).
+func (p *PlayerPersister) PersistPerMatchRating(
+	ctx context.Context, skill *SkillRankInsert, career *CareerProgressionInsert,
+) (skillWritten, careerWritten bool, err error) {
+	if skill == nil && career == nil {
+		return false, false, nil
+	}
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, false, fmt.Errorf("persist: BeginTx per-match rating: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if skill != nil {
+		if err := persistSkillRank(ctx, tx, skill); err != nil {
+			return false, false, err
+		}
+		skillWritten = true
+	}
+	if career != nil {
+		var exists bool
+		if err := tx.QueryRowContext(ctx,
+			`SELECT EXISTS(SELECT 1 FROM career_progression WHERE xuid = ? AND recorded_at = ?)`,
+			career.XUID, career.RecordedAt,
+		).Scan(&exists); err != nil {
+			return false, false, fmt.Errorf("persist: check career_progression exists %s: %w", career.XUID, err)
+		}
+		if !exists {
+			if err := persistCareerProgression(ctx, tx, career); err != nil {
+				return false, false, err
+			}
+			careerWritten = true
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return false, false, fmt.Errorf("persist: Commit per-match rating: %w", err)
+	}
+	return skillWritten, careerWritten, nil
+}
+
 // ─── INSERT dynamique sur player_match_enrichment ──────────────────────────
 
 // fieldEntry est une paire (column_name, value) pour construire un INSERT

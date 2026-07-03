@@ -402,10 +402,32 @@ Objectif : plus aucun chemin prod du pattern déclencheur ART #23046 ; tripwire 
   + helper unique `readSyncMetaValue` ; les versions `*DB` délèguent (zéro impact sur leurs
   ~10 callers). worldenrich : imports morts retirés (`database/sql`, driver blank) + lectures
   sync_meta DRY via les helpers. Gate : build+vet OK, queries_auth + pool `-tags=integration -p 1` verts.
-- [ ] E7 — ARCHI mineur : `sync/schema.go:22` — DDL bootstrap → `internal/migration`.
-- [ ] E8 — DEC-8 : `games/halo_5/livesync/csr_match.go:69` — router les écritures
+- [!] E7 — ARCHI mineur : `sync/schema.go:22` — DDL bootstrap → `internal/migration`.
+  DIFFÉRÉ (blocage réel, règle plan-execution 9 — l'item est MAL LABELLISÉ « mineur »).
+  Vérif sur pièces : (1) `EnsurePlayerSchema`/`EnsureSharedSchema` s'exécutent à CHAQUE
+  `OpenPlayerDB`/`OpenSharedDB` (quick-provision idempotent) — mécanisme DISTINCT du migration
+  runner ; les outils/tests qui ouvrent une DB SANS runner en dépendent. (2) Le DDL est
+  dupliqué-mais-aligné avec les steps `create_base_*_schema`, eux-mêmes EN TRANSITION
+  (Phase 1.5 b23/b25 : `create_base_player_schema` existe dans `internal/migration` ET
+  `games/halo_infinite/migrations` — ownership en cours de bascule global→title-owned).
+  (3) `EnsureSharedSchema` porte une logique de création de vues AU BOOT qui corrige des bugs
+  prod documentés (attach RO/RW 2026-05-27 « Cannot execute CREATE on read-only », xuid bruts
+  2026-05-30). Déplacer = recâbler le boot/provisioning de TOUTES les DBs sur le migration
+  runner → risque de régression de ces bugs + collision avec la transition b23/b25 en cours.
+  Disproportionné pour « ARCHI mineur ». À FAIRE en chantier dédié testé APRÈS stabilisation
+  b23/b25. Signalé à l'utilisateur.
+- [x] E8 — DEC-8 : `games/halo_5/livesync/csr_match.go:69` — router les écritures
   per-match H5 via la couche persist (BatchBuilder/Persister dédié). Convention à figer
-  en F14 (ADD_TITLE.md).
+  en F14 (ADD_TITLE.md). FAIT : `writePerMatchCSR`/`writeCareerSR` (ExecContext directs sur
+  match_skill_rank + career_progression, hors couche persist) → builders
+  `buildPerMatchCSRInsert`/`buildCareerProgressionInsert` + `PlayerPersister.PersistPerMatchRating`
+  (Persister DÉDIÉ, nouveau). BLOCAGE RÉSOLU que la carto avait manqué : `PlayerPersister.Persist`
+  exige `Enrichment != nil` comme ancre d'idempotence et SKIP si l'enrichment 'live' du match
+  existe → inutilisable pour un hook POST-SCORE (l'enrichment est déjà écrit). D'où le persister
+  dédié INSERT-only SANS ancre enrichment : match_skill_rank append-only + career_progression
+  dédupliqué par (xuid, recorded_at). csr_match : 0 ExecContext direct restant. Convention
+  ADD_TITLE.md = [~]→F14. Gate : `TestPerMatchCareerSR` (rewire) + H5 livesync + persist
+  `-tags=integration -p 1` verts.
 
 Gate E : `go test ./... && go test -tags=integration ./internal/persist/... ./internal/sync/...` ;
 tripwire étendu vert ; allowlist ART réduite et bloquante.

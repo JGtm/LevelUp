@@ -2,7 +2,8 @@
 
 // Package livesync — career_sr_persist_integration_test.go : round-trip
 // persist→read du rang SR Halo 5 dans career_progression sur une DuckDB
-// in-memory. Vérifie que writeCareerSR écrit rank_name = "SR N" (libellé
+// in-memory. Vérifie que le chemin per-match (buildCareerProgressionInsert +
+// PlayerPersister.PersistPerMatchRating, E8) écrit rank_name = "SR N" (libellé
 // title-aware, source unique halo5.SpartanRankLabel) — sinon la Home retombe
 // sur le fallback générique HINF « Rang N » (career.rank_catalog = not_exposed).
 //
@@ -18,10 +19,11 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	halo5 "levelup/go-api/internal/games/halo_5"
+	"levelup/go-api/internal/persist"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
-func TestWriteCareerSR_WritesSRRankName(t *testing.T) {
+func TestPerMatchCareerSR_WritesSRRankName(t *testing.T) {
 	ctx := context.Background()
 	db, err := sql.Open("duckdb", ":memory:")
 	if err != nil {
@@ -33,6 +35,7 @@ func TestWriteCareerSR_WritesSRRankName(t *testing.T) {
 	if err := syncpkg.EnsurePlayerSchema(ctx, db); err != nil {
 		t.Fatalf("EnsurePlayerSchema: %v", err)
 	}
+	pp := persist.NewPlayerPersister(db)
 
 	// SR 111 / TotalXP réaliste (> seuil de début du rang 111) → SpartanRankProgression ok.
 	const xuid = "xuid1"
@@ -40,8 +43,16 @@ func TestWriteCareerSR_WritesSRRankName(t *testing.T) {
 	const totalXP = 3908120
 	start := sql.NullTime{Time: time.Date(2026, 4, 29, 14, 0, 0, 0, time.UTC), Valid: true}
 
-	if ok := writeCareerSR(ctx, db, xuid, spartanRank, totalXP, start); !ok {
-		t.Fatalf("writeCareerSR: want true (SR valide + recorded_at présent)")
+	career := buildCareerProgressionInsert(xuid, spartanRank, totalXP, start)
+	if career == nil {
+		t.Fatalf("buildCareerProgressionInsert: want non-nil (SR valide + recorded_at présent)")
+	}
+	_, srW, err := pp.PersistPerMatchRating(ctx, nil, career)
+	if err != nil {
+		t.Fatalf("PersistPerMatchRating: %v", err)
+	}
+	if !srW {
+		t.Fatalf("PersistPerMatchRating: want careerWritten=true")
 	}
 
 	// rank_name doit être "SR 111" (= halo5.SpartanRankLabel(111)). On filtre par
@@ -61,19 +72,19 @@ func TestWriteCareerSR_WritesSRRankName(t *testing.T) {
 		t.Errorf("rank_name = %q, want %q (libellé SR title-aware)", rankName, want)
 	}
 
-	// Note : la dédup par (xuid, recorded_at) n'est PAS asséurée ici — le binding
-	// d'un time.Time dans la forme INSERT…SELECT…WHERE NOT EXISTS du driver DuckDB
-	// dépend du fuseau du process (le TIMESTAMP stocké subit le décalage local), ce
-	// qui rend la comparaison de paramètres non fiable hors UTC. Orthogonal au but
-	// du test (rank_name = "SR N"). Les gardes propres de writeCareerSR ci-dessous
-	// (SR hors borne, recorded_at absent) ne dépendent d'aucun round-trip TIMESTAMP.
+	// Note : la dédup par (xuid, recorded_at) — désormais dans PersistPerMatchRating —
+	// n'est PAS ré-assertée ici : le binding d'un time.Time dans le SELECT EXISTS du
+	// driver DuckDB dépend du fuseau du process (le TIMESTAMP stocké subit le décalage
+	// local), ce qui rend la comparaison de paramètres non fiable hors UTC. Orthogonal
+	// au but du test (rank_name = "SR N"). Les gardes du builder ci-dessous (SR hors
+	// borne, recorded_at absent) ne dépendent d'aucun round-trip TIMESTAMP.
 
-	// SR hors borne → false (snapshot ignoré).
-	if ok := writeCareerSR(ctx, db, xuid, 0, totalXP, start); ok {
-		t.Errorf("writeCareerSR (SR hors borne): want false, got true")
+	// SR hors borne → builder nil (snapshot ignoré).
+	if c := buildCareerProgressionInsert(xuid, 0, totalXP, start); c != nil {
+		t.Errorf("buildCareerProgressionInsert (SR hors borne): want nil, got %+v", c)
 	}
-	// recorded_at absent → false.
-	if ok := writeCareerSR(ctx, db, xuid, spartanRank, totalXP, sql.NullTime{}); ok {
-		t.Errorf("writeCareerSR (recorded_at absent): want false, got true")
+	// recorded_at absent → builder nil.
+	if c := buildCareerProgressionInsert(xuid, spartanRank, totalXP, sql.NullTime{}); c != nil {
+		t.Errorf("buildCareerProgressionInsert (recorded_at absent): want nil, got %+v", c)
 	}
 }
