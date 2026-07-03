@@ -254,7 +254,11 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			rating_deviation DOUBLE, tier VARCHAR, tier_fr VARCHAR, sub_tier SMALLINT,
 			tier_label VARCHAR, rating_delta DOUBLE, playlist_group VARCHAR,
 			expected_win_prob DOUBLE,
-			start_time TIMESTAMPTZ, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ)`,
+			start_time TIMESTAMPTZ, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ,
+			-- Colonnes append-only (ADR 0026, miroir schema.go) : Q26g
+			-- (Q26gPlaylistPhaseAMSRTpl) lit match_skill_rank BRUTE — lecture
+			-- allowlistée B8 — et ordonne par written_at DESC, id DESC.
+			id BIGINT, written_at TIMESTAMP DEFAULT now())`,
 		// Vue latest (miroir de schema.go) : player_matches_repo.go la requête.
 		`CREATE OR REPLACE VIEW match_skill_rank_latest AS SELECT * FROM match_skill_rank`,
 		// match_csrs (shared, append-only) : CSR par match/participant — source
@@ -268,6 +272,12 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			measurement_matches_remaining INTEGER DEFAULT 0, season_id VARCHAR,
 			written_at TIMESTAMP DEFAULT now())`,
 		`CREATE VIEW match_csrs AS SELECT * FROM shared.match_csrs`,
+		// Vue latest (miroir de steps_appendonly_misc.go / sync.schema.go) :
+		// player_matches_loaders.go (loadMatchCSRMetaForMatches) et Q30 lisent
+		// match_csrs_latest.
+		`CREATE OR REPLACE VIEW match_csrs_latest AS
+			SELECT * FROM shared.match_csrs
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1`,
 		// Schéma append-only (Phase 2.G refactor ART) + vue latest
 		`CREATE SEQUENCE pcs_seq START 1`,
 		`CREATE TABLE player_csr_snapshots (
@@ -364,9 +374,13 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			[]interface{}{pTestXUID, 25, 5000, "2025-01-10 12:00:00+00",
 				"Platinum 1", "Platinum", 10000, 50000, false, "Progression/RewardTracks/CareerRanks/platinum1-adornment.png", "JGTM", "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/progression/Nameplates/test-banner.png", "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/progression/Emblems/test-emblem.png", "https://gamecms-hacs.svc.halowaypoint.com/hi/Waypoint/file/images/backdrops/test-backdrop.png"}},
-		{`INSERT INTO match_skill_rank VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		{`INSERT INTO match_skill_rank
+			(match_id, rating_type, rating_value, rating_deviation, tier, tier_fr, sub_tier, tier_label, rating_delta, playlist_group, expected_win_prob, start_time, created_at, updated_at)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			[]interface{}{"m1", "CSR", 1250.5, 50.0, "Gold", "Or", 3, "Gold 3", nil, "ranked", nil, "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00"}},
-		{`INSERT INTO match_skill_rank VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		{`INSERT INTO match_skill_rank
+			(match_id, rating_type, rating_value, rating_deviation, tier, tier_fr, sub_tier, tier_label, rating_delta, playlist_group, expected_win_prob, start_time, created_at, updated_at)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			[]interface{}{"m2", "LUSR", 1750.0, 40.0, "Platinum", "Platine", 5, "Platinum V", 15.0, "social", nil, "2025-01-11 14:00:00+00", "2025-01-11 14:00:00+00", "2025-01-11 14:00:00+00"}},
 		{`INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES (?,?,?)`,
 			[]interface{}{"m1", "killing_spree", 3}},
