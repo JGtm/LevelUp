@@ -578,9 +578,15 @@ traiter AVANT les refactors structurels.)
   supprimé — statuer `[~]` réf G3.)
 - [ ] F6 — ARCHI 34 : compléter `config/titles/halo_5/mappings/fields.toml` (5 → ~59
   FieldKeys) + test de parité « FieldKeys requis vs déclarés » pour tout titre actif.
-- [ ] F7 — ARCHI 37 : réconcilier coarse `engagement` (title.toml:48) vs fine
-  `engagement.score = not_exposed` (capabilities.toml:28) + test générique des paires
-  miroir coarse↔fine (croisé L2).
+- [!] F7 — ARCHI 37 : DÉCISION PRODUIT REQUISE. La contradiction est réelle (coarse
+  `engagement` présent, fine `engagement.score = not_exposed`, commentaire disant « events
+  présents, coefficients à recalibrer Phase 2 »). MAIS la réconciliation est un choix
+  produit : exposer un score d'engagement H5 NON calibré (`degraded` → montre une valeur
+  peu fiable) vs le garder caché (`not_exposed` + retirer `engagement` du coarse). Vérifié
+  sur pièces : l'adapter H5 (`adapter_data.go`) NE câble PAS engagement → `not_exposed` est
+  l'état honnête actuel. Le test miroir coarse↔fine dépend de la résolution (H5 le violerait
+  en l'état). DIFFÉRÉ (règle 9) : escaladé à l'utilisateur (§7). Le test miroir sera livré
+  avec la décision (recoupe F15-12 / L2).
 - [ ] F8 — ARCHI 36 : câbler `LoadAuthDescriptor` au boot par titre actif ;
   `DefaultHaloAuthDescriptor()` réservé au titre par défaut (`halo_exchange.go:71`).
   Corriger le statut MT-02 au registre.
@@ -595,9 +601,11 @@ traiter AVANT les refactors structurels.)
   Grandfathered dans l'allowlist (par fichier, justif datée catégorisée ; comeback:34 suivi F15-15).
   Test de sanité positif ajouté (regex attrape les formes élargies, pas l'égalité slug↔slug).
   Gate : `go test ./internal/archlint/... -run Slug` VERT (ratchet + sanité).
-- [ ] F11 — ARCHI 38 : titre par défaut hors TOML — WARN explicite au boot si un
-  `title.toml` infinite existe (skip muet `config_loader.go:185`), ou parity-test
-  built-in vs TOML versionné. Trancher et documenter dans ADR 0025.
+- [x] F11 — ARCHI 38 : DÉCISION TRANCHÉE = WARN (défaut recommandé, moins risqué qu'un
+  parity-test qui figerait le built-in au TOML). FAIT : `config_loader.go` émet
+  `title_builtin_toml_ignored` (WARN) quand un `title.toml` existe pour un titre déjà
+  enregistré (built-in) — plus de skip muet. Test `TestLoadTitlesIntoRegistry_BuiltinTOMLWarns`
+  (capture slog). Gate : `go test ./internal/domain/title/... -run LoadTitles` VERT.
 - [ ] F12 — ARCHI 13 / DETTE §2.4.1 : migrer le pipeline film Infinite entier
   (`weapon_data.go`, `weapon_scanner/parser/correlation/reconciliation`,
   `highlight_event_parser.go`, `spawn_detection.go`, `kill_attribution.go`) de
@@ -606,8 +614,11 @@ traiter AVANT les refactors structurels.)
 - [ ] F13 — DETTE §2.4.2 : paramétrer les goldens par slug
   (`analysis/timeline/golden_test.go`, `home_canonical_test.go`,
   `synthesis_canonical_test.go`) pour distinguer régression vs divergence de titre.
-- [ ] F14 — DETTE §2.4.3 : figer la convention « nouveau titre » dans `docs/ADD_TITLE.md`
-  (hiérarchie client → livesync → migrations, écritures via persist — cf. E8).
+- [x] F14 — DETTE §2.4.3 : convention « nouveau titre » figée. FAIT : section « Data writes:
+  the Collect → Persist architecture (ADR 0019) » ajoutée à `docs/ADD_TITLE.md` (Étape 4) EN
+  **et** FR — invariant INSERT-only, hiérarchie client→livesync→persist, tables append-only +
+  vues `_latest`, impl de référence `halo_5/livesync/csr_match.go`. Doc-only (ADD_TITLE.md
+  hors hook docs-fr-sync mais bilingue → MAJ des 2 versions).
 - [ ] F15 — ARCHI mineurs title-agnosticism (traiter CHAQUE puce de la section, ~20) :
   `home_repo_skill_peak.go:516` (fallback badge CSR cross-titre),
   `match_view_repo_neighbors_skill.go:63` (préfixes HINF), `halo_ranks_loader.go:132`
@@ -1326,3 +1337,11 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
   `media_files` (`steps_shared_social_media_files_drop_filepath_unique.go:221`, `ops/media_store.go`)
   + un test persister. Aucun lecteur/writer applicatif. Candidat DROP (recette ADR 0026
   comme G14) — NON traité en G5 (règle 7, hors cible nommée `discord_notified_at`).
+- [LOT F / F7 — DÉCISION PRODUIT À TRANCHER] H5 `engagement` : le coarse (title.toml) déclare
+  la capability `engagement` mais le fine `engagement.score = not_exposed` (capabilities.toml),
+  commentaire « events présents, coefficients à recalibrer Phase 2 ». Vérifié : l'adapter H5
+  ne câble PAS engagement → `not_exposed` = état honnête. Choix requis : (A) exposer un score
+  H5 non calibré → `degraded` (montre une valeur peu fiable) ; (B) le garder caché → `not_exposed`
+  ET retirer `engagement` du coarse (le titre ne l'expose pas). Le test miroir coarse↔fine
+  (générique, tous titres) sera livré AVEC la décision (H5 le violerait en l'état). Reco : (B)
+  — ne pas montrer de donnée non fiable ; réactiver quand la calibration Phase 2 est faite.

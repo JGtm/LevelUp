@@ -335,6 +335,32 @@ Ce changement Go nécessite un rebuild (`make go-api-build`).
 > `additional_title_no_adapter_registrar` et le titre n'est pas servi. Un titre
 > `coming_soon` n'a pas besoin d'adapter (il n'est jamais servi).
 
+### Écritures de données : l'architecture Collect → Persist (ADR 0019)
+
+Un nouveau titre qui synchronise des matchs **ne doit jamais écrire de lignes
+per-match avec un `ExecContext` brut**. Toute écriture per-match sur une DB
+partagée ou joueur passe par la couche `internal/persist`, qui est **INSERT-only**
+— jamais d'`UPSERT` / `ON CONFLICT DO UPDATE` concurrent sur les tables critiques
+(c'est ce qui a corrompu les index ART DuckDB en production, ADR 0019 / 0026) :
+
+- **Collect** : agréger le match dans un `persist.MatchBatch` via
+  `persist.NewBatchBuilder(...)` (`SetMatch` / `AddParticipants` / `AddMedals` /
+  `AddMatchCSRs`).
+- **Persist** : l'écrire avec `persist.NewSharedPersister(db).Persist(ctx, batch)`
+  (partagé, atomique, idempotent — re-persister un `match_id` existant est un no-op),
+  ou un `PlayerPersister` pour les enrichissements joueur / ratings per-match.
+- **Tables append-only** (`match_skill_rank`, `match_csrs`, `player_csr_snapshots`,
+  `pve_match_stats`, …) : écriture INSERT-only avec un `written_at`, **lecture
+  EXCLUSIVEMENT via la vue `<table>_latest`** (une lecture brute sert des lignes
+  périmées, ADR 0026).
+
+Implémentation de référence pour la sync live d'un nouveau titre :
+`internal/games/halo_5/livesync/csr_match.go` (CSR/skill per-match écrits via
+`PlayerPersister.PersistPerMatchRating`). Hiérarchie : `games/<slug>/client.go`
+(fetch) → `games/<slug>/livesync/*` (mapping vers les entrées persist) →
+`internal/persist/*` (écriture). Ne jamais court-circuiter persist depuis la couche
+client ou livesync.
+
 ---
 
 ## Étape 5 — Ajouter les joueurs dans `db_profiles.json`
