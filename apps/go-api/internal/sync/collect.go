@@ -194,7 +194,7 @@ func buildBatchFromFetchedMatchCtx(
 	if len(fm.SharedCSRs) > 0 {
 		mcInserts := make([]persist.MatchCSRInsert, 0, len(fm.SharedCSRs))
 		for _, s := range fm.SharedCSRs {
-			mcInserts = append(mcInserts, sharedCSRRowToMatchCSRInsert(s))
+			mcInserts = append(mcInserts, SharedCSRRowToMatchCSRInsert(s))
 		}
 		builder.AddMatchCSRs(mcInserts)
 	}
@@ -270,9 +270,10 @@ func applyCompletionBitsToBatch(batch *persist.MatchBatch, skillOK bool) {
 	m.BackfillCompleted = &bits
 }
 
-// sharedCSRRowToMatchCSRInsert convertit SharedMatchCSRRow (sync) →
-// persist.MatchCSRInsert (batch).
-func sharedCSRRowToMatchCSRInsert(s SharedMatchCSRRow) persist.MatchCSRInsert {
+// SharedCSRRowToMatchCSRInsert convertit SharedMatchCSRRow (sync) →
+// persist.MatchCSRInsert (batch). Exporté : réutilisé par l'import OpenSpartan
+// (service) qui construit son propre batch persist (E1, ADR 0019).
+func SharedCSRRowToMatchCSRInsert(s SharedMatchCSRRow) persist.MatchCSRInsert {
 	tier := s.Tier
 	subTier := s.SubTier
 	tierLabel := s.TierLabel
