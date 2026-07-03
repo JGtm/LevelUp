@@ -318,10 +318,18 @@ Objectif : plus aucun « forever guard » sur le chemin critique ; flags découv
   flags hors config. Baseline prod hors config : 34 → 29 (résidu justifié §7). Gate :
   build+vet OK, tests config/notify/validation/handlers/scheduler verts,
   `-tags=integration -p 1 ./...` = exit 0.
-- [ ] D1f — DETTE reco 7 : généraliser `TODO(expiry:YYYY-MM-DD)` + lint léger qui échoue à
+- [x] D1f — DETTE reco 7 : généraliser `TODO(expiry:YYYY-MM-DD)` + lint léger qui échoue à
   date dépassée (précédent : `season_pass_repo_tracks.go:254`). Trier les 513 TODO/FIXME :
   dater ceux qui référencent des phases mortes, supprimer les caducs (passe rapide, pas
-  d'exhaustivité ligne-à-ligne exigée — l'outillage est le livrable).
+  d'exhaustivité ligne-à-ligne exigée — l'outillage est le livrable). FAIT : lint
+  `internal/archlint/todo_expiry_test.go` (calque `no_slug_comparison_test.go` ; regex
+  `TODO\(expiry:YYYY-MM-DD\)` ; `now` injectable via `LEVELUP_TODO_EXPIRY_NOW` ; scanne toute
+  la racine go-api ; auto-exclusion du scanner). Vérifié DANS LES DEUX SENS : vert au
+  2026-07-03, ROUGE à `now=2026-09-01` (attrape `season_pass_repo_tracks.go:254` échu
+  2026-08-01). Triage rapide : 1 caduc supprimé (`persist/worker.go` — marqueurs « TODO Phase
+  1.5+ » sur PlayerPersister/PVEPersister/MetadataPersister, désormais tous implémentés).
+  Résidu documenté §7 (cluster P4 ADR 0006 « retirer *100 », TODO session_compare = fichiers
+  DEC-1, stub WithPrestigeHook). Gate : build OK, `go test ./internal/archlint/...` vert.
 
 Gate D1 : `go build ./... && go test ./...` ; grep `LEVELUP_PERSIST_BATCH` → 0 ;
 grep `os.Getenv` hors `internal/config` → baseline notée au Journal (cible : ~0 hors
@@ -931,6 +939,43 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
   commit de clôture C.
 - Commits : 07ee3546d (fix gate B) + <hash clôture C>.
 - RÉCONCILIER plan/journal S+A+B+C au merge (S sur sa branche ; A+B+C sur refactor/audits-2026-07).
+
+### LOT D1 — Flags & guards (cycle de vie) — CLOS 2026-07-03
+
+- D1a [x] : télémétrie `legacy_source_used` (`internal/observability/legacy_source.go` +
+  `RecordLegacySourceUsed` + 4 constantes) instrumentée sur 6 sites legacy auth. Pré-requis D2.
+  Commit 9b2d07870.
+- D1b [x] : suppression COMPLÈTE de `LEVELUP_PERSIST_BATCH` + chemin legacy `insertFetchedMatch`
+  (batch INSERT-only = unique voie). −1249 L. A révélé le piège `batchMode=false` (défaut
+  silencieux des tests) — 2 lacunes de SETUP corrigées (contract_v1 nil-provider, 4 E2E provider
+  via patchSharedSchemaForBatch). Commit d4343dce4. Voir §7.
+- D1c [x] : suppression pipeline V1 (flag `LEVELUP_SYNC_PIPELINE` + fallback auto). AUDIT
+  H5-sous-V2 (3 agents) → BUG PRÉ-EXISTANT corrigé : V2 mono-titre ne routait pas H5 →
+  `RunOnceTrigger` partitionne par `livesync.HandlesTitle`. `syncPlayer`/`engine.run` CONSERVÉS
+  (live-only + filet boot ; engine.run PARTAGÉ, K2b reste valide). Commits b30eb9fe5 + 52a8920c3.
+  Voir §7. ATTENTION : kill-switch rollback V1 retiré sur branche — gate live-sync manuel avant
+  land main.
+- D1d [x] : cycle de vie documenté des 4 flags restants (modèle `shared_reader_legacy.go`). 2
+  vrais kill-switches (BATCH_ASYNC, EVENTS_CONVERGENCE) → triplet complet (retrait >= 2026-Q4 +
+  critère mesurable) ; MULTI_TITLE = gate de rollout ; CONTRACT_VALIDATE = diagnostic dev/CI
+  permanent. `docs/CONFIGURATION.md` (+FR) : défaut `(off)`→`on` corrigé pour BATCH_ASYNC + 4
+  lignes de flags. Commit 268d600f2. Tension règle 11 (MULTI_TITLE) en §7.
+- D1e [x] : centralisation des lectures `os.Getenv` DIVERGENTES (CR A6). Suppression de 2
+  fonctions mortes+divergentes (`handlers.MultiTitleAPIEnabled`, `notify.EnvWebhookURL`) ;
+  `config.DiscordWebhookURLFromEnv()` = précédence env unique (notify/validation cessent de
+  bypasser `LEVELUP_DISCORD_WEBHOOK_URL`) ; kill-switches scheduler (`PersistBatchAsync`/
+  `EventsConvergence`/`EventsConvergenceMax`) dans AppConfig ; garde-rail
+  `env_centralization_test.go`. Baseline prod `os.Getenv` hors config 34→29 (résidu justifié §7).
+  Commit ec5335afd.
+- D1f [x] : lint `internal/archlint/todo_expiry_test.go` (`TODO(expiry:YYYY-MM-DD)`, `now`
+  injectable, scanne go-api). Validé dans les 2 sens (vert 2026-07-03, rouge à now=2026-09-01).
+  1 caduc supprimé (`persist/worker.go` marqueurs Phase 1.5+). Résidu TODO + BUG latent
+  `WithPrestigeHook` en §7. Commit <hash clôture D1f>.
+- Gate D1 : `go build ./...` OK ; `go test ./...` OK ; `go test -tags=integration -p 1 ./...`
+  = exit 0 (D1e, sérialisé) ; grep `LEVELUP_PERSIST_BATCH` (flag exact, hors _ASYNC) → 0 ;
+  os.Getenv baseline notée (34→29, reads `LEVELUP_PERSIST_BATCH_ASYNC` → 0).
+- RÉCONCILIER plan/journal S+A+B+C+D1 au merge. NE PAS merger main sans feu vert + gate
+  live-sync manuel (retrait rollback V1).
 ```
 
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
@@ -1002,6 +1047,20 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 - [LOT D1 / D1c — GATE live-sync différé] Le gate D1c (3) « sync live complet en local » exige
   tokens/réseau réels, non exécutable par l'agent. Couvert par `-tags=integration -p 1 ./...`
   (vert) ; le sync live reste un contrôle MANUEL avant le land sur main.
+- [LOT D1 / D1f — BUG latent : hook Prestige HTTP droppé] `SyncHandler.WithPrestigeHook`
+  (`sync_handler.go:226`) est un STUB no-op (`return h`), mais `server.go:1292` lui passe
+  `prestigeBundle.RunPostSync` — le hook est SILENCIEUSEMENT ignoré. Conséquence probable : un
+  sync manuel déclenché via l'endpoint HTTP ne lance pas le post-sync Prestige (l'auto-sync
+  scheduler passe, lui, par le hook du SyncEngine `engine_options.go:78`, correct). À VÉRIFIER
+  puis câbler (ou retirer le stub + le call si redondant avec le chemin engine). Hors périmètre
+  D1f (règle 7) — candidat LOT K (couches) ou fix dédié.
+- [LOT D1 / D1f — résidu TODO non traité] Passe rapide (outillage = livrable) : NON datés/
+  supprimés (aucun n'est échu, le lint reste vert) : (a) cluster « TODO P4 ADR 0006 : retirer
+  *100 » (~10 occurrences service/analysis) = migration unité canonique 0..1 cohérente, à
+  traiter en bloc (pas de dating piecemeal arbitraire) ; (b) TODO dans les fichiers
+  `session_compare_*` = supprimés avec les fichiers au titre de DEC-1 ; (c) TODO Phase 2/3
+  Prestige/squad = travaux futurs réels. Convention `TODO(expiry:)` désormais outillée pour
+  toute NOUVELLE dette datée.
 - [LOT D1 / D1e — baseline résiduelle + report justifié] Après centralisation, 29 `os.Getenv`
   prod subsistent hors `internal/config` (34 avant). AUCUN n'est plus une lecture divergente
   multi-sites d'un flag de déploiement (le défaut CR A6 est éradiqué). Résidu classé :
