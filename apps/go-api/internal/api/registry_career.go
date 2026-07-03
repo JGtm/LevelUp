@@ -217,8 +217,9 @@ func (r *ServiceRegistry) Achievements(ctx context.Context, slug string) (port.A
 // couche canonique. Le PlayerDB est résolu avec son CareerRepo, ce qui
 // active la capability career.progression pour ce DataAdapter.
 //
-// Retourne ErrTitleNotResolved si le slug courant n'est pas halo_infinite
-// (les autres titres viendront avec leurs propres factories).
+// Title-agnostic (MT-09) : la factory player-scoped est résolue par slug via
+// r.playerDataBuilders. Retourne ErrTitleNotResolved si AUCUN DataAdapter
+// player-scoped n'est enregistré pour le titre courant (quel qu'il soit).
 func (r *ServiceRegistry) TitleDataAdapter(ctx context.Context, slug string) (games.TitleDataAdapter, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {

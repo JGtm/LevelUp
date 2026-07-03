@@ -1,12 +1,17 @@
 // Package archlint — garde-fous d'architecture vérifiés en test (ratchet).
 //
 // no_slug_comparison_test.go : interdit les NOUVEAUX gating de titre par
-// comparaison de slug (`slug == "halo_infinite"`, `!= title.DefaultSlug`),
-// conformément à ADR 0025 + master title-agnostic §7. Tout gating titre doit
-// passer par une capability (HasCapability / FeatureChecker), jamais par le
-// slug. Les 2 hard-gates connus du câblage multi-titre sont allowlistés (à
-// retirer quand l'adapter du 2e titre est enregistré) ; toute occurrence hors
-// allowlist fait échouer le test.
+// comparaison de slug (`slug == "halo_infinite"`, `!= title.DefaultSlug`,
+// `TitleSlug(ctx) == "halo_infinite"`), conformément à ADR 0025 + master
+// title-agnostic §7. Tout gating de FEATURE titre doit passer par une capability
+// (HasCapability / FeatureChecker), jamais par le slug.
+//
+// La regex couvre aussi la forme d'appel (`TitleSlug(ctx) == ...`) et tout
+// préfixe de package sur DefaultSlug (`titlePkg.DefaultSlug`) — sinon un nouveau
+// feature-gate `TitleSlug(ctx) == "halo_infinite"` passait au travers (F10,
+// 2026-07-03). Les gardes de PARITÉ de base (défaut = comportement HINF
+// byte-identique, autres titres divergent) sont grandfathered dans l'allowlist :
+// ce ne sont pas des feature-gates. Toute occurrence hors allowlist échoue.
 package archlint
 
 import (
@@ -19,20 +24,28 @@ import (
 	"testing"
 )
 
-// slugCompareAllowlist : fichiers (chemin relatif depuis internal/) où un gating
-// slug est toléré transitoirement.
-//
-// VIDE depuis MT-09 (PMT-12) : les 2 derniers hard-gates `pdb.TitleSlug !=
-// DefaultSlug` (dataAdapterForPDB, TitleDataAdapter) sont remplacés par un lookup
-// de factory player-scoped par titre (ServiceRegistry.playerDataBuilders). La
-// garde est désormais MORDANTE — toute nouvelle comparaison de slug fait échouer
-// le test ; passer par une capability ou enregistrer un builder par titre.
-var slugCompareAllowlist = map[string]bool{}
+// slugCompareAllowlist : fichiers (chemin relatif depuis internal/) où une
+// comparaison de slug au titre par défaut est TOLÉRÉE — gardes de PARITÉ de base
+// (défaut = comportement/layout HINF byte-identique ; autres titres divergent),
+// PAS des feature-gates. Grandfathered le 2026-07-03 (F10) quand la regex a été
+// élargie (préfixe de package + forme d'appel `TitleSlug(ctx)`) : ces sites
+// existaient déjà mais échappaient à l'ancienne regex. Le ratchet reste MORDANT
+// pour toute NOUVELLE comparaison hors de cette liste. Retrait par site quand la
+// garde passe à une capability/mapping TOML (comeback.go:34 suivi en F15-15).
+var slugCompareAllowlist = map[string]bool{
+	"sync/comeback.go":            true, // :34 medal Steaktacular (→ mapping TOML F15-15) ; :95 dominance HINF byte-identique
+	"sync/coordinator.go":         true, // :316 gateKey dedup (défaut = clé nue, parité gate MT-11)
+	"api/server.go":               true, // :461 skip HINF déjà chargé (le vrai gate suivant est par capability career.rank_catalog)
+	"ops/seed_demo_multititle.go": true, // layout FS démo (défaut = layout legacy byte-identique)
+	"ops/seed_demo.go":            true, // :391 extraction média démo du titre par défaut
+}
 
-// slugCompareRE matche un gating de titre : une variable *Slug (ou le littéral
-// "halo_infinite") comparée par == / != à "halo_infinite" ou title.DefaultSlug.
+// slugCompareRE matche un gating de titre : une variable/appel *Slug (ou le
+// littéral "halo_infinite") comparé par == / != à "halo_infinite" ou à
+// <pkg>.DefaultSlug. Couvre la forme d'appel `TitleSlug(ctx) == ...` et tout
+// préfixe de package (`titlePkg.DefaultSlug`).
 var slugCompareRE = regexp.MustCompile(
-	`(?:[Ss]lug\s*[!=]=\s*(?:"halo_infinite"|(?:title\.)?DefaultSlug))` +
+	`(?:[Ss]lug(?:\([^)]*\))?\s*[!=]=\s*(?:"halo_infinite"|(?:\w+\.)?DefaultSlug))` +
 		`|(?:"halo_infinite"\s*[!=]=)`)
 
 func TestNoNewSlugComparison(t *testing.T) {
@@ -77,5 +90,32 @@ func TestNoNewSlugComparison(t *testing.T) {
 		t.Errorf("gating de titre par slug interdit (ADR 0025) — passer par une capability "+
 			"(HasCapability / FeatureChecker) ou allowlister un hard-gate transitoire :\n  %s",
 			strings.Join(violations, "\n  "))
+	}
+}
+
+// TestSlugCompareRE_CatchesBroadenedForms verrouille l'élargissement F10 : la
+// regex DOIT attraper la forme d'appel `TitleSlug(ctx) == "halo_infinite"` (le
+// feature-gate qui passait au travers avant F10) et le préfixe de package sur
+// DefaultSlug. Elle NE DOIT PAS attraper une égalité slug↔slug légitime.
+func TestSlugCompareRE_CatchesBroadenedForms(t *testing.T) {
+	mustMatch := []string{
+		`if ctxkeys.TitleSlug(ctx) == "halo_infinite" {`,
+		`if ctxkeys.TitleSlug(ctx) == titlePkg.DefaultSlug {`,
+		`if slug == titlePkg.DefaultSlug {`,
+		`if td.Slug != titlePkg.DefaultSlug {`,
+	}
+	for _, s := range mustMatch {
+		if !slugCompareRE.MatchString(s) {
+			t.Errorf("regex devrait matcher (gate slug) : %q", s)
+		}
+	}
+	mustNotMatch := []string{
+		`return s.rankCatalog.TitleSlug() == s.titleSlug`, // slug↔slug, pas un gate défaut
+		`titleSlug := ctxkeys.TitleSlug(ctx)`,             // affectation
+	}
+	for _, s := range mustNotMatch {
+		if slugCompareRE.MatchString(s) {
+			t.Errorf("regex ne devrait PAS matcher : %q", s)
+		}
 	}
 }
