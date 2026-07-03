@@ -79,17 +79,24 @@ Le sync actuel orchestre au niveau **player** : N goroutines parallèles (une pa
 
 ## Compatibilité et migration
 
-### Feature flag
+### Feature flag — SUPPRIMÉ (2026-07-03, lot D1c)
 
-`LEVELUP_SYNC_PIPELINE` :
-- `v1` (défaut, statu quo) : `AutoSyncScheduler` itère sur les joueurs et appelle l'engine actuel (`internal/sync/`).
-- `v2` (opt-in) : `AutoSyncScheduler` instancie `v2.CycleOrchestrator` et lui passe la liste complète des joueurs.
+Le flag `LEVELUP_SYNC_PIPELINE` et le fallback automatique V2→V1 ont été supprimés
+(audits 2026-07, DEC-2). V2 est désormais l'unique moteur de sync des joueurs moteur :
+`AutoSyncScheduler` route les joueurs moteur (Infinite) vers `v2.CycleOrchestrator`
+et les titres live-only (Halo 5) vers `syncPlayer`→`liveRunner` (D1c étape 1 : V2 est
+mono-titre, il ne route pas les live-only). Si l'orchestrator n'est pas câblé au boot
+(prérequis pool/queue/metaDB manquants), le cycle bascule sur un filet structurel
+`syncPlayer` — ce n'est PLUS un rollback flag-sélectionnable.
 
-### Coexistence V1/V2
+Historique (avant D1c) : `v1` (défaut) itérait sur les joueurs via l'engine legacy ;
+`v2` (opt-in via l'env var) instanciait l'orchestrator, avec fallback auto V2→V1.
 
-- V1 et V2 partagent les mêmes Persisters (`internal/persist/`), même schéma DB, même WAL format.
-- V2 réutilise les heals existants (`internal/sync/engine_postsync.go`) — pas de réimplémentation.
-- Rollback : changer la valeur de l'env var, redémarrer. Pas de migration de schéma.
+### Réutilisation
+
+- V2 partage les Persisters (`internal/persist/`), le schéma DB et le WAL format.
+- V2 réutilise les heals + le `SyncEngine` pour le post-sync (`internal/sync/engine_postsync.go`).
+  `engine.run`/`RunDelta` reste PARTAGÉ (watcher, HTTP, CLI, admin convergence) — non supprimé.
 
 ### Shadow run (D7)
 

@@ -280,7 +280,7 @@ Objectif : plus aucun « forever guard » sur le chemin critique ; flags découv
   (`cmd/levelup/cmd_sync.go:68-70`, `engine.go:338`, `scheduler/auto_sync.go:336`,
   `handlers/sync_handler.go:210`, `engine_batch_path.go`, +3). Supprimer aussi
   `processMatch` legacy test-only (CR A9) et ses tests V1 qui exercent un chemin mort.
-- [ ] D1c — DEC-2 (VALIDÉ : suppression complète) : supprimer le pipeline V1 ENTIÈREMENT —
+- [x] D1c — DEC-2 (VALIDÉ : suppression complète) : supprimer le pipeline V1 ENTIÈREMENT —
   fallback automatique (ARCHI 50), flag `LEVELUP_SYNC_PIPELINE` et sa lecture
   (`auto_sync.go:437-444`), chemins d'orchestration V1 non partagés avec V2.
   MÉTHODE OBLIGATOIRE (gros diff dans sync/, prudence) :
@@ -966,3 +966,22 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
   d'`insertFetchedMatch` (son seul caller prod) — le chemin batch persiste les events via
   SharedPersister. À supprimer avec ses 2 tests (`highlight_events_orchestration_test.go`)
   après vérif du sibling `ProcessHighlightEvents`. Hors périmètre nommé de D1b.
+- [LOT D1 / D1c — TRAITÉ + BUG PRÉ-EXISTANT CORRIGÉ] L'audit H5-sous-V2 (3 agents + vérif sur
+  pièces) a révélé que le pipeline V2 (défaut prod) est MONO-TITRE (orchestrator câblé
+  halo_infinite en dur) et ne route PAS les titres live-only : les joueurs Halo 5 (SyncEnabled
+  par défaut → dans SyncablePlayers) étaient traités comme Infinite sous V2, leur chemin
+  liveRunner (testé, correct) bypassé. D1c étape 1 corrige ce BUG : RunOnceTrigger partitionne
+  par `livesync.HandlesTitle` (H5 → syncPlayer→liveRunner ; Infinite → orchestrator). Puis
+  suppression du flag `LEVELUP_SYNC_PIPELINE` + du fallback auto V2→V1.
+- [LOT D1 / D1c — REPLI documenté] `syncPlayer` + sa branche moteur (RunnerFactory→engine.run)
+  NON supprimés : `main.go:1104` câble l'orchestrator V2 CONDITIONNELLEMENT (si pool+queue+
+  metaDB présents) → orchestrator-nil est un scénario boot RÉEL. `syncPlayer` conservé comme
+  (a) chemin des titres live-only et (b) filet structurel de boot — ce n'est PLUS le pipeline
+  V1 flag-sélectionnable (supprimé). C'est le « repli autorisé » du plan (fallback auto
+  supprimé), pas une suppression totale de syncPlayer.
+- [LOT D1 / D1c — K2b NON impacté] `engine.run`/`RunDelta` confirmé PARTAGÉ (watcher, HTTP,
+  handlers, CLI, admin convergence) → NON supprimé. La condition « si engine.run V1-only →
+  K2b [~] » n'est PAS remplie : K2b (refactor de run() 483 L) reste un item LOT K valide.
+- [LOT D1 / D1c — GATE live-sync différé] Le gate D1c (3) « sync live complet en local » exige
+  tokens/réseau réels, non exécutable par l'agent. Couvert par `-tags=integration -p 1 ./...`
+  (vert) ; le sync live reste un contrôle MANUEL avant le land sur main.

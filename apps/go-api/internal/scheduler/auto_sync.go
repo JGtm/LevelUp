@@ -24,7 +24,6 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
-	"strings"
 	gosync "sync"
 	"sync/atomic"
 	"time"
@@ -201,11 +200,10 @@ type AutoSyncScheduler struct {
 	// désormais rafraîchie en LIVE via CareerLiveService.kickoffBackgroundRefresh
 	// (UPSERT dans `spartan_identity`).
 
-	// cycleOrchestrator (ADR 0027) — pipeline V2 cycle-level. Câblé via
-	// WithCycleOrchestrator. Activation runtime gated par
-	// LEVELUP_SYNC_PIPELINE=v2 (cf. shouldUseV2). En D0 le stub renvoie
-	// ErrNotImplemented → fallback V1 silencieux ; le wiring du dispatch
-	// proprement dit arrive en D6 du plan ADR 0027.
+	// cycleOrchestrator (ADR 0027) — pipeline V2 cycle-level, UNIQUE moteur de sync
+	// des joueurs moteur depuis la suppression du pipeline V1 (lot D1c). Câblé via
+	// WithCycleOrchestrator (main.go, si prérequis pool/queue/metaDB présents). Nil
+	// → le cycle bascule sur le filet structurel syncPlayer de boot (cf. shouldUseV2).
 	cycleOrchestrator syncv2.CycleOrchestrator
 
 	// Snapshot par joueur du dernier cycle — pour l'endpoint admin diagnostic.
@@ -407,9 +405,9 @@ func (s *AutoSyncScheduler) WithPostSyncRunner(runner port.PostSyncRunner) *Auto
 	return s
 }
 
-// WithCycleOrchestrator branche le pipeline V2 (ADR 0027). L'activation
-// runtime reste gated par LEVELUP_SYNC_PIPELINE=v2 ; câbler un orchestrator
-// non-nil sans l'env var ne change rien au comportement. Nil → V1 toujours.
+// WithCycleOrchestrator branche le pipeline V2 (ADR 0027), unique moteur de sync
+// des joueurs moteur depuis la suppression du pipeline V1 (lot D1c). Câbler un
+// orchestrator non-nil active V2 ; nil → filet structurel syncPlayer de boot.
 //
 // Doit être appelé depuis cmd/server/main.go au boot, avant Run.
 func (s *AutoSyncScheduler) WithCycleOrchestrator(o syncv2.CycleOrchestrator) *AutoSyncScheduler {
@@ -423,19 +421,13 @@ func (s *AutoSyncScheduler) WithCycleOrchestrator(o syncv2.CycleOrchestrator) *A
 // contention qui gelait les lectures user-facing pendant un sync V1 (le writer RW
 // shared était tenu pendant tout le fetch réseau — cf. .ai/PLAN_CONTENTION_SYNC_SERVICE.md).
 //
-// Conditions :
-//   - cycleOrchestrator non-nil (câblé par main.go, parity-complete)
-//   - LEVELUP_SYNC_PIPELINE != "v1" (échappatoire de rollback : forcer le legacy V1)
-//
-// Le dispatch conserve un fallback V1 automatique sur ErrNotImplemented ou échec
-// global (runOnceV2 → V1), donc l'activation par défaut ne peut pas casser un cycle.
+// shouldUseV2 indique si le pipeline V2 (orchestrator) pilote le cycle. Depuis la
+// suppression du pipeline V1 (lot D1c, ADR 0027), V2 est l'unique moteur : la seule
+// condition est que l'orchestrator soit câblé (main.go, parity-complete). Le flag
+// LEVELUP_SYNC_PIPELINE (échappatoire de rollback vers V1) et le fallback automatique
+// ont été supprimés — un orchestrator non câblé bascule sur le filet syncPlayer de boot.
 func (s *AutoSyncScheduler) shouldUseV2() bool {
-	if s.cycleOrchestrator == nil {
-		return false
-	}
-	// V2 par défaut ; seul un opt-out explicite "v1" repasse en legacy.
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("LEVELUP_SYNC_PIPELINE")))
-	return v != "v1"
+	return s.cycleOrchestrator != nil
 }
 
 // Snapshot retourne un cliché thread-safe du dernier cycle de sync, incluant
@@ -629,36 +621,38 @@ func (s *AutoSyncScheduler) RunOnceTrigger(ctx context.Context, trigger string) 
 		}
 	}
 
-	// ADR 0027 dispatch : si V2 est activé via env var ET orchestrator non-nil,
-	// déléguer les joueurs MOTEUR au pipeline V2, et syncer les joueurs live-only
-	// via syncPlayer (path liveRunner) en parallèle. Fallback silencieux à V1
-	// (boucle syncPlayer sur TOUS les joueurs, qui gère aussi les live-only) si
-	// l'orchestrator retourne ErrNotImplemented (cas D0-D6 transitoire) ou échoue.
+	// Dispatch (ADR 0027 — pipeline V1 supprimé au lot D1c) : le pipeline V2 est
+	// l'UNIQUE moteur de sync du cycle dès qu'il est câblé. Les joueurs MOTEUR
+	// (Infinite) passent par l'orchestrator V2 ; les joueurs LIVE-ONLY (Halo 5)
+	// par syncPlayer (→ liveRunner) en parallèle. Plus de flag LEVELUP_SYNC_PIPELINE
+	// ni de fallback automatique vers V1 : un échec V2 est loggé et re-tenté au
+	// cycle suivant (pipeline append-only idempotent), jamais rejoué via l'ancien
+	// chemin UPSERT ART-unsafe.
 	if s.shouldUseV2() {
-		if v2Res, v2Err := s.runOnceV2(ctx, orchPlayers); v2Err == nil {
-			liveSynced, liveSkipped, liveFailed := s.syncPlayersConcurrent(ctx, livePlayers)
-			v2Res.Synced += liveSynced
-			v2Res.Skipped += liveSkipped
-			v2Res.Failed += liveFailed
-			v2Res.Total = len(players)
-			// Duration couvre le cycle COMPLET (orchestrator + sync live-only) —
-			// runOnceV2 ne mesure que l'orchestrator ; sans ceci le dashboard peut
-			// afficher un temps API/écriture > durée de cycle (parité path V1).
-			v2Res.Duration = time.Since(start)
-			s.storeCycleResult(v2Res, trigger, captureCycleLoad().deltaSince(loadBefore))
-			return v2Res
-		} else if v2Err == syncv2.ErrNotImplemented {
-			slog.DebugContext(ctx, "auto_sync: V2 stub → fallback V1 silencieux")
-		} else {
-			slog.WarnContext(ctx, "auto_sync: V2 échec — fallback V1", "err", v2Err)
+		v2Res, v2Err := s.runOnceV2(ctx, orchPlayers)
+		if v2Err != nil {
+			slog.ErrorContext(ctx, "auto_sync: cycle V2 en échec (pas de fallback V1 — re-tenté au prochain cycle)",
+				"err", v2Err)
+			v2Res = &RunOnceResult{} // runOnceV2 renvoie nil sur erreur globale
 		}
-		// Fallthrough vers V1 (syncPlayer gère Infinite ET live-only).
+		liveSynced, liveSkipped, liveFailed := s.syncPlayersConcurrent(ctx, livePlayers)
+		v2Res.Synced += liveSynced
+		v2Res.Skipped += liveSkipped
+		v2Res.Failed += liveFailed
+		v2Res.Total = len(players)
+		// Duration couvre le cycle COMPLET (orchestrator + sync live-only) —
+		// runOnceV2 ne mesure que l'orchestrator (parité avec le filet ci-dessous).
+		v2Res.Duration = time.Since(start)
+		s.storeCycleResult(v2Res, trigger, captureCycleLoad().deltaSince(loadBefore))
+		return v2Res
 	}
 
-	// V1 : boucle syncPlayer sur TOUS les joueurs (syncPlayer route lui-même les
-	// titres live-only vers liveRunner). Phase 3.4 : parallélisée par errgroup.
-	slog.InfoContext(ctx, "auto_sync: démarrage du cycle",
-		"player_count", res.Total, "pool_size", s.poolSizeSafe())
+	// Filet structurel : orchestrator V2 non câblé (prérequis boot manquants —
+	// pool/queue/metaDB). On sync directement via syncPlayer (qui route Infinite ET
+	// live-only). Ce n'est PAS l'ancien pipeline V1 flag-sélectionnable (supprimé),
+	// mais une sécurité de démarrage — en prod l'orchestrator est toujours câblé.
+	slog.WarnContext(ctx, "auto_sync: orchestrator V2 non câblé — sync directe via syncPlayer (filet de boot)",
+		"player_count", res.Total)
 	res.Synced, res.Skipped, res.Failed = s.syncPlayersConcurrent(ctx, players)
 
 	// PLAN_SPARTAN_IDENTITY_REFACTOR §11 Phase 5 (2026-05-25) :
