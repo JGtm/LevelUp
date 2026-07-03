@@ -18,6 +18,8 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/config"
+
 	titlePkg "levelup/go-api/internal/domain/title"
 )
 
@@ -347,11 +349,11 @@ func checkDBProfiles(profilesPath string) (bool, string) {
 }
 
 func checkDiscordNotify(repoRoot string) (bool, string) {
-	if url := os.Getenv("DISCORD_WEBHOOK_URL"); url != "" {
+	if url := config.DiscordWebhookURLFromEnv(); url != "" {
 		if strings.HasPrefix(url, "https://discord.com/api/webhooks/") {
-			return true, "DISCORD_WEBHOOK_URL configuré via env"
+			return true, "webhook Discord configuré via env (LEVELUP_DISCORD_WEBHOOK_URL/DISCORD_WEBHOOK_URL)"
 		}
-		return false, "DISCORD_WEBHOOK_URL invalide (doit commencer par https://discord.com/api/webhooks/)"
+		return false, "webhook Discord env invalide (doit commencer par https://discord.com/api/webhooks/)"
 	}
 	// Vérifier app_settings.json
 	settingsPath := filepath.Join(repoRoot, "app_settings.json")

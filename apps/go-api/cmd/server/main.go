@@ -716,7 +716,7 @@ func main() {
 	// autoBatchQueue.Drain() + Close() AVANT duckdb.CloseAll() (ordre critique).
 	var autoBatchQueue *persist.BatchQueue
 	var workerWG sync.WaitGroup // tracks the batch Worker goroutine lifecycle
-	if os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") != "0" {
+	if cfg.PersistBatchAsync {
 		walDir := pr.WALDir()
 		q, qErr := persist.NewBatchQueue(persist.BatchQueueConfig{
 			WALDir:      walDir,

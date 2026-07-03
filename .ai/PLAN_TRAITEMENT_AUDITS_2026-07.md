@@ -303,9 +303,21 @@ Objectif : plus aucun « forever guard » sur le chemin critique ; flags découv
   classé diagnostic dev/CI permanent sans retrait). docs/CONFIGURATION.md (+FR) : défaut
   `(off)`→`on` corrigé pour BATCH_ASYNC + 4 lignes de flags ajoutées. Tension règle 11 sur
   MULTI_TITLE notée en §7.
-- [ ] D1e — CR A6 : centraliser les 41 `os.Getenv` hors `internal/config` dans
+- [x] D1e — CR A6 : centraliser les 41 `os.Getenv` hors `internal/config` dans
   `config.AppConfig` au boot, injecter (élimine la double lecture scheduler/handler de
   PERSIST_BATCH — devient sans objet après D1b pour ce flag, reste vrai pour les autres).
+  FAIT (cible réelle = les lectures DIVERGENTES/multi-sites, pas le littéral ~0) : (1)
+  supprimé le mort+divergent `handlers.MultiTitleAPIEnabled()` (server lit `cfg.MultiTitleAPIEnabled`)
+  + son test ; (2) supprimé le mort `notify.EnvWebhookURL()` + son test ; (3) extrait
+  `config.DiscordWebhookURLFromEnv()` (précédence env UNIQUE), consommé par le loader config
+  ET par notify/validation (fin de la triple lecture `DISCORD_WEBHOOK_URL` qui bypassait
+  `LEVELUP_DISCORD_WEBHOOK_URL`) ; (4) centralisé les kill-switches scheduler
+  `PersistBatchAsync`/`EventsConvergence`/`EventsConvergenceMax` dans AppConfig (fin de la
+  triple lecture `LEVELUP_PERSIST_BATCH_ASYNC` main/wiring/scheduler) ; (5) garde-rail
+  `internal/config/env_centralization_test.go` interdit toute relecture `os.Getenv` de ces
+  flags hors config. Baseline prod hors config : 34 → 29 (résidu justifié §7). Gate :
+  build+vet OK, tests config/notify/validation/handlers/scheduler verts,
+  `-tags=integration -p 1 ./...` = exit 0.
 - [ ] D1f — DETTE reco 7 : généraliser `TODO(expiry:YYYY-MM-DD)` + lint léger qui échoue à
   date dépassée (précédent : `season_pass_repo_tracks.go:254`). Trier les 513 TODO/FIXME :
   dater ceux qui référencent des phases mortes, supprimer les caducs (passe rapide, pas
@@ -990,6 +1002,22 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 - [LOT D1 / D1c — GATE live-sync différé] Le gate D1c (3) « sync live complet en local » exige
   tokens/réseau réels, non exécutable par l'agent. Couvert par `-tags=integration -p 1 ./...`
   (vert) ; le sync live reste un contrôle MANUEL avant le land sur main.
+- [LOT D1 / D1e — baseline résiduelle + report justifié] Après centralisation, 29 `os.Getenv`
+  prod subsistent hors `internal/config` (34 avant). AUCUN n'est plus une lecture divergente
+  multi-sites d'un flag de déploiement (le défaut CR A6 est éradiqué). Résidu classé :
+  (a) sentinels/secrets auth `SPNKR_*` + `LEVELUP_OAUTH_CLIENT_ID` + `SPNKR_AZURE_CLIENT_SECRET`
+  — gardés par `sentinel_test.go` (ADR 0023), retrait Phase 5 ; (b) bootstrap logging
+  (`observability/logging/config.go` — c'est le loader de config logging, analogue à config) ;
+  (c) fixtures de test (`testfixtures/external_chunks.go`) ; (d) flags LUSR expérimentaux
+  shadow (`skill_v2_*.go` : `lusrV2EnvFlag`/`lusrCanonicalEnvFlag`/`lusrModeCouplingEnvFlag`/
+  `lusrSquadOffsetEnvFlag`) — harnais de test dédié, tuning expérimental, pas de la config
+  opérateur ; (e) knobs de tuning sync mono-lecteur profonds dans l'engine
+  (`LEVELUP_SYNC_RESOLVE_ASSETS`, `LEVELUP_SNAPSHOT_GRACE_HOURS`, `LEVELUP_POSTSYNC_BURST`,
+  `LEVELUP_PERSIST_NO_FETCH_CACHE`, `LEVELUP_FRESH_FILM_RETRY`, `LEVELUP_FILM_RETRY_WINDOW_HOURS`,
+  `LEVELUP_NOTIFY_VERSIONS`) — lecteur unique chacun, zéro divergence ; les centraliser
+  exigerait de plomber `cfg` dans les internals du SyncEngine (gros diff, faible valeur).
+  REPORT justifié (règle 3 : pas de valeur/accès bloquant, mais périmètre disproportionné
+  pour un lot « flags & guards ») — follow-up possible en LOT K (structure/couches).
 - [LOT D1 / D1d — tension règle 11] `MULTI_TITLE_API_ENABLED` défaut OFF est un gate de rollout
   qui « laisse une feature OFF pour plus tard » — ce que la règle CLAUDE.md n°11 proscrit. NON
   corrigé en D1d (doc-only) : la bascule ON relève du chantier d'activation multi-titre

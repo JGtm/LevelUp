@@ -1,3 +1,36 @@
+## [2026-07-03] LOT D1e (audit 2026-07) — centralisation des lectures os.Getenv divergentes — COMPLÉTÉ
+
+**Tâche** : D1e du PLAN_TRAITEMENT_AUDITS_2026-07 (CR A6), branche refactor/audits-2026-07.
+Centraliser les `os.Getenv` dispersés dans `config.AppConfig` / injecter.
+
+**Décision technique principale** : cadrage sur la VRAIE cible du finding (les lectures
+DIVERGENTES multi-sites qui causent une désync entre deux lecteurs), pas le littéral « ~0 »
+qui exigerait de plomber `cfg` dans les internals du SyncEngine (gros diff, faible valeur).
+Actions : (1) suppression du mort+divergent `handlers.MultiTitleAPIEnabled()` — le serveur
+lit déjà `cfg.MultiTitleAPIEnabled`, la fonction (env-only, ignorait le fallback settings)
+n'était appelée que par son test ; (2) suppression du mort `notify.EnvWebhookURL()` (aucun
+caller prod) ; (3) extraction de `config.DiscordWebhookURLFromEnv()` = précédence env UNIQUE
+(`LEVELUP_DISCORD_WEBHOOK_URL` > `DISCORD_WEBHOOK_URL`), consommée par le loader config ET
+par notify/validation qui la bypassaient (bug de précédence pré-existant : ils rataient
+`LEVELUP_DISCORD_WEBHOOK_URL`) ; (4) centralisation des kill-switches scheduler
+`PersistBatchAsync`/`EventsConvergence`/`EventsConvergenceMax` dans AppConfig — fin de la
+triple lecture `LEVELUP_PERSIST_BATCH_ASYNC` (main.go + sync_v2_wiring.go + scheduler),
+`eventsConvergenceEnabled`/`convergencePerCycleLimit` deviennent des méthodes lisant `s.cfg` ;
+(5) garde-rail `internal/config/env_centralization_test.go` (calque `sentinel_test.go`) qui
+interdit toute relecture `os.Getenv` de ces 6 flags hors `internal/config`.
+
+**Résultats observés** : import graph vérifié sans cycle (config n'importe pas notify/validation).
+Baseline prod `os.Getenv` hors config : 34 → 29 ; le résidu (sentinels/secrets auth gardés
+ADR 0023, bootstrap logging, fixtures test, flags LUSR shadow expérimentaux, knobs sync
+mono-lecteur profonds) est classé §7 — aucun n'est plus une lecture divergente. Pas de faux
+vert : les tests scheduler construisent `AppConfig{}` littéral (champs à zéro) mais `s.batchQueue`
+est nil partout et aucun test n'assied la passe convergence → chemins non couverts AVANT comme
+APRÈS, prod inchangée (config.Load pose les défauts true/true/50). Gate : build+vet OK ; tests
+config/notify/validation/handlers/scheduler verts ; `-tags=integration -p 1 ./...` = exit 0.
+
+**Conclusion / prochaine étape** : D1e clos (1 commit). Prochain : D1f (lint TODO-expiry
+archlint), puis clôture LOT D1 (journal §6 consolidé + gate D1 final).
+
 ## [2026-07-03] LOT D1d (audit 2026-07) — cycle de vie documenté des 4 flags restants — COMPLÉTÉ
 
 **Tâche** : D1d du PLAN_TRAITEMENT_AUDITS_2026-07 (DETTE §2.1), branche refactor/audits-2026-07.

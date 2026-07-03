@@ -23,7 +23,6 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"strconv"
 	gosync "sync"
 	"sync/atomic"
 	"time"
@@ -331,8 +330,9 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 	// Le batch INSERT-only est le seul chemin d'écriture depuis D1b. Phase 4.9 :
 	// le layer async reste optionnel. Set LEVELUP_PERSIST_BATCH_ASYNC=0 pour un
 	// fallback synchrone direct Persister. La queue est injectée par main.go au
-	// boot si != "0" (cf. autoBatchQueue init — cycle de vie du kill-switch).
-	if s.batchQueue != nil && os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") != "0" {
+	// boot si activé (cf. autoBatchQueue init — cycle de vie du kill-switch).
+	// Valeur résolue au boot dans config.AppConfig (source unique — CR A6).
+	if s.batchQueue != nil && s.cfg.PersistBatchAsync {
 		engine.WithBatchQueue(s.batchQueue)
 	}
 	if s.cfg.CurrentCSRSeasonID != "" {
@@ -902,13 +902,9 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 	return outcome
 }
 
-// convergencePerCycleMax borne le nombre de matchs traités par la passe de
-// convergence events à chaque tick (le reste est repris au tick suivant).
-// Override via LEVELUP_EVENTS_CONVERGENCE_MAX.
-const convergencePerCycleMax = 50
-
 // eventsConvergenceEnabled : kill-switch (défaut ON). LEVELUP_EVENTS_CONVERGENCE=0
-// désactive la passe scheduler ET le trigger immédiat.
+// désactive la passe scheduler ET le trigger immédiat. La valeur est résolue au boot
+// dans config.AppConfig (source unique — CR A6).
 //
 // Cycle de vie du kill-switch :
 //   - basculement défaut ON : dès la livraison de la convergence events
@@ -918,28 +914,26 @@ const convergencePerCycleMax = 50
 //     « auto_sync: convergence events échouée » sur >= 1 trimestre + res.Processed
 //     converge vers 0 (backlog de highlight_events incomplets rattrapé). Alors
 //     retirer le flag en gardant la passe active.
-func eventsConvergenceEnabled() bool {
-	return os.Getenv("LEVELUP_EVENTS_CONVERGENCE") != "0"
+func (s *AutoSyncScheduler) eventsConvergenceEnabled() bool {
+	return s.cfg.EventsConvergence
 }
 
-func convergencePerCycleLimit() int {
-	if v := os.Getenv("LEVELUP_EVENTS_CONVERGENCE_MAX"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			return n
-		}
-	}
-	return convergencePerCycleMax
+// convergencePerCycleLimit borne le nombre de matchs traités par la passe de
+// convergence events à chaque tick (le reste est repris au tick suivant). Résolu au
+// boot depuis LEVELUP_EVENTS_CONVERGENCE_MAX (config.AppConfig).
+func (s *AutoSyncScheduler) convergencePerCycleLimit() int {
+	return s.cfg.EventsConvergenceMax
 }
 
 // runEventsConvergencePass lance une passe bornée de convergence events pour un
 // joueur, SOUS le claim déjà tenu par syncPlayer (gate=nil → pas de re-claim).
 // Gate sur le pool (tests sans pool → skip) + kill-switch. Best-effort.
 func (s *AutoSyncScheduler) runEventsConvergencePass(ctx context.Context, gamertag, xuid string) {
-	if s.pool == nil || !eventsConvergenceEnabled() {
+	if s.pool == nil || !s.eventsConvergenceEnabled() {
 		return
 	}
 	engine := s.BuildEngine(ctx, gamertag, xuid)
-	res, err := engine.RunEventsConvergence(ctx, nil, convergencePerCycleLimit())
+	res, err := engine.RunEventsConvergence(ctx, nil, s.convergencePerCycleLimit())
 	if err != nil {
 		slog.WarnContext(ctx, "auto_sync: convergence events échouée", "gamertag", gamertag, "err", err)
 		return
@@ -957,7 +951,7 @@ func (s *AutoSyncScheduler) runEventsConvergencePass(ctx context.Context, gamert
 // Cède au sync live par lot (gate=SyncGate). Conçue pour un appel en goroutine
 // (ne tient pas de claim externe). No-op si pool absent ou kill-switch off.
 func (s *AutoSyncScheduler) TriggerEventsConvergence(ctx context.Context, gamertag, xuid string) {
-	if s == nil || s.pool == nil || !eventsConvergenceEnabled() {
+	if s == nil || s.pool == nil || !s.eventsConvergenceEnabled() {
 		return
 	}
 	engine := s.BuildEngine(ctx, gamertag, xuid)

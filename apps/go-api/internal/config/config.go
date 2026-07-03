@@ -153,7 +153,25 @@ type AppConfig struct {
 	// LEVELUP_TRUST_PROXY_HEADERS=true, sinon toutes les requêtes partagent le bucket
 	// de l'IP du proxy (127.0.0.1) et le site sature en 429 sous trafic public.
 	RateLimitRPM int
+	// PersistBatchAsync active le drainage asynchrone du persister batch (queue WAL
+	// + worker). Kill-switch : LEVELUP_PERSIST_BATCH_ASYNC=0 → chemin synchrone.
+	// Défaut : true. Cycle de vie du kill-switch documenté au câblage boot
+	// (cmd/server/main.go). Source UNIQUE lue par main.go, sync_v2_wiring.go et le
+	// scheduler (élimine la triple lecture os.Getenv — CR A6).
+	PersistBatchAsync bool
+	// EventsConvergence active la passe de convergence des highlight_events
+	// (scheduler + trigger immédiat). Kill-switch : LEVELUP_EVENTS_CONVERGENCE=0.
+	// Défaut : true. Cycle de vie : internal/scheduler/auto_sync.go.
+	EventsConvergence bool
+	// EventsConvergenceMax borne le nombre de matchs traités par tick de convergence.
+	// Lit LEVELUP_EVENTS_CONVERGENCE_MAX (valeur <= 0 ignorée). Défaut :
+	// DefaultEventsConvergenceMax.
+	EventsConvergenceMax int
 }
+
+// DefaultEventsConvergenceMax est le plafond par défaut de matchs traités par la
+// passe de convergence events à chaque tick scheduler.
+const DefaultEventsConvergenceMax = 50
 
 // BackupConfig centralise la configuration du backup périodique.
 // Comportement (enabled, interval, retention) : app_settings.json.
@@ -221,6 +239,12 @@ func Load() (*AppConfig, error) {
 	cfg.Backup = loadBackupConfig(repoRoot, appSettingsPath)
 	cfg.MultiTitleAPIEnabled = loadMultiTitleAPIEnabled(appSettingsPath)
 	cfg.PrestigeEnabled = prestige.IsEnabled(appSettingsPath)
+	cfg.PersistBatchAsync = getEnvOrDefault("LEVELUP_PERSIST_BATCH_ASYNC", "") != "0"
+	cfg.EventsConvergence = getEnvOrDefault("LEVELUP_EVENTS_CONVERGENCE", "") != "0"
+	cfg.EventsConvergenceMax = getEnvInt("LEVELUP_EVENTS_CONVERGENCE_MAX", DefaultEventsConvergenceMax)
+	if cfg.EventsConvergenceMax <= 0 {
+		cfg.EventsConvergenceMax = DefaultEventsConvergenceMax
+	}
 	return cfg, nil
 }
 
