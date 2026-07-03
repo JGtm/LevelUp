@@ -173,16 +173,16 @@ func TestNoARTPatternsOnProtectedTables(t *testing.T) {
 			if !strings.HasSuffix(path, ".go") {
 				return nil
 			}
-			// Exclure les fichiers de test, migrations (one-shot boot), seeds,
-			// outils CLI/scripts one-shot (cmd/, scripts/ — exécutés hors serveur,
-			// mono-processus, même statut que migration/ops), et le présent guard-rail.
+			// Exclure les fichiers de test, migrations (one-shot boot), outils
+			// CLI/scripts one-shot (cmd/, scripts/ — exécutés hors serveur,
+			// mono-processus), et le présent guard-rail. NB (E3, 2026-07-03) : ops/
+			// N'EST PLUS exclu — sa plomberie (catalog_refresh, lying_bits_reset,
+			// data_quality) tourne IN-PROCESS, donc soumise au tripwire.
 			if strings.HasSuffix(path, "_test.go") ||
 				strings.Contains(path, "/migration/") ||
 				strings.Contains(path, "\\migration\\") ||
 				strings.Contains(path, "/migrations/") ||
 				strings.Contains(path, "\\migrations\\") ||
-				strings.Contains(path, "/ops/") ||
-				strings.Contains(path, "\\ops\\") ||
 				strings.Contains(path, "/cmd/") ||
 				strings.Contains(path, "\\cmd\\") ||
 				strings.Contains(path, "/scripts/") ||
@@ -233,8 +233,8 @@ func TestNoARTPatternsOnProtectedTables(t *testing.T) {
 // (incident catalog_fetch_queue 2026-06-19 — drain DiscoveryUGC autonome au boot).
 // Sur ces tables, seuls INSERT / INSERT OR IGNORE et SELECT-then-UPDATE single-row
 // sont permis. Le motif est SCOPÉ au nom exact de la table → zéro faux positif
-// (contrairement à patternsAtRisk qui est file-level). migrations/ops/cmd/scripts
-// exclus (rebuild one-shot, mono-processus).
+// (contrairement à patternsAtRisk qui est file-level). migrations/cmd/scripts
+// exclus (rebuild one-shot, mono-processus) ; ops/ scanné depuis E3 (in-process).
 func TestNoRawDeleteOnAppendOnlyTables(t *testing.T) {
 	repoRoot := findRepoRoot(t)
 
@@ -259,7 +259,6 @@ func TestNoRawDeleteOnAppendOnlyTables(t *testing.T) {
 			if strings.HasSuffix(path, "_test.go") ||
 				strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
 				strings.Contains(path, "/migrations/") || strings.Contains(path, "\\migrations\\") ||
-				strings.Contains(path, "/ops/") || strings.Contains(path, "\\ops\\") ||
 				strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
 				strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {
 				return nil
@@ -359,7 +358,7 @@ func reUpdateRawSQL(table string) *regexp.Regexp {
 // dans tablesProtegees (leurs UPDATE bitmask/row-by-row sérialisés sont sûrs),
 // mais la forme bulk `UPDATE … FROM (VALUES …)` multi-row — le vrai déclencheur
 // ART — y est INTERDITE. Ce test fail si elle réapparaît sur une table critique.
-// Périmètre identique au scan principal (hors _test/migration/ops/cmd/scripts).
+// Périmètre identique au scan principal (hors _test/migration/cmd/scripts ; ops/ inclus depuis E3).
 func TestNoBulkMultiRowUpdateOnCriticalTables(t *testing.T) {
 	repoRoot := findRepoRoot(t)
 
@@ -385,7 +384,6 @@ func TestNoBulkMultiRowUpdateOnCriticalTables(t *testing.T) {
 			if strings.HasSuffix(path, "_test.go") ||
 				strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
 				strings.Contains(path, "/migrations/") || strings.Contains(path, "\\migrations\\") ||
-				strings.Contains(path, "/ops/") || strings.Contains(path, "\\ops\\") ||
 				strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
 				strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {
 				return nil
