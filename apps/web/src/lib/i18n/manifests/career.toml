@@ -428,6 +428,10 @@ en = "In placement"
 fr = "Non classé"
 en = "Unranked"
 
+[career.ranking.vs_prev_season]
+fr = "Évolution vs saison précédente"
+en = "Change vs previous season"
+
 # ─── Encounters (table additional columns) ──────────────────────────────────
 
 [career.encounters.col_player]

@@ -12,12 +12,15 @@ import { screen } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { TitleSummary } from '@/lib/api/types'
-import type { CareerLusrSection } from '@/lib/api/types'
+import type { CareerLusrSection, CareerCSRRank, CareerPlaylistCSR } from '@/lib/api/types'
 import { CareerRankingBlock } from './CareerRankingBlock'
+import { useCareerCSRs } from './queries'
 
-// useCareerCSRs touche le réseau : on neutralise la colonne CSR (vide).
+// useCareerCSRs touche le réseau : mock contrôlable (défaut = colonne CSR vide).
+// Le delta inter-saison appelle le hook DEUX fois (courante + précédente) ; le
+// test dédié distingue par l'argument `season`.
 vi.mock('./queries', () => ({
-  useCareerCSRs: () => ({ data: undefined }),
+  useCareerCSRs: vi.fn(() => ({ data: undefined })),
 }))
 
 const ALL_CAPS = ['ranked', 'lusr', 'career']
@@ -55,6 +58,7 @@ function checkpoint(group: string): CareerLusrSection['checkpoints'][number] {
 describe('CareerRankingBlock — colonne LUSR title-aware', () => {
   beforeEach(() => {
     useAppShellStore.setState({ locale: 'fr' })
+    vi.mocked(useCareerCSRs).mockReturnValue({ data: undefined } as ReturnType<typeof useCareerCSRs>)
   })
 
   it('Halo Infinite : rend les 4 groupes connus dans l\'ordre, « Non classé » inclus', () => {
@@ -98,5 +102,50 @@ describe('CareerRankingBlock — colonne LUSR title-aware', () => {
     expect(screen.queryByText('Grande Équipe')).not.toBeInTheDocument()
     expect(screen.queryByText('Chaos')).not.toBeInTheDocument()
     expect(screen.queryByText('Non classé')).not.toBeInTheDocument()
+  })
+
+  it('CSR : flèche de tendance ▲ quand la valeur progresse vs la saison précédente', () => {
+    useAppShellStore.setState({ availableTitles: [HINF], currentTitleSlug: 'halo_infinite' })
+    const rank = (tier: string, subTier: number, value: number): CareerCSRRank => ({
+      badge_image_url: undefined,
+      measurement_matches_remaining: 0,
+      placement_total: 5,
+      sub_tier: subTier,
+      tier,
+      value,
+    })
+    const playlist = (current: CareerCSRRank): CareerPlaylistCSR => ({
+      all_time: current,
+      current,
+      input: 'controller',
+      playlist_id: 'pl-arena',
+      playlist_name: 'Ranked Arena',
+      queue: 'solo-duo',
+      season: current,
+    })
+    const seasons = [
+      { season_id: 'CsrSeason13-2', label: 'Saison 13', is_current: true },
+      { season_id: 'CsrSeason12-1', label: 'Saison 12' },
+    ]
+    // 1er appel (season falsy) → saison courante ; 2e (season='CsrSeason12-1') → précédente.
+    vi.mocked(useCareerCSRs).mockImplementation(
+      ((_slug: string, season?: string) =>
+        season
+          ? { data: { playlists: [playlist(rank('Diamond', 1, 1300))], available_seasons: seasons, season_id: 'CsrSeason12-1' } }
+          : { data: { playlists: [playlist(rank('Diamond', 3, 1500))], available_seasons: seasons, season_id: 'CsrSeason13-2' } }) as unknown as typeof useCareerCSRs,
+    )
+    const lusr: CareerLusrSection = {
+      current_rating: null,
+      current_tier_label: null,
+      current_playlist_group: null,
+      trend_label: null,
+      checkpoints: [],
+    }
+    renderWithProviders(<CareerRankingBlock playerSlug="p" lusrData={lusr} />)
+
+    // La flèche « up » (▲) est rendue avec le tooltip vs saison précédente.
+    const arrow = screen.getByText('▲')
+    expect(arrow).toBeInTheDocument()
+    expect(arrow.getAttribute('title')).toContain('Évolution vs saison précédente')
   })
 })

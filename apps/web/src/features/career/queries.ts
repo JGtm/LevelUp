@@ -102,14 +102,17 @@ export function useCareerRivals(playerSlug: string) {
   })
 }
 
-export function useCareerCSRs(playerSlug: string, season?: string) {
+// enabled : permet au second appel (saison précédente, delta CSR) de rester
+// inactif quand aucune saison antérieure n'existe — sinon la query key
+// careerCSRs(slug, undefined) collisionnerait avec l'appel principal.
+export function useCareerCSRs(playerSlug: string, season?: string, enabled = true) {
   return useQuery({
     queryKey: queryKeys.careerCSRs(playerSlug, season),
     queryFn: () =>
       api.get<CareerCSRResponse>(
         `/players/${playerSlug}/pages/career/csrs${season ? `?season=${encodeURIComponent(season)}` : ''}`,
       ),
-    enabled: !!playerSlug,
+    enabled: enabled && !!playerSlug,
     staleTime: 10 * 60 * 1000,
   })
 }
