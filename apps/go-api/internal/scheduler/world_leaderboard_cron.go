@@ -32,6 +32,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
@@ -46,6 +47,9 @@ type LeaderboardScraperPort interface {
 	// de la page (source directe autoritative — le manifest de build a un PlaylistLinks
 	// vide). refPlaylistID = graine pour charger la page.
 	FetchActivePlaylists(ctx context.Context, refPlaylistID string) ([]domain.WorldPlaylistRef, error)
+	// FetchSeasons découvre la liste des saisons CSR (nom d'Operation EN + FR) du menu
+	// déroulant de la page — source autoritative pour season_catalog (C2).
+	FetchSeasons(ctx context.Context, refPlaylistID string) ([]domain.WorldSeasonRef, error)
 }
 
 // WorldStatsEnricherPort agrège les stats des joueurs d'une saison (Phase C).
@@ -234,8 +238,12 @@ func (c *WorldLeaderboardCron) runOnceForTitle(ctx context.Context, titleSlug st
 		return
 	}
 
+	// Découvrir les saisons (nom d'Operation + FR) HORS lease writer — best-effort,
+	// persistées dans la même fenêtre writer que le snapshot CSR (C2).
+	seasons := c.discoverSeasons(ctx, playlists[0])
+
 	// 4. Acquérir le writer brièvement et insérer (fenêtre RW minimale).
-	inserted, err := c.persist(ctx, titleSlug, entries)
+	inserted, err := c.persist(ctx, titleSlug, entries, seasons)
 	if err != nil {
 		slog.ErrorContext(ctx, "world_leaderboard_cron: persistance échouée",
 			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "season", season, "err", err)
@@ -277,6 +285,19 @@ func (c *WorldLeaderboardCron) discoverActivePlaylists(ctx context.Context, stat
 	slog.InfoContext(ctx, "world_leaderboard_cron: playlists actives découvertes (Waypoint)",
 		"module", logging.ModuleLeaderboard, "discovered", len(ids), "static", len(static))
 	return ids
+}
+
+// discoverSeasons récupère la liste des saisons (nom d'Operation EN + FR) du menu
+// déroulant Waypoint pour alimenter season_catalog. Best-effort : une découverte en
+// échec (ou vide) renvoie nil — le cycle CSR n'est jamais compromis par les saisons.
+func (c *WorldLeaderboardCron) discoverSeasons(ctx context.Context, refPlaylistID string) []domain.WorldSeasonRef {
+	seasons, err := c.scraper.FetchSeasons(ctx, refPlaylistID)
+	if err != nil {
+		slog.WarnContext(ctx, "world_leaderboard_cron: découverte saisons échouée — season_catalog non rafraîchi",
+			"module", logging.ModuleLeaderboard, "err", err)
+		return nil
+	}
+	return seasons
 }
 
 // enrich agrège les stats des joueurs de la saison active (via l'enricher
@@ -396,11 +417,26 @@ func (c *WorldLeaderboardCron) scrapeAll(ctx context.Context, season string, pla
 // persist acquiert le writer shared et insère les entrées en append-only sous le
 // slug du titre courant (PMT-7 write-path : capability-gated par l'appelant
 // runOnceForTitle — seuls les titres déclarant CapWorldLeaderboard arrivent ici).
-func (c *WorldLeaderboardCron) persist(ctx context.Context, titleSlug string, entries []domain.LeaderboardEntry) (int, error) {
+// Upsert aussi season_catalog (C2) dans la MÊME fenêtre writer — best-effort : un
+// échec de l'upsert saisons est loggé mais ne fait pas échouer le snapshot CSR.
+func (c *WorldLeaderboardCron) persist(ctx context.Context, titleSlug string, entries []domain.LeaderboardEntry, seasons []domain.WorldSeasonRef) (int, error) {
 	wh, err := c.provider.AcquireWriter(ctxkeys.WithDBWriterLabel(ctx, "world_leaderboard_snapshot"))
 	if err != nil {
 		return 0, err
 	}
 	defer wh.Release()
-	return duckdb.InsertWorldCSRSnapshot(ctx, wh.DB(), titleSlug, entries)
+	inserted, err := duckdb.InsertWorldCSRSnapshot(ctx, wh.DB(), titleSlug, entries)
+	if err != nil {
+		return inserted, err
+	}
+	if len(seasons) > 0 {
+		if n, serr := ops.RefreshSeasonCatalog(ctx, wh.DB(), titleSlug, seasons); serr != nil {
+			slog.WarnContext(ctx, "world_leaderboard_cron: upsert season_catalog échoué (snapshot CSR conservé)",
+				"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "err", serr)
+		} else {
+			slog.DebugContext(ctx, "world_leaderboard_cron: season_catalog rafraîchi",
+				"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "seasons", n)
+		}
+	}
+	return inserted, nil
 }

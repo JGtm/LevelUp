@@ -38,6 +38,11 @@ type stubScraper struct {
 	activePlaylists     []domain.WorldPlaylistRef
 	activePlaylistsErr  error
 	activePlaylistCalls int
+	// seasons : saisons « découvertes » (C2). nil → season_catalog non rafraîchi
+	// (comportement par défaut des tests historiques).
+	seasons      []domain.WorldSeasonRef
+	seasonsErr   error
+	seasonsCalls int
 }
 
 func (s *stubScraper) FetchActiveSeason(_ context.Context, _ string) (string, error) {
@@ -51,6 +56,11 @@ func (s *stubScraper) FetchActiveSeason(_ context.Context, _ string) (string, er
 func (s *stubScraper) FetchActivePlaylists(_ context.Context, _ string) ([]domain.WorldPlaylistRef, error) {
 	s.activePlaylistCalls++
 	return s.activePlaylists, s.activePlaylistsErr
+}
+
+func (s *stubScraper) FetchSeasons(_ context.Context, _ string) ([]domain.WorldSeasonRef, error) {
+	s.seasonsCalls++
+	return s.seasons, s.seasonsErr
 }
 
 func (s *stubScraper) FetchCSRLeaderboard(_ context.Context, season, playlist string, _ int) ([]domain.LeaderboardEntry, error) {
@@ -132,6 +142,42 @@ func TestWorldLeaderboardCron_DiscoversActivePlaylists(t *testing.T) {
 	}
 	if n := countSnapshots(t, db, "csrseason13-2"); n != 3 {
 		t.Errorf("snapshots = %d, want 3 (une entrée par playlist découverte)", n)
+	}
+}
+
+// TestWorldLeaderboardCron_PersistsSeasonCatalog (C2) vérifie que les saisons
+// découvertes (nom d'Operation + FR) sont upsertées dans season_catalog dans la
+// même fenêtre writer que le snapshot CSR.
+func TestWorldLeaderboardCron_PersistsSeasonCatalog(t *testing.T) {
+	provider, db := newSharedProviderForTest(t)
+	scraper := &stubScraper{
+		season:          "csrseason13-2",
+		entries:         []domain.LeaderboardEntry{{Rank: 1, Gamertag: "Alpha", XUID: "2535000000000001", CSRValue: 1500}},
+		activePlaylists: []domain.WorldPlaylistRef{{AssetID: "pl-1", DisplayName: "Ranked Arena"}},
+		seasons: []domain.WorldSeasonRef{
+			{SeasonID: "csrseason13-2", DisplayName: "Infinite", NameFR: "Infinite"},
+			{SeasonID: "csrseason12-1", DisplayName: "Shadows", NameFR: "Ombres"},
+		},
+	}
+	c := newTestCron(provider, scraper)
+	c.RunOnce(context.Background())
+
+	if scraper.seasonsCalls == 0 {
+		t.Errorf("FetchSeasons jamais appelé (season_catalog non câblé)")
+	}
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM season_catalog WHERE title_slug = ?`, "halo_infinite").Scan(&count); err != nil {
+		t.Fatalf("count season_catalog: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("season_catalog = %d lignes, want 2", count)
+	}
+	var nameFR string
+	if err := db.QueryRow(`SELECT name_fr FROM season_catalog WHERE season_id = ?`, "csrseason12-1").Scan(&nameFR); err != nil {
+		t.Fatalf("select FR: %v", err)
+	}
+	if nameFR != "Ombres" {
+		t.Errorf("name_fr csrseason12-1 = %q, want \"Ombres\"", nameFR)
 	}
 }
 

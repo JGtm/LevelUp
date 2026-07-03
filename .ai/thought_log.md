@@ -1,3 +1,37 @@
+## [2026-07-03] C2a : persistance season_catalog (noms + FR des saisons Waypoint) — COMPLÉTÉ (backend, worktree)
+
+**Statut** : Complété (sous-tranche C2a — persistance). C2b (surfaçage des libellés
+« Saison N · Nom » dans les sélecteurs) reste à faire.
+
+**Décision architecturale clé** : `season_catalog` va dans la SHARED DB (pas metadata).
+Raison : la SOURCE est le scrape Waypoint et le SEUL writer sanctionné détenu par
+`world_leaderboard_cron` est le writer shared (`provider.AcquireWriter`). Écrire dans
+metadata depuis ce cron violerait le writer mono-process (contention sync — même hazard
+qui a fait choisir, en A3, de lire les actives depuis les snapshots plutôt que d'écrire
+`is_active` dans metadata). Co-localisé avec `world_csr_leaderboard_snapshots` (même cron,
+même scrape). Table PK-only + upsert SELECT-then-write (`ops.RefreshSeasonCatalog`) =
+ART-safe (pas d'index secondaire muté ; pattern `catalog_refresh.go`).
+
+**Données** : la fixture confirme `translations` par locale dans le payload
+(`fr-FR: "Ombres"` pour csrseason12-1, `"Dernier bastion"` pour 11-1). `displayName` = EN
+(la page est requêtée en en-US). Le scraper résout FR (`WaypointRef.FrenchName`,
+fallback EN) et expose `FetchSeasons() []domain.WorldSeasonRef`.
+
+**Câblage** : `world_leaderboard_cron` découvre les saisons (hors lease writer) et les
+upsert dans la MÊME fenêtre writer que le snapshot CSR (best-effort : un échec saisons
+n'annule pas le snapshot). Migration `create_season_catalog` (TargetShared, PK-only).
+
+**Résultats observés** : `go build` OK, `go vet` OK, tests unitaires (scheduler/ops/halo/
+migration) verts + `-tags=integration` (sync anti-ART, migration, ops, scheduler) verts.
+Nouveaux tests : `TestFetchSeasons_TranslationsFR` (fixture réelle), `TestRefreshSeasonCatalog_
+UpsertAndIdempotent`, `TestWorldLeaderboardCron_PersistsSeasonCatalog`.
+
+**Prochaine étape** : C2b — surfacer « Saison N · Nom » (localisé) dans le sélecteur de la
+page player (`AvailableCSRSeasons`, match season_id insensible à la casse) et de la page
+classement (`useLeaderboardCatalog`, match direct). Puis C3.
+
+---
+
 ## [2026-07-03] C1 : delta placement saison précédente (page player) — COMPLÉTÉ (voie b frontend-only, worktree)
 
 **Statut** : Complété. Étape C1 du PLAN_PLAYLISTS_CATALOG_ET_LEADERBOARD livrée.
