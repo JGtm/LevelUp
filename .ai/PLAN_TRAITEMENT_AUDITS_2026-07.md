@@ -563,9 +563,17 @@ traiter AVANT les refactors structurels.)
 - [ ] F1 — ARCHI 28 : `media_repo.go:112` (+ :240, q37_enrich) — injecter la
   classification de modes par titre au wiring (seam `analysis.PairNamePrefixesFunc`
   existant) ; plus de couplage platform/duckdb → games/halo_infinite.
-- [ ] F2 — ARCHI 29 : providers CSR Explorer/Compare (`registry_pages.go:360`, `:812`) —
-  gate capability (`csr.live`) ou map slug→provider (pattern MT-09) ; un joueur H5 ne
-  voit plus le CSR Infinite.
+- [x] F2 — ARCHI 29 : providers CSR Explorer/Compare gatés par capability. FAIT : les 2
+  providers (`newExplorerCSRProvider`/`newExplorerSeasonCSRProvider`) sont spécifiques au
+  live Infinite (`rankedplaylists.Active()` + client + endpoints HINF). Nouveau helper
+  `titleSupportsLiveCSR(pdb)` = `dataAdapter.Capabilities().Has(CapMatchSkillSnapshot)` (pas
+  de comparaison de slug → pas de violation ratchet). Infinite `match.skill.snapshot=degraded`
+  → Has=true → providers injectés (0 changement). H5 `=not_exposed` → Has=false → providers
+  nil → le service dégrade (encart CSR vide, `s.csr==nil` guard) : plus de fuite CSR/playlists
+  Infinite sous H5. Appliqué aux 2 sites (Explorer deps + Compare WithCSR). NOTE Phase 2 : quand
+  H5 exposera match.skill.snapshot, ces providers Infinite devront devenir title-aware (playlists
+  H5) — la capability les réactiverait à tort en l'état (à traiter au câblage CSR H5). Gate :
+  build+vet + api/service tests verts.
 - [ ] F3 — ARCHI 32 : URL Waypoint (`match_view_builders_header.go:59`,
   `match_history_service_enrich.go:278`) → derrière `TitleAssetURLAdapter` (déjà injecté) ;
   capability/None pour les titres sans page match — plus de lien mort en Match View H5.
