@@ -48,6 +48,16 @@ func loadBackupConfig(repoRoot, settingsPath string) BackupConfig {
 // loadMultiTitleAPIEnabled lit multi_title_api_enabled depuis app_settings.json.
 // La var d'env MULTI_TITLE_API_ENABLED prend la priorité (override d'urgence).
 // Défaut : false.
+//
+// Nature : gate de déploiement progressif (rollout), PAS un kill-switch de
+// rollback. Cycle de vie :
+//   - défaut actuel : OFF (surface API multi-titre field-mappings/preview non
+//     exposée par défaut) ;
+//   - critère de bascule ON : surface multi-titre validée pour >= 2 titres
+//     (activation Halo 5, chantier multi-titre phase 1b) ;
+//   - date cible de retrait du flag : quand le multi-titre est le comportement
+//     permanent — corriger la cause et livrer actif (CLAUDE.md n°11) plutôt que
+//     de conserver un flag qui laisse la feature OFF « pour plus tard ».
 func loadMultiTitleAPIEnabled(settingsPath string) bool {
 	if v := os.Getenv("MULTI_TITLE_API_ENABLED"); v != "" {
 		vl := strings.ToLower(strings.TrimSpace(v))

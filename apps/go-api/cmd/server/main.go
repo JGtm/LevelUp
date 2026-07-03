@@ -700,6 +700,15 @@ func main() {
 	// Phase 4.9 (2026-05-24) : BatchQueue serveur-wide default ON. Set
 	// LEVELUP_PERSIST_BATCH_ASYNC=0 pour fallback path synchrone (validé Phase 4.5).
 	//
+	// Cycle de vie du kill-switch (rollback vers le path synchrone) :
+	//   - basculement défaut ON : 2026-05-24 (Phase 4.9) ;
+	//   - date cible de retrait : >= 2026-Q4 (après >= 1 trimestre prod stable) ;
+	//   - critère mesurable : aucun rollback `=0` activé + compteur
+	//     `persist_wal_purged_total` stable (aucun WAL purgé sans persist) +
+	//     recovery boot (RecoverPending) sans batch orphelin. Alors supprimer le
+	//     chemin synchrone, le flag et ses 3 lecteurs (main.go, sync_v2_wiring.go,
+	//     auto_sync.go).
+	//
 	// Path async : queue.Submit + worker + WAL durable (recovery au boot via
 	// RecoverPending). Bénéfice : décorrélation sync/persist + résilience crash
 	// mid-persist (le batch est journalisé sur disque AVANT le push channel).

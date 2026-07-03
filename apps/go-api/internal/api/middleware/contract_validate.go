@@ -21,6 +21,12 @@ import (
 )
 
 // contractEnabled indique si la validation est active (lu une seule fois au démarrage).
+//
+// Nature : diagnostic dev/CI PERMANENT, PAS un kill-switch de déploiement.
+// Défaut OFF en prod par conception (no-op transparent) ; ON en dev/CI. Aucune
+// date de retrait — l'outil reste en opt-in tant que la validation de contrat a
+// une valeur : il ne masque aucune feature et n'entretient aucun code mort
+// conditionnel côté prod.
 var contractEnabled = os.Getenv("LEVELUP_CONTRACT_VALIDATE") == "1"
 
 // ContractValidate est un middleware qui valide les réponses en dev mode.

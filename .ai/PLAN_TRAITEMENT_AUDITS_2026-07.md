@@ -294,10 +294,15 @@ Objectif : plus aucun « forever guard » sur le chemin critique ; flags découv
   En cas de découverte bloquante (couplage V1/V2 plus profond que prévu) : repli autorisé
   sur « fallback auto supprimé + retrait daté » MAIS en informer l'utilisateur au point
   d'étape, pas en silence.
-- [ ] D1d — DETTE §2.1 : documenter le cycle de vie des autres flags
+- [x] D1d — DETTE §2.1 : documenter le cycle de vie des autres flags
   (`LEVELUP_PERSIST_BATCH_ASYNC`, `MULTI_TITLE_API_ENABLED`, `LEVELUP_EVENTS_CONVERGENCE`,
   `LEVELUP_CONTRACT_VALIDATE`) — modèle `shared_reader_legacy.go:30-34` (date de
-  basculement + date cible de retrait + critère mesurable).
+  basculement + date cible de retrait + critère mesurable). FAIT : triplet ajouté aux 4
+  sites de lecture (2 vrais kill-switches BATCH_ASYNC/EVENTS_CONVERGENCE avec date cible
+  >= 2026-Q4 + critère mesurable ; MULTI_TITLE classé gate de rollout ; CONTRACT_VALIDATE
+  classé diagnostic dev/CI permanent sans retrait). docs/CONFIGURATION.md (+FR) : défaut
+  `(off)`→`on` corrigé pour BATCH_ASYNC + 4 lignes de flags ajoutées. Tension règle 11 sur
+  MULTI_TITLE notée en §7.
 - [ ] D1e — CR A6 : centraliser les 41 `os.Getenv` hors `internal/config` dans
   `config.AppConfig` au boot, injecter (élimine la double lecture scheduler/handler de
   PERSIST_BATCH — devient sans objet après D1b pour ce flag, reste vrai pour les autres).
@@ -985,3 +990,9 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 - [LOT D1 / D1c — GATE live-sync différé] Le gate D1c (3) « sync live complet en local » exige
   tokens/réseau réels, non exécutable par l'agent. Couvert par `-tags=integration -p 1 ./...`
   (vert) ; le sync live reste un contrôle MANUEL avant le land sur main.
+- [LOT D1 / D1d — tension règle 11] `MULTI_TITLE_API_ENABLED` défaut OFF est un gate de rollout
+  qui « laisse une feature OFF pour plus tard » — ce que la règle CLAUDE.md n°11 proscrit. NON
+  corrigé en D1d (doc-only) : la bascule ON relève du chantier d'activation multi-titre
+  (phase 1b, cf. `HANDOFF` multi-titre), pas de la campagne d'audits. D1d a
+  documenté son cycle de vie (critère de bascule + renvoi règle 11 pour le retrait) sans changer
+  le défaut.
