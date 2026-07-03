@@ -99,9 +99,6 @@
 //   - `match_exclusion` (`is_excluded`) (player DB) : action utilisateur via
 //     PATCH /players/{slug}/matches/{id}/exclusion. Pas de relation avec
 //     le sync. Écrit par `match_exclusion_repo.go`.
-//   - `known_teammates_count` / `friends_xuids` (player_match_enrichment) :
-//     colonnes réservées dans le schéma, jamais peuplées. Ne pas
-//     implémenter sans clarifier l'usage en amont.
 //
 // Cf. `.ai/REFACTOR_COLLECT_PERSIST.md` pour le design complet,
 // `.ai/ENRICHMENTS_CATALOG.md` pour l'inventaire exhaustif des données.

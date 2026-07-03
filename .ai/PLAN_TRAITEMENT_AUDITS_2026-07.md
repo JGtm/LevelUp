@@ -534,13 +534,22 @@ openapi/migrations associées, puis build+tests.
   VÉRIFIÉ : la fonction `processMatch` est déjà supprimée (D1b, engine_process_match.go) ; il ne
   reste que des mentions en COMMENTAIRE (backfill_personal_scores.go, csr_writes.go, engine.go…) —
   commentaires stale, non bloquants (nettoyage cosmétique noté, hors périmètre suppression).
-- [ ] G14 — DETTE §2.5 / DEC-6 : `known_teammates_count` + `friends_xuids` — DROP au
-  prochain rebuild (suivre la recette ADR 0026) ; retirer toute lecture résiduelle.
-- [ ] G15 — ARCHI mineur perf : `sync/aggregates.go:37` — `mv_map_stats` rebuildée à chaque
-  sync sans AUCUN lecteur Go → supprimer le rebuild (et la vue si rien ne la lit).
-- [ ] G16 — PRÉ-EXÉCUTÉ le 2026-07-02 (section 0 « Complétude » ajoutée à
-  delivery-checklist : suppression routing => suppression code+tests). Statuer `[~]` au
-  passage du lot après vérification.
+- [x] G14 — DETTE §2.5 / DEC-6 : `known_teammates_count` + `friends_xuids` retirées. FAIT :
+  confirmé 0 writer (persister ne les écrit pas) et 0 lecture applicative (`ExcludeFriendsXUIDs`
+  = param requête distinct, pas la colonne). Retiré de la vue `player_match_enrichment_latest`
+  (buildPMELatestViewSQL, baseline-only), de `ensurePMEColumns`, du CREATE TABLE `sync/schema.go`
+  et de la doc `persist/doc.go`. DROP physique = au prochain rebuild append-only (DEC-6, pas de
+  writer à réactiver ; la vue ne les projette plus donc plus aucune surface de lecture). Fixtures
+  de test conservées AVEC les colonnes (couvre le cas réel « DB legacy = colonnes orphelines
+  physiques présentes »). Gate : build+vet + sync/migration/persist tests verts + intégration -p 1.
+- [x] G15 — ARCHI mineur perf : `mv_map_stats` rebuild supprimé. FAIT : confirmé 0 lecteur Go
+  (seule réf = la définition). Retiré de `playerMaterializedViews` (plus de DROP+CREATE TABLE à
+  chaque sync). Ajout d'un nettoyage self-healing `deprecatedPlayerAggregates` (DROP TABLE IF
+  EXISTS mv_map_stats, no-op après 1er passage) pour purger les DBs prod existantes — commenté
+  façon kill-switch (critère de retrait mesurable). Gate : idem G14.
+- [~] G16 — PRÉ-EXÉCUTÉ le 2026-07-02. VÉRIFIÉ : la section « ## 0. Complétude » est bien
+  présente dans `.claude/skills/delivery-checklist/SKILL.md` (couvre suppression routing =>
+  suppression code+tests+imports+types+openapi/i18n). Rien à refaire.
 
 Gate G : `go build ./... && go test ./...` ; `npm run typecheck && npm run build` ;
 grep de chaque symbole supprimé → 0 ; diff openapi cohérent (suppression session-compare).
