@@ -270,12 +270,12 @@ proposée (c'est SON fichier d'instructions).
 
 Objectif : plus aucun « forever guard » sur le chemin critique ; flags découvrables.
 
-- [ ] D1a — DETTE TOP4 (pré-requis de D2) : implémenter le warn log `legacy_source_used`
+- [x] D1a — DETTE TOP4 (pré-requis de D2) : implémenter le warn log `legacy_source_used`
   (+ compteur expvar) sur TOUTES les lectures de fallback legacy auth
   (`sync_meta.oauth_refresh_token`, `msal_token_cache`, `SPNKR_OAUTH_REFRESH_TOKEN_*`) —
   tel que CLAUDE.md le documente déjà. Noter la date de mise en prod dans le Journal §6 :
   D2 se déclenche ≥7 jours après.
-- [ ] D1b — DETTE TOP3 / DEC-3 : supprimer `LEVELUP_PERSIST_BATCH` et la branche `=0`
+- [x] D1b — DETTE TOP3 / DEC-3 : supprimer `LEVELUP_PERSIST_BATCH` et la branche `=0`
   (chemin `insertFetchedMatch` / UPSERT legacy `sync/writes.go:68`) — 8 sites recensés
   (`cmd/levelup/cmd_sync.go:68-70`, `engine.go:338`, `scheduler/auto_sync.go:336`,
   `handlers/sync_handler.go:210`, `engine_batch_path.go`, +3). Supprimer aussi
@@ -949,3 +949,20 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
   `seedSharedDBForPoolTest.match_registry` sans `game_variant_id`/`game_variant_name`
   (lus par Q5SharedHistory depuis f7c7885b69, 2026-07-01) — colonnes ajoutées au fixture
   (commit 07ee3546d). Pas de défaut de prod (schéma prod expose ces colonnes).
+- [LOT D1 / D1b — TRAITÉ] `batchMode=false` était le DÉFAUT SILENCIEUX des tests : tout test
+  basé sur run()/RunDelta (y compris la suite E2E provider concurrency) utilisait le chemin
+  legacy `insertFetchedMatch` (écriture inline), JAMAIS le chemin batch. Supprimer `batchMode`
+  (batch INSERT-only = unique voie) a rerouté ces tests vers `submitMatchAsBatch` →
+  SharedPersister, révélant 2 lacunes de SETUP de test (PAS des bugs prod — le batch est le
+  défaut prod, correct) : (1) `contract_v1_test.go` à provider nil bloquait sur le writer-lease
+  (corrigé : le contrat ne teste que le format d'URL `xuid(NNN)`, vérifiable sans persist) ;
+  (2) les 4 E2E provider (`newE2EEnv`/`newMultiUserEnv`) créaient le shared via
+  `EnsureSharedSchema` statique, sans les colonnes écrites par le SharedPersister
+  (`match_intensity`, `backfill_bits`, mécaniques H5 — ajoutées par migrations title-owned) →
+  corrigé via `patchSharedSchemaForBatch` dans les 2 env. LEÇON : un flag à défaut-false peut
+  masquer un chemin de code entier en test.
+- [LOT D1 / D1b — À TRAITER (transitif)] `insertHighlightEventsFromData`
+  (`engine_highlight_events.go`) devient orphelin test-only après la suppression
+  d'`insertFetchedMatch` (son seul caller prod) — le chemin batch persiste les events via
+  SharedPersister. À supprimer avec ses 2 tests (`highlight_events_orchestration_test.go`)
+  après vérif du sibling `ProcessHighlightEvents`. Hors périmètre nommé de D1b.

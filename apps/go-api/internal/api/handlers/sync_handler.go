@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	gosync "sync"
 	"time"
 
@@ -202,13 +201,6 @@ func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *dom
 				return ""
 			},
 		))
-	}
-	// Phase 4.7 closure (2026-05-24) : default flipé à ON après validation
-	// empirique Phase 4.5 (16 syncs / 0 FATAL). Set LEVELUP_PERSIST_BATCH=0
-	// pour fallback legacy insertFetchedMatch (mode dégradé, ART bug actif).
-	// Aligne sur AutoSyncScheduler.defaultRunnerFactory.
-	if os.Getenv("LEVELUP_PERSIST_BATCH") != "0" {
-		engine = engine.WithBatchPersistMode(true)
 	}
 	return engine
 }

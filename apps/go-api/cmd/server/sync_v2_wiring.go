@@ -315,12 +315,11 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 			))
 		}
 
-		// 6. BatchPersistMode + BatchQueue (Phase 2.3/4.7/4.9 — INSERT-only async)
-		if os.Getenv("LEVELUP_PERSIST_BATCH") != "0" {
-			engine.WithBatchPersistMode(true)
-			if deps.BatchQueue != nil && os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") != "0" {
-				engine.WithBatchQueue(deps.BatchQueue)
-			}
+		// 6. BatchQueue async (Phase 4.9 — INSERT-only via WAL + worker). Le batch
+		// INSERT-only est le seul chemin d'écriture depuis D1b ; seul le layer async
+		// reste optionnel via LEVELUP_PERSIST_BATCH_ASYNC.
+		if deps.BatchQueue != nil && os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") != "0" {
+			engine.WithBatchQueue(deps.BatchQueue)
 		}
 
 		// 7. CSRSeasonID (CSR snapshot post-sync)

@@ -112,8 +112,6 @@ levelup sync-full --all [--token-pool-size 0]
 | `--rps` | les deux | 1 | Max de requêtes API par seconde. |
 | `--token-pool-size` | `--all` uniquement | 0 | 0 = auto (toutes les sources découvertes), `MaxSize` du pool. |
 
-`LEVELUP_PERSIST_BATCH=0` revient au chemin legacy d'insertion match par match (le batch persist est ON par défaut).
-
 ### Backfill (recalculs locaux & backfills API)
 
 ```bash

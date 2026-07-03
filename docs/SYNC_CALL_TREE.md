@@ -58,8 +58,7 @@ AutoSyncScheduler.Run(ctx)                         (scheduler/auto_sync.go)
                       │           ├─ SetCustomClient(NewPooledHaloClient(pool, gamertag, xuid))
                       │           ├─ WithPostSyncRunner(postSyncRunner, gamertag)
                       │           ├─ WithMediaScanHook(...)
-                      │           ├─ WithBatchPersistMode(true)   if LEVELUP_PERSIST_BATCH != "0"
-                      │           │     └─ WithBatchQueue(batchQueue) if LEVELUP_PERSIST_BATCH_ASYNC != "0"
+                      │           ├─ WithBatchQueue(batchQueue)    if LEVELUP_PERSIST_BATCH_ASYNC != "0"
                       │           ├─ WithCSRSeasonID / WithAssetNameResolution(pool)
                       │           └─ returns *sync.SyncEngine
                       │
@@ -100,9 +99,8 @@ SyncEngine.RunFull(ctx, opts)   → run(ctx, opts, isDelta=false)
   │     ├─ HEAD / watermark check  (delta: stop at first known match)
   │     ├─ load known match ids (shared × player_match_enrichment × awards)
   │     ├─ PooledHaloClient.GetMatchHistory / GetMatchStats (parallel fetch)
-  │     └─ per match → insertFetchedMatch(...)
-  │           └─ submitMatchAsBatch(...)   if WithBatchPersistMode  → see Persist layer
-  │           (else legacy per-match INSERT path — LEVELUP_PERSIST_BATCH=0)
+  │     └─ per match → persistFetchedMatch(...)
+  │           └─ submitMatchAsBatch(...)   → see Persist layer (INSERT-only, seul chemin)
   │
   └─ ── post-sync (best effort) ──
         ├─ refresh aggregates / career rank / sync_meta watermark

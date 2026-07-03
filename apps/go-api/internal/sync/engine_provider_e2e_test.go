@@ -84,6 +84,11 @@ func newE2EEnv(t *testing.T) *e2eTestEnv {
 	if err != nil {
 		t.Fatalf("OpenSharedDB init: %v", err)
 	}
+	// Depuis D1b, le chemin batch (SharedPersister) est l'UNIQUE voie d'écriture :
+	// il écrit des colonnes (match_intensity, backfill_bits, mécaniques H5…) ajoutées
+	// par les migrations title-owned et absentes du schéma statique EnsureSharedSchema.
+	// On les patche ici, sinon le persist casse sur "column match_intensity does not exist".
+	patchSharedSchemaForBatch(t, sharedInit.SQLDb())
 	_ = sharedInit.Close()
 
 	// Initialise player via OpenPlayerDB (crée + EnsurePlayerSchema, ferme).

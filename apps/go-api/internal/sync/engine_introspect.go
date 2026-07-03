@@ -43,11 +43,6 @@ func (e *SyncEngine) HasCustomClient() bool {
 	return e.customClient != nil
 }
 
-// BatchPersistEnabled retourne le flag WithBatchPersistMode. Test-only.
-func (e *SyncEngine) BatchPersistEnabled() bool {
-	return e.batchMode
-}
-
 // HasBatchQueue retourne true si .WithBatchQueue a été appelé. Test-only.
 func (e *SyncEngine) HasBatchQueue() bool {
 	return e.batchQueue != nil

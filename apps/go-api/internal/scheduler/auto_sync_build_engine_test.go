@@ -19,7 +19,6 @@
 //   - FriendsLoader câblé quand settings != nil
 //   - PostSyncRunner câblé quand WithPostSyncRunner(runner)
 //   - MediaScanHook câblé quand settings != nil
-//   - BatchPersistMode default ON (sauf LEVELUP_PERSIST_BATCH=0)
 //   - CSRSeasonID câblé quand cfg.CurrentCSRSeasonID != ""
 package scheduler_test
 
@@ -110,9 +109,6 @@ func TestBuildEngine_AllOptionsWired_GoldenAntiRegression(t *testing.T) {
 	}
 	if !engine.HasMediaScanHook() {
 		t.Error("REGRESSION: MediaScanHook non câblé — captures non associées aux matchs")
-	}
-	if !engine.BatchPersistEnabled() {
-		t.Error("REGRESSION: BatchPersistMode désactivé — fallback insertFetchedMatch legacy (ART bug actif)")
 	}
 	if engine.CSRSeasonIDForTest() != "CsrSeason42" {
 		t.Errorf("REGRESSION: CSRSeasonID = %q, want CsrSeason42", engine.CSRSeasonIDForTest())
