@@ -77,8 +77,43 @@ shared DB en RW direct) :
    toutes les playlists jouées automatiquement (agrégation par-match). Vérifier les flags saison
    (`--season`, checkpoint) et, si besoin, le format saison CMS validé (`Csr/Seasons/CsrSeasonX-Y.json`).
 
-Non bloquant (les gens regardent surtout la saison courante) ; à faire APRÈS C1/C2. Préparer les
-commandes exactes (chemins CMS de saison validés) au moment de lancer.
+Non bloquant (les gens regardent surtout la saison courante) ; à faire APRÈS C1/C2.
+
+**VALIDÉ SUR SAMPLE (2026-07-03)** — pipeline testé de bout en bout sur csrseason12-1 (Shadows) :
+snapshot 6 playlists (4→6, +Tactique +Duel 1v1) → 300 lignes avec xuid (B1) ; enrich 3 joueurs
+via **pool de 7 tokens round-robin** (`-all-tokens`), xuid pré-seedé du snapshot (PeopleHub
+court-circuité), filtre fenêtre-date saison actif → 6 lignes persistées, 0 erreur.
+
+**Fix livré (les CLI étaient incomplets)** : `snapshot-world-leaderboard` et
+`backfill-world-player-stats` n'appelaient PAS `migration.SetTitleStepsProvider` → `RunForDB`
+ratait les migrations title-owned (add_xuid, create_season_catalog) sur une DB non pré-migrée
+par le serveur → `InsertWorldCSRSnapshot`/`WorldSeasonPlayers` échouaient (colonne xuid absente).
+Ajouté aux 2 CLI (auto-migration prouvée sur DB fraîche). Alternative manuelle si besoin :
+`go run ./cmd/apply_shared_migrations -shared <db>`.
+
+**Commandes du backfill COMPLET** (serveur ARRÊTÉ ; depuis `apps/go-api` ; `LEVELUP_REPO_ROOT`
+= racine repo principal ; `DB` = chemin absolu shared_matches_v2.duckdb) :
+
+```
+# jeu complet des 16 playlists ranked (actives + historiques) :
+PL="edfef3ac-9cbe-4fa2-b949-8f29deafd483,dcb2e24e-05fb-4390-8076-32a0cdb4326e,fa5aa2a3-2428-4912-a023-e1eeea7b877c,c94cb508-2fbd-450a-81db-bb74f7741d45,6233381c-fc96-40b9-b1ff-f6a4de72dd7a,57e417dd-7366-4dda-9bdd-2802151d5e81,71734db4-4b8e-4682-9206-62b6eff92582,28bfa5f4-89b0-47dc-86e8-1a7cc5b593fc,a4a4453c-7a91-4b27-b952-2456c5ce3205,6dc5f699-d6d9-41c4-bdf8-7ae11dec2d1b,f3738fae-bd09-4fd1-9dea-e32f546bbbfd,0b42053a-32c5-4c2d-b8b8-5f07274a0117,7c60fb3e-656c-4ada-a085-293562642e50,a883e7e1-9aca-4296-9009-3733a0ca8081,f7eb8c71-fedb-4696-8c0f-96025e285ffd,f7f30787-f607-436b-bdec-44c65bc2ecef"
+
+# ÉTAPE 1 — re-scraper TOUTES les saisons × 16 playlists (public, sans token ; ~quelques min) :
+go run ./cmd/snapshot-world-leaderboard -season all -shared-db "$DB" -playlists "$PL" -limit 200 -polite-ms 800
+
+# ÉTAPE 2 — enrichir TOUTES les saisons via le POOL de tokens (LONG, off-peak ; checkpoint reprend) :
+go run ./cmd/backfill-world-player-stats -token-gamertag JGtm -season all -all-tokens -deep -max-pages 120 -quiet
+```
+
+Notes : `-season all` = toutes les saisons (csrseason3-1 → active) — idempotent (append-only,
+_latest gagne) ; la saison COURANTE est aussi re-couverte (inoffensif, le cron la gère aussi.
+Étape 2 : `-all-tokens` OBLIGATOIRE pour le pool (sinon single-token) ; ~3 comptes ont un RT
+périmé (XxDaemonGamerxX/Chocoboflor/Madina97294 — `invalid_grant`, NE PAS re-capturer, ADR 0023),
+le pool tourne sur 7 comptes valides ; Ctrl-C = arrêt propre + reprise via checkpoint
+`data/world_backfill_checkpoint.json` (relancer la MÊME commande). Durée étape 2 = plusieurs
+heures (deep fetch × ~276 joueurs × ~14 saisons) — lancer en heures creuses. `season_catalog`
+(C2) N'est PAS peuplé par ce backfill : c'est le cron serveur (world_leaderboard_cron) qui le
+remplit — sans ça les libellés de saison retombent en fallback « Saison N » (dégradation OK).
 
 ## 3. B2 — ce qui a été prouvé (NE PAS refaire l'erreur)
 

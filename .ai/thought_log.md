@@ -1,3 +1,36 @@
+## [2026-07-03] C3 : backfill saisons passées — SAMPLE VALIDÉ + fix auto-migration CLI (worktree)
+
+**Statut** : Complété pour la partie SAMPLE + fix outillage. Backfill COMPLET = commandes
+remises à l'utilisateur (opérationnel, plusieurs heures, off-peak — pas lancé par l'agent).
+
+**Sample validé de bout en bout** (serveur arrêté, code worktree + données repo principal via
+`LEVELUP_REPO_ROOT`) sur csrseason12-1 (Shadows) : étape 1 snapshot 6 playlists (4→6, +Tactique
+57e417dd +Duel 1v1 28bfa5f4) = 300 lignes, **300/300 avec xuid** (B1 : scraper→persister, pas de
+PeopleHub) ; étape 2 enrich 3 joueurs via **pool 7 tokens round-robin** (`-all-tokens`),
+`276/276 xuid pré-seedés du snapshot`, filtre fenêtre-date saison actif → 6 lignes persistées,
+0 erreur (B2 agrégation par-match).
+
+**Bug outillage trouvé + corrigé** : `snapshot-world-leaderboard` et `backfill-world-player-stats`
+n'appelaient PAS `migration.SetTitleStepsProvider(halomigrations.StepsFor)` → leur `RunForDB`
+n'appliquait QUE les migrations globales, ratant les title-owned (add_xuid B1, create_season_catalog
+C2a). Sur une DB non pré-migrée par le serveur (cas hors prod déployée), `InsertWorldCSRSnapshot`
+et `WorldSeasonPlayers` échouaient (« column xuid not found »). Ajout de l'appel aux 2 CLI ;
+auto-migration PROUVÉE sur DB fraîche (5 insérées sans apply_shared_migrations préalable).
+Débloquage immédiat du sample via `cmd/apply_shared_migrations` (applied=2).
+
+**Découverte (token pool)** : 3 comptes ont un RT périmé (XxDaemonGamerxX, Chocoboflor,
+Madina97294 — `invalid_grant`) — les xuids périmés connus, NE PAS re-capturer (ADR 0023) ; le
+pool tourne sur 7 comptes valides. [[feedback_token_model_rt_never_recapture]]
+
+**État data** : la DB locale a reçu les 2 migrations (add_xuid + season_catalog) + Shadows a
+maintenant 6 playlists snapshotées ; enrich Shadows partiel (3/276 joueurs, checkpoint pose le
+reste). Un run complet `-season all` complète tout.
+
+**Prochaine étape** : l'utilisateur lance le backfill complet (2 commandes dans le handoff §C3)
+quand il veut (off-peak). Reste du plan : RIEN — B1→A2→A3→B2→C1→C2→C3(sample) tous couverts.
+
+---
+
 ## [2026-07-03] C2b : surfaçage "Saison N · Nom" dans les 2 sélecteurs — COMPLÉTÉ (étape C2 close, worktree)
 
 **Statut** : Complété. Étape C2 (saisons) close (C2a persistance + C2b surfaçage).

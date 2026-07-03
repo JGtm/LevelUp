@@ -58,6 +58,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/duckdb"
@@ -87,6 +88,12 @@ type cliFlags struct {
 }
 
 func main() {
+	// Enregistre les steps de migration title-owned (halo_infinite) : sans ça,
+	// RunForDB n'applique QUE les migrations globales et rate p.ex. add_xuid
+	// (WorldSeasonPlayers échoue : colonne xuid absente) sur une DB que le serveur
+	// n'a pas déjà migrée (backfill hors prod déployée).
+	migration.SetTitleStepsProvider(halomigrations.StepsFor)
+
 	f := parseFlags()
 
 	// -quiet : console au niveau ERROR → masque les INFO (oauth/xsts/migration) et les
