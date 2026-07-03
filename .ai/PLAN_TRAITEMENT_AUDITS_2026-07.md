@@ -351,10 +351,17 @@ Objectif : plus aucun chemin prod du pattern déclencheur ART #23046 ; tripwire 
   (colonnes batch match_intensity/backfill_completed/backfill_bits/kill-mechanics). Gate :
   `TestOpenSpartanImport_EndToEnd_WritesAllRowFamilies` vert ; `-tags=integration -p 1`
   persist/sync/service vert.
-- [ ] E2 — ARCHI 16 : `backfill_registry_names.go:98` — convertir l'UPDATE bulk multi-row
+- [x] E2 — ARCHI 16 : `backfill_registry_names.go:98` — convertir l'UPDATE bulk multi-row
   nu sur match_registry en row-by-row par match_id (ou réserver au CLI serveur-arrêté,
   décision au code) ; ÉTENDRE la regex du tripwire aux UPDATE multi-row nus sur les
-  tables critiques.
+  tables critiques. FAIT (choix A1 = row-by-row, garde le chemin API admin) :
+  `backfillPairNamesByConstruction` fait un SELECT des match_ids + pair_name construit puis
+  N `UPDATE ... WHERE match_id = ?` sérialisés. Tripwire étendu : `reUpdateRawSQL` +
+  détection « littéral SQL `UPDATE <table critique>` SANS placeholder `?` » = bulk set-based
+  nu (ancrage backtick, faux positifs évités — vérifié sur events_completion/pve/writes qui
+  lient tous match_id=?). Signature précise (seul le bare set-based n'a aucun `?`).
+  `TestBareBulkUpdateDetection_Sanity` valide les 2 sens. Gate : tripwire + backfill_registry
+  vert, `-tags=integration -p 1 ./internal/sync/...` = exit 0.
 - [ ] E3 — ARCHI mineur : `no_art_patterns_test.go:184` — retirer l'exclusion `ops/`
   (hypothèse « exécuté hors serveur » fausse : plomberie média ops tourne in-process).
 - [ ] E4 — DETTE §2.5 : `TestAllowlistJustifiesEverything` passe de warning à erreur.
@@ -989,6 +996,13 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
 
+- [LOT E / E2 — bulk résiduel per-asset-id] `backfillOneColumn` (`backfill_registry_names.go:177`)
+  fait `UPDATE match_registry SET <name> = ? WHERE <id_col> = ? AND <name> = ?` — multi-row
+  par asset_id (tous les matchs d'une même map), donc bulk-ish, MAIS lie des `?` (pas « nu »).
+  Hors cible nommée de E2 (« l'UPDATE bulk multi-row NU », ligne 98) et non attrapé par le
+  garde-fou bare-bulk (il a des placeholders). Résiduel ART-adjacent : à convertir en
+  row-by-row par match_id dans un follow-up si on veut match_registry 100% row-serialized.
+  Non traité (règle 7).
 - [LOT E / E1 — code mort transitif] Après E1, `sync.InsertRegistryIfNotExists`,
   `sync.InsertParticipants`, `sync.InsertMedals` n'ont PLUS aucun caller prod (openspartan
   était le dernier) — seulement des tests (dont `concurrent_upsert_*_test.go` qui caractérisent
