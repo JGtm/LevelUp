@@ -1,3 +1,32 @@
+## [2026-07-03] C2b : surfaçage "Saison N · Nom" dans les 2 sélecteurs — COMPLÉTÉ (étape C2 close, worktree)
+
+**Statut** : Complété. Étape C2 (saisons) close (C2a persistance + C2b surfaçage).
+
+**Décision produit** (validée user) : libellé « Saison 13 · Infinite » (numéro + nom
+d'Operation localisé ; FR « Saison 12 · Ombres »).
+
+**Décision technique** : helper canonique `duckdb.SeasonSelectorLabel` +
+`LoadSeasonCatalogNames` (foyer unique, règle ≤2 copies) réutilisé par les 2 sélecteurs :
+- Page classement (`GetWorldLeaderboardCatalog`) : `DisplayName` = SeasonSelectorLabel(locale,
+  id, names, fallback "Saison N" dérivé). Le front `LeaderboardBlock` PRÉFÉRAIT son mapping
+  codé en dur `KNOWN_SEASON_LABEL` (seasons.i18n.ts) au display_name ; précédence INVERSÉE
+  → backend autoritatif, le mapping front n'est plus qu'un secours (offline / saison pas
+  encore scrapée). Doc seasons.i18n.ts mise à jour.
+- Page player (`AvailableCSRSeasons`) : `Label` = SeasonSelectorLabel(...) avec fallback
+  `csrSeasonLabel` ("Saison N"). Match season_id INSENSIBLE À LA CASSE (API carrière
+  "CsrSeason13-2" vs Waypoint "csrseason13-2" → clé map en minuscules).
+
+Dégradation gracieuse : season_catalog absent/illisible → nil map → fallback libellé dérivé
+(aucun 500, aucune régression sur DB legacy).
+
+**Résultats observés** : `go build`/`go vet` OK ; tests duckdb (dont nouveaux
+`TestSeasonSelectorLabel`, `TestFallbackSeasonLabel`, `TestLoadSeasonCatalogNames_RoundTripAndCase`)
++ service career verts ; front `tsc -b` + `eslint` 0 err + `vitest LeaderboardBlock` 11/11.
+
+**Prochaine étape** : C3 (backfill saisons passées, basse priorité — cf. handoff §C3).
+
+---
+
 ## [2026-07-03] C2a : persistance season_catalog (noms + FR des saisons Waypoint) — COMPLÉTÉ (backend, worktree)
 
 **Statut** : Complété (sous-tranche C2a — persistance). C2b (surfaçage des libellés

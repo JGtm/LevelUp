@@ -276,6 +276,19 @@ func (r *LeaderboardRepo) GetWorldLeaderboardCatalog(ctx context.Context, titleS
 	// rankedplaylists EN > name_canonical (EN) > FR > id ; cascade FR :
 	// asset_translations[fr] > rankedplaylists FR > name_canonical (EN) > EN > id.
 	locale := ctxkeys.Locale(ctx)
+	// C2b : libellé autoritatif "Saison N · Nom" depuis season_catalog (scrape
+	// Waypoint). Best-effort : catalogue vide (pas encore scrapé) → fallback
+	// "Saison N" dérivé du numéro.
+	seasonNames, err := LoadSeasonCatalogNames(ctx, sharedDB, titleSlug)
+	if err != nil {
+		slog.WarnContext(ctx, "GetWorldLeaderboardCatalog: season_catalog illisible — libellés dérivés",
+			"module", logModuleLeaderboard, "err", err)
+		seasonNames = map[string]SeasonName{}
+	}
+	for i := range seasons {
+		seasons[i].DisplayName = SeasonSelectorLabel(locale, seasons[i].ID, seasonNames,
+			fallbackSeasonLabel(locale, seasons[i].ID))
+	}
 	frMap, enMap, canonMap := r.resolvePlaylistNamesFromCatalog(ctx, plIDs)
 	playlists := make([]domain.LeaderboardCatalogRef, 0, len(plIDs))
 	for _, id := range plIDs {
@@ -302,6 +315,19 @@ func worldSeasonRank(id string) int {
 	mj, _ := strconv.Atoi(major)
 	mn, _ := strconv.Atoi(minor)
 	return mj*100 + mn
+}
+
+// fallbackSeasonLabel dérive "Saison N" / "Season N" du season_id quand season_catalog
+// ne connaît pas la saison (pas encore scrapée). Format inconnu → id brut.
+func fallbackSeasonLabel(locale, id string) string {
+	major := worldSeasonRank(id) / 100
+	if major <= 0 {
+		return id
+	}
+	if locale == "en" {
+		return fmt.Sprintf("Season %d", major)
+	}
+	return fmt.Sprintf("Saison %d", major)
 }
 
 // sortSeasonsRecentFirst trie les saisons du plus récent au plus ancien (numérique).

@@ -13,8 +13,8 @@
   (branche feature → AUCUN déploiement ; seul un push sur `main` déploie).
 - **WIP séparé intact** : le repo principal est sur `fix/security-unauth-endpoints` (chantier
   sécurité non lié) — ne pas y toucher.
-- **Reprendre par C2** (saisons), puis **C3** (backfill saisons passées, basse priorité).
-  Ordre : B1→A2→A3→B2→**C1** [FAITS] → **C2 → C3** [restants].
+- **Reprendre par C3** (backfill saisons passées, basse priorité).
+  Ordre : B1→A2→A3→B2→**C1→C2** [FAITS] → **C3** [restant].
 - **Contrat d'exécution** : skill `plan-execution` (ordre strict, pas de report d'action
   exécutable, statuer chaque item, gate + thought_log + commit par étape).
 
@@ -46,16 +46,18 @@ Delta placement saison précédente sur la page player (`CareerRankingBlock.tsx`
   (full-stack). Liste triée par `alltime_value DESC` en attendant.
 - Gate : `tsc -b` + `eslint .` (0 err) + `vitest run` HORS sandbox (237 fichiers / 2070 tests PASS).
 
-### C2 — Saisons : persister + surfacer
-- **Enquête DÉJÀ LIVRÉE** (fixture `leaderboard_sample.html`) : `seasonId`=identifiant CSR,
-  `displayName`=nom d'Operation. `csrseason13-2`→"Infinite", `csrseason12-1`→"Shadows"(FR "Ombres"),
-  `csrseason11-1`→"Last Stand"(FR "Dernier bastion"). `translations` par locale DANS le payload
-  Waypoint. « X-Infinite » = `csrseasonX-Y` (n° CSR) + Operation.
-- **Reste** : persister la liste (table `season_catalog` ou colonnes ; upsert ART-safe SELECT-then-write,
-  cf. `internal/ops/catalog_refresh.go`). Le scraper renvoie déjà `seasons` via `FetchCatalog`
-  (jeté chez l'appelant `snapshot-world-leaderboard:147`). Surfaçage DÉJÀ partiel :
-  `useLeaderboardCatalog` (leaderboard) + `availableSeasons` (career) exposent `display_name`.
-  C2 n'ajoute que la persistance autoritative noms+traductions. Multi-titre : gate capability, pas slug.
+### C2 — LIVRÉ (2026-07-03) : persister + surfacer les saisons
+- **C2a (persistance)** : table `season_catalog` dans la SHARED DB (migration `create_season_catalog`,
+  PK-only, ART-safe). Scraper parse `translations` + `FetchSeasons()`→`[]WorldSeasonRef` (FR résolu).
+  `world_leaderboard_cron` upsert via `ops.RefreshSeasonCatalog` dans la même fenêtre writer que le
+  snapshot CSR. Choix shared (pas metadata) : seul writer sanctionné du cron = writer shared ;
+  metadata violerait le mono-process (cf. gotcha §3).
+- **C2b (surfaçage)** : helper canonique `duckdb.SeasonSelectorLabel` + `LoadSeasonCatalogNames`
+  réutilisé par le classement (`GetWorldLeaderboardCatalog`) et la page player (`AvailableCSRSeasons`).
+  Libellé « Saison N · Nom » localisé (décision user). Front `LeaderboardBlock` : précédence inversée
+  (backend autoritatif ; `KNOWN_SEASON_LABEL`/seasons.i18n.ts = secours offline). Match season_id
+  casse-insensible (API "CsrSeason13-2" vs Waypoint "csrseason13-2"). Dégradation gracieuse
+  (table absente → fallback dérivé).
 
 ### C3 — Backfill des saisons PASSÉES (à faire ; basse priorité, fenêtre dédiée)
 Les corrections (A2 : 3 playlists en plus ; B1 : xuid ; B2 : hardening) s'auto-appliquent à la

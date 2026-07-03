@@ -1,7 +1,9 @@
 /**
  * Saisons CSR : noms officiels (saisons/opérations Halo Infinite), TEXTE SEUL (pas de
- * numéro). Sert de FALLBACK (catalogue vide) ET de table de libellés (override du
- * display_name brut de l'API). Noms recoupés PAR DATE de début via wiki.halo.fr
+ * numéro). Depuis C2b, le backend renvoie un display_name AUTORITATIF "Saison N · Nom"
+ * localisé (season_catalog, scrape Waypoint) : cette table ne sert plus que de SECOURS
+ * — (a) catalogue vide (avant le 1er scrape) ; (b) saison présente au classement mais
+ * pas encore nommée dans season_catalog. Noms recoupés PAR DATE de début via wiki.halo.fr
  * (Halo a abandonné les saisons numérotées après la S5 → opérations) :
  *   3-1 Echoes Within (mars 2023) · 4-1 Infection (juin 2023) · 5-1 Reckoning (oct 2023)
  *   6-1 Spirit of Fire (janv 2024) · 7-1 Banished Honor · 8-1 Fleetcom · 9-1 Great Journey

@@ -120,7 +120,10 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
     () =>
       catalog?.seasons?.length
         ? catalog.seasons.map((s) => {
-            const base = KNOWN_SEASON_LABEL[s.id] ?? s.display_name
+            // Backend AUTORITATIF (C2b) : display_name = "Saison N · Nom" localisé
+            // (season_catalog, scrape Waypoint). KNOWN_SEASON_LABEL ne sert plus que
+            // de secours si le catalogue n'a pas encore de nom pour cette saison.
+            const base = s.display_name || KNOWN_SEASON_LABEL[s.id] || s.id
             return { value: s.id, label: s.enriched ? base : `${base} (${archivedBadge})`, enriched: s.enriched }
           })
         : SEASONS.map((s) => ({ value: s.id, label: s.label, enriched: true })),
