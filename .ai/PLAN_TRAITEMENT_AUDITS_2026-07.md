@@ -508,10 +508,13 @@ openapi/migrations associées, puis build+tests.
   documenté (réintroduction correcte = Phase 1). Gate : `go test ./internal/games/...` vert.
 - [~] G10 — CR A9 : `upsertLUSRRatingsLegacy` — vérifier déjà supprimé en A3, sinon supprimer.
   VÉRIFIÉ : déjà supprimé (grep = 0 occurrence). Rien à faire.
-- [ ] G11 — CR A9 / DEC-7 : `SessionKDATimeline.tsx`, `SessionOcdrScatter.tsx` — supprimer,
-  noter dans `.ai/` backlog UI.
-- [ ] G12 — CR A9 : `MapMuToLegacyRating`/`MapTierSubToLegacyRating` → dé-exporter
-  (test-only).
+- [x] G11 — CR A9 / DEC-7 : `SessionKDATimeline.tsx`, `SessionOcdrScatter.tsx` supprimés
+  (orphelins confirmés : 0 importeur). Noté dans le backlog UI (mémoire
+  project-backlog-deferred-tasks item 3 : récupérables via git si regret). Gate : front
+  typecheck vert.
+- [x] G12 — CR A9 : `MapMuToLegacyRating`/`MapTierSubToLegacyRating` dé-exportés →
+  `mapMuToLegacyRating`/`mapTierSubToLegacyRating` (test-only confirmé : 0 caller prod).
+  Noms de tests `Test*` conservés (convention Go). Gate : build+vet + skill_v2 test verts.
 - [~] G13 — CR A9 : `processMatch` legacy — vérifier déjà supprimé en D1b, sinon supprimer.
   VÉRIFIÉ : la fonction `processMatch` est déjà supprimée (D1b, engine_process_match.go) ; il ne
   reste que des mentions en COMMENTAIRE (backfill_personal_scores.go, csr_writes.go, engine.go…) —

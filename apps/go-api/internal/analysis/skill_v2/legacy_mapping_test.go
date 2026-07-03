@@ -46,7 +46,7 @@ func TestMapMuToLegacyRating_ReferencePlayers(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := MapMuToLegacyRating(c.mu, bs)
+			got := mapMuToLegacyRating(c.mu, bs)
 			if math.Abs(got-c.wantApprox) > 20 {
 				t.Errorf("μ=%v → %v, want ≈%v (tol ±20)", c.mu, got, c.wantApprox)
 			}
@@ -62,7 +62,7 @@ func TestMapMuToLegacyRating_TierPreservation(t *testing.T) {
 	mus := []float64{20.38, 23.52, 23.81, 26.12, 26.17}
 	for _, mu := range mus {
 		v2Tier, _ := InferTier(mu, bs)
-		legacy := MapMuToLegacyRating(mu, bs)
+		legacy := mapMuToLegacyRating(mu, bs)
 		v1Min, v1Max := LegacyTierRange(v2Tier.Name)
 		if v2Tier.Name != "Onyx" && (legacy < v1Min || legacy >= v1Max) {
 			t.Errorf("μ=%v v2_tier=%s mapped to legacy=%v, hors range v1 [%v, %v[",
@@ -111,11 +111,11 @@ func TestMapMuToContinuousRating_WithinTierRange(t *testing.T) {
 
 func TestMapMuToContinuousRating_DiffersFromQuantized(t *testing.T) {
 	// Cœur du fix : deux μ DIFFÉRENTS dans le MÊME sous-palier donnent des valeurs
-	// continues DIFFÉRENTES (≠ MapMuToLegacyRating qui les écrase au même bas de
+	// continues DIFFÉRENTES (≠ mapMuToLegacyRating qui les écrase au même bas de
 	// sous-palier → rating_delta resterait 0). Diamant D3 = [26.6, 27[.
 	bs := DefaultTierBoundaries()
 	muA, muB := 26.65, 26.85
-	qA, qB := MapMuToLegacyRating(muA, bs), MapMuToLegacyRating(muB, bs)
+	qA, qB := mapMuToLegacyRating(muA, bs), mapMuToLegacyRating(muB, bs)
 	if qA != qB {
 		t.Fatalf("pré-condition : μ choisis pas dans le même sous-palier quantifié (qA=%v qB=%v)", qA, qB)
 	}
