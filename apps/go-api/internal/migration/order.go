@@ -76,7 +76,6 @@ var canonicalOrder = []string{
 	"add_challenge_snapshots_display_path",                    // player
 	"add_battlepass_snapshots",                                // player
 	"add_dominance_flag_column",                               // player
-	"add_media_discord_notified",                              // player
 	"add_media_like_columns",                                  // player
 	"add_media_capture_start_utc",                             // player
 	"add_performance_score",                                   // player

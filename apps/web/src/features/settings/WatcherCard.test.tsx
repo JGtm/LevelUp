@@ -65,7 +65,6 @@ const t = {
   discordEnabled: 'Activé',
   discordNotifySync: 'Notifier sync',
   discordNotifyBackfill: 'Notifier backfill',
-  discordNotifyNewMedia: 'Notifier médias',
   discordNoWebhook: 'Webhook absent',
   mediaTitle: 'Médias',
   mediaWatcherEnabled: 'Surveillance médias',
