@@ -29,6 +29,7 @@ import (
 	"log/slog"
 	"os"
 
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
 	"strings"
 	"time"
@@ -199,6 +200,7 @@ func lookupRefreshToken(
 	if envToken := RefreshTokenFromEnv(gamertag); envToken != "" {
 		slog.WarnContext(ctx, "watcher_refresh: legacy env var utilisée — à migrer",
 			"gamertag", gamertag, "deprecated_since", "ADR-0023")
+		observability.RecordLegacySourceUsed(observability.LegacySourceEnvOAuth)
 		return envToken, "", "env_var"
 	}
 	return "", "", ""

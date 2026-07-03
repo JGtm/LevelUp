@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
@@ -246,6 +247,7 @@ func (r *ServiceRegistry) tryRefreshFromLegacy(ctx context.Context, pdb *duckdb.
 	if err == nil && cacheJSON != "" {
 		slog.WarnContext(ctx, "halo_auth: legacy source MSAL utilisée (sync_meta DuckDB) — à migrer",
 			"xuid", xuid, "gamertag", pdb.Gamertag, "deprecated_since", "ADR-0023")
+		observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBMSAL)
 		if accessToken, err := r.provider.TrySilentRefresh(ctx, cacheJSON); err == nil && accessToken != "" {
 			if result, err := r.provider.Exchange(ctx, accessToken); err == nil && result != nil {
 				slog.DebugContext(ctx, "halo_auth: tokens obtenus via MSAL cache (legacy)", "xuid", xuid)
@@ -266,6 +268,11 @@ func (r *ServiceRegistry) tryRefreshFromLegacy(ctx context.Context, pdb *duckdb.
 
 	slog.WarnContext(ctx, "halo_auth: legacy source RT utilisée — à migrer",
 		"xuid", xuid, "gamertag", pdb.Gamertag, "source", source, "deprecated_since", "ADR-0023")
+	if source == "legacy_env_var" {
+		observability.RecordLegacySourceUsed(observability.LegacySourceEnvOAuth)
+	} else {
+		observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBOAuth)
+	}
 
 	accessToken, rotatedRT, err := r.provider.TryOAuthRefreshWithRotation(ctx, refreshToken)
 	if err != nil || accessToken == "" {

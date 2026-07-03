@@ -20,6 +20,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	title "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability"
 	auth "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/ratebudget"
 	"levelup/go-api/internal/service"
@@ -86,6 +87,18 @@ func resolveAccessToken(ctx context.Context, provider auth.TokenProvider, store 
 		if at := try(user.MSALCacheJSON, user.OAuthRefreshToken, true); at != "" {
 			return at, nil
 		}
+	}
+	// D1a : le store canonique n'a pas résolu → fallback legacy sync_meta atteint.
+	// Signal de dépréciation (ADR 0023 Phase 5, prérequis D2).
+	if legacy.MSALCache != "" {
+		slog.WarnContext(ctx, "legacy_source_used", "source", observability.LegacySourceDuckDBMSAL,
+			"xuid", xuid, "deprecated_since", "ADR-0023")
+		observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBMSAL)
+	}
+	if legacy.OAuthRT != "" {
+		slog.WarnContext(ctx, "legacy_source_used", "source", observability.LegacySourceDuckDBOAuth,
+			"xuid", xuid, "deprecated_since", "ADR-0023")
+		observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBOAuth)
 	}
 	if at := try(legacy.MSALCache, legacy.OAuthRT, false); at != "" {
 		return at, nil
