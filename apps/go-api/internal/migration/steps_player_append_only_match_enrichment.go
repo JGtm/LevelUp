@@ -49,7 +49,8 @@ func init() {
 
 // pmeColumnStage : colonne → étape propriétaire (le writer qui l'écrit). Une colonne =
 // exactement une étape ; le socle 'legacy' est le fallback universel pour les rows
-// migrées. known_teammates_count / friends_xuids sont MORTES (aucun writer Go) → legacy.
+// migrées. (G14, 2026-07-03 : known_teammates_count / friends_xuids retirées — colonnes
+// mortes jamais peuplées ; la vue ne les projette plus, DROP physique au prochain rebuild.)
 var pmeColumnStage = []struct{ col, stage string }{
 	{"performance_score", "perf"},
 	{"performance_chain", "perf"},
@@ -110,10 +111,6 @@ func buildPMELatestViewSQL() string {
 		}
 		sb.WriteString(",\n  " + expr + " AS " + cs.col)
 	}
-	// known_teammates_count / friends_xuids : baseline uniquement (colonnes mortes,
-	// aucun writer owner-stage).
-	sb.WriteString(",\n  " + pmeBaselineFallback("known_teammates_count") + " AS known_teammates_count")
-	sb.WriteString(",\n  " + pmeBaselineFallback("friends_xuids") + " AS friends_xuids")
 	sb.WriteString(",\n  MIN(created_at) AS created_at")
 	sb.WriteString(",\n  MAX(updated_at) AS updated_at")
 	sb.WriteString("\nFROM ls\nGROUP BY match_id")
@@ -204,8 +201,6 @@ func ensurePMEColumns(db *sql.DB) error {
 		{"engagement_pace_team", colDouble},
 		{"engagement_pace_lobby", colDouble},
 		{"engagement_player_activity", colInteger},
-		{"known_teammates_count", colSmallInt},
-		{"friends_xuids", colVarchar},
 		{"snapshot_ready_at", colTimestamp},
 		{"partial_reasons", colVarchar},
 		{"created_at", colTimestamp},

@@ -33,19 +33,15 @@ var playerMaterializedViews = []MaterializedView{
 		FROM player_match_enrichment_latest pme
 		WHERE pme.performance_score IS NOT NULL`,
 	},
-	{
-		Name: "mv_map_stats",
-		Query: `
-		SELECT
-			msr.playlist_group,
-			COUNT(*) AS match_count,
-			AVG(msr.rating_value) AS avg_rating,
-			MAX(msr.rating_value) AS peak_rating
-		FROM match_skill_rank msr
-		WHERE msr.rating_type = 'LUSR'
-		GROUP BY msr.playlist_group`,
-	},
 }
+
+// deprecatedPlayerAggregates : vues matérialisées RETIRÉES, à DROP sur les DBs
+// existantes (self-healing). mv_map_stats (G15, retiré 2026-07-03) était
+// rebuildée (DROP+CREATE) à chaque sync SANS AUCUN lecteur Go → coût pur. Le
+// DROP TABLE IF EXISTS est un no-op après le premier passage. Retrait de cette
+// liste possible une fois toutes les player DBs resynchronisées post-déploiement
+// (critère mesurable : plus aucune table mv_map_stats en prod).
+var deprecatedPlayerAggregates = []string{"mv_map_stats"}
 
 // refreshAggregates recrée les vues matérialisées dans la player DB.
 // Best-effort : tente toutes les vues même si l'une échoue. Retourne
@@ -53,6 +49,13 @@ var playerMaterializedViews = []MaterializedView{
 // échec) — permet au caller de loguer un warn agrégé corrélé au lieu de perdre
 // les warns par-vue.
 func refreshAggregates(ctx context.Context, playerDB *sql.DB) (created, failed int, err error) {
+	// Nettoyage self-healing des agrégats dépréciés (no-op après le 1er passage).
+	for _, name := range deprecatedPlayerAggregates {
+		if _, derr := playerDB.ExecContext(ctx, "DROP TABLE IF EXISTS "+name); derr != nil {
+			slog.WarnContext(ctx, "aggregates: échec DROP agrégat déprécié", "view", name, "err", derr)
+		}
+	}
+
 	var viewErrs []error
 	for _, mv := range playerMaterializedViews {
 		if verr := recreateMaterializedView(ctx, playerDB, mv); verr != nil {
