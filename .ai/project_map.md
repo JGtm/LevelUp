@@ -1,6 +1,12 @@
 # Project Map - LevelUp
 
-> Ce fichier est la cartographie vivante du projet. L'agent IA doit le consulter et le mettre à jour.
+> **[HISTORIQUE — GELÉ, NE FAIT PLUS FOI]** (dernière révision de fond ~2026-04-28).
+> Ce fichier n'est plus tenu à jour. Le **code fait foi** ; pour l'état courant, voir
+> `CLAUDE.md`, `docs/ARCHITECTURE_V6.md`, `.ai/thought_log.md` et les ADRs `docs/adr/`.
+> Affirmations connues **PÉRIMÉES** : monde Python (supprimé — migration Go terminée),
+> chemins `data/warehouse/` plats (réels = `data/titles/{slug}/warehouse/`, ADR 0008),
+> « Film Chunks NON EXPLOITABLES » (démenti — décodage kill-feed résolu). Ne pas s'appuyer
+> sur les sections ci-dessous sans re-vérifier dans le code.
 
 > 📋 **Tâches et TODO centralisés** : voir `.ai/BACKLOG.md` et `.ai/PUNCHLIST.md` (handover GS↔OP, sources de vérité courtes).
 

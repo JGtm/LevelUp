@@ -49,6 +49,10 @@ func NewSharedPersister(db txBeginner) *SharedPersister {
 
 // Persist écrit le SharedBatch en 1 transaction INSERT-only.
 //
+// INVARIANT (ADR 0019/0026, anti-ART) : écriture INSERT-only — aucun UPDATE ni
+// DELETE sur les tables critiques, jamais d'ON CONFLICT DO UPDATE concurrent.
+// Toute mutation per-match passe par ici sous write-lease.
+//
 // Cas particuliers :
 //
 //   - batch == nil               → error (defensive).

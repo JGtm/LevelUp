@@ -14,6 +14,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/prestige"
 )
 
 // defaultUserTimezone est le timezone IANA utilisé en l'absence de configuration.
@@ -138,9 +139,9 @@ type AppConfig struct {
 	// Source : multi_title_api_enabled dans app_settings.json. Env var MULTI_TITLE_API_ENABLED
 	// en override d'urgence (1/true/yes). Défaut : false.
 	MultiTitleAPIEnabled bool
-	// PrestigeEnabled gate les 16 routes Prestige et le hook post-sync.
-	// Source : prestige_enabled dans app_settings.json. Env var PRESTIGE_ENABLED en override.
-	// Défaut : true.
+	// PrestigeEnabled gate les 16 routes Prestige ET le hook post-sync (gate UNIQUE,
+	// C7/DEC-4). Source : prestige.IsEnabled → prestige_enabled dans app_settings.json,
+	// override d'urgence PRESTIGE_ENABLED. Défaut : true (activation actée, ADR 0005).
 	PrestigeEnabled bool
 	// WebDistDir : répertoire du build React (Vite) servi en SPA par le routeur.
 	// Lit LEVELUP_WEB_DIST (posé par le Dockerfile/compose → /app/apps/web/dist).
@@ -219,7 +220,7 @@ func Load() (*AppConfig, error) {
 	cfg.MediaCapturesBaseDir = loadMediaCapturesBaseDir(appSettingsPath)
 	cfg.Backup = loadBackupConfig(repoRoot, appSettingsPath)
 	cfg.MultiTitleAPIEnabled = loadMultiTitleAPIEnabled(appSettingsPath)
-	cfg.PrestigeEnabled = loadPrestigeEnabled(appSettingsPath)
+	cfg.PrestigeEnabled = prestige.IsEnabled(appSettingsPath)
 	return cfg, nil
 }
 

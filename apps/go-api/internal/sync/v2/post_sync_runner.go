@@ -87,6 +87,12 @@ func NewPostSyncRunner(
 
 // RunPostSync délègue à V1.RunPostSyncForV2 après avoir ouvert les DB
 // et construit le client + engine.
+//
+// INVARIANT (Phase 6, ADR 0016 B-swap) : en mode bursts (défaut), aucun
+// write-lease shared n'est tenu pour toute la durée de la phase 6 — chaque
+// écriture shared ouvre une fenêtre RW courte puis la relâche (mesure étape 0 :
+// ~13s/joueur tenues pour rien). Le fallback LEVELUP_POSTSYNC_BURST=0 acquiert
+// encore le writer upfront.
 func (r *postSyncRunnerV2) RunPostSync(ctx context.Context, p PlayerProfile, insertedIDs []string) (PlayerPostSyncResult, error) {
 	engine, err := r.engineFactory(ctx, p)
 	if err != nil {
