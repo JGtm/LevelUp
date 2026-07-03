@@ -34,14 +34,14 @@ func LegacyTierRange(tierName string) (min, max float64) {
 	case "Onyx":
 		// Onyx est ouvert en haut — on retourne 2000 comme point d'ancrage,
 		// les rares joueurs Onyx auront des rating_value au-dessus selon
-		// leur μ. Cf. MapMuToLegacyRating.
+		// leur μ. Cf. mapMuToLegacyRating.
 		return 2000, 2200
 	default:
 		return 1000, 1200
 	}
 }
 
-// MapMuToLegacyRating : μ v2 → rating_value legacy v1.
+// mapMuToLegacyRating : μ v2 → rating_value legacy v1.
 //
 // Algorithme :
 //  1. Trouve le tier v2 (e.g., "Or IV") via InferTier
@@ -56,7 +56,7 @@ func LegacyTierRange(tierName string) (min, max float64) {
 //	v2 tier = Diamond, sub = 2
 //	v1 range = [1800, 2000]
 //	rating = 1800 + 1/6 × 200 = 1833
-func MapMuToLegacyRating(mu float64, v2Boundaries []TierBoundary) float64 {
+func mapMuToLegacyRating(mu float64, v2Boundaries []TierBoundary) float64 {
 	tier, sub := InferTier(mu, v2Boundaries)
 	if tier.Name == "" {
 		// Cas pathologique (μ très bas) — retourne Bronze entrée.
@@ -96,7 +96,7 @@ func LegacySubTierRange(tier TierBoundary, sub int) (min, max float64) {
 
 // MapMuToContinuousRating : μ v2 → rating_value legacy CONTINU (non quantifié).
 //
-// Variante de MapMuToLegacyRating qui, au lieu de renvoyer le BAS du sous-palier,
+// Variante de mapMuToLegacyRating qui, au lieu de renvoyer le BAS du sous-palier,
 // interpole linéairement la position de μ DANS son tier sur la plage legacy
 // [min, max[ du tier. Le résultat bouge donc à chaque variation de μ — c'est lui
 // qui alimente rating_value pour LUSR v2, de sorte que rating_delta devienne un
