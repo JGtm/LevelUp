@@ -223,7 +223,7 @@ hors allowlist → 0.
 Objectif : les documents lus « avant toute action » redeviennent vrais ; les invariants
 critiques sont écrits aux points de mutation.
 
-- [ ] C1 — PRÉ-EXÉCUTÉ le 2026-07-02 (session de planification : CLAUDE.md réécrit +
+- [x] C1 — PRÉ-EXÉCUTÉ le 2026-07-02 (session de planification : CLAUDE.md réécrit +
   skills mis à jour). Au passage du lot : VÉRIFIER la fraîcheur (le code aura bougé via
   les lots S-D1) et statuer `[~]` si rien à corriger. Contenu original de l'item : réécrire
   CLAUDE.md — purger : § Environnement Python, § Commandes
@@ -233,30 +233,30 @@ critiques sont écrits aux points de mutation.
   MCP ATTACH corrigé ; conserver/rafraîchir : liste ADRs, règle auth 0023 (sans le marqueur
   fantôme tant que D1a n'est pas livré — coordonner), règle Collect→Persist, branches Git,
   skills, règles front (§20 couleurs). Les seuils (500 L/80 L) restent, reformulés Go/TS.
-- [ ] C2 — DETTE TOP5 : `.ai/project_map.md` — soit mise à jour réelle, soit bandeau
+- [x] C2 — DETTE TOP5 : `.ai/project_map.md` — soit mise à jour réelle, soit bandeau
   « HISTORIQUE — gelé au 2026-04-28, ne fait plus foi » + suppression des affirmations
   démenties (« Film Chunks : NON EXPLOITABLES », règles Python).
-- [ ] C3 — DETTE §1.1 : rotation du thought_log — archiver les entrées avant 2026-Q2 vers
+- [x] C3 — DETTE §1.1 : rotation du thought_log — archiver les entrées avant 2026-Q2 vers
   `.ai/archive/thought_log_2025-2026Q1.md` (pattern archive existant) ; noter la règle de
   rotation trimestrielle dans CLAUDE.md.
-- [ ] C4 — DETTE TOP8 : corriger les 2 pointeurs `0014-b-swap` → 0016
+- [x] C4 — DETTE TOP8 : corriger les 2 pointeurs `0014-b-swap` → 0016
   (`sharedprovider/doc.go:23`, `baseline_red_integration_test.go:93`) + rafraîchir le
   statut « commit 2/9 » (B-swap livré).
-- [ ] C5 — DETTE TOP9 : écrire les 4 invariants aux points de mutation :
+- [x] C5 — DETTE TOP9 : écrire les 4 invariants aux points de mutation :
   INSERT-only sur `SharedPersister.Persist` ; « pas de shared writer lease pendant la
   phase 6 » dans le runner post-sync V2 ; « jamais sql.Open direct sur ce chemin —
   mono-process RO/RW » sur l'API publique `sharedprovider/provider.go` ; recette 3-étapes
   ADR 0019 référencée depuis `enrichmentFields()`. Bonus : rappel du piège de scope dans
   `soloFilterStore.ts` (le récit est dans createFilterStore.ts).
-- [ ] C6 — DETTE §1.3 : doc.go/README manquants : `internal/sync` (v1), `internal/migration`,
+- [x] C6 — DETTE §1.3 : doc.go/README manquants : `internal/sync` (v1), `internal/migration`,
   `internal/games` (+ `halo_5`), `internal/progression`, `internal/domain`,
   `internal/api/handlers` (patron : `persist/doc.go`) ; compléter
   `analysis/temporal/README.md` (ComputeEngagementScore, ComputeEngagementCoefficient,
   types + erreurs sentinelles).
-- [ ] C7 — DETTE TOP7 / DEC-4 : Prestige — mettre à jour ADR 0005 (activation actée),
+- [x] C7 — DETTE TOP7 / DEC-4 : Prestige — mettre à jour ADR 0005 (activation actée),
   unifier `prestige.IsEnabled()` et `loadPrestigeEnabled()` sur une source unique
   (settings.json + override env), le hook de sync lit la même source que les surfaces HTTP.
-- [ ] C8 — DETTE TOP10 / DEC-5 : politique docs/FR écrite dans CLAUDE.md (ADRs+runbooks
+- [x] C8 — DETTE TOP10 / DEC-5 : politique docs/FR écrite dans CLAUDE.md (ADRs+runbooks
   EN-only ; guides bilingues) ; rattraper `docs/CITATIONS.md` EN (FR a 4 mois d'avance) ;
   statuer COMMENDATIONS.md et RUNBOOK_OPS_DUCKDB (EN-only assumé) ; réparer les liens
   relatifs de `docs/FR/ARCHITECTURE_V6.md` ; hook lefthook qui liste les paires
@@ -692,7 +692,12 @@ Gate L : CI verte avec les nouvelles règles actives et baselines commitées dat
   hétérogène (règle mémoire projet), ordre des matchs + watermark assertés.
 - [ ] M2 — QUALITE : garantir que la CI n'est JAMAIS verte sans `-tags=integration`
   (vérifier workflows ; ajouter un job dédié ou un garde qui échoue si les tests
-  integration n'ont pas tourné).
+  integration n'ont pas tourné). MOTIVÉ PAR INCIDENT (2026-07-03, décision utilisateur) :
+  le gate intégration de LOT B avait été validé à tort (20 tests `platform/duckdb` rouges
+  non vus). Le job CI DOIT lancer `go test -tags=integration -p 1 ./...` (SÉRIALISÉ — sinon
+  flake DuckDB mono-process + durées fantômes masquant les FAIL) et échouer sur code de
+  sortie ≠ 0 (pas sur un grep de sortie). Cf. skill delivery-checklist (règle `-p 1` +
+  filtre ancré `^--- FAIL:`).
 - [ ] M3 — QUALITE : tests manquants : `ComputeMedalExploitScore` (`medal_exploit.go:22`),
   `GetTiming` (`weapon_data.go:224` — ATTENTION : aura bougé vers games/halo_infinite/film
   en F12) ; renforcer `ComputeImpactSummary`, `ComputeMVPLVP`, `ComputeTrend`,
@@ -872,6 +877,45 @@ correct — seule sa vérification était incomplète. Garde-fou process ajouté
 delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 ```
 
+```
+[2026-07-03] LOT C — CLOS (branche refactor/audits-2026-07)
+- Items [x] : 8 (C1-C8) / [~] : 0 / [!] : 0.
+- Statuts détaillés :
+  - C1 [x] : CLAUDE.md (pré-écrit 07-02) vérifié frais + 2 corrections mineures (formulation
+    de la purge Python ligne 19 sans littéraux `src/`//`.venv` ; chemin `generated.ts` ligne
+    164 qualifié `apps/web/`). Gate grep : 0 token Python-mort sans ambiguïté ; 3 hits bruts
+    résiduels LÉGITIMES (2× `apps/web/src` frontend, 1× la règle 2 qui INTERDIT pandas/polars).
+  - C2 [x] : `.ai/project_map.md` bandeau « HISTORIQUE — GELÉ, NE FAIT PLUS FOI ».
+  - C3 [x] : règle de rotation trimestrielle écrite dans CLAUDE.md (archive
+    `.ai/archive/thought_log_<AAAA>-Q<N>.md`). Archivage effectif = NO-OP : le journal actif
+    ne contient que 2026-05/06/07 = Q2+Q3 (fenêtre courant+précédent), rien avant Q2 à sortir.
+  - C4 [x] : 2 pointeurs `0014`→`0016` (`sharedprovider/doc.go`, `baseline_red_integration_test.go`)
+    + statut « commit 2/9 »→« livré ».
+  - C5 [x] : 4 invariants écrits (INSERT-only `SharedPersister.Persist` ; pas de write-lease
+    shared en phase 6 du runner post-sync V2 ; jamais `sql.Open` direct sur `provider.go`
+    mono-process ; recette 3-étapes ADR 0019 depuis `enrichmentFields()`/player_persister).
+  - C6 [x] : doc.go créés — sync, migration, games, progression (README), domain, api/handlers ;
+    `temporal/README.md` complété (engagement). `halo_5/doc.go` déjà présent (33a288783).
+  - C7 [x] : Prestige unifié — `prestige.IsEnabled(settingsPath)` source unique
+    (app_settings.json + override env), `loadPrestigeEnabled()` supprimé, hook post-sync et
+    surfaces HTTP lisent la même source. ADR 0005 → Accepted + clause d'expiration annulée.
+    `prestige_expiry_test.go` supprimé. Pas de cycle d'import (config→prestige, vérifié).
+  - C8 [x] : politique docs/FR dans CLAUDE.md règle 15 (ADRs+runbooks EN-only, 4 guides
+    bilingues) ; liens `docs/FR/ARCHITECTURE_V6.md` validés (3 cibles existent) ; hook
+    lefthook `docs-fr-sync` (warning non bloquant). SOUS-ITEMS audit revus sur pièces :
+    « rattraper CITATIONS.md EN » = SANS OBJET — CITATIONS.md (EN et FR) sont des STUBS de
+    redirection vers la source unique `docs/COMMENDATIONS.md` (122 L, à jour) ; la prémisse
+    « FR 4 mois d'avance » lisait les dates git des stubs. `RUNBOOK_OPS_DUCKDB.md` n'existe pas.
+- Gate C : grep CLAUDE.md tokens Python-morts → 0 (3 hits légitimes documentés) ; liens
+  docs/FR valides ; `go build ./...` OK ; `go test ./...` OK ; `go vet ./...` OK ;
+  `go test -tags=integration -p 1 ./...` = exit 0 (suite complète VERTE, sérialisée).
+- NOTE : le gate d'intégration a révélé que celui des LOTS A/B était masqué (voir §7 +
+  correction LOT B ci-dessus). Réparation dans un commit fix dédié (07ee3546d) séparé du
+  commit de clôture C.
+- Commits : 07ee3546d (fix gate B) + <hash clôture C>.
+- RÉCONCILIER plan/journal S+A+B+C au merge (S sur sa branche ; A+B+C sur refactor/audits-2026-07).
+```
+
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
 
 - [LOT A / A2] Dette de type front pré-existante : `CareerTopMatchesResponse` hand-written
@@ -890,3 +934,18 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
   `queries_home_citations.go` Q26f (effective_type CSR/LUSR) — une migration `_latest`
   (priorité CSR>LUSR) changerait la valeur LUSR sur les matchs ranked. À trancher (décision
   produit LUSR vs CSR) avant toute migration.
+- [LOT C / gate — TRAITÉ] Le gate `-tags=integration` des LOTS A/B n'était pas réellement
+  vert (masqué par le flake concurrent DuckDB + un filtre `Select-String "FAIL"` attrapant
+  « Failure » de logs). 20 tests `platform/duckdb` rouges (fixtures sans vues `_latest` /
+  colonnes append-only, régression B8) + 1 collision `stubResolver` service (pré-campagne
+  Phase F). RÉPARÉ dans le commit fix 07ee3546d. Prémisse process : lancer les tests
+  d'intégration DuckDB avec `-p 1` et filtrer les FAIL avec l'ancre `^--- FAIL:` (consigné
+  au skill delivery-checklist).
+- [LOT C → LOT M] Aucun gate CI n'exécute la suite d'intégration aujourd'hui (le pre-push
+  a retiré les tests Go). C'est la cause racine de la non-détection de la casse B. ACTION
+  planifiée en LOT M (Tests) : câbler un job CI `go test -tags=integration -p 1 ./...`
+  (sérialisé) — décision utilisateur 2026-07-03.
+- [pré-campagne — TRAITÉ (fixture)] `TestGetOrOpen_RunsPlayerMigrationsForLegacySchema` :
+  `seedSharedDBForPoolTest.match_registry` sans `game_variant_id`/`game_variant_name`
+  (lus par Q5SharedHistory depuis f7c7885b69, 2026-07-01) — colonnes ajoutées au fixture
+  (commit 07ee3546d). Pas de défaut de prod (schéma prod expose ces colonnes).

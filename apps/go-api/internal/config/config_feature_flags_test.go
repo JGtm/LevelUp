@@ -16,6 +16,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"levelup/go-api/internal/prestige"
 )
 
 // ---------------------------------------------------------------------------
@@ -110,7 +112,7 @@ func TestLoadMultiTitleAPIEnabled_ProductionSettingsHasField(t *testing.T) {
 func TestLoadPrestigeEnabled_EnvOverridesJSON(t *testing.T) {
 	t.Setenv("PRESTIGE_ENABLED", "false")
 	path := writeTempSettings(t, `{"prestige_enabled": true}`)
-	if loadPrestigeEnabled(path) {
+	if prestige.IsEnabled(path) {
 		t.Error("env var false doit prendre la priorité sur JSON true")
 	}
 }
@@ -118,7 +120,7 @@ func TestLoadPrestigeEnabled_EnvOverridesJSON(t *testing.T) {
 func TestLoadPrestigeEnabled_EnvTrueOverridesJSON(t *testing.T) {
 	t.Setenv("PRESTIGE_ENABLED", "true")
 	path := writeTempSettings(t, `{"prestige_enabled": false}`)
-	if !loadPrestigeEnabled(path) {
+	if !prestige.IsEnabled(path) {
 		t.Error("env var true doit prendre la priorité sur JSON false")
 	}
 }
@@ -126,7 +128,7 @@ func TestLoadPrestigeEnabled_EnvTrueOverridesJSON(t *testing.T) {
 func TestLoadPrestigeEnabled_FallbackToJSONFalse(t *testing.T) {
 	t.Setenv("PRESTIGE_ENABLED", "")
 	path := writeTempSettings(t, `{"prestige_enabled": false}`)
-	if loadPrestigeEnabled(path) {
+	if prestige.IsEnabled(path) {
 		t.Error("JSON false doit désactiver Prestige quand env var absente")
 	}
 }
@@ -134,7 +136,7 @@ func TestLoadPrestigeEnabled_FallbackToJSONFalse(t *testing.T) {
 func TestLoadPrestigeEnabled_FallbackToJSONTrue(t *testing.T) {
 	t.Setenv("PRESTIGE_ENABLED", "")
 	path := writeTempSettings(t, `{"prestige_enabled": true}`)
-	if !loadPrestigeEnabled(path) {
+	if !prestige.IsEnabled(path) {
 		t.Error("JSON true doit activer Prestige quand env var absente")
 	}
 }
@@ -142,14 +144,14 @@ func TestLoadPrestigeEnabled_FallbackToJSONTrue(t *testing.T) {
 func TestLoadPrestigeEnabled_DefaultTrueWhenAbsent(t *testing.T) {
 	t.Setenv("PRESTIGE_ENABLED", "")
 	path := writeTempSettings(t, `{"lang": "fr"}`)
-	if !loadPrestigeEnabled(path) {
+	if !prestige.IsEnabled(path) {
 		t.Error("défaut doit être true quand ni JSON ni env var ne précisent la valeur")
 	}
 }
 
 func TestLoadPrestigeEnabled_DefaultTrueWhenFileMissing(t *testing.T) {
 	t.Setenv("PRESTIGE_ENABLED", "")
-	if !loadPrestigeEnabled(filepath.Join(t.TempDir(), "nonexistent.json")) {
+	if !prestige.IsEnabled(filepath.Join(t.TempDir(), "nonexistent.json")) {
 		t.Error("défaut doit être true quand le fichier est absent")
 	}
 }
@@ -157,7 +159,7 @@ func TestLoadPrestigeEnabled_DefaultTrueWhenFileMissing(t *testing.T) {
 func TestLoadPrestigeEnabled_DefaultTrueWhenJSONMalformed(t *testing.T) {
 	t.Setenv("PRESTIGE_ENABLED", "")
 	path := writeTempSettings(t, `{"prestige_enabled": false`)
-	if !loadPrestigeEnabled(path) {
+	if !prestige.IsEnabled(path) {
 		t.Error("défaut doit être true sur JSON malformé")
 	}
 }
@@ -168,7 +170,7 @@ func TestLoadPrestigeEnabled_FalsyEnvVariants(t *testing.T) {
 		t.Run("env="+v, func(t *testing.T) {
 			t.Setenv("PRESTIGE_ENABLED", v)
 			path := writeTempSettings(t, `{}`)
-			if loadPrestigeEnabled(path) {
+			if prestige.IsEnabled(path) {
 				t.Errorf("env=%q doit être reconnu comme false", v)
 			}
 		})
@@ -183,7 +185,7 @@ func TestLoadPrestigeEnabled_ProductionSettingsHasField(t *testing.T) {
 	if _, err := os.Stat(prodPath); err != nil {
 		t.Skipf("app_settings.json racine introuvable (%v) — skip CI", err)
 	}
-	if !loadPrestigeEnabled(prodPath) {
+	if !prestige.IsEnabled(prodPath) {
 		t.Error("app_settings.json racine devrait avoir prestige_enabled: true (actif en prod)")
 	}
 }

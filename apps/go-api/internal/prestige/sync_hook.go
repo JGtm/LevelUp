@@ -2,6 +2,7 @@ package prestige
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"os"
 	"strings"
@@ -16,41 +17,48 @@ import (
 // si le flag est désactivé, aucune action — le module Prestige est
 // totalement absent du flux de sync.
 
-// FeatureFlagEnv est le nom de la variable d'environnement contrôlant
-// l'activation du module Prestige.
-//
-// Activé par défaut. Désactivé seulement si PRESTIGE_ENABLED vaut explicitement
-// "0", "false", "no" ou "off" (insensible à la casse).
+// FeatureFlagEnv est le nom de la variable d'environnement d'override d'urgence
+// de la source canonique (app_settings.json).
 const FeatureFlagEnv = "PRESTIGE_ENABLED"
 
-// IsEnabled retourne true si le feature flag Prestige est activé.
-//
-// Lit PRESTIGE_ENABLED à chaque appel — le boot ne cache pas l'état pour
-// permettre un toggle sans redémarrage en dev.
-//
-// Défaut : activé. Pour désactiver, exporter PRESTIGE_ENABLED=false.
-func IsEnabled() bool {
-	raw := strings.ToLower(strings.TrimSpace(os.Getenv(FeatureFlagEnv)))
-	switch raw {
-	case "0", "false", "no", "off":
-		return false
+// IsEnabled est la SOURCE UNIQUE de l'activation Prestige (C7 / DEC-4, ADR 0005).
+// Lit `prestige_enabled` dans app_settings.json (settingsPath), avec la var d'env
+// PRESTIGE_ENABLED en override d'urgence (falsy "0"/"false"/"no"/"off" → OFF).
+// Défaut : ACTIVÉ (fichier/clé absents ou JSON malformé → true). Consommée par
+// TOUTES les surfaces via cfg.PrestigeEnabled (config.go) → un seul gate.
+func IsEnabled(settingsPath string) bool {
+	if v := os.Getenv(FeatureFlagEnv); v != "" {
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "0", "false", "no", "off":
+			return false
+		}
+		return true
+	}
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		return true
+	}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		return true
+	}
+	if b, ok := m["prestige_enabled"].(bool); ok {
+		return b
 	}
 	return true
 }
 
 // RunPostSyncHook ré-évalue les défis actifs d'un joueur après une sync.
 //
-// Appelé par le sync engine une fois `match_participants` écrits. Si le
-// feature flag est désactivé, retourne immédiatement (aucun effet de bord).
+// Appelé par le sync engine via PrestigeBundle.RunPostSync une fois
+// `match_participants` écrits. Le GATE Prestige est UNIQUE et vit chez
+// l'appelant (PrestigeBundle.RunPostSync teste b.enabled = cfg.PrestigeEnabled
+// avant d'appeler ce hook) — plus de re-lecture du flag ici (C7 : fin du
+// double-gate env-only vs settings.json).
 //
 // Best-effort : log les erreurs mais ne casse pas le flux sync. Le sync
 // engine ne doit pas dépendre du résultat de Prestige.
 func RunPostSyncHook(ctx context.Context, svc Service, userID, titleSlug string) {
-	if !IsEnabled() {
-		slog.DebugContext(ctx, "prestige: sync hook skipped (feature flag off)",
-			"user_id", userID, "title_slug", titleSlug)
-		return
-	}
 	if svc == nil {
 		slog.WarnContext(ctx, "prestige: sync hook called with nil service")
 		return

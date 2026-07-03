@@ -16,7 +16,8 @@
 | Stockage | **DuckDB** par titre + Parquet (archives) | `data/titles/{slug}/` |
 | Config | JSON + TOML | `db_profiles.json`, `app_settings.json`, `.env.local`, `config/titles/` |
 
-La migration Python→Go est **terminée** : `src/` et `.venv` n'existent plus. Il reste 3
+La migration Python→Go est **terminée** : les anciens dossiers Python (code source +
+environnement virtuel) n'existent plus. Il reste 3
 scripts `.py` utilitaires (2 générateurs de fixtures sous `apps/go-api/tests/`, 1 analyse
 ponctuelle sous `scripts/`). **Ne pas écrire de nouveau Python** : tout code applicatif est
 en Go ou TypeScript. **SQLite interdit** : DuckDB uniquement.
@@ -35,8 +36,10 @@ en Go ou TypeScript. **SQLite interdit** : DuckDB uniquement.
 **THOUGHT LOG — RÈGLE OBLIGATOIRE** : avant tout commit (ou à défaut avant de rendre la
 main), ajouter une entrée dans `.ai/thought_log.md` avec : date `[YYYY-MM-DD]`, titre,
 statut (En cours / Complété), décision technique principale, résultats observés,
-conclusion / prochaine étape. L'absence d'entrée = tâche non terminée. Rotation
-trimestrielle vers `.ai/archive/`.
+conclusion / prochaine étape. L'absence d'entrée = tâche non terminée. **Rotation
+trimestrielle** : quand un trimestre est clos, déplacer ses entrées vers
+`.ai/archive/thought_log_<AAAA>-Q<N>.md` — le journal actif ne garde que le
+trimestre courant + le précédent.
 
 **Skills agent** (`.claude/skills/*/SKILL.md`) — invoquer le skill AVANT d'agir dans son domaine :
 
@@ -158,7 +161,7 @@ make go-api-lint            # golangci-lint
 # Frontend
 make check-types            # tsc
 make test-web               # vitest
-make generate-types         # openapi.yaml -> src/lib/api/generated.ts
+make generate-types         # openapi.yaml -> apps/web/src/lib/api/generated.ts
 
 # Dev servers
 make dev                    # go-api (air) + vite

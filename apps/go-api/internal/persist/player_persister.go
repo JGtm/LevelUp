@@ -118,7 +118,10 @@ type fieldEntry struct {
 // enrichmentFields produit la liste des colonnes à INSERTer pour cette row
 // (uniquement les champs pointer non-nil, plus le PK match_id).
 //
-// **Ajouter un nouvel enrichment** : ajouter 1 if-block ici. C'est tout.
+// RECETTE 3 ÉTAPES pour ajouter un enrichment local (ADR 0019 + persist/doc.go) :
+//  1. migration ALTER TABLE (nouvelle colonne) ;
+//  2. champ pointer dans EnrichmentRow ;
+//  3. if-block ci-dessous ajoutant le fieldEntry.
 func enrichmentFields(row *EnrichmentRow) []fieldEntry {
 	fields := []fieldEntry{
 		{"match_id", row.MatchID},

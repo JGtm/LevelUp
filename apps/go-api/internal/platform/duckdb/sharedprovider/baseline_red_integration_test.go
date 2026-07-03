@@ -90,7 +90,7 @@ func TestBaselineRedConflictExists_integration(t *testing.T) {
 			"OpenReadWrite a réussi alors qu'une conn RO existe déjà sur le même fichier. " +
 				"Cela signifie que duckdb-go a corrigé la limite \"different configuration\" — " +
 				"le sharedprovider B-swap n'a plus de raison d'exister. " +
-				"Voir docs/adr/0014-shared-db-provider-b-swap.md (à créer) pour le plan d'archive.")
+				"Voir docs/adr/0016-shared-db-provider-b-swap.md pour le plan d'archive.")
 	}
 
 	// La signature exacte du message doit être stable pour distinguer ce bug

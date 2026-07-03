@@ -48,6 +48,11 @@ const defaultRWHoldWatchdog = 2 * time.Second
 // Une instance Provider est sûre pour usage concurrent : Get peut être
 // appelé depuis N goroutines en parallèle. AcquireWriter est sérialisé via
 // dblease.AcquireWriterCtx.
+//
+// INVARIANT (ADR 0013/0016, mono-process) : ce provider est l'unique owner du
+// handle DuckDB pour un chemin donné. Jamais de sql.Open direct sur ce fichier
+// ailleurs — RO et RW coexistent via un swap arbitré (drain), pas via des
+// handles concurrents (limite native duckdb-go « different configuration »).
 type Provider interface {
 	// Get retourne un *sql.DB en mode RO + une fonction release qui DOIT
 	// être appelée (typiquement via defer) une fois les lectures terminées.

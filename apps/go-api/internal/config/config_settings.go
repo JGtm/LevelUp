@@ -67,32 +67,6 @@ func loadMultiTitleAPIEnabled(settingsPath string) bool {
 	return false
 }
 
-// loadPrestigeEnabled lit prestige_enabled depuis app_settings.json.
-// La var d'env PRESTIGE_ENABLED prend la priorité (override d'urgence).
-// Défaut : true (activé si ni JSON ni env var ne précisent la valeur).
-func loadPrestigeEnabled(settingsPath string) bool {
-	if v := os.Getenv("PRESTIGE_ENABLED"); v != "" {
-		vl := strings.ToLower(strings.TrimSpace(v))
-		switch vl {
-		case "0", "false", "no", "off":
-			return false
-		}
-		return true
-	}
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		return true
-	}
-	var m map[string]any
-	if err := json.Unmarshal(data, &m); err != nil {
-		return true
-	}
-	if b, ok := m["prestige_enabled"].(bool); ok {
-		return b
-	}
-	return true
-}
-
 // loadDiscordWebhookURL lit le webhook Discord depuis LEVELUP_DISCORD_WEBHOOK_URL,
 // DISCORD_WEBHOOK_URL (legacy Python) ou le champ discord_webhook_url de app_settings.json.
 func loadDiscordWebhookURL(settingsPath string) string {

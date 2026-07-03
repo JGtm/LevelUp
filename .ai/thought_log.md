@@ -1,3 +1,33 @@
+## [2026-07-03] LOT C (audit 2026-07) : documents d'orientation redevenus vrais + invariants aux points de mutation — COMPLÉTÉ (C1-C8)
+
+**Tâche** : 4e lot du PLAN_TRAITEMENT_AUDITS_2026-07, branche refactor/audits-2026-07.
+
+**Décision technique principale** : (C7) unification du gate Prestige sur une SOURCE UNIQUE —
+`prestige.IsEnabled(settingsPath)` lit `app_settings.json` + override env `PRESTIGE_ENABLED`
+(défaut ON) ; suppression de `loadPrestigeEnabled()` (config) ; le hook post-sync et les
+surfaces HTTP lisent désormais la MÊME source ; ADR 0005 → Accepted, clause d'expiration
+annulée, `prestige_expiry_test.go` supprimé ; pas de cycle d'import config→prestige (vérifié).
+(C5) 4 invariants ART/mono-process écrits aux points de mutation (INSERT-only SharedPersister ;
+pas de write-lease shared phase 6 post-sync V2 ; jamais `sql.Open` direct sur provider ;
+recette 3-étapes ADR 0019). (C6) doc.go de package pour sync/migration/games/progression/
+domain/api/handlers + temporal README (engagement). (C1/C2/C3) CLAUDE.md + project_map
+assainis, règle de rotation trimestrielle du thought_log. (C4) pointeurs 0014→0016. (C8)
+politique docs/FR (règle 15 : ADRs/runbooks EN-only, 4 guides bilingues) + hook lefthook
+`docs-fr-sync` non bloquant ; sous-item CITATIONS.md = sans objet (stubs de redirection vers
+COMMENDATIONS.md, source unique à jour).
+
+**Résultats observés** : Gate C — grep CLAUDE.md 0 token Python-mort (3 hits résiduels
+légitimes documentés) ; liens docs/FR valides ; `go build`/`go test`/`go vet ./...` OK ;
+`go test -tags=integration -p 1 ./...` exit 0. DÉCOUVERTE MAJEURE traitée : le gate
+intégration des LOTS A/B avait été validé à tort (voir entrée dédiée ci-dessous) — 20 tests
+`platform/duckdb` + 1 build break service réparés dans un commit fix séparé (07ee3546d).
+
+**Conclusion / prochaine étape** : LOT C clos (commits 07ee3546d fix + clôture C). Garde-fou
+process ajouté (skill delivery-checklist `-p 1` + filtre ancré ; M2 enrichi pour câbler le
+gate CI intégration). Réconcilier plan/journal S+A+B+C au merge. Prochain : LOT D1 (flags &
+guards — PERSIST_BATCH, suppression pipeline V1, os.Getenv, TODO-expiry) — gros diff sync/,
+méthode 4 temps prudente (D1c).
+
 ## [2026-07-03] Gate d'intégration masqué (LOTS A/B) : 20 fixtures platform/duckdb + collision service réparées — COMPLÉTÉ
 
 **Tâche** : remédiation découverte au gate de LOT C. Le gate `-tags=integration ./...` des
