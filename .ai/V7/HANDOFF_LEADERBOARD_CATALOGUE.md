@@ -79,6 +79,13 @@ shared DB en RW direct) :
 
 Non bloquant (les gens regardent surtout la saison courante) ; à faire APRÈS C1/C2.
 
+**ÉTAPE 1 EXÉCUTÉE (2026-07-03)** — snapshot `-season all` × 16 playlists, `-limit 100`, sur la
+DB locale : **11 saisons, 3182 lignes insérées, xuid peuplé partout** (`with_xuid = rows`).
+Trous comblés (playlists/saison) : 3-1 1→2 · 4-1 3→5 · 5-1 3→5 · 10-1 3→5 · 11-1 3→4 · 12-1 4→6
+· 13-2 4→7 (6-1 inchangé 3). Saisons 7/8/9 = aucun classement Waypoint (tout 404). 2 playlists
+de niche renvoient un HTTP 500 PERSISTANT (FFA saison 5-1, HaloWC Qualifier saison 4-1) = jamais
+classées ces saisons-là, rien à récupérer. **RESTE : ÉTAPE 2 (enrich) à lancer par l'utilisateur.**
+
 **VALIDÉ SUR SAMPLE (2026-07-03)** — pipeline testé de bout en bout sur csrseason12-1 (Shadows) :
 snapshot 6 playlists (4→6, +Tactique +Duel 1v1) → 300 lignes avec xuid (B1) ; enrich 3 joueurs
 via **pool de 7 tokens round-robin** (`-all-tokens`), xuid pré-seedé du snapshot (PeopleHub
