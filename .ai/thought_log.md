@@ -1,3 +1,33 @@
+## [2026-07-03] LOT G (audit 2026-07) — Purge du code mort — CLOS (G1-G16)
+
+**Tâche** : LOT G du PLAN_TRAITEMENT_AUDITS_2026-07 (16 items, CR A7-A9 « dead code museum »),
+branche refactor/audits-2026-07.
+
+**Décision technique principale** : chaque suppression VÉRIFIÉE SUR PIÈCES avant delete (la
+cartographie Haiku antérieure s'est montrée peu fiable — grep 0-caller/0-reader systématique).
+Deux corrections de trajectoire notables : (1) G3 (session-compare) — le plan disait supprimer
+`domain/session_compare.go` + service + helpers, mais ces types + builders sont PARTAGÉS avec la
+page session-detail vivante → suppression réduite à la couche compare-only, infra préservée
+(DEC-1). (2) G5 (notif Discord médias) — le plan scopait « func + migration + tests », mais la
+feature était câblée end-to-end jusqu'à un TOGGLE réglages user-facing SANS déclencheur (0 caller
+de NotifyNewMedia) : laisser le backend supprimé + le toggle vivant aurait violé la règle 11
+(toggle no-op). Décision autonome : suppression COMPLÈTE full-stack (backend notify+settings+
+migration + front toggle/i18n/openapi régénéré/fixtures) — signalée à l'utilisateur.
+
+**Résultats observés** : G1-G9, G11, G12, G14, G15 [x] livrés+gatés ; G10/G13/G16 [~] (déjà faits
+A3/D1b/pré-exécuté). G8 a corrigé une doc inversée (Q26e) + une doc fausse (Q24 : param inexistant).
+G14 a retiré 2 colonnes PME mortes de la vue _latest (DROP physique au prochain rebuild, DEC-6).
+G15 a supprimé un rebuild mv_map_stats par-sync sans lecteur (+ nettoyage self-healing). Gates :
+build+vet + suites unitaires par package + front typecheck/build/vitest verts ; intégration
+`-p 1` exit 0 sur les 2 lots à impact schéma/persist (G5, G14/G15 : 233 lignes, 0 FAIL ancré).
+6 commits (5d14fa19f, 9c6c2a9cc, 25f9c3581, a4fb7bcad + G11/G12, G3/G4 antérieurs). Découvertes §7 :
+colonne bool `discord_notified` orpheline (candidat DROP), helpers sync.Insert* orphelins (de E1).
+
+**Conclusion / prochaine étape** : LOT G clos (13 [x] + 3 [~], 0 case vide). Prochain lot : F
+(title-agnosticism — fuites HINF sous H5, manifests H5, ratchet anti-slug). Investigation on-pieces
+des 15 items F via workflow AVANT exécution (line-numbers audit possiblement périmés). Réconcilier
+plan/journal G au merge. NE PAS merger main sans feu vert + gate live-sync manuel.
+
 ## [2026-07-03] LOT E (audit 2026-07) — ART résiduel & écritures à risque — CLOS (E7 différé)
 
 **Tâche** : LOT E du PLAN_TRAITEMENT_AUDITS_2026-07 (8 items), branche refactor/audits-2026-07.

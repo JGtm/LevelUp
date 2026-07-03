@@ -1162,6 +1162,40 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 - RÉCONCILIER plan/journal E au merge. E7 reste [!] à planifier.
 ```
 
+### LOT G — Purge du code mort — CLOS 2026-07-03
+
+```
+- Méthode : chaque suppression VÉRIFIÉE sur pièces (la cartographie Haiku antérieure s'est
+  révélée peu fiable) — 0 caller/reader confirmé par grep avant chaque delete.
+- G1 [x] : gen/types.gen.go + oapi-codegen retirés (Makefile, golangci, coverage, docs, ratchets).
+- G2 [x] : analysis/home_* — fonctions mortes supprimées chirurgicalement (BuildKPIs/Trend/
+  HeroCard/Highlights/SessionSummaries/RecentMatches*) ; helpers vivants + BuildSpartanIdentity gardés.
+- G3 [x] : feature session-compare supprimée MAIS infra partagée préservée (DEC-1, correction
+  de plan : les types domain + builders sont partagés avec session-detail vivant). Openapi + front purgés.
+- G4 [x] : SquadV2RouteHost + SquadV2Page orphelins supprimés. Commit(s) G1-G4.
+- G5 [x] : feature « notif Discord nouveaux médias » morte — PÉRIMÈTRE ÉLARGI (signalé) : câblée
+  end-to-end jusqu'à un toggle réglages user-facing mais SANS déclencheur (0 caller). Suppression
+  COMPLÈTE full-stack (backend notify+settings+migration + front toggle/i18n/openapi/fixtures) pour
+  ne pas laisser un toggle no-op (règle 11). Découverte §7 : colonne bool `discord_notified` orpheline.
+  Commit 25f9c3581. Gate intégration -p 1 vert.
+- G6/G7 [x] : ReassociateMedia (prod-orphelin, route retirée 2026-04-29) + ServiceConfigIDFor
+  (stub mort) supprimés. Commit 5d14fa19f.
+- G8 [x] : constantes SQL mortes Q4/Q4MV monolithiques + Q26eHomeSkillPeakByType (remplacée par
+  split Phase A/B) supprimées ; doc inversée corrigée ; Q24 = doc fausse (param inexistant) corrigée,
+  const vivante. G9 [x] : 8 entrées [assets.mode.*] H5 placeholder (slugs divergents, 0 lecteur)
+  supprimées. Commit 9c6c2a9cc.
+- G10 [~] (déjà fait A3) · G13 [~] (déjà fait D1b) · G16 [~] (pré-exécuté, section 0 delivery-checklist).
+- G11 [x] : SessionKDATimeline + SessionOcdrScatter orphelins supprimés (notés backlog UI mémoire).
+  G12 [x] : Map{Mu,TierSub}ToLegacyRating dé-exportés (test-only). Commit(s) G11/G12.
+- G14 [x] : known_teammates_count + friends_xuids (PME) retirées de la vue _latest + ensurePMEColumns
+  + CREATE TABLE + doc (0 writer/lecture ; DROP physique au prochain rebuild, DEC-6). G15 [x] :
+  mv_map_stats rebuild par-sync supprimé (0 lecteur Go) + nettoyage self-healing deprecatedPlayerAggregates.
+  Commit a4fb7bcad. Gate intégration -p 1 vert (233 lignes, 0 FAIL ancré).
+- Gate G : go build+vet OK ; suites unitaires par package vertes ; front typecheck+build+vitest verts ;
+  intégration -p 1 exit 0 (G5 + G14/G15) ; grep de chaque symbole supprimé → 0.
+- RÉCONCILIER plan/journal G au merge. Suivi LOT F ensuite (title-agnosticism).
+```
+
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
 
 - [LOT E / E2 — bulk résiduel per-asset-id] `backfillOneColumn` (`backfill_registry_names.go:177`)
