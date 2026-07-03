@@ -373,7 +373,13 @@ Objectif : plus aucun chemin prod du pattern déclencheur ART #23046 ; tripwire 
   empirique : lying_bits était la SEULE exposition (catalog_refresh = SELECT-then-write tables
   non protégées ; seed/archive/restore = non protégées/dynamiques) → aucune allowlist ajoutée.
   Gate : `TestResetLyingBits` vert (comportement préservé), tripwire complet + ops verts, vet OK.
-- [ ] E4 — DETTE §2.5 : `TestAllowlistJustifiesEverything` passe de warning à erreur.
+- [x] E4 — DETTE §2.5 : `TestAllowlistJustifiesEverything` passe de warning à erreur.
+  FAIT + NUANCE : le test lisait le contenu BRUT (commentaires inclus), donc une
+  « justification » vivant uniquement dans un commentaire passait — alors que le scan
+  principal strippe les commentaires. Rendu (1) BLOQUANT (`t.Logf`→`t.Errorf`) ET (2)
+  cohérent avec le scan (`stripGoComments`). Entrée `internal/persist/doc.go` retirée
+  (ses seuls patterns étaient en commentaire → morte). `internal/sync/writes.go` conservée
+  (ON CONFLICT réel en code, l.68/133). Gate : allowlist + scan principal + tripwire verts.
 - [ ] E5 — ARCHI mineur : `progression/profile/queries.go:40` — SQL de lecture HTTP →
   platform/duckdb + filtre temporel canonique (COALESCE timezone, croisé H1).
 - [ ] E6 — ARCHI mineur : bare connects RO sur player DB potentiellement tenue RW :
