@@ -282,20 +282,27 @@ saison correct + placement « saison précédente » nommé.
       `csrseason13-2`→"Infinite", `csrseason12-1`→"Shadows" (FR "Ombres"),
       `csrseason11-1`→"Last Stand" (FR "Dernier bastion"). Les `translations` par locale sont
       DANS le payload Waypoint. « X-Infinite » = `csrseasonX-Y` (n° saison CSR) + Operation.
-- [!] Persister la liste des saisons (table `season_catalog` ou colonnes) : NON exécuté —
-      full-stack, contexte frais requis. NB : le scraper renvoie DÉJÀ seasons via FetchCatalog
-      (jeté chez l'appelant), donc la persistance = capter cette portion + upsert ART-safe.
-- [~] Surfacer via sélecteur : DÉJÀ partiellement fait — `useLeaderboardCatalog` renvoie
-      `seasons[].display_name` (leaderboard) et `CareerRankingBlock` a `availableSeasons`. C2
-      n'ajoute que la persistance autoritative des noms+traductions Waypoint.
-- [!] Multi-titre gate capability : dépend de la persistance (item ci-dessus).
+- [x] **C2a — Persister la liste des saisons** : LIVRÉ. Table `season_catalog` dans la SHARED
+      DB (pas metadata : source = scrape, seul writer sanctionné du cron = writer shared ;
+      metadata violerait le writer mono-process, cf. A3). PK-only + upsert SELECT-then-write
+      (`ops.RefreshSeasonCatalog`) ART-safe. Scraper : parse `translations`, `FetchSeasons()`
+      → `[]WorldSeasonRef` (FR résolu, fallback EN). Cron : upsert dans la même fenêtre writer
+      que le snapshot CSR (best-effort).
+- [x] **C2b — Surfacer via sélecteur** : LIVRÉ. Helper canonique `SeasonSelectorLabel` +
+      `LoadSeasonCatalogNames` (foyer unique) réutilisé par le classement
+      (`GetWorldLeaderboardCatalog`, DisplayName = "Saison N · Nom") et la page player
+      (`AvailableCSRSeasons`, Label idem, match casse-insensible). Front `LeaderboardBlock` :
+      précédence inversée → backend autoritatif, `KNOWN_SEASON_LABEL` = secours seulement.
+      Décision produit user : format « Saison 13 · Infinite » (numéro + Operation localisé).
+- [x] Multi-titre : season_catalog porté par `title_slug` ; helpers filtrent par titre.
+      Dégradation gracieuse (table absente → fallback libellé dérivé, pas de 500).
 
-**Raison du non-go (delivery-checklist)** : idem C1 — full-stack + vitest hors sandbox, à
-faire en contexte frais. Enquête (le cœur de ta question saisons) = LIVRÉE ci-dessus.
-
-**Gate (quand exécuté)** :
-- `cd apps/go-api && go test ./internal/platform/halo/ ./internal/platform/duckdb/ -run 'Season|Leaderboard'`
-- `make check-types && make test-web`
+**Gate exécuté (2026-07-03, worktree)** :
+- `go build`/`go vet` OK ; tests unitaires halo (`FetchSeasons` FR), ops
+  (`RefreshSeasonCatalog` idempotent), duckdb (`SeasonSelectorLabel`, `FallbackSeasonLabel`,
+  `LoadSeasonCatalogNames` round-trip), scheduler (`PersistsSeasonCatalog`), service career —
+  verts ; `-tags=integration` (sync anti-ART, migration, ops, scheduler) verts.
+- Front : `tsc -b` + `eslint` 0 err ; `vitest LeaderboardBlock` 11/11.
 
 ---
 
@@ -330,10 +337,10 @@ faire en contexte frais. Enquête (le cœur de ta question saisons) = LIVRÉE ci
   7a49ab0a0 — pivot hardening après sonde live prouvant playlistAssetId non supporté] ·
   C1 [x LIVRÉ 2026-07-03 — voie b : delta placement N-1 + composant partagé metric-trend +
   garde-rail + i18n ; item tri is_active [!] full-stack reporté] ·
-  C2 [x enquête saisons ; persistance [!] full-stack]. Tests verts.
-- Reprendre : **C2** (persistance seasons Waypoint : table `season_catalog`, upsert ART-safe)
-  puis **C3** (backfill saisons passées — cf. HANDOFF). Aucun blocage externe ; friction C2 =
-  écriture DuckDB (SELECT-then-write, pas d'UPSERT concurrent).
+  C2 [x LIVRÉ 2026-07-03 — C2a persistance season_catalog (shared) + C2b surfaçage
+  "Saison N · Nom" les 2 sélecteurs]. Tests verts, poussés.
+- Reprendre : **C3** (backfill saisons passées — cf. HANDOFF §C3, basse priorité). Le reste
+  du plan (B1→A2→A3→B2→C1→C2) est LIVRÉ.
 - Avant de coder une étape : rouvrir les fichiers cibles (le code a pu bouger).
 
 ## Statut de clôture
