@@ -216,9 +216,12 @@ auto-detection) before any `os.Getenv` read.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `LEVELUP_PERSIST_BATCH_ASYNC` | Run the batch persister asynchronously (WAL + worker). | (off) |
+| `LEVELUP_PERSIST_BATCH_ASYNC` | Run the batch persister asynchronously (WAL + worker). Kill-switch: set `0` to roll back to the synchronous path. Removal target >= 2026-Q4. | on |
+| `LEVELUP_EVENTS_CONVERGENCE` | Highlight-events convergence pass (scheduler + immediate trigger). Kill-switch: set `0` to disable. Removal target >= 2026-Q4. | on |
+| `LEVELUP_EVENTS_CONVERGENCE_MAX` | Cap on matches processed per convergence tick. | `50` |
 | `LEVELUP_CSR_SEASON_ID` | Override CSR season id. | from `app_settings.json` |
-| `MULTI_TITLE_API_ENABLED` | Expose the multi-title field-mappings/preview routes (override of `app_settings.json`). | `false` |
+| `MULTI_TITLE_API_ENABLED` | Expose the multi-title field-mappings/preview routes (override of `app_settings.json`). Rollout gate (not a rollback kill-switch). | `false` |
+| `LEVELUP_CONTRACT_VALIDATE` | Enable dev/CI response-contract validation middleware (permanent dev diagnostic; no-op in prod). | `0` |
 | `PRESTIGE_ENABLED` | Enable the Prestige module (override of `app_settings.json`). | `true` |
 
 ### Integrations

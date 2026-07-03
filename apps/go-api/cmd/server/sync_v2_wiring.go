@@ -317,7 +317,8 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 
 		// 6. BatchQueue async (Phase 4.9 — INSERT-only via WAL + worker). Le batch
 		// INSERT-only est le seul chemin d'écriture depuis D1b ; seul le layer async
-		// reste optionnel via LEVELUP_PERSIST_BATCH_ASYNC.
+		// reste optionnel via LEVELUP_PERSIST_BATCH_ASYNC (cf. main.go pour le
+		// cycle de vie du kill-switch).
 		if deps.BatchQueue != nil && os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") != "0" {
 			engine.WithBatchQueue(deps.BatchQueue)
 		}

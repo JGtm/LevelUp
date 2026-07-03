@@ -1,3 +1,29 @@
+## [2026-07-03] LOT D1d (audit 2026-07) — cycle de vie documenté des 4 flags restants — COMPLÉTÉ
+
+**Tâche** : D1d du PLAN_TRAITEMENT_AUDITS_2026-07 (DETTE §2.1), branche refactor/audits-2026-07.
+Doc-only : documenter le cycle de vie de `LEVELUP_PERSIST_BATCH_ASYNC`, `MULTI_TITLE_API_ENABLED`,
+`LEVELUP_EVENTS_CONVERGENCE`, `LEVELUP_CONTRACT_VALIDATE` — modèle `shared_reader_legacy.go:30-34`.
+
+**Décision technique principale** : le modèle du triplet (date bascule défaut + date cible
+retrait + critère mesurable) ne s'applique tel quel qu'aux VRAIS kill-switches de rollback. J'ai
+donc classé les 4 flags plutôt que d'inventer des critères inapplicables : (1) `PERSIST_BATCH_ASYNC`
+= kill-switch (rollback sync), triplet complet (ON 2026-05-24, retrait >= 2026-Q4, critère =
+aucun `=0` + `persist_wal_purged_total` stable + recovery sans orphelin) ; (2) `EVENTS_CONVERGENCE`
+= kill-switch, triplet complet (retrait >= 2026-Q4, critère = aucun `=0` + zéro « convergence
+events échouée » sur 1 trimestre + res.Processed→0) ; (3) `MULTI_TITLE_API_ENABLED` = gate de
+rollout (pas rollback) : critère de bascule ON + renvoi règle 11 pour le retrait ; (4)
+`CONTRACT_VALIDATE` = diagnostic dev/CI PERMANENT (no-op prod), explicitement SANS date de retrait.
+
+**Résultats observés** : 4 sites de lecture commentés + 2 pointeurs cross-ref aux lecteurs
+secondaires de `PERSIST_BATCH_ASYNC` (sync_v2_wiring.go, auto_sync.go → main.go). `docs/CONFIGURATION.md`
+(+ FR) : défaut `(off)`→`on` corrigé pour `PERSIST_BATCH_ASYNC` (bug de doc : le code lit `!= "0"`,
+défaut ON), 4 lignes de flags ajoutées (EVENTS_CONVERGENCE, EVENTS_CONVERGENCE_MAX, CONTRACT_VALIDATE +
+description enrichie MULTI_TITLE). `go build ./...` OK. Tension règle 11 (MULTI_TITLE OFF « pour plus
+tard ») notée §7 — hors périmètre, relève du chantier activation multi-titre.
+
+**Conclusion / prochaine étape** : D1d clos (doc-only, 1 commit). Prochain : D1e (centralisation
+os.Getenv hors config) puis D1f (lint TODO-expiry), puis clôture LOT D1 (journal §6 consolidé).
+
 ## [2026-07-03] LOT D1c (audit 2026-07) — suppression pipeline V1 (flag + fallback auto), V2 devient multi-titre — COMPLÉTÉ
 
 **Tâche** : D1c du PLAN_TRAITEMENT_AUDITS_2026-07 (DEC-2), branche refactor/audits-2026-07.

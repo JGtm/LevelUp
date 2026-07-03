@@ -331,7 +331,7 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 	// Le batch INSERT-only est le seul chemin d'écriture depuis D1b. Phase 4.9 :
 	// le layer async reste optionnel. Set LEVELUP_PERSIST_BATCH_ASYNC=0 pour un
 	// fallback synchrone direct Persister. La queue est injectée par main.go au
-	// boot si != "0" (cf. autoBatchQueue init).
+	// boot si != "0" (cf. autoBatchQueue init — cycle de vie du kill-switch).
 	if s.batchQueue != nil && os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") != "0" {
 		engine.WithBatchQueue(s.batchQueue)
 	}
@@ -909,6 +909,15 @@ const convergencePerCycleMax = 50
 
 // eventsConvergenceEnabled : kill-switch (défaut ON). LEVELUP_EVENTS_CONVERGENCE=0
 // désactive la passe scheduler ET le trigger immédiat.
+//
+// Cycle de vie du kill-switch :
+//   - basculement défaut ON : dès la livraison de la convergence events
+//     (idempotente append-only, ADR 0026/0027) ;
+//   - date cible de retrait : >= 2026-Q4 ;
+//   - critère mesurable : aucun rollback `=0` activé + aucune erreur récurrente
+//     « auto_sync: convergence events échouée » sur >= 1 trimestre + res.Processed
+//     converge vers 0 (backlog de highlight_events incomplets rattrapé). Alors
+//     retirer le flag en gardant la passe active.
 func eventsConvergenceEnabled() bool {
 	return os.Getenv("LEVELUP_EVENTS_CONVERGENCE") != "0"
 }
