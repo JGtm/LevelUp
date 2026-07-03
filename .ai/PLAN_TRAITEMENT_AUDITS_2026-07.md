@@ -1046,6 +1046,44 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
   os.Getenv baseline notée (34→29, reads `LEVELUP_PERSIST_BATCH_ASYNC` → 0).
 - RÉCONCILIER plan/journal S+A+B+C+D1 au merge. NE PAS merger main sans feu vert + gate
   live-sync manuel (retrait rollback V1).
+
+### LOT E — ART résiduel & écritures à risque — CLOS 2026-07-03 (E7 différé)
+
+- Cartographie read-only préalable : 8 agents Explore (1/item), 562k tokens — a mappé
+  chaque item sur pièces avant implémentation (dépendances croisées + gotchas Haiku à
+  vérifier).
+- E1 [x] : import OpenSpartan `writeOneMatch` → `persist.SharedPersister` (1 tx INSERT-only
+  atomique, remplace 4 `sync.Insert*/Upsert*` dont ON CONFLICT). Converter CSR exporté.
+  Commit 0a27412f7 (+ fixture E2E api/handlers 9c211a6f3). Découverte §7 : helpers sync.Insert*
+  orphelins prod → LOT G.
+- E2 [x] : `backfillPairNamesByConstruction` bulk UPDATE nu → row-by-row par match_id +
+  garde-fou tripwire « bare-bulk » (littéral SQL `UPDATE <critique>` sans `?` = violation,
+  ancrage backtick) + sanity test. Commit 7262df3e0. Découverte §7 : backfillOneColumn per-asset-id.
+- E3 [x] : exclusion `ops/` retirée du tripwire (3 tests + 3 commentaires). BUG ART RÉEL
+  découvert+corrigé : `lying_bits_reset` faisait 3 bulk UPDATE in-process sur match_registry
+  (« pas de risque ART » — faux) → row-by-row. Vérif empirique : seule exposition. Commit cdd1e970d.
+- E4 [x] : `TestAllowlistJustifiesEverything` warning→erreur + cohérent avec le scan
+  (stripGoComments — une justif commentaire-only ne compte plus) ; entrée `persist/doc.go`
+  retirée (morte). Commit 58c5542dd.
+- E5 [x/~] : filtre temporel canonique dans `progression/profile/queries.go` (5 sites
+  start_time bruts) via helper exporté `duckdb.StartTimeCanonicalSQL(alias)`. Déplacement des
+  littéraux SQL → repo platform/duckdb = [~]→H1 (orchestration cross-DB, connexion déjà via
+  SharedReader). Commit 461532340.
+- E6 [x] : bare RO connects (`worldenrich/wiring.go` sql.Open RO, `auth/pool/discovery.go`
+  OpenReadOnly) → `OpenReadForQuery`. Gotcha résolu (hallucination carto) via variantes
+  `Read*FromSQL(*sql.DB)` + helper `readSyncMetaValue`. Commit deb6f8e98.
+- E7 [!] : DDL bootstrap `sync/schema.go` → migration. DIFFÉRÉ (règle 9) : item MAL LABELLISÉ
+  « mineur » — en réalité refactor profond du boot/provisioning de TOUTES les DBs, DDL
+  dupliqué-mais-aligné avec `create_base_*_schema` en transition b23/b25 (title-ownership),
+  logique de vues au boot corrigeant des bugs prod documentés (attach RO/RW, xuid bruts).
+  À faire en chantier dédié APRÈS stabilisation b23/b25. Signalé utilisateur.
+- E8 [x/~] : écritures per-match H5 CSR/SR → `PlayerPersister.PersistPerMatchRating` (persister
+  DÉDIÉ, nouveau). Blocage résolu : `Persist()` exige l'ancre enrichment + skip si présent →
+  inutilisable post-score. ADD_TITLE.md = [~]→F14. Commit e84853e70.
+- Gate E : `go test -tags=integration -p 1 ./...` = exit 0 (105 packages, suite complète VERTE
+  sérialisée) ; tripwire étendu (bulk-from-values + bare-bulk) vert ; allowlist ART réduite
+  (1 entrée) et BLOQUANTE ; ops/ scanné.
+- RÉCONCILIER plan/journal E au merge. E7 reste [!] à planifier.
 ```
 
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
