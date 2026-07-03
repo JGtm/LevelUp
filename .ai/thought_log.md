@@ -1,3 +1,35 @@
+## [2026-07-03] LOT E (audit 2026-07) — ART résiduel & écritures à risque — CLOS (E7 différé)
+
+**Tâche** : LOT E du PLAN_TRAITEMENT_AUDITS_2026-07 (8 items), branche refactor/audits-2026-07.
+Objectif : plus aucun chemin prod du pattern déclencheur ART #23046 ; tripwire étendu.
+
+**Décision technique principale** : cartographie read-only préalable (workflow, 8 agents Explore
+Haiku, 1/item) puis implémentation LINÉAIRE en ordre strict, chaque item vérifié SUR PIÈCES
+(les gotchas Haiku se sont avérés partiellement faux — voir E6/E8). E1 : import OpenSpartan →
+SharedPersister (atomique INSERT-only, remplace ON CONFLICT). E2 : backfill bulk UPDATE nu →
+row-by-row + garde-fou tripwire « bare-bulk » (littéral SQL sans placeholder `?`, ancrage
+backtick pour éviter les faux positifs commentaire/fenêtre). E3 : exclusion ops/ retirée — a
+RÉVÉLÉ un vrai bug ART (lying_bits_reset, 3 bulk UPDATE in-process sur match_registry, corrigé
+row-by-row). E4 : allowlist justif bloquante + strip-cohérente. E5 : timezone canonique
+progression/profile (helper exporté). E6 : bare RO connects → OpenReadForQuery (gotcha carto
+`&duckdb.DB{}` = hallucination → variantes *FromSQL). E8 : per-match H5 → PlayerPersister dédié
+(blocage : Persist() a une ancre enrichment qui skip post-score → persister sans ancre).
+
+**Résultats observés** : E1-E6 + E8 LIVRÉS + gatés. E7 DIFFÉRÉ [!] (règle plan-execution 9) :
+item mal labellisé « mineur », en réalité refactor profond du boot/provisioning de TOUTES les
+DBs (Ensure*Schema à chaque open ≠ migration runner ; DDL dupliqué-aligné avec create_base_*_schema
+en transition b23/b25 title-ownership ; logique de vues au boot corrigeant des bugs prod
+documentés) → chantier dédié après stabilisation b23/b25. 2 découvertes ART matérielles :
+lying_bits_reset (E3, corrigé) + le gate complet a rattrapé une 2e fixture E2E openspartan
+(api/handlers) manquant les colonnes batch (même piège que le service test — E1). Gate final :
+`go test -tags=integration -p 1 ./...` = exit 0, 105 packages VERTS ; tripwire étendu vert ;
+allowlist ART réduite (1) et bloquante ; ops/ scanné. 9 commits (0a27412f7, 7262df3e0, cdd1e970d,
+58c5542dd, 461532340, deb6f8e98, e84853e70, 9c211a6f3).
+
+**Conclusion / prochaine étape** : LOT E clos (7/8 livrés, E7 [!] planifié). Prochain lot : G
+(purge code mort — dont les helpers sync.Insert* orphelinés par E1). Réconcilier plan/journal E
+au merge. NE PAS merger main sans feu vert + gate live-sync manuel (rappel D1c).
+
 ## [2026-07-03] LOT D1f (audit 2026-07) — lint TODO(expiry) + LOT D1 CLOS — COMPLÉTÉ
 
 **Tâche** : D1f du PLAN_TRAITEMENT_AUDITS_2026-07 (DETTE reco 7), branche refactor/audits-2026-07.
