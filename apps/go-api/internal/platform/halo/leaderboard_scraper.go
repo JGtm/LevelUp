@@ -20,6 +20,7 @@ package halo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -283,11 +284,22 @@ func (s *LeaderboardScraper) fetchPageBytes(ctx context.Context, seasonID, playl
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		// 404 = cette playlist n'a AUCUN classement pour cette saison (pas classée /
+		// inexistante à l'époque). Cas NOMINAL d'un backfill multi-saisons × toutes
+		// playlists — pas une erreur. Sentinel pour que l'appelant skippe en silence.
+		return nil, fmt.Errorf("statut HTTP 404: %w", ErrLeaderboardPageNotFound)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("statut HTTP %d", resp.StatusCode)
 	}
 	return io.ReadAll(io.LimitReader(resp.Body, 12<<20)) // 12 MiB garde-fou
 }
+
+// ErrLeaderboardPageNotFound : la page classement d'une (saison, playlist) renvoie
+// 404 — la playlist n'était pas classée à cette saison. À traiter comme un skip
+// nominal (pas une erreur) côté appelant, via errors.Is.
+var ErrLeaderboardPageNotFound = errors.New("classement absent pour cette (saison, playlist)")
 
 // ─── Parsing du bloc __NEXT_DATA__ (point d'ajustement unique) ────────────────
 
