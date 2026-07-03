@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"path/filepath"
 	"strings"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -13,7 +12,6 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/dblease"
-	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/jobs"
 	"levelup/go-api/internal/port"
 )
@@ -331,74 +329,4 @@ func (s *MediaService) buildLikeResponse(ctx context.Context, req domain.MediaLi
 		}
 	}
 	return resp
-}
-
-// UploadMedia sauvegarde les fichiers uploadés sur disque puis les indexe
-// (scan + association matchs + génération miniatures).
-func (s *MediaService) ReassociateMedia(ctx context.Context, req domain.ReassociateRequest) (*domain.ReassociateResult, error) {
-	result := &domain.ReassociateResult{}
-
-	// Sélectionner la DB cible (shared_social si dispo, sinon stats.duckdb).
-	targetPath := req.DBPath
-	if req.SharedSocialDBPath != "" {
-		targetPath = req.SharedSocialDBPath
-	}
-	if targetPath == "" {
-		return nil, fmt.Errorf("ReassociateMedia: aucun chemin DB fourni")
-	}
-
-	bufferMin := req.BufferMin
-	if bufferMin <= 0 {
-		bufferMin = 2
-	}
-
-	// Phase 2 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 (audit residuel 2026-05-25) :
-	// Ouvrir la DB en lecture-écriture via le cache duckdbpkg (DSN aligne).
-	handle, err := duckdbpkg.OpenReadWrite(targetPath)
-	if err != nil {
-		return nil, fmt.Errorf("ouverture DB: %w", err)
-	}
-	defer handle.Close()
-	db := handle.SQLDb()
-
-	// Appliquer la timezone pour les opérations sur timestamps.
-	if tz := ops.SanitizeMediaTimezone(s.timezone); tz != "" {
-		if _, err := db.ExecContext(ctx, "SET TimeZone = '"+tz+"'"); err != nil {
-			slog.WarnContext(ctx, "ReassociateMedia: SET TimeZone échoué",
-				"timezone", s.timezone, "err", err)
-		}
-	}
-
-	// APPEND-ONLY : plus de DELETE des associations auto ni de backup CTAS. Le reindex
-	// est purement ADDITIF — ops.AssociateMediaWithMatches → loadUnassociatedMedia
-	// (forward-only : exclut les médias déjà associés via la vue _latest) → INSERT event
-	// auto dans media_match_associations_history. Les corrections manuelles (is_manual)
-	// sont préservées par construction (la vue _latest les priorise). Zéro surface ART
-	// (plus de DELETE WHERE NOT is_manual, plus de table _bak_ proliférante).
-	result.DeletedAssoc = 0
-
-	// Re-créer les associations manquantes (additif).
-	newAssoc, err := ops.AssociateMediaWithMatches(ctx, db, req.SharedMatchesDBPath, bufferMin, s.timezone)
-	if err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("association: %v", err))
-		slog.ErrorContext(ctx, "ReassociateMedia: association échouée", "err", err)
-	}
-	result.NewAssoc = newAssoc
-
-	// 4 — Backfill thumbnail_path pour les miniatures existantes dans thumbs/.
-	if req.CapturesDir != "" {
-		thumbsDir := filepath.Join(req.CapturesDir, "thumbs")
-		store := ops.MediaPathStore{CapturesBase: req.CapturesBase}
-		if n, backfillErr := ops.BackfillThumbnailPaths(ctx, db, req.CapturesDir, thumbsDir, req.Gamertag, store); backfillErr != nil {
-			slog.WarnContext(ctx, "ReassociateMedia: backfill thumbnail_path échoué", "err", backfillErr)
-		} else {
-			slog.InfoContext(ctx, "ReassociateMedia: thumbnail_path backfillé", "updated", n)
-		}
-	}
-
-	slog.InfoContext(ctx, "ReassociateMedia: terminé (additif append-only)",
-		"new_assoc", newAssoc,
-		"errors", len(result.Errors))
-
-	return result, nil
 }

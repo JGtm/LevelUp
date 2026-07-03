@@ -243,13 +243,6 @@ func (r *Registry) XboxTitleIDFor(slug string) string {
 	return ""
 }
 
-// ServiceConfigIDFor retourne le ServiceConfigID (SCID) Xbox pour un slug LevelUp.
-// Retourne "" si le slug n'est pas reconnu ou si le SCID n'est pas encore connu.
-// Le SCID HI sera confirmé lors du premier sync avec le bon title ID.
-func ServiceConfigIDFor(slug string) string {
-	return "" // SCID HI non encore confirmé — le filtre titleId est suffisant
-}
-
 // NewRegistry crée un registre avec les titres par défaut.
 func NewRegistry() *Registry {
 	r := &Registry{

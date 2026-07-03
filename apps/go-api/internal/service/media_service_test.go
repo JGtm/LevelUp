@@ -826,19 +826,6 @@ func TestNewMediaService_EmptyTimezone(t *testing.T) {
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ReassociateMedia — sans accès DuckDB réel (DB vide/absente)
-// ─────────────────────────────────────────────────────────────────────────────
-
-func TestReassociateMedia_NoDB_ReturnsError(t *testing.T) {
-	// DBPath et SharedSocialDBPath vides → erreur
-	svc := NewMediaService(&mockMediaRepo{}, "Europe/Paris")
-	_, err := svc.ReassociateMedia(context.Background(), domain.ReassociateRequest{})
-	if err == nil {
-		t.Error("expected error when no DB path provided")
-	}
-}
-
 // ─── Atomic SetMediaLike (commit 6 db-concurrency) ───
 
 // mockAtomicMediaRepo étend mockMediaRepo avec SetMediaLikeAtomic pour activer
