@@ -70,16 +70,18 @@ func (a *stubCatalogAdapter) ClassifyExperience(_ canonical.CanonicalPlaylist) c
 	return canonical.ExperienceUnknown
 }
 
-// stubResolver retourne le stub adapter pour tout slug.
-type stubResolver struct {
+// stubCatalogResolver retourne le stub adapter pour tout slug.
+type stubCatalogResolver struct {
 	adapter games.TitleCatalogAdapter
 }
 
-func (r *stubResolver) Data(_ string) (games.TitleDataAdapter, error)         { return nil, nil }
-func (r *stubResolver) Semantic(_ string) (games.TitleSemanticAdapter, error) { return nil, nil }
-func (r *stubResolver) AssetURL(_ string) (games.TitleAssetURLAdapter, error) { return nil, nil }
-func (r *stubResolver) Catalog(_ string) (games.TitleCatalogAdapter, error)   { return r.adapter, nil }
-func (r *stubResolver) DefaultSlug() string                                   { return "halo_infinite" }
+func (r *stubCatalogResolver) Data(_ string) (games.TitleDataAdapter, error)         { return nil, nil }
+func (r *stubCatalogResolver) Semantic(_ string) (games.TitleSemanticAdapter, error) { return nil, nil }
+func (r *stubCatalogResolver) AssetURL(_ string) (games.TitleAssetURLAdapter, error) { return nil, nil }
+func (r *stubCatalogResolver) Catalog(_ string) (games.TitleCatalogAdapter, error) {
+	return r.adapter, nil
+}
+func (r *stubCatalogResolver) DefaultSlug() string { return "halo_infinite" }
 
 func setupCatalogTestDB(t *testing.T) *sql.DB {
 	t.Helper()
@@ -123,7 +125,7 @@ func TestCatalogFetcherService_Drain_PlaylistAndPair(t *testing.T) {
 			},
 		},
 	}
-	svc := NewCatalogFetcherService(db, &stubResolver{adapter: adapter})
+	svc := NewCatalogFetcherService(db, &stubCatalogResolver{adapter: adapter})
 
 	res, err := svc.Drain(ctx, "halo_infinite")
 	if err != nil {
@@ -180,7 +182,7 @@ func TestCatalogFetcherService_Drain_TransientError_StaysPending(t *testing.T) {
 			"playlist:pl-fail": errors.New("503 service unavailable"),
 		},
 	}
-	svc := NewCatalogFetcherService(db, &stubResolver{adapter: adapter})
+	svc := NewCatalogFetcherService(db, &stubCatalogResolver{adapter: adapter})
 
 	res, err := svc.Drain(ctx, "halo_infinite")
 	if err != nil {
@@ -215,7 +217,7 @@ func TestCatalogFetcherService_Drain_AlreadyInCatalog_Skipped(t *testing.T) {
 
 	// Adapter vide : FetchMap échouerait s'il était appelé. On prouve la
 	// déduplication par NOT EXISTS (l'entrée résolue est hors périmètre pending).
-	svc := NewCatalogFetcherService(db, &stubResolver{adapter: &stubCatalogAdapter{}})
+	svc := NewCatalogFetcherService(db, &stubCatalogResolver{adapter: &stubCatalogAdapter{}})
 
 	res, err := svc.Drain(ctx, "halo_infinite")
 	if err != nil {
@@ -236,7 +238,7 @@ func TestCatalogFetcherService_Drain_AlreadyInCatalog_Skipped(t *testing.T) {
 func TestCatalogFetcherService_Drain_EmptyQueue_NoError(t *testing.T) {
 	ctx := context.Background()
 	db := setupCatalogTestDB(t)
-	svc := NewCatalogFetcherService(db, &stubResolver{adapter: &stubCatalogAdapter{}})
+	svc := NewCatalogFetcherService(db, &stubCatalogResolver{adapter: &stubCatalogAdapter{}})
 	res, err := svc.Drain(ctx, "halo_infinite")
 	if err != nil {
 		t.Fatalf("Drain empty: %v", err)

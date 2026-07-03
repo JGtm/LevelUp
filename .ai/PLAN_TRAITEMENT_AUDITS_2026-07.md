@@ -856,6 +856,20 @@ Format par entrée :
   only_played invalide). Sites sans ctx laissés (documentés).
 - 2 commits : 0077142bb (partie 1 : B1-B12/B14 + garde-rail B8) + le commit de clôture (B13/B15/B16).
 - RÉCONCILIER plan/journal S+A+B au merge (S sur sa branche ; A+B sur refactor/audits-2026-07).
+
+[CORRECTION 2026-07-03 — gate B incomplet à la clôture] Le "Gate B" ci-dessus n'a fait
+tourner que `go test ./...` (NON-intégration) ; le `-tags=integration ./...` était pourtant
+OBLIGATOIRE (B touche sync/ en B10-B14 et les lecteurs platform/duckdb en B8). Découvert au
+gate de LOT C : 20 tests d'intégration `internal/platform/duckdb` étaient ROUGES — fixtures
+périmées par la migration B8 vers les vues _latest (vues `match_skill_rank_latest` /
+`match_csrs_latest` absentes, colonnes append-only `written_at`/`id` manquantes) — plus 1
+build break `internal/service` pré-campagne (collision `stubResolver`). Le rouge avait été
+masqué par (1) le flake concurrent DuckDB mono-process et (2) un filtre `Select-String "FAIL"`
+attrapant les logs « Failure while replaying WAL ». RÉPARÉ 2026-07-03 (commit fix dédié) :
+fixtures alignées sur le schéma prod + `stubResolver`→`stubCatalogResolver` ; suite
+d'intégration complète VERTE en run sérialisé `-p 1` (exit 0). Le code livrable de B était
+correct — seule sa vérification était incomplète. Garde-fou process ajouté au skill
+delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 ```
 
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)

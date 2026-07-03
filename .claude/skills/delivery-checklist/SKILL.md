@@ -26,9 +26,14 @@ Invoquer ce skill avant tout PR, merge, ou "c'est livré".
 ```bash
 # Depuis apps/go-api/
 go test ./...                   # tous les tests
-go test -tags=integration ./... # OBLIGATOIRE si le diff touche persist/, sync/ ou migration/
-                                # (les tests anti-ART critiques sont derrière ce tag —
-                                #  un run nu donne un FAUX VERT)
+go test -tags=integration -p 1 ./...  # OBLIGATOIRE si le diff touche persist/, sync/ ou
+                                # migration/ (les tests anti-ART critiques sont derrière ce
+                                # tag — un run nu donne un FAUX VERT). `-p 1` NON NÉGOCIABLE :
+                                # le driver DuckDB est mono-process ; en parallèle (défaut),
+                                # les packages platform/duckdb + sync se contendent, avortent
+                                # avec des durées FANTÔMES (~28000 s) et MASQUENT les vraies
+                                # défaillances (piège vécu : gate LOT B « vert » à tort,
+                                # 20 tests rouges non vus — 2026-07-03).
 go vet ./...                    # analyse statique
 # -race : incompatible driver DuckDB tel quel — ajouter -gcflags=all=-d=checkptr=0
 
@@ -36,9 +41,16 @@ go vet ./...                    # analyse statique
 go test ./internal/service/... -v -run TestMatchView
 ```
 
+> PIÈGE DE FILTRE : pour lister les échecs, ancrer le motif — `Select-String "^--- FAIL:"`
+> ou `grep '^--- FAIL:'`. Un filtre `FAIL` nu attrape aussi les logs applicatifs
+> (« **Fail**ure while replaying WAL ») et, combiné à un `tail`, fait défiler les vraies
+> lignes `--- FAIL:` hors écran → FAUX VERT. Vérifier aussi le code de sortie (`$LASTEXITCODE`
+> / `echo $?`), jamais la seule sortie filtrée.
+
 Critères go/no-go :
 - [ ] `go test ./...` passe sans erreur
-- [ ] `-tags=integration` lancé si persist/sync/migration touchés
+- [ ] `-tags=integration -p 1` lancé si persist/sync/migration touchés — sérialisé, code de
+      sortie 0 vérifié (pas seulement la sortie filtrée)
 - [ ] `go vet ./...` sans warning
 - [ ] Pas de test ignoré (`t.Skip`) sans commentaire justificatif
 - [ ] Aucun garde-rail affaibli pour passer (allowlist agrandie, regex assouplie, seuil

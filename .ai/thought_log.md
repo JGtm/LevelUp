@@ -1,3 +1,28 @@
+## [2026-07-03] Gate d'intégration masqué (LOTS A/B) : 20 fixtures platform/duckdb + collision service réparées — COMPLÉTÉ
+
+**Tâche** : remédiation découverte au gate de LOT C. Le gate `-tags=integration ./...` des
+lots précédents n'était pas réellement vert.
+
+**Décision technique principale** : réparer les fixtures de test pour les ALIGNER sur le
+schéma de prod (aucun code de prod modifié — vérifié par git blame que prod expose bien ces
+vues/colonnes). Détail : (1) `repos_extra_test.go` + `player_repos_test.go` : ajout des vues
+`match_skill_rank_latest` et `match_csrs_latest` (QUALIFY latest, miroir schema.go), lues par
+les readers migrés en B8 ; (2) `player_repos_test.go` : colonnes append-only `written_at`/`id`
+sur `match_skill_rank` (Q26g lit la table BRUTE avec tie-break, allowlist B8) + inserts passés
+en colonne-qualifiés ; (3) `pool_migration_test.go` : colonnes `game_variant_id`/`name` sur le
+`match_registry` fixture (Q5SharedHistory les lit depuis f7c7885b69, pré-campagne) ; (4)
+`catalog_fetcher_service_test.go` : `stubResolver`→`stubCatalogResolver` (collision de nom avec
+le stub `ResolveXUID` de gamertag_search_live_test, build break integration pré-campagne Phase F).
+
+**Résultats observés** : cause du masquage = flake concurrent DuckDB mono-process (durées
+fantômes ~28000 s, packages avortés) + filtre `Select-String "FAIL"` attrapant les logs
+« Failure while replaying WAL ». En sérialisant `-p 1` + filtre ancré `^--- FAIL:`, les 20
+rouges + le build break sont apparus. Après réparation : `go test -tags=integration -p 1 ./...`
+= exit 0, suite complète verte. Garde-fou ajouté au skill delivery-checklist.
+
+**Conclusion / prochaine étape** : commit fix dédié + note de correction au journal §6 de LOT B.
+Job CI `go test -tags=integration -p 1 ./...` à câbler en LOT M (Tests). Puis clôture LOT C.
+
 ## [2026-07-02] Dette logging Go (audit QUALITE Axe 3) — slog Context + err natif dans api/** et service/** — Complété
 
 **Tâche** : mineurs mécanique du logging sur `internal/api/**` (handlers inclus) et `internal/service/**`. Deux transformations sûres, plus 2 sites de params HTTP défaultés silencieusement à tracer. Vérification sur pièces de la portée de `ctx` avant chaque conversion.
