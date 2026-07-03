@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -160,28 +159,6 @@ func TestFieldMappingsHandler_ETag304(t *testing.T) {
 	if w2.Code != http.StatusNotModified {
 		t.Errorf("re-request with same ETag: status = %d, want 304", w2.Code)
 	}
-}
-
-func TestMultiTitleAPIEnabled(t *testing.T) {
-	cases := []struct {
-		val  string
-		want bool
-	}{
-		{"", false},
-		{"0", false},
-		{"false", false},
-		{"1", true},
-		{"true", true},
-		{"TRUE", true},
-		{"yes", true},
-	}
-	for _, tc := range cases {
-		t.Setenv("MULTI_TITLE_API_ENABLED", tc.val)
-		if got := MultiTitleAPIEnabled(); got != tc.want {
-			t.Errorf("env=%q → %v, want %v", tc.val, got, tc.want)
-		}
-	}
-	_ = os.Unsetenv("MULTI_TITLE_API_ENABLED")
 }
 
 // mustLoad charge le fixture TOML et retourne le map slug→set utilisé par stubRegistry.

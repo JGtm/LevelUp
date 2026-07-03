@@ -77,13 +77,22 @@ func loadMultiTitleAPIEnabled(settingsPath string) bool {
 	return false
 }
 
-// loadDiscordWebhookURL lit le webhook Discord depuis LEVELUP_DISCORD_WEBHOOK_URL,
-// DISCORD_WEBHOOK_URL (legacy Python) ou le champ discord_webhook_url de app_settings.json.
-func loadDiscordWebhookURL(settingsPath string) string {
+// DiscordWebhookURLFromEnv retourne le webhook Discord depuis l'environnement SEUL
+// (LEVELUP_DISCORD_WEBHOOK_URL prioritaire sur DISCORD_WEBHOOK_URL, nom legacy Python).
+// Source UNIQUE de la précédence env du webhook (CR A6) : consommée par le loader config
+// ci-dessous ET par les résolveurs notify/validation, qui conservent leur propre fallback
+// settings (map résolue par titre côté notify). Chaîne vide si aucune n'est définie.
+func DiscordWebhookURLFromEnv() string {
 	if url := os.Getenv("LEVELUP_DISCORD_WEBHOOK_URL"); url != "" {
 		return url
 	}
-	if url := os.Getenv("DISCORD_WEBHOOK_URL"); url != "" {
+	return os.Getenv("DISCORD_WEBHOOK_URL")
+}
+
+// loadDiscordWebhookURL lit le webhook Discord depuis l'environnement
+// (DiscordWebhookURLFromEnv) ou le champ discord_webhook_url de app_settings.json.
+func loadDiscordWebhookURL(settingsPath string) string {
+	if url := DiscordWebhookURLFromEnv(); url != "" {
 		return url
 	}
 	data, err := os.ReadFile(settingsPath)

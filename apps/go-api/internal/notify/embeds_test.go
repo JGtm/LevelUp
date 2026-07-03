@@ -427,17 +427,6 @@ func TestStrValDefault(t *testing.T) {
 	}
 }
 
-func TestEnvWebhookURL(t *testing.T) {
-	t.Setenv("DISCORD_WEBHOOK_URL", "")
-	if EnvWebhookURL() != "" {
-		t.Error("expected empty when env not set")
-	}
-	t.Setenv("DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/test")
-	if EnvWebhookURL() != "https://discord.com/api/webhooks/test" {
-		t.Error("expected webhook URL from env")
-	}
-}
-
 // ─── notifiers.go ────────────────────────────────────────────────────────────
 
 func TestMin(t *testing.T) {

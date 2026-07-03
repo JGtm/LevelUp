@@ -14,6 +14,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/config"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -141,8 +143,9 @@ func notifyConfigFromMap(settingsPath string, s map[string]any) NotifyConfig {
 		return cfg
 	}
 
-	// Résolution webhook : env var > settings (résolus)
-	url := strings.TrimSpace(os.Getenv("DISCORD_WEBHOOK_URL"))
+	// Résolution webhook : env var (LEVELUP_DISCORD_WEBHOOK_URL > DISCORD_WEBHOOK_URL,
+	// via config — source unique de précédence) > settings résolus (map par titre).
+	url := strings.TrimSpace(config.DiscordWebhookURLFromEnv())
 	if url == "" {
 		url = strings.TrimSpace(strVal(s, "discord_webhook_url"))
 	}

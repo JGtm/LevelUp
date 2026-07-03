@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 	"time"
 
@@ -328,18 +327,4 @@ func NotifyFriendSyncCompleted(cfg NotifyConfig, slug string, promoted int64) {
 	if SendWebhook(cfg.WebhookURL, WebhookPayload{Embeds: []Embed{embed}}) {
 		slog.InfoContext(ctx, "discord_friend_sync_sent", "op", "friend_sync", "slug", slug, "promoted", promoted)
 	}
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// EnvWebhookURL — résolution depuis env var (pour les scripts CLI)
-// ─────────────────────────────────────────────────────────────────────────────
-
-// EnvWebhookURL retourne DISCORD_WEBHOOK_URL depuis l'environnement si valide.
-// Utile pour les scripts CLI qui n'ont pas app_settings.json.
-func EnvWebhookURL() string {
-	url := strings.TrimSpace(os.Getenv("DISCORD_WEBHOOK_URL"))
-	if strings.HasPrefix(url, "https://discord.com/api/webhooks/") {
-		return url
-	}
-	return ""
 }

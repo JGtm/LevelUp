@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -97,13 +95,6 @@ func NewFieldMappingsHandler(reg FieldMappingsRegistry, logger *slog.Logger) *Fi
 func (h *FieldMappingsHandler) WithSeasonsCatalog(resolver SeasonsCatalogResolver) *FieldMappingsHandler {
 	h.seasons = resolver
 	return h
-}
-
-// MultiTitleAPIEnabled retourne true si la feature flag MULTI_TITLE_API_ENABLED
-// est activée. Par défaut false en Phase A.
-func MultiTitleAPIEnabled() bool {
-	v := strings.ToLower(strings.TrimSpace(os.Getenv("MULTI_TITLE_API_ENABLED")))
-	return v == "1" || v == jsonBoolTrueStr || v == "yes"
 }
 
 type fieldMappingDTO struct {
