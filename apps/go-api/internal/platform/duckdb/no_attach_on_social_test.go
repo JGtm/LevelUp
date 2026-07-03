@@ -239,7 +239,6 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"cmd/wal_forensic_compare/main.go":                                                  "outil one-shot forensique WAL (ADR 0021 Gap 2)",
 	"cmd/duckdb_7659_repro/main.go":                                                     "outil one-shot repro bug DuckDB upstream (ADR 0021 Bonus 13)",
 	"cmd/server/main.go":                                                                "boot serveur : pool init + CHECKPOINT scheduler",
-	"internal/api/gen/types.gen.go":                                                     "généré par oapi-codegen (DO NOT EDIT) ; 'shared_social' provient d'une description OpenAPI (champ player_records_count), pas d'un accès DB",
 	"internal/api/registry_media.go":                                                    "factory MediaService + acquéreur leased writer",
 	"internal/api/registry_notifications.go":                                            "factory NotificationsService (shared_social path)",
 	"internal/api/notifications_title_ready.go":                                         "notifier MT-19 title_ready : la mention 'shared_social' est un commentaire doc (per-title via PathResolver.SharedSocialDBPath) ; l'émission passe par l'Emitter (path Persister), pas d'ATTACH/INSERT direct",

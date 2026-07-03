@@ -21,18 +21,8 @@ CGO_ENV := PATH="/c/msys64/ucrt64/bin:$(PATH)" CC=$(CC) CGO_ENABLED=1
 # Paramètres serveur locaux (override via env)
 REPO_ROOT   ?= $(shell cd ../.. && pwd)
 API_PORT    ?= 8000
-# Version épinglée via `go run …@version` : pas d'install manuelle requise
-# (résout le blocage "oapi-codegen not on PATH"), reproductible, zéro dépendance
-# ajoutée à go.mod. Doit rester alignée avec le marqueur de version en tête de
-# internal/api/gen/types.gen.go.
-OAPI_CODEGEN := go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0
-
 build:
 	$(CGO_ENV) go build -o bin/server.exe ./cmd/server/
-
-# Régénère internal/api/gen/types.gen.go depuis api/openapi.yaml
-gen:
-	$(OAPI_CODEGEN) --config api/oapi-codegen-types.yaml api/openapi.yaml
 
 run:
 	$(CGO_ENV) LEVELUP_REPO_ROOT="$(REPO_ROOT)" LEVELUP_API_PORT=$(API_PORT) \
@@ -47,7 +37,7 @@ test:
 
 # Tests unitaires uniquement (pas de CGO/DuckDB)
 test-unit:
-	go test -count=1 -timeout=60s $$(go list ./... | grep -v -E 'cmd/|api/gen|sync/testutil|platform/duckdb|/migration$$')
+	go test -count=1 -timeout=60s $$(go list ./... | grep -v -E 'cmd/|sync/testutil|platform/duckdb|/migration$$')
 
 # Tests rapides (pas de -count=1, cache activé)
 test-fast:
