@@ -119,9 +119,11 @@ var tablesProtegees = []string{
 // non encore migrées (cf. audit_art_writes.md), l'allowlist contient
 // les sites tolérés temporairement.
 var allowlistArtPatterns = map[string]string{
-	// Documentation interne du package persist : mentionne les patterns
-	// à risque par nature (c'est sa raison d'être).
-	"internal/persist/doc.go": "Documentation : mentionne explicitement les patterns à risque dans son rôle d'expliquer le refactor anti-ART",
+	// (Entrée `internal/persist/doc.go` retirée en E4 : ses seuls « patterns »
+	// vivaient dans un commentaire ; le scan principal strippe les commentaires,
+	// donc l'entrée était morte — TestAllowlistJustifiesEverything la refuse
+	// désormais, bloquant + strip cohérent avec le scan.)
+	//
 	// FAUX POSITIF file-level (append-only #23046) : writes.go co-localise
 	// UpsertPlayerEnrichment (player_match_enrichment, INSERT pur append-only) avec
 	// les ON CONFLICT LÉGITIMES sur match_registry/match_participants (NON append-only,
@@ -303,7 +305,10 @@ func TestAllowlistJustifiesEverything(t *testing.T) {
 			t.Errorf("allowlist : fichier introuvable %q (raison: %q) — entrée à retirer ?", fileRel, reason)
 			continue
 		}
-		text := string(content)
+		// Détection cohérente avec le scan principal (stripGoComments) : une
+		// « justification » qui n'existe que dans un commentaire ne compte PAS —
+		// le scan strippe les commentaires, donc une telle entrée est morte.
+		text := stripGoComments(string(content))
 		hasRiskPattern := false
 		for _, pat := range patternsAtRisk {
 			if pat.MatchString(text) {
@@ -312,7 +317,8 @@ func TestAllowlistJustifiesEverything(t *testing.T) {
 			}
 		}
 		if !hasRiskPattern {
-			t.Logf("allowlist : %q n'a plus de pattern à risque → retirer l'entrée (raison historique: %q)",
+			t.Errorf("allowlist ART obsolète : %q n'a plus de pattern à risque dans son CODE "+
+				"(commentaires strippés) → retirer l'entrée (raison historique: %q)",
 				fileRel, reason)
 		}
 	}
