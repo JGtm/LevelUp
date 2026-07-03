@@ -14,10 +14,12 @@
 // garantit la cross-player dedup correcte (visibilité immédiate des writes
 // avant le prochain loadKnown).
 //
-// Activation : V2 PAR DÉFAUT (shouldUseV2 = LEVELUP_SYNC_PIPELINE != "v1").
-// LEVELUP_SYNC_PIPELINE=v1 = kill-switch de rollback vers le legacy V1 (retrait
-// planifié lot D1c). Rollback instantané.
-// Coexistence : V1 et V2 partagent les Persisters, le schéma DB et le WAL.
+// Activation : V2 est l'UNIQUE moteur de sync des joueurs moteur (pipeline V1
+// supprimé au lot D1c, 2026-07). shouldUseV2 = orchestrator câblé ; s'il ne l'est
+// pas (prérequis boot manquants), le scheduler bascule sur le filet structurel
+// syncPlayer. Les titres live-only (Halo 5) passent par syncPlayer→liveRunner,
+// jamais par V2. V2 réutilise les Persisters, le schéma DB et le WAL (écriture
+// unique) + le SyncEngine pour le post-sync (engine.run reste partagé).
 //
 // Tests anti-régression critiques : cf. tests/integration/sync_v2/ et
 // internal/sync/contract_test.go.

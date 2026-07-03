@@ -1093,14 +1093,15 @@ func main() {
 		autoScheduler.WithPostSyncRunner(postSyncRunner)
 	}
 
-	// ADR 0027 D6.5 — câblage pipeline V2. Une fois l'orchestrator câblé
-	// (bloc ci-dessous), scheduler.shouldUseV2() retourne true PAR DÉFAUT
-	// (LEVELUP_SYNC_PIPELINE != "v1") : le flow runtime passe en V2. Le
-	// kill-switch LEVELUP_SYNC_PIPELINE=v1 force le rollback vers le legacy V1.
-	// Retrait de V1 + du flag planifié (lot D1c, DEC-2).
+	// ADR 0027 — câblage pipeline V2, UNIQUE moteur de sync du cycle depuis la
+	// suppression du pipeline V1 (lot D1c, DEC-2). Une fois l'orchestrator câblé
+	// (bloc ci-dessous), le cycle auto-sync pilote les joueurs MOTEUR (Infinite)
+	// par V2 et les LIVE-ONLY (Halo 5) par syncPlayer→liveRunner. Plus de flag
+	// LEVELUP_SYNC_PIPELINE ni de fallback automatique.
 	//
-	// Pré-requis : autoSyncPool non-nil + autoBatchQueue non-nil. Si l'un
-	// manque, on skip le câblage : V2 sera indisponible mais V1 fonctionne.
+	// Pré-requis : autoSyncPool + autoBatchQueue + metaDB non-nil. Si l'un manque,
+	// on skip le câblage : le cycle bascule sur le filet structurel syncPlayer de
+	// boot (sync directe sans orchestrator).
 	if autoSyncPool != nil && autoBatchQueue != nil && metaDB != nil {
 		// Récupère le handle shared via le cache duckdb process-wide
 		// (déjà ouvert plus tôt par le serveur en RO ou RW selon mode).
@@ -1127,7 +1128,7 @@ func main() {
 		})
 		if v2Orch != nil {
 			autoScheduler.WithCycleOrchestrator(v2Orch)
-			slog.Info("sync.v2: orchestrator câblé parity-complete (V2 par défaut ; rollback via LEVELUP_SYNC_PIPELINE=v1)")
+			slog.Info("sync.v2: orchestrator câblé parity-complete (unique moteur de sync ; filet syncPlayer si non câblé)")
 		}
 	}
 

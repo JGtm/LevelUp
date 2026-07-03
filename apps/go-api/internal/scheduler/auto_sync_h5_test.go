@@ -141,8 +141,6 @@ func TestSyncPlayer_H5LiveRunnerError_Failed(t *testing.T) {
 // (syncPlayer), JAMAIS envoyé à l'orchestrator V2 mono-titre (Infinite). Le joueur
 // Infinite, lui, va bien à l'orchestrator. Garde-fou du split de dispatch runOnceV2.
 func TestRunOnceTrigger_V2_RoutesH5ToLiveRunner_NotOrchestrator(t *testing.T) {
-	t.Setenv("LEVELUP_SYNC_PIPELINE", "") // V2 par défaut
-
 	repoRoot := t.TempDir()
 	settingsPath := filepath.Join(repoRoot, "app_settings.json")
 	if err := os.WriteFile(settingsPath, []byte(`{"spnkr_auto_sync_enabled":true,"spnkr_auto_sync_interval_hours":1}`), 0o644); err != nil {

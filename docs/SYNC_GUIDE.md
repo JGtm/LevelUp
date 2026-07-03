@@ -76,7 +76,7 @@ The per-player engine (`RunDelta`/`RunFull`) is the default (V1). An opt-in **V2
 5. **Persist** — single writer: one mega-batch (shared + player) in one transaction.
 6. **PostSync** — parallel per player: heals, films, citations, etc.
 
-Activation: `LEVELUP_SYNC_PIPELINE=v2` (default `v1`, instant rollback). V1 and V2 share the Persisters, schema and WAL.
+V2 is the sole engine driver of the auto-sync cycle since the V1 pipeline was removed (2026-07). Engine titles (Infinite) go through the orchestrator; live-only titles (Halo 5) go through `syncPlayer`→`liveRunner`. If the orchestrator is not wired at boot (missing prereqs), the cycle falls back to a structural `syncPlayer` safety net. V2 shares the Persisters, schema and WAL.
 
 ## Delta vs Full
 

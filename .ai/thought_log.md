@@ -1,3 +1,30 @@
+## [2026-07-03] LOT D1c (audit 2026-07) — suppression pipeline V1 (flag + fallback auto), V2 devient multi-titre — COMPLÉTÉ
+
+**Tâche** : D1c du PLAN_TRAITEMENT_AUDITS_2026-07 (DEC-2), branche refactor/audits-2026-07.
+
+**Décision technique principale** : audit read-only préalable (3 agents Explore + vérif sur
+pièces) → DÉCOUVERTE : le pipeline V2 (défaut prod) est MONO-TITRE et ne route pas Halo 5 →
+les joueurs H5 étaient traités comme Infinite sous V2 (bug pré-existant). Étape 1 (additif,
+commit b30eb9fe5) : RunOnceTrigger partitionne par `livesync.HandlesTitle` — H5 →
+syncPlayer→liveRunner (path testé), Infinite → orchestrator V2 ; helper syncPlayersConcurrent
+extrait ; test dédié + revue adversariale 3 agents (dispatch/compteurs/concurrence OK, 1
+défaut Duration mineur corrigé). Étape 2 (commit à venir) : suppression du flag
+LEVELUP_SYNC_PIPELINE + du fallback auto V2→V1 (shouldUseV2 = orchestrator câblé). REPLI
+documenté : `syncPlayer` + branche moteur CONSERVÉS car main.go câble l'orchestrator
+CONDITIONNELLEMENT (pool+queue+metaDB) → orchestrator-nil = scénario boot réel ; syncPlayer
+devient (a) chemin live-only + (b) filet structurel de boot (plus un rollback flag). ADR 0027
++ sync/v2/doc.go + docs EN/FR MAJ.
+
+**Résultats observés** : engine.run confirmé PARTAGÉ (watcher/HTTP/CLI/admin) → NON supprimé,
+K2b (refactor run()) reste valide (pas [~]). Gate : go build/test/vet ./... OK ; scheduler
+unit+integration verts ; go test -tags=integration -p 1 ./... vert ; grep LEVELUP_SYNC_PIPELINE
+(reads) → 0 (restent : commentaires de suppression + ADR historique). Gate live-sync local
+(delta+backfill) NON exécutable par l'agent (tokens/réseau) → contrôle manuel avant land.
+
+**Conclusion / prochaine étape** : D1c clos (2 commits). Le retrait du kill-switch de rollback
+est effectif sur la branche — NE PAS merger sur main sans feu vert (push = deploy auto).
+Prochain : D1d (docs cycle de vie flags) / D1f (lint TODO-expiry) / D1e (centralisation os.Getenv).
+
 ## [2026-07-03] LOT D1 (audit 2026-07) — D1a télémétrie legacy + D1b suppression LEVELUP_PERSIST_BATCH — EN COURS (D1a+D1b livrés)
 
 **Tâche** : 5e lot du PLAN_TRAITEMENT_AUDITS_2026-07 (flags & guards), branche refactor/audits-2026-07.

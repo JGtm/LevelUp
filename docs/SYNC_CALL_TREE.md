@@ -135,10 +135,12 @@ tables — append-only by construction (ADR
 [0019](adr/0019-collect-persist-architecture.md),
 [0026](adr/0026-append-only-art-eradication.md)).
 
-## Entry point C — V2 cycle orchestrator (opt-in, all players per cycle)
+## Entry point C — V2 cycle orchestrator (sole cycle engine)
 
-Activated by `LEVELUP_SYNC_PIPELINE=v2` (and a wired orchestrator); otherwise V1
-is used. `RunOnceTrigger` → `shouldUseV2()` → `runOnceV2` → `CycleOrchestratorImpl.Run`.
+The sole engine driver of the auto-sync cycle since the V1 pipeline was removed
+(2026-07). `RunOnceTrigger` → `shouldUseV2()` (= orchestrator wired) → `runOnceV2`
+→ `CycleOrchestratorImpl.Run` for engine titles; live-only titles (Halo 5) go through
+`syncPlayer`→`liveRunner`. No orchestrator wired → structural `syncPlayer` safety net.
 
 ```text
 CycleOrchestratorImpl.Run(ctx, players)            (sync/v2/cycle.go)
