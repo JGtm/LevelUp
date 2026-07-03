@@ -447,11 +447,19 @@ openapi/migrations associées, puis build+tests.
   nettoyés ; message drift-test corrigé (`make gen`→ Huma dérive le contrat). NB : `internal/ln/`
   (output stale de l'ancienne config oapi, dir absent) = Découverte §7, hors périmètre G1. Gate :
   build+vet OK, 0 ref `api/gen` Go, tests no_attach + drift verts.
-- [ ] G2 — CR A7 : cluster home legacy — supprimer les 10 exports morts (`ComputeKPIs`,
+- [x] G2 — CR A7 : cluster home legacy — supprimer les 10 exports morts (`ComputeKPIs`,
   `ComputeTrend`, `BuildHeroCard`, `BuildHighlights`, `BuildSessionSummaries`,
   `BuildRecentMatches*` x4) + tiles legacy transitifs + leurs tests ; CONSERVER
   `mapImageURLFromRegistry`, `mmrDelta`, `float64PtrVal`, `intPtrIfPos` ; corriger la doc
-  fausse de `home_canonical.go:4-18`.
+  fausse de `home_canonical.go:4-18`. FAIT (chirurgie fonction-par-fonction — la carto Haiku
+  s'était TROMPÉE en annonçant des suppressions de FICHIERS entiers alors que `home_kpis.go`
+  mêle du VIVANT `BuildSpartanIdentity`/career-rank). Vérifié sur pièces : cluster à 0 caller
+  externe (les `*FromCanonical` ne délèguent plus). Supprimé les 10 exports + `bestKDAMatch`/
+  `bestMMRUnderdogWin` + `home_highlights_tiles.go` (6 tiles) ; CONSERVÉ les helpers PARTAGÉS
+  (dominantKey, selectHighlightWindow, highlightPerf/KDAColor, distinctSessionLabels, latest*,
+  earliest*, + les 4 nommés). Tests morts retirés des 5 fichiers (chirurgie sélective, KEPT
+  BuildSpartanIdentity/BuildRecentMedia/ComputeKPIStats). Doc `home_canonical.go` corrigée
+  (délégation legacy → autonomie canonical). Gate : build OK, `go test ./internal/analysis/` vert.
 - [ ] G3 — CR A8 / DEC-1 : supprimer la feature session-compare entière : 17 fichiers
   front (`features/session-compare/`), `handlers/session_compare.go`,
   `service/session_compare_service.go` + 3 helpers, `domain/session_compare.go`, entrée
