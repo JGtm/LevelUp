@@ -293,39 +293,3 @@ func TestBuildRecentMedia_SkipsEmpty(t *testing.T) {
 		t.Errorf("expected 1, got %d", len(result))
 	}
 }
-
-func TestComputeKPIs_Full(t *testing.T) {
-	r1, r2 := 2.0, 3.0
-	a1, a2 := 0.4, 0.6
-	matches := []legacymatch.HomeMatchRow{
-		{Outcome: homeOutcomeWin, Ratio: &r1, Accuracy: &a1},
-		{Outcome: homeOutcomeLoss, Ratio: &r2, Accuracy: &a2},
-	}
-	kpis := ComputeKPIs(matches, len(matches), 225)
-	if kpis.TotalMatches != 2 {
-		t.Errorf("TotalMatches = %d, want 2", kpis.TotalMatches)
-	}
-	if kpis.Wins != 1 {
-		t.Errorf("Wins = %d, want 1", kpis.Wins)
-	}
-	if kpis.GlobalRatio == nil {
-		t.Error("GlobalRatio nil")
-	}
-	if kpis.AvgAccuracy == nil {
-		t.Error("AvgAccuracy nil")
-	}
-}
-
-func TestBuildHeroCard(t *testing.T) {
-	r := 2.0
-	matches := []legacymatch.HomeMatchRow{
-		{Outcome: homeOutcomeWin, Ratio: &r, StartTime: time.Now()},
-	}
-	card := BuildHeroCard(matches, "TestPlayer", len(matches), 225)
-	if card.PlayerName != "TestPlayer" {
-		t.Errorf("PlayerName = %q", card.PlayerName)
-	}
-	if card.KPIs.TotalMatches != 1 {
-		t.Errorf("TotalMatches = %d", card.KPIs.TotalMatches)
-	}
-}

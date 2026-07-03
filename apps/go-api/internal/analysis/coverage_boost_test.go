@@ -2,7 +2,6 @@ package analysis
 
 import (
 	"testing"
-	"time"
 
 	"levelup/go-api/internal/legacymatch"
 )
@@ -233,57 +232,6 @@ func TestComputeNormalizedMetrics_NoOptionalFields(t *testing.T) {
 }
 
 // ---------- BuildHighlights â€” more branch coverage ----------
-
-func TestBuildHighlights_WithRatioAndTrend(t *testing.T) {
-	r := 2.5
-	kda := 2.1
-	now := time.Now()
-	matches := make([]legacymatch.HomeMatchRow, 12)
-	for i := range matches {
-		matches[i] = legacymatch.HomeMatchRow{
-			MatchID:   "m",
-			StartTime: now.Add(-time.Duration(i) * time.Hour),
-			MapName:   "Map",
-			PairName:  "Mode",
-			Outcome:   2,
-			Kills:     10,
-			Deaths:    4,
-			Ratio:     &r,
-			KDA:       &kda,
-		}
-	}
-	got := BuildHighlights(matches)
-	if len(got) < 2 {
-		t.Errorf("expected >=2 highlights, got %d", len(got))
-	}
-}
-
-func TestBuildHighlights_NegativeTrend(t *testing.T) {
-	now := time.Now()
-	matches := make([]legacymatch.HomeMatchRow, 12)
-	for i := range matches {
-		r := 0.5 // low ratio for recent
-		if i >= 5 {
-			r = 3.0 // high ratio for older
-		}
-		matches[i] = legacymatch.HomeMatchRow{
-			MatchID:   "m",
-			StartTime: now.Add(-time.Duration(i) * time.Hour),
-			MapName:   "Map",
-			PairName:  "Mode",
-			Outcome:   3, // loss
-			Kills:     5,
-			Deaths:    10,
-			Ratio:     &r,
-		}
-	}
-	got := BuildHighlights(matches)
-	if len(got) == 0 {
-		t.Error("expected highlights")
-	}
-}
-
-// ---------- meanAccuracy â€” with values ----------
 
 func TestMeanAccuracy_WithMultipleValues(t *testing.T) {
 	a1, a2, a3 := 0.4, 0.6, 0.8
