@@ -460,10 +460,24 @@ openapi/migrations associées, puis build+tests.
   earliest*, + les 4 nommés). Tests morts retirés des 5 fichiers (chirurgie sélective, KEPT
   BuildSpartanIdentity/BuildRecentMedia/ComputeKPIStats). Doc `home_canonical.go` corrigée
   (délégation legacy → autonomie canonical). Gate : build OK, `go test ./internal/analysis/` vert.
-- [ ] G3 — CR A8 / DEC-1 : supprimer la feature session-compare entière : 17 fichiers
+- [x] G3 — CR A8 / DEC-1 : supprimer la feature session-compare entière : 17 fichiers
   front (`features/session-compare/`), `handlers/session_compare.go`,
   `service/session_compare_service.go` + 3 helpers, `domain/session_compare.go`, entrée
   openapi.yaml, query key, manifest §compare. (~25 fichiers.)
+  FAIT — CORRECTION DE PLAN MAJEURE (signalée §7) : le plan disait « supprimer
+  domain/session_compare.go + service + 3 helpers » MAIS ces types+helpers sont PARTAGÉS
+  avec la page SESSION-DETAIL vivante (session_page) : `SessionCompareEntry`,
+  `SessionCompareMetricRow`, `SessionParticipationAxis`, `SessionMatchPoint`,
+  `SessionCompareSuggestion` + les builders (buildCompareEntryWithObjectives, buildCompareMetrics,
+  extractSessionLabels…) + les stat/table/participation helpers. Les supprimer aurait CASSÉ
+  session-detail + le build front. G3 corrigé = supprimer SEULEMENT la couche compare-only :
+  handler+test, orchestration `Compare`/`NewSessionCompareService` (struct), buildMapTable/
+  buildModeTable, types Request/Response/MapRow/ModeRow, route openapi /pages/session-compare,
+  17 fichiers front, query key ; PRÉSERVER l'infra session-summary partagée (trimmée dans
+  domain/session_compare.go + doc mise à jour). generated.ts régénéré, types.ts nettoyé.
+  Gate : go build+vet+`-tags=integration -p 1` service/api/domain vert (drift openapi OK) ;
+  front typecheck + build verts. NB dette mineure : fichiers `session_compare_*.go` gardent leur
+  nom bien qu'ils contiennent désormais l'infra session-summary partagée (rename = follow-up).
 - [ ] G4 — CR A9 : `SquadV2RouteHost.tsx` + `SquadV2Page.tsx` (ATTENTION : `squad/v2/types.ts`
   reste vivant).
 - [ ] G5 — CR A9 + ARCHI mineur : chaîne `NotifyNewMedia` → `queryUnnotifiedMedia` →

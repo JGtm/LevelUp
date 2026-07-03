@@ -200,11 +200,6 @@ type SessionsService interface {
 	GetSessions(ctx context.Context, opts domain.SessionComputeOptions) (domain.SessionsResponse, error)
 }
 
-// SessionCompareService compare deux sessions.
-type SessionCompareService interface {
-	Compare(ctx context.Context, req domain.SessionCompareRequest) (domain.SessionCompareResponse, error)
-}
-
 // SessionPageService construit la page détail de session.
 type SessionPageService interface {
 	GetPage(ctx context.Context, req domain.SessionPageRequest) (domain.SessionPageResponse, error)

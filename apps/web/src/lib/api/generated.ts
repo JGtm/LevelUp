@@ -1041,23 +1041,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/players/{player_slug}/pages/session-compare": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Comparaison de sessions A/B */
-        post: operations["postSessionCompare"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/players/{player_slug}/pages/last-match/resolve": {
         parameters: {
             query?: never;
@@ -7531,21 +7514,6 @@ export interface components {
             with_friends: boolean;
             worst_match?: components["schemas"]["SessionDetailMatchRow"];
         };
-        SessionCompareMapRow: {
-            /** Format: int64 */
-            a_losses: number;
-            /** Format: int64 */
-            a_matches: number;
-            /** Format: int64 */
-            a_wins: number;
-            /** Format: int64 */
-            b_losses: number;
-            /** Format: int64 */
-            b_matches: number;
-            /** Format: int64 */
-            b_wins: number;
-            map_name: string;
-        };
         SessionCompareMetricRow: {
             delta: string | null;
             key: string;
@@ -7553,25 +7521,6 @@ export interface components {
             value_a: string;
             value_b: string;
             winner: string | null;
-        };
-        SessionCompareModeRow: {
-            /** Format: int64 */
-            a_matches: number;
-            /** Format: int64 */
-            a_wins: number;
-            /** Format: int64 */
-            b_matches: number;
-            /** Format: int64 */
-            b_wins: number;
-            mode_name: string;
-        };
-        SessionCompareResponse: {
-            available_sessions: string[] | null;
-            maps_table: components["schemas"]["SessionCompareMapRow"][] | null;
-            metrics: components["schemas"]["SessionCompareMetricRow"][] | null;
-            modes_table: components["schemas"]["SessionCompareModeRow"][] | null;
-            session_a: components["schemas"]["SessionCompareEntry"];
-            session_b: components["schemas"]["SessionCompareEntry"];
         };
         SessionCompareSuggestion: {
             reason: string;
@@ -10260,30 +10209,6 @@ export interface operations {
                             display_name?: string;
                         }[];
                     };
-                };
-            };
-            404: components["responses"]["NotFound"];
-        };
-    };
-    postSessionCompare: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
-                player_slug: components["parameters"]["PlayerSlug"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Comparaison sessions A/B */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
                 };
             };
             404: components["responses"]["NotFound"];

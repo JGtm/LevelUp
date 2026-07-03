@@ -1790,12 +1790,6 @@ export type TimeseriesPageResponse = components['schemas']['TimeseriesPageRespon
 /** Point de données par match pour les charts de progression (K/D, cumul, précision). */
 export type SessionMatchPoint = components['schemas']['SessionMatchPoint']
 
-/** Ligne du tableau par carte. */
-export type SessionCompareMapRow = components['schemas']['SessionCompareMapRow']
-
-/** Ligne du tableau par mode. */
-export type SessionCompareModeRow = components['schemas']['SessionCompareModeRow']
-
 /** Axe du profil de participation 6 axes, normalisé 0..100. */
 export type SessionParticipationAxis = components['schemas']['SessionParticipationAxis']
 
@@ -1808,14 +1802,6 @@ export type SessionCompareEntry = components['schemas']['SessionCompareEntry'] &
 }
 
 export type SessionCompareMetricRow = components['schemas']['SessionCompareMetricRow']
-
-export interface SessionCompareRequest {
-  filters: FilterContextInput
-  session_a?: string | null
-  session_b?: string | null
-}
-
-export type SessionCompareResponse = components['schemas']['SessionCompareResponse']
 
 export type SessionDetailMatchRow = components['schemas']['SessionDetailMatchRow']
 

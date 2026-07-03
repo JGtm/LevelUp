@@ -128,10 +128,6 @@ export const queryKeys = {
   timeseries: (playerSlug: string, filterHash: string) =>
     ['timeseries', 'solo', playerSlug, filterHash] as const,
 
-  // Session Compare (Slice 3C)
-  sessionCompare: (playerSlug: string, filterHash: string, sessionA: string, sessionB: string) =>
-    ['session-compare', playerSlug, filterHash, sessionA, sessionB] as const,
-
   // Session Detail (session page revamp)
   sessionDetail: (
     playerSlug: string,

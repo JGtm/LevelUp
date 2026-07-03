@@ -1536,10 +1536,6 @@ func NewRouter(
 			timeseries := handlers.NewTimeseriesHandler(reg.Timeseries)
 			timeseries.Mount(r)
 
-			// Sprint 33 : Session Compare
-			sc := handlers.NewSessionCompareHandler(reg.SessionCompare)
-			sc.Mount(r)
-
 			// Exclusion manuelle de matchs non pertinents
 			// NOTE : GET /match-exclusions supprimé en revue 2026-04-29 P0.2 Q6
 			// (orphelin côté front, vue admin jamais implémentée).
