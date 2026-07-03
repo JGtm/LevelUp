@@ -99,7 +99,9 @@ Ajouté aux 2 CLI (auto-migration prouvée sur DB fraîche). Alternative manuell
 PL="edfef3ac-9cbe-4fa2-b949-8f29deafd483,dcb2e24e-05fb-4390-8076-32a0cdb4326e,fa5aa2a3-2428-4912-a023-e1eeea7b877c,c94cb508-2fbd-450a-81db-bb74f7741d45,6233381c-fc96-40b9-b1ff-f6a4de72dd7a,57e417dd-7366-4dda-9bdd-2802151d5e81,71734db4-4b8e-4682-9206-62b6eff92582,28bfa5f4-89b0-47dc-86e8-1a7cc5b593fc,a4a4453c-7a91-4b27-b952-2456c5ce3205,6dc5f699-d6d9-41c4-bdf8-7ae11dec2d1b,f3738fae-bd09-4fd1-9dea-e32f546bbbfd,0b42053a-32c5-4c2d-b8b8-5f07274a0117,7c60fb3e-656c-4ada-a085-293562642e50,a883e7e1-9aca-4296-9009-3733a0ca8081,f7eb8c71-fedb-4696-8c0f-96025e285ffd,f7f30787-f607-436b-bdec-44c65bc2ecef"
 
 # ÉTAPE 1 — re-scraper TOUTES les saisons × 16 playlists (public, sans token ; ~quelques min) :
-go run ./cmd/snapshot-world-leaderboard -season all -shared-db "$DB" -playlists "$PL" -limit 200 -polite-ms 800
+# top 100 par playlist ; les playlists non classées d'une saison → 404 = skip nominal
+# (affiché "— (non classée cette saison)", plus une ERROR depuis le fix 23f3c3c58).
+go run ./cmd/snapshot-world-leaderboard -season all -shared-db "$DB" -playlists "$PL" -limit 100 -polite-ms 800
 
 # ÉTAPE 2 — enrichir TOUTES les saisons via le POOL de tokens (LONG, off-peak ; checkpoint reprend) :
 go run ./cmd/backfill-world-player-stats -token-gamertag JGtm -season all -all-tokens -deep -max-pages 120 -quiet
