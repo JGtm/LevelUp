@@ -615,12 +615,36 @@ func (s *AutoSyncScheduler) RunOnceTrigger(ctx context.Context, trigger string) 
 	// pour le signal temps-réel.
 	s.warnStaleGateClaims(ctx)
 
-	// ADR 0027 dispatch : si V2 est activé via env var ET orchestrator
-	// non-nil, déléguer au pipeline V2. Fallback silencieux à V1 si
-	// l'orchestrator retourne ErrNotImplemented (cas D0-D6 transitoire)
-	// ou en cas d'échec global (best-effort, V1 reprend).
+	// Séparer les titres live-only (Halo 5+) du batch moteur : l'orchestrator V2
+	// est mono-titre (Infinite) et ne sait pas router un titre live-only. Ces
+	// joueurs passent TOUJOURS par syncPlayer, qui sélectionne le runner de façon
+	// registry-driven (livesync.HandlesTitle → liveRunner), que V2 soit actif ou
+	// non. Le batch V2 ne reçoit donc que les joueurs pilotés par le SyncEngine.
+	var orchPlayers, livePlayers []domain.PlayerSummary
+	for _, p := range players {
+		if livesync.HandlesTitle(resolveTitleSlug(p)) {
+			livePlayers = append(livePlayers, p)
+		} else {
+			orchPlayers = append(orchPlayers, p)
+		}
+	}
+
+	// ADR 0027 dispatch : si V2 est activé via env var ET orchestrator non-nil,
+	// déléguer les joueurs MOTEUR au pipeline V2, et syncer les joueurs live-only
+	// via syncPlayer (path liveRunner) en parallèle. Fallback silencieux à V1
+	// (boucle syncPlayer sur TOUS les joueurs, qui gère aussi les live-only) si
+	// l'orchestrator retourne ErrNotImplemented (cas D0-D6 transitoire) ou échoue.
 	if s.shouldUseV2() {
-		if v2Res, v2Err := s.runOnceV2(ctx, players); v2Err == nil {
+		if v2Res, v2Err := s.runOnceV2(ctx, orchPlayers); v2Err == nil {
+			liveSynced, liveSkipped, liveFailed := s.syncPlayersConcurrent(ctx, livePlayers)
+			v2Res.Synced += liveSynced
+			v2Res.Skipped += liveSkipped
+			v2Res.Failed += liveFailed
+			v2Res.Total = len(players)
+			// Duration couvre le cycle COMPLET (orchestrator + sync live-only) —
+			// runOnceV2 ne mesure que l'orchestrator ; sans ceci le dashboard peut
+			// afficher un temps API/écriture > durée de cycle (parité path V1).
+			v2Res.Duration = time.Since(start)
 			s.storeCycleResult(v2Res, trigger, captureCycleLoad().deltaSince(loadBefore))
 			return v2Res
 		} else if v2Err == syncv2.ErrNotImplemented {
@@ -628,51 +652,14 @@ func (s *AutoSyncScheduler) RunOnceTrigger(ctx context.Context, trigger string) 
 		} else {
 			slog.WarnContext(ctx, "auto_sync: V2 échec — fallback V1", "err", v2Err)
 		}
-		// Fallthrough vers V1.
+		// Fallthrough vers V1 (syncPlayer gère Infinite ET live-only).
 	}
 
-	// Phase 3.4 (plan stabilisation 2026-05-22) — paralléliser le cycle :
-	// chaque syncPlayer tourne dans une goroutine, errgroup.SetLimit borne à
-	// la taille du pool de tokens. Gain estimé 15min → 5-8min sur 3 joueurs.
-	//
-	// Safety : syncPlayer met à jour s.playerOutcomes via recordOutcome qui est
-	// protégé par s.snapshotMu. Les writes shared sont déjà sérialisés par
-	// dblease.leaseMutex + singleflight match_participants (phase 2.3). Les
-	// compteurs locaux (Synced/Skipped/Failed) sont protégés via atomic.Int32.
-	parallelism := s.poolSizeSafe()
-	if parallelism < 1 {
-		parallelism = 1
-	}
+	// V1 : boucle syncPlayer sur TOUS les joueurs (syncPlayer route lui-même les
+	// titres live-only vers liveRunner). Phase 3.4 : parallélisée par errgroup.
 	slog.InfoContext(ctx, "auto_sync: démarrage du cycle",
-		"player_count", res.Total,
-		"pool_size", parallelism,
-		"parallel", parallelism > 1,
-	)
-
-	var synced, skipped, failed atomic.Int32
-	eg, egCtx := errgroup.WithContext(ctx)
-	eg.SetLimit(parallelism)
-	for _, p := range players {
-		p := p
-		eg.Go(func() error {
-			outcome := s.syncPlayer(egCtx, p)
-			switch outcome {
-			case outcomeOK:
-				synced.Add(1)
-			case outcomeSkipped:
-				skipped.Add(1)
-			case outcomeFailed:
-				failed.Add(1)
-			}
-			// Best-effort : un échec syncPlayer n'annule pas les autres goroutines.
-			// L'erreur est déjà loggée + reflétée dans res.Failed++.
-			return nil
-		})
-	}
-	_ = eg.Wait()
-	res.Synced = int(synced.Load())
-	res.Skipped = int(skipped.Load())
-	res.Failed = int(failed.Load())
+		"player_count", res.Total, "pool_size", s.poolSizeSafe())
+	res.Synced, res.Skipped, res.Failed = s.syncPlayersConcurrent(ctx, players)
 
 	// PLAN_SPARTAN_IDENTITY_REFACTOR §11 Phase 5 (2026-05-25) :
 	// customRefresher.RefreshAll(ctx) supprimé. La customisation est désormais
@@ -683,6 +670,45 @@ func (s *AutoSyncScheduler) RunOnceTrigger(ctx context.Context, trigger string) 
 	s.storeCycleResult(res, trigger, captureCycleLoad().deltaSince(loadBefore))
 
 	return res
+}
+
+// syncPlayersConcurrent lance syncPlayer pour chaque joueur en parallèle (errgroup
+// borné par la taille du pool de tokens) et agrège synced/skipped/failed. Extrait
+// de la boucle de cycle (Phase 3.4) pour être réutilisé par le path V2 (joueurs
+// live-only, non gérés par l'orchestrator) ET le path V1 (tous les joueurs).
+//
+// Best-effort : un échec syncPlayer n'annule pas les autres goroutines (l'erreur
+// est déjà loggée + reflétée dans le compteur failed). Safety : syncPlayer met à
+// jour s.playerOutcomes via recordOutcome (protégé par s.snapshotMu) ; les writes
+// shared sont sérialisés par dblease + singleflight ; les compteurs locaux sont
+// protégés par atomic.Int32.
+func (s *AutoSyncScheduler) syncPlayersConcurrent(ctx context.Context, players []domain.PlayerSummary) (synced, skipped, failed int) {
+	if len(players) == 0 {
+		return 0, 0, 0
+	}
+	parallelism := s.poolSizeSafe()
+	if parallelism < 1 {
+		parallelism = 1
+	}
+	var syncedN, skippedN, failedN atomic.Int32
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.SetLimit(parallelism)
+	for _, p := range players {
+		p := p
+		eg.Go(func() error {
+			switch s.syncPlayer(egCtx, p) {
+			case outcomeOK:
+				syncedN.Add(1)
+			case outcomeSkipped:
+				skippedN.Add(1)
+			case outcomeFailed:
+				failedN.Add(1)
+			}
+			return nil
+		})
+	}
+	_ = eg.Wait()
+	return int(syncedN.Load()), int(skippedN.Load()), int(failedN.Load())
 }
 
 // syncOutcome encode le résultat d'une tentative de sync par joueur.
