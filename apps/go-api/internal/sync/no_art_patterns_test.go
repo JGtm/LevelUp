@@ -343,6 +343,17 @@ func reBulkUpdateFromValues(table string) *regexp.Regexp {
 	return regexp.MustCompile(`(?is)\bUPDATE\s+` + regexp.QuoteMeta(table) + `\b.{0,400}?\bFROM\s*\(\s*VALUES\b`)
 }
 
+// reUpdateRawSQL capture un littéral SQL brut (délimité par des backticks Go)
+// contenant `UPDATE <table>`. Le second garde-fou vérifie ensuite la présence d'au
+// moins un placeholder `?` DANS ce littéral : son absence = UPDATE set-based multi-row
+// NU (prédicat pur, aucune valeur liée), l'autre déclencheur ART direct à côté de
+// `FROM (VALUES)`. Un UPDATE row-by-row sérialisé lie toujours match_id à `?`.
+// Ancrage sur les backticks (bornes réelles du littéral SQL) → pas de faux positif
+// sur les commentaires ni de fenêtre tronquée (E2, 2026-07-03).
+func reUpdateRawSQL(table string) *regexp.Regexp {
+	return regexp.MustCompile("(?is)`[^`]*\\bUPDATE\\s+" + regexp.QuoteMeta(table) + "\\b[^`]*`")
+}
+
 // TestNoBulkMultiRowUpdateOnCriticalTables — garde-fou complémentaire à
 // TestNoARTPatternsOnProtectedTables. Les tables match-of-record ne sont pas
 // dans tablesProtegees (leurs UPDATE bitmask/row-by-row sérialisés sont sûrs),
@@ -354,7 +365,8 @@ func TestNoBulkMultiRowUpdateOnCriticalTables(t *testing.T) {
 
 	var violations []string
 	for _, table := range criticalMatchTables {
-		re := reBulkUpdateFromValues(table)
+		reValues := reBulkUpdateFromValues(table)
+		reStmt := reUpdateRawSQL(table)
 		err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
@@ -383,9 +395,15 @@ func TestNoBulkMultiRowUpdateOnCriticalTables(t *testing.T) {
 				return nil
 			}
 			text := stripGoComments(string(content))
-			if re.MatchString(text) {
-				rel, _ := filepath.Rel(repoRoot, path)
-				violations = append(violations, "table="+table+" file="+filepath.ToSlash(rel))
+			rel, _ := filepath.Rel(repoRoot, path)
+			if reValues.MatchString(text) {
+				violations = append(violations, "bulk-from-values table="+table+" file="+filepath.ToSlash(rel))
+			}
+			// Bare bulk (set-based, aucun `?` dans le corps du statement) — E2.
+			for _, stmt := range reStmt.FindAllString(text, -1) {
+				if !strings.Contains(stmt, "?") {
+					violations = append(violations, "bare-bulk (aucun placeholder) table="+table+" file="+filepath.ToSlash(rel))
+				}
 			}
 			return nil
 		})
@@ -396,8 +414,24 @@ func TestNoBulkMultiRowUpdateOnCriticalTables(t *testing.T) {
 
 	if len(violations) > 0 {
 		t.Errorf("ART bulk UPDATE multi-row détecté sur table(s) critique(s) — "+
-			"utiliser N UPDATE row-by-row (PostSyncEnrichmentPersister) ou INSERT-only (persist) :\n  - %s",
+			"utiliser N UPDATE row-by-row `WHERE match_id = ?` (PostSyncEnrichmentPersister) ou "+
+			"INSERT-only (persist) :\n  - %s",
 			strings.Join(violations, "\n  - "))
+	}
+}
+
+// TestBareBulkUpdateDetection_Sanity valide que le garde-fou bare-bulk MORD :
+// il attrape un UPDATE set-based nu (aucun `?`) et LAISSE PASSER un row-by-row
+// `WHERE match_id = ?`. Un garde-fou qui ne détecte jamais rien est inutile.
+func TestBareBulkUpdateDetection_Sanity(t *testing.T) {
+	re := reUpdateRawSQL("match_registry")
+	bare := "q := `UPDATE match_registry SET pair_name = game_variant_name || map_name WHERE pair_id IS NOT NULL`"
+	rowByRow := "q := `UPDATE match_registry SET pair_name = ? WHERE match_id = ?`"
+	if m := re.FindString(bare); m == "" || strings.Contains(m, "?") {
+		t.Errorf("bare bulk devrait matcher SANS placeholder, got %q", m)
+	}
+	if m := re.FindString(rowByRow); m == "" || !strings.Contains(m, "?") {
+		t.Errorf("row-by-row devrait matcher AVEC placeholder, got %q", m)
 	}
 }
 
