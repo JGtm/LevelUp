@@ -24,11 +24,12 @@ func TestContract_HaloAPIURLFormatXUID_V1(t *testing.T) {
 	tokens := &domain.HaloTokens{SpartanToken: "t", ClearanceToken: "c"}
 	engine := NewSyncEngine(repoRoot, gamertag, xuid, tokens, nil)
 
-	mid := "aabbccdd-0000-4000-8000-000000000001"
-	mock := &mockHaloClient{
-		history:   makeHistory(mid),
-		statsBody: map[string]map[string]any{mid: makeMatchJSON(mid, 2)},
-	}
+	// Historique vide : ce contrat ne teste QUE le format d'URL passé à
+	// GetMatchHistory (xuid(NNN)), pas la persistance. GetMatchHistory est appelé
+	// AVANT tout persist ; un historique vide suffit à capturer l'argument et
+	// évite le chemin batch persister (qui exige un SharedProvider câblé, non
+	// pertinent pour ce contrat d'URL).
+	mock := &mockHaloClient{history: makeHistory()}
 	engine.SetCustomClient(mock)
 
 	opts := domain.SyncOptions{

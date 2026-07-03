@@ -217,8 +217,7 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 
 | Variable | Description | Défaut |
 |----------|-------------|--------|
-| `LEVELUP_PERSIST_BATCH` | Route les écritures de live-sync via le persister batch (ADR 0019/0026). | (off) |
-| `LEVELUP_PERSIST_BATCH_ASYNC` | Exécute le persister batch en asynchrone. | (off) |
+| `LEVELUP_PERSIST_BATCH_ASYNC` | Exécute le persister batch en asynchrone (WAL + worker). | (off) |
 | `LEVELUP_SYNC_PIPELINE` | Sélectionne le pipeline de sync. | interne |
 | `LEVELUP_CSR_SEASON_ID` | Surcharge l'id de saison CSR. | depuis `app_settings.json` |
 | `MULTI_TITLE_API_ENABLED` | Expose les routes multi-titres field-mappings/preview (override de `app_settings.json`). | `false` |

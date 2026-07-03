@@ -37,8 +37,7 @@ func TestTrigger_PaternFromFactory_RealCheckOnEngineFields(t *testing.T) {
 	factory := func(_ context.Context, gamertag, xuid string) *SyncEngine {
 		eng := NewSyncEngine(t.TempDir(), gamertag, xuid, &domain.HaloTokens{}, nil).
 			WithSharedProvider(memProvider).
-			WithCSRSeasonID("CsrSeason99").
-			WithBatchPersistMode(true)
+			WithCSRSeasonID("CsrSeason99")
 		captured.Store(eng)
 		return eng
 	}
@@ -56,9 +55,6 @@ func TestTrigger_PaternFromFactory_RealCheckOnEngineFields(t *testing.T) {
 	// --- Assertions de parité avec ce que BuildEngine produirait ---
 	if !got.HasSharedProvider() {
 		t.Error("PARITY REGRESSION: SharedProvider absent sur engine post-RunSync — Trigger a ignoré le wiring factory")
-	}
-	if !got.BatchPersistEnabled() {
-		t.Error("PARITY REGRESSION: BatchPersist absent sur engine post-RunSync")
 	}
 	if got.CSRSeasonIDForTest() != "CsrSeason99" {
 		t.Errorf("PARITY REGRESSION: CSRSeason mutilé, got %q want CsrSeason99", got.CSRSeasonIDForTest())

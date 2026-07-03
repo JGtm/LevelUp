@@ -133,14 +133,7 @@ type SyncEngine struct {
 	// Injecté via WithMediaScanHook depuis scheduler + SyncHandler.
 	mediaHook func(ctx context.Context)
 
-	// batchMode (Phase 2.3 refactor Collect→Persist) — si true, la boucle
-	// d'insertion utilise `submitMatchAsBatch` (chemin INSERT-only via
-	// persist.SharedPersister + persist.PlayerPersister) au lieu de
-	// `insertFetchedMatch` legacy (UPSERT direct). ACTIVÉ PAR DÉFAUT côté serveur/
-	// scheduler/CLI (LEVELUP_PERSIST_BATCH != "0") ; =0 = kill-switch ART-unsafe.
-	batchMode bool
-
-	// batchQueue (Phase 3 refactor Collect→Persist) — si non-nil ET batchMode,
+	// batchQueue (Phase 3 refactor Collect→Persist) — si non-nil,
 	// submitMatchAsBatch passe par queue.Submit (WAL + worker async) au lieu
 	// d'appeler les Persisters directement. À la fin du cycle, run() appelle
 	// queue.Drain pour attendre que tous les batches soient ACKed (parité
@@ -478,11 +471,11 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 					continue
 				}
 
-				if err := e.submitOrInsertMatch(ctx, sharedDB, playerDB, &result, fm); err != nil {
-					slog.WarnContext(ctx, "sync: submitOrInsertMatch échoué",
+				if err := e.persistFetchedMatch(ctx, sharedDB, playerDB, &result, fm); err != nil {
+					slog.WarnContext(ctx, "sync: persistFetchedMatch échoué",
 						"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
 					)
-					result.AddWarning(fmt.Sprintf("submitOrInsertMatch(%s): %v", fm.MatchID, err))
+					result.AddWarning(fmt.Sprintf("persistFetchedMatch(%s): %v", fm.MatchID, err))
 				} else {
 					processed++
 					slog.InfoContext(ctx, "sync: match traité (parallèle)",
@@ -715,17 +708,13 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 // runConditionalPostSync, hasMatchesNeedingScoreRefresh : déplacés vers
 // engine_postsync.go (refactor 2026-05-21).
 
-// processMatch : déplacé vers engine_process_match.go (refactor 2026-05-21).
-// Legacy séquentiel encore utilisé par engine_e2e_test.go.
+// fetchedMatch struct + fetchMatchData + hasAnyTeamMMR : dans engine_fetch.go.
+// Pipeline parallèle fetch (Phase 2 errgroup) + persist séquentiel (Phase 3 :
+// persistFetchedMatch → submitMatchAsBatch INSERT-only).
 
-// fetchedMatch struct + fetchMatchData + insertFetchedMatch + hasAnyTeamMMR :
-// déplacés vers engine_fetch.go (refactor 2026-05-21). Pipeline parallèle
-// fetch (Phase 2 errgroup) + insert séquentiel (Phase 3).
-
-// insertHighlightEventsFromData, ProcessHighlightEvents : déplacés vers
-// engine_highlight_events.go (refactor 2026-05-21). Parse + insert events
-// (path standalone via ProcessHighlightEvents pour outils de replay ; path
-// in-line via insertHighlightEventsFromData depuis insertFetchedMatch).
+// insertHighlightEventsFromData, ProcessHighlightEvents : dans
+// engine_highlight_events.go. Parse + insert events (path standalone via
+// ProcessHighlightEvents pour outils de replay).
 
 // reconcileInsertedAgainstRegistry retire de result.InsertedMatchIDs (et décrémente
 // MatchesInserted, incrémente MatchesSkipped) les match_id comptés au Submit mais
@@ -774,7 +763,7 @@ func reconcileInsertedAgainstRegistry(ctx context.Context, sharedDB *sql.DB, res
 //
 // Source 2 — sharedDB.match_participants WHERE xuid=? : matchs déjà présents
 // en shared pour ce joueur (typiquement parce qu'un AUTRE joueur du même
-// cycle de sync a déjà fait le fetch + insert via insertFetchedMatch — qui
+// cycle de sync a déjà fait le fetch + persist via le chemin batch — qui
 // écrit toutes les rows participants y compris celle de notre xuid). Avant
 // 2026-05-22 ce 2e check n'existait pas, donc Chocoboflor re-fetchait depuis
 // Halo API 21 matchs déjà insérés par Madina dans le même tick (84 calls

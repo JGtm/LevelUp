@@ -330,17 +330,12 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 			},
 		))
 	}
-	// Phase 4.7 closure (2026-05-24) : default flipé à ON après validation
-	// empirique Phase 4.5 (16 syncs / 0 FATAL). Set LEVELUP_PERSIST_BATCH=0
-	// pour fallback legacy insertFetchedMatch (mode dégradé, ART bug actif).
-	if os.Getenv("LEVELUP_PERSIST_BATCH") != "0" {
-		engine.WithBatchPersistMode(true)
-		// Phase 4.9 : layer async default ON aussi. Set LEVELUP_PERSIST_BATCH_ASYNC=0
-		// pour fallback synchrone direct Persister (validé Phase 4.5). La queue
-		// est injectée par main.go au boot si != "0" (cf. autoBatchQueue init).
-		if s.batchQueue != nil && os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") != "0" {
-			engine.WithBatchQueue(s.batchQueue)
-		}
+	// Le batch INSERT-only est le seul chemin d'écriture depuis D1b. Phase 4.9 :
+	// le layer async reste optionnel. Set LEVELUP_PERSIST_BATCH_ASYNC=0 pour un
+	// fallback synchrone direct Persister. La queue est injectée par main.go au
+	// boot si != "0" (cf. autoBatchQueue init).
+	if s.batchQueue != nil && os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") != "0" {
+		engine.WithBatchQueue(s.batchQueue)
 	}
 	if s.cfg.CurrentCSRSeasonID != "" {
 		engine.WithCSRSeasonID(s.cfg.CurrentCSRSeasonID)
@@ -391,11 +386,11 @@ func resolveTitleSlug(p domain.PlayerSummary) string {
 
 // WithBatchQueue branche la BatchQueue serveur-wide (Phase 4.7 closure
 // 2026-05-24). Injectée par cmd/server/main.go après NewBatchQueue.
-// Activation effective dans defaultRunnerFactory sous le double gate :
-//   - LEVELUP_PERSIST_BATCH=1 (batch mode INSERT-only sync path)
-//   - LEVELUP_PERSIST_BATCH_ASYNC=1 (queue async + WAL durable)
+// Le batch INSERT-only est le seul chemin d'écriture (D1b) ; la queue async est
+// activée dans defaultRunnerFactory sous LEVELUP_PERSIST_BATCH_ASYNC != "0"
+// (queue async + WAL durable).
 //
-// Nil queue → fallback path synchrone direct Persister (déjà validé Phase 4.5).
+// Nil queue → path synchrone direct Persister (déjà validé Phase 4.5).
 func (s *AutoSyncScheduler) WithBatchQueue(q *persist.BatchQueue) *AutoSyncScheduler {
 	s.batchQueue = q
 	return s

@@ -4,10 +4,9 @@
 // + parsée depuis l'API Halo, sans I/O DB) en *persist.MatchBatch prêt à
 // être Submit() dans la BatchQueue.
 //
-// **Coexistence avec insertFetchedMatch** : cette fonction est utilisée par
-// le chemin Collect→Persist (Phase 2+) — le chemin direct insertFetchedMatch
-// reste utilisé tant que le feature flag LEVELUP_PERSIST_BATCH n'est pas
-// activé. Les deux chemins partagent fetchMatchData() en entrée.
+// Chemin unique Collect→Persist : c'est la seule voie d'écriture per-match du
+// live sync (le chemin legacy insertFetchedMatch a été supprimé au lot D1b).
+// buildBatchFromFetchedMatch et fetchMatchData() forment l'entrée du pipeline.
 //
 // **Logique pure** : pas d'I/O DB, pas d'I/O API. Les seules erreurs
 // possibles viennent du parsing du chunk highlight_events (analysis.

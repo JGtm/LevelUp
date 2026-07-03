@@ -119,30 +119,13 @@ func (e *SyncEngine) WithCSRSeasonID(id string) *SyncEngine {
 	return e
 }
 
-// WithBatchPersistMode active le chemin Collect→Persist (Phase 2.3 du refactor).
-// La boucle d'insertion utilise `submitMatchAsBatch` (INSERT-only via
-// persist.SharedPersister + persist.PlayerPersister) au lieu d'insertFetchedMatch
-// legacy.
+// WithBatchQueue branche une BatchQueue partagée serveur-wide. Quand non-nil,
+// submitMatchAsBatch passe par queue.Submit (WAL + async worker) au lieu
+// d'appeler les Persisters directement. À la fin du cycle, run() appelle
+// queue.Drain pour attendre la fin des persists.
 //
-// Sans WithBatchQueue : chemin synchrone (direct Persister.Persist, sans WAL).
-// Avec WithBatchQueue : chemin async (queue.Submit + worker, WAL durable).
-//
-// Serveur, scheduler et CLI l'activent PAR DÉFAUT (LEVELUP_PERSIST_BATCH != "0").
-// LEVELUP_PERSIST_BATCH=0 = kill-switch de rollback qui réactive le chemin legacy
-// insertFetchedMatch (UPSERT ART-unsafe) — à ne jamais laisser posé en prod.
-// Retrait du flag et de la branche legacy planifié (lot D1b, audit 2026-07).
-func (e *SyncEngine) WithBatchPersistMode(enabled bool) *SyncEngine {
-	e.batchMode = enabled
-	return e
-}
-
-// WithBatchQueue branche une BatchQueue partagée serveur-wide. Quand non-nil
-// ET batchMode=true, submitMatchAsBatch passe par queue.Submit (WAL + async
-// worker) au lieu d'appeler les Persisters directement. À la fin du cycle,
-// run() appelle queue.Drain pour attendre la fin des persists.
-//
-// Activé par cmd/server/main.go quand LEVELUP_PERSIST_BATCH_ASYNC=1
-// (en plus de LEVELUP_PERSIST_BATCH=1). Sans, l'engine reste synchrone.
+// Activé par cmd/server/main.go quand LEVELUP_PERSIST_BATCH_ASYNC != "0".
+// Sans, l'engine reste synchrone (Persisters directs, Phase 2.3).
 func (e *SyncEngine) WithBatchQueue(q *persist.BatchQueue) *SyncEngine {
 	e.batchQueue = q
 	return e

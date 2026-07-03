@@ -1,3 +1,38 @@
+## [2026-07-03] LOT D1 (audit 2026-07) — D1a télémétrie legacy + D1b suppression LEVELUP_PERSIST_BATCH — EN COURS (D1a+D1b livrés)
+
+**Tâche** : 5e lot du PLAN_TRAITEMENT_AUDITS_2026-07 (flags & guards), branche refactor/audits-2026-07.
+
+**D1a (livré, commit 9b2d07870)** : télémétrie `legacy_source_used` — helper
+`observability.RecordLegacySourceUsed` + 4 sources bornées, compteurs expvar au POINT
+D'ADOPTION sur 6 sites runtime (registry_auth, pool/discovery, watcher_refresh, cli_refresh,
+engine_postsync_csr, worldenrich), warns `legacy_source_used` comblés aux 2 trous. Prérequis
+D2 (dater la mise en prod au merge sur main).
+
+**D1b (livré)** : suppression COMPLÈTE de `LEVELUP_PERSIST_BATCH` + du chemin legacy. Le batch
+INSERT-only (`submitMatchAsBatch` → SharedPersister) devient l'UNIQUE voie d'écriture per-match.
+Supprimés : flag (8 sites) + warn boot, `insertFetchedMatch`, `processMatch` (fichier entier),
+`MarkSkillLoaded`/`MarkParticipantsDone`, `WithBatchPersistMode`/`batchMode`/`BatchPersistEnabled`,
+2 fichiers de tests V1 + 12 tests processMatch du fichier mixte engine_e2e_test.go (11 tests
+utiles conservés). `submitOrInsertMatch` → `persistFetchedMatch`. Net −710 lignes. CONSERVÉS
+(cartographie corrigée sur pièces) : `hasAnyTeamMMR` (utilisé par collect.go),
+Insert{Registry,Participants,Medals} (import OpenSpartan → E1). Docs MAJ (SYNC_GUIDE EN/FR,
+CONFIGURATION EN/FR, SYNC_CALL_TREE, .env). ASYNC (`LEVELUP_PERSIST_BATCH_ASYNC`) conservé.
+
+**Résultats observés** : DÉCOUVERTE majeure — `batchMode=false` était le défaut SILENCIEUX des
+tests, masquant le chemin legacy dans toute la suite run()-based (dont les E2E provider
+concurrency). Forcer le batch a révélé 2 lacunes de SETUP de test (PAS des bugs prod, le batch
+est le défaut prod correct) : contract_v1 nil-provider (corrigé) + 4 E2E provider sans les
+colonnes batch-persister match_intensity/backfill_bits (corrigé via patchSharedSchemaForBatch).
+Gate : go build/test/vet ./... OK ; go test -tags=integration -p 1 ./... vert (après fix des
+4 E2E) ; grep LEVELUP_PERSIST_BATCH (code + docs actifs) → 0 (refs restantes = ADR 0019 +
+.ai/ historiques). Baseline os.Getenv : 125 (non-test), ~40 en internal/ hors config = surface
+D1e. `insertHighlightEventsFromData` orphelin transitif noté §7.
+
+**Conclusion / prochaine étape** : D1a+D1b clos (commits 9b2d07870 + à venir). Prochain : D1c
+(suppression pipeline V1) — BLOQUEUR Halo 5 identifié à la cartographie (V2 mono-titre, seul V1
+route H5 via livesync) : à RÉSOUDRE avant de retirer le fallback, + le retrait du kill-switch de
+rollback (push main = deploy auto) à valider avec l'utilisateur. Puis D1d/D1e/D1f.
+
 ## [2026-07-03] LOT C (audit 2026-07) : documents d'orientation redevenus vrais + invariants aux points de mutation — COMPLÉTÉ (C1-C8)
 
 **Tâche** : 4e lot du PLAN_TRAITEMENT_AUDITS_2026-07, branche refactor/audits-2026-07.
