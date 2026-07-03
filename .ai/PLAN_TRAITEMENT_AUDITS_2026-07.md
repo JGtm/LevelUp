@@ -478,8 +478,10 @@ openapi/migrations associées, puis build+tests.
   Gate : go build+vet+`-tags=integration -p 1` service/api/domain vert (drift openapi OK) ;
   front typecheck + build verts. NB dette mineure : fichiers `session_compare_*.go` gardent leur
   nom bien qu'ils contiennent désormais l'infra session-summary partagée (rename = follow-up).
-- [ ] G4 — CR A9 : `SquadV2RouteHost.tsx` + `SquadV2Page.tsx` (ATTENTION : `squad/v2/types.ts`
-  reste vivant).
+- [x] G4 — CR A9 : `SquadV2RouteHost.tsx` + `SquadV2Page.tsx` (ATTENTION : `squad/v2/types.ts`
+  reste vivant). FAIT : 2 pages orphelines (0 importeur, 0 route) supprimées ; `squad/v2/types.ts`
+  (consommé par SessionBriefing/SquadVerdict) + les autres composants squad/v2 (HistoryTable,
+  MedalsGallery, WeaponsTable…) conservés. Gate : front typecheck vert.
 - [ ] G5 — CR A9 + ARCHI mineur : chaîne `NotifyNewMedia` → `queryUnnotifiedMedia` →
   `markMediaNotified` (`notify/notifiers.go:88-190`) + la migration de colonne
   `discord_notified_at` qui ne vit que pour elle + tests.
