@@ -1,3 +1,39 @@
+## [2026-07-03] C3+ : top 50 + skip-existing BDD + marquage/masquage joueurs privés (worktree)
+
+**Statut** : Complété. Suite à retour utilisateur (backfill lent + re-traitait des jours de
+travail déjà en base ; « garder top 50 en excluant les privés »).
+
+**Décisions techniques** :
+- **top 50 partout** : `WorldLeaderboardTopN` 100→50 (enrich/cron) + `defaultLeaderboardLimit`
+  100→50 (affichage). ~2× moins de joueurs.
+- **`-skip-existing`** (nouveau flag backfill, BDD-aware, indépendant du checkpoint) : saute les
+  joueurs déjà dans `world_player_season_stats` ET marqués `world_player_no_data` → ne fetch que
+  le manquant. Le checkpoint seul ne connaissait pas la BDD (redonnait tout).
+- **Marqueur privés** : migration `create_world_player_no_data` (shared, PK-only INSERT-only,
+  ART-safe). Un joueur fetché avec `err==nil && len(stats)==0` (historique privé OU expiré API
+  ~6 mois pour vieilles saisons) est marqué → skip futur + masquage affichage
+  (`GetCSRWorldLeaderboard` NOT IN, avant LIMIT, best-effort si table absente).
+
+**Diagnostic lenteur (9 min/joueur)** : re-traitement complet (checkpoint quasi vide) + `-deep`
+sur la saison COURANTE (scan massif du top player) + timeouts halostats. `-skip-existing` règle
+tout : la saison courante a 0 manquant → ignorée.
+
+**Résultats observés (test RÉEL, pas 3 joueurs)** : csrseason5-1 → 12 privés marqués ; re-run
+« 262 enrichis + 12 privés ignorés → 45 à traiter » ; masquage affichage Arena 100→97.
+`-concurrency 8` = ~18 s/joueur (vs 28 s en 4), 0 err, 0 429. Tests : round-trip+idempotence
+marqueur ; suites migration/duckdb/service/scheduler vertes ; `-tags=integration` non re-lancé
+(pas de nouvelle écriture per-match critique, table marqueur INSERT-only hors surface ART).
+
+**Leçon** : mon sample initial (3 joueurs, 1 saison) était trop petit — n'a révélé ni la lenteur
+ni la redondance. Tester sur une saison entière réaliste avant de livrer une commande.
+[[feedback_integration_tests_realistic_datasets]]
+
+**État** : commité/poussé (2e4c62ed2 feat + docs). Backfill relancé par l'utilisateur avec la
+commande finale. Migrations `add_xuid`/`create_season_catalog`/`create_world_player_no_data`
+appliquées à la DB locale.
+
+---
+
 ## [2026-07-03] C3 : backfill saisons passées — SAMPLE VALIDÉ + fix auto-migration CLI (worktree)
 
 **Statut** : Complété pour la partie SAMPLE + fix outillage. Backfill COMPLET = commandes
