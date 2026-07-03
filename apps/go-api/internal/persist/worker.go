@@ -67,10 +67,10 @@ func isTransientPersistError(err error) bool {
 // BatchPersister : abstraction du composant qui persiste un batch dans une
 // DB cible. Une implémentation par target :
 //
-//   - SharedPersister  (shared_matches_v2.duckdb)
-//   - PlayerPersister  (stats.duckdb)        — TODO Phase 1.5+
-//   - PVEPersister     (shared_pve.duckdb)   — TODO Phase 1.5+
-//   - MetadataPersister (metadata.duckdb)    — TODO Phase 1.5+
+//   - SharedPersister   (shared_matches_v2.duckdb)
+//   - PlayerPersister   (stats.duckdb)
+//   - PVEPersister      (shared_pve.duckdb)
+//   - MetadataPersister (metadata.duckdb)
 //
 // L'interface garantit que le worker reste générique (pas de dépendance
 // directe sur SharedPersister).

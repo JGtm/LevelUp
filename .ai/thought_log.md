@@ -1,3 +1,30 @@
+## [2026-07-03] LOT D1f (audit 2026-07) — lint TODO(expiry) + LOT D1 CLOS — COMPLÉTÉ
+
+**Tâche** : D1f du PLAN_TRAITEMENT_AUDITS_2026-07 (DETTE reco 7), branche refactor/audits-2026-07.
+Généraliser `TODO(expiry:YYYY-MM-DD)` + lint qui échoue à date dépassée ; triage rapide.
+
+**Décision technique principale** : l'outillage est le livrable (pas l'exhaustivité du triage).
+Créé `internal/archlint/todo_expiry_test.go` (calque `no_slug_comparison_test.go`) : regex
+`TODO\(expiry:YYYY-MM-DD\)`, scanne toute la racine go-api, parse la date, échoue si échue ou
+malformée. `now` injectable via `LEVELUP_TODO_EXPIRY_NOW` (déterminisme) sinon heure murale UTC.
+Auto-exclusion du scanner par basename. Triage : le seul `TODO(expiry)` existant
+(`season_pass_repo_tracks.go:254`, échu 2026-08-01) est futur → vert. 1 caduc supprimé
+(`persist/worker.go` : marqueurs « TODO Phase 1.5+ » sur Player/PVE/Metadata Persister, tous
+implémentés désormais).
+
+**Résultats observés** : lint validé DANS LES DEUX SENS — vert au 2026-07-03 ; ROUGE forcé à
+`LEVELUP_TODO_EXPIRY_NOW=2026-09-01` (attrape correctement season_pass échu 2026-08-01). Build
+OK, `go test ./internal/archlint/... ./internal/persist/...` verts. Découvertes §7 : BUG latent
+`SyncHandler.WithPrestigeHook` = stub no-op alors que server.go:1292 lui passe un vrai hook (le
+post-sync Prestige HTTP est droppé — le chemin scheduler/engine reste correct) → noté, non
+corrigé (règle 7, candidat LOT K). Résidu TODO (cluster P4 ADR 0006 *100, session_compare DEC-1,
+Phase 2/3) documenté.
+
+**Conclusion / prochaine étape** : D1f clos → LOT D1 COMPLET (D1a télémétrie, D1b suppression
+PERSIST_BATCH, D1c suppression pipeline V1, D1d docs flags, D1e centralisation os.Getenv, D1f
+lint TODO). Retrait du kill-switch rollback V1 (D1c) effectif sur branche — NE PAS merger main
+sans feu vert + gate live-sync manuel. Prochain lot : E (ART résiduel & écritures à risque).
+
 ## [2026-07-03] LOT D1e (audit 2026-07) — centralisation des lectures os.Getenv divergentes — COMPLÉTÉ
 
 **Tâche** : D1e du PLAN_TRAITEMENT_AUDITS_2026-07 (CR A6), branche refactor/audits-2026-07.
