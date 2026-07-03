@@ -24,6 +24,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 )
 
 // LegacyAuthInputs regroupe les sources legacy déjà lues par le caller.
@@ -142,6 +143,7 @@ func tryRefreshFromLegacyInputs(
 	if legacy.MSALCache != "" {
 		slog.WarnContext(ctx, "cli_auth: legacy MSAL utilisé — à migrer",
 			"gamertag", gamertag, "source", legacy.Source, "deprecated_since", "ADR-0023")
+		observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBMSAL)
 		if at, err := provider.TrySilentRefresh(ctx, legacy.MSALCache); err == nil && at != "" {
 			if result, err := provider.Exchange(ctx, at); err == nil && result != nil {
 				return result
@@ -153,6 +155,7 @@ func tryRefreshFromLegacyInputs(
 	}
 	slog.WarnContext(ctx, "cli_auth: legacy RT utilisé — à migrer",
 		"gamertag", gamertag, "source", legacy.Source, "deprecated_since", "ADR-0023")
+	observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBOAuth)
 
 	at, rotatedRT, err := provider.TryOAuthRefreshWithRotation(ctx, legacy.OAuthRT)
 	if err != nil || at == "" {

@@ -9,6 +9,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -154,6 +155,7 @@ func (d *discoveryImpl) scanPlayer(ctx context.Context, player domain.PlayerSumm
 		if envToken := readOAuthRefreshTokenFromEnv(player.Gamertag); envToken != "" {
 			slog.WarnContext(ctx, "pool: legacy env var utilisée — à migrer",
 				"gamertag", player.Gamertag, "deprecated_since", "ADR-0023")
+			observability.RecordLegacySourceUsed(observability.LegacySourceEnvOAuth)
 			oauth = envToken
 			sourceLabel = appendSource(sourceLabel, "env_oauth")
 		}
@@ -169,6 +171,7 @@ func (d *discoveryImpl) scanPlayer(ctx context.Context, player domain.PlayerSumm
 				slog.WarnContext(ctx, "pool: legacy mono-user store attribué (approximation)",
 					"gamertag", player.Gamertag,
 					"hint", "configurer le store via token-capture pour éviter cette ambiguïté")
+				observability.RecordLegacySourceUsed(observability.LegacySourceMonoUser)
 			}
 		}
 	}
@@ -219,6 +222,13 @@ func (d *discoveryImpl) adoptLegacySyncMeta(
 		slog.WarnContext(ctx, "pool: legacy sync_meta DuckDB utilisée — à migrer",
 			"gamertag", player.Gamertag, "fields", strings.Join(adopted, "+"),
 			"deprecated_since", "ADR-0023")
+		for _, f := range adopted {
+			if f == "msal" {
+				observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBMSAL)
+			} else {
+				observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBOAuth)
+			}
+		}
 	}
 	return msal, oauth, sourceLabel
 }

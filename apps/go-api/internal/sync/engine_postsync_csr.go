@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
@@ -234,6 +235,7 @@ func resolveAccessTokenFromDB(
 	provider auth.TokenProvider,
 ) (string, error) {
 	var cacheJSON, refreshToken string
+	rtSource := observability.LegacySourceDuckDBOAuth
 	if err := playerDB.QueryRowContext(ctx,
 		"SELECT value FROM sync_meta WHERE key = 'msal_token_cache'").Scan(&cacheJSON); err != nil {
 		slog.DebugContext(ctx, "achievements: msal_token_cache absent", "gamertag", gamertag)
@@ -248,10 +250,15 @@ func resolveAccessTokenFromDB(
 		key := strings.ToUpper(strings.NewReplacer(" ", "_", "-", "_", ".", "_").Replace(gamertag))
 		if v := os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + key); v != "" {
 			refreshToken = v
+			rtSource = observability.LegacySourceEnvOAuth
 		}
 	}
 
 	if cacheJSON != "" {
+		// D1a : source legacy sync_meta atteinte — signal de dépréciation (ADR 0023 Phase 5, prérequis D2).
+		slog.WarnContext(ctx, "legacy_source_used", "source", observability.LegacySourceDuckDBMSAL,
+			"gamertag", gamertag, "deprecated_since", "ADR-0023")
+		observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBMSAL)
 		token, err := provider.TrySilentRefresh(ctx, cacheJSON)
 		if err == nil && token != "" {
 			return token, nil
@@ -259,6 +266,9 @@ func resolveAccessTokenFromDB(
 	}
 
 	if refreshToken != "" {
+		slog.WarnContext(ctx, "legacy_source_used", "source", rtSource,
+			"gamertag", gamertag, "deprecated_since", "ADR-0023")
+		observability.RecordLegacySourceUsed(rtSource)
 		token, err := provider.TryOAuthRefresh(ctx, refreshToken)
 		if err == nil && token != "" {
 			return token, nil
