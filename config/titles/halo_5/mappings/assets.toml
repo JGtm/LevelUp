@@ -4,40 +4,14 @@
 # Fiesta/Husky/BTB ; Warzone à la place). La taxonomie définitive (modes complets,
 # médailles, maps) + leur catégorisation = Phase 1 (adapter + sonde live). Les clés
 # kind/id sont libres (validation = non-vide + pas de collision display_order).
+#
+# G9 (2026-07-03) : les 8 entrées [assets.mode.*] placeholder ont été retirées —
+# leurs slugs lowercase (slayer/ctf/strongholds/…) divergeaient de la convention
+# (la clé mode = la catégorie de mode réelle produite par le pipeline, cf.
+# halo_infinite : "Ranked", "BTB", …) et n'étaient consommées nulle part (aucun
+# lecteur mode-kind en prod). Phase 1 les réintroduira, correctement clées depuis
+# la sonde live.
 
 [meta]
 title_slug     = "halo_5"
 schema_version = 1
-
-# Modes Halo 5 (Arena + Warzone). Libellés provisoires.
-[assets.mode.slayer]
-labels = { en = "Slayer", fr = "Massacre" }
-display_order = 10
-
-[assets.mode.ctf]
-labels = { en = "Capture the Flag", fr = "Capture du drapeau" }
-display_order = 20
-
-[assets.mode.strongholds]
-labels = { en = "Strongholds", fr = "Bastions" }
-display_order = 30
-
-[assets.mode.breakout]
-labels = { en = "Breakout", fr = "Percée" }
-display_order = 40
-
-[assets.mode.swat]
-labels = { en = "SWAT", fr = "SWAT" }
-display_order = 50
-
-[assets.mode.ffa]
-labels = { en = "Free-for-All", fr = "Chacun pour soi" }
-display_order = 60
-
-[assets.mode.warzone]
-labels = { en = "Warzone", fr = "Zone de guerre" }
-display_order = 70
-
-[assets.mode.warzone_firefight]
-labels = { en = "Warzone Firefight", fr = "Zone de guerre - Combat" }
-display_order = 80

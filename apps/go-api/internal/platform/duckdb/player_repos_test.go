@@ -910,7 +910,7 @@ func TestHomeRepo_LoadHomeMatches_FallsBackToMetadataAssetTranslations(t *testin
 }
 
 // seedMaturedSkillRankGroups insère 9 rows de padding par groupe pour que
-// "ranked" et "social" comptent 10 matchs chacun. Évite que Q26eHomeSkillPeakByType
+// "ranked" et "social" comptent 10 matchs chacun. Évite que loadHomeSkillPeak
 // (logique placement mai 2026) classe ces groupes comme en placement. Les
 // padding rows ont des ratings volontairement très bas (≤310) pour préserver
 // m1/m2 comme MAX(rating_value) du groupe.
@@ -1228,7 +1228,7 @@ func TestHomeRepo_LoadRecentPlaylistRanks_InfersCSRFromRankedPlaylistName(t *tes
 }
 
 // TestHomeRepo_LoadHomeSkillPeak_CSR_InPlacement vérifie qu'en placement
-// (groupe playlist_group avec < 10 matchs), Q26eHomeSkillPeakByType +
+// (groupe playlist_group avec < 10 matchs), le chemin Phase A/B +
 // loadHomeSkillPeak retournent un peak avec :
 //   - BadgeImageURL = unranked_(10-remaining).png
 //   - MeasurementMatchesRemaining > 0
@@ -1269,7 +1269,7 @@ func TestHomeRepo_LoadHomeSkillPeak_CSR_InPlacement(t *testing.T) {
 // TestHomeRepo_LoadHomeSkillPeak_LUSR_InPlacement : pendant que CSR a son
 // propre placement (player_csr_snapshots), LUSR le dérive de match_skill_rank
 // par playlist_group. Test parallèle au CSR ci-dessus pour cadenasser la
-// branche LUSR du chemin Q26eHomeSkillPeakByType.
+// branche LUSR du chemin Phase A/B (loadHomeSkillPeak).
 func TestHomeRepo_LoadHomeSkillPeak_LUSR_InPlacement(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()

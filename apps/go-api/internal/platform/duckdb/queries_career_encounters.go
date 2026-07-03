@@ -436,7 +436,8 @@ FROM player_match_enrichment_latest
 WHERE match_id IN (%s)`
 
 // Q24 : LUSR — chargement du rating par match depuis match_skill_rank.
-// Parametre : ?1 = xuid du joueur (filtre via player_match_enrichment).
+// Aucun parametre : la player DB (stats.duckdb) est mono-joueur, match_skill_rank
+// ne contient que ses propres ratings — pas de filtre xuid necessaire.
 const Q24LUSRHistory = `
 SELECT
     msr.match_id,
