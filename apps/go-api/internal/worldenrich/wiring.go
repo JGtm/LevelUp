@@ -8,7 +8,6 @@ package worldenrich
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -16,12 +15,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	_ "github.com/duckdb/duckdb-go/v2"
-
 	"levelup/go-api/internal/config"
 	title "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	auth "levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/ratebudget"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
@@ -32,14 +30,16 @@ import (
 // joueur (cf. cmd/backfill-csr-history). Best-effort (vide si DB/clé absente).
 func loadLegacyInputs(cfg *config.AppConfig, gamertag string) auth.LegacyAuthInputs {
 	path := title.NewPathResolver(cfg.RepoRoot).PlayerDBPath(title.DefaultSlug, gamertag)
-	db, err := sql.Open("duckdb", path+"?access_mode=read_only")
+	// OpenReadForQuery (jamais sql.Open RO nu) : réutilise un handle en cache si la
+	// player DB est déjà tenue RW dans le process (évite l'erreur DuckDB « different
+	// configuration ») — E6, ADR 0016. Lecture sync_meta via les helpers canoniques.
+	db, release, err := duckdb.OpenReadForQuery(path)
 	if err != nil {
 		return auth.LegacyAuthInputs{}
 	}
-	defer db.Close()
-	var rt, msal string
-	_ = db.QueryRowContext(context.Background(), `SELECT value FROM sync_meta WHERE key='oauth_refresh_token'`).Scan(&rt)
-	_ = db.QueryRowContext(context.Background(), `SELECT value FROM sync_meta WHERE key='msal_token_cache'`).Scan(&msal)
+	defer release()
+	rt, _ := duckdb.ReadOAuthRefreshTokenFromSQL(context.Background(), db)
+	msal, _ := duckdb.ReadMSALCacheJSONFromSQL(context.Background(), db)
 	return auth.LegacyAuthInputs{OAuthRT: rt, MSALCache: msal, Source: "player_db.sync_meta"}
 }
 

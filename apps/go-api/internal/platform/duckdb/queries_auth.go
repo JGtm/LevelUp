@@ -42,25 +42,39 @@ func WriteOAuthRefreshToken(ctx context.Context, db *DB, token string) error {
 	}
 }
 
+// readSyncMetaValue lit une valeur sync_meta par clé depuis un *sql.DB. Source
+// UNIQUE des lectures auth sync_meta (variantes *DB et *sql.DB délèguent ici).
+// Retourne ("", nil) si la clé est absente ou en cas d'erreur (best-effort).
+func readSyncMetaValue(ctx context.Context, sqlDB *sql.DB, key string) (string, error) {
+	var v string
+	if err := sqlDB.QueryRowContext(ctx,
+		"SELECT value FROM sync_meta WHERE key = ?", key).Scan(&v); err != nil {
+		return "", nil
+	}
+	return v, nil
+}
+
 // ReadMSALCacheJSON lit le cache MSAL sérialisé depuis sync_meta du joueur.
 // Retourne ("", nil) si la clé est absente (joueur sans token persisté).
 func ReadMSALCacheJSON(ctx context.Context, db *DB) (string, error) {
-	var cacheJSON string
-	err := db.QueryRow(ctx, "SELECT value FROM sync_meta WHERE key = 'msal_token_cache'").Scan(&cacheJSON)
-	if err != nil {
-		return "", nil // absent ou erreur → pas de cache
-	}
-	return cacheJSON, nil
+	return readSyncMetaValue(ctx, db.SQLDb(), "msal_token_cache")
+}
+
+// ReadMSALCacheJSONFromSQL est la variante *sql.DB : pour les lecteurs ouverts via
+// OpenReadForQuery (qui retourne un *sql.DB réutilisant un handle en cache, JAMAIS
+// un OpenReadOnly nu qui doublerait l'ouverture d'une DB tenue RW — E6, ADR 0016).
+func ReadMSALCacheJSONFromSQL(ctx context.Context, sqlDB *sql.DB) (string, error) {
+	return readSyncMetaValue(ctx, sqlDB, "msal_token_cache")
 }
 
 // ReadOAuthRefreshToken lit le refresh_token OAuth v2 depuis sync_meta du joueur.
 // Clé utilisée : "oauth_refresh_token" (stockée par le sync Python legacy).
 // Retourne ("", nil) si la clé est absente.
 func ReadOAuthRefreshToken(ctx context.Context, db *DB) (string, error) {
-	var token string
-	err := db.QueryRow(ctx, "SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'").Scan(&token)
-	if err != nil {
-		return "", nil // absent → pas de token legacy
-	}
-	return token, nil
+	return readSyncMetaValue(ctx, db.SQLDb(), "oauth_refresh_token")
+}
+
+// ReadOAuthRefreshTokenFromSQL est la variante *sql.DB (cf. ReadMSALCacheJSONFromSQL, E6).
+func ReadOAuthRefreshTokenFromSQL(ctx context.Context, sqlDB *sql.DB) (string, error) {
+	return readSyncMetaValue(ctx, sqlDB, "oauth_refresh_token")
 }

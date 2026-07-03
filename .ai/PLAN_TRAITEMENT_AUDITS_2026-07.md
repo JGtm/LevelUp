@@ -392,9 +392,16 @@ Objectif : plus aucun chemin prod du pattern déclencheur ART #23046 ; tripwire 
   faire en H1 pour éviter double-travail. `analysis/match_filter.go` garde sa copie inline
   (analysis ne peut importer platform/duckdb) → unification H1. Gate : build+vet OK, profile +
   platform/duckdb `-tags=integration -p 1` verts.
-- [ ] E6 — ARCHI mineur : bare connects RO sur player DB potentiellement tenue RW :
+- [x] E6 — ARCHI mineur : bare connects RO sur player DB potentiellement tenue RW :
   `worldenrich/wiring.go:33`, `platform/auth/pool/discovery.go:229` → pattern
-  `OpenReadForQuery` / provider.
+  `OpenReadForQuery` / provider. FAIT : Site 1 (`sql.Open ...access_mode=read_only`) et
+  Site 2 (`duckdb.OpenReadOnly`) → `duckdb.OpenReadForQuery` (réutilise un handle en cache
+  si la DB est tenue RW, sinon ouvre RO — release func). GOTCHA résolu (le `&duckdb.DB{}` de
+  la carto était une hallucination) : `OpenReadForQuery` rend `*sql.DB` mais les helpers auth
+  prenaient `*DB` → ajout de variantes `Read{MSALCacheJSON,OAuthRefreshToken}FromSQL(*sql.DB)`
+  + helper unique `readSyncMetaValue` ; les versions `*DB` délèguent (zéro impact sur leurs
+  ~10 callers). worldenrich : imports morts retirés (`database/sql`, driver blank) + lectures
+  sync_meta DRY via les helpers. Gate : build+vet OK, queries_auth + pool `-tags=integration -p 1` verts.
 - [ ] E7 — ARCHI mineur : `sync/schema.go:22` — DDL bootstrap → `internal/migration`.
 - [ ] E8 — DEC-8 : `games/halo_5/livesync/csr_match.go:69` — router les écritures
   per-match H5 via la couche persist (BatchBuilder/Persister dédié). Convention à figer
