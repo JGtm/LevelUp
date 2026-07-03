@@ -66,9 +66,9 @@ type peakRegistryInfo struct {
 //
 // Comportement :
 //   - CSR : priorité à player_csr_snapshots.alltime_value (officiel Waypoint).
-//     Si vide, fallback sur Q26eHomeSkillPeakByType qui calcule via les
-//     match_skill_rank classés CSR (heuristique playlist_name).
-//   - LUSR : Q26eHomeSkillPeakByType uniquement.
+//     Si vide, fallback sur le chemin Phase A/B (Q26ePeakPhaseAPlayer +
+//     classification CSR/LUSR en Go via classifyPeakType).
+//   - LUSR : chemin Phase A/B (Q26ePeakPhaseAPlayer + classifyPeakType) uniquement.
 //   - En placement (placement_remaining > 0) : retourne un row avec
 //     BadgeImageURL=unranked_(10-remaining).png et MeasurementMatchesRemaining
 //     non-nil ; le front affichera "En placement" sans inventer.
@@ -269,7 +269,9 @@ func (r *HomeRepo) assemblePeak(playerRows []peakRow, registryByMatch map[string
 	return peak
 }
 
-// classifyPeakType : heuristique CSR/LUSR identique à Q26e historique.
+// classifyPeakType : heuristique CSR/LUSR (is_ranked, sinon fallback si
+// playlist_name/pair_name contient 'ranked'). Portée en Go depuis l'ancienne
+// query monolithique Q26e (supprimée, split en Phase A/B).
 func classifyPeakType(pr peakRow, registryByMatch map[string]peakRegistryInfo) string {
 	if info, ok := registryByMatch[pr.matchID]; ok {
 		if info.isRanked ||

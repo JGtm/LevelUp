@@ -6,7 +6,7 @@
 // aucun ATTACH `shared` sur les conns du pool depuis le commit 9c.5).
 //
 // Requêtes par domaine :
-//   - queries_career.go         : Q4/Q4MV/Q5, Q6-Q9, Q22-Q25 (filtres, historique, carrière, stats)
+//   - queries_career.go         : Q4Shared/Q4MVShared/Q5, Q6-Q9, Q22-Q25 (filtres, historique, carrière, stats)
 //   - queries_match.go          : Q10, Q12-Q21 (encounters, scoreboard, events, armes)
 //   - queries_squad.go          : Q29-Q33b (escouade, coéquipiers, synthèse)
 //   - queries_home_citations.go : Q26-Q28, Q34-Q37 (home, citations, médias)

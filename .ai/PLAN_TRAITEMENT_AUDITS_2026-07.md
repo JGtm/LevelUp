@@ -492,10 +492,20 @@ openapi/migrations associées, puis build+tests.
   service/handlers/title tests verts.
 - [x] G7 — ARCHI mineur : `ServiceConfigIDFor` (`domain/title/registry.go:249`, fonction morte).
   FAIT : stub (return "") 0 caller supprimé. Gate : build+vet OK.
-- [ ] G8 — ARCHI mineurs : constantes SQL mortes Q4/Q4MV (`queries_career.go:7`), Q26e
-  (`queries_home_citations.go:283`), Q24 + doc fausse (`queries_career_encounters.go:446`).
-- [ ] G9 — ARCHI mineur : entrées mortes `config/titles/halo_5/mappings/assets.toml:13`
-  (slugs divergents de la convention).
+- [x] G8 — ARCHI mineurs : constantes SQL mortes + doc fausse. FAIT : supprimé
+  `Q4MatchesForFilters` + `Q4MVMatchesForFilters` (variantes monolithiques mortes ;
+  les variantes `Q4Shared*`/`Q4MVShared*` restent LIVE, cf. filters_repo.go) et
+  `Q26eHomeSkillPeakByType` (monolithique remplacée par le split Phase A/B
+  Q26ePeakPhaseAPlayer + classifyPeakType). Corrigé la doc inversée référençant Q26e
+  (home_repo_skill_peak.go, csr_backfill.go, player_repos_test.go, queries.go catalog).
+  Q24 (`Q24LUSRHistory`) : PAS morte (2 lecteurs) — c'était la doc fausse qui annonçait
+  un param `?1=xuid` inexistant (query sans WHERE, player DB mono-joueur) → doc corrigée.
+  Gate : build+vet OK, `go test ./internal/platform/duckdb/...` vert.
+- [x] G9 — ARCHI mineur : entrées mortes `assets.toml`. FAIT : supprimé les 8 entrées
+  `[assets.mode.*]` placeholder H5 (slugs lowercase slayer/ctf/… divergents de la
+  convention — clé = catégorie de mode réelle comme halo_infinite ; AUCUN lecteur
+  mode-kind en prod, seuls des tests lisent "mode"/"ranked" côté Infinite). Header
+  documenté (réintroduction correcte = Phase 1). Gate : `go test ./internal/games/...` vert.
 - [~] G10 — CR A9 : `upsertLUSRRatingsLegacy` — vérifier déjà supprimé en A3, sinon supprimer.
   VÉRIFIÉ : déjà supprimé (grep = 0 occurrence). Rien à faire.
 - [ ] G11 — CR A9 / DEC-7 : `SessionKDATimeline.tsx`, `SessionOcdrScatter.tsx` — supprimer,

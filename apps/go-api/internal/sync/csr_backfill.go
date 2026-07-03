@@ -161,7 +161,8 @@ func BackfillCSRFromAPI(
 // is_ranked=FALSE malgré des playlists "Ranked Arena"/"Ranked Slayer"),
 // on classe aussi en ranked tout match dont `playlist_name` ou `pair_name`
 // contient "ranked" (case-insensitive). Cette heuristique est identique à
-// celle utilisée par Q26eHomeSkillPeakByType côté lecture — sans elle, le
+// celle appliquée côté lecture home (classifyPeakType, home_repo_skill_peak.go)
+// — sans elle, le
 // CSR backfill serait un no-op silencieux pour les joueurs touchés par la
 // régression is_ranked.
 func loadRankedMatchesForCSRBackfill(ctx context.Context, sharedDB *sql.DB) ([]MatchRegistryRow, error) {
