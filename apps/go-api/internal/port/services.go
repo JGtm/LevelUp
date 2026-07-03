@@ -182,7 +182,6 @@ type MediaService interface {
 	GetMediaPage(ctx context.Context, req domain.MediaPageRequest) (*domain.MediaPageResponse, error)
 	SetMediaLike(ctx context.Context, req domain.MediaLikeRequest) (*domain.MediaLikeResponse, error)
 	UploadMedia(ctx context.Context, req domain.UploadRequest) (*domain.UploadResult, error)
-	ReassociateMedia(ctx context.Context, req domain.ReassociateRequest) (*domain.ReassociateResult, error)
 	GetMatchCandidates(ctx context.Context, filePath string, windowMinutes int) (*domain.MediaMatchCandidatesResponse, error)
 	AssociateMediaToMatch(ctx context.Context, req domain.MediaAssociateRequest) (*domain.MediaAssociateResponse, error)
 	// ListMediaAuthors retourne les auteurs sélectionnables dans le filtre Auteurs

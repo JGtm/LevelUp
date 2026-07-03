@@ -25,16 +25,14 @@ import (
 
 // mockMediaService implémente port.MediaService.
 type mockMediaService struct {
-	page           *domain.MediaPageResponse
-	pageErr        error
-	like           *domain.MediaLikeResponse
-	likeErr        error
-	upload         *domain.UploadResult
-	uploadErr      error
-	reassociate    *domain.ReassociateResult
-	reassociateErr error
-	authors        []domain.MediaAuthor
-	authorsErr     error
+	page       *domain.MediaPageResponse
+	pageErr    error
+	like       *domain.MediaLikeResponse
+	likeErr    error
+	upload     *domain.UploadResult
+	uploadErr  error
+	authors    []domain.MediaAuthor
+	authorsErr error
 }
 
 func (m *mockMediaService) GetMediaPage(_ context.Context, _ domain.MediaPageRequest) (*domain.MediaPageResponse, error) {
@@ -59,16 +57,6 @@ func (m *mockMediaService) UploadMedia(_ context.Context, _ domain.UploadRequest
 		return m.upload, nil
 	}
 	return &domain.UploadResult{}, nil
-}
-
-func (m *mockMediaService) ReassociateMedia(_ context.Context, _ domain.ReassociateRequest) (*domain.ReassociateResult, error) {
-	if m.reassociateErr != nil {
-		return nil, m.reassociateErr
-	}
-	if m.reassociate != nil {
-		return m.reassociate, nil
-	}
-	return &domain.ReassociateResult{}, nil
 }
 
 func (m *mockMediaService) GetMatchCandidates(_ context.Context, _ string, _ int) (*domain.MediaMatchCandidatesResponse, error) {

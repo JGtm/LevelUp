@@ -485,19 +485,27 @@ openapi/migrations associées, puis build+tests.
 - [ ] G5 — CR A9 + ARCHI mineur : chaîne `NotifyNewMedia` → `queryUnnotifiedMedia` →
   `markMediaNotified` (`notify/notifiers.go:88-190`) + la migration de colonne
   `discord_notified_at` qui ne vit que pour elle + tests.
-- [ ] G6 — ARCHI mineur : `ReassociateMedia` (`media_service.go:338`) — méthode + interface
-  + types (route supprimée 2026-04-29).
-- [ ] G7 — ARCHI mineur : `ServiceConfigIDFor` (`domain/title/registry.go:249`, fonction morte).
+- [x] G6 — ARCHI mineur : `ReassociateMedia` (`media_service.go:338`) — méthode + interface
+  + types (route supprimée 2026-04-29). FAIT : méthode `MediaService.ReassociateMedia`, entrée
+  interface `port`, types `domain.ReassociateRequest/Result`, test + mock supprimés (prod-orphelin :
+  handler HTTP retiré 2026-04-29, gardé vivant seulement par les tests). Gate : build+vet OK,
+  service/handlers/title tests verts.
+- [x] G7 — ARCHI mineur : `ServiceConfigIDFor` (`domain/title/registry.go:249`, fonction morte).
+  FAIT : stub (return "") 0 caller supprimé. Gate : build+vet OK.
 - [ ] G8 — ARCHI mineurs : constantes SQL mortes Q4/Q4MV (`queries_career.go:7`), Q26e
   (`queries_home_citations.go:283`), Q24 + doc fausse (`queries_career_encounters.go:446`).
 - [ ] G9 — ARCHI mineur : entrées mortes `config/titles/halo_5/mappings/assets.toml:13`
   (slugs divergents de la convention).
-- [ ] G10 — CR A9 : `upsertLUSRRatingsLegacy` — vérifier déjà supprimé en A3, sinon supprimer.
+- [~] G10 — CR A9 : `upsertLUSRRatingsLegacy` — vérifier déjà supprimé en A3, sinon supprimer.
+  VÉRIFIÉ : déjà supprimé (grep = 0 occurrence). Rien à faire.
 - [ ] G11 — CR A9 / DEC-7 : `SessionKDATimeline.tsx`, `SessionOcdrScatter.tsx` — supprimer,
   noter dans `.ai/` backlog UI.
 - [ ] G12 — CR A9 : `MapMuToLegacyRating`/`MapTierSubToLegacyRating` → dé-exporter
   (test-only).
-- [ ] G13 — CR A9 : `processMatch` legacy — vérifier déjà supprimé en D1b, sinon supprimer.
+- [~] G13 — CR A9 : `processMatch` legacy — vérifier déjà supprimé en D1b, sinon supprimer.
+  VÉRIFIÉ : la fonction `processMatch` est déjà supprimée (D1b, engine_process_match.go) ; il ne
+  reste que des mentions en COMMENTAIRE (backfill_personal_scores.go, csr_writes.go, engine.go…) —
+  commentaires stale, non bloquants (nettoyage cosmétique noté, hors périmètre suppression).
 - [ ] G14 — DETTE §2.5 / DEC-6 : `known_teammates_count` + `friends_xuids` — DROP au
   prochain rebuild (suivre la recette ADR 0026) ; retirer toute lecture résiduelle.
 - [ ] G15 — ARCHI mineur perf : `sync/aggregates.go:37` — `mv_map_stats` rebuildée à chaque
