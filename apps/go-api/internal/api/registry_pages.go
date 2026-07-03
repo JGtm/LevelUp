@@ -17,6 +17,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/games/mappings"
@@ -339,16 +340,25 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 	if sem := r.semanticFor(pdb.TitleSlug); sem != nil {
 		ranks = sem.Ranks()
 	}
+	// CSR live (Explorer) : providers spécifiques Infinite → n'injecter que si le
+	// titre expose match.skill.snapshot, sinon nil (le service dégrade : encart CSR
+	// vide, pas de fuite de playlists/CSR Infinite sous un autre titre — F2).
+	var csrProvider service.ExplorerTargetCSRProvider
+	var seasonCSRProvider service.ExplorerSeasonCSRProvider
+	if r.titleSupportsLiveCSR(pdb) {
+		csrProvider = r.newExplorerCSRProvider()
+		seasonCSRProvider = r.newExplorerSeasonCSRProvider()
+	}
 	svc = svc.WithTargetProfileProviders(service.ExplorerTargetProfileDeps{
 		LocalIdentity:   r.newExplorerLocalIdentityResolver(pdb.TitleSlug),
 		LiveIdentity:    r.newCareerLiveService(pdb, homeRepo),
 		RemoteStats:     r.remoteStats,
 		MedalDefs:       duckdb.NewMedalDefinitionsRepo(pdb),
-		CSR:             r.newExplorerCSRProvider(),
+		CSR:             csrProvider,
 		CurrentSeasonID: csrSeasonID,
 		Seasons:         seasons,
 		SeasonSR:        r.remoteStats, // *CachedStatsProvider implémente port.SeasonStatsProvider
-		SeasonCSR:       r.newExplorerSeasonCSRProvider(),
+		SeasonCSR:       seasonCSRProvider,
 		Ranks:           ranks,
 		RecentMatches:   wrapRecentMatchesAuthRetry(r.recentMatches),
 		LocalBannerPool: r.newExplorerLocalBannerPool(pdb.TitleSlug),
@@ -358,6 +368,17 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 	svc = svc.WithLiveGamertagResolver(r.liveGamertagResolver)
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
+}
+
+// titleSupportsLiveCSR indique si le titre du joueur expose la capability
+// match.skill.snapshot (Infinite = degraded → oui ; H5 = not_exposed → non).
+// Les providers CSR Explorer/Compare sont spécifiques au live Infinite
+// (rankedplaylists.Active() + endpoints CSR HINF) : ne les injecter que pour un
+// titre déclarant cette capability évite de servir des playlists/CSR Infinite
+// sous un autre titre (F2). Gate par CAPABILITY, jamais par slug (ratchet ADR 0025).
+func (r *ServiceRegistry) titleSupportsLiveCSR(pdb *duckdb.PlayerDB) bool {
+	a := r.dataAdapterForPDB(pdb)
+	return a != nil && a.Capabilities().Has(games.CapMatchSkillSnapshot)
 }
 
 // newExplorerCSRProvider construit le provider CSR de l'encart cible : instancie
@@ -796,7 +817,10 @@ func (r *ServiceRegistry) Compare(ctx context.Context, slug string) (port.Compar
 	if r.cfg != nil {
 		csrSeasonID = r.cfg.CSRSeasonIDForTitle(ctx, pdb.TitleSlug, nil)
 	}
-	svc = svc.WithCSR(r.newExplorerCSRProvider(), csrSeasonID)
+	// CSR live (Compare) : provider spécifique Infinite → gate capability (F2).
+	if r.titleSupportsLiveCSR(pdb) {
+		svc = svc.WithCSR(r.newExplorerCSRProvider(), csrSeasonID)
+	}
 	// Catalogue de rangs carrière (même source que le profil de combat) pour
 	// afficher le rang en titre ("Général Platine VI") plutôt qu'en numéro.
 	if sem := r.semanticFor(pdb.TitleSlug); sem != nil {
