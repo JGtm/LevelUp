@@ -59,13 +59,31 @@ func (r *LeaderboardRepo) GetCSRWorldLeaderboard(
 	// activer is_local (mise en évidence du joueur courant sur ce classement mondial).
 	// Les lignes scrapées AVANT l'ajout de la colonne xuid restent à NULL → COALESCE ''
 	// → is_local false, jusqu'au prochain scrape qui les remplit.
-	const q = `
+	// Masquage des joueurs privés/sans données (historique inaccessible → aucune stat) :
+	// on les exclut EN SQL (avant le LIMIT) pour servir un top complet de joueurs
+	// exploitables. Best-effort : table absente → set vide → aucun filtre (dégradation).
+	noData, ndErr := WorldSeasonNoDataGamertags(ctx, sharedDB, titleSlug, season)
+	if ndErr != nil {
+		slog.WarnContext(ctx, "GetCSRWorldLeaderboard: lecture world_player_no_data échouée — pas de masquage",
+			"module", logModuleLeaderboard, "season", season, "err", ndErr)
+		noData = nil
+	}
+	q := `
 		SELECT rank, COALESCE(gamertag, ''), COALESCE(xuid, '') AS xuid, csr_value
 		FROM world_csr_leaderboard_latest
-		WHERE title_slug = ? AND season_id = ? AND playlist_id = ?
-		ORDER BY rank ASC
-		LIMIT ?`
-	rows, err := sharedDB.QueryContext(ctx, q, titleSlug, season, playlist, limit)
+		WHERE title_slug = ? AND season_id = ? AND playlist_id = ?`
+	args := []any{titleSlug, season, playlist}
+	if len(noData) > 0 {
+		ph := make([]string, 0, len(noData))
+		for gt := range noData {
+			ph = append(ph, "?")
+			args = append(args, gt)
+		}
+		q += ` AND gamertag NOT IN (` + strings.Join(ph, ",") + `)`
+	}
+	q += ` ORDER BY rank ASC LIMIT ?`
+	args = append(args, limit)
+	rows, err := sharedDB.QueryContext(ctx, q, args...)
 	if err != nil {
 		slog.WarnContext(ctx, "lecture classement CSR mondial échouée", "module", logModuleLeaderboard,
 			"season", season, "playlist", playlist, "err", err)

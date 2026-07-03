@@ -70,11 +70,12 @@ func InsertPlayerSeasonStats(ctx context.Context, db *sql.DB, stats []domain.Wor
 }
 
 // WorldLeaderboardTopN borne l'enrichissement à la profondeur RÉELLEMENT affichée
-// par le classement mondial : top 100 PAR playlist (cf. GetCSRWorldLeaderboard,
-// `ORDER BY rank ASC LIMIT 100` ; service.defaultLeaderboardLimit). Enrichir les
-// rangs 101+ serait du fetch jamais affiché (~moitié du coût). À garder synchronisé
-// avec le display si la profondeur change.
-const WorldLeaderboardTopN = 100
+// par le classement mondial : top 50 PAR playlist (cf. GetCSRWorldLeaderboard ;
+// service.defaultLeaderboardLimit). Enrichir plus profond serait du fetch jamais
+// affiché. À garder synchronisé avec le display (defaultLeaderboardLimit) si la
+// profondeur change. Réduit de 100 à 50 (2026-07-03) : classement plus digeste
+// (top 50) + backfill/cron ~2× plus rapides.
+const WorldLeaderboardTopN = 50
 
 // WorldSeasonPlayers retourne les joueurs distincts (gamertag + xuid) présents dans
 // les snapshots CSR mondiaux d'une saison, restreints au top `topN` PAR playlist
@@ -109,6 +110,87 @@ func WorldSeasonPlayers(ctx context.Context, db *sql.DB, season string, topN int
 		out = append(out, ref)
 	}
 	return out, rows.Err()
+}
+
+// WorldSeasonEnrichedGamertags retourne l'ensemble des gamertags AYANT DÉJÀ des
+// stats agrégées pour une saison (world_player_season_stats_latest). Sert au flag
+// -skip-existing du backfill : un joueur enrichi (n'importe quelle playlist) l'a été
+// en un seul passage couvrant toutes ses playlists, donc sa seule présence = « déjà
+// fait » — pas besoin de re-fetcher son historique. `db` = lecteur shared. Best-effort
+// : table absente (jamais enrichi) → set vide sans erreur.
+func WorldSeasonEnrichedGamertags(ctx context.Context, db *sql.DB, season string) (map[string]struct{}, error) {
+	rows, err := db.QueryContext(ctx,
+		`SELECT DISTINCT gamertag FROM world_player_season_stats_latest
+		 WHERE season_id = ? AND gamertag <> ''`, season)
+	if err != nil {
+		if isTableNotFoundErr(err) {
+			return map[string]struct{}{}, nil
+		}
+		return nil, fmt.Errorf("WorldSeasonEnrichedGamertags(%s): %w", season, err)
+	}
+	defer rows.Close()
+	out := make(map[string]struct{})
+	for rows.Next() {
+		var gt string
+		if err := rows.Scan(&gt); err != nil {
+			return nil, fmt.Errorf("WorldSeasonEnrichedGamertags scan: %w", err)
+		}
+		out[gt] = struct{}{}
+	}
+	return out, rows.Err()
+}
+
+// WorldSeasonNoDataGamertags retourne les gamertags marqués « privé / sans données »
+// pour une saison (world_player_no_data) : historique matchmade inaccessible → 0 stat.
+// Sert au skip du backfill ET au masquage à l'affichage. Best-effort : table absente
+// → set vide sans erreur.
+func WorldSeasonNoDataGamertags(ctx context.Context, db *sql.DB, titleSlug, season string) (map[string]struct{}, error) {
+	rows, err := db.QueryContext(ctx,
+		`SELECT gamertag FROM world_player_no_data WHERE title_slug = ? AND season_id = ?`,
+		titleSlug, season)
+	if err != nil {
+		if isTableNotFoundErr(err) {
+			return map[string]struct{}{}, nil
+		}
+		return nil, fmt.Errorf("WorldSeasonNoDataGamertags(%s): %w", season, err)
+	}
+	defer rows.Close()
+	out := make(map[string]struct{})
+	for rows.Next() {
+		var gt string
+		if err := rows.Scan(&gt); err != nil {
+			return nil, fmt.Errorf("WorldSeasonNoDataGamertags scan: %w", err)
+		}
+		out[gt] = struct{}{}
+	}
+	return out, rows.Err()
+}
+
+// InsertWorldNoDataPlayers marque des joueurs « privé / sans données » pour une saison
+// (INSERT-only, idempotent via WHERE NOT EXISTS — pas d'ON CONFLICT ni d'UPDATE, hors
+// surface ART). Retourne le nombre de nouvelles marques. `db` = writer shared.
+func InsertWorldNoDataPlayers(ctx context.Context, db *sql.DB, titleSlug, season string, gamertags []string) (int, error) {
+	n := 0
+	for _, gt := range gamertags {
+		if gt == "" {
+			continue
+		}
+		res, err := db.ExecContext(ctx,
+			`INSERT INTO world_player_no_data (title_slug, season_id, gamertag)
+			 SELECT ?, ?, ?
+			 WHERE NOT EXISTS (
+				SELECT 1 FROM world_player_no_data
+				WHERE title_slug = ? AND season_id = ? AND gamertag = ?
+			 )`,
+			titleSlug, season, gt, titleSlug, season, gt)
+		if err != nil {
+			return n, fmt.Errorf("InsertWorldNoDataPlayers(%s,%s): %w", season, gt, err)
+		}
+		if a, _ := res.RowsAffected(); a > 0 {
+			n++
+		}
+	}
+	return n, nil
 }
 
 // worldPlayerStatsQuery : compteurs bruts + ratios dérivés + comparaison

@@ -979,6 +979,29 @@ func Steps() []migration.Migration {
 			},
 		},
 		{
+			// Joueurs « privés / sans données » du classement mondial : un joueur dont
+			// l'historique matchmade est inaccessible (privacy Xbox → 403/vide) ressort
+			// de l'enrichissement avec 0 stat. On le marque ici pour (a) ne plus le
+			// re-fetcher aux runs suivants (backfill -skip-existing), (b) le masquer du
+			// classement affiché (anti-join). Marqueur par (titre, saison, gamertag).
+			Name:        "create_world_player_no_data",
+			TargetDB:    migration.TargetShared,
+			Description: "Marqueur des joueurs privés/sans données du classement mondial (skip backfill + masquage affichage)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS world_player_no_data (
+						title_slug  VARCHAR NOT NULL,
+						season_id   VARCHAR NOT NULL,
+						gamertag    VARCHAR NOT NULL,
+						marked_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (title_slug, season_id, gamertag)
+					);
+					-- AUCUN index secondaire (PK-only) : insert-or-ignore, jamais d'UPDATE
+					-- sur colonne indexée → hors surface ART #23046. Table petite.
+				`)
+			},
+		},
+		{
 			Name:        "shared_create_player_squad_offset",
 			TargetDB:    migration.TargetShared,
 			Description: "LUSR v2 Sprint 1.C — player_squad_offset (append-only) + vue _latest : offset synergie par paire de coéquipiers",
