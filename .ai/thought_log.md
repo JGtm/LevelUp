@@ -1,3 +1,38 @@
+## [2026-07-03] C1 : delta placement saison précédente (page player) — COMPLÉTÉ (voie b frontend-only, worktree)
+
+**Statut** : Complété. Étape C1 du PLAN_PLAYLISTS_CATALOG_ET_LEADERBOARD livrée.
+
+**Décision technique principale** : voie (b) frontend-only. `CareerRankingBlock.tsx` fait un 2e
+appel `useCareerCSRs` sur la saison ANTÉRIEURE à celle sélectionnée (`availableSeasons[idx+1]`,
+tri desc backend confirmé via `sortCSRSeasonsDesc`) ; join par `playlist_id` ; helper pur
+`csrSeasonTrend` compare `current.value` (null si l'une des deux n'est pas classée) → flèche
+▲▼=. Param `enabled` ajouté à `useCareerCSRs` pour désactiver le 2e appel quand aucune saison
+antérieure (sinon collision de query key `careerCSRs(slug, undefined)`).
+
+**Anti-dette (règle ≤2 copies)** : le pattern flèche-tendance existait déjà 3× (LeaderboardBlock
+`up/down/stable`, KPIStrip + PlayerScoreCard `above/below/near`). Plutôt qu'une 4e copie, extrait
+`MetricWithTrend` (+ type `Trend`, tokens `--narrative-trend-*`) dans le foyer canonique
+`components/ui/metric-trend.tsx` ; LeaderboardBlock y est MIGRÉ (0 nouvelle copie) ; garde-rail
+`metric-trend.guard.test.ts` (import.meta.glob) interdit toute ré-inline. Les 2 copies
+`above/below/near` (sémantique « vs référence », distincte) sont notées en Découvertes, non
+fusionnées (hors périmètre).
+
+**i18n** : clé `career.ranking.vs_prev_season` (FR « Évolution vs saison précédente » / EN
+« Change vs previous season ») + regen `generated/career.ts` (2353 clés).
+
+**Reporté [!] (report VALIDE — donnée backend absente)** : tri `is_active`-d'abord exige un flag
+sur `CareerCSRRank` (full-stack) ; liste triée par `alltime_value DESC` en attendant.
+
+**Résultats observés** : gate worktree — `tsc -b` 0 err, `eslint .` 0 err (70 warnings
+pré-existants hors scope), `vitest run` HORS sandbox 237 fichiers / 2070 tests PASS (dont le
+nouveau test delta + garde-rail). Gotcha : worktree sans node_modules → jonction vers repo
+principal requise (mklink /J) ; à retirer avant `worktree remove`.
+
+**Prochaine étape** : C2 (persister la liste des saisons Waypoint : table `season_catalog`,
+upsert ART-safe SELECT-then-write) puis C3 (backfill saisons passées, cf. handoff).
+
+---
+
 ## [2026-07-02] B2 : service-record par-playlist NON VIABLE (prouvé live) → pivot hardening par-match EXÉCUTÉ — worktree
 
 **Finding décisif (sonde live JGtm)** : format saison service-record = chemin CMS

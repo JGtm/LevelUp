@@ -13,8 +13,8 @@
   (branche feature → AUCUN déploiement ; seul un push sur `main` déploie).
 - **WIP séparé intact** : le repo principal est sur `fix/security-unauth-endpoints` (chantier
   sécurité non lié) — ne pas y toucher.
-- **Reprendre par C1** (frontend), puis **C2** (saisons), puis **C3** (backfill saisons passées,
-  basse priorité). Ordre : B1→A2→A3→B2 [FAITS] → **C1 → C2 → C3** [restants].
+- **Reprendre par C2** (saisons), puis **C3** (backfill saisons passées, basse priorité).
+  Ordre : B1→A2→A3→B2→**C1** [FAITS] → **C2 → C3** [restants].
 - **Contrat d'exécution** : skill `plan-execution` (ordre strict, pas de report d'action
   exécutable, statuer chaque item, gate + thought_log + commit par étape).
 
@@ -32,19 +32,19 @@ Gate systématique : `go build ./...` + `gofmt` + go-vet hook + tests unitaires/
 
 ## 2. RESTE À FAIRE
 
-### C1 — Frontend : delta placement saison précédente (page player)
-- **Fichier** : `apps/web/src/features/career/CareerRankingBlock.tsx` (colonne CSR).
-- **Voie b (frontend-only, recommandée)** : 2e appel `useCareerCSRs(playerSlug, previousSeason)`
-  où `previousSeason = availableSeasons[1]?.season_id` ; join par `playlist_id` ; afficher un
-  delta ↑/↓ du tier/value courant vs précédent. Pattern flèche/tokens : voir `LeaderboardBlock.tsx`
-  (`TREND_VAR`/`MetricWithTrend`).
-- **Item 1 (tri actives-d'abord)** : nécessite un flag `is_active` par playlist dans la réponse
-  CSR carrière — ABSENT de `CareerCSRRank` (champs : badge_image_url, measurement_matches_remaining,
-  placement_total, sub_tier, tier, value). → full-stack (backend `career_service` + type). À part.
-- **Friction** : nouvelle clé i18n (career.toml n'a PAS de clé trend/delta réutilisable) → éditer
-  `apps/web/src/lib/i18n/manifests/career.toml` + REGÉNÉRER `generated/career.ts` (build i18n) ;
-  gate `make check-types` (sandbox OK) + `make test-web` (**vitest HORS sandbox** :
-  `dangerouslyDisableSandbox=true`, cf. memory `reference_vitest_outside_sandbox`).
+### C1 — LIVRÉ (2026-07-03, voie b frontend-only)
+Delta placement saison précédente sur la page player (`CareerRankingBlock.tsx`, colonne CSR).
+- 2e appel `useCareerCSRs(playerSlug, previousSeasonId, enabled)` — param `enabled` AJOUTÉ à
+  `useCareerCSRs` (sinon collision de query key quand pas de saison antérieure). `previousSeasonId
+  = availableSeasons[selectedIdx+1]` (tri desc backend confirmé, `sortCSRSeasonsDesc`).
+- Join par `playlist_id`, helper pur `csrSeasonTrend` (compare `current.value`, null si non
+  classé de part et d'autre) ; flèche ▲▼= via composant PARTAGÉ `components/ui/metric-trend.tsx`
+  (extrait de LeaderboardBlock → 0 nouvelle copie) + garde-rail `metric-trend.guard.test.ts`.
+- i18n : clé `career.ranking.vs_prev_season` (FR/EN) + regen `generated/career.ts`. Couleurs =
+  tokens `--narrative-trend-*` (aucun hex).
+- **Reporté [!]** : tri `is_active`-d'abord → exige un flag backend sur `CareerCSRRank`
+  (full-stack). Liste triée par `alltime_value DESC` en attendant.
+- Gate : `tsc -b` + `eslint .` (0 err) + `vitest run` HORS sandbox (237 fichiers / 2070 tests PASS).
 
 ### C2 — Saisons : persister + surfacer
 - **Enquête DÉJÀ LIVRÉE** (fixture `leaderboard_sample.html`) : `seasonId`=identifiant CSR,
@@ -107,6 +107,12 @@ commandes exactes (chemins CMS de saison validés) au moment de lancer.
    par le worktree). Harnais auth de référence : `cmd/probe-world-stats/main.go` (lignes 78-126).
 6. **CGO requis** (driver DuckDB, gcc msys64). Tests : jamais `-race` (incompatible driver).
    `go test -race` → utiliser `-gcflags=all=-d=checkptr=0` si besoin.
+7. **Worktree SANS node_modules** : `apps/web/node_modules` n'existe pas dans le worktree →
+   i18n build / tsc / eslint / vitest échouent (`ERR_MODULE_NOT_FOUND`). Remède utilisé en C1 :
+   jonction vers le repo principal (`cmd //c "mklink /J node_modules C:\...\apps\web\node_modules"`).
+   RETIRER la jonction AVANT tout `git worktree remove` (cf. memory
+   `reference_worktree_remove_follows_junctions`). Attention : lancer les commandes web depuis
+   le chemin worktree, PAS `C:\...\LevelUp-go-migration\apps\web` (= repo principal).
 
 ## 5. Reprise concrète
 

@@ -239,29 +239,33 @@ suppression. RAS.
 
 ---
 
-## Étape C1 — Frontend : tri + affichage placement précédent (FULL-STACK, non exécutée)
+## Étape C1 — Frontend : affichage placement saison précédente (delta) — LIVRÉE (voie b)
 
-**RE-CADRAGE (sur pièces)** : ce n'est PAS du polish frontend — les 2 items exigent des
-DONNÉES BACKEND non exposées aujourd'hui par `CareerCSRRank` (`apps/web/src/lib/api/types`,
-rendu par `CareerRankingBlock.tsx`). Le classement (LeaderboardBlock) a DÉJÀ tri + trends +
-rank_delta ; C1 concerne la page PLAYER.
+**RE-CADRAGE (sur pièces)** : la page PLAYER (`CareerRankingBlock.tsx`) n'exposait pas le
+placement N-1. Le classement (LeaderboardBlock) avait DÉJÀ tri + trends + rank_delta ; C1
+concerne la page PLAYER. Voie (b) frontend-only retenue et exécutée (2026-07-03).
 
 **Périmètre fermé** :
-- [!] Trier `is_active` d'abord : NON exécuté. Nécessite d'ajouter un flag `is_active` par
-      playlist à la réponse CSR carrière (career_service + type TS). Full-stack.
-- [!] Placement saison précédente en delta : NON exécuté. `CareerCSRRank` ne porte pas la
-      valeur N-1. Deux voies : (a) backend expose `prev_value/prev_tier` par playlist
-      (join player_csr_snapshots saison N-1) ; (b) frontend-only : `useCareerCSRs` current +
-      previous (availableSeasons[1]) + join par playlist_id + delta UI. (b) est faisable sans
-      backend mais reste une vraie feature (2 queries, i18n, tokens).
-- [!] i18n FR/EN + tokens : dépend des items ci-dessus.
+- [x] Placement saison précédente en delta : LIVRÉ (voie b). 2e appel `useCareerCSRs`
+      (param `enabled` ajouté pour éviter la collision de query key quand aucune saison
+      antérieure) sur `availableSeasons[selectedIdx+1]` (tri desc backend confirmé) ; join
+      par `playlist_id` ; helper pur `csrSeasonTrend` (compare `current.value`, null si non
+      classé de part et d'autre) ; flèche ▲▼= rendue via le composant PARTAGÉ
+      `components/ui/metric-trend.tsx` (extrait de LeaderboardBlock — 0 nouvelle copie) +
+      garde-rail `metric-trend.guard.test.ts`. Tooltip = nom+valeur du palier N-1.
+- [x] i18n FR/EN + tokens : LIVRÉ. Nouvelle clé `career.ranking.vs_prev_season` (FR/EN) +
+      regen `generated/career.ts` ; couleurs = tokens sémantiques `--narrative-trend-*`
+      réutilisés (aucun hex).
+- [!] Trier `is_active` d'abord : NON exécuté (hors périmètre voie b). Nécessite un flag
+      `is_active` par playlist dans la réponse CSR carrière (`career_service` + `CareerCSRRank`
+      + type TS) — FULL-STACK. Reporté (report VALIDE : donnée backend absente) → voir
+      Découvertes. Non bloquant : la liste reste triée par `alltime_value DESC` (Q26csrSnapshots).
 
-**Raison du non-go (delivery-checklist)** : full-stack + gate vitest hors sandbox, à exécuter
-en contexte frais — précipiter à grande profondeur de session risquerait la page player
-elle-même. Design (a)/(b) prêt. Aucun blocage EXTERNE (exécutable en session dédiée).
-
-**Gate** :
-- `make check-types && make test-web`
+**Gate exécuté (2026-07-03, worktree)** :
+- `npx tsc -b` : 0 erreur · `npx eslint .` : 0 erreur (70 warnings pré-existants hors scope)
+- `npx vitest run` (HORS sandbox) : 237 fichiers / 2070 tests PASS, 0 échec (dont le nouveau
+  test delta + le garde-rail). Pré-requis worktree : jonction `apps/web/node_modules` → repo
+  principal (aucun node_modules propre au worktree).
 
 ---
 
@@ -310,17 +314,26 @@ faire en contexte frais. Enquête (le cœur de ta question saisons) = LIVRÉE ci
   liste autoritative des playlists classées actives est fetchée puis ignorée. Traité en A2.
 - **`playlists_catalog` sans index secondaire** (ratchet `playlists_catalog_no_index_test.go`)
   : UPDATE OK sans index ; ne JAMAIS recréer idx_playlists_catalog_active (corruption ART).
+- **Dette flèche-tendance `above/below/near`** (repéré en C1) : `KPIStrip.tsx` et
+  `PlayerScoreCard.tsx` dupliquent le trio glyphe/token de tendance mais avec un vocabulaire
+  DISTINCT (comparaison à une RÉFÉRENCE : moyenne/all-time), non fusionnable tel quel avec le
+  `MetricWithTrend` temporel (`up/down/stable`) centralisé en C1. Centralisation possible plus
+  tard en mappant leur sémantique (2 copies pré-existantes, NON traité — hors périmètre).
+- **Tri CSR `is_active`-d'abord page player** (item C1 reporté) : exige un flag `is_active` par
+  playlist dans `CareerCSRRank` (career_service + type TS) — FULL-STACK. À planifier avec C2
+  si on ré-ouvre le backend career CSR.
 
 ## Protocole de reprise de session
 
 - Avancement = cases cochées de ce fichier + entrées `.ai/thought_log.md`.
 - État final session : B1 [x d58528501] · A2 [x dfce681f4] · A3 [x fddf71f5c] · B2 [x
   7a49ab0a0 — pivot hardening après sonde live prouvant playlistAssetId non supporté] ·
-  C1 [!] frontend (voie b : 2e query + delta + NOUVELLE clé i18n regen + vitest) ·
-  C2 [x enquête saisons ; persistance [!] full-stack]. Tests verts, tout poussé.
-- Reprendre en session FRAÎCHE (toolchain web) : C1 (voie b, previous-delta page player —
-  nécessite édition career.toml + regénération i18n + vitest hors sandbox), puis C2
-  (persistance seasons Waypoint). Aucun blocage externe ; friction = toolchain frontend.
+  C1 [x LIVRÉ 2026-07-03 — voie b : delta placement N-1 + composant partagé metric-trend +
+  garde-rail + i18n ; item tri is_active [!] full-stack reporté] ·
+  C2 [x enquête saisons ; persistance [!] full-stack]. Tests verts.
+- Reprendre : **C2** (persistance seasons Waypoint : table `season_catalog`, upsert ART-safe)
+  puis **C3** (backfill saisons passées — cf. HANDOFF). Aucun blocage externe ; friction C2 =
+  écriture DuckDB (SELECT-then-write, pas d'UPSERT concurrent).
 - Avant de coder une étape : rouvrir les fichiers cibles (le code a pu bouger).
 
 ## Statut de clôture

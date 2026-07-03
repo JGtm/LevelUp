@@ -12,6 +12,7 @@ const SUB_TIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']
 const toRoman = (n: number): string => SUB_TIER_ROMAN[n] ?? String(n)
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { MetricWithTrend, type Trend } from '@/components/ui/metric-trend'
 import type { CareerLusrSection, CareerCSRRank } from '@/lib/api/types'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { careerManifest } from '@/lib/i18n/generated/career'
@@ -40,6 +41,16 @@ function csrTierLabel(rank: CareerCSRRank, placementLabel: string, unrankedLabel
 function formatCSRValue(rank: CareerCSRRank): string {
   if (!rank.tier) return ''
   return rank.value > 0 ? ` · ${Math.round(rank.value).toLocaleString()}` : ''
+}
+
+// csrSeasonTrend compare la valeur CSR de la saison sélectionnée à celle de la
+// saison précédente (même playlist). null si l'une des deux n'est pas classée
+// (tier vide / valeur ≤ 0) : aucune flèche sur un placement ou une absence.
+function csrSeasonTrend(current: CareerCSRRank, prev: CareerCSRRank | undefined): Trend | null {
+  if (!prev || !current.tier || !prev.tier || current.value <= 0 || prev.value <= 0) return null
+  if (current.value > prev.value) return 'up'
+  if (current.value < prev.value) return 'down'
+  return 'stable'
 }
 
 function inputIcon(input: string): string {
@@ -88,6 +99,17 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
   const playlists = csrData?.playlists ?? []
   const availableSeasons = csrData?.available_seasons ?? []
   const selectedSeason = season ?? csrData?.season_id ?? ''
+  // Delta CSR vs saison PRÉCÉDENTE : available_seasons est triée récentes
+  // d'abord (backend sortCSRSeasonsDesc), donc la saison antérieure à celle
+  // affichée est l'entrée suivante. Second appel gated (enabled) pour éviter
+  // une collision de query key quand il n'existe aucune saison antérieure.
+  const selectedIdx = availableSeasons.findIndex((s) => s.season_id === selectedSeason)
+  const previousSeasonId =
+    selectedIdx >= 0 ? availableSeasons[selectedIdx + 1]?.season_id : undefined
+  const { data: prevCsrData } = useCareerCSRs(playerSlug, previousSeasonId, !!previousSeasonId)
+  const prevByPlaylist = new Map<string, CareerCSRRank>(
+    (prevCsrData?.playlists ?? []).map((pl) => [pl.playlist_id, pl.current]),
+  )
   const lusrByGroup = lusrData ? deriveLatestLUSRByGroup(lusrData.checkpoints) : new Map<string, LusrCheckpoint>()
   // Groupes affichés = UNION (connus du titre, ordre déclaré) + (groupes présents
   // dans la donnée mais non connus, triés). HINF : ses 4 connus, inchangé. h5 :
@@ -133,26 +155,35 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
               />
             ) : (
               <ul className="space-y-2">
-                {playlists.map((pl) => (
-                  <li key={pl.playlist_id} className="flex items-center gap-2">
-                    <img
-                      src={pl.current.badge_image_url ?? staticAssetURL('csr-rank', 'unranked_0', '.png')}
-                      alt={pl.current.tier || 'unranked'}
-                      className="h-8 w-8 shrink-0 object-contain"
-                    />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {shortPlaylistName(pl.playlist_name)}
-                        <span className="ml-1 text-xs text-muted-foreground">
-                          {inputIcon(pl.input)}
-                        </span>
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {csrTierLabel(pl.current, t('career.ranking.placement'), t('career.ranking.unranked'))}{formatCSRValue(pl.current)}
-                      </p>
-                    </div>
-                  </li>
-                ))}
+                {playlists.map((pl) => {
+                  const prevRank = prevByPlaylist.get(pl.playlist_id)
+                  const trend = csrSeasonTrend(pl.current, prevRank)
+                  const csrText = `${csrTierLabel(pl.current, t('career.ranking.placement'), t('career.ranking.unranked'))}${formatCSRValue(pl.current)}`
+                  const trendTooltip =
+                    trend && prevRank
+                      ? `${t('career.ranking.vs_prev_season')} : ${csrTierLabel(prevRank, t('career.ranking.placement'), t('career.ranking.unranked'))}${formatCSRValue(prevRank)}`
+                      : undefined
+                  return (
+                    <li key={pl.playlist_id} className="flex items-center gap-2">
+                      <img
+                        src={pl.current.badge_image_url ?? staticAssetURL('csr-rank', 'unranked_0', '.png')}
+                        alt={pl.current.tier || 'unranked'}
+                        className="h-8 w-8 shrink-0 object-contain"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {shortPlaylistName(pl.playlist_name)}
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            {inputIcon(pl.input)}
+                          </span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          <MetricWithTrend text={csrText} trend={trend} tooltip={trendTooltip} />
+                        </p>
+                      </div>
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </div>
