@@ -110,8 +110,11 @@ PL="edfef3ac-9cbe-4fa2-b949-8f29deafd483,dcb2e24e-05fb-4390-8076-32a0cdb4326e,fa
 # (affiché "— (non classée cette saison)", plus une ERROR depuis le fix 23f3c3c58).
 go run ./cmd/snapshot-world-leaderboard -season all -shared-db "$DB" -playlists "$PL" -limit 100 -polite-ms 800
 
-# ÉTAPE 2 — enrichir TOUTES les saisons via le POOL de tokens (LONG, off-peak ; checkpoint reprend) :
-go run ./cmd/backfill-world-player-stats -token-gamertag JGtm -season all -all-tokens -deep -max-pages 120 -quiet
+# ÉTAPE 2 — enrichir via le POOL de tokens, top 50, SANS re-faire l'existant :
+# -skip-existing = saute les joueurs déjà enrichis ET les privés déjà marqués
+# (world_player_no_data) ; -top-n 50 est désormais le DÉFAUT (WorldLeaderboardTopN=50).
+# -concurrency 8 exploite mieux les 7 tokens. off-peak ; Ctrl-C = reprise (checkpoint).
+go run ./cmd/backfill-world-player-stats -token-gamertag JGtm -season all -all-tokens -skip-existing -deep -max-pages 80 -concurrency 8 -quiet
 ```
 
 Notes : `-season all` = toutes les saisons (csrseason3-1 → active) — idempotent (append-only,
