@@ -456,9 +456,9 @@ func scanTargetRecentMatch(rows *sql.Rows) (domain.ExplorerTargetRecentMatch, er
 // car elle capture aussi les joueurs qui sont apparus dans match_participants
 // avant d'être synchronisés dans xuid_aliases. Bots filtrés (xuid 'bid(...)').
 func (r *ExplorerRepo) ResolveXUIDByGamertag(ctx context.Context, gamertag string) (string, error) {
-	const q = `
+	var q = `
 		SELECT xuid FROM v_gamertag_lookup
-		WHERE gamertag ILIKE ? AND xuid NOT LIKE 'bid(%'
+		WHERE gamertag ILIKE ? AND ` + analysis.SQLIsNotBotCol("xuid") + `
 		LIMIT 1
 	`
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)

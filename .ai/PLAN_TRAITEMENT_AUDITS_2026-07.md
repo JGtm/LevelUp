@@ -798,14 +798,22 @@ embarque son garde-rail anti-régression le jour de sa livraison (CR reco 1).
   n'attrape ni `real_start_time` ni l'offset-diagnostic backfill_first_joined_tz). Gate :
   build+vet OK, unit duckdb/sync/ops verts, **intégration `-p 1` VERTE** (duckdb 111 s,
   sync 109 s, 0 FAIL, exit 0), garde-rail vert, grep hors allowlist → 0.
-- [ ] H2 — CR A11 : prédicat bot. CALIBRÉ : **58 littéraux / 30 fichiers** (vs 36/19) ;
-  `SQLIsBot`/`SQLIsNotBot` EXISTENT mais supposent la colonne `xuid` NUE alors que les
-  copies utilisent des préfixes variables (`mp.xuid`, `opp.xuid`) et l'échappement `%%`
-  (fmt.Sprintf). PIÈGE sémantique : certains sites (migrations steps_shared_core) filtrent
-  `gamertag LIKE 'bid(%'` = AUTRE prédicat, NE PAS remplacer. Fix : ajouter
-  `SQLIsBotCol(col string)`/`SQLIsNotBotCol(col)` paramétrés + migrer les sites xuid
-  non gelés ; garde-rail `archlint/isbot_canonical_test.go` (allowlist migrations +
-  commentaires). Gate : build+tests + grep hors allowlist → 0.
+- [x] H2 — CR A11 : prédicat bot. **LIVRÉ (2026-07-04)**. Les ex-const nues
+  `SQLIsBot`/`SQLIsNotBot` avaient **0 consommateur SQL** (centralisation abandonnée,
+  34 copies re-divergées — leçon CLAUDE.md règle 6) → remplacées par
+  `SQLIsBotCol(col)`/`SQLIsNotBotCol(col)` (paramétrées, préfixe d'alias inclus).
+  **33 sites single-% migrés** (34 − 1 : le site `gamertag NOT LIKE 'bid(%'` de
+  diag_recent_match_sync RÉVERTÉ — colonne distincte, wrapper aurait blanchi un bug latent
+  puisque les bots ont un gamertag "343 …", pas "bid…" ; noté en Découvertes). PIÈGE `%%`
+  confirmé : 10 sites sont des templates `fmt.Sprintf` (`'bid(%%'`) répartis sur 6 fichiers
+  → prédicat statique correct, migration = threading d'un `%s`-arg positionnel à travers
+  plusieurs call sites (fragile, SQL identique) → **allowlistés** dans le garde-rail
+  (politique identique à no_raw_outcome_literal_test.go). Garde-rail
+  `archlint/no_raw_isbot_literal_test.go` (regex ciblant les colonnes xuid — ignore
+  `gamertag` et la forme paramétrée `%s LIKE` d'identity.go ; allowlist décroissante =
+  6 fichiers Sprintf + media.go comment). Effets de bord : 8 `const`→`var` ; test de
+  régression B2 (grep `bid(`) mis à jour pour accepter le helper. Gate : build+vet OK,
+  unit verts, **intégration `-p 1` VERTE** (duckdb 109 s, sync 106 s, 0 FAIL, exit 0).
 - [ ] H3 — CR A12 : SynthesisPage / useLocalFilterBar. CALIBRÉ : le hook EXISTE ; la
   duplication réelle = **13 L** (`EXPERIENCE_TO_CASCADE` + `setsEqual`,
   `SynthesisPage.tsx:48-61` === `useLocalFilterBar.tsx:22-33`) — PAS ~250 L. Étape 1 :
@@ -1496,6 +1504,14 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
 
+- [LOT H / H2 — bug latent filtre bot par gamertag] `cmd/diag_recent_match_sync/main.go:333`
+  et `migrations/steps_shared_core.go:387` filtrent `gamertag [NOT] LIKE 'bid(%'`. Or les bots
+  ont un xuid `bid(N.0)` mais un GAMERTAG "343 Meowlnir/Ellis/…" (cf. `analysis/identity.go`
+  botDisplayNames) — donc `gamertag LIKE 'bid(%'` ne matche JAMAIS un bot réel. Le prédicat
+  bot correct est sur `xuid`. Ces 2 sites sont soit un no-op (diag : compte "vrais gamertags"
+  — l'exclusion bot y est redondante avec `gamertag != xuid`), soit un filtre inopérant.
+  Non traité en H2 (règle 7 ; le site diag a été laissé littéral, migrations = gelé). À
+  clarifier : supprimer le prédicat gamertag inopérant ou le corriger en xuid.
 - [LOT E / E2 — bulk résiduel per-asset-id] `backfillOneColumn` (`backfill_registry_names.go:177`)
   fait `UPDATE match_registry SET <name> = ? WHERE <id_col> = ? AND <name> = ?` — multi-row
   par asset_id (tous les matchs d'une même map), donc bulk-ish, MAIS lie des `?` (pas « nu »).

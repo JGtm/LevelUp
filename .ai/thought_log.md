@@ -1,3 +1,30 @@
+## [2026-07-04] LOT H — H2 prédicat bot canonique — COMPLÉTÉ
+
+**Tâche** : H2 du PLAN_TRAITEMENT_AUDITS_2026-07 — source unique du prédicat SQL
+d'exclusion des bots (`xuid LIKE 'bid(%'`), 58 littéraux annoncés.
+
+**Décision technique principale** : les ex-const nues `SQLIsBot`/`SQLIsNotBot` avaient
+**0 consommateur SQL** (centralisation abandonnée, re-divergée en 34 copies littérales —
+exactement la leçon CLAUDE.md règle 6 « prédicat bot 8→36 copies »). Remplacées par
+`SQLIsBotCol(col)`/`SQLIsNotBotCol(col)` paramétrées (les copies utilisent des préfixes
+d'alias variables mp./opp./p2.). Deux régimes d'échappement : backtick direct (`'bid(%'`,
+migré par concat) et templates `fmt.Sprintf` (`'bid(%%'`).
+
+**Résultats observés** : 33 sites single-% migrés. 1 site RÉVERTÉ — `gamertag NOT LIKE
+'bid(%'` (diag) : le wrapper aurait blanchi un **bug latent** (les bots ont un gamertag
+"343 …", pas "bid…" → ce filtre gamertag ne matche jamais un bot ; noté §7 Découvertes).
+10 sites `%%` (templates Sprintf, 6 fichiers) allowlistés dans le garde-rail : migration =
+threading d'un `%s`-arg positionnel multi-call-site (fragile, SQL identique), même politique
+que le ratchet no_raw_outcome_literal. Garde-rail `no_raw_isbot_literal_test.go` (regex
+ciblant les colonnes xuid — ignore `gamertag` et la forme paramétrée `%s LIKE` d'identity.go).
+Effets de bord : 8 `const`→`var` ; test régression B2 (grep `bid(`) élargi au helper
+(`BotCol(` — piège : `SQLIsNotBotCol` ne contient pas la sous-chaîne `IsBotCol`). Gate :
+build+vet OK, unit verts, **intégration `-p 1` VERTE** (duckdb 109 s, sync 106 s, 0 FAIL).
+
+**Conclusion / prochaine étape** : H2 clos. Suite LOT H : H3 (front SynthesisPage/hook),
+H4 (formatters front), H5 (strPtr — safeDiv=faux positif), H6 (ECharts builder), H7
+(couleurs), H8 (augmentWithActiveRankedCSRs). Les H3/H4/H6/H7 sont front (typecheck+vitest).
+
 ## [2026-07-04] LOT H — H1 helper start_time canonique — COMPLÉTÉ
 
 **Tâche** : H1 du PLAN_TRAITEMENT_AUDITS_2026-07 (branche refactor/audits-2026-07) —

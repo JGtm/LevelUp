@@ -113,7 +113,7 @@ func CountDataQuality(ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug s
 		SELECT COUNT(DISTINCT mp.xuid)
 		FROM match_participants mp
 		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
-		WHERE mp.xuid NOT LIKE 'bid(%'
+		WHERE `+analysis.SQLIsNotBotCol("mp.xuid")+`
 		  AND (xa.xuid IS NULL OR xa.gamertag IS NULL OR xa.gamertag = '')
 	`).Scan(&c.OrphanXUIDs); err != nil {
 		return c, fmt.Errorf("count orphan xuids: %w", err)
@@ -375,7 +375,7 @@ func listOrphanXUIDs(ctx context.Context, sharedDB *sql.DB, limit int) ([]DataQu
 		SELECT mp.xuid, COUNT(DISTINCT mp.match_id)
 		FROM match_participants mp
 		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
-		WHERE mp.xuid NOT LIKE 'bid(%'
+		WHERE `+analysis.SQLIsNotBotCol("mp.xuid")+`
 		  AND (xa.xuid IS NULL OR xa.gamertag IS NULL OR xa.gamertag = '')
 		GROUP BY mp.xuid
 		ORDER BY 2 DESC

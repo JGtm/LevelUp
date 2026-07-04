@@ -331,7 +331,7 @@ func inspectMatch(shared, globalDB *sql.DB, mid string) {
 	_ = shared.QueryRow(`SELECT COUNT(*) FROM match_participants WHERE match_id = ?`, mid).Scan(&participantsCount)
 	_ = shared.QueryRow(`SELECT
 		SUM(CASE WHEN gamertag IS NOT NULL AND gamertag != '' AND gamertag NOT LIKE 'bid(%' AND gamertag != xuid THEN 1 ELSE 0 END),
-		SUM(CASE WHEN (gamertag IS NULL OR gamertag = '' OR gamertag = xuid) AND xuid NOT LIKE 'bid(%' THEN 1 ELSE 0 END),
+		SUM(CASE WHEN (gamertag IS NULL OR gamertag = '' OR gamertag = xuid) AND `+analysis.SQLIsNotBotCol("xuid")+` THEN 1 ELSE 0 END),
 		SUM(CASE WHEN team_mmr IS NOT NULL THEN 1 ELSE 0 END),
 		SUM(CASE WHEN kills_expected IS NOT NULL THEN 1 ELSE 0 END)
 		FROM match_participants WHERE match_id = ?`, mid).Scan(
@@ -362,7 +362,7 @@ func inspectMatch(shared, globalDB *sql.DB, mid string) {
 	_ = shared.QueryRow(`
 		WITH players AS (
 			SELECT DISTINCT xuid FROM match_participants
-			WHERE match_id = ? AND xuid NOT LIKE 'bid(%'
+			WHERE match_id = ? AND `+analysis.SQLIsNotBotCol("xuid")+`
 		)
 		SELECT
 			SUM(CASE WHEN xa.gamertag IS NOT NULL AND xa.gamertag != '' THEN 1 ELSE 0 END),
@@ -375,7 +375,7 @@ func inspectMatch(shared, globalDB *sql.DB, mid string) {
 		var globalCovered, globalMissing int
 		// shared a aussi xuid_aliases ; on copie via ATTACH virtuel — ici on
 		// requête directement le global avec la liste de xuids.
-		xuids, err := shared.Query(`SELECT DISTINCT xuid FROM match_participants WHERE match_id = ? AND xuid NOT LIKE 'bid(%'`, mid)
+		xuids, err := shared.Query(`SELECT DISTINCT xuid FROM match_participants WHERE match_id = ? AND `+analysis.SQLIsNotBotCol("xuid")+``, mid)
 		if err == nil {
 			defer xuids.Close()
 			var ids []string

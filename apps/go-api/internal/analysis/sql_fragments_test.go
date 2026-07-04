@@ -14,8 +14,11 @@ func TestSQLFragments_StableStrings(t *testing.T) {
 		got  string
 		want string
 	}{
-		{"SQLIsBot", SQLIsBot, "xuid LIKE 'bid(%'"},
-		{"SQLIsNotBot", SQLIsNotBot, "xuid NOT LIKE 'bid(%'"},
+		{"SQLIsBotCol(xuid)", SQLIsBotCol("xuid"), "xuid LIKE 'bid(%'"},
+		{"SQLIsBotCol(mp.xuid)", SQLIsBotCol("mp.xuid"), "mp.xuid LIKE 'bid(%'"},
+		{"SQLIsNotBotCol(xuid)", SQLIsNotBotCol("xuid"), "xuid NOT LIKE 'bid(%'"},
+		{"SQLIsNotBotCol(opp.xuid)", SQLIsNotBotCol("opp.xuid"), "opp.xuid NOT LIKE 'bid(%'"},
+		{"SQLStartTimeCanonical(mr)", SQLStartTimeCanonical("mr"), "COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC')"},
 		{
 			"SQLKDRExpr",
 			SQLKDRExpr,
