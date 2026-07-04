@@ -36,11 +36,17 @@ garde `WorldSeasonHasEnriched` : masquer seulement si la saison a ≥1 enrichi, 
 **Vérif finale (04)** : `go build`+`go test ./...` (unit) verts ; front `tsc`+`eslint`+`vitest`
 verts ; logging OK (logs/leaderboard.log, ModuleLeaderboard, aucun print interdit ni erreur
 avalée). Ajout du test manquant `TestGetCSRWorldLeaderboard_PrivateMasking` (masquage + garde
-saison expirée, integration). `-tags=integration` : 2 échecs PRÉ-EXISTANTS hors périmètre
-(non dans mon diff) — service `[build failed]` (conflit `stubResolver` catalog_fetcher vs
-gamertag_search_live, présent sur la base) + duckdb `TestGetOrOpen_RunsPlayerMigrationsForLegacySchema`
-(`game_variant_id` dans MatchHistoryRepo, sous-système historique). Mes packages
-(sync anti-ART, migration, ops, scheduler, mes tests duckdb) passent. [[reference_test_baseline_linux_gate]]
+saison expirée, integration).
+
+**Piège concurrence go (leçon)** : `-tags=integration` a d'abord montré 2 « échecs » (service
+`[build failed]` stubResolver/stubAssetURL ; duckdb `TestGetOrOpen...` `game_variant_id`). FAUX :
+c'étaient des ARTEFACTS de cache/concurrence que j'ai causés en lançant plusieurs `go test`/
+`go vet`/`go build` EN PARALLÈLE (cache de build Go corrompu sur Windows + ~10 `link.exe`
+orphelins verrouillant le cache ; les tests DuckDB `:memory:` flakent aussi sous conns
+concurrentes). Après kill des orphelins + `go clean -cache` + relance SÉQUENTIELLE (aucun autre
+`go` en //) : `internal/service` OK (38s) et `internal/platform/duckdb` OK (195s). Règle : ne
+JAMAIS lancer des commandes `go` en concurrence sur ce repo (cache partagé) — séquentiel obligatoire.
+TOUTE la suite (unit + integration + front) est verte.
 
 **État** : commité/poussé (2e4c62ed2 feat + docs). Backfill relancé par l'utilisateur avec la
 commande finale. Migrations `add_xuid`/`create_season_catalog`/`create_world_player_no_data`
