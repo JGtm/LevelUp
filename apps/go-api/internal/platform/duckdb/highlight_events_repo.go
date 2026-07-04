@@ -202,7 +202,7 @@ func buildHighlightEventsQuery(f port.HighlightEventFilters) (string, []any, err
 			fmt.Sprintf("he.event_type IN (%s)", strings.Join(placeholders, ",")))
 	}
 	if f.Since != nil {
-		whereParts = append(whereParts, "COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') >= ?")
+		whereParts = append(whereParts, StartTimeCanonicalSQL("r")+" >= ?")
 		args = append(args, *f.Since)
 	}
 

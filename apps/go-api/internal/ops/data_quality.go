@@ -31,7 +31,7 @@ const (
 
 // dqTimestampExpr : horodatage canonique d'un match (règle projet : jamais
 // start_time brut — cf. pattern media_repo).
-const dqTimestampExpr = `COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC')`
+var dqTimestampExpr = `` + analysis.SQLStartTimeCanonical("") + ``
 
 // DataQualityCounts agrège les compteurs d'inconnus.
 type DataQualityCounts struct {

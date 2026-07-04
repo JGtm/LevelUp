@@ -105,10 +105,10 @@ ORDER BY p.team_id ASC NULLS LAST, p.rank ASC NULLS LAST`
 // Q13 : Match view — métadonnées du match.
 // Paramètre : ? = match_id.
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
-const Q13MatchMeta = `
+var Q13MatchMeta = `
 SELECT
     r.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     r.duration_seconds,
     r.map_name,
     r.pair_name,
@@ -135,7 +135,7 @@ SELECT
     CASE
         WHEN r.real_start_time IS NOT NULL THEN
             epoch_ms(r.real_start_time AT TIME ZONE 'UTC')
-            - epoch_ms(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))
+            - epoch_ms(` + StartTimeCanonicalSQL("r") + `)
     END AS t0_ms,
     r.map_version_id
 FROM match_registry r
@@ -280,10 +280,10 @@ WHERE pme.match_id = ?`
 // Paramètres : ?1 = xuid joueur principal, ?2 = xuid autre joueur.
 // Retourne 10 colonnes : match_id, start_time, map_ui, mode_ui,
 // player1_team_id, player2_team_id, player1_outcome, player1_kills, player1_deaths, player1_kda.
-const Q19CommonMatches = `
+var Q19CommonMatches = `
 SELECT
     r.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     COALESCE(r.map_name, '')          AS map_ui,
     COALESCE(r.pair_name, '')         AS mode_ui,
     p1.team_id                        AS player1_team_id,
@@ -295,7 +295,7 @@ SELECT
 FROM match_registry r
 JOIN match_participants p1 ON r.match_id = p1.match_id AND p1.xuid = ?
 JOIN match_participants p2 ON r.match_id = p2.match_id AND p2.xuid = ?
-ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
+ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC`
 
 // Q19cTargetRecentMatches : les `limit` derniers matchs PvP (firefight exclu)
 // du joueur cible, pour les graphes "profil de combat" (Explorer mode Joueur).
@@ -307,7 +307,7 @@ ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 // source unique que queries_squad.go / compare_repo.go). Exécutée sur
 // SharedReader (shared.* sans préfixe).
 // Params (ordre) : ? = xuid (perfect CTE), ? = xuid (participants), ? = limit.
-const Q19cTargetRecentMatches = `
+var Q19cTargetRecentMatches = `
 WITH perfect AS (
     SELECT match_id, COALESCE(SUM(count), 0) AS perfect_kills
     FROM medals_earned
@@ -316,7 +316,7 @@ WITH perfect AS (
 )
 SELECT
     mp.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     COALESCE(r.map_name, '')          AS map_ui,
     r.pair_name                       AS pair_name,
     r.pair_name_fr                    AS pair_name_fr,
@@ -391,13 +391,13 @@ ORDER BY he.time_ms ASC NULLS LAST`
 // Ordre : start_time DESC (plus récent = index 0).
 //
 // Executée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
-const Q25NeighborMatches = `
+var Q25NeighborMatches = `
 WITH ordered AS (
     SELECT
         mr.match_id,
-        COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') AS start_time,
+        ` + StartTimeCanonicalSQL("mr") + ` AS start_time,
         ROW_NUMBER() OVER (
-            ORDER BY COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') DESC
+            ORDER BY ` + StartTimeCanonicalSQL("mr") + ` DESC
         ) - 1 AS idx,
         COUNT(*) OVER () AS total
     FROM match_registry mr
@@ -423,13 +423,13 @@ LIMIT 1`
 // Paramètres positionnels : xuid, [filtres...], match_id.
 // L'ordre est important — le repo concatène les args dans cet ordre.
 // Executée sur SharedReader (ADR 0016).
-const Q25NeighborMatchesTemplate = `
+var Q25NeighborMatchesTemplate = `
 WITH ordered AS (
     SELECT
         mr.match_id,
-        COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') AS start_time,
+        ` + StartTimeCanonicalSQL("mr") + ` AS start_time,
         ROW_NUMBER() OVER (
-            ORDER BY COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') DESC
+            ORDER BY ` + StartTimeCanonicalSQL("mr") + ` DESC
         ) - 1 AS idx,
         COUNT(*) OVER () AS total
     FROM match_registry mr

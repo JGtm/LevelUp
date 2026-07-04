@@ -22,6 +22,7 @@ import (
 	"sort"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/timeline"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -138,7 +139,7 @@ func main() {
 // loadMatchStarts charge le start UTC canonique de chaque match.
 func loadMatchStarts(db *sql.DB) (map[string]time.Time, error) {
 	rows, err := db.Query(`
-		SELECT match_id, COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') AS start_utc
+		SELECT match_id, ` + analysis.SQLStartTimeCanonical("") + ` AS start_utc
 		FROM match_registry`)
 	if err != nil {
 		return nil, err

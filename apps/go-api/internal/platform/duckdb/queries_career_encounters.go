@@ -1,6 +1,6 @@
 package duckdb
 
-const Q26CareerTopEncountersTpl = `
+var Q26CareerTopEncountersTpl = `
 WITH my_history AS (
     SELECT match_id, team_id, outcome
     FROM match_participants
@@ -13,7 +13,7 @@ encounters AS (
         p.team_id  AS opp_team_id,
         h.team_id  AS my_team_id,
         h.outcome  AS my_outcome,
-        COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time
+        ` + StartTimeCanonicalSQL("r") + ` AS start_time
     FROM my_history h
     JOIN match_participants p
         ON p.match_id = h.match_id
@@ -136,7 +136,7 @@ LIMIT 10`
 // count_together, ally_count, enemy_count, wins_as_ally, losses_as_ally,
 // wins_vs_enemy, losses_vs_enemy, kills_dealt, deaths_suffered, avg_kda_with,
 // avg_kda_against, first_seen_at, last_seen_at.
-const Q28RelationsTpl = `
+var Q28RelationsTpl = `
 WITH my_history AS (
     SELECT match_id, team_id, outcome
     FROM match_participants
@@ -150,7 +150,7 @@ encounters AS (
         h.team_id  AS my_team_id,
         h.outcome  AS my_outcome,
         p.kda      AS opp_kda,
-        COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time
+        ` + StartTimeCanonicalSQL("r") + ` AS start_time
     FROM my_history h
     JOIN match_participants p
         ON p.match_id = h.match_id
@@ -239,7 +239,7 @@ ORDER BY es.count_together DESC, es.xuid ASC`
 //	?…  scope IN (kv_stats)     — N placeholders du set
 //
 // Le binding exact est construit par buildRelationsQuery.
-const Q28RelationsScopedTpl = `
+var Q28RelationsScopedTpl = `
 WITH my_history AS (
     SELECT match_id, team_id, outcome
     FROM match_participants
@@ -253,7 +253,7 @@ encounters AS (
         h.team_id  AS my_team_id,
         h.outcome  AS my_outcome,
         p.kda      AS opp_kda,
-        COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time
+        ` + StartTimeCanonicalSQL("r") + ` AS start_time
     FROM my_history h
     JOIN match_participants p
         ON p.match_id = h.match_id
@@ -337,10 +337,10 @@ WHERE xuid = ?`
 // coreIn (placeholders du noyau), winExpr, lossExpr (sur la colonne `outcome`).
 // Placeholders ? : ?1 = xuid joueur (my_matches), puis scope, puis ?= xuid joueur
 // (exclusion self dans with_core), puis les xuid du noyau, puis ?= limit.
-const QRelationsCoreFormTpl = `
+var QRelationsCoreFormTpl = `
 WITH my_matches AS (
     SELECT mp.match_id, mp.team_id, mp.outcome AS outcome,
-           COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time
+           ` + StartTimeCanonicalSQL("r") + ` AS start_time
     FROM match_participants mp
     LEFT JOIN match_registry r ON r.match_id = mp.match_id
     WHERE mp.xuid = ?%s
@@ -363,10 +363,10 @@ LIMIT ?`
 // Parametre : ?1 = xuid du joueur.
 // Retourne 6 colonnes : match_id, start_time, teammates_sig, is_ranked,
 // time_played_seconds, end_time (NULL si absent).
-const Q22SessionMatches = `
+var Q22SessionMatches = `
 SELECT
     mp.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     -- Signature des coeequipiers : XUIDs tries concatenes (hors joueur lui-meme)
     (SELECT string_agg(t.xuid, ',' ORDER BY t.xuid)
      FROM match_participants t
@@ -375,13 +375,13 @@ SELECT
     COALESCE(r.is_ranked, FALSE)                       AS is_ranked,
     mp.time_played_seconds,
     CASE WHEN mp.time_played_seconds IS NOT NULL
-         THEN COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') + INTERVAL (mp.time_played_seconds || ' seconds')
+         THEN ` + StartTimeCanonicalSQL("r") + ` + INTERVAL (mp.time_played_seconds || ' seconds')
          ELSE NULL
     END                                                 AS end_time
 FROM match_participants mp
 JOIN match_registry r ON r.match_id = mp.match_id
 WHERE mp.xuid = ?
-ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') ASC`
+ORDER BY ` + StartTimeCanonicalSQL("r") + ` ASC`
 
 // Q23 : Stats series — chargement des matchs avec metriques pour perf score.
 // Parametre : ?1 = xuid du joueur.
@@ -389,10 +389,10 @@ ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') ASC`
 // Q23StatsMatchesShared : partie shared-only de Q23 (exécutée sur SharedReader).
 // La partie player_match_enrichment est chargée séparément via Q23StatsMatchesPlayerEnrich
 // puis mergée côté Go (cf. StatsRepo.LoadStatsMatches, ADR 0016).
-const Q23StatsMatchesShared = `
+var Q23StatsMatchesShared = `
 SELECT
     mp.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     mp.outcome,
     COALESCE(mp.kills, 0)              AS kills,
     COALESCE(mp.deaths, 0)             AS deaths,
@@ -425,7 +425,7 @@ SELECT
 FROM match_participants mp
 JOIN match_registry r ON r.match_id = mp.match_id
 WHERE mp.xuid = ?
-ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') ASC`
+ORDER BY ` + StartTimeCanonicalSQL("r") + ` ASC`
 
 // Q23StatsMatchesPlayerEnrich : Phase B de Q23 — performance_score + session
 // + label depuis player_match_enrichment pour les match_ids résultants de

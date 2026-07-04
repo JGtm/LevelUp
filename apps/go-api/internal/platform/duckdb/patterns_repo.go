@@ -120,10 +120,10 @@ func (r *PatternsRepo) loadShared(ctx context.Context, limit int) ([]patternShar
 	// TIMESTAMPTZ UTC garanti, fallback sur start_time AT TIME ZONE 'UTC' pour
 	// les matchs sans start_time_utc (cf. media_repo, ADR add_start_time_utc).
 	// mode_raw : sous-mode (pair_name), normalisé en Go via NormalizeModeLabel.
-	const q = `
+	q := `
 SELECT
     r.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS played_at,
+    ` + StartTimeCanonicalSQL("r") + ` AS played_at,
     COALESCE(NULLIF(r.pair_name_fr, ''), r.pair_name, '') AS mode_raw,
     r.map_id,
     p.outcome,
@@ -134,7 +134,7 @@ SELECT
 FROM match_participants p
 JOIN match_registry r USING (match_id)
 WHERE p.xuid = ?
-ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC
+ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC
 LIMIT ?`
 
 	sqlRows, err := db.QueryContext(ctx, q, r.pdb.XUID, limit)

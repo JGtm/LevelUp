@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"sort"
 
+	"levelup/go-api/internal/analysis"
+
 	duckdb "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -49,7 +51,7 @@ func main() {
 	rows, err := db.QueryContext(ctx, fmt.Sprintf(`
 		SELECT
 			r.match_id,
-			COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')::VARCHAR AS played_at,
+			`+analysis.SQLStartTimeCanonical("r")+`::VARCHAR AS played_at,
 			COALESCE(r.pair_name, '')                                            AS pair_name,
 			COALESCE(r.map_name, '')                                             AS map_name
 		FROM match_registry r

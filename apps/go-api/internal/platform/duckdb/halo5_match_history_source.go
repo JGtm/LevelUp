@@ -47,10 +47,10 @@ const h5DefaultHistoryLimit = 250
 // nécessaires à un canonical.MatchSummary. Pattern TZ canonique projet (préférer
 // start_time_utc, sinon interpréter start_time naïf comme UTC). team_0/1_score à -1
 // quand NULL (= absent, exclu de Teams, cf. projectTeamScores).
-const h5MatchSummarySelect = `
+var h5MatchSummarySelect = `
 SELECT
     p.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     r.duration_seconds,
     COALESCE(r.map_id, '')                            AS map_id,
     COALESCE(r.map_name, '')                          AS map_name,

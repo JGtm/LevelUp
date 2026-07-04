@@ -26,6 +26,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
+
 	duckdb "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -91,7 +93,7 @@ func main() {
 func runSummary(shared *sql.DB, n int) {
 	rows, err := shared.Query(`
 		SELECT r.match_id,
-		       COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')::VARCHAR,
+		       `+analysis.SQLStartTimeCanonical("r")+`::VARCHAR,
 		       COALESCE(r.map_name, ''),
 		       COALESCE(r.pair_name, ''),
 		       (SELECT COUNT(*) FROM highlight_events h WHERE h.match_id = r.match_id),
@@ -99,7 +101,7 @@ func runSummary(shared *sql.DB, n int) {
 		       (SELECT COUNT(*) FROM killer_victim_pairs k WHERE k.match_id = r.match_id),
 		       COALESCE(r.backfill_completed, 0)
 		FROM match_registry r
-		ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC NULLS LAST
+		ORDER BY `+analysis.SQLStartTimeCanonical("r")+` DESC NULLS LAST
 		LIMIT ?`, n)
 	if err != nil {
 		log.Fatalf("summary: %v", err)
@@ -256,7 +258,7 @@ func loadRecentMatches(shared *sql.DB, n int) []string {
 	rows, err := shared.Query(`
 		SELECT match_id
 		FROM match_registry
-		ORDER BY COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') DESC NULLS LAST
+		ORDER BY `+analysis.SQLStartTimeCanonical("")+` DESC NULLS LAST
 		LIMIT ?`, n)
 	if err != nil {
 		log.Fatalf("loadRecentMatches: %v", err)
@@ -287,7 +289,7 @@ func inspectMatch(shared, globalDB *sql.DB, mid string) {
 	)
 	err := shared.QueryRow(`
 		SELECT
-			COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC')::VARCHAR,
+			`+analysis.SQLStartTimeCanonical("")+`::VARCHAR,
 			map_id, map_name, pair_name,
 			pair_name_fr, map_name_fr,
 			playlist_id, playlist_name,

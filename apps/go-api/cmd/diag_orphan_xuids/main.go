@@ -18,6 +18,8 @@ import (
 	"log"
 	"path/filepath"
 
+	"levelup/go-api/internal/analysis"
+
 	duckdb "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -53,8 +55,8 @@ func main() {
 		SELECT
 			o.xuid,
 			COUNT(DISTINCT mp.match_id) AS match_count,
-			MIN(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))::VARCHAR AS first_seen,
-			MAX(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))::VARCHAR AS last_seen
+			MIN(`+analysis.SQLStartTimeCanonical("r")+`)::VARCHAR AS first_seen,
+			MAX(`+analysis.SQLStartTimeCanonical("r")+`)::VARCHAR AS last_seen
 		FROM orphans o
 		JOIN match_participants mp ON mp.xuid = o.xuid
 		LEFT JOIN match_registry r ON r.match_id = mp.match_id

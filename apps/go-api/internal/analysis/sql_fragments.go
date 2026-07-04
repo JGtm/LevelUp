@@ -8,7 +8,9 @@
 //   - Préfixer les noms par SQL (ex: SQLIsBot)
 //   - Ne pas paramétrer les noms de tables/alias — laisser le repository
 //     les composer. Ces fragments sont des prédicats / expressions, pas des
-//     queries complètes.
+//     queries complètes. Exception : SQLStartTimeCanonical(alias) est une
+//     fonction car l'expression référence la colonne aliasée deux fois — un
+//     const ne peut pas porter l'alias sur les deux occurrences.
 //   - Toujours utiliser ces fragments via concaténation explicite, pas via
 //     fmt.Sprintf (lisibilité + audit grep).
 package analysis
@@ -42,3 +44,24 @@ const SQLIsNotBot = `xuid NOT LIKE 'bid(%'`
 // "K/D moyen affiché" produit, préférer cette agrégation totaliste qui est
 // stable face aux matchs aux scores extrêmes.
 const SQLKDRExpr = `CAST(SUM(kills) AS DOUBLE) / NULLIF(SUM(deaths), 0)`
+
+// SQLStartTimeCanonical est l'expression SQL canonique du timestamp de début
+// de match, en UTC. Elle applique la règle CLAUDE.md n°8 : ne JAMAIS filtrer
+// ni trier sur `start_time` brut — toujours COALESCE avec `start_time_utc`
+// puis interpréter `start_time` en UTC. Toute divergence de cette expression
+// a causé des décalages de fuseau (DETTE first_joined_time).
+//
+// alias est le préfixe de table (ex "mr", "r") ; "" pour une colonne non
+// qualifiée. Le garde-rail analysis/start_time_canonical_test.go interdit le
+// littéral brut hors de ce helper (et de son délégué duckdb.StartTimeCanonicalSQL).
+//
+// Usage :
+//
+//	`... ORDER BY ` + analysis.SQLStartTimeCanonical("mr") + ` DESC`
+func SQLStartTimeCanonical(alias string) string {
+	prefix := ""
+	if alias != "" {
+		prefix = alias + "."
+	}
+	return "COALESCE(" + prefix + "start_time_utc, " + prefix + "start_time AT TIME ZONE 'UTC')"
+}

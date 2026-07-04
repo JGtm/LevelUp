@@ -75,9 +75,9 @@ func (p *PrestigeSquadMatchProvider) candidateMatches(ctx context.Context, db *s
 		FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
 		WHERE mp.xuid IN (%s)
-		GROUP BY mp.match_id, COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC')
+		GROUP BY mp.match_id, `+StartTimeCanonicalSQL("mr")+`
 		HAVING COUNT(DISTINCT mp.xuid) = %d
-		ORDER BY COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') DESC
+		ORDER BY `+StartTimeCanonicalSQL("mr")+` DESC
 		LIMIT %d
 	`, sqlInPlaceholders(len(roster)), len(roster), limit)
 
@@ -167,7 +167,7 @@ func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, ros
 	q := fmt.Sprintf(`
 		WITH cm AS (
 			SELECT mp.match_id,
-			       MAX(COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC')) AS st
+			       MAX(`+StartTimeCanonicalSQL("mr")+`) AS st
 			FROM match_participants mp
 			JOIN match_registry mr ON mr.match_id = mp.match_id
 			WHERE mp.xuid IN (%s)

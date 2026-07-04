@@ -233,7 +233,7 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 	rows, err := sharedDB.QueryContext(ctx, fmt.Sprintf(`
 		SELECT
 			r.match_id,
-			COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_utc,
+			`+StartTimeCanonicalSQL("r")+` AS start_utc,
 			COALESCE(r.end_time_utc,   r.end_time   AT TIME ZONE 'UTC') AS end_utc,
 			COALESCE(r.map_name_fr, r.map_name) AS map_name,
 			COALESCE(r.map_id, '') AS map_id,
@@ -244,14 +244,14 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			mp.team_id,
 			r.team_0_score,
 			r.team_1_score,
-			ABS(DATEDIFF('second', ?, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))) AS delta_s
+			ABS(DATEDIFF('second', ?, `+StartTimeCanonicalSQL("r")+`)) AS delta_s
 		FROM match_registry r
 		JOIN match_participants mp
 			ON mp.match_id = r.match_id AND mp.xuid = ?
-		WHERE COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')
+		WHERE `+StartTimeCanonicalSQL("r")+`
 		        BETWEEN (? - INTERVAL '%d minutes')
 		            AND (? + INTERVAL '%d minutes')
-		ORDER BY ABS(DATEDIFF('second', ?, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))) ASC
+		ORDER BY ABS(DATEDIFF('second', ?, `+StartTimeCanonicalSQL("r")+`)) ASC
 		LIMIT 50
 	`, windowMinutes, windowMinutes), cap, r.pdb.XUID, cap, cap, cap)
 	if err != nil {

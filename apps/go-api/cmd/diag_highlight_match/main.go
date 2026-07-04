@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
@@ -92,7 +93,7 @@ func main() {
 	var pairName, playlistName sql.NullString
 	errB := sharedDB.QueryRow(`
 		SELECT mp.outcome, mp.time_played_seconds, r.is_firefight, mp.kills, mp.deaths,
-			COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+			`+analysis.SQLStartTimeCanonical("r")+` AS start_time,
 			r.pair_name, r.playlist_name
 		FROM match_participants mp
 		JOIN match_registry r ON mp.match_id = r.match_id

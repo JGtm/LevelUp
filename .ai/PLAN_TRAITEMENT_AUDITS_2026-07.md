@@ -784,15 +784,20 @@ embarque son garde-rail anti-régression le jour de sa livraison (CR reco 1).
 > littéraux, les ALLOWLISTER dans les garde-rails ; (c) chaque helper livré = garde-rail
 > grep dans le MÊME commit.
 
-- [ ] H1 — CR A10 : helper start_time canonique. CALIBRÉ : **115 littéraux / 52 fichiers**
-  (vs 87/33 audit), dont cmd/ + migrations (→ allowlist). Le helper N'EXISTE PAS dans
-  `analysis/sql_fragments.go` MAIS E5 a déjà créé `duckdb.StartTimeCanonicalSQL(alias)`
-  (platform/duckdb) → DÉCISION TRANCHÉE (défaut approuvé) : **une seule source dans
-  `analysis/sql_fragments.go`** : `SQLStartTimeCanonical(alias string) string` (func, les
-  alias varient : mr./x./m.), `duckdb.StartTimeCanonicalSQL` devient un ré-export/délégué.
-  Migration des sites NON gelés (hors migrations/), garde-rail
-  `archlint/start_time_canonical_test.go` (calque no_art_patterns : allowlist migrations +
-  sql_fragments). Gate : build+tests + grep littéral hors allowlist → 0.
+- [x] H1 — CR A10 : helper start_time canonique. **LIVRÉ (2026-07-04)**. Source unique
+  `analysis.SQLStartTimeCanonical(alias string) string` (sql_fragments.go) ;
+  `duckdb.StartTimeCanonicalSQL` délègue (appel local sans préfixe pour les repos duckdb).
+  Comptes RÉELS : le « 115 » de l'audit conflatait le pattern canonique avec
+  `real_start_time` (colonne DISTINCTE, epoch/durée), des commentaires-prose et la
+  définition — le vrai pattern `COALESCE(x.start_time_utc, x.start_time AT TIME ZONE 'UTC')`
+  = **97 sites migrés** (92 backtick scriptés + 5 double-quote/analysis manuels), sur
+  ~46 fichiers (internal + cmd). Effets de bord traités : **21 `const`→`var`** (une valeur
+  bâtie par appel de fonction n'est plus constante) + 2 `const q` locaux → `:=` + 2
+  commentaires démanglés. Garde-rail `archlint/no_raw_start_time_literal_test.go` (scanne
+  internal/ + cmd/, saute migrations/ + la définition, allowlist VIDE, regex précis qui
+  n'attrape ni `real_start_time` ni l'offset-diagnostic backfill_first_joined_tz). Gate :
+  build+vet OK, unit duckdb/sync/ops verts, **intégration `-p 1` VERTE** (duckdb 111 s,
+  sync 109 s, 0 FAIL, exit 0), garde-rail vert, grep hors allowlist → 0.
 - [ ] H2 — CR A11 : prédicat bot. CALIBRÉ : **58 littéraux / 30 fichiers** (vs 36/19) ;
   `SQLIsBot`/`SQLIsNotBot` EXISTENT mais supposent la colonne `xuid` NUE alors que les
   copies utilisent des préfixes variables (`mp.xuid`, `opp.xuid`) et l'échappement `%%`
