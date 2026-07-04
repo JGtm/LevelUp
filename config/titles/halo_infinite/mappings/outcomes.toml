@@ -33,6 +33,6 @@ color_token = "outcome.neutral"
 raw_code = 1
 
 [outcomes.dnf]
-labels = { en = "DNF", fr = "Non terminé" }
+labels = { en = "DNF", fr = "Abandon" }
 color_token = "outcome.neutral"
 raw_code = 4

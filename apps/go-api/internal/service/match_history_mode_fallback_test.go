@@ -13,21 +13,21 @@ func TestEnrichRow_ModeFallbackToGameVariant(t *testing.T) {
 	assassin := "Assassin"
 	// H5 : pas de pair, game_variant FR présent → mode résolu (non vide).
 	h5 := domain.MatchHistoryRawRow{MatchID: "m1", GameVariantNameFR: &assassin}
-	if got := enrichRow(h5, nil, func(string) string { return "" }); got.ModeUI == nil || *got.ModeUI == "" {
+	if got := enrichRow(h5, nil, rowFormatters{}); got.ModeUI == nil || *got.ModeUI == "" {
 		t.Errorf("H5: mode vide alors que game_variant présent (ModeUI=%v)", got.ModeUI)
 	}
 
 	// Infinite : pair_name présent → c'est lui qui prime (game_variant ignoré).
 	pair, variant := "Strongholds", "Slayer"
 	inf := domain.MatchHistoryRawRow{MatchID: "m2", PairName: &pair, GameVariantName: &variant}
-	got := enrichRow(inf, nil, func(string) string { return "" })
+	got := enrichRow(inf, nil, rowFormatters{})
 	if got.ModeUI == nil || *got.ModeUI != "Strongholds" {
 		t.Errorf("Infinite: mode = %v, attendu Strongholds (depuis pair, pas game_variant)", got.ModeUI)
 	}
 
 	// Aucune source (ni pair ni game_variant) → ModeUI nil (dégradation propre).
 	empty := domain.MatchHistoryRawRow{MatchID: "m3"}
-	if got := enrichRow(empty, nil, func(string) string { return "" }); got.ModeUI != nil {
+	if got := enrichRow(empty, nil, rowFormatters{}); got.ModeUI != nil {
 		t.Errorf("sans source de mode, ModeUI attendu nil, obtenu %v", *got.ModeUI)
 	}
 }

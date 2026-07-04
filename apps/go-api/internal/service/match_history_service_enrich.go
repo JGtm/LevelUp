@@ -58,15 +58,37 @@ func computeMapWinRates(rows []domain.MatchHistoryRawRow) map[string][2]int {
 // Enrichissement
 // ---------------------------------------------------------------------------
 
-func enrichRows(rows []domain.MatchHistoryRawRow, mapWR map[string][2]int, matchURLFor func(matchID string) string) []domain.MatchHistoryRow {
+// rowFormatters regroupe les résolveurs title-agnostic injectés dans l'enrichissement
+// d'une ligne : URL de page publique du match (F3) et libellé d'outcome via le titre
+// (F4). Champs nil → dégradation gracieuse (URL vide ; outcome via le fallback FR dur).
+type rowFormatters struct {
+	matchURL     func(matchID string) string
+	outcomeLabel func(code int) string
+}
+
+func (f rowFormatters) matchURLFor(matchID string) string {
+	if f.matchURL == nil {
+		return ""
+	}
+	return f.matchURL(matchID)
+}
+
+func (f rowFormatters) outcomeLabelFor(code int) string {
+	if f.outcomeLabel == nil {
+		return outcomeLabel(code) // failsafe : libellés FR canoniques Halo
+	}
+	return f.outcomeLabel(code)
+}
+
+func enrichRows(rows []domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFormatters) []domain.MatchHistoryRow {
 	out := make([]domain.MatchHistoryRow, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, enrichRow(r, mapWR, matchURLFor))
+		out = append(out, enrichRow(r, mapWR, fmts))
 	}
 	return out
 }
 
-func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, matchURLFor func(matchID string) string) domain.MatchHistoryRow {
+func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFormatters) domain.MatchHistoryRow {
 	modeUI := analysis.ResolveModeUI(r.PairName, r.PairNameFR)
 	// Fallback game_variant : les titres sans pair_name (Halo 5) portent leur mode dans
 	// le game_variant. Sans ce repli, mode_ui resterait vide sur la liste Explorer/
@@ -99,7 +121,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, matchURLFor
 		}
 	}
 
-	matchURL := matchURLFor(r.MatchID)
+	matchURL := fmts.matchURLFor(r.MatchID)
 
 	var perfScore *int
 	var perfTier int
@@ -124,7 +146,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, matchURLFor
 		StartTime:                startTime,
 		StartTimeLabel:           label,
 		OutcomeCode:              r.Outcome,
-		OutcomeLabel:             outcomeLabel(r.Outcome),
+		OutcomeLabel:             fmts.outcomeLabelFor(r.Outcome),
 		ScoreLabel:               scoreLabel,
 		MapUI:                    ptrStr(mapU),
 		ModeUI:                   modeUI,

@@ -369,7 +369,7 @@ func (s *MatchHistoryService) ExportCSV(
 	filtered = filterBySkillTier(filtered, req.SkillTiers, req.RankedContext)
 	filtered = filterByPerfTiers(filtered, req.PerfTiers)
 	mapWinRates := computeMapWinRates(rawRows)
-	items := enrichRows(filtered, mapWinRates, s.matchURLFn())
+	items := enrichRows(filtered, mapWinRates, s.rowFormatters())
 	sortItems(items, req.SortField, req.SortDir)
 
 	return items, nil
