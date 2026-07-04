@@ -749,9 +749,12 @@ traiter AVANT les refactors structurels.)
   F15-12 (miroir coarse↔fine, livrable F7 souple) + F15-14 (garde-rail cap⟺scalaire damage_model/
   team_mmr) → **L2** (gouvernance/ratchets) : garde-rails génériques cross-source ; invariants déjà
   documentés dans le code (`registry.go` « SSI ProvidesDamageTaken(slug) »).
-- [ ] F16 — ARCHI 7 : dédupliquer `augmentWithActiveRankedCSRs` (copie DI
-  `registry_pages.go:380` vs original `sync/career.go:255`, divergence NameFR/NameEN déjà
-  réelle) → une implémentation unique, nom résolu via semantic adapter + locale.
+- [~] F16 — ARCHI 7 : DÉPLACÉ → **LOT H** (repropagation/dédup — home naturel). Dédup
+  `augmentWithActiveRankedCSRs` : original `sync/career.go` vs copie DI dans
+  `registry_pages.go` (Explorer/newExplorerCSRProvider, déjà touchée en F2), divergence
+  NameFR/NameEN réelle. C'est un item de DÉDUPLICATION (« plus de copie locale divergente
+  d'un helper ») = exactement le thème de LOT H → traité là avec H1-H7 (une impl unique,
+  nom résolu via semantic adapter + locale, + garde-rail anti-régression).
 
 Gate F : archlint étendu vert (F10) ; test parité fields.toml (F6) et coarse/fine (F7)
 verts ; grep `halowaypoint` hors `games/halo_infinite` + `platform/halo` → 0 (le client
