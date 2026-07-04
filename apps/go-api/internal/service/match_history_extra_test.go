@@ -44,21 +44,8 @@ func TestFormatLifeSeconds_Normal(t *testing.T) {
 	}
 }
 
-// ---------- buildMatchURL ----------
-
-func TestBuildMatchURL_EmptyWaypoint(t *testing.T) {
-	if got := buildMatchURL("", "m1"); got != "" {
-		t.Errorf("expected empty, got %s", got)
-	}
-}
-
-func TestBuildMatchURL_Valid(t *testing.T) {
-	got := buildMatchURL("Player1", "abc-123")
-	want := "https://www.halowaypoint.com/halo-infinite/players/Player1/matches/abc-123"
-	if got != want {
-		t.Errorf("got %s", got)
-	}
-}
+// (buildMatchURL supprimé en F3 : la construction d'URL Waypoint vit désormais
+// dans halo_infinite.AssetURLAdapter.{Match,PlayerMatch}WebURL, testée là-bas.)
 
 // ---------- buildPeriodLabel ----------
 

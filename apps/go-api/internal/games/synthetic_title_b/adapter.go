@@ -185,3 +185,5 @@ func (a *AssetURLAdapter) MedalImageURL(_ uint64) string          { return "" }
 func (a *AssetURLAdapter) CSRRankImageURL(_ string, _ int) string { return "" }
 func (a *AssetURLAdapter) CSRRankImageURLOnyx() string            { return "" }
 func (a *AssetURLAdapter) WeaponImageURL(_ string) string         { return "" }
+func (a *AssetURLAdapter) MatchWebURL(_ string) string            { return "" }
+func (a *AssetURLAdapter) PlayerMatchWebURL(_, _ string) string   { return "" }

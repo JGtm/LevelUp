@@ -1,7 +1,7 @@
 // Package service - match_history_service_enrich.go : toFilterMatchRow +
 // computeMapWinRates + enrichRows/enrichRow + sortItems/compareRows +
 // paginate + helpers de format (outcomeLabel, formatDateFR,
-// formatLifeSeconds, buildMatchURL, buildPeriodLabel, ptr/cmp helpers).
+// formatLifeSeconds, buildPeriodLabel, ptr/cmp helpers).
 // Decoupe de match_history_service.go (god-file split, refactor 2026-05-27).
 package service
 
@@ -58,15 +58,15 @@ func computeMapWinRates(rows []domain.MatchHistoryRawRow) map[string][2]int {
 // Enrichissement
 // ---------------------------------------------------------------------------
 
-func enrichRows(rows []domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint string) []domain.MatchHistoryRow {
+func enrichRows(rows []domain.MatchHistoryRawRow, mapWR map[string][2]int, matchURLFor func(matchID string) string) []domain.MatchHistoryRow {
 	out := make([]domain.MatchHistoryRow, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, enrichRow(r, mapWR, waypoint))
+		out = append(out, enrichRow(r, mapWR, matchURLFor))
 	}
 	return out
 }
 
-func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint string) domain.MatchHistoryRow {
+func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, matchURLFor func(matchID string) string) domain.MatchHistoryRow {
 	modeUI := analysis.ResolveModeUI(r.PairName, r.PairNameFR)
 	// Fallback game_variant : les titres sans pair_name (Halo 5) portent leur mode dans
 	// le game_variant. Sans ce repli, mode_ui resterait vide sur la liste Explorer/
@@ -99,7 +99,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint st
 		}
 	}
 
-	matchURL := buildMatchURL(waypoint, r.MatchID)
+	matchURL := matchURLFor(r.MatchID)
 
 	var perfScore *int
 	var perfTier int
@@ -268,14 +268,6 @@ func formatLifeSeconds(secs *float64) string {
 	mm := total / 60
 	ss := total % 60
 	return fmt.Sprintf("%d:%02d", mm, ss)
-}
-
-func buildMatchURL(waypoint, matchID string) string {
-	wp := strings.TrimSpace(waypoint)
-	if wp == "" {
-		return ""
-	}
-	return "https://www.halowaypoint.com/halo-infinite/players/" + wp + "/matches/" + matchID
 }
 
 func buildPeriodLabel(f domain.FilterContextInput) *string {

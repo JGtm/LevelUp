@@ -194,6 +194,29 @@ func (a *AssetURLAdapter) WeaponImageURL(nameEN string) string {
 	return static.URL(static.KindWeapon, a.titleSlug, stem, ".png")
 }
 
+// waypointMatchBaseURL est la base des pages de détail de match sur Waypoint.
+const waypointMatchBaseURL = "https://www.halowaypoint.com/halo-infinite"
+
+// MatchWebURL retourne l'URL de la page publique d'un match sur Waypoint
+// (forme sans joueur : /halo-infinite/matches/{matchID}).
+func (a *AssetURLAdapter) MatchWebURL(matchID string) string {
+	if strings.TrimSpace(matchID) == "" {
+		return ""
+	}
+	return waypointMatchBaseURL + "/matches/" + matchID
+}
+
+// PlayerMatchWebURL retourne l'URL de la page d'un match POUR un joueur sur
+// Waypoint (/halo-infinite/players/{gamertag}/matches/{matchID}). "" si le
+// gamertag ou le matchID est vide.
+func (a *AssetURLAdapter) PlayerMatchWebURL(gamertag, matchID string) string {
+	gt := strings.TrimSpace(gamertag)
+	if gt == "" || strings.TrimSpace(matchID) == "" {
+		return ""
+	}
+	return waypointMatchBaseURL + "/players/" + gt + "/matches/" + matchID
+}
+
 // MedalImageURL retourne l'URL de l'icône d'une médaille à partir de son ID numérique.
 func (a *AssetURLAdapter) MedalImageURL(medalID uint64) string {
 	return static.URL(static.KindMedal, a.titleSlug, strconv.FormatUint(medalID, 10), ".png")

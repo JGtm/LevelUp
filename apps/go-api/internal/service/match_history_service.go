@@ -89,11 +89,32 @@ type MatchHistoryService struct {
 	// placement CSR par saison (5 depuis S3, 10 avant). Si nil, fallback à 5.
 	// Utilisé par applyMatchPlacements pour calculer PlacementDone/Total.
 	csrThreshold CSRThresholdResolver
+	// assetURL (optionnel) : adapter d'URLs d'assets du titre, utilisé pour le
+	// lien vers la page publique du match (Waypoint pour Infinite). nil ou titre
+	// sans page publique → pas de lien (dégradation gracieuse, F3).
+	assetURL games.TitleAssetURLAdapter
 }
 
 // NewMatchHistoryService crée un MatchHistoryService.
 func NewMatchHistoryService(repo port.MatchHistoryRepository, waypointPlayer string) *MatchHistoryService {
 	return &MatchHistoryService{repo: repo, waypointPlayer: waypointPlayer}
+}
+
+// WithAssetURL injecte l'adapter d'URLs d'assets du titre (lien page publique du
+// match). Sans injection, aucun lien n'est produit (dégradation gracieuse, F3).
+func (s *MatchHistoryService) WithAssetURL(a games.TitleAssetURLAdapter) *MatchHistoryService {
+	s.assetURL = a
+	return s
+}
+
+// matchURLFn construit le résolveur d'URL de page publique du match pour ce
+// service (adapter du titre + gamertag du joueur). nil adapter → "" (pas de lien).
+func (s *MatchHistoryService) matchURLFn() func(matchID string) string {
+	if s.assetURL == nil {
+		return func(string) string { return "" }
+	}
+	gt := s.waypointPlayer
+	return func(matchID string) string { return s.assetURL.PlayerMatchWebURL(gt, matchID) }
 }
 
 // WithDataAdapter injecte le DataAdapter multi-titres pour activer une
@@ -181,7 +202,7 @@ func (s *MatchHistoryService) GetPage(
 	mapWinRates := computeMapWinRates(rawRows)
 
 	// Enrichissement
-	items := enrichRows(filtered, mapWinRates, s.waypointPlayer)
+	items := enrichRows(filtered, mapWinRates, s.matchURLFn())
 
 	// Tri
 	sortItems(items, req.SortField, req.SortDir)

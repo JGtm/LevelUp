@@ -119,6 +119,11 @@ func (a *AssetURLAdapter) WeaponImageURL(nameEN string) string {
 	return ""
 }
 
+// MatchWebURL / PlayerMatchWebURL : Halo 5 n'a pas de page de détail de match
+// publique équivalente à Waypoint → "" (pas de lien externe, F3).
+func (a *AssetURLAdapter) MatchWebURL(_ string) string          { return "" }
+func (a *AssetURLAdapter) PlayerMatchWebURL(_, _ string) string { return "" }
+
 // MedalImageURL : Halo 5 expose ses icônes de médaille sous forme de SPRITE
 // (feuille + offset left/top/width/height), non exprimable en une URL PNG simple.
 // Le rendu sprite côté front est un chantier distinct (G2 / D.1) ; cet adapter
