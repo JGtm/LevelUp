@@ -3,6 +3,7 @@ package halo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -110,6 +111,27 @@ func TestFetchCSRLeaderboard_EmptyPage1Counter(t *testing.T) {
 	}
 }
 
+// TestFetchCSRLeaderboard_404Sentinel : un 404 (playlist non classée cette saison)
+// renvoie une erreur qui matche ErrLeaderboardPageNotFound via errors.Is — l'appelant
+// (backfill multi-saisons) skippe alors en silence au lieu de logger une ERROR.
+func TestFetchCSRLeaderboard_404Sentinel(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	scraper := NewLeaderboardScraper(0)
+	scraper.host = srv.URL
+
+	_, err := scraper.FetchCSRLeaderboard(context.Background(), "csrseason3-1", "absente", 0)
+	if err == nil {
+		t.Fatal("attendu une erreur sur 404")
+	}
+	if !errors.Is(err, ErrLeaderboardPageNotFound) {
+		t.Errorf("erreur = %v, attendu errors.Is(ErrLeaderboardPageNotFound)", err)
+	}
+}
+
 // buildCatalogHTML fabrique une page avec menus saisons/playlists (ordre
 // décroissant pour les saisons, comme en prod : seasons[0] = active).
 func buildCatalogHTML(seasons, playlists [][2]string) []byte {
@@ -170,6 +192,43 @@ func TestFetchActiveSeasonAndCatalog(t *testing.T) {
 	// refPlaylistID vide → erreur claire.
 	if _, err := scraper.FetchActiveSeason(context.Background(), ""); err == nil {
 		t.Error("FetchActiveSeason avec refPlaylistID vide devrait échouer")
+	}
+}
+
+// TestFetchSeasons_TranslationsFR valide, sur la fixture réelle, que FetchSeasons
+// résout le nom FR depuis translations["fr-FR"] (csrseason12-1 → "Ombres") et
+// retombe sur le DisplayName EN quand aucune traduction FR n'existe (csrseason13-2
+// "Infinite" n'a que des locales qps-ploc).
+func TestFetchSeasons_TranslationsFR(t *testing.T) {
+	body, err := os.ReadFile(filepath.Join("testdata", "leaderboard_sample.html"))
+	if err != nil {
+		t.Skipf("fixture absente (%v)", err)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(body)
+	}))
+	defer srv.Close()
+
+	scraper := NewLeaderboardScraper(0)
+	scraper.host = srv.URL
+
+	seasons, err := scraper.FetchSeasons(context.Background(), "pl-arena")
+	if err != nil {
+		t.Fatalf("FetchSeasons: %v", err)
+	}
+	byID := make(map[string]struct{ en, fr string }, len(seasons))
+	for _, s := range seasons {
+		byID[s.SeasonID] = struct{ en, fr string }{s.DisplayName, s.NameFR}
+	}
+	if got := byID["csrseason12-1"]; got.en != "Shadows" || got.fr != "Ombres" {
+		t.Errorf("csrseason12-1 = %+v, attendu {Shadows, Ombres}", got)
+	}
+	if got := byID["csrseason11-1"]; got.fr != "Dernier bastion" {
+		t.Errorf("csrseason11-1 FR = %q, attendu \"Dernier bastion\"", got.fr)
+	}
+	// Pas de fr-FR pour csrseason13-2 → fallback EN.
+	if got := byID["csrseason13-2"]; got.en != "Infinite" || got.fr != "Infinite" {
+		t.Errorf("csrseason13-2 = %+v, attendu fallback {Infinite, Infinite}", got)
 	}
 }
 
