@@ -14,6 +14,32 @@ func TestAssetURLAdapter_TitleSlug(t *testing.T) {
 	}
 }
 
+func TestAssetURLAdapter_MatchWebURL(t *testing.T) {
+	t.Parallel()
+	a := NewAssetURLAdapter()
+	if got := a.MatchWebURL("abc-123"); got != "https://www.halowaypoint.com/halo-infinite/matches/abc-123" {
+		t.Errorf("MatchWebURL = %q", got)
+	}
+	if got := a.MatchWebURL("  "); got != "" {
+		t.Errorf("MatchWebURL(blank) = %q, want empty", got)
+	}
+}
+
+func TestAssetURLAdapter_PlayerMatchWebURL(t *testing.T) {
+	t.Parallel()
+	a := NewAssetURLAdapter()
+	want := "https://www.halowaypoint.com/halo-infinite/players/Player1/matches/abc-123"
+	if got := a.PlayerMatchWebURL("Player1", "abc-123"); got != want {
+		t.Errorf("PlayerMatchWebURL = %q, want %q", got, want)
+	}
+	if got := a.PlayerMatchWebURL("", "m1"); got != "" {
+		t.Errorf("PlayerMatchWebURL(empty gt) = %q, want empty", got)
+	}
+	if got := a.PlayerMatchWebURL("Player1", ""); got != "" {
+		t.Errorf("PlayerMatchWebURL(empty match) = %q, want empty", got)
+	}
+}
+
 func TestAssetURLAdapter_MapImageURL(t *testing.T) {
 	t.Parallel()
 	a := NewAssetURLAdapter()

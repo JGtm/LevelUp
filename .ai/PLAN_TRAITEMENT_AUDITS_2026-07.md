@@ -584,9 +584,16 @@ traiter AVANT les refactors structurels.)
   H5 exposera match.skill.snapshot, ces providers Infinite devront devenir title-aware (playlists
   H5) — la capability les réactiverait à tort en l'état (à traiter au câblage CSR H5). Gate :
   build+vet + api/service tests verts.
-- [ ] F3 — ARCHI 32 : URL Waypoint (`match_view_builders_header.go:59`,
-  `match_history_service_enrich.go:278`) → derrière `TitleAssetURLAdapter` (déjà injecté) ;
-  capability/None pour les titres sans page match — plus de lien mort en Match View H5.
+- [x] F3 — ARCHI 32 : URL Waypoint derrière `TitleAssetURLAdapter`. FAIT : 2 méthodes ajoutées
+  à l'interface — `MatchWebURL(matchID)` (forme `.../matches/{id}`, site MatchView) et
+  `PlayerMatchWebURL(gt, matchID)` (forme `.../players/{gt}/matches/{id}`, site MatchHistory).
+  Implémentées : halo_infinite (Waypoint, byte-identique) ; halo_5 + synthetic_title_b → "".
+  MatchView `builders_header.go` : `assetURL.MatchWebURL(matchID)` (nil-guard) — H5 (assetURL nil)
+  → plus de lien Waypoint Infinite MORT en Match View H5. MatchHistory : `buildMatchURL` (URL
+  hardcodée) SUPPRIMÉ ; nouveau `WithAssetURL` + closure `matchURLFn()` threadée dans enrichRows/
+  enrichRow (remplace le param `waypoint string`) ; câblé au wiring (registry_pages:682). Tests
+  `buildMatchURL` migrés vers l'adapter halo_infinite (Match/PlayerMatchWebURL). 3 stubs de test
+  complétés (resolver + 2 service). Gate : build+vet + `go test ./...` (non-intégration) verts.
 - [ ] F4 — ARCHI 31 : labels d'outcome FR en dur x3 (`match_history_service.go:34`,
   `analysis/home_locale.go:55`, notify/discord) → `resolver.Semantic(slug).Outcomes().Label(...)`,
   littéraux en failsafe. Corrige l'incohérence Victory/Defeat vs Win/Loss.

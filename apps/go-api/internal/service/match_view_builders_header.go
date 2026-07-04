@@ -55,8 +55,10 @@ func buildMatchHeader(
 	applyMatchHeaderMapImage(ctx, &h, matchID, meta, assetURL)
 	h.PlayableDurationSeconds = headerGameplayDurationSeconds(meta)
 	h.IsRanked = meta.IsRanked
-	if meta.MapAssetID != nil {
-		h.WaypointURL = fmt.Sprintf("https://www.halowaypoint.com/halo-infinite/matches/%s", matchID)
+	// Lien vers la page publique du match (Waypoint pour Infinite). Via l'adapter
+	// du titre (F3) : un titre sans page publique (H5) → "" → pas de lien mort.
+	if meta.MapAssetID != nil && assetURL != nil {
+		h.WaypointURL = assetURL.MatchWebURL(matchID)
 	}
 
 	applyMatchHeaderOutcome(&h, meta, stats)

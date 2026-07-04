@@ -684,6 +684,11 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
+	// Lien page publique du match (Waypoint pour Infinite) via l'adapter du titre
+	// (F3) : nil pour un titre sans page publique (H5) → pas de lien mort.
+	if au := r.assetURLFor(pdb.TitleSlug); au != nil {
+		svc = svc.WithAssetURL(au)
+	}
 	if pdb.Metadata != nil {
 		// PR2 placement X/Y : résolveur season_id → threshold (5 ou 10 selon
 		// saison CSR). Fallback à 5 si absent. Cf. csr_thresholds_repo.go.
