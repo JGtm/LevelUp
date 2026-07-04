@@ -901,11 +901,15 @@ Objectif : purge FR monolingue + anglicismes ; règle lint passée en `error` à
   Sous-découpage : I2a scoreboard (clés `t.sbCol*`) · I2b heatmap (manifest dédié +
   formatter paramétré) · I2c `toLocaleString` → helper `formatNumber(locale, v)` (pattern
   Intl existant) · I2d « Par carte »/« Par mode »/« Analyser ».
-- [ ] I3 — CR A19 : CALIBRÉ : **68+ occurrences réelles** (ascension/i18n.ts = 58,
-  notifications = 10, + match-view/settings/squad/help) vs ~10 citées. **PIÈGE : ne
-  remplacer que les VALEURS FR — JAMAIS les CLÉS** (`streaksSectionTitle`, `streakActive`…
-  restent stables, sinon casse des consommateurs). Glossaire `help/i18n.ts` fait foi.
-  Gate : grep valeurs FR contenant `streak` → 0 ; clés intactes ; typecheck.
+- [x] I3 — CR A19 : **LIVRÉ (2026-07-04)**. Le « 68+ » sur-comptait ~5× : la quasi-totalité
+  sont des CLÉS (`streaksSectionTitle`, `streak_milestone`), des identifiants de code
+  (`StreakType`, `StreakCard`, `win_streak`), des valeurs EN (à garder) et le terme de
+  glossaire `'Série (Streak)'` (intentionnel — help/i18n.ts documente la traduction).
+  **13 VALEURS FR réelles** avec l'anglicisme corrigées → « série » (ascension 5,
+  notifications 4, help 1, match-view 1, squad 1, coach-comment 1), dont 2 reformulées
+  (double « série » évité ; « streak shield » → « bouclier de série »). CLÉS intactes.
+  Gate : typecheck OK, vitest 425 verts, grep valeur FR + « streak » → 0 (ne restent que
+  clés/EN/glossaire/commentaires de code).
 - [ ] I4 — CR mineurs : CALIBRÉ : **88 ternaires** `locale === 'en' ?` (ascension seul
   = 26, ex. AscensionProfileTab ×16) vs ~33 audit ; + aria-label FR figé
   (NotificationItem:72), labels hardcodés (TimeseriesFormCharts:200, LeaderboardBlock:435,

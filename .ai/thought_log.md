@@ -1,3 +1,19 @@
+## [2026-07-04] LOT I — I3 (anglicisme streak→série) — COMPLÉTÉ
+
+**Tâche** : I3 du plan (purge de l'anglicisme « streak » des valeurs FR). Ordre calibré I3
+d'abord (mécanique).
+
+**Décision** : même sur-comptage récurrent de l'audit — « 68+ » = surtout des CLÉS
+(streaksSectionTitle, streak_milestone), identifiants (StreakType, win_streak), valeurs EN
+et le terme de glossaire `'Série (Streak)'` (intentionnel). **13 vraies valeurs FR** avec
+l'anglicisme → « série » (2 reformulées). Clés/EN/glossaire préservés.
+
+**Résultats** : typecheck OK, vitest 425 verts, grep valeur-FR+streak → 0.
+
+**Prochaine étape** : LOT I reste I1 (i18n pages auth/setup/onboarding), I2 (scoreboard/
+heatmap), I4 (88 ternaires `locale===` → i18n par feature), I5 (lint warn→error, gate final
+APRÈS I1-I4 à 0 warning). Items volumineux (surtout I4).
+
 ## [2026-07-04] LOT H — H3/H4/H6/H7 (front) — COMPLÉTÉ (LOT H CLOS)
 
 **Tâche** : les 4 items FRONT de LOT H (dédup formatters/couleurs/ECharts), toolchain npm.
