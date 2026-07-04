@@ -608,10 +608,15 @@ traiter AVANT les refactors structurels.)
   - Site 2 (`analysis/home_locale.go`) : `[~]` → K1. Reste en littéraux FR (analysis = pur, la
     migration resolver relève de la couche service K1) ; valeur déjà cohérente ("Abandon").
   Gate : build+vet + service/api/games/mappings tests verts.
-- [ ] F5 — ARCHI 33 : labels KPI en dur (`compare_service.go:472` ~20 labels,
-  `timeseries_service_tabs.go:48`) → FieldMappingSet du titre ou key-only + labelling
-  front via /field-mappings. (`session_compare_service.go:414` : sans objet si G3 a
-  supprimé — statuer `[~]` réf G3.)
+- [x/~] F5 — ARCHI 33 : labels KPI en dur. FAIT (bugs concrets) : `timeseries_service_tabs.go`
+  portait des ANGLICISMES dans l'UI FR (« Win Rate » → « Taux de victoire », « Kills/game » →
+  « Frags / partie », viole `feedback_fr_ui_no_anglicisms`) + une CORRUPTION UTF-8 réelle
+  (« PrÃ©cision » double-encodé → « Précision »). Corrigés + gate service vert.
+  DIFFÉRÉ `[~]` → K1 : le routage complet des ~20 labels `compare_service.go:472` (et
+  timeseries) via `FieldMappingSet.Get(FieldKey).Label(locale)` (ou key-only + labelling front)
+  est un refactor architectural de couche (K1). Les libellés actuels sont FR-canoniques Halo
+  (corrects pour Infinite ET H5, même famille) → faible valeur title-agnosticism, gros diff.
+  `session_compare_service.go` : `[~]` réf G3 (helper partagé conservé ; migration = K1).
 - [ ] F6 — ARCHI 34 : compléter `config/titles/halo_5/mappings/fields.toml` + test de parité.
   **DÉCISION (2026-07-04) : sous-ensemble par capability, PAS strict-59.** H5 déclare les
   FieldKeys des groupes qu'il EXPOSE (combat, match, career, skill, aggregate) mais PAS les
