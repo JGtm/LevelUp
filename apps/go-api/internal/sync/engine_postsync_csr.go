@@ -8,10 +8,59 @@ import (
 	"strings"
 
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
+
+// activeRankedPlaylists retourne les playlists classées à interroger pour compléter
+// les CSR du joueur : les playlists réellement ACTIVES découvertes par le cron
+// classement (dernier batch de world_csr_leaderboard_snapshots), au lieu de la liste
+// statique rankedplaylists.Active() (historiquement 4). Fallback sur Active() si le
+// provider shared est absent, la table vide, ou en cas d'erreur — jamais MOINS que le
+// comportement historique. Season-agnostic (le format de saison Waypoint diffère de
+// e.csrSeasonID) : on lit le dernier scrape, qui porte les actives courantes.
+func (e *SyncEngine) activeRankedPlaylists(ctx context.Context) []rankedplaylists.Playlist {
+	fallback := rankedplaylists.Active()
+	if e.sharedProvider == nil {
+		return fallback
+	}
+	db, release, err := e.sharedProvider.Get(ctx)
+	if err != nil {
+		slog.DebugContext(ctx, "activeRankedPlaylists: shared reader indispo — fallback statique", "err", err)
+		return fallback
+	}
+	defer release()
+	rows, err := db.QueryContext(ctx, `
+		SELECT DISTINCT playlist_id FROM world_csr_leaderboard_snapshots
+		WHERE title_slug = ? AND playlist_id <> '' AND fetched_at = (
+			SELECT MAX(fetched_at) FROM world_csr_leaderboard_snapshots WHERE title_slug = ?
+		)`, e.titleSlug, e.titleSlug)
+	if err != nil {
+		slog.DebugContext(ctx, "activeRankedPlaylists: requête échouée — fallback statique", "err", err)
+		return fallback
+	}
+	defer rows.Close()
+	var out []rankedplaylists.Playlist
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return fallback
+		}
+		if pl, ok := rankedplaylists.Lookup(id); ok {
+			out = append(out, pl)
+			continue
+		}
+		// Playlist active hors référence statique : on l'interroge quand même (nom vide,
+		// la lecture catalogue-first complètera le libellé).
+		out = append(out, rankedplaylists.Playlist{AssetID: id})
+	}
+	if err := rows.Err(); err != nil || len(out) == 0 {
+		return fallback
+	}
+	return out
+}
 
 func (e *SyncEngine) runCSRSnapshotSync(ctx context.Context, playerDB *sql.DB, client HaloClient) ([]PlayerPlaylistCSR, error) {
 	if strings.TrimSpace(e.csrSeasonID) == "" {
@@ -27,7 +76,8 @@ func (e *SyncEngine) runCSRSnapshotSync(ctx context.Context, playerDB *sql.DB, c
 		return nil, nil
 	}
 	slog.DebugContext(ctx, "post-sync: sync CSR snapshots", "gamertag", e.gamertag, "season", e.csrSeasonID)
-	csrs, err := syncPlayerCSRs(ctx, client, playerDB, e.xuid, e.csrSeasonID)
+	activePlaylists := e.activeRankedPlaylists(ctx)
+	csrs, err := syncPlayerCSRs(ctx, client, playerDB, e.xuid, e.csrSeasonID, activePlaylists)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: CSR snapshots échoué", "gamertag", e.gamertag, "err", err)
 		return nil, err

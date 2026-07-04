@@ -913,6 +913,95 @@ func Steps() []migration.Migration {
 			},
 		},
 		{
+			// B1 (leaderboard sans trous) : le scraper Waypoint parse DÉJÀ le xuid de
+			// chaque joueur (leaderboard_scraper.go) mais il était jeté à la persistance
+			// (table sans colonne xuid). On l'ajoute (nullable — les lignes pré-migration
+			// restent NULL, le prochain scrape les remplit) pour alimenter l'enrichissement
+			// mondial SANS re-résolution PeopleHub, et pour activer la mise en évidence du
+			// joueur courant (isLocalXUID) sur le classement mondial. Colonne non indexée /
+			// non-PK → aucun risque ART. La vue _latest est recréée : DuckDB fige
+			// l'expansion de `s.*` à la création, il faut donc la reconstruire pour exposer
+			// la nouvelle colonne.
+			Name:        "add_xuid_to_world_csr_leaderboard",
+			TargetDB:    migration.TargetShared,
+			Description: "B1 : colonne xuid sur world_csr_leaderboard_snapshots (déjà scrapé de Waypoint) + vue _latest exposant xuid",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE world_csr_leaderboard_snapshots
+						ADD COLUMN IF NOT EXISTS xuid VARCHAR;
+
+					CREATE OR REPLACE VIEW world_csr_leaderboard_latest AS
+						SELECT s.*
+						FROM world_csr_leaderboard_snapshots s
+						WHERE s.fetched_at = (
+							SELECT max(s2.fetched_at)
+							FROM world_csr_leaderboard_snapshots s2
+							WHERE s2.title_slug = s.title_slug
+							  AND s2.season_id = s.season_id
+							  AND s2.playlist_id = s.playlist_id
+						);
+				`)
+			},
+		},
+		{
+			// C2 (saisons) : la page classement Waypoint expose la liste des saisons CSR
+			// avec leur nom d'Operation (displayName EN + translations par locale, ex
+			// fr-FR "Ombres"). Le scraper les parse (FetchCatalog) ; on les persiste ici
+			// pour un libellé autoritatif "Saison N · Nom" dans les sélecteurs (page
+			// classement + page player), au lieu du "Saison N" dérivé du seul season_id.
+			//
+			// TargetShared (et non metadata) : la SOURCE est le scrape Waypoint et le
+			// SEUL writer sanctionné détenu par world_leaderboard_cron est le writer
+			// shared (provider.AcquireWriter). Écrire dans metadata depuis ce cron
+			// contredirait le writer mono-process (contention avec la sync — cf. A3).
+			// Co-localisé avec world_csr_leaderboard_snapshots (même cron, même scrape).
+			Name:        "create_season_catalog",
+			TargetDB:    migration.TargetShared,
+			Description: "C2 : season_catalog (noms + traduction FR des saisons CSR Waypoint)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS season_catalog (
+						title_slug       VARCHAR NOT NULL,
+						season_id        VARCHAR NOT NULL,
+						display_name     VARCHAR,
+						name_fr          VARCHAR,
+						season_major     INTEGER,
+						season_minor     INTEGER,
+						first_seen_at    TIMESTAMP,
+						last_fetched_at  TIMESTAMP,
+						PRIMARY KEY (title_slug, season_id)
+					);
+					-- AUCUN index secondaire : display_name/name_fr sont MUTÉS par l'upsert
+					-- (SELECT-then-write, ops.RefreshSeasonCatalog). PK-only → l'UPDATE ne
+					-- touche pas d'index secondaire (surface ART #23046). Table minuscule
+					-- (≤ ~15 saisons) → scan séquentiel instantané.
+				`)
+			},
+		},
+		{
+			// Joueurs « privés / sans données » du classement mondial : un joueur dont
+			// l'historique matchmade est inaccessible (privacy Xbox → 403/vide) ressort
+			// de l'enrichissement avec 0 stat. On le marque ici pour (a) ne plus le
+			// re-fetcher aux runs suivants (backfill -skip-existing), (b) le masquer du
+			// classement affiché (anti-join). Marqueur par (titre, saison, gamertag).
+			Name:        "create_world_player_no_data",
+			TargetDB:    migration.TargetShared,
+			Description: "Marqueur des joueurs privés/sans données du classement mondial (skip backfill + masquage affichage)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS world_player_no_data (
+						title_slug  VARCHAR NOT NULL,
+						season_id   VARCHAR NOT NULL,
+						gamertag    VARCHAR NOT NULL,
+						marked_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (title_slug, season_id, gamertag)
+					);
+					-- AUCUN index secondaire (PK-only) : insert-or-ignore, jamais d'UPDATE
+					-- sur colonne indexée → hors surface ART #23046. Table petite.
+				`)
+			},
+		},
+		{
 			Name:        "shared_create_player_squad_offset",
 			TargetDB:    migration.TargetShared,
 			Description: "LUSR v2 Sprint 1.C — player_squad_offset (append-only) + vue _latest : offset synergie par paire de coéquipiers",
