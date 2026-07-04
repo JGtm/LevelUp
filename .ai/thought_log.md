@@ -33,6 +33,15 @@ enrichis OU privés). Effet de bord repéré + corrigé (07bbb42dd) : une vieill
 expirée (3-1 = 61 privés/0 enrichi ; 4-1 = 235/0) aurait un classement VIDE après masquage →
 garde `WorldSeasonHasEnriched` : masquer seulement si la saison a ≥1 enrichi, sinon CSR brut.
 
+**Vérif finale (04)** : `go build`+`go test ./...` (unit) verts ; front `tsc`+`eslint`+`vitest`
+verts ; logging OK (logs/leaderboard.log, ModuleLeaderboard, aucun print interdit ni erreur
+avalée). Ajout du test manquant `TestGetCSRWorldLeaderboard_PrivateMasking` (masquage + garde
+saison expirée, integration). `-tags=integration` : 2 échecs PRÉ-EXISTANTS hors périmètre
+(non dans mon diff) — service `[build failed]` (conflit `stubResolver` catalog_fetcher vs
+gamertag_search_live, présent sur la base) + duckdb `TestGetOrOpen_RunsPlayerMigrationsForLegacySchema`
+(`game_variant_id` dans MatchHistoryRepo, sous-système historique). Mes packages
+(sync anti-ART, migration, ops, scheduler, mes tests duckdb) passent. [[reference_test_baseline_linux_gate]]
+
 **État** : commité/poussé (2e4c62ed2 feat + docs). Backfill relancé par l'utilisateur avec la
 commande finale. Migrations `add_xuid`/`create_season_catalog`/`create_world_player_no_data`
 appliquées à la DB locale.
