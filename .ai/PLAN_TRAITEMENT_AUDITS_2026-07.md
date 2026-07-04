@@ -635,9 +635,17 @@ traiter AVANT les refactors structurels.)
 - [ ] F8 — ARCHI 36 : câbler `LoadAuthDescriptor` au boot par titre actif ;
   `DefaultHaloAuthDescriptor()` réservé au titre par défaut (`halo_exchange.go:71`).
   Corriger le statut MT-02 au registre.
-- [ ] F9 — ARCHI 35 : les 5-6 handlers Ascension épinglés DefaultSlug
-  (`server.go:1554,1579,1584,1588,1609,1614`) → `ctxkeys.TitleSlug(ctx)` ou a minima
-  `RequireCapability` → 503 propre. (Débloque MT-19 / Phase 1b.)
+- [~] F9 — ARCHI 35 : DIFFÉRÉ Phase 1b / MT-19 (justifié, règle 9). Vérifié sur pièces :
+  les 6 handlers Ascension/Prestige (progression/coach/profile/awards/patterns/campaign,
+  `server.go:~1554-1614`) sont construits AU BOOT avec `DefaultSlug` figé et montés
+  (`.Mount(r)`). Le fix « a minima RequireCapability → 503 » N'EST PAS applicable proprement :
+  Ascension/Prestige (progression V2) est Infinite-only mais il N'EXISTE PAS de capability
+  Ascension/Prestige, et H5 déclare `CapCareer` → un gate `CapCareer` ne bloquerait PAS H5.
+  Les 2 vrais fixes — (a) créer `CapAscension` + gater, ou (b) rendre chaque handler
+  ctx-title-aware (`ctxkeys.TitleSlug` + resolver → 503 pour titre sans Ascension) — sont du
+  câblage boot multi-handlers = chantier d'activation multi-titre (le plan lui-même le renvoie
+  à MT-19 / Phase 1b). Risque élevé pour valeur audit faible (le front ne lie pas Ascension
+  hors Infinite → pas de fuite active constatée). Non traité ici ; à reprendre en Phase 1b.
 - [x] F10 — ARCHI 30 : regex ratchet élargie (`(?:\w+\.)?DefaultSlug` + forme d'appel
   `TitleSlug(ctx)`), FERME le trou d'un feature-gate `TitleSlug(ctx) == "halo_infinite"`.
   PÉRIMÈTRE : l'audit citait 3 sites (comeback:34/95, coordinator:316) mais l'élargissement
