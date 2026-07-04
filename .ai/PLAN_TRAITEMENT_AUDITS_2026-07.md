@@ -601,17 +601,26 @@ traiter AVANT les refactors structurels.)
   `timeseries_service_tabs.go:48`) → FieldMappingSet du titre ou key-only + labelling
   front via /field-mappings. (`session_compare_service.go:414` : sans objet si G3 a
   supprimé — statuer `[~]` réf G3.)
-- [ ] F6 — ARCHI 34 : compléter `config/titles/halo_5/mappings/fields.toml` (5 → ~59
-  FieldKeys) + test de parité « FieldKeys requis vs déclarés » pour tout titre actif.
-- [!] F7 — ARCHI 37 : DÉCISION PRODUIT REQUISE. La contradiction est réelle (coarse
-  `engagement` présent, fine `engagement.score = not_exposed`, commentaire disant « events
-  présents, coefficients à recalibrer Phase 2 »). MAIS la réconciliation est un choix
-  produit : exposer un score d'engagement H5 NON calibré (`degraded` → montre une valeur
-  peu fiable) vs le garder caché (`not_exposed` + retirer `engagement` du coarse). Vérifié
-  sur pièces : l'adapter H5 (`adapter_data.go`) NE câble PAS engagement → `not_exposed` est
-  l'état honnête actuel. Le test miroir coarse↔fine dépend de la résolution (H5 le violerait
-  en l'état). DIFFÉRÉ (règle 9) : escaladé à l'utilisateur (§7). Le test miroir sera livré
-  avec la décision (recoupe F15-12 / L2).
+- [ ] F6 — ARCHI 34 : compléter `config/titles/halo_5/mappings/fields.toml` + test de parité.
+  **DÉCISION (2026-07-04) : sous-ensemble par capability, PAS strict-59.** H5 déclare les
+  FieldKeys des groupes qu'il EXPOSE (combat, match, career, skill, aggregate) mais PAS les
+  7 champs PvE/Firefight (`waves_completed`, `bosses_killed`, `grunt/elite/jackal/brute/
+  hunter_kills`) — H5 = modèle Warzone Firefight distinct, `pve.firefight_stats=not_exposed`.
+  Test de parité générique : « chaque titre actif déclare les FieldKeys des capability-groups
+  qu'il expose » (un FieldKey manquant dégrade gracieusement via `Get()→ok=false`, donc pas
+  de casse ; la parité garde la cohérence capabilities↔fields).
+- [~] F7 — ARCHI 37 : DÉCISION (2026-07-04). Réconciliation seule dans ce plan ; l'ACTIVATION
+  de l'engagement H5 est **HORS PÉRIMÈTRE** (chantier dédié — cf. mémoire
+  [[project-h5-engagement-canonicalization-chantier]]). Constat vérifié : le calcul
+  (`temporal.ComputeEngagementScore`) est PUR + title-agnostic et le sync H5 reconstruit déjà
+  l'enrichment « …/engagement/… » → la machine tourne pour H5 ; c'est l'adapter H5 qui coupe
+  (`CapEngagement=not_exposed`) par prudence (score non canonicalisé de 1er ordre + coefficients
+  cold-start calés Infinite → risque de mauvaise calibration H5 non validée). Ce plan livre
+  UNIQUEMENT le test miroir coarse↔fine en règle SOUPLE : pour tout titre, une capability coarse
+  ayant un pendant fine ⟹ le fine est DÉCLARÉ (n'importe quel statut). H5 (coarse `engagement`
+  ON + fine `engagement.score`=not_exposed) est alors COHÉRENT — pas de changement de comportement.
+  Test à livrer avec F15-12 (complétude capabilities). L'activation `not_exposed→degraded` +
+  câblage adapter + validation calibration = chantier futur (impacte Halo 7 et tout titre).
 - [ ] F8 — ARCHI 36 : câbler `LoadAuthDescriptor` au boot par titre actif ;
   `DefaultHaloAuthDescriptor()` réservé au titre par défaut (`halo_exchange.go:71`).
   Corriger le statut MT-02 au registre.
