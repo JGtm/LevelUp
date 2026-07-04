@@ -13,7 +13,6 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite"
 )
 
 // assetIDLikeRe matche un UUID brut (asset_id Halo). Sert de garde anti-GUID :
@@ -237,9 +236,12 @@ func (r *MediaRepo) translateModeFilterOptions(ctx context.Context, pairs []medi
 	buckets := make(map[string]*catBucket)
 	subEnSet := make(map[string]struct{})
 	for _, p := range pairs {
-		cat := halo_infinite.InferModeCategoryFromPairName(p.id)
+		cat := r.modeTax.Classify(p.id)
 		if cat == "" {
-			cat = halo_infinite.ModeCategoryOther
+			cat = r.modeTax.Other
+		}
+		if cat == "" {
+			continue // titre sans taxonomie de modes → pas de regroupement par catégorie
 		}
 		if buckets[cat] == nil {
 			buckets[cat] = &catBucket{category: cat, subEN: make(map[string]struct{})}
