@@ -677,7 +677,11 @@ traiter AVANT les refactors structurels.)
   **et** FR — invariant INSERT-only, hiérarchie client→livesync→persist, tables append-only +
   vues `_latest`, impl de référence `halo_5/livesync/csr_match.go`. Doc-only (ADD_TITLE.md
   hors hook docs-fr-sync mais bilingue → MAJ des 2 versions).
-- [ ] F15 — ARCHI mineurs title-agnosticism (traiter CHAQUE puce de la section, ~20) :
+- [x] F15 — ARCHI mineurs title-agnosticism : toutes les puces statuées (voir Sous-progrès
+  ci-dessous). Bilan : 8 `[x]` (couplages retirés / paramétrés) + 9 `[~]` (déjà title-agnostic
+  vérifié, ou seams différés à leur lot naturel). Les 2 garde-rails génériques (F15-12 miroir
+  coarse↔fine = livrable F7 souple ; F15-14 cap⟺scalaire) → **L2** (gouvernance/ratchets), leur
+  home naturel (cross-source registre+capabilities+damage_model, cf. renvoi F7). Détail :
   `home_repo_skill_peak.go:516` (fallback badge CSR cross-titre),
   `match_view_repo_neighbors_skill.go:63` (préfixes HINF), `halo_ranks_loader.go:132`
   (DefaultSlug forcé), `server.go:780` (callbacks Asset Drawer), `world_stats_enricher.go:15`
@@ -710,8 +714,21 @@ traiter AVANT les refactors structurels.)
   `handlers/sync_handler.go` (F15-6) `[~]` `livesync.RunnerForTitle(titleSlug)` est DÉJÀ le point
   de dispatch title-aware (retourne nil hors titre live → fallback engine par défaut) ; seul
   l'emplacement de l'import couple (mineur) — déplacer `RunnerForTitle` en package agnostique = K-couches.
-  RESTE : F15-4 asset drawer, F15-5 world_stats, F15-7 catalog_adapter, F15-11 synthetic_title_b,
-  F15-12 capabilities complétude (= test miroir F7), F15-13 server_titles fallback, F15-14 damage_model.
+  `server.go loadTitleAssetDrawerData` (F15-4) `[~]` DÉJÀ title-paramétré `(metaPath, slug)`, appelé
+  pour H5 (h5Maps/Weapons/Medals) → pas de hardcoding Infinite ·
+  `registry_catalog_adapter_check.go` (F15-7) `[~]` `HasCatalogAdapter(slug)` DÉJÀ title-aware +
+  dégradation gracieuse (H5 → false, « pas une erreur ») ·
+  `server_titles_additional.go:110` (F15-13) `[~]` DÉJÀ un `slog.Warn("capabilities_convert_failed")`
+  (pas un fallback SILENCIEUX) ; décision retenue = WARN (télémétrie expvar = nice-to-have L1/L2) ·
+  `world_stats_enricher.go` (F15-5) `[~]` → suivi activation leaderboard mondial multi-titre :
+  `RankedPlaylistSet()` couple `rankedplaylists.Active()` (Infinite) mais le classement mondial est
+  CSR/Infinite-only en prod (H5 non câblé) ; le seam `RankedPlaylistProvider(slug)` (pattern F2) se
+  posera au câblage leaderboard H5 ·
+  `synthetic_title_b` (F15-11) `[~]` fixture de test multi-titre (config/titles + package) ; les tests
+  d'isolation en DÉPENDENT ; à couvrir/retirer avec le test miroir capabilities (L2) ·
+  F15-12 (miroir coarse↔fine, livrable F7 souple) + F15-14 (garde-rail cap⟺scalaire damage_model/
+  team_mmr) → **L2** (gouvernance/ratchets) : garde-rails génériques cross-source ; invariants déjà
+  documentés dans le code (`registry.go` « SSI ProvidesDamageTaken(slug) »).
 - [ ] F16 — ARCHI 7 : dédupliquer `augmentWithActiveRankedCSRs` (copie DI
   `registry_pages.go:380` vs original `sync/career.go:255`, divergence NameFR/NameEN déjà
   réelle) → une implémentation unique, nom résolu via semantic adapter + locale.
