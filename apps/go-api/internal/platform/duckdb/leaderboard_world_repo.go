@@ -62,11 +62,22 @@ func (r *LeaderboardRepo) GetCSRWorldLeaderboard(
 	// Masquage des joueurs privés/sans données (historique inaccessible → aucune stat) :
 	// on les exclut EN SQL (avant le LIMIT) pour servir un top complet de joueurs
 	// exploitables. Best-effort : table absente → set vide → aucun filtre (dégradation).
+	//
+	// GARDE : on ne masque QUE si la saison a des joueurs enrichis. Une vieille saison
+	// entièrement expirée (historique API perdu → 0 enrichi, TOUS marqués privés)
+	// laisserait sinon un classement VIDE ; on montre alors le CSR brut.
 	noData, ndErr := WorldSeasonNoDataGamertags(ctx, sharedDB, titleSlug, season)
 	if ndErr != nil {
 		slog.WarnContext(ctx, "GetCSRWorldLeaderboard: lecture world_player_no_data échouée — pas de masquage",
 			"module", logModuleLeaderboard, "season", season, "err", ndErr)
 		noData = nil
+	}
+	if len(noData) > 0 {
+		hasEnriched, hErr := WorldSeasonHasEnriched(ctx, sharedDB, season)
+		if hErr != nil || !hasEnriched {
+			// Saison sans aucune stat (expirée) ou lecture en échec → pas de masquage.
+			noData = nil
+		}
 	}
 	q := `
 		SELECT rank, COALESCE(gamertag, ''), COALESCE(xuid, '') AS xuid, csr_value
