@@ -319,10 +319,10 @@ func loadMatchesForEngagement(ctx context.Context, sharedDB *sql.DB, xuid string
 
 // loadTeamSizes compte les humains de l'equipe alliee et du lobby pour un match.
 func loadTeamSizes(ctx context.Context, sharedDB *sql.DB, matchID string, teamID int) (nTeam, nLobby int) {
-	const q = `
+	var q = `
 		SELECT
-			SUM(CASE WHEN team_id = ? AND xuid NOT LIKE 'bid(%' THEN 1 ELSE 0 END),
-			SUM(CASE WHEN xuid NOT LIKE 'bid(%' THEN 1 ELSE 0 END)
+			SUM(CASE WHEN team_id = ? AND ` + analysis.SQLIsNotBotCol("xuid") + ` THEN 1 ELSE 0 END),
+			SUM(CASE WHEN ` + analysis.SQLIsNotBotCol("xuid") + ` THEN 1 ELSE 0 END)
 		FROM match_participants
 		WHERE match_id = ?
 	`
@@ -412,11 +412,11 @@ func loadSyntheticKillEventsForMatch(ctx context.Context, sharedDB *sql.DB, matc
 
 // loadTeamXUIDs charge les XUIDs des coequipiers humains (joueur cible exclu).
 func loadTeamXUIDs(ctx context.Context, sharedDB *sql.DB, matchID string, teamID int, targetXUID string) (map[string]bool, error) {
-	const q = `
+	var q = `
 		SELECT xuid FROM match_participants
 		WHERE match_id = ?
 		  AND team_id = ?
-		  AND xuid NOT LIKE 'bid(%'
+		  AND ` + analysis.SQLIsNotBotCol("xuid") + `
 		  AND xuid <> ?
 	`
 	rows, err := sharedDB.QueryContext(ctx, q, matchID, teamID, targetXUID)

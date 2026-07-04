@@ -7,29 +7,32 @@
 // Convention :
 //   - Préfixer les noms par SQL (ex: SQLIsBot)
 //   - Ne pas paramétrer les noms de tables/alias — laisser le repository
-//     les composer. Ces fragments sont des prédicats / expressions, pas des
-//     queries complètes. Exception : SQLStartTimeCanonical(alias) est une
-//     fonction car l'expression référence la colonne aliasée deux fois — un
-//     const ne peut pas porter l'alias sur les deux occurrences.
+//     les composer. Exceptions (fonctions) : SQLStartTimeCanonical(alias) —
+//     l'expression référence la colonne aliasée deux fois ; SQLIsBotCol(col) /
+//     SQLIsNotBotCol(col) — les copies utilisaient des préfixes variables
+//     (mp.xuid, opp.xuid), un const nu re-divergeait (34 copies constatées).
 //   - Toujours utiliser ces fragments via concaténation explicite, pas via
 //     fmt.Sprintf (lisibilité + audit grep).
 package analysis
 
-// SQLIsBot est le prédicat SQL pour identifier un xuid de bot.
-// Aligné sur analysis.IsBot côté Go (préfixe bid(*).
+// SQLIsBotCol construit le prédicat SQL « colonne = xuid de bot » pour la colonne
+// donnée (préfixe d'alias inclus : "xuid", "mp.xuid", "opp.xuid"…). Source unique
+// du prédicat bot (préfixe bid(*), aligné sur analysis.IsBot côté Go). Le garde-rail
+// archlint/no_raw_isbot_literal_test.go interdit le littéral brut ailleurs.
 //
-// Usage typique :
+// Deux régimes d'usage selon le consommateur :
+//   - chaîne backtick exécutée directement : concaténer
+//     `... WHERE ` + analysis.SQLIsNotBotCol("mp.xuid") + ` ...`
+//   - template fmt.Sprintf : l'injecter comme ARGUMENT %s (le `%` interne de
+//     'bid(%' n'est PAS réinterprété par Sprintf), JAMAIS dans la chaîne de format.
 //
-//	WHERE xuid NOT LIKE 'bid(%'        // filtrer les bots
-//	WHERE xuid NOT LIKE ` + analysis.SQLIsBot + `   // version centralisée
-//
-// Pour préserver la lisibilité dans les repos, préférer concaténer en
-// fin de WHERE plutôt qu'au milieu d'une CTE complexe.
-const SQLIsBot = `xuid LIKE 'bid(%'`
+// H2 (2026-07-04) : remplace les ex-const nues SQLIsBot/SQLIsNotBot (0 consommateur
+// SQL — centralisation abandonnée, 34 copies littérales re-divergées) — cf. leçon
+// CLAUDE.md règle 6.
+func SQLIsBotCol(col string) string { return col + " LIKE 'bid(%'" }
 
-// SQLIsNotBot est le prédicat opposé — utile pour filtrer les bots sans
-// double négation côté repository.
-const SQLIsNotBot = `xuid NOT LIKE 'bid(%'`
+// SQLIsNotBotCol est le prédicat opposé (exclusion des bots) pour la colonne donnée.
+func SQLIsNotBotCol(col string) string { return col + " NOT LIKE 'bid(%'" }
 
 // Note : les prédicats d'issue (win/loss/tie) NE sont PAS des fragments const
 // (ils dépendent du titre — MT-06 / PMT-5). Construire l'expression via le

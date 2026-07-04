@@ -43,6 +43,7 @@ import (
 	"sort"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/duckdb"
@@ -234,7 +235,7 @@ func chantier3BackfillXUIDAliases(sharedPath string, dryRun bool) error {
 		SELECT DISTINCT mp.xuid
 		FROM match_participants mp
 		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
-		WHERE mp.xuid NOT LIKE 'bid(%'
+		WHERE `+analysis.SQLIsNotBotCol("mp.xuid")+`
 		  AND (xa.xuid IS NULL OR xa.gamertag IS NULL OR xa.gamertag = '')
 	`)
 	if err != nil {

@@ -49,7 +49,7 @@ func main() {
 			SELECT DISTINCT mp.xuid
 			FROM match_participants mp
 			LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
-			WHERE mp.xuid NOT LIKE 'bid(%'
+			WHERE `+analysis.SQLIsNotBotCol("mp.xuid")+`
 			  AND (xa.xuid IS NULL OR xa.gamertag IS NULL OR xa.gamertag = '')
 		)
 		SELECT
@@ -154,7 +154,7 @@ func main() {
 		SELECT COUNT(DISTINCT mp.xuid)
 		FROM match_participants mp
 		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
-		WHERE mp.xuid NOT LIKE 'bid(%'
+		WHERE `+analysis.SQLIsNotBotCol("mp.xuid")+`
 		  AND (xa.xuid IS NULL OR xa.gamertag IS NULL OR xa.gamertag = '')
 		  AND EXISTS (SELECT 1 FROM highlight_events h WHERE h.match_id = mp.match_id)
 	`).Scan(&inEventsMatches)

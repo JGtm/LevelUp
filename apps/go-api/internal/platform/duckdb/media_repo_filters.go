@@ -465,7 +465,7 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 			COALESCE(vg.gamertag, ('Joueur ' || RIGHT(mp.xuid, 4))) AS gamertag,
 			mp.team_id,
 			(mp.xuid = ?) AS is_self,
-			(mp.xuid LIKE 'bid(%') AS is_bot
+			(` + analysis.SQLIsBotCol("mp.xuid") + `) AS is_bot
 		FROM match_participants mp
 		LEFT JOIN v_gamertag_lookup vg ON vg.xuid = mp.xuid
 		WHERE mp.match_id IN (` + joinStrings(placeholders) + `)

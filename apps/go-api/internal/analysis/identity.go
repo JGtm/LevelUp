@@ -5,7 +5,7 @@
 // commit du jour (engagement B2) a corrigé 4 bugs causés exactement par cette
 // duplication.
 //
-// Pour le filtrage SQL, utiliser `analysis.SQLIsBot` (cf. sql_fragments.go).
+// Pour le filtrage SQL, utiliser `analysis.SQLIsBotCol(col)` (cf. sql_fragments.go).
 package analysis
 
 import (

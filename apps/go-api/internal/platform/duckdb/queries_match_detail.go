@@ -1,5 +1,7 @@
 package duckdb
 
+import "levelup/go-api/internal/analysis"
+
 const Q22aMatchSkillRankPlayer = `
 SELECT
     UPPER(COALESCE(NULLIF(TRIM(msr.rating_type), ''), '')) AS rating_type_raw,
@@ -31,7 +33,7 @@ LIMIT 1`
 //	?4 = myXUID (my_team), ?5 = myXUID (me.xuid=?).
 //
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
-const Q23MatchEncounters = `
+var Q23MatchEncounters = `
 WITH this_match AS (
     SELECT p.xuid, p.team_id,
            COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.xuid, 4))) AS gamertag,
@@ -42,7 +44,7 @@ WITH this_match AS (
       AND p.xuid != ?
       -- Bots exclus : leur xuid 'bid(N.0)' est unique par match → aucun
       -- "historique de rencontres" pertinent à afficher.
-      AND p.xuid NOT LIKE 'bid(%'
+      AND ` + analysis.SQLIsNotBotCol("p.xuid") + `
 ),
 my_team AS (
     SELECT team_id FROM match_participants

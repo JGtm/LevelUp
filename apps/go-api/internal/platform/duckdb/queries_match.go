@@ -1,6 +1,8 @@
 // Package duckdb — queries_match.go : requêtes vue match (scoreboard, events, armes).
 package duckdb
 
+import "levelup/go-api/internal/analysis"
+
 // Q10 : Career — encounters (adversaires et coéquipiers fréquents).
 // Paramètre : ? = xuid du joueur.
 //
@@ -34,7 +36,7 @@ LIMIT 50`
 // Le token /*__PERFECT_KILL_IN__*/ est résolu au moment de l'exécution vers le
 // set de médailles « frag parfait » du titre du joueur (perfectKillMedalInClause ;
 // HINF byte-identique = medal_name_id IN (1512363953)).
-const Q12MatchScoreboard = `
+var Q12MatchScoreboard = `
 WITH me_perfect AS (
     SELECT xuid, COALESCE(SUM(count), 0) AS perfect_kills
     FROM medals_earned
@@ -58,7 +60,7 @@ SELECT
     -- (jamais de xuid brut, miroir analysis.MaskedXuidLabelSQL) pour les orphelins
     -- + garantit gamertag NON NULL pour le scan. Plus de CASE WHEN bot ad-hoc ici.
     COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.xuid, 4))) AS gamertag,
-    (p.xuid LIKE 'bid(%') AS is_bot,
+    (` + analysis.SQLIsBotCol("p.xuid") + `) AS is_bot,
     p.team_id,
     p.rank              AS rank_in_team,
     COALESCE(p.outcome, 0)         AS outcome,
