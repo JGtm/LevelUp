@@ -53,3 +53,18 @@ export function formatPercentValue(
   }
   return (ratio * 100).toFixed(decimals)
 }
+
+/**
+ * Pourcentage ENTIER compact SANS espace avant le « % » — pour les cellules de
+ * tableaux/briefings denses (ex: "55%"). Distinct de formatPercent (décimales +
+ * espace typographique FR). Prend un ratio 0..1.
+ *
+ * @example
+ *   formatPercentInt(0.5532)   // "55%"
+ */
+export function formatPercentInt(ratio: number | null | undefined, fallback = '—'): string {
+  if (ratio == null || !Number.isFinite(ratio)) {
+    return fallback
+  }
+  return `${Math.round(ratio * 100)}%`
+}

@@ -1,3 +1,28 @@
+## [2026-07-04] LOT H — H3/H4/H6/H7 (front) — COMPLÉTÉ (LOT H CLOS)
+
+**Tâche** : les 4 items FRONT de LOT H (dédup formatters/couleurs/ECharts), toolchain npm.
+
+**Décision technique principale** : même leçon récurrente qu'H5-safeDiv — l'audit sur-compte
+la « duplication » par nom sans vérifier la SÉMANTIQUE. Vérif per-copie systématique :
+- H3 : vraie dup = 13 L (EXPERIENCE_TO_CASCADE + setsEqual) → module `_shared/experienceCascade.ts`.
+  Étape 2 (migration d'état) + matching FR-label = follow-ups documentés §7 (pas des dédups).
+- H4 : « 7-8 copies » = 1 SEUL vrai doublon (formatPercent int) → `lib/formatters.formatPercentInt` ;
+  le reste = homonymes divergents (locale-aware) RENOMMÉS (formatLabDateTime, formatAscensionDate,
+  formatDateMonthDay). PIÈGE : ascension.formatDate cru mort au grep, typecheck a prouvé qu'il
+  est appelé → restauré+renommé. session-detail.formatPercent gardé (legacy documentée ADR 0006).
+- H6 : icône = faux positif (1 def) ; `_utils.ts` factorisait déjà tout SAUF le littéral `grid`
+  (8×) → `getGridBase(overrides)`, valeurs exactes préservées.
+- H7 : signatures divergentes (`ratioColor` en 3 formes) → `lib/colors/outcomePalette.ts` avec
+  fonctions distinctes par seuil (ratioColor/winRateColor/kdaNetColor/kdRatioColor/…). 6 fichiers.
+
+**Résultats observés** : INCIDENT évité — un `git checkout` de récupération après un échec de
+script shell a reverté par erreur les changements H4 non commités d'Explorer+MatchEncounters ;
+détecté et redone. Gate front commun : typecheck OK, eslint 0 err, **vitest 2070 verts / 0 échec
+(237 fichiers)**. LOT H entièrement clos (H1-H8).
+
+**Conclusion / prochaine étape** : LOT H CLOS. Suite : LOT I (i18n — purge FR monolingue +
+anglicismes, règle lint en error), surtout front. Puis M, L, J(sauf J5), chantier K, N.
+
 ## [2026-07-04] LOT H — H5 (pointers.Ptr) + H8 (augment CSR) — COMPLÉTÉ
 
 **Tâche** : H5 (helpers Go) + H8 (dédup augmentWithActiveRankedCSRs) du

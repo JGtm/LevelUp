@@ -18,19 +18,7 @@ import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeaso
 import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/MultiSelectFilter'
 import { ExperienceDropdown, type Experience } from '@/features/_shared/ExperienceDropdown'
 import type { CascadeInput, FilterContextInput, PeriodInput } from '@/lib/api/types'
-
-// Mapping experience → cascade.experience_types (labels canoniques backend).
-const EXPERIENCE_TO_CASCADE: Record<Experience, string[]> = {
-  all: [],
-  ranked: ['PVP classé'],
-  unranked: ['PVP non classé'],
-}
-
-function setsEqual(a: Set<string>, b: Set<string>): boolean {
-  if (a.size !== b.size) return false
-  for (const v of a) if (!b.has(v)) return false
-  return true
-}
+import { EXPERIENCE_TO_CASCADE, setsEqual } from '@/features/_shared/experienceCascade'
 
 export interface LocalFilterBarLabels {
   experience: string

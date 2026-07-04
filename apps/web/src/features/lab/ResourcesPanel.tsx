@@ -9,7 +9,7 @@ import type { LabResourcesResponse } from '@/lib/api/types'
 import type { LabLocale, LabText } from './i18n'
 import {
   formatBytes,
-  formatDate,
+  formatLabDateTime,
   formatNumber,
   JsonViewer,
   MetricCard,
@@ -139,7 +139,7 @@ export function ResourcesPanel({
                 <CardContent className="space-y-4 p-4">
                   <div className="grid gap-2 text-sm text-muted-foreground md:grid-cols-2">
                     <p>{text.common.version}: <span className="font-medium text-foreground">{data.selected_snapshot.version}</span></p>
-                    <p>{text.common.fetchedAt}: <span className="font-medium text-foreground">{formatDate(data.selected_snapshot.fetched_at, locale, text)}</span></p>
+                    <p>{text.common.fetchedAt}: <span className="font-medium text-foreground">{formatLabDateTime(data.selected_snapshot.fetched_at, locale, text)}</span></p>
                     <p className="break-all">{text.common.hash}: <span className="font-medium text-foreground">{data.selected_snapshot.content_hash}</span></p>
                     <p className="break-all">{text.common.source}: <span className="font-medium text-foreground">{data.selected_snapshot.source_url || text.common.notAvailable}</span></p>
                   </div>
@@ -181,7 +181,7 @@ export function ResourcesPanel({
                     <p>{text.common.asset}: <span className="font-medium text-foreground">{data.assets.selected.asset_id}</span></p>
                     <p>{text.common.type}: <span className="font-medium text-foreground">{data.assets.selected.asset_type}</span></p>
                     <p>{text.common.version}: <span className="font-medium text-foreground">{data.assets.selected.version_id}</span></p>
-                    <p>{text.common.fetchedAt}: <span className="font-medium text-foreground">{formatDate(data.assets.selected.fetched_at, locale, text)}</span></p>
+                    <p>{text.common.fetchedAt}: <span className="font-medium text-foreground">{formatLabDateTime(data.assets.selected.fetched_at, locale, text)}</span></p>
                   </div>
                   <JsonViewer title={text.resources.rawAssetTitle} content={data.assets.selected.raw_json} text={text} />
                 </CardContent>
@@ -221,7 +221,7 @@ export function ResourcesPanel({
                     <p>{text.common.id}: <span className="font-medium text-foreground">{data.medals.selected.medal_id}</span></p>
                     <p>{text.common.type}: <span className="font-medium text-foreground">{data.medals.selected.medal_type || text.common.notAvailable}</span></p>
                     <p>{text.common.score}: <span className="font-medium text-foreground">{formatNumber(data.medals.selected.personal_score, locale, text)}</span></p>
-                    <p>{text.common.fetchedAt}: <span className="font-medium text-foreground">{formatDate(data.medals.selected.fetched_at, locale, text)}</span></p>
+                    <p>{text.common.fetchedAt}: <span className="font-medium text-foreground">{formatLabDateTime(data.medals.selected.fetched_at, locale, text)}</span></p>
                   </div>
                   <JsonViewer title={text.resources.rawMedalTitle} content={data.medals.selected.raw_json} text={text} />
                 </CardContent>

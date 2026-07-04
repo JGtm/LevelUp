@@ -16,6 +16,8 @@
  * Conteneur style SessionBriefing : carte avec header + grille de KPIs.
  */
 import type { ExplorerEncounterStats } from '@/lib/api/types'
+import { formatPercentInt } from '@/lib/formatters'
+import { kdRatioColor, winRateClass } from '@/lib/colors/outcomePalette'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
@@ -46,16 +48,6 @@ interface Props {
 
 // ─── Helpers de formatage (copiés à l'identique de MatchEncountersTable.tsx) ─
 
-function formatPercent(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return '—'
-  return `${Math.round(v * 100)}%`
-}
-
-function percentClass(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return ''
-  return v >= 0.5 ? 'text-success font-bold' : 'text-warning font-bold'
-}
-
 function formatKDCross(
   kills: number | null | undefined,
   deaths: number | null | undefined,
@@ -68,15 +60,6 @@ function formatKDRatio(kills: number | null | undefined, deaths: number | null |
   if (kills == null || deaths == null) return '—'
   if (deaths === 0) return kills > 0 ? '∞' : '—'
   return (kills / deaths).toFixed(2)
-}
-
-function kdRatioColor(kills: number | null | undefined, deaths: number | null | undefined): string | undefined {
-  if (kills == null || deaths == null) return undefined
-  if (deaths === 0) return kills > 0 ? tokenCssVar('outcome-win') : undefined
-  const ratio = kills / deaths
-  if (ratio > 1) return tokenCssVar('outcome-win')
-  if (ratio < 1) return tokenCssVar('outcome-loss')
-  return tokenCssVar('outcome-draw')
 }
 
 function formatRelativeFR(iso: string): string {
@@ -261,8 +244,8 @@ export function ExplorerEncounterBriefing({ stats, locale }: Props) {
             label={t('explorer.encounter.wr_ally')}
             value={
               <span className="inline-flex items-baseline gap-1.5">
-                <span className={percentClass(stats.winrate_as_ally)}>
-                  {formatPercent(stats.winrate_as_ally)}
+                <span className={winRateClass(stats.winrate_as_ally)}>
+                  {formatPercentInt(stats.winrate_as_ally)}
                 </span>
                 {ally != null && (
                   <span className="text-xs font-normal text-muted-foreground">
@@ -278,8 +261,8 @@ export function ExplorerEncounterBriefing({ stats, locale }: Props) {
             label={t('explorer.encounter.wr_enemy')}
             value={
               <span className="inline-flex items-baseline gap-1.5">
-                <span className={percentClass(stats.winrate_vs_enemy)}>
-                  {formatPercent(stats.winrate_vs_enemy)}
+                <span className={winRateClass(stats.winrate_vs_enemy)}>
+                  {formatPercentInt(stats.winrate_vs_enemy)}
                 </span>
                 {enemy != null && (
                   <span className="text-xs font-normal text-muted-foreground">
