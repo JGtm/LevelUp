@@ -761,6 +761,17 @@ verts ; grep `halowaypoint` hors `games/halo_infinite` + `platform/halo` → 0 (
 sync bouge en K3e — allowlist temporaire datée si besoin) ; smoke test des pages H5
 (Médias, Explorer, Match View) via `verify`/run local.
 
+> **STRATÉGIE H→N (décidée 2026-07-04, investigation workflow 8 agents sur pièces)** :
+> Lots SÛRS d'abord (H, I, J sauf J5, M, L, N) exécutés en autonomie sur les défauts recommandés
+> de l'investigation (helpers dans `sql_fragments.go`/`util/pointers`, i18n par-feature, etc. —
+> low-stakes, notés au journal). **LOT K (26 items, ~4-6 j, refactors god-functions/packages
+> haut-risque : NewRouter 1470L, SyncEngine.run 483L, extractions packages 143/127/112 fichiers)
+> + J5 (cache Match-History) + F12 (film) = CHANTIER DÉDIÉ** (mini-commits séquentiels + smoke-run,
+> en DERNIER ou planifié à part). Vraies décisions produit escaladées au moment voulu : J2 (budgets
+> mémoire DuckDB, après mesure J1), J5 (sémantique cache), N4 (politique purge migrations).
+> Ordre : H → I → M → L → J(sauf J5) → **K dédié** → J5 → N. Comptes réels > audit (H1=115 littéraux/
+> 52 fichiers vs 87/33 ; H2=58/30 vs 36/19). Résultats complets : workflow `lotHN-investigate`.
+
 ### LOT H — Repropagation & duplication (source de vérité unique)
 
 Objectif : plus de copie locale divergente d'un helper canonique existant ; chaque helper
@@ -1489,3 +1500,15 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
   ET retirer `engagement` du coarse (le titre ne l'expose pas). Le test miroir coarse↔fine
   (générique, tous titres) sera livré AVEC la décision (H5 le violerait en l'état). Reco : (B)
   — ne pas montrer de donnée non fiable ; réactiver quand la calibration Phase 2 est faite.
+- [LOT H — l'audit SOUS-ESTIME la nuance des dédups (vérifié 2026-07-04)] Les items H sont
+  présentés comme des dédups « mécaniques » mais la vérif on-pièces révèle des DIVERGENCES
+  SÉMANTIQUES qui interdisent le remplacement aveugle : (1) **H5 `safeDiv` ≠ `analysis.SafeRatio`** :
+  `safeDiv(a,0)` renvoie le NUMÉRATEUR (KD=kills quand deaths=0) + arrondit à 2 déc. ; `SafeRatio(n,0)`
+  renvoie `0.0` NON arrondi. Les remplacer = BUG de comportement (KD à 0 au lieu de kills sur les
+  matchs sans mort). safeDiv N'EST PAS un doublon → garder, statuer `[~] faux positif`. (2) **H2**
+  littéraux `bid(` à préfixe VARIABLE (`xuid`/`mp.xuid`/`opp.xuid`/`gamertag`, `%`/`%%`) ; le const
+  `SQLIsBot` suppose `xuid` nu → migration NON triviale (helper paramétré `SQLIsBotCol(col)` requis
+  pour les alias, sinon allowlist). (3) comptes réels > audit (H1=115/52, H2=58/30). CONSÉQUENCE :
+  LOT H (et probablement I/J) demande une vérif per-copie AVANT migration + garde-rail — pas un
+  grep-replace. Exécution careful multi-session (l'investigation workflow `lotHN-investigate` a la
+  carte complète ; la stratégie safe-first + K-dédié est posée en tête de §4 LOT H).
