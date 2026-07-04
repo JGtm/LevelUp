@@ -95,7 +95,7 @@ ORDER BY e.xuid ASC, e.hour_local ASC`
 // sous-requête) puis on les ré-ordonne ancien→récent pour la frise et le WR
 // glissant. Colonnes SELECT (7) : match_id, start_time, result,
 // kills_on_rival, deaths_by_rival, mode (pair_name), map_name.
-const Q30RivalTimelineTpl = `
+var Q30RivalTimelineTpl = `
 WITH duel AS (
     SELECT
         kv.match_id,
@@ -109,7 +109,7 @@ WITH duel AS (
 recent AS (
     SELECT
         r.match_id,
-        COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+        ` + StartTimeCanonicalSQL("r") + ` AS start_time,
         CASE WHEN %s THEN 1 WHEN %s THEN 2 ELSE 0 END AS result,
         COALESCE(d.kills_on_rival, 0)  AS kills_on_rival,
         COALESCE(d.deaths_by_rival, 0) AS deaths_by_rival,

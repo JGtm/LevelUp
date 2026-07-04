@@ -151,14 +151,14 @@ func BuildNeighborsWhereClause(spec *domain.MatchFilterSpec, categoryPrefixes Mo
 	if spec.DateFrom != nil {
 		// Pattern timezone canonique (cf. memory reference_timezone_canonical_pattern.md).
 		clauses = append(clauses,
-			"COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') >= ?",
+			SQLStartTimeCanonical("mr")+" >= ?",
 		)
 		args = append(args, spec.DateFrom.UTC())
 	}
 
 	if spec.DateTo != nil {
 		clauses = append(clauses,
-			"COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') <= ?",
+			SQLStartTimeCanonical("mr")+" <= ?",
 		)
 		// DateTo est inclusive — on ajoute 1 microseconde pour matcher
 		// le comportement "fin de journée incluse" si le caller passe 23:59:59.

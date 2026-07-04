@@ -211,14 +211,14 @@ func (r *ExplorerRepo) GetMedalCountsForMatches(
 
 // GetMatchStartTimesForXUID retourne les start_time (UTC) de tous les matchs du
 // joueur dans shared.match_participants (join match_registry). Pattern timezone
-// canonique COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC'). Sert au
+// canonique (via StartTimeCanonicalSQL). Sert au
 // bucketing "matchs par saison" côté service.
 func (r *ExplorerRepo) GetMatchStartTimesForXUID(ctx context.Context, xuid string) ([]time.Time, error) {
 	if strings.TrimSpace(xuid) == "" {
 		return nil, nil
 	}
-	const q = `
-		SELECT COALESCE(reg.start_time_utc, reg.start_time AT TIME ZONE 'UTC') AS start_time
+	q := `
+		SELECT ` + StartTimeCanonicalSQL("reg") + ` AS start_time
 		FROM match_participants p
 		JOIN match_registry reg ON reg.match_id = p.match_id
 		WHERE p.xuid = ?`

@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"os"
 
+	"levelup/go-api/internal/analysis"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -98,7 +100,7 @@ func main() {
 		_ = db.QueryRow(`
 			SELECT CASE WHEN real_start_time IS NOT NULL THEN
 				epoch_ms(real_start_time AT TIME ZONE 'UTC')
-				- epoch_ms(COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC'))
+				- epoch_ms(`+analysis.SQLStartTimeCanonical("")+`)
 			END
 			FROM match_registry WHERE match_id = ?`, id).Scan(&t0)
 		var topKiller sql.NullString

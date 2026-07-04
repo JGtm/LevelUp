@@ -22,7 +22,7 @@ package duckdb
 //
 // Le token /*__PERFECT_KILL_IN__*/ est résolu au runtime vers le set de médailles
 // « frag parfait » du titre du joueur (perfectKillMedalInClause ; HINF = {1512363953}).
-const Q26HomeMatchesSharedPart = `
+var Q26HomeMatchesSharedPart = `
 WITH perfect AS (
     SELECT match_id, COALESCE(SUM(count), 0) AS perfect_kills
     FROM medals_earned
@@ -31,7 +31,7 @@ WITH perfect AS (
 )
 SELECT
     mp.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     COALESCE(r.map_id, '')                                  AS map_id,
     COALESCE(r.map_name, '')                                AS map_name,
     COALESCE(r.map_name_fr, r.map_name, '')                 AS map_name_fr,
@@ -77,7 +77,7 @@ FROM match_participants mp
 JOIN match_registry r ON r.match_id = mp.match_id
 LEFT JOIN perfect ON perfect.match_id = mp.match_id
 WHERE mp.xuid = ?
-ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC
+ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC
 LIMIT 150`
 
 // Q26HomeMatchesPlayerEnrichTpl : enrichissement player (pme + msr) pour un
@@ -117,10 +117,10 @@ WHERE pme.session_label IS NOT NULL`
 
 // Q27HomeSessionsSharedStartTimesTpl : Phase B de Q27 — start_time pour
 // un lot de match_ids depuis match_registry (shared).
-const Q27HomeSessionsSharedStartTimesTpl = `
+var Q27HomeSessionsSharedStartTimesTpl = `
 SELECT
     match_id,
-    COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') AS start_time
+    ` + StartTimeCanonicalSQL("") + ` AS start_time
 FROM match_registry
 WHERE match_id IN (%s)`
 
@@ -298,7 +298,7 @@ WHERE mr.match_id IN (%s)`
 // match_registry (Social, anciens matchs non backfillés). On groupe sur
 // COALESCE(playlist_id, playlist_name) pour capturer ces cas et retourner
 // jusqu'à 3 playlists distinctes même sans playlist_id renseigné.
-const Q26gPlaylistPhaseBShared = `
+var Q26gPlaylistPhaseBShared = `
 WITH scoped AS (
 	SELECT
 		COALESCE(NULLIF(TRIM(r.playlist_id), ''), NULLIF(TRIM(r.playlist_name), '')) AS group_key,
@@ -312,10 +312,10 @@ WITH scoped AS (
 		END AS is_ranked_flag,
 		r.match_id AS match_id,
 		r.season_id AS season_id,
-		COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS played_at,
+		` + StartTimeCanonicalSQL("r") + ` AS played_at,
 		ROW_NUMBER() OVER (
 			PARTITION BY COALESCE(NULLIF(TRIM(r.playlist_id), ''), NULLIF(TRIM(r.playlist_name), ''))
-			ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC
+			ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC
 		) AS rn_recent
 	FROM match_participants mp
 	JOIN match_registry r ON r.match_id = mp.match_id

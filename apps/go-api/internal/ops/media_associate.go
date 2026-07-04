@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 )
 
@@ -83,10 +84,10 @@ func loadMatchTimeWindows(ctx context.Context, sharedMatchesPath string) ([]matc
 	rows, err := db.QueryContext(ctx, `
 		SELECT
 			match_id,
-			COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') AS start_utc,
+			`+analysis.SQLStartTimeCanonical("")+` AS start_utc,
 			COALESCE(end_time_utc,   end_time   AT TIME ZONE 'UTC') AS end_utc
 		FROM match_registry
-		WHERE COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') IS NOT NULL
+		WHERE `+analysis.SQLStartTimeCanonical("")+` IS NOT NULL
 		  AND COALESCE(end_time_utc,   end_time   AT TIME ZONE 'UTC') IS NOT NULL
 	`)
 	if err != nil {

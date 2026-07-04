@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
@@ -445,7 +446,7 @@ func concurrentTeamSize(team []rosterMember) int {
 func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]shadowMatch, error) {
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT mr.match_id,
-		       COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') AS ts,
+		       `+analysis.SQLStartTimeCanonical("mr")+` AS ts,
 		       COALESCE(mr.pair_name, ''),
 		       COALESCE(mp.outcome, 0),
 		       mp.team_id,
@@ -453,7 +454,7 @@ func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]sh
 		       GREATEST(0, COALESCE(mr.duration_seconds, 0) * 1000 - CASE
 		           WHEN mr.real_start_time IS NOT NULL THEN
 		               epoch_ms(mr.real_start_time AT TIME ZONE 'UTC')
-		               - epoch_ms(COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC'))
+		               - epoch_ms(`+analysis.SQLStartTimeCanonical("mr")+`)
 		           ELSE 0 END) AS gameplay_dur_ms
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id

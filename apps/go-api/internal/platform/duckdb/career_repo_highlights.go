@@ -35,7 +35,7 @@ func buildHighlightFilterClause(filters domain.CareerHighlightFilters) (string, 
 	if len(filters.SeasonRanges) > 0 {
 		seasonExprs := make([]string, 0, len(filters.SeasonRanges))
 		for _, win := range filters.SeasonRanges {
-			ts := "COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')"
+			ts := StartTimeCanonicalSQL("r")
 			if win.End != nil {
 				seasonExprs = append(seasonExprs, "("+ts+" >= ? AND "+ts+" < ?)")
 				args = append(args, win.Start, *win.End)

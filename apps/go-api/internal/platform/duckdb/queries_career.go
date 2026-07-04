@@ -12,10 +12,10 @@ package duckdb
 // Le merge avec player_match_enrichment se fait en Go (Q4PlayerEnrichmentForMatches).
 //
 // Paramètre : ? = xuid.
-const Q4SharedMatchesForFilters = `
+var Q4SharedMatchesForFilters = `
 SELECT
     r.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     r.map_name,
     COALESCE(r.map_name_fr, r.map_name)                AS map_name_fr,
     r.pair_name,
@@ -32,10 +32,10 @@ ORDER BY start_time DESC`
 
 // Q4MVSharedMatchesForFilters : variante du split avec mv_player_matches.
 // Paramètre : ? = xuid.
-const Q4MVSharedMatchesForFilters = `
+var Q4MVSharedMatchesForFilters = `
 SELECT
     match_id,
-    COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("") + ` AS start_time,
     map_name,
     COALESCE(map_name_fr, map_name)                AS map_name_fr,
     pair_name,
@@ -58,10 +58,10 @@ ORDER BY start_time DESC`
 // SharedReader cible directement le catalogue de shared_matches_v2.duckdb.
 //
 // Paramètre : ? = xuid (utilisé pour le filtre p.xuid).
-const Q5SharedHistory = `
+var Q5SharedHistory = `
 SELECT
     r.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     r.map_name,
     COALESCE(r.map_name_fr, r.map_name)                AS map_name_fr,
     r.pair_name,
@@ -196,10 +196,10 @@ WHERE msr.rating_type <> 'LUSR_V2'`
 // Q8LUSRHistoryRegistryTpl : Phase B de Q8 — start_time + playlist depuis
 // match_registry pour les match_ids résultants de Phase A. Exécutée via
 // SharedReader.
-const Q8LUSRHistoryRegistryTpl = `
+var Q8LUSRHistoryRegistryTpl = `
 SELECT
     match_id,
-    COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') AS recorded_at,
+    ` + StartTimeCanonicalSQL("") + ` AS recorded_at,
     COALESCE(playlist_name_fr, playlist_name, '')           AS playlist_name,
     COALESCE(playlist_id, '')                               AS playlist_id
 FROM match_registry
@@ -229,10 +229,10 @@ WHERE performance_score IS NOT NULL`
 // Q9TopMatchesShared : Phase B de Q9 — partie shared (mp + r) avec filtres
 // shared-only (time_played >= 180, is_firefight = FALSE). Filtre xuid + IN
 // les match_ids passés par Phase A.
-const Q9TopMatchesSharedTpl = `
+var Q9TopMatchesSharedTpl = `
 SELECT
     mp.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     r.map_name,
     r.pair_name,
     r.playlist_name,
@@ -255,12 +255,12 @@ WHERE mp.xuid = ?
 // les match_ids de Phase A). Le 2e %s reçoit la clause dynamique
 // (buildHighlightFilterClause) qui filtre sur r.is_ranked / r.start_time /
 // r.pair_name / r.playlist_name.
-const Q9bHighlightSharedTpl = `
+var Q9bHighlightSharedTpl = `
 SELECT
     mp.match_id,
     COALESCE(mp.outcome, 0)                                                AS outcome,
     COALESCE(r.is_ranked, FALSE)                                           AS is_ranked,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')            AS start_time,
+    ` + StartTimeCanonicalSQL("r") + `            AS start_time,
     COALESCE(NULLIF(r.pair_name_fr, ''), r.pair_name, '')                  AS pair_name_source,
     COALESCE(NULLIF(r.playlist_name_fr, ''), r.playlist_name, '')          AS playlist_name_source,
     COALESCE(r.playlist_id, '')                                            AS playlist_id

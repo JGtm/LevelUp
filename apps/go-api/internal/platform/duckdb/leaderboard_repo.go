@@ -125,7 +125,7 @@ func (r *LeaderboardRepo) GetLocalLeaderboard(ctx context.Context, titleSlug, se
 			       COALESCE(is_ranked, FALSE),
 			       COALESCE(playlist_name, ''),
 			       COALESCE(pair_name, ''),
-			       COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC')
+			       `+StartTimeCanonicalSQL("")+`
 			FROM match_registry
 			WHERE match_id IN (%s)`, Placeholders(len(matchIDs)))
 		regRows, err := sharedDB.QueryContext(ctx, query, ToAnySlice(matchIDs)...)

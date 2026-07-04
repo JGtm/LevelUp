@@ -1,3 +1,31 @@
+## [2026-07-04] LOT H — H1 helper start_time canonique — COMPLÉTÉ
+
+**Tâche** : H1 du PLAN_TRAITEMENT_AUDITS_2026-07 (branche refactor/audits-2026-07) —
+source unique de l'expression SQL timezone-canonique du start_time (règle CLAUDE.md n°8).
+
+**Décision technique principale** : home canonique dans `internal/analysis`
+(`SQLStartTimeCanonical(alias)`) et NON dans platform/duckdb — contrainte de couche :
+`analysis/match_filter.go` en a besoin et analysis ne peut pas importer platform/duckdb.
+`duckdb.StartTimeCanonicalSQL` (créé par E5) devient un délégué, gardé pour l'appel
+LOCAL sans préfixe dans les repos duckdb. Migration scriptée (perl quotemeta par
+alias/forme) pour les raw-strings backtick + 5 sites double-quote/analysis manuels ;
+`goimports -local` pour les imports.
+
+**Résultats observés** : le « 115 littéraux » de l'audit était SUR-évalué — il conflatait
+le pattern canonique avec `real_start_time` (colonne distincte pour epoch/durée), des
+commentaires-prose et la définition. Vrai compte = **97 sites** du pattern
+`COALESCE(x.start_time_utc, x.start_time AT TIME ZONE 'UTC')`, tous migrés. Effet de bord
+majeur non anticipé par l'audit : **21 `const`→`var`** (une valeur SQL bâtie par appel de
+fonction n'est plus une constante Go) découverts incrémentalement puis balayés par un
+regex perl exhaustif (backtick-concat + helper), + 2 `const q` locaux → `:=`, + 2
+commentaires démanglés par le script. Garde-rail `archlint/no_raw_start_time_literal_test.go`
+(scanne internal/+cmd/, saute migrations/ gelées + la définition, allowlist VIDE, regex
+précis). Gate : build+vet OK ; unit duckdb/sync/ops verts ; **intégration `-p 1` VERTE**
+(duckdb 111 s, sync 109 s, 0 `--- FAIL:`, exit 0) ; garde-rail vert ; grep hors allowlist → 0.
+
+**Conclusion / prochaine étape** : H1 clos. Suite LOT H : H2 (prédicat bot, param col +
+piège gamertag), puis H3/H4/H6/H7 (front), H5 (strPtr, safeDiv=faux positif), H8.
+
 ## [2026-07-04] Recalibration LOTS H→N (audit 2026-07) — plan mis à jour — COMPLÉTÉ
 
 **Tâche** : l'utilisateur a constaté que les lots H→N étaient mal calibrés par l'audit →

@@ -28,6 +28,7 @@ import (
 	"sort"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 
@@ -124,7 +125,7 @@ func loadMatchWindows(db *sql.DB) (map[string]domain.MatchTimeline, error) {
 	rows, err := db.Query(`
 		SELECT
 			match_id,
-			COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC')               AS start_utc,
+			` + analysis.SQLStartTimeCanonical("") + `               AS start_utc,
 			real_start_time,
 			COALESCE(duration_seconds, 0)                                         AS dur
 		FROM match_registry`)

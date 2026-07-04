@@ -40,14 +40,14 @@ func NewHalo5CommendationTotalsSource(shared SharedReader, xuid string) *Halo5Co
 // h5CommendationTotalsQuery — dernier `progress` (total à vie absolu) par commendation
 // pour un xuid. Ignore les lignes progress NULL (écrites avant la colonne / sans
 // re-fetch). Tie-break par match_id pour un déterminisme strict.
-const h5CommendationTotalsQuery = `
+var h5CommendationTotalsQuery = `
 SELECT commendation_id, progress
 FROM (
     SELECT mc.commendation_id AS commendation_id,
            mc.progress        AS progress,
            ROW_NUMBER() OVER (
                PARTITION BY mc.commendation_id
-               ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC,
+               ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC,
                         mc.match_id DESC
            ) AS rn
     FROM match_commendations mc

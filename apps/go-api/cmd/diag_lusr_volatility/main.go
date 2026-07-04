@@ -26,6 +26,7 @@ import (
 	"sort"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -111,8 +112,8 @@ func printPlayerCoverage(ctx context.Context, db *sql.DB, p player) {
 	var minM, maxM sql.NullTime
 	_ = db.QueryRowContext(ctx, `
 		SELECT COUNT(*),
-		       MIN(COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC')),
-		       MAX(COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC'))
+		       MIN(`+analysis.SQLStartTimeCanonical("mr")+`),
+		       MAX(`+analysis.SQLStartTimeCanonical("mr")+`)
 		FROM match_registry mr JOIN match_participants mp ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ? AND COALESCE(mr.is_ranked,FALSE)=FALSE
 		  AND COALESCE(mr.is_firefight,FALSE)=FALSE AND mr.start_time IS NOT NULL`, p.xuid).Scan(&nEligible, &minM, &maxM)

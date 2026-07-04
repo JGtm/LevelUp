@@ -31,6 +31,8 @@ import (
 	"sort"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
+
 	duckdb "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -263,7 +265,7 @@ func findSessionsOnDate(shared, pdb *sql.DB, xuid, mmdd string) []string {
 		FROM match_participants mp
 		JOIN match_registry r ON r.match_id = mp.match_id
 		WHERE mp.xuid = ?
-		  AND strftime(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'), '%m-%d') = ?
+		  AND strftime(` + analysis.SQLStartTimeCanonical("r") + `, '%m-%d') = ?
 	`
 	rows, err := shared.Query(q, xuid, mmdd)
 	if err != nil {
