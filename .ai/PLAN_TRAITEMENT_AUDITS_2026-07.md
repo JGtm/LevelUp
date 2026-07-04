@@ -656,10 +656,13 @@ traiter AVANT les refactors structurels.)
   `registry_career.go:220` (F15-8) `[x]` commentaire corrigé (title-agnostic MT-09) ·
   `capabilities.toml:10` (F15-10) `[x]` header MAJ (8 caps supported, pas « seul career ») ·
   `job.go:92` (F15-17) `[x]` littéral → `title.DefaultSlug` (pas de cycle) ·
-  `sync/comeback.go:33-38` (F15-15) allowlisté ratchet F10 (mapping TOML = suivi). RESTE :
-  F15-2 neighbors, F15-3 ranks_loader, F15-4 asset drawer, F15-5 world_stats, F15-6 sync_handler,
-  F15-7 catalog_adapter, F15-9 outcomes raw_code, F15-11 synthetic_title_b, F15-12 capabilities
-  complétude, F15-13 server_titles fallback, F15-14 damage_model, F15-16 achievement_categories.
+  `sync/comeback.go:33-38` (F15-15) allowlisté ratchet F10 (mapping TOML = suivi) ·
+  `match_view_repo_neighbors_skill.go:63` (F15-2) `[x]` couplage halo_infinite retiré, injecte
+  le seam `analysis.ModeTaxonomy` (réutilise F1) via `WithModeTaxonomy` au wiring + fix test
+  intégration. RESTE : F15-3 ranks_loader, F15-4 asset drawer, F15-5 world_stats, F15-6
+  sync_handler, F15-7 catalog_adapter, F15-9 outcomes raw_code, F15-11 synthetic_title_b,
+  F15-12 capabilities complétude, F15-13 server_titles fallback, F15-14 damage_model,
+  F15-16 achievement_categories.
 - [ ] F16 — ARCHI 7 : dédupliquer `augmentWithActiveRankedCSRs` (copie DI
   `registry_pages.go:380` vs original `sync/career.go:255`, divergence NameFR/NameEN déjà
   réelle) → une implémentation unique, nom résolu via semantic adapter + locale.

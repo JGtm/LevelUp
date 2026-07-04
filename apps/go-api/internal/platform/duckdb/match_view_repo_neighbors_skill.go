@@ -13,7 +13,6 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite"
 )
 
 // GetMatchNeighbors retourne les matchs précédent/suivant pour la navigation (Q25).
@@ -45,9 +44,9 @@ func (r *MatchViewRepo) GetMatchNeighbors(ctx context.Context, xuid, matchID str
 // GetMatchNeighborsFiltered : variante paramétrable Phase 2b. spec=nil ou
 // vide → délègue à GetMatchNeighbors (chronologie globale).
 //
-// Le fragment SQL est produit par analysis.BuildNeighborsWhereClause avec
-// halo_infinite.PairNamePrefixesForCategory injecté. Pour les titres futurs
-// sans la notion ModeCategory, l'adapter dégradera silencieusement.
+// Le fragment SQL est produit par analysis.BuildNeighborsWhereClause avec la
+// ModeTaxonomy injectée (r.modeTax.Prefixes, nil-safe). Pour les titres sans la
+// notion ModeCategory, la clause est omise (dégradation silencieuse).
 func (r *MatchViewRepo) GetMatchNeighborsFiltered(
 	ctx context.Context,
 	xuid, matchID string,
@@ -60,7 +59,7 @@ func (r *MatchViewRepo) GetMatchNeighborsFiltered(
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	clauseRes := analysis.BuildNeighborsWhereClause(spec, halo_infinite.PairNamePrefixesForCategory)
+	clauseRes := analysis.BuildNeighborsWhereClause(spec, r.modeTax.Prefixes)
 
 	if len(clauseRes.IgnoredFilters) > 0 {
 		slog.WarnContext(ctx, "neighbors: filters ignored",

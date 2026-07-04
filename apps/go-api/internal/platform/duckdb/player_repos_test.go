@@ -2021,7 +2021,7 @@ func TestCareerRepo_GetHighlightPool_Empty(t *testing.T) {
 
 func TestMediaRepo_CountMediaFiles(t *testing.T) {
 	pdb := newTestPlayerDB(t)
-	repo := NewMediaRepo(pdb)
+	repo := NewMediaRepo(pdb).WithModeTaxonomy(testModeTaxonomy())
 	count, err := repo.CountMediaFiles(context.Background(), domain.MediaFilters{})
 	if err != nil {
 		t.Fatalf("CountMediaFiles: %v", err)
@@ -2033,7 +2033,7 @@ func TestMediaRepo_CountMediaFiles(t *testing.T) {
 
 func TestMediaRepo_LoadMediaFiles_WithData(t *testing.T) {
 	pdb := newTestPlayerDB(t)
-	repo := NewMediaRepo(pdb)
+	repo := NewMediaRepo(pdb).WithModeTaxonomy(testModeTaxonomy())
 	rows, err := repo.LoadMediaFiles(context.Background(), domain.MediaFilters{}, 10, 0)
 	if err != nil {
 		t.Fatalf("LoadMediaFiles: %v", err)
@@ -2045,7 +2045,7 @@ func TestMediaRepo_LoadMediaFiles_WithData(t *testing.T) {
 
 func TestMediaRepo_SetMediaLike(t *testing.T) {
 	pdb := newTestPlayerDB(t)
-	repo := NewMediaRepo(pdb)
+	repo := NewMediaRepo(pdb).WithModeTaxonomy(testModeTaxonomy())
 
 	// Phase 3.bis plan stabilisation 2026-05-22 : newTestPlayerDB câble
 	// désormais SharedSocial avec son propre seed ('/clips/shared.mp4',
@@ -2074,7 +2074,7 @@ func TestMediaRepo_SetMediaLike(t *testing.T) {
 
 func TestMediaRepo_LoadMediaFiles_WithSharedSocialSchema(t *testing.T) {
 	pdb := newTestPlayerDBWithSharedSocial(t)
-	repo := NewMediaRepo(pdb)
+	repo := NewMediaRepo(pdb).WithModeTaxonomy(testModeTaxonomy())
 
 	rows, err := repo.LoadMediaFiles(context.Background(), domain.MediaFilters{}, 10, 0)
 	if err != nil {
