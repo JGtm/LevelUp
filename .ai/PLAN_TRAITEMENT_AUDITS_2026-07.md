@@ -560,9 +560,19 @@ Objectif : plus aucune donnée/label/URL Infinite servie sous titre H5 ; manifes
 complets ; ratchet anti-slug étanche. (Priorité audit : ces items bloquent Halo 5, les
 traiter AVANT les refactors structurels.)
 
-- [ ] F1 — ARCHI 28 : `media_repo.go:112` (+ :240, q37_enrich) — injecter la
-  classification de modes par titre au wiring (seam `analysis.PairNamePrefixesFunc`
-  existant) ; plus de couplage platform/duckdb → games/halo_infinite.
+- [x] F1 — ARCHI 28 : couplage platform/duckdb → games/halo_infinite (classification
+  média des modes) SUPPRIMÉ. PÉRIMÈTRE ÉLARGI vs synthèse : q37_enrich couplait 3 symboles
+  (pas 1) — `PairNamePrefixesForCategory` + `ModeCategoryOther` + `AllKnownPairNamePrefixes`,
+  via une chaîne de fonctions LIBRES (`applyCrossDBMediaFilters`→`mediaRowMatchesMode`). Créé
+  un seam unique `analysis.ModeTaxonomy` (struct + helpers nil-safe Classify/Prefixes/
+  KnownPrefixes + champ Other), injecté dans MediaRepo (`WithModeTaxonomy`) et threadé aux
+  fonctions libres via `runMediaPipeline` (méthode `r`). Les 3 fichiers media_repo* n'importent
+  PLUS halo_infinite (import retiré ×3). Câblage au wiring `registry_media.go` (helper
+  `mediaModeTaxonomy()`, racine DI autorisée à importer games) — byte-identique (Infinite =
+  seul titre média en prod). NOTE per-titre : quand un 2e titre exposera du média, résoudre
+  la taxonomie via le title resolver (comme assetURLFor). Test seam nil-safe + délégation.
+  Gate : build+vet + duckdb/api/service/analysis tests verts. (F15-2 neighbors_skill = même
+  seam `ModeCategoryPrefixes`, item distinct.)
 - [x] F2 — ARCHI 29 : providers CSR Explorer/Compare gatés par capability. FAIT : les 2
   providers (`newExplorerCSRProvider`/`newExplorerSeasonCSRProvider`) sont spécifiques au
   live Infinite (`rankedplaylists.Active()` + client + endpoints HINF). Nouveau helper

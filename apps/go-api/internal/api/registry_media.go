@@ -5,12 +5,30 @@ package api
 import (
 	"context"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/api/handlers"
+	"levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 )
+
+// mediaModeTaxonomy est la taxonomie de classification des modes injectée dans
+// MediaRepo (F1). Le couplage games/halo_infinite vit désormais au niveau
+// composition (registry = racine DI, autorisée à importer games) et NON plus dans
+// platform/duckdb. Actuellement Halo Infinite (seul titre avec média + modes
+// catégorisés en prod ; comportement byte-identique au code d'avant F1).
+// FOLLOW-UP per-titre : quand un 2e titre exposera du média, résoudre la taxonomie
+// via le title resolver (comme assetURLFor) au lieu de cette constante.
+func mediaModeTaxonomy() analysis.ModeTaxonomy {
+	return analysis.ModeTaxonomy{
+		InferCategory: halo_infinite.InferModeCategoryFromPairName,
+		PrefixesFor:   halo_infinite.PairNamePrefixesForCategory,
+		AllPrefixes:   halo_infinite.AllKnownPairNamePrefixes,
+		Other:         halo_infinite.ModeCategoryOther,
+	}
+}
 
 // mediaWriterAcquirerFor construit l'acquéreur shared_social pour un PlayerDB.
 // Factorise la création de l'option pour les deux factories (Media, MediaUpload).
@@ -32,7 +50,7 @@ func (r *ServiceRegistry) Media(ctx context.Context, slug string) (port.MediaSer
 	if err != nil {
 		return nil, err
 	}
-	repo := duckdb.NewMediaRepo(pdb)
+	repo := duckdb.NewMediaRepo(pdb).WithModeTaxonomy(mediaModeTaxonomy())
 	if a := r.assetURLFor(pdb.TitleSlug); a != nil {
 		repo = repo.WithAssetURL(a)
 	}
@@ -49,7 +67,7 @@ func (r *ServiceRegistry) MediaUpload(ctx context.Context, slug string) (
 	if err != nil {
 		return nil, "", "", "", "", "", err
 	}
-	repo := duckdb.NewMediaRepo(pdb)
+	repo := duckdb.NewMediaRepo(pdb).WithModeTaxonomy(mediaModeTaxonomy())
 	if a := r.assetURLFor(pdb.TitleSlug); a != nil {
 		repo = repo.WithAssetURL(a)
 	}

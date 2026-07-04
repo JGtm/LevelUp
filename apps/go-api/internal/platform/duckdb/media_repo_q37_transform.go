@@ -273,7 +273,7 @@ func (r *MediaRepo) runMediaPipeline(
 		return nil, err
 	}
 	enriched := enrichCandidates(cands, registry)
-	enriched = applyCrossDBMediaFilters(enriched, f, whereCfg)
+	enriched = applyCrossDBMediaFilters(enriched, f, whereCfg, r.modeTax)
 	enriched = dedupCandidatesByFilePath(enriched)
 	sortEnrichedRows(enriched, f)
 	if limit > 0 {
@@ -333,7 +333,7 @@ func extractMapPairs(rows []mediaEnrichedRow) []mediaFilterOptionPair {
 // DISTINCT (pair_name_raw, label_normalisé) avec label non vide.
 //
 // id = pair_name brut (pour normalisation FR ultérieure côté
-// translateModeFilterOptions via halo_infinite.InferModeCategoryFromPairName).
+// translateModeFilterOptions via la ModeTaxonomy injectée).
 // label = label normalisé (préfixe avant ":" ou strip suffixes).
 func extractModePairs(rows []mediaEnrichedRow) []mediaFilterOptionPair {
 	type key struct{ id, label string }
