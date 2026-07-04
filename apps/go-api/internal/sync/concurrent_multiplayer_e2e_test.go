@@ -111,14 +111,14 @@ type playerE2E struct {
 // Tous les inserts passent par InsertParticipants → singleflight protégé.
 func syncOnePlayer(ctx context.Context, db *sql.DB, p playerE2E, sharedMatches []string) error {
 	intPtr := func(v int) *int { return &v }
-	strPtr := func(v string) *string { return &v }
+	strPtrNonEmpty := func(v string) *string { return &v }
 
 	rows := make([]ParticipantRow, 0, len(sharedMatches)+len(p.soloMatch))
 	for _, mid := range sharedMatches {
 		rows = append(rows, ParticipantRow{
 			MatchID:  mid,
 			XUID:     p.xuid,
-			Gamertag: strPtr(p.gamertag),
+			Gamertag: strPtrNonEmpty(p.gamertag),
 			TeamID:   intPtr(0),
 			Outcome:  intPtr(2),
 			Kills:    intPtr(10),
@@ -130,7 +130,7 @@ func syncOnePlayer(ctx context.Context, db *sql.DB, p playerE2E, sharedMatches [
 		rows = append(rows, ParticipantRow{
 			MatchID:  mid,
 			XUID:     p.xuid,
-			Gamertag: strPtr(p.gamertag),
+			Gamertag: strPtrNonEmpty(p.gamertag),
 			TeamID:   intPtr(0),
 			Outcome:  intPtr(2),
 			Kills:    intPtr(8),

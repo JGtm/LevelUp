@@ -65,6 +65,7 @@ import (
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/util/pointers"
 	"levelup/go-api/internal/watcher"
 	"levelup/go-api/internal/worldenrich"
 )
@@ -351,8 +352,8 @@ func main() {
 	// En DEMO_MODE, utiliser les fixtures de démo si les DBs prod n'existent pas.
 	if cfg.DemoMode {
 		demoPaths := []struct{ name, path *string }{
-			{name: strPtr("shared"), path: &sharedPath},
-			{name: strPtr("metadata"), path: &metaPath},
+			{name: pointers.Ptr("shared"), path: &sharedPath},
+			{name: pointers.Ptr("metadata"), path: &metaPath},
 		}
 		for _, dp := range demoPaths {
 			if _, err := os.Stat(*dp.path); os.IsNotExist(err) {
@@ -1441,8 +1442,6 @@ func main() {
 	}
 	fmt.Fprintln(os.Stderr, " terminé.")
 }
-
-func strPtr(s string) *string { return &s }
 
 // ensureWarehouseDir crée le répertoire warehouse du titre s'il n'existe pas.
 //

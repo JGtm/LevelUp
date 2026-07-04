@@ -402,29 +402,9 @@ func (r *ServiceRegistry) newExplorerCSRProvider() service.ExplorerTargetCSRProv
 				return nil, err
 			}
 			// 2. Compléter avec les playlists ranked ACTIVES manquantes (endpoint
-			//    par-playlist) — parité avec la page Carrière. Même mécanisme que
-			//    sync.augmentWithActiveRankedCSRs.
-			seen := make(map[string]struct{}, len(raw))
-			for i := range raw {
-				seen[strings.ToLower(strings.TrimSpace(raw[i].PlaylistID))] = struct{}{}
-			}
-			for _, pl := range rankedplaylists.Active() {
-				if _, ok := seen[strings.ToLower(pl.AssetID)]; ok {
-					continue
-				}
-				res, perr := client.GetPlaylistCsr(c, pl.AssetID, xuid, seasonID)
-				if perr != nil {
-					slog.WarnContext(c, "explorer_target_csr_augment_failed", "playlist", pl.AssetID, "err", perr)
-					continue
-				}
-				if res == nil {
-					continue
-				}
-				res.PlaylistName = pl.NameFR
-				res.Queue = pl.Queue
-				res.Input = pl.Input
-				raw = append(raw, *res)
-			}
+			//    par-playlist) — parité avec la page Carrière. Source unique
+			//    partagée (H8) ; locale "fr" pour l'Explorer.
+			raw = sync_pkg.AugmentWithActiveRankedCSRs(c, client, xuid, seasonID, raw, "fr")
 			return mapSyncCSRsToDomain(raw), nil
 		})
 	})

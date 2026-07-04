@@ -1,3 +1,29 @@
+## [2026-07-04] LOT H — H5 (pointers.Ptr) + H8 (augment CSR) — COMPLÉTÉ
+
+**Tâche** : H5 (helpers Go) + H8 (dédup augmentWithActiveRankedCSRs) du
+PLAN_TRAITEMENT_AUDITS_2026-07, exécutés ensemble (Go, gate intégration commune).
+
+**Décision technique principale** :
+- H5 : la vérif sur pièces a révélé 2 pièges. (1) `safeDiv` (déjà calibré faux positif)
+  NON touché. (2) Le `strPtr` de sync/transforms_helpers.go n'est PAS pur — il renvoie
+  `nil` sur vide → le migrer vers `pointers.Ptr` (toujours non-nil) aurait été un bug de
+  faux-dédup. RENOMMÉ `strPtrNonEmpty` (clarté + garde-rail propre). Seules les 3 copies
+  PURES + strPtrH5 → `pointers.Ptr[T]` (nouveau internal/util/pointers).
+- H8 : la « copie » n'était pas une fonction nommée mais une boucle INLINE dans
+  newExplorerCSRProvider divergeant sur NameFR vs NameEN. Fonction sync exportée +
+  param `locale` ; même type CSR des deux côtés → appel direct.
+
+**Résultats observés** : H5 = pointers.Ptr + 4 migrations + rename sync (13+tests) +
+garde-rail no_local_ptr_helper. H8 = 1 def exportée, boucle inline (~21 L) supprimée,
+parité comportement (sync "en", Explorer "fr"). Pas de garde-rail grep H8 : le fingerprint
+Active()+GetPlaylistCsr collisionne avec newExplorerSeasonCSRProvider (logique légitime
+distincte) → la fonction unique exportée est le mécanisme. Gate commun : build+vet OK,
+unit verts, **intégration `-p 1` VERTE** (duckdb 110 s, sync 106 s, 0 FAIL, exit 0).
+
+**Conclusion / prochaine étape** : H5+H8 clos. Reste LOT H : items FRONT H3 (SynthesisPage/
+useLocalFilterBar), H4 (formatters), H6 (builder option ECharts), H7 (palette couleurs).
+Bascule toolchain npm (typecheck+vitest+eslint hors sandbox).
+
 ## [2026-07-04] LOT H — H2 prédicat bot canonique — COMPLÉTÉ
 
 **Tâche** : H2 du PLAN_TRAITEMENT_AUDITS_2026-07 — source unique du prédicat SQL

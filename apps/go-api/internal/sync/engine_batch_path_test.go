@@ -90,7 +90,7 @@ func TestSubmitMatchAsBatch_SmokePath(t *testing.T) {
 	}
 
 	intPtr := func(v int) *int { return &v }
-	strPtr := func(v string) *string { return &v }
+	strPtrNonEmpty := func(v string) *string { return &v }
 
 	fm := &fetchedMatch{
 		MatchID: "m_e2e_001",
@@ -101,8 +101,8 @@ func TestSubmitMatchAsBatch_SmokePath(t *testing.T) {
 			FirstSyncBy:  "Alice",
 		},
 		Participants: []domain.MatchParticipantRow{
-			{MatchID: "m_e2e_001", XUID: "1111", Gamertag: strPtr("Alice"), Kills: intPtr(10), Deaths: intPtr(5)},
-			{MatchID: "m_e2e_001", XUID: "2222", Gamertag: strPtr("Bob"), Kills: intPtr(7), Deaths: intPtr(8)},
+			{MatchID: "m_e2e_001", XUID: "1111", Gamertag: strPtrNonEmpty("Alice"), Kills: intPtr(10), Deaths: intPtr(5)},
+			{MatchID: "m_e2e_001", XUID: "2222", Gamertag: strPtrNonEmpty("Bob"), Kills: intPtr(7), Deaths: intPtr(8)},
 		},
 		Medals: []domain.MedalRow{
 			{MatchID: "m_e2e_001", XUID: "1111", MedalNameID: 1234, Count: 2},

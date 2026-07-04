@@ -40,7 +40,7 @@ func TestAugmentWithActiveRankedCSRs(t *testing.T) {
 		},
 	}}
 
-	out := augmentWithActiveRankedCSRs(context.Background(), stub, "123", "CsrSeason13-1", pre)
+	out := AugmentWithActiveRankedCSRs(context.Background(), stub, "123", "CsrSeason13-1", pre, "en")
 
 	// La playlist déjà présente ne doit pas être interrogée.
 	for _, id := range stub.got {
