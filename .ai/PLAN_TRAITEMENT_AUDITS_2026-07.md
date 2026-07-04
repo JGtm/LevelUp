@@ -617,7 +617,12 @@ traiter AVANT les refactors structurels.)
   est un refactor architectural de couche (K1). Les libellés actuels sont FR-canoniques Halo
   (corrects pour Infinite ET H5, même famille) → faible valeur title-agnosticism, gros diff.
   `session_compare_service.go` : `[~]` réf G3 (helper partagé conservé ; migration = K1).
-- [ ] F6 — ARCHI 34 : compléter `config/titles/halo_5/mappings/fields.toml` + test de parité.
+- [x/~] F6 — ARCHI 34 : `config/titles/halo_5/mappings/fields.toml` COMPLÉTÉ (5 → 52 FieldKeys).
+  FAIT : généré par transform d'Infinite (59) MOINS les 7 champs PvE/Firefight (`group="pve"`) —
+  labels/unités canoniques Halo partagés. 52 = combat+match+career+skill+derived. Gate :
+  `go test -count=1 ./internal/games/mappings/ ./internal/games/halo_5/` VERT (validate + loader).
+  Le test de parité générique (« chaque titre déclare les FieldKeys de ses capability-groups ») →
+  **L2** avec les autres garde-rails (F15-12/14) : cross-source capabilities↔fields, home gouvernance.
   **DÉCISION (2026-07-04) : sous-ensemble par capability, PAS strict-59.** H5 déclare les
   FieldKeys des groupes qu'il EXPOSE (combat, match, career, skill, aggregate) mais PAS les
   7 champs PvE/Firefight (`waves_completed`, `bosses_killed`, `grunt/elite/jackal/brute/
@@ -673,14 +678,20 @@ traiter AVANT les refactors structurels.)
   `title_builtin_toml_ignored` (WARN) quand un `title.toml` existe pour un titre déjà
   enregistré (built-in) — plus de skip muet. Test `TestLoadTitlesIntoRegistry_BuiltinTOMLWarns`
   (capture slog). Gate : `go test ./internal/domain/title/... -run LoadTitles` VERT.
-- [ ] F12 — ARCHI 13 / DETTE §2.4.1 : migrer le pipeline film Infinite entier
-  (`weapon_data.go`, `weapon_scanner/parser/correlation/reconciliation`,
-  `highlight_event_parser.go`, `spawn_detection.go`, `kill_attribution.go`) de
-  `internal/analysis/` vers `internal/games/halo_infinite/film/` (migration mécanique
-  vérifiée par l'audit) + entrée au registre MT.
-- [ ] F13 — DETTE §2.4.2 : paramétrer les goldens par slug
-  (`analysis/timeline/golden_test.go`, `home_canonical_test.go`,
-  `synthesis_canonical_test.go`) pour distinguer régression vs divergence de titre.
+- [~] F12 — ARCHI 13 / DETTE §2.4.1 : DIFFÉRÉ → **LOT K** (structure & couches). Vérifié :
+  18 fichiers (9 src + 9 test) à extraire de `package analysis` vers un nouveau `package film`
+  (`internal/games/halo_infinite/film/`). L'audit l'annonçait « mécanique » mais c'est une
+  EXTRACTION DE PACKAGE d'un sous-système délicat (pipeline film RE-verse, keyframe/weapon
+  attribution) : les fichiers vivent dans `package analysis`, leurs symboles exportés sont
+  consommés par ~3 callers externes via `analysis.X` (sync/backfill_weapons, sync/collect,
+  games/halo_infinite/events) + dépendances film→analysis (`RawEvent`). Renommage package +
+  requalification des refs + MAJ imports callers = refactor structurel = domaine LOT K, pas
+  audit-mineur. Risque de casser le pipeline film (délicat). À faire en chantier dédié K.
+- [~] F13 — DETTE §2.4.2 : DIFFÉRÉ → **LOT M** (Tests). Paramétrer les goldens par slug
+  (`golden_output_<slug>.json`, fixtures H5) pour distinguer régression vs divergence de titre =
+  amélioration d'INFRASTRUCTURE DE TEST (nouvelles fixtures H5 + chemins slug-aware), home naturel
+  = LOT M (gaps de tests ciblés). Pas un défaut fonctionnel ; les goldens Infinite actuels restent
+  valides. À livrer avec les autres travaux tests de M.
 - [x] F14 — DETTE §2.4.3 : convention « nouveau titre » figée. FAIT : section « Data writes:
   the Collect → Persist architecture (ADR 0019) » ajoutée à `docs/ADD_TITLE.md` (Étape 4) EN
   **et** FR — invariant INSERT-only, hiérarchie client→livesync→persist, tables append-only +
