@@ -1328,6 +1328,31 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 - RÉCONCILIER plan/journal G au merge. Suivi LOT F ensuite (title-agnosticism).
 ```
 
+### LOT F — Title-agnosticism — CLOS 2026-07-04
+
+```
+- Méthode : investigation on-pièces des 15 items (workflow 16 agents) puis exécution linéaire,
+  chaque seam vérifié + gaté. Pattern récurrent : injection de seam au wiring (racine DI autorisée
+  à importer games) pour découpler platform/service de games/halo_infinite.
+- LIVRÉS [x] : F1 (media_repo → seam `analysis.ModeTaxonomy`), F2 (CSR Explorer/Compare gated
+  capability → 0 fuite H5), F3 (URL Waypoint → 2 méthodes `TitleAssetURLAdapter`, lien mort H5
+  supprimé), F4 (labels outcome → outcomes.toml + unif « Abandon » cross-titre), F5 (anglicismes +
+  corruption UTF-8 timeseries ; routage FieldMappingSet → K1), F6 (H5 fields.toml 5→52, sous-ensemble
+  par capability, transform Infinite-moins-PvE), F10 (ratchet anti-slug élargi, FERME un feature-gate
+  `TitleSlug(ctx)=="halo_infinite"` ; 11 sites parité grandfathered), F11 (WARN builtin toml),
+  F14 (doc Collect→Persist EN+FR), F15 (17 puces : 8 [x] + 9 [~]).
+- DÉCISIONS UTILISATEUR (2026-07-04) : F6 = sous-ensemble par capability (pas strict-59) ;
+  F7 = réconciliation SEULE (test miroir souple) — l'ACTIVATION engagement H5 est un chantier futur
+  (canonicalisation + calibration, impacte Halo 7), HORS audit → mémoire dédiée.
+- DIFFÉRÉS [~] justifiés : F7 (activation = chantier futur), F8 (auth ADR 0023, H5 réutilise audiences
+  Infinite → défaut fonctionnel, per-titre = MT-02/Phase 1b), F9 (Ascension épinglé DefaultSlug, pas de
+  cap Ascension + H5 a CapCareer → Phase 1b), F12 (extraction package film 18 fichiers = structurel → LOT K),
+  F13 (goldens par slug = infra test → LOT M). Garde-rails génériques F15-12/14 + parité fields F6 → LOT L2.
+- Gate F : go build+vet OK ; suites unitaires par package + front verts ; intégration -p 1 exit 0
+  (F1/F15-2, 233 pkgs). ~14 commits (F1 9e602c638 … F6 ecdb0b4e0).
+- RÉCONCILIER plan/journal F au merge. Suivi LOTS H→N.
+```
+
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
 
 - [LOT E / E2 — bulk résiduel per-asset-id] `backfillOneColumn` (`backfill_registry_names.go:177`)

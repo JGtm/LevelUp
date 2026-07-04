@@ -1,3 +1,33 @@
+## [2026-07-04] LOT F (audit 2026-07) — Title-agnosticism — CLOS (F1-F15)
+
+**Tâche** : LOT F du PLAN_TRAITEMENT_AUDITS_2026-07 (15 items + F15 ~17 puces), branche
+refactor/audits-2026-07. Objectif : plus aucune donnée/label/URL Infinite servie sous H5 ;
+manifests H5 complets ; ratchet anti-slug étanche.
+
+**Décision technique principale** : investigation on-pièces (workflow 16 agents) puis exécution
+linéaire. Pattern récurrent = injection de SEAM au wiring (racine DI, autorisée à importer games)
+pour découpler platform/service de games/halo_infinite : `analysis.ModeTaxonomy` (F1/F15-2),
+`TitleAssetURLAdapter.{Match,PlayerMatch}WebURL` (F3), `MatchHistoryService.{WithSemantic,rowFormatters}`
+(F4). F10 a fermé un vrai trou de sécurité (feature-gate `TitleSlug(ctx)=="halo_infinite"` passait
+sous le ratchet). F6 = H5 fields.toml généré par transform (Infinite 59 − 7 PvE = 52).
+
+**2 décisions produit tranchées avec l'utilisateur** : (1) F6 sous-ensemble par capability ;
+(2) F7 réconciliation seule — l'ACTIVATION de l'engagement H5 (le compute est déjà title-agnostic
++ tourne pour H5 ; bloqué par non-canonicalisation adapter + calibration cold-start) est un CHANTIER
+FUTUR hors audit (impacte Halo 7) → mémoire project-h5-engagement-canonicalization-chantier.
+
+**Résultats observés** : F1-F6, F10, F11, F14, F15 LIVRÉS+gatés. DIFFÉRÉS [~] justifiés (règle 9) :
+F7 (activation future), F8 (auth ADR 0023 sensible, H5 réutilise les audiences Infinite → défaut
+fonctionnel ; per-titre = MT-02), F9 (Ascension DefaultSlug + pas de cap Ascension → Phase 1b),
+F12 (extraction package film 18 fichiers = structurel → LOT K), F13 (goldens par slug = infra test
+→ LOT M). Garde-rails cross-source + parité fields → L2. Gate : build+vet + front verts ; intégration
+-p 1 exit 0. ~15 commits.
+
+**Conclusion / prochaine étape** : LOT F clos (substantiel livré ; défers vers leurs lots naturels
+K/M/L2 + chantiers Phase 1b). Prochain : LOTS H (repropagation), I (i18n), J (perf DuckDB),
+K (structure — inclut F12), L (gouvernance — inclut garde-rails F15-12/14/F6-parité),
+M (tests — inclut F13), N (front). Réconcilier plan/journal F au merge.
+
 ## [2026-07-03] LOT G (audit 2026-07) — Purge du code mort — CLOS (G1-G16)
 
 **Tâche** : LOT G du PLAN_TRAITEMENT_AUDITS_2026-07 (16 items, CR A7-A9 « dead code museum »),
