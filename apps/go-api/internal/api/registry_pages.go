@@ -689,6 +689,11 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 	if au := r.assetURLFor(pdb.TitleSlug); au != nil {
 		svc = svc.WithAssetURL(au)
 	}
+	// Libellés d'outcome via outcomes.toml du titre (F4) : source de vérité au lieu
+	// des littéraux FR ; fallback FR canonique si l'adapter est absent.
+	if sem := r.semanticFor(pdb.TitleSlug); sem != nil {
+		svc = svc.WithSemantic(sem)
+	}
 	if pdb.Metadata != nil {
 		// PR2 placement X/Y : résolveur season_id → threshold (5 ou 10 selon
 		// saison CSR). Fallback à 5 si absent. Cf. csr_thresholds_repo.go.

@@ -594,9 +594,20 @@ traiter AVANT les refactors structurels.)
   enrichRow (remplace le param `waypoint string`) ; câblé au wiring (registry_pages:682). Tests
   `buildMatchURL` migrés vers l'adapter halo_infinite (Match/PlayerMatchWebURL). 3 stubs de test
   complétés (resolver + 2 service). Gate : build+vet + `go test ./...` (non-intégration) verts.
-- [ ] F4 — ARCHI 31 : labels d'outcome FR en dur x3 (`match_history_service.go:34`,
-  `analysis/home_locale.go:55`, notify/discord) → `resolver.Semantic(slug).Outcomes().Label(...)`,
-  littéraux en failsafe. Corrige l'incohérence Victory/Defeat vs Win/Loss.
+- [x/~] F4 — ARCHI 31 : labels d'outcome FR en dur x3. FAIT (site 1 + site 3) :
+  - Site 1 `match_history` : `MatchHistoryService.WithSemantic` + résolution via
+    `semantic.Outcomes().Get(code→key).Label("fr")` avec fallback FR canonique
+    (`outcomeLabel`). Le seam `matchURLFor` (F3) + `outcomeLabel` (F4) consolidés dans une
+    struct nil-safe `rowFormatters` (réduit l'explosion de params + churn de tests). Câblé au
+    wiring (registry_pages `WithSemantic`). Map `outcomeCodeToKey` (1→tie/2→win/3→loss/4→dnf).
+  - Incohérence corrigée : `outcomes.toml` Infinite avait dnf fr="Non terminé" alors que H5 +
+    les 2 surfaces UI (match_history/home) utilisaient "Abandon" → aligné Infinite→"Abandon"
+    (byte-identique UI, source de vérité unifiée cross-titre).
+  - Site 3 (notify/discord) : `[~]` déjà via le seam `Outcomes()` (labels.go, testé). Désormais
+    "Abandon" pour dnf (unifié).
+  - Site 2 (`analysis/home_locale.go`) : `[~]` → K1. Reste en littéraux FR (analysis = pur, la
+    migration resolver relève de la couche service K1) ; valeur déjà cohérente ("Abandon").
+  Gate : build+vet + service/api/games/mappings tests verts.
 - [ ] F5 — ARCHI 33 : labels KPI en dur (`compare_service.go:472` ~20 labels,
   `timeseries_service_tabs.go:48`) → FieldMappingSet du titre ou key-only + labelling
   front via /field-mappings. (`session_compare_service.go:414` : sans objet si G3 a

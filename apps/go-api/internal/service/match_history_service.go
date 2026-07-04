@@ -93,6 +93,19 @@ type MatchHistoryService struct {
 	// lien vers la page publique du match (Waypoint pour Infinite). nil ou titre
 	// sans page publique → pas de lien (dégradation gracieuse, F3).
 	assetURL games.TitleAssetURLAdapter
+	// semantic (optionnel) : adapter sémantique du titre, utilisé pour résoudre les
+	// libellés d'outcome depuis outcomes.toml (source de vérité) plutôt qu'en dur
+	// (F4). nil → fallback FR canonique via outcomeLabel().
+	semantic games.TitleSemanticAdapter
+}
+
+// outcomeCodeToKey mappe le code outcome Halo (domain.Outcome*) vers la clé
+// canonique outcomes.toml (win/loss/tie/dnf). "" si code inconnu.
+var outcomeCodeToKey = map[int]string{
+	domain.OutcomeDraw: "tie",
+	domain.OutcomeWin:  "win",
+	domain.OutcomeLoss: "loss",
+	domain.OutcomeDNF:  "dnf",
 }
 
 // NewMatchHistoryService crée un MatchHistoryService.
@@ -107,14 +120,36 @@ func (s *MatchHistoryService) WithAssetURL(a games.TitleAssetURLAdapter) *MatchH
 	return s
 }
 
-// matchURLFn construit le résolveur d'URL de page publique du match pour ce
-// service (adapter du titre + gamertag du joueur). nil adapter → "" (pas de lien).
-func (s *MatchHistoryService) matchURLFn() func(matchID string) string {
-	if s.assetURL == nil {
-		return func(string) string { return "" }
+// WithSemantic injecte l'adapter sémantique du titre (libellés d'outcome résolus
+// depuis outcomes.toml, source de vérité). Sans injection, fallback FR canonique. F4.
+func (s *MatchHistoryService) WithSemantic(a games.TitleSemanticAdapter) *MatchHistoryService {
+	s.semantic = a
+	return s
+}
+
+// rowFormatters construit les résolveurs title-agnostic injectés dans
+// l'enrichissement d'une ligne : URL de page publique du match (F3, via l'adapter
+// d'assets + gamertag) et libellé d'outcome (F4, via l'adapter sémantique). Champs
+// nil si l'adapter correspondant n'est pas câblé → dégradation gracieuse.
+func (s *MatchHistoryService) rowFormatters() rowFormatters {
+	f := rowFormatters{}
+	if s.assetURL != nil {
+		gt := s.waypointPlayer
+		f.matchURL = func(matchID string) string { return s.assetURL.PlayerMatchWebURL(gt, matchID) }
 	}
-	gt := s.waypointPlayer
-	return func(matchID string) string { return s.assetURL.PlayerMatchWebURL(gt, matchID) }
+	if s.semantic != nil {
+		f.outcomeLabel = func(code int) string {
+			if oc := s.semantic.Outcomes(); oc != nil {
+				if m, ok := oc.Get(outcomeCodeToKey[code]); ok {
+					if lbl, _ := m.Label("fr"); lbl != "" {
+						return lbl
+					}
+				}
+			}
+			return outcomeLabel(code) // failsafe FR canonique
+		}
+	}
+	return f
 }
 
 // WithDataAdapter injecte le DataAdapter multi-titres pour activer une
@@ -202,7 +237,7 @@ func (s *MatchHistoryService) GetPage(
 	mapWinRates := computeMapWinRates(rawRows)
 
 	// Enrichissement
-	items := enrichRows(filtered, mapWinRates, s.matchURLFn())
+	items := enrichRows(filtered, mapWinRates, s.rowFormatters())
 
 	// Tri
 	sortItems(items, req.SortField, req.SortDir)
