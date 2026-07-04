@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 
-	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/mappings"
 )
 
@@ -53,9 +52,9 @@ func LoadCareerRankImageURLs(ctx context.Context, metaDB *DB, titleSlug string) 
 //
 // Les codes lang Waypoint ("fr-FR", "de-DE") sont normalisÃ©s en codes courts
 // ("fr", "de") au moment de la lecture, en cohÃ©rence avec mappings.LocaleEN/FR.
-func LoadRankCatalog(ctx context.Context, metaDB *DB) (*mappings.RankCatalog, error) {
+func LoadRankCatalog(ctx context.Context, metaDB *DB, titleSlug string) (*mappings.RankCatalog, error) {
 	if metaDB == nil {
-		return mappings.NewRankCatalog(titlePkg.DefaultSlug, nil), nil
+		return mappings.NewRankCatalog(titleSlug, nil), nil
 	}
 
 	rows, err := metaDB.Query(ctx, `
@@ -129,5 +128,5 @@ func LoadRankCatalog(ctx context.Context, metaDB *DB) (*mappings.RankCatalog, er
 	for _, a := range byID {
 		entries = append(entries, a.entry)
 	}
-	return mappings.NewRankCatalog(titlePkg.DefaultSlug, entries), nil
+	return mappings.NewRankCatalog(titleSlug, entries), nil
 }

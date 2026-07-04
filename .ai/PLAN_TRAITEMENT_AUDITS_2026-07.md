@@ -699,10 +699,19 @@ traiter AVANT les refactors structurels.)
   `sync/comeback.go:33-38` (F15-15) allowlisté ratchet F10 (mapping TOML = suivi) ·
   `match_view_repo_neighbors_skill.go:63` (F15-2) `[x]` couplage halo_infinite retiré, injecte
   le seam `analysis.ModeTaxonomy` (réutilise F1) via `WithModeTaxonomy` au wiring + fix test
-  intégration. RESTE : F15-3 ranks_loader, F15-4 asset drawer, F15-5 world_stats, F15-6
-  sync_handler, F15-7 catalog_adapter, F15-9 outcomes raw_code, F15-11 synthetic_title_b,
-  F15-12 capabilities complétude, F15-13 server_titles fallback, F15-14 damage_model,
-  F15-16 achievement_categories.
+  intégration ·
+  `halo_ranks_loader.go` (F15-3) `[x]` `LoadRankCatalog` paramétrisé `(ctx, metaDB, titleSlug)`
+  au lieu de `DefaultSlug` figé ; callers (boot + 3 tests) MAJ ; import titlePkg retiré du loader ·
+  `halo_5/outcomes.toml` (F15-9) `[x]` `raw_code` ajouté (win=2/loss=3/tie=1/dnf=4) — seam
+  int↔canonique MT-06 complet pour H5 ·
+  `domain/achievement_categories.go` (F15-16) `[~]` DÉJÀ title-agnostic : `achievementCategoriesByTitle`
+  est un registre map[slug] avec dégradation gracieuse (titre absent → catégorie vide, front masque
+  le filtre) — pas de littéral en dur à corriger ; décision « statu quo » respectée ·
+  `handlers/sync_handler.go` (F15-6) `[~]` `livesync.RunnerForTitle(titleSlug)` est DÉJÀ le point
+  de dispatch title-aware (retourne nil hors titre live → fallback engine par défaut) ; seul
+  l'emplacement de l'import couple (mineur) — déplacer `RunnerForTitle` en package agnostique = K-couches.
+  RESTE : F15-4 asset drawer, F15-5 world_stats, F15-7 catalog_adapter, F15-11 synthetic_title_b,
+  F15-12 capabilities complétude (= test miroir F7), F15-13 server_titles fallback, F15-14 damage_model.
 - [ ] F16 — ARCHI 7 : dédupliquer `augmentWithActiveRankedCSRs` (copie DI
   `registry_pages.go:380` vs original `sync/career.go:255`, divergence NameFR/NameEN déjà
   réelle) → une implémentation unique, nom résolu via semantic adapter + locale.

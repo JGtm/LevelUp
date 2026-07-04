@@ -4,6 +4,7 @@ package duckdb
 
 import (
 	"context"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"path/filepath"
 	"testing"
 )
@@ -12,7 +13,7 @@ import (
 // un catalog vide (le caller dÃ©grade gracieusement vers un libellÃ© minimal).
 func TestLoadRankCatalog_NilDB(t *testing.T) {
 	t.Parallel()
-	catalog, err := LoadRankCatalog(context.Background(), nil)
+	catalog, err := LoadRankCatalog(context.Background(), nil, titlePkg.DefaultSlug)
 	if err != nil {
 		t.Fatalf("err = %v, want nil pour DB nil", err)
 	}
@@ -42,7 +43,7 @@ func TestLoadRankCatalog_EmptyTable(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 
-	catalog, err := LoadRankCatalog(context.Background(), db)
+	catalog, err := LoadRankCatalog(context.Background(), db, titlePkg.DefaultSlug)
 	if err != nil {
 		t.Fatalf("LoadRankCatalog: %v", err)
 	}
@@ -86,7 +87,7 @@ func TestLoadRankCatalog_PopulatedTable(t *testing.T) {
 		}
 	}
 
-	catalog, err := LoadRankCatalog(context.Background(), db)
+	catalog, err := LoadRankCatalog(context.Background(), db, titlePkg.DefaultSlug)
 	if err != nil {
 		t.Fatalf("LoadRankCatalog: %v", err)
 	}
