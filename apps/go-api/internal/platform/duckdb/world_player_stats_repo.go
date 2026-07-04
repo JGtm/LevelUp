@@ -19,6 +19,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -164,6 +165,27 @@ func WorldSeasonNoDataGamertags(ctx context.Context, db *sql.DB, titleSlug, seas
 		out[gt] = struct{}{}
 	}
 	return out, rows.Err()
+}
+
+// WorldSeasonHasEnriched indique si AU MOINS un joueur a des stats pour la saison
+// (world_player_season_stats_latest). Sert de garde au masquage des privés à
+// l'affichage : une saison ENTIÈREMENT expirée (historique API perdu → 0 enrichi,
+// tous marqués privés) ne doit PAS être masquée (sinon classement vide) — on montre
+// alors le classement CSR brut. Best-effort : table absente → false.
+func WorldSeasonHasEnriched(ctx context.Context, db *sql.DB, season string) (bool, error) {
+	var one int
+	err := db.QueryRowContext(ctx,
+		`SELECT 1 FROM world_player_season_stats_latest WHERE season_id = ? LIMIT 1`, season).Scan(&one)
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, sql.ErrNoRows):
+		return false, nil
+	case isTableNotFoundErr(err):
+		return false, nil
+	default:
+		return false, fmt.Errorf("WorldSeasonHasEnriched(%s): %w", season, err)
+	}
 }
 
 // InsertWorldNoDataPlayers marque des joueurs « privé / sans données » pour une saison
