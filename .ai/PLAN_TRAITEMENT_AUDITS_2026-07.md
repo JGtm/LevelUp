@@ -777,48 +777,100 @@ sync bouge en K3e — allowlist temporaire datée si besoin) ; smoke test des pa
 Objectif : plus de copie locale divergente d'un helper canonique existant ; chaque helper
 embarque son garde-rail anti-régression le jour de sa livraison (CR reco 1).
 
-- [ ] H1 — CR A10 : helper `SQLStartTimeUTC(alias)` dans `analysis/sql_fragments.go` +
-  migration mécanique des 87 copies (33 fichiers) + test grep interdisant le littéral
-  hors sql_fragments.go.
-- [ ] H2 — CR A11 : adoption `SQLIsBot` sur les 36 littéraux résiduels (19 fichiers) +
-  test grep interdisant `LIKE 'bid(%` hors sql_fragments.go.
-- [ ] H3 — CR A12 : migrer SynthesisPage sur `useLocalFilterBar` (~250 L supprimées,
-  `SynthesisPage.tsx:51-61` === `useLocalFilterBar.tsx:23-33`) ; en profiter pour corriger
-  le matching de filtres couplé aux libellés FR (`useLocalFilterBar.tsx:234-236`, CR mineur).
-- [ ] H4 — CR A13 : compléter `lib/formatters/{date,duration,percent}.ts` et purger les
-  copies (4 formatDate, 4 formatPercent, 3 durées) ; absorber le dictionnaire 60 L inline
-  + `formatDateShort` homonyme de `PeriodSessionRail.tsx:55-114` (CR mineur).
-- [ ] H5 — CR A13 : côté Go — `Ptr[T]` générique (remplace 5 `strPtr`) ; `safeDiv`
-  (`teammates_service_kpis.go:224`) → `analysis.SafeRatio`.
-- [ ] H6 — CR A13 : composant `<OpenMatchIcon/>` (9 copies, 8 fichiers) ; factoriser le
-  socle d'option ECharts répété x7 dans `TimeseriesFormCharts.tsx`.
-- [ ] H7 — CR A13 : helpers couleur win/loss/ratio recodés x4 (palmares/career) →
-  module partagé (respect règle couleurs §20).
+> **CALIBRATION H (2026-07-04, vérifiée sur pièces)** : les comptes de l'audit sont PÉRIMÉS
+> (sous-évalués) et plusieurs « dédups » cachent des DIVERGENCES SÉMANTIQUES. Règles
+> d'exécution H : (a) vérif PER-COPIE avant migration (pas de grep-replace aveugle) ;
+> (b) les `migrations/steps_*.go` sont de l'HISTORIQUE GELÉ — ne jamais y réécrire les
+> littéraux, les ALLOWLISTER dans les garde-rails ; (c) chaque helper livré = garde-rail
+> grep dans le MÊME commit.
 
-Gate H : tests grep H1/H2 verts ; `npm run typecheck && npm run test` ; go test ; compte
-des copies au Journal (avant/après).
+- [ ] H1 — CR A10 : helper start_time canonique. CALIBRÉ : **115 littéraux / 52 fichiers**
+  (vs 87/33 audit), dont cmd/ + migrations (→ allowlist). Le helper N'EXISTE PAS dans
+  `analysis/sql_fragments.go` MAIS E5 a déjà créé `duckdb.StartTimeCanonicalSQL(alias)`
+  (platform/duckdb) → DÉCISION TRANCHÉE (défaut approuvé) : **une seule source dans
+  `analysis/sql_fragments.go`** : `SQLStartTimeCanonical(alias string) string` (func, les
+  alias varient : mr./x./m.), `duckdb.StartTimeCanonicalSQL` devient un ré-export/délégué.
+  Migration des sites NON gelés (hors migrations/), garde-rail
+  `archlint/start_time_canonical_test.go` (calque no_art_patterns : allowlist migrations +
+  sql_fragments). Gate : build+tests + grep littéral hors allowlist → 0.
+- [ ] H2 — CR A11 : prédicat bot. CALIBRÉ : **58 littéraux / 30 fichiers** (vs 36/19) ;
+  `SQLIsBot`/`SQLIsNotBot` EXISTENT mais supposent la colonne `xuid` NUE alors que les
+  copies utilisent des préfixes variables (`mp.xuid`, `opp.xuid`) et l'échappement `%%`
+  (fmt.Sprintf). PIÈGE sémantique : certains sites (migrations steps_shared_core) filtrent
+  `gamertag LIKE 'bid(%'` = AUTRE prédicat, NE PAS remplacer. Fix : ajouter
+  `SQLIsBotCol(col string)`/`SQLIsNotBotCol(col)` paramétrés + migrer les sites xuid
+  non gelés ; garde-rail `archlint/isbot_canonical_test.go` (allowlist migrations +
+  commentaires). Gate : build+tests + grep hors allowlist → 0.
+- [ ] H3 — CR A12 : SynthesisPage / useLocalFilterBar. CALIBRÉ : le hook EXISTE ; la
+  duplication réelle = **13 L** (`EXPERIENCE_TO_CASCADE` + `setsEqual`,
+  `SynthesisPage.tsx:48-61` === `useLocalFilterBar.tsx:22-33`) — PAS ~250 L. Étape 1 :
+  dédup des 2 helpers (import du hook). Étape 2 (SEULEMENT si le hook couvre tous les
+  besoins d'état de SynthesisPage — à vérifier avant) : migration d'état complète. Le fix
+  du matching couplé aux libellés FR (`useLocalFilterBar.tsx:234-236`) reste dû.
+  Gate : typecheck+vitest ; grep EXPERIENCE_TO_CASCADE/setsEqual = 1 seule def (hook).
+- [ ] H4 — CR A13 : formatters front. CALIBRÉ : `lib/formatters/{date,duration,percent}.ts`
+  EXISTENT ; copies réelles = **7-8** (4 formatDate : LabPage, PalmaresRelationsPage,
+  SquadV2/HistoryTable… ; 3 formatPercent : ExplorerEncounterBriefing,
+  MatchEncountersTable, session-detail/_shared) + `formatDateShort` HOMONYME DIVERGENT
+  (`PeriodSessionRail.tsx:55-114`, dictionnaire 60 L inline) → fusionner si identique,
+  sinon renommer (`formatDateMonthDay`). Gate : typecheck+vitest ; grep
+  `function formatDate|function formatPercent` hors lib/formatters → 0.
+- [ ] H5 — CR A13 : helpers Go. **RECALIBRÉ — l'item de l'audit est en partie FAUX** :
+  (a) `safeDiv` ≠ `analysis.SafeRatio` : `safeDiv(a,0)` renvoie le NUMÉRATEUR + arrondi
+  2 déc. ; `SafeRatio(n,0)` renvoie 0.0 non arrondi → remplacer = BUG (KD=0 au lieu de
+  kills sur match sans mort). safeDiv N'EST PAS un doublon → `[~] faux positif`, GARDER.
+  (b) `strPtr` : 5 VARIANTES sémantiquement DISTINCTES (strPtr/strPtrOrNil/strPtrH5/
+  strPtrEq/strPtrDeref) — seules les copies du pur `strPtr(s string)*string` sont
+  migrables vers `Ptr[T]` (nouveau `internal/util/pointers`, défaut approuvé D-A.2).
+  Gate : build+tests ; garde-rail grep `func strPtr\b` hors util → 0 (variantes exclues).
+- [ ] H6 — CR A13 : **RECALIBRÉ — volet icône STALE** : 1 SEULE définition
+  `OpenMatchIcon` (MediaViewer.tsx), pas « 9 copies/8 fichiers » → `[~]` volet icône.
+  Volet VALIDE : socle d'option ECharts répété (~24 blocs grid/tooltip/xAxis dans
+  `TimeseriesFormCharts.tsx`) → factoriser un builder local (cf. SPEC_ECHARTS_TIMESERIES
+  `_utils.ts`). Gate : typecheck+vitest ; rendu visuel inchangé.
+- [ ] H7 — CR A13 : CONFIRMÉ — helpers couleur K/D-ratio/win-loss recodés
+  (CareerRivalsSection, PalmaresRelationsPage, ExplorerEncounterBriefing `kdRatioColor`…)
+  → module partagé `lib/colors/outcomePalette.ts` (défaut approuvé D-A.3), TOKENS
+  sémantiques uniquement (règle couleurs). Gate : typecheck+vitest + grep des fns locales → 0.
+- [ ] H8 (ex-F16) — ARCHI 7 : dédupliquer `augmentWithActiveRankedCSRs` (original
+  `sync/career.go` vs copie DI `registry_pages.go` — copie déjà gatée capability en F2).
+  Divergence réelle NameFR/NameEN → impl unique avec **param `locale string`** (vide =
+  skip enrichissement label ; défaut approuvé D-D.11), nom résolu via semantic adapter.
+  Gate : build+tests ; grep `augmentWithActiveRankedCSRs` = 1 def.
+
+Gate H : garde-rails grep H1/H2/H5/H7 verts (allowlists migrations datées) ;
+`npm run typecheck && npm run test` ; go build+test ; comptes avant/après au Journal.
 
 ### LOT I — i18n
 
 Objectif : purge FR monolingue + anglicismes ; règle lint passée en `error` à la fin.
 
-- [ ] I1 — CR A17 : chemins d'erreur auth/setup/onboarding → i18n.ts (FR+EN) :
-  `XboxLoginPage.tsx:106-418` (~12 strings), `StepDeviceCode.tsx:129-142`,
-  `StepInitialSync.tsx:81-87`, `RegisterPage.tsx:71-79`, `OpenSpartanImportCard.tsx:346-365`.
-- [ ] I2 — CR A18 : surfaces de données — 9 colonnes scoreboard
-  (`MatchScoreboard.tsx:51-76`, finir la migration `t.sbCol*`) ; heatmap Explorer entière
-  (`ExplorerActivityHeatmapChart.tsx:18-84`) ; 24 `toLocaleString('fr-FR')` figés
-  (7 fichiers synthesis/career/session) ; « Par carte »/« Par mode »/« Analyser »
-  (SynthesisPage, SquadLayout).
-- [ ] I3 — CR A19 : « streak » → « série » dans les textes FR (`notifications/i18n.ts:171,
-  201,283,286`, `ascension/i18n.ts:162-169`, `settings/i18n.ts:456` ranked/casual,
-  `match-view/i18n.ts:239`, `squad/i18n.ts:429`, `help/i18n.ts:200`) — le glossaire
-  officiel (`help/i18n.ts:326`) fait foi.
-- [ ] I4 — CR mineurs : ~33 ternaires `locale === 'en' ? ... : ...` inline → i18n.ts ;
-  aria-label FR figé (`NotificationItem.tsx:72`) ; labels hardcodés
-  (`TimeseriesFormCharts.tsx:207`, `LeaderboardBlock.tsx:435`, `LeaderboardPP.tsx:82-87`).
-- [ ] I5 — CR reco 4 : passer `@levelup/no-hardcoded-strings` en `error` (après purge
-  I1-I4).
+> **CALIBRATION I (2026-07-04)** : volumes réels ≫ audit (88 ternaires vs ~33 ; 68+
+> « streak » FR vs ~10 cités). Décision tranchée (défaut approuvé D-B.8) : i18n **par
+> feature** (pattern existant ascension/, match-view/, notifications/). Ordre : I3
+> (mécanique) → I1 → I2 → I4 → I5 EN DERNIER (gate).
+
+- [ ] I1 — CR A17 : CONFIRMÉ (10+ strings FR brutes vérifiées dans XboxLoginPage:106,162,
+  164,197,215,248,274,292,307,318 ; + StepDeviceCode, StepInitialSync, RegisterPage,
+  OpenSpartanImportCard). Créer `features/{auth,setup,onboarding}/i18n.ts` FR+EN,
+  remplacer le JSX brut par `t('clé')`.
+- [ ] I2 — CR A18 : CONFIRMÉ (scoreboard `MatchScoreboard.tsx:51-76` : 7+ labels FR sans
+  t() ; heatmap DOW_LABELS/HOUR_LABELS + tooltips ; `toLocaleString('fr-FR')` figés).
+  Sous-découpage : I2a scoreboard (clés `t.sbCol*`) · I2b heatmap (manifest dédié +
+  formatter paramétré) · I2c `toLocaleString` → helper `formatNumber(locale, v)` (pattern
+  Intl existant) · I2d « Par carte »/« Par mode »/« Analyser ».
+- [ ] I3 — CR A19 : CALIBRÉ : **68+ occurrences réelles** (ascension/i18n.ts = 58,
+  notifications = 10, + match-view/settings/squad/help) vs ~10 citées. **PIÈGE : ne
+  remplacer que les VALEURS FR — JAMAIS les CLÉS** (`streaksSectionTitle`, `streakActive`…
+  restent stables, sinon casse des consommateurs). Glossaire `help/i18n.ts` fait foi.
+  Gate : grep valeurs FR contenant `streak` → 0 ; clés intactes ; typecheck.
+- [ ] I4 — CR mineurs : CALIBRÉ : **88 ternaires** `locale === 'en' ?` (ascension seul
+  = 26, ex. AscensionProfileTab ×16) vs ~33 audit ; + aria-label FR figé
+  (NotificationItem:72), labels hardcodés (TimeseriesFormCharts:200, LeaderboardBlock:435,
+  LeaderboardPP:82-87). Exception tolérée (défaut approuvé) : helpers PURS de lib/
+  (décision mécanique) ; AUCUN ternaire dans les composants features/.
+- [ ] I5 — CR reco 4 : CONFIRMÉ : règle à `'warn'` (`eslint.config.js:40`), >100 warnings
+  actuels. Passer `'error'` UNIQUEMENT une fois I1-I4 à 0 warning (gate final du lot).
 
 Gate I : `npm run lint` vert AVEC la règle en error ; revue visuelle EN des pages touchées
 (badges, scoreboard, heatmap).
@@ -827,6 +879,16 @@ Gate I : `npm run lint` vert AVEC la règle en error ; revue visuelle EN des pag
 
 Objectif : mesurer d'abord (règle audit), puis desserrer les goulots ; batcher les N+1
 des chemins HTTP chauds.
+
+> **CALIBRATION J (2026-07-04, vérifiée sur pièces)** : les 9 items sont VALIDES (0 déjà
+> fait) — `sql.DBStats` jamais exporté (0 hit), DSN nu sans memory_limit/threads
+> (db.go:493-517), `GetHistoryForAvgBulk`/`LoadSquadMatchesBulk` inexistants, magic 4/2
+> confirmés (db.go:188-196), emprunt cross-titre non possédant réel (use-after-free).
+> **Chemin critique : J1 (mesure) AVANT J2** — les budgets mémoire/threads de J2 sont une
+> DÉCISION PRODUIT (stabilité VPS) à escalader APRÈS lecture des mesures J1.
+> **J5 = CHANTIER DÉDIÉ** (haut risque : sémantique d'invalidation de cache = décision
+> produit ; à traiter avec le chantier K, PAS au fil de l'eau).
+> Ordre calibré : J8 → J7 → J1 → [décision J2] → J2 → J3 → J4 → J9 → J6 ; J5 sorti.
 
 - [ ] J1 — ARCHI 48 : (1) exporter `sql.DBStats` (WaitCount/WaitDuration) par handle via
   expvar (ADR 0009) ; (2) APRÈS lecture des stats et audit des UPSERT player reposant sur
@@ -840,9 +902,14 @@ des chemins HTTP chauds.
   (`match_view_data_loaders.go:386`).
 - [ ] J4 — ARCHI 47 : `LoadSquadMatchesBulk` groupé par teammate_xuid + lookup gamertags
   batch (`teammates_service.go:185`).
-- [ ] J5 — ARCHI 44 : `LoadAll` full-history par hit (`match_history_repo.go:32`) → cache
-  par joueur invalidé post-sync OU matérialisation du placement (le push-LIMIT naïf est
-  impossible — nuance vérifiée par l'audit).
+- [ ] J5 — ARCHI 44 [CHANTIER DÉDIÉ — décidé 2026-07-04] : `LoadAll` full-history par hit
+  (`match_history_repo.go:32`, confirmé sans LIMIT ni cache) → cache par joueur invalidé
+  post-sync (option A recommandée : entrée PlayerCache invalidée si MatchesInserted>0 via
+  finalizer) OU matérialisation du placement (option B). Le push-LIMIT naïf est impossible
+  (le placement exige l'historique chronologique complet — nuance vérifiée). DÉCISIONS
+  PRODUIT à trancher au chantier : TTL (invalidation immédiate vs 30 min), propriétaire de
+  l'invalidation (finalizer engine.run vs sync result handler). À traiter avec le chantier
+  K (risque données périmées servies).
 - [ ] J6 — ARCHI mineurs N+1 batchables (8 sites, lecture seule) : `sync/engine.go:696`,
   `sync/skill_v2_helpers.go:28`, `relations_moments_service.go:140`,
   `fanout_service.go:73`, `sync/session_recalc.go:80`,
@@ -862,6 +929,21 @@ Journal (temps de réponse Match View + page escouade en local).
 
 Objectif : la racine api/ cesse d'être une 2e couche service ; god functions/packages
 découpés ; chemins via PathResolver. Chaque sous-lot = 1 commit + build/tests verts.
+
+> **CALIBRATION K (2026-07-04, vérifiée sur pièces)** : contrairement à H/I, les comptes
+> de l'audit sont EXACTS (143 fichiers duckdb / 127 service / 112 sync / 40 api, non-test)
+> — le lot est bien calibré, il est juste GROS (~4-6 j, 26 items, god-functions/packages
+> haut-risque). **DÉCISION (2026-07-04) : K = CHANTIER DÉDIÉ**, exécuté EN DERNIER (ou
+> planifié à part), mini-commits séquentiels + smoke-run local après K2a — PAS au fil de
+> l'eau avec les lots sûrs. S'y rattachent : **F12** (extraction package film 18 fichiers →
+> à faire pendant K3, même nature), **J5** (cache Match History), **F15-6** (RunnerForTitle
+> → package agnostique, K-couches), **L7-reste** (double-load boot → K1g). Contraintes
+> d'ordre internes : K1 → K2 → K3 (les extractions K3 bougent les fichiers sous les pieds
+> de K1/K2 sinon) ; K2a prérequis de K3d ; K1a croise B1-B7/J6 ; K1b prérequis de D2.
+> Défauts approuvés : orchestrateurs table-driven `{name, gate, fn}` (K1a/K1f) ;
+> PathResolver reste dans domain/ (K1l — réutiliser l'existant registry.go, ne pas en
+> créer un 2e) ; DI dans `api/wire/` (K3d) ; client Infinite → `games/halo_infinite/client/`
+> sur le modèle games/halo_5/client.go (K3e).
 
 K1 — Extractions de couches (ROI d'abord) :
 - [ ] K1a — ARCHI 1 + 2 (reste) + CR A2 (partie post-sync) : extraire le pipeline
@@ -974,30 +1056,47 @@ changée) ; archlint verts ; smoke run local du serveur après K2a.
 Objectif : chaque règle d'architecture de l'audit finit soit corrigée (lots précédents),
 soit ENCODÉE en ratchet à allowlist décroissante datée (reco centrale ARCHI).
 
-- [ ] L1 — ARCHI 27 [TRACKÉ] : résorber les 22 schémas OpenAPI DIVERGENT (mode emit prévu
-  par le drift-test), régénérer generated.ts, puis durcir : `t.Errorf` si divergent > 0.
-- [ ] L2 — ARCHI TOP3 : 3 nouvelles règles archlint : (1) pas de SQL/`Open*` dans api/
-  (baseline = sites restants après K, décroissante datée) ; (2) pas de
-  `filepath.Join(..."data"...)` hors PathResolver ; (3) parité coarse↔fine des
-  capabilities (générique, croisé F7).
-- [ ] L3 — CR A20 : `.golangci.yml` — remplacer les exclusions par répertoire
-  (funlen/gocyclo sur sync/, analysis/, service/, handlers/) par une baseline gelée
-  (`--new-from-rev` ou baseline explicite) ; réactiver `argument-limit` (l'exclusion
-  `text:` l.117-118 tue la règle) ; funlen 100 → 80 avec baseline ; supprimer le
-  commentaire périmé l.92.
-- [ ] L4 — ARCHI mineurs contrat : `contract_validate.go:34` — le middleware ne valide
-  aucun schéma et bufferise TOUS les corps → soit implémenter la validation (flag
-  CONTRACT_VALIDATE, croisé D1d), soit supprimer ; `read_budget.go:7` couplé sharedprovider
-  → découpler ou documenter l'exception.
-- [ ] L5 — CR A16 : query keys front — rapatrier les 11 clés inline + invalidations par
-  littéral (`admin/data-quality/mutations.ts:22`) dans `lib/query/keys.ts` ; consolider ou
-  documenter les 7 registres locaux (squadKeys, prestigeKeys, watcherKeys...) dans le
-  skill frontend-patterns ; règle ESLint : `queryKey:` littéral interdit hors keys.ts.
-- [ ] L6 — PRÉ-EXÉCUTÉ le 2026-07-02 (convention kill-switch écrite dans CLAUDE.md
-  règle 11 + arch-rules § Feature flags + delivery-checklist §5). Statuer `[~]` au
-  passage du lot après vérification.
-- [ ] L7 — ARCHI mineur : `api/server.go:773` câblage Halo 5 copy-paste au boot (double
-  lecture + fallbacks image HINF) — statuer `[~]` si déjà résolu par K1g/F15, sinon traiter.
+> **CALIBRATION L (2026-07-04, vérifiée sur pièces)** : L2 HÉRITE des garde-rails différés
+> par F : **F15-12** (miroir coarse↔fine souple — livrable F7), **F15-14** (cap⟺scalaire
+> damage_model/team_mmr), **F6-parité** (chaque titre déclare les FieldKeys de ses
+> capability-groups). La règle L2-(1) (SQL dans api/) dépend de K → livrer (2)+(3)+hérités
+> d'abord, (1) après le chantier K (baseline datée sinon).
+
+- [ ] L1 — ARCHI 27 [TRACKÉ] : RECALIBRÉ : le drift-test est DÉJÀ bloquant sur MISSING
+  (`t.Errorf`, openapi_schema_drift_test.go:112) ; seul **DIVERGENT (22) est log-only**
+  (`t.Logf`:119). Travail réel = résorber les 22 DIVERGENT (défaut approuvé D-E.12 :
+  auto-dérivation via mode emit `OPENAPI_EMIT_OUT` + revue du diff, pas de fix à la main),
+  régénérer generated.ts, PUIS durcir DIVERGENT>0 → `t.Errorf`.
+- [ ] L2 — ARCHI TOP3 + hérités F : règles archlint (calque `no_slug_comparison_test.go`) :
+  (1) pas de SQL/`Open*` dans api/ (APRÈS K ; baseline décroissante datée) ; (2) pas de
+  `filepath.Join(..."data"...)` hors PathResolver (`no_data_path_join_test.go`) ;
+  (3) parité coarse↔fine des capabilities — règle SOUPLE décidée F7 : coarse présent ⟹
+  fine DÉCLARÉ (tout statut) ; (4) hérité F15-14 : cap title-level ⟺ scalaire
+  (`CapDamageTaken` ⟺ `ProvidesDamageTaken(slug)`, idem TeamMMR) ; (5) hérité F6 :
+  parité fields.toml par capability-groups (couvre aussi synthetic_title_b, F15-11).
+- [ ] L3 — CR A20 : CONFIRMÉ (l.117-118 exclusion `text:` tue argument-limit ; funlen=100 ;
+  commentaire périmé l.92). Défauts approuvés : baseline **`--new-from-rev <SHA base de
+  branche>`** + **argument-limit=5** + funlen 100→80 avec baseline. Mesurer les violations
+  AVANT de committer la config (si 0, strictifier direct).
+- [ ] L4 — ARCHI mineurs contrat : CONFIRMÉ (contract_validate.go 135 L : valide
+  Content-Type/format erreur mais AUCUN schéma, bufferise tous les corps ; flag
+  LEVELUP_CONTRACT_VALIDATE défaut OFF prod). Défaut approuvé D-E.15 : **SUPPRIMER**
+  (Huma dérive déjà le contrat ; la validation schéma n'apporte pas de valeur) — relire le
+  fichier avant, retirer middleware+flag+test. `read_budget.go` couplé sharedprovider →
+  DOCUMENTER l'exception (pas découpler).
+- [ ] L5 — CR A16 : CALIBRÉ : **180 occurrences `queryKey:`** dans le front (11 clés
+  inline à rapatrier + 7 registres locaux squadKeys/prestigeKeys/watcherKeys…). Défaut
+  approuvé D-E.16 : **fusionner les registres dans `lib/query/keys.ts`** + règle ESLint
+  `queryKey:` littéral interdit hors keys.ts (le garde-rail impose la centralisation de
+  toute façon) + documenter au skill frontend-patterns.
+- [~] L6 — PRÉ-EXÉCUTÉ, VÉRIFIÉ 2026-07-04 : la convention kill-switch est bien dans
+  CLAUDE.md règle 11 (date de basculement + date cible de retrait + critère mesurable,
+  modèle shared_reader_legacy.go) + skill arch-rules §Feature flags + delivery-checklist
+  §5. Rien à faire.
+- [~] L7 — PARTIEL, réf K1g : la title-paramétrisation est FAITE (F15-4 :
+  `loadTitleAssetDrawerData(metaPath, slug)`, pas de fallback HINF) ; il RESTE la double
+  lecture au boot (`server.go:777` vs `:820`, 2 appels) dont la fusion appartient à K1g
+  (extraction platform/duckdb + dédup). Suivi au chantier K.
 
 Gate L : CI verte avec les nouvelles règles actives et baselines commitées datées ;
 `TestOpenAPISchemaDrift` strict (0 divergent).
@@ -1007,40 +1106,63 @@ Gate L : CI verte avec les nouvelles règles actives et baselines commitées dat
 - [ ] M1 — QUALITE : test d'intégration sur `RecomputeLUSRCanonicalForPlayer`
   (`lusr_full_recompute.go` — orchestrateur à 3 callers, 0 test) : dataset réaliste
   hétérogène (règle mémoire projet), ordre des matchs + watermark assertés.
-- [ ] M2 — QUALITE : garantir que la CI n'est JAMAIS verte sans `-tags=integration`
-  (vérifier workflows ; ajouter un job dédié ou un garde qui échoue si les tests
-  integration n'ont pas tourné). MOTIVÉ PAR INCIDENT (2026-07-03, décision utilisateur) :
-  le gate intégration de LOT B avait été validé à tort (20 tests `platform/duckdb` rouges
-  non vus). Le job CI DOIT lancer `go test -tags=integration -p 1 ./...` (SÉRIALISÉ — sinon
-  flake DuckDB mono-process + durées fantômes masquant les FAIL) et échouer sur code de
-  sortie ≠ 0 (pas sur un grep de sortie). Cf. skill delivery-checklist (règle `-p 1` +
-  filtre ancré `^--- FAIL:`).
-- [ ] M3 — QUALITE : tests manquants : `ComputeMedalExploitScore` (`medal_exploit.go:22`),
-  `GetTiming` (`weapon_data.go:224` — ATTENTION : aura bougé vers games/halo_infinite/film
-  en F12) ; renforcer `ComputeImpactSummary`, `ComputeMVPLVP`, `ComputeTrend`,
-  `ComputeSquadPerformanceScore` (1 seul test référent chacun).
-- [ ] M4 — QUALITE : tests middleware manquants : `http_cache.go`, `read_budget.go`
-  (touche la contention DB).
+- [ ] M2 — QUALITE : **RECALIBRÉ (vérifié ci.yml sur pièces — le trou exact est identifié)** :
+  la CI exécute DÉJÀ `-tags=integration` (2 jobs coverage, l.206-215 et l.260-266, avec
+  `-count=1 -timeout 300s`) MAIS **SANS `-p 1`** → c'est EXACTEMENT le mode parallèle qui a
+  produit le faux-vert de l'incident 2026-07-03 (contention DuckDB mono-process, durées
+  fantômes ~28000s masquant les FAIL) ; et le timeout 300s est TROP COURT une fois
+  sérialisé (suite locale sérialisée > 5 min). Fix calibré : ajouter **`-p 1`** aux 2 jobs
+  (ou job dédié `go-integration-tests`), **timeout 600s**, échec sur code de sortie ≠ 0
+  (pas de grep). Défaut approuvé : déclenchement **all-push** (détection précoce).
+- [ ] M3 — QUALITE : CONFIRMÉ (0 test : `ComputeMedalExploitScore` medal_exploit.go:22,
+  `GetTiming` weapon_data.go:224) ; renforcer `ComputeImpactSummary`, `ComputeMVPLVP`,
+  `ComputeTrend`, `ComputeSquadPerformanceScore` (1 seul test référent chacun).
+  NOTE F12 différé au chantier K : poser le test GetTiming dans `weapon_data_test.go`
+  AVEC commentaire « relocatable → games/halo_infinite/film (F12) ».
+- [ ] M4 — QUALITE : CONFIRMÉ (0 test middleware : `http_cache.go` — CacheMaxAge/NoStore/
+  WriteJSONCached ETag SHA-256/304 ; `read_budget.go` — touche la contention DB).
+  Unit HTTP pur (httptest).
+- [ ] M5 (ex-F13) — DETTE §2.4.2 : goldens paramétrés par slug. Approche calibrée :
+  `golden_output_<slug>.json` + fixtures H5 dédiées (`testdata/t0_fixtures/`, garder
+  l'arborescence existante — défaut approuvé), subtests `t.Run(slug)`, helper
+  `goldenPathForSlug`. Distingue régression vs divergence de titre.
 
-Gate M : `go test ./... && go test -tags=integration ./...` verts ; les nouveaux tests
-échouent si on casse volontairement le code testé (vérif mutation rapide à la main).
+Gate M : `go test ./... && go test -tags=integration -p 1 ./...` verts ; les nouveaux
+tests échouent si on casse volontairement le code testé (vérif mutation rapide) ;
+CI : les 2 jobs integration passent en `-p 1` (M2).
 
 ### LOT N — Front structurel + résidus (bonus/optionnels)
 
-- [ ] N1 — CR A14 : `LeaderboardBlock.tsx:325` → TanStack Table (règle projet, 8 tables
-  de référence dans le repo).
-- [ ] N2 — CR A15 : `SquadLayout.tsx` ~630 L → 3 hooks (`useSquadSessionSync`,
+> **CALIBRATION N (2026-07-04, vérifiée sur pièces)** : N1/N2 confirmés (table native
+> l.323-379 ; SquadLayout l.97-729 ≈630 L god component avec double sync localStorage).
+> N3 contient un FAUX POSITIF (voir item). N4 = la seule vraie DÉCISION
+> PRODUIT/OPÉRATEUR restante du lot — à escalader au moment de le traiter.
+
+- [ ] N1 — CR A14 : CONFIRMÉ (`LeaderboardBlock.tsx:323-379`, `<table>` native, tri client
+  manuel, 9+ colonnes) → TanStack Table (`ColumnDef[]`, règle projet, 8 tables de
+  référence dans le repo). Pas de décision produit (interne).
+- [ ] N2 — CR A15 : CONFIRMÉ (`SquadLayout.tsx:97-729`) → 3 hooks (`useSquadSessionSync`,
   `useSquadCompositionAnchor`, `useSquadPendingFilters`) + `SquadFilterBar` ; l'écriture
-  localStorage sort de l'updater setState (l.143-149) vers un `useEffect`.
-- [ ] N3 — CR mineurs web : bypass ECharts (`CumulativeFragGapChart.tsx:23`) ;
-  `isLoading → return null` remplacé par skeleton (SynthesisPage:631, HomePage:123) ;
-  listener clavier deps (`CoverFlowModal.tsx:474-482`) ; `MatchCard` ~470 L découpé
-  (`match-card.tsx:65-537`) ; `joinAndSort` renommé (`mapPerfVsHistoryChart.ts:56`).
-- [ ] N4 — DETTE §2.5 : politique de cycle-out des ~105 migrations — décision documentée
-  (squash par version majeure à date fixe, ou TTL) dans internal/migration/doc.go (créé
-  en C6).
-- [ ] N5 — DETTE §2.6 : consigner la dette assumée résiduelle (ce qui reste volontairement
-  non traité à l'issue du plan) dans un court doc `.ai/V7/DETTE_ASSUMEE_2026-Q3.md`.
+  localStorage sort de l'updater setState (l.143-149) vers un `useEffect`. Défaut approuvé
+  D-G.19 : le localStorage RESTE local aux hooks (pas de migration au store global).
+- [ ] N3 — CR mineurs web : RECALIBRÉ : (a) « bypass ECharts »
+  (`CumulativeFragGapChart.tsx:23`) = **FAUX POSITIF** — c'est un `React.lazy` code-split
+  standard et le fichier consomme déjà les helpers canoniques `_utils` → `[~]` ce volet.
+  VALIDES : (b) `isLoading → return null` → skeleton EXISTANT du repo (SynthesisPage:631,
+  HomePage:123 — flash blanc) ; (c) deps listener clavier (`CoverFlowModal.tsx:474-482`) ;
+  (d) `MatchCard` ~470 L découpé PAR RESPONSABILITÉ (layout/score/outcome/médailles —
+  défaut approuvé D-G.20) ; (e) `joinAndSort` renommé (`mapPerfVsHistoryChart.ts:56`).
+- [ ] N4 — DETTE §2.5 : CALIBRÉ : `internal/migration/doc.go` EXISTE (C6) mais ne contient
+  AUCUNE politique de cycle-out (~105 migrations). **DÉCISION PRODUIT/OPÉRATEUR à
+  escalader au traitement** — proposition par défaut : squash par version majeure
+  (7.0.0), déclenchement MANUEL, préserver les 10 derniers steps + archive
+  `.ai/migrations/squashed/`. Livrable = la politique documentée dans doc.go (pas le
+  squash lui-même).
+- [ ] N5 — DETTE §2.6 : fichier `.ai/V7/DETTE_ASSUMEE_2026-Q3.md` à créer EN DERNIER
+  (après tous les lots — c'est le bilan). Scope décidé (défaut approuvé D-F.18) :
+  uniquement les items `[!]`/`[~]` PLANIFIÉS du plan (E7, F7-activation, F8/F9 Phase 1b,
+  chantier K/J5/F12, D2…) ; les découvertes incidentes de §7 vont dans un backlog séparé,
+  pas dans la dette assumée.
 
 Gate N : typecheck + vitest + revue visuelle des pages touchées (leaderboard, escouade).
 
@@ -1069,9 +1191,9 @@ joueurs en local/prod (RT jamais re-capturés — règle projet).
 
 | Source | Section/IDs | Lot(s) |
 |---|---|---|
-| ARCHI | Majeurs 1-7 (racine api/) | K1a, B6, K1c, K1d, K1b, K1e, F16 |
+| ARCHI | Majeurs 1-7 (racine api/) | K1a, B6, K1c, K1d, K1b, K1e, F16→H8 |
 | ARCHI | Majeurs 8-12 (service/) | K1i, K1j, K1k, K1l, K1m |
-| ARCHI | Majeurs 13-14 (analysis/chemins) | F12, K1l |
+| ARCHI | Majeurs 13-14 (analysis/chemins) | F12→K3, K1l |
 | ARCHI | Majeurs 15-16 (ART) | E1, E2 |
 | ARCHI | Majeurs 17-25 (structure) | K3a-e, K2a-d |
 | ARCHI | Majeurs 26-27 (contrat) | G1, L1 |
@@ -1087,10 +1209,10 @@ joueurs en local/prod (RT jamais re-capturés — règle projet).
 | ARCHI | Mineurs performance (~15) | J6-J9, B7, G15, G8 |
 | ARCHI | Mineurs contrat/gouvernance (4) | L4, G6, K1g (boot H5), L7 |
 | ARCHI | TOP 10 + recos techniques | répartis (L2 ratchets, F, J, K, G) — vérifier en fin de plan |
-| DETTE | TOP 1-10 | C1, A4/D1c, D1b, D1a/D2, C2, F12, C7, C4, C5, C8 |
+| DETTE | TOP 1-10 | C1, A4/D1c, D1b, D1a/D2, C2, F12→K3, C7, C4, C5, C8 |
 | DETTE | §1.3 READMEs / §1.4 invariants | C6, C5 |
 | DETTE | §2.1 guards / §2.2 Phase 5 / §2.3 Prestige | D1b-f, D2, C7 |
-| DETTE | §2.4 multi-titre (film, goldens, template) | F12, F13, F14/E8 |
+| DETTE | §2.4 multi-titre (film, goldens, template) | F12→K3, F13→M5, F14/E8 |
 | DETTE | §2.5 schéma DB (colonnes, migrations, allowlist) | G14, N4, E4 |
 | DETTE | §2.6 dette assumée / recos 1-9 + gouvernance | N5, C3, C8, D1f |
 | QUALITE | B1-B2 + cause racine | S1, S2, S3 |
@@ -1098,11 +1220,11 @@ joueurs en local/prod (RT jamais re-capturés — règle projet).
 | QUALITE | Tokens/secrets (probe, CLIs) | S5, S9, D2 (dette Phase 5) |
 | QUALITE | XSS frontend | A5 |
 | QUALITE | Robustesse #3/#6/#8/#10 + autres | B10-B16 |
-| QUALITE | Axe 4 tests (gaps) | M1-M4 |
+| QUALITE | Axe 4 tests (gaps) | M1-M5 |
 | CR | C1-C4 | A1-A4 |
 | CR | A1-A6 (archi Go) | K2a, K1g, K1f, K2b, K1h/K1i, D1e |
 | CR | A7-A9 (code mort) | G2-G5, G10-G13 |
-| CR | A10-A13 (duplication) | H1-H7 |
+| CR | A10-A13 (duplication) | H1-H8 |
 | CR | A14-A16 (React) | N1, N2, L5 |
 | CR | A17-A19 (i18n) | I1-I3 |
 | CR | A20 (gouvernance lint) | L3 |

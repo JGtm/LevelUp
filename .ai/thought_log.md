@@ -1,3 +1,31 @@
+## [2026-07-04] Recalibration LOTS H→N (audit 2026-07) — plan mis à jour — COMPLÉTÉ
+
+**Tâche** : l'utilisateur a constaté que les lots H→N étaient mal calibrés par l'audit →
+analyse supplémentaire sur pièces + mise à jour du plan (PLAN_TRAITEMENT_AUDITS_2026-07).
+
+**Décision technique principale** : recalibration écrite DANS le plan (bloc « CALIBRATION »
+par lot + items réécrits), à partir de l'investigation 8-agents (fichier complet sur disque)
+CROISÉE avec mes propres vérifications sur pièces des affirmations porteuses — l'investigation
+elle-même contenait une erreur (L7 « déjà résolu » alors que la double-lecture boot subsiste).
+
+**Résultats observés — corrections majeures** : (1) **M2** : la CI exécute DÉJÀ
+-tags=integration (2 jobs coverage) mais SANS `-p 1` et timeout 300s = exactement le mode du
+faux-vert de l'incident 2026-07-03 → fix calibré = -p 1 + 600s + exit code. (2) **L1** : le
+drift OpenAPI est DÉJÀ bloquant sur MISSING (t.Errorf:112) ; seul DIVERGENT(22) est log-only.
+(3) **Faux positifs d'audit** : H5-safeDiv (≠ SafeRatio : numérateur+arrondi vs 0.0 —
+remplacer = bug KD), H6-icône (1 def, pas 9 copies), N3-« bypass ECharts » (React.lazy
+code-split standard). (4) **Sous-évaluations** : H1=115 littéraux/52 fichiers (vs 87/33),
+H2=58/30 (vs 36/19) avec préfixes variables + prédicat gamertag distinct, I3=68+ streak
+(vs ~10) avec piège clés-vs-valeurs, I4=88 ternaires (vs ~33), L5=180 queryKey:. (5) **K est
+LE lot bien calibré** (comptes exacts 143/127/112/40) — juste gros → chantier dédié confirmé.
+Règles d'exécution posées : migrations/ = historique gelé à allowlister ; vérif per-copie
+avant toute migration ; renumérotations F16→H8, F13→M5, F12→K3 (+ matrice §5 alignée).
+
+**Conclusion / prochaine étape** : plan H→N recalibré et exécutable (périmètres fermés,
+gates exacts, décisions tranchées ou marquées à escalader : J2 budgets après mesure J1,
+J5 sémantique cache au chantier K, N4 politique migrations). Exécution : H → I → M → L →
+J(sauf J5) → chantier K(+J5+F12) → N4/N5 en bilan.
+
 ## [2026-07-04] LOT F (audit 2026-07) — Title-agnosticism — CLOS (F1-F15)
 
 **Tâche** : LOT F du PLAN_TRAITEMENT_AUDITS_2026-07 (15 items + F15 ~17 puces), branche
