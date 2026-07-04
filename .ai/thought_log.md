@@ -28,6 +28,11 @@ marqueur ; suites migration/duckdb/service/scheduler vertes ; `-tags=integration
 ni la redondance. Tester sur une saison entière réaliste avant de livrer une commande.
 [[feedback_integration_tests_realistic_datasets]]
 
+**Post-backfill (04)** : backfill COMPLET, top-50 quasi 100% couvert (0-6 restants/saison, tous
+enrichis OU privés). Effet de bord repéré + corrigé (07bbb42dd) : une vieille saison ENTIÈREMENT
+expirée (3-1 = 61 privés/0 enrichi ; 4-1 = 235/0) aurait un classement VIDE après masquage →
+garde `WorldSeasonHasEnriched` : masquer seulement si la saison a ≥1 enrichi, sinon CSR brut.
+
 **État** : commité/poussé (2e4c62ed2 feat + docs). Backfill relancé par l'utilisateur avec la
 commande finale. Migrations `add_xuid`/`create_season_catalog`/`create_world_player_no_data`
 appliquées à la DB locale.
