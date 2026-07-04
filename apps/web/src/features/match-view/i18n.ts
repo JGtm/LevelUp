@@ -236,7 +236,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     radarTooltipCombat: 'Frags + tirs à la tête + frags parfaits, pondérés par la précision.',
     radarTooltipSurvival: 'Résistance défensive — dégâts / (225 × morts). P80 = 1,59.',
     radarTooltipSupport: 'Assists × 50.',
-    radarTooltipScore: 'Score résiduel après frags (×100) et assists (×50) : médailles et streaks.',
+    radarTooltipScore: 'Score résiduel après frags (×100) et assists (×50) : médailles et séries.',
     radarTooltipObjective: "Points d'objectif (PersonalScoreAwards).",
     radarTooltipGlossaryLink: '→ Glossaire',
     chartWeaponPieTitle: 'Frags par arme',

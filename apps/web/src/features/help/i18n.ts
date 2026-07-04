@@ -197,7 +197,7 @@ const FR_TEXT: HelpText = {
           {
             term: 'Score',
             definition:
-              'Score personnel résiduel après déduction de la contribution directe en frags et assists. Capture la valeur ajoutée via les médailles, les streaks et les actions de mode de jeu (défenses de point, captures bonus, etc.) qui ne sont pas comptabilisées dans les autres axes.',
+              'Score personnel résiduel après déduction de la contribution directe en frags et assists. Capture la valeur ajoutée via les médailles, les séries et les actions de mode de jeu (défenses de point, captures bonus, etc.) qui ne sont pas comptabilisées dans les autres axes.',
             formula: 'Score = score personnel − (frags × 100) − (assists × 50) − score objectif, ≥ 0',
             example: 'Score personnel 2 400, 8 frags, 4 assists, 200 pts objectif → 2 400 − 800 − 200 − 200 = 1 200.',
           },

@@ -426,7 +426,7 @@ const FR_TEXT: SquadText = {
       combat: 'Frags + tirs à la tête + frags parfaits, pondérés par la précision.',
       survival: 'Résistance défensive — dégâts / (225 × morts). P80 = 1,59.',
       support: 'Assists × 50.',
-      score: 'Score résiduel après frags (×100) et assists (×50) : médailles et streaks.',
+      score: 'Score résiduel après frags (×100) et assists (×50) : médailles et séries.',
       objective: 'Points d\'objectif (PersonalScoreAwards).',
       glossaryLink: '→ Glossaire',
     },

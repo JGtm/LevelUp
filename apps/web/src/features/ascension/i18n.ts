@@ -29,7 +29,7 @@ export interface AscensionText {
   streakPaused: string
   streakBroken: string
   streakBadgeAriaLabel: string // "{count} jours d'affilée"
-  streakBadgeAriaEmpty: string // "Aucune streak active"
+  streakBadgeAriaEmpty: string // "Aucune série active"
   streakCurrentLength: string // "{n} jour(s)"
   streakUnitDay: string // unité période daily_* (jour/jours)
   streakUnitWeek: string // unité période weekly_* (semaine/semaines)
@@ -159,14 +159,14 @@ const FR: AscensionText = {
   ascensionLayerTitle: 'Ascension — Coaching d\'amélioration',
   ascensionLayerDescription:
     'Analyse ton historique pour te proposer des angles d\'amélioration ciblés. S\'appuie sur Prestige (les campagnes deviennent des objectifs) — tu peux ignorer cette section si tu préfères piloter toi-même.',
-  streaksSectionTitle: 'Mes streaks',
+  streaksSectionTitle: 'Mes séries',
   streaksEmpty:
-    "Aucune streak en cours. Joue un match aujourd'hui pour démarrer une série !",
+    "Aucune série en cours. Joue un match aujourd'hui pour en démarrer une !",
   streakActive: 'En cours',
   streakPaused: 'Préservée par un bouclier',
   streakBroken: 'Cassée',
-  streakBadgeAriaLabel: 'Streak de {count} jours',
-  streakBadgeAriaEmpty: 'Aucune streak active',
+  streakBadgeAriaLabel: 'Série de {count} jours',
+  streakBadgeAriaEmpty: 'Aucune série active',
   streakCurrentLength: '{n} jour{plural}',
   streakUnitDay: 'jour{plural}',
   streakUnitWeek: 'semaine{plural}',
