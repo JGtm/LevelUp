@@ -8,6 +8,7 @@
  * Clic gamertag → Explorer mode joueur.
  */
 import { useNavigate, useParams } from '@tanstack/react-router'
+import { ratioColorGuarded } from '@/lib/colors/outcomePalette'
 import { Spinner } from '@/components/ui/spinner'
 import { useCareerRivals } from './queries'
 import { careerManifest } from '@/lib/i18n/generated/career'
@@ -19,13 +20,6 @@ import type { CareerRival } from '@/lib/api/types'
 function formatRatio(r: number): string {
   if (!Number.isFinite(r)) return '∞'
   return r.toFixed(2)
-}
-
-function ratioColor(deaths: number, ratio: number): string | undefined {
-  if (deaths === 0) return ratio > 0 ? tokenCssVar('outcome-win') : undefined
-  if (ratio > 1) return tokenCssVar('outcome-win')
-  if (ratio < 1) return tokenCssVar('outcome-loss')
-  return tokenCssVar('outcome-draw')
 }
 
 // ─── Butterfly chart ─────────────────────────────────────────────────────────
@@ -51,7 +45,7 @@ function ButterflyRow({ rank, nemesis, victim, maxDeaths, maxFrags, onPlayerClic
           <>
             <span
               className="font-mono font-bold tabular-nums text-xs shrink-0 leading-none"
-              style={{ color: ratioColor(nemesis.deaths, nemesis.ratio) }}
+              style={{ color: ratioColorGuarded(nemesis.deaths, nemesis.ratio) }}
             >
               {formatRatio(nemesis.ratio)}
             </span>
@@ -119,7 +113,7 @@ function ButterflyRow({ rank, nemesis, victim, maxDeaths, maxFrags, onPlayerClic
             <span className="text-muted-foreground text-xs leading-none shrink-0">·</span>
             <span
               className="font-mono font-bold tabular-nums text-xs shrink-0 leading-none"
-              style={{ color: ratioColor(victim.deaths, victim.ratio) }}
+              style={{ color: ratioColorGuarded(victim.deaths, victim.ratio) }}
             >
               {formatRatio(victim.ratio)}
             </span>

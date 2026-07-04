@@ -21,6 +21,8 @@
  * Construit avec TanStack Table v8.
  */
 import { useMemo } from 'react'
+import { formatPercentInt } from '@/lib/formatters'
+import { kdRatioColor, winRateClass } from '@/lib/colors/outcomePalette'
 import {
   type ColumnDef,
   flexRender,
@@ -52,11 +54,6 @@ interface Props {
    * page Carrière, où le user a explicitement demandé "pas de bloc").
    */
   hideCardWrapper?: boolean
-}
-
-function formatPercent(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return '—'
-  return `${Math.round(v * 100)}%`
 }
 
 function isSemanticToken(s: string): s is SemanticToken {
@@ -122,11 +119,6 @@ function EncounterBadgesInline({
   )
 }
 
-function percentClass(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return ''
-  return v >= 0.5 ? 'text-success font-bold' : 'text-warning font-bold'
-}
-
 function formatKDCross(kills: number | null | undefined, deaths: number | null | undefined): string {
   if (kills == null && deaths == null) return '—'
   return `${kills ?? 0}/${deaths ?? 0}`
@@ -136,15 +128,6 @@ function formatKDRatio(kills: number | null | undefined, deaths: number | null |
   if (kills == null || deaths == null) return '—'
   if (deaths === 0) return kills > 0 ? '∞' : '—'
   return (kills / deaths).toFixed(2)
-}
-
-function kdRatioColor(kills: number | null | undefined, deaths: number | null | undefined): string | undefined {
-  if (kills == null || deaths == null) return undefined
-  if (deaths === 0) return kills > 0 ? tokenCssVar('outcome-win') : undefined
-  const ratio = kills / deaths
-  if (ratio > 1) return tokenCssVar('outcome-win')
-  if (ratio < 1) return tokenCssVar('outcome-loss')
-  return tokenCssVar('outcome-draw')
 }
 
 function SplitBar({
@@ -384,7 +367,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
         header: labels.wrAlly,
         cell: (ctx) => {
           const v = ctx.row.original.winrate_as_ally
-          return <span className={`font-mono ${percentClass(v)}`}>{formatPercent(v)}</span>
+          return <span className={`font-mono ${winRateClass(v)}`}>{formatPercentInt(v)}</span>
         },
       },
       {
@@ -392,7 +375,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
         header: labels.wrEnemy,
         cell: (ctx) => {
           const v = ctx.row.original.winrate_vs_enemy
-          return <span className={`font-mono ${percentClass(v)}`}>{formatPercent(v)}</span>
+          return <span className={`font-mono ${winRateClass(v)}`}>{formatPercentInt(v)}</span>
         },
       },
       {

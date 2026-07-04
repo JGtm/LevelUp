@@ -11,7 +11,7 @@
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useMilestones } from './queries'
 import { getAscensionText } from './i18n'
-import { formatDate, interpolate } from './format'
+import { formatAscensionDate, interpolate } from './format'
 import type { MilestoneItem } from './types'
 
 export interface MilestonesGridProps {
@@ -122,7 +122,7 @@ function MilestoneCard({ milestone: m, locale, t }: MilestoneCardProps) {
       )}
       {m.earned && m.earned_at && (
         <p className="mt-auto text-2xs text-amber-700 dark:text-amber-300"> {/* color-allow: amber distinction milestone earned (CLAUDE.md §20) */}
-          {interpolate(t.milestonesEarnedAt, { date: formatDate(m.earned_at, locale) })}
+          {interpolate(t.milestonesEarnedAt, { date: formatAscensionDate(m.earned_at, locale) })}
         </p>
       )}
     </article>

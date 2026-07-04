@@ -14,6 +14,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import {
   getEChartsThemeColors,
   getAxisBase,
+  getGridBase,
   getLegendBase,
   getTooltipBase,
   CHART_BG,
@@ -106,7 +107,7 @@ export function TimeseriesKdaValueTrend({
     const smoothValues = smooth.map((v) => (v == null ? null : Math.round(v * 100) / 100))
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, right: 16, bottom: 64, left: 48, containLabel: true },
+      grid: getGridBase(),
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
@@ -184,7 +185,7 @@ export function TimeseriesPerformanceTrend({
 
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, right: 16, bottom: 64, left: 48, containLabel: true },
+      grid: getGridBase(),
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
@@ -250,7 +251,7 @@ export function TimeseriesAssistsTrend({
     const smoothValues = smooth.map((v) => (v == null ? null : Math.round(v * 100) / 100))
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, right: 16, bottom: 64, left: 48, containLabel: true },
+      grid: getGridBase(),
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
@@ -339,7 +340,7 @@ export function TimeseriesPerMinuteTrend({
 
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 24, right: 16, bottom: 64, left: 48, containLabel: true },
+      grid: getGridBase({ top: 24 }),
       tooltip: {
         ...getTooltipBase(tc),
         trigger: 'axis',
@@ -435,7 +436,7 @@ export function TimeseriesAvgLifeTrend({
     })
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, right: 16, bottom: 48, left: 48, containLabel: true },
+      grid: getGridBase({ bottom: 48 }),
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
       xAxis: {
         ...getAxisBase(tc),
@@ -499,7 +500,7 @@ export function TimeseriesSpreeHeadshots({
     const colPerf = resolveToken('chart-series-7')
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, right: 16, bottom: 64, left: 48, containLabel: true },
+      grid: getGridBase(),
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
@@ -579,7 +580,7 @@ export function TimeseriesSkillRankPerformance({
 
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, right: 56, bottom: 64, left: 56, containLabel: true },
+      grid: getGridBase({ right: 56, left: 56 }),
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
@@ -672,7 +673,7 @@ export function TimeseriesRankScore({
 
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, right: 56, bottom: 64, left: 56, containLabel: true },
+      grid: getGridBase({ right: 56, left: 56 }),
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {

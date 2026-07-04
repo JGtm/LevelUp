@@ -44,21 +44,8 @@ import type {
   SynthesisWeaponKillEntry,
   SynthesisWeaponAccuracyEntry,
 } from '@/lib/api/types'
-
-// ─── Mapping experience → cascade.experience_types ──────────────────────────
-// Backend cascade utilise les labels canoniques "PVP classé" / "PVP non classé"
-// (service/filters_service.go::experienceLabels). 'all' → tableau vide = pas de filtre.
-const EXPERIENCE_TO_CASCADE: Record<Experience, string[]> = {
-  all: [],
-  ranked: ['PVP classé'],
-  unranked: ['PVP non classé'],
-}
-
-function setsEqual(a: Set<string>, b: Set<string>): boolean {
-  if (a.size !== b.size) return false
-  for (const v of a) if (!b.has(v)) return false
-  return true
-}
+// EXPERIENCE_TO_CASCADE + setsEqual : source unique partagée avec useLocalFilterBar (H3).
+import { EXPERIENCE_TO_CASCADE, setsEqual } from '@/features/_shared/experienceCascade'
 
 // ─── Sous-composants ──────────────────────────────────────────────────────────
 

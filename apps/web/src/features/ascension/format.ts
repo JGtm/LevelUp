@@ -26,7 +26,7 @@ export function interpolate(
 }
 
 /** Formate une date ISO en JJ/MM/AAAA (FR) ou MM/DD/YYYY (EN). */
-export function formatDate(iso: string | null | undefined, locale: AscensionLocale): string {
+export function formatAscensionDate(iso: string | null | undefined, locale: AscensionLocale): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''

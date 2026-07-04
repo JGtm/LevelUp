@@ -814,20 +814,29 @@ embarque son garde-rail anti-régression le jour de sa livraison (CR reco 1).
   6 fichiers Sprintf + media.go comment). Effets de bord : 8 `const`→`var` ; test de
   régression B2 (grep `bid(`) mis à jour pour accepter le helper. Gate : build+vet OK,
   unit verts, **intégration `-p 1` VERTE** (duckdb 109 s, sync 106 s, 0 FAIL, exit 0).
-- [ ] H3 — CR A12 : SynthesisPage / useLocalFilterBar. CALIBRÉ : le hook EXISTE ; la
-  duplication réelle = **13 L** (`EXPERIENCE_TO_CASCADE` + `setsEqual`,
-  `SynthesisPage.tsx:48-61` === `useLocalFilterBar.tsx:22-33`) — PAS ~250 L. Étape 1 :
-  dédup des 2 helpers (import du hook). Étape 2 (SEULEMENT si le hook couvre tous les
-  besoins d'état de SynthesisPage — à vérifier avant) : migration d'état complète. Le fix
-  du matching couplé aux libellés FR (`useLocalFilterBar.tsx:234-236`) reste dû.
-  Gate : typecheck+vitest ; grep EXPERIENCE_TO_CASCADE/setsEqual = 1 seule def (hook).
-- [ ] H4 — CR A13 : formatters front. CALIBRÉ : `lib/formatters/{date,duration,percent}.ts`
-  EXISTENT ; copies réelles = **7-8** (4 formatDate : LabPage, PalmaresRelationsPage,
-  SquadV2/HistoryTable… ; 3 formatPercent : ExplorerEncounterBriefing,
-  MatchEncountersTable, session-detail/_shared) + `formatDateShort` HOMONYME DIVERGENT
-  (`PeriodSessionRail.tsx:55-114`, dictionnaire 60 L inline) → fusionner si identique,
-  sinon renommer (`formatDateMonthDay`). Gate : typecheck+vitest ; grep
-  `function formatDate|function formatPercent` hors lib/formatters → 0.
+- [x] H3 — CR A12 : SynthesisPage / useLocalFilterBar. **Étape 1 LIVRÉE (2026-07-04)**.
+  Nouveau module partagé `features/_shared/experienceCascade.ts` (EXPERIENCE_TO_CASCADE +
+  setsEqual) importé par le hook ET SynthesisPage → dédup des 13 L à l'identique
+  (1 def chacune, vérifié grep). Étape 2 (migration d'état complète : faire consommer le
+  hook par SynthesisPage) = `[!]` NON traité — gros refactor conditionnel (le hook devrait
+  couvrir l'état pending/committed de SynthesisPage, mais SynthesisPage a des besoins
+  synthesis-spécifiques à valider) → §7 Découvertes. Le fix du matching couplé aux libellés
+  FR (substring `'classé'` dans experienceCounts) = `[!]` → §7 (design, pas dédup).
+  Gate : typecheck OK, eslint OK (0 err), vitest 46 verts (dont useLocalFilterBar + Synthesis).
+- [x] H4 — CR A13 : formatters front. **LIVRÉ (2026-07-04)**. Comme H5-safeDiv, l'audit a
+  SUR-compté : les « copies » sont des HOMONYMES DIVERGENTS (locale-aware, fallbacks/formats/
+  contrats d'entrée distincts), pas des doublons. **1 seul vrai doublon** :
+  `MatchEncountersTable.formatPercent` === `ExplorerEncounterBriefing.formatPercent`
+  (`Math.round(v*100)%`) → centralisé `lib/formatters.formatPercentInt(ratio)` (sans espace,
+  entier ; distinct de formatPercent qui a l'espace typo FR + décimales). Homonymes divergents
+  RENOMMÉS (nom descriptif, satisfait le gate sans fusion destructrice) : PeriodSessionRail
+  `formatDateShort`→`formatDateMonthDay` ; lab `formatDate`→`formatLabDateTime` (date+heure) ;
+  ascension `formatDate`→`formatAscensionDate` (PIÈGE évité : cru mort au grep, typecheck a
+  prouvé qu'il est appelé par 3 composants → restauré+renommé, PAS supprimé).
+  `session-detail._shared.formatPercent` = `[~]` GARDÉ : legacy DOCUMENTÉE (entrée 0..100,
+  TODO ADR 0006 de bascule vers lib quand l'API passera en 0..1, testée). Gate : typecheck OK,
+  eslint 0 err, vitest 334 verts, grep `function formatDate` hors lib → 0 (formatPercent : ne
+  reste que la legacy session-detail documentée).
 - [x] H5 — CR A13 : helpers Go. **LIVRÉ (2026-07-04)**. (a) `safeDiv` `[~] faux positif`
   CONFIRMÉ non touché (≠ SafeRatio : remplacer = bug KD). (b) Créé `internal/util/pointers`
   `Ptr[T any](v T) *T`. Migrés vers `pointers.Ptr` : les **3 copies PURES** `strPtr`
@@ -839,15 +848,26 @@ embarque son garde-rail anti-régression le jour de sa livraison (CR reco 1).
   TrimSpace+nil) + `strPtrEq`/`strPtrDeref` (test) restent distincts. Garde-rail
   `archlint/no_local_ptr_helper_test.go` (regex `func strPtr(H5)?\(` — ignore les variantes
   nommées). Gate : build+vet OK, unit verts, intégration `-p 1` VERTE (0 FAIL).
-- [ ] H6 — CR A13 : **RECALIBRÉ — volet icône STALE** : 1 SEULE définition
-  `OpenMatchIcon` (MediaViewer.tsx), pas « 9 copies/8 fichiers » → `[~]` volet icône.
-  Volet VALIDE : socle d'option ECharts répété (~24 blocs grid/tooltip/xAxis dans
-  `TimeseriesFormCharts.tsx`) → factoriser un builder local (cf. SPEC_ECHARTS_TIMESERIES
-  `_utils.ts`). Gate : typecheck+vitest ; rendu visuel inchangé.
-- [ ] H7 — CR A13 : CONFIRMÉ — helpers couleur K/D-ratio/win-loss recodés
-  (CareerRivalsSection, PalmaresRelationsPage, ExplorerEncounterBriefing `kdRatioColor`…)
-  → module partagé `lib/colors/outcomePalette.ts` (défaut approuvé D-A.3), TOKENS
-  sémantiques uniquement (règle couleurs). Gate : typecheck+vitest + grep des fns locales → 0.
+- [x] H6 — CR A13 : **LIVRÉ (2026-07-04)**. Volet icône = `[~]` faux positif confirmé
+  (1 seule def `OpenMatchIcon` MediaViewer.tsx). Volet ECharts : `_utils.ts` factorisait
+  DÉJÀ axis/tooltip/legend/xAxis (getAxisBase/getTooltipBase/getLegendBase) ; seul le
+  littéral `grid: { top, right, bottom, left, containLabel: true }` restait recopié **8×**
+  (4 identiques + 3 variantes de marge). Ajouté `getGridBase(overrides)` à
+  `components/charts/_utils.ts` ; 8 littéraux → `getGridBase()` / `getGridBase({...})` avec
+  overrides EXACTS (objets identiques → rendu visuel inchangé). Gate : typecheck OK,
+  eslint 0 err, vitest 131 verts (timeseries + charts), 0 littéral grid brut restant.
+- [x] H7 — CR A13 : **LIVRÉ (2026-07-04)**. Nouveau module `lib/colors/outcomePalette.ts`
+  (défaut approuvé D-A.3) — TOKENS sémantiques uniquement via `tokenCssVar` (règle 12).
+  Comme H4, l'audit sur-comptait : les helpers avaient des SIGNATURES DIVERGENTES (`ratioColor`
+  seul en 3 variantes) → canonicalisés en fonctions distinctes selon la sémantique du seuil :
+  `ratioColor(v)` (seuil 1), `winRateColor(v)` (seuil 0.5), `kdaNetColor(v)` (net signé, seuil 0),
+  `kdRatioColor(kills,deaths)` (garde deaths=0, délègue à ratioColor), `ratioColorGuarded(deaths,ratio)`
+  (variante ratio pré-calculé), `winRateClass(v)` (classes Tailwind sémantiques). 6 fichiers migrés
+  (Explorer, MatchEncounters, PalmaresRelationsPage, RelationsTable, RelationsRivalryCards,
+  CareerRivalsSection) — noms locaux incohérents (winLossColor/wrColor/kdaColor) → noms canoniques.
+  Famille outcome-ENUM (`outcomeColor`/`outcomeColorVar`, mécanisme `resolveToken` distinct) hors
+  périmètre H7 (ratio/winrate). Gate : typecheck OK, eslint 0 err, **vitest 2070 verts (suite
+  complète)**, grep fns couleur locales hors lib → 0.
 - [x] H8 (ex-F16) — ARCHI 7 : **LIVRÉ (2026-07-04)**. La « copie » de registry_pages.go
   n'était pas une fonction nommée mais une **boucle inline** (newExplorerCSRProvider,
   ~21 L) divergeant sur `pl.NameFR` (vs `NameEN` côté sync) + un message de log distinct.
@@ -1513,6 +1533,13 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
 
+- [LOT H / H3 — Étape 2 + matching FR-label] Deux follow-ups au-delà du dédup 13 L :
+  (1) Faire consommer `useLocalFilterBar` par `SynthesisPage` (supprimerait ~200 L d'état
+  pending/committed dupliqué) — conditionné à vérifier que le hook couvre les besoins
+  synthesis-spécifiques (rôles, armes, accuracy). (2) `experienceCounts`
+  (`useLocalFilterBar.tsx`) classe les options via substring FR `'classé'`/`'non classé'`
+  — couplage fragile aux libellés ; à dériver d'un champ canonique d'expérience côté
+  contrat backend. Aucun des deux n'est un dédup → hors périmètre H3 (règle 7).
 - [LOT H / H2 — bug latent filtre bot par gamertag] `cmd/diag_recent_match_sync/main.go:333`
   et `migrations/steps_shared_core.go:387` filtrent `gamertag [NOT] LIKE 'bid(%'`. Or les bots
   ont un xuid `bid(N.0)` mais un GAMERTAG "343 Meowlnir/Ellis/…" (cf. `analysis/identity.go`

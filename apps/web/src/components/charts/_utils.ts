@@ -55,6 +55,15 @@ export function getAxisBase(tc: EChartsThemeColors) {
   } as const
 }
 
+/**
+ * Socle `grid` ECharts commun (marges + containLabel) pour les charts timeseries.
+ * `overrides` ajuste ponctuellement une marge (ex: axe secondaire plus large).
+ * Factorisé H6 (2026-07-04) — remplace ~8 littéraux grid identiques/quasi-identiques.
+ */
+export function getGridBase(overrides: Record<string, number | boolean> = {}) {
+  return { top: 16, right: 16, bottom: 64, left: 48, containLabel: true, ...overrides }
+}
+
 /** Base tooltip style. À spread avant `formatter` ou `trigger`. */
 export function getTooltipBase(tc: EChartsThemeColors) {
   return {

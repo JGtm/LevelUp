@@ -114,7 +114,7 @@ const TEXTS: Record<Locale, RailText> = {
 }
 
 /** Formate une date ISO (YYYY-MM-DD) en label localisé court. */
-function formatDateShort(iso: string, locale: Locale): string {
+function formatDateMonthDay(iso: string, locale: Locale): string {
   try {
     const d = new Date(iso + 'T00:00:00Z')
     return d.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
@@ -475,8 +475,8 @@ function PeriodRail({ period, durationDays, locale, t, filterStore, centerExtra 
   const goToPrevPeriod = filterStore((s) => s.goToPrevPeriod)
   const goToNextPeriod = filterStore((s) => s.goToNextPeriod)
 
-  const startLabel = period.start_date ? formatDateShort(period.start_date, locale) : '?'
-  const endLabel = period.end_date ? formatDateShort(period.end_date, locale) : '?'
+  const startLabel = period.start_date ? formatDateMonthDay(period.start_date, locale) : '?'
+  const endLabel = period.end_date ? formatDateMonthDay(period.end_date, locale) : '?'
   const canGoPrev = !!computePrevWindow(period)
   const canGoNext = !!computeNextWindow(period)
 
@@ -536,8 +536,8 @@ function SeasonRail({ season, seasons, locale, t, filterStore, centerExtra }: Se
   const next = nextSeason(seasons, season)
   const todayUTC = isoDateUTC(new Date())
 
-  const startLabel = formatDateShort(isoDateUTC(season.startDate), locale)
-  const endLabel = formatDateShort(
+  const startLabel = formatDateMonthDay(isoDateUTC(season.startDate), locale)
+  const endLabel = formatDateMonthDay(
     season.endDate ? isoDateUTC(season.endDate) : todayUTC,
     locale,
   )

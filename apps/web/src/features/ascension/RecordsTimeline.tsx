@@ -14,7 +14,7 @@
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useRecords } from './queries'
 import { getAscensionText } from './i18n'
-import { formatDate, formatMetricValue, interpolate } from './format'
+import { formatAscensionDate, formatMetricValue, interpolate } from './format'
 import type { PersonalBest, RecordHistory, RecordPeriod } from './types'
 
 export interface RecordsTimelineProps {
@@ -142,7 +142,7 @@ function PBCard({ metric, pbs, locale, t }: PBCardProps) {
               {pb.achieved_at && (
                 <span className="text-2xs text-muted-foreground">
                   {interpolate(t.recordsAchievedAt, {
-                    date: formatDate(pb.achieved_at, locale),
+                    date: formatAscensionDate(pb.achieved_at, locale),
                   })}
                 </span>
               )}
@@ -166,7 +166,7 @@ function HistoryRow({ entry, locale, t }: HistoryRowProps) {
     <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 text-sm">
       <div className="flex flex-1 items-baseline gap-2">
         <span className="text-xs text-muted-foreground">
-          {formatDate(entry.achieved_at, locale)}
+          {formatAscensionDate(entry.achieved_at, locale)}
         </span>
         <span className="font-medium">{label}</span>
         <span className="text-xs text-muted-foreground">

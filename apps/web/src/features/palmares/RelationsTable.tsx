@@ -17,6 +17,7 @@ import { useMemo } from 'react'
 import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatPercent } from '@/lib/formatters'
+import { ratioColor } from '@/lib/colors/outcomePalette'
 import type { RelationInsight } from '@/lib/api/types'
 
 import { RelationBadges } from './RelationBadges'
@@ -36,13 +37,6 @@ function percentColor(v: number | null | undefined): string | undefined {
 function formatRatio(v: number | null | undefined): string {
   if (v == null || !Number.isFinite(v)) return '—'
   return v.toFixed(2)
-}
-
-function ratioColor(v: number | null | undefined): string | undefined {
-  if (v == null || !Number.isFinite(v)) return undefined
-  if (v > 1) return tokenCssVar('outcome-win')
-  if (v < 1) return tokenCssVar('outcome-loss')
-  return tokenCssVar('outcome-draw')
 }
 
 function SplitBar({
