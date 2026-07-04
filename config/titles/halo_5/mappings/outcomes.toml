@@ -1,6 +1,8 @@
 # config/titles/halo_5/mappings/outcomes.toml
 #
 # Outcomes Halo 5 (universels : win/loss/tie/dnf). Color tokens sémantiques partagés.
+# raw_code = entier brut du titre (MT-06/PMT-5) : identique à Halo Infinite
+# (win=2, loss=3, tie=1, dnf=4) — sert au seam int↔canonique (OutcomeMappingSet).
 
 [meta]
 title_slug     = "halo_5"
@@ -9,15 +11,19 @@ schema_version = 1
 [outcomes.win]
 labels = { en = "Victory", fr = "Victoire" }
 color_token = "outcome.positive"
+raw_code = 2
 
 [outcomes.loss]
 labels = { en = "Defeat", fr = "Défaite" }
 color_token = "outcome.negative"
+raw_code = 3
 
 [outcomes.tie]
 labels = { en = "Tie", fr = "Égalité" }
 color_token = "outcome.neutral"
+raw_code = 1
 
 [outcomes.dnf]
 labels = { en = "DNF", fr = "Abandon" }
 color_token = "outcome.neutral"
+raw_code = 4

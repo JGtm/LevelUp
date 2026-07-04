@@ -410,7 +410,7 @@ func NewRouter(
 		// redirige vers les fixtures démo (sinon RankCatalog vide → rangs en EN).
 		hiMetaPath := metadataDBPathFor(cfg)
 		if metaDB, err := platform_duckdb.OpenReadWriteShared(hiMetaPath); err == nil {
-			if catalog, err := platform_duckdb.LoadRankCatalog(context.Background(), metaDB); err == nil {
+			if catalog, err := platform_duckdb.LoadRankCatalog(context.Background(), metaDB, titlePkg.DefaultSlug); err == nil {
 				hiRanks = catalog
 				slog.Info("rank_catalog_loaded", "title_slug", titlePkg.DefaultSlug, "ranks", catalog.Len())
 			} else {
