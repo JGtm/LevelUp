@@ -637,9 +637,18 @@ traiter AVANT les refactors structurels.)
   ON + fine `engagement.score`=not_exposed) est alors COHÉRENT — pas de changement de comportement.
   Test à livrer avec F15-12 (complétude capabilities). L'activation `not_exposed→degraded` +
   câblage adapter + validation calibration = chantier futur (impacte Halo 7 et tout titre).
-- [ ] F8 — ARCHI 36 : câbler `LoadAuthDescriptor` au boot par titre actif ;
-  `DefaultHaloAuthDescriptor()` réservé au titre par défaut (`halo_exchange.go:71`).
-  Corriger le statut MT-02 au registre.
+- [~] F8 — ARCHI 36 : DIFFÉRÉ Phase 1b / MT-02 (justifié, règle 9 — territoire auth ADR 0023
+  sensible). Vérifié sur pièces : `config/titles/halo_5/auth.toml` DOCUMENTE explicitement que
+  H5 RÉUTILISE les audiences Infinite (« ZÉRO audience séparée requise, les bonnes ») ; seule
+  divergence = `clearance_url=""` — or H5 IGNORE le clearance (`ClearanceAware:false`, confirmé
+  sonde live cmd/probe-h5). Donc `DefaultHaloAuthDescriptor()` (Infinite) est FONCTIONNELLEMENT
+  correct pour H5 aujourd'hui (il fait juste un appel clearance supplémentaire que H5 ignore) —
+  H5 sync fonctionne. L'infra existe (`LoadAuthDescriptor(root,slug)` + variantes `*WithDescriptor`)
+  mais threader le descripteur par-titre à travers la chaîne d'échange de tokens (par-joueur) est
+  un refactor auth-sensible pour titres FUTURS à auth réellement divergente = MT-02 / activation
+  multi-titre. Risque de casser l'auth (règle : jamais toucher l'auth à la légère) pour valeur
+  H5 NULLE. Le seam est prêt ; le câblage se fait au chantier d'activation. Défaut byte-identique
+  Infinite (0 régression).
 - [~] F9 — ARCHI 35 : DIFFÉRÉ Phase 1b / MT-19 (justifié, règle 9). Vérifié sur pièces :
   les 6 handlers Ascension/Prestige (progression/coach/profile/awards/patterns/campaign,
   `server.go:~1554-1614`) sont construits AU BOOT avec `DefaultSlug` figé et montés
