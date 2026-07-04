@@ -36,6 +36,10 @@ type MatchViewRepo struct {
 	// relations shared non-match-immutables (ex. world_csr_leaderboard) lues par
 	// d'autres repos restent sur le live. Media (SharedSocial) + player (ReadDB) idem.
 	sharedReader SharedReader
+	// modeTax : classification des modes du titre, injectée au wiring pour éviter
+	// le couplage platform/duckdb → games/halo_infinite dans le filtrage neighbors
+	// (F15-2). Zéro-value = pas de classification (clause ModeCategory omise).
+	modeTax analysis.ModeTaxonomy
 }
 
 // NewMatchViewRepo crée un MatchViewRepo.
@@ -47,6 +51,14 @@ func NewMatchViewRepo(pdb *PlayerDB, xuid string) *MatchViewRepo {
 // snapshot scoped). Retourne le repo pour chaînage. nil = no-op (reste sur pdb.SharedReadDB()).
 func (r *MatchViewRepo) WithSharedReader(sr SharedReader) *MatchViewRepo {
 	r.sharedReader = sr
+	return r
+}
+
+// WithModeTaxonomy injecte la classification des modes du titre (préfixes pair_name
+// par catégorie) pour le filtrage neighbors. Sans injection, la clause ModeCategory
+// est omise (dégradation gracieuse). Câblé au wiring depuis games/halo_infinite (F15-2).
+func (r *MatchViewRepo) WithModeTaxonomy(t analysis.ModeTaxonomy) *MatchViewRepo {
+	r.modeTax = t
 	return r
 }
 

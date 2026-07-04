@@ -14,14 +14,14 @@ import (
 	"levelup/go-api/internal/service"
 )
 
-// mediaModeTaxonomy est la taxonomie de classification des modes injectée dans
-// MediaRepo (F1). Le couplage games/halo_infinite vit désormais au niveau
-// composition (registry = racine DI, autorisée à importer games) et NON plus dans
-// platform/duckdb. Actuellement Halo Infinite (seul titre avec média + modes
-// catégorisés en prod ; comportement byte-identique au code d'avant F1).
-// FOLLOW-UP per-titre : quand un 2e titre exposera du média, résoudre la taxonomie
-// via le title resolver (comme assetURLFor) au lieu de cette constante.
-func mediaModeTaxonomy() analysis.ModeTaxonomy {
+// haloInfiniteModeTaxonomy est la taxonomie de classification des modes injectée dans
+// MediaRepo (F1) et MatchViewRepo (F15-2, filtrage neighbors). Le couplage
+// games/halo_infinite vit désormais au niveau composition (registry = racine DI,
+// autorisée à importer games) et NON plus dans platform/duckdb. Actuellement Halo
+// Infinite (seul titre avec ces surfaces en prod ; comportement byte-identique au code
+// d'avant F1/F15-2). FOLLOW-UP per-titre : quand un 2e titre exposera média/neighbors
+// filtrés, résoudre la taxonomie via le title resolver (comme assetURLFor).
+func haloInfiniteModeTaxonomy() analysis.ModeTaxonomy {
 	return analysis.ModeTaxonomy{
 		InferCategory: halo_infinite.InferModeCategoryFromPairName,
 		PrefixesFor:   halo_infinite.PairNamePrefixesForCategory,
@@ -50,7 +50,7 @@ func (r *ServiceRegistry) Media(ctx context.Context, slug string) (port.MediaSer
 	if err != nil {
 		return nil, err
 	}
-	repo := duckdb.NewMediaRepo(pdb).WithModeTaxonomy(mediaModeTaxonomy())
+	repo := duckdb.NewMediaRepo(pdb).WithModeTaxonomy(haloInfiniteModeTaxonomy())
 	if a := r.assetURLFor(pdb.TitleSlug); a != nil {
 		repo = repo.WithAssetURL(a)
 	}
@@ -67,7 +67,7 @@ func (r *ServiceRegistry) MediaUpload(ctx context.Context, slug string) (
 	if err != nil {
 		return nil, "", "", "", "", "", err
 	}
-	repo := duckdb.NewMediaRepo(pdb).WithModeTaxonomy(mediaModeTaxonomy())
+	repo := duckdb.NewMediaRepo(pdb).WithModeTaxonomy(haloInfiniteModeTaxonomy())
 	if a := r.assetURLFor(pdb.TitleSlug); a != nil {
 		repo = repo.WithAssetURL(a)
 	}

@@ -89,7 +89,7 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 		return nil, err
 	}
 	svc := service.NewMatchViewService(
-		duckdb.NewMatchViewRepo(pdb, pdb.XUID).WithSharedReader(r.matchViewSharedReader(pdb)), pdb.XUID)
+		duckdb.NewMatchViewRepo(pdb, pdb.XUID).WithSharedReader(r.matchViewSharedReader(pdb)).WithModeTaxonomy(haloInfiniteModeTaxonomy()), pdb.XUID)
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		// Voie canonique (repo-first / adapter-fallback) : le viewer gamertag est
 		// requis par LoadMatchDetail des titres GAMERTAG-keyés (Halo 5, Player.Xuid
@@ -184,7 +184,7 @@ func (r *ServiceRegistry) buildFriendsExtrasResolver(mainPDB *duckdb.PlayerDB) p
 		if perr != nil {
 			return nil, perr
 		}
-		return duckdb.NewMatchViewRepo(pdb, pdb.XUID).WithSharedReader(r.matchViewSharedReader(pdb)), nil
+		return duckdb.NewMatchViewRepo(pdb, pdb.XUID).WithSharedReader(r.matchViewSharedReader(pdb)).WithModeTaxonomy(haloInfiniteModeTaxonomy()), nil
 	}
 	return service.NewFriendsExtrasResolver(friendsByXUID, opener, r.assetURLFor(mainPDB.TitleSlug))
 }
