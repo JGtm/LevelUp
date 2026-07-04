@@ -34,6 +34,7 @@ import (
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/platform/duckdb"
 	syncpkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/util/pointers"
 )
 
 // AppearanceSource est la surface live minimale consommée par le hook appearance.
@@ -87,21 +88,21 @@ func PersistAppearance(
 	// Service tag → spartan_id (convention existante).
 	if st := strings.TrimSpace(app.ServiceTag); st != "" {
 		res.ServiceTag = st
-		partial.SpartanID = strPtr(st)
+		partial.SpartanID = pointers.Ptr(st)
 	}
 
 	// Rendu Spartan → banner_image_url (fond du bloc Home).
 	if persistAppearancePNG(ctx, store, assets.KindSpartanBanner, slug,
 		func() ([]byte, string, error) { return src.GetSpartanRenderPNG(ctx, gamertag) }) {
 		res.SpartanRendered = true
-		partial.BannerImageURL = strPtr(slug)
+		partial.BannerImageURL = pointers.Ptr(slug)
 	}
 
 	// Emblème → emblem_image_url (avatar circulaire du bloc Home).
 	if persistAppearancePNG(ctx, store, assets.KindSpartanEmblem, slug,
 		func() ([]byte, string, error) { return src.GetEmblemPNG(ctx, gamertag) }) {
 		res.EmblemRendered = true
-		partial.EmblemImageURL = strPtr(slug)
+		partial.EmblemImageURL = pointers.Ptr(slug)
 	}
 
 	if partial.IsEmpty() {
@@ -181,4 +182,3 @@ func appearanceAssetSlug(gamertag string) string {
 }
 
 // strPtr retourne un pointeur vers s (helper local — pas de dépendance externe).
-func strPtr(s string) *string { return &s }

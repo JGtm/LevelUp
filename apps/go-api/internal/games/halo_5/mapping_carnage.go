@@ -24,6 +24,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/halo/duration"
+	"levelup/go-api/internal/util/pointers"
 )
 
 // h5GameModeSegment mappe le GameMode numérique (liste de matchs) vers le segment
@@ -80,7 +81,7 @@ func mapCarnageParticipants(ctx context.Context, matchID string, carnage *H5Carn
 		out = append(out, domain.MatchParticipantRow{
 			MatchID:          matchID,
 			XUID:             xuid,
-			Gamertag:         strPtrH5(p.Player.Gamertag),
+			Gamertag:         pointers.Ptr(p.Player.Gamertag),
 			TeamID:           intPtrH5(p.TeamId),
 			Rank:             intPtrH5(p.Rank),
 			Score:            intPtrH5(p.PlayerScore),
@@ -177,6 +178,5 @@ func h5NetFDA(kills, assists, deaths int) *float64 {
 	return &v
 }
 
-func strPtrH5(s string) *string     { return &s }
 func intPtrH5(n int) *int           { return &n }
 func floatPtrH5(f float64) *float64 { return &f }

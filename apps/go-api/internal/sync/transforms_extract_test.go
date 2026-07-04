@@ -206,7 +206,7 @@ func TestExtractRegistry_VersionIDsAbsent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExtractRegistry: %v", err)
 	}
-	// strPtr("") retourne nil — convention pour insérer NULL en DB.
+	// strPtrNonEmpty("") retourne nil — convention pour insérer NULL en DB.
 	if row.PlaylistVersionID != nil {
 		t.Errorf("PlaylistVersionID attendu nil, got %v", *row.PlaylistVersionID)
 	}

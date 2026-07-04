@@ -828,14 +828,17 @@ embarque son garde-rail anti-régression le jour de sa livraison (CR reco 1).
   (`PeriodSessionRail.tsx:55-114`, dictionnaire 60 L inline) → fusionner si identique,
   sinon renommer (`formatDateMonthDay`). Gate : typecheck+vitest ; grep
   `function formatDate|function formatPercent` hors lib/formatters → 0.
-- [ ] H5 — CR A13 : helpers Go. **RECALIBRÉ — l'item de l'audit est en partie FAUX** :
-  (a) `safeDiv` ≠ `analysis.SafeRatio` : `safeDiv(a,0)` renvoie le NUMÉRATEUR + arrondi
-  2 déc. ; `SafeRatio(n,0)` renvoie 0.0 non arrondi → remplacer = BUG (KD=0 au lieu de
-  kills sur match sans mort). safeDiv N'EST PAS un doublon → `[~] faux positif`, GARDER.
-  (b) `strPtr` : 5 VARIANTES sémantiquement DISTINCTES (strPtr/strPtrOrNil/strPtrH5/
-  strPtrEq/strPtrDeref) — seules les copies du pur `strPtr(s string)*string` sont
-  migrables vers `Ptr[T]` (nouveau `internal/util/pointers`, défaut approuvé D-A.2).
-  Gate : build+tests ; garde-rail grep `func strPtr\b` hors util → 0 (variantes exclues).
+- [x] H5 — CR A13 : helpers Go. **LIVRÉ (2026-07-04)**. (a) `safeDiv` `[~] faux positif`
+  CONFIRMÉ non touché (≠ SafeRatio : remplacer = bug KD). (b) Créé `internal/util/pointers`
+  `Ptr[T any](v T) *T`. Migrés vers `pointers.Ptr` : les **3 copies PURES** `strPtr`
+  (cmd/server, api/handlers/openspartan_import, games/halo_5/livesync/appearance_persist)
+  + `strPtrH5` (games/halo_5, clone identique). PIÈGE évité (sur pièces) : le `strPtr` de
+  `sync/transforms_helpers.go` N'EST PAS pur — il renvoie `nil` sur chaîne vide → migrer =
+  bug (`&""` au lieu de nil). RENOMMÉ `strPtrNonEmpty` (13 call sites prod + tests) pour
+  refléter sa sémantique et laisser le garde-rail propre. `strPtrOrNil` (openspartan,
+  TrimSpace+nil) + `strPtrEq`/`strPtrDeref` (test) restent distincts. Garde-rail
+  `archlint/no_local_ptr_helper_test.go` (regex `func strPtr(H5)?\(` — ignore les variantes
+  nommées). Gate : build+vet OK, unit verts, intégration `-p 1` VERTE (0 FAIL).
 - [ ] H6 — CR A13 : **RECALIBRÉ — volet icône STALE** : 1 SEULE définition
   `OpenMatchIcon` (MediaViewer.tsx), pas « 9 copies/8 fichiers » → `[~]` volet icône.
   Volet VALIDE : socle d'option ECharts répété (~24 blocs grid/tooltip/xAxis dans
@@ -845,11 +848,17 @@ embarque son garde-rail anti-régression le jour de sa livraison (CR reco 1).
   (CareerRivalsSection, PalmaresRelationsPage, ExplorerEncounterBriefing `kdRatioColor`…)
   → module partagé `lib/colors/outcomePalette.ts` (défaut approuvé D-A.3), TOKENS
   sémantiques uniquement (règle couleurs). Gate : typecheck+vitest + grep des fns locales → 0.
-- [ ] H8 (ex-F16) — ARCHI 7 : dédupliquer `augmentWithActiveRankedCSRs` (original
-  `sync/career.go` vs copie DI `registry_pages.go` — copie déjà gatée capability en F2).
-  Divergence réelle NameFR/NameEN → impl unique avec **param `locale string`** (vide =
-  skip enrichissement label ; défaut approuvé D-D.11), nom résolu via semantic adapter.
-  Gate : build+tests ; grep `augmentWithActiveRankedCSRs` = 1 def.
+- [x] H8 (ex-F16) — ARCHI 7 : **LIVRÉ (2026-07-04)**. La « copie » de registry_pages.go
+  n'était pas une fonction nommée mais une **boucle inline** (newExplorerCSRProvider,
+  ~21 L) divergeant sur `pl.NameFR` (vs `NameEN` côté sync) + un message de log distinct.
+  `augmentWithActiveRankedCSRs` (sync/career.go) EXPORTÉ → `AugmentWithActiveRankedCSRs`
+  + **param `locale`** ("fr"→NameFR, "en"/autre→NameEN, ""→skip label ; défaut approuvé
+  D-D.11) ; les 2 CSR ont le même type `PlayerPlaylistCSR` donc appel direct. Sync passe
+  "en", provider DI Explorer passe "fr" (parité comportement préservée). Boucle inline
+  supprimée. Pas de garde-rail grep : le fingerprint (Active()+GetPlaylistCsr) collisionne
+  avec `newExplorerSeasonCSRProvider` (autre logique légitime) → la fonction exportée unique
+  EST le mécanisme anti-divergence (gate `= 1 def` vérifié). Gate : build+vet OK, unit
+  api/sync verts, intégration `-p 1` VERTE (0 FAIL).
 
 Gate H : garde-rails grep H1/H2/H5/H7 verts (allowlists migrations datées) ;
 `npm run typecheck && npm run test` ; go build+test ; comptes avant/après au Journal.

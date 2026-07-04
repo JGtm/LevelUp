@@ -142,7 +142,7 @@ func TestProperty_ConcurrentUpsertsIdempotent(t *testing.T) {
 	// les UPSERTs sur la même clé naturelle.
 	src := rand.New(rand.NewSource(42))
 	intPtr := func(v int) *int { return &v }
-	strPtr := func(v string) *string { return &v }
+	strPtrNonEmpty := func(v string) *string { return &v }
 	type job struct {
 		p    pair
 		rows []ParticipantRow
@@ -155,7 +155,7 @@ func TestProperty_ConcurrentUpsertsIdempotent(t *testing.T) {
 				rows: []ParticipantRow{{
 					MatchID:  p.matchID,
 					XUID:     p.xuid,
-					Gamertag: strPtr(fmt.Sprintf("player-%d", src.Intn(100))),
+					Gamertag: strPtrNonEmpty(fmt.Sprintf("player-%d", src.Intn(100))),
 					TeamID:   intPtr(src.Intn(2)),
 					Outcome:  intPtr(2),
 					Kills:    intPtr(src.Intn(30)),
@@ -251,11 +251,11 @@ func TestProperty_SamePairManyConcurrent_OneRow(t *testing.T) {
 	}
 
 	intPtr := func(v int) *int { return &v }
-	strPtr := func(v string) *string { return &v }
+	strPtrNonEmpty := func(v string) *string { return &v }
 	row := ParticipantRow{
 		MatchID:  "prop-singlepair",
 		XUID:     "prop-xuid-single",
-		Gamertag: strPtr("player_unique"),
+		Gamertag: strPtrNonEmpty("player_unique"),
 		Kills:    intPtr(10),
 		Deaths:   intPtr(5),
 	}

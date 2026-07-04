@@ -215,7 +215,7 @@ func syncPlayerCSRs(
 	// 2. Compléter avec les playlists classées ACTIVES manquantes via l'endpoint
 	//    par-playlist (/hi/playlist/{id}/csrs) — garantit la couverture de toutes
 	//    les playlists classées de la saison sans dériver de l'historique.
-	csrs = augmentWithActiveRankedCSRs(ctx, client, xuid, seasonID, csrs)
+	csrs = AugmentWithActiveRankedCSRs(ctx, client, xuid, seasonID, csrs, "en")
 	if len(csrs) == 0 {
 		return nil, nil
 	}
@@ -225,19 +225,25 @@ func syncPlayerCSRs(
 	return csrs, nil
 }
 
-// augmentWithActiveRankedCSRs ajoute à csrs les playlists classées ACTIVES
+// AugmentWithActiveRankedCSRs ajoute à csrs les playlists classées ACTIVES
 // (référence rankedplaylists) absentes du player-level, en interrogeant
-// l'endpoint par-playlist (Grunt Skill.GetPlaylistCsr). Nom/queue/input viennent
-// de la référence. Best-effort par playlist : une erreur n'interrompt pas.
+// l'endpoint par-playlist (Grunt Skill.GetPlaylistCsr). Queue/input viennent de
+// la référence. Best-effort par playlist : une erreur n'interrompt pas.
+//
+// locale sélectionne le libellé de playlist depuis la référence : "fr" → NameFR,
+// "en"/autre → NameEN, "" → ne PAS enrichir le nom (garder celui de l'API).
+// Source unique partagée par le sync post-cycle (career.go) et le provider DI
+// Explorer (api/registry_pages.go) — H8 (2026-07-04), dédup d'une copie inline.
 //
 // Les playlists pour lesquelles l'API ne renvoie aucune entrée (jamais jouées)
 // sont volontairement ignorées : la lecture catalogue-first (GetCSRSnapshots)
 // synthétise alors une ligne "Non classé" cohérente avec le seuil de la saison.
-func augmentWithActiveRankedCSRs(
+func AugmentWithActiveRankedCSRs(
 	ctx context.Context,
 	client HaloClient,
 	xuid, seasonID string,
 	csrs []PlayerPlaylistCSR,
+	locale string,
 ) []PlayerPlaylistCSR {
 	seen := make(map[string]struct{}, len(csrs))
 	for _, c := range csrs {
@@ -249,14 +255,21 @@ func augmentWithActiveRankedCSRs(
 		}
 		res, err := client.GetPlaylistCsr(ctx, pl.AssetID, xuid, seasonID)
 		if err != nil {
-			slog.WarnContext(ctx, "augmentWithActiveRankedCSRs: GetPlaylistCsr échoué",
+			slog.WarnContext(ctx, "AugmentWithActiveRankedCSRs: GetPlaylistCsr échoué",
 				"playlist", pl.AssetID, "err", err)
 			continue
 		}
 		if res == nil {
 			continue // pas d'entrée → catalogue-first affichera "Non classé"
 		}
-		res.PlaylistName = pl.NameEN
+		switch locale {
+		case "fr":
+			res.PlaylistName = pl.NameFR
+		case "":
+			// skip : garder le PlaylistName renvoyé par l'API.
+		default:
+			res.PlaylistName = pl.NameEN
+		}
 		res.Queue = pl.Queue
 		res.Input = pl.Input
 		csrs = append(csrs, *res)
