@@ -34,7 +34,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { mmrDeltaScale, kdaDivergentScale } from '@/lib/accessibility/scales'
 import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
-import { formatDate, formatDurationMMSS, displayRatingLabel } from '@/lib/formatters'
+import { formatDate, formatDurationMMSS, displayRatingLabel, intlLocale as toIntlLocale } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
 import type { ContextDescriptor, MatchFilterSpec } from '@/lib/match-nav/navContext'
@@ -172,7 +172,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
     formatMessage(explorerManifest, key, locale, values)
   const tMV = (key: MatchViewManifestKey, values?: Record<string, string | number>) =>
     formatMessage(matchViewManifest, key, locale, values)
-  const intlLocale = locale === 'en' ? 'en-US' : 'fr-FR'
+  const intlLocale = toIntlLocale(locale)
 
   const { data: mappings } = useFieldMappings()
   const mapAssets = mappings?.assets?.['map']

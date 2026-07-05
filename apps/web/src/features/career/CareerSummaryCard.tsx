@@ -10,6 +10,7 @@ import { RankProgressGauge } from '@/components/ui/rank-progress-gauge'
 import { careerManifest } from '@/lib/i18n/generated/career'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale as toIntlLocale } from '@/lib/formatters'
 import type { CareerSummary, HeroProgress, CareerProjections } from '@/lib/api/types'
 
 interface Props {
@@ -30,7 +31,7 @@ const TITLE_SLUG_HALO_5 = 'halo_5'
 export function CareerSummaryCard({ summary, heroProgress, projections }: Props) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const intlLocale = locale === 'fr' ? 'fr-FR' : 'en-US'
+  const intlLocale = toIntlLocale(locale)
 
   if (!summary) {
     return (
