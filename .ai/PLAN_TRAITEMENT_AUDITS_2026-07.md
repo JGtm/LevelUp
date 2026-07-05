@@ -929,11 +929,20 @@ Objectif : purge FR monolingue + anglicismes ; règle lint passée en `error` à
   (double « série » évité ; « streak shield » → « bouclier de série »). CLÉS intactes.
   Gate : typecheck OK, vitest 425 verts, grep valeur FR + « streak » → 0 (ne restent que
   clés/EN/glossaire/commentaires de code).
-- [!] I4 — CR mineurs : **DIFFÉRÉ → chantier i18n manuel séparé** (décision utilisateur A,
-  2026-07-05). ~88 ternaires `locale === 'en' ?` (réel, ascension seul = 26) → migrer vers
-  manifests/dicts par feature ; + aria-label figé (NotificationItem), labels hardcodés
-  (TimeseriesFormCharts, LeaderboardBlock/PP). NON exigé par le gate lint. Exception tolérée
-  (approuvée) : helpers PURS de lib/. Voir §7.
+- [!] I4 — CR mineurs : **SCOPÉ PRÉCISÉMENT (2026-07-05), non exécuté ce tour.** Comptage
+  réel = **155 ternaires** `locale === 'en'/'fr' ?` (audit disait 88), MAIS distinction
+  clé vérifiée sur pièces : **tous DÉJÀ bilingues** (les 2 langues présentes dans le
+  ternaire) → I4 est un refactor **d'ORGANISATION** (centralisation + parité typée), PAS
+  un correctif de lacune bilingue user-facing (contrairement à I1/I2 qui comblaient de vraies
+  strings FR-only). Priorité moindre une fois I1/I2 livrés. Deux sous-ensembles :
+  - **40 ternaires = pont locale→BCP-47** (`locale === 'en' ? 'en-US' : 'fr-FR'`) → remplacer
+    par `intlLocale(locale)` (helper créé en I2b). Dédup #6 (dupliqué 40×). Nuance :
+    6 sites `'en-GB'` délibérés (date EU) à garder ou router via variante. Collision de nom
+    sur les sites `const intlLocale = …` → import aliasé `import { intlLocale as toIntlLocale }`.
+  - **~115 ternaires = libellés** → migrer vers i18n.ts/manifests par feature. Concentration :
+    AscensionProfileTab 16, ArcPresetPicker 10, MatchViewPage 9, MatchEncountersTable 6,
+    ExplorerEncounterBriefing 5 ; longue traîne 1-2/fichier (un ternaire bilingue isolé =
+    tolérable). Exception approuvée : helpers PURS de lib/. Détail DETTE_ASSUMEE §2 I4.
 - [x] I5 — CR reco 4 : **LIVRÉ (2026-07-05)**. RECALIBRÉ : la règle remontait **1 warning**
   (pas « >100 ») et n'est PAS couplée à I1-I4. Fix du seul warning (`AscensionProfileTab`
   title `Phase 5 minimale` → clé bilingue `prestigeDisabledHint` FR+EN), puis

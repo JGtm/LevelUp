@@ -45,7 +45,13 @@ mais NON exigé par le gate :
   Effort mécanique mais par-site (surface rendu chart). Impact = cosmétique (séparateurs
   nombre, ordre date EN). **Garder** : valeurs objet `fr` d'i18n (légitimes), `formatDateShort`
   (verrou chart DD/MM documenté). Poser un garde-rail avec allowlist des exceptions.
-- **I4** — ~88 ternaires `locale === 'en' ?` → dicts/manifests par feature (NON commencé).
+- **I4** — **155 ternaires** `locale === 'en'/'fr' ?` (vérifié 2026-07-05 ; audit disait 88),
+  **tous DÉJÀ bilingues** → refactor d'ORGANISATION (pas de lacune user-facing). Deux lots :
+  (a) **40 ponts** `? 'en-US' : 'fr-FR'` → `intlLocale(locale)` (helper prêt, I2b) — dédup #6 ;
+  garder les 6 `'en-GB'` (date EU) ; import aliasé si collision `const intlLocale`.
+  (b) **~115 libellés** → i18n.ts par feature ; concentration AscensionProfileTab(16),
+  ArcPresetPicker(10), MatchViewPage(9), MatchEncountersTable(6), ExplorerEncounterBriefing(5),
+  longue traîne 1-2/fichier tolérable. Non commencé (priorité basse : déjà bilingue).
 - **Reprise** : tâche front dédiée ; système cible = manifests TOML + `build_i18n_manifests.mjs`
   (labels) et `intlLocale()` (formatage nombre/date).
 
