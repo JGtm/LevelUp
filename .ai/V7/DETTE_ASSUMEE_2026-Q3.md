@@ -50,9 +50,13 @@ mais NON exigé par le gate :
   (a) **41 ponts** `? 'en-US' : 'fr-FR'` → `intlLocale(locale)` — ✅ **LIVRÉ (2026-07-05)**,
   dédup #6 complète (6 commits `refactor(I4)`), 6 `'en-GB'` conservés, typecheck/eslint/261
   tests verts.
-  (b) **~114 libellés** (RESTE) → i18n.ts par feature ; concentration AscensionProfileTab(16),
-  ArcPresetPicker(10), MatchViewPage(9), MatchEncountersTable(6), ExplorerEncounterBriefing(5),
-  longue traîne 1-2/fichier tolérable. Non commencé (priorité basse : déjà bilingue).
+  (b) **libellés** — sur-compté (le « 114 » incluait dict/locale-prop/data-selection). Vrais
+  scattered ≈ 40. **26 migrés (2026-07-05)** : fichiers haute densité (AscensionProfileTab 16,
+  MatchViewPage 3, PrestigeSquadProgress 3, Ascension{Realisations,Coaching}Tab 4) → feature
+  i18n. **Reste** (accepté/scopé) : `ArcPresetPicker` dict local consolidé (pattern accepté) ;
+  **cluster tooltips paramétrés dupliqué** MatchEncountersTable+ExplorerEncounterBriefing
+  (`${n} matches as ally`…, #6 cross-feature — sous-tâche i18n paramétré partagé) ; longue
+  traîne 1-2/fichier (**tolérable** par règle plan). Data-selection `_fr:_en` = légitime, garder.
 - **Reprise** : tâche front dédiée ; système cible = manifests TOML + `build_i18n_manifests.mjs`
   (labels) et `intlLocale()` (formatage nombre/date).
 
