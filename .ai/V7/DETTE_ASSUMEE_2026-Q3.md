@@ -54,10 +54,9 @@ mais NON exigé par le gate :
   scattered ≈ 40. **26 migrés (2026-07-05)** : fichiers haute densité (AscensionProfileTab 16,
   MatchViewPage 3, PrestigeSquadProgress 3, Ascension{Realisations,Coaching}Tab 4) → feature
   i18n. **Reste** (accepté/scopé) : `ArcPresetPicker` dict local consolidé (pattern accepté) ;
-  **3 composants dupliqués** `SplitBar`+`AllyEnemySplitBar`+`KDSplitBar` (byte-identiques dans
-  MatchEncountersTable ET ExplorerEncounterBriefing, tooltips `${n} matches as ally`… inclus) →
-  #6 : extraire vers `features/_shared/EncounterSplitBars.tsx`, importer dans les 2 (résout les
-  tooltips i18n au passage) — sous-tâche extraction composant ; longue
+  ~~3 composants dupliqués SplitBar+AllyEnemySplitBar+KDSplitBar~~ → ✅ **LIVRÉ (2026-07-05)** :
+  extraits vers `features/_shared/EncounterSplitBars.tsx` (dédup #6, tooltips i18n résolus au
+  passage) ; longue
   traîne 1-2/fichier (**tolérable** par règle plan). Data-selection `_fr:_en` = légitime, garder.
 - **Reprise** : tâche front dédiée ; système cible = manifests TOML + `build_i18n_manifests.mjs`
   (labels) et `intlLocale()` (formatage nombre/date).
