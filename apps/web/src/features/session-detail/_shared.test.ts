@@ -9,7 +9,6 @@ import { describe, expect, it } from 'vitest'
 
 import {
   formatPercent,
-  formatShortDateTime,
   matchOutcomeTone,
   outcomeIntToKey,
   parseDelta,
@@ -53,20 +52,6 @@ describe('formatPercent', () => {
 
   it("retourne '—' pour null", () => {
     expect(formatPercent(null)).toBe('—')
-  })
-})
-
-describe('formatShortDateTime', () => {
-  it('formate un ISO datetime en jj/mm HH:MM (locale FR)', () => {
-    // 21 avril 2026 19:45 UTC → la locale FR est utilisée par Intl avec timezone
-    // implicite ; on vérifie juste que le format porte bien des séparateurs et
-    // 4 paires de chiffres (sans dépendre du timezone du runner).
-    const out = formatShortDateTime('2026-04-21T19:45:00Z')
-    expect(out).toMatch(/^\d{2}\/\d{2}\s\d{2}:\d{2}$/)
-  })
-
-  it("retourne la valeur d'origine si le parsing échoue", () => {
-    expect(formatShortDateTime('not-a-date')).toBe('not-a-date')
   })
 })
 

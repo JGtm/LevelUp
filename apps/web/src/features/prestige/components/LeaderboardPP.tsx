@@ -12,7 +12,8 @@ import type { Tier } from '@/lib/prestige'
 import { TIER_COLORS, TIER_LABELS_FR } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { formatMessage } from '@/lib/i18n/format'
+import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
+import { intlLocale } from '@/lib/formatters'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export interface LeaderboardEntry {
@@ -89,7 +90,7 @@ export function LeaderboardPP({
             </thead>
             <tbody>
               {sorted.map((e, idx) => (
-                <Row key={e.user_id} entry={e} rank={idx + 1} />
+                <Row key={e.user_id} entry={e} rank={idx + 1} locale={locale} />
               ))}
             </tbody>
           </table>
@@ -128,7 +129,7 @@ function PeriodToggle({
   )
 }
 
-function Row({ entry, rank }: { entry: LeaderboardEntry; rank: number }) {
+function Row({ entry, rank, locale }: { entry: LeaderboardEntry; rank: number; locale: ManifestLocale }) {
   const tierColor = entry.last_tier ? TIER_COLORS[entry.last_tier] : undefined
   // Phase 4 plan finition multi-titres : libellé du tier via TOML, fallback dict.
   const tierLabelFromTOML = useAssetLabel('challenge_tier', entry.last_tier ?? '')
@@ -161,7 +162,7 @@ function Row({ entry, rank }: { entry: LeaderboardEntry; rank: number }) {
       <td className="px-3 py-2 text-xs">
         <span className="font-medium">{entry.level_name}</span>
         <span className="ml-1 text-muted-foreground">
-          ({entry.total_pp.toLocaleString('fr-FR')} PP)
+          ({entry.total_pp.toLocaleString(intlLocale(locale))} PP)
         </span>
       </td>
     </tr>
