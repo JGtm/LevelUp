@@ -186,6 +186,7 @@ function ChallengeGroup({
 }
 
 function PilotModeToggle({ locale }: { locale: 'fr' | 'en' }) {
+  const t = getAscensionText(locale)
   const labelOff = locale === 'en' ? 'Disabled' : 'Désactivé'
   const help =
     locale === 'en'
@@ -207,7 +208,7 @@ function PilotModeToggle({ locale }: { locale: 'fr' | 'en' }) {
       <button
         type="button"
         className="rounded-md border border-border px-3 py-1 text-xs"
-        title="Phase 5 minimale : non implémenté côté backend"
+        title={t.prestigeDisabledHint}
         disabled
       >
         {labelOff}

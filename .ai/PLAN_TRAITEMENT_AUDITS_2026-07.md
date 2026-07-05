@@ -887,20 +887,27 @@ Gate H : garde-rails grep H1/H2/H5/H7 verts (allowlists migrations datées) ;
 
 Objectif : purge FR monolingue + anglicismes ; règle lint passée en `error` à la fin.
 
-> **CALIBRATION I (2026-07-04)** : volumes réels ≫ audit (88 ternaires vs ~33 ; 68+
-> « streak » FR vs ~10 cités). Décision tranchée (défaut approuvé D-B.8) : i18n **par
-> feature** (pattern existant ascension/, match-view/, notifications/). Ordre : I3
-> (mécanique) → I1 → I2 → I4 → I5 EN DERNIER (gate).
+> **CALIBRATION I (2026-07-04, RÉVISÉE 2026-07-05 sur pièces)** : l'audit s'est
+> RÉVÉLÉ FAUX sur le couplage gate↔migration. La règle lint `no-hardcoded-strings`
+> ne remonte qu'**1 warning** (pas « >100 ») et ne flague QUE le texte JSX (≥3 mots
+> /≥15 car) + 5 attributs (title/aria-*/placeholder/alt) — **PAS** les args de
+> fonction (`setError('…')`) ni les libellés courts (« Connexion Xbox » = 2 mots/14 car)
+> que visent I1/I2/I4. Donc **I5 n'est PAS couplé à I1-I4** : la migration manuelle des
+> strings brutes (bilinguisme réel, règle CLAUDE.md n°1) est volumineuse mais NON exigée
+> par le gate lint. **Décision utilisateur 2026-07-05 (option A) : verrouiller le gate
+> (I3 + I5 livrés) et sortir I1/I2/I4 en chantier i18n manuel séparé** (§7 + handoff), pour
+> enchaîner sur M/L/J/N mieux calibrés. I3 confirme aussi le sur-comptage (13 valeurs FR
+> réelles vs « 68+ »). Le « 88 ternaires » d'I4 reste réel mais hors gate.
 
-- [ ] I1 — CR A17 : CONFIRMÉ (10+ strings FR brutes vérifiées dans XboxLoginPage:106,162,
-  164,197,215,248,274,292,307,318 ; + StepDeviceCode, StepInitialSync, RegisterPage,
-  OpenSpartanImportCard). Créer `features/{auth,setup,onboarding}/i18n.ts` FR+EN,
-  remplacer le JSX brut par `t('clé')`.
-- [ ] I2 — CR A18 : CONFIRMÉ (scoreboard `MatchScoreboard.tsx:51-76` : 7+ labels FR sans
-  t() ; heatmap DOW_LABELS/HOUR_LABELS + tooltips ; `toLocaleString('fr-FR')` figés).
-  Sous-découpage : I2a scoreboard (clés `t.sbCol*`) · I2b heatmap (manifest dédié +
-  formatter paramétré) · I2c `toLocaleString` → helper `formatNumber(locale, v)` (pattern
-  Intl existant) · I2d « Par carte »/« Par mode »/« Analyser ».
+- [!] I1 — CR A17 : **DIFFÉRÉ → chantier i18n manuel séparé** (décision utilisateur A,
+  2026-07-05). Réel (10+ strings FR brutes : XboxLoginPage, StepDeviceCode, StepInitialSync,
+  RegisterPage, OpenSpartanImportCard) mais NON exigé par le gate lint (la règle ne flague
+  ni les args de fonction ni les libellés courts). Vraie valeur = bilinguisme onboarding
+  (CLAUDE.md n°1). Le vrai système = manifests TOML `lib/i18n/manifests/*.toml` +
+  `build_i18n_manifests.mjs` (PAS `features/*/i18n.ts` comme disait l'audit). Voir §7.
+- [!] I2 — CR A18 : **DIFFÉRÉ → chantier i18n manuel séparé** (idem). Scoreboard
+  `MatchScoreboard.tsx` labels FR ; heatmap DOW/HOUR + tooltips ; `toLocaleString('fr-FR')`
+  figés ; « Par carte/mode/Analyser ». Non exigé par le gate. Voir §7.
 - [x] I3 — CR A19 : **LIVRÉ (2026-07-04)**. Le « 68+ » sur-comptait ~5× : la quasi-totalité
   sont des CLÉS (`streaksSectionTitle`, `streak_milestone`), des identifiants de code
   (`StreakType`, `StreakCard`, `win_streak`), des valeurs EN (à garder) et le terme de
@@ -910,16 +917,21 @@ Objectif : purge FR monolingue + anglicismes ; règle lint passée en `error` à
   (double « série » évité ; « streak shield » → « bouclier de série »). CLÉS intactes.
   Gate : typecheck OK, vitest 425 verts, grep valeur FR + « streak » → 0 (ne restent que
   clés/EN/glossaire/commentaires de code).
-- [ ] I4 — CR mineurs : CALIBRÉ : **88 ternaires** `locale === 'en' ?` (ascension seul
-  = 26, ex. AscensionProfileTab ×16) vs ~33 audit ; + aria-label FR figé
-  (NotificationItem:72), labels hardcodés (TimeseriesFormCharts:200, LeaderboardBlock:435,
-  LeaderboardPP:82-87). Exception tolérée (défaut approuvé) : helpers PURS de lib/
-  (décision mécanique) ; AUCUN ternaire dans les composants features/.
-- [ ] I5 — CR reco 4 : CONFIRMÉ : règle à `'warn'` (`eslint.config.js:40`), >100 warnings
-  actuels. Passer `'error'` UNIQUEMENT une fois I1-I4 à 0 warning (gate final du lot).
+- [!] I4 — CR mineurs : **DIFFÉRÉ → chantier i18n manuel séparé** (décision utilisateur A,
+  2026-07-05). ~88 ternaires `locale === 'en' ?` (réel, ascension seul = 26) → migrer vers
+  manifests/dicts par feature ; + aria-label figé (NotificationItem), labels hardcodés
+  (TimeseriesFormCharts, LeaderboardBlock/PP). NON exigé par le gate lint. Exception tolérée
+  (approuvée) : helpers PURS de lib/. Voir §7.
+- [x] I5 — CR reco 4 : **LIVRÉ (2026-07-05)**. RECALIBRÉ : la règle remontait **1 warning**
+  (pas « >100 ») et n'est PAS couplée à I1-I4. Fix du seul warning (`AscensionProfileTab`
+  title `Phase 5 minimale` → clé bilingue `prestigeDisabledHint` FR+EN), puis
+  `@levelup/no-hardcoded-strings` passé de `'warn'` à `'error'` (eslint.config.js). Portée
+  documentée dans le commentaire de la règle (texte JSX + attributs ; hors args de fonction).
+  Gate : typecheck OK, **`npm run lint` = 0 erreur** (rule en error), vitest ascension 62 verts.
 
-Gate I : `npm run lint` vert AVEC la règle en error ; revue visuelle EN des pages touchées
-(badges, scoreboard, heatmap).
+Gate I (RÉVISÉ) : `npm run lint` vert AVEC la règle en error → **ATTEINT** (I3+I5 livrés).
+La revue visuelle EN des pages I1/I2 (scoreboard, heatmap, onboarding) fait partie du
+chantier i18n manuel différé (§7), pas du gate de ce lot.
 
 ### LOT J — Performance DuckDB
 
@@ -1537,6 +1549,17 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
 
+- [CHANTIER i18n manuel différé — I1/I2/I4] Décision utilisateur A (2026-07-05). La règle
+  lint `no-hardcoded-strings` (I5, désormais `error`) est volontairement ciblée : texte JSX
+  ≥3 mots/≥15 car + attributs title/aria-*/placeholder/alt. Elle NE flague PAS : (a) les args
+  de fonction (`setError('Impossible…')`), (b) les libellés JSX courts (« Connexion Xbox »),
+  (c) les ternaires `locale === 'en' ? … : …`. Reste donc un vrai chantier de couverture
+  bilingue (CLAUDE.md n°1), NON exigé par le gate : **I1** (onboarding : XboxLoginPage,
+  StepDeviceCode, StepInitialSync, RegisterPage, OpenSpartanImportCard) ; **I2** (scoreboard
+  MatchScoreboard, heatmap DOW/HOUR, `toLocaleString('fr-FR')` figés, « Par carte/mode/
+  Analyser ») ; **I4** (~88 ternaires `locale===`). Système cible = manifests TOML
+  `src/lib/i18n/manifests/*.toml` + `node scripts/build_i18n_manifests.mjs` → `generated/*.ts`,
+  consommés via `formatMessage(manifest, key, locale)`. À planifier comme chantier dédié.
 - [LOT H / H3 — Étape 2 + matching FR-label] Deux follow-ups au-delà du dédup 13 L :
   (1) Faire consommer `useLocalFilterBar` par `SynthesisPage` (supprimerait ~200 L d'état
   pending/committed dupliqué) — conditionné à vérifier que le hook couvre les besoins
