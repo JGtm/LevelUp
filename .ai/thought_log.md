@@ -1,3 +1,20 @@
+## [2026-07-05] LOT L — L4 + L2-(2) livrés ; L1/L2-345/L3/L5 en attente
+
+**Livré** : L4 (SUPPRESSION du middleware ContractValidate — Huma dérive le contrat, D-E.15 ;
+−283 L nettes) ; L2-(2) (ratchet `no_data_path_join_test.go` : `filepath.Join(..."data"...)`
+hors PathResolver interdit dans internal/, allowlist décroissante datée de 9 sites bootstrap).
+L6/L7 étaient déjà `[~]` (pré-exécutés).
+
+**En attente (prochaine session)** : L1 (drift OpenAPI — résorber 22 DIVERGENT via emit-mode
++ regen puis durcir) ; L2-(1) (SQL dans api/ = après K) ; L2-(3/4/5) (parités capability/config
+héritées de F — DÉCOUVERTE : pas de const `CapDamageTaken`, seulement le scalaire
+`games.ProvidesDamageTaken(slug)` → la parité cap⟺scalaire de F15-14 est peut-être un
+non-sujet ; à analyser) ; L3 (golangci config, mesurer d'abord) ; L5 (180 `queryKey:` +
+règle ESLint, gros front).
+
+**Prochaine étape** : reprise possible sur L3/L1 (governance) puis J (perf, J1 instrumentation
+d'abord) et N (front N1/N2). K = chantier dédié.
+
 ## [2026-07-05] LOT M — M2/M3/M4 livrés, M1/M5 différés
 
 **Tâche** : LOT M (tests — gaps ciblés).
