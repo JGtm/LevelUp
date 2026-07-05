@@ -985,8 +985,17 @@ des chemins HTTP chauds.
 - [ ] J9 — ARCHI mineur : `registry_relations_cross_game.go:81` — emprunt non-possédant
   d'un handle cross-titre → acquisition sûre (refcount/provider du titre visé).
 
-Gate J : expvar DBStats visibles dans /debug/vars ; go test ; mesure avant/après notée au
-Journal (temps de réponse Match View + page escouade en local).
+**J2/J3/J4/J6/J7/J9 — DIFFÉRÉS (measure-first, 2026-07-05)** : J1(1) livre l'instrumentation
+(expvar DBStats) qui est le PRÉ-REQUIS de la règle « mesurer d'abord ». Les optimisations
+(J2 budgets mémoire = **DÉCISION PRODUIT** VPS ; J3 GetHistoryForAvgBulk ; J4 LoadSquadMatchesBulk ;
+J6 8 N+1 batchables ; J7 CTE Q26 bornée ; J9 emprunt cross-titre B-swap-safe) doivent être
+VALIDÉES par une mesure avant/après SOUS CHARGE (runtime), pas faites à l'aveugle — sinon on
+optimise un chemin non mesuré + risque de changement de résultat (J3/J4/J7) / wiring provider
+(J9). Chacune a son approche confirmée dans les items ci-dessus. À traiter en tâches ciblées
+avec les mesures J1. J5 = chantier K.
+
+Gate J (PARTIEL) : J8 + J1(1) livrés (expvar `duckdb_pool_stats` visible /debug/vars, tests
+verts). Optimisations J2-J9 = follow-ups measure-first (voir ci-dessus). J5 = chantier K.
 
 ### LOT K — Structure & couches (le plus gros — sous-lots commités séparément)
 
