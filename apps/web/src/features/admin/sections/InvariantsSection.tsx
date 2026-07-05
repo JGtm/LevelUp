@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useAdminInvariants } from '../queries'
@@ -58,7 +59,7 @@ export function InvariantsSection() {
             {data?.generated_at && (
               <p className="text-xs text-muted-foreground">
                 {t('common.admin.invariants_generated_at')}{' '}
-                {new Date(data.generated_at).toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US')}
+                {new Date(data.generated_at).toLocaleString(intlLocale(locale))}
               </p>
             )}
           </div>

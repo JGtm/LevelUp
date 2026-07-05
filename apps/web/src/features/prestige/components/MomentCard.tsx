@@ -7,6 +7,7 @@
  * Animations sobres : pas de flip/particules. Glow bordure + fade-in suffit.
  */
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import type { Challenge } from '@/lib/prestige'
 import { TIER_COLORS, TIER_LABELS_FR } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
@@ -47,7 +48,7 @@ export function MomentCard({
 
   const label = challenge.label || challenge.metric
   const date = challenge.completed_at
-    ? new Date(challenge.completed_at).toLocaleDateString(locale === 'en' ? 'en-US' : 'fr-FR', {
+    ? new Date(challenge.completed_at).toLocaleDateString(intlLocale(locale), {
         day: '2-digit',
         month: 'short',
         year: 'numeric',

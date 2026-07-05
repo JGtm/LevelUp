@@ -7,6 +7,7 @@ import { useParams } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import type { LabelValue, MediaItemRow, MediaQueryRequest } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { MediaLightbox, MediaThumbnailCard, buildOwnerColorMap } from './MediaViewer'
 import { MediaToolbar } from './MediaToolbar'
 import { MediaMatchPicker } from './MediaMatchPicker'
@@ -67,7 +68,7 @@ function itemTimestamp(item: MediaItemRow): number | null {
 
 function buildSessionGroups(items: MediaItemRow[], text: MediaText, locale: string): MediaGroup[] {
   if (items.length === 0) return []
-  const formatter = new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'fr-FR', {
+  const formatter = new Intl.DateTimeFormat(intlLocale(locale), {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

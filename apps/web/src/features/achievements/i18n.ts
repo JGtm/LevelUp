@@ -6,6 +6,7 @@
  * est vide côté API (Xbox renvoie parfois un seul des deux).
  */
 import type { ManifestLocale } from '@/lib/i18n/format'
+import { intlLocale } from '@/lib/formatters'
 
 export type AchievementsLocale = ManifestLocale
 
@@ -127,7 +128,7 @@ export function formatUnlockedDate(
   if (!iso) return null
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return null
-  return date.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+  return date.toLocaleDateString(intlLocale(locale), {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
