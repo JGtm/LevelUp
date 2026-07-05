@@ -13,6 +13,8 @@ import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBas
 import { resolveToken } from '@/lib/accessibility'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
 import { sessionMatchAxisLabel } from './_shared'
@@ -29,9 +31,9 @@ interface DamageOpts {
   takenLabel: string
   /** false (titre sans damage_taken, ex. Halo 5) → segment + légende « subis » retirés. */
   showTaken?: boolean
+  /** Locale BCP-47 pour le formatage des entiers (défaut 'fr-FR' si absent). */
+  numLoc?: string
 }
-
-const fmtInt = (n: number) => Math.round(n).toLocaleString('fr-FR')
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildSessionDamageOption(
@@ -39,6 +41,7 @@ export function buildSessionDamageOption(
   opts: DamageOpts,
 ): EChartsCoreOption {
   const showTaken = opts.showTaken ?? true
+  const fmtInt = (n: number) => Math.round(n).toLocaleString(opts.numLoc ?? 'fr-FR')
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
 
@@ -127,6 +130,7 @@ export function SessionDamageComposite({ title, matches, height = 280 }: Props) 
   // false (Halo 5) → dégâts subis non fournis : segment + légende « subis » retirés
   // (cf. buildSessionDamageOption). Source unique de masquage via useCapability.
   const providesDamageTaken = useProvidesDamageTaken()
+  const locale = useAppShellStore((s) => s.locale)
 
   const series = useMemo<ChartSeries<DamagePoint>[]>(() => {
     const sorted = [...matches]
@@ -168,6 +172,7 @@ export function SessionDamageComposite({ title, matches, height = 280 }: Props) 
           dealtLabel: fields?.damage_dealt?.label ?? 'damage_dealt',
           takenLabel: fields?.damage_taken?.label ?? 'damage_taken',
           showTaken: providesDamageTaken,
+          numLoc: intlLocale(locale),
         })
       }
     />

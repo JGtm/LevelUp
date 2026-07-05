@@ -21,6 +21,8 @@ import {
 } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { ChartFromOption } from './ChartFromOption'
 import type {
   TimeseriesMatchRow,
@@ -89,6 +91,7 @@ export function TimeseriesSessionPerformance({
   showMmr = true,
 }: TimeseriesSessionPerformanceProps) {
   const themeVersion = useThemeVersion()
+  const locale = useAppShellStore((s) => s.locale)
 
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (points.length === 0) return null
@@ -96,6 +99,7 @@ export function TimeseriesSessionPerformance({
     const colPerf = resolveToken('chart-series-2')
     const colWR = resolveToken('outcome-win')
     const colMMR = resolveToken('chart-series-7')
+    const numLoc = intlLocale(locale)
 
     // Format X selon la granularité : session=DD/MM, week=Sxx, month=Mois yy.
     const formatX = (p: SoloSessionPerfPoint): string => {
@@ -104,9 +108,9 @@ export function TimeseriesSessionPerformance({
         case 'week':
           return `${p.session_label}\n(${p.match_count})`
         case 'month':
-          return `${d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })}\n(${p.match_count})`
+          return `${d.toLocaleDateString(numLoc, { month: 'short', year: '2-digit' })}\n(${p.match_count})`
         default:
-          return `${d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}\n(${p.match_count})`
+          return `${d.toLocaleDateString(numLoc, { day: '2-digit', month: '2-digit' })}\n(${p.match_count})`
       }
     }
     const categories = points.map(formatX)
@@ -187,7 +191,7 @@ export function TimeseriesSessionPerformance({
       ],
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [points, granularity, perfLabel, winRateLabel, mmrLabel, showMmr, themeVersion])
+  }, [points, granularity, perfLabel, winRateLabel, mmrLabel, showMmr, themeVersion, locale])
   return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />
 }
 

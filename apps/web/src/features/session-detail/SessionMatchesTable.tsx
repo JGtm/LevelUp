@@ -22,6 +22,9 @@ import { type ColumnDef } from '@tanstack/react-table'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
 import type { ExplorerMatchRow, SessionDetailMatchRow } from '@/lib/api/types'
 import { tokenCssVar } from '@/lib/accessibility'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
+import type { ManifestLocale } from '@/lib/i18n/format'
 
 import { formatRankDelta, rankDeltaToken, useSessionT } from './_shared'
 
@@ -62,7 +65,7 @@ interface Props {
  * (delta_perf, dominance) restent nuls → l'Explorer affiche "-" gracieusement.
  */
 // eslint-disable-next-line react-refresh/only-export-components
-export function toExplorerRow(m: SessionDetailMatchRow, withFriends: boolean): ExplorerMatchRow {
+export function toExplorerRow(m: SessionDetailMatchRow, withFriends: boolean, locale: ManifestLocale): ExplorerMatchRow {
   const ratingType = m.skill_rating_type ? m.skill_rating_type.toUpperCase() : null
   return {
     match_id: m.match_id,
@@ -73,7 +76,7 @@ export function toExplorerRow(m: SessionDetailMatchRow, withFriends: boolean): E
     playlist_label: m.playlist_name ?? '',
     outcome_label: '',
     outcome_code: m.outcome ?? 4,
-    score_label: m.personal_score != null ? m.personal_score.toLocaleString('fr-FR') : '',
+    score_label: m.personal_score != null ? m.personal_score.toLocaleString(intlLocale(locale)) : '',
     is_with_friends: withFriends,
     experience_type_label: '',
     kills: m.kills,
@@ -103,14 +106,15 @@ export function toExplorerRow(m: SessionDetailMatchRow, withFriends: boolean): E
 
 export function SessionMatchesTable({ matches, playerSlug, variant = 'full', withFriends = false }: Props) {
   const t = useSessionT()
+  const locale = useAppShellStore((s) => s.locale)
   // Tri chronologique ASC (oldest first) — cohérent avec les charts de session
   // au-dessus. start_time ISO UTC → comparaison lexicale = ordre chrono.
   const rows = useMemo(
     () =>
       [...matches]
         .sort((a, b) => a.start_time.localeCompare(b.start_time))
-        .map((m) => toExplorerRow(m, withFriends)),
-    [matches, withFriends],
+        .map((m) => toExplorerRow(m, withFriends, locale)),
+    [matches, withFriends, locale],
   )
 
   // Colonne « Δ rang » (gain/perte de rating du match) INJECTÉE après la colonne
