@@ -1,3 +1,19 @@
+## [2026-07-05] LOT M — M2/M3/M4 livrés, M1/M5 différés
+
+**Tâche** : LOT M (tests — gaps ciblés).
+
+**Livré** : M2 (CI `-p 1` + 600s sur les 2 jobs integration — fix du faux-vert 2026-07-03).
+M3 (tests des 2 fonctions 0-test MedalExploit/GetTiming + garde MVPLVP ; `ComputeTrend`
+n'existe pas = réf périmée). M4 (tests middleware http_cache/read_budget, mutation-check
+vérifié, MT-25 no-title-leak).
+
+**Différés (follow-ups ciblés)** : M1 (test intégration LUSR — replay déjà couvert par 30+
+tests ; DÉCOUVERTE : scaffolding openShadowTestDB en retard sur le schéma prod, sans
+`is_reset`) ; M5 (goldens par slug — exige de générer des captures d'endpoints H5, infra
+lourde). Ratio effort/valeur défavorable en fin de session ; §7.
+
+**Prochaine étape** : LOT L (gouvernance/ratchets — possibles gains rapides), puis J, N.
+
 ## [2026-07-05] LOT I — I5 livré + RECALIBRATION (I1/I2/I4 différés)
 
 **Tâche** : I5 (règle lint i18n en `error`) + investigation du couplage réel gate↔migration.

@@ -1161,9 +1161,16 @@ Gate L : CI verte avec les nouvelles règles actives et baselines commitées dat
 
 ### LOT M — Tests (gaps ciblés)
 
-- [ ] M1 — QUALITE : test d'intégration sur `RecomputeLUSRCanonicalForPlayer`
-  (`lusr_full_recompute.go` — orchestrateur à 3 callers, 0 test) : dataset réaliste
-  hétérogène (règle mémoire projet), ordre des matchs + watermark assertés.
+- [!] M1 — QUALITE : **DIFFÉRÉ (follow-up ciblé, 2026-07-05)**. Item le plus lourd du lot.
+  `RecomputeLUSRCanonicalForPlayer` est mince (INSERT sentinelle `is_reset=TRUE` +
+  délégation à `RunLUSRV2ShadowOwnerOnly`) ; **le replay délégué est DÉJÀ couvert par 30+
+  `TestRunLUSRV2Shadow_*`** (skill_v2_shadow_test.go). La valeur marginale = la sentinelle
+  de reset, qui exige une fixture au schéma COURANT (`is_reset` + vue `_latest` filtrant
+  `WHERE NOT is_reset`, ADR 0026). **DÉCOUVERTE : le scaffolding existant `openShadowTestDB`
+  est EN RETARD sur le schéma prod** (player_skill_state_v2 sans `is_reset`, vue sans le
+  filtre) → un test M1 direct échouerait sur l'INSERT sentinelle. À écrire avec un setup
+  is_reset-aware dédié (copie corrigée d'openShadowTestDB) — chantier ciblé, hors budget
+  de cette session vu son ratio effort/valeur (replay déjà testé). Voir §7.
 - [x] M2 — QUALITE : **LIVRÉ (2026-07-05)**. Les 2 jobs coverage integration de ci.yml
   (l.206 « couverture complète » + l.260 « internal/sync ») reçoivent **`-p 1`** + passage
   **`-timeout 300s`→`600s`** + commentaire NON-NÉGOCIABLE référençant l'incident 2026-07-03.
@@ -1186,14 +1193,18 @@ Gate L : CI verte avec les nouvelles règles actives et baselines commitées dat
   next ; budget≤0 → défaut ; la sémantique fail-fast reste couverte par l'intégration
   sharedprovider). Mutation-check vérifié (casser le header max-age → FAIL). Gate : package
   middleware vert. Note : helper renommé `cacheBackend` (collision `okHandler` auth_test.go).
-- [ ] M5 (ex-F13) — DETTE §2.4.2 : goldens paramétrés par slug. Approche calibrée :
-  `golden_output_<slug>.json` + fixtures H5 dédiées (`testdata/t0_fixtures/`, garder
-  l'arborescence existante — défaut approuvé), subtests `t.Run(slug)`, helper
-  `goldenPathForSlug`. Distingue régression vs divergence de titre.
+- [!] M5 (ex-F13) — DETTE §2.4.2 : **DIFFÉRÉ (follow-up ciblé, 2026-07-05)**. Vérifié sur
+  pièces : les goldens sont des CAPTURES de réponses d'endpoints (`tests/fixtures/golden_values/
+  *.json` : career_page_chocoboflor, match_view_slayer… = données halo_infinite). Paramétrer
+  par slug exige de **GÉNÉRER des goldens H5** (mêmes endpoints pour un joueur/match halo_5
+  → data H5 traversant les handlers + capture), pas seulement de restructurer. C'est une
+  infra de test substantielle (comparable à M1). Structure cible confirmée (helper
+  `goldenPathForSlug` + subtests `t.Run(slug)`). Voir §7. Note : `cmd/refresh_golden_fixture`
+  concerne un AUTRE golden (chunk highlight events), pas ces goldens d'endpoint.
 
-Gate M : `go test ./... && go test -tags=integration -p 1 ./...` verts ; les nouveaux
-tests échouent si on casse volontairement le code testé (vérif mutation rapide) ;
-CI : les 2 jobs integration passent en `-p 1` (M2).
+Gate M (PARTIEL) : M2+M3+M4 livrés et verts (mutation-check M4 vérifié ; CI `-p 1` posé).
+M1 + M5 = follow-ups ciblés différés (infra de test lourde, ratio effort/valeur défavorable
+en fin de session ; le replay LUSR de M1 est déjà couvert par 30+ tests) — voir §7.
 
 ### LOT N — Front structurel + résidus (bonus/optionnels)
 
@@ -1555,6 +1566,13 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
 
+- [FOLLOW-UPS tests lourds — M1 + M5] Différés (2026-07-05, fin de session). **M1** : test
+  intégration `RecomputeLUSRCanonicalForPlayer` — le replay délégué est déjà couvert (30+
+  `TestRunLUSRV2Shadow_*`) ; la sentinelle `is_reset` exige une fixture au schéma courant, et
+  DÉCOUVERTE le scaffolding `openShadowTestDB` est en retard (pas d'`is_reset`) → setup dédié à
+  écrire. **M5** : goldens par slug — exige de GÉNÉRER des captures d'endpoints H5 (infra
+  substantielle), pas juste `goldenPathForSlug` + `t.Run(slug)`. Les deux ont un ratio
+  effort/valeur défavorable en fin de session ; à planifier comme tâches ciblées.
 - [CHANTIER i18n manuel différé — I1/I2/I4] Décision utilisateur A (2026-07-05). La règle
   lint `no-hardcoded-strings` (I5, désormais `error`) est volontairement ciblée : texte JSX
   ≥3 mots/≥15 car + attributs title/aria-*/placeholder/alt. Elle NE flague PAS : (a) les args
