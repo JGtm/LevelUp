@@ -1,4 +1,23 @@
-## [2026-07-05] LOT L — L4 + L2-(2) livrés ; L1/L2-345/L3/L5 en attente
+## [2026-07-05] LOT L — L3/L4/L2-(2) livrés ; L1 recalibré ; L2-345/L5 différés
+
+**Livré** : L4 (SUPPRESSION ContractValidate, −283 L) ; L2-(2) (ratchet no_data_path_join,
+allowlist 9 sites) ; **L3** (activer argument-limit — blanket retiré — + funlen 100→80 ;
+mesure sur pièces → seuil argument-limit=7 data-driven au lieu de 5, car 89 fn à 6 args +
+29 à 7 = idiome, puis queue de 33 à ≥8 ; enrichRow 83→<80 ; only-new-issues grandfather la
+dette ; --new-from-rev=main = 0 issue L3-causée). L6/L7 déjà [~].
+
+**L1 — DÉCOUVERTE majeure** : l'approche approuvée (bulk-résoudre les 22 DIVERGENT via emit
+Huma) est INVALIDE. Testé : le remplacement met bien DIVERGENT à 0, MAIS regen generated.ts
+CASSE le typecheck (appShellStore) car Huma dérive `string` des champs Go string, PERDANT
+les énums/nullabilité ajoutés MANUELLEMENT à openapi.yaml. Donc une partie des 22 DIVERGENT
+= enrichissement VOULU, pas de la dérive ; les adopter DÉGRADE le contrat, et durcir à 0
+forcerait à supprimer ces enrichissements. Reverté. Re-scope requis (catégoriser).
+
+**Différés (§7)** : L2-(3/4/5) parités capability (invariant F15-14 confirmé RÉEL —
+CapDamageTaken⟺ProvidesDamageTaken — mais test exige de charger 2 sous-systèmes config) ;
+L5 (180 queryKey, gros front) ; L1 (re-scope) ; L2-(1) (après K).
+
+**Prochaine étape** : LOT J (J1 instrumentation d'abord), puis N ; K = chantier.
 
 **Livré** : L4 (SUPPRESSION du middleware ContractValidate — Huma dérive le contrat, D-E.15 ;
 −283 L nettes) ; L2-(2) (ratchet `no_data_path_join_test.go` : `filepath.Join(..."data"...)`
