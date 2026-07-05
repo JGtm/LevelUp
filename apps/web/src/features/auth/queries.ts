@@ -55,14 +55,9 @@ export function useSetPassword() {
 // Admin : utilisateurs
 // ---------------------------------------------------------------------------
 
-/** Clés admin centralisées — définition ET invalidation (cf. AdminPage). */
-export const adminKeys = {
-  users: ['admin', 'users'] as const,
-}
-
 export function useAdminUsers() {
   return useQuery({
-    queryKey: adminKeys.users,
+    queryKey: queryKeys.adminUsers,
     queryFn: () => api.get<AdminUserSummary[]>('/admin/users'),
   })
 }

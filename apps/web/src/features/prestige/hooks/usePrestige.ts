@@ -3,19 +3,11 @@
  */
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { prestigeApi, type Tier } from '@/lib/prestige'
-
-export const prestigeKeys = {
-  me: (userId: string, titleSlug?: string) =>
-    ['prestige', 'me', userId, titleSlug] as const,
-  /** Préfixe broad — invalide `me(userId, *)` pour tous les titres. */
-  meAll: (userId: string) => ['prestige', 'me', userId] as const,
-  templates: (userId: string, titleSlug: string) =>
-    ['prestige', 'templates', userId, titleSlug] as const,
-}
+import { queryKeys } from '@/lib/query/keys'
 
 export function useMyPrestige(userId: string, titleSlug?: string) {
   return useQuery({
-    queryKey: prestigeKeys.me(userId, titleSlug),
+    queryKey: queryKeys.prestige.me(userId, titleSlug),
     queryFn: () => prestigeApi.getMyPrestige(userId, titleSlug),
     retry: false,
     enabled: !!userId,
@@ -24,7 +16,7 @@ export function useMyPrestige(userId: string, titleSlug?: string) {
 
 export function useSuggestedTemplates(userId: string, titleSlug: string, count = 3) {
   return useQuery({
-    queryKey: prestigeKeys.templates(userId, titleSlug),
+    queryKey: queryKeys.prestige.templates(userId, titleSlug),
     queryFn: () => prestigeApi.suggestTemplates(userId, titleSlug, count),
     retry: false,
     enabled: !!userId && !!titleSlug,

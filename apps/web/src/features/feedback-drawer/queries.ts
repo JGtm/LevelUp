@@ -20,6 +20,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query/keys'
 import { buildSearchIssuesUrl } from './buildIssueUrl'
 import { log } from './_logger'
 
@@ -55,7 +56,7 @@ export function useSimilarIssues(rawTitle: string, enabled: boolean) {
   const queryEnabled = enabled && trimmed.length >= MIN_QUERY_LENGTH
 
   return useQuery<SimilarIssueRef[]>({
-    queryKey: ['feedback-drawer', 'similar-issues', trimmed],
+    queryKey: queryKeys.feedbackSimilarIssues(trimmed),
     queryFn: () => fetchSimilarIssues(trimmed),
     enabled: queryEnabled,
     staleTime: STALE_MS,
