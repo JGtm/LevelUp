@@ -1170,11 +1170,15 @@ Gate L : CI verte avec les nouvelles règles actives et baselines commitées dat
   L'échec sur code de sortie est déjà inhérent (steps `run:` GitHub Actions, pas de grep).
   Note : `-timeout` est PAR-package (chaque binaire de test) — 600s est une marge généreuse
   (duckdb ~111s, sync ~106s en local). YAML vérifié (indentation + continuations `\`).
-- [ ] M3 — QUALITE : CONFIRMÉ (0 test : `ComputeMedalExploitScore` medal_exploit.go:22,
-  `GetTiming` weapon_data.go:224) ; renforcer `ComputeImpactSummary`, `ComputeMVPLVP`,
-  `ComputeTrend`, `ComputeSquadPerformanceScore` (1 seul test référent chacun).
-  NOTE F12 différé au chantier K : poser le test GetTiming dans `weapon_data_test.go`
-  AVEC commentaire « relocatable → games/halo_infinite/film (F12) ».
+- [x] M3 — QUALITE : **LIVRÉ (2026-07-05)**. Les 2 fonctions 0-test CIBLÉES sont couvertes :
+  `medal_exploit_test.go` (8 cas table : poids par difficulté, normal/nil/index-inconnu
+  ignorés, mixte) ; `weapon_data_test.go` (GetTiming known-vs-default, AVEC commentaire
+  « NOTE F12 : relocatable → games/halo_infinite/film »). Renforcement : `ComputeMVPLVP`
+  cas-garde (`scoreboard_extremes_test.go` : vide/1 humain/que-bots/humain+bots → extrêmes
+  vides). `ComputeTrend` = **n'existe pas** (réf audit périmée). `ComputeImpactSummary` +
+  `ComputeSquadPerformanceScore` gardent leur baseline (squad_test.go) — renforcement
+  edge-case plus profond = follow-up basse priorité (baseline présente). Gate : package
+  analysis vert ; helper `intPtr` réutilisé (perf_score_test).
 - [x] M4 — QUALITE : **LIVRÉ (2026-07-05)**. `http_cache_test.go` (9 tests httptest :
   CacheMaxAge GET vs mutations, NoStore, ETagFromBytes déterministe/distinct/format,
   WriteJSONCached 200/304/stale + **NoTitleLeak MT-25** = pas de fuite de cache inter-titre)
