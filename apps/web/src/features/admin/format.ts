@@ -4,6 +4,7 @@
  * notifications/relativeTime.ts) — les manifests TOML ne gèrent pas les
  * placeholders.
  */
+import { intlLocale } from '@/lib/formatters'
 
 export type AdminLocale = 'fr' | 'en'
 
@@ -39,7 +40,7 @@ export function adminRelativeTime(iso: string | undefined, locale: AdminLocale, 
   if (hours < 24) return t.hoursAgo(hours)
   const days = Math.round(hours / 24)
   if (days < 7) return t.daysAgo(days)
-  return date.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US')
+  return date.toLocaleDateString(intlLocale(locale))
 }
 
 /**
@@ -73,7 +74,7 @@ export function adminAbsoluteTime(iso: string | undefined, locale: AdminLocale):
   if (!iso) return ''
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US')
+  return date.toLocaleString(intlLocale(locale))
 }
 
 /** Formate un intervalle scheduler en minutes vers un libellé lisible. */
