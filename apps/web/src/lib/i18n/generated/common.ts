@@ -394,6 +394,14 @@ export const commonManifest = {
   "common.shell.sync_uptodate_title": { fr: "À jour", en: "Up to date" },
   "common.shell.title_coming_soon": { fr: "Bientôt disponible", en: "Coming soon" },
   "common.tooltip.more_info_aria": { fr: "Plus d'informations", en: "More information" },
+  "common.xbox_login.err_demo": { fr: "Authentification indisponible en mode démo.", en: "Authentication unavailable in demo mode." },
+  "common.xbox_login.err_interrupted": { fr: "La connexion au serveur a été interrompue plusieurs fois. Veuillez réessayer.", en: "The connection to the server was interrupted several times. Please try again." },
+  "common.xbox_login.err_restart": { fr: "Impossible de redémarrer le flow.", en: "Unable to restart the flow." },
+  "common.xbox_login.err_start": { fr: "Impossible de démarrer le flow Xbox.", en: "Unable to start the Xbox flow." },
+  "common.xbox_login.retry": { fr: "Réessayer", en: "Retry" },
+  "common.xbox_login.title": { fr: "Connexion Xbox", en: "Xbox sign-in" },
+  "common.xbox_login.valid_for": { fr: "Valide encore", en: "Valid for" },
+  "common.xbox_login.welcome": { fr: "Bienvenue, {gamertag}", en: "Welcome, {gamertag}" },
 } as const
 
 export type CommonManifestKey = keyof typeof commonManifest
