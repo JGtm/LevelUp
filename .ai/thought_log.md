@@ -25,6 +25,10 @@ nouveau fichier. **Gate** : build 0, gofmt 0, api post-sync verts, **intégratio
 5. `EmitPostSyncDeltas` god-function → table-driven (7 deltas compteur, comportement identique).
 6. OC/DR post-sync inline → `analysis.ComputeCombatYieldFloat` (formules → analysis/, +respecte
    AssistsExcludedFromYield).
+7. **K1c** : helper unique sync_meta (read+write ART-safe) → `duckdb/sync_meta_repo.go` (dédup
+   2 copies notifications_title_ready/boot ; durcissement SOUS LEASE noté follow-up).
+8. **K1n** : médiane centralisée `analysis.MedianFloat` (dédup 3 copies : post-sync medianStat,
+   squad_session_window, temporal/engagement_coefficients — algos purs → analysis/).
 
 **RESTE K1a = la grosse extraction `service/postsync/`** (dédiée, smoke-run après K2a) :
 les queries progression restantes (loadProgressionMatches → `streaks.MatchActivity` = cycle
