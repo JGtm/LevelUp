@@ -1,3 +1,21 @@
+## [2026-07-05] I4 (a) — dédup #6 des ponts locale→BCP-47 COMPLÈTE (41 sites)
+
+**Statut** : Lot (a) d'I4 complété. Le pont `locale === 'en' ? 'en-US' : 'fr-FR'` était
+dupliqué **41×** (vrai cas #6) → centralisé sur `intlLocale(locale)` (helper créé en I2b).
+
+**Décision technique** : migration mécanique en 6 batches commités (home, career-collision,
+donuts, admin/ascension-helpers, single-site inline, multi-site). Collisions de nom
+`const intlLocale = …` résolues par import aliasé `intlLocale as toIntlLocale`. `LeaderboardBlock` :
+params `locale: string` resserrés en `ManifestLocale` (le typecheck a servi de filet — un
+`locale` déjà BCP-47 aurait refusé `intlLocale()`). 6 variantes `'en-GB'` (date EU délibérée,
+ex. match-card) conservées. Comportement IDENTIQUE (dédup pur, zéro changement user-facing).
+
+**Résultats** : ~30 fichiers, 6 commits `refactor(I4)`. Gate : typecheck 0, eslint 0, vitest
+261 verts, `grep` ternaire-pont = 0. **Reste I4 (b)** : ~114 ternaires de LIBELLÉS →
+i18n.ts par feature (organisationnel, déjà bilingue, priorité basse). Voir DETTE_ASSUMEE §2.
+
+---
+
 ## [2026-07-05] I2b — figement fr-FR COMPLET (autonomie, sans redemander)
 
 **Statut** : Complété. Après recadrage utilisateur (« fais les chantiers restants, arrête de
