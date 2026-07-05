@@ -28,11 +28,26 @@ La règle est volontairement ciblée (texte JSX + attributs) et NE couvre PAS le
 de fonction ni les libellés courts. Reste donc un chantier de couverture bilingue réel
 mais NON exigé par le gate :
 
-- **I1** — pages onboarding (XboxLoginPage, StepDeviceCode, StepInitialSync, RegisterPage,
-  OpenSpartanImportCard) → manifests TOML `lib/i18n/manifests/*.toml` + regen.
-- **I2** — scoreboard `MatchScoreboard`, heatmap DOW/HOUR, `toLocaleString('fr-FR')`.
-- **I4** — ~88 ternaires `locale === 'en' ?` → dicts/manifests par feature.
-- **Reprise** : tâche front dédiée ; système cible = manifests TOML + `build_i18n_manifests.mjs`.
+- **I1** — ✅ **LIVRÉ (2026-07-05)**. 5 composants onboarding/auth bilingues via
+  `common.toml` (commits 6462887f4, 81fed7aad, d39cc5d1a).
+- **I2 labels** — ✅ **LIVRÉ (2026-07-05)**. Scoreboard, heatmaps (+ centralisation
+  `calendar.ts` + garde-rail), filtres, breakdowns synthesis.
+- **I2b — figement `toLocaleString('fr-FR')` (RESTE ~24 sites)** : pont canonique
+  `lib/formatters/intlLocale.ts` créé + SynthesisPage (15 sites) migré. Résiduel = helpers
+  PURS / builders ECharts / consts module SANS `locale` en scope :
+  `career/CareerChartsSection.gauges.tsx` (2, buildRankGaugeOption/buildHeroGaugeOption),
+  `session-detail/SessionDamageComposite.tsx` (fmtInt const), `session-detail/_shared.ts`,
+  `session-detail/SessionMatchesTable.tsx` (toExplorerRow), `synthesis/SynthesisWeapon{Kills,Accuracy}Chart.tsx`
+  (buildOption ECharts), `media/{MediaViewer,CoverFlowModal,MediaMatchPicker}.tsx` (dates),
+  `home/HomeSessionCarousel.tsx` (formatSessionDate/Duration), `prestige/LeaderboardPP.tsx`,
+  `timeseries/TimeseriesSquadAdapted.tsx`, `match-view/MatchScoreboard.logic.ts` (fmtScore).
+  **Fix** : threader `locale` (param signature / prop) puis `X.toLocaleString(intlLocale(locale))`.
+  Effort mécanique mais par-site (surface rendu chart). Impact = cosmétique (séparateurs
+  nombre, ordre date EN). **Garder** : valeurs objet `fr` d'i18n (légitimes), `formatDateShort`
+  (verrou chart DD/MM documenté). Poser un garde-rail avec allowlist des exceptions.
+- **I4** — ~88 ternaires `locale === 'en' ?` → dicts/manifests par feature (NON commencé).
+- **Reprise** : tâche front dédiée ; système cible = manifests TOML + `build_i18n_manifests.mjs`
+  (labels) et `intlLocale()` (formatage nombre/date).
 
 ## 3. Infra de test — M1, M5
 

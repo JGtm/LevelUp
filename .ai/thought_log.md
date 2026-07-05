@@ -1,3 +1,34 @@
+## [2026-07-05] LOT I — I2 (i18n scoreboard/heatmaps/filtres) : labels LIVRÉS, figement scopé
+
+**Statut** : Labels complétés `[x]` ; figement nombre/date résiduel `[~]` (helper + flagship
+livrés, ~24 sites scopés).
+
+**Décision technique** :
+- Labels (haute valeur user-facing) : MatchScoreboard 11 colonnes + header + tooltip +
+  `sbFormatScore` (MatchViewText fr/en) ; heatmaps activité explorer+synthesis bilingues.
+- **CLAUDE.md n°6** : `['Lun'..'Dim']` était dupliqué dans 4 fichiers → source unique
+  `lib/formatters/calendar.ts` (`dowLabels`/`HOUR_LABELS`/`calendarChartText`) + garde-rail
+  `calendar.guard.test.ts` (test node fs-grep interdisant le littéral hors calendar.ts).
+- Filtres Analyser/Appliqué (`common.filter.*`), breakdowns « Par carte/mode »
+  (`synthesis.breakdown.*`).
+- **Démystification figement** : l'audit annonçait « ~100 occ `toLocaleString('fr-FR')` »
+  → **réel = 39, dont ~9 légitimes** (valeurs objet `fr` d'i18n bilingue = corrects ;
+  `formatDateShort` = verrou chart DD/MM documenté). La majorité des « 61 fichiers » étaient
+  la branche FR d'un ternaire `locale === 'fr' ? 'fr-FR' : 'en-US'` DÉJÀ bilingue (faux
+  positif, même sur-comptage que tous les lots). Vrai figement ≈ 30 sites.
+- Pont canonique `lib/formatters/intlLocale.ts` (ManifestLocale→BCP-47) + SynthesisPage
+  flagship (15 sites) migrés.
+
+**Résultats** : commits (labels + calendar) + (intlLocale + SynthesisPage). Gate : typecheck
+0, eslint 0, vitest 211 (labels) + 22 (synthesis) verts, garde-rail DOW vert (littéral =
+calendar.ts seul).
+
+**Résiduel scopé (DETTE_ASSUMEE §I2b)** : ~24 sites figés dans helpers PURS / builders
+ECharts / consts module SANS `locale` en scope → threading signature requis, cosmétique.
+`intlLocale()` prêt. **Prochaine étape** : I4 (~88 ternaires `locale === 'en' ?`).
+
+---
+
 ## [2026-07-05] LOT I — I1 (i18n onboarding/auth) COMPLET — chantier i18n manuel
 
 **Statut** : Complété. Go utilisateur pour le chantier i18n manuel différé (I1→I2→I4→L5).
