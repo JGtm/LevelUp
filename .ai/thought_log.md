@@ -1,3 +1,34 @@
+## [2026-07-05] K1l (partie) — dédup PlayersRootDir (7 copies → resolver)
+
+**Statut** : Complété (sous-partie « helper `PlayersRootDir(slug)` » de K1l ; le reste des
+chemins hétérogènes de K1l — stash friends, CacheRootDir, seed_demo, config.go — reste
+en session chemins dédiée).
+
+**Décision technique principale** : le sous-chemin racine des joueurs d'un titre,
+`filepath.Join(pr.TitleDataDir(slug), "players")`, était recopié à la main. Source unique
+posée : `PathResolver.PlayersRootDir(titleSlug)` (registry.go), et `PlayerDir` délègue
+dessus (élimine aussi le workaround « gamertag vide + trim segment » de cmd_title). Migré
+partout : ops/backup_service, ops/healthcheck ×2, scheduler/data_health_check,
+service/media_index_service ×2, cmd/levelup/cmd_title.
+
+**Le garde-rail a payé immédiatement** : le grep initial ne couvrait que `internal/` (6
+copies) ; `TestNoManualPlayersRootJoin` (qui walk `internal/` + `cmd/`) a débusqué une
+**7e copie** dans `cmd/levelup/cmd_title.go:137` — sans le garde-rail elle serait restée.
+Illustration directe de CLAUDE.md règle 6 (factorisation SANS garde-rail re-diverge).
+
+**Garde-rail #6** : `archlint/no_players_root_join_test.go` bannit
+`TitleDataDir(...), "players")` hors de registry.go (resolver).
+
+**Résultats observés** : build ./... 0, vet 0, gofmt/goimports OK. Guard vert (après ajout
+de la 7e migration), registry unit test vert. **Gate intégration -p 1 VERT** :
+ops (24 s) + ops/migrate + scheduler + service + domain/title — 0 FAIL. Refactor
+byte-identique (PlayersRootDir renvoie exactement la même chaîne).
+
+**Conclusion / prochaine étape** : K1l marqué `[~]` (PlayersRootDir fait, reste chemins
+hétérogènes). Poursuite du chantier K en autonomie.
+
+---
+
 ## [2026-07-05] K1d (partie) — dédup 3e copie du pattern upsert ART-safe
 
 **Statut** : Complété (sous-partie « factoriser la 3e copie du pattern upsert ART-safe » de

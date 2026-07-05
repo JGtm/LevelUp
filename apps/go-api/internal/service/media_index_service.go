@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
@@ -66,7 +65,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 	pr := titlePkg.NewPathResolver(repoRoot)
 	titleSlug := ctxkeys.TitleSlug(ctx) // titre courant (sync/admin) ; repli halo_infinite si absent
 	capturesBaseDir = effectiveMediaBase(ctx, pr, capturesBaseDir)
-	playersDir := filepath.Join(pr.TitleDataDir(titleSlug), "players")
+	playersDir := pr.PlayersRootDir(titleSlug)
 
 	entries, err := os.ReadDir(playersDir)
 	if err != nil {
@@ -169,7 +168,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 	pr := titlePkg.NewPathResolver(repoRoot)
 	titleSlug := ctxkeys.TitleSlug(ctx) // titre courant (sync/admin) ; repli halo_infinite si absent
 	capturesBaseDir = effectiveMediaBase(ctx, pr, capturesBaseDir)
-	playersDir := filepath.Join(pr.TitleDataDir(titleSlug), "players")
+	playersDir := pr.PlayersRootDir(titleSlug)
 
 	entries, err := os.ReadDir(playersDir)
 	if err != nil {

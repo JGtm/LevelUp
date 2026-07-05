@@ -480,10 +480,18 @@ func (p *PathResolver) SharedSocialDBPath(titleSlug string) string {
 	return filepath.Join(p.WarehouseDir(titleSlug), "shared_social.duckdb")
 }
 
+// PlayersRootDir retourne le répertoire racine des joueurs d'un titre (source
+// unique du sous-chemin "players" — ne pas reconstruire à la main, cf. garde-rail
+// archlint/no_players_root_join_test.go).
+// Ex: data/titles/halo_infinite/players/
+func (p *PathResolver) PlayersRootDir(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "players")
+}
+
 // PlayerDir retourne le répertoire d'un joueur pour un titre.
 // Ex: data/titles/halo_infinite/players/Chocoboflor/
 func (p *PathResolver) PlayerDir(titleSlug, gamertag string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "players", gamertag)
+	return filepath.Join(p.PlayersRootDir(titleSlug), gamertag)
 }
 
 // PlayerDBPath retourne le chemin de la DB stats d'un joueur.

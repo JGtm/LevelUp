@@ -1099,13 +1099,23 @@ K1 — Extractions de couches (ROI d'abord) :
 - [ ] K1k — ARCHI 10 : `career_live_fetcher.go:150` — factory client Halo injectée côté
   registry ; promouvoir CareerRankData/SpartanCustomizationData en types domain/ (5
   fichiers career_live_* cessent d'importer internal/sync). Débloque career-live H5.
-- [ ] K1l — ARCHI 11 + 14 + mineurs chemins : TOUS les chemins via PathResolver :
+- [~] K1l — ARCHI 11 + 14 + mineurs chemins : TOUS les chemins via PathResolver :
   `openspartan_import_service.go:481` + `server.go:1344` (stash friends layout legacy),
   `server.go:290/651/1112` (data/cache — ajouter `CacheRootDir()` au resolver),
   `ops/seed_demo.go:392` (MediaDataDir existant), `seed_demo_multititle.go:43` (layout
   réimplémenté), helper `PlayersRootDir(slug)` (6 copies du filepath.Join, dont
   `data_health_check.go:257`), `config.go:205` (double mécanisme data/auth + data/sessions).
   Garde-rail archlint en L2.
+  - [x] **`PlayersRootDir(slug)` FAIT (2026-07-05)** : `PathResolver.PlayersRootDir` ajouté
+    (registry.go), `PlayerDir` délègue dessus ; **7 copies** migrées (le garde-rail a
+    débusqué une 7e hors du grep initial : `cmd/levelup/cmd_title.go:137`) —
+    ops/backup_service, ops/healthcheck ×2, scheduler/data_health_check,
+    service/media_index_service ×2, cmd_title. Garde-rail #6 :
+    `archlint/no_players_root_join_test.go`. Build+vet+gate intégration
+    (ops+scheduler+service+domain/title) verts.
+  - [!] Reste K1l (stash friends, `CacheRootDir()`, seed_demo, config.go double mécanisme,
+    garde-rail data-path global L2) : non fait ici — chemins hétérogènes nécessitant
+    chacun une décision de resolver (session chemins dédiée).
 - [ ] K1m — ARCHI 12 [TRACKÉ] : exécuter le plan de l'allowlist media — extraire
   MediaRepository/MediaStore de `media_service.go:357` + `media_index_service.go`, vider
   l'allowlist de `no_duckdb_import_test.go`.

@@ -119,7 +119,7 @@ func titleDataChecks(ctx context.Context, pr *titlePkg.PathResolver, slug string
 	// Répertoires de données.
 	for _, dir := range []string{
 		pr.WarehouseDir(slug),
-		filepath.Join(pr.TitleDataDir(slug), "players"),
+		pr.PlayersRootDir(slug),
 	} {
 		checks = append(checks, checkDirExists(name(filepath.Base(dir)), dir))
 	}
@@ -139,7 +139,7 @@ func titleDataChecks(ctx context.Context, pr *titlePkg.PathResolver, slug string
 	}
 
 	// Joueurs configurés.
-	playersDir := filepath.Join(pr.TitleDataDir(slug), "players")
+	playersDir := pr.PlayersRootDir(slug)
 	if entries, err := os.ReadDir(playersDir); err == nil {
 		for _, e := range entries {
 			if !e.IsDir() {
