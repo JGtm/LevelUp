@@ -371,7 +371,7 @@ func EmitPostSyncDeltas(
 
 	// personal_record : best_kda matériel battu
 	if pdb != nil && after.BestKDA > 0 {
-		oldRec, err := loadPlayerRecord(ctx, pdb, "best_kda")
+		oldRec, err := duckdb.LoadPlayerRecord(ctx, pdb, "best_kda")
 		if err != nil {
 			slog.DebugContext(ctx, "post_sync: load best_kda record", "err", err)
 		}
@@ -394,14 +394,16 @@ func EmitPostSyncDeltas(
 		// Toujours persister la nouvelle valeur (init au premier passage,
 		// update si battue)
 		if !oldRec.Loaded || after.BestKDA > oldRec.Value+0.01 {
-			if err := upsertPlayerRecord(ctx, pdb, "best_kda", after.BestKDA, after.BestKDAMatchID); err != nil {
+			if err := duckdb.UpsertPlayerRecord(ctx, pdb, "best_kda", after.BestKDA, after.BestKDAMatchID); err != nil {
 				slog.WarnContext(ctx, "post_sync: persist best_kda", "err", err)
 			}
 		}
 	}
 }
 
-// playerRecord est l'état stocké d'un record dans player_records.
+// newCitationsServiceForPDB construit un CitationsService scopé sur le joueur.
+// Retourne nil si pdb est invalide — SnapshotPlayerState saute alors la lecture
+// citations.
 func newCitationsServiceForPDB(pdb *duckdb.PlayerDB) port.CitationsService {
 	if pdb == nil || pdb.Player == nil {
 		return nil

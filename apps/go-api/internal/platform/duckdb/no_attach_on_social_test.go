@@ -330,7 +330,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"pkg/duckdbbackup/exporter.go":                                                      "backup exporter",
 	// Ajoutés 2026-06-03
 	"internal/api/handlers/media.go":                    "commentaire doc : liste auteurs depuis shared_social.media_files",
-	"internal/api/post_sync_deltas_records.go":          "post-sync records (path Persister shared_social)",
+	"internal/platform/duckdb/player_record_repo.go":    "records perso (Load/UpsertPlayerRecord, path Persister shared_social) — ex-api/post_sync_deltas_records.go, déplacé K1a 2026-07-05",
 	"internal/migration/order.go":                       "ordre de migration (cible TargetSharedSocial dans la liste)",
 	"internal/persist/shared_social_persister_batch.go": "batch SocialPersister (accès shared_social via persister canonique)",
 	"internal/platform/duckdb/queries_match_detail.go":  "Q24 matchs media shared_social (commentaire)",
