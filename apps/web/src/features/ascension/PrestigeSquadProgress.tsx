@@ -24,6 +24,7 @@ import { intlLocale } from '@/lib/formatters'
 import { useSettings } from '@/features/settings/queries'
 import { queryKeys } from '@/lib/query/keys'
 import { PRESTIGE_LEVEL_NAMES_FALLBACK } from '@/features/prestige/fallback.i18n'
+import { getAscensionText } from './i18n'
 import { prestigeApi, type UserPrestige } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import type { PlayerSummary } from '@/lib/api/types'
@@ -104,11 +105,12 @@ export function PrestigeSquadProgress() {
   if (rows.length === 0) return null
 
   const numberLocale = intlLocale(locale)
+  const t = getAscensionText(locale)
 
   return (
     <section className="space-y-3 rounded-lg border border-border bg-card p-4">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        {locale === 'en' ? 'Prestige progression' : 'Progression Prestige'}
+        {t.squadPrestigeTitle}
       </h2>
       <div className="space-y-3">
         {rows.map((r) => (
@@ -129,6 +131,7 @@ function SquadPrestigeRow({
   locale: 'fr' | 'en'
 }) {
   const { prestige, gamertag, isMe } = row
+  const t = getAscensionText(locale)
   const level = prestige.current_level
   const levelKey = String(level)
   const levelLabel = useAssetLabel('prestige_level', levelKey)
@@ -141,7 +144,7 @@ function SquadPrestigeRow({
   const isMax = lvl ? lvl.next_threshold_pp <= 0 : false
   const progressPct = lvl ? Math.round(lvl.progress_ratio * 100) : 0
   const nextPP = lvl?.next_threshold_pp ?? 0
-  const maxLabel = locale === 'en' ? 'Max tier' : 'Niveau max'
+  const maxLabel = t.squadPrestigeMaxTier
 
   return (
     <div
@@ -157,7 +160,7 @@ function SquadPrestigeRow({
           {gamertag}
           {isMe && (
             <span className="ml-1.5 text-2xs uppercase tracking-wide text-primary">
-              {locale === 'en' ? 'you' : 'moi'}
+              {t.squadPrestigeYou}
             </span>
           )}
           <span className="ml-2 font-normal text-muted-foreground">{levelName}</span>

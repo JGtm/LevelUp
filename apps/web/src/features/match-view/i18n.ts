@@ -36,6 +36,9 @@ export interface MatchViewText {
   addFavorite: string
   removeFavorite: string
   mapUnknown: string
+  pageErrorTitle: string
+  pageRetry: string
+  pagePartialLoad: string
   noRank: string
   exitContext: string
   outcomeWin: string
@@ -218,6 +221,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     addFavorite: 'Ajouter aux favoris',
     removeFavorite: 'Retirer des favoris',
     mapUnknown: 'Map inconnue',
+    pageErrorTitle: 'Match introuvable ou erreur de chargement.',
+    pageRetry: 'Réessayer',
+    pagePartialLoad: 'Ce match n\'a pas pu être chargé en totalité.',
     noRank: 'Pas de rang',
     exitContext: 'Sortir du contexte',
     outcomeWin: 'Victoires',
@@ -383,6 +389,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     addFavorite: 'Add to favorites',
     removeFavorite: 'Remove from favorites',
     mapUnknown: 'Unknown map',
+    pageErrorTitle: 'Match not found or load error.',
+    pageRetry: 'Retry',
+    pagePartialLoad: 'This match could not be fully loaded.',
     noRank: 'No rank',
     exitContext: 'Exit context',
     outcomeWin: 'Wins',

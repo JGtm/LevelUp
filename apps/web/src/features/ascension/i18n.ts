@@ -37,6 +37,9 @@ export interface AscensionText {
   profileBrowsePresets: string
   profileMyActiveArcs: string
   profileNoArc: string
+  squadPrestigeTitle: string
+  squadPrestigeMaxTier: string
+  squadPrestigeYou: string
   ascensionLayerTitle: string
   ascensionLayerDescription: string
 
@@ -191,6 +194,9 @@ const FR: AscensionText = {
   profileBrowsePresets: 'Parcourir les presets',
   profileMyActiveArcs: 'Mes arcs en cours',
   profileNoArc: 'Aucun arc en cours. Adopte un arc preset ou crée le tien.',
+  squadPrestigeTitle: 'Progression Prestige',
+  squadPrestigeMaxTier: 'Niveau max',
+  squadPrestigeYou: 'moi',
   ascensionLayerTitle: 'Ascension — Coaching d\'amélioration',
   ascensionLayerDescription:
     'Analyse ton historique pour te proposer des angles d\'amélioration ciblés. S\'appuie sur Prestige (les campagnes deviennent des objectifs) — tu peux ignorer cette section si tu préfères piloter toi-même.',
@@ -374,6 +380,9 @@ const EN: AscensionText = {
   profileBrowsePresets: 'Browse presets',
   profileMyActiveArcs: 'My active arcs',
   profileNoArc: 'No arc in progress. Adopt a preset arc or create your own.',
+  squadPrestigeTitle: 'Prestige progression',
+  squadPrestigeMaxTier: 'Max tier',
+  squadPrestigeYou: 'you',
   ascensionLayerTitle: 'Ascension — Improvement coaching',
   ascensionLayerDescription:
     'Analyses your history to surface targeted improvement angles. Builds on Prestige (campaigns become objectives) — feel free to ignore this section if you prefer to drive your own progress.',
