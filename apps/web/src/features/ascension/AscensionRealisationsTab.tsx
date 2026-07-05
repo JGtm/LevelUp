@@ -14,6 +14,7 @@
  * Tout le contenu rétrospectif de l'ancienne page Parcours + Séries.
  */
 import { useAppShellStore } from '@/stores/appShellStore'
+import { getAscensionText } from './i18n'
 import { useChallenges } from '@/features/prestige/hooks'
 import { StatsGlobales } from '@/features/prestige/components/StatsGlobales'
 import { MomentCard } from '@/features/prestige/components/MomentCard'
@@ -34,7 +35,7 @@ export function AscensionRealisationsTab() {
   if (!playerSlug) {
     return (
       <p className="p-6 text-sm text-muted-foreground">
-        {locale === 'en' ? 'Select a player.' : 'Sélectionne un joueur.'}
+        {getAscensionText(locale).realisationsSelectPlayer}
       </p>
     )
   }
@@ -62,16 +63,15 @@ export function AscensionRealisationsTab() {
 // ─── Moments marquants ──────────────────────────────────────────────────────
 
 function MomentsSection({ completed, locale }: { completed: Challenge[]; locale: 'fr' | 'en' }) {
+  const t = getAscensionText(locale)
   return (
     <section className="rounded-lg border border-border bg-card p-4">
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        {locale === 'en' ? 'Highlights' : 'Moments marquants'}
+        {t.realisationsHighlights}
       </h2>
       {completed.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          {locale === 'en'
-            ? 'Moment cards will appear here as you complete your first objectives.'
-            : 'Les moment cards apparaîtront ici à la validation de tes premiers objectifs.'}
+          {t.realisationsEmpty}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

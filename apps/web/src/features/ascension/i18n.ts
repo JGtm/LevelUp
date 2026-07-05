@@ -40,6 +40,10 @@ export interface AscensionText {
   squadPrestigeTitle: string
   squadPrestigeMaxTier: string
   squadPrestigeYou: string
+  realisationsSelectPlayer: string
+  realisationsHighlights: string
+  realisationsEmpty: string
+  coachingSelectPlayer: string
   ascensionLayerTitle: string
   ascensionLayerDescription: string
 
@@ -197,6 +201,10 @@ const FR: AscensionText = {
   squadPrestigeTitle: 'Progression Prestige',
   squadPrestigeMaxTier: 'Niveau max',
   squadPrestigeYou: 'moi',
+  realisationsSelectPlayer: 'Sélectionne un joueur.',
+  realisationsHighlights: 'Moments marquants',
+  realisationsEmpty: 'Les moment cards apparaîtront ici à la validation de tes premiers objectifs.',
+  coachingSelectPlayer: 'Sélectionne un joueur pour voir ton entraînement.',
   ascensionLayerTitle: 'Ascension — Coaching d\'amélioration',
   ascensionLayerDescription:
     'Analyse ton historique pour te proposer des angles d\'amélioration ciblés. S\'appuie sur Prestige (les campagnes deviennent des objectifs) — tu peux ignorer cette section si tu préfères piloter toi-même.',
@@ -383,6 +391,10 @@ const EN: AscensionText = {
   squadPrestigeTitle: 'Prestige progression',
   squadPrestigeMaxTier: 'Max tier',
   squadPrestigeYou: 'you',
+  realisationsSelectPlayer: 'Select a player.',
+  realisationsHighlights: 'Highlights',
+  realisationsEmpty: 'Moment cards will appear here as you complete your first objectives.',
+  coachingSelectPlayer: 'Select a player to view coaching.',
   ascensionLayerTitle: 'Ascension — Improvement coaching',
   ascensionLayerDescription:
     'Analyses your history to surface targeted improvement angles. Builds on Prestige (campaigns become objectives) — feel free to ignore this section if you prefer to drive your own progress.',
