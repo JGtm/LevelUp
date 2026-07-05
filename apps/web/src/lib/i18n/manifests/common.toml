@@ -1672,3 +1672,56 @@ en = "Unable to restart the flow."
 [common.xbox_login.valid_for]
 fr = "Valide encore"
 en = "Valid for"
+
+# ─── Setup : device-code + sync initiale (I1, 2026-07-05) ────────────────────
+[common.device_code.err_denied]
+fr = "Vous avez refusé ou annulé la demande Microsoft."
+en = "You denied or cancelled the Microsoft request."
+
+[common.device_code.err_ms]
+fr = "Erreur lors de l'authentification Microsoft."
+en = "Error during Microsoft authentication."
+
+[common.device_code.err_halo]
+fr = "Impossible d'obtenir un accès Halo. Veuillez réessayer."
+en = "Unable to obtain Halo access. Please try again."
+
+[common.device_code.err_identity]
+fr = "Impossible de résoudre votre Gamertag. Réessayez dans quelques instants."
+en = "Unable to resolve your Gamertag. Try again shortly."
+
+[common.device_code.err_expired]
+fr = "Le code a expiré."
+en = "The code expired."
+
+[common.device_code.err_generic]
+fr = "Échec de l'authentification."
+en = "Authentication failed."
+
+[common.initial_sync.err_auth_expired]
+fr = "Votre session Halo a expiré. Relancez pour renouveler l'authentification."
+en = "Your Halo session expired. Restart to renew authentication."
+
+[common.initial_sync.err_halo_api]
+fr = "L'API Halo est temporairement indisponible. Veuillez réessayer."
+en = "The Halo API is temporarily unavailable. Please try again."
+
+[common.initial_sync.err_db]
+fr = "Erreur interne lors de l'enregistrement des données. Contactez le support."
+en = "Internal error while saving data. Contact support."
+
+[common.initial_sync.err_aborted]
+fr = "La synchronisation a été interrompue. Vous pouvez relancer."
+en = "Sync was interrupted. You can restart."
+
+[common.initial_sync.err_internal]
+fr = "Erreur inattendue. Veuillez réessayer."
+en = "Unexpected error. Please try again."
+
+[common.initial_sync.starting]
+fr = "Démarrage…"
+en = "Starting…"
+
+[common.initial_sync.start_action]
+fr = "Lancer la synchronisation"
+en = "Start sync"

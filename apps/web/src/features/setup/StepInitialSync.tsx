@@ -79,11 +79,11 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
   }, [job?.status, titleIndex])
 
   const errorMessages: Record<string, string> = {
-    sync_auth_expired: "Votre session Halo a expiré. Relancez pour renouveler l'authentification.",
-    sync_halo_api_error: "L'API Halo est temporairement indisponible. Veuillez réessayer.",
-    sync_db_error: "Erreur interne lors de l'enregistrement des données. Contactez le support.",
-    sync_aborted: "La synchronisation a été interrompue. Vous pouvez relancer.",
-    internal_error: "Erreur inattendue. Veuillez réessayer.",
+    sync_auth_expired: t('common.initial_sync.err_auth_expired'),
+    sync_halo_api_error: t('common.initial_sync.err_halo_api'),
+    sync_db_error: t('common.initial_sync.err_db'),
+    sync_aborted: t('common.initial_sync.err_aborted'),
+    internal_error: t('common.initial_sync.err_internal'),
   }
 
   return (
@@ -108,7 +108,7 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
 
       {!resolvedJobId && (
         <Button onClick={handleStart} disabled={startSync.isPending}>
-          {startSync.isPending ? 'Démarrage…' : 'Lancer la synchronisation'}
+          {startSync.isPending ? t('common.initial_sync.starting') : t('common.initial_sync.start_action')}
         </Button>
       )}
 
