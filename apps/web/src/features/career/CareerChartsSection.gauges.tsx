@@ -24,7 +24,7 @@ interface GaugePoint { value: number; label: string; detail: string }
 
 // ── career.01 — jauge rang ─────────────────────────────────────────────────
 
-function rankGaugeSeries(summary: CareerSummary): ChartSeries<GaugePoint> {
+function rankGaugeSeries(summary: CareerSummary, numLoc: string): ChartSeries<GaugePoint> {
   // progress_pct est déjà en 0..100 côté API Go
   const pct = Math.min(100, summary.progress_pct)
   return {
@@ -32,7 +32,7 @@ function rankGaugeSeries(summary: CareerSummary): ChartSeries<GaugePoint> {
     datapoints: [{
       value: pct,
       label: summary.rank_label,
-      detail: `${summary.current_xp.toLocaleString('fr-FR')} / ${summary.xp_for_next_rank.toLocaleString('fr-FR')} XP`,
+      detail: `${summary.current_xp.toLocaleString(numLoc)} / ${summary.xp_for_next_rank.toLocaleString(numLoc)} XP`,
     }],
   }
 }
@@ -45,7 +45,7 @@ function buildRankGaugeOption(series: ChartSeries<GaugePoint>[]): EChartsCoreOpt
 
 // ── career.02 — jauge Héros ────────────────────────────────────────────────
 
-function heroGaugeSeries(hero: HeroProgress): ChartSeries<GaugePoint> {
+function heroGaugeSeries(hero: HeroProgress, numLoc: string): ChartSeries<GaugePoint> {
   // percentage est déjà en 0..100 côté API Go (× 100 fait côté service)
   const pct = Math.min(100, hero.percentage)
   const acquired = hero.xp_total_required - hero.xp_remaining
@@ -54,7 +54,7 @@ function heroGaugeSeries(hero: HeroProgress): ChartSeries<GaugePoint> {
     datapoints: [{
       value: pct,
       label: 'Progression vers Héros',
-      detail: `${acquired.toLocaleString('fr-FR')} / ${HERO_XP_TOTAL.toLocaleString('fr-FR')} XP`,
+      detail: `${acquired.toLocaleString(numLoc)} / ${HERO_XP_TOTAL.toLocaleString(numLoc)} XP`,
     }],
   }
 }
@@ -218,7 +218,7 @@ export function CareerRankGaugeChart({ summary, locale, intlLocale }: CareerRank
   return (
     <ChartCard<GaugePoint>
       title={careerManifest['career.charts.rank_gauge_title'][locale]}
-      series={summary ? [rankGaugeSeries(summary)] : []}
+      series={summary ? [rankGaugeSeries(summary, intlLocale)] : []}
       height={280}
       buildOption={buildRankGaugeOption}
       emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
@@ -240,7 +240,7 @@ export function CareerHeroGaugeChart({ heroProgress, locale, intlLocale }: Caree
   return (
     <ChartCard<GaugePoint>
       title={careerManifest['career.charts.hero_gauge_title'][locale]}
-      series={heroProgress ? [heroGaugeSeries(heroProgress)] : []}
+      series={heroProgress ? [heroGaugeSeries(heroProgress, intlLocale)] : []}
       height={280}
       buildOption={buildHeroGaugeOption}
       emptyMessage={careerManifest['career.charts.placeholder_unavailable'][locale]}
