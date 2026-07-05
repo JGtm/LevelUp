@@ -36,10 +36,10 @@ import (
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/notify"
 
-	// Blank import : déclenche l'init() de observability qui publie le namespace
-	// expvar "levelup". Le handler /debug/vars (stdlib) découvre ces compteurs
-	// automatiquement via http.DefaultServeMux (P8.3, ADR 0009).
-	_ "levelup/go-api/internal/observability"
+	// init() de observability publie le namespace expvar "levelup" ; le handler
+	// /debug/vars (stdlib) découvre ces compteurs via http.DefaultServeMux (P8.3,
+	// ADR 0009). Import nommé depuis J1 : PublishDuckDBPoolStats (stats de pool).
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
@@ -901,6 +901,10 @@ func NewRouter(
 	//
 	// P8.3 finalisé : protégé derrière RequireAuth + RequireAdmin (transparent
 	// en mode démo / auth=none, refus 403 sinon).
+	//
+	// J1 (ADR 0009) : publie les sql.DBStats des pools DuckDB sous
+	// "levelup"/"duckdb_pool_stats" (WaitCount/WaitDuration = contention pool).
+	observability.PublishDuckDBPoolStats(func() any { return platform_duckdb.PoolStatsSnapshot() })
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))

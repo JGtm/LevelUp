@@ -948,10 +948,13 @@ des chemins HTTP chauds.
 > produit ; à traiter avec le chantier K, PAS au fil de l'eau).
 > Ordre calibré : J8 → J7 → J1 → [décision J2] → J2 → J3 → J4 → J9 → J6 ; J5 sorti.
 
-- [ ] J1 — ARCHI 48 : (1) exporter `sql.DBStats` (WaitCount/WaitDuration) par handle via
-  expvar (ADR 0009) ; (2) APRÈS lecture des stats et audit des UPSERT player reposant sur
-  l'effet de bord MaxOpenConns(1) : petit pool lecture 2-4 conns pour les player DBs (ou
-  généralisation du modèle sharedprovider). Ne pas inverser l'ordre.
+- [~] J1 — ARCHI 48 : **(1) LIVRÉ (2026-07-05)** : `duckdb.PoolStatsSnapshot()` (sql.DBStats
+  par handle ouvert, sous verrou) + `observability.PublishDuckDBPoolStats` (injection anti-cycle)
+  câblé au boot → exposé sous `/debug/vars` `levelup/duckdb_pool_stats` (WaitCount/WaitDuration/
+  InUse). Tests : handle présent avec MaxOpenConns=4, absent après Close. **(2) BLOQUÉ RUNTIME** :
+  le pool lecture 2-4 conns pour player DBs dépend de la LECTURE des stats SOUS CHARGE (obs.
+  runtime VPS) + audit des UPSERT reposant sur MaxOpenConns(1) — impossible en test local.
+  Ordre respecté (ne pas inverser). Follow-up runtime.
 - [ ] J2 — ARCHI 49 : configurer memory_limit/threads par classe de DB dans
   `openSQLDBFor` (params DSN), valeurs exposées dans /health (8-15 instances x défauts
   80 % RAM = surengagement VPS).
@@ -975,8 +978,10 @@ des chemins HTTP chauds.
   `registry_catalog_expand.go:94` (croisé K1d).
 - [ ] J7 — ARCHI mineur : CTE perfect de Q26 bornée (agrège tout l'historique pour un
   LIMIT 150) (`queries_home_citations.go:26`).
-- [ ] J8 — ARCHI mineur : `db.go:192` — limites de pool 4/2 en constantes nommées +
-  observabilité d'attente (couvert en partie par J1).
+- [x] J8 — ARCHI mineur : **LIVRÉ (2026-07-05)**. Magic 4/2/1 → constantes nommées
+  `poolMaxOpenShared`/`poolMaxIdleShared`/`poolSingleConn` (db.go) sur les 3 sites
+  (OpenReadOnly, OpenReadWriteShared, OpenReadWrite) + commentaire expliquant le lien mono-
+  process (ADR 0013). Observabilité d'attente = couverte par J1(1). Gate : build+vet OK.
 - [ ] J9 — ARCHI mineur : `registry_relations_cross_game.go:81` — emprunt non-possédant
   d'un handle cross-titre → acquisition sûre (refcount/provider du titre visé).
 

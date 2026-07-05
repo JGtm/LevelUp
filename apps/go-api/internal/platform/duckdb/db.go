@@ -79,6 +79,26 @@ func DumpCachedLeaks() map[string]int {
 	return out
 }
 
+// PoolStatsSnapshot retourne les sql.DBStats de chaque handle DuckDB ouvert
+// (clé de cache "ro:"/"rw:"+path → stats). Observabilité pool (J1, ADR 0009) :
+// WaitCount/WaitDuration non nuls révèlent la contention sur le pool (lectures qui
+// attendent une connexion libre) ; InUse proche de MaxOpenConnections = saturation.
+// Snapshot instantané, sous verrou — appelé par l'endpoint expvar /debug/vars.
+func PoolStatsSnapshot() map[string]sql.DBStats {
+	openDBsMu.Lock()
+	defer openDBsMu.Unlock()
+	out := make(map[string]sql.DBStats, len(openDBs))
+	for k, c := range openDBs {
+		if c.db == nil || c.db.closed.Load() {
+			continue
+		}
+		if sdb := c.db.loadSQL(); sdb != nil {
+			out[k] = sdb.Stats()
+		}
+	}
+	return out
+}
+
 // LookupCachedDB retourne le *DB déjà ouvert pour path s'il est présent dans
 // le cache process-wide, sinon (nil, false). Cherche d'abord la variante RW
 // (clé "rw:"+path), puis RO ("ro:"+path).
@@ -189,15 +209,15 @@ func OpenReadOnly(path string, timezone ...string) (*DB, error) {
 		"ro:"+path,
 		path,
 		path+"?access_mode=read_only",
-		4,
-		2,
+		poolMaxOpenShared,
+		poolMaxIdleShared,
 		"OpenReadOnly",
 		tz,
 	)
 }
 
 // OpenReadWriteShared ouvre une base DuckDB en lecture-écriture avec un pool de connexions
-// (4 conns max, comme OpenReadOnly). À utiliser pour les bases partagées (ex: metadata.duckdb)
+// (poolMaxOpenShared, comme OpenReadOnly). À utiliser pour les bases partagées (ex: metadata.duckdb)
 // qui reçoivent des lectures concurrentes ET des écritures occasionnelles.
 // Partage la même clé de cache que OpenReadWrite : si l'un est déjà ouvert, l'autre le réutilise.
 func OpenReadWriteShared(path string, timezone ...string) (*DB, error) {
@@ -209,7 +229,7 @@ func OpenReadWriteShared(path string, timezone ...string) (*DB, error) {
 			slog.Warn("duckdb: timezone invalide ignorée", "input", raw, "path", path)
 		}
 	}
-	return openCachedDB("rw:"+path, path, path, 4, 2, "OpenReadWriteShared", tz)
+	return openCachedDB("rw:"+path, path, path, poolMaxOpenShared, poolMaxIdleShared, "OpenReadWriteShared", tz)
 }
 
 // OpenReadWrite ouvre une base DuckDB en lecture-écriture.
@@ -224,8 +244,18 @@ func OpenReadWrite(path string, timezone ...string) (*DB, error) {
 			slog.Warn("duckdb: timezone invalide ignorée", "input", raw, "path", path)
 		}
 	}
-	return openCachedDB("rw:"+path, path, path, 1, 1, "OpenReadWrite", tz)
+	return openCachedDB("rw:"+path, path, path, poolSingleConn, poolSingleConn, "OpenReadWrite", tz)
 }
+
+// Limites de pool DuckDB (J8, 2026-07-05 : ex-magic 4/2/1). Le driver DuckDB est
+// mono-process (ADR 0013) : les pools RO / shared-RW tolèrent quelques lectures
+// concurrentes (poolMaxOpenShared) avec réutilisation au repos (poolMaxIdleShared) ;
+// le writer RW exclusif reste à une seule connexion (poolSingleConn).
+const (
+	poolMaxOpenShared = 4
+	poolMaxIdleShared = 2
+	poolSingleConn    = 1
+)
 
 func openCachedDB(
 	key, path, dsn string,
