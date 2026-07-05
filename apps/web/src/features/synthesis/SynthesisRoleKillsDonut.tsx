@@ -12,6 +12,7 @@ import type { SynthesisRoleKillEntry } from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { weaponRoleInsight } from './weaponRoleInsight'
 
 // Tokens DISTINCTS color-blind friendly par rôle (mapping stable → couleurs
@@ -32,7 +33,7 @@ type ManifestKey = keyof typeof synthesisManifest
 
 export function SynthesisRoleKillsDonut({ roles }: { roles?: SynthesisRoleKillEntry[] }) {
   const appLocale = useAppShellStore((s) => s.locale)
-  const locale = appLocale === 'en' ? 'en-US' : 'fr-FR'
+  const locale = intlLocale(appLocale)
   const title = formatMessage(synthesisManifest, 'synthesis.charts.role_kills_title', appLocale)
 
   // role_<key> existe dans le manifest pour les 9 rôles canoniques ; cast sûr
