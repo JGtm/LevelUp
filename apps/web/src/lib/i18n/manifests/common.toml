@@ -1725,3 +1725,121 @@ en = "Starting…"
 [common.initial_sync.start_action]
 fr = "Lancer la synchronisation"
 en = "Start sync"
+
+# ─── Inscription (RegisterPage) — I1, 2026-07-05 ─────────────────────────────
+[common.auth.register_instance_closed]
+fr = "Cette instance est fermée aux nouvelles inscriptions."
+en = "This instance is closed to new registrations."
+
+[common.auth.register_password_mismatch]
+fr = "Les mots de passe ne correspondent pas."
+en = "Passwords do not match."
+
+[common.auth.register_err_user_exists]
+fr = "Ce nom d'utilisateur est déjà pris."
+en = "This username is already taken."
+
+[common.auth.register_err_invite_required]
+fr = "Un code d'invitation est requis."
+en = "An invitation code is required."
+
+[common.auth.register_err_invalid_invite]
+fr = "Code d'invitation invalide ou expiré."
+en = "Invalid or expired invitation code."
+
+[common.auth.register_err_closed]
+fr = "Les inscriptions sont fermées."
+en = "Registrations are closed."
+
+[common.auth.register_err_generic]
+fr = "Erreur lors de l'inscription."
+en = "Registration error."
+
+[common.auth.register_submit]
+fr = "Créer le compte"
+en = "Create account"
+
+[common.auth.register_pending]
+fr = "Inscription…"
+en = "Registering…"
+
+# ─── Import OpenSpartan (OpenSpartanImportCard) — I1, 2026-07-05 ─────────────
+[common.onboarding.import_only_db]
+fr = "Seuls les fichiers .db OpenSpartan sont acceptés."
+en = "Only OpenSpartan .db files are accepted."
+
+[common.onboarding.import_too_large]
+fr = "Fichier trop volumineux (max {max} Go)."
+en = "File too large (max {max} GB)."
+
+[common.onboarding.import_start_failed]
+fr = "Échec du démarrage de l'import"
+en = "Failed to start import"
+
+[common.onboarding.cancel]
+fr = "Annuler"
+en = "Cancel"
+
+[common.onboarding.uploading]
+fr = "Envoi…"
+en = "Uploading…"
+
+[common.onboarding.import_action]
+fr = "Importer"
+en = "Import"
+
+[common.onboarding.importing]
+fr = "Import en cours…"
+en = "Importing…"
+
+[common.onboarding.matches_processed]
+fr = "matchs traités"
+en = "matches processed"
+
+[common.onboarding.participants]
+fr = "Participants"
+en = "Participants"
+
+[common.onboarding.medals]
+fr = "Médailles"
+en = "Medals"
+
+[common.onboarding.xuid_aliases]
+fr = "Alias XUID"
+en = "XUID aliases"
+
+[common.onboarding.import_interrupted]
+fr = "Import interrompu"
+en = "Import interrupted"
+
+[common.onboarding.import_failed]
+fr = "Échec de l'import"
+en = "Import failed"
+
+[common.onboarding.retry]
+fr = "Réessayer"
+en = "Retry"
+
+[common.onboarding.import_err_unknown]
+fr = "Erreur inconnue."
+en = "Unknown error."
+
+[common.onboarding.import_err_xuid_mismatch]
+fr = "Cette base OpenSpartan n'appartient pas à ton compte Xbox connecté."
+en = "This OpenSpartan database does not belong to your connected Xbox account."
+
+[common.onboarding.import_err_low_confidence]
+fr = "Impossible de vérifier que cette base est bien la tienne. Renomme le fichier en <ton-xuid>.db et réessaye."
+en = "Unable to verify this database is yours. Rename the file to <your-xuid>.db and try again."
+
+[common.onboarding.import_err_not_openspartan]
+fr = "Ce fichier ne ressemble pas à une base OpenSpartan reconnaissable."
+en = "This file does not look like a recognisable OpenSpartan database."
+
+[common.onboarding.import_err_demo]
+fr = "L'import OpenSpartan est désactivé en mode démo."
+en = "OpenSpartan import is disabled in demo mode."
+
+[common.onboarding.import_err_auth_required]
+fr = "Connexion Xbox/Halo requise pour lancer un import."
+en = "Xbox/Halo connection required to start an import."
