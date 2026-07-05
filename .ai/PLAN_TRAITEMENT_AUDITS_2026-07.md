@@ -1120,11 +1120,18 @@ soit ENCODÉE en ratchet à allowlist décroissante datée (reco centrale ARCHI)
 > capability-groups). La règle L2-(1) (SQL dans api/) dépend de K → livrer (2)+(3)+hérités
 > d'abord, (1) après le chantier K (baseline datée sinon).
 
-- [ ] L1 — ARCHI 27 [TRACKÉ] : RECALIBRÉ : le drift-test est DÉJÀ bloquant sur MISSING
-  (`t.Errorf`, openapi_schema_drift_test.go:112) ; seul **DIVERGENT (22) est log-only**
-  (`t.Logf`:119). Travail réel = résorber les 22 DIVERGENT (défaut approuvé D-E.12 :
-  auto-dérivation via mode emit `OPENAPI_EMIT_OUT` + revue du diff, pas de fix à la main),
-  régénérer generated.ts, PUIS durcir DIVERGENT>0 → `t.Errorf`.
+- [!] L1 — ARCHI 27 [TRACKÉ] : **APPROCHE INVALIDÉE (2026-07-05), à re-scoper**. Testé sur
+  pièces : le mode emit résout bien les 22 DIVERGENT à **0** (script de remplacement des
+  blocs de schéma, vérifié par le drift-test) MAIS **la régénération de generated.ts CASSE
+  le typecheck front** (`appShellStore.ts` : `data.auth_state`/`setup_state`/`auth_mode`/
+  `registration_mode` deviennent `string` au lieu des UNIONS d'énums ; `available_players`
+  perd `| null`). CAUSE : Huma dérive `string` des champs Go `string` — l'openapi.yaml
+  MANUEL est INTENTIONNELLEMENT PLUS RICHE (énums + nullabilité ajoutés à la main). Donc
+  une partie des 22 DIVERGENT = **enrichissement voulu, PAS de la dérive** ; les adopter
+  DÉGRADE le contrat, et durcir DIVERGENT→0 (t.Errorf) FORCERAIT à supprimer ces
+  enrichissements. Le log-only actuel est donc ~correct. Re-scope requis : catégoriser les
+  22 (dérive réelle → fix Huma ; enrichissement → GARDER + allowlist) et durcir avec
+  allowlist, PAS à 0. Reverté (openapi.yaml + generated.ts intacts). Voir §7. Follow-up ciblé.
 - [~] L2 — ARCHI TOP3 + hérités F : **PARTIEL (2026-07-05)**. (2) **LIVRÉ** :
   `archlint/no_data_path_join_test.go` (interdit `filepath.Join(..."data"...)` hors
   PathResolver dans internal/ ; allowlist décroissante datée = 9 sites bootstrap légitimes :
@@ -1150,11 +1157,11 @@ soit ENCODÉE en ratchet à allowlist décroissante datée (reco centrale ARCHI)
   (définis dans require_auth.go), flag LEVELUP_CONTRACT_VALIDATE plus référencé. `read_budget.go`
   couplé sharedprovider : exception DOCUMENTÉE (M4 le teste, commentaire déjà en place). Gate :
   build+vet OK, api+handlers+middleware verts, 0 ref résiduelle (hors commentaires « retiré »).
-- [ ] L5 — CR A16 : CALIBRÉ : **180 occurrences `queryKey:`** dans le front (11 clés
-  inline à rapatrier + 7 registres locaux squadKeys/prestigeKeys/watcherKeys…). Défaut
-  approuvé D-E.16 : **fusionner les registres dans `lib/query/keys.ts`** + règle ESLint
-  `queryKey:` littéral interdit hors keys.ts (le garde-rail impose la centralisation de
-  toute façon) + documenter au skill frontend-patterns.
+- [!] L5 — CR A16 : **DIFFÉRÉ (follow-up front, 2026-07-05)**. Gros chantier front réel
+  (~180 `queryKey:` : 11 clés inline + 7 registres locaux). Approche confirmée (D-E.16 :
+  fusionner dans `lib/query/keys.ts` + règle ESLint `queryKey:` littéral interdit hors
+  keys.ts + doc skill frontend-patterns). Non fait ici (volume + session très longue) ;
+  à planifier comme tâche front dédiée. Voir §7.
 - [~] L6 — PRÉ-EXÉCUTÉ, VÉRIFIÉ 2026-07-04 : la convention kill-switch est bien dans
   CLAUDE.md règle 11 (date de basculement + date cible de retrait + critère mesurable,
   modèle shared_reader_legacy.go) + skill arch-rules §Feature flags + delivery-checklist
@@ -1574,6 +1581,15 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
 
+- [FOLLOW-UPS L — L2-(3/4/5) parités capability + L5 queryKey + L1 re-scope] Différés
+  2026-07-05. **L2-(4)** cap⟺scalaire : invariant RÉEL et confirmé (registry.go documente
+  « CapDamageTaken déclarée SSI ProvidesDamageTaken(slug) », idem TeamMMR) ; test de parité
+  buildable mais exige de charger DEUX sous-systèmes de config en test (title.Registry via
+  LoadTitlesIntoRegistry + games.NewMappingsEndpointResolver depuis mappings.Registry) →
+  intégration modérée. **L2-(3)** coarse↔fine + **L2-(5)** fields.toml par capability-group :
+  même besoin de chargement config. **L5** : 180 queryKey (gros front). **L1** : re-scope
+  (catégoriser dérive-réelle vs enrichissement-voulu, cf. plus haut). Tous ont API/invariant
+  confirmés ; à traiter en tâches ciblées (config-integration tests / front).
 - [DETTE lint pré-existante branche — révélée par L3] `--new-from-rev=main` (config L3)
   remonte 2 issues PRÉ-EXISTANTES (hors périmètre L3, config goconst/gocyclo inchangée par
   L3) : (a) `match_history_service.go:107` goconst — `"loss"` ×4, à remplacer par la const
