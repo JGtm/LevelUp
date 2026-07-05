@@ -15,8 +15,6 @@ package api
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -74,7 +72,7 @@ func emitTitleReadyForPlayer(
 	}
 
 	key := titleReadyWatermarkKey(titleSlug)
-	already, err := readSyncMetaValue(ctx, pdb, key)
+	already, err := duckdb.ReadSyncMeta(ctx, pdb, key)
 	if err != nil {
 		return fmt.Errorf("read sync_meta: %w", err)
 	}
@@ -102,7 +100,7 @@ func emitTitleReadyForPlayer(
 	}); err != nil {
 		return fmt.Errorf("emit: %w", err)
 	}
-	return writeSyncMetaValue(ctx, pdb, key, "1")
+	return duckdb.WriteSyncMeta(ctx, pdb, key, "1")
 }
 
 // playerSlugForXUID résout le player_slug (db_profiles) d'un xuid Xbox dans le
@@ -120,35 +118,5 @@ func playerSlugForXUID(cfg *config.AppConfig, xuid string) string {
 	return ""
 }
 
-// readSyncMetaValue retourne sync_meta.value pour une clé, "" si absente. La table
-// sync_meta est garantie présente après "create_base_player_schema".
-func readSyncMetaValue(ctx context.Context, pdb *duckdb.PlayerDB, key string) (string, error) {
-	var v sql.NullString
-	err := pdb.ReadDB().QueryRow(ctx, `SELECT value FROM sync_meta WHERE key = ?`, key).Scan(&v)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		return "", nil
-	case err != nil:
-		return "", err
-	}
-	return v.String, nil
-}
-
-// writeSyncMetaValue upsert une clé sync_meta. ART-safe : SELECT-then-UPDATE-or-INSERT
-// (pas d'ON CONFLICT sur la PK key, qui réécrirait via l'index ART). sync_meta =
-// clé/valeur sans index secondaire.
-func writeSyncMetaValue(ctx context.Context, pdb *duckdb.PlayerDB, key, value string) error {
-	rwDB, err := duckdb.OpenReadWrite(pdb.Player.Path())
-	if err != nil {
-		return fmt.Errorf("open rw: %w", err)
-	}
-	defer rwDB.Close()
-	return rwDB.UpsertNoConflict(ctx,
-		`SELECT 1 FROM sync_meta WHERE key = ?`,
-		[]any{key},
-		`UPDATE sync_meta SET value = ?, updated_at = NOW() WHERE key = ?`,
-		[]any{value, key},
-		`INSERT INTO sync_meta (key, value, updated_at) VALUES (?, ?, NOW())`,
-		[]any{key, value},
-	)
-}
+// Lecture/écriture sync_meta : centralisées dans duckdb.{Read,Write}SyncMeta
+// (dédup #6, K1c) — cf. platform/duckdb/sync_meta_repo.go.

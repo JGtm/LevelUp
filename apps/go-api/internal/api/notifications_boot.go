@@ -7,8 +7,6 @@ package api
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -94,35 +92,10 @@ func emitAppReleaseForPlayer(
 // si la clé n'existe pas. La table sync_meta est garantie présente après migration
 // "create_base_player_schema".
 func readLastSeenAppVersion(ctx context.Context, pdb *duckdb.PlayerDB) (string, error) {
-	var v sql.NullString
-	err := pdb.ReadDB().QueryRow(ctx,
-		`SELECT value FROM sync_meta WHERE key = ?`, lastSeenAppVersionKey,
-	).Scan(&v)
-	switch {
-	case errors.Is(err, sql.ErrNoRows):
-		return "", nil
-	case err != nil:
-		return "", err
-	}
-	return v.String, nil
+	return duckdb.ReadSyncMeta(ctx, pdb, lastSeenAppVersionKey)
 }
 
 // writeLastSeenAppVersion upsert la clé sync_meta.last_seen_app_version.
 func writeLastSeenAppVersion(ctx context.Context, pdb *duckdb.PlayerDB, version string) error {
-	rwDB, err := duckdb.OpenReadWrite(pdb.Player.Path())
-	if err != nil {
-		return fmt.Errorf("open rw: %w", err)
-	}
-	defer rwDB.Close()
-
-	// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT sur la PK key, qui
-	// réécrit via l'index ART). sync_meta = clé/valeur sans index secondaire.
-	return rwDB.UpsertNoConflict(ctx,
-		`SELECT 1 FROM sync_meta WHERE key = ?`,
-		[]any{lastSeenAppVersionKey},
-		`UPDATE sync_meta SET value = ?, updated_at = NOW() WHERE key = ?`,
-		[]any{version, lastSeenAppVersionKey},
-		`INSERT INTO sync_meta (key, value, updated_at) VALUES (?, ?, NOW())`,
-		[]any{lastSeenAppVersionKey, version},
-	)
+	return duckdb.WriteSyncMeta(ctx, pdb, lastSeenAppVersionKey, version)
 }
