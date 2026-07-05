@@ -28,7 +28,7 @@ export function AscensionProfileTab() {
   if (!playerSlug) {
     return (
       <p className="p-6 text-sm text-muted-foreground">
-        {locale === 'en' ? 'Select a player to view objectives.' : 'Sélectionne un joueur pour voir tes objectifs.'}
+        {t.profileSelectPlayer}
       </p>
     )
   }
@@ -52,6 +52,7 @@ interface PlayerLocaleSectionProps {
 }
 
 function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
+  const t = getAscensionText(locale)
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const { data, isLoading, isError } = useChallenges(playerSlug, titleSlug)
   const abandon = useAbandonChallenge(playerSlug, titleSlug)
@@ -59,11 +60,9 @@ function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
 
   if (isError) {
     return (
-      <SectionShell title={locale === 'en' ? 'My objectives' : 'Mes objectifs'}>
+      <SectionShell title={t.profileMyObjectives}>
         <p className="text-sm text-muted-foreground">
-          {locale === 'en'
-            ? 'The Prestige module is not enabled on this server.'
-            : "Le module Prestige n'est pas activé sur ce serveur."}
+          {t.profilePrestigeNotEnabled}
         </p>
       </SectionShell>
     )
@@ -74,15 +73,11 @@ function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
   const pilotes = challenges.filter((c) => c.mode === 'pilote')
 
   const handleAbandon = (id: string) => {
-    const msg =
-      locale === 'en'
-        ? 'Abandon this objective? 24h cooldown on the metric.'
-        : 'Abandonner cet objectif ? Cooldown 24h sur la métrique.'
-    if (confirm(msg)) abandon.mutate(id)
+    if (confirm(t.profileAbandonConfirm)) abandon.mutate(id)
   }
 
   return (
-    <SectionShell title={locale === 'en' ? 'My active objectives' : 'Mes objectifs actifs'}>
+    <SectionShell title={t.profileMyActiveObjectives}>
       <PilotModeToggle locale={locale} />
       {showForm ? (
         <div className="rounded-lg border border-border bg-card p-4">
@@ -96,17 +91,17 @@ function MyObjectivesSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
       ) : (
         <>
           <ChallengeGroup
-            title={`${locale === 'en' ? 'Free objectives' : 'Objectifs libres'} (${libres.length})`}
+            title={`${t.profileFreeObjectives} (${libres.length})`}
             challenges={libres}
             loading={isLoading}
-            emptyMessage={locale === 'en' ? 'No free objective active.' : 'Aucun objectif libre actif.'}
+            emptyMessage={t.profileNoFreeObjective}
             onAbandon={handleAbandon}
             onCreate={() => setShowForm(true)}
-            createLabel={locale === 'en' ? '+ New objective' : '+ Nouvel objectif'}
+            createLabel={t.profileNewObjective}
           />
           {pilotes.length > 0 && (
             <ChallengeGroup
-              title={`${locale === 'en' ? 'Piloted objectives' : 'Objectifs pilotés'} (${pilotes.length})`}
+              title={`${t.profilePilotedObjectives} (${pilotes.length})`}
               challenges={pilotes}
               loading={false}
               emptyMessage=""
@@ -187,15 +182,12 @@ function ChallengeGroup({
 
 function PilotModeToggle({ locale }: { locale: 'fr' | 'en' }) {
   const t = getAscensionText(locale)
-  const labelOff = locale === 'en' ? 'Disabled' : 'Désactivé'
-  const help =
-    locale === 'en'
-      ? 'The system assigns you daily/weekly/monthly objectives with caps.'
-      : "Le système t'attribue des objectifs quotidiens, hebdo et mensuels avec des plafonds."
+  const labelOff = t.profilePilotDisabled
+  const help = t.profilePilotHelp
   return (
     <div className="flex items-center justify-between rounded-md border border-border bg-card px-4 py-3">
       <div>
-        <h3 className="text-sm font-semibold">{locale === 'en' ? 'Pilot mode' : 'Mode pilote'}</h3>
+        <h3 className="text-sm font-semibold">{t.profilePilotMode}</h3>
         <p className="flex items-center gap-1 text-xs text-muted-foreground">
           {help}
           <Tooltip content="3 daily · 5 weekly · 2 monthly">
@@ -220,6 +212,7 @@ function PilotModeToggle({ locale }: { locale: 'fr' | 'en' }) {
 // ─── Mes arcs ────────────────────────────────────────────────────────────────
 
 function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
+  const t = getAscensionText(locale)
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const { data: arcsData } = useArcs(playerSlug, titleSlug)
   const { data: challengesData } = useChallenges(playerSlug, titleSlug)
@@ -239,11 +232,11 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
     stepsByArc.set(c.arc_id, cur)
   }
 
-  const newArcLabel = locale === 'en' ? '+ New arc' : '+ Nouvel arc'
-  const browseLabel = locale === 'en' ? 'Browse presets' : 'Parcourir les presets'
+  const newArcLabel = t.profileNewArc
+  const browseLabel = t.profileBrowsePresets
 
   return (
-    <SectionShell title={locale === 'en' ? 'My active arcs' : 'Mes arcs en cours'}>
+    <SectionShell title={t.profileMyActiveArcs}>
       {showArcForm ? (
         <div className="rounded-lg border border-border bg-background p-4">
           <CreateArcForm
@@ -263,9 +256,7 @@ function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
       ) : arcs.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-6 text-center">
           <p className="text-sm text-muted-foreground">
-            {locale === 'en'
-              ? 'No arc in progress. Adopt a preset arc or create your own.'
-              : 'Aucun arc en cours. Adopte un arc preset ou crée le tien.'}
+            {t.profileNoArc}
           </p>
           <div className="mt-3 flex justify-center gap-2">
             <button

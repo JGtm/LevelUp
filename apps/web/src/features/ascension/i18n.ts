@@ -20,6 +20,23 @@ export interface AscensionText {
   prestigeLayerTitle: string
   prestigeLayerDescription: string
   prestigeDisabledHint: string // tooltip bouton désactivé (backend non implémenté)
+  // Onglet Profil & objectifs — labels ex-inline (I4b, 2026-07-05)
+  profileSelectPlayer: string
+  profileMyObjectives: string
+  profilePrestigeNotEnabled: string
+  profileAbandonConfirm: string
+  profileMyActiveObjectives: string
+  profileFreeObjectives: string
+  profileNoFreeObjective: string
+  profileNewObjective: string
+  profilePilotedObjectives: string
+  profilePilotDisabled: string
+  profilePilotHelp: string
+  profilePilotMode: string
+  profileNewArc: string
+  profileBrowsePresets: string
+  profileMyActiveArcs: string
+  profileNoArc: string
   ascensionLayerTitle: string
   ascensionLayerDescription: string
 
@@ -158,6 +175,22 @@ const FR: AscensionText = {
   prestigeLayerDescription:
     'Système autonome pour te fixer des objectifs personnels et suivre ta progression. Tu peux l\'utiliser seul, sans coaching.',
   prestigeDisabledHint: 'Phase 5 minimale : non implémenté côté backend',
+  profileSelectPlayer: 'Sélectionne un joueur pour voir tes objectifs.',
+  profileMyObjectives: 'Mes objectifs',
+  profilePrestigeNotEnabled: "Le module Prestige n'est pas activé sur ce serveur.",
+  profileAbandonConfirm: 'Abandonner cet objectif ? Cooldown 24h sur la métrique.',
+  profileMyActiveObjectives: 'Mes objectifs actifs',
+  profileFreeObjectives: 'Objectifs libres',
+  profileNoFreeObjective: 'Aucun objectif libre actif.',
+  profileNewObjective: '+ Nouvel objectif',
+  profilePilotedObjectives: 'Objectifs pilotés',
+  profilePilotDisabled: 'Désactivé',
+  profilePilotHelp: "Le système t'attribue des objectifs quotidiens, hebdo et mensuels avec des plafonds.",
+  profilePilotMode: 'Mode pilote',
+  profileNewArc: '+ Nouvel arc',
+  profileBrowsePresets: 'Parcourir les presets',
+  profileMyActiveArcs: 'Mes arcs en cours',
+  profileNoArc: 'Aucun arc en cours. Adopte un arc preset ou crée le tien.',
   ascensionLayerTitle: 'Ascension — Coaching d\'amélioration',
   ascensionLayerDescription:
     'Analyse ton historique pour te proposer des angles d\'amélioration ciblés. S\'appuie sur Prestige (les campagnes deviennent des objectifs) — tu peux ignorer cette section si tu préfères piloter toi-même.',
@@ -325,6 +358,22 @@ const EN: AscensionText = {
   prestigeLayerDescription:
     'Autonomous system to set personal objectives and track progression. Usable on its own, no coaching required.',
   prestigeDisabledHint: 'Minimal Phase 5: not yet implemented on the backend',
+  profileSelectPlayer: 'Select a player to view objectives.',
+  profileMyObjectives: 'My objectives',
+  profilePrestigeNotEnabled: 'The Prestige module is not enabled on this server.',
+  profileAbandonConfirm: 'Abandon this objective? 24h cooldown on the metric.',
+  profileMyActiveObjectives: 'My active objectives',
+  profileFreeObjectives: 'Free objectives',
+  profileNoFreeObjective: 'No free objective active.',
+  profileNewObjective: '+ New objective',
+  profilePilotedObjectives: 'Piloted objectives',
+  profilePilotDisabled: 'Disabled',
+  profilePilotHelp: 'The system assigns you daily/weekly/monthly objectives with caps.',
+  profilePilotMode: 'Pilot mode',
+  profileNewArc: '+ New arc',
+  profileBrowsePresets: 'Browse presets',
+  profileMyActiveArcs: 'My active arcs',
+  profileNoArc: 'No arc in progress. Adopt a preset arc or create your own.',
   ascensionLayerTitle: 'Ascension — Improvement coaching',
   ascensionLayerDescription:
     'Analyses your history to surface targeted improvement angles. Builds on Prestige (campaigns become objectives) — feel free to ignore this section if you prefer to drive your own progress.',
