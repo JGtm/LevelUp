@@ -1,3 +1,16 @@
+## [2026-07-05] I4b/#6 — extraction EncounterSplitBars (3 composants dupliqués)
+
+**Statut** : Complété. `SplitBar`+`AllyEnemySplitBar`+`KDSplitBar` étaient BYTE-IDENTIQUES
+dans MatchEncountersTable ET ExplorerEncounterBriefing (cette dernière avait le commentaire
+« copié depuis MatchEncountersTable.tsx » — copie-colle assumé). Extraits vers
+`features/_shared/EncounterSplitBars.tsx` (source unique #6). Résout au passage les tooltips
+i18n `${n} matches as ally`… (désormais en un seul endroit) + retire l'import `tokenCssVar`
+devenu mort dans MatchEncountersTable. Gate : typecheck 0, eslint 0, vitest 171 verts.
+Clôt le dernier vrai cluster de libellés d'I4b (reste = dicts consolidés acceptés + longue
+traîne tolérable). **Prochaine étape : LOT K** (chantier archi backend).
+
+---
+
 ## [2026-07-05] I4 (b) — migration des libellés haute-densité vers feature i18n
 
 **Statut** : Les fichiers HAUTE DENSITÉ migrés (26 ternaires) ; reste accepté/scopé.
