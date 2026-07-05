@@ -194,9 +194,7 @@ export function MatchViewPage() {
           <Card>
             <CardContent className="py-8 text-center">
               <p className="font-medium text-destructive">
-                {locale === 'en'
-                  ? 'Match not found or load error.'
-                  : 'Match introuvable ou erreur de chargement.'}
+                {t.pageErrorTitle}
               </p>
               {error && (error as { message?: string }).message && (
                 <p className="mt-1 text-xs text-muted-foreground font-mono">
@@ -205,7 +203,7 @@ export function MatchViewPage() {
               )}
               <div className="mt-4">
                 <Button variant="outline" size="sm" onClick={() => refetch()}>
-                  {locale === 'en' ? 'Retry' : 'Réessayer'}
+                  {t.pageRetry}
                 </Button>
               </div>
             </CardContent>
@@ -273,9 +271,7 @@ export function MatchViewPage() {
             </svg>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">
-                {locale === 'en'
-                  ? 'This match could not be fully loaded.'
-                  : 'Ce match n\'a pas pu être chargé en totalité.'}
+                {t.pagePartialLoad}
               </p>
               <ul className="mt-1.5 space-y-1">
                 {data.partial_reasons.map((r) => (
