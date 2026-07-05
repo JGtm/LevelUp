@@ -1,3 +1,28 @@
+## [2026-07-05] LOT K — DÉMARRÉ ; K1a sous-étape 1 : records perso → repo duckdb
+
+**Statut** : K démarré (chantier archi). Reconnaissance faite (pipeline post-sync = 2837 L,
+8 fichiers `internal/api/post_sync_*`). K1a = extraction post-sync hors de api/ + SQL→repos +
+formules→analysis + mineurs. **Coupling confirmé** : le mineur « outcome=2 → outcomeSQLEq »
+dépend de l'extraction SQL→repo (le seam `outcomeSQLEq` title-aware est unexported dans
+platform/duckdb). Donc K1a s'exécute par déplacement de requêtes vers des repos duckdb, pas
+par fixes in-place isolés. Décomposition en mini-commits sûrs (plan « K = dédié, mini-commits »).
+
+**Sous-étape 1 LIVRÉE** : `loadPlayerRecord`/`upsertPlayerRecord`/`playerRecord` (SQL
+player_records, ex-`api/post_sync_deltas_records.go`) → `platform/duckdb/player_record_repo.go`
+(exporté `LoadPlayerRecord`/`UpsertPlayerRecord`/`PlayerRecord`). Move byte-identique (aucun
+nouvel import — `pdb.SocialPersister`/`SharedSocial` déjà accessibles dans le package). Callers
+post_sync_deltas.go mis à jour ; docstrings mal placées (playerRecord↔newCitationsService)
+corrigées ; allowlist garde-rail ADR 0022 `no_attach_on_social_test.go` repointée vers le
+nouveau fichier. **Gate** : build 0, gofmt 0, api post-sync verts, **intégration -p 1 duckdb
+(99 s) + api + persist VERTS**.
+
+**Prochaines sous-étapes K1a** : SnapshotPlayerState (SQL best_kda + citations) → repo ;
+loadProgressionMatches (+ outcome=2 → outcomeSQLEq) → repo ; EmitPostSyncDeltas 247 L →
+table-driven ; BestKDA quotient → ADR 0006 (impact données, prudence) ; puis extraction
+service/postsync/. Chantier multi-heures — dédié, smoke-run après K2a (cf. plan K).
+
+---
+
 ## [2026-07-05] I4b/#6 — extraction EncounterSplitBars (3 composants dupliqués)
 
 **Statut** : Complété. `SplitBar`+`AllyEnemySplitBar`+`KDSplitBar` étaient BYTE-IDENTIQUES

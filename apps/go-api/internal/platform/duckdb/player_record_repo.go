@@ -1,6 +1,12 @@
-// Package api — post_sync_deltas_records.go : persistance des records personnels
-// (player_records). Extrait de post_sync_deltas.go (refactor god-file).
-package api
+// Package duckdb — player_record_repo.go : persistance des records personnels
+// (player_records). Extrait de internal/api/post_sync_deltas_records.go (K1a,
+// 2026-07-05) : la racine api/ ne doit plus porter de SQL — les lectures/écritures
+// player_records vivent ici, à côté des autres repos DuckDB.
+//
+// Écriture = append-only via SocialPersister (ADR 0022, CHECKPOINT garanti) ;
+// lecture = vue player_records_latest (jamais la table legacy). Cf. loadPlayerRecord
+// d'origine pour l'historique du split-brain corrigé.
+package duckdb
 
 import (
 	"context"
@@ -8,46 +14,48 @@ import (
 	"errors"
 	"fmt"
 	"time"
-
-	"levelup/go-api/internal/platform/duckdb"
 )
 
-type playerRecord struct {
+// PlayerRecord est un record personnel (meilleure valeur atteinte sur une métrique).
+type PlayerRecord struct {
 	Loaded        bool
 	Value         float64
 	AchievedMatch string
 }
 
-func loadPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string) (playerRecord, error) {
+// LoadPlayerRecord lit le record all-time d'une métrique via la vue append-only
+// player_records_latest. Retourne un PlayerRecord non-chargé si absent/pdb invalide.
+func LoadPlayerRecord(ctx context.Context, pdb *PlayerDB, metric string) (PlayerRecord, error) {
 	if pdb == nil || pdb.SharedSocial == nil || pdb.XUID == "" {
-		return playerRecord{}, nil
+		return PlayerRecord{}, nil
 	}
 	var v sql.NullFloat64
 	var matchID sql.NullString
 	// Lit la vue append-only player_records_latest (et non plus la table legacy
 	// player_records) : les écritures passent désormais par AppendPlayerRecord
 	// → player_records_history. period='all_time' = la clé écrite par
-	// upsertPlayerRecord (corrige le split-brain lecture/écriture historique).
+	// UpsertPlayerRecord (corrige le split-brain lecture/écriture historique).
 	err := pdb.SharedSocial.QueryRow(ctx,
 		`SELECT value, achieved_match_id FROM player_records_latest WHERE xuid = ? AND metric = ? AND period = 'all_time'`,
 		pdb.XUID, metric,
 	).Scan(&v, &matchID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		return playerRecord{}, nil
+		return PlayerRecord{}, nil
 	case err != nil:
-		return playerRecord{}, err
+		return PlayerRecord{}, err
 	}
-	return playerRecord{
+	return PlayerRecord{
 		Loaded:        v.Valid,
 		Value:         v.Float64,
 		AchievedMatch: matchID.String,
 	}, nil
 }
 
-func upsertPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string, value float64, matchID string) error {
+// UpsertPlayerRecord écrit (append-only) le record all-time d'une métrique.
+func UpsertPlayerRecord(ctx context.Context, pdb *PlayerDB, metric string, value float64, matchID string) error {
 	if pdb == nil || pdb.SharedSocial == nil || pdb.XUID == "" {
-		return fmt.Errorf("upsertPlayerRecord: shared_social or xuid missing")
+		return fmt.Errorf("UpsertPlayerRecord: shared_social or xuid missing")
 	}
 
 	// ADR 0022 : route via Persister (append-only sur player_records_history
@@ -70,12 +78,12 @@ func upsertPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string
 	// ADR 0021 Gap 1 : en prod (RequireSocialPersister=true set par main.go),
 	// refuse d'écrire silencieusement via le path legacy — l'absence de Persister
 	// est un bug de wiring, pas un mode de fonctionnement nominal.
-	if duckdb.RequireSocialPersister {
-		return duckdb.ErrSocialPersisterNotWired
+	if RequireSocialPersister {
+		return ErrSocialPersisterNotWired
 	}
 
 	// Fallback (tests uniquement — RequireSocialPersister=false par défaut).
-	// Append-only dans player_records_history, COHÉRENT avec loadPlayerRecord qui
+	// Append-only dans player_records_history, COHÉRENT avec LoadPlayerRecord qui
 	// lit player_records_latest : plus d'ON CONFLICT sur la table legacy (qui
 	// aurait été invisible pour le lecteur → split-brain). CHECKPOINT immédiat
 	// pour ne pas accumuler de WAL non-checkpointed même en mode test.
@@ -86,7 +94,7 @@ func upsertPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string
 	`, pdb.XUID, metric, value, nullableMatchID(matchID)); err != nil {
 		return err
 	}
-	return duckdb.CheckpointSharedSocial(ctx, pdb.SharedSocial)
+	return CheckpointSharedSocial(ctx, pdb.SharedSocial)
 }
 
 func nullableMatchID(id string) any {
@@ -95,7 +103,3 @@ func nullableMatchID(id string) any {
 	}
 	return id
 }
-
-// newCitationsServiceForPDB construit un CitationsService scopé sur le joueur.
-// Retourne nil si pdb est invalide — SnapshotPlayerState saute alors la lecture
-// citations.
