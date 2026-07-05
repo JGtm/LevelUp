@@ -1062,9 +1062,18 @@ K1 — Extractions de couches (ROI d'abord) :
 - [ ] K1c — ARCHI 3 : helper unique côté platform pour les écritures sync_meta SOUS LEASE
   dblease (ADR 0013) — remplace les 2 copies (`notifications_title_ready.go:141`,
   `notifications_boot.go:112`) ; pattern `prestige_lazy_service.go:119`.
-- [ ] K1d — ARCHI 4 : `ExpandPlaylistChildren` (`registry_catalog_expand.go:94`) → ops/ ou
+- [~] K1d — ARCHI 4 : `ExpandPlaylistChildren` (`registry_catalog_expand.go:94`) → ops/ ou
   service/ ; DDL → internal/migration ; factoriser la 3e copie du pattern upsert ART-safe ;
   batcher ses 3 requêtes/entry (croisé J6).
+  - [x] **Dédup upsert ART-safe FAIT (2026-07-05)** : canonique `duckdb.UpsertRowNoConflict`
+    (`db.go` — la méthode `*DB.UpsertNoConflict` délègue) ; les 3 copies (`ops/catalog_refresh`,
+    `service/catalog_fetcher_service`, `api/registry_catalog_expand.upsertPlaylistWeight`)
+    pointent dessus, SAUF la copie service — gardée volontairement car ADR 0025 D-MV2 interdit
+    à service d'importer duckdb (allowlistée). Garde-rail #6 :
+    `archlint/no_local_upsert_helper_test.go`. Build+vet+gate intégration (duckdb+ops+api) verts.
+  - [!] Reste (relocation `ExpandPlaylistChildren` hors racine api/, DDL→migration, batch 3-req)
+    : couplé à la sortie du post-sync de la racine api/ (famille K1a) — session dédiée, pas
+    fait ici pour ne pas mélanger un déplacement de package avec la dédup gated.
 - [ ] K1e — ARCHI 6 : `dataQualityHandles` (`registry_data_quality.go:33`) → lire via
   `cfg.SharedProvider` (pattern `acquireProgressionSharedRead`) — élimine le conflit avec
   les fenêtres RW du B-swap pour les 5+ runners admin.

@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/platform/duckdb"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
@@ -139,22 +140,18 @@ func ensurePlaylistWeightsTable(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-// upsertPlaylistWeight : SELECT-then-update-or-insert (évite ON CONFLICT → bug ART
-// DuckDB sur metadata, cf. catalog_fetcher_service.upsertRowNoConflict). Best-effort.
+// upsertPlaylistWeight : wrapper best-effort de l'upsert ART-safe canonique
+// (duckdb.UpsertRowNoConflict — SELECT-then-write, JAMAIS d'ON CONFLICT sur metadata,
+// bug ART #23046). L'erreur est délibérément ignorée (poids best-effort, recalculé au
+// prochain cycle catalog_expand).
 func upsertPlaylistWeight(ctx context.Context, db *sql.DB, titleSlug, playlistID, pairID string, weight float64) {
 	now := time.Now().UTC()
-	var exists int
-	err := db.QueryRowContext(ctx,
+	_ = duckdb.UpsertRowNoConflict(ctx, db,
 		`SELECT 1 FROM playlist_map_mode_weights WHERE title_slug=? AND playlist_asset_id=? AND pair_asset_id=?`,
-		titleSlug, playlistID, pairID).Scan(&exists)
-	switch err {
-	case sql.ErrNoRows:
-		_, _ = db.ExecContext(ctx,
-			`INSERT INTO playlist_map_mode_weights (title_slug, playlist_asset_id, pair_asset_id, weight, updated_at) VALUES (?,?,?,?,?)`,
-			titleSlug, playlistID, pairID, weight, now)
-	case nil:
-		_, _ = db.ExecContext(ctx,
-			`UPDATE playlist_map_mode_weights SET weight=?, updated_at=? WHERE title_slug=? AND playlist_asset_id=? AND pair_asset_id=?`,
-			weight, now, titleSlug, playlistID, pairID)
-	}
+		[]any{titleSlug, playlistID, pairID},
+		`UPDATE playlist_map_mode_weights SET weight=?, updated_at=? WHERE title_slug=? AND playlist_asset_id=? AND pair_asset_id=?`,
+		[]any{weight, now, titleSlug, playlistID, pairID},
+		`INSERT INTO playlist_map_mode_weights (title_slug, playlist_asset_id, pair_asset_id, weight, updated_at) VALUES (?,?,?,?,?)`,
+		[]any{titleSlug, playlistID, pairID, weight, now},
+	)
 }
