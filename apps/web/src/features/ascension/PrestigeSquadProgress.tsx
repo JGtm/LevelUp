@@ -20,6 +20,7 @@ import { useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { useSettings } from '@/features/settings/queries'
 import { queryKeys } from '@/lib/query/keys'
 import { PRESTIGE_LEVEL_NAMES_FALLBACK } from '@/features/prestige/fallback.i18n'
@@ -102,7 +103,7 @@ export function PrestigeSquadProgress() {
 
   if (rows.length === 0) return null
 
-  const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
+  const numberLocale = intlLocale(locale)
 
   return (
     <section className="space-y-3 rounded-lg border border-border bg-card p-4">
