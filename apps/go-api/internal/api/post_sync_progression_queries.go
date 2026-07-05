@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/progression/milestones"
 	"levelup/go-api/internal/progression/records"
@@ -295,16 +296,22 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 		headshots     int64
 		assists       int64
 	)
-	if err := sharedDB.QueryRowContext(ctx, `
+	// « wins » via le seam d'issues title-aware (K1a) plutôt qu'un `outcome = 2`
+	// codé en dur : byte-identique pour halo_infinite, correct pour tout titre au
+	// raw_code différent. Slug explicite (pdb.TitleSlug) car le ctx post-sync
+	// détaché ne porte pas forcément le titleSlug.
+	winExpr := duckdb.OutcomeSQLEqSlug(pdb.TitleSlug, "outcome", canonical.OutcomeWin, "outcome = 2")
+	statsQuery := `
 		SELECT
 			COUNT(*),
-			COALESCE(SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END), 0),
+			COALESCE(SUM(CASE WHEN ` + winExpr + ` THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(kills), 0),
 			COALESCE(SUM(headshot_kills), 0),
 			COALESCE(SUM(assists), 0)
 		FROM match_participants
 		WHERE xuid = ?
-	`, pdb.XUID).Scan(&matchesPlayed, &wins, &kills, &headshots, &assists); err != nil {
+	`
+	if err := sharedDB.QueryRowContext(ctx, statsQuery, pdb.XUID).Scan(&matchesPlayed, &wins, &kills, &headshots, &assists); err != nil {
 		return out, fmt.Errorf("aggregate stats: %w", err)
 	}
 
