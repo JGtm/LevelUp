@@ -79,10 +79,10 @@ changement de résultat (J3/J4/J7) ou de wiring provider (J9).
 - **J1(2)** pool lecture player DBs · **J2** budgets mémoire/threads · **J3**
   `GetHistoryForAvgBulk` · **J4** `LoadSquadMatchesBulk` · **J6** 8 N+1 batchables ·
   **J7** CTE Q26 bornée · **J9** emprunt cross-titre B-swap-safe.
-- **DÉCISION PRODUIT J2 (tranchée 2026-07-05)** : VPS = **2 vCPU / 2 Go RAM** (très
-  contraint). Cible calibration : DuckDB `memory_limit` **bas ~768 Mo** (le conteneur Go +
-  OS + reste doivent tenir dans 2 Go) + `threads=2` (= vCPU). À AFFINER sous mesure réelle
-  (avec 2 Go, la pression mémoire est le vrai risque → `duckdb_pool_stats` critique).
+- **J2 — ✅ LIVRÉ (2026-07-05)**. Mesure VPS (ssh) : 2 vCPU/2 Go no-swap, conteneur 845 Mo
+  au repos, ~256 Mo dispo. DuckDB n'avait AUCUNE limite → défaut ~1.5 Go = risque OOM. Fix :
+  `SET memory_limit + threads` sur chaque connexion (hook connector `openSQLDBFor`), défaut
+  `512MB`/`2`, override env. Suite intégration duckdb verte. (J1(2)/J3/J4/J6/J7/J9 restent.)
 - **Reprise** : lire `/debug/vars` `duckdb_pool_stats` sous charge, puis optimiser +
   valider avant/après.
 

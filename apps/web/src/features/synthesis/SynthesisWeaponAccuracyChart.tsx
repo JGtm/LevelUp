@@ -4,8 +4,9 @@ import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getEChartsThemeColors } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import type { SynthesisWeaponAccuracyEntry } from '@/lib/api/types'
-import { formatMessage } from '@/lib/i18n/format'
+import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
+import { intlLocale } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 interface Props {
@@ -22,8 +23,9 @@ interface AccuracyPoint {
   shotsLanded: number
 }
 
-function buildWeaponAccuracyOption(series: ChartSeries<AccuracyPoint>[]): EChartsCoreOption {
+function buildWeaponAccuracyOption(series: ChartSeries<AccuracyPoint>[], locale: ManifestLocale): EChartsCoreOption {
   const tc = getEChartsThemeColors()
+  const numLoc = intlLocale(locale)
   // L'axe catégoriel ECharts empile de bas en haut → reverse pour afficher la
   // meilleure précision EN HAUT (les datapoints arrivent triés desc côté Go).
   const data = [...(series[0]?.datapoints ?? [])].reverse()
@@ -37,7 +39,7 @@ function buildWeaponAccuracyOption(series: ChartSeries<AccuracyPoint>[]): EChart
       formatter: (params: { name: string; value: number; dataIndex: number }[]) => {
         const p = params[0]
         const d = data[p.dataIndex]
-        return `${escapeHtml(p.name ?? '')}<br/><b>${p.value.toFixed(1)} %</b><br/>${d.shotsLanded.toLocaleString('fr-FR')} / ${d.shotsFired.toLocaleString('fr-FR')} tirs`
+        return `${escapeHtml(p.name ?? '')}<br/><b>${p.value.toFixed(1)} %</b><br/>${d.shotsLanded.toLocaleString(numLoc)} / ${d.shotsFired.toLocaleString(numLoc)} tirs`
       },
     },
     xAxis: { type: 'value', show: false, max: 100 },
@@ -85,8 +87,8 @@ export function SynthesisWeaponAccuracyChart({ weapons, height, fillHeight }: Pr
       : []
 
   const buildOption = useCallback(
-    (s: ChartSeries<AccuracyPoint>[]) => buildWeaponAccuracyOption(s),
-    []
+    (s: ChartSeries<AccuracyPoint>[]) => buildWeaponAccuracyOption(s, locale),
+    [locale]
   )
 
   const computedHeight = height ?? Math.max(180, list.length * 28 + 16)

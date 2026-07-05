@@ -4,8 +4,9 @@ import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, escapeHtml, getEChartsThemeColors } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import type { SynthesisWeaponKillEntry } from '@/lib/api/types'
-import { formatMessage } from '@/lib/i18n/format'
+import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
+import { intlLocale } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 interface Props {
@@ -19,8 +20,9 @@ interface WeaponPoint {
   kills: number
 }
 
-function buildWeaponKillsOption(series: ChartSeries<WeaponPoint>[]): EChartsCoreOption {
+function buildWeaponKillsOption(series: ChartSeries<WeaponPoint>[], locale: ManifestLocale): EChartsCoreOption {
   const tc = getEChartsThemeColors()
+  const numLoc = intlLocale(locale)
   const data = [...(series[0]?.datapoints ?? [])].reverse()
   const color = resolveToken('chart-series-1')
   return {
@@ -31,7 +33,7 @@ function buildWeaponKillsOption(series: ChartSeries<WeaponPoint>[]): EChartsCore
       axisPointer: { type: 'shadow' },
       formatter: (params: { name: string; value: number }[]) => {
         const p = params[0]
-        return `${escapeHtml(p.name ?? '')}<br/><b>${p.value.toLocaleString('fr-FR')}</b> frags`
+        return `${escapeHtml(p.name ?? '')}<br/><b>${p.value.toLocaleString(numLoc)}</b> frags`
       },
     },
     xAxis: { type: 'value', show: false },
@@ -52,7 +54,7 @@ function buildWeaponKillsOption(series: ChartSeries<WeaponPoint>[]): EChartsCore
         position: 'right',
         color: tc.axisLabel,
         fontSize: 11,
-        formatter: (p: { value: number }) => p.value.toLocaleString('fr-FR'),
+        formatter: (p: { value: number }) => p.value.toLocaleString(numLoc),
       },
     }],
   }
@@ -72,8 +74,8 @@ export function SynthesisWeaponKillsChart({ weapons, height, fillHeight }: Props
       : []
 
   const buildOption = useCallback(
-    (s: ChartSeries<WeaponPoint>[]) => buildWeaponKillsOption(s),
-    []
+    (s: ChartSeries<WeaponPoint>[]) => buildWeaponKillsOption(s, locale),
+    [locale]
   )
 
   const computedHeight = height ?? Math.max(180, list.length * 28 + 16)
