@@ -6,6 +6,7 @@
  */
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import type { HomeSkillPeakSummary, HomeSpartanIdentity } from '@/lib/api/types'
 import { getSpartanIdentityText } from './spartanIdentity.i18n'
@@ -42,7 +43,7 @@ export function HomeSpartanIdentityBanner({
   spartanCustomizeLabel,
 }: HomeSpartanIdentityBannerProps) {
   const locale = useAppShellStore((s) => s.locale)
-  const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
+  const numberLocale = intlLocale(locale)
   const spartanText = getSpartanIdentityText(locale)
 
   // Bannière SYNTHÉTISÉE (emblème + nameplate recolorisés) pour les titres déclarant la

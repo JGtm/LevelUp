@@ -11,6 +11,7 @@
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import type { NormalizedPlayerStats } from '@/lib/api/types'
@@ -44,7 +45,7 @@ function formatPlaytime(seconds: number, locale: string): string {
 
 export function ExplorerTargetCareerStats({ careerStats }: ExplorerTargetCareerStatsProps) {
   const appLocale = useAppShellStore((s) => s.locale)
-  const numberLocale = appLocale === 'en' ? 'en-US' : 'fr-FR'
+  const numberLocale = intlLocale(appLocale)
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, appLocale, values)
 
