@@ -88,6 +88,22 @@ func enrichRows(rows []domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts 
 	return out
 }
 
+// enrichMapWinRate calcule le taux de victoire historique du joueur sur une map
+// (arrondi 1 déc.) + le total de matchs, depuis la table mapWR pré-agrégée.
+// (nil, nil) si map inconnue ou 0 match. Extrait d'enrichRow (L3 : funlen).
+func enrichMapWinRate(mapName string, mapWR map[string][2]int) (*float64, *int) {
+	if mapName == "" {
+		return nil, nil
+	}
+	entry, ok := mapWR[mapName]
+	if !ok || entry[1] <= 0 {
+		return nil, nil
+	}
+	v := math.Round(float64(entry[0])/float64(entry[1])*100*10) / 10
+	total := entry[1]
+	return &v, &total
+}
+
 func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFormatters) domain.MatchHistoryRow {
 	modeUI := analysis.ResolveModeUI(r.PairName, r.PairNameFR)
 	// Fallback game_variant : les titres sans pair_name (Halo 5) portent leur mode dans
@@ -111,15 +127,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		deltaMMR = &v
 	}
 
-	var winRate *float64
-	var winRateTotal *int
-	if name := derefStr(r.MapName); name != "" {
-		if entry, ok := mapWR[name]; ok && entry[1] > 0 {
-			v := math.Round(float64(entry[0])/float64(entry[1])*100*10) / 10
-			winRate = &v
-			winRateTotal = &entry[1]
-		}
-	}
+	winRate, winRateTotal := enrichMapWinRate(derefStr(r.MapName), mapWR)
 
 	matchURL := fmts.matchURLFor(r.MatchID)
 

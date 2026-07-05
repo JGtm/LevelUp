@@ -1133,10 +1133,15 @@ soit ENCODÉE en ratchet à allowlist décroissante datée (reco centrale ARCHI)
   documentée). (3)(4)(5) hérités F (parité coarse↔fine, cap⟺scalaire, fields.toml par
   capability-group) = `[!]` À BÂTIR — ratchets de parité capability/config, plus impliqués
   (nécessitent l'API CapabilityMap + resolvers scalaires) → follow-up L2-suite (§7).
-- [ ] L3 — CR A20 : CONFIRMÉ (l.117-118 exclusion `text:` tue argument-limit ; funlen=100 ;
-  commentaire périmé l.92). Défauts approuvés : baseline **`--new-from-rev <SHA base de
-  branche>`** + **argument-limit=5** + funlen 100→80 avec baseline. Mesurer les violations
-  AVANT de committer la config (si 0, strictifier direct).
+- [x] L3 — CR A20 : **LIVRÉ (2026-07-05)**. Exclusion blanket `argument-limit` RETIRÉE (la
+  règle était DÉSACTIVÉE) + funlen 100→80. **Mesure sur pièces** (golangci-lint 2.12.2, run
+  complet) : 43 funlen>80, 151 argument-limit>5 dont **89 à 6 args + 29 à 7** (idiome
+  orchestration) puis queue nette de **33 à ≥8** (monstres jusqu'à 14). DÉCISION (mienne,
+  non-triviale) : argument-limit=**7** (pas 5-Python) — cible la queue ≥8 sans refactorer
+  l'idiome établi. Baseline = `only-new-issues: true` DÉJÀ en CI (grandfather ~479 dette) →
+  pas besoin de `--new-from-rev` séparé. Vérifié via `--new-from-rev=main` : **0 issue
+  L3-causée** sur la branche (1 seul funlen-caused corrigé : `enrichRow` 83→<80 par
+  extraction `enrichMapWinRate`). Config `golangci-lint config verify` OK.
 - [x] L4 — ARCHI mineurs contrat : **LIVRÉ (2026-07-05)**. `contract_validate.go` relu
   (confirmé : Content-Type/JSON/error-shape mais AUCUN schéma, bufferise tous les corps),
   SUPPRIMÉ (D-E.15) avec son test `contract_validate_test.go`, le `r.Use(ContractValidate)`
@@ -1569,6 +1574,14 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
 
+- [DETTE lint pré-existante branche — révélée par L3] `--new-from-rev=main` (config L3)
+  remonte 2 issues PRÉ-EXISTANTES (hors périmètre L3, config goconst/gocyclo inchangée par
+  L3) : (a) `match_history_service.go:107` goconst — `"loss"` ×4, à remplacer par la const
+  existante `duelLabelLoss` ; (b) `halo_ranks_loader.go:55` gocyclo `LoadRankCatalog`
+  complexité 16>15 (introduite par F15-3) — extraire une branche. Non bloquantes pour le
+  commit L3 (only-new-issues compare par push ; ces fichiers ne sont pas dans le push L3).
+  À nettoyer avant le merge final vers main (ou vérifier qu'only-new-issues les a déjà
+  acceptées à F4/F15). Règle 7 : non traitées ici.
 - [FOLLOW-UPS tests lourds — M1 + M5] Différés (2026-07-05, fin de session). **M1** : test
   intégration `RecomputeLUSRCanonicalForPlayer` — le replay délégué est déjà couvert (30+
   `TestRunLUSRV2Shadow_*`) ; la sentinelle `is_reset` exige une fixture au schéma courant, et
