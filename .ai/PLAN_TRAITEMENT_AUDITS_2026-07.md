@@ -1125,13 +1125,14 @@ soit ENCODÉE en ratchet à allowlist décroissante datée (reco centrale ARCHI)
   (`t.Logf`:119). Travail réel = résorber les 22 DIVERGENT (défaut approuvé D-E.12 :
   auto-dérivation via mode emit `OPENAPI_EMIT_OUT` + revue du diff, pas de fix à la main),
   régénérer generated.ts, PUIS durcir DIVERGENT>0 → `t.Errorf`.
-- [ ] L2 — ARCHI TOP3 + hérités F : règles archlint (calque `no_slug_comparison_test.go`) :
-  (1) pas de SQL/`Open*` dans api/ (APRÈS K ; baseline décroissante datée) ; (2) pas de
-  `filepath.Join(..."data"...)` hors PathResolver (`no_data_path_join_test.go`) ;
-  (3) parité coarse↔fine des capabilities — règle SOUPLE décidée F7 : coarse présent ⟹
-  fine DÉCLARÉ (tout statut) ; (4) hérité F15-14 : cap title-level ⟺ scalaire
-  (`CapDamageTaken` ⟺ `ProvidesDamageTaken(slug)`, idem TeamMMR) ; (5) hérité F6 :
-  parité fields.toml par capability-groups (couvre aussi synthetic_title_b, F15-11).
+- [~] L2 — ARCHI TOP3 + hérités F : **PARTIEL (2026-07-05)**. (2) **LIVRÉ** :
+  `archlint/no_data_path_join_test.go` (interdit `filepath.Join(..."data"...)` hors
+  PathResolver dans internal/ ; allowlist décroissante datée = 9 sites bootstrap légitimes :
+  registry.go=resolver, config/ (défauts data-root), api/server.go (DI), ops/seed+migrate+
+  backup, testfixtures/paths.go). (1) SQL/`Open*` dans api/ = **après K** (dépendance
+  documentée). (3)(4)(5) hérités F (parité coarse↔fine, cap⟺scalaire, fields.toml par
+  capability-group) = `[!]` À BÂTIR — ratchets de parité capability/config, plus impliqués
+  (nécessitent l'API CapabilityMap + resolvers scalaires) → follow-up L2-suite (§7).
 - [ ] L3 — CR A20 : CONFIRMÉ (l.117-118 exclusion `text:` tue argument-limit ; funlen=100 ;
   commentaire périmé l.92). Défauts approuvés : baseline **`--new-from-rev <SHA base de
   branche>`** + **argument-limit=5** + funlen 100→80 avec baseline. Mesurer les violations
