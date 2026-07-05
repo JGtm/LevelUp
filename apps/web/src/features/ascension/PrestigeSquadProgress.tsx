@@ -1,6 +1,6 @@
 // cross-feature-allow: bloc Progression Prestige de la tab Réalisations —
-// consomme prestigeKeys + PRESTIGE_LEVEL_NAMES_FALLBACK depuis features/prestige
-// et useSettings (friend_gamertags) depuis features/settings.
+// consomme queryKeys.prestige (lib/query) + PRESTIGE_LEVEL_NAMES_FALLBACK depuis
+// features/prestige et useSettings (friend_gamertags) depuis features/settings.
 /**
  * PrestigeSquadProgress — bloc "Progression Prestige" de la tab Réalisations.
  *
@@ -21,7 +21,7 @@ import { useQueries } from '@tanstack/react-query'
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettings } from '@/features/settings/queries'
-import { prestigeKeys } from '@/features/prestige/hooks'
+import { queryKeys } from '@/lib/query/keys'
 import { PRESTIGE_LEVEL_NAMES_FALLBACK } from '@/features/prestige/fallback.i18n'
 import { prestigeApi, type UserPrestige } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
@@ -76,7 +76,7 @@ export function PrestigeSquadProgress() {
 
   const results = useQueries({
     queries: slugs.map((slug) => ({
-      queryKey: prestigeKeys.me(slug, titleSlug),
+      queryKey: queryKeys.prestige.me(slug, titleSlug),
       queryFn: () => prestigeApi.getMyPrestige(slug, titleSlug),
       retry: false,
       enabled: !!slug,

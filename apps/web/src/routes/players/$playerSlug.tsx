@@ -11,6 +11,7 @@ import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useEffect, useRef } from 'react'
 import { NavL2 } from '@/components/shell/NavL2'
 import { useFiltersResolve, useFollowLatestSession } from '@/features/filters/queries'
+import { queryKeys } from '@/lib/query/keys'
 
 export const Route = createFileRoute('/players/$playerSlug')({
   // Guard synchrone avant rendu — bloque les accès directs par URL.
@@ -84,7 +85,7 @@ function PlayerLayout() {
     if (prev === null || activeSyncJobId !== null) return
     // Préfixe ['filters-resolve', playerSlug] : couvre les stores solo ET squad
     // (cf. queryKeys.filtersResolve, lib/query/keys.ts).
-    queryClient.invalidateQueries({ queryKey: ['filters-resolve', playerSlug] })
+    queryClient.invalidateQueries({ queryKey: queryKeys.filtersResolveAll(playerSlug) })
   }, [activeSyncJobId, playerSlug, queryClient])
 
   return (

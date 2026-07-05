@@ -13,26 +13,13 @@ import {
   type PlayerProfile,
   type StartCampaignBody,
 } from '@/lib/playerProfile'
-
-// ─── Cache keys ────────────────────────────────────────────────────────────
-
-export const profileKeys = {
-  profile: (playerSlug: string, windowDays: number) =>
-    ['playerProfile', playerSlug, windowDays] as const,
-  activeCampaign: (playerSlug: string) =>
-    ['playerProfile', 'campaign', 'active', playerSlug] as const,
-  campaign: (playerSlug: string, id: string) =>
-    ['playerProfile', 'campaign', playerSlug, id] as const,
-  /** Préfixe broad — invalide tous les `campaign(playerSlug, *)`. */
-  campaignAll: (playerSlug: string) =>
-    ['playerProfile', 'campaign', playerSlug] as const,
-}
+import { queryKeys } from '@/lib/query/keys'
 
 // ─── Queries ───────────────────────────────────────────────────────────────
 
 export function usePlayerProfile(playerSlug: string | undefined, windowDays = 30) {
   return useQuery<PlayerProfile>({
-    queryKey: profileKeys.profile(playerSlug ?? '', windowDays),
+    queryKey: queryKeys.playerProfile.profile(playerSlug ?? '', windowDays),
     queryFn: () => playerProfileApi.getProfile(playerSlug!, windowDays),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
@@ -42,7 +29,7 @@ export function usePlayerProfile(playerSlug: string | undefined, windowDays = 30
 
 export function useActiveCampaign(playerSlug: string | undefined) {
   return useQuery<ImprovementCampaign | null>({
-    queryKey: profileKeys.activeCampaign(playerSlug ?? ''),
+    queryKey: queryKeys.playerProfile.activeCampaign(playerSlug ?? ''),
     queryFn: () => campaignApi.getActive(playerSlug!),
     enabled: !!playerSlug,
     staleTime: 60 * 1000,
@@ -56,8 +43,8 @@ export function useCampaignMutations(playerSlug: string | undefined) {
   const qc = useQueryClient()
   const slug = playerSlug ?? ''
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: profileKeys.activeCampaign(slug) })
-    qc.invalidateQueries({ queryKey: profileKeys.campaignAll(slug) })
+    qc.invalidateQueries({ queryKey: queryKeys.playerProfile.activeCampaign(slug) })
+    qc.invalidateQueries({ queryKey: queryKeys.playerProfile.campaignAll(slug) })
   }
   return {
     start: useMutation({
