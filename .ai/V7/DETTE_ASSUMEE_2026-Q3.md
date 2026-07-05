@@ -11,7 +11,13 @@
 - **K (tous sous-lots)** — la racine `api/` cesse d'être une 2e couche service ;
   god functions/packages découpés ; chemins via PathResolver. Calibré comme le seul
   lot aux comptes EXACTS (143/127/112/40) — juste énorme (4-6 j). Chantier dédié,
-  commits par sous-lot. Inclut :
+  commits par sous-lot.
+  - **K1a DÉMARRÉ (2026-07-05, 6 sous-étapes gated)** : records perso→duckdb repo ;
+    outcome=2→seam ; seuils nommés ; BestKDA ADR0006 scopé (fix+re-backfill) ; EmitPostSyncDeltas
+    table-driven ; OC/DR→analysis. **RESTE K1a = extraction `service/postsync/`** (queries
+    progression couplées cycle streaks↔duckdb + inversion dépendance `*ServiceRegistry` ;
+    haut-risque post-sync) = le cœur dédié, à froid. Cf. thought_log 2026-07-05.
+  Inclut :
   - **F12** — migration film 18 fichiers `analysis/` → `games/halo_infinite/film/`
     (extraction d'un sous-système délicat, pas mécanique).
   - **J5** — `LoadAll` full-history par hit → cache joueur invalidé post-sync.

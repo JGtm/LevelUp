@@ -16,10 +16,23 @@ corrigées ; allowlist garde-rail ADR 0022 `no_attach_on_social_test.go` repoint
 nouveau fichier. **Gate** : build 0, gofmt 0, api post-sync verts, **intégration -p 1 duckdb
 (99 s) + api + persist VERTS**.
 
-**Prochaines sous-étapes K1a** : SnapshotPlayerState (SQL best_kda + citations) → repo ;
-loadProgressionMatches (+ outcome=2 → outcomeSQLEq) → repo ; EmitPostSyncDeltas 247 L →
-table-driven ; BestKDA quotient → ADR 0006 (impact données, prudence) ; puis extraction
-service/postsync/. Chantier multi-heures — dédié, smoke-run après K2a (cf. plan K).
+**Sous-étapes K1a LIVRÉES (6, toutes gated build+integration -p 1)** :
+1. records perso (SQL player_records) → `duckdb/player_record_repo.go` (byte-identique).
+2. `outcome = 2` → seam title-aware `duckdb.OutcomeSQLEqSlug` (loadPlayerStats).
+3. seuils magiques 0.05/0.01 nommés (post_sync_deltas.go).
+4. BestKDA quotient ADR 0006 : DOCUMENTÉ + scopé (fix + re-backfill coordonnés requis — la
+   KDA native étant plus petite, un fix seul bloquerait les records ; dette in-code).
+5. `EmitPostSyncDeltas` god-function → table-driven (7 deltas compteur, comportement identique).
+6. OC/DR post-sync inline → `analysis.ComputeCombatYieldFloat` (formules → analysis/, +respecte
+   AssistsExcludedFromYield).
+
+**RESTE K1a = la grosse extraction `service/postsync/`** (dédiée, smoke-run après K2a) :
+les queries progression restantes (loadProgressionMatches → `streaks.MatchActivity` = cycle
+streaks↔duckdb ; loadPlayerStats/loadComebackContext = acquire+budgets partagés, test-mutés)
+ne se déplacent proprement QUE dans un package `service/postsync/` LEAF (peut tout importer).
+Cette extraction exige aussi l'INVERSION DE DÉPENDANCE de `buildPostSyncDeltaHook(*ServiceRegistry)`
+/ `BuildProgressionAfterSyncHook` (sinon cycle api↔postsync) — chirurgie archi haut-risque
+(post-sync tourne après CHAQUE sync). C'est le cœur « dédié » du plan K, à faire à froid.
 
 ---
 
