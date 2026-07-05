@@ -1175,9 +1175,13 @@ Gate L : CI verte avec les nouvelles règles actives et baselines commitées dat
   `ComputeTrend`, `ComputeSquadPerformanceScore` (1 seul test référent chacun).
   NOTE F12 différé au chantier K : poser le test GetTiming dans `weapon_data_test.go`
   AVEC commentaire « relocatable → games/halo_infinite/film (F12) ».
-- [ ] M4 — QUALITE : CONFIRMÉ (0 test middleware : `http_cache.go` — CacheMaxAge/NoStore/
-  WriteJSONCached ETag SHA-256/304 ; `read_budget.go` — touche la contention DB).
-  Unit HTTP pur (httptest).
+- [x] M4 — QUALITE : **LIVRÉ (2026-07-05)**. `http_cache_test.go` (9 tests httptest :
+  CacheMaxAge GET vs mutations, NoStore, ETagFromBytes déterministe/distinct/format,
+  WriteJSONCached 200/304/stale + **NoTitleLeak MT-25** = pas de fuite de cache inter-titre)
+  + `read_budget_test.go` (câblage : enveloppe le contexte via WithSwapWaitBudget + appelle
+  next ; budget≤0 → défaut ; la sémantique fail-fast reste couverte par l'intégration
+  sharedprovider). Mutation-check vérifié (casser le header max-age → FAIL). Gate : package
+  middleware vert. Note : helper renommé `cacheBackend` (collision `okHandler` auth_test.go).
 - [ ] M5 (ex-F13) — DETTE §2.4.2 : goldens paramétrés par slug. Approche calibrée :
   `golden_output_<slug>.json` + fixtures H5 dédiées (`testdata/t0_fixtures/`, garder
   l'arborescence existante — défaut approuvé), subtests `t.Run(slug)`, helper
