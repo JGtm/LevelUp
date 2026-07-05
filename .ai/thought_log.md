@@ -1,3 +1,18 @@
+## [2026-07-05] LOT J — J8 + J1(1) livrés ; optimisations differées measure-first
+
+**Livré** : J8 (magic 4/2/1 pool → constantes nommées) ; J1(1) (`duckdb.PoolStatsSnapshot`
++ `observability.PublishDuckDBPoolStats` injecté au boot → `/debug/vars`
+`levelup/duckdb_pool_stats`, tests verts).
+
+**Différés (measure-first)** : J1(1) EST le pré-requis de la règle « mesurer d'abord ». Les
+optimisations (J2 budgets mémoire = décision produit VPS ; J3/J4 bulk loaders ; J6 8 N+1 ;
+J7 CTE bornée ; J9 emprunt cross-titre B-swap-safe) doivent être validées par une mesure
+avant/après SOUS CHARGE runtime — les faire à l'aveugle optimiserait un chemin non mesuré
+(+ risque changement de résultat J3/J4/J7, wiring provider J9). Approches confirmées dans le
+plan. J5 = chantier K.
+
+**Prochaine étape** : LOT N (front N1/N2 concrets), puis K = chantier.
+
 ## [2026-07-05] LOT L — L3/L4/L2-(2) livrés ; L1 recalibré ; L2-345/L5 différés
 
 **Livré** : L4 (SUPPRESSION ContractValidate, −283 L) ; L2-(2) (ratchet no_data_path_join,
