@@ -530,6 +530,35 @@ func (db *DB) WithReopenOnInvalidated(fn func() error) error {
 // <pk...>`). Les écritures concurrentes sur la MÊME clé doivent être sérialisées
 // par le caller (WriteQueue, write lease…) : ce helper ne protège pas la course
 // SELECT→INSERT entre goroutines.
+// UpsertRowNoConflict fait un SELECT d'existence puis UPDATE (si présent) ou INSERT
+// (sinon) sur un *sql.DB brut — ART-safe : JAMAIS d'ON CONFLICT sur la PK (qui réécrit
+// via l'index ART DuckDB, bug #23046). existsQuery doit retourner ≥1 ligne si la clé
+// existe.
+//
+// SOURCE UNIQUE (K1d, dédup #6, 2026-07-05) : ce pattern était copié-collé dans
+// ops/catalog_refresh.upsertNoConflict, service.CatalogFetcherService.upsertRowNoConflict
+// et api/registry_catalog_expand.upsertPlaylistWeight. La méthode (*DB).UpsertNoConflict
+// délègue ici depuis son wrapper reopen-on-invalidated.
+func UpsertRowNoConflict(
+	ctx context.Context, db *sql.DB,
+	existsQuery string, existsArgs []any,
+	updateQuery string, updateArgs []any,
+	insertQuery string, insertArgs []any,
+) error {
+	var dummy int
+	err := db.QueryRowContext(ctx, existsQuery, existsArgs...).Scan(&dummy)
+	switch {
+	case err == nil:
+		_, execErr := db.ExecContext(ctx, updateQuery, updateArgs...)
+		return execErr
+	case errors.Is(err, sql.ErrNoRows):
+		_, execErr := db.ExecContext(ctx, insertQuery, insertArgs...)
+		return execErr
+	default:
+		return err
+	}
+}
+
 func (db *DB) UpsertNoConflict(
 	ctx context.Context,
 	existsQuery string, existsArgs []any,
@@ -537,18 +566,8 @@ func (db *DB) UpsertNoConflict(
 	insertQuery string, insertArgs []any,
 ) error {
 	return db.WithReopenOnInvalidated(func() error {
-		var dummy int
-		err := db.loadSQL().QueryRowContext(ctx, existsQuery, existsArgs...).Scan(&dummy)
-		switch {
-		case err == nil:
-			_, execErr := db.loadSQL().ExecContext(ctx, updateQuery, updateArgs...)
-			return execErr
-		case errors.Is(err, sql.ErrNoRows):
-			_, execErr := db.loadSQL().ExecContext(ctx, insertQuery, insertArgs...)
-			return execErr
-		default:
-			return err
-		}
+		return UpsertRowNoConflict(ctx, db.loadSQL(),
+			existsQuery, existsArgs, updateQuery, updateArgs, insertQuery, insertArgs)
 	})
 }
 

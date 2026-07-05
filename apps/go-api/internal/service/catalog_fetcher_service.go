@@ -160,6 +160,12 @@ func (s *CatalogFetcherService) processEntry(ctx context.Context, adapter games.
 
 // upsertRowNoConflict fait un SELECT d'existence puis UPDATE ou INSERT.
 //
+// Copie locale VOLONTAIRE de duckdb.UpsertRowNoConflict : la couche service ne peut
+// pas importer internal/platform/duckdb (ADR 0025 D-MV2, verrou
+// TestServicesDoNotImportDuckDB). Allowlistée par le garde-rail dédup #6
+// archlint/no_local_upsert_helper_test.go ; toute AUTRE copie hors duckdb est interdite.
+// À supprimer quand un CatalogRepository (port) remplacera le *sql.DB brut tenu ici.
+//
 // Évite délibérément `INSERT ... ON CONFLICT DO UPDATE` : sur metadata.duckdb
 // ce pattern déclenche le bug ART DuckDB « Failed to delete all rows from index.
 // Only deleted 0 out of 1 rows. » qui FATAL-invalide la connexion partagée pour

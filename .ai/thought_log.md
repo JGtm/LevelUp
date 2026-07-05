@@ -1,3 +1,43 @@
+## [2026-07-05] K1d (partie) — dédup 3e copie du pattern upsert ART-safe
+
+**Statut** : Complété (sous-partie « factoriser la 3e copie du pattern upsert ART-safe » de
+K1d ; la relocation de `ExpandPlaylistChildren` hors racine api/ + DDL→migration + batch
+restent couplés à la famille K1a, session dédiée).
+
+**Décision technique principale** : le helper générique « SELECT-d'existence puis
+UPDATE|INSERT paramétré » (ART-safe, JAMAIS d'ON CONFLICT sur metadata — bug ART #23046)
+existait en **3-4 copies** : `ops/catalog_refresh.upsertNoConflict`,
+`service.CatalogFetcherService.upsertRowNoConflict`,
+`api/registry_catalog_expand.upsertPlaylistWeight`, plus la méthode
+`duckdb.(*DB).UpsertNoConflict` (wrapper reopen-on-invalidated). Source unique posée :
+package-func `duckdb.UpsertRowNoConflict(ctx, *sql.DB, exists/update/insert)` — la méthode
+`*DB.UpsertNoConflict` délègue désormais dedans (dans son wrapper reopen). ops + api pointent
+sur la canonique. **La copie service est GARDÉE volontairement** : ADR 0025 D-MV2 (verrou
+`TestServicesDoNotImportDuckDB`) interdit à la couche service d'importer
+internal/platform/duckdb — tant que `CatalogFetcherService` tient un `*sql.DB` brut (pas un
+port), sa copie est architecturalement forcée, pas de la dette. Elle est allowlistée par le
+garde-rail.
+
+**Garde-rail #6** : `archlint/no_local_upsert_helper_test.go` — bannit la signature
+distinctive `existsQuery string, existsArgs []any` hors de `platform/duckdb/db.go`
+(canonique) et `service/catalog_fetcher_service.go` (exception D-MV2 documentée). Toute
+nouvelle 3e copie échouera le test.
+
+**Résultats observés** : build ./... 0, go vet 0, gofmt/goimports (drop `errors` devenu
+inutilisé dans ops). Garde-rails : `TestNoLocalGenericUpsertHelper` vert,
+`TestServicesDoNotImportDuckDB` (D-MV2) vert, suite archlint verte. **Gate intégration
+-p 1 VERT** : duckdb (100 s) + sharedprovider + ops + api + api/handlers — 0 FAIL.
+Comportement identique (logique byte-identique déplacée ; `switch err`→`errors.Is` dans
+upsertPlaylistWeight = robustesse en plus, best-effort préservé).
+
+**Conclusion / prochaine étape** : K1d marqué `[~]` (dédup faite, reste relocation couplée
+K1a). Reste du chantier K = grosse extraction `service/postsync/` (inversion de dépendance
+`buildPostSyncDeltaHook`, cycle streaks↔duckdb) + K1b (cascade auth, délicate ADR 0023) +
+K1e (dataQualityHandles→SharedProvider, B-swap) + splits god-package K1h/K1j — tous
+« session dédiée à froid » par nature (déplacements de packages, pas des dédups gated).
+
+---
+
 ## [2026-07-05] LOT K — DÉMARRÉ ; K1a sous-étape 1 : records perso → repo duckdb
 
 **Statut** : K démarré (chantier archi). Reconnaissance faite (pipeline post-sync = 2837 L,
