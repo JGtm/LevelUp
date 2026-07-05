@@ -60,6 +60,33 @@ const (
 	bestKDARecordEpsilon = 0.01
 )
 
+// counterDelta décrit une notification post-sync « compteur » : émise quand
+// after.field > before.field, delta = différence porté dans Params[count]. Les
+// deltas NON uniformes (career_rank, skill_tier, threshold_crossed, personal_record)
+// restent codés à la main dans EmitPostSyncDeltas. K1a (2026-07-05) : table-driven
+// pour dégonfler la god-function EmitPostSyncDeltas.
+type counterDelta struct {
+	field       func(s *PlayerSnapshot) int
+	category    notifications.Category
+	severity    notifications.Severity
+	titleKey    string
+	bodyKey     string
+	routeSuffix string         // segment après /players/{slug}/
+	search      map[string]any // TargetSearch optionnel (nil = aucun)
+	logLabel    string
+}
+
+// postSyncCounterDeltas — les 7 deltas compteur uniformes émis après une sync.
+var postSyncCounterDeltas = []counterDelta{
+	{field: func(s *PlayerSnapshot) int { return s.PersonalAwardCount }, category: notifications.CategoryObjectiveCompleted, severity: notifications.SeveritySuccess, titleKey: "notif.objective_completed.title", bodyKey: "notif.objective_completed.body", routeSuffix: "ascension", logLabel: "objective_completed"},
+	{field: func(s *PlayerSnapshot) int { return s.ChallengeCompletedCount }, category: notifications.CategoryChallengeCompleted, severity: notifications.SeveritySuccess, titleKey: "notif.challenge_completed.title", bodyKey: "notif.challenge_completed.body", routeSuffix: "ascension", search: map[string]any{"tab": "challenges"}, logLabel: "challenge_completed"},
+	{field: func(s *PlayerSnapshot) int { return s.BattlepassCompletedTracks }, category: notifications.CategoryBattlepassCompleted, severity: notifications.SeveritySuccess, titleKey: "notif.battlepass_completed.title", bodyKey: "notif.battlepass_completed.body", routeSuffix: "career/season-pass", logLabel: "battlepass_completed"},
+	{field: func(s *PlayerSnapshot) int { return s.CitationTotalEarnedTiers }, category: notifications.CategoryCitationTier, severity: notifications.SeveritySuccess, titleKey: "notif.citation_tier.title", bodyKey: "notif.citation_tier.body", routeSuffix: "citations", logLabel: "citation_tier"},
+	{field: func(s *PlayerSnapshot) int { return s.CitationMasteryCount }, category: notifications.CategoryCitationMastery, severity: notifications.SeveritySuccess, titleKey: "notif.citation_mastery.title", bodyKey: "notif.citation_mastery.body", routeSuffix: "citations", logLabel: "citation_mastery"},
+	{field: func(s *PlayerSnapshot) int { return s.ChallengePathsCount }, category: notifications.CategoryChallengeAdded, severity: notifications.SeverityInfo, titleKey: "notif.challenge_added.title", bodyKey: "notif.challenge_added.body", routeSuffix: "ascension", search: map[string]any{"tab": "challenges"}, logLabel: "challenge_added"},
+	{field: func(s *PlayerSnapshot) int { return s.PersonalAwardCount }, category: notifications.CategoryObjectiveAssigned, severity: notifications.SeverityInfo, titleKey: "notif.objective_assigned.title", bodyKey: "notif.objective_assigned.body", routeSuffix: "ascension", logLabel: "objective_assigned"},
+}
+
 // buildPostSyncDeltaHook construit la closure consommée par sync_handler :
 // elle prend une snapshot avant le run, retourne une fonction qui prend
 // la snapshot d'après et émet les notifications correspondantes.
@@ -172,6 +199,31 @@ func EmitPostSyncDeltas(
 		return
 	}
 
+	// Deltas compteur uniformes (table-driven, K1a). Ordre non significatif :
+	// chaque catégorie est distincte et les tests valident l'ENSEMBLE émis, pas
+	// la séquence (hasCategory/countCategory). Les deltas bespoke suivent.
+	for _, d := range postSyncCounterDeltas {
+		newV, oldV := d.field(after), d.field(before)
+		if newV <= oldV {
+			continue
+		}
+		in := notifications.EmitInput{
+			Category:    d.category,
+			Severity:    d.severity,
+			TitleKey:    d.titleKey,
+			BodyKey:     d.bodyKey,
+			Params:      map[string]any{paramKeyCount: newV - oldV},
+			TargetRoute: fmt.Sprintf("/players/%s/%s", slug, d.routeSuffix),
+			Source:      postSyncSource,
+		}
+		if d.search != nil {
+			in.TargetSearch = d.search
+		}
+		if err := emitter.Emit(ctx, in); err != nil {
+			slog.WarnContext(ctx, "post_sync: "+d.logLabel, "err", err)
+		}
+	}
+
 	// career_rank : nouveau rang Halo lifetime franchi (career_progression).
 	// Remplace l'ancien câblage CategorySeasonPassLevel qui pointait à tort sur
 	// career_progression — déprécié depuis 2026-05-16.
@@ -190,43 +242,6 @@ func EmitPostSyncDeltas(
 			Source:      postSyncSource,
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: career_rank", "err", err)
-		}
-	}
-
-	// objective_completed (agrégé) : nouveaux awards. Le frontend résout
-	// le libellé via templates i18n ; on ne passe que les paramètres machine.
-	if after.PersonalAwardCount > before.PersonalAwardCount {
-		delta := after.PersonalAwardCount - before.PersonalAwardCount
-		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category:    notifications.CategoryObjectiveCompleted,
-			Severity:    notifications.SeveritySuccess,
-			TitleKey:    "notif.objective_completed.title",
-			BodyKey:     "notif.objective_completed.body",
-			Params:      map[string]any{paramKeyCount: delta},
-			TargetRoute: fmt.Sprintf("/players/%s/ascension", slug),
-			Source:      postSyncSource,
-		}); err != nil {
-			slog.WarnContext(ctx, "post_sync: objective_completed", "err", err)
-		}
-	}
-
-	// challenge_completed (vrais défis daily/weekly) : nb challenge_path dont le
-	// dernier status est 'Completed'. Recâblé depuis match_citations vers
-	// challenge_snapshots le 2026-05-16 — la sémantique citations est désormais
-	// traitée par citation_tier / citation_mastery.
-	if after.ChallengeCompletedCount > before.ChallengeCompletedCount {
-		delta := after.ChallengeCompletedCount - before.ChallengeCompletedCount
-		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category:     notifications.CategoryChallengeCompleted,
-			Severity:     notifications.SeveritySuccess,
-			TitleKey:     "notif.challenge_completed.title",
-			BodyKey:      "notif.challenge_completed.body",
-			Params:       map[string]any{paramKeyCount: delta},
-			TargetRoute:  fmt.Sprintf("/players/%s/ascension", slug),
-			TargetSearch: map[string]any{"tab": "challenges"},
-			Source:       postSyncSource,
-		}); err != nil {
-			slog.WarnContext(ctx, "post_sync: challenge_completed", "err", err)
 		}
 	}
 
@@ -259,94 +274,6 @@ func EmitPostSyncDeltas(
 			Source:      postSyncSource,
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: skill_tier", "playlist", playlist, "err", err)
-		}
-	}
-
-	// battlepass_completed : un track de plus a atteint son rang max.
-	if after.BattlepassCompletedTracks > before.BattlepassCompletedTracks {
-		delta := after.BattlepassCompletedTracks - before.BattlepassCompletedTracks
-		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category:    notifications.CategoryBattlepassCompleted,
-			Severity:    notifications.SeveritySuccess,
-			TitleKey:    "notif.battlepass_completed.title",
-			BodyKey:     "notif.battlepass_completed.body",
-			Params:      map[string]any{paramKeyCount: delta},
-			TargetRoute: fmt.Sprintf("/players/%s/career/season-pass", slug),
-			Source:      postSyncSource,
-		}); err != nil {
-			slog.WarnContext(ctx, "post_sync: battlepass_completed", "err", err)
-		}
-	}
-
-	// citation_tier : au moins un nouveau palier franchi sur une commendation.
-	// Agrégé : count = somme des paliers franchis depuis la sync précédente.
-	if after.CitationTotalEarnedTiers > before.CitationTotalEarnedTiers {
-		delta := after.CitationTotalEarnedTiers - before.CitationTotalEarnedTiers
-		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category:    notifications.CategoryCitationTier,
-			Severity:    notifications.SeveritySuccess,
-			TitleKey:    "notif.citation_tier.title",
-			BodyKey:     "notif.citation_tier.body",
-			Params:      map[string]any{paramKeyCount: delta},
-			TargetRoute: fmt.Sprintf("/players/%s/citations", slug),
-			Source:      postSyncSource,
-		}); err != nil {
-			slog.WarnContext(ctx, "post_sync: citation_tier", "err", err)
-		}
-	}
-
-	// citation_mastery : une (ou plusieurs) commendation(s) viennent d'atteindre
-	// 100 % de masterisation.
-	if after.CitationMasteryCount > before.CitationMasteryCount {
-		delta := after.CitationMasteryCount - before.CitationMasteryCount
-		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category:    notifications.CategoryCitationMastery,
-			Severity:    notifications.SeveritySuccess,
-			TitleKey:    "notif.citation_mastery.title",
-			BodyKey:     "notif.citation_mastery.body",
-			Params:      map[string]any{paramKeyCount: delta},
-			TargetRoute: fmt.Sprintf("/players/%s/citations", slug),
-			Source:      postSyncSource,
-		}); err != nil {
-			slog.WarnContext(ctx, "post_sync: citation_mastery", "err", err)
-		}
-	}
-
-	// challenge_added : nouveaux challenge_path apparus dans challenge_snapshots.
-	if after.ChallengePathsCount > before.ChallengePathsCount {
-		delta := after.ChallengePathsCount - before.ChallengePathsCount
-		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category:     notifications.CategoryChallengeAdded,
-			Severity:     notifications.SeverityInfo,
-			TitleKey:     "notif.challenge_added.title",
-			BodyKey:      "notif.challenge_added.body",
-			Params:       map[string]any{paramKeyCount: delta},
-			TargetRoute:  fmt.Sprintf("/players/%s/ascension", slug),
-			TargetSearch: map[string]any{"tab": "challenges"},
-			Source:       postSyncSource,
-		}); err != nil {
-			slog.WarnContext(ctx, "post_sync: challenge_added", "err", err)
-		}
-	}
-
-	// objective_assigned : la table personal_score_awards ne distingue pas
-	// "assigned" vs "completed". Le delta seul détecte une nouvelle entrée
-	// (qui peut être déjà complétée). On émet quand même : l'utilisateur peut
-	// distinguer dans l'UI via les params (target = score atteint vs assigné).
-	// Doublon possible avec objective_completed sur le même match — accepté pour
-	// le MVP, à raffiner avec un signal explicite côté Prestige.
-	if after.PersonalAwardCount > before.PersonalAwardCount {
-		delta := after.PersonalAwardCount - before.PersonalAwardCount
-		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category:    notifications.CategoryObjectiveAssigned,
-			Severity:    notifications.SeverityInfo,
-			TitleKey:    "notif.objective_assigned.title",
-			BodyKey:     "notif.objective_assigned.body",
-			Params:      map[string]any{paramKeyCount: delta},
-			TargetRoute: fmt.Sprintf("/players/%s/ascension", slug),
-			Source:      postSyncSource,
-		}); err != nil {
-			slog.WarnContext(ctx, "post_sync: objective_assigned", "err", err)
 		}
 	}
 
