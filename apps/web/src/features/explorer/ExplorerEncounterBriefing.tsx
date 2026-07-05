@@ -22,6 +22,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { Tooltip } from '@/components/ui/tooltip'
+import { AllyEnemySplitBar, KDSplitBar } from '@/features/_shared/EncounterSplitBars'
 
 // ─── Accent KPI selon le sentiment du contenu (barre colorée en haut) ────────
 // Vert (positif) / rouge (négatif) / bleu = outcome-draw (ok, égal ou neutre).
@@ -102,87 +103,8 @@ function formatRelativeEN(iso: string): string {
   return years <= 1 ? '1 y ago' : `${years} y ago`
 }
 
-// ─── SplitBar (copié depuis MatchEncountersTable.tsx) ─────────────────────────
-
-function SplitBar({
-  leftCount,
-  rightCount,
-  leftColor,
-  rightColor,
-  leftTooltip,
-  rightTooltip,
-}: {
-  leftCount: number
-  rightCount: number
-  leftColor: string
-  rightColor: string
-  leftTooltip: string
-  rightTooltip: string
-}) {
-  const total = leftCount + rightCount
-  if (total === 0) return <span className="font-mono">—</span>
-  const leftPct = Math.round((leftCount / total) * 100)
-  return (
-    <span className="inline-flex items-center gap-1 font-mono tabular-nums">
-      <Tooltip content={leftTooltip}>
-        <span style={{ color: leftColor }}>{leftCount}</span>
-      </Tooltip>
-      <span className="inline-flex h-2 w-12 border border-border overflow-hidden">
-        <span style={{ width: `${leftPct}%`, backgroundColor: leftColor }} />
-        <span style={{ flex: 1, backgroundColor: rightColor }} />
-      </span>
-      <Tooltip content={rightTooltip}>
-        <span style={{ color: rightColor }}>{rightCount}</span>
-      </Tooltip>
-    </span>
-  )
-}
-
-function AllyEnemySplitBar({
-  allyCount,
-  enemyCount,
-  locale,
-}: {
-  allyCount: number
-  enemyCount: number
-  locale: 'fr' | 'en'
-}) {
-  const ttAlly = locale === 'en' ? `${allyCount} matches as ally` : `${allyCount} matchs en allié`
-  const ttEnemy = locale === 'en' ? `${enemyCount} matches as enemy` : `${enemyCount} matchs en ennemi`
-  return (
-    <SplitBar
-      leftCount={allyCount}
-      rightCount={enemyCount}
-      leftColor={tokenCssVar('team-ally')}
-      rightColor={tokenCssVar('team-enemy')}
-      leftTooltip={ttAlly}
-      rightTooltip={ttEnemy}
-    />
-  )
-}
-
-function KDSplitBar({
-  kills,
-  deaths,
-  locale,
-}: {
-  kills: number
-  deaths: number
-  locale: 'fr' | 'en'
-}) {
-  const ttKills = locale === 'en' ? `${kills} kills dealt` : `${kills} frags infligés`
-  const ttDeaths = locale === 'en' ? `${deaths} deaths suffered` : `${deaths} morts subies`
-  return (
-    <SplitBar
-      leftCount={kills}
-      rightCount={deaths}
-      leftColor={tokenCssVar('outcome-win')}
-      rightColor={tokenCssVar('outcome-loss')}
-      leftTooltip={ttKills}
-      rightTooltip={ttDeaths}
-    />
-  )
-}
+// SplitBar / AllyEnemySplitBar / KDSplitBar : extraits vers
+// features/_shared/EncounterSplitBars.tsx (dédup #6 — cf. import).
 
 // ─── KpiCard (style SessionBriefing) ─────────────────────────────────────────
 
