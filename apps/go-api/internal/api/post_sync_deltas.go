@@ -50,6 +50,14 @@ const (
 	// paramKeyCount est la clé "count" du Params{} pour les notifications
 	// delta agrégées (objectives, citations, friend_sync, etc.).
 	paramKeyCount = "count"
+	// kdRatioThresholdStep / winrateThresholdStep : pas de palier pour l'émission
+	// des notifications threshold_crossed (0.05 = 5 points de KD ratio / 5 % de
+	// taux de victoire). Nommés K1a (ex-magic 0.05).
+	kdRatioThresholdStep = 0.05
+	winrateThresholdStep = 0.05
+	// bestKDARecordEpsilon : amélioration minimale du best_kda pour compter comme
+	// un nouveau record personnel (filtre le bruit de flottant). Nommé K1a (ex-0.01).
+	bestKDARecordEpsilon = 0.01
 )
 
 // buildPostSyncDeltaHook construit la closure consommée par sync_handler :
@@ -344,7 +352,7 @@ func EmitPostSyncDeltas(
 
 	// threshold_crossed — KD ratio (palier 0.05). On envoie metric_key (clé i18n)
 	// + value formaté ; le frontend résout metric_label via i18n.metricLabel.
-	if crossed, level := thresholdCrossed(before.KDRatio, after.KDRatio, 0.05); crossed {
+	if crossed, level := thresholdCrossed(before.KDRatio, after.KDRatio, kdRatioThresholdStep); crossed {
 		_ = emitter.Emit(ctx, notifications.EmitInput{
 			Category:    notifications.CategoryThresholdCrossed,
 			Severity:    notifications.SeveritySuccess,
@@ -357,7 +365,7 @@ func EmitPostSyncDeltas(
 	}
 
 	// threshold_crossed — Winrate (palier 0.05 = 5%)
-	if crossed, level := thresholdCrossed(before.Winrate, after.Winrate, 0.05); crossed {
+	if crossed, level := thresholdCrossed(before.Winrate, after.Winrate, winrateThresholdStep); crossed {
 		_ = emitter.Emit(ctx, notifications.EmitInput{
 			Category:    notifications.CategoryThresholdCrossed,
 			Severity:    notifications.SeveritySuccess,
@@ -375,7 +383,7 @@ func EmitPostSyncDeltas(
 		if err != nil {
 			slog.DebugContext(ctx, "post_sync: load best_kda record", "err", err)
 		}
-		if oldRec.Loaded && after.BestKDA > oldRec.Value+0.01 {
+		if oldRec.Loaded && after.BestKDA > oldRec.Value+bestKDARecordEpsilon {
 			// Record battu → emit + persist. metric_key résolu côté frontend.
 			_ = emitter.Emit(ctx, notifications.EmitInput{
 				Category: notifications.CategoryPersonalRecord,
@@ -393,7 +401,7 @@ func EmitPostSyncDeltas(
 		}
 		// Toujours persister la nouvelle valeur (init au premier passage,
 		// update si battue)
-		if !oldRec.Loaded || after.BestKDA > oldRec.Value+0.01 {
+		if !oldRec.Loaded || after.BestKDA > oldRec.Value+bestKDARecordEpsilon {
 			if err := duckdb.UpsertPlayerRecord(ctx, pdb, "best_kda", after.BestKDA, after.BestKDAMatchID); err != nil {
 				slog.WarnContext(ctx, "post_sync: persist best_kda", "err", err)
 			}
