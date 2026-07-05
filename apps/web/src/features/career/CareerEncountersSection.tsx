@@ -11,6 +11,7 @@ import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { formatMessage } from '@/lib/i18n/format'
 import { careerManifest, type CareerManifestKey } from '@/lib/i18n/generated/career'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { useCareerEncounters } from './queries'
 
 interface Props {
@@ -68,7 +69,7 @@ function EncounterTable({ items }: { items: CareerEncounter[] }) {
               <td className="py-1.5 text-right text-destructive">{enc.losses}</td>
               <td className="py-1.5 text-right text-xs text-muted-foreground">
                 {enc.last_seen_at
-                  ? new Date(enc.last_seen_at).toLocaleDateString('fr-FR')
+                  ? new Date(enc.last_seen_at).toLocaleDateString(intlLocale(locale))
                   : '—'}
               </td>
             </tr>
