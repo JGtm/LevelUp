@@ -16,12 +16,46 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 
 	duckdb "github.com/duckdb/duckdb-go/v2"
 )
+
+// Limites ressources DuckDB appliquées à CHAQUE connexion (J2, 2026-07-05).
+// Sans limite, DuckDB fixe memory_limit à ~80% de la RAM (~1.5 Go sur un VPS 2 Go) :
+// un seul gros SELECT/backfill peut alors OOM le conteneur (prod = no-swap). En
+// bornant memory_limit, DuckDB DÉBORDE sur disque au-delà (dégradation sûre, pas
+// d'échec). Défaut CONSERVATEUR calibré sur le VPS prod (2 vCPU / 2 Go ; conteneur
+// ~845 Mo au repos, ~256 Mo dispo). Override par env pour un hôte plus large :
+//
+//	LEVELUP_DUCKDB_MEMORY_LIMIT (ex. "2GB")   LEVELUP_DUCKDB_THREADS (ex. "4")
+//
+// Knob permanent (pas de date de retrait) ; critère : memory_limit doit rester
+// < (RAM - baseline conteneur - marge démo/OS).
+var (
+	duckMemoryLimit = envOr("LEVELUP_DUCKDB_MEMORY_LIMIT", "512MB")
+	duckThreads     = envIntOr("LEVELUP_DUCKDB_THREADS", 2)
+)
+
+func envOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
+func envIntOr(key string, def int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return def
+}
 
 // DB encapsule une connexion DuckDB ouverte.
 //
@@ -521,29 +555,42 @@ func (db *DB) UpsertNoConflict(
 // openSQLDBFor construit un *sql.DB depuis un DSN + timezone, avec ping.
 // Extrait de openCachedDB pour réutilisation par Reopen.
 func openSQLDBFor(dsn, timezone, op, path string) (*sql.DB, error) {
-	var sqlDB *sql.DB
-	if timezone != "" {
-		tz := timezone
-		connector, err := duckdb.NewConnector(dsn, func(execer driver.ExecerContext) error {
-			_, initErr := execer.ExecContext(context.Background(), "SET TimeZone='"+tz+"'", nil)
-			return initErr
-		})
-		if err != nil {
-			return nil, fmt.Errorf("duckdb.%s connector(%s): %w", op, path, err)
-		}
-		sqlDB = sql.OpenDB(connector)
-	} else {
-		var err error
-		sqlDB, err = sql.Open("duckdb", dsn)
-		if err != nil {
-			return nil, fmt.Errorf("duckdb.%s(%s): %w", op, path, err)
-		}
+	// Toutes les connexions passent par le connector pour appliquer les limites
+	// ressources (memory_limit + threads, J2) + la timezone. Auparavant seule la
+	// branche timezone!="" avait un hook d'init → la borne mémoire manquait sur
+	// les DBs ouvertes sans TZ (ex. metadata) = risque OOM sur VPS contraint.
+	connector, err := duckdb.NewConnector(dsn, func(execer driver.ExecerContext) error {
+		return applyDuckSessionInit(execer, timezone)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("duckdb.%s connector(%s): %w", op, path, err)
 	}
+	sqlDB := sql.OpenDB(connector)
 	if err := sqlDB.PingContext(context.Background()); err != nil {
 		sqlDB.Close()
 		return nil, fmt.Errorf("duckdb.%s ping(%s): %w", op, path, err)
 	}
 	return sqlDB, nil
+}
+
+// applyDuckSessionInit borne les ressources de CHAQUE connexion (J2) puis applique
+// la timezone si fournie. memory_limit protège le conteneur d'un OOM ; threads borne
+// le parallélisme au nombre de vCPU. Cf. vars duckMemoryLimit / duckThreads.
+func applyDuckSessionInit(execer driver.ExecerContext, timezone string) error {
+	ctx := context.Background()
+	stmts := []string{
+		"SET memory_limit='" + duckMemoryLimit + "'",
+		"SET threads=" + strconv.Itoa(duckThreads),
+	}
+	if timezone != "" {
+		stmts = append(stmts, "SET TimeZone='"+timezone+"'")
+	}
+	for _, s := range stmts {
+		if _, err := execer.ExecContext(ctx, s, nil); err != nil {
+			return fmt.Errorf("duckdb session init %q: %w", s, err)
+		}
+	}
+	return nil
 }
 
 // applyConnLimits applique maxOpen/maxIdle avec la logique d'openCachedDB

@@ -1,3 +1,30 @@
+## [2026-07-05] LOT J — J2 (limites ressources DuckDB) LIVRÉ + mesure VPS prod
+
+**Statut** : Complété. Mesure runtime faite moi-même via `ssh lvelup` (l'utilisateur a
+donné l'accès pour ne plus avoir à me fournir les chiffres).
+
+**Mesure VPS prod** : 2 vCPU / **2 Go RAM, no-swap** ; conteneur `levelup-levelup-1`
+**845 Mo** au repos, conteneur démo 221 Mo, **~256 Mo dispo** seulement. `/debug/vars`
+auth-gated (401) et la prod tourne du code pré-J1 → `duckdb_pool_stats` live nécessite le
+déploiement de la branche (différé au merge). Mais docker stats = donnée suffisante pour J2.
+
+**Risque latent trouvé** : AUCUN `memory_limit`/`threads` n'était configuré → DuckDB prend
+son défaut (~80% RAM = ~1.5 Go). Sur 2 Go no-swap avec conteneur déjà à 845 Mo, un seul gros
+SELECT/backfill peut **OOM le conteneur**. Décision technique : borner memory_limit +
+threads sur CHAQUE connexion via le hook d'init du connector (`openSQLDBFor`). Bug corrigé au
+passage : la branche `timezone==""` (ex. metadata) n'avait AUCUN hook → aucune borne. Défaut
+conservateur `512MB`/`2` (DuckDB déborde sur disque au-delà = dégradation sûre), override
+`LEVELUP_DUCKDB_MEMORY_LIMIT`/`_THREADS` pour hôte plus large.
+
+**Résultats** : `db.go` (connector unifié + vars env), `db_resource_limits_test.go` (preuve
+via `current_setting('threads')` sur DB sans TZ). Gate : gofmt clean, vet 0, **suite intégration
+duckdb complète verte (99 s, -p 1)** — refactor du chemin de connexion validé.
+
+**Prochaine étape** : K (chantier archi, le plus gros). J3/J4/J6/J7 (optims requête) restent
+measure-first mais SANS live pool_stats (bloqué déploiement) → sound-as-code au cas par cas.
+
+---
+
 ## [2026-07-05] LOT L — L5 (centralisation query-keys) COMPLET
 
 **Statut** : Complété (commit 91492e360). Dernier item de la séquence I1→I2→I4→L5.
