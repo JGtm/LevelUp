@@ -14,8 +14,12 @@
   commits par sous-lot. Inclut :
   - **F12** — migration film 18 fichiers `analysis/` → `games/halo_infinite/film/`
     (extraction d'un sous-système délicat, pas mécanique).
-  - **J5** — `LoadAll` full-history par hit → cache joueur invalidé post-sync
-    (DÉCISIONS PRODUIT : TTL, propriétaire de l'invalidation). Risque données périmées.
+  - **J5** — `LoadAll` full-history par hit → cache joueur invalidé post-sync.
+    **DÉCISION reco 2026-07-05 (à confirmer au démarrage)** : invalidation ÉVÉNEMENTIELLE
+    par le chemin de complétion sync (après CHECKPOINT append-only) via un
+    `InvalidatePlayerHistoryCache(xuid, titleSlug)` — **PAS de TTL temporel** (un TTL laisse
+    voir des données périmées ; l'événement sync est le vrai signal, cohérent doctrine
+    convergente append-only). Propriétaire = le sync, pas le lecteur.
   - **L2-(1)** — ratchet « pas de SQL/`Open*` dans api/ » (dépend de K ; baseline
     décroissante datée une fois K livré).
   - **K1g** — fusion de la double-lecture asset-drawer au boot (server.go), croisé L7.
@@ -72,9 +76,13 @@ Les optimisations DÉPENDENT d'une mesure avant/après SOUS CHARGE (runtime) que
 rend possible — les faire à l'aveugle optimiserait un chemin non mesuré + risque de
 changement de résultat (J3/J4/J7) ou de wiring provider (J9).
 
-- **J1(2)** pool lecture player DBs · **J2** budgets mémoire/threads (**DÉCISION PRODUIT**
-  VPS) · **J3** `GetHistoryForAvgBulk` · **J4** `LoadSquadMatchesBulk` · **J6** 8 N+1
-  batchables · **J7** CTE Q26 bornée · **J9** emprunt cross-titre B-swap-safe.
+- **J1(2)** pool lecture player DBs · **J2** budgets mémoire/threads · **J3**
+  `GetHistoryForAvgBulk` · **J4** `LoadSquadMatchesBulk` · **J6** 8 N+1 batchables ·
+  **J7** CTE Q26 bornée · **J9** emprunt cross-titre B-swap-safe.
+- **DÉCISION PRODUIT J2 (tranchée 2026-07-05)** : VPS = **2 vCPU / 2 Go RAM** (très
+  contraint). Cible calibration : DuckDB `memory_limit` **bas ~768 Mo** (le conteneur Go +
+  OS + reste doivent tenir dans 2 Go) + `threads=2` (= vCPU). À AFFINER sous mesure réelle
+  (avec 2 Go, la pression mémoire est le vrai risque → `duckdb_pool_stats` critique).
 - **Reprise** : lire `/debug/vars` `duckdb_pool_stats` sous charge, puis optimiser +
   valider avant/après.
 
