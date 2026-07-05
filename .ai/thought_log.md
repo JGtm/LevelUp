@@ -1,3 +1,23 @@
+## [2026-07-05] I4 (b) — migration des libellés haute-densité vers feature i18n
+
+**Statut** : Les fichiers HAUTE DENSITÉ migrés (26 ternaires) ; reste accepté/scopé.
+
+**Décision technique** : sur-comptage confirmé (comme tout item audit) — le « 114 » incluait
+dict-selection, locale-prop-normalization et **data-selection** (`title_en : title_fr` =
+sélection de champ backend, LÉGITIME). Vrais libellés scattered ≈ 40. Migré les fichiers
+haute-densité (le vrai anti-pattern « strings éparpillées dans le JSX ») : AscensionProfileTab
+(16), MatchViewPage (3), PrestigeSquadProgress (3), AscensionRealisationsTab (3),
+AscensionCoachingTab (1) = **26** → `getAscensionText` / `MatchViewText` (interface + fr + en).
+
+**Accepté/scopé** (justifié) : (i) `ArcPresetPicker` = dict local `t={…}` consolidé/typé/
+bilingue → pattern i18n ACCEPTÉ (≠ scattered) ; (ii) tooltips paramétrés `${n} matches as ally`
+DUPLIQUÉS MatchEncountersTable+ExplorerEncounterBriefing → #6 cross-feature, sous-tâche i18n
+paramétré partagé ; (iii) longue traîne 1-2/fichier = **tolérable** (règle explicite du plan).
+
+**Résultats** : 3 commits `i18n(I4b)`, typecheck 0, vitest match-view+ascension verts.
+
+---
+
 ## [2026-07-05] I4 (a) — dédup #6 des ponts locale→BCP-47 COMPLÈTE (41 sites)
 
 **Statut** : Lot (a) d'I4 complété. Le pont `locale === 'en' ? 'en-US' : 'fr-FR'` était

@@ -941,10 +941,19 @@ Objectif : purge FR monolingue + anglicismes ; règle lint passée en `error` à
     `const intlLocale` résolues par import aliasé ; `LeaderboardBlock` params resserrés
     `string`→`ManifestLocale`. 6 sites `'en-GB'` (date EU délibérée) conservés. Gate :
     typecheck 0, eslint 0, vitest 261 verts, 0 ternaire pont restant.
-  - **~114 ternaires = libellés** (RESTE) → migrer vers i18n.ts/manifests par feature. Concentration :
-    AscensionProfileTab 16, ArcPresetPicker 10, MatchViewPage 9, MatchEncountersTable 6,
-    ExplorerEncounterBriefing 5 ; longue traîne 1-2/fichier (un ternaire bilingue isolé =
-    tolérable). Exception approuvée : helpers PURS de lib/. Détail DETTE_ASSUMEE §2 I4.
+  - **Libellés** — SUR-COMPTÉ comme tous les items (vérifié 2026-07-05). Le « 114 » incluait
+    dict-selection (`MATCH_VIEW_TEXT[…]`), locale-prop-normalization (`locale === 'en' ? 'en' : 'fr'`)
+    et data-selection (`title_en : title_fr`, backend — LÉGITIME). Vrais libellés scattered ≈ 40.
+    - ✅ **LIVRÉ (2026-07-05)** : les fichiers HAUTE DENSITÉ (le vrai anti-pattern) — **26
+      ternaires** migrés : AscensionProfileTab(16), MatchViewPage(3), PrestigeSquadProgress(3),
+      AscensionRealisationsTab(3), AscensionCoachingTab(1) → feature i18n (`getAscensionText`,
+      `MatchViewText`). 3 commits `i18n(I4b)`, typecheck/tests verts.
+    - **RESTE (accepté / scopé)** : (i) `ArcPresetPicker` — dict local `t={…}` consolidé, typé,
+      bilingue = pattern ACCEPTÉ (pas du scattered) ; (ii) **cluster tooltips paramétrés
+      DUPLIQUÉ** `MatchEncountersTable`+`ExplorerEncounterBriefing` (`${n} matches as ally`…,
+      ~9 sites, #6 cross-feature) = sous-tâche distincte (i18n paramétré partagé) ; (iii) longue
+      traîne 1-2/fichier (FeatureUnavailable, SettingsPage, HomePage, HomeAscensionWidget,
+      ExplorerTargetSeasonCSR) = **tolérable** (règle plan). Détail DETTE_ASSUMEE §2 I4.
 - [x] I5 — CR reco 4 : **LIVRÉ (2026-07-05)**. RECALIBRÉ : la règle remontait **1 warning**
   (pas « >100 ») et n'est PAS couplée à I1-I4. Fix du seul warning (`AscensionProfileTab`
   title `Phase 5 minimale` → clé bilingue `prestigeDisabledHint` FR+EN), puis
