@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/platform/duckdb"
@@ -228,16 +229,18 @@ func assembleProgressionResults(loaded []progressionMatchRow, perfByMatch map[st
 			kpm = r.kills / minutes
 			pspm = r.personal / minutes
 		}
+		// OC/DR via le calcul canonique analysis.ComputeCombatYieldFloat (K1a :
+		// formules produit → analysis/) plutôt qu'un recalcul inline dupliqué.
+		// Respecte AssistsExcludedFromYield ; byte-identique en mode par défaut. On
+		// ne pose la clé que si la métrique est définie (dmg > 0) — un predicate
+		// distingue « absent » de « 0 ».
+		cy := analysis.ComputeCombatYieldFloat(r.kills, r.assists, r.dmgDealt, r.dmgTaken, r.deaths, effectiveHpToKill)
 		matchStats := map[string]float64{"kda": r.kda}
 		if r.dmgDealt > 0 {
-			// offensive_conversion = effectiveHpToKill * (kills + assists/3) / damage_dealt
-			oc := effectiveHpToKill * (r.kills + r.assists/3.0) / r.dmgDealt
-			matchStats["oc"] = oc
+			matchStats["oc"] = cy.OffensiveConversion
 		}
 		if r.dmgTaken > 0 && r.deaths > 0 {
-			// defensive_resistance = damage_taken / (effectiveHpToKill * deaths)
-			dr := r.dmgTaken / (effectiveHpToKill * r.deaths)
-			matchStats["dr"] = dr
+			matchStats["dr"] = cy.DefensiveResistance
 		}
 		activities = append(activities, streaks.MatchActivity{
 			PlayedAt: r.startTime,
