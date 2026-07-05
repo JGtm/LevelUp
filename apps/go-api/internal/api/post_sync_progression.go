@@ -28,8 +28,7 @@ import (
 	"log/slog"
 	"time"
 
-	"sort"
-
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/campaign"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
@@ -589,10 +588,5 @@ func medianStat(activities []streaks.MatchActivity, key string) float64 {
 	if len(values) < 10 {
 		return 0
 	}
-	sort.Float64s(values)
-	n := len(values)
-	if n%2 == 1 {
-		return values[n/2]
-	}
-	return (values[n/2-1] + values[n/2]) / 2
+	return analysis.MedianFloat(values)
 }

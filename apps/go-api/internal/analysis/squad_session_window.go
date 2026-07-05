@@ -61,7 +61,7 @@ func SquadSessionWindowKeep(firstSeenUnixAsc []int64, cfg SquadSessionWindowConf
 		}
 		gaps = append(gaps, d)
 	}
-	g := medianFloat(gaps)
+	g := MedianFloat(gaps)
 	if g <= 0 {
 		g = 1 // sessions le même jour → l'horizon minimal s'appliquera
 	}
@@ -96,7 +96,10 @@ func SquadSessionWindowKeep(firstSeenUnixAsc []int64, cfg SquadSessionWindowConf
 	return keep
 }
 
-func medianFloat(xs []float64) float64 {
+// MedianFloat retourne la médiane de xs (0 si vide). Canonique (K1n 2026-07-05) :
+// réutilisé par le post-sync (medianStat) et la fenêtre de session escouade, plutôt
+// que des recalculs sort+milieu dupliqués.
+func MedianFloat(xs []float64) float64 {
 	if len(xs) == 0 {
 		return 0
 	}
