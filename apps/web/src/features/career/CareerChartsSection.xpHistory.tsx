@@ -12,6 +12,7 @@
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { intlLocale as toIntlLocale } from '@/lib/formatters'
 import {
   getEChartsThemeColors,
   getAxisBase,
@@ -227,7 +228,7 @@ function buildWeeklyCurve(
 function buildXpHistoryOption(series: ChartSeries<[string, number]>[], locale: ManifestLocale): EChartsCoreOption {
   const tc = getEChartsThemeColors()
   const axisBase = getAxisBase(tc)
-  const intlLocale = locale === 'fr' ? 'fr-FR' : 'en-US'
+  const intlLocale = toIntlLocale(locale)
 
   // Map seriesIndex → meta pour le tooltip custom.
   const metaByIdx = new Map<number, XpSeriesMeta>()

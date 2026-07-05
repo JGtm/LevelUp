@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import type { CareerTopMatch } from '@/lib/api/types'
 import { tokenCssVar } from '@/lib/accessibility'
 import { outcomeKey } from '@/lib/outcome-color'
-import { formatDate } from '@/lib/formatters'
+import { formatDate, intlLocale as toIntlLocale } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { formatMessage } from '@/lib/i18n/format'
 import { careerManifest, type CareerManifestKey } from '@/lib/i18n/generated/career'
@@ -59,7 +59,7 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
   const playerSlug = slugProp ?? params.playerSlug ?? ''
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const locale = useAppShellStore((s) => s.locale)
-  const intlLocale = locale === 'en' ? 'en-US' : 'fr-FR'
+  const intlLocale = toIntlLocale(locale)
   const t = (key: CareerManifestKey) => formatMessage(careerManifest, key, locale)
 
   const filtered = variant ? items.filter((m) => m.variant === variant) : items
