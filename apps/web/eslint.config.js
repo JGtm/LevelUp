@@ -37,7 +37,11 @@ export default defineConfig([
       },
     },
     rules: {
-      '@levelup/no-hardcoded-strings': 'warn',
+      // I5 (2026-07-05) : passé en `error` — bloque toute NOUVELLE string JSX
+      // hardcodée (texte ≥3 mots/≥15 car + attributs title/aria/placeholder/alt).
+      // Portée volontairement ciblée : n'attrape PAS les args de fonction ni les
+      // libellés courts (chantier i18n manuel I1/I2/I4, hors gate — cf. plan LOT I).
+      '@levelup/no-hardcoded-strings': 'error',
       // EXT-5 / MT-12 : périmètre features/+components/ nettoyé (slug courant lu
       // via useAppShellStore) → error pour bloquer toute régression de littéral.
       '@levelup/no-title-slug-literal': 'error',

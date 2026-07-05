@@ -19,6 +19,7 @@ export interface AscensionText {
   tipsTickerAriaLabel: string
   prestigeLayerTitle: string
   prestigeLayerDescription: string
+  prestigeDisabledHint: string // tooltip bouton désactivé (backend non implémenté)
   ascensionLayerTitle: string
   ascensionLayerDescription: string
 
@@ -156,6 +157,7 @@ const FR: AscensionText = {
   prestigeLayerTitle: 'Prestige — Objectifs et arcs',
   prestigeLayerDescription:
     'Système autonome pour te fixer des objectifs personnels et suivre ta progression. Tu peux l\'utiliser seul, sans coaching.',
+  prestigeDisabledHint: 'Phase 5 minimale : non implémenté côté backend',
   ascensionLayerTitle: 'Ascension — Coaching d\'amélioration',
   ascensionLayerDescription:
     'Analyse ton historique pour te proposer des angles d\'amélioration ciblés. S\'appuie sur Prestige (les campagnes deviennent des objectifs) — tu peux ignorer cette section si tu préfères piloter toi-même.',
@@ -322,6 +324,7 @@ const EN: AscensionText = {
   prestigeLayerTitle: 'Prestige — Objectives and arcs',
   prestigeLayerDescription:
     'Autonomous system to set personal objectives and track progression. Usable on its own, no coaching required.',
+  prestigeDisabledHint: 'Minimal Phase 5: not yet implemented on the backend',
   ascensionLayerTitle: 'Ascension — Improvement coaching',
   ascensionLayerDescription:
     'Analyses your history to surface targeted improvement angles. Builds on Prestige (campaigns become objectives) — feel free to ignore this section if you prefer to drive your own progress.',

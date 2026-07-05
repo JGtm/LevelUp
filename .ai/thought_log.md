@@ -1,3 +1,26 @@
+## [2026-07-05] LOT I — I5 livré + RECALIBRATION (I1/I2/I4 différés)
+
+**Tâche** : I5 (règle lint i18n en `error`) + investigation du couplage réel gate↔migration.
+
+**Découverte majeure (invalide l'hypothèse du plan)** : l'audit annonçait « >100 warnings »
+et un I5 gaté sur I1-I4. Vérif sur pièces : la règle `no-hardcoded-strings` remonte **1 seul
+warning** et ne flague QUE le texte JSX (≥3 mots/≥15 car) + 5 attributs — PAS les args de
+fonction (`setError`) ni les libellés courts que visent I1/I2/I4. Donc I5 n'est PAS couplé.
+Signalé à l'utilisateur → décision A : verrouiller le gate + sortir I1/I2/I4 en chantier
+i18n manuel séparé (§7 + handoff).
+
+**Livré I5** : fix du seul warning (AscensionProfileTab title « Phase 5 minimale » → clé
+bilingue `prestigeDisabledHint` FR+EN, PilotModeToggle reçoit `t`), règle passée
+`warn`→`error` avec commentaire de portée. Gate : typecheck OK, `npm run lint` = 0 erreur,
+vitest ascension 62 verts.
+
+**Résultats LOT I** : I3 + I5 livrés (gate atteint) ; I1/I2/I4 = `[!]` différés (chantier
+i18n manuel, non exigé par le gate — cible = manifests TOML). L'audit LOT I était le plus
+mal calibré des lots (comme confirmé par la recalibration H-N sur d'autres axes).
+
+**Prochaine étape** : LOT M (tests — gaps ciblés + F13 goldens par slug), puis L, J(sauf J5),
+N ; K = chantier dédié.
+
 ## [2026-07-04] LOT I — I3 (anglicisme streak→série) — COMPLÉTÉ
 
 **Tâche** : I3 du plan (purge de l'anglicisme « streak » des valeurs FR). Ordre calibré I3
