@@ -1164,14 +1164,12 @@ Gate L : CI verte avec les nouvelles règles actives et baselines commitées dat
 - [ ] M1 — QUALITE : test d'intégration sur `RecomputeLUSRCanonicalForPlayer`
   (`lusr_full_recompute.go` — orchestrateur à 3 callers, 0 test) : dataset réaliste
   hétérogène (règle mémoire projet), ordre des matchs + watermark assertés.
-- [ ] M2 — QUALITE : **RECALIBRÉ (vérifié ci.yml sur pièces — le trou exact est identifié)** :
-  la CI exécute DÉJÀ `-tags=integration` (2 jobs coverage, l.206-215 et l.260-266, avec
-  `-count=1 -timeout 300s`) MAIS **SANS `-p 1`** → c'est EXACTEMENT le mode parallèle qui a
-  produit le faux-vert de l'incident 2026-07-03 (contention DuckDB mono-process, durées
-  fantômes ~28000s masquant les FAIL) ; et le timeout 300s est TROP COURT une fois
-  sérialisé (suite locale sérialisée > 5 min). Fix calibré : ajouter **`-p 1`** aux 2 jobs
-  (ou job dédié `go-integration-tests`), **timeout 600s**, échec sur code de sortie ≠ 0
-  (pas de grep). Défaut approuvé : déclenchement **all-push** (détection précoce).
+- [x] M2 — QUALITE : **LIVRÉ (2026-07-05)**. Les 2 jobs coverage integration de ci.yml
+  (l.206 « couverture complète » + l.260 « internal/sync ») reçoivent **`-p 1`** + passage
+  **`-timeout 300s`→`600s`** + commentaire NON-NÉGOCIABLE référençant l'incident 2026-07-03.
+  L'échec sur code de sortie est déjà inhérent (steps `run:` GitHub Actions, pas de grep).
+  Note : `-timeout` est PAR-package (chaque binaire de test) — 600s est une marge généreuse
+  (duckdb ~111s, sync ~106s en local). YAML vérifié (indentation + continuations `\`).
 - [ ] M3 — QUALITE : CONFIRMÉ (0 test : `ComputeMedalExploitScore` medal_exploit.go:22,
   `GetTiming` weapon_data.go:224) ; renforcer `ComputeImpactSummary`, `ComputeMVPLVP`,
   `ComputeTrend`, `ComputeSquadPerformanceScore` (1 seul test référent chacun).
