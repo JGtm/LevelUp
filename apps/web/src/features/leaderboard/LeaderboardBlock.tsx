@@ -27,7 +27,8 @@ import { Badge } from '@/components/ui/badge'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import type { LeaderboardEntry } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { formatMessage } from '@/lib/i18n/format'
+import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
+import { intlLocale } from '@/lib/formatters'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { csrRankImageURL } from '@/lib/staticAssets'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -83,9 +84,9 @@ interface LeaderboardBlockProps {
 type SortDir = 'asc' | 'desc'
 
 /** Formate la valeur d'une catégorie de stat. */
-function formatStatValue(entry: LeaderboardEntry, locale: string): string {
+function formatStatValue(entry: LeaderboardEntry, locale: ManifestLocale): string {
   const v = entry.value ?? 0
-  const intl = locale === 'en' ? 'en-US' : 'fr-FR'
+  const intl = intlLocale(locale)
   const decimals = entry.unit === '%' || /kd|per_game/.test(entry.category ?? '') ? 2 : 0
   return `${v.toLocaleString(intl, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}${entry.unit ?? ''}`
 }
@@ -119,8 +120,8 @@ function MetricWithTrend({ text, trend, tooltip }: { text: string; trend?: strin
   )
 }
 
-const fmtPct = (v: number, locale: string): string =>
-  `${(v * 100).toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+const fmtPct = (v: number, locale: ManifestLocale): string =>
+  `${(v * 100).toLocaleString(intlLocale(locale), { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
 
 export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockProps) {
   const locale = useAppShellStore((s) => s.locale)
@@ -415,7 +416,7 @@ function LeaderboardRow({
   onHover?: (gamertag: string) => void
   onGamertagClick: (gamertag: string, xuid: string) => void
 }) {
-  const intl = locale === 'en' ? 'en-US' : 'fr-FR'
+  const intl = intlLocale(locale)
   // Accent podium : top-3 en gras (tokens foreground/muted, pas de hex).
   const isPodium = entry.rank <= 3
   const rankClass = isPodium ? 'font-bold text-primary' : 'text-muted-foreground'

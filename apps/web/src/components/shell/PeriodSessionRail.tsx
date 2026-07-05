@@ -16,6 +16,7 @@
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import type { FilterStore } from '@/stores/createFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { computeNextWindow, computePrevWindow, getRailMode } from '@/features/filters/periodSessionNav'
 import { useSeasons, type SeasonEntry } from '@/lib/i18n/fieldMappings'
 import { findActiveSeason, isoDateUTC, nextSeason, prevSeason } from '@/lib/seasons/findSeasonAt'
@@ -117,7 +118,7 @@ const TEXTS: Record<Locale, RailText> = {
 function formatDateMonthDay(iso: string, locale: Locale): string {
   try {
     const d = new Date(iso + 'T00:00:00Z')
-    return d.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+    return d.toLocaleDateString(intlLocale(locale), {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -146,12 +147,12 @@ function formatSessionLabel(
   try {
     const start = new Date(startedAtUTC)
     if (isNaN(start.getTime())) return sessionLabel
-    const dateFmt = new Intl.DateTimeFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+    const dateFmt = new Intl.DateTimeFormat(intlLocale(locale), {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
     })
-    const timeFmt = new Intl.DateTimeFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+    const timeFmt = new Intl.DateTimeFormat(intlLocale(locale), {
       hour: '2-digit',
       minute: '2-digit',
       hour12: locale !== 'fr',

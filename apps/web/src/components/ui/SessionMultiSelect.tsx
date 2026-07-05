@@ -7,6 +7,7 @@
  */
 import { useRef, useState, useEffect } from 'react'
 import type { SessionLabelEntry } from '@/lib/api/types'
+import { intlLocale as toIntlLocale } from '@/lib/formatters'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -72,7 +73,7 @@ export function SessionMultiSelect({
   getMatchCount,
 }: SessionMultiSelectProps) {
   const t = getTexts(locale)
-  const intlLocale = locale === 'fr' ? 'fr-FR' : 'en-US'
+  const intlLocale = toIntlLocale(locale)
 
   const [isOpen, setIsOpen]     = useState(false)
   const [query, setQuery]       = useState('')

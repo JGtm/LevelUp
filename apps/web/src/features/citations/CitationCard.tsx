@@ -8,6 +8,7 @@
  */
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
 import { MedalIcon } from '@/components/ui/MedalIcon'
+import { intlLocale } from '@/lib/formatters'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import type { CitationDisplayItem } from '@/lib/citations/types'
 
@@ -58,7 +59,7 @@ export function CitationCard({ item, locale }: { item: CitationDisplayItem; loca
         </span>
       ) : native ? (
         <span className="text-sm font-semibold leading-none text-foreground">
-          {item.total.toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR')}
+          {item.total.toLocaleString(intlLocale(locale))}
         </span>
       ) : null}
     </div>
