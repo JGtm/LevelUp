@@ -30,6 +30,7 @@ import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
 import { TimeseriesCombatYield } from '@/features/timeseries/TimeseriesCombatYield'
 import { TimeseriesKdaBars } from '@/features/timeseries/TimeseriesKdaBars'
 import type { MatchHistoryRow, TimeseriesMatchRow } from '@/lib/api/types'
+import { DOW_LABELS_FR } from '@/lib/formatters'
 
 // ─── Sample data ───────────────────────────────────────────────────────────
 
@@ -99,7 +100,7 @@ const HEATMAP_SERIES = [
       const day = Math.floor(i / 12)
       return {
         x: String(hour + 8).padStart(2, '0'),
-        y: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'][day],
+        y: DOW_LABELS_FR[day],
         value: Math.round(Math.random() * 10),
       }
     }),

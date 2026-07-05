@@ -425,7 +425,7 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, 
               : 'border border-input bg-background text-muted-foreground hover:bg-muted',
         ].join(' ')}
       >
-        {justAnalysed ? '✓ Appliqué' : isPreviewFetching ? '…' : 'Analyser'}
+        {justAnalysed ? tCommon('common.filter.applied') : isPreviewFetching ? '…' : tCommon('common.filter.analyser')}
       </button>
 
       {hasActiveFilters && (
