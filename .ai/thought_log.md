@@ -1,3 +1,17 @@
+## [2026-07-05] LOT N — N4 (politique migrations) + N5 (bilan dette) livrés ; N1/N2/N3 front différés
+
+**Livré** : N4 (politique de cycle-out des migrations documentée dans migration/doc.go —
+PROPOSITION par défaut à confirmer par l'opérateur ; le squash destructif reste un chantier
+distinct, décision non prise ici). N5 (`.ai/V7/DETTE_ASSUMEE_2026-Q3.md` — bilan consolidé
+des reports PLANIFIÉS du plan avec condition de reprise). N3(a) = faux positif confirmé.
+
+**Différés → session front** : N1 (LeaderboardBlock 576 L → TanStack), N2 (SquadLayout ~630 L
+→ hooks), N3(b/c/d/e) (petits fixes + MatchCard split). Raison : refactors + **Gate N exige
+une revue visuelle** non faisable à l'aveugle en fin de session ; risque de régression
+user-facing (leaderboard/escouade). Bilan N5 §6.
+
+**Prochaine étape** : K = chantier dédié (le plus gros). Voir DETTE_ASSUMEE §1.
+
 ## [2026-07-05] LOT J — J8 + J1(1) livrés ; optimisations differées measure-first
 
 **Livré** : J8 (magic 4/2/1 pool → constantes nommées) ; J1(1) (`duckdb.PoolStatsSnapshot`

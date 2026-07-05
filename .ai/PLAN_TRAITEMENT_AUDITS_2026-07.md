@@ -1242,33 +1242,31 @@ en fin de session ; le replay LUSR de M1 est déjà couvert par 30+ tests) — v
 > N3 contient un FAUX POSITIF (voir item). N4 = la seule vraie DÉCISION
 > PRODUIT/OPÉRATEUR restante du lot — à escalader au moment de le traiter.
 
-- [ ] N1 — CR A14 : CONFIRMÉ (`LeaderboardBlock.tsx:323-379`, `<table>` native, tri client
-  manuel, 9+ colonnes) → TanStack Table (`ColumnDef[]`, règle projet, 8 tables de
-  référence dans le repo). Pas de décision produit (interne).
-- [ ] N2 — CR A15 : CONFIRMÉ (`SquadLayout.tsx:97-729`) → 3 hooks (`useSquadSessionSync`,
-  `useSquadCompositionAnchor`, `useSquadPendingFilters`) + `SquadFilterBar` ; l'écriture
-  localStorage sort de l'updater setState (l.143-149) vers un `useEffect`. Défaut approuvé
-  D-G.19 : le localStorage RESTE local aux hooks (pas de migration au store global).
-- [ ] N3 — CR mineurs web : RECALIBRÉ : (a) « bypass ECharts »
-  (`CumulativeFragGapChart.tsx:23`) = **FAUX POSITIF** — c'est un `React.lazy` code-split
-  standard et le fichier consomme déjà les helpers canoniques `_utils` → `[~]` ce volet.
-  VALIDES : (b) `isLoading → return null` → skeleton EXISTANT du repo (SynthesisPage:631,
-  HomePage:123 — flash blanc) ; (c) deps listener clavier (`CoverFlowModal.tsx:474-482`) ;
-  (d) `MatchCard` ~470 L découpé PAR RESPONSABILITÉ (layout/score/outcome/médailles —
-  défaut approuvé D-G.20) ; (e) `joinAndSort` renommé (`mapPerfVsHistoryChart.ts:56`).
-- [ ] N4 — DETTE §2.5 : CALIBRÉ : `internal/migration/doc.go` EXISTE (C6) mais ne contient
-  AUCUNE politique de cycle-out (~105 migrations). **DÉCISION PRODUIT/OPÉRATEUR à
-  escalader au traitement** — proposition par défaut : squash par version majeure
-  (7.0.0), déclenchement MANUEL, préserver les 10 derniers steps + archive
-  `.ai/migrations/squashed/`. Livrable = la politique documentée dans doc.go (pas le
-  squash lui-même).
-- [ ] N5 — DETTE §2.6 : fichier `.ai/V7/DETTE_ASSUMEE_2026-Q3.md` à créer EN DERNIER
-  (après tous les lots — c'est le bilan). Scope décidé (défaut approuvé D-F.18) :
-  uniquement les items `[!]`/`[~]` PLANIFIÉS du plan (E7, F7-activation, F8/F9 Phase 1b,
-  chantier K/J5/F12, D2…) ; les découvertes incidentes de §7 vont dans un backlog séparé,
-  pas dans la dette assumée.
+- [!] N1 — CR A14 : **DIFFÉRÉ → session front (visual review)**. Vérifié sur pièces :
+  `LeaderboardBlock.tsx` = 576 L, colonnes CONDITIONNELLES (isWorld/hasEnrichment),
+  `LeaderboardRow` à rendu RICHE (hover/extremes/trends/rank-delta/badges), masquage
+  responsive, tri manuel. Migration TanStack = refactor DÉLICAT + **Gate N exige une revue
+  visuelle** non faisable à l'aveugle. Bilan N5 §6.
+- [!] N2 — CR A15 : **DIFFÉRÉ → session front (visual review)**. `SquadLayout` ~630 L god
+  component → 3 hooks + SquadFilterBar (défaut D-G.19 : localStorage reste local aux hooks).
+  Refactor + revue visuelle. Bilan N5 §6.
+- [~] N3 — CR mineurs web : (a) `[~]` FAUX POSITIF confirmé (React.lazy code-split standard,
+  consomme déjà `_utils`). (b) skeleton, (c) deps listener clavier, (e) `joinAndSort` rename
+  = petits fixes front, (d) MatchCard split = refactor → **DIFFÉRÉS session front** ((e) sans
+  nom cible spécifié, (c) nécessite analyse deps `navigate` — mieux avec revue). Bilan N5 §6.
+- [x] N4 — DETTE §2.5 : **LIVRÉ (2026-07-05)**. Politique de cycle-out documentée dans
+  `internal/migration/doc.go` comme **PROPOSITION par défaut à confirmer par l'opérateur**
+  (déclenchement manuel, squash par version majeure, préserver 10 derniers steps, archive
+  `.ai/migrations/squashed/`, invariant schéma bit-identique). Le squash DESTRUCTIF lui-même
+  reste un chantier opérateur distinct (décision non prise ici — livrable = la politique).
+- [x] N5 — DETTE §2.6 : **LIVRÉ (2026-07-05)**. `.ai/V7/DETTE_ASSUMEE_2026-Q3.md` créé —
+  bilan des reports PLANIFIÉS (chantier K/J5/F12, i18n I1/I2/I4, tests M1/M5, perf J1(2)/J2-J9
+  measure-first, gouvernance L1-rescope/L2-345/L5, front N1/N2/N3d, + antérieurs E7/F7/F8-9/D2)
+  avec condition de reprise. Les découvertes incidentes restent en §7 (backlog séparé).
 
-Gate N : typecheck + vitest + revue visuelle des pages touchées (leaderboard, escouade).
+Gate N (PARTIEL) : N4 (doc) + N5 (bilan) livrés ; N3(a) faux positif. N1/N2/N3(b-e) =
+différés session front (le Gate « revue visuelle » leaderboard/escouade n'est pas faisable
+à l'aveugle en fin de session — bilan N5 §6).
 
 ### LOT D2 — ADR 0023 Phase 5 (DIFFÉRÉ : ≥7 jours après mise en prod de D1a)
 
