@@ -1,3 +1,26 @@
+## [2026-07-05] LOT I — I1 (i18n onboarding/auth) COMPLET — chantier i18n manuel
+
+**Statut** : Complété. Go utilisateur pour le chantier i18n manuel différé (I1→I2→I4→L5).
+
+**Décision technique** : les 5 composants onboarding/auth passés bilingues FR+EN via le
+système manifest canonique (`lib/i18n/manifests/common.toml` → `build_i18n_manifests.mjs`
+→ `generated/common.ts` → `formatMessage(commonManifest, key, locale, {vars})`), PAS
+`features/*/i18n.ts` (ce que disait l'audit — inexistant). Interpolation ICU vérifiée
+(`{gamertag}`, `{max}`). Refactor notable : `failureMessageFromCode(err)` (mapper code→
+phrase FR, exporté + testé) → `failureMessageFromCode(err, t)` par injection du traducteur ;
+test unité mis à jour avec un `t()` forcé 'fr' (assertions FR inchangées, vert).
+
+**Résultats** : XboxLoginPage (6462887f4), StepDeviceCode+StepInitialSync (81fed7aad),
+RegisterPage+OpenSpartanImportCard (d39cc5d1a). +43 clés common.toml (2359→2402). Gate :
+typecheck 0, eslint 0 (règle no-hardcoded en error depuis I5), vitest 18/18 (auth+onboarding),
+grep résiduel FR user-facing = 0 sur les 2 derniers fichiers.
+
+**Prochaine étape** : I2 (scoreboard MatchScoreboard + heatmap DOW/HOUR + `toLocaleString`
+figés + « Par carte/mode/Analyser »), puis I4, L5, K. Pattern établi : cataloguer strings →
+ajouter clés common.toml → regen → Edits précis avec t() (JAMAIS de regex bulk — leçon L5).
+
+---
+
 ## [2026-07-05] LOT N — N4 (politique migrations) + N5 (bilan dette) livrés ; N1/N2/N3 front différés
 
 **Livré** : N4 (politique de cycle-out des migrations documentée dans migration/doc.go —

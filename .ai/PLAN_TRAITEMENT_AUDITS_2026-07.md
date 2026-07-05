@@ -899,12 +899,13 @@ Objectif : purge FR monolingue + anglicismes ; règle lint passée en `error` à
 > enchaîner sur M/L/J/N mieux calibrés. I3 confirme aussi le sur-comptage (13 valeurs FR
 > réelles vs « 68+ »). Le « 88 ternaires » d'I4 reste réel mais hors gate.
 
-- [!] I1 — CR A17 : **DIFFÉRÉ → chantier i18n manuel séparé** (décision utilisateur A,
-  2026-07-05). Réel (10+ strings FR brutes : XboxLoginPage, StepDeviceCode, StepInitialSync,
-  RegisterPage, OpenSpartanImportCard) mais NON exigé par le gate lint (la règle ne flague
-  ni les args de fonction ni les libellés courts). Vraie valeur = bilinguisme onboarding
-  (CLAUDE.md n°1). Le vrai système = manifests TOML `lib/i18n/manifests/*.toml` +
-  `build_i18n_manifests.mjs` (PAS `features/*/i18n.ts` comme disait l'audit). Voir §7.
+- [x] I1 — CR A17 : **LIVRÉ (2026-07-05)** (chantier i18n manuel, go utilisateur). Les 5
+  composants onboarding/auth passés bilingues FR+EN via manifest `common.toml` +
+  `build_i18n_manifests.mjs` : XboxLoginPage (commit 6462887f4), StepDeviceCode +
+  StepInitialSync (81fed7aad), RegisterPage + OpenSpartanImportCard (d39cc5d1a).
+  `failureMessageFromCode(err, t)` refactoré pour injecter le traducteur (test unité MAJ).
+  +43 clés `common.toml` (2402 total). Gate : typecheck 0, eslint 0 (règle no-hardcoded en
+  error, I5), vitest 18/18 sur auth+onboarding, 0 résiduel FR user-facing.
 - [!] I2 — CR A18 : **DIFFÉRÉ → chantier i18n manuel séparé** (idem). Scoreboard
   `MatchScoreboard.tsx` labels FR ; heatmap DOW/HOUR + tooltips ; `toLocaleString('fr-FR')`
   figés ; « Par carte/mode/Analyser ». Non exigé par le gate. Voir §7.
