@@ -228,7 +228,17 @@ func SnapshotPlayerState(
 				s.Winrate = winrate.Float64
 			}
 
-			// Best KDA matériel (single match)
+			// Best KDA matériel (single match).
+			//
+			// DETTE K1a (ADR 0006) : ce calcul `(kills+assists)/GREATEST(deaths,1)`
+			// est un QUOTIENT — interdit par ADR 0006 (per-match KDA = valeur API
+			// native `mp.kda`, jamais un quotient recalculé). Le fix correct =
+			// `SELECT kda ... ORDER BY kda DESC`. MAIS il ne peut PAS être appliqué
+			// seul : les records best_kda déjà persistés sont sur l'échelle quotient ;
+			// la KDA native étant systématiquement plus petite, les anciens records
+			// resteraient BLOQUÉS (jamais battus → jamais auto-guéris). Requiert donc
+			// formule + RE-BACKFILL coordonné des records (décision data/produit,
+			// op prod gated). Scopé — cf. plan K1a + DETTE_ASSUMEE.
 			var bestKDA sql.NullFloat64
 			var matchID sql.NullString
 			err = sharedDB.QueryRowContext(ctx, `
