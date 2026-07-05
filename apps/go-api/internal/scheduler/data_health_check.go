@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	gosync "sync"
 	"time"
 
@@ -259,7 +258,7 @@ func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResol
 // bannière/emblème/backdrop « garbage » (chemins /Waypoint/file/images/ résiduels).
 // Une player DB absente ou inouvrable est ignorée silencieusement (best-effort).
 func (s *HealthScheduler) auditPlayerBanners(ctx context.Context, pr *titlePkg.PathResolver, slug string, probeErrors *int) int {
-	playersDir := filepath.Join(pr.TitleDataDir(slug), "players")
+	playersDir := pr.PlayersRootDir(slug)
 	entries, err := os.ReadDir(playersDir)
 	if err != nil {
 		return 0
