@@ -935,11 +935,13 @@ Objectif : purge FR monolingue + anglicismes ; règle lint passée en `error` à
   ternaire) → I4 est un refactor **d'ORGANISATION** (centralisation + parité typée), PAS
   un correctif de lacune bilingue user-facing (contrairement à I1/I2 qui comblaient de vraies
   strings FR-only). Priorité moindre une fois I1/I2 livrés. Deux sous-ensembles :
-  - **40 ternaires = pont locale→BCP-47** (`locale === 'en' ? 'en-US' : 'fr-FR'`) → remplacer
-    par `intlLocale(locale)` (helper créé en I2b). Dédup #6 (dupliqué 40×). Nuance :
-    6 sites `'en-GB'` délibérés (date EU) à garder ou router via variante. Collision de nom
-    sur les sites `const intlLocale = …` → import aliasé `import { intlLocale as toIntlLocale }`.
-  - **~115 ternaires = libellés** → migrer vers i18n.ts/manifests par feature. Concentration :
+  - **40 ternaires = pont locale→BCP-47** — ✅ **LIVRÉ (2026-07-05)**. **41 sites** migrés
+    vers `intlLocale(locale)` (helper I2b) : home/explorer/prestige/career/donuts/admin+ascension
+    helpers/leaderboard/PeriodSessionRail/citations/media/settings/achievements. Collisions
+    `const intlLocale` résolues par import aliasé ; `LeaderboardBlock` params resserrés
+    `string`→`ManifestLocale`. 6 sites `'en-GB'` (date EU délibérée) conservés. Gate :
+    typecheck 0, eslint 0, vitest 261 verts, 0 ternaire pont restant.
+  - **~114 ternaires = libellés** (RESTE) → migrer vers i18n.ts/manifests par feature. Concentration :
     AscensionProfileTab 16, ArcPresetPicker 10, MatchViewPage 9, MatchEncountersTable 6,
     ExplorerEncounterBriefing 5 ; longue traîne 1-2/fichier (un ternaire bilingue isolé =
     tolérable). Exception approuvée : helpers PURS de lib/. Détail DETTE_ASSUMEE §2 I4.
