@@ -23,3 +23,4 @@ export {
   calendarChartText,
   type CalendarChartText,
 } from './calendar'
+export { intlLocale } from './intlLocale'
