@@ -132,6 +132,8 @@ export const commonManifest = {
   "common.error.boundary_description": { fr: "L'application a rencontré un problème inattendu. Rechargez la page pour réessayer.", en: "The application encountered an unexpected problem. Reload the page to try again." },
   "common.error.boundary_title": { fr: "Une erreur est survenue", en: "An error occurred" },
   "common.error.reload_action": { fr: "Recharger la page", en: "Reload page" },
+  "common.filter.analyser": { fr: "Analyser", en: "Analyse" },
+  "common.filter.applied": { fr: "✓ Appliqué", en: "✓ Applied" },
   "common.filters.advanced_aria": { fr: "Filtres avancés", en: "Advanced filters" },
   "common.filters.apply_pending_title": { fr: "Applique les filtres en attente (cascade et période). Coéquipiers et sessions s'appliquent en direct.", en: "Apply pending filters (cascade and period). Teammates and sessions apply live." },
   "common.filters.browse_label": { fr: "Voir les matchs", en: "View matches" },

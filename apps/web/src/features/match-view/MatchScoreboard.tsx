@@ -48,20 +48,20 @@ const SHOW_GRENADE_KILLS_COLUMN: boolean = false
 
 function buildHighlightCols(t: MatchViewText, offensiveLabel: string, defensiveLabel: string): ColDef[] {
   return [
-    { key: 'rank', label: 'Rang', inverted: true },
-    { key: 'score', label: 'Score', inverted: false, fmt: (v) => new Intl.NumberFormat('fr-FR').format(v) },
+    { key: 'rank', label: t.sbColRank, inverted: true },
+    { key: 'score', label: t.sbColScore, inverted: false, fmt: (v) => t.sbFormatScore(v) },
     { key: 'kills', label: t.combatKillsLabel, inverted: false },
     { key: 'deaths', label: t.combatDeathsLabel, inverted: true },
-    { key: 'assists', label: 'Assist.', inverted: false },
+    { key: 'assists', label: t.sbColAssists, inverted: false },
     { key: 'kda', label: t.sbColKda, inverted: false, fmt: (v) => v.toFixed(2) },
-    { key: 'max_killing_spree', label: 'Folie meurt.', inverted: false },
-    { key: 'headshot_kills', label: 'Tirs à la Tête', inverted: false },
-    { key: 'perfect_kills', label: 'Frags parfaits', inverted: false },
-    { key: 'shots_fired', label: 'Tirs', inverted: false },
+    { key: 'max_killing_spree', label: t.sbColMaxSpree, inverted: false },
+    { key: 'headshot_kills', label: t.sbColHeadshots, inverted: false },
+    { key: 'perfect_kills', label: t.sbColPerfectKills, inverted: false },
+    { key: 'shots_fired', label: t.sbColShotsFired, inverted: false },
     { key: 'shots_hit', label: t.sbColShotsHit, inverted: false },
     { key: 'accuracy', label: t.sbColAccuracy, inverted: false, fmt: (v) => `${v.toFixed(1)}%` },
     { key: 'melee_kills', label: t.sbColMeleeKills, inverted: false },
-    { key: 'power_weapon_kills', label: 'Armes lourdes', inverted: false },
+    { key: 'power_weapon_kills', label: t.sbColPowerWeapons, inverted: false },
     ...(SHOW_GRENADE_KILLS_COLUMN ? [{ key: 'grenade_kills', label: t.labelGrenade, inverted: false } as ColDef] : []),
     // Mécaniques de kill natives Halo 5 (assassinats + compétences spartiate).
     // Auto-masquées hors H5 : `null` pour Infinite → retirées par le filtre
@@ -71,7 +71,7 @@ function buildHighlightCols(t: MatchViewText, offensiveLabel: string, defensiveL
     { key: 'shoulder_bash_kills', label: t.labelShoulderBash, inverted: false },
     { key: 'damage_dealt', label: t.sbColDamageDealt, inverted: false, fmt: (v) => v.toFixed(0) },
     { key: 'damage_taken', label: t.sbColDamageTaken, inverted: true, fmt: (v) => v.toFixed(0) },
-    { key: 'avg_life_seconds', label: 'Vie moy.', inverted: false, fmt: (v) => formatDurationMMSS(v, '—') },
+    { key: 'avg_life_seconds', label: t.sbColAvgLife, inverted: false, fmt: (v) => formatDurationMMSS(v, '—') },
     { key: 'offensive_conversion', label: offensiveLabel, inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
     { key: 'defensive_resistance', label: defensiveLabel, inverted: false, fmt: (v) => v < 0 ? '∞' : `${((v - 1) * 100).toFixed(0)}%` },
   ]
@@ -304,7 +304,7 @@ function TeamScoreboard({
     const cols: ColumnDef<ScoreboardRowVM>[] = [
       {
         id: 'gamertag',
-        header: 'Joueur',
+        header: t.sbColPlayer,
         cell: (ctx) => {
           const r = ctx.row.original
           const isExpanded = expandedXuid === r.xuid
@@ -320,7 +320,7 @@ function TeamScoreboard({
                   type="button"
                   className="font-medium text-foreground hover:text-primary hover:underline transition-colors"
                   onClick={(e) => onPlayerClick(r.gamertag, e)}
-                  title={`Voir l'historique avec ${displayGamertag}`}
+                  title={t.sbViewHistoryFmt(displayGamertag)}
                 >
                   {displayGamertag}
                 </button>
@@ -365,7 +365,7 @@ function TeamScoreboard({
       hlDef('kda'),
       {
         id: 'top_weapon',
-        header: 'Outil de destr.',
+        header: t.sbColTopWeapon,
         cell: (ctx) => {
           const lbl = ctx.row.original.top_weapon_label
           return <span className="text-muted-foreground">{lbl ?? '—'}</span>

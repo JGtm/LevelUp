@@ -760,7 +760,7 @@ export function SynthesisPage() {
           <div className="flex flex-col gap-4">
             {(data.breakdowns.top_maps ?? []).length > 0 && (
               <SynthesisOutcomesByGroupChart
-                title="Par carte"
+                title={t('synthesis.breakdown.by_map')}
                 entries={(data.breakdowns.top_maps ?? []).map((m) => ({
                   name: m.map_name,
                   wins: m.wins,
@@ -773,7 +773,7 @@ export function SynthesisPage() {
             )}
             {(data.breakdowns.top_modes ?? []).length > 0 && (
               <SynthesisOutcomesByGroupChart
-                title="Par mode"
+                title={t('synthesis.breakdown.by_mode')}
                 entries={(data.breakdowns.top_modes ?? []).map((m) => ({
                   name: m.mode_name,
                   wins: m.wins,

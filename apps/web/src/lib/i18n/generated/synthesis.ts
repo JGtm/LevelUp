@@ -2,6 +2,8 @@
 // Source : apps/web/src/lib/i18n/manifests/synthesis.toml
 
 export const synthesisManifest = {
+  "synthesis.breakdown.by_map": { fr: "Par carte", en: "By map" },
+  "synthesis.breakdown.by_mode": { fr: "Par mode", en: "By mode" },
   "synthesis.charts.kill_type_assassination": { fr: "Assassinat", en: "Assassination" },
   "synthesis.charts.kill_type_ground_pound": { fr: "Frappe au sol", en: "Ground Pound" },
   "synthesis.charts.kill_type_other": { fr: "Autres", en: "Other" },

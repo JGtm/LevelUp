@@ -158,6 +158,20 @@ export interface MatchViewText {
   sbColShotsHit: string
   sbColAccuracy: string
   sbColCsr: string
+  sbColRank: string
+  sbColScore: string
+  sbColAssists: string
+  sbColMaxSpree: string
+  sbColHeadshots: string
+  sbColPerfectKills: string
+  sbColShotsFired: string
+  sbColPowerWeapons: string
+  sbColAvgLife: string
+  sbColPlayer: string
+  sbColTopWeapon: string
+  sbViewHistoryFmt: (gamertag: string) => string
+  /** Format du score (séparateurs locale-sensitive : "12 345" FR / "12,345" EN). */
+  sbFormatScore: (v: number) => string
   // Nav contextuelle — Phase 2c (descriptor → label compact)
   ctxRecent: string
   ctxFavorites: string
@@ -314,6 +328,19 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColShotsHit: 'Tirs au but',
     sbColAccuracy: 'Précision',
     sbColCsr: 'CSR',
+    sbColRank: 'Rang',
+    sbColScore: 'Score',
+    sbColAssists: 'Assist.',
+    sbColMaxSpree: 'Folie meurt.',
+    sbColHeadshots: 'Tirs à la Tête',
+    sbColPerfectKills: 'Frags parfaits',
+    sbColShotsFired: 'Tirs',
+    sbColPowerWeapons: 'Armes lourdes',
+    sbColAvgLife: 'Vie moy.',
+    sbColPlayer: 'Joueur',
+    sbColTopWeapon: 'Outil de destr.',
+    sbViewHistoryFmt: (gamertag) => `Voir l'historique avec ${gamertag}`,
+    sbFormatScore: (v) => new Intl.NumberFormat('fr-FR').format(v),
     ctxRecent: 'récents',
     ctxFavorites: 'favoris',
     ctxMedia: 'avec média',
@@ -466,6 +493,19 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColShotsHit: 'Shots hit',
     sbColAccuracy: 'Accuracy',
     sbColCsr: 'CSR',
+    sbColRank: 'Rank',
+    sbColScore: 'Score',
+    sbColAssists: 'Assists',
+    sbColMaxSpree: 'Killing spree',
+    sbColHeadshots: 'Headshots',
+    sbColPerfectKills: 'Perfect kills',
+    sbColShotsFired: 'Shots',
+    sbColPowerWeapons: 'Power weapons',
+    sbColAvgLife: 'Avg. life',
+    sbColPlayer: 'Player',
+    sbColTopWeapon: 'Top weapon',
+    sbViewHistoryFmt: (gamertag) => `View history with ${gamertag}`,
+    sbFormatScore: (v) => new Intl.NumberFormat('en-US').format(v),
     ctxRecent: 'recent',
     ctxFavorites: 'favorites',
     ctxMedia: 'with media',

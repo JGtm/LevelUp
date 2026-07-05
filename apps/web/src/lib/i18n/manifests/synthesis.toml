@@ -339,3 +339,12 @@ fr = "Matchs Top vs Total par semaine"
 en = "Top vs Total matches per week"
 
 # Section "Relations de jeu" retirée le 2026-05-27 (cf. thought_log).
+
+# ─── Répartitions (breakdowns par carte / mode) — I2, 2026-07-05 ─────────────
+[synthesis.breakdown.by_map]
+fr = "Par carte"
+en = "By map"
+
+[synthesis.breakdown.by_mode]
+fr = "Par mode"
+en = "By mode"

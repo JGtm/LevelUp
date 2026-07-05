@@ -1843,3 +1843,12 @@ en = "OpenSpartan import is disabled in demo mode."
 [common.onboarding.import_err_auth_required]
 fr = "Connexion Xbox/Halo requise pour lancer un import."
 en = "Xbox/Halo connection required to start an import."
+
+# ─── Barre de filtres (FilterOmnibar + useLocalFilterBar) — I2, 2026-07-05 ───
+[common.filter.analyser]
+fr = "Analyser"
+en = "Analyse"
+
+[common.filter.applied]
+fr = "✓ Appliqué"
+en = "✓ Applied"

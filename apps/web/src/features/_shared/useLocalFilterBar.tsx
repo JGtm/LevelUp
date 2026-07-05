@@ -19,6 +19,9 @@ import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/M
 import { ExperienceDropdown, type Experience } from '@/features/_shared/ExperienceDropdown'
 import type { CascadeInput, FilterContextInput, PeriodInput } from '@/lib/api/types'
 import { EXPERIENCE_TO_CASCADE, setsEqual } from '@/features/_shared/experienceCascade'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
 
 export interface LocalFilterBarLabels {
   experience: string
@@ -163,6 +166,10 @@ function ViewDropdown({
 }
 
 export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFilterBarOptions): UseLocalFilterBarResult {
+  // Défaut i18n du bouton « Analyser » quand l'appelant ne fournit pas de libellé
+  // (le littéral FR figé cassait le bilinguisme — I2, 2026-07-05).
+  const locale = useAppShellStore((s) => s.locale)
+  const analyserLabel = labels.analyser ?? formatMessage(commonManifest, 'common.filter.analyser', locale)
   // States pending / committed
   const [pendingPeriod, setPendingPeriod] = useState<PeriodInput>(DEFAULT_PERIOD)
   const [pendingExperience, setPendingExperience] = useState<Experience>('all')
@@ -361,7 +368,7 @@ export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFi
               : 'border border-input bg-background text-muted-foreground hover:bg-muted',
           ].join(' ')}
         >
-          {labels.analyser ?? 'Analyser'}
+          {analyserLabel}
         </button>
         {hasActiveFilters && (
           <button
