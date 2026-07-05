@@ -23,6 +23,8 @@ import { resolveTeamNameFromID } from '@/lib/halo/teamNames'
 import { tokenCssVar } from '@/lib/accessibility'
 import { OUTCOME_LABELS_FALLBACK_FR } from './fallback.i18n'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
+import type { ManifestLocale } from '@/lib/i18n/format'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -37,11 +39,11 @@ interface Props {
   hasCurrentMatch?: boolean
 }
 
-function formatLocalTime(iso: string | null | undefined): string {
+function formatLocalTime(iso: string | null | undefined, locale: ManifestLocale): string {
   if (!iso) return '—'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleString('fr-FR', {
+  return d.toLocaleString(intlLocale(locale), {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
@@ -222,7 +224,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
             <h2 className="text-base font-semibold">{hasCurrentMatch ? 'Réassocier ce média' : 'Associer ce média'}</h2>
             {data?.capture_utc && (
               <p className="text-xs text-muted-foreground">
-                Capture : {formatLocalTime(data.capture_utc)}
+                Capture : {formatLocalTime(data.capture_utc, locale)}
               </p>
             )}
           </div>
@@ -314,7 +316,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
                         </div>
                       </div>
                       <div className="flex items-center gap-3 text-3xs text-muted-foreground">
-                        <span>{formatLocalTime(c.start_time)}</span>
+                        <span>{formatLocalTime(c.start_time, locale)}</span>
                         <span className="opacity-60">{formatDelta(c.delta_seconds)}</span>
                         {c.playlist_name && <span className="ml-auto truncate">{c.playlist_name}</span>}
                       </div>
@@ -332,7 +334,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
             <div>
               <p className="font-medium">{hasCurrentMatch ? 'Confirmer la réassociation ?' : "Confirmer l'association ?"}</p>
               <p className="text-xs text-muted-foreground">
-                <CandidateHeading candidate={pending} /> · {formatLocalTime(pending.start_time)}
+                <CandidateHeading candidate={pending} /> · {formatLocalTime(pending.start_time, locale)}
               </p>
             </div>
             <div className="flex gap-2">

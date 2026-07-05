@@ -6,6 +6,8 @@ import { getMediaModalsText } from './i18n-modals'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { looksLikeAssetId } from '@/lib/halo/assetId'
+import { intlLocale } from '@/lib/formatters'
+import type { ManifestLocale } from '@/lib/i18n/format'
 import type { MediaItemRow } from '@/lib/api/types'
 
 // Tokens identiques à SQUAD_TEAMMATE_COLOR_TOKENS — cohérence visuelle inter-pages.
@@ -43,7 +45,7 @@ export function buildOwnerColorMap(
 
 export { CoverFlowModal as MediaLightbox }
 
-function formatMediaDate(value: string | null | undefined) {
+function formatMediaDate(value: string | null | undefined, locale: ManifestLocale) {
   if (!value) {
     return null
   }
@@ -51,8 +53,9 @@ function formatMediaDate(value: string | null | undefined) {
   if (Number.isNaN(d.getTime())) {
     return null
   }
-  const datePart = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
-  const timePart = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const loc = intlLocale(locale)
+  const datePart = d.toLocaleDateString(loc, { day: '2-digit', month: '2-digit', year: '2-digit' })
+  const timePart = d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })
   return `${timePart} ${datePart}`
 }
 
@@ -206,7 +209,7 @@ export function MediaThumbnailCard({
   const locale = useAppShellStore((s) => s.locale)
   const text = getMediaText(locale)
   const modals = getMediaModalsText(locale)
-  const dateStr = formatMediaDate(item.capture_end_utc ?? item.match_start_time)
+  const dateStr = formatMediaDate(item.capture_end_utc ?? item.match_start_time, locale)
   const hasMatch = Boolean(item.match_id)
   // Garde anti-GUID (défense en profondeur) : un asset_id de map non résolu ne
   // doit jamais s'afficher ; le backend renvoie normalement le nom ou null.
