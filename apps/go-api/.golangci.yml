@@ -50,7 +50,7 @@ linters:
       min-complexity: 15  # Relaxe de 12 a 15 : fonctions de routing/sync naturellement complexes
 
     funlen:
-      lines: 100  # Relaxe de 80 a 100 : portage Python conserve certaines fonctions longues
+      lines: 80  # Standard projet (seuils Python) ; dette gelee via only-new-issues (L3, 2026-07-05)
       statements: 80
 
     lll:
@@ -64,7 +64,13 @@ linters:
     revive:
       rules:
         - name: argument-limit
-          arguments: [7]  # Relaxe de 5 a 7 : handlers/sync ont parfois 6-7 args legitimes
+          # L3 (2026-07-05) : exclusion blanket 'argument-limit' RETIREE -> la regle
+          # (jusqu'ici DESACTIVEE, cf. audit CR A20) est desormais ACTIVE. Seuil 7 (et
+          # non 5-Python) : mesure sur pieces = distribution 89 fonctions a 6 args + 29
+          # a 7 (idiome orchestration ctx+params), PUIS une queue nette de 33 a >=8
+          # (les vrais monstres, jusqu'a 14 args). 7 cible cette queue sans refactorer
+          # l'idiome 6-7 etabli. Dette gelee via only-new-issues ; nouveau code borne a 7.
+          arguments: [7]
         - name: exported
           arguments: ["checkPrivateReceivers"]
         - name: var-naming
@@ -112,10 +118,6 @@ linters:
       # Renommage trop risque sans API stable — accepte pour v1
       - linters: [revive]
         text: 'that stutters'
-
-      # argument-limit : fonctions de correlation multi-metriques, refactoring hors scope
-      - linters: [revive]
-        text: 'argument-limit'
 
       # Tests : permissifs sur fonctions longues + lll + complexite + setup DB
       # sans context + duplication de constantes (patterns idiomatiques tests).
