@@ -906,9 +906,20 @@ Objectif : purge FR monolingue + anglicismes ; règle lint passée en `error` à
   `failureMessageFromCode(err, t)` refactoré pour injecter le traducteur (test unité MAJ).
   +43 clés `common.toml` (2402 total). Gate : typecheck 0, eslint 0 (règle no-hardcoded en
   error, I5), vitest 18/18 sur auth+onboarding, 0 résiduel FR user-facing.
-- [!] I2 — CR A18 : **DIFFÉRÉ → chantier i18n manuel séparé** (idem). Scoreboard
-  `MatchScoreboard.tsx` labels FR ; heatmap DOW/HOUR + tooltips ; `toLocaleString('fr-FR')`
-  figés ; « Par carte/mode/Analyser ». Non exigé par le gate. Voir §7.
+- [~] I2 — CR A18 : **LABELS LIVRÉS (2026-07-05) ; figement nombre/date résiduel scopé.**
+  Fait `[x]` : (a) MatchScoreboard 11 libellés colonnes + header + tooltip + sbFormatScore
+  locale-aware (MatchViewText fr/en) ; (b) heatmaps activité explorer+synthesis (DOW/heures/
+  axes/tooltips bilingues) + **centralisation `lib/formatters/calendar.ts`** (4 copies DOW
+  dédupliquées, garde-rail `calendar.guard.test.ts`, CLAUDE.md n°6) ; (c) filtres Analyser/
+  Appliqué (`common.filter.*`) + « Par carte/mode » (`synthesis.breakdown.*`).
+  Fait partiel `[~]` : figement `toLocaleString('fr-FR')` — audit sur-comptait (« ~100 » →
+  **39 réels dont ~9 légitimes** : valeurs objet `fr` d'i18n bilingue + `formatDateShort`
+  verrou chart documenté). Pont canonique **`lib/formatters/intlLocale.ts`** créé +
+  SynthesisPage flagship (15 sites) migré. **RESTE ~24 sites** `[!]` : helpers PURS /
+  builders ECharts / consts module SANS locale en scope (career gauges, media/home dates,
+  session-detail `fmtInt`+_shared, prestige LeaderboardPP, timeseries SquadAdapted,
+  synthesis Weapon*Chart, MatchScoreboard.logic) → threading `locale` par signature requis
+  (cosmétique : séparateurs nombre / ordre date). Helper prêt. Détail DETTE_ASSUMEE §I2b.
 - [x] I3 — CR A19 : **LIVRÉ (2026-07-04)**. Le « 68+ » sur-comptait ~5× : la quasi-totalité
   sont des CLÉS (`streaksSectionTitle`, `streak_milestone`), des identifiants de code
   (`StreakType`, `StreakCard`, `win_streak`), des valeurs EN (à garder) et le terme de
