@@ -86,8 +86,10 @@ changement de résultat (J3/J4/J7) ou de wiring provider (J9).
   vs enrichissement-voulu, durcir avec allowlist (PAS à 0).
 - **L2-(3/4/5)** — parités capability (invariant F15-14 confirmé RÉEL) : tests exigeant
   de charger 2 sous-systèmes de config.
-- **L5** — 180 `queryKey:` → `lib/query/keys.ts` + règle ESLint (gros front).
-- **Reprise** : tests config-integration (L2) ; tâche front (L5) ; re-scope (L1).
+- **L5** — ✅ **LIVRÉ (2026-07-05, commit 91492e360)**. 7 registres feature-local + 8
+  littéraux inline centralisés dans `queryKeys` (clés identiques au byte) + garde-rail
+  `keys.guard.test.ts`. Le « 180 » sur-comptait (la plupart consommaient déjà `queryKeys`).
+- **Reprise** : tests config-integration (L2) ; re-scope (L1). (L5 clos.)
 
 ## 6. Front structurel — N1, N2, N3(d)
 

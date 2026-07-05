@@ -1192,11 +1192,19 @@ soit ENCODÉE en ratchet à allowlist décroissante datée (reco centrale ARCHI)
   (définis dans require_auth.go), flag LEVELUP_CONTRACT_VALIDATE plus référencé. `read_budget.go`
   couplé sharedprovider : exception DOCUMENTÉE (M4 le teste, commentaire déjà en place). Gate :
   build+vet OK, api+handlers+middleware verts, 0 ref résiduelle (hors commentaires « retiré »).
-- [!] L5 — CR A16 : **DIFFÉRÉ (follow-up front, 2026-07-05)**. Gros chantier front réel
-  (~180 `queryKey:` : 11 clés inline + 7 registres locaux). Approche confirmée (D-E.16 :
-  fusionner dans `lib/query/keys.ts` + règle ESLint `queryKey:` littéral interdit hors
-  keys.ts + doc skill frontend-patterns). Non fait ici (volume + session très longue) ;
-  à planifier comme tâche front dédiée. Voir §7.
+- [x] L5 — CR A16 : **LIVRÉ (2026-07-05, commit 91492e360)**. Le « ~180 queryKey » de
+  l'audit = la plupart consommaient DÉJÀ `queryKeys` ; le vrai chantier = **7 registres
+  feature-local** (prestige/arc/challenge/squad/profileKeys + watcher/adminKeys) + **8
+  littéraux inline** (les 4 restants = extensions légitimes `[...queryKeys.X]`).
+  - 7 registres repliés en namespaces `queryKeys.{prestige,arc,challenge,squad,
+    playerProfile,watcher}` + `queryKeys.adminUsers`. **Clés IDENTIQUES au byte** → zéro
+    changement de cache ; typecheck = filet (réf manquée = erreur compile, pas bug muet).
+  - 8 littéraux → clés dédiées (+ préfixes broad `filtersResolveAll`/`adminDataQualityIssuesAll`).
+  - Garde-rail `lib/query/keys.guard.test.ts` (fs-grep node) : interdit tout registre
+    `*Keys` feature-local ET tout `queryKey: ['…']` littéral (autorise `[...queryKeys]`).
+  Gate : typecheck 0, eslint 0, vitest 438 verts (11 features), garde-rail vert (mord).
+  NB : garde-rail vitest fs-grep plutôt que règle ESLint custom (précédent `calendar.guard`,
+  moins d'infra) — couvre le même invariant.
 - [~] L6 — PRÉ-EXÉCUTÉ, VÉRIFIÉ 2026-07-04 : la convention kill-switch est bien dans
   CLAUDE.md règle 11 (date de basculement + date cible de retrait + critère mesurable,
   modèle shared_reader_legacy.go) + skill arch-rules §Feature flags + delivery-checklist

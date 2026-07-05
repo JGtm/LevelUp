@@ -1,3 +1,28 @@
+## [2026-07-05] LOT L — L5 (centralisation query-keys) COMPLET
+
+**Statut** : Complété (commit 91492e360). Dernier item de la séquence I1→I2→I4→L5.
+
+**Décision technique** : l'audit annonçait « ~180 queryKey » mais la plupart consommaient
+DÉJÀ `queryKeys`. Le vrai chantier = **7 registres feature-local** (prestige/arc/challenge/
+squad/profileKeys + watcher/adminKeys) + **8 littéraux inline** (les 4 autres = extensions
+légitimes `[...queryKeys.X]`). Approche SÛRE : replier les registres en namespaces
+`queryKeys.{prestige,arc,challenge,squad,playerProfile,watcher}` + `adminUsers` avec des
+**tableaux de clés IDENTIQUES au byte** → zéro changement de comportement de cache. Le
+typecheck sert de filet : toute référence manquée devient une erreur de compilation (pas un
+bug de cache silencieux — c'est CE qui rend le refactor sûr malgré la sensibilité des clés).
+Édition précise fichier-par-fichier (leçon L5 antérieure : le bulk-regex avait mangé
+auth/queries.ts). Garde-rail `keys.guard.test.ts` (fs-grep node, précédent `calendar.guard`)
+interdit tout registre `*Keys` local ET tout `queryKey: ['…']` littéral.
+
+**Résultats** : 21 fichiers. Gate : typecheck 0, eslint 0 err, vitest 438 verts (prestige/
+ascension/settings/home/timeseries/media/admin/auth/changelog/help/feedback), garde-rail
+vérifié mordant (0 littéral restant, 4 spreads légitimes conservés).
+
+**Prochaine étape** : séquence I1→I2→L5 close (I4 scopé, organisationnel). Reste K (le plus
+gros) + dette assumée → guide de reprise pour l'utilisateur.
+
+---
+
 ## [2026-07-05] LOT I — I2 (i18n scoreboard/heatmaps/filtres) : labels LIVRÉS, figement scopé
 
 **Statut** : Labels complétés `[x]` ; figement nombre/date résiduel `[~]` (helper + flagship
