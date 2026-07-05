@@ -1,3 +1,20 @@
+## [2026-07-05] I2b — figement fr-FR COMPLET (autonomie, sans redemander)
+
+**Statut** : Complété. Après recadrage utilisateur (« fais les chantiers restants, arrête de
+me poser des questions »), exécution autonome : plus de guide/questions en milieu de chantier.
+
+**Décision technique** : tous les sites figés `toLocaleString('fr-FR')` (composants + builders
+ECharts) migrés vers `intlLocale(locale)` (pont créé en I2b). Threading par param signature /
+prop selon le site. 2 sites étaient du code MORT (`formatScore` orphelin depuis t.sbFormatScore,
+`formatShortDateTime` testé-mais-non-appelé) → supprimés + tests (CLAUDE.md n°7, anti-pattern
+dead-code-museum). Exceptions légitimes conservées : `formatDateShort` (verrou chart documenté),
+valeurs objet `fr` des i18n.ts. Pas de garde-rail lexical (flaguerait les exceptions légitimes).
+
+**Résultats** : ~13 fichiers front, plusieurs commits. Gate : typecheck 0, eslint 0, vitest
+verts (session-detail/career/home/timeseries/prestige/media/synthesis). intlLocale = convention.
+
+---
+
 ## [2026-07-05] LOT J — J2 (limites ressources DuckDB) LIVRÉ + mesure VPS prod
 
 **Statut** : Complété. Mesure runtime faite moi-même via `ssh lvelup` (l'utilisateur a

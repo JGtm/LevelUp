@@ -36,19 +36,15 @@ mais NON exigé par le gate :
   `common.toml` (commits 6462887f4, 81fed7aad, d39cc5d1a).
 - **I2 labels** — ✅ **LIVRÉ (2026-07-05)**. Scoreboard, heatmaps (+ centralisation
   `calendar.ts` + garde-rail), filtres, breakdowns synthesis.
-- **I2b — figement `toLocaleString('fr-FR')` (RESTE ~24 sites)** : pont canonique
-  `lib/formatters/intlLocale.ts` créé + SynthesisPage (15 sites) migré. Résiduel = helpers
-  PURS / builders ECharts / consts module SANS `locale` en scope :
-  `career/CareerChartsSection.gauges.tsx` (2, buildRankGaugeOption/buildHeroGaugeOption),
-  `session-detail/SessionDamageComposite.tsx` (fmtInt const), `session-detail/_shared.ts`,
-  `session-detail/SessionMatchesTable.tsx` (toExplorerRow), `synthesis/SynthesisWeapon{Kills,Accuracy}Chart.tsx`
-  (buildOption ECharts), `media/{MediaViewer,CoverFlowModal,MediaMatchPicker}.tsx` (dates),
-  `home/HomeSessionCarousel.tsx` (formatSessionDate/Duration), `prestige/LeaderboardPP.tsx`,
-  `timeseries/TimeseriesSquadAdapted.tsx`, `match-view/MatchScoreboard.logic.ts` (fmtScore).
-  **Fix** : threader `locale` (param signature / prop) puis `X.toLocaleString(intlLocale(locale))`.
-  Effort mécanique mais par-site (surface rendu chart). Impact = cosmétique (séparateurs
-  nombre, ordre date EN). **Garder** : valeurs objet `fr` d'i18n (légitimes), `formatDateShort`
-  (verrou chart DD/MM documenté). Poser un garde-rail avec allowlist des exceptions.
+- **I2b — figement `toLocaleString('fr-FR')` — ✅ LIVRÉ (2026-07-05)**. Pont canonique
+  `lib/formatters/intlLocale.ts` + TOUS les sites figés composant/chart migrés (SynthesisPage,
+  synthesis weapon charts, media ×3, career gauges/encounters, LeaderboardPP, session-detail
+  ×2, HomeSessionCarousel, TimeseriesSquadAdapted) via `intlLocale(locale)` threadé. 2 sites
+  figés étaient du **code mort** (`formatScore`, `formatShortDateTime`) → supprimés (CLAUDE.md
+  n°7). **Exceptions conservées (légitimes)** : `formatDateShort` (verrou chart DD/MM documenté,
+  date.ts) + valeurs objet `fr` des i18n.ts (branche FR d'un bilingue). Pas de garde-rail
+  automatique posé : un guard lexical `'fr-FR'` flaguerait les exceptions légitimes (allowlist
+  trop large, faible signal) — `intlLocale()` EST la convention. Gate : typecheck 0, eslint 0.
 - **I4** — **155 ternaires** `locale === 'en'/'fr' ?` (vérifié 2026-07-05 ; audit disait 88),
   **tous DÉJÀ bilingues** → refactor d'ORGANISATION (pas de lacune user-facing). Deux lots :
   (a) **40 ponts** `? 'en-US' : 'fr-FR'` → `intlLocale(locale)` (helper prêt, I2b) — dédup #6 ;
