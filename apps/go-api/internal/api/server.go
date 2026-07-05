@@ -3,7 +3,7 @@
 // Sprint 16 : Settings, Setup.
 // Sprint 17 : Jobs longs persistants, sync initiale.
 // Sprint 37 : Architecture handlers & injection DI via ServiceRegistry.
-// Sprint 40 : ContractValidate (dev). ErrorTracker retiré P8.3 (ADR 0009).
+// ContractValidate (dev) retiré L4 (2026-07-05 : Huma dérive le contrat). ErrorTracker retiré P8.3 (ADR 0009).
 package api
 
 import (
@@ -536,9 +536,6 @@ func NewRouter(
 		}
 		return notify.LabelsFor(sem, name)
 	})
-
-	// Sprint 40 T1 : validation de contrat (dev mode, no-op si LEVELUP_CONTRACT_VALIDATE != 1).
-	r.Use(middleware.ContractValidate)
 
 	// P8.3 (revue 2026-04-29, ADR 0009) : error_tracker.Middleware retiré.
 	// L'alerting Discord 500 / taux d'erreur n'est pas souhaité (commentaire

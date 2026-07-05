@@ -1136,12 +1136,14 @@ soit ENCODÉE en ratchet à allowlist décroissante datée (reco centrale ARCHI)
   commentaire périmé l.92). Défauts approuvés : baseline **`--new-from-rev <SHA base de
   branche>`** + **argument-limit=5** + funlen 100→80 avec baseline. Mesurer les violations
   AVANT de committer la config (si 0, strictifier direct).
-- [ ] L4 — ARCHI mineurs contrat : CONFIRMÉ (contract_validate.go 135 L : valide
-  Content-Type/format erreur mais AUCUN schéma, bufferise tous les corps ; flag
-  LEVELUP_CONTRACT_VALIDATE défaut OFF prod). Défaut approuvé D-E.15 : **SUPPRIMER**
-  (Huma dérive déjà le contrat ; la validation schéma n'apporte pas de valeur) — relire le
-  fichier avant, retirer middleware+flag+test. `read_budget.go` couplé sharedprovider →
-  DOCUMENTER l'exception (pas découpler).
+- [x] L4 — ARCHI mineurs contrat : **LIVRÉ (2026-07-05)**. `contract_validate.go` relu
+  (confirmé : Content-Type/JSON/error-shape mais AUCUN schéma, bufferise tous les corps),
+  SUPPRIMÉ (D-E.15) avec son test `contract_validate_test.go`, le `r.Use(ContractValidate)`
+  (server.go) et les commentaires. Tests contract-validation retirés de
+  `middleware_internal_test.go` (`TestResolveTitleSlug` conservé). Vérifs : `errKey*` restent
+  (définis dans require_auth.go), flag LEVELUP_CONTRACT_VALIDATE plus référencé. `read_budget.go`
+  couplé sharedprovider : exception DOCUMENTÉE (M4 le teste, commentaire déjà en place). Gate :
+  build+vet OK, api+handlers+middleware verts, 0 ref résiduelle (hors commentaires « retiré »).
 - [ ] L5 — CR A16 : CALIBRÉ : **180 occurrences `queryKey:`** dans le front (11 clés
   inline à rapatrier + 7 registres locaux squadKeys/prestigeKeys/watcherKeys…). Défaut
   approuvé D-E.16 : **fusionner les registres dans `lib/query/keys.ts`** + règle ESLint
