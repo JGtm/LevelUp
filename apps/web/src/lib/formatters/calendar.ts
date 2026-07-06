@@ -24,7 +24,7 @@ export const HOUR_LABELS: readonly string[] = Array.from(
   (_, h) => `${String(h).padStart(2, '0')}h`,
 )
 
-export interface CalendarChartText {
+interface CalendarChartText {
   hourAxis: string
   dayAxis: string
   winRate: string

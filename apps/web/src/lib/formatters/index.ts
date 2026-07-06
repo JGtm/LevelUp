@@ -21,6 +21,5 @@ export {
   DOW_LABELS_EN,
   HOUR_LABELS,
   calendarChartText,
-  type CalendarChartText,
 } from './calendar'
 export { intlLocale } from './intlLocale'
