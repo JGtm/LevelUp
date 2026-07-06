@@ -1,3 +1,25 @@
+## [2026-07-06] K3d api/wire — PROBE : cœur DI extractible, api-root borné mais intriqué (revert)
+
+**Statut** : Probe complet, NON livré, revert propre à e7aea7e63 (K3b vert). Recette précise établie
+au plan (K3d [!]). Décision de ne PAS livrer : borné mais substantiel (~20-30 edits) ET intriqué
+avec K2a+K1a-cœur ; budget de session déjà très élevé ; branche verte préservée plutôt qu'un état
+partiel cassé.
+
+**Finding clé** : le cœur DI est PROPREMENT extractible. Build-probe : 20 `registry*.go` (type
+ServiceRegistry + 94 méthodes) + 3 fichiers bundle → `internal/api/wire` buildent SELF-CONTAINED,
+0 undefined, aucune arête wire→api (les refs `NewRouter` dans registry sont des commentaires). Le
+blocage est côté api-ROOT : (a) 2 fichiers définissent des méthodes sur ServiceRegistry (og_inject,
+progression_backfill_provider) → doivent bouger dans wire ; (b) 5 fichiers accèdent à 7 membres
+NON-EXPORTÉS de ServiceRegistry (resolve/wire/serveIndexWithOG/hiCapabilities/cfg/homeMatchesCache/
+playerOGMeta) ; (c) server.go/NewRouter accède à 4 de ces membres et RESTE en api → exposer des
+accesseurs. Le cluster ServiceRegistry traverse registry+og+notifications+post_sync+server.go →
+c'est le MÊME chantier que K2a (NewRouter) + K1a-cœur (post_sync). À mener d'une passe coordonnée.
+
+**Méthode validée (réutilisable)** : build-probe = `git mv` du cluster candidat + sed package +
+`go build ./newpkg 2>&1 | grep undefined | wc -l` donne INSTANTANÉMENT la taille de la surface de
+couplage AVANT tout engagement. 3 undefined ici → j'ai su en 2 commandes que le cœur était propre
+et où était le vrai blocage (api-root, pas wire).
+
 ## [2026-07-06] K3b teammates EXTRAIT — cycle BIDIRECTIONNEL rompu par feuille squadagg
 
 **Statut** : Complété. Le cas le plus dur du lot K — un VRAI cycle bidirectionnel (contrairement à

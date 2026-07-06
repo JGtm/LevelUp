@@ -1397,8 +1397,26 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
   STRUCTURELLEMENT non-subdivisable proprement — constantes/helpers tissés sur 3+ niveaux de
   cascade et des centaines de références. Les scissions K3 ne sont PAS un travail de session mais
   un refactor pluri-semaines à requalification de masse. Revert propre, branche verte.
-- [ ] K3d — ARCHI 20 : racine api/ (39 fichiers) → api/wire/ pour la DI ; cible < 10
+- [!] K3d — ARCHI 20 : racine api/ (39 fichiers) → api/wire/ pour la DI ; cible < 10
   fichiers racine (le post-sync est déjà parti en K1a).
+  **PROBE FAIT (2026-07-06), non livré — recette précise établie, revert propre à e7aea7e63** :
+  build-probe complet réalisé. Le CŒUR DI est PROPREMENT extractible : les 20 fichiers
+  `registry*.go` (type `ServiceRegistry` + 94 méthodes) + 3 fichiers bundle (coach_advisor_setup,
+  prestige_setup, post_sync_progression_queries, définissant CoachAdvisorBundle/PrestigeBundle/
+  acquireProgressionSharedRead) → `internal/api/wire` (package `wire`) BUILDENT SELF-CONTAINED (0
+  undefined, aucune arête wire→api : les 2 refs `NewRouter` dans registry sont des COMMENTAIRES).
+  Reste à faire côté api-root (BORNÉ mais substantiel, ~20-30 edits) : (1) requalifier
+  `wire.ServiceRegistry`/`wire.PrestigeBundle`/`wire.PlayerResolver` dans ~12 fichiers appelants ;
+  (2) 2 fichiers DÉFINISSENT des méthodes sur ServiceRegistry (`og_inject.go`,
+  `progression_backfill_provider.go`) → DOIVENT bouger dans wire ; (3) 5 fichiers accèdent à des
+  membres NON-EXPORTÉS de ServiceRegistry (`resolve`, `wire`, `serveIndexWithOG`, `hiCapabilities`,
+  `cfg`) — soit les bouger dans wire (notifications_boot/title_ready, post_sync_deltas/progression,
+  server_admin_monitoring), soit exposer des accesseurs exportés ; (4) `server.go`/NewRouter RESTE
+  en api mais accède à `reg.{resolve,wire,serveIndexWithOG,hiCapabilities}` → EXPOSER ces 4 en
+  accesseurs sur wire.ServiceRegistry. **Intriqué avec K2a (NewRouter) + K1a-cœur (post_sync)** :
+  ces 3 items forment UN seul chantier « décomposition DI api-root » à mener d'une passe coordonnée
+  (ne PAS tenter K3d isolément — le cluster ServiceRegistry traverse registry+og+notifications+
+  post_sync+server.go).
 - [~] K3e — ARCHI 21 : client HTTP Halo Infinite → games/halo_infinite/client. **TENTÉ +
   revert propre (2026-07-06)** : le CODE DE PROD s'extrait proprement (full build 0). Le cluster
   client = ~12 fichiers (halo_client*.go + endpoint_resolver + halo_skill + halo_skill_csr +
