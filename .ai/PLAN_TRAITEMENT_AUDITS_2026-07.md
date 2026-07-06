@@ -1191,9 +1191,16 @@ K2 — God functions à risque (tâche dédiée, passer la grille plan-review av
   `applyMiddlewares` / `mountXxx` par domaine ; cible < 100 L ; `waypointExplore` (closure
   46 L) → service ; purge sessions goroutine et retry-loop metadata extraites ; corriger le
   doc-comment rattaché à la mauvaise fonction.
-- [ ] K2b — ARCHI 23 + CR A4 : `SyncEngine.run()` 483 L → extraire au minimum le bloc
-  drain/ré-acquisition (l.505-597) et la boucle de pagination (l.346-497) en méthodes
-  nommées (précédent : engine_backfills.go). Tests e2e sync verts obligatoires.
+- [~] K2b — ARCHI 23 + CR A4 (2026-07-06) : **boucle de pagination EXTRAITE** de `run()` →
+  méthode `paginateAndPersistHistory(ctx, historyPaginationInputs, *SyncResult)` (~155 L,
+  `//nolint:funlen` justifié : filtre/fetch/persist par page partagent processed/toFetch/
+  stopAfterFlush ; découper disperserait le critère d'arrêt delta). État groupé en struct
+  (≤5 params). **Gate : build+vet 0, e2e sync `-tags=integration -p 1` VERT (103 s)** —
+  comportement byte-identique. `[!]` Bloc drain/ré-acquisition (l.505-597) NON extrait :
+  **techniquement infaisable en méthode simple** — il gère les leases via des `defer` au scope
+  `run()` (postPH.Close / wp.Release / postRls) dont le timing LIFO au retour de run() est
+  load-bearing (prévention auto-deadlock, ADR 0016) ; les déplacer en méthode les ferait
+  tourner tôt → deadlock/corruption. Laissé en place (documenté).
 - [~] K2c — ARCHI 24 (2026-07-06) : `auto_sync.go` scindé — `auto_sync_engine.go` (150 L :
   `BuildEngine` factory + `defaultRunnerFactory`/`acquireLiveTitleRunner`/`resolveTitleSlug`)
   + `auto_sync_convergence.go` (89 L : passe convergence events + `warnStaleGateClaims`).
