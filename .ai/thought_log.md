@@ -1,3 +1,29 @@
+## [2026-07-06] Clôture LOT V2 — câblage du hook Prestige post-sync (VF-1)
+
+**Statut** : Complété.
+
+**Décision technique principale** : VF-1 confirmé sur pièces — `prestige.RunPostSyncHook`
+ne tournait sur AUCUN chemin (`SyncEngine.WithPrestigeHook` sans caller prod ;
+`SyncHandler.WithPrestigeHook` = stub `return h` qui jetait `prestigeBundle.RunPostSync`).
+DC-4 appliqué (câbler, pas retirer). Cartographie V2a → 4 chemins : HTTP initial
+(`newEngineFor`), HTTP delta + auto-sync + watcher (tous via `scheduler.BuildEngine`), et
+pipeline V2 (cycle orchestrator). Découverte MAJEURE non anticipée : le pipeline V2 (moteur
+de sync par DÉFAUT, ADR 0027) appelle `RunPostSyncForV2` directement, PAS `engine.run()` →
+le hook engine (engine.go:713) ne l'aurait jamais couvert. Wiring V2 dédié :
+`CycleOrchestratorImpl.WithPrestigeHook` invoqué en Phase 6 par joueur au post-sync réussi
+(hors fenêtre RW, lease relâché). Identifiant = playerSlug (= user_id des défis Prestige ;
+réel PlayerSlug==Gamertag). Invariant deadlock-free respecté (instance directe non-lease).
+
+**Résultats observés** : `go build && go vet ./...` = exit 0. `go test` unitaire
+(prestige/handlers/scheduler/sync) = exit 0. `go test -tags=integration -p 1
+./internal/sync/... ./internal/api/...` = exit 0, 0 `--- FAIL:`. `grep TODO(prestige-agent)`
+= 0. 3 gardes anti-régression livrées, chacune vérifiée MORDANTE (régression simulée →
+rouge, puis revert) : golden BuildEngine (`HasPrestigeHook`), cabling handler (`newEngineFor`),
+cycle V2 (spy per-joueur + skip-on-failure). Inspecteur `SyncEngine.HasPrestigeHook()` ajouté.
+
+**Prochaine étape** : push branche `refactor/audits-2026-07`, attendre CI VERTE sur le commit,
+puis LOT V3 (sécurité /jobs + ratchet routes nues).
+
 ## [2026-07-06] Clôture LOT V1 — gate front réparé + CI baseline Go rebaselinée
 
 **Statut** : Complété.

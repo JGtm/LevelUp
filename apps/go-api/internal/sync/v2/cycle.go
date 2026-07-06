@@ -48,6 +48,12 @@ type CycleOrchestratorImpl struct {
 	// (Phase 6bis). nil = aucun snapshot émis (nil-guard explicite, jamais de panic —
 	// contrairement aux 6 dépendances obligatoires injectées par NewCycleOrchestrator).
 	snapshotProducer SnapshotProducer
+	// prestigeHook (optionnel) ré-évalue les défis Prestige actifs après le post-sync
+	// de chaque joueur (Phase 6). Le chemin V2 n'appelle PAS engine.run() (il passe par
+	// RunPostSyncForV2 directement), le hook engine ne fire donc jamais ici : il est
+	// invoqué explicitement après RunPostSync, hors fenêtre RW (write-lease relâché en
+	// fin de Phase 6), par PlayerSlug (= user_id des défis). nil = no-op.
+	prestigeHook func(ctx context.Context, playerSlug, titleSlug string)
 }
 
 // WithSnapshotProducer câble le producteur de snapshot (Phase 6bis), optionnel et
@@ -55,6 +61,15 @@ type CycleOrchestratorImpl struct {
 // proprement la production de snapshot.
 func (o *CycleOrchestratorImpl) WithSnapshotProducer(p SnapshotProducer) *CycleOrchestratorImpl {
 	o.snapshotProducer = p
+	return o
+}
+
+// WithPrestigeHook câble le hook Prestige post-sync (best-effort), invoqué en
+// Phase 6 après le post-sync de chaque joueur (V2 ne passe pas par engine.run, cf.
+// champ prestigeHook). Retourne l'orchestrator pour chaînage. Laisser non appelé
+// désactive proprement la ré-évaluation Prestige côté V2 (nil-guard).
+func (o *CycleOrchestratorImpl) WithPrestigeHook(hook func(ctx context.Context, playerSlug, titleSlug string)) *CycleOrchestratorImpl {
+	o.prestigeHook = hook
 	return o
 }
 
@@ -261,6 +276,23 @@ func (o *CycleOrchestratorImpl) Run(
 	// Merger les compteurs post-sync dans PerPlayer.
 	for slug, pr := range postRes.PerPlayer {
 		o.mergePostSyncOutcome(res.PerPlayer, slug, pr)
+	}
+
+	// ─── Hook Prestige (post-sync V2) ───────────────────────────────────
+	// V2 ne passe pas par engine.run() (RunPostSyncForV2 appelle directement
+	// runPostSyncPipeline), donc le hook engine ne fire jamais ici : on ré-évalue
+	// explicitement les défis actifs par joueur. Hors fenêtre RW (write-lease shared
+	// relâché en fin de RunPostSync) → instance directe non-lease, aucun deadlock
+	// (invariant wire/prestige_setup.go). Best-effort : RunPostSync (côté hook) log et
+	// n'échoue jamais le cycle. Identifiant = PlayerSlug (= user_id des défis).
+	if o.prestigeHook != nil {
+		for _, p := range players {
+			pr, ok := postRes.PerPlayer[p.PlayerSlug]
+			if !ok || pr.Err != nil {
+				continue // post-sync joueur en échec → pas de ré-éval sur snapshot incohérent
+			}
+			o.prestigeHook(ctx, p.PlayerSlug, p.TitleSlug)
+		}
 	}
 
 	// ─── Phase 6bis — Cut snapshot immuable ─────────────────────────────

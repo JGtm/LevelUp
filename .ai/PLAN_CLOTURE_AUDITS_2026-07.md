@@ -105,23 +105,36 @@ sur la branche après push** (`gh run watch` / `gh run list`).
 Objectif : `prestige.RunPostSyncHook` tourne réellement après ingestion sur les chemins
 sync (HTTP + auto-sync + V2), OU décision de repli documentée (DC-4).
 
-- [ ] V2a — Cartographie sur pièces AVANT tout code (30 min max) : depuis
-  `wire.PrestigeBundle.RunPostSync` (prestige_setup.go:196), établir qui DEVRAIT l'appeler
-  par chemin : (1) sync HTTP (`handlers/sync_handler.go` → `newEngineFor`), (2) auto-sync
-  scheduler (`scheduler.BuildEngine`), (3) pipeline V2 (post-sync runner / cycle). Relire
-  l'invariant deadlock-free de prestige_setup.go:188 (le hook doit tourner APRÈS libération
-  du write-lease shared — cf. sync/lease.go:31) : le POINT d'appel choisi doit le respecter.
-- [ ] V2b — Implémenter : `SyncHandler.WithPrestigeHook` stocke le hook et le handler le
-  passe au `SyncEngine` qu'il construit (`WithPrestigeHook` engine) ; câbler AUSSI le
-  chemin scheduler/V2 si V2a montre qu'ils construisent leurs engines sans hook (c'est le
-  cas apparent : 0 caller prod de `SyncEngine.WithPrestigeHook`). Retirer le commentaire
-  « Stub temporaire » (sync_handler.go:158) et le TODO(prestige-agent).
-- [ ] V2c — Garde anti-régression : un test qui échoue si le câblage disparaît. Deux
-  niveaux, livrer les deux : (1) unitaire — `WithPrestigeHook` puis run court : le hook
-  est invoqué (spy) ; (2) câblage — test wire/handlers vérifiant que le SyncEngine construit
-  par le handler porte un prestigeHook non-nil quand le bundle est enabled.
-- [ ] V2d — MAJ des DOCS du hook (sync_hook.go:53-55 décrit un appel « par le sync
-  engine » désormais vrai) + entrée §7 du plan parent (D1f BUG latent) marquée TRAITÉE ici.
+- [x] V2a — Cartographie sur pièces faite (cf. journal ci-dessous). 4 chemins établis :
+  (1) HTTP initial → `newEngineFor` → engine.run():713 ; (2) HTTP delta + (3) auto-sync +
+  watcher → `scheduler.BuildEngine` → engine.run():713 ; (4) V2 cycle → `RunPostSyncForV2`
+  (NE passe PAS par engine.run(), gap confirmé) → hook explicite Phase 6. Invariant
+  deadlock-free respecté : V1 fire pendant le lease tenu (instance directe non-lease) ;
+  V2 fire hors fenêtre RW (lease relâché en fin de RunPostSync). Identifiant = playerSlug
+  (= user_id des défis ; réel PlayerSlug==Gamertag, cf. config_players.go:142/180).
+- [x] V2b — `SyncHandler.WithPrestigeHook` stocke le hook (champ struct), `newEngineFor`
+  câble `SyncEngine.WithPrestigeHook`. Scheduler : `AutoSyncScheduler.WithPrestigeHook` +
+  câblage `BuildEngine` (couvre auto-sync + HTTP delta + watcher). V2 :
+  `CycleOrchestratorImpl.WithPrestigeHook` + invocation Phase 6 par joueur réussi. DI dans
+  cmd/server/main.go (bundle via `reg.PrestigeBundle()`) → scheduler + `SyncV2WiringDeps`.
+  Stub `return h` + `TODO(prestige-agent)` retirés (le commentaire « Stub temporaire »
+  n'était plus sur la ligne 158 mais sur la méthode ligne 226 — retiré là).
+- [x] V2c — Gardes livrées, DEUX niveaux, chacune vérifiée MORDANTE (régression simulée →
+  rouge, puis revert) : (1) unitaire — `internal/sync/engine_prestige_hook_test.go` (hook
+  stocké + invoqué au pattern run():713) + `internal/sync/v2/cycle_prestige_hook_test.go`
+  (hook invoqué par joueur réussi via spy, skip si post-sync échoue) ; (2) câblage —
+  `scheduler/auto_sync_build_engine_test.go` (golden `HasPrestigeHook`) +
+  `handlers/sync_handler_align_test.go` (`newEngineFor` porte le hook). Inspecteur
+  `SyncEngine.HasPrestigeHook()` ajouté (engine_introspect.go).
+- [x] V2d — DOCS MAJ : `prestige/sync_hook.go` (RunPostSyncHook décrit le câblage réel des
+  4 chemins) + `wire/prestige_setup.go` (RunPostSync) ; entrée §7 du plan parent (D1f BUG
+  latent) annotée `[TRAITÉ V2 2026-07-06]`.
+
+Journal V2 (2026-07-06) : VF-1 confirmé — hook mort sur TOUS les chemins (pas seulement HTTP :
+le SyncEngine.WithPrestigeHook n'avait aucun caller prod). Découverte MAJEURE non anticipée par
+le plan : le pipeline V2 (cycle orchestrator, moteur de sync par défaut ADR 0027) NE passe PAS
+par engine.run() → le hook engine ne l'aurait jamais couvert. Wiring V2 dédié ajouté
+(CycleOrchestratorImpl Phase 6). DC-4 (câbler) appliqué, pas de repli. Gates V2 tous verts.
 
 Gate V2 : `go build ./... && go vet ./...` ; `go test ./internal/prestige/... ./internal/api/handlers/... ./internal/scheduler/...` ;
 `go test -tags=integration -p 1 ./internal/sync/... ./internal/api/...` → exit 0 ;

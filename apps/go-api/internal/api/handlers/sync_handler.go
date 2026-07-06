@@ -71,6 +71,14 @@ type SyncHandler struct {
 	provider      auth_platform.TokenProvider
 	notifierFor   NotificationsEmitterFactory // optionnel
 	postSync      PostSyncDeltaHook           // optionnel : season_pass_level / objective_completed / challenge_completed
+	// prestigeHook (optionnel) ré-évalue les défis Prestige actifs après ingestion.
+	// Injecté par server.go = PrestigeBundle.RunPostSync (no-op si flag off ou bundle
+	// nil). Câblé sur le SyncEngine construit par le handler (newEngineFor) via
+	// SyncEngine.WithPrestigeHook → fire à engine.run() après le post-sync, pendant
+	// que le lease est encore tenu (instance directe non-lease : cf. prestige_setup.go
+	// invariant deadlock-free). Le chemin delta/auto-sync passe par BuildEngine, câblé
+	// séparément côté scheduler (parité runtime).
+	prestigeHook PrestigeHook
 	// syncGate déduplique les syncs cross-source (cf. go_sync.SyncGate). Un sync
 	// HTTP cède si le joueur est déjà en vol (watcher ou auto-sync) : pré-check
 	// IsInFlight → 409 à la requête, et TryClaim dans la goroutine pour la garantie
@@ -152,12 +160,11 @@ func (h *SyncHandler) WithPostSyncDeltaHook(hook PostSyncDeltaHook) *SyncHandler
 }
 
 // PrestigeHook est la signature du hook post-sync injecté pour le module Prestige.
-// Stub minimal — la logique métier vit dans internal/api/prestige_setup.go.
+// La logique métier vit dans internal/api/wire/prestige_setup.go (RunPostSync).
+// L'identifiant attendu est le playerSlug (= user_id des défis Prestige) ; pour
+// les joueurs réels PlayerSlug == Gamertag (config_players.go).
 type PrestigeHook func(ctx context.Context, playerSlug, titleSlug string)
 
-// WithPrestigeHook branche un hook Prestige post-sync. Stub temporaire pour
-// satisfaire la référence de server.go en attendant la finalisation côté
-// agent Prestige. No-op si pas de hook configuré.
 // newEngineFor instancie un SyncEngine pré-câblé avec le loader friends
 // (settings.FriendGamertags), pour que le hook auto-recompute is_with_friends
 // post-sync delta soit toujours actif sur les syncs déclenchés par cet handler.
@@ -202,6 +209,16 @@ func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *dom
 			},
 		))
 	}
+	// Hook Prestige post-sync (best-effort). Fire à engine.run() après le pipeline
+	// post-sync, pendant que le lease player/shared est encore tenu (instance directe
+	// non-lease : invariant deadlock-free, cf. wire/prestige_setup.go). L'engine fournit
+	// le gamertag ; pour les joueurs réels PlayerSlug == Gamertag → identifiant correct
+	// pour RunPostSync/EvaluateForUser (filtre UserID des défis).
+	if h.prestigeHook != nil {
+		engine = engine.WithPrestigeHook(func(hookCtx context.Context, playerSlug, ts string) {
+			h.prestigeHook(hookCtx, playerSlug, ts)
+		})
+	}
 	return engine
 }
 
@@ -223,8 +240,12 @@ func (h *SyncHandler) runnerFor(ctx context.Context, titleSlug, gamertag, xuid s
 	return h.newEngineFor(titleSlug, gamertag, xuid, tokens), ctx
 }
 
-func (h *SyncHandler) WithPrestigeHook(_ PrestigeHook) *SyncHandler {
-	// TODO(prestige-agent): câbler l'invocation post-RunDelta.
+// WithPrestigeHook stocke le hook Prestige post-sync. Le handler le câble sur
+// chaque SyncEngine qu'il construit via newEngineFor (StartInitialSync). Le chemin
+// delta/auto-sync (BuildEngine) est câblé côté scheduler (parité runtime). No-op si
+// le hook est nil (bundle absent ou flag Prestige off côté RunPostSync).
+func (h *SyncHandler) WithPrestigeHook(hook PrestigeHook) *SyncHandler {
+	h.prestigeHook = hook
 	return h
 }
 

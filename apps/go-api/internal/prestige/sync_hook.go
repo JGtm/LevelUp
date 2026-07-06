@@ -12,7 +12,8 @@ import (
 //
 // Référence : Annexe E du plan conceptuel + Phase 3 IMPL.
 //
-// Le sync engine appelle `RunPostSyncHook` après ingestion des matchs.
+// Les chemins de sync appellent `RunPostSyncHook` (via PrestigeBundle.RunPostSync)
+// après ingestion des matchs — cf. le détail du câblage sur RunPostSyncHook.
 // La fonction est gardée par le feature flag `PRESTIGE_ENABLED` :
 // si le flag est désactivé, aucune action — le module Prestige est
 // totalement absent du flux de sync.
@@ -50,11 +51,18 @@ func IsEnabled(settingsPath string) bool {
 
 // RunPostSyncHook ré-évalue les défis actifs d'un joueur après une sync.
 //
-// Appelé par le sync engine via PrestigeBundle.RunPostSync une fois
-// `match_participants` écrits. Le GATE Prestige est UNIQUE et vit chez
-// l'appelant (PrestigeBundle.RunPostSync teste b.enabled = cfg.PrestigeEnabled
-// avant d'appeler ce hook) — plus de re-lecture du flag ici (C7 : fin du
-// double-gate env-only vs settings.json).
+// Appelé par PrestigeBundle.RunPostSync une fois `match_participants` écrits.
+// Câblage réel (VF-1, corrigé 2026-07-06) — le hook tourne sur TOUS les chemins
+// de sync :
+//   - V1 (auto-sync + HTTP delta + watcher) : SyncEngine.WithPrestigeHook, câblé
+//     par scheduler.BuildEngine → fire à engine.run() (post-pipeline, lease tenu).
+//   - HTTP sync initial : SyncHandler.newEngineFor câble le même hook engine.
+//   - V2 (cycle orchestrator, ADR 0027) : CycleOrchestratorImpl invoque le hook
+//     par joueur après RunPostSync (V2 ne passe pas par engine.run()).
+//
+// Le GATE Prestige est UNIQUE et vit chez l'appelant (PrestigeBundle.RunPostSync
+// teste b.enabled = cfg.PrestigeEnabled avant d'appeler ce hook) — plus de
+// re-lecture du flag ici (C7 : fin du double-gate env-only vs settings.json).
 //
 // Best-effort : log les erreurs mais ne casse pas le flux sync. Le sync
 // engine ne doit pas dépendre du résultat de Prestige.

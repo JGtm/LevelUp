@@ -190,6 +190,14 @@ type AutoSyncScheduler struct {
 	// désormais rafraîchie en LIVE via CareerLiveService.kickoffBackgroundRefresh
 	// (UPSERT dans `spartan_identity`).
 
+	// prestigeHook (optionnel) ré-évalue les défis Prestige actifs après ingestion.
+	// Câblé sur chaque SyncEngine construit par BuildEngine → fire à engine.run()
+	// (chemin V1 : auto-sync + HTTP delta + watcher, tous via BuildEngine). Injecté
+	// depuis cmd/server/main.go = PrestigeBundle.RunPostSync. Nil → feature off
+	// (no-op). L'identifiant passé est le gamertag (== PlayerSlug pour les joueurs
+	// réels, cf. WithPostSyncRunner ci-dessus).
+	prestigeHook func(ctx context.Context, playerSlug, titleSlug string)
+
 	// cycleOrchestrator (ADR 0027) — pipeline V2 cycle-level, UNIQUE moteur de sync
 	// des joueurs moteur depuis la suppression du pipeline V1 (lot D1c). Câblé via
 	// WithCycleOrchestrator (main.go, si prérequis pool/queue/metaDB présents). Nil
@@ -259,6 +267,16 @@ func (s *AutoSyncScheduler) WithBatchQueue(q *persist.BatchQueue) *AutoSyncSched
 // Nil runner → no-op (legacy : feature désactivée).
 func (s *AutoSyncScheduler) WithPostSyncRunner(runner port.PostSyncRunner) *AutoSyncScheduler {
 	s.postSyncRunner = runner
+	return s
+}
+
+// WithPrestigeHook branche le hook Prestige post-sync sur chaque SyncEngine
+// construit par BuildEngine (chemin V1 : auto-sync + HTTP delta via engineBuilder +
+// watcher). À appeler depuis cmd/server/main.go = PrestigeBundle.RunPostSync. Nil →
+// no-op (feature Prestige off côté RunPostSync). Le chemin V2 (cycle orchestrator)
+// est câblé séparément (le hook y est appelé après RunPostSync par PlayerSlug).
+func (s *AutoSyncScheduler) WithPrestigeHook(hook func(ctx context.Context, playerSlug, titleSlug string)) *AutoSyncScheduler {
+	s.prestigeHook = hook
 	return s
 }
 
