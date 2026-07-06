@@ -1,3 +1,15 @@
+//go:build dev
+
+// Command get-token — utilitaire DEV : échange le refresh token OAuth
+// (SPNKR_OAUTH_REFRESH_TOKEN_JGTM) contre un Spartan + Clearance token et les
+// imprime EN CLAIR sur stdout.
+//
+// AVERTISSEMENT SÉCURITÉ (S9, lot S) : la sortie contient des tokens Halo
+// valides. Ne JAMAIS la capturer, rediriger vers un fichier, coller dans un
+// ticket/log, ni committer. Réservé au debug manuel local. Le tag de build `dev`
+// l'exclut de `go build ./...` et des binaires de prod :
+//
+//	go run -tags dev ./cmd/get-token
 package main
 
 import (

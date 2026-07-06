@@ -18,6 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/authz"
+	"levelup/go-api/internal/domain"
 )
 
 // PlayerXUIDResolver mappe un slug joueur vers le xuid du profil pour le titre
@@ -34,7 +35,7 @@ type FamilyXUIDResolver func(ctx context.Context) map[string]bool
 // désactivé (mode demo / auth non activée).
 //
 //   - session absente (contexte non-HTTP, jamais le cas derrière RequireAuth) → laisse passer ;
-//   - slug inconnu → laisse passer (le handler répondra 404 player_not_found) ;
+//   - slug inconnu → fail-closed (S7) : admin → passe (handler répondra 404) ; sinon 403 ;
 //   - profil possédé OU membre de la même famille → laisse passer ;
 //   - sinon → 403 player_forbidden.
 //
@@ -54,15 +55,28 @@ func RequirePlayerOwnership(demoMode bool, authMode string, resolveXUID PlayerXU
 			}
 			slug := chi.URLParam(r, "player_slug")
 			profileXUID, found := resolveXUID(r.Context(), slug)
+			user := authz.CurrentUser(sess, users)
 			if !found {
-				next.ServeHTTP(w, r)
+				// S7 (sécurité, lot S) : slug inconnu → fail-closed. Auparavant on
+				// laissait filer (next), permettant à un utilisateur authentifié de
+				// sonder n'importe quel /players/{slug} — la réponse 404 distincte du
+				// handler servait d'oracle d'existence. Désormais seul l'admin (accès
+				// à tout) passe et voit le 404 player_not_found ; tout autre reçoit un
+				// 403 uniforme, sans révéler si le profil existe.
+				if user != nil && user.Role == domain.RoleAdmin {
+					next.ServeHTTP(w, r)
+					return
+				}
+				slog.WarnContext(r.Context(), "authz: slug joueur inconnu refusé",
+					"slug", slug, "path", r.URL.Path, "ip", r.RemoteAddr)
+				writePlayerForbidden(w)
 				return
 			}
 			var familyXUIDs map[string]bool
 			if resolveFamily != nil {
 				familyXUIDs = resolveFamily(r.Context())
 			}
-			if authz.CanAccessPlayer(true, authz.CurrentUser(sess, users), profileXUID, familyXUIDs) {
+			if authz.CanAccessPlayer(true, user, profileXUID, familyXUIDs) {
 				next.ServeHTTP(w, r)
 				return
 			}
