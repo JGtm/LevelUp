@@ -242,170 +242,38 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		"include_media", opts.IncludeMedia,
 	)
 
-	// 0. Manifeste figé (optionnel) : si config/demo/<gamertag>/<slug>.json existe, le
-	// corpus est lu depuis lui au lieu des requêtes dynamiques « N plus récents » →
-	// démo reproductible (médias associés + sessions représentatives préservés).
-	var manifest *DemoManifest
-	if !opts.IgnoreManifest && opts.RepoRoot != "" && opts.SourceLabel != "" {
-		mp := titlePkg.NewPathResolver(opts.RepoRoot).DemoManifestPath(opts.SourceLabel, opts.TitleSlug)
-		m, found, mErr := LoadDemoManifest(mp)
-		if mErr != nil {
-			return res, fmt.Errorf("seed-demo: %w", mErr)
-		}
-		if found {
-			manifest = m
-			res.Frozen = true
-			slog.InfoContext(ctx, "seed-demo: manifeste figé chargé", "path", mp, "corpus", len(m.CorpusMatchIDs()))
-		}
-	}
-
-	// 1. Corpus = solo (historique/home) ∪ squad (page Escouade) ∪ ranked (CSR/playlists
-	// classées) ∪ media-anchored (clips). Figé (manifeste) ou dynamique (« N récents »).
-	// L'union préserve l'ordre solo→squad→ranked→media (dédupliqué).
-	var dc dynamicCorpus
-	if manifest != nil {
-		dc = dynamicCorpus{
-			solo:   manifest.Corpus.SoloMatchIDs,
-			squad:  manifest.Corpus.SquadMatchIDs,
-			ranked: manifest.Corpus.RankedMatchIDs,
-			media:  manifest.Corpus.MediaMatchIDs,
-		}
-	} else {
-		dc = selectDynamicCorpus(ctx, opts)
-	}
-	matchIDs := unionMatchIDs(dc.solo, dc.squad, dc.ranked, dc.media)
-	if len(matchIDs) == 0 {
-		return res, fmt.Errorf("seed-demo: aucun match trouvé pour xuid=%s dans %s",
-			opts.SourceXUID, opts.SourceSharedDB)
+	// Phases 0+1+1b : corpus (figé via manifeste ou dynamique) + roster démo.
+	matchIDs, roster, frozen, err := resolveDemoCorpusAndRoster(ctx, opts)
+	res.Frozen = frozen
+	if err != nil {
+		return res, err
 	}
 	res.MatchIDs = matchIDs
-	slog.InfoContext(ctx, "seed-demo: corpus sélectionné",
-		"frozen", manifest != nil, "total", len(matchIDs),
-		"solo", len(dc.solo), "squad", len(dc.squad), "ranked", len(dc.ranked), "media", len(dc.media))
 
-	// 1b. Roster démo : source + coéquipiers principaux (classés sur le corpus escouade)
-	// + autres participants, mappés vers des identités démo stables. Dérivé du corpus
-	// (figé ⇒ déterministe + couverture complète des xuids réels = aucune fuite).
-	roster, err := buildDemoRoster(ctx, opts.SourceSharedDB, dc.squad, matchIDs, opts.SourceXUID, 2)
+	// Phases 2-4 : warehouse démo (metadata copiée + shared extrait + anonymisé + migré).
+	metaCopied, sharedRows, err := buildDemoWarehouse(ctx, opts, titleOut, matchIDs, roster)
+	res.MetadataCopied = metaCopied
 	if err != nil {
-		return res, fmt.Errorf("seed-demo: build roster: %w", err)
-	}
-	slog.InfoContext(ctx, "seed-demo: roster démo construit", "participants", len(roster))
-
-	// 2. Copie metadata.duckdb
-	outMeta := filepath.Join(titleOut, "warehouse", "metadata.duckdb")
-	if err := copyMetadataFile(opts.SourceMetaDB, outMeta); err != nil {
-		return res, fmt.Errorf("seed-demo: copy metadata: %w", err)
-	}
-	res.MetadataCopied = true
-	slog.InfoContext(ctx, "seed-demo: metadata copiée", "out", outMeta)
-
-	// 3. Extraction shared
-	outShared := filepath.Join(titleOut, "warehouse", "shared_matches_v2.duckdb")
-	sharedRows, err := extractSharedTables(ctx, opts.SourceSharedDB, outShared, matchIDs,
-		opts.SourceXUID, opts.DemoXUID)
-	if err != nil {
-		return res, fmt.Errorf("seed-demo: extract shared: %w", err)
+		return res, err
 	}
 	res.SharedRows = sharedRows
-	slog.InfoContext(ctx, "seed-demo: shared extraite", "out", outShared, "rows", sharedRows)
 
-	// 3b. Anonymisation universelle : remappe TOUS les xuid + gamertag du shared
-	// (source → DemoPlayer, coéquipiers → DemoPlayer2/3, autres → Player N) pour
-	// que les médailles/arme/frags du DemoPlayer s'affichent ET qu'aucun vrai
-	// gamertag ne fuite (page Escouade, kill-feed, Face-à-face).
-	if err := anonymizeSharedUniversal(ctx, outShared, roster); err != nil {
-		return res, fmt.Errorf("seed-demo: anonymisation universelle: %w", err)
+	// 5. Player DB du roster (DemoPlayer principal + coéquipiers principaux).
+	seeded, playerRows, err := seedDemoPlayerDBs(ctx, opts, titleOut, matchIDs, roster)
+	if err != nil {
+		return res, err
 	}
-	slog.InfoContext(ctx, "seed-demo: anonymisation universelle appliquée", "mapped", len(roster))
+	res.PlayerRows = playerRows
+	res.SeededPlayers = seeded
 
-	// 4. Migration shared (une fois) : reconstruit les tables append-only +
-	// vues _latest. Idempotent.
-	if err := applyMigrationsOnPath(outShared, migration.TargetShared); err != nil {
-		return res, fmt.Errorf("seed-demo: migrate shared: %w", err)
-	}
-
-	// 5. Seed des player DB du roster : DemoPlayer (source) + DemoPlayer2/3
-	// (coéquipiers principaux), chacune filtrée sur le corpus + anonymisée vers son
-	// xuid démo. Les coéquipiers donnent leurs vraies stats (perf, LUSR) à la page
-	// Escouade. Les player DB coéquipiers sont résolues depuis db_profiles par xuid.
-	mains := rosterMains(roster)
-	var seeded []seededDemoPlayer
-	for i, m := range mains {
-		srcPlayerDB := opts.SourcePlayerDB
-		if i > 0 {
-			// Title-aware : on veut la player DB du coéquipier POUR LE TITRE courant
-			// (ses stats H5 quand on seede H5), pas une autre (il peut exister sous
-			// plusieurs titres). Fallback tous-titres si absent du titre courant.
-			rel, found, rerr := resolvePlayerDBByXUIDForTitle(opts.ProfilesPath, opts.TitleSlug, m.SourceXUID)
-			if rerr != nil || !found {
-				slog.WarnContext(ctx, "seed-demo: player DB coéquipier introuvable pour ce titre, skip",
-					"title", opts.TitleSlug, "xuid", m.SourceXUID, "gamertag", m.DemoGamertag, "err", rerr)
-				continue
-			}
-			srcPlayerDB = filepath.Join(opts.RepoRoot, rel)
-		}
-		demoDir := demoDirForIndex(i)
-		outP := filepath.Join(titleOut, "players", demoDir, "stats.duckdb")
-		rows, perr := extractPlayerTables(ctx, srcPlayerDB, outP, matchIDs, m.SourceXUID, m.DemoXUID)
-		if perr != nil {
-			if i == 0 {
-				return res, fmt.Errorf("seed-demo: extract player principal: %w", perr)
-			}
-			slog.WarnContext(ctx, "seed-demo: extract player coéquipier échoué, skip",
-				"gamertag", m.DemoGamertag, "err", perr)
-			continue
-		}
-		if err := applyMigrationsOnPath(outP, migration.TargetPlayer); err != nil {
-			return res, fmt.Errorf("seed-demo: migrate player %s: %w", demoDir, err)
-		}
-		// Identité Spartan : empruntée pour le DemoPlayer principal (le joueur
-		// source n'a pas de customization propre) ; les coéquipiers ont déjà la
-		// leur (career_progression réelle copiée).
-		if i == 0 {
-			res.PlayerRows = rows
-			if opts.SourcePlayersDir != "" {
-				if err := borrowDemoIdentity(ctx, outP, opts.SourcePlayersDir, m.DemoXUID); err != nil {
-					slog.WarnContext(ctx, "seed-demo: emprunt identité échoué (non bloquant)", "err", err)
-				}
-			}
-		}
-		seeded = append(seeded, seededDemoPlayer{Dir: demoDir, XUID: m.DemoXUID, Gamertag: m.DemoGamertag})
-		slog.InfoContext(ctx, "seed-demo: player seedée", "dir", demoDir, "gamertag", m.DemoGamertag, "rows", rows)
-	}
-
-	// 6. Médias (DemoPlayer principal). Les FICHIERS vont dans le dir média PLAT
-	// (OutDir/players/DEMO/media = base dir unique servie par ServeMediaFile) ; le
-	// shared_social est title-scopé (lu par resolveDemoPlayer pour le titre courant).
-	// player_slug = SLUG de route du main (la page Média filtre par auteur = slug courant).
-	//   - titre par défaut (Infinite) : flux HLS, attribution par carte (extractDemoMedia) ;
-	//   - titre additionnel (Halo 5)  : clips mp4 servis direct, association RÉELLE indexée
-	//     (extractDemoMediaH5).
+	// 6. Médias (DemoPlayer principal).
 	if opts.IncludeMedia {
-		flatMediaDir := filepath.Join(opts.OutDir, "players", DefaultDemoGamertag, "media")
-		outSocial := filepath.Join(titleOut, "warehouse", "shared_social.duckdb")
-		// shared_social SOURCE (prod) : même dossier warehouse que shared_matches_v2.
-		srcSocialDB := filepath.Join(filepath.Dir(opts.SourceSharedDB), "shared_social.duckdb")
-		var mediaCount int
-		var mediaErr error
-		if opts.TitleSlug == titlePkg.DefaultSlug {
-			srcMediaDir := filepath.Join(opts.RepoRoot, "data", "media", opts.SourceLabel)
-			mediaCount, mediaErr = extractDemoMedia(ctx, srcMediaDir, opts.SourceSharedDB, srcSocialDB,
-				outSocial, flatMediaDir, matchIDs, DefaultDemoMainSlug, opts.MaxMedia)
-		} else {
-			// mediaBaseDir = racine média (parent du dir par gamertag) pour réancrer les
-			// file_path relatifs stockés par index-media (ex. "JGtm/clip.mp4" en prod).
-			mediaBaseDir := filepath.Join(opts.RepoRoot, "data", "media")
-			mediaCount, mediaErr = extractDemoMediaH5(ctx, srcSocialDB, outSocial, flatMediaDir,
-				matchIDs, DefaultDemoMainSlug, opts.MaxMedia, mediaBaseDir)
-		}
+		mediaCount, mediaErr := seedDemoMediaFiles(ctx, opts, titleOut, matchIDs)
 		if mediaErr != nil {
 			slog.WarnContext(ctx, "seed-demo: extraction média partielle", "err", mediaErr, "copied", mediaCount)
 		}
 		res.MediaCopied = mediaCount
 	}
-
-	res.SeededPlayers = seeded
 
 	// 7. Configs (db_profiles avec les 3 profils démo + app_settings). SKIP quand
 	// l'orchestrateur multi-titre les écrira une fois (v3) après tous les titres.
@@ -423,6 +291,159 @@ func SeedDemo(ctx context.Context, opts SeedDemoOptions) (SeedDemoResult, error)
 		"media", res.MediaCopied,
 	)
 	return res, nil
+}
+
+// resolveDemoCorpusAndRoster sélectionne le corpus (figé via manifeste ou dynamique
+// « N récents ») puis construit le roster démo (source + coéquipiers principaux + autres
+// participants → identités démo stables, anti-fuite). Phases 0+1+1b de SeedDemo (K2d).
+// frozen=true si un manifeste figé a été utilisé.
+func resolveDemoCorpusAndRoster(ctx context.Context, opts SeedDemoOptions) (matchIDs []string, roster []demoRosterEntry, frozen bool, err error) {
+	// 0. Manifeste figé (optionnel) : config/demo/<gamertag>/<slug>.json → corpus reproductible.
+	var manifest *DemoManifest
+	if !opts.IgnoreManifest && opts.RepoRoot != "" && opts.SourceLabel != "" {
+		mp := titlePkg.NewPathResolver(opts.RepoRoot).DemoManifestPath(opts.SourceLabel, opts.TitleSlug)
+		m, found, mErr := LoadDemoManifest(mp)
+		if mErr != nil {
+			return nil, nil, false, fmt.Errorf("seed-demo: %w", mErr)
+		}
+		if found {
+			manifest = m
+			frozen = true
+			slog.InfoContext(ctx, "seed-demo: manifeste figé chargé", "path", mp, "corpus", len(m.CorpusMatchIDs()))
+		}
+	}
+
+	// 1. Corpus = solo ∪ squad ∪ ranked ∪ media (ordre solo→squad→ranked→media, dédupliqué).
+	var dc dynamicCorpus
+	if manifest != nil {
+		dc = dynamicCorpus{
+			solo:   manifest.Corpus.SoloMatchIDs,
+			squad:  manifest.Corpus.SquadMatchIDs,
+			ranked: manifest.Corpus.RankedMatchIDs,
+			media:  manifest.Corpus.MediaMatchIDs,
+		}
+	} else {
+		dc = selectDynamicCorpus(ctx, opts)
+	}
+	matchIDs = unionMatchIDs(dc.solo, dc.squad, dc.ranked, dc.media)
+	if len(matchIDs) == 0 {
+		return nil, nil, frozen, fmt.Errorf("seed-demo: aucun match trouvé pour xuid=%s dans %s",
+			opts.SourceXUID, opts.SourceSharedDB)
+	}
+	slog.InfoContext(ctx, "seed-demo: corpus sélectionné",
+		"frozen", manifest != nil, "total", len(matchIDs),
+		"solo", len(dc.solo), "squad", len(dc.squad), "ranked", len(dc.ranked), "media", len(dc.media))
+
+	// 1b. Roster démo (dérivé du corpus : figé ⇒ déterministe + couverture xuids réels).
+	roster, err = buildDemoRoster(ctx, opts.SourceSharedDB, dc.squad, matchIDs, opts.SourceXUID, 2)
+	if err != nil {
+		return nil, nil, frozen, fmt.Errorf("seed-demo: build roster: %w", err)
+	}
+	slog.InfoContext(ctx, "seed-demo: roster démo construit", "participants", len(roster))
+	return matchIDs, roster, frozen, nil
+}
+
+// buildDemoWarehouse copie la metadata, extrait le shared filtré sur le corpus, anonymise
+// universellement (xuid+gamertag → identités démo, aucun vrai gamertag ne fuite) puis migre
+// le shared (append-only + vues _latest, idempotent). Phases 2-4 de SeedDemo (K2d).
+// metaCopied=true dès que la copie metadata a réussi (préservé même si une phase suivante échoue).
+func buildDemoWarehouse(ctx context.Context, opts SeedDemoOptions, titleOut string,
+	matchIDs []string, roster []demoRosterEntry) (metaCopied bool, sharedRows map[string]int, err error) {
+	// 2. Copie metadata.duckdb.
+	outMeta := filepath.Join(titleOut, "warehouse", "metadata.duckdb")
+	if err = copyMetadataFile(opts.SourceMetaDB, outMeta); err != nil {
+		return false, nil, fmt.Errorf("seed-demo: copy metadata: %w", err)
+	}
+	slog.InfoContext(ctx, "seed-demo: metadata copiée", "out", outMeta)
+
+	// 3. Extraction shared.
+	outShared := filepath.Join(titleOut, "warehouse", "shared_matches_v2.duckdb")
+	sharedRows, err = extractSharedTables(ctx, opts.SourceSharedDB, outShared, matchIDs, opts.SourceXUID, opts.DemoXUID)
+	if err != nil {
+		return true, nil, fmt.Errorf("seed-demo: extract shared: %w", err)
+	}
+	slog.InfoContext(ctx, "seed-demo: shared extraite", "out", outShared, "rows", sharedRows)
+
+	// 3b. Anonymisation universelle (Escouade, kill-feed, Face-à-face — aucune fuite).
+	if err = anonymizeSharedUniversal(ctx, outShared, roster); err != nil {
+		return true, sharedRows, fmt.Errorf("seed-demo: anonymisation universelle: %w", err)
+	}
+	slog.InfoContext(ctx, "seed-demo: anonymisation universelle appliquée", "mapped", len(roster))
+
+	// 4. Migration shared (reconstruit tables append-only + vues _latest, idempotent).
+	if err = applyMigrationsOnPath(outShared, migration.TargetShared); err != nil {
+		return true, sharedRows, fmt.Errorf("seed-demo: migrate shared: %w", err)
+	}
+	return true, sharedRows, nil
+}
+
+// seedDemoPlayerDBs seede les player DB du roster : DemoPlayer principal (source) +
+// coéquipiers principaux (DemoPlayer2/3, vraies stats perf/LUSR pour la page Escouade),
+// chacune filtrée sur le corpus + anonymisée vers son xuid démo + migrée. Identité Spartan
+// empruntée pour le principal (le source n'a pas de customization propre). Phase 5 (K2d).
+// playerRows = compteurs du DemoPlayer principal (i==0).
+func seedDemoPlayerDBs(ctx context.Context, opts SeedDemoOptions, titleOut string,
+	matchIDs []string, roster []demoRosterEntry) (seeded []seededDemoPlayer, playerRows map[string]int, err error) {
+	mains := rosterMains(roster)
+	for i, m := range mains {
+		srcPlayerDB := opts.SourcePlayerDB
+		if i > 0 {
+			// Title-aware : player DB du coéquipier POUR LE TITRE courant (ses stats H5
+			// quand on seede H5). Fallback tous-titres si absent du titre courant.
+			rel, found, rerr := resolvePlayerDBByXUIDForTitle(opts.ProfilesPath, opts.TitleSlug, m.SourceXUID)
+			if rerr != nil || !found {
+				slog.WarnContext(ctx, "seed-demo: player DB coéquipier introuvable pour ce titre, skip",
+					"title", opts.TitleSlug, "xuid", m.SourceXUID, "gamertag", m.DemoGamertag, "err", rerr)
+				continue
+			}
+			srcPlayerDB = filepath.Join(opts.RepoRoot, rel)
+		}
+		demoDir := demoDirForIndex(i)
+		outP := filepath.Join(titleOut, "players", demoDir, "stats.duckdb")
+		rows, perr := extractPlayerTables(ctx, srcPlayerDB, outP, matchIDs, m.SourceXUID, m.DemoXUID)
+		if perr != nil {
+			if i == 0 {
+				return seeded, playerRows, fmt.Errorf("seed-demo: extract player principal: %w", perr)
+			}
+			slog.WarnContext(ctx, "seed-demo: extract player coéquipier échoué, skip",
+				"gamertag", m.DemoGamertag, "err", perr)
+			continue
+		}
+		if err := applyMigrationsOnPath(outP, migration.TargetPlayer); err != nil {
+			return seeded, playerRows, fmt.Errorf("seed-demo: migrate player %s: %w", demoDir, err)
+		}
+		if i == 0 {
+			playerRows = rows
+			if opts.SourcePlayersDir != "" {
+				if err := borrowDemoIdentity(ctx, outP, opts.SourcePlayersDir, m.DemoXUID); err != nil {
+					slog.WarnContext(ctx, "seed-demo: emprunt identité échoué (non bloquant)", "err", err)
+				}
+			}
+		}
+		seeded = append(seeded, seededDemoPlayer{Dir: demoDir, XUID: m.DemoXUID, Gamertag: m.DemoGamertag})
+		slog.InfoContext(ctx, "seed-demo: player seedée", "dir", demoDir, "gamertag", m.DemoGamertag, "rows", rows)
+	}
+	return seeded, playerRows, nil
+}
+
+// seedDemoMediaFiles extrait les médias du DemoPlayer principal (fichiers → dir média PLAT
+// servi par ServeMediaFile ; shared_social title-scopé). Infinite : flux HLS + attribution
+// par carte ; titre additionnel : clips mp4 + association réelle indexée. Phase 6 (K2d).
+func seedDemoMediaFiles(ctx context.Context, opts SeedDemoOptions, titleOut string, matchIDs []string) (int, error) {
+	flatMediaDir := filepath.Join(opts.OutDir, "players", DefaultDemoGamertag, "media")
+	outSocial := filepath.Join(titleOut, "warehouse", "shared_social.duckdb")
+	// shared_social SOURCE (prod) : même dossier warehouse que shared_matches_v2.
+	srcSocialDB := filepath.Join(filepath.Dir(opts.SourceSharedDB), "shared_social.duckdb")
+	if opts.TitleSlug == titlePkg.DefaultSlug {
+		srcMediaDir := filepath.Join(opts.RepoRoot, "data", "media", opts.SourceLabel)
+		return extractDemoMedia(ctx, srcMediaDir, opts.SourceSharedDB, srcSocialDB,
+			outSocial, flatMediaDir, matchIDs, DefaultDemoMainSlug, opts.MaxMedia)
+	}
+	// mediaBaseDir = racine média (parent du dir par gamertag) pour réancrer les file_path
+	// relatifs stockés par index-media (ex. "JGtm/clip.mp4" en prod).
+	mediaBaseDir := filepath.Join(opts.RepoRoot, "data", "media")
+	return extractDemoMediaH5(ctx, srcSocialDB, outSocial, flatMediaDir,
+		matchIDs, DefaultDemoMainSlug, opts.MaxMedia, mediaBaseDir)
 }
 
 // validateSeedDemoOpts applique les valeurs par défaut + vérifie les chemins source.

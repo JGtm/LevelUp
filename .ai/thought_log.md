@@ -1,3 +1,24 @@
+## [2026-07-06] K2d — SeedDemo god-function → orchestrateur + 4 phases
+
+**Statut** : Complété. Reprise du lot K (le /goal exige TOUT K). `SeedDemo()` (~203 L, pipeline
+linéaire 8 phases) → orchestrateur ~55 L + 4 fonctions de phase nommées :
+`resolveDemoCorpusAndRoster` (manifeste/corpus/roster), `buildDemoWarehouse`
+(metadata+shared+anonymisation+migration), `seedDemoPlayerDBs`, `seedDemoMediaFiles`.
+
+**Point délicat (deploy-sensible)** : préservation de la sémantique `res.*` sur le chemin
+d'erreur — `res.Frozen`/`res.MetadataCopied` sont positionnés AVANT le check d'erreur (comme
+l'original les fixait avant les phases suivantes) pour que le résultat partiel sur échec reste
+identique. Le chemin de succès est byte-identique.
+
+**Gate** : build+vet 0, **intégration -p 1 ops VERTE** (13 s) — `seed_demo_integration_test`
++ `seed_demo_manifest_integration_test` construisent des DB sources synthétiques, lancent
+SeedDemo end-to-end et vérifient le résultat. C'est le gate « regen demo » du plan, satisfait
+sans données prod.
+
+**Prochaine étape** : K2c (auto_sync split), puis K2b/K2a, K1j/K1h, K1k, K1b, K1a, K3.
+
+---
+
 ## [2026-07-06] BILAN session /goal « faire tout le lot K + push »
 
 **Statut** : portion contenue de K livrée + poussée ; reste = session dédiée (documenté).

@@ -1196,8 +1196,14 @@ K2 — God functions à risque (tâche dédiée, passer la grille plan-review av
   nommées (précédent : engine_backfills.go). Tests e2e sync verts obligatoires.
 - [ ] K2c — ARCHI 24 : `auto_sync.go` 1 083 L → scission en 3 (scheduler / factory engine
   / métriques-convergence) ; exemptions 80 L résolues (BuildEngine, RunOnceTrigger).
-- [ ] K2d — ARCHI 25 : `SeedDemo()` 203 L → scission extract/configs/identity + phases
-  nommées (chemin de déploiement sensible — tester via regen demo local).
+- [x] K2d — ARCHI 25 (2026-07-06) : `SeedDemo()` ~203 L → orchestrateur (~55 L) + 4 phases
+  nommées : `resolveDemoCorpusAndRoster` (0/1/1b : corpus figé/dynamique + roster),
+  `buildDemoWarehouse` (2-4 : metadata+shared+anonymisation+migration), `seedDemoPlayerDBs`
+  (5), `seedDemoMediaFiles` (6). Extraction FIDÈLE (mêmes libellés/erreurs/ordre ; sémantique
+  `res.*` sur erreur préservée — MetadataCopied/Frozen positionnés avant le retour d'erreur).
+  Gate : build+vet 0, **intégration -p 1 ops (SeedDemo end-to-end sur sources synthétiques)
+  VERTE** (13 s) — c'est le gate « regen demo » demandé (les tests construisent les DB
+  sources + lancent le pipeline + vérifient le résultat).
 - [x] K2e — CR mineurs (2026-07-06) : `strings.Title` déprécié (`engine.go`) supprimé →
   `mode, modeTitle := "full","Full"` (dual-assign inline, plus simple qu'une map pour le
   site unique). ~18 blocs `g.Go` copiés (`match_view_data_loaders.go`) → helper `goLoad(gctx,
