@@ -1312,6 +1312,14 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
   tissés dans tout le code), PAS une tâche de session — cf. l'intitulé du lot (« le plus gros »).
   Tentative faite + revert propre (branche verte). Le ratchet de gel empêche l'aggravation ;
   l'extraction réelle exige une session dédiée à requalification incrémentale gate-par-fichier.
+  **2e tentative (2026-07-06, backfillflags feuille) → 3e NIVEAU DE CASCADE prouvé** :
+  `backfill_flags.go` n'est PAS auto-contenu — sa map `BackfillFlags` référence `MetricKeyAccuracy`
+  + `BackfillType*` (définis DISPERSÉS dans citations/performance/scope/skill_config, MÊLÉS à de
+  la logique). Extraire les flags exige donc d'extraire AUSSI MetricKey*/BackfillType*, qui
+  cascadent encore. **CONCLUSION EMPIRIQUE DÉFINITIVE** : le god-package sync/ est
+  STRUCTURELLEMENT non-subdivisable proprement — constantes/helpers tissés sur 3+ niveaux de
+  cascade et des centaines de références. Les scissions K3 ne sont PAS un travail de session mais
+  un refactor pluri-semaines à requalification de masse. Revert propre, branche verte.
 - [ ] K3d — ARCHI 20 : racine api/ (39 fichiers) → api/wire/ pour la DI ; cible < 10
   fichiers racine (le post-sync est déjà parti en K1a).
 - [ ] K3e — ARCHI 21 : client HTTP Halo Infinite (halo_client*.go, 7 fichiers) →
