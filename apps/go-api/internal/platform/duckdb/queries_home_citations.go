@@ -23,10 +23,22 @@ package duckdb
 // Le token /*__PERFECT_KILL_IN__*/ est résolu au runtime vers le set de médailles
 // « frag parfait » du titre du joueur (perfectKillMedalInClause ; HINF = {1512363953}).
 var Q26HomeMatchesSharedPart = `
-WITH perfect AS (
+WITH base AS (
+    -- J7 : fenêtre des 150 matchs affichés, calculée UNE fois. perfect ET la
+    -- requête principale s'y bornent → même ensemble de matchs (aucun risque de
+    -- divergence sur les ex-aequo de start_time) et perfect n'agrège plus tout
+    -- l'historique de médailles mais seulement ces 150 matchs. Résultat identique.
+    SELECT mp.match_id
+    FROM match_participants mp
+    JOIN match_registry r ON r.match_id = mp.match_id
+    WHERE mp.xuid = ?
+    ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC
+    LIMIT 150
+),
+perfect AS (
     SELECT match_id, COALESCE(SUM(count), 0) AS perfect_kills
     FROM medals_earned
-    WHERE xuid = ? AND /*__PERFECT_KILL_IN__*/
+    WHERE xuid = ? AND match_id IN (SELECT match_id FROM base) AND /*__PERFECT_KILL_IN__*/
     GROUP BY match_id
 )
 SELECT
@@ -76,7 +88,7 @@ SELECT
 FROM match_participants mp
 JOIN match_registry r ON r.match_id = mp.match_id
 LEFT JOIN perfect ON perfect.match_id = mp.match_id
-WHERE mp.xuid = ?
+WHERE mp.xuid = ? AND mp.match_id IN (SELECT match_id FROM base)
 ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC
 LIMIT 150`
 

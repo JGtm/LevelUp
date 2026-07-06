@@ -829,6 +829,32 @@ func TestHomeRepo_LoadHomeMatches_WithData(t *testing.T) {
 	}
 }
 
+// TestHomeRepo_LoadHomeMatches_PerfectKillsBounded_J7 : la CTE perfect bornée à la
+// fenêtre `base` (J7) doit toujours attribuer les frags parfaits au match affiché.
+// medal_name_id 1512363953 = frag parfait HINF (cf. Q26HomeMatchesSharedPart).
+func TestHomeRepo_LoadHomeMatches_PerfectKillsBounded_J7(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	if _, err := pdb.Player.Exec(ctx, `DELETE FROM shared.medals_earned WHERE match_id = 'm1'`); err != nil {
+		t.Fatalf("clear medals: %v", err)
+	}
+	if _, err := pdb.Player.Exec(ctx,
+		`INSERT INTO shared.medals_earned (medal_id, medal_name_id, xuid, match_id, count)
+		 VALUES (99, 1512363953, ?, 'm1', 3)`, pTestXUID); err != nil {
+		t.Fatalf("seed perfect medal: %v", err)
+	}
+	rows, err := NewHomeRepo(pdb).LoadHomeMatches(ctx)
+	if err != nil {
+		t.Fatalf("LoadHomeMatches: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("attendu 1 match, obtenu %d", len(rows))
+	}
+	if rows[0].PerfectKills != 3 {
+		t.Errorf("perfect_kills = %d, want 3 (CTE perfect bornée J7)", rows[0].PerfectKills)
+	}
+}
+
 func TestHomeRepo_LoadHomeMatches_DoesNotDependOnVMatchFull(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
