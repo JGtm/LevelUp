@@ -1194,8 +1194,13 @@ K2 — God functions à risque (tâche dédiée, passer la grille plan-review av
 - [ ] K2b — ARCHI 23 + CR A4 : `SyncEngine.run()` 483 L → extraire au minimum le bloc
   drain/ré-acquisition (l.505-597) et la boucle de pagination (l.346-497) en méthodes
   nommées (précédent : engine_backfills.go). Tests e2e sync verts obligatoires.
-- [ ] K2c — ARCHI 24 : `auto_sync.go` 1 083 L → scission en 3 (scheduler / factory engine
-  / métriques-convergence) ; exemptions 80 L résolues (BuildEngine, RunOnceTrigger).
+- [~] K2c — ARCHI 24 (2026-07-06) : `auto_sync.go` scindé — `auto_sync_engine.go` (150 L :
+  `BuildEngine` factory + `defaultRunnerFactory`/`acquireLiveTitleRunner`/`resolveTitleSlug`)
+  + `auto_sync_convergence.go` (89 L : passe convergence events + `warnStaleGateClaims`).
+  auto_sync.go 1101 → 887 L. Gate : build+vet 0, tests scheduler unit+intégration -p 1 verts
+  (déplacement pur, compiler-vérifié). `[!]` RESTE : auto_sync.go encore > 500 L (extraire le
+  bloc run-loop `Run`/`RunOnce`/`RunOnceTrigger`/`syncPlayer` en `auto_sync_run.go`) + décomposer
+  `BuildEngine`/`RunOnceTrigger` (exemptions 80 L) — suite mécanique.
 - [x] K2d — ARCHI 25 (2026-07-06) : `SeedDemo()` ~203 L → orchestrateur (~55 L) + 4 phases
   nommées : `resolveDemoCorpusAndRoster` (0/1/1b : corpus figé/dynamique + roster),
   `buildDemoWarehouse` (2-4 : metadata+shared+anonymisation+migration), `seedDemoPlayerDBs`
