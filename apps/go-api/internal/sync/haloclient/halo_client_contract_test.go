@@ -7,7 +7,7 @@
 //   1. Le call site engine.go régresse vers le format gamertag brut.
 //   2. Le shape MatchInfo.StartTime ou MatchId change côté API.
 
-package sync
+package haloclient
 
 import (
 	"context"

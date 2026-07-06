@@ -23,7 +23,7 @@ func filmAbsent() *weaponTestClient { return &weaponTestClient{filmPresent: fals
 func filmEmpty() *weaponTestClient {
 	return &weaponTestClient{
 		filmPresent: true,
-		filmChunks:  map[int]filmChunkData{0: {Data: []byte{}, StartMS: 0, DurationMS: 1000}},
+		filmChunks:  map[int]FilmChunkData{0: {Data: []byte{}, StartMS: 0, DurationMS: 1000}},
 	}
 }
 

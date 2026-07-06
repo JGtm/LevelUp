@@ -7,7 +7,7 @@
 // Extrait de halo_skill.go (règle 500 lignes/fichier). Les types partagés
 // (PlayerPlaylistCSR, csrRankRaw, rawToCSRSnapshot) + le player-level
 // GetPlayerCSRs restent dans halo_skill.go (même package).
-package sync
+package haloclient
 
 import (
 	"context"

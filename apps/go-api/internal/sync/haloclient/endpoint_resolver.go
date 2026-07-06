@@ -12,7 +12,7 @@
 // chemins non câblés (binaires CLI hors boot, tests) — pour halo_infinite, le
 // resolver rend exactement la même valeur (golden de parité), donc zéro
 // changement de comportement.
-package sync
+package haloclient
 
 import (
 	"context"

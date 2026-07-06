@@ -15,7 +15,7 @@
 // Vérifié en prod le 2026-05-20 pour JGtm : emblem cfg=-809699482 (Test)
 // → JSON CMS contient AvailableConfigurations avec [3]=651339664 positif
 // → URL nameplate construite avec ce cfg retourne 200 OK + image/png 10585 b.
-package sync
+package haloclient
 
 import (
 	"context"

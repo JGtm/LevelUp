@@ -5,7 +5,7 @@
 // taper l'API réelle ni écrire en DB. Réutilise le pattern redirectTransport
 // déjà en place dans halo_client_extra_test.go.
 
-package sync
+package haloclient
 
 import (
 	"context"

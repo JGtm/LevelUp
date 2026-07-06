@@ -1,7 +1,7 @@
 // Package sync - halo_client_career.go : endpoints career progression +
 // spartan customization + helpers de parsing. Decoupe de halo_client.go
 // (god-file split, refactor 2026-05-27).
-package sync
+package haloclient
 
 import (
 	"context"

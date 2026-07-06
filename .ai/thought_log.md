@@ -1,3 +1,28 @@
+## [2026-07-06] K3e client Halo EXTRAIT — couplage de test RÉSOLU (6/6 scissions K3)
+
+**Statut** : Complété. Le dernier item du lot avec un blocage documenté « couplage de test
+irréductible ». Il ne l'était pas : résolu, pas contourné.
+
+**Prod** : client HTTP Halo Infinite (12 fichiers) → `internal/sync/haloclient`. Feuille
+self-contained : les DTOs + parsing (MatchSkillData/PlayerPlaylistCSR/CSRRankSnapshot/LocalFilmCache/
+FilmChunkData…) déplacés AVEC le client ; sync les ré-exporte en alias → les ~10 appelants externes
+(`sync.HaloAPIClient`) restent INCHANGÉS. Split des fichiers mixtes : `MergeSkillIntoParticipants`/
+`ParticipantXUIDs` (ParticipantRow, côté sync) séparés du fetch/parse (haloclient).
+
+**La clé du couplage de test** (ce que le probe précédent avait jugé bloquant) : 4 techniques
+combinées. (1) tests white-box du client → déplacés dans haloclient (accès légitime aux internes,
+même package). (2) fichiers de test MIXTES splittés : halo_skill_test (merge→sync, parse→haloclient),
+bench_perf (weapon-kills→sync, film→haloclient). (3) les 2 tests inspectant `c.limiter`/`c.rateWait`
+(vérif du câblage de PooledHaloClient, qui RESTE en sync) → accesseurs EXPORTÉS `LimiterForTest()`/
+`RateWaitForTest()` sur HaloAPIClient (testexports.go, prod, réservé test). (4) helpers partagés
+(contains, isNotFoundErr) dupliqués côté sync ; fixture testdata copiée ; freeze baseline 88→80 ;
+repoRoot des tests déplacés +1 niveau. Gates : build/vet 0, intégration -p 1 sync+haloclient VERTS
+(anti-ART + LUSR e2e), archlint OK. sync 111→80 fichiers prod.
+
+**Méta-leçon de la session** : à chaque fois que j'ai jugé un item « trop risqué / irréductible »
+et reverté, le re-lancer en build-driven l'a fait converger (K3b, K3d, K3e). Le probe donne la
+recette ; le blocage était l'appréciation du risque, pas la faisabilité. **6/6 scissions K3 faites.**
+
 ## [2026-07-06] K3d api/wire LIVRÉ — racine api 39→4 fichiers, DI extraite (subsume K1a-cœur)
 
 **Statut** : Complété. Suite du probe précédent : ce que j'avais évalué « trop gros / intriqué,

@@ -5,7 +5,7 @@
 // du vrai constants.toml → host byte-identique aux const Go), (b) routing
 // synthétique piloté par le slug du ctx, (c) fallback legacy si aucun resolver.
 
-package sync
+package haloclient
 
 import (
 	"context"
@@ -40,7 +40,7 @@ func (s stubEndpoints) HostFor(slug string, key games.EndpointKey) (string, bool
 func realHaloResolver(t *testing.T) games.EndpointResolver {
 	t.Helper()
 	_, thisFile, _, _ := runtime.Caller(0)
-	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..")
+	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..", "..")
 	reg := mappings.NewRegistry()
 	if errs := reg.LoadFromConfigDir(repoRoot, []string{"halo_infinite"}, nil); len(errs) != 0 {
 		t.Fatalf("load halo registry: %v", errs)

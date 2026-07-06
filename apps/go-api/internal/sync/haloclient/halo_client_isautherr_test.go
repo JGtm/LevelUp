@@ -1,6 +1,6 @@
 // Package sync — halo_client_isautherr_test.go : garde-fou IsAuthError (filet 401
 // du client sync, consommé par halo.RetryWithFreshTokens côté Explorer).
-package sync
+package haloclient
 
 import (
 	"errors"
