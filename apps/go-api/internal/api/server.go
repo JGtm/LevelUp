@@ -318,149 +318,19 @@ func wireHalo5AssetAdapters(cfg *config.AppConfig, titleResolver *games.StaticRe
 	}
 }
 
-//nolint:gocyclo // Routeur central : mount de ~80 endpoints avec feature flags
-func NewRouter(
-	serverCtx context.Context,
-	cfg *config.AppConfig,
-	bootRepo port.BootstrapRepository,
-	bootSvc *service.BootstrapService,
-	daemon watcher.DaemonController,
-	tokenProvider auth_platform.TokenProvider,
-	autoSyncScheduler *scheduler.AutoSyncScheduler,
-	backupScheduler *duckdbbackup.Scheduler,
-	groupStore *groupstore.GroupStore,
-) (http.Handler, *ServiceRegistry) {
-	if tokenProvider == nil {
-		tokenProvider = auth_platform.NewMSALProvider()
-	}
-	// Sprint 14 : session store + Sprint 15 : attempt store auth
-	// Le flag Secure du cookie + HSTS sont décidés PAR REQUÊTE selon le schéma réel
-	// (TLS natif ou X-Forwarded-Proto derrière un proxy de confiance), pas figés au
-	// boot : ne plus coupler « secret custom » à « HTTPS » (sinon cookie Secure jeté
-	// sur http://localhost → onboarding bloqué). Override via LEVELUP_COOKIE_SECURE.
-	cookiePolicy := middleware.SecureCookiePolicy{Mode: cfg.CookieSecure, TrustProxy: cfg.TrustProxyHeaders}
-	sessionStore := session_platform.NewStore(cfg.SessionDir, session_platform.DefaultTTL, cfg.SessionSecret)
-	// Purge périodique des sessions expirées (TTL dépassé). Sans ça, data/sessions/
-	// accumule indéfiniment. Purge immédiate au boot (rattrape le backlog), puis
-	// toutes les 6h ; arrêt propre au shutdown via serverCtx.
-	go func() {
-		if n := sessionStore.PurgeExpired(); n > 0 {
-			slog.InfoContext(serverCtx, "session: purge initiale sessions expirées", "removed", n)
-		}
-		ticker := time.NewTicker(6 * time.Hour)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-serverCtx.Done():
-				return
-			case <-ticker.C:
-				if n := sessionStore.PurgeExpired(); n > 0 {
-					slog.InfoContext(serverCtx, "session: purge sessions expirées", "removed", n)
-				}
-			}
-		}
-	}()
-	attemptStore := auth_platform.NewAttemptStore()
+// titleRuntime regroupe les sorties du boot multi-titres (Phase B) consommees par NewRouter.
+type titleRuntime struct {
+	resolver   *games.StaticResolver
+	hiRanks    *mappings.RankCatalog
+	rankImages map[string]map[int]*string
+	hiCaps     games.CapabilityMap
+	hiAssetURL *halo_games.AssetURLAdapter
+}
 
-	// Sprint 16 : settings store + Sprint 17 : job store
-	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath)
-	jobsPath := titlePkg.NewPathResolver(cfg.RepoRoot).JobsCachePath()
-	jobStore := jobs_platform.NewStore(jobsPath)
-
-	// Auth locale : user store + invite store (mode password).
-	usersPath := filepath.Join(cfg.AuthDir, "users.json")
-	invitesPath := filepath.Join(cfg.AuthDir, "invites.json")
-	users := userstore.NewStore(usersPath)
-	invites := userstore.NewInviteStore(invitesPath)
-
-	r := chi.NewRouter()
-
-	// Middlewares transverses (ordre important)
-	r.Use(chimiddleware.Recoverer)
-	// Capture l'adresse TCP réelle du peer AVANT tout middleware susceptible de
-	// réécrire RemoteAddr : le garde LoopbackOnly des endpoints /_diag s'appuie
-	// dessus pour ne pas être falsifiable via un en-tête X-Real-IP/X-Forwarded-For.
-	r.Use(middleware.PreserveRemoteAddr)
-	// chi RealIP réécrit RemoteAddr depuis les en-têtes d'IP client : on ne
-	// l'active QUE derrière un reverse proxy de confiance qui assainit ces en-têtes
-	// (LEVELUP_TRUST_PROXY_HEADERS=1). Sinon RemoteAddr reste le peer TCP réel, ce
-	// qui empêche un client externe d'usurper une IP (rate-limit, logs d'audit et
-	// LoopbackOnly non falsifiables). Revue P0 2026-06-02 (faille RealIP/LoopbackOnly).
-	if cfg.TrustProxyHeaders {
-		r.Use(chimiddleware.RealIP)
-	}
-	// En-têtes de sécurité HTTP sur toutes les réponses (HSTS seulement en prod/TLS).
-	r.Use(middleware.SecurityHeaders(cfg.TrustProxyHeaders))
-	r.Use(middleware.RequestID)
-	r.Use(middleware.CORS(cfg.CORSOrigins))
-	r.Use(middleware.CSRF(cfg.CORSOrigins))
-	r.Use(middleware.RateLimit(cfg.DemoMode, cfg.RateLimitRPM))
-	r.Use(middleware.SlogLogger)
-	r.Use(chimiddleware.Compress(5))
-	r.Use(middleware.WithSession(sessionStore, cookiePolicy))
-
-	// Sprint 44 : TitleExtractor — injecte title_slug dans le contexte.
-	// MT-16 / day-one 2e titre : registre PARTAGÉ piloté par config (built-in
-	// halo_infinite + titres additionnels découverts en config/titles). Posé par
-	// SetDefaultRegistry au boot ; retombe sur le built-in mono-titre en test/CLI.
-	titleRegistry := titlePkg.DefaultRegistry()
-	r.Use(middleware.TitleExtractor(titleRegistry))
-
-	// Phase A multi-titres : chargement des FieldMappingSet TOML par titre.
-	// Erreur de chargement → log mais ne bloque pas le boot (les autres titres
-	// restent disponibles). L'endpoint /field-mappings n'est exposé que si le
-	// flag MULTI_TITLE_API_ENABLED est activé. Les slugs viennent du registre
-	// (non-archivés) → un 2e titre config charge automatiquement ses mappings.
-	fieldMappingsRegistry := mappings.NewRegistry()
-	multiTitleSlugs := make([]string, 0)
-	for _, td := range titleRegistry.NonArchived() {
-		multiTitleSlugs = append(multiTitleSlugs, td.Slug)
-	}
-	if len(multiTitleSlugs) == 0 {
-		multiTitleSlugs = []string{titlePkg.DefaultSlug}
-	}
-	for _, err := range fieldMappingsRegistry.LoadFromConfigDir(cfg.RepoRoot, multiTitleSlugs, slog.Default()) {
-		slog.Warn("field_mappings_load_warning", "err", err)
-	}
-
-	// PMT-1 / MT-01 : câble le resolver d'hosts d'ingestion title-aware partagé.
-	// Les clients d'ingestion (sync HaloAPIClient, platform/halo HaloProvider,
-	// assets) routent désormais via [endpoints] de constants.toml (fallback const
-	// Halo byte-identique pour halo_infinite).
-	games.SetDefaultEndpointResolver(games.NewMappingsEndpointResolver(fieldMappingsRegistry, titlePkg.DefaultSlug))
-
-	// PMT-5 / MT-06 : câble le resolver d'issues (outcome) title-aware partagé. Les
-	// repos platform/duckdb bâtissent leurs agrégats wins/losses/draws via
-	// [outcomes].raw_code (fallback littéral `outcome = N` byte-identique pour Halo).
-	games.SetDefaultOutcomeResolver(games.NewMappingsOutcomeResolver(fieldMappingsRegistry, titlePkg.DefaultSlug))
-
-	// PMT-12 / MT-21 : validateur boot des mappings TOML requis. Le required-set
-	// est dérivé des capabilities du titre (RequiredTOMLFor). Un titre ACTIF à
-	// moitié configuré fait fail-fast (os.Exit) ; un coming_soon/archived est
-	// loggé mais non bloquant (il n'est de toute façon pas servable, cf. gate
-	// RequireActiveTitle/PMT-8). Skip en DemoMode (tests/démo : repoRoot sans
-	// config TOML, cf. buildTestRouter).
-	if !cfg.DemoMode {
-		for _, td := range titleRegistry.All() {
-			errs := mappings.ValidateRequiredTOML(cfg.RepoRoot, td)
-			if len(errs) == 0 {
-				continue
-			}
-			for _, e := range errs {
-				if m, ok := e.(mappings.MissingRequiredTOML); ok {
-					slog.ErrorContext(serverCtx, "required_toml_missing",
-						"title", td.Slug, "path", m.Path, "required_by", m.RequiredBy)
-				} else {
-					slog.ErrorContext(serverCtx, "required_toml_missing", "title", td.Slug, "err", e)
-				}
-			}
-			if td.IsActive() {
-				slog.ErrorContext(serverCtx, "boot_validation_failed", "title", td.Slug, "errors_count", len(errs))
-				os.Exit(1)
-			}
-		}
-	}
-
+// buildTitleRuntime construit le resolver d adapters par titre (semantic/data/assetURL
+// Halo Infinite + images de rang par titre actif) et les capabilities HI. Extrait de
+// NewRouter (K2a, 2026-07-06) : deplacement pur du bloc Phase B multi-titres.
+func buildTitleRuntime(serverCtx context.Context, cfg *config.AppConfig, titleRegistry *titlePkg.Registry, fieldMappingsRegistry *mappings.Registry) titleRuntime {
 	// Phase B multi-titres : resolver des adapters par titre.
 	// Le resolver est exposé aux services produit qui veulent consommer la
 	// couche canonique.
@@ -609,6 +479,167 @@ func NewRouter(
 		}
 		return notify.LabelsFor(sem, name)
 	})
+
+	return titleRuntime{
+		resolver:   titleResolver,
+		hiRanks:    hiRanks,
+		rankImages: rankImageURLsByTitle,
+		hiCaps:     hiCaps,
+		hiAssetURL: hiAssetURL,
+	}
+}
+
+//nolint:gocyclo // Routeur central : mount de ~80 endpoints avec feature flags
+func NewRouter(
+	serverCtx context.Context,
+	cfg *config.AppConfig,
+	bootRepo port.BootstrapRepository,
+	bootSvc *service.BootstrapService,
+	daemon watcher.DaemonController,
+	tokenProvider auth_platform.TokenProvider,
+	autoSyncScheduler *scheduler.AutoSyncScheduler,
+	backupScheduler *duckdbbackup.Scheduler,
+	groupStore *groupstore.GroupStore,
+) (http.Handler, *ServiceRegistry) {
+	if tokenProvider == nil {
+		tokenProvider = auth_platform.NewMSALProvider()
+	}
+	// Sprint 14 : session store + Sprint 15 : attempt store auth
+	// Le flag Secure du cookie + HSTS sont décidés PAR REQUÊTE selon le schéma réel
+	// (TLS natif ou X-Forwarded-Proto derrière un proxy de confiance), pas figés au
+	// boot : ne plus coupler « secret custom » à « HTTPS » (sinon cookie Secure jeté
+	// sur http://localhost → onboarding bloqué). Override via LEVELUP_COOKIE_SECURE.
+	cookiePolicy := middleware.SecureCookiePolicy{Mode: cfg.CookieSecure, TrustProxy: cfg.TrustProxyHeaders}
+	sessionStore := session_platform.NewStore(cfg.SessionDir, session_platform.DefaultTTL, cfg.SessionSecret)
+	// Purge périodique des sessions expirées (TTL dépassé). Sans ça, data/sessions/
+	// accumule indéfiniment. Purge immédiate au boot (rattrape le backlog), puis
+	// toutes les 6h ; arrêt propre au shutdown via serverCtx.
+	go func() {
+		if n := sessionStore.PurgeExpired(); n > 0 {
+			slog.InfoContext(serverCtx, "session: purge initiale sessions expirées", "removed", n)
+		}
+		ticker := time.NewTicker(6 * time.Hour)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-serverCtx.Done():
+				return
+			case <-ticker.C:
+				if n := sessionStore.PurgeExpired(); n > 0 {
+					slog.InfoContext(serverCtx, "session: purge sessions expirées", "removed", n)
+				}
+			}
+		}
+	}()
+	attemptStore := auth_platform.NewAttemptStore()
+
+	// Sprint 16 : settings store + Sprint 17 : job store
+	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath)
+	jobsPath := titlePkg.NewPathResolver(cfg.RepoRoot).JobsCachePath()
+	jobStore := jobs_platform.NewStore(jobsPath)
+
+	// Auth locale : user store + invite store (mode password).
+	usersPath := filepath.Join(cfg.AuthDir, "users.json")
+	invitesPath := filepath.Join(cfg.AuthDir, "invites.json")
+	users := userstore.NewStore(usersPath)
+	invites := userstore.NewInviteStore(invitesPath)
+
+	r := chi.NewRouter()
+
+	// Middlewares transverses (ordre important)
+	r.Use(chimiddleware.Recoverer)
+	// Capture l'adresse TCP réelle du peer AVANT tout middleware susceptible de
+	// réécrire RemoteAddr : le garde LoopbackOnly des endpoints /_diag s'appuie
+	// dessus pour ne pas être falsifiable via un en-tête X-Real-IP/X-Forwarded-For.
+	r.Use(middleware.PreserveRemoteAddr)
+	// chi RealIP réécrit RemoteAddr depuis les en-têtes d'IP client : on ne
+	// l'active QUE derrière un reverse proxy de confiance qui assainit ces en-têtes
+	// (LEVELUP_TRUST_PROXY_HEADERS=1). Sinon RemoteAddr reste le peer TCP réel, ce
+	// qui empêche un client externe d'usurper une IP (rate-limit, logs d'audit et
+	// LoopbackOnly non falsifiables). Revue P0 2026-06-02 (faille RealIP/LoopbackOnly).
+	if cfg.TrustProxyHeaders {
+		r.Use(chimiddleware.RealIP)
+	}
+	// En-têtes de sécurité HTTP sur toutes les réponses (HSTS seulement en prod/TLS).
+	r.Use(middleware.SecurityHeaders(cfg.TrustProxyHeaders))
+	r.Use(middleware.RequestID)
+	r.Use(middleware.CORS(cfg.CORSOrigins))
+	r.Use(middleware.CSRF(cfg.CORSOrigins))
+	r.Use(middleware.RateLimit(cfg.DemoMode, cfg.RateLimitRPM))
+	r.Use(middleware.SlogLogger)
+	r.Use(chimiddleware.Compress(5))
+	r.Use(middleware.WithSession(sessionStore, cookiePolicy))
+
+	// Sprint 44 : TitleExtractor — injecte title_slug dans le contexte.
+	// MT-16 / day-one 2e titre : registre PARTAGÉ piloté par config (built-in
+	// halo_infinite + titres additionnels découverts en config/titles). Posé par
+	// SetDefaultRegistry au boot ; retombe sur le built-in mono-titre en test/CLI.
+	titleRegistry := titlePkg.DefaultRegistry()
+	r.Use(middleware.TitleExtractor(titleRegistry))
+
+	// Phase A multi-titres : chargement des FieldMappingSet TOML par titre.
+	// Erreur de chargement → log mais ne bloque pas le boot (les autres titres
+	// restent disponibles). L'endpoint /field-mappings n'est exposé que si le
+	// flag MULTI_TITLE_API_ENABLED est activé. Les slugs viennent du registre
+	// (non-archivés) → un 2e titre config charge automatiquement ses mappings.
+	fieldMappingsRegistry := mappings.NewRegistry()
+	multiTitleSlugs := make([]string, 0)
+	for _, td := range titleRegistry.NonArchived() {
+		multiTitleSlugs = append(multiTitleSlugs, td.Slug)
+	}
+	if len(multiTitleSlugs) == 0 {
+		multiTitleSlugs = []string{titlePkg.DefaultSlug}
+	}
+	for _, err := range fieldMappingsRegistry.LoadFromConfigDir(cfg.RepoRoot, multiTitleSlugs, slog.Default()) {
+		slog.Warn("field_mappings_load_warning", "err", err)
+	}
+
+	// PMT-1 / MT-01 : câble le resolver d'hosts d'ingestion title-aware partagé.
+	// Les clients d'ingestion (sync HaloAPIClient, platform/halo HaloProvider,
+	// assets) routent désormais via [endpoints] de constants.toml (fallback const
+	// Halo byte-identique pour halo_infinite).
+	games.SetDefaultEndpointResolver(games.NewMappingsEndpointResolver(fieldMappingsRegistry, titlePkg.DefaultSlug))
+
+	// PMT-5 / MT-06 : câble le resolver d'issues (outcome) title-aware partagé. Les
+	// repos platform/duckdb bâtissent leurs agrégats wins/losses/draws via
+	// [outcomes].raw_code (fallback littéral `outcome = N` byte-identique pour Halo).
+	games.SetDefaultOutcomeResolver(games.NewMappingsOutcomeResolver(fieldMappingsRegistry, titlePkg.DefaultSlug))
+
+	// PMT-12 / MT-21 : validateur boot des mappings TOML requis. Le required-set
+	// est dérivé des capabilities du titre (RequiredTOMLFor). Un titre ACTIF à
+	// moitié configuré fait fail-fast (os.Exit) ; un coming_soon/archived est
+	// loggé mais non bloquant (il n'est de toute façon pas servable, cf. gate
+	// RequireActiveTitle/PMT-8). Skip en DemoMode (tests/démo : repoRoot sans
+	// config TOML, cf. buildTestRouter).
+	if !cfg.DemoMode {
+		for _, td := range titleRegistry.All() {
+			errs := mappings.ValidateRequiredTOML(cfg.RepoRoot, td)
+			if len(errs) == 0 {
+				continue
+			}
+			for _, e := range errs {
+				if m, ok := e.(mappings.MissingRequiredTOML); ok {
+					slog.ErrorContext(serverCtx, "required_toml_missing",
+						"title", td.Slug, "path", m.Path, "required_by", m.RequiredBy)
+				} else {
+					slog.ErrorContext(serverCtx, "required_toml_missing", "title", td.Slug, "err", e)
+				}
+			}
+			if td.IsActive() {
+				slog.ErrorContext(serverCtx, "boot_validation_failed", "title", td.Slug, "errors_count", len(errs))
+				os.Exit(1)
+			}
+		}
+	}
+
+	// Phase B multi-titres : resolver d adapters par titre + catalogues de rang
+	// (extraits en buildTitleRuntime, K2a).
+	tr := buildTitleRuntime(serverCtx, cfg, titleRegistry, fieldMappingsRegistry)
+	titleResolver := tr.resolver
+	hiRanks := tr.hiRanks
+	rankImageURLsByTitle := tr.rankImages
+	hiCaps := tr.hiCaps
+	hiAssetURL := tr.hiAssetURL
 
 	// P8.3 (revue 2026-04-29, ADR 0009) : error_tracker.Middleware retiré.
 	// L'alerting Discord 500 / taux d'erreur n'est pas souhaité (commentaire
