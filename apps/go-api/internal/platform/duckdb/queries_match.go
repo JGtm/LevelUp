@@ -266,6 +266,58 @@ SELECT
 FROM recent rc
 LEFT JOIN perfect p ON p.match_id = rc.match_id`
 
+// Q29HistoryForAvgBulkTpl : variante MULTI-xuid de Q29 (J3). Remplace ~8
+// exécutions séquentielles de GetHistoryForAvg (une par ami du scoreboard) par une
+// seule requête. `%s` = placeholders de la clause IN (répétés 2x : recent + perfect).
+// Sémantique identique à Q29 par xuid : 50 derniers matchs (ROW_NUMBER PARTITION BY
+// xuid au lieu de LIMIT 50) + perfect kills agrégés. La colonne xuid en tête permet
+// de regrouper les lignes par joueur côté Go.
+const Q29HistoryForAvgBulkTpl = `
+WITH recent AS (
+    SELECT
+        p.xuid,
+        p.match_id,
+        COALESCE(p.kills, 0)           AS kills,
+        COALESCE(p.deaths, 0)          AS deaths,
+        COALESCE(p.assists, 0)         AS assists,
+        p.headshot_kills,
+        p.max_killing_spree,
+        COALESCE(r.pair_name, '')      AS pair_name,
+        COALESCE(r.is_firefight, FALSE) AS is_firefight,
+        COALESCE(r.is_ranked, FALSE)    AS is_ranked,
+        COALESCE(r.duration_seconds, 0) AS duration_seconds,
+        ROW_NUMBER() OVER (PARTITION BY p.xuid ORDER BY r.start_time DESC NULLS LAST) AS rn
+    FROM match_participants p
+    JOIN match_registry r ON r.match_id = p.match_id
+    WHERE p.xuid IN (%s)
+),
+recent_capped AS (
+    SELECT * FROM recent WHERE rn <= 50
+),
+perfect AS (
+    SELECT m.xuid, m.match_id, COALESCE(SUM(m.count), 0) AS perfect_kills
+    FROM medals_earned m
+    WHERE m.xuid IN (%s)
+      AND m.match_id IN (SELECT match_id FROM recent_capped)
+      AND /*__PERFECT_KILL_IN__*/
+    GROUP BY m.xuid, m.match_id
+)
+SELECT
+    rc.xuid,
+    rc.kills,
+    rc.deaths,
+    rc.assists,
+    rc.headshot_kills,
+    rc.max_killing_spree,
+    COALESCE(p.perfect_kills, 0) AS perfect_kills,
+    rc.pair_name,
+    rc.is_firefight,
+    rc.is_ranked,
+    rc.duration_seconds
+FROM recent_capped rc
+LEFT JOIN perfect p ON p.match_id = rc.match_id AND p.xuid = rc.xuid
+ORDER BY rc.xuid, rc.rn`
+
 // Q18 : Enrichissement joueur pour un match (player_match_enrichment).
 // Paramètre : ? = match_id.
 // Retourne 3 colonnes : performance_score, is_with_friends, is_excluded.
