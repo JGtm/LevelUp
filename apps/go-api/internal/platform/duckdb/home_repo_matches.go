@@ -84,8 +84,9 @@ func (r *HomeRepo) loadHomeMatchesSharedPart(ctx context.Context) ([]legacymatch
 	defer release()
 
 	// Set perfect-kill résolu pour le titre du joueur (HINF byte-identique).
+	// J7 : 3 params xuid — base (fenêtre 150), perfect (médailles bornées), principale.
 	q := resolvePerfectKillClause(Q26HomeMatchesSharedPart, "medal_name_id", r.titleSlug())
-	rows, err := sharedDB.QueryContext(ctx, q, r.pdb.XUID, r.pdb.XUID)
+	rows, err := sharedDB.QueryContext(ctx, q, r.pdb.XUID, r.pdb.XUID, r.pdb.XUID)
 	if err != nil {
 		return nil, err
 	}
