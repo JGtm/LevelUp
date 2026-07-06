@@ -36,6 +36,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/api"
+	"levelup/go-api/internal/api/wire"
 	"levelup/go-api/internal/assetnames"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
@@ -941,7 +942,7 @@ func main() {
 	//
 	// Le notifierGetter est un getter lazy : il référence reg via une closure afin que le
 	// LiveRefreshFactory puisse lier le SessionNotifier quand il est appelé (après le démarrage).
-	var reg *api.ServiceRegistry
+	var reg *wire.ServiceRegistry
 	notifierGetter := func(xuid string) port.SessionNotifier {
 		if reg != nil {
 			return reg.GetSessionNotifier(xuid)
@@ -1099,7 +1100,7 @@ func main() {
 	// notifications delta). Maintenant les 3 entry points (HTTP, auto-sync,
 	// CLI futur) invoquent le MÊME runner via SyncEngine.WithPostSyncRunner.
 	// Cf. AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21 §4 cause B.
-	if postSyncRunner := api.NewPostSyncRunner(reg); postSyncRunner != nil {
+	if postSyncRunner := wire.NewPostSyncRunner(reg); postSyncRunner != nil {
 		autoScheduler.WithPostSyncRunner(postSyncRunner)
 	}
 
@@ -1123,7 +1124,7 @@ func main() {
 		// defaultRunnerFactory utilise pour câbler la SyncEngine V1.
 		// Garantit que V2 a EXACTEMENT le même runtime que V1 sur le
 		// post-sync (sessions, achievements, progression V2, media scan).
-		v2PostSyncRunner := api.NewPostSyncRunner(reg)
+		v2PostSyncRunner := wire.NewPostSyncRunner(reg)
 		v2Orch := buildSyncV2Orchestrator(SyncV2WiringDeps{
 			Cfg:            cfg,
 			PathResolver:   pr,
@@ -1241,15 +1242,15 @@ func main() {
 	// AVANT que les syncs scheduler/watcher tournent (runtime post-boot). Émet une
 	// notif quand un titre live a des matchs, dans le flux du titre par défaut, hors
 	// pipeline progression/prestige. Même pattern d'injection que cfg.SharedManager.
-	cfg.TitleReadyNotifier = api.BuildTitleReadyNotifier(reg, cfg)
+	cfg.TitleReadyNotifier = wire.BuildTitleReadyNotifier(reg, cfg)
 	// Progression V2 title-agnostic : le Runner live d'un titre (Halo 5+) déclenche le
 	// pipeline streaks/records/milestones/coach via ce hook après un cycle qui insère
 	// des matchs (deps de base, SANS le PrestigeBundle mono-titre). Même pattern d'injection.
-	cfg.ProgressionAfterSync = api.BuildProgressionAfterSyncHook(reg, cfg)
+	cfg.ProgressionAfterSync = wire.BuildProgressionAfterSyncHook(reg, cfg)
 
 	// app_release : émission asynchrone d'une notification in-app par joueur si la
 	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot.
-	go api.EmitAppReleaseForAllPlayers(context.Background(), cfg, reg, cfg.AppVersion)
+	go wire.EmitAppReleaseForAllPlayers(context.Background(), cfg, reg, cfg.AppVersion)
 
 	srv := &http.Server{
 		Addr:         cfg.ServerAddr(),

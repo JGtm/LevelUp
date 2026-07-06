@@ -1397,8 +1397,24 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
   STRUCTURELLEMENT non-subdivisable proprement — constantes/helpers tissés sur 3+ niveaux de
   cascade et des centaines de références. Les scissions K3 ne sont PAS un travail de session mais
   un refactor pluri-semaines à requalification de masse. Revert propre, branche verte.
-- [!] K3d — ARCHI 20 : racine api/ (39 fichiers) → api/wire/ pour la DI ; cible < 10
+- [x] K3d — ARCHI 20 : racine api/ (39 fichiers) → api/wire/ pour la DI ; cible < 10
   fichiers racine (le post-sync est déjà parti en K1a).
+  **FAIT (2026-07-06) ✅** : 36 fichiers (registry* + bundles coach/prestige + og_inject +
+  notifications + post_sync* + prestige_lazy/squad_profile + progression_backfill +
+  server_admin_monitoring + server_titles_additional) → `internal/api/wire` (package `wire`, 58
+  fichiers avec tests). Le cœur DI est SELF-CONTAINED (aucune arête wire→api). **Racine api/ : 39
+  → 4 fichiers prod** (server.go, huma_setup, huma_routes, commendation_handler) — largement sous
+  la cible < 10. Recette exécutée : (1) `wire.ServiceRegistry`/bundles/PlayerResolver requalifiés
+  chez les 4 appelants api-root + cmd/server/main.go ; (2) 4 fonctions DI exportées
+  (BuildPostSyncDeltaHook, NewSquadPerfProfileProvider, MountAdminMonitoringRoutes,
+  RegisterAdditionalTitles) ; (3) `server.go`/NewRouter RESTE en api et accède à ServiceRegistry
+  via 3 accesseurs exportés ajoutés (`Resolve()`, `HiCapabilities()`, `ServeIndexWithOG()` —
+  `registry_accessors.go`) ; (4) ~15 fichiers de test white-box déplacés dans wire (dé-qualif
+  `wire.` pour éviter l'auto-import), `worktreeRoot` +1 niveau, `TestMain` de câblage du provider
+  migrations title-owned + classifier LUSR répliqué (sinon match_registry absent). Gates : `go
+  build/vet ./...` 0 ; `go test -tags=integration -p 1` api + wire VERTS (incl. progression e2e) ;
+  archlint OK. **Bonus** : subsume largement K1a-cœur (post_sync + CoachAdvisorBundle/PrestigeBundle
+  relogés hors racine api).
   **PROBE FAIT (2026-07-06), non livré — recette précise établie, revert propre à e7aea7e63** :
   build-probe complet réalisé. Le CŒUR DI est PROPREMENT extractible : les 20 fichiers
   `registry*.go` (type `ServiceRegistry` + 94 méthodes) + 3 fichiers bundle (coach_advisor_setup,

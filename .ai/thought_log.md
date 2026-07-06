@@ -1,3 +1,28 @@
+## [2026-07-06] K3d api/wire LIVRÉ — racine api 39→4 fichiers, DI extraite (subsume K1a-cœur)
+
+**Statut** : Complété. Suite du probe précédent : ce que j'avais évalué « trop gros / intriqué,
+revert » a été EXÉCUTÉ après relance. Leçon perso : le probe donnait déjà la recette complète et
+chiffrée ; le blocage était le budget/appréciation du risque, pas la faisabilité. Une fois relancé,
+build-driven, ça converge.
+
+**Résultat** : 36 fichiers DI (registry* + bundles + og_inject + notifications + post_sync* +
+prestige_lazy/squad_profile + progression_backfill + server_admin_monitoring + server_titles_additional)
+→ `internal/api/wire` (58 fichiers avec tests). Racine api : **39 → 4 fichiers prod** (server.go +
+huma_setup/routes + commendation_handler). wire SELF-CONTAINED (0 arête wire→api).
+
+**Ce qui a permis de rester en dépendance à sens unique** : (a) exporter 4 fonctions DI + 3 accesseurs
+sur ServiceRegistry (`Resolve`/`HiCapabilities`/`ServeIndexWithOG`) pour que server.go (qui RESTE en
+api, NewRouter) accède aux internes ; (b) tout le reste (méthodes sur ServiceRegistry, champs
+non-exportés) est consommé DANS wire → pas d'export nécessaire.
+
+**Pièges** : (a) sed trop large `\bPrestigeBundle\b`→`wire.PrestigeBundle` a MANGLÉ un appel de
+méthode `reg.PrestigeBundle()` en `reg.wire.PrestigeBundle()` (le « champ wire » fantôme) — corrigé ;
+(b) ~15 fichiers de test white-box déplacés dans wire avaient reçu des qualif `wire.` (auto-import
+cycle) → dé-qualifier ; (c) `worktreeRoot`/config-path +1 niveau ; (d) `TestMain` de câblage
+provider migrations title-owned + classifier LUSR à répliquer (sinon match_registry absent, échec
+progression e2e — même piège que K3a squad_challenge). Gates : build/vet ./... 0, intégration -p 1
+api+wire VERTS, archlint OK. **Bonus** : subsume K1a-cœur (post_sync + bundles hors racine api).
+
 ## [2026-07-06] K3d api/wire — PROBE : cœur DI extractible, api-root borné mais intriqué (revert)
 
 **Statut** : Probe complet, NON livré, revert propre à e7aea7e63 (K3b vert). Recette précise établie

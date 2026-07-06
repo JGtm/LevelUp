@@ -2,7 +2,7 @@
 // Sprint 4 : CORS, rate-limit, slog logging, mode démo.
 // Sprint 16 : Settings, Setup.
 // Sprint 17 : Jobs longs persistants, sync initiale.
-// Sprint 37 : Architecture handlers & injection DI via ServiceRegistry.
+// Sprint 37 : Architecture handlers & injection DI via wire.ServiceRegistry.
 // ContractValidate (dev) retiré L4 (2026-07-05 : Huma dérive le contrat). ErrorTracker retiré P8.3 (ADR 0009).
 package api
 
@@ -22,6 +22,7 @@ import (
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/api/middleware"
+	"levelup/go-api/internal/api/wire"
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/authz"
@@ -128,7 +129,7 @@ func metadataDBPathForTitle(cfg *config.AppConfig, titleSlug string) string {
 // Construction par injection de dépendances — pas d'état global.
 // daemon peut être nil si le watcher n'est pas actif au démarrage.
 // tokenProvider peut être nil : MSALProvider est utilisé par défaut.
-// Retourne aussi le *ServiceRegistry pour permettre au démon watcher de lier le TTL dynamique.
+// Retourne aussi le *wire.ServiceRegistry pour permettre au démon watcher de lier le TTL dynamique.
 //
 // conditionnels (MULTI_TITLE_API_ENABLED, PRESTIGE_ENABLED, etc.). Complexité
 // reflète la surface API, pas un défaut de conception.
@@ -564,7 +565,7 @@ func NewRouter(
 	autoSyncScheduler *scheduler.AutoSyncScheduler,
 	backupScheduler *duckdbbackup.Scheduler,
 	groupStore *groupstore.GroupStore,
-) (http.Handler, *ServiceRegistry) {
+) (http.Handler, *wire.ServiceRegistry) {
 	if tokenProvider == nil {
 		tokenProvider = auth_platform.NewMSALProvider()
 	}
@@ -668,10 +669,10 @@ func NewRouter(
 	// L'alerting Discord 500 / taux d'erreur n'est pas souhaité (commentaire
 	// explicite en code). Code mort supprimé pour éliminer la confusion.
 
-	// Sprint 37 : ServiceRegistry — câblage par injection de dépendances.
+	// Sprint 37 : wire.ServiceRegistry — câblage par injection de dépendances.
 	// titleResolver est attaché pour que les services puissent résoudre les
 	// SemanticAdapter (libellés rangs etc.) selon le titre courant.
-	reg := NewServiceRegistry(cfg, tokenProvider).
+	reg := wire.NewServiceRegistry(cfg, tokenProvider).
 		WithTitleResolver(titleResolver).
 		WithCapabilities(hiCaps).
 		WithSettingsStore(settingsStore).
@@ -679,13 +680,13 @@ func NewRouter(
 		WithRankImageURLsByTitle(rankImageURLsByTitle)
 
 	// MT-09 (PMT-12) : factory player-scoped de Halo enregistrée par SLUG (clé de
-	// map, pas de comparaison littérale). Le builder lit reg.hiCapabilities à la
+	// map, pas de comparaison littérale). Le builder lit reg.HiCapabilities() à la
 	// volée (posé ci-dessus). Un 2e titre enregistrerait ICI son propre builder,
 	// sans toucher aux factories dataAdapterForPDB/TitleDataAdapter.
 	reg.RegisterPlayerDataBuilder(titlePkg.DefaultSlug, func(pdb *platform_duckdb.PlayerDB) games.TitleDataAdapter {
 		a := halo_games.NewDataAdapter(platform_duckdb.NewCareerRepo(pdb), slog.Default())
-		if reg.hiCapabilities != nil {
-			a = a.WithCapabilities(reg.hiCapabilities)
+		if reg.HiCapabilities() != nil {
+			a = a.WithCapabilities(reg.HiCapabilities())
 		}
 		// HIGH-B : sources Explorer canonical-typées (profil de combat récent +
 		// agrégat sample stats). Le même ExplorerRepo satisfait les 2.
@@ -703,20 +704,20 @@ func NewRouter(
 	// ACTIFS (≠ défaut), pilotée par le registre. NO-OP tant qu'aucun 2e titre
 	// n'est actif → Halo Infinite reste l'unique chemin (byte-identique). Cf.
 	// server_titles_additional.go (gating registry-driven, jamais par slug).
-	registerAdditionalTitles(titleRegistry, titleResolver, reg, fieldMappingsRegistry)
+	wire.RegisterAdditionalTitles(titleRegistry, titleResolver, reg, fieldMappingsRegistry)
 
 	// Module Prestige — initialisation du bundle (best-effort, désactivable via flag).
 	// Charge tuning.toml + templates + preset arcs Halo, ouvre shared_social et metadata.
 	// Si le flag PRESTIGE_ENABLED est désactivé, les routes ne sont pas montées et
 	// le sync hook est no-op — mais le boot du bundle reste utile pour valider la
 	// config au démarrage.
-	var prestigeBundle *PrestigeBundle
-	if pb, err := NewPrestigeBundle(cfg.RepoRoot, reg.resolve, cfg.PrestigeEnabled); err != nil {
+	var prestigeBundle *wire.PrestigeBundle
+	if pb, err := wire.NewPrestigeBundle(cfg.RepoRoot, reg.Resolve(), cfg.PrestigeEnabled); err != nil {
 		slog.Warn("prestige_bundle_init_failed", "err", err)
 	} else {
-		prestigeBundle = pb.WithSquadProfile(newSquadPerfProfileProvider(
+		prestigeBundle = pb.WithSquadProfile(wire.NewSquadPerfProfileProvider(
 			func() ([]domain.PlayerSummary, error) { return cfg.LoadPlayers() },
-			reg.resolve,
+			reg.Resolve(),
 			titlePkg.DefaultSlug,
 		))
 		// Phase 2 plan stabilisation 2026-05-22 : enregistrer le bundle sur
@@ -729,7 +730,7 @@ func NewRouter(
 	// synthèse une fois au boot. Pas de DB-handle à fermer ; toujours non-nil
 	// (fallback grammaire vide si TOML absent, synthèse désactivée mais
 	// matching catalogue reste fonctionnel).
-	reg.WithCoachAdvisorBundle(NewCoachAdvisorBundle(cfg.RepoRoot))
+	reg.WithCoachAdvisorBundle(wire.NewCoachAdvisorBundle(cfg.RepoRoot))
 
 	// MultiUserTokenStore (ADR 0023) — source unique des tokens auth (RT + MSAL).
 	// refreshTokensFromDB le lit AVANT de tomber sur les fallbacks legacy
@@ -773,7 +774,7 @@ func NewRouter(
 
 	// AssetHandler — couche d'abstraction unifiée (local-first → API-fallback).
 	// Le resolver est créé ici pour accéder à reg.AnyPlayerTokens.
-	// Il est aussi passé au ServiceRegistry pour que les HaloProviders délèguent
+	// Il est aussi passé au wire.ServiceRegistry pour que les HaloProviders délèguent
 	// le cache/fetch des définitions BP/challenges au resolver (P4/P5).
 	assetCfg := assets.AssetConfig{
 		CacheRootDir:  titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir(),
@@ -1223,7 +1224,7 @@ func NewRouter(
 			// Dashboard monitoring admin : overview/scheduler/convergence/jobs
 			// + actions correctives (data-health run, cycle auto-sync forcé).
 			// Cf. server_admin_monitoring.go.
-			mountAdminMonitoringRoutes(r, reg, autoSyncScheduler, jobStore, serverCtx)
+			wire.MountAdminMonitoringRoutes(r, reg, autoSyncScheduler, jobStore, serverCtx)
 			// Gestion des titres (PMT-14 volet A) : liste + détail (Status lifecycle
 			// MT-22 enfin lu/exposé, capabilities + feature-matrix réutilisés de
 			// 1.7a/b sans recalcul). Read-only, admin-gated, NoStore (reflète l'état
@@ -1290,7 +1291,7 @@ func NewRouter(
 		// Branche la factory d'émetteurs de notifications (match_synced / sync_error).
 		syncH = syncH.WithNotificationsEmitterFactory(reg.NotificationsEmitter)
 		// Branche le hook delta-detection post-sync (season_pass_level / objective_completed / challenge_completed).
-		syncH = syncH.WithPostSyncDeltaHook(buildPostSyncDeltaHook(reg))
+		syncH = syncH.WithPostSyncDeltaHook(wire.BuildPostSyncDeltaHook(reg))
 		// Dédup cross-source (unification 2026-06-02) : le gate provient du
 		// Coordinator partagé du watcher, exposé via le scheduler (main.go a injecté
 		// autoScheduler.SyncGate). Si le watcher est désactivé, Gate() renvoie le
@@ -1386,7 +1387,7 @@ func NewRouter(
 			handlers.NewTitleSyncHandler(profileService).Mount(r)
 		})
 
-		// Endpoints P1 : pages par joueur (Sprint 37 — DI via ServiceRegistry)
+		// Endpoints P1 : pages par joueur (Sprint 37 — DI via wire.ServiceRegistry)
 		r.Route("/players/{player_slug}", func(r chi.Router) {
 			// MT-22 (PMT-8) : gate du cycle de vie du titre. Un titre courant
 			// coming_soon/archived/inconnu → 503 title_unavailable (machine-readable)
@@ -1545,7 +1546,7 @@ func NewRouter(
 			// Couche progression V2 (Ascension) — streaks / records / milestones.
 			// Cf. .ai/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1.
 			progressionResolve := func(ctx context.Context, slug string) (*platform_duckdb.PlayerDB, error) {
-				return reg.resolve(ctx, slug)
+				return reg.Resolve()(ctx, slug)
 			}
 			progressionH := handlers.NewProgressionHandler(progressionResolve, titlePkg.DefaultSlug).
 				WithDemoMode(cfg.DemoMode)
@@ -1554,7 +1555,7 @@ func NewRouter(
 			// Coach Advisor — proposals coach proactives (ADR 0020 Phase 9).
 			// Resolver compose PlayerDB + bundles → coach_advisor.Service.
 			coachResolve := func(ctx context.Context, slug string) (coach_advisor.Service, string, error) {
-				pdb, err := reg.resolve(ctx, slug)
+				pdb, err := reg.Resolve()(ctx, slug)
 				if err != nil {
 					return nil, "", err
 				}
@@ -1617,7 +1618,7 @@ func NewRouter(
 			// Module Prestige — routes derrière feature flag PRESTIGE_ENABLED.
 			// Le bundle a été initialisé au boot ; si nil ou flag off, routes non montées.
 			if prestigeBundle != nil && cfg.PrestigeEnabled {
-				lazy := NewLazyPrestigeService(prestigeBundle, nil, cfg.DemoMode)
+				lazy := wire.NewLazyPrestigeService(prestigeBundle, nil, cfg.DemoMode)
 				appPlayers := func(context.Context) ([]domain.PlayerSummary, error) {
 					return cfg.LoadPlayers()
 				}
@@ -1701,7 +1702,7 @@ func NewRouter(
 				// Route client-side / dossier / fichier absent → index.html, avec
 				// injection des balises Open Graph (apercus de liens sociaux).
 				// no-cache géré dans serveIndexWithOG.
-				reg.serveIndexWithOG(w, req, indexPath)
+				reg.ServeIndexWithOG(w, req, indexPath)
 			})
 			slog.InfoContext(serverCtx, "SPA: front React servi depuis le dist", "dir", dist)
 		} else {
