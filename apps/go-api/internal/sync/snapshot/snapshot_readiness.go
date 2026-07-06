@@ -1,4 +1,6 @@
-package sync
+package snapshot
+
+import "levelup/go-api/internal/sync/matchflags"
 
 // snapshot_readiness.go — prédicat de complétude « snapshot-ready » (Phase 2).
 //
@@ -29,7 +31,7 @@ package sync
 const (
 	snapReasonLUSRIneligible = "lusr_ineligible" // ranked / firefight / FFA / non-2-team
 	snapReasonLUSRSkipped    = "lusr_skipped"    // 2-team éligible mais pas de row (imbalance/DNF/group-hold)
-	snapReasonWeaponsAbsent  = "weapons_absent"  // film 404/expiré (MBitWeaponKillsNoFilm) — terminal
+	snapReasonWeaponsAbsent  = "weapons_absent"  // film 404/expiré (matchflags.MBitWeaponKillsNoFilm) — terminal
 	snapReasonForced         = "forced"          // pose forcée : grâce dépassée malgré dérivation(s) bloquée(s)
 
 	snapReasonBlockedEvents    = "blocked_events"
@@ -47,7 +49,7 @@ const (
 type matchReadinessFacts struct {
 	// shared.match_registry
 	eventsLoaded      bool  // events_loaded = TRUE (chargé OU no-film définitif)
-	backfillCompleted int64 // match_registry.backfill_completed (bits MBitWeaponKills/NoFilm/PVEStats)
+	backfillCompleted int64 // match_registry.backfill_completed (bits matchflags.MBitWeaponKills/NoFilm/PVEStats)
 	isRanked          bool
 	isFirefight       bool
 	durationSeconds   int
@@ -96,9 +98,9 @@ func isMatchSnapshotReady(f matchReadinessFacts, c titleReadinessCaps, agedOut b
 	// Weapon-kills : seulement si le titre les produit (CapWeaponKills).
 	if c.hasWeaponKills {
 		switch {
-		case f.backfillCompleted&MBitWeaponKills != 0:
+		case f.backfillCompleted&matchflags.MBitWeaponKills != 0:
 			// calculé → rien
-		case f.backfillCompleted&MBitWeaponKillsNoFilm != 0:
+		case f.backfillCompleted&matchflags.MBitWeaponKillsNoFilm != 0:
 			partial = append(partial, snapReasonWeaponsAbsent) // terminal-absent
 		default:
 			blocked = append(blocked, snapReasonBlockedWeapons)
@@ -120,7 +122,7 @@ func isMatchSnapshotReady(f matchReadinessFacts, c titleReadinessCaps, agedOut b
 	}
 
 	// PvE : seulement pour les matchs Firefight d'un titre qui les supporte.
-	if f.isFirefight && c.hasFirefight && f.backfillCompleted&MBitPVEStats == 0 {
+	if f.isFirefight && c.hasFirefight && f.backfillCompleted&matchflags.MBitPVEStats == 0 {
 		blocked = append(blocked, snapReasonBlockedPVE)
 	}
 

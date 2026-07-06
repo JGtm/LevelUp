@@ -1,8 +1,10 @@
-package sync
+package snapshot
 
 import (
 	"slices"
 	"testing"
+
+	"levelup/go-api/internal/sync/matchflags"
 )
 
 // fullInfinite : un match Infinite COMPLET (toutes dérivations terminales,
@@ -10,7 +12,7 @@ import (
 func fullInfiniteFacts() matchReadinessFacts {
 	return matchReadinessFacts{
 		eventsLoaded:      true,
-		backfillCompleted: MBitWeaponKills,
+		backfillCompleted: matchflags.MBitWeaponKills,
 		isRanked:          false,
 		isFirefight:       false,
 		durationSeconds:   600,
@@ -35,7 +37,7 @@ func TestIsMatchSnapshotReady(t *testing.T) {
 
 	t.Run("weapon film perdu → ready [weapons_absent]", func(t *testing.T) {
 		f := fullInfiniteFacts()
-		f.backfillCompleted = MBitWeaponKillsNoFilm
+		f.backfillCompleted = matchflags.MBitWeaponKillsNoFilm
 		ready, reasons := isMatchSnapshotReady(f, infiniteCaps, false)
 		if !ready || !slices.Contains(reasons, snapReasonWeaponsAbsent) {
 			t.Fatalf("ready=%v reasons=%v, attendu ready+weapons_absent", ready, reasons)
@@ -97,20 +99,20 @@ func TestIsMatchSnapshotReady(t *testing.T) {
 		}
 	})
 
-	t.Run("Firefight sans MBitPVEStats dans la grâce → NON ready", func(t *testing.T) {
+	t.Run("Firefight sans matchflags.MBitPVEStats dans la grâce → NON ready", func(t *testing.T) {
 		f := fullInfiniteFacts()
 		f.isFirefight = true
-		f.backfillCompleted = MBitWeaponKills // pas de MBitPVEStats
+		f.backfillCompleted = matchflags.MBitWeaponKills // pas de matchflags.MBitPVEStats
 		ready, _ := isMatchSnapshotReady(f, infiniteCaps, false)
 		if ready {
 			t.Fatal("Firefight sans stats PvE doit être NON ready (dans la grâce)")
 		}
 	})
 
-	t.Run("Firefight avec MBitPVEStats → ready [lusr_ineligible] (firefight = LUSR inéligible)", func(t *testing.T) {
+	t.Run("Firefight avec matchflags.MBitPVEStats → ready [lusr_ineligible] (firefight = LUSR inéligible)", func(t *testing.T) {
 		f := fullInfiniteFacts()
 		f.isFirefight = true
-		f.backfillCompleted = MBitWeaponKills | MBitPVEStats
+		f.backfillCompleted = matchflags.MBitWeaponKills | matchflags.MBitPVEStats
 		ready, reasons := isMatchSnapshotReady(f, infiniteCaps, false)
 		if !ready || !slices.Contains(reasons, snapReasonLUSRIneligible) {
 			t.Fatalf("ready=%v reasons=%v, attendu ready+lusr_ineligible", ready, reasons)

@@ -18,7 +18,8 @@ import (
 
 // syncRootFileBaseline : plafond GELÉ de fichiers .go (hors _test.go) à la racine de
 // internal/sync/. Décroît uniquement (K3c / ADR 0027).
-const syncRootFileBaseline = 112
+// 112 → 106 (2026-07-06) : cluster snapshot (6 fichiers) extrait vers internal/sync/snapshot.
+const syncRootFileBaseline = 106
 
 func TestSyncRootPackageFrozen(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)

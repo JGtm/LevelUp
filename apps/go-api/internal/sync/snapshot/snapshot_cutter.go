@@ -1,4 +1,4 @@
-package sync
+package snapshot
 
 // snapshot_cutter.go — pont entre le cycle V2 (Phase 6bis) et le producteur ops.
 //

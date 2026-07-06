@@ -1,6 +1,6 @@
 //go:build integration
 
-package sync
+package snapshot
 
 import (
 	"context"

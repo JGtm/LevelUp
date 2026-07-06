@@ -1,6 +1,6 @@
 //go:build integration
 
-package sync
+package snapshot
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/sync/matchflags"
 )
 
 func openSnapMemDB(t *testing.T) *sql.DB {
@@ -73,7 +74,7 @@ func TestEvaluateSnapshotReadiness_integration(t *testing.T) {
 	snapExec(t, shared, `CREATE TABLE match_participants (match_id VARCHAR, xuid VARCHAR, team_id INTEGER)`)
 
 	recent := time.Now().Add(-time.Hour) // dans la fenêtre de grâce
-	wk := int64(MBitWeaponKills)
+	wk := int64(matchflags.MBitWeaponKills)
 	seedReg := func(matchID string) {
 		snapExec(t, shared, `INSERT INTO match_registry VALUES (?, ?, NULL, TRUE, ?, FALSE, FALSE, 600)`,
 			matchID, recent, wk)
@@ -93,7 +94,7 @@ func TestEvaluateSnapshotReadiness_integration(t *testing.T) {
 	seedPart("m_ffa", 3)
 
 	// ── 1re passe.
-	n, err := evaluateSnapshotReadiness(ctx, player, shared, "owner", "halo_infinite")
+	n, err := EvaluateSnapshotReadiness(ctx, player, shared, "owner", "halo_infinite")
 	if err != nil {
 		t.Fatalf("evaluate: %v", err)
 	}
@@ -123,7 +124,7 @@ func TestEvaluateSnapshotReadiness_integration(t *testing.T) {
 	}
 
 	// ── 2e passe : idempotent (complete & ffa déjà ready, transient toujours bloqué).
-	n2, err := evaluateSnapshotReadiness(ctx, player, shared, "owner", "halo_infinite")
+	n2, err := EvaluateSnapshotReadiness(ctx, player, shared, "owner", "halo_infinite")
 	if err != nil {
 		t.Fatalf("evaluate #2: %v", err)
 	}
