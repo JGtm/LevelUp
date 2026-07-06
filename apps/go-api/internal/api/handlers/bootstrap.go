@@ -70,9 +70,11 @@ func (h *PlayersHandler) Mount(r chi.Router) {
 // même corps JSON que l'ancien writeJSON(resp)).
 type playersOutput struct{ Body *domain.PlayersListResponse }
 
-// handlePlayers retourne la liste des joueurs disponibles.
+// handlePlayers retourne la liste des joueurs disponibles, restreinte aux profils
+// possédés par l'utilisateur courant (S4, lot S — même filtrage que /bootstrap).
 func (h *PlayersHandler) handlePlayers(ctx context.Context, _ *struct{}) (*playersOutput, error) {
-	resp, err := h.svc.BuildPlayersList(ctx)
+	sess := middleware.GetSession(ctx)
+	resp, err := h.svc.BuildPlayersList(ctx, sess)
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "players_error", err.Error())
 	}

@@ -116,30 +116,50 @@ Effort total estimé : ~23-30 jours-homme. Chaque lot est livrable indépendamme
 Objectif : plus aucun endpoint mutant ou révélateur d'identité accessible sans auth.
 Done : chaque route sous /api/v1 a une garde documentée ; tests httptest 401/403 neufs verts.
 
-- [ ] S1 — QUALITE B1 : envelopper `settingsHandler.Mount` sous `RequireAuth`+`RequireAdmin`
-  (`server.go:1271`, `handlers/settings.go:103-114`). Test httptest : PATCH /settings
-  anonyme → 401 ; les 4 POST associés idem.
-- [ ] S2 — QUALITE B2 : déplacer `NewProgressionBackfillHandler` sous le groupe `/admin`
-  (RequireAuth+RequireAdmin) (`server.go:972`). Test 401 anonyme.
-- [ ] S3 — QUALITE « cause racine » : revue EXHAUSTIVE de tous les `Mount`/`r.Get`/`r.Post`
-  montés sous /api/v1 hors groupe protégé. Produire un tableau route→garde (dans le message
-  de commit ou un doc court). Vérifier que le no-op demo/single-user est préservé.
-- [ ] S4 — QUALITE M2 : `GET /players` filtré par `filterOwnedPlayers` (comme /bootstrap)
-  ou gated RequireAuth (`bootstrap_service.go:346`, `server.go:947`).
-- [ ] S5 — QUALITE M3 : `/_diag/auto-sync/probe` → ajouter `RequireAdmin`, retirer
-  `refresh_token_head`/`tail` (garder le sha) (`handlers/admin_auto_sync.go:106-146`).
-- [ ] S6 — QUALITE M4 : diagnostics par joueur (`HealthHome`, `DiagCSR`, `DiagProgression`,
-  `server.go:953-965`) → RequireAuth + ownership.
-- [ ] S7 — QUALITE A1-m1 : `RequirePlayerOwnership` — slug inconnu avec session existante →
-  403 au lieu de fail-open (`require_player_ownership.go:56-60`) + test.
-- [ ] S8 — QUALITE A4-m2 : `/setup/players` & `/setup/smoke-test` → RequireAuth par
-  cohérence (gardes internes conservées) (`server.go:1280`).
-- [ ] S9 — QUALITE mineurs tokens : `scripts/warm_bp_assets/main.go:176` → logger « OK »
-  sans préfixe de token ; `cmd/get-token` → commentaire d'avertissement (sortie à ne
-  jamais capturer) ou build tag dev.
+- [x] S1 — QUALITE B1 : `settingsHandler.Mount` enveloppé sous `RequireAuth`+`RequireAdmin`
+  (`server_apiv1.go:462` — routes déplacées en K2a). Test httptest `TestLotS_GuardedRoutes`
+  (PATCH /settings + 4 POST → 401).
+- [x] S2 — QUALITE B2 : `NewProgressionBackfillHandler` (`POST /_admin/progression/backfill/{slug}`)
+  sous `RequireAuth`+`RequireAdmin` (`server_apiv1.go:155`, via `r.With`, NoStore conservé —
+  URL inchangée : « sous /admin » = garde admin, pas préfixe). Test 401.
+- [x] S3 — QUALITE « cause racine » : revue EXHAUSTIVE livrée dans
+  `.ai/LOT_S_ROUTE_GUARD_TABLE.md` (tableau route→garde, 5 catégories). **Découverte traitée**
+  (dans le périmètre de l'objectif du lot) : `POST /import/openspartan` (`server_apiv1.go:555`)
+  était sur `r` nu hors du groupe admin (seul `!DemoMode`) → `RequireAuth` ajouté (cohérent S8).
+  No-op démo/single-user vérifié (toutes les gardes prennent `cfg.DemoMode`).
+- [x] S4 — QUALITE M2 : `GET /players` filtré par `filterOwnedPlayers` (signature
+  `BuildPlayersList(ctx, sess)` — port + service + handler + 3 tests màj). Test
+  `TestBuildPlayersList_FilteredByOwnership`.
+- [x] S5 — QUALITE M3 : `/_diag/auto-sync` → `RequireAuth`+`RequireAdmin` ajoutés sur
+  LoopbackOnly (`server_apiv1.go:437`) ; `refresh_token_head`/`tail` retirés du probe +
+  `fingerprintToken` réduit au sha256 (`handlers/admin_auto_sync.go`).
+- [x] S6 — QUALITE M4 : `HealthHome` (`/healthz/home`) → `RequireAuth` ; `DiagCSR` +
+  `DiagProgression` (`/{player_slug}`) → `RequireAuth`+ownership (`server_apiv1.go:129-146`,
+  via `r.With` + `ownershipMW` centralisé). Tests 401.
+- [x] S7 — QUALITE A1-m1 : `RequirePlayerOwnership` — slug inconnu → fail-closed (admin passe
+  → 404 handler ; non-propriétaire → 403), `require_player_ownership.go` + tests
+  (`_UnknownSlug_NonAdmin_403`, `_UnknownSlug_Admin_PassThrough`).
+- [x] S8 — QUALITE A4-m2 : `/setup/players` & `/setup/smoke-test` sous `RequireAuth`
+  (`server_apiv1.go:478`, gardes internes conservées). Tests 401.
+- [x] S9 — QUALITE mineurs tokens : `scripts/warm_bp_assets/main.go` logge « OK » sans préfixe
+  (helper `safePrefix` mort supprimé) ; `cmd/get-token` → `//go:build dev` + avertissement
+  sécurité (exclu de `go build ./...`/prod).
 
-Gate S : `go build ./... && go test ./internal/api/...` + les nouveaux tests httptest ;
-grep de contrôle : aucun `Mount(r)` nu restant sans justification dans le tableau S3.
+Gate S : `go build ./...` (EXIT 0) + `go test ./internal/api/...` (ok) + suite complète
+`go test ./...` (EXIT 0) verts. Tests httptest neufs : `TestLotS_GuardedRoutes_AnonymousUnauthorized`
+(11 routes), `TestBuildPlayersList_FilteredByOwnership`, `TestRequirePlayerOwnership_UnknownSlug_*`.
+Tableau route→garde S3 = `.ai/LOT_S_ROUTE_GUARD_TABLE.md`.
+
+> Journal S [2026-07-06] — Complété. Les refs de ligne du plan (`server.go:12xx`) étaient
+> périmées (routes déplacées en `server_apiv1.go` par K2a/K3d) ; re-ciblées sur pièces.
+> `ownershipMW` centralisé (règle ≤2 copies : 2 usages inline 558/582 → 1 var + 4 usages).
+> **Fallout lot K réparé au passage** (bloquait `go test ./...`) : les ratchets ADR 0023
+> (`platform/auth/sentinel_test.go`) et ADR 0021 (`platform/duckdb/no_attach_on_social_test.go`)
+> référençaient les chemins pré-K (`internal/api/registry_auth.go`, `internal/api/*.go`) alors
+> que K a déplacé ces fichiers en `internal/api/wire/` + split `server.go`→`server_apiv1.go`.
+> Whitelists re-cheminées (invariants inchangés, mêmes fichiers sanctionnés). Découvertes
+> résiduelles (hors périmètre, à traiter Phase 5) : entrées mortes `internal/api/registry.go`
+> dans les allowlists auth (fichier disparu).
 
 ### LOT A — Bugs utilisateur actifs, intégrité LUSR, docs de flags, XSS
 

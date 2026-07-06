@@ -139,3 +139,50 @@ func TestBootstrapBuild_AvailablePlayersFilteredByOwnership(t *testing.T) {
 		t.Fatalf("current_player attendu alice, obtenu %#v", resp.CurrentPlayer)
 	}
 }
+
+// S4 (lot S) : GET /players (BuildPlayersList) restreint la liste aux profils
+// possédés — auparavant il énumérait TOUS les joueurs sans tenir compte de la
+// session (contournait le filtrage de /bootstrap).
+func TestBuildPlayersList_FilteredByOwnership(t *testing.T) {
+	dir := t.TempDir()
+	profilesPath := filepath.Join(dir, "db_profiles.json")
+	profiles := `{
+      "version": "3.0",
+      "profiles": {
+        "halo_infinite": {
+          "alice": {"db_path": "a.duckdb", "xuid": "222", "waypoint_player": "alice"},
+          "bob": {"db_path": "b.duckdb", "xuid": "999", "waypoint_player": "bob"}
+        }
+      }
+    }`
+	if err := os.WriteFile(profilesPath, []byte(profiles), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &config.AppConfig{AuthMode: "password", DBProfilesPath: profilesPath}
+	svc := NewBootstrapService(cfg, &mockBootRepo{}).
+		WithUserLookup(fakeBootstrapLookup{
+			byName: map[string]*domain.User{
+				"alice": {Username: "alice", Role: domain.RoleUser, XUID: "222"},
+				"boss":  {Username: "boss", Role: domain.RoleAdmin, XUID: "111"},
+			},
+		})
+
+	// alice (non-admin) ne voit que son propre profil.
+	resp, err := svc.BuildPlayersList(context.Background(), &domain.SessionData{Username: strPtr("alice")})
+	if err != nil {
+		t.Fatalf("BuildPlayersList(alice): %v", err)
+	}
+	if got := slugsOf(resp.Items); len(got) != 1 || got[0] != "alice" {
+		t.Fatalf("S4 : /players non filtré — attendu [alice], obtenu %v", got)
+	}
+
+	// admin voit tout le parc.
+	respAdmin, err := svc.BuildPlayersList(context.Background(), &domain.SessionData{Username: strPtr("boss")})
+	if err != nil {
+		t.Fatalf("BuildPlayersList(boss): %v", err)
+	}
+	if got := slugsOf(respAdmin.Items); len(got) != 2 {
+		t.Fatalf("S4 : admin doit voir 2 joueurs, obtenu %v", got)
+	}
+}

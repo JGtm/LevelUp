@@ -112,12 +112,13 @@ type TokenProbeResult struct {
 	// Voir pool.CredentialSource.Source.
 	Source string `json:"source,omitempty"`
 
-	HasMSALCache       bool   `json:"has_msal_cache"`
-	HasRefreshToken    bool   `json:"has_refresh_token"`
-	RefreshTokenLen    int    `json:"refresh_token_len,omitempty"`
+	HasMSALCache    bool `json:"has_msal_cache"`
+	HasRefreshToken bool `json:"has_refresh_token"`
+	RefreshTokenLen int  `json:"refresh_token_len,omitempty"`
+	// S5 (sécurité, lot S) : SEUL le sha256 tronqué identifie le token. head/tail
+	// (préfixe/suffixe en clair) supprimés — un diagnostic ne doit pas exposer de
+	// fragment de secret, même sur une route loopback+admin.
 	RefreshTokenSHA256 string `json:"refresh_token_sha256,omitempty"`
-	RefreshTokenHead   string `json:"refresh_token_head,omitempty"`
-	RefreshTokenTail   string `json:"refresh_token_tail,omitempty"`
 
 	// Résultat du Resolve (pipeline complet : MSAL/OAuth → Exchange Halo).
 	ResolveOK              bool   `json:"resolve_ok"`
@@ -126,23 +127,16 @@ type TokenProbeResult struct {
 	RefreshTokenWasRotated bool   `json:"refresh_token_was_rotated"`
 }
 
-// fingerprintToken retourne sha256 + head/tail tronqués pour identifier un
-// token sans révéler sa valeur (utile pour comparer plusieurs lectures, ex :
-// vérifier que `.env.local` n'a pas été modifié sans redémarrage du serveur).
-func fingerprintToken(s string) (sha string, head string, tail string) {
+// fingerprintToken retourne un sha256 tronqué identifiant un token sans révéler
+// sa valeur (utile pour comparer plusieurs lectures, ex : vérifier que `.env.local`
+// n'a pas été modifié sans redémarrage du serveur). Aucun fragment en clair
+// (head/tail) : cf. S5 — un diagnostic n'expose pas de morceau de secret.
+func fingerprintToken(s string) string {
 	if s == "" {
-		return "", "", ""
+		return ""
 	}
 	sum := sha256.Sum256([]byte(s))
-	sha = hex.EncodeToString(sum[:8])
-	if len(s) >= 6 {
-		head = s[:6]
-		tail = s[len(s)-6:]
-	} else {
-		head = s
-		tail = s
-	}
-	return
+	return hex.EncodeToString(sum[:8])
 }
 
 // handleProbeTokens diagnostic complet pour un joueur via Discovery + Resolver.
@@ -183,7 +177,7 @@ func (h *AdminAutoSyncHandler) handleProbeTokens(ctx context.Context, in *autoSy
 	res.HasMSALCache = src.MSALCache != ""
 	res.HasRefreshToken = src.RefreshToken != ""
 	res.RefreshTokenLen = len(src.RefreshToken)
-	res.RefreshTokenSHA256, res.RefreshTokenHead, res.RefreshTokenTail = fingerprintToken(src.RefreshToken)
+	res.RefreshTokenSHA256 = fingerprintToken(src.RefreshToken)
 
 	// Tenter le Resolve complet (pipeline MSAL→OAuth→Exchange) avec le même
 	// callback onRotated qu'en production (ADR 0023) :

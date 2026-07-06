@@ -97,10 +97,23 @@ func TestRequirePlayerOwnership_NoSession_PassThrough(t *testing.T) {
 	}
 }
 
-func TestRequirePlayerOwnership_UnknownSlug_PassThrough(t *testing.T) {
-	// Slug inconnu → laissé passer (le handler répondra 404 player_not_found).
-	if rr := runOwnership(false, "password", "ghost", userSession("alice")); rr.Code != http.StatusOK {
-		t.Errorf("unknown slug: status = %d, want 200", rr.Code)
+func TestRequirePlayerOwnership_UnknownSlug_NonAdmin_403(t *testing.T) {
+	// S7 : slug inconnu + utilisateur authentifié non-admin → 403 (fail-closed).
+	// Auparavant laissé passer → oracle d'existence via le 404 distinct du handler.
+	rr := runOwnership(false, "password", "ghost", userSession("alice"))
+	if rr.Code != http.StatusForbidden {
+		t.Errorf("unknown slug non-admin: status = %d, want 403", rr.Code)
+	}
+	if body := rr.Body.String(); !contains(body, "player_forbidden") {
+		t.Errorf("corps attendu avec player_forbidden, obtenu %s", body)
+	}
+}
+
+func TestRequirePlayerOwnership_UnknownSlug_Admin_PassThrough(t *testing.T) {
+	// S7 : l'admin garde l'accès à un slug inconnu (le handler renverra 404
+	// player_not_found) — il possède déjà tout, aucun oracle à masquer.
+	if rr := runOwnership(false, "password", "ghost", userSession("boss")); rr.Code != http.StatusOK {
+		t.Errorf("unknown slug admin: status = %d, want 200", rr.Code)
 	}
 }
 

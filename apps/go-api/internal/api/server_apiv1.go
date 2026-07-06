@@ -100,6 +100,12 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	jobStore := d.jobStore
 	titleRegistry := d.titleRegistry
 	backupScheduler := d.backupScheduler
+	// Garde de propriété joueur (ADR 0029), construite UNE fois et réutilisée par
+	// tous les groupes player-scoped : /players/{slug}, /profiles/.../titles et les
+	// diagnostics par joueur (lot S — csr-coverage, progression). Transparente en
+	// démo / auth non activée. Source unique (règle ≤2 copies) : ne pas ré-inliner.
+	ownershipMW := middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode,
+		playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(groupStore, users))
 	var xboxOAuthRoot *handlers.XboxOAuthHandler
 	// Phase 3b : API Huma COEXISTANTE sur ce sous-routeur /api/v1. Les routes
 	// migrées (huma.Register/huma.Get) cohabitent avec les routes chi non
@@ -116,26 +122,39 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// CSR/LUSR, playlists récentes, arme favorite) et renvoie 503 si une
 	// section est vide sans raison. Pensé pour CI post-backfill et alerte
 	// dev. Cf. handlers/health_home.go.
-	handlers.NewHealthHomeHandler(reg.HomeCtxWithAuth).Mount(r.With(middleware.NoStore))
+	// S6 (sécurité, lot S) : /healthz/home construit la home du joueur de la
+	// session (banner, peaks CSR/LUSR, arme favorite = révélateur d'identité) →
+	// RequireAuth. Pas de {player_slug} : la propriété est implicite (session). No-op
+	// en démo / auth non activée (probe CI/dev inchangée).
+	handlers.NewHealthHomeHandler(reg.HomeCtxWithAuth).Mount(
+		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)))
 
 	// Phase 9 du plan pipeline CSR : diagnostic coverage CSR pour un joueur.
 	// Permet de vérifier en 1 ligne si le pipeline a bien capturé les CSR
 	// (matured + placement) ou s'il faut lancer un backfill.
-	handlers.NewDiagCSRHandler(reg.CSRCoverageProvider).Mount(r.With(middleware.NoStore))
+	// S6 : révèle la couverture CSR d'un {player_slug} → RequireAuth + ownership.
+	handlers.NewDiagCSRHandler(reg.CSRCoverageProvider).Mount(
+		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode), ownershipMW))
 
 	// Phase 4 plan stabilisation 2026-05-22 : diagnostic progression V2
 	// (Ascension). Compte les rows dans streak/player_records/record_history/
 	// milestone_earned + milestone_catalog. Permet de vérifier que
 	// EvaluateProgressionAfterSync tourne bien sur l'auto-sync (avant Phase 4
 	// ces tables restaient vides — cf. AUDIT_ASCENSION_PIPELINE_DISCONNECTED).
-	handlers.NewDiagProgressionHandler(reg.ProgressionDiagProvider).Mount(r.With(middleware.NoStore))
+	// S6 : diagnostic par {player_slug} → RequireAuth + ownership.
+	handlers.NewDiagProgressionHandler(reg.ProgressionDiagProvider).Mount(
+		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode), ownershipMW))
 
 	// Fix 2026-05-30 : backfill progression V2 in-process. Force une
 	// évaluation idempotente (streaks/records/milestones) pour un joueur
 	// dont l'historique existe mais dont le pipeline post-sync n'avait
 	// jamais abouti (incident timeout shared reader). Renvoie le diag
 	// post-exécution.
-	handlers.NewProgressionBackfillHandler(reg.ProgressionBackfillProvider).Mount(r.With(middleware.NoStore))
+	// S2 (sécurité, lot S) : POST /_admin/progression/backfill/{player_slug} MUTE
+	// des données → RequireAuth + RequireAdmin (admin = accès à tous les joueurs).
+	handlers.NewProgressionBackfillHandler(reg.ProgressionBackfillProvider).Mount(
+		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode),
+			middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode)))
 
 	// Phase A multi-titres : exposition des field mappings TOML.
 	// Derrière MULTI_TITLE_API_ENABLED.
@@ -408,15 +427,18 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		adminTitleDiagHandler.Mount(r.With(middleware.NoStore))
 	})
 
-	// Diagnostic — accessible en loopback (127.0.0.1) uniquement, sans auth.
-	// Permet de comprendre pourquoi le scheduler ne sync pas un joueur sans
-	// avoir à fouiller dans les logs serveur (raison du skip/failure par joueur).
-	// Bloqué en non-loopback : retourne 403.
+	// Diagnostic — loopback (127.0.0.1) uniquement, ET admin (S5, lot S :
+	// défense en profondeur). /probe résout des tokens (sensibles) → n'est plus
+	// accessible au seul fait d'être sur la loopback. Permet de comprendre pourquoi
+	// le scheduler ne sync pas un joueur (raison du skip/failure). Non-loopback → 403 ;
+	// non-admin → 401/403. No-op auth en démo / auth non activée (dev inchangé).
 	if autoSyncScheduler != nil {
 		autoSyncH := handlers.NewAdminAutoSyncHandler(autoSyncScheduler, cfg, tokenProvider)
 		r.Route("/_diag/auto-sync", func(r chi.Router) {
 			r.Use(middleware.LoopbackOnly)
-			autoSyncH.Mount(r) // /snapshot, /run, /probe (sous LoopbackOnly)
+			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
+			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+			autoSyncH.Mount(r) // /snapshot, /run, /probe (loopback + admin)
 		})
 	}
 
@@ -434,7 +456,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		WithFriendsOrchestrator(friendsOrchestrator).
 		WithNotificationsEmitter(reg.NotificationsEmitter).
 		WithBackupScheduler(backupScheduler)
-	settingsHandler.Mount(r) // /settings + /settings/{media,sessions,backup}/...
+	// S1 (sécurité, lot S) : /settings mute la config (PATCH + POST media/sessions/backup)
+	// → RequireAuth + RequireAdmin. No-op en démo/single-user (cfg.DemoMode court-circuite
+	// le middleware), donc le mode public/démo reste inchangé.
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
+		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+		settingsHandler.Mount(r) // /settings + /settings/{media,sessions,backup}/...
+	})
 
 	// ProfileService PARTAGÉ : writer UNIQUE de db_profiles.json. Le store
 	// porte un verrou process par-instance → toutes les écritures (onboarding
@@ -443,7 +472,13 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	profileService := service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot).
 		WithDBEvictor(func(playerDBPath string) { platform_duckdb.EvictAndCloseCached(playerDBPath) })
 	setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore, profileService)
-	setupHandler.Mount(r) // /setup/players, /setup/smoke-test
+	// S8 (sécurité, lot S) : /setup/players (écrit db_profiles.json) et
+	// /setup/smoke-test → RequireAuth par cohérence (gardes internes conservées).
+	// No-op en démo / auth non activée.
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
+		setupHandler.Mount(r) // /setup/players, /setup/smoke-test
+	})
 
 	// Sprint 17 : Jobs longs persistants + sync initiale.
 	// GET /jobs/{job_id} migré vers Huma (Phase 3b, shape path-param).
@@ -517,7 +552,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			osCfg.Convergence = autoSyncScheduler
 		}
 		osImportH := handlers.NewOpenSpartanImportHandler(osCfg)
-		r.Post("/import/openspartan", osImportH.StartImport)
+		// S3 (lot S) : import MUTANT (upload d'un .db → shared_matches). La revue
+		// exhaustive route→garde a trouvé cette route sur `r` nu (hors du groupe
+		// RequireAuth+RequireAdmin fermé plus haut) : seul `!cfg.DemoMode` la
+		// protégeait. RequireAuth par cohérence avec /setup et /sync (la validation
+		// XUID interne via session SSO est conservée). No-op si auth non activée
+		// (single-user) ; en multi-user, réservé aux utilisateurs connectés.
+		r.With(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)).
+			Post("/import/openspartan", osImportH.StartImport)
 	}
 
 	// Galerie médias — version de flux pour polling léger
@@ -548,7 +590,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// non sur le header (anti-bypass).
 	r.Route("/profiles/{player_slug}/titles/{slug}", func(r chi.Router) {
 		r.Use(middleware.TitleSlugFromPath("slug"))
-		r.Use(middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode, playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(groupStore, users)))
+		r.Use(ownershipMW)
 		handlers.NewTitleSyncHandler(profileService).Mount(r)
 	})
 
@@ -572,7 +614,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		// 403 player_forbidden si l'utilisateur courant ne possède pas le slug.
 		// Transparent en mode demo / auth non activée. Toute route player-scoped
 		// DOIT rester montée sous ce groupe pour être protégée.
-		r.Use(middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode, playerOwnershipXUIDResolver(cfg), users, familyXUIDResolver(groupStore, users)))
+		r.Use(ownershipMW)
 
 		filters := handlers.NewFiltersHandler(reg.Filters)
 		filters.Mount(r)

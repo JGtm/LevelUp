@@ -289,7 +289,7 @@ func TestDTOs_NoNilSlicesOnEmptyInput(t *testing.T) {
 	t.Run("BootstrapService.BuildPlayersList", func(t *testing.T) {
 		repo := &mockBootRepo{matchCount: 0}
 		svc := NewBootstrapService(testBootstrapConfig(), repo)
-		resp, err := svc.BuildPlayersList(context.Background())
+		resp, err := svc.BuildPlayersList(context.Background(), nil)
 		if err != nil {
 			t.Fatalf("error: %v", err)
 		}

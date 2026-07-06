@@ -1,3 +1,37 @@
+## [2026-07-06] LOT S (Sécurité) — 9 items livrés + fallout K réparé
+
+**Statut** : COMPLÉTÉ. Objectif atteint : plus aucun endpoint mutant/révélateur d'identité
+sous `/api/v1` accessible sans auth. Toutes les gardes prennent `cfg.DemoMode` → no-op
+démo/single-user préservé (onboarding/public inchangés).
+
+**Décisions techniques** :
+- Refs de ligne du plan périmées (routes déplacées de `server.go` vers `server_apiv1.go`
+  par K2a/K3d) → re-ciblées sur pièces (plan-execution règle 4).
+- « S2 sous le groupe /admin » interprété comme la GARDE admin (RequireAuth+RequireAdmin),
+  PAS un préfixe d'URL — déplacer physiquement aurait cassé les callers. URL inchangée.
+- S4 : filtrage ownership fait *in-service* (`BuildPlayersList(ctx, sess)` + `filterOwnedPlayers`)
+  plutôt que gate RequireAuth — préserve la navigation démo/publique du parc possédé.
+- S6 : `HealthHome` (`/healthz/home`, pas de player param) → RequireAuth seul ; `DiagCSR`/
+  `DiagProgression` (`/{player_slug}`) → RequireAuth+ownership. `ownershipMW` CENTRALISÉ
+  (règle ≤2 copies : les 2 inline 558/582 → 1 var + 4 usages).
+- S7 : fail-closed sur slug inconnu via `CanAccessPlayer` (admin passe → 404 handler ;
+  non-propriétaire → 403, pas d'oracle d'existence).
+- S3 (revue exhaustive) : tableau route→garde = `.ai/LOT_S_ROUTE_GUARD_TABLE.md`. A TROUVÉ
+  `POST /import/openspartan` sur `r` nu (mutant, hors groupe admin) → RequireAuth ajouté
+  (dans le périmètre de l'objectif du lot, pas un fix opportuniste).
+
+**Résultats** : `go build ./...` 0, `go test ./...` 0 (suite COMPLÈTE verte). Nouveaux tests :
+`TestLotS_GuardedRoutes_AnonymousUnauthorized` (11 routes → 401), `TestBuildPlayersList_FilteredByOwnership`,
+`TestRequirePlayerOwnership_UnknownSlug_{NonAdmin_403,Admin_PassThrough}`.
+
+**Fallout lot K réparé** (bloquait `go test ./...`, découvert à la vérif de livraison) : les
+ratchets `platform/auth/sentinel_test.go` (ADR 0023) et `platform/duckdb/no_attach_on_social_test.go`
+(ADR 0021) référençaient les chemins pré-K ; K avait déplacé `registry_auth.go` + 6 fichiers en
+`internal/api/wire/` et splitté `server.go`→`server_apiv1.go`. Whitelists re-cheminées (mêmes
+fichiers sanctionnés, invariants inchangés). Résiduel Phase 5 : entrées mortes `internal/api/registry.go`.
+
+**Prochaine étape** : LOT J (Performance DuckDB — J2-J7, J9).
+
 ## [2026-07-06] K2a NewRouter — CIBLE < 100 L ATTEINTE : 1 470 → 89 L
 
 **Statut** : COMPLÉTÉ. Ce que j'avais qualifié de « bascule builder pluri-fichiers non fiable via
