@@ -180,16 +180,18 @@ func (e *SyncEngine) RunFull(ctx context.Context, opts domain.SyncOptions) (doma
 // run est le cÅ“ur du moteur de sync. isDelta=true → stop dès un match connu.
 func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta bool) (domain.SyncResult, error) {
 	result := domain.SyncResult{StartedAt: time.Now()}
-	mode := "full"
+	// mode + sa forme titre-case pour le nom d'event (remplace strings.Title,
+	// déprécié Go 1.18+ et cassé sur l'Unicode). Seuls 2 modes existent.
+	mode, modeTitle := "full", "Full"
 	if isDelta {
-		mode = "delta"
+		mode, modeTitle = "delta", "Delta"
 	}
 
 	// Sprint B1 commit 16 : crée un event_id qui sera ajouté à TOUS les logs
 	// émis depuis ce ctx (cf. ContextHandler) — permet de grep cross-module
 	// dans logs/{sync,provider,pool,...}.log pour reconstituer le timeline
 	// d'un sync donné.
-	ctx, eventID := logging.WithEvent(ctx, "sync.Run"+strings.Title(mode))
+	ctx, eventID := logging.WithEvent(ctx, "sync.Run"+modeTitle)
 	slog.InfoContext(ctx, "sync: démarrage",
 		"gamertag", e.gamertag,
 		"xuid", e.xuid,

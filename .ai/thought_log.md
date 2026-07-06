@@ -1,3 +1,18 @@
+## [2026-07-06] K2e — CR cleanups : strings.Title + helper goLoad (18 blocs g.Go)
+
+**Statut** : Complété. (1) `strings.Title(mode)` (déprécié Go 1.18+) dans engine.go →
+`mode, modeTitle := "full","Full"` / `"delta","Delta"` (dual-assign inline ; plus simple
+qu'une map globale pour un site unique). (2) 18 blocs `g.Go(func(){var e error; d.X,e=repo.GetX;
+if e!=nil{slog.Warn}; return nil})` copiés dans match_view_data_loaders → helper
+`goLoad(gctx, g, matchID, label, load func() error)` (best-effort + slog.WarnContext, jamais
+fatal). Les 2 blocs non-uniformes (eventsRepo : Validate + ErrCapabilityNotSupported) restent
+en g.Go brut. ctx-first dans la signature du helper (lint context-as-argument).
+
+**Résultats** : build 0, vet 0, tests match_view verts. Comportement identique (goLoad
+reproduit exactement le best-effort ; slog.Warn→WarnContext = amélioration structurée).
+
+---
+
 ## [2026-07-06] K1i — interfaces consumer-side étroites (home/career/filters)
 
 **Statut** : Complété. 3 couplages service→service concrets remplacés par des interfaces

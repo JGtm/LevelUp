@@ -1171,8 +1171,12 @@ K2 — God functions à risque (tâche dédiée, passer la grille plan-review av
   / métriques-convergence) ; exemptions 80 L résolues (BuildEngine, RunOnceTrigger).
 - [ ] K2d — ARCHI 25 : `SeedDemo()` 203 L → scission extract/configs/identity + phases
   nommées (chemin de déploiement sensible — tester via regen demo local).
-- [ ] K2e — CR mineurs : `strings.Title` déprécié (`engine.go:191`) → map 2 entrées ;
-  ~15 blocs `g.Go` copiés (`match_view_data_loaders.go:68-256`) → helper + `WarnContext(gctx)`.
+- [x] K2e — CR mineurs (2026-07-06) : `strings.Title` déprécié (`engine.go`) supprimé →
+  `mode, modeTitle := "full","Full"` (dual-assign inline, plus simple qu'une map pour le
+  site unique). ~18 blocs `g.Go` copiés (`match_view_data_loaders.go`) → helper `goLoad(gctx,
+  g, matchID, label, load)` (best-effort + `slog.WarnContext`, jamais fatal) ; les 2 blocs
+  non-uniformes (eventsRepo Validate/ErrCapabilityNotSupported) restent en g.Go brut. Gate :
+  build+vet 0, tests match_view verts.
 
 K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
 - [ ] K3a — ARCHI 17 : platform/duckdb (143 fichiers) → extraction par domaine, commencer
