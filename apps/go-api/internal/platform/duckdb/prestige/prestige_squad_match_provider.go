@@ -3,9 +3,9 @@
 // Implémente prestige.SquadMatchProvider : pour un roster d'escouade, retourne
 // les derniers matchs où TOUT le roster a joué, avec tous les participants (pour
 // la règle no-overlap) et la métrique du défi par membre. Lecture sur
-// shared_matches_v2.duckdb via un SharedReader (coordination RO↔RW).
+// shared_matches_v2.duckdb via un duckdb.SharedReader (coordination RO↔RW).
 
-package duckdb
+package prestige
 
 import (
 	"context"
@@ -17,18 +17,19 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 )
 
 // PrestigeSquadMatchProvider lit match_participants pour l'évaluation des défis
 // d'escouade.
 type PrestigeSquadMatchProvider struct {
-	reader SharedReader
+	reader duckdb.SharedReader
 }
 
-// NewPrestigeSquadMatchProvider construit le provider depuis un SharedReader
+// NewPrestigeSquadMatchProvider construit le provider depuis un duckdb.SharedReader
 // (passer pdb.SharedReadDB() côté caller, comme HaloBaselineProvider).
-func NewPrestigeSquadMatchProvider(reader SharedReader) *PrestigeSquadMatchProvider {
+func NewPrestigeSquadMatchProvider(reader duckdb.SharedReader) *PrestigeSquadMatchProvider {
 	return &PrestigeSquadMatchProvider{reader: reader}
 }
 
@@ -75,9 +76,9 @@ func (p *PrestigeSquadMatchProvider) candidateMatches(ctx context.Context, db *s
 		FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
 		WHERE mp.xuid IN (%s)
-		GROUP BY mp.match_id, `+StartTimeCanonicalSQL("mr")+`
+		GROUP BY mp.match_id, `+duckdb.StartTimeCanonicalSQL("mr")+`
 		HAVING COUNT(DISTINCT mp.xuid) = %d
-		ORDER BY `+StartTimeCanonicalSQL("mr")+` DESC
+		ORDER BY `+duckdb.StartTimeCanonicalSQL("mr")+` DESC
 		LIMIT %d
 	`, sqlInPlaceholders(len(roster)), len(roster), limit)
 
@@ -167,7 +168,7 @@ func (p *PrestigeSquadMatchProvider) SquadUsualContexts(ctx context.Context, ros
 	q := fmt.Sprintf(`
 		WITH cm AS (
 			SELECT mp.match_id,
-			       MAX(`+StartTimeCanonicalSQL("mr")+`) AS st
+			       MAX(`+duckdb.StartTimeCanonicalSQL("mr")+`) AS st
 			FROM match_participants mp
 			JOIN match_registry mr ON mr.match_id = mp.match_id
 			WHERE mp.xuid IN (%s)

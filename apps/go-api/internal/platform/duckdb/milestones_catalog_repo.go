@@ -48,11 +48,11 @@ func (r *MilestoneCatalogRepo) Upsert(ctx context.Context, e milestones.CatalogE
 		`UPDATE milestone_catalog SET title_slug = ?, metric = ?, threshold = ?, title_en = ?,
 		 title_fr = ?, icon = ?, condition = ?, updated_at = ? WHERE id = ?`,
 		[]any{e.TitleSlug, e.Metric, e.Threshold, e.TitleEN, e.TitleFR,
-			nullableStr(e.Icon), nullableStr(e.Condition), now, e.ID},
+			NullableStr(e.Icon), NullableStr(e.Condition), now, e.ID},
 		`INSERT INTO milestone_catalog (id, title_slug, metric, threshold, title_en, title_fr, icon, condition, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		[]any{e.ID, e.TitleSlug, e.Metric, e.Threshold, e.TitleEN, e.TitleFR,
-			nullableStr(e.Icon), nullableStr(e.Condition), now},
+			NullableStr(e.Icon), NullableStr(e.Condition), now},
 	); err != nil {
 		return fmt.Errorf("MilestoneCatalogRepo.Upsert: %w", err)
 	}

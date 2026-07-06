@@ -146,7 +146,7 @@ func (r *CampaignRepo) LinkChallenge(ctx context.Context, challengeID, campaignI
 }
 
 // scanCampaign convertit une ligne en ImprovementCampaign. Helper interne.
-func scanCampaign(row rowScanner) (campaign.ImprovementCampaign, error) {
+func scanCampaign(row RowScanner) (campaign.ImprovementCampaign, error) {
 	var c campaign.ImprovementCampaign
 	var (
 		axisKind, status               string

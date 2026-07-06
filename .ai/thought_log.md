@@ -1,3 +1,40 @@
+## [2026-07-06] K3a platform/duckdb → sous-package prestige EXTRAIT (cas INVERSE de K3c)
+
+**Statut** : Complété (le domaine Prestige ; le reste de K3a — halo5_*.go, autres domaines — demeure).
+
+**Décision technique — le cas inverse de K3c** : ici le cluster à extraire (prestige) USE le cœur
+duckdb (DB, SharedReader, helpers SQL) au lieu d'être utilisé par lui. Le ré-export (technique K3c)
+créerait un cycle parent→cluster→parent. Recette du cas inverse : (1) EXPORTER les helpers cœur
+requis (helpers SQL génériques `RowScanner`/`NullableStr`, qui traînaient dans prestige_player_helpers.go
+mais servaient aussi les repos duckdb-root → remontés dans `sql_scan_helpers.go`) ; (2) QUALIFIER
+les usages prestige (`duckdb.DB`, `duckdb.CheckpointSharedSocial`, `duckdb.StartTimeCanonicalSQL`…) ;
+(3) requalifier le seul caller externe `api/prestige_setup.go` via alias `prestigedb` (collision de
+nom avec le domaine `internal/prestige` — un `package prestige` peut importer un autre `package
+prestige`, son propre nom n'étant pas dans son scope de fichier).
+
+**Piège n°1 — helpers partagés embarqués** : `RowScanner`/`NullableStr` définis dans un fichier
+"prestige" mais utilisés par le cœur → un `sed` de qualification a MANGLÉ leurs définitions
+(`func duckdb.NullableStr` invalide). Fix : les remonter au cœur, exportés. Leçon : avant de bouger
+un fichier, vérifier que ses defs ne sont pas des helpers partagés.
+
+**Piège n°2 — provider de migrations title-owned perdu** : `squad_challenge` (table title-owned)
+est créée par `internal/games/halo_infinite/migrations`, câblée via `SetTitleStepsProvider` dans le
+`TestMain` du package duckdb-root. Le test déplacé a perdu ce câblage (nouveau binaire de test) →
+`RunForDB` ne créait plus la table. Fix : répliquer le `TestMain` dans le sous-package.
+
+**Piège n°3 — helper de test GÉNÉRIQUE mal nommé** : `setupPrestigeDB` (ouvre une DB migrée) sert
+6 tests duckdb-root NON-prestige (coach_proposal/milestones/records/streaks). Il a suivi
+prestige_repos_test.go → 6 tests cœur orphelins. Fix : restauré côté cœur (2 copies à travers la
+scission, comme walSize — un helper `_test.go` n'est pas exportable).
+
+**Autres ajustements** : split `axis_metric_helpers_test.go` (mapMetricToColumn→prestige,
+axisValueExpression reste) ; ratchet `no_attach_on_social` clé allowlist re-pathée ; `repoRoot` du
+loader +1 niveau (`..`×6) ; const cross-package `rivalsOrderColDeaths` → `metricColDeaths` local.
+
+**Résultats** : `go build/vet ./...` 0 ; `go test -tags=integration -p 1` duckdb 81 s + prestige
+18 s VERTS (incl. coach_advisor e2e + writes_checkpoint ADR 0022) ; archlint OK. Comportement
+préservé. **Prochaine étape** : relocalisation `halo5_*.go` (2e sous-item K3a) ; K3b (teammates).
+
 ## [2026-07-06] K3c sync/snapshot EXTRAIT — technique feuille+re-export PROUVÉE
 
 **Statut** : Complété (première scission cross-package d'un god-package du lot K). Corrige une

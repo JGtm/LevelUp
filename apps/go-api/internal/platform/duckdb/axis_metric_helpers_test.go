@@ -1,5 +1,7 @@
-// Package duckdb — axis_metric_helpers_test.go : tests purs (no DB) pour
-// les helpers de mapping métrique/axe vers colonnes SQL.
+// Package duckdb — axis_metric_helpers_test.go : test pur (no DB) du mapping
+// axe radar campaign -> expression SQL (axisValueExpression). Le test frère
+// TestMapMetricToColumn a suivi mapMetricToColumn dans le sous-package
+// duckdb/prestige lors de l'extraction K3a.
 package duckdb
 
 import (
@@ -7,47 +9,6 @@ import (
 
 	"levelup/go-api/internal/campaign"
 )
-
-// TestMapMetricToColumn : mapping FieldKey/lowercase → colonne match_participants.
-// Couvre l'ensemble des cas listés dans le switch + cas inconnu → "".
-func TestMapMetricToColumn(t *testing.T) {
-	tests := []struct {
-		metric string
-		want   string
-	}{
-		// FieldKey canonical
-		{"FieldKDA", "kda"},
-		{"FieldKDR", "kd"},
-		{"FieldAccuracy", "accuracy"},
-		{"FieldKills", "kills"},
-		{"FieldDeaths", "deaths"},
-		{"FieldAssists", "assists"},
-		{"FieldHeadshotKills", "headshot_kills"},
-		{"FieldMeleeKills", "melee_kills"},
-		{"FieldGrenadeKills", "grenade_kills"},
-		{"FieldPowerWeaponKills", "power_weapon_kills"},
-		{"FieldDamageDealt", "damage_dealt"},
-		{"FieldPersonalScore", "personal_score"},
-		{"FieldMaxKillingSpree", "max_killing_spree"},
-		// Alias lowercase équivalents
-		{"kda", "kda"},
-		{"kd", "kd"},
-		{"accuracy", "accuracy"},
-		{"kills", "kills"},
-		{"deaths", "deaths"},
-		// Whitespace toléré
-		{"  kills  ", "kills"},
-		// Inconnu → empty
-		{"unknown_metric", ""},
-		{"", ""},
-		{"FieldEngagementScore", ""},
-	}
-	for _, tc := range tests {
-		if got := mapMetricToColumn(tc.metric); got != tc.want {
-			t.Errorf("mapMetricToColumn(%q) = %q, want %q", tc.metric, got, tc.want)
-		}
-	}
-}
 
 // TestAxisValueExpression : mapping axis radar → expression SQL.
 // Seuls les 6 axes radar V1 sont mappés. Tout le reste retourne ("", false).

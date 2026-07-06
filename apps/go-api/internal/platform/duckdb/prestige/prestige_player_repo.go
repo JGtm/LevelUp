@@ -3,7 +3,7 @@
 // 5 structs distinctes pour respecter les interfaces du package prestige
 // dont les méthodes Create/Get/List collisionnent en signature de retour.
 
-package duckdb
+package prestige
 
 import (
 	"context"
@@ -12,16 +12,17 @@ import (
 	"fmt"
 	"time"
 
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 )
 
 // ─────────── ChallengeRepo ───────────
 
 // PrestigeChallengeRepo implémente prestige.ChallengeRepo.
-type PrestigeChallengeRepo struct{ db *DB }
+type PrestigeChallengeRepo struct{ db *duckdb.DB }
 
 // NewPrestigeChallengeRepo construit le repo.
-func NewPrestigeChallengeRepo(db *DB) *PrestigeChallengeRepo {
+func NewPrestigeChallengeRepo(db *duckdb.DB) *PrestigeChallengeRepo {
 	return &PrestigeChallengeRepo{db: db}
 }
 
@@ -40,7 +41,7 @@ func (r *PrestigeChallengeRepo) Create(ctx context.Context, c prestige.Challenge
 			last_palier_recompute_at, is_private
 		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 	`,
-		c.ID, c.UserID, c.TitleSlug, nullableStr(c.ArcID), c.Position, nullableStr(c.TemplateID),
+		c.ID, c.UserID, c.TitleSlug, duckdb.NullableStr(c.ArcID), c.Position, duckdb.NullableStr(c.TemplateID),
 		c.Metric, c.Target, c.TargetPerMember, string(c.WindowType), c.WindowValue,
 		string(c.Cadence), string(c.EvalType), string(c.Mode), string(c.Tier), string(c.DataTier),
 		c.Label, string(c.Status),
@@ -177,9 +178,9 @@ func (r *PrestigeChallengeRepo) DeleteByArc(ctx context.Context, arcID string) e
 // ─────────── ArcRepo ───────────
 
 // PrestigeArcRepo implémente prestige.ArcRepo.
-type PrestigeArcRepo struct{ db *DB }
+type PrestigeArcRepo struct{ db *duckdb.DB }
 
-func NewPrestigeArcRepo(db *DB) *PrestigeArcRepo { return &PrestigeArcRepo{db: db} }
+func NewPrestigeArcRepo(db *duckdb.DB) *PrestigeArcRepo { return &PrestigeArcRepo{db: db} }
 
 var (
 	_ prestige.ArcRepo       = (*PrestigeArcRepo)(nil)
@@ -192,7 +193,7 @@ func (r *PrestigeArcRepo) Create(ctx context.Context, a prestige.Arc) error {
 	if _, err := r.db.Exec(ctx, `
 		INSERT INTO arc (id, user_id, title_slug, title, description, is_preset, preset_id, created_at, completed_at)
 		VALUES (?,?,?,?,?,?,?,?,?)
-	`, a.ID, a.UserID, a.TitleSlug, a.Title, a.Description, a.IsPreset, nullableStr(a.PresetID), a.CreatedAt, a.CompletedAt); err != nil {
+	`, a.ID, a.UserID, a.TitleSlug, a.Title, a.Description, a.IsPreset, duckdb.NullableStr(a.PresetID), a.CreatedAt, a.CompletedAt); err != nil {
 		return err
 	}
 	// Invariant cross-titre : 1 ligne (arc.id, arc.title_slug) par arc. La voie
@@ -324,9 +325,9 @@ func (r *PrestigeArcRepo) Delete(ctx context.Context, id string) error {
 // ─────────── MomentCardRepo ───────────
 
 // PrestigeMomentCardRepo implémente prestige.MomentCardRepo.
-type PrestigeMomentCardRepo struct{ db *DB }
+type PrestigeMomentCardRepo struct{ db *duckdb.DB }
 
-func NewPrestigeMomentCardRepo(db *DB) *PrestigeMomentCardRepo {
+func NewPrestigeMomentCardRepo(db *duckdb.DB) *PrestigeMomentCardRepo {
 	return &PrestigeMomentCardRepo{db: db}
 }
 
@@ -383,9 +384,11 @@ func (r *PrestigeMomentCardRepo) ListRecent(ctx context.Context, userID, titleSl
 // ─────────── TelemetryRepo ───────────
 
 // PrestigeTelemetryRepo implémente prestige.TelemetryRepo.
-type PrestigeTelemetryRepo struct{ db *DB }
+type PrestigeTelemetryRepo struct{ db *duckdb.DB }
 
-func NewPrestigeTelemetryRepo(db *DB) *PrestigeTelemetryRepo { return &PrestigeTelemetryRepo{db: db} }
+func NewPrestigeTelemetryRepo(db *duckdb.DB) *PrestigeTelemetryRepo {
+	return &PrestigeTelemetryRepo{db: db}
+}
 
 var _ prestige.TelemetryRepo = (*PrestigeTelemetryRepo)(nil)
 
@@ -398,10 +401,10 @@ func (r *PrestigeTelemetryRepo) Emit(ctx context.Context, ev prestige.PrestigeTe
 			baseline_value, mode, cadence, eval_type, time_since_create_seconds, created_at
 		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
 	`,
-		ev.ID, ev.UserID, nullableStr(ev.ChallengeID), ev.EventType,
-		nullableStr(string(ev.Palier)), ev.StretchRatio, ev.BaselineValue,
-		nullableStr(string(ev.Mode)), nullableStr(string(ev.Cadence)),
-		nullableStr(string(ev.EvalType)), ev.TimeSinceCreateSeconds, ev.CreatedAt,
+		ev.ID, ev.UserID, duckdb.NullableStr(ev.ChallengeID), ev.EventType,
+		duckdb.NullableStr(string(ev.Palier)), ev.StretchRatio, ev.BaselineValue,
+		duckdb.NullableStr(string(ev.Mode)), duckdb.NullableStr(string(ev.Cadence)),
+		duckdb.NullableStr(string(ev.EvalType)), ev.TimeSinceCreateSeconds, ev.CreatedAt,
 	)
 	return err
 }
@@ -409,9 +412,9 @@ func (r *PrestigeTelemetryRepo) Emit(ctx context.Context, ev prestige.PrestigeTe
 // ─────────── BaselineStateRepo ───────────
 
 // PrestigeBaselineStateRepo implémente prestige.BaselineStateRepo.
-type PrestigeBaselineStateRepo struct{ db *DB }
+type PrestigeBaselineStateRepo struct{ db *duckdb.DB }
 
-func NewPrestigeBaselineStateRepo(db *DB) *PrestigeBaselineStateRepo {
+func NewPrestigeBaselineStateRepo(db *duckdb.DB) *PrestigeBaselineStateRepo {
 	return &PrestigeBaselineStateRepo{db: db}
 }
 

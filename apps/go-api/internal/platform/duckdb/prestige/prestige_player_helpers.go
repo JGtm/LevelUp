@@ -1,16 +1,16 @@
-package duckdb
+package prestige
 
 import (
-	"database/sql"
 	"strings"
 
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 )
 
 // prestige_player_helpers.go — fonctions utilitaires pour les repos Prestige joueur.
 //
 // Séparées du fichier principal pour rester sous le seuil 500L de CLAUDE.md
-// et pour permettre des tests unitaires de buildChallengeListQuery sans DB.
+// et pour permettre des tests unitaires de buildChallengeListQuery sans duckdb.DB.
 
 // challengeSelectColumns liste les colonnes de la table challenge dans
 // l'ordre attendu par scanChallenge. Centralise la requête pour éviter
@@ -27,13 +27,8 @@ const challengeSelectColumns = `
 	       last_palier_recompute_at, is_private
 	FROM challenge`
 
-// rowScanner abstrait *sql.Row et *sql.Rows pour partager la logique scan.
-type rowScanner interface {
-	Scan(dest ...any) error
-}
-
 // scanChallenge lit une ligne de la table challenge.
-func scanChallenge(row rowScanner) (prestige.Challenge, error) {
+func scanChallenge(row duckdb.RowScanner) (prestige.Challenge, error) {
 	var c prestige.Challenge
 	var windowType, cadence, evalType, mode, tier, dataTier, status string
 
@@ -62,7 +57,7 @@ func scanChallenge(row rowScanner) (prestige.Challenge, error) {
 }
 
 // scanArc lit une ligne de la table arc.
-func scanArc(row rowScanner) (prestige.Arc, error) {
+func scanArc(row duckdb.RowScanner) (prestige.Arc, error) {
 	var a prestige.Arc
 	err := row.Scan(&a.ID, &a.UserID, &a.TitleSlug, &a.Title, &a.Description,
 		&a.IsPreset, &a.PresetID, &a.CreatedAt, &a.CompletedAt)
@@ -127,12 +122,4 @@ func timestampColumnFor(status prestige.ChallengeStatus) string {
 		return "committed_at"
 	}
 	return ""
-}
-
-// nullableStr convertit une string vide en sql.NullString (NULL en DB).
-func nullableStr(s string) any {
-	if s == "" {
-		return sql.NullString{}
-	}
-	return s
 }

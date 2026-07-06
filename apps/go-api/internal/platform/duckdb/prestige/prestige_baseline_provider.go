@@ -3,7 +3,7 @@
 // Implémente prestige.BaselineProvider en lisant les match_participants
 // existants depuis shared_matches_v2.duckdb et la métrique demandée.
 
-package duckdb
+package prestige
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 )
 
@@ -19,6 +20,7 @@ import (
 const (
 	metricColAccuracy = "accuracy"
 	metricColKills    = "kills"
+	metricColDeaths   = "deaths"
 )
 
 // HaloBaselineProvider lit les matchs récents d'un joueur Halo Infinite
@@ -27,17 +29,17 @@ const (
 // La complexité réelle (filtres mode/playlist, jointures avec medals) est
 // gardée minimale pour Phase 4. Phase 5/6 affineront selon les besoins UI.
 //
-// reçoit un SharedReader (pas un *DB) pour coordonner
+// reçoit un duckdb.SharedReader (pas un *duckdb.DB) pour coordonner
 // avec le SharedDBProvider (cycle RO↔RW).
 type HaloBaselineProvider struct {
-	reader SharedReader
+	reader duckdb.SharedReader
 }
 
-// NewHaloBaselineProvider construit le provider depuis un SharedReader.
+// NewHaloBaselineProvider construit le provider depuis un duckdb.SharedReader.
 //
 // Côté caller : passer pdb.SharedReadDB() pour bénéficier du Provider B-swap
 // (fallback transparent vers LegacySharedReader(pdb.Shared) si Provider absent).
-func NewHaloBaselineProvider(reader SharedReader) *HaloBaselineProvider {
+func NewHaloBaselineProvider(reader duckdb.SharedReader) *HaloBaselineProvider {
 	return &HaloBaselineProvider{reader: reader}
 }
 
@@ -161,8 +163,8 @@ func mapMetricToColumn(metric string) string {
 		return metricColAccuracy
 	case "FieldKills", metricColKills:
 		return metricColKills
-	case "FieldDeaths", rivalsOrderColDeaths:
-		return rivalsOrderColDeaths
+	case "FieldDeaths", metricColDeaths:
+		return metricColDeaths
 	case "FieldAssists", "assists":
 		return "assists"
 	case "FieldHeadshotKills", "headshot_kills":
