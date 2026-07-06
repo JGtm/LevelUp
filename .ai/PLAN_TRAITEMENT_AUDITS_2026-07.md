@@ -1086,10 +1086,13 @@ K1 — Extractions de couches (ROI d'abord) :
   `(kills+assists)/GREATEST(deaths,1)` ; le fix ADR 0006 (kda natif) ne peut PAS s'appliquer
   seul (records best_kda persistés sur l'échelle quotient → resteraient bloqués), exige un
   RE-BACKFILL coordonné (op data/prod, hors branche refacto) — commentaire explicite en code.
-  `[!]` **cœur RESTE** : extraction pipeline post-sync api/ → `service/postsync/` + repos →
-  duckdb + formules → analysis/ = inversion de dépendance large (relocation
-  `CoachAdvisorBundle`/`PrestigeBundle` hors api pour éviter le cycle api↔postsync +
-  interface 6-capacités) — gros déplacement cross-package, session dédiée.
+  `[~]` **cœur LARGEMENT SUBSUMÉ PAR K3d (2026-07-06)** : la relocation
+  `CoachAdvisorBundle`/`PrestigeBundle` HORS de la racine api + le déplacement du pipeline
+  post-sync (post_sync_deltas/progression/runner_adapter/queries) hors du god-package api/ =
+  FAIT — ils vivent désormais dans `internal/api/wire` (le cycle api↔postsync est rompu :
+  wire est self-contained). Reste optionnel (raffinement, PAS un fix god-package/cycle) :
+  déplacer post_sync de `wire` → `service/postsync/` + formules → `analysis/` si on veut la
+  couche « métier » stricte. Non bloquant.
 - [~] K1b — ARCHI 5 : cascade refresh tokens de `registry_auth.go` dupliquant le pipeline
   MSAL→OAuth. **FAIT (2026-07-06) — dédup de la cascade store (cœur), ZÉRO changement de
   comportement** : la cascade MSAL silent → OAuth refresh+rotation est extraite en source
