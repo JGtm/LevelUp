@@ -1297,9 +1297,21 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
   gel** : `archlint/sync_root_freeze_test.go` gèle la racine sync/ à 112 fichiers .go non-test
   (baseline DÉCROISSANTE : échoue si un nouveau fichier racine est ajouté ET si le compte
   descend sans abaisser la baseline). Doctrine ADR 0027 : le neuf va en v2/ ou sous-package.
-  Test vert. `[!]` RESTE : extractions sync/skill/ + sync/snapshot/ = déplacements cross-package
-  (réécriture d'imports + risque de cycle, même profil que K3b teammates) — session dédiée
-  d'untangling ; le ratchet empêche déjà l'aggravation.
+  Test vert. `[!]` RESTE : extractions sync/skill/ + sync/snapshot/ = déplacements cross-package.
+  **CYCLE PROUVÉ (tentative 2026-07-06, revert propre)** : sync/snapshot a un cycle
+  BIDIRECTIONNEL — `engine_postsync.go:511` (sync-root) appelle `evaluateSnapshotReadiness`
+  (cluster snapshot) ET le cluster snapshot lit `MBitWeaponKills`/`MBitPVEStats`/
+  `MBitWeaponKillsNoFilm` (constantes de `backfill_flags.go`, sync-root). Casser le cycle exige
+  de RELOGER `backfill_flags.go` (constantes MBit*/PBit* + BackfillFlags + 2 fns, AUTO-CONTENU)
+  dans un package feuille, PUIS re-qualifier ses utilisateurs, PUIS exporter
+  `evaluateSnapshotReadiness` + câbler engine_postsync. **MESURE (2026-07-06)** : MBit*/PBit*
+  sont référencés dans **~48 fichiers / ~400+ références** (sync, persist, domain, ops,
+  scheduler, cmd). Reloger `backfill_flags.go` = requalification de ~400 sites — ÉNORME et à
+  haut risque. Le cluster snapshot est tissé dans toute la couche sync/persist. **CONCLUSION
+  ÉTAYÉE** : les scissions K3 cross-package sont un chantier PLURI-SEMAINES (symboles partagés
+  tissés dans tout le code), PAS une tâche de session — cf. l'intitulé du lot (« le plus gros »).
+  Tentative faite + revert propre (branche verte). Le ratchet de gel empêche l'aggravation ;
+  l'extraction réelle exige une session dédiée à requalification incrémentale gate-par-fichier.
 - [ ] K3d — ARCHI 20 : racine api/ (39 fichiers) → api/wire/ pour la DI ; cible < 10
   fichiers racine (le post-sync est déjà parti en K1a).
 - [ ] K3e — ARCHI 21 : client HTTP Halo Infinite (halo_client*.go, 7 fichiers) →
