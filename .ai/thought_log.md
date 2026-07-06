@@ -1,3 +1,38 @@
+## [2026-07-07] Clôture LOT V3 — sécurité /jobs + ratchet routes nues (VF-3, VF-15)
+
+**Statut** : Complété.
+
+**Décision technique principale** : (V3a/DC-1) `GET /jobs/{job_id}` (statut de job =
+révélateur d'identité : PlayerSlug + type + messages d'erreur) était monté sur le root
+`humaAPI` sans garde (VF-3). Corrigé en adossant l'API Huma jobs à un sous-routeur gardé
+`r.With(RequireAuth(cfg.DemoMode, cfg.AuthMode))` — humachi hérite du middleware du
+sous-groupe (mécanisme confirmé sur pièces, identique aux `Mount(r)` gardés des handlers).
+Cas 401 anonyme ajouté à `guard_s_test.go` (mount minimal répliqué : cycle d'import
+empêche d'appeler `registerJobsHuma` depuis le package handlers ; la garde court-circuite
+avant le handler). (V3b/DC-1) `newJobID()` `job_<UnixNano>` (énumérable) →
+`job_<YYYYMMDD>_<hex16>` crypto/rand 128 bits ; aucun consommateur ne parse le timestamp
+(vérifié grep) — seul usage ordonnant = tiebreaker `Store.List` (StartedAt nil, dégénéré),
+préservé par le préfixe date lexical. (V3c/DC-8) Ratchet comportemental
+`bare_routes_ratchet_test.go` : le marquage de middlewares est fragile (closures chi non
+comparables) donc j'ai bâti le VRAI routeur en enforcement (`DemoMode=false`,
+`AuthMode="password"`, RepoRoot=dépôt) et, par `chi.Walk`, composé la SEULE chaîne de
+middlewares de chaque route autour d'un handler bidon + requête anonyme. 401/403 = gardée ;
+sinon → allowlist datée 2026-07-07 (30 routes publiques) sous peine d'échec. Handler jamais
+exécuté → 0 dépendance nil, 0 DuckDB. Self-check anti-rot d'allowlist (leçon V4d).
+
+**Résultats observés** : `go build && go vet ./...` = exit 0. `go test ./internal/api/...
+./internal/platform/jobs/...` = exit 0. `go test -tags=integration -p 1 ./internal/api/...`
+= exit 0, 0 `^--- FAIL:`. `jobid_test` : 10 000 générations, 0 collision, format OK.
+Ratchet MORDANT prouvé 2 sens : (1) jobs dégardé localement → rouge
+« GET /api/v1/jobs/{job_id} (code OK) » (aurait attrapé VF-3) ; (2) entrée d'allowlist
+bidon → rouge « entrée d'allowlist MORTE ». `golangci-lint --new-from-rev=HEAD` = 0 issue
+nouvelle (4 issues résiduelles = dette baseline server.go/server_apiv1.go, hors périmètre).
+`LOT_S_ROUTE_GUARD_TABLE.md` rafraîchi (VF-15) : +/jobs, `POST /session/context`,
+`GET /directory/gamertags/search`, lignes re-pointées, section garde-rail V3c.
+
+**Prochaine étape** : push branche `refactor/audits-2026-07`, attendre CI VERTE sur le
+commit, puis LOT V4 (code mort + allowlists mortes + artefacts).
+
 ## [2026-07-06] Clôture LOT V2 — câblage du hook Prestige post-sync (VF-1)
 
 **Statut** : Complété.

@@ -482,7 +482,14 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 
 	// Sprint 17 : Jobs longs persistants + sync initiale.
 	// GET /jobs/{job_id} migré vers Huma (Phase 3b, shape path-param).
-	registerJobsHuma(humaAPI, handlers.NewJobsHandler(jobStore))
+	// V3 (sécurité) : le statut de job expose PlayerSlug + type + messages d'erreur
+	// (révélateur d'identité) → RequireAuth. Tous les jobs sont créés depuis des flux
+	// déjà authentifiés → no-op en démo/single-user (cfg.DemoMode court-circuite le
+	// middleware). L'API Huma est adossée à un sous-routeur gardé (humachi hérite du
+	// middleware du sous-groupe, cf. registerGamertagHuma/Mount des handlers gardés).
+	registerJobsHuma(
+		newHumaAPI(r.With(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))),
+		handlers.NewJobsHandler(jobStore))
 	syncH := handlers.NewSyncHandler(cfg, settingsStore, jobStore, tokenProvider)
 	// Branche le hook Prestige post-sync (best-effort, no-op si flag off ou bundle nil).
 	if prestigeBundle != nil {

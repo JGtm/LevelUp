@@ -142,22 +142,47 @@ grep `TODO(prestige-agent)` → 0.
 
 ## LOT V3 — Sécurité : /jobs + ratchet routes nues
 
-- [ ] V3a — VF-3/DC-1 : `registerJobsHuma` sous `RequireAuth` (server_apiv1.go:485 — via
-  groupe `r.With` comme S2) + test 401 anonyme ajouté à `TestLotS_GuardedRoutes_*`.
-- [ ] V3b — DC-1 : `newJobID()` (platform/jobs/store.go:253) → identifiant aléatoire
-  crypto (collision-safe) ; vérifier qu'aucun consommateur ne parse le timestamp de l'ID
-  (grep `job_` + lecture des callers) avant de changer le format.
-- [ ] V3c — DC-8 : ratchet « routes nues » : test qui `chi.Walk` le routeur assemblé
-  (réutiliser le boot de test intégration api existant) et compare l'ensemble des routes
-  SANS RequireAuth/RequireAdmin/ownership à une allowlist explicite datée (login/callback,
-  health/readyz, session/context, static, SPA, demo-públics). Toute nouvelle route nue =
-  rouge. (C'est le garde-rail qui manquait à S3.)
-- [ ] V3d — VF-15 : rafraîchir `.ai/LOT_S_ROUTE_GUARD_TABLE.md` : +/jobs (désormais gardé),
-  `POST /session/context` (libellé réel), `/directory/gamertags/search`, re-numérotation
-  lignes. Petite passe, la table redevient fiable.
+- [x] V3a — VF-3/DC-1 : `registerJobsHuma` sous `RequireAuth` (server_apiv1.go:490 — la
+  ligne avait bougé de 485). Fait via `newHumaAPI(r.With(RequireAuth(cfg.DemoMode,
+  cfg.AuthMode)))` : humachi adosse l'API Huma au sous-routeur gardé (héritage middleware
+  confirmé sur pièces, cf. `humacore.NewAPI` + registerGamertagHuma). NoStore : pas
+  présent sur cette route à l'origine → non ajouté (respect « conserver s'il y est »). Cas
+  `V3 GET /jobs/{job_id}` ajouté à `TestLotS_GuardedRoutes_AnonymousUnauthorized`
+  (`guard_s_test.go`) : 401 anonyme, PASS. Le package `handlers` ne peut pas appeler
+  `registerJobsHuma` (cycle d'import api↔handlers) → mount minimal répliqué (garde
+  court-circuite avant le handler, idem cas S existants).
+- [x] V3b — DC-1 : `newJobID()` → `job_<YYYYMMDD>_<hex16>` (crypto/rand 16 octets =
+  128 bits). Consommateurs vérifiés sur pièces (grep JobID/Split/Atoi/Parse → 0 parsing
+  du timestamp) : seul usage ordonnant = tiebreaker `Store.List` quand StartedAt nil (cas
+  dégénéré, ordre lexical grossièrement chronologique conservé par le préfixe date).
+  Fallback horloge sur échec crypto/rand loggé (slog.Error, jamais d'ID vide silencieux).
+  Commentaire stale `store_list_test.go:19` (« newJobID = UnixNano ») corrigé. Test
+  `jobid_test.go` : format + unicité + 0 collision sur 10 000 générations → PASS.
+- [x] V3c — DC-8 : ratchet `internal/api/bare_routes_ratchet_test.go`. Approche
+  COMPORTEMENTALE (marquage middleware fragile — closures non comparables). Boot du VRAI
+  routeur en enforcement (`DemoMode=false`, `AuthMode="password"`, RepoRoot=dépôt pour la
+  validation TOML boot ; sinon les gardes lot S no-opent). `chi.Walk` → pour chaque route,
+  composition de sa SEULE chaîne de middlewares autour d'un handler bidon (aucun vrai
+  handler exécuté → 0 dépendance nil, 0 accès DuckDB) + requête anonyme. 401/403 = gardée ;
+  autre = doit être dans l'allowlist datée 2026-07-07 (30 routes publiques : liveness,
+  static, référentiels assets/titres, bootstrap/players/changelog/help/feed-version,
+  directory/gamertags, auth device-flow). Self-check anti-rot (leçon V4d) : 0 entrée
+  d'allowlist morte/inutile. MORDANT prouvé 2 sens : (1) jobs dégardé → rouge
+  « GET /api/v1/jobs/{job_id} (code OK) » ; (2) entrée d'allowlist bidon → rouge
+  « entrée d'allowlist MORTE ». Périmètre password ; `/auth/xbox/*` racine (mode xbox) et
+  catch-all SPA (NotFound non walkable) hors surface, documentés.
+- [x] V3d — VF-15 : `.ai/LOT_S_ROUTE_GUARD_TABLE.md` rafraîchi : +`GET /jobs/{job_id}` (§2,
+  gardé RequireAuth, l.490), `GET /session` (302) → `POST /session/context` (l.302, libellé
+  réel + note CSRF), `/gamertags?q=` → `GET /directory/gamertags/search` (l.888), lignes
+  re-pointées partout (§1-§5 post-J2/K), +`/static/*`, +note MountAdminMonitoringRoutes
+  (/admin/monitoring/jobs). Section « Garde-rail automatisé (V3c) » ajoutée : la table est
+  désormais adossée au ratchet (c'est lui qui mord, plus le grep manuel).
 
-Gate V3 : `go test -tags=integration -p 1 ./internal/api/...` → exit 0 ; le ratchet V3c
-passe ET mord (le vérifier dans les 2 sens : retirer temporairement une garde → rouge).
+Gate V3 : `go build ./... && go vet ./...` → exit 0 ; `go test ./internal/api/...
+./internal/platform/jobs/...` → exit 0 ; `go test -tags=integration -p 1
+./internal/api/...` → exit 0 (0 `^--- FAIL:`) ; ratchet V3c mordant 2 sens (ci-dessus) ;
+`golangci-lint --new-from-rev=HEAD` → 0 issue nouvelle (4 issues résiduelles = dette
+baseline pré-existante server.go/server_apiv1.go, hors périmètre V3).
 
 ## LOT V4 — Code mort + allowlists mortes + artefacts
 
