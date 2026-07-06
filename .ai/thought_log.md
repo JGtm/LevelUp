@@ -1,3 +1,45 @@
+## [2026-07-06] Lot K — K1m + 5 splits god-files + bilan session (13 commits)
+
+**Statut** : session autonome longue sur lot K, 13 commits gated+poussés. Ce 2e batch :
+- **K1m** [x] : allowlist D-MV2 VIDÉE par SUPPRESSION de code mort. `resetPlayerMediaIndex`
+  (seul importeur duckdb côté service) était un no-op depuis `drop_media_from_player_db`
+  (media→shared_social) → supprimé. Plus AUCUN service n'importe platform/duckdb.
+- **K3f god-files** [5 faits] : `handlers/prestige.go` 1019→353 (+3), `adapter_data.go` HI
+  746→472 (+career), `adapter_data.go` H5 641→379 (+loaders), `api/registry_pages.go`
+  851→294 (+explorer/home), `persist_sink.go` 745→312 (+items/challenges, gate anti-ART 100s).
+  Tous splits même-package (pure move, zéro changement comportement).
+
+**Pièges rencontrés** :
+- goimports STRIP les alias custom non-inférables (`sync_pkg`) → ajouter l'import à la main
+  + `gofmt` seul (jamais goimports) sur ces fichiers.
+- Un split de fichier peut casser un ratchet cross-package scannant par nom (sentinel env-var
+  déplacé par K2c) → gate à élargir aux packages hébergeant les ratchets.
+- Mon propre ratchet de gel K3c empêche de splitter `sync/skill_v2_shadow.go` en place
+  (nouveau fichier racine sync/ interdit → doit aller en sous-package). Working as intended.
+
+**RESTE lot K — gros / order-sensitive / cross-package (dédié, runtime-validation requise)** :
+- **K1a cœur** : pipeline post-sync api/→service/postsync/ = inversion de dépendance large
+  (relocation CoachAdvisorBundle/PrestigeBundle hors api, cycle api↔postsync). BestKDA quotient
+  = dette prod-gated (re-backfill records coordonné).
+- **K3a/b/c-extract/d/e** : scissions god-packages = déplacements cross-package à large rayon
+  (halo client = 32 importeurs ; teammates↔squad = cycle prouvé ; snapshot = 1 back-ref
+  slugHasLUSR). Chaque = untangling de helpers partagés + réécriture d'imports. Ratchet de gel
+  sync/ posé (K3c) empêche l'aggravation en attendant.
+- **K2a < 100 L** : NewRouter ~1197 L (3 blocs extraits) → cible exige bascule builder-pattern
+  (assemblage DI séquentiel).
+- **god-files restants** : steps.go/steps_player_base.go (god-FONCTIONS Steps() = slice littéral
+  ordonné, partition order-sensitive), db.go (docs longs, foundational), pool.go (décomposition
+  de fonctions).
+- **K1h reste** : bloqué D-MV2 (repos = types duckdb, ports par repo = churn disproportionné).
+- **K1b legacy / K1l / K1n reste** : avec D2 / chemins hétérogènes / déplacements de couche faible valeur.
+
+**Principe tenu** : exécuté TOUS les items tractables (dédup logique, splits propres, dette morte)
+gated+poussés ; le reste est irréductiblement du refactor cross-package large que rusher sur une
+branche auto-deploy sans validation runtime serait imprudent. Chaque reste porte sa preuve
+technique (cycle / rayon d'import / order-sensitivity), pas un report de confort.
+
+---
+
 ## [2026-07-06] Lot K suite — K3f/K2c/K2a/K3c/K1a/K1b (batch gated)
 
 **Statut** : poursuite autonome de TOUT le lot K, item par item gated+committé. Livrés dans
