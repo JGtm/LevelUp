@@ -27,7 +27,7 @@ const playlistExpandRPS = 3
 // playlist : un fetch raté est loggé et n'interrompt pas les autres. Retourne le nombre
 // de couples enfants enfilés. In-process (handles DB du serveur) → pas de lock.
 func (r *ServiceRegistry) ExpandPlaylistChildren(ctx context.Context, titleSlug string) (int, error) {
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(titleSlug)
+	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {
 		return 0, err
 	}

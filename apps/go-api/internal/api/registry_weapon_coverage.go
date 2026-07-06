@@ -25,7 +25,7 @@ func (r *ServiceRegistry) WeaponCoverage(ctx context.Context, titleSlug string) 
 		GeneratedAt:   time.Now().UTC().Format(time.RFC3339),
 		TopUnresolved: []domain.AdminWeaponCoverageItem{},
 	}
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(titleSlug)
+	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {
 		return resp, err
 	}
