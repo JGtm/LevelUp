@@ -1121,12 +1121,14 @@ K1 — Extractions de couches (ROI d'abord) :
   SUPPRIMÉ : `loadTitleAssetDrawerData(h5)` était appelé 2× (AssetMetadataHandler + adapter
   TitleAssetURLAdapter) → hoisté UNE fois avant le bloc, réutilisé aux 2 endroits. Gate :
   build+vet 0, intégration -p 1 (api+handlers) verte.
-- [ ] K1h — CR A5 + ARCHI mineurs handlers : handlers qui construisent repos/métier →
+- [~] K1h — CR A5 + ARCHI mineurs handlers : handlers qui construisent repos/métier →
   services + ports : `progression.go:162-251` (ProgressionService, jointure catalog x
   earned hors handler), `campaign.go:221`, `admin_auto_sync.go:206`, `sync_handler.go:165`,
   `player_profile.go`, `home.go` ; `bootstrap.go:23`/`title_sync.go:30` → port.* ;
-  `commendation_handler.go` → api/handlers/ ; `registry_weapon_coverage.go:102` (SQL slug
-  concaténé → paramétré + déplacé).
+  `commendation_handler.go` → api/handlers/.
+  - [x] **`registry_weapon_coverage.go:102` FAIT (2026-07-06)** : slug concaténé dans le SQL
+    → **paramétré** (`title_slug=?` + arg). Injection-hardening. Build+vet 0. (Le « déplacé »
+    vers duckdb + les autres handlers = reste de K1h, `[!]` collection incrémentale.)
 - [x] K1i — ARCHI 8 + CR A5 (2026-07-06) : interfaces consumer-side étroites (1 méthode
   chacune) remplacent les champs concrets. `HomeService.careerLive` → `homeSpartanIdentityProvider`
   (`GetSpartanIdentity`). `CareerService.seasonsCatalog` + `FiltersService.catalog` →
