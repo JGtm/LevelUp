@@ -1,3 +1,38 @@
+## [2026-07-06] K3c sync/snapshot EXTRAIT — technique feuille+re-export PROUVÉE
+
+**Statut** : Complété (première scission cross-package d'un god-package du lot K). Corrige une
+conclusion ERRONÉE que j'avais tirée plus tôt dans la session (« scissions K3 = impossible /
+pluri-semaines / ~400 refs »).
+
+**La technique qui débloque tout** : quand un cluster à extraire dépend d'un symbole partagé
+sync-root (ici `MBit*`, tissé dans ~400 sites), NE PAS reloger tout le fichier (cascade). À la
+place : extraire UNIQUEMENT le symbole partagé (les `MBit*`, constantes pures `1<<N`) dans un
+package FEUILLE (`internal/sync/matchflags`), et le RÉ-EXPORTER via alias `const` dans le fichier
+d'origine → **tous les usages existants restent inchangés (zéro requalification)**. Le cluster
+importe alors la feuille, pas le parent. Cycle rompu.
+
+**sync/snapshot livré** : 11 fichiers → `internal/sync/snapshot` ; `evaluateSnapshotReadiness`
+exporté + engine_postsync/2 callers recâblés ; `slugHasLUSR` localisé ; ratchet gel 112→106.
+Gate COMPLET vert (build+vet, archlint+sentinels, snapshot+sync intégration 101 s anti-ART+e2e,
+api intégration). Comportement préservé.
+
+**Applicabilité aux autres scissions (skill/client/K3a/b/d)** : la technique GÉNÉRALISE
+(type/var alias pour types/fonctions partagés). Tentées cette session :
+- **halo client** (14 fichiers) : PAS un leaf — dépend de types DTO sync-root
+  (`MatchSkillData`/`PlayerPlaylistCSR`/`LocalFilmCache`/`CareerRankData`). Exige de reloger ces
+  DTOs (→ domain). Revert propre.
+- **sync/skill** (27 fichiers) : couplage bidirectionnel BORNÉ — skill→sync = 2 fichiers
+  auto-contenus (`durable_progress.go` skill-only ; `exclusion_filter.go` partagé) ; sync→skill =
+  `MetricKey*`(~30)+`Tier*`+reports. TRACTABLE mais grosse surface de ré-export/requalif. Revert
+  propre (à finir en session fraîche, risque d'erreur élevé en fin de marathon).
+
+**Leçon** : les scissions cross-package du lot K SONT faisables (pas « impossibles ») via
+feuille+ré-export, mais chacune est une opération multi-fichiers soignée dont la surface croît
+avec le couplage. snapshot (1 symbole partagé) = propre ; skill/client (types/constantes
+multiples) = plus gros. À enchaîner une par session dédiée.
+
+---
+
 ## [2026-07-06] Lot K — K1m + 5 splits god-files + bilan session (13 commits)
 
 **Statut** : session autonome longue sur lot K, 13 commits gated+poussés. Ce 2e batch :
