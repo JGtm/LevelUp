@@ -1247,8 +1247,11 @@ K2 — God functions à risque (tâche dédiée, passer la grille plan-review av
   gate api intégration après chaque). **FAIT (2026-07-06)** : `buildAssetMetadataHandler` +
   `wireHalo5AssetAdapters` (~134 L) PUIS `buildTitleRuntime` (~148 L : tout le bloc « Phase B
   multi-titres » — resolver d'adapters semantic/data/assetURL HI + images de rang par titre
-  actif + capabilities HI, sorties regroupées en struct `titleRuntime`). **NewRouter ~1 470 →
-  ~1 197 L**. Gate à chaque : build+vet 0, intégration -p 1 api verte (NewRouter boot OK).
+  actif + capabilities HI, sorties regroupées en struct `titleRuntime`). **PUIS (2026-07-06,
+  suite)** : `startSessionPurgeLoop` (goroutine de purge sessions, bloc à zéro sortie) +
+  `applyTransverseMiddlewares` (chaîne `r.Use` transverse : recovery→…→TitleExtractor, ~30 L, zéro
+  sortie ; `titleRegistry` remonté avant le bloc car réutilisé partout). **NewRouter ~1 470 → ~1 197
+  → ~1 157 L**. Gate à chaque : build+vet 0, intégration -p 1 api verte (NewRouter boot OK).
   `[!]` RESTE : poursuivre par bloc (`buildStores`, `applyMiddlewares`, `mountXxx` par domaine,
   `waypointExplore`→service, purge sessions goroutine) — la cible < 100 L exige une bascule
   builder-pattern (assemblage DI intrinsèquement séquentiel) ; réduction incrémentale continue.

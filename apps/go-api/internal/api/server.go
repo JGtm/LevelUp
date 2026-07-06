@@ -489,31 +489,13 @@ func buildTitleRuntime(serverCtx context.Context, cfg *config.AppConfig, titleRe
 	}
 }
 
+// startSessionPurgeLoop lance la purge périodique des sessions expirées (TTL
+// dépassé) : purge immédiate au boot (rattrape le backlog) puis toutes les 6h,
+// arrêt propre au shutdown via serverCtx. Extrait de NewRouter (K2a — réduction
+// du god-func d'assemblage DI).
+//
 //nolint:gocyclo // Routeur central : mount de ~80 endpoints avec feature flags
-func NewRouter(
-	serverCtx context.Context,
-	cfg *config.AppConfig,
-	bootRepo port.BootstrapRepository,
-	bootSvc *service.BootstrapService,
-	daemon watcher.DaemonController,
-	tokenProvider auth_platform.TokenProvider,
-	autoSyncScheduler *scheduler.AutoSyncScheduler,
-	backupScheduler *duckdbbackup.Scheduler,
-	groupStore *groupstore.GroupStore,
-) (http.Handler, *ServiceRegistry) {
-	if tokenProvider == nil {
-		tokenProvider = auth_platform.NewMSALProvider()
-	}
-	// Sprint 14 : session store + Sprint 15 : attempt store auth
-	// Le flag Secure du cookie + HSTS sont décidés PAR REQUÊTE selon le schéma réel
-	// (TLS natif ou X-Forwarded-Proto derrière un proxy de confiance), pas figés au
-	// boot : ne plus coupler « secret custom » à « HTTPS » (sinon cookie Secure jeté
-	// sur http://localhost → onboarding bloqué). Override via LEVELUP_COOKIE_SECURE.
-	cookiePolicy := middleware.SecureCookiePolicy{Mode: cfg.CookieSecure, TrustProxy: cfg.TrustProxyHeaders}
-	sessionStore := session_platform.NewStore(cfg.SessionDir, session_platform.DefaultTTL, cfg.SessionSecret)
-	// Purge périodique des sessions expirées (TTL dépassé). Sans ça, data/sessions/
-	// accumule indéfiniment. Purge immédiate au boot (rattrape le backlog), puis
-	// toutes les 6h ; arrêt propre au shutdown via serverCtx.
+func startSessionPurgeLoop(serverCtx context.Context, sessionStore *session_platform.Store) {
 	go func() {
 		if n := sessionStore.PurgeExpired(); n > 0 {
 			slog.InfoContext(serverCtx, "session: purge initiale sessions expirées", "removed", n)
@@ -531,22 +513,20 @@ func NewRouter(
 			}
 		}
 	}()
-	attemptStore := auth_platform.NewAttemptStore()
+}
 
-	// Sprint 16 : settings store + Sprint 17 : job store
-	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath)
-	jobsPath := titlePkg.NewPathResolver(cfg.RepoRoot).JobsCachePath()
-	jobStore := jobs_platform.NewStore(jobsPath)
-
-	// Auth locale : user store + invite store (mode password).
-	usersPath := filepath.Join(cfg.AuthDir, "users.json")
-	invitesPath := filepath.Join(cfg.AuthDir, "invites.json")
-	users := userstore.NewStore(usersPath)
-	invites := userstore.NewInviteStore(invitesPath)
-
-	r := chi.NewRouter()
-
-	// Middlewares transverses (ordre important)
+// applyTransverseMiddlewares monte les middlewares transverses (l'ORDRE importe)
+// sur le routeur racine : recovery, préservation du RemoteAddr, RealIP conditionnel
+// (uniquement derrière un proxy de confiance), en-têtes de sécurité, RequestID,
+// CORS, CSRF, rate-limit, logs slog, compression, session, puis TitleExtractor
+// (injecte title_slug dans le contexte). Extrait de NewRouter (K2a).
+func applyTransverseMiddlewares(
+	r chi.Router,
+	cfg *config.AppConfig,
+	sessionStore *session_platform.Store,
+	cookiePolicy middleware.SecureCookiePolicy,
+	titleRegistry *titlePkg.Registry,
+) {
 	r.Use(chimiddleware.Recoverer)
 	// Capture l'adresse TCP réelle du peer AVANT tout middleware susceptible de
 	// réécrire RemoteAddr : le garde LoopbackOnly des endpoints /_diag s'appuie
@@ -569,13 +549,56 @@ func NewRouter(
 	r.Use(middleware.SlogLogger)
 	r.Use(chimiddleware.Compress(5))
 	r.Use(middleware.WithSession(sessionStore, cookiePolicy))
-
-	// Sprint 44 : TitleExtractor — injecte title_slug dans le contexte.
-	// MT-16 / day-one 2e titre : registre PARTAGÉ piloté par config (built-in
-	// halo_infinite + titres additionnels découverts en config/titles). Posé par
-	// SetDefaultRegistry au boot ; retombe sur le built-in mono-titre en test/CLI.
-	titleRegistry := titlePkg.DefaultRegistry()
+	// Sprint 44 : TitleExtractor — injecte title_slug dans le contexte (registre
+	// PARTAGÉ piloté par config, MT-16 / day-one 2e titre).
 	r.Use(middleware.TitleExtractor(titleRegistry))
+}
+
+func NewRouter(
+	serverCtx context.Context,
+	cfg *config.AppConfig,
+	bootRepo port.BootstrapRepository,
+	bootSvc *service.BootstrapService,
+	daemon watcher.DaemonController,
+	tokenProvider auth_platform.TokenProvider,
+	autoSyncScheduler *scheduler.AutoSyncScheduler,
+	backupScheduler *duckdbbackup.Scheduler,
+	groupStore *groupstore.GroupStore,
+) (http.Handler, *ServiceRegistry) {
+	if tokenProvider == nil {
+		tokenProvider = auth_platform.NewMSALProvider()
+	}
+	// Sprint 14 : session store + Sprint 15 : attempt store auth
+	// Le flag Secure du cookie + HSTS sont décidés PAR REQUÊTE selon le schéma réel
+	// (TLS natif ou X-Forwarded-Proto derrière un proxy de confiance), pas figés au
+	// boot : ne plus coupler « secret custom » à « HTTPS » (sinon cookie Secure jeté
+	// sur http://localhost → onboarding bloqué). Override via LEVELUP_COOKIE_SECURE.
+	cookiePolicy := middleware.SecureCookiePolicy{Mode: cfg.CookieSecure, TrustProxy: cfg.TrustProxyHeaders}
+	sessionStore := session_platform.NewStore(cfg.SessionDir, session_platform.DefaultTTL, cfg.SessionSecret)
+	// Purge périodique des sessions expirées (TTL dépassé) — cf. startSessionPurgeLoop.
+	startSessionPurgeLoop(serverCtx, sessionStore)
+	attemptStore := auth_platform.NewAttemptStore()
+
+	// Sprint 16 : settings store + Sprint 17 : job store
+	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath)
+	jobsPath := titlePkg.NewPathResolver(cfg.RepoRoot).JobsCachePath()
+	jobStore := jobs_platform.NewStore(jobsPath)
+
+	// Auth locale : user store + invite store (mode password).
+	usersPath := filepath.Join(cfg.AuthDir, "users.json")
+	invitesPath := filepath.Join(cfg.AuthDir, "invites.json")
+	users := userstore.NewStore(usersPath)
+	invites := userstore.NewInviteStore(invitesPath)
+
+	r := chi.NewRouter()
+
+	// Registre de titres PARTAGÉ piloté par config (built-in halo_infinite + titres
+	// additionnels découverts en config/titles ; posé par SetDefaultRegistry au boot,
+	// retombe sur le built-in mono-titre en test/CLI). Créé ici car réutilisé dans
+	// tout NewRouter (mappings, capabilities, TitleExtractor).
+	titleRegistry := titlePkg.DefaultRegistry()
+	// Middlewares transverses (l'ordre importe) — cf. applyTransverseMiddlewares.
+	applyTransverseMiddlewares(r, cfg, sessionStore, cookiePolicy, titleRegistry)
 
 	// Phase A multi-titres : chargement des FieldMappingSet TOML par titre.
 	// Erreur de chargement → log mais ne bloque pas le boot (les autres titres
