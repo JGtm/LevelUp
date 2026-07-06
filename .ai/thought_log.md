@@ -1,3 +1,15 @@
+## [2026-07-06] K2a NewRouter — 2 blocs à zéro-sortie extraits (~1 197 → ~1 157 L)
+
+**Statut** : En cours (réduction incrémentale ; cible < 100 L exige toujours la bascule
+builder-pattern, hors périmètre de ce lot). Décision : n'extraire que des blocs à ZÉRO sortie
+(pas de variable réutilisée en aval → aucun replumbing des sites d'usage, risque minimal en fin
+de session longue). Extraits : `startSessionPurgeLoop(serverCtx, sessionStore)` (goroutine de purge
+périodique) + `applyTransverseMiddlewares(r, cfg, sessionStore, cookiePolicy, titleRegistry)` (chaîne
+`r.Use` transverse jusqu'à TitleExtractor ; `titleRegistry := DefaultRegistry()` remonté avant le
+bloc — sans dépendance locale, sûr). Gate : build+vet 0, `go test -tags=integration -p 1 ./internal/api/`
+VERT 17 s (NewRouter boot OK). **Prochaine étape** : blocs restants à sortie (buildStores,
+mountXxx) exigent un regroupement en struct (fiddly) ou la bascule builder.
+
 ## [2026-07-06] K3a platform/duckdb → sous-package prestige EXTRAIT (cas INVERSE de K3c)
 
 **Statut** : Complété (le domaine Prestige ; le reste de K3a — halo5_*.go, autres domaines — demeure).
