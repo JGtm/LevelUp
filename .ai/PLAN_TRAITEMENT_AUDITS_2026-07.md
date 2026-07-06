@@ -1076,15 +1076,35 @@ découpés ; chemins via PathResolver. Chaque sous-lot = 1 commit + build/tests 
 > Reprise recommandée : K1a → K2a → K3d (ordre du plan).
 
 K1 — Extractions de couches (ROI d'abord) :
-- [ ] K1a — ARCHI 1 + 2 (reste) + CR A2 (partie post-sync) : extraire le pipeline
-  post-sync de api/ → `service/postsync/` ; SQL → repos platform/duckdb
-  (`PlayerSnapshotRepo`, `post_sync_progression_queries.go:139`,
-  `post_sync_deltas_records.go:21-48` loadPlayerRecord/upsertPlayerRecord) ; formules
-  produit → analysis/ ; au passage : `EmitPostSyncDeltas` 247 L → table-driven (CR mineur),
-  « BestKDA » en quotient → formule ADR 0006 (ARCHI mineur), seuils 0.05/0.01 nommés
-  (CR mineur), `outcome = 2` → `outcomeSQLEq` (`post_sync_progression_queries.go:301`).
-- [ ] K1b — ARCHI 5 : cascade refresh tokens de `registry_auth.go:169` (~130 L dupliquant
-  `RefreshHaloTokensViaStoreFirst`) → platform/auth, implémentation unique (pré-requis D2).
+- [~] K1a — ARCHI 1 + 2 (reste) + CR A2 (partie post-sync). **« au passage » FAIT+VÉRIFIÉ
+  (2026-07-06)** : `outcome = 2` → `duckdb.OutcomeSQLEqSlug(pdb.TitleSlug, …)` title-aware
+  (`post_sync_progression_queries.go:306`, plus aucun littéral en requête) ; seuils nommés
+  `kdRatioThresholdStep`/`winrateThresholdStep` (0.05) + `bestKDARecordEpsilon` (0.01)
+  (`post_sync_deltas.go:56-60`) ; `EmitPostSyncDeltas` déjà réduit 247 → 147 L
+  (`//nolint:funlen,gocyclo` justifié : émetteur multi-événements comparant ~12 snapshots).
+  `[!]` **BestKDA quotient** = DETTE DOCUMENTÉE prod-gated : la requête calcule
+  `(kills+assists)/GREATEST(deaths,1)` ; le fix ADR 0006 (kda natif) ne peut PAS s'appliquer
+  seul (records best_kda persistés sur l'échelle quotient → resteraient bloqués), exige un
+  RE-BACKFILL coordonné (op data/prod, hors branche refacto) — commentaire explicite en code.
+  `[!]` **cœur RESTE** : extraction pipeline post-sync api/ → `service/postsync/` + repos →
+  duckdb + formules → analysis/ = inversion de dépendance large (relocation
+  `CoachAdvisorBundle`/`PrestigeBundle` hors api pour éviter le cycle api↔postsync +
+  interface 6-capacités) — gros déplacement cross-package, session dédiée.
+- [~] K1b — ARCHI 5 : cascade refresh tokens de `registry_auth.go` dupliquant le pipeline
+  MSAL→OAuth. **FAIT (2026-07-06) — dédup de la cascade store (cœur), ZÉRO changement de
+  comportement** : la cascade MSAL silent → OAuth refresh+rotation est extraite en source
+  unique `auth.RefreshFromStoreEntry` (ex-`tryRefreshFromUserEntry`, param `store` élargi à
+  l'interface `UserTokenStore` — seul `UpdateOAuthRefreshToken` y est appelé, PAS besoin
+  d'élargir l'interface). `registry.tryRefreshFromAuthStore` délègue et CONSERVE sa politique
+  exacte (clear-on-success ; JAMAIS de marquage reauth sur le chemin serveur haute-fréquence ;
+  erreur désormais LOGUÉE, jamais avalée). Les 4 tests registry (rotation persistée / no-write /
+  clear-on-success / no-clear-on-failure) passent INCHANGÉS = preuve de non-régression.
+  Gate : build+vet 0, tests auth cascade (canonique+registry) + intégration -p 1 auth verts.
+  `[!]` RESTE : dédup du CHEMIN LEGACY (sync_meta DuckDB + env var) NON faite — la déléguer à
+  `tryRefreshFromLegacyInputs` introduirait 3 divergences (marquage reauth, rotation→DuckDB si
+  store nil, granularité télémétrie env-vs-duckdb) sur un chemin DÉPRÉCIÉ (retrait Phase 5/D2).
+  Réconciliation à faire AVEC D2 quand le legacy disparaît (élimine les divergences). Suit la
+  logique « pré-requis D2 » du plan.
 - [x] K1c — ARCHI 3 (2026-07-06) : helper unique `duckdb.WriteSyncMeta` (+ `ReadSyncMeta`)
   déjà source unique des 2 ex-copies (`notifications_title_ready`/`_boot`, dédup #6). **Reste
   livré ici** : le durcissement « écriture SOUS LEASE dblease » (ADR 0013, un seul writer

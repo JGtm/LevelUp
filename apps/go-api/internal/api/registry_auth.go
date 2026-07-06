@@ -193,45 +193,20 @@ func (r *ServiceRegistry) tryRefreshFromAuthStore(ctx context.Context, pdb *duck
 	if err != nil || user == nil {
 		return nil
 	}
-
-	var result *auth.ExchangeResult
-
-	// MSAL cache → silent refresh
-	if user.MSALCacheJSON != "" {
-		accessToken, err := r.provider.TrySilentRefresh(ctx, user.MSALCacheJSON)
-		if err == nil && accessToken != "" {
-			if res, xerr := r.provider.Exchange(ctx, accessToken); xerr == nil && res != nil {
-				slog.DebugContext(ctx, "halo_auth: tokens obtenus via MSAL cache (store)", "xuid", xuid)
-				result = res
-			}
-		} else if err != nil {
-			slog.WarnContext(ctx, "halo_auth: MSAL silent refresh échoué (store)", "xuid", xuid, "err", err)
-		}
+	// Cascade store MSAL→OAuth (rotation persistée) déléguée à la source unique
+	// auth.RefreshFromStoreEntry (K1b dédup). L'erreur classifiée est LOGUÉE (jamais
+	// avalée) mais N'entraîne PAS de marquage reauth_required : le chemin serveur
+	// haute-fréquence conserve sa politique historique (clear-on-success uniquement ;
+	// c'est le chemin CLI de cli_refresh.go qui marque un RT révoqué).
+	result, refreshErr := auth.RefreshFromStoreEntry(ctx, r.provider, r.authStore, xuid, user)
+	if refreshErr != nil {
+		slog.WarnContext(ctx, "halo_auth: refresh store échoué", "xuid", xuid, "err", refreshErr)
 	}
-
-	// OAuth RT → refresh + rotation persistée au store (sauf si MSAL a déjà réussi)
-	if result == nil && user.OAuthRefreshToken != "" {
-		accessToken, rotatedRT, err := r.provider.TryOAuthRefreshWithRotation(ctx, user.OAuthRefreshToken)
-		if err == nil && accessToken != "" {
-			if rotatedRT != "" && rotatedRT != user.OAuthRefreshToken {
-				if werr := r.authStore.UpdateOAuthRefreshToken(xuid, rotatedRT); werr != nil {
-					slog.WarnContext(ctx, "halo_auth: persistance RT rotaté store échouée", "xuid", xuid, "err", werr)
-				}
-			}
-			if res, xerr := r.provider.Exchange(ctx, accessToken); xerr == nil && res != nil {
-				slog.DebugContext(ctx, "halo_auth: tokens obtenus via OAuth refresh (store)", "xuid", xuid)
-				result = res
-			}
-		} else if err != nil {
-			slog.WarnContext(ctx, "halo_auth: OAuth refresh échoué (store)", "xuid", xuid, "err", err)
-		}
-	}
-
 	if result != nil {
 		// Refresh OK → l'éventuel flag reauth_required est obsolète : on l'efface
-		// (auto-guérison de la bannière, symétrique du clear côté CLI cli_refresh.go).
-		// Idempotent, best-effort, non bloquant. Un xuid au RT réellement mort
-		// n'atteint jamais ce point → son flag reste posé (pas de faux clear).
+		// (auto-guérison de la bannière, symétrique du clear côté CLI). Idempotent,
+		// best-effort, non bloquant. Un xuid au RT réellement mort n'atteint jamais
+		// ce point → son flag reste posé (pas de faux clear).
 		if cerr := r.authStore.ClearReauthRequired(xuid); cerr != nil {
 			slog.WarnContext(ctx, "halo_auth: clear reauth_required échoué (non-bloquant)", "xuid", xuid, "err", cerr)
 		}

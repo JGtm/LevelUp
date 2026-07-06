@@ -64,6 +64,7 @@ var allowedEnvReaders = map[string]string{
 	"internal/config/config_helpers_test.go": "Test du chargement env (t.Setenv).",
 	"cmd/server/main.go":                     "Wiring resolveXUIDForRotation + appel migrateLegacyAuthTokensAtBoot (Phase 2). Mention dans onRotated log.",
 	"internal/scheduler/auto_sync.go":        "Header doc qui mentionne le retrait de defaultTokenReader (referenced for historical context).",
+	"internal/scheduler/auto_sync_run.go":    "Message d'aide (K2c : extrait de auto_sync.go) citant SPNKR_OAUTH_REFRESH_TOKEN_<GT> dans checkSyncPreconditions — libellé pour l'utilisateur, PAS une lecture d'env.",
 
 	// === Sync engine ===
 	"internal/sync/engine_postsync.go": "Mention dans commentaire/log (legacy).",
