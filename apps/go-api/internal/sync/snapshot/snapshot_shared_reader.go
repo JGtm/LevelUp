@@ -1,4 +1,4 @@
-package sync
+package snapshot
 
 // snapshot_shared_reader.go — SharedReader snapshot-préféré (Phase 3 cutover lecture).
 //

@@ -1,4 +1,4 @@
-package sync
+package snapshot
 
 // snapshot_readiness_eval.go — orchestration du marquage snapshot-ready (Phase 2).
 //
@@ -84,9 +84,9 @@ type snapshotReadyRow struct {
 	reasons string
 }
 
-// evaluateSnapshotReadiness marque les matchs complets du joueur (snapshot_ready_at).
+// EvaluateSnapshotReadiness marque les matchs complets du joueur (snapshot_ready_at).
 // Retourne le nombre de matchs nouvellement marqués. Best-effort côté caller.
-func evaluateSnapshotReadiness(ctx context.Context, playerDB, sharedDB *sql.DB, xuid, titleSlug string) (int, error) {
+func EvaluateSnapshotReadiness(ctx context.Context, playerDB, sharedDB *sql.DB, xuid, titleSlug string) (int, error) {
 	if playerDB == nil || sharedDB == nil || xuid == "" {
 		return 0, nil
 	}

@@ -31,6 +31,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/snapshot"
 	syncv2 "levelup/go-api/internal/sync/v2"
 )
 
@@ -187,7 +188,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 			keep = n
 		}
 	}
-	snapshotCutter := syncpkg.NewSnapshotCutter(deps.PathResolver, keep)
+	snapshotCutter := snapshot.NewSnapshotCutter(deps.PathResolver, keep)
 
 	return syncv2.NewCycleOrchestrator(
 		knownLoader,

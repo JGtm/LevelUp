@@ -17,7 +17,7 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
-	sync_pkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/snapshot"
 )
 
 // Filters retourne un FiltersService pour le joueur.
@@ -63,7 +63,7 @@ func (r *ServiceRegistry) matchViewSharedReader(pdb *duckdb.PlayerDB) duckdb.Sha
 		return v.(duckdb.SharedReader)
 	}
 	paths := title.NewPathResolver(r.cfg.RepoRoot)
-	sr := duckdb.SharedReader(sync_pkg.NewSnapshotPreferredSharedReader(paths, slug, pdb.SharedReadDB()))
+	sr := duckdb.SharedReader(snapshot.NewSnapshotPreferredSharedReader(paths, slug, pdb.SharedReadDB()))
 	actual, _ := r.snapReaders.LoadOrStore(slug, sr)
 	return actual.(duckdb.SharedReader)
 }

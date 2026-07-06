@@ -33,6 +33,7 @@ import (
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/ops"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/snapshot"
 )
 
 // trackFatalErr collecte les erreurs FATAL DuckDB (IsInvalidatedError) dans
@@ -508,7 +509,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// au snapshot immuable. Best-effort : n'interrompt pas le pipeline ; réévalué à
 	// chaque cycle convergent (aucun nouveau call site — runConditionalPostSync gère).
 	withSharedRead("snapshot_readiness", func(sharedDB *sql.DB) {
-		if n, err := evaluateSnapshotReadiness(ctx, playerDB, sharedDB, e.xuid, e.titleSlug); err != nil {
+		if n, err := snapshot.EvaluateSnapshotReadiness(ctx, playerDB, sharedDB, e.xuid, e.titleSlug); err != nil {
 			slog.WarnContext(ctx, "post-sync: snapshot readiness échoué", "gamertag", e.gamertag, "err", err)
 			trackFatalErr(&r, "snapshot readiness", err)
 		} else if n > 0 {

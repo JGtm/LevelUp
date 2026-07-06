@@ -1,4 +1,4 @@
-package sync
+package snapshot
 
 // snapshot_metrics.go — métriques expvar TITRÉES du cut snapshot (Phase 2 / Phase 6bis
 // du PLAN_DURABILITE_SNAPSHOT_IMMUABLE). Conforme ADR 0009 (expvar stdlib, pas

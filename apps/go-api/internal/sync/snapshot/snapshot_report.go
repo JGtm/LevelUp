@@ -1,4 +1,4 @@
-package sync
+package snapshot
 
 // snapshot_report.go — agrégat GLOBAL-par-titre du backlog de snapshot (gauges expvar
 // pour le monitoring opérateur, ADR 0009). Calculé après chaque cut.

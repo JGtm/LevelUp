@@ -1297,21 +1297,21 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
   gel** : `archlint/sync_root_freeze_test.go` gèle la racine sync/ à 112 fichiers .go non-test
   (baseline DÉCROISSANTE : échoue si un nouveau fichier racine est ajouté ET si le compte
   descend sans abaisser la baseline). Doctrine ADR 0027 : le neuf va en v2/ ou sous-package.
-  Test vert. `[!]` RESTE : extractions sync/skill/ + sync/snapshot/ = déplacements cross-package.
-  **CYCLE PROUVÉ (tentative 2026-07-06, revert propre)** : sync/snapshot a un cycle
-  BIDIRECTIONNEL — `engine_postsync.go:511` (sync-root) appelle `evaluateSnapshotReadiness`
-  (cluster snapshot) ET le cluster snapshot lit `MBitWeaponKills`/`MBitPVEStats`/
-  `MBitWeaponKillsNoFilm` (constantes de `backfill_flags.go`, sync-root). Casser le cycle exige
-  de RELOGER `backfill_flags.go` (constantes MBit*/PBit* + BackfillFlags + 2 fns, AUTO-CONTENU)
-  dans un package feuille, PUIS re-qualifier ses utilisateurs, PUIS exporter
-  `evaluateSnapshotReadiness` + câbler engine_postsync. **MESURE (2026-07-06)** : MBit*/PBit*
-  sont référencés dans **~48 fichiers / ~400+ références** (sync, persist, domain, ops,
-  scheduler, cmd). Reloger `backfill_flags.go` = requalification de ~400 sites — ÉNORME et à
-  haut risque. Le cluster snapshot est tissé dans toute la couche sync/persist. **CONCLUSION
-  ÉTAYÉE** : les scissions K3 cross-package sont un chantier PLURI-SEMAINES (symboles partagés
-  tissés dans tout le code), PAS une tâche de session — cf. l'intitulé du lot (« le plus gros »).
-  Tentative faite + revert propre (branche verte). Le ratchet de gel empêche l'aggravation ;
-  l'extraction réelle exige une session dédiée à requalification incrémentale gate-par-fichier.
+  **sync/snapshot EXTRAIT (2026-07-06) ✅** : le cluster snapshot (11 fichiers : cutter/metrics/
+  readiness/readiness_eval/report/shared_reader + tests) → `internal/sync/snapshot` (package
+  `snapshot`). Cycle bidirectionnel rompu par la **technique du package feuille + ré-export** :
+  (1) les constantes `MBit*` (pures `1<<N`) → package feuille `internal/sync/matchflags` ;
+  `sync/backfill_flags.go` les RÉ-EXPORTE (const alias) → **ZÉRO requalification** des ~centaines
+  d'usages (sync/domain/ops/scheduler/cmd) ; (2) snapshot importe `matchflags` (feuille) au lieu
+  de sync ; (3) `slugHasLUSR` localisé dans snapshot (2 copies triviales, ≤2) ; (4)
+  `evaluateSnapshotReadiness` → exporté `EvaluateSnapshotReadiness`, `engine_postsync` câblé sur
+  `snapshot.EvaluateSnapshotReadiness` ; (5) 2 callers externes requalifiés (registry_pages,
+  sync_v2_wiring). **Aucun cycle** (snapshot→matchflags feuille ; sync→snapshot uni-directionnel).
+  Baseline ratchet 112 → 106. **Gate : build+vet 0, archlint + auth-sentinel + duckdb-ratchets
+  verts, snapshot intégration + sync intégration (101 s, anti-ART+e2e) + api intégration verts** —
+  comportement préservé. **LEÇON (corrige la mesure « ~400 refs impossible » précédente)** : la
+  ré-export des constantes partagées rend les scissions cross-package FAISABLES sans requalification
+  de masse. Applicable à K3a/b/d/e. `[!]` RESTE : sync/skill/ (17 fichiers, même technique).
   **2e tentative (2026-07-06, backfillflags feuille) → 3e NIVEAU DE CASCADE prouvé** :
   `backfill_flags.go` n'est PAS auto-contenu — sa map `BackfillFlags` référence `MetricKeyAccuracy`
   + `BackfillType*` (définis DISPERSÉS dans citations/performance/scope/skill_config, MÊLÉS à de
