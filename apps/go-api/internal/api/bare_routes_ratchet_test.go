@@ -7,51 +7,52 @@
 // garde-rail automatisé n'attrapait une route montée sur `r` nu. Ce test est ce
 // garde-rail permanent. Il aurait attrapé /jobs.
 //
-// COMMENT (approche COMPORTEMENTALE, choisie car le marquage des middlewares est
-// fragile — chi ne fournit qu'un slice de closures non comparables). On construit
-// le VRAI routeur en mode ENFORCEMENT (DemoMode=false, AuthMode="password" — sinon
-// les gardes du lot S no-opent et tout paraîtrait public). On `chi.Walk` le routeur
-// assemblé ; pour CHAQUE route on compose UNIQUEMENT sa chaîne de middlewares
-// autour d'un handler bidon (jamais le vrai handler → aucune dépendance nil, aucun
-// accès DuckDB) et on envoie une requête ANONYME. Une route qui répond 401/403 est
-// gardée (RequireAuth / RequireAdmin / ownership / LoopbackOnly / CSRF). Une route
-// qui répond autre chose (2xx…) est PUBLIQUE : elle DOIT figurer dans l'allowlist
-// datée ci-dessous, sinon le test échoue.
+// COMMENT (marquage des middlewares par NOM de fonction, robuste). On construit le
+// VRAI routeur en mode DÉMO (boot propre, aucune dépendance de service réelle : le
+// mode enforcement, lui, wire des services nil → panics/os.Exit au boot, cf. la
+// tentative comportementale abandonnée). En démo les gardes sont des NO-OP au
+// RUNTIME (RequireAuth(demo=true) renvoie `next`), MAIS le closure du middleware
+// reste présent dans la chaîne exposée par `chi.Walk`. On l'identifie donc par le
+// nom runtime de sa fonction (`runtime.FuncForPC`), qui encode le constructeur
+// (`...RequireAuth.1`, `...RequirePlayerOwnership.func18`, etc.) — stable, non
+// dépendant de l'OS. Une route dont la chaîne contient un garde d'auth est GARDÉE.
+// Une route SANS garde doit figurer dans l'allowlist datée ci-dessous, sinon échec.
 //
-// PÉRIMÈTRE. Mode "password" (auth déployée en self-hosted). Les routes racine
-// /auth/xbox/{login,callback} (mode "xbox" uniquement) et le catch-all SPA `/*`
-// (handler NotFound, non walkable) ne sont pas exercés ici — publics par
-// conception, hors surface /api/v1, couverts par le tableau LOT_S_ROUTE_GUARD_TABLE.
+// PÉRIMÈTRE. Routes montées sous le routeur assemblé (`/api/v1`, `/health*`,
+// `/static/*`). Le catch-all SPA `/*` (handler NotFound, non walkable) et les
+// routes racine /auth/xbox/{login,callback} (mode "xbox" only) sont publics par
+// conception, hors surface, couverts par LOT_S_ROUTE_GUARD_TABLE.
 //
-// MAINTENANCE. Ajouter une route PUBLIQUE légitime = ajouter 1 ligne à l'allowlist
-// AVEC sa justification. Ajouter une route qui doit être gardée = la monter sous
-// une garde (elle passe alors en 401/403, le test reste vert). Une nouvelle route
-// nue non justifiée = ROUGE.
+// MAINTENANCE. Route publique légitime = 1 ligne d'allowlist AVEC justification.
+// Route qui doit être gardée = la monter sous une garde (elle disparaît de l'échec).
+// Nouvelle route nue non justifiée = ROUGE.
 
 package api_test
 
 import (
-	"context"
 	"net/http"
-	"net/http/httptest"
-	"os"
-	"path/filepath"
-	"regexp"
+	"reflect"
+	"runtime"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
-
-	"levelup/go-api/internal/api"
-	"levelup/go-api/internal/config"
-	"levelup/go-api/internal/platform/groupstore"
-	"levelup/go-api/internal/service"
 )
 
+// guardMarkers — sous-chaînes de nom de fonction des middlewares qui constituent
+// une garde d'accès (auth / admin / ownership / loopback). Le nom runtime d'un
+// middleware construit par `middleware.RequireAuth(...)` contient « RequireAuth ».
+var guardMarkers = []string{
+	"RequireAuth",
+	"RequireAdmin",
+	"RequirePlayerOwnership",
+	"LoopbackOnly",
+}
+
 // publicRoutesAllowlist — routes légitimement accessibles sans garde d'auth.
-// Établie 2026-07-07 par relevé comportemental (voir en-tête). Toute entrée =
-// « METHOD /route » exact (paramètres sous forme {name}, comme chi.Walk les rend).
-// DÉCROISSANTE par principe : on n'ajoute une entrée qu'avec une raison écrite.
+// Établie 2026-07-07 (relevé comportemental croisé + marquage). Clé = « METHOD /route »
+// exact (chi.Walk rend les paramètres {name}). DÉCROISSANTE : n'ajouter qu'avec raison.
 var publicRoutesAllowlist = map[string]string{
 	// Liveness / readiness (sondes infra, aucune donnée).
 	"GET /health":  "sonde liveness",
@@ -59,6 +60,12 @@ var publicRoutesAllowlist = map[string]string{
 	"GET /readyz":  "sonde readiness",
 	// Auth-bootstrap (nécessaire AVANT login).
 	"GET /api/v1/auth/device-flow/{attempt_id}": "polling device-flow (onboarding, pas de session)",
+	"POST /api/v1/auth/device-flow/start":       "démarrage device-flow (onboarding) — POST protégé CSRF",
+	"POST /api/v1/auth/login":                   "login local — POST protégé CSRF",
+	"POST /api/v1/auth/logout":                  "logout — POST protégé CSRF",
+	"POST /api/v1/auth/register":                "register (invite) — POST protégé CSRF",
+	"POST /api/v1/auth/password":                "changement mot de passe (session) — POST protégé CSRF",
+	"POST /api/v1/session/context":              "établit le contexte de session (avant login) — POST protégé CSRF",
 	// Shell applicatif + annuaire (filtrés par ownership IN-SERVICE, pas au routeur).
 	"GET /api/v1/bootstrap":                  "shell React ; available_players filtré par session dans BootstrapService",
 	"GET /api/v1/players":                    "liste joueurs filtrée par ownership in-service (S4, BuildPlayersList)",
@@ -76,121 +83,78 @@ var publicRoutesAllowlist = map[string]string{
 	"GET /api/v1/assets/{title_id}/maps":                       "référentiel catalogue maps",
 	"GET /api/v1/assets/{title_id}/medals":                     "référentiel catalogue médailles",
 	"GET /api/v1/assets/{title_id}/weapons":                    "référentiel catalogue armes",
-	// Référentiels de titre (labels / capacités / catalogues — MULTI_TITLE_API_ENABLED).
-	"GET /api/v1/titles/{slug}/capabilities":      "référentiel capacités titre",
-	"GET /api/v1/titles/{slug}/feature-matrix":    "référentiel matrice de features",
-	"GET /api/v1/titles/{slug}/field-mappings":    "référentiel labels de champs",
-	"GET /api/v1/titles/{slug}/catalog/maps":      "référentiel catalogue maps titre",
-	"GET /api/v1/titles/{slug}/catalog/pairs":     "référentiel catalogue pairs titre",
-	"GET /api/v1/titles/{slug}/catalog/playlists": "référentiel catalogue playlists titre",
-	// Assets statiques servis par le backend (SPA + commendations).
+	// Référentiels de titre (labels / capacités — MULTI_TITLE_API_ENABLED). NOTE :
+	// les catalog/{playlists,pairs,maps} sont dep-gated (câblés seulement si le
+	// catalog seasons est branché) → absents du routeur de test démo, donc non
+	// couverts ici ; référentiels GET public par conception (LOT_S table §1).
+	"GET /api/v1/titles/{slug}/capabilities":   "référentiel capacités titre",
+	"GET /api/v1/titles/{slug}/feature-matrix": "référentiel matrice de features",
+	"GET /api/v1/titles/{slug}/field-mappings": "référentiel labels de champs",
+	// Assets statiques servis par le backend (file-server chi → TOUTES les méthodes).
 	"GET /static/*":                   "assets statiques",
 	"HEAD /static/*":                  "assets statiques (HEAD)",
 	"OPTIONS /static/*":               "assets statiques (preflight)",
+	"POST /static/*":                  "assets statiques (file-server chi, toutes méthodes)",
+	"PUT /static/*":                   "assets statiques (file-server chi, toutes méthodes)",
+	"PATCH /static/*":                 "assets statiques (file-server chi, toutes méthodes)",
+	"DELETE /static/*":                "assets statiques (file-server chi, toutes méthodes)",
+	"CONNECT /static/*":               "assets statiques (file-server chi, toutes méthodes)",
+	"TRACE /static/*":                 "assets statiques (file-server chi, toutes méthodes)",
 	"GET /static/commendations/*":     "assets statiques commendations",
 	"HEAD /static/commendations/*":    "assets statiques commendations (HEAD)",
 	"OPTIONS /static/commendations/*": "assets statiques commendations (preflight)",
+	"POST /static/commendations/*":    "assets statiques commendations (file-server chi, toutes méthodes)",
+	"PUT /static/commendations/*":     "assets statiques commendations (file-server chi, toutes méthodes)",
+	"PATCH /static/commendations/*":   "assets statiques commendations (file-server chi, toutes méthodes)",
+	"DELETE /static/commendations/*":  "assets statiques commendations (file-server chi, toutes méthodes)",
+	"CONNECT /static/commendations/*": "assets statiques commendations (file-server chi, toutes méthodes)",
+	"TRACE /static/commendations/*":   "assets statiques commendations (file-server chi, toutes méthodes)",
 }
 
-// buildEnforcedRouter construit le routeur RÉEL en mode enforcement pour le
-// ratchet. RepoRoot pointe le dépôt (TOML de mappings réels → validation boot OK).
-func buildEnforcedRouter(t *testing.T) http.Handler {
-	t.Helper()
-	repoRoot := findRepoRoot(t)
-	tmpDir := t.TempDir()
-	appSettingsPath := filepath.Join(tmpDir, "app_settings.json")
-	if err := os.WriteFile(appSettingsPath, []byte(`{}`), 0o600); err != nil {
-		t.Fatalf("write app_settings: %v", err)
-	}
-	sessionDir := filepath.Join(tmpDir, "sessions")
-	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
-		t.Fatalf("mkdir sessions: %v", err)
-	}
-
-	cfg := &config.AppConfig{
-		RepoRoot:             repoRoot,
-		DBProfilesPath:       filepath.Join(tmpDir, "db_profiles.json"), // absent → liste vide, pas de DuckDB
-		AppSettingsPath:      appSettingsPath,
-		SessionDir:           sessionDir,
-		DemoMode:             false,      // CRITIQUE : gardes lot S actives
-		AuthMode:             "password", // enforcement password (auth déployée)
-		AuthDir:              filepath.Join(tmpDir, "auth"),
-		DemoFixturesDir:      tmpDir,
-		APIHost:              "127.0.0.1",
-		APIPort:              8000,
-		SessionSecret:        "CHANGE_ME_IN_PRODUCTION", // pragma: allowlist secret
-		CORSOrigins:          []string{},
-		Lang:                 "fr",
-		RateLimitRPM:         1000000, // ne pas rate-limiter le balayage
-		MultiTitleAPIEnabled: true,    // expose les référentiels de titre (routes publiques à couvrir)
-		PrestigeEnabled:      true,    // expose les routes prestige (gardées → doivent l'être)
-	}
-	bootRepo := &mockBootstrapRepo{}
-	bootSvc := service.NewBootstrapService(cfg, bootRepo)
-	gs := groupstore.NewGroupStore(filepath.Join(tmpDir, "groups.json"))
-	router, _ := api.NewRouter(context.Background(), cfg, bootRepo, bootSvc, nil, nil, nil, nil, gs)
-	return router
-}
-
-// findRepoRoot remonte depuis le CWD du test jusqu'à trouver config/titles.
-func findRepoRoot(t *testing.T) string {
-	t.Helper()
-	dir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd: %v", err)
-	}
-	for i := 0; i < 8; i++ {
-		if _, err := os.Stat(filepath.Join(dir, "config", "titles", "halo_infinite", "mappings", "fields.toml")); err == nil {
-			return dir
+// routeIsGuarded — vrai si la chaîne de middlewares de la route contient au moins
+// un garde d'auth (identifié par le nom runtime de la fonction du closure).
+func routeIsGuarded(mws []func(http.Handler) http.Handler) bool {
+	for _, mw := range mws {
+		name := runtime.FuncForPC(reflect.ValueOf(mw).Pointer()).Name()
+		for _, marker := range guardMarkers {
+			if strings.Contains(name, marker) {
+				return true
+			}
 		}
-		dir = filepath.Dir(dir)
 	}
-	t.Fatal("repo root introuvable (config/titles/halo_infinite/mappings/fields.toml absent)")
-	return ""
-}
-
-// probeAnonymous compose la chaîne de middlewares de la route autour d'un handler
-// bidon (200) et renvoie le code d'une requête anonyme. 401/403 = gardée.
-func probeAnonymous(method, route string, mws []func(http.Handler) http.Handler) int {
-	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-	for i := len(mws) - 1; i >= 0; i-- {
-		h = mws[i](h)
-	}
-	paramRe := regexp.MustCompile(`\{[^/]+\}`)
-	concrete := paramRe.ReplaceAllString(route, "x")
-	req := httptest.NewRequest(method, concrete, nil)
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	return rec.Code
+	return false
 }
 
 // TestBareRoutesRatchet_NoUnguardedRouteOutsideAllowlist : aucune route montée
 // sans garde d'auth hors allowlist datée. Garde-rail permanent de VF-3.
 func TestBareRoutesRatchet_NoUnguardedRouteOutsideAllowlist(t *testing.T) {
-	router := buildEnforcedRouter(t)
+	// Flags ON pour exposer les routes conditionnelles (référentiels titre, prestige),
+	// comme le contract_test — la surface publique doit être couverte au complet.
+	t.Setenv("LEVELUP_DEMO_MODE", "true")
+	t.Setenv("MULTI_TITLE_API_ENABLED", "true")
+	t.Setenv("PRESTIGE_ENABLED", "true")
+
+	router := buildTestRouter(t)
 	r, ok := router.(chi.Router)
 	if !ok {
 		t.Fatalf("le routeur n'est pas un chi.Router (%T)", router)
 	}
 
-	seen := make(map[string]bool)     // routes walkées (pour le self-check)
-	hitAllow := make(map[string]bool) // entrées d'allowlist effectivement rencontrées
+	seen := make(map[string]bool)     // routes walkées (self-check)
+	hitAllow := make(map[string]bool) // entrées d'allowlist rencontrées
 	var bare []string                 // routes publiques hors allowlist (violations)
 
 	err := chi.Walk(r, func(method, route string, _ http.Handler, mws ...func(http.Handler) http.Handler) error {
 		key := method + " " + route
 		seen[key] = true
-		code := probeAnonymous(method, route, mws)
-		if code == http.StatusUnauthorized || code == http.StatusForbidden {
-			return nil // gardée
+		if routeIsGuarded(mws) {
+			return nil
 		}
 		if _, allowed := publicRoutesAllowlist[key]; allowed {
 			hitAllow[key] = true
-			return nil // publique légitime
+			return nil
 		}
-		bare = append(bare, key+" (code "+http.StatusText(code)+")")
+		bare = append(bare, key)
 		return nil
 	})
 	if err != nil {
@@ -200,23 +164,23 @@ func TestBareRoutesRatchet_NoUnguardedRouteOutsideAllowlist(t *testing.T) {
 	if len(bare) > 0 {
 		sort.Strings(bare)
 		t.Errorf("%d route(s) NUE(S) hors allowlist (montées sans garde d'auth) — "+
-			"les garder sous RequireAuth/RequireAdmin/ownership OU les ajouter à "+
-			"publicRoutesAllowlist AVEC justification :", len(bare))
+			"les garder sous RequireAuth/RequireAdmin/ownership/LoopbackOnly OU les "+
+			"ajouter à publicRoutesAllowlist AVEC justification :", len(bare))
 		for _, b := range bare {
 			t.Errorf("  - %s", b)
 		}
 	}
 
 	// Self-check (leçon V4d) : aucune entrée d'allowlist morte. Une entrée pour une
-	// route walkée mais gardée (401/403) est INUTILE → la retirer. Une entrée pour
-	// une route absente du walk (route supprimée/renommée) est ROT → la retirer.
+	// route walkée mais gardée est INUTILE ; une entrée pour une route absente du
+	// walk est ROT. Les deux → à retirer.
 	for key := range publicRoutesAllowlist {
 		if !seen[key] {
 			t.Errorf("entrée d'allowlist MORTE (route absente du routeur) : %q — la retirer", key)
 			continue
 		}
 		if !hitAllow[key] {
-			t.Errorf("entrée d'allowlist INUTILE (route %q est en réalité gardée 401/403) — la retirer", key)
+			t.Errorf("entrée d'allowlist INUTILE (route %q est en réalité gardée) — la retirer", key)
 		}
 	}
 }

@@ -158,19 +158,24 @@ grep `TODO(prestige-agent)` → 0.
   Fallback horloge sur échec crypto/rand loggé (slog.Error, jamais d'ID vide silencieux).
   Commentaire stale `store_list_test.go:19` (« newJobID = UnixNano ») corrigé. Test
   `jobid_test.go` : format + unicité + 0 collision sur 10 000 générations → PASS.
-- [x] V3c — DC-8 : ratchet `internal/api/bare_routes_ratchet_test.go`. Approche
-  COMPORTEMENTALE (marquage middleware fragile — closures non comparables). Boot du VRAI
-  routeur en enforcement (`DemoMode=false`, `AuthMode="password"`, RepoRoot=dépôt pour la
-  validation TOML boot ; sinon les gardes lot S no-opent). `chi.Walk` → pour chaque route,
-  composition de sa SEULE chaîne de middlewares autour d'un handler bidon (aucun vrai
-  handler exécuté → 0 dépendance nil, 0 accès DuckDB) + requête anonyme. 401/403 = gardée ;
-  autre = doit être dans l'allowlist datée 2026-07-07 (30 routes publiques : liveness,
-  static, référentiels assets/titres, bootstrap/players/changelog/help/feed-version,
-  directory/gamertags, auth device-flow). Self-check anti-rot (leçon V4d) : 0 entrée
-  d'allowlist morte/inutile. MORDANT prouvé 2 sens : (1) jobs dégardé → rouge
-  « GET /api/v1/jobs/{job_id} (code OK) » ; (2) entrée d'allowlist bidon → rouge
-  « entrée d'allowlist MORTE ». Périmètre password ; `/auth/xbox/*` racine (mode xbox) et
-  catch-all SPA (NotFound non walkable) hors surface, documentés.
+- [x] V3c — DC-8 : ratchet `internal/api/bare_routes_ratchet_test.go`. Approche par
+  MARQUAGE des middlewares (nom runtime). Une 1re tentative COMPORTEMENTALE (boot enforcement
+  `DemoMode=false` + composition de chaîne + requête anonyme) a été ABANDONNÉE après échec
+  CI : le boot enforcement wire des services nil → `os.Exit(1)` de validation TOML +
+  nil-deref dans `NewRouter` sur Linux, crashant tout le binaire de test `internal/api`
+  (VF observé en direct sur `e703d6dc7` : Go Coverage + Baseline rouges). Approche
+  livrée, robuste : boot du routeur en mode DÉMO (propre, 0 dépendance réelle) ; en démo les
+  gardes lot S sont NO-OP au runtime MAIS le closure du middleware reste dans la chaîne
+  `chi.Walk` ; on l'identifie par `runtime.FuncForPC(...).Name()` (contient `RequireAuth`,
+  `RequireAdmin`, `RequirePlayerOwnership`, `LoopbackOnly` — stable, OS-indépendant). Route
+  gardée = chaîne contient un de ces marqueurs ; sinon → allowlist datée 2026-07-07
+  (liveness, static toutes-méthodes, référentiels assets/titres, bootstrap/players/
+  changelog/help/feed-version, directory/gamertags, auth device-flow + POST auth/session).
+  Self-check anti-rot (leçon V4d) : 0 entrée d'allowlist morte/inutile. MORDANT prouvé
+  2 sens : (1) jobs dégardé → rouge « GET /api/v1/jobs/{job_id} » ; (2) entrée d'allowlist
+  bidon → rouge « entrée d'allowlist MORTE ». Limite documentée : `catalog/*` dep-gated
+  (absent du routeur démo) → non couvert (référentiel GET, table §1) ; SPA `/*` (NotFound
+  non walkable) et `/auth/xbox/*` racine (mode xbox) hors surface.
 - [x] V3d — VF-15 : `.ai/LOT_S_ROUTE_GUARD_TABLE.md` rafraîchi : +`GET /jobs/{job_id}` (§2,
   gardé RequireAuth, l.490), `GET /session` (302) → `POST /session/context` (l.302, libellé
   réel + note CSRF), `/gamertags?q=` → `GET /directory/gamertags/search` (l.888), lignes
