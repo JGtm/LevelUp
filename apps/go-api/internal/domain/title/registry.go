@@ -561,10 +561,17 @@ func (p *PathResolver) SessionDir() string {
 	return filepath.Join(p.repoRoot, "data", "sessions")
 }
 
+// CacheRootDir retourne le répertoire racine du cache applicatif (jobs, cache
+// BP/challenges, release notes...). Source unique du sous-chemin "data/cache".
+// Ex: data/cache/
+func (p *PathResolver) CacheRootDir() string {
+	return filepath.Join(p.repoRoot, "data", "cache")
+}
+
 // JobsCachePath retourne le chemin du cache des jobs.
 // Ex: data/cache/jobs.json
 func (p *PathResolver) JobsCachePath() string {
-	return filepath.Join(p.repoRoot, "data", "cache", "jobs.json")
+	return filepath.Join(p.CacheRootDir(), "jobs.json")
 }
 
 // SyncCacheDir retourne le répertoire racine du cache fetch intermédiaire

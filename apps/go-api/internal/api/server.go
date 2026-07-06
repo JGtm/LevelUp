@@ -235,7 +235,7 @@ func NewRouter(
 
 	// Sprint 16 : settings store + Sprint 17 : job store
 	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath)
-	jobsPath := filepath.Join(cfg.RepoRoot, "data", "cache", "jobs.json")
+	jobsPath := titlePkg.NewPathResolver(cfg.RepoRoot).JobsCachePath()
 	jobStore := jobs_platform.NewStore(jobsPath)
 
 	// Auth locale : user store + invite store (mode password).
@@ -593,7 +593,7 @@ func NewRouter(
 	// Il est aussi passé au ServiceRegistry pour que les HaloProviders délèguent
 	// le cache/fetch des définitions BP/challenges au resolver (P4/P5).
 	assetCfg := assets.AssetConfig{
-		CacheRootDir:  filepath.Join(cfg.RepoRoot, "data", "cache"),
+		CacheRootDir:  titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir(),
 		MetaDBPath:    metadataDBPathFor(cfg),
 		TokenProvider: reg.AnyPlayerTokens,
 		// Résolution d'image de carte inconnue (KindMapImage) via DiscoveryUGC.
@@ -1061,7 +1061,7 @@ func NewRouter(
 		// P8.10 : la logique git + parsing markdown vit dans
 		// service.ReleaseNotesService ; le handler ne fait que cache + I/O HTTP.
 		releaseBuilder := service.NewReleaseNotesService(cfg.RepoRoot)
-		help := handlers.NewHelpHandler(releaseBuilder, filepath.Join(cfg.RepoRoot, "data", "cache"))
+		help := handlers.NewHelpHandler(releaseBuilder, titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir())
 		help.Mount(r)
 
 		// Sprint 14 : contexte de session
