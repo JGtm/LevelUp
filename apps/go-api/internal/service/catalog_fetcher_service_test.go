@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // stubCatalogAdapter implémente games.TitleCatalogAdapter pour tests d'intégration.
@@ -125,7 +126,7 @@ func TestCatalogFetcherService_Drain_PlaylistAndPair(t *testing.T) {
 			},
 		},
 	}
-	svc := NewCatalogFetcherService(db, &stubCatalogResolver{adapter: adapter})
+	svc := NewCatalogFetcherService(duckdb.NewCatalogWriter(db), &stubCatalogResolver{adapter: adapter})
 
 	res, err := svc.Drain(ctx, "halo_infinite")
 	if err != nil {
@@ -182,7 +183,7 @@ func TestCatalogFetcherService_Drain_TransientError_StaysPending(t *testing.T) {
 			"playlist:pl-fail": errors.New("503 service unavailable"),
 		},
 	}
-	svc := NewCatalogFetcherService(db, &stubCatalogResolver{adapter: adapter})
+	svc := NewCatalogFetcherService(duckdb.NewCatalogWriter(db), &stubCatalogResolver{adapter: adapter})
 
 	res, err := svc.Drain(ctx, "halo_infinite")
 	if err != nil {
@@ -217,7 +218,7 @@ func TestCatalogFetcherService_Drain_AlreadyInCatalog_Skipped(t *testing.T) {
 
 	// Adapter vide : FetchMap échouerait s'il était appelé. On prouve la
 	// déduplication par NOT EXISTS (l'entrée résolue est hors périmètre pending).
-	svc := NewCatalogFetcherService(db, &stubCatalogResolver{adapter: &stubCatalogAdapter{}})
+	svc := NewCatalogFetcherService(duckdb.NewCatalogWriter(db), &stubCatalogResolver{adapter: &stubCatalogAdapter{}})
 
 	res, err := svc.Drain(ctx, "halo_infinite")
 	if err != nil {
@@ -238,7 +239,7 @@ func TestCatalogFetcherService_Drain_AlreadyInCatalog_Skipped(t *testing.T) {
 func TestCatalogFetcherService_Drain_EmptyQueue_NoError(t *testing.T) {
 	ctx := context.Background()
 	db := setupCatalogTestDB(t)
-	svc := NewCatalogFetcherService(db, &stubCatalogResolver{adapter: &stubCatalogAdapter{}})
+	svc := NewCatalogFetcherService(duckdb.NewCatalogWriter(db), &stubCatalogResolver{adapter: &stubCatalogAdapter{}})
 	res, err := svc.Drain(ctx, "halo_infinite")
 	if err != nil {
 		t.Fatalf("Drain empty: %v", err)

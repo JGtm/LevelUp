@@ -12,7 +12,27 @@ import (
 	"context"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 )
+
+// CatalogWriter expose la PERSISTANCE catalogue (drain + upserts) au
+// CatalogFetcherService, pour qu'il ne tienne plus de *sql.DB brut (ADR 0025 D-MV2,
+// K1j). Interface consumer-side étroite implémentée par platform/duckdb.CatalogRepo.
+// Les upserts sont ART-safe (SELECT-then-write, jamais d'ON CONFLICT sur metadata).
+type CatalogWriter interface {
+	// SelectPending retourne les entrées de catalog_fetch_queue dont l'asset n'est
+	// PAS encore dans la table catalogue de son type (append-only : file jamais mutée).
+	SelectPending(ctx context.Context, titleSlug string) ([]domain.CatalogQueueEntry, error)
+	// UpsertPlaylist persiste une playlist + ses pair_links + ré-enqueue les pairs.
+	// isRanked/experience sont déjà résolus par le caller (gate rankedplaylists).
+	UpsertPlaylist(ctx context.Context, titleSlug string, pl canonical.CanonicalPlaylist, isRanked bool, experience string) error
+	// UpsertPair persiste un pair + ses labels multi-langues + ré-enqueue map/game_variant.
+	UpsertPair(ctx context.Context, titleSlug string, p canonical.CanonicalPair) error
+	// UpsertMap persiste une map du catalogue.
+	UpsertMap(ctx context.Context, titleSlug string, m canonical.CanonicalMap) error
+	// UpsertGameVariant persiste un game_variant du catalogue.
+	UpsertGameVariant(ctx context.Context, titleSlug string, gv canonical.CanonicalGameVariant) error
+}
 
 // CatalogRepo expose la lecture catalogue title-aware vers les services.
 type CatalogRepo interface {
