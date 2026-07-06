@@ -13,7 +13,7 @@
 //
 // Satisfait STRUCTURELLEMENT halo_5.CommendationTotalsSource (retour canonical, aucun
 // import du package halo_5 → pas de cycle ; parité Halo5MatchHistorySource).
-package duckdb
+package halo5
 
 import (
 	"context"
@@ -22,18 +22,19 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // Halo5CommendationTotalsSource lit les totaux à vie des commendations d'un joueur
 // (xuid fixé) depuis le shared via un SharedReader title-aware.
 type Halo5CommendationTotalsSource struct {
-	shared SharedReader
+	shared duckdb.SharedReader
 	xuid   string
 }
 
 // NewHalo5CommendationTotalsSource construit la source liée à un joueur (xuid) et au
 // SharedReader du titre h5.
-func NewHalo5CommendationTotalsSource(shared SharedReader, xuid string) *Halo5CommendationTotalsSource {
+func NewHalo5CommendationTotalsSource(shared duckdb.SharedReader, xuid string) *Halo5CommendationTotalsSource {
 	return &Halo5CommendationTotalsSource{shared: shared, xuid: strings.TrimSpace(xuid)}
 }
 
@@ -47,7 +48,7 @@ FROM (
            mc.progress        AS progress,
            ROW_NUMBER() OVER (
                PARTITION BY mc.commendation_id
-               ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC,
+               ORDER BY ` + duckdb.StartTimeCanonicalSQL("r") + ` DESC,
                         mc.match_id DESC
            ) AS rn
     FROM match_commendations mc

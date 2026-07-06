@@ -23,11 +23,11 @@ var readExcludedGameVariantIDs = map[string][]string{
 	},
 }
 
-// excludedVariantClause retourne une clause SQL
+// ExcludedVariantClause retourne une clause SQL
 // ` AND COALESCE(<alias>.game_variant_id, ”) NOT IN (?, ?, ...)` + ses args pour le
 // titre donné, ou ("", nil) si le titre n'a aucun mode masqué. `alias` est l'alias de
 // la table match_registry / v_match_full dans la requête appelante (ex. "r").
-func excludedVariantClause(titleSlug, alias string) (string, []any) {
+func ExcludedVariantClause(titleSlug, alias string) (string, []any) {
 	ids := readExcludedGameVariantIDs[titleSlug]
 	if len(ids) == 0 {
 		return "", nil

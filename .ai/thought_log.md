@@ -33,7 +33,19 @@ loader +1 niveau (`..`×6) ; const cross-package `rivalsOrderColDeaths` → `met
 
 **Résultats** : `go build/vet ./...` 0 ; `go test -tags=integration -p 1` duckdb 81 s + prestige
 18 s VERTS (incl. coach_advisor e2e + writes_checkpoint ADR 0022) ; archlint OK. Comportement
-préservé. **Prochaine étape** : relocalisation `halo5_*.go` (2e sous-item K3a) ; K3b (teammates).
+préservé.
+
+**Suite — halo5 EXTRAIT (même session)** : 2e sous-item K3a fait. 5 fichiers prod + 3 tests →
+`internal/platform/duckdb/halo5` (destination `duckdb/halo5`, PAS games/halo_5 qui évite d'importer
+platform/duckdb). 4 helpers de projection partagés (matchTypeFromFlags/assetReference/outcomeFromInt/
+excludedVariantClause) exportés (utilisés aussi par player_matches_projection.go). Caller
+`server_titles_additional.go` via alias `halo5db`. **Blocage K3e-like ÉVITÉ** : les sources h5 ne
+dépendent que de l'INTERFACE `duckdb.SharedReader` (méthode unique `Get -> *sql.DB`) → un double
+`memSharedReader` sur `*sql.DB` remplace `openMemDB`+`LegacySharedReader` sans construire de
+`*duckdb.DB` (champs non-exportés) → zéro export de test côté prod. Leçon générale : quand un test
+déplacé dépend d'un type cœur seulement via une petite INTERFACE, un double structurel bat la
+duplication de helpers ou l'export d'internals. Gate integration duckdb+halo5+api VERT. duckdb-root
+269→261. **Prochaine étape** : K3b (teammates), K3d (api/wire).
 
 ## [2026-07-06] K3c sync/snapshot EXTRAIT — technique feuille+re-export PROUVÉE
 

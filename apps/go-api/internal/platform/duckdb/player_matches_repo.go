@@ -120,7 +120,7 @@ func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string,
 	}
 	// Masquage read-side des modes exclus du titre (Halo 5 : Campagne). Alias "r" =
 	// v_match_full dans playerMatchesSharedBaseSelect.
-	if clause, exArgs := excludedVariantClause(pdbTitleSlug(r.pdb), "r"); clause != "" {
+	if clause, exArgs := ExcludedVariantClause(pdbTitleSlug(r.pdb), "r"); clause != "" {
 		sb.WriteString(clause)
 		args = append(args, exArgs...)
 	}

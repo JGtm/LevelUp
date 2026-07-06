@@ -1,4 +1,4 @@
-package duckdb
+package halo5
 
 // halo5_commendation_defs.go — lecture du référentiel commendation_definitions
 // (metadata h5) pour résoudre nom + icône d'une commendation NATIVE par UUID.

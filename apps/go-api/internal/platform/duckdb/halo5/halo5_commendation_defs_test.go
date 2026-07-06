@@ -6,7 +6,7 @@
 //
 // Lancer : go test -tags=integration ./internal/platform/duckdb/ -run Halo5Commendation
 
-package duckdb
+package halo5
 
 import (
 	"context"

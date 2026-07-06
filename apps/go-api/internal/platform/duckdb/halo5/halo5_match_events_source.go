@@ -13,7 +13,7 @@
 //
 // Satisfait STRUCTURELLEMENT halo_5.MatchEventsLocalSource (retour canonical, aucun
 // import du package halo_5 → pas de cycle ; parité Halo5MatchHistorySource).
-package duckdb
+package halo5
 
 import (
 	"context"
@@ -21,15 +21,16 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // Halo5MatchEventsSource lit le kill-feed local d'un match via le SharedReader h5.
 type Halo5MatchEventsSource struct {
-	shared SharedReader
+	shared duckdb.SharedReader
 }
 
 // NewHalo5MatchEventsSource construit la source liée au SharedReader du titre h5.
-func NewHalo5MatchEventsSource(shared SharedReader) *Halo5MatchEventsSource {
+func NewHalo5MatchEventsSource(shared duckdb.SharedReader) *Halo5MatchEventsSource {
 	return &Halo5MatchEventsSource{shared: shared}
 }
 

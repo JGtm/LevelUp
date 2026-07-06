@@ -7,22 +7,23 @@
 // aucun import du package halo_5 → pas de cycle ; parité Halo5MatchHistorySource).
 // La PROJECTION vers canonical.CareerSnapshot (libellés de palier FR, bornes SR)
 // reste côté halo_5 (qui détient les référentiels CSR/SR).
-package duckdb
+package halo5
 
 import (
 	"context"
 	"database/sql"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // Halo5CareerSource lit le career local d'un joueur depuis SA player DB (h5).
 type Halo5CareerSource struct {
-	pdb *PlayerDB
+	pdb *duckdb.PlayerDB
 }
 
 // NewHalo5CareerSource construit la source liée à la player DB h5 d'un joueur.
-func NewHalo5CareerSource(pdb *PlayerDB) *Halo5CareerSource {
+func NewHalo5CareerSource(pdb *duckdb.PlayerDB) *Halo5CareerSource {
 	return &Halo5CareerSource{pdb: pdb}
 }
 
@@ -97,5 +98,5 @@ func (s *Halo5CareerSource) GetLatestCareer(ctx context.Context) (*domain.H5Care
 // et le sync h5 (livesync / cmd/h5-career-rank-xp) l'alimente. Vide si aucun
 // checkpoint (le graphe se masque, dégradation propre).
 func (s *Halo5CareerSource) GetXPHistory(ctx context.Context) ([]domain.XPHistoryPoint, error) {
-	return NewCareerRepo(s.pdb).GetXPHistory(ctx)
+	return duckdb.NewCareerRepo(s.pdb).GetXPHistory(ctx)
 }
