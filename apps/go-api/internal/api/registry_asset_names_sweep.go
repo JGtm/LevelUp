@@ -25,7 +25,7 @@ func (r *ServiceRegistry) ResolveUnresolvedAssetNames(ctx context.Context, title
 	if p == nil {
 		return assetnames.Result{}, nil
 	}
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(titleSlug)
+	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {
 		return assetnames.Result{}, err
 	}

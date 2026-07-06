@@ -1074,9 +1074,14 @@ K1 — Extractions de couches (ROI d'abord) :
   - [!] Reste (relocation `ExpandPlaylistChildren` hors racine api/, DDL→migration, batch 3-req)
     : couplé à la sortie du post-sync de la racine api/ (famille K1a) — session dédiée, pas
     fait ici pour ne pas mélanger un déplacement de package avec la dédup gated.
-- [ ] K1e — ARCHI 6 : `dataQualityHandles` (`registry_data_quality.go:33`) → lire via
-  `cfg.SharedProvider` (pattern `acquireProgressionSharedRead`) — élimine le conflit avec
-  les fenêtres RW du B-swap pour les 5+ runners admin.
+- [x] K1e — ARCHI 6 (2026-07-06) : `dataQualityHandles(ctx, titleSlug)` route la lecture
+  shared via `cfg.SharedProvider.Get` (réutilise `acquireProgressionSharedRead`, drain
+  RO↔RW résilient) QUAND le provider tient ce fichier (titre par défaut = seul shared pris
+  en RW en process) — élimine le conflit "different configuration" des 5+ runners admin
+  concurrents à un sync. Autres titres (aucune fenêtre RW) → `OpenReadOnly` conservé. ctx
+  threadé aux 8 callers (registry_actions ×2, asset_names_sweep, catalog_drain,
+  catalog_expand, data_quality ×2, weapon_coverage). Gate : build+vet 0, intégration -p 1
+  (api) verte.
 - [x] K1f — CR A3 (2026-07-06) : `service.BackfillOrchestrator` extrait
   (`backfill_orchestrator.go`) ; `handleStartBackfill` réduit à validation (400/404/409) +
   wiring SyncEngine + création job + 202 (~50 L, plus de nolint:funlen). Décomposé en

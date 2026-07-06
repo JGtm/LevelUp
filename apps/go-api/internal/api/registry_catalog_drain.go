@@ -47,7 +47,7 @@ func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug stri
 	}
 	defer catalogDrainMu.Unlock()
 
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(titleSlug)
+	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {
 		return res, err
 	}

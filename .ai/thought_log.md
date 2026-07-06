@@ -1,3 +1,22 @@
+## [2026-07-06] K1e — dataQualityHandles B-swap-safe via SharedProvider
+
+**Statut** : Complété. `dataQualityHandles` forçait `duckdb.OpenReadOnly(sharedPath)` — en
+conflit "different configuration" avec les fenêtres RW du B-swap quand un des 5+ runners
+admin (data-quality counts, asset-name sweep, catalog drain/expand, weapon coverage,
+lying-bits reset) tourne pendant un sync. Fix : quand `cfg.SharedProvider.Path() ==
+sharedPath` (titre par défaut = seul shared pris en RW en process), on passe par
+`acquireProgressionSharedRead(ctx, cfg.SharedProvider)` (drain RO↔RW résilient, retry/backoff
+déjà éprouvé côté progression). Les autres titres (aucune fenêtre RW en process) gardent
+`OpenReadOnly`. `ctx` threadé aux 8 callers. Provider satisfait `duckdb.SharedReader`
+structurellement (même `Get(ctx)`).
+
+**Résultats** : build 0, vet 0, intégration -p 1 (api 17 s) verte. Comportement inchangé
+hors chevauchement sync (le chemin provider ne s'active que pour le titre par défaut).
+
+**Conclusion** : K1e livré. Suite : K1i (interfaces consumer-side) / K1h.
+
+---
+
 ## [2026-07-06] K1n (suite) — dédup liste modes + statuer impuretés analysis/
 
 **Statut** : Complété (le reste de K1n statué). La liste `{"PvP_ranked","PvP_unranked"}`

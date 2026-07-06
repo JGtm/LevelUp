@@ -115,7 +115,7 @@ func (r *ServiceRegistry) RunLyingBitsReset(ctx context.Context, titleSlug strin
 	res := domain.LyingBitsResetResult{DryRun: dryRun}
 
 	if dryRun {
-		sharedSQL, _, closeAll, err := r.dataQualityHandles(titleSlug)
+		sharedSQL, _, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
 		if err != nil {
 			return res, err
 		}
@@ -250,7 +250,7 @@ func (r *ServiceRegistry) RunCatalogRefresh(ctx context.Context, titleSlug strin
 	}
 	defer catalogRefreshMu.Unlock()
 
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(titleSlug)
+	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {
 		return out, err
 	}

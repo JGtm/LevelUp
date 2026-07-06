@@ -1,10 +1,12 @@
 // Package api — registry_data_quality.go : runners qualité données du
 // dashboard monitoring (compteurs + listes d'inconnus).
 //
-// Handles : shared en RO via le cache duckdb (pattern openDBShared de
-// data_health_check — clé "ro:path" partagée avec main.go, Close décrémente
-// le ref-count) ; metadata via OpenReadWriteShared (handle process partagé
-// avec les catalogs/prestige, jamais un second sql.Open concurrent).
+// Handles (K1e, B-swap-safe) : shared via le SharedProvider quand celui-ci tient CE
+// fichier (titre par défaut — seul shared pris en RW en process) : le provider draine
+// les fenêtres RW↔RO au lieu de forcer un OpenReadOnly qui échouerait en "different
+// configuration" pendant un sync (5+ runners admin concurrents). Pour les autres titres
+// (aucune fenêtre RW en process) OpenReadOnly reste correct. metadata via
+// OpenReadWriteShared (handle process partagé avec les catalogs/prestige).
 package api
 
 import (
@@ -24,15 +26,31 @@ import (
 // dataQualityHandles ouvre shared (RO) + metadata (RW partagé). closeAll
 // décrémente les ref-counts — à defer par le caller. metadata absente →
 // metaSQL nil (les fonctions ops dégradent explicitement).
-func (r *ServiceRegistry) dataQualityHandles(titleSlug string) (sharedSQL, metaSQL *sql.DB, closeAll func(), err error) {
+func (r *ServiceRegistry) dataQualityHandles(ctx context.Context, titleSlug string) (sharedSQL, metaSQL *sql.DB, closeAll func(), err error) {
 	pr := titlePkg.NewPathResolver(r.cfg.RepoRoot)
 	sharedPath := pr.SharedDBPath(titleSlug)
 	if _, statErr := os.Stat(sharedPath); statErr != nil {
 		return nil, nil, nil, fmt.Errorf("shared DB absente pour %s: %w", titleSlug, statErr)
 	}
-	shared, err := duckdb.OpenReadOnly(sharedPath)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("open shared RO: %w", err)
+
+	// Lecture shared B-swap-safe : si le SharedProvider tient CE fichier (titre par
+	// défaut), passer par lui (drain RO↔RW, résilient au sync concurrent) ; sinon
+	// OpenReadOnly direct (aucune fenêtre RW en process pour ce titre).
+	var sharedRelease func()
+	if r.cfg.SharedProvider != nil && r.cfg.SharedProvider.Path() == sharedPath {
+		db, release, gerr := acquireProgressionSharedRead(ctx, r.cfg.SharedProvider)
+		if gerr != nil {
+			return nil, nil, nil, fmt.Errorf("acquire shared read (provider): %w", gerr)
+		}
+		sharedSQL = db
+		sharedRelease = release
+	} else {
+		shared, oerr := duckdb.OpenReadOnly(sharedPath)
+		if oerr != nil {
+			return nil, nil, nil, fmt.Errorf("open shared RO: %w", oerr)
+		}
+		sharedSQL = shared.SQLDb()
+		sharedRelease = func() { _ = shared.Close() } //nolint:errcheck // ref-count
 	}
 
 	var meta *duckdb.DB
@@ -41,13 +59,13 @@ func (r *ServiceRegistry) dataQualityHandles(titleSlug string) (sharedSQL, metaS
 		if m, openErr := duckdb.OpenReadWriteShared(metaPath); openErr == nil {
 			meta = m
 		} else {
-			monitoringLog.WarnContext(context.Background(), "data_quality: metadata indisponible",
+			monitoringLog.WarnContext(ctx, "data_quality: metadata indisponible",
 				"title", titleSlug, "err", openErr)
 		}
 	}
 
 	closeAll = func() {
-		_ = shared.Close() //nolint:errcheck // ref-count
+		sharedRelease()
 		if meta != nil {
 			_ = meta.Close() //nolint:errcheck // ref-count
 		}
@@ -55,7 +73,7 @@ func (r *ServiceRegistry) dataQualityHandles(titleSlug string) (sharedSQL, metaS
 	if meta != nil {
 		metaSQL = meta.SQLDb()
 	}
-	return shared.SQLDb(), metaSQL, closeAll, nil
+	return sharedSQL, metaSQL, closeAll, nil
 }
 
 // DataQualityCounts calcule les compteurs d'inconnus (lectures seules).
@@ -64,7 +82,7 @@ func (r *ServiceRegistry) DataQualityCounts(ctx context.Context, titleSlug strin
 		TitleSlug:   titleSlug,
 		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
 	}
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(titleSlug)
+	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {
 		return resp, err
 	}
@@ -101,7 +119,7 @@ func (r *ServiceRegistry) DataQualityIssues(ctx context.Context, titleSlug, kind
 		Kind:        kind,
 		Items:       []domain.AdminDataQualityIssue{},
 	}
-	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(titleSlug)
+	sharedSQL, metaSQL, closeAll, err := r.dataQualityHandles(ctx, titleSlug)
 	if err != nil {
 		return resp, err
 	}
