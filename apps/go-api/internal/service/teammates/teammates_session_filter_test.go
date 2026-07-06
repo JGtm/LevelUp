@@ -1,4 +1,4 @@
-package service
+package teammates
 
 // teammates_session_filter_test.go — tests du filtre de session dans GetPage.
 //

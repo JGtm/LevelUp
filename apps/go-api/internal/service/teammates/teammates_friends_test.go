@@ -1,6 +1,6 @@
 // teammates_friends_test.go : tests purs pour le filtre amis-only du dropdown
 // (§3 plan Squad/Sessions). Indépendant de DuckDB.
-package service
+package teammates
 
 import (
 	"testing"

@@ -10,6 +10,7 @@ import (
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
+	teammatespkg "levelup/go-api/internal/service/teammates"
 )
 
 // SquadService orchestre les données des pages Escouade et Synthèse.
@@ -77,7 +78,7 @@ func (s *SquadService) GetSquadPage(
 	// au référentiel gameplay avant ComputeImpactSummary. Sans effet observable
 	// (SquadImpact n'expose que des compteurs, gagnants invariants par T0), mais
 	// évite que ce consommateur d'events bruts diverge du reste de la pipeline.
-	impactEvents = correctSquadImpactEvents(ctx, "squad.v1", impactEvents, timeline.BuildTimelinesFromSquadRows(myMatches))
+	impactEvents = teammatespkg.CorrectSquadImpactEvents(ctx, "squad.v1", impactEvents, timeline.BuildTimelinesFromSquadRows(myMatches))
 	impact := analysis.ComputeImpactSummary(impactEvents, playerXUID, teammateXUID)
 
 	timeseries := analysis.ComputeSquadTimeseries(myMatches, 20)

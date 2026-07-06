@@ -20,7 +20,7 @@
 //     modeLabel + computeMapBreakdown +
 //     collectModeENs + buildSquadMatchHistory +
 //     buildMatchSeries
-package service
+package teammates
 
 import (
 	"context"
@@ -32,6 +32,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/squadagg"
 )
 
 // FriendGamertagsResolver retourne la liste courante des amis configurÃƒÂ©s
@@ -54,7 +55,7 @@ type TeammatesService struct {
 	// squadLoader (optionnel) : utilise pour charger les canonical rows des
 	// coequipiers (mode squad du SessionBriefing). Si nil, le briefing degrade
 	// en mode solo (SoloKPIs uniquement, pas de squad verdict).
-	squadLoader SquadV2Loader
+	squadLoader squadagg.SquadV2Loader
 	// medalDefs (optionnel) : résout les labels/descriptions anglais des médailles
 	// depuis metadata.medal_definitions. Si nil, le digest est retourné sans
 	// labels (medal_id et count seulement).
@@ -81,7 +82,7 @@ func (s *TeammatesService) WithPlayerMatchesRepo(repo port.PlayerMatchesReposito
 // WithSquadLoader injecte le loader per-gamertag utilise pour le SessionBriefing
 // mode squad (chargement des canonical rows de chaque coequipier en parallele
 // via TitlePlayerResolver). Si non cable, le briefing degrade en mode solo.
-func (s *TeammatesService) WithSquadLoader(loader SquadV2Loader) *TeammatesService {
+func (s *TeammatesService) WithSquadLoader(loader squadagg.SquadV2Loader) *TeammatesService {
 	s.squadLoader = loader
 	return s
 }
@@ -316,7 +317,7 @@ func (s *TeammatesService) GetPage(
 // filterCanonicalByMatchIDsSet ne garde que les canonical rows dont le match_id
 // figure dans le slice de SynthesisMatchRow filtré (post cascade + sessions).
 // Sert de pont entre la pipeline legacy SynthesisMatchRow et les builders
-// canoniques (ComputeKPIStats, buildSquadHeader).
+// canoniques (ComputeKPIStats, squadagg.BuildSquadHeader).
 func filterCanonicalByMatchIDsSet(
 	rows []canonical.PlayerMatchRow,
 	filtered []legacymatch.SynthesisMatchRow,
@@ -340,7 +341,7 @@ func filterCanonicalByMatchIDsSet(
 // buildBriefingHeaderForTeammatesPage construit le SquadHeader pour la page
 // Teammates. Mode solo si selectedGamertags vide ; mode squad complet sinon
 // (charge les canonical rows par teammate en parallele puis appelle le builder
-// existant buildSquadHeader).
+// existant squadagg.BuildSquadHeader).
 //
 // Degradation gracieuse : si le chargement des teammates echoue (capability
 // absente, erreur DB), retourne au moins le SoloKPIs du joueur principal pour

@@ -1,4 +1,4 @@
-package service
+package teammates
 
 // Tests purs sur filterSynthesisByPeriodInput et filterSynthesisByPickedSessions —
 // les deux helpers ajoutés pour faire fonctionner la navigation rail

@@ -29,6 +29,7 @@ import (
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/teammates"
 )
 
 // trendLabelStable est le label retourné quand une tendance est stable
@@ -63,7 +64,7 @@ type CareerService struct {
 	// friendGamertags : resolver des gamertags amis (cf. settings.FriendGamertags).
 	// Utilisé par GetTopEncounters pour exclure les amis du tableau "joueurs les
 	// plus croisés (hors amis)". Si nil, aucune exclusion (équivalent à 0 ami).
-	friendGamertags FriendGamertagsResolver
+	friendGamertags teammates.FriendGamertagsResolver
 	// friendXUIDResolver : optionnel — résout un gamertag en XUID via xuid_aliases.
 	// Si nil, GetTopEncounters dégrade gracieusement (pas d'exclusion d'amis).
 	friendXUIDResolver func(ctx context.Context, gamertag string) (string, error)
@@ -129,7 +130,7 @@ func (s *CareerService) WithRankImageURLs(imgs map[int]*string) *CareerService {
 // WithFriendGamertagsResolver injecte le resolver d'amis configurés (lit
 // app_settings.friend_gamertags). Quand nil, GetTopEncounters n'exclut aucun
 // joueur (le tableau "hors amis" affichera tous les plus croisés).
-func (s *CareerService) WithFriendGamertagsResolver(r FriendGamertagsResolver) *CareerService {
+func (s *CareerService) WithFriendGamertagsResolver(r teammates.FriendGamertagsResolver) *CareerService {
 	s.friendGamertags = r
 	return s
 }

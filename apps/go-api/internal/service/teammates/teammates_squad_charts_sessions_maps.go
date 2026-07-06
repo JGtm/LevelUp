@@ -2,7 +2,7 @@
 // teammates.04 (squad timeline par session) + teammates.03 (heatmap
 // player x map). Decoupe de teammates_squad_charts.go (god-file split,
 // refactor 2026-05-27).
-package service
+package teammates
 
 import (
 	"context"

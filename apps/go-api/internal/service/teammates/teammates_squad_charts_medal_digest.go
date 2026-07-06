@@ -1,7 +1,7 @@
 // Package service - teammates_squad_charts_medal_digest.go : load impact
 // events + medal digest builder + helpers. Decoupe de
 // teammates_squad_charts.go (god-file split, refactor 2026-05-27).
-package service
+package teammates
 
 import (
 	"context"
@@ -15,13 +15,13 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// correctSquadImpactEvents ramène les TimeMS au référentiel gameplay (T0 /
+// CorrectSquadImpactEvents ramène les TimeMS au référentiel gameplay (T0 /
 // countdown pré-match retranché, §4.A-bis) et émet un log d'observabilité
 // (combien de matchs du lot portaient un countdown réel) → logs/service.log,
 // grep "squad_t0_applied". Centralise le pattern partagé par les 4 consommateurs
 // d'events de la page Escouade (.17, .07, .13, squad V1). timelines nil ou
 // match absent → identité (T0=0).
-func correctSquadImpactEvents(
+func CorrectSquadImpactEvents(
 	ctx context.Context,
 	chart string,
 	events []domain.ImpactEventRow,
@@ -60,7 +60,7 @@ func (s *TeammatesService) loadImpactEventsByMatch(
 			"err", err, "n_matches", len(matchIDs))
 		return out
 	}
-	rows = correctSquadImpactEvents(ctx, "teammates.07", rows, timelines)
+	rows = CorrectSquadImpactEvents(ctx, "teammates.07", rows, timelines)
 	for _, r := range rows {
 		// EventType de ImpactEventRow est le BadgeKey original ou un type kill/death.
 		// analysis.ComputeMatchImpactFull attend EventType == "kill" ou "death".

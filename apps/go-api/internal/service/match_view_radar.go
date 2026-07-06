@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/teammates"
 )
 
 // haloAwardToAxis mappe les award_name connus de Halo Infinite vers les 6
@@ -264,8 +265,8 @@ func computeMatchRadarRawAxes(row domain.ScoreboardRaw, objectiveScore int, effe
 
 	raw[narrative.AxisCombat] = (float64(row.Kills) + 0.5*float64(hs) + 0.5*float64(pk)) * (1.0 + acc*0.4)
 	raw[narrative.AxisSupport] = float64(row.Assists) * 50.0
-	raw[narrative.AxisImpact] = synergyOffensiveConversion(row.Kills, row.Assists, dd, effectiveHpToKill)
-	raw[narrative.AxisSurvival] = synergyDefensiveResistance(dt, row.Deaths, effectiveHpToKill)
+	raw[narrative.AxisImpact] = teammates.SynergyOffensiveConversion(row.Kills, row.Assists, dd, effectiveHpToKill)
+	raw[narrative.AxisSurvival] = teammates.SynergyDefensiveResistance(dt, row.Deaths, effectiveHpToKill)
 	raw[narrative.AxisObjective] = float64(objectiveScore)
 
 	// Score résiduel = personal_score − kills×100 − assists×50 − objectif (medals/streaks).

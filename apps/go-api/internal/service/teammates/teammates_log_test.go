@@ -2,7 +2,7 @@
 // un slog "teammates_gamertag_not_found" quand un gamertag confirmé n'est
 // pas trouvé dans LoadTopTeammates. Cause racine du bug frontend
 // "Comparaison inactive même après sélection".
-package service
+package teammates
 
 import (
 	"bytes"

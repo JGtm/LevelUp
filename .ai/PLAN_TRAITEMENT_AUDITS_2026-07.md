@@ -1336,8 +1336,27 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
   + api VERTS, archlint OK. duckdb-root : 269→261 fichiers .go.
   **Les 2 sous-items nommés de K3a (prestige + halo5) sont FAITS.** Reste (open-ended, hors périmètre
   chiffré) : poursuite d'autres domaines si le compte doit encore descendre.
-- [ ] K3b — ARCHI 18 : service/ (127 fichiers) → sous-packages par feature, commencer par
+- [x] K3b — ARCHI 18 : service/ (127 fichiers) → sous-packages par feature, commencer par
   teammates (13 fichiers) ; archlint interdit les imports croisés entre features.
+  **FAIT (2026-07-06) ✅** : le cluster teammates (13 fichiers prod + 9 tests) →
+  `internal/service/teammates` (package `teammates`). Cas le PLUS dur du lot K : cycle
+  BIDIRECTIONNEL réel service↔teammates (teammates USE ~5 helpers d'agrégation + SquadV2Loader
+  de service-root ; squad_service_v2_compose + career/home/match_view/session_compare USENT
+  FriendGamertagsResolver/SynergyX/CorrectSquadImpactEvents de teammates). Rupture du cycle par un
+  package FEUILLE `internal/service/squadagg` (Stage A) : les helpers de calcul PARTAGÉS
+  (buildSquadHeader/Order, extractSquadXUIDs, filterRowsByCascade, intersectByMatchID,
+  projectSharedRows + toute la famille aggregates.go/intersect.go + l'interface SquadV2Loader +
+  consts ExpType*) remontés dans squadagg (importé par service ET teammates, sans dépendre d'aucun) ;
+  service-root les garde via ré-exports alias (`squadagg_reexport.go`, zéro requalification des
+  appels service). Puis (Stage B) : teammates déplacé, ses usages qualifiés `squadagg.X` ; le
+  service-root requalifie `teammates.X` (import `teammatespkg` là où un var local `teammates` shadow
+  le package). `home_squad_session_teammates.go` RESTE dans service (méthodes sur HomeService,
+  non déplaçables). Tests : les fixtures partagées (mockSquadRepo, mockSynthPlayerMatches,
+  fakeSquadLoader, rowWithStats*, ptr helpers) DUPLIQUÉES côté teammates (pattern K3c) ;
+  helpers_extra_test + squad_service_test SPLIT (tests computeKPIs/safeDiv/TeammatesService →
+  teammates). Résultat : teammates→squadagg, service→teammates→squadagg, squadagg→∅ (aucun cycle).
+  Gates : `go build/vet ./...` 0, tests service+teammates+api VERTS, archlint OK. **Reste** :
+  ratchet archlint « pas d'imports croisés entre features » à poser dans une passe ultérieure.
 - [~] K3c — ARCHI 19 : sync/ (111 fichiers) → extraire sync/skill/ (17) et sync/snapshot/
   (6) ; ratchet de gel sur la racine ; le neuf va dans v2. **FAIT (2026-07-06) — ratchet de
   gel** : `archlint/sync_root_freeze_test.go` gèle la racine sync/ à 112 fichiers .go non-test

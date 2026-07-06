@@ -10,6 +10,7 @@ import (
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/service/teammates"
 	sync_pkg "levelup/go-api/internal/sync"
 )
 
@@ -167,7 +168,7 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	// canonical rows d'un coequipier different). On reutilise le SquadV2Loader.
 	briefingLoader := duckdb.NewSquadV2LoaderAdapter(r.resolveByGT)
 	briefingLoader.SetDefaultGamertag(pdb.Gamertag)
-	svc := service.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
+	svc := teammates.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithSquadLoader(briefingLoader).
 		WithMedalDefs(duckdb.NewMedalDefinitionsRepo(pdb))
@@ -177,7 +178,7 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 // friendGamertagsResolver construit un resolver lisant app_settings.friend_gamertags
 // à chaque appel. Retourne nil si aucun settings store n'est attaché — le
 // service tourne alors en mode legacy.
-func (r *ServiceRegistry) friendGamertagsResolver() service.FriendGamertagsResolver {
+func (r *ServiceRegistry) friendGamertagsResolver() teammates.FriendGamertagsResolver {
 	if r.settingsStore == nil {
 		return nil
 	}

@@ -9,8 +9,8 @@
 //   - teammates_squad_charts_weapons_perf.go          : buildSquadWeaponKills +
 //     buildSquadPerformanceSeries
 //   - teammates_squad_charts_synergy.go               : buildSquadSynergyRadar (6 axes) +
-//     synergyOffensiveConversion +
-//     synergyDefensiveResistance +
+//     SynergyOffensiveConversion +
+//     SynergyDefensiveResistance +
 //     synergyMainFallbackAxes +
 //     loadSynergyMateAxes
 //   - teammates_squad_charts_intensity_perminute.go   : buildSquadIntensityProfile +
@@ -20,4 +20,4 @@
 //
 // Ce fichier ne contient plus de code - il sert de point d'entree documentaire
 // pour reperer rapidement quel builder vit ou.
-package service
+package teammates

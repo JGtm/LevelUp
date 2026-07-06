@@ -2,7 +2,7 @@
 // d'escouade par composition exacte. Découpe de teammates_service.go (god-file
 // split). Corrige le bug "coéquipier ajouté à une session qu'il n'a pas jouée" :
 // la page Escouade unionnait les matchs par coéquipier au lieu de les intersecter.
-package service
+package teammates
 
 import (
 	"sort"

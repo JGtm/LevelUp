@@ -2,7 +2,7 @@
 // collectUniqueIDs + modeLabel + computeMapBreakdown + collectModeENs +
 // buildSquadMatchHistory + buildMatchSeries. Decoupe de teammates_service.go
 // (god-file split, refactor 2026-05-27).
-package service
+package teammates
 
 import (
 	"cmp"

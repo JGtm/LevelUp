@@ -1,7 +1,7 @@
 // Package service - teammates_squad_charts_intensity_perminute.go : builders
 // squad intensity profile + per-minute stats. Decoupe de
 // teammates_squad_charts.go (god-file split, refactor 2026-05-27).
-package service
+package teammates
 
 import (
 	"context"
@@ -65,7 +65,7 @@ func (s *TeammatesService) buildSquadIntensityProfile(
 	// pré-match retranché) AVANT le calcul de durée et le bucketing. Le profil
 	// est auto-normalisé (dénominateur = max event time), mais sans correction
 	// le countdown gonfle le 1ᵉʳ bucket. T0 lu depuis allSquadRows (Q30.t0_ms).
-	events = correctSquadImpactEvents(ctx, "teammates.13", events, timeline.BuildTimelinesFromSquadRows(allSquadRows))
+	events = CorrectSquadImpactEvents(ctx, "teammates.13", events, timeline.BuildTimelinesFromSquadRows(allSquadRows))
 
 	// 3. Pour chaque match, calculer la durée approximée = max(time_ms) sur les
 	//    events corrigés. Les events pré-gameplay (TimeMS<0, countdown) sont
