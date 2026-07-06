@@ -1,3 +1,25 @@
+## [2026-07-06] K1n (suite) — dédup liste modes + statuer impuretés analysis/
+
+**Statut** : Complété (le reste de K1n statué). La liste `{"PvP_ranked","PvP_unranked"}`
+était copiée dans `sync.engagementCoefModes` ET `service.engagementCoefModesService`
+(2 copies, commentaires « aligne sur l'autre ») → source unique `domain.EngagementCoefModes()`.
+
+**Statuer (règle « toléré si documenté, sinon déplacer »)** : `combat_yield.go` état global
+atomique = impureté DOCUMENTÉE délibérée (réglage app-unique, évite de threader dans ~13
+agrégateurs ; « PAS un guard de compat ») → TOLÉRÉ. slog comeback + fragments SQL
+`sql_fragments`/`perfect_kills` = diagnostic/partagés documentés → TOLÉRÉS. Déplacements
+d'algos purs (binning/aggregations/intensity), regex placement (2 copies intra-≤2),
+friends_orchestrator→port, mode_label/identity/citations/world_stats/home_kpis = valeur
+structurelle FAIBLE, chacun un mini-refactor → REPORTÉS au profit des items à fort levier
+(K1e/K1h/K1a). Aucun n'excède les seuils lint.
+
+**Résultats** : build 0, vet 0. **Note stratégie /goal** : je bank les items K
+propres+gated ; K1k reporté (migration 55-sites prod-critique career-live/HaloAPIClient,
+collision de noms `CareerRankData`) ; K1n allégé (statuer) pour concentrer l'effort sur
+K1e/K1h/K1a/K2/K3.
+
+---
+
 ## [2026-07-06] K1g — SQL asset-drawer/CSR-badge → duckdb + dédup double-load H5 boot
 
 **Statut** : Complété.
