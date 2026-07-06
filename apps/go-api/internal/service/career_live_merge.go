@@ -13,7 +13,6 @@ package service
 
 import (
 	"levelup/go-api/internal/domain"
-	syncpkg "levelup/go-api/internal/sync"
 )
 
 // overlayIdentityFromFallback applique le filet DB last-known-good par-dessus
@@ -61,8 +60,8 @@ func overlayIdentityFromFallback(identity, fallback *domain.HomeSpartanIdentityR
 //
 // Retourne nil si toutes les sources sont vides.
 func mergeCareerRow(
-	progress *syncpkg.CareerRankData,
-	custom *syncpkg.SpartanCustomizationData,
+	progress *domain.CareerRankSnapshot,
+	custom *domain.SpartanCustomizationData,
 	dbLast *domain.CareerRankRow,
 ) *domain.CareerRankRow {
 	if progress == nil && custom == nil && dbLast == nil {
@@ -86,7 +85,7 @@ func mergeCareerRow(
 // mergeProgressInto applique progress live + dbLast carry-forward sur les
 // champs rank/current_xp/is_max_rank. Retourne true si au moins un champ a
 // été carry-forward depuis dbLast.
-func mergeProgressInto(merged *domain.CareerRankRow, progress *syncpkg.CareerRankData, dbLast *domain.CareerRankRow) bool {
+func mergeProgressInto(merged *domain.CareerRankRow, progress *domain.CareerRankSnapshot, dbLast *domain.CareerRankRow) bool {
 	if progress != nil {
 		merged.Rank = progress.CurrentRank
 		merged.CurrentXP = progress.CurrentXP
@@ -115,7 +114,7 @@ func mergeProgressInto(merged *domain.CareerRankRow, progress *syncpkg.CareerRan
 // mergeCustomInto applique custom live + dbLast carry-forward sur les champs
 // spartan_id/banner/emblem/backdrop. Retourne true si au moins un champ a été
 // carry-forward depuis dbLast.
-func mergeCustomInto(merged *domain.CareerRankRow, custom *syncpkg.SpartanCustomizationData, dbLast *domain.CareerRankRow) bool {
+func mergeCustomInto(merged *domain.CareerRankRow, custom *domain.SpartanCustomizationData, dbLast *domain.CareerRankRow) bool {
 	if custom != nil {
 		merged.SpartanID = custom.SpartanID
 		merged.BannerImageURL = custom.BannerImageURL
