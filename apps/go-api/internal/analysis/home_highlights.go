@@ -9,6 +9,11 @@ import (
 	"levelup/go-api/internal/legacymatch"
 )
 
+// maxSessionlessHighlights borne le fallback « aucun match avec session_label » aux N
+// premiers matchs, pour ne pas renvoyer un historique entier non sessionnisé. Partagé
+// par BuildHighlights (legacy) et la variante canonique (home_canonical_highlights.go).
+const maxSessionlessHighlights = 50
+
 // ---------------------------------------------------------------------------
 // selectHighlightWindow â€” fenÃªtre de sessions similaires
 // ---------------------------------------------------------------------------
@@ -51,8 +56,8 @@ func selectHighlightWindow(matches []legacymatch.HomeMatchRow) []legacymatch.Hom
 
 	if len(sessionOrder) == 0 {
 		// Aucun match avec session_label : fallback sur les 50 premiers.
-		if len(matches) > 50 {
-			return matches[:50]
+		if len(matches) > maxSessionlessHighlights {
+			return matches[:maxSessionlessHighlights]
 		}
 		return matches
 	}

@@ -1265,18 +1265,24 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
   fichiers racine (le post-sync est déjà parti en K1a).
 - [ ] K3e — ARCHI 21 : client HTTP Halo Infinite (halo_client*.go, 7 fichiers) →
   platform/halo/ ou games/halo_infinite/client/ (cible montrée par games/halo_5/client.go).
-- [ ] K3f — ARCHI mineurs structure : doublon `notify/` vs `notifications/` (renommer ou
-  documenter) ; `prestige/` + `campaign/` → progression/ (ou documenter le choix) ;
-  `worldenrich/` câblage top-level ; frontières `assets/`/`assetnames/`/`media/`
-  documentées ; `metadata/` renommé ; `openspartan/` → platform/ ; `legacymatch` échéance
-  documentée [TRACKÉ] ; `migration/steps_*` Halo-specific [TRACKÉ ADR 0025 Ph 1.5 — statuer
-  seulement] ; PathResolver dans domain/ (documenter le choix) ; god-files secondaires
-  (10 items : steps.go, handlers/prestige.go 1 019 L, skill_v2_shadow.go, persist_sink.go,
-  adapter_data.go, db.go, registry_pages.go, pool.go x3 fns, prestige/service.go
-  CreateChallenge, steps_player_base.go) → découper OU exemption justifiée par commentaire ;
-  débris de splits (doc/nolint orphelins : `teammates_squad_charts_impact_events.go:444-463`,
-  `post_sync_deltas.go:133,404`, nolint brouillés 5+ sites) ; `rows[:50]` + fenêtre 15 min
-  nommées (CR mineurs magic numbers).
+- [~] K3f — ARCHI mineurs structure. **FAIT (2026-07-06) — magic numbers** : `rows[:50]`/
+  `matches[:50]` (analysis home highlights) → const partagée `maxSessionlessHighlights = 50`
+  (home_highlights.go, réutilisée par la variante canonique) ; `window := 15` (media
+  match-candidates) → `defaultMediaMatchWindowMinutes = 15` (media.go). Build+vet 0, tests
+  analysis+handlers verts. **Débris nolint/doc** : les lignes citées par l'audit ont dérivé —
+  ce qui s'y trouve désormais (`post_sync_deltas.go`, `teammates_squad_charts_impact_events.go`)
+  sont des `//nolint:funlen` JUSTIFIÉS + doc de rationale valide, pas des orphelins → rien à
+  purger. `[!]` RESTE (god-files 10 items + décisions de packages notify/prestige/campaign/
+  metadata/openspartan) : structurel, suite dédiée.
+  - `[!]` détail RESTE : doublon `notify/` vs `notifications/` (renommer ou
+    documenter) ; `prestige/` + `campaign/` → progression/ (ou documenter le choix) ;
+    `worldenrich/` câblage top-level ; frontières `assets/`/`assetnames/`/`media/`
+    documentées ; `metadata/` renommé ; `openspartan/` → platform/ ; `legacymatch` échéance
+    documentée [TRACKÉ] ; `migration/steps_*` Halo-specific [TRACKÉ ADR 0025 Ph 1.5 — statuer
+    seulement] ; PathResolver dans domain/ (documenter le choix) ; god-files secondaires
+    (10 items : steps.go, handlers/prestige.go 1 019 L, skill_v2_shadow.go, persist_sink.go,
+    adapter_data.go, db.go, registry_pages.go, pool.go x3 fns, prestige/service.go
+    CreateChallenge, steps_player_base.go) → découper OU exemption justifiée par commentaire.
 
 Gate K (par sous-lot) : `go build ./... && go test ./...` ; pour K2a/K2b :
 `go test -tags=integration ./internal/sync/...` + diff openapi VIDE (aucune route

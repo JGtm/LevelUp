@@ -210,9 +210,9 @@ func selectHighlightWindowCanonical(rows []canonical.PlayerMatchRow) []canonical
 	}
 
 	if len(sessionOrder) == 0 {
-		// Fallback : 50 premiers.
-		if len(rows) > 50 {
-			return rows[:50]
+		// Fallback : maxSessionlessHighlights premiers (const partagée, home_highlights.go).
+		if len(rows) > maxSessionlessHighlights {
+			return rows[:maxSessionlessHighlights]
 		}
 		return rows
 	}
