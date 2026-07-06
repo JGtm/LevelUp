@@ -1311,7 +1311,19 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
   verts, snapshot intégration + sync intégration (101 s, anti-ART+e2e) + api intégration verts** —
   comportement préservé. **LEÇON (corrige la mesure « ~400 refs impossible » précédente)** : la
   ré-export des constantes partagées rend les scissions cross-package FAISABLES sans requalification
-  de masse. Applicable à K3a/b/d/e. `[!]` RESTE : sync/skill/ (17 fichiers, même technique).
+  de masse. Applicable à K3a/b/d/e.
+  **sync/skill EXTRAIT (2026-07-06) ✅ — K3c COMPLET** : le cluster skill (17 fichiers +
+  durable_progress + exclusion_filter + tests) → `internal/sync/skill` (package FEUILLE). ~90
+  symboles (MetricKey* ×16, Tier*/TierLabel* ×13, params TrueSkill, chaînes, ~30 fonctions/types)
+  RÉ-EXPORTÉS via `sync/skill_reexport.go` (const/type/var alias) → sync-root + externes
+  (analysis, api/handlers, duckdb, cmd) INCHANGÉS. Détails techniques : impl minuscules exportées
+  côté skill sans collision (piège `batchComputeLUSR` 5-arg wrapper vs 6-arg impl → renommé
+  `BatchComputeLUSRWithMedals`) ; `LusrMatchData` (champs déjà exportés) → alias de type ;
+  helpers de test partagés dupliqués (execScript côté skill, openLUSRDB côté sync — feuille ne
+  peut importer le parent) ; `TestMain` skill câble le classifier LUSR (MT-15). Baseline gel
+  sync/ 106 → 88. **Gate COMPLET : build+vet 0, archlint(freeze 88)+auth-sentinel+duckdb-ratchets
+  verts, skill intégration + sync intégration (101 s LUSR/rating e2e + anti-ART) + api intégration
+  + analysis verts** — comportement préservé. K3c (snapshot + skill) TERMINÉ.
   **2e tentative (2026-07-06, backfillflags feuille) → 3e NIVEAU DE CASCADE prouvé** :
   `backfill_flags.go` n'est PAS auto-contenu — sa map `BackfillFlags` référence `MetricKeyAccuracy`
   + `BackfillType*` (définis DISPERSÉS dans citations/performance/scope/skill_config, MÊLÉS à de
