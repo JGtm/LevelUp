@@ -7,9 +7,10 @@
 // `key`, qui réécrirait via l'index ART DuckDB — bug #23046). sync_meta est une
 // table clé/valeur sans index secondaire.
 //
-// DETTE (ADR 0013) : WriteSyncMeta ouvre un handle RW direct via OpenReadWrite
-// (comportement PRÉSERVÉ des 2 copies). Le durcissement « écriture SOUS LEASE
-// dblease » (un seul writer par DB) reste un follow-up K1c — cf. plan.
+// ADR 0013 : WriteSyncMeta écrit SOUS LEASE dblease (KindPlayer, un seul writer par DB)
+// — sérialise avec le post-sync / CLI / autres écrivains de la MÊME player DB. Sans lease,
+// deux writers concurrents sur sync_meta ne sont sûrs que par l'effet de bord
+// MaxOpenConns(1) du cache de connexion — fragile (K1c durcissement, 2026-07-06).
 package duckdb
 
 import (
@@ -17,6 +18,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // ReadSyncMeta retourne sync_meta.value pour une clé, "" si absente. La table
@@ -33,8 +36,16 @@ func ReadSyncMeta(ctx context.Context, pdb *PlayerDB, key string) (string, error
 	return v.String, nil
 }
 
-// WriteSyncMeta upsert une clé sync_meta (ART-safe SELECT-then-UPDATE-or-INSERT).
+// WriteSyncMeta upsert une clé sync_meta (ART-safe SELECT-then-UPDATE-or-INSERT),
+// SOUS LEASE dblease (KindPlayer) : sérialise avec les autres écrivains de la player DB.
+// ErrDBLocked remonte si le lease n'est pas obtenu dans le délai (mappé 503 côté handler).
 func WriteSyncMeta(ctx context.Context, pdb *PlayerDB, key, value string) error {
+	w, err := pdb.AcquirePlayerWriterTimeout(dblease.PlayerLeaseTimeout)
+	if err != nil {
+		return fmt.Errorf("lease: %w", err)
+	}
+	defer w.Release()
+
 	rwDB, err := OpenReadWrite(pdb.Player.Path())
 	if err != nil {
 		return fmt.Errorf("open rw: %w", err)
