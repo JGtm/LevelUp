@@ -1226,6 +1226,9 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// J1 (ADR 0009) : publie les sql.DBStats des pools DuckDB sous
 	// "levelup"/"duckdb_pool_stats" (WaitCount/WaitDuration = contention pool).
 	observability.PublishDuckDBPoolStats(func() any { return platform_duckdb.PoolStatsSnapshot() })
+	// J2 : publie les bornes ressources (memory_limit/threads/pool) sous
+	// "levelup"/"duckdb_budgets" — rend la config mémoire appliquée observable.
+	observability.PublishDuckDBBudgets(func() any { return platform_duckdb.BudgetsSnapshot() })
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
 		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
