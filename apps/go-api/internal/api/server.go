@@ -189,6 +189,135 @@ func loadTitleRankImageURLs(pr *titlePkg.PathResolver, slug string) map[int]*str
 	return imgs
 }
 
+// buildAssetMetadataHandler construit l'AssetMetadataHandler (drawer d'assets) : charge
+// maps/armes/médailles Infinite depuis metadata.duckdb (in-memory, retry 3× × 500ms pour
+// absorber la fenêtre de chevauchement Air) + câble le titre additionnel (Halo 5) via
+// WithTitle. Extrait de NewRouter (K2a, 2026-07-06). Retourne nil si metadata reste
+// indisponible après les 3 tentatives (drawer désactivé, non fatal).
+func buildAssetMetadataHandler(cfg *config.AppConfig, hiAssetURL *halo_games.AssetURLAdapter,
+	titleRegistry *titlePkg.Registry, h5Maps, h5Weapons, h5Medals []canonical.AssetMeta,
+) *handlers.AssetMetadataHandler {
+	metaDBPath := metadataDBPathFor(cfg)
+	for attempt := 0; attempt < 3; attempt++ {
+		if attempt > 0 {
+			time.Sleep(500 * time.Millisecond)
+		}
+		metaDB, err := platform_duckdb.OpenReadWriteShared(metaDBPath)
+		if err != nil {
+			slog.Warn("asset_metadata_db_unavailable", "attempt", attempt+1, "err", err)
+			continue
+		}
+		liveRepo := platform_duckdb.NewMetadataRepoFromDB(metaDB)
+		loadCtx := context.Background()
+		maps, errM := liveRepo.ListMapsByTitle(loadCtx, titlePkg.DefaultSlug, "")
+		weapons, errW := liveRepo.ListWeaponsByTitle(loadCtx, titlePkg.DefaultSlug, "")
+		// Médailles Infinite : sans ce chargement, le tab « Médailles » du drawer reste
+		// VIDE pour Infinite. Noms FR/EN depuis medal_definitions ; icône = PNG
+		// /static/medals/halo_infinite/{id}.png (résolu via static.MedalImage).
+		medals, errMed := liveRepo.ListMedalsByTitle(loadCtx, titlePkg.DefaultSlug, "")
+		_ = metaDB.Close() // relâche le lock Windows immédiatement après chargement
+		if errM != nil || errW != nil || errMed != nil {
+			slog.Warn("asset_metadata_load_failed", "err_maps", errM, "err_weapons", errW, "err_medals", errMed)
+			continue
+		}
+		for i := range medals {
+			if id, perr := strconv.ParseInt(medals[i].ID, 10, 64); perr == nil {
+				if png, _ := static.MedalImage(titlePkg.DefaultSlug, id); png != "" {
+					medals[i].ImageURL = png
+				}
+			}
+		}
+		// Titres additionnels (H5) : maps/armes + URLs depuis leur metadata isolée
+		// (h5Maps/h5Weapons/h5Medals chargés une fois par l'appelant). Title-aware via
+		// WithTitle ; les URLs DB priment sur les builders HINF.
+		h := handlers.NewAssetMetadataHandler(
+			service.NewAssetService(
+				service.NewStaticAssetMetaRepo(maps, weapons).
+					WithFallbackMedals(medals).
+					WithTitle(halo5.TitleSlug, h5Maps, h5Weapons, h5Medals)).
+				WithMapImageURL(func(_ string, nameEN string) string {
+					return hiAssetURL.MapImageURL(nameEN)
+				}).
+				WithWeaponImageURL(func(_ string, nameEN string) string {
+					return hiAssetURL.WeaponImageURL(nameEN)
+				}),
+			func(slug string, cap titlePkg.Capability) bool {
+				d := titleRegistry.Get(slug)
+				return d != nil && d.HasCapability(cap)
+			},
+		)
+		slog.Info("asset_metadata_handler_ready",
+			"title", titlePkg.DefaultSlug,
+			"maps", len(maps), "weapons", len(weapons), "medals", len(medals),
+			"attempt", attempt+1,
+		)
+		return h
+	}
+	return nil
+}
+
+// wireHalo5AssetAdapters câble les résolveurs d'assets title-aware pour Halo 5 : badge CSR
+// (csr_designations → SetCSRBadgeResolver), TitleAssetURLAdapter (maps/armes CDN + CSR sur
+// titleResolver) et sprites de médailles (SetMedalSpriteResolver). Tout best-effort :
+// nil/vide → HINF strictement inchangé. Extrait de NewRouter (K2a). Les assets h5
+// (h5Maps/h5Weapons/h5Medals) sont chargés une fois par l'appelant.
+func wireHalo5AssetAdapters(cfg *config.AppConfig, titleResolver *games.StaticResolver,
+	h5Maps, h5Weapons, h5Medals []canonical.AssetMeta,
+) {
+	h5CSRResolver := loadCSRBadgeResolver(config.MetadataDBPath(cfg, halo5.TitleSlug), halo5.TitleSlug)
+	platform_duckdb.SetCSRBadgeResolver(h5CSRResolver)
+
+	// C0 / G1 : TitleAssetURLAdapter pour Halo 5. Sans lui, titleResolver.AssetURL("halo_5")
+	// renvoie ErrTitleNotResolved → assetURL==nil sur la Match View. Adapter PUR (couche 3).
+	if h5CSRResolver != nil || len(h5Maps) > 0 || len(h5Weapons) > 0 {
+		h5AssetURL := halo5.NewAssetURLAdapter().
+			WithMaps(h5Maps).
+			WithWeapons(h5Weapons)
+		if h5CSRResolver != nil {
+			h5AssetURL = h5AssetURL.WithCSRResolver(
+				func(designation string, subTier int) string {
+					return h5CSRResolver(halo5.TitleSlug, designation, subTier)
+				})
+		}
+		titleResolver.RegisterAssetURL(h5AssetURL)
+		slog.Info("adapter_loaded",
+			"title_slug", h5AssetURL.TitleSlug(), "kind", "asset_url",
+			"maps", len(h5Maps), "weapons", len(h5Weapons), "csr", h5CSRResolver != nil)
+	}
+
+	// G2/G7/D.1 : sprite médaille title-aware. Les médailles H5 sont des SPRITES (feuille +
+	// offset) — aucun PNG par médaille → résolveur sprite title-keyé peuplé depuis h5Medals.
+	h5MedalSprites := make(map[int64]static.MedalSprite, len(h5Medals))
+	for _, m := range h5Medals {
+		if m.SpriteSheet == "" {
+			continue
+		}
+		id, perr := strconv.ParseInt(m.ID, 10, 64)
+		if perr != nil {
+			continue
+		}
+		h5MedalSprites[id] = static.MedalSprite{
+			SheetURL: m.SpriteSheet,
+			Left:     m.SpriteLeft,
+			Top:      m.SpriteTop,
+			Width:    m.SpriteWidth,
+			Height:   m.SpriteHeight,
+		}
+	}
+	if len(h5MedalSprites) > 0 {
+		static.SetMedalSpriteResolver(func(titleSlug string, medalID int64) *static.MedalSprite {
+			if titleSlug != halo5.TitleSlug {
+				return nil
+			}
+			if sp, ok := h5MedalSprites[medalID]; ok {
+				return &sp
+			}
+			return nil
+		})
+		slog.Info("medal_sprite_resolver_ready", "title_slug", halo5.TitleSlug, "sprites", len(h5MedalSprites))
+	}
+}
+
 //nolint:gocyclo // Routeur central : mount de ~80 endpoints avec feature flags
 func NewRouter(
 	serverCtx context.Context,
@@ -674,154 +803,19 @@ func NewRouter(
 		)
 	}
 
-	// AssetMetadataHandler — listing maps & armes pour l'Asset Drawer.
-	// Stratégie in-memory : on ouvre metadata.duckdb, on charge tout en RAM, on ferme
-	// la connexion immédiatement. Avantage : aucun lock Windows persistant entre processus
-	// (Air hot-reload). Retry 3× (500ms) pour absorber la fenêtre de chevauchement Air.
-	// Assets du titre additionnel (Halo 5) chargés UNE FOIS depuis sa metadata isolée
-	// (maps/armes/médailles + URLs) — réutilisés par l'AssetMetadataHandler ET l'adapter
-	// TitleAssetURLAdapter ci-dessous (K1g : supprime le double chargement metadata h5
-	// au boot). Best-effort : slices nil si pas de seed h5.
+	// Assets du titre additionnel (Halo 5) chargés UNE FOIS depuis sa metadata isolée —
+	// réutilisés par l'AssetMetadataHandler ET l'adapter TitleAssetURLAdapter ci-dessous
+	// (K1g : supprime le double chargement metadata h5 au boot). Best-effort : nil si pas de seed.
 	h5Maps, h5Weapons, h5Medals := loadTitleAssetDrawerData(
 		config.MetadataDBPath(cfg, halo5.TitleSlug), halo5.TitleSlug)
 
-	var assetMetaHandler *handlers.AssetMetadataHandler
-	{
-		metaDBPath := metadataDBPathFor(cfg)
-		for attempt := 0; attempt < 3; attempt++ {
-			if attempt > 0 {
-				time.Sleep(500 * time.Millisecond)
-			}
-			metaDB, err := platform_duckdb.OpenReadWriteShared(metaDBPath)
-			if err != nil {
-				slog.Warn("asset_metadata_db_unavailable", "attempt", attempt+1, "err", err)
-				continue
-			}
-			liveRepo := platform_duckdb.NewMetadataRepoFromDB(metaDB)
-			loadCtx := context.Background()
-			maps, errM := liveRepo.ListMapsByTitle(loadCtx, titlePkg.DefaultSlug, "")
-			weapons, errW := liveRepo.ListWeaponsByTitle(loadCtx, titlePkg.DefaultSlug, "")
-			// Médailles Infinite : sans ce chargement, le tab « Médailles » du drawer
-			// reste VIDE pour Infinite (le constructeur ne prend que maps+weapons). Les
-			// noms FR/EN viennent de medal_definitions (déjà complet) ; l'icône est un
-			// PNG /static/medals/halo_infinite/{id}.png (résolu via static.MedalImage).
-			medals, errMed := liveRepo.ListMedalsByTitle(loadCtx, titlePkg.DefaultSlug, "")
-			_ = metaDB.Close() // relâche le lock Windows immédiatement après chargement
-			if errM != nil || errW != nil || errMed != nil {
-				slog.Warn("asset_metadata_load_failed", "err_maps", errM, "err_weapons", errW, "err_medals", errMed)
-				continue
-			}
-			for i := range medals {
-				if id, perr := strconv.ParseInt(medals[i].ID, 10, 64); perr == nil {
-					if png, _ := static.MedalImage(titlePkg.DefaultSlug, id); png != "" {
-						medals[i].ImageURL = png
-					}
-				}
-			}
-			// Titres additionnels (ex. Halo 5) : maps/armes + URLs d'image viennent de
-			// leur metadata.duckdb isolée (h5Maps/h5Weapons/h5Medals chargés une fois plus
-			// haut). Title-aware via WithTitle ; les URLs DB priment sur les builders HINF
-			// (cf. AssetService : ImageURL non vide conservée).
-			assetMetaHandler = handlers.NewAssetMetadataHandler(
-				service.NewAssetService(
-					service.NewStaticAssetMetaRepo(maps, weapons).
-						WithFallbackMedals(medals).
-						WithTitle(halo5.TitleSlug, h5Maps, h5Weapons, h5Medals)).
-					WithMapImageURL(func(_ string, nameEN string) string {
-						return hiAssetURL.MapImageURL(nameEN)
-					}).
-					WithWeaponImageURL(func(_ string, nameEN string) string {
-						return hiAssetURL.WeaponImageURL(nameEN)
-					}),
-				func(slug string, cap titlePkg.Capability) bool {
-					d := titleRegistry.Get(slug)
-					return d != nil && d.HasCapability(cap)
-				},
-			)
-			slog.Info("asset_metadata_handler_ready",
-				"title", titlePkg.DefaultSlug,
-				"maps", len(maps),
-				"weapons", len(weapons),
-				"medals", len(medals),
-				"attempt", attempt+1,
-			)
-			break
-		}
-	}
+	// AssetMetadataHandler (drawer) — construit hors NewRouter (K2a). nil si metadata
+	// indisponible après retries (non fatal).
+	assetMetaHandler := buildAssetMetadataHandler(cfg, hiAssetURL, titleRegistry, h5Maps, h5Weapons, h5Medals)
 
-	// Insignes CSR des titres additionnels (Halo 5 : table csr_designations, URLs
-	// officielles) — rend l'image de rang CSR title-aware dans le builder de badge
-	// (buildHomeSkillPeakBadgeURL). nil si pas de seed → HINF strictement inchangé.
-	// Chargé UNE fois et réutilisé par l'adapter TitleAssetURLAdapter h5 ci-dessous.
-	h5CSRResolver := loadCSRBadgeResolver(
-		config.MetadataDBPath(cfg, halo5.TitleSlug), halo5.TitleSlug)
-	platform_duckdb.SetCSRBadgeResolver(h5CSRResolver)
-
-	// C0 / G1 : TitleAssetURLAdapter pour Halo 5. Sans lui,
-	// titleResolver.AssetURL("halo_5") renvoie ErrTitleNotResolved → assetURL==nil
-	// sur la Match View → image de map + badge CSR absents. Adapter PUR (couche 3) :
-	// les URLs CDN officielles (maps/armes) et le résolveur CSR sont injectés depuis
-	// la metadata h5 DÉJÀ chargée (aucun accès DB dans l'adapter).
-	{
-		if h5CSRResolver != nil || len(h5Maps) > 0 || len(h5Weapons) > 0 {
-			h5AssetURL := halo5.NewAssetURLAdapter().
-				WithMaps(h5Maps).
-				WithWeapons(h5Weapons)
-			if h5CSRResolver != nil {
-				h5AssetURL = h5AssetURL.WithCSRResolver(
-					func(designation string, subTier int) string {
-						return h5CSRResolver(halo5.TitleSlug, designation, subTier)
-					})
-			}
-			titleResolver.RegisterAssetURL(h5AssetURL)
-			slog.Info("adapter_loaded",
-				"title_slug", h5AssetURL.TitleSlug(),
-				"kind", "asset_url",
-				"maps", len(h5Maps),
-				"weapons", len(h5Weapons),
-				"csr", h5CSRResolver != nil,
-			)
-		}
-
-		// G2/G7/D.1 : sprite médaille title-aware. Les médailles Halo 5 sont des
-		// SPRITES (feuille + offset, medal_definitions) — aucun PNG par médaille
-		// n'existe → <img> /static/medals/halo_5/{id}.png 404 partout hors Asset
-		// Drawer. On câble un résolveur sprite title-keyé (miroir csrBadgeResolver)
-		// peuplé depuis h5Medals DÉJÀ chargé. nil/vide → pas de câblage → HINF sert
-		// les PNG strictement inchangé.
-		h5MedalSprites := make(map[int64]static.MedalSprite, len(h5Medals))
-		for _, m := range h5Medals {
-			if m.SpriteSheet == "" {
-				continue
-			}
-			id, perr := strconv.ParseInt(m.ID, 10, 64)
-			if perr != nil {
-				continue
-			}
-			h5MedalSprites[id] = static.MedalSprite{
-				SheetURL: m.SpriteSheet,
-				Left:     m.SpriteLeft,
-				Top:      m.SpriteTop,
-				Width:    m.SpriteWidth,
-				Height:   m.SpriteHeight,
-			}
-		}
-		if len(h5MedalSprites) > 0 {
-			static.SetMedalSpriteResolver(func(titleSlug string, medalID int64) *static.MedalSprite {
-				if titleSlug != halo5.TitleSlug {
-					return nil
-				}
-				if sp, ok := h5MedalSprites[medalID]; ok {
-					return &sp
-				}
-				return nil
-			})
-			slog.Info("medal_sprite_resolver_ready",
-				"title_slug", halo5.TitleSlug,
-				"sprites", len(h5MedalSprites),
-			)
-		}
-	}
+	// Résolveurs d'assets title-aware Halo 5 (badge CSR + AssetURLAdapter + sprites
+	// médailles), extraits en helper (K2a). Best-effort : nil/vide → HINF inchangé.
+	wireHalo5AssetAdapters(cfg, titleResolver, h5Maps, h5Weapons, h5Medals)
 
 	// Fichiers statiques (images maps, médailles, armes…)
 	staticDir := filepath.Join(cfg.RepoRoot, "static")
