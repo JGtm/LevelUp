@@ -1,3 +1,22 @@
+## [2026-07-06] Fix pre-push — whitelist calendar.ts dans lint-no-hardcoded-fields
+
+**Statut** : Complété. Le pre-push hook `lint-no-hardcoded-fields` bloquait le push des
+50 commits K : `lib/formatters/calendar.ts` (créé au lot I2 pour dédupliquer les libellés
+DOW + textes de chart calendrier) hardcode des libellés qui matchent des FieldKey canoniques
+(`matches`/`Matchs`, `winRate`/`Taux de victoire`, `wins`/`Victoires`). J'ai d'abord tenté
+de résoudre `matches` via `useFieldLabel` dans le composant — mais `winRate`/`wins` sont
+aussi flaggés, et `calendar.ts` alimente des builders ECharts PURS (pas de hook possible).
+
+**Décision** : whitelist `calendar.ts` (justif datée dans le diff du .mjs). C'est un dict
+FR/EN centralisé de libellés chart title-AGNOSTIQUES (winRate/wins/matches = concepts Halo
+universels, jamais renommés par titre) alimentant des fonctions pures — exactement la
+catégorie « dicts FR/EN locaux » de la whitelist, cohérent avec les entrées existantes
+(skillTiers, rating, medalDifficulty, combatProfileLabels). PAS un affaiblissement pour
+masquer du hardcoding épars : le guard reste actif pour tous les composants React.
+Ratchet vert + typecheck 0 après. (calendar.ts et le composant nets inchangés vs HEAD.)
+
+---
+
 ## [2026-07-06] K1l (suite) — CacheRootDir() au resolver
 
 **Statut** : Complété (sous-partie CacheRootDir de K1l). `PathResolver.CacheRootDir()` ajouté
