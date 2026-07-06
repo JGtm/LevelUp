@@ -104,6 +104,10 @@ const maxUploadSize = 500 << 20
 // maxUploadFiles limite le nombre de fichiers par requête.
 const maxUploadFiles = 50
 
+// defaultMediaMatchWindowMinutes : fenêtre ± (minutes) d'association d'un média à un match
+// par proximité temporelle, appliquée quand le client ne fournit pas window_minutes.
+const defaultMediaMatchWindowMinutes = 15
+
 // allowedMediaExts liste les extensions acceptées en upload.
 var allowedMediaExts = map[string]bool{
 	".mp4": true, ".mov": true, ".avi": true, ".mkv": true, ".webm": true,
@@ -391,7 +395,7 @@ func (h *MediaHandler) handleGetMediaMatchCandidates(ctx context.Context, in *me
 	if in.FilePath == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_file_path", "file_path query param requis")
 	}
-	window := 15
+	window := defaultMediaMatchWindowMinutes
 	if in.WindowMinutes != "" {
 		if n, err := strconv.Atoi(in.WindowMinutes); err == nil && n > 0 {
 			window = n
