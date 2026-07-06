@@ -40,6 +40,21 @@ var (
 	duckThreads     = envIntOr("LEVELUP_DUCKDB_THREADS", 2)
 )
 
+// BudgetsSnapshot expose les bornes ressources DuckDB effectives (J2) pour
+// l'observabilité — publiées sous /debug/vars levelup/duckdb_budgets, à côté de
+// duckdb_pool_stats (J1). Valeurs statiques résolues au boot (env ou défauts) :
+// permet de vérifier en un coup d'œil la config mémoire/threads/pool RÉELLEMENT
+// appliquée sur un hôte donné (prérequis de la calibration measure-first).
+func BudgetsSnapshot() map[string]any {
+	return map[string]any{
+		"memory_limit":         duckMemoryLimit,
+		"threads":              duckThreads,
+		"pool_max_open_shared": poolMaxOpenShared,
+		"pool_max_idle_shared": poolMaxIdleShared,
+		"pool_single_conn":     poolSingleConn,
+	}
+}
+
 func envOr(key, def string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
