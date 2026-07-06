@@ -1049,6 +1049,29 @@ découpés ; chemins via PathResolver. Chaque sous-lot = 1 commit + build/tests 
 > créer un 2e) ; DI dans `api/wire/` (K3d) ; client Infinite → `games/halo_infinite/client/`
 > sur le modèle games/halo_5/client.go (K3e).
 
+> **BILAN SESSION /goal 2026-07-06** — la portion CONTENUE, sûre et gated de K est livrée
+> et poussée sur `refactor/audits-2026-07`. **Fait (gated build+vet+intégration+guards,
+> commité + poussé)** : K1a (6 sous-étapes : records repo, seam outcome, seuils, table-driven
+> deltas, formules→analysis, +BestKDA doc), K1c (sync_meta helper), K1d (upsert ART-safe
+> dédup + guard), K1e (dataQualityHandles B-swap), K1f (BackfillOrchestrator), K1g
+> (asset-drawer/CSR SQL→duckdb + dédup double-load), K1i (interfaces consumer-side), K1l
+> (PlayersRootDir + CacheRootDir, 2 guards), K1n (MedianFloat + EngagementCoefModes + statuer),
+> K2e (strings.Title + goLoad). **RESTE = session dédiée** (le plan les désigne « tâche
+> dédiée » ; prod-critiques ou énormes — NE PAS précipiter en fin de session longue) :
+> - `[!]` **K1a cœur** (extraction `service/postsync/`) : inversion de dépendance
+>   `buildPostSyncDeltaHook` + cycle `streaks↔duckdb` ; tourne après CHAQUE sync. Le plus dur.
+> - `[!]` **K1b** (cascade auth ~130 L) : ADR 0023, la plus haute conséquence (merge=deploy).
+> - `[!]` **K1h / K1j+K1m** : handlers→services+ports (nombreux) ; catalog/media repos (D-MV2).
+> - `[!]` **K1k** : migration 55-sites `CareerRankData`/`SpartanCustomizationData`→domain
+>   (collision de noms, prod career-live/HaloAPIClient). Cf. thought_log 2026-07-06.
+> - `[!]` **K2a-d** : god-functions 1470/1083/483/203 L (NewRouter, auto_sync, SyncEngine.run,
+>   SeedDemo). K2b/K2d prod/deploy-critiques (gate e2e sync / regen-demo requis).
+> - `[!]` **K3a-f** : scissions god-packages (duckdb 143 / service 127 / sync 111 fichiers) —
+>   énormes, « 1 domaine = 1 commit », mécaniques mais volumineuses.
+> Raison de l'arrêt : ces items exigent soit des heures de découpe mécanique, soit une
+> chirurgie prod-critique qui, précipitée, casse exactement ce que les règles qualité
+> (override CLAUDE.md) protègent. Reprise recommandée : K1a → K2a → K3d (ordre du plan).
+
 K1 — Extractions de couches (ROI d'abord) :
 - [ ] K1a — ARCHI 1 + 2 (reste) + CR A2 (partie post-sync) : extraire le pipeline
   post-sync de api/ → `service/postsync/` ; SQL → repos platform/duckdb
