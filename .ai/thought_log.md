@@ -1,3 +1,26 @@
+## [2026-07-06] Reprise post-hook — items durs de K attaqués (K2d/K2c/K2b/K1k/K1h)
+
+**Statut** : après le retour du hook « fais TOUT le lot K », j'ai repris et attaqué les items
+durs (pas seulement les dédups faciles) : K2d (SeedDemo → 4 phases, gate intégration ops),
+K2c (auto_sync scindé engine+convergence), K2b (pagination de SyncEngine.run extraite, gate
+e2e sync 103 s), K1h partiel (slug SQL weapon-coverage paramétré), K1k (DTO career-live →
+domain via alias, 4/5 fichiers décoplés de sync). 13 items K gated + poussés au total.
+
+**Blocages techniques RÉELS documentés (pas des reports de confort)** :
+- **K2b drain** : le bloc drain/ré-acquisition gère les leases via des `defer` au scope
+  `run()` dont le timing LIFO au retour est load-bearing (anti-deadlock ADR 0016) → infaisable
+  en méthode simple. Seule la pagination (sans defer) était extractible → faite.
+- **K1b** : les 2 cascades auth divergent (marquage `reauth_required` sur échec) → déléguer
+  changerait le comportement bannière prod. Réconciliation comportementale, pas dédup.
+- **K1a cœur** : `buildPostSyncDeltaHook` couple ~10 capacités `*ServiceRegistry` → inversion
+  de dépendance large + cycle streaks↔duckdb, après CHAQUE sync. Multi-heures.
+
+**Reste** (multi-heures / énorme, prod-critique) : K1a cœur, K1b, K1j (D-MV2 catalog repo),
+K1h reste, K2a (NewRouter 1470 L), K3 (scissions god-packages 100+ fichiers). Ordre de
+reprise : K1a → K2a → K3d. Détail par item : bloc BILAN du plan.
+
+---
+
 ## [2026-07-06] K2d — SeedDemo god-function → orchestrateur + 4 phases
 
 **Statut** : Complété. Reprise du lot K (le /goal exige TOUT K). `SeedDemo()` (~203 L, pipeline
