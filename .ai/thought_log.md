@@ -1,3 +1,15 @@
+## [2026-07-06] K1i — interfaces consumer-side étroites (home/career/filters)
+
+**Statut** : Complété. 3 couplages service→service concrets remplacés par des interfaces
+consumer-side à 1 méthode : `HomeService.careerLive *CareerLiveService` →
+`homeSpartanIdentityProvider` (GetSpartanIdentity) ; `CareerService.seasonsCatalog` +
+`FiltersService.catalog *SeasonsCatalog` → `seasonsCatalogLoader` (Load, partagé). Setters
+gardent le param concret + garde `if x != nil` — nil-check CONCRET fiable qui évite le piège
+interface typed-nil (un `*T` nil stocké dans un champ interface rend `champ == nil` faux).
+Testabilité : champ interface mockable en test même-package. Build+vet 0, tests service verts.
+
+---
+
 ## [2026-07-06] K1e — dataQualityHandles B-swap-safe via SharedProvider
 
 **Statut** : Complété. `dataQualityHandles` forçait `duckdb.OpenReadOnly(sharedPath)` — en

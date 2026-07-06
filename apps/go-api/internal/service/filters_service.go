@@ -23,7 +23,7 @@ var experienceLabels = []string{expTypePVPUnranked, expTypePVPRanked, expTypePVE
 type FiltersService struct {
 	repo      port.FiltersRepository
 	titleSlug string
-	catalog   *SeasonsCatalog // optionnel : nil → aucun SeasonCount renvoyé
+	catalog   seasonsCatalogLoader // optionnel : nil → aucun SeasonCount renvoyé
 }
 
 // NewFiltersService crée un FiltersService.
@@ -43,7 +43,9 @@ func NewFiltersService(repo port.FiltersRepository) *FiltersService {
 // affiche les saisons sans compteur ni folding).
 func (s *FiltersService) WithSeasonsCatalog(titleSlug string, catalog *SeasonsCatalog) *FiltersService {
 	s.titleSlug = titleSlug
-	s.catalog = catalog
+	if catalog != nil { // garde concret fiable — évite le piège interface typed-nil
+		s.catalog = catalog
+	}
 	return s
 }
 

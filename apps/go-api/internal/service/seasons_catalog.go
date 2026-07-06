@@ -129,6 +129,14 @@ func projectTOMLSeasons(assets *mappings.AssetMappingSet) []SeasonCatalogEntry {
 //
 // Retourne toujours une slice (possiblement vide). Aucune erreur fatale —
 // les échecs de I/O sont loggués et l'appelant reçoit ce qu'on a pu collecter.
+// seasonsCatalogLoader est le contrat minimal consommé par CareerService et
+// FiltersService : charger les entrées saison d'un titre. Interface consumer-side
+// (K1i, ARCHI 8) — leurs champs ne sont plus typés sur *SeasonsCatalog concret,
+// mockables en test (même package). Implémenté par *SeasonsCatalog.
+type seasonsCatalogLoader interface {
+	Load(ctx context.Context, titleID string) []SeasonCatalogEntry
+}
+
 func (c *SeasonsCatalog) Load(ctx context.Context, titleID string) []SeasonCatalogEntry {
 	dbSeasons := c.loadDBWithFallback(ctx, titleID)
 	return mergeSeasonSources(c.static, dbSeasons)
