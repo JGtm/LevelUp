@@ -291,6 +291,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/platform/dblease/kind.go":                                                 "type Kind=SharedSocial pour lease tracking",
 	"internal/platform/dblease/metrics.go":                                              "expvar par kind",
 	"internal/platform/duckdb/db.go":                                                    "API DB générique (commentaire sur policy)",
+	"internal/platform/duckdb/db_query.go":                                              "API DB générique — commentaire policy sur l'invalidation process-level (ex-db.go, split K3f)",
 	"internal/platform/duckdb/pool.go":                                                  "pool : SharedSocial config + ouverture",
 	"internal/platform/duckdb/pool_shared_social_recovery.go":                           "recovery WAL (ADR 0021 Phase 2)",
 	"internal/platform/duckdb/pool_writers.go":                                          "acquéreurs LeasedWriter par kind",
