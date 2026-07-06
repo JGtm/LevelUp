@@ -1129,17 +1129,26 @@ K1 — Extractions de couches (ROI d'abord) :
 - [ ] K1m — ARCHI 12 [TRACKÉ] : exécuter le plan de l'allowlist media — extraire
   MediaRepository/MediaStore de `media_service.go:357` + `media_index_service.go`, vider
   l'allowlist de `no_duckdb_import_test.go`.
-- [ ] K1n — ARCHI mineurs couches service/analysis/domain : algos purs → analysis/
-  (`engagement_timeseries_binning.go:65`, `timeseries_service_aggregations.go:58`,
-  `teammates_squad_charts_intensity_perminute.go:141`, `match_history_placement.go:35` —
-  résoudre le cycle regex dupliquée) ; `friends_orchestrator_service.go:102` → port ;
-  liste de modes dupliquée (`engagement_admin_service.go:28`) ; impuretés analysis/ :
-  `combat_yield.go:28` (état global), `comeback.go:130` (slog), `sql_fragments.go:26` +
-  `perfect_kills.go:28` (fragments SQL — statuer : tolérés si documentés, sinon déplacer),
-  `identity.go:162` (générateur DDL), `citations.go:174` (URLs assets),
-  `world_stats.go:153` (TitleDataAdapter de fait), `mode_label.go:49` (playlists dupliquées
-  vs games/), `home_kpis.go:12` (dépendance legacymatch — croisé G2) ;
-  `domain/achievement_categories.go:27` + `domain/job.go:92` (croisé F15).
+- [~] K1n — ARCHI mineurs couches service/analysis/domain. Médiane centralisée FAITE
+  (`analysis.MedianFloat`, 3 copies, commité plus tôt). Liste de modes dupliquée FAITE
+  (2026-07-06) : `domain.EngagementCoefModes()` source unique — `sync.engagementCoefModes`
+  + `service.engagementCoefModesService` s'y alignent. **Reste STATUÉ** (règle plan
+  « statuer : toléré si documenté, sinon déplacer ») :
+  - `combat_yield.go:28` (état global atomique) : `[~]` TOLÉRÉ — impureté DOCUMENTÉE et
+    délibérée (réglage app-unique, évite de threader le flag dans ~13 agrégateurs purs ;
+    commentaire explicite « PAS un guard de compatibilité »). Conforme à la règle.
+  - `comeback.go:130` / `sql_fragments.go:26` / `perfect_kills.go:28` (slog + fragments
+    SQL en analysis/) : `[~]` TOLÉRÉ documenté — logs diagnostic best-effort / fragments
+    SQL partagés déjà commentés ; les extraire exigerait de threader un canal diagnostic
+    pour un bénéfice marginal.
+  - Algos purs → analysis/ (`engagement_timeseries_binning`, `timeseries_service_aggregations`,
+    `teammates_squad_charts_intensity_perminute`, `match_history_placement` regex 2 copies
+    intra-≤2) ; `friends_orchestrator_service.go:102` → port ; `mode_label.go:49`,
+    `identity.go:162`, `citations.go:174`, `world_stats.go:153`, `home_kpis.go:12` (croisé
+    G2), `domain/achievement_categories.go:27` + `domain/job.go:92` (croisé F15) : `[!]`
+    déplacements de couche de valeur structurelle FAIBLE (chacun un mini-refactor +
+    callers) — reportés au profit des items structurels à fort levier (K1e/K1h/K1a). Non
+    bloquants, aucun n'excède les seuils lint.
 
 K2 — God functions à risque (tâche dédiée, passer la grille plan-review avant chaque item) :
 - [ ] K2a — ARCHI 22 + CR A1 : `NewRouter` ~1 470 L → `buildStores` / `buildTitleRuntime` /
