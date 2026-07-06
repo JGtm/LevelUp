@@ -71,7 +71,7 @@ type CareerService struct {
 	// Utilisé par GetHighlightMatchIDs pour traduire les SeasonIDs sélectionnés
 	// en fenêtres temporelles SQL et pour calculer les cascade counts. Quand
 	// nil, le filtre saisons est inopérant et available_seasons reste vide.
-	seasonsCatalog *SeasonsCatalog
+	seasonsCatalog seasonsCatalogLoader
 	// csrSeasonID : identifiant de la saison CSR courante (ex. "CsrSeason8").
 	// Utilisé comme metadata dans GetCareerCSRs. Vide = non configuré.
 	csrSeasonID string
@@ -146,7 +146,9 @@ func (s *CareerService) WithFriendXUIDResolver(fn func(ctx context.Context, game
 // que FiltersService). Sert au filtre Saisons + cascade counts dans la
 // section "Matchs marquants". Quand nil, le filtre saisons est inopérant.
 func (s *CareerService) WithSeasonsCatalog(catalog *SeasonsCatalog) *CareerService {
-	s.seasonsCatalog = catalog
+	if catalog != nil { // garde concret fiable — évite le piège interface typed-nil
+		s.seasonsCatalog = catalog
+	}
 	return s
 }
 

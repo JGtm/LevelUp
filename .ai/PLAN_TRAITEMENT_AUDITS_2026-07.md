@@ -1104,9 +1104,13 @@ K1 — Extractions de couches (ROI d'abord) :
   `player_profile.go`, `home.go` ; `bootstrap.go:23`/`title_sync.go:30` → port.* ;
   `commendation_handler.go` → api/handlers/ ; `registry_weapon_coverage.go:102` (SQL slug
   concaténé → paramétré + déplacé).
-- [ ] K1i — ARCHI 8 + CR A5 : interfaces consumer-side étroites pour les couplages
-  service→service concrets : `home_service.go:264` (spartanIdentityProvider, pattern
-  `explorer_service.go:65`), `career_service.go:74`, `filters_service.go:26`.
+- [x] K1i — ARCHI 8 + CR A5 (2026-07-06) : interfaces consumer-side étroites (1 méthode
+  chacune) remplacent les champs concrets. `HomeService.careerLive` → `homeSpartanIdentityProvider`
+  (`GetSpartanIdentity`). `CareerService.seasonsCatalog` + `FiltersService.catalog` →
+  `seasonsCatalogLoader` (`Load`) partagé (défini dans seasons_catalog.go). Setters gardent
+  le param concret + garde `if x != nil` (nil-check concret fiable → évite le piège
+  interface typed-nil) ; `*CareerLiveService`/`*SeasonsCatalog` satisfont structurellement,
+  mockables en test (même package). Gate : build+vet 0, tests service verts.
 - [ ] K1j — ARCHI 9 : persistance catalogue (~200 L SQL + *sql.DB dans
   `catalog_fetcher_service.go:73` + même dérive `openspartan_post_import_service.go:170`)
   → CatalogRepository (platform/duckdb) ou Persister dédié via port.* ; + gate titre sur
