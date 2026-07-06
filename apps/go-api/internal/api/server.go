@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -23,12 +22,10 @@ import (
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/api/wire"
-	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
-	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -40,11 +37,10 @@ import (
 	// init() de observability publie le namespace expvar "levelup" ; le handler
 	// /debug/vars (stdlib) découvre ces compteurs via http.DefaultServeMux (P8.3,
 	// ADR 0009). Import nommé depuis J1 : PublishDuckDBPoolStats (stats de pool).
-	"levelup/go-api/internal/observability"
+
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/groupstore"
-	"levelup/go-api/internal/platform/halo"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	session_platform "levelup/go-api/internal/platform/session"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -53,7 +49,6 @@ import (
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/watcher"
-	"levelup/go-api/internal/worldenrich"
 	"levelup/go-api/pkg/duckdbbackup"
 )
 
@@ -603,308 +598,8 @@ func NewRouter(
 	// restent disponibles). L'endpoint /field-mappings n'est exposé que si le
 	// flag MULTI_TITLE_API_ENABLED est activé. Les slugs viennent du registre
 	// (non-archivés) → un 2e titre config charge automatiquement ses mappings.
-	fieldMappingsRegistry := mappings.NewRegistry()
-	multiTitleSlugs := make([]string, 0)
-	for _, td := range titleRegistry.NonArchived() {
-		multiTitleSlugs = append(multiTitleSlugs, td.Slug)
-	}
-	if len(multiTitleSlugs) == 0 {
-		multiTitleSlugs = []string{titlePkg.DefaultSlug}
-	}
-	for _, err := range fieldMappingsRegistry.LoadFromConfigDir(cfg.RepoRoot, multiTitleSlugs, slog.Default()) {
-		slog.Warn("field_mappings_load_warning", "err", err)
-	}
-
-	// PMT-1 / MT-01 : câble le resolver d'hosts d'ingestion title-aware partagé.
-	// Les clients d'ingestion (sync HaloAPIClient, platform/halo HaloProvider,
-	// assets) routent désormais via [endpoints] de constants.toml (fallback const
-	// Halo byte-identique pour halo_infinite).
-	games.SetDefaultEndpointResolver(games.NewMappingsEndpointResolver(fieldMappingsRegistry, titlePkg.DefaultSlug))
-
-	// PMT-5 / MT-06 : câble le resolver d'issues (outcome) title-aware partagé. Les
-	// repos platform/duckdb bâtissent leurs agrégats wins/losses/draws via
-	// [outcomes].raw_code (fallback littéral `outcome = N` byte-identique pour Halo).
-	games.SetDefaultOutcomeResolver(games.NewMappingsOutcomeResolver(fieldMappingsRegistry, titlePkg.DefaultSlug))
-
-	// PMT-12 / MT-21 : validateur boot des mappings TOML requis. Le required-set
-	// est dérivé des capabilities du titre (RequiredTOMLFor). Un titre ACTIF à
-	// moitié configuré fait fail-fast (os.Exit) ; un coming_soon/archived est
-	// loggé mais non bloquant (il n'est de toute façon pas servable, cf. gate
-	// RequireActiveTitle/PMT-8). Skip en DemoMode (tests/démo : repoRoot sans
-	// config TOML, cf. buildTestRouter).
-	if !cfg.DemoMode {
-		for _, td := range titleRegistry.All() {
-			errs := mappings.ValidateRequiredTOML(cfg.RepoRoot, td)
-			if len(errs) == 0 {
-				continue
-			}
-			for _, e := range errs {
-				if m, ok := e.(mappings.MissingRequiredTOML); ok {
-					slog.ErrorContext(serverCtx, "required_toml_missing",
-						"title", td.Slug, "path", m.Path, "required_by", m.RequiredBy)
-				} else {
-					slog.ErrorContext(serverCtx, "required_toml_missing", "title", td.Slug, "err", e)
-				}
-			}
-			if td.IsActive() {
-				slog.ErrorContext(serverCtx, "boot_validation_failed", "title", td.Slug, "errors_count", len(errs))
-				os.Exit(1)
-			}
-		}
-	}
-
-	// Phase B multi-titres : resolver d adapters par titre + catalogues de rang
-	// (extraits en buildTitleRuntime, K2a).
-	tr := buildTitleRuntime(serverCtx, cfg, titleRegistry, fieldMappingsRegistry)
-	titleResolver := tr.resolver
-	hiRanks := tr.hiRanks
-	rankImageURLsByTitle := tr.rankImages
-	hiCaps := tr.hiCaps
-	hiAssetURL := tr.hiAssetURL
-
-	// P8.3 (revue 2026-04-29, ADR 0009) : error_tracker.Middleware retiré.
-	// L'alerting Discord 500 / taux d'erreur n'est pas souhaité (commentaire
-	// explicite en code). Code mort supprimé pour éliminer la confusion.
-
-	// Sprint 37 : wire.ServiceRegistry — câblage par injection de dépendances.
-	// titleResolver est attaché pour que les services puissent résoudre les
-	// SemanticAdapter (libellés rangs etc.) selon le titre courant.
-	reg := wire.NewServiceRegistry(cfg, tokenProvider).
-		WithTitleResolver(titleResolver).
-		WithCapabilities(hiCaps).
-		WithSettingsStore(settingsStore).
-		WithRankCatalog(hiRanks).
-		WithRankImageURLsByTitle(rankImageURLsByTitle)
-
-	// MT-09 (PMT-12) : factory player-scoped de Halo enregistrée par SLUG (clé de
-	// map, pas de comparaison littérale). Le builder lit reg.HiCapabilities() à la
-	// volée (posé ci-dessus). Un 2e titre enregistrerait ICI son propre builder,
-	// sans toucher aux factories dataAdapterForPDB/TitleDataAdapter.
-	reg.RegisterPlayerDataBuilder(titlePkg.DefaultSlug, func(pdb *platform_duckdb.PlayerDB) games.TitleDataAdapter {
-		a := halo_games.NewDataAdapter(platform_duckdb.NewCareerRepo(pdb), slog.Default())
-		if reg.HiCapabilities() != nil {
-			a = a.WithCapabilities(reg.HiCapabilities())
-		}
-		// HIGH-B : sources Explorer canonical-typées (profil de combat récent +
-		// agrégat sample stats). Le même ExplorerRepo satisfait les 2.
-		explorerRepo := platform_duckdb.NewExplorerRepo(pdb, pdb.XUID)
-		a = a.WithRecentSource(explorerRepo).
-			WithParticipantSource(explorerRepo).
-			WithCrossPlayerSource(explorerRepo)
-		// Canonical MatchEvents (Phase 2) : timeline reconstruite depuis
-		// highlight_events + match_registry (T0) via la player DB courante.
-		a = a.WithEventsSource(platform_duckdb.NewMatchEventsSource(pdb))
-		return a
-	})
-
-	// Activation 1b multi-titre : enregistre les adapters des titres additionnels
-	// ACTIFS (≠ défaut), pilotée par le registre. NO-OP tant qu'aucun 2e titre
-	// n'est actif → Halo Infinite reste l'unique chemin (byte-identique). Cf.
-	// server_titles_additional.go (gating registry-driven, jamais par slug).
-	wire.RegisterAdditionalTitles(titleRegistry, titleResolver, reg, fieldMappingsRegistry)
-
-	// Module Prestige — initialisation du bundle (best-effort, désactivable via flag).
-	// Charge tuning.toml + templates + preset arcs Halo, ouvre shared_social et metadata.
-	// Si le flag PRESTIGE_ENABLED est désactivé, les routes ne sont pas montées et
-	// le sync hook est no-op — mais le boot du bundle reste utile pour valider la
-	// config au démarrage.
-	var prestigeBundle *wire.PrestigeBundle
-	if pb, err := wire.NewPrestigeBundle(cfg.RepoRoot, reg.Resolve(), cfg.PrestigeEnabled); err != nil {
-		slog.Warn("prestige_bundle_init_failed", "err", err)
-	} else {
-		prestigeBundle = pb.WithSquadProfile(wire.NewSquadPerfProfileProvider(
-			func() ([]domain.PlayerSummary, error) { return cfg.LoadPlayers() },
-			reg.Resolve(),
-			titlePkg.DefaultSlug,
-		))
-		// Phase 2 plan stabilisation 2026-05-22 : enregistrer le bundle sur
-		// le registry pour fermeture au shutdown (évite la fuite de refCount
-		// sur metadata.duckdb qui causait le verrou au hot-reload Air).
-		reg.WithPrestigeBundle(pb)
-	}
-
-	// Coach Advisor bundle (Phase 8 ADR 0020) — charge la grammaire de
-	// synthèse une fois au boot. Pas de DB-handle à fermer ; toujours non-nil
-	// (fallback grammaire vide si TOML absent, synthèse désactivée mais
-	// matching catalogue reste fonctionnel).
-	reg.WithCoachAdvisorBundle(wire.NewCoachAdvisorBundle(cfg.RepoRoot))
-
-	// MultiUserTokenStore (ADR 0023) — source unique des tokens auth (RT + MSAL).
-	// refreshTokensFromDB le lit AVANT de tomber sur les fallbacks legacy
-	// (sync_meta DuckDB + env var). Idempotent : peut être re-créé à chaque boot
-	// (pointe sur le même répertoire `data/auth/watcher_tokens/`).
-	authStore := auth_platform.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	reg.WithAuthStore(authStore)
-
-	// Transcoding média HLS asynchrone : le registry partage le jobStore process-wide
-	// (cf. service.WithMediaTranscoding, injecté dans MediaUpload).
-	reg.WithJobStore(jobStore)
-
-	var gamertagSvc port.GamertagSearchService
-	// Sprint B1 commit 11a : route via cfg.SharedProvider (sharedprovider.Provider)
-	// au lieu d'un OpenReadOnly direct. Élimine le dernier handle RO non-coordonné
-	// qui pinnait le fichier shared pendant les swaps RW du sync engine (bug
-	// latent : le handle dédié à gamertag search bloquait Provider.AcquireWriter
-	// avec "Unique file handle conflict" et faisait régresser le bug Madina97294).
-	// En mode kill-switch (LEVELUP_USE_SHARED_PROVIDER=0), cfg.SharedProvider
-	// reste un LegacySharedReader wrappant le handle global — comportement
-	// identique au pre-sprint.
-	if cfg.SharedProvider != nil {
-		local := platform_duckdb.NewGamertagRepo(cfg.SharedProvider)
-		// Fallback live (joueur JAMAIS croisé) : résolveur PeopleHub→profil Xbox
-		// construit depuis le pool de tokens (db_profiles). OFF en démo/offline (pas
-		// de tokens) → recherche purement locale. Instance partagée avec
-		// Explorer/Compare via reg (cache mutualisé).
-		var liveResolver service.GamertagXUIDResolver
-		if !cfg.DemoMode {
-			if dr, derr := worldenrich.BuildDirectoryResolver(cfg); derr != nil {
-				slog.Warn("directory live resolver indisponible — recherche live désactivée", "err", derr)
-			} else {
-				liveResolver = dr
-				reg.WithLiveGamertagResolver(dr)
-			}
-		}
-		gamertagSvc = service.NewLiveFallbackGamertagSearch(local, liveResolver)
-	} else {
-		slog.Warn("shared DB unavailable for gamertag search — cfg.SharedProvider nil")
-	}
-
-	// AssetHandler — couche d'abstraction unifiée (local-first → API-fallback).
-	// Le resolver est créé ici pour accéder à reg.AnyPlayerTokens.
-	// Il est aussi passé au wire.ServiceRegistry pour que les HaloProviders délèguent
-	// le cache/fetch des définitions BP/challenges au resolver (P4/P5).
-	assetCfg := assets.AssetConfig{
-		CacheRootDir:  titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir(),
-		MetaDBPath:    metadataDBPathFor(cfg),
-		TokenProvider: reg.AnyPlayerTokens,
-		// Résolution d'image de carte inconnue (KindMapImage) via DiscoveryUGC.
-		// Injectée ici (et non dans internal/assets) pour éviter le cycle
-		// assets→halo : réutilise halo.FetchAsset (→ DiscoveryAsset.ImageURL).
-		// Tokens Spartan+clearance via reg.AnyPlayerTokens. Résultat caché par le
-		// resolver → fetch ~1×/carte inconnue.
-		MapImageURLFetcher: func(ctx context.Context, titleID, mapID, versionID string) (string, error) {
-			tokens, terr := reg.AnyPlayerTokens(ctx)
-			if terr != nil {
-				return "", terr
-			}
-			a, ferr := halo.NewHaloProvider().WithTokens(tokens).FetchAsset(
-				ctx, halo.AssetTypeMap, titleID, mapID, versionID, "en-US")
-			if ferr != nil {
-				return "", ferr
-			}
-			if a == nil {
-				return "", nil
-			}
-			return a.ImageURL, nil
-		},
-	}
-	assetResolver, err := assets.New(assetCfg)
-	if err != nil {
-		slog.ErrorContext(serverCtx, "assets resolver non disponible — arrêt du serveur", "err", err)
-		os.Exit(1)
-	}
-	assetHandler := handlers.NewAssetHandler(assetResolver)
-	reg.WithAssetResolver(assetResolver)
-
-	// V2 saisons — résolveur unifié (TOML + DB live + lazy fetch via Waypoint).
-	// Pattern symétrique à season_pass_service : DB d'abord, fetch + persist
-	// si vide, merge avec le TOML (libellés FR + display_order). Le metaDB
-	// reste ouvert pour la durée du process (OpenReadWriteShared = pool
-	// reference-counted, le close de cmd/server décrémente).
-	if seasonsAssets, ok := fieldMappingsRegistry.GetAssets(titlePkg.DefaultSlug); ok {
-		// La DB metadata est OPTIONNELLE : si elle est indisponible (verrou RW pris
-		// par un autre process) ou si EnsureSeasonTables échoue, on câble quand même
-		// le catalogue en TOML-seul (repo=nil → Load court-circuite DB + provider).
-		// Sinon les saisons du TOML sont perdues et le breakdown « matchs par saison »
-		// (Explorer) disparaît silencieusement.
-		//
-		// NB : seasonsRepo est typé en interface (port.MetadataRepository), PAS en
-		// *MetadataRepo concret — un pointeur concret nil emballé dans une interface
-		// n'est pas == nil, ce qui ferait échouer le court-circuit repo==nil du
-		// catalogue (piège classique Go).
-		var seasonsRepo port.MetadataRepository // nil ⇒ catalogue TOML-seul
-		seasonsMetaPath := metadataDBPathFor(cfg)
-		if seasonsMetaDB, err := platform_duckdb.OpenReadWriteShared(seasonsMetaPath); err != nil {
-			slog.Warn("seasons_catalog_meta_db_unavailable",
-				"err", err, "fallback", "static_toml_only")
-		} else {
-			candidateRepo := platform_duckdb.NewMetadataRepoFromDB(seasonsMetaDB)
-			// Tables idempotentes : la migration peut ne pas avoir tourné encore.
-			if ensureErr := candidateRepo.EnsureSeasonTables(context.Background()); ensureErr != nil {
-				// Handle ouvert mais inexploitable : le fermer pour ne pas fuiter le
-				// refCount du pool (cf. INCIDENT_2026-05-21). Repli en TOML-seul.
-				_ = seasonsMetaDB.Close()
-				slog.Warn("seasons_catalog_ensure_tables_failed",
-					"err", ensureErr, "fallback", "static_toml_only")
-			} else {
-				// Handle RW persistant sur metadata.duckdb : le SeasonsCatalog le
-				// garde pour la vie du process. Tracker pour fermeture au shutdown
-				// via reg.Close(), sinon fuite de refCount (cf. INCIDENT_2026-05-21).
-				reg.TrackMetadataHandle(seasonsMetaDB)
-				seasonsRepo = candidateRepo
-			}
-		}
-		// Toujours câbler le catalogue : repo nil ⇒ TOML-seul. db_wired distingue le
-		// mode complet (DB fraîche + lazy fetch) du mode dégradé (TOML-seul) en prod.
-		catalog := service.NewSeasonsCatalog(seasonsAssets, seasonsRepo, halo.DefaultHaloProvider, slog.Default())
-		reg.WithSeasonsCatalog(catalog)
-		slog.Info("seasons_catalog_ready",
-			"title_slug", titlePkg.DefaultSlug,
-			"toml_count", len(seasonsAssets.AllOfKind("season")),
-			"db_wired", seasonsRepo != nil,
-		)
-	}
-
-	// Assets du titre additionnel (Halo 5) chargés UNE FOIS depuis sa metadata isolée —
-	// réutilisés par l'AssetMetadataHandler ET l'adapter TitleAssetURLAdapter ci-dessous
-	// (K1g : supprime le double chargement metadata h5 au boot). Best-effort : nil si pas de seed.
-	h5Maps, h5Weapons, h5Medals := loadTitleAssetDrawerData(
-		config.MetadataDBPath(cfg, halo5.TitleSlug), halo5.TitleSlug)
-
-	// AssetMetadataHandler (drawer) — construit hors NewRouter (K2a). nil si metadata
-	// indisponible après retries (non fatal).
-	assetMetaHandler := buildAssetMetadataHandler(cfg, hiAssetURL, titleRegistry, h5Maps, h5Weapons, h5Medals)
-
-	// Résolveurs d'assets title-aware Halo 5 (badge CSR + AssetURLAdapter + sprites
-	// médailles), extraits en helper (K2a). Best-effort : nil/vide → HINF inchangé.
-	wireHalo5AssetAdapters(cfg, titleResolver, h5Maps, h5Weapons, h5Medals)
-
-	// Fichiers statiques (images maps, médailles, armes…)
-	staticDir := filepath.Join(cfg.RepoRoot, "static")
-	// Handler spécial pour /static/commendations/* : fallback vers noms URL-encodés
-	// pour les fichiers dont le nom décodé contient des caractères interdits Windows (ex: ?).
-	r.Handle("/static/commendations/*", newCommendationHandler(staticDir))
-	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
-
-	// Health check (pas de préfixe /api/v1 — sondage infrastructurel).
-	//
-	// P8.11 (revue 2026-04-29 axe 8 amende) : sémantique séparée
-	// liveness vs readiness pour orchestrateurs K8s/LB multi-user.
-	//   - /health   : Deprecated, mixte (200 si DB OK), gardé en rétrocompat.
-	//   - /healthz  : liveness — process vivant, 0 I/O DB, latence < 5ms.
-	//   - /readyz   : readiness — vérifie DuckDB + fs, retourne 503 si un check KO.
-	healthH := handlers.NewHealthHandlerWithVersion(bootRepo, cfg.AppVersion)
-	healthH.Mount(r) // /health, /healthz, /readyz (racine, Huma)
-
-	// P8.3 (revue 2026-04-29, ADR 0009) : monitoring expvar minimal.
-	// Expose /debug/vars (stdlib) avec les compteurs LevelUp publiés sous la
-	// clé "levelup". Pas de Prometheus/OpenTelemetry — observability basique
-	// pour multi-user. Les hot paths sont instrumentés progressivement via
-	// observability.RecordDurationMS / IncCounter.
-	//
-	// P8.3 finalisé : protégé derrière RequireAuth + RequireAdmin (transparent
-	// en mode démo / auth=none, refus 403 sinon).
-	//
-	// J1 (ADR 0009) : publie les sql.DBStats des pools DuckDB sous
-	// "levelup"/"duckdb_pool_stats" (WaitCount/WaitDuration = contention pool).
-	observability.PublishDuckDBPoolStats(func() any { return platform_duckdb.PoolStatsSnapshot() })
-	r.Group(func(r chi.Router) {
-		r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
-		r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
-		r.Mount("/debug/vars", http.DefaultServeMux)
-	})
-
-	// PR 4 (fix routing OAuth) — Le redirect_uri Azure pointe sur le chemin racine
+	deps := buildAPIV1Deps(r, apiV1Inputs{serverCtx: serverCtx, cfg: cfg, bootRepo: bootRepo, bootSvc: bootSvc, daemon: daemon, tokenProvider: tokenProvider, autoSyncScheduler: autoSyncScheduler, backupScheduler: backupScheduler, groupStore: groupStore, sessionStore: sessionStore, attemptStore: attemptStore, settingsStore: settingsStore, jobStore: jobStore, users: users, invites: invites, titleRegistry: titleRegistry})
+	reg := deps.reg
 	// /auth/xbox/callback (sans /api/v1). Comme le SPA est servi par ce backend, ce
 	// chemin tombait sur le catch-all `/*` (index.html) → le handler OAuth ne tournait
 	// jamais → l'utilisateur retombait sur /login. On expose donc login + callback AUSSI
@@ -933,34 +628,11 @@ func NewRouter(
 
 	// v1 API
 	r.Route("/api/v1", func(r chi.Router) {
-		xboxOAuthRoot = mountAPIV1(r, apiV1Deps{cfg: cfg, bootSvc: bootSvc, reg: reg, fieldMappingsRegistry: fieldMappingsRegistry, attemptStore: attemptStore, users: users, invites: invites, sessionStore: sessionStore, tokenProvider: tokenProvider, groupStore: groupStore, settingsStore: settingsStore, assetHandler: assetHandler, assetMetaHandler: assetMetaHandler, gamertagSvc: gamertagSvc, prestigeBundle: prestigeBundle, serverCtx: serverCtx, daemon: daemon, autoSyncScheduler: autoSyncScheduler, authStore: authStore, jobStore: jobStore, titleRegistry: titleRegistry, backupScheduler: backupScheduler})
+		xboxOAuthRoot = mountAPIV1(r, deps)
 	})
 
-	// SPA React : sert le build Vite (LEVELUP_WEB_DIST, cf. Dockerfile/compose) en
-	// catch-all `/*`. chi route d'abord les patterns plus spécifiques (/api/v1/*,
-	// /static/*, /health*, /debug/vars…), donc ce handler ne reçoit que les requêtes
-	// front : un fichier du dist → servi tel quel ; sinon (route client-side React
-	// Router, ou dossier) → index.html. Inactif si WebDistDir vide ou index.html
-	// absent (dev : Vite sert le front sur :5173).
-	if dist := cfg.WebDistDir; dist != "" {
-		indexPath := filepath.Join(dist, "index.html")
-		if _, statErr := os.Stat(indexPath); statErr == nil {
-			fileServer := http.FileServer(http.Dir(dist))
-			r.Get("/*", func(w http.ResponseWriter, req *http.Request) {
-				if fi, err := os.Stat(filepath.Join(dist, filepath.Clean(req.URL.Path))); err == nil && !fi.IsDir() {
-					fileServer.ServeHTTP(w, req)
-					return
-				}
-				// Route client-side / dossier / fichier absent → index.html, avec
-				// injection des balises Open Graph (apercus de liens sociaux).
-				// no-cache géré dans serveIndexWithOG.
-				reg.ServeIndexWithOG(w, req, indexPath)
-			})
-			slog.InfoContext(serverCtx, "SPA: front React servi depuis le dist", "dir", dist)
-		} else {
-			slog.WarnContext(serverCtx, "LEVELUP_WEB_DIST défini mais index.html introuvable — SPA non montée", "dir", dist)
-		}
-	}
+	// SPA React (catch-all /*) — cf. mountSPA.
+	mountSPA(r, serverCtx, cfg, reg)
 
 	return r, reg
 }

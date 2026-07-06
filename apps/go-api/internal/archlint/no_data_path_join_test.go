@@ -28,7 +28,8 @@ var dataPathJoinAllowlist = map[string]bool{
 	"internal/config/config.go":          true,
 	"internal/config/config_settings.go": true,
 	// Wiring DI (racine api/, hors handlers) : chemins cache/jobs/stash au boot.
-	"internal/api/server.go": true,
+	"internal/api/server.go":       true,
+	"internal/api/server_apiv1.go": true, // K2a : construction DI extraite de NewRouter
 	// Seed démo + migration legacy + backup (chemins historiques / data-root ops).
 	"internal/ops/seed_demo.go":            true,
 	"internal/ops/seed_demo_multititle.go": true,
