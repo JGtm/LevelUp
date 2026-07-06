@@ -1255,9 +1255,19 @@ K2 — God functions à risque (tâche dédiée, passer la grille plan-review av
   `applyTransverseMiddlewares` (chaîne `r.Use` transverse : recovery→…→TitleExtractor, ~30 L, zéro
   sortie ; `titleRegistry` remonté avant le bloc car réutilisé partout). **NewRouter ~1 470 → ~1 197
   → ~1 157 L**. Gate à chaque : build+vet 0, intégration -p 1 api verte (NewRouter boot OK).
-  `[!]` RESTE : poursuivre par bloc (`buildStores`, `applyMiddlewares`, `mountXxx` par domaine,
-  `waypointExplore`→service, purge sessions goroutine) — la cible < 100 L exige une bascule
-  builder-pattern (assemblage DI intrinsèquement séquentiel) ; réduction incrémentale continue.
+  **PUIS `/api/v1` EXTRAIT (2026-07-06, commit 8ea6db7bd)** : le bloc `r.Route("/api/v1", …)` de
+  746 L (qui construit ses ~55 handlers en interne + les monte) → `mountAPIV1(r, apiV1Deps)`
+  (`server_apiv1.go`). Les ~18 dépendances de la portée NewRouter regroupées dans `apiV1Deps`
+  (DÉSTRUCTURÉES en tête de fonction → corps inchangé, aucune réécriture par-ligne) ; le handler
+  xbox OAuth construit dans le bloc est RETOURNÉ pour que les routes racine `/auth/xbox/*` (montées
+  dans NewRouter) le lient tardivement. **NewRouter ~1 470 → ~412 L (−72 %)**. Gate : build/vet 0,
+  intégration -p 1 api VERT (NewRouter boot OK), `//nolint:funlen` sur mountAPIV1 (liste de montage
+  séquentielle).
+  `[!]` RESTE pour < 100 L : extraire la phase de CONSTRUCTION (~606-907, ~300 L) → `buildAPIV1Deps`
+  retournant `apiV1Deps` (~22 champs). Attention : cette phase ENTRELACE construction de deps ET
+  enregistrement de routes racine (observability `/debug/vars`, groupe admin) → la fonction extraite
+  prend `r` + ~16 entrées et retourne les deps (moins propre que le bloc `/api/v1`). Recette établie ;
+  reste une opération de threading à mener. La réduction 1 470→412 (−72 %) est livrée et vérifiée.
 - [~] K2b — ARCHI 23 + CR A4 (2026-07-06) : **boucle de pagination EXTRAITE** de `run()` →
   méthode `paginateAndPersistHistory(ctx, historyPaginationInputs, *SyncResult)` (~155 L,
   `//nolint:funlen` justifié : filtre/fetch/persist par page partagent processed/toFetch/

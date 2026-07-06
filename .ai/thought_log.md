@@ -1,3 +1,23 @@
+## [2026-07-06] K2a NewRouter — /api/v1 extrait, 1 470 → 412 L (−72 %)
+
+**Statut** : En cours (grosse réduction livrée ; < 100 L reste une extraction de plus). Le bloc
+`r.Route("/api/v1", …)` de 746 L → `mountAPIV1(r, apiV1Deps)` (commit 8ea6db7bd).
+
+**La technique qui a rendu l'extraction sûre** (contre le « rewrite par-ligne » que je craignais) :
+le bloc /api/v1 construit ses ~55 handlers EN INTERNE (build-probe : seulement ~18 dépendances de la
+portée NewRouter). Je les regroupe dans un struct `apiV1Deps` et les DÉSTRUCTURE en tête de
+`mountAPIV1` (`cfg := d.cfg; …`) → le corps de 746 L reste INCHANGÉ. Zéro réécriture des références.
+Découverte des deps 100 % build-driven (chaque build révèle le lot suivant d'`undefined`/`unused`).
+Piège : le handler xbox OAuth est construit dans le bloc mais consommé par des routes RACINE
+(`/auth/xbox/*`) → `mountAPIV1` le RETOURNE, NewRouter l'assigne dans la closure de route (liaison
+tardive, OK car NewRouter finit avant toute requête). Un `nolint:funlen` sur mountAPIV1 (liste de
+montage). Gate : build/vet 0, intégration -p 1 api VERT (boot OK).
+
+**Reste pour < 100 L** : extraire la phase de construction (~606-907) → `buildAPIV1Deps`. Moins
+propre (elle ENTRELACE build de deps + enregistrement de routes racine `/debug/vars`/observability
+→ prend `r` + ~16 entrées, rend ~22 champs). Recette au plan. La réduction 1 470→412 est livrée,
+vérifiée, poussée.
+
 ## [2026-07-06] K3e client Halo EXTRAIT — couplage de test RÉSOLU (6/6 scissions K3)
 
 **Statut** : Complété. Le dernier item du lot avec un blocage documenté « couplage de test
