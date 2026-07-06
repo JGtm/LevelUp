@@ -1236,9 +1236,12 @@ K2 — God functions à risque (tâche dédiée, passer la grille plan-review av
   `BuildEngine` factory + `defaultRunnerFactory`/`acquireLiveTitleRunner`/`resolveTitleSlug`)
   + `auto_sync_convergence.go` (89 L : passe convergence events + `warnStaleGateClaims`).
   auto_sync.go 1101 → 887 L. Gate : build+vet 0, tests scheduler unit+intégration -p 1 verts
-  (déplacement pur, compiler-vérifié). `[!]` RESTE : auto_sync.go encore > 500 L (extraire le
-  bloc run-loop `Run`/`RunOnce`/`RunOnceTrigger`/`syncPlayer` en `auto_sync_run.go`) + décomposer
-  `BuildEngine`/`RunOnceTrigger` (exemptions 80 L) — suite mécanique.
+  (déplacement pur, compiler-vérifié). **run-loop extrait (2026-07-06)** : `Run`/`RunOnce`/
+  `RunOnceTrigger`/`syncPlayersConcurrent`/`syncPlayer`/`checkSyncPreconditions` + type
+  `syncOutcome` → `auto_sync_run.go` (455 L, même package = zéro churn d'import). **auto_sync.go
+  887 → 445 L (< 500 ✓)**. Gate : build+vet 0, intégration -p 1 scheduler (4,8 s) verte.
+  `[!]` RESTE mineur : `BuildEngine`/`RunOnceTrigger` > 80 L portent leur `//nolint:funlen`
+  justifié (cohésion) — décomposition optionnelle, seuil couvert par exemption.
 - [x] K2d — ARCHI 25 (2026-07-06) : `SeedDemo()` ~203 L → orchestrateur (~55 L) + 4 phases
   nommées : `resolveDemoCorpusAndRoster` (0/1/1b : corpus figé/dynamique + roster),
   `buildDemoWarehouse` (2-4 : metadata+shared+anonymisation+migration), `seedDemoPlayerDBs`
