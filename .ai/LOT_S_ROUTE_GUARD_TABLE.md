@@ -99,10 +99,14 @@ Après le lot S : conforme (les endpoints mutants/identité sont en §2-§5).
 Le grep ci-dessus était MANUEL — il a laissé passer `GET /jobs/{job_id}` (VF-3, il
 était monté sur le root `humaAPI` sans garde, donc pas un `.Mount(r)`/`r.Get(` nu
 détectable au grep). Le garde-rail permanent est désormais
-`internal/api/bare_routes_ratchet_test.go` : il `chi.Walk` le routeur ASSEMBLÉ en
-mode enforcement (`DemoMode=false`, `AuthMode="password"`), compose la chaîne de
-middlewares de chaque route autour d'un handler bidon, et envoie une requête
-anonyme. Une route qui ne répond pas 401/403 doit figurer dans l'allowlist datée du
-test (= la catégorie §1 ci-dessus) ; sinon le test échoue. Vérifié mordant dans les
-deux sens (retrait d'une garde → rouge ; entrée d'allowlist morte → rouge). Toute
-évolution de cette table doit rester cohérente avec cette allowlist.
+`internal/api/bare_routes_ratchet_test.go` : il `chi.Walk` le routeur ASSEMBLÉ (mode
+démo, boot propre) et, pour chaque route, identifie via le nom runtime de fonction
+(`runtime.FuncForPC`) si sa chaîne de middlewares contient une garde d'auth
+(`RequireAuth` / `RequireAdmin` / `RequirePlayerOwnership` / `LoopbackOnly`). En
+démo ces gardes sont NO-OP au runtime mais le closure reste dans la chaîne exposée
+par `chi.Walk`, donc détectable. Une route SANS garde doit figurer dans l'allowlist
+datée du test (= la catégorie §1 ci-dessus) ; sinon le test échoue. Vérifié mordant
+dans les deux sens (retrait d'une garde → rouge ; entrée d'allowlist morte → rouge).
+Toute évolution de cette table doit rester cohérente avec cette allowlist.
+(Note : le boot en mode enforcement a été écarté — il wire des services nil menant
+à `os.Exit`/nil-deref au boot en CI.)

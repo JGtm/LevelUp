@@ -12,21 +12,28 @@ empêche d'appeler `registerJobsHuma` depuis le package handlers ; la garde cour
 avant le handler). (V3b/DC-1) `newJobID()` `job_<UnixNano>` (énumérable) →
 `job_<YYYYMMDD>_<hex16>` crypto/rand 128 bits ; aucun consommateur ne parse le timestamp
 (vérifié grep) — seul usage ordonnant = tiebreaker `Store.List` (StartedAt nil, dégénéré),
-préservé par le préfixe date lexical. (V3c/DC-8) Ratchet comportemental
-`bare_routes_ratchet_test.go` : le marquage de middlewares est fragile (closures chi non
-comparables) donc j'ai bâti le VRAI routeur en enforcement (`DemoMode=false`,
-`AuthMode="password"`, RepoRoot=dépôt) et, par `chi.Walk`, composé la SEULE chaîne de
-middlewares de chaque route autour d'un handler bidon + requête anonyme. 401/403 = gardée ;
-sinon → allowlist datée 2026-07-07 (30 routes publiques) sous peine d'échec. Handler jamais
-exécuté → 0 dépendance nil, 0 DuckDB. Self-check anti-rot d'allowlist (leçon V4d).
+préservé par le préfixe date lexical. (V3c/DC-8) Ratchet `bare_routes_ratchet_test.go` par
+MARQUAGE des middlewares (nom runtime `runtime.FuncForPC`). PIVOT en cours de lot : ma
+1re version COMPORTEMENTALE (boot enforcement `DemoMode=false` + composition de chaîne +
+requête anonyme) a crashé la CI sur `e703d6dc7` (Go Coverage + Baseline rouges) — le boot
+enforcement wire des services nil → `os.Exit(1)` validation TOML + nil-deref dans
+`NewRouter` sur Linux, ce qui TUE tout le binaire de test `internal/api` (les tests
+`api_test` deviennent « absents » du run baseline). Version livrée robuste : boot en mode
+DÉMO (propre) ; en démo les gardes lot S sont NO-OP au runtime MAIS le closure du middleware
+reste dans la chaîne `chi.Walk` → détectable par nom (`RequireAuth`/`RequireAdmin`/
+`RequirePlayerOwnership`/`LoopbackOnly`, stable OS-indépendant). Route sans garde →
+allowlist datée 2026-07-07 sous peine d'échec. Self-check anti-rot (V4d).
 
 **Résultats observés** : `go build && go vet ./...` = exit 0. `go test ./internal/api/...
-./internal/platform/jobs/...` = exit 0. `go test -tags=integration -p 1 ./internal/api/...`
-= exit 0, 0 `^--- FAIL:`. `jobid_test` : 10 000 générations, 0 collision, format OK.
+./internal/platform/jobs/...` = exit 0. `go test -tags=integration -count=1 -p 1
+./internal/api/...` (commande baseline) = exit 0, 0 `^--- FAIL:`, tests `api_test` bien
+présents (plus de crash). `jobid_test` : 10 000 générations, 0 collision, format OK.
 Ratchet MORDANT prouvé 2 sens : (1) jobs dégardé localement → rouge
-« GET /api/v1/jobs/{job_id} (code OK) » (aurait attrapé VF-3) ; (2) entrée d'allowlist
-bidon → rouge « entrée d'allowlist MORTE ». `golangci-lint --new-from-rev=HEAD` = 0 issue
-nouvelle (4 issues résiduelles = dette baseline server.go/server_apiv1.go, hors périmètre).
+« GET /api/v1/jobs/{job_id} » (aurait attrapé VF-3) ; (2) entrée d'allowlist bidon → rouge
+« entrée d'allowlist MORTE ». `golangci-lint --new-from-rev` = 0 issue nouvelle (4 issues
+résiduelles = dette baseline server.go/server_apiv1.go, hors périmètre). LEÇON : ne jamais
+booter un routeur enforcement avec deps nil en test (os.Exit tue le package) ; croiser les
+runs CI réels AVANT clôture (le gate local scopé ne rejoue pas la commande baseline).
 `LOT_S_ROUTE_GUARD_TABLE.md` rafraîchi (VF-15) : +/jobs, `POST /session/context`,
 `GET /directory/gamertags/search`, lignes re-pointées, section garde-rail V3c.
 
