@@ -1334,9 +1334,13 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
     (6) `platform/duckdb/db.go` 757 → 484 L + `db_recovery.go` 152 (invalidation/reopen) +
     `db_query.go` 142 (Query/Exec/*Recovered). Gate build+vet 0 + intégration -p 1 duckdb verte
     (anti-ART OK ; ratchet `TestNoUnauthorizedSharedSocialMention` mis à jour : commentaire policy
-    déplacé vers db_query.go → allowlisté). **RESTE god-files (4)** : steps.go / steps_player_base.go
-    (god-FONCTIONS `Steps()` = slice littéral ordonné → partition order-sensitive avec sous-fonctions),
-    pool.go x3 fns (décomposition), prestige/service.go CreateChallenge. **NOTE** : `sync/skill_v2_shadow.go` NON splittable en
+    déplacé vers db_query.go → allowlisté). (7) **steps.go / steps_player_base.go** (god-FONCTIONS `Steps()`/`playerBaseSteps()` =
+    slice littéral de migrations ORDONNÉ, ordre audité par `order_audit_test.go`) → **EXEMPTION
+    JUSTIFIÉE** (plan « découper OU exemption ») : exclusion `.golangci.yml` ajoutée pour
+    `internal/games/.*/migrations/steps` (funlen/gocyclo/lll), MIROIR de l'exemption existante
+    `internal/migration/steps_`. Découper fragmenterait le registre ordonné sans gain ; la
+    longueur = nombre de migrations. **RESTE god-files (2)** : pool.go x3 fns (décomposition de
+    fonctions), prestige/service.go CreateChallenge — décomposition de fonctions, suite. **NOTE** : `sync/skill_v2_shadow.go` NON splittable en
     place — le ratchet de gel K3c interdit un nouveau fichier racine sync/ (doit aller en
     sous-package, cf. K3c reste). RESTE (7) : steps.go (migration — ordering sensible),
     persist_sink.go (ART-critique), db.go, registry_pages.go, pool.go x3 fns, prestige/service.go

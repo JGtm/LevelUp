@@ -221,6 +221,16 @@ linters:
           - gocyclo
           - lll
 
+      # Steps de migration title-owned (games/*/migrations) : idem — registre de
+      # migrations ORDONNÉ (slice littéral séquentiel, ordre audité par
+      # order_audit_test.go). La longueur = nombre de migrations ; découper
+      # fragmenterait le registre ordonné sans gain (K3f, exemption justifiée).
+      - path: "internal/games/.*/migrations/steps"
+        linters:
+          - funlen
+          - gocyclo
+          - lll
+
       # Backfill : 96 champs -> argument-limit non applicable
       - path: "internal/sync/backfill"
         linters:
