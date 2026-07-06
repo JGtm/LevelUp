@@ -1049,28 +1049,31 @@ découpés ; chemins via PathResolver. Chaque sous-lot = 1 commit + build/tests 
 > créer un 2e) ; DI dans `api/wire/` (K3d) ; client Infinite → `games/halo_infinite/client/`
 > sur le modèle games/halo_5/client.go (K3e).
 
-> **BILAN SESSION /goal 2026-07-06** — la portion CONTENUE, sûre et gated de K est livrée
-> et poussée sur `refactor/audits-2026-07`. **Fait (gated build+vet+intégration+guards,
-> commité + poussé)** : K1a (6 sous-étapes : records repo, seam outcome, seuils, table-driven
-> deltas, formules→analysis, +BestKDA doc), K1c (sync_meta helper), K1d (upsert ART-safe
-> dédup + guard), K1e (dataQualityHandles B-swap), K1f (BackfillOrchestrator), K1g
-> (asset-drawer/CSR SQL→duckdb + dédup double-load), K1i (interfaces consumer-side), K1l
-> (PlayersRootDir + CacheRootDir, 2 guards), K1n (MedianFloat + EngagementCoefModes + statuer),
-> K2e (strings.Title + goLoad). **RESTE = session dédiée** (le plan les désigne « tâche
-> dédiée » ; prod-critiques ou énormes — NE PAS précipiter en fin de session longue) :
-> - `[!]` **K1a cœur** (extraction `service/postsync/`) : inversion de dépendance
->   `buildPostSyncDeltaHook` + cycle `streaks↔duckdb` ; tourne après CHAQUE sync. Le plus dur.
-> - `[!]` **K1b** (cascade auth ~130 L) : ADR 0023, la plus haute conséquence (merge=deploy).
-> - `[!]` **K1h / K1j+K1m** : handlers→services+ports (nombreux) ; catalog/media repos (D-MV2).
-> - `[!]` **K1k** : migration 55-sites `CareerRankData`/`SpartanCustomizationData`→domain
->   (collision de noms, prod career-live/HaloAPIClient). Cf. thought_log 2026-07-06.
-> - `[!]` **K2a-d** : god-functions 1470/1083/483/203 L (NewRouter, auto_sync, SyncEngine.run,
->   SeedDemo). K2b/K2d prod/deploy-critiques (gate e2e sync / regen-demo requis).
+> **BILAN SESSION /goal 2026-07-06** (mis à jour après reprise post-hook — les items durs
+> aussi ont été attaqués). **Fait (gated build+vet+intégration/e2e+guards, commité + poussé
+> sur `refactor/audits-2026-07`)** : K1a (6 sous-étapes), K1c (sync_meta), K1d (upsert
+> ART-safe + guard), K1e (dataQualityHandles B-swap), K1f (BackfillOrchestrator), K1g
+> (asset-drawer/CSR → duckdb + dédup double-load), K1i (interfaces consumer-side), K1k
+> (**DTO career-live → domain**, 4/5 fichiers décoplés de sync, alias zéro-churn), K1l
+> (PlayersRootDir + CacheRootDir, 2 guards), K1n (MedianFloat + EngagementCoefModes), K1h
+> (partiel : slug SQL weapon-coverage paramétré), K2b (**pagination de SyncEngine.run
+> extraite**, e2e sync vert), K2c (**auto_sync scindé** engine+convergence), K2d (**SeedDemo
+> → 4 phases**, intégration ops verte), K2e (strings.Title + goLoad). **RESTE** (items dont
+> l'extraction propre est soit infaisable en méthode simple, soit multi-heures/énorme) :
+> - `[!]` **K1a cœur** (extraction `service/postsync/`) : `buildPostSyncDeltaHook` couple ~10
+>   capacités `*ServiceRegistry` (resolve/homeCache/emitter/bundles/settings) → inversion de
+>   dépendance large + cycle `streaks↔duckdb`. Tourne après CHAQUE sync. Multi-heures.
+> - `[!]` **K1b** (cascade auth ~130 L) : les 2 cascades DIVERGENT (registry ne marque PAS
+>   `reauth_required` sur échec révoqué, le helper canonique SI) → déléguer changerait le
+>   comportement bannière prod. Réconciliation comportementale sur l'auth (merge=deploy), pas
+>   un dédup mécanique.
+> - `[!]` **K1h (reste) / K1j+K1m** : handlers→services+ports (collection) ; catalog/media
+>   repos (D-MV2, ~250 L SQL + port + wiring).
+> - `[!]` **K2a** : `NewRouter` ~1470 L (huge) ; **K2b drain** non extrait (defer-lifecycle
+>   load-bearing, cf. commit K2b) ; **K2c reste** (run-loop → auto_sync_run.go pour < 500 L).
 > - `[!]` **K3a-f** : scissions god-packages (duckdb 143 / service 127 / sync 111 fichiers) —
 >   énormes, « 1 domaine = 1 commit », mécaniques mais volumineuses.
-> Raison de l'arrêt : ces items exigent soit des heures de découpe mécanique, soit une
-> chirurgie prod-critique qui, précipitée, casse exactement ce que les règles qualité
-> (override CLAUDE.md) protègent. Reprise recommandée : K1a → K2a → K3d (ordre du plan).
+> Reprise recommandée : K1a → K2a → K3d (ordre du plan).
 
 K1 — Extractions de couches (ROI d'abord) :
 - [ ] K1a — ARCHI 1 + 2 (reste) + CR A2 (partie post-sync) : extraire le pipeline
