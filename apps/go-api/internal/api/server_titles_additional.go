@@ -11,6 +11,7 @@ import (
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/mappings"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	halo5db "levelup/go-api/internal/platform/duckdb/halo5"
 )
 
 // additionalTitleRegistrar câble les adapters (semantic + data global + builder
@@ -167,7 +168,7 @@ func registerHalo5Adapters(
 		slog.Warn("h5_commendation_defs_open_failed", "title_slug", td.Slug, "err", err)
 	} else {
 		reg.TrackMetadataHandle(metaDB)
-		commDefs = platform_duckdb.NewHalo5CommendationDefSource(metaDB.SQLDb())
+		commDefs = halo5db.NewHalo5CommendationDefSource(metaDB.SQLDb())
 	}
 
 	// Builder player-scoped : adapter live + source d'historique LOCAL (AXE A) +
@@ -183,21 +184,21 @@ func registerHalo5Adapters(
 			return a
 		}
 		if pdb != nil {
-			src := platform_duckdb.NewHalo5MatchHistorySource(pdb.SharedReadDB(), pdb.Gamertag)
+			src := halo5db.NewHalo5MatchHistorySource(pdb.SharedReadDB(), pdb.Gamertag)
 			da = da.WithMatchHistorySource(src)
 			// Totaux à vie des commendations : keyés par XUID (≠ historique keyé
 			// gamertag) — match_commendations.xuid = l'xuid Xbox résolu au sync.
 			da = da.WithCommendationTotals(
-				platform_duckdb.NewHalo5CommendationTotalsSource(pdb.SharedReadDB(), pdb.XUID))
+				halo5db.NewHalo5CommendationTotalsSource(pdb.SharedReadDB(), pdb.XUID))
 			// Career LOCAL (DuckDB synchronisé) : servi en FALLBACK du live (LoadCareerSnapshot
 			// est live-first → local). Désormais injecté EN PROD aussi : garantit que le rang/XP
 			// d'un joueur SUIVI ne disparaît pas quand SON refresh_token est mort (le live échoue,
 			// le persisté couvre). Données = player DB (career_progression SR + player_csr_snapshots).
-			da = da.WithCareerSource(platform_duckdb.NewHalo5CareerSource(pdb))
+			da = da.WithCareerSource(halo5db.NewHalo5CareerSource(pdb))
 			// Kill-feed LOCAL : reste gaté DÉMO (timeline hors-ligne sans token ; en prod la
 			// voie /events live est conservée — hors scope de ce fix).
 			if reg.cfg.DemoMode {
-				da = da.WithMatchEventsSource(platform_duckdb.NewHalo5MatchEventsSource(pdb.SharedReadDB()))
+				da = da.WithMatchEventsSource(halo5db.NewHalo5MatchEventsSource(pdb.SharedReadDB()))
 			}
 		}
 		if commDefs != nil {

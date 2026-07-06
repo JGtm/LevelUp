@@ -6,7 +6,7 @@
 //
 // Lancer : go test -tags=integration ./internal/platform/duckdb/ -run Halo5MatchHistory
 
-package duckdb
+package halo5
 
 import (
 	"context"
@@ -75,9 +75,9 @@ func seedH5SharedHistory(t *testing.T, db *sql.DB) {
 
 func newH5HistorySource(t *testing.T, gamertag string) *Halo5MatchHistorySource {
 	t.Helper()
-	mem := openMemDB(t)
-	seedH5SharedHistory(t, mem.SQLDb())
-	return NewHalo5MatchHistorySource(LegacySharedReader(mem), gamertag)
+	mem := openMemSQL(t)
+	seedH5SharedHistory(t, mem)
+	return NewHalo5MatchHistorySource(&memSharedReader{mem}, gamertag)
 }
 
 // TestHalo5MatchHistory_LatestN : matchIDs nil → tous les matchs du joueur, DESC.
@@ -204,9 +204,9 @@ func TestHalo5MatchHistory_UnknownPlayer_Empty(t *testing.T) {
 // TestHalo5MatchHistory_EmptyGamertag_NeutralEmpty : source sans gamertag → vide
 // neutre (pas de query, pas d'erreur).
 func TestHalo5MatchHistory_EmptyGamertag_NeutralEmpty(t *testing.T) {
-	mem := openMemDB(t)
-	seedH5SharedHistory(t, mem.SQLDb())
-	src := NewHalo5MatchHistorySource(LegacySharedReader(mem), "   ")
+	mem := openMemSQL(t)
+	seedH5SharedHistory(t, mem)
+	src := NewHalo5MatchHistorySource(&memSharedReader{mem}, "   ")
 	got, err := src.GetMatchSummaries(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("GetMatchSummaries: %v", err)

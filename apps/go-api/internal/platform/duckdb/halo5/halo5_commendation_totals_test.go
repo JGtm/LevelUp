@@ -6,7 +6,7 @@
 //
 // Lancer : go test -tags=integration ./internal/platform/duckdb/ -run Halo5CommendationTotals
 
-package duckdb
+package halo5
 
 import (
 	"context"
@@ -60,10 +60,10 @@ func seedCommendationTotals(t *testing.T, db *sql.DB) {
 }
 
 func TestHalo5CommendationTotals_LatestProgressPerCommendation(t *testing.T) {
-	mem := openMemDB(t)
-	seedCommendationTotals(t, mem.SQLDb())
+	mem := openMemSQL(t)
+	seedCommendationTotals(t, mem)
 
-	src := NewHalo5CommendationTotalsSource(LegacySharedReader(mem), "xA")
+	src := NewHalo5CommendationTotalsSource(&memSharedReader{mem}, "xA")
 	got, err := src.GetCommendationTotals(context.Background())
 	if err != nil {
 		t.Fatalf("totals: %v", err)
@@ -91,9 +91,9 @@ func TestHalo5CommendationTotals_NilAndEmpty(t *testing.T) {
 	if got, err := NewHalo5CommendationTotalsSource(nil, "x").GetCommendationTotals(context.Background()); err != nil || got != nil {
 		t.Errorf("reader nil: got=%v err=%v, want nil neutre", got, err)
 	}
-	mem := openMemDB(t)
-	seedCommendationTotals(t, mem.SQLDb())
-	if got, err := NewHalo5CommendationTotalsSource(LegacySharedReader(mem), "  ").GetCommendationTotals(context.Background()); err != nil || got != nil {
+	mem := openMemSQL(t)
+	seedCommendationTotals(t, mem)
+	if got, err := NewHalo5CommendationTotalsSource(&memSharedReader{mem}, "  ").GetCommendationTotals(context.Background()); err != nil || got != nil {
 		t.Errorf("xuid vide: got=%v err=%v, want nil neutre", got, err)
 	}
 }

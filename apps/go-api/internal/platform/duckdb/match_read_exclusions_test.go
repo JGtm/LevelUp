@@ -10,15 +10,15 @@ import (
 // et le bon nombre d'args ; vide (no-op) pour les autres titres (ex. Infinite).
 func TestExcludedVariantClause(t *testing.T) {
 	// Titre sans mode masqué → no-op (aucune clause, aucun arg).
-	if clause, args := excludedVariantClause("halo_infinite", "r"); clause != "" || args != nil {
+	if clause, args := ExcludedVariantClause("halo_infinite", "r"); clause != "" || args != nil {
 		t.Errorf("halo_infinite: attendu ('', nil), obtenu (%q, %v)", clause, args)
 	}
-	if clause, args := excludedVariantClause("", "r"); clause != "" || args != nil {
+	if clause, args := ExcludedVariantClause("", "r"); clause != "" || args != nil {
 		t.Errorf("titre vide: attendu ('', nil), obtenu (%q, %v)", clause, args)
 	}
 
 	// Halo 5 → clause NOT IN + 2 args (les GUID Campagne) + alias injecté.
-	clause, args := excludedVariantClause("halo_5", "r")
+	clause, args := ExcludedVariantClause("halo_5", "r")
 	if !strings.Contains(clause, "r.game_variant_id") {
 		t.Errorf("alias non injecté dans la clause: %q", clause)
 	}
@@ -37,7 +37,7 @@ func TestExcludedVariantClause(t *testing.T) {
 	}
 
 	// Alias paramétrable (autre table).
-	if c2, _ := excludedVariantClause("halo_5", "reg"); !strings.Contains(c2, "reg.game_variant_id") {
+	if c2, _ := ExcludedVariantClause("halo_5", "reg"); !strings.Contains(c2, "reg.game_variant_id") {
 		t.Errorf("alias 'reg' non injecté: %q", c2)
 	}
 }

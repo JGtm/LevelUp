@@ -14,7 +14,7 @@
 //
 // Cette implémentation satisfait STRUCTURELLEMENT l'interface halo_5.MatchHistorySource
 // (définie côté package consommateur), sans cycle d'import.
-package duckdb
+package halo5
 
 import (
 	"context"
@@ -23,19 +23,20 @@ import (
 	"time"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // Halo5MatchHistorySource lit l'historique h5 d'un joueur (fixé à la construction)
 // depuis le shared via un SharedReader title-aware.
 type Halo5MatchHistorySource struct {
-	shared   SharedReader
+	shared   duckdb.SharedReader
 	gamertag string
 }
 
 // NewHalo5MatchHistorySource construit la source liée à un joueur (gamertag) et au
 // SharedReader du titre h5. Le gamertag est normalisé (trim) ; la comparaison SQL
 // est insensible à la casse (LOWER), h5 étant gamertag-keyé.
-func NewHalo5MatchHistorySource(shared SharedReader, gamertag string) *Halo5MatchHistorySource {
+func NewHalo5MatchHistorySource(shared duckdb.SharedReader, gamertag string) *Halo5MatchHistorySource {
 	return &Halo5MatchHistorySource{shared: shared, gamertag: strings.TrimSpace(gamertag)}
 }
 
@@ -50,7 +51,7 @@ const h5DefaultHistoryLimit = 250
 var h5MatchSummarySelect = `
 SELECT
     p.match_id,
-    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
+    ` + duckdb.StartTimeCanonicalSQL("r") + ` AS start_time,
     r.duration_seconds,
     COALESCE(r.map_id, '')                            AS map_id,
     COALESCE(r.map_name, '')                          AS map_name,
@@ -127,13 +128,13 @@ func (s *Halo5MatchHistorySource) loadRows(ctx context.Context, matchIDs []strin
 	args := []any{s.gamertag}
 	// Masquage read-side des modes Campagne (cf. match_read_exclusions). Source
 	// h5-only → titre fixe "halo_5". Alias "r" = match_registry dans le SELECT.
-	if clause, exArgs := excludedVariantClause("halo_5", "r"); clause != "" {
+	if clause, exArgs := duckdb.ExcludedVariantClause("halo_5", "r"); clause != "" {
 		query += clause
 		args = append(args, exArgs...)
 	}
 	if len(matchIDs) > 0 {
-		query += fmt.Sprintf(" AND p.match_id IN (%s)", Placeholders(len(matchIDs)))
-		args = append(args, ToAnySlice(matchIDs)...)
+		query += fmt.Sprintf(" AND p.match_id IN (%s)", duckdb.Placeholders(len(matchIDs)))
+		args = append(args, duckdb.ToAnySlice(matchIDs)...)
 	} else {
 		query += fmt.Sprintf(" ORDER BY start_time DESC LIMIT %d", h5DefaultHistoryLimit)
 	}
@@ -203,14 +204,14 @@ func projectH5MatchSummary(r h5MatchSummaryRow) canonical.MatchSummary {
 		MatchID:         r.matchID,
 		StartedAtUTC:    r.startTime,
 		DurationSeconds: r.durationSec,
-		MatchType:       matchTypeFromFlags(r.isRanked, r.isFirefight),
-		Playlist:        assetReference("playlist", r.playlistID, r.playlistName, r.playlistNameFR),
-		Map:             assetReference("map", r.mapID, r.mapName, r.mapNameFR),
-		GameVariant:     assetReference("game_variant", r.variantID, r.variantName, ""),
-		PairMode:        assetReference("pair_mode", r.pairID, r.pairName, r.pairNameFR),
+		MatchType:       duckdb.MatchTypeFromFlags(r.isRanked, r.isFirefight),
+		Playlist:        duckdb.AssetReference("playlist", r.playlistID, r.playlistName, r.playlistNameFR),
+		Map:             duckdb.AssetReference("map", r.mapID, r.mapName, r.mapNameFR),
+		GameVariant:     duckdb.AssetReference("game_variant", r.variantID, r.variantName, ""),
+		PairMode:        duckdb.AssetReference("pair_mode", r.pairID, r.pairName, r.pairNameFR),
 		IsRanked:        &isRanked,
 		IsPvE:           &isFirefight,
-		Outcome:         outcomeFromInt(r.outcomeCode),
+		Outcome:         duckdb.OutcomeFromInt(r.outcomeCode),
 		Teams:           h5TeamScores(r.team0Score, r.team1Score),
 		T0Ms:            nil,
 	}

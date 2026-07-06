@@ -1314,8 +1314,25 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
   axisValueExpression reste) ; ratchet `no_attach_on_social_test.go` : clé d'allowlist
   `prestige_social_repo.go` → `prestige/prestige_social_repo.go` ; `repoRoot` du loader : +1 niveau
   (`..`×6). Gates : `go build/vet ./...` 0, `go test -tags=integration -p 1` duckdb 81s + prestige
-  18s VERTS, archlint OK. **Reste K3a** : relocalisation `halo5_*.go` + poursuite d'autres domaines
-  (le package reste > 100 fichiers).
+  18s VERTS, archlint OK.
+  **halo5 EXTRAIT (2026-07-06) ✅** : le cluster h5 (5 fichiers prod `halo5_{career_source,
+  commendation_defs,commendation_totals,match_events_source,match_history_source}.go` + 3 tests) →
+  `internal/platform/duckdb/halo5` (package `halo5`). Même cas inverse que prestige. Destination
+  `duckdb/halo5` (PAS games/halo_5 : ce dernier évite délibérément d'importer platform/duckdb, cf.
+  ses commentaires career_local/events_local). Recette :
+  (1) symboles cœur DÉJÀ exportés QUALIFIÉS (`duckdb.DB/PlayerDB/SharedReader/StartTimeCanonicalSQL/
+  NewCareerRepo/Placeholders/ToAnySlice`) ; (2) 4 helpers de projection/exclusion partagés
+  (`matchTypeFromFlags`, `assetReference`, `outcomeFromInt`, `excludedVariantClause`) EXPORTÉS —
+  ils sont utilisés par player_matches_projection.go lui-même, donc légitimement cœur ; (3) seul
+  caller externe `api/server_titles_additional.go` requalifié via alias `halo5db` (le nom `halo5`
+  est déjà pris pour `games/halo_5`) ; (4) tests : blocage de type K3e ÉVITÉ élégamment — les
+  sources h5 ne dépendent que de l'INTERFACE `duckdb.SharedReader` (méthode unique `Get -> *sql.DB`),
+  donc un double `memSharedReader` sur `*sql.DB` in-memory remplace `openMemDB`+`LegacySharedReader`
+  sans jamais construire de `*duckdb.DB` (dont les champs sont non-exportés) → ZÉRO export de test
+  côté prod. Gates : `go build/vet ./...` 0, `go test -tags=integration -p 1` duckdb 81s + halo5
+  + api VERTS, archlint OK. duckdb-root : 269→261 fichiers .go.
+  **Les 2 sous-items nommés de K3a (prestige + halo5) sont FAITS.** Reste (open-ended, hors périmètre
+  chiffré) : poursuite d'autres domaines si le compte doit encore descendre.
 - [ ] K3b — ARCHI 18 : service/ (127 fichiers) → sous-packages par feature, commencer par
   teammates (13 fichiers) ; archlint interdit les imports croisés entre features.
 - [~] K3c — ARCHI 19 : sync/ (111 fichiers) → extraire sync/skill/ (17) et sync/snapshot/
