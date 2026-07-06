@@ -1,3 +1,4 @@
+/// <reference types="node" />
 // @vitest-environment node
 /**
  * Garde-rail (CLAUDE.md n°6) : les libellés de jours `['Lun', 'Mar', ...]`

@@ -35,7 +35,7 @@ import {
 import { DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
-import { formatMessage } from '@/lib/i18n/format'
+import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
 
 // Hash de cache STABLE et dédié à la home (contexte à vie). Distinct du hash de la
@@ -151,7 +151,7 @@ function NearCompletionTile({
   onClick,
 }: {
   entry: NearCompletionItem
-  locale: string
+  locale: ManifestLocale
   t: (key: HomeManifestKey, values?: Record<string, string | number>) => string
   onClick: () => void
 }) {

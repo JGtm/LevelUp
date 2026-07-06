@@ -7,6 +7,7 @@ import { useParams } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import type { LabelValue, MediaItemRow, MediaQueryRequest } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
+import type { ManifestLocale } from '@/lib/i18n/format'
 import { intlLocale } from '@/lib/formatters'
 import { MediaLightbox, MediaThumbnailCard, buildOwnerColorMap } from './MediaViewer'
 import { MediaToolbar } from './MediaToolbar'
@@ -66,7 +67,7 @@ function itemTimestamp(item: MediaItemRow): number | null {
   return Number.isNaN(t) ? null : t
 }
 
-function buildSessionGroups(items: MediaItemRow[], text: MediaText, locale: string): MediaGroup[] {
+function buildSessionGroups(items: MediaItemRow[], text: MediaText, locale: ManifestLocale): MediaGroup[] {
   if (items.length === 0) return []
   const formatter = new Intl.DateTimeFormat(intlLocale(locale), {
     day: '2-digit',
@@ -149,7 +150,7 @@ function buildSimpleGroups(items: MediaItemRow[], groupBy: string, text: MediaTe
   return order.map((key) => map.get(key) as MediaGroup)
 }
 
-function buildGroups(items: MediaItemRow[], groupBy: string, text: MediaText, locale: string): MediaGroup[] {
+function buildGroups(items: MediaItemRow[], groupBy: string, text: MediaText, locale: ManifestLocale): MediaGroup[] {
   if (!groupBy || items.length === 0) {
     return [{ key: '__all__', label: '', items }]
   }

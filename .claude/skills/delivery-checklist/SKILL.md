@@ -20,6 +20,10 @@ Invoquer ce skill avant tout PR, merge, ou "c'est livré".
       (test grep interdisant l'ancien littéral) dans le MÊME commit
 - [ ] Le message final à l'utilisateur décrit fidèlement ce qui est fait ET ce qui ne
       l'est pas — pas de « terminé » approximatif
+- [ ] État des runs CI de la branche vérifié (`gh run list --branch <branche>`) AVANT de
+      déclarer un lot clos — un gate rejoué LOCALEMENT ne couvre pas les jobs CI (baseline
+      Go Linux, type-check + build Vite front). Un signal rouge public ignoré = lot non
+      clos (leçon VF-16 : CI de branche rouge sur K2a.. pendant toute la fin de campagne)
 
 ## 1. Tests et qualité — Go
 
@@ -61,12 +65,22 @@ Critères go/no-go :
 
 ```bash
 # Depuis apps/web/
-npm run typecheck     # tsc --noEmit
+Remove-Item -Recurse -Force node_modules\.tmp   # purge le tsBuildInfo AVANT (cf. piège)
+npm run typecheck     # tsc -b
 npm run lint          # eslint
 npm run test          # vitest
 ```
 
+> PIÈGE DE CACHE : `npm run typecheck` = `tsc -b` (build INCRÉMENTAL, `.tsbuildinfo`
+> sous `node_modules/.tmp`). Un cache chaud peut rendre un FAUX VERT — tsc re-typecheck
+> seulement ce qu'il croit modifié et rate des erreurs pré-existantes. Purger
+> `node_modules\.tmp` (ou `tsc -b --force`) AVANT de conclure un typecheck vert.
+> Symétrique du faux vert `-p 1` côté Go (§1) : dans les deux cas, l'outillage
+> incrémental/parallèle masque des rouges. Vitest, lui, ne typecheck pas (esbuild) —
+> un vitest vert NE couvre PAS le typecheck.
+
 Critères :
+- [ ] Cache `.tsbuildinfo` purgé avant le typecheck de clôture (pas de faux vert incrémental)
 - [ ] TypeScript compile sans erreur
 - [ ] Pas de `any` non justifié introduit
 - [ ] Nouveau hook/query a un test ou au minimum un type correct

@@ -1,3 +1,4 @@
+/// <reference types="node" />
 // @vitest-environment node
 /**
  * Garde-rail (CLAUDE.md n°13 + n°6) : TOUTES les query keys vivent dans

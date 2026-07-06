@@ -412,7 +412,7 @@ function LeaderboardRow({
   localLabel: string
   trendTooltip: string
   rankDeltaTooltip: string
-  locale: string
+  locale: ManifestLocale
   onHover?: (gamertag: string) => void
   onGamertagClick: (gamertag: string, xuid: string) => void
 }) {

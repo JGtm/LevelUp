@@ -489,7 +489,12 @@ export function CoverFlowModal({
     if (!autoChain || !currentItem || isCurrentClip || !canAdvanceFurther || pendingPageAdvance) {
       return
     }
-    autoChainTimerRef.current = window.setTimeout(() => navigate('next'), IMAGE_AUTOCHAIN_DELAY_MS)
+    // NB : `setTimeout` (pas `window.setTimeout`) pour que le type de retour
+    // s'accorde à `ReturnType<typeof setTimeout>` du ref. Les 2 garde-rails node
+    // (calendar/keys .guard.test.ts) tirent `@types/node` dans le programme tsc,
+    // ce qui bascule `setTimeout` sur la surcharge Node (retour `Timeout`, pas
+    // `number`). Runtime identique en navigateur (V1c, DC-2).
+    autoChainTimerRef.current = setTimeout(() => navigate('next'), IMAGE_AUTOCHAIN_DELAY_MS)
     return () => {
       if (autoChainTimerRef.current) clearTimeout(autoChainTimerRef.current)
     }
