@@ -6,7 +6,6 @@ package sync_test
 import (
 	"database/sql"
 	"testing"
-	"time"
 
 	"levelup/go-api/internal/domain"
 	intsync "levelup/go-api/internal/sync"
@@ -14,41 +13,6 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
-
-func TestInsertRegistryIfNotExists(t *testing.T) {
-	db := testutil.NewInMemoryShared(t)
-
-	mapName := "Recharge"
-	plName := "Ranked Arena"
-	row := intsync.MatchRegistryRow{
-		MatchID:      "test-match-001",
-		StartTime:    time.Now(),
-		MapName:      &mapName,
-		PlaylistName: &plName,
-		FirstSyncBy:  "test-player",
-	}
-	if err := intsync.InsertRegistryIfNotExists(t.Context(), db, row); err != nil {
-		t.Fatalf("InsertRegistryIfNotExists: %v", err)
-	}
-
-	// Vérifier l'insertion
-	var count int
-	if err := db.QueryRow("SELECT COUNT(*) FROM match_registry WHERE match_id = ?", "test-match-001").Scan(&count); err != nil {
-		t.Fatal(err)
-	}
-	if count != 1 {
-		t.Errorf("expected 1 row, got %d", count)
-	}
-
-	// INSERT OR IGNORE → pas de doublon
-	if err := intsync.InsertRegistryIfNotExists(t.Context(), db, row); err != nil {
-		t.Fatalf("second insert should not fail: %v", err)
-	}
-	_ = db.QueryRow("SELECT COUNT(*) FROM match_registry WHERE match_id = ?", "test-match-001").Scan(&count)
-	if count != 1 {
-		t.Errorf("expected still 1 row after duplicate insert, got %d", count)
-	}
-}
 
 func TestUpsertXUIDAlias(t *testing.T) {
 	db := testutil.NewInMemoryShared(t)
@@ -75,24 +39,6 @@ func TestUpsertXUIDAlias(t *testing.T) {
 	}
 }
 
-func TestInsertMedals(t *testing.T) {
-	db := testutil.NewInMemoryShared(t)
-
-	rows := []intsync.MedalRow{
-		{MatchID: "m1", XUID: "x1", MedalNameID: 100, Count: 3},
-		{MatchID: "m1", XUID: "x1", MedalNameID: 200, Count: 1},
-	}
-	if err := intsync.InsertMedals(t.Context(), db, rows); err != nil {
-		t.Fatalf("InsertMedals: %v", err)
-	}
-
-	var count int
-	_ = db.QueryRow("SELECT COUNT(*) FROM medals_earned WHERE match_id = 'm1'").Scan(&count)
-	if count != 2 {
-		t.Errorf("expected 2 medals, got %d", count)
-	}
-}
-
 func TestSetSyncMeta(t *testing.T) {
 	db := testutil.NewInMemoryShared(t)
 
@@ -111,192 +57,6 @@ func TestSetSyncMeta(t *testing.T) {
 	_ = db.QueryRow("SELECT value FROM sync_meta WHERE key = 'last_sync'").Scan(&val)
 	if val != "2025-06-01T00:00:00Z" {
 		t.Errorf("expected 2025-06-01T00:00:00Z after upsert, got %s", val)
-	}
-}
-
-func TestInsertParticipants(t *testing.T) {
-	db := testutil.NewInMemoryShared(t)
-
-	teamMMR := 1500.0
-	enemyMMR := 1480.0
-	teamID0, teamID1 := 0, 1
-	outcome2, outcome3 := 2, 3
-	kills15, kills8 := 15, 8
-	deaths10, deaths12 := 10, 12
-	assists5, assists3 := 5, 3
-	kda20, kda092 := 2.0, 0.92
-	rows := []intsync.ParticipantRow{
-		{
-			MatchID:  "m1",
-			XUID:     "x1",
-			TeamID:   &teamID0,
-			Outcome:  &outcome2,
-			Kills:    &kills15,
-			Deaths:   &deaths10,
-			Assists:  &assists5,
-			KDA:      &kda20,
-			TeamMMR:  &teamMMR,
-			EnemyMMR: &enemyMMR,
-		},
-		{
-			MatchID: "m1",
-			XUID:    "x2",
-			TeamID:  &teamID1,
-			Outcome: &outcome3,
-			Kills:   &kills8,
-			Deaths:  &deaths12,
-			Assists: &assists3,
-			KDA:     &kda092,
-		},
-	}
-	if err := intsync.InsertParticipants(t.Context(), db, rows); err != nil {
-		t.Fatalf("InsertParticipants: %v", err)
-	}
-
-	var count int
-	_ = db.QueryRow("SELECT COUNT(*) FROM match_participants WHERE match_id = 'm1'").Scan(&count)
-	if count != 2 {
-		t.Errorf("expected 2 participants, got %d", count)
-	}
-
-	// Verify MMR propagated
-	var mmr float64
-	_ = db.QueryRow("SELECT team_mmr FROM match_participants WHERE xuid = 'x1'").Scan(&mmr)
-	if mmr != 1500.0 {
-		t.Errorf("expected team_mmr=1500.0, got %f", mmr)
-	}
-
-	// Idempotence: re-insert should not fail or duplicate
-	if err := intsync.InsertParticipants(t.Context(), db, rows); err != nil {
-		t.Fatalf("second InsertParticipants should not fail: %v", err)
-	}
-	_ = db.QueryRow("SELECT COUNT(*) FROM match_participants WHERE match_id = 'm1'").Scan(&count)
-	if count != 2 {
-		t.Errorf("expected still 2 participants after duplicate insert, got %d", count)
-	}
-
-	// Empty slice should no-op
-	if err := intsync.InsertParticipants(t.Context(), db, nil); err != nil {
-		t.Fatalf("InsertParticipants(nil) should not fail: %v", err)
-	}
-}
-
-// TestInsertParticipants_UpsertFillsNullSkill vérifie qu'un re-sync avec des
-// données skill (team_mmr/enemy_mmr/kills_expected) remplit les colonnes
-// laissées à NULL au premier sync — c'est le mécanisme qui permet de combler
-// les matchs où le skill endpoint avait initialement échoué.
-func TestInsertParticipants_UpsertFillsNullSkill(t *testing.T) {
-	db := testutil.NewInMemoryShared(t)
-
-	// Premier sync : pas de skill data (tous les champs MMR/expected à NULL).
-	teamID, outcome, kills, deaths := 0, 2, 15, 10
-	first := []intsync.ParticipantRow{
-		{
-			MatchID: "m1", XUID: "x1",
-			TeamID:  &teamID,
-			Outcome: &outcome,
-			Kills:   &kills,
-			Deaths:  &deaths,
-		},
-	}
-	if err := intsync.InsertParticipants(t.Context(), db, first); err != nil {
-		t.Fatalf("first insert: %v", err)
-	}
-
-	var teamMMR sql.NullFloat64
-	_ = db.QueryRow("SELECT team_mmr FROM match_participants WHERE xuid = 'x1'").Scan(&teamMMR)
-	if teamMMR.Valid {
-		t.Fatalf("expected team_mmr NULL after first sync, got %v", teamMMR.Float64)
-	}
-
-	// Second sync : skill API a répondu cette fois. Les champs skill doivent
-	// remplir les NULL existants.
-	tm, em, ke := 1500.0, 1450.0, 12.5
-	second := []intsync.ParticipantRow{
-		{
-			MatchID: "m1", XUID: "x1",
-			TeamID:        &teamID,
-			Outcome:       &outcome,
-			Kills:         &kills,
-			Deaths:        &deaths,
-			TeamMMR:       &tm,
-			EnemyMMR:      &em,
-			KillsExpected: &ke,
-		},
-	}
-	if err := intsync.InsertParticipants(t.Context(), db, second); err != nil {
-		t.Fatalf("upsert: %v", err)
-	}
-
-	var got struct {
-		TeamMMR       sql.NullFloat64
-		EnemyMMR      sql.NullFloat64
-		KillsExpected sql.NullFloat64
-	}
-	row := db.QueryRow("SELECT team_mmr, enemy_mmr, kills_expected FROM match_participants WHERE xuid = 'x1'")
-	if err := row.Scan(&got.TeamMMR, &got.EnemyMMR, &got.KillsExpected); err != nil {
-		t.Fatalf("scan: %v", err)
-	}
-	if !got.TeamMMR.Valid || got.TeamMMR.Float64 != tm {
-		t.Errorf("team_mmr: want %.0f, got %v", tm, got.TeamMMR)
-	}
-	if !got.EnemyMMR.Valid || got.EnemyMMR.Float64 != em {
-		t.Errorf("enemy_mmr: want %.0f, got %v", em, got.EnemyMMR)
-	}
-	if !got.KillsExpected.Valid || got.KillsExpected.Float64 != ke {
-		t.Errorf("kills_expected: want %.1f, got %v", ke, got.KillsExpected)
-	}
-
-	// Pas de doublons.
-	var count int
-	_ = db.QueryRow("SELECT COUNT(*) FROM match_participants WHERE match_id = 'm1'").Scan(&count)
-	if count != 1 {
-		t.Errorf("expected 1 row after upsert, got %d", count)
-	}
-}
-
-// TestInsertParticipants_UpsertPreservesNonNull vérifie qu'un sync postérieur
-// avec des champs nil ne détruit PAS les valeurs déjà persistées (COALESCE).
-func TestInsertParticipants_UpsertPreservesNonNull(t *testing.T) {
-	db := testutil.NewInMemoryShared(t)
-
-	// Sync avec skill data complète.
-	teamID, outcome, kills, deaths := 0, 2, 15, 10
-	tm, em := 1500.0, 1450.0
-	first := []intsync.ParticipantRow{
-		{
-			MatchID: "m1", XUID: "x1",
-			TeamID: &teamID, Outcome: &outcome,
-			Kills: &kills, Deaths: &deaths,
-			TeamMMR: &tm, EnemyMMR: &em,
-		},
-	}
-	if err := intsync.InsertParticipants(t.Context(), db, first); err != nil {
-		t.Fatalf("first insert: %v", err)
-	}
-
-	// Re-sync sans skill data (skill endpoint en panne) — les MMR doivent
-	// être préservés.
-	second := []intsync.ParticipantRow{
-		{
-			MatchID: "m1", XUID: "x1",
-			TeamID: &teamID, Outcome: &outcome,
-			Kills: &kills, Deaths: &deaths,
-			// TeamMMR / EnemyMMR : nil
-		},
-	}
-	if err := intsync.InsertParticipants(t.Context(), db, second); err != nil {
-		t.Fatalf("upsert: %v", err)
-	}
-
-	var teamMMR, enemyMMR sql.NullFloat64
-	_ = db.QueryRow("SELECT team_mmr, enemy_mmr FROM match_participants WHERE xuid = 'x1'").
-		Scan(&teamMMR, &enemyMMR)
-	if !teamMMR.Valid || teamMMR.Float64 != tm {
-		t.Errorf("team_mmr should be preserved %.0f, got %v", tm, teamMMR)
-	}
-	if !enemyMMR.Valid || enemyMMR.Float64 != em {
-		t.Errorf("enemy_mmr should be preserved %.0f, got %v", em, enemyMMR)
 	}
 }
 

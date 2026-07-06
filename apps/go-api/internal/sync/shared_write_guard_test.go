@@ -51,18 +51,16 @@ func sharedWritePattern(table string) *regexp.Regexp {
 // corresponde à un write réel, mais une liste qui grossit signale une dérive).
 var allowedSharedWriteFiles = map[string]map[string]string{
 	"match_registry": {
-		"internal/sync/writes.go":                  "InsertRegistryIfNotExists (ON CONFLICT idempotent) — import OpenSpartan (E1 : à router via persist), sérialisé dblease",
+		"internal/sync/writes.go":                  "MarkWeaponKillsDone (UPDATE backfill_completed bitmask post-complétion, single-writer sérialisé dblease)",
 		"internal/sync/engagement.go":              "UPDATE match_intensity (bitmask post-complétion, single-writer)",
 		"internal/sync/pve.go":                     "UPDATE pve bits (bitmask post-complétion, single-writer)",
 		"internal/sync/events_replay.go":           "outil replay (reset events_loaded) — recovery hors flux primaire",
 		"internal/sync/backfill_registry_names.go": "backfill noms registry (UPDATE ciblé, basse fréquence)",
 	},
-	"match_participants": {
-		"internal/sync/writes.go": "insertParticipantRow (ON CONFLICT COALESCE) — import OpenSpartan (E1 : à router via persist)",
-	},
-	"medals_earned": {
-		"internal/sync/writes.go": "InsertMedals (INSERT OR IGNORE) — import OpenSpartan (E1 : à router via persist)",
-	},
+	// match_participants / medals_earned : plus AUCUN writer direct dans sync/ —
+	// le trio legacy InsertParticipants/InsertMedals a été supprimé en V4b
+	// (import OpenSpartan routé via persist.SharedPersister depuis E1). Ces tables
+	// ne sont donc écrites QUE par internal/persist/. Aucune entrée d'allowlist.
 	"weapon_kills": {
 		"internal/sync/writes.go": "InsertWeaponKills (DELETE+INSERT sérialisé par lease shared + MaxOpenConns(1), backfill film inline)",
 	},

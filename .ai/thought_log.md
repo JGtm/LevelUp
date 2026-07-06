@@ -1,3 +1,46 @@
+## [2026-07-07] Clôture LOT V4 — code mort + allowlists mortes + artefacts (VF-5, VF-6, VF-9, VF-12)
+
+**Statut** : Complété.
+
+**Décision technique principale** : suppression de dead code transitif que le §7 du plan
+parent « à traiter » avait laissé pourrir (dead code museum réel, VF-5), + purge des
+allowlists de garde-rails pointant du code disparu (trous latents, VF-6), + éradication
+du mécanisme qui laissait pourrir : self-checks d'existence.
+- **V4a** : `insertHighlightEventsFromData` (engine_highlight_events.go) — 0 caller prod
+  depuis que son caller `insertFetchedMatch` est mort (D1b). Supprimée + ses 2 tests
+  dédiés. Sibling `ProcessHighlightEvents` (chemin standalone/replay VIVANT) + son test +
+  helper `makeBenignZlibChunk` conservés (vérif sur pièces avant coupe).
+- **V4b** : trio `InsertRegistryIfNotExists`/`InsertParticipants`(+`insertParticipantRow`)/
+  `InsertMedals` (writes.go) — 0 caller prod : l'import OpenSpartan est routé via
+  `persist.NewSharedPersister(...).Persist()` depuis E1 (openspartan_import_service.go:342,
+  vérifié). Les 3 fichiers `concurrent_upsert_*`/`concurrent_multiplayer_e2e` testaient
+  EXCLUSIVEMENT le contrat concurrence de l'UPSERT supprimé → supprimés en entier (le
+  tripwire no_art_patterns reste le garde du pattern) ; 5 tests du trio retirés
+  chirurgicalement de writes_test.go (le reste — XUIDAlias/SyncMeta/Enrichment/WeaponKills/
+  SessionAssignments — conservé). Allowlist ART : entrée writes.go retirée (plus aucun
+  ON CONFLICT DO UPDATE réel) ; shared_write_guard corrigé (justification match_registry =
+  MarkWeaponKillsDone, entrées mortes match_participants/medals_earned retirées).
+- **V4c/V4d** : 4 entrées d'allowlist mortes purgées (api/registry.go ×2 supprimé lot K ;
+  allowlistRawDelete skill_rating_postsync_persist.go — compaction supprimée + fichier
+  déplacé ; social_persister_combined.go spéculatif jamais créé). `TestAllowlistJustifies…`
+  étendu à allowlistRawDelete + self-checks « entrée = fichier existant » ajoutés (sentinel,
+  no_attach). Les 3 self-checks PROUVÉS mordants (entrée bidon → rouge → retirée).
+- **V4e** : coverage.html dé-tracké + .gitignore. coverage_baseline.txt GARDÉ (consommé par
+  le ratchet CI coverage_check.sh, working-directory apps/go-api).
+- **V4f** : clé morte discord_notify_new_media retirée de la fixture (non lue depuis G5).
+
+**Résultats observés** : `go build ./... && go vet ./...` = exit 0. `go test ./...` =
+exit 0 (sync/auth/duckdb inclus, self-checks V4d verts). `go test -tags=integration -p 1
+./internal/sync/... ./internal/persist/... ./internal/platform/auth/...
+./internal/platform/duckdb/...` = exit 0, 0 `^--- FAIL:` (anti-ART après coupe des tests
+upsert). Greps symboles supprimés = 0 en code (occurrences restantes = commentaires de
+traçabilité d'allowlist). Baseline CI : 52 lignes retirées (13 pairs Package::Test du pkg
+sync, retrait subtractif pur, LF préservé, 0 insertion).
+
+**Conclusion / prochaine étape** : lot V4 clos, périmètre fermé respecté (V5c reprend le
+balayage des commentaires stale restants). Reste V5 (garde-rail halowaypoint + docs
+inversées), V6 (tracker/vérif finale), V7-V8.
+
 ## [2026-07-07] Clôture LOT V3 — sécurité /jobs + ratchet routes nues (VF-3, VF-15)
 
 **Statut** : Complété.

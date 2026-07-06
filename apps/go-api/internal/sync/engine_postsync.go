@@ -234,7 +234,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// Le film highlights est disponible immédiatement ~99% du temps : le sync
 	// PRIMAIRE (engine_fetch.go) récupère et persiste skill (GetMatchSkill +
 	// MergeSkillIntoParticipants), participants (ExtractParticipants) et events
-	// (GetHighlightEventsChunk → insertHighlightEventsFromData) au 1er passage,
+	// (GetHighlightEventsChunk → persistCombatCompletion) au 1er passage,
 	// via le writer RW orchestré (persist.BatchBuilder → *Persister). Les heals
 	// post-sync ne faisaient que dupliquer ce chemin sur une fenêtre non
 	// maîtrisée — et `healSkillForMissingMatches` réécrivait match_participants
