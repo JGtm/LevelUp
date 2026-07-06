@@ -273,6 +273,10 @@ func NewService(d Deps) Service {
 
 // ---------- CreateChallenge ----------
 
+// Orchestration de création cohésive (validation + activation Prestige + persistance) ;
+// le flux de garde/validation est séquentiel et lié (K3f, exemption).
+//
+//nolint:funlen
 func (s *service) CreateChallenge(ctx context.Context, req CreateChallengeRequest) (Challenge, error) {
 	if err := validateCreateRequest(req); err != nil {
 		return Challenge{}, err

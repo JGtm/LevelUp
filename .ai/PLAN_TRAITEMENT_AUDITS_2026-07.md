@@ -1351,8 +1351,12 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
     JUSTIFIÉE** (plan « découper OU exemption ») : exclusion `.golangci.yml` ajoutée pour
     `internal/games/.*/migrations/steps` (funlen/gocyclo/lll), MIROIR de l'exemption existante
     `internal/migration/steps_`. Découper fragmenterait le registre ordonné sans gain ; la
-    longueur = nombre de migrations. **RESTE god-files (2)** : pool.go x3 fns (décomposition de
-    fonctions), prestige/service.go CreateChallenge — décomposition de fonctions, suite. **NOTE** : `sync/skill_v2_shadow.go` NON splittable en
+    longueur = nombre de migrations. (8) **pool.go ×3 fns** (`NewPool` constructeur DI,
+    `OnHTTPError` machine à états backoff, `refresherLoop` boucle goroutine) + **prestige/service.go
+    `CreateChallenge`** → **EXEMPTIONS `//nolint:funlen` JUSTIFIÉES** (fonctions cohésives
+    lifecycle/orchestration ; décomposer fragmenterait un flux unique). build+vet 0. **✅ K3f
+    god-files : TOUS traités** (6 splits même-package + steps exemptés config + 4 fns exemptées
+    nolint). **NOTE** : `sync/skill_v2_shadow.go` NON splittable en
     place — le ratchet de gel K3c interdit un nouveau fichier racine sync/ (doit aller en
     sous-package, cf. K3c reste). RESTE (7) : steps.go (migration — ordering sensible),
     persist_sink.go (ART-critique), db.go, registry_pages.go, pool.go x3 fns, prestige/service.go
