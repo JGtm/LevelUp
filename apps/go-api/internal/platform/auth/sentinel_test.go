@@ -48,7 +48,7 @@ var allowedEnvReaders = map[string]string{
 	"internal/platform/auth/pool/discovery_test.go":             "Test discovery (t.Setenv).",
 	"internal/platform/auth/pool/discovery_watcher_test.go":     "Test isolation env var.",
 	"internal/api/registry.go":                                  "Phase 3a fallback DEPRECATED : oauthRefreshTokenForPlayer (avant split). Retiré Phase 5.",
-	"internal/api/registry_auth.go":                             "Phase 3a fallback DEPRECATED post god-file split : refreshTokensFromDB + oauthRefreshTokenForPlayer. Retiré Phase 5.",
+	"internal/api/wire/registry_auth.go":                        "Phase 3a fallback DEPRECATED post god-file split : refreshTokensFromDB + oauthRefreshTokenForPlayer. Retiré Phase 5.",
 	"internal/platform/auth/oauth_refresh.go":                   "Module OAuth bas-niveau : lit SPNKR_AZURE_* (pas SPNKR_OAUTH_REFRESH_TOKEN_) — string mention dans le module canonique OAuth.",
 	"internal/platform/auth/capturecli/capturecli.go":           "ParseRefreshTokenStdin détecte le format env-var-line pour extraire le RT (string match, pas os.Getenv).",
 	"internal/platform/auth/capturecli/capturecli_test.go":      "Tests du parser — strings 'SPNKR_OAUTH_REFRESH_TOKEN_X=value' utilisées comme fixtures.",
@@ -153,7 +153,7 @@ var duckdbWritePattern = regexp.MustCompile(`\bduckdb\.WriteOAuthRefreshToken\b`
 var allowedDuckDBWriters = map[string]string{
 	"internal/platform/duckdb/queries_auth.go": "Définition de la fonction. Sera supprimée Phase 6.",
 	"internal/api/registry.go":                 "ADR 0023 compat transitoire (pré-split) : tryRefreshFromLegacy persiste aussi en DuckDB. Retiré Phase 5.",
-	"internal/api/registry_auth.go":            "ADR 0023 compat transitoire post-split : tryRefreshFromLegacy persiste aussi en DuckDB. Retiré Phase 5.",
+	"internal/api/wire/registry_auth.go":       "ADR 0023 compat transitoire post-split : tryRefreshFromLegacy persiste aussi en DuckDB. Retiré Phase 5.",
 	"internal/api/handlers/admin_auto_sync.go": "ADR 0023 compat transitoire : probe onRotated écrit double (store + DuckDB). Retiré Phase 5.",
 	"cmd/server/main.go":                       "ADR 0023 compat transitoire : autoSyncPool onRotated double-write store + DuckDB. Retiré Phase 5.",
 	"internal/scheduler/auto_sync_e2e_test.go": "Test E2E historique qui setup sync_meta directement — sera adapté Phase 5.",
