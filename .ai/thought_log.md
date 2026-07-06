@@ -1,3 +1,35 @@
+## [2026-07-06] K1f — extraction service.BackfillOrchestrator (god-function handler)
+
+**Statut** : Complété. Objectif `/goal` : faire TOUT le lot K en autonomie puis push.
+
+**Décision technique principale** : `handleStartBackfill` (~370 L : validation + goroutine
+10-phases) violait « pas de logique métier dans un handler » (CLAUDE.md §7) + god-function.
+Extraction de l'orchestration vers `service.BackfillOrchestrator`
+(`internal/service/backfill_orchestrator.go`) — le handler ne garde que validation
+(400/404/409), wiring du SyncEngine (DI + WithSharedProvider), création du job, 202.
+service→sync sans cycle (déjà le cas pour career_live_*). Le pipeline est décomposé en
+méthodes de phase ≤ 80 L (`runCitationsComeback`, `runWeaponsEngagement`, `runEventsLusr`,
+`runCsrPerfPsa`, `warnUnimplemented`) pilotées par `Run(jobID)`.
+
+**Choix vs plan** : le plan demandait « table-driven `{nom, gate, fn}` ». Écarté au profit
+d'une extraction FIDÈLE en méthodes de phase : les 10 phases sont hétérogènes (signatures
+différentes, token-gating par phase, compteurs de formes variées, early-return citations/
+comeback avant `total==0`). Une table uniforme aurait exigé des closures par phase = même
+logique, risque d'écart de comportement sur un pipeline de prod (backfill admin). La
+décomposition en méthodes atteint le même but archi (SRP, hors handler, ≤ 80 L) sans ce
+risque. Comportement byte-identique (mêmes libellés d'étape, warnings, chaîne de résumé).
+
+**Résultats observés** : build 0, vet 0. Tests `warnUnimplemented` (4) migrés vers
+`service` (package interne pour la méthode non-exportée) — verts. Tests `buildSyncScope`
+(9) restés côté handler (buildSyncScope = adaptation requête→scope, conservé). Gate
+intégration -p 1 (service 15 s + handlers 14 s) VERT.
+
+**Conclusion / prochaine étape** : K1f livré. Suite du lot K : K1g (asset drawer/CSR badge
+→ duckdb), K1k, K1i, K1e, K1h, K1j+K1m, K1b (auth, délicat), K1a (extraction post-sync),
+K2 (god-functions), K3 (god-packages). Enchaînement en autonomie.
+
+---
+
 ## [2026-07-05] K1l (partie) — dédup PlayersRootDir (7 copies → resolver)
 
 **Statut** : Complété (sous-partie « helper `PlayersRootDir(slug)` » de K1l ; le reste des
