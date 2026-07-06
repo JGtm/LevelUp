@@ -2,7 +2,7 @@
 // builders + KPIs (squad/synthesis) + safeDiv/round2 + enrichMapBreakdown +
 // squadStatsToWinTotal. Decoupe de teammates_service.go (god-file split,
 // refactor 2026-05-27).
-package service
+package teammates
 
 import (
 	"context"

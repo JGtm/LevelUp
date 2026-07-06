@@ -1,4 +1,4 @@
-package service
+package teammates
 
 import (
 	"context"
@@ -802,18 +802,18 @@ func TestBuildSquadMapHeatmap_NoCapOnMaps(t *testing.T) {
 	}
 }
 
-// ---------- synergyOffensiveConversion / synergyDefensiveResistance ----------
+// ---------- SynergyOffensiveConversion / SynergyDefensiveResistance ----------
 
 func TestSynergyOffensiveConversion_ZeroDamage(t *testing.T) {
-	if v := synergyOffensiveConversion(10, 5, 0, 225); v != 0 {
+	if v := SynergyOffensiveConversion(10, 5, 0, 225); v != 0 {
 		t.Errorf("zero damage → want 0, got %v", v)
 	}
 }
 
 func TestSynergyOffensiveConversion_TypicalMatch(t *testing.T) {
 	// 225 × (10 + 5/3) / 2500 ≈ 1.05
-	high := synergyOffensiveConversion(10, 5, 2500, 225)
-	low := synergyOffensiveConversion(3, 1, 2500, 225)
+	high := SynergyOffensiveConversion(10, 5, 2500, 225)
+	low := SynergyOffensiveConversion(3, 1, 2500, 225)
 	if high <= 0 {
 		t.Errorf("typical OC: want > 0, got %v", high)
 	}
@@ -823,14 +823,14 @@ func TestSynergyOffensiveConversion_TypicalMatch(t *testing.T) {
 }
 
 func TestSynergyDefensiveResistance_ZeroBoth(t *testing.T) {
-	if v := synergyDefensiveResistance(0, 0, 225); v != 0 {
+	if v := SynergyDefensiveResistance(0, 0, 225); v != 0 {
 		t.Errorf("zero both → want 0, got %v", v)
 	}
 }
 
 func TestSynergyDefensiveResistance_ZeroDeaths(t *testing.T) {
 	// 0 mort avec damage pris → score parfait (au-delà du P80)
-	v := synergyDefensiveResistance(1000, 0, 225)
+	v := SynergyDefensiveResistance(1000, 0, 225)
 	if v <= 0 {
 		t.Errorf("zero deaths + damage → want > 0 (parfait), got %v", v)
 	}
@@ -838,7 +838,7 @@ func TestSynergyDefensiveResistance_ZeroDeaths(t *testing.T) {
 
 func TestSynergyDefensiveResistance_TypicalMatch(t *testing.T) {
 	// 1000 DT / (225 × 4) ≈ 1.11
-	v := synergyDefensiveResistance(1000, 4, 225)
+	v := SynergyDefensiveResistance(1000, 4, 225)
 	if v <= 0.5 || v > 3.0 {
 		t.Errorf("typical DR: want in (0.5, 3.0], got %v", v)
 	}

@@ -1,3 +1,38 @@
+## [2026-07-06] K3b teammates EXTRAIT — cycle BIDIRECTIONNEL rompu par feuille squadagg
+
+**Statut** : Complété. Le cas le plus dur du lot K — un VRAI cycle bidirectionnel (contrairement à
+K3a/K3c qui étaient à sens unique cluster→cœur).
+
+**Le diagnostic qui débloque** : le cycle service↔teammates a deux arêtes. (1) teammates→service :
+teammates USE ~5 helpers d'agrégation d'escouade + l'interface SquadV2Loader ; mesuré par build-probe
+à seulement 8 symboles (pas les ~88 craints — le reste était local/stdlib). (2) service→teammates :
+squad_service_v2_compose + career/home/match_view/session_compare USENT FriendGamertagsResolver /
+SynergyX / CorrectSquadImpactEvents de teammates. Les DEUX arêtes existent → cycle réel.
+
+**La rupture** : un package FEUILLE `internal/service/squadagg` reçoit les helpers de calcul PARTAGÉS
+(aggregates.go entier + 3 fn d'intersect + buildSquadOrder/extractSquadXUIDs + interface SquadV2Loader
++ consts ExpType*). Le closure a CONVERGÉ (~14 fn pures) — vérifié par BFS du graphe d'appels avant
+de bouger quoi que ce soit. squadagg est importé par service ET teammates mais n'importe NI l'un NI
+l'autre → arête (1) devient teammates→squadagg (plus service). service garde ses appels via
+ré-exports alias (`var buildSquadHeader = squadagg.BuildSquadHeader`) → zéro requalification côté
+service. Arête (2) reste service→teammates : c'est une dépendance de feature normale, PAS un cycle
+(teammates n'importe plus service). Graphe final acyclique : service→{teammates,squadagg},
+teammates→squadagg, squadagg→∅.
+
+**Pièges rencontrés** : (a) `home_squad_session_teammates.go` définit des MÉTHODES sur HomeService
+(type service-root) → non déplaçable, reste dans service (Go interdit les méthodes cross-package) ;
+(b) collision nom de package `teammates` vs var locale `teammates` ([]TopTeammate) dans squad_service.go
+→ import aliasé `teammatespkg` ; (c) `round2` a suivi teammates mais un consommateur prod service-root
+restait → réintroduit localement ; (d) web de fixtures de test partagées (mockSquadRepo, fakeSquadLoader,
+rowWithStats…) → dupliquées côté teammates (pattern K3c), + 2 fichiers de test SPLIT (computeKPIs/
+safeDiv/TeammatesService extraits vers teammates).
+
+**Méthode gagnante** : stages indépendamment committables (A = squadagg d'abord, service reste vert ;
+B = teammates ensuite). Build-probe + BFS de closure AVANT surgery = pas de mauvaise surprise de
+cascade. Filet `git reset --hard <dernier-vert>` disponible à tout instant (tout non-committé).
+Gates : `go build/vet ./...` 0, tests service+teammates+api VERTS, archlint OK. **Prochaine étape** :
+K3d (api/wire), K1a-cœur, K2a→<100L.
+
 ## [2026-07-06] K2a NewRouter — 2 blocs à zéro-sortie extraits (~1 197 → ~1 157 L)
 
 **Statut** : En cours (réduction incrémentale ; cible < 100 L exige toujours la bascule

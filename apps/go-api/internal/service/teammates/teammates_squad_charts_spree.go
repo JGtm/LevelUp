@@ -3,7 +3,7 @@
 // (analysis.ComputeMaxKillingSpree quand la valeur native est absente). Découpe
 // de teammates_squad_charts_weapons_perf.go (dépassement limite 500 L). Le calcul
 // native-ou-computed reste inline dans buildSquadPerformanceSeries (weapons_perf.go).
-package service
+package teammates
 
 import (
 	"context"

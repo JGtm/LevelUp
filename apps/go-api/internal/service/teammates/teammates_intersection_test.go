@@ -1,4 +1,4 @@
-package service
+package teammates
 
 // teammates_intersection_test.go — tests de la composition EXACTE (intersection)
 // dans GetPage + sessions composition-aware. Couvre le bug "coéquipier ajouté à

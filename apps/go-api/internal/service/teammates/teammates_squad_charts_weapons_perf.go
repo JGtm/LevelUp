@@ -1,7 +1,7 @@
 // Package service - teammates_squad_charts_weapons_perf.go : builders
 // teammates weapon kills + performance series. Decoupe de
 // teammates_squad_charts.go (god-file split, refactor 2026-05-27).
-package service
+package teammates
 
 import (
 	"context"
@@ -432,14 +432,14 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 				dd := *r.Self.DamageDealt
 				pt.DamageDealt = &dd // brut, pour le chart dégâts/frag
 				if dd > 0 {
-					v := round2(synergyOffensiveConversion(pt.Kills, pt.Assists, float64(dd), games.EffectiveHpToKill(s.titleSlug)))
+					v := round2(SynergyOffensiveConversion(pt.Kills, pt.Assists, float64(dd), games.EffectiveHpToKill(s.titleSlug)))
 					pt.RendementOffensif = &v
 				}
 			}
 			if r.Self.DamageTaken != nil {
 				dt := *r.Self.DamageTaken
 				pt.DamageTaken = &dt // brut, pour le chart dégâts/mort
-				v := round2(synergyDefensiveResistance(float64(dt), pt.Deaths, games.EffectiveHpToKill(s.titleSlug)))
+				v := round2(SynergyDefensiveResistance(float64(dt), pt.Deaths, games.EffectiveHpToKill(s.titleSlug)))
 				pt.ResistanceDefensive = &v
 			}
 			if r.Enrichment.TeamMMR != nil {

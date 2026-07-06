@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/teammates"
 )
 
 // HomeService orchestre les donnÃ©es de la page d'accueil.
@@ -71,7 +72,7 @@ type HomeService struct {
 	sessionTeammatesLoader mainTeamParticipantsLoader
 	// sessionFriendsResolver (optionnel) : restreint les coéquipiers de session aux
 	// amis configurés (settings.friend_gamertags). nil → tous les coéquipiers alliés.
-	sessionFriendsResolver FriendGamertagsResolver
+	sessionFriendsResolver teammates.FriendGamertagsResolver
 }
 
 // NewHomeService crÃ©e un HomeService avec le repository et le provider Halo.

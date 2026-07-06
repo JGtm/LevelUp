@@ -1,7 +1,7 @@
 // Package service - teammates_squad_charts_impact_events.go : builders
 // teammates.07 (squad impact matrix) + teammates first events. Decoupe de
 // teammates_squad_charts.go (god-file split, refactor 2026-05-27).
-package service
+package teammates
 
 import (
 	"cmp"
@@ -291,7 +291,7 @@ func (s *TeammatesService) buildSquadFirstEvents(
 		}
 		return nil
 	}
-	events = correctSquadImpactEvents(ctx, "teammates.17", events, timeline.BuildTimelinesFromSquadRows(allSquadRows))
+	events = CorrectSquadImpactEvents(ctx, "teammates.17", events, timeline.BuildTimelinesFromSquadRows(allSquadRows))
 
 	// 4. Pour chaque (match, xuid) calculer first_kill_s et first_death_s
 	// (en secondes, time_ms / 1000).

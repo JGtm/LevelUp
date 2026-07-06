@@ -2,7 +2,7 @@
 // loadTeammatesCanonicalParallel + filtres synthesis (cascade, period,
 // picked sessions, session, experience labels). Decoupe de
 // teammates_service.go (god-file split, refactor 2026-05-27).
-package service
+package teammates
 
 import (
 	"cmp"
@@ -23,6 +23,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/squadagg"
 )
 
 func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
@@ -61,7 +62,7 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 		filtered := rows
 		if filters != nil {
 			c := filters.Cascade
-			filtered = filterRowsByCascade(filtered, c.ExperienceTypes, c.Playlists, c.Maps, c.Modes)
+			filtered = squadagg.FilterRowsByCascade(filtered, c.ExperienceTypes, c.Playlists, c.Maps, c.Modes)
 		}
 		if len(sessionMatchIDs) > 0 {
 			kept := make([]canonical.PlayerMatchRow, 0, len(filtered))
@@ -75,11 +76,11 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 		perPlayer[gt] = filtered
 	}
 
-	squadOrder := buildSquadOrder(s.gamertag, selectedGamertags)
-	gtToXUID := extractSquadXUIDs(squadOrder, perPlayer)
-	sharedMatches := intersectByMatchID(perPlayer)
+	squadOrder := squadagg.BuildSquadOrder(s.gamertag, selectedGamertags)
+	gtToXUID := squadagg.ExtractSquadXUIDs(squadOrder, perPlayer)
+	sharedMatches := squadagg.IntersectByMatchID(perPlayer)
 
-	header := buildSquadHeader(ctx, s.gamertag, gtToXUID, sharedMatches)
+	header := squadagg.BuildSquadHeader(ctx, s.gamertag, gtToXUID, sharedMatches)
 	// Mode degrade : si aucun match partage, le briefing repasse en mode solo
 	// pour rester utile (sinon SoloKPIs serait nil et la section disparaitrait).
 	if header.SoloKPIs == nil && len(mainFiltered) > 0 {
@@ -233,12 +234,12 @@ func extractSynthesisSessionLabels(matches []legacymatch.SynthesisMatchRow) doma
 // synthesisExperienceLabel dÃƒÂ©rive le label d'expÃƒÂ©rience d'un match (miroir de filters_service.go).
 func synthesisExperienceLabel(m legacymatch.SynthesisMatchRow) string {
 	if m.IsFirefight {
-		return expTypePVE
+		return squadagg.ExpTypePVE
 	}
 	if m.IsRanked {
-		return expTypePVPRanked
+		return squadagg.ExpTypePVPRanked
 	}
-	return expTypePVPUnranked
+	return squadagg.ExpTypePVPUnranked
 }
 
 // filterSynthesisByCascade applique les filtres experience_types et playlists sur les matchs.

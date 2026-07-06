@@ -2,7 +2,7 @@
 // synergy radar (6 axes : participation, frags, defensive, kills/min,
 // assists/min, conversion offensive/defensive) + helpers. Decoupe de
 // teammates_squad_charts.go (god-file split, refactor 2026-05-27).
-package service
+package teammates
 
 import (
 	"context"
@@ -27,18 +27,18 @@ func synergyRadarThresholds(nShared int, ocP80 float64) narrative.ParticipationT
 	}
 }
 
-// synergyOffensiveConversion calcule le rendement offensif agrégé sur l'ensemble
+// SynergyOffensiveConversion calcule le rendement offensif agrégé sur l'ensemble
 // des matchs : 225 × (ΣK + ΣA/3) / ΣDD. Retourne 0 si aucun dégât infligé.
-func synergyOffensiveConversion(totalKills, totalAssists int, totalDamageDlt float64, effectiveHpToKill float64) float64 {
+func SynergyOffensiveConversion(totalKills, totalAssists int, totalDamageDlt float64, effectiveHpToKill float64) float64 {
 	if totalDamageDlt <= 0 {
 		return 0
 	}
 	return effectiveHpToKill * (float64(totalKills) + float64(totalAssists)/3.0) / totalDamageDlt
 }
 
-// synergyDefensiveResistance calcule la résistance défensive agrégée :
+// SynergyDefensiveResistance calcule la résistance défensive agrégée :
 // ΣDT / (225 × ΣD). Zéro mort avec damage positif → score parfait (au-delà du P80).
-func synergyDefensiveResistance(totalDamageTkn float64, totalDeaths int, effectiveHpToKill float64) float64 {
+func SynergyDefensiveResistance(totalDamageTkn float64, totalDeaths int, effectiveHpToKill float64) float64 {
 	if totalDeaths == 0 {
 		if totalDamageTkn > 0 {
 			return analysis.DefensiveResistanceP80 * analysis.CombatYieldClipFactor
@@ -130,8 +130,8 @@ func (s *TeammatesService) loadSynergyMateAxes(
 	}
 
 	hp := games.EffectiveHpToKill(s.titleSlug)
-	raw[narrative.AxisImpact] = synergyOffensiveConversion(totalKills, totalAssists, totalDamageDlt, hp)
-	raw[narrative.AxisSurvival] = synergyDefensiveResistance(totalDamageTkn, totalDeaths, hp)
+	raw[narrative.AxisImpact] = SynergyOffensiveConversion(totalKills, totalAssists, totalDamageDlt, hp)
+	raw[narrative.AxisSurvival] = SynergyDefensiveResistance(totalDamageTkn, totalDeaths, hp)
 
 	// Objective via PSA — dégradation silencieuse si absent.
 	var objTotal float64

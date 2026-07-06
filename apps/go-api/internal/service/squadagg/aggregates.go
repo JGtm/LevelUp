@@ -1,4 +1,4 @@
-package service
+package squadagg
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 )
 
-func buildSquadHeader(
+func BuildSquadHeader(
 	ctx context.Context,
 	mainGT string,
 	gtToXUID map[string]string,
@@ -26,7 +26,7 @@ func buildSquadHeader(
 	}
 
 	// Carte par joueur : agreger les rows partages depuis SharedMatches.
-	rowsByPlayer := projectSharedRows(shared)
+	rowsByPlayer := ProjectSharedRows(shared)
 	hp := games.EffectiveHpToKill(ctxkeys.TitleSlug(ctx))
 
 	// SoloKPIs : KPIs du joueur principal sur les matchs partages uniquement.
@@ -64,9 +64,9 @@ func buildSquadHeader(
 	return header
 }
 
-// projectSharedRows extrait des SharedMatches une vue par joueur :
+// ProjectSharedRows extrait des SharedMatches une vue par joueur :
 // gamertag -> liste des PlayerMatchRow sur les matchs partages.
-func projectSharedRows(shared []domain.SquadSharedMatch) map[string][]canonical.PlayerMatchRow {
+func ProjectSharedRows(shared []domain.SquadSharedMatch) map[string][]canonical.PlayerMatchRow {
 	out := make(map[string][]canonical.PlayerMatchRow)
 	for _, sm := range shared {
 		for gt, row := range sm.Players {
@@ -315,20 +315,20 @@ func squadGrade(score float64) string {
 // Miroir de synthesisExperienceLabel dans teammates_service.go.
 func canonicalRowExperienceLabel(r canonical.PlayerMatchRow) string {
 	if r.Summary.IsPvE != nil && *r.Summary.IsPvE {
-		return expTypePVE
+		return ExpTypePVE
 	}
 	if r.Summary.IsRanked != nil && *r.Summary.IsRanked {
-		return expTypePVPRanked
+		return ExpTypePVPRanked
 	}
-	return expTypePVPUnranked
+	return ExpTypePVPUnranked
 }
 
-// filterRowsByCascade filtre une slice de PlayerMatchRow selon les critères
+// FilterRowsByCascade filtre une slice de PlayerMatchRow selon les critères
 // experience_types, playlists, maps et modes. Slices vides = pas de filtre sur ce critère.
 //
 // Modes : comparaison sur PairMode (pair_name_fr COALESCE pair_name) — même source
 // que filtersResolve. Fallback sur DefaultLabel (EN) si Labels["fr"] absent.
-func filterRowsByCascade(rows []canonical.PlayerMatchRow, expTypes, playlists, maps, modes []string) []canonical.PlayerMatchRow {
+func FilterRowsByCascade(rows []canonical.PlayerMatchRow, expTypes, playlists, maps, modes []string) []canonical.PlayerMatchRow {
 	expSet := make(map[string]struct{}, len(expTypes))
 	for _, e := range expTypes {
 		expSet[e] = struct{}{}
