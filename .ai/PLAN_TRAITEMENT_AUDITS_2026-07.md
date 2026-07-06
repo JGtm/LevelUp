@@ -1211,9 +1211,16 @@ K1 — Extractions de couches (ROI d'abord) :
   - [!] Reste K1l (stash friends, seed_demo layout, config.go double mécanisme data/auth+sessions,
     garde-rail data-path global L2) : non fait ici — chemins hétérogènes nécessitant chacun une
     décision de resolver (session chemins dédiée).
-- [ ] K1m — ARCHI 12 [TRACKÉ] : exécuter le plan de l'allowlist media — extraire
-  MediaRepository/MediaStore de `media_service.go:357` + `media_index_service.go`, vider
-  l'allowlist de `no_duckdb_import_test.go`.
+- [x] K1m — ARCHI 12 (2026-07-06) : **allowlist D-MV2 VIDÉE** (`no_duckdb_import_test.go` →
+  `map[string]bool{}`, zéro service important `internal/platform/duckdb`). Résolu par SUPPRESSION
+  de code mort plutôt qu'extraction d'un repo : `media_index_service.resetPlayerMediaIndex`
+  (seul importeur de duckdb) était un NO-OP (ouvrait lease + RW handle pour `_ = db; return nil`)
+  depuis `drop_media_from_player_db` (media → shared_social append-only) → fonction + cérémonie
+  « reset » (progression 0-50 %) supprimées ; réindexation passe en 0-100 %. `media_service.go`
+  n'importait DÉJÀ plus le package data (entrée d'allowlist périmée). `ResetAndReindex`/`ScanAllMedia`
+  (contrat MediaIndexer, sentinelle) INCHANGÉS. Gate : build+vet 0, `TestServicesDoNotImportDuckDB`
+  vert (allowlist vide), tests media indexer verts. Comportement identique (le reset était déjà
+  no-op) hors libellé de progression.
 - [~] K1n — ARCHI mineurs couches service/analysis/domain. Médiane centralisée FAITE
   (`analysis.MedianFloat`, 3 copies, commité plus tôt). Liste de modes dupliquée FAITE
   (2026-07-06) : `domain.EngagementCoefModes()` source unique — `sync.engagementCoefModes`

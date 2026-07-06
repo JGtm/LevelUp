@@ -16,8 +16,6 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/ops"
-	"levelup/go-api/internal/platform/dblease"
-	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/jobs"
 )
 
@@ -101,27 +99,13 @@ func (d *DirMediaIndexer) ResetAndReindex(
 		gamertag := entry.Name()
 		dbPath := pr.PlayerDBPath(titleSlug, gamertag)
 
-		// Mettre à jour la progression (0–50% pour reset, 50–100% pour reindex).
-		pct := (i * 50) / total
-		step := fmt.Sprintf("Reset médias : %s (%d/%d)", gamertag, i+1, total)
-		jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
-			j.CurrentStep = &step
-			j.ProgressPct = &pct
-		})
-
-		if err := resetPlayerMediaIndex(ctx, dbPath); err != nil {
-			// Avertissement non-fatal : continuer avec les autres joueurs.
-			jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
-				w := fmt.Sprintf("WARN reset %s: %v", gamertag, err)
-				j.Warnings = append(j.Warnings, w)
-			})
-			continue
-		}
-
+		// Réindexation additive et idempotente (0–100%). Il n'y a plus de phase « reset »
+		// destructive : media_files/media_match_associations sont dans shared_social
+		// (append-only) depuis drop_media_from_player_db (K1m, ex-resetPlayerMediaIndex no-op).
 		if reindexAfter {
 			capturesDir := pr.ResolveCapturesDir(titleSlug, gamertag, capturesBaseDir)
 			if _, err := os.Stat(capturesDir); err == nil {
-				reindexPct := 50 + (i*50)/total
+				reindexPct := (i * 100) / total
 				reindexStep := fmt.Sprintf("Réindexation : %s (%d/%d)", gamertag, i+1, total)
 				jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
 					j.CurrentStep = &reindexStep
@@ -352,41 +336,9 @@ func triggerHLSSweep(capturesBaseDir, sharedSocialDBPath, onlySlug string) {
 	}()
 }
 
-// resetPlayerMediaIndex supprime toutes les entrées media_files et media_match_associations
-// dans la player DB.
-//
-// Sprint B1 commit 14a : acquiert dblease.KindPlayer avant les DELETE pour
-// se sérialiser avec auto_sync.RunDelta qui peut écrire sur ces mêmes tables
-// (post-sync media reindex inline). Sans ce lease, race condition possible
-// entre le DELETE et un INSERT/UPDATE sync — données incohérentes.
-func resetPlayerMediaIndex(ctx context.Context, dbPath string) error {
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		return nil // pas de DB joueur, rien à réinitialiser
-	}
-
-	lease, err := dblease.AcquireWriterCtx(ctx, nil, dbPath, dblease.KindPlayer)
-	if err != nil {
-		return fmt.Errorf("resetPlayerMediaIndex lease %s: %w", dbPath, err)
-	}
-	defer lease.Release()
-
-	// Phase 2 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 (audit residuel 2026-05-25) :
-	// passage par le cache duckdbpkg.OpenReadWrite pour DSN aligne avec sync.
-	// Sans ce fix, resetPlayerMediaIndex peut entrer en conflit "different
-	// configuration" avec un sync delta concurrent sur le meme player DB.
-	handle, err := duckdbpkg.OpenReadWrite(dbPath)
-	if err != nil {
-		return fmt.Errorf("ouverture %s: %w", dbPath, err)
-	}
-	defer handle.Close()
-	db := handle.SQLDb()
-
-	// APPEND-ONLY / topologie migrée : plus aucun DELETE. media_files +
-	// media_match_associations ont été déplacées de la player DB vers shared_social
-	// (migration drop_media_from_player_db) → ces DELETE frappaient des tables absentes
-	// (chemin mort, WARN non-fatal). Les associations shared_social sont désormais
-	// append-only ; le reindex (IndexMedia) est ADDITIF et idempotent (loadUnassociatedMedia
-	// forward-only), aucun reset destructif n'est nécessaire.
-	_ = db
-	return nil
-}
+// resetPlayerMediaIndex a été SUPPRIMÉ (K1m, 2026-07-06) : depuis la migration
+// drop_media_from_player_db, media_files/media_match_associations vivent dans
+// shared_social (append-only) — le « reset » par player DB frappait des tables absentes
+// (déjà un no-op documenté : ouverture RW + lease pour `_ = db; return nil`). Le reindex
+// (ops.IndexMedia) est additif et idempotent, aucun reset destructif n'est requis. Retrait
+// du code mort → media_index_service ne dépend plus de platform/duckdb (D-MV2, allowlist vidée).
