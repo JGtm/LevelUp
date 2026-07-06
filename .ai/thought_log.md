@@ -1,3 +1,36 @@
+## [2026-07-06] Vérification finale de la campagne d'audits (session Fable dédiée)
+
+**Statut** : Complété (livrables = audit + plan de clôture ; AUCUNE correction de code appliquée).
+
+**Décision technique principale** : vérification indépendante du travail des lots S→N :
+gates mécaniques complets re-exécutés (go build/vet/test unitaires = verts ; intégration
+`-tags=integration -p 1 -timeout 900s ./...` = exit 0, 112 packages, 0 FAIL ; vitest
+2071 verts ; lint 0 erreur) + 6 passes de vérification sur pièces en parallèle
+(tracker/journal, garde-rails, greps de gates, structure K, sécurité S, lots H/I/L/M/N)
++ revue manuelle des commits J et du câblage Prestige. La session Opus travaillait en
+parallèle (J7/J9 + clôture J commités pendant l'audit — pris en compte).
+
+**Résultats observés** : travail massivement livré et vérifié conforme (chaque [x] sondé
+a son commit, garde-rails mordants, reports honnêtes), MAIS campagne non terminable en
+l'état : (1) `npm run typecheck` CASSÉ à HEAD — 13 erreurs (6 ManifestLocale ex-I4, 1
+media/queries ex-L5, 6 types Node dans les 2 garde-rails I2/L5 ; piège `tsc -b`
+incrémental = faux vert probable) ; (2) hook Prestige post-sync JAMAIS exécuté (stub
+`WithPrestigeHook` no-op + `SyncEngine.WithPrestigeHook` 0 caller prod) alors que
+Prestige est acté ON — bug fonctionnel majeur, découverte §7 D1f jamais reprise ;
+(3) `GET /jobs/{job_id}` anonyme (révélateur d'identité, IDs horodatés) ; (4) dead code
+§7 non purgé (trio writes.go, insertHighlightEventsFromData), allowlists mortes
+(sentinel ×2, allowlistRawDelete, no_attach ×1), garde-rail halowaypoint promis jamais
+créé, doc CONTRACT_VALIDATE inversée, coverage.html versionné ; (5) §6 journal absent
+pour H..N, vérification finale §5 du plan jamais exécutée.
+
+**Conclusion / prochaine étape** : findings VF-1..VF-15 dans
+`.ai/AUDIT_VERIF_FINALE_2026-07-06.md` ; plan de reprise exécutable (7 lots V1→V7,
+décisions pré-tranchées DC-1..DC-8, gates exacts) dans
+`.ai/PLAN_CLOTURE_AUDITS_2026-07.md`. Opus prend le relais sur V1 (typecheck) après
+clôture de sa session J. Merge main interdit avant V1/V2/V3 au minimum.
+
+---
+
 ## [2026-07-06] LOT J (Performance DuckDB) — J3/J7 livrés, J2 complété, J4/J6 différés measure-first
 
 **Statut** : COMPLÉTÉ (partiel assumé). Vérification SUR PIÈCES d'abord (plan périmé) : J2 était
