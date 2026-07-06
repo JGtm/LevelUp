@@ -95,14 +95,16 @@ func classifyWeaponCoverage(ctx context.Context, metaSQL *sql.DB, slug string, i
 	for i, id := range ids {
 		vals[i] = "('" + strconv.FormatUint(uint64(id), 10) + "')" //nolint:gosec — ids numériques internes
 	}
+	// slug PARAMÉTRÉ (K1h) — plus de concaténation d'une string dans le SQL. Les ids
+	// (VALUES) restent inlinés : entiers internes validés (nolint:gosec ci-dessus).
 	q := "SELECT ids.v," +
 		" CASE WHEN w.weapon_key IS NOT NULL THEN 1 ELSE 0 END," +
 		" CASE WHEN wl.weapon_id IS NOT NULL THEN 1 ELSE 0 END" +
 		" FROM (VALUES " + strings.Join(vals, ",") + ") AS ids(v)" +
-		" LEFT JOIN weapon_ids wi ON wi.title_slug='" + slug + "' AND wi.id_value=ids.v" +
+		" LEFT JOIN weapon_ids wi ON wi.title_slug=? AND wi.id_value=ids.v" +
 		" LEFT JOIN weapons w ON w.title_slug=wi.title_slug AND w.weapon_key=wi.weapon_key" +
 		" LEFT JOIN weapon_labels wl ON wl.weapon_id=CAST(ids.v AS UBIGINT)"
-	rows, err := metaSQL.QueryContext(ctx, q)
+	rows, err := metaSQL.QueryContext(ctx, q, slug)
 	if err != nil {
 		classifyWeaponLabelsOnly(ctx, metaSQL, ids, inLabel)
 		return
