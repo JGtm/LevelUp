@@ -1,3 +1,25 @@
+## [2026-07-06] K1c — durcissement WriteSyncMeta sous lease dblease (ADR 0013)
+
+**Statut** : Complété. La dédup K1c (2 copies read/write sync_meta → `duckdb.WriteSyncMeta`)
+était déjà faite (2026-07-05) ; il restait le durcissement documenté « écriture SOUS LEASE ».
+`WriteSyncMeta` acquiert désormais `AcquirePlayerWriterTimeout(dblease.PlayerLeaseTimeout)` +
+`defer Release()` avant l'`OpenReadWrite` (modèle `match_exclusion_repo.go`) → un seul writer
+par player DB, sérialisé avec post-sync/CLI.
+
+**Vérif ré-entrance (lease non-réentrant → risque self-deadlock)** : tracé les 2 seuls
+appelants de WriteSyncMeta — (1) boot `EmitAppReleaseForAllPlayers` prend le PlayerDB via
+`reg.resolve` (handle, PAS de lease) ; (2) notifier title-ready, doc « à la fin d'un cycle »
+(post-lease). `EvaluateProgressionAfterSync` n'appelle PAS WriteSyncMeta (pas de nesting).
+Lease libre aux 2 sites → acquisition immédiate.
+
+**Résultats** : build+vet 0 ; intégration -p 1 duckdb (99 s) + api (17 s) vertes séparément
+(le run combiné a rendu 1 = flake SharedProvider reopen RO documenté, non régression).
+
+**Prochaine étape** : poursuite lot K — K2a (blocs NewRouter), K3f (magic numbers/débris),
+puis scissions K3a-e.
+
+---
+
 ## [2026-07-06] Reprise post-hook — items durs de K attaqués (K2d/K2c/K2b/K1k/K1h)
 
 **Statut** : après le retour du hook « fais TOUT le lot K », j'ai repris et attaqué les items

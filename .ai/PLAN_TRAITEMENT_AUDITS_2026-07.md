@@ -1085,9 +1085,15 @@ K1 — Extractions de couches (ROI d'abord) :
   (CR mineur), `outcome = 2` → `outcomeSQLEq` (`post_sync_progression_queries.go:301`).
 - [ ] K1b — ARCHI 5 : cascade refresh tokens de `registry_auth.go:169` (~130 L dupliquant
   `RefreshHaloTokensViaStoreFirst`) → platform/auth, implémentation unique (pré-requis D2).
-- [ ] K1c — ARCHI 3 : helper unique côté platform pour les écritures sync_meta SOUS LEASE
-  dblease (ADR 0013) — remplace les 2 copies (`notifications_title_ready.go:141`,
-  `notifications_boot.go:112`) ; pattern `prestige_lazy_service.go:119`.
+- [x] K1c — ARCHI 3 (2026-07-06) : helper unique `duckdb.WriteSyncMeta` (+ `ReadSyncMeta`)
+  déjà source unique des 2 ex-copies (`notifications_title_ready`/`_boot`, dédup #6). **Reste
+  livré ici** : le durcissement « écriture SOUS LEASE dblease » (ADR 0013, un seul writer
+  par DB) — `WriteSyncMeta` acquiert `AcquirePlayerWriterTimeout(dblease.PlayerLeaseTimeout)`
+  + `defer Release()` AVANT l'`OpenReadWrite` (modèle `match_exclusion_repo.go`). Sûr :
+  les 2 seuls appelants (boot `EmitAppReleaseForAllPlayers` via `reg.resolve` handle RO ;
+  notifier title-ready « à la fin d'un cycle ») ne tiennent PAS le lease player →
+  acquisition libre, zéro ré-entrance. Gate : build+vet 0, intégration -p 1 duckdb (99 s)
+  + api (17 s) vertes séparément (combiné = flake SharedProvider reopen documenté).
 - [~] K1d — ARCHI 4 : `ExpandPlaylistChildren` (`registry_catalog_expand.go:94`) → ops/ ou
   service/ ; DDL → internal/migration ; factoriser la 3e copie du pattern upsert ART-safe ;
   batcher ses 3 requêtes/entry (croisé J6).
