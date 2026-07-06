@@ -1210,10 +1210,12 @@ K1 — Extractions de couches (ROI d'abord) :
     bloquants, aucun n'excède les seuils lint.
 
 K2 — God functions à risque (tâche dédiée, passer la grille plan-review avant chaque item) :
-- [ ] K2a — ARCHI 22 + CR A1 : `NewRouter` ~1 470 L → `buildStores` / `buildTitleRuntime` /
-  `applyMiddlewares` / `mountXxx` par domaine ; cible < 100 L ; `waypointExplore` (closure
-  46 L) → service ; purge sessions goroutine et retry-loop metadata extraites ; corriger le
-  doc-comment rattaché à la mauvaise fonction.
+- [~] K2a — ARCHI 22 + CR A1 : `NewRouter` ~1 470 L → extractions par bloc (compiler-vérifié,
+  gate api intégration après chaque). **FAIT (2026-07-06)** : `buildAssetMetadataHandler` (le
+  retry-loop metadata extrait) + `wireHalo5AssetAdapters` (CSR badge + AssetURLAdapter +
+  sprites H5) — ~134 L retirés de NewRouter. `[!]` RESTE : poursuivre par bloc (`buildStores`,
+  `applyMiddlewares`, `mountXxx` par domaine, `waypointExplore`→service, purge sessions
+  goroutine) jusqu'à cible < 100 L — mécanique, incrémental, ~15 blocs restants.
 - [~] K2b — ARCHI 23 + CR A4 (2026-07-06) : **boucle de pagination EXTRAITE** de `run()` →
   méthode `paginateAndPersistHistory(ctx, historyPaginationInputs, *SyncResult)` (~155 L,
   `//nolint:funlen` justifié : filtre/fetch/persist par page partagent processed/toFetch/
