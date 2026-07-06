@@ -8,12 +8,10 @@
 // service/catalog_fetcher_service et api/registry_catalog_expand (3e copie) —
 // leçon CLAUDE.md règle 6 (centraliser + garde-rail).
 //
-// Exception allowlistée : service.CatalogFetcherService.upsertRowNoConflict garde
-// sa copie locale car ADR 0025 D-MV2 INTERDIT à la couche service d'importer le
-// package de données internal/platform/duckdb (verrou TestServicesDoNotImportDuckDB).
-// Tant que ce service tient un *sql.DB brut plutôt qu'un port, il ne peut pas
-// appeler la canonique — sa copie est donc architecturalement justifiée, pas de la
-// dette de dédup. À supprimer le jour où un CatalogRepository (port) est extrait.
+// K1j (2026-07-06) : la copie forcée de service.CatalogFetcherService a été SUPPRIMÉE —
+// un CatalogWriter (port) a été extrait vers platform/duckdb.CatalogWriterDB, qui appelle
+// la canonique UpsertRowNoConflict. Le service ne tient plus de *sql.DB ni d'upsert local.
+// Il n'y a donc plus AUCUNE exception hors duckdb/db.go.
 package archlint
 
 import (
@@ -31,12 +29,10 @@ import (
 // triplet de paramètres) ne matchent pas et restent hors périmètre.
 var genericUpsertSigRE = regexp.MustCompile(`existsQuery\s+string,\s+existsArgs\s+\[\]any`)
 
-// upsertHelperAllowed : chemins (relatifs à apps/go-api) autorisés à porter la
-// signature du helper générique. duckdb/db.go = source canonique ;
-// catalog_fetcher_service.go = copie forcée par le verrou D-MV2 (cf. entête).
+// upsertHelperAllowed : seule la source canonique (duckdb/db.go) porte la signature du
+// helper générique. Plus aucune exception depuis K1j (copie service supprimée).
 var upsertHelperAllowed = map[string]bool{
-	"internal/platform/duckdb/db.go":              true,
-	"internal/service/catalog_fetcher_service.go": true,
+	"internal/platform/duckdb/db.go": true,
 }
 
 func TestNoLocalGenericUpsertHelper(t *testing.T) {

@@ -35,6 +35,7 @@ import (
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/service"
 )
@@ -130,7 +131,7 @@ func main() {
 	resolver.RegisterCatalog(adapter)
 
 	// 4. Lance le drain (loop jusqu'à plus aucune nouvelle résolution).
-	svc := service.NewCatalogFetcherService(metadataDB, resolver)
+	svc := service.NewCatalogFetcherService(duckdb.NewCatalogWriter(metadataDB), resolver)
 	t0 := time.Now()
 	totalPlaylists, totalPairs, totalMaps, totalGV, totalErrors := 0, 0, 0, 0, 0
 	for pass := 1; ; pass++ {

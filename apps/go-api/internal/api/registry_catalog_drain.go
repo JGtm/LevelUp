@@ -81,7 +81,7 @@ func (r *ServiceRegistry) RunCatalogUGCDrain(ctx context.Context, titleSlug stri
 	resolver.RegisterCatalog(adapter)
 
 	// 4. Drain loop (s'arrête dès qu'une passe ne progresse plus, ou ctx annulé).
-	svc := service.NewCatalogFetcherService(metaSQL, resolver)
+	svc := service.NewCatalogFetcherService(duckdb.NewCatalogWriter(metaSQL), resolver)
 	for pass := 1; pass <= catalogDrainMaxPasses; pass++ {
 		if err := ctx.Err(); err != nil {
 			return res, err

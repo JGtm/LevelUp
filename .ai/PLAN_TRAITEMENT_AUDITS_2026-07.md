@@ -1139,10 +1139,18 @@ K1 — Extractions de couches (ROI d'abord) :
   le param concret + garde `if x != nil` (nil-check concret fiable → évite le piège
   interface typed-nil) ; `*CareerLiveService`/`*SeasonsCatalog` satisfont structurellement,
   mockables en test (même package). Gate : build+vet 0, tests service verts.
-- [ ] K1j — ARCHI 9 : persistance catalogue (~200 L SQL + *sql.DB dans
-  `catalog_fetcher_service.go:73` + même dérive `openspartan_post_import_service.go:170`)
-  → CatalogRepository (platform/duckdb) ou Persister dédié via port.* ; + gate titre sur
-  le référentiel rankedplaylists dans le drain (`catalog_fetcher_service.go:197`, mineur).
+- [~] K1j — ARCHI 9 (2026-07-06) : **persistance catalogue extraite** —
+  `catalog_fetcher_service` ne tient PLUS de *sql.DB ni de SQL : `port.CatalogWriter`
+  (interface consumer-side étroite : SelectPending + Upsert{Playlist,Pair,Map,GameVariant})
+  implémenté par `duckdb.CatalogWriterDB` (nouveau, ~180 L SQL déplacé, utilise
+  `UpsertRowNoConflict` canonique). Le service ne garde que l'orchestration (drain loop +
+  policy is_ranked rankedplaylists). **Ferme la boucle K1d** : la copie locale forcée
+  `upsertRowNoConflict` est SUPPRIMÉE → garde-rail archlint durci (plus aucune exception hors
+  duckdb/db.go). 2 constructeurs + test rewirés. Gate : build+vet 0, D-MV2 + upsert guards
+  verts, **intégration catalog drain end-to-end verte** (playlist+pair+labels+re-enqueue),
+  duckdb+api intégration verts. `[!]` RESTE : `openspartan_post_import_service.go` (même
+  dérive *sql.DB, 2e service) ; gate-titre explicite sur rankedplaylists (actuellement
+  effectif car les IDs H5 ne matchent pas l'allowlist HI — clarification mineure).
 - [~] K1k — ARCHI 10 (2026-07-06) : **types promus dans domain** — `domain.CareerRankSnapshot`
   (ex-`sync.CareerRankData`, renommé pour éviter la collision avec `domain.CareerRankData`
   calculé) + `domain.SpartanCustomizationData` (`domain/career_live.go`). sync garde des
