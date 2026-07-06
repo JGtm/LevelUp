@@ -1217,11 +1217,14 @@ K1 — Extractions de couches (ROI d'abord) :
 
 K2 — God functions à risque (tâche dédiée, passer la grille plan-review avant chaque item) :
 - [~] K2a — ARCHI 22 + CR A1 : `NewRouter` ~1 470 L → extractions par bloc (compiler-vérifié,
-  gate api intégration après chaque). **FAIT (2026-07-06)** : `buildAssetMetadataHandler` (le
-  retry-loop metadata extrait) + `wireHalo5AssetAdapters` (CSR badge + AssetURLAdapter +
-  sprites H5) — ~134 L retirés de NewRouter. `[!]` RESTE : poursuivre par bloc (`buildStores`,
-  `applyMiddlewares`, `mountXxx` par domaine, `waypointExplore`→service, purge sessions
-  goroutine) jusqu'à cible < 100 L — mécanique, incrémental, ~15 blocs restants.
+  gate api intégration après chaque). **FAIT (2026-07-06)** : `buildAssetMetadataHandler` +
+  `wireHalo5AssetAdapters` (~134 L) PUIS `buildTitleRuntime` (~148 L : tout le bloc « Phase B
+  multi-titres » — resolver d'adapters semantic/data/assetURL HI + images de rang par titre
+  actif + capabilities HI, sorties regroupées en struct `titleRuntime`). **NewRouter ~1 470 →
+  ~1 197 L**. Gate à chaque : build+vet 0, intégration -p 1 api verte (NewRouter boot OK).
+  `[!]` RESTE : poursuivre par bloc (`buildStores`, `applyMiddlewares`, `mountXxx` par domaine,
+  `waypointExplore`→service, purge sessions goroutine) — la cible < 100 L exige une bascule
+  builder-pattern (assemblage DI intrinsèquement séquentiel) ; réduction incrémentale continue.
 - [~] K2b — ARCHI 23 + CR A4 (2026-07-06) : **boucle de pagination EXTRAITE** de `run()` →
   méthode `paginateAndPersistHistory(ctx, historyPaginationInputs, *SyncResult)` (~155 L,
   `//nolint:funlen` justifié : filtre/fetch/persist par page partagent processed/toFetch/
