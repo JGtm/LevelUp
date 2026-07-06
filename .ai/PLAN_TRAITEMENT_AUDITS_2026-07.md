@@ -1265,8 +1265,14 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
   par prestige ; `halo5_*.go` → games/halo_5 ou duckdb/halo5.
 - [ ] K3b — ARCHI 18 : service/ (127 fichiers) → sous-packages par feature, commencer par
   teammates (13 fichiers) ; archlint interdit les imports croisés entre features.
-- [ ] K3c — ARCHI 19 : sync/ (111 fichiers) → extraire sync/skill/ (17) et sync/snapshot/
-  (6) ; ratchet de gel sur la racine (aucun nouveau fichier racine) ; le neuf va dans v2.
+- [~] K3c — ARCHI 19 : sync/ (111 fichiers) → extraire sync/skill/ (17) et sync/snapshot/
+  (6) ; ratchet de gel sur la racine ; le neuf va dans v2. **FAIT (2026-07-06) — ratchet de
+  gel** : `archlint/sync_root_freeze_test.go` gèle la racine sync/ à 112 fichiers .go non-test
+  (baseline DÉCROISSANTE : échoue si un nouveau fichier racine est ajouté ET si le compte
+  descend sans abaisser la baseline). Doctrine ADR 0027 : le neuf va en v2/ ou sous-package.
+  Test vert. `[!]` RESTE : extractions sync/skill/ + sync/snapshot/ = déplacements cross-package
+  (réécriture d'imports + risque de cycle, même profil que K3b teammates) — session dédiée
+  d'untangling ; le ratchet empêche déjà l'aggravation.
 - [ ] K3d — ARCHI 20 : racine api/ (39 fichiers) → api/wire/ pour la DI ; cible < 10
   fichiers racine (le post-sync est déjà parti en K1a).
 - [ ] K3e — ARCHI 21 : client HTTP Halo Infinite (halo_client*.go, 7 fichiers) →
