@@ -268,7 +268,11 @@ export const queryKeys = {
     ['feedback-drawer', 'similar-issues', query] as const,
   mediaMatchCandidates: (
     playerSlug: string,
-    filePath: string,
+    // `filePath` peut être null tant que la sélection média n'est pas faite ;
+    // le hook associé est alors désactivé (`enabled: !!filePath`) et ne fetch
+    // jamais avec cette valeur. La forme de clé pour un filePath non-null reste
+    // byte-identique (rien inséré/retiré) — pas d'invalidation de cache.
+    filePath: string | null,
     windowMinutes: number,
   ) => ['media', 'match-candidates', playerSlug, filePath, windowMinutes] as const,
   combatYieldHistory: (playerSlug: string, filterHash: string) =>

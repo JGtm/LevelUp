@@ -63,28 +63,38 @@ data sur la copie) → GATE HUMAIN → PLAN DE MERGE → V9b-e + V10c (post-merg
 
 Objectif : `npm run typecheck` = 0 erreur, CACHE PURGÉ, et le rester.
 
-- [ ] V1a — VF-2 : les 6 TS2345 `ManifestLocale` (DC-3) : `SessionMultiSelect.tsx:76`
-  (prop `locale`), `HomeCitationsNearCompletion.tsx:159`, `LeaderboardBlock.tsx:419/502/544`,
-  `MediaPage.tsx:71`. Remonter le type `ManifestLocale` sur les props/paramètres source ;
-  suivre la chaîne d'appel jusqu'au store locale (qui EST typé).
-- [ ] V1b — VF-2 : `media/queries.ts:345` — `useMediaMatchCandidates` est gardé par
-  `enabled: !!filePath` : soit early-return de clé avec `filePath ?? ''`, soit élargir la
-  signature `queryKeys.mediaMatchCandidates(slug, filePath: string | null, w)`. Choisir la
-  variante qui garde la clé STABLE (même byte-shape qu'avant L5).
-- [ ] V1c — VF-2 : `/// <reference types="node" />` en tête de
-  `lib/formatters/calendar.guard.test.ts` et `lib/query/keys.guard.test.ts` (DC-2).
-- [ ] V1d — Leçon process : documenter le piège tsc -b dans le skill `delivery-checklist`
-  (§2 Frontend : « purger node_modules/.tmp avant de conclure typecheck vert », symétrique
-  du piège -p 1). Même commit.
-- [ ] V1e — VF-16 : job CI « Go Baseline Tests (non-régression) » ROUGE sur la branche
-  (échec « Vérifier suite baseline de tests pré-migration »). Cause probable : les
-  déplacements de tests du lot K (K3a-e). MÉTHODE OBLIGATOIRE (mémoire
-  [[reference-test-baseline-linux-gate]]) : lire le log du job, VÉRIFIER que chaque test
-  « manquant » est un RENOMMAGE/déplacement (le retrouver dans son nouveau package) et
-  PAS une disparition réelle, PUIS rebaseliner. Jamais de rebaseline aveugle.
-- [ ] V1f — Leçon VF-16 : ajouter au skill `delivery-checklist` (§0 ou §1) : « vérifier
-  l'état des runs CI de la branche (`gh run list --branch <br>`) avant de déclarer un
-  lot clos — un gate local vert ne couvre pas les jobs CI (baseline Linux, typecheck). »
+- [x] V1a — VF-2 : les 6 TS2345 `ManifestLocale` (DC-3) résolus À LA SOURCE, 0 cast.
+  Props/paramètres `locale` remontés de `string` → `ManifestLocale` :
+  `SessionMultiSelect.tsx` (prop + `getTexts` + default param du test),
+  `HomeCitationsNearCompletion.tsx` (prop `NearCompletionTile`),
+  `LeaderboardBlock.tsx` (prop de la row — couvre 419/502/544 par 1 seul typage),
+  `MediaPage.tsx` (`buildSessionGroups` + `buildGroups`). Tous les call-sites source
+  tirent du store `appShellStore.locale` (déjà `'fr' | 'en'`) → typecheck sans cast.
+- [x] V1b — VF-2 : `queryKeys.mediaMatchCandidates` — signature élargie à
+  `filePath: string | null` (variante « clé STABLE »). Pour un `filePath` non-null la clé
+  reste byte-identique (rien inséré/retiré) ; le null n'est jamais fetché (`enabled:!!filePath`).
+  Commentaire ajouté dans keys.ts.
+- [x] V1c — VF-2 : `/// <reference types="node" />` en 1re ligne de
+  `calendar.guard.test.ts` et `keys.guard.test.ts` (DC-2). EFFET DE BORD constaté (→ Découvertes,
+  traité car bloquant le gate) : la directive tire `@types/node` dans TOUT le programme tsc
+  (elle n'est PAS file-scopée), ce qui bascule `setTimeout` sur la surcharge Node dans
+  `CoverFlowModal.tsx:492` (retour `Timeout` ≠ `number`). Corrigé en 1 ligne (`window.setTimeout`
+  → `setTimeout`, runtime identique navigateur) + commentaire. Typecheck = 0 (cache purgé).
+- [x] V1d — Piège `tsc -b` incrémental documenté dans `delivery-checklist` §2 Frontend
+  (purge `node_modules\.tmp` avant conclusion, symétrique du `-p 1` §1) + critère go/no-go.
+- [x] V1e — VF-16 : baseline rebaselinée SUR PIÈCES. Le log CI a été mal diagnostiqué au
+  départ (« déplacements lot K ») : sur les 537 tests top-level absents, 427 sont des
+  RELOCATIONS lot K (func existe encore, ex. `TestGetLUSRChain`→`internal/sync/skill`) et
+  110 sont des SUPPRESSIONS légitimes documentées — chacune tracée à son commit
+  (`8daee9fed` G2 home legacy ×48, `d4343dce4` D1b ×20, `25f9c3581` G5 media-notif ×11,
+  `bb1ba3422` G3 session-compare ×9, `75e57c6e4` L4 ContractValidate ×8, kda/E8/F3/D1e/S…).
+  0 disparition orpheline, 0 fail dans la capture courante, 0 package perdu (sauf
+  `internal/api/gen` supprimé en G1 + `cmd/get-token` sans tests). Rebaseline = retrait
+  SUBTRACTIF pur des 688 pairs absentes (diff = 5546 lignes, 0 insertion, LF préservé,
+  aucun sous-test Windows-only réintroduit). Gate rejoué localement (extraction exacte du
+  script vs capture courante) : 0 missing → exit 0.
+- [x] V1f — `delivery-checklist` §0 : item « vérifier les runs CI de la branche
+  (`gh run list --branch`) avant de déclarer un lot clos » ajouté (leçon VF-16).
 
 Gate V1 : `Remove-Item -Recurse -Force node_modules\.tmp ; npm run typecheck` → exit 0 ;
 `npm run lint` → 0 erreur ; `npm run test` (hors sandbox) → vert ; **run CI complet VERT
@@ -388,4 +398,13 @@ Séquence OBLIGATOIRE, dans l'ordre :
 
 ## Découvertes hors périmètre (à remplir pendant l'exécution — NE PAS traiter)
 
-- (vide au démarrage)
+- **[V1 — TRAITÉE car bloquait le gate] DC-2 a un effet de bord non anticipé.** Une
+  directive `/// <reference types="node" />` dans un fichier inclus au programme tsc
+  N'EST PAS file-scopée : elle tire `@types/node` dans TOUT le programme (`tsconfig.app.json`
+  `include: ["src"]` couvre les `.guard.test.ts`). Conséquence : `setTimeout`/`ReturnType<typeof setTimeout>`
+  bascule sur la surcharge Node (`Timeout`) pour tout le code, cassant `CoverFlowModal.tsx:492`
+  (`window.setTimeout` → `number`). L'intention de DC-2 (« ne pas exposer les globals Node
+  au code navigateur ») est partiellement contredite par le mécanisme choisi. Corrigé a
+  minima dans le périmètre (1 ligne CoverFlowModal + commentaire) pour débloquer le gate.
+  Piste future (hors lot) si on veut vraiment isoler node : sortir les 2 guard-tests dans
+  un projet tsconfig séparé, ou remplacer la directive par un typage local de `process`/`node:*`.

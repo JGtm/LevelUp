@@ -1,3 +1,57 @@
+## [2026-07-06] Clôture LOT V1 — gate front réparé + CI baseline Go rebaselinée
+
+**Statut** : Complété.
+
+**Décision technique principale** : (1) Front (VF-2) — les 6 TS2345 `ManifestLocale`
+corrigées À LA SOURCE (DC-3, 0 cast) en remontant le type `string`→`ManifestLocale` sur
+les props/paramètres `locale`, dont l'origine est toujours `appShellStore.locale`
+(déjà `'fr' | 'en'`) : SessionMultiSelect, HomeCitationsNearCompletion, LeaderboardBlock
+(1 typage de row couvre 419/502/544), MediaPage (buildSessionGroups+buildGroups). La clé
+`queryKeys.mediaMatchCandidates` élargie à `string | null` (byte-shape stable pour non-null,
+V1b). Les 2 garde-rails node ont reçu `/// <reference types="node" />` (DC-2, V1c).
+(2) CI baseline (VF-16) — rebaseline SUR PIÈCES via retrait subtractif pur des 688 pairs
+`Package::Test` absentes ; chaque absence prouvée légitime (427 relocations lot K, func
+existe encore ; 110 suppressions tracées à leur commit G2/G3/G5/L4/D1b/…, 0 orpheline).
+
+**Résultats observés** : `tsc -b --force` (cache purgé) = 0 erreur ; `npm run lint` = 0
+erreur (68 warnings baseline) ; `npm run test` = 2071 passed / 14 skipped. Capture Go
+intégration locale (`-tags=integration -p 1`) = exit 0, 0 fail, 9711 tests, 0 package
+disparu. Gate baseline rejoué (extraction exacte du script vs capture) = 0 missing → exit 0.
+Effet de bord DC-2 : la directive `reference types=node` pollue TOUT le programme tsc
+(pas file-scopée) → `setTimeout` bascule surcharge Node, cassait CoverFlowModal:492 ;
+corrigé 1 ligne (`window.setTimeout`→`setTimeout`) — consigné en §Découvertes du plan.
+
+**Prochaine étape** : push branche `refactor/audits-2026-07`, attendre le run CI complet
+VERT (jobs Frontend type-check + Go Baseline Tests), puis LOT V2 (hook Prestige post-sync).
+
+## [2026-07-06] Monitoring admin — diagnostic complet + 2 plans (refonte / triage détections)
+
+**Statut** : Complété (livrables = diagnostic + 2 plans ; AUCUN code modifié).
+
+**Décision technique principale** : avant de refondre la page monitoring, poser le
+diagnostic structurel sur pièces : cartographie front (9 onglets, 14 GET + 9 POST admin)
++ back (expvar, détecteurs, crons) par 2 agents Explore, et relevé des détections
+réelles en local (logs JSON + requêtes data-quality identiques aux détecteurs via
+diag_q). Le « truc raté » identifié : (1) monitoring 100 % mémoire process — restart =
+amnésie, aucune persistance ni cycle de vie des détections (open/acked/muted/resolved)
+→ page qui liste du bruit sans hiérarchie, donc inutilisée ; (2) on monitore le process,
+pas le produit ni la machine (zéro fraîcheur des données, zéro disque/RSS/tailles DB/
+backup, zéro statut de crons secondaires, zéro feature-liveness — cf. hook Prestige mort
+vu seulement par audit) ; (3) bruit non traité à la source (~25k ERROR / ~63k WARN
+cumulés, dont l'essentiel historique — juillet ≈ 83 E / 730 W avec ~6 causes racines).
+
+**Résultats observés** : data-quality HI = 24 UUID bruts / 120 xuids orphelins /
+580 lying-bits events / 0 playlists orphelines ; H5 = 0 partout. 100 % des erreurs
+weapon_kills de juillet = pool auth (slots morts), pas le décodeur. VPS injoignable
+(SSH timeout + HTTP 000, réseau OK) pendant toute la session — consigné dans le plan B.
+
+**Conclusion / prochaine étape** : exécuter `.ai/PLAN_MONITORING_TRIAGE_DETECTIONS_2026-07.md`
+(branche fix/monitoring-triage-2026-07) PUIS `.ai/PLAN_MONITORING_REFONTE_2026-07.md`
+(branche feat/monitoring-refonte-2026-07, base post-clôture audits). Alerting externe
+reste hors périmètre (décision user).
+
+---
+
 ## [2026-07-06] Vérification finale de la campagne d'audits (session Fable dédiée)
 
 **Statut** : Complété (livrables = audit + plan de clôture ; AUCUNE correction de code appliquée).
