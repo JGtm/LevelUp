@@ -69,7 +69,7 @@ func (s *Service) templateRepo() *duckdbRepo {
 
 // duckdbRepo wrappe Metadata pour les queries templates (évite la dépendance
 // circulaire api ↔ duckdb : on requête directement plutôt que d'importer
-// platform/duckdb.NewPrestigeTemplateRepo qui exposerait le type complet).
+// platform/duckdb/prestige.NewPrestigeTemplateRepo qui exposerait le type complet).
 type duckdbRepo struct{ db *duckdb.DB }
 
 // Load construit le PlayerProfile minimal (V2-compat) avec LUSR + tier + MuTrend.

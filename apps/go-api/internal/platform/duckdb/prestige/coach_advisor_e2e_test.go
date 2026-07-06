@@ -10,7 +10,7 @@
 //
 // Utilise un stub BaselineProvider pour éviter de seeder shared_matches_v2.
 
-package duckdb
+package prestige
 
 import (
 	"context"
@@ -20,6 +20,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 	"levelup/go-api/internal/progression/coach_advisor"
 )
@@ -43,13 +44,13 @@ func (p *stubBaselineProvider) PopulationPercentile(_ context.Context, _, _ stri
 
 // e2eEnv regroupe tous les artefacts construits pour un test E2E.
 type e2eEnv struct {
-	playerDB     *DB
-	metadataDB   *DB
-	sharedDB     *DB
+	playerDB     *duckdb.DB
+	metadataDB   *duckdb.DB
+	sharedDB     *duckdb.DB
 	templateRepo *PrestigeTemplateRepo
 	prestigeSvc  prestige.Service
 	advisorSvc   coach_advisor.Service
-	proposalRepo *CoachProposalRepo
+	proposalRepo *duckdb.CoachProposalRepo
 }
 
 // newE2EEnv construit le full stack : 3 DBs migrées, prestige.Service réel,
@@ -91,7 +92,7 @@ func newE2EEnv(t *testing.T) *e2eEnv {
 		BaselineProvider: &stubBaselineProvider{matches: baselineMatches},
 	})
 
-	proposalRepo := NewCoachProposalRepo(playerDB)
+	proposalRepo := duckdb.NewCoachProposalRepo(playerDB)
 	// Grammar inline minimale pour les tests
 	grammar := coach_advisor.DefaultSynthesisGrammar()
 	synth := coach_advisor.NewSynthesizer(grammar, coach_advisor.DefaultSynthesisConfig())

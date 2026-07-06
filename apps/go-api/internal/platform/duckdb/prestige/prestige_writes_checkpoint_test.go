@@ -1,6 +1,6 @@
 //go:build cgo
 
-// Package duckdb_test — prestige_writes_checkpoint_test.go (ADR 0022).
+// Package prestige — prestige_writes_checkpoint_test.go (ADR 0022).
 //
 // Valide que les mutations Prestige sur shared_social (events/user_prestige,
 // squad/squad_member, squad_challenge/participant) flushent le WAL via le
@@ -9,14 +9,17 @@
 //
 // Oracle = taille du fichier .wal (un CHECKPOINT le tronque ; un write non
 // flushé le laisse >0 et serait perdu à la quarantaine d'un WAL orphelin #7659).
-// Réutilise walSize() de notifications_writes_checkpoint_test.go (même package).
+// walSize() est dupliqué en pied de fichier : depuis l'extraction du sous-package
+// prestige (K3a) ce test ne partage plus le package de test de duckdb-root où vit
+// l'original (notifications_writes_checkpoint_test.go).
 //
 // Noms `TestSet...PersistsAfter` → matchent la regex du gate CI.
-package duckdb_test
+package prestige
 
 import (
 	"context"
 	"database/sql"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -27,6 +30,21 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 )
+
+// walSize retourne la taille du fichier .wal (0 si absent). Oracle de flush.
+// Dupliqué de notifications_writes_checkpoint_test.go (K3a — packages de test
+// disjoints après extraction du sous-package prestige).
+func walSize(t *testing.T, dbPath string) int64 {
+	t.Helper()
+	info, err := os.Stat(dbPath + ".wal")
+	if os.IsNotExist(err) {
+		return 0
+	}
+	if err != nil {
+		t.Fatalf("stat wal: %v", err)
+	}
+	return info.Size()
+}
 
 // newPrestigeSocialDB crée une shared_social.duckdb avec le schéma Prestige
 // complet (migrations réelles, donc squad_member rekeyé avec xuid) + un
@@ -61,7 +79,7 @@ func newPrestigeSocialDB(t *testing.T) *duckdb.DB {
 // UPSERT user_prestige) → WAL flushé (~0) par le CHECKPOINT du bump.
 func TestSetPrestigeEvent_PersistsAfterReopen(t *testing.T) {
 	db := newPrestigeSocialDB(t)
-	repo := duckdb.NewPrestigeSocialRepo(db)
+	repo := NewPrestigeSocialRepo(db)
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Second)
 
@@ -95,7 +113,7 @@ func TestPrestigeEmitEvent_Atomic_RollsBackOnBumpFailure(t *testing.T) {
 	if _, err := db.SQLDb().Exec("DROP VIEW user_prestige_latest"); err != nil {
 		t.Fatalf("drop user_prestige_latest: %v", err)
 	}
-	repo := duckdb.NewPrestigeSocialRepo(db)
+	repo := NewPrestigeSocialRepo(db)
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Second)
 
@@ -119,7 +137,7 @@ func TestPrestigeEmitEvent_Atomic_RollsBackOnBumpFailure(t *testing.T) {
 // TestSetPrestigeUserPrestige_PersistsAfterReopen : UpsertUserPrestige → WAL flushé.
 func TestSetPrestigeUserPrestige_PersistsAfterReopen(t *testing.T) {
 	db := newPrestigeSocialDB(t)
-	repo := duckdb.NewPrestigeSocialRepo(db)
+	repo := NewPrestigeSocialRepo(db)
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Second)
 
@@ -137,7 +155,7 @@ func TestSetPrestigeUserPrestige_PersistsAfterReopen(t *testing.T) {
 // → WAL flushé après chaque mutation.
 func TestSetPrestigeSquad_PersistsAfterReopen(t *testing.T) {
 	db := newPrestigeSocialDB(t)
-	repo := duckdb.NewPrestigeSquadRepo(db)
+	repo := NewPrestigeSquadRepo(db)
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Second)
 
@@ -165,7 +183,7 @@ func TestSetPrestigeSquad_PersistsAfterReopen(t *testing.T) {
 // AddParticipant + UpdateParticipantProgress → WAL flushé.
 func TestSetPrestigeSquadChallenge_PersistsAfterReopen(t *testing.T) {
 	db := newPrestigeSocialDB(t)
-	repo := duckdb.NewPrestigeSquadChallengeRepo(db)
+	repo := NewPrestigeSquadChallengeRepo(db)
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Second)
 

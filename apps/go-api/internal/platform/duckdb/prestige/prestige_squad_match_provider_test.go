@@ -1,4 +1,4 @@
-package duckdb
+package prestige
 
 import "testing"
 

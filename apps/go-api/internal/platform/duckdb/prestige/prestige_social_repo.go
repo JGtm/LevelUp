@@ -2,7 +2,7 @@
 //
 // Implémente prestige.PrestigeRepo, prestige.SquadRepo, prestige.SquadChallengeRepo.
 
-package duckdb
+package prestige
 
 import (
 	"context"
@@ -12,15 +12,16 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 )
 
 // ─────────── PrestigeRepo ───────────
 
 // PrestigeSocialRepo implémente prestige.PrestigeRepo.
-type PrestigeSocialRepo struct{ db *DB }
+type PrestigeSocialRepo struct{ db *duckdb.DB }
 
-func NewPrestigeSocialRepo(db *DB) *PrestigeSocialRepo { return &PrestigeSocialRepo{db: db} }
+func NewPrestigeSocialRepo(db *duckdb.DB) *PrestigeSocialRepo { return &PrestigeSocialRepo{db: db} }
 
 var _ prestige.PrestigeRepo = (*PrestigeSocialRepo)(nil)
 
@@ -34,11 +35,11 @@ var _ prestige.PrestigeRepo = (*PrestigeSocialRepo)(nil)
 // #7659 quarantine un WAL orphelin au restart — même classe de bug que les
 // mutations notifications (ADR 0022). CHECKPOINT non-fatal : la donnée est déjà
 // commit, le scheduler 5 min fera fallback.
-func execCheckpointed(ctx context.Context, db *DB, query string, args ...any) error {
+func execCheckpointed(ctx context.Context, db *duckdb.DB, query string, args ...any) error {
 	if _, err := db.ExecRecovered(ctx, query, args...); err != nil {
 		return err
 	}
-	_ = CheckpointSharedSocial(ctx, db)
+	_ = duckdb.CheckpointSharedSocial(ctx, db)
 	return nil
 }
 
@@ -61,8 +62,8 @@ func (r *PrestigeSocialRepo) EmitEvent(ctx context.Context, ev prestige.Prestige
 		if _, e := tx.ExecContext(ctx, `
 			INSERT INTO prestige_events (id, user_id, title_slug, source_type, source_id, pp_amount, tier, created_at)
 			VALUES (?,?,?,?,?,?,?,?)
-		`, ev.ID, ev.UserID, ev.TitleSlug, ev.SourceType, nullableStr(ev.SourceID),
-			ev.PPAmount, nullableStr(string(ev.Tier)), ev.CreatedAt); e != nil {
+		`, ev.ID, ev.UserID, ev.TitleSlug, ev.SourceType, duckdb.NullableStr(ev.SourceID),
+			ev.PPAmount, duckdb.NullableStr(string(ev.Tier)), ev.CreatedAt); e != nil {
 			_ = tx.Rollback()
 			return e
 		}
@@ -83,7 +84,7 @@ func (r *PrestigeSocialRepo) EmitEvent(ctx context.Context, ev prestige.Prestige
 	if err != nil {
 		return fmt.Errorf("PrestigeRepo.EmitEvent: %w", err)
 	}
-	_ = CheckpointSharedSocial(ctx, r.db)
+	_ = duckdb.CheckpointSharedSocial(ctx, r.db)
 	return nil
 }
 
@@ -210,9 +211,9 @@ func (r *PrestigeSocialRepo) GetLeaderboard(
 // ─────────── SquadRepo ───────────
 
 // PrestigeSquadRepo implémente prestige.SquadRepo.
-type PrestigeSquadRepo struct{ db *DB }
+type PrestigeSquadRepo struct{ db *duckdb.DB }
 
-func NewPrestigeSquadRepo(db *DB) *PrestigeSquadRepo { return &PrestigeSquadRepo{db: db} }
+func NewPrestigeSquadRepo(db *duckdb.DB) *PrestigeSquadRepo { return &PrestigeSquadRepo{db: db} }
 
 var _ prestige.SquadRepo = (*PrestigeSquadRepo)(nil)
 
@@ -252,7 +253,7 @@ func (r *PrestigeSquadRepo) AddMember(ctx context.Context, m prestige.SquadMembe
 	return execCheckpointed(ctx, r.db,
 		`INSERT INTO squad_member_history (squad_id, xuid, user_id, gamertag, is_member, joined_at)
 		 VALUES (?, ?, ?, ?, TRUE, ?)`,
-		m.SquadID, m.Xuid, m.UserID, nullableStr(m.Gamertag), m.JoinedAt)
+		m.SquadID, m.Xuid, m.UserID, duckdb.NullableStr(m.Gamertag), m.JoinedAt)
 }
 
 func (r *PrestigeSquadRepo) RemoveMember(ctx context.Context, squadID, xuid string) error {
@@ -313,9 +314,9 @@ func (r *PrestigeSquadRepo) ListSquadsForUser(ctx context.Context, userID string
 // ─────────── SquadChallengeRepo ───────────
 
 // PrestigeSquadChallengeRepo implémente prestige.SquadChallengeRepo.
-type PrestigeSquadChallengeRepo struct{ db *DB }
+type PrestigeSquadChallengeRepo struct{ db *duckdb.DB }
 
-func NewPrestigeSquadChallengeRepo(db *DB) *PrestigeSquadChallengeRepo {
+func NewPrestigeSquadChallengeRepo(db *duckdb.DB) *PrestigeSquadChallengeRepo {
 	return &PrestigeSquadChallengeRepo{db: db}
 }
 
@@ -329,7 +330,7 @@ func (r *PrestigeSquadChallengeRepo) Create(ctx context.Context, sc prestige.Squ
 			id, squad_id, template_id, title_slug, mode, eval_type,
 			window_type, window_value, target_per_member, expires_at, created_by, created_at
 		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-	`, sc.ID, sc.SquadID, nullableStr(sc.TemplateID), sc.TitleSlug,
+	`, sc.ID, sc.SquadID, duckdb.NullableStr(sc.TemplateID), sc.TitleSlug,
 		string(sc.Mode), string(sc.EvalType),
 		string(sc.WindowType), sc.WindowValue, sc.TargetPerMember,
 		sc.ExpiresAt, sc.CreatedBy, sc.CreatedAt)
@@ -403,7 +404,7 @@ func (r *PrestigeSquadChallengeRepo) AddParticipant(ctx context.Context, p prest
 			SELECT 1 FROM squad_challenge_participant_latest
 			WHERE squad_challenge_id = ? AND user_id = ?
 		)
-	`, p.SquadChallengeID, p.UserID, nullableStr(string(p.ChosenTier)), string(p.DataTier),
+	`, p.SquadChallengeID, p.UserID, duckdb.NullableStr(string(p.ChosenTier)), string(p.DataTier),
 		p.CurrentValue, p.CompletedAt, p.IsPrivate, p.JoinedAt,
 		p.SquadChallengeID, p.UserID)
 }

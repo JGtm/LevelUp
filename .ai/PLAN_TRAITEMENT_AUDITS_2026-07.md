@@ -1288,8 +1288,34 @@ K2 — God functions à risque (tâche dédiée, passer la grille plan-review av
   build+vet 0, tests match_view verts.
 
 K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
-- [ ] K3a — ARCHI 17 : platform/duckdb (143 fichiers) → extraction par domaine, commencer
+- [~] K3a — ARCHI 17 : platform/duckdb (143 fichiers) → extraction par domaine, commencer
   par prestige ; `halo5_*.go` → games/halo_5 ou duckdb/halo5.
+  **prestige EXTRAIT (2026-07-06) ✅** : le domaine Prestige (6 fichiers prod
+  `prestige_{baseline_provider,metadata_repo,player_helpers,player_repo,social_repo,squad_match_provider}.go`
+  + 6 fichiers de test) → `internal/platform/duckdb/prestige` (package `prestige`). C'est le
+  cas **inverse** de K3c : le cluster prestige USE le cœur duckdb (DB, SharedReader) au lieu
+  d'être utilisé par lui → pas de ré-export possible (créerait un cycle parent→cluster→parent).
+  Recette appliquée :
+  (1) helpers SQL génériques `RowScanner`/`NullableStr` (vivaient dans prestige_player_helpers.go
+  mais partagés par les repos duckdb-root) remontés + EXPORTÉS dans `sql_scan_helpers.go` (cœur) ;
+  (2) les usages prestige des symboles cœur QUALIFIÉS (`duckdb.DB`, `duckdb.CheckpointSharedSocial`,
+  `duckdb.StartTimeCanonicalSQL`, `duckdb.OpenReadWrite`…) ; const cross-package `rivalsOrderColDeaths`
+  remplacé par un `metricColDeaths` local (découplage) ;
+  (3) seul caller externe `api/prestige_setup.go` requalifié via alias `prestigedb` (collision de
+  nom avec le domaine `internal/prestige`, résolue par l'alias — un `package prestige` peut importer
+  un autre `package prestige` car son propre nom n'est pas dans son scope de fichier) ;
+  (4) tests : les tests white-box (repos, arc_titles, loader, squad_match, coach_advisor_e2e,
+  writes_checkpoint) DÉPLACÉS dans le sous-package (accès aux internals) ; le helper de test
+  GÉNÉRIQUE `setupPrestigeDB` (utilisé par 6 tests duckdb-root : coach_proposal/milestones/records/
+  streaks) RESTAURÉ côté cœur (2 copies à travers la scission — pattern K3c, un helper `_test.go`
+  n'est pas exportable) ; `walSize` idem ; `TestMain` de câblage du provider de migrations
+  title-owned (`SetTitleStepsProvider`) répliqué dans le sous-package (sinon `RunForDB` ne crée
+  pas `squad_challenge`) ; split de `axis_metric_helpers_test.go` (mapMetricToColumn→prestige,
+  axisValueExpression reste) ; ratchet `no_attach_on_social_test.go` : clé d'allowlist
+  `prestige_social_repo.go` → `prestige/prestige_social_repo.go` ; `repoRoot` du loader : +1 niveau
+  (`..`×6). Gates : `go build/vet ./...` 0, `go test -tags=integration -p 1` duckdb 81s + prestige
+  18s VERTS, archlint OK. **Reste K3a** : relocalisation `halo5_*.go` + poursuite d'autres domaines
+  (le package reste > 100 fichiers).
 - [ ] K3b — ARCHI 18 : service/ (127 fichiers) → sous-packages par feature, commencer par
   teammates (13 fichiers) ; archlint interdit les imports croisés entre features.
 - [~] K3c — ARCHI 19 : sync/ (111 fichiers) → extraire sync/skill/ (17) et sync/snapshot/

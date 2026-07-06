@@ -3,7 +3,7 @@
 // Tests d'intégration des repos Prestige (Phase 2).
 // Vérifie le round-trip insert/get sur stats.duckdb, shared_social.duckdb, metadata.duckdb.
 
-package duckdb
+package prestige
 
 import (
 	"context"
@@ -17,13 +17,14 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 )
 
 // setupPrestigeDB ouvre une DB temp et applique les migrations du target.
 //
-// Retourne un *DB du package duckdb (avec pool) prêt pour les repos.
-func setupPrestigeDB(t *testing.T, target migration.TargetDB) *DB {
+// Retourne un *duckdb.DB du package duckdb-root (avec pool) prêt pour les repos.
+func setupPrestigeDB(t *testing.T, target migration.TargetDB) *duckdb.DB {
 	t.Helper()
 	dir := t.TempDir()
 	path := filepath.Join(dir, string(target)+".duckdb")
@@ -40,7 +41,7 @@ func setupPrestigeDB(t *testing.T, target migration.TargetDB) *DB {
 	raw.Close()
 
 	// Ouvrir via le wrapper duckdb.OpenReadWrite (cache + pool).
-	db, err := OpenReadWrite(path)
+	db, err := duckdb.OpenReadWrite(path)
 	if err != nil {
 		t.Fatalf("OpenReadWrite: %v", err)
 	}
@@ -193,7 +194,7 @@ func TestPrestigeChallengeRepo_List_FilterByMetric(t *testing.T) {
 	}
 }
 
-func seedArcWithChallenges(t *testing.T, db *DB, arcID string, challengeIDs ...string) (*PrestigeChallengeRepo, *PrestigeArcRepo) {
+func seedArcWithChallenges(t *testing.T, db *duckdb.DB, arcID string, challengeIDs ...string) (*PrestigeChallengeRepo, *PrestigeArcRepo) {
 	t.Helper()
 	chRepo := NewPrestigeChallengeRepo(db)
 	arcRepo := NewPrestigeArcRepo(db)

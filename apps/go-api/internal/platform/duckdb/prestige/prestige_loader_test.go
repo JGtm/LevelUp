@@ -3,7 +3,7 @@
 // Tests d'intégration du loader TOML Prestige — placés dans le package duckdb
 // pour éviter le cycle d'import (prestige importerait duckdb).
 
-package duckdb
+package prestige
 
 import (
 	"context"
@@ -75,10 +75,11 @@ func TestLoadPresetArcsFromTOML_HaloInfinite(t *testing.T) {
 	}
 }
 
-// repoRoot remonte 4 niveaux depuis apps/go-api/internal/platform/duckdb/
+// repoRoot remonte de apps/go-api/internal/platform/duckdb/prestige/ jusqu'à la
+// racine du repo (6 niveaux — un de plus depuis l'extraction du sous-package K3a).
 func repoRoot(t *testing.T) string {
 	t.Helper()
-	abs, err := filepath.Abs(filepath.Join("..", "..", "..", "..", ".."))
+	abs, err := filepath.Abs(filepath.Join("..", "..", "..", "..", "..", ".."))
 	if err != nil {
 		t.Fatalf("abs: %v", err)
 	}

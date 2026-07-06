@@ -22,6 +22,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	prestigedb "levelup/go-api/internal/platform/duckdb/prestige"
 	"levelup/go-api/internal/prestige"
 )
 
@@ -37,11 +38,11 @@ type PrestigeBundle struct {
 	tuning         prestige.Tuning
 	sharedSocialDB *platform_duckdb.DB
 	metadataDB     *platform_duckdb.DB
-	socialRepo     *platform_duckdb.PrestigeSocialRepo
-	squadRepo      *platform_duckdb.PrestigeSquadRepo
-	squadChallRepo *platform_duckdb.PrestigeSquadChallengeRepo
-	templateRepo   *platform_duckdb.PrestigeTemplateRepo
-	presetArcRepo  *platform_duckdb.PrestigePresetArcRepo
+	socialRepo     *prestigedb.PrestigeSocialRepo
+	squadRepo      *prestigedb.PrestigeSquadRepo
+	squadChallRepo *prestigedb.PrestigeSquadChallengeRepo
+	templateRepo   *prestigedb.PrestigeTemplateRepo
+	presetArcRepo  *prestigedb.PrestigePresetArcRepo
 	resolve        PlayerResolver
 	squadProfile   prestige.SquadProfileProvider
 	mu             sync.Mutex
@@ -79,11 +80,11 @@ func NewPrestigeBundle(repoRoot string, resolve PlayerResolver, enabled bool) (*
 		tuning:         tuning,
 		sharedSocialDB: sharedSocialDB,
 		metadataDB:     metadataDB,
-		socialRepo:     platform_duckdb.NewPrestigeSocialRepo(sharedSocialDB),
-		squadRepo:      platform_duckdb.NewPrestigeSquadRepo(sharedSocialDB),
-		squadChallRepo: platform_duckdb.NewPrestigeSquadChallengeRepo(sharedSocialDB),
-		templateRepo:   platform_duckdb.NewPrestigeTemplateRepo(metadataDB),
-		presetArcRepo:  platform_duckdb.NewPrestigePresetArcRepo(metadataDB),
+		socialRepo:     prestigedb.NewPrestigeSocialRepo(sharedSocialDB),
+		squadRepo:      prestigedb.NewPrestigeSquadRepo(sharedSocialDB),
+		squadChallRepo: prestigedb.NewPrestigeSquadChallengeRepo(sharedSocialDB),
+		templateRepo:   prestigedb.NewPrestigeTemplateRepo(metadataDB),
+		presetArcRepo:  prestigedb.NewPrestigePresetArcRepo(metadataDB),
 		resolve:        resolve,
 	}
 
@@ -161,18 +162,18 @@ func (b *PrestigeBundle) serviceAndPlayerDB(ctx context.Context, playerSlug stri
 
 	deps := prestige.Deps{
 		Tuning:           b.tuning,
-		Challenges:       platform_duckdb.NewPrestigeChallengeRepo(pdb.Player),
-		Arcs:             platform_duckdb.NewPrestigeArcRepo(pdb.Player),
-		Moments:          platform_duckdb.NewPrestigeMomentCardRepo(pdb.Player),
+		Challenges:       prestigedb.NewPrestigeChallengeRepo(pdb.Player),
+		Arcs:             prestigedb.NewPrestigeArcRepo(pdb.Player),
+		Moments:          prestigedb.NewPrestigeMomentCardRepo(pdb.Player),
 		Prestige:         b.socialRepo,
-		Telemetry:        platform_duckdb.NewPrestigeTelemetryRepo(pdb.Player),
-		BaselineState:    platform_duckdb.NewPrestigeBaselineStateRepo(pdb.Player),
+		Telemetry:        prestigedb.NewPrestigeTelemetryRepo(pdb.Player),
+		BaselineState:    prestigedb.NewPrestigeBaselineStateRepo(pdb.Player),
 		Templates:        b.templateRepo,
 		PresetArcs:       b.presetArcRepo,
 		SquadChallenges:  b.squadChallRepo,
 		Squads:           b.squadRepo,
-		BaselineProvider: platform_duckdb.NewHaloBaselineProvider(pdb.SharedReadDB()),
-		SquadMatches:     platform_duckdb.NewPrestigeSquadMatchProvider(pdb.SharedReadDB()),
+		BaselineProvider: prestigedb.NewHaloBaselineProvider(pdb.SharedReadDB()),
+		SquadMatches:     prestigedb.NewPrestigeSquadMatchProvider(pdb.SharedReadDB()),
 		SquadProfile:     b.squadProfile,
 	}
 	return pdb, prestige.NewService(deps), nil

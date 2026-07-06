@@ -299,7 +299,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/platform/duckdb/social_persister_iface.go":                                "interface SocialPersister consommée",
 	"internal/platform/duckdb/notifications_repo.go":                                    "notifications repo (lit shared_social)",
 	"internal/platform/duckdb/records_repo.go":                                          "records repo (lit shared_social)",
-	"internal/platform/duckdb/prestige_social_repo.go":                                  "prestige social repo",
+	"internal/platform/duckdb/prestige/prestige_social_repo.go":                         "prestige social repo",
 	"internal/platform/duckdb/progression_diag_repo.go":                                 "progression diag repo",
 	"internal/platform/duckdb/home_repo_matches.go":                                     "home recent media (lit shared_social via SharedSocial)",
 	"internal/platform/duckdb/match_view_repo_extras.go":                                "match view media (lit shared_social)",

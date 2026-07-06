@@ -121,7 +121,7 @@ func (r *PersonalRecordsRepo) Upsert(ctx context.Context, pr records.PersonalRec
 		) VALUES (?,?,?,?,?,?,?,?, CURRENT_TIMESTAMP)
 	`,
 		pr.XUID, pr.Metric, period, pr.Value,
-		nullableTime(pr.AchievedAt), nullableStr(pr.AchievedMatchID),
+		nullableTime(pr.AchievedAt), NullableStr(pr.AchievedMatchID),
 		nullableFloat(pr.PreviousValue), nullableTime(pr.PreviousAchievedAt),
 	); err != nil {
 		return fmt.Errorf("PersonalRecordsRepo.Upsert: %w", err)
@@ -157,7 +157,7 @@ func (r *PersonalRecordsRepo) ListByXUID(ctx context.Context, xuid string) ([]re
 }
 
 // scanPersonalRecord parse une ligne de player_records en records.PersonalRecord.
-func scanPersonalRecord(row rowScanner) (records.PersonalRecord, error) {
+func scanPersonalRecord(row RowScanner) (records.PersonalRecord, error) {
 	var (
 		pr              records.PersonalRecord
 		periodStr       string

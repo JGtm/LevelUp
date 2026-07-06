@@ -2,7 +2,7 @@
 //
 // Implémente prestige.TemplateRepo et prestige.PresetArcRepo.
 
-package duckdb
+package prestige
 
 import (
 	"context"
@@ -12,15 +12,18 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 )
 
 // ─────────── TemplateRepo ───────────
 
 // PrestigeTemplateRepo implémente prestige.TemplateRepo.
-type PrestigeTemplateRepo struct{ db *DB }
+type PrestigeTemplateRepo struct{ db *duckdb.DB }
 
-func NewPrestigeTemplateRepo(db *DB) *PrestigeTemplateRepo { return &PrestigeTemplateRepo{db: db} }
+func NewPrestigeTemplateRepo(db *duckdb.DB) *PrestigeTemplateRepo {
+	return &PrestigeTemplateRepo{db: db}
+}
 
 var _ prestige.TemplateRepo = (*PrestigeTemplateRepo)(nil)
 
@@ -100,7 +103,7 @@ func (r *PrestigeTemplateRepo) Replace(ctx context.Context, titleSlug string, te
 	defer cancel()
 
 	// UPSERT par ligne — jamais de DELETE/TRUNCATE pour éviter le bug ART index DuckDB
-	// ("Failed to delete all rows from index"). Les rows retirées du TOML restent en DB
+	// ("Failed to delete all rows from index"). Les rows retirées du TOML restent en duckdb.DB
 	// (acceptable : les templates ne sont jamais supprimés, seulement ajoutés/modifiés).
 	for _, t := range templates {
 		lusrJSON, err := encodeStringList(t.LUSRComponents)
@@ -156,7 +159,7 @@ const templateSelectColumns = `
 	       schema_version, updated_at
 	FROM challenge_template`
 
-func scanTemplate(row rowScanner) (prestige.Template, error) {
+func scanTemplate(row duckdb.RowScanner) (prestige.Template, error) {
 	var t prestige.Template
 	var windowType, cadence, evalType string
 	var lusrJSON, radarJSON string
@@ -181,7 +184,7 @@ func scanTemplate(row rowScanner) (prestige.Template, error) {
 }
 
 // encodeStringList sérialise une liste pour stockage VARCHAR (CSV simple).
-// Liste vide → string vide (utilise NULL côté DB grâce au COALESCE en lecture).
+// Liste vide → string vide (utilise NULL côté duckdb.DB grâce au COALESCE en lecture).
 func encodeStringList(items []string) (string, error) {
 	if len(items) == 0 {
 		return "", nil
@@ -196,7 +199,7 @@ func encodeStringList(items []string) (string, error) {
 	return strings.Join(items, ","), nil
 }
 
-// decodeStringList parse le CSV stocké en DB. String vide → nil.
+// decodeStringList parse le CSV stocké en duckdb.DB. String vide → nil.
 func decodeStringList(s string) []string {
 	if s == "" {
 		return nil
@@ -207,9 +210,11 @@ func decodeStringList(s string) []string {
 // ─────────── PresetArcRepo ───────────
 
 // PrestigePresetArcRepo implémente prestige.PresetArcRepo.
-type PrestigePresetArcRepo struct{ db *DB }
+type PrestigePresetArcRepo struct{ db *duckdb.DB }
 
-func NewPrestigePresetArcRepo(db *DB) *PrestigePresetArcRepo { return &PrestigePresetArcRepo{db: db} }
+func NewPrestigePresetArcRepo(db *duckdb.DB) *PrestigePresetArcRepo {
+	return &PrestigePresetArcRepo{db: db}
+}
 
 var _ prestige.PresetArcRepo = (*PrestigePresetArcRepo)(nil)
 

@@ -4,7 +4,7 @@
 // invariant Create, lectures ArcTitles / ArcsByTitle, fallback pré-backfill.
 // Comportement strictement équivalent au mono-titre actuel
 // (PLAN_CROSS_TITLE_ARCS_BACKEND Phase 2).
-package duckdb
+package prestige
 
 import (
 	"context"
