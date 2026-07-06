@@ -1325,9 +1325,15 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
     `adapter_data_career.go` 287 L (méthodes carrière/historique) ; (3) `games/halo_5/adapter_data.go`
     641 → 379 L + `adapter_data_loaders.go` 277 L (carrière + chargement matchs) ; (4)
     `api/registry_pages.go` 851 → 294 L + `registry_pages_explorer.go` 323 + `registry_pages_home.go`
-    259 (factories Explorer / Home-MatchHistory-Squad). Gates : build+vet 0, tests package +
-    intégration api verts. **Piège noté** : goimports STRIP l'alias custom `sync_pkg` → import
-    ajouté à la main + `gofmt` seul (jamais goimports) sur les fichiers à alias non-inférable. **NOTE** : `sync/skill_v2_shadow.go` NON splittable en
+    259 (factories Explorer / Home-MatchHistory-Squad) ; (5) `platform/duckdb/persist_sink.go`
+    745 → 312 L + `persist_sink_items.go` 203 + `persist_sink_challenges.go` 259 (INSERT-only
+    ART-safe INCHANGÉ, ADR 0019). Gates : build+vet 0, tests package + intégration api verts ;
+    **persist_sink : intégration -p 1 duckdb anti-ART verte (100 s)** — logique persist intacte.
+    **Piège noté** : goimports STRIP l'alias custom `sync_pkg` → import ajouté à la main +
+    `gofmt` seul (jamais goimports) sur les fichiers à alias non-inférable.
+    **RESTE god-files (5)** : steps.go (migration, ordering), steps_player_base.go (migration),
+    db.go (docs longs interleaved, foundational), pool.go x3 fns (décomposition de fonctions),
+    prestige/service.go CreateChallenge — splits même-package OU exemption, suite mécanique. **NOTE** : `sync/skill_v2_shadow.go` NON splittable en
     place — le ratchet de gel K3c interdit un nouveau fichier racine sync/ (doit aller en
     sous-package, cf. K3c reste). RESTE (7) : steps.go (migration — ordering sensible),
     persist_sink.go (ART-critique), db.go, registry_pages.go, pool.go x3 fns, prestige/service.go
