@@ -78,6 +78,16 @@ func (c *crossGameCooccurrence) CooccurrencesByXUID(ctx context.Context, oppXUID
 // BEST-EFFORT : toute erreur (DB absente, lock, requête) → map vide + log debug.
 func (c *crossGameCooccurrence) countForTitle(ctx context.Context, slug string, oppXUIDs []string) map[string]int {
 	path := c.resolver.SharedDBPath(slug)
+	// J9 — sûreté de l'emprunt cross-titre : OpenReadForQuery EMPRUNTE la handle
+	// cachée si le titre visé est actif (son SharedProvider maintient refCount>=1
+	// → la handle reste vivante pendant la requête, une fermeture normale ne peut
+	// pas la libérer) ; sinon il OUVRE une handle RO dédiée (titre froid), fermée
+	// au release. Aucun use-after-free en fonctionnement normal. Le seul cas où la
+	// handle empruntée pourrait être fermée sous nos pieds est une PURGE délibérée
+	// concurrente de l'autre titre (EvictAndCloseCached, qui ignore le refCount PAR
+	// CONCEPTION) — un refcount sur l'emprunt ne l'empêcherait donc pas. Ce chemin
+	// best-effort dégrade proprement (badge omis) sur toute erreur, ce qui couvre
+	// ce cas rare sans risque de crash.
 	sqlDB, release, err := duckdb.OpenReadForQuery(path, c.timezone)
 	if err != nil {
 		slog.DebugContext(ctx, "cross-game: shared indisponible (badge omis pour ce titre)",
