@@ -1,3 +1,36 @@
+## [2026-07-06] LOT J (Performance DuckDB) — J3/J7 livrés, J2 complété, J4/J6 différés measure-first
+
+**Statut** : COMPLÉTÉ (partiel assumé). Vérification SUR PIÈCES d'abord (plan périmé) : J2 était
+déjà implémenté (bornes memory_limit/threads, 2026-07-05) malgré `[ ]` au plan ; un agent Explore
+a re-mappé toutes les cibles post-K (fichiers déplacés).
+
+**Livré ce tour** :
+- **J3** : `GetHistoryForAvgBulk` (IN + ROW_NUMBER PARTITION BY xuid) — la boucle amis du Match
+  View (~8 GetHistoryForAvg séquentiels) devient 1 requête. Test bulk==single par xuid (multiset,
+  car l'historique alimente des moyennes — ordre indifférent).
+- **J7** : CTE `perfect` de Q26 bornée via une CTE `base` (fenêtre 150). Clé : perfect ET la
+  requête principale bornées à `match_id IN base` → MÊME ensemble de matchs (zéro divergence sur
+  ex-aequo start_time), résultat identique PAR CONSTRUCTION. Test perfect_kills.
+- **J2** : cœur déjà livré ; ajout de l'exposition `duckdb_budgets` sous /debug/vars.
+- **J9** : revu — l'emprunt cross-titre est sûr en opération normale (provider maintient refCount≥1) ;
+  la purge délibérée ignore le refcount par conception → best-effort suffit. Contrat documenté.
+
+**Différé measure-first (VPS injoignable — 2 timeouts ssh 212.227.206.42:22)** :
+- **J4** (squad bulk) : N PETIT (1-4 coéquipiers sélectionnés) + refacto lourd 2-DB
+  correctness-sensible → gain modeste non mesuré, risque > bénéfice sans validation runtime.
+- **J6** (8 N+1) : tous arrière-plan (sync/backfill/catalog), petit-N, « ARCHI mineurs ».
+- **J5** : chantier K (cache invalidation, décision produit).
+
+**Décision technique clé** : measure-first n'est pas un prétexte à ne rien faire — j'ai livré les
+gains CLAIRS (J3 = plus gros N+1 user-facing ~8 ; J7 = identique par construction) avec tests
+correctness comme filet (les changements de forme de requête sont prouvés iso-résultat), et différé
+les optimisations petit-N/arrière-plan que je ne peux pas valider sous charge (VPS down). La branche
+ne se déploie pas automatiquement (revue user au merge) → sûr.
+
+**Résultats** : `go build ./...` + `go test ./...` + `go test -tags=integration -p 1 duckdb/` (121 s)
+VERTS. 6 commits J (J2/J3/J7/J9 + infra). **Prochaine étape** : J4/J6 en session dédiée avec mesures
+VPS quand joignable ; sinon lot d'audits 2026-07 clos hormis D2 (différé design) + J4/J5/J6 (measure-first).
+
 ## [2026-07-06] LOT S (Sécurité) — 9 items livrés + fallout K réparé
 
 **Statut** : COMPLÉTÉ. Objectif atteint : plus aucun endpoint mutant/révélateur d'identité
