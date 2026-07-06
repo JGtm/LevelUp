@@ -1077,9 +1077,15 @@ K1 — Extractions de couches (ROI d'abord) :
 - [ ] K1e — ARCHI 6 : `dataQualityHandles` (`registry_data_quality.go:33`) → lire via
   `cfg.SharedProvider` (pattern `acquireProgressionSharedRead`) — élimine le conflit avec
   les fenêtres RW du B-swap pour les 5+ runners admin.
-- [ ] K1f — CR A3 : extraire `service.BackfillOrchestrator` table-driven
-  (`{nom, gate, fn}`) du handler `handleStartBackfill` (368 L, `backfill.go:76-443`) ;
-  le handler ne garde que validation + 202.
+- [x] K1f — CR A3 (2026-07-06) : `service.BackfillOrchestrator` extrait
+  (`backfill_orchestrator.go`) ; `handleStartBackfill` réduit à validation (400/404/409) +
+  wiring SyncEngine + création job + 202 (~50 L, plus de nolint:funlen). Décomposé en
+  phases `Run`/`runCitationsComeback`/`runWeaponsEngagement`/`runEventsLusr`/`runCsrPerfPsa`/
+  `warnUnimplemented` (chacune ≤ 80 L). Extraction FIDÈLE (mêmes libellés d'étape, warnings,
+  résumé, ordre de phase — pas de refonte table-driven qui aurait risqué un écart de
+  comportement sur ce pipeline hétérogène). Tests `warnUnimplemented` migrés vers service
+  (package `service`). Gate : build+vet 0, tests handlers+service verts, intégration -p 1
+  (service+handlers) verte.
 - [ ] K1g — CR A2 + A1 (partie) : `loadTitleAssetDrawerData` + `loadCSRBadgeResolver`
   (`server.go:137-222`) → platform/duckdb (modèle `loadTitleRankImageURLs`) ; supprimer le
   double chargement metadata H5 au boot (`server.go:773` vs `:816`).
