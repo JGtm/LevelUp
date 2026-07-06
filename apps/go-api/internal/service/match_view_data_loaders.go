@@ -333,22 +333,47 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// que les matchs communs avec l'escouade → échantillon biaisé). Skip si l'API
 	// a déjà fourni les K/D (Infinite).
 	if curDurSec > 60 && len(friendsExtras) > 0 {
-		for i := range d.scoreboard {
+		// J3 : collecter les xuids amis éligibles, charger tout leur historique en
+		// UN seul appel (GetHistoryForAvgBulk) au lieu de ~8 GetHistoryForAvg
+		// séquentiels, puis réappliquer le même filtre d'éligibilité pour écrire
+		// l'expected K/D. Best-effort : bulk en échec → map vide → aucun expected
+		// (dégradation identique à la voie unitaire).
+		var needXUIDs []string
+		seen := make(map[string]bool)
+		eligible := func(i int) bool {
 			xuid := d.scoreboard[i].XUID
 			if xuid == s.xuid || d.scoreboard[i].KillsExpected != nil {
+				return false
+			}
+			_, tracked := friendsExtras[xuid]
+			return tracked
+		}
+		for i := range d.scoreboard {
+			if !eligible(i) {
 				continue
 			}
-			if _, tracked := friendsExtras[xuid]; !tracked {
-				continue
+			if xuid := d.scoreboard[i].XUID; !seen[xuid] {
+				seen[xuid] = true
+				needXUIDs = append(needXUIDs, xuid)
 			}
-			fh, err := s.repo.GetHistoryForAvg(ctx, xuid)
-			if err != nil || len(fh) == 0 {
-				continue
-			}
-			if ek, ed, ok := localExpectedKD(fh, meta, curDurSec); ok {
-				d.scoreboard[i].KillsExpected = ek
-				d.scoreboard[i].DeathsExpected = ed
-				d.scoreboard[i].LocallyEstimated = true
+		}
+		if len(needXUIDs) > 0 {
+			histByXUID, err := s.repo.GetHistoryForAvgBulk(ctx, needXUIDs)
+			if err == nil {
+				for i := range d.scoreboard {
+					if !eligible(i) {
+						continue
+					}
+					fh := histByXUID[d.scoreboard[i].XUID]
+					if len(fh) == 0 {
+						continue
+					}
+					if ek, ed, ok := localExpectedKD(fh, meta, curDurSec); ok {
+						d.scoreboard[i].KillsExpected = ek
+						d.scoreboard[i].DeathsExpected = ed
+						d.scoreboard[i].LocallyEstimated = true
+					}
+				}
 			}
 		}
 	}

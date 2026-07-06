@@ -275,6 +275,10 @@ type MatchViewRepository interface {
 	// des moyennes historiques K/D/A + spree/headshots/perfect (Q29).
 	GetHistoryForAvg(ctx context.Context, xuid string) ([]domain.MatchHistAvgRow, error)
 
+	// GetHistoryForAvgBulk : variante multi-xuid de GetHistoryForAvg (J3) — une
+	// seule requête pour tous les amis du scoreboard, résultat groupé par xuid.
+	GetHistoryForAvgBulk(ctx context.Context, xuids []string) (map[string][]domain.MatchHistAvgRow, error)
+
 	// GetPlayerAssistsModel retourne les coefs OLS expected_assists pour un mode.
 	// Retourne nil si le modèle n'existe pas (joueur sans DB locale ou < 15 matchs
 	// dans ce mode). Dégradation gracieuse vers le modèle populationnel.
@@ -473,6 +477,9 @@ func (n *noopMatchViewRepo) GetMatchBulkWeaponKills(_ context.Context, _ string)
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetHistoryForAvg(_ context.Context, _ string) ([]domain.MatchHistAvgRow, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetHistoryForAvgBulk(_ context.Context, _ []string) (map[string][]domain.MatchHistAvgRow, error) {
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetPlayerAssistsModel(_ context.Context, _ string) (*domain.PlayerAssistsModel, error) {
