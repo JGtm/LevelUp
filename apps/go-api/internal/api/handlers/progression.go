@@ -220,16 +220,23 @@ func (h *ProgressionHandler) handleMilestones(ctx context.Context, in *progPlaye
 	if err != nil {
 		return nil, err
 	}
+	items, err := h.milestoneDTOs(ctx, pdb, requestTitleSlug(ctx, h.titleSlug))
+	if err != nil {
+		return nil, err
+	}
+	return &milestonesHumaOutput{Body: milestonesResponse{Items: items}}, nil
+}
 
-	catalogRepo := duckdb.NewMilestoneCatalogRepo(pdb.Metadata)
-	catalog, err := catalogRepo.ListByTitle(ctx, requestTitleSlug(ctx, h.titleSlug))
+// milestoneDTOs charge le catalogue du titre + le statut Earned du joueur puis les JOINT
+// en DTOs. Extrait du handler (K1h) — la jointure catalog × earned n'est plus dans la
+// méthode HTTP. Erreurs mappées en humacore.NewError (5xx).
+func (h *ProgressionHandler) milestoneDTOs(ctx context.Context, pdb *duckdb.PlayerDB, titleSlug string) ([]milestoneDTO, error) {
+	catalog, err := duckdb.NewMilestoneCatalogRepo(pdb.Metadata).ListByTitle(ctx, titleSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "progression: list catalog", "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "list_catalog_error", err.Error())
 	}
-
-	earnedRepo := duckdb.NewMilestoneEarnedRepo(pdb.Player)
-	earnedList, err := earnedRepo.ListByUser(ctx, pdb.XUID, requestTitleSlug(ctx, h.titleSlug))
+	earnedList, err := duckdb.NewMilestoneEarnedRepo(pdb.Player).ListByUser(ctx, pdb.XUID, titleSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "progression: list earned", "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "list_earned_error", err.Error())
@@ -238,7 +245,6 @@ func (h *ProgressionHandler) handleMilestones(ctx context.Context, in *progPlaye
 	for _, e := range earnedList {
 		earnedByID[e.MilestoneID] = e.EarnedAt
 	}
-
 	items := make([]milestoneDTO, 0, len(catalog))
 	for _, c := range catalog {
 		dto := toMilestoneDTO(c)
@@ -249,7 +255,7 @@ func (h *ProgressionHandler) handleMilestones(ctx context.Context, in *progPlaye
 		}
 		items = append(items, dto)
 	}
-	return &milestonesHumaOutput{Body: milestonesResponse{Items: items}}, nil
+	return items, nil
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
