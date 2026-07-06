@@ -15,27 +15,15 @@ import (
 	"time"
 	"unicode"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
-// CareerRankData contient les données d'un snapshot de rang.
-// Portage de src/data/sync/models.py CareerRankData.
-type CareerRankData struct {
-	XUID             string
-	CurrentRank      int
-	CurrentRankName  string
-	CurrentRankTier  string
-	CurrentXP        int
-	XPForNextRank    int
-	XPTotal          int
-	IsMaxRank        bool
-	AdornmentPath    string
-	SpartanID        string
-	BannerImageURL   string
-	EmblemImageURL   string
-	BackdropImageURL string
-}
+// CareerRankData : alias vers domain.CareerRankSnapshot (type promu dans domain, K1k).
+// Les usages internes de sync (et duckdb/games/port) restent inchangés via l'alias ; le
+// type canonique vit dans domain pour que la couche service ne dépende plus de sync.
+type CareerRankData = domain.CareerRankSnapshot
 
 // syncCareerRank récupère la progression du rang carrière via le client Halo.
 // Si le token joueur est absent, la sync est sautée proprement (nil, nil).

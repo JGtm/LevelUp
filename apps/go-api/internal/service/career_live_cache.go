@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/sync/singleflight"
+	"levelup/go-api/internal/domain"
 
-	syncpkg "levelup/go-api/internal/sync"
+	"golang.org/x/sync/singleflight"
 )
 
 // Cadences par défaut. Surchageables via CareerLiveCacheConfig pour les tests.
@@ -26,12 +26,12 @@ const (
 )
 
 type careerProgressEntry struct {
-	data      *syncpkg.CareerRankData
+	data      *domain.CareerRankSnapshot
 	fetchedAt time.Time
 }
 
 type careerCustomEntry struct {
-	data      *syncpkg.SpartanCustomizationData
+	data      *domain.SpartanCustomizationData
 	fetchedAt time.Time
 }
 
@@ -89,7 +89,7 @@ func NewCareerLiveCache(cfg CareerLiveCacheConfig) *CareerLiveCache {
 }
 
 // GetProgress retourne le snapshot caché si frais, sinon (nil, false).
-func (c *CareerLiveCache) GetProgress(xuid string) (*syncpkg.CareerRankData, bool) {
+func (c *CareerLiveCache) GetProgress(xuid string) (*domain.CareerRankSnapshot, bool) {
 	c.muP.RLock()
 	entry, ok := c.progress[xuid]
 	c.muP.RUnlock()
@@ -103,14 +103,14 @@ func (c *CareerLiveCache) GetProgress(xuid string) (*syncpkg.CareerRankData, boo
 }
 
 // PutProgress mémorise le snapshot avec un timestamp égal à `now()`.
-func (c *CareerLiveCache) PutProgress(xuid string, data *syncpkg.CareerRankData) {
+func (c *CareerLiveCache) PutProgress(xuid string, data *domain.CareerRankSnapshot) {
 	c.muP.Lock()
 	c.progress[xuid] = careerProgressEntry{data: data, fetchedAt: c.now()}
 	c.muP.Unlock()
 }
 
 // GetCustomization retourne la customisation cachée si fraîche, sinon (nil, false).
-func (c *CareerLiveCache) GetCustomization(xuid string) (*syncpkg.SpartanCustomizationData, bool) {
+func (c *CareerLiveCache) GetCustomization(xuid string) (*domain.SpartanCustomizationData, bool) {
 	c.muC.RLock()
 	entry, ok := c.customs[xuid]
 	c.muC.RUnlock()
@@ -124,7 +124,7 @@ func (c *CareerLiveCache) GetCustomization(xuid string) (*syncpkg.SpartanCustomi
 }
 
 // PutCustomization mémorise la customisation avec un timestamp égal à `now()`.
-func (c *CareerLiveCache) PutCustomization(xuid string, data *syncpkg.SpartanCustomizationData) {
+func (c *CareerLiveCache) PutCustomization(xuid string, data *domain.SpartanCustomizationData) {
 	c.muC.Lock()
 	c.customs[xuid] = careerCustomEntry{data: data, fetchedAt: c.now()}
 	c.muC.Unlock()
@@ -133,7 +133,7 @@ func (c *CareerLiveCache) PutCustomization(xuid string, data *syncpkg.SpartanCus
 // DoProgress exécute fn une seule fois pour un xuid donné même en cas
 // d'appels concurrents (pattern singleflight). Les erreurs ne sont pas
 // cachées (chaque tentative suivante refait l'appel).
-func (c *CareerLiveCache) DoProgress(xuid string, fn func() (*syncpkg.CareerRankData, error)) (*syncpkg.CareerRankData, error) {
+func (c *CareerLiveCache) DoProgress(xuid string, fn func() (*domain.CareerRankSnapshot, error)) (*domain.CareerRankSnapshot, error) {
 	v, err, _ := c.sfProgress.Do(xuid, func() (interface{}, error) {
 		return fn()
 	})
@@ -143,13 +143,13 @@ func (c *CareerLiveCache) DoProgress(xuid string, fn func() (*syncpkg.CareerRank
 	if v == nil {
 		return nil, nil
 	}
-	return v.(*syncpkg.CareerRankData), nil
+	return v.(*domain.CareerRankSnapshot), nil
 }
 
 // DoCustomization exécute fn une seule fois pour un xuid donné même en cas
 // d'appels concurrents (pattern singleflight). Les erreurs ne sont pas
 // cachées.
-func (c *CareerLiveCache) DoCustomization(xuid string, fn func() (*syncpkg.SpartanCustomizationData, error)) (*syncpkg.SpartanCustomizationData, error) {
+func (c *CareerLiveCache) DoCustomization(xuid string, fn func() (*domain.SpartanCustomizationData, error)) (*domain.SpartanCustomizationData, error) {
 	v, err, _ := c.sfCustom.Do(xuid, func() (interface{}, error) {
 		return fn()
 	})
@@ -159,5 +159,5 @@ func (c *CareerLiveCache) DoCustomization(xuid string, fn func() (*syncpkg.Spart
 	if v == nil {
 		return nil, nil
 	}
-	return v.(*syncpkg.SpartanCustomizationData), nil
+	return v.(*domain.SpartanCustomizationData), nil
 }

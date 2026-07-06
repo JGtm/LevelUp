@@ -1140,9 +1140,15 @@ K1 — Extractions de couches (ROI d'abord) :
   `catalog_fetcher_service.go:73` + même dérive `openspartan_post_import_service.go:170`)
   → CatalogRepository (platform/duckdb) ou Persister dédié via port.* ; + gate titre sur
   le référentiel rankedplaylists dans le drain (`catalog_fetcher_service.go:197`, mineur).
-- [ ] K1k — ARCHI 10 : `career_live_fetcher.go:150` — factory client Halo injectée côté
-  registry ; promouvoir CareerRankData/SpartanCustomizationData en types domain/ (5
-  fichiers career_live_* cessent d'importer internal/sync). Débloque career-live H5.
+- [~] K1k — ARCHI 10 (2026-07-06) : **types promus dans domain** — `domain.CareerRankSnapshot`
+  (ex-`sync.CareerRankData`, renommé pour éviter la collision avec `domain.CareerRankData`
+  calculé) + `domain.SpartanCustomizationData` (`domain/career_live.go`). sync garde des
+  **alias** (`type CareerRankData = domain.CareerRankSnapshot`) → ses ~55 usages (+ duckdb/
+  games/port) INCHANGÉS. Les 5 fichiers `career_live_*` référencent les types domain ; **4/5
+  cessent d'importer internal/sync** (cache/merge/partial/service décoplés). Gate : build+vet
+  0, tests career-live (service+sync) verts. `[!]` RESTE : `career_live_fetcher.go` importe
+  encore sync pour la FACTORY (`sync.NewHaloAPIClient` + compile-check `*HaloAPIClient`) →
+  déplacer la factory côté registry (api) est le dernier pas du découplage (débloque H5).
 - [~] K1l — ARCHI 11 + 14 + mineurs chemins : TOUS les chemins via PathResolver :
   `openspartan_import_service.go:481` + `server.go:1344` (stash friends layout legacy),
   `server.go:290/651/1112` (data/cache — ajouter `CacheRootDir()` au resolver),

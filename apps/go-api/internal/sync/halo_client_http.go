@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/domain"
 )
 
 func (c *HaloAPIClient) downloadBlob(ctx context.Context, blobURL string) ([]byte, error) {
@@ -164,16 +166,10 @@ func (c *HaloAPIClient) backoff(ctx context.Context, attempt int, retryAfter tim
 	}
 }
 
-// SpartanCustomizationData contient les données d'identité visuelle Spartan
-// résolues depuis l'endpoint /customization?view=public (ServiceTag + images
-// banner/emblem/backdrop). Les URLs sont vides si le resolve GameCMS a échoué
-// (le front affiche un placeholder).
-type SpartanCustomizationData struct {
-	SpartanID        string
-	BannerImageURL   string
-	EmblemImageURL   string
-	BackdropImageURL string
-}
+// SpartanCustomizationData : alias vers domain.SpartanCustomizationData (promu K1k).
+// Identité visuelle Spartan (ServiceTag + images banner/emblem/backdrop) résolue depuis
+// /customization?view=public. Le type canonique vit dans domain (découplage service→sync).
+type SpartanCustomizationData = domain.SpartanCustomizationData
 
 // GetCareerProgress récupère uniquement la progression de rang carrière
 // (rang, XP courante, IsMaxRank) via l'API Economy player-gated.
