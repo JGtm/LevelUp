@@ -1132,9 +1132,13 @@ K1 — Extractions de couches (ROI d'abord) :
     service/media_index_service ×2, cmd_title. Garde-rail #6 :
     `archlint/no_players_root_join_test.go`. Build+vet+gate intégration
     (ops+scheduler+service+domain/title) verts.
-  - [!] Reste K1l (stash friends, `CacheRootDir()`, seed_demo, config.go double mécanisme,
-    garde-rail data-path global L2) : non fait ici — chemins hétérogènes nécessitant
-    chacun une décision de resolver (session chemins dédiée).
+  - [x] **`CacheRootDir()` FAIT (2026-07-06)** : `PathResolver.CacheRootDir()` ajouté,
+    `JobsCachePath` délègue dessus ; 3 sites `data/cache` de server.go (jobsPath, assetCfg
+    CacheRootDir, HelpHandler) migrés via `NewPathResolver(cfg.RepoRoot).CacheRootDir/JobsCachePath`.
+    Build+vet 0, test resolver vert.
+  - [!] Reste K1l (stash friends, seed_demo layout, config.go double mécanisme data/auth+sessions,
+    garde-rail data-path global L2) : non fait ici — chemins hétérogènes nécessitant chacun une
+    décision de resolver (session chemins dédiée).
 - [ ] K1m — ARCHI 12 [TRACKÉ] : exécuter le plan de l'allowlist media — extraire
   MediaRepository/MediaStore de `media_service.go:357` + `media_index_service.go`, vider
   l'allowlist de `no_duckdb_import_test.go`.

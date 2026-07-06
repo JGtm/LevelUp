@@ -1,3 +1,14 @@
+## [2026-07-06] K1l (suite) — CacheRootDir() au resolver
+
+**Statut** : Complété (sous-partie CacheRootDir de K1l). `PathResolver.CacheRootDir()` ajouté
+(source unique de `data/cache`), `JobsCachePath` délègue dessus. 3 reconstructions manuelles
+dans server.go (jobsPath ligne 238, assetCfg.CacheRootDir 596, HelpHandler 1064) migrées via
+`NewPathResolver(cfg.RepoRoot).CacheRootDir()/JobsCachePath()` (mirroir du pattern inline
+`.WatcherTokensDir()` déjà présent). Build+vet 0, test resolver vert. Reste K1l (stash friends,
+seed_demo, config.go) = session chemins dédiée.
+
+---
+
 ## [2026-07-06] K2e — CR cleanups : strings.Title + helper goLoad (18 blocs g.Go)
 
 **Statut** : Complété. (1) `strings.Title(mode)` (déprécié Go 1.18+) dans engine.go →
