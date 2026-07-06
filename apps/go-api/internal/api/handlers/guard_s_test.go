@@ -12,14 +12,18 @@ package handlers
 // COMPORTEMENT (401 anonyme) des gardes appliquées.
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
 )
 
 func TestLotS_GuardedRoutes_AnonymousUnauthorized(t *testing.T) {
@@ -82,6 +86,24 @@ func TestLotS_GuardedRoutes_AnonymousUnauthorized(t *testing.T) {
 			"S3 POST /import/openspartan", http.MethodPost, "/import/openspartan",
 			func(r chi.Router) {
 				r.Post("/import/openspartan", NewOpenSpartanImportHandler(OpenSpartanImportConfig{}).StartImport)
+			},
+			[]func(http.Handler) http.Handler{auth},
+		},
+		// V3 — GET /jobs/{job_id} : le statut expose PlayerSlug + type + messages
+		// d'erreur (révélateur d'identité), était sur `r` nu via registerJobsHuma.
+		// Migré sous RequireAuth (server_apiv1.go). La route Huma est enregistrée
+		// ici comme en prod (humacore.NewAPI hérite du middleware du sous-groupe) ;
+		// registerJobsHuma vit dans le package api (cycle d'import évité en
+		// répliquant le mount minimal — la garde court-circuite avant le handler).
+		{
+			"V3 GET /jobs/{job_id}", http.MethodGet, "/jobs/job_123",
+			func(r chi.Router) {
+				api := humacore.NewAPI(r)
+				huma.Get(api, "/jobs/{job_id}", func(_ context.Context, _ *struct {
+					JobID string `path:"job_id"`
+				}) (*struct{ Body *domain.AsyncJobStatus }, error) {
+					return &struct{ Body *domain.AsyncJobStatus }{}, nil
+				})
 			},
 			[]func(http.Handler) http.Handler{auth},
 		},

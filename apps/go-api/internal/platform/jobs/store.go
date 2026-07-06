@@ -3,6 +3,8 @@
 package jobs
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -249,7 +251,23 @@ func (s *Store) purgeExpiredLocked() {
 	}
 }
 
-// newJobID génère un identifiant unique pour un job.
+// newJobID génère un identifiant de job non énumérable.
+//
+// V3 (sécurité) : l'ancien format `job_<UnixNano>` était horodaté donc énumérable
+// (deviner un ID d'un autre flux à partir de l'heure). Nouveau format
+// `job_<YYYYMMDD>_<hex>` : le préfixe date reste lisible (debug/tri lexical
+// grossièrement chronologique — le seul usage du JobID comme ordre est un
+// tiebreaker de Store.List quand StartedAt est nil, cas dégénéré), le suffixe est
+// 16 octets crypto-aléatoires (collision-safe : 128 bits). AUCUN consommateur ne
+// parse le timestamp de l'ID (vérifié V3b : grep parsing/Atoi/Split sur JobID → 0).
 func newJobID() string {
-	return fmt.Sprintf("job_%d", time.Now().UnixNano())
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		// crypto/rand ne devrait jamais échouer ; si c'est le cas, logger et
+		// dégrader vers l'horloge nanoseconde (unicité process préservée) plutôt
+		// que de renvoyer un ID vide/collisionnable en silence (règle slog n°3).
+		slog.Error("jobs.newJobID: crypto/rand failed, falling back to timestamp", "err", err)
+		return fmt.Sprintf("job_%s_%d", time.Now().UTC().Format("20060102"), time.Now().UnixNano())
+	}
+	return fmt.Sprintf("job_%s_%s", time.Now().UTC().Format("20060102"), hex.EncodeToString(b[:]))
 }
