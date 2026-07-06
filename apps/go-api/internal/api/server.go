@@ -144,52 +144,7 @@ func loadTitleAssetDrawerData(metaPath, slug string) (maps, weapons, medals []ca
 		return nil, nil, nil
 	}
 	defer func() { _ = metaDB.Close() }()
-	ctx := context.Background()
-
-	if rows, qerr := metaDB.Query(ctx,
-		`SELECT map_asset_id, COALESCE(name_canonical, ''), COALESCE(image_url, '')
-		 FROM maps_catalog WHERE title_slug = ? ORDER BY name_canonical`, slug); qerr == nil {
-		for rows.Next() {
-			var m canonical.AssetMeta
-			if rows.Scan(&m.ID, &m.NameEN, &m.ImageURL) == nil && m.NameEN != "" {
-				maps = append(maps, m)
-			}
-		}
-		_ = rows.Close()
-	}
-	if rows, qerr := metaDB.Query(ctx,
-		`SELECT weapon_id::VARCHAR, name_en, COALESCE(icon_url, '')
-		 FROM weapon_labels ORDER BY name_en`); qerr == nil {
-		for rows.Next() {
-			var w canonical.AssetMeta
-			if rows.Scan(&w.ID, &w.NameEN, &w.ImageURL) == nil && w.NameEN != "" {
-				weapons = append(weapons, w)
-			}
-		}
-		_ = rows.Close()
-	}
-	// Médailles : icône SPRITE (feuille + offset) depuis medal_definitions + noms et
-	// descriptions FR/EN. Le name_fr EST peuplé par cmd/h5-metadata-fetch (Accept-Language:
-	// fr-FR, jamais vide). Sans le sélectionner ici, le drawer affichait les médailles h5
-	// en ANGLAIS (name_fr vide → AssetCard retombe sur name_en). La cascade locale finale
-	// est faite côté front (AssetCard : fr → name_fr sinon name_en).
-	if rows, qerr := metaDB.Query(ctx,
-		`SELECT medal_name_id::VARCHAR, name_en, COALESCE(name_fr, ''),
-		        COALESCE(description_en, ''), COALESCE(description_fr, ''),
-		        COALESCE(sprite_sheet_url, ''),
-		        COALESCE(sprite_left, 0), COALESCE(sprite_top, 0),
-		        COALESCE(sprite_width, 0), COALESCE(sprite_height, 0)
-		 FROM medal_definitions ORDER BY name_en`); qerr == nil {
-		for rows.Next() {
-			var m canonical.AssetMeta
-			if rows.Scan(&m.ID, &m.NameEN, &m.NameFR, &m.Description, &m.DescriptionFR, &m.SpriteSheet,
-				&m.SpriteLeft, &m.SpriteTop, &m.SpriteWidth, &m.SpriteHeight) == nil && m.NameEN != "" {
-				medals = append(medals, m)
-			}
-		}
-		_ = rows.Close()
-	}
-	return maps, weapons, medals
+	return platform_duckdb.LoadTitleAssetDrawerData(context.Background(), metaDB, slug)
 }
 
 // loadCSRBadgeResolver construit un résolveur d'insignes CSR pour un titre
@@ -202,18 +157,7 @@ func loadCSRBadgeResolver(metaPath, slug string) func(string, string, int) strin
 		return nil
 	}
 	defer func() { _ = metaDB.Close() }()
-	m := map[string]string{}
-	if rows, qerr := metaDB.Query(context.Background(),
-		`SELECT designation_name, tier_id, COALESCE(icon_url, '') FROM csr_designations`); qerr == nil {
-		for rows.Next() {
-			var name, url string
-			var tier int
-			if rows.Scan(&name, &tier, &url) == nil && url != "" {
-				m[fmt.Sprintf("%s|%d", strings.ToLower(name), tier)] = url
-			}
-		}
-		_ = rows.Close()
-	}
+	m := platform_duckdb.LoadCSRBadgeMap(context.Background(), metaDB)
 	if len(m) == 0 {
 		return nil
 	}
@@ -734,6 +678,13 @@ func NewRouter(
 	// Stratégie in-memory : on ouvre metadata.duckdb, on charge tout en RAM, on ferme
 	// la connexion immédiatement. Avantage : aucun lock Windows persistant entre processus
 	// (Air hot-reload). Retry 3× (500ms) pour absorber la fenêtre de chevauchement Air.
+	// Assets du titre additionnel (Halo 5) chargés UNE FOIS depuis sa metadata isolée
+	// (maps/armes/médailles + URLs) — réutilisés par l'AssetMetadataHandler ET l'adapter
+	// TitleAssetURLAdapter ci-dessous (K1g : supprime le double chargement metadata h5
+	// au boot). Best-effort : slices nil si pas de seed h5.
+	h5Maps, h5Weapons, h5Medals := loadTitleAssetDrawerData(
+		config.MetadataDBPath(cfg, halo5.TitleSlug), halo5.TitleSlug)
+
 	var assetMetaHandler *handlers.AssetMetadataHandler
 	{
 		metaDBPath := metadataDBPathFor(cfg)
@@ -768,11 +719,9 @@ func NewRouter(
 				}
 			}
 			// Titres additionnels (ex. Halo 5) : maps/armes + URLs d'image viennent de
-			// leur metadata.duckdb isolée (seedée par cmd/h5-metadata-fetch depuis l'API
-			// Metadata officielle). Title-aware via WithTitle ; les URLs DB priment sur
-			// les builders HINF (cf. AssetService : ImageURL non vide conservée).
-			h5Maps, h5Weapons, h5Medals := loadTitleAssetDrawerData(
-				config.MetadataDBPath(cfg, halo5.TitleSlug), halo5.TitleSlug)
+			// leur metadata.duckdb isolée (h5Maps/h5Weapons/h5Medals chargés une fois plus
+			// haut). Title-aware via WithTitle ; les URLs DB priment sur les builders HINF
+			// (cf. AssetService : ImageURL non vide conservée).
 			assetMetaHandler = handlers.NewAssetMetadataHandler(
 				service.NewAssetService(
 					service.NewStaticAssetMetaRepo(maps, weapons).
@@ -814,8 +763,6 @@ func NewRouter(
 	// les URLs CDN officielles (maps/armes) et le résolveur CSR sont injectés depuis
 	// la metadata h5 DÉJÀ chargée (aucun accès DB dans l'adapter).
 	{
-		h5Maps, h5Weapons, h5Medals := loadTitleAssetDrawerData(
-			config.MetadataDBPath(cfg, halo5.TitleSlug), halo5.TitleSlug)
 		if h5CSRResolver != nil || len(h5Maps) > 0 || len(h5Weapons) > 0 {
 			h5AssetURL := halo5.NewAssetURLAdapter().
 				WithMaps(h5Maps).
