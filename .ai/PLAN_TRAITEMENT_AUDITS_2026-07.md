@@ -1007,14 +1007,24 @@ des chemins HTTP chauds.
   le pool lecture 2-4 conns pour player DBs dépend de la LECTURE des stats SOUS CHARGE (obs.
   runtime VPS) + audit des UPSERT reposant sur MaxOpenConns(1) — impossible en test local.
   Ordre respecté (ne pas inverser). Follow-up runtime.
-- [ ] J2 — ARCHI 49 : configurer memory_limit/threads par classe de DB dans
-  `openSQLDBFor` (params DSN), valeurs exposées dans /health (8-15 instances x défauts
-  80 % RAM = surengagement VPS).
-- [ ] J3 — ARCHI 46 : `GetHistoryForAvgBulk` (IN + ROW_NUMBER PARTITION BY xuid), un seul
-  Get du SharedReader — remplace jusqu'à ~8 exécutions par clic Match View
-  (`match_view_data_loaders.go:386`).
-- [ ] J4 — ARCHI 47 : `LoadSquadMatchesBulk` groupé par teammate_xuid + lookup gamertags
-  batch (`teammates_service.go:185`).
+- [~] J2 — ARCHI 49 : **CŒUR DÉJÀ LIVRÉ (2026-07-05)** — `applyDuckSessionInit` borne
+  `memory_limit`/`threads` sur CHAQUE connexion (env-tunable `LEVELUP_DUCKDB_MEMORY_LIMIT`
+  =512MB / `LEVELUP_DUCKDB_THREADS`=2, test `db_resource_limits_test.go`, doc OOM-safety).
+  **AJOUTÉ (2026-07-06)** : exposition `BudgetsSnapshot()` + `PublishDuckDBBudgets` →
+  `/debug/vars levelup/duckdb_budgets` (à côté de duckdb_pool_stats). **Par-classe : NON
+  fait délibérément** — sur RAM partagée (2 Go, 8-15 instances) une borne globale est plus
+  sûre à raisonner ; le split par classe exige une mesure runtime (VPS injoignable). Tunable.
+- [x] J3 — ARCHI 46 : **LIVRÉ (2026-07-06)** `GetHistoryForAvgBulk` (IN + ROW_NUMBER
+  PARTITION BY xuid, Q29HistoryForAvgBulkTpl) — 1 requête au lieu de ~8 dans la boucle amis
+  du Match View (`match_view_data_loaders.go`). Test `match_view_history_bulk_test.go`
+  (bulk == single par xuid, multiset). Gate build+test+intégration duckdb verts.
+- [!] J4 — ARCHI 47 : **DIFFÉRÉ (2026-07-06, measure-first)**. N est PETIT (1-4 coéquipiers
+  SÉLECTIONNÉS, pas un fan-out large) → gain modeste ; le refacto est LOURD (Q30 bulk groupé
+  par teammate_xuid + résolution gamertag batch + merge 2-DB shared/player + logique
+  d'intersection/KPI par coéquipier à préserver à l'identique). Optimiser un chemin petit-N,
+  correctness-sensitive, SANS mesure sous charge (VPS injoignable) = exactement ce que
+  measure-first proscrit. Cibles mappées (`teammates_service.go:185`,
+  `teammates_service_kpis.go:84`, `squad_repo.go:167`) → session dédiée + validation VPS.
 - [ ] J5 — ARCHI 44 [CHANTIER DÉDIÉ — décidé 2026-07-04] : `LoadAll` full-history par hit
   (`match_history_repo.go:32`, confirmé sans LIMIT ni cache) → cache par joueur invalidé
   post-sync (option A recommandée : entrée PlayerCache invalidée si MatchesInserted>0 via
@@ -1023,31 +1033,42 @@ des chemins HTTP chauds.
   PRODUIT à trancher au chantier : TTL (invalidation immédiate vs 30 min), propriétaire de
   l'invalidation (finalizer engine.run vs sync result handler). À traiter avec le chantier
   K (risque données périmées servies).
-- [ ] J6 — ARCHI mineurs N+1 batchables (8 sites, lecture seule) : `sync/engine.go:696`,
-  `sync/skill_v2_helpers.go:28`, `relations_moments_service.go:140`,
-  `fanout_service.go:73`, `sync/session_recalc.go:80`,
-  `sync/backfill_registry_names.go:157` (croisé E2), `handlers/prestige.go:718`,
-  `registry_catalog_expand.go:94` (croisé K1d).
-- [ ] J7 — ARCHI mineur : CTE perfect de Q26 bornée (agrège tout l'historique pour un
-  LIMIT 150) (`queries_home_citations.go:26`).
+- [!] J6 — ARCHI mineurs N+1 batchables : **DIFFÉRÉ (2026-07-06, measure-first)**. Les 8
+  sites sont TOUS des chemins d'arrière-plan (sync/backfill/catalog) à petit-N — pas des
+  chemins HTTP chauds. « ARCHI mineurs » par l'audit lui-même. Cibles re-mappées post-K :
+  `sync/engine.go`, `sync/skill/skill_v2_helpers.go:27`, `relations_moments_service.go:139`
+  (N≤3), `fanout_service.go:68`, `sync/session_recalc.go:76`,
+  `sync/backfill_registry_names.go:182`, `handlers/prestige.go`, `wire/registry_catalog_expand.go:71`.
+  Batcher un chemin d'arrière-plan petit-N sans preuve runtime = optimisation à l'aveugle
+  (measure-first). À traiter en lot ciblé avec mesures VPS.
+- [x] J7 — ARCHI mineur : **LIVRÉ (2026-07-06)**. CTE `perfect` de Q26 bornée à la fenêtre
+  `base` (150 matchs) : perfect ET la requête principale bornées à `match_id IN base` →
+  même ensemble (zéro divergence ex-aequo), perfect n'agrège plus tout l'historique.
+  Résultat identique par construction (`queries_home_citations.go`). Test intégration
+  `TestHomeRepo_LoadHomeMatches_PerfectKillsBounded_J7`.
 - [x] J8 — ARCHI mineur : **LIVRÉ (2026-07-05)**. Magic 4/2/1 → constantes nommées
   `poolMaxOpenShared`/`poolMaxIdleShared`/`poolSingleConn` (db.go) sur les 3 sites
   (OpenReadOnly, OpenReadWriteShared, OpenReadWrite) + commentaire expliquant le lien mono-
   process (ADR 0013). Observabilité d'attente = couverte par J1(1). Gate : build+vet OK.
-- [ ] J9 — ARCHI mineur : `registry_relations_cross_game.go:81` — emprunt non-possédant
-  d'un handle cross-titre → acquisition sûre (refcount/provider du titre visé).
+- [~] J9 — ARCHI mineur : **REVU + DOCUMENTÉ (2026-07-06)**. `OpenReadForQuery` emprunte la
+  handle cachée si le titre visé est actif (SharedProvider maintient refCount≥1 → vivante
+  pendant la requête) ou ouvre une handle RO dédiée si froid. Aucun use-after-free en
+  opération normale ; le seul cas (purge délibérée concurrente via EvictAndCloseCached, qui
+  ignore le refCount PAR CONCEPTION) n'est pas évitable par un refcount et dégrade proprement
+  (best-effort, badge omis). Contrat de sûreté documenté dans `countForTitle` ; aucun
+  changement de code justifié.
 
-**J2/J3/J4/J6/J7/J9 — DIFFÉRÉS (measure-first, 2026-07-05)** : J1(1) livre l'instrumentation
-(expvar DBStats) qui est le PRÉ-REQUIS de la règle « mesurer d'abord ». Les optimisations
-(J2 budgets mémoire = **DÉCISION PRODUIT** VPS ; J3 GetHistoryForAvgBulk ; J4 LoadSquadMatchesBulk ;
-J6 8 N+1 batchables ; J7 CTE Q26 bornée ; J9 emprunt cross-titre B-swap-safe) doivent être
-VALIDÉES par une mesure avant/après SOUS CHARGE (runtime), pas faites à l'aveugle — sinon on
-optimise un chemin non mesuré + risque de changement de résultat (J3/J4/J7) / wiring provider
-(J9). Chacune a son approche confirmée dans les items ci-dessus. À traiter en tâches ciblées
-avec les mesures J1. J5 = chantier K.
+**Bilan LOT J (2026-07-06)** : J1(1)/J8 déjà livrés (2026-07-05). Ce tour : **J3, J7 LIVRÉS**
+(bulk Match View + CTE Q26 bornée, avec tests correctness identiques-par-construction) ;
+**J2 complété** (exposition budgets) ; **J9 revu/documenté** (sûr en opération normale).
+**J4, J6 DIFFÉRÉS measure-first** : petit-N (J4 = 1-4 coéquipiers ; J6 = arrière-plan) +
+refactos correctness-sensibles SANS validation runtime possible (VPS injoignable ce tour —
+2 timeouts ssh) → optimiser à l'aveugle proscrit. **J5 = chantier K**. Les items différés
+sont mappés sur pièces (post-K) et prêts pour une session dédiée + mesures VPS.
 
-Gate J (PARTIEL) : J8 + J1(1) livrés (expvar `duckdb_pool_stats` visible /debug/vars, tests
-verts). Optimisations J2-J9 = follow-ups measure-first (voir ci-dessus). J5 = chantier K.
+Gate J : `go build ./...` + `go test ./...` + `go test -tags=integration -p 1
+./internal/platform/duckdb/` VERTS (121 s, valide J3/J7 sur la suite intégration). Livré :
+J2(exposition)/J3/J7 + J9(doc). Différé justifié : J4/J6 (measure-first), J5 (chantier K).
 
 ### LOT K — Structure & couches (le plus gros — sous-lots commités séparément)
 
