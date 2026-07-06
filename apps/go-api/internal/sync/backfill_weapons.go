@@ -60,7 +60,7 @@ func BackfillWeaponKillsForMatch(
 		return false, nil
 	}
 
-	// 2. Convertir filmChunkData → analysis.ChunkData.
+	// 2. Convertir FilmChunkData → analysis.ChunkData.
 	chunks := make(map[int]analysis.ChunkData, len(rawChunks))
 	for idx, fc := range rawChunks {
 		chunks[idx] = analysis.ChunkData{
@@ -154,7 +154,7 @@ func BackfillWeaponKillsForMatchAll(
 		return false, nil
 	}
 
-	// 2. Convertir filmChunkData → analysis.ChunkData.
+	// 2. Convertir FilmChunkData → analysis.ChunkData.
 	chunks := make(map[int]analysis.ChunkData, len(rawChunks))
 	for idx, fc := range rawChunks {
 		chunks[idx] = analysis.ChunkData{

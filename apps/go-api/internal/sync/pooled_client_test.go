@@ -347,7 +347,7 @@ func TestPooledHaloClient_FallbackLimiter(t *testing.T) {
 	leaseNil := makeLease("s1", "c1", nil)
 	c1 := pc.newAPIClient(leaseNil)
 	c2 := pc.newAPIClient(makeLease("s2", "c2", nil))
-	if c1.limiter != c2.limiter || c1.limiter != pc.fallbackLimiter {
+	if c1.LimiterForTest() != c2.LimiterForTest() || c1.LimiterForTest() != pc.fallbackLimiter {
 		t.Fatal("avec Lease.Limiter nil, les HaloAPIClient doivent partager pc.fallbackLimiter")
 	}
 
@@ -359,7 +359,7 @@ func TestPooledHaloClient_FallbackLimiter(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			c := pc.newAPIClient(makeLease("s", "c", nil))
-			c.rateWait(context.Background())
+			c.RateWaitForTest(context.Background())
 		}()
 	}
 	wg.Wait()
@@ -391,10 +391,10 @@ func TestPooledHaloClient_LeaseLimiterPriority(t *testing.T) {
 		t.Fatalf("mockPool.Acquire: %v", err)
 	}
 	c := pc.newAPIClient(lease)
-	if c.limiter != slotLim {
+	if c.LimiterForTest() != slotLim {
 		t.Fatal("newAPIClient doit utiliser Lease.Limiter (slot) et pas le fallback")
 	}
-	if c.limiter == pc.fallbackLimiter {
+	if c.LimiterForTest() == pc.fallbackLimiter {
 		t.Fatal("newAPIClient ne doit PAS utiliser fallbackLimiter quand Lease.Limiter est non-nil")
 	}
 
@@ -409,7 +409,7 @@ func TestPooledHaloClient_LeaseLimiterPriority(t *testing.T) {
 			defer wg.Done()
 			lease, _ := mp.Acquire(context.Background(), pool.PolicyAnyPublic, "")
 			c := pc.newAPIClient(lease)
-			c.rateWait(context.Background())
+			c.RateWaitForTest(context.Background())
 		}()
 	}
 	wg.Wait()

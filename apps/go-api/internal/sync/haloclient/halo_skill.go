@@ -31,7 +31,7 @@
 //
 // Les bots (xuid `bid(N.0)`) sont filtrés en amont — l'API skill ne renvoie
 // rien pour eux.
-package sync
+package haloclient
 
 import (
 	"context"
@@ -281,61 +281,6 @@ func unwrapXUID(wrapped string) string {
 		return wrapped[5 : len(wrapped)-1]
 	}
 	return wrapped
-}
-
-// MergeSkillIntoParticipants applique les données skill aux ParticipantRow.
-// Pour chaque participant dont le XUID a des skill data, écrase team_mmr,
-// enemy_mmr, kills_expected, deaths_expected, kills_stddev, deaths_stddev
-// (s'ils sont fournis).
-//
-// Note : `assists_expected` / `assists_stddev` ne sont pas fournis par l'API
-// Halo (StatPerformances n'a que Kills + Deaths, pas Assists). Ces colonnes
-// resteront permanentment NULL — c'est une limite de l'API, pas du sync.
-func MergeSkillIntoParticipants(
-	participants []ParticipantRow,
-	skill map[string]*MatchSkillData,
-) []ParticipantRow {
-	if len(skill) == 0 {
-		return participants
-	}
-	for i := range participants {
-		sd, ok := skill[participants[i].XUID]
-		if !ok || sd == nil {
-			continue
-		}
-		if sd.TeamMMR != nil {
-			participants[i].TeamMMR = sd.TeamMMR
-		}
-		if sd.EnemyMMR != nil {
-			participants[i].EnemyMMR = sd.EnemyMMR
-		}
-		if sd.KillsExpected != nil {
-			participants[i].KillsExpected = sd.KillsExpected
-		}
-		if sd.KillsStdDev != nil {
-			participants[i].KillsStddev = sd.KillsStdDev
-		}
-		if sd.DeathsExpected != nil {
-			participants[i].DeathsExpected = sd.DeathsExpected
-		}
-		if sd.DeathsStdDev != nil {
-			participants[i].DeathsStddev = sd.DeathsStdDev
-		}
-	}
-	return participants
-}
-
-// ParticipantXUIDs extrait la liste des XUIDs (humains uniquement) d'une slice
-// de ParticipantRow — utilisée pour passer les bons XUIDs à GetMatchSkill.
-func ParticipantXUIDs(rows []ParticipantRow) []string {
-	out := make([]string, 0, len(rows))
-	for _, r := range rows {
-		if r.XUID == "" || strings.HasPrefix(r.XUID, "bid(") {
-			continue
-		}
-		out = append(out, r.XUID)
-	}
-	return out
 }
 
 // ErrSkillStatsUnavailable est retournée par GetMatchSkill quand le token n'a

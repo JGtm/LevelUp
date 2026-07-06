@@ -13,7 +13,7 @@
 //   - cfg <= 0 + CMS HTTP error : "" (fail-safe, pas de panic)
 //   - emblemPath empty ou non-Emblems : "" (validation)
 //   - extractEmblemStem cas limites
-package sync
+package haloclient
 
 import (
 	"context"

@@ -1,7 +1,7 @@
 // Package sync - halo_client_http.go : helpers HTTP (downloadBlob, doGet,
 // rate limiting, backoff). Decoupe de halo_client.go (god-file split,
 // refactor 2026-05-27).
-package sync
+package haloclient
 
 import (
 	"bytes"

@@ -1436,7 +1436,7 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
   ces 3 items forment UN seul chantier « décomposition DI api-root » à mener d'une passe coordonnée
   (ne PAS tenter K3d isolément — le cluster ServiceRegistry traverse registry+og+notifications+
   post_sync+server.go).
-- [~] K3e — ARCHI 21 : client HTTP Halo Infinite → games/halo_infinite/client. **TENTÉ +
+- [x] K3e — ARCHI 21 : client HTTP Halo Infinite → games/halo_infinite/client. **TENTÉ +
   revert propre (2026-07-06)** : le CODE DE PROD s'extrait proprement (full build 0). Le cluster
   client = ~12 fichiers (halo_client*.go + endpoint_resolver + halo_skill + halo_skill_csr +
   spartan_nameplate_resolver + local_film_cache) ; DTOs partagés (MatchSkillData/PlayerPlaylistCSR/
@@ -1450,6 +1450,7 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
   rate-limiting vers le client, découper les fichiers de test mixtes), pas un simple déplacement.
   Session dédiée. Le code de prod est prêt ; c'est la seule scission K3 à couplage de test
   irréductible (snapshot/skill n'avaient pas ce profil).
+  **FAIT (2026-07-06) ✅ — le blocage de test a été RÉSOLU, pas contourné** : client → `internal/sync/haloclient` (12 fichiers prod). DTOs + parsing (MatchSkillData/PlayerPlaylistCSR/CSRRankSnapshot/LocalFilmCache/FilmChunkData/…) déplacés AVEC le client ; sync les ré-exporte en alias (`haloclient_reexport.go`) → ZÉRO requalification des ~10 appelants externes (ils utilisent toujours `sync.HaloAPIClient`). Ponts `MergeSkillIntoParticipants`/`ParticipantXUIDs` (ParticipantRow) restés dans sync (`skill_merge.go`). **Résolution du couplage de test** : (1) tests white-box du client déplacés dans haloclient (accès légitime aux internes, même package) ; (2) fichiers de test MIXTES SPLITTÉS (halo_skill_test → tests merge côté sync ; bench_perf → bench film côté haloclient) ; (3) les 2 tests qui inspectaient `c.limiter`/`c.rateWait` (câblage pooled, PooledHaloClient restant en sync) utilisent désormais des accesseurs EXPORTÉS `LimiterForTest()`/`RateWaitForTest()` (testexports.go) ; (4) helpers partagés (contains, isNotFoundErr) dupliqués côté sync ; fixture testdata + freeze baseline (88→80) ajustés. Gates : build/vet ./... 0, `go test -tags=integration -p 1` sync+haloclient VERTS (anti-ART + LUSR e2e), archlint OK. **6/6 scissions K3 faites.**
 - [~] K3f — ARCHI mineurs structure. **FAIT (2026-07-06) — magic numbers** : `rows[:50]`/
   `matches[:50]` (analysis home highlights) → const partagée `maxSessionlessHighlights = 50`
   (home_highlights.go, réutilisée par la variante canonique) ; `window := 15` (media

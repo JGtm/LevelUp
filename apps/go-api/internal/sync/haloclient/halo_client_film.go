@@ -1,7 +1,7 @@
 // Package sync - halo_client_film.go : film manifest + chunk download +
 // highlight events extraction. Decoupe de halo_client.go (god-file split,
 // refactor 2026-05-27).
-package sync
+package haloclient
 
 import (
 	"context"
@@ -136,13 +136,13 @@ func (c *HaloAPIClient) fetchFilmManifest(ctx context.Context, matchID string) (
 // du slice `dlResults` (indexé par la position dans `toDownload`, jamais par
 // chunk.Index qui peut être sparse). L'assemblage final du map se fait
 // séquentiellement après eg.Wait() — race-free par construction.
-func (c *HaloAPIClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error) {
+func (c *HaloAPIClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]FilmChunkData, bool, error) {
 	manifest, found, err := c.fetchFilmManifest(ctx, matchID)
 	if err != nil || !found {
 		return nil, found, err
 	}
 
-	result := make(map[int]filmChunkData)
+	result := make(map[int]FilmChunkData)
 
 	// Phase 1 (séquentielle) : pré-filtre les chunks. Cache hits → écrits
 	// directement dans result. Misses → accumulés dans toDownload pour la
@@ -161,7 +161,7 @@ func (c *HaloAPIClient) GetMatchFilm(ctx context.Context, matchID string) (map[i
 		}
 		// Cache disque d'abord (Python legacy stocke les REPLICATION_DATA).
 		if cached, cErr := c.localFilmCache.LoadChunk(matchID, chunk.Index); cErr == nil && cached != nil {
-			result[chunk.Index] = filmChunkData{
+			result[chunk.Index] = FilmChunkData{
 				Data:       cached,
 				StartMS:    chunk.ChunkStartTimeOffsetMilliseconds,
 				DurationMS: chunk.DurationMilliseconds,
@@ -192,7 +192,7 @@ func (c *HaloAPIClient) GetMatchFilm(ctx context.Context, matchID string) (map[i
 	// via http.Request).
 	type dlResult struct {
 		index int
-		data  filmChunkData
+		data  FilmChunkData
 	}
 	dlResults := make([]dlResult, len(toDownload))
 	eg, egCtx := errgroup.WithContext(ctx)
@@ -207,7 +207,7 @@ func (c *HaloAPIClient) GetMatchFilm(ctx context.Context, matchID string) (map[i
 			}
 			dlResults[i] = dlResult{
 				index: ch.index,
-				data: filmChunkData{
+				data: FilmChunkData{
 					Data:       data,
 					StartMS:    ch.startMS,
 					DurationMS: ch.durationMS,
@@ -267,8 +267,8 @@ func (c *HaloAPIClient) GetHighlightEventsChunk(ctx context.Context, matchID str
 	return nil, 0, false, nil
 }
 
-// filmChunkData encapsule les données binaires d'un chunk film.
-type filmChunkData struct {
+// FilmChunkData encapsule les données binaires d'un chunk film.
+type FilmChunkData struct {
 	Data       []byte
 	StartMS    int
 	DurationMS int

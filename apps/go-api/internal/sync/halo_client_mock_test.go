@@ -5,7 +5,7 @@
 // Les tests qui l'utilisent tournent avec CGO_ENABLED=1 (requis par duckdb-go) mais
 // sans accès réseau réel.
 //
-// A7 — filmChunkData : le type reste non exporté car HaloClient est consommé uniquement
+// A7 — FilmChunkData : le type reste non exporté car HaloClient est consommé uniquement
 // dans le package sync. Tant qu'aucun consommateur externe n'utilise GetMatchFilm dans
 // une expression de type (ex. var _ sync.HaloClient = &MyMock{}), l'export n'est pas requis.
 package sync
@@ -125,7 +125,7 @@ func (m *mockHaloClient) GetMatchSkill(_ context.Context, matchID string, _ []st
 }
 
 // GetMatchFilm retourne toujours (nil, false, nil) : film absent.
-func (m *mockHaloClient) GetMatchFilm(_ context.Context, _ string) (map[int]filmChunkData, bool, error) {
+func (m *mockHaloClient) GetMatchFilm(_ context.Context, _ string) (map[int]FilmChunkData, bool, error) {
 	return nil, false, nil
 }
 

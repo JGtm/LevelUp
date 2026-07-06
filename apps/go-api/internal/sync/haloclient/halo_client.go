@@ -25,7 +25,7 @@
 //     rateWait, backoff)
 //   - halo_client_career.go : endpoints career progression + spartan
 //     customization + helpers de parsing
-package sync
+package haloclient
 
 import (
 	"context"
@@ -113,7 +113,7 @@ type HaloClient interface {
 	GetMatchSkill(ctx context.Context, matchID string, xuids []string) (map[string]*MatchSkillData, error)
 	// GetMatchFilm récupère les chunks REPLICATION_DATA du film d'un match.
 	// Retourne (nil, false, nil) si le film est absent (404/410 — normal pour vieux matchs).
-	GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error)
+	GetMatchFilm(ctx context.Context, matchID string) (map[int]FilmChunkData, bool, error)
 	// GetHighlightEventsChunk télécharge le chunk highlight events (ChunkType=3) du film.
 	// Retourne (data, filmMajorVersion, true, nil) si disponible.
 	// Retourne (nil, 0, false, nil) si le film est absent ou sans chunk highlight events.

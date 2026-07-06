@@ -13,7 +13,7 @@
 // Activation : env `LEVELUP_LEGACY_FILM_CACHE_DIR` (ex.
 // `C:\...\LevelUp\data\cache`). Si vide ou inexistant, le cache est désactivé
 // et le client retombe sur les appels API standards.
-package sync
+package haloclient
 
 import (
 	"encoding/json"

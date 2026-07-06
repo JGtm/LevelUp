@@ -16,7 +16,7 @@
 //  1. ParallelFasterThanSequential : test perf qui ÉCHOUE sur le code
 //     séquentiel actuel (10 chunks × 100ms = 1s) et PASSE post-impl
 //     (~200ms avec parallelism=8).
-//  2. PreservesAllChunks : map[int]filmChunkData identique au séquentiel
+//  2. PreservesAllChunks : map[int]FilmChunkData identique au séquentiel
 //     (clés == chunk.Index, data == blob CDN décompressé).
 //  3. CompletesAllBeforeReturn : GetMatchFilm ne retourne QUE quand tous
 //     les chunks sont téléchargés (le caller BackfillWeaponKillsForMatch
@@ -28,7 +28,7 @@
 //  6. NoRace : 30 chunks parallèles, -race clean (preuve que le write au
 //     map résultat est sync-safe).
 
-package sync
+package haloclient
 
 import (
 	"context"
@@ -271,7 +271,7 @@ func TestGetMatchFilm_CancelMidDownload(t *testing.T) {
 // sync-safe (pas de race condition sur la collection des résultats).
 //
 // Sans synchronisation correcte, `go test -race` détecterait une data race
-// sur l'accès concurrent au `map[int]filmChunkData`.
+// sur l'accès concurrent au `map[int]FilmChunkData`.
 func TestGetMatchFilm_NoRace(t *testing.T) {
 	const nChunks = 30
 	srv, _ := newLatencyFilmServer(t, nChunks, 2*time.Millisecond)
