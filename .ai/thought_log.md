@@ -1,3 +1,39 @@
+## [2026-07-06] Lot K suite — K3f/K2c/K2a/K3c/K1a/K1b (batch gated)
+
+**Statut** : poursuite autonome de TOUT le lot K, item par item gated+committé. Livrés dans
+ce batch :
+- **K3f magic numbers** : `rows[:50]`/`matches[:50]` → `maxSessionlessHighlights` (const
+  partagée analysis) ; `window:=15` media → `defaultMediaMatchWindowMinutes`. Renommages purs.
+- **K2c run-loop** : `Run`/`RunOnce`/`RunOnceTrigger`/`syncPlayer*`/`checkSyncPreconditions` +
+  type `syncOutcome` → `auto_sync_run.go` (même package). auto_sync.go 887 → 445 L (< 500).
+- **K2a buildTitleRuntime** : bloc « Phase B multi-titres » (~148 L) → helper avec struct de
+  sortie. NewRouter ~1336 → ~1197 L. Gate api intégration (boot OK).
+- **K3c ratchet de gel** : `sync_root_freeze_test.go` gèle la racine sync/ à 112 fichiers
+  (baseline décroissante) — gouvernance LOT L, empêche l'aggravation du god-package.
+- **K1a « au passage »** : VÉRIFIÉ déjà fait (outcome=2→seam title-aware, seuils nommés,
+  EmitPostSyncDeltas 247→147 L). BestKDA quotient = DETTE prod-gated documentée (re-backfill
+  coordonné requis). Cœur (extraction package post-sync) = gros move, session dédiée.
+- **K1b dédup cascade store** : `auth.RefreshFromStoreEntry` (source unique MSAL→OAuth+rotation,
+  `store` élargi à l'interface). Registry délègue, GARDE sa politique exacte (clear-on-success,
+  pas de marquage reauth serveur, erreur loguée). **Non-régression PROUVÉE** : les 4 tests
+  registry passent inchangés. Legacy path NON dédupliqué (3 divergences sur chemin déprécié →
+  avec D2). Chemin CLI (marquage reauth) inchangé.
+
+**Effet de bord corrigé** : le split K2c a déplacé un message d'aide citant
+`SPNKR_OAUTH_REFRESH_TOKEN_` vers `auto_sync_run.go` → sentinel `TestSentinel_NoNewEnvVarReaders`
+(package auth, scanne tout le repo) rouge. Non détecté au gate K2c (qui ne lançait que le
+package scheduler). Allowlist mise à jour (libellé, pas une lecture d'env).
+
+**Leçon** : un split de fichier peut casser un ratchet cross-package (sentinel/archlint) qui
+scanne par nom de fichier. Gate à élargir aux packages qui hébergent ces ratchets, pas juste
+le package touché.
+
+**Reste lot K** (gros cross-package / délicat) : K1a cœur, K1m (media repo), K3a/b/d/e
+(scissions god-packages, untangling cycles), K2a jusqu'à < 100 L (bascule builder), K1h reste
+(bloqué D-MV2), K1l/K1n reste. Détail statué dans le plan.
+
+---
+
 ## [2026-07-06] K1c — durcissement WriteSyncMeta sous lease dblease (ADR 0013)
 
 **Statut** : Complété. La dédup K1c (2 copies read/write sync_meta → `duckdb.WriteSyncMeta`)
