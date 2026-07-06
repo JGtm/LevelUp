@@ -1334,8 +1334,20 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
   un refactor pluri-semaines à requalification de masse. Revert propre, branche verte.
 - [ ] K3d — ARCHI 20 : racine api/ (39 fichiers) → api/wire/ pour la DI ; cible < 10
   fichiers racine (le post-sync est déjà parti en K1a).
-- [ ] K3e — ARCHI 21 : client HTTP Halo Infinite (halo_client*.go, 7 fichiers) →
-  platform/halo/ ou games/halo_infinite/client/ (cible montrée par games/halo_5/client.go).
+- [~] K3e — ARCHI 21 : client HTTP Halo Infinite → games/halo_infinite/client. **TENTÉ +
+  revert propre (2026-07-06)** : le CODE DE PROD s'extrait proprement (full build 0). Le cluster
+  client = ~12 fichiers (halo_client*.go + endpoint_resolver + halo_skill + halo_skill_csr +
+  spartan_nameplate_resolver + local_film_cache) ; DTOs partagés (MatchSkillData/PlayerPlaylistCSR/
+  CSRRankSnapshot/LocalFilmCache/HTTPError/MatchHistoryEntry) → client + ré-exportés dans sync
+  (alias) ; ponts transform utilisant `ParticipantRow` (MergeSkillIntoParticipants/ParticipantXUIDs)
+  restés dans sync ; ~15 symboles ré-exportés. **BLOCAGE : couplage de TESTS profond** — les
+  tests sync accèdent aux INTERNES NON-EXPORTÉS de HaloAPIClient (`c.limiter`, `c.rateWait` via
+  `pooled_client_test.go`) en white-box, + helpers/internes partagés en cascade (contains,
+  isNotFoundErr, emblem cache, FilmChunkData). Le client étant une FEUILLE, ces tests ne peuvent
+  ni importer sync ni accéder aux internes → exige un REFACTOR des tests (extraire les tests de
+  rate-limiting vers le client, découper les fichiers de test mixtes), pas un simple déplacement.
+  Session dédiée. Le code de prod est prêt ; c'est la seule scission K3 à couplage de test
+  irréductible (snapshot/skill n'avaient pas ce profil).
 - [~] K3f — ARCHI mineurs structure. **FAIT (2026-07-06) — magic numbers** : `rows[:50]`/
   `matches[:50]` (analysis home highlights) → const partagée `maxSessionlessHighlights = 50`
   (home_highlights.go, réutilisée par la variante canonique) ; `window := 15` (media
