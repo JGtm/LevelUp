@@ -1246,7 +1246,7 @@ K1 — Extractions de couches (ROI d'abord) :
     bloquants, aucun n'excède les seuils lint.
 
 K2 — God functions à risque (tâche dédiée, passer la grille plan-review avant chaque item) :
-- [~] K2a — ARCHI 22 + CR A1 : `NewRouter` ~1 470 L → extractions par bloc (compiler-vérifié,
+- [x] K2a — ARCHI 22 + CR A1 : `NewRouter` ~1 470 L → extractions par bloc (compiler-vérifié,
   gate api intégration après chaque). **FAIT (2026-07-06)** : `buildAssetMetadataHandler` +
   `wireHalo5AssetAdapters` (~134 L) PUIS `buildTitleRuntime` (~148 L : tout le bloc « Phase B
   multi-titres » — resolver d'adapters semantic/data/assetURL HI + images de rang par titre
@@ -1263,11 +1263,12 @@ K2 — God functions à risque (tâche dédiée, passer la grille plan-review av
   dans NewRouter) le lient tardivement. **NewRouter ~1 470 → ~412 L (−72 %)**. Gate : build/vet 0,
   intégration -p 1 api VERT (NewRouter boot OK), `//nolint:funlen` sur mountAPIV1 (liste de montage
   séquentielle).
-  `[!]` RESTE pour < 100 L : extraire la phase de CONSTRUCTION (~606-907, ~300 L) → `buildAPIV1Deps`
-  retournant `apiV1Deps` (~22 champs). Attention : cette phase ENTRELACE construction de deps ET
-  enregistrement de routes racine (observability `/debug/vars`, groupe admin) → la fonction extraite
-  prend `r` + ~16 entrées et retourne les deps (moins propre que le bloc `/api/v1`). Recette établie ;
-  reste une opération de threading à mener. La réduction 1 470→412 (−72 %) est livrée et vérifiée.
+  **PUIS CONSTRUCTION + SPA EXTRAITES (2026-07-06) — CIBLE ATTEINTE ✅** : `buildAPIV1Deps(r, apiV1Inputs)`
+  (phase de construction 606-907 → registry + handlers + montage diag racine, retourne `apiV1Deps` 22
+  champs ; struct d'entrées `apiV1Inputs` déstructurée en tête → corps inchangé) PUIS `mountSPA`
+  (catch-all React /*). **NewRouter ~1 470 → 89 L (< 100 ✅)**. Gate : build/vet ./... 0, intégration
+  -p 1 api VERT (NewRouter boot OK), archlint OK (allowlist data-path étendue à server_apiv1.go).
+  `buildAPIV1Deps`/`mountAPIV1` portent `//nolint:funlen` (assembleur DI séquentiel). K2a COMPLÈTE.
 - [~] K2b — ARCHI 23 + CR A4 (2026-07-06) : **boucle de pagination EXTRAITE** de `run()` →
   méthode `paginateAndPersistHistory(ctx, historyPaginationInputs, *SyncResult)` (~155 L,
   `//nolint:funlen` justifié : filtre/fetch/persist par page partagent processed/toFetch/

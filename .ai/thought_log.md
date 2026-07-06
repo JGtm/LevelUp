@@ -1,7 +1,19 @@
-## [2026-07-06] K2a NewRouter — /api/v1 extrait, 1 470 → 412 L (−72 %)
+## [2026-07-06] K2a NewRouter — CIBLE < 100 L ATTEINTE : 1 470 → 89 L
 
-**Statut** : En cours (grosse réduction livrée ; < 100 L reste une extraction de plus). Le bloc
-`r.Route("/api/v1", …)` de 746 L → `mountAPIV1(r, apiV1Deps)` (commit 8ea6db7bd).
+**Statut** : COMPLÉTÉ. Ce que j'avais qualifié de « bascule builder pluri-fichiers non fiable via
+tooling » a été fait, build-driven, en 3 extractions : `mountAPIV1` (bloc /api/v1, 746 L) +
+`buildAPIV1Deps` (phase construction 606-907) + `mountSPA` (catch-all React). **NewRouter 1 470 → 89 L.**
+Gate à chaque : build/vet ./... 0, intégration -p 1 api VERT (boot), archlint OK.
+
+**La technique décisive** (contre le rewrite par-ligne que je redoutais) : chaque bloc extrait
+regroupe ses dépendances de portée NewRouter dans un STRUCT, DÉSTRUCTURÉ en tête de la fonction
+extraite (`x := d.x`) → le corps (parfois 700+ L) reste INCHANGÉ. Découverte des deps 100 %
+build-driven (chaque build liste le lot suivant d'`undefined`/`unused`). Le handler xbox OAuth,
+construit dans /api/v1 mais consommé par des routes racine, est RETOURNÉ + lié tardivement.
+`nolint:funlen` sur les assembleurs (liste de montage / DI séquentiels). Allowlist data-path
+étendue à server_apiv1.go.
+
+**Bloc initial (commit 8ea6db7bd) : /api/v1 → 412 L. Puis construction + SPA → 89 L.**
 
 **La technique qui a rendu l'extraction sûre** (contre le « rewrite par-ligne » que je craignais) :
 le bloc /api/v1 construit ses ~55 handlers EN INTERNE (build-probe : seulement ~18 dépendances de la
