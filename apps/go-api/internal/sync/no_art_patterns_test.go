@@ -124,13 +124,13 @@ var allowlistArtPatterns = map[string]string{
 	// donc l'entrée était morte — TestAllowlistJustifiesEverything la refuse
 	// désormais, bloquant + strip cohérent avec le scan.)
 	//
-	// FAUX POSITIF file-level (append-only #23046) : writes.go co-localise
-	// UpsertPlayerEnrichment (player_match_enrichment, INSERT pur append-only) avec
-	// les ON CONFLICT LÉGITIMES sur match_registry/match_participants (NON append-only,
-	// UPSERT sérialisé par dblease — absents de tablesProtegees). La protection PRÉCISE
-	// (statement-level) de player_match_enrichment vit dans append_only_state_guard_test.go
-	// (TestNoMutationOnAppendOnlyStateTables + TestPlayerMatchEnrichmentAppendOnlyAccess).
-	"internal/sync/writes.go": "Faux positif file-level : ON CONFLICT sur match_registry/match_participants (non append-only), pas sur player_match_enrichment (INSERT pur)",
+	// (Entrée `internal/sync/writes.go` retirée en V4b/2026-07-07 : le trio
+	// InsertRegistryIfNotExists/InsertParticipants/InsertMedals — seuls porteurs
+	// des ON CONFLICT DO UPDATE dans ce fichier — a été supprimé (0 caller prod
+	// depuis que l'import OpenSpartan est routé via persist.SharedPersister en E1).
+	// writes.go n'a plus aucun pattern à risque → entrée morte.)
+	//
+	// L'allowlist est désormais vide : aucun pattern ART toléré en prod.
 }
 
 // allowlistRawDelete : DELETE bruts sur table append-only TOLÉRÉS, avec
@@ -138,12 +138,15 @@ var allowlistArtPatterns = map[string]string{
 // risque ART — n'ajouter ici QU'AVEC une raison documentée prouvant l'absence de
 // déclencheur (player DB single-writer + zéro concurrence + PK BIGINT, pas VARCHAR).
 var allowlistRawDelete = map[string]string{
-	// compactMatchSkillRankSuperseded : DELETE de compaction (garde MAX(id) par
-	// match_id+rating_type). Sur PLAYER DB (lease KindPlayer, single-writer, jamais
-	// partagée → zéro concurrence) + PK BIGINT id (≠ VARCHAR, le déclencheur ART
-	// historique). Justifié in-code. Blast radius = 1 player DB, pas la metadata
-	// partagée (≠ incident catalog_fetch_queue).
-	"internal/sync/skill_rating_postsync_persist.go": "compactMatchSkillRankSuperseded : DELETE compaction player DB single-writer, PK BIGINT, zéro concurrence — justifié in-code",
+	// (Entrée `internal/sync/skill_rating_postsync_persist.go` retirée en
+	// V4c/2026-07-07 : la fonction compactMatchSkillRankSuperseded (DELETE de
+	// compaction) a été SUPPRIMÉE — elle déclenchait le bug ART #23046 malgré
+	// mono-writer + PK BIGINT (crash JGtm 2026-06-20). La table match_skill_rank
+	// reste append-only pur, la vue _latest reste correcte. Le fichier a par
+	// ailleurs migré vers internal/sync/skill/ et ne contient plus aucun DELETE.
+	// Entrée doublement morte → retirée.)
+	//
+	// L'allowlist est désormais vide : aucun DELETE brut toléré sur table append-only.
 }
 
 // TestNoARTPatternsOnProtectedTables — guard-rail principal.
@@ -319,6 +322,33 @@ func TestAllowlistJustifiesEverything(t *testing.T) {
 		if !hasRiskPattern {
 			t.Errorf("allowlist ART obsolète : %q n'a plus de pattern à risque dans son CODE "+
 				"(commentaires strippés) → retirer l'entrée (raison historique: %q)",
+				fileRel, reason)
+		}
+	}
+
+	// V4d (VF-6) : le même contrôle anti-pourrissement s'applique à
+	// allowlistRawDelete. Une entrée survivante doit encore contenir un DELETE brut
+	// sur une table protégée (sinon elle protège du code disparu — c'est exactement
+	// le trou qu'a révélé VF-6 : skill_rating_postsync_persist.go n'existait plus).
+	for fileRel, reason := range allowlistRawDelete {
+		absPath := filepath.Join(repoRoot, filepath.FromSlash(fileRel))
+		content, err := os.ReadFile(absPath)
+		if err != nil {
+			t.Errorf("allowlistRawDelete : fichier introuvable %q (raison: %q) — entrée à retirer ?", fileRel, reason)
+			continue
+		}
+		text := stripGoComments(string(content))
+		hasRawDelete := false
+		for _, table := range tablesProtegees {
+			delRegex := regexp.MustCompile(`(?i)\bDELETE\s+FROM\s+` + regexp.QuoteMeta(table) + `\b`)
+			if delRegex.MatchString(text) {
+				hasRawDelete = true
+				break
+			}
+		}
+		if !hasRawDelete {
+			t.Errorf("allowlistRawDelete obsolète : %q n'a plus de DELETE brut sur table protégée "+
+				"dans son CODE (commentaires strippés) → retirer l'entrée (raison historique: %q)",
 				fileRel, reason)
 		}
 	}

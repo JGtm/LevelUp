@@ -191,31 +191,46 @@ baseline pré-existante server.go/server_apiv1.go, hors périmètre V3).
 
 ## LOT V4 — Code mort + allowlists mortes + artefacts
 
-- [ ] V4a — VF-5/DC-5 : supprimer `insertHighlightEventsFromData`
-  (engine_highlight_events.go:163) + ses 2 tests (`highlight_events_orchestration_test.go`)
-  après vérif du sibling `ProcessHighlightEvents` (chemin batch vivant).
-- [ ] V4b — VF-5/DC-5 : supprimer `InsertRegistryIfNotExists`/`InsertParticipants`/
-  `InsertMedals` (sync/writes.go:34/99/188) + tests associés (`writes_test.go`,
-  `concurrent_upsert_*_test.go`, `concurrent_multiplayer_e2e_test.go` — vérifier sur
-  pièces ce que chacun teste d'AUTRE avant suppression) + retirer les entrées ON CONFLICT
-  de l'allowlist ART devenues sans objet + la justification périmée de
-  `shared_write_guard_test.go:54,64`. ATTENTION : `UpsertSharedCSRs` reste VIVANT
-  (csr_shared_backfill.go:149) — ne pas le toucher.
-- [ ] V4c — VF-6 : purger les entrées mortes d'allowlists : `sentinel_test.go:50,:155`
-  (internal/api/registry.go ×2) ; `no_art_patterns_test.go:146` (allowlistRawDelete) ;
-  `no_attach_on_social_test.go:312` (social_persister_combined.go).
-- [ ] V4d — VF-6 : étendre les self-checks : `TestAllowlistJustifiesEverything` couvre
-  AUSSI `allowlistRawDelete` ; ajouter un self-check « toute entrée d'allowlist pointe un
-  fichier existant » à sentinel_test.go et no_attach_on_social_test.go (pattern du
-  tripwire ART — c'est le mécanisme qui aurait évité VF-6).
-- [ ] V4e — VF-9/DC-6 : `git rm --cached apps/go-api/coverage.html` + .gitignore ;
-  statuer coverage_baseline.txt (consommé par scripts/coverage_filter.sh ? → garder si oui).
-- [ ] V4f — VF-12 (partiel, mécanique) : fixture morte `discord_extra_test.go:51` (clé
-  `discord_notify_new_media` écrite pour rien) — nettoyer.
+- [x] V4a — VF-5/DC-5 : supprimé `insertHighlightEventsFromData`
+  (engine_highlight_events.go) + ses 2 tests (`TestInsertHighlightEventsFromData_*` dans
+  `highlight_events_orchestration_test.go`). Sibling `ProcessHighlightEvents` (chemin
+  batch/replay vivant) + son test `TestProcessHighlightEvents_ZeroEvents…` conservés,
+  helper `makeBenignZlibChunk` conservé. Header fichier + commentaires stale (engine.go,
+  engine_postsync.go) mis à jour (fonction supprimée).
+- [x] V4b — VF-5/DC-5 : supprimé le trio `InsertRegistryIfNotExists`/`InsertParticipants`
+  (+ `insertParticipantRow`)/`InsertMedals` (sync/writes.go) — 0 caller prod (import
+  OpenSpartan routé via `persist.SharedPersister` depuis E1, vérifié sur pièces
+  openspartan_import_service.go:342). Tests : retiré chirurgicalement les 5 tests du trio
+  de `writes_test.go` (import `time` mort retiré) ; supprimé en entier les 3 fichiers
+  `concurrent_upsert_stress_test.go`/`concurrent_upsert_property_test.go`/
+  `concurrent_multiplayer_e2e_test.go` (sujet unique = InsertParticipants supprimé).
+  Allowlists : retiré l'entrée morte `writes.go` d'`allowlistArtPatterns` (plus aucun
+  ON CONFLICT DO UPDATE) ; corrigé la justification `match_registry` de
+  `shared_write_guard_test.go` (MarkWeaponKillsDone, pas InsertRegistry) + retiré les
+  entrées mortes `match_participants`/`medals_earned`. `UpsertSharedCSRs` NON touché.
+  Baseline CI mise à jour (52 lignes retirées, 13 pairs, retrait subtractif pur).
+- [x] V4c — VF-6 : purgé les entrées mortes : `sentinel_test.go` `internal/api/registry.go`
+  (×2 : allowedEnvReaders + allowedDuckDBWriters, fichier supprimé au lot K, remplacé par
+  wire/registry_auth.go déjà listé) ; `no_art_patterns_test.go` allowlistRawDelete
+  `skill_rating_postsync_persist.go` (compactMatchSkillRankSuperseded SUPPRIMÉE + fichier
+  déplacé sync/skill/, doublement mort) ; `no_attach_on_social_test.go`
+  `social_persister_combined.go` (spéculative « si présent », jamais créée).
+- [x] V4d — VF-6 : `TestAllowlistJustifiesEverything` couvre AUSSI `allowlistRawDelete`
+  (DELETE FROM table protégée) ; self-check « entrée d'allowlist = fichier existant »
+  ajouté à sentinel_test.go (3 maps chemins) et no_attach_on_social_test.go. Les 3
+  self-checks PROUVÉS mordants (entrée bidon → rouge → retirée).
+- [x] V4e — VF-9/DC-6 : `git rm --cached apps/go-api/coverage.html` + .gitignore.
+  `coverage_baseline.txt` GARDÉ : consommé par le ratchet CI (scripts/coverage_check.sh,
+  ci.yml:237, working-directory apps/go-api) ET scripts/check_coverage_ratchet.sh.
+- [x] V4f — VF-12 (partiel, mécanique) : retiré la clé morte `discord_notify_new_media`
+  de la fixture `discord_extra_test.go:51` (jamais lue par LoadNotifyConfig depuis G5 ;
+  discord.go ne lit que sync + new_version). Test conservé.
 
-Gate V4 : `go build ./... && go test ./...` → exit 0 ;
-`go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` → exit 0
-(anti-ART après suppression des tests upsert) ; grep de chaque symbole supprimé → 0.
+Gate V4 : `go build ./... && go vet ./...` → exit 0 ; `go test ./...` → exit 0 ;
+`go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...
+./internal/platform/auth/... ./internal/platform/duckdb/...` → exit 0 (anti-ART après
+suppression des tests upsert) ; grep de chaque symbole supprimé → 0 (code) ; self-checks
+V4d mordants prouvés. TOUS PASSÉS (2026-07-07).
 
 ## LOT V5 — Garde-rail halowaypoint + docs/commentaires inversés
 
@@ -451,3 +466,18 @@ Séquence OBLIGATOIRE, dans l'ordre :
   minima dans le périmètre (1 ligne CoverFlowModal + commentaire) pour débloquer le gate.
   Piste future (hors lot) si on veut vraiment isoler node : sortir les 2 guard-tests dans
   un projet tsconfig séparé, ou remplacer la directive par un typage local de `process`/`node:*`.
+
+- **[V4 — commentaires « carte de navigation » stale, TRAITÉS car mécaniquement liés à
+  V4a]** `engine.go:747` et `engine_postsync.go:237` listaient/citaient
+  `insertHighlightEventsFromData` (fonction supprimée en V4a) → doc inversée introduite
+  par ma suppression. Corrigés dans le lot (non un fix opportuniste : conséquence directe
+  du retrait). Le reste du balayage commentaires stale reste V5c.
+- **[V4 — hors périmètre, NON traité] `scripts/coverage_baseline.txt`** est un 2e fichier
+  baseline versionné (distinct de `apps/go-api/coverage_baseline.txt`), consommé par
+  `scripts/check_coverage_ratchet.sh` (ratchet per-function). VF-9/DC-6 ne visait que le
+  fichier apps/go-api → laissé tel quel (légitimement versionné).
+- **[V4 — hors périmètre, NON traité] entrée `weapon_kills` de `shared_write_guard_test.go`**
+  décrit encore « InsertWeaponKills (DELETE+INSERT sérialisé…) » : InsertWeaponKills est
+  passé append-only (génération, plus de DELETE, cf. writes.go). Justification légèrement
+  stale mais l'entrée reste NÉCESSAIRE (InsertWeaponKills écrit toujours weapon_kills) —
+  correction cosmétique reportée (pas dans le périmètre VF-5 qui ne cite que :54,64).

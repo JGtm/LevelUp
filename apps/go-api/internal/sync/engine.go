@@ -744,9 +744,8 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 // Pipeline parallèle fetch (Phase 2 errgroup) + persist séquentiel (Phase 3 :
 // persistFetchedMatch → submitMatchAsBatch INSERT-only).
 
-// insertHighlightEventsFromData, ProcessHighlightEvents : dans
-// engine_highlight_events.go. Parse + insert events (path standalone via
-// ProcessHighlightEvents pour outils de replay).
+// ProcessHighlightEvents : dans engine_highlight_events.go. Parse + insert
+// events (path standalone exposé pour les outils de replay).
 
 // reconcileInsertedAgainstRegistry retire de result.InsertedMatchIDs (et décrémente
 // MatchesInserted, incrémente MatchesSkipped) les match_id comptés au Submit mais

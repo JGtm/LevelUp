@@ -33,48 +33,6 @@ func makeBenignZlibChunk(t *testing.T) []byte {
 	return buf.Bytes()
 }
 
-func TestInsertHighlightEventsFromData_EmptyData_NoWarning(t *testing.T) {
-	observability.Reset()
-	result := &domain.SyncResult{}
-	err := insertHighlightEventsFromData(context.Background(), nil, "m1", nil, 41, result)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if len(result.Warnings) != 0 {
-		t.Errorf("empty data ne doit pas générer de warning, got: %v", result.Warnings)
-	}
-	if got := observability.LoadCounter("highlight_events_parse_anomaly_total"); got != 0 {
-		t.Errorf("counter ne doit pas s'incrémenter sur data vide, got %d", got)
-	}
-}
-
-func TestInsertHighlightEventsFromData_ZeroEventsFromNonEmptyChunk_FlagsAnomaly(t *testing.T) {
-	observability.Reset()
-	chunk := makeBenignZlibChunk(t)
-	result := &domain.SyncResult{}
-
-	err := insertHighlightEventsFromData(context.Background(), nil, "match-test-id", chunk, 41, result)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	// Anomalie attendue : warning + compteur expvar.
-	if len(result.Warnings) != 1 {
-		t.Fatalf("expected 1 warning, got %d: %v", len(result.Warnings), result.Warnings)
-	}
-	w := result.Warnings[0]
-	if !strings.Contains(w, "parse_anomaly") {
-		t.Errorf("warning should mention parse_anomaly, got %q", w)
-	}
-	if !strings.Contains(w, "match-test-id") {
-		t.Errorf("warning should mention match_id, got %q", w)
-	}
-
-	if got := observability.LoadCounter("highlight_events_parse_anomaly_total"); got != 1 {
-		t.Errorf("counter should be 1, got %d", got)
-	}
-}
-
 func TestProcessHighlightEvents_ZeroEventsFromNonEmptyChunk_FlagsAnomaly(t *testing.T) {
 	observability.Reset()
 	chunk := makeBenignZlibChunk(t)

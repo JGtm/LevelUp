@@ -145,6 +145,10 @@ apps/go-api/token_*.txt
 # Artefacts test/coverage Go (générés par go test / scripts ratchet)
 apps/go-api/coverage
 apps/go-api/coverage*.out
+# Rapport HTML de couverture : artefact de build (régénéré + uploadé en CI),
+# jamais versionné (VF-9/DC-6). NB : coverage_baseline.txt RESTE versionné —
+# consommé par le ratchet CI (scripts/coverage_check.sh) et check_coverage_ratchet.sh.
+apps/go-api/coverage.html
 apps/go-api/cover_*
 coverage_ratchet.out
 **/coverage.out

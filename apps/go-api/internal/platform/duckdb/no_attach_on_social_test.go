@@ -149,6 +149,25 @@ func TestNoUnauthorizedSharedSocialMention(t *testing.T) {
 		strings.Join(violations, "\n  - "))
 }
 
+// TestSharedSocialWhitelistEntriesPointToExistingFiles (V4d, VF-6) — self-check
+// anti-pourrissement : chaque clé de sharedSocialFilesWhitelist est un CHEMIN de
+// fichier (pas un motif) ; elle doit désigner un fichier EXISTANT. Une entrée
+// dont le fichier a disparu (déplacé/supprimé par un refactor) est un trou
+// latent — c'est le défaut révélé par VF-6 (social_persister_combined.go
+// « si présent », jamais créé). Un fichier recréé plus tard à ce chemin
+// mentionnerait shared_social sans déclencher le sentinel.
+func TestSharedSocialWhitelistEntriesPointToExistingFiles(t *testing.T) {
+	root := findGoAPIRoot(t)
+	for rel := range sharedSocialFilesWhitelist {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		if _, err := os.Stat(path); err != nil {
+			t.Errorf("sharedSocialFilesWhitelist : entrée %q pointe un fichier inexistant (%v) — "+
+				"refactor de renommage/suppression ? Retirer l'entrée morte (trou latent : un fichier "+
+				"recréé à ce chemin échapperait au sentinel).", rel, err)
+		}
+	}
+}
+
 func isATTACHFuncName(name string) bool {
 	lower := strings.ToLower(name)
 	return strings.Contains(lower, "attach") &&
@@ -309,7 +328,6 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/platform/duckdb/media_repo_q37_pipeline.go":                               "pipeline Q37 (lit shared_social)",
 	"internal/platform/duckdb/media_repo_registry.go":                                   "registry helpers",
 	"internal/platform/duckdb/media_repo_translations.go":                               "translations helpers",
-	"internal/platform/duckdb/social_persister_combined.go":                             "combined persister wiring (si présent)",
 	"internal/progression/coach/types.go":                                               "coach types touchent shared_social",
 	"internal/progression/records/repository.go":                                        "records repo wiring",
 	"internal/progression/records/types.go":                                             "records types",

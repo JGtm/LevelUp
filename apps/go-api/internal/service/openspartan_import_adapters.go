@@ -9,9 +9,10 @@ import (
 )
 
 // toSyncRegistry converts a mapper.MatchRegistryRow (PR 2 pivot type) into
-// the sync.MatchRegistryRow that writes.go's InsertRegistryIfNotExists
-// expects. Required because the sync types predate the mapper and use
-// slightly different nullability conventions.
+// the sync.MatchRegistryRow consumed by the shared persist path
+// (persist.BatchBuilder.SetMatch in openspartan_import_service.go). Required
+// because the sync types predate the mapper and use slightly different
+// nullability conventions.
 func toSyncRegistry(m mapper.MatchRegistryRow) sync.MatchRegistryRow {
 	durSec := m.DurationSeconds
 	playableSec := m.PlayableDurationSeconds

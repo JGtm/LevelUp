@@ -48,7 +48,6 @@ func TestLoadNotifyConfig_ValidConfig(t *testing.T) {
 		"discord_webhook_url":           "https://discord.com/api/webhooks/123/abc",
 		"discord_lang":                  "en",
 		"discord_notify_sync":           false,
-		"discord_notify_new_media":      true,
 		"discord_notify_new_version":    true,
 	})
 	_ = os.WriteFile(p, data, 0644)
