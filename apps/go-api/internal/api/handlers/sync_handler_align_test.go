@@ -75,3 +75,35 @@ func TestNewPooledEngine_FallbackWhenNoBuilder(t *testing.T) {
 		t.Fatal("fallback legacy doit retourner un moteur non-nil")
 	}
 }
+
+// TestNewEngineFor_WiresPrestigeHook : garde anti-régression VF-1. Quand le
+// SyncHandler a reçu un hook Prestige (WithPrestigeHook), le SyncEngine construit
+// par newEngineFor (chemin StartInitialSync) doit le porter. Ce test échoue si
+// quelqu'un remet un stub qui jette le hook (le bug d'origine).
+func TestNewEngineFor_WiresPrestigeHook(t *testing.T) {
+	called := false
+	h := NewSyncHandler(&config.AppConfig{RepoRoot: t.TempDir()}, nil, nil, nil).
+		WithPrestigeHook(func(_ context.Context, _, _ string) { called = true })
+
+	engine := h.newEngineFor("halo_infinite", "DemoPlayer", "xuid-1", nil)
+	if engine == nil {
+		t.Fatal("newEngineFor doit retourner un moteur non-nil")
+	}
+	if !engine.HasPrestigeHook() {
+		t.Fatal("REGRESSION VF-1: le SyncEngine construit par newEngineFor ne porte pas le hook Prestige alors que WithPrestigeHook a été appelé (prestige.RunPostSyncHook ne tournera jamais sur le sync HTTP initial)")
+	}
+	_ = called // la closure n'est pas exécutée ici (pas de RunDelta) : on teste le câblage
+}
+
+// TestNewEngineFor_NoPrestigeHookWhenNotWired : sans WithPrestigeHook, le moteur
+// ne porte pas de hook (pas de fuite).
+func TestNewEngineFor_NoPrestigeHookWhenNotWired(t *testing.T) {
+	h := NewSyncHandler(&config.AppConfig{RepoRoot: t.TempDir()}, nil, nil, nil)
+	engine := h.newEngineFor("halo_infinite", "DemoPlayer", "xuid-1", nil)
+	if engine == nil {
+		t.Fatal("newEngineFor doit retourner un moteur non-nil")
+	}
+	if engine.HasPrestigeHook() {
+		t.Error("PrestigeHook câblé alors que WithPrestigeHook pas appelé — fuite")
+	}
+}

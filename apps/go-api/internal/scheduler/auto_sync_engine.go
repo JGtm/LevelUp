@@ -111,6 +111,17 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 	// LEVELUP_SYNC_RESOLVE_ASSETS appliqué côté sync. Le chemin prod V2 est câblé
 	// séparément (persister).
 	engine.WithAssetNameResolution(s.pool)
+	// Hook Prestige post-sync (best-effort). Fire à engine.run() après le pipeline
+	// post-sync, pendant que le lease player/shared est encore tenu — instance directe
+	// non-lease (invariant deadlock-free, cf. wire/prestige_setup.go). gamertag ==
+	// PlayerSlug pour les joueurs réels (cf. WithPostSyncRunner). Couvre les 3 entrées
+	// V1 qui passent par BuildEngine : auto-sync, HTTP delta (engineBuilder), watcher.
+	if s.prestigeHook != nil {
+		hook := s.prestigeHook
+		engine.WithPrestigeHook(func(hookCtx context.Context, playerSlug, ts string) {
+			hook(hookCtx, playerSlug, ts)
+		})
+	}
 	return engine
 }
 

@@ -1104,6 +1104,17 @@ func main() {
 		autoScheduler.WithPostSyncRunner(postSyncRunner)
 	}
 
+	// VF-1 / DC-4 — câblage du hook Prestige post-sync sur le chemin V1
+	// (auto-sync + HTTP delta + watcher, tous via BuildEngine). Avant ce fix,
+	// prestige.RunPostSyncHook ne tournait sur AUCUN chemin (stub qui jetait le
+	// hook, engine.prestigeHook toujours nil). = PrestigeBundle.RunPostSync
+	// (no-op si bundle nil ou flag Prestige off, cf. RunPostSync).
+	var prestigePostSyncHook func(ctx context.Context, playerSlug, titleSlug string)
+	if pb := reg.PrestigeBundle(); pb != nil {
+		prestigePostSyncHook = pb.RunPostSync
+		autoScheduler.WithPrestigeHook(prestigePostSyncHook)
+	}
+
 	// ADR 0027 — câblage pipeline V2, UNIQUE moteur de sync du cycle depuis la
 	// suppression du pipeline V1 (lot D1c, DEC-2). Une fois l'orchestrator câblé
 	// (bloc ci-dessous), le cycle auto-sync pilote les joueurs MOTEUR (Infinite)
@@ -1136,6 +1147,7 @@ func main() {
 			TokenProvider:  tokenProvider,
 			Settings:       settingsStore,
 			PostSyncRunner: v2PostSyncRunner,
+			PrestigeHook:   prestigePostSyncHook,
 		})
 		if v2Orch != nil {
 			autoScheduler.WithCycleOrchestrator(v2Orch)

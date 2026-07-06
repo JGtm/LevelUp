@@ -52,6 +52,9 @@ type SyncV2WiringDeps struct {
 	TokenProvider  auth.TokenProvider
 	Settings       *settingsplatform.Store // pour FriendsLoader + MediaScanHook
 	PostSyncRunner port.PostSyncRunner     // pour WithPostSyncRunner (progression V2)
+	// PrestigeHook (optionnel) ré-évalue les défis Prestige actifs après le post-sync
+	// de chaque joueur (Phase 6). = PrestigeBundle.RunPostSync. Nil → no-op.
+	PrestigeHook func(ctx context.Context, playerSlug, titleSlug string)
 }
 
 // buildSyncV2Orchestrator construit l'orchestrator V2 avec ses 6
@@ -198,7 +201,8 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		persister,
 		postSyncRunner,
 		syncv2.CycleConfig{},
-	).WithSnapshotProducer(snapshotCutter)
+	).WithSnapshotProducer(snapshotCutter).
+		WithPrestigeHook(deps.PrestigeHook)
 }
 
 // ─── Dry-run stubs (mode validation sans écriture DB) ─────────────────

@@ -179,8 +179,10 @@ func (b *PrestigeBundle) serviceAndPlayerDB(ctx context.Context, playerSlug stri
 	return pdb, prestige.NewService(deps), nil
 }
 
-// RunPostSync est le point d'entrée du sync engine pour ré-évaluer
-// les défis actifs après ingestion de matchs.
+// RunPostSync est le point d'entrée des chemins de sync (V1 via
+// SyncEngine.WithPrestigeHook câblé par scheduler.BuildEngine + handler
+// newEngineFor ; V2 via CycleOrchestratorImpl.WithPrestigeHook) pour ré-évaluer
+// les défis actifs après ingestion de matchs. Câblage réel depuis VF-1 (2026-07-06).
 //
 // No-op si PRESTIGE_ENABLED=false. Best-effort : log les erreurs
 // sans propager (le sync ne doit pas échouer à cause de Prestige).

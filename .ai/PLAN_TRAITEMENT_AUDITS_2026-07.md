@@ -2162,13 +2162,14 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 - [LOT D1 / D1c — GATE live-sync différé] Le gate D1c (3) « sync live complet en local » exige
   tokens/réseau réels, non exécutable par l'agent. Couvert par `-tags=integration -p 1 ./...`
   (vert) ; le sync live reste un contrôle MANUEL avant le land sur main.
-- [LOT D1 / D1f — BUG latent : hook Prestige HTTP droppé] `SyncHandler.WithPrestigeHook`
-  (`sync_handler.go:226`) est un STUB no-op (`return h`), mais `server.go:1292` lui passe
-  `prestigeBundle.RunPostSync` — le hook est SILENCIEUSEMENT ignoré. Conséquence probable : un
-  sync manuel déclenché via l'endpoint HTTP ne lance pas le post-sync Prestige (l'auto-sync
-  scheduler passe, lui, par le hook du SyncEngine `engine_options.go:78`, correct). À VÉRIFIER
-  puis câbler (ou retirer le stub + le call si redondant avec le chemin engine). Hors périmètre
-  D1f (règle 7) — candidat LOT K (couches) ou fix dédié.
+- [LOT D1 / D1f — BUG latent : hook Prestige HTTP droppé] [TRAITÉ V2 2026-07-06]
+  Vérification finale VF-1 : le hook ne tournait sur AUCUN chemin (pas seulement HTTP) — le
+  SyncEngine.WithPrestigeHook (`engine_options.go:78`) n'avait aucun caller prod, donc auto-sync,
+  HTTP delta ET V2 le sautaient tous. Câblé (DC-4) dans LOT V2 du plan de clôture
+  (`.ai/PLAN_CLOTURE_AUDITS_2026-07.md`) : `SyncHandler.WithPrestigeHook` stocke le hook +
+  `newEngineFor`, `scheduler.BuildEngine`, `CycleOrchestratorImpl` (V2) le câblent ; 3 gardes
+  anti-régression (golden BuildEngine, cabling handler, cycle V2). Stub + `TODO(prestige-agent)`
+  retirés.
 - [LOT D1 / D1f — résidu TODO non traité] Passe rapide (outillage = livrable) : NON datés/
   supprimés (aucun n'est échu, le lint reste vert) : (a) cluster « TODO P4 ADR 0006 : retirer
   *100 » (~10 occurrences service/analysis) = migration unité canonique 0..1 cohérente, à
