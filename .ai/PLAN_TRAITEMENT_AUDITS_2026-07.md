@@ -1323,8 +1323,11 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
     fichiers même-package (prestige.go 353 + prestige_arcs 142 + prestige_squad_challenges 92 +
     prestige_squads 470), tous < 500 ; (2) `games/halo_infinite/adapter_data.go` 746 → 472 L +
     `adapter_data_career.go` 287 L (méthodes carrière/historique) ; (3) `games/halo_5/adapter_data.go`
-    641 → 379 L + `adapter_data_loaders.go` 277 L (carrière + chargement matchs). Gates : build+vet 0,
-    tests package + intégration api verts. **NOTE** : `sync/skill_v2_shadow.go` NON splittable en
+    641 → 379 L + `adapter_data_loaders.go` 277 L (carrière + chargement matchs) ; (4)
+    `api/registry_pages.go` 851 → 294 L + `registry_pages_explorer.go` 323 + `registry_pages_home.go`
+    259 (factories Explorer / Home-MatchHistory-Squad). Gates : build+vet 0, tests package +
+    intégration api verts. **Piège noté** : goimports STRIP l'alias custom `sync_pkg` → import
+    ajouté à la main + `gofmt` seul (jamais goimports) sur les fichiers à alias non-inférable. **NOTE** : `sync/skill_v2_shadow.go` NON splittable en
     place — le ratchet de gel K3c interdit un nouveau fichier racine sync/ (doit aller en
     sous-package, cf. K3c reste). RESTE (7) : steps.go (migration — ordering sensible),
     persist_sink.go (ART-critique), db.go, registry_pages.go, pool.go x3 fns, prestige/service.go
