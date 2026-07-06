@@ -1319,13 +1319,15 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
     documentées ; `metadata/` renommé ; `openspartan/` → platform/ ; `legacymatch` échéance
     documentée [TRACKÉ] ; `migration/steps_*` Halo-specific [TRACKÉ ADR 0025 Ph 1.5 — statuer
     seulement] ; PathResolver dans domain/ (documenter le choix) ; god-files secondaires
-    → découper OU exemption. **FAIT (2026-07-06)** : `handlers/prestige.go` 1 019 L → split
-    même-package en 4 fichiers (prestige.go 353 L + prestige_arcs.go 142 + prestige_squad_challenges.go
-    92 + prestige_squads.go 470), tous < 500 ; build+vet 0, tests handlers + intégration api verts
-    (routes Huma montées OK). RESTE (9) : steps.go, skill_v2_shadow.go, persist_sink.go,
-    adapter_data.go, db.go, registry_pages.go, pool.go x3 fns, prestige/service.go CreateChallenge,
-    steps_player_base.go → découper OU exemption justifiée par commentaire (splits même-package,
-    mécaniques, suite).
+    → découper OU exemption. **FAIT (2026-07-06)** : (1) `handlers/prestige.go` 1 019 L → 4
+    fichiers même-package (prestige.go 353 + prestige_arcs 142 + prestige_squad_challenges 92 +
+    prestige_squads 470), tous < 500 ; (2) `games/halo_infinite/adapter_data.go` 746 → 472 L +
+    `adapter_data_career.go` 287 L (méthodes carrière/historique). Gates : build+vet 0, tests
+    package + intégration api verts. **NOTE** : `sync/skill_v2_shadow.go` NON splittable en
+    place — le ratchet de gel K3c interdit un nouveau fichier racine sync/ (doit aller en
+    sous-package, cf. K3c reste). RESTE (7) : steps.go (migration — ordering sensible),
+    persist_sink.go (ART-critique), db.go, registry_pages.go, pool.go x3 fns, prestige/service.go
+    CreateChallenge, steps_player_base.go → splits même-package OU exemption, suite mécanique.
 
 Gate K (par sous-lot) : `go build ./... && go test ./...` ; pour K2a/K2b :
 `go test -tags=integration ./internal/sync/...` + diff openapi VIDE (aucune route
