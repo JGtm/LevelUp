@@ -1086,9 +1086,13 @@ K1 — Extractions de couches (ROI d'abord) :
   comportement sur ce pipeline hétérogène). Tests `warnUnimplemented` migrés vers service
   (package `service`). Gate : build+vet 0, tests handlers+service verts, intégration -p 1
   (service+handlers) verte.
-- [ ] K1g — CR A2 + A1 (partie) : `loadTitleAssetDrawerData` + `loadCSRBadgeResolver`
-  (`server.go:137-222`) → platform/duckdb (modèle `loadTitleRankImageURLs`) ; supprimer le
-  double chargement metadata H5 au boot (`server.go:773` vs `:816`).
+- [x] K1g — CR A2 + A1 (partie) (2026-07-06) : SQL de `loadTitleAssetDrawerData` +
+  `loadCSRBadgeResolver` → `platform/duckdb/title_asset_drawer_loader.go`
+  (`LoadTitleAssetDrawerData` + `LoadCSRBadgeMap`) ; les wrappers server.go ne gardent que
+  open+delegate (modèle `loadTitleRankImageURLs`). Double chargement metadata H5 au boot
+  SUPPRIMÉ : `loadTitleAssetDrawerData(h5)` était appelé 2× (AssetMetadataHandler + adapter
+  TitleAssetURLAdapter) → hoisté UNE fois avant le bloc, réutilisé aux 2 endroits. Gate :
+  build+vet 0, intégration -p 1 (api+handlers) verte.
 - [ ] K1h — CR A5 + ARCHI mineurs handlers : handlers qui construisent repos/métier →
   services + ports : `progression.go:162-251` (ProgressionService, jointure catalog x
   earned hors handler), `campaign.go:221`, `admin_auto_sync.go:206`, `sync_handler.go:165`,

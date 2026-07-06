@@ -1,3 +1,25 @@
+## [2026-07-06] K1g — SQL asset-drawer/CSR-badge → duckdb + dédup double-load H5 boot
+
+**Statut** : Complété.
+
+**Décision technique principale** : (a) le SQL de `loadTitleAssetDrawerData` (3 requêtes
+maps/armes/médailles) et `loadCSRBadgeResolver` (csr_designations) vivait dans api/server.go
+→ déplacé vers `platform/duckdb/title_asset_drawer_loader.go` (`LoadTitleAssetDrawerData`,
+`LoadCSRBadgeMap`), les wrappers server.go réduits à open+delegate (modèle
+`loadTitleRankImageURLs`, déjà en place). (b) Double chargement boot supprimé :
+`loadTitleAssetDrawerData(metadata h5)` était appelé DEUX fois avec les mêmes args (bloc
+AssetMetadataHandler dans la retry-loop + bloc adapter TitleAssetURLAdapter) — chacun
+ouvrait la DB + 3 requêtes. Hoisté UNE fois (`h5Maps/h5Weapons/h5Medals`) avant les 2 blocs,
+réutilisé. Le commentaire « metadata h5 DÉJÀ chargée » de l'adapter devient enfin exact.
+
+**Résultats observés** : build 0, vet 0. Gate intégration -p 1 (api 17 s + handlers 14 s)
+VERT — NewRouter (boot) construit correctement. Comportement identique (SQL byte-identique
+déplacé ; 2e load renvoyait exactement les mêmes données).
+
+**Conclusion / prochaine étape** : K1g livré. Suite : K1k (career_live_fetcher factory).
+
+---
+
 ## [2026-07-06] K1f — extraction service.BackfillOrchestrator (god-function handler)
 
 **Statut** : Complété. Objectif `/goal` : faire TOUT le lot K en autonomie puis push.
