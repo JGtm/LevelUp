@@ -1,3 +1,31 @@
+## [2026-07-07] Clôture audits — GATE GLOBAL FINAL V1-V8 (session pilotage Fable→Opus)
+
+**Statut** : Complété (volet code de la clôture terminé ; restent V9/V10 bloqués VPS + GATE HUMAIN + PLAN DE MERGE).
+
+**Décision technique principale** : exécution du plan `.ai/PLAN_CLOTURE_AUDITS_2026-07.md`
+en mode piloté — 8 sous-agents Opus séquentiels (1 lot = 1 agent, périmètre fermé, gates
+exacts), vérification indépendante par le superviseur (Fable) à chaque clôture : revue de
+diff sur pièces, re-exécution des gates critiques, confirmation CI de première main.
+
+**Résultats observés** : V1-V8 CLOS, CI de branche VERTE après chacun des 9 commits
+(b74428e2f, 82a6f0016, e703d6dc7+7221c21d1, 5183c3a25, 90c4e187c, 4b56c1fc3, 519a76518,
+e481159ce). Gate global final re-exécuté en fin de session : go build/vet 0 ;
+`go test -tags=integration -p 1 -timeout 900s ./...` = exit 0, 0 FAIL ; front cache purgé
+typecheck 0, lint 0 erreur, vitest 242 fichiers / 2076 verts. Faits saillants : hook
+Prestige câblé sur 4 chemins (V2), ratchet routes nues + /jobs gardé (V3), dead code museum
+purgé + self-checks d'allowlists (V4), ratchet halowaypoint (V5), vérification finale des
+4 audits = 0 orphelin + BILAN FINAL §8 du plan parent (V6), 5e copie perfTierToken
+découverte par son propre garde-rail (V7), section Top matchs Carrière réparée — elle ne
+s'affichait JAMAIS (V8).
+
+**Conclusion / prochaine étape** : la branche est prête pour le GATE HUMAIN (checklist
+revue visuelle du plan de clôture) puis le PLAN DE MERGE (8 étapes — répétition sur copie
+prod, gate live-sync D1c manuel, rollback documenté). V9 (données prod) et V10
+(exploitation) attendent le retour du VPS (backup restic). Push main = deploy auto :
+NE PAS merger avant ces étapes.
+
+---
+
 ## [2026-07-07] Clôture audits — LOT V8 (contrat front↔back : généraliser la découverte A2)
 
 **Statut** : Complété. Périmètre fermé V8a..V8d, tous `[x]`. 3 divergences additionnelles
