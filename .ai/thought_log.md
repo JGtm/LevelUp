@@ -1,3 +1,40 @@
+## [2026-07-07] Clôture campagne d'audits 2026-07 — chantier V (V1-V6) post-vérification finale
+
+**Statut** : Complété (V1-V6) ; V7-V10 + GATE HUMAIN + merge restants (bloqués VPS/user).
+
+**Décision technique principale** : exécuter le plan `PLAN_CLOTURE_AUDITS_2026-07.md` (dernier
+kilomètre avant merge main) qui convertit les 16 findings de l'audit de vérification finale
+(`AUDIT_VERIF_FINALE_2026-07-06.md`, VF-1..VF-16) en lots cochables. Les lots V1-V5 (code) ont
+été livrés par sous-agents pilotés, un par lot, CI re-croisée à chaque lot (leçon VF-16 : les
+gates locaux ne suffisent pas, il faut lire `gh run list --branch`).
+- **V1 (VF-2/VF-16)** `b74428e2f` : gate front typecheck réparé (6 TS2345 ManifestLocale à la
+  source + queryKey mediaMatchCandidates + `/// <reference types="node" />` sur les 2 guards) +
+  baseline CI Go rebaselinée (688 pairs absentes = 427 relocations K + 110 suppressions tracées,
+  retrait subtractif pur).
+- **V2 (VF-1)** `82a6f0016` : hook Prestige post-sync câblé sur les 4 chemins (HTTP initial/delta,
+  auto-sync/watcher, V2 cycle orchestrator Phase 6) — le stub `return h` jetait le hook, feature
+  morte à tests verts. Découverte majeure : le pipeline V2 (ADR 0027, défaut) ne passe PAS par
+  engine.run() → wiring V2 dédié ajouté.
+- **V3 (VF-3/VF-15)** `e703d6dc7` + `7221c21d1` : `/jobs/{job_id}` sous RequireAuth + newJobID
+  crypto/rand ; ratchet routes nues (chi.Walk + marquage middleware par nom runtime) — pivot
+  après crash CI de l'approche boot-enforcement (deps nil → os.Exit tue le binaire de test).
+- **V4 (VF-5/VF-6/VF-9)** `5183c3a25` : code mort transitif supprimé (insertHighlightEventsFromData,
+  trio writes.go + 3 tests concurrent_upsert), allowlists mortes purgées + self-checks d'existence,
+  coverage.html dé-tracké.
+- **V5 (VF-7/VF-8/VF-10/VF-12)** `90c4e187c` : ratchet halowaypoint (frontière URL figée),
+  doc inversée d'un flag supprimé purgée, commentaires stale post-suppression réécrits.
+- **V6 (VF-4)** ce commit : tracker/journal/DETTE_ASSUMEE réconciliés avec la réalité (I2→[x],
+  I4→[x/~], K3f purge RESTE(7), P1/P2 statués, §6 Journal H-N ajouté) + VÉRIFICATION FINALE §5
+  du plan parent exécutée (relecture des 4 audits, BILAN FINAL rédigé, orphelins consignés §7).
+
+**Résultats observés** : V1-V5 gates verts localement ET CI de branche verte après chaque push
+(VF-16 résorbé). V6 = doc-only, aucun gate Go/front (relecture croisée : 0 item du plan parent
+sans statut hors différés documentés).
+
+**Conclusion / prochaine étape** : chantier V code (V1-V5) + tracker (V6) clos. Restent V7
+(résiduel qualité), V8 (contrat front↔back), V9 (données prod, bloqué VPS), V10 (exploitation
+restore restic, bloqué VPS), puis GATE HUMAIN (revue visuelle) et PLAN DE MERGE main (deploy auto).
+
 ## [2026-07-07] Clôture LOT V5 — garde-rail halowaypoint + docs/commentaires inversés (VF-7, VF-8, VF-10, VF-12)
 
 **Statut** : Complété.

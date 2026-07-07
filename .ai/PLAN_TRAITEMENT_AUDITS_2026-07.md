@@ -57,10 +57,13 @@ documenté de traitement non séquentiel et partiel. Toute dérogation = tâche 
 
 ## 1. Pré-requis et branches
 
-- [ ] P1 — Le chantier en cours sur `fix/h5-ui-adjustments-batch` (burst-lease, fichiers
+- [x] P1 — Le chantier en cours sur `fix/h5-ui-adjustments-batch` (burst-lease, fichiers
   sync modifiés) est commité/landé AVANT de démarrer ce plan. Ce plan ne se démarre pas
-  avec un working tree sale d'un autre sujet.
-- [ ] P2 — Partir de `main` à jour.
+  avec un working tree sale d'un autre sujet. **Vérifié (V6a) : la branche
+  `refactor/audits-2026-07` part d'un commit propre de main (`3aef23396`, Open Graph) et son
+  1er commit est `audit(A)` `f3d708a63` — aucun WIP burst-lease dans l'historique de branche.**
+- [x] P2 — Partir de `main` à jour. **Vérifié (V6a) : point de branche = `3aef23396` (HEAD
+  de main au démarrage) ; pas de rebase divergent constaté.**
 - Branches (règle « 1 tâche = 1 branche, N commits ») :
   - **Lot S** : branche dédiée `fix/security-unauth-endpoints` — à merger/déployer vite
     (2 Bloquants exploitables). PRÉVENIR l'utilisateur avant le push main (auto-deploy).
@@ -926,20 +929,21 @@ Objectif : purge FR monolingue + anglicismes ; règle lint passée en `error` à
   `failureMessageFromCode(err, t)` refactoré pour injecter le traducteur (test unité MAJ).
   +43 clés `common.toml` (2402 total). Gate : typecheck 0, eslint 0 (règle no-hardcoded en
   error, I5), vitest 18/18 sur auth+onboarding, 0 résiduel FR user-facing.
-- [~] I2 — CR A18 : **LABELS LIVRÉS (2026-07-05) ; figement nombre/date résiduel scopé.**
-  Fait `[x]` : (a) MatchScoreboard 11 libellés colonnes + header + tooltip + sbFormatScore
+- [x] I2 — CR A18 : **LABELS + FIGEMENT nombre/date COMPLETS (2026-07-05 ; I2b clos par
+  d3fdead37 / 8b80c7b46 / 974ac5a33, docs 3fa9a6f33).**
+  Fait : (a) MatchScoreboard 11 libellés colonnes + header + tooltip + sbFormatScore
   locale-aware (MatchViewText fr/en) ; (b) heatmaps activité explorer+synthesis (DOW/heures/
   axes/tooltips bilingues) + **centralisation `lib/formatters/calendar.ts`** (4 copies DOW
   dédupliquées, garde-rail `calendar.guard.test.ts`, CLAUDE.md n°6) ; (c) filtres Analyser/
   Appliqué (`common.filter.*`) + « Par carte/mode » (`synthesis.breakdown.*`).
-  Fait partiel `[~]` : figement `toLocaleString('fr-FR')` — audit sur-comptait (« ~100 » →
-  **39 réels dont ~9 légitimes** : valeurs objet `fr` d'i18n bilingue + `formatDateShort`
-  verrou chart documenté). Pont canonique **`lib/formatters/intlLocale.ts`** créé +
-  SynthesisPage flagship (15 sites) migré. **RESTE ~24 sites** `[!]` : helpers PURS /
-  builders ECharts / consts module SANS locale en scope (career gauges, media/home dates,
-  session-detail `fmtInt`+_shared, prestige LeaderboardPP, timeseries SquadAdapted,
-  synthesis Weapon*Chart, MatchScoreboard.logic) → threading `locale` par signature requis
-  (cosmétique : séparateurs nombre / ordre date). Helper prêt. Détail DETTE_ASSUMEE §I2b.
+  **I2b — figement `toLocaleString('fr-FR')` : COMPLET** (l'audit sur-comptait « ~100 » →
+  39 réels). Pont canonique **`lib/formatters/intlLocale.ts`** créé + TOUS les sites figés
+  migrés via `intlLocale(locale)` threadé : SynthesisPage flagship, synthesis weapon charts
+  (d3fdead37), media dates ×3 (d3fdead37), career gauges + LeaderboardPP (8b80c7b46),
+  session-detail ×2, HomeSessionCarousel, TimeseriesSquadAdapted (974ac5a33). 2 sites figés
+  étaient du **code mort** (`formatScore`, `formatShortDateTime`) → supprimés (CLAUDE.md n°7).
+  **Exceptions conservées, légitimes** : `formatDateShort` (verrou chart DD/MM documenté) +
+  valeurs objet `fr` des i18n.ts (branche FR d'un bilingue). Détail DETTE_ASSUMEE §2 I2b.
 - [x] I3 — CR A19 : **LIVRÉ (2026-07-04)**. Le « 68+ » sur-comptait ~5× : la quasi-totalité
   sont des CLÉS (`streaksSectionTitle`, `streak_milestone`), des identifiants de code
   (`StreakType`, `StreakCard`, `win_streak`), des valeurs EN (à garder) et le terme de
@@ -949,7 +953,8 @@ Objectif : purge FR monolingue + anglicismes ; règle lint passée en `error` à
   (double « série » évité ; « streak shield » → « bouclier de série »). CLÉS intactes.
   Gate : typecheck OK, vitest 425 verts, grep valeur FR + « streak » → 0 (ne restent que
   clés/EN/glossaire/commentaires de code).
-- [!] I4 — CR mineurs : **SCOPÉ PRÉCISÉMENT (2026-07-05), non exécuté ce tour.** Comptage
+- [x/~] I4 — CR mineurs : **LARGEMENT LIVRÉ (2026-07-05) ; longue traîne 1-2/fichier [~]
+  tolérée (règle plan).** Comptage
   réel = **155 ternaires** `locale === 'en'/'fr' ?` (audit disait 88), MAIS distinction
   clé vérifiée sur pièces : **tous DÉJÀ bilingues** (les 2 langues présentes dans le
   ternaire) → I4 est un refactor **d'ORGANISATION** (centralisation + parité typée), PAS
@@ -968,10 +973,12 @@ Objectif : purge FR monolingue + anglicismes ; règle lint passée en `error` à
       ternaires** migrés : AscensionProfileTab(16), MatchViewPage(3), PrestigeSquadProgress(3),
       AscensionRealisationsTab(3), AscensionCoachingTab(1) → feature i18n (`getAscensionText`,
       `MatchViewText`). 3 commits `i18n(I4b)`, typecheck/tests verts.
+    - **cluster tooltips paramétrés DUPLIQUÉ** `MatchEncountersTable`+`ExplorerEncounterBriefing`
+      (`${n} matches as ally`…, ~9 sites, #6 cross-feature) → ✅ **LIVRÉ [TRAITÉ, commits
+      7f70297b8 + 652232dfa]** : extrait vers `features/_shared/EncounterSplitBars.tsx`
+      (3 composants dupliqués byte-identiques, tooltips i18n résolus au passage — dédup #6).
     - **RESTE (accepté / scopé)** : (i) `ArcPresetPicker` — dict local `t={…}` consolidé, typé,
-      bilingue = pattern ACCEPTÉ (pas du scattered) ; (ii) **cluster tooltips paramétrés
-      DUPLIQUÉ** `MatchEncountersTable`+`ExplorerEncounterBriefing` (`${n} matches as ally`…,
-      ~9 sites, #6 cross-feature) = sous-tâche distincte (i18n paramétré partagé) ; (iii) longue
+      bilingue = pattern ACCEPTÉ (pas du scattered) ; (ii) longue
       traîne 1-2/fichier (FeatureUnavailable, SettingsPage, HomePage, HomeAscensionWidget,
       ExplorerTargetSeasonCSR) = **tolérable** (règle plan). Détail DETTE_ASSUMEE §2 I4.
 - [x] I5 — CR reco 4 : **LIVRÉ (2026-07-05)**. RECALIBRÉ : la règle remontait **1 warning**
@@ -1090,7 +1097,10 @@ découpés ; chemins via PathResolver. Chaque sous-lot = 1 commit + build/tests 
 > créer un 2e) ; DI dans `api/wire/` (K3d) ; client Infinite → `games/halo_infinite/client/`
 > sur le modèle games/halo_5/client.go (K3e).
 
-> **BILAN SESSION /goal 2026-07-06** (mis à jour après reprise post-hook — les items durs
+> **BILAN SESSION /goal 2026-07-06** — **[BILAN PÉRIMÉ 2026-07-07 (V6a) — voir statuts par
+> item ci-dessous, qui font foi ; ce bilan liste encore en `[!]` des items depuis statués
+> `[x]` (ex. K3d/K3f god-files, K2a NewRouter 89 L via K2a-finish e227f97df).]**
+> (mis à jour après reprise post-hook — les items durs
 > aussi ont été attaqués). **Fait (gated build+vet+intégration/e2e+guards, commité + poussé
 > sur `refactor/audits-2026-07`)** : K1a (6 sous-étapes), K1c (sync_meta), K1d (upsert
 > ART-safe + guard), K1e (dataQualityHandles B-swap), K1f (BackfillOrchestrator), K1g
@@ -1548,9 +1558,8 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
     god-files : TOUS traités** (6 splits même-package + steps exemptés config + 4 fns exemptées
     nolint). **NOTE** : `sync/skill_v2_shadow.go` NON splittable en
     place — le ratchet de gel K3c interdit un nouveau fichier racine sync/ (doit aller en
-    sous-package, cf. K3c reste). RESTE (7) : steps.go (migration — ordering sensible),
-    persist_sink.go (ART-critique), db.go, registry_pages.go, pool.go x3 fns, prestige/service.go
-    CreateChallenge, steps_player_base.go → splits même-package OU exemption, suite mécanique.
+    sous-package, cf. K3c reste). [Ancien paragraphe « RESTE (7) » retiré 2026-07-07 (V6a) :
+    il re-listait les 7 éléments déjà traités aux points (1)-(8) ci-dessus — contradiction interne.]
 
 Gate K (par sous-lot) : `go build ./... && go test ./...` ; pour K2a/K2b :
 `go test -tags=integration ./internal/sync/...` + diff openapi VIDE (aucune route
@@ -1777,6 +1786,13 @@ joueurs en local/prod (RT jamais re-capturés — règle projet).
 Vérification finale (dernière action du plan, après N) : relire les 4 audits en diagonale,
 confirmer que chaque finding a un statut dans ce fichier, compléter la matrice si un item
 a été oublié, puis produire le bilan final à l'utilisateur.
+
+**EXÉCUTÉE 2026-07-07 (lot V6d du plan de clôture)** : les 4 audits relus en diagonale
+(4 passes parallèles, une par audit). Chaque famille d'IDs sondée contre cette matrice §5 +
+DETTE_ASSUMEE + plan de clôture. **RÉSULTAT : 0 ORPHELIN** — chaque finding a un statut
+traçable. Matrice §5 confirmée exhaustive et conforme. Détail : voir « BILAN FINAL » en fin
+de fichier (§8). Aucune ligne de matrice n'a dû être ajoutée (aucun oubli). Découvertes
+mineures de traçabilité (chemin CODE_REVIEW, sous-labels tests) consignées en §7.
 
 ---
 
@@ -2032,6 +2048,117 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
 - RÉCONCILIER plan/journal F au merge. Suivi LOTS H→N.
 ```
 
+```
+[2026-07-04] LOT H — CLOS (repropagation & duplication ; entrées rétro-consignées 2026-07-07/V6a
+depuis thought_log 2026-07-04 + statuts par item)
+- Commits : 1644ec48d (H1) + 918ffd33a (H2) + e75fb748a (H5+H8) + d2b8c98c5 (H3/H4/H6/H7) +
+  a3f0df9db (F16→H8 re-path).
+- Items [x] : 8 (H1-H8) / [~] : 0 / [!] : 0. (H3 étape 2 + matching FR → §7 Découvertes ;
+  H4/H5 « copies » = homonymes divergents renommés, pas fusionnés.)
+- COMPTES AVANT/APRÈS (exigés Gate H) : H1 start_time canonique — audit annonçait 115 sites/
+  52 fichiers ; réel = **97 sites migrés** (92 backtick scriptés + 5 double-quote/analysis),
+  ~46 fichiers ; allowlist garde-rail VIDE, migrations/ + définition exclues.
+  H2 prédicat bot — audit 58/30 ; réel = **33 sites single-% migrés** (34−1 réverté :
+  diag_recent_match_sync, colonne gamertag distincte) + **allowlist de 6 fichiers** Sprintf
+  `%%` + media.go comment (garde-rail décroissant).
+- Gate H : go build+vet OK ; unit par package + front (typecheck/eslint 0/vitest 2070) verts ;
+  intégration -p 1 VERTE (duckdb ~111 s, sync ~109 s, 0 `^--- FAIL:`, exit 0) ; garde-rails
+  H1 (no_raw_start_time_literal) + H2 (no_raw_isbot_literal) + H5 (no_local_ptr_helper) verts ;
+  grep hors allowlist → 0.
+- Notes : chaque helper canonique livré AVEC son garde-rail dans le même commit (CR reco 1 /
+  CLAUDE.md n°6) ; leçon H2 = ré-application de la règle 6 (SQLIsBot re-divergé à 34 copies).
+```
+
+```
+[2026-07-05] LOT I — CLOS (i18n ; entrées rétro-consignées 2026-07-07/V6a. Gate lint ATTEINT
+2026-07-05 ; chantier bilingue manuel I1/I2/I4 poursuivi jusqu'à I2b/I4b COMPLETS)
+- Commits : I3 (2026-07-04) ; I5 + recalibration ; I1 6462887f4/81fed7aad/d39cc5d1a ;
+  I2 labels 3cdcd6c3c ; I2b d3fdead37/8b80c7b46/974ac5a33 (+ docs 3fa9a6f33) ; I4 ponts
+  ce9cdf08e/6c39bdc19/9621b0e6c ; I4b labels f0389b1e5/e9bfd343e/b80992096 ;
+  EncounterSplitBars 7f70297b8/652232dfa.
+- Items : I1 [x], I2 [x] (labels + I2b figement fr-FR COMPLET), I3 [x], I4 [x/~] (ponts +
+  libellés haute densité + cluster EncounterSplitBars livrés ; longue traîne 1-2/fichier [~]
+  tolérée), I5 [x]. 0 [!] résiduel.
+- COMPTES : l'audit sur-comptait TOUS les items (leçon récurrente). Règle lint
+  `no-hardcoded-strings` = 1 warning (pas « >100 ») → gate atteint par I3+I5 seuls, NON couplé
+  à I1/I2/I4 (décision utilisateur option A 2026-07-05). I2b = 39 sites figés réels (audit
+  « ~100 »), I4 = 155 ternaires (audit 88), tous DÉJÀ bilingues = refactor d'organisation.
+- Gate I : `npm run lint` = 0 erreur (règle en error) ; typecheck 0 ; vitest verts. Revue
+  visuelle EN des pages → GATE HUMAIN (plan de clôture).
+```
+
+```
+[2026-07-06] LOT J — CLOS (Performance DuckDB ; entrée déjà posée par 18f3c7ee7, rappel V6a)
+- Commits : J8 + J1(1) (2026-07-05) ; J2 df5832d60 + 305b6b959 (exposition budgets) ;
+  J3 dfeb199f3 ; J7 f6b8cce4a ; J9 8d385cc70 (doc) ; clôture 18f3c7ee7.
+- Items [x] : J3, J7, J8 / [~] : J1, J2, J9 (livrés partiels/documentés) / [!] : J4, J6
+  (différés measure-first) / [ ]→chantier : J5 (LOT K, décision produit cache).
+- Justifications [!] : J4 (1-4 coéquipiers, petit-N, refacto correctness-sensible) + J6
+  (8 sites arrière-plan petit-N) → optimiser sans mesure sous charge = proscrit par
+  measure-first (VPS injoignable ce tour). Cibles mappées sur pièces post-K. J1(2)/J4/J6
+  = follow-up runtime (LOT V10c du plan de clôture).
+- Gate J : go build + go test ./... + go test -tags=integration -p 1 ./internal/platform/duckdb/
+  VERTS (121 s, valide J3/J7). Mesure VPS (J2) : 2 vCPU/2 Go no-swap, ~256 Mo dispo →
+  memory_limit 512MB/threads 2 par connexion (anti-OOM).
+```
+
+```
+[2026-07-06] LOT K — CLOS (Structure & couches — le plus gros ; entrées rétro-consignées
+2026-07-07/V6a depuis thought_log 2026-07-05/06 + statuts par item)
+- Commits (~40, un par sous-domaine) : K1a 5928f9a19/61420e785/8ef7ebbbe/ad0a47e06/d9dddc85e ;
+  K1c d423cd836/931378a31 ; K1d d442fb507 ; K1e 2929d0508 ; K1f 57fed28d5 ; K1g 4511818ab ;
+  K1h de52897c3/b5a978e1e ; K1i 11149b66a ; K1j 21d9154db ; K1k ad2efea74 ; K1l f271bbdc5/
+  0316ef1c1 ; K1m 70181bb84 ; K1n 6b1662655/fad35380f/4208c9f85 ; K2a 8ea6db7bd/e227f97df
+  (NewRouter 1157→412→89 L) ; K2b 6aa7a260e ; K2c 7783ca878/02ad47ac2 ; K2d 35b335d1b ;
+  K2e 4501862af ; K3a 29d69fb81/1475192bc ; K3b e7aea7e63 ; K3c f3de609c6/6a6e60297/28c98f3a5 ;
+  K3d 8b70101f3 ; K3e fc8d0c129 ; K3f 2b0df5432 + 8999e89ba/f87ebb96a/5c351d744/66f3bcc69/
+  4463e23f8/a8e110252.
+- Items : K1a [~] (cœur post-sync subsumé K3d ; BestKDA quotient = dette prod-gated ADR 0006
+  documentée) ; K1b [x] (2da454304, cascade MSAL→OAuth source unique) ; K1c-K1n [x] ; K2a-K2e [x] ;
+  K3a-f [x] (god-files : 6 splits même-package + steps exemptés config + 4 fns exemptées nolint).
+- MESURES (Gate K) : NewRouter 89 L (<100) ; racine api = 4 root files après K3d (39→4) ;
+  funlen freeze 80 ; god-files duckdb/service/sync découpés/exemptés. Résidus structurels
+  (K1a-cœur, K1b-legacy, K1h-reste, K1j/K1l-reste, décisions packages) → DETTE_ASSUMEE §1.
+- Gate K (par sous-lot) : go build + go test ./... ; K2a/K2b intégration -p 1 sync + diff
+  openapi VIDE ; archlint verts (ratchets de gel K3c) ; smoke run local post-K2a. Tous verts.
+```
+
+```
+[2026-07-05] LOT L — CLOS partiel (Gouvernance/ratchets/contrat ; rétro-consigné 2026-07-07/V6a)
+- Commits : L4 75e57c6e4 (suppr. ContractValidate) ; L3 1e71485c8 (argument-limit + funlen 100→80) ;
+  L2-2 76c211f7a (ratchet no_data_path_join) ; L5 91492e360 + 3cbfb090b (query-keys) ; L 699243aae.
+- Items [x] : L3, L4, L5 / [~] : L2 (partiel : (2) livré ; (1) après K ; (3/4/5) hérités F à bâtir),
+  L6, L7 (pré-exécutés/K1g) / [!] : L1 (approche emit INVALIDÉE — Huma dérive string, dégrade
+  le contrat enrichi ; à re-scoper allowlist ≠ 0). Reports → DETTE_ASSUMEE §5.
+- MESURE L3 (golangci 2.12.2) : 43 funlen>80, 151 argument-limit>5 → décision argument-limit=7
+  (cible la queue ≥8 sans casser l'idiome orchestration) ; `--new-from-rev=main` = 0 issue L3-causée.
+- Gate L : CI verte avec règles actives + baselines datées ; L5 garde-rail keys.guard mordant.
+```
+
+```
+[2026-07-05] LOT M — CLOS partiel (Tests — gaps ciblés ; rétro-consigné 2026-07-07/V6a)
+- Commits : M2 4e44e99c4 (-p 1 + timeout 600s les 2 jobs intégration) ; M3 b04060baf
+  (MedalExploit/GetTiming + garde MVPLVP) ; M4 b0b475927 (http_cache + read_budget).
+- Items [x] : M2, M3, M4 / [!] : M1 (test RecomputeLUSR — replay déjà couvert 30+ tests ;
+  reste sentinelle is_reset, scaffolding openShadowTestDB en retard de schéma), M5 (goldens
+  par slug — exige de GÉNÉRER des captures H5, infra lourde). Reports → DETTE_ASSUMEE §3.
+- Gate M (partiel) : M2+M3+M4 verts ; mutation-check M4 vérifié (casser max-age → FAIL) ;
+  CI -p 1 posé (leçon incident 2026-07-03).
+```
+
+```
+[2026-07-05] LOT N — CLOS partiel (Front structurel + résidus ; rétro-consigné 2026-07-07/V6a)
+- Commits : N4 f55d024d7 (politique cycle-out migrations) ; N5 f55d024d7 (bilan dette
+  DETTE_ASSUMEE_2026-Q3.md créé).
+- Items [x] : N4, N5 / [~] : N3 ((a) faux positif React.lazy confirmé) / [!] : N1
+  (LeaderboardBlock 576 L → TanStack), N2 (SquadLayout ~630 L → 3 hooks+SquadFilterBar),
+  N3(b/c/d/e) (skeleton, deps listener clavier, MatchCard split, rename joinAndSort).
+  Tous les [!] = session front avec REVUE VISUELLE (Gate N non faisable à l'aveugle) →
+  DETTE_ASSUMEE §6 + §Clôture V (plan de clôture).
+- Gate N (partiel) : N4/N5 = livrables doc (build/typecheck non impactés) ; front différés
+  documentés.
+```
+
 ## 7. Découvertes hors périmètre (à remplir — NE PAS traiter sans accord)
 
 - [FOLLOW-UPS L — L2-(3/4/5) parités capability + L5 queryKey + L1 re-scope] Différés
@@ -2228,3 +2355,69 @@ delivery-checklist (`-p 1` obligatoire + filtre ancré `^--- FAIL:`).
   LOT H (et probablement I/J) demande une vérif per-copie AVANT migration + garde-rail — pas un
   grep-replace. Exécution careful multi-session (l'investigation workflow `lotHN-investigate` a la
   carte complète ; la stratégie safe-first + K-dédié est posée en tête de §4 LOT H).
+- [V6d 2026-07-07 — TRAÇABILITÉ, non bloquant] Le plan de clôture cite l'audit revue de code
+  au chemin `.ai/V7/CODE_REVIEW_2026-07-02.md` alors que le fichier réel est
+  `.ai/CODE_REVIEW_2026-07-02.md` (le lien Markdown relatif résout correctement depuis `.ai/`,
+  mais le chemin affiché est trompeur — `.ai/V7/` ne contient qu'un CODE_REVIEW_2026-06-02
+  antérieur). Statut proposé : corriger le libellé du chemin dans le plan de clôture à
+  l'occasion (cosmétique). Aucun impact sur la couverture.
+- [V6d 2026-07-07 — TRAÇABILITÉ, non bloquant] La matrice §5 mappe les gaps tests QUALITE
+  « Axe 4 » sur `M1-M5` en bloc ; le détail par sous-item (Persister gated → M2 CI, exportés
+  sans test → M3, couverture mince → M3, middleware → M4, goldens → M5) n'est pas ventilé dans
+  la matrice mais l'est dans les items M du §4. Aucun orphelin ; ventilation fine optionnelle.
+
+---
+
+## 8. BILAN FINAL — Vérification finale de la campagne (V6d, 2026-07-07)
+
+> Dernière action prévue par ce plan (§5). Exécutée par relecture en diagonale des 4 audits
+> sources, croisée avec la matrice §5, DETTE_ASSUMEE_2026-Q3.md et PLAN_CLOTURE_AUDITS_2026-07.md.
+> Méthode : 4 passes de vérification parallèles (une par audit), chaque famille d'IDs sondée
+> sur pièces (grep de l'ID/lot cité, confirmation du statut `[x]`/`[~]`/`[!]`).
+
+### Couverture par audit
+
+| Audit source | Volume findings | Familles/IDs | Orphelins |
+|---|---|---|---|
+| `AUDIT_ARCHI_GO_API_2026-07.md` | 173 (0 bloquant, 55 majeurs, 118 mineurs ; 21 [TRACKÉ]) | Majeurs 1-50 + mineurs par catégorie (couches/SQL/structure/title-agnosticism/perf/contrat) | **0** |
+| `AUDIT_DETTE_DOC_2026-07.md` | TOP 1-10 + §1 (docs/READMEs/invariants) + §2 (guards/Phase 5/Prestige/multi-titre/schéma DB) + recos 1-9 | ~29 items + recos | **0** |
+| `AUDIT_QUALITE_SECURITE_GO_API_2026-07.md` | ~25 (2 bloquants B1-B2, majeurs M2-M4, mineurs accès, tokens, XSS, robustesse #3/#6/#8/#10, Axe 4 tests) | S1-S9, A5, B10-B16, M1-M5 | **0** |
+| `CODE_REVIEW_2026-07-02.md` | C1-C4 + A1-A20 + mineurs §5 + recos 1-5 | A1-A4, D1e, G2-G5/G10-G13, H1-H8, I1-I5, K1a-K3f, L3/L5/L6, N1-N5 | **0** |
+
+### Y — ORPHELINS TROUVÉS : **0**
+
+Aucun finding des 4 audits ne reste sans lot traçable. La matrice §5 est confirmée
+exhaustive : aucune ligne à ajouter (aucun oubli détecté). Deux écarts de traçabilité
+mineurs et non bloquants relevés (chemin CODE_REVIEW affiché ; ventilation fine des gaps
+tests QUALITE) — consignés en §7, sans impact sur la couverture.
+
+### Z — DIFFÉRÉS DOCUMENTÉS (reports statués, tous dans DETTE_ASSUMEE_2026-Q3.md ou plan de clôture)
+
+- **Chantier K résidus** (K1a-cœur, K1b-legacy, K1d-reste, K1h/K1j/K1k/K1l-reste, K1n,
+  K2b-drain infaisable, K3a-poursuite, K3b-ratchet, K3f-décisions packages) — DETTE §1.
+- **Perf DuckDB measure-first** : J1(2), J4, J6 (VPS requis) ; J5 chantier dédié — DETTE §4.
+- **i18n manuel** : longue traîne I4 tolérée — DETTE §2.
+- **Tests** : M1 (scaffolding is_reset), M5 (goldens H5) — DETTE §3.
+- **Gouvernance** : L1 (re-scope OpenAPI), L2-(1/3/4/5) — DETTE §5.
+- **Front structurel** : N1, N2, N3(b/c/d/e) — session front + revue visuelle — DETTE §6.
+- **Reports antérieurs** : E7 (DDL bootstrap, après b23/b25), D2/D1a→D2 (Phase 5 ADR 0023,
+  ≥7 j après deploy), F7/F8/F9 (activation multi-titre/engagement H5) — DETTE §7.
+- **Clôture V restants** : V7 (résiduel qualité), V8 (contrat front↔back), V9 (données prod),
+  V10 (exploitation) — plan de clôture + DETTE §9.
+
+### Gates finaux (état 2026-07-07)
+
+- Chantier V code (V1-V5) : gates Go + front verts localement ET CI de branche VERTE après
+  chaque push (VF-16 résorbé — leçon : croiser `gh run list --branch`).
+- V6 (tracker/journal/DETTE + vérification finale) : doc-only, pas de gate Go/front ;
+  relecture croisée = 0 item du plan parent sans statut (hors différés documentés).
+- RESTE avant merge main : V7-V8 (code borné) + V9-V10 (bloqués VPS) + GATE HUMAIN (revue
+  visuelle utilisateur) + PLAN DE MERGE (répétition sur copie prod, gate live-sync D1c manuel,
+  fenêtre calme — push main = deploy auto sans kill-switch V1).
+
+### Verdict
+
+**La campagne d'audits 2026-07 a 100 % de ses findings tracés et statués.** Le socle
+technique (V1-V5) est livré et vérifié ; le tracker est réconcilié avec la réalité (V6).
+**Prête pour le GATE HUMAIN puis le PLAN DE MERGE, après clôture de V7/V8** (résiduel qualité
++ contrat front↔back) et exécution de V9/V10 (données prod + exploitation, en fenêtre VPS/user).
