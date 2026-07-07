@@ -52,6 +52,12 @@ func LoadCareerRankImageURLs(ctx context.Context, metaDB *DB, titleSlug string) 
 //
 // Les codes lang Waypoint ("fr-FR", "de-DE") sont normalisÃ©s en codes courts
 // ("fr", "de") au moment de la lecture, en cohÃ©rence avec mappings.LocaleEN/FR.
+// rankAcc accumule l'entrée de rang en cours de construction (une par rank_id) le
+// temps d'agréger les traductions puis le seuil XP.
+type rankAcc struct {
+	entry mappings.RankEntry
+}
+
 func LoadRankCatalog(ctx context.Context, metaDB *DB, titleSlug string) (*mappings.RankCatalog, error) {
 	if metaDB == nil {
 		return mappings.NewRankCatalog(titleSlug, nil), nil
@@ -67,10 +73,7 @@ func LoadRankCatalog(ctx context.Context, metaDB *DB, titleSlug string) (*mappin
 	}
 	defer rows.Close()
 
-	type acc struct {
-		entry mappings.RankEntry
-	}
-	byID := make(map[int]*acc)
+	byID := make(map[int]*rankAcc)
 
 	for rows.Next() {
 		var (
@@ -84,7 +87,7 @@ func LoadRankCatalog(ctx context.Context, metaDB *DB, titleSlug string) (*mappin
 		norm := mappings.NormalizeLang(lang)
 		a, ok := byID[id]
 		if !ok {
-			a = &acc{entry: mappings.RankEntry{
+			a = &rankAcc{entry: mappings.RankEntry{
 				ID:       id,
 				Title:    make(map[string]string),
 				Subtitle: make(map[string]string),
@@ -106,27 +109,34 @@ func LoadRankCatalog(ctx context.Context, metaDB *DB, titleSlug string) (*mappin
 		return nil, fmt.Errorf("iter career_rank_translations: %w", err)
 	}
 
-	// Enrichit chaque rang avec son seuil XP (career_ranks.xp_required, table
-	// distincte des traductions). Best-effort : table/colonne absente (tests,
-	// schéma partiel) → libellés conservés sans XP (le fallback de progression
-	// dans buildHomeCareerRank reste simplement inactif, pas d'échec).
-	if xpRows, xerr := metaDB.Query(ctx, `SELECT rank_id, xp_required FROM career_ranks`); xerr == nil {
-		for xpRows.Next() {
-			var id int
-			var xp sql.NullInt64
-			if scanErr := xpRows.Scan(&id, &xp); scanErr != nil {
-				break
-			}
-			if a, ok := byID[id]; ok && xp.Valid {
-				a.entry.XPRequired = int(xp.Int64)
-			}
-		}
-		xpRows.Close()
-	}
+	enrichRankCatalogXP(ctx, metaDB, byID)
 
 	entries := make([]mappings.RankEntry, 0, len(byID))
 	for _, a := range byID {
 		entries = append(entries, a.entry)
 	}
 	return mappings.NewRankCatalog(titleSlug, entries), nil
+}
+
+// enrichRankCatalogXP enrichit chaque rang accumulé avec son seuil XP
+// (career_ranks.xp_required, table distincte des traductions). Best-effort :
+// table/colonne absente (tests, schéma partiel) → libellés conservés sans XP (le
+// fallback de progression dans buildHomeCareerRank reste inactif, pas d'échec).
+// Extrait de LoadRankCatalog (V7f, gocyclo).
+func enrichRankCatalogXP(ctx context.Context, metaDB *DB, byID map[int]*rankAcc) {
+	xpRows, xerr := metaDB.Query(ctx, `SELECT rank_id, xp_required FROM career_ranks`)
+	if xerr != nil {
+		return
+	}
+	defer xpRows.Close()
+	for xpRows.Next() {
+		var id int
+		var xp sql.NullInt64
+		if scanErr := xpRows.Scan(&id, &xp); scanErr != nil {
+			break
+		}
+		if a, ok := byID[id]; ok && xp.Valid {
+			a.entry.XPRequired = int(xp.Int64)
+		}
+	}
 }

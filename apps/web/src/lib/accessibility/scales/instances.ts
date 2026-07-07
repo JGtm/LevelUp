@@ -22,6 +22,18 @@ export const perfScale = makeOrdinalScale({
   thresholds: [80, 65, 50, 35],
 })
 
+/**
+ * Score de performance en contexte COMPARATIF de session (0–100). Seuils
+ * légèrement plus indulgents que `perfScale` (75 / 60 / 45 / 30) car ces surfaces
+ * comparent une session à un historique / timeline de squad, pas un score absolu.
+ * Variante nommée (leçon H7 : centraliser sans écraser des seuils réellement
+ * différents). Consommée par mapPerfVsHistoryChart + squadSessionTimelineChart.
+ */
+export const perfSessionScale = makeOrdinalScale({
+  tiers: ['perf-tier-1', 'perf-tier-2', 'perf-tier-3', 'perf-tier-4', 'perf-tier-5'],
+  thresholds: [75, 60, 45, 30],
+})
+
 /** Précision / accuracy (%). Seuils : 55 / 40. */
 export const accuracyScale = makeOrdinalScale({
   tiers: ['perf-tier-1', 'perf-tier-3', 'perf-tier-5'],

@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
 import { citationMastery } from '@/lib/citations/mastery'
 import { tokenCssVar } from '@/lib/accessibility'
+import { perfScale } from '@/lib/accessibility/scales'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import { displayPlayerName } from '@/lib/players/displayName'
 import { formatRankDelta } from '@/lib/formatters'
@@ -285,14 +286,6 @@ function AntagonistSection({ result, title, nemesisLabel, bullyLabel }: { result
 
 interface LocalRow { perfDisplay?: string; perfColorToken?: string; ratingType?: string; tierLabel?: string; ratingDelta?: number | null; iconUrl?: string | null; hadBotTeammate?: boolean }
 
-function perfTierToken(score: number): string {
-  if (score >= 80) return 'perf-tier-1'
-  if (score >= 65) return 'perf-tier-2'
-  if (score >= 50) return 'perf-tier-3'
-  if (score >= 35) return 'perf-tier-4'
-  return 'perf-tier-5'
-}
-
 function buildLocalRow(row: MatchScoreboardRow, header?: MatchViewHeader, mainRank?: MatchViewRank): LocalRow | null {
   const local: LocalRow = {}
   let hasData = false
@@ -301,7 +294,7 @@ function buildLocalRow(row: MatchScoreboardRow, header?: MatchViewHeader, mainRa
     if (mainRank?.tier_label) { local.ratingType = mainRank.rating_type; local.tierLabel = mainRank.tier_label; local.ratingDelta = mainRank.delta_value; local.iconUrl = mainRank.icon_url; hasData = true }
     if (header?.had_bot_teammate) { local.hadBotTeammate = true; hasData = true }
   } else {
-    if (row.performance_score != null) { local.perfDisplay = Math.round(row.performance_score).toString(); local.perfColorToken = perfTierToken(row.performance_score); hasData = true }
+    if (row.performance_score != null) { local.perfDisplay = Math.round(row.performance_score).toString(); local.perfColorToken = perfScale(row.performance_score); hasData = true }
     if (row.skill_rank?.tier_label) { local.ratingType = row.skill_rank.rating_type; local.tierLabel = row.skill_rank.tier_label; local.ratingDelta = row.skill_rank.rating_delta; local.iconUrl = row.skill_rank.icon_url; hasData = true }
     if (row.had_bot_teammate) { local.hadBotTeammate = true; hasData = true }
   }

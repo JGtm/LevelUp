@@ -225,7 +225,11 @@ SELECT EXISTS(
 // Q29 : Historique récent (50 matchs) pour moyennes K/D/A + spree/headshots/perfect.
 // Paramètres : ?1 = xuid (recent CTE), ?2 = xuid (perfect CTE).
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
-const Q29HistoryForAvg = `
+// ORDER BY : fragment canonique StartTimeCanonicalSQL (règle CLAUDE.md n°8) — un
+// `r.start_time` brut mal-trie les imports OpenSpartan à start_time NULL/TZ-décalé
+// hors de la fenêtre des 50 (VF-13). Doit rester sémantiquement identique à
+// Q29HistoryForAvgBulkTpl (contrat du test match_view_history_bulk_test.go).
+var Q29HistoryForAvg = `
 WITH recent AS (
     SELECT
         p.match_id,
@@ -241,7 +245,7 @@ WITH recent AS (
     FROM match_participants p
     JOIN match_registry r ON r.match_id = p.match_id
     WHERE p.xuid = ?
-    ORDER BY r.start_time DESC NULLS LAST
+    ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC NULLS LAST
     LIMIT 50
 ),
 perfect AS (
@@ -272,7 +276,10 @@ LEFT JOIN perfect p ON p.match_id = rc.match_id`
 // Sémantique identique à Q29 par xuid : 50 derniers matchs (ROW_NUMBER PARTITION BY
 // xuid au lieu de LIMIT 50) + perfect kills agrégés. La colonne xuid en tête permet
 // de regrouper les lignes par joueur côté Go.
-const Q29HistoryForAvgBulkTpl = `
+// ORDER BY (fenêtre ROW_NUMBER) : fragment canonique StartTimeCanonicalSQL
+// (règle CLAUDE.md n°8) — identique à Q29HistoryForAvg pour tenir le contrat
+// bulk==unitaire (VF-13).
+var Q29HistoryForAvgBulkTpl = `
 WITH recent AS (
     SELECT
         p.xuid,
@@ -286,7 +293,7 @@ WITH recent AS (
         COALESCE(r.is_firefight, FALSE) AS is_firefight,
         COALESCE(r.is_ranked, FALSE)    AS is_ranked,
         COALESCE(r.duration_seconds, 0) AS duration_seconds,
-        ROW_NUMBER() OVER (PARTITION BY p.xuid ORDER BY r.start_time DESC NULLS LAST) AS rn
+        ROW_NUMBER() OVER (PARTITION BY p.xuid ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC NULLS LAST) AS rn
     FROM match_participants p
     JOIN match_registry r ON r.match_id = p.match_id
     WHERE p.xuid IN (%s)

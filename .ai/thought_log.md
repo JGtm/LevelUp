@@ -1,3 +1,35 @@
+## [2026-07-07] Clôture audits — LOT V7 (résiduel qualité VF-11/13/14/15 + lint préexistants)
+
+**Statut** : Complété. Périmètre fermé V7a..V7f, tous `[x]`.
+
+**Décision technique principale** : traiter les 6 findings résiduels bornés comme un seul lot,
+un commit. Points saillants :
+- **V7b (VF-13)** : `Q29HistoryForAvg` + variante bulk migrées vers le fragment canonique
+  `StartTimeCanonicalSQL("r")` (const→var, comme H1 pour les 21 autres requêtes du fichier).
+  Garde-rail H1 étendu d'un 2e regex `ORDER BY \w+\.start_time([^_]|$)` RESTREINT à la forme
+  table-qualifiée (toujours brute) pour ne PAS mordre l'alias nu légitime issu d'une projection
+  canonique (queries_match.go:400). Allowlist GELÉE keyée par fichier (20 fichiers cmd/diag/
+  backfill/seed préexistants) — dette existante gelée (règle 5), queries_match.go volontairement
+  hors liste (régression y refait échouer). Morsure prouvée dans les 2 sens (sonde jetable).
+- **V7c (VF-14)** : verdict per-copie = 2 VARIANTES nommées (leçon H7), pas 4 doublons —
+  `perfScale` (80/65/50/35) réutilisé + `perfSessionScale` (75/60/45/30) créé. Le garde-rail
+  grep a DÉCOUVERT une 5e copie (`SessionBriefing/tier.ts::getScoreTier`) non listée par l'audit
+  → migrée aussi (dérive de perfScale). Garde-rail `perf-tier.guard.test.ts` (modèle calendar)
+  interdit toute redéfinition locale, morsure 2 sens prouvée.
+- **V7d (VF-14)** : `formatDateShort('fr-FR')` CONSERVÉ (décision I2b ferme, DD/MM numérique
+  locale-invariant) ; justification renforcée sur place. Pas de threading (introduirait MM/DD
+  en 'en-US' sans gain i18n).
+- **V7f** : goconst `"loss"`→`duelLabelLoss` + gocyclo `LoadRankCatalog` réduit via extraction
+  `enrichRankCatalogXP`. Les 2 issues disparues de `--new-from-rev=main`, 0 nouvelle sur mes fichiers.
+
+**Résultats observés** : front typecheck 0 (cache purgé) / lint 0 err / vitest 2073 pass ;
+Go build+vet 0, tests duckdb/archlint/service/sync 0 FAIL, intégration `-p 1` duckdb 0 FAIL ;
+`golangci-lint --new-from-rev=main` = V7f disparus, résiduel = dette branche préexistante.
+
+**Conclusion / prochaine étape** : LOT V7 clos. Restent V8-V10 + GATE HUMAIN + merge main.
+
+---
+
 ## [2026-07-07] Clôture campagne d'audits 2026-07 — chantier V (V1-V6) post-vérification finale
 
 **Statut** : Complété (V1-V6) ; V7-V10 + GATE HUMAIN + merge restants (bloqués VPS/user).
