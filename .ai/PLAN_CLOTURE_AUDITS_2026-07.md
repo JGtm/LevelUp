@@ -339,22 +339,37 @@ préexistante hors périmètre).
 Objectif : plus aucun type de réponse écrit à la main dans `apps/web/src` qui diverge du
 contrat réel (chaque divergence = un `undefined` silencieux à l'écran).
 
-- [ ] V8a — Inventaire : balayer `types.ts` (et tout fichier front définissant des shapes
-  de RÉPONSE API à la main) et comparer champ par champ à `generated.ts`/openapi.yaml +
-  aux structs Go réellement sérialisées. Livrable : tableau divergences (type, champ,
-  réel vs déclaré, consommateurs).
-- [ ] V8b — Corriger le cas PROUVÉ (A2 §7) : `CareerTopMatchesResponse` (`types.ts:516`,
-  `{items}` vs réel `{best_matches, worst_matches}`) + `data.top_matches_preview` lu par
-  `CareerPage.tsx` mais absent du `CareerPageResponse` Go → aligner le flux de données
-  Career (vérifier À L'ÉCRAN que les top matches s'affichent).
-- [ ] V8c — Migrer les types réponse hand-written vers des imports de `generated.ts`
-  partout où le schéma openapi existe ; pour les restants, allowlist datée.
-- [ ] V8d — Garde-rail (règle 6) : test vitest fs-grep (modèle `keys.guard.test.ts`)
-  interdisant toute nouvelle `interface/type *Response` manuelle hors `generated.ts` +
-  allowlist décroissante datée.
+- [x] V8a — Inventaire (2026-07-07) : balayage complet des types de réponse hand-written
+  consommés par `api.get/post`, comparés à `generated.ts`/openapi.yaml + structs Go.
+  Livrable : `.ai/INVENTAIRE_V8A_TYPES_FRONT_BACK.md` (4 divergences confirmées, toutes
+  Career ; ~33 hand-written conservés = view-models/hors-Huma/richer, allowlistés V8d).
+- [x] V8b — Cas PROUVÉ corrigé (2026-07-07). Réalité à l'écran : la section « Top matchs »
+  ne s'affichait JAMAIS au 1er chargement (`data.top_matches_preview` absent du Go →
+  EmptyStateCard) ; « voir tout » lisait `fullTopMatches.items` (undefined, réel
+  `{best_matches, worst_matches}`) → toujours vide. Idem encounters (`.items` vs
+  `{teammates, enemies}`). Fix : `types.ts` (retrait des 2 champs fantômes de
+  `CareerPageResponse` + ré-export généré de `CareerTopMatchesResponse`/`CareerEncountersResponse`) ;
+  `CareerPage`/`CareerTopMatchesTable`/`CareerEncountersSection`/`queries.ts` réalignés sur
+  les endpoints dédiés (fetch d'entrée de page) et les shapes DTO réelles ; `start_time`
+  ajouté à `TopMatchDTO` Go (dispo dans `TopMatchRawRow`) + openapi + `generate-types` pour
+  préserver la colonne date. Vérifié : test vitest `CareerTopMatches.contract.test.tsx`
+  monte CareerPage avec la réponse au shape RÉEL et prouve le rendu non-vide (map + bouton
+  « voir tout »). Revue visuelle finale = GATE HUMAIN.
+- [x] V8c — Migration/allowlist statuées par type (2026-07-07). La MAJORITÉ de `types.ts`
+  était déjà ré-exportée du contrat (batches antérieurs). Les ~33 restants hand-written
+  sont soit des view-models composites (sous-types sans schéma), soit des endpoints hors
+  OpenAPI Huma, soit des types PLUS RICHES que le généré (cas L1 : ré-export cru destructif —
+  ex. `SessionContextResponse`, `CareerPageResponse`, `CompareResponse`). Choix documenté
+  par type dans l'inventaire ; conservés + verrouillés par l'allowlist décroissante V8d.
+- [x] V8d — Garde-rail livré (2026-07-07) : `apps/web/src/lib/api/response-types.guard.test.ts`
+  (modèle `keys.guard.test.ts`), interdit toute nouvelle `interface/type *Response` manuelle
+  hors `generated.ts` + allowlist décroissante datée. Morsure prouvée 2 sens (ajout hors
+  allowlist → rouge ; entrée d'allowlist orpheline → rouge self-check).
 
-Gate V8 : typecheck (cache purgé) + vitest verts ; garde-rail V8d mord (vérifié 2 sens) ;
-revue visuelle de la page Career au GATE HUMAIN.
+Gate V8 : typecheck (cache purgé) 0 ; lint 0 erreur ; vitest 242 fichiers / 2076 pass /
+0 fail (garde-rail V8d + test contrat V8b inclus) ; Go build + `go test ./internal/api/...`
+`./internal/service/...` verts (drift OpenAPI sans MISSING nouveau : `start_time` ajouté des
+2 côtés) ; garde-rail V8d mord (2 sens). Revue visuelle Career = GATE HUMAIN.
 
 ## LOT V9 — Données de prod (audit d'abord, correctifs ensuite)
 
@@ -498,3 +513,18 @@ Séquence OBLIGATOIRE, dans l'ordre :
   passé append-only (génération, plus de DELETE, cf. writes.go). Justification légèrement
   stale mais l'entrée reste NÉCESSAIRE (InsertWeaponKills écrit toujours weapon_kills) —
   correction cosmétique reportée (pas dans le périmètre VF-5 qui ne cite que :54,64).
+
+- **[V8 — 3 divergences front↔back hors cas A2, NON traitées]** Trouvées pendant le
+  balayage V8a (détail : `.ai/INVENTAIRE_V8A_TYPES_FRONT_BACK.md` §divergences additionnelles).
+  Hors du cas PROUVÉ A2 (Career), donc consignées et non corrigées (règle 7 ; aucune ne
+  bloque le gate V8). À trancher (décision produit/backend) :
+  1. `CompareResponse.privacy_warning` + `.player_b_partial` (lus `ComparePage.tsx:433-434`,
+     absents du Go `domain.CompareResponse` + openapi) → LATENT ACTIF : bannière privacy et
+     hint partiel jamais rendus. `CompareResponse` est allowlisté V8d (dette verrouillée).
+  2. `NormalizedPlayerStats.is_local_sample` : présent Go+openapi, absent de l'interface
+     front → champ backend non lisible (sens inverse). Sous-type, hors garde-rail nommé.
+  3. `RecentMediaItem` (sous-type `HomePageResponse.recent_media`) : front déclare 15 champs,
+     Go n'en sérialise que 3 → LATENT DORMANT (recent_media non consommé dans l'UI Home,
+     référencé `[]` en tests seuls). Sous-type, hors garde-rail nommé.
+  Fixer (1) exige de décider add-au-Go vs retrait-front ; (2)/(3) = alignement de sous-types
+  view-model (élargir le garde-rail aux sous-types = chantier distinct).

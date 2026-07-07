@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
@@ -364,8 +365,14 @@ func convertTopMatches(rows []domain.TopMatchRawRow) []domain.TopMatchDTO {
 		if modeUI != "" {
 			modePtr = &modeUI
 		}
+		var startPtr *string
+		if r.StartTime != nil {
+			s := r.StartTime.UTC().Format(time.RFC3339)
+			startPtr = &s
+		}
 		out = append(out, domain.TopMatchDTO{
 			MatchID:          r.MatchID,
+			StartTime:        startPtr,
 			PerformanceScore: r.PerformanceScore,
 			MapUI:            mapPtr,
 			ModeUI:           modePtr,

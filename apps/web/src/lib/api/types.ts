@@ -497,10 +497,22 @@ export interface CareerLusrSection {
   checkpoints: CareerLusrCheckpoint[]
 }
 
-export type CareerTopMatch = components['schemas']['CareerTopMatch']
+// V8b (2026-07-07) — les DTO réels servis par les endpoints Career. Le contrat Go
+// NE renvoie PAS de `top_matches_preview`/`encounters_preview` sur /pages/career :
+// les top matches et encounters sont fournis par leurs endpoints dédiés
+// (/top-matches, /encounters), consommés en direct par la page. Les schémas
+// canoniques CareerTopMatch/CareerEncounter existaient en surplus dans le contrat
+// mais N'étaient PAS les shapes de réponse — d'où des `undefined` silencieux.
+export type TopMatchDTO = components['schemas']['TopMatchDTO']
 
-export type CareerEncounter = components['schemas']['CareerEncounter']
+export type EncounterDTO = components['schemas']['EncounterDTO']
 
+// CareerPageResponse reste une interface manuelle : les sous-types view-model
+// (CareerSummary, CareerLusrSection, CareerHistoryPoint) sont hand-written et NE
+// portent PAS les mêmes noms de schéma que le contrat généré (CareerRankSummary,
+// LUSRSummary, XPHistoryPoint) — un ré-export cru romprait les consommateurs LUSR/
+// résumé/xp. Le fix V8b se limite à retirer les DEUX champs fantômes
+// (top_matches_preview / encounters_preview) absents du CareerPageResponse Go.
 export interface CareerPageResponse {
   summary: CareerSummary | null
   hero_progress: HeroProgress | null
@@ -508,17 +520,11 @@ export interface CareerPageResponse {
   xp_history: CareerHistoryPoint[]
   lusr: CareerLusrSection | null
   friends_xp_history?: FriendXPHistory[]
-  top_matches_preview: CareerTopMatch[]
-  encounters_preview: CareerEncounter[]
 }
 
-export interface CareerTopMatchesResponse {
-  items: CareerTopMatch[]
-}
+export type CareerTopMatchesResponse = components['schemas']['CareerTopMatchesResponse']
 
-export interface CareerEncountersResponse {
-  items: CareerEncounter[]
-}
+export type CareerEncountersResponse = components['schemas']['CareerEncountersResponse']
 
 // Section "Matchs marquants" (page Carrière) : 15 best + 15 worst au format
 // ExplorerMatchRow (mêmes 21 colonnes que la page Explorer) + cascade counts

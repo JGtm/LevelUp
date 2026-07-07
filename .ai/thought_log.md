@@ -1,3 +1,47 @@
+## [2026-07-07] Clôture audits — LOT V8 (contrat front↔back : généraliser la découverte A2)
+
+**Statut** : Complété. Périmètre fermé V8a..V8d, tous `[x]`. 3 divergences additionnelles
+découvertes → Découvertes (règle 7, non traitées).
+
+**Décision technique principale** : le cas prouvé A2 était plus profond qu'un renommage de
+champ. Sur pièces : la section « Top matchs » de la page Carrière ne s'affichait JAMAIS —
+`CareerPageResponse.top_matches_preview` (lu par CareerPage) N'EXISTE PAS dans le struct Go
+(fantôme depuis toujours) → EmptyStateCard au 1er chargement ; « voir tout » lisait
+`fullTopMatches.items` alors que l'endpoint sert `{ best_matches, worst_matches: TopMatchDTO[] }`
+→ toujours vide. Même schéma pour les encounters (`.items` vs `{ teammates, enemies: EncounterDTO }`).
+De plus le composant consommait le schéma canonique RICHE `CareerTopMatch` (variant/assists/
+kd_ratio/badge) alors que l'endpoint sert `TopMatchDTO` (pauvre) → ces champs auraient été
+undefined même avec les types corrigés.
+
+Fix V8b : `types.ts` = retrait des 2 champs fantômes de `CareerPageResponse` (interface manuelle
+CONSERVÉE — ses sous-types view-model CareerSummary/LusrSection ne mappent pas les noms de schéma
+générés, un ré-export cru cassait LUSR/résumé/xp) + ré-export généré de CareerTopMatchesResponse/
+CareerEncountersResponse. `CareerPage`/`CareerTopMatchesTable`/`CareerEncountersSection`/`queries.ts`
+réalignés sur les endpoints dédiés (fetch d'entrée de page) et les shapes DTO réelles. `start_time`
+ajouté à `TopMatchDTO` Go (trivialement dispo dans TopMatchRawRow) + openapi + generate-types pour
+préserver la colonne date. i18n career.toml nettoyé (col_assists_short/col_badge orphelins retirés,
+col_as_teammate/col_as_enemy/players_suffix ajoutés). Test `CareerTopMatches.contract.test.tsx`
+monte CareerPage au shape RÉEL et prouve le rendu non-vide.
+
+V8c : la majorité de types.ts était déjà ré-exportée du contrat ; les ~33 restants hand-written
+sont des view-models composites / endpoints hors Huma / types PLUS RICHES que le généré (cas L1,
+ré-export destructif — ex. SessionContextResponse porte current_player+capabilities absents du
+généré). Conservés + verrouillés par l'allowlist V8d, choix documenté par type dans l'inventaire.
+
+V8d : `response-types.guard.test.ts` (modèle keys.guard) interdit toute nouvelle interface/type
+*Response manuelle hors generated.ts + allowlist décroissante datée 2026-07-07. Morsure prouvée
+2 sens (rogue interface → rouge unexpected ; entrée orpheline → rouge stale self-check).
+
+**Résultats observés** : Go build 0, `go test ./internal/api/... ./internal/service/...` 0 FAIL
+(drift OpenAPI sans MISSING nouveau : start_time des 2 côtés). Front cache purgé → typecheck 0,
+lint 0 err (68 warnings préexistants), vitest 242 fichiers / 2076 pass / 0 fail (garde-rail V8d +
+test contrat V8b inclus). 3 divergences hors-A2 confirmées sur pièces et consignées :
+CompareResponse.privacy_warning/player_b_partial (latent actif, allowlisté), NormalizedPlayerStats.
+is_local_sample (sens inverse), RecentMediaItem 12 champs fantômes (dormant, non consommé).
+
+**Conclusion / prochaine étape** : LOT V8 clos. Livrable inventaire = `.ai/INVENTAIRE_V8A_TYPES_FRONT_BACK.md`.
+Revue visuelle Career = GATE HUMAIN. Restent V9-V10 + GATE HUMAIN + merge main.
+
 ## [2026-07-07] Clôture audits — LOT V7 (résiduel qualité VF-11/13/14/15 + lint préexistants)
 
 **Statut** : Complété. Périmètre fermé V7a..V7f, tous `[x]`.

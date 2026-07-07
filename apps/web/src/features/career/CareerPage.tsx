@@ -27,10 +27,9 @@ export function CareerPage() {
   const t = (key: CareerManifestKey) => formatMessage(careerManifest, key, locale)
   const { data, isLoading, isError, refetch } = useCareerPage(playerSlug)
   const [showAllTopMatches, setShowAllTopMatches] = useState(false)
-  const { data: fullTopMatches, isLoading: loadingTopMatches } = useCareerTopMatches(
-    playerSlug,
-    showAllTopMatches,
-  )
+  // V8b — top matches/encounters ne sont PAS dans /pages/career : on les fetch via
+  // leurs endpoints dédiés (shape réelle { best_matches, worst_matches }).
+  const { data: topMatches, isLoading: loadingTopMatches } = useCareerTopMatches(playerSlug)
 
   if (isLoading) return null
 
@@ -65,10 +64,9 @@ export function CareerPage() {
     )
   }
 
-  const topMatchesItems =
-    showAllTopMatches && fullTopMatches
-      ? fullTopMatches.items
-      : data.top_matches_preview
+  const bestMatches = topMatches?.best_matches ?? []
+  const worstMatches = topMatches?.worst_matches ?? []
+  const hasTopMatches = bestMatches.length > 0 || worstMatches.length > 0
 
   return (
     <div className="flex flex-col">
@@ -109,21 +107,21 @@ export function CareerPage() {
         <CareerRankingBlock playerSlug={playerSlug} lusrData={data.lusr} />
 
         {/* Top matchs */}
-        {(topMatchesItems?.length ?? 0) > 0 ? (
+        {loadingTopMatches ? (
+          <div className="flex justify-center py-4">
+            <Spinner size="sm" label={t('career.encounters.loading')} />
+          </div>
+        ) : hasTopMatches ? (
           <div className="space-y-4">
-            {loadingTopMatches ? (
-              <div className="flex justify-center py-4">
-                <Spinner size="sm" label={t('career.encounters.loading')} />
-              </div>
-            ) : showAllTopMatches ? (
+            {showAllTopMatches ? (
               <>
                 <CareerTopMatchesTable
-                  items={topMatchesItems}
+                  items={bestMatches}
                   variant="best"
                   playerSlug={playerSlug}
                 />
                 <CareerTopMatchesTable
-                  items={topMatchesItems}
+                  items={worstMatches}
                   variant="worst"
                   playerSlug={playerSlug}
                 />
@@ -131,19 +129,21 @@ export function CareerPage() {
             ) : (
               <>
                 <CareerTopMatchesTable
-                  items={topMatchesItems}
+                  items={bestMatches}
                   title={t('career.top_matches.section_title')}
                   playerSlug={playerSlug}
                 />
-                <div className="flex justify-center">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAllTopMatches(true)}
-                  >
-                    {t('career.top_matches.see_all')}
-                  </Button>
-                </div>
+                {worstMatches.length > 0 && (
+                  <div className="flex justify-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAllTopMatches(true)}
+                    >
+                      {t('career.top_matches.see_all')}
+                    </Button>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -155,10 +155,7 @@ export function CareerPage() {
         )}
 
         {/* Rencontres fréquentes */}
-        <CareerEncountersSection
-          playerSlug={playerSlug}
-          preview={data.encounters_preview ?? []}
-        />
+        <CareerEncountersSection playerSlug={playerSlug} />
       </div>
 
     </div>
