@@ -37,7 +37,7 @@ func buildTimeseriesSummaryTab(matches []legacymatch.StatsMatchRow) domain.Times
 		}
 	}
 
-	// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+	// TODO(expiry:2026-12-31) P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
 	winRate := analysis.WinRate(wins, n) * 100
 	kd := 0.0
 	if totalDeaths > 0 {

@@ -154,7 +154,7 @@ func EvaluateCumulative(t Tuning, c Challenge, events []MedalEvent, now time.Tim
 // computeAverage retourne la moyenne de la métrique sur les matchs fournis.
 //
 // Pour win_rate, calcule (#wins / #matches) × 100.
-// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+// TODO(expiry:2026-12-31) P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
 func computeAverage(matches []MatchSample, metric string) float64 {
 	if len(matches) == 0 {
 		return 0
