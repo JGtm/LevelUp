@@ -16375,6 +16375,10 @@ components:
           performance_score:
               format: double
               type: number
+          start_time:
+              type: string
+              format: date-time
+              nullable: true
       required:
           - match_id
           - performance_score

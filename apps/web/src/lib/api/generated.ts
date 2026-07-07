@@ -8625,6 +8625,8 @@ export interface components {
             outcome_label: string;
             /** Format: double */
             performance_score: number;
+            /** Format: date-time */
+            start_time?: string | null;
         };
         TopTeammate: {
             /** Format: double */

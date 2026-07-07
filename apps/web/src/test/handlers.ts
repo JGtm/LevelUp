@@ -69,8 +69,6 @@ const careerFixture = {
   projections: null,
   xp_history: [],
   lusr: null,
-  top_matches_preview: [],
-  encounters_preview: [],
 }
 
 const citationsFixture = {
@@ -466,7 +464,8 @@ export const handlers = [
 
   // Career
   http.get(p(`/players/${SLUG}/pages/career`), () => HttpResponse.json(careerFixture)),
-  http.get(p(`/players/${SLUG}/pages/career/top-matches`), () => HttpResponse.json({ items: [] })),
+  http.get(p(`/players/${SLUG}/pages/career/top-matches`), () =>
+    HttpResponse.json({ best_matches: [], worst_matches: [] })),
   http.get(p(`/players/${SLUG}/pages/career/encounters`), () =>
     HttpResponse.json({
       teammates: [

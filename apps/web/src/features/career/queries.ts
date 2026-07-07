@@ -24,20 +24,23 @@ export function useCareerPage(playerSlug: string) {
   })
 }
 
-export function useCareerTopMatches(playerSlug: string, enabled = false) {
+// V8b — top matches et encounters ne sont PAS servis par /pages/career : ils ont
+// leurs endpoints dédiés, fetch d'entrée de page (le contrat renvoie best_matches /
+// worst_matches et teammates / enemies, jamais un champ preview).
+export function useCareerTopMatches(playerSlug: string) {
   return useQuery({
     queryKey: queryKeys.careerTopMatches(playerSlug),
     queryFn: () => api.get<CareerTopMatchesResponse>(`/players/${playerSlug}/pages/career/top-matches`),
-    enabled: enabled && !!playerSlug,
+    enabled: !!playerSlug,
     staleTime: 10 * 60 * 1000,
   })
 }
 
-export function useCareerEncounters(playerSlug: string, enabled = false) {
+export function useCareerEncounters(playerSlug: string) {
   return useQuery({
     queryKey: queryKeys.careerEncounters(playerSlug),
     queryFn: () => api.get<CareerEncountersResponse>(`/players/${playerSlug}/pages/career/encounters`),
-    enabled: enabled && !!playerSlug,
+    enabled: !!playerSlug,
     staleTime: 10 * 60 * 1000,
   })
 }

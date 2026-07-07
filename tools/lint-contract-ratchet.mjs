@@ -37,14 +37,14 @@ const BASELINE_COLLISIONS = new Set([
   'AdminSchedulerStatusResponse',
   'AsyncJobStatus',
   'BackupStatusResponse',
-  'CareerEncountersResponse',
+  // V8b (2026-07-07) : CareerEncountersResponse / CareerTopMatchesResponse retirés —
+  // migrés en ré-export du contrat généré (plus de collision hand-written).
   'CareerHighlightMatchesResponse',
   'CareerHistoryPoint',
   'CareerLusrCheckpoint',
   'CareerLusrSection',
   'CareerPageResponse',
   'CareerSummary',
-  'CareerTopMatchesResponse',
   'CascadeInput',
   'CompareRequest',
   'CompareResponse',
