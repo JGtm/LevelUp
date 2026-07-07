@@ -243,8 +243,9 @@ func buildBatchFromFetchedMatchCtx(
 // batch (Phase 3, INSERT-only — cf. doc domain.MatchRegistryRow.BackfillCompleted :
 // valeur calculée AVANT le Submit). Lit l'état RÉEL du batch construit
 // (highlight_events / killer_victim effectivement ajoutés) → backfill_completed
-// fiable sur le chemin batch, sans UPDATE post-persist. Parité legacy
-// insertFetchedMatch (MarkParticipantsDone / MarkSkillLoaded + events/kv).
+// fiable sur le chemin batch, sans UPDATE post-persist. Reproduit la parité de
+// l'ancien insertFetchedMatch (supprimé D1b : MarkParticipantsDone /
+// MarkSkillLoaded + events/kv).
 // skillOK = l'API skill a renvoyé des données (cf. buildBatchFromFetchedMatch).
 func applyCompletionBitsToBatch(batch *persist.MatchBatch, skillOK bool) {
 	m := batch.Shared.Match

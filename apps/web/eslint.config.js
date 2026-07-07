@@ -27,8 +27,8 @@ export default defineConfig([
     plugins: {
       // Plugin custom pour la règle anti-hardcoded-strings (cf.
       // PLAN_META_FOUNDATIONS_GO § 3.4.3).
-      // Activee en `warn` Phase 0 ; passera en `error` Phase 2 quand
-      // tous les composants seront migres vers le manifest i18n.
+      // Réglages effectifs dans le bloc `rules` ci-dessous : depuis I5
+      // (2026-07-05) `no-hardcoded-strings` est en `error`.
       '@levelup': {
         rules: {
           'no-hardcoded-strings': noHardcodedStrings,

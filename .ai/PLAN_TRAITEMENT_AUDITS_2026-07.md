@@ -1459,7 +1459,10 @@ K3 — God packages & structure (mécanique, 1 domaine = 1 PR/commit) :
   server_admin_monitoring + server_titles_additional) → `internal/api/wire` (package `wire`, 58
   fichiers avec tests). Le cœur DI est SELF-CONTAINED (aucune arête wire→api). **Racine api/ : 39
   → 4 fichiers prod** (server.go, huma_setup, huma_routes, commendation_handler) — largement sous
-  la cible < 10. Recette exécutée : (1) `wire.ServiceRegistry`/bundles/PlayerResolver requalifiés
+  la cible < 10.
+  **[CORRECTION V5d 2026-07-07 — VF-10 : le compte réel est 5, pas 4 : `server_apiv1.go`
+  (assembleur DI séquentiel ~1290 L) avait été omis de ce bilan. Exemption fichier posée en
+  tête de `server_apiv1.go`.]** Recette exécutée : (1) `wire.ServiceRegistry`/bundles/PlayerResolver requalifiés
   chez les 4 appelants api-root + cmd/server/main.go ; (2) 4 fonctions DI exportées
   (BuildPostSyncDeltaHook, NewSquadPerfProfileProvider, MountAdminMonitoringRoutes,
   RegisterAdditionalTitles) ; (3) `server.go`/NewRouter RESTE en api et accède à ServiceRegistry

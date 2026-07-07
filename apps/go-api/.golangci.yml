@@ -4,17 +4,17 @@
 #   ruff (lint)                -> golangci-lint + staticcheck
 #   black / ruff-format        -> gofmt (standard Go, pas de config)
 #   pyright / mypy             -> compilateur Go (verification statique a la compile)
-#   McCabe C901 max 12         -> gocyclo max-complexity 12
-#   PLR0913 max 5 args         -> revive argument-limit 5
-#   enforce_size_limits.py     -> funlen (80 lignes) + lll (100 chars)
+#   McCabe C901                -> gocyclo max-complexity (relaxe a 15)
+#   PLR0913                    -> revive argument-limit (relaxe a 7)
+#   enforce_size_limits.py     -> funlen (80 lignes / 80 statements) + lll
 #   isort                      -> goimports (no config needed)
 #   detect-secrets             -> hook pre-commit universel (inchange)
 #
-# Seuils (identiques Python) :
-#   Complexite cyclomatique : 12
-#   Longueur de fonction     : 80 lignes  / 60 statements
-#   Longueur de ligne        : 100 caracteres
-#   Nombre d'arguments       : 5
+# Seuils EFFECTIFS (cf. bloc linters.settings ci-dessous — source de verite) :
+#   Complexite cyclomatique : 15
+#   Longueur de fonction     : 80 lignes  / 80 statements
+#   Longueur de ligne        : 220 caracteres (relaxe progressive)
+#   Nombre d'arguments       : 7
 #
 # Migration v1 -> v2 (chore/ci-stabilization, 2026-05-20) :
 #   - branche v1 abandonnee depuis mars 2025 (derniere = v1.64.8)

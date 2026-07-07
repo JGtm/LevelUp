@@ -1,3 +1,17 @@
+// Package api — server_apiv1.go : assembleur DI de l'API v1 (montage /api/v1).
+//
+// EXEMPTION FICHIER (CLAUDE.md seuil ≤ 500 L — VF-10 / K3d) : ce fichier dépasse
+// délibérément le seuil (~1290 L). C'est un assembleur d'injection de dépendances
+// SÉQUENTIEL, sans logique métier : mountAPIV1 monte ~80 endpoints sur le routeur,
+// buildAPIV1Deps construit et câble les services/handlers, mountSPA branche le
+// fallback SPA. La longueur reflète la surface API (nombre de routes/services),
+// pas une responsabilité mélangée — le découper en sous-fichiers arbitraires
+// éparpillerait une liste de montage cohésive et lisible d'un bloc.
+//
+// CONDITION DE RE-DÉCOUPE : dès qu'une VRAIE logique métier s'y glisse (calcul,
+// transformation, décision autre que du wiring/routing), l'extraire dans un
+// service/handler dédié (internal/service, internal/api/handlers, internal/api/wire)
+// — l'exemption ne couvre QUE l'assemblage DI, pas de la logique.
 package api
 
 import (

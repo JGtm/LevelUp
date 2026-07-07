@@ -185,6 +185,3 @@ func (s *MediaService) runTranscodeJob(p ops.HLSTranscodeParams, jobID string) {
 		s.feedBump()
 	}
 }
-
-// ReassociateMedia recrée toutes les associations médias↔matchs depuis zéro.
-// Avant de supprimer, crée un snapshot horodaté (backup) dans la même DB.

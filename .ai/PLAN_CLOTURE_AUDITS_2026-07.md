@@ -234,35 +234,40 @@ V4d mordants prouvés. TOUS PASSÉS (2026-07-07).
 
 ## LOT V5 — Garde-rail halowaypoint + docs/commentaires inversés
 
-- [ ] V5a — VF-7 : livrer `internal/archlint/no_halowaypoint_literal_test.go` : interdit
-  le littéral `halowaypoint` hors `games/halo_infinite/`, `platform/halo/` (si existant),
-  `sync/haloclient/`, `games/halo_5/client.go`, `platform/auth/` (échange tokens),
-  `domain/title/auth_descriptor.go` (defaults documentés), `assets/fetcher_gamecms.go`,
-  `halotest/`, `cmd/` (outils) — allowlist PAR FICHIER datée 2026-07-06, décroissante,
-  self-check d'existence des entrées (leçon V4d). Le but n'est pas 0 aujourd'hui : c'est
-  de FIGER la liste pour que la prochaine URL en dur hors liste soit rouge.
-- [ ] V5b — VF-8 : purger `LEVELUP_CONTRACT_VALIDATE` de `docs/CONFIGURATION.md:224`,
-  `docs/FR/CONFIGURATION.md:225` (les DEUX, règle bilinguisme), `.env.local.example:203`.
-- [ ] V5c — VF-12 : balayage des commentaires stale (1 commit, mécanique) :
-  `engine_fetch.go:29-32` (réécrire : chemin batch unique), `engine_highlight_events.go:162`
-  (disparaît avec V4a — vérifier), mentions `processMatch` (`backfill_personal_scores.go:7`,
-  `engine.go:100`, `csr_shared_backfill.go:5`, `csr_writes.go:5`), `engine.go:175`
-  (RunBackfillLUSR), header `session_compare_service.go:1,22` (décrire l'infra
-  session-summary partagée), commentaire orphelin fin de `media_service_upload.go:189-190`,
-  `ops/healthcheck.go:8` (exemple fmt.Println → slog), `eslint.config.js:30-31`,
-  `.golangci.yml:8,15`.
-- [ ] V5d — VF-10 : débris K : retirer/corriger le `//nolint:gocyclo` mensonger de
-  `server.go:490` (startSessionPurgeLoop n'en a pas besoin) + fragment orphelin
-  `server.go:126-127` ; justifier le nolint nu `player_repos_test.go:112` (ou le retirer) ;
-  rafraîchir l'historique `sync_root_freeze_test.go:21` (112→106→88→80) ; corriger le
-  bilan K3d/K2a du plan parent (« 4 fichiers » → 5, server_apiv1.go nommé) ; ajouter un
-  commentaire d'exemption fichier en tête de `server_apiv1.go` (assembleur DI séquentiel,
-  1286 L, pourquoi c'est accepté + condition de re-découpe).
+- [x] V5a — VF-7 : livré `internal/archlint/no_halowaypoint_literal_test.go` : interdit
+  le littéral `halowaypoint` dans les .go non-test hors allowlist PAR FICHIER (27 entrées,
+  datée 2026-07-07, décroissante) + self-check d'existence ET de présence du littéral
+  (leçon V4d/VF-6). Zones vérifiées sur pièces par grep : `sync/haloclient/` (5),
+  `platform/halo/` (5), `platform/auth/` (2), `domain/title/auth_descriptor.go`,
+  `assets/{fetcher_gamecms,kinds}.go`, `games/halo_infinite/adapter_asset_urls.go`,
+  `games/halo_5/client.go`, `halotest/fake_server.go`, `cmd/*` (9), `scripts/warm_bp_assets`.
+  Morsure prouvée 2 sens (littéral bidon hors allowlist → RED ; retiré → GREEN) + self-check
+  prouvé (entrée bidon → RED). But atteint : FIGER la liste (pas 0 aujourd'hui).
+- [x] V5b — VF-8 : purgé `LEVELUP_CONTRACT_VALIDATE` de `docs/CONFIGURATION.md`,
+  `docs/FR/CONFIGURATION.md` (les DEUX) et `.env.local.example` (bloc entier). Grep tracked
+  hors `.ai/` → 0 (le middleware source n'existe déjà plus sur la branche depuis L4).
+- [x] V5c — VF-12 : commentaires stale réécrits : `engine_fetch.go` (chemin batch unique,
+  + 3 comments inline `insertFetchedMatch`), `engine_highlight_events.go:160` (processMatch →
+  appelant convergence/replay ; la fonction morte `insertHighlightEventsFromData` a bien été
+  supprimée par V4a — constaté), mentions `processMatch` (`backfill_personal_scores.go`,
+  `engine.go:100`, `csr_shared_backfill.go`, `csr_writes.go` — `processMatch` = 0 restant),
+  `engine.go:175` (RunBackfillLUSR → RunBackfillLUSRDryRun v2), header
+  `session_compare_service.go` (décrit l'infra session-summary partagée + orphelin l.22 retiré),
+  orphelin `ReassociateMedia` fin `media_service_upload.go` supprimé, `ops/healthcheck.go:8`
+  (fmt.Println → slog), `eslint.config.js` (warn Phase 0 → error depuis I5), `.golangci.yml`
+  (header 5 args/60 stmts/12 → 7/80/15 effectifs).
+- [x] V5d — VF-10 : `//nolint:gocyclo` mensonger retiré de `startSessionPurgeLoop`
+  (golangci confirme : aucun gocyclo sur cette fonction) ; fragment orphelin `server.go:126-127`
+  réparé (phrase NewRouter complétée) ; nolint nu `player_repos_test.go:112` justifié (liste
+  DDL plate) ; historique `sync_root_freeze_test.go:21` complété (112→106→88→80) ; bilan
+  K3d/K2a du plan parent annoté (4 → 5 fichiers, server_apiv1.go nommé) ; exemption fichier
+  ajoutée en tête de `server_apiv1.go` (assembleur DI séquentiel ~1290 L + condition de re-découpe).
 
-Gate V5 : `go test ./internal/archlint/...` vert (nouveau ratchet inclus, vérifié dans
-les 2 sens) ; grep `LEVELUP_CONTRACT_VALIDATE` hors coverage/artefacts → 0 ;
-grep `processMatch|insertFetchedMatch|RunBackfillLUSR` en COMMENTAIRE prod → 0 résiduel
-trompeur (les mentions « historique/supprimé le » explicites sont OK).
+Gate V5 : `go build/vet ./...` exit 0 ; `go test ./internal/archlint/...` vert (nouveau
+ratchet inclus, morsure 2 sens prouvée) ; `go test sync/api/service/ops` exit 0 ;
+grep `LEVELUP_CONTRACT_VALIDATE` tracked hors `.ai/` → 0 ; grep `processMatch` prod → 0,
+`insertFetchedMatch`/`RunBackfillLUSR` résiduels tous explicitement « legacy/supprimé D1b »
+(mentions historiques OK). Commit `cloture(V5):` + entrée thought_log.
 
 ## LOT V6 — Tracker, journal, dette assumée, vérification finale
 

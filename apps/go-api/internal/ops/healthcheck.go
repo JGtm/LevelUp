@@ -4,8 +4,13 @@
 //
 // Usage :
 //
-//	report := RunHealthcheck(HealthcheckOptions{RepoRoot: "/path/to/levelup"})
-//	if !report.OK { fmt.Println(report.Summary()) }
+//	report := RunHealthcheck(ctx, HealthcheckOptions{RepoRoot: "/path/to/levelup"})
+//	if !report.OK {
+//		slog.ErrorContext(ctx, "healthcheck KO", "summary", report.Summary())
+//	}
+//
+// (Le point d'entrée CLI cmd/levelup/cmd_ops.go imprime le résumé sur stdout ;
+// tout code serveur/service utilise slog — CLAUDE.md règle 3.)
 package ops
 
 import (
