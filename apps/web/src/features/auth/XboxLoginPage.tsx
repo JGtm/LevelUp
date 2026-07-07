@@ -387,7 +387,7 @@ function AdminPasswordPanel({ onBack }: AdminPasswordPanelProps) {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="admin-username" className="block text-sm font-medium text-foreground mb-1">
-                  Identifiant
+                  {t('common.auth.username_label')}
                 </label>
                 <input
                   id="admin-username"
@@ -419,7 +419,7 @@ function AdminPasswordPanel({ onBack }: AdminPasswordPanelProps) {
               {error && <p className="text-sm text-destructive">{error}</p>}
 
               <Button type="submit" className="w-full" disabled={login.isPending}>
-                {login.isPending ? 'Connexion…' : 'Se connecter'}
+                {login.isPending ? t('common.auth.login_pending') : t('common.auth.login_action')}
               </Button>
             </form>
 

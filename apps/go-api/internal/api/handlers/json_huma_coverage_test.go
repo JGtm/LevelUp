@@ -31,7 +31,7 @@ var jsonBypassAllowlist = map[string]string{
 	"helpers.go":            "définitions de writeJSON/writeJSONCached + usage interne de writeError (modèle d'erreur, pas une route)",
 	"media_upload.go":       "POST /media/upload — entrée multipart/form-data (reste chi), réponse JSON incidente",
 	"openspartan_import.go": "POST /import/openspartan — entrée multipart (reste chi), réponse JSON incidente",
-	"groups.go":             "endpoints /groups (gestion familles, feat multititre) montés chi-natif sous RequireAuth avec path params {id}/{xuid} + flux d'invitation Xbox SSO ; livrés chi-style avec leur propre suite (groups_test.go). Réponses JSON incidentes. Migration Huma à planifier hors merge.",
+	"groups.go":             "endpoints /groups (gestion familles, feat multititre) montés chi-natif sous RequireAuth avec path params {id}/{xuid} + flux d'invitation Xbox SSO ; livrés chi-style avec leur propre suite (groups_test.go). Réponses JSON incidentes. TODO(expiry:2026-10-01) : migration Huma non triviale (path params + flux invitation) — planifier ou re-dater à échéance.",
 }
 
 var writeJSONCallRe = regexp.MustCompile(`\bwriteJSON(Cached)?\(`)

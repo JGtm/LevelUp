@@ -103,8 +103,8 @@ type MatchHistoryService struct {
 // canonique outcomes.toml (win/loss/tie/dnf). "" si code inconnu.
 var outcomeCodeToKey = map[int]string{
 	domain.OutcomeDraw: "tie",
-	domain.OutcomeWin:  "win",
-	domain.OutcomeLoss: "loss",
+	domain.OutcomeWin:  duelLabelWin,
+	domain.OutcomeLoss: duelLabelLoss,
 	domain.OutcomeDNF:  "dnf",
 }
 

@@ -15,7 +15,7 @@ import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
 import { KpiCard } from '@/components/cards/KpiCard'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
-import { accuracyScale, kdScale, lifespanScale } from '@/lib/accessibility/scales'
+import { accuracyScale, kdScale, lifespanScale, perfScale } from '@/lib/accessibility/scales'
 import { formatDurationMMSS, displayRatingLabel } from '@/lib/formatters'
 import { combatYieldToken } from '@/lib/formatters/combatYield'
 import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
@@ -31,11 +31,11 @@ interface Props {
   compact?: boolean
 }
 
-// Seuils perf-tier (alignés sur analysis.PerfTier côté Go).
-function perfTierToken(score: number | null): SemanticToken | undefined {
-  if (score == null) return undefined
-  const tier = score >= 80 ? 1 : score >= 65 ? 2 : score >= 50 ? 3 : score >= 35 ? 4 : 5
-  return `perf-tier-${tier}` as SemanticToken
+// Accent perf via la source unique perfScale (80/65/50/35, alignés sur
+// analysis.PerfTier côté Go). null → undefined (pas d'accent). Fin adaptateur, pas
+// une échelle recopiée (le mapping seuils→tiers reste dans perfScale).
+function perfAccent(score: number | null): SemanticToken | undefined {
+  return score == null ? undefined : perfScale(score)
 }
 
 export function SessionSummaryCard({ entry, compact = false }: Props) {
@@ -90,8 +90,8 @@ export function SessionSummaryCard({ entry, compact = false }: Props) {
       <KpiStat
         label={t('session.detail.stat_perf_score')}
         value={formatNumber(entry.performance_score, 1)}
-        token={perfTierToken(entry.performance_score)}
-        accent={perfTierToken(entry.performance_score)}
+        token={perfAccent(entry.performance_score)}
+        accent={perfAccent(entry.performance_score)}
       />
       {/* Rendement / Résistance : tile plus large (barre composite responsive).
           Accent = qualité combinée vs référence (rendement ≥ 100% & résistance

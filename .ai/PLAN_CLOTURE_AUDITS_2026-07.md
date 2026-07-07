@@ -299,25 +299,40 @@ justification ; chaque report présent dans DETTE_ASSUMEE ; bilan final rédigé
 
 ## LOT V7 — Résiduel qualité (bornés, faibles enjeux)
 
-- [ ] V7a — VF-11 : `XboxLoginPage.tsx:390,:422` → clés `common.auth.*` existantes.
-- [ ] V7b — VF-13/DC-7 : Q29 + Q29Bulk → `StartTimeCanonicalSQL("r")` (les 2 dans le même
-  commit, tests bulk==unitaire re-passés) + extension du garde-rail H1 (`ORDER BY` sur
-  start_time nu ; allowlist migrations/ gelées).
-- [ ] V7c — VF-14 : `perfTierToken` — 4e copie détectée : centraliser dans
-  `lib/accessibility/scales` (ou module dédié) + étendre le garde-rail perfScale existant
-  (règle 6 : helper + ratchet même commit).
-- [ ] V7d — VF-14 : `lib/formatters/date.ts:52` `'fr-FR'` en dur → `intlLocale(locale)`
-  (threading si nécessaire) OU justification documentée sur place si verrou chart délibéré
-  (cf. décision I2 « formatDateShort verrou chart ») — statuer, pas laisser flou.
-- [ ] V7e — VF-15 : dater l'entrée `groups.go` de l'allowlist Huma
-  (`json_huma_coverage_test.go`) ou la traiter.
-- [ ] V7f — (issu de §7 parent, pré-existant, 5 min) : lint pré-existants au merge :
-  `match_history_service.go:107` goconst `"loss"` → const `duelLabelLoss` ;
-  `halo_ranks_loader.go:55` gocyclo 16>15 → extraire une branche. (Nettoyage AVANT merge
-  main comme le §7 le prévoyait.)
+- [x] V7a — VF-11 : `XboxLoginPage.tsx:390,:422` migrés vers `t('common.auth.username_label')`
+  / `login_pending` / `login_action` (clés déjà présentes, FR identiques ; aucun ajout
+  manifest ni rebuild requis).
+- [x] V7b — VF-13/DC-7 : `Q29HistoryForAvg` (:248) ET `Q29HistoryForAvgBulkTpl` (:296)
+  migrés en `var` + `ORDER BY `+`StartTimeCanonicalSQL("r")`+` DESC NULLS LAST` (identiques
+  entre eux ; test bulk==unitaire `TestGetHistoryForAvgBulk_EqualsSinglePerXUID` re-passé).
+  Garde-rail `no_raw_start_time_literal_test.go` étendu d'un 2e regex
+  `ORDER BY \w+\.start_time([^_]|$)` (table-qualifié = toujours brut ; ne mord PAS
+  l'alias nu issu du fragment canonique — queries_match.go:400 vérifié ; ni start_time_utc).
+  Allowlist fichier GELÉE (20 fichiers cmd/diag/backfill/seed préexistants, keyée par
+  fichier comme H1 ; queries_match.go volontairement absent). Morsure prouvée 2 sens.
+- [x] V7c — VF-14 : VERDICT per-copie = 2 variantes (leçon H7), PAS 4 doublons —
+  Variant A 80/65/50/35 (SessionSummaryCard, PlayerDetailPanel) = `perfScale` existant ;
+  Variant B 75/60/45/30 (mapPerfVsHistoryChart, squadSessionTimelineChart) = nouveau
+  `perfSessionScale`. 5e copie découverte par le garde-rail : `SessionBriefing/tier.ts`
+  `getScoreTier` (Variant A) → dérive maintenant de `perfScale`. Garde-rail grep
+  `perf-tier.guard.test.ts` (modèle calendar.guard) interdit toute redéfinition locale
+  `perfTierToken`/échelle recopiée hors instances.ts. Morsure prouvée 2 sens.
+- [x] V7d — VF-14 : `formatDateShort` `'fr-FR'` = verrou chart DÉLIBÉRÉ CONSERVÉ (décision
+  I2b l.945 ferme + DETTE_ASSUMEE §2 I2b). Motif : rendu `DD/MM` numérique pur,
+  locale-invariant FR/EN ; threader la locale introduirait un ordre MM/DD en 'en-US' sans
+  gain i18n. Justification renforcée sur place (plus de flou) — pas de threading.
+- [x] V7e — VF-15 : entrée `groups.go` de l'allowlist Huma datée
+  `TODO(expiry:2026-10-01)` (migration non triviale : path params + flux invitation).
+- [x] V7f — lint préexistants : `match_history_service.go:107` goconst `"loss"` →
+  `duelLabelLoss`/`duelLabelWin` (même package) ; `halo_ranks_loader.go` gocyclo
+  `LoadRankCatalog` 16>15 → extraction `enrichRankCatalogXP` + type `rankAcc` promu.
+  Les 2 issues disparues de `golangci-lint --new-from-rev=main` ; 0 nouvelle sur mes fichiers.
 
-Gate V7 : gates front V1 re-passés (cache purgé) ; `go test ./internal/platform/duckdb/...`
-+ garde-rails archlint verts ; `golangci-lint run --new-from-rev=main` → 0 issue.
+Gate V7 : ✅ front (cache purgé) typecheck 0 / lint 0 err (68 warn baseline) / vitest
+2073 pass (garde-rail V7c inclus) ; ✅ Go build+vet 0, `go test duckdb/archlint/service/sync`
+0 FAIL, intégration `-p 1` duckdb 0 FAIL ; ✅ `golangci-lint --new-from-rev=main` : V7f
+disparus, 0 nouvelle issue sur fichiers touchés (22 issues résiduelles = dette branche
+préexistante hors périmètre).
 
 ## LOT V8 — Contrat front↔back (généraliser la découverte A2 §7)
 
