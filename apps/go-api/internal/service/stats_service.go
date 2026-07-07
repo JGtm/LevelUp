@@ -201,7 +201,7 @@ func buildWinLossTab(matches []legacymatch.StatsMatchRow) domain.WinLossTabRespo
 
 	winRate := 0.0
 	if len(matches) > 0 {
-		// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+		// TODO(expiry:2026-12-31) P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
 		winRate = analysis.WinRate(wins, len(matches)) * 100.0
 	}
 

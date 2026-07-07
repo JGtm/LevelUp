@@ -377,31 +377,50 @@ Objectif : les dettes DATA connues cessent d'être des mémoires — elles sont 
 sur une copie réelle, puis corrigées. AUCUNE écriture directe sur prod hors fenêtre
 convenue avec l'utilisateur (règle projet : prévenir avant toute op prod).
 
-- [ ] V9a — Audit read-only sur la COPIE restaurée par V10a (jamais sur les fichiers que
-  le serveur tient — mono-process) : quantifier (1) matchs `first_joined_time` décalés
-  (~964 attendus, requête du diag `backfill_first_joined_tz`) ; (2) matchs import
-  OpenSpartan à `is_ranked` faux (signal RankRecap) ; (3) lignes orphelines/doublons
-  match_registry↔participants↔medals ; (4) présence physique des colonnes à DROP différé
-  (DEC-6 `known_teammates_count`/`friends_xuids`, G5 `discord_notified`) ; (5) watermarks
-  LUSR v2 vs lignes réelles (désync connue). Livrable : rapport chiffré par titre.
-- [ ] V9b — Correctif TZ `first_joined_time` : backfill dédié (outil existant à vérifier :
-  `backfill_first_joined_tz`) + RE-BACKFILL LUSR des joueurs affectés
-  (`RecomputeLUSRCanonicalForPlayer`, jamais v1) — d'abord sur la copie (validation),
-  puis sur prod en fenêtre convenue.
-- [ ] V9c — Correctif `is_ranked` OpenSpartan : fix à l'import (signal RankRecap) +
-  backfill des matchs existants + re-calcul CSR/LUSR impactés. Même méthode copie→prod.
-- [ ] V9d — Planifier LE rebuild append-only qui exécute les DROP différés (recette
-  ADR 0026) : colonnes DEC-6 + `discord_notified` + toute colonne morte confirmée par
-  V9a(4). Date/fenêtre à convenir — le rebuild N'EST PAS fait en autonomie.
-- [ ] V9e — Statuer `weapon_kills_v3` (shadow jamais promu) : promouvoir ou retirer —
-  DÉCISION UTILISATEUR à escalader avec les chiffres V9a en main.
-- [ ] V9f — Cluster « TODO P4 ADR 0006 retirer *100 » (§7 parent) : re-confirmer qu'il
-  reste hors périmètre (migration d'unité canonique = chantier à part) et le dater
-  `TODO(expiry:)` en bloc pour qu'il ne soit plus indolore.
+- [x] V9a — Audit read-only sur la copie (snapshot restic 9e96ed20, 2026-06-27) LIVRÉ :
+  `.ai/AUDIT_DATA_PROD_2026-07-07.md` (chiffré par titre). Verdict : la copie est PROPRE
+  sur les 3 dettes DATA connues (correctifs déjà déployés avant le backup). (1) TZ décalés
+  Infinite = **0** (max T0 apparent 118s < 120s ; ~964 = chiffre historique déjà corrigé) ;
+  H5 = N/A (first_joined_time NULL 100%). (2) is_ranked faux = **0** (Infinite 34/34 sur
+  playlist classée flaggés ; H5 0 CSR-porteur non flaggé). (3) orphelins/doublons = 0 SAUF
+  medals_earned H5 = 2149 orphelins (bruit ingestion, Découvertes). (4) colonnes DROP
+  différé toutes présentes (PME known_teammates_count/friends_xuids ×8 DB ; media_files
+  discord_notified ×2 shared_social). (5) watermark LUSR = dernière ligne (pas de désync de
+  tête) ; 23 gaps d'intérieur (Madina 7 / JGtm 10 / Choco 6) = résidu EP ~0,8% hors V9.
+  (6) counts = V10a (Inf 1780/26577, H5 3032/24208).
+- [x] V9b — Correctif TZ : l'outil `cmd/backfill_first_joined_tz` a DÉJÀ un mode `--commit`
+  (pas seulement diag) → aucune implémentation requise. Validé sur copie : dry-run =
+  « Matchs décalés : 0 » → **0 à corriger** (déjà appliqué en prod avant le backup).
+  Aucun re-backfill LUSR nécessaire (0 match affecté). Aucune écriture copie, aucun
+  `.pristine`. PLAN DE MERGE : rien à rejouer en prod pour la TZ.
+- [x] V9c — Correctif is_ranked : fix CODE import-time DÉJÀ présent
+  (`openspartan_import_service.go::writeOneMatch` l.317-320 : RankRecap présent ⟹
+  is_ranked=true) + test unitaire DÉJÀ présent (`openspartan_import_service_test.go:261-270`,
+  re-passé vert). Backfill historique = migration boot `shared_backfill_is_ranked_and_season`
+  + seed autoritatif ranked-playlists. Validé sur copie : **0 mismarqué** (rien à backfiller,
+  aucun CSR/LUSR à recalculer). Aucune écriture copie. PLAN DE MERGE : rien à rejouer en prod.
+- [x] V9d — Rebuild append-only des DROP différés PLANIFIÉ (non exécuté — décision
+  opérateur) : section dédiée dans `.ai/AUDIT_DATA_PROD_2026-07-07.md` §V9d (tables PME ×8 +
+  media_files ×2, recette ADR 0026 via `append_only_rebuild.go` + CHECKPOINT shared_social,
+  procédure serveur arrêté, vérifs post, à combiner avec étape 2 « répétition générale » du
+  PLAN DE MERGE).
+- [x] V9e — `weapon_kills_v3` chiffré + reco ESCALADÉE (décision utilisateur) : v3 n'existe
+  NI en prod NI sur la branche (uniquement worktree non mergé `feat/weapon-attribution-v3`) ;
+  0 table `%v3%` dans la copie. Servi en prod = v2 `weapon_kills`, couverture Infinite
+  **1194/1780 = 67,1%** (v3 corrigerait l'ATTRIBUTION churn, pas la couverture ; algo
+  inachevé). **RECO par défaut : retirer** (supprimer branche+worktree ; dead-code museum
+  évité). Aucun changement code. Détail §V9e du rapport.
+- [x] V9f — Cluster « TODO P4 ADR 0006 retirer *100 » : 6 occurrences (pas ~10) datées en
+  bloc `TODO(expiry:2026-12-31)` (prestige/evaluator.go, squad_service.go,
+  timeseries_service_{tabs,buckets}.go, session_compare_stat_helpers.go, stats_service.go).
+  Reste hors périmètre (migration unité canonique 0..1 = chantier à part). Lint
+  `TestNoExpiredTODO` re-passé vert.
 
-Gate V9 : rapport V9a remis AVANT tout correctif ; chaque backfill validé sur copie
-(counts avant/après) puis rejoué sur prod en fenêtre annoncée ; intégration `-p 1` verte
-si du code d'import a changé (V9c touche sync/).
+Gate V9 : ✅ rapport V9a remis AVANT tout (rien à corriger — copie propre). Code touché =
+V9f COMMENTAIRES SEULS + dating TODO (V9b/V9c déjà en place avant le lot). `go build` +
+`go vet` = 0 ; tests prestige/service/archlint/openspartan = 0 FAIL ; intégration `-p 1`
+sync+service = 0 FAIL (V9c import re-vérifié). Aucune écriture sur la copie prod, aucun
+`.pristine` (0 à corriger).
 
 ## LOT V10 — Exploitation (SANS alerting uptime — décision utilisateur 2026-07-06)
 

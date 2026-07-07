@@ -1,3 +1,39 @@
+## [2026-07-07] Clôture audits LOT V9 — audit données prod + correctifs déjà en place
+
+**Statut** : Complété (V9a..V9f `[x]`).
+
+**Décision technique principale** : audit READ-ONLY de la copie prod restaurée par V10a
+(snapshot restic 9e96ed20, 2026-06-27) via `cmd/tmpdbq`. Constat structurant : les 3
+dettes DATA connues (TZ first_joined_time, is_ranked OpenSpartan, désync watermark LUSR)
+avaient DÉJÀ été corrigées en prod AVANT ce backup. L'audit mesure donc l'état
+POST-correctifs — les chiffres attendus des mémoires (964 matchs TZ, matchs classés non
+flaggés) sont HISTORIQUES. Rapport livré : `.ai/AUDIT_DATA_PROD_2026-07-07.md`.
+
+**Résultats observés (chiffrés par titre)** :
+- V9a(1) TZ : Infinite 0 décalé (max T0 apparent 118s < seuil 120s) ; H5 N/A
+  (first_joined_time NULL 100%). V9b : l'outil `backfill_first_joined_tz` a DÉJÀ `--commit` ;
+  dry-run copie = 0 → aucune implémentation ni écriture.
+- V9a(2) is_ranked : Infinite 34/34 sur playlist classée flaggés, 0 CSR-porteur non flaggé ;
+  H5 idem 0. V9c : fix import-time (RankRecap⟹is_ranked=true, openspartan_import_service.go
+  l.317-320) + test (l.261-270) DÉJÀ présents et verts ; backfill = migration boot. 0 à
+  corriger sur la copie.
+- V9a(3) intégrité : 0 orphelin/doublon SAUF medals_earned H5 = 2149 orphelins (1190 xuid
+  vide + 959 non-participant = bruit ingestion H5, consigné Découvertes, hors V9).
+- V9a(4) : known_teammates_count/friends_xuids présents ×8 player DB ; discord_notified
+  présent ×2 shared_social. → V9d rebuild planifié (§V9d du rapport), NON exécuté.
+- V9a(5) : watermark LUSR = dernière ligne rated pour les 4 joueurs (désync de tête
+  disparue, fix 2026-06-07 tient) ; 23 gaps d'intérieur (résidu EP ~0,8%, hors V9).
+- V9a(6) : counts = V10a (Inf 1780/26577, H5 3032/24208).
+- V9e : weapon_kills_v3 absent de prod ET de la branche (worktree non mergé) ; v2 servi =
+  67,1% couverture Infinite. RECO par défaut = RETIRER (branche/worktree). ESCALADÉ.
+- V9f : 6 TODO `*100` datés `TODO(expiry:2026-12-31)` ; lint TestNoExpiredTODO vert.
+
+**Conclusion / prochaine étape** : seul changement code = V9f (commentaires + dating TODO ;
+V9b/V9c déjà livrés par lots antérieurs). Gate : build+vet 0, tests unitaires +
+intégration `-p 1` sync+service verts. Aucune écriture sur la copie prod (0 à corriger →
+aucun `.pristine`). PLAN DE MERGE : rien à rejouer en prod pour TZ/is_ranked ; V9d rebuild
+à combiner avec l'étape 2 (répétition sur copie) ; décision v3 = utilisateur.
+
 ## [2026-07-07] Clôture audits LOT V10ab — test de restauration restic + checklist deploy
 
 **Statut** : Complété (V10a + V10b ; V10c différé post-merge `[!]`).

@@ -88,7 +88,7 @@ func winRate(matches []legacymatch.StatsMatchRow) float64 {
 			wins++
 		}
 	}
-	// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+	// TODO(expiry:2026-12-31) P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
 	return analysis.WinRate(wins, len(matches)) * 100
 }
 
