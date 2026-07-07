@@ -1,3 +1,143 @@
+## [2026-07-07] Audit notifications — 57 non-lues JGtm, diagnostic + propositions (aucun code)
+
+**Statut** : Complété (analyse seule ; implémentation non demandée).
+
+**Décision technique principale** : analyse sur pièces des 57 notifications non-lues de
+JGtm (prod VPS, `shared_social.duckdb` Halo Infinite copié en RO — jamais ouvert sur le
+fichier tenu RW). Toutes datent du 2026-07-03. Quatre causes prouvées : (1) burst
+cold-start de 22 notifs en 1 seconde à 16:05:32 — snapshot « before » absente/zéro dans
+`BuildPostSyncDeltaHook` (post_sync_deltas.go:101-104 continue sur erreur) → tout
+l'historique émis comme delta (`objective_completed count=3434`, `career_rank
+previous=0`, 6× `skill_tier previous_tier=""`) ; (2) paire objective_completed +
+objective_assigned émise à CHAQUE cycle de sync avec le MÊME compteur
+(`PersonalAwardCount` aux deux lignes 81 et 87 de postSyncCounterDeltas) = 26/57 ;
+(3) skill_tier sans hystérésis = 5 notifs de flapping Or IV↔V arena_slayer dans la
+soirée ; (4) media_added sans coalescence = 5 notifs pour 5 clips du même acteur en
+5 min. Constat transverse : personne ne marque lu (JGtm 57/59, Madina 32/32 depuis
+avril, Chocoboflor 10/10) — problème de cycle de vie, pas de débit moyen (59 notifs en
+6 semaines ; cap rétention 500 jamais approché).
+
+**Résultats observés** : ~46/57 notifs évitables (≈80 %) via baseline silencieuse au
+cold-start + suppression du doublon objective_assigned + hystérésis skill_tier +
+coalescence media/records. La dédup 24h du coach (`FilterRecent`,
+ProgressionDedupWindow) fonctionne et est le pattern à généraliser aux counter deltas.
+
+**Conclusion / prochaine étape** : propositions remises à l'utilisateur en 4 lots
+(A anti-burst baseline, B dédoublonnage sémantique, C coalescence/digest, D cycle de vie
+UX badge/auto-read). Arbitrage utilisateur : plan d'implémentation demandé → voir
+l'entrée suivante (PLAN_NOTIFICATIONS_RATIONALISATION_2026-07).
+
+## [2026-07-07] Plan rationalisation notifications rédigé (implémentation confiée à un agent ultérieur)
+
+**Statut** : Complété (plan seul ; aucun code touché).
+
+**Décision technique principale** : suite au diagnostic des 57 non-lues (entrée
+précédente), plan d'implémentation rédigé dans
+`.ai/PLAN_NOTIFICATIONS_RATIONALISATION_2026-07.md` — 5 phases (A gardes anti-burst
+cold-start dans EmitPostSyncDeltas ; B suppression émission objective_assigned +
+records coach période la plus large + skill_tier montées-seules avec dédup 24h ;
+C EmitCoalesced sur l'interface Emitter pour media_added, fenêtre 1h, réémission
+même id via le modèle append-only ; D badge_count severity!=info + auto-read à la
+fermeture du dropdown + sweep info > 7 j ; E gate final). 10 décisions produit
+tranchées (D1-D10), dont le rejet motivé d'une baseline persistée au profit de gardes
+(le « before » est relu à chaque cycle — une anomalie ne dure qu'un cycle).
+
+**Résultats observés** : plan passé à la grille plan-review — périmètre fermé par
+items cochables, gates commandés par phase (filtre intégration ancré `^` + `-p 1`),
+décisions tranchées, multi-titre fail-open sur tiers inconnus (Champion H5),
+protocole de reprise. Numéros de ligne validés au commit ccc950324.
+
+**Conclusion / prochaine étape** : exécution par un agent ultérieur (Opus) sous
+plan-execution, branche `refactor/notifications-rationalization` depuis
+`refactor/audits-2026-07` (ou main si mergée). Critère de succès : les 6 scénarios
+mesurables du plan couverts par tests nommés.
+
+## [2026-07-07] Plan refonte engagement — ancre lobby + attendu conditionné par l'intensité
+
+**Statut** : Complété (plan rédigé ; implémentation NON commencée — confiée à un agent
+ultérieur).
+
+**Décision technique principale** : suite au diagnostic bc918a5a (entrée plus bas),
+décisions produit prises avec l'utilisateur : (1) l'attendu joueur s'ancre sur le LOBBY
+(réponse à l'activité totale du match), pas sur l'équipe ; (2) l'attendu est conditionné
+par l'INTENSITÉ (bins terciles calme/standard/chaotique par joueur+mode, coef = médiane
+pace_joueur/pace_lobby du bin) — un joueur qui répond mal aux matchs intenses doit avoir
+un attendu bas dans un match intense, pas un attendu proportionnel gonflé ; (3) poids
+mort 0.4 → 0 (un frag d'un côté = une mort de l'autre, on ne compte plus le même
+affrontement deux fois ; le farmé ne « répond » plus en mourant) ; (4) graphe match = 3
+courbes (Équipe réelle conservée, PAS d'« Équipe attendue » — habitude d'équipe mal
+définie avec des coéquipiers inconnus), lobby dans le tooltip.
+
+**Résultats observés** (vérifications d'appui) : squad TeamExpected hérite du
+PaceAttendu du joueur principal (aucun changement structurel squad) ; recompute force
+existant (engine_backfills.go l.93, enrichment_backfill.go l.122) ; équipe d'inconnus
+déjà bien gérée (events de tous les humains ingérés — 8/8 sur le match témoin,
+coefficients = historique du seul joueur cible) ; clé d'intensité disponible =
+engagement_pace_lobby persisté (match_intensity ne l'est pas).
+
+**Conclusion / prochaine étape** : plan détaillé livré dans
+`.ai/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md` (6 phases, décisions D1-D8 tranchées,
+re-backfill 2 titres en deux passes — ordre critique documenté). Exécution sous
+plan-execution par un agent ultérieur, branche `feat/engagement-lobby-response`.
+
+## [2026-07-07] Revue UX page Relations + plan d'amélioration v4 (PLAN_RELATIONS_UX_2026-07)
+
+**Statut** : Complété (revue + plan ; aucun changement code).
+
+**Décision technique principale** : revue critique de Communauté > Relations à la demande
+de l'utilisateur (« pas convaincu par cette page »). Diagnostic validé avec lui : page
+bien exécutée mais descriptive — noyau dur servi 3 fois, lift auto-référentiel pour un
+joueur d'escouade fixe (WR historique ≈ WR ensemble → lift ~0 par construction), versant
+rival sous-exploité (vrai potentiel, surtout petites populations type H5), tableau non
+triable, frises de duels non cliquables (matchId présent mais aucune navigation),
+toggle « amis » au libellé mensonger (il masque les jamais-affrontés).
+
+**Résultats observés** : décisions produit tranchées avec l'utilisateur — recherche
+tableau REJETÉE (redondant Explorer), tri RETENU ; CSR rival = optionnel (classé only) ;
+heatmap CONSERVÉE (choix user) ; CoreCards à SUPPRIMER ; toggle relibellé + défaut
+masqué. Plan écrit : `.ai/PLAN_RELATIONS_UX_2026-07.md` — 7 lots obligatoires
+(A tri, B duels cliquables via OutcomeSequenceTape+convertFromPixel, C toggle+migrate
+store v2, H chip « Multi-jeux » client pur sur le badge cross-jeu Phase 3b,
+F dé-redondance+lien Escouade, D « Quoi de neuf » nouvelles têtes/retrouvailles
+(2 agrégats SQL Q28 + is_revived), E notification rival_encounter post-sync par watermark
+LastMatchStartTime) + G conditionnel (CSR bête noire, gate de couverture ≥30 %).
+Branche cible `feat/relations-ux-2026-07` depuis main à jour (attention : merge du
+chantier audits en attente — à signaler avant de démarrer).
+
+**Conclusion / prochaine étape** : exécution par un agent (Opus) sous contrat
+plan-execution. Rien n'est codé dans cette session.
+
+## [2026-07-07] Diagnostic graphe engagement match bc918a5a — courbes « Équipe réelle » / « Joueur attendu » confondues
+
+**Statut** : Complété (diagnostic seul, aucun changement code).
+
+**Décision technique principale** : investigation du signalement « courbe Équipe et
+courbe Joueur attendu strictement identiques » sur le match Infinite bc918a5a-ed48
+(Arena:CTF on Catalyst, 2026-07-03, unranked, joueurs suivis : Madina/JGtm/Chocoboflor).
+Chaîne vérifiée : `pace_attendu(t) = coef_team_share × pace_team(t)` point à point
+(engagement_curve.go l.80-85) → superposition ⟺ coef ≈ 1.0.
+
+**Résultats observés** :
+- API locale `/matches/{id}/engagement` : les 3 joueurs donnent des courbes distinctes
+  (ratios constants 1.311 / 1.005 / 0.830). Le cas signalé = vue JGtm.
+- Coefficients persistés : JGtm PvP_unranked `coef_team_share` = 1.0050 (local,
+  n=198) et 1.0019 (copie prod du 2026-06-27, n=198). Madina 1.31, Choco 0.83 →
+  le calcul de médiane n'est PAS dégénéré ; JGtm est réellement au partage médian
+  de ses équipes. Écart courbes 0,2-0,5 % = invisible à l'écran, tooltip arrondi
+  2 décimales affiche souvent des valeurs égales → perçu « strictement identique ».
+- Verdict : comportement conforme au design (attendu personnalisé ≈ équipe quand le
+  coef historique vaut ~1.0). Vaut pour TOUS les matchs de JGtm, pas ce match.
+- Découverte adjacente (non traitée, hors périmètre) : le masquage front de la série
+  « Joueur attendu » (EngagementMatchSection.tsx l.65) est indexé sur
+  `confidence === 'insufficient_history'` (historique de résidus ≥ 10) alors que la
+  superposition est gouvernée par le coefficient, chargé indépendamment
+  (`loadCoefsSafe` → 1.0 si ligne absente). Cas non couvert : coef absent + historique
+  ≥ 10 → superposition STRICTE affichée (le piège que hideAttendu devait éviter).
+
+**Conclusion / prochaine étape** : rien à corriger côté calcul. Si l'UX doit lever
+l'ambiguïté : afficher le coef dans le sous-titre/tooltip du graphe (ex. « attendu =
+1.00 × équipe ») plutôt que masquer — décision utilisateur.
+
 ## [2026-07-07] Clôture audits LOT V9 — audit données prod + correctifs déjà en place
 
 **Statut** : Complété (V9a..V9f `[x]`).
@@ -88,8 +228,24 @@ rétrogradés (le gros de leur bruit prod était le DNS), data-quality inchangé
 Post-reboot, prod quasi propre hors LUSR. Découvertes : /health = healthcheck avec I/O DB
 (503 sous gate lecture), disque 82 %, rotation des logs non vérifiée.
 
-**Conclusion / prochaine étape** : GO user attendu pour B1 (hotfix + deploy prod).
-Le reste du triage (B2→B7) suit sur `fix/monitoring-triage-2026-07`.
+**Addendum (même jour) — cause racine LUSR identifiée sur pièces** : le refactor
+contention a classé le bloc LUSR post-sync en segment LECTURE
+(`engine_postsync_scoring.go:136` `shared.Read`, commentaire ne couvrant que v1) alors
+que le v2 shadow écrit `player_skill_state_v2` côté SHARED. Correctif retenu (pérenne,
+pas un patch) : aligner le shadow sur le pattern bursts Write chunkés des étapes
+events/weapons — seam lease (Read + Write-burst) injecté dans `RunLUSRV2ShadowOwnerOnly`,
+sélection sous Read, process/persist par chunks sous Write. + test d'intégration
+reproduisant le bug (provider RO) + audit des autres segments `shared.Read` du
+post-sync. Détail : plan triage B1.1-B1.3 (révisés).
+
+**Conclusion / prochaine étape** : plan hotfix AUTOPORTEUR écrit pour exécution par
+une session agent dédiée (Opus) : `.ai/PLAN_HOTFIX_LUSR_SHADOW_RO_2026-07.md`
+(phases H1→H7, DC-H1..H7 figées, topologie main vérifiée — skill/ à plat, seam =
+`*SharedAccess` même package + `NewPinnedSharedAccess` pour CLI/tests ; test de repro
+rouge-avant/vert-après ; audit des segments `shared.Read` frères ; gate GO user avant
+push main ; vérif post-deploy + rattrapage auto du watermark, backfill seulement si
+résiduel ; report du fix sur la branche audits au merge). Le reste du triage (B2→B7)
+suit sur `fix/monitoring-triage-2026-07`.
 
 ---
 
@@ -33962,3 +34118,65 @@ locaux + lot V bloqué VPS, décisions DEC-1..6, gates en commandes exactes).
 
 **Conclusion / prochaine étape** : validation des DEC-1..6 par l'utilisateur puis
 exécution du plan sur `fix/h5-matchview-residus` (lots A→E), lot V à la remontée du VPS.
+
+## [2026-07-07] Revue UX page Ascension + plan de refonte
+
+**Statut** : Complété (revue + plan rédigé — exécution non démarrée)
+
+**Décision technique principale** : revue sur pièces (code des 3 onglets + ~25
+composants, ADR 0014) ET en conditions réelles (serveur dev local, profil JGtm,
+navigation des 3 onglets), consolidée en `.ai/PLAN_ASCENSION_UX_2026-07.md`
+(lots A-D, décisions DEC-1..9, gates en commandes exactes).
+
+**Résultats observés** (constats prouvés à l'écran) :
+- Fuites d'identifiants : GUID de cartes comme titres de patterns ET dans le texte des
+  leviers (« Améliore ton win rate en 2b6d2baf-... ») ; `with_friends` ; `FieldKDA`
+  dans Stats globales ; `best_kda` clé brute en carte record.
+- Valeurs aberrantes servies : record Précision 7333.3 %, best_kda 107 ; dates de
+  jalons toutes au 30/05/2026 (artefact de seed) ; levier « Actuel — → Cible 37% ».
+- Doc inversée majeure : le mode pilote Prestige est COMPLET côté backend (routes
+  POST /pilot-mode/enable|disable, quotas, service_pilot_pool.go) mais le front
+  affiche un bouton grisé « non implémenté côté backend ».
+- IA confuse : onglet « Profil & objectifs » sans profil (le profil vit dans
+  Entraînement) ; widget home montre des séries mais deep-link vers l'onglet
+  objectifs ; doublon patterns by_squad / carte Comparaison ; μ/σ bruts affichés.
+- Culs-de-sac : aucune carte (pattern, record, série, jalon) ne mène aux matchs.
+
+**Conclusion / prochaine étape** : DEC-1 (pilote opt-in) et DEC-3 validées par
+l'utilisateur le 2026-07-07 ; DEC-3 revue à la hausse à sa demande : restructuration
+en 4 onglets (Profil index / Objectifs / Entraînement / Réalisations), recomposition
+pure ~0,5-1 j, seule découpe réelle = ProgressionSection extraite de PlayerProfileV3
+(plan mis à jour, item B1 en périmètre fermé). Exécution sur
+`refactor/ascension-ux-2026-07` après merge du chantier audits.
+
+## [2026-07-07] Volet VPS du plan résidus H5 — « match introuvable » élucidé
+
+**Statut** : Complété (diagnostic V1 — exécution des fixes non démarrée)
+
+**Décision technique principale** : VPS revenu → lot V1 exécuté en lecture seule
+(copies des DuckDB prod vers /tmp puis rapatriement local, JAMAIS d'ouverture des
+fichiers tenus par le serveur — contrainte mono-process/B-swap), requêtes via
+cmd/tmpdbq sur les copies, test API prod anonyme, lecture des logs conteneur.
+
+**Résultats observés** :
+- Prod = local : registre H5 identique (3032 matchs, 5 témoins présents, noms NULL
+  pareil), ratings JGtm identiques (662 LUSR / 1003 CSR) — l'import du 2026-06-23 est
+  bien en prod ; tous les fixes/backfills locaux s'appliqueront tels quels.
+- « f88f6d8b introuvable » : le média existe (id 82, association active du 2026-06-25,
+  delta 108 s) et le match est complet côté joueur. Cause réelle : le pipeline média
+  Q37 résout les libellés match uniquement depuis les colonnes du registre (NULL sur
+  TOUT H5) → card « Carte inconnue »/vide + filtres galerie vides ; le match paraît
+  introuvable alors que le lien fonctionne (HTTP 200 local à données identiques).
+- Découverte : les MÊMES 84 clips H5 sont indexés dans les shared_social des DEUX
+  titres (IndexMedia scanne le dossier captures joueur sans filtre de titre) ; sous
+  Infinite ils restent « Sans match » à perpétuité.
+- Limites : trafic utilisateur d'origine perdu (conteneur recréé au redéploiement,
+  logs non persistés) ; requête anonyme = 403 ownership → pas de repro authentifiée.
+- Plan mis à jour : diagnostics n°9-11, DEC-7 (libellés média via cascade
+  asset_translations réutilisée) + DEC-8 (routage titre de l'indexeur + purge des 84
+  copies), nouveau LOT F (médias), lot V réécrit (V1 fait, V2-V4 après merge),
+  découvertes logging (authz title vs http title_slug incohérents, logs volatils).
+
+**Conclusion / prochaine étape** : exécution des lots A→F sur
+`fix/h5-matchview-residus` après validation des DEC-1..8, puis V2-V4 (opérations data
+prod + vérification visuelle utilisateur + deploy via push main).
