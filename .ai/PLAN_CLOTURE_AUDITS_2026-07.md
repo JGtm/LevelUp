@@ -274,28 +274,25 @@ grep `LEVELUP_CONTRACT_VALIDATE` tracked hors `.ai/` → 0 ; grep `processMatch`
 Objectif : le plan parent redevient la source de vérité, puis SA dernière action (jamais
 faite) est exécutée.
 
-- [ ] V6a — VF-4 : plan parent — les statuts J sont DÉJÀ à jour (`18f3c7ee7`, clôture J
-  pendant l'audit — vérifier qu'ils le sont restés) ; reste : I2 → `[x]` (I2b complet,
-  hash) ; I4 → `[x/~]` + purger la sous-puce (ii) livrée ; purger le paragraphe
-  « RESTE (7) » de K3f et rafraîchir le bloc « BILAN SESSION /goal » ; statuer P1/P2 ;
-  ajouter les entrées §6 manquantes : H, I, J, K, L, M, N (format du plan, comptes/gates
-  repris du thought_log).
-- [ ] V6b — VF-4 : thought_log — l'entrée J est DÉJÀ posée (`18f3c7ee7`) ; reste l'entrée
-  de CE chantier de clôture (et une par lot V au fil de l'eau, règle CLAUDE.md).
-- [ ] V6c — VF-4 : DETTE_ASSUMEE_2026-Q3.md — corriger l'entrée « E7 » (contenu = D1a/D2)
-  et ajouter le VRAI E7 (DDL bootstrap sync/schema.go, condition : après stabilisation
-  b23/b25) ; ajouter les résidus K réels (K1b-legacy→D2, K1d-reste, K1h-collection,
-  K1j-openspartan, K1k-factory, K1l-reste-chemins, K1n-déplacements, K2b-drain(infaisable,
-  documenté), K3b-ratchet-imports-croisés, K3f-décisions-packages) ; rafraîchir §4 J
-  (J3/J7 livrés ; restent J1(2)/J4/J5/J6/J9-suite) ; ajouter N3(b/c/e) ; trancher le
-  footer (reco : déplacer les ✅ dans une section « Livrées depuis » en bas, garder la
-  règle).
-- [ ] V6d — Exécuter la VÉRIFICATION FINALE du plan parent (§5, jamais faite) : relire
-  les 4 audits en diagonale, confirmer que chaque finding a un statut dans le plan parent
-  OU dans DETTE_ASSUMEE OU ici ; compléter la matrice §5 si un item est orphelin ;
-  produire le BILAN FINAL utilisateur (fait / différé-où / abandonné-pourquoi).
-- [ ] V6e — Mémoire : mettre à jour la mémoire projet (plan traitement audits) avec l'état
-  de clôture + pointeur vers ce plan et l'audit VF.
+- [x] V6a — VF-4 : plan parent. Statuts J restés à jour (18f3c7ee7 tient). I2 → `[x]`
+  (I2b complet, hashes d3fdead37/8b80c7b46/974ac5a33) ; I4 → `[x/~]` + sous-puce (ii)
+  EncounterSplitBars annotée [TRAITÉ, 7f70297b8/652232dfa] ; paragraphe « RESTE (7) » de K3f
+  purgé (contradiction interne) + « BILAN SESSION /goal » annoté [BILAN PÉRIMÉ] ; P1/P2
+  statués `[x]` (vérif git : branche part de 3aef23396 propre) ; §6 Journal H/I/J/K/L/M/N
+  ajouté (comptes/gates/hashes, dont Gate H comptes 97/33).
+- [x] V6b — VF-4 : thought_log — entrée de clôture du chantier V (V1-V6, hashes, CI verte)
+  ajoutée EN TÊTE.
+- [x] V6c — VF-4 : DETTE_ASSUMEE — entrée « E7 » corrigée (renommée D1a→D2 ; VRAI E7 DDL
+  bootstrap ajouté, condition b23/b25) ; résidus K réels ajoutés (§1 : K1a-cœur, K1b-legacy,
+  K1d/K1h/K1j/K1k/K1l-reste, K1n, K2b-drain infaisable, K3a/K3b, K3f-décisions) ; §4 J
+  rafraîchi (J2/J3/J7/J9 livrés ; restent J1(2)/J4/J6 + J5) ; N3(b/c/e) ajoutés (§6) ;
+  footer tranché (§8 « Livrées depuis la rédaction ») + §9 « Clôture V » (V9/V10/GATE/MERGE).
+- [x] V6d — VÉRIFICATION FINALE §5 exécutée (4 audits relus en diagonale, 4 passes // ).
+  **0 ORPHELIN** — matrice §5 confirmée exhaustive (0 ligne à ajouter). BILAN FINAL rédigé
+  en §8 du plan parent (173+29+25+CR findings couverts, 0 orphelin, différés documentés,
+  gates finaux, prêt GATE HUMAIN + merge après V7/V8). Écarts traçabilité mineurs → §7.
+- [x] V6e — Mémoire projet `project_plan_traitement_audits_2026_07.md` mise à jour (état
+  clôture V1-V6, hashes, pointeurs plan de clôture + audit VF + DETTE §8/§9).
 
 Gate V6 : relecture croisée — 0 item du plan parent sans statut ; 0 `[!]` sans
 justification ; chaque report présent dans DETTE_ASSUMEE ; bilan final rédigé et remis.
