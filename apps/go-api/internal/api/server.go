@@ -123,8 +123,9 @@ func metadataDBPathForTitle(cfg *config.AppConfig, titleSlug string) string {
 // tokenProvider peut être nil : MSALProvider est utilisé par défaut.
 // Retourne aussi le *wire.ServiceRegistry pour permettre au démon watcher de lier le TTL dynamique.
 //
-// conditionnels (MULTI_TITLE_API_ENABLED, PRESTIGE_ENABLED, etc.). Complexité
-// reflète la surface API, pas un défaut de conception.
+// Le montage des routes et services passe par plusieurs sous-fonctions (extraites
+// en K2a) et des groupes conditionnels (MULTI_TITLE_API_ENABLED, PRESTIGE_ENABLED,
+// etc.). La complexité reflète la surface API, pas un défaut de conception.
 //
 // loadTitleAssetDrawerData charge les maps + armes (avec leurs URLs d'image) d'un
 // titre additionnel depuis sa metadata.duckdb ISOLÉE, pour l'Asset Drawer
@@ -486,8 +487,6 @@ func buildTitleRuntime(serverCtx context.Context, cfg *config.AppConfig, titleRe
 // dépassé) : purge immédiate au boot (rattrape le backlog) puis toutes les 6h,
 // arrêt propre au shutdown via serverCtx. Extrait de NewRouter (K2a — réduction
 // du god-func d'assemblage DI).
-//
-//nolint:gocyclo // Routeur central : mount de ~80 endpoints avec feature flags
 func startSessionPurgeLoop(serverCtx context.Context, sessionStore *session_platform.Store) {
 	go func() {
 		if n := sessionStore.PurgeExpired(); n > 0 {

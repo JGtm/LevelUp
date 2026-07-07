@@ -2,7 +2,8 @@
 // shared.match_csrs (Option A du plan pipeline CSR).
 //
 // Le sync nominal écrit déjà shared.match_csrs à mesure que les matchs ranked
-// sont synchronisés (cf. csr_shared_writes.go + appel dans engine.processMatch).
+// sont synchronisés (via le batch Collect→Persist : batch.Shared.MatchCSRs,
+// cf. buildBatchFromFetchedMatch → submitMatchAsBatch).
 // Ce backfill rattrape les matchs ranked qui étaient déjà en DB AVANT le câblage
 // Option A.
 //

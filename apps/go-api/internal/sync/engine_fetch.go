@@ -26,12 +26,12 @@ import (
 )
 
 // fetchedMatch contient les données extraites d'un GetMatchStats, prêtes pour
-// insertion (chemin legacy `insertFetchedMatch`) ou conversion en MatchBatch
-// (chemin Collect→Persist `buildBatchFromFetchedMatch`).
+// conversion en MatchBatch (chemin unique Collect→Persist).
 //
-// Les deux chemins consomment ce type : insertFetchedMatch écrit directement
-// dans les DBs (legacy), buildBatchFromFetchedMatch produit un *persist.MatchBatch
-// à Submit dans la BatchQueue. Coexistence pendant la transition Phase 2.
+// Chemin unique : buildBatchFromFetchedMatch(Ctx) convertit ce type en
+// *persist.MatchBatch, submit dans la BatchQueue (INSERT-only, anti-ART ADR 0019).
+// Le chemin legacy insertFetchedMatch (écriture directe dans les DBs) a été
+// supprimé au lot D1b (audits 2026-07) — plus aucun écrivain per-match direct.
 type fetchedMatch struct {
 	MatchID        string
 	Registry       *MatchRegistryRow
@@ -45,7 +45,7 @@ type fetchedMatch struct {
 	SkillError     error // Non-bloquant si présent
 	// CSRRow : ligne CSR à insérer côté player DB. Renseignée uniquement
 	// pour les matchs classés dont le payload skill contient RankRecap.
-	// Inséré dans insertFetchedMatch / batch.PlayerData.SkillRank.
+	// Inséré via batch.PlayerData.SkillRank (chemin Collect→Persist).
 	CSRRow *MatchCSRRow
 
 	// SharedCSRs : CSR de TOUS les participants ranked du match (lobby
@@ -108,8 +108,8 @@ func (e *SyncEngine) fetchMatchData(
 			} else if len(skillData) > 0 {
 				fm.Participants = MergeSkillIntoParticipants(fm.Participants, skillData)
 				// CSR par-match (player DB) : extraction depuis RankRecap si
-				// match classé. L'écriture en player DB est différée à
-				// insertFetchedMatch (legacy) ou batch.PlayerData.SkillRank.
+				// match classé. L'écriture en player DB est différée au batch
+				// (batch.PlayerData.SkillRank, chemin Collect→Persist).
 				fm.CSRRow = ExtractCSRRowIfRanked(fm.Registry, skillData[e.xuid])
 				// CSR de tous les participants ranked (shared.match_csrs)
 				// — lobby context, utilisé par batch.Shared.MatchCSRs.
@@ -128,7 +128,7 @@ func (e *SyncEngine) fetchMatchData(
 	}
 	// PersonalScores du joueur courant — toujours extraits (pas de flag dédié,
 	// même cycle de vie que les participants). La table n'est pas dans shared :
-	// l'insertion se fera côté playerDB dans insertFetchedMatch.
+	// l'insertion se fera côté playerDB via le batch (batch.PlayerData).
 	fm.PSA = ExtractPersonalScoreAwards(matchJSON, matchID, e.xuid)
 	if opts.WithHighlightEvents {
 		// Attente bornée du film pour un match FRAIS (cf. fetchHighlightChunkResilient) :

@@ -1,3 +1,41 @@
+## [2026-07-07] Clôture LOT V5 — garde-rail halowaypoint + docs/commentaires inversés (VF-7, VF-8, VF-10, VF-12)
+
+**Statut** : Complété.
+
+**Décision technique principale** : figer par ratchet la frontière des URLs Halo en dur
+(promesse du gate F jamais tenue), purger la doc inversée d'un flag supprimé, et éradiquer
+les commentaires stale qui décrivent du code disparu comme vivant (doc inversée dispersée).
+- **V5a (VF-7)** : `internal/archlint/no_halowaypoint_literal_test.go`. Interdit le littéral
+  `halowaypoint` dans tout .go non-test hors allowlist PAR FICHIER (27 entrées, datée
+  2026-07-07, décroissante). Décision : scanner TOUTES les lignes (y compris commentaires) —
+  un commentaire documentant une URL est aussi un point où une dépendance en dur pourrit ;
+  on gèle donc l'état complet, pas seulement le code. Deux self-checks (leçon V4d/VF-6) :
+  fichier existant ET contient encore le littéral (sinon entrée = à retirer). Morsure prouvée
+  dans les 2 sens + self-check prouvé (entrée bidon → rouge). But = FIGER, pas mettre à 0.
+- **V5b (VF-8)** : `LEVELUP_CONTRACT_VALIDATE` purgé des 2 CONFIGURATION.md (bilinguisme) +
+  bloc entier de `.env.local.example`. Le middleware source n'existait déjà plus sur la
+  branche (L4) → grep tracked hors `.ai/` = 0.
+- **V5c (VF-12)** : réécriture ciblée des commentaires stale post-suppression. `processMatch`
+  (fonction morte) éradiqué des commentaires prod (= 0 restant) ; `insertFetchedMatch`
+  résiduels tous requalifiés « legacy/supprimé D1b » ; `RunBackfillLUSR` (v1 mort) → v2 ;
+  header session_compare décrit désormais l'infra session-summary partagée réelle ; orphelin
+  `ReassociateMedia` supprimé ; exemple doc `fmt.Println` → `slog` (règle 3) ;
+  eslint (warn Phase 0 → error I5) et .golangci.yml (header 5/60/12 → 7/80/15 effectifs).
+- **V5d (VF-10)** : `//nolint:gocyclo` mensonger retiré de `startSessionPurgeLoop` (golangci
+  confirme aucune complexité à couvrir) ; fragment de doc orphelin NewRouter réparé ; nolint
+  nu `player_repos_test.go` justifié ; historique freeze complété (112→106→88→80) ; bilan
+  K3d/K2a parent annoté (4→5 fichiers, server_apiv1.go nommé) ; exemption fichier posée en
+  tête de `server_apiv1.go` (assembleur DI séquentiel ~1290 L + condition de re-découpe).
+
+**Résultats observés** : `go build/vet ./...` exit 0 ; `go test ./internal/archlint/...`
+vert ; `go test sync/api/service/ops` exit 0 ; golangci `--new-from-rev=main` sur les
+paquets touchés : 0 issue NOUVELLE imputable à V5 (le gofmt de mon nouveau test corrigé ;
+le reste = baseline K pré-existante). Grep gates : CONTRACT_VALIDATE tracked hors .ai = 0,
+processMatch prod = 0.
+
+**Conclusion / prochaine étape** : LOT V5 clos. Prochaine étape = LOT V6 (tracker/journal/
+dette assumée + vérification finale des 4 audits).
+
 ## [2026-07-07] Clôture LOT V4 — code mort + allowlists mortes + artefacts (VF-5, VF-6, VF-9, VF-12)
 
 **Statut** : Complété.

@@ -4,8 +4,9 @@
 // PersonalScores du joueur courant (e.xuid), et écrit dans
 // player.personal_score_awards.
 //
-// Le pipeline LIVE écrit déjà PSA via insertFetchedMatch + processMatch (cf.
-// engine.go). Cette fonction sert uniquement à rattraper les matchs synced
+// Le pipeline LIVE écrit déjà PSA via le batch Collect→Persist
+// (buildBatchFromFetchedMatch → submitMatchAsBatch, cf. engine_batch_path.go).
+// Cette fonction sert uniquement à rattraper les matchs synced
 // avant que l'extraction ne soit câblée (PSA absent en avril/mai 2026 sur
 // les player DBs).
 package sync

@@ -1,9 +1,14 @@
-// Package service — SessionCompareService : POST /pages/session-compare.
+// Package service — session_compare_service.go : infra PARTAGÉE de résumé de
+// session (label helpers + construction d'entrées/métriques/séries de comparaison).
 //
-// Sprint 33 : compare deux sessions de jeu.
-// Charge les matchs + sessions, filtre par label, calcule les métriques A vs B.
+// Le service Compare autonome (POST /pages/session-compare, ancien
+// SessionCompareService) a été supprimé. Ce fichier ne contient plus qu'un
+// jeu de helpers réutilisables, consommés par session_page_service.go :
+//   - extraction/sélection des labels de session (extractSessionLabels, keepMultiMatch…)
+//   - filtrage par label (filterBySession)
+//   - construction des entrées/métriques/séries A-vs-B (buildCompareEntry*, buildCompareMetrics…)
 //
-// Helpers extraits dans :
+// Helpers de calcul associés dans :
 //   - session_compare_stat_helpers.go   : calculs purs (winRate, avgKD, compareMetric…)
 //   - session_compare_table_helpers.go  : buildMapTable, buildModeTable, classifySessionCategory
 //   - session_compare_participation_helpers.go : profil 6 axes, lastSkillRating, avgMMR
@@ -18,8 +23,6 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
 )
-
-// SessionCompareService compare deux sessions de jeu d'un joueur.
 
 // ---------------------------------------------------------------------------
 // Session label helpers

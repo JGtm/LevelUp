@@ -221,7 +221,6 @@ auto-detection) before any `os.Getenv` read.
 | `LEVELUP_EVENTS_CONVERGENCE_MAX` | Cap on matches processed per convergence tick. | `50` |
 | `LEVELUP_CSR_SEASON_ID` | Override CSR season id. | from `app_settings.json` |
 | `MULTI_TITLE_API_ENABLED` | Expose the multi-title field-mappings/preview routes (override of `app_settings.json`). Rollout gate (not a rollback kill-switch). | `false` |
-| `LEVELUP_CONTRACT_VALIDATE` | Enable dev/CI response-contract validation middleware (permanent dev diagnostic; no-op in prod). | `0` |
 | `PRESTIGE_ENABLED` | Enable the Prestige module (override of `app_settings.json`). | `true` |
 
 ### Integrations

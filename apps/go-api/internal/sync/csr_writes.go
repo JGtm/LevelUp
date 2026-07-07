@@ -2,7 +2,7 @@
 // depuis le payload skill Halo (RankRecap.PostMatchCsr).
 //
 // Le sync nominal fetche déjà l'endpoint /hi/matches/{id}/skill pour tous les
-// matchs (cf. processMatch + le path fetchedMatch dans engine.go). Ce fichier
+// matchs (cf. fetchMatchData → le path fetchedMatch dans engine_fetch.go). Ce fichier
 // branche un consommateur supplémentaire sur le même payload : pour chaque
 // match classé (registry.IsRanked == TRUE), on lit RankRecap dans MatchSkillData
 // et on persiste une ligne dans match_skill_rank côté player DB avec

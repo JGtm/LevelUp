@@ -157,7 +157,8 @@ func fetchHighlightChunkResilient(
 
 // ProcessHighlightEvents télécharge le chunk highlight events, le parse et
 // insère les events + paires killer/victim dans la shared DB.
-// Retourne une erreur uniquement en cas de défaillance fatale (non-nil = warning dans processMatch).
+// Retourne une erreur uniquement en cas de défaillance fatale (non-nil = warning
+// côté appelant : convergence highlight-events et replay standalone).
 //
 // Exposé (majuscule) pour les outils de replay : cmd/replay_highlight_events.
 func ProcessHighlightEvents(

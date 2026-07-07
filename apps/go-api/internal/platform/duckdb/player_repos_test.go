@@ -109,7 +109,7 @@ func newTestPlayerDBWithSharedSocial(t *testing.T) *PlayerDB {
 
 // seedPlayerSchema initialise toutes les tables de la player DB.
 // Inclut le schéma shared simulé ; metadata reste sur pdb.Metadata.
-func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
+func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate (schéma player+shared simulé), pas de branchement à découper
 	t.Helper()
 	ctx := context.Background()
 	ddl := []string{

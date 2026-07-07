@@ -97,8 +97,8 @@ type SyncEngine struct {
 	// pour permettre l'enrichissement post-Extract des MatchRegistryRow via
 	// asset_translations (cf. EnrichRegistryFromMetadata, anti-régression UUIDs
 	// bruts dans match_registry.playlist_name). Nil dans les tests unitaires
-	// qui appellent processMatch directement → l'enrichissement devient no-op
-	// et la sync reste fonctionnelle (UUID préservé comme avant).
+	// qui appellent buildBatchFromFetchedMatch directement → l'enrichissement
+	// devient no-op et la sync reste fonctionnelle (UUID préservé comme avant).
 	metaDB *sql.DB
 	// csrSeasonID est l'identifiant de saison CSR courant (ex: "CsrSeason8").
 	// Vide → runCSRSnapshotSync est skippé silencieusement.
@@ -172,10 +172,11 @@ func (e *SyncEngine) RunFull(ctx context.Context, opts domain.SyncOptions) (doma
 }
 
 // RunBackfill, RunBackfillEngagementScores, RunBackfillEngagementCoefficients,
-// RunBackfillLUSR, RunBackfillCSR, RunBackfillPerf, RunBackfillComebackBadges,
-// loadMedalExploitMap, loadMedalExploitMapBestEffort, selectMatchesForComebackBadges,
-// loadAllMatchIDsForPlayer, loadFlaggedMatchIDs : déplacés vers engine_backfills.go
-// (refactor 2026-05-21).
+// RunBackfillLUSRDryRun (LUSR v2 : le v1 RunBackfillLUSR est mort — cf.
+// RecomputeLUSRCanonicalForPlayer), RunBackfillCSR, RunBackfillPerf,
+// RunBackfillComebackBadges, loadMedalExploitMap, loadMedalExploitMapBestEffort,
+// selectMatchesForComebackBadges, loadAllMatchIDsForPlayer, loadFlaggedMatchIDs :
+// déplacés vers engine_backfills.go (refactor 2026-05-21).
 
 // historyPaginationInputs regroupe l'état run()-local consommé par
 // paginateAndPersistHistory (garde la signature ≤ 5 params — CLAUDE.md).
