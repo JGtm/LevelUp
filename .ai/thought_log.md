@@ -1,3 +1,83 @@
+## [2026-07-07] Clôture audits LOT V10ab — test de restauration restic + checklist deploy
+
+**Statut** : Complété (V10a + V10b ; V10c différé post-merge `[!]`).
+
+**Décision technique principale** : premier test de restauration restic RÉEL. Config prod
+découverte (SANS secret : repo `/opt/levelup/restic-repo` disque VPS, password
+`/opt/levelup/.restic-password`, timer systemd 04:00 UTC, scope `data/titles` 2 titres +
+`data/auth` + config). Méthode (a) retenue : restic LOCAL 0.18.1 via `sftp:lvelup:` +
+password injecté au runtime depuis le VPS → restore de `latest` (9e96ed20, 2026-06-27)
+vers `C:\...\LevelUp-prod-copy\` (HORS repo git, survit à la session pour V9a). 109
+fichiers / 734.832 MiB. VPS traité en lecture seule stricte (aucun write/restart/prune).
+Toutes les DB des 2 titres ouvertes en RO via `cmd/tmpdbq` (pas de duckdb CLI local),
+counts plausibles consignés au plan comme référence V9a. 2 runbooks EN-only écrits :
+`docs/RUNBOOK_RESTORE_TEST.md` + `docs/RUNBOOK_DEPLOY_CHECKLIST.md` (chaque item vérifié
+sur pièces dans le repo).
+
+**Résultats observés / ALARME** : le backup restic AUTOMATIQUE n'a jamais produit de
+snapshot — service `203/EXEC` car `restic-backup.sh` non exécutable (git le versionne en
+`100644`). Les 3 snapshots existants sont tous manuels ; `latest` a 10 j. Consigné en
+Découvertes V10-D1 (fix hors périmètre lecture-seule : `git update-index --chmod=+x` +
+chmod VPS). V10-D2 : repo single-disk sans copie off-VPS prouvée (la copie V10a est de
+fait la 1re validation off-site).
+
+**Conclusion / prochaine étape** : Gate V10 partiel passé (restauration prouvée, checklist
+relue à blanc). V10c à statuer après le merge sous charge réelle. Recommandation prioritaire
+au user : corriger le bit +x du backup (alarme prod silencieuse).
+
+---
+
+## [2026-07-07] Monitoring — B0 mesure prod : incident DNS clos + RÉGRESSION LUSR shadow active
+
+**Statut** : Complété (mesure lecture seule + recalibrage du plan de triage ; AUCUN code
+modifié, AUCUNE écriture prod).
+
+**Décision technique principale** : VPS revenu → exécution de B0 du plan de triage.
+Constat : le profil prod ≠ local. Juillet prod = ~40k ERROR / ~136k WARN, deux tempêtes :
+(1) panne DNS Docker (`lookup … on 127.0.0.11:53: server misbehaving`) par vagues du
+01 au 07-07 (pic 59 285 le 06-07 = jour VPS injoignable), ÉTEINTE au reboot 07-07
+12:31 UTC → classée incident infra (DC-B5), pas de correctif applicatif, mais item
+anti-flood de logs (B6.4). (2) **RÉGRESSION ACTIVE** depuis le 03-07 : LUSR v2 shadow,
+chemin recovery owner-only (`persistComputedMatchSkillV2`,
+`internal/sync/skill/skill_v2_shadow.go:704`) → `UpsertState` sur `shared_matches_v2`
+attachée READ-ONLY (~6 500 W/jour, ~280/h post-reboot, Infinite ET H5). Effets en
+cascade mesurés : watermark LUSR figé depuis 4 jours, writer RW tenu au-delà du seuil
+(×150/4 h), lectures gatées, `/health` 503 intermittent (×44/4 h). Suspect n°1 = déploiement
+main du 02-07 soir (burst-lease post-sync b34724a7f « writer non tenu pendant I/O »).
+
+**Résultats observés** : plan de triage RECALIBRÉ (`.ai/PLAN_MONITORING_TRIAGE_DETECTIONS_2026-07.md`) :
+nouveau B1 = hotfix régression LUSR (branche depuis origin/main — DC-B6, la branche
+audits n'étant pas mergée ; push main = deploy auto → accord user requis), pool/crons
+rétrogradés (le gros de leur bruit prod était le DNS), data-quality inchangé (mêmes BDD).
+Post-reboot, prod quasi propre hors LUSR. Découvertes : /health = healthcheck avec I/O DB
+(503 sous gate lecture), disque 82 %, rotation des logs non vérifiée.
+
+**Conclusion / prochaine étape** : GO user attendu pour B1 (hotfix + deploy prod).
+Le reste du triage (B2→B7) suit sur `fix/monitoring-triage-2026-07`.
+
+---
+
+## [2026-07-07] Monitoring admin — révision plan refonte : onglets par question + retrait du Lab
+
+**Statut** : Complété (révision de plan ; AUCUN code modifié).
+
+**Décision technique principale** : le user valide la réorganisation des onglets admin
+par question opérateur (DC-8 : 9 onglets → 6 — État / Détections / Données / Sync /
+Système / Gestion) → nouvelle phase A3 « architecture de l'information » insérée dans
+`.ai/PLAN_MONITORING_REFONTE_2026-07.md` (renumérotation A3→A9, DC découplées des
+numéros de phase). Décision DC-9 tranchée avec le user : le **Lab est retiré de l'app**
+— sa mission (outiller l'ajout d'un titre, explorer Discovery/Waypoint) est un workflow
+de dev mieux servi par Claude Code + CLI existantes (probe-h5, probe-mcc,
+h5-metadata-fetch, populate-assets) ; suppression front (`features/lab/`,
+`features/admin/lab/`) + back (`handlers/lab.go`, `LabService`, 4 routes /lab/*),
+compensée par un runbook EN-only « ajout d'un titre » (A3.6). Sur pièces :
+`/lab/contracts` est déjà sans appelant front (code mort probable).
+
+**Conclusion / prochaine étape** : inchangée — triage d'abord
+(`PLAN_MONITORING_TRIAGE_DETECTIONS_2026-07.md`), puis refonte.
+
+---
+
 ## [2026-07-07] Clôture audits — GATE GLOBAL FINAL V1-V8 (session pilotage Fable→Opus)
 
 **Statut** : Complété (volet code de la clôture terminé ; restent V9/V10 bloqués VPS + GATE HUMAIN + PLAN DE MERGE).
@@ -33814,3 +33894,35 @@ halo-modes vérifiés à jour sans correction.
 **Conclusion / prochaine étape** : commit de l'ensemble (plan + CLAUDE.md + skills) après
 accord utilisateur, puis démarrage du LOT S (sécurité) une fois le chantier burst-lease
 de la branche courante landé (pré-requis P1 du plan).
+
+## [2026-07-07] Investigation résidus Halo 5 match view + plan de traitement
+
+**Statut** : Complété (investigation + plan rédigé — exécution non démarrée)
+
+**Décision technique principale** : investigation sur pièces (DuckDB locales via
+cmd/tmpdbq, serveur API local compilé + curl, lecture code) des 7 problèmes H5 remontés
+par l'utilisateur, consolidée en `.ai/PLAN_H5_MATCHVIEW_RESIDUS_2026-07.md` (lots A-E
+locaux + lot V bloqué VPS, décisions DEC-1..6, gates en commandes exactes).
+
+**Résultats observés** (causes racines toutes prouvées) :
+- Playlist « Fête » = nom FR officiel 343 « Super Fiesta Fête » tronqué par
+  NormalizePlaylistLabel (Infinite-only, appliqué à H5 — match_view_repo.go:133).
+- Map inconnue = Tidal (canvas Forge, identifié par l'image halocdn) : name_canonical
+  vide dans maps_catalog, absent d'asset_translations — SEUL asset non résolu du
+  registre H5 (129 matchs).
+- Mode vide = résolution par pair_name uniquement ; H5 n'a pas de pair, le
+  game_variant (traductions présentes) n'est jamais utilisé.
+- Dominance vide sur 100 % des matchs H5 : playable_duration_seconds NULL partout
+  (3032/3032) → durationMS=0 → ComputeTugOfWar nil ; kv_pairs pourtant complets.
+- « Pas de LUSR » sur matchs classés = CSR par match manquant (JGtm 115/1306, ~388 sur
+  4 joueurs) : skips silencieux du backfill (carnage KO/gamertag/CurrentCsr null) ;
+  profil temporel → présomption matchs de placement. LUSR sociaux manquants (190 JGtm)
+  = filtres du modèle (mono-équipe/FFA/multi-team) : par design.
+- f88f6d8b « introuvable » : HTTP 200 complet en LOCAL (données saines) ; problème
+  prod-only (médias VPS), bloqué VPS.
+- Card Résistance : capability damage_taken correctement absente mais card rendue
+  « N/A » ; Résultat attendu : SUPPORTÉ (ewp LUSR v2 servi sur sociaux), vide sur
+  classés des deux titres.
+
+**Conclusion / prochaine étape** : validation des DEC-1..6 par l'utilisateur puis
+exécution du plan sur `fix/h5-matchview-residus` (lots A→E), lot V à la remontée du VPS.

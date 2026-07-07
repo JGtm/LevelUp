@@ -405,22 +405,42 @@ si du code d'import a changé (V9c touche sync/).
 
 ## LOT V10 — Exploitation (SANS alerting uptime — décision utilisateur 2026-07-06)
 
-- [ ] V10a — Test de RESTAURATION restic : restaurer le dernier snapshot prod dans un
-  dossier local isolé, ouvrir chaque DB restaurée (duckdb CLI RO), vérifier counts
-  plausibles (match_registry, players, media). Documenter la procédure exacte en runbook
-  (elle n'existe qu'à l'état de backup jamais rejoué). Cette copie SERT AUSSI à V9a et à
-  la répétition générale du merge.
-- [ ] V10b — Checklist de déploiement EXÉCUTABLE (fichier `docs/RUNBOOK_DEPLOY_CHECKLIST.md`
-  ou script) consolidant les pièges connus aujourd'hui dispersés en mémoires : regen-demo
-  (rm avant seed), lock backfill → crash-loop, CHECKPOINT shared_social, vérif
-  `legacy_source_used` post-deploy, NOTER LA DATE D1A (arme D2), vérif port 8000/logs
-  par catégorie, `/debug/vars` accessible admin.
-- [ ] V10c — POST-merge : fenêtre d'observation runtime — lire `duckdb_pool_stats` +
-  `duckdb_budgets` sous charge réelle (débloque J1(2)) et statuer ENFIN J4/J6 (measure-first)
-  avec des chiffres. Clôt la boucle « mesurer d'abord » du lot J.
+- [x] V10a — Test de RESTAURATION restic PROUVÉ (2026-07-07). Config découverte : repo
+  `/opt/levelup/restic-repo` (disque VPS), password `/opt/levelup/.restic-password`,
+  timer systemd `levelup-restic-backup.timer` (04:00 UTC), scope `data/titles` (2 titres)
+  + `data/auth` + config JSON. Méthode (a) : restic LOCAL 0.18.1 via `sftp:lvelup:` +
+  password injecté depuis le VPS → restore de `latest` (9e96ed20, 2026-06-27) vers
+  `C:\Users\Guillaume\Downloads\Scripts\LevelUp-prod-copy\` (HORS repo git, survit à la
+  session — consommée par V9a). 109 fichiers / 734.832 MiB. Toutes les DB ouvertes en RO
+  (outil Go `cmd/tmpdbq`, pas de duckdb CLI local). Counts de référence pour V9a :
+  Infinite shared 1780 matchs / 26577 participants (2021-11→2026-06-25) ; Infinite
+  metadata 123 maps / 167 medals / 35 playlists / 9702 asset_tr ; Infinite pve 20 ;
+  joueurs Infinite Madina 1182 / JGtm 958 / Chocoboflor 490 / XxDaemon 22 (mv_player_matches) ;
+  H5 shared 3032 matchs / 24208 participants (2015-2023) ; H5 metadata 13 tables ;
+  H5 social 33 tables ; H5 Madina 1424 matchs ; 9 tokens auth. Runbook :
+  `docs/RUNBOOK_RESTORE_TEST.md`. ALARME reportée en Découvertes (backup auto jamais
+  produit — voir V10-D1).
+- [x] V10b — Checklist de déploiement EXÉCUTABLE écrite : `docs/RUNBOOK_DEPLOY_CHECKLIST.md`
+  (structure pré-deploy / deploy / post-deploy / rollback, cases à cocher). Chaque item
+  vérifié sur pièces dans le repo avant écriture : regen-demo NON destructif (rm des seuls
+  stubs JSON fantômes — pas warehouse/players, incident 2026-06-05, `deploy.sh` §2a) ;
+  garde anti-crash-loop `pgrep -f '[b]ackfill'` (`deploy.yml`) ; CHECKPOINT shared_social
+  (ADR 0022) ; `legacy_source_used_*` sous `/debug/vars` clé `levelup`
+  (`internal/observability/legacy_source.go`) ; `/debug/vars` admin-only
+  (`server_apiv1.go` sous RequireAuth+RequireAdmin) ; port 8000 `/health`
+  (`deploy.sh` §4) ; logs par catégorie `/opt/levelup/data/logs/*.log` (23 fichiers
+  vérifiés VPS) ; rollback `git revert -m 1` + critère GO/NO-GO migrations irréversibles.
+  Emplacement TODO explicite « DATE DE MISE EN PROD DE D1A » présent dans la checklist
+  (arme D2 ≥ 7 j). Relue à blanc une fois (dry-run de lecture : chaque étape exécutable
+  telle quelle).
+- [!] V10c — POST-merge (différé par conception : nécessite la prod post-merge sous charge
+  réelle). Hors périmètre de l'exécutant V10ab. Fenêtre d'observation runtime — lire
+  `duckdb_pool_stats` + `duckdb_budgets` sous charge réelle (débloque J1(2)) et statuer
+  J4/J6 (measure-first) avec des chiffres. À traiter après le merge (Gate J définitif).
 
-Gate V10 : restauration prouvée (DB ouvertes + counts) ; checklist rejouée à blanc une
-fois ; V10c = chiffres consignés au plan parent (Gate J définitif).
+Gate V10 (partiel — V10c différé post-merge) : restauration PROUVÉE (DB ouvertes +
+counts consignés ci-dessus) ; 2 runbooks écrits ; checklist rejouée à blanc une fois.
+V10c = chiffres consignés au plan parent après merge (Gate J définitif).
 
 ---
 
@@ -528,3 +548,28 @@ Séquence OBLIGATOIRE, dans l'ordre :
      référencé `[]` en tests seuls). Sous-type, hors garde-rail nommé.
   Fixer (1) exige de décider add-au-Go vs retrait-front ; (2)/(3) = alignement de sous-types
   view-model (élargir le garde-rail aux sous-types = chantier distinct).
+
+- **[V10-D1 — hors périmètre, NON traité — ALARME PROD] Le backup restic automatique n'a
+  JAMAIS produit de snapshot.** Le timer `levelup-restic-backup.timer` s'exécute bien à
+  04:00 UTC mais le service échoue avec `status=203/EXEC` : le script à
+  `/opt/levelup/scripts/restic-backup.sh` a les permissions `-rw-r--r--` (bit exécutable
+  ABSENT) → systemd ne peut pas l'exécuter. Les 3 snapshots existants (dont `latest`
+  9e96ed20 du 2026-06-27) ont TOUS été créés par des invocations MANUELLES (`bash
+  restic-backup.sh`). Conséquence : `latest` a 10 j au 2026-07-07 et aucun backup
+  automatique n'existe. Correctif (VPS, hors périmètre lecture-seule V10 — à faire par
+  l'utilisateur ou une session write) : `chmod +x /opt/levelup/scripts/restic-backup.sh`.
+  NOTE : `deploy.sh` fait `git reset --hard` qui écrase le fichier depuis git — vérifier
+  que le repo versionne le bit +x (le script `scripts/restic-backup.sh` doit être
+  exécutable dans git, sinon le chmod sera reperdu au prochain deploy).
+- **[V10-D2 — hors périmètre, NON traité] Repo restic single-disk sans copie off-VPS
+  prouvée.** `scripts/RESTIC_BACKUP.md` recommande de copier `.restic-password` + le repo
+  hors-VPS (sinon irrécupérable si le disque est perdu) mais aucune preuve que c'est fait.
+  La copie locale `LevelUp-prod-copy/` produite par V10a est de fait la première
+  validation off-VPS d'une restauration. Résilience hors-site = chantier séparé (non une
+  clôture d'audit).
+- **[V10 — note doc] `docs/BACKUP_RESTORE.md` décrit un 2e mécanisme (scheduler in-app
+  `pkg/duckdbbackup`, Parquet-staged, `cmd/restore`) DISTINCT du backup prod réel (timer
+  systemd + `restic-backup.sh`, fichiers `.duckdb` bruts).** Le scheduler in-app est
+  désactivé (`backup_enabled` défaut `false`). Deux docs coexistent sans se référencer —
+  `RUNBOOK_RESTORE_TEST.md` cible explicitement le mécanisme réellement en prod et note la
+  distinction. Consolidation doc = hors périmètre.
