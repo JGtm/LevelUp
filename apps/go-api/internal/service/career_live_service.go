@@ -31,6 +31,12 @@
 //  3. live KO/timeout complet          → fallback total sur la dernière row
 //  4. live KO + DB vide                → nil (front affiche placeholder)
 //
+// Directive produit apparence : bannière/emblème/backdrop sont des champs
+// INDÉPENDANTS ; chacun affiche toujours une valeur (l'actuelle si résoluble,
+// sinon la dernière connue), jamais vide, sans couplage entre eux. Cas des
+// emblèmes nouvelle génération sans nameplate upstream : la dernière bannière
+// connue reste servie (cf. career_live_merge.go).
+//
 // INSERT-if-changed dans `career_progression` : une nouvelle row n'est
 // écrite que si au moins un champ d'identité diffère de la dernière (cf.
 // duckdb.CareerRankRowEqualForInsert). Évite de saturer la table à 288
@@ -142,6 +148,8 @@ func NewCareerLiveService(
 // fraîcheur du live ne doit JAMAIS dégrader la visibilité (cf. revue
 // 2026-05-20 « les bannières vont et viennent »). Retourne nil uniquement
 // quand DB ET live sont tous deux vides (joueur jamais sync'd).
+// Chaque asset (bannière/emblème/backdrop) : l'actuel si résoluble, sinon le
+// dernier connu — jamais vide tant qu'une valeur a existé ; indépendants.
 //
 // Stratégie défense en profondeur :
 //

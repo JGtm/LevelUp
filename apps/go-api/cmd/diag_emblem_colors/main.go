@@ -90,8 +90,8 @@ func main() {
 	if len(os.Args) > 1 && strings.HasPrefix(os.Args[1], "Inventory/") {
 		emblemPath = os.Args[1]
 	}
-	// Mode 2 : si arg1 commence par "Configuration/", on dump ce coating
-	if len(os.Args) > 1 && strings.HasPrefix(os.Args[1], "Configuration/") {
+	// Mode 2 : si arg1 commence par "configuration/", on dump ce coating
+	if len(os.Args) > 1 && strings.HasPrefix(strings.ToLower(os.Args[1]), "configuration/") {
 		dumpCoating(os.Args[1])
 		return
 	}

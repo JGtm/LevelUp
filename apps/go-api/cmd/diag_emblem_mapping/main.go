@@ -18,8 +18,32 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/config"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 )
+
+// acquireDiagTokens : pipeline ADR 0023 (MultiUserTokenStore d'abord, env var
+// en fallback legacy). Persiste la rotation au store. Même helper que
+// diag_emblem_colors.
+func acquireDiagTokens(ctx context.Context, gamertag string) (*auth.ExchangeResult, error) {
+	provider := auth.NewMSALProvider()
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, fmt.Errorf("config.Load: %w", err)
+	}
+	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+
+	var xuid string
+	if user, err := store.LoadByGamertag(gamertag); err == nil && user != nil {
+		xuid = user.XUID
+	}
+	legacy := auth.LegacyAuthInputs{
+		OAuthRT: os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + strings.ToUpper(gamertag)),
+		Source:  "env_var",
+	}
+	return auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, gamertag, legacy)
+}
 
 func main() {
 	want := "olympus_campaign_windfall"
@@ -30,12 +54,29 @@ func main() {
 	if len(os.Args) > 2 {
 		gamertag = os.Args[2]
 	}
-	rt := os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + strings.ToUpper(gamertag))
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	p := auth.NewMSALProvider()
-	at, _ := p.TryOAuthRefresh(ctx, rt)
-	res, _ := p.Exchange(ctx, at)
+	res, err := acquireDiagTokens(ctx, gamertag)
+	if err != nil || res == nil || res.Tokens == nil {
+		fmt.Fprintf(os.Stderr, "FATAL: tokens %s: %v\n", gamertag, err)
+		os.Exit(1)
+	}
+
+	// Mode probe : arg1 = URL complète → GET authentifié, print status/type/size.
+	if strings.HasPrefix(want, "http") {
+		req, _ := http.NewRequestWithContext(ctx, "GET", want, nil)
+		req.Header.Set("x-343-authorization-spartan", res.Tokens.SpartanToken)
+		req.Header.Set("343-clearance", res.Tokens.ClearanceToken)
+		resp, perr := http.DefaultClient.Do(req)
+		if perr != nil {
+			fmt.Fprintln(os.Stderr, "probe error:", perr)
+			os.Exit(1)
+		}
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		fmt.Printf("Probe %s\n  Status=%d Content-Type=%s Size=%d\n", want, resp.StatusCode, resp.Header.Get("Content-Type"), len(body))
+		return
+	}
 
 	url := "https://gamecms-hacs.svc.halowaypoint.com/hi/Waypoint/file/images/emblems/mapping.json"
 	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)

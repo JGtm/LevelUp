@@ -9,6 +9,15 @@
 //   - overlayIdentityFromFallback : dernier patch de l'identity rendue par le
 //     builder, depuis la row DB last-known-good — sécurise les cas où live a
 //     produit identity != nil mais avec des champs vides.
+//
+// DIRECTIVE PRODUIT apparence (rappelée 2026-07-08) : bannière, emblème et
+// backdrop sont des champs INDÉPENDANTS — chacun affiche TOUJOURS une valeur
+// (l'actuelle si résoluble, sinon la dernière connue), jamais vide, et sans
+// aucun couplage entre eux. Le carry-forward est donc inconditionnel,
+// champ par champ. Contexte documenté : les emblèmes nouvelle génération
+// (`<id>-SpartanEmblem`, ex. 3806589 équipé par JGtm le 2026-07-03) n'ont
+// AUCUNE nameplate upstream (absents de mapping.json, aucune cfg positive,
+// 404 CDN) — la bannière servie reste alors la dernière connue.
 package service
 
 import (
@@ -22,7 +31,9 @@ import (
 //   - nil (si les deux sont nil)
 //
 // Anti-régression « bannière qui va et vient » : un fetch live qui rend
-// BannerImageURL=nil ne doit JAMAIS écraser la valeur DB historique.
+// BannerImageURL=nil ne doit JAMAIS écraser la valeur DB historique
+// (directive « jamais vide », cf. en-tête de fichier). Champs indépendants :
+// chaque asset est patché pour lui-même, sans condition croisée.
 func overlayIdentityFromFallback(identity, fallback *domain.HomeSpartanIdentityRow) *domain.HomeSpartanIdentityRow {
 	if identity == nil {
 		return fallback
@@ -113,7 +124,8 @@ func mergeProgressInto(merged *domain.CareerRankRow, progress *domain.CareerRank
 
 // mergeCustomInto applique custom live + dbLast carry-forward sur les champs
 // spartan_id/banner/emblem/backdrop. Retourne true si au moins un champ a été
-// carry-forward depuis dbLast.
+// carry-forward depuis dbLast. Chaque champ est indépendant : carry-forward
+// inconditionnel par champ (directive « jamais vide », cf. en-tête de fichier).
 func mergeCustomInto(merged *domain.CareerRankRow, custom *domain.SpartanCustomizationData, dbLast *domain.CareerRankRow) bool {
 	if custom != nil {
 		merged.SpartanID = custom.SpartanID
