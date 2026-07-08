@@ -188,7 +188,7 @@ export function MatchViewPage() {
     // permettre à l'utilisateur de continuer à naviguer entre les matchs.
     return (
       <div className="flex flex-col">
-        <MatchBreadcrumb playerSlug={playerSlug} matchLabel={t.mapUnknown} />
+        <MatchBreadcrumb playerSlug={playerSlug} matchLabel={t.mapUnknown} locale={locale === 'en' ? 'en' : 'fr'} />
         <MatchNavigationBar playerSlug={playerSlug} matchId={matchId} locale={locale === 'en' ? 'en' : 'fr'} />
         <div className="p-6">
           <Card>
@@ -241,7 +241,7 @@ export function MatchViewPage() {
 
   return (
     <div className="flex flex-col">
-      <MatchBreadcrumb playerSlug={playerSlug} matchLabel={breadcrumbLabel} />
+      <MatchBreadcrumb playerSlug={playerSlug} matchLabel={breadcrumbLabel} locale={locale === 'en' ? 'en' : 'fr'} />
 
       {/* Sprint 54-B : avertissement privacy */}
       {data.privacy_warning && (

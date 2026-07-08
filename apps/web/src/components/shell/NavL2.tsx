@@ -23,13 +23,16 @@ import { isCommunityPath } from './shellNavigation'
 // Onglet « Classements » de la section Communauté (gaté sur world.leaderboard).
 const COMMUNITY_LEADERBOARD_PATH = '/players/$playerSlug/community'
 
+// Onglet NavL2 : libellé référencé par clé i18n (résolu au rendu via `t()`).
+type NavTab = { readonly labelKey: CommonManifestKey; readonly path: string }
+
 // ─── Sous-onglets de la section Carrière ──────────────────────────────────────
 
 const CAREER_TABS = [
-  { label: 'Progression', path: '/players/$playerSlug/career' },
-  { label: 'Citations', path: '/players/$playerSlug/career/citations' },
-  { label: 'Pass saisonnier', path: '/players/$playerSlug/career/season-pass' },
-] as const
+  { labelKey: 'common.nav.tab_progression', path: '/players/$playerSlug/career' },
+  { labelKey: 'common.nav.tab_citations', path: '/players/$playerSlug/career/citations' },
+  { labelKey: 'common.nav.tab_season_pass', path: '/players/$playerSlug/career/season-pass' },
+] as const satisfies readonly NavTab[]
 
 // Halo 5 : les commendations sont NATIVES (carnage) — l'onglet « Citations » (moteur
 // dérivé d'Infinite, capability `citations.engine` not_exposed pour h5) est remplacé
@@ -40,19 +43,19 @@ const CAREER_TABS = [
 // L'inventaire REQ personnel n'étant pas servi (sonde 404), aucune surface de
 // remplacement n'est câblée → pas d'onglet « Pass saisonnier » pour h5.
 const CAREER_TABS_H5 = [
-  { label: 'Progression', path: '/players/$playerSlug/career' },
-  // Halo 5 : commendations natives, libellé FR « Citations » (terme officiel Halo
-  // FR, cohérent avec Infinite et l'onglet L1).
-  { label: 'Citations', path: '/players/$playerSlug/career/commendations' },
-] as const
+  { labelKey: 'common.nav.tab_progression', path: '/players/$playerSlug/career' },
+  // Halo 5 : commendations natives. Clé `tab_citations` = FR « Citations » (terme
+  // officiel Halo FR, cohérent Infinite et l'onglet L1) / EN « Commendations ».
+  { labelKey: 'common.nav.tab_citations', path: '/players/$playerSlug/career/commendations' },
+] as const satisfies readonly NavTab[]
 
 // Communauté : aligné sur le dropdown L1 (NavL1 section 'community'). Face-à-face
 // pointe vers /compare (hors /palmares), d'où des chemins absolus par onglet.
 const COMMUNITY_TABS = [
-  { label: 'Classements', path: '/players/$playerSlug/community' },
-  { label: 'Relations', path: '/players/$playerSlug/community/relations' },
-  { label: 'Face-à-face', path: '/players/$playerSlug/community/compare' },
-] as const
+  { labelKey: 'common.nav.tab_leaderboard', path: '/players/$playerSlug/community' },
+  { labelKey: 'common.nav.tab_relations', path: '/players/$playerSlug/community/relations' },
+  { labelKey: 'common.nav.tab_compare', path: '/players/$playerSlug/community/compare' },
+] as const satisfies readonly NavTab[]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -79,11 +82,13 @@ function NavTabBar({
   pathname,
   resolvePath,
   ariaLabel,
+  t,
 }: {
-  tabs: readonly { readonly label: string; readonly path: string }[]
+  tabs: readonly NavTab[]
   pathname: string
   resolvePath: (tpl: string) => string
   ariaLabel: string
+  t: (key: CommonManifestKey) => string
 }) {
   return (
     <div
@@ -97,7 +102,7 @@ function NavTabBar({
           const isActive = pathname === resolved
           return (
             <Link
-              key={tab.label}
+              key={tab.path}
               to={resolved}
               className={[
                 'border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
@@ -107,7 +112,7 @@ function NavTabBar({
               ].join(' ')}
               aria-current={isActive ? 'page' : undefined}
             >
-              {tab.label}
+              {t(tab.labelKey)}
             </Link>
           )
         })}
@@ -152,6 +157,7 @@ export function NavL2() {
         pathname={pathname}
         resolvePath={resolvePath}
         ariaLabel={t('common.shell.nav_career_aria')}
+        t={t}
       />
     )
   }
@@ -168,6 +174,7 @@ export function NavL2() {
         pathname={pathname}
         resolvePath={resolvePath}
         ariaLabel={t('common.shell.nav_community_aria')}
+        t={t}
       />
     )
   }

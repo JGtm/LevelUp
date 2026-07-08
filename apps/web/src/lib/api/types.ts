@@ -1524,7 +1524,15 @@ export interface MatchWeaponKill {
 
 export type PlayerWeaponKillRow = components['schemas']['PlayerWeaponKillRow']
 
-export type PlayerMedalRow = components['schemas']['PlayerMedalRow']
+// Champs sprite (médailles Halo 5) — shim manuel comme MatchMedal / MedalDigestItem.
+// Sans eux, le drawer scoreboard affichait les médailles H5 vides (GH-5a) faute de PNG.
+export type PlayerMedalRow = components['schemas']['PlayerMedalRow'] & {
+  sprite_sheet?: string
+  sprite_left?: number
+  sprite_top?: number
+  sprite_width?: number
+  sprite_height?: number
+}
 
 export interface MatchHighlightEvent {
   event_time_ms: number | null

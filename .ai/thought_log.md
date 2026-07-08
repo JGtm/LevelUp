@@ -1,3 +1,74 @@
+## [2026-07-08] LOT GH — corrections du GATE HUMAIN (passe 1) : i18n nav/header + régression médailles drawer
+
+**Statut** : Complété (GH-1..GH-9 ; gates locaux verts ; commit `cloture(GH):`).
+
+**Décision technique principale** : exécution du LOT GH du `PLAN_CLOTURE_AUDITS_2026-07.md`
+(branche `refactor/audits-2026-07`), 9 items. GH-1/2/3 doc-only (onglet « Forme »
+inexistant → Synthèse/Progression ; dette dominance v7.1 ; rivalité Relations absente des
+top matchs = design gap, non câblé). GH-4 (gros morceau) : nav L1/L2 + barre de filtres
+passées bilingues via le manifest typé `common.toml` (40 clés `common.nav.*` + filters/
+period ; `navL1Sections` label→labelKey ; breadcrumb « Retour » match-view). GH-5a
+RÉGRESSION médailles drawer : cause racine = commit `b2ed57f36` (sprite title-agnostic sur
+4 surfaces) a OMIS le drawer `PlayerDetailPanel` + n'a jamais ajouté les champs sprite à
+`PlayerMedalRow` → médailles H5 (sprite, image_url "") vides ; fix = champs sprite
+Go+TS + `indexBulkMedalsByXUID` via `static.MedalImage` + drawer→`MedalIcon` ; test
+mordant prouvé rouge sur code cassé. GH-5b/7/8/9 = résolution par locale de requête
+(`ctxkeys.Locale`, header X-LevelUp-Locale) : noms de médailles (`lookupMedalMeta`→helper
+canonique), badges Match flow (front, map bilingue `impactBadgeNames`), CSR playlists
+Explorer (`"fr"` statique → ctx), header Match View Infinite (map/mode/playlist/date).
+GH-6 : asset drawer médailles = description tronquée retirée (reste au survol).
+
+**Résultats observés** : front cache purgé typecheck 0 ; lint 0 erreur (68 warn baseline) ;
+vitest 244 fichiers / 2081 pass / 0 fail (dont 2 tests neufs PlayerDetailPanel + AssetCard).
+Go build/vet 0 ; tests service/wire/duckdb/analysis 0 fail ; intégration `-p 1`
+api+service EXIT=0. Site sync CSR `"en"` statué correct (persistance = nom canonique). H5
+canonique header + ré-localisation snapshots persistés = hors périmètre (Découvertes).
+
+**Conclusion / prochaine étape** : commit `cloture(GH):` (fichiers GH uniquement — la WIP
+« paire cohérente » concurrente non incluse). Push + CI. Puis RE-PASSE visuelle utilisateur
+sur GH-1/4/5/6/7/8/9 (header Match View EN ajouté à la liste).
+
+## [2026-07-08] Bannière JGtm figée — root cause (emblème sans nameplate upstream) + fix « paire cohérente »
+
+**Statut** : Complété (fix code + tests ; non commité — en attente d'autorisation).
+
+**Décision technique principale** : root cause prouvée de bout en bout. JGtm a équipé le
+2026-07-03 un emblème nouvelle génération (`Inventory/Spartan/Emblems/3806589-SpartanEmblem.json`,
+cfg -1766636888, item « Women's History Month ») qui n'a AUCUNE nameplate upstream :
+absent de `mapping.json` (243 entrées, toutes des stems legacy `104-001-…`), une seule
+cfg disponible et négative dans le JSON CMS, aucun PNG servi par le CDN sous aucune
+convention (`_n<abs>`, `_<cfg>`, brut → 404/403, probes 2026-07-08). `ResolveNameplateURL`
+rend donc "" (comportement correct), le persist partial écrit bannière NULL + emblème
+frais (rows prod vérifiées : depuis 07-03 21:38, emblème 3806589 + banner vide,
+status=ok). Le bug était dans les TROIS couches de lecture qui ressuscitaient « la
+dernière bannière non vide » indépendamment de l'emblème : `qLoadLastCareerRank` +
+`Q26cHomeSpartanIdentity` (ARG_MAX FILTER non-vide), `mergeCustomInto` (carry-forward
+inconditionnel), `overlayIdentityFromFallback` (patch aveugle) — design anti-flicker
+2026-05-20 dont l'hypothèse implicite (« tout emblème a une nameplate résoluble ») est
+morte avec les emblèmes `<id>-SpartanEmblem`. Fix : invariant « paire cohérente » — une
+bannière n'est servie/carry-forwardée que si elle appartient à l'emblème servi (CTE
+`cur_emblem` + FILTER emblème=courant en SQL ; condition d'égalité d'emblème dans le
+merge et l'overlay, emblème patché AVANT bannière). Anti-flicker conservé pour les
+échecs transitoires à emblème inchangé. Bonus : `resolvePositiveEmblemCfg` distingue
+désormais échec définitif (CMS 200 sans cfg positive → Info, état normal durable) et
+transitoire (HTTP KO → Warn) + xuid dans les logs ; outils diag `diag_emblem_mapping`
+(auth store-first ADR 0023 + mode probe URL) et `diag_emblem_colors` (coating lowercase)
+modernisés.
+
+**Résultats observés** : SQL validée sur snapshots prod (JGtm : banner NULL + emblème
+neuf vs bannière olympus périmée avec l'ancienne sémantique ; Chocoboflor : bannière
+conservée, emblème stable). Aucune réparation de données nécessaire (le write-path
+partial était déjà correct). Tests : matrice merge + overlay enrichie (2 cas paire
+cohérente), test repo réécrit (il cadenassait précisément le bug : emblème différent →
+attendait la vieille bannière), nouveau test Q26c `NoStaleBannerAfterEmblemChange`.
+`go test ./...` + `go vet` verts ; gate `-tags=integration -p 1` lancé.
+
+**Conclusion / prochaine étape** : au déploiement, la Home de JGtm affiche le nouvel
+emblème sans bannière (dégradation UI existante) au lieu de la bannière de l'ancien
+emblème — état honnête tant que Microsoft ne publie pas de nameplate pour ces items.
+Si Waypoint expose un jour un rendu nameplate pour les emblèmes `<id>-SpartanEmblem`,
+le seul point à brancher est `ResolveNameplateURL` (la lecture s'auto-répare).
+
 ## [2026-07-07] Audit notifications — 57 non-lues JGtm, diagnostic + propositions (aucun code)
 
 **Statut** : Complété (analyse seule ; implémentation non demandée).
@@ -47,9 +118,32 @@ items cochables, gates commandés par phase (filtre intégration ancré `^` + `-
 décisions tranchées, multi-titre fail-open sur tiers inconnus (Champion H5),
 protocole de reprise. Numéros de ligne validés au commit ccc950324.
 
+**Amendement (2026-07-08)** : cas remonté par l'utilisateur — notif near-miss
+« 73.33 vs 73.33 » (accuracy 90d). Vérifié sur pièces : `records.IsNearMiss`
+(detector.go:226-231) a déjà la garde stricte `current < target` (commentaire
+anti-spam documenté) mais l'incident porte `target=73.333336, value=73.33` —
+strictement inférieur en float, identique à 2 décimales à l'affichage.
+
+**Amendement 2 (2026-07-08)** : revue « qualité du signal » de TOUTES les catégories
+à la demande de l'utilisateur (un écart de 2 décimales de KDA n'intéresse personne ;
+pas de notifs d'état sans narratif). Vérifications sur pièces : (1) `buildRecordAlerts`
+émet RecordBroken même sur premier record (`PreviousValue == nil`) — source des 4
+personal_record du burst ; (2) `lusr_tier_approach`/LOWESS/milestone_near_miss sont
+des alertes d'ÉTAT re-émises tant que la condition dure (seul FilterRecent 24 h les
+espace → re-notification quotidienne possible) ; (3) `milestones.NearMissRatio=0.10`
+→ « proche » à 90 % de 10 000 kills = des semaines ; (4) `coach.AutoDismissAfter` et
+`MaxConcurrentUnread` = constantes MORTES jamais câblées ; (5) ComebackPauseThreshold
+= 5 j (sain, le rapport d'agent disait 6 h — faux) ; (6) streaks = modèle événementiel
+sain (transition exacte). Plan amendé : décisions renommées DP1-DP15 (collision avec
+les items D1-D9 de la phase D), principe directeur « événement, jamais état » ajouté,
+DP11 révisée (écart relatif 2 % au lieu d'absolu 0.01 — 0.1 de KDA sur un PB à 5),
+DP12 seed silencieux, DP13 dédup 30 j des nudges d'état, DP14 milestones 0.10→0.02,
+DP15 match_synced→info + sync_error coalescé 6 h ; items B12-B15, C7, D8-D9 ajoutés ;
+critères de succès portés à 10 scénarios.
+
 **Conclusion / prochaine étape** : exécution par un agent ultérieur (Opus) sous
 plan-execution, branche `refactor/notifications-rationalization` depuis
-`refactor/audits-2026-07` (ou main si mergée). Critère de succès : les 6 scénarios
+`refactor/audits-2026-07` (ou main si mergée). Critère de succès : les 10 scénarios
 mesurables du plan couverts par tests nommés.
 
 ## [2026-07-07] Plan refonte engagement — ancre lobby + attendu conditionné par l'intensité

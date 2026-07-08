@@ -214,6 +214,23 @@ changement de résultat (J3/J4/J7) ou de wiring provider (J9).
   kill-switch V1) + rollback documenté (`git revert -m 1` + risque migrations non réversibles).
   D2 (ADR 0023 Phase 5) = chantier séparé déclenché par télémétrie `legacy_source_used` ≥7 j après deploy.
 
+## 10. Attribution des flags de dominance — parties À OBJECTIFS (v7.1)
+
+> Réserve utilisateur au GATE HUMAIN (passe 1, 2026-07-07 ; item A2 du
+> `PLAN_CLOTURE_AUDITS_2026-07.md`). Doc-only (GH-2) : aucun code touché.
+
+- **Flags de dominance (« Débandade », etc.)** — l'attribution de ces flags est
+  DOUTEUSE sur les parties à OBJECTIFS (CTF, Strongholds, Oddball…), où « dominer »
+  ne se réduit pas au différentiel de frags. L'architecture qui distinguerait la
+  dominance par mode/objectif n'est PAS en place — prévue v7.1. À la mise en place de
+  la v7.1 : NETTOYER les attributions actuelles (recalcul des flags sur les parties à
+  objectifs avec la sémantique par mode, plutôt que le proxy frag-diff hérité).
+- **Différé car** : chantier d'architecture (sémantique de dominance par capability /
+  outcome de mode), pas un fix ponctuel ; non bloquant pour le merge (les flags
+  s'affichent, seule leur pertinence sur les modes objectifs est réservée).
+- **Reprise** : chantier v7.1 (dominance par mode) ; nettoyer les attributions
+  existantes au même moment.
+
 ---
 
 _Mis à jour au fil des sessions. Les items livrés sortent de la dette active (déplacés en §8

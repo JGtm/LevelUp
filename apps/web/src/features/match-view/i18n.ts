@@ -120,6 +120,13 @@ export interface MatchViewText {
   fragDiffNoData: string
   antagonistNoData: string
   impactBadgesNoData: string
+  // Libellés des badges d'impact (Match flow), keyés par BadgeKey backend. Le
+  // moteur analysis ne produit qu'un libellé FR (BadgeFR) → sous UI EN les cartes
+  // restaient en FR (GH-7). Résolution front bilingue par clé, fallback = libellé
+  // serveur pour une clé inconnue.
+  impactBadgeNames: Record<string, string>
+  // Breadcrumb retour (MatchBreadcrumb)
+  back: string
   // Sections de l'onglet Détails (titres type-1 du catalogue d'harmonisation)
   sectionFlow: string
   sectionDuels: string
@@ -297,6 +304,19 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     fragDiffNoData: 'Aucun événement de combat enregistré pour ce match.',
     antagonistNoData: 'Aucune donnée de duels disponible pour ce match.',
     impactBadgesNoData: 'Aucun badge d\'impact sur ce match.',
+    impactBadgeNames: {
+      first_blood: 'Premier sang',
+      first_group_death: 'Première victime',
+      clutch_finisher: 'Finisseur',
+      last_casualty: 'Boulet',
+      last_group_kill: 'Touriste',
+      top_killer: 'Bourreau',
+      silent_hero: 'Héros silencieux',
+      false_brother: 'Faux-frère',
+      top_gun: 'Top Gun',
+      kamikaze: 'Kamikaze',
+    },
+    back: 'Retour',
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
     sectionEncounters: 'Historique des rencontres',
@@ -465,6 +485,19 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     fragDiffNoData: 'No combat events recorded for this match.',
     antagonistNoData: 'No duel data available for this match.',
     impactBadgesNoData: 'No impact badges for this match.',
+    impactBadgeNames: {
+      first_blood: 'First blood',
+      first_group_death: 'First down',
+      clutch_finisher: 'Finisher',
+      last_casualty: 'Last casualty',
+      last_group_kill: 'Latecomer',
+      top_killer: 'Top killer',
+      silent_hero: 'Silent hero',
+      false_brother: 'False brother',
+      top_gun: 'Top Gun',
+      kamikaze: 'Kamikaze',
+    },
+    back: 'Back',
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',
     sectionEncounters: 'Encounter history',

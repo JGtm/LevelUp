@@ -319,12 +319,21 @@ type MatchCombatTab struct {
 // ---------------------------------------------------------------------------
 
 // PlayerMedalRow : médaille d'un joueur dans un match (expander scoreboard).
+//
+// Icône title-aware (mêmes tags que MatchMedal) : ImageURL (PNG, HINF) OU les champs
+// Sprite* (feuille + offset, Halo 5). Mutuellement exclusifs. Sans les champs sprite,
+// une médaille Halo 5 (pas de PNG par-médaille) s'affichait vide dans le drawer (GH-5a).
 type PlayerMedalRow struct {
-	MedalID    int64  `json:"medal_id"`
-	Count      int    `json:"count"`
-	Label      string `json:"label,omitempty"`
-	ImageURL   string `json:"image_url,omitempty"`
-	Difficulty string `json:"difficulty,omitempty"`
+	MedalID      int64  `json:"medal_id"`
+	Count        int    `json:"count"`
+	Label        string `json:"label,omitempty"`
+	ImageURL     string `json:"image_url,omitempty"`
+	Difficulty   string `json:"difficulty,omitempty"`
+	SpriteSheet  string `json:"sprite_sheet,omitempty"`
+	SpriteLeft   int    `json:"sprite_left,omitempty"`
+	SpriteTop    int    `json:"sprite_top,omitempty"`
+	SpriteWidth  int    `json:"sprite_width,omitempty"`
+	SpriteHeight int    `json:"sprite_height,omitempty"`
 }
 
 // PlayerWeaponKillRow : kills par arme d'un joueur dans un match (expander scoreboard).

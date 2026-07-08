@@ -8,6 +8,7 @@
  */
 import { useState } from 'react'
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
+import { MedalIcon } from '@/components/ui/MedalIcon'
 import { citationMastery } from '@/lib/citations/mastery'
 import { tokenCssVar } from '@/lib/accessibility'
 import { perfScale } from '@/lib/accessibility/scales'
@@ -132,13 +133,19 @@ function MedalsSection({ medals, title }: { medals: PlayerMedalRow[]; title: str
           const glow = dropShadowForDifficulty(m.difficulty ?? undefined)
           return (
             <div key={m.medal_id} className="flex flex-col items-center gap-0.5" title={m.label}>
-              {m.image_url ? (
-                <img
-                  src={m.image_url}
-                  alt={m.label ?? ''}
-                  style={{ width: 32, height: 32, objectFit: 'contain', filter: glow }}
-                  loading="lazy"
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+              {m.image_url || m.sprite_sheet ? (
+                // MedalIcon = rendu title-agnostic (PNG Infinite OU sprite Halo 5) — le
+                // drawer utilisait un <img> brut qui restait vide pour H5 (GH-5a).
+                <MedalIcon
+                  imageUrl={m.image_url}
+                  spriteSheet={m.sprite_sheet}
+                  spriteLeft={m.sprite_left}
+                  spriteTop={m.sprite_top}
+                  spriteWidth={m.sprite_width}
+                  spriteHeight={m.sprite_height}
+                  label={m.label ?? ''}
+                  size={32}
+                  style={{ filter: glow }}
                 />
               ) : (
                 <span className="text-2xs text-muted-foreground">{m.label ?? `#${m.medal_id}`}</span>

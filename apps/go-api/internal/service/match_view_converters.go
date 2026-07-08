@@ -7,6 +7,7 @@ package service
 
 import (
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 )
@@ -108,25 +109,37 @@ func computeScoreboardRowCombatYield(s domain.ScoreboardRaw, effectiveHpToKill f
 }
 
 // indexBulkMedalsByXUID indexe les médailles bulk par XUID pour O(1) lookup.
-// ImageURL résolu via TitleAssetURLAdapter (medals = ID numérique).
+// Icône title-aware via static.MedalImage (comme convertMedals du résumé) : PNG pour
+// Halo Infinite, sprite (feuille + offset) pour Halo 5. L'ancien chemin
+// assetURL.MedalImageURL renvoyait "" pour H5 (pas de PNG par-médaille) → médailles
+// vides dans le drawer scoreboard (GH-5a). titleSlug tiré de l'adapter.
 func indexBulkMedalsByXUID(
 	bulkMedals []domain.BulkMedalRaw,
 	assetURL games.TitleAssetURLAdapter,
 	hint int,
 ) map[string][]domain.PlayerMedalRow {
 	out := make(map[string][]domain.PlayerMedalRow, hint)
+	titleSlug := ""
+	if assetURL != nil {
+		titleSlug = assetURL.TitleSlug()
+	}
 	for _, m := range bulkMedals {
-		var imgURL string
-		if assetURL != nil {
-			imgURL = assetURL.MedalImageURL(uint64(m.MedalID)) //nolint:gosec
-		}
-		out[m.XUID] = append(out[m.XUID], domain.PlayerMedalRow{
+		row := domain.PlayerMedalRow{
 			MedalID:    m.MedalID,
 			Count:      m.Count,
 			Label:      m.Label,
-			ImageURL:   imgURL,
 			Difficulty: m.Difficulty,
-		})
+		}
+		if titleSlug != "" {
+			png, sp := static.MedalImage(titleSlug, m.MedalID)
+			if sp != nil {
+				row.SpriteSheet, row.SpriteLeft, row.SpriteTop, row.SpriteWidth, row.SpriteHeight =
+					sp.SheetURL, sp.Left, sp.Top, sp.Width, sp.Height
+			} else {
+				row.ImageURL = png
+			}
+		}
+		out[m.XUID] = append(out[m.XUID], row)
 	}
 	return out
 }

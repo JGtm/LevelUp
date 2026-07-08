@@ -122,8 +122,8 @@ func (r *ServiceRegistry) newExplorerCSRProvider() service.ExplorerTargetCSRProv
 			}
 			// 2. Compléter avec les playlists ranked ACTIVES manquantes (endpoint
 			//    par-playlist) — parité avec la page Carrière. Source unique
-			//    partagée (H8) ; locale "fr" pour l'Explorer.
-			raw = sync_pkg.AugmentWithActiveRankedCSRs(c, client, xuid, seasonID, raw, "fr")
+			//    partagée (H8) ; locale = requete (ctxkeys.Locale, GH-8).
+			raw = sync_pkg.AugmentWithActiveRankedCSRs(c, client, xuid, seasonID, raw, ctxkeys.Locale(c))
 			return mapSyncCSRsToDomain(raw), nil
 		})
 	})
