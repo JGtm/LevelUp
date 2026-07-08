@@ -1,3 +1,47 @@
+## [2026-07-08] LOT GH2-A — bugs fonctionnels re-passe 2 du GATE HUMAIN (View matches 404, popup réassoc 500, UUID playlist)
+
+**Statut** : Complété (GH2-A1/A2/A3 ; gates locaux verts ; en attente commit `cloture(GH2-A):`).
+
+**Décision technique principale** : 3 bugs reproduits sur pièces (JGtm, serveur dev rebuildé),
+tous PRÉEXISTANTS (aucun n'est une régression GH-4/V1b comme suspecté au plan).
+- **GH2-A1** (« View matches » L2 → 404 depuis Timeseries) : `MatchViewRepo` lit les faits
+  shared match-immutables via un SNAPSHOT Parquet immuable (`SnapshotPreferredSharedReader`,
+  découplé du B-swap) alors que `/filters/match-ids` (source de la liste du bouton) lit le
+  shared LIVE. Un match présent en live mais absent du snapshot courant (v10, watermark
+  07-07 ; 106 matchs live hors snapshot dont `9a2241c5…`, pourtant COMPLET) → `GetMatchMeta`
+  `sql.ErrNoRows` → 404. Fix : fallback snapshot→live per-requête dans `match_view_repo.go`
+  (champ `forceLive` armé par `GetMatchMeta` sur snapshot-miss ; `sharedRead()` bascule tout
+  le reste de la requête — ~18 lectures + `IsParticipant` — sur le live, sinon page à moitié
+  vide). Refacto `scanMatchMeta` (helper isolé pour le double-tir). Test
+  `TestGetMatchMeta_SnapshotMissFallsBackToLive` prouvé rouge (« no rows ») sur code cassé.
+- **GH2-A2** (popup réassociation média « loading error ») : pour une vidéo, la galerie sert
+  `file_path` = URL servable pointant sur le playlist HLS (`…/media/files/JGtm/hls/<stem>/
+  master.m3u8`). Les handlers `/media/match-candidates` et `/media/associate` ne dépouillaient
+  pas le préfixe → lookup `media_files` ne matchait ni `file_path` (préfixe URL) ni `file_name`
+  (`basename`=`master.m3u8`≠`<stem>.mkv`) → `ErrNoRows` → 500. Fix : helper
+  `mediaServableURLToStoredPath` (strip préfixe → chemin relatif stocké), appliqué aux 2
+  handlers, factorisé dans `urlToFilePath` (`media_paths.go`). 2 tests handler (candidates +
+  associate) prouvés rouges (URL brute passée) sur code cassé.
+- **GH2-A3** (Accueil « Recent playlists » : UUID en 2e position, UI EN) : la playlist
+  `96f32b0a-…` (FR « Arène delta : Héritage ») n'a pas de traduction EN dans
+  `asset_translations` → `resolvePlaylistNameForLocale` retombe sous EN sur le
+  `match_registry.playlist_name` brut = le playlist_id. Fix display : `HomeRecentPlaylistsCard`
+  détecte un playlist_name UUID et affiche le libellé neutre localisé existant
+  `common.home.unknown_playlist`. Cause data (backfill EN via `cmd/populate-assets`) consignée
+  en §Découvertes (à faire en prod, PAS sur le dev). Test vitest prouvé rouge sur code cassé.
+
+**Résultats observés** : Go build+vet 0 ; `duckdb`+`handlers` tests OK ; intégration
+`-tags=integration -p 1 ./internal/api/... ./internal/service/...` EXIT=0. Front : cache purgé,
+typecheck 0, eslint 0 (fichiers touchés), vitest complet 244 fichiers / 2082 pass / 0 fail.
+Vérifs LIVE (dev :8000) : match `9a2241c5…` 404→200 (scoreboard+médailles complets) ;
+`/media/match-candidates` sur URL HLS 500→200 (5 candidats). Le sentinel
+`TestNoUnauthorizedSharedSocialMention` a d'abord cassé sur un commentaire (« shared_social »)
+que j'avais mis dans `media_paths.go` (hors whitelist) → reformulé, guard revert.
+
+**Conclusion / prochaine étape** : commit `cloture(GH2-A):` par chemins EXPLICITES (WIP
+concurrent career_live_*/diag_emblem_*/spartan_nameplate_resolver/queries_home_citations/
+PLAN_NOTIFICATIONS préservé, jamais stagé). Push + CI verte. Puis LOT GH2-B (i18n re-passe 2).
+
 ## [2026-07-08] LOT GH — corrections du GATE HUMAIN (passe 1) : i18n nav/header + régression médailles drawer
 
 **Statut** : Complété (GH-1..GH-9 ; gates locaux verts ; commit `cloture(GH):`).
