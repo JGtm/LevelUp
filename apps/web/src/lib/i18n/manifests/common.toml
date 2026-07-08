@@ -1852,3 +1852,166 @@ en = "Analyse"
 [common.filter.applied]
 fr = "✓ Appliqué"
 en = "✓ Applied"
+
+# ─── Nav L1 / L2 — sections et onglets (GH-4, 2026-07-08) ───────────────────
+# Libellés de navigation rendus par NavL1/NavL1MobileMenu (via navL1Sections) et
+# NavL2. Auparavant en dur FR ; passés bilingues (parité FR/EN typée).
+
+[common.nav.section_home]
+fr = "Accueil"
+en = "Home"
+
+[common.nav.section_solo]
+fr = "Solo"
+en = "Solo"
+
+[common.nav.section_squad]
+fr = "Escouade"
+en = "Squad"
+
+[common.nav.section_career]
+fr = "Carrière"
+en = "Career"
+
+[common.nav.section_ascension]
+fr = "Ascension"
+en = "Ascension"
+
+[common.nav.section_community]
+fr = "Communauté"
+en = "Community"
+
+[common.nav.section_media]
+fr = "Médias"
+en = "Media"
+
+[common.nav.section_explorer]
+fr = "Explorer"
+en = "Explorer"
+
+[common.nav.tab_synthesis]
+fr = "Synthèse"
+en = "Summary"
+
+[common.nav.tab_timeseries]
+fr = "Séries temporelles"
+en = "Time series"
+
+[common.nav.tab_sessions]
+fr = "Sessions"
+en = "Sessions"
+
+[common.nav.tab_synergies]
+fr = "Synergies"
+en = "Synergies"
+
+[common.nav.tab_contributions]
+fr = "Contributions"
+en = "Contributions"
+
+[common.nav.tab_progression]
+fr = "Progression"
+en = "Progression"
+
+# Citations (terme officiel Halo FR) = Commendations côté EN (cf. UI citations/commendations).
+[common.nav.tab_citations]
+fr = "Citations"
+en = "Commendations"
+
+[common.nav.tab_season_pass]
+fr = "Pass saisonnier"
+en = "Season pass"
+
+[common.nav.tab_profile_objectives]
+fr = "Profil & objectifs"
+en = "Profile & goals"
+
+[common.nav.tab_coaching]
+fr = "Entraînement"
+en = "Coaching"
+
+[common.nav.tab_realisations]
+fr = "Réalisations"
+en = "Achievements"
+
+[common.nav.tab_leaderboard]
+fr = "Classements"
+en = "Leaderboards"
+
+[common.nav.tab_relations]
+fr = "Relations"
+en = "Relations"
+
+[common.nav.tab_compare]
+fr = "Face-à-face"
+en = "Head-to-head"
+
+# Aria du bouton ▾ ouvrant le dropdown d'onglets d'une section (« Onglets <section> »).
+[common.nav.section_tabs_aria]
+fr = "Onglets {section}"
+en = "{section} tabs"
+
+# Aria de la liste des sections dans le drawer mobile.
+[common.nav.sections_aria]
+fr = "Sections"
+en = "Sections"
+
+# ─── Barre de filtres — libellés en dur restants (GH-4, 2026-07-08) ─────────
+
+[common.filters.pill_label]
+fr = "Filtres"
+en = "Filters"
+
+[common.filters.context_aria]
+fr = "Contexte"
+en = "Context"
+
+[common.filters.matches_count]
+fr = "{count, plural, one {# match} other {# matchs}}"
+en = "{count, plural, one {# match} other {# matches}}"
+
+[common.filters.incompatible_tooltip]
+fr = "{n, plural, one {# filtre incompatible} other {# filtres incompatibles}} — ouvrez pour corriger"
+en = "{n, plural, one {# incompatible filter} other {# incompatible filters}} — open to fix"
+
+# ─── Pill Période — libellés en dur restants (GH-4, 2026-07-08) ─────────────
+
+[common.period.prefix_named]
+fr = "Période : {label}"
+en = "Period: {label}"
+
+[common.period.custom_label]
+fr = "Période : personnalisée"
+en = "Period: custom"
+
+[common.period.dialog_aria]
+fr = "Période"
+en = "Period"
+
+[common.period.from]
+fr = "Du"
+en = "From"
+
+[common.period.to]
+fr = "Au"
+en = "To"
+
+[common.period.empty_title]
+fr = "0 match sur cette période"
+en = "0 matches in this period"
+
+[common.period.preset_7d]
+fr = "7 jours"
+en = "7 days"
+
+[common.period.preset_30d]
+fr = "30 jours"
+en = "30 days"
+
+[common.period.preset_90d]
+fr = "90 jours"
+en = "90 days"
+
+[common.period.preset_all]
+fr = "Toutes"
+en = "All"

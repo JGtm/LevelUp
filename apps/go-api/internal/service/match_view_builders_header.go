@@ -14,6 +14,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -51,7 +52,7 @@ func buildMatchHeader(
 		return h
 	}
 
-	applyMatchHeaderMetaLabels(&h, meta)
+	applyMatchHeaderMetaLabels(&h, meta, ctxkeys.Locale(ctx))
 	applyMatchHeaderMapImage(ctx, &h, matchID, meta, assetURL)
 	h.PlayableDurationSeconds = headerGameplayDurationSeconds(meta)
 	h.IsRanked = meta.IsRanked
@@ -84,13 +85,21 @@ func headerGameplayDurationSeconds(meta *domain.MatchMetaRaw) *int64 {
 	return &gp
 }
 
-// applyMatchHeaderMetaLabels renseigne StartTime, MapUI, MapID, ModeUI, PlaylistLabel.
-func applyMatchHeaderMetaLabels(h *domain.MatchViewHeader, meta *domain.MatchMetaRaw) {
+// applyMatchHeaderMetaLabels renseigne StartTime, MapUI, MapID, ModeUI, PlaylistLabel,
+// LOCALE-AWARE (locale de la requête). Sous UI EN, le header servait des libellés FR
+// (map/mode/playlist) composés avec un joint « on » côté front → « Assassin en équipe
+// on Bazaar » (GH-9). EN = noms canoniques API (MapNameEN, pair_name EN, PlaylistName
+// brut) ; FR = traductions (comportement historique préservé à l'octet).
+func applyMatchHeaderMetaLabels(h *domain.MatchViewHeader, meta *domain.MatchMetaRaw, locale string) {
+	isEN := locale == "en"
 	h.StartTime = meta.StartTime
 	if meta.StartTime != nil {
-		h.StartTimeLabel = formatDateFRLong(*meta.StartTime)
+		h.StartTimeLabel = formatDateLong(*meta.StartTime, locale)
 	}
-	if meta.MapNameFR != nil && *meta.MapNameFR != "" {
+	// Map : EN canonique (asset_translations en-US) sous UI EN, FR sinon ; fallback brut.
+	if isEN && meta.MapNameEN != nil && *meta.MapNameEN != "" {
+		h.MapUI = *meta.MapNameEN
+	} else if !isEN && meta.MapNameFR != nil && *meta.MapNameFR != "" {
 		h.MapUI = *meta.MapNameFR
 	} else if meta.MapName != nil {
 		h.MapUI = *meta.MapName
@@ -98,21 +107,27 @@ func applyMatchHeaderMetaLabels(h *domain.MatchViewHeader, meta *domain.MatchMet
 	if meta.MapAssetID != nil {
 		h.MapID = *meta.MapAssetID
 	}
-	// ModeNameFR est normalement déjà le résultat de analysis.ResolveModeUI
-	// côté repo. Fallback défense-en-profondeur via le même helper si jamais
-	// un caller externe construit un MatchMetaRaw sans pré-résoudre.
-	modeUI := meta.ModeNameFR
-	if modeUI == nil || *modeUI == "" {
-		modeUI = analysis.ResolveModeUI(meta.PairName, meta.PairNameFR)
+	// Mode : sous UI EN on dérive du pair_name EN (pas de traduction FR injectée) ;
+	// sinon ModeNameFR pré-résolu par le repo (fallback ResolveModeUI(pair, pairFR)).
+	var modeUI *string
+	if isEN {
+		modeUI = analysis.ResolveModeUI(meta.PairName, nil)
+	} else {
+		modeUI = meta.ModeNameFR
+		if modeUI == nil || *modeUI == "" {
+			modeUI = analysis.ResolveModeUI(meta.PairName, meta.PairNameFR)
+		}
 	}
 	if modeUI != nil {
-		// Re-normalise SYSTÉMATIQUEMENT : ModeNameFR peut arriver brut du repo
-		// quand le catalogue est incomplet (pair_name_fr = "Slayer on Forest"
-		// avec le nom de map EN collé). NormalizeModeLabel strippe le suffixe
-		// " on/sur <map>" — sinon le front recompose "Slayer on Forest sur Forêt".
+		// Re-normalise SYSTÉMATIQUEMENT : le libellé peut arriver brut avec un nom de
+		// map collé (pair_name = "Slayer on Forest"). NormalizeModeLabel strippe le
+		// suffixe " on/sur <map>" — sinon le front recompose "Slayer on Forest sur Forêt".
 		h.ModeUI = analysis.NormalizeModeLabel(*modeUI, h.MapUI)
 	}
-	if meta.PlaylistNameFR != nil && *meta.PlaylistNameFR != "" {
+	// Playlist : EN brut (PlaylistName) sous UI EN, FR (PlaylistNameFR) sinon.
+	if isEN && meta.PlaylistName != nil && *meta.PlaylistName != "" {
+		h.PlaylistLabel = *meta.PlaylistName
+	} else if !isEN && meta.PlaylistNameFR != nil && *meta.PlaylistNameFR != "" {
 		h.PlaylistLabel = *meta.PlaylistNameFR
 	} else if meta.PlaylistName != nil {
 		h.PlaylistLabel = *meta.PlaylistName

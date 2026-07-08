@@ -468,19 +468,166 @@ V10c = chiffres consignés au plan parent après merge (Gate J définitif).
 Checklist consolidée de TOUTES les vérifications visuelles promises par la campagne
 (à dérouler par Guillaume sur le dev local, FR puis EN via le switch locale) :
 
-- [ ] A1 — Timeseries tab **Forme** : échelle de perf non inversée (perfScale).
-- [ ] A2 — Career **Top matches** : badges outcome corrects (win/loss/tie/dnf), dates
-  au bon format locale — ET les données s'affichent (croisé V8b).
-- [ ] A5 — Tooltips ECharts échappés : `MatchWeaponCharts` (nom d'arme + valeur + %
-  préservés post-conversion formatter), squad heatmap/efficiency, OutcomeSequenceTape.
-- [ ] Gate F — Pages H5 : Médias, Explorer, Match View (pas de fuite Infinite : lien
-  Waypoint absent, CSR vide propre, labels corrects).
-- [ ] I1/I2 — Onboarding (XboxLoginPage, StepDeviceCode, StepInitialSync, RegisterPage,
-  OpenSpartanImportCard) + MatchScoreboard + heatmaps activité **en EN** (aucun résidu FR).
-- [ ] I4 — AscensionProfileTab / MatchViewPage / PrestigeSquadProgress **en EN**.
-- [ ] G3 — Session-detail intact (l'infra partagée session-summary n'a pas régressé).
-- [ ] Smoke général : Home, Career, Squad, Explorer, Sessions — FR et EN, un joueur
-  Infinite + un joueur H5.
+**PASSE 1 EFFECTUÉE PAR GUILLAUME LE 2026-07-07** — résultats ci-dessous ; anomalies
+regroupées dans le LOT GH (à corriger, puis RE-PASSE ciblée sur les items GH).
+
+- [x] A1 — CORRIGÉ (GH-1) : il n'existe PAS d'onglet « Forme ». La page Séries
+  temporelles (`/players/$playerSlug/stats/timeseries`) expose 3 onglets :
+  **Synthèse** (EN « Summary », défaut), **Distributions** (EN « Distributions »),
+  **Progression** (EN « Progression ») — cf. `TimeseriesPage.tsx:41-43` +
+  `manifests/timeseries.toml` `timeseries.tabs.*`. Les courbes de
+  `TimeseriesFormCharts.tsx` (FDA / KDA value trend, « Durée de vie moyenne » / Avg
+  life, « Assistances » / Assists) sont rendues dans l'onglet **Synthèse** (défaut,
+  `TimeseriesPage.summary.tsx:132-170`) ET réutilisées dans **Progression**
+  (`TimeseriesPage.progression.tsx`). RE-VÉRIF UTILISATEUR : Séries temporelles →
+  onglet **Synthèse** (puis **Progression**), contrôler ces 3 courbes en FR puis EN.
+  (Le libellé « Forme » vient d'un ancien pilote 6-onglets — commentaire historique
+  résiduel `timeseries.toml:7`, sans onglet correspondant ; noté en Découvertes.)
+- [x] A2 — Top matches OK (dominance flags « Débandade » etc. présents). RÉSERVE
+  consignée (PAS bloquant) : doutes sur l'attribution des flags de dominance pour les
+  parties À OBJECTIFS — l'archi n'est pas en place, prévue v7.1 → à nettoyer à la mise
+  en place de la v7.1 (GH-2, backlog).
+- [x] V8 — Top matches/rencontres s'affichent. QUESTION ouverte : les nouveaux badges
+  créés lors de la page Relations y figurent-ils ? → GH-3 (investiguer, répondre, câbler
+  si trou simple).
+- [x] A5 — Tooltips ECharts OK.
+- [x] Gate F — Pages H5 OK.
+- [!] I1/I2 — **EN incomplet** (vérifié UI en anglais) : nav **L1 full FR** ; nav **L2
+  full FR** (boutons « Analyse », breadcrumb « Retour ») ; drawer du scoreboard :
+  **RÉGRESSION — les images des médailles ne s'affichent plus** + noms de médailles
+  en FR ; Match View section « Match flow » : cards en FR. → GH-4/GH-5/GH-7.
+  DEMANDE UX (asset drawer, tab bordure droite) : médailles à description TRONQUÉE →
+  retirer la description, garder image + nom (la description existe déjà en tooltip
+  au survol). → GH-6.
+- [x] I4 — Ascension/MatchView/PrestigeSquadProgress EN OK.
+- [x] G3 — Session-detail OK (nav L2 FR = GH-4).
+- [!] Bloc « CSR rankings (current season) » : les noms de playlists restent en FR
+  en UI EN. Cause probable : `AugmentWithActiveRankedCSRs` câblé locale="fr" statique
+  au DI (H8, wire/registry_pages_explorer.go:126). → GH-8.
+- [!] Match View, HEADER (haut de page) en UI EN : titre mode+map (« … on … »), date,
+  durée, playlist. → GH-9 (extension superviseur 2026-07-08).
+- [ ] Smoke général : à RE-passer après le LOT GH (Home, Career, Squad, Explorer,
+  Sessions — FR et EN, un joueur Infinite + un H5).
+
+## LOT GH — Corrections du GATE HUMAIN (2026-07-07, décidées par Guillaume)
+
+Objectif : purger les anomalies vues en re-passe 1 du gate humain. Exécutant : Opus
+piloté. Périmètre fermé GH-1..GH-8 ; découvertes → §Découvertes.
+
+- [x] GH-1 — FAIT : pas d'onglet « Forme ». `TimeseriesFormCharts.tsx` exporte 3
+  courbes (KdaValueTrend/AvgLifeTrend/AssistsTrend) rendues dans l'onglet **Synthèse**
+  (défaut) et réutilisées dans **Progression** (les 3 onglets réels : Synthèse /
+  Distributions / Progression, `TimeseriesPage.tsx:41-43`). Item A1 ci-dessus corrigé
+  avec noms FR/EN exacts + chemin de nav pour re-vérification.
+- [x] GH-2 — FAIT : entrée « §10. Attribution des flags de dominance — parties À
+  OBJECTIFS (v7.1) » ajoutée à `.ai/V7/DETTE_ASSUMEE_2026-Q3.md` (réserve utilisateur
+  2026-07-07, non bloquant, doc-only).
+- [x] GH-3 — RÉPONSE FACTUELLE : **non câblé, et PAS un trou simple** (design gap →
+  consigné en Découvertes, non corrigé). Faits sur pièces :
+  (1) `TopMatchDTO` (`domain/career.go:194-205`) ne porte AUCUN champ badge — seulement
+  `outcome_code`/`outcome_label`. Le tableau `CareerTopMatchesTable.tsx` ne rend qu'une
+  pill d'issue (victoire/défaite/égalité, `outcomeBadgeVariant`) ; aucun badge
+  rivalité/némésis/dominance.
+  (2) La page Relations (`features/palmares/RelationsRivalryCards.tsx`) a introduit des
+  CARTES de rivalité (frise des duels + écart de frags cumulé + taux de victoire par
+  rival, type `RelationRivalry.duels[]`) — des cartes AGRÉGÉES par adversaire, pas des
+  badges par match. Aucune donnée par-match adverse n'existe sur `/pages/career/top-matches`
+  (une ligne de top match ne porte pas l'identité de l'adversaire).
+  (3) Câbler la rivalité sur les top matchs exigerait : jointure backend (chaque top
+  match → adversaire dominant + son état de rivalité), nouveau champ `TopMatchDTO`, rendu
+  front — soit une feature (backend + DTO + front, ~1-2 j), pas une réutilisation de
+  composant. Hors périmètre GH → Découvertes.
+- [x] GH-4 — FAIT. Système : manifest typé `common.toml` → `generated/common.ts`
+  (`node scripts/build_i18n_manifests.mjs`). Ajout de 40 clés `common.nav.*` (sections +
+  onglets + aria) et `common.filters.*`/`common.period.*` (pill_label, context_aria,
+  matches_count ICU plural, incompatible_tooltip, prefix_named, custom_label, dialog_aria,
+  from/to, empty_title, presets 7d/30d/90d/all). `navL1Sections.tsx` : `label`→`labelKey`
+  (interfaces L1Section/L1Tab) ; `NavL1.tsx` (SplitButton + inline + aria « Onglets
+  {section} » via var ICU), `NavL1MobileMenu.tsx` (+ aria « Sections »), `NavL2.tsx`
+  (CAREER_TABS/CAREER_TABS_H5/COMMUNITY_TABS `labelKey` + NavTabBar résout via `t`),
+  `FilterOmnibar.tsx` (aria Filtres/Contexte, compteur « N matchs » ICU plural),
+  `_filter_pills/FiltresPill.tsx` (span + tooltip incompat.), `PeriodePill.tsx` (trigger,
+  Du/Au, dialog aria, empty title, presets), `_hooks.ts` (PERIOD_PRESETS `labelKey`),
+  breadcrumb « Retour » = `MatchHeader.tsx` (match-view i18n `back`, locale threadée).
+  Citations EN = « Commendations » (cohérent citations/commendations). Tests adaptés
+  locale-explicite (`NavL1MobileMenu.test` labelKey ; `FilterOmnibar.test` +
+  `FiltresPill.test` pin `locale:'fr'`) — 0 assertion supprimée. Manifests régénérés
+  (generated/*.ts commités).
+- [x] GH-5 — FAIT. (a) CAUSE RACINE (sur pièces) : NON une refonte I2/K1g/F3. La médaille
+  H5 (sprite, pas de PNG par-médaille) s'affichait vide car le drawer
+  (`PlayerDetailPanel.tsx` MedalsSection) rendait un `<img src={image_url}>` BRUT et
+  `MedalImageURL` renvoie "" pour H5 (`games/halo_5/adapter_asset_urls.go:132`). Le commit
+  `b2ed57f36` (2026-06-21, « rendu sprite médaille title-agnostic sur 4 surfaces ») a migré
+  4 surfaces vers `MedalIcon` + champs sprite MAIS a OMIS le drawer + n'a jamais ajouté les
+  champs sprite à `PlayerMedalRow`. Infinite (drawer) marchait (PNG). Fix : champs sprite
+  ajoutés à `domain.PlayerMedalRow` (Go) + `PlayerMedalRow` (shim TS) ; `indexBulkMedalsByXUID`
+  passe par `static.MedalImage(slug, id)` (sprite H5 / PNG Infinite) comme le résumé ; drawer
+  migré vers `<MedalIcon>`. Test `PlayerDetailPanel.test.tsx` (fixture Infinite = img src non
+  vide + fixture H5 sprite = role=img) — PROUVÉ rouge sur le code cassé (re-cassé
+  temporairement : test H5 échoue, Infinite passe), puis restauré. **Portée : DRAWER
+  UNIQUEMENT** (PlayerMedalRow consommé nulle part ailleurs ; les 4 autres surfaces
+  utilisent déjà MedalIcon). (b) Noms FR sous EN : `lookupMedalMeta`
+  (`match_view_repo_medals.go`) hardcodait un COALESCE FR-first sans locale → migré vers le
+  helper canonique locale-aware `medalLabelDescCoalesceSQL(ctxkeys.Locale(ctx))` +
+  `medalTranslationJoinsSQL` (EN n'injecte jamais name_fr). Corrige AUSSI la grille de
+  médailles du résumé (même helper). FR par défaut préservé (ctxkeys.Locale défaut "fr").
+- [x] GH-6 — FAIT. `features/asset-drawer/AssetCard.tsx` : la description tronquée
+  (`<p class="line-clamp-2">`) n'est plus rendue pour `kind === 'medals'` (image + nom
+  seulement). La description COMPLÈTE reste au survol via le `title` du conteneur
+  (« nom — description », déjà présent). Maps/armes inchangés. Test `AssetCard.test.tsx`
+  (médaille : pas de `<p>` description mais title conteneur la contient ; map : description
+  toujours rendue).
+- [x] GH-7 — FAIT (FRONT, clés bilingues). Les « cards » = badges d'impact
+  (`MatchImpactBadgesBar`). Le titre venait de `b.label` = backend `BadgeFR`
+  (`analysis/match_impact.go`, FR-only ; le moteur analysis reste inchangé — pas de
+  refonte). Le badge porte déjà un `BadgeKey` stable et les DESCRIPTIONS étaient déjà
+  bilingues front. Ajout d'un map `impactBadgeNames: Record<string,string>` à la i18n
+  match-view (FR = libellés serveur actuels à l'octet, EN ajouté) ; le composant rend
+  `t.impactBadgeNames[b.key] ?? b.label` (fallback = libellé serveur pour clé inconnue).
+  Les graphes du Match flow (Dominance/Cadence/KD cumulé) utilisent déjà `t` (bilingue).
+- [ ] GH-8 — CSR rankings : noms de playlists locale-aware. Le param locale de
+  `AugmentWithActiveRankedCSRs` est STATIQUE ("fr") au boot (H8). Fix : résoudre la
+  locale PAR REQUÊTE (ctx) sur ce chemin, OU servir les deux noms (name_fr/name_en) et
+  choisir côté front — prendre le pattern le plus cohérent avec l'existant (citations).
+  Vérifier aussi le chemin sync ("en" statique — correct pour la persistance ? statuer).
+  **FAIT** : la closure DI `newExplorerCSRProvider` (`registry_pages_explorer.go:126`) est
+  construite au boot mais EXÉCUTÉE par requête avec son ctx → `"fr"` statique remplacé par
+  `ctxkeys.Locale(c)`. Le bloc Explorer CSR sert donc les noms de playlist dans la locale
+  de la requête (EN = NameEN via `AugmentWithActiveRankedCSRs`). CHOIX = résolution par
+  requête (pattern ctx, pas de double-nom : l'augment prend déjà un param locale). SITE
+  SYNC (`sync/career.go:206`, `"en"`) STATUÉ CORRECT : c'est de la PERSISTANCE
+  (`SaveCSRSnapshots`), le nom canonique EN est le bon défaut persistant ; le bloc Explorer
+  flagué lit la voie LIVE (augment per-requête, désormais localisée), pas les snapshots. La
+  ré-localisation à la lecture des snapshots persistés (GetCSRSnapshots, autre surface) =
+  hors périmètre, notée.
+- [ ] GH-9 — (EXTENSION superviseur 2026-07-08, retour utilisateur direct) Match View,
+  SECTION HEADER (haut de page) non traduit sous UI EN. Vu en anglais :
+  « Assassin en équipe on Bazaar » / « 06 avr. 2026, 23:40 » / « 9m 53s » / « Partie
+  rapide ». Trois défauts distincts : (1) titre mode+map = label mode FR composé avec
+  « on » EN = famille du bug de normalisation cross-langue (skill `halo-modes`, mémoire
+  « Slayer on Forest sur Forêt ») ; source = header servi par `builders_header.go`
+  (mode_name FR issu des traductions metadata) → résolution PAR LOCALE de requête
+  (X-LevelUp-Locale → ctx ; EN = nom canonique API, FR = asset_translations) ;
+  (2) date « 06 avr. 2026, 23:40 » figée FR sous EN → formatter front du header
+  MatchViewPage (formatDate sans locale threadée / 'fr-FR' résiduel) ; (3) « Partie
+  rapide » (playlist) = même famille que GH-8 (playlist locale-aware) — vérifier si même
+  chemin de données ou site distinct. À traiter AVEC GH-7/GH-8 (mêmes fichiers match_view).
+  **FAIT** (voie Infinite = `applyMatchHeaderMetaLabels`, `match_view_builders_header.go`,
+  rendue locale-aware via `ctxkeys.Locale(ctx)` threadé depuis `buildMatchHeader`) :
+  (1) map+mode : EN → MapNameEN + mode dérivé de `pair_name` EN (`ResolveModeUI(pair, nil)`)
+  ; FR → MapNameFR + ModeNameFR (comportement historique préservé à l'octet). Comme map ET
+  mode deviennent cohérents en langue, le compose front `buildMatchHeadingStr` (« on »/
+  « sur ») n'est plus mixte. `NormalizeModeLabel` strippe toujours « on/sur <map> ».
+  (2) date : `formatDateFRLong` conservé (voie canonique + tests) ; nouveau
+  `formatDateLong(t, locale)` (mois EN/FR) utilisé par le header ; FR identique à l'octet.
+  (3) playlist : EN → PlaylistName brut, FR → PlaylistNameFR. Test Go
+  `match_view_header_locale_test.go` (EN vs FR). LIMITE : la voie H5 CANONIQUE
+  (`buildCanonicalHeader`, labels via `assetLabelAndID` FR-first + `formatDateFRLong`) reste
+  FR — chantier locale de l'adapter canonique distinct → Découvertes.
+
+Gate GH : front purge cache + typecheck 0 + lint 0 err + vitest 0 fail ; si Go touché
+(GH-5b/GH-7/GH-8) : build+vet+tests packages + `-tags=integration -p 1 ./internal/api/...`
+exit 0 ; CI de branche verte ; RE-PASSE visuelle utilisateur sur GH-1/4/5/6/7/8.
 
 ## PLAN DE MERGE & DÉPLOIEMENT (le big-bang est inévitable — le rendre sûr)
 
@@ -592,3 +739,34 @@ Séquence OBLIGATOIRE, dans l'ordre :
   désactivé (`backup_enabled` défaut `false`). Deux docs coexistent sans se référencer —
   `RUNBOOK_RESTORE_TEST.md` cible explicitement le mécanisme réellement en prod et note la
   distinction. Consolidation doc = hors périmètre.
+
+- **[GH-1 — hors périmètre, NON traité] Commentaire historique stale `timeseries.toml:6-7`.**
+  L'en-tête du manifest cite « Pilote 6 onglets : KPIs, Cumul, Forme, Intensité,
+  Distributions, Combat » — plan pilote ancien ; les onglets RÉELS sont Synthèse /
+  Distributions / Progression (`TimeseriesPage.tsx:41-43`). C'est la source du faux item
+  « onglet Forme » du GATE HUMAIN. Fix trivial (1 ligne de commentaire) mais hors périmètre
+  GH-1 (qui ne vise que l'item du plan) — laissé tel quel (règle 7).
+
+- **[GH-9 — hors périmètre, NON traité] Header Match View voie CANONIQUE (H5 live) reste FR.**
+  `buildCanonicalHeader` (`match_view_canonical.go`) résout map/mode/playlist via
+  `assetLabelAndID`/`canonicalModeUI` (label « FR si dispo sinon défaut », sous-système
+  adapter canonique) et la date via `formatDateFRLong` — pas de séparation FR/EN ni de ctx
+  locale threadé. Sous UI EN, un match servi par la voie live/H5 garde des libellés FR.
+  Rendre l'adapter canonique locale-aware (AssetReference FR/EN + threading ctx) = chantier
+  distinct (touche la couche canonical, pas juste le header). GH-9 a corrigé la voie
+  Infinite (`applyMatchHeaderMetaLabels`), qui est celle du rapport utilisateur.
+
+- **[GH-8 — hors périmètre, NON traité] Ré-localisation lecture snapshots CSR persistés.**
+  `GetCSRSnapshots` sert `CareerPlaylistCSR.PlaylistName` persisté (« en » depuis le sync).
+  Si une surface Career/saison affiche ce nom persisté directement sous UI FR, elle
+  montrerait de l'EN (bug symétrique de GH-8). Le bloc Explorer flagué lit la voie LIVE
+  (corrigée). Statuer/re-localiser à la lecture des snapshots = surface distincte non
+  flaguée, notée.
+
+- **[GH-3 — design gap, NON traité] Rivalité Relations absente des Top matchs Career.**
+  `TopMatchDTO` ne porte aucun champ badge/adversaire ; le tableau ne rend qu'une pill
+  d'issue. Les cartes de rivalité de la page Relations (`RelationsRivalryCards`) sont des
+  agrégats PAR ADVERSAIRE (duels), pas des badges par match. Rapprocher les deux exige une
+  feature backend (jointure top-match → adversaire dominant + état rivalité, nouveau champ
+  DTO) + rendu front — ~1-2 j, pas une réutilisation de composant. Décision produit :
+  backlog éventuel (afficher un contexte de rivalité sur les top matchs). Non corrigé.

@@ -16,6 +16,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useSoloFilterStore as useGlobalFilterStore } from '@/stores/soloFilterStore'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { DEFAULT_GAP_MINUTES } from '@/stores/createFilterStore'
 import type { FilterContextResolved } from '@/lib/api/types'
 
@@ -67,6 +68,10 @@ function buildResolved(): FilterContextResolved {
 
 describe('FilterOmnibar', () => {
   beforeEach(() => {
+    // Locale pinnée : les libellés (Filtres, périodes, « N matchs », Analyser)
+    // sont désormais résolus via le manifest i18n (GH-4) — on fige 'fr' pour que
+    // les assertions FR ci-dessous soient explicites, pas dépendantes du défaut.
+    useAppShellStore.setState({ locale: 'fr' })
     useGlobalFilterStore.getState().resetFilters()
     useGlobalFilterStore.getState().setResolvedContext(buildResolved())
   })

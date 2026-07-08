@@ -152,7 +152,7 @@ export function MatchImpactBadgesBar({ badges, scoreboard, t }: Props) {
               <div className="flex items-center gap-1.5">
                 <BadgeIcon badgeKey={b.key} size={14} />
                 <span className="text-sm font-medium leading-none" style={titleStyle}>
-                  {b.label}
+                  {t.impactBadgeNames[b.key] ?? b.label}
                 </span>
               </div>
               {hasSubline && (

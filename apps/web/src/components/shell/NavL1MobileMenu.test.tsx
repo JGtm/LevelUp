@@ -23,20 +23,22 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   }
 })
 
+// Libellés référencés par clé i18n (résolus au rendu) — locale 'fr' fixée dans
+// beforeEach ⇒ 'Accueil' / 'Solo' / 'Sessions' rendus.
 const SECTIONS: L1Section[] = [
   {
     key: 'home',
-    label: 'Accueil',
+    labelKey: 'common.nav.section_home',
     defaultPath: '/players/$playerSlug/home',
     matchPathname: (p) => p.includes('/home'),
   },
   {
     key: 'stats',
-    label: 'Solo',
+    labelKey: 'common.nav.section_solo',
     defaultPath: '/players/$playerSlug/stats/timeseries',
     matchPathname: (p) => p.includes('/stats'),
     tabs: [
-      { key: 'sessions', label: 'Sessions', path: '/players/$playerSlug/stats/sessions' },
+      { key: 'sessions', labelKey: 'common.nav.tab_sessions', path: '/players/$playerSlug/stats/sessions' },
     ],
   },
 ]
