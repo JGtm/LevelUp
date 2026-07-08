@@ -499,3 +499,92 @@ func TestGetMatchMeta_MapImageURLFallsBackToEndpoint(t *testing.T) {
 		t.Errorf("MapImageURL = %v, want %q", meta.MapImageURL, want)
 	}
 }
+
+// newEmptySnapshotSharedReader construit un SharedReader adossé à une DB in-memory
+// isolée exposant un `match_registry` root-level (colonnes lues par Q13), pré-rempli
+// avec les lignes fournies. Simule le snapshot immuable de MatchView, distinct du live.
+func newEmptySnapshotSharedReader(t *testing.T, seed ...string) SharedReader {
+	t.Helper()
+	snapSQL, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open snapshot: %v", err)
+	}
+	t.Cleanup(func() { snapSQL.Close() })
+	snap := newTestDB(snapSQL, ":memory:")
+	if _, err := snap.Exec(context.Background(), `CREATE TABLE match_registry (
+		match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP, end_time TIMESTAMP,
+		start_time_utc TIMESTAMPTZ, end_time_utc TIMESTAMPTZ, real_start_time TIMESTAMP,
+		playlist_id VARCHAR, map_id VARCHAR, map_version_id VARCHAR, pair_id VARCHAR,
+		game_variant_id VARCHAR, map_name VARCHAR, map_name_fr VARCHAR,
+		game_variant_name VARCHAR, pair_name VARCHAR, pair_name_fr VARCHAR,
+		playlist_name VARCHAR, playlist_name_fr VARCHAR,
+		is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
+		duration_seconds INTEGER, playable_duration_seconds INTEGER,
+		team_0_score INTEGER, team_1_score INTEGER)`); err != nil {
+		t.Fatalf("seed snapshot schema: %v", err)
+	}
+	for _, q := range seed {
+		if _, err := snap.Exec(context.Background(), q); err != nil {
+			t.Fatalf("seed snapshot row: %v\nSQL: %s", err, q)
+		}
+	}
+	return LegacySharedReader(snap)
+}
+
+// TestGetMatchMeta_SnapshotMissFallsBackToLive prouve le correctif GH2-A1.
+//
+// Contexte : la vue détaillée d'un match (MatchViewRepo) lit les faits shared
+// match-immutables depuis un SNAPSHOT Parquet découplé du B-swap. Le bouton
+// « Voir les matchs » (FilterOmnibar, page Séries temporelles) construit sa liste
+// via /filters/match-ids qui lit le shared LIVE. Un match joué après le dernier cut
+// du snapshot (ou exclu comme "partial" au moment du cut) est donc dans le live mais
+// ABSENT du snapshot → GetMatchMeta renvoyait sql.ErrNoRows → 404 sur le 1er match
+// de la liste. Correctif : fallback snapshot→live per-requête (forceLive).
+func TestGetMatchMeta_SnapshotMissFallsBackToLive(t *testing.T) {
+	pdb := newMetaResolveTestPDB(t) // pdb.SharedReadDB() = LIVE (player)
+	ctx := context.Background()
+
+	// LIVE : contient le match récent (absent du snapshot).
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO shared.match_registry
+			(match_id, start_time, start_time_utc, map_name, pair_name, playlist_name, duration_seconds)
+		VALUES ('live-only', '2026-07-03 18:57:00', '2026-07-03 18:57:00+00',
+		        'Catalyst', 'Slayer', 'Quick Play', 495)`); err != nil {
+		t.Fatalf("insert live match: %v", err)
+	}
+
+	// SNAPSHOT : DB isolée, ne contient PAS 'live-only' (juste un décor).
+	snapReader := newEmptySnapshotSharedReader(t,
+		`INSERT INTO match_registry (match_id, start_time, start_time_utc, map_name, pair_name, playlist_name)
+		 VALUES ('in-snap', '2026-06-01 00:00:00', '2026-06-01 00:00:00+00', 'Aquarius', 'Slayer', 'Ranked')`)
+
+	repo := NewMatchViewRepo(pdb, "test-xuid").WithSharedReader(snapReader)
+
+	// Contrôle (non-régression) : un match PRÉSENT dans le snapshot est servi sans
+	// jamais toucher au live → forceLive reste désarmé.
+	if _, err := repo.GetMatchMeta(ctx, "in-snap"); err != nil {
+		t.Fatalf("match présent dans le snapshot devrait résoudre: %v", err)
+	}
+	if repo.forceLive {
+		t.Fatalf("forceLive ne doit PAS être armé quand le snapshot contient le match")
+	}
+
+	// Cœur GH2-A1 : match absent du snapshot mais présent en live → servi (fallback).
+	meta, err := repo.GetMatchMeta(ctx, "live-only")
+	if err != nil {
+		t.Fatalf("GH2-A1: 'live-only' doit être servi via fallback live, err=%v", err)
+	}
+	if meta == nil || meta.MatchID != "live-only" {
+		t.Fatalf("meta.MatchID = %v, want 'live-only'", meta)
+	}
+	if !repo.forceLive {
+		t.Fatalf("forceLive doit être armé après un snapshot-miss servi par le live")
+	}
+
+	// Non-régression : un match absent du snapshot ET du live reste introuvable
+	// (vraie 404, pas de faux positif du fallback).
+	repo2 := NewMatchViewRepo(pdb, "test-xuid").WithSharedReader(snapReader)
+	if _, err := repo2.GetMatchMeta(ctx, "ghost"); err == nil {
+		t.Fatalf("match absent du snapshot ET du live doit rester introuvable")
+	}
+}

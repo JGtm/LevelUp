@@ -395,13 +395,17 @@ func (h *MediaHandler) handleGetMediaMatchCandidates(ctx context.Context, in *me
 	if in.FilePath == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_file_path", "file_path query param requis")
 	}
+	// La galerie sert file_path sous forme d'URL servable (vidéo → playlist HLS
+	// .../hls/<stem>/master.m3u8). On recompose le chemin RELATIF stocké pour que le
+	// lookup media_files matche mf.file_path — sinon ErrNoRows → 500 « loading error ».
+	filePath := mediaServableURLToStoredPath(in.PlayerSlug, in.FilePath)
 	window := defaultMediaMatchWindowMinutes
 	if in.WindowMinutes != "" {
 		if n, err := strconv.Atoi(in.WindowMinutes); err == nil && n > 0 {
 			window = n
 		}
 	}
-	resp, err := svc.GetMatchCandidates(ctx, in.FilePath, window)
+	resp, err := svc.GetMatchCandidates(ctx, filePath, window)
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "candidates_error", err.Error())
 	}
@@ -419,6 +423,10 @@ func (h *MediaHandler) handlePostMediaAssociate(ctx context.Context, in *mediaAs
 	if err := json.NewDecoder(bytes.NewReader(in.RawBody)).Decode(&req); err != nil {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
+	// Symétrie avec /media/match-candidates : la galerie envoie l'URL servable
+	// (vidéo → HLS). On recompose le chemin RELATIF stocké pour que l'UPDATE cible
+	// la bonne ligne media_files (sinon 0 row → association silencieusement perdue).
+	req.FilePath = mediaServableURLToStoredPath(in.PlayerSlug, req.FilePath)
 	resp, err := svc.AssociateMediaToMatch(ctx, req)
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "associate_error", err.Error())

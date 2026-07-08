@@ -124,4 +124,32 @@ describe('HomeRecentPlaylistsCard', () => {
 
     expect(screen.getByTestId('home-rank-unranked-label')).toHaveTextContent('En placement (3/10)')
   })
+
+  // GH2-A3 : une playlist non résolue côté backend (asset_translations sans entrée
+  // pour la locale) retombe sur le playlist_id brut = un UUID. Il ne doit JAMAIS
+  // s'afficher tel quel — libellé neutre localisé à la place.
+  it("n'affiche jamais un UUID brut de playlist — libellé neutre à la place (GH2-A3)", () => {
+    const uuid = '96f32b0a-f89b-4507-83b1-bc07dd458dfa'
+    renderWithProviders(
+      <HomeRecentPlaylistsCard
+        recentPlaylistRanks={[
+          {
+            playlist_name: uuid,
+            is_ranked: false,
+            rating_type: 'LUSR',
+            rating_value: 1570,
+            tier_label: 'Or VI',
+            badge_image_url: '/static/ranks/halo_infinite/120px-HINF-CSR_Gold6.png',
+            tier_progress_pct: 100,
+            next_tier_label: 'Platine I',
+          },
+        ]}
+      />,
+    )
+
+    // Le UUID ne doit JAMAIS apparaître à l'écran.
+    expect(screen.queryByText(uuid)).not.toBeInTheDocument()
+    // Libellé neutre localisé (FR par défaut dans les tests).
+    expect(screen.getByTestId('home-recent-playlist-name')).toHaveTextContent('Sélection inconnue')
+  })
 })

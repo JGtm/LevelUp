@@ -7,6 +7,15 @@ import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { unrankedBadgeURL } from '@/lib/staticAssets'
 
+// GH2-A3 : une playlist dont le nom n'a pas été résolu côté backend (asset_translations
+// sans entrée pour la locale de requête) retombe sur le playlist_id brut = un UUID. On
+// ne l'affiche JAMAIS tel quel : on substitue le libellé neutre localisé
+// `common.home.unknown_playlist`. Cause data documentée (backfill EN) — cf. thought_log.
+const RAW_ASSET_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+function isRawAssetId(name: string | null | undefined): boolean {
+  return !!name && RAW_ASSET_ID_RE.test(name.trim())
+}
+
 function RankBadge({
   imageUrl,
   label,
@@ -130,7 +139,9 @@ export function HomeRecentPlaylistsCard({
                         data-testid="home-recent-playlist-name"
                         className="truncate text-2xs font-medium uppercase tracking-label-md text-muted-foreground"
                       >
-                        {item.playlist_name || t('common.home.unknown_playlist')}
+                        {isRawAssetId(item.playlist_name)
+                          ? t('common.home.unknown_playlist')
+                          : item.playlist_name || t('common.home.unknown_playlist')}
                       </p>
                       {showTierLabel ? (
                         <p

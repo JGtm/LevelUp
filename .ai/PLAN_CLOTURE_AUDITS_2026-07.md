@@ -629,6 +629,86 @@ Gate GH : front purge cache + typecheck 0 + lint 0 err + vitest 0 fail ; si Go t
 (GH-5b/GH-7/GH-8) : build+vet+tests packages + `-tags=integration -p 1 ./internal/api/...`
 exit 0 ; CI de branche verte ; RE-PASSE visuelle utilisateur sur GH-1/4/5/6/7/8.
 
+## GATE HUMAIN — RE-PASSE 2 (Guillaume, 2026-07-08 soir, UI EN, serveur rebuildé)
+
+Validés : GH-1 (couleurs perf OK), GH-4 (sauf Saison), GH-5, GH-6, GH-7, GH-8 (Explorer),
+GH-9 (header). Anomalies restantes/nouvelles → LOTS GH2-A (bugs) et GH2-B (i18n) :
+
+- [!] Omnibar : le filtre **Saison** a été oublié par GH-4 (encore FR). → GH2-B1
+- [!] BUG FONCTIONNEL : bouton L2 « View matches » → ERREUR depuis la page Timeseries
+  (vérifier les autres pages partageant ce L2). Suspect : refactor nav GH-4. → GH2-A1
+- [!] Match View : onglets « Général » et « Détails » non traduits ; titre
+  « Antagonistes » non traduit ; drawer : tooltip des CITATIONS non traduit. → GH2-B2
+- [!] Carrière, bloc « Rankings » : playlists non traduites — surface symétrique de
+  GH-8 (lecture des snapshots CSR PERSISTÉS — la découverte GH est confirmée par
+  l'utilisateur). → GH2-B3
+- [!] Accueil « Recent playlists » : un UUID s'affiche en 2e position (JGtm) —
+  résolution de nom d'asset manquante. → GH2-A3
+- [!] Accueil « Recent sessions » : « Solo »/« Escouade » hardcodés, « Matchs » FR,
+  outcomes FR, « Durée de la session » FR. → GH2-B4
+- [!] Accueil « Highlights » (KPI cards) : noms de cartes et playlists FR. → GH2-B5
+- [!] Tuiles de matchs : noms de médailles et CITATIONS en FR (tooltips inclus) ;
+  « Recent media » : noms de cartes FR. → GH2-B6
+- [!] BUG FONCTIONNEL + i18n : popup de réassociation de médias ENTIÈREMENT FR et
+  affiche « loading error ». Suspect bug : V1b (clé mediaMatchCandidates). → GH2-A2 + GH2-B7
+- Motif de fond : l'ACCUEIL sert des libellés FR-canoniques backend — le report
+  F4-site-2 (« analysis/home_locale.go littéraux FR » → K1) devient bloquant sous UI EN.
+  Traiter par locale de requête (pattern GH-9), résolution UNIQUE au point d'entrée du
+  builder Home plutôt que N patchs.
+
+## LOT GH2-A — Bugs fonctionnels re-passe 2 (PRIORITÉ, avant GH2-B)
+
+- [x] GH2-A1 — L2 « View matches » en erreur depuis Timeseries. CAUSE (PAS GH-4 :
+  labels seuls) = préexistant : `MatchViewRepo` lit les faits shared via un SNAPSHOT
+  Parquet immuable (`SnapshotPreferredSharedReader`), tandis que `/filters/match-ids`
+  (liste du bouton) lit le shared LIVE. Un match présent en live mais absent du snapshot
+  courant (récent / exclu comme "partial" au cut) → `GetMatchMeta` `sql.ErrNoRows` → 404.
+  Reproduit sur JGtm (match `9a2241c5…` : 106 matchs live hors snapshot v10). FIX :
+  fallback snapshot→live per-requête (`match_view_repo.go` `forceLive`) — les ~18 lectures
+  shared match-immutables basculent sur le live si le match manque au snapshot. Test
+  `TestGetMatchMeta_SnapshotMissFallsBackToLive` (rouge sur code cassé). Vérifié live :
+  match `9a2241c5…` passe de 404 à 200 avec scoreboard/médailles complets. Toutes les
+  pages partageant ce L2 (History/Sessions/Squad) utilisent la même chaîne → couvertes.
+- [x] GH2-A2 — Popup réassociation média « loading error ». CAUSE (PAS V1b) = préexistant
+  (feature HLS) : pour une vidéo, la galerie sert `file_path` sous forme d'URL servable
+  pointant sur le playlist HLS (`…/media/files/JGtm/hls/<stem>/master.m3u8`). Le handler
+  `/media/match-candidates` (et `/media/associate`) ne dépouillait PAS le préfixe → le
+  lookup `media_files` ne matchait ni `file_path` (préfixe URL en trop) ni `file_name`
+  (`basename`=`master.m3u8` ≠ `<stem>.mkv`) → `ErrNoRows` → 500. FIX : helper
+  `mediaServableURLToStoredPath` (strip du préfixe → chemin relatif stocké) appliqué aux
+  2 handlers (`media.go`), factorisé avec `urlToFilePath` (`media_paths.go`). Tests
+  handler (candidates + associate, rouge sur code cassé). Vérifié live : 500 → 200 +
+  5 candidats. (i18n de la popup = GH2-B7, hors lot.)
+- [x] GH2-A3 — Accueil « Recent playlists » : UUID en 2e position (JGtm), UI EN. CAUSE :
+  la playlist `96f32b0a-f89b-4507-83b1-bc07dd458dfa` (FR « Arène delta : Héritage ») n'a
+  PAS d'entrée EN dans `asset_translations` ; `resolvePlaylistNameForLocale` retombe alors
+  sous EN sur le `match_registry.playlist_name` brut = le playlist_id UUID (FR résout, EN
+  non). FIX display (frontend) : `HomeRecentPlaylistsCard` détecte un playlist_name UUID
+  et affiche le libellé neutre localisé existant `common.home.unknown_playlist`
+  (FR « Sélection inconnue » / EN « Unknown playlist ») — JAMAIS d'UUID brut. Test vitest
+  (rouge sur code cassé). Backfill data requis pour résoudre le vrai nom EN → §Découvertes.
+
+## LOT GH2-B — i18n re-passe 2 (backend locale-aware + oublis front)
+
+- [ ] GH2-B1 — Omnibar : filtre Saison bilingue (complète GH-4).
+- [ ] GH2-B2 — Match View : onglets « Général »/« Détails » + titre « Antagonistes » →
+  i18n match-view ; tooltip citations du drawer → locale-aware (pattern GH-5b).
+- [ ] GH2-B3 — Carrière « Rankings » : lecture des snapshots CSR persistés locale-aware
+  (symétrique GH-8 ; nom canonique EN persisté + résolution FR à la lecture, ou double nom).
+- [ ] GH2-B4 — Accueil « Recent sessions » : Solo/Escouade/Matchs/Durée de la session/
+  outcomes bilingues (backend → locale de requête ; front → clés i18n).
+- [ ] GH2-B5 — Accueil « Highlights » : noms cartes/playlists locale-aware.
+- [ ] GH2-B6 — Tuiles de matchs (accueil) : médailles + citations + tooltips locale-aware ;
+  « Recent media » : noms de cartes locale-aware.
+- [ ] GH2-B7 — Popup réassociation média : i18n complet FR+EN.
+- Architecture : UNE résolution de locale au point d'entrée du builder Home
+  (ctxkeys.Locale) plutôt que N patchs. Si le périmètre explose (>2x), arrêt propre +
+  rapport (règle 9).
+
+Gate GH2 (A puis B) : front purge cache + typecheck 0 + lint 0 err + vitest 0 fail ;
+Go build+vet+tests + `-tags=integration -p 1 ./internal/api/... ./internal/service/...`
+exit 0 si backend touché ; CI verte ; re-passe 3 utilisateur ciblée.
+
 ## PLAN DE MERGE & DÉPLOIEMENT (le big-bang est inévitable — le rendre sûr)
 
 Constat : les merges intermédiaires (après B, G, K) n'ont pas été faits ; ~130 commits
@@ -770,3 +850,34 @@ Séquence OBLIGATOIRE, dans l'ordre :
   feature backend (jointure top-match → adversaire dominant + état rivalité, nouveau champ
   DTO) + rendu front — ~1-2 j, pas une réutilisation de composant. Décision produit :
   backlog éventuel (afficher un contexte de rivalité sur les top matchs). Non corrigé.
+
+- **[GH2-A3 — CAUSE DATA + BACKFILL prod, à exécuter hors dev]** Le nom UUID vient d'un
+  trou de traduction : la playlist `96f32b0a-f89b-4507-83b1-bc07dd458dfa` a une entrée
+  FR dans `metadata.asset_translations` (« Arène delta : Héritage ») mais AUCUNE entrée
+  EN → sous UI EN, la résolution retombe sur le `match_registry.playlist_name` brut = le
+  playlist_id. Le fix GH2-A3 est un garde d'affichage (jamais d'UUID) ; le VRAI nom EN se
+  répare en peuplant `asset_translations` (playlist, en-US) — commande existante
+  `go run ./apps/go-api/cmd/populate-assets` (peupler les playlists manquantes). NE PAS
+  l'exécuter sur les données dev ici (pas de tokens ; risque écriture) — à lancer côté prod
+  (ou dev avec tokens réels) dans un chantier data. Vérif : `SELECT asset_id,lang,name FROM
+  asset_translations WHERE asset_id='96f32b0a-…' AND asset_type='playlist'` doit avoir une
+  ligne `en`/`en-US`. Le même trou explique le mode UUID `8347c528-…` vu dans le filtre
+  Média (symptôme identique côté mode).
+
+- **[GH2-A1 — DÉCOUVERTE snapshot ready-filter, NON traité]** Le snapshot immuable v10
+  (watermark 2026-07-07T21:06) EXCLUT 106 matchs pourtant présents en live et COMPLETS
+  (ex. `9a2241c5…` : 8 participants, 214 events, 31 médailles). Le cut n'exporte que les
+  matchs « ready » (`ready_match_count`=1713 vs live=1819) ; le critère de readiness a donc
+  écarté des matchs à données complètes (lag de flag readiness au moment du cut, ou seuil
+  trop strict). Le fix GH2-A1 (fallback live) masque le symptôme correctement, mais la
+  cause amont (readiness du snapshot cutter) mérite un audit séparé — sinon la voie live
+  (plus lente, sujette au B-swap) est empruntée pour ~6 % des matchs. Hors périmètre GH2-A.
+
+- **[GH2-A2 — DÉCOUVERTES adjacentes, NON traitées]** (a) `LoadMatchCandidatesForMedia`
+  renvoie une ERREUR (→ 500) quand le lookup capture est `ErrNoRows` : après le fix c'est
+  inatteignable pour un média valide, mais un média réellement introuvable resterait un 500
+  « loading error » au lieu d'une réponse vide propre — durcissement défensif possible (hors
+  lot). (b) L'endpoint `/media/likes` convertit l'URL servable via `urlToFilePath` (chemin
+  ABSOLU), qui pour une vidéo HLS donne `basename`=`master.m3u8` — le like d'une vidéo HLS
+  a probablement le même angle mort que la réassociation avant fix (à vérifier/durcir
+  séparément ; non reproduit dans ce lot).
