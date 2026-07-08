@@ -1064,6 +1064,40 @@ func TestHomeRepo_LoadSpartanIdentity_FallsBackToLatestNonEmptyIdentityAssets(t 
 	}
 }
 
+// TestHomeRepo_LoadSpartanIdentity_BannerNeverEmptyWhenNewEmblemHasNone :
+// directive produit apparence (2026-07-08, cas JGtm emblème 3806589) —
+// bannière et emblème sont des champs INDÉPENDANTS : un snapshot récent
+// portant un nouvel emblème avec bannière vide (nameplate irrésoluble
+// upstream) sert le nouvel emblème ET la dernière bannière connue
+// (« jamais vide »).
+func TestHomeRepo_LoadSpartanIdentity_BannerNeverEmptyWhenNewEmblemHasNone(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO career_progression
+			(xuid,rank,current_xp,recorded_at,rank_name,rank_tier,xp_for_next_rank,xp_total,is_max_rank,adornment_path,spartan_id,banner_image_url,emblem_image_url,backdrop_image_url)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+	`, pTestXUID, 26, 6400, "2025-01-11 12:00:00+00", "Platinum 2", "Platinum", 12000, 62000, false, "", "", "",
+		"hi/images/file/progression/Inventory/Emblems/3806589-SpartanEmblem-SM.png", ""); err != nil {
+		t.Fatalf("INSERT newer career_progression: %v", err)
+	}
+
+	repo := NewHomeRepo(pdb)
+	identity, err := repo.LoadSpartanIdentity(ctx)
+	if err != nil {
+		t.Fatalf("LoadSpartanIdentity: %v", err)
+	}
+	if identity == nil {
+		t.Fatal("expected non-nil identity")
+	}
+	if identity.EmblemImageURL == nil || *identity.EmblemImageURL != "/api/v1/assets/spartan/emblem/halo_infinite/hi/images/file/progression/Inventory/Emblems/3806589-SpartanEmblem-SM.png" {
+		t.Fatalf("EmblemImageURL = %v, want nouvel emblème", identity.EmblemImageURL)
+	}
+	if identity.BannerImageURL == nil || *identity.BannerImageURL != "/api/v1/assets/spartan/banner/halo_infinite/hi/images/file/progression/Nameplates/test-banner.png" {
+		t.Fatalf("BannerImageURL = %v, want dernière bannière connue (jamais vide)", identity.BannerImageURL)
+	}
+}
+
 func TestHomeRepo_LoadSpartanIdentity_ClassifiesRankedRowsAsCSR(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	seedMaturedSkillRankGroups(t, pdb)

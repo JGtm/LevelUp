@@ -206,10 +206,24 @@ func ResolveNameplateURL(
 	// potentiellement incorrectes mais image servable).
 	resolvedCfg := cfg
 	if resolvedCfg <= 0 {
-		resolvedCfg = resolvePositiveEmblemCfg(ctx, trimmed, spartanToken, clearanceToken)
+		var definitive bool
+		resolvedCfg, definitive = resolvePositiveEmblemCfg(ctx, trimmed, spartanToken, clearanceToken)
 		if resolvedCfg <= 0 {
-			slog.WarnContext(ctx, "nameplate_resolver: aucun cfg positif trouvé (mapping miss)",
-				"emblem_path", trimmed, "stem", stem, "original_cfg", cfg)
+			if definitive {
+				// État NORMAL et durable pour les emblèmes nouvelle génération
+				// (`<id>-SpartanEmblem`) : absents de mapping.json, une seule cfg
+				// négative, aucun PNG nameplate servi par le CDN (vérifié
+				// 2026-07-08, emblème 3806589). Pas une erreur — la lecture
+				// (qLoadLastCareerRank/merge) servira la dernière bannière connue
+				// (directive « jamais vide »).
+				slog.InfoContext(ctx, "nameplate_resolver: emblème sans nameplate upstream (mapping.json miss + aucune cfg positive) — la dernière bannière connue sera servie",
+					"emblem_path", trimmed, "stem", stem, "original_cfg", cfg,
+					"xuid", ctxkeys.HaloXUID(ctx))
+			} else {
+				slog.WarnContext(ctx, "nameplate_resolver: résolution nameplate échouée (fetch CMS emblem KO, indéterminé)",
+					"emblem_path", trimmed, "stem", stem, "original_cfg", cfg,
+					"xuid", ctxkeys.HaloXUID(ctx))
+			}
 			return ""
 		}
 	}
@@ -238,12 +252,18 @@ func extractEmblemStem(emblemPath string) string {
 }
 
 // resolvePositiveEmblemCfg fetche le JSON CMS de l'emblem et retourne le
-// premier ConfigurationId > 0 dans AvailableConfigurations. Retourne 0 sur
-// échec (HTTP, parse, aucun positif).
+// premier ConfigurationId > 0 dans AvailableConfigurations. Retourne (0, ...)
+// sur échec (HTTP, parse, aucun positif).
+//
+// definitive distingue les deux natures d'échec pour le caller :
+//   - true  → le JSON CMS a été fetché et parsé : l'absence de cfg positive
+//     est un fait upstream DURABLE (emblème sans nameplate publiée) ;
+//   - false → échec transport/HTTP/parse : indéterminé, potentiellement
+//     transitoire (retente au prochain refresh).
 func resolvePositiveEmblemCfg(
 	ctx context.Context,
 	emblemPath, spartanToken, clearanceToken string,
-) int64 {
+) (result int64, definitive bool) {
 	cmsURL := fmt.Sprintf("%s/%s/progression/file/%s",
 		nameplateHostFor(ctx), gamePrefixForCtx(ctx), strings.TrimPrefix(emblemPath, "/"))
 
@@ -251,7 +271,7 @@ func resolvePositiveEmblemCfg(
 	defer cancel()
 	req, err := http.NewRequestWithContext(reqCtx, "GET", cmsURL, nil)
 	if err != nil {
-		return 0
+		return 0, false
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("x-343-authorization-spartan", spartanToken)
@@ -262,21 +282,21 @@ func resolvePositiveEmblemCfg(
 	if err != nil {
 		slog.DebugContext(ctx, "nameplate_resolver: HTTP error",
 			"emblem_path", emblemPath, "err", err)
-		return 0
+		return 0, false
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		slog.DebugContext(ctx, "nameplate_resolver: CMS non-200",
 			"emblem_path", emblemPath, "status", resp.StatusCode)
-		return 0
+		return 0, false
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return 0
+		return 0, false
 	}
 	var data map[string]any
 	if err := json.Unmarshal(body, &data); err != nil {
-		return 0
+		return 0, false
 	}
 	configs, _ := data["AvailableConfigurations"].([]any)
 	for _, c := range configs {
@@ -290,8 +310,8 @@ func resolvePositiveEmblemCfg(
 			cfg, _ = v.Int64()
 		}
 		if cfg > 0 {
-			return cfg
+			return cfg, true
 		}
 	}
-	return 0
+	return 0, true
 }

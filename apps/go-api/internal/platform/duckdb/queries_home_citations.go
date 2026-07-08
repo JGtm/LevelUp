@@ -198,6 +198,11 @@ SELECT COUNT(*) FROM match_participants WHERE xuid = ?`
 // Concaténer xuid à une chaîne vide défait le pushdown sur l'index PK (cf.
 // career_live_repo.go : index DuckDB connu corrompu, table-scan complet, < 1k rows/joueur).
 // ParamÃ¨tre : ?1 = xuid du joueur.
+// BANNIÈRE/EMBLÈME/BACKDROP : champs d'apparence INDÉPENDANTS (directive
+// produit 2026-07-08) — chacun sert sa dernière valeur non vide (« jamais
+// vide »). Pas de couplage bannière↔emblème : un emblème sans nameplate
+// upstream (nouvelle génération `<id>-SpartanEmblem`) laisse la dernière
+// bannière connue servie.
 const Q26cHomeSpartanIdentity = `
 SELECT
     ARG_MAX(rank,             recorded_at) FILTER (WHERE rank IS NOT NULL)                                  AS rank,

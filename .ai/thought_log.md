@@ -28,46 +28,55 @@ canonique header + ré-localisation snapshots persistés = hors périmètre (Dé
 « paire cohérente » concurrente non incluse). Push + CI. Puis RE-PASSE visuelle utilisateur
 sur GH-1/4/5/6/7/8/9 (header Match View EN ajouté à la liste).
 
-## [2026-07-08] Bannière JGtm figée — root cause (emblème sans nameplate upstream) + fix « paire cohérente »
+## [2026-07-08] Bannière JGtm figée — root cause (image bannière non publiée upstream) ; sémantique finale : champs d'apparence INDÉPENDANTS, jamais vides
 
-**Statut** : Complété (fix code + tests ; non commité — en attente d'autorisation).
+**Statut** : Complété (diagnostics + tests + doc ; comportement de lecture = INCHANGÉ
+par rapport à l'origine ; commité sur `refactor/audits-2026-07` avec l'accord
+utilisateur). Suite décidée : panneau « diagnostic apparence Spartan » dans la page
+admin (verdicts actionnables par composant) — plan rédigé pour Opus :
+`.ai/PLAN_DIAG_APPARENCE_ADMIN_2026-07.md` (dépend du merge de cette branche).
 
-**Décision technique principale** : root cause prouvée de bout en bout. JGtm a équipé le
-2026-07-03 un emblème nouvelle génération (`Inventory/Spartan/Emblems/3806589-SpartanEmblem.json`,
-cfg -1766636888, item « Women's History Month ») qui n'a AUCUNE nameplate upstream :
-absent de `mapping.json` (243 entrées, toutes des stems legacy `104-001-…`), une seule
-cfg disponible et négative dans le JSON CMS, aucun PNG servi par le CDN sous aucune
-convention (`_n<abs>`, `_<cfg>`, brut → 404/403, probes 2026-07-08). `ResolveNameplateURL`
-rend donc "" (comportement correct), le persist partial écrit bannière NULL + emblème
-frais (rows prod vérifiées : depuis 07-03 21:38, emblème 3806589 + banner vide,
-status=ok). Le bug était dans les TROIS couches de lecture qui ressuscitaient « la
-dernière bannière non vide » indépendamment de l'emblème : `qLoadLastCareerRank` +
-`Q26cHomeSpartanIdentity` (ARG_MAX FILTER non-vide), `mergeCustomInto` (carry-forward
-inconditionnel), `overlayIdentityFromFallback` (patch aveugle) — design anti-flicker
-2026-05-20 dont l'hypothèse implicite (« tout emblème a une nameplate résoluble ») est
-morte avec les emblèmes `<id>-SpartanEmblem`. Fix : invariant « paire cohérente » — une
-bannière n'est servie/carry-forwardée que si elle appartient à l'emblème servi (CTE
-`cur_emblem` + FILTER emblème=courant en SQL ; condition d'égalité d'emblème dans le
-merge et l'overlay, emblème patché AVANT bannière). Anti-flicker conservé pour les
-échecs transitoires à emblème inchangé. Bonus : `resolvePositiveEmblemCfg` distingue
-désormais échec définitif (CMS 200 sans cfg positive → Info, état normal durable) et
-transitoire (HTTP KO → Warn) + xuid dans les logs ; outils diag `diag_emblem_mapping`
-(auth store-first ADR 0023 + mode probe URL) et `diag_emblem_colors` (coating lowercase)
-modernisés.
+**Décision technique principale** : root cause prouvée de bout en bout. JGtm a changé
+son apparence le 2026-07-03 (appearance API : `3806589-SpartanEmblem.json`,
+cfg -1766636888, item « Women's History Month »). L'emblème (image directe CMS) se
+résout et s'affiche à jour. La bannière, elle, n'a PAS d'image publiée par Microsoft
+pour cette configuration : l'API appearance ne renvoie aucune URL de bannière, la table
+de correspondance `mapping.json` (243 entrées, toutes legacy `104-001-…`) n'a pas
+d'entrée, le JSON CMS n'offre aucune cfg positive, et aucun PNG n'existe sur le CDN
+(probes 404, 2026-07-08). `ResolveNameplateURL` rend "" — échec DÉFINITIF upstream, pas
+transitoire. Le write-path partial est sain (rows prod vérifiées : bannière NULL +
+emblème frais depuis 07-03 21:38). La bannière ne peut donc PAS « se mettre à jour »
+tant que Microsoft ne publie pas l'image ; l'app sert la dernière connue.
 
-**Résultats observés** : SQL validée sur snapshots prod (JGtm : banner NULL + emblème
-neuf vs bannière olympus périmée avec l'ancienne sémantique ; Chocoboflor : bannière
-conservée, emblème stable). Aucune réparation de données nécessaire (le write-path
-partial était déjà correct). Tests : matrice merge + overlay enrichie (2 cas paire
-cohérente), test repo réécrit (il cadenassait précisément le bug : emblème différent →
-attendait la vieille bannière), nouveau test Q26c `NoStaleBannerAfterEmblemChange`.
-`go test ./...` + `go vet` verts ; gate `-tags=integration -p 1` lancé.
+DIRECTIVE PRODUIT clarifiée par l'utilisateur (2 itérations de fix REJETÉES) :
+bannière/emblème/backdrop sont des champs 100 % INDÉPENDANTS — AUCUNE relation
+bannière↔emblème, ni stricte ni préférentielle ; chaque champ affiche toujours sa
+dernière valeur non vide (« jamais vide »). Itération 1 (paire cohérente stricte :
+bannière vide si irrésoluble) → bannière disparue, rejetée. Itération 2 (préférence
+bannière-du-même-emblème en SQL) → couplage conceptuel rejeté aussi. Final : SQL
+`qLoadLastCareerRank`/`Q26c` et merge/overlay REVENUS À L'ORIGINE (per-field,
+ARG_MAX FILTER non-vide, carry-forward inconditionnel). Le net du chantier = diagnostics
+et verrouillage : `resolvePositiveEmblemCfg` distingue échec définitif (CMS 200 sans cfg
+positive → Info explicite) et transitoire (HTTP KO → Warn) + xuid dans les logs ; outils
+diag `diag_emblem_mapping` (auth store-first ADR 0023 + mode probe URL) et
+`diag_emblem_colors` (coating lowercase) modernisés ; commentaires SQL/merge/service
+énoncent désormais la directive ; tests enrichis qui cadenassent l'indépendance et le
+jamais-vide (repo : emblème avance + bannière conserve sa dernière valeur, y compris
+séquence multi-changements ; Q26c `BannerNeverEmptyWhenNewEmblemHasNone` ; merge
+`BannerNeverEmpty` ; overlay : patch bannière même si emblème changé).
 
-**Conclusion / prochaine étape** : au déploiement, la Home de JGtm affiche le nouvel
-emblème sans bannière (dégradation UI existante) au lieu de la bannière de l'ancien
-emblème — état honnête tant que Microsoft ne publie pas de nameplate pour ces items.
-Si Waypoint expose un jour un rendu nameplate pour les emblèmes `<id>-SpartanEmblem`,
-le seul point à brancher est `ResolveNameplateURL` (la lecture s'auto-répare).
+**Résultats observés** : `go build`, `go test ./...` (exit 0, 0 FAIL), `go vet`,
+intégration `-p 1` duckdb complète (85 s, exit 0) verts ; deux runs complets
+`-tags=integration -p 1 ./...` verts pendant les itérations. Vérif end-to-end sur le
+dev local : `/api/v1/healthz/home?player=JGtm` → `banner: ok` (bannière réaffichée).
+
+**Conclusion / prochaine étape** : comportement runtime identique à l'avant-chantier
+(dernière bannière connue servie) — le « bug » perçu était une limite upstream,
+désormais explicite dans les logs (Info dédiée) au lieu d'un Warn ambigu toutes les
+6 h. La bannière de JGtm se remettra à jour d'elle-même si Microsoft publie l'image
+de sa config (aucune action côté app). Piste optionnelle si on veut une bannière
+« à jour » malgré l'absence upstream : synthèse locale (précédent H5 `synthesizeBanner`,
+capability `spartan_customizer`) — non demandée.
 
 ## [2026-07-07] Audit notifications — 57 non-lues JGtm, diagnostic + propositions (aucun code)
 
