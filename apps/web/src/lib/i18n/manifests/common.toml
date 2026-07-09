@@ -955,6 +955,20 @@ en = "Selecting a period automatically empties the active session."
 fr = "Choix de la saison"
 en = "Season selector"
 
+# ─── Pill Saison — libellés en dur restants (GH2-B1, 2026-07-09) ─────────────
+
+[common.filters.season_pill_label]
+fr = "Saison"
+en = "Season"
+
+[common.filters.season_all]
+fr = "Toutes saisons"
+en = "All seasons"
+
+[common.filters.season_empty_fold]
+fr = "+ {n, plural, one {# saison sans matchs} other {# saisons sans matchs}}"
+en = "+ {n, plural, one {# season without matches} other {# seasons without matches}}"
+
 [common.filters.session_search_placeholder]
 fr = "Rechercher une session…"
 en = "Search a session…"

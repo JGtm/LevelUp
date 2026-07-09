@@ -58,7 +58,7 @@ export function MatchAntagonistChart({ pairs, scoreboard, meXUID, t }: Props) {
   const height = Math.max(240, 80 + 24 * killerCount)
   return (
     <BarStackedChart
-      title="Antagonistes"
+      title={t.antagonistTitle}
       height={height}
       orientation="horizontal"
       series={series}

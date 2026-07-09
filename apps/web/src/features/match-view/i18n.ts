@@ -127,6 +127,11 @@ export interface MatchViewText {
   impactBadgeNames: Record<string, string>
   // Breadcrumb retour (MatchBreadcrumb)
   back: string
+  // Onglets de la page (GH2-B2)
+  tabGeneral: string
+  tabDetails: string
+  // Titre du chart Antagonistes (GH2-B2)
+  antagonistTitle: string
   // Sections de l'onglet Détails (titres type-1 du catalogue d'harmonisation)
   sectionFlow: string
   sectionDuels: string
@@ -317,6 +322,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
       kamikaze: 'Kamikaze',
     },
     back: 'Retour',
+    tabGeneral: 'Général',
+    tabDetails: 'Détails',
+    antagonistTitle: 'Antagonistes',
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
     sectionEncounters: 'Historique des rencontres',
@@ -498,6 +506,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
       kamikaze: 'Kamikaze',
     },
     back: 'Back',
+    tabGeneral: 'General',
+    tabDetails: 'Details',
+    antagonistTitle: 'Antagonists',
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',
     sectionEncounters: 'Encounter history',

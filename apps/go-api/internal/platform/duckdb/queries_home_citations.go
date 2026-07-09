@@ -171,17 +171,23 @@ ORDER BY mc.match_id, mc.value DESC`
 // Q26j : Home â€” mÃ©tadonnÃ©es citations depuis metadata.duckdb pour un ensemble de norms.
 // Les citation_name_norm sont injectÃ©s dynamiquement via IN (%s).
 // GROUP BY car une citation peut avoir plusieurs medal_id rows.
+//
+// GH2-B2/B6 : citation_name_display_en exposé pour la résolution locale-aware du
+// nom (les citations Infinite sont des copies de commendations H5, seul le calcul
+// diffère → l'EN vient du seed). Sous UI EN, l'appelant remplace le display FR par
+// l'EN quand il est non vide. La description reste mono-colonne (pas de source EN).
 const Q26jCitationMappingsForNormsTemplate = `
 SELECT
     citation_name_norm,
     citation_name_display,
+    COALESCE(citation_name_display_en, '') AS citation_name_display_en,
     COALESCE(image_path, '')   AS image_path,
     COALESCE(tier_targets, '') AS tier_targets,
     COALESCE(MAX(description), '') AS description
 FROM citation_mappings
 WHERE citation_name_norm IN (%s)
   AND enabled IS NOT FALSE
-GROUP BY citation_name_norm, citation_name_display, image_path, tier_targets`
+GROUP BY citation_name_norm, citation_name_display, citation_name_display_en, image_path, tier_targets`
 
 // Q26b : Home -- nombre total de matchs d un joueur (pas de LIMIT).
 // Parametre : ?1 = xuid du joueur.

@@ -6,6 +6,7 @@
 package analysis
 
 import (
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
@@ -208,7 +209,7 @@ func TestSelectHighlightWindowCanonical_FiltersDissimilarFriends(t *testing.T) {
 
 func TestSliceBestKillingSpreeCanonical_Empty(t *testing.T) {
 	t.Parallel()
-	if got := sliceBestKillingSpreeCanonical(nil); got != nil {
+	if got := sliceBestKillingSpreeCanonical(nil, "fr"); got != nil {
 		t.Errorf("sliceBestKillingSpreeCanonical(nil) = %v, want nil", got)
 	}
 }
@@ -220,7 +221,7 @@ func TestSliceBestKillingSpreeCanonical_AllZeroOrNil(t *testing.T) {
 		{Self: canonical.MatchParticipant{MaxKillingSpree: nil}},
 		{Self: canonical.MatchParticipant{MaxKillingSpree: &zero}},
 	}
-	if got := sliceBestKillingSpreeCanonical(rows); got != nil {
+	if got := sliceBestKillingSpreeCanonical(rows, "fr"); got != nil {
 		t.Errorf("zero/nil: got %v, want nil", got)
 	}
 }
@@ -242,9 +243,42 @@ func TestSliceBestKillingSpreeCanonical_FindsBest(t *testing.T) {
 			Self: canonical.MatchParticipant{MaxKillingSpree: &s2},
 		},
 	}
-	got := sliceBestKillingSpreeCanonical(rows)
+	got := sliceBestKillingSpreeCanonical(rows, "fr")
 	if got == nil || got.Value != "9" {
 		t.Errorf("best spree: got %v, want 9", got)
+	}
+}
+
+// TestSliceBestKillingSpreeCanonical_LocaleAware prouve GH2-B5 : le Detail
+// (map · mode) suit la locale de requête (EN = DefaultLabel, FR = Labels["fr"]).
+func TestSliceBestKillingSpreeCanonical_LocaleAware(t *testing.T) {
+	t.Parallel()
+	s := 7
+	rows := []canonical.PlayerMatchRow{
+		{
+			Summary: canonical.MatchSummary{
+				Map: &canonical.AssetReference{
+					ID:           "streets",
+					DefaultLabel: "Streets",
+					Labels:       map[string]string{"fr": "Les rues"},
+				},
+			},
+			Self: canonical.MatchParticipant{MaxKillingSpree: &s},
+		},
+	}
+	gotFR := sliceBestKillingSpreeCanonical(rows, "fr")
+	gotEN := sliceBestKillingSpreeCanonical(rows, "en")
+	if gotFR == nil || gotEN == nil {
+		t.Fatalf("nil slide: fr=%v en=%v", gotFR, gotEN)
+	}
+	if !strings.Contains(gotFR.Detail, "Les rues") {
+		t.Errorf("FR Detail = %q, want to contain %q", gotFR.Detail, "Les rues")
+	}
+	if !strings.Contains(gotEN.Detail, "Streets") {
+		t.Errorf("EN Detail = %q, want to contain %q", gotEN.Detail, "Streets")
+	}
+	if strings.Contains(gotEN.Detail, "Les rues") {
+		t.Errorf("EN Detail = %q, must NOT contain FR label", gotEN.Detail)
 	}
 }
 
@@ -303,7 +337,7 @@ func TestSliceBestWinStreakCanonical_LongStreak(t *testing.T) {
 
 func TestSliceFavoriteMapCanonical_Empty(t *testing.T) {
 	t.Parallel()
-	if got := sliceFavoriteMapCanonical(nil); got != nil {
+	if got := sliceFavoriteMapCanonical(nil, "fr"); got != nil {
 		t.Errorf("sliceFavoriteMapCanonical(nil) = %v, want nil", got)
 	}
 }
@@ -313,7 +347,7 @@ func TestSliceFavoriteMapCanonical_NoMapID(t *testing.T) {
 	rows := []canonical.PlayerMatchRow{
 		{Self: canonical.MatchParticipant{Outcome: canonical.OutcomeWin}},
 	}
-	if got := sliceFavoriteMapCanonical(rows); got != nil {
+	if got := sliceFavoriteMapCanonical(rows, "fr"); got != nil {
 		t.Errorf("no MapID: got %v, want nil", got)
 	}
 }
@@ -328,7 +362,7 @@ func TestSliceFavoriteMapCanonical_RequiresAtLeast2(t *testing.T) {
 			Self: canonical.MatchParticipant{Outcome: canonical.OutcomeWin},
 		},
 	}
-	if got := sliceFavoriteMapCanonical(rows); got != nil {
+	if got := sliceFavoriteMapCanonical(rows, "fr"); got != nil {
 		t.Errorf("only 1 play: got %v, want nil", got)
 	}
 }
@@ -346,7 +380,7 @@ func TestSliceFavoriteMapCanonical_BestWR(t *testing.T) {
 			Self:    canonical.MatchParticipant{Outcome: canonical.OutcomeWin},
 		},
 	}
-	got := sliceFavoriteMapCanonical(rows)
+	got := sliceFavoriteMapCanonical(rows, "fr")
 	if got == nil || got.Value != "Bazaar" {
 		t.Errorf("favorite: got %v, want Bazaar", got)
 	}
@@ -368,8 +402,33 @@ func TestSliceFavoriteMapCanonical_LowWR(t *testing.T) {
 			Self:    canonical.MatchParticipant{Outcome: canonical.OutcomeLoss},
 		},
 	}
-	got := sliceFavoriteMapCanonical(rows)
+	got := sliceFavoriteMapCanonical(rows, "fr")
 	if got == nil || got.ValueColor != homeColorNegative {
 		t.Errorf("low WR: got %v, want negative color", got)
+	}
+}
+
+// TestSliceFavoriteMapCanonical_LocaleAware prouve GH2-B5 : le nom de carte
+// (Value) suit la locale (EN = DefaultLabel, FR = Labels["fr"]).
+func TestSliceFavoriteMapCanonical_LocaleAware(t *testing.T) {
+	t.Parallel()
+	mkRow := func() canonical.PlayerMatchRow {
+		return canonical.PlayerMatchRow{
+			Summary: canonical.MatchSummary{
+				Map: &canonical.AssetReference{
+					ID:           "bazaar",
+					DefaultLabel: "Bazaar",
+					Labels:       map[string]string{"fr": "Bazar"},
+				},
+			},
+			Self: canonical.MatchParticipant{Outcome: canonical.OutcomeWin},
+		}
+	}
+	rows := []canonical.PlayerMatchRow{mkRow(), mkRow()}
+	if got := sliceFavoriteMapCanonical(rows, "fr"); got == nil || got.Value != "Bazar" {
+		t.Errorf("FR favorite map Value = %v, want Bazar", got)
+	}
+	if got := sliceFavoriteMapCanonical(rows, "en"); got == nil || got.Value != "Bazaar" {
+		t.Errorf("EN favorite map Value = %v, want Bazaar", got)
 	}
 }

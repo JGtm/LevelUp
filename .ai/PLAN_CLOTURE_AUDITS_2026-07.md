@@ -690,24 +690,83 @@ GH-9 (header). Anomalies restantes/nouvelles → LOTS GH2-A (bugs) et GH2-B (i18
 
 ## LOT GH2-B — i18n re-passe 2 (backend locale-aware + oublis front)
 
-- [ ] GH2-B1 — Omnibar : filtre Saison bilingue (complète GH-4).
-- [ ] GH2-B2 — Match View : onglets « Général »/« Détails » + titre « Antagonistes » →
-  i18n match-view ; tooltip citations du drawer → locale-aware (pattern GH-5b).
-- [ ] GH2-B3 — Carrière « Rankings » : lecture des snapshots CSR persistés locale-aware
-  (symétrique GH-8 ; nom canonique EN persisté + résolution FR à la lecture, ou double nom).
-- [ ] GH2-B4 — Accueil « Recent sessions » : Solo/Escouade/Matchs/Durée de la session/
-  outcomes bilingues (backend → locale de requête ; front → clés i18n).
-- [ ] GH2-B5 — Accueil « Highlights » : noms cartes/playlists locale-aware.
-- [ ] GH2-B6 — Tuiles de matchs (accueil) : médailles + citations + tooltips locale-aware ;
-  « Recent media » : noms de cartes locale-aware.
-- [ ] GH2-B7 — Popup réassociation média : i18n complet FR+EN.
-- Architecture : UNE résolution de locale au point d'entrée du builder Home
-  (ctxkeys.Locale) plutôt que N patchs. Si le périmètre explose (>2x), arrêt propre +
-  rapport (règle 9).
+- [x] GH2-B1 — Omnibar : filtre Saison bilingue (complète GH-4). FAIT : 3 littéraux FR
+  de `SaisonPill.tsx` (trigger « Saison », « Toutes saisons », folding « + N saisons
+  sans matchs ») → clés `common.filters.season_pill_label/season_all/season_empty_fold`
+  (ICU plural). Test EN vs FR (`SaisonPill.test.tsx`, locale épinglée + bloc EN,
+  0 assertion perdue).
+- [x] GH2-B2 — Match View : onglets « Général »/« Détails » + « Antagonistes » →
+  i18n match-view (`tabGeneral/tabDetails/antagonistTitle`, TABS→labelKey ;
+  `MatchAntagonistChart` via `t`). Tooltip citations du drawer = BACKEND
+  (`title={c.description ?? c.name}` ← Q26j) : nom locale-aware via la colonne
+  existante `citation_name_display_en` ; description SANS source EN (seed FR-only) →
+  masquée sous EN (principe GH-5b : EN n'injecte jamais de FR), tooltip = nom EN.
+  Test Go EN vs FR (`TestCitationsRepo_LoadMatchCitationsRich_LocaleAware`).
+- [x] GH2-B3 — Carrière « Rankings » : schéma réel = `player_csr_snapshots` persiste
+  UN nom (canonique EN, sync locale "en" — statué GH-8). Fix au chokepoint UNIQUE de
+  lecture (`enrichCSRPlaylistNames` ; tous les lecteurs passent par
+  `GetCSRSnapshots` → career_service:166) : FR via asset_translations +
+  `resolvePlaylistNameForLocale`, EN garde le nom persisté. Lecteur symétrique de la
+  même page (`enrichLUSRPlaylistNames`, FR forcé) corrigé aussi
+  (`PreferredLangsForLocale(ctxkeys.Locale)`). Test EN vs FR
+  (`TestEnrichCSRPlaylistNames_LocaleAware`).
+- [x] GH2-B4 — Accueil « Recent sessions » : FRONT (`HomeSessionCarousel.tsx`) —
+  Solo/Escouade, Équipe/Perso, « N match(s) », outcomes, FDA, « Durée de la
+  session », aria → clés `home.sessions.*` (TOUTES existaient dans home.toml mais
+  n'étaient pas câblées ; coquille FR `losses_count` « # Defeats » corrigée).
+  `dominant_playlist/mode` backend déjà locale-aware. Test EN vs FR
+  (`HomeSessionCarousel.test.tsx`).
+- [x] GH2-B5 — Accueil « Highlights » : titres de cartes = TitleKey manifest (déjà
+  bilingues) ; les composés map · mode (Detail best_underdog/kda_peak/killing_spree,
+  Value favorite_map) étaient `labelFR` (FR-first) →
+  `labelForLocale`, locale threadée en PARAMÈTRE
+  (`BuildHighlightsFromCanonical(rows, locale)` — analysis reste pur, résolution
+  unique au point d'entrée GetHomePage). Tests EN vs FR
+  (`TestSliceBestKillingSpreeCanonical_LocaleAware`,
+  `TestSliceFavoriteMapCanonical_LocaleAware`).
+- [x] GH2-B6 — Tuiles de matchs (accueil) : médailles (noms + tooltips) →
+  `resolveMedalLabels` migré sur le helper canonique GH-5b
+  (`medalLabelDescCoalesceSQL(ctxkeys.Locale)`) ; citations → Q26j locale-aware
+  (2 scanners HomeRepo + CitationsRepo) ; commendations natives H5 (slot
+  TopCitations) → `loadCommendationDefsFromMetadata` locale-aware (parité
+  halo5_commendation_defs.go) ; « Recent media » : cartes →
+  `enrichMediaMapTranslations` locale-aware. Tests EN vs FR
+  (`TestResolveMedalLabels_LocaleAware`, `TestHomeRepo_LoadMatchCitations_LocaleAware`,
+  `TestEnrichMediaMapTranslations_LocaleAware`).
+- [x] GH2-B7 — Popup réassociation média : le dictionnaire `matchPicker`
+  (i18n-modals.ts) existait FR+EN mais n'était PAS câblé (`MediaMatchPicker.tsx` FR
+  en dur, erreur = clé leaderboard empruntée). Câblé intégralement (titres, Capture,
+  Fermer, Fenêtre, compteur, Chargement, erreur dédiée, état vide, badge actuel,
+  confirmation, Annuler/Confirmer/Application, équipes/spectateurs/lobby) ; clés
+  mortes purgées (minutesSuffix/reassociationError/unknownError/youSuffix) +
+  variantes titleAssociate/confirmTitleAssociate ajoutées. Test EN vs FR
+  (`MediaMatchPicker.test.tsx`, 5 tests).
+- Architecture : locale résolue UNE fois par requête (`ctxkeys.Locale(ctx)`, posée
+  par le middleware title.go) côté repos/service ; `analysis/` reste pur (locale en
+  paramètre depuis GetHomePage). Pas d'explosion de périmètre.
 
 Gate GH2 (A puis B) : front purge cache + typecheck 0 + lint 0 err + vitest 0 fail ;
 Go build+vet+tests + `-tags=integration -p 1 ./internal/api/... ./internal/service/...`
 exit 0 si backend touché ; CI verte ; re-passe 3 utilisateur ciblée.
+
+### RE-PASSE 3 UTILISATEUR — checklist ciblée (après GH2-B, UI EN puis FR)
+
+1. Omnibar (toute page filtrée) : pill « Season » (EN) / « Saison » (FR), popover
+   « All seasons » + folding « + N seasons without matches ».
+2. Match View : onglets « General »/« Details », section « Antagonists » ; drawer
+   scoreboard → survol des CITATIONS : nom EN, tooltip = nom EN (la DESCRIPTION
+   n'existe qu'en FR — sous EN elle est volontairement absente, pas un bug).
+3. Carrière, bloc « Rankings » : noms de playlists EN sous UI EN, FR sous FR
+   (idem le bloc LUSR de la même page).
+4. Accueil « Recent sessions » : « Squad »/« Solo », « N matches », outcomes EN,
+   « Session duration », « Team »/« Self ».
+5. Accueil « Highlights » : détails « map · mode » des tuiles (Plus belle victoire,
+   Pic FDA, Série) dans la langue de l'UI.
+6. Tuiles de matchs (accueil) : noms + tooltips des médailles ET citations dans la
+   langue de l'UI (y compris joueur H5 : commendations natives) ; rail « Recent
+   media » : noms de cartes localisés.
+7. Popup de réassociation média (galerie ou accueil) : tout EN sous UI EN (titre,
+   Window, boutons, états vide/erreur).
 
 ## PLAN DE MERGE & DÉPLOIEMENT (le big-bang est inévitable — le rendre sûr)
 
@@ -881,3 +940,21 @@ Séquence OBLIGATOIRE, dans l'ordre :
   ABSOLU), qui pour une vidéo HLS donne `basename`=`master.m3u8` — le like d'une vidéo HLS
   a probablement le même angle mort que la réassociation avant fix (à vérifier/durcir
   séparément ; non reproduit dans ce lot).
+
+- **[GH2-B — DÉCOUVERTES, NON traitées]** (a) **Descriptions de citations : aucune
+  source EN.** `citation_mappings.description` est seedée FR-only (seed_citation_data.go)
+  et il n'existe pas de colonne `description_en` (contrairement au nom,
+  `citation_name_display_en`). GH2-B2/B6 masquent la description sous EN (principe
+  GH-5b) → tooltip = nom. La vraie traduction EN des descriptions = chantier
+  data/seed (ajouter `description_en` + seed, symétrique de
+  `add_citation_name_display_en`). (b) **`LoadPlaylistAssetTranslationsFR`**
+  (career_repo_highlights.go:323) reste un contrat FR-nommé qui force
+  `PreferredLangsForLocale("fr")` — consommé par les highlights Carrière (« Matchs
+  marquants ») ; si cette surface montre des playlists FR sous UI EN à la re-passe 3,
+  c'est ce site (renommer + threader la locale = petite refonte du contrat, non
+  flaguée par l'utilisateur, non traitée règle 7). (c) **Clés `home.sessions.newer_aria/
+  older_aria` dormantes** : home.toml porte des doublons des clés réellement câblées
+  (`common.home.newer_session_aria/older_session_aria`) — purge cosmétique du manifest
+  possible. (d) `OUTCOME_LABELS_FALLBACK_FR` (MediaMatchPicker) : fallback FR-only
+  quand `useFieldMappings` n'a pas encore répondu — la voie primaire (outcomes TOML)
+  est localisée ; résiduel transitoire acceptable, noté.

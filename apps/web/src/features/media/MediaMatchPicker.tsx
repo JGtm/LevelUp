@@ -22,6 +22,7 @@ import { useFieldMappings, useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { resolveTeamNameFromID } from '@/lib/halo/teamNames'
 import { tokenCssVar } from '@/lib/accessibility'
 import { OUTCOME_LABELS_FALLBACK_FR } from './fallback.i18n'
+import { getMediaModalsText, type MatchPickerText } from './i18n-modals'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
 import type { ManifestLocale } from '@/lib/i18n/format'
@@ -51,11 +52,11 @@ function formatLocalTime(iso: string | null | undefined, locale: ManifestLocale)
   })
 }
 
-function formatDelta(deltaSeconds: number | null | undefined): string {
+function formatDelta(deltaSeconds: number | null | undefined, mp: MatchPickerText): string {
   if (deltaSeconds == null) return ''
   const m = Math.round(Math.abs(deltaSeconds) / 60)
-  if (m === 0) return '< 1 min'
-  return `±${m} min`
+  if (m === 0) return mp.deltaUnder1Min
+  return mp.deltaMinFormat(m)
 }
 
 // outcomeKeyOf mappe le code outcome Halo (2 win, 3 loss, 1 tie, 4 dnf)
@@ -100,13 +101,14 @@ function CandidateHeading({ candidate }: { candidate: MediaMatchCandidate }) {
 
 // Libellé d'équipe : nom officiel Halo (Eagle/Cobra/…) si team_id ∈ [0..8],
 // sinon fallback "Équipe N" ; null → "Spectateurs". Aligné sur MatchScoreboard.
-function teamHeaderLabel(teamID: number | null): string {
-  if (teamID == null) return 'Spectateurs'
+// Bilingue via MatchPickerText (GH2-B7).
+function teamHeaderLabel(teamID: number | null, mp: MatchPickerText): string {
+  if (teamID == null) return mp.spectators
   const official = resolveTeamNameFromID(teamID)
-  return official ? `Équipe ${official}` : `Équipe ${teamID + 1}`
+  return official ? mp.teamLabel(official) : mp.teamLabel(teamID + 1)
 }
 
-function LobbyTeams({ lobby }: { lobby: MediaMatchCandidate['lobby'] }) {
+function LobbyTeams({ lobby, mp }: { lobby: MediaMatchCandidate['lobby']; mp: MatchPickerText }) {
   // Groupement + détection de l'équipe du joueur — recompute uniquement si
   // l'array lobby change (référence stable côté react-query entre rerenders).
   const grouped = useMemo(() => {
@@ -123,8 +125,7 @@ function LobbyTeams({ lobby }: { lobby: MediaMatchCandidate['lobby'] }) {
   }, [lobby])
 
   if (!lobby || lobby.length === 0) {
-    // eslint-disable-next-line @levelup/no-hardcoded-strings
-    return <p className="text-3xs italic text-muted-foreground">Lobby indisponible</p>
+    return <p className="text-3xs italic text-muted-foreground">{mp.lobbyUnavailable}</p>
   }
 
   return (
@@ -146,7 +147,7 @@ function LobbyTeams({ lobby }: { lobby: MediaMatchCandidate['lobby'] }) {
               className="font-semibold"
               style={headerColor ? { color: headerColor } : undefined}
             >
-              {teamHeaderLabel(team.teamID)}
+              {teamHeaderLabel(team.teamID, mp)}
             </span>
             <ul>
               {team.players.map((p) => (
@@ -177,6 +178,8 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
   const associate = useAssociateMediaToMatch(playerSlug)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  // GH2-B7 : dictionnaire bilingue de la popup (i18n-modals.ts, enfin câblé).
+  const mp = getMediaModalsText(locale).matchPicker
   // Phase 4 plan finition multi-titres : libellés outcomes via TOML, fallback FR.
   const { data: fieldMappings } = useFieldMappings()
   const outcomeLabel = (outcome: number | null | undefined): { text: string; cls: string } => {
@@ -221,10 +224,10 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
       >
         <header className="flex items-center justify-between border-b border-border px-5 py-3">
           <div>
-            <h2 className="text-base font-semibold">{hasCurrentMatch ? 'Réassocier ce média' : 'Associer ce média'}</h2>
+            <h2 className="text-base font-semibold">{hasCurrentMatch ? mp.title : mp.titleAssociate}</h2>
             {data?.capture_utc && (
               <p className="text-xs text-muted-foreground">
-                Capture : {formatLocalTime(data.capture_utc, locale)}
+                {mp.capturePrefix} {formatLocalTime(data.capture_utc, locale)}
               </p>
             )}
           </div>
@@ -232,14 +235,14 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
             type="button"
             onClick={onClose}
             className="rounded p-1 text-sm text-muted-foreground hover:bg-accent"
-            aria-label="Fermer"
+            aria-label={mp.closeAriaLabel}
           >
             ✕
           </button>
         </header>
 
         <div className="flex items-center gap-2 border-b border-border px-5 py-2 text-xs">
-          <span className="text-muted-foreground">Fenêtre :</span>
+          <span className="text-muted-foreground">{mp.windowLabel}</span>
           {WINDOW_OPTIONS.map((w) => (
             <button
               key={w}
@@ -251,23 +254,22 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
                   : 'hover:bg-accent'
               }`}
             >
-              ±{w} min
+              {mp.deltaMinFormat(w)}
             </button>
           ))}
           {data && (
             <span className="ml-auto text-muted-foreground">
-              {/* eslint-disable-next-line @levelup/no-hardcoded-strings */}
-              {candidates.length} match(s) trouvé(s)
+              {mp.matchesFound(candidates.length)}
             </span>
           )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-2">
-          {isLoading && <p className="p-4 text-center text-sm text-muted-foreground">Chargement…</p>}
-          {isError && <p className="p-4 text-center text-sm text-destructive">{t('common.leaderboard.load_error')}</p>}
+          {isLoading && <p className="p-4 text-center text-sm text-muted-foreground">{mp.loading}</p>}
+          {isError && <p className="p-4 text-center text-sm text-destructive">{mp.error}</p>}
           {!isLoading && !isError && candidates.length === 0 && (
             <p className="p-4 text-center text-sm text-muted-foreground">
-              {t('common.leaderboard.no_match_in_window')}
+              {mp.noMatchesFound}
             </p>
           )}
           <ul className="flex flex-col gap-2">
@@ -310,17 +312,17 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
                           </span>
                           {isCurrent && (
                             <span className="rounded bg-primary px-1.5 py-0.5 text-2xs font-semibold text-primary-foreground">
-                              actuel
+                              {mp.currentBadge}
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="flex items-center gap-3 text-3xs text-muted-foreground">
                         <span>{formatLocalTime(c.start_time, locale)}</span>
-                        <span className="opacity-60">{formatDelta(c.delta_seconds)}</span>
+                        <span className="opacity-60">{formatDelta(c.delta_seconds, mp)}</span>
                         {c.playlist_name && <span className="ml-auto truncate">{c.playlist_name}</span>}
                       </div>
-                      <LobbyTeams lobby={c.lobby} />
+                      <LobbyTeams lobby={c.lobby} mp={mp} />
                     </div>
                   </button>
                 </li>
@@ -332,7 +334,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
         {pending && (
           <footer className="flex items-center justify-between gap-3 border-t border-border bg-muted/40 px-5 py-3 text-sm">
             <div>
-              <p className="font-medium">{hasCurrentMatch ? 'Confirmer la réassociation ?' : "Confirmer l'association ?"}</p>
+              <p className="font-medium">{hasCurrentMatch ? mp.confirmTitle : mp.confirmTitleAssociate}</p>
               <p className="text-xs text-muted-foreground">
                 <CandidateHeading candidate={pending} /> · {formatLocalTime(pending.start_time, locale)}
               </p>
@@ -343,7 +345,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
                 onClick={() => setPendingMatchID(null)}
                 className="rounded border border-border px-3 py-1.5 text-xs hover:bg-accent"
               >
-                Annuler
+                {mp.cancel}
               </button>
               <button
                 type="button"
@@ -351,7 +353,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
                 onClick={handleConfirm}
                 className="rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
               >
-                {associate.isPending ? 'Application…' : 'Confirmer'}
+                {associate.isPending ? mp.applying : mp.confirm}
               </button>
             </div>
           </footer>

@@ -72,7 +72,7 @@ export function SaisonPill({
 
   const triggerLabel = activeSeason
     ? `${activeSeason.shortLabel} — ${activeSeason.label}`
-    : 'Saison'
+    : t('common.filters.season_pill_label')
 
   return (
     <div ref={ref} className="relative shrink-0">
@@ -113,7 +113,7 @@ export function SaisonPill({
               ].join(' ')}
               disabled={!activeSeason}
             >
-              Toutes saisons
+              {t('common.filters.season_all')}
             </button>
           )}
 
@@ -135,7 +135,7 @@ export function SaisonPill({
           {unavailable.length > 0 && (
             <details className="mt-1">
               <summary className="cursor-pointer rounded px-2 py-1 text-3xs text-muted-foreground hover:bg-muted">
-                + {unavailable.length} saison{unavailable.length > 1 ? 's' : ''} sans matchs
+                {formatMessage(commonManifest, 'common.filters.season_empty_fold', locale, { n: unavailable.length })}
               </summary>
               <ul className="mt-0.5 flex flex-col gap-0.5">
                 {unavailable.map((s) => (

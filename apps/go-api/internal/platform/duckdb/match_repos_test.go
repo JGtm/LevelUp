@@ -175,6 +175,53 @@ func TestCitationsRepo_LoadCitationMappings_LocaleAware(t *testing.T) {
 	}
 }
 
+// TestCitationsRepo_LoadMatchCitationsRich_LocaleAware prouve GH2-B2 : le nom de
+// citation servi à la Match View (drawer/tooltips) suit la locale de requête via
+// Q26j (citation_name_display_en). Seed : m1 → killing_spree (FR "Killing Spree",
+// EN "Killing Spree (EN)").
+func TestCitationsRepo_LoadMatchCitationsRich_LocaleAware(t *testing.T) {
+	repo := NewCitationsRepo(newTestPlayerDB(t))
+
+	fr, err := repo.LoadMatchCitationsRich(ctxkeys.WithLocale(context.Background(), "fr"), "m1")
+	if err != nil || len(fr) != 1 {
+		t.Fatalf("FR: err=%v n=%d", err, len(fr))
+	}
+	if fr[0].Display != "Killing Spree" {
+		t.Errorf("FR Display = %q, want 'Killing Spree'", fr[0].Display)
+	}
+
+	en, err := repo.LoadMatchCitationsRich(ctxkeys.WithLocale(context.Background(), "en"), "m1")
+	if err != nil || len(en) != 1 {
+		t.Fatalf("EN: err=%v n=%d", err, len(en))
+	}
+	if en[0].Display != "Killing Spree (EN)" {
+		t.Errorf("EN Display = %q, want 'Killing Spree (EN)'", en[0].Display)
+	}
+}
+
+// TestHomeRepo_LoadMatchCitations_LocaleAware prouve GH2-B6 : le nom de citation
+// des tuiles de match Home suit la locale de requête (même chaîne Q26j que la
+// Match View — citation_name_display_en sous EN, display FR sinon).
+func TestHomeRepo_LoadMatchCitations_LocaleAware(t *testing.T) {
+	repo := NewHomeRepo(newTestPlayerDB(t))
+
+	fr, err := repo.LoadMatchCitations(ctxkeys.WithLocale(context.Background(), "fr"), []string{"m1"})
+	if err != nil || len(fr["m1"]) != 1 {
+		t.Fatalf("FR: err=%v n=%d", err, len(fr["m1"]))
+	}
+	if fr["m1"][0].Display != "Killing Spree" {
+		t.Errorf("FR Display = %q, want 'Killing Spree'", fr["m1"][0].Display)
+	}
+
+	en, err := repo.LoadMatchCitations(ctxkeys.WithLocale(context.Background(), "en"), []string{"m1"})
+	if err != nil || len(en["m1"]) != 1 {
+		t.Fatalf("EN: err=%v n=%d", err, len(en["m1"]))
+	}
+	if en["m1"][0].Display != "Killing Spree (EN)" {
+		t.Errorf("EN Display = %q, want 'Killing Spree (EN)'", en["m1"][0].Display)
+	}
+}
+
 func TestCitationsRepo_LoadCitationTotals_WithData(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewCitationsRepo(pdb)

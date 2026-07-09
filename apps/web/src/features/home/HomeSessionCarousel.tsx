@@ -16,7 +16,7 @@ import { intlLocale } from '@/lib/formatters'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
-import { homeManifest } from '@/lib/i18n/generated/home'
+import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
 
 function ChevronUpIcon() {
   return (
@@ -110,7 +110,10 @@ export function HomeSessionCarousel({
   const cleanupRef = useRef<(() => void) | null>(null)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
-  const dominantTooltip = formatMessage(homeManifest, 'home.sessions.dominant_tooltip', locale)
+  // th : clés home.sessions.* (GH2-B4 — libellés du carrousel bilingues).
+  const th = (key: HomeManifestKey, values?: Record<string, string | number>) =>
+    formatMessage(homeManifest, key, locale, values)
+  const dominantTooltip = th('home.sessions.dominant_tooltip')
 
   // Nettoyage si le composant est démonté en cours d'animation
   useEffect(() => () => { cleanupRef.current?.() }, [])
@@ -158,7 +161,7 @@ export function HomeSessionCarousel({
 
   const session = sessions[displayIdx]
   const total = sessions.length
-  const variantLabel = variant === 'solo' ? 'Solo' : 'Escouade'
+  const variantLabel = variant === 'solo' ? th('home.sessions.solo') : th('home.sessions.squad')
   const cardClass = variant === 'solo' ? 'rounded-md bg-muted p-3' : 'rounded-md bg-primary/10 p-3'
   const chevronBottomCls =
     'flex w-full cursor-pointer items-center justify-center py-2 text-muted-foreground/40 transition-colors hover:text-muted-foreground focus-visible:outline-none focus-visible:text-foreground disabled:cursor-not-allowed disabled:opacity-20'
@@ -192,7 +195,7 @@ export function HomeSessionCarousel({
             type="button"
             className={`${cardClass} w-full cursor-pointer text-left border border-transparent transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
             onClick={() => onNavigate(session.session_label, session.teammates ?? [])}
-            aria-label={`Voir le détail de la session ${session.session_label}`}
+            aria-label={th('home.sessions.detail_aria', { label: session.session_label })}
           >
             {/* Scores de performance */}
             <div className="mb-2 flex items-baseline gap-3">
@@ -204,7 +207,7 @@ export function HomeSessionCarousel({
                   >
                     {Math.round(session.avg_team_performance)}
                   </span>
-                  <span className="text-xs text-muted-foreground">Équipe</span>
+                  <span className="text-xs text-muted-foreground">{th('home.sessions.team_label')}</span>
                 </>
               )}
               {session.avg_player_performance != null && (
@@ -215,7 +218,7 @@ export function HomeSessionCarousel({
                   >
                     {Math.round(session.avg_player_performance)}
                   </span>
-                  <span className="text-xs text-muted-foreground">Perso</span>
+                  <span className="text-xs text-muted-foreground">{th('home.sessions.player_label')}</span>
                 </>
               )}
             </div>
@@ -231,26 +234,26 @@ export function HomeSessionCarousel({
             {/* Décompte des outcomes avec nombre de matchs */}
             <p className="mt-1.5 flex flex-wrap gap-x-2 text-xs">
               <span className="font-medium text-foreground">
-                {session.match_count} match{session.match_count > 1 ? 's' : ''}
+                {th('home.sessions.match_count', { n: session.match_count })}
               </span>
               {session.wins > 0 && (
                 <span style={{ color: tokenCssVar('outcome-win') }}>
-                  {session.wins} Victoire{session.wins > 1 ? 's' : ''}
+                  {th('home.sessions.wins_count', { n: session.wins })}
                 </span>
               )}
               {session.losses > 0 && (
                 <span style={{ color: tokenCssVar('outcome-loss') }}>
-                  {session.losses} Défaite{session.losses > 1 ? 's' : ''}
+                  {th('home.sessions.losses_count', { n: session.losses })}
                 </span>
               )}
               {session.draws > 0 && (
                 <span style={{ color: tokenCssVar('outcome-draw') }}>
-                  {session.draws} Égalité{session.draws > 1 ? 's' : ''}
+                  {th('home.sessions.draws_count', { n: session.draws })}
                 </span>
               )}
               {session.dnfs > 0 && (
                 <span style={{ color: tokenCssVar('outcome-dnf') }}>
-                  {session.dnfs} Non terminé{session.dnfs > 1 ? 's' : ''}
+                  {th('home.sessions.dnfs_count', { n: session.dnfs })}
                 </span>
               )}
             </p>
@@ -259,7 +262,7 @@ export function HomeSessionCarousel({
             <p className="mt-0.5 text-xs text-muted-foreground">
               {session.avg_kda != null && (
                 <span>
-                  FDA{' '}
+                  {th('home.sessions.kda_label')}{' '}
                   <span style={{ color: tokenCssVar(kdaDivergentScale(session.avg_kda)) }}>
                     {session.avg_kda.toFixed(2)}
                   </span>
@@ -288,7 +291,7 @@ export function HomeSessionCarousel({
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {formatSessionDate(session.started_at, locale)}
                 {session.ended_at
-                  ? ` · Durée de la session : ${formatSessionDuration(session.started_at, session.ended_at)}`
+                  ? ` · ${th('home.sessions.duration_prefix')}${locale === 'en' ? ': ' : ' : '}${formatSessionDuration(session.started_at, session.ended_at)}`
                   : null}
               </p>
             )}
