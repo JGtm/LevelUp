@@ -110,9 +110,10 @@ function killTypeFallback(me: MatchScoreboardRow | undefined, t: MatchViewText):
 
 type TabId = 'summary' | 'details'
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'summary', label: 'Général' },
-  { id: 'details', label: 'Détails' },
+// Libellés résolus au rendu via MATCH_VIEW_TEXT (GH2-B2 : bilingue).
+const TABS: { id: TabId; labelKey: 'tabGeneral' | 'tabDetails' }[] = [
+  { id: 'summary', labelKey: 'tabGeneral' },
+  { id: 'details', labelKey: 'tabDetails' },
 ]
 
 export function MatchViewPage() {
@@ -314,7 +315,7 @@ export function MatchViewPage() {
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              {tab.label}
+              {t[tab.labelKey]}
             </Button>
           ))}
         </div>

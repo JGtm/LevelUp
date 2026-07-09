@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -43,18 +44,17 @@ func (r *MediaRepo) enrichMediaMapTranslations(ctx context.Context, rows []domai
 	// map_asset_id et on n'affiche jamais l'UUID brut.
 	names := r.loadMapCatalogNames(ctx, ids)
 
+	// GH2-B6 : locale-aware. Sous UI EN, le nom canonique EN prime (name_canonical) ;
+	// sous FR, la traduction FR (asset_translations). resolvePlaylistNameForLocale
+	// est le helper de préférence-par-locale du package (fallback croisé si un nom
+	// manque) — réutilisé ici pour ne pas dupliquer la logique.
+	locale := ctxkeys.Locale(ctx)
 	for i := range rows {
 		id := mediaMapAssetID(&rows[i])
 		if id != "" {
 			if n, ok := names[id]; ok {
-				if n.fr != "" {
-					fr := n.fr
-					rows[i].MapName = &fr
-					continue
-				}
-				if n.en != "" {
-					en := n.en
-					rows[i].MapName = &en
+				if resolved := resolvePlaylistNameForLocale(locale, n.fr, n.en); resolved != "" {
+					rows[i].MapName = &resolved
 					continue
 				}
 			}

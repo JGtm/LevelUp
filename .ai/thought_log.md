@@ -1,3 +1,42 @@
+## [2026-07-09] LOT GH2-B — i18n re-passe 2 du GATE HUMAIN (Saison, Match View, Rankings CSR, accueil, popup média)
+
+**Statut** : Complété (GH2-B1..B7 ; gates locaux verts ; commit `cloture(GH2-B):` + push + CI).
+
+**Décision technique principale** : locale résolue UNE fois par requête, à l'altitude la
+plus basse qui reste propre — `ctxkeys.Locale(ctx)` dans les repos/loaders (pattern GH-8/
+GH-9), et en PARAMÈTRE pour la couche `analysis/` pure (`BuildHighlightsFromCanonical(rows,
+locale)`, threadée depuis `GetHomePage`). Pas de N patchs dispersés : chaque famille de
+libellés passe par son chokepoint unique.
+- **B1** (front) : `SaisonPill` avait 3 littéraux FR oubliés par GH-4 → clés
+  `common.filters.season_*` (ICU plural pour le folding).
+- **B2** : onglets + « Antagonistes » = front (`MatchViewText`) ; tooltip citations =
+  backend Q26j → nom via `citation_name_display_en` (colonne existante) ; la DESCRIPTION
+  n'a AUCUNE source EN (seed FR-only) → masquée sous EN (principe GH-5b « EN n'injecte
+  jamais de FR », tooltip = nom). Découverte consignée (chantier seed description_en).
+- **B3** : `player_csr_snapshots` persiste UN nom (canonique EN) ; fix au chokepoint
+  `enrichCSRPlaylistNames` (FR via asset_translations, EN = persisté) + lecteur symétrique
+  `enrichLUSRPlaylistNames` (même page). `LoadPlaylistAssetTranslationsFR` (highlights
+  Carrière) laissé (contrat FR-nommé non flagué) → Découvertes.
+- **B4** (front) : les clés `home.sessions.*` existaient TOUTES dans home.toml mais
+  n'étaient pas câblées dans `HomeSessionCarousel` (+ coquille FR « # Defeats » corrigée).
+- **B5** (backend) : composés map · mode des highlights = `labelFR` FR-first →
+  `labelForLocale` (locale en paramètre, analysis pur).
+- **B6** (backend) : médailles Home → helper canonique GH-5b
+  (`medalLabelDescCoalesceSQL`) ; citations → Q26j (2 scanners) ; commendations H5 →
+  `loadCommendationDefsFromMetadata` aligné sur halo5_commendation_defs ; cartes
+  « Recent media » → `enrichMediaMapTranslations` + `resolvePlaylistNameForLocale`.
+- **B7** (front) : le dict `matchPicker` (i18n-modals.ts) existait FR+EN mais n'était PAS
+  câblé — `MediaMatchPicker` FR en dur + erreur empruntée à une clé leaderboard. Câblage
+  complet + purge des clés mortes du dict + variantes Associer.
+
+**Résultats observés** : front typecheck 0, eslint 0 err, vitest 245 fichiers / 2090 pass ;
+Go build+vet 0, analysis OK, intégration duckdb complète `-p 1` OK (84 s), gate
+`-tags=integration -p 1 ./internal/api/... ./internal/service/...` exit 0. 1 test EN-vs-FR
+par item (10 tests d'intégration ancrés verts + 3 fichiers vitest 18 tests).
+
+**Conclusion / prochaine étape** : re-passe 3 utilisateur (checklist ajoutée au plan,
+§RE-PASSE 3) ; découvertes GH2-B consignées (description_en des citations = data gap).
+
 ## [2026-07-08] LOT GH2-A — bugs fonctionnels re-passe 2 du GATE HUMAIN (View matches 404, popup réassoc 500, UUID playlist)
 
 **Statut** : Complété (GH2-A1/A2/A3 ; gates locaux verts ; en attente commit `cloture(GH2-A):`).

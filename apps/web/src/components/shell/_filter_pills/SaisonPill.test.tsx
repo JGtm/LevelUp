@@ -8,11 +8,18 @@
  *   - Fallback : pas de seasonCounts → toutes les saisons visibles, pas de folding
  *   - onSelectSeason appelé avec la bonne SeasonEntry au click
  */
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 
 import type { SeasonEntry } from '@/lib/i18n/fieldMappings'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { SaisonPill } from './SaisonPill'
+
+// Libellés résolus par clé i18n (GH2-B1) — locale 'fr' épinglée pour les
+// assertions historiques FR ; le bloc « i18n EN » bascule explicitement en 'en'.
+beforeEach(() => {
+  useAppShellStore.setState({ locale: 'fr' })
+})
 
 function makeSeasons(): SeasonEntry[] {
   return [
@@ -211,5 +218,39 @@ describe('SaisonPill — onClear', () => {
     )
     const btn = screen.getByRole('button', { name: 'Toutes saisons' })
     expect(btn).toBeDisabled()
+  })
+})
+
+describe('SaisonPill — i18n EN (GH2-B1)', () => {
+  it('rend le trigger, "All seasons" et le folding en anglais sous locale en', () => {
+    useAppShellStore.setState({ locale: 'en' })
+    const seasonCounts = [
+      { season_id: 'season1', count: 0 },
+      { season_id: 'season2', count: 8 },
+      { season_id: 'season3', count: 0 },
+      { season_id: 'season4', count: 12 },
+      { season_id: 'season6', count: 42 },
+    ]
+    render(
+      <SaisonPill
+        open={true}
+        onToggle={vi.fn()}
+        onClose={vi.fn()}
+        seasons={makeSeasons()}
+        activeSeason={null}
+        seasonCounts={seasonCounts}
+        onSelectSeason={vi.fn()}
+        onClear={vi.fn()}
+      />,
+    )
+    // Trigger EN (pas de saison active).
+    expect(screen.getByRole('button', { name: /Season/ })).toBeInTheDocument()
+    const dialog = screen.getByRole('dialog', { name: /Season selector/ })
+    // Bouton clear EN.
+    expect(within(dialog).getByRole('button', { name: 'All seasons' })).toBeInTheDocument()
+    // Folding EN (2 saisons à count=0), plus aucun libellé FR.
+    expect(within(dialog).getByText(/\+ 2 seasons without matches/)).toBeInTheDocument()
+    expect(within(dialog).queryByText(/sans matchs/)).not.toBeInTheDocument()
+    expect(within(dialog).queryByText('Toutes saisons')).not.toBeInTheDocument()
   })
 })

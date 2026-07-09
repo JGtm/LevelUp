@@ -15,8 +15,8 @@ func seedMedalFallbackData(t *testing.T, db *DB) {
 	ctx := context.Background()
 	seedMedalDefsSchema(t, db)
 	// name_en seul (name_fr laissé vide) → label déterministe "Killjoy" quelle
-	// que soit la locale : resolveMedalLabels et lookupMedalMeta sont FR-first
-	// mais NULLIF(TRIM(name_fr),'') retombe sur name_en.
+	// que soit la locale : resolveMedalLabels et lookupMedalMeta sont locale-aware
+	// mais NULLIF(TRIM(name_fr),'') retombe sur name_en même en FR.
 	if _, err := db.Exec(ctx,
 		`INSERT INTO medal_definitions (medal_name_id, name_en, difficulty) VALUES (100, 'Killjoy', 'Heroic')`,
 	); err != nil {
@@ -62,12 +62,43 @@ func TestResolveMedalLabels_CitationFallback(t *testing.T) {
 	seedMedalFallbackData(t, db)
 	ctx := context.Background()
 
-	got := resolveMedalLabels(ctx, db, []int64{100, 200})
+	got := resolveMedalLabels(ctx, db, []int64{100, 200}, "fr")
 	if got[100].label != "Killjoy" {
 		t.Errorf("home: medal 100 = %q, want Killjoy (medal_definitions)", got[100].label)
 	}
 	if got[200].label != "Perfection" {
 		t.Errorf("home: medal 200 = %q, want Perfection (fallback citation_mappings)", got[200].label)
+	}
+}
+
+// TestResolveMedalLabels_LocaleAware prouve GH2-B6 : la tuile de match Home sert
+// le nom/description de médaille dans la locale de requête. Sous UI EN, JAMAIS de
+// colonne FR (name_fr/description_fr) — parité avec la vue Match (GH-5b).
+func TestResolveMedalLabels_LocaleAware(t *testing.T) {
+	db := openMemDB(t)
+	seedMedalDefsSchema(t, db)
+	ctx := context.Background()
+	if _, err := db.Exec(ctx,
+		`INSERT INTO medal_definitions (medal_name_id, name_fr, name_en, description_fr, description_en, difficulty)
+		 VALUES (300, 'Tueur de joie', 'Killjoy', 'Fin d une serie', 'Ended a spree', 'Heroic')`,
+	); err != nil {
+		t.Fatalf("seed medal 300: %v", err)
+	}
+
+	fr := resolveMedalLabels(ctx, db, []int64{300}, "fr")
+	if fr[300].label != "Tueur de joie" {
+		t.Errorf("FR label = %q, want 'Tueur de joie'", fr[300].label)
+	}
+	if fr[300].description != "Fin d une serie" {
+		t.Errorf("FR description = %q, want 'Fin d une serie'", fr[300].description)
+	}
+
+	en := resolveMedalLabels(ctx, db, []int64{300}, "en")
+	if en[300].label != "Killjoy" {
+		t.Errorf("EN label = %q, want 'Killjoy' (jamais name_fr sous EN)", en[300].label)
+	}
+	if en[300].description != "Ended a spree" {
+		t.Errorf("EN description = %q, want 'Ended a spree' (jamais description_fr sous EN)", en[300].description)
 	}
 }
 

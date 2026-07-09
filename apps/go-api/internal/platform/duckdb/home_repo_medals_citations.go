@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/assets/static"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -127,7 +128,7 @@ func (r *HomeRepo) LoadMatchMedals(ctx context.Context, matchIDs []string) (map[
 		return result, nil
 	}
 
-	metaMap := resolveMedalLabels(ctx, r.pdb.Metadata, medalIDsList)
+	metaMap := resolveMedalLabels(ctx, r.pdb.Metadata, medalIDsList, ctxkeys.Locale(ctx))
 
 	slug := r.titleSlug()
 	for _, rr := range rawRows {
@@ -158,38 +159,26 @@ type medalLabel struct {
 	difficulty  string
 }
 
-// resolveMedalLabels résout les labels de médailles avec la chaîne BCP-47 complète :
-//
-//	medal_translations (fr-FR) → medal_definitions.name_fr
-//	→ medal_translations (en-US) → medal_definitions.name_en
-//
-// Miroir de resolve_medal_name(id, lang) dans src/data/medal_definitions.py.
-func resolveMedalLabels(ctx context.Context, db *DB, medalIDs []int64) map[int64]medalLabel {
+// resolveMedalLabels résout les labels de médailles locale-aware (GH2-B6). La
+// chaîne de priorité label/description vient de la source unique
+// medalLabelDescCoalesceSQL(locale) + medalTranslationJoinsSQL(locale) —
+// partagée avec la vue Match (GH-5b) et l'Explorer : sous UI EN, ne jamais
+// injecter les colonnes FR (sinon la tuile Home affiche du FR sous EN).
+func resolveMedalLabels(ctx context.Context, db *DB, medalIDs []int64, locale string) map[int64]medalLabel {
 	result := make(map[int64]medalLabel, len(medalIDs))
 	if len(medalIDs) == 0 || db == nil {
 		return result
 	}
 
-	// Chaîne BCP-47 : medal_translations (fr-FR, en-US) > medal_definitions (name_fr, name_en).
+	labelExpr, descExpr := medalLabelDescCoalesceSQL(locale)
+	// Chaîne locale-aware : medal_translations[locale, en-US] > medal_definitions.
 	q, mArgs, ok := buildLookupQuery(
 		`SELECT md.medal_name_id,
-		        COALESCE(
-		            NULLIF(TRIM(mt_fr.name),''),
-		            NULLIF(TRIM(md.name_fr),''),
-		            NULLIF(TRIM(mt_en.name),''),
-		            NULLIF(TRIM(md.name_en),'')
-		        ) AS label,
-		        COALESCE(
-		            NULLIF(TRIM(md.description_fr),''),
-		            NULLIF(TRIM(md.description_en),''),
-		            ''
-		        ) AS description,
+		        `+labelExpr+` AS label,
+		        `+descExpr+` AS description,
 		        COALESCE(NULLIF(TRIM(md.difficulty),''), 'Normal') AS difficulty
 		 FROM medal_definitions md
-		 LEFT JOIN medal_translations mt_fr
-		     ON mt_fr.medal_name_id = md.medal_name_id AND mt_fr.lang = 'fr-FR'
-		 LEFT JOIN medal_translations mt_en
-		     ON mt_en.medal_name_id = md.medal_name_id AND mt_en.lang = 'en-US'
+		 `+medalTranslationJoinsSQL(locale)+`
 		 WHERE md.medal_name_id IN (%s)`,
 		medalIDs,
 	)
@@ -444,11 +433,13 @@ func (r *HomeRepo) loadCommendationDefs(ctx context.Context, ids []string) map[s
 	return loadCommendationDefsFromMetadata(ctx, r.pdb.Metadata, ids)
 }
 
-// loadCommendationDefsFromMetadata résout nom (FR > EN) + icône CDN + tier_targets
-// pour un ensemble d'UUID de commendations depuis commendation_definitions
-// (metadata h5). Fonction libre partagée par HomeRepo (slot TopCitations de la
-// MatchCard) et CitationsRepo (onglet citations de la Match View). IDs inconnus
-// absents de la map. Dégradation : metadata nil / table absente → map vide.
+// loadCommendationDefsFromMetadata résout nom (locale-aware, GH2-B6 : EN
+// privilégie name_en, FR name_fr, repli croisé — parité avec
+// halo5_commendation_defs.go) + icône CDN + tier_targets pour un ensemble
+// d'UUID de commendations depuis commendation_definitions (metadata h5).
+// Fonction libre partagée par HomeRepo (slot TopCitations de la MatchCard) et
+// CitationsRepo (onglet citations de la Match View). IDs inconnus absents de la
+// map. Dégradation : metadata nil / table absente → map vide.
 //
 // tier_targets est COALESCE'é vide : nullable + colonne possiblement absente sur une
 // DB pré-migration. Pour absorber le cas « colonne absente » (metadata h5 provisionnée
@@ -466,8 +457,13 @@ func loadCommendationDefsFromMetadata(ctx context.Context, metadata *DB, ids []s
 		args[i] = id
 	}
 	in := strings.Join(placeholders, ", ")
+	// Nom locale-aware : EN privilégie name_en, FR (défaut) name_fr, repli croisé.
+	nameExpr := `COALESCE(NULLIF(TRIM(name_fr), ''), name_en)`
+	if ctxkeys.Locale(ctx) == "en" {
+		nameExpr = `COALESCE(NULLIF(TRIM(name_en), ''), name_fr)`
+	}
 	query := `SELECT commendation_id,
-	                 COALESCE(NULLIF(TRIM(name_fr), ''), name_en) AS name,
+	                 ` + nameExpr + ` AS name,
 	                 COALESCE(icon_url, '') AS icon_url,
 	                 COALESCE(tier_targets, '') AS tier_targets
 	          FROM commendation_definitions
@@ -477,7 +473,7 @@ func loadCommendationDefsFromMetadata(ctx context.Context, metadata *DB, ids []s
 		// Colonne tier_targets absente (DB pré-migration) → retry sans elle (le
 		// progrès dégradera proprement en anneau vide).
 		queryNoTiers := `SELECT commendation_id,
-		                        COALESCE(NULLIF(TRIM(name_fr), ''), name_en) AS name,
+		                        ` + nameExpr + ` AS name,
 		                        COALESCE(icon_url, '') AS icon_url
 		                 FROM commendation_definitions
 		                 WHERE commendation_id IN (` + in + `)`
@@ -533,10 +529,21 @@ func (r *HomeRepo) loadCitationMappingMeta(ctx context.Context, norms []string) 
 		return result
 	}
 	defer rows.Close()
+	enLocale := ctxkeys.Locale(ctx) == "en"
 	for rows.Next() {
-		var norm, display, imagePath, tierTargets, description string
-		if err := rows.Scan(&norm, &display, &imagePath, &tierTargets, &description); err != nil {
+		var norm, display, displayEN, imagePath, tierTargets, description string
+		if err := rows.Scan(&norm, &display, &displayEN, &imagePath, &tierTargets, &description); err != nil {
 			continue
+		}
+		// Locale-aware (GH2-B6) : sous UI EN, le nom anglais prime (fallback FR).
+		// La description n'a AUCUNE source EN (citation_mappings.description = FR
+		// seedé) → principe GH-5b « EN n'injecte jamais de FR » : masquée sous EN,
+		// le front retombe sur le nom (tooltip = name quand description absente).
+		if enLocale {
+			if displayEN != "" {
+				display = displayEN
+			}
+			description = ""
 		}
 		result[norm] = citationMeta{display: display, imagePath: imagePath, tierTargets: tierTargets, description: description}
 	}

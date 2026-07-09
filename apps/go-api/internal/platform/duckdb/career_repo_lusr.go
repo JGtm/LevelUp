@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -190,9 +191,10 @@ func computeLUSRRatingDeltas(results []domain.LUSRCheckpointDTO) {
 	}
 }
 
-// enrichLUSRPlaylistNames résout les noms de playlists FR via asset_translations.
-// Même pattern que applyMatchHistoryFRTranslations : lookup par playlist_id (UUID).
-// Best-effort : silencieux si Metadata absent ou résolution échoue.
+// enrichLUSRPlaylistNames résout les noms de playlists via asset_translations
+// selon la locale de requête (GH2-B3, même famille que enrichCSRPlaylistNames :
+// la cascade PreferredLangsForLocale retombe sur le FR si l'EN manque).
+// Lookup par playlist_id (UUID). Best-effort : silencieux si Metadata absent.
 func (r *CareerRepo) enrichLUSRPlaylistNames(ctx context.Context, cps []domain.LUSRCheckpointDTO) {
 	if r.pdb.Metadata == nil || len(cps) == 0 {
 		return
@@ -214,7 +216,7 @@ func (r *CareerRepo) enrichLUSRPlaylistNames(ctx context.Context, cps []domain.L
 		return
 	}
 	metaRepo := NewMetadataRepoFromDB(r.pdb.Metadata)
-	names, err := metaRepo.ResolveAssetNamesBulk(ctx, "playlist", ids, PreferredLangsForLocale("fr"))
+	names, err := metaRepo.ResolveAssetNamesBulk(ctx, "playlist", ids, PreferredLangsForLocale(ctxkeys.Locale(ctx)))
 	if err != nil || len(names) == 0 {
 		return
 	}
