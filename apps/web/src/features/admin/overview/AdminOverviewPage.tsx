@@ -17,6 +17,7 @@ import { adminAbsoluteTime, adminRelativeTime, formatDurationMs, type AdminLocal
 import { AdminQuickActions } from './AdminQuickActions'
 import { DataHealthPanel } from './DataHealthPanel'
 import { DiagnosticPanel } from './DiagnosticPanel'
+import { FreshnessPanel } from './FreshnessPanel'
 import { WeaponCoveragePanel } from './WeaponCoveragePanel'
 
 export function AdminOverviewPage() {
@@ -50,6 +51,8 @@ export function AdminOverviewPage() {
           }}
         />
       </section>
+
+      <FreshnessPanel />
 
       <section className="space-y-3">
         <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
@@ -157,6 +160,11 @@ function OverviewKpiGrid({
         accent={
           !dhRan ? undefined : (data.data_health?.warnings_total ?? 0) > 0 ? 'warning' : 'success'
         }
+      />
+      <OverviewKpi
+        label={tA('admin.overview.kpi_freshness')}
+        value={String(data.freshness_critical)}
+        accent={data.freshness_critical > 0 ? 'destructive' : 'success'}
       />
       <OverviewKpi
         label={tA('admin.overview.kpi_uptime')}

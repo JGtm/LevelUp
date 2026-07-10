@@ -59,6 +59,10 @@ type DetectionsRunner func(ctx context.Context, status, level, module, title str
 // vie). Implémenté par ServiceRegistry.SetDetectionStatus.
 type DetectionStatusRunner func(ctx context.Context, fingerprint, status, note string) error
 
+// FreshnessRunner calcule la fraîcheur des données par joueur suivi
+// (implémenté par ServiceRegistry.FreshnessReport — lectures shared par joueur).
+type FreshnessRunner func(ctx context.Context, titleFilter string) (domain.AdminFreshnessResponse, error)
+
 // AdminMonitoringHandler sert les endpoints lecture du dashboard monitoring.
 type AdminMonitoringHandler struct {
 	overview     MonitoringOverviewRunner
@@ -67,13 +71,14 @@ type AdminMonitoringHandler struct {
 	errors       ErrorStatsRunner
 	detections   DetectionsRunner             // nil → section détections vide
 	setDetection DetectionStatusRunner        // nil → PATCH 503
+	freshness    FreshnessRunner              // nil → réponse vide
 	sched        *scheduler.AutoSyncScheduler // nil → scheduler indisponible
 	jobs         *jobs.Store                  // nil → liste jobs vide
 }
 
 // NewAdminMonitoringHandler construit le handler. sched et jobs peuvent être
-// nil (sections dégradées, jamais de panic). detections/setDetection peuvent
-// être nil si le store monitoring n'est pas câblé (dégradation propre).
+// nil (sections dégradées, jamais de panic). detections/setDetection/freshness
+// peuvent être nil (dégradation propre).
 func NewAdminMonitoringHandler(
 	overview MonitoringOverviewRunner,
 	convergence ConvergenceReportRunner,
@@ -81,12 +86,14 @@ func NewAdminMonitoringHandler(
 	errors ErrorStatsRunner,
 	detections DetectionsRunner,
 	setDetection DetectionStatusRunner,
+	freshness FreshnessRunner,
 	sched *scheduler.AutoSyncScheduler,
 	jobStore *jobs.Store,
 ) *AdminMonitoringHandler {
 	return &AdminMonitoringHandler{
 		overview: overview, convergence: convergence, perf: perf, errors: errors,
-		detections: detections, setDetection: setDetection, sched: sched, jobs: jobStore,
+		detections: detections, setDetection: setDetection, freshness: freshness,
+		sched: sched, jobs: jobStore,
 	}
 }
 
@@ -102,6 +109,7 @@ func (h *AdminMonitoringHandler) Mount(r chi.Router) {
 	huma.Get(api, "/monitoring/errors", h.handleGetErrors)
 	huma.Get(api, "/monitoring/detections", h.handleGetDetections)
 	huma.Patch(api, "/monitoring/detections/{fingerprint}", h.handlePatchDetection)
+	huma.Get(api, "/monitoring/freshness", h.handleGetFreshness)
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -181,6 +189,8 @@ type AdminDetectionPatchResponse struct {
 	OK          bool   `json:"ok"`
 }
 type detectionPatchOutput struct{ Body AdminDetectionPatchResponse }
+
+type adminFreshnessOutput struct{ Body domain.AdminFreshnessResponse }
 
 // titleOrDefaultSlug lit ?title= avec fallback sur le titre par défaut.
 func titleOrDefaultSlug(title string) string {
@@ -327,4 +337,24 @@ func (h *AdminMonitoringHandler) handlePatchDetection(ctx context.Context, in *d
 	return &detectionPatchOutput{Body: AdminDetectionPatchResponse{
 		Fingerprint: in.Fingerprint, Status: in.Body.Status, OK: true,
 	}}, nil
+}
+
+// handleGetFreshness retourne la fraîcheur des données par joueur suivi.
+// GET /admin/monitoring/freshness?title= (vide = tous les titres actifs).
+func (h *AdminMonitoringHandler) handleGetFreshness(ctx context.Context, in *titleInput) (*adminFreshnessOutput, error) {
+	if h.freshness == nil {
+		return &adminFreshnessOutput{Body: domain.AdminFreshnessResponse{
+			GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+			Titles:      []domain.TitleFreshnessReport{},
+		}}, nil
+	}
+	// PAS de fallback titre par défaut : vide = tous les titres actifs (le
+	// panneau État affiche halo_infinite ET halo_5 côte à côte).
+	resp, err := h.freshness(ctx, in.Title)
+	if err != nil {
+		slog.ErrorContext(ctx, "admin_monitoring: freshness failed", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_freshness_error",
+			"Impossible de calculer la fraîcheur des données.")
+	}
+	return &adminFreshnessOutput{Body: resp}, nil
 }

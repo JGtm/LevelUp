@@ -37,7 +37,7 @@ func MountAdminMonitoringRoutes(
 
 	monitoringH := handlers.NewAdminMonitoringHandler(
 		reg.MonitoringOverview, reg.ConvergenceReport, reg.PerfStats, reg.ErrorStats,
-		reg.DetectionsReport, reg.SetDetectionStatus, sched, jobStore)
+		reg.DetectionsReport, reg.SetDetectionStatus, reg.FreshnessReport, sched, jobStore)
 	// 6 GET /monitoring/* migrés vers Huma (Phase 3b), NoStore.
 	monitoringH.Mount(r.With(middleware.NoStore))
 

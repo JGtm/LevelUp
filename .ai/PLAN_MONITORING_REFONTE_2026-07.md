@@ -234,21 +234,42 @@ garde-rail). GATE PASSÉ.
 
 ### A4 — Fraîcheur des données (effort : moyen) — atterrit dans « État »
 
-- [ ] A4.1 Service `ops.ComputeDataFreshness(title)` : par joueur suivi — dernier match
-      persisté (`match_registry` via timestamp canonique COALESCE), dernier cycle sync
-      OK, âge, statut ok/warn/critical (seuils DC-3). Multi-titre : itère les slugs
-      actifs du registry (capabilities, jamais `slug ==`) — couvre le trou de
-      visibilité H5 (scheduler V2 = halo_infinite only, H5 passe par liveRunner).
-- [ ] A4.2 Âge du dernier backup : lecture marker/dernier succès (source : `cron_runs`
-      A1 pour backup-once ; à défaut mtime du dernier log de succès — décision au
-      moment de l'implémentation, consigner).
-- [ ] A4.3 Endpoint `GET /admin/monitoring/freshness?title=` + panneau onglet État
-      (KPI accent + drill-down liste joueurs) ; badge si critical.
-- [ ] A4.4 Tests : analysis/ops purs sur dataset hétérogène (joueur à jour, périmé,
-      jamais synchronisé, titre sans capability).
+- [x] A4.1 Service PURE `ops.EvaluatePlayerFreshness` + seuils
+      `FreshnessThresholdsFromSettings` (app_settings.json :
+      freshness_warn_match_hours/warn_sync_hours/critical_match_days — défauts DC-3
+      48h/6h/7j, jamais en dur). Orchestrateur `reg.FreshnessReport` : itère
+      `titlePkg.DefaultRegistry().NonArchived()` actifs non-internes (registre
+      config-driven du boot — PAS NewRegistry() qui ne connaît que le défaut),
+      capability `CapMatchmaking` requise (jamais `slug ==`). Dernier match =
+      `MAX(SQLStartTimeCanonical)` sur match_registry⋈match_participants (règle n°8) ;
+      dernier sync OK = snapshot scheduler (halo_infinite ; H5 live-only → inconnu,
+      l'âge du match fait foi — trou de visibilité couvert). Best-effort par joueur.
+      Sémantique DC-3 : sync récent (≤6h) → ok même si le joueur ne joue pas ; sinon
+      match >7j (ou aucun) → critical, >48h → warn.
+- [x] A4.2 Âge du dernier backup : DÉCISION = `duckdbbackup.Scheduler.Status()`
+      (manifest restic, LastBackupAt) exposé dans la réponse freshness — PAS
+      cron_runs (câblé seulement en A6) ni mtime de log (fragile).
+      `reg.WithBackupScheduler` câblé dans server_apiv1.go (même scheduler que
+      /settings/backup/status).
+- [x] A4.3 Endpoint `GET /admin/monitoring/freshness?title=` (vide = tous titres
+      actifs) + `FreshnessPanel` sur État (sections par titre, table joueurs
+      dernier match / dernier sync / statut, âge backup) + KPI « Fraîcheur
+      critique » (accent destructive/success) ; badge nav État via gauge expvar
+      `monitoring_freshness_critical` (posée au calcul) → `overview.freshness_critical`
+      → tabBadges `/admin`. openapi.yaml : path + 4 schémas ; types front régénérés.
+- [x] A4.4 Tests : `data_freshness_test.go` — dataset hétérogène (à jour, inactif
+      +moteur vivant, périmé 3j, mort 10j, jamais synchronisé, sync inconnu
+      live-only, DB en erreur) + seuils settings ; handler httptest (filtre titre
+      sans fallback défaut, runner nil) ; badge test. Le cas « titre sans
+      capability » est traité par l'orchestrateur (Note, dégradation gracieuse).
 
 **Gate A4** : tests Go verts ; l'onglet État local affiche la fraîcheur pour
 halo_infinite ET halo_5.
+RÉSULTAT 2026-07-10 : `go build` 0 ; tests ops/handlers/wire verts ; contract+drift
+verts ; `tsc -b` 0 ; `vitest run` 247 fichiers / 2109 tests OK ; lint new-from-rev 0.
+halo_5 couvert par DefaultRegistry (title.toml status=active + capability matchmaking
+vérifiés sur pièces). Constat visuel État (les 2 titres affichés) = revue utilisateur.
+GATE PASSÉ.
 
 ### A5 — Ressources machine & process (effort : rapide/moyen) — « État » + détail « Système »
 

@@ -68,6 +68,72 @@ en = "Titles"
 fr = "Logs bruts"
 en = "Raw logs"
 
+# ─── Fraîcheur des données (A4, onglet État) ────────────────────────────────
+
+[admin.freshness.section]
+fr = "Fraîcheur des données"
+en = "Data freshness"
+
+[admin.freshness.unavailable]
+fr = "Fraîcheur indisponible."
+en = "Freshness unavailable."
+
+[admin.freshness.col_player]
+fr = "Joueur"
+en = "Player"
+
+[admin.freshness.col_last_match]
+fr = "Dernier match"
+en = "Last match"
+
+[admin.freshness.col_last_sync]
+fr = "Dernier sync"
+en = "Last sync"
+
+[admin.freshness.col_status]
+fr = "Statut"
+en = "Status"
+
+[admin.freshness.status_ok]
+fr = "À jour"
+en = "Fresh"
+
+[admin.freshness.status_warn]
+fr = "Périmé"
+en = "Stale"
+
+[admin.freshness.status_critical]
+fr = "Critique"
+en = "Critical"
+
+[admin.freshness.status_unknown]
+fr = "Inconnu"
+en = "Unknown"
+
+[admin.freshness.never]
+fr = "Jamais"
+en = "Never"
+
+[admin.freshness.sync_unknown]
+fr = "Inconnu"
+en = "Unknown"
+
+[admin.freshness.backup_label]
+fr = "Dernier backup :"
+en = "Last backup:"
+
+[admin.freshness.backup_never]
+fr = "jamais"
+en = "never"
+
+[admin.freshness.backup_disabled]
+fr = "backup désactivé"
+en = "backup disabled"
+
+[admin.overview.kpi_freshness]
+fr = "Fraîcheur critique"
+en = "Critical freshness"
+
 # ─── Section Titres (PMT-14 volet A — gestion multi-titres) ─────────────────
 [admin.titles.heading]
 fr = "Gestion des titres"

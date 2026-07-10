@@ -405,6 +405,9 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		WithFriendsOrchestrator(friendsOrchestrator).
 		WithNotificationsEmitter(reg.NotificationsEmitter).
 		WithBackupScheduler(backupScheduler)
+	// Fraîcheur A4.2 : le runner monitoring lit l'âge du dernier backup depuis
+	// le même scheduler (manifest duckdbbackup) — nil toléré (section absente).
+	reg.WithBackupScheduler(backupScheduler)
 	// S1 (sécurité, lot S) : /settings mute la config (PATCH + POST media/sessions/backup)
 	// → RequireAuth + RequireAdmin. No-op en démo/single-user (cfg.DemoMode court-circuite
 	// le middleware), donc le mode public/démo reste inchangé.

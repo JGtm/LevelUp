@@ -68,6 +68,60 @@ type AdminDetectionsResponse struct {
 	OpenCount int `json:"open_count"`
 }
 
+// Statuts de fraîcheur des données d'un joueur (A4, seuils DC-3).
+const (
+	FreshnessStatusOK       = "ok"
+	FreshnessStatusWarn     = "warn"
+	FreshnessStatusCritical = "critical"
+	FreshnessStatusUnknown  = "unknown"
+)
+
+// PlayerFreshness — fraîcheur des données d'un joueur suivi.
+type PlayerFreshness struct {
+	Gamertag string `json:"gamertag"`
+	XUID     string `json:"xuid"`
+	// LastMatchAt : dernier match persisté (RFC3339, vide si aucun).
+	LastMatchAt     string `json:"last_match_at,omitempty"`
+	MatchAgeSeconds int64  `json:"match_age_seconds,omitempty"`
+	// LastSyncOKAt : dernier cycle sync réussi (RFC3339, vide si inconnu —
+	// titre hors scheduler V2 ou jamais couru depuis le boot).
+	LastSyncOKAt   string `json:"last_sync_ok_at,omitempty"`
+	SyncAgeSeconds int64  `json:"sync_age_seconds,omitempty"`
+	// Status : ok / warn / critical / unknown (DB inaccessible).
+	Status     string `json:"status"`
+	Reason     string `json:"reason,omitempty"`
+	CheckError string `json:"check_error,omitempty"`
+}
+
+// TitleFreshnessReport — fraîcheur par titre actif.
+type TitleFreshnessReport struct {
+	TitleSlug string            `json:"title_slug"`
+	Players   []PlayerFreshness `json:"players"`
+	// Note non vide = titre sans la capability requise / sans joueur suivi
+	// (dégradation gracieuse, jamais d'erreur globale).
+	Note          string `json:"note,omitempty"`
+	WarnCount     int    `json:"warn_count"`
+	CriticalCount int    `json:"critical_count"`
+}
+
+// FreshnessBackupInfo — âge du dernier backup réussi (A4.2 ; source :
+// manifest du scheduler duckdbbackup — décision consignée au plan).
+type FreshnessBackupInfo struct {
+	Enabled      bool   `json:"enabled"`
+	LastBackupAt string `json:"last_backup_at,omitempty"` // RFC3339, vide si jamais
+	AgeSeconds   int64  `json:"age_seconds,omitempty"`
+}
+
+// AdminFreshnessResponse — réponse de GET /admin/monitoring/freshness.
+type AdminFreshnessResponse struct {
+	GeneratedAt string                 `json:"generated_at"`
+	Titles      []TitleFreshnessReport `json:"titles"`
+	// Backup : nil si scheduler backup non câblé.
+	Backup *FreshnessBackupInfo `json:"backup,omitempty"`
+	// CriticalTotal : joueurs critical tous titres (source du badge État).
+	CriticalTotal int `json:"critical_total"`
+}
+
 // MonitoringServerInfo : identité du process serveur (overview).
 type MonitoringServerInfo struct {
 	UptimeS   int64  `json:"uptime_s"`
@@ -106,6 +160,11 @@ type AdminMonitoringOverview struct {
 	// par le flush du store monitoring — source du badge nav « Détections »).
 	// Zéro I/O DuckDB ici : simple lecture d'un compteur expvar.
 	OpenDetections int64 `json:"open_detections"`
+
+	// FreshnessCritical : joueurs en fraîcheur critical tous titres (gauge posé
+	// par le calcul de GET /admin/monitoring/freshness — source du badge « État »).
+	// Zéro I/O DuckDB ici. 0 tant que la fraîcheur n'a jamais été calculée.
+	FreshnessCritical int64 `json:"freshness_critical"`
 }
 
 // MonitoringSnapshotSummary expose l'état du producteur de snapshot immuable (gauges +

@@ -56,5 +56,10 @@ export function computeTabBadges(
     out['/admin/detections'] = { count: overview.open_detections, token: 'warning' }
   }
 
+  // État : fraîcheur critical (gauge posée par le calcul freshness — A4.3).
+  if (overview.freshness_critical > 0) {
+    out['/admin'] = { count: overview.freshness_critical, token: 'destructive' }
+  }
+
   return out
 }
