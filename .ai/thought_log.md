@@ -1,3 +1,23 @@
+## [2026-07-10] LOT GH3 — Traîne re-passe 3 (finalisé par le superviseur après arrêt de l'agent)
+
+**Statut** : Complété. L'agent GH3 a été stoppé à la toute fin (gates Go passés, commit
+non fait) ; le superviseur a re-vérifié le diff sur pièces, repassé les gates (go
+build/vet/tests handlers+service+duckdb = 0 ; front purge cache : tsc 0, lint 0 err,
+vitest 245/2091/0 fail) et commité le reliquat par chemins explicites.
+
+**Décision principale** : GH3-2 — la valeur EN du bouton était l'orthographe britannique
+« Analyse » → normalisée « Analyze » (cohérence en-US). GH3-3 traité dans le composant
+PARTAGÉ combat-yield (une correction couvre Home/tuiles/KpiGrid/Synthesis). GH3-1
+saisons résolues par locale côté catalogue ; GH3-4 réutilise la résolution GH2-B6.
+
+**Résultats** : 12 fichiers (+312/−47), tests EN/FR ajoutés sur les 3 chemins backend.
+Coordination multi-agents : GH4 a livré en parallèle sur le même arbre sans collision
+(staging par chemins explicites des deux côtés).
+
+**Prochaine étape** : CI du commit GH3, relance serveur, re-passe 4 éclair utilisateur.
+
+---
+
 ## [2026-07-10] LOT GH4 — Descriptions EN des citations (seed description_en + câblage tooltip)
 
 **Statut** : Complété (GH4-1..5 ; gates locaux verts ; seed dev exécuté ; commit + push).

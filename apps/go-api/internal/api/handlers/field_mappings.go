@@ -53,8 +53,10 @@ type SeasonsCatalogResolver interface {
 // mais redéfini ici pour éviter l'import circulaire (les types domain/canonical
 // ne suffisent pas car on a besoin du Label localisé).
 type SeasonCatalogEntry struct {
-	ID           string
-	Label        string
+	ID    string
+	Label string
+	// LabelEN = libellé EN (GH3-1). Vide → Label sert dans les deux locales.
+	LabelEN      string
 	Start        time.Time
 	End          *time.Time
 	DisplayOrder int
@@ -290,20 +292,27 @@ func (h *FieldMappingsHandler) buildAssetsDTO(ctx context.Context, slug, locale 
 			if out == nil {
 				out = make(map[string]map[string]assetMappingDTO, 1)
 			}
-			out["season"] = projectCatalogToBucket(catalog)
+			out["season"] = projectCatalogToBucket(catalog, locale)
 		}
 	}
 
 	return out
 }
 
-// projectCatalogToBucket projette le catalog unifié saisons en bucket DTO.
-func projectCatalogToBucket(catalog []SeasonCatalogEntry) map[string]assetMappingDTO {
+// projectCatalogToBucket projette le catalog unifié saisons en bucket DTO,
+// résolu dans la locale de requête (GH3-1). Sous EN, le libellé EN prime
+// (LabelEN) ; sinon le libellé FR/canonique (Label). Les saisons DB-only sans
+// traduction portent le même Name dans les deux locales (LabelEN == Label).
+func projectCatalogToBucket(catalog []SeasonCatalogEntry, locale string) map[string]assetMappingDTO {
 	bucket := make(map[string]assetMappingDTO, len(catalog))
 	for _, e := range catalog {
 		start := e.Start
+		label := e.Label
+		if locale == mappings.LocaleEN && e.LabelEN != "" {
+			label = e.LabelEN
+		}
 		bucket[e.ID] = assetMappingDTO{
-			Label:        e.Label,
+			Label:        label,
 			DisplayOrder: e.DisplayOrder,
 			StartDate:    &start,
 			EndDate:      e.End,

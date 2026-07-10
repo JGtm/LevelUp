@@ -387,3 +387,53 @@ func TestFieldMappingsHandler_SeasonsCatalogEmpty_FallsBackToTOML(t *testing.T) 
 		t.Errorf("catalog vide → TOML conservé attendu, got %v", body.Assets["season"])
 	}
 }
+
+// TestFieldMappingsHandler_SeasonsCatalog_LocaleAware prouve GH3-1 : la liste
+// des saisons de la SaisonPill suit la locale de requête. season2 a des libellés
+// distincts (FR "Loups solitaires" / EN "Lone Wolves") ; le bucket season doit
+// servir le bon selon ?locale=. Une saison DB-only sans traduction (LabelEN vide)
+// garde son Name brut dans les deux locales.
+func TestFieldMappingsHandler_SeasonsCatalog_LocaleAware(t *testing.T) {
+	t.Parallel()
+	start := time.Date(2022, 5, 3, 0, 0, 0, 0, time.UTC)
+	dbOnlyStart := time.Date(2026, 4, 15, 0, 0, 0, 0, time.UTC)
+	catalog := &fakeSeasonsCatalog{
+		entries: []SeasonCatalogEntry{
+			{ID: "season2", Label: "Loups solitaires", LabelEN: "Lone Wolves", Start: start, DisplayOrder: 20},
+			// DB-only : pas de traduction → même Name FR et EN.
+			{ID: "season14", Label: "Skyfall", LabelEN: "Skyfall", Start: dbOnlyStart, DisplayOrder: 70},
+		},
+	}
+
+	load := func(locale string) map[string]assetMappingDTO {
+		t.Helper()
+		stub := &stubRegistry{set: mustLoad(t), assets: mustLoadAssets(t)}
+		h := newHandler(stub).WithSeasonsCatalog(catalog)
+		r := chi.NewRouter()
+		r.Route("/api/v1", func(sub chi.Router) { h.Mount(sub) })
+		req := httptest.NewRequest("GET", "/api/v1/titles/test_title/field-mappings?locale="+locale, nil)
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("locale=%s status = %d, body=%s", locale, w.Code, w.Body.String())
+		}
+		var body fieldMappingsResponse
+		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+			t.Fatalf("locale=%s unmarshal: %v", locale, err)
+		}
+		return body.Assets["season"]
+	}
+
+	fr := load("fr")
+	if fr["season2"].Label != "Loups solitaires" {
+		t.Errorf("FR season2 label = %q, want Loups solitaires", fr["season2"].Label)
+	}
+	en := load("en")
+	if en["season2"].Label != "Lone Wolves" {
+		t.Errorf("EN season2 label = %q, want Lone Wolves (jamais le FR sous EN)", en["season2"].Label)
+	}
+	// DB-only : identique dans les deux locales.
+	if fr["season14"].Label != "Skyfall" || en["season14"].Label != "Skyfall" {
+		t.Errorf("season14 DB-only label FR=%q EN=%q, want Skyfall/Skyfall", fr["season14"].Label, en["season14"].Label)
+	}
+}
