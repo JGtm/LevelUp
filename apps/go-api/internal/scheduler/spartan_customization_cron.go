@@ -185,6 +185,11 @@ func (c *SpartanCustomizationCron) RunOnce(ctx context.Context) {
 	if c == nil || c.cfg == nil || len(c.refreshers) == 0 {
 		return
 	}
+	// Statut unifie des crons (A6/DC-5) : liveness du cycle.
+	start := time.Now()
+	defer func() {
+		observability.ReportCronRun("spartan_customization", start, nil, time.Since(start).Milliseconds())
+	}()
 	reg := c.registry
 	if reg == nil {
 		reg = titlePkg.DefaultRegistry()

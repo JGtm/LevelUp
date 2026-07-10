@@ -122,6 +122,45 @@ type AdminFreshnessResponse struct {
 	CriticalTotal int `json:"critical_total"`
 }
 
+// CronFailuresCriticalThreshold : échecs consécutifs à partir desquels une
+// ligne cron passe critical (A6.3).
+const CronFailuresCriticalThreshold = 3
+
+// CronStatusEntry — statut d'un cron (A6, DC-5). Fusion registre mémoire
+// (depuis le boot) + dernier run persisté (cron_runs — survit au restart).
+type CronStatusEntry struct {
+	Name          string `json:"name"`
+	LastRunAt     string `json:"last_run_at,omitempty"`     // RFC3339, vide si jamais vu
+	LastSuccessAt string `json:"last_success_at,omitempty"` // RFC3339
+	LastError     string `json:"last_error,omitempty"`
+	// ConsecutiveFailures : depuis le boot (le registre mémoire fait foi).
+	ConsecutiveFailures int   `json:"consecutive_failures"`
+	Runs                int64 `json:"runs"`
+	LastDurationMs      int64 `json:"last_duration_ms,omitempty"`
+	// Status : ok / warn (dernier run en échec) / critical (>= seuil consécutif)
+	// / unknown (jamais vu, ni en mémoire ni persisté).
+	Status string `json:"status"`
+	// SinceBoot : false = donnée réhydratée depuis cron_runs (pas encore couru
+	// depuis ce boot).
+	SinceBoot bool `json:"since_boot"`
+}
+
+// FeatureHeartbeat — liveness d'une feature (A6.2, liste fermée DC-5).
+type FeatureHeartbeat struct {
+	Feature    string `json:"feature"`
+	LastSeenAt string `json:"last_seen_at,omitempty"` // RFC3339, vide si jamais vu
+	AgeSeconds int64  `json:"age_seconds,omitempty"`
+	// Status : ok / never (jamais vu depuis le boot → accent destructive).
+	Status string `json:"status"`
+}
+
+// AdminCronsResponse — réponse de GET /admin/monitoring/crons (A6.3).
+type AdminCronsResponse struct {
+	GeneratedAt string             `json:"generated_at"`
+	Crons       []CronStatusEntry  `json:"crons"`
+	Features    []FeatureHeartbeat `json:"features"`
+}
+
 // ResourceRuntime — état runtime Go du process (A5, DC-4).
 type ResourceRuntime struct {
 	Goroutines     int    `json:"goroutines"`

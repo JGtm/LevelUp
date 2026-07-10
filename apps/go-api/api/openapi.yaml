@@ -2235,6 +2235,18 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminResourcesResponse" }
 
+  /admin/monitoring/crons:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringCrons
+      summary: "Dashboard monitoring — statut unifié des crons (dernier run/succès, échecs consécutifs, persistance cron_runs) + heartbeats de features (liste fermée DC-5) (auth admin requis)"
+      responses:
+        "200":
+          description: "Statut des crons + liveness des features"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCronsResponse" }
+
   /admin/monitoring/detections/{fingerprint}:
     patch:
       tags: [admin]
@@ -7454,6 +7466,73 @@ components:
           - heap_sys_bytes
           - sys_bytes
           - num_gc
+      type: object
+    AdminCronsResponse:
+      additionalProperties: false
+      properties:
+          crons:
+              items:
+                  $ref: '#/components/schemas/CronStatusEntry'
+              nullable: true
+              type: array
+          features:
+              items:
+                  $ref: '#/components/schemas/FeatureHeartbeat'
+              nullable: true
+              type: array
+          generated_at:
+              type: string
+      required:
+          - generated_at
+          - crons
+          - features
+      type: object
+    CronStatusEntry:
+      additionalProperties: false
+      properties:
+          consecutive_failures:
+              format: int64
+              type: integer
+          last_duration_ms:
+              format: int64
+              type: integer
+          last_error:
+              type: string
+          last_run_at:
+              type: string
+          last_success_at:
+              type: string
+          name:
+              type: string
+          runs:
+              format: int64
+              type: integer
+          since_boot:
+              type: boolean
+          status:
+              type: string
+      required:
+          - name
+          - consecutive_failures
+          - runs
+          - status
+          - since_boot
+      type: object
+    FeatureHeartbeat:
+      additionalProperties: false
+      properties:
+          age_seconds:
+              format: int64
+              type: integer
+          feature:
+              type: string
+          last_seen_at:
+              type: string
+          status:
+              type: string
+      required:
+          - feature
+          - status
       type: object
     AdminInvariantsResponse:
       additionalProperties: false

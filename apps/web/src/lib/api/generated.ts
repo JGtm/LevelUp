@@ -1902,6 +1902,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/monitoring/crons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard monitoring — statut unifié des crons (dernier run/succès, échecs consécutifs, persistance cron_runs) + heartbeats de features (liste fermée DC-5) (auth admin requis) */
+        get: operations["getAdminMonitoringCrons"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/monitoring/detections/{fingerprint}": {
         parameters: {
             query?: never;
@@ -5013,6 +5030,32 @@ export interface components {
             num_gc: number;
             /** Format: int64 */
             sys_bytes: number;
+        };
+        AdminCronsResponse: {
+            crons: components["schemas"]["CronStatusEntry"][] | null;
+            features: components["schemas"]["FeatureHeartbeat"][] | null;
+            generated_at: string;
+        };
+        CronStatusEntry: {
+            /** Format: int64 */
+            consecutive_failures: number;
+            /** Format: int64 */
+            last_duration_ms?: number;
+            last_error?: string;
+            last_run_at?: string;
+            last_success_at?: string;
+            name: string;
+            /** Format: int64 */
+            runs: number;
+            since_boot: boolean;
+            status: string;
+        };
+        FeatureHeartbeat: {
+            /** Format: int64 */
+            age_seconds?: number;
+            feature: string;
+            last_seen_at?: string;
+            status: string;
         };
         AdminInvariantsResponse: {
             generated_at: string;
@@ -11453,6 +11496,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminResourcesResponse"];
+                };
+            };
+        };
+    };
+    getAdminMonitoringCrons: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Statut des crons + liveness des features */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCronsResponse"];
                 };
             };
         };

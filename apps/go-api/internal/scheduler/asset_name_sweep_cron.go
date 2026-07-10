@@ -7,6 +7,7 @@ import (
 
 	"levelup/go-api/internal/assetnames"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
 )
 
@@ -130,6 +131,12 @@ func (c *AssetNameSweepCron) RunOnce(ctx context.Context) {
 	if c == nil || c.run == nil {
 		return
 	}
+	// Statut unifie des crons (A6/DC-5) : liveness du cycle — les erreurs par
+	// titre restent best-effort internes (loguees).
+	start := time.Now()
+	defer func() {
+		observability.ReportCronRun("asset_name_sweep", start, nil, time.Since(start).Milliseconds())
+	}()
 	reg := c.registry
 	if reg == nil {
 		reg = titlePkg.DefaultRegistry()

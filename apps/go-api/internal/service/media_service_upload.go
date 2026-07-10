@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"levelup/go-api/internal/domain"
 	mediapkg "levelup/go-api/internal/media"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
 	"log/slog"
 	"os"
@@ -162,6 +163,7 @@ func (s *MediaService) launchHLSTranscoding(ctx context.Context, req domain.Uplo
 // runTranscodeJob exécute le transcoding en arrière-plan (context.Background :
 // survit à la requête HTTP), met à jour le job, et notifie la galerie au succès.
 func (s *MediaService) runTranscodeJob(p ops.HLSTranscodeParams, jobID string) {
+	observability.Heartbeat("media_pipeline") // A6/DC-5 : pipeline media vu vivant
 	ctx := context.Background()
 	log := slog.With("module", "media") // logs/media.log
 	step := "transcoding"

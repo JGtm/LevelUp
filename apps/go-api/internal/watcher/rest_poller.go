@@ -128,6 +128,7 @@ func (p *RESTPoller) Run(ctx context.Context) {
 	// 1er tick immédiat pour avoir un état dès le démarrage.
 	nextDelay := time.Duration(0)
 	for {
+		observability.Heartbeat("watcher_rta") // A6/DC-5 : tick du poller vu vivant
 		if nextDelay > 0 {
 			select {
 			case <-ctx.Done():

@@ -1055,6 +1055,14 @@ func main() {
 		if err := monStore.RecordCronRun(ctx, "server_boot", time.Now(), true, "", 0); err != nil {
 			slog.Warn("monitoring store: marqueur server_boot non écrit", "err", err)
 		}
+		// Statut unifié des crons (A6/DC-5) : chaque ReportCronRun est relayé
+		// vers cron_runs (persistance — l'historique survit au restart). Les
+		// crons tournent sur schedulerCtx, drainé AVANT duckdb.CloseAll.
+		observability.SetCronRunSink(func(name string, startedAt time.Time, ok bool, errStr string, durationMs int64) {
+			if err := monStore.RecordCronRun(context.Background(), name, startedAt, ok, errStr, durationMs); err != nil {
+				slog.Warn("monitoring store: cron run non persisté", "cron", name, "err", err)
+			}
+		})
 		schedulerWG.Add(1)
 		go func() {
 			defer schedulerWG.Done()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"levelup/go-api/internal/observability"
 	"log/slog"
 	"time"
 
@@ -116,6 +117,8 @@ func (s *Service) withWriterBestEffort(ctx context.Context, op string, fn func()
 // est silencieusement droppée (best-effort) — le sync engine et le boot ne
 // doivent jamais échouer à cause d'une notif qu'on n'a pas pu écrire.
 func (s *Service) Emit(ctx context.Context, in EmitInput) error {
+	// Heartbeat feature (A6/DC-5) : emission de notification vue vivante.
+	observability.Heartbeat("notifications_push")
 	if err := in.Validate(); err != nil {
 		return err
 	}

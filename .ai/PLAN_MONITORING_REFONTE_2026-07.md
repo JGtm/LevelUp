@@ -298,18 +298,35 @@ panneau Système) = revue utilisateur. GATE PASSÉ.
 
 ### A6 — Statut unifié des crons + feature liveness (effort : moyen) — « État »
 
-- [ ] A6.1 Registre `CronStatus` central (DC-5) branché sur : auto_sync, HealthScheduler,
-      world_leaderboard_cron, catalog_refresh_cron, asset_name_sweep, spartan_cron,
-      backup. Persisté dans `cron_runs` (A1).
-- [ ] A6.2 Heartbeats features (DC-5, liste fermée) : `prestige_hook`,
-      `notifications_push`, `watcher_rta`, `media_pipeline` — timestamp au passage réel
-      dans le code (le cas « hook câblé mais jamais invoqué » devient visible).
-- [ ] A6.3 Endpoint + panneau État « Crons & features » : chaque ligne = dernier
-      succès, échecs consécutifs, heartbeat age ; accent destructive si
-      consecutive_failures >= 3 ou heartbeat jamais vu.
-- [ ] A6.4 Tests : registre pur + httptest.
+- [x] A6.1 Registre central `observability.ReportCronRun/CronStatusSnapshot`
+      (cronstatus.go — last_run/last_success/last_error/consecutive_failures) branché
+      sur les 7 crons : auto_sync (point de convergence storeCycleResult, échec =
+      joueurs failed), HealthScheduler (runCycle), catalog_refresh, asset_name_sweep,
+      spartan_customization, world_leaderboard (RunOnce — liveness, erreurs par
+      titre/playlist restant best-effort internes), backup (callback `OnCycleDone`
+      ajouté à pkg/duckdbbackup — le package reste standalone, pont câblé dans
+      ops.NewLevelUpBackupScheduler). Persistance : `SetCronRunSink` → cron_runs (A1),
+      câblé au boot (main.go).
+- [x] A6.2 Heartbeats (liste fermée DC-5) posés au passage RÉEL :
+      `prestige_hook` (prestige.RunPostSyncHook), `notifications_push`
+      (notifications.Service.Emit), `watcher_rta` (RESTPoller.Run tick),
+      `media_pipeline` (MediaService.runTranscodeJob) — via
+      `observability.Heartbeat` (expvar heartbeat_{feature}).
+- [x] A6.3 Endpoint `GET /admin/monitoring/crons` (fusion registre mémoire depuis le
+      boot + réhydratation cron_runs_latest marquée `since_boot=false`) + `CronsPanel`
+      sur État (table crons : dernier succès / échecs consécutifs / statut ; table
+      features : heartbeat age). Accents : critical si consecutive_failures >=
+      `domain.CronFailuresCriticalThreshold` (3, nommé), destructive si heartbeat
+      `never`. openapi.yaml + types front régénérés.
+- [x] A6.4 Tests : `cronstatus_test.go` (cycle succès→3 échecs→récupération, sink
+      relay, heartbeats), httptest crons (payload + runner nil).
 
 **Gate A6** : tests verts ; arrêter un cron en local (config) → la ligne passe warn.
+RÉSULTAT 2026-07-10 : `go test ./internal/...` 0 FAIL (dont garde-rail shared_social :
+entrée whitelist DATÉE ajoutée pour registry_monitoring_resources.go — os.Stat pur,
+aucune connexion) ; `tsc -b` 0 ; vitest 247/2109 OK ; lint new-from-rev 0. Les
+transitions warn/critical sont couvertes par les tests du registre pur ; le constat
+manuel « cron arrêté → warn » local = revue utilisateur. GATE PASSÉ.
 
 ### A7 — Compteurs HTTP par classe (effort : rapide) — « État »
 

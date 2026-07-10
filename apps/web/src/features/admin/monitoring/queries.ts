@@ -13,6 +13,7 @@ import { queryKeys } from '@/lib/query/keys'
 import type {
   AdminConvergenceReport,
   AdminDetectionsResponse,
+  AdminCronsResponse,
   AdminFreshnessResponse,
   AdminResourcesResponse,
   AdminJobsResponse,
@@ -159,6 +160,20 @@ export function useMonitoringResources() {
   return useQuery({
     queryKey: queryKeys.adminMonitoringResources,
     queryFn: () => api.get<AdminResourcesResponse>('/admin/monitoring/resources'),
+    refetchInterval: 30_000,
+    staleTime: 25_000,
+    retry: false,
+  })
+}
+
+/**
+ * Statut unifié des crons + heartbeats de features (A6, DC-5). Registre
+ * mémoire + réhydratation cron_runs côté Go — polling aligné sur l'overview.
+ */
+export function useMonitoringCrons() {
+  return useQuery({
+    queryKey: queryKeys.adminMonitoringCrons,
+    queryFn: () => api.get<AdminCronsResponse>('/admin/monitoring/crons'),
     refetchInterval: 30_000,
     staleTime: 25_000,
     retry: false,

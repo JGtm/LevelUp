@@ -296,6 +296,43 @@ func (s *MonitoringStore) RecordCronRun(ctx context.Context, name string, starte
 	return nil
 }
 
+// PersistedCronRun est le dernier run persisté d'un cron (vue cron_runs_latest).
+type PersistedCronRun struct {
+	Name       string
+	StartedAt  time.Time
+	OK         bool
+	Err        string
+	DurationMs int64
+}
+
+// LatestCronRuns lit le dernier run persisté de chaque cron (réhydratation
+// après restart — le registre mémoire fait foi pour le boot courant, A6).
+func (s *MonitoringStore) LatestCronRuns(ctx context.Context) ([]PersistedCronRun, error) {
+	rows, err := s.db.Query(ctx,
+		`SELECT cron_name, started_at, ok, err, duration_ms FROM cron_runs_latest ORDER BY cron_name`)
+	if err != nil {
+		return nil, fmt.Errorf("monitoring store: latest cron runs: %w", err)
+	}
+	defer rows.Close()
+	var out []PersistedCronRun
+	for rows.Next() {
+		var r PersistedCronRun
+		var startedAt sql.NullTime
+		var errStr sql.NullString
+		var durationMs sql.NullInt64
+		if err := rows.Scan(&r.Name, &startedAt, &r.OK, &errStr, &durationMs); err != nil {
+			return nil, fmt.Errorf("monitoring store: scan cron run: %w", err)
+		}
+		if startedAt.Valid {
+			r.StartedAt = startedAt.Time
+		}
+		r.Err = errStr.String
+		r.DurationMs = durationMs.Int64
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
 // CronRunCount compte les exécutions enregistrées d'un cron (ex. marqueur
 // server_boot → compteur de démarrages persistant, A5.1).
 func (s *MonitoringStore) CronRunCount(ctx context.Context, name string) (int64, error) {
