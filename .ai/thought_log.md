@@ -1,3 +1,25 @@
+## [2026-07-10] PLAN MONITORING REFONTE — A5 ressources machine & process (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A5 CLOSE (gates verts, vérif visuelle déléguée à la revue user).
+
+**Décision technique principale** : `GET /admin/monitoring/resources` — runtime Go
+(MemStats/goroutines), tailles DB+WAL via os.Stat sur chemins PathResolver (par titre
+actif du DefaultRegistry + players agrégés + globales), disque libre via nouvelle façade
+`platform/diskfree` (build tags windows/unix, x/sys déjà présent — DC-4 zéro nouvelle
+dépendance), budgets/pools DuckDB (snapshots expvar J1/J8 enfin surfacés dans l'UI).
+Compteur de restarts = COUNT(server_boot) dans cron_runs (marqueur écrit au boot —
+persistant, plus simple et fiable que parser server.crash.log). Seuils disque NOMMÉS
+(DiskFreeWarnBytes 2 Go / DiskFreeCriticalBytes 500 Mo) + EvaluateDiskStatus pur testé
+aux bornes. UI : KPI verdict disque sur État (drill-down Système) + ResourcesSection
+détaillée sur Système (table bases + WAL + total, budgets dépliables).
+
+**Résultats** : build 0 ; tests ops/handlers verts ; contract+drift verts ; tsc 0 ;
+vitest admin 81 OK ; lint new-from-rev 0.
+
+**Conclusion / prochaine étape** : A6 (statut unifié des crons + feature liveness).
+
+---
+
 ## [2026-07-10] PLAN MONITORING REFONTE — A4 fraîcheur des données (Complété, branche feat/monitoring-refonte-2026-07)
 
 **Statut** : Phase A4 CLOSE (gates verts, constat visuel État délégué à la revue user).

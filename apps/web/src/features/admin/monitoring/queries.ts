@@ -14,6 +14,7 @@ import type {
   AdminConvergenceReport,
   AdminDetectionsResponse,
   AdminFreshnessResponse,
+  AdminResourcesResponse,
   AdminJobsResponse,
   AdminMonitoringOverview,
   AdminPerfStats,
@@ -145,6 +146,21 @@ export function useMonitoringFreshness() {
     queryKey: queryKeys.adminMonitoringFreshness,
     queryFn: () => api.get<AdminFreshnessResponse>('/admin/monitoring/freshness'),
     staleTime: 60_000,
+    retry: false,
+  })
+}
+
+/**
+ * Ressources machine & process (A5) : runtime Go, tailles DB + WAL, disque
+ * libre, budgets/pool DuckDB, restarts. os.Stat + expvar côté Go (pas de
+ * lecture DuckDB) — polling tranquille aligné sur l'overview.
+ */
+export function useMonitoringResources() {
+  return useQuery({
+    queryKey: queryKeys.adminMonitoringResources,
+    queryFn: () => api.get<AdminResourcesResponse>('/admin/monitoring/resources'),
+    refetchInterval: 30_000,
+    staleTime: 25_000,
     retry: false,
   })
 }

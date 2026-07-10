@@ -2250,6 +2250,12 @@ export type TitleFreshnessReport = components['schemas']['TitleFreshnessReport']
 /** Réponse GET /admin/monitoring/freshness. Miroir de domain.AdminFreshnessResponse. */
 export type AdminFreshnessResponse = components['schemas']['AdminFreshnessResponse']
 
+/** Taille d'une base DuckDB + WAL. Miroir de domain.ResourceDBFile. */
+export type ResourceDBFile = components['schemas']['ResourceDBFile']
+
+/** Réponse GET /admin/monitoring/resources. Miroir de domain.AdminResourcesResponse. */
+export type AdminResourcesResponse = components['schemas']['AdminResourcesResponse']
+
 // NB : les types Watcher (WatcherStatusResponse, WatcherPlayerStatus) existent
 // déjà plus haut dans ce fichier (section watcher historique) — le dashboard
 // monitoring les réutilise via features/settings/watcher-queries.ts.

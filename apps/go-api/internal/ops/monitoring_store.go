@@ -296,6 +296,18 @@ func (s *MonitoringStore) RecordCronRun(ctx context.Context, name string, starte
 	return nil
 }
 
+// CronRunCount compte les exécutions enregistrées d'un cron (ex. marqueur
+// server_boot → compteur de démarrages persistant, A5.1).
+func (s *MonitoringStore) CronRunCount(ctx context.Context, name string) (int64, error) {
+	var n int64
+	if err := s.db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM cron_runs WHERE cron_name = ?`, name,
+	).Scan(&n); err != nil {
+		return 0, fmt.Errorf("monitoring store: cron run count: %w", err)
+	}
+	return n, nil
+}
+
 // RecordDataHealthRun persiste le résultat sérialisé (JSON) du dernier audit
 // data-health, pour que l'overview survive au restart.
 func (s *MonitoringStore) RecordDataHealthRun(ctx context.Context, resultJSON string) error {

@@ -7,11 +7,13 @@
 import { DBContentionSection } from '../sections/DBContentionSection'
 import { PersistPhasesSection } from './PersistPhasesSection'
 import { AdminBackupSection } from './AdminBackupSection'
+import { ResourcesSection } from './ResourcesSection'
 import { AdminLogsPage } from '../logs/AdminLogsPage'
 
 export function AdminSystemPage() {
   return (
     <div className="space-y-8">
+      <ResourcesSection />
       <DBContentionSection />
       <PersistPhasesSection />
       <AdminBackupSection />

@@ -273,16 +273,28 @@ GATE PASSÉ.
 
 ### A5 — Ressources machine & process (effort : rapide/moyen) — « État » + détail « Système »
 
-- [ ] A5.1 `GET /admin/monitoring/resources` : RSS/heap/goroutines, tailles des DB
-      (shared, metadata, pve, social, players agrégés, monitoring) + WAL présents,
-      disque libre du volume data, `duckdb_budgets` + pool stats (relecture expvar
-      existants — enfin surfacés), uptime + compteur de restarts (marqueurs
-      server.crash.log → `cron_runs` ou table dédiée).
-- [ ] A5.2 Verdict compact sur État ; panneau détaillé sur Système.
-- [ ] A5.3 Seuils visuels : disque < 2 Go = warn, < 500 Mo = critical (VPS 2 Go RAM /
-      disque serré — pièges connus BuildKit/restic).
+- [x] A5.1 `GET /admin/monitoring/resources` : runtime Go (heap/sys/goroutines/GC via
+      `ops.CollectRuntimeStats`), tailles DB + WAL (`ops.DBFileSize` sur chemins
+      PathResolver : shared/metadata/pve/social par titre actif + players agrégés
+      `DirTotalSize` + globales aliases/monitoring), disque libre via façade
+      `platform/diskfree` (build tags windows/unix, x/sys déjà dans le graphe —
+      DC-4 zéro nouvelle dépendance), `duckdb.BudgetsSnapshot()` +
+      `PoolStatsSnapshot()` enfin surfacés, uptime + restarts = COUNT(marqueur
+      `server_boot`) dans `cron_runs` (écrit au boot par main.go — DÉCISION :
+      compteur persistant via cron_runs A1, pas de table dédiée ni parsing
+      server.crash.log).
+- [x] A5.2 Verdict compact sur État (KPI « Disque libre » accent par statut,
+      drill-down Système) ; panneau détaillé `ResourcesSection` sur Système
+      (résumé runtime/disque/uptime/restarts + table des bases + WAL + total +
+      budgets/pools en détail dépliable).
+- [x] A5.3 Seuils NOMMÉS `ops.DiskFreeWarnBytes` (2 Go) / `DiskFreeCriticalBytes`
+      (500 Mo) — `EvaluateDiskStatus` pur testé ; aucun littéral chez les callers.
 
 **Gate A5** : tests + vérif visuelle locale ; aucune valeur en dur non nommée.
+RÉSULTAT 2026-07-10 : build 0 ; tests ops (disk status bornes exactes, DBFileSize+WAL,
+DirTotalSize) + handlers verts ; contract+drift verts (path + 4 schémas) ; `tsc -b` 0 ;
+vitest admin 81 tests OK ; lint new-from-rev 0. Vérif visuelle locale (KPI État +
+panneau Système) = revue utilisateur. GATE PASSÉ.
 
 ### A6 — Statut unifié des crons + feature liveness (effort : moyen) — « État »
 

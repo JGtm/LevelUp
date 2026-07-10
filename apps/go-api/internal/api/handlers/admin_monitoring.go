@@ -63,6 +63,10 @@ type DetectionStatusRunner func(ctx context.Context, fingerprint, status, note s
 // (implémenté par ServiceRegistry.FreshnessReport — lectures shared par joueur).
 type FreshnessRunner func(ctx context.Context, titleFilter string) (domain.AdminFreshnessResponse, error)
 
+// ResourcesRunner agrège l'état ressources machine & process (implémenté par
+// ServiceRegistry.ResourcesReport — os.Stat + expvar + runtime, pas de DuckDB).
+type ResourcesRunner func(ctx context.Context) (domain.AdminResourcesResponse, error)
+
 // AdminMonitoringHandler sert les endpoints lecture du dashboard monitoring.
 type AdminMonitoringHandler struct {
 	overview     MonitoringOverviewRunner
@@ -72,6 +76,7 @@ type AdminMonitoringHandler struct {
 	detections   DetectionsRunner             // nil → section détections vide
 	setDetection DetectionStatusRunner        // nil → PATCH 503
 	freshness    FreshnessRunner              // nil → réponse vide
+	resources    ResourcesRunner              // nil → réponse vide
 	sched        *scheduler.AutoSyncScheduler // nil → scheduler indisponible
 	jobs         *jobs.Store                  // nil → liste jobs vide
 }
@@ -87,13 +92,14 @@ func NewAdminMonitoringHandler(
 	detections DetectionsRunner,
 	setDetection DetectionStatusRunner,
 	freshness FreshnessRunner,
+	resources ResourcesRunner,
 	sched *scheduler.AutoSyncScheduler,
 	jobStore *jobs.Store,
 ) *AdminMonitoringHandler {
 	return &AdminMonitoringHandler{
 		overview: overview, convergence: convergence, perf: perf, errors: errors,
 		detections: detections, setDetection: setDetection, freshness: freshness,
-		sched: sched, jobs: jobStore,
+		resources: resources, sched: sched, jobs: jobStore,
 	}
 }
 
@@ -110,6 +116,7 @@ func (h *AdminMonitoringHandler) Mount(r chi.Router) {
 	huma.Get(api, "/monitoring/detections", h.handleGetDetections)
 	huma.Patch(api, "/monitoring/detections/{fingerprint}", h.handlePatchDetection)
 	huma.Get(api, "/monitoring/freshness", h.handleGetFreshness)
+	huma.Get(api, "/monitoring/resources", h.handleGetResources)
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -191,6 +198,8 @@ type AdminDetectionPatchResponse struct {
 type detectionPatchOutput struct{ Body AdminDetectionPatchResponse }
 
 type adminFreshnessOutput struct{ Body domain.AdminFreshnessResponse }
+
+type adminResourcesOutput struct{ Body domain.AdminResourcesResponse }
 
 // titleOrDefaultSlug lit ?title= avec fallback sur le titre par défaut.
 func titleOrDefaultSlug(title string) string {
@@ -357,4 +366,22 @@ func (h *AdminMonitoringHandler) handleGetFreshness(ctx context.Context, in *tit
 			"Impossible de calculer la fraîcheur des données.")
 	}
 	return &adminFreshnessOutput{Body: resp}, nil
+}
+
+// handleGetResources retourne l'état ressources machine & process (A5).
+// GET /admin/monitoring/resources.
+func (h *AdminMonitoringHandler) handleGetResources(ctx context.Context, _ *struct{}) (*adminResourcesOutput, error) {
+	if h.resources == nil {
+		return &adminResourcesOutput{Body: domain.AdminResourcesResponse{
+			GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+			Databases:   []domain.ResourceDBFile{},
+		}}, nil
+	}
+	resp, err := h.resources(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "admin_monitoring: resources failed", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_resources_error",
+			"Impossible d'agréger l'état des ressources.")
+	}
+	return &adminResourcesOutput{Body: resp}, nil
 }
