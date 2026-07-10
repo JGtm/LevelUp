@@ -36029,10 +36029,6 @@
 {"Time":"2026-06-26T23:49:55.4150546+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestGetCSRWorldLeaderboard_PrevSeasonCrossDigit","Output":"=== RUN   TestGetCSRWorldLeaderboard_PrevSeasonCrossDigit\n"}
 {"Time":"2026-06-26T23:49:55.4522197+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestGetCSRWorldLeaderboard_PrevSeasonCrossDigit","Output":"--- PASS: TestGetCSRWorldLeaderboard_PrevSeasonCrossDigit (0.04s)\n"}
 {"Time":"2026-06-26T23:49:55.4522197+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestGetCSRWorldLeaderboard_PrevSeasonCrossDigit","Elapsed":0.04}
-{"Time":"2026-06-26T23:49:55.4522197+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestWorldSeasonGamertags_TopNPerPlaylist"}
-{"Time":"2026-06-26T23:49:55.4522197+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestWorldSeasonGamertags_TopNPerPlaylist","Output":"=== RUN   TestWorldSeasonGamertags_TopNPerPlaylist\n"}
-{"Time":"2026-06-26T23:49:55.473016+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestWorldSeasonGamertags_TopNPerPlaylist","Output":"--- PASS: TestWorldSeasonGamertags_TopNPerPlaylist (0.02s)\n"}
-{"Time":"2026-06-26T23:49:55.473016+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestWorldSeasonGamertags_TopNPerPlaylist","Elapsed":0.02}
 {"Time":"2026-06-26T23:49:55.473016+02:00","Action":"run","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestAssetDiff_NewDetected"}
 {"Time":"2026-06-26T23:49:55.473016+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestAssetDiff_NewDetected","Output":"=== RUN   TestAssetDiff_NewDetected\n"}
 {"Time":"2026-06-26T23:49:55.473016+02:00","Action":"output","Package":"levelup/go-api/internal/platform/duckdb","Test":"TestAssetDiff_NewDetected","Output":"--- PASS: TestAssetDiff_NewDetected (0.00s)\n"}
