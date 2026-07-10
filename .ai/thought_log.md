@@ -1,3 +1,26 @@
+## [2026-07-10] MERGE MAIN — campagne audits 2026-07 + clôture + gate humain (GO utilisateur)
+
+**Statut** : En cours (merge exécuté dans cette session ; post-deploy VPS à suivre).
+
+**Décision principale** : exécution du PLAN DE MERGE en 8 étapes. Gates re-passés le jour
+même : CI branche verte (672960cb0) ; intégration -p 1 complète locale exit 0/0 FAIL ;
+front tsc 0/lint 0 err/vitest 2099. RÉPÉTITION GÉNÉRALE sur la copie prod (root isolé
+LevelUp-rehearsal, junction titles, AUTH VIDE pour interdire toute rotation des RT prod
+copiés) : boot 200 en ~10 s, migrations appliquées (metadata HI applied=3 dont
+add_citation_name_display_en + add_citation_description_en ; halo_5 shared applied=1),
+zéro erreur de migration — erreurs restantes toutes attendues sans tokens. LIVE-SYNC
+prouvé sur le binaire courant (cycles V2 synced=4/failed=0, deltas success ×4, hook
+Prestige VF-1 actif en réel : « post-sync evaluation completed »). ROLLBACK statué :
+diff migrations additif → git revert -m 1 suffit, restic non requis. GATE HUMAIN clos
+(4 re-passes utilisateur, GH1-GH6 tous verts). DATE D1A = 2026-07-10 → D2 armable au
+2026-07-17.
+
+**Prochaine étape** : merge commit main + push (deploy auto), surveillance deploy,
+checks post-deploy VPS, one-offs (seed citation-mappings + populate-assets), premier
+auto-sync surveillé.
+
+---
+
 ## [2026-07-10] Décisions F7/B7/N4 tranchées + 2 plans de chantiers futurs
 
 **Statut** : Complété (livrables = 2 plans + micro-fix doc allowlist ; décisions consignées).
