@@ -768,6 +768,114 @@ exit 0 si backend touché ; CI verte ; re-passe 3 utilisateur ciblée.
 7. Popup de réassociation média (galerie ou accueil) : tout EN sous UI EN (titre,
    Window, boutons, états vide/erreur).
 
+### RE-PASSE 3 — RÉSULTATS (Guillaume, 2026-07-09/10) → LOT GH3
+
+Validés : 2 (Match View onglets/Antagonists/citations drawer), 3 (Rankings+LUSR),
+4 (Recent sessions), 5 (Highlights), 6 (tuiles, sauf a/b ci-dessous), 7 (popup, sauf
+libellés des suggestions). Résiduels → LOT GH3 :
+
+- [!] GH3-1 — Omnibar Saison : la LISTE des saisons affiche les NOMS FR sous UI EN
+  (source = catalogue saisons ; résoudre par locale).
+- [!] GH3-2 — Le bouton/label « Analyse » reste tel quel sous UI EN — choisir le bon
+  terme EN (« Analyze » pour le bouton d'action, « Analysis » pour une section de nav)
+  et vérifier LES DEUX sites (bouton omnibar/L2 + section nav L1 le cas échéant).
+- [!] GH3-3 — Tuiles de matchs : légendes rendement/résistance en FR sous EN
+  (« 327 dégâts/frag », « 263 dégâts/mort ») → localiser.
+- [!] GH3-4 — Popup réassociation : les SUGGESTIONS affichent playlist et mode en FR
+  sous UI EN (endpoint match-candidates ou rendu front) → locale-aware. NOTE PERF
+  consignée (hors périmètre) : chargement des suggestions lent.
+- [~] 6b clarifié : les descriptions de citations n'existent qu'en FR (data) — sous EN,
+  tooltip = nom seul (comportement GH2-B2 voulu) ; sous FR la description s'affiche.
+
+## LOT GH3 — Traîne re-passe 3 (4 correctifs bornés)
+
+- [ ] GH3-1 noms de saisons locale-aware (Omnibar popover).
+- [ ] GH3-2 terme EN du bouton « Analyse » (+ section nav si concernée).
+- [ ] GH3-3 légendes dégâts/frag + dégâts/mort des tuiles localisées.
+- [ ] GH3-4 playlist/mode des suggestions de réassociation locale-aware.
+
+Gate GH3 : front purge cache + typecheck 0 + lint 0 err + vitest 0 fail ; Go si touché :
+build+vet+tests + intégration -p 1 api/service exit 0 ; CI verte ; re-passe 4 éclair.
+
+## LOT GH4 — Descriptions EN des citations/commendations (nouveau, 2026-07-10)
+
+Origine : re-passe 3 point 6b + Découverte GH2-B(a). Les descriptions de citations
+n'existent qu'en FR (data) → sous UI EN, le tooltip du drawer retombe sur le nom seul
+(masquage GH2-B2/B6 voulu, faute de source EN). L'utilisateur veut les descriptions EN.
+Source proposée : la page Halopedia des commendations Halo 5. Périmètre EXÉCUTANT GH4 =
+DATA (seed + migration + read) + tooltip citations UNIQUEMENT ; NE PAS toucher les
+fichiers FRONT des tuiles/omnibar/popup (lot GH3 en cours).
+
+CARTOGRAPHIE (GH4-1, sur pièces) — deux systèmes DISTINCTS :
+
+- **Système A — `citation_mappings`** (le « Citations/Commendations » anneau doré,
+  app-authored, PARTAGÉ Infinite+H5-dérivé). Table dans `metadata.duckdb` PAR TITRE
+  (title-owned, isolée par chemin ADR 0008 ; colonnes sans title_id). Colonnes :
+  `citation_name_norm` (PK), `citation_name_display` (FR), `citation_name_display_en`
+  (EN nom, migration `add_citation_name_display_en`), `description` (**FR SEULE, PAS de
+  `description_en`**), `mapping_type`, `category`, `image_path`, `tier_targets`, …
+  Seed = `internal/ops/seed_citation_data.go::defaultCitationMappings()` (88 règles, FR
+  écrit-main) + map `citationDisplayEN` (Norm→nom EN) → `SeedCitationMappings`
+  (`ops/seed.go`), lancé par la CLI `levelup data seed citation-mappings` (PAS au boot ;
+  même mécanique que `citation_name_display_en`, non encore déployé en prod car GH2
+  pré-merge). Commentaire code : « les citations Infinite sont des COPIES de
+  commendations Halo 5 (seul le calcul de progression diffère) » → la source EN
+  autoritative des descriptions EST la commendation Halo 5 officielle.
+  Tooltip / read-paths (chemin GH2-B2, « Q26j ») :
+    1. `citations_repo.go::loadCitationMappingMeta` (Q26j) → Match View drawer/summary ;
+    2. `home_repo_medals_citations.go::loadCitationMappingMeta` (Q26j) → tuiles accueil ;
+    3. `citations_repo.go::LoadCitationMappings` (Q34) → page Citations catalogue.
+  #1 et #2 masquent `description=""` sous EN (GH2-B2/B6) ; #3 sert le FR brut. C'est ici
+  que la description EN doit être servie.
+- **Système B — `commendation_definitions`** (H5 NATIF, metadata.duckdb halo_5,
+  `platform/duckdb/halo5/halo5_commendation_defs.go` + `loadCommendationDefsFromMetadata`).
+  Peuplé par `cmd/h5-metadata-fetch` depuis l'API Metadata OFFICIELLE
+  (`www.haloapi.com/metadata/h5/metadata/commendations`, clé `LEVELUP_HALOAPI_KEY`,
+  `Accept-Language` honoré). La table PORTE DÉJÀ `description_en`/`description_fr`
+  (seedCommendations l.526-531) MAIS les read-paths ne SÉLECTIONNENT PAS la description
+  (retour = ID/Name/IconURL/Category/TierTargets). Surface = slot TopCitations d'un
+  joueur H5 (GH2-B6). Hors périmètre tooltip-description in-scope (le report utilisateur
+  vise le système A) → noté Découvertes.
+
+- [x] GH4-1 — CARTOGRAPHIE consignée ci-dessus (2 systèmes, sources, stockage, 3
+  read-paths, point de masquage). Vérifiée sur pièces.
+- [x] GH4-2 — H5 VOIE OFFICIELLE : clé `LEVELUP_HALOAPI_KEY` (`.env.local`) VALIDE —
+  `GET /metadata/h5/metadata/commendations` = HTTP 200, 121 commendations EN avec
+  descriptions (ex. « Spartan Slayer » → « Take out enemy Spartans »). Source autoritative
+  pour les citations Système A copiées de H5 (mode de jeu, multijoueur, véhicules,
+  éliminations, grenades). NB : ces descriptions sont RÉPLIQUÉES dans la map Go committée
+  (pas une dépendance runtime à l'API — même robustesse que citation_name_display_en).
+- [x] GH4-3 — CONTRE-VÉRIF Halopedia OK (WebFetch `List_of_Halo_5:_Guardians_commendations`).
+  L'endpoint metadata NE porte PAS les commendations « Spartan Company » (Flag 'Em Down,
+  Grand Theft, Power Play, Vandalism, Too Fast For You, No Hard Feelings, Look Ma No Pin…)
+  ni certaines firefight → Halopedia les fournit/confirme. Matching : 88/88 citations ont
+  une description EN. Provenance : ~57 API H5 officielle (verbatim), 15 Spartan Company
+  (Halopedia + trad fidèle du FR), 24 maîtrises d'armes Infinite (trad fidèle, idiome
+  officiel), 4 Infinite-only (avenger, sentinel/brute/skimmer slayer, trad fidèle). 0
+  non-matchée. Attribution : contenu officiel du jeu, usage projet perso — OK.
+- [x] GH4-4 — Map `citationDescriptionEN` (Norm→EN, 88 entrées) livrée dans
+  `seed_citation_data.go`, symétrique de `citationDisplayEN` + helper
+  `citationDescriptionENOr` (`seed.go`, nil si absente ⇒ pas de FR injecté). Data committée
+  en Go. Garde-rail `seed_citation_en_test.go` : complétude (toute citation a une
+  description EN) + pas d'entrée morte — PASSÉ (prouve 88/88).
+- [x] GH4-5 — SCHÉMA + CÂBLAGE livrés : migration title-owned `add_citation_description_en`
+  (ALTER `citation_mappings` ADD `description_en` ; ajoutée à `canonicalOrder`) ; seed
+  écrit `description_en` (INSERT+UPDATE) ; Q26j + Q34 sélectionnent `description_en` ; les 3
+  read-paths (drawer `citations_repo`, tuiles `home_repo`, catalogue `LoadCitationMappings`)
+  servent la description EN sous UI EN (dispo → EN ; absente → nom seul, fallback GH2-B2
+  conservé, jamais de FR). Tests Go EN vs FR : `TestCitationsRepo_LoadMatchCitationsRich_LocaleAware`
+  + `TestHomeRepo_LoadMatchCitations_LocaleAware` (description EN sous EN) +
+  `TestCitationsRepo_LoadCitationMappings_DescriptionLocaleAware` (fallback nom-seul
+  prouvé). Backfill dev = re-run `levelup data seed citation-mappings` (data non committée) ;
+  prod = même commande post-merge (voir PLAN DE MERGE étape V9d/6).
+
+Gate GH4 : Go build+vet 0 ; tests packages touchés 0 ; `-tags=integration -p 1
+./internal/platform/duckdb/... ./internal/api/...` exit 0 (schéma/lecture touchés) ;
+1 test EN-vs-FR (description EN servie sous EN, nom seul si absente, FR sous FR) ;
+commit(s) `cloture(GH4):` FR + Co-Authored-By ; push + CI verte. Données binaires
+(metadata.duckdb) NON committées → livrer l'OUTIL (seed) + documenter l'exécution
+(dev exécutée, prod post-merge).
+
 ## PLAN DE MERGE & DÉPLOIEMENT (le big-bang est inévitable — le rendre sûr)
 
 Constat : les merges intermédiaires (après B, G, K) n'ont pas été faits ; ~130 commits
@@ -792,6 +900,14 @@ Séquence OBLIGATOIRE, dans l'ordre :
 6. **Post-deploy immédiat** (checklist V10b) : logs boot (migrations OK), port répond,
    pages clés, `legacy_source_used` visible, **NOTER LA DATE D1A au plan parent**,
    surveiller le premier auto-sync complet.
+   - **SEED CITATIONS (GH2-B2 + GH4)** : `citation_name_display_en` ET `description_en`
+     sont peuplés par le seed CLI, PAS au boot. Lancer `levelup data seed citation-mappings`
+     (conteneur one-off, serveur arrêté — écriture metadata.duckdb Infinite, mono-process
+     ADR 0013 ; NE PAS écraser tout le metadata.duckdb, le seed est SELECT-then-write
+     idempotent, respecte `asset_translations` UGC runtime). Sans ce run, les noms/descriptions
+     EN des citations restent vides en prod (lecteur retombe sur nom FR / nom seul — pas de
+     régression, mais objectif GH4 non atteint). Les migrations `add_citation_name_display_en`
+     + `add_citation_description_en` (colonnes) passent, elles, au boot.
 7. **Rollback documenté AVANT le merge** : le deploy étant auto, le rollback =
    `git revert -m 1 <merge>` + push (redéploie l'ancien état applicatif). RISQUE DB à
    évaluer en répétition (étape 2) : lister les migrations NON réversibles du diff

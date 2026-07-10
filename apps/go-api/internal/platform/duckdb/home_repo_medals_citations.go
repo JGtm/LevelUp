@@ -531,19 +531,18 @@ func (r *HomeRepo) loadCitationMappingMeta(ctx context.Context, norms []string) 
 	defer rows.Close()
 	enLocale := ctxkeys.Locale(ctx) == "en"
 	for rows.Next() {
-		var norm, display, displayEN, imagePath, tierTargets, description string
-		if err := rows.Scan(&norm, &display, &displayEN, &imagePath, &tierTargets, &description); err != nil {
+		var norm, display, displayEN, imagePath, tierTargets, description, descriptionEN string
+		if err := rows.Scan(&norm, &display, &displayEN, &imagePath, &tierTargets, &description, &descriptionEN); err != nil {
 			continue
 		}
-		// Locale-aware (GH2-B6) : sous UI EN, le nom anglais prime (fallback FR).
-		// La description n'a AUCUNE source EN (citation_mappings.description = FR
-		// seedé) → principe GH-5b « EN n'injecte jamais de FR » : masquée sous EN,
-		// le front retombe sur le nom (tooltip = name quand description absente).
+		// Locale-aware (GH2-B6 + GH4) : sous UI EN, le nom anglais prime (fallback FR)
+		// et la description EN (description_en) prime. Si description_en est absente →
+		// nom seul (masquée) : principe GH-5b « EN n'injecte jamais de FR ».
 		if enLocale {
 			if displayEN != "" {
 				display = displayEN
 			}
-			description = ""
+			description = descriptionEN
 		}
 		result[norm] = citationMeta{display: display, imagePath: imagePath, tierTargets: tierTargets, description: description}
 	}

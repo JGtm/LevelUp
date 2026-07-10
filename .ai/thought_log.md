@@ -1,3 +1,39 @@
+## [2026-07-10] LOT GH4 — Descriptions EN des citations (seed description_en + câblage tooltip)
+
+**Statut** : Complété (GH4-1..5 ; gates locaux verts ; seed dev exécuté ; commit + push).
+
+**Contexte** : clôture de la Découverte GH2-B(a). Les descriptions de `citation_mappings`
+(système « Citations », anneau doré, drawer Match View) n'existaient qu'en FR (seed
+`seed_citation_data.go`) → tooltip = nom seul sous UI EN (masquage GH2-B2/B6). L'utilisateur
+veut les descriptions EN.
+
+**Cartographie (GH4-1)** : DEUX systèmes. (A) `citation_mappings` (metadata.duckdb
+title-owned) = système en scope : a `citation_name_display_en` mais PAS `description_en` ;
+3 read-paths (Q26j drawer + Q26j tuiles + Q34 catalogue). (B) `commendation_definitions`
+(H5 natif, cmd/h5-metadata-fetch) : porte DÉJÀ `description_en`/`description_fr` (API
+officielle) mais les read-paths ne lisent pas la description → hors scope (Découverte).
+
+**Décision technique principale** : traiter le système A par SYMÉTRIE avec
+`citation_name_display_en` — migration `add_citation_description_en` (ALTER metadata),
+map `citationDescriptionEN` (Norm→EN) committée en Go dans `seed_citation_data.go`, seed
+écrit `description_en`, Q26j/Q34 le sélectionnent, read-paths servent EN sous UI EN (sinon
+nom seul). Source EN = API Metadata OFFICIELLE H5 (clé `LEVELUP_HALOAPI_KEY` VALIDE,
+HTTP 200 sur `/commendations`, 121 commendations EN avec descriptions) + contre-vérif
+Halopedia (Spartan Company/firefight absents de l'endpoint) + traduction fidèle des
+maîtrises d'armes Infinite (idiome officiel « Kill enemy Spartans with the <arme> »). Data
+non committée (metadata.duckdb) → livrer l'outil (seed) ; prod backfille post-merge via
+`levelup data seed citation-mappings` (même run que citation_name_display_en, GH2 pré-merge).
+
+**Résultats** : migration `add_citation_description_en` (canonicalOrder + title steps) ;
+map `citationDescriptionEN` (88/88, garde-rail complétude+orphelins) ; seed écrit
+`description_en` ; Q26j+Q34 le sélectionnent ; 3 read-paths servent la description EN sous
+EN (nom seul si absente, FR sous FR). Provenance : 57 API H5 officielle (verbatim, clé
+valide HTTP 200) + 15 Spartan Company (Halopedia + trad) + 24 maîtrises armes Infinite
+(trad idiome officiel) + 4 Infinite-only. Gates : build+vet 0 ; ops/migration/duckdb-int/
+api-int/service/analysis/sync 0 FAIL. Seed dev exécuté (serveur arrêté→seed 88 MAJ→air
+relance, /health 200). **Reste PROD** : `levelup seed citation-mappings` post-merge
+(serveur arrêté, one-off — même run que citation_name_display_en GH2, noté PLAN DE MERGE §6).
+
 ## [2026-07-09] LOT GH2-B — i18n re-passe 2 du GATE HUMAIN (Saison, Match View, Rankings CSR, accueil, popup média)
 
 **Statut** : Complété (GH2-B1..B7 ; gates locaux verts ; commit `cloture(GH2-B):` + push + CI).
