@@ -7712,6 +7712,8 @@ components:
           freshness_critical:
               format: int64
               type: integer
+          http:
+              $ref: '#/components/schemas/MonitoringHTTPSummary'
           title_slug:
               type: string
           tokens:
@@ -7728,6 +7730,28 @@ components:
           - snapshot
           - open_detections
           - freshness_critical
+          - http
+      type: object
+    MonitoringHTTPSummary:
+      additionalProperties: false
+      properties:
+          status_2xx:
+              format: int64
+              type: integer
+          status_3xx:
+              format: int64
+              type: integer
+          status_4xx:
+              format: int64
+              type: integer
+          status_5xx:
+              format: int64
+              type: integer
+      required:
+          - status_2xx
+          - status_3xx
+          - status_4xx
+          - status_5xx
       type: object
     AdminPerfStats:
       additionalProperties: false

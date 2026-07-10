@@ -1,3 +1,20 @@
+## [2026-07-10] PLAN MONITORING REFONTE — A7 compteurs HTTP par classe (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A7 CLOSE (gate vert).
+
+**Décision technique principale** : compteurs posés dans le middleware SlogLogger existant
+(`countHTTPStatusClass`), expvar `http_status_{2xx,3xx,4xx,5xx}_total` via IncCounterT —
+convention MT-05 respectée (défaut = clé nue, un seul incrément — piège du double comptage
+IncCounter+IncCounterT évité) ; jamais de dimension route (DC-6). Overview expose
+`http` (LoadCounterT zéro I/O) + KPI 5xx sur État (destructive si > 0).
+
+**Résultats** : go test ./internal/api/... 0 FAIL (1 flake connu vert au re-run) ;
+contract+drift verts ; tsc 0 ; vitest admin 81 OK ; lint 0.
+
+**Conclusion / prochaine étape** : A8 (alignement UI catalogue).
+
+---
+
 ## [2026-07-10] PLAN MONITORING REFONTE — A6 crons unifiés + feature liveness (Complété, branche feat/monitoring-refonte-2026-07)
 
 **Statut** : Phase A6 CLOSE (gates verts).

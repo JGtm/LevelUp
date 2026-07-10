@@ -5125,9 +5125,20 @@ export interface components {
             open_detections: number;
             /** Format: int64 */
             freshness_critical: number;
+            http: components["schemas"]["MonitoringHTTPSummary"];
             title_slug: string;
             tokens?: components["schemas"]["MonitoringTokensSummary"];
             tokens_error?: string;
+        };
+        MonitoringHTTPSummary: {
+            /** Format: int64 */
+            status_2xx: number;
+            /** Format: int64 */
+            status_3xx: number;
+            /** Format: int64 */
+            status_4xx: number;
+            /** Format: int64 */
+            status_5xx: number;
         };
         AdminPerfStats: {
             api_buckets: components["schemas"]["PerfAPIBuckets"];

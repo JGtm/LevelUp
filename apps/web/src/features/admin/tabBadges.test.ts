@@ -25,6 +25,7 @@ function baseOverview(): AdminMonitoringOverview {
     } as AdminMonitoringOverview['snapshot'],
     open_detections: 0,
     freshness_critical: 0,
+    http: { status_2xx: 0, status_3xx: 0, status_4xx: 0, status_5xx: 0 },
   }
 }
 
