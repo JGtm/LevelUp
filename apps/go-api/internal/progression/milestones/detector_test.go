@@ -136,7 +136,9 @@ func TestDetect_AlreadyEarned_NoDuplicate(t *testing.T) {
 	}
 }
 
-func TestDetect_NearMiss_Within10Percent(t *testing.T) {
+// DP14 : la bande near-miss passe de 90 % à 98 % du seuil. À 95 % il reste des
+// semaines (1 000 kills sur 20 000), à 98 % le dénouement est imminent.
+func TestDetect_NearMiss_Within2Percent(t *testing.T) {
 	cat := newFakeCatalog()
 	earned := newFakeEarned()
 	d := NewDetector(cat, earned)
@@ -145,26 +147,32 @@ func TestDetect_NearMiss_Within10Percent(t *testing.T) {
 		CatalogEntry{ID: "kills.1000", Metric: "kills", Threshold: 1000, TitleEN: "Killer", TitleFR: "Tueur"},
 	)
 
-	// 920 kills = 92% du seuil → dans la zone near-miss (>= 90%)
-	results, err := d.Detect(context.Background(), DetectInput{
-		UserID: "u1", TitleSlug: "halo_infinite", Now: time.Now(),
-		Stats: PlayerStats{Metrics: map[string]float64{"kills": 920}},
-	})
-	if err != nil {
-		t.Fatalf("Detect: %v", err)
+	detect := func(kills float64) DetectionResult {
+		results, err := d.Detect(context.Background(), DetectInput{
+			UserID: "u1", TitleSlug: "halo_infinite", Now: time.Now(),
+			Stats: PlayerStats{Metrics: map[string]float64{"kills": kills}},
+		})
+		if err != nil {
+			t.Fatalf("Detect: %v", err)
+		}
+		r, _ := findResult(results, "kills.1000")
+		return r
 	}
-	r, _ := findResult(results, "kills.1000")
-	if r.Earned {
-		t.Errorf("expected Earned=false (920 < 1000)")
+
+	// 950 kills = 95% → PAS near-miss (DP14 : encore trop loin).
+	if r := detect(950); r.NearMiss || r.Earned {
+		t.Errorf("950 (95%%) : attendu aucun signal, got Earned=%v NearMiss=%v", r.Earned, r.NearMiss)
 	}
-	if !r.NearMiss {
-		t.Errorf("expected NearMiss=true (920 >= 900)")
-	}
-	if r.Progress < 0.91 || r.Progress > 0.93 {
-		t.Errorf("Progress = %.3f, want ~0.92", r.Progress)
+	// 985 kills = 98.5% → near-miss (dans la bande [98%, 100%)).
+	if r := detect(985); !r.NearMiss || r.Earned {
+		t.Errorf("985 (98.5%%) : attendu NearMiss=true, got Earned=%v NearMiss=%v", r.Earned, r.NearMiss)
 	}
 	if len(earned.rows) != 0 {
-		t.Errorf("EarnedRepo should be empty on near-miss only")
+		t.Errorf("EarnedRepo doit rester vide sur near-miss only")
+	}
+	// 1000 kills = 100% → earned, pas near-miss.
+	if r := detect(1000); !r.Earned || r.NearMiss {
+		t.Errorf("1000 (100%%) : attendu Earned=true, got Earned=%v NearMiss=%v", r.Earned, r.NearMiss)
 	}
 }
 

@@ -161,6 +161,102 @@ func TestGenerate_RecordNearMiss(t *testing.T) {
 	}
 }
 
+// ─── B5/B12 : collapse période la plus large + seed silencieux ────────────────
+
+func countAlertsByType(alerts []Alert, t AlertType) int {
+	n := 0
+	for _, a := range alerts {
+		if a.Type == t {
+			n++
+		}
+	}
+	return n
+}
+
+// DP3 : un record battu sur 30d+90d+all_time → 1 seule alerte (all_time).
+func TestGenerate_RecordBroken_CollapseWidestPeriod(t *testing.T) {
+	g := NewGenerator()
+	now := fixedDate(2026, 5, 18)
+	prev := 80.0
+	res := []records.DetectionResult{
+		{Metric: records.MetricKDA, Period: records.RecordPeriod30d, Value: 92, PreviousValue: &prev, NewPB: true},
+		{Metric: records.MetricKDA, Period: records.RecordPeriod90d, Value: 92, PreviousValue: &prev, NewPB: true},
+		{Metric: records.MetricKDA, Period: records.RecordPeriodAllTime, Value: 92, PreviousValue: &prev, NewPB: true},
+	}
+	alerts := g.Generate(context.Background(), GenerateInput{UserID: "u1", Now: now, RecordResults: res})
+	if got := countAlertsByType(alerts, AlertTypeRecordBroken); got != 1 {
+		t.Fatalf("attendu 1 alerte RecordBroken (all_time), got %d", got)
+	}
+	if _, ok := findAlertByDedup(alerts, AlertTypeRecordBroken, "kda|all_time"); !ok {
+		t.Error("la période conservée doit être all_time")
+	}
+}
+
+// Record battu sur 30d seul → 1 alerte (30d).
+func TestGenerate_RecordBroken_SinglePeriodKept(t *testing.T) {
+	g := NewGenerator()
+	now := fixedDate(2026, 5, 18)
+	prev := 80.0
+	res := []records.DetectionResult{
+		{Metric: records.MetricKDA, Period: records.RecordPeriod30d, Value: 92, PreviousValue: &prev, NewPB: true},
+	}
+	alerts := g.Generate(context.Background(), GenerateInput{UserID: "u1", Now: now, RecordResults: res})
+	if _, ok := findAlertByDedup(alerts, AlertTypeRecordBroken, "kda|30d"); !ok {
+		t.Error("attendu 1 alerte RecordBroken 30d")
+	}
+}
+
+// Near-miss 90d + all_time → 1 alerte (all_time).
+func TestGenerate_RecordNearMiss_CollapseWidest(t *testing.T) {
+	g := NewGenerator()
+	now := fixedDate(2026, 5, 18)
+	prev := 100.0
+	res := []records.DetectionResult{
+		{Metric: records.MetricKDA, Period: records.RecordPeriod90d, Value: 97, PreviousValue: &prev, NearMiss: true},
+		{Metric: records.MetricKDA, Period: records.RecordPeriodAllTime, Value: 97, PreviousValue: &prev, NearMiss: true},
+	}
+	alerts := g.Generate(context.Background(), GenerateInput{UserID: "u1", Now: now, RecordResults: res})
+	if got := countAlertsByType(alerts, AlertTypeRecordNearMiss); got != 1 {
+		t.Fatalf("attendu 1 alerte near-miss (all_time), got %d", got)
+	}
+	if _, ok := findAlertByDedup(alerts, AlertTypeRecordNearMiss, "kda|all_time"); !ok {
+		t.Error("la période conservée doit être all_time")
+	}
+}
+
+// Métriques DIFFÉRENTES → les deux passent (collapse est per-métrique).
+func TestGenerate_RecordDifferentMetrics_BothPass(t *testing.T) {
+	g := NewGenerator()
+	now := fixedDate(2026, 5, 18)
+	prevA, prevB := 80.0, 100.0
+	res := []records.DetectionResult{
+		{Metric: records.MetricKDA, Period: records.RecordPeriod30d, Value: 92, PreviousValue: &prevA, NewPB: true},
+		{Metric: records.MetricPerformanceScore, Period: records.RecordPeriodAllTime, Value: 97, PreviousValue: &prevB, NearMiss: true},
+	}
+	alerts := g.Generate(context.Background(), GenerateInput{UserID: "u1", Now: now, RecordResults: res})
+	if _, ok := findAlertByDedup(alerts, AlertTypeRecordBroken, "kda|30d"); !ok {
+		t.Error("attendu RecordBroken kda|30d")
+	}
+	if _, ok := findAlertByDedup(alerts, AlertTypeRecordNearMiss, "performance_score|all_time"); !ok {
+		t.Error("attendu RecordNearMiss performance_score|all_time")
+	}
+}
+
+// DP12 : premier record (PreviousValue == nil) → seed silencieux, 0 alerte.
+func TestGenerate_RecordBroken_SeedSilencieux(t *testing.T) {
+	g := NewGenerator()
+	now := fixedDate(2026, 5, 18)
+	res := []records.DetectionResult{
+		{Metric: records.MetricKDA, Period: records.RecordPeriod30d, Value: 92, PreviousValue: nil, NewPB: true},
+		{Metric: records.MetricKDA, Period: records.RecordPeriod90d, Value: 92, PreviousValue: nil, NewPB: true},
+		{Metric: records.MetricKDA, Period: records.RecordPeriodAllTime, Value: 92, PreviousValue: nil, NewPB: true},
+	}
+	alerts := g.Generate(context.Background(), GenerateInput{UserID: "u1", Now: now, RecordResults: res})
+	if got := countAlertsByType(alerts, AlertTypeRecordBroken); got != 0 {
+		t.Errorf("premier record sans référence → 0 alerte (seed), got %d", got)
+	}
+}
+
 // ─── Milestone alerts ───────────────────────────────────────────────────────
 
 func TestGenerate_MilestoneUnlocked(t *testing.T) {
@@ -343,6 +439,12 @@ func TestGenerate_ComebackWelcome_PauseTooShort(t *testing.T) {
 
 // ─── Dedup filter ───────────────────────────────────────────────────────────
 
+// constWindow retourne un résolveur de fenêtre constant (tests legacy à fenêtre
+// unique, avant la résolution par catégorie DP13).
+func constWindow(d time.Duration) func(notifications.Category) time.Duration {
+	return func(notifications.Category) time.Duration { return d }
+}
+
 func TestFilterRecent_SkipsAlreadyEmitted(t *testing.T) {
 	now := fixedDate(2026, 5, 18)
 	alerts := []Alert{
@@ -358,7 +460,7 @@ func TestFilterRecent_SkipsAlreadyEmitted(t *testing.T) {
 			CreatedAt: now.Add(-2 * time.Hour),
 		},
 	}
-	out := FilterRecent(alerts, recent, now, 24*time.Hour)
+	out := FilterRecent(alerts, recent, now, constWindow(24*time.Hour))
 	if len(out) != 1 {
 		t.Fatalf("expected 1 alert remaining, got %d", len(out))
 	}
@@ -378,7 +480,7 @@ func TestFilterRecent_OutsideWindow_DoesNotFilter(t *testing.T) {
 			CreatedAt: now.Add(-48 * time.Hour), // > 24h fenêtre
 		},
 	}
-	out := FilterRecent(alerts, recent, now, 24*time.Hour)
+	out := FilterRecent(alerts, recent, now, constWindow(24*time.Hour))
 	if len(out) != 1 {
 		t.Errorf("expected alert to pass through (outside dedup window)")
 	}
@@ -391,9 +493,64 @@ func TestFilterRecent_DifferentDedupKey_DoesNotFilter(t *testing.T) {
 	recent := []notifications.Notification{
 		{Category: notifications.CategoryRecordNearMiss, Params: paramsKDA30, CreatedAt: now},
 	}
-	out := FilterRecent(alerts, recent, now, 24*time.Hour)
+	out := FilterRecent(alerts, recent, now, constWindow(24*time.Hour))
 	if len(out) != 1 {
 		t.Errorf("different dedup_key should not filter")
+	}
+}
+
+// ─── B15/DP13 : dédup par catégorie (nudges d'état = 30 jours) ────────────────
+
+func recentNotif(cat notifications.Category, dedupKey string, at time.Time) notifications.Notification {
+	p, _ := json.Marshal(map[string]any{"dedup_key": dedupKey})
+	return notifications.Notification{Category: cat, Params: p, CreatedAt: at}
+}
+
+// Un nudge d'état (lusr_tier_approach) émis il y a 5 jours reste filtré : la
+// fenêtre est 30 jours (DedupWindowFor), pas 24 h.
+func TestFilterRecent_StateNudge_30DayWindow(t *testing.T) {
+	now := fixedDate(2026, 5, 18)
+	alerts := []Alert{{Type: AlertTypeLUSRTierApproach, DedupKey: "Diamond III"}}
+
+	// Il y a 5 jours → dans la fenêtre 30 j → filtré.
+	recent5d := []notifications.Notification{
+		recentNotif(notifications.CategoryLUSRTierApproach, "Diamond III", now.AddDate(0, 0, -5)),
+	}
+	if out := FilterRecent(alerts, recent5d, now, DedupWindowFor); len(out) != 0 {
+		t.Errorf("nudge d'état émis il y a 5 j → doit être filtré (fenêtre 30 j), got %d", len(out))
+	}
+
+	// Il y a 35 jours → hors fenêtre 30 j → passe.
+	recent35d := []notifications.Notification{
+		recentNotif(notifications.CategoryLUSRTierApproach, "Diamond III", now.AddDate(0, 0, -35)),
+	}
+	if out := FilterRecent(alerts, recent35d, now, DedupWindowFor); len(out) != 1 {
+		t.Errorf("nudge d'état émis il y a 35 j → doit passer, got %d", len(out))
+	}
+}
+
+// Une catégorie ÉVÉNEMENT (personal_record) reste à 24 h : émise il y a 5 jours,
+// elle ne filtre plus une nouvelle occurrence.
+func TestFilterRecent_EventCategory_24hWindow(t *testing.T) {
+	now := fixedDate(2026, 5, 18)
+	alerts := []Alert{{Type: AlertTypeRecordBroken, DedupKey: "kda|all_time"}}
+	recent := []notifications.Notification{
+		recentNotif(notifications.CategoryPersonalRecord, "kda|all_time", now.AddDate(0, 0, -5)),
+	}
+	if out := FilterRecent(alerts, recent, now, DedupWindowFor); len(out) != 1 {
+		t.Errorf("événement émis il y a 5 j (fenêtre 24 h) → doit passer, got %d", len(out))
+	}
+}
+
+func TestDedupWindowFor_Resolution(t *testing.T) {
+	if DedupWindowFor(notifications.CategoryLUSRTierApproach) != StateNudgeDedupWindow {
+		t.Error("lusr_tier_approach doit être un nudge d'état (30 j)")
+	}
+	if DedupWindowFor(notifications.CategoryPersonalRecord) != DedupWindow {
+		t.Error("personal_record doit rester à 24 h")
+	}
+	if DedupWindowFor(notifications.CategoryStreakMilestone) != DedupWindow {
+		t.Error("streak_milestone doit rester à 24 h")
 	}
 }
 

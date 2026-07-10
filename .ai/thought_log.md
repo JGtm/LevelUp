@@ -1,3 +1,22 @@
+## [2026-07-10] Rationalisation notifications — Phase B (dédoublonnage sémantique)
+
+**Statut** : En cours (Phase B close). Branche `refactor/notifications-rationalization`.
+
+**Décisions principales** : (B1/DP2) objective_assigned supprimé de postSyncCounterDeltas,
+catégorie conservée en rétro-compat + garde-rail TestPostSyncNeverEmitsObjectiveAssigned
+(morsure prouvée). (B5/DP3) `keepWidestPeriod` dans coach : 1 alerte par métrique sur la
+période la plus large (all_time>90d>30d). (B6/DP11) `NearMissMinGapRatio=0.02`, IsNearMiss
+borne haute `<= target×0.98` (fin du spam « 73.33 vs 73.33 »). (B9/DP4) skill_tier montées
+uniquement via `skillTierRank` (ordre csr_mapper H5) + fail-open tier inconnu. (B10/DP4)
+dédup 24 h via `PostSyncDeltaOptions{RecentSkillTiers}` variadic. (B12/DP12) seed silencieux
+records (PreviousValue==nil → pas d'alerte). (B13/DP13) `DedupWindowFor` : 30 j pour les
+nudges d'état, 24 h sinon. (B14/DP14) `milestones.NearMissRatio` 0.10→0.02.
+
+**Résultats** : `go test ./internal/api/wire/ ./internal/progression/... ./internal/notifications/`
+exit 0. Nouveaux tests B7/B8/B11/B15 + adaptation détecteurs records/milestones.
+
+**Prochaine étape** : Phase C (coalescence media_added + sync_error via EmitCoalesced).
+
 ## [2026-07-10] Rationalisation notifications — Phase A (anti-burst cold-start)
 
 **Statut** : En cours (Phase A close). Branche `refactor/notifications-rationalization`.

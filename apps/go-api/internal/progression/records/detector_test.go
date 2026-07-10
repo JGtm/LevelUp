@@ -331,19 +331,22 @@ func TestDetect_Window30d_IgnoresOldMatches(t *testing.T) {
 // ─── Tests : IsNearMiss edge cases ─────────────────────────────────────────
 
 func TestIsNearMiss_Cases(t *testing.T) {
+	// DP11 : bande SIGNIFICATIVE = target×0.95 <= current <= target×0.98.
 	cases := []struct {
 		current, target float64
 		want            bool
 		desc            string
 	}{
-		{96, 100, true, "96% = 0.96 >= 0.95 → near-miss"},
-		{95, 100, true, "exactly 95% → near-miss"},
-		{94.999, 100, false, "just under 95% → no"},
-		{99.99, 100, true, "juste sous le PB → near-miss"},
-		{100, 100, false, "equal → PAS near-miss (value == PB, on est déjà au record, pas en approche)"},
-		{101, 100, false, "above target → no (this is a NewPB case, not near-miss)"},
-		{50, 0, false, "target 0 → degenerate, no near-miss"},
-		{0, 100, false, "current 0 → too far"},
+		{97, 100, true, "3% sous le PB → near-miss (dans la bande [95,98])"},
+		{95, 100, true, "exactement 95% → near-miss (borne basse)"},
+		{98, 100, true, "exactement 98% → near-miss (borne haute = 1-NearMissMinGapRatio)"},
+		{94.999, 100, false, "6% sous le PB (< 95%) → non (hors bande)"},
+		{99, 100, false, "1% sous le PB (> 98%) → non (écart insignifiant, DP11)"},
+		{99.99, 100, false, "quasi égal au PB → non (incident 73.33 vs 73.333336)"},
+		{100, 100, false, "égal → PAS near-miss (on est déjà au record)"},
+		{101, 100, false, "au-dessus → non (c'est un NewPB, pas un near-miss)"},
+		{50, 0, false, "target 0 → dégénéré, pas de near-miss"},
+		{0, 100, false, "current 0 → trop loin"},
 	}
 	for _, c := range cases {
 		if got := IsNearMiss(c.current, c.target); got != c.want {

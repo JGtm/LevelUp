@@ -90,7 +90,11 @@ var postSyncCounterDeltas = []counterDelta{
 	{field: func(s *PlayerSnapshot) int { return s.CitationTotalEarnedTiers }, category: notifications.CategoryCitationTier, severity: notifications.SeveritySuccess, titleKey: "notif.citation_tier.title", bodyKey: "notif.citation_tier.body", routeSuffix: "citations", logLabel: "citation_tier"},
 	{field: func(s *PlayerSnapshot) int { return s.CitationMasteryCount }, category: notifications.CategoryCitationMastery, severity: notifications.SeveritySuccess, titleKey: "notif.citation_mastery.title", bodyKey: "notif.citation_mastery.body", routeSuffix: "citations", logLabel: "citation_mastery"},
 	{field: func(s *PlayerSnapshot) int { return s.ChallengePathsCount }, category: notifications.CategoryChallengeAdded, severity: notifications.SeverityInfo, titleKey: "notif.challenge_added.title", bodyKey: "notif.challenge_added.body", routeSuffix: "ascension", search: map[string]any{"tab": "challenges"}, logLabel: "challenge_added"},
-	{field: func(s *PlayerSnapshot) int { return s.PersonalAwardCount }, category: notifications.CategoryObjectiveAssigned, severity: notifications.SeverityInfo, titleKey: "notif.objective_assigned.title", bodyKey: "notif.objective_assigned.body", routeSuffix: "ascension", logLabel: "objective_assigned"},
+	// B1/DP2 (2026-07) : objective_assigned SUPPRIMÉ — doublon exact de
+	// objective_completed (les deux étaient branchés sur PersonalAwardCount, une
+	// paire de notifs à chaque cycle de sync). Catégorie conservée en rétro-compat
+	// (types.go) mais plus jamais émise post-sync. Garde-rail :
+	// TestPostSyncNeverEmitsObjectiveAssigned.
 }
 
 // BuildPostSyncDeltaHook construit la closure consommée par sync_handler :
@@ -128,7 +132,10 @@ func BuildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 				slog.WarnContext(ctx, "post_sync: emitter", "slug", slug, "err", err)
 				return
 			}
-			EmitPostSyncDeltas(ctx, emitter, slug, before, after, pdb2)
+			EmitPostSyncDeltas(ctx, emitter, slug, before, after, pdb2, PostSyncDeltaOptions{
+				RecentSkillTiers: loadRecentSkillTierNotifs(ctx, pdb2),
+				Now:              time.Now().UTC(),
+			})
 
 			// Couche progression V2 (Ascension) — pipeline streaks/records/
 			// milestones/coach + coach_advisor (Phase 8 ADR 0020). Non
@@ -225,6 +232,25 @@ func persistBestKDASeed(ctx context.Context, pdb *duckdb.PlayerDB, after *Player
 	}
 }
 
+// loadRecentSkillTierNotifs charge les dernières notifs skill_tier du joueur
+// (limite 50) pour la dédup 24 h (B10). Best-effort : retourne nil si la DB
+// sociale n'est pas attachée ou si la lecture échoue.
+func loadRecentSkillTierNotifs(ctx context.Context, pdb *duckdb.PlayerDB) []notifications.Notification {
+	if pdb == nil || pdb.SharedSocial == nil {
+		return nil
+	}
+	repo := duckdb.NewNotificationsRepo(pdb)
+	lr, err := repo.List(ctx, notifications.ListFilter{
+		Category: notifications.CategorySkillTier,
+		Limit:    50,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "post_sync: load recent skill_tier notifs", "err", err)
+		return nil
+	}
+	return lr.Items
+}
+
 // EmitPostSyncDeltas compare 2 snapshots et émet les notifications applicables.
 //
 // Best-effort : toute erreur est loguée et n'interrompt pas le flux de sync.
@@ -234,6 +260,16 @@ func persistBestKDASeed(ctx context.Context, pdb *duckdb.PlayerDB, after *Player
 // et émet 1 notification par delta significatif. Complexité reflète le nombre
 // de KPIs surveillés, pas un défaut de conception.
 //
+// PostSyncDeltaOptions porte les entrées optionnelles de l'émission delta —
+// le contexte de dédup skill_tier (B10/DP4). Variadic pour éviter la refonte
+// des nombreux call-sites de test ; la prod passe les notifs skill_tier récentes.
+type PostSyncDeltaOptions struct {
+	// RecentSkillTiers : notifs skill_tier récentes (< 24 h utile) pour la dédup.
+	RecentSkillTiers []notifications.Notification
+	// Now : horloge injectée (défaut time.Now().UTC()).
+	Now time.Time
+}
+
 //nolint:funlen,gocyclo // Émetteur multi-événements : compare ~12 snapshots delta
 func EmitPostSyncDeltas(
 	ctx context.Context,
@@ -241,9 +277,17 @@ func EmitPostSyncDeltas(
 	slug string,
 	before, after *PlayerSnapshot,
 	pdb *duckdb.PlayerDB,
+	opts ...PostSyncDeltaOptions,
 ) {
 	if emitter == nil || before == nil || after == nil {
 		return
+	}
+	var o PostSyncDeltaOptions
+	if len(opts) > 0 {
+		o = opts[0]
+	}
+	if o.Now.IsZero() {
+		o.Now = time.Now().UTC()
 	}
 
 	// Anti-burst cold-start (DP1) : un snapshot « before » froid (échec de lecture
@@ -326,6 +370,25 @@ func EmitPostSyncDeltas(
 		}
 		ratingType, tier, subTier := splitSkillTier(newVal)
 		oldRT, oldTier, oldSub := splitSkillTier(oldVal)
+		// B9/DP4 : montées uniquement. Entre deux rangs CONNUS, ne pas émettre
+		// une démotion ou un mouvement latéral (flapping Or IV↔V). Rang inconnu
+		// d'un côté (tier exotique/multi-titre) → fail-open. Playlist nouvelle
+		// (oldVal == "", hors cold-start déjà écarté) → toujours émettre.
+		if oldVal != "" {
+			newRank := skillTierRank(tier, subTier)
+			oldRank := skillTierRank(oldTier, oldSub)
+			if newRank >= 0 && oldRank >= 0 && newRank <= oldRank {
+				slog.DebugContext(ctx, "post_sync: skill_tier démotion/latéral — émission supprimée",
+					"playlist", playlist, "from", oldVal, "to", newVal)
+				continue
+			}
+		}
+		// B10/DP4 : dédup 24 h par (playlist_group, valeur cible).
+		if skillTierAlreadyNotified(o.RecentSkillTiers, playlist, ratingType, tier, subTier, o.Now) {
+			slog.DebugContext(ctx, "post_sync: skill_tier déjà notifié < 24 h — supprimé",
+				"playlist", playlist, "value", newVal)
+			continue
+		}
 		if err := emitter.Emit(ctx, notifications.EmitInput{
 			Category: notifications.CategorySkillTier,
 			Severity: notifications.SeveritySuccess,
