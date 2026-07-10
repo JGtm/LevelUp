@@ -12,12 +12,48 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
 
 // Constantes expérience (ordre affiché dans l'UI).
 var experienceLabels = []string{expTypePVPUnranked, expTypePVPRanked, expTypePVE}
+
+// expTypeLabelEN mappe la VALUE canonique FR d'un type d'expérience vers son
+// libellé d'affichage EN. La VALUE reste FR par contrat : la cascade front
+// (EXPERIENCE_TO_CASCADE) et les matchers substring (applyExperienceFilter ici,
+// experienceCounts dans useLocalFilterBar.tsx) matchent sur la VALUE FR — seul le
+// LABEL est localisé (GH5-2, miroir de GH3-1 saisons). Libellés EN alignés sur le
+// vocabulaire « Ranked »/« Unranked » des manifests (session/synthesis/career),
+// en conservant la distinction PvP/PvE des 3 options.
+var expTypeLabelEN = map[string]string{
+	expTypePVPRanked:   "Ranked PvP",
+	expTypePVPUnranked: "Unranked PvP",
+	expTypePVE:         "PvE",
+}
+
+// experienceLabelForLocale retourne le libellé d'affichage d'une VALUE
+// d'expérience dans la locale de requête. FR (défaut) = la value elle-même
+// (canonique) ; EN = le libellé mappé (fallback sur la value si non mappée).
+func experienceLabelForLocale(value, locale string) string {
+	if strings.EqualFold(locale, "en") {
+		if en, ok := expTypeLabelEN[value]; ok {
+			return en
+		}
+	}
+	return value
+}
+
+// localizeExperienceOptions projette le LABEL des options d'expérience vers la
+// locale de requête en laissant la VALUE FR intacte (contrat cascade/substring).
+// Appelé UNE fois au point d'entrée ctx-aware (Resolve) : la couche pure
+// (ResolveFiltersFromRows) produit le canonique FR, le service le localise. GH5-2.
+func localizeExperienceOptions(opts []domain.LabelValue, locale string) {
+	for i := range opts {
+		opts[i].Label = experienceLabelForLocale(opts[i].Value, locale)
+	}
+}
 
 // FiltersService calcule FilterContextResolved depuis les données du repo.
 type FiltersService struct {
@@ -60,6 +96,10 @@ func (s *FiltersService) Resolve(
 		return domain.FilterContextResolved{}, err
 	}
 	resolved := ResolveFiltersFromRows(rows, input)
+	// Localise le LABEL des options d'expérience vers la locale de requête
+	// (Value FR conservée — contrat cascade/substring). C'est le seul chemin prod
+	// qui surface ces options à l'UI ; la couche pure reste canonique FR. GH5-2.
+	localizeExperienceOptions(resolved.AvailableOptions.ExperienceTypes, ctxkeys.Locale(ctx))
 	if s.catalog != nil && s.titleSlug != "" {
 		// Le match_context a déjà été appliqué dans ResolveFiltersFromRowsAt.
 		// Pour les SeasonCounts on veut le même périmètre : on ré-applique
@@ -372,6 +412,11 @@ func applyCascadeFilter(rows []domain.FilterMatchRow, c domain.CascadeFilter) []
 	return rows
 }
 
+// applyExperienceFilter garde les rows dont le type d'expérience est demandé.
+// Matche par SUBSTRING sur la VALUE (FR canonique « PVP non classé » / « PVP
+// classé » / « PVE »), jamais sur le Label : la Value reste FR par contrat même
+// quand le Label est localisé côté service (GH5-2). Ne PAS remplacer ces
+// littéraux FR ni localiser la Value — la cascade front en dépend.
 func applyExperienceFilter(rows []domain.FilterMatchRow, types []string) []domain.FilterMatchRow {
 	if len(types) == 0 || len(types) >= len(experienceLabels) {
 		return rows
@@ -454,6 +499,9 @@ func normalizeInput(in domain.FilterContextInput) domain.FilterContextInput {
 }
 
 func emptyResolved(effective domain.FilterContextInput, sess domain.SessionOptions) domain.FilterContextResolved {
+	// Label = value canonique FR ici ; localisé vers la locale de requête au point
+	// d'entrée (FiltersService.Resolve → localizeExperienceOptions). Value FR par
+	// contrat (cascade/substring — ne PAS localiser la Value). GH5-2.
 	expOpts := make([]domain.LabelValue, len(experienceLabels))
 	for i, lbl := range experienceLabels {
 		expOpts[i] = domain.LabelValue{Label: lbl, Value: lbl, Count: 0}

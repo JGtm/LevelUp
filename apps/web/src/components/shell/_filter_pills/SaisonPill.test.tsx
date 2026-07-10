@@ -180,6 +180,30 @@ describe('SaisonPill — popover folding', () => {
   })
 })
 
+describe('SaisonPill — ordre récent-en-haut (GH5-1)', () => {
+  it("préserve l'ordre des saisons fourni (récent en tête) dans le popover", () => {
+    // useSeasons trie récent-d'abord (DESC) ; la pill n'inverse pas — elle rend
+    // dans l'ordre reçu. On fournit un tableau DESC (S6 → S1) et on vérifie que
+    // le DOM sort dans cet ordre.
+    const desc = [...makeSeasons()].reverse() // S6, S4, S3, S2, S1
+    render(
+      <SaisonPill
+        open={true}
+        onToggle={vi.fn()}
+        onClose={vi.fn()}
+        seasons={desc}
+        activeSeason={null}
+        onSelectSeason={vi.fn()}
+      />,
+    )
+    const dialog = screen.getByRole('dialog')
+    const buttons = within(dialog).getAllByRole('button')
+    // Sans seasonCounts ni onClear : les boutons du dialog = uniquement les rows saison.
+    expect(buttons[0].textContent).toContain('Spirit of Fire') // S6, plus récente
+    expect(buttons[buttons.length - 1].textContent).toContain('Heroes of Reach') // S1, plus ancienne
+  })
+})
+
 describe('SaisonPill — onClear', () => {
   it("le bouton 'Toutes saisons' est cliquable quand une saison est active", () => {
     const seasons = makeSeasons()

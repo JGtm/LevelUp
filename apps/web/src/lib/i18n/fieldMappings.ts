@@ -240,9 +240,30 @@ function toSeasonEntry(id: string, dto: AssetMappingDTO): SeasonEntry | null {
 }
 
 /**
- * Hook qui retourne la liste des saisons du titre courant, triées par
- * displayOrder. Sélecteur dérivé sur useFieldMappings — pas de queryKey
- * additionnelle, le cache est partagé.
+ * Comparateur d'affichage des saisons : la plus RÉCENTE d'abord (DESC).
+ *
+ * Clé de tri = `startDate` (récence réelle), départage par `displayOrder` DESC.
+ * Keyer sur la date réelle — et NON sur `displayOrder` — place correctement les
+ * saisons « DB-only » (connues de Waypoint mais pas encore du TOML) : le backend
+ * leur attribue un `displayOrder` synthétique élevé (`mergeSeasonSources`,
+ * seasons_catalog.go) qui, trié DESC brut, les ferait sauter en tête à tort ;
+ * leur `startDate` réelle les remet à leur juste place chronologique. Ordre
+ * « récent-en-haut » cohérent avec les autres sélecteurs de saison (Carrière CSR
+ * `sortCSRSeasonsDesc`). Réf. GH5-1.
+ */
+export function compareSeasonsRecentFirst(a: SeasonEntry, b: SeasonEntry): number {
+  const byDate = b.startDate.getTime() - a.startDate.getTime()
+  if (byDate !== 0) return byDate
+  return b.displayOrder - a.displayOrder
+}
+
+/**
+ * Hook qui retourne la liste des saisons du titre courant, triées la plus
+ * RÉCENTE d'abord (startDate DESC, cf. compareSeasonsRecentFirst). Sélecteur
+ * dérivé sur useFieldMappings — pas de queryKey additionnelle, le cache est
+ * partagé. Consommé par la SaisonPill (Omnibar), le sélecteur Explorer et la
+ * dropdown Carrière ; les consommateurs qui ont besoin de l'ordre chronologique
+ * (PeriodSessionRail prev/next) le recalculent en interne (findSeasonAt).
  *
  * Comportement :
  *   - Mappings non chargés ou kind "season" absent → tableau vide
@@ -257,7 +278,7 @@ export function useSeasons(): SeasonEntry[] {
       const e = toSeasonEntry(id, dto)
       if (e) entries.push(e)
     }
-    entries.sort((a, b) => a.displayOrder - b.displayOrder)
+    entries.sort(compareSeasonsRecentFirst)
     return entries
   }, [data])
 }

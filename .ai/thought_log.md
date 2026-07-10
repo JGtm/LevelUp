@@ -1,3 +1,43 @@
+## [2026-07-10] LOT GH5 — Résiduels re-passe 4 gate humain (ordre saisons DESC + expérience i18n)
+
+**Statut** : Complété (GH5-1, GH5-2 ; tous gates locaux verts ; commit + push + CI à suivre).
+
+**Contexte** : 2 incohérences inter-surfaces de la re-passe 4. GH5-1 : Omnibar/Explorer
+triaient les saisons ASC (ancienne en tête) vs Carrière CSR DESC → uniformiser DESC
+(récent-en-haut). GH5-2 : le filtre « Experience Type » du FiltresPill affichait « PVP non
+classé » (FR) sous UI EN.
+
+**Décisions techniques principales** :
+- GH5-1 : tri VISIBLE flippé dans le sélecteur PARTAGÉ `useSeasons` (fieldMappings.ts), keyé
+  sur `startDate` DESC (récence RÉELLE) et non `displayOrder` — le `SeasonEntry` front n'a pas
+  de champ `source`, donc la date place les saisons « DB-only » (displayOrder synthétique
+  élevé) à leur juste récence, évitant le piège du DESC-naïf. PIÈGE découvert sur pièces :
+  `prevSeason`/`nextSeason` (findSeasonAt.ts, consommés par `PeriodSessionRail`) étaient
+  array-index → un flip global les aurait INVERSÉS ; rendus ordre-indépendants (voisin
+  chronologique recalculé par startDate sur copie). `useActiveSeason`/`SaisonPill` déjà sûrs
+  (recherche par fenêtre / préservation d'ordre). Dev = 14 saisons TOML S1→S13, 0 DB-only.
+- GH5-2 : Label locale-aware côté BACKEND, Value FR INCHANGÉE (miroir GH3-1). Réalisé au
+  POINT D'ENTRÉE ctx-aware `FiltersService.Resolve` (post-projection via mapping Go
+  `value_FR→label_EN` : « Ranked PvP »/« Unranked PvP »/« PvE ») plutôt que par threading de
+  `locale` dans la fonction PURE `ResolveFiltersFromRows` (~40 call-sites de tests). Justifié :
+  le 2e caller de cette fonction jette `resolved` (`_ = resolved`) → Resolve est le SEUL chemin
+  UI. Value FR intacte → cascade `EXPERIENCE_TO_CASCADE` + matchers substring inchangés,
+  commentaires de contrat posés aux 3 sites couplés.
+
+**Résultats** : Go build/vet 0, service+api tests 0, intégration `-p 1` service+api exit 0
+(`TestFiltersService_Resolve_ExperienceLabelsLocaleAware` EN-vs-FR). Front cache purgé :
+typecheck 0, lint 0 err (68 warn baseline), vitest 245 fichiers / 2099 pass / 0 fail (tests
+DESC : comparateur, prev/next ordre-indépendant, SaisonPill ordre DOM). Aucun manifest touché.
+
+**Découvertes (non traitées, règle 7)** : surface symétrique Explorer/Historique
+(`available_experience_types []string` FR) hors périmètre Omnibar ; appel mort
+`ResolveFiltersFromRows` jeté dans `filterMatchHistoryRows`. Consignées §Découvertes du plan.
+
+**Prochaine étape** : CI du commit GH5 verte ; re-passe visuelle utilisateur (ordre saisons +
+libellés EN du filtre expérience) au GATE HUMAIN.
+
+---
+
 ## [2026-07-10] LOT GH3 — Traîne re-passe 3 (finalisé par le superviseur après arrêt de l'agent)
 
 **Statut** : Complété. L'agent GH3 a été stoppé à la toute fin (gates Go passés, commit
