@@ -1,3 +1,22 @@
+## [2026-07-10] Rationalisation notifications — Phase E + CLÔTURE (plan COMPLÉTÉ)
+
+**Statut** : Complété. Branche `refactor/notifications-rationalization` (5 commits
+refactor(notif-A..E)), plan déplacé vers `.ai/V7/`.
+
+**Décision principale** : E3 — extraction `emitCareerRankDelta` + `emitSkillTierDeltas`
+vers `post_sync_deltas_bespoke.go` : `EmitPostSyncDeltas` dégonflée 146→123 L, fichier
+principal 409 L (< 500). Les 10 critères de succès du plan sont couverts par des tests
+nommés (mapping consigné dans le plan, Phase E).
+
+**Résultats** : go test ./... exit 0 (relancé post-extraction) ; intégration -p 1
+duckdb+sync exit 0 (89 s + 85 s) ; golangci-lint --new-from-rev=origin/main « 0 issues » ;
+tsc exit 0 ; vitest 2106 passed ; eslint 0 erreur (68 warnings pré-existants, aucun sur
+notifications). Découvertes consignées : Makefile generate-types = no-op (echo).
+
+**Prochaine étape** : merge par le superviseur (push main = deploy prod auto) ; revue
+visuelle utilisateur (badge, auto-read fermeture, toasts) ; en prod, DP7+DP8 résorbent
+les 57 non-lues de JGtm sans purge manuelle (DP10).
+
 ## [2026-07-10] Rationalisation notifications — Phase D (cycle de vie du badge)
 
 **Statut** : En cours (Phase D close). Branche `refactor/notifications-rationalization`.

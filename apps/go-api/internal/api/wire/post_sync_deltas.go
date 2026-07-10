@@ -333,82 +333,8 @@ func EmitPostSyncDeltas(
 		}
 	}
 
-	// career_rank : nouveau rang Halo lifetime franchi (career_progression).
-	// Remplace l'ancien câblage CategorySeasonPassLevel qui pointait à tort sur
-	// career_progression — déprécié depuis 2026-05-16.
-	// A4 : ne jamais émettre depuis un rang « inconnu » (before=0). L'incident
-	// cold-start portait previous:0 — un rang non initialisé n'est pas une montée.
-	if after.CurrentRank > before.CurrentRank && after.CurrentRank > 0 && before.CurrentRank == 0 {
-		slog.DebugContext(ctx, "post_sync: career_rank previous=0 — émission supprimée",
-			"slug", slug, "rank", after.CurrentRank)
-	} else if after.CurrentRank > before.CurrentRank && after.CurrentRank > 0 {
-		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category: notifications.CategoryCareerRank,
-			Severity: notifications.SeveritySuccess,
-			TitleKey: "notif.career_rank.title",
-			BodyKey:  "notif.career_rank.body",
-			Params: map[string]any{
-				"rank":      after.CurrentRank,
-				"rank_name": rankSubRoman(after.CurrentRankName),
-				"previous":  before.CurrentRank,
-			},
-			TargetRoute: fmt.Sprintf("/players/%s/career", slug),
-			Source:      postSyncSource,
-		}); err != nil {
-			slog.WarnContext(ctx, "post_sync: career_rank", "err", err)
-		}
-	}
-
-	// skill_tier (CSR / LUSR unifié) : une notif par playlist_group dont le
-	// tier|sub_tier|rating_type a changé entre les 2 snapshots. Les apparitions
-	// inédites (playlist absente avant, présente après) sont aussi émises.
-	for _, playlist := range sortedPlaylistKeys(after.SkillTierByPlaylist) {
-		newVal := after.SkillTierByPlaylist[playlist]
-		oldVal := before.SkillTierByPlaylist[playlist]
-		if newVal == oldVal {
-			continue
-		}
-		ratingType, tier, subTier := splitSkillTier(newVal)
-		oldRT, oldTier, oldSub := splitSkillTier(oldVal)
-		// B9/DP4 : montées uniquement. Entre deux rangs CONNUS, ne pas émettre
-		// une démotion ou un mouvement latéral (flapping Or IV↔V). Rang inconnu
-		// d'un côté (tier exotique/multi-titre) → fail-open. Playlist nouvelle
-		// (oldVal == "", hors cold-start déjà écarté) → toujours émettre.
-		if oldVal != "" {
-			newRank := skillTierRank(tier, subTier)
-			oldRank := skillTierRank(oldTier, oldSub)
-			if newRank >= 0 && oldRank >= 0 && newRank <= oldRank {
-				slog.DebugContext(ctx, "post_sync: skill_tier démotion/latéral — émission supprimée",
-					"playlist", playlist, "from", oldVal, "to", newVal)
-				continue
-			}
-		}
-		// B10/DP4 : dédup 24 h par (playlist_group, valeur cible).
-		if skillTierAlreadyNotified(o.RecentSkillTiers, playlist, ratingType, tier, subTier, o.Now) {
-			slog.DebugContext(ctx, "post_sync: skill_tier déjà notifié < 24 h — supprimé",
-				"playlist", playlist, "value", newVal)
-			continue
-		}
-		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category: notifications.CategorySkillTier,
-			Severity: notifications.SeveritySuccess,
-			TitleKey: "notif.skill_tier.title",
-			BodyKey:  "notif.skill_tier.body",
-			Params: map[string]any{
-				"playlist_group":    playlist,
-				"rating_type":       ratingType,
-				"tier":              tier,
-				"sub_tier":          subTier,
-				"previous_type":     oldRT,
-				"previous_tier":     oldTier,
-				"previous_sub_tier": oldSub,
-			},
-			TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
-			Source:      postSyncSource,
-		}); err != nil {
-			slog.WarnContext(ctx, "post_sync: skill_tier", "playlist", playlist, "err", err)
-		}
-	}
+	emitCareerRankDelta(ctx, emitter, slug, before, after)
+	emitSkillTierDeltas(ctx, emitter, slug, before, after, o)
 
 	// threshold_crossed — KD ratio (palier 0.05). On envoie metric_key (clé i18n)
 	// + value formaté ; le frontend résout metric_label via i18n.metricLabel.
