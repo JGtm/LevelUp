@@ -1,3 +1,26 @@
+## [2026-07-10] PLAN MONITORING REFONTE — A6 crons unifiés + feature liveness (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A6 CLOSE (gates verts).
+
+**Décision technique principale** : registre central `observability.cronstatus`
+(ReportCronRun → last_run/success/error/consecutive_failures + Sink optionnel câblé au
+boot vers cron_runs — le registre reste utilisable sans store). 7 crons instrumentés :
+auto_sync au point de convergence storeCycleResult (échec = joueurs failed), les 4 crons
+scheduler + HealthScheduler en liveness de cycle (les erreurs par titre restent
+best-effort internes), backup via callback OnCycleDone ajouté à pkg/duckdbbackup (package
+standalone préservé). Heartbeats DC-5 posés au passage réel (prestige_hook,
+notifications_push, watcher_rta, media_pipeline). Endpoint /monitoring/crons fusionne
+mémoire (since_boot=true) + réhydratation cron_runs_latest ; seuil critical NOMMÉ
+(CronFailuresCriticalThreshold=3) ; heartbeat never = destructive. Garde-rail
+shared_social : whitelist enrichie (entrée datée — os.Stat de taille de fichier, zéro SQL).
+
+**Résultats** : go test ./internal/... 0 FAIL ; contract+drift verts ; tsc 0 ;
+vitest 247/2109 OK ; lint new-from-rev 0.
+
+**Conclusion / prochaine étape** : A7 (compteurs HTTP par classe).
+
+---
+
 ## [2026-07-10] PLAN MONITORING REFONTE — A5 ressources machine & process (Complété, branche feat/monitoring-refonte-2026-07)
 
 **Statut** : Phase A5 CLOSE (gates verts, vérif visuelle déléguée à la revue user).

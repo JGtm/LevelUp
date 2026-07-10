@@ -32,6 +32,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -127,6 +128,11 @@ func (s *HealthScheduler) RunOnce(ctx context.Context) *DataHealthCheckResult {
 func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	start := time.Now()
 	res := &DataHealthCheckResult{}
+	// Statut unifié des crons (A6/DC-5) : liveness du cycle d'audit (les warnings
+	// data-health sont un RÉSULTAT, pas un échec du cron).
+	defer func() {
+		observability.ReportCronRun("data_health", start, nil, time.Since(start).Milliseconds())
+	}()
 
 	// Chemins via PathResolver (jamais de filepath.Join("data","titles",...) en
 	// dur — règle multi-titres). On itère sur TOUS les titres enregistrés

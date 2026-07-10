@@ -16,6 +16,7 @@ import { diskToken } from '../system/ResourcesSection'
 import { useAdminT, useAdminLocale, type TAdmin } from '../useAdminText'
 import { adminAbsoluteTime, adminRelativeTime, formatBytes, formatDurationMs, type AdminLocale } from '../format'
 import { AdminQuickActions } from './AdminQuickActions'
+import { CronsPanel } from './CronsPanel'
 import { DataHealthPanel } from './DataHealthPanel'
 import { DiagnosticPanel } from './DiagnosticPanel'
 import { FreshnessPanel } from './FreshnessPanel'
@@ -55,6 +56,8 @@ export function AdminOverviewPage() {
       </section>
 
       <FreshnessPanel />
+
+      <CronsPanel />
 
       <section className="space-y-3">
         <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">

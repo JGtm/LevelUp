@@ -242,6 +242,7 @@ func containsATTACHKeyword(litValue string) bool {
 // Ordre alphabétique. Chemins relatifs à apps/go-api/ (avec / unix-style).
 var sharedSocialFilesWhitelist = map[string]string{
 	"cmd/analyze_media_tz/main.go":                                                      "outil one-shot diag timezone media",
+	"internal/api/wire/registry_monitoring_resources.go":                                "monitoring A5 (2026-07-10) : os.Stat de la TAILLE du fichier shared_social.duckdb via PathResolver — lecture filesystem pure, aucune connexion ni SQL",
 	"cmd/backfill-media-hls/main.go":                                                    "outil one-shot backfill HLS média : UPDATE media_files (commentaires + flag --db référencent le chemin shared_social.duckdb, serveur arrêté)",
 	"internal/ops/media_hls_sweep.go":                                                   "balayage « assure le HLS » partagé scan/CLI (fix HEVC 2026-06-11) : candidats hls_path NULL + UPDATE via le handle injecté par le caller (MediaIndexService in-process ou CLI serveur arrêté) — la mention shared_social est le commentaire du champ DBPath",
 	"cmd/cleanup_media_index/main.go":                                                   "outil one-shot cleanup index media",

@@ -2256,6 +2256,15 @@ export type ResourceDBFile = components['schemas']['ResourceDBFile']
 /** Réponse GET /admin/monitoring/resources. Miroir de domain.AdminResourcesResponse. */
 export type AdminResourcesResponse = components['schemas']['AdminResourcesResponse']
 
+/** Statut d'un cron. Miroir de domain.CronStatusEntry. */
+export type CronStatusEntry = components['schemas']['CronStatusEntry']
+
+/** Liveness d'une feature. Miroir de domain.FeatureHeartbeat. */
+export type FeatureHeartbeat = components['schemas']['FeatureHeartbeat']
+
+/** Réponse GET /admin/monitoring/crons. Miroir de domain.AdminCronsResponse. */
+export type AdminCronsResponse = components['schemas']['AdminCronsResponse']
+
 // NB : les types Watcher (WatcherStatusResponse, WatcherPlayerStatus) existent
 // déjà plus haut dans ce fichier (section watcher historique) — le dashboard
 // monitoring les réutilise via features/settings/watcher-queries.ts.

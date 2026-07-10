@@ -67,6 +67,10 @@ type FreshnessRunner func(ctx context.Context, titleFilter string) (domain.Admin
 // ServiceRegistry.ResourcesReport — os.Stat + expvar + runtime, pas de DuckDB).
 type ResourcesRunner func(ctx context.Context) (domain.AdminResourcesResponse, error)
 
+// CronsRunner agrège le statut des crons + heartbeats de features (implémenté
+// par ServiceRegistry.CronsReport — registre mémoire + cron_runs_latest).
+type CronsRunner func(ctx context.Context) (domain.AdminCronsResponse, error)
+
 // AdminMonitoringHandler sert les endpoints lecture du dashboard monitoring.
 type AdminMonitoringHandler struct {
 	overview     MonitoringOverviewRunner
@@ -77,6 +81,7 @@ type AdminMonitoringHandler struct {
 	setDetection DetectionStatusRunner        // nil → PATCH 503
 	freshness    FreshnessRunner              // nil → réponse vide
 	resources    ResourcesRunner              // nil → réponse vide
+	crons        CronsRunner                  // nil → réponse vide
 	sched        *scheduler.AutoSyncScheduler // nil → scheduler indisponible
 	jobs         *jobs.Store                  // nil → liste jobs vide
 }
@@ -93,13 +98,14 @@ func NewAdminMonitoringHandler(
 	setDetection DetectionStatusRunner,
 	freshness FreshnessRunner,
 	resources ResourcesRunner,
+	crons CronsRunner,
 	sched *scheduler.AutoSyncScheduler,
 	jobStore *jobs.Store,
 ) *AdminMonitoringHandler {
 	return &AdminMonitoringHandler{
 		overview: overview, convergence: convergence, perf: perf, errors: errors,
 		detections: detections, setDetection: setDetection, freshness: freshness,
-		resources: resources, sched: sched, jobs: jobStore,
+		resources: resources, crons: crons, sched: sched, jobs: jobStore,
 	}
 }
 
@@ -117,6 +123,7 @@ func (h *AdminMonitoringHandler) Mount(r chi.Router) {
 	huma.Patch(api, "/monitoring/detections/{fingerprint}", h.handlePatchDetection)
 	huma.Get(api, "/monitoring/freshness", h.handleGetFreshness)
 	huma.Get(api, "/monitoring/resources", h.handleGetResources)
+	huma.Get(api, "/monitoring/crons", h.handleGetCrons)
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -200,6 +207,8 @@ type detectionPatchOutput struct{ Body AdminDetectionPatchResponse }
 type adminFreshnessOutput struct{ Body domain.AdminFreshnessResponse }
 
 type adminResourcesOutput struct{ Body domain.AdminResourcesResponse }
+
+type adminCronsOutput struct{ Body domain.AdminCronsResponse }
 
 // titleOrDefaultSlug lit ?title= avec fallback sur le titre par défaut.
 func titleOrDefaultSlug(title string) string {
@@ -384,4 +393,23 @@ func (h *AdminMonitoringHandler) handleGetResources(ctx context.Context, _ *stru
 			"Impossible d'agréger l'état des ressources.")
 	}
 	return &adminResourcesOutput{Body: resp}, nil
+}
+
+// handleGetCrons retourne le statut des crons + heartbeats de features (A6).
+// GET /admin/monitoring/crons.
+func (h *AdminMonitoringHandler) handleGetCrons(ctx context.Context, _ *struct{}) (*adminCronsOutput, error) {
+	if h.crons == nil {
+		return &adminCronsOutput{Body: domain.AdminCronsResponse{
+			GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+			Crons:       []domain.CronStatusEntry{},
+			Features:    []domain.FeatureHeartbeat{},
+		}}, nil
+	}
+	resp, err := h.crons(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "admin_monitoring: crons failed", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_crons_error",
+			"Impossible d'agréger le statut des crons.")
+	}
+	return &adminCronsOutput{Body: resp}, nil
 }

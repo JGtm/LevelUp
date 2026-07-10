@@ -16,6 +16,10 @@ type Scheduler struct {
 	cfg      Config
 	discover func() ([]Target, error)
 	restic   *ResticClient
+	// OnCycleDone (optional) is invoked after every cycle, success or failure —
+	// observability callback for the caller (this package stays standalone,
+	// no internal dependency). Set it BEFORE calling Run.
+	OnCycleDone func(startedAt time.Time, err error, durationMs int64)
 }
 
 // New creates a Scheduler.
@@ -70,8 +74,13 @@ func (s *Scheduler) RunOnce(ctx context.Context) (*Result, error) {
 }
 
 func (s *Scheduler) runCycle(ctx context.Context) {
-	if _, err := s.cycle(ctx); err != nil {
+	start := time.Now()
+	_, err := s.cycle(ctx)
+	if err != nil {
 		slog.WarnContext(ctx, "backup: cycle échoué (non-bloquant)", "err", err)
+	}
+	if s.OnCycleDone != nil {
+		s.OnCycleDone(start, err, time.Since(start).Milliseconds())
 	}
 }
 
