@@ -1,3 +1,38 @@
+## [2026-07-10] DÉPLOYÉ EN PROD — campagne audits + leaderboard fusionnés (merge 28146aa3a)
+
+**Statut** : Complété (prod à jour, one-off citations exécuté ; suivi 1er auto-sync en cours).
+
+**Décision technique principale** : le merge vers main a révélé que main portait DÉJÀ le
+chantier leaderboard/catalogue dynamique (mergé par la session parallèle, CI de main
+ROUGE depuis le 02/07 — baseline jamais mise à jour après suppression d'un test).
+Protocole appliqué : abort sur main → fusion main→branche → résolution des 14 conflits
+en COMBINANT les intentions (AugmentWithActiveRankedCSRs = locale H8/GH-8 + activePlaylists
+dynamiques ; server_apiv1 porte les gardes S, prouvé par diff base..main ; ownership S7
+version testée admin-pass-through ; metric-trend = composant partagé de main adopté,
+copie locale retirée ; season_catalog_refresh branché sur UpsertRowNoConflict canonique) ;
+INCIDENT ENCODAGE attrapé et réparé (splices PowerShell = mojibake UTF-8-sans-BOM sur 4
+fichiers → restauration octets git + ré-application UTF-8-safe, 0 mojibake vérifié) ;
+baseline purgée du test fantôme hérité (TestWorldSeasonGamertags_TopNPerPlaylist, supprimé
+côté main sans rebaseline). Gates fusion : build/vet/tests/intégration -p 1 = 0 ;
+tsc 0 ; vitest 2101/246. CI branche VERTE puis merge main --no-ff + push.
+
+**Résultats observés (post-deploy)** : Deploy to VPS = success ; conteneurs healthy ;
+healthz interne 200 ; https://lvelup.info = 200 ; migrations prod schema_version 190→193
+(2 colonnes citations EN + seed médaille, conforme répétition générale) ; one-off
+`levelup seed citation-mappings` exécuté en fenêtre d'arrêt (~1 min) : **88 citations
+mises à jour** (noms + descriptions EN) ; app re-healthy. Seule ERROR au boot = cron
+leaderboard 404 saison (comportement connu du chantier parallèle). populate-assets
+ABSENT de l'image prod → follow-up (le fallback UI « Unknown playlist » couvre).
+main a retrouvé une CI verte pour la première fois depuis le 02/07.
+
+**Conclusion / prochaine étape** : suivi du 1er cycle auto-sync prod (+ hook Prestige en
+réel) ; DATE D1A = 2026-07-10 → D2 (ADR 0023 Phase 5) armable au 2026-07-17 si
+`legacy_source_used` = 0 ; V10c (lecture budgets sous charge → statuer J4/J6) ; follow-up
+populate-assets dans l'image ; chantiers plannifiés post-merge : engagement gradué (F7),
+squash migrations (N4), V9d rebuild DROP.
+
+---
+
 ## [2026-07-10] MERGE MAIN — campagne audits 2026-07 + clôture + gate humain (GO utilisateur)
 
 **Statut** : En cours (merge exécuté dans cette session ; post-deploy VPS à suivre).
