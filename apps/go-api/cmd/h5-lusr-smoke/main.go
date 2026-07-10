@@ -64,7 +64,7 @@ func main() {
 		fmt.Printf("reset state (non bloquant): %v\n", err)
 	}
 
-	processed, err := lusync.RunLUSRV2ShadowOwnerOnly(ctx, nil, shared, jgtmXUID)
+	processed, err := lusync.RunLUSRV2ShadowOwnerOnly(ctx, nil, lusync.NewPinnedSharedAccess(shared), jgtmXUID)
 	if err != nil {
 		fatal("RunLUSRV2ShadowOwnerOnly: %v", err)
 	}

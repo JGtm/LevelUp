@@ -490,7 +490,7 @@ func TestRunLUSRV2Shadow_FlagOff_NoOp(t *testing.T) {
 	_ = os.Setenv(lusrV2EnvFlag, "0")
 
 	db := openShadowTestDB(t)
-	n, err := RunLUSRV2Shadow(context.Background(), nil, db, "anyxuid")
+	n, err := RunLUSRV2Shadow(context.Background(), nil, newPinnedSharedAccessor(db), "anyxuid")
 	if err != nil {
 		t.Fatalf("RunLUSRV2Shadow: %v", err)
 	}
@@ -531,7 +531,7 @@ func TestRunLUSRV2Shadow_FullFlow_2v2Match(t *testing.T) {
 		}
 	}
 
-	processed, err := RunLUSRV2Shadow(context.Background(), nil, db, "owner")
+	processed, err := RunLUSRV2Shadow(context.Background(), nil, newPinnedSharedAccessor(db), "owner")
 	if err != nil {
 		t.Fatalf("RunLUSRV2Shadow: %v", err)
 	}
@@ -567,7 +567,7 @@ func TestRunLUSRV2Shadow_FullFlow_2v2Match(t *testing.T) {
 	}
 
 	// Re-run : watermark → 0 traités.
-	processed2, err := RunLUSRV2Shadow(context.Background(), nil, db, "owner")
+	processed2, err := RunLUSRV2Shadow(context.Background(), nil, newPinnedSharedAccessor(db), "owner")
 	if err != nil {
 		t.Fatalf("RunLUSRV2Shadow second pass: %v", err)
 	}
@@ -613,7 +613,7 @@ func TestRunLUSRV2ShadowOwnerOnly_TeammateDoesNotBlockOwner(t *testing.T) {
 	ctx := context.Background()
 
 	// 1) Coéquipier traité en premier (owner-only).
-	n1, err := RunLUSRV2ShadowOwnerOnly(ctx, nil, db, "teammate1")
+	n1, err := RunLUSRV2ShadowOwnerOnly(ctx, nil, newPinnedSharedAccessor(db), "teammate1")
 	if err != nil {
 		t.Fatalf("owner-only teammate1: %v", err)
 	}
@@ -627,7 +627,7 @@ func TestRunLUSRV2ShadowOwnerOnly_TeammateDoesNotBlockOwner(t *testing.T) {
 	}
 
 	// 2) Owner traité ensuite : NE doit PAS être bloqué (autonomie).
-	n2, err := RunLUSRV2ShadowOwnerOnly(ctx, nil, db, "owner")
+	n2, err := RunLUSRV2ShadowOwnerOnly(ctx, nil, newPinnedSharedAccessor(db), "owner")
 	if err != nil {
 		t.Fatalf("owner-only owner: %v", err)
 	}
@@ -681,7 +681,7 @@ func TestRunLUSRV2Shadow_Canonical_WritesLegacyLUSRRow(t *testing.T) {
 		}
 	}
 
-	processed, err := RunLUSRV2Shadow(context.Background(), playerDB, sharedDB, "owner")
+	processed, err := RunLUSRV2Shadow(context.Background(), playerDB, newPinnedSharedAccessor(sharedDB), "owner")
 	if err != nil {
 		t.Fatalf("RunLUSRV2Shadow: %v", err)
 	}
@@ -838,7 +838,7 @@ func TestRunLUSRV2Shadow_RankedSkipped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("insert: %v", err)
 	}
-	processed, err := RunLUSRV2Shadow(context.Background(), nil, db, "owner")
+	processed, err := RunLUSRV2Shadow(context.Background(), nil, newPinnedSharedAccessor(db), "owner")
 	if err != nil {
 		t.Fatalf("RunLUSRV2Shadow: %v", err)
 	}
@@ -900,7 +900,7 @@ func TestRunLUSRV2Shadow_Phase4_CrossModeLeak(t *testing.T) {
 		}
 	}
 
-	if _, err := RunLUSRV2Shadow(ctx, nil, db, "owner"); err != nil {
+	if _, err := RunLUSRV2Shadow(ctx, nil, newPinnedSharedAccessor(db), "owner"); err != nil {
 		t.Fatalf("RunLUSRV2Shadow: %v", err)
 	}
 
@@ -979,7 +979,7 @@ func TestRunLUSRV2Shadow_Phase4_ExplicitlyOff(t *testing.T) {
 			t.Fatalf("insert participant: %v", err)
 		}
 	}
-	if _, err := RunLUSRV2Shadow(ctx, nil, db, "owner"); err != nil {
+	if _, err := RunLUSRV2Shadow(ctx, nil, newPinnedSharedAccessor(db), "owner"); err != nil {
 		t.Fatalf("RunLUSRV2Shadow: %v", err)
 	}
 
@@ -1049,7 +1049,7 @@ func TestRunLUSRV2Shadow_Halo5_TitleAwareChain(t *testing.T) {
 	seedH5Match(t, sharedDB, "h5_m1", time.Date(2025, 11, 1, 14, 0, 0, 0, time.UTC))
 
 	ctx := ctxkeys.WithTitleSlug(context.Background(), "halo_5")
-	processed, err := RunLUSRV2ShadowOwnerOnly(ctx, nil, sharedDB, "owner")
+	processed, err := RunLUSRV2ShadowOwnerOnly(ctx, nil, newPinnedSharedAccessor(sharedDB), "owner")
 	if err != nil {
 		t.Fatalf("RunLUSRV2ShadowOwnerOnly: %v", err)
 	}
@@ -1111,7 +1111,7 @@ func TestRunLUSRV2Shadow_Canonical_StoresExpectedWinProb(t *testing.T) {
 	playerDB := openCanonicalPlayerTestDB(t)
 	seedCanonical2v2(t, sharedDB, "m_winprob", time.Date(2025, 3, 1, 14, 0, 0, 0, time.UTC))
 
-	if _, err := RunLUSRV2Shadow(context.Background(), playerDB, sharedDB, "owner"); err != nil {
+	if _, err := RunLUSRV2Shadow(context.Background(), playerDB, newPinnedSharedAccessor(sharedDB), "owner"); err != nil {
 		t.Fatalf("RunLUSRV2Shadow: %v", err)
 	}
 
@@ -1145,7 +1145,7 @@ func TestRunLUSRV2Shadow_Canonical_FirstMatchFallback(t *testing.T) {
 	playerDB := openCanonicalPlayerTestDB(t)
 	seedCanonical2v2(t, sharedDB, "m_firstmatch", time.Date(2025, 3, 2, 14, 0, 0, 0, time.UTC))
 
-	if _, err := RunLUSRV2Shadow(context.Background(), playerDB, sharedDB, "owner"); err != nil {
+	if _, err := RunLUSRV2Shadow(context.Background(), playerDB, newPinnedSharedAccessor(sharedDB), "owner"); err != nil {
 		t.Fatalf("RunLUSRV2Shadow: %v", err)
 	}
 
@@ -1200,7 +1200,7 @@ func TestRunLUSRV2Shadow_UsesEmpiricalDrawProb(t *testing.T) {
 				t.Fatalf("insert participant: %v", err)
 			}
 		}
-		if _, err := RunLUSRV2Shadow(context.Background(), nil, db, "owner"); err != nil {
+		if _, err := RunLUSRV2Shadow(context.Background(), nil, newPinnedSharedAccessor(db), "owner"); err != nil {
 			t.Fatalf("RunLUSRV2Shadow: %v", err)
 		}
 		st, err := duckdb.NewSkillV2Repo(db).LoadState(context.Background(), "owner", "arena_slayer")
@@ -1264,7 +1264,7 @@ func TestRunLUSRV2Shadow_AppliesSquadOffset(t *testing.T) {
 				t.Fatalf("insert participant: %v", err)
 			}
 		}
-		if _, err := RunLUSRV2Shadow(context.Background(), nil, db, "owner"); err != nil {
+		if _, err := RunLUSRV2Shadow(context.Background(), nil, newPinnedSharedAccessor(db), "owner"); err != nil {
 			t.Fatalf("RunLUSRV2Shadow: %v", err)
 		}
 		st, err := duckdb.NewSkillV2Repo(db).LoadState(context.Background(), "owner", "arena_slayer")
@@ -1307,7 +1307,7 @@ func TestRunLUSRV2Shadow_Canonical_RatingDelta(t *testing.T) {
 	seedCanonical2v2(t, sharedDB, "m1", time.Date(2025, 6, 1, 12, 0, 0, 0, time.UTC))
 	seedCanonical2v2(t, sharedDB, "m2", time.Date(2025, 6, 1, 13, 0, 0, 0, time.UTC))
 
-	if _, err := RunLUSRV2Shadow(context.Background(), playerDB, sharedDB, "owner"); err != nil {
+	if _, err := RunLUSRV2Shadow(context.Background(), playerDB, newPinnedSharedAccessor(sharedDB), "owner"); err != nil {
 		t.Fatalf("RunLUSRV2Shadow: %v", err)
 	}
 
@@ -1375,7 +1375,7 @@ func TestRunLUSRV2Shadow_QuitContext_LeadingAtQuit(t *testing.T) {
 				}
 			}
 		}
-		if _, err := RunLUSRV2Shadow(context.Background(), nil, db, "owner"); err != nil {
+		if _, err := RunLUSRV2Shadow(context.Background(), nil, newPinnedSharedAccessor(db), "owner"); err != nil {
 			t.Fatalf("RunLUSRV2Shadow: %v", err)
 		}
 		st, err := duckdb.NewSkillV2Repo(db).LoadState(context.Background(), "owner", "arena_slayer")
@@ -1428,7 +1428,7 @@ func TestRunLUSRV2Shadow_Canonical_WriteFailHoldsWatermark(t *testing.T) {
 	}
 	_ = brokenPlayerDB.Close() // fermeture volontaire = reproduit l'incident 03/06
 
-	processed, err := RunLUSRV2Shadow(ctx, brokenPlayerDB, sharedDB, "owner")
+	processed, err := RunLUSRV2Shadow(ctx, brokenPlayerDB, newPinnedSharedAccessor(sharedDB), "owner")
 	if err != nil {
 		t.Fatalf("RunLUSRV2Shadow (broken): %v", err)
 	}
@@ -1442,7 +1442,7 @@ func TestRunLUSRV2Shadow_Canonical_WriteFailHoldsWatermark(t *testing.T) {
 
 	// 2) Retry avec une player DB saine → le match tenu passe ET écrit la ligne LUSR.
 	goodPlayerDB := openCanonicalPlayerTestDB(t)
-	processed2, err := RunLUSRV2Shadow(ctx, goodPlayerDB, sharedDB, "owner")
+	processed2, err := RunLUSRV2Shadow(ctx, goodPlayerDB, newPinnedSharedAccessor(sharedDB), "owner")
 	if err != nil {
 		t.Fatalf("RunLUSRV2Shadow (retry): %v", err)
 	}
@@ -1494,7 +1494,7 @@ func TestRunLUSRV2Shadow_Canonical_HeldGroupSkipsLaterMatches(t *testing.T) {
 	}
 	_ = brokenPlayerDB.Close()
 
-	processed, err := RunLUSRV2Shadow(ctx, brokenPlayerDB, sharedDB, "owner")
+	processed, err := RunLUSRV2Shadow(ctx, brokenPlayerDB, newPinnedSharedAccessor(sharedDB), "owner")
 	if err != nil {
 		t.Fatalf("RunLUSRV2Shadow (broken): %v", err)
 	}
@@ -1515,7 +1515,7 @@ func TestRunLUSRV2Shadow_Canonical_HeldGroupSkipsLaterMatches(t *testing.T) {
 
 	// 2) Retry avec player DB saine → les DEUX matchs sont traités, EN ORDRE, aucun gap.
 	goodPlayerDB := openCanonicalPlayerTestDB(t)
-	processed2, err := RunLUSRV2Shadow(ctx, goodPlayerDB, sharedDB, "owner")
+	processed2, err := RunLUSRV2Shadow(ctx, goodPlayerDB, newPinnedSharedAccessor(sharedDB), "owner")
 	if err != nil {
 		t.Fatalf("RunLUSRV2Shadow (retry): %v", err)
 	}
@@ -1629,7 +1629,7 @@ func TestRunLUSRV2ShadowOwnerOnly_DoesNotOverwriteTeammateState(t *testing.T) {
 	// Match owner+teammate vs opp1+opp2 (pair_name 'Slayer' → arena_slayer).
 	seedCanonical2v2(t, sharedDB, "m_oo", time.Date(2025, 9, 2, 12, 0, 0, 0, time.UTC))
 
-	processed, err := RunLUSRV2ShadowOwnerOnly(ctx, playerDB, sharedDB, "owner")
+	processed, err := RunLUSRV2ShadowOwnerOnly(ctx, playerDB, newPinnedSharedAccessor(sharedDB), "owner")
 	if err != nil {
 		t.Fatalf("RunLUSRV2ShadowOwnerOnly: %v", err)
 	}

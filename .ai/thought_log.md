@@ -1,3 +1,30 @@
+## [2026-07-10] HOTFIX LUSR shadow read-only — H2 (implémentation)
+
+**Statut** : En cours (phase H2 close ; H3 tests + audit à suivre).
+
+**Décision principale** : interface seam `skill.SharedAccessor` (Read/Write) satisfaite
+structurellement par `*sync.SharedAccess` (sous-package skill ne peut pas importer sync).
+`runLUSRV2Shadow` réécrit : sélection sous `loadShadowMatchesUnderRead` (Read, release
+immédiat) → chunks de 3 (`postsyncLUSRBurstChunk`) sous `shared.Write(ctx,"lusr")`, repos
++ lectures per-match sur le handle du burst (persist va sur RW, plus jamais RO). 0 candidat
+→ aucun burst. `runSkillRatingSteps` (engine) découpé DC-H4 : v1 sous Read (helper), shadow
+v2 via bursts (reçoit le `*SharedAccess`), sentinelle playerDB-only ; `runSkillRatingStepsWithDB`
+supprimé ; commentaire de classification corrigé. Nouveau fichier `skill_v2_shared_access.go`
+(interface + pinned skill-local + 2 helpers) pour ne pas accroître skill_v2_shadow.go (déjà
+>500L) ; import `duckdb` retiré de skill_v2_shadow.go. Callers migrés : engine,
+lusr_full_recompute, 3 cmd, wire h5, ~21 tests.
+
+**Résultats observés** : `CGO_ENABLED=1 go build ./...` exit 0 ; `go vet ./...` exit 0 ;
+`go test -tags=cgo ./internal/sync/...` tous ok (sync 24.5s, skill 0.8s, v2 13.3s) — les
+tests anti-gap/held-group/dual-row/owner-only existants restent verts (sémantique watermark
+inchangée).
+
+**Prochaine étape** : H3 — test pérenne read-only VERT (accès scindé Read RO / Write RW,
+watermark avance), test anti-deadlock (Read relâché avant Write, incl. >1 chunk), audit des
+segments frères `shared.Read(` de engine_postsync*, gate intégration `-p 1`.
+
+---
+
 ## [2026-07-10] HOTFIX LUSR shadow read-only — H1 (prep + repro ROUGE)
 
 **Statut** : En cours (phase H1 close ; H2 implémentation à suivre).

@@ -22,7 +22,6 @@ import (
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 )
 
@@ -80,8 +79,8 @@ type shadowParticipant struct {
 // Variante "persist des 2 équipes" (avance le watermark de TOUS les participants).
 // N'est PLUS utilisée par le live (cf. RunLUSRV2ShadowOwnerOnly, fix 2026-06-08,
 // couplage cross-joueur) — conservée pour cmd/lusr_v2_replay et les tests.
-func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (int, error) {
-	return runLUSRV2Shadow(ctx, playerDB, sharedDB, xuid, false)
+func RunLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccessor, xuid string) (int, error) {
+	return runLUSRV2Shadow(ctx, playerDB, shared, xuid, false)
 }
 
 // RunLUSRV2ShadowOwnerOnly : persiste UNIQUEMENT l'état v2 du joueur traité (pas
@@ -99,11 +98,11 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 // Compromis assumé : l'EP du joueur lit l'état COURANT de ses coéquipiers (pas
 // forcément leur état pré-match) — approximation inhérente au modèle per-joueur,
 // identique entre live et backfill (résultats cohérents).
-func RunLUSRV2ShadowOwnerOnly(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (int, error) {
-	return runLUSRV2Shadow(ctx, playerDB, sharedDB, xuid, true)
+func RunLUSRV2ShadowOwnerOnly(ctx context.Context, playerDB *sql.DB, shared SharedAccessor, xuid string) (int, error) {
+	return runLUSRV2Shadow(ctx, playerDB, shared, xuid, true)
 }
 
-func runLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string, ownerOnlyPersist bool) (int, error) {
+func runLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccessor, xuid string, ownerOnlyPersist bool) (int, error) {
 	if !IsLUSRV2Enabled() {
 		return 0, nil
 	}
@@ -112,8 +111,8 @@ func runLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 	if skipIfNoLUSRCapability(ctx, "RunLUSRV2Shadow") {
 		return 0, nil
 	}
-	if sharedDB == nil {
-		return 0, fmt.Errorf("RunLUSRV2Shadow: sharedDB nil")
+	if shared == nil {
+		return 0, fmt.Errorf("RunLUSRV2Shadow: shared nil")
 	}
 	canonical := IsLUSRV2Canonical()
 	if canonical && playerDB == nil {
@@ -124,36 +123,24 @@ func runLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 		canonical = false
 	}
 
-	// Découplage (Axe 2 refactor) : la logique en aval dépend des interfaces
-	// port.* ; seul ce point d'instanciation connaît le type concret DuckDB.
-	var repo port.SkillV2Repository = duckdb.NewSkillV2Repo(sharedDB)
-	// Sprint 1.C : repo squad seulement si le flag est actif (OFF par défaut →
-	// interface nil → aucun offset appliqué, comportement strictement inchangé).
-	// Déclaré en type interface : assigner un *duckdb.SquadOffsetRepo nil à une
-	// interface donnerait un typed-nil (interface NON nil) qui casserait le
-	// garde `repo == nil` de computeTeamSquadOffsets.
-	var squadRepo port.SquadOffsetRepository
-	if IsLUSRV2SquadOffsetEnabled() {
-		squadRepo = duckdb.NewSquadOffsetRepo(sharedDB)
-	}
-	priors := skillv2.DefaultPriors()
-	tierBoundaries := skillv2.DefaultTierBoundaries() // Phase 5 batch écrira override
-
-	matches, err := loadShadowMatches(ctx, sharedDB, xuid)
+	// Sélection sous segment LECTURE, release IMMÉDIAT (pur SELECT). Le Read est
+	// relâché AVANT tout burst Write (garde anti-deadlock). Régression 2026-07-03 :
+	// le persist per-match ne doit JAMAIS passer par ce handle de lecture (RO en
+	// mode burst) — il passe par des bursts Write (RW) ci-dessous.
+	matches, err := loadShadowMatchesUnderRead(ctx, shared, xuid)
 	if err != nil {
 		return 0, fmt.Errorf("RunLUSRV2Shadow.loadShadowMatches: %w", err)
 	}
 	if len(matches) == 0 {
-		return 0, nil
+		return 0, nil // cas stationnaire dominant : AUCUN burst Write acquis
 	}
 
 	ctxRun := shadowRunContext{
-		repo:             repo,
-		squadRepo:        squadRepo,
+		// repo / squadRepo / sharedDB sont câblés PAR CHUNK sur le handle du burst
+		// Write courant (cf. processShadowChunk) — jamais sur le handle de lecture.
 		playerDB:         playerDB,
-		sharedDB:         sharedDB,
-		priors:           priors,
-		tierBoundaries:   tierBoundaries,
+		priors:           skillv2.DefaultPriors(),
+		tierBoundaries:   skillv2.DefaultTierBoundaries(), // Phase 5 batch écrira override
 		xuid:             xuid,
 		canonical:        canonical,
 		ownerOnlyPersist: ownerOnlyPersist,
@@ -164,13 +151,32 @@ func runLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 	// heldGroups : groupes dont un match a échoué son écriture canonical ce run.
 	// Les matchs plus RÉCENTS de ces groupes sont sautés pour ne pas avancer le
 	// watermark de groupe par-dessus un match non écrit (anti-gap, fix 2026-06-07).
+	// Partagé entre chunks (l'ordre chrono ASC est préservé par le découpage).
 	heldGroups := make(map[string]bool)
 	withGameplayDur := 0 // matchs ayant une durée gameplay → pondération temps-joué alimentée
-	for _, m := range matches {
-		if m.gameplayDurMs > 0 {
-			withGameplayDur++
+	squadEnabled := IsLUSRV2SquadOffsetEnabled()
+
+	// Persistance per-match sous bursts Write("lusr") COURTS et chunkés : la
+	// fenêtre RW est bornée par postsyncLUSRBurstChunk, les lecteurs passent entre
+	// les chunks. La dépendance séquentielle des états EP impose de persister au fil
+	// de l'eau — le chunk borne la fenêtre RW sans casser l'ordre.
+	for start := 0; start < len(matches); start += postsyncLUSRBurstChunk {
+		end := min(start+postsyncLUSRBurstChunk, len(matches))
+		burstDB, release, werr := shared.Write(ctx, "lusr")
+		if werr != nil {
+			// Shared indisponible / read-only (probe burst) → dégradation propre :
+			// on reporte le reste au prochain cycle (watermark non avancé, retry).
+			slog.WarnContext(ctx, "LUSR v2 shadow: burst write shared indisponible — reste reporté au prochain cycle",
+				"xuid", xuid, "remaining", len(matches)-start, "err", werr)
+			break
 		}
-		processOneShadowMatch(ctx, ctxRun, m, &s, heldGroups)
+		if burstDB == nil {
+			release()
+			slog.WarnContext(ctx, "LUSR v2 shadow: burst write handle nil — reste reporté", "xuid", xuid)
+			break
+		}
+		processShadowChunk(ctx, ctxRun, burstDB, squadEnabled, matches[start:end], &s, heldGroups, &withGameplayDur)
+		release()
 	}
 	slog.InfoContext(ctx, "LUSR v2 shadow terminé",
 		"xuid", xuid, "processed", s.processed,
