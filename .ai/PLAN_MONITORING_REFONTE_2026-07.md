@@ -1,6 +1,12 @@
 # PLAN — Refonte de fond du monitoring admin (2026-07)
 
-> Statut : EN COURS (démarré 2026-07-10, branche `feat/monitoring-refonte-2026-07`).
+> Statut : EN COURS — PARTIEL (branche `feat/monitoring-refonte-2026-07`).
+> **A1 + A2 CLOSES** (gates verts, commits 43d6acfb8 + 6ae955515, poussés). Reprendre
+> à **A3** (première case non cochée). A3-A9 non démarrées (périmètre de session : A3
+> est une restructuration front lourde — 9 onglets → 6 + suppression Lab front/back +
+> régén OpenAPI/types + runbook — qui mérite sa propre session focalisée ; le contrat
+> plan-execution interdit d'enjamber/laisser une phase à moitié). Constat visuel restart
+> serveur (gate A2) = revue utilisateur.
 > Révisé 2026-07-07 : ajout de la phase A3
 > (architecture de l'information — onglets réorganisés par question opérateur,
 > retrait du Lab) validée par le user ; renumérotation A3→A9.
