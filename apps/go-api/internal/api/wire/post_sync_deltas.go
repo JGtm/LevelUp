@@ -58,6 +58,12 @@ const (
 	// bestKDARecordEpsilon : amélioration minimale du best_kda pour compter comme
 	// un nouveau record personnel (filtre le bruit de flottant). Nommé K1a (ex-0.01).
 	bestKDARecordEpsilon = 0.01
+	// maxPlausibleCounterDelta : borne de vraisemblance d'un delta compteur par
+	// cycle de sync. Le max légitime observé en prod = 6 ; l'incident cold-start
+	// 2026-07-03 portait objective_completed=3434. Au-delà de ce seuil le delta
+	// est presque toujours un artefact de snapshot « before » faussement bas —
+	// on log et on supprime l'émission (DP9).
+	maxPlausibleCounterDelta = 20
 )
 
 // counterDelta décrit une notification post-sync « compteur » : émise quand
@@ -178,6 +184,47 @@ func thresholdCrossed(before, after, step float64) (crossed bool, level float64)
 	return false, 0
 }
 
+// snapshotLooksCold retourne vrai si le snapshot ne porte AUCUN signal joueur :
+// tous les compteurs à 0, aucune playlist classée, KD nul. Un « before » froid
+// (échec de lecture de la DB, ou premier passage) fait apparaître tout
+// l'historique comme delta positif au cycle suivant → burst de notifications
+// (incident cold-start 2026-07-03 : 22 notifs en 1 s). DP1 : garde en mémoire,
+// pas de baseline persistée.
+func snapshotLooksCold(s *PlayerSnapshot) bool {
+	if s == nil {
+		return true
+	}
+	return s.PersonalAwardCount == 0 &&
+		s.CitationsCount == 0 &&
+		s.ChallengePathsCount == 0 &&
+		s.ChallengeCompletedCount == 0 &&
+		s.BattlepassCompletedTracks == 0 &&
+		s.CitationTotalEarnedTiers == 0 &&
+		s.CitationMasteryCount == 0 &&
+		s.CurrentRank == 0 &&
+		len(s.SkillTierByPlaylist) == 0 &&
+		s.KDRatio == 0
+}
+
+// persistBestKDASeed persiste le record best_kda SANS émettre de notification —
+// seed silencieux. Utilisé au cold-start (before froid : on supprime toutes les
+// émissions mais on veut quand même semer le PB pour ne pas le notifier au cycle
+// suivant) ; la garde `!oldRec.Loaded` évite d'écraser un record existant.
+func persistBestKDASeed(ctx context.Context, pdb *duckdb.PlayerDB, after *PlayerSnapshot) {
+	if pdb == nil || after == nil || after.BestKDA <= 0 {
+		return
+	}
+	oldRec, err := duckdb.LoadPlayerRecord(ctx, pdb, "best_kda")
+	if err != nil {
+		slog.DebugContext(ctx, "post_sync: load best_kda record (cold-start seed)", "err", err)
+	}
+	if !oldRec.Loaded || after.BestKDA > oldRec.Value+bestKDARecordEpsilon {
+		if err := duckdb.UpsertPlayerRecord(ctx, pdb, "best_kda", after.BestKDA, after.BestKDAMatchID); err != nil {
+			slog.WarnContext(ctx, "post_sync: persist best_kda (cold-start seed)", "err", err)
+		}
+	}
+}
+
 // EmitPostSyncDeltas compare 2 snapshots et émet les notifications applicables.
 //
 // Best-effort : toute erreur est loguée et n'interrompt pas le flux de sync.
@@ -199,6 +246,16 @@ func EmitPostSyncDeltas(
 		return
 	}
 
+	// Anti-burst cold-start (DP1) : un snapshot « before » froid (échec de lecture
+	// DB ou premier passage) transforme tout l'historique en delta positif → burst.
+	// On supprime toutes les émissions de ce cycle mais on sème silencieusement le
+	// PB best_kda pour ne pas le notifier au cycle suivant.
+	if snapshotLooksCold(before) && !snapshotLooksCold(after) {
+		slog.WarnContext(ctx, "post_sync: snapshot before froid — émissions supprimées (cold-start)", "slug", slug)
+		persistBestKDASeed(ctx, pdb, after)
+		return
+	}
+
 	// Deltas compteur uniformes (table-driven, K1a). Ordre non significatif :
 	// chaque catégorie est distincte et les tests valident l'ENSEMBLE émis, pas
 	// la séquence (hasCategory/countCategory). Les deltas bespoke suivent.
@@ -207,12 +264,20 @@ func EmitPostSyncDeltas(
 		if newV <= oldV {
 			continue
 		}
+		delta := newV - oldV
+		// Cap de vraisemblance (DP9) : un delta > maxPlausibleCounterDelta trahit
+		// presque toujours un snapshot « before » faussement bas — on supprime.
+		if delta > maxPlausibleCounterDelta {
+			slog.WarnContext(ctx, "post_sync: delta compteur invraisemblable supprimé",
+				"category", d.category, "delta", delta, "log_label", d.logLabel)
+			continue
+		}
 		in := notifications.EmitInput{
 			Category:    d.category,
 			Severity:    d.severity,
 			TitleKey:    d.titleKey,
 			BodyKey:     d.bodyKey,
-			Params:      map[string]any{paramKeyCount: newV - oldV},
+			Params:      map[string]any{paramKeyCount: delta},
 			TargetRoute: fmt.Sprintf("/players/%s/%s", slug, d.routeSuffix),
 			Source:      postSyncSource,
 		}
@@ -227,7 +292,12 @@ func EmitPostSyncDeltas(
 	// career_rank : nouveau rang Halo lifetime franchi (career_progression).
 	// Remplace l'ancien câblage CategorySeasonPassLevel qui pointait à tort sur
 	// career_progression — déprécié depuis 2026-05-16.
-	if after.CurrentRank > before.CurrentRank && after.CurrentRank > 0 {
+	// A4 : ne jamais émettre depuis un rang « inconnu » (before=0). L'incident
+	// cold-start portait previous:0 — un rang non initialisé n'est pas une montée.
+	if after.CurrentRank > before.CurrentRank && after.CurrentRank > 0 && before.CurrentRank == 0 {
+		slog.DebugContext(ctx, "post_sync: career_rank previous=0 — émission supprimée",
+			"slug", slug, "rank", after.CurrentRank)
+	} else if after.CurrentRank > before.CurrentRank && after.CurrentRank > 0 {
 		if err := emitter.Emit(ctx, notifications.EmitInput{
 			Category: notifications.CategoryCareerRank,
 			Severity: notifications.SeveritySuccess,

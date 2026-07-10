@@ -3,7 +3,10 @@
 package wire
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/notifications"
@@ -399,6 +402,107 @@ func TestEmitPostSyncDeltas_NoFantomRoutes(t *testing.T) {
 					fantom, in.Category)
 			}
 		}
+	}
+}
+
+// ─── A5 : anti-burst cold-start ─────────────────────────────────────────
+
+// (a) before froid + after riche → 0 émission (au lieu de 22).
+func TestEmitPostSyncDeltas_ColdStart_SuppressesAll(t *testing.T) {
+	em := &recordingEmitter{}
+	before := &PlayerSnapshot{} // tous compteurs à 0 → froid
+	after := &PlayerSnapshot{
+		CurrentRank:               42,
+		PersonalAwardCount:        3434,
+		ChallengeCompletedCount:   50,
+		BattlepassCompletedTracks: 10,
+		CitationTotalEarnedTiers:  200,
+		SkillTierByPlaylist:       map[string]string{"ranked-arena": "csr|Onyx|0"},
+		KDRatio:                   1.5,
+	}
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	if len(em.emitted) != 0 {
+		t.Errorf("cold-start doit supprimer toutes les émissions, got %d", len(em.emitted))
+	}
+}
+
+// (b) delta objectifs = 25 (> cap) → supprimé, les autres deltas du même cycle passent.
+func TestEmitPostSyncDeltas_ImplausibleDelta_Suppressed(t *testing.T) {
+	em := &recordingEmitter{}
+	before := &PlayerSnapshot{PersonalAwardCount: 5, ChallengePathsCount: 3}
+	after := &PlayerSnapshot{PersonalAwardCount: 30, ChallengePathsCount: 5} // PSA +25 (>20), paths +2
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	if hasCategory(em.emitted, notifications.CategoryObjectiveCompleted) {
+		t.Error("delta PSA=25 (>cap) doit être supprimé")
+	}
+	if !hasCategory(em.emitted, notifications.CategoryChallengeAdded) {
+		t.Error("le delta challenge_added=2 du même cycle doit passer")
+	}
+}
+
+// (c) delta = 5 → émis.
+func TestEmitPostSyncDeltas_PlausibleDelta_Emitted(t *testing.T) {
+	em := &recordingEmitter{}
+	before := &PlayerSnapshot{PersonalAwardCount: 10}
+	after := &PlayerSnapshot{PersonalAwardCount: 15}
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	if !hasCategory(em.emitted, notifications.CategoryObjectiveCompleted) {
+		t.Error("delta PSA=5 (<cap) doit être émis")
+	}
+}
+
+// (d) career_rank previous=0 → supprimé.
+func TestEmitPostSyncDeltas_CareerRank_PreviousZero_Suppressed(t *testing.T) {
+	em := &recordingEmitter{}
+	// PersonalAwardCount non nul → snapshot non froid, on isole la garde career_rank.
+	before := &PlayerSnapshot{CurrentRank: 0, PersonalAwardCount: 5}
+	after := &PlayerSnapshot{CurrentRank: 5, PersonalAwardCount: 5, CurrentRankName: "Onyx"}
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	if hasCategory(em.emitted, notifications.CategoryCareerRank) {
+		t.Error("career_rank previous=0 doit être supprimé")
+	}
+}
+
+// (e) career_rank 190→192 → émis.
+func TestEmitPostSyncDeltas_CareerRank_RealRankUp_Emitted(t *testing.T) {
+	em := &recordingEmitter{}
+	before := &PlayerSnapshot{CurrentRank: 190}
+	after := &PlayerSnapshot{CurrentRank: 192, CurrentRankName: "Onyx"}
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	if !hasCategory(em.emitted, notifications.CategoryCareerRank) {
+		t.Error("career_rank 190→192 doit être émis")
+	}
+}
+
+// (f) before froid ET after froid (nouveau joueur vide) → 0 émission, pas de warn cold-start.
+func TestEmitPostSyncDeltas_BothCold_NoEmitNoWarn(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	defer slog.SetDefault(prev)
+
+	em := &recordingEmitter{}
+	EmitPostSyncDeltas(context.Background(), em, "p1", &PlayerSnapshot{}, &PlayerSnapshot{}, nil)
+	if len(em.emitted) != 0 {
+		t.Errorf("before+after froids → 0 émission, got %d", len(em.emitted))
+	}
+	if strings.Contains(buf.String(), "cold-start") {
+		t.Error("aucun warn cold-start attendu quand after est aussi froid")
+	}
+}
+
+func TestSnapshotLooksCold(t *testing.T) {
+	if !snapshotLooksCold(nil) {
+		t.Error("nil doit être considéré froid")
+	}
+	if !snapshotLooksCold(&PlayerSnapshot{}) {
+		t.Error("snapshot vide doit être froid")
+	}
+	if snapshotLooksCold(&PlayerSnapshot{PersonalAwardCount: 1}) {
+		t.Error("PSA=1 ne doit pas être froid")
+	}
+	if snapshotLooksCold(&PlayerSnapshot{SkillTierByPlaylist: map[string]string{"a": "b"}}) {
+		t.Error("skill tier présent ne doit pas être froid")
 	}
 }
 

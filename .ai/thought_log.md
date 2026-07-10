@@ -1,3 +1,19 @@
+## [2026-07-10] Rationalisation notifications — Phase A (anti-burst cold-start)
+
+**Statut** : En cours (Phase A close). Branche `refactor/notifications-rationalization`.
+
+**Décision principale** : anti-burst par GARDES en mémoire (DP1), pas de baseline
+persistée. `snapshotLooksCold` (tous compteurs + rank + skill tier + KD à 0) →
+cold-start supprime toutes les émissions du cycle mais sème silencieusement le PB
+best_kda (`persistBestKDASeed`). Cap de vraisemblance `maxPlausibleCounterDelta=20`
+(DP9) sur les counter deltas ; garde career_rank `before.CurrentRank==0`.
+
+**Résultats** : `go test ./internal/api/wire/` exit 0. 8 nouveaux tests A5
+(cold-start, cap, career previous=0, both-cold sans warn).
+
+**Prochaine étape** : Phase B (dédoublonnage sémantique — objective_assigned, records
+coach période la plus large, near-miss significatif, skill_tier montées+dédup 24 h).
+
 ## [2026-07-10] MERGE MAIN — campagne audits 2026-07 + clôture + gate humain (GO utilisateur)
 
 **Statut** : En cours (merge exécuté dans cette session ; post-deploy VPS à suivre).
