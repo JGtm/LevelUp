@@ -889,6 +889,79 @@ commit(s) `cloture(GH4):` FR + Co-Authored-By ; push + CI verte. Données binair
 (metadata.duckdb) NON committées → livrer l'OUTIL (seed) + documenter l'exécution
 (dev exécutée, prod post-merge).
 
+## LOT GH5 — Résiduels re-passe 4 du gate humain (nouveau, 2026-07-10)
+
+Origine : re-passe 4 du gate humain (post-GH3/GH4). Deux incohérences inter-surfaces.
+Exécutant GH5 piloté. Périmètre FERMÉ = GH5-1, GH5-2 ; découvertes → §Découvertes.
+Décisions superviseur PRÉ-TRANCHÉES (ne pas re-questionner) :
+  - GH5-1 : ordre des sélecteurs de saison = RÉCENT-EN-HAUT (DESC) PARTOUT (aligner
+    Omnibar/Explorer sur la Carrière CSR, déjà DESC via `sortCSRSeasonsDesc`).
+  - GH5-2 : libellé du filtre « Experience Type » locale-aware côté BACKEND, la Value
+    reste FR INCHANGÉE (miroir exact de GH3-1 saisons — « PVP non classé » est le pivot
+    des 3 mécanismes cascade/substring : ne JAMAIS toucher la Value).
+
+- [x] GH5-1 — Ordre des saisons DESC (récent d'abord) dans les sélecteurs Omnibar/Explorer.
+  Le tri VISIBLE est établi front par `useSeasons()` (fieldMappings.ts:260, était
+  `displayOrder` ASC). Approche retenue = tri par `startDate` DESC (récence réelle) :
+  le `SeasonEntry` front ne porte PAS de champ `source`, donc keyer sur la date réelle
+  place les saisons « DB-only » (DisplayOrder synthétique `maxOrder+10*(i+1)`,
+  seasons_catalog.go:246) à leur JUSTE place chronologique (approche (a) du superviseur)
+  et évite le piège du DESC-sur-displayOrder naïf. Données dev (serveur :8000) : 14 saisons
+  TOML (S1→S13 + Winter Update), 0 DB-only aujourd'hui ; `display_order` strictement
+  monotone avec `start_date` → startDate-DESC ≡ displayOrder-DESC pour le TOML, robuste
+  au futur (une S14+ Waypoint arriverait DB-only et se placerait à sa date réelle en tête).
+  PIÈGE traité (découvert on-pièces) : `prevSeason`/`nextSeason` (findSeasonAt.ts, consommés
+  par PeriodSessionRail `SeasonRail`) étaient array-index → un flip global du selecteur
+  partagé les aurait INVERSÉS ; rendus ORDRE-INDÉPENDANTS (voisin chronologique calculé par
+  startDate). `useActiveSeason` (findActiveSeason) déjà ordre-indépendant (recherche par
+  fenêtre) → sûr, inchangé. `SaisonPill` préserve l'ordre d'entrée dans chaque partition
+  (available count>0 / unavailable count=0) → DESC conservé. `CareerHighlightMatchesSection`
+  (dropdown saisons) hérite DESC = cohérent avec la décision. Tests DESC ajoutés
+  (comparateur pur + prev/next ordre-indépendant + ordre DOM SaisonPill).
+- [x] GH5-2 — Filtre « Experience Type » : Label locale-aware backend, Value FR inchangée.
+  Les 3 libellés `expTypePVPUnranked`/`expTypePVPRanked`/`expTypePVE` (constantes FR,
+  match_history_service.go:50-52) étaient Label ET Value des options (buildExperienceOptions
+  filters_options.go:326 ; emptyResolved filters_service.go:459), sans locale → FR sous EN
+  dans le FiltresPill. Décision = localiser le LABEL, garder la VALUE FR. Réalisation :
+  mapping Go `value_FR → label_EN` (backend-authored, à côté des constantes FR) + helper
+  `experienceLabelForLocale` ; localisation appliquée au POINT D'ENTRÉE ctx-aware
+  `FiltersService.Resolve` (seul chemin prod surfaçant ces options à l'UI ; l'autre caller
+  `filterMatchHistoryRows:407` jette `resolved` via `_ = resolved`). CHOIX documenté : PAS
+  de threading de `locale` à travers la fonction PURE `ResolveFiltersFromRows`
+  (~40 call-sites de tests) — post-projection unique à l'entrée = même résultat, risque nul,
+  0 test cassé (la couche pure produit le canonique FR, le service projette vers la locale
+  de requête). Libellés EN choisis = « Ranked PvP » / « Unranked PvP » / « PvE » (garde la
+  distinction PvP/PvE des 3 options, cohérent avec le vocabulaire « Ranked »/« Unranked »
+  des manifests session/synthesis/career). Value FR intacte → cascade `EXPERIENCE_TO_CASCADE`
+  + matchers substring `applyExperienceFilter` (Go) et `experienceCounts` (useLocalFilterBar)
+  inchangés, commentaires de contrat ajoutés à chacun. Test Go EN-vs-FR (Label localisé,
+  Value FR dans les DEUX).
+
+Gate GH5 PASSÉ (2026-07-10) : ✅ front cache purgé — typecheck 0 ; lint 0 err (68 warn
+baseline, aucun sur mes fichiers) ; vitest 245 fichiers / 2099 pass / 14 skip / 0 fail
+(dont GH5-1 : fieldMappings comparateur DESC, findSeasonAt prev/next ordre-indépendant,
+SaisonPill ordre DOM). ✅ Go build 0 + vet 0 ; `go test ./internal/service/... ./internal/api/...`
+0 FAIL ; `-tags=integration -p 1 -timeout 900s ./internal/api/... ./internal/service/...`
+exit 0 (0 `^--- FAIL:`, tous `ok`), dont GH5-2 `TestFiltersService_Resolve_ExperienceLabelsLocaleAware`
+(Label EN sous EN, Value FR dans les 2 locales, chemins buildExperienceOptions + emptyResolved).
+Aucun manifest i18n ni `generated/*.ts` touché (GH5-2 = libellés EN Go-authored ; GH5-1 = TS pur).
+
+Journal GH5 (2026-07-10) : GH5-1 — flip du sélecteur PARTAGÉ `useSeasons` révèle sur pièces
+un couplage non cité par le plan : `prevSeason`/`nextSeason` (findSeasonAt.ts) étaient
+array-index et consommés par `PeriodSessionRail` → un flip naïf aurait INVERSÉ les boutons
+saison précédente/suivante du rail. Rendus ordre-indépendants (voisin chronologique recalculé
+par startDate sur copie). Tri visible keyé sur `startDate` DESC (pas `displayOrder`) : le
+`SeasonEntry` front n'a pas de champ `source`, la date réelle place les DB-only à leur juste
+récence (0 DB-only en dev aujourd'hui — 14 saisons TOML S1→S13 + Winter ; robuste au futur).
+GH5-2 — 2e caller de `ResolveFiltersFromRows` (`filterMatchHistoryRows`) jette `resolved`
+(`_ = resolved`) → le SEUL chemin prod surfaçant les options d'expérience à l'UI est
+`FiltersService.Resolve`. Choix : localisation du Label au point d'entrée ctx-aware (post-projection
+unique) plutôt que threading de `locale` dans la fonction PURE `ResolveFiltersFromRows`
+(~40 call-sites de tests) — même résultat, risque nul, Value FR intacte (cascade/substring),
+commentaires de contrat posés aux 3 sites couplés (EXPERIENCE_TO_CASCADE, applyExperienceFilter,
+experienceCounts). Écart documenté vs la lettre « thread jusqu'au builder » : la décision
+superviseur (Label locale-aware backend, Value FR) est respectée à l'identique.
+
 ## PLAN DE MERGE & DÉPLOIEMENT (le big-bang est inévitable — le rendre sûr)
 
 Constat : les merges intermédiaires (après B, G, K) n'ont pas été faits ; ~130 commits
@@ -1087,3 +1160,24 @@ Séquence OBLIGATOIRE, dans l'ordre :
   possible. (d) `OUTCOME_LABELS_FALLBACK_FR` (MediaMatchPicker) : fallback FR-only
   quand `useFieldMappings` n'a pas encore répondu — la voie primaire (outcomes TOML)
   est localisée ; résiduel transitoire acceptable, noté.
+
+- **[GH5-2 — SURFACE SYMÉTRIQUE hors périmètre, NON traitée]** Le filtre « expérience »
+  du mode « matchs » de l'Explorer/Historique est servi par un champ DISTINCT :
+  `MatchHistoryQuerySummary.AvailableExperienceTypes []string` (valeurs FR canoniques,
+  `computeExplorerAvailableOptions`, match_history_service.go:220/269) → openapi
+  `available_experience_types` → `ExplorerPage.filterOptions.ts:42`. Sous UI EN cette surface
+  montrerait les mêmes libellés FR (« PVP non classé »…). GH5-2 vise le FiltresPill de
+  l'OMNIBAR (`FiltersService.Resolve`, le report utilisateur) — cette surface Explorer est un
+  chemin séparé, non flaguée, hors périmètre (règle 7). Fix futur = même recette (localiser le
+  Label côté service, garder la Value FR ; le champ étant `[]string` il faudrait le passer en
+  `[]LabelValue` ou localiser front via un mapping value_FR→label — petite refonte du contrat).
+- **[GH5-2 — micro-inefficacité pré-existante, NON traitée]** `filterMatchHistoryRows`
+  (match_history_service_filters.go:407) calcule `resolved := ResolveFiltersFromRows(...)` puis
+  le JETTE (`_ = resolved`) et re-filtre via `applyAllFilters` — appel entièrement inutile
+  (résultat jamais lu). Pré-existant, hors périmètre GH5 (retrait de l'appel mort = nettoyage
+  ultérieur).
+- **[GH5-1 — pas une découverte bloquante] `prevSeason`/`nextSeason` rendus ordre-indépendants.**
+  Traité DANS le lot (conséquence directe du flip de `useSeasons`, comme V1c/V4a) : ce n'est
+  pas un fix opportuniste mais la correction obligatoire d'une régression que le flip aurait
+  introduite sur `PeriodSessionRail`. 0 DB-only saison en dev aujourd'hui (14 TOML) ; la clé
+  `startDate` rend le tri robuste si Waypoint ajoute une saison hors TOML.
