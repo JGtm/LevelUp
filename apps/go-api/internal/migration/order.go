@@ -29,6 +29,7 @@ var canonicalOrder = []string{
 	"add_citation_mappings_pk",                              // metadata
 	"add_citation_mappings_v2_fields",                       // metadata
 	"add_citation_name_display_en",                          // metadata
+	"add_citation_description_en",                           // metadata
 	"add_xbox_achievement_definitions",                      // metadata
 	"add_career_rank_translations",                          // metadata
 	"medal_definitions_add_indices",                         // metadata

@@ -175,7 +175,10 @@ ORDER BY mc.match_id, mc.value DESC`
 // GH2-B2/B6 : citation_name_display_en exposé pour la résolution locale-aware du
 // nom (les citations Infinite sont des copies de commendations H5, seul le calcul
 // diffère → l'EN vient du seed). Sous UI EN, l'appelant remplace le display FR par
-// l'EN quand il est non vide. La description reste mono-colonne (pas de source EN).
+// l'EN quand il est non vide.
+// GH4 : description_en exposé (source = commendations H5 officielles + trad fidèle
+// Infinite). Sous UI EN, l'appelant sert description_en quand non vide, sinon le nom
+// seul (description masquée) — jamais le FR (principe GH-5b).
 const Q26jCitationMappingsForNormsTemplate = `
 SELECT
     citation_name_norm,
@@ -183,7 +186,8 @@ SELECT
     COALESCE(citation_name_display_en, '') AS citation_name_display_en,
     COALESCE(image_path, '')   AS image_path,
     COALESCE(tier_targets, '') AS tier_targets,
-    COALESCE(MAX(description), '') AS description
+    COALESCE(MAX(description), '') AS description,
+    COALESCE(MAX(description_en), '') AS description_en
 FROM citation_mappings
 WHERE citation_name_norm IN (%s)
   AND enabled IS NOT FALSE

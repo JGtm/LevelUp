@@ -660,6 +660,121 @@ var citationDisplayEN = map[string]string{
 	"forerunner_weapons_mastery": "Forerunner Weapon Mastery",
 }
 
+// citationDescriptionEN — description ANGLAISE par citation (clé = Norm). Symétrique de
+// citationDisplayEN. Les citations Infinite étant des copies de commendations Halo 5, la
+// source EN autoritative des descriptions est, par ordre de fiabilité (GH4) :
+//   - la description OFFICIELLE H5 (API Metadata www.haloapi.com /commendations, EN) pour
+//     les citations qui reprennent une commendation H5 in-match (mode de jeu, multijoueur,
+//     véhicules, éliminations d'ennemis, grenades) — 57 citations ;
+//   - la page Halopedia des commendations Halo 5 (section Spartan Company, absente de
+//     l'endpoint metadata) pour les 15 citations Spartan Companies ;
+//   - une traduction fidèle du FR dans l'idiome officiel « Kill enemy Spartans with the
+//     <arme> », pour les 24 maîtrises d'armes Infinite (armes absentes de H5) et les 4
+//     citations Infinite-only (avenger, sentinel/brute/skimmer slayer).
+//
+// Consommé par citationDescriptionENOr() au seed → colonne description_en, servie
+// locale-aware au read (Q26j/Q34). Absent ⇒ description_en NULL ⇒ tooltip = nom seul EN
+// (fallback GH2-B2 conservé, principe GH-5b « EN n'injecte jamais de FR »).
+var citationDescriptionEN = map[string]string{
+	// ── Mode de jeu (source : API H5 officielle /commendations) ─────────────────
+	"charge":              "Take over any base in any Stronghold gametype in matchmaking.",
+	"forced_annexation":   "Take over 3 bases without dying in any Stronghold gametype in matchmaking.",
+	"assistant":           "Earn any Assist medal in Warzone.",
+	"bulldozer":           "Finish with a KDA over 8 in any Slayer gametype in matchmaking.",
+	"flag_defender":       "Protect your team's flag in any Capture the Flag gametype in matchmaking.",
+	"got_you":             "Return your team's flag in any Capture the Flag gametype in matchmaking.",
+	"stakeholder":         "Defend a team base in any Stronghold gametype in matchmaking.",
+	"flag_carrier_hunter": "Kill an enemy flag carrier in any Capture the Flag gametype in matchmaking.",
+	"flag_victory":        "Win a match in any Capture the Flag gametype in matchmaking.",
+	"slayer_victory":      "Be on the winning team of a Slayer match.",
+	"strongholds_victory": "Win a match in any Stronghold gametype in matchmaking.",
+	// ── Véhicule + grenade (API H5) ─────────────────────────────────────────────
+	"splatter":       "Splatter an enemy Spartan with a vehicle.",
+	"driver":         "Earn Vehicle Skill medals.",
+	"frag_grenade":   "Kill an enemy Spartan with the Frag Grenade.",
+	"plasma_grenade": "Kill an enemy Spartan with the Plasma Grenade.",
+	// ── Multijoueur (API H5) ────────────────────────────────────────────────────
+	"assassin":        "Assassinate enemy Spartans.",
+	"spartan_carnage": "Kill multiple enemy Spartans without dying.",
+	"close_combat":    "Earn any CQC medal.",
+	"opportunist":     "Earn any combat skill medal.",
+	"multikill":       "Quickly kill multiple enemy Spartans.",
+	"melee_fighter":   "Kill an enemy Spartan with melee.",
+	"headshot":        "Kill an enemy Spartan with a headshot.",
+	"spartan_killer":  "Take out enemy Spartans.",
+	"eagle_eye":       "Kill a full health enemy Spartan with a precision weapon without missing any shots.",
+	// ── Véhicules destructeurs (API H5) ─────────────────────────────────────────
+	"wraith_destroyer":   "Destroy enemy occupied Wraiths.",
+	"banshee_destroyer":  "Destroy enemy occupied Banshees.",
+	"ghost_destroyer":    "Destroy enemy occupied Ghosts.",
+	"mongoose_destroyer": "Destroy enemy occupied Mongooses.",
+	"scorpion_destroyer": "Destroy enemy occupied Scorpions.",
+	"warthog_destroyer":  "Destroy enemy occupied Warthogs.",
+	"wasp_destroyer":     "Destroy enemy occupied Wasps.",
+	// ── Éliminations Firefight (API H5) ─────────────────────────────────────────
+	"grunt_slayer":         "Kill Grunts.",
+	"elite_slayer":         "Kill Elites.",
+	"jackal_slayer":        "Kill Jackals.",
+	"hunter_slayer":        "Kill Hunters.",
+	"marine_slayer":        "Kill enemy Marines.",
+	"like_a_boss":          "Kill a boss in a Warzone Firefight match.",
+	"player_vs_everything": "Win matches in Warzone Firefight.",
+	// ── Spartan Company (source : Halopedia + traduction fidèle du FR) ───────────
+	"flag_em_down":          "Earn any of these medals: Interception, Flag Bout, Carrier Kill, Flag Return, Flag Defense.",
+	"grand_theft":           "Hijack a vehicle or aircraft.",
+	"helping_hand":          "Earn any assist.",
+	"im_just_perfect":       "Kill a player with a precision weapon without missing a shot.",
+	"lawnmower":             "Splatter an opponent with a vehicle.",
+	"look_ma_no_pin":        "Kill an enemy Spartan with any grenade.",
+	"lucky":                 "Earn the Lucky, Empty Clip, Sayonara, or Cannonball medals.",
+	"no_hard_feelings":      "Kill enemy Spartans.",
+	"positive_contribution": "Finish with a KDA over 8 in any Slayer game in matchmaking.",
+	"power_play":            "Kill an enemy Spartan with a power weapon.",
+	"road_trip":             "Kill an enemy Spartan with a ground vehicle.",
+	"sting_like_a_bee":      "Kill an enemy Spartan in close combat.",
+	"the_reaper":            "Kill an opponent from beyond the grave.",
+	"too_fast_for_you":      "Kill an opponent that shot you first.",
+	"vandalism":             "Destroy an enemy vehicle.",
+	// ── Maîtrises d'armes Infinite (trad fidèle, idiome officiel « Kill … with the ») ──
+	"br75_mastery":           "Kill enemy Spartans with the BR75.",
+	"ma40_mastery":           "Kill enemy Spartans with the MA40 AR.",
+	"sidekick_mastery":       "Kill enemy Spartans with the Mk50 Sidekick.",
+	"commando_mastery":       "Kill enemy Spartans with the VK78 Commando.",
+	"sniper_mastery":         "Kill enemy Spartans with the S7 Sniper.",
+	"spnkr_mastery":          "Kill enemy Spartans with the M41 SPNKr.",
+	"bulldog_mastery":        "Kill enemy Spartans with the CQS48 Bulldog.",
+	"bandit_mastery":         "Kill enemy Spartans with the Bandit EVO.",
+	"hydra_mastery":          "Kill enemy Spartans with the MLRS-2 Hydra.",
+	"mutilator_mastery":      "Kill enemy Spartans with the Mutilator.",
+	"stalker_mastery":        "Kill enemy Spartans with the Stalker Rifle.",
+	"needler_mastery":        "Kill enemy Spartans with the Needler.",
+	"energy_sword_mastery":   "Kill enemy Spartans with the Energy Sword.",
+	"mangler_mastery":        "Kill enemy Spartans with the Mangler.",
+	"skewer_mastery":         "Kill enemy Spartans with the Skewer.",
+	"gravity_hammer_mastery": "Kill enemy Spartans with the Gravity Hammer.",
+	"pulse_carbine_mastery":  "Kill enemy Spartans with the Pulse Carbine.",
+	"ravager_mastery":        "Kill enemy Spartans with the Ravager.",
+	"plasma_pistol_mastery":  "Kill enemy Spartans with the Plasma Pistol.",
+	"heatwave_mastery":       "Kill enemy Spartans with the Heatwave.",
+	"cindershot_mastery":     "Kill enemy Spartans with the Cindershot.",
+	"sentinel_beam_mastery":  "Kill enemy Spartans with the Sentinel Beam.",
+	"disruptor_mastery":      "Kill enemy Spartans with the Disruptor.",
+	"shock_rifle_mastery":    "Kill enemy Spartans with the Shock Rifle.",
+	// ── Éliminations / natives Infinite-only (trad fidèle du FR) ────────────────
+	"avenger":         "Kill the enemy responsible for your previous death.",
+	"sentinel_slayer": "Kill Sentinels.",
+	"brute_slayer":    "Kill Brutes.",
+	"skimmer_slayer":  "Kill Skimmers.",
+	// ── Composites (API H5 « Master all… » + trad fidèle des familles Infinite) ──
+	"covenant_destroyer":         "Master all Covenant kill commendations.",
+	"grenade_mastery":            "Master all grenade commendations.",
+	"vehicle_mastery":            "Master all vehicle commendations.",
+	"human_weapons_mastery":      "Master all UNSC weapon commendations.",
+	"paria_weapons_mastery":      "Master all Banished weapon commendations.",
+	"forerunner_weapons_mastery": "Master all Forerunner weapon commendations.",
+	"all_weapons_mastery":        "Master all weapon commendations.",
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // medal_definitions
 // ─────────────────────────────────────────────────────────────────────────────

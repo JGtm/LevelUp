@@ -738,6 +738,16 @@ func Steps() []migration.Migration {
 			},
 		},
 		{
+			Name:        "add_citation_description_en",
+			TargetDB:    migration.TargetMetadata,
+			Description: "citation_mappings : ajout description_en (description anglaise ; source = commendations Halo 5 officielles via l'API Metadata + traduction fidèle des maîtrises d'armes Infinite). Symétrique de citation_name_display_en. Servie locale-aware au read ; NULL → tooltip = nom seul (GH4).",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS description_en VARCHAR;
+				`)
+			},
+		},
+		{
 			// Downstream de la famille citation (data-fix). DOIT rester title-owned
 			// avec la chaîne : il UPDATE citation_mappings, absente en run global-only.
 			Name:        "fix_citation_image_paths_double_encoded",

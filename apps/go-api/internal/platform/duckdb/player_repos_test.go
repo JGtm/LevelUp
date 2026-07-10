@@ -648,7 +648,7 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 			citation_name_norm VARCHAR, citation_name_display VARCHAR,
 			citation_name_display_en VARCHAR,
 			mapping_type VARCHAR, category VARCHAR,
-			image_path VARCHAR, description VARCHAR, tier_targets VARCHAR,
+			image_path VARCHAR, description VARCHAR, description_en VARCHAR, tier_targets VARCHAR,
 			medal_id UBIGINT, enabled BOOLEAN DEFAULT TRUE,
 			medal_ids VARCHAR, stat_name VARCHAR, award_name VARCHAR,
 			award_category VARCHAR, custom_function VARCHAR,
@@ -711,8 +711,8 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 		args []interface{}
 	}
 	inserts := []row{
-		{`INSERT INTO citation_mappings (citation_name_norm,citation_name_display,citation_name_display_en,mapping_type,category,enabled,medal_id) VALUES (?,?,?,?,?,?,?)`,
-			[]interface{}{"killing_spree", "Killing Spree", "Killing Spree (EN)", "medal", "combat", true, uint64(1001)}},
+		{`INSERT INTO citation_mappings (citation_name_norm,citation_name_display,citation_name_display_en,mapping_type,category,description,description_en,enabled,medal_id) VALUES (?,?,?,?,?,?,?,?,?)`,
+			[]interface{}{"killing_spree", "Killing Spree", "Killing Spree (EN)", "medal", "combat", "Série de kills", "Killing spree streak", true, uint64(1001)}},
 		{`INSERT INTO medal_definitions (medal_name_id,name_fr,name_en,description_fr,description_en,difficulty) VALUES (?,?,?,?,?,?)`,
 			[]interface{}{int64(1001), "Killing Spree", "Killing Spree", "Série de kills", "Killing spree", "Normal"}},
 		{`INSERT INTO weapon_labels (weapon_id,name_en,name_fr) VALUES (?,?,?)`,
