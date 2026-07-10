@@ -122,6 +122,54 @@ type AdminFreshnessResponse struct {
 	CriticalTotal int `json:"critical_total"`
 }
 
+// ResourceRuntime — état runtime Go du process (A5, DC-4).
+type ResourceRuntime struct {
+	Goroutines     int    `json:"goroutines"`
+	HeapAllocBytes uint64 `json:"heap_alloc_bytes"`
+	HeapSysBytes   uint64 `json:"heap_sys_bytes"`
+	// SysBytes : total demandé à l'OS par le runtime (approx. RSS).
+	SysBytes uint64 `json:"sys_bytes"`
+	NumGC    uint32 `json:"num_gc"`
+}
+
+// ResourceDisk — espace libre du volume data (A5.3 : seuils nommés côté ops).
+type ResourceDisk struct {
+	Path       string `json:"path"`
+	FreeBytes  uint64 `json:"free_bytes"`
+	TotalBytes uint64 `json:"total_bytes"`
+	// Status : ok / warn (< seuil warn) / critical (< seuil critical) / unknown.
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
+}
+
+// ResourceDBFile — taille d'une base DuckDB + WAL éventuel.
+type ResourceDBFile struct {
+	// Name : libellé stable "{title}/{base}" ou "global/{base}".
+	Name      string `json:"name"`
+	Path      string `json:"path"`
+	SizeBytes int64  `json:"size_bytes"`
+	// WalBytes : taille du .wal adjacent (0 = absent).
+	WalBytes int64 `json:"wal_bytes,omitempty"`
+}
+
+// AdminResourcesResponse — réponse de GET /admin/monitoring/resources (A5).
+type AdminResourcesResponse struct {
+	GeneratedAt string          `json:"generated_at"`
+	Runtime     ResourceRuntime `json:"runtime"`
+	UptimeS     int64           `json:"uptime_s"`
+	// Restarts : démarrages du serveur enregistrés dans la base monitoring
+	// (marqueur server_boot dans cron_runs — persiste au restart). 0 si store absent.
+	Restarts int64        `json:"restarts"`
+	Disk     ResourceDisk `json:"disk"`
+	// Databases : shared/metadata/pve/social par titre actif + players agrégés
+	// + bases globales (aliases, monitoring).
+	Databases    []ResourceDBFile `json:"databases"`
+	DBTotalBytes int64            `json:"db_total_bytes"`
+	// Budgets / PoolStats : relecture des snapshots expvar existants (J1/J8).
+	Budgets   map[string]interface{} `json:"budgets,omitempty"`
+	PoolStats map[string]interface{} `json:"pool_stats,omitempty"`
+}
+
 // MonitoringServerInfo : identité du process serveur (overview).
 type MonitoringServerInfo struct {
 	UptimeS   int64  `json:"uptime_s"`

@@ -11,9 +11,10 @@ import { KpiCard } from '@/components/cards/KpiCard'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import type { AdminMonitoringOverview } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
-import { useMonitoringOverview } from '../monitoring/queries'
+import { useMonitoringOverview, useMonitoringResources } from '../monitoring/queries'
+import { diskToken } from '../system/ResourcesSection'
 import { useAdminT, useAdminLocale, type TAdmin } from '../useAdminText'
-import { adminAbsoluteTime, adminRelativeTime, formatDurationMs, type AdminLocale } from '../format'
+import { adminAbsoluteTime, adminRelativeTime, formatBytes, formatDurationMs, type AdminLocale } from '../format'
 import { AdminQuickActions } from './AdminQuickActions'
 import { DataHealthPanel } from './DataHealthPanel'
 import { DiagnosticPanel } from './DiagnosticPanel'
@@ -22,6 +23,7 @@ import { WeaponCoveragePanel } from './WeaponCoveragePanel'
 
 export function AdminOverviewPage() {
   const { data, isLoading, isError } = useMonitoringOverview()
+  const resources = useMonitoringResources()
   const queryClient = useQueryClient()
   const tA = useAdminT()
   const locale = useAdminLocale()
@@ -37,7 +39,7 @@ export function AdminOverviewPage() {
     <div className="space-y-8">
       <DiagnosticPanel overview={data} />
 
-      <OverviewKpiGrid data={data} tA={tA} locale={locale} />
+      <OverviewKpiGrid data={data} tA={tA} locale={locale} disk={resources.data?.disk} />
 
       <section className="space-y-3">
         <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
@@ -72,10 +74,13 @@ function OverviewKpiGrid({
   data,
   tA,
   locale,
+  disk,
 }: {
   data: AdminMonitoringOverview
   tA: TAdmin
   locale: AdminLocale
+  /** Verdict disque compact (A5.2) — undefined tant que /resources charge. */
+  disk?: import('@/lib/api/types').AdminResourcesResponse['disk']
 }) {
   const sched = data.scheduler
   const tokensNeedAction = data.tokens
@@ -165,6 +170,12 @@ function OverviewKpiGrid({
         label={tA('admin.overview.kpi_freshness')}
         value={String(data.freshness_critical)}
         accent={data.freshness_critical > 0 ? 'destructive' : 'success'}
+      />
+      <OverviewKpi
+        label={tA('admin.overview.kpi_disk')}
+        value={disk && disk.status !== 'unknown' ? formatBytes(disk.free_bytes, locale) : '—'}
+        accent={disk ? diskToken(disk.status) : undefined}
+        to="/admin/system"
       />
       <OverviewKpi
         label={tA('admin.overview.kpi_uptime')}

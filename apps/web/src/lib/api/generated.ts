@@ -1885,6 +1885,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/monitoring/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard monitoring — ressources machine & process : runtime Go, tailles des bases DuckDB + WAL, disque libre du volume data, budgets/pool DuckDB, uptime + compteur de restarts (auth admin requis) */
+        get: operations["getAdminMonitoringResources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/monitoring/detections/{fingerprint}": {
         parameters: {
             query?: never;
@@ -4949,6 +4966,53 @@ export interface components {
             title_slug: string;
             /** Format: int64 */
             warn_count: number;
+        };
+        AdminResourcesResponse: {
+            budgets?: {
+                [key: string]: unknown;
+            };
+            databases: components["schemas"]["ResourceDBFile"][] | null;
+            /** Format: int64 */
+            db_total_bytes: number;
+            disk: components["schemas"]["ResourceDisk"];
+            generated_at: string;
+            pool_stats?: {
+                [key: string]: unknown;
+            };
+            /** Format: int64 */
+            restarts: number;
+            runtime: components["schemas"]["ResourceRuntime"];
+            /** Format: int64 */
+            uptime_s: number;
+        };
+        ResourceDBFile: {
+            name: string;
+            path: string;
+            /** Format: int64 */
+            size_bytes: number;
+            /** Format: int64 */
+            wal_bytes?: number;
+        };
+        ResourceDisk: {
+            error?: string;
+            /** Format: int64 */
+            free_bytes: number;
+            path: string;
+            status: string;
+            /** Format: int64 */
+            total_bytes: number;
+        };
+        ResourceRuntime: {
+            /** Format: int64 */
+            goroutines: number;
+            /** Format: int64 */
+            heap_alloc_bytes: number;
+            /** Format: int64 */
+            heap_sys_bytes: number;
+            /** Format: int32 */
+            num_gc: number;
+            /** Format: int64 */
+            sys_bytes: number;
         };
         AdminInvariantsResponse: {
             generated_at: string;
@@ -11369,6 +11433,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminFreshnessResponse"];
+                };
+            };
+        };
+    };
+    getAdminMonitoringResources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description État ressources (best-effort par section) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminResourcesResponse"];
                 };
             };
         };

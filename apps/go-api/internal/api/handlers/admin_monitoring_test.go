@@ -51,7 +51,7 @@ func okOverviewRunner(t *testing.T, wantTitle string) MonitoringOverviewRunner {
 // TestAdminMonitoring_Overview_OKAndTitleDefault : 200 + titre par défaut
 // quand ?title= absent.
 func TestAdminMonitoring_Overview_OKAndTitleDefault(t *testing.T) {
-	h := NewAdminMonitoringHandler(okOverviewRunner(t, "halo_infinite"), nil, nil, nil, nil, nil, nil, nil, nil)
+	h := NewAdminMonitoringHandler(okOverviewRunner(t, "halo_infinite"), nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/admin/monitoring/overview", nil)
 	rec := serveAdminMonitoring(h, req)
 
@@ -71,7 +71,7 @@ func TestAdminMonitoring_Overview_OKAndTitleDefault(t *testing.T) {
 func TestAdminMonitoring_Overview_RunnerError(t *testing.T) {
 	h := NewAdminMonitoringHandler(func(context.Context, string) (domain.AdminMonitoringOverview, error) {
 		return domain.AdminMonitoringOverview{}, errors.New("boom")
-	}, nil, nil, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/admin/monitoring/overview?title=halo_infinite", nil)
 	rec := serveAdminMonitoring(h, req)
 
@@ -83,7 +83,7 @@ func TestAdminMonitoring_Overview_RunnerError(t *testing.T) {
 // TestAdminMonitoring_Scheduler_UnavailableWhenNil : scheduler non câblé →
 // 200 avec available=false et history=[] (jamais de 500/panic).
 func TestAdminMonitoring_Scheduler_UnavailableWhenNil(t *testing.T) {
-	h := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	h := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/admin/monitoring/scheduler", nil)
 	rec := serveAdminMonitoring(h, req)
 
@@ -115,7 +115,7 @@ func TestAdminMonitoring_Convergence_OK(t *testing.T) {
 				{Gamertag: "JGtm", MissingEvents: 3},
 			},
 		}, nil
-	}, nil, nil, nil, nil, nil, nil, nil)
+	}, nil, nil, nil, nil, nil, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/admin/monitoring/convergence", nil)
 	rec := serveAdminMonitoring(h, req)
 
@@ -137,7 +137,7 @@ func TestAdminMonitoring_Jobs_ListAndClamp(t *testing.T) {
 	store := jobs.NewStore(filepath.Join(t.TempDir(), "jobs.json"))
 	store.Create(domain.JobTypeBackfill, "p1")
 
-	h := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, nil, nil, store)
+	h := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, store)
 	req := httptest.NewRequest(http.MethodGet, "/admin/monitoring/jobs?limit=9999", nil)
 	rec := serveAdminMonitoring(h, req)
 
@@ -153,7 +153,7 @@ func TestAdminMonitoring_Jobs_ListAndClamp(t *testing.T) {
 	}
 
 	// Store nil : dégradation sans panic.
-	hNil := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	hNil := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	recNil := serveAdminMonitoring(hNil, httptest.NewRequest(http.MethodGet, "/admin/monitoring/jobs", nil))
 	if recNil.Code != http.StatusOK {
 		t.Fatalf("status store nil = %d (attendu 200)", recNil.Code)
@@ -173,7 +173,7 @@ func TestAdminMonitoring_Errors_OK(t *testing.T) {
 			},
 		}, nil
 	}
-	h := NewAdminMonitoringHandler(nil, nil, nil, runner, nil, nil, nil, nil, nil)
+	h := NewAdminMonitoringHandler(nil, nil, nil, runner, nil, nil, nil, nil, nil, nil)
 
 	rec := serveAdminMonitoring(h, httptest.NewRequest(http.MethodGet, "/admin/monitoring/errors", nil))
 	if rec.Code != http.StatusOK {
@@ -209,7 +209,7 @@ func TestAdminMonitoring_Detections_ListWithFilters(t *testing.T) {
 			},
 		}, nil
 	}
-	h := NewAdminMonitoringHandler(nil, nil, nil, nil, runner, nil, nil, nil, nil)
+	h := NewAdminMonitoringHandler(nil, nil, nil, nil, runner, nil, nil, nil, nil, nil)
 
 	rec := serveAdminMonitoring(h,
 		httptest.NewRequest(http.MethodGet, "/admin/monitoring/detections?status=open&level=WARN&limit=25", nil))
@@ -225,7 +225,7 @@ func TestAdminMonitoring_Detections_ListWithFilters(t *testing.T) {
 	}
 
 	// Runner nil → dégradation en liste vide.
-	hNil := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	hNil := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	recNil := serveAdminMonitoring(hNil, httptest.NewRequest(http.MethodGet, "/admin/monitoring/detections", nil))
 	if recNil.Code != http.StatusOK {
 		t.Fatalf("runner nil : status = %d (attendu 200)", recNil.Code)
@@ -244,7 +244,7 @@ func TestAdminMonitoring_Detections_Patch(t *testing.T) {
 		gotFp, gotStatus, gotNote = fingerprint, status, note
 		return nil
 	}
-	h := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, setter, nil, nil, nil)
+	h := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, setter, nil, nil, nil, nil)
 
 	body := bytes.NewReader([]byte(`{"status":"acked","note":"vu"}`))
 	req := httptest.NewRequest(http.MethodPatch, "/admin/monitoring/detections/abc123", body)
@@ -266,7 +266,7 @@ func TestAdminMonitoring_Detections_Patch(t *testing.T) {
 	}
 
 	// Setter nil → 503.
-	hNil := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	hNil := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	nilReq := httptest.NewRequest(http.MethodPatch, "/admin/monitoring/detections/abc123",
 		bytes.NewReader([]byte(`{"status":"acked"}`)))
 	nilReq.Header.Set("Content-Type", "application/json")
@@ -291,7 +291,7 @@ func TestAdminMonitoring_Freshness_OK(t *testing.T) {
 			},
 		}, nil
 	}
-	h := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, runner, nil, nil)
+	h := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, runner, nil, nil, nil)
 
 	rec := serveAdminMonitoring(h, httptest.NewRequest(http.MethodGet, "/admin/monitoring/freshness", nil))
 	if rec.Code != http.StatusOK {
@@ -311,7 +311,7 @@ func TestAdminMonitoring_Freshness_OK(t *testing.T) {
 	}
 
 	// Runner nil → réponse vide sans panic.
-	hNil := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	hNil := NewAdminMonitoringHandler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 	recNil := serveAdminMonitoring(hNil, httptest.NewRequest(http.MethodGet, "/admin/monitoring/freshness", nil))
 	if recNil.Code != http.StatusOK {
 		t.Fatalf("runner nil : status = %d (attendu 200)", recNil.Code)

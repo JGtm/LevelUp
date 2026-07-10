@@ -1050,6 +1050,11 @@ func main() {
 		slog.Warn("monitoring store: ouverture échouée — sections détections dégradées", "err", mErr)
 	} else {
 		reg.WithMonitoringStore(monStore)
+		// Marqueur de démarrage (A5.1) : compteur de restarts persistant
+		// (COUNT(server_boot) dans cron_runs — exposé par /monitoring/resources).
+		if err := monStore.RecordCronRun(ctx, "server_boot", time.Now(), true, "", 0); err != nil {
+			slog.Warn("monitoring store: marqueur server_boot non écrit", "err", err)
+		}
 		schedulerWG.Add(1)
 		go func() {
 			defer schedulerWG.Done()
