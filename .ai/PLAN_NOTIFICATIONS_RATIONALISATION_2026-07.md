@@ -145,31 +145,26 @@ Phase E : rapide. Total : 1 session agent.
 
 ## Phase A — Anti-burst cold-start (`post_sync_deltas.go`)
 
-- [ ] A1. Helper `snapshotLooksCold(s *PlayerSnapshot) bool` dans
+- [x] A1. Helper `snapshotLooksCold(s *PlayerSnapshot) bool` dans
       `post_sync_deltas.go` : vrai si TOUS les compteurs (`PersonalAwardCount`,
       `CitationsCount`, `ChallengePathsCount`, `ChallengeCompletedCount`,
       `BattlepassCompletedTracks`, `CitationTotalEarnedTiers`, `CitationMasteryCount`,
       `CurrentRank`) sont à 0 ET `len(SkillTierByPlaylist) == 0` ET `KDRatio == 0`.
-- [ ] A2. Dans `EmitPostSyncDeltas` (l.191), tout en haut après le nil-check : si
-      `snapshotLooksCold(before) && !snapshotLooksCold(after)` →
-      `slog.WarnContext(ctx, "post_sync: snapshot before froid — émissions supprimées (cold-start)", "slug", slug)`,
-      exécuter UNIQUEMENT le sous-bloc de persistance du record best_kda
-      (l.329-335, seed silencieux — il a déjà sa garde `!oldRec.Loaded`), puis `return`.
-- [ ] A3. Cap de vraisemblance dans la boucle counter deltas (l.205-225) : constante
-      `maxPlausibleCounterDelta = 20` (commentée : max légitime observé = 6, incident
-      prod 2026-07-03 = 3434) ; si `newV-oldV > maxPlausibleCounterDelta` →
-      `slog.WarnContext` avec le delta + `continue` (pas d'émission).
-- [ ] A4. Garde career_rank (l.230) : ne pas émettre si `before.CurrentRank == 0`
-      (rang inconnu/non initialisé — l'incident montrait `previous:0`).
-      `slog.DebugContext` en trace.
-- [ ] A5. Tests `post_sync_deltas_test.go` (compléter l'existant, suivre ses
-      helpers/patterns) : (a) before froid + after riche → 0 émission ;
-      (b) delta objectifs = 25 → supprimé, les autres deltas du même cycle passent ;
-      (c) delta = 5 → émis ; (d) career_rank previous=0 → supprimé ;
-      (e) career_rank 190→192 → émis ; (f) before froid ET after froid (nouveau
-      joueur vide) → 0 émission, pas de warn cold-start.
+      FAIT : helper + garde nil.
+- [x] A2. Dans `EmitPostSyncDeltas`, tout en haut après le nil-check : si
+      `snapshotLooksCold(before) && !snapshotLooksCold(after)` → warn + `persistBestKDASeed`
+      (seed silencieux, garde `!oldRec.Loaded`) + `return`. FAIT.
+- [x] A3. Cap de vraisemblance dans la boucle counter deltas : constante
+      `maxPlausibleCounterDelta = 20` ; `delta > cap` → `slog.WarnContext` + `continue`. FAIT.
+- [x] A4. Garde career_rank : ne pas émettre si `before.CurrentRank == 0`
+      (`slog.DebugContext` en trace). FAIT.
+- [x] A5. Tests `post_sync_deltas_test.go` : (a) cold-start → 0 ; (b) delta=25
+      supprimé, challenge_added du même cycle passe ; (c) delta=5 émis ;
+      (d) career_rank previous=0 supprimé ; (e) career_rank 190→192 émis ;
+      (f) before+after froids → 0 émission ET pas de warn (capture slog).
+      + `TestSnapshotLooksCold`. FAIT.
 
-**Gate A** : `cd apps/go-api && go test ./internal/api/wire/`. Vert = phase close.
+**Gate A** : `cd apps/go-api && go test ./internal/api/wire/`. Vert = phase close. → OK (exit 0, 2026-07-10).
 
 ## Phase B — Dédoublonnage sémantique
 
