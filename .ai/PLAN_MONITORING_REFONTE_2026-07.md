@@ -353,25 +353,39 @@ vitest admin 81 OK ; lint 0. GATE PASSÉ.
 Constat (cartographie 2026-07-06) : tokens/i18n/query keys déjà conformes ; les écarts
 sont structurels.
 
-- [ ] A8.1 Un seul composant KPI : remplacer les 5 variantes locales (`OverviewKpi`,
-      `SummaryCell`, `DQKpi`, `BacklogKpi`, `DataHealthMetric`) par `KpiCard` foundations
-      (+ wrapper admin si besoin d'un variant compact). Garde-rail : test grep interdisant
-      la re-déclaration locale d'un composant `*Kpi` sous `features/admin/`.
-- [ ] A8.2 Hook `useCounterSnapshot(key, build)` : factoriser le pattern snapshot delta
-      dupliqué 3× (data-quality, convergence, invariants). Garde-rail grep sur
-      `readCountersSnapshot(` hors du hook.
-- [ ] A8.3 Composant `SectionHeader` admin unique (3 patterns actuels → 1).
-- [ ] A8.4 Primitives table admin (`AdminTable`, `AdminTh`, `AdminTd`) pour les tables
-      natives statiques restantes ; les tables interactives (A2.4) = TanStack.
-- [ ] A8.5 Extraire les fichiers > 300 L : `AdminTitlesPage.tsx` (343) et
-      `AdminDataQualityPage.tsx` (348) → sous-composants en fichiers dédiés (si A3 ne
-      l'a pas déjà imposé en les déplaçant).
-- [ ] A8.6 Supprimer `JobProgressInline.tsx` (orphelin, 0 import) avec ses tests éventuels.
-- [ ] A8.7 i18n des 3 strings en dur (`OK`/`FAIL`/`WARN` — PostSyncMatrix:30,
-      AdminOverviewPage:128, InvariantsSection:142-147) — FR ET EN.
+- [x] A8.1 Composant canonique `components/AdminKpi.tsx` (wrapper KpiCard foundations :
+      label/value/valueSuffix/sub/title/accent/delta/compactValue/size/to) — les 5
+      variantes locales (OverviewKpi, SummaryCell, DQKpi, BacklogKpi, DataHealthMetric)
+      REMPLACÉES et supprimées. Garde-rail `admin-ui.guard.test.ts` (re-déclaration
+      `function *Kpi(|SummaryCell(|DataHealthMetric(` interdite hors AdminKpi).
+- [x] A8.2 Hook `useCounterSnapshot(storageKey, generatedAt, build)` — les 3 copies
+      (data-quality, convergence, invariants) migrées ; read/writeInvariantsSnapshot
+      supprimés (persistance via countersTrend). Garde-rail dans admin-ui.guard.test.ts
+      (read/writeCountersSnapshot( interdits hors countersTrend/hook/tests).
+- [x] A8.3 `components/SectionHeader.tsx` (title/description/actions, title ReactNode) —
+      les 3 patterns unifiés : 15 fichiers migrés (sweep du h3-caps brut + les blocs
+      h3+description) ; le h2 InvariantsSection reste dans sa Card (chrome Card ≠
+      section, pattern à part entière conservé).
+- [x] A8.4 `components/AdminTable.tsx` (AdminTable/AdminTh/AdminTr/AdminTd) — tables
+      natives statiques migrées (FreshnessPanel, CronsPanel ×2, ResourcesSection) ;
+      les tables interactives restent TanStack (DetectionsPanel).
+- [x] A8.5 `AdminTitlesPage.tsx` 343→153 L (extraction `TitleDetailCards.tsx` :
+      TitleDetailCard + KeyStatusList + TitleDiagnosticCard + TomlDraftButton) ;
+      `AdminDataQualityPage.tsx` 348→~300 L via A8.1/A8.2 (DQKpi + boilerplate snapshot
+      supprimés). Plus aucun fichier admin > 310 L.
+- [x] A8.6 `JobProgressInline.tsx` : VÉRIFIÉ SUR PIÈCES — n'est PLUS orphelin
+      (importé et rendu par `AdminActionButton.tsx:16,69` ; la prémisse de la
+      cartographie 2026-07-06 est caduque). Suppression non applicable — conservé.
+- [x] A8.7 i18n : `admin.status_label.fail/warn` (FR « échecs/alertes », EN FAIL/WARN)
+      dans AdminOverviewPage + InvariantsSection ; PostSyncMatrix colonnes booléennes →
+      `admin.status.ok` (clé existante) ; badge OK InvariantsSection → `admin.status.ok`.
 
 **Gate A8** : `make check-types && make test-web && make go-api-lint` verts ; garde-rails
 A8.1/A8.2 rouges sur l'ancien pattern ; revue visuelle user au merge.
+RÉSULTAT 2026-07-10 : `tsc -b` 0 ; `vitest run` 247 fichiers / 2111 tests OK ;
+`make go-api-lint` 0 ; test de morsure des garde-rails PROUVÉ (fichier planté avec
+`function TestKpi(` + `readCountersSnapshot(` → 2 tests rouges, vert après retrait).
+Revue visuelle user au merge (KPIs/har­monisation). GATE PASSÉ.
 
 ### A9 — Clôture (effort : rapide)
 

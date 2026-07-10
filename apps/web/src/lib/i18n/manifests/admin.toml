@@ -142,6 +142,16 @@ en = "Free disk"
 fr = "Erreurs 5xx (boot)"
 en = "5xx errors (boot)"
 
+# Libellés de statut agrégé (A8.7 — remplacent les FAIL/WARN en dur).
+
+[admin.status_label.fail]
+fr = "échecs"
+en = "FAIL"
+
+[admin.status_label.warn]
+fr = "alertes"
+en = "WARN"
+
 # ─── Ressources machine & process (A5, onglet Système) ──────────────────────
 
 [admin.resources.section]

@@ -7,6 +7,8 @@
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import type { AdminResourcesResponse } from '@/lib/api/types'
 import { useMonitoringResources } from '../monitoring/queries'
+import { AdminTable, AdminTd, AdminTh, AdminTr } from '../components/AdminTable'
+import { SectionHeader } from '../components/SectionHeader'
 import { formatBytes, formatDurationMs } from '../format'
 import { useAdminT, useAdminLocale, type TAdmin } from '../useAdminText'
 import type { AdminLocale } from '../format'
@@ -32,9 +34,7 @@ export function ResourcesSection() {
 
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        {tA('admin.resources.section')}
-      </h3>
+      <SectionHeader title={tA('admin.resources.section')} />
       {isError ? (
         <p className="text-sm text-destructive">{tA('admin.resources.unavailable')}</p>
       ) : !data ? (
@@ -90,38 +90,35 @@ function RuntimeSummary({ data, tA, locale }: { data: AdminResourcesResponse; tA
 function DatabasesTable({ data, tA, locale }: { data: AdminResourcesResponse; tA: TAdmin; locale: AdminLocale }) {
   const dbs = data.databases ?? []
   return (
-    <div className="overflow-x-auto rounded-md border">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <th className="px-3 py-2 font-medium">{tA('admin.resources.col_db')}</th>
-            <th className="px-3 py-2 font-medium">{tA('admin.resources.col_size')}</th>
-            <th className="px-3 py-2 font-medium">{tA('admin.resources.col_wal')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {dbs.map((db) => (
-            <tr key={db.name} className="border-b last:border-b-0 hover:bg-muted/30">
-              <td className="px-3 py-2 font-mono text-xs text-foreground" title={db.path}>
-                {db.name}
-              </td>
-              <td className="px-3 py-2 tabular-nums text-muted-foreground">{formatBytes(db.size_bytes, locale)}</td>
-              <td className="px-3 py-2 tabular-nums text-muted-foreground">
-                {db.wal_bytes ? formatBytes(db.wal_bytes, locale) : '—'}
-              </td>
-            </tr>
-          ))}
-          <tr className="bg-muted/40">
-            <td className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {tA('admin.resources.total')}
-            </td>
-            <td className="px-3 py-2 font-semibold tabular-nums text-foreground" colSpan={2}>
-              {formatBytes(data.db_total_bytes, locale)}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <AdminTable
+      head={
+        <>
+          <AdminTh>{tA('admin.resources.col_db')}</AdminTh>
+          <AdminTh>{tA('admin.resources.col_size')}</AdminTh>
+          <AdminTh>{tA('admin.resources.col_wal')}</AdminTh>
+        </>
+      }
+    >
+      {dbs.map((db) => (
+        <AdminTr key={db.name}>
+          <AdminTd className="font-mono text-xs text-foreground" title={db.path}>
+            {db.name}
+          </AdminTd>
+          <AdminTd className="tabular-nums text-muted-foreground">{formatBytes(db.size_bytes, locale)}</AdminTd>
+          <AdminTd className="tabular-nums text-muted-foreground">
+            {db.wal_bytes ? formatBytes(db.wal_bytes, locale) : '—'}
+          </AdminTd>
+        </AdminTr>
+      ))}
+      <tr className="bg-muted/40">
+        <AdminTd className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {tA('admin.resources.total')}
+        </AdminTd>
+        <AdminTd className="font-semibold tabular-nums text-foreground" colSpan={2}>
+          {formatBytes(data.db_total_bytes, locale)}
+        </AdminTd>
+      </tr>
+    </AdminTable>
   )
 }
 

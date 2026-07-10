@@ -1,3 +1,23 @@
+## [2026-07-10] PLAN MONITORING REFONTE — A8 alignement UI catalogue (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A8 CLOSE (gates verts, morsure des garde-rails prouvée).
+
+**Décision technique principale** : 4 briques canoniques sous features/admin/components —
+`AdminKpi` (remplace les 5 variantes KPI locales), `SectionHeader` (15 fichiers migrés du
+h3-caps brut), `AdminTable/Th/Tr/Td` (tables natives statiques), + hook
+`useCounterSnapshot` (3 copies du pattern baseline roulante factorisées ;
+read/writeInvariantsSnapshot supprimés). Garde-rails vitest fs-scan
+(`admin-ui.guard.test.ts`) avec test de morsure prouvé (violation plantée → rouge).
+A8.5 : AdminTitlesPage 343→153 L (TitleDetailCards.tsx extrait). A8.6 : prémisse
+caduque — JobProgressInline N'EST PLUS orphelin (AdminActionButton), conservé. A8.7 :
+FAIL/WARN/OK en dur → clés i18n FR+EN (status_label.fail/warn + status.ok).
+
+**Résultats** : tsc 0 ; vitest 247/2111 OK ; make go-api-lint 0 ; morsure guard 2/2.
+
+**Conclusion / prochaine étape** : A9 (clôture : statuts, docs, delivery-checklist, gate final).
+
+---
+
 ## [2026-07-10] PLAN MONITORING REFONTE — A7 compteurs HTTP par classe (Complété, branche feat/monitoring-refonte-2026-07)
 
 **Statut** : Phase A7 CLOSE (gate vert).

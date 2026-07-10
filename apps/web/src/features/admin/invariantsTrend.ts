@@ -19,22 +19,8 @@ export const SHARED_SCOPE_KEY = '__shared__'
 /** "scope|invariant_key" -> count. Scope = player_slug ou SHARED_SCOPE_KEY. */
 export type InvariantsSnapshot = Record<string, number>
 
-export function readInvariantsSnapshot(): InvariantsSnapshot {
-  try {
-    const raw = localStorage.getItem(INVARIANTS_SNAPSHOT_KEY)
-    return raw ? (JSON.parse(raw) as InvariantsSnapshot) : {}
-  } catch {
-    return {}
-  }
-}
-
-export function writeInvariantsSnapshot(snap: InvariantsSnapshot): void {
-  try {
-    localStorage.setItem(INVARIANTS_SNAPSHOT_KEY, JSON.stringify(snap))
-  } catch {
-    /* quota/SSR : tendance simplement absente */
-  }
-}
+// read/write : supprimes (A8.2) — la persistance localStorage passe par le
+// hook canonique useCounterSnapshot (countersTrend read/write).
 
 export function buildInvariantsSnapshot(data: AdminInvariantsResponse): InvariantsSnapshot {
   const snap: InvariantsSnapshot = {}

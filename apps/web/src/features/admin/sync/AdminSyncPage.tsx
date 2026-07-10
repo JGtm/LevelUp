@@ -7,7 +7,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 
 import { EmptyStateCard } from '@/components/ui/empty-state'
-import { KpiCard } from '@/components/cards/KpiCard'
+import { AdminKpi } from '../components/AdminKpi'
 import { queryKeys } from '@/lib/query/keys'
 import type { AdminSchedulerStatusResponse } from '@/lib/api/types'
 import { useAdminJobs, useMonitoringScheduler, usePerfStats } from '../monitoring/queries'
@@ -27,6 +27,7 @@ import { AdminJobsTable } from './AdminJobsTable'
 import { WatcherSection } from './WatcherSection'
 import { ApiHaloSection } from './ApiHaloSection'
 import { AdminSyncSettingsSection } from './AdminSyncSettingsSection'
+import { SectionHeader } from '../components/SectionHeader'
 
 export function AdminSyncPage() {
   const queryClient = useQueryClient()
@@ -53,9 +54,7 @@ export function AdminSyncPage() {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          {tA('admin.sync.scheduler_section')}
-        </h3>
+        <SectionHeader title={tA('admin.sync.scheduler_section')} />
         <SchedulerSummary data={data} tA={tA} locale={locale} />
         <AdminQuickActions
           onAnyActionSettled={() => {
@@ -69,9 +68,7 @@ export function AdminSyncPage() {
       {data?.available && data.snapshot && (
         <>
           <section className="space-y-3">
-            <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-              {tA('admin.sync.players_section')}
-            </h3>
+            <SectionHeader title={tA('admin.sync.players_section')} />
             <SyncPlayersTable
               players={data.snapshot.players ?? []}
               zeroInsertThreshold={data.zero_insert_warn_threshold}
@@ -79,10 +76,7 @@ export function AdminSyncPage() {
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-              {tA('admin.sync.history_section')}{' '}
-              <span className="normal-case font-normal">({tA('admin.sync.history_since_boot')})</span>
-            </h3>
+            <SectionHeader title={<>{tA('admin.sync.history_section')}{' '} <span className="normal-case font-normal">({tA('admin.sync.history_since_boot')})</span></>} />
             <SyncCycleHistory history={data.history ?? []} />
           </section>
         </>
@@ -101,9 +95,7 @@ export function AdminSyncPage() {
       <AdminSyncSettingsSection />
 
       <section className="space-y-3">
-        <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          {tA('admin.jobs.section')}
-        </h3>
+        <SectionHeader title={tA('admin.jobs.section')} />
         <AdminJobsTable jobs={jobsQuery.data?.jobs ?? []} />
       </section>
     </div>
@@ -141,49 +133,23 @@ function SchedulerSummary({
   const res = snap.last_cycle_result
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-      <SummaryCell
+      <AdminKpi
+        size="sm"
         label={tA('admin.sync.last_cycle')}
         value={adminRelativeTime(snap.last_cycle_at, locale)}
         title={adminAbsoluteTime(snap.last_cycle_at, locale)}
       />
-      <SummaryCell label={tA('admin.sync.interval')} value={formatIntervalMinutes(snap.interval_minutes, locale)} />
-      <SummaryCell label={tA('admin.sync.pool')} value={String(snap.pool_size)} />
-      <SummaryCell label={tA('admin.sync.summary_synced')} value={String(res?.synced ?? 0)} good={(res?.synced ?? 0) > 0} />
-      <SummaryCell label={tA('admin.sync.summary_skipped')} value={String(res?.skipped ?? 0)} />
-      <SummaryCell
+      <AdminKpi size="sm" label={tA('admin.sync.interval')} value={formatIntervalMinutes(snap.interval_minutes, locale)} />
+      <AdminKpi size="sm" label={tA('admin.sync.pool')} value={String(snap.pool_size)} />
+      <AdminKpi size="sm" label={tA('admin.sync.summary_synced')} value={String(res?.synced ?? 0)} accent={(res?.synced ?? 0) > 0 ? 'success' : undefined} />
+      <AdminKpi size="sm" label={tA('admin.sync.summary_skipped')} value={String(res?.skipped ?? 0)} />
+      <AdminKpi
+        size="sm"
         label={tA('admin.sync.summary_failed')}
         value={String(res?.failed ?? 0)}
-        bad={(res?.failed ?? 0) > 0}
+        accent={(res?.failed ?? 0) > 0 ? 'destructive' : undefined}
         sub={res ? formatDurationMs(res.duration_ns / 1_000_000, locale) : undefined}
       />
     </div>
-  )
-}
-
-function SummaryCell({
-  label,
-  value,
-  sub,
-  title,
-  good,
-  bad,
-}: {
-  label: string
-  value: string
-  sub?: string
-  title?: string
-  good?: boolean
-  bad?: boolean
-}) {
-  return (
-    <KpiCard accent={bad ? 'destructive' : good ? 'success' : undefined} className="h-full">
-      <div className="p-3">
-        <div className="text-xs text-muted-foreground">{label}</div>
-        <div className="mt-0.5 text-lg font-semibold tabular-nums text-foreground" title={title}>
-          {value}
-        </div>
-        {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
-      </div>
-    </KpiCard>
   )
 }

@@ -14,6 +14,7 @@ import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useAdminTitles } from '../titles/queries'
 import { useAdminT, type TAdmin } from '../useAdminText'
 import { useWeaponCoverage, type AdminWeaponCoverage } from '../monitoring/queries'
+import { SectionHeader } from '../components/SectionHeader'
 
 export function WeaponCoveragePanel() {
   const tA = useAdminT()
@@ -25,9 +26,7 @@ export function WeaponCoveragePanel() {
   return (
     <section className="space-y-3">
       <div>
-        <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          {tA('admin.overview.weapon_coverage_section')}
-        </h3>
+        <SectionHeader title={tA('admin.overview.weapon_coverage_section')} />
         <p className="mt-0.5 text-xs text-muted-foreground">
           {tA('admin.overview.weapon_coverage_hint')}
         </p>

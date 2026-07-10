@@ -293,6 +293,8 @@ export const adminManifest = {
   "admin.status.skipped": { fr: "Ignoré", en: "Skipped" },
   "admin.status.succeeded": { fr: "Terminé", en: "Succeeded" },
   "admin.status.warning": { fr: "Attention", en: "Warning" },
+  "admin.status_label.fail": { fr: "échecs", en: "FAIL" },
+  "admin.status_label.warn": { fr: "alertes", en: "WARN" },
   "admin.sync.col_api_time": { fr: "Temps API", en: "API time" },
   "admin.sync.col_blocked": { fr: "Indispo lectures", en: "Reads blocked" },
   "admin.sync.col_duration": { fr: "Durée", en: "Duration" },
