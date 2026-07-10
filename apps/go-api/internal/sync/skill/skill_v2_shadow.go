@@ -147,14 +147,21 @@ func runLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccesso
 		priorsCache:      make(map[string]skillv2.Priors),
 		countHypCache:    make(map[string]map[skillv2.CountType]skillv2.CountHyperparams),
 	}
+	ctxRun.squadEnabled = IsLUSRV2SquadOffsetEnabled()
 	var s shadowRunStats
 	// heldGroups : groupes dont un match a échoué son écriture canonical ce run.
 	// Les matchs plus RÉCENTS de ces groupes sont sautés pour ne pas avancer le
 	// watermark de groupe par-dessus un match non écrit (anti-gap, fix 2026-06-07).
 	// Partagé entre chunks (l'ordre chrono ASC est préservé par le découpage).
 	heldGroups := make(map[string]bool)
-	withGameplayDur := 0 // matchs ayant une durée gameplay → pondération temps-joué alimentée
-	squadEnabled := IsLUSRV2SquadOffsetEnabled()
+	// Observabilité TS2 : nb de matchs ayant une durée gameplay connue (wᵢ alimenté).
+	// Comptabilisé une fois sur l'ensemble (indépendant du découpage en chunks).
+	withGameplayDur := 0
+	for _, m := range matches {
+		if m.gameplayDurMs > 0 {
+			withGameplayDur++
+		}
+	}
 
 	// Persistance per-match sous bursts Write("lusr") COURTS et chunkés : la
 	// fenêtre RW est bornée par postsyncLUSRBurstChunk, les lecteurs passent entre
@@ -175,7 +182,7 @@ func runLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccesso
 			slog.WarnContext(ctx, "LUSR v2 shadow: burst write handle nil — reste reporté", "xuid", xuid)
 			break
 		}
-		processShadowChunk(ctx, ctxRun, burstDB, squadEnabled, matches[start:end], &s, heldGroups, &withGameplayDur)
+		processShadowChunk(ctx, ctxRun, burstDB, matches[start:end], &s, heldGroups)
 		release()
 	}
 	slog.InfoContext(ctx, "LUSR v2 shadow terminé",
@@ -213,8 +220,11 @@ type shadowRunContext struct {
 	// ownerOnlyPersist : recovery backfill — ne persiste que l'état du joueur
 	// traité (pas les coéquipiers). Voir RunLUSRV2ShadowOwnerOnly.
 	ownerOnlyPersist bool
-	priorsCache      map[string]skillv2.Priors
-	countHypCache    map[string]map[skillv2.CountType]skillv2.CountHyperparams
+	// squadEnabled : LEVELUP_LUSR_V2_SQUAD_OFFSET actif → squadRepo câblé par chunk.
+	// Porté ici (pas en paramètre) pour borner le nb d'arguments de processShadowChunk.
+	squadEnabled  bool
+	priorsCache   map[string]skillv2.Priors
+	countHypCache map[string]map[skillv2.CountType]skillv2.CountHyperparams
 }
 
 // shadowRunStats compte les buckets de skip pour le log de fin de run.

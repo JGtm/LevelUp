@@ -76,21 +76,18 @@ func loadShadowMatchesUnderRead(ctx context.Context, shared SharedAccessor, xuid
 // persistance UpsertState va donc sur un handle inscriptible (fix read-only
 // 2026-07-03). `base` est copié par valeur mais ses caches (maps) et heldGroups
 // sont des références partagées → l'état de run survit d'un chunk au suivant.
-func processShadowChunk(ctx context.Context, base shadowRunContext, burstDB *sql.DB, squadEnabled bool,
-	chunk []shadowMatch, s *shadowRunStats, heldGroups map[string]bool, withGameplayDur *int) {
+func processShadowChunk(ctx context.Context, base shadowRunContext, burstDB *sql.DB,
+	chunk []shadowMatch, s *shadowRunStats, heldGroups map[string]bool) {
 	c := base
 	c.sharedDB = burstDB
 	c.repo = duckdb.NewSkillV2Repo(burstDB)
 	// squadRepo seulement si le flag est actif (sinon interface nil → offsets nuls,
 	// comportement strictement inchangé ; un typed-nil casserait le garde de
 	// computeTeamSquadOffsets).
-	if squadEnabled {
+	if c.squadEnabled {
 		c.squadRepo = duckdb.NewSquadOffsetRepo(burstDB)
 	}
 	for _, m := range chunk {
-		if m.gameplayDurMs > 0 {
-			*withGameplayDur++
-		}
 		processOneShadowMatch(ctx, c, m, s, heldGroups)
 	}
 }
