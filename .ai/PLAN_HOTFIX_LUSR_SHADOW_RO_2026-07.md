@@ -1,9 +1,10 @@
 # PLAN HOTFIX — LUSR v2 shadow écrit sur un attach read-only (prod, régression 2026-07-03)
 
-> Statut : PRÊT — exécutable par une session agent autonome (Opus), AUCUN contexte
-> conversationnel requis : tout est dans ce fichier. Exécution sous contrat du skill
-> `plan-execution` (ordre strict, une phase à la fois, gates exacts, statuts
-> [x]/[~]/[!], zéro fix hors périmètre — consigner en §Découvertes).
+> Statut : **H1-H4 COMPLÉTÉS (2026-07-10)** ; **H5 EN ATTENTE — GATE USER** (merge main =
+> deploy prod auto, GO explicite requis) ; H6/H7 dépendent du deploy. Branche
+> `hotfix/lusr-shadow-ro` poussée (5 commits) ; **PR #53** ouverte vers main, CI 13/14
+> verte (seul E2E Playwright pending, frontend, sans lien avec ce diff Go-only).
+> Exécution sous contrat du skill `plan-execution`.
 >
 > **Branche : `hotfix/lusr-shadow-ro` créée depuis `origin/main`** (PAS depuis
 > `refactor/audits-2026-07` — la branche d'audits n'est pas mergée et son arborescence
@@ -231,8 +232,16 @@ sync 80.2s, skill 1.1s, v2 13.2s) ; tableau H3.4 rempli.
 
 ### H5 — Livraison (GATE USER — ne pas franchir sans GO explicite)
 
-- [ ] H5.1 Présenter au user : diff résumé, résultats des gates, rappel « push main =
-      deploy prod auto ». ATTENDRE le GO dans le tour courant.
+> **EN ATTENTE DU GO UTILISATEUR (2026-07-10).** L'agent autonome s'arrête ici : H5.2/H5.3
+> exigent le merge/push main = deploy prod AUTOMATIQUE, qui requiert un GO explicite de
+> l'utilisateur dans le tour courant (non acquis d'une session précédente — protocole H5).
+> Présentation faite via **PR #53** (diff résumé + gates + rappel deploy) + rapport final
+> de session. CI de branche 13/14 verte (E2E Playwright pending, frontend). H6/H7 (vérif
+> post-deploy VPS lecture seule + clôture + git mv vers `.ai/V7/`) s'exécutent APRÈS le
+> deploy. NE PAS clôturer (git mv + COMPLÉTÉ) tant que H5-H7 ne sont pas verts.
+
+- [~] H5.1 Présentation faite (PR #53 + rapport final). ATTENTE du GO utilisateur pour
+      H5.2/H5.3 — [~] car le GO n'est pas acquis en session autonome (référence : gate user).
 - [ ] H5.2 Après GO : merge dans main (se placer sur main à jour, merger la branche,
       pousser — jamais de push direct branche→main sans synchroniser main local).
 - [ ] H5.3 Surveiller le déploiement (conteneur redéployé, `docker ps` healthy,

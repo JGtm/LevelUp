@@ -1,3 +1,28 @@
+## [2026-07-10] HOTFIX LUSR shadow read-only — ARRÊT à H5 (GATE USER)
+
+**Statut** : H1-H4 COMPLÉTÉS ; H5 EN ATTENTE du GO utilisateur (merge main = deploy prod
+auto) ; H6/H7 après deploy. NON clôturé (pas de git mv vers V7 tant que H5-H7 non verts).
+
+**Décision principale** : la CI ne se déclenche PAS sur push d'une branche `hotfix/*`
+(ci.yml : `push branches [main, feature/*, refactor/*, fix/*, docs/*, chore/*]`) — j'ai
+donc ouvert **PR #53** vers main (déclenche `pull_request`) pour obtenir le signal CI SANS
+merger (le deploy n'a lieu qu'au push sur main). Ouvrir une PR ≠ deploy.
+
+**Résultats observés** : CI PR #53 = 13/14 jobs VERTS (Go Build+Test ubuntu+windows, Go
+Baseline non-régression, Go Coverage full ./... CGO, Go Lint golangci, Contract, Lease
+ADR 0013, OpenAPI, Frontend tsc+Vite, Docker Build, Permissions gosu, regen-demo, Syntaxe).
+Seul E2E React (Playwright) encore pending — frontend, sans lien avec ce diff Go-only.
+Aucun échec.
+
+**Prochaine étape (requiert l'utilisateur)** : GO explicite → merge `hotfix/lusr-shadow-ro`
+dans main (se placer sur main à jour, merger, push = deploy auto) → surveiller deploy
+(`docker ps` healthy, `/health` 200) → H6 vérif VPS lecture seule (plus de `persist état
+échoué`, writer RW retombé, plus de 503, backlog LUSR résorbé) → H7 clôture (statuer tout,
+git mv plan vers `.ai/V7/`, MAJ `PLAN_MONITORING_TRIAGE_DETECTIONS_2026-07.md` B1). Repli
+post-deploy : `LEVELUP_POSTSYNC_BURST=0` (mode pinned).
+
+---
+
 ## [2026-07-10] HOTFIX LUSR shadow read-only — H4 (lint + delivery-checklist)
 
 **Statut** : Complété (côté implémentation branche) ; reste H5 (GATE USER : merge main =
