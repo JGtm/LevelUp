@@ -55,6 +55,24 @@ func localizeExperienceOptions(opts []domain.LabelValue, locale string) {
 	}
 }
 
+// experienceTypeOptionsForLocale construit les options d'expérience (LabelValue) à
+// partir des VALUES canoniques FR distinctes (computeExplorerAvailableOptions) : LABEL
+// localisé, VALUE FR intacte. Source UNIQUE partagée avec l'Omnibar (GH5-2) — réutilise
+// experienceLabelForLocale (mêmes libellés EN, ZÉRO duplication). CONTRAT : la VALUE FR
+// est la clé de filtre (req.ExperienceTypes → filterByExplorerExperienceTypes match
+// exact) et alimente la cascade FR-hardcodée front (ExplorerPage.tsx rankedContext) :
+// ne JAMAIS la localiser. Surface Explorer/Historique, miroir GH5-2 (GH6-1).
+func experienceTypeOptionsForLocale(values []string, locale string) []domain.LabelValue {
+	if len(values) == 0 {
+		return nil
+	}
+	opts := make([]domain.LabelValue, len(values))
+	for i, v := range values {
+		opts[i] = domain.LabelValue{Label: experienceLabelForLocale(v, locale), Value: v}
+	}
+	return opts
+}
+
 // FiltersService calcule FilterContextResolved depuis les données du repo.
 type FiltersService struct {
 	repo      port.FiltersRepository

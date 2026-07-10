@@ -3770,7 +3770,7 @@ export interface components {
         };
         MatchHistoryQuerySummary: {
             active_filter_mode: string;
-            available_experience_types?: string[] | null;
+            available_experience_types?: components["schemas"]["LabelValue"][] | null;
             available_maps?: string[] | null;
             available_modes?: string[] | null;
             available_outcomes?: components["schemas"]["LabelValue"][] | null;
@@ -5658,7 +5658,7 @@ export interface components {
             team_mmr?: number;
         };
         ExplorerMatchesSummary: {
-            available_experience_types?: string[] | null;
+            available_experience_types?: components["schemas"]["LabelValue"][] | null;
             available_maps?: string[] | null;
             available_modes?: string[] | null;
             available_outcomes?: components["schemas"]["LabelValue"][] | null;
