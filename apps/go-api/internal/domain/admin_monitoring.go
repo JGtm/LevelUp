@@ -252,6 +252,19 @@ type AdminMonitoringOverview struct {
 	// par le calcul de GET /admin/monitoring/freshness — source du badge « État »).
 	// Zéro I/O DuckDB ici. 0 tant que la fraîcheur n'a jamais été calculée.
 	FreshnessCritical int64 `json:"freshness_critical"`
+
+	// HTTP : compteurs de requêtes par classe de statut depuis le boot (A7,
+	// DC-6 — middleware SlogLogger, titre-aware, jamais par route).
+	HTTP MonitoringHTTPSummary `json:"http"`
+}
+
+// MonitoringHTTPSummary — compteurs HTTP par classe de statut depuis le boot
+// (expvar http_status_*_total, posés par le middleware — zéro I/O).
+type MonitoringHTTPSummary struct {
+	Status2xx int64 `json:"status_2xx"`
+	Status3xx int64 `json:"status_3xx"`
+	Status4xx int64 `json:"status_4xx"`
+	Status5xx int64 `json:"status_5xx"`
 }
 
 // MonitoringSnapshotSummary expose l'état du producteur de snapshot immuable (gauges +

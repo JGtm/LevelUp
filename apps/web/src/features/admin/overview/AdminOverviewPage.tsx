@@ -181,6 +181,12 @@ function OverviewKpiGrid({
         to="/admin/system"
       />
       <OverviewKpi
+        label={tA('admin.overview.kpi_http_5xx')}
+        value={String(data.http.status_5xx)}
+        sub={`4xx ${data.http.status_4xx} · 2xx ${data.http.status_2xx}`}
+        accent={data.http.status_5xx > 0 ? 'destructive' : 'success'}
+      />
+      <OverviewKpi
         label={tA('admin.overview.kpi_uptime')}
         value={formatDurationMs(data.server.uptime_s * 1000, locale)}
         sub={data.server.version}

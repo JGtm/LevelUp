@@ -66,6 +66,12 @@ func (r *ServiceRegistry) MonitoringOverview(ctx context.Context, titleSlug stri
 		Snapshot:          monitoringSnapshotSummary(titleSlug),
 		OpenDetections:    observability.LoadCounter("monitoring_detections_open"),
 		FreshnessCritical: observability.LoadCounter("monitoring_freshness_critical"),
+		HTTP: domain.MonitoringHTTPSummary{
+			Status2xx: observability.LoadCounterT(titleSlug, "http_status_2xx_total"),
+			Status3xx: observability.LoadCounterT(titleSlug, "http_status_3xx_total"),
+			Status4xx: observability.LoadCounterT(titleSlug, "http_status_4xx_total"),
+			Status5xx: observability.LoadCounterT(titleSlug, "http_status_5xx_total"),
+		},
 	}
 	if res, at := r.lastDataHealth(); res != nil {
 		resp.DataHealth = toMonitoringDataHealth(res, at)

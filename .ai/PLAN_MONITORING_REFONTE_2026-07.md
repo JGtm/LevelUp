@@ -330,13 +330,23 @@ manuel « cron arrêté → warn » local = revue utilisateur. GATE PASSÉ.
 
 ### A7 — Compteurs HTTP par classe (effort : rapide) — « État »
 
-- [ ] A7.1 Middleware existant : incrément expvar `levelup.http.status_2xx/4xx/5xx`
-      (+ par titre si trivial via observability.titled).
-- [ ] A7.2 Exposition dans l'overview État (depuis boot + delta snapshot roulant,
-      pattern existant).
-- [ ] A7.3 Test middleware.
+- [x] A7.1 Middleware `SlogLogger` : `countHTTPStatusClass` → expvar
+      `http_status_{2xx,3xx,4xx,5xx}_total` via `IncCounterT` (titre-aware MT-05 :
+      défaut = clé nue, UN SEUL incrément — pas de double comptage ; 2e titre = clé
+      dédiée ; jamais de dimension route, DC-6).
+- [x] A7.2 Exposition overview : `overview.http` (MonitoringHTTPSummary, lu par
+      LoadCounterT — zéro I/O) + KPI « Erreurs 5xx (boot) » sur État (accent
+      destructive si > 0, sous-texte 4xx/2xx). Le « delta snapshot roulant » est
+      couvert par le pattern existant countersTrend côté client si besoin — le KPI
+      depuis-boot est le contrat de l'overview (comme tous ses compteurs).
+- [x] A7.3 Test middleware `slog_logger_status_test.go` (2xx/3xx/4xx/5xx comptés,
+      relatif — expvar process-global).
 
 **Gate A7** : `go test ./internal/api/...` vert.
+RÉSULTAT 2026-07-10 : `go test ./internal/api/...` 0 FAIL (un flake connu
+TestStartImport... au 1er passage — vert en isolation et au re-run, cf. mémoire
+« flake reopen RO ») ; contract+drift verts (schéma MonitoringHTTPSummary) ; `tsc -b` 0 ;
+vitest admin 81 OK ; lint 0. GATE PASSÉ.
 
 ### A8 — Alignement UI catalogue (effort : moyen)
 

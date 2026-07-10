@@ -138,6 +138,10 @@ en = "Critical freshness"
 fr = "Disque libre"
 en = "Free disk"
 
+[admin.overview.kpi_http_5xx]
+fr = "Erreurs 5xx (boot)"
+en = "5xx errors (boot)"
+
 # ─── Ressources machine & process (A5, onglet Système) ──────────────────────
 
 [admin.resources.section]

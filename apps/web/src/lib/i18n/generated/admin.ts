@@ -240,6 +240,7 @@ export const adminManifest = {
   "admin.overview.kpi_data_health": { fr: "Avertissements data", en: "Data warnings" },
   "admin.overview.kpi_disk": { fr: "Disque libre", en: "Free disk" },
   "admin.overview.kpi_freshness": { fr: "Fraîcheur critique", en: "Critical freshness" },
+  "admin.overview.kpi_http_5xx": { fr: "Erreurs 5xx (boot)", en: "5xx errors (boot)" },
   "admin.overview.kpi_in_flight": { fr: "Syncs en vol", en: "Syncs in flight" },
   "admin.overview.kpi_invariants": { fr: "Invariants", en: "Invariants" },
   "admin.overview.kpi_jobs_running": { fr: "Jobs en cours", en: "Active jobs" },
