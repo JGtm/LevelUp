@@ -10,6 +10,7 @@ import (
 
 	"golang.org/x/sync/singleflight"
 
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/auth"
 )
@@ -352,8 +353,17 @@ func (r *resolverImpl) tryOAuthRefreshAndPropagateRotation(ctx context.Context, 
 		// WARN unique de la chaîne : les logs intermédiaires (oauth_refresh,
 		// sisu_provider) sont en Debug ; les occurrences suivantes d'un échec
 		// permanent sont court-circuitées par le cache négatif (Debug aussi).
-		slog.WarnContext(ctx, "pool/resolver: TryOAuthRefresh erreur",
-			"gamertag", src.Gamertag, "class", auth.ClassifyAuthError(err), "err", err)
+		// Anti-flood B6.4 : une panne réseau/DNS fait échouer le refresh de tous
+		// les tokens en boucle → clé par classe d'erreur, compteur expvar exact.
+		// Le clé-par-classe préserve la 1re occurrence de chaque cause distincte
+		// (un reauth_required d'un compte isolé reste visible).
+		class := auth.ClassifyAuthError(err)
+		if allow, since := observability.AllowThrottledLog(
+			"log_throttle_pool_oauth_refresh_"+string(class), observability.NetworkFloodWindow); allow {
+			slog.WarnContext(ctx, "pool/resolver: TryOAuthRefresh erreur",
+				"gamertag", src.Gamertag, "class", class, "err", err,
+				"throttled_since_last", since)
+		}
 		return "", fmt.Errorf("pool/resolver: TryOAuthRefresh échoué pour %s: %w", src.Gamertag, err)
 	}
 	if token == "" {

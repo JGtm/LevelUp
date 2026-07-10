@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 )
 
 func (c *HaloAPIClient) downloadBlob(ctx context.Context, blobURL string) ([]byte, error) {
@@ -31,7 +32,13 @@ func (c *HaloAPIClient) downloadBlob(ctx context.Context, blobURL string) ([]byt
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		slog.WarnContext(ctx, "halo_api: downloadBlob échec réseau", "url", blobURL, "err", err)
+		// Anti-flood B6.4 : une panne réseau fait échouer tous les téléchargements
+		// de blobs en rafale → clé globale par cause, compteur expvar exact.
+		if allow, since := observability.AllowThrottledLog(
+			"log_throttle_halo_api_download_blob", observability.NetworkFloodWindow); allow {
+			slog.WarnContext(ctx, "halo_api: downloadBlob échec réseau",
+				"url", blobURL, "err", err, "throttled_since_last", since)
+		}
 		return nil, fmt.Errorf("downloadBlob: %w", err)
 	}
 	defer resp.Body.Close()

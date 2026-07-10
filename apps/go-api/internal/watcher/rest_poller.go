@@ -29,6 +29,7 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/presence"
 )
 
@@ -173,9 +174,15 @@ func (p *RESTPoller) handleError(ctx context.Context, err error) time.Duration {
 				"xuid", p.xuid, "gamertag", p.gamertag, "backoff", p.backoffRate)
 			return p.backoffRate
 		case httpErr.IsTransient():
-			slog.WarnContext(ctx, "rest_poller: erreur transiente Xbox",
-				"xuid", p.xuid, "gamertag", p.gamertag,
-				"status", httpErr.StatusCode, "backoff", p.backoffTrans)
+			// Anti-flood B6.4 : un incident Xbox/infra frappe tous les pollers en
+			// boucle → clé globale par cause, 1 log / fenêtre, compteur expvar exact.
+			if allow, since := observability.AllowThrottledLog(
+				"log_throttle_rest_poller_transient", observability.NetworkFloodWindow); allow {
+				slog.WarnContext(ctx, "rest_poller: erreur transiente Xbox",
+					"xuid", p.xuid, "gamertag", p.gamertag,
+					"status", httpErr.StatusCode, "backoff", p.backoffTrans,
+					"throttled_since_last", since)
+			}
 			return p.backoffTrans
 		default:
 			slog.ErrorContext(ctx, "rest_poller: HTTP non géré",
@@ -185,10 +192,14 @@ func (p *RESTPoller) handleError(ctx context.Context, err error) time.Duration {
 		}
 	}
 
-	// Erreur non-HTTP (réseau, timeout, parse).
-	slog.WarnContext(ctx, "rest_poller: erreur réseau/parse",
-		"xuid", p.xuid, "gamertag", p.gamertag,
-		"err", err, "backoff", p.backoffNet)
+	// Erreur non-HTTP (réseau, timeout, parse). Anti-flood B6.4 : pendant une
+	// panne DNS/réseau, chaque poller échoue à chaque cycle → clé globale.
+	if allow, since := observability.AllowThrottledLog(
+		"log_throttle_rest_poller_network", observability.NetworkFloodWindow); allow {
+		slog.WarnContext(ctx, "rest_poller: erreur réseau/parse",
+			"xuid", p.xuid, "gamertag", p.gamertag,
+			"err", err, "backoff", p.backoffNet, "throttled_since_last", since)
+	}
 	return p.backoffNet
 }
 

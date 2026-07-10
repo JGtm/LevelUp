@@ -38,6 +38,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -243,7 +244,13 @@ func (c *SpartanCustomizationCron) runOnceForTitle(ctx context.Context, titleSlu
 	// Pas d'abort du process : les locks au boot sont souvent transitoires
 	// (cf. db.go IsFileLockError + commentaire Air post-SIGKILL).
 	if len(lockedDBs) > 0 {
-		slog.ErrorContext(ctx, "spartan_cron: player DB(s) verrouillée(s) par un autre process — "+
+		// B3.3 : lock concurrent player DB = bruit LOCAL à cause connue (2e writer
+		// air/worktree/CLI), self-healing à la fermeture du writer. Une seule ligne
+		// WARN agrégée par cycle (les per-joueur sont en Debug) + compteur expvar
+		// (DC-B2) — pas d'ERROR : ce n'est pas un incident serveur, c'est une
+		// contention de poste de dev qui se résorbe seule.
+		observability.AddInt("spartan_cron_player_db_locked_total", int64(len(lockedDBs)))
+		slog.WarnContext(ctx, "spartan_cron: player DB(s) verrouillée(s) par un autre process — "+
 			"un writer concurrent (CLI backfill / 2e instance serveur / Air pas encore libéré) tient le fichier RW ; "+
 			"ces joueurs restent dégradés jusqu'à sa fermeture (DuckDB est mono-writer par fichier)",
 			"titleSlug", titleSlug, "locked_players", lockedDBs, "count", len(lockedDBs))

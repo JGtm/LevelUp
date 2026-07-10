@@ -562,7 +562,11 @@ func main() {
 			slog.Error("ouverture metadata échouée", "attempts", metaOpenAttempts, "err", err)
 			os.Exit(1)
 		}
-		slog.Warn("metadata verrouillée, nouvelle tentative...", "attempt", attempt+1, "max", metaOpenAttempts, "err", err)
+		// B6.1 : retry de boot à cause connue (lock transitoire tenu par un
+		// hot-reload Air / un ancien process qui n'a pas encore libéré) → DEBUG +
+		// compteur expvar (DC-B2). L'échec DÉFINITIF reste ERROR+exit ci-dessus.
+		observability.IncCounter("boot_metadata_lock_retry_total")
+		slog.Debug("metadata verrouillée, nouvelle tentative...", "attempt", attempt+1, "max", metaOpenAttempts, "err", err)
 		time.Sleep(metaOpenDelay)
 	}
 	slog.Debug("DuckDB ouvert")
