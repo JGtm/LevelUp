@@ -101,6 +101,11 @@ type AdminMonitoringOverview struct {
 	// Snapshot : état du substrat immuable (durabilité / lecture découplée du B-swap).
 	// Gauges = état courant (version, ready, backlog) ; cumuls = cuts depuis le boot.
 	Snapshot MonitoringSnapshotSummary `json:"snapshot"`
+
+	// OpenDetections : nombre de détections persistées au statut open (gauge posé
+	// par le flush du store monitoring — source du badge nav « Détections »).
+	// Zéro I/O DuckDB ici : simple lecture d'un compteur expvar.
+	OpenDetections int64 `json:"open_detections"`
 }
 
 // MonitoringSnapshotSummary expose l'état du producteur de snapshot immuable (gauges +

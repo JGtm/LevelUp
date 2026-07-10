@@ -12,7 +12,7 @@ import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type {
   AdminConvergenceReport,
-  AdminErrorStats,
+  AdminDetectionsResponse,
   AdminJobsResponse,
   AdminMonitoringOverview,
   AdminPerfStats,
@@ -61,11 +61,18 @@ export function usePerfStats() {
   })
 }
 
-export function useMonitoringErrors() {
+/**
+ * Détections persistées avec cycle de vie (open/acked/muted/resolved) — vue
+ * detections_latest de la base monitoring, survit au restart. Remplace l'ancien
+ * panneau « erreurs récurrentes » mémoire (perdu au reboot). On récupère toutes
+ * les détections (plafond serveur) et le filtrage statut/niveau/module se fait
+ * côté table (TanStack) — pas de refetch par filtre.
+ */
+export function useMonitoringDetections() {
   return useQuery({
-    queryKey: queryKeys.adminMonitoringErrors,
-    queryFn: () => api.get<AdminErrorStats>('/admin/monitoring/errors'),
-    // Collecteur mémoire (zéro I/O) — polling tranquille aligné sur l'overview.
+    queryKey: queryKeys.adminMonitoringDetections,
+    queryFn: () => api.get<AdminDetectionsResponse>('/admin/monitoring/detections'),
+    // Le GET flush d'abord le collecteur mémoire côté serveur : cadence tranquille.
     refetchInterval: 30_000,
     staleTime: 25_000,
     retry: false,

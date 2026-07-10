@@ -2199,6 +2199,64 @@ paths:
       responses:
         "200": { description: "Buckets d'erreurs triés par occurrences décroissantes" }
 
+  /admin/monitoring/detections:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringDetections
+      summary: "Dashboard monitoring — détections persistées avec cycle de vie (open/acked/muted/resolved), survivent au restart, filtrables (auth admin requis)"
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string, enum: [open, acked, muted, resolved] }
+        - name: level
+          in: query
+          required: false
+          schema: { type: string }
+        - name: module
+          in: query
+          required: false
+          schema: { type: string }
+        - name: title
+          in: query
+          required: false
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: "Détections triées par last_seen décroissant + open_count"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminDetectionsResponse" }
+
+  /admin/monitoring/detections/{fingerprint}:
+    patch:
+      tags: [admin]
+      operationId: patchAdminMonitoringDetection
+      summary: "Dashboard monitoring — statuer une détection (Reconnaître / Sourdine / Résoudre) (auth admin requis)"
+      parameters:
+        - name: fingerprint
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [open, acked, muted, resolved] }
+                note: { type: string }
+      responses:
+        "200": { description: "Statut appliqué (fingerprint, status, ok)" }
+        "400": { description: "Statut invalide" }
+        "503": { description: "Store monitoring indisponible" }
+
   /admin/monitoring/logs/modules:
     get:
       tags: [admin]
@@ -7123,6 +7181,84 @@ components:
           - generated_at
           - buckets
       type: object
+    MonitoringDetection:
+      additionalProperties: false
+      properties:
+          fingerprint:
+              type: string
+          level:
+              type: string
+          module:
+              type: string
+          message:
+              type: string
+          title_slug:
+              type: string
+          count:
+              format: int64
+              type: integer
+          first_seen:
+              type: string
+          last_seen:
+              type: string
+          sample_detail:
+              type: string
+          status:
+              type: string
+          note:
+              type: string
+          status_at:
+              type: string
+      required:
+          - fingerprint
+          - level
+          - message
+          - count
+          - first_seen
+          - last_seen
+          - status
+      type: object
+    AdminDetectionsResponse:
+      additionalProperties: false
+      properties:
+          generated_at:
+              type: string
+          detections:
+              items:
+                  $ref: '#/components/schemas/MonitoringDetection'
+              type: array
+              nullable: true
+          open_count:
+              type: integer
+      required:
+          - generated_at
+          - detections
+          - open_count
+      type: object
+    AdminDetectionPatchResponse:
+      additionalProperties: false
+      properties:
+          fingerprint:
+              type: string
+          ok:
+              type: boolean
+          status:
+              type: string
+      required:
+          - fingerprint
+          - status
+          - ok
+      type: object
+    DetectionPatchInputBody:
+      additionalProperties: false
+      properties:
+          note:
+              type: string
+          status:
+              type: string
+      required:
+          - status
+      type: object
     AdminInvariantsResponse:
       additionalProperties: false
       properties:
@@ -7295,6 +7431,9 @@ components:
               $ref: '#/components/schemas/MonitoringServerInfo'
           snapshot:
               $ref: '#/components/schemas/MonitoringSnapshotSummary'
+          open_detections:
+              format: int64
+              type: integer
           title_slug:
               type: string
           tokens:
@@ -7309,6 +7448,7 @@ components:
           - jobs
           - invariants
           - snapshot
+          - open_detections
       type: object
     AdminPerfStats:
       additionalProperties: false

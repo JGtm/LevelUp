@@ -2263,6 +2263,12 @@ export type AdminErrorStats = components['schemas']['AdminErrorStats']
 /** Une erreur agrégée par (niveau, message). Miroir de domain.AdminErrorBucket. */
 export type AdminErrorBucket = components['schemas']['AdminErrorBucket']
 
+/** Détection persistée avec cycle de vie. Miroir de domain.MonitoringDetection. */
+export type MonitoringDetection = components['schemas']['MonitoringDetection']
+
+/** Réponse GET /admin/monitoring/detections. Miroir de domain.AdminDetectionsResponse. */
+export type AdminDetectionsResponse = components['schemas']['AdminDetectionsResponse']
+
 // NB : les types Watcher (WatcherStatusResponse, WatcherPlayerStatus) existent
 // déjà plus haut dans ce fichier (section watcher historique) — le dashboard
 // monitoring les réutilise via features/settings/watcher-queries.ts.

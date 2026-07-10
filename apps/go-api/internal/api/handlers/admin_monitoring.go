@@ -50,30 +50,47 @@ type PerfStatsRunner func(ctx context.Context, titleSlug string) (domain.AdminPe
 // par titre (MT-05 ; implémenté par ServiceRegistry.ErrorStats — collecteur mémoire).
 type ErrorStatsRunner func(ctx context.Context, titleSlug string) (domain.AdminErrorStats, error)
 
+// DetectionsRunner liste les détections PERSISTÉES avec cycle de vie (vue
+// detections_latest, survit au restart), filtrées. Implémenté par
+// ServiceRegistry.DetectionsReport (flush de l'ErrorCollector puis lecture).
+type DetectionsRunner func(ctx context.Context, status, level, module, title string, limit int) (domain.AdminDetectionsResponse, error)
+
+// DetectionStatusRunner statue une détection (append d'un événement de cycle de
+// vie). Implémenté par ServiceRegistry.SetDetectionStatus.
+type DetectionStatusRunner func(ctx context.Context, fingerprint, status, note string) error
+
 // AdminMonitoringHandler sert les endpoints lecture du dashboard monitoring.
 type AdminMonitoringHandler struct {
-	overview    MonitoringOverviewRunner
-	convergence ConvergenceReportRunner
-	perf        PerfStatsRunner
-	errors      ErrorStatsRunner
-	sched       *scheduler.AutoSyncScheduler // nil → scheduler indisponible
-	jobs        *jobs.Store                  // nil → liste jobs vide
+	overview     MonitoringOverviewRunner
+	convergence  ConvergenceReportRunner
+	perf         PerfStatsRunner
+	errors       ErrorStatsRunner
+	detections   DetectionsRunner             // nil → section détections vide
+	setDetection DetectionStatusRunner        // nil → PATCH 503
+	sched        *scheduler.AutoSyncScheduler // nil → scheduler indisponible
+	jobs         *jobs.Store                  // nil → liste jobs vide
 }
 
 // NewAdminMonitoringHandler construit le handler. sched et jobs peuvent être
-// nil (sections dégradées, jamais de panic).
+// nil (sections dégradées, jamais de panic). detections/setDetection peuvent
+// être nil si le store monitoring n'est pas câblé (dégradation propre).
 func NewAdminMonitoringHandler(
 	overview MonitoringOverviewRunner,
 	convergence ConvergenceReportRunner,
 	perf PerfStatsRunner,
 	errors ErrorStatsRunner,
+	detections DetectionsRunner,
+	setDetection DetectionStatusRunner,
 	sched *scheduler.AutoSyncScheduler,
 	jobStore *jobs.Store,
 ) *AdminMonitoringHandler {
-	return &AdminMonitoringHandler{overview: overview, convergence: convergence, perf: perf, errors: errors, sched: sched, jobs: jobStore}
+	return &AdminMonitoringHandler{
+		overview: overview, convergence: convergence, perf: perf, errors: errors,
+		detections: detections, setDetection: setDetection, sched: sched, jobs: jobStore,
+	}
 }
 
-// Mount enregistre les 6 routes via Huma sur le sous-routeur chi /admin
+// Mount enregistre les routes via Huma sur le sous-routeur chi /admin
 // (middleware RequireAuth/RequireAdmin/NoStore hérités).
 func (h *AdminMonitoringHandler) Mount(r chi.Router) {
 	api := humacore.NewAPI(r)
@@ -83,6 +100,8 @@ func (h *AdminMonitoringHandler) Mount(r chi.Router) {
 	huma.Get(api, "/monitoring/jobs", h.handleGetJobs)
 	huma.Get(api, "/monitoring/perf", h.handleGetPerf)
 	huma.Get(api, "/monitoring/errors", h.handleGetErrors)
+	huma.Get(api, "/monitoring/detections", h.handleGetDetections)
+	huma.Patch(api, "/monitoring/detections/{fingerprint}", h.handlePatchDetection)
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -132,6 +151,36 @@ type AdminJobsResponse struct {
 	GeneratedAt string                   `json:"generated_at"`
 	Jobs        []*domain.AsyncJobStatus `json:"jobs"`
 }
+
+// detectionsInput : filtres optionnels de GET /monitoring/detections. limit en
+// STRING (contrat souple : non numérique/<=0 → défaut store), pas de 422 Huma.
+type detectionsInput struct {
+	Status string `query:"status"`
+	Level  string `query:"level"`
+	Module string `query:"module"`
+	Title  string `query:"title"`
+	Limit  string `query:"limit"`
+}
+type adminDetectionsOutput struct {
+	Body domain.AdminDetectionsResponse
+}
+
+// detectionPatchInput : {fingerprint} + body {status, note?}.
+type detectionPatchInput struct {
+	Fingerprint string `path:"fingerprint"`
+	Body        struct {
+		Status string `json:"status"`
+		Note   string `json:"note,omitempty"`
+	}
+}
+
+// AdminDetectionPatchResponse : accusé d'un changement de statut de détection.
+type AdminDetectionPatchResponse struct {
+	Fingerprint string `json:"fingerprint"`
+	Status      string `json:"status"`
+	OK          bool   `json:"ok"`
+}
+type detectionPatchOutput struct{ Body AdminDetectionPatchResponse }
 
 // titleOrDefaultSlug lit ?title= avec fallback sur le titre par défaut.
 func titleOrDefaultSlug(title string) string {
@@ -230,4 +279,52 @@ func (h *AdminMonitoringHandler) handleGetErrors(ctx context.Context, in *titleI
 			"Impossible d'agréger les erreurs récentes.")
 	}
 	return &adminErrorsOutput{Body: resp}, nil
+}
+
+// handleGetDetections retourne les détections persistées avec leur cycle de vie.
+// GET /admin/monitoring/detections?status=&level=&module=&title=&limit=.
+func (h *AdminMonitoringHandler) handleGetDetections(ctx context.Context, in *detectionsInput) (*adminDetectionsOutput, error) {
+	if h.detections == nil {
+		return &adminDetectionsOutput{Body: domain.AdminDetectionsResponse{
+			GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+			Detections:  []domain.MonitoringDetection{},
+		}}, nil
+	}
+	limit := 0
+	if in.Limit != "" {
+		if n, err := strconv.Atoi(in.Limit); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	resp, err := h.detections(ctx, in.Status, in.Level, in.Module, in.Title, limit)
+	if err != nil {
+		slog.ErrorContext(ctx, "admin_monitoring: detections failed", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_detections_error",
+			"Impossible de lister les détections.")
+	}
+	return &adminDetectionsOutput{Body: resp}, nil
+}
+
+// handlePatchDetection statue une détection (Reconnaître / Sourdine / Résoudre).
+// PATCH /admin/monitoring/detections/{fingerprint} — body {status, note?}.
+func (h *AdminMonitoringHandler) handlePatchDetection(ctx context.Context, in *detectionPatchInput) (*detectionPatchOutput, error) {
+	if h.setDetection == nil {
+		return nil, humacore.NewError(http.StatusServiceUnavailable, "monitoring_store_unavailable",
+			"Le store monitoring n'est pas disponible.")
+	}
+	if !domain.IsValidDetectionStatus(in.Body.Status) {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_status",
+			"Statut invalide (open, acked, muted ou resolved).")
+	}
+	if err := h.setDetection(ctx, in.Fingerprint, in.Body.Status, in.Body.Note); err != nil {
+		slog.ErrorContext(ctx, "admin_monitoring: patch detection failed",
+			"fingerprint", in.Fingerprint, "status", in.Body.Status, "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_detection_patch_error",
+			"Impossible de mettre à jour la détection.")
+	}
+	slog.InfoContext(ctx, "admin_monitoring: détection statuée",
+		"fingerprint", in.Fingerprint, "status", in.Body.Status)
+	return &detectionPatchOutput{Body: AdminDetectionPatchResponse{
+		Fingerprint: in.Fingerprint, Status: in.Body.Status, OK: true,
+	}}, nil
 }

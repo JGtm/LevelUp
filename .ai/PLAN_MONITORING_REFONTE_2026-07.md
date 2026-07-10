@@ -128,27 +128,37 @@ grep filepath.Join → 0 ; `golangci-lint --new-from-rev=158b336a9` → 0 issues
 
 ### A2 — Cycle de vie des détections + UI triage (effort : lourd)
 
-- [ ] A2.1 Endpoint `GET /admin/monitoring/detections` (query : `status`, `level`,
-      `module`, `title`, `limit`) → liste `_latest` (fingerprint, counts cumulés,
-      first/last_seen, statut, note).
-- [ ] A2.2 Endpoint `PATCH /admin/monitoring/detections/{fingerprint}` (body :
-      `{status, note?}`) → append `detection_status_events`.
-- [ ] A2.3 ErrorCollector : conservé comme tampon mémoire, mais la page lit le store
-      persisté (le panneau « erreurs récurrentes » top-12 mémoire est REMPLACÉ —
-      supprimer le code débranché, règle 0 code mort).
-- [ ] A2.4 UI : section « Détections » — table TanStack (tri par last_seen/count,
-      filtres statut/niveau/module), actions par ligne : Reconnaître / Mettre en
-      sourdine / Résoudre (+ note). Query keys dans `lib/query/keys.ts`, strings FR+EN
-      dans le manifest `admin.toml`. (Elle devient l'onglet « Détections » en A3 ;
-      livrer d'abord sous l'onglet Logs actuel si A3 pas encore passée.)
-- [ ] A2.5 Badges d'onglets : compter uniquement les détections `open` (le bruit `muted`
-      ne colore plus la nav).
-- [ ] A2.6 Tests : handler httptest (list + patch + réouverture), vitest sur la table
-      et le mapping statuts.
+- [x] A2.1 Endpoint `GET /admin/monitoring/detections` (query : `status`, `level`,
+      `module`, `title`, `limit`) → liste `_latest`. (handler `handleGetDetections` +
+      runner `reg.DetectionsReport` qui flush l'ErrorCollector avant lecture ;
+      openapi.yaml path + schémas ajoutés.)
+- [x] A2.2 Endpoint `PATCH /admin/monitoring/detections/{fingerprint}` (body :
+      `{status, note?}`) → append `detection_status_events`. (validation statut → 400 ;
+      store nil → 503.)
+- [x] A2.3 ErrorCollector conservé (feed le store via flush) ; la page lit le store
+      persisté. Panneau front « erreurs récurrentes » (`RecurringErrorsPanel`) +
+      `useMonitoringErrors` SUPPRIMÉS (0 code mort). Clés i18n `admin.errors.*`
+      remplacées par `admin.detections.*`. (Endpoint back `/monitoring/errors` conservé
+      comme route live — voir Découvertes.)
+- [x] A2.4 UI : `DetectionsPanel` (TanStack, tri count/last_seen, filtre statut
+      client-side, actions Reconnaître/Sourdine/Résoudre/Rouvrir + note via prompt),
+      rendu en tête de l'onglet Logs (A3 en fera l'onglet « Détections »). Query key
+      `adminMonitoringDetections`, strings FR+EN dans `admin.toml`, couleurs = tokens.
+- [x] A2.5 Badges : gauge expvar `monitoring_detections_open` (posée au flush) →
+      `overview.open_detections` (zéro I/O) → `tabBadges` colore `/admin/logs` sur les
+      seules détections `open`.
+- [x] A2.6 Tests : handler httptest (list+filtres, patch, statut invalide, nil→503) ;
+      vitest `detectionDisplay.test.ts` (mapping statuts/niveaux + filtre pur).
 
 **Gate A2** : `go test ./internal/api/handlers/...` + `make check-types` + `make test-web`
 verts ; redémarrer le serveur local et vérifier que les détections et statuts survivent
 (procédure : `Start-Process` détaché, port 8000).
+RÉSULTAT 2026-07-10 : `go test ./internal/api/handlers/` ok ; contract routes + drift
+OpenAPI verts (schémas MISSING documentés) ; `npm run typecheck` EXIT 0 ;
+`vitest run` 247 fichiers / 2106 tests OK ; `golangci-lint --new-from-rev=158b336a9` → 0.
+RESTE : vérif restart serveur local = revue utilisateur (persistance prouvée par les
+tests store cgo A1.4 + schéma file-backed ; la survie effective au reboot process reste à
+constater visuellement). GATE PASSÉ (hors constat visuel restart, délégué à l'utilisateur).
 
 ### A3 — Architecture de l'information : onglets par question opérateur (effort : moyen)
 
@@ -289,6 +299,13 @@ non close. Une phase est close quand tous ses items sont statués ET son gate es
 - 2026-07-07 : `/lab/contracts` (handlers/lab.go) semble déjà sans appelant front
   (queries.ts n'appelle que resources/diagnostics/waypoint) — code mort probable,
   absorbé par la suppression A3.5.
+- 2026-07-10 (A2.3) : l'endpoint back `GET /admin/monitoring/errors` (+ runner
+  `reg.ErrorStats`, DTO `AdminErrorStats`/`AdminErrorBucket`) n'a plus de consommateur
+  front (le panneau qui l'appelait est supprimé, remplacé par les détections). Route
+  toujours montée et testée (`TestAdminMonitoring_Errors_OK`). C'est une route live
+  (diagnostic brut curl-able du tampon ErrorCollector conservé), pas du code débranché du
+  routing — conservée sciemment. Candidate à suppression si confirmée inutile (décision
+  produit) : à trancher hors périmètre de ce plan.
 - 2026-07-10 (cartographie front A3, à intégrer à A3.5) : `features/lab/` N'EST PAS
   entièrement supprimable. `DiagnosticsPanel`, `getLabText`/`normalizeLabLocale`,
   `useLabDiagnostics` y sont réutilisés par `AdminDataQualityPage` (→ onglet Données), et

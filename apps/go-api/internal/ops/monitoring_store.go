@@ -268,6 +268,18 @@ func rfc3339OrEmpty(t sql.NullTime) string {
 	return t.Time.UTC().Format(time.RFC3339)
 }
 
+// OpenDetectionCount compte les détections au statut open (source du badge nav,
+// exposé en gauge expvar par le flush → overview zéro I/O).
+func (s *MonitoringStore) OpenDetectionCount(ctx context.Context) (int, error) {
+	var n int
+	if err := s.db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM detections_latest WHERE status = 'open'`,
+	).Scan(&n); err != nil {
+		return 0, fmt.Errorf("monitoring store: open detection count: %w", err)
+	}
+	return n, nil
+}
+
 // RecordCronRun persiste une exécution de cron (append-only, historique).
 func (s *MonitoringStore) RecordCronRun(ctx context.Context, name string, startedAt time.Time, ok bool, errStr string, durationMs int64) error {
 	w, err := s.acquire()

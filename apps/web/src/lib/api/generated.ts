@@ -1902,6 +1902,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/monitoring/detections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard monitoring — détections persistées avec cycle de vie (open/acked/muted/resolved), survivent au restart, filtrables (auth admin requis) */
+        get: operations["getAdminMonitoringDetections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/monitoring/detections/{fingerprint}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Dashboard monitoring — statuer une détection (Reconnaître / Sourdine / Résoudre) (auth admin requis) */
+        patch: operations["patchAdminMonitoringDetection"];
+        trace?: never;
+    };
     "/admin/monitoring/logs/modules": {
         parameters: {
             query?: never;
@@ -4886,6 +4920,35 @@ export interface components {
             buckets: components["schemas"]["AdminErrorBucket"][] | null;
             generated_at: string;
         };
+        MonitoringDetection: {
+            fingerprint: string;
+            level: string;
+            module?: string;
+            message: string;
+            title_slug?: string;
+            /** Format: int64 */
+            count: number;
+            first_seen: string;
+            last_seen: string;
+            sample_detail?: string;
+            status: string;
+            note?: string;
+            status_at?: string;
+        };
+        AdminDetectionsResponse: {
+            generated_at: string;
+            detections: components["schemas"]["MonitoringDetection"][] | null;
+            open_count: number;
+        };
+        AdminDetectionPatchResponse: {
+            fingerprint: string;
+            ok: boolean;
+            status: string;
+        };
+        DetectionPatchInputBody: {
+            note?: string;
+            status: string;
+        };
         AdminInvariantsResponse: {
             generated_at: string;
             reports: components["schemas"]["PlayerInvariantsReport"][] | null;
@@ -4950,6 +5013,8 @@ export interface components {
             scheduler: components["schemas"]["MonitoringSchedulerSummary"];
             server: components["schemas"]["MonitoringServerInfo"];
             snapshot: components["schemas"]["MonitoringSnapshotSummary"];
+            /** Format: int64 */
+            open_detections: number;
             title_slug: string;
             tokens?: components["schemas"]["MonitoringTokensSummary"];
             tokens_error?: string;
@@ -11486,6 +11551,74 @@ export interface operations {
         responses: {
             /** @description Buckets d'erreurs triés par occurrences décroissantes */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getAdminMonitoringDetections: {
+        parameters: {
+            query?: {
+                status?: "open" | "acked" | "muted" | "resolved";
+                level?: string;
+                module?: string;
+                title?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Détections triées par last_seen décroissant + open_count */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDetectionsResponse"];
+                };
+            };
+        };
+    };
+    patchAdminMonitoringDetection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fingerprint: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "open" | "acked" | "muted" | "resolved";
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Statut appliqué (fingerprint, status, ok) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Statut invalide */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Store monitoring indisponible */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

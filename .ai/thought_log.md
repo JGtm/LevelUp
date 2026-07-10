@@ -1,3 +1,33 @@
+## [2026-07-10] PLAN MONITORING REFONTE — A2 cycle de vie détections + UI triage (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A2 CLOSE (gate passé, hors constat visuel restart délégué à l'utilisateur).
+
+**Décision technique principale** : deux endpoints Huma sur l'`AdminMonitoringHandler`
+existant — `GET /admin/monitoring/detections` (runner `reg.DetectionsReport` : flush du
+delta ErrorCollector PUIS lecture `detections_latest`, donc l'admin voit l'état à jour sans
+attendre le tick) et `PATCH .../{fingerprint}` (append cycle de vie, statut validé côté
+domain → 400 ; store nil → 503). Store câblé au boot (`ops.NewMonitoringStore` après
+NewRouter), flush périodique 60s sur `schedulerCtx/schedulerWG` (drainé AVANT
+`duckdb.CloseAll` — écriture sûre) + flush final à l'arrêt. Badge nav : gauge expvar
+`monitoring_detections_open` posée au flush → `overview.open_detections` (zéro I/O) →
+`tabBadges` colore `/admin/logs` sur les seules détections `open`. Front : `DetectionsPanel`
+TanStack (tri, filtre statut client-side, actions + note), remplace `RecurringErrorsPanel`
+mémoire (SUPPRIMÉ, 0 code mort ; clés `admin.errors.*` → `admin.detections.*`). openapi.yaml
+étendu manuellement (source de vérité) : 2 paths + 4 schémas (dont les 2 Huma-dérivés
+`AdminDetectionPatchResponse`/`DetectionPatchInputBody` exigés par le drift-test strict),
+types front régénérés.
+
+**Résultats** : `go test ./internal/api/handlers/` ok ; contract routes (seuil 0) + drift
+OpenAPI verts ; `npm run typecheck` EXIT 0 ; `vitest run` 247 fichiers / 2106 tests OK ;
+`golangci-lint --new-from-rev=158b336a9` → 0 ; build 0.
+
+**Conclusion / prochaine étape** : A3 — architecture de l'information (9 onglets → 6, retrait
+Lab). ATTENTION découverte A3.5 : `features/lab/` partiellement réutilisé (Données + charts)
+— supprimer l'ONGLET Lab + back `/lab/*`, PAS les briques encore consommées. Endpoint back
+`/monitoring/errors` désormais UI-orphelin (route live conservée, consignée en Découvertes).
+
+---
+
 ## [2026-07-10] PLAN MONITORING REFONTE — A1 socle de persistance (Complété, branche feat/monitoring-refonte-2026-07)
 
 **Statut** : Phase A1 CLOSE (gate passé). Base sur `fix/monitoring-triage-2026-07` (158b336a9).

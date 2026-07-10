@@ -301,25 +301,95 @@ en = "Detail"
 fr = "Logs indisponibles."
 en = "Logs unavailable."
 
-[admin.errors.section]
-fr = "Erreurs récurrentes (depuis le démarrage)"
-en = "Recurring errors (since boot)"
+# ─── Détections (cycle de vie, persistées — remplacent « erreurs récurrentes ») ─
 
-[admin.errors.empty]
-fr = "Aucune erreur depuis le démarrage."
-en = "No errors since boot."
+[admin.detections.section]
+fr = "Détections"
+en = "Detections"
 
-[admin.errors.col_count]
+[admin.detections.subtitle]
+fr = "Anomalies persistées avec cycle de vie — survivent au redémarrage."
+en = "Persisted anomalies with a lifecycle — they survive restarts."
+
+[admin.detections.empty]
+fr = "Aucune détection."
+en = "No detections."
+
+[admin.detections.unavailable]
+fr = "Détections indisponibles."
+en = "Detections unavailable."
+
+[admin.detections.col_count]
 fr = "Occ."
 en = "Count"
 
-[admin.errors.col_message]
+[admin.detections.col_level]
+fr = "Niveau"
+en = "Level"
+
+[admin.detections.col_module]
+fr = "Module"
+en = "Module"
+
+[admin.detections.col_message]
 fr = "Message"
 en = "Message"
 
-[admin.errors.col_last]
+[admin.detections.col_last]
 fr = "Dernière"
 en = "Last"
+
+[admin.detections.col_status]
+fr = "Statut"
+en = "Status"
+
+[admin.detections.col_actions]
+fr = "Actions"
+en = "Actions"
+
+[admin.detections.filter_status]
+fr = "Statut"
+en = "Status"
+
+[admin.detections.filter_all]
+fr = "Tous"
+en = "All"
+
+[admin.detections.status_open]
+fr = "Ouverte"
+en = "Open"
+
+[admin.detections.status_acked]
+fr = "Reconnue"
+en = "Acknowledged"
+
+[admin.detections.status_muted]
+fr = "En sourdine"
+en = "Muted"
+
+[admin.detections.status_resolved]
+fr = "Résolue"
+en = "Resolved"
+
+[admin.detections.action_ack]
+fr = "Reconnaître"
+en = "Acknowledge"
+
+[admin.detections.action_mute]
+fr = "Mettre en sourdine"
+en = "Mute"
+
+[admin.detections.action_resolve]
+fr = "Résoudre"
+en = "Resolve"
+
+[admin.detections.action_reopen]
+fr = "Rouvrir"
+en = "Reopen"
+
+[admin.detections.note_prompt]
+fr = "Note (optionnelle) :"
+en = "Note (optional):"
 
 # ─── Vue d'ensemble (KPIs) ─────────────────────────────────────────────────
 
