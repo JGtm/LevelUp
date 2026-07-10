@@ -188,8 +188,15 @@ func (s *Service) insertAndSweep(ctx context.Context, n *Notification) error {
 		"category", n.Category, "title_key", n.TitleKey, "severity", n.Severity)
 	// Cap rétention best-effort : erreur loguée par le repo, jamais propagée.
 	_ = s.repo.CapAndSweep(ctx, DefaultRetentionCap)
+	// Expiry douce (DP8) : les info non lues > staleInfoMaxAge passent lues.
+	// Best-effort idempotent, à côté du cap (jamais propagé).
+	_ = s.repo.SweepStaleInfoRead(ctx, time.Now().UTC().Add(-staleInfoMaxAge))
 	return nil
 }
+
+// staleInfoMaxAge : âge au-delà duquel une notification `info` non lue passe
+// silencieusement lue (DP8, réalise l'intention de l'ex-coach.AutoDismissAfter).
+const staleInfoMaxAge = 7 * 24 * time.Hour
 
 // EmitCoalesced insère une notification en la fusionnant avec une candidate
 // récente non lue si possible (cf. doc interface). Best-effort côté writer,

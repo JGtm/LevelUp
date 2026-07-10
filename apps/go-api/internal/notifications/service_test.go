@@ -23,6 +23,7 @@ type fakeRepo struct {
 	lastAllCat    Category
 	lastDeleteID  int64
 	unread        UnreadCount
+	sweepCalls    int
 }
 
 func newFakeRepo() *fakeRepo {
@@ -76,6 +77,10 @@ func (r *fakeRepo) Delete(_ context.Context, id int64) error {
 	return nil
 }
 func (r *fakeRepo) CapAndSweep(_ context.Context, _ int) error { return nil }
+func (r *fakeRepo) SweepStaleInfoRead(_ context.Context, _ time.Time) error {
+	r.sweepCalls++
+	return nil
+}
 func (r *fakeRepo) GetPreferences(_ context.Context) ([]Preference, error) {
 	return r.prefs, nil
 }

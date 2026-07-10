@@ -16459,6 +16459,9 @@ components:
     UnreadCount:
       additionalProperties: false
       properties:
+          badge_count:
+              format: int64
+              type: integer
           by_category:
               additionalProperties:
                   format: int64
@@ -16469,6 +16472,7 @@ components:
               type: integer
       required:
           - count
+          - badge_count
           - by_category
       type: object
     WatcherAuthStatusResponse:

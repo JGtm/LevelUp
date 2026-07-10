@@ -309,24 +309,24 @@ PASS vérifié en -v). 2026-07-10.
 
 ## Phase D — Cycle de vie du badge (back léger + front)
 
-- [ ] D1. Backend `badge_count` : struct `UnreadCount` (`types.go`) — champ
+- [x] D1. Backend `badge_count` : struct `UnreadCount` (`types.go`) — champ
       `BadgeCount int` json `badge_count` (« non-lues severity != 'info' »).
       Requête `NotificationsRepo.UnreadCount` (`notifications_repo.go:232-237`) :
       ajouter `COUNT(*) FILTER (severity <> 'info')` par catégorie et sommer dans
       la boucle de scan.
-- [ ] D2. OpenAPI : ajouter `badge_count` au schéma unread-count dans
+- [x] D2. OpenAPI : ajouter `badge_count` au schéma unread-count dans
       `apps/go-api/api/openapi.yaml`, puis `make generate-types` (le garde-fou
       TestNoJSONRouteBypassesHuma existe — le laisser guider si autre chose est requis).
-- [ ] D3. Front badge : `NotificationsBell.tsx:30` →
+- [x] D3. Front badge : `NotificationsBell.tsx:30` →
       `const unreadCount = countData?.badge_count ?? countData?.count ?? 0`.
       La page Notifications continue d'afficher le compteur complet.
-- [ ] D4. Front auto-read à la fermeture : dans `NotificationsBell`, accumuler dans
+- [x] D4. Front auto-read à la fermeture : dans `NotificationsBell`, accumuler dans
       un `useRef<Set<number>>` les ids non lus rendus pendant l'ouverture ; sur
       transition open→false (click-outside, Esc, navigation), si le set est non vide
       → `markRead.mutate([...set])` puis vider. Vérifier que `mutations.ts` invalide
       bien le préfixe `notificationsAll` (keys.ts:161) pour rafraîchir badge + liste.
       Le bouton « tout marquer lu » reste.
-- [ ] D5. Sweep expiry douce (DP8) : méthode persister
+- [x] D5. Sweep expiry douce (DP8) : méthode persister
       `SweepStaleInfoNotificationsRead(ctx, xuid string, cutoff time.Time) error`
       (iface `social_persister_iface.go` + implémentation à côté de
       `MarkAllNotificationsRead` — la retrouver :
@@ -337,19 +337,19 @@ PASS vérifié en -v). 2026-07-10.
       best-effort dans `emitInner` à côté de `CapAndSweep` (l.178) avec
       `const staleInfoMaxAge = 7 * 24 * time.Hour`. Erreur → log warn, jamais propagée
       (même contrat que CapAndSweep, écriture idempotente).
-- [ ] D6. Tests : repo/e2e — une info vieille de 8 j non lue + une émission → l'info
+- [x] D6. Tests : repo/e2e — une info vieille de 8 j non lue + une émission → l'info
       passe lue, une `success` vieille de 8 j reste non lue ; UnreadCount →
       `badge_count` exclut les info. Front — test composant Bell (vitest, patterns
       des tests existants du dossier) : ouverture avec liste mockée (2 non lues) →
       fermeture → `markRead` appelé avec les 2 ids ; badge affiche `badge_count`.
       NB : vitest se lance HORS sandbox (`dangerouslyDisableSandbox`) ; typecheck OK
       en sandbox.
-- [ ] D7. i18n : si de nouvelles strings UI apparaissent (a priori aucune), parité
+- [x] D7. i18n : si de nouvelles strings UI apparaissent (a priori aucune), parité
       FR **et** EN dans `i18n.ts` (`Record<Locale, T>`), FR sans anglicisme.
-- [ ] D8. `match_synced` severity `success` → `info` (DP15) : `emitMatchSynced`
+- [x] D8. `match_synced` severity `success` → `info` (DP15) : `emitMatchSynced`
       (`sync_handler.go:252-272`). Sort du badge via DP6, reste visible en
       liste. Adapter les tests qui vérifient la severity.
-- [ ] D9. Code mort coach (règle CLAUDE.md n°7) : `MaxConcurrentUnread` et
+- [x] D9. Code mort coach (règle CLAUDE.md n°7) : `MaxConcurrentUnread` et
       `AutoDismissAfter` (`coach/types.go:83-89`) ne sont consommées nulle part
       (vérifier : `grep -rn "AutoDismissAfter\|MaxConcurrentUnread"
       apps/go-api/`). Les SUPPRIMER — l'intention d'`AutoDismissAfter` (purge
@@ -359,6 +359,18 @@ PASS vérifié en -v). 2026-07-10.
 **Gate D** : `cd apps/go-api && go test ./...` ; `make check-types` ; `make test-web` ;
 `make generate-types` puis `git diff --exit-code apps/web/src/lib/api/generated.ts`
 (le commit doit contenir les types régénérés).
+→ OK 2026-07-10 : go test ./... exit 0 ; tsc exit 0 ; vitest 2106 passed (247 fichiers,
+dont 5 nouveaux tests Bell) ; generated.ts régénéré (+badge_count) et commité.
+
+> Note D2 (découverte) : la cible Makefile `generate-types` est un NO-OP (echo sans
+> exécuter le générateur) — la vraie commande est `npm run generate-types` dans apps/web
+> (openapi-typescript). Consigné en Découvertes, non corrigé (hors périmètre).
+> Note D6 : sweep testé aux 2 niveaux — persister (TestSharedSocialPersister_
+> SweepStaleInfoNotificationsRead, chemin prod) ET e2e repo fallback
+> (TestNotificationsE2E_SweepStaleInfo_And_BadgeCount).
+> Note D7 : aucune nouvelle string UI (aria-labels existants réutilisés) — rien à ajouter.
+> Note D8 : aucun test n'assertait severity=success sur match_synced ; le toastBridge
+> affiche aussi les info (DP15 « reste visible en toast » vérifié sur pièces).
 
 ## Phase E — Gate final et clôture
 
@@ -394,7 +406,17 @@ des tests nommés, tous les gates sont verts, aucun item sans statut.
 
 ## Découvertes en cours d'exécution (à consigner, ne pas traiter)
 
-- (vide — à remplir par l'agent exécutant)
+- **Makefile `generate-types` = no-op** : la cible affiche « Types générés » sans
+  exécuter openapi-typescript (elle ne fait qu'un `command -v npx` + echo). La vraie
+  commande est `npm run generate-types` dans `apps/web/`. Toute session qui s'appuie
+  sur `make generate-types` croit régénérer les types sans le faire — à corriger dans
+  un chantier outillage.
+- **`recordingEmitter` (post_sync_deltas_test.go) est le seul fake Emitter du repo** :
+  l'ajout d'une méthode à l'interface `notifications.Emitter` ne casse que lui + les
+  implémentations réelles (Service, NoopEmitter). Peu de friction, mais aucun
+  garde-rail ne signale les implémentations structurelles hors compile-time.
+- **`prestige.TelemetryRepo.Emit`** partage le nom `Emit` avec `notifications.Emitter`
+  mais est une interface distincte (aucun impact, noté pour éviter une confusion grep).
 
 ## Protocole de reprise de session
 

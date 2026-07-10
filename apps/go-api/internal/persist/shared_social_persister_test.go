@@ -783,6 +783,48 @@ func TestSharedSocialPersister_MarkAllNotificationsRead(t *testing.T) {
 	}
 }
 
+// D5/DP8 : le sweep expiry douce ne touche que severity='info' non lues plus
+// vieilles que cutoff.
+func TestSharedSocialPersister_SweepStaleInfoNotificationsRead(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	old := now.Add(-8 * 24 * time.Hour)
+	cutoff := now.Add(-7 * 24 * time.Hour)
+
+	seedNotifSeverity := func(id int64, severity string, createdAt time.Time) {
+		t.Helper()
+		if _, err := db.Exec(`
+			INSERT INTO player_notifications_history
+				(xuid, id, category, severity, title_key, source, created_at, read_at, is_deleted, written_at)
+			VALUES ('x', ?, 'c', ?, 'k', 's', ?, NULL, FALSE, CURRENT_TIMESTAMP)`,
+			id, severity, createdAt); err != nil {
+			t.Fatalf("seed notif id=%d: %v", id, err)
+		}
+	}
+	seedNotifSeverity(1, "info", old)    // → swept (info + périmée)
+	seedNotifSeverity(2, "success", old) // → intacte (pas info)
+	seedNotifSeverity(3, "info", now)    // → intacte (récente)
+
+	n, err := p.SweepStaleInfoNotificationsRead(ctx, "x", cutoff)
+	if err != nil {
+		t.Fatalf("SweepStaleInfoNotificationsRead: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("n=%d want 1 (seule l'info périmée)", n)
+	}
+	var unread int
+	_ = db.QueryRow(`SELECT COUNT(*) FROM player_notifications_latest WHERE xuid='x' AND read_at IS NULL`).Scan(&unread)
+	if unread != 2 {
+		t.Errorf("unread=%d want 2 (success 8 j + info fraîche)", unread)
+	}
+	// Idempotent : re-sweep → 0.
+	if n2, _ := p.SweepStaleInfoNotificationsRead(ctx, "x", cutoff); n2 != 0 {
+		t.Errorf("re-sweep n=%d want 0", n2)
+	}
+}
+
 func TestSharedSocialPersister_DeleteNotification(t *testing.T) {
 	_, db := setupSocialDB(t)
 	p := NewSharedSocialPersister(db)

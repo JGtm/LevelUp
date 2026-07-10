@@ -407,6 +407,26 @@ func (p *SharedSocialPersister) MarkAllNotificationsRead(ctx context.Context, xu
 		base+` AND category = ?`, readAt, xuid, category)
 }
 
+// SweepStaleInfoNotificationsRead marque lues les notifs severity='info' non
+// lues et plus anciennes que cutoff (expiry douce DP8). SANS CHECKPOINT immédiat :
+// balayage idempotent, re-joué au prochain emit si perdu (même contrat que
+// CapAndSweepNotifications). Renvoie le nb de notifs marquées.
+func (p *SharedSocialPersister) SweepStaleInfoNotificationsRead(ctx context.Context, xuid string, cutoff time.Time) (int64, error) {
+	// APPEND-ONLY : un event read par notif info périmée (INSERT…SELECT depuis _latest).
+	return p.execNotifWriteCheckpointed(ctx, "notif-sweep-stale-info", false, `
+		INSERT INTO player_notifications_history (
+			xuid, id, category, severity, title_key, body_key, params,
+			target_route, target_search, actor_xuid, actor_name, source,
+			created_at, read_at, is_deleted, written_at
+		)
+		SELECT xuid, id, category, severity, title_key, body_key, params,
+		       target_route, target_search, actor_xuid, actor_name, source,
+		       created_at, ?, FALSE, CURRENT_TIMESTAMP
+		FROM player_notifications_latest
+		WHERE xuid = ? AND read_at IS NULL AND severity = 'info' AND created_at < ?`,
+		time.Now().UTC(), xuid, cutoff)
+}
+
 // DeleteNotification supprime une notif (+ CHECKPOINT). Renvoie le nb de lignes
 // affectées (0 = id inconnu, le caller traduit en ErrNotFound).
 func (p *SharedSocialPersister) DeleteNotification(ctx context.Context, xuid string, id int64) (int64, error) {

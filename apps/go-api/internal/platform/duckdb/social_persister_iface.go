@@ -105,6 +105,10 @@ type SocialPersister interface {
 	// CapAndSweepNotifications : purge de rétention (DELETE), SANS CHECKPOINT
 	// immédiat (idempotent, flush via scheduler 5min).
 	CapAndSweepNotifications(ctx context.Context, xuid string, max int) error
+	// SweepStaleInfoNotificationsRead : marque lues les notifs severity='info'
+	// non lues plus vieilles que cutoff (expiry douce DP8), SANS CHECKPOINT
+	// immédiat (idempotent). Renvoie le nb marqué.
+	SweepStaleInfoNotificationsRead(ctx context.Context, xuid string, cutoff time.Time) (int64, error)
 	// UpsertNotificationPreferences : INSERT ON CONFLICT par (xuid, category)
 	// en 1 TX + CHECKPOINT. Slices parallèles pour éviter le cycle d'import.
 	UpsertNotificationPreferences(ctx context.Context, xuid string, categories []string, enabled []bool, delivery []string, updatedAt time.Time) error

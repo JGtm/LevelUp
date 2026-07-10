@@ -180,8 +180,13 @@ type ListResult struct {
 }
 
 // UnreadCount expose le total et la répartition par catégorie.
+//
+// BadgeCount (DP6) = non-lues de severity != 'info' — ce qui alimente le badge
+// cloche « signifiant » (une info de plomberie ne fait pas clignoter la cloche).
+// Count reste le total complet exposé (page Notifications, aria-label).
 type UnreadCount struct {
 	Count      int            `json:"count"`
+	BadgeCount int            `json:"badge_count"`
 	ByCategory map[string]int `json:"by_category"`
 }
 
