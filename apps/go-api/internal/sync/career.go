@@ -188,6 +188,7 @@ func syncPlayerCSRs(
 	client HaloClient,
 	db *sql.DB,
 	xuid, seasonID string,
+	activePlaylists []rankedplaylists.Playlist,
 ) ([]PlayerPlaylistCSR, error) {
 	if strings.TrimSpace(seasonID) == "" {
 		return nil, nil
@@ -203,7 +204,11 @@ func syncPlayerCSRs(
 	// 2. Compléter avec les playlists classées ACTIVES manquantes via l'endpoint
 	//    par-playlist (/hi/playlist/{id}/csrs) — garantit la couverture de toutes
 	//    les playlists classées de la saison sans dériver de l'historique.
-	csrs = AugmentWithActiveRankedCSRs(ctx, client, xuid, seasonID, csrs, "en")
+	//    `activePlaylists` = actives découvertes par le cron (dynamique) ; vide →
+	//    fallback rankedplaylists.Active() dans l'augment. Locale "en" : le nom
+	//    persisté (SaveCSRSnapshots) reste le canonique EN — résolution FR à la
+	//    lecture (GH2-B3).
+	csrs = AugmentWithActiveRankedCSRs(ctx, client, xuid, seasonID, csrs, "en", activePlaylists)
 	if len(csrs) == 0 {
 		return nil, nil
 	}
@@ -220,8 +225,11 @@ func syncPlayerCSRs(
 //
 // locale sélectionne le libellé de playlist depuis la référence : "fr" → NameFR,
 // "en"/autre → NameEN, "" → ne PAS enrichir le nom (garder celui de l'API).
+// activePlaylists = playlists classées actives découvertes dynamiquement (cron
+// catalogue) ; vide → fallback rankedplaylists.Active() (référence statique).
 // Source unique partagée par le sync post-cycle (career.go) et le provider DI
-// Explorer (api/registry_pages.go) — H8 (2026-07-04), dédup d'une copie inline.
+// Explorer (wire/registry_pages_explorer.go) — H8 (2026-07-04), dédup d'une copie
+// inline ; fusion 2026-07-10 avec le chantier leaderboard (playlists dynamiques).
 //
 // Les playlists pour lesquelles l'API ne renvoie aucune entrée (jamais jouées)
 // sont volontairement ignorées : la lecture catalogue-first (GetCSRSnapshots)
@@ -232,12 +240,18 @@ func AugmentWithActiveRankedCSRs(
 	xuid, seasonID string,
 	csrs []PlayerPlaylistCSR,
 	locale string,
+	activePlaylists []rankedplaylists.Playlist,
 ) []PlayerPlaylistCSR {
+	// activePlaylists vide → fallback sur la référence statique (comportement
+	// historique + titres sans cron classement). Sinon = actives dynamiques.
+	if len(activePlaylists) == 0 {
+		activePlaylists = rankedplaylists.Active()
+	}
 	seen := make(map[string]struct{}, len(csrs))
 	for _, c := range csrs {
 		seen[strings.ToLower(strings.TrimSpace(c.PlaylistID))] = struct{}{}
 	}
-	for _, pl := range rankedplaylists.Active() {
+	for _, pl := range activePlaylists {
 		if _, ok := seen[strings.ToLower(pl.AssetID)]; ok {
 			continue
 		}

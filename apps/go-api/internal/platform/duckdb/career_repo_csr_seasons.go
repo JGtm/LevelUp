@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -72,16 +73,45 @@ func (r *CareerRepo) AvailableCSRSeasons(ctx context.Context) ([]domain.CSRSeaso
 		return []domain.CSRSeasonOption{}, nil
 	}
 
+	// C2b : libellé autoritatif "Saison N · Nom" (localisé) depuis season_catalog
+	// (scrape Waypoint). Best-effort : nil map (indisponible) → fallback "Saison N"
+	// dérivé (csrSeasonLabel). Match season_id insensible à la casse (API carrière
+	// "CsrSeason13-2" vs Waypoint "csrseason13-2").
+	locale := ctxkeys.Locale(ctx)
+	names := r.seasonCatalogNames(ctx)
 	out := make([]domain.CSRSeasonOption, 0, len(seen))
 	for sid := range seen {
 		out = append(out, domain.CSRSeasonOption{
 			SeasonID:  sid,
-			Label:     csrSeasonLabel(sid),
+			Label:     SeasonSelectorLabel(locale, sid, names, csrSeasonLabel(sid)),
 			IsCurrent: sid == r.currentCSRSID,
 		})
 	}
 	sortCSRSeasonsDesc(out)
 	return out, nil
+}
+
+// seasonCatalogNames lit season_catalog (shared) best-effort pour les libellés de
+// saison. nil si shared indisponible ou table absente (DB legacy) — l'appelant
+// retombe alors sur le libellé dérivé.
+func (r *CareerRepo) seasonCatalogNames(ctx context.Context) map[string]SeasonName {
+	if r.pdb == nil || r.pdb.SharedReader == nil {
+		return nil
+	}
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "AvailableCSRSeasons: shared indisponible pour season_catalog (libellés dérivés)",
+			"xuid", r.pdb.XUID, "err", err)
+		return nil
+	}
+	defer release()
+	names, err := LoadSeasonCatalogNames(ctx, db, r.titleSlug())
+	if err != nil {
+		slog.WarnContext(ctx, "AvailableCSRSeasons: season_catalog illisible (libellés dérivés)",
+			"xuid", r.pdb.XUID, "err", err)
+		return nil
+	}
+	return names
 }
 
 // collectSeasonsFromMatchCSRs ajoute à `seen` les season_id présents dans le CSR

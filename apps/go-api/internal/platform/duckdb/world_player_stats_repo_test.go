@@ -225,11 +225,12 @@ func TestGetCSRWorldLeaderboard_PrevSeasonCrossDigit(t *testing.T) {
 	}
 }
 
-// TestWorldSeasonGamertags_TopNPerPlaylist valide le cap top-N PAR playlist :
+// TestWorldSeasonPlayers_TopNPerPlaylist valide le cap top-N PAR playlist :
 // un joueur hors du top-N d'une playlist mais DANS le top-N d'une autre reste
 // inclus (sémantique par playlist = ce qu'affiche le classement) ; un joueur hors
-// top-N partout est exclu ; topN <= 0 = aucun cap.
-func TestWorldSeasonGamertags_TopNPerPlaylist(t *testing.T) {
+// top-N partout est exclu ; topN <= 0 = aucun cap. Vérifie aussi que le xuid scrapé
+// est remonté (dédup par gamertag via MAX(xuid), B1).
+func TestWorldSeasonPlayers_TopNPerPlaylist(t *testing.T) {
 	shared := openMemDB(t)
 	applyWorldLeaderboardMigration(t, shared.SQLDb())
 	ctx := context.Background()
@@ -238,29 +239,44 @@ func TestWorldSeasonGamertags_TopNPerPlaylist(t *testing.T) {
 	const slayer = "dcb2e24e-05fb-4390-8076-32a0cdb4326e"
 	t0 := time.Now().UTC()
 	if _, err := InsertWorldCSRSnapshot(ctx, shared.SQLDb(), "halo_infinite", []domain.LeaderboardEntry{
-		{Season: "csrseason13-2", Playlist: arena, Rank: 1, Gamertag: "Alpha", CSRValue: 2000, Tier: "Onyx", FetchedAt: t0},
-		{Season: "csrseason13-2", Playlist: arena, Rank: 150, Gamertag: "Beta", CSRValue: 1200, Tier: "Diamond", FetchedAt: t0},
-		{Season: "csrseason13-2", Playlist: arena, Rank: 120, Gamertag: "Charlie", CSRValue: 1300, Tier: "Diamond", FetchedAt: t0},
+		{Season: "csrseason13-2", Playlist: arena, Rank: 1, Gamertag: "Alpha", XUID: "2535000000000001", CSRValue: 2000, Tier: "Onyx", FetchedAt: t0},
+		{Season: "csrseason13-2", Playlist: arena, Rank: 150, Gamertag: "Beta", XUID: "2535000000000002", CSRValue: 1200, Tier: "Diamond", FetchedAt: t0},
+		{Season: "csrseason13-2", Playlist: arena, Rank: 120, Gamertag: "Charlie", XUID: "2535000000000003", CSRValue: 1300, Tier: "Diamond", FetchedAt: t0},
 		// Beta est top-100 d'une AUTRE playlist (rang 5) → doit rester inclus malgré son rang 150 en arena.
-		{Season: "csrseason13-2", Playlist: slayer, Rank: 5, Gamertag: "Beta", CSRValue: 1900, Tier: "Onyx", FetchedAt: t0},
+		{Season: "csrseason13-2", Playlist: slayer, Rank: 5, Gamertag: "Beta", XUID: "2535000000000002", CSRValue: 1900, Tier: "Onyx", FetchedAt: t0},
 	}); err != nil {
 		t.Fatalf("InsertWorldCSRSnapshot: %v", err)
 	}
 
-	top100, err := WorldSeasonGamertags(ctx, shared.SQLDb(), "csrseason13-2", 100)
-	if err != nil {
-		t.Fatalf("WorldSeasonGamertags(top100): %v", err)
-	}
-	// Alpha (arena rang 1) + Beta (slayer rang 5) ; Charlie (arena rang 120, nulle part ailleurs) exclu.
-	if !reflect.DeepEqual(top100, []string{"Alpha", "Beta"}) {
-		t.Errorf("top100 = %v, want [Alpha Beta] (Charlie >100 partout exclu, Beta inclus via slayer)", top100)
+	gts := func(players []domain.WorldPlayerRef) []string {
+		out := make([]string, len(players))
+		for i, p := range players {
+			out[i] = p.Gamertag
+		}
+		return out
 	}
 
-	all, err := WorldSeasonGamertags(ctx, shared.SQLDb(), "csrseason13-2", 0)
+	top100, err := WorldSeasonPlayers(ctx, shared.SQLDb(), "csrseason13-2", 100)
 	if err != nil {
-		t.Fatalf("WorldSeasonGamertags(all): %v", err)
+		t.Fatalf("WorldSeasonPlayers(top100): %v", err)
 	}
-	if !reflect.DeepEqual(all, []string{"Alpha", "Beta", "Charlie"}) {
-		t.Errorf("all (topN=0) = %v, want [Alpha Beta Charlie]", all)
+	// Alpha (arena rang 1) + Beta (slayer rang 5) ; Charlie (arena rang 120, nulle part ailleurs) exclu.
+	if !reflect.DeepEqual(gts(top100), []string{"Alpha", "Beta"}) {
+		t.Errorf("top100 = %v, want [Alpha Beta] (Charlie >100 partout exclu, Beta inclus via slayer)", gts(top100))
+	}
+	// Le xuid scrapé du snapshot est remonté (alimente le court-circuit PeopleHub, B1) —
+	// Beta n'apparaît qu'UNE fois malgré deux playlists (dédup GROUP BY gamertag).
+	for _, p := range top100 {
+		if p.XUID == "" {
+			t.Errorf("xuid manquant pour %s (attendu depuis le snapshot)", p.Gamertag)
+		}
+	}
+
+	all, err := WorldSeasonPlayers(ctx, shared.SQLDb(), "csrseason13-2", 0)
+	if err != nil {
+		t.Fatalf("WorldSeasonPlayers(all): %v", err)
+	}
+	if !reflect.DeepEqual(gts(all), []string{"Alpha", "Beta", "Charlie"}) {
+		t.Errorf("all (topN=0) = %v, want [Alpha Beta Charlie]", gts(all))
 	}
 }

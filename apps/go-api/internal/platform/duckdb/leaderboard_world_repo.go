@@ -54,17 +54,47 @@ func (r *LeaderboardRepo) GetCSRWorldLeaderboard(
 	}
 	defer release()
 
-	// NB : le snapshot Halo Waypoint ne publie pas de xuid (seulement gamertag) —
-	// la table world_csr_leaderboard_snapshots n'a donc pas de colonne xuid.
-	// On sélectionne '' pour rester compatible avec le scan (xuid vide → is_local
-	// toujours false sur ce classement mondial, attendu).
-	const q = `
-		SELECT rank, COALESCE(gamertag, ''), '' AS xuid, csr_value
+	// Le snapshot Halo Waypoint EXPOSE le xuid de chaque joueur (parsé du bloc
+	// __NEXT_DATA__ par le scraper, persisté depuis B1) : on le sélectionne pour
+	// activer is_local (mise en évidence du joueur courant sur ce classement mondial).
+	// Les lignes scrapées AVANT l'ajout de la colonne xuid restent à NULL → COALESCE ''
+	// → is_local false, jusqu'au prochain scrape qui les remplit.
+	// Masquage des joueurs privés/sans données (historique inaccessible → aucune stat) :
+	// on les exclut EN SQL (avant le LIMIT) pour servir un top complet de joueurs
+	// exploitables. Best-effort : table absente → set vide → aucun filtre (dégradation).
+	//
+	// GARDE : on ne masque QUE si la saison a des joueurs enrichis. Une vieille saison
+	// entièrement expirée (historique API perdu → 0 enrichi, TOUS marqués privés)
+	// laisserait sinon un classement VIDE ; on montre alors le CSR brut.
+	noData, ndErr := WorldSeasonNoDataGamertags(ctx, sharedDB, titleSlug, season)
+	if ndErr != nil {
+		slog.WarnContext(ctx, "GetCSRWorldLeaderboard: lecture world_player_no_data échouée — pas de masquage",
+			"module", logModuleLeaderboard, "season", season, "err", ndErr)
+		noData = nil
+	}
+	if len(noData) > 0 {
+		hasEnriched, hErr := WorldSeasonHasEnriched(ctx, sharedDB, season)
+		if hErr != nil || !hasEnriched {
+			// Saison sans aucune stat (expirée) ou lecture en échec → pas de masquage.
+			noData = nil
+		}
+	}
+	q := `
+		SELECT rank, COALESCE(gamertag, ''), COALESCE(xuid, '') AS xuid, csr_value
 		FROM world_csr_leaderboard_latest
-		WHERE title_slug = ? AND season_id = ? AND playlist_id = ?
-		ORDER BY rank ASC
-		LIMIT ?`
-	rows, err := sharedDB.QueryContext(ctx, q, titleSlug, season, playlist, limit)
+		WHERE title_slug = ? AND season_id = ? AND playlist_id = ?`
+	args := []any{titleSlug, season, playlist}
+	if len(noData) > 0 {
+		ph := make([]string, 0, len(noData))
+		for gt := range noData {
+			ph = append(ph, "?")
+			args = append(args, gt)
+		}
+		q += ` AND gamertag NOT IN (` + strings.Join(ph, ",") + `)`
+	}
+	q += ` ORDER BY rank ASC LIMIT ?`
+	args = append(args, limit)
+	rows, err := sharedDB.QueryContext(ctx, q, args...)
 	if err != nil {
 		slog.WarnContext(ctx, "lecture classement CSR mondial échouée", "module", logModuleLeaderboard,
 			"season", season, "playlist", playlist, "err", err)
@@ -275,6 +305,19 @@ func (r *LeaderboardRepo) GetWorldLeaderboardCatalog(ctx context.Context, titleS
 	// rankedplaylists EN > name_canonical (EN) > FR > id ; cascade FR :
 	// asset_translations[fr] > rankedplaylists FR > name_canonical (EN) > EN > id.
 	locale := ctxkeys.Locale(ctx)
+	// C2b : libellé autoritatif "Saison N · Nom" depuis season_catalog (scrape
+	// Waypoint). Best-effort : catalogue vide (pas encore scrapé) → fallback
+	// "Saison N" dérivé du numéro.
+	seasonNames, err := LoadSeasonCatalogNames(ctx, sharedDB, titleSlug)
+	if err != nil {
+		slog.WarnContext(ctx, "GetWorldLeaderboardCatalog: season_catalog illisible — libellés dérivés",
+			"module", logModuleLeaderboard, "err", err)
+		seasonNames = map[string]SeasonName{}
+	}
+	for i := range seasons {
+		seasons[i].DisplayName = SeasonSelectorLabel(locale, seasons[i].ID, seasonNames,
+			fallbackSeasonLabel(locale, seasons[i].ID))
+	}
 	frMap, enMap, canonMap := r.resolvePlaylistNamesFromCatalog(ctx, plIDs)
 	playlists := make([]domain.LeaderboardCatalogRef, 0, len(plIDs))
 	for _, id := range plIDs {
@@ -301,6 +344,19 @@ func worldSeasonRank(id string) int {
 	mj, _ := strconv.Atoi(major)
 	mn, _ := strconv.Atoi(minor)
 	return mj*100 + mn
+}
+
+// fallbackSeasonLabel dérive "Saison N" / "Season N" du season_id quand season_catalog
+// ne connaît pas la saison (pas encore scrapée). Format inconnu → id brut.
+func fallbackSeasonLabel(locale, id string) string {
+	major := worldSeasonRank(id) / 100
+	if major <= 0 {
+		return id
+	}
+	if locale == "en" {
+		return fmt.Sprintf("Season %d", major)
+	}
+	return fmt.Sprintf("Saison %d", major)
 }
 
 // sortSeasonsRecentFirst trie les saisons du plus récent au plus ancien (numérique).
@@ -628,11 +684,11 @@ func InsertWorldCSRSnapshot(ctx context.Context, db *sql.DB, titleSlug string, e
 
 	const ins = `
 		INSERT INTO world_csr_leaderboard_snapshots
-			(title_slug, season_id, playlist_id, rank, gamertag, csr_value, tier_derived, fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+			(title_slug, season_id, playlist_id, rank, gamertag, csr_value, tier_derived, fetched_at, xuid)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	for _, e := range entries {
 		if _, err := tx.ExecContext(ctx, ins,
-			titleSlug, e.Season, e.Playlist, e.Rank, e.Gamertag, e.CSRValue, e.Tier, e.FetchedAt,
+			titleSlug, e.Season, e.Playlist, e.Rank, e.Gamertag, e.CSRValue, e.Tier, e.FetchedAt, e.XUID,
 		); err != nil {
 			return 0, fmt.Errorf("InsertWorldCSRSnapshot (rank %d): %w", e.Rank, err)
 		}

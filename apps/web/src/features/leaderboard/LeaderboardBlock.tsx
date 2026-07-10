@@ -25,6 +25,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyStateCard } from '@/components/ui/empty-state'
+import { MetricWithTrend } from '@/components/ui/metric-trend'
 import type { LeaderboardEntry } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
@@ -91,35 +92,9 @@ function formatStatValue(entry: LeaderboardEntry, locale: ManifestLocale): strin
   return `${v.toLocaleString(intl, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}${entry.unit ?? ''}`
 }
 
-type Trend = 'up' | 'down' | 'stable'
-const TREND_GLYPH: Record<Trend, string> = { up: '▲', down: '▼', stable: '=' }
-// Tokens sémantiques de tendance (cf. KPIStrip) — jamais de hex direct.
-const TREND_VAR: Record<Trend, string> = {
-  up: '--narrative-trend-positive',
-  down: '--narrative-trend-negative',
-  stable: '--narrative-trend-neutral',
-}
-const isTrend = (v: unknown): v is Trend => v === 'up' || v === 'down' || v === 'stable'
-
-/** Valeur d'une métrique suivie d'une flèche de tendance colorée (optionnelle). */
-function MetricWithTrend({ text, trend, tooltip }: { text: string; trend?: string | null; tooltip?: string }) {
-  return (
-    <span className="inline-flex items-baseline justify-end gap-1">
-      <span>{text}</span>
-      {isTrend(trend) && (
-        <span
-          className="text-[10px] font-bold leading-none"
-          style={{ color: `var(${TREND_VAR[trend]})` }}
-          title={tooltip}
-          aria-label={tooltip}
-        >
-          {TREND_GLYPH[trend]}
-        </span>
-      )}
-    </span>
-  )
-}
-
+// MetricWithTrend vient du composant PARTAGÉ components/ui/metric-trend (extrait
+// par le chantier leaderboard, garde-rail metric-trend.guard.test.ts) — l'ex-copie
+// locale a été retirée à la fusion campagne↔leaderboard (2026-07-10).
 const fmtPct = (v: number, locale: ManifestLocale): string =>
   `${(v * 100).toLocaleString(intlLocale(locale), { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
 

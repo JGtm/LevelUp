@@ -71,6 +71,7 @@ export const careerManifest = {
   "career.ranking.title": { fr: "Classements", en: "Rankings" },
   "career.ranking.tooltip": { fr: "CSR : classement officiel Halo Waypoint par sélection classée. LUSR : rating local calculé depuis vos matchs synchés.", en: "CSR: official Halo Waypoint ranking per ranked playlist. LUSR: local rating calculated from your synced matches." },
   "career.ranking.unranked": { fr: "Non classé", en: "Unranked" },
+  "career.ranking.vs_prev_season": { fr: "Évolution vs saison précédente", en: "Change vs previous season" },
   "career.rivals.col_deaths": { fr: "Morts", en: "Deaths" },
   "career.rivals.col_frags": { fr: "Frags", en: "Kills" },
   "career.rivals.col_matches": { fr: "Matchs", en: "Matches" },

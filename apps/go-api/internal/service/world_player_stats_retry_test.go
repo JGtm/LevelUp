@@ -77,7 +77,47 @@ func TestWithRetry_RecoversAfter429(t *testing.T) {
 	}
 }
 
-// TestWithRetry_GivesUpAfterMaxAttempts vérifie qu'au-delà des retries, l'erreur remonte.
+// partialStatsSource : historique d'1 page (2 matchs) ; GetMatchStats échoue TOUJOURS
+// pour "m_bad" (404, non transitoire → pas de retry) et réussit pour "m_good".
+type partialStatsSource struct{}
+
+func (partialStatsSource) GetMatchHistory(_ context.Context, _, _ string, start, _ int) ([]syncpkg.MatchHistoryEntry, error) {
+	if start > 0 {
+		return nil, nil // une seule page
+	}
+	return []syncpkg.MatchHistoryEntry{{MatchID: "m_good"}, {MatchID: "m_bad"}}, nil
+}
+
+func (partialStatsSource) GetMatchStats(_ context.Context, matchID string) (map[string]any, error) {
+	if matchID == "m_bad" {
+		return nil, &syncpkg.HTTPError{StatusCode: 404}
+	}
+	return buildMatch("42", "Csr/Seasons/CsrSeason13-2.json", tArena, 2, 7, 3, 2), nil
+}
+
+// TestAggregate_SkipsUnreadableMatch vérifie le hardening B2 : un match illisible (404)
+// est IGNORÉ sans faire perdre au joueur les stats des autres matchs (avant : un 403/404
+// annulait tout le joueur — cause des trous d'enrichissement).
+func TestAggregate_SkipsUnreadableMatch(t *testing.T) {
+	before := worldEnrichMatchSkipped.Value()
+	agg := NewWorldStatsAggregator(partialStatsSource{}, &fakeResolver{m: map[string]string{"Neo": "42"}},
+		WorldStatsAggregatorConfig{TargetSeasons: map[string]bool{"csrseason13-2": true}, MaxPages: 1})
+
+	stats, err := agg.AggregatePlayer(context.Background(), "Neo")
+	if err != nil {
+		t.Fatalf("un match illisible ne doit pas faire échouer le joueur, got err=%v", err)
+	}
+	if len(stats) != 1 || stats[0].Kills != 7 {
+		t.Fatalf("stats = %+v, want 1 bucket 7 kills (m_good conservé, m_bad ignoré)", stats)
+	}
+	if worldEnrichMatchSkipped.Value() <= before {
+		t.Errorf("compteur world_enrich.match_skipped non incrémenté (%d -> %d)", before, worldEnrichMatchSkipped.Value())
+	}
+}
+
+// TestWithRetry_GivesUpAfterMaxAttempts vérifie qu'un échec d'historique dès la 1re page
+// (rien collecté) remonte bien l'erreur (signal préservé ; le hardening ne masque QUE les
+// échecs partiels après collecte).
 func TestWithRetry_GivesUpAfterMaxAttempts(t *testing.T) {
 	old := retryDelays
 	retryDelays = []time.Duration{time.Millisecond, time.Millisecond}

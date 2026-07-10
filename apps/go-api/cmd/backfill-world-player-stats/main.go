@@ -58,6 +58,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/duckdb"
@@ -80,6 +81,7 @@ type cliFlags struct {
 	allTokens     bool
 	deep          bool
 	retryFailed   bool
+	skipExisting  bool
 	topN          int
 	xuidDelayMs   int
 	probeDelayMs  int
@@ -87,6 +89,12 @@ type cliFlags struct {
 }
 
 func main() {
+	// Enregistre les steps de migration title-owned (halo_infinite) : sans ça,
+	// RunForDB n'applique QUE les migrations globales et rate p.ex. add_xuid
+	// (WorldSeasonPlayers échoue : colonne xuid absente) sur une DB que le serveur
+	// n'a pas déjà migrée (backfill hors prod déployée).
+	migration.SetTitleStepsProvider(halomigrations.StepsFor)
+
 	f := parseFlags()
 
 	// -quiet : console au niveau ERROR → masque les INFO (oauth/xsts/migration) et les
@@ -130,6 +138,7 @@ func parseFlags() cliFlags {
 	flag.BoolVar(&f.allTokens, "all-tokens", false, "fetch en round-robin sur TOUS les comptes db_profiles résolus (Halo limite ~par IP → gain borné, pas N×)")
 	flag.BoolVar(&f.deep, "deep", false, "désactive l'arrêt-anticipé (scan profond) — pour backfiller une VIEILLE saison ; combiner avec -max-pages élevé")
 	flag.BoolVar(&f.retryFailed, "retry-failed", false, "re-tente les joueurs précédemment en échec (par défaut ils sont sautés à la reprise pour ne pas rebloquer la saison)")
+	flag.BoolVar(&f.skipExisting, "skip-existing", false, "saute les joueurs DÉJÀ présents en base (world_player_season_stats) pour cette saison — ne fetch QUE les manquants (ne pas re-faire un backfill existant). Indépendant du checkpoint.")
 	flag.IntVar(&f.topN, "top-n", duckdb.WorldLeaderboardTopN, "n'enrichit que le top N PAR playlist (= profondeur affichée ; 0 = toutes les playlists/rangs)")
 	flag.IntVar(&f.xuidDelayMs, "xuid-delay-ms", 1600, "délai entre résolutions xuid PeopleHub (limite ~10 req/15s/compte ; ↑ si 429, 0 = pas de throttle)")
 	flag.IntVar(&f.probeDelayMs, "probe-delay-ms", 350, "délai entre sondes de la recherche dichotomique d'offset (lisse la rafale qui déclenche les 429 halostats ; 0 = pas de throttle)")
@@ -255,9 +264,48 @@ func backfillSeason(
 	resolver service.WorldXUIDResolver, season string, f cliFlags, cp *checkpoint,
 	seasonWindows map[string][2]time.Time,
 ) error {
-	gamertags, err := duckdb.WorldSeasonGamertags(ctx, db, season, f.topN)
+	players, err := duckdb.WorldSeasonPlayers(ctx, db, season, f.topN)
 	if err != nil {
 		return err
+	}
+	// Dérive les gamertags (logique de checkpoint inchangée) et la table des xuid
+	// déjà connus (scrapés du snapshot Waypoint) pour pré-seeder l'agrégateur →
+	// résolution PeopleHub court-circuitée pour ces joueurs (cf. B1).
+	gamertags := make([]string, 0, len(players))
+	knownXUIDs := make(map[string]string, len(players))
+	for _, p := range players {
+		gamertags = append(gamertags, p.Gamertag)
+		if p.XUID != "" {
+			knownXUIDs[p.Gamertag] = p.XUID
+		}
+	}
+	// -skip-existing : ne fetch QUE les joueurs absents de la base pour cette saison —
+	// ni déjà enrichis (world_player_season_stats), ni marqués privés/sans données
+	// (world_player_no_data). Évite de re-faire un backfill existant ET de re-tenter les
+	// comptes privés. Best-effort : lecture en échec → on n'exclut personne.
+	if f.skipExisting {
+		existing, eerr := duckdb.WorldSeasonEnrichedGamertags(ctx, db, season)
+		noData, nerr := duckdb.WorldSeasonNoDataGamertags(ctx, db, titlepkg.DefaultSlug, season)
+		if eerr != nil || nerr != nil {
+			fmt.Printf("[%s] -skip-existing : lecture base échouée (%v / %v) — aucun skip appliqué\n", season, eerr, nerr)
+		} else if len(existing)+len(noData) > 0 {
+			kept := make([]string, 0, len(gamertags))
+			for _, gt := range gamertags {
+				_, done := existing[gt]
+				_, priv := noData[gt]
+				if !done && !priv {
+					kept = append(kept, gt)
+				}
+			}
+			fmt.Printf("[%s] -skip-existing : %d en base (%d enrichis + %d privés) ignorés → %d à traiter\n",
+				season, len(gamertags)-len(kept), len(existing), len(noData), len(kept))
+			gamertags = kept
+		}
+	}
+	if len(gamertags) == 0 {
+		markSeasonCompleteIfFull(season, gamertags, f, cp, cp.attemptedCount(season, gamertags))
+		fmt.Printf("[%s] rien à traiter (tous en base / snapshot vide)\n", season)
+		return nil
 	}
 	pending := cp.remaining(season, gamertags, f.limit, f.retryFailed)
 	already := cp.doneCount(season, gamertags)
@@ -300,6 +348,10 @@ func backfillSeason(
 			season, w[0].Format("2006-01-02"), w[1].Format("2006-01-02"))
 	}
 	agg := service.NewWorldStatsAggregator(pooled, resolver, cfg)
+	if n := agg.SeedKnownXUIDs(knownXUIDs); n > 0 {
+		fmt.Printf("[%s] %d/%d xuid pré-seedés depuis le snapshot (PeopleHub court-circuité)\n",
+			season, n, len(gamertags))
+	}
 
 	// Résolution xuid PARESSEUSE : chaque worker résout le xuid de SON joueur juste
 	// avant de fetcher ses matchs (pour fetcher X il suffit du xuid de X). On ne bloque
@@ -374,6 +426,7 @@ func collectSeason(
 	var batch []domain.WorldPlayerSeasonStats
 	var batchGTs []string
 	var failedGTs []string
+	var noDataGTs []string // fetch OK mais 0 stat = privé/sans données → à marquer
 	done, failures := already, 0
 	// rowsCollected = lignes agrégées DÈS leur collecte (progression honnête en temps
 	// réel) ; rowsPersisted = lignes réellement écrites en base (résumé). Ils convergent
@@ -387,6 +440,14 @@ func collectSeason(
 			return err
 		}
 		rowsPersisted += n
+		// Marque les joueurs privés/sans données (fetch OK, 0 stat) → skip aux prochains
+		// runs + masquage à l'affichage. Best-effort : un échec ici n'annule pas le flush
+		// des stats (déjà persistées ci-dessus).
+		if !f.dryRun && len(noDataGTs) > 0 {
+			if _, nerr := flushNoData(f, season, noDataGTs); nerr != nil {
+				fmt.Printf("\n[%s] marquage privés échoué (%v) — poursuite\n", season, nerr)
+			}
+		}
 		// Dry-run = répétition à blanc : ne JAMAIS toucher le checkpoint (sinon un run
 		// réel ultérieur saute des joueurs jamais insérés).
 		if !f.dryRun {
@@ -398,7 +459,7 @@ func collectSeason(
 				return err
 			}
 		}
-		batch, batchGTs, failedGTs = nil, nil, nil
+		batch, batchGTs, failedGTs, noDataGTs = nil, nil, nil, nil
 		return nil
 	}
 
@@ -411,6 +472,9 @@ func collectSeason(
 			batch = append(batch, o.stats...)
 			batchGTs = append(batchGTs, o.gamertag)
 			rowsCollected += len(o.stats) // compté à la collecte → affichage temps réel
+			if len(o.stats) == 0 {
+				noDataGTs = append(noDataGTs, o.gamertag) // privé/sans données
+			}
 		}
 		if len(batchGTs)+len(failedGTs) >= f.flushEvery {
 			if err := flush(); err != nil {
@@ -461,6 +525,22 @@ func flushBatch(f cliFlags, batch []domain.WorldPlayerSeasonStats) (int, error) 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	return duckdb.InsertPlayerSeasonStats(ctx, db, batch)
+}
+
+// flushNoData marque les joueurs privés/sans données d'une saison (world_player_no_data).
+// Contexte frais (survit à un Ctrl-C, comme flushBatch). No-op en dry-run.
+func flushNoData(f cliFlags, season string, gts []string) (int, error) {
+	if f.dryRun || len(gts) == 0 {
+		return 0, nil
+	}
+	db, err := openSharedRW(f.sharedDB)
+	if err != nil {
+		return 0, err
+	}
+	defer db.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+	return duckdb.InsertWorldNoDataPlayers(ctx, db, titlepkg.DefaultSlug, season, gts)
 }
 
 // printProgress affiche une ligne de progression (réécrite en place via \r).
