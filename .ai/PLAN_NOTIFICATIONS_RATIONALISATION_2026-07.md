@@ -45,6 +45,24 @@ Points d'appui code (vérifiés le 2026-07-07) :
   `ProgressionDedupWindow = 24h`, `post_sync_progression.go:57`, appel l.361).
 - `apps/go-api/internal/progression/coach/generator.go` — RecordBroken (DedupKey
   `metric|period`, l.167), RecordNearMiss (l.182) : une alerte PAR période.
+- `apps/go-api/internal/progression/coach/generator.go` (suite) — `buildRecordAlerts`
+  (l.149-187) : émet `RecordBroken` même quand `PreviousValue == nil` (premier record
+  = seed) — source des 4 `personal_record` du burst. `buildLUSRTierApproachAlert`
+  (l.230-249) et `buildLOWESSAlerts`/`SoftNegative` (l.253-301) : alertes d'ÉTAT
+  (re-émises tant que la condition dure, seul FilterRecent 24 h les espace).
+  Sain par contraste : `buildStreakAlerts` (l.120-144) ne notifie que la transition
+  exacte (`CurrentLength == palier`) — c'est le modèle événementiel à imiter.
+- Constantes de seuils : `records/types.go:45` (`NearMissRatio = 0.05`),
+  `milestones/types.go:17` (`NearMissRatio = 0.10`), `coach/types.go:83-97`
+  (`MaxConcurrentUnread = 3` et `AutoDismissAfter = 7j` — MORTES, aucun consommateur ;
+  `ComebackPauseThreshold = 5j` — sain ; `LUSRTierApproachDelta = 10.0`).
+- `apps/go-api/internal/progression/records/detector.go` — `IsNearMiss` (l.226-231) :
+  garde stricte `current < target` DÉJÀ en place (commentaire l.218-222 documentant le
+  spam « X vs X »), mais insuffisante : l'incident prod porte `target=73.333336,
+  value=73.33` — strictement inférieur en float, identique à l'affichage (2 décimales)
+  → notif « 73.33 vs 73.33 » absurde. Constantes : `records/types.go` (`NearMissRatio
+  = 0.05` l.45, `MinMatchesForRecord` l.41). `IsNearMiss` est le point de passage
+  unique (détecteur + coach).
 - `apps/go-api/internal/api/handlers/media.go` — `emitMediaAdded` (l.201-239) : un
   `Emit` par upload, aucune coalescence.
 - `apps/go-api/internal/notifications/service.go` — `Emit`/`emitInner` (l.118-180),
@@ -73,21 +91,42 @@ Critère mesurable (rejouer le scénario du 2026-07-03 dans les tests) :
 5. Record KDA battu sur 30d+90d+all_time → **1 notif** (all_time) (au lieu de 3).
 6. Badge cloche = non-lues `severity != info` ; ouverture puis fermeture du dropdown →
    les notifs affichées passent lues.
+7. Near-miss avec écart < 2 % du PB (ex. 73.33 vs 73.333336) → **0 émission** (au lieu
+   d'une notif « 73.33 vs 73.33 ») ; écart entre 2 % et 5 % → 1 émission.
+8. Première évaluation records (`player_records` vide) → **0 notif** `personal_record`
+   (au lieu de 4 : seed silencieux).
+9. Nudge d'état (near-miss/approche/tendance) dont la condition persiste →
+   **max 1 émission par 30 jours** par cible (au lieu d'une par jour).
+10. Sync en panne durable (échecs répétés < 6 h d'intervalle) → **1 notif**
+    `sync_error` coalescée (au lieu d'une par tentative).
 
 ## Décisions produit — TRANCHÉES (ne pas rouvrir en cours d'exécution)
 
+Préfixe `DP` (décision produit) pour ne pas confondre avec les items `D1..D9` de la
+phase D.
+
+**Principe directeur (toutes catégories)** : une notification rapporte un ÉVÉNEMENT
+(quelque chose vient de se passer, attribuable à l'activité récente), jamais un ÉTAT
+(quelque chose est vrai depuis longtemps). Un écart doit être significatif pour un
+joueur, pas seulement non-nul en float. Toute nouvelle catégorie devra passer ce test.
+
 | # | Décision |
 |---|---|
-| D1 | Anti-burst = **gardes** (snapshot froid + cap de vraisemblance), PAS de baseline persistée en table. Justification : le « before » est relu à chaque cycle, une anomalie ne dure qu'un cycle ; on évite la machinerie ADR 0026 d'une nouvelle table append-only. Rejeté : persister le snapshot. |
-| D2 | `objective_assigned` : émission post-sync **supprimée définitivement** (doublon exact de `objective_completed`). La catégorie reste déclarée (rétro-compat historique + prefs), commentaire de dépréciation daté, précédent `CategorySeasonPassLevel`. |
-| D3 | Records/near-miss coach : **une seule période, la plus large** (`all_time` > `90d` > `30d`), par métrique. |
-| D4 | `skill_tier` : émissions **montées uniquement** + dédup 24 h par (playlist, valeur cible). Démotions silencieuses. Tier inconnu (multi-titre) → fail-open : émettre sur changement. |
-| D5 | `media_added` : coalescence fenêtre **1 h** par (catégorie, acteur), uniquement si la notif candidate est **non lue**. Une notif lue n'est jamais ressuscitée. |
-| D6 | Badge = non-lues avec `severity != 'info'` (`badge_count` serveur). Le compteur complet reste exposé (`count`). |
-| D7 | Auto-read à la **fermeture** du dropdown (pas à l'ouverture — évite le flip visuel « Non lues »→« Anciennes » pendant la consultation). Le bouton « tout marquer lu » est conservé. |
-| D8 | Expiry douce : les `info` non lues depuis > **7 jours** passent lues (sweep best-effort à l'émission, à côté de `CapAndSweep`). |
-| D9 | `maxPlausibleCounterDelta = 20` par cycle de sync (le max légitime observé est 6). |
-| D10 | Aucune purge manuelle du stock prod existant : D7 + D8 le résorbent naturellement. |
+| DP1 | Anti-burst = **gardes** (snapshot froid + cap de vraisemblance), PAS de baseline persistée en table. Justification : le « before » est relu à chaque cycle, une anomalie ne dure qu'un cycle ; on évite la machinerie ADR 0026 d'une nouvelle table append-only. Rejeté : persister le snapshot. |
+| DP2 | `objective_assigned` : émission post-sync **supprimée définitivement** (doublon exact de `objective_completed`). La catégorie reste déclarée (rétro-compat historique + prefs), commentaire de dépréciation daté, précédent `CategorySeasonPassLevel`. |
+| DP3 | Records/near-miss coach : **une seule période, la plus large** (`all_time` > `90d` > `30d`), par métrique. |
+| DP4 | `skill_tier` : émissions **montées uniquement** + dédup 24 h par (playlist, valeur cible). Démotions silencieuses. Tier inconnu (multi-titre) → fail-open : émettre sur changement. |
+| DP5 | `media_added` : coalescence fenêtre **1 h** par (catégorie, acteur), uniquement si la notif candidate est **non lue**. Une notif lue n'est jamais ressuscitée. |
+| DP6 | Badge = non-lues avec `severity != 'info'` (`badge_count` serveur). Le compteur complet reste exposé (`count`). |
+| DP7 | Auto-read à la **fermeture** du dropdown (pas à l'ouverture — évite le flip visuel « Non lues »→« Anciennes » pendant la consultation). Le bouton « tout marquer lu » est conservé. |
+| DP8 | Expiry douce : les `info` non lues depuis > **7 jours** passent lues (sweep best-effort à l'émission, à côté de `CapAndSweep`). Réalise l'intention de la constante morte `coach.AutoDismissAfter` (jamais câblée — item D9). |
+| DP9 | `maxPlausibleCounterDelta = 20` par cycle de sync (le max légitime observé est 6). |
+| DP10 | Aucune purge manuelle du stock prod existant : DP7 + DP8 le résorbent naturellement. |
+| DP11 | Near-miss records : l'écart doit être **significatif pour un joueur** — bande d'émission `PB×(1-NearMissRatio) <= value <= PB×(1-NearMissMinGapRatio)` avec `NearMissMinGapRatio = 0.02` (2 %). À l'échelle KDA ~5.0 → écart >= 0.1 ; accuracy ~73 → écart >= ~1.5 pt. Relatif (pas d'absolu 0.01 : insignifiant sur toutes les échelles). Remplace la première version de cette décision (écart absolu 0.01, trop fin — un joueur se fiche d'un écart de deux décimales). |
+| DP12 | **Premier record = seed silencieux** : `RecordBroken` avec `PreviousValue == nil` (première évaluation, `player_records` vide) n'émet PAS d'alerte — le PB est persisté sans notification. « Ton record est X » sans référence antérieure n'est pas une nouvelle (4 des 10 notifs coach du burst du 2026-07-03). Même principe que la garde `oldRec.Loaded` de post_sync. |
+| DP13 | Nudges d'ÉTAT (`record_near_miss`, `milestone_near_miss`, `lusr_tier_approach`, `threshold_crossed` source coach/LOWESS, `trend_consolidate`) : fenêtre de dédup **30 jours** par (catégorie, dedup_key) au lieu de 24 h. Une condition qui persiste (μ proche d'un palier, progression à 95 % d'un milestone, tendance positive) ne doit pas re-notifier chaque jour — max 1 nudge par cible par mois. Les catégories ÉVÉNEMENT (records battus, streaks, unlocks) restent à 24 h. |
+| DP14 | `milestones.NearMissRatio` : **0.10 → 0.02**. « Proche » à 90 % de 10 000 kills = 1 000 kills restants (des semaines) — pas une approche. À 98 % (200 kills) le dénouement est imminent, le nudge a du sens. |
+| DP15 | `match_synced` : severity `success` → **`info`** (plomberie, pas un accomplissement — sort du badge via DP6, reste visible en liste/toast). `sync_error` : coalescence **6 h** (une panne durable = UNE notif dont le count s'incrémente, pas une par cycle de sync). |
 
 ## Branche Git
 
@@ -151,11 +190,25 @@ Phase E : rapide. Total : 1 session agent.
       construction des alertes. Ordre : `all_time` > `90d` > `30d` (vérifier les
       valeurs exactes du type Period dans `internal/progression/records/` avant de
       coder — RE-VÉRIFIER).
-- [ ] B6. Tests coach (`generator_test.go` existant à compléter) : record battu sur
+- [ ] B6. Near-miss écart significatif (DP11) : constante
+      `NearMissMinGapRatio = 0.02` dans `records/types.go` (commentaire : incident
+      prod 2026-07-03 « 73.33 vs 73.333336 » rendu « 73.33 vs 73.33 » ; 2 % ≈ 0.1 de
+      KDA sur un PB à 5.0) ; dans `IsNearMiss` (`detector.go:226-231`), remplacer
+      `current < target` par `current <= target*(1-NearMissMinGapRatio)` et compléter
+      le commentaire existant (l.215-225) qui documente déjà le cas d'égalité
+      stricte — même rationale étendu aux écarts insignifiants. Point de passage
+      unique : détecteur ET coach passent par `IsNearMiss`, aucun autre site à
+      modifier (vérifier : `grep -rn "IsNearMiss" apps/go-api/internal/`).
+- [ ] B7. Tests `records/detector_test.go` : écart 1 % sous le PB → pas de
+      near-miss ; écart 3 % → near-miss ; écart 6 % (hors bande des 5 %) → pas de
+      near-miss ; égalité stricte → pas de near-miss (cas existant à conserver) ;
+      PB à 0 → pas de near-miss (garde existante).
+- [ ] B8. Tests coach (`generator_test.go` existant à compléter) : record battu sur
       3 périodes → 1 alerte (all_time) ; battu sur 30d seul → 1 alerte (30d) ;
       near-miss 90d + all_time → 1 alerte (all_time) ; broken 30d + near-miss
-      all_time (métriques différentes de cas) → les deux passent.
-- [ ] B7. skill_tier montées uniquement : helper `skillTierRank(tier string,
+      all_time (métriques différentes de cas) → les deux passent ; near-miss avec
+      écart sous `NearMissMinDelta` → 0 alerte.
+- [ ] B9. skill_tier montées uniquement : helper `skillTierRank(tier string,
       subTier int) int` dans `post_sync_deltas.go` (map insensible à la casse :
       Bronze=1, Silver=2, Gold=3, Platinum=4, Diamond=5, Onyx=6, Champion=7 — H5 ;
       tier inconnu → -1). Ne pas émettre si `rank(after) <= rank(before)` quand les
@@ -166,7 +219,7 @@ Phase E : rapide. Total : 1 session agent.
       si un ordre de tiers canonique existe déjà (`grep -rn "Onyx" apps/go-api/internal/
       --include=*.go -l` puis inspection), le réutiliser au lieu de créer la map
       (skill `go-features`).
-- [ ] B8. skill_tier dédup 24 h : suivre le câblage de `post_sync_progression.go`
+- [ ] B10. skill_tier dédup 24 h : suivre le câblage de `post_sync_progression.go`
       (qui charge les notifs récentes pour `FilterRecent`, appel l.361 — remonter à la
       source du paramètre `recent` pour réutiliser le même fetch). Dans
       `BuildPostSyncDeltaHook`, charger les notifs récentes catégorie `skill_tier`
@@ -175,9 +228,34 @@ Phase E : rapide. Total : 1 session agent.
       valeur cible `rating_type|tier|sub_tier` dans ses params. Ajouter
       `playlist_group` + valeur cible en clair dans les params émis si pas déjà le cas
       (c'est déjà le cas : l.264-272).
-- [ ] B9. Tests skill_tier : séquence IV→V→IV→V→IV→V en < 24 h → 1 émission ;
+- [ ] B11. Tests skill_tier : séquence IV→V→IV→V→IV→V en < 24 h → 1 émission ;
       démotion V→IV → 0 ; montée Gold→Platinum → 1 ; tier inconnu « Mythril » →
       émet sur changement ; placement nouvelle playlist (before non froid) → 1.
+- [ ] B12. Seed silencieux des records (DP12) : dans `buildRecordAlerts`
+      (`generator.go:149-187`), le cas `r.NewPB` n'émet une alerte QUE si
+      `r.PreviousValue != nil` (le détecteur a déjà persisté le PB — seed sans
+      notification, `detector.go:126-167` inchangé). Commentaire renvoyant à la
+      garde jumelle `oldRec.Loaded` de `post_sync_deltas.go:313`.
+- [ ] B13. Fenêtre de dédup par catégorie (DP13) : remplacer l'unique
+      `ProgressionDedupWindow = 24h` (`post_sync_progression.go:57`) par une
+      résolution par catégorie — 30 jours pour les nudges d'état
+      (`record_near_miss`, `milestone_near_miss`, `lusr_tier_approach`,
+      `threshold_crossed`, `trend_consolidate`), 24 h pour le reste. Passer la
+      fenêtre à `coach.FilterRecent` par alerte (signature à adapter,
+      `dedup.go:26`). Vérifier que le fetch des notifs récentes passées à
+      FilterRecent couvre bien 30 jours (remonter la construction du paramètre
+      `recent` depuis l'appel `post_sync_progression.go:361` ; élargir la limite si
+      elle est temporelle et non en nombre). NB : les `threshold_crossed` émis par
+      post_sync (KD/winrate) ne passent pas par FilterRecent — hors sujet ici,
+      pas de collision (dedup_key différent).
+- [ ] B14. `milestones.NearMissRatio` 0.10 → 0.02 (`milestones/types.go:17`,
+      DP14) + mise à jour du commentaire et des tests
+      `milestones/detector_test.go` (cas : progress 0.95 → pas de near-miss ;
+      0.985 → near-miss ; 1.0 → earned, pas de near-miss).
+- [ ] B15. Tests dédup 30 j (`coach/dedup_test.go` ou équivalent existant) : une
+      notif `lusr_tier_approach` émise il y a 5 jours avec le même dedup_key →
+      alerte filtrée ; il y a 35 jours → alerte passe ; catégorie événement
+      (`personal_record`) émise il y a 5 jours → passe (fenêtre 24 h).
 
 **Gate B** : `cd apps/go-api && go test ./internal/api/wire/ ./internal/progression/... ./internal/notifications/`.
 
@@ -209,6 +287,13 @@ Phase E : rapide. Total : 1 session agent.
 - [ ] C6. Vérifier le rendu i18n : `notif.media_added.body` consomme déjà
       `{count}` (`apps/web/src/features/notifications/i18n.ts`) — contrôler le
       pluriel FR/EN, corriger si « 5 clip » s'affiche.
+- [ ] C7. `sync_error` coalescé (DP15) : `emitSyncError`
+      (`sync_handler.go:274-294`) → `EmitCoalesced` fenêtre
+      `syncErrorCoalesceWindow = 6h`. Préciser dans C2 la règle de matching :
+      même catégorie + même acteur SI acteur présent, catégorie seule sinon
+      (sync_error n'a pas d'acteur) ; params de la candidate mis à jour avec le
+      dernier message, count incrémenté. Test : 3 échecs en 1 h → 1 notif
+      count=3 avec le dernier message.
 
 **Gate C** : `cd apps/go-api && go test ./internal/notifications/ ./internal/api/handlers/`
 puis `go test -tags=integration -p 1 -run '^TestNotifications' ./internal/platform/duckdb/`
@@ -233,7 +318,7 @@ puis `go test -tags=integration -p 1 -run '^TestNotifications' ./internal/platfo
       → `markRead.mutate([...set])` puis vider. Vérifier que `mutations.ts` invalide
       bien le préfixe `notificationsAll` (keys.ts:161) pour rafraîchir badge + liste.
       Le bouton « tout marquer lu » reste.
-- [ ] D5. Sweep expiry douce (D8) : méthode persister
+- [ ] D5. Sweep expiry douce (DP8) : méthode persister
       `SweepStaleInfoNotificationsRead(ctx, xuid string, cutoff time.Time) error`
       (iface `social_persister_iface.go` + implémentation à côté de
       `MarkAllNotificationsRead` — la retrouver :
@@ -253,6 +338,15 @@ puis `go test -tags=integration -p 1 -run '^TestNotifications' ./internal/platfo
       en sandbox.
 - [ ] D7. i18n : si de nouvelles strings UI apparaissent (a priori aucune), parité
       FR **et** EN dans `i18n.ts` (`Record<Locale, T>`), FR sans anglicisme.
+- [ ] D8. `match_synced` severity `success` → `info` (DP15) : `emitMatchSynced`
+      (`sync_handler.go:252-272`). Sort du badge via DP6, reste visible en
+      liste. Adapter les tests qui vérifient la severity.
+- [ ] D9. Code mort coach (règle CLAUDE.md n°7) : `MaxConcurrentUnread` et
+      `AutoDismissAfter` (`coach/types.go:83-89`) ne sont consommées nulle part
+      (vérifier : `grep -rn "AutoDismissAfter\|MaxConcurrentUnread"
+      apps/go-api/`). Les SUPPRIMER — l'intention d'`AutoDismissAfter` (purge
+      passive 7 j) est réalisée par l'item D5. Si le grep révèle un consommateur,
+      statuer `[~]` avec référence et ne pas supprimer.
 
 **Gate D** : `cd apps/go-api && go test ./...` ; `make check-types` ; `make test-web` ;
 `make generate-types` puis `git diff --exit-code apps/web/src/lib/api/generated.ts`
@@ -275,8 +369,8 @@ puis `go test -tags=integration -p 1 -run '^TestNotifications' ./internal/platfo
 - [ ] E6. Statuer tous les items du plan ; consigner les découvertes hors périmètre
       ci-dessous sans les traiter.
 
-**Critère de clôture global** : les 6 points du critère de succès sont couverts par des
-tests nommés, tous les gates sont verts, aucun item sans statut.
+**Critère de clôture global** : les 10 points du critère de succès sont couverts par
+des tests nommés, tous les gates sont verts, aucun item sans statut.
 
 ---
 
@@ -286,7 +380,7 @@ tests nommés, tous les gates sont verts, aucun item sans statut.
   cycles successifs en une notif récap) — à réévaluer si le bruit résiduel gêne encore.
 - Écran de préférences par catégorie (existe côté API, UI non prioritaire).
 - Notifs push/Discord (`internal/notify/`) — pipeline distinct, non concerné.
-- Purge/backfill du stock prod existant (décision D10).
+- Purge/backfill du stock prod existant (décision DP10).
 - Fix de la formule quotient `best_kda` (DETTE K1a documentée dans
   `post_sync_deltas_snapshot.go:233-241` — re-backfill coordonné requis, NE PAS toucher).
 
