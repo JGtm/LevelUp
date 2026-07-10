@@ -59,7 +59,7 @@ func TestRunLUSRV2Shadow_SkipsIfNoLUSRCapability(t *testing.T) {
 	ctx := ctxkeys.WithTitleSlug(context.Background(), "some_future_title")
 
 	var nilShared *sql.DB
-	n, err := RunLUSRV2Shadow(ctx, nil, nilShared, "xuid-123")
+	n, err := RunLUSRV2Shadow(ctx, nil, newPinnedSharedAccessor(nilShared), "xuid-123")
 	if err != nil {
 		t.Fatalf("RunLUSRV2Shadow sans capability: err = %v, want nil (gate avant check sharedDB)", err)
 	}

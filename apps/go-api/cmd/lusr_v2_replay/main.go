@@ -86,7 +86,7 @@ func main() {
 			slog.Warn("xuid introuvable", "gamertag", gt)
 			continue
 		}
-		processed, err := lusync.RunLUSRV2Shadow(ctx, nil, db, xuid)
+		processed, err := lusync.RunLUSRV2Shadow(ctx, nil, lusync.NewPinnedSharedAccess(db), xuid)
 		if err != nil {
 			slog.Warn("RunLUSRV2Shadow", "gamertag", gt, "err", err)
 			continue

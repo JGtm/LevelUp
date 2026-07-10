@@ -104,7 +104,7 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 			}
 			// LUSR incrémental owner-only (gated capability via registre boot + env
 			// LUSR_V2 posés au boot serveur). Best-effort.
-			if _, lerr := syncpkg.RunLUSRV2ShadowOwnerOnly(runCtx, playerDB.SQLDb(), shared, xuid); lerr != nil {
+			if _, lerr := syncpkg.RunLUSRV2ShadowOwnerOnly(runCtx, playerDB.SQLDb(), syncpkg.NewPinnedSharedAccess(shared), xuid); lerr != nil {
 				slog.WarnContext(runCtx, "h5 post-score: LUSR incrémental échoué (non bloquant)",
 					"gamertag", gamertag, "err", lerr)
 			}

@@ -43,7 +43,9 @@ func RecomputeLUSRCanonicalForPlayer(ctx context.Context, playerDB, sharedDB *sq
 		FROM player_skill_state_v2_latest WHERE xuid = ?`, xuid); err != nil {
 		return 0, fmt.Errorf("RecomputeLUSRCanonicalForPlayer reset watermark: %w", err)
 	}
-	n, err := RunLUSRV2ShadowOwnerOnly(ctx, playerDB, sharedDB, xuid)
+	// sharedDB est un handle DÉJÀ TENU par le caller (writer primaire) → mode pinned
+	// (Read/Write retournent ce handle). Le shadow persiste via son burst Write.
+	n, err := RunLUSRV2ShadowOwnerOnly(ctx, playerDB, NewPinnedSharedAccess(sharedDB), xuid)
 	if err != nil {
 		return n, fmt.Errorf("RecomputeLUSRCanonicalForPlayer replay: %w", err)
 	}

@@ -138,25 +138,37 @@ API `SharedAccess` (`internal/sync/shared_access.go`) :
 
 ### H2 — Implémentation (effort : moyen)
 
-- [ ] H2.1 Signatures + plombage (DC-H2) : `runLUSRV2Shadow(ctx, playerDB,
-      shared *SharedAccess, xuid, ownerOnlyPersist)` ; suppression du paramètre
-      `sharedDB *sql.DB` ; `shadowRunContext` transporte ce qu'il faut (handle du
-      burst courant passé aux étapes, pas stocké globalement).
-- [ ] H2.2 Découpage Read/Write (DC-H3) : sélection sous Read (release immédiat) ;
-      chunks sous `shared.Write(ctx, "lusr")` ; repos (`NewSkillV2Repo`,
-      `NewSquadOffsetRepo`) construits sur le handle du burst courant ;
-      `heldGroups`/watermark : sémantique INCHANGÉE (anti-gap 2026-06-07 préservé —
-      les tests existants le verrouillent).
-- [ ] H2.3 `runSkillRatingSteps` (DC-H4) : v1 + medal map sous Read, release, puis
-      `RunLUSRV2ShadowOwnerOnly(scoringCtx, playerDB, shared, e.xuid)` ; le
-      commentaire de classification est CORRIGÉ (doc inversée = anti-pattern n°9).
-- [ ] H2.4 Callers migrés (DC-H2) : `lusr_full_recompute.go`, `cmd/lusr_v2_replay`,
-      chemin H5 livesync de main, tests → `NewPinnedSharedAccess(db)`.
-- [ ] H2.5 Grep de contrôle : plus AUCUN appel `RunLUSRV2Shadow*(..., *sql.DB, ...)` ;
-      `go vet ./...` propre.
+- [x] H2.1 Signatures + plombage (DC-H2, ADAPTÉ interface seam §7) :
+      `runLUSRV2Shadow(ctx, playerDB *sql.DB, shared SharedAccessor, xuid, ownerOnlyPersist)` ;
+      suppression du paramètre `sharedDB *sql.DB`. Interface `SharedAccessor`
+      (Read/Write) déclarée côté `skill` (`skill_v2_shared_access.go`), satisfaite
+      structurellement par `*sync.SharedAccess`. `shadowRunContext.repo/squadRepo/sharedDB`
+      câblés PAR CHUNK sur le handle du burst (pas globalement).
+- [x] H2.2 Découpage Read/Write (DC-H3) : sélection sous `loadShadowMatchesUnderRead`
+      (Read, release immédiat) ; `processShadowChunk` par chunks de
+      `postsyncLUSRBurstChunk=3` sous `shared.Write(ctx, "lusr")` ; repos
+      `NewSkillV2Repo`/`NewSquadOffsetRepo` construits sur le handle du burst ;
+      `heldGroups`/watermark sémantique INCHANGÉE (map partagée entre chunks, ordre
+      chrono ASC préservé) ; 0 match candidat → AUCUN burst. Tests anti-gap/held/dual-row
+      existants restent verts (cf. gate).
+- [x] H2.3 `runSkillRatingSteps` (DC-H4) : v1 + medal map sous Read (helper
+      `runLUSRV1UnderRead`, defer release), PUIS `RunLUSRV2ShadowOwnerOnly(scoringCtx,
+      playerDB, shared, e.xuid)` (reçoit le `*SharedAccess`), PUIS sentinelle
+      (`runDualRowSentinelBestEffort`, playerDB-only). Commentaire de classification
+      CORRIGÉ (le v2 écrit shared → burst Write dédié). `runSkillRatingStepsWithDB`
+      SUPPRIMÉ (code mort).
+- [x] H2.4 Callers migrés : `engine_postsync_scoring.go` (passe `shared`),
+      `lusr_full_recompute.go` (`NewPinnedSharedAccess`), `cmd/lusr_v2_replay`,
+      `cmd/h5-lusr-smoke`, `cmd/lusr_v2_canonical_backfill` (`lusync.NewPinnedSharedAccess`),
+      `internal/games/halo_5/livesync/wire.go` (`syncpkg.NewPinnedSharedAccess`), ~21 sites
+      de test (`newPinnedSharedAccessor`, skill-local).
+- [x] H2.5 Grep de contrôle : plus AUCUN caller ne passe un `*sql.DB` brut au shadow
+      (build type-check garantit la signature `SharedAccessor`) ; `go vet ./...` propre.
 
-**Gate H2** : `cd apps/go-api && go build ./... && go vet ./...` verts ; test de repro
-H1.3 devenu VERT ; suite `go test ./internal/sync/...` verte.
+**Gate H2** : `cd apps/go-api && CGO_ENABLED=1 go build ./... && go vet ./...` verts (exit 0/0) ;
+suite `go test -tags=cgo ./internal/sync/...` verte (sync 24.5s, skill 0.8s, v2 13.3s, tous ok).
+Test de repro devenu VERT : couvert par la version pérenne H3.1 [~] (le repro a été retiré
+en H1 pour garder l'arbre buildable — cf. §7 adaptation).
 
 ### H3 — Tests et audit des segments frères (effort : moyen)
 

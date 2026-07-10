@@ -107,7 +107,7 @@ func main() {
 			playerDB = openDB(playerDBPath(*dataRoot, gt))
 		}
 
-		processed, err := lusync.RunLUSRV2ShadowOwnerOnly(ctx, playerDB, shared, xuid)
+		processed, err := lusync.RunLUSRV2ShadowOwnerOnly(ctx, playerDB, lusync.NewPinnedSharedAccess(shared), xuid)
 		if playerDB != nil {
 			playerDB.Close()
 		}
