@@ -1,3 +1,36 @@
+## [2026-07-10] PLAN MONITORING TRIAGE — exécution (PARTIEL, branche fix/monitoring-triage-2026-07)
+
+**Statut** : Complété côté code déploy-indépendant ; PARTIEL global (items restants bloqués
+par deploy prod B1 / écriture prod interdite / soak / auth live).
+
+**Décision technique principale** : après mesure de clôture (prod post-reboot 07-08→10 via
+`ssh lvelup` + endpoint data-quality local), ~95 % du bruit survivant est la cascade LUSR
+(B1, PR #53 `hotfix/lusr-shadow-ro` OUVERTE non déployée) — sync 28 422 W shadow, provider
+2 303 W writer-hold, et les 632 « http » ERROR = `GET /health → 503` (timeout 5 s), symptôme
+DIRECT du writer-hold. La tempête DNS est éteinte (0 ERROR pool). Les familles B6.1/6.2/6.3/6.5
+sont à 0 en prod ET juillet local (bruit historique juin/pré-reboot). Livré le seul code
+déploy-indépendant à valeur durable : **B6.4 anti-flood** (`observability.AllowThrottledLog` —
+clé globale par cause, 1re occurrence toujours émise DC-B2, compteur expvar exact, câblé
+rest_poller + halo_api downloadBlob + pool oauth-refresh) ; **B6.1** WARN→Debug+compteur
+metadata boot ; **B3.3** ligne agrégée spartan_cron ERROR→WARN+compteur. B5.6/B3.3 partie basse
+déjà conformes (vérifiés sur pièces).
+
+**Résultats** : `go build ./...` exit 0 ; `go test ./...` exit 0 ; `go test -tags=integration
+-p 1 ./internal/sync/... ./internal/persist/... [+touchés]` exit 0 ; gofmt/vet propres. Test
+étouffeur B6.4 vert (1re occurrence, étouffement fenêtré + compte exact, concurrent single-emit).
+Data-quality local HI : raw_uuid 24, untranslated_modes 8, orphan_xuids 131, lying_bits 580
+(inchangé — remédiation prod-gated). B2 prod : 0 reauth, 0 ERROR pool (sain, rien à blacklister).
+
+**Items [!] (bloqués)** : B1.5/B1.6 (attente deploy PR #53), B2.4 (soak), B4.1-B4.4 (écriture
+prod interdite + B4.2 auth live), B5.5 (migrate-media prod), B7.4 (soak conditionné deploy B1).
+Découvertes : détecteur data-quality H5 échoue localement (`data_quality_error`) ; orphan_xuids
+local 131 (>120).
+
+**Prochaine étape** : merge/deploy PR #53 (GO user) → puis armer B1.5/B1.6, B4 remédiation prod,
+B7.4 soak T0+30j. Plan laissé à la racine (PARTIEL). Push branche.
+
+---
+
 ## [2026-07-10] MERGE MAIN — campagne audits 2026-07 + clôture + gate humain (GO utilisateur)
 
 **Statut** : En cours (merge exécuté dans cette session ; post-deploy VPS à suivre).

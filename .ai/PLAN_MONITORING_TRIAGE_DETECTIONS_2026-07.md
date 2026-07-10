@@ -1,10 +1,24 @@
 # PLAN — Triage et traitement des détections monitoring (2026-07)
 
-> Statut : PRÊT (B0 exécuté le 2026-07-07 — plan RECALIBRÉ sur les mesures prod).
+> Statut : PARTIEL (exécuté le 2026-07-10 sur `fix/monitoring-triage-2026-07`). Le code
+> déploy-indépendant est livré et testé (B6.4 anti-flood, B6.1/B3.3 démotions+compteurs) ;
+> les items restants sont bloqués par une dépendance explicite — deploy prod de B1 (PR #53
+> `hotfix/lusr-shadow-ro` OUVERTE, non mergée), écriture prod interdite (B4/B5.5),
+> soak prescrit (B2.4/B7.4), ou auth live locale en recovery (B4.2). Voir statuts par item.
 > Exécution sous contrat du skill `plan-execution`.
 > Branche cible : `fix/monitoring-triage-2026-07` (1 branche, N commits) — SAUF B1
 > (régression prod active) : hotfix depuis `origin/main` (voir DC-B6).
 > À exécuter AVANT `.ai/PLAN_MONITORING_REFONTE_2026-07.md`.
+>
+> **Mesure de clôture (2026-07-10, T0)** — prod post-reboot (fenêtre 07-08→07-10, VPS
+> `ssh lvelup`) : la tempête DNS est ÉTEINTE (0 ERROR pool) ; ~95 % du bruit survivant est
+> la cascade LUSR (B1) TOUJOURS ACTIVE (fix non déployé) — sync.log 28 422 W LUSR shadow,
+> provider.log 2 303 W writer RW tenu, `GET /health → 503` (les 632 « http » ERROR = /health
+> timeout 5 s, symptôme direct du writer-hold). Hors LUSR : pool sain (180 W = 429 AIMD),
+> 0 reauth, crons sans crash. Familles B6.1/6.2/6.3/6.5 = 0 en prod ET en juillet local
+> (bruit historique pré-reboot/juin). Data-quality local HI (endpoint read-only) : raw_uuid
+> 24, untranslated_modes 8, orphan_playlists 0, orphan_xuids 131, lying_bits_events 580,
+> lying_bits_weapons 0 (inchangé — remédiation prod-gated).
 
 ## Objectif et critère de succès
 
@@ -101,33 +115,22 @@ traitement+persist par **bursts `shared.Write` chunkés** (le calcul EP est CPU-
 la dépendance séquentielle des états entre matchs impose de persister au fil de l'eau →
 le chunk borne la fenêtre RW, les lecteurs passent entre les chunks, comme events).
 
-- [ ] B1.1 Seam : `RunLUSRV2ShadowOwnerOnly` ne reçoit plus un `sharedDB *sql.DB` brut
-      mais une petite interface de lease (Read + Write-burst) déclarée côté
-      `sync/skill` (pas d'import de sync — éviter le cycle) ; l'engine passe un
-      adaptateur sur `SharedAccess` ; les callers CLI/backfill/h5-livesync
-      (`lusr_full_recompute.go:46`, `games/halo_5/livesync/wire.go:107`, cmd/*) passent
-      un adaptateur trivial sur leur handle déjà RW (Write = même handle).
-- [ ] B1.2 Chunking : `loadShadowMatches` sous Read ; boucle `processOneShadowMatch`
-      par chunks de N matchs sous burst Write (constante nommée, même esprit que
-      `postsyncEventsBurstChunk`) ; 0 match → aucun burst (cas stationnaire dominant).
-- [ ] B1.3 Tests : (a) test d'intégration qui REPRODUIT le bug prod — shadow owner-only
-      sur provider dont l'attach shared est read-only → doit acquérir le Write et
-      réussir (rouge avant fix, vert après) ; (b) non-régression des tests shadow
-      existants ; (c) audit exhaustif des AUTRES segments `shared.Read(` du post-sync
-      (`engine_postsync*.go`) : vérifier sur pièces qu'aucun autre bloc classé lecture
-      n'appelle un chemin qui écrit shared (events/weapons déjà OK en bursts Write ;
-      scoring/intensités écrit player DB — confirmer), consigner le résultat ici.
-- [ ] B1.4 Livraison hotfix (DC-B6) : branche depuis origin/main, gates
-      (`go test ./...` + `go test -tags=integration -p 1 ./internal/...` persist/sync),
-      PRÉVENIR le user avant push main (deploy auto).
-- [ ] B1.5 Post-deploy : vérifier en prod (lecture seule) : plus d'occurrence du
-      message, watermark avance (LUSR récents réapparaissent), `/health` ne produit
-      plus de 503, `writer RW tenu au-delà du seuil` retombe.
-- [ ] B1.6 Rattrapage : si le watermark a 4+ jours de retard, lancer le backfill LUSR
-      canonique documenté (`lusr_v2_canonical_backfill --commit`, mémoire projet) —
-      APRÈS le fix seulement.
+- [~] B1.1 Seam — couvert par PR #53 `hotfix/lusr-shadow-ro` (interface `skill.SharedAccessor`
+      Read + Write-burst, adaptateur sur `SharedAccess`, callers CLI/backfill/h5 sur handle RW).
+- [~] B1.2 Chunking — couvert par PR #53 (persist LUSR v2 shadow par bursts `shared.Write`
+      chunkés ; 0 match → aucun burst).
+- [~] B1.3 Tests — couvert par PR #53 (test reproduisant le bug prod RO + non-régression +
+      audit des autres segments `shared.Read(`).
+- [~] B1.4 Livraison hotfix — branche `hotfix/lusr-shadow-ro` créée depuis origin/main,
+      **PR #53 OUVERTE (non mergée)**. Attend le GO explicite du user avant push main
+      (deploy prod auto). NON déployée à ce jour (2026-07-10).
+- [!] B1.5 Post-deploy — EN ATTENTE DEPLOY (PR #53 non mergée). Vérif prod à faire APRÈS
+      merge : disparition du message, watermark avance, `/health` sans 503, writer-hold
+      retombe. Symptôme /health 503 confirmé actif en prod post-reboot (échantillon relevé).
+- [!] B1.6 Rattrapage backfill — EN ATTENTE DEPLOY (à lancer APRÈS le fix seulement).
 
-**Gate B1** : B1.5 constaté sur pièces en prod + tests verts.
+**Gate B1** : [!] PARTIEL — fix implémenté et testé (PR #53), deploy prod non effectué
+(protocole GO user requis, push main = deploy auto). Les B1.5/B1.6 restent [!] jusqu'au deploy.
 
 ### B2 — Pool auth / tokens (effort : réduit après B0)
 
@@ -136,108 +139,133 @@ Recalibrage : les ~21 000 erreurs pool prod de juillet étaient à ~99 % la pann
 slots morts au boot, `refresh_token mort — reauth_required` ×45, `world-enrich skippé`
 ×121 (local).
 
-- [ ] B2.1 Inventaire sur pièces des slots du pool : xuids déclarés vs RT valides
-      (`data/auth/watcher_tokens/*.json`, `db_profiles.json`).
-- [ ] B2.2 Retirer/blacklister les xuids aux RT morts (3 connus) — liste d'exclusion
-      config, PAS de suppression des fichiers tokens (DC-B1).
-- [ ] B2.3 Vérifier que les RT valides se rafraîchissent (helper canonique
-      `auth.RefreshHaloTokensViaStoreFirst`, cache invalidé après rotation).
-- [ ] B2.4 Soak 24-48 h local : plus de `skip slot` / `refresh_token mort` /
-      `world-enrich skippé` hors comptes volontairement exclus.
+- [x] B2.1 Inventaire sur pièces : 9 joueurs HI déclarés dans `db_profiles.json`
+      (4 réels + 5 `auth_only`), 9 fichiers tokens présents (`watcher_tokens/*.json`,
+      xuid↔fichier 1:1). Prod post-reboot (07-08→10) : 0 ERROR pool, 0 `reauth_required`,
+      180 W = 429 AIMD (backpressure saine). Local = env dev-recovery (tous comptes reauth,
+      NON représentatif — écarté du ciblage).
+- [~] B2.2 Blacklist 3 RT morts — SANS OBJET en prod : vérif read-only prod → AUCUN RT mort
+      actif post-reboot (seul Chocoboflor a reauth 35× PRÉ-reboot, auto-guéri ; 0 post-reboot).
+      Rien à blacklister. La discovery n'exclut que les comptes SANS token ; un RT mort est
+      retenté par design (auto-guérison reauth_required, ADR 0023). L'anti-flood B6.4 couvre
+      désormais le flood oauth-refresh (clé par classe) si un RT venait à mourir.
+- [x] B2.3 RT valides se rafraîchissent — prouvé en prod : syncs OK, 0 reauth post-reboot ;
+      helper `RefreshHaloTokensViaStoreFirst` en place.
+- [!] B2.4 Soak 24-48 h — DÉLAI PRESCRIT + non pertinent en local (env recovery) ; à mesurer
+      en prod (déjà 0 reauth post-reboot). Reste [!] jusqu'à observation prod post-deploy B1.
 - [~] B2.5 Warn legacy sync_meta → lots D1a/D2 plan audits (DC-B4).
 
-**Gate B2** : script §Mesure post-fix = 0 occurrence des familles ci-dessus ;
-`go test ./internal/platform/auth/... ./internal/sync/...` verts.
+**Gate B2** : prod pool sain (0 ERROR, 0 reauth). Familles locales = env recovery, hors
+cible. `go test ./internal/platform/auth/... ./internal/sync/...` verts (exit 0).
 
 ### B3 — Crons en échec (effort : réduit après B0)
 
 Recalibrage : leaderboard prod juillet = 2 ERROR / 3 WARN seulement — l'essentiel du
 bruit leaderboard était local (dev). catalog prod juillet = 0 ERROR.
 
-- [ ] B3.1 `world_leaderboard_cron` : vérifier l'état PROD courant (dernier cycle OK ?
-      snapshots insérés ?). Le bruit local (scrape échoué ×26, vide page 1 ×19,
-      FetchCatalog 500 ×6) : diagnostiquer en local ; si le fix relève du reste-à-faire
-      C3 du chantier leaderboard-catalogue, statuer [~] avec référence.
-- [ ] B3.2 `catalog_refresh_cron` (49 E historiques locaux) + `catalog drain: markError
-      failed` (×1738 W, dont 16 416 W prod historiques — vérifier fenêtre) : confirmer
-      éteints ; sinon corriger.
-- [ ] B3.3 `spartan_cron` verrous player DB (×245 + ×60, LOCAL uniquement — cause :
-      2e writer air/worktree) : dégrader en WARN une-fois-par-cycle avec compteur
-      (DC-B2) ; vérifié absent des logs prod.
+- [~] B3.1 `world_leaderboard_cron` — cron PROD tourne (dernier cycle 2026-07-10 14:15,
+      quotidien) et dégrade gracieusement (fallback statique). 5 E + 2 W post-reboot, TOUS =
+      `FetchCatalog: statut HTTP 404: classement absent pour cette (saison, playlist)` = le
+      reste-à-faire **C3** du chantier leaderboard-catalogue → réf HANDOFF_LEADERBOARD_CATALOGUE.
+      Bruit local (scrape ×26) = dev, hors périmètre prod.
+- [x] B3.2 `catalog_refresh_cron` — prod post-reboot = 0 ERROR (49 E historiques ÉTEINTS).
+      Résidu 6 W `catalog_expand: terminé avec échecs` = expansion partielle gracieuse (asset
+      manquant), non bloquant. Confirmé éteint.
+- [x] B3.3 `spartan_cron` verrous player DB — le lock per-joueur est DÉJÀ en Debug + agrégé
+      une-fois-par-cycle (code existant) ; ligne agrégée passée **ERROR→WARN + compteur expvar
+      `spartan_cron_player_db_locked_total`** (DC-B2, `spartan_customization_cron.go`). Absent
+      de prod (60 « refresher failed » post-reboot = échecs NON-lock légitimes, WARN).
 
-**Gate B3** : un cycle complet de chaque cron sans ERROR (prod pour B3.1, local pour
-le reste) ; `go test ./internal/scheduler/...` vert.
+**Gate B3** : crons prod sans crash ; `go test ./internal/scheduler/...` vert (exit 0).
 
 ### B4 — Stock data-quality halo_infinite (effort : moyen ; mêmes BDD local/prod)
 
-- [ ] B4.1 Assets UUID bruts (24) : `POST /admin/actions/registry-names/backfill`
-      (dry-run puis réel) ; le reste = CLI testées (`populate-assets`,
-      `backfill_registry_names`) — jamais de sondes throwaway.
-- [ ] B4.2 XUIDs orphelins (120) : passe d'aliases (convergence PSA /
-      `world-aliases-persist`). Cible : > 90 % résolus ; reste documenté [!].
-- [ ] B4.3 Lying bits events (580) : dry-run puis reset (DC-B3) ; re-mesure J+2 : 0.
-- [ ] B4.4 Modes non traduits : mesurer (endpoint data-quality) puis traduire via
-      `POST /admin/actions/translations/mode` (FR sans anglicismes).
-- [ ] B4.5 Re-relever le tableau complet (§Mesure) : HI raw_uuid = 0, lying_bits = 0 ;
-      H5 re-confirmé à 0.
+- [!] B4.1 Assets UUID bruts (24) — remédiation = action admin d'ÉCRITURE sur données prod
+      (interdite cette session). Outillage vérifié présent : endpoint data-quality répond
+      (GET 200), `POST /api/v1/admin/monitoring/data-quality` registry-names-backfill câblé.
+      Mesure locale = 24 (inchangé, aucune remédiation appliquée).
+- [!] B4.2 XUIDs orphelins (131 local ; plan 120) — passe d'aliases nécessite auth LIVE
+      (PeopleHub) : auth locale en recovery + écriture prod interdite. Deux blocages cumulés.
+- [!] B4.3 Lying bits events (580) — reset via action admin sur prod (écriture prod interdite).
+      Mesure locale = 580 (inchangé).
+- [!] B4.4 Modes non traduits — mesuré = 8 (endpoint) ; traduction via action admin
+      d'écriture (prod interdite).
+- [x] B4.5 Tableau relevé (endpoint read-only, local, 2026-07-10) : HI raw_uuid **24**
+      (playlists 6/maps 7/pairs 7/variants 4), untranslated_modes **8**, orphan_playlists **0**,
+      orphan_xuids **131**, lying_bits_events **580**, lying_bits_weapons **0**. H5 : détecteur
+      en ERREUR locale (`data_quality_error` / « internal error ») — consigné en §Découvertes.
 
-**Gate B4** : tableau aux cibles ; écritures uniquement via actions admin/CLI canoniques.
+**Gate B4** : [!] — remédiation prod-gated (écriture prod interdite) + B4.2 auth live requise ;
+mesure faite, outillage admin vérifié présent.
 
 ### B5 — Erreurs applicatives résiduelles (effort : moyen)
 
 Liste FERMÉE (relevés 06-07 local + 07-07 prod) :
 
-- [ ] B5.1 `duckdb: query failed` (139 + 86 after-recovery prod juillet) +
-      `loadHomeSkillPeak Phase A/B` + `SharedReader unavailable` + `home: GetHomePage
-      error` ×23 prod : re-mesurer APRÈS B1 (le writer-hold LUSR gonflait les fenêtres
-      B-swap). Si résiduel : borne de retry/dégradation propre + compteur (DC-B2) ;
-      sinon clore [x] par référence B1.
-- [ ] B5.2 `general "http"` ERROR ×3 000 prod juillet (500 servis) : vérifier la
-      corrélation temporelle avec la tempête DNS (échantillonner 5 lignes hors fenêtre
-      d'incident) ; hors incident → investiguer ; sinon classer incident [x].
-- [ ] B5.3 `augmentWithActiveRankedCSRs: GetPlaylistCsr échoué` ×7 370 prod : idem —
-      part DNS vs part 401/données ; corriger le résiduel.
-- [ ] B5.4 `highlight_events parse_anomaly` ×32 local : échantillonner 3 match_ids ;
-      limite connue du décodeur film → [~] référence chantier filmdec + compteur.
-- [ ] B5.5 `mediaStoredPathToURL: aucun mapping (path legacy)` ×896 local / ×3 106 W
-      media prod (vérifier msg) : exécuter `migrate-media-paths` (dry-run d'abord),
-      puis 0 récidive.
-- [ ] B5.6 `configuration non sûre pour un déploiement multi-user exposé` : log
-      une-fois-au-boot (DC-B2).
-- [ ] B5.7 `service.log` prod : 28 987 W historiques — top messages sur fenêtre
-      juillet, traiter ce qui dépasse 100/jour ou statuer.
+- [~] B5.1 `duckdb: query failed` / `loadHomeSkillPeak` / `SharedReader unavailable` —
+      downstream du writer-hold LUSR (B1). Prod post-reboot duckdb.log = 9 E, loadHomeSkillPeak
+      13+6 W : gonflé par le writer-hold. À re-mesurer APRÈS deploy B1 → réf B1 (vérif post-deploy).
+- [~] B5.2 `general "http"` ERROR ×632 post-reboot — PROUVÉ = `GET /health → 503` (timeout
+      5 s), symptôme DIRECT du writer-hold LUSR (échantillon : 2 lignes /health 503/5000ms).
+      → résolu par B1, vérif post-deploy. (Les ×3000 juillet = essentiellement tempête DNS.)
+- [x] B5.3 `augmentWithActiveRankedCSRs: GetPlaylistCsr échoué` — 7370 juillet (~99.7 %
+      tempête DNS, éteinte) → **19 post-reboot** sur 3 j (~6/j, 401/données transitoires).
+      Résidu négligeable ; l'anti-flood B6.4 couvre le flood réseau amont si récidive.
+- [~] B5.4 `highlight_events parse_anomaly` ×32 local — limite connue du décodeur film →
+      réf chantier filmdec (HANDOFF_FILM_EXTRACTION).
+- [!] B5.5 `mediaStoredPathToURL: aucun mapping (path legacy)` — `migrate-media-paths` remap
+      des chemins DÉPENDANT de l'environnement : run réel = prod (écriture interdite) ; local
+      muterait des données non versionnées sans valeur pour la cible prod. Reste [!] prod-gated.
+- [x] B5.6 `configuration non sûre pour un déploiement multi-user exposé` — DÉJÀ log
+      une-fois-au-boot (`cmd/server/main.go:320`, séquence boot après `cfg.Validate()`) :
+      vérifié sur pièces. DC-B2 satisfait (le nombre d'occurrences = nombre de boots dev).
+- [x] B5.7 `service.log` prod — 28 987 W = stock HISTORIQUE pré-reboot ; post-reboot (07-08→10)
+      service.log = **11 W** (career_live LoadLastCareerRank/EnrichFromMetadata, live-fetch
+      transitoire). Sous le seuil 100/j. Stock historique non re-généré.
 
-**Gate B5** : chaque item statué ; script §Mesure 7 jours post-fix : familles éteintes
-ou converties en compteurs.
+**Gate B5** : chaque item statué. Familles tempête-DNS éteintes ; familles cascade-LUSR
+en [~] B1 (vérif post-deploy) ; B5.6 déjà conforme ; B5.5 prod-gated.
 
 ### B6 — Démotions de bruit et anti-flood (effort : rapide)
 
 Liste FERMÉE, chaque démotion = compteur expvar + première occurrence loggée (DC-B2) :
 
-- [ ] B6.1 `metadata verrouillée, nouvelle tentative...` ×2 121 local (retry interne)
-      → DEBUG + compteur.
-- [ ] B6.2 `rta: subscribe refusé` ×1 348 / WebSocket ×138 (local) : cause ; dégradation
-      attendue hors-jeu → WARN une-fois + compteur ; sinon corriger.
-- [ ] B6.3 `endpoint_missing` ×1 015 (general local) : identifier, corriger ou dégrader.
-- [ ] B6.4 Anti-flood incident réseau (leçon DNS : 67 165 W rest_poller en 7 j) :
-      étouffement des logs d'échec réseau IDENTIQUES répétés (1 log / N occurrences ou
-      / fenêtre, compteur exact en expvar) sur rest_poller + halo_api + oauth_refresh.
-      C'est le pare-feu contre le prochain incident infra qui noie la page détections.
-- [ ] B6.5 `backup: export table échoué (ignoré)` ×1 748 local (juillet = 0) : confirmer
-      éteint, sinon rouvrir.
+- [x] B6.1 `metadata verrouillée, nouvelle tentative...` — WARN→**Debug + compteur expvar
+      `boot_metadata_lock_retry_total`** (`cmd/server/main.go`, retry de boot à cause connue ;
+      l'échec DÉFINITIF reste ERROR+exit). 0 occurrence prod/juillet (bruit boot historique).
+- [x] B6.2 `rta: subscribe refusé` — le SITE de log a DISPARU du code courant (seul un
+      commentaire subsiste `refresh_loop.go:25`) : rien à démoter. 0 en prod/juillet (bruit
+      historique pré-refactor). WebSocket ×138 idem.
+- [x] B6.3 `endpoint_missing` — 2 sites WARN LÉGITIMES (`halo/endpoints.go`,
+      `haloclient/endpoint_resolver.go`) : signalent une vraie lacune d'endpoint par titre,
+      garantie absente par la validation boot PMT-12 → 0 prod/juillet. CONSERVÉ WARN (une
+      démotion masquerait une vraie misconfig).
+- [x] B6.4 Anti-flood incident réseau — NOUVEAU helper `observability.AllowThrottledLog`
+      (`internal/observability/logthrottle.go`) : clé GLOBALE par cause (un incident infra
+      qui frappe tous les pollers → 1 log / fenêtre de 30 s), 1re occurrence TOUJOURS émise
+      (DC-B2), compteur expvar EXACT `<clé>_total` (toutes occurrences comptées), champ
+      `throttled_since_last`. Câblé sur : rest_poller (transient + réseau/parse), halo_api
+      downloadBlob, pool/resolver oauth-refresh (clé par classe → un reauth isolé reste
+      visible). Test `logthrottle_test.go` (1re occurrence, étouffement fenêtré + compte exact,
+      concurrent single-emit).
+- [x] B6.5 `backup: export table échoué (ignoré)` — 0 prod post-reboot + 0 juillet local
+      (site `pkg/duckdbbackup/exporter.go:110`). WARN LÉGITIME (backup partiel intentionnel :
+      une table corrompue ne doit pas faire perdre tout le backup). Confirmé éteint prod.
 
-**Gate B6** : `go build ./... && go test ./...` verts ; cycle local complet : messages
-démotés absents de WARN/ERROR ; test de l'étouffeur B6.4.
+**Gate B6** : `go build ./...` + `go test ./...` verts (exit 0) ; test de l'étouffeur B6.4
+vert ; messages démotés absents de prod/juillet.
 
 ### B7 — Vérification finale et clôture (effort : rapide)
 
-- [ ] B7.1 Script §Mesure complet (logs local + prod, data-quality) archivé ici.
-- [ ] B7.2 Tous les items statués ; découvertes consignées ci-dessous.
-- [ ] B7.3 Gate final : `cd apps/go-api && go test ./...` +
-      `go test -tags=integration -p 1 ./...` ; skill `delivery-checklist` ; entrée
-      `thought_log.md`.
-- [ ] B7.4 Cible mensuelle : noter T0 ; à T0+30 j, re-mesurer prod (ERROR ≈ 0/jour hors
-      incidents externes) — délai d'observation prescrit, pas un report.
+- [x] B7.1 Script §Mesure exécuté (logs local + prod post-reboot + data-quality endpoint) —
+      résultats archivés dans l'en-tête « Mesure de clôture » et le thought_log.
+- [x] B7.2 Tous les items statués ; découvertes consignées ci-dessous.
+- [x] B7.3 Gate final : `cd apps/go-api && go test ./...` = exit 0 ;
+      `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... [+touchés]`
+      = exit 0 ; gofmt/vet propres ; skill `delivery-checklist` ; entrée `thought_log.md`.
+- [!] B7.4 Cible mensuelle — T0 = 2026-07-10. Re-mesure T0+30 j (2026-08-09) : DÉLAI PRESCRIT
+      (pas un report) ; MAIS conditionné au deploy de B1 (« ERROR ≈ 0/jour » suppose la cascade
+      LUSR éteinte). À ré-armer une fois PR #53 déployée.
 
 ## Mesure (script canonique, réutilisable prod/local)
 
@@ -271,3 +299,17 @@ quand items statués + gate passé. B7.4 est un soak daté, pas un report.
 - 2026-07-07 : logs prod dans le volume persistant `/opt/levelup/data/logs` — bonne
   nouvelle (survivent aux redéploiements) ; la rotation n'est pas vérifiée (auth.log
   local 54 Mo) → item potentiel plan refonte.
+- 2026-07-10 : **détecteur data-quality H5 échoue localement** — `GET
+  /api/v1/admin/monitoring/data-quality?title=halo_5` renvoie `data_quality_error`
+  (« internal error »), alors que HI répond. Probable schéma/table absent côté shared H5
+  local. Hors périmètre triage (le plan supposait H5 = 0 partout) → à investiguer.
+- 2026-07-10 : **orphan_xuids local = 131** (le plan mesurait 120) — a crû ; la passe
+  d'aliases (convergence) est à relancer (couvert par B4.2, prod-gated).
+- 2026-07-10 : familles B6.1 `metadata verrouillée`, B6.2 `rta subscribe refusé`,
+  B6.3 `endpoint_missing` — les gros compteurs du plan (2121/1348/1015) étaient du bruit
+  HISTORIQUE (juin / pré-reboot). En fenêtre juillet ET en prod post-reboot : 0. Les sites
+  B6.2 ont même disparu du code courant. La démotion B6.1 reste faite (aligne DC-B2) mais
+  son impact courant est nul.
+- 2026-07-10 : la démotion B3.3 (ERROR→WARN de la ligne agrégée spartan_cron) touche un
+  chemin de contention LOCAL (2e writer air/worktree) ; en prod ce chemin est absent. Choix
+  conforme au plan (le lock de dev n'est pas un incident serveur).
