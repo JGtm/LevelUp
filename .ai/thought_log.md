@@ -1,3 +1,30 @@
+## [2026-07-10] HOTFIX LUSR shadow read-only — H1 (prep + repro ROUGE)
+
+**Statut** : En cours (phase H1 close ; H2 implémentation à suivre).
+
+**Décision principale** : hotfix de la régression prod 2026-07-03 (LUSR v2 shadow persiste
+`player_skill_state_v2` sur un attach shared read-only → ~6500 WARN/j, watermark figé,
+writer RW tenu, /health 503). DÉVIATION MAJEURE constatée sur pièces : la branche
+`hotfix/lusr-shadow-ro` part d'un `origin/main` qui contient DÉJÀ le merge audits
+(`28146aa3a`), donc le cluster skill (`RunLUSRV2Shadow`) est dans le sous-package
+`internal/sync/skill/` (pas « à plat » comme le supposait l'en-tête du plan). Le
+sous-package ne peut pas importer `sync` (cycle) → DC-H2 appliqué via l'INTERFACE SEAM de
+H7.2 (`skill.SharedAccessor` satisfaite structurellement par `*sync.SharedAccess`), pas
+par passage direct. H7.2 (report branche audits) devient sans objet (déjà mergée).
+
+**Résultats observés** : repro ROUGE fidèle contre l'ancienne signature (handle unique) :
+DB fichier seedée + attach READ_ONLY → `RunLUSRV2Shadow` retourne `processed=0` avec le
+message prod EXACT `persist état échoué — watermark non avancé ... Cannot execute statement
+of type "INSERT" on database "s" which is attached in read-only mode!`. Test de repro
+supprimé après capture (arbre buildable) ; version pérenne VERTE (accès scindé) en H3.1.
+
+**Prochaine étape** : H2 — interface `SharedAccessor` côté skill, signatures
+`runLUSRV2Shadow(ctx, playerDB, shared SharedAccessor, xuid, ownerOnly)`, découpage
+Read(sélection)/Write-burst(persist per-match chunké `postsyncLUSRBurstChunk=3`), migration
+de tous les callers (engine, lusr_full_recompute, 3 cmd, wire h5, ~20 tests).
+
+---
+
 ## [2026-07-10] MERGE MAIN — campagne audits 2026-07 + clôture + gate humain (GO utilisateur)
 
 **Statut** : En cours (merge exécuté dans cette session ; post-deploy VPS à suivre).

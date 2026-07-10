@@ -103,19 +103,35 @@ API `SharedAccess` (`internal/sync/shared_access.go`) :
 
 ### H1 — Préparation et vérification sur pièces (effort : rapide)
 
-- [ ] H1.1 `git fetch origin && git checkout -b hotfix/lusr-shadow-ro origin/main`.
-- [ ] H1.2 Vérifier sur pièces (la topologie main ≠ branche audits) : localisation
-      réelle de `runSkillRatingSteps` / `runSkillRatingStepsWithDB`
-      (`engine_postsync_scoring.go`), `runLUSRV2Shadow` + `persistComputedMatchSkillV2`
-      (`skill_v2_shadow.go`), `SharedAccess` (`shared_access.go`),
-      `postsyncEventsBurstChunk` (valeur), tous les callers de
-      `RunLUSRV2Shadow(OwnerOnly)?` (`grep -rn "RunLUSRV2Shadow" apps/go-api`).
-      Consigner les chemins/lignes constatés ici.
-- [ ] H1.3 Reproduire le symptôme en local AVANT fix : test d'intégration provisoire
-      ou scénario existant adapté — un `SharedAccess` burst dont `read` sert un handle
-      où `shared_matches_v2` n'est pas inscriptible → `UpsertState` échoue avec le
-      message de prod. (Ce test devient le test pérenne en H3 — rouge ici, vert
-      après H2.)
+- [x] H1.1 Branche `hotfix/lusr-shadow-ro` déjà créée depuis `origin/main` (HEAD
+      `28146aa3a`, qui contient le merge audits) et checkoutée. Vérifié
+      `git branch --show-current` = `hotfix/lusr-shadow-ro`.
+- [x] H1.2 Vérifié sur pièces (topologie RÉELLE = sous-package, cf. §7 déviation) :
+      - `runSkillRatingSteps` / `runSkillRatingStepsWithDB` : `internal/sync/engine_postsync_scoring.go`
+        L135 / L151 (package `sync`). Caller : `engine_postsync.go:438`.
+      - `runLUSRV2Shadow` + `RunLUSRV2Shadow` + `RunLUSRV2ShadowOwnerOnly` +
+        `persistComputedMatchSkillV2` : `internal/sync/skill/skill_v2_shadow.go`
+        (L83 / L102 / L106 / L695) — **package `skill`**, pas `sync`.
+      - `SharedAccess` (+ `NewPinnedSharedAccess`, `Read`, `Write`) :
+        `internal/sync/shared_access.go` (package `sync`, L42/L69/L90/L118). Méthodes
+        exactement `Read(ctx)(*sql.DB,func(),error)` + `Write(ctx,string)(*sql.DB,func(),error)`
+        → `*sync.SharedAccess` satisfait structurellement l'interface `skill.SharedAccessor`.
+      - `postsyncEventsBurstChunk = 3` : `internal/sync/engine.go:50` (package `sync`).
+        → nouvelle constante `postsyncLUSRBurstChunk = 3` déclarée côté `skill` (pas
+        d'accès cross-package).
+      - Callers de `RunLUSRV2Shadow(OwnerOnly)?` : engine_postsync_scoring.go:194 (fix),
+        lusr_full_recompute.go:46, cmd/lusr_v2_replay:89, cmd/h5-lusr-smoke:67,
+        cmd/lusr_v2_canonical_backfill:110, internal/games/halo_5/livesync/wire.go:107,
+        + ~20 sites de test dans internal/sync/skill/skill_v2_shadow_test.go &
+        skill_v2_capability_test.go. Re-exports : skill_reexport.go:101/117.
+- [x] H1.3 Repro observé ROUGE contre l'ANCIENNE signature (handle unique) : DB fichier
+      seedée (1 match 2v2 éligible), attachée READ_ONLY (`ATTACH ... (READ_ONLY); USE s`),
+      passée à `RunLUSRV2Shadow(ctx, nil, roHandle, "owner")`. Résultat : `loadShadowMatches`
+      + `LoadState` OK (SELECT), `persistComputedMatchSkillV2` → `UpsertState` échoue
+      `Cannot execute statement of type "INSERT" on database "s" which is attached in
+      read-only mode!` → `processed=0`, aucune ligne `player_skill_state_v2` écrite
+      (message prod reproduit). La version pérenne VERTE (accès scindé) est livrée en
+      H3.1 (cf. §7 adaptation).
 
 **Gate H1** : chemins consignés ; test de repro ROUGE avec l'erreur
 `read-only`/non-inscriptible attendue.
@@ -234,4 +250,22 @@ précédente.
 
 ## 7. Découvertes hors périmètre
 
-- (vide)
+- **DÉVIATION MAJEURE DE TOPOLOGIE (constatée 2026-07-10, sur pièces)** : contrairement
+  à l'hypothèse de l'en-tête du plan (« sur main tout est encore à plat dans
+  `internal/sync/` »), la branche `hotfix/lusr-shadow-ro` a été créée depuis un
+  `origin/main` qui **contient déjà le merge de la campagne audits** (commit
+  `28146aa3a`, déployé prod 2026-07-10). La topologie réelle = celle de la branche
+  audits : le cluster skill (dont `RunLUSRV2Shadow`) vit dans le **sous-package**
+  `internal/sync/skill/` (package `skill`), ré-exporté vers `sync` via
+  `skill_reexport.go`. `SharedAccess` reste dans package `sync`
+  (`internal/sync/shared_access.go`). Le sous-package `skill` NE PEUT PAS importer
+  `sync` (cycle sync→skill). Conséquence : DC-H2 est appliqué via l'**interface seam**
+  décrit en H7.2 (petite interface `SharedAccessor` déclarée côté `skill`, satisfaite
+  STRUCTURELLEMENT par `*sync.SharedAccess`), et NON par passage direct d'un
+  `*sync.SharedAccess` au runner. H7.2 (report du fix sur la branche audits) devient
+  **sans objet** : la branche audits est déjà mergée dans main. Voir thought_log
+  2026-07-10.
+- Adaptation du test de repro (H1.3) : la topologie sous-package impose que la version
+  pérenne du test utilise la nouvelle API (`SharedAccessor`). Le repro ROUGE est observé
+  contre l'ANCIENNE signature (handle unique RO), puis la version pérenne VERTE (accès
+  scindé Read RO / Write RW) est livrée en H2/H3 — même intention, API adaptée.
