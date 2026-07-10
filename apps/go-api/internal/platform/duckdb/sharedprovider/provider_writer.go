@@ -81,7 +81,7 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 			defer func() {
 				if r := recover(); r != nil {
 					swapFailuresTotal.Add(failReasonPanic, 1)
-					slog.Error("sharedprovider: panic during Release",
+					slog.ErrorContext(ctx, "sharedprovider: panic during Release",
 						"panic", r, "path", p.path)
 				}
 				// Toujours libérer le mutex dblease, même sur panic, sinon
@@ -396,6 +396,6 @@ func (p *providerImpl) retryReopenLoop(capturedEventID string) {
 		}
 		p.mu.Unlock()
 	}
-	slog.Error("sharedprovider: retry reopen RO definitively failed",
+	slog.ErrorContext(ctx, "sharedprovider: retry reopen RO definitively failed",
 		"path", p.path, "attempts", retryMaxAttempts)
 }

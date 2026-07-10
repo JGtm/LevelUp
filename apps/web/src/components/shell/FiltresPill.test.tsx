@@ -96,6 +96,13 @@ function buildResolved(availOverrides: Partial<FilterContextResolved['available_
 // ─── Tests FiltresPill — zombie detection ─────────────────────────────────────
 
 describe('FiltresPill — zombie detection', () => {
+  // Locale pinnée : le libellé « Filtres » et le tooltip d'incompatibilité sont
+  // résolus via le manifest i18n (GH-4) — on fige 'fr' pour rendre les assertions
+  // FR explicites.
+  beforeEach(() => {
+    useAppShellStore.setState({ locale: 'fr' })
+  })
+
   // ── 1. Aucun zombie ──────────────────────────────────────────────────────
 
   it('pas de banner incompatibilité quand toutes les sélections sont dans les options disponibles', () => {

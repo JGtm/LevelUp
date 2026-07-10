@@ -31,6 +31,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/snapshot"
 	syncv2 "levelup/go-api/internal/sync/v2"
 )
 
@@ -51,6 +52,9 @@ type SyncV2WiringDeps struct {
 	TokenProvider  auth.TokenProvider
 	Settings       *settingsplatform.Store // pour FriendsLoader + MediaScanHook
 	PostSyncRunner port.PostSyncRunner     // pour WithPostSyncRunner (progression V2)
+	// PrestigeHook (optionnel) ré-évalue les défis Prestige actifs après le post-sync
+	// de chaque joueur (Phase 6). = PrestigeBundle.RunPostSync. Nil → no-op.
+	PrestigeHook func(ctx context.Context, playerSlug, titleSlug string)
 }
 
 // buildSyncV2Orchestrator construit l'orchestrator V2 avec ses 6
@@ -187,7 +191,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 			keep = n
 		}
 	}
-	snapshotCutter := syncpkg.NewSnapshotCutter(deps.PathResolver, keep)
+	snapshotCutter := snapshot.NewSnapshotCutter(deps.PathResolver, keep)
 
 	return syncv2.NewCycleOrchestrator(
 		knownLoader,
@@ -197,7 +201,8 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		persister,
 		postSyncRunner,
 		syncv2.CycleConfig{},
-	).WithSnapshotProducer(snapshotCutter)
+	).WithSnapshotProducer(snapshotCutter).
+		WithPrestigeHook(deps.PrestigeHook)
 }
 
 // ─── Dry-run stubs (mode validation sans écriture DB) ─────────────────
@@ -315,12 +320,12 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 			))
 		}
 
-		// 6. BatchPersistMode + BatchQueue (Phase 2.3/4.7/4.9 — INSERT-only async)
-		if os.Getenv("LEVELUP_PERSIST_BATCH") != "0" {
-			engine.WithBatchPersistMode(true)
-			if deps.BatchQueue != nil && os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") != "0" {
-				engine.WithBatchQueue(deps.BatchQueue)
-			}
+		// 6. BatchQueue async (Phase 4.9 — INSERT-only via WAL + worker). Le batch
+		// INSERT-only est le seul chemin d'écriture depuis D1b ; seul le layer async
+		// reste optionnel via LEVELUP_PERSIST_BATCH_ASYNC (cf. main.go pour le
+		// cycle de vie du kill-switch).
+		if deps.BatchQueue != nil && deps.Cfg.PersistBatchAsync {
+			engine.WithBatchQueue(deps.BatchQueue)
 		}
 
 		// 7. CSRSeasonID (CSR snapshot post-sync)

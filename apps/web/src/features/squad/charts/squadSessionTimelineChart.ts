@@ -10,7 +10,8 @@
  *   - tooltip trigger='axis' (hover unifié par session)
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { resolveToken, type SemanticToken } from '@/lib/accessibility'
+import { resolveToken } from '@/lib/accessibility'
+import { perfSessionScale } from '@/lib/accessibility/scales'
 import {
   CHART_BG,
   getAxisBase,
@@ -30,14 +31,6 @@ export interface SquadSessionTimelineOpts {
   mmrAxisLabel: string
 }
 
-function perfTierToken(perf: number): SemanticToken {
-  if (perf >= 75) return 'perf-tier-1'
-  if (perf >= 60) return 'perf-tier-2'
-  if (perf >= 45) return 'perf-tier-3'
-  if (perf >= 30) return 'perf-tier-4'
-  return 'perf-tier-5'
-}
-
 function round1(v: number): number {
   return parseFloat(v.toFixed(1))
 }
@@ -52,7 +45,7 @@ export function buildSquadSessionTimelineOption(
   const labels = points.map((p) => p.session_label)
   const perfData = points.map((p) => ({
     value: round1(p.squad_perf),
-    itemStyle: { color: resolveToken(perfTierToken(p.squad_perf)), opacity: 0.85 },
+    itemStyle: { color: resolveToken(perfSessionScale(p.squad_perf)), opacity: 0.85 },
   }))
   const hasWinRate = points.some((p) => p.win_rate !== undefined)
   const hasMmr = points.some((p) => p.team_mmr_avg !== undefined)

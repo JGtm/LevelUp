@@ -414,7 +414,7 @@ func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]
 		kvPairs, kvErr := r.loadKVPairsOn(ctx, db, matchIDs)
 		if kvErr != nil {
 			slog.WarnContext(ctx, "LoadImpactEvents: kv pairs fallback indisponible (best-effort)",
-				"err", kvErr.Error(), "n_matches", len(matchIDs))
+				"err", kvErr, "n_matches", len(matchIDs))
 			return result, nil
 		}
 		if synth := synthesizeImpactRowsFromKVPairs(kvPairs); len(synth) > 0 {

@@ -114,11 +114,11 @@ func FormatTierSubLabel(tier TierBoundary, sub int) string {
 	return tier.NameFR + " " + r
 }
 
-// MapTierSubToLegacyRating mappe un (tier, sub) résolu vers le rating_value
-// legacy [1000..2000] — variante de MapMuToLegacyRating pour le chemin lissé
+// mapTierSubToLegacyRating mappe un (tier, sub) résolu vers le rating_value
+// legacy [1000..2000] — variante de mapMuToLegacyRating pour le chemin lissé
 // (le rating doit refléter le palier AFFICHÉ, pas μ brut, sinon incohérence
 // label/valeur quand l'hystérésis bride la descente).
-func MapTierSubToLegacyRating(tier TierBoundary, sub int) float64 {
+func mapTierSubToLegacyRating(tier TierBoundary, sub int) float64 {
 	if tier.Name == "" {
 		return 1000
 	}

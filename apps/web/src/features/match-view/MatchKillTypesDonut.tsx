@@ -12,6 +12,7 @@ import { KillTypesDonut, type DonutSlice } from '@/components/charts/KillTypesDo
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import type { MatchScoreboardRow } from '@/lib/api/types'
 import type { MatchViewText } from './i18n'
 
@@ -23,7 +24,7 @@ interface Props {
 
 export function MatchKillTypesDonut({ me, t }: Props) {
   const appLocale = useAppShellStore((s) => s.locale)
-  const locale = appLocale === 'en' ? 'en-US' : 'fr-FR'
+  const locale = intlLocale(appLocale)
   const hasKillMechanics = useCapability('native_kill_mechanics')
 
   // Surface H5-only (mécaniques natives) : pour les titres sans la capability,

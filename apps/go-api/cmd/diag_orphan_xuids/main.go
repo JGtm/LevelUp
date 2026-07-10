@@ -18,6 +18,8 @@ import (
 	"log"
 	"path/filepath"
 
+	"levelup/go-api/internal/analysis"
+
 	duckdb "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -47,14 +49,14 @@ func main() {
 			SELECT DISTINCT mp.xuid
 			FROM match_participants mp
 			LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
-			WHERE mp.xuid NOT LIKE 'bid(%'
+			WHERE `+analysis.SQLIsNotBotCol("mp.xuid")+`
 			  AND (xa.xuid IS NULL OR xa.gamertag IS NULL OR xa.gamertag = '')
 		)
 		SELECT
 			o.xuid,
 			COUNT(DISTINCT mp.match_id) AS match_count,
-			MIN(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))::VARCHAR AS first_seen,
-			MAX(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))::VARCHAR AS last_seen
+			MIN(`+analysis.SQLStartTimeCanonical("r")+`)::VARCHAR AS first_seen,
+			MAX(`+analysis.SQLStartTimeCanonical("r")+`)::VARCHAR AS last_seen
 		FROM orphans o
 		JOIN match_participants mp ON mp.xuid = o.xuid
 		LEFT JOIN match_registry r ON r.match_id = mp.match_id
@@ -152,7 +154,7 @@ func main() {
 		SELECT COUNT(DISTINCT mp.xuid)
 		FROM match_participants mp
 		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
-		WHERE mp.xuid NOT LIKE 'bid(%'
+		WHERE `+analysis.SQLIsNotBotCol("mp.xuid")+`
 		  AND (xa.xuid IS NULL OR xa.gamertag IS NULL OR xa.gamertag = '')
 		  AND EXISTS (SELECT 1 FROM highlight_events h WHERE h.match_id = mp.match_id)
 	`).Scan(&inEventsMatches)

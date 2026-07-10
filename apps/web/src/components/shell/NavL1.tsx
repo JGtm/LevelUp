@@ -37,6 +37,9 @@ interface SplitButtonProps {
 function SplitButton({ section, isActive, resolvedDefaultPath, resolvePath }: SplitButtonProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  const sectionLabel = t(section.labelKey)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -64,7 +67,7 @@ function SplitButton({ section, isActive, resolvedDefaultPath, resolvePath }: Sp
           aria-current={isActive ? 'page' : undefined}
         >
           {section.icon}
-          {section.label}
+          {sectionLabel}
         </Link>
 
         <span className="mx-0.5 h-4 w-px self-center rounded-full bg-current opacity-20" aria-hidden="true" />
@@ -73,7 +76,7 @@ function SplitButton({ section, isActive, resolvedDefaultPath, resolvePath }: Sp
           type="button"
           onClick={() => setOpen((v) => !v)}
           className="px-1.5 py-1.5 cursor-pointer"
-          aria-label={`Onglets ${section.label}`}
+          aria-label={formatMessage(commonManifest, 'common.nav.section_tabs_aria', locale, { section: sectionLabel })}
           aria-expanded={open}
           aria-haspopup="menu"
         >
@@ -102,7 +105,7 @@ function SplitButton({ section, isActive, resolvedDefaultPath, resolvePath }: Sp
               onClick={() => setOpen(false)}
               className="block px-3 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground whitespace-nowrap"
             >
-              {tab.label}
+              {t(tab.labelKey)}
             </Link>
           ))}
         </div>
@@ -270,9 +273,9 @@ export function NavL1() {
       const tabs = s.tabs.filter(tabVisible).map((tab) =>
         currentTitleSlug === 'halo_5' && tab.key === 'citations'
           ? {
-              // Halo 5 : commendations natives, mais libellé FR = « Citations »
-              // (terme officiel Halo FR, cohérent Infinite) — on conserve donc le
-              // label d'origine de l'onglet et on ne change QUE la clé + le chemin.
+              // Halo 5 : commendations natives. On conserve la clé i18n d'origine
+              // (`tab_citations` = FR « Citations » / EN « Commendations », terme
+              // officiel Halo) et on ne change QUE la clé de tab + le chemin.
               ...tab,
               key: 'commendations',
               path: '/players/$playerSlug/commendations',
@@ -367,7 +370,7 @@ export function NavL1() {
                 aria-current={isActive ? 'page' : undefined}
               >
                 {section.icon}
-                {section.label}
+                {t(section.labelKey)}
               </Link>
             )
           })}

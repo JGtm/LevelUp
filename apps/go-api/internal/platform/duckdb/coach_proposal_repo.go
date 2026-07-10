@@ -202,8 +202,8 @@ const baseSelectCoachProposal = `
 	FROM coach_proposal
 `
 
-// scanCoachProposal lit une ligne (rowScanner défini dans prestige_player_helpers.go).
-func scanCoachProposal(s rowScanner) (coach_advisor.Proposal, error) {
+// scanCoachProposal lit une ligne (RowScanner défini dans sql_scan_helpers.go).
+func scanCoachProposal(s RowScanner) (coach_advisor.Proposal, error) {
 	var (
 		p              coach_advisor.Proposal
 		kind           string

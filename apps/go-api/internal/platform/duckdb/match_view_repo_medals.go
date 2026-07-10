@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -64,32 +65,25 @@ type medalMeta struct {
 }
 
 // lookupMedalMeta résout label + description + difficulty depuis medal_definitions
-// (chaîne BCP-47 medal_translations fr-FR/en-US > medal_definitions name_fr/name_en).
+// (chaîne BCP-47 medal_translations > medal_definitions), LOCALE-AWARE via la locale
+// de requête (ctxkeys.Locale ← header X-LevelUp-Locale). En UI EN, ne jamais injecter
+// les colonnes FR (name_fr/description_fr) — le drawer/résumé affichaient des noms FR
+// sous UI EN (GH-5b). Source unique de la chaîne : medalLabelDescCoalesceSQL.
 // Fallback citation_mappings.citation_name_display si la médaille n'est pas dans medal_definitions.
 func (r *MatchViewRepo) lookupMedalMeta(ctx context.Context, medalIDs []int64) map[int64]medalMeta {
 	result := make(map[int64]medalMeta, len(medalIDs))
 	if len(medalIDs) == 0 || r.pdb.Metadata == nil {
 		return result
 	}
+	locale := ctxkeys.Locale(ctx)
+	labelExpr, descExpr := medalLabelDescCoalesceSQL(locale)
 	q, args, ok := buildLookupQuery(
 		`SELECT md.medal_name_id,
-		        COALESCE(
-		            NULLIF(TRIM(mt_fr.name),''),
-		            NULLIF(TRIM(md.name_fr),''),
-		            NULLIF(TRIM(mt_en.name),''),
-		            NULLIF(TRIM(md.name_en),'')
-		        ) AS label,
-		        COALESCE(
-		            NULLIF(TRIM(md.description_fr),''),
-		            NULLIF(TRIM(md.description_en),''),
-		            ''
-		        ) AS description,
+		        `+labelExpr+` AS label,
+		        `+descExpr+` AS description,
 		        COALESCE(NULLIF(TRIM(md.difficulty),''), 'Normal') AS difficulty
 		 FROM medal_definitions md
-		 LEFT JOIN medal_translations mt_fr
-		     ON mt_fr.medal_name_id = md.medal_name_id AND mt_fr.lang = 'fr-FR'
-		 LEFT JOIN medal_translations mt_en
-		     ON mt_en.medal_name_id = md.medal_name_id AND mt_en.lang = 'en-US'
+		 `+medalTranslationJoinsSQL(locale)+`
 		 WHERE md.medal_name_id IN (%s)`,
 		medalIDs,
 	)

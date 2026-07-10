@@ -25,6 +25,48 @@ import (
 // sans la notion, l'adapter retournera une liste vide → la clause est omise.
 type ModeCategoryPrefixes func(category string) []string
 
+// InferModeCategory : signature qui infère la catégorie de mode depuis un
+// pair_name brut (ex: "Arena:Slayer on X" → "Assassin"). Injectée par le caller
+// (wiring) pour éviter le couplage platform/duckdb → games/halo_infinite.
+// L'impl Halo est `halo_infinite.InferModeCategoryFromPairName`.
+type InferModeCategory func(pairName string) string
+
+// ModeTaxonomy regroupe les fonctions de classification des modes d'un titre,
+// injectées dans platform/duckdb (media_repo) pour éviter le couplage direct à
+// games/halo_infinite. Zéro-value = aucune classification (dégradation gracieuse
+// via les helpers nil-safe ci-dessous : un titre sans taxonomie ne classe pas
+// ses modes plutôt que de paniquer).
+type ModeTaxonomy struct {
+	InferCategory InferModeCategory    // pair_name → catégorie
+	PrefixesFor   ModeCategoryPrefixes // catégorie → préfixes pair_name
+	AllPrefixes   func() []string      // tous les préfixes connus
+	Other         string               // libellé du bucket "non classé" (ex: "Other")
+}
+
+// Classify infère la catégorie ; "" si aucune fonction injectée.
+func (t ModeTaxonomy) Classify(pairName string) string {
+	if t.InferCategory == nil {
+		return ""
+	}
+	return t.InferCategory(pairName)
+}
+
+// Prefixes retourne les préfixes pair_name d'une catégorie ; nil si non injecté.
+func (t ModeTaxonomy) Prefixes(category string) []string {
+	if t.PrefixesFor == nil {
+		return nil
+	}
+	return t.PrefixesFor(category)
+}
+
+// KnownPrefixes retourne tous les préfixes connus ; nil si non injecté.
+func (t ModeTaxonomy) KnownPrefixes() []string {
+	if t.AllPrefixes == nil {
+		return nil
+	}
+	return t.AllPrefixes()
+}
+
 // outcomeLabelToCode : whitelist canonique. Toute valeur hors map retourne 0
 // (clause omise). C'est aussi la liste autorisée côté handler.
 var outcomeLabelToCode = map[string]int{
@@ -109,14 +151,14 @@ func BuildNeighborsWhereClause(spec *domain.MatchFilterSpec, categoryPrefixes Mo
 	if spec.DateFrom != nil {
 		// Pattern timezone canonique (cf. memory reference_timezone_canonical_pattern.md).
 		clauses = append(clauses,
-			"COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') >= ?",
+			SQLStartTimeCanonical("mr")+" >= ?",
 		)
 		args = append(args, spec.DateFrom.UTC())
 	}
 
 	if spec.DateTo != nil {
 		clauses = append(clauses,
-			"COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') <= ?",
+			SQLStartTimeCanonical("mr")+" <= ?",
 		)
 		// DateTo est inclusive — on ajoute 1 microseconde pour matcher
 		// le comportement "fin de journée incluse" si le caller passe 23:59:59.

@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 
+	"levelup/go-api/internal/analysis"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -33,7 +35,7 @@ func main() {
 		WHERE table_name='match_registry' AND column_name='start_time_utc'`).Scan(&hasUTC)
 	stExpr := "mr.start_time"
 	if hasUTC > 0 {
-		stExpr = "COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC')"
+		stExpr = analysis.SQLStartTimeCanonical("mr")
 	}
 
 	q := fmt.Sprintf(`

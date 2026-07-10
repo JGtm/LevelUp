@@ -117,7 +117,7 @@ func (h *AdminHandler) handleDeleteUser(ctx context.Context, in *adminUsernameIn
 		if errors.Is(err, userstore.ErrUserNotFound) {
 			return nil, humacore.NewError(http.StatusNotFound, "not_found", "utilisateur introuvable")
 		}
-		slog.Error("admin: erreur delete user", "target", in.Username, "err", err)
+		slog.ErrorContext(ctx, "admin: erreur delete user", "target", in.Username, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "delete_error", "erreur de suppression")
 	}
 	slog.Info("admin: utilisateur supprimé", "target", in.Username, "by", adminUsername(ctx))
@@ -140,7 +140,7 @@ func (h *AdminHandler) handleChangeRole(ctx context.Context, in *adminUsernameBo
 		if errors.Is(err, userstore.ErrUserNotFound) {
 			return nil, humacore.NewError(http.StatusNotFound, "not_found", "utilisateur introuvable")
 		}
-		slog.Error("admin: erreur change role", "target", in.Username, "role", body.Role, "err", err)
+		slog.ErrorContext(ctx, "admin: erreur change role", "target", in.Username, "role", body.Role, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "role_error", "erreur de modification")
 	}
 	slog.Info("admin: rôle modifié", "target", in.Username, "role", body.Role, "by", adminUsername(ctx))
@@ -163,7 +163,7 @@ func (h *AdminHandler) handleResetPassword(ctx context.Context, in *adminUsernam
 		if errors.Is(err, userstore.ErrPasswordTooShort) {
 			return nil, humacore.NewError(http.StatusBadRequest, "validation_error", err.Error())
 		}
-		slog.Error("admin: erreur reset password", "target", in.Username, "err", err)
+		slog.ErrorContext(ctx, "admin: erreur reset password", "target", in.Username, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "reset_error", "erreur de réinitialisation")
 	}
 	slog.Info("admin: mot de passe réinitialisé", "target", in.Username, "by", adminUsername(ctx))
@@ -204,7 +204,7 @@ func (h *AdminHandler) handleGenerateInvite(ctx context.Context, in *adminGenera
 	// Invitation admin legacy (inscription mot de passe) : pas de groupe associé.
 	invite, err := h.invites.Generate(createdBy, body.ExpiresInDays, "")
 	if err != nil {
-		slog.Error("admin: erreur generate invite", "by", createdBy, "err", err)
+		slog.ErrorContext(ctx, "admin: erreur generate invite", "by", createdBy, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "generate_error", "erreur de génération")
 	}
 	slog.Info("admin: invitation générée", "code", invite.Code, "by", createdBy, "expires_in_days", body.ExpiresInDays)
@@ -218,7 +218,7 @@ func (h *AdminHandler) handleRevokeInvite(ctx context.Context, in *adminCodeInpu
 		if errors.Is(err, userstore.ErrInviteNotFound) {
 			return nil, humacore.NewError(http.StatusNotFound, "not_found", "invitation introuvable")
 		}
-		slog.Error("admin: erreur revoke invite", "code", in.Code, "err", err)
+		slog.ErrorContext(ctx, "admin: erreur revoke invite", "code", in.Code, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "revoke_error", "erreur de révocation")
 	}
 	slog.Info("admin: invitation révoquée", "code", in.Code, "by", adminUsername(ctx))

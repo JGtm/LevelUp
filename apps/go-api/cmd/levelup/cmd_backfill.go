@@ -117,7 +117,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 				}
 			}
 		} else if *allPlayers {
-			if err := runBackfillAllLUSR(ctx, cfg, *force); err != nil {
+			if err := runBackfillAllLUSR(ctx, cfg); err != nil {
 				return err
 			}
 		} else {
@@ -125,7 +125,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 			if err != nil {
 				return err
 			}
-			if err := runBackfillLUSRForPlayer(ctx, cfg, player, *force); err != nil {
+			if err := runBackfillLUSRForPlayer(ctx, cfg, player); err != nil {
 				return err
 			}
 		}
@@ -385,7 +385,7 @@ func applyMigrationsOnDB(path string, target migration.TargetDB) error {
 
 // ── LUSR backfill ─────────────────────────────────────────────────────────────
 
-func runBackfillAllLUSR(ctx context.Context, cfg *config.AppConfig, force bool) error {
+func runBackfillAllLUSR(ctx context.Context, cfg *config.AppConfig) error {
 	players, err := cfg.LoadPlayers()
 	if err != nil {
 		return fmt.Errorf("chargement db_profiles.json: %w", err)
@@ -408,7 +408,7 @@ func runBackfillAllLUSR(ctx context.Context, cfg *config.AppConfig, force bool) 
 			continue
 		}
 		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, nil, nil)
-		updated, runErr := engine.RunBackfillLUSR(ctx, force)
+		updated, runErr := engine.RecomputeLUSRCanonical(ctx)
 		if runErr != nil {
 			failed++
 			fmt.Printf("backfill lusr FAIL: gamertag=%s err=%v\n", player.Gamertag, runErr)
@@ -426,13 +426,13 @@ func runBackfillAllLUSR(ctx context.Context, cfg *config.AppConfig, force bool) 
 	return nil
 }
 
-func runBackfillLUSRForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary, force bool) error {
+func runBackfillLUSRForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary) error {
 	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, nil, nil)
-	updated, err := engine.RunBackfillLUSR(ctx, force)
+	updated, err := engine.RecomputeLUSRCanonical(ctx)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("backfill lusr OK: gamertag=%s updated=%d force=%t\n", player.Gamertag, updated, force)
+	fmt.Printf("backfill lusr OK: gamertag=%s updated=%d\n", player.Gamertag, updated)
 	return nil
 }
 

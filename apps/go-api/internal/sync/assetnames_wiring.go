@@ -43,7 +43,7 @@ func (e *SyncEngine) WithAssetNameResolution(p pool.Pool) *SyncEngine {
 
 // resolveCycleAssets résout les noms des assets neufs du cycle vers
 // asset_translations, AVANT la phase d'insert (donc avant EnrichRegistryFromMetadata
-// dans submitOrInsertMatch). Best-effort, convergent. No-op si le pool n'est pas
+// dans persistFetchedMatch). Best-effort, convergent. No-op si le pool n'est pas
 // câblé ou si le handle metadata n'est pas disponible.
 func (e *SyncEngine) resolveCycleAssets(ctx context.Context, fetched []*fetchedMatch) {
 	if e.assetPool == nil || e.metaDB == nil {

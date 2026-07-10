@@ -9,9 +9,17 @@
  * silencieuse (`Number.isNaN` + null check explicites).
  */
 
-export { formatPercent, formatPercentValue } from './percent'
+export { formatPercent, formatPercentValue, formatPercentInt } from './percent'
 export { formatDate, formatDateShort, formatDateTime, type Locale } from './date'
 export { formatNumber, formatNumberFixed, formatRatio, formatKDA } from './number'
 export { formatDurationMMSS, formatDurationHMS, formatDurationMinSec } from './duration'
 export { displayRatingLabel, formatRankDelta } from './rating'
 export { formatOffensiveConversion, formatDefensiveResistance, effectiveDmgPerFrag } from './combatYield'
+export {
+  dowLabels,
+  DOW_LABELS_FR,
+  DOW_LABELS_EN,
+  HOUR_LABELS,
+  calendarChartText,
+} from './calendar'
+export { intlLocale } from './intlLocale'

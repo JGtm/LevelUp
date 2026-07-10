@@ -112,9 +112,12 @@ type TokenProbeResult struct {
 	// Voir pool.CredentialSource.Source.
 	Source string `json:"source,omitempty"`
 
-	HasMSALCache       bool   `json:"has_msal_cache"`
-	HasRefreshToken    bool   `json:"has_refresh_token"`
-	RefreshTokenLen    int    `json:"refresh_token_len,omitempty"`
+	HasMSALCache    bool `json:"has_msal_cache"`
+	HasRefreshToken bool `json:"has_refresh_token"`
+	RefreshTokenLen int  `json:"refresh_token_len,omitempty"`
+	// S5 (sécurité, lot S) : SEUL le sha256 tronqué identifie le token. head/tail
+	// (préfixe/suffixe en clair) supprimés — un diagnostic ne doit pas exposer de
+	// fragment de secret, même sur une route loopback+admin.
 	RefreshTokenSHA256 string `json:"refresh_token_sha256,omitempty"`
 
 	// Résultat du Resolve (pipeline complet : MSAL/OAuth → Exchange Halo).
@@ -124,10 +127,10 @@ type TokenProbeResult struct {
 	RefreshTokenWasRotated bool   `json:"refresh_token_was_rotated"`
 }
 
-// fingerprintToken retourne un sha256 tronqué pour identifier un token sans
-// révéler sa valeur (utile pour comparer plusieurs lectures, ex : vérifier que
-// `.env.local` n'a pas été modifié sans redémarrage du serveur). Lot S (audit
-// M3) : head/tail retirés — même tronqués, ils exposaient un fragment du secret.
+// fingerprintToken retourne un sha256 tronqué identifiant un token sans révéler
+// sa valeur (utile pour comparer plusieurs lectures, ex : vérifier que `.env.local`
+// n'a pas été modifié sans redémarrage du serveur). S5 / audit M3 (lot S) :
+// head/tail retirés — même tronqués, ils exposaient un fragment du secret.
 func fingerprintToken(s string) string {
 	if s == "" {
 		return ""

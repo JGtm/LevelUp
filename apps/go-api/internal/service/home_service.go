@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/teammates"
 )
 
 // HomeService orchestre les donnÃ©es de la page d'accueil.
@@ -52,7 +53,7 @@ type HomeService struct {
 	// un flow live throttle 5 min / 6 h + fallback DB per-field garanti.
 	// Si nil, le service retombe sur l'ancien chemin (repo.LoadSpartanIdentity)
 	// — utilisé par les tests et les bootstraps minimaux sans auth.
-	careerLive *CareerLiveService
+	careerLive homeSpartanIdentityProvider
 	// demoMode : en démo, certaines sections sans source réelle (défis : pas d'API
 	// live + cache TTL 24h) sont servies depuis des fixtures embarquées au lieu de
 	// renvoyer vide. Cf. home_service_demo.go.
@@ -71,7 +72,7 @@ type HomeService struct {
 	sessionTeammatesLoader mainTeamParticipantsLoader
 	// sessionFriendsResolver (optionnel) : restreint les coéquipiers de session aux
 	// amis configurés (settings.friend_gamertags). nil → tous les coéquipiers alliés.
-	sessionFriendsResolver FriendGamertagsResolver
+	sessionFriendsResolver teammates.FriendGamertagsResolver
 }
 
 // NewHomeService crÃ©e un HomeService avec le repository et le provider Halo.
@@ -167,8 +168,18 @@ func (s *HomeService) WithMatchesCache(cache *HomeMatchesCache, xuid string) *Ho
 // découplés du post-sync matchs). Quand fourni, GetHomePage remplace
 // l'appel repo.LoadSpartanIdentity (DB-only) par un flow live throttle
 // 5 min / 6 h + fallback DB per-field garanti.
+// homeSpartanIdentityProvider : contrat minimal consommé par HomeService pour
+// l'identité Spartan live (implémenté par *CareerLiveService). Interface
+// consumer-side (K1i, ARCHI 8) — le champ n'est plus typé sur le concret, mockable
+// en test (même package).
+type homeSpartanIdentityProvider interface {
+	GetSpartanIdentity(ctx context.Context) (*domain.HomeSpartanIdentityRow, error)
+}
+
 func (s *HomeService) WithCareerLive(svc *CareerLiveService) *HomeService {
-	s.careerLive = svc
+	if svc != nil { // garde concret fiable — évite le piège interface typed-nil
+		s.careerLive = svc
+	}
 	return s
 }
 
@@ -351,7 +362,7 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 	hp := games.EffectiveHpToKill(ctxkeys.TitleSlug(ctx))
 	hasRankedHistory, hasUnrankedHistory := analysis.InferHomeSkillHistoryFromCanonical(d.canonicalRows)
 	hero := analysis.BuildHeroCardFromCanonical(d.canonicalRows, gamertag, d.totalMatches, locale, hp)
-	highlights := analysis.BuildHighlightsFromCanonical(d.canonicalRows)
+	highlights := analysis.BuildHighlightsFromCanonical(d.canonicalRows, locale)
 	recentMatches := analysis.BuildRecentMatchesWithFavoritesFromCanonical(d.canonicalRows, len(d.canonicalRows), d.favoriteIDs, locale, hp, s.skillBadgeResolver)
 	favoriteMatches := buildFavoriteMatchListCanonical(d.canonicalRows, d.favoriteIDs, locale, hp, s.skillBadgeResolver)
 	soloSession := analysis.BuildSessionSummaryFromCanonical(d.canonicalRows, false, locale, hp)

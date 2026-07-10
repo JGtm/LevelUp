@@ -1,21 +1,20 @@
 // Package analysis â€” home_canonical.go : entry-points canonical-aware pour la
 // page Home (P4.3b, ADR 0011).
 //
-// **StratÃ©gie pragmatique** : chaque `*FromCanonical` convertit canonical â†’
-// `legacymatch.HomeMatchRow` puis dÃ©lÃ¨gue Ã  la version legacy. Ainsi :
+// Les *FromCanonical sont les entry-points de la page Home : ils operent
+// DIRECTEMENT sur les types canonical. Il n'y a PLUS de delegation a une couche
+// legacy -- les anciennes fonctions publiques (ComputeKPIs, ComputeTrend,
+// BuildHeroCard, BuildHighlights, BuildRecentMatches*, BuildSessionSummaries),
+// jadis "source de verite legacy", ont ete SUPPRIMEES (G2, 2026-07-03) : plus
+// aucun caller, les *FromCanonical etant devenus autonomes.
 //
-//   - Le converter `HomeMatchRowFromCanonical` vit DANS le package analysis
-//     (encapsulÃ©) et n'est plus visible cÃ´tÃ© `service/home_service.go`.
-//   - Le service consomme uniquement `analysis.BuildHeroCardFromCanonical(...)`,
-//     plus de conversion Ã  son niveau.
-//   - La logique mÃ©tier (ComputeKPIs, BuildHighlights, etc.) reste UNE source
-//     de vÃ©ritÃ© cÃ´tÃ© legacy. Pas de duplication, pas de risque de drift.
-//
-// **TODO P4.3 finale** : porter les internals (ComputeKPIs, BuildHighlights,
-// etc.) Ã  canonical et retirer ces wrappers + les types legacy
-// `legacymatch.HomeMatchRow` / `legacymatch.HomeSessionRow`. BloquÃ© tant que le repo
-// `port.HomeRepository.LoadHomeMatches` retourne du legacy + tant que des
-// callers parallÃ¨les (squad/teammates) consomment encore des types legacy.
+//   - Le converter HomeMatchRowFromCanonical reste encapsule dans le package
+//     (invisible cote service/home_service.go, qui consomme uniquement les
+//     *FromCanonical).
+//   - Residu legacy conserve : types legacymatch.HomeMatchRow / HomeSessionRow +
+//     helpers partages (dominantKey, selectHighlightWindow, mapImageURLFromRegistry,
+//     distinctSessionLabels...) tant que port.HomeRepository.LoadHomeMatches
+//     retourne du legacy et que des callers paralleles (squad/teammates) les consomment.
 //
 // **DÃ©coupage thÃ©matique** (split god-file 2026-05) :
 //   - home_canonical_converters.go : conversion canonical â†’ legacy.

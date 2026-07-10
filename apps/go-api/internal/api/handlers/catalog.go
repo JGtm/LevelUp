@@ -16,6 +16,7 @@ package handlers
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -104,7 +105,11 @@ func (h *CatalogHandler) handlePlaylists(ctx context.Context, in *catalogPlaylis
 	if in.Slug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_slug", "title slug requis")
 	}
-	onlyPlayed, _ := strconv.ParseBool(in.OnlyPlayed)
+	onlyPlayed, perr := strconv.ParseBool(in.OnlyPlayed)
+	if perr != nil && in.OnlyPlayed != "" {
+		slog.WarnContext(ctx, "catalog: only_played invalide, défaut false",
+			"slug", in.Slug, "only_played", in.OnlyPlayed, "err", perr)
+	}
 
 	playlists, err := h.repo.PlaylistsByTitle(ctx, in.Slug, in.XUID, onlyPlayed)
 	if err != nil {
@@ -137,7 +142,11 @@ func (h *CatalogHandler) handleMaps(ctx context.Context, in *catalogMapsInput) (
 	if in.Slug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_slug", "title slug requis")
 	}
-	onlyPlayed, _ := strconv.ParseBool(in.OnlyPlayed)
+	onlyPlayed, perr := strconv.ParseBool(in.OnlyPlayed)
+	if perr != nil && in.OnlyPlayed != "" {
+		slog.WarnContext(ctx, "catalog: only_played invalide, défaut false",
+			"slug", in.Slug, "only_played", in.OnlyPlayed, "err", perr)
+	}
 
 	maps, err := h.repo.MapsByTitle(ctx, in.Slug, in.XUID, onlyPlayed)
 	if err != nil {

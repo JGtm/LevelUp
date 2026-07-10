@@ -96,15 +96,15 @@ func buildPerMinuteHighlightCanonical(window []canonical.PlayerMatchRow) *domain
 }
 
 // buildSerieHighlightCanonical : tuile SÃ©rie.
-func buildSerieHighlightCanonical(window []canonical.PlayerMatchRow) *domain.HighlightItem {
+func buildSerieHighlightCanonical(window []canonical.PlayerMatchRow, locale string) *domain.HighlightItem {
 	var slides []domain.HighlightSlide
-	if s := sliceBestKillingSpreeCanonical(window); s != nil {
+	if s := sliceBestKillingSpreeCanonical(window, locale); s != nil {
 		slides = append(slides, *s)
 	}
 	if s := sliceBestWinStreakCanonical(window); s != nil {
 		slides = append(slides, *s)
 	}
-	if s := sliceFavoriteMapCanonical(window); s != nil {
+	if s := sliceFavoriteMapCanonical(window, locale); s != nil {
 		slides = append(slides, *s)
 	}
 	if len(slides) == 0 {
@@ -117,7 +117,7 @@ func buildSerieHighlightCanonical(window []canonical.PlayerMatchRow) *domain.Hig
 	}
 }
 
-func sliceBestKillingSpreeCanonical(window []canonical.PlayerMatchRow) *domain.HighlightSlide {
+func sliceBestKillingSpreeCanonical(window []canonical.PlayerMatchRow, locale string) *domain.HighlightSlide {
 	var best *canonical.PlayerMatchRow
 	bestVal := 0
 	for i := range window {
@@ -138,7 +138,7 @@ func sliceBestKillingSpreeCanonical(window []canonical.PlayerMatchRow) *domain.H
 	return &domain.HighlightSlide{
 		LabelKey:   "highlight.slide.killing_spree_max",
 		Value:      fmt.Sprintf("%d", bestVal),
-		Detail:     fmt.Sprintf("%s · %s", labelFR(mapFR, mapEN), normalizeHomeModeLabel(labelFR(modeFR, modeEN), mapFR, mapEN)),
+		Detail:     fmt.Sprintf("%s · %s", labelForLocale(locale, mapFR, mapEN), normalizeHomeModeLabel(labelForLocale(locale, modeFR, modeEN), mapFR, mapEN)),
 		ValueColor: homeColorPositive,
 	}
 }
@@ -174,7 +174,7 @@ func sliceBestWinStreakCanonical(window []canonical.PlayerMatchRow) *domain.High
 	}
 }
 
-func sliceFavoriteMapCanonical(window []canonical.PlayerMatchRow) *domain.HighlightSlide {
+func sliceFavoriteMapCanonical(window []canonical.PlayerMatchRow, locale string) *domain.HighlightSlide {
 	type stat struct {
 		name   string
 		nameFR string
@@ -220,7 +220,7 @@ func sliceFavoriteMapCanonical(window []canonical.PlayerMatchRow) *domain.Highli
 	}
 	return &domain.HighlightSlide{
 		LabelKey:  "highlight.slide.favorite_map",
-		Value:     labelFR(best.nameFR, best.name),
+		Value:     labelForLocale(locale, best.nameFR, best.name),
 		DetailKey: "highlight.detail.favorite_map",
 		DetailParams: map[string]any{
 			"wins":   best.wins,

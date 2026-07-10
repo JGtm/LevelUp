@@ -19,6 +19,7 @@ import type { ProfileManifestKey } from '@/lib/i18n/generated/profile'
 import type { ImprovementCampaign } from '@/lib/playerProfile'
 import { useCampaignMutations } from '@/features/ascension/profile/queries'
 import { useProfileI18n } from '@/features/ascension/profile/useProfileI18n'
+import { intlLocale } from '@/lib/formatters'
 
 const MIN_MATCHES_FOR_TREND = 20
 
@@ -37,7 +38,7 @@ export function CampaignTracker({ playerSlug, campaign }: CampaignTrackerProps) 
   const lusrKey = `profile.lusr.${campaign.axis}` as ProfileManifestKey
   const axisLabel = t(campaign.axis_kind === 'radar' ? axisKey : lusrKey)
   const startedAt = new Date(campaign.started_at).toLocaleDateString(
-    locale === 'fr' ? 'fr-FR' : 'en-US',
+    intlLocale(locale),
     { day: '2-digit', month: 'long' },
   )
   const enoughData = campaign.matches_since_start >= MIN_MATCHES_FOR_TREND

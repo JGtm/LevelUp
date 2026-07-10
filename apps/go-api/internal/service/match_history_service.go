@@ -24,6 +24,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -89,11 +90,67 @@ type MatchHistoryService struct {
 	// placement CSR par saison (5 depuis S3, 10 avant). Si nil, fallback à 5.
 	// Utilisé par applyMatchPlacements pour calculer PlacementDone/Total.
 	csrThreshold CSRThresholdResolver
+	// assetURL (optionnel) : adapter d'URLs d'assets du titre, utilisé pour le
+	// lien vers la page publique du match (Waypoint pour Infinite). nil ou titre
+	// sans page publique → pas de lien (dégradation gracieuse, F3).
+	assetURL games.TitleAssetURLAdapter
+	// semantic (optionnel) : adapter sémantique du titre, utilisé pour résoudre les
+	// libellés d'outcome depuis outcomes.toml (source de vérité) plutôt qu'en dur
+	// (F4). nil → fallback FR canonique via outcomeLabel().
+	semantic games.TitleSemanticAdapter
+}
+
+// outcomeCodeToKey mappe le code outcome Halo (domain.Outcome*) vers la clé
+// canonique outcomes.toml (win/loss/tie/dnf). "" si code inconnu.
+var outcomeCodeToKey = map[int]string{
+	domain.OutcomeDraw: "tie",
+	domain.OutcomeWin:  duelLabelWin,
+	domain.OutcomeLoss: duelLabelLoss,
+	domain.OutcomeDNF:  "dnf",
 }
 
 // NewMatchHistoryService crée un MatchHistoryService.
 func NewMatchHistoryService(repo port.MatchHistoryRepository, waypointPlayer string) *MatchHistoryService {
 	return &MatchHistoryService{repo: repo, waypointPlayer: waypointPlayer}
+}
+
+// WithAssetURL injecte l'adapter d'URLs d'assets du titre (lien page publique du
+// match). Sans injection, aucun lien n'est produit (dégradation gracieuse, F3).
+func (s *MatchHistoryService) WithAssetURL(a games.TitleAssetURLAdapter) *MatchHistoryService {
+	s.assetURL = a
+	return s
+}
+
+// WithSemantic injecte l'adapter sémantique du titre (libellés d'outcome résolus
+// depuis outcomes.toml, source de vérité). Sans injection, fallback FR canonique. F4.
+func (s *MatchHistoryService) WithSemantic(a games.TitleSemanticAdapter) *MatchHistoryService {
+	s.semantic = a
+	return s
+}
+
+// rowFormatters construit les résolveurs title-agnostic injectés dans
+// l'enrichissement d'une ligne : URL de page publique du match (F3, via l'adapter
+// d'assets + gamertag) et libellé d'outcome (F4, via l'adapter sémantique). Champs
+// nil si l'adapter correspondant n'est pas câblé → dégradation gracieuse.
+func (s *MatchHistoryService) rowFormatters() rowFormatters {
+	f := rowFormatters{}
+	if s.assetURL != nil {
+		gt := s.waypointPlayer
+		f.matchURL = func(matchID string) string { return s.assetURL.PlayerMatchWebURL(gt, matchID) }
+	}
+	if s.semantic != nil {
+		f.outcomeLabel = func(code int) string {
+			if oc := s.semantic.Outcomes(); oc != nil {
+				if m, ok := oc.Get(outcomeCodeToKey[code]); ok {
+					if lbl, _ := m.Label("fr"); lbl != "" {
+						return lbl
+					}
+				}
+			}
+			return outcomeLabel(code) // failsafe FR canonique
+		}
+	}
+	return f
 }
 
 // WithDataAdapter injecte le DataAdapter multi-titres pour activer une
@@ -162,6 +219,9 @@ func (s *MatchHistoryService) GetPage(
 
 	// Options Explorer disponibles calculées AVANT les filtres Explorer additionnels.
 	availExpTypes, availPlaylists, availMaps, availModes := computeExplorerAvailableOptions(filtered)
+	// GH6-1 : LABEL des types d'expérience localisé (EN sous locale EN), VALUE FR
+	// intacte (clé de filtre + cascade front). Miroir GH5-2 (Omnibar).
+	availExpTypeOpts := experienceTypeOptionsForLocale(availExpTypes, ctxkeys.Locale(ctx))
 
 	// Options Explorer-spécifiques avec count cascade-aware (sémantique OR au sein
 	// d'une dimension, AND entre dimensions). Calculées sur baseForExplorerOptions
@@ -181,7 +241,7 @@ func (s *MatchHistoryService) GetPage(
 	mapWinRates := computeMapWinRates(rawRows)
 
 	// Enrichissement
-	items := enrichRows(filtered, mapWinRates, s.waypointPlayer)
+	items := enrichRows(filtered, mapWinRates, s.rowFormatters())
 
 	// Tri
 	sortItems(items, req.SortField, req.SortDir)
@@ -210,7 +270,7 @@ func (s *MatchHistoryService) GetPage(
 			TotalMatchesUnfiltered:   totalUnfiltered,
 			PeriodLabel:              buildPeriodLabel(req.Filters),
 			ActiveFilterMode:         req.Filters.FilterMode,
-			AvailableExperienceTypes: availExpTypes,
+			AvailableExperienceTypes: availExpTypeOpts,
 			AvailablePlaylists:       availPlaylists,
 			AvailableMaps:            availMaps,
 			AvailableModes:           availModes,

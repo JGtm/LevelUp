@@ -47,7 +47,7 @@ function makeRow(): SessionDetailMatchRow {
 
 describe('toExplorerRow — adapter session → Explorer', () => {
   it('mappe les champs clés (escouade, map/mode/playlist, MMR, rating)', () => {
-    const r = toExplorerRow(makeRow(), true)
+    const r = toExplorerRow(makeRow(), true, 'fr')
     expect(r.match_id).toBe('m1')
     expect(r.outcome_code).toBe(2)
     expect(r.map_ui).toBe('Tir réel')
@@ -66,7 +66,7 @@ describe('toExplorerRow — adapter session → Explorer', () => {
 
   it('palier passthrough ; outcome null → DNF(4) ; solo', () => {
     const row = { ...makeRow(), skill_rating_type: 'lusr', skill_tier_label: 'Diamant V', outcome: undefined }
-    const r = toExplorerRow(row, false)
+    const r = toExplorerRow(row, false, 'fr')
     expect(r.rating_type).toBe('LUSR')
     expect(r.skill_tier_label).toBe('Diamant V') // libellé fourni par le backend, tel quel
     expect(r.outcome_code).toBe(4)
@@ -74,7 +74,7 @@ describe('toExplorerRow — adapter session → Explorer', () => {
   })
 
   it('placement (placement_done/total) mappé', () => {
-    const r = toExplorerRow({ ...makeRow(), placement_done: 3, placement_total: 5 }, false)
+    const r = toExplorerRow({ ...makeRow(), placement_done: 3, placement_total: 5 }, false, 'fr')
     expect(r.placement_done).toBe(3)
     expect(r.placement_total).toBe(5)
   })

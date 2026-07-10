@@ -10,21 +10,13 @@ import {
   type CreateChallengeBody,
   type UpdateChallengeBody,
 } from '@/lib/prestige'
-import { prestigeKeys } from './usePrestige'
-
-// ─── Cache keys ───
-
-export const challengeKeys = {
-  list: (userId: string, titleSlug: string) =>
-    ['prestige', 'challenges', userId, titleSlug] as const,
-  one: (id: string) => ['prestige', 'challenge', id] as const,
-}
+import { queryKeys } from '@/lib/query/keys'
 
 // ─── Queries ───
 
 export function useChallenges(userId: string, titleSlug: string) {
   return useQuery({
-    queryKey: challengeKeys.list(userId, titleSlug),
+    queryKey: queryKeys.challenge.list(userId, titleSlug),
     queryFn: () => prestigeApi.listActiveChallenges(userId, titleSlug),
     retry: false,
     enabled: !!userId && !!titleSlug,
@@ -38,8 +30,8 @@ export function useCreateChallenge(userId: string, titleSlug: string) {
   return useMutation({
     mutationFn: (body: CreateChallengeBody) => prestigeApi.createChallenge(body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: challengeKeys.list(userId, titleSlug) })
-      qc.invalidateQueries({ queryKey: prestigeKeys.meAll(userId) })
+      qc.invalidateQueries({ queryKey: queryKeys.challenge.list(userId, titleSlug) })
+      qc.invalidateQueries({ queryKey: queryKeys.prestige.meAll(userId) })
     },
   })
 }
@@ -50,7 +42,7 @@ export function useUpdateChallenge(userId: string, titleSlug: string) {
     mutationFn: ({ id, body }: { id: string; body: UpdateChallengeBody }) =>
       prestigeApi.updateChallenge(id, body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: challengeKeys.list(userId, titleSlug) })
+      qc.invalidateQueries({ queryKey: queryKeys.challenge.list(userId, titleSlug) })
     },
   })
 }
@@ -60,7 +52,7 @@ export function useAbandonChallenge(userId: string, titleSlug: string) {
   return useMutation({
     mutationFn: (id: string) => prestigeApi.abandonChallenge(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: challengeKeys.list(userId, titleSlug) })
+      qc.invalidateQueries({ queryKey: queryKeys.challenge.list(userId, titleSlug) })
     },
   })
 }

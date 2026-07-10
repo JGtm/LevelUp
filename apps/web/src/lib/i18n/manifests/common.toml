@@ -941,11 +941,11 @@ en = "Incompatible with active filters — click to deselect"
 
 [common.filters.with_selection_hint]
 fr = "avec la sélection actuelle. Cliquez Analyser pour"
-en = "with the current selection. Click Analyse to"
+en = "with the current selection. Click Analyze to"
 
 [common.filters.incompatible_full]
 fr = "{n, plural, one {# filtre incompatible} other {# filtres incompatibles}} avec la sélection actuelle. Cliquez Analyser pour les retirer automatiquement."
-en = "{n, plural, one {# incompatible filter} other {# incompatible filters}} with the current selection. Click Analyse to remove them automatically."
+en = "{n, plural, one {# incompatible filter} other {# incompatible filters}} with the current selection. Click Analyze to remove them automatically."
 
 [common.filters.period_session_auto]
 fr = "Sélectionner une période vide automatiquement la session active."
@@ -954,6 +954,20 @@ en = "Selecting a period automatically empties the active session."
 [common.filters.season_aria]
 fr = "Choix de la saison"
 en = "Season selector"
+
+# ─── Pill Saison — libellés en dur restants (GH2-B1, 2026-07-09) ─────────────
+
+[common.filters.season_pill_label]
+fr = "Saison"
+en = "Season"
+
+[common.filters.season_all]
+fr = "Toutes saisons"
+en = "All seasons"
+
+[common.filters.season_empty_fold]
+fr = "+ {n, plural, one {# saison sans matchs} other {# saisons sans matchs}}"
+en = "+ {n, plural, one {# season without matches} other {# seasons without matches}}"
 
 [common.filters.session_search_placeholder]
 fr = "Rechercher une session…"
@@ -1048,6 +1062,14 @@ en = "Yield"
 [common.match_card.defensive_resistance]
 fr = "Résistance"
 en = "Resistance"
+
+[common.match_card.dmg_per_kill]
+fr = "{n} dégâts/frag"
+en = "{n} dmg/kill"
+
+[common.match_card.dmg_per_death]
+fr = "{n} dégâts/mort"
+en = "{n} dmg/death"
 
 [common.match_card.accuracy]
 fr = "Précision"
@@ -1639,3 +1661,379 @@ en = "Invitation code"
 [common.groups.continue_xbox]
 fr = "Continuer avec Xbox"
 en = "Continue with Xbox"
+
+# ─── Onboarding / connexion Xbox (I1, 2026-07-05) ────────────────────────────
+[common.xbox_login.title]
+fr = "Connexion Xbox"
+en = "Xbox sign-in"
+
+[common.xbox_login.retry]
+fr = "Réessayer"
+en = "Retry"
+
+[common.xbox_login.welcome]
+fr = "Bienvenue, {gamertag}"
+en = "Welcome, {gamertag}"
+
+[common.xbox_login.err_demo]
+fr = "Authentification indisponible en mode démo."
+en = "Authentication unavailable in demo mode."
+
+[common.xbox_login.err_start]
+fr = "Impossible de démarrer le flow Xbox."
+en = "Unable to start the Xbox flow."
+
+[common.xbox_login.err_interrupted]
+fr = "La connexion au serveur a été interrompue plusieurs fois. Veuillez réessayer."
+en = "The connection to the server was interrupted several times. Please try again."
+
+[common.xbox_login.err_restart]
+fr = "Impossible de redémarrer le flow."
+en = "Unable to restart the flow."
+
+[common.xbox_login.valid_for]
+fr = "Valide encore"
+en = "Valid for"
+
+# ─── Setup : device-code + sync initiale (I1, 2026-07-05) ────────────────────
+[common.device_code.err_denied]
+fr = "Vous avez refusé ou annulé la demande Microsoft."
+en = "You denied or cancelled the Microsoft request."
+
+[common.device_code.err_ms]
+fr = "Erreur lors de l'authentification Microsoft."
+en = "Error during Microsoft authentication."
+
+[common.device_code.err_halo]
+fr = "Impossible d'obtenir un accès Halo. Veuillez réessayer."
+en = "Unable to obtain Halo access. Please try again."
+
+[common.device_code.err_identity]
+fr = "Impossible de résoudre votre Gamertag. Réessayez dans quelques instants."
+en = "Unable to resolve your Gamertag. Try again shortly."
+
+[common.device_code.err_expired]
+fr = "Le code a expiré."
+en = "The code expired."
+
+[common.device_code.err_generic]
+fr = "Échec de l'authentification."
+en = "Authentication failed."
+
+[common.initial_sync.err_auth_expired]
+fr = "Votre session Halo a expiré. Relancez pour renouveler l'authentification."
+en = "Your Halo session expired. Restart to renew authentication."
+
+[common.initial_sync.err_halo_api]
+fr = "L'API Halo est temporairement indisponible. Veuillez réessayer."
+en = "The Halo API is temporarily unavailable. Please try again."
+
+[common.initial_sync.err_db]
+fr = "Erreur interne lors de l'enregistrement des données. Contactez le support."
+en = "Internal error while saving data. Contact support."
+
+[common.initial_sync.err_aborted]
+fr = "La synchronisation a été interrompue. Vous pouvez relancer."
+en = "Sync was interrupted. You can restart."
+
+[common.initial_sync.err_internal]
+fr = "Erreur inattendue. Veuillez réessayer."
+en = "Unexpected error. Please try again."
+
+[common.initial_sync.starting]
+fr = "Démarrage…"
+en = "Starting…"
+
+[common.initial_sync.start_action]
+fr = "Lancer la synchronisation"
+en = "Start sync"
+
+# ─── Inscription (RegisterPage) — I1, 2026-07-05 ─────────────────────────────
+[common.auth.register_instance_closed]
+fr = "Cette instance est fermée aux nouvelles inscriptions."
+en = "This instance is closed to new registrations."
+
+[common.auth.register_password_mismatch]
+fr = "Les mots de passe ne correspondent pas."
+en = "Passwords do not match."
+
+[common.auth.register_err_user_exists]
+fr = "Ce nom d'utilisateur est déjà pris."
+en = "This username is already taken."
+
+[common.auth.register_err_invite_required]
+fr = "Un code d'invitation est requis."
+en = "An invitation code is required."
+
+[common.auth.register_err_invalid_invite]
+fr = "Code d'invitation invalide ou expiré."
+en = "Invalid or expired invitation code."
+
+[common.auth.register_err_closed]
+fr = "Les inscriptions sont fermées."
+en = "Registrations are closed."
+
+[common.auth.register_err_generic]
+fr = "Erreur lors de l'inscription."
+en = "Registration error."
+
+[common.auth.register_submit]
+fr = "Créer le compte"
+en = "Create account"
+
+[common.auth.register_pending]
+fr = "Inscription…"
+en = "Registering…"
+
+# ─── Import OpenSpartan (OpenSpartanImportCard) — I1, 2026-07-05 ─────────────
+[common.onboarding.import_only_db]
+fr = "Seuls les fichiers .db OpenSpartan sont acceptés."
+en = "Only OpenSpartan .db files are accepted."
+
+[common.onboarding.import_too_large]
+fr = "Fichier trop volumineux (max {max} Go)."
+en = "File too large (max {max} GB)."
+
+[common.onboarding.import_start_failed]
+fr = "Échec du démarrage de l'import"
+en = "Failed to start import"
+
+[common.onboarding.cancel]
+fr = "Annuler"
+en = "Cancel"
+
+[common.onboarding.uploading]
+fr = "Envoi…"
+en = "Uploading…"
+
+[common.onboarding.import_action]
+fr = "Importer"
+en = "Import"
+
+[common.onboarding.importing]
+fr = "Import en cours…"
+en = "Importing…"
+
+[common.onboarding.matches_processed]
+fr = "matchs traités"
+en = "matches processed"
+
+[common.onboarding.participants]
+fr = "Participants"
+en = "Participants"
+
+[common.onboarding.medals]
+fr = "Médailles"
+en = "Medals"
+
+[common.onboarding.xuid_aliases]
+fr = "Alias XUID"
+en = "XUID aliases"
+
+[common.onboarding.import_interrupted]
+fr = "Import interrompu"
+en = "Import interrupted"
+
+[common.onboarding.import_failed]
+fr = "Échec de l'import"
+en = "Import failed"
+
+[common.onboarding.retry]
+fr = "Réessayer"
+en = "Retry"
+
+[common.onboarding.import_err_unknown]
+fr = "Erreur inconnue."
+en = "Unknown error."
+
+[common.onboarding.import_err_xuid_mismatch]
+fr = "Cette base OpenSpartan n'appartient pas à ton compte Xbox connecté."
+en = "This OpenSpartan database does not belong to your connected Xbox account."
+
+[common.onboarding.import_err_low_confidence]
+fr = "Impossible de vérifier que cette base est bien la tienne. Renomme le fichier en <ton-xuid>.db et réessaye."
+en = "Unable to verify this database is yours. Rename the file to <your-xuid>.db and try again."
+
+[common.onboarding.import_err_not_openspartan]
+fr = "Ce fichier ne ressemble pas à une base OpenSpartan reconnaissable."
+en = "This file does not look like a recognisable OpenSpartan database."
+
+[common.onboarding.import_err_demo]
+fr = "L'import OpenSpartan est désactivé en mode démo."
+en = "OpenSpartan import is disabled in demo mode."
+
+[common.onboarding.import_err_auth_required]
+fr = "Connexion Xbox/Halo requise pour lancer un import."
+en = "Xbox/Halo connection required to start an import."
+
+# ─── Barre de filtres (FilterOmnibar + useLocalFilterBar) — I2, 2026-07-05 ───
+[common.filter.analyser]
+fr = "Analyser"
+en = "Analyze"
+
+[common.filter.applied]
+fr = "✓ Appliqué"
+en = "✓ Applied"
+
+# ─── Nav L1 / L2 — sections et onglets (GH-4, 2026-07-08) ───────────────────
+# Libellés de navigation rendus par NavL1/NavL1MobileMenu (via navL1Sections) et
+# NavL2. Auparavant en dur FR ; passés bilingues (parité FR/EN typée).
+
+[common.nav.section_home]
+fr = "Accueil"
+en = "Home"
+
+[common.nav.section_solo]
+fr = "Solo"
+en = "Solo"
+
+[common.nav.section_squad]
+fr = "Escouade"
+en = "Squad"
+
+[common.nav.section_career]
+fr = "Carrière"
+en = "Career"
+
+[common.nav.section_ascension]
+fr = "Ascension"
+en = "Ascension"
+
+[common.nav.section_community]
+fr = "Communauté"
+en = "Community"
+
+[common.nav.section_media]
+fr = "Médias"
+en = "Media"
+
+[common.nav.section_explorer]
+fr = "Explorer"
+en = "Explorer"
+
+[common.nav.tab_synthesis]
+fr = "Synthèse"
+en = "Summary"
+
+[common.nav.tab_timeseries]
+fr = "Séries temporelles"
+en = "Time series"
+
+[common.nav.tab_sessions]
+fr = "Sessions"
+en = "Sessions"
+
+[common.nav.tab_synergies]
+fr = "Synergies"
+en = "Synergies"
+
+[common.nav.tab_contributions]
+fr = "Contributions"
+en = "Contributions"
+
+[common.nav.tab_progression]
+fr = "Progression"
+en = "Progression"
+
+# Citations (terme officiel Halo FR) = Commendations côté EN (cf. UI citations/commendations).
+[common.nav.tab_citations]
+fr = "Citations"
+en = "Commendations"
+
+[common.nav.tab_season_pass]
+fr = "Pass saisonnier"
+en = "Season pass"
+
+[common.nav.tab_profile_objectives]
+fr = "Profil & objectifs"
+en = "Profile & goals"
+
+[common.nav.tab_coaching]
+fr = "Entraînement"
+en = "Coaching"
+
+[common.nav.tab_realisations]
+fr = "Réalisations"
+en = "Achievements"
+
+[common.nav.tab_leaderboard]
+fr = "Classements"
+en = "Leaderboards"
+
+[common.nav.tab_relations]
+fr = "Relations"
+en = "Relations"
+
+[common.nav.tab_compare]
+fr = "Face-à-face"
+en = "Head-to-head"
+
+# Aria du bouton ▾ ouvrant le dropdown d'onglets d'une section (« Onglets <section> »).
+[common.nav.section_tabs_aria]
+fr = "Onglets {section}"
+en = "{section} tabs"
+
+# Aria de la liste des sections dans le drawer mobile.
+[common.nav.sections_aria]
+fr = "Sections"
+en = "Sections"
+
+# ─── Barre de filtres — libellés en dur restants (GH-4, 2026-07-08) ─────────
+
+[common.filters.pill_label]
+fr = "Filtres"
+en = "Filters"
+
+[common.filters.context_aria]
+fr = "Contexte"
+en = "Context"
+
+[common.filters.matches_count]
+fr = "{count, plural, one {# match} other {# matchs}}"
+en = "{count, plural, one {# match} other {# matches}}"
+
+[common.filters.incompatible_tooltip]
+fr = "{n, plural, one {# filtre incompatible} other {# filtres incompatibles}} — ouvrez pour corriger"
+en = "{n, plural, one {# incompatible filter} other {# incompatible filters}} — open to fix"
+
+# ─── Pill Période — libellés en dur restants (GH-4, 2026-07-08) ─────────────
+
+[common.period.prefix_named]
+fr = "Période : {label}"
+en = "Period: {label}"
+
+[common.period.custom_label]
+fr = "Période : personnalisée"
+en = "Period: custom"
+
+[common.period.dialog_aria]
+fr = "Période"
+en = "Period"
+
+[common.period.from]
+fr = "Du"
+en = "From"
+
+[common.period.to]
+fr = "Au"
+en = "To"
+
+[common.period.empty_title]
+fr = "0 match sur cette période"
+en = "0 matches in this period"
+
+[common.period.preset_7d]
+fr = "7 jours"
+en = "7 days"
+
+[common.period.preset_30d]
+fr = "30 jours"
+en = "30 days"
+
+[common.period.preset_90d]
+fr = "90 jours"
+en = "90 days"
+
+[common.period.preset_all]
+fr = "Toutes"
+en = "All"

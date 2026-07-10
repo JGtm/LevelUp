@@ -294,6 +294,9 @@ func SeedCitationMappings(ctx context.Context, opts SeedOptions) (SeedResult, er
 			-- Nom anglais des citations (Infinite = copies de commendations H5 ; seul le
 			-- calcul diffère). Locale-aware au read via ctxkeys.Locale. NULL → fallback FR.
 			ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS citation_name_display_en VARCHAR;
+			-- Description anglaise des citations (source : commendations H5 officielles +
+			-- trad fidèle Infinite). Locale-aware au read ; NULL → tooltip = nom seul (GH4).
+			ALTER TABLE citation_mappings ADD COLUMN IF NOT EXISTS description_en VARCHAR;
 	`); err != nil {
 		return SeedResult{Component: componentCitationMappings}, fmt.Errorf("create schema: %w", err)
 	}
@@ -323,14 +326,14 @@ func SeedCitationMappings(ctx context.Context, opts SeedOptions) (SeedResult, er
 			citation_name_norm, citation_name_display, citation_name_display_en, mapping_type,
 			medal_id, medal_ids, stat_name, award_name, award_category,
 			custom_function, composite_children, enabled,
-			image_path, category, description, tier_targets, subcategory
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			image_path, category, description, description_en, tier_targets, subcategory
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	const updateQ = `
 		UPDATE citation_mappings SET
 			citation_name_display = ?, citation_name_display_en = ?, mapping_type = ?, medal_id = ?, medal_ids = ?,
 			stat_name = ?, award_name = ?, award_category = ?, custom_function = ?,
 			composite_children = ?, enabled = ?, image_path = ?, category = ?,
-			description = ?, tier_targets = ?, subcategory = ?
+			description = ?, description_en = ?, tier_targets = ?, subcategory = ?
 		WHERE citation_name_norm = ?`
 
 	mappings := defaultCitationMappings()
@@ -347,7 +350,7 @@ func SeedCitationMappings(ctx context.Context, opts SeedOptions) (SeedResult, er
 				m.Display, citationDisplayENOr(m.Norm, m.Display), m.MappingType, medalArg, nullStr(m.MedalIDs),
 				nullStr(m.StatName), nullStr(m.AwardName), nullStr(m.AwardCategory),
 				nullStr(m.CustomFunction), nullStr(m.CompositeChildren), m.Enabled,
-				nullStr(m.ImagePath), m.Category, m.Description,
+				nullStr(m.ImagePath), m.Category, m.Description, citationDescriptionENOr(m.Norm),
 				nullStr(m.TierTargets), nullStr(m.Subcategory), m.Norm)
 		} else {
 			_, execErr = db.ExecContext(ctx, insertQ,
@@ -355,7 +358,7 @@ func SeedCitationMappings(ctx context.Context, opts SeedOptions) (SeedResult, er
 				medalArg, nullStr(m.MedalIDs), nullStr(m.StatName),
 				nullStr(m.AwardName), nullStr(m.AwardCategory),
 				nullStr(m.CustomFunction), nullStr(m.CompositeChildren), m.Enabled,
-				nullStr(m.ImagePath), m.Category, m.Description,
+				nullStr(m.ImagePath), m.Category, m.Description, citationDescriptionENOr(m.Norm),
 				nullStr(m.TierTargets), nullStr(m.Subcategory))
 		}
 		if execErr != nil {
@@ -394,6 +397,18 @@ func citationDisplayENOr(norm, fallbackFR string) interface{} {
 		return nil
 	}
 	return fallbackFR
+}
+
+// citationDescriptionENOr retourne la description EN d'une citation (map
+// citationDescriptionEN, clé = norm) ou nil si absente. Contrairement à
+// citationDisplayENOr, on NE retombe PAS sur le FR : description_en reste NULL et le read
+// locale-aware sert alors le nom seul sous UI EN (principe GH-5b « EN n'injecte jamais de
+// FR »). La map couvre les 88 citations → nil en pratique = citation ajoutée sans EN.
+func citationDescriptionENOr(norm string) interface{} {
+	if en, ok := citationDescriptionEN[norm]; ok && en != "" {
+		return en
+	}
+	return nil
 }
 
 // defaultCitationMappings — 88 règles citations portées de

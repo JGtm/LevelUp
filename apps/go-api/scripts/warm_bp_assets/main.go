@@ -173,7 +173,8 @@ func main() {
 		}
 	}
 	haloTokens := result.Tokens
-	// Audit S9 : ne jamais logger de fragment de token (même tronqué). Signal binaire seul.
+	// S9 (sécurité, lot S) : ne jamais logger de fragment de token (même tronqué).
+	// Signal binaire seul.
 	slog.Info("auth: spartan token OK")
 
 	// 4. Asset resolver (FS + DuckDB index + GameCMS).

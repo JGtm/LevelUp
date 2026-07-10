@@ -11,6 +11,7 @@ import {
   getTooltipBase,
   getLegendBase,
   CHART_BG,
+  escapeHtml,
   seriesColor,
 } from '@/components/charts/_utils'
 import type { MatchWeaponKill } from '@/lib/api/types'
@@ -78,7 +79,11 @@ export function MatchWeaponPieChart({ weaponKills, t }: WeaponChartsProps) {
         tooltip: {
           ...getTooltipBase(tc),
           trigger: 'item',
-          formatter: '{b} : <b>{c}</b> ({d}%)',
+          // Formatter fonction (au lieu du template '{b} : <b>{c}</b> ({d}%)') pour
+          // échapper le nom d'arme ({b}, donnée asset non constante) — {c}=value et
+          // {d}=percent restent des nombres calculés par ECharts (percent = {d}).
+          formatter: (p: { name?: string; value?: number; percent?: number }) =>
+            `${escapeHtml(p.name ?? '')} : <b>${p.value ?? 0}</b> (${p.percent ?? 0}%)`,
         },
         legend: {
           ...getLegendBase(tc),

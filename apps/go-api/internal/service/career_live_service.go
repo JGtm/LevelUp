@@ -31,6 +31,12 @@
 //  3. live KO/timeout complet          → fallback total sur la dernière row
 //  4. live KO + DB vide                → nil (front affiche placeholder)
 //
+// Directive produit apparence : bannière/emblème/backdrop sont des champs
+// INDÉPENDANTS ; chacun affiche toujours une valeur (l'actuelle si résoluble,
+// sinon la dernière connue), jamais vide, sans couplage entre eux. Cas des
+// emblèmes nouvelle génération sans nameplate upstream : la dernière bannière
+// connue reste servie (cf. career_live_merge.go).
+//
 // INSERT-if-changed dans `career_progression` : une nouvelle row n'est
 // écrite que si au moins un champ d'identité diffère de la dernière (cf.
 // duckdb.CareerRankRowEqualForInsert). Évite de saturer la table à 288
@@ -48,7 +54,6 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
-	syncpkg "levelup/go-api/internal/sync"
 )
 
 // CareerLiveBudget cap la durée totale du fetch live dans le chemin
@@ -70,8 +75,8 @@ const careerLiveLogModule = "career_live"
 // CareerFetcher abstrait les appels live Halo nécessaires au flow.
 // Implémenté par sync.HaloAPIClient (production) et par les mocks de tests.
 type CareerFetcher interface {
-	GetCareerProgress(ctx context.Context, xuid string) (*syncpkg.CareerRankData, error)
-	GetSpartanCustomization(ctx context.Context, xuid string) (*syncpkg.SpartanCustomizationData, error)
+	GetCareerProgress(ctx context.Context, xuid string) (*domain.CareerRankSnapshot, error)
+	GetSpartanCustomization(ctx context.Context, xuid string) (*domain.SpartanCustomizationData, error)
 }
 
 // CareerFetcherFactory instancie un fetcher live depuis le contexte de la
@@ -143,6 +148,8 @@ func NewCareerLiveService(
 // fraîcheur du live ne doit JAMAIS dégrader la visibilité (cf. revue
 // 2026-05-20 « les bannières vont et viennent »). Retourne nil uniquement
 // quand DB ET live sont tous deux vides (joueur jamais sync'd).
+// Chaque asset (bannière/emblème/backdrop) : l'actuel si résoluble, sinon le
+// dernier connu — jamais vide tant qu'une valeur a existé ; indépendants.
 //
 // Stratégie défense en profondeur :
 //
@@ -282,8 +289,8 @@ func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string, allo
 	}
 
 	var (
-		cachedProgress *syncpkg.CareerRankData
-		cachedCustom   *syncpkg.SpartanCustomizationData
+		cachedProgress *domain.CareerRankSnapshot
+		cachedCustom   *domain.SpartanCustomizationData
 		needRefresh    bool
 	)
 	if hasAuth && s.cache != nil {
@@ -424,8 +431,8 @@ func (s *CareerLiveService) kickoffBackgroundRefresh(xuid string, tokens *domain
 func (s *CareerLiveService) persistPartial(
 	ctx context.Context,
 	xuid string,
-	progress *syncpkg.CareerRankData,
-	custom *syncpkg.SpartanCustomizationData,
+	progress *domain.CareerRankSnapshot,
+	custom *domain.SpartanCustomizationData,
 	status FetchStatus,
 ) {
 	if s.repo == nil {
@@ -458,7 +465,7 @@ func (s *CareerLiveService) persistPartial(
 
 // computeFetchStatus dérive le FetchStatus depuis le résultat des 2 fetchs.
 // Source de vérité unique pour la classification des outcomes.
-func computeFetchStatus(progress *syncpkg.CareerRankData, custom *syncpkg.SpartanCustomizationData) FetchStatus {
+func computeFetchStatus(progress *domain.CareerRankSnapshot, custom *domain.SpartanCustomizationData) FetchStatus {
 	hasProgress := progress != nil && (progress.CurrentRank > 0 || progress.IsMaxRank)
 	hasCustom := custom != nil && (custom.SpartanID != "" || custom.BannerImageURL != "" ||
 		custom.EmblemImageURL != "" || custom.BackdropImageURL != "")

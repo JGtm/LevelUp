@@ -15,6 +15,8 @@ import (
 	"sort"
 	"time"
 
+	"levelup/go-api/internal/analysis"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -83,7 +85,7 @@ func main() {
 func loadMatches(db *sql.DB) ([]matchRow, error) {
 	q := `
 		SELECT r.match_id,
-		       COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+		       ` + analysis.SQLStartTimeCanonical("r") + ` AS start_time,
 		       COALESCE(r.is_firefight, FALSE) AS is_firefight,
 		       COALESCE(r.backfill_completed, 0) AS bitmask,
 		       (SELECT COUNT(*) FROM match_participants p WHERE p.match_id = r.match_id) AS participants,

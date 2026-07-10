@@ -27,8 +27,8 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite"
 )
 
 // MediaRepo implémente port.MediaRepository.
@@ -42,6 +42,10 @@ import (
 type MediaRepo struct {
 	pdb      *PlayerDB
 	assetURL mediaAssetURLAdapter
+	// modeTax : classification des modes du titre, injectée au wiring pour éviter
+	// le couplage platform/duckdb → games/halo_infinite (F1). Zéro-value = pas de
+	// classification (dégradation gracieuse).
+	modeTax analysis.ModeTaxonomy
 }
 
 // mediaAssetURLAdapter est l'interface duck-typed que le caller (registry.go)
@@ -61,6 +65,14 @@ func NewMediaRepo(pdb *PlayerDB) *MediaRepo {
 // adapter câblé, la résolution reste exclusivement via map_images_registry.
 func (r *MediaRepo) WithAssetURL(a mediaAssetURLAdapter) *MediaRepo {
 	r.assetURL = a
+	return r
+}
+
+// WithModeTaxonomy injecte la classification des modes du titre (inférence de
+// catégorie + préfixes pair_name). Sans injection, les modes ne sont pas classés
+// (dégradation gracieuse). Câblé au wiring depuis games/halo_infinite (F1).
+func (r *MediaRepo) WithModeTaxonomy(t analysis.ModeTaxonomy) *MediaRepo {
+	r.modeTax = t
 	return r
 }
 
@@ -100,16 +112,17 @@ func (r *MediaRepo) LoadMediaFiles(ctx context.Context, filters domain.MediaFilt
 	return result, nil
 }
 
-// enrichMediaModeCategories remplace ModeName par la catÃ©gorie custom infÃ©rÃ©e
-// depuis pair_name brut (Assassin/Fiesta/BTB/Ranked/Firefight/Other). Cf.
-// halo_infinite.InferModeCategoryFromPairName pour la logique.
+// enrichMediaModeCategories remplace ModeName par la catégorie custom inférée
+// depuis pair_name brut (Assassin/Fiesta/BTB/Ranked/Firefight/Other). La logique
+// de classification est injectée via WithModeTaxonomy (F1) — sans taxonomie, les
+// modes ne sont pas classés.
 func (r *MediaRepo) enrichMediaModeCategories(rows []domain.MediaFileRow) {
 	for i := range rows {
 		if rows[i].PairNameRaw == nil || strings.TrimSpace(*rows[i].PairNameRaw) == "" {
 			rows[i].ModeName = nil
 			continue
 		}
-		cat := halo_infinite.InferModeCategoryFromPairName(*rows[i].PairNameRaw)
+		cat := r.modeTax.Classify(*rows[i].PairNameRaw)
 		if cat != "" {
 			c := cat
 			rows[i].ModeName = &c

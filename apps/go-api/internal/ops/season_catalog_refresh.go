@@ -2,10 +2,10 @@
 // exposée par la page classement Waypoint (numéro + nom d'Operation + traduction
 // FR) dans shared.season_catalog.
 //
-// ART-safe : écritures via upsertNoConflict (SELECT-then-write), JAMAIS
-// d'`INSERT ... ON CONFLICT DO UPDATE`. Table PK-only (pas d'index secondaire) →
-// l'UPDATE ne touche pas de surface ART #23046. Même politique que
-// refreshPlaylistsCatalog (cf. ADR 0019).
+// ART-safe : écritures via duckdb.UpsertRowNoConflict (SELECT-then-write,
+// canonique K1d/K1j), JAMAIS d'`INSERT ... ON CONFLICT DO UPDATE`. Table PK-only
+// (pas d'index secondaire) → l'UPDATE ne touche pas de surface ART #23046. Même
+// politique que refreshPlaylistsCatalog (cf. ADR 0019).
 //
 // Écrit dans la SHARED DB (pas metadata) : la source est le scrape Waypoint et le
 // seul writer sanctionné détenu par world_leaderboard_cron est le writer shared —
@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // RefreshSeasonCatalog upsert (ART-safe) chaque saison dans shared.season_catalog.
@@ -43,7 +44,7 @@ func RefreshSeasonCatalog(ctx context.Context, db *sql.DB, titleSlug string, sea
 			nameFR = s.DisplayName
 		}
 		major, minor := parseWaypointSeasonNumber(id)
-		if err := upsertNoConflict(ctx, db,
+		if err := duckdb.UpsertRowNoConflict(ctx, db,
 			`SELECT 1 FROM season_catalog WHERE title_slug = ? AND season_id = ?`,
 			[]any{titleSlug, id},
 			`UPDATE season_catalog SET

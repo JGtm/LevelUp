@@ -25,8 +25,10 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/openspartan"
 	"levelup/go-api/internal/openspartan/mapper"
+	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/sync"
 )
@@ -316,29 +318,36 @@ func (s *OpenSpartanImportService) writeOneMatch(
 	if len(csrs) > 0 {
 		syncReg.IsRanked = true
 	}
-	if err := sync.InsertRegistryIfNotExists(ctx, sharedDB, syncReg); err != nil {
-		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "insert_registry", Err: err.Error()})
+
+	// Écriture per-match INSERT-only + atomique via persist.SharedPersister (ADR
+	// 0019/0026, anti-ART #23046) : registry + participants + medals + match_csrs
+	// dans UNE transaction, jamais d'ON CONFLICT DO UPDATE per-helper (l'ancien
+	// chemin sync.Insert*/Upsert* pouvait laisser un état partiel). Idempotent :
+	// si le match existe déjà, Persist no-op. Modèle identique au livesync H5.
+	builder := persist.NewBatchBuilder(title.DefaultSlug, "", "", "openspartan_import")
+	builder.SetMatch(&syncReg)
+	if parts := toSyncParticipants(mm.Participants); len(parts) > 0 {
+		builder.AddParticipants(parts)
+	}
+	if medals := toSyncMedals(mm.Medals); len(medals) > 0 {
+		builder.AddMedals(medals)
+	}
+	if len(csrs) > 0 {
+		mcInserts := make([]persist.MatchCSRInsert, 0, len(csrs))
+		for _, c := range csrs {
+			mcInserts = append(mcInserts, sync.SharedCSRRowToMatchCSRInsert(c))
+		}
+		builder.AddMatchCSRs(mcInserts)
+	}
+	if err := persist.NewSharedPersister(sharedDB).Persist(ctx, builder.Build()); err != nil {
+		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "persist_match", Err: err.Error()})
 		return
 	}
 	result.InsertedMatches++
 	result.InsertedMatchIDs = append(result.InsertedMatchIDs, pm.MatchID)
-	if err := sync.InsertParticipants(ctx, sharedDB, toSyncParticipants(mm.Participants)); err != nil {
-		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "insert_participants", Err: err.Error()})
-	} else {
-		result.InsertedParticipants += len(mm.Participants)
-	}
-	if err := sync.InsertMedals(ctx, sharedDB, toSyncMedals(mm.Medals)); err != nil {
-		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "insert_medals", Err: err.Error()})
-	} else {
-		result.InsertedMedals += len(mm.Medals)
-	}
-	if len(csrs) > 0 {
-		if err := sync.UpsertSharedCSRs(ctx, sharedDB, csrs); err != nil {
-			result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "insert_csr", Err: err.Error()})
-		} else {
-			result.InsertedCSRs += len(csrs)
-		}
-	}
+	result.InsertedParticipants += len(mm.Participants)
+	result.InsertedMedals += len(mm.Medals)
+	result.InsertedCSRs += len(csrs)
 }
 
 // extractMatchCSRRows parse le payload skill OpenSpartan (table PlayerMatchStats,

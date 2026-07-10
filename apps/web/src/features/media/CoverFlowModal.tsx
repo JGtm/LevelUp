@@ -12,6 +12,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Hls from 'hls.js'
 import type { MediaItemRow } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
+import type { ManifestLocale } from '@/lib/i18n/format'
 import { MediaLikeButton } from './MediaViewer'
 import { getMediaModalsText } from './i18n-modals'
 import { log } from './_logger'
@@ -59,15 +61,16 @@ const ANIM_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
 const WINDOW_RADIUS = 2
 const IMAGE_AUTOCHAIN_DELAY_MS = 7000
 
-function formatHeading(item: MediaItemRow, index: number, total: number) {
+function formatHeading(item: MediaItemRow, index: number, total: number, locale: ManifestLocale) {
   // Format court HH:MM JJ/MM/AA (cohérent avec formatMediaDate des thumbnails).
   const raw = item.capture_end_utc ?? item.match_start_time
   let dateStr: string | null = null
   if (raw) {
     const d = new Date(raw)
     if (!Number.isNaN(d.getTime())) {
-      const datePart = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
-      const timePart = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+      const loc = intlLocale(locale)
+      const datePart = d.toLocaleDateString(loc, { day: '2-digit', month: '2-digit', year: '2-digit' })
+      const timePart = d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })
       dateStr = `${timePart} ${datePart}`
     }
   }
@@ -425,7 +428,7 @@ export function CoverFlowModal({
 
   const total = globalTotal ?? items.length
   const globalIndex = globalIndexOffset + committedIdx
-  const heading = currentItem ? formatHeading(currentItem, globalIndex, total) : ''
+  const heading = currentItem ? formatHeading(currentItem, globalIndex, total, locale) : ''
   const currentHasMatch = Boolean(currentItem?.match_id)
   const isOnCurrentMatchPage = currentHasMatch && currentMatchId === currentItem?.match_id
   const showViewMatchLink = currentHasMatch && !isOnCurrentMatchPage && Boolean(playerSlug) && Boolean(currentItem?.match_id)
@@ -486,7 +489,12 @@ export function CoverFlowModal({
     if (!autoChain || !currentItem || isCurrentClip || !canAdvanceFurther || pendingPageAdvance) {
       return
     }
-    autoChainTimerRef.current = window.setTimeout(() => navigate('next'), IMAGE_AUTOCHAIN_DELAY_MS)
+    // NB : `setTimeout` (pas `window.setTimeout`) pour que le type de retour
+    // s'accorde à `ReturnType<typeof setTimeout>` du ref. Les 2 garde-rails node
+    // (calendar/keys .guard.test.ts) tirent `@types/node` dans le programme tsc,
+    // ce qui bascule `setTimeout` sur la surcharge Node (retour `Timeout`, pas
+    // `number`). Runtime identique en navigateur (V1c, DC-2).
+    autoChainTimerRef.current = setTimeout(() => navigate('next'), IMAGE_AUTOCHAIN_DELAY_MS)
     return () => {
       if (autoChainTimerRef.current) clearTimeout(autoChainTimerRef.current)
     }

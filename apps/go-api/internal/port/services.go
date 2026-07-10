@@ -182,7 +182,6 @@ type MediaService interface {
 	GetMediaPage(ctx context.Context, req domain.MediaPageRequest) (*domain.MediaPageResponse, error)
 	SetMediaLike(ctx context.Context, req domain.MediaLikeRequest) (*domain.MediaLikeResponse, error)
 	UploadMedia(ctx context.Context, req domain.UploadRequest) (*domain.UploadResult, error)
-	ReassociateMedia(ctx context.Context, req domain.ReassociateRequest) (*domain.ReassociateResult, error)
 	GetMatchCandidates(ctx context.Context, filePath string, windowMinutes int) (*domain.MediaMatchCandidatesResponse, error)
 	AssociateMediaToMatch(ctx context.Context, req domain.MediaAssociateRequest) (*domain.MediaAssociateResponse, error)
 	// ListMediaAuthors retourne les auteurs sélectionnables dans le filtre Auteurs
@@ -198,11 +197,6 @@ type SocialService interface {
 // SessionsService construit la page des sessions.
 type SessionsService interface {
 	GetSessions(ctx context.Context, opts domain.SessionComputeOptions) (domain.SessionsResponse, error)
-}
-
-// SessionCompareService compare deux sessions.
-type SessionCompareService interface {
-	Compare(ctx context.Context, req domain.SessionCompareRequest) (domain.SessionCompareResponse, error)
 }
 
 // SessionPageService construit la page détail de session.

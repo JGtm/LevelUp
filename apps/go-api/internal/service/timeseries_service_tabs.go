@@ -37,7 +37,7 @@ func buildTimeseriesSummaryTab(matches []legacymatch.StatsMatchRow) domain.Times
 		}
 	}
 
-	// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+	// TODO(expiry:2026-12-31) P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
 	winRate := analysis.WinRate(wins, n) * 100
 	kd := 0.0
 	if totalDeaths > 0 {
@@ -46,15 +46,15 @@ func buildTimeseriesSummaryTab(matches []legacymatch.StatsMatchRow) domain.Times
 
 	cards = append(cards,
 		domain.TimeseriesKpiCard{Key: "total_matches", Label: "Matchs", Value: fmt.Sprintf("%d", n)},
-		domain.TimeseriesKpiCard{Key: "win_rate", Label: "Win Rate", Value: fmt.Sprintf("%.1f%%", winRate)},
+		domain.TimeseriesKpiCard{Key: "win_rate", Label: "Taux de victoire", Value: fmt.Sprintf("%.1f%%", winRate)},
 		domain.TimeseriesKpiCard{Key: "kd_ratio", Label: "K/D", Value: fmt.Sprintf("%.2f", kd)},
-		domain.TimeseriesKpiCard{Key: "kills_per_game", Label: "Kills/game", Value: fmt.Sprintf("%.1f", float64(totalKills)/float64(n))},
+		domain.TimeseriesKpiCard{Key: "kills_per_game", Label: "Frags / partie", Value: fmt.Sprintf("%.1f", float64(totalKills)/float64(n))},
 	)
 
 	if accN > 0 {
 		avgAcc := accSum / float64(accN) * 100
 		cards = append(cards, domain.TimeseriesKpiCard{
-			Key: tsMetricKeyAccuracy, Label: "PrÃ©cision", Value: fmt.Sprintf("%.1f%%", avgAcc),
+			Key: tsMetricKeyAccuracy, Label: "Précision", Value: fmt.Sprintf("%.1f%%", avgAcc),
 		})
 	}
 

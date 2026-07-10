@@ -5,6 +5,9 @@ package duckdb
 import (
 	"context"
 	"testing"
+
+	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 )
 
 // insertCSRSnapshot insère une ligne player_csr_snapshots (append-only) pour les tests.
@@ -95,6 +98,35 @@ func TestAvailableCSRSeasons_FromMatchCSRs(t *testing.T) {
 	}
 	if !hasS13 {
 		t.Errorf("saison courante 13 absente : %+v", seasons)
+	}
+}
+
+// TestEnrichCSRPlaylistNames_LocaleAware prouve GH2-B3 : la lecture des snapshots
+// CSR persistés résout le nom de playlist par locale de requête. Le nom persisté est
+// le canonique EN ; sous FR, la traduction asset_translations prime ; sous EN, le nom
+// persisté EN est conservé (jamais du FR sous UI EN — symétrique de GH-8).
+func TestEnrichCSRPlaylistNames_LocaleAware(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	// asset_translations FR pour la playlist (le nom persisté "Ranked Arena" sert d'EN).
+	if _, err := pdb.Metadata.Exec(ctx,
+		`INSERT INTO asset_translations (asset_id, asset_type, lang, name)
+		 VALUES ('pl-ranked', 'playlist', 'fr-FR', 'Arène classée')`,
+	); err != nil {
+		t.Fatalf("seed asset_translations: %v", err)
+	}
+	repo := NewCareerRepo(pdb)
+
+	frRows := []domain.CareerPlaylistCSR{{PlaylistID: "pl-ranked", PlaylistName: "Ranked Arena"}}
+	repo.enrichCSRPlaylistNames(ctxkeys.WithLocale(ctx, "fr"), frRows)
+	if frRows[0].PlaylistName != "Arène classée" {
+		t.Errorf("FR name = %q, want 'Arène classée'", frRows[0].PlaylistName)
+	}
+
+	enRows := []domain.CareerPlaylistCSR{{PlaylistID: "pl-ranked", PlaylistName: "Ranked Arena"}}
+	repo.enrichCSRPlaylistNames(ctxkeys.WithLocale(ctx, "en"), enRows)
+	if enRows[0].PlaylistName != "Ranked Arena" {
+		t.Errorf("EN name = %q, want 'Ranked Arena' (jamais du FR sous UI EN)", enRows[0].PlaylistName)
 	}
 }
 

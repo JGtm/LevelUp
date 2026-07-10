@@ -65,11 +65,6 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 	if cache := loadLocalFilmCache(); cache != nil {
 		engine.SetLocalFilmCache(cache)
 	}
-	// Phase 4.7 closure (2026-05-24) : default flipé ON. Set
-	// LEVELUP_PERSIST_BATCH=0 pour fallback legacy insertFetchedMatch.
-	if os.Getenv("LEVELUP_PERSIST_BATCH") != "0" {
-		engine = engine.WithBatchPersistMode(true)
-	}
 	opts := domain.DefaultSyncOptions()
 	opts.MatchType = *matchType
 	opts.MaxMatches = *maxMatches
@@ -170,10 +165,6 @@ func runSyncDeltaAll(
 
 		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{}, provider).
 			WithCSRSeasonID(cfg.CurrentCSRSeasonID)
-		// Phase 4.7 closure (2026-05-24) : default flipé ON.
-		if os.Getenv("LEVELUP_PERSIST_BATCH") != "0" {
-			engine = engine.WithBatchPersistMode(true)
-		}
 		cache := loadLocalFilmCache()
 		if cache != nil {
 			engine.SetLocalFilmCache(cache)
@@ -264,9 +255,6 @@ func runSyncFull(cfg *config.AppConfig, args []string) error {
 		WithCSRSeasonID(cfg.CurrentCSRSeasonID)
 	if cache := loadLocalFilmCache(); cache != nil {
 		engine.SetLocalFilmCache(cache)
-	}
-	if os.Getenv("LEVELUP_PERSIST_BATCH") != "0" {
-		engine = engine.WithBatchPersistMode(true)
 	}
 	opts := domain.DefaultSyncOptions()
 	opts.MatchType = *matchType
@@ -360,9 +348,6 @@ func runSyncFullAll(
 
 		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{}, provider).
 			WithCSRSeasonID(cfg.CurrentCSRSeasonID)
-		if os.Getenv("LEVELUP_PERSIST_BATCH") != "0" {
-			engine = engine.WithBatchPersistMode(true)
-		}
 		cache := loadLocalFilmCache()
 		if cache != nil {
 			engine.SetLocalFilmCache(cache)

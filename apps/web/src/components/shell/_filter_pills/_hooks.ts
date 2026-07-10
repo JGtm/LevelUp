@@ -5,6 +5,7 @@
  */
 import { useEffect, useRef } from 'react'
 import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
+import type { CommonManifestKey } from '@/lib/i18n/generated/common'
 import type {
   CascadeInput,
   FilterContextInput,
@@ -28,12 +29,13 @@ export const DEFAULT_PERIOD: PeriodInput = { start_date: null, end_date: null }
 
 // ─── Période — presets et helpers ────────────────────────────────────────────
 
+// labelKey : clé i18n résolue par le consommateur (PeriodePill) via `t()`.
 export const PERIOD_PRESETS = [
-  { id: '7d', label: '7 jours', days: 7 },
-  { id: '30d', label: '30 jours', days: 30 },
-  { id: '90d', label: '90 jours', days: 90 },
-  { id: 'all', label: 'Toutes', days: 0 },
-] as const
+  { id: '7d', labelKey: 'common.period.preset_7d', days: 7 },
+  { id: '30d', labelKey: 'common.period.preset_30d', days: 30 },
+  { id: '90d', labelKey: 'common.period.preset_90d', days: 90 },
+  { id: 'all', labelKey: 'common.period.preset_all', days: 0 },
+] as const satisfies readonly { id: string; labelKey: CommonManifestKey; days: number }[]
 
 export type PresetId = (typeof PERIOD_PRESETS)[number]['id'] | 'custom'
 

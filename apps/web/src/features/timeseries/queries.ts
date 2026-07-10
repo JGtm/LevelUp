@@ -28,7 +28,7 @@ export function useTimeseriesPage(
 /** S56 — charge les 500 derniers matchs pour alimenter CombatYieldTimeseries. */
 export function useCombatYieldHistory(playerSlug: string, filterHash: string, filters: MatchHistoryQueryRequest['filters']) {
   return useQuery({
-    queryKey: ['combatYieldHistory', playerSlug, filterHash],
+    queryKey: queryKeys.combatYieldHistory(playerSlug, filterHash),
     queryFn: () =>
       api.post<MatchHistoryPageResponse>(
         `/players/${playerSlug}/pages/match-history/query`,

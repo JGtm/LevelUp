@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 )
@@ -119,7 +120,7 @@ func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string,
 	}
 	// Masquage read-side des modes exclus du titre (Halo 5 : Campagne). Alias "r" =
 	// v_match_full dans playerMatchesSharedBaseSelect.
-	if clause, exArgs := excludedVariantClause(pdbTitleSlug(r.pdb), "r"); clause != "" {
+	if clause, exArgs := ExcludedVariantClause(pdbTitleSlug(r.pdb), "r"); clause != "" {
 		sb.WriteString(clause)
 		args = append(args, exArgs...)
 	}
@@ -141,12 +142,19 @@ func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string,
 	return sb.String(), args, hints, nil
 }
 
-// startTimeCanonicalSQL est l'expression canonique du timestamp de début de match
-// (pattern TZ projet : préférer start_time_utc, sinon interpréter start_time naïf
-// comme UTC). Utilisée pour la projection, le filtre Period et l'ORDER BY afin
-// d'éviter le décalage de fuseau (cf. reference_timezone_canonical_pattern, aligné
-// sur Q26HomeMatchesSharedPart).
-const startTimeCanonicalSQL = `COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')`
+// StartTimeCanonicalSQL délègue à analysis.SQLStartTimeCanonical — source unique
+// du fragment timezone canonique (règle CLAUDE.md n°8). Conservé comme alias local
+// pour les repos platform/duckdb (appel sans préfixe de package). Le garde-rail
+// analysis/start_time_canonical_test.go interdit le littéral brut ailleurs.
+// Unification H1 (2026-07-04) : le corps a migré vers internal/analysis car
+// analysis/match_filter.go en a besoin et ne peut pas importer platform/duckdb.
+func StartTimeCanonicalSQL(alias string) string {
+	return analysis.SQLStartTimeCanonical(alias)
+}
+
+// startTimeCanonicalSQL : expression canonique pour l'alias `r` (projection,
+// filtre Period, ORDER BY de player_matches_repo). Source unique via le helper.
+var startTimeCanonicalSQL = StartTimeCanonicalSQL("r")
 
 // appendPlayerMatchScalarFilters ajoute les filtres scalaires (Period, IsFirefight,
 // IsRanked, MinTimePlayedSeconds, BTBExcluded).
@@ -261,10 +269,10 @@ func classifyOrderBy(s string) (sharedQueryHints, string, error) {
 // remplit ensuite Labels["fr"] depuis metadata.asset_translations.
 //
 // Bug #3 : projeter damage_dealt / damage_taken pour ComputeCombatYield.
-const playerMatchesSharedBaseSelect = `
+var playerMatchesSharedBaseSelect = `
 SELECT
     p.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     COALESCE(r.duration_seconds, 0)                   AS duration_seconds,
     COALESCE(r.map_id, '')                            AS map_id,
     COALESCE(r.map_name, '')                          AS map_name,
@@ -323,7 +331,7 @@ SELECT
     CASE
         WHEN r.real_start_time IS NOT NULL THEN
             epoch_ms(r.real_start_time AT TIME ZONE 'UTC')
-            - epoch_ms(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))
+            - epoch_ms(` + StartTimeCanonicalSQL("r") + `)
     END                                                  AS t0_ms
 FROM match_participants p
 JOIN v_match_full r ON r.match_id = p.match_id

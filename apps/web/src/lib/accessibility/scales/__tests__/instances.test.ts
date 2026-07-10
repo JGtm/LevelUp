@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  perfScale, accuracyScale, kdScale, progressScale,
+  perfScale, perfSessionScale, accuracyScale, kdScale, progressScale,
   mmrDeltaScale, skillDeltaScale, kdaDivergentScale, outcomeScale, narrativeScale,
 } from '../instances'
 
@@ -20,6 +20,18 @@ describe('instances — snapshot des seuils', () => {
     ]
     for (const [v, expected] of cases) {
       expect(perfScale(v), `perfScale(${v})`).toBe(expected)
+    }
+  })
+
+  it('perfSessionScale — table de vérité (seuils comparatifs 75/60/45/30)', () => {
+    const cases: [number, string][] = [
+      [100, 'perf-tier-1'], [75, 'perf-tier-1'], [74, 'perf-tier-2'],
+      [60, 'perf-tier-2'],  [59, 'perf-tier-3'], [45, 'perf-tier-3'],
+      [44, 'perf-tier-4'],  [30, 'perf-tier-4'], [29, 'perf-tier-5'],
+      [0,  'perf-tier-5'],
+    ]
+    for (const [v, expected] of cases) {
+      expect(perfSessionScale(v), `perfSessionScale(${v})`).toBe(expected)
     }
   })
 

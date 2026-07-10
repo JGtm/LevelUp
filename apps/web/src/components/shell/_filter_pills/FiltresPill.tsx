@@ -98,7 +98,7 @@ export function FiltresPill({
               : 'border-input bg-background text-muted-foreground hover:bg-muted hover:text-foreground',
         ].join(' ')}
       >
-        <span>Filtres</span>
+        <span>{t('common.filters.pill_label')}</span>
         {cascadeCount > 0 && (
           <span
             className={[
@@ -113,7 +113,7 @@ export function FiltresPill({
         )}
         {incompatibleCount > 0 && (
           <span
-            title={`${incompatibleCount} filtre${incompatibleCount > 1 ? 's' : ''} incompatible${incompatibleCount > 1 ? 's' : ''} — ouvrez pour corriger`}
+            title={formatMessage(commonManifest, 'common.filters.incompatible_tooltip', locale, { n: incompatibleCount })}
             aria-label={t('common.filters.incompatible_aria')}
           >
             ⚠

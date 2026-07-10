@@ -31,11 +31,11 @@ type weaponLatencyClient struct {
 	weaponTestClient                                  // hérite des autres méthodes mock
 	latency          time.Duration                    // simule le RTT du download film
 	filmsByMatch     map[string]bool                  // filmPresent par match_id (default false = noFilm)
-	chunksByMatch    map[string]map[int]filmChunkData // optionnel : data si film present
+	chunksByMatch    map[string]map[int]FilmChunkData // optionnel : data si film present
 	callsByMatch     sync.Map                         // map[string]*atomic.Int64 — nb d'appels par match_id
 }
 
-func (w *weaponLatencyClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error) {
+func (w *weaponLatencyClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]FilmChunkData, bool, error) {
 	// Tracking : 1 call par match_id
 	v, _ := w.callsByMatch.LoadOrStore(matchID, new(atomic.Int64))
 	v.(*atomic.Int64).Add(1)
@@ -50,7 +50,7 @@ func (w *weaponLatencyClient) GetMatchFilm(ctx context.Context, matchID string) 
 	}
 
 	present := w.filmsByMatch[matchID]
-	var chunks map[int]filmChunkData
+	var chunks map[int]FilmChunkData
 	if present {
 		chunks = w.chunksByMatch[matchID]
 	}

@@ -6,9 +6,8 @@
 //   - fetchMatchData : exécute fetch + extraction d'un match (pur, sans DB).
 //     Appelé en parallèle par run() via errgroup (Phase 2 — RPS limité par
 //     HaloAPIClient).
-//   - insertFetchedMatch : insère les données fetchées d'un match (séquentiel,
-//     order-preserving). Appelé après le wait du errgroup (Phase 3).
-//   - hasAnyTeamMMR : helper pour décider si MarkSkillLoaded doit être appelé.
+//   - hasAnyTeamMMR : helper de décision des bits skill, consommé par le collect
+//     (collect.go) lors de la construction du MatchBatch.
 //
 // Le découpage fetch/insert permet de paralléliser les fetches tout en gardant
 // les inserts séquentiels (order-preserving, évite races sur les UPSERT shared).
@@ -19,7 +18,6 @@ package sync
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"time"
@@ -28,12 +26,12 @@ import (
 )
 
 // fetchedMatch contient les données extraites d'un GetMatchStats, prêtes pour
-// insertion (chemin legacy `insertFetchedMatch`) ou conversion en MatchBatch
-// (chemin Collect→Persist `buildBatchFromFetchedMatch`).
+// conversion en MatchBatch (chemin unique Collect→Persist).
 //
-// Les deux chemins consomment ce type : insertFetchedMatch écrit directement
-// dans les DBs (legacy), buildBatchFromFetchedMatch produit un *persist.MatchBatch
-// à Submit dans la BatchQueue. Coexistence pendant la transition Phase 2.
+// Chemin unique : buildBatchFromFetchedMatch(Ctx) convertit ce type en
+// *persist.MatchBatch, submit dans la BatchQueue (INSERT-only, anti-ART ADR 0019).
+// Le chemin legacy insertFetchedMatch (écriture directe dans les DBs) a été
+// supprimé au lot D1b (audits 2026-07) — plus aucun écrivain per-match direct.
 type fetchedMatch struct {
 	MatchID        string
 	Registry       *MatchRegistryRow
@@ -47,7 +45,7 @@ type fetchedMatch struct {
 	SkillError     error // Non-bloquant si présent
 	// CSRRow : ligne CSR à insérer côté player DB. Renseignée uniquement
 	// pour les matchs classés dont le payload skill contient RankRecap.
-	// Inséré dans insertFetchedMatch / batch.PlayerData.SkillRank.
+	// Inséré via batch.PlayerData.SkillRank (chemin Collect→Persist).
 	CSRRow *MatchCSRRow
 
 	// SharedCSRs : CSR de TOUS les participants ranked du match (lobby
@@ -110,8 +108,8 @@ func (e *SyncEngine) fetchMatchData(
 			} else if len(skillData) > 0 {
 				fm.Participants = MergeSkillIntoParticipants(fm.Participants, skillData)
 				// CSR par-match (player DB) : extraction depuis RankRecap si
-				// match classé. L'écriture en player DB est différée à
-				// insertFetchedMatch (legacy) ou batch.PlayerData.SkillRank.
+				// match classé. L'écriture en player DB est différée au batch
+				// (batch.PlayerData.SkillRank, chemin Collect→Persist).
 				fm.CSRRow = ExtractCSRRowIfRanked(fm.Registry, skillData[e.xuid])
 				// CSR de tous les participants ranked (shared.match_csrs)
 				// — lobby context, utilisé par batch.Shared.MatchCSRs.
@@ -130,7 +128,7 @@ func (e *SyncEngine) fetchMatchData(
 	}
 	// PersonalScores du joueur courant — toujours extraits (pas de flag dédié,
 	// même cycle de vie que les participants). La table n'est pas dans shared :
-	// l'insertion se fera côté playerDB dans insertFetchedMatch.
+	// l'insertion se fera côté playerDB via le batch (batch.PlayerData).
 	fm.PSA = ExtractPersonalScoreAwards(matchJSON, matchID, e.xuid)
 	if opts.WithHighlightEvents {
 		// Attente bornée du film pour un match FRAIS (cf. fetchHighlightChunkResilient) :
@@ -154,128 +152,9 @@ func (e *SyncEngine) fetchMatchData(
 	return fm, nil
 }
 
-// insertFetchedMatch insère les données fetchées d'un match (séquentiel, order-preserving).
-func (e *SyncEngine) insertFetchedMatch(
-	ctx context.Context,
-	sharedDB, playerDB *sql.DB,
-	result *domain.SyncResult,
-	fm *fetchedMatch,
-) error {
-	// Registry (obligatoire).
-	if err := InsertRegistryIfNotExists(ctx, sharedDB, *fm.Registry); err != nil {
-		slog.ErrorContext(ctx, "sync: InsertRegistry échoué",
-			"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
-		)
-		return fmt.Errorf("InsertRegistry: %w", err)
-	}
-
-	// Participants.
-	if len(fm.Participants) > 0 {
-		if fm.SkillError != nil {
-			result.Warnings = append(result.Warnings, fmt.Sprintf("skill %s: %v", fm.MatchID, fm.SkillError))
-		}
-		if err := InsertParticipants(ctx, sharedDB, fm.Participants); err != nil {
-			slog.ErrorContext(ctx, "sync: InsertParticipants échoué",
-				"gamertag", e.gamertag, "match_id", fm.MatchID, "count", len(fm.Participants), "err", err,
-			)
-			return fmt.Errorf("InsertParticipants: %w", err)
-		}
-		result.ParticipantsDone += len(fm.Participants)
-
-		// Phase 2 du plan PLAN_BITMASKS_AUDIT_FIX : marquer le bit
-		// participants pour que `levelup backfill --participants` ne re-traite
-		// pas indéfiniment ce match.
-		if markErr := MarkParticipantsDone(ctx, sharedDB, fm.MatchID); markErr != nil {
-			slog.WarnContext(ctx, "sync: MarkParticipantsDone échoué",
-				"match_id", fm.MatchID, "err", markErr)
-		}
-
-		// Phase 2 — skill bits : on ne marque que si l'API skill a renvoyé des
-		// données (fm.SkillError nil ET team_mmr présent sur ≥1 participant).
-		// MarkSkillLoaded filtre lui-même sur team_mmr IS NOT NULL côté SQL.
-		if fm.SkillError == nil && hasAnyTeamMMR(fm.Participants) {
-			if markErr := MarkSkillLoaded(ctx, sharedDB, fm.MatchID); markErr != nil {
-				slog.WarnContext(ctx, "sync: MarkSkillLoaded échoué",
-					"match_id", fm.MatchID, "err", markErr)
-			}
-		}
-
-		// Alias xuid→gamertag : plus d'upsert vers le store global xbox_aliases
-		// (consolidé dans shared 2026-06-19). Gamertags déjà en
-		// shared.match_participants ; chemin convergent upserte shared.xuid_aliases.
-		slog.DebugContext(ctx, "sync: participants insérés",
-			"match_id", fm.MatchID, "participants", len(fm.Participants),
-		)
-	}
-
-	// Medals.
-	if len(fm.Medals) > 0 {
-		if err := InsertMedals(ctx, sharedDB, fm.Medals); err != nil {
-			slog.ErrorContext(ctx, "sync: InsertMedals échoué",
-				"gamertag", e.gamertag, "match_id", fm.MatchID, "count", len(fm.Medals), "err", err,
-			)
-			return fmt.Errorf("InsertMedals: %w", err)
-		}
-		result.MedalsInserted += len(fm.Medals)
-		slog.DebugContext(ctx, "sync: médailles insérées",
-			"match_id", fm.MatchID, "medals", len(fm.Medals),
-		)
-	}
-
-	// Highlight events.
-	if fm.HasHighlights && fm.HighlightData != nil {
-		if err := insertHighlightEventsFromData(ctx, sharedDB, fm.MatchID, fm.HighlightData, fm.FilmMajorVer, result); err != nil {
-			slog.WarnContext(ctx, "sync: highlight_events insertion échouée",
-				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
-			)
-			result.Warnings = append(result.Warnings, fmt.Sprintf("highlight_events %s: %v", fm.MatchID, err))
-		}
-	} else if fm.HighlightError != nil {
-		result.Warnings = append(result.Warnings, fmt.Sprintf("highlight_events %s: %v", fm.MatchID, fm.HighlightError))
-	}
-
-	// Player enrichment.
-	if err := UpsertPlayerEnrichment(ctx, playerDB, fm.MatchID, ""); err != nil {
-		slog.ErrorContext(ctx, "sync: UpsertPlayerEnrichment échoué",
-			"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
-		)
-		return fmt.Errorf("UpsertPlayerEnrichment: %w", err)
-	}
-
-	// PersonalScoreAwards (player DB, par joueur synchronisé). Non-bloquant :
-	// un échec produit un warning, le sync continue.
-	if len(fm.PSA) > 0 {
-		if err := InsertPersonalScoreAwards(ctx, playerDB, fm.MatchID, e.xuid, fm.PSA); err != nil {
-			slog.WarnContext(ctx, "sync: InsertPersonalScoreAwards échoué",
-				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
-			)
-			result.Warnings = append(result.Warnings, fmt.Sprintf("psa %s: %v", fm.MatchID, err))
-		}
-	}
-
-	// CSR par-match (player DB). Renseigné par fetchMatchData uniquement pour
-	// les matchs classés dont RankRecap était présent. Non-bloquant.
-	if fm.CSRRow != nil {
-		if err := UpsertCSRRow(ctx, playerDB, fm.CSRRow); err != nil {
-			slog.WarnContext(ctx, "sync: UpsertCSRRow échoué",
-				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
-			)
-			result.Warnings = append(result.Warnings, fmt.Sprintf("csr %s: %v", fm.MatchID, err))
-		} else {
-			slog.DebugContext(ctx, "sync: CSR row écrite",
-				"match_id", fm.MatchID, "tier", fm.CSRRow.Tier, "tier_label", fm.CSRRow.TierLabel,
-			)
-		}
-	}
-
-	result.MatchesInserted++
-	result.InsertedMatchIDs = append(result.InsertedMatchIDs, fm.MatchID)
-	return nil
-}
-
 // hasAnyTeamMMR retourne true si au moins un participant a team_mmr renseigné.
-// Utilisé pour décider si MarkSkillLoaded doit être appelé après
-// MergeSkillIntoParticipants (Phase 2 plan PLAN_BITMASKS_AUDIT_FIX).
+// Utilisé par le collect (collect.go) pour décider si les bits skill doivent être
+// posés (skillOK) au moment de construire le MatchBatch.
 func hasAnyTeamMMR(parts []ParticipantRow) bool {
 	for _, p := range parts {
 		if p.TeamMMR != nil {

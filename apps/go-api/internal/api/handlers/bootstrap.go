@@ -71,7 +71,7 @@ func (h *PlayersHandler) Mount(r chi.Router) {
 type playersOutput struct{ Body *domain.PlayersListResponse }
 
 // handlePlayers retourne la liste des joueurs accessibles par l'utilisateur courant.
-// Lot S (audit M2) : la session est transmise pour filtrer par ownership (comme
+// S4 / audit M2 (lot S) : la session est transmise pour filtrer par ownership (comme
 // /bootstrap) et ne plus divulguer l'identité de tous les joueurs de l'instance.
 func (h *PlayersHandler) handlePlayers(ctx context.Context, _ *struct{}) (*playersOutput, error) {
 	sess := middleware.GetSession(ctx)

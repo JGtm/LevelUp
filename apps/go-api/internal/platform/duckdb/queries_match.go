@@ -1,6 +1,8 @@
 // Package duckdb — queries_match.go : requêtes vue match (scoreboard, events, armes).
 package duckdb
 
+import "levelup/go-api/internal/analysis"
+
 // Q10 : Career — encounters (adversaires et coéquipiers fréquents).
 // Paramètre : ? = xuid du joueur.
 //
@@ -34,7 +36,7 @@ LIMIT 50`
 // Le token /*__PERFECT_KILL_IN__*/ est résolu au moment de l'exécution vers le
 // set de médailles « frag parfait » du titre du joueur (perfectKillMedalInClause ;
 // HINF byte-identique = medal_name_id IN (1512363953)).
-const Q12MatchScoreboard = `
+var Q12MatchScoreboard = `
 WITH me_perfect AS (
     SELECT xuid, COALESCE(SUM(count), 0) AS perfect_kills
     FROM medals_earned
@@ -58,7 +60,7 @@ SELECT
     -- (jamais de xuid brut, miroir analysis.MaskedXuidLabelSQL) pour les orphelins
     -- + garantit gamertag NON NULL pour le scan. Plus de CASE WHEN bot ad-hoc ici.
     COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.xuid, 4))) AS gamertag,
-    (p.xuid LIKE 'bid(%') AS is_bot,
+    (` + analysis.SQLIsBotCol("p.xuid") + `) AS is_bot,
     p.team_id,
     p.rank              AS rank_in_team,
     COALESCE(p.outcome, 0)         AS outcome,
@@ -105,10 +107,10 @@ ORDER BY p.team_id ASC NULLS LAST, p.rank ASC NULLS LAST`
 // Q13 : Match view — métadonnées du match.
 // Paramètre : ? = match_id.
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
-const Q13MatchMeta = `
+var Q13MatchMeta = `
 SELECT
     r.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     r.duration_seconds,
     r.map_name,
     r.pair_name,
@@ -135,7 +137,7 @@ SELECT
     CASE
         WHEN r.real_start_time IS NOT NULL THEN
             epoch_ms(r.real_start_time AT TIME ZONE 'UTC')
-            - epoch_ms(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))
+            - epoch_ms(` + StartTimeCanonicalSQL("r") + `)
     END AS t0_ms,
     r.map_version_id
 FROM match_registry r
@@ -223,7 +225,11 @@ SELECT EXISTS(
 // Q29 : Historique récent (50 matchs) pour moyennes K/D/A + spree/headshots/perfect.
 // Paramètres : ?1 = xuid (recent CTE), ?2 = xuid (perfect CTE).
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
-const Q29HistoryForAvg = `
+// ORDER BY : fragment canonique StartTimeCanonicalSQL (règle CLAUDE.md n°8) — un
+// `r.start_time` brut mal-trie les imports OpenSpartan à start_time NULL/TZ-décalé
+// hors de la fenêtre des 50 (VF-13). Doit rester sémantiquement identique à
+// Q29HistoryForAvgBulkTpl (contrat du test match_view_history_bulk_test.go).
+var Q29HistoryForAvg = `
 WITH recent AS (
     SELECT
         p.match_id,
@@ -239,7 +245,7 @@ WITH recent AS (
     FROM match_participants p
     JOIN match_registry r ON r.match_id = p.match_id
     WHERE p.xuid = ?
-    ORDER BY r.start_time DESC NULLS LAST
+    ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC NULLS LAST
     LIMIT 50
 ),
 perfect AS (
@@ -264,6 +270,61 @@ SELECT
 FROM recent rc
 LEFT JOIN perfect p ON p.match_id = rc.match_id`
 
+// Q29HistoryForAvgBulkTpl : variante MULTI-xuid de Q29 (J3). Remplace ~8
+// exécutions séquentielles de GetHistoryForAvg (une par ami du scoreboard) par une
+// seule requête. `%s` = placeholders de la clause IN (répétés 2x : recent + perfect).
+// Sémantique identique à Q29 par xuid : 50 derniers matchs (ROW_NUMBER PARTITION BY
+// xuid au lieu de LIMIT 50) + perfect kills agrégés. La colonne xuid en tête permet
+// de regrouper les lignes par joueur côté Go.
+// ORDER BY (fenêtre ROW_NUMBER) : fragment canonique StartTimeCanonicalSQL
+// (règle CLAUDE.md n°8) — identique à Q29HistoryForAvg pour tenir le contrat
+// bulk==unitaire (VF-13).
+var Q29HistoryForAvgBulkTpl = `
+WITH recent AS (
+    SELECT
+        p.xuid,
+        p.match_id,
+        COALESCE(p.kills, 0)           AS kills,
+        COALESCE(p.deaths, 0)          AS deaths,
+        COALESCE(p.assists, 0)         AS assists,
+        p.headshot_kills,
+        p.max_killing_spree,
+        COALESCE(r.pair_name, '')      AS pair_name,
+        COALESCE(r.is_firefight, FALSE) AS is_firefight,
+        COALESCE(r.is_ranked, FALSE)    AS is_ranked,
+        COALESCE(r.duration_seconds, 0) AS duration_seconds,
+        ROW_NUMBER() OVER (PARTITION BY p.xuid ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC NULLS LAST) AS rn
+    FROM match_participants p
+    JOIN match_registry r ON r.match_id = p.match_id
+    WHERE p.xuid IN (%s)
+),
+recent_capped AS (
+    SELECT * FROM recent WHERE rn <= 50
+),
+perfect AS (
+    SELECT m.xuid, m.match_id, COALESCE(SUM(m.count), 0) AS perfect_kills
+    FROM medals_earned m
+    WHERE m.xuid IN (%s)
+      AND m.match_id IN (SELECT match_id FROM recent_capped)
+      AND /*__PERFECT_KILL_IN__*/
+    GROUP BY m.xuid, m.match_id
+)
+SELECT
+    rc.xuid,
+    rc.kills,
+    rc.deaths,
+    rc.assists,
+    rc.headshot_kills,
+    rc.max_killing_spree,
+    COALESCE(p.perfect_kills, 0) AS perfect_kills,
+    rc.pair_name,
+    rc.is_firefight,
+    rc.is_ranked,
+    rc.duration_seconds
+FROM recent_capped rc
+LEFT JOIN perfect p ON p.match_id = rc.match_id AND p.xuid = rc.xuid
+ORDER BY rc.xuid, rc.rn`
+
 // Q18 : Enrichissement joueur pour un match (player_match_enrichment).
 // Paramètre : ? = match_id.
 // Retourne 3 colonnes : performance_score, is_with_friends, is_excluded.
@@ -280,10 +341,10 @@ WHERE pme.match_id = ?`
 // Paramètres : ?1 = xuid joueur principal, ?2 = xuid autre joueur.
 // Retourne 10 colonnes : match_id, start_time, map_ui, mode_ui,
 // player1_team_id, player2_team_id, player1_outcome, player1_kills, player1_deaths, player1_kda.
-const Q19CommonMatches = `
+var Q19CommonMatches = `
 SELECT
     r.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     COALESCE(r.map_name, '')          AS map_ui,
     COALESCE(r.pair_name, '')         AS mode_ui,
     p1.team_id                        AS player1_team_id,
@@ -295,7 +356,7 @@ SELECT
 FROM match_registry r
 JOIN match_participants p1 ON r.match_id = p1.match_id AND p1.xuid = ?
 JOIN match_participants p2 ON r.match_id = p2.match_id AND p2.xuid = ?
-ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
+ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC`
 
 // Q19cTargetRecentMatches : les `limit` derniers matchs PvP (firefight exclu)
 // du joueur cible, pour les graphes "profil de combat" (Explorer mode Joueur).
@@ -307,7 +368,7 @@ ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 // source unique que queries_squad.go / compare_repo.go). Exécutée sur
 // SharedReader (shared.* sans préfixe).
 // Params (ordre) : ? = xuid (perfect CTE), ? = xuid (participants), ? = limit.
-const Q19cTargetRecentMatches = `
+var Q19cTargetRecentMatches = `
 WITH perfect AS (
     SELECT match_id, COALESCE(SUM(count), 0) AS perfect_kills
     FROM medals_earned
@@ -316,7 +377,7 @@ WITH perfect AS (
 )
 SELECT
     mp.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     COALESCE(r.map_name, '')          AS map_ui,
     r.pair_name                       AS pair_name,
     r.pair_name_fr                    AS pair_name_fr,
@@ -391,13 +452,13 @@ ORDER BY he.time_ms ASC NULLS LAST`
 // Ordre : start_time DESC (plus récent = index 0).
 //
 // Executée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
-const Q25NeighborMatches = `
+var Q25NeighborMatches = `
 WITH ordered AS (
     SELECT
         mr.match_id,
-        COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') AS start_time,
+        ` + StartTimeCanonicalSQL("mr") + ` AS start_time,
         ROW_NUMBER() OVER (
-            ORDER BY COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') DESC
+            ORDER BY ` + StartTimeCanonicalSQL("mr") + ` DESC
         ) - 1 AS idx,
         COUNT(*) OVER () AS total
     FROM match_registry mr
@@ -423,13 +484,13 @@ LIMIT 1`
 // Paramètres positionnels : xuid, [filtres...], match_id.
 // L'ordre est important — le repo concatène les args dans cet ordre.
 // Executée sur SharedReader (ADR 0016).
-const Q25NeighborMatchesTemplate = `
+var Q25NeighborMatchesTemplate = `
 WITH ordered AS (
     SELECT
         mr.match_id,
-        COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') AS start_time,
+        ` + StartTimeCanonicalSQL("mr") + ` AS start_time,
         ROW_NUMBER() OVER (
-            ORDER BY COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') DESC
+            ORDER BY ` + StartTimeCanonicalSQL("mr") + ` DESC
         ) - 1 AS idx,
         COUNT(*) OVER () AS total
     FROM match_registry mr

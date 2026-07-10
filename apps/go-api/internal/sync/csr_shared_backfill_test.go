@@ -54,7 +54,7 @@ func (m *mockSkillClient) GetMatchHistory(_ context.Context, _, _ string, _, _ i
 func (m *mockSkillClient) GetMatchStats(_ context.Context, _ string) (map[string]any, error) {
 	return nil, nil
 }
-func (m *mockSkillClient) GetMatchFilm(_ context.Context, _ string) (map[int]filmChunkData, bool, error) {
+func (m *mockSkillClient) GetMatchFilm(_ context.Context, _ string) (map[int]FilmChunkData, bool, error) {
 	return nil, false, nil
 }
 func (m *mockSkillClient) GetHighlightEventsChunk(_ context.Context, _ string) ([]byte, int, bool, error) {

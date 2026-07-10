@@ -189,7 +189,7 @@ func (r *MatchExclusionRepo) loadExcludedRegistryRows(ctx context.Context, match
 	defer release()
 	query := fmt.Sprintf(`
 		SELECT match_id,
-		       COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC'),
+		       `+StartTimeCanonicalSQL("")+`,
 		       COALESCE(map_name, ''),
 		       COALESCE(pair_name, '')
 		FROM match_registry

@@ -10,6 +10,7 @@
 import type { ReactNode } from 'react'
 import { isCommunityPath } from './shellNavigation'
 import type { TitleCapability } from '@/lib/capabilities/capabilities'
+import type { CommonManifestKey } from '@/lib/i18n/generated/common'
 
 // ─── Icône flamme (label Ascension) ──────────────────────────────────────────
 // Nœud JSX statique (pas un composant) pour garder ce module « data-only »
@@ -35,7 +36,8 @@ const flameIcon: ReactNode = (
 
 export interface L1Tab {
   key: string
-  label: string
+  /** Clé i18n du libellé (résolue par le consommateur via `t()`). */
+  labelKey: CommonManifestKey
   /** Chemin avec $playerSlug en placeholder. */
   path: string
   /**
@@ -47,7 +49,8 @@ export interface L1Tab {
 
 export interface L1Section {
   key: string
-  label: string
+  /** Clé i18n du libellé (résolue par le consommateur via `t()`). */
+  labelKey: CommonManifestKey
   /** Icône optionnelle affichée avant le label (ex: flamme pour Ascension). */
   icon?: ReactNode
   /** Route par défaut lors du clic sur le label (avec $playerSlug en placeholder). */
@@ -74,43 +77,43 @@ export interface L1Section {
 export const L1_SECTIONS: L1Section[] = [
   {
     key: 'home',
-    label: 'Accueil',
+    labelKey: 'common.nav.section_home',
     defaultPath: '/players/$playerSlug/home',
     matchPathname: (p) => /\/players\/[^/]+\/home/.test(p),
   },
   {
     key: 'stats',
-    label: 'Solo',
+    labelKey: 'common.nav.section_solo',
     defaultPath: '/players/$playerSlug/stats/timeseries',
     matchPathname: (p) => /\/players\/[^/]+\/(stats\/|synthesis)/.test(p),
     tabs: [
-      { key: 'synthesis', label: 'Synthèse', path: '/players/$playerSlug/stats/synthesis' },
-      { key: 'timeseries', label: 'Séries temporelles', path: '/players/$playerSlug/stats/timeseries' },
-      { key: 'sessions', label: 'Sessions', path: '/players/$playerSlug/stats/sessions' },
+      { key: 'synthesis', labelKey: 'common.nav.tab_synthesis', path: '/players/$playerSlug/stats/synthesis' },
+      { key: 'timeseries', labelKey: 'common.nav.tab_timeseries', path: '/players/$playerSlug/stats/timeseries' },
+      { key: 'sessions', labelKey: 'common.nav.tab_sessions', path: '/players/$playerSlug/stats/sessions' },
     ],
   },
   {
     key: 'squad',
-    label: 'Escouade',
+    labelKey: 'common.nav.section_squad',
     defaultPath: '/players/$playerSlug/squad/synergies',
     matchPathname: (p) => /\/players\/[^/]+\/squad/.test(p),
     tabs: [
-      { key: 'synergies', label: 'Synergies', path: '/players/$playerSlug/squad/synergies' },
-      { key: 'contributions', label: 'Contributions', path: '/players/$playerSlug/squad/contributions' },
+      { key: 'synergies', labelKey: 'common.nav.tab_synergies', path: '/players/$playerSlug/squad/synergies' },
+      { key: 'contributions', labelKey: 'common.nav.tab_contributions', path: '/players/$playerSlug/squad/contributions' },
     ],
   },
   {
     key: 'career',
-    label: 'Carrière',
+    labelKey: 'common.nav.section_career',
     capability: 'career',
     defaultPath: '/players/$playerSlug/career',
     matchPathname: (p) => /\/players\/[^/]+\/(career|citations|profile)/.test(p),
     tabs: [
-      { key: 'progression', label: 'Progression', path: '/players/$playerSlug/career' },
-      { key: 'citations', label: 'Citations', path: '/players/$playerSlug/career/citations' },
+      { key: 'progression', labelKey: 'common.nav.tab_progression', path: '/players/$playerSlug/career' },
+      { key: 'citations', labelKey: 'common.nav.tab_citations', path: '/players/$playerSlug/career/citations' },
       {
         key: 'season-pass',
-        label: 'Pass saisonnier',
+        labelKey: 'common.nav.tab_season_pass',
         path: '/players/$playerSlug/career/season-pass',
         capability: 'season_pass',
       },
@@ -118,7 +121,7 @@ export const L1_SECTIONS: L1Section[] = [
   },
   {
     key: 'ascension',
-    label: 'Ascension',
+    labelKey: 'common.nav.section_ascension',
     icon: flameIcon,
     // Ascension (profil LUSR + leviers + coaching) dérive entièrement du rating
     // LUSR ⇒ gatée sur `lusr`. (Reste aussi conditionnée par le réglage
@@ -127,14 +130,14 @@ export const L1_SECTIONS: L1Section[] = [
     defaultPath: '/players/$playerSlug/ascension',
     matchPathname: (p) => /\/players\/[^/]+\/(objectifs|ascension)/.test(p),
     tabs: [
-      { key: 'profile', label: 'Profil & objectifs', path: '/players/$playerSlug/ascension' },
-      { key: 'coaching', label: 'Entraînement', path: '/players/$playerSlug/ascension/coaching' },
-      { key: 'realisations', label: 'Réalisations', path: '/players/$playerSlug/ascension/realisations' },
+      { key: 'profile', labelKey: 'common.nav.tab_profile_objectives', path: '/players/$playerSlug/ascension' },
+      { key: 'coaching', labelKey: 'common.nav.tab_coaching', path: '/players/$playerSlug/ascension/coaching' },
+      { key: 'realisations', labelKey: 'common.nav.tab_realisations', path: '/players/$playerSlug/ascension/realisations' },
     ],
   },
   {
     key: 'community',
-    label: 'Communauté',
+    labelKey: 'common.nav.section_community',
     defaultPath: '/players/$playerSlug/community',
     matchPathname: isCommunityPath,
     // Section transverse non gatée (Relations / Face-à-face dérivent des matchs) ;
@@ -142,24 +145,24 @@ export const L1_SECTIONS: L1Section[] = [
     tabs: [
       {
         key: 'leaderboard',
-        label: 'Classements',
+        labelKey: 'common.nav.tab_leaderboard',
         path: '/players/$playerSlug/community',
         capability: 'world.leaderboard',
       },
-      { key: 'relations', label: 'Relations', path: '/players/$playerSlug/community/relations' },
-      { key: 'compare', label: 'Face-à-face', path: '/players/$playerSlug/community/compare' },
+      { key: 'relations', labelKey: 'common.nav.tab_relations', path: '/players/$playerSlug/community/relations' },
+      { key: 'compare', labelKey: 'common.nav.tab_compare', path: '/players/$playerSlug/community/compare' },
     ],
   },
   {
     key: 'media',
-    label: 'Médias',
+    labelKey: 'common.nav.section_media',
     capability: 'media',
     defaultPath: '/players/$playerSlug/media',
     matchPathname: (p) => /\/players\/[^/]+\/media/.test(p),
   },
   {
     key: 'explorer',
-    label: 'Explorer',
+    labelKey: 'common.nav.section_explorer',
     defaultPath: '/players/$playerSlug/explorer',
     matchPathname: (p) => /\/players\/[^/]+\/explorer/.test(p),
   },

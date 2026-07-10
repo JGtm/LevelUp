@@ -8,7 +8,7 @@ import { useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase, seriesColor } from '@/components/charts/_utils'
+import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase, seriesColor } from '@/components/charts/_utils'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
 import { useSessionT } from './_shared'
@@ -42,7 +42,7 @@ export function buildSessionModeBreakdownOption(
         const arr = Array.isArray(params) ? params : []
         if (arr.length === 0) return ''
         const p = arr[0] as { name: string; value: number }
-        return `${p.name}: <b>${p.value}</b> ${opts.countLabel}`
+        return `${escapeHtml(p.name)}: <b>${p.value}</b> ${opts.countLabel}`
       },
     },
     xAxis: {

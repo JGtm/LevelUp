@@ -130,13 +130,13 @@ func TestFormatTierSubLabel(t *testing.T) {
 	}
 }
 
-// TestMapTierSubToLegacyRating cohérent avec MapMuToLegacyRating pour un μ donné.
+// TestMapTierSubToLegacyRating cohérent avec mapMuToLegacyRating pour un μ donné.
 func TestMapTierSubToLegacyRating_ConsistentWithMu(t *testing.T) {
 	bs := DefaultTierBoundaries()
 	for _, mu := range []float64{20.38, 23.52, 24.0, 25.5, 26.17} {
 		tier, sub := InferTier(mu, bs)
-		viaTierSub := MapTierSubToLegacyRating(tier, sub)
-		viaMu := MapMuToLegacyRating(mu, bs)
+		viaTierSub := mapTierSubToLegacyRating(tier, sub)
+		viaMu := mapMuToLegacyRating(mu, bs)
 		if viaTierSub != viaMu {
 			t.Errorf("μ=%v : MapTierSub=%v != MapMu=%v", mu, viaTierSub, viaMu)
 		}

@@ -28,6 +28,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/auth"
 	gosync "levelup/go-api/internal/sync"
@@ -164,7 +165,7 @@ func loadMissingWeaponMatches(sharedDBPath, xuid string, force bool) ([]string, 
 				JOIN match_registry mr ON mr.match_id = mp.match_id
 				WHERE mp.xuid = ?
 				  AND COALESCE(mr.is_firefight, FALSE) = FALSE
-				  AND COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') >= ?
+				  AND `+analysis.SQLStartTimeCanonical("mr")+` >= ?
 				  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
 			)
 			AND xuid = ?`,
@@ -184,7 +185,7 @@ func loadMissingWeaponMatches(sharedDBPath, xuid string, force bool) ([]string, 
 				JOIN match_registry mr ON mr.match_id = mp.match_id
 				WHERE mp.xuid = ?
 				  AND COALESCE(mr.is_firefight, FALSE) = FALSE
-				  AND COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') >= ?
+				  AND `+analysis.SQLStartTimeCanonical("mr")+` >= ?
 				  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
 			)`,
 			mBitWeaponKills, xuid, cutoff, mBitWeaponKillsNoFilm)
@@ -201,7 +202,7 @@ func loadMissingWeaponMatches(sharedDBPath, xuid string, force bool) ([]string, 
 		WHERE mp.xuid = ?
 		  AND wk.match_id IS NULL
 		  AND COALESCE(mr.is_firefight, FALSE) = FALSE
-		  AND COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') >= ?
+		  AND `+analysis.SQLStartTimeCanonical("mr")+` >= ?
 		  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
 		ORDER BY mr.start_time DESC`,
 		xuid, cutoff, mBitWeaponKillsNoFilm)

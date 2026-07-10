@@ -24,6 +24,7 @@ import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { ChartCard, type ChartSeries } from './ChartCard'
 import {
   CHART_BG,
+  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getLegendBase,
@@ -224,12 +225,4 @@ export function buildBarStackedOption(
     yAxis: orientation === 'horizontal' ? categoryAxis : valueAxis,
     series: echartsSeries,
   }
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
 }

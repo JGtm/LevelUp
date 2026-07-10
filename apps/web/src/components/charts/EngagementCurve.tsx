@@ -25,7 +25,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken } from '@/lib/accessibility'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
-import { CHART_BG, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase } from './_utils'
+import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase } from './_utils'
 
 export interface EngagementPoint {
   /** Timestamp en ms (Match View) ou index match (Session) */
@@ -197,10 +197,10 @@ function buildEngagementOption(
           marker?: string
           value?: number | null
         }>
-        const head = items[0]?.axisValueLabel ?? ''
+        const head = escapeHtml(items[0]?.axisValueLabel ?? '')
         const lines = items.map((p) => {
           const v = typeof p.value === 'number' && Number.isFinite(p.value) ? p.value.toFixed(2) : '—'
-          return `${p.marker ?? ''} ${p.seriesName ?? ''}: <b>${v}</b>`
+          return `${p.marker ?? ''} ${escapeHtml(p.seriesName ?? '')}: <b>${v}</b>`
         })
         return [head, ...lines].join('<br/>')
       },

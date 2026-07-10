@@ -62,6 +62,15 @@ func NewCareerLiveRepo(pdb *PlayerDB) *CareerLiveRepo {
 // reconstruit la table pour éliminer la corruption à la source, mais ce
 // workaround reste en place comme défense permanente (DuckDB est connu pour
 // ces régressions d'index, cf. duckdb/duckdb#9999 et apparentés).
+//
+// Bannière/emblème/backdrop : champs d'apparence INDÉPENDANTS (directive
+// produit 2026-07-08) — chacun sert sa dernière valeur non vide, sans aucun
+// couplage entre eux (« jamais vide » : un champ irrésoluble au dernier
+// snapshot conserve sa dernière valeur connue). Cas réel documenté : les
+// emblèmes nouvelle génération (`<id>-SpartanEmblem`, ex. 3806589 JGtm
+// 2026-07-03) n'ont AUCUNE nameplate upstream (absents de mapping.json,
+// aucune cfg positive, 404 CDN) — la bannière servie reste alors la dernière
+// connue jusqu'à publication Microsoft (auto-réparation au refresh suivant).
 const qLoadLastCareerRank = `
 SELECT
     COALESCE(ARG_MAX(rank,              recorded_at) FILTER (WHERE rank IS NOT NULL), 0)                     AS rank,

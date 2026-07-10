@@ -48,7 +48,6 @@ func sharedSocialRootSteps() []migration.Migration {
 						file_size            INTEGER DEFAULT 0,
 						thumbnail_path       VARCHAR,
 						capture_end_utc      TIMESTAMP,
-						discord_notified_at  TIMESTAMP,
 						liked                BOOLEAN DEFAULT FALSE,
 						liked_at             TIMESTAMP,
 						created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -329,18 +328,6 @@ func sharedSocialSteps() []migration.Migration {
 				}
 				if err := addIfMissing("updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"); err != nil {
 					return err
-				}
-				if err := addIfMissing("discord_notified_at", "TIMESTAMP"); err != nil {
-					return err
-				}
-				if _, ok := cols["discord_notified"]; ok {
-					if _, err := db.Exec(`
-						UPDATE media_files
-						SET discord_notified_at = CURRENT_TIMESTAMP
-						WHERE discord_notified = TRUE AND discord_notified_at IS NULL
-					`); err != nil {
-						return nil
-					}
 				}
 				if _, ok := cols["indexed_at"]; ok {
 					if _, err := db.Exec(`

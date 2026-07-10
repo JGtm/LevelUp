@@ -8,8 +8,10 @@
  */
 import { useState } from 'react'
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
+import { MedalIcon } from '@/components/ui/MedalIcon'
 import { citationMastery } from '@/lib/citations/mastery'
 import { tokenCssVar } from '@/lib/accessibility'
+import { perfScale } from '@/lib/accessibility/scales'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
 import { displayPlayerName } from '@/lib/players/displayName'
 import { formatRankDelta } from '@/lib/formatters'
@@ -131,13 +133,19 @@ function MedalsSection({ medals, title }: { medals: PlayerMedalRow[]; title: str
           const glow = dropShadowForDifficulty(m.difficulty ?? undefined)
           return (
             <div key={m.medal_id} className="flex flex-col items-center gap-0.5" title={m.label}>
-              {m.image_url ? (
-                <img
-                  src={m.image_url}
-                  alt={m.label ?? ''}
-                  style={{ width: 32, height: 32, objectFit: 'contain', filter: glow }}
-                  loading="lazy"
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+              {m.image_url || m.sprite_sheet ? (
+                // MedalIcon = rendu title-agnostic (PNG Infinite OU sprite Halo 5) — le
+                // drawer utilisait un <img> brut qui restait vide pour H5 (GH-5a).
+                <MedalIcon
+                  imageUrl={m.image_url}
+                  spriteSheet={m.sprite_sheet}
+                  spriteLeft={m.sprite_left}
+                  spriteTop={m.sprite_top}
+                  spriteWidth={m.sprite_width}
+                  spriteHeight={m.sprite_height}
+                  label={m.label ?? ''}
+                  size={32}
+                  style={{ filter: glow }}
                 />
               ) : (
                 <span className="text-2xs text-muted-foreground">{m.label ?? `#${m.medal_id}`}</span>
@@ -285,14 +293,6 @@ function AntagonistSection({ result, title, nemesisLabel, bullyLabel }: { result
 
 interface LocalRow { perfDisplay?: string; perfColorToken?: string; ratingType?: string; tierLabel?: string; ratingDelta?: number | null; iconUrl?: string | null; hadBotTeammate?: boolean }
 
-function perfTierToken(score: number): string {
-  if (score >= 80) return 'perf-tier-1'
-  if (score >= 65) return 'perf-tier-2'
-  if (score >= 50) return 'perf-tier-3'
-  if (score >= 35) return 'perf-tier-4'
-  return 'perf-tier-5'
-}
-
 function buildLocalRow(row: MatchScoreboardRow, header?: MatchViewHeader, mainRank?: MatchViewRank): LocalRow | null {
   const local: LocalRow = {}
   let hasData = false
@@ -301,7 +301,7 @@ function buildLocalRow(row: MatchScoreboardRow, header?: MatchViewHeader, mainRa
     if (mainRank?.tier_label) { local.ratingType = mainRank.rating_type; local.tierLabel = mainRank.tier_label; local.ratingDelta = mainRank.delta_value; local.iconUrl = mainRank.icon_url; hasData = true }
     if (header?.had_bot_teammate) { local.hadBotTeammate = true; hasData = true }
   } else {
-    if (row.performance_score != null) { local.perfDisplay = Math.round(row.performance_score).toString(); local.perfColorToken = perfTierToken(row.performance_score); hasData = true }
+    if (row.performance_score != null) { local.perfDisplay = Math.round(row.performance_score).toString(); local.perfColorToken = perfScale(row.performance_score); hasData = true }
     if (row.skill_rank?.tier_label) { local.ratingType = row.skill_rank.rating_type; local.tierLabel = row.skill_rank.tier_label; local.ratingDelta = row.skill_rank.rating_delta; local.iconUrl = row.skill_rank.icon_url; hasData = true }
     if (row.had_bot_teammate) { local.hadBotTeammate = true; hasData = true }
   }

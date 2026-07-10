@@ -1,7 +1,7 @@
 // Package sync — transforms_helpers_unit_test.go : tests unitaires des helpers purs.
 //
 // Couvre les fonctions stateless qui étaient à 0% : findCoreStats, isRankedPlaylist,
-// isFirefightMatch, extractTeamScoresByID, asString, strPtr, coalesceStrPtr,
+// isFirefightMatch, extractTeamScoresByID, asString, strPtrNonEmpty, coalesceStrPtr,
 // intPtrFrom, floatPtrFrom, intFrom, int64From.
 package sync
 
@@ -32,19 +32,19 @@ func TestAsString_NonString(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// strPtr
+// strPtrNonEmpty
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestStrPtr_Empty(t *testing.T) {
-	if got := strPtr(""); got != nil {
-		t.Errorf("strPtr(\"\") should be nil")
+	if got := strPtrNonEmpty(""); got != nil {
+		t.Errorf("strPtrNonEmpty(\"\") should be nil")
 	}
 }
 
 func TestStrPtr_NonEmpty(t *testing.T) {
-	got := strPtr("abc")
+	got := strPtrNonEmpty("abc")
 	if got == nil || *got != "abc" {
-		t.Errorf("strPtr(\"abc\") = %v, want ptr to \"abc\"", got)
+		t.Errorf("strPtrNonEmpty(\"abc\") = %v, want ptr to \"abc\"", got)
 	}
 }
 

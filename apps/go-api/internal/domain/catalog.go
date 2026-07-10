@@ -36,3 +36,12 @@ type CatalogMap struct {
 	ImageURL   string `json:"image_url,omitempty"`
 	MatchCount int    `json:"match_count,omitempty"`
 }
+
+// CatalogQueueEntry est une entrée PENDING de catalog_fetch_queue (asset pas encore
+// présent dans la table catalogue de son type). Consommée par le drain du
+// CatalogFetcherService (K1j), résolue via l'adapter puis persistée par le CatalogWriter.
+type CatalogQueueEntry struct {
+	AssetType string
+	AssetID   string
+	VersionID string
+}

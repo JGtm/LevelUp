@@ -9,6 +9,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { SessionMultiSelect } from './SessionMultiSelect'
 import type { SessionLabelEntry } from '@/lib/api/types'
+import type { ManifestLocale } from '@/lib/i18n/format'
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ const SESSIONS: SessionLabelEntry[] = [
 function setup(
   selected: string[] = [],
   onChange = vi.fn(),
-  locale = 'fr',
+  locale: ManifestLocale = 'fr',
 ) {
   const utils = render(
     <SessionMultiSelect

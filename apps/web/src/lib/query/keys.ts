@@ -128,10 +128,6 @@ export const queryKeys = {
   timeseries: (playerSlug: string, filterHash: string) =>
     ['timeseries', 'solo', playerSlug, filterHash] as const,
 
-  // Session Compare (Slice 3C)
-  sessionCompare: (playerSlug: string, filterHash: string, sessionA: string, sessionB: string) =>
-    ['session-compare', playerSlug, filterHash, sessionA, sessionB] as const,
-
   // Session Detail (session page revamp)
   sessionDetail: (
     playerSlug: string,
@@ -217,4 +213,72 @@ export const queryKeys = {
   adminTitles: ['admin', 'titles'] as const,
   adminTitleDetail: (slug: string) => ['admin', 'titles', slug] as const,
   adminTitleDiagnostic: (slug: string) => ['admin', 'titles', slug, 'diagnostic'] as const,
+  // Admin — Gestion des utilisateurs (ex-adminKeys, L5)
+  adminUsers: ['admin', 'users'] as const,
+
+  // Prestige / Ascension — registres feature centralisés (L5, CLAUDE.md n°13).
+  // Tableaux de clés IDENTIQUES aux ex-registres (prestigeKeys/arcKeys/…) → aucun
+  // changement de comportement de cache, juste un point d'accès unique.
+  prestige: {
+    me: (userId: string, titleSlug?: string) =>
+      ['prestige', 'me', userId, titleSlug] as const,
+    /** Préfixe broad — invalide `me(userId, *)` pour tous les titres. */
+    meAll: (userId: string) => ['prestige', 'me', userId] as const,
+    templates: (userId: string, titleSlug: string) =>
+      ['prestige', 'templates', userId, titleSlug] as const,
+  },
+  arc: {
+    list: (userId: string, titleSlug: string) =>
+      ['prestige', 'arcs', userId, titleSlug] as const,
+    one: (id: string) => ['prestige', 'arc', id] as const,
+    presets: (userId: string, titleSlug: string) =>
+      ['prestige', 'arc-presets', userId, titleSlug] as const,
+  },
+  challenge: {
+    list: (userId: string, titleSlug: string) =>
+      ['prestige', 'challenges', userId, titleSlug] as const,
+    one: (id: string) => ['prestige', 'challenge', id] as const,
+  },
+  squad: {
+    mine: (userId: string) => ['prestige', 'squads', userId] as const,
+    challenges: (squadId: string) => ['prestige', 'squad-challenges', squadId] as const,
+    orientation: (squadId: string, requestedBy: string) =>
+      ['prestige', 'squad-orientation', squadId, requestedBy] as const,
+  },
+  playerProfile: {
+    profile: (playerSlug: string, windowDays: number) =>
+      ['playerProfile', playerSlug, windowDays] as const,
+    activeCampaign: (playerSlug: string) =>
+      ['playerProfile', 'campaign', 'active', playerSlug] as const,
+    campaign: (playerSlug: string, id: string) =>
+      ['playerProfile', 'campaign', playerSlug, id] as const,
+    /** Préfixe broad — invalide tous les `campaign(playerSlug, *)`. */
+    campaignAll: (playerSlug: string) =>
+      ['playerProfile', 'campaign', playerSlug] as const,
+  },
+  watcher: {
+    status: ['watcher', 'status'] as const,
+    authPoll: (attemptId: string) => ['watcher', 'auth', attemptId] as const,
+  },
+
+  // Clés feature diverses ex-inline (L5, CLAUDE.md n°13) — centralisées ici.
+  changelog: ['changelog'] as const,
+  releaseNotes: (lang: string) => ['release-notes', lang] as const,
+  feedbackSimilarIssues: (query: string) =>
+    ['feedback-drawer', 'similar-issues', query] as const,
+  mediaMatchCandidates: (
+    playerSlug: string,
+    // `filePath` peut être null tant que la sélection média n'est pas faite ;
+    // le hook associé est alors désactivé (`enabled: !!filePath`) et ne fetch
+    // jamais avec cette valeur. La forme de clé pour un filePath non-null reste
+    // byte-identique (rien inséré/retiré) — pas d'invalidation de cache.
+    filePath: string | null,
+    windowMinutes: number,
+  ) => ['media', 'match-candidates', playerSlug, filePath, windowMinutes] as const,
+  combatYieldHistory: (playerSlug: string, filterHash: string) =>
+    ['combatYieldHistory', playerSlug, filterHash] as const,
+  /** Préfixe broad — invalide tous les `filtersResolve(playerSlug, *)`. */
+  filtersResolveAll: (playerSlug: string) => ['filters-resolve', playerSlug] as const,
+  /** Préfixe broad — invalide tous les `adminDataQualityIssues(*)`. */
+  adminDataQualityIssuesAll: ['admin', 'data-quality', 'issues'] as const,
 } as const

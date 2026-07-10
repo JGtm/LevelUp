@@ -243,13 +243,6 @@ func (r *Registry) XboxTitleIDFor(slug string) string {
 	return ""
 }
 
-// ServiceConfigIDFor retourne le ServiceConfigID (SCID) Xbox pour un slug LevelUp.
-// Retourne "" si le slug n'est pas reconnu ou si le SCID n'est pas encore connu.
-// Le SCID HI sera confirmé lors du premier sync avec le bon title ID.
-func ServiceConfigIDFor(slug string) string {
-	return "" // SCID HI non encore confirmé — le filtre titleId est suffisant
-}
-
 // NewRegistry crée un registre avec les titres par défaut.
 func NewRegistry() *Registry {
 	r := &Registry{
@@ -487,10 +480,18 @@ func (p *PathResolver) SharedSocialDBPath(titleSlug string) string {
 	return filepath.Join(p.WarehouseDir(titleSlug), "shared_social.duckdb")
 }
 
+// PlayersRootDir retourne le répertoire racine des joueurs d'un titre (source
+// unique du sous-chemin "players" — ne pas reconstruire à la main, cf. garde-rail
+// archlint/no_players_root_join_test.go).
+// Ex: data/titles/halo_infinite/players/
+func (p *PathResolver) PlayersRootDir(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "players")
+}
+
 // PlayerDir retourne le répertoire d'un joueur pour un titre.
 // Ex: data/titles/halo_infinite/players/Chocoboflor/
 func (p *PathResolver) PlayerDir(titleSlug, gamertag string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "players", gamertag)
+	return filepath.Join(p.PlayersRootDir(titleSlug), gamertag)
 }
 
 // PlayerDBPath retourne le chemin de la DB stats d'un joueur.
@@ -560,10 +561,17 @@ func (p *PathResolver) SessionDir() string {
 	return filepath.Join(p.repoRoot, "data", "sessions")
 }
 
+// CacheRootDir retourne le répertoire racine du cache applicatif (jobs, cache
+// BP/challenges, release notes...). Source unique du sous-chemin "data/cache".
+// Ex: data/cache/
+func (p *PathResolver) CacheRootDir() string {
+	return filepath.Join(p.repoRoot, "data", "cache")
+}
+
 // JobsCachePath retourne le chemin du cache des jobs.
 // Ex: data/cache/jobs.json
 func (p *PathResolver) JobsCachePath() string {
-	return filepath.Join(p.repoRoot, "data", "cache", "jobs.json")
+	return filepath.Join(p.CacheRootDir(), "jobs.json")
 }
 
 // SyncCacheDir retourne le répertoire racine du cache fetch intermédiaire

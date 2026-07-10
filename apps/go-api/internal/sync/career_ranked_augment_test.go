@@ -40,7 +40,8 @@ func TestAugmentWithActiveRankedCSRs(t *testing.T) {
 		},
 	}}
 
-	out := augmentWithActiveRankedCSRs(context.Background(), stub, "123", "CsrSeason13-1", pre, nil)
+	// activePlaylists nil → fallback rankedplaylists.Active() (la référence testée ici).
+	out := AugmentWithActiveRankedCSRs(context.Background(), stub, "123", "CsrSeason13-1", pre, "en", nil)
 
 	// La playlist déjà présente ne doit pas être interrogée.
 	for _, id := range stub.got {
@@ -82,7 +83,7 @@ func TestAugmentWithActiveRankedCSRs_UsesProvidedList(t *testing.T) {
 	}}
 	provided := []rankedplaylists.Playlist{{AssetID: dynID, NameEN: "Dynamic"}}
 
-	out := augmentWithActiveRankedCSRs(context.Background(), stub, "123", "CsrSeason13-1", nil, provided)
+	out := AugmentWithActiveRankedCSRs(context.Background(), stub, "123", "CsrSeason13-1", nil, "en", provided)
 
 	if len(stub.got) != 1 || stub.got[0] != dynID {
 		t.Fatalf("l'augment doit interroger la liste fournie (%q), got %v", dynID, stub.got)

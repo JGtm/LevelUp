@@ -36,6 +36,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/api"
+	"levelup/go-api/internal/api/wire"
 	"levelup/go-api/internal/assetnames"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
@@ -65,6 +66,7 @@ import (
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/util/pointers"
 	"levelup/go-api/internal/watcher"
 	"levelup/go-api/internal/worldenrich"
 )
@@ -333,18 +335,6 @@ func main() {
 			"recommendation", "si le serveur est derrière nginx/Caddy/Traefik, définir LEVELUP_TRUST_PROXY_HEADERS=true")
 	}
 
-	// Foot-gun ART (revue P1 2026-06-02) : LEVELUP_PERSIST_BATCH=0 désactive le
-	// chemin d'écriture batch INSERT-only et réactive le chemin legacy
-	// (ON CONFLICT DO UPDATE sur les tables shared match_registry/match_participants)
-	// qui peut rouvrir le bug ART DuckDB ("Failed to delete all rows from index")
-	// sous concurrence multi-user. Le défaut (batch ON) est sûr ; on alerte
-	// bruyamment si l'opérateur a explicitement désactivé le batch — ce fallback
-	// de rollback ne doit jamais rester posé en prod/multi-user.
-	if os.Getenv("LEVELUP_PERSIST_BATCH") == "0" {
-		slog.Warn("LEVELUP_PERSIST_BATCH=0 : chemin d'écriture legacy ART-unsafe activé (UPSERT concurrent sur tables shared) — risque de corruption d'index DuckDB en multi-user",
-			"recommendation", "retirer LEVELUP_PERSIST_BATCH (ou le mettre à 1) hors situation de rollback ponctuel")
-	}
-
 	// --- Registre de titres PILOTÉ PAR CONFIG (MT-16 / day-one 2e titre) ---
 	// Built-in halo_infinite + titres additionnels découverts sous
 	// config/titles/<slug>/title.toml. Posé en registre partagé AVANT toute
@@ -363,8 +353,8 @@ func main() {
 	// En DEMO_MODE, utiliser les fixtures de démo si les DBs prod n'existent pas.
 	if cfg.DemoMode {
 		demoPaths := []struct{ name, path *string }{
-			{name: strPtr("shared"), path: &sharedPath},
-			{name: strPtr("metadata"), path: &metaPath},
+			{name: pointers.Ptr("shared"), path: &sharedPath},
+			{name: pointers.Ptr("metadata"), path: &metaPath},
 		}
 		for _, dp := range demoPaths {
 			if _, err := os.Stat(*dp.path); os.IsNotExist(err) {
@@ -712,6 +702,15 @@ func main() {
 	// Phase 4.9 (2026-05-24) : BatchQueue serveur-wide default ON. Set
 	// LEVELUP_PERSIST_BATCH_ASYNC=0 pour fallback path synchrone (validé Phase 4.5).
 	//
+	// Cycle de vie du kill-switch (rollback vers le path synchrone) :
+	//   - basculement défaut ON : 2026-05-24 (Phase 4.9) ;
+	//   - date cible de retrait : >= 2026-Q4 (après >= 1 trimestre prod stable) ;
+	//   - critère mesurable : aucun rollback `=0` activé + compteur
+	//     `persist_wal_purged_total` stable (aucun WAL purgé sans persist) +
+	//     recovery boot (RecoverPending) sans batch orphelin. Alors supprimer le
+	//     chemin synchrone, le flag et ses 3 lecteurs (main.go, sync_v2_wiring.go,
+	//     auto_sync.go).
+	//
 	// Path async : queue.Submit + worker + WAL durable (recovery au boot via
 	// RecoverPending). Bénéfice : décorrélation sync/persist + résilience crash
 	// mid-persist (le batch est journalisé sur disque AVANT le push channel).
@@ -719,7 +718,7 @@ func main() {
 	// autoBatchQueue.Drain() + Close() AVANT duckdb.CloseAll() (ordre critique).
 	var autoBatchQueue *persist.BatchQueue
 	var workerWG sync.WaitGroup // tracks the batch Worker goroutine lifecycle
-	if os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") != "0" {
+	if cfg.PersistBatchAsync {
 		walDir := pr.WALDir()
 		q, qErr := persist.NewBatchQueue(persist.BatchQueueConfig{
 			WALDir:      walDir,
@@ -943,7 +942,7 @@ func main() {
 	//
 	// Le notifierGetter est un getter lazy : il référence reg via une closure afin que le
 	// LiveRefreshFactory puisse lier le SessionNotifier quand il est appelé (après le démarrage).
-	var reg *api.ServiceRegistry
+	var reg *wire.ServiceRegistry
 	notifierGetter := func(xuid string) port.SessionNotifier {
 		if reg != nil {
 			return reg.GetSessionNotifier(xuid)
@@ -1101,17 +1100,30 @@ func main() {
 	// notifications delta). Maintenant les 3 entry points (HTTP, auto-sync,
 	// CLI futur) invoquent le MÊME runner via SyncEngine.WithPostSyncRunner.
 	// Cf. AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21 §4 cause B.
-	if postSyncRunner := api.NewPostSyncRunner(reg); postSyncRunner != nil {
+	if postSyncRunner := wire.NewPostSyncRunner(reg); postSyncRunner != nil {
 		autoScheduler.WithPostSyncRunner(postSyncRunner)
 	}
 
-	// ADR 0027 D6.5 — câblage pipeline V2 (dormant tant que
-	// LEVELUP_SYNC_PIPELINE=v2 n'est pas positionné). En l'absence d'env
-	// var, scheduler.shouldUseV2() retourne false et le flow runtime reste
-	// 100% V1 — aucun changement de comportement.
+	// VF-1 / DC-4 — câblage du hook Prestige post-sync sur le chemin V1
+	// (auto-sync + HTTP delta + watcher, tous via BuildEngine). Avant ce fix,
+	// prestige.RunPostSyncHook ne tournait sur AUCUN chemin (stub qui jetait le
+	// hook, engine.prestigeHook toujours nil). = PrestigeBundle.RunPostSync
+	// (no-op si bundle nil ou flag Prestige off, cf. RunPostSync).
+	var prestigePostSyncHook func(ctx context.Context, playerSlug, titleSlug string)
+	if pb := reg.PrestigeBundle(); pb != nil {
+		prestigePostSyncHook = pb.RunPostSync
+		autoScheduler.WithPrestigeHook(prestigePostSyncHook)
+	}
+
+	// ADR 0027 — câblage pipeline V2, UNIQUE moteur de sync du cycle depuis la
+	// suppression du pipeline V1 (lot D1c, DEC-2). Une fois l'orchestrator câblé
+	// (bloc ci-dessous), le cycle auto-sync pilote les joueurs MOTEUR (Infinite)
+	// par V2 et les LIVE-ONLY (Halo 5) par syncPlayer→liveRunner. Plus de flag
+	// LEVELUP_SYNC_PIPELINE ni de fallback automatique.
 	//
-	// Pré-requis : autoSyncPool non-nil + autoBatchQueue non-nil. Si l'un
-	// manque, on skip le câblage : V2 sera indisponible mais V1 fonctionne.
+	// Pré-requis : autoSyncPool + autoBatchQueue + metaDB non-nil. Si l'un manque,
+	// on skip le câblage : le cycle bascule sur le filet structurel syncPlayer de
+	// boot (sync directe sans orchestrator).
 	if autoSyncPool != nil && autoBatchQueue != nil && metaDB != nil {
 		// Récupère le handle shared via le cache duckdb process-wide
 		// (déjà ouvert plus tôt par le serveur en RO ou RW selon mode).
@@ -1123,7 +1135,7 @@ func main() {
 		// defaultRunnerFactory utilise pour câbler la SyncEngine V1.
 		// Garantit que V2 a EXACTEMENT le même runtime que V1 sur le
 		// post-sync (sessions, achievements, progression V2, media scan).
-		v2PostSyncRunner := api.NewPostSyncRunner(reg)
+		v2PostSyncRunner := wire.NewPostSyncRunner(reg)
 		v2Orch := buildSyncV2Orchestrator(SyncV2WiringDeps{
 			Cfg:            cfg,
 			PathResolver:   pr,
@@ -1135,10 +1147,11 @@ func main() {
 			TokenProvider:  tokenProvider,
 			Settings:       settingsStore,
 			PostSyncRunner: v2PostSyncRunner,
+			PrestigeHook:   prestigePostSyncHook,
 		})
 		if v2Orch != nil {
 			autoScheduler.WithCycleOrchestrator(v2Orch)
-			slog.Info("sync.v2: orchestrator câblé parity-complete (V2 par défaut ; rollback via LEVELUP_SYNC_PIPELINE=v1)")
+			slog.Info("sync.v2: orchestrator câblé parity-complete (unique moteur de sync ; filet syncPlayer si non câblé)")
 		}
 	}
 
@@ -1241,15 +1254,15 @@ func main() {
 	// AVANT que les syncs scheduler/watcher tournent (runtime post-boot). Émet une
 	// notif quand un titre live a des matchs, dans le flux du titre par défaut, hors
 	// pipeline progression/prestige. Même pattern d'injection que cfg.SharedManager.
-	cfg.TitleReadyNotifier = api.BuildTitleReadyNotifier(reg, cfg)
+	cfg.TitleReadyNotifier = wire.BuildTitleReadyNotifier(reg, cfg)
 	// Progression V2 title-agnostic : le Runner live d'un titre (Halo 5+) déclenche le
 	// pipeline streaks/records/milestones/coach via ce hook après un cycle qui insère
 	// des matchs (deps de base, SANS le PrestigeBundle mono-titre). Même pattern d'injection.
-	cfg.ProgressionAfterSync = api.BuildProgressionAfterSyncHook(reg, cfg)
+	cfg.ProgressionAfterSync = wire.BuildProgressionAfterSyncHook(reg, cfg)
 
 	// app_release : émission asynchrone d'une notification in-app par joueur si la
 	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot.
-	go api.EmitAppReleaseForAllPlayers(context.Background(), cfg, reg, cfg.AppVersion)
+	go wire.EmitAppReleaseForAllPlayers(context.Background(), cfg, reg, cfg.AppVersion)
 
 	srv := &http.Server{
 		Addr:         cfg.ServerAddr(),
@@ -1443,8 +1456,6 @@ func main() {
 	fmt.Fprintln(os.Stderr, " terminé.")
 }
 
-func strPtr(s string) *string { return &s }
-
 // ensureWarehouseDir crée le répertoire warehouse du titre s'il n'existe pas.
 //
 // metadata/shared/shared_pve/shared_social vivent tous dans ce dossier.
@@ -1513,6 +1524,11 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 	// les autres titres gardent le défaut Infinite. Sans ça, h5 collapserait tous
 	// ses modes dans arena_slayer (classifier Infinite sur pair_name vide).
 	syncpkg.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)
+	// Lot B (audit robustesse) : fail-fast au boot si le classifier LUSR par
+	// défaut n'a pas été posé, au lieu du panic tardif au 1er match live.
+	if err := syncpkg.ValidateLUSRChainClassifierWired(); err != nil {
+		return fmt.Errorf("boot: %w", err)
+	}
 
 	// 1. metadata.duckdb
 	metaDB, err := duckdb.OpenReadWrite(metaPath)

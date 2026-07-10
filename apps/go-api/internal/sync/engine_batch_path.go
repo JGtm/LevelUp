@@ -9,13 +9,9 @@
 //   - Synchrone : pas de queue ni worker async. Phase 3 ajoutera la couche
 //     queue+worker pour découpler la persistance du fetch.
 //
-// **Activation** : via WithBatchPersistMode(true) sur le SyncEngine —
-// l'orchestrateur cmd/server / scheduler peut activer le flag selon
-// LEVELUP_PERSIST_BATCH=1 ou tout autre critère.
-//
-// **Coexistence** : tant que batchMode=false (défaut), le chemin legacy
-// insertFetchedMatch reste utilisé. submitOrInsertMatch est le point de
-// branchement unique.
+// C'est le SEUL chemin d'écriture per-match du live sync : le chemin legacy
+// insertFetchedMatch a été supprimé au lot D1b (audits 2026-07). Le point d'entrée
+// est persistFetchedMatch : enrichissement registry puis submitMatchAsBatch.
 
 package sync
 
@@ -39,34 +35,27 @@ import (
 // quelque chose va clairement mal (lock contention, IO saturée).
 const persistTimeout = 30 * time.Second
 
-// submitOrInsertMatch est le point de branchement unique entre le chemin
-// legacy (insertFetchedMatch) et le chemin Collect→Persist (submitMatchAsBatch).
-// Appelé depuis la boucle d'insertion de SyncEngine.run().
-func (e *SyncEngine) submitOrInsertMatch(
+// persistFetchedMatch est le point d'entrée d'écriture per-match du live sync :
+// enrichissement registry (résolution des noms d'assets) puis submitMatchAsBatch
+// (INSERT-only). Appelé depuis la boucle d'insertion de SyncEngine.run().
+func (e *SyncEngine) persistFetchedMatch(
 	ctx context.Context,
 	sharedDB, playerDB *sql.DB,
 	result *domain.SyncResult,
 	fm *fetchedMatch,
 ) error {
 	// Résolution des noms d'assets (playlist/map/pair/game_variant) depuis
-	// metadata.asset_translations AVANT l'écriture registry. Câblé ICI, au
-	// chokepoint commun batch+legacy : depuis le refactor fetch/insert
-	// (2026-05-21) seul processMatch (legacy test-only) appelait
-	// EnrichRegistryFromMetadata — le chemin prod (fetchMatchData → submit/insert)
-	// écrivait donc l'UUID brut tel quel. Placé dans la phase d'insert séquentielle
-	// (et non dans fetchMatchData parallèle) pour bénéficier du dictionnaire
-	// fraîchement peuplé par le pré-pass de résolution d'assets. Best-effort :
-	// metaDB nil ou asset absent → fallback historique (no-op).
+	// metadata.asset_translations AVANT l'écriture registry. Placé dans la phase
+	// d'insert séquentielle (et non dans fetchMatchData parallèle) pour bénéficier
+	// du dictionnaire fraîchement peuplé par le pré-pass de résolution d'assets.
+	// Best-effort : metaDB nil ou asset absent → fallback historique (no-op).
 	if fm != nil && fm.Registry != nil {
 		if err := EnrichRegistryFromMetadata(ctx, e.metaDB, fm.Registry); err != nil {
 			slog.WarnContext(ctx, "sync: EnrichRegistryFromMetadata non-bloquant",
 				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err)
 		}
 	}
-	if e.batchMode {
-		return e.submitMatchAsBatch(ctx, sharedDB, playerDB, result, fm)
-	}
-	return e.insertFetchedMatch(ctx, sharedDB, playerDB, result, fm)
+	return e.submitMatchAsBatch(ctx, sharedDB, playerDB, result, fm)
 }
 
 // submitMatchAsBatch est le chemin Phase 2.3 INSERT-only.

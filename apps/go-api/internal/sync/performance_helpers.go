@@ -211,7 +211,7 @@ func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]h
 	}
 	if scanErrors > 0 {
 		// Cas anormal (schéma divergent ?). On a quand même chargé ce qu'on a pu.
-		slog.Warn("loadHistoryForPerf: scan errors on history rows",
+		slog.WarnContext(ctx, "loadHistoryForPerf: scan errors on history rows",
 			"xuid", xuid, "scan_errors", scanErrors, "loaded_rows", len(history))
 	}
 	return history, rows.Err()

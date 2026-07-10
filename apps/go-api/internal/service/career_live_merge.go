@@ -9,11 +9,19 @@
 //   - overlayIdentityFromFallback : dernier patch de l'identity rendue par le
 //     builder, depuis la row DB last-known-good — sécurise les cas où live a
 //     produit identity != nil mais avec des champs vides.
+//
+// DIRECTIVE PRODUIT apparence (rappelée 2026-07-08) : bannière, emblème et
+// backdrop sont des champs INDÉPENDANTS — chacun affiche TOUJOURS une valeur
+// (l'actuelle si résoluble, sinon la dernière connue), jamais vide, et sans
+// aucun couplage entre eux. Le carry-forward est donc inconditionnel,
+// champ par champ. Contexte documenté : les emblèmes nouvelle génération
+// (`<id>-SpartanEmblem`, ex. 3806589 équipé par JGtm le 2026-07-03) n'ont
+// AUCUNE nameplate upstream (absents de mapping.json, aucune cfg positive,
+// 404 CDN) — la bannière servie reste alors la dernière connue.
 package service
 
 import (
 	"levelup/go-api/internal/domain"
-	syncpkg "levelup/go-api/internal/sync"
 )
 
 // overlayIdentityFromFallback applique le filet DB last-known-good par-dessus
@@ -23,7 +31,9 @@ import (
 //   - nil (si les deux sont nil)
 //
 // Anti-régression « bannière qui va et vient » : un fetch live qui rend
-// BannerImageURL=nil ne doit JAMAIS écraser la valeur DB historique.
+// BannerImageURL=nil ne doit JAMAIS écraser la valeur DB historique
+// (directive « jamais vide », cf. en-tête de fichier). Champs indépendants :
+// chaque asset est patché pour lui-même, sans condition croisée.
 func overlayIdentityFromFallback(identity, fallback *domain.HomeSpartanIdentityRow) *domain.HomeSpartanIdentityRow {
 	if identity == nil {
 		return fallback
@@ -61,8 +71,8 @@ func overlayIdentityFromFallback(identity, fallback *domain.HomeSpartanIdentityR
 //
 // Retourne nil si toutes les sources sont vides.
 func mergeCareerRow(
-	progress *syncpkg.CareerRankData,
-	custom *syncpkg.SpartanCustomizationData,
+	progress *domain.CareerRankSnapshot,
+	custom *domain.SpartanCustomizationData,
 	dbLast *domain.CareerRankRow,
 ) *domain.CareerRankRow {
 	if progress == nil && custom == nil && dbLast == nil {
@@ -86,7 +96,7 @@ func mergeCareerRow(
 // mergeProgressInto applique progress live + dbLast carry-forward sur les
 // champs rank/current_xp/is_max_rank. Retourne true si au moins un champ a
 // été carry-forward depuis dbLast.
-func mergeProgressInto(merged *domain.CareerRankRow, progress *syncpkg.CareerRankData, dbLast *domain.CareerRankRow) bool {
+func mergeProgressInto(merged *domain.CareerRankRow, progress *domain.CareerRankSnapshot, dbLast *domain.CareerRankRow) bool {
 	if progress != nil {
 		merged.Rank = progress.CurrentRank
 		merged.CurrentXP = progress.CurrentXP
@@ -114,8 +124,9 @@ func mergeProgressInto(merged *domain.CareerRankRow, progress *syncpkg.CareerRan
 
 // mergeCustomInto applique custom live + dbLast carry-forward sur les champs
 // spartan_id/banner/emblem/backdrop. Retourne true si au moins un champ a été
-// carry-forward depuis dbLast.
-func mergeCustomInto(merged *domain.CareerRankRow, custom *syncpkg.SpartanCustomizationData, dbLast *domain.CareerRankRow) bool {
+// carry-forward depuis dbLast. Chaque champ est indépendant : carry-forward
+// inconditionnel par champ (directive « jamais vide », cf. en-tête de fichier).
+func mergeCustomInto(merged *domain.CareerRankRow, custom *domain.SpartanCustomizationData, dbLast *domain.CareerRankRow) bool {
 	if custom != nil {
 		merged.SpartanID = custom.SpartanID
 		merged.BannerImageURL = custom.BannerImageURL

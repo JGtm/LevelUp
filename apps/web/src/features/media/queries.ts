@@ -342,7 +342,7 @@ export function useMediaMatchCandidates(
   enabled = true,
 ) {
   return useQuery({
-    queryKey: ['media', 'match-candidates', playerSlug, filePath, windowMinutes],
+    queryKey: queryKeys.mediaMatchCandidates(playerSlug, filePath, windowMinutes),
     queryFn: () =>
       api.get<MediaMatchCandidatesResponse>(
         `/players/${playerSlug}/media/match-candidates?file_path=${encodeURIComponent(filePath ?? '')}&window_minutes=${windowMinutes}`,

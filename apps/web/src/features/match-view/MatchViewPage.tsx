@@ -110,9 +110,10 @@ function killTypeFallback(me: MatchScoreboardRow | undefined, t: MatchViewText):
 
 type TabId = 'summary' | 'details'
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'summary', label: 'Général' },
-  { id: 'details', label: 'Détails' },
+// Libellés résolus au rendu via MATCH_VIEW_TEXT (GH2-B2 : bilingue).
+const TABS: { id: TabId; labelKey: 'tabGeneral' | 'tabDetails' }[] = [
+  { id: 'summary', labelKey: 'tabGeneral' },
+  { id: 'details', labelKey: 'tabDetails' },
 ]
 
 export function MatchViewPage() {
@@ -188,15 +189,13 @@ export function MatchViewPage() {
     // permettre à l'utilisateur de continuer à naviguer entre les matchs.
     return (
       <div className="flex flex-col">
-        <MatchBreadcrumb playerSlug={playerSlug} matchLabel={t.mapUnknown} />
+        <MatchBreadcrumb playerSlug={playerSlug} matchLabel={t.mapUnknown} locale={locale === 'en' ? 'en' : 'fr'} />
         <MatchNavigationBar playerSlug={playerSlug} matchId={matchId} locale={locale === 'en' ? 'en' : 'fr'} />
         <div className="p-6">
           <Card>
             <CardContent className="py-8 text-center">
               <p className="font-medium text-destructive">
-                {locale === 'en'
-                  ? 'Match not found or load error.'
-                  : 'Match introuvable ou erreur de chargement.'}
+                {t.pageErrorTitle}
               </p>
               {error && (error as { message?: string }).message && (
                 <p className="mt-1 text-xs text-muted-foreground font-mono">
@@ -205,7 +204,7 @@ export function MatchViewPage() {
               )}
               <div className="mt-4">
                 <Button variant="outline" size="sm" onClick={() => refetch()}>
-                  {locale === 'en' ? 'Retry' : 'Réessayer'}
+                  {t.pageRetry}
                 </Button>
               </div>
             </CardContent>
@@ -243,7 +242,7 @@ export function MatchViewPage() {
 
   return (
     <div className="flex flex-col">
-      <MatchBreadcrumb playerSlug={playerSlug} matchLabel={breadcrumbLabel} />
+      <MatchBreadcrumb playerSlug={playerSlug} matchLabel={breadcrumbLabel} locale={locale === 'en' ? 'en' : 'fr'} />
 
       {/* Sprint 54-B : avertissement privacy */}
       {data.privacy_warning && (
@@ -273,9 +272,7 @@ export function MatchViewPage() {
             </svg>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">
-                {locale === 'en'
-                  ? 'This match could not be fully loaded.'
-                  : 'Ce match n\'a pas pu être chargé en totalité.'}
+                {t.pagePartialLoad}
               </p>
               <ul className="mt-1.5 space-y-1">
                 {data.partial_reasons.map((r) => (
@@ -318,7 +315,7 @@ export function MatchViewPage() {
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              {tab.label}
+              {t[tab.labelKey]}
             </Button>
           ))}
         </div>

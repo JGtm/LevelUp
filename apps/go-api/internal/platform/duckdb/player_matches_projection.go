@@ -28,7 +28,7 @@ func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
 // projectOutcome retourne l'Outcome canonique. Outcome vide si NULL/0 en DB.
 func projectOutcome(s playerMatchScanResult) canonical.Outcome {
 	if s.outcomeCode.Valid && s.outcomeCode.Int64 != 0 {
-		return outcomeFromInt(int(s.outcomeCode.Int64))
+		return OutcomeFromInt(int(s.outcomeCode.Int64))
 	}
 	return ""
 }
@@ -104,11 +104,11 @@ func projectMatchSummary(s playerMatchScanResult, outcome canonical.Outcome, tea
 		MatchID:         s.matchID,
 		StartedAtUTC:    s.startTime,
 		DurationSeconds: &durationPtr,
-		MatchType:       matchTypeFromFlags(s.isRanked, s.isFirefight),
-		Playlist:        assetReference("playlist", s.playlistID, s.playlistName, s.playlistNameFR),
-		Map:             assetReference("map", s.mapID, s.mapName, s.mapNameFR),
-		GameVariant:     assetReference("game_variant", s.variantID, s.variantName, ""),
-		PairMode:        assetReference("pair_mode", s.pairID, s.pairName, s.pairNameFR),
+		MatchType:       MatchTypeFromFlags(s.isRanked, s.isFirefight),
+		Playlist:        AssetReference("playlist", s.playlistID, s.playlistName, s.playlistNameFR),
+		Map:             AssetReference("map", s.mapID, s.mapName, s.mapNameFR),
+		GameVariant:     AssetReference("game_variant", s.variantID, s.variantName, ""),
+		PairMode:        AssetReference("pair_mode", s.pairID, s.pairName, s.pairNameFR),
 		IsRanked:        &s.isRanked,
 		IsPvE:           &s.isFirefight,
 		Outcome:         outcome,
@@ -185,8 +185,8 @@ func outcomeToInt(o canonical.Outcome) int {
 	return 0
 }
 
-// outcomeFromInt convertit le code int DB vers un canonical.Outcome.
-func outcomeFromInt(i int) canonical.Outcome {
+// OutcomeFromInt convertit le code int DB vers un canonical.Outcome.
+func OutcomeFromInt(i int) canonical.Outcome {
 	switch i {
 	case 1:
 		return canonical.OutcomeTie
@@ -200,9 +200,9 @@ func outcomeFromInt(i int) canonical.Outcome {
 	return canonical.Outcome("")
 }
 
-// matchTypeFromFlags choisit un MatchType canonique a partir de is_ranked /
+// MatchTypeFromFlags choisit un MatchType canonique a partir de is_ranked /
 // is_firefight (selection prioritaire : firefight > ranked > social).
-func matchTypeFromFlags(isRanked, isFirefight bool) canonical.MatchType {
+func MatchTypeFromFlags(isRanked, isFirefight bool) canonical.MatchType {
 	if isFirefight {
 		return canonical.MatchTypeFirefight
 	}
@@ -212,9 +212,9 @@ func matchTypeFromFlags(isRanked, isFirefight bool) canonical.MatchType {
 	return canonical.MatchTypeSocial
 }
 
-// assetReference compose un canonical.AssetReference depuis les colonnes DB.
+// AssetReference compose un canonical.AssetReference depuis les colonnes DB.
 // Retourne nil si aucun ID ni label.
-func assetReference(kind, id, name, nameFR string) *canonical.AssetReference {
+func AssetReference(kind, id, name, nameFR string) *canonical.AssetReference {
 	if id == "" && name == "" && nameFR == "" {
 		return nil
 	}

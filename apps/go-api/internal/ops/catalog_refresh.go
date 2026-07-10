@@ -7,12 +7,12 @@
 // appelable in-process par le dashboard admin ET au sync (résorption autonome des
 // « playlists hors catalogue », sans flag).
 //
-// ART-safe : toutes les écritures passent par upsertNoConflict (SELECT-then-write),
-// JAMAIS d'`INSERT ... ON CONFLICT DO UPDATE` — ce pattern FATAL-invalide
-// metadata.duckdb (bug ART « Failed to delete all rows from index »), ce qui faisait
-// retomber toute l'UI en anglais brut jusqu'au redémarrage. Même politique que
-// service.CatalogFetcherService.upsertRowNoConflict (cf. ADR 0019). C'est ce qui
-// permet de garder cette résolution TOUJOURS active (plus de LEVELUP_CATALOG_REFRESH).
+// ART-safe : toutes les écritures passent par duckdb.UpsertRowNoConflict
+// (SELECT-then-write), JAMAIS d'`INSERT ... ON CONFLICT DO UPDATE` — ce pattern
+// FATAL-invalide metadata.duckdb (bug ART « Failed to delete all rows from index »),
+// ce qui faisait retomber toute l'UI en anglais brut jusqu'au redémarrage. Même upsert
+// canonique que le CatalogFetcherService (cf. ADR 0019). C'est ce qui permet de garder
+// cette résolution TOUJOURS active (plus de LEVELUP_CATALOG_REFRESH).
 //
 // Spécifique Halo Infinite (rankedplaylists allowlist) — comme la source.
 package ops
@@ -20,41 +20,18 @@ package ops
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // CatalogSeedResult compte les upserts par table catalog.
 type CatalogSeedResult struct {
 	Playlists, Pairs, Maps, GameVariants int
-}
-
-// upsertNoConflict : SELECT-then-(UPDATE|INSERT), ART-safe. Miroir local de
-// service.CatalogFetcherService.upsertRowNoConflict — JAMAIS d'ON CONFLICT sur
-// metadata.duckdb (bug ART). existsQuery doit retourner ≥1 ligne si la PK existe.
-func upsertNoConflict(
-	ctx context.Context, db *sql.DB,
-	existsQuery string, existsArgs []any,
-	updateQuery string, updateArgs []any,
-	insertQuery string, insertArgs []any,
-) error {
-	var dummy int
-	err := db.QueryRowContext(ctx, existsQuery, existsArgs...).Scan(&dummy)
-	switch {
-	case err == nil:
-		_, execErr := db.ExecContext(ctx, updateQuery, updateArgs...)
-		return execErr
-	case errors.Is(err, sql.ErrNoRows):
-		_, execErr := db.ExecContext(ctx, insertQuery, insertArgs...)
-		return execErr
-	default:
-		return err
-	}
 }
 
 // CatalogRefreshFromRegistry peuple les tables catalog depuis match_registry sans
@@ -109,7 +86,7 @@ func refreshPlaylistsCatalog(ctx context.Context, metadataDB, sharedDB *sql.DB, 
 			isRanked = true
 		}
 		experience := classifyExperienceFromName(name, isRanked)
-		if err := upsertNoConflict(ctx, metadataDB,
+		if err := duckdb.UpsertRowNoConflict(ctx, metadataDB,
 			`SELECT 1 FROM playlists_catalog WHERE title_slug = ? AND playlist_asset_id = ?`,
 			[]any{titleSlug, id},
 			`UPDATE playlists_catalog SET
@@ -158,7 +135,7 @@ func refreshMapsCatalog(ctx context.Context, metadataDB, sharedDB *sql.DB, title
 			slog.DebugContext(ctx, "map skip: mode-variant name", "map_id", id, "name", name)
 			continue
 		}
-		if err := upsertNoConflict(ctx, metadataDB,
+		if err := duckdb.UpsertRowNoConflict(ctx, metadataDB,
 			`SELECT 1 FROM maps_catalog WHERE title_slug = ? AND map_asset_id = ?`,
 			[]any{titleSlug, id},
 			`UPDATE maps_catalog SET
@@ -200,7 +177,7 @@ func refreshGameVariantsCatalog(ctx context.Context, metadataDB, sharedDB *sql.D
 			return n, fmt.Errorf("scan game_variant: %w", err)
 		}
 		modeCanonical := classifyModeCanonicalFromName(name)
-		if err := upsertNoConflict(ctx, metadataDB,
+		if err := duckdb.UpsertRowNoConflict(ctx, metadataDB,
 			`SELECT 1 FROM game_variants_catalog WHERE title_slug = ? AND game_variant_asset_id = ?`,
 			[]any{titleSlug, id},
 			`UPDATE game_variants_catalog SET
@@ -275,10 +252,14 @@ func refreshPairsCatalog(ctx context.Context, metadataDB, sharedDB *sql.DB, titl
 		}
 		n++
 		if name != "" {
-			_ = upsertPairLabel(ctx, metadataDB, titleSlug, id, "en", name)
+			if lblErr := upsertPairLabel(ctx, metadataDB, titleSlug, id, "en", name); lblErr != nil {
+				slog.WarnContext(ctx, "upsert pair label (en)", "id", id, "err", lblErr)
+			}
 		}
 		if nameFR.Valid && nameFR.String != "" {
-			_ = upsertPairLabel(ctx, metadataDB, titleSlug, id, "fr", nameFR.String)
+			if lblErr := upsertPairLabel(ctx, metadataDB, titleSlug, id, "fr", nameFR.String); lblErr != nil {
+				slog.WarnContext(ctx, "upsert pair label (fr)", "id", id, "err", lblErr)
+			}
 		}
 	}
 	return n, rows.Err()
@@ -286,7 +267,7 @@ func refreshPairsCatalog(ctx context.Context, metadataDB, sharedDB *sql.DB, titl
 
 // upsertPairDefinition : une ligne map_mode_pair_definitions (ART-safe).
 func upsertPairDefinition(ctx context.Context, db *sql.DB, titleSlug, id, versionID, name, mapID, gvID, modeCategory string) error {
-	return upsertNoConflict(ctx, db,
+	return duckdb.UpsertRowNoConflict(ctx, db,
 		`SELECT 1 FROM map_mode_pair_definitions WHERE title_slug = ? AND pair_asset_id = ?`,
 		[]any{titleSlug, id},
 		`UPDATE map_mode_pair_definitions SET
@@ -307,7 +288,7 @@ func upsertPairDefinition(ctx context.Context, db *sql.DB, titleSlug, id, versio
 
 // upsertPairLabel : une traduction pair_mode_label_translations (ART-safe).
 func upsertPairLabel(ctx context.Context, db *sql.DB, titleSlug, id, lang, label string) error {
-	return upsertNoConflict(ctx, db,
+	return duckdb.UpsertRowNoConflict(ctx, db,
 		`SELECT 1 FROM pair_mode_label_translations WHERE title_slug = ? AND pair_asset_id = ? AND lang = ?`,
 		[]any{titleSlug, id, lang},
 		`UPDATE pair_mode_label_translations SET label = ? WHERE title_slug = ? AND pair_asset_id = ? AND lang = ?`,

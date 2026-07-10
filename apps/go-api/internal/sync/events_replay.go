@@ -29,6 +29,7 @@ import (
 	"log/slog"
 	"sort"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
@@ -72,7 +73,7 @@ func FindBrokenHighlightEventMatches(ctx context.Context, db *sql.DB, limit int)
 		      AND NOT EXISTS (SELECT 1 FROM killer_victim_pairs kvp WHERE kvp.match_id = mr.match_id)
 		    )
 		  )
-		ORDER BY COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') DESC NULLS LAST
+		ORDER BY `+analysis.SQLStartTimeCanonical("mr")+` DESC NULLS LAST
 		LIMIT ?
 	`, limit)
 	if err != nil {

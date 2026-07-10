@@ -54,11 +54,13 @@ func BackfillWeaponKillsForMatch(
 		return false, fmt.Errorf("BackfillWeaponKillsForMatch film(%s): %w", matchID, err)
 	}
 	if !found {
-		_ = MarkWeaponKillsDone(ctx, sharedDB, matchID, true)
+		if err := MarkWeaponKillsDone(ctx, sharedDB, matchID, true); err != nil {
+			slog.WarnContext(ctx, "backfill_weapons: MarkWeaponKillsDone (film absent) failed", "match_id", matchID, "err", err)
+		}
 		return false, nil
 	}
 
-	// 2. Convertir filmChunkData → analysis.ChunkData.
+	// 2. Convertir FilmChunkData → analysis.ChunkData.
 	chunks := make(map[int]analysis.ChunkData, len(rawChunks))
 	for idx, fc := range rawChunks {
 		chunks[idx] = analysis.ChunkData{
@@ -146,11 +148,13 @@ func BackfillWeaponKillsForMatchAll(
 		return false, fmt.Errorf("BackfillWeaponKillsForMatchAll film(%s): %w", matchID, err)
 	}
 	if !found {
-		_ = MarkWeaponKillsDone(ctx, sharedDB, matchID, true)
+		if err := MarkWeaponKillsDone(ctx, sharedDB, matchID, true); err != nil {
+			slog.WarnContext(ctx, "backfill_weapons: MarkWeaponKillsDone (film absent) failed", "match_id", matchID, "err", err)
+		}
 		return false, nil
 	}
 
-	// 2. Convertir filmChunkData → analysis.ChunkData.
+	// 2. Convertir FilmChunkData → analysis.ChunkData.
 	chunks := make(map[int]analysis.ChunkData, len(rawChunks))
 	for idx, fc := range rawChunks {
 		chunks[idx] = analysis.ChunkData{

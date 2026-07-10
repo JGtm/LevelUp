@@ -249,7 +249,7 @@ func asString(v any) string {
 	return s
 }
 
-func strPtr(s string) *string {
+func strPtrNonEmpty(s string) *string {
 	if s == "" {
 		return nil
 	}

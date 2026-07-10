@@ -112,6 +112,11 @@ func poolTitleOf(sources []CredentialSource) string {
 
 // NewPool crée un Pool à partir d'une liste de CredentialSources découvertes.
 // opts.MaxSize = 0 → utiliser tous les sources. opts.PerTokenRPS = 0 → défaut 1 RPS.
+//
+// Constructeur : câblage cohésif des dépendances du pool (sources, rate limiter,
+// refresher, cooldown) ; découper fragmenterait l'assemblage DI (K3f, exemption).
+//
+//nolint:funlen
 func NewPool(
 	ctx context.Context,
 	resolver Resolver,
@@ -462,6 +467,11 @@ func (s *slot) xuidSnapshot() string {
 // Non-bloquant : tous les tokens sont marqués malsains et le refresher est suspendu.
 // retryAfter > 0 = durée du header Retry-After (prioritaire) ; sinon backoff
 // exponentiel sur globalCooldown pour les 429 répétés, borné à maxCooldown.
+//
+// Machine à états backoff/cooldown cohésive (Retry-After vs exponentiel, marquage
+// tokens, suspension refresher) — un seul flux de décision (K3f, exemption).
+//
+//nolint:funlen
 func (p *poolImpl) OnHTTPError(statusCode int, retryAfter time.Duration) {
 	if statusCode != 429 && statusCode != 503 {
 		// Ignorer les autres codes d'erreur.
@@ -612,6 +622,11 @@ func (p *poolImpl) Close() {
 }
 
 // refresherLoop en arrière-plan, rafraîchit les tokens malsains ou proches de l'expiration.
+//
+// Boucle goroutine ticker+select+shutdown cohésive ; découper le corps du select
+// romprait la lisibilité du cycle de vie (K3f, exemption).
+//
+//nolint:funlen
 func (p *poolImpl) refresherLoop(baseCtx context.Context) {
 	// Sprint B1 commit 17 : event_id sur la loop globale. Les opérations
 	// individuelles (Refresh par slot) génèrent leur propre sous-event_id

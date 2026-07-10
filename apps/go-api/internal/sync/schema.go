@@ -65,8 +65,6 @@ CREATE TABLE IF NOT EXISTS player_match_enrichment (
     session_label               VARCHAR,
     is_with_friends             BOOLEAN   DEFAULT FALSE,
     teammates_signature         VARCHAR,
-    known_teammates_count       SMALLINT,
-    friends_xuids               VARCHAR,
     had_bot_teammate            BOOLEAN,
     is_excluded                 BOOLEAN   DEFAULT FALSE,
     -- Marqueur terminal de la convergence PSA (cf. convergePSA). NULL = jamais

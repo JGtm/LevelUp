@@ -6,11 +6,13 @@
 // aucun ATTACH `shared` sur les conns du pool depuis le commit 9c.5).
 //
 // Requêtes par domaine :
-//   - queries_career.go         : Q4/Q4MV/Q5, Q6-Q9, Q22-Q25 (filtres, historique, carrière, stats)
+//   - queries_career.go         : Q4Shared/Q4MVShared/Q5, Q6-Q9, Q22-Q25 (filtres, historique, carrière, stats)
 //   - queries_match.go          : Q10, Q12-Q21 (encounters, scoreboard, events, armes)
 //   - queries_squad.go          : Q29-Q33b (escouade, coéquipiers, synthèse)
 //   - queries_home_citations.go : Q26-Q28, Q34-Q37 (home, citations, médias)
 package duckdb
+
+import "levelup/go-api/internal/analysis"
 
 // Q1 : Bootstrap — nombre de matchs dans shared_matches_v2.
 const Q1MatchCount = `SELECT COUNT(*) FROM match_registry`
@@ -41,7 +43,7 @@ const Q3ResolveXUID = `SELECT value FROM sync_meta WHERE key = 'xuid'`
 //
 // Note schéma : GamertagRepo ouvre shared_matches_v2.duckdb directement (pas via
 // pool player). Les tables sont dans main — pas de préfixe global./shared. ici.
-const Q11GamertagSearch = `
+var Q11GamertagSearch = `
 WITH params AS (SELECT lower(?) AS q),
 matched AS (
     SELECT
@@ -53,7 +55,7 @@ matched AS (
       + CAST(jaro_winkler_similarity(lower(xa.gamertag), p.q) * 100 AS INTEGER) AS score
     FROM xuid_aliases xa
     CROSS JOIN params p
-    WHERE xa.xuid NOT LIKE 'bid(%'
+    WHERE ` + analysis.SQLIsNotBotCol("xa.xuid") + `
       AND (   lower(xa.gamertag) LIKE '%' || p.q || '%'
            OR jaro_winkler_similarity(lower(xa.gamertag), p.q) > 0.80)
 )

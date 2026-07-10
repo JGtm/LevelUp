@@ -17,6 +17,7 @@ import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { HomeSkillPeakCard, resolveSkillPeakState } from '@/features/home/HomeSkillPeakCard'
 import { getSpartanIdentityText } from '@/features/home/spartanIdentity.i18n'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import type { HomeSpartanIdentity } from '@/lib/api/types'
 import { RecoloredMask } from '@/features/spartan-customizer/RecoloredMask'
@@ -39,7 +40,7 @@ export function ExplorerTargetIdentityBanner({
   identityUnavailableDescription,
 }: ExplorerTargetIdentityBannerProps) {
   const locale = useAppShellStore((s) => s.locale)
-  const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
+  const numberLocale = intlLocale(locale)
   // Labels localisés réutilisés du Home (source unique : home.spartan.*) :
   // « Meilleur CSR/LUSR », « Rang max », « Progression vers … ».
   const { labels } = getSpartanIdentityText(locale)

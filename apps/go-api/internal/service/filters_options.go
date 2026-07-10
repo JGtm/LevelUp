@@ -323,6 +323,9 @@ func buildExperienceOptions(rows []domain.FilterMatchRow, c domain.CascadeFilter
 		rs = filterBySet(rs, c.Playlists, playlistUI)
 		rs = filterBySet(rs, c.Modes, modeUI)
 		rs = filterBySet(rs, c.Maps, mapUI)
+		// Label = value canonique FR ; localisé vers la locale de requête au point
+		// d'entrée (FiltersService.Resolve → localizeExperienceOptions). Value FR par
+		// contrat (cascade EXPERIENCE_TO_CASCADE + matchers substring). GH5-2.
 		out = append(out, domain.LabelValue{Label: lbl, Value: lbl, Count: len(rs)})
 	}
 	return out

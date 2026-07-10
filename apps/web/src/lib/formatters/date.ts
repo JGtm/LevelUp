@@ -41,11 +41,19 @@ export function formatDate(
 }
 
 /**
- * Format date court FR (DD/MM) pour les axes de chart timeseries.
- * Verrouillé sur fr-FR — usage chart uniquement.
+ * Format date court DD/MM pour les axes de chart timeseries.
+ *
+ * VERROU 'fr-FR' DÉLIBÉRÉ (décision I2b, 2026-07-04 ; DETTE_ASSUMEE §2 I2b ; revu
+ * V7d/VF-14 2026-07-07 — maintenu). Le rendu est NUMÉRIQUE PUR `DD/MM` (day+month
+ * en 2-digit, sans nom de mois) : identique en FR et EN (`29/04` dans les deux
+ * locales), donc locale-invariant à l'affichage. On fige explicitement pour
+ * garantir l'ordre jour/mois sur l'axe quelle que soit la locale runtime (un
+ * 'en-US' rendrait MM/DD et casserait la lecture de l'axe). Ne PAS threader la
+ * locale ici : ce serait introduire une divergence d'ordre sans gain d'i18n.
+ * Pour une date lisible localisée (nom de mois), utiliser formatDate(value, locale).
  *
  * @example
- *   formatDateShort('2026-04-29')   // "29/04"
+ *   formatDateShort('2026-04-29')   // "29/04" (FR comme EN)
  */
 export function formatDateShort(value: Date | string | number): string {
   const d = value instanceof Date ? value : new Date(value)

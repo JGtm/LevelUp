@@ -209,7 +209,7 @@ func playerDoneGuard(ctx context.Context, playerDB *sql.DB, table string, column
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
-			slog.Warn("playerDoneGuard: row scan failed, ID skipped",
+			slog.WarnContext(ctx, "playerDoneGuard: row scan failed, ID skipped",
 				"table", table, "err", err)
 			continue
 		}
@@ -230,7 +230,7 @@ func playerDoneGuard(ctx context.Context, playerDB *sql.DB, table string, column
 		}
 	}
 	if len(rejected) > 0 {
-		slog.Warn("playerDoneGuard: malformed match_id(s) rejected by isValidMatchID — guard will treat affected matches as not done",
+		slog.WarnContext(ctx, "playerDoneGuard: malformed match_id(s) rejected by isValidMatchID — guard will treat affected matches as not done",
 			"table", table, "rejected_count", len(rejected),
 			"total_count", len(doneIDs), "sample", rejected[:min(3, len(rejected))])
 	}
@@ -421,7 +421,7 @@ func findMatchesInSharedAll(
 
 	rows, err := sharedDB.QueryContext(ctx, query, params...)
 	if err != nil {
-		slog.Warn("backfill: détection V5 shared DB échouée", "err", err)
+		slog.WarnContext(ctx, "backfill: détection V5 shared DB échouée", "err", err)
 		return nil, nil // match Python behavior: log + return []
 	}
 	defer rows.Close()
@@ -512,7 +512,7 @@ func findMatchesInSharedDB(
 
 	rows, err := sharedDB.QueryContext(ctx, query, xuid)
 	if err != nil {
-		slog.Warn("backfill: détection shared DB échouée", "err", err)
+		slog.WarnContext(ctx, "backfill: détection shared DB échouée", "err", err)
 		return nil, nil
 	}
 	defer rows.Close()

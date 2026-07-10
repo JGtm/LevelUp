@@ -53,7 +53,7 @@ export function AscensionCoachingTab() {
   if (!playerSlug) {
     return (
       <p className="p-6 text-sm text-muted-foreground">
-        {locale === 'en' ? 'Select a player to view coaching.' : 'Sélectionne un joueur pour voir ton entraînement.'}
+        {t.coachingSelectPlayer}
       </p>
     )
   }

@@ -103,7 +103,7 @@ function RedirectFlowPanel({ onUseDeviceCode }: RedirectFlowPanelProps) {
 
   return (
     <div className="space-y-5 text-center">
-      <h2 className="text-lg font-semibold">Connexion Xbox</h2>
+      <h2 className="text-lg font-semibold">{t('common.xbox_login.title')}</h2>
       <p className="text-sm text-muted-foreground">
         {t('common.auth.xbox_connect_microsoft')}
       </p>
@@ -159,9 +159,9 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
         onError: (err) => {
           const apiErr = err as unknown as ApiError
           if (apiErr.code === 'demo_mode') {
-            setStartError('Authentification indisponible en mode démo.')
+            setStartError(t('common.xbox_login.err_demo'))
           } else {
-            setStartError(apiErr.message ?? 'Impossible de démarrer le flow Xbox.')
+            setStartError(apiErr.message ?? t('common.xbox_login.err_start'))
           }
         },
       })
@@ -194,7 +194,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
   useEffect(() => {
     if (!attemptId || apiErrorCode(error) !== 'attempt_not_found') return
     if (recoveryCountRef.current >= MAX_AUTO_RECOVERY) {
-      setStartError('La connexion au serveur a été interrompue plusieurs fois. Veuillez réessayer.')
+      setStartError(t('common.xbox_login.err_interrupted'))
       return
     }
     recoveryCountRef.current += 1
@@ -212,7 +212,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
       },
       onError: (err) => {
         const apiErr = err as unknown as ApiError
-        setStartError(apiErr.message ?? 'Impossible de redémarrer le flow.')
+        setStartError(apiErr.message ?? t('common.xbox_login.err_restart'))
       },
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -235,7 +235,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
       },
       onError: (err) => {
         const apiErr = err as unknown as ApiError
-        setStartError(apiErr.message ?? 'Impossible de redémarrer le flow.')
+        setStartError(apiErr.message ?? t('common.xbox_login.err_restart'))
       },
     })
   }
@@ -245,7 +245,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
     return (
       <div className="space-y-3 text-center">
         <p className="text-destructive font-medium">{startError}</p>
-        <Button onClick={handleRetry}>Réessayer</Button>
+        <Button onClick={handleRetry}>{t('common.xbox_login.retry')}</Button>
       </div>
     )
   }
@@ -261,7 +261,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
         <p className="text-destructive font-medium">
           {expired ? 'Le code a expiré.' : status?.error?.message ?? 'Échec de l\'authentification.'}
         </p>
-        <Button onClick={handleRetry}>Réessayer</Button>
+        <Button onClick={handleRetry}>{t('common.xbox_login.retry')}</Button>
       </div>
     )
   }
@@ -271,7 +271,11 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
       <div className="space-y-3 text-center">
         <p className="text-success font-semibold">{t('common.auth.xbox_auth_success')}</p>
         {status.gamertag && (
-          <p className="text-sm text-muted-foreground">Bienvenue, {status.gamertag}</p>
+          <p className="text-sm text-muted-foreground">
+            {formatMessage(commonManifest, 'common.xbox_login.welcome', locale, {
+              gamertag: status.gamertag,
+            })}
+          </p>
         )}
         <Spinner size="sm" label={t('common.empty.loading')} />
       </div>
@@ -289,7 +293,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-center">Connexion Xbox</h2>
+      <h2 className="text-lg font-semibold text-center">{t('common.xbox_login.title')}</h2>
       <p className="text-sm text-muted-foreground text-center">
         {t('common.setup.go_to')}{' '}
         <a href={uri} target="_blank" rel="noopener noreferrer" className="text-primary underline">
@@ -304,7 +308,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
       </div>
       {secondsLeft != null && secondsLeft > 0 && (
         <p className="text-center text-xs text-muted-foreground">
-          Valide encore{' '}
+          {t('common.xbox_login.valid_for')}{' '}
           <span className={secondsLeft < 60 ? 'text-warning font-semibold' : ''}>
             {mins}:{String(secs).padStart(2, '0')}
           </span>
@@ -383,7 +387,7 @@ function AdminPasswordPanel({ onBack }: AdminPasswordPanelProps) {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="admin-username" className="block text-sm font-medium text-foreground mb-1">
-                  Identifiant
+                  {t('common.auth.username_label')}
                 </label>
                 <input
                   id="admin-username"
@@ -415,7 +419,7 @@ function AdminPasswordPanel({ onBack }: AdminPasswordPanelProps) {
               {error && <p className="text-sm text-destructive">{error}</p>}
 
               <Button type="submit" className="w-full" disabled={login.isPending}>
-                {login.isPending ? 'Connexion…' : 'Se connecter'}
+                {login.isPending ? t('common.auth.login_pending') : t('common.auth.login_action')}
               </Button>
             </form>
 

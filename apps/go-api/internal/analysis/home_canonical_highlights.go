@@ -18,7 +18,10 @@ import (
 // BuildHighlightsFromCanonical : full canonical (P4.3 finale).
 // 8 highlights (perf moyenne, delta rang, best underdog win, KDA peak,
 // MaÃ®trise tile, Per-minute tile, Volume, SÃ©rie tile).
-func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow) []domain.HighlightItem {
+//
+// `locale` ("fr"/"en") sélectionne les libellés de carte/mode composés dans les
+// champs Detail/Value (GH2-B5 : sans elle, labelFR forçait le FR sous UI EN).
+func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow, locale string) []domain.HighlightItem {
 	if len(rows) == 0 {
 		return nil
 	}
@@ -112,7 +115,7 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow) []domain.High
 			highlights = append(highlights, domain.HighlightItem{
 				TitleKey:   "highlight.title.best_underdog_win",
 				Value:      fmt.Sprintf("%s%.0f MMR", sign, delta),
-				Detail:     fmt.Sprintf("%s · %s", labelFR(mapFR, mapEN), normalizeHomeModeLabel(labelFR(modeFR, modeEN), mapFR, mapEN)),
+				Detail:     fmt.Sprintf("%s · %s", labelForLocale(locale, mapFR, mapEN), normalizeHomeModeLabel(labelForLocale(locale, modeFR, modeEN), mapFR, mapEN)),
 				ValueColor: color,
 			})
 		}
@@ -127,7 +130,7 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow) []domain.High
 			highlights = append(highlights, domain.HighlightItem{
 				TitleKey:   "highlight.title.kda_peak",
 				Value:      fmt.Sprintf("%.2f", *best.Self.KDA),
-				Detail:     fmt.Sprintf("%s · %s", labelFR(mapFR, mapEN), normalizeHomeModeLabel(labelFR(modeFR, modeEN), mapFR, mapEN)),
+				Detail:     fmt.Sprintf("%s · %s", labelForLocale(locale, mapFR, mapEN), normalizeHomeModeLabel(labelForLocale(locale, modeFR, modeEN), mapFR, mapEN)),
 				ValueColor: highlightKDAColor(*best.Self.KDA),
 			})
 		}
@@ -172,7 +175,7 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow) []domain.High
 	}
 
 	// Highlight 8 : SÃ©rie.
-	if serie := buildSerieHighlightCanonical(window); serie != nil {
+	if serie := buildSerieHighlightCanonical(window, locale); serie != nil {
 		highlights = append(highlights, *serie)
 	}
 
@@ -210,9 +213,9 @@ func selectHighlightWindowCanonical(rows []canonical.PlayerMatchRow) []canonical
 	}
 
 	if len(sessionOrder) == 0 {
-		// Fallback : 50 premiers.
-		if len(rows) > 50 {
-			return rows[:50]
+		// Fallback : maxSessionlessHighlights premiers (const partagée, home_highlights.go).
+		if len(rows) > maxSessionlessHighlights {
+			return rows[:maxSessionlessHighlights]
 		}
 		return rows
 	}

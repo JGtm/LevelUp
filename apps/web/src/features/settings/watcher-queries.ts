@@ -14,15 +14,7 @@ import type {
   WatcherAuthAttempt,
   WatcherAuthStatus,
 } from '@/lib/api/types'
-
-// ---------------------------------------------------------------------------
-// Clés de requête
-// ---------------------------------------------------------------------------
-
-export const watcherKeys = {
-  status: ['watcher', 'status'] as const,
-  authPoll: (attemptId: string) => ['watcher', 'auth', attemptId] as const,
-}
+import { queryKeys } from '@/lib/query/keys'
 
 // ---------------------------------------------------------------------------
 // GET /api/v1/watcher/status
@@ -30,7 +22,7 @@ export const watcherKeys = {
 
 export function useWatcherStatus() {
   return useQuery({
-    queryKey: watcherKeys.status,
+    queryKey: queryKeys.watcher.status,
     queryFn: () => api.get<WatcherStatusResponse>('/watcher/status'),
     refetchInterval: 10_000,
     staleTime: 5_000,
@@ -51,7 +43,7 @@ export function useStartWatcherAuth() {
   return useMutation({
     mutationFn: () => api.post<WatcherAuthAttempt>('/watcher/auth/start', {}),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: watcherKeys.status })
+      qc.invalidateQueries({ queryKey: queryKeys.watcher.status })
     },
   })
 }
@@ -62,7 +54,7 @@ export function useStartWatcherAuth() {
 
 export function useWatcherAuthPoll(attemptId: string | null) {
   return useQuery({
-    queryKey: watcherKeys.authPoll(attemptId ?? ''),
+    queryKey: queryKeys.watcher.authPoll(attemptId ?? ''),
     queryFn: () =>
       api.get<WatcherAuthStatus>(`/watcher/auth/${attemptId}`),
     enabled: !!attemptId,
@@ -88,7 +80,7 @@ export function useUpdateWatcherSubscriptions() {
         subscribed_players: subscribedPlayers,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: watcherKeys.status })
+      qc.invalidateQueries({ queryKey: queryKeys.watcher.status })
     },
   })
 }

@@ -7,6 +7,8 @@
  */
 import { useRef, useState, useEffect } from 'react'
 import type { SessionLabelEntry } from '@/lib/api/types'
+import type { ManifestLocale } from '@/lib/i18n/format'
+import { intlLocale as toIntlLocale } from '@/lib/formatters'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -24,7 +26,7 @@ interface Texts {
   empty: string
 }
 
-function getTexts(locale: string): Texts {
+function getTexts(locale: ManifestLocale): Texts {
   const isFr = locale === 'fr'
   return {
     all:        isFr ? 'Toutes les sessions'    : 'All sessions',
@@ -50,7 +52,7 @@ export interface SessionMultiSelectProps {
   sessions: SessionLabelEntry[]
   selected: string[]
   onChange: (labels: string[]) => void
-  locale: string
+  locale: ManifestLocale
   placeholder?: string
   /** Surcharge la classe CSS du bouton déclencheur (ex: taille dans une barre compacte). */
   triggerClassName?: string
@@ -72,7 +74,7 @@ export function SessionMultiSelect({
   getMatchCount,
 }: SessionMultiSelectProps) {
   const t = getTexts(locale)
-  const intlLocale = locale === 'fr' ? 'fr-FR' : 'en-US'
+  const intlLocale = toIntlLocale(locale)
 
   const [isOpen, setIsOpen]     = useState(false)
   const [query, setQuery]       = useState('')

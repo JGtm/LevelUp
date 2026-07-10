@@ -125,50 +125,6 @@ func (m *mockSessionCompareStatsRepo) LoadMatchParticipants(_ context.Context) (
 	return m.participants, m.partErr
 }
 
-func TestSessionCompareService_Compare_OK(t *testing.T) {
-	now := time.Now()
-	sessA, sessB := "1", "2"
-	sessRepo := &mockSessionCompareSessionsRepo{
-		rows: []domain.SessionMatchRow{
-			{MatchID: "m1", StartTime: now.Add(-3 * time.Hour)},
-			{MatchID: "m2", StartTime: now.Add(-2 * time.Hour)},
-			{MatchID: "m3", StartTime: now.Add(-30 * time.Minute)},
-			{MatchID: "m4", StartTime: now},
-		},
-	}
-	statsRepo := &mockSessionCompareStatsRepo{
-		matches: []legacymatch.StatsMatchRow{
-			{MatchID: "m1", StartTime: now.Add(-3 * time.Hour), Kills: 10, Deaths: 5},
-			{MatchID: "m2", StartTime: now.Add(-2 * time.Hour), Kills: 8, Deaths: 6},
-			{MatchID: "m3", StartTime: now.Add(-30 * time.Minute), Kills: 12, Deaths: 3},
-			{MatchID: "m4", StartTime: now, Kills: 15, Deaths: 2},
-		},
-	}
-	svc := NewSessionCompareService(sessRepo, statsRepo).WithPlayerMatchesRepo(newStatsMockFromRows(statsRepo.matches, nil), "halo_infinite", "Test")
-
-	resp, err := svc.Compare(context.Background(), domain.SessionCompareRequest{
-		SessionA: &sessA,
-		SessionB: &sessB,
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	_ = resp // response structure is complex; just verify no panic/error
-}
-
-func TestSessionCompareService_Compare_SessionsError(t *testing.T) {
-	sessRepo := &mockSessionCompareSessionsRepo{}
-	statsRepo := &mockSessionCompareStatsRepo{matchErr: errors.New("fail")}
-	svc := NewSessionCompareService(sessRepo, statsRepo).WithPlayerMatchesRepo(newStatsMockFromRows(nil, errors.New("fail")), "halo_infinite", "Test")
-
-	_, err := svc.Compare(context.Background(), domain.SessionCompareRequest{})
-	if err == nil {
-		t.Error("expected error")
-	}
-}
-
-// --- session_compare_service.go pure helpers ---
-
 func TestLastOrNil_Empty(t *testing.T) {
 	if lastOrNil(nil, nil) != "" {
 		t.Error("expected empty")

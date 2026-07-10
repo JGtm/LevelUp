@@ -209,18 +209,6 @@ func playerBaseSteps() []migration.Migration {
 			},
 		},
 		{
-			Name:        "add_media_discord_notified",
-			TargetDB:    migration.TargetPlayer,
-			Description: "Colonne discord_notified_at sur media_files",
-			ApplySchema: func(db *sql.DB) error {
-				exists, err := migration.TableExists(db, "media_files")
-				if err != nil || !exists {
-					return err
-				}
-				return migration.AddColumnIfMissing(db, "media_files", "discord_notified_at", "TIMESTAMP")
-			},
-		},
-		{
 			Name:        "add_media_like_columns",
 			TargetDB:    migration.TargetPlayer,
 			Description: "Colonnes liked et liked_at sur media_files",

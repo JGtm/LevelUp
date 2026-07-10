@@ -61,9 +61,9 @@ func TestResolveRefs_PopulatesTranslationsAndEnriches(t *testing.T) {
 		calls: map[string]int{},
 	}
 	reg := &MatchRegistryRow{
-		PlaylistID:        strPtr(newPlaylist),
-		PlaylistName:      strPtr(newPlaylist), // UUID brut
-		PlaylistVersionID: strPtr("v-new"),     // version requise par discovery-infiniteugc
+		PlaylistID:        strPtrNonEmpty(newPlaylist),
+		PlaylistName:      strPtrNonEmpty(newPlaylist), // UUID brut
+		PlaylistVersionID: strPtrNonEmpty("v-new"),     // version requise par discovery-infiniteugc
 	}
 	refs := collectAssetRefsFromRegistry(reg)
 	res := resolveRefs(ctx, fetcher, meta, "halo_infinite", "test", refs, 0)
@@ -95,9 +95,9 @@ func TestResolveRefs_SkipsAlreadyKnown(t *testing.T) {
 
 	fetcher := &fakeAssetFetcher{names: map[string]string{}, calls: map[string]int{}}
 	reg := &MatchRegistryRow{
-		PlaylistID:        strPtr("playlist-known-uuid"),
-		PlaylistName:      strPtr("playlist-known-uuid"),
-		PlaylistVersionID: strPtr("v-known"),
+		PlaylistID:        strPtrNonEmpty("playlist-known-uuid"),
+		PlaylistName:      strPtrNonEmpty("playlist-known-uuid"),
+		PlaylistVersionID: strPtrNonEmpty("v-known"),
 	}
 	refs := collectAssetRefsFromRegistry(reg)
 	resolveRefs(ctx, fetcher, meta, "halo_infinite", "test", refs, 0)
@@ -165,7 +165,7 @@ func TestResolveRefs_SkipsRefsWithoutVersion(t *testing.T) {
 
 // TestResolveRefs_NilFetcher : fetcher nil → no-op.
 func TestResolveRefs_NilFetcher(t *testing.T) {
-	refs := collectAssetRefsFromRegistry(&MatchRegistryRow{PlaylistID: strPtr("x"), PlaylistName: strPtr("x")})
+	refs := collectAssetRefsFromRegistry(&MatchRegistryRow{PlaylistID: strPtrNonEmpty("x"), PlaylistName: strPtrNonEmpty("x")})
 	res := resolveRefs(context.Background(), nil, nil, "halo_infinite", "test", refs, 0)
 	if res.Requested != 0 || res.Resolved != 0 {
 		t.Fatalf("nil fetcher: %+v", res)

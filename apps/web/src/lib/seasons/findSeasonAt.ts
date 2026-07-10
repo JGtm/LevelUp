@@ -27,18 +27,32 @@ export function currentSeason(seasons: SeasonEntry[]): SeasonEntry | null {
   return findSeasonAt(seasons, new Date())
 }
 
-/** Voisine chronologique précédente (par displayOrder), ou null si la
- *  saison passée est la première. */
-export function prevSeason(seasons: SeasonEntry[], current: SeasonEntry): SeasonEntry | null {
-  const idx = seasons.findIndex((s) => s.id === current.id)
-  return idx > 0 ? seasons[idx - 1] : null
+/** Tri chronologique ASCendant (ancienne → récente), clé `startDate` puis
+ *  `displayOrder`. Opère sur une COPIE : n'altère jamais le tableau d'entrée. */
+function chronoAsc(seasons: SeasonEntry[]): SeasonEntry[] {
+  return [...seasons].sort((a, b) => {
+    const byDate = a.startDate.getTime() - b.startDate.getTime()
+    return byDate !== 0 ? byDate : a.displayOrder - b.displayOrder
+  })
 }
 
-/** Voisine chronologique suivante (par displayOrder), ou null si la
- *  saison passée est la dernière. */
+/** Voisine chronologique PRÉCÉDENTE (plus ancienne), ou null si `current` est la
+ *  première / absente. ORDRE-INDÉPENDANT : recalcule l'ordre chronologique en
+ *  interne (chronoAsc), donc robuste quel que soit le tri du tableau d'entrée —
+ *  le sélecteur partagé `useSeasons` trie désormais récent-d'abord (DESC, GH5-1),
+ *  et PeriodSessionRail lui passe ce tableau tel quel. */
+export function prevSeason(seasons: SeasonEntry[], current: SeasonEntry): SeasonEntry | null {
+  const asc = chronoAsc(seasons)
+  const idx = asc.findIndex((s) => s.id === current.id)
+  return idx > 0 ? asc[idx - 1] : null
+}
+
+/** Voisine chronologique SUIVANTE (plus récente), ou null si `current` est la
+ *  dernière / absente. ORDRE-INDÉPENDANT (cf. prevSeason). */
 export function nextSeason(seasons: SeasonEntry[], current: SeasonEntry): SeasonEntry | null {
-  const idx = seasons.findIndex((s) => s.id === current.id)
-  return idx >= 0 && idx < seasons.length - 1 ? seasons[idx + 1] : null
+  const asc = chronoAsc(seasons)
+  const idx = asc.findIndex((s) => s.id === current.id)
+  return idx >= 0 && idx < asc.length - 1 ? asc[idx + 1] : null
 }
 
 /** Convertit une Date UTC vers son ISO `YYYY-MM-DD` (pour matcher les

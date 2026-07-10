@@ -38,10 +38,12 @@ export { MatchHeaderCard, DominanceBadgeInline } from './MatchHeader.card'
 interface MatchBreadcrumbProps {
   playerSlug: string
   matchLabel: string
+  locale: MatchViewLocale
 }
 
-export function MatchBreadcrumb({ playerSlug, matchLabel }: MatchBreadcrumbProps) {
+export function MatchBreadcrumb({ playerSlug, matchLabel, locale }: MatchBreadcrumbProps) {
   const router = useRouter()
+  const t = MATCH_VIEW_TEXT[locale]
 
   function handleBack() {
     const canGoBack = router.history.length > 1
@@ -61,7 +63,7 @@ export function MatchBreadcrumb({ playerSlug, matchLabel }: MatchBreadcrumbProps
         type="button"
         onClick={handleBack}
         className="flex items-center gap-1 hover:text-foreground transition-colors"
-        aria-label="Retour"
+        aria-label={t.back}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -76,7 +78,7 @@ export function MatchBreadcrumb({ playerSlug, matchLabel }: MatchBreadcrumbProps
             clipRule="evenodd"
           />
         </svg>
-        Retour
+        {t.back}
       </button>
       <span aria-hidden="true">·</span>
       <Link

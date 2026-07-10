@@ -5,6 +5,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { useParams } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { useSynthesisPage } from './queries'
@@ -44,21 +45,8 @@ import type {
   SynthesisWeaponKillEntry,
   SynthesisWeaponAccuracyEntry,
 } from '@/lib/api/types'
-
-// ─── Mapping experience → cascade.experience_types ──────────────────────────
-// Backend cascade utilise les labels canoniques "PVP classé" / "PVP non classé"
-// (service/filters_service.go::experienceLabels). 'all' → tableau vide = pas de filtre.
-const EXPERIENCE_TO_CASCADE: Record<Experience, string[]> = {
-  all: [],
-  ranked: ['PVP classé'],
-  unranked: ['PVP non classé'],
-}
-
-function setsEqual(a: Set<string>, b: Set<string>): boolean {
-  if (a.size !== b.size) return false
-  for (const v of a) if (!b.has(v)) return false
-  return true
-}
+// EXPERIENCE_TO_CASCADE + setsEqual : source unique partagée avec useLocalFilterBar (H3).
+import { EXPERIENCE_TO_CASCADE, setsEqual } from '@/features/_shared/experienceCascade'
 
 // ─── Sous-composants ──────────────────────────────────────────────────────────
 
@@ -178,6 +166,8 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
     fieldMappings?.fields[key]?.label ?? key
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const t = (key: keyof typeof synthesisManifest) => synthesisManifest[key][locale]
+  // Format nombre locale-aware (séparateurs "12 345" FR / "12,345" EN) — I2.
+  const numLoc = intlLocale(locale)
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const openMatchLabel = t('synthesis.kpi.open_match')
   // Helper : crée le handler onOpenMatch d'une carte si le ref backend est présent.
@@ -239,7 +229,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
               {detailedStats?.max_killing_spree != null && (
                 <AccentCard
                   label={t('synthesis.kpi.killing_spree_max')}
-                  value={detailedStats.max_killing_spree.toLocaleString('fr-FR')}
+                  value={detailedStats.max_killing_spree.toLocaleString(numLoc)}
                   accent="outcome-win"
                   onOpenMatch={handlerFor(overview.best_killing_spree_ref)}
                   openMatchLabel={openMatchLabel}
@@ -257,7 +247,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
               {overview.best_perf_ref && (
                 <AccentCard
                   label={t('synthesis.kpi.top_perf')}
-                  value={Math.round(overview.best_perf_ref.value).toLocaleString('fr-FR')}
+                  value={Math.round(overview.best_perf_ref.value).toLocaleString(numLoc)}
                   accent="perf-tier-3"
                   onOpenMatch={handlerFor(overview.best_perf_ref)}
                   openMatchLabel={openMatchLabel}
@@ -275,7 +265,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
               {overview.best_damage_ref && (
                 <AccentCard
                   label={t('synthesis.kpi.top_damage')}
-                  value={Math.round(overview.best_damage_ref.value).toLocaleString('fr-FR')}
+                  value={Math.round(overview.best_damage_ref.value).toLocaleString(numLoc)}
                   accent="outcome-win"
                   onOpenMatch={handlerFor(overview.best_damage_ref)}
                   openMatchLabel={openMatchLabel}
@@ -284,7 +274,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
               {overview.best_headshots_ref && (
                 <AccentCard
                   label={t('synthesis.kpi.top_headshots')}
-                  value={Math.round(overview.best_headshots_ref.value).toLocaleString('fr-FR')}
+                  value={Math.round(overview.best_headshots_ref.value).toLocaleString(numLoc)}
                   accent="perf-tier-2"
                   onOpenMatch={handlerFor(overview.best_headshots_ref)}
                   openMatchLabel={openMatchLabel}
@@ -293,7 +283,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
               {overview.best_personal_score_ref && (
                 <AccentCard
                   label={t('synthesis.kpi.top_personal_score')}
-                  value={Math.round(overview.best_personal_score_ref.value).toLocaleString('fr-FR')}
+                  value={Math.round(overview.best_personal_score_ref.value).toLocaleString(numLoc)}
                   accent="chart-series-4"
                   onOpenMatch={handlerFor(overview.best_personal_score_ref)}
                   openMatchLabel={openMatchLabel}
@@ -381,14 +371,14 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                   )}
 
                   <div className="grid grid-cols-2 gap-2">
-                    <AccentCard label={t('synthesis.combat_profile.perfect_kills')} value={detailedStats.total_perfect_kills.toLocaleString('fr-FR')} accent="perf-tier-3" />
-                    <AccentCard label={fieldMappings?.fields['headshot_kills']?.label ?? 'Tirs à la tête'} value={detailedStats.total_headshot_kills.toLocaleString('fr-FR')} accent="perf-tier-2" />
+                    <AccentCard label={t('synthesis.combat_profile.perfect_kills')} value={detailedStats.total_perfect_kills.toLocaleString(numLoc)} accent="perf-tier-3" />
+                    <AccentCard label={fieldMappings?.fields['headshot_kills']?.label ?? 'Tirs à la tête'} value={detailedStats.total_headshot_kills.toLocaleString(numLoc)} accent="perf-tier-2" />
                   </div>
 
                   <div>
                     <div className="grid grid-cols-2 gap-2">
-                      <AccentCard label={fieldMappings?.fields['shots_fired']?.label ?? 'Tirs effectués'} value={detailedStats.total_shots_fired.toLocaleString('fr-FR')} accent="info" />
-                      <AccentCard label={fieldMappings?.fields['shots_hit']?.label ?? 'Tirs au but'}      value={detailedStats.total_shots_hit.toLocaleString('fr-FR')}   accent="info" />
+                      <AccentCard label={fieldMappings?.fields['shots_fired']?.label ?? 'Tirs effectués'} value={detailedStats.total_shots_fired.toLocaleString(numLoc)} accent="info" />
+                      <AccentCard label={fieldMappings?.fields['shots_hit']?.label ?? 'Tirs au but'}      value={detailedStats.total_shots_hit.toLocaleString(numLoc)}   accent="info" />
                       {detailedStats.total_shots_fired > 0 && (
                         <AccentCard
                           label={t('synthesis.kpi.raw_accuracy')}
@@ -408,9 +398,9 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
 
                   <div>
                     <div className="grid grid-cols-2 gap-2">
-                      <AccentCard label={fieldMappings?.fields['damage_dealt']?.label ?? 'Dégâts infligés'} value={Math.round(detailedStats.total_damage_dealt).toLocaleString('fr-FR')} accent="outcome-win" />
+                      <AccentCard label={fieldMappings?.fields['damage_dealt']?.label ?? 'Dégâts infligés'} value={Math.round(detailedStats.total_damage_dealt).toLocaleString(numLoc)} accent="outcome-win" />
                       {hasDamageTaken && (
-                        <AccentCard label={fieldMappings?.fields['damage_taken']?.label ?? 'Dégâts reçus'} value={Math.round(detailedStats.total_damage_taken).toLocaleString('fr-FR')} accent="outcome-loss" />
+                        <AccentCard label={fieldMappings?.fields['damage_taken']?.label ?? 'Dégâts reçus'} value={Math.round(detailedStats.total_damage_taken).toLocaleString(numLoc)} accent="outcome-loss" />
                       )}
                     </div>
                   </div>
@@ -421,9 +411,9 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                     <div>
                       <p className="text-xs text-muted-foreground mb-1.5">{t('synthesis.spartan.section_title')}</p>
                       <div className="grid grid-cols-3 gap-2">
-                        <AccentCard label={t('synthesis.charts.kill_type_assassination')} value={detailedStats.total_assassinations.toLocaleString('fr-FR')} accent="chart-series-2" />
-                        <AccentCard label={t('synthesis.charts.kill_type_ground_pound')} value={detailedStats.total_ground_pound_kills.toLocaleString('fr-FR')} accent="chart-series-3" />
-                        <AccentCard label={t('synthesis.charts.kill_type_shoulder_bash')} value={detailedStats.total_shoulder_bash_kills.toLocaleString('fr-FR')} accent="chart-series-4" />
+                        <AccentCard label={t('synthesis.charts.kill_type_assassination')} value={detailedStats.total_assassinations.toLocaleString(numLoc)} accent="chart-series-2" />
+                        <AccentCard label={t('synthesis.charts.kill_type_ground_pound')} value={detailedStats.total_ground_pound_kills.toLocaleString(numLoc)} accent="chart-series-3" />
+                        <AccentCard label={t('synthesis.charts.kill_type_shoulder_bash')} value={detailedStats.total_shoulder_bash_kills.toLocaleString(numLoc)} accent="chart-series-4" />
                       </div>
                     </div>
                   )}
@@ -432,10 +422,10 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                     <div>
                       <div className="grid grid-cols-2 gap-2">
                         {detailedStats.total_vehicles_destroyed > 0 && (
-                          <AccentCard label={t('synthesis.kpi.vehicles_destroyed')} value={detailedStats.total_vehicles_destroyed.toLocaleString('fr-FR')} accent="warning" />
+                          <AccentCard label={t('synthesis.kpi.vehicles_destroyed')} value={detailedStats.total_vehicles_destroyed.toLocaleString(numLoc)} accent="warning" />
                         )}
                         {detailedStats.total_hijacks > 0 && (
-                          <AccentCard label={t('synthesis.combat_profile.hijacks')} value={detailedStats.total_hijacks.toLocaleString('fr-FR')} accent="chart-series-4" />
+                          <AccentCard label={t('synthesis.combat_profile.hijacks')} value={detailedStats.total_hijacks.toLocaleString(numLoc)} accent="chart-series-4" />
                         )}
                       </div>
                     </div>
@@ -773,7 +763,7 @@ export function SynthesisPage() {
           <div className="flex flex-col gap-4">
             {(data.breakdowns.top_maps ?? []).length > 0 && (
               <SynthesisOutcomesByGroupChart
-                title="Par carte"
+                title={t('synthesis.breakdown.by_map')}
                 entries={(data.breakdowns.top_maps ?? []).map((m) => ({
                   name: m.map_name,
                   wins: m.wins,
@@ -786,7 +776,7 @@ export function SynthesisPage() {
             )}
             {(data.breakdowns.top_modes ?? []).length > 0 && (
               <SynthesisOutcomesByGroupChart
-                title="Par mode"
+                title={t('synthesis.breakdown.by_mode')}
                 entries={(data.breakdowns.top_modes ?? []).map((m) => ({
                   name: m.mode_name,
                   wins: m.wins,

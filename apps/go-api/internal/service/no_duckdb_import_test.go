@@ -18,14 +18,15 @@ import (
 // sous-packages (ex. `internal/platform/duckdb/sharedprovider`, importé par
 // openspartan_import_service) ne sont PAS le package de données et ne comptent pas.
 //
-// Allowlist DÉCROISSANTE : sites de write-IO media (OpenReadWrite — ouverture de
-// connexion d'écriture, hors chemin de lecture canonique). Le critère Phase 2 cible
-// les services de LECTURE produit ; l'extraction d'un MediaRepository (port) est un
-// refactor distinct. À vider quand ce port sera extrait.
-var duckdbImportAllowlist = map[string]bool{
-	"media_service.go":       true, // duckdbpkg.OpenReadWrite — write-IO media (atomique)
-	"media_index_service.go": true, // idem — indexation media (write-IO)
-}
+// Allowlist VIDE (K1m, 2026-07-06). Plus aucun service n'importe le package data
+// `internal/platform/duckdb` :
+//   - media_index_service : le seul importeur (resetPlayerMediaIndex) était un NO-OP
+//     depuis drop_media_from_player_db (media en shared_social append-only) — supprimé.
+//   - media_service : n'importait déjà PLUS le package data (entrée d'allowlist périmée).
+//
+// Toute réintroduction d'un import `internal/platform/duckdb` dans un service = régression
+// D-MV2 (ADR 0025) → ce test échoue. Ne PAS ré-agrandir sans justification datée.
+var duckdbImportAllowlist = map[string]bool{}
 
 func TestServicesDoNotImportDuckDB(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)

@@ -76,7 +76,7 @@ Le moteur par joueur (`RunDelta`/`RunFull`) est le défaut (V1). Un **orchestrat
 5. **Persist** — writer unique : un méga-batch (shared + player) en une transaction.
 6. **PostSync** — parallèle par joueur : heals, films, citations, etc.
 
-Activation : `LEVELUP_SYNC_PIPELINE=v2` (défaut `v1`, rollback instantané). V1 et V2 partagent les Persisters, le schéma et le WAL.
+V2 est l'unique moteur de sync du cycle auto-sync depuis la suppression du pipeline V1 (2026-07). Les titres moteur (Infinite) passent par l'orchestrator ; les titres live-only (Halo 5) par `syncPlayer`→`liveRunner`. Si l'orchestrator n'est pas câblé au boot (prérequis manquants), le cycle bascule sur un filet structurel `syncPlayer`. V2 partage les Persisters, le schéma et le WAL.
 
 ## Delta vs Full
 
@@ -111,8 +111,6 @@ levelup sync-full --all [--token-pool-size 0]
 | `--match-type` | les deux | `matchmaking` | `all` \| `matchmaking` \| `custom` \| `local`. |
 | `--rps` | les deux | 1 | Max de requêtes API par seconde. |
 | `--token-pool-size` | `--all` uniquement | 0 | 0 = auto (toutes les sources découvertes), `MaxSize` du pool. |
-
-`LEVELUP_PERSIST_BATCH=0` revient au chemin legacy d'insertion match par match (le batch persist est ON par défaut).
 
 ### Backfill (recalculs locaux & backfills API)
 

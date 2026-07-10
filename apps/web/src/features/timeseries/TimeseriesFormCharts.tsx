@@ -14,11 +14,14 @@ import type { EChartsCoreOption } from 'echarts/core'
 import {
   getEChartsThemeColors,
   getAxisBase,
+  getGridBase,
   getLegendBase,
   getTooltipBase,
   CHART_BG,
+  escapeHtml,
 } from '@/components/charts/_utils'
-import { resolveToken, type SemanticToken } from '@/lib/accessibility'
+import { resolveToken } from '@/lib/accessibility'
+import { perfScale } from '@/lib/accessibility/scales'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { TimeseriesMatchRow } from '@/lib/api/types'
 import { buildMatchCategories } from './matchLabels'
@@ -45,15 +48,6 @@ function rollingMean(values: (number | null | undefined)[], window: number): (nu
     out[i] = n > 0 ? sum / n : null
   }
   return out
-}
-
-/** Tier perf (1..5) selon le score sur [0, 100]. */
-function perfTier(score: number): SemanticToken {
-  if (score < 20) return 'perf-tier-1'
-  if (score < 40) return 'perf-tier-2'
-  if (score < 60) return 'perf-tier-3'
-  if (score < 80) return 'perf-tier-4'
-  return 'perf-tier-5'
 }
 
 interface CommonRenderProps {
@@ -113,7 +107,7 @@ export function TimeseriesKdaValueTrend({
     const smoothValues = smooth.map((v) => (v == null ? null : Math.round(v * 100) / 100))
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, right: 16, bottom: 64, left: 48, containLabel: true },
+      grid: getGridBase(),
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
@@ -183,7 +177,7 @@ export function TimeseriesPerformanceTrend({
       if (v == null) return { value: null }
       return {
         value: v,
-        itemStyle: { color: resolveToken(perfTier(v)), opacity: 0.85 },
+        itemStyle: { color: resolveToken(perfScale(v)), opacity: 0.85 },
       }
     })
     const smooth = rollingMean(scores, 5)
@@ -191,7 +185,7 @@ export function TimeseriesPerformanceTrend({
 
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, right: 16, bottom: 64, left: 48, containLabel: true },
+      grid: getGridBase(),
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
@@ -257,7 +251,7 @@ export function TimeseriesAssistsTrend({
     const smoothValues = smooth.map((v) => (v == null ? null : Math.round(v * 100) / 100))
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, right: 16, bottom: 64, left: 48, containLabel: true },
+      grid: getGridBase(),
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
@@ -346,7 +340,7 @@ export function TimeseriesPerMinuteTrend({
 
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 24, right: 16, bottom: 64, left: 48, containLabel: true },
+      grid: getGridBase({ top: 24 }),
       tooltip: {
         ...getTooltipBase(tc),
         trigger: 'axis',
@@ -354,10 +348,10 @@ export function TimeseriesPerMinuteTrend({
         formatter: (params: unknown) => {
           const arr = Array.isArray(params) ? params : []
           if (arr.length === 0) return ''
-          const cat = (arr[0] as { name?: string }).name?.replace(/\n/g, ' ') ?? ''
+          const cat = escapeHtml((arr[0] as { name?: string }).name?.replace(/\n/g, ' ') ?? '')
           const lines = arr.map((p) => {
             const point = p as { seriesName: string; value: number; color: string }
-            return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${point.color};margin-right:6px"></span>${point.seriesName}: ${fmt(point.value)}${perMinuteSuffix}`
+            return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${point.color};margin-right:6px"></span>${escapeHtml(point.seriesName ?? '')}: ${fmt(point.value)}${perMinuteSuffix}`
           })
           return `<strong>${cat}</strong><br/>${lines.join('<br/>')}`
         },
@@ -442,7 +436,7 @@ export function TimeseriesAvgLifeTrend({
     })
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, right: 16, bottom: 48, left: 48, containLabel: true },
+      grid: getGridBase({ bottom: 48 }),
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
       xAxis: {
         ...getAxisBase(tc),
@@ -506,7 +500,7 @@ export function TimeseriesSpreeHeadshots({
     const colPerf = resolveToken('chart-series-7')
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, right: 16, bottom: 64, left: 48, containLabel: true },
+      grid: getGridBase(),
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
@@ -586,7 +580,7 @@ export function TimeseriesSkillRankPerformance({
 
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, right: 56, bottom: 64, left: 56, containLabel: true },
+      grid: getGridBase({ right: 56, left: 56 }),
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
@@ -679,7 +673,7 @@ export function TimeseriesRankScore({
 
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, right: 56, bottom: 64, left: 56, containLabel: true },
+      grid: getGridBase({ right: 56, left: 56 }),
       tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {

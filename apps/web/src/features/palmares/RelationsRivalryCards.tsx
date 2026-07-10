@@ -11,13 +11,13 @@
  * Aucune couleur hex : tokens outcome-* (via les wrappers chart).
  */
 import { useMemo } from 'react'
+import { winRateColor } from '@/lib/colors/outcomePalette'
 
 import {
   OutcomeSequenceTape,
   type OutcomePoint,
   type OutcomeSequenceLabels,
 } from '@/components/charts/OutcomeSequenceTape'
-import { tokenCssVar } from '@/lib/accessibility'
 import { formatPercent } from '@/lib/formatters'
 import type { RelationRivalry } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -28,11 +28,6 @@ import { normalizePalmaresLocale, type PalmaresText } from './i18n'
 type MomentsText = PalmaresText['relations']['moments']
 
 // wrColor : vert si WR >= 50 %, rouge sinon (undefined si inconnu).
-function wrColor(v: number | null | undefined): string | undefined {
-  if (v == null || !Number.isFinite(v)) return undefined
-  return v >= 0.5 ? tokenCssVar('outcome-win') : tokenCssVar('outcome-loss')
-}
-
 // toTapePoints : duels backend → points de frise. Le tooltip d'un duel affiche un
 // libellé pré-formaté (date · mode · map — frags/morts) au lieu de l'UUID.
 function toTapePoints(rivalry: RelationRivalry, locale: 'fr' | 'en'): OutcomePoint[] {
@@ -85,13 +80,13 @@ function RivalryCard({ rivalry, t, locale }: { rivalry: RelationRivalry; t: Mome
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
         <span>
           <span className="text-muted-foreground">{t.recentShort} </span>
-          <span className="font-mono font-bold" style={{ color: wrColor(rivalry.recent_win_rate) }}>
+          <span className="font-mono font-bold" style={{ color: winRateColor(rivalry.recent_win_rate) }}>
             {formatPercent(rivalry.recent_win_rate, 0)}
           </span>
         </span>
         <span>
           <span className="text-muted-foreground">{t.globalShort} </span>
-          <span className="font-mono font-bold" style={{ color: wrColor(rivalry.global_win_rate) }}>
+          <span className="font-mono font-bold" style={{ color: winRateColor(rivalry.global_win_rate) }}>
             {formatPercent(rivalry.global_win_rate, 0)}
           </span>
         </span>

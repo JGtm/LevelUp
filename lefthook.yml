@@ -38,6 +38,11 @@ pre-commit:
     check-merge-conflict:
       run: bash scripts/git-hooks/lefthook/check-merge-conflict.sh
 
+    # docs/FR — WARNING non bloquant (C8/DEC-5) : liste les guides bilingues
+    # (docs/X.md ↔ docs/FR/X.md) modifiés d'un seul côté (CLAUDE.md règle 15).
+    docs-fr-sync:
+      run: bash scripts/git-hooks/lefthook/docs-fr-sync.sh
+
 pre-push:
   parallel: false
   commands:

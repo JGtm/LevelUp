@@ -282,7 +282,7 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 			filtered = append(filtered, m)
 		}
 		allMatches = filtered
-		slog.Debug("batchComputePerformanceScores: matchs exclus filtrés",
+		slog.DebugContext(ctx, "batchComputePerformanceScores: matchs exclus filtrés",
 			"xuid", xuid, "filtered", before-len(allMatches), "remaining", len(allMatches))
 		if len(allMatches) == 0 {
 			return 0, nil
@@ -307,7 +307,7 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 			  WHERE performance_score IS NOT NULL`)
 		if queryErr != nil {
 			// Non bloquant : on continue en recompute-tout, mais on signale.
-			slog.Warn("batchComputePerformanceScores: query existing scores failed — fallback recompute-all",
+			slog.WarnContext(ctx, "batchComputePerformanceScores: query existing scores failed — fallback recompute-all",
 				"xuid", xuid, "err", queryErr)
 		} else {
 			defer existRows.Close()
@@ -327,11 +327,11 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 				}
 			}
 			if err := existRows.Err(); err != nil {
-				slog.Warn("batchComputePerformanceScores: existing rows iteration error",
+				slog.WarnContext(ctx, "batchComputePerformanceScores: existing rows iteration error",
 					"xuid", xuid, "err", err)
 			}
 			if scanErrors > 0 {
-				slog.Warn("batchComputePerformanceScores: scan errors on existing scores",
+				slog.WarnContext(ctx, "batchComputePerformanceScores: scan errors on existing scores",
 					"xuid", xuid, "scan_errors", scanErrors)
 			}
 		}
@@ -432,7 +432,7 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 
 	// Résumé final : observabilité de la distribution réelle.
 	if updated > 0 || execErrors > 0 || len(totalByChain) > 0 {
-		slog.Info("batchComputePerformanceScores: batch terminé",
+		slog.InfoContext(ctx, "batchComputePerformanceScores: batch terminé",
 			"xuid", xuid,
 			"force", force,
 			"total_matches", len(allMatches),

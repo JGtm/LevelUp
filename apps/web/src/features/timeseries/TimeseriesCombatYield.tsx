@@ -16,6 +16,7 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { resolveToken } from '@/lib/accessibility'
 import {
   CHART_BG,
+  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getLegendBase,
@@ -221,7 +222,7 @@ export function buildCombatYieldOption(
             const formatted = p.seriesName === labels.drSeries && pct >= 0
               ? `+${pct}%`
               : `${pct}%`
-            return `${p.marker}${p.seriesName}: <b>${formatted}</b>`
+            return `${p.marker}${escapeHtml(p.seriesName ?? '')}: <b>${formatted}</b>`
           })
         return lines.join('<br/>')
       },

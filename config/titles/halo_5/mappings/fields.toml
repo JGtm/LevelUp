@@ -1,15 +1,30 @@
 # config/titles/halo_5/mappings/fields.toml
 #
-# Champs canoniques Halo 5 (squelette). Vocabulaire standard Halo. Les unités/format
-# RÉELS seront affinés au mapping de l'adapter (Phase 1) d'après les shapes de l'API
-# interne (carnage report). Provisoire pour le coming_soon.
+# Source de vérité des FieldKey canoniques pour Halo 5. SOUS-ENSEMBLE PAR CAPABILITY
+# (F6, décision 2026-07-04) : tous les groupes exposés (combat/match/career/skill/
+# derived) ; les 7 champs PvE/Firefight sont EXCLUS (modèle Warzone Firefight distinct,
+# pve.firefight_stats=not_exposed). Libellés/unités = canoniques Halo (mêmes qu'Infinite).
+#
+# Convention : sections indexées par FieldKey canonique (cf. canonical/fields.go).
+# Une section absente = le titre ne supporte pas ce champ pour les surfaces produit.
+#
+# Champs obligatoires : labels.en, labels.fr, storage_unit, display_unit,
+# format, display_order, group.
+# Champs optionnels : description (en+fr conjointement), icon.
+#
+# Toute modification breaking incrémente schema_version (cf. tools/mappings/CHANGELOG.md).
 
 [meta]
 title_slug     = "halo_5"
 schema_version = 1
 
+# =============================================================================
+# Combat (group = "combat") — 15 FieldKey
+# =============================================================================
+
 [fields.kills]
-labels        = { en = "Kills", fr = "Éliminations" }
+labels        = { en = "Kills", fr = "Frags" }
+description   = { en = "Total kills in the match.", fr = "Total des frags dans le match." }
 storage_unit  = "count"
 display_unit  = "count"
 format        = "integer"
@@ -32,18 +47,418 @@ format        = "integer"
 display_order = 30
 group         = "combat"
 
-[fields.accuracy]
-labels        = { en = "Accuracy", fr = "Précision" }
-storage_unit  = "ratio"
-display_unit  = "percent"
-format        = "percent_2"
+[fields.headshot_kills]
+labels        = { en = "Headshots", fr = "Tirs à la tête" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
 display_order = 40
 group         = "combat"
 
+[fields.melee_kills]
+labels        = { en = "Melee Kills", fr = "Corps à corps" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 50
+group         = "combat"
+
+[fields.grenade_kills]
+labels        = { en = "Grenade Kills", fr = "Éliminations à la grenade" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 60
+group         = "combat"
+
+[fields.power_weapon_kills]
+labels        = { en = "Power Weapon Kills", fr = "Arme puissante" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 70
+group         = "combat"
+
+[fields.damage_dealt]
+labels        = { en = "Damage Dealt", fr = "Dégâts infligés" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 80
+group         = "combat"
+
+[fields.damage_taken]
+labels        = { en = "Damage Taken", fr = "Dégâts subis" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 90
+group         = "combat"
+
+[fields.shots_fired]
+labels        = { en = "Shots Fired", fr = "Tirs effectués" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 100
+group         = "combat"
+
+[fields.shots_hit]
+labels        = { en = "Shots Hit", fr = "Tirs au but" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 110
+group         = "combat"
+
+[fields.accuracy]
+labels        = { en = "Accuracy", fr = "Précision" }
+description   = { en = "Hit rate (shots hit / shots fired).", fr = "Taux de tirs au but (tirs au but / tirs effectués)." }
+storage_unit  = "ratio"
+display_unit  = "percent"
+format        = "percent_1"
+display_order = 120
+group         = "combat"
+
+[fields.kdr]
+labels        = { en = "KDR", fr = "Ratio F/D" }
+description   = { en = "Kill/Death ratio.", fr = "Ratio Éliminations/Morts." }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 130
+group         = "combat"
+
+[fields.kda]
+labels        = { en = "KDA", fr = "FDA" }
+description   = { en = "Kills + Assists/2 - Deaths.", fr = "Éliminations + Assistances/2 - Morts." }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 140
+group         = "combat"
+
+[fields.max_killing_spree]
+labels        = { en = "Best Spree", fr = "Meilleure série" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 150
+group         = "combat"
+
+# =============================================================================
+# Match (group = "match") — 9 FieldKey
+# =============================================================================
+
+[fields.match_id]
+labels        = { en = "Match ID", fr = "ID du match" }
+storage_unit  = ""
+display_unit  = ""
+format        = "string"
+display_order = 5
+group         = "match"
+
+[fields.started_at_utc]
+labels        = { en = "Started At", fr = "Début" }
+storage_unit  = ""
+display_unit  = ""
+format        = "datetime"
+display_order = 10
+group         = "match"
+
 [fields.duration_seconds]
-labels        = { en = "Match Length", fr = "Durée du match" }
+labels        = { en = "Duration", fr = "Durée" }
 storage_unit  = "seconds"
 display_unit  = "seconds"
 format        = "duration_hms"
-display_order = 5
+display_order = 20
 group         = "match"
+
+[fields.is_ranked]
+labels        = { en = "Ranked", fr = "Classé" }
+storage_unit  = ""
+display_unit  = ""
+format        = "boolean"
+display_order = 30
+group         = "match"
+
+[fields.is_pve]
+labels        = { en = "PvE", fr = "JcE" }
+storage_unit  = ""
+display_unit  = ""
+format        = "boolean"
+display_order = 40
+group         = "match"
+
+[fields.outcome]
+labels        = { en = "Outcome", fr = "Résultat" }
+storage_unit  = ""
+display_unit  = ""
+format        = "enum"
+display_order = 50
+group         = "match"
+
+[fields.personal_score]
+labels        = { en = "Personal Score", fr = "Score personnel" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 60
+group         = "match"
+
+[fields.team_score]
+labels        = { en = "Team Score", fr = "Score d'équipe" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 70
+group         = "match"
+
+[fields.rank_in_match]
+labels        = { en = "Rank in Match", fr = "Classement" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 80
+group         = "match"
+
+# =============================================================================
+# Career (group = "career") — 6 FieldKey
+# =============================================================================
+
+[fields.current_rank_id]
+labels        = { en = "Current Rank", fr = "Rang actuel" }
+storage_unit  = ""
+display_unit  = ""
+format        = "string"
+display_order = 10
+group         = "career"
+
+[fields.current_xp]
+labels        = { en = "Current XP", fr = "XP actuelle" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 20
+group         = "career"
+
+[fields.xp_for_next_rank]
+labels        = { en = "XP for Next Rank", fr = "XP rang suivant" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 30
+group         = "career"
+
+[fields.total_matches_played]
+labels        = { en = "Matches Played", fr = "Parties jouées" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 40
+group         = "career"
+
+[fields.total_kills_career]
+labels        = { en = "Career Kills", fr = "Éliminations totales" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 50
+group         = "career"
+
+[fields.win_rate]
+labels        = { en = "Win Rate", fr = "Taux de victoire" }
+storage_unit  = "ratio"
+display_unit  = "percent"
+format        = "percent_1"
+display_order = 60
+group         = "career"
+
+# =============================================================================
+# Skill (group = "skill") — 6 FieldKey
+# =============================================================================
+
+[fields.team_mmr]
+labels        = { en = "Team MMR", fr = "MMR équipe" }
+storage_unit  = ""
+display_unit  = ""
+format        = "signed_int"
+display_order = 10
+group         = "skill"
+
+[fields.enemy_mmr]
+labels        = { en = "Enemy MMR", fr = "MMR adverse" }
+storage_unit  = ""
+display_unit  = ""
+format        = "signed_int"
+display_order = 20
+group         = "skill"
+
+[fields.kills_expected]
+labels        = { en = "Expected Kills", fr = "Éliminations attendues" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "kdr_2"
+display_order = 30
+group         = "skill"
+
+[fields.deaths_expected]
+labels        = { en = "Expected Deaths", fr = "Morts attendues" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "kdr_2"
+display_order = 40
+group         = "skill"
+
+[fields.csr_value]
+labels        = { en = "CSR", fr = "CSR" }
+description   = { en = "Competitive Skill Rating.", fr = "Classement compétitif officiel." }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 50
+group         = "skill"
+
+[fields.lusr_value]
+labels        = { en = "LUSR", fr = "LUSR" }
+description   = { en = "LevelUp Skill Rating (TrueSkill 2 derived).", fr = "Classement LevelUp dérivé de TrueSkill 2." }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 60
+group         = "skill"
+
+# =============================================================================
+# Derived KPIs (group = "derived") — métriques synthétisées sur une période
+# =============================================================================
+
+[fields.match_count]
+labels        = { en = "Matches", fr = "Matchs" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 10
+group         = "derived"
+
+[fields.ranked_match_count]
+labels        = { en = "Ranked Matches", fr = "Matchs classés" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 11
+group         = "derived"
+
+[fields.headshots_per_match]
+labels        = { en = "Headshots / match", fr = "Tirs à la tête / match" }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 20
+group         = "derived"
+
+[fields.deaths_per_min]
+labels        = { en = "Deaths / min", fr = "Morts / min" }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 30
+group         = "derived"
+
+[fields.assists_per_min]
+labels        = { en = "Assists / min", fr = "Assistances / min" }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 40
+group         = "derived"
+
+[fields.perfect_kills_per_match]
+labels        = { en = "Perfect kills / match", fr = "Frags parfaits / match" }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 45
+group         = "derived"
+
+[fields.avg_max_killing_spree]
+labels        = { en = "Best Spree (avg)", fr = "Folie meurtrière max" }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 50
+group         = "derived"
+
+[fields.avg_damage_dealt]
+labels        = { en = "Damage Dealt / match", fr = "Dégâts infligés / match" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 60
+group         = "derived"
+
+[fields.avg_damage_taken]
+labels        = { en = "Damage Taken / match", fr = "Dégâts subis / match" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 70
+group         = "derived"
+
+[fields.offensive_conversion]
+labels        = { en = "Efficiency", fr = "Rendement" }
+description   = { en = "225 × (kills + assists/3) / damage dealt — offensive combat yield.", fr = "225 × (frags + assists/3) / dégâts infligés — rendement offensif." }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 71
+group         = "derived"
+
+[fields.defensive_resistance]
+labels        = { en = "Resistance", fr = "Résistance" }
+description   = { en = "damage taken / (225 × deaths) — defensive combat yield.", fr = "dégâts subis / (225 × morts) — résistance défensive." }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 72
+group         = "derived"
+
+[fields.avg_life_seconds]
+labels        = { en = "Avg. Lifespan", fr = "Durée de vie moyenne" }
+storage_unit  = "seconds"
+display_unit  = "seconds"
+format        = "seconds"
+display_order = 80
+group         = "derived"
+
+[fields.kd_ratio]
+labels        = { en = "KDA", fr = "FDA" }
+description   = { en = "Kill/Death/Assist ratio average.", fr = "Ratio Éliminations/Morts/Assistances moyen." }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 85
+group         = "derived"
+
+[fields.kills_per_min]
+labels        = { en = "Kills / min", fr = "Frags / min" }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 90
+group         = "derived"
+
+[fields.performance_score]
+labels        = { en = "Performance score", fr = "Score de performance" }
+storage_unit  = ""
+display_unit  = ""
+format        = "integer"
+display_order = 95
+group         = "derived"
+
+[fields.time_played_seconds]
+labels        = { en = "Time played", fr = "Temps de jeu" }
+storage_unit  = "seconds"
+display_unit  = "seconds"
+format        = "duration_hms"
+display_order = 100
+group         = "derived"

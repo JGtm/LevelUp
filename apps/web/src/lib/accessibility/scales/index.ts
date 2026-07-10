@@ -3,6 +3,7 @@ export { makeDivergentScale } from './makeDivergentScale'
 export { makeCategoricalScale } from './makeCategoricalScale'
 export {
   perfScale,
+  perfSessionScale,
   accuracyScale,
   kdScale,
   assistsScale,

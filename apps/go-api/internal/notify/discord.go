@@ -14,6 +14,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/config"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -71,8 +73,6 @@ type NotifyConfig struct {
 	NotifySync bool
 	// NotifyBackfill active les notifications de fin de backfill.
 	NotifyBackfill bool
-	// NotifyNewMedia active les notifications de nouveaux médias.
-	NotifyNewMedia bool
 	// NotifyFriends active les notifications du flow ami (§6.B Squad/Sessions
 	// overhaul) : friend_added + friend_sync_completed.
 	NotifyFriends bool
@@ -141,8 +141,9 @@ func notifyConfigFromMap(settingsPath string, s map[string]any) NotifyConfig {
 		return cfg
 	}
 
-	// Résolution webhook : env var > settings (résolus)
-	url := strings.TrimSpace(os.Getenv("DISCORD_WEBHOOK_URL"))
+	// Résolution webhook : env var (LEVELUP_DISCORD_WEBHOOK_URL > DISCORD_WEBHOOK_URL,
+	// via config — source unique de précédence) > settings résolus (map par titre).
+	url := strings.TrimSpace(config.DiscordWebhookURLFromEnv())
 	if url == "" {
 		url = strings.TrimSpace(strVal(s, "discord_webhook_url"))
 	}
@@ -156,7 +157,6 @@ func notifyConfigFromMap(settingsPath string, s map[string]any) NotifyConfig {
 	cfg.Lang = strValDefault(s, "discord_lang", "fr")
 	cfg.NotifySync = boolValDefault(s, "discord_notify_sync", true)
 	cfg.NotifyBackfill = boolValDefault(s, "discord_notify_backfill", true)
-	cfg.NotifyNewMedia = boolValDefault(s, "discord_notify_new_media", true)
 	cfg.NotifyFriends = boolValDefault(s, "discord_notify_friends", true)
 	cfg.NotifyVersion = boolValDefault(s, "discord_notify_new_version", true)
 	cfg.NotifyReauth = boolValDefault(s, "discord_notify_reauth", true)
@@ -294,21 +294,6 @@ var discordStrings = map[string]map[string]string{
 	keyDiscordVersionFooter: {
 		"fr": "LevelUp · Mise à jour automatique",
 		"en": "LevelUp · Auto-update",
-	},
-
-	// Médias
-	"discord_media_title_fr": {"fr": "📸 Nouveaux médias — {gamertag}", "en": "📸 New media — {gamertag}"},
-	"discord_media_desc_video": {
-		"fr": "Nouvellement indexé : {n} vidéo(s)",
-		"en": "Newly indexed: {n} video(s)",
-	},
-	"discord_media_desc_image": {
-		"fr": "Nouvellement indexé : {n} capture(s)",
-		"en": "Newly indexed: {n} screenshot(s)",
-	},
-	"discord_media_desc_both": {
-		"fr": "Nouvellement indexés : {nv} vidéo(s) · {ni} capture(s)",
-		"en": "Newly indexed: {nv} video(s) · {ni} screenshot(s)",
 	},
 
 	// §6.B — Flow ami (Squad/Sessions overhaul)

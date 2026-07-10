@@ -56,7 +56,7 @@ export function translateStatus(status: string, text: LabText) {
   }
 }
 
-export function formatDate(value: string | null | undefined, locale: LabLocale, text: LabText) {
+export function formatLabDateTime(value: string | null | undefined, locale: LabLocale, text: LabText) {
   if (!value) {
     return text.common.notAvailable
   }
@@ -163,7 +163,7 @@ export function FileStatusRow({
       </div>
       <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
         <span>{text.common.size}: {formatBytes(file.size_bytes, locale, text)}</span>
-        <span>{text.common.modified}: {formatDate(file.modified_at ?? null, locale, text)}</span>
+        <span>{text.common.modified}: {formatLabDateTime(file.modified_at ?? null, locale, text)}</span>
       </div>
     </div>
   )

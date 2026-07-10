@@ -18,19 +18,10 @@ import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeaso
 import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/MultiSelectFilter'
 import { ExperienceDropdown, type Experience } from '@/features/_shared/ExperienceDropdown'
 import type { CascadeInput, FilterContextInput, PeriodInput } from '@/lib/api/types'
-
-// Mapping experience → cascade.experience_types (labels canoniques backend).
-const EXPERIENCE_TO_CASCADE: Record<Experience, string[]> = {
-  all: [],
-  ranked: ['PVP classé'],
-  unranked: ['PVP non classé'],
-}
-
-function setsEqual(a: Set<string>, b: Set<string>): boolean {
-  if (a.size !== b.size) return false
-  for (const v of a) if (!b.has(v)) return false
-  return true
-}
+import { EXPERIENCE_TO_CASCADE, setsEqual } from '@/features/_shared/experienceCascade'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
 
 export interface LocalFilterBarLabels {
   experience: string
@@ -175,6 +166,10 @@ function ViewDropdown({
 }
 
 export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFilterBarOptions): UseLocalFilterBarResult {
+  // Défaut i18n du bouton « Analyser » quand l'appelant ne fournit pas de libellé
+  // (le littéral FR figé cassait le bilinguisme — I2, 2026-07-05).
+  const locale = useAppShellStore((s) => s.locale)
+  const analyserLabel = labels.analyser ?? formatMessage(commonManifest, 'common.filter.analyser', locale)
   // States pending / committed
   const [pendingPeriod, setPendingPeriod] = useState<PeriodInput>(DEFAULT_PERIOD)
   const [pendingExperience, setPendingExperience] = useState<Experience>('all')
@@ -230,6 +225,9 @@ export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFi
     let unranked = 0
     let total = 0
     for (const o of opts) {
+      // CONTRAT (GH5-2) : on matche sur o.VALUE (FR canonique), jamais o.label —
+      // le backend localise désormais le LABEL (Ranked PvP / Unranked PvP sous EN)
+      // mais garde la Value FR. Substring 'non classé' testé AVANT 'classé'.
       const v = o.value.toLowerCase()
       if (v.includes('non classé') || v.includes('non-classé') || v.includes('unranked')) {
         unranked += o.count
@@ -373,7 +371,7 @@ export function useLocalFilterBar({ playerSlug, labels, viewLabels }: UseLocalFi
               : 'border border-input bg-background text-muted-foreground hover:bg-muted',
           ].join(' ')}
         >
-          {labels.analyser ?? 'Analyser'}
+          {analyserLabel}
         </button>
         {hasActiveFilters && (
           <button

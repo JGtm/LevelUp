@@ -438,17 +438,17 @@ en = "Change vs previous season"
 fr = "Joueur"
 en = "Player"
 
-[career.encounters.col_wins]
-fr = "Victoires"
-en = "Wins"
+[career.encounters.col_as_teammate]
+fr = "En équipe"
+en = "As teammate"
 
-[career.encounters.col_losses]
-fr = "Défaites"
-en = "Losses"
+[career.encounters.col_as_enemy]
+fr = "Adverse"
+en = "As enemy"
 
-[career.encounters.col_last_encounter]
-fr = "Dernière rencontre"
-en = "Last encounter"
+[career.encounters.players_suffix]
+fr = "joueurs"
+en = "players"
 
 [career.encounters.loading]
 fr = "Chargement…"
@@ -457,10 +457,6 @@ en = "Loading…"
 [career.encounters.empty]
 fr = "Aucune rencontre enregistrée."
 en = "No encounter recorded."
-
-[career.encounters.see_all]
-fr = "Voir toutes les rencontres"
-en = "View all encounters"
 
 # ─── Compare action ────────────────────────────────────────────────────────
 
@@ -490,17 +486,9 @@ en = "K"
 fr = "D"
 en = "D"
 
-[career.top_matches.col_assists_short]
-fr = "A"
-en = "A"
-
 [career.top_matches.col_score]
 fr = "Score"
 en = "Score"
-
-[career.top_matches.col_badge]
-fr = "Badge"
-en = "Badge"
 
 [career.top_matches.default_title_best]
 fr = "Meilleurs matchs"

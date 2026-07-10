@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -293,6 +294,67 @@ func (r *MatchViewRepo) GetHistoryForAvg(ctx context.Context, xuid string) ([]do
 		results = append(results, row)
 	}
 	return results, rows.Err()
+}
+
+// GetHistoryForAvgBulk retourne l'historique Q29 (50 derniers matchs) pour PLUSIEURS
+// xuids en une seule requête (J3). Remplace la boucle ~8× GetHistoryForAvg du builder
+// Match View (moyennes K/D locales des amis du scoreboard). Résultat groupé par xuid ;
+// sémantique par joueur identique à GetHistoryForAvg. Best-effort : reader/requête en
+// échec → map nil (le builder dégrade sans expected K/D, comme la voie unitaire).
+func (r *MatchViewRepo) GetHistoryForAvgBulk(ctx context.Context, xuids []string) (map[string][]domain.MatchHistAvgRow, error) {
+	if len(xuids) == 0 {
+		return map[string][]domain.MatchHistAvgRow{}, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	sharedDB, release, err := r.sharedRead().Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "GetHistoryForAvgBulk shared reader failed", "err", err)
+		return nil, nil //nolint:nilerr
+	}
+	defer release()
+
+	ph := strings.TrimRight(strings.Repeat("?,", len(xuids)), ",")
+	q := resolvePerfectKillClause(
+		fmt.Sprintf(Q29HistoryForAvgBulkTpl, ph, ph), "m.medal_name_id", pdbTitleSlug(r.pdb))
+	// La liste xuid alimente les DEUX clauses IN (recent puis perfect), dans l'ordre.
+	args := make([]any, 0, len(xuids)*2)
+	for _, x := range xuids {
+		args = append(args, x)
+	}
+	for _, x := range xuids {
+		args = append(args, x)
+	}
+	rows, err := sharedDB.QueryContext(ctx, q, args...)
+	if err != nil {
+		slog.WarnContext(ctx, "GetHistoryForAvgBulk query failed", "err", err)
+		return nil, nil //nolint:nilerr
+	}
+	defer rows.Close()
+
+	out := make(map[string][]domain.MatchHistAvgRow, len(xuids))
+	for rows.Next() {
+		var xuid string
+		var row domain.MatchHistAvgRow
+		if err := rows.Scan(
+			&xuid,
+			&row.Kills,
+			&row.Deaths,
+			&row.Assists,
+			&row.HeadshotKills,
+			&row.MaxKillingSpree,
+			&row.PerfectKills,
+			&row.PairName,
+			&row.IsFirefight,
+			&row.IsRanked,
+			&row.DurationSeconds,
+		); err != nil {
+			return nil, fmt.Errorf("GetHistoryForAvgBulk scan: %w", err)
+		}
+		out[xuid] = append(out[xuid], row)
+	}
+	return out, rows.Err()
 }
 
 // GetPlayerAssistsModel retourne les coefs OLS expected_assists pour un mode.

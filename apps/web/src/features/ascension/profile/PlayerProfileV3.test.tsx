@@ -120,7 +120,6 @@ vi.mock('./queries', () => ({
     close: { mutate: vi.fn(), isPending: false },
     abandon: { mutate: vi.fn(), isPending: false },
   }),
-  profileKeys: { profile: () => ['p'], activeCampaign: () => ['c'], campaign: () => ['c'] },
 }))
 
 // Import after mocks

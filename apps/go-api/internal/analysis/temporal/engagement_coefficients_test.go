@@ -6,6 +6,8 @@ import (
 	"math"
 	"math/rand"
 	"testing"
+
+	"levelup/go-api/internal/analysis"
 )
 
 // =============================================================================
@@ -466,9 +468,9 @@ func TestMedian(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got := median(c.in)
+			got := analysis.MedianFloat(c.in)
 			if math.Abs(got-c.want) > 1e-9 {
-				t.Errorf("median(%v) want %v, got %v", c.in, c.want, got)
+				t.Errorf("MedianFloat(%v) want %v, got %v", c.in, c.want, got)
 			}
 		})
 	}

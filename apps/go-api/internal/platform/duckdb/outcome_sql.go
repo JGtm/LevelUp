@@ -21,6 +21,14 @@ func outcomeSQLEq(ctx context.Context, col string, o canonical.Outcome, legacy s
 	return outcomeSQLEqSlug(ctxkeys.TitleSlug(ctx), col, o, legacy)
 }
 
+// OutcomeSQLEqSlug est la variante EXPORTÉE (slug explicite) du seam d'issues,
+// pour les consommateurs HORS package duckdb qui construisent du SQL agrégé et
+// doivent éviter le littéral `outcome = 2` codé en dur (ex. l'orchestrateur
+// post-sync `internal/api`, K1a). Même contrat byte-identique + fallback legacy.
+func OutcomeSQLEqSlug(slug, col string, o canonical.Outcome, legacy string) string {
+	return outcomeSQLEqSlug(slug, col, o, legacy)
+}
+
 // outcomeSQLEqSlug est la variante à slug EXPLICITE, pour les repos qui reçoivent
 // déjà un titleSlug en paramètre (ex. CompareRepo.GetLocalStats) plutôt que via le
 // ctx. Même contrat byte-identique + fallback legacy que outcomeSQLEq.

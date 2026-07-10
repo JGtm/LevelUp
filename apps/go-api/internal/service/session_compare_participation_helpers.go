@@ -10,6 +10,7 @@ import (
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/service/teammates"
 )
 
 // lastSkillRating extrait le dernier rating (LUSR ou CSR) de la session, trié
@@ -118,8 +119,8 @@ func buildSessionParticipationProfile(
 			objTotal += float64(objScores[m.MatchID])
 		}
 	}
-	rawByAxis[narrative.AxisImpact] = synergyOffensiveConversion(totalKills, totalAssists, totalDD, effectiveHpToKill)
-	rawByAxis[narrative.AxisSurvival] = synergyDefensiveResistance(totalDT, totalDeaths, effectiveHpToKill)
+	rawByAxis[narrative.AxisImpact] = teammates.SynergyOffensiveConversion(totalKills, totalAssists, totalDD, effectiveHpToKill)
+	rawByAxis[narrative.AxisSurvival] = teammates.SynergyDefensiveResistance(totalDT, totalDeaths, effectiveHpToKill)
 	rawByAxis[narrative.AxisObjective] = objTotal
 	// Score = résiduel PS après kills×100 + assists×50 + objectif (medals/streaks).
 	residual := totalPS - float64(totalKills)*100.0 - float64(totalAssists)*50.0 - objTotal

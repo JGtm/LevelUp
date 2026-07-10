@@ -19,7 +19,6 @@
 //   - FriendsLoader câblé quand settings != nil
 //   - PostSyncRunner câblé quand WithPostSyncRunner(runner)
 //   - MediaScanHook câblé quand settings != nil
-//   - BatchPersistMode default ON (sauf LEVELUP_PERSIST_BATCH=0)
 //   - CSRSeasonID câblé quand cfg.CurrentCSRSeasonID != ""
 package scheduler_test
 
@@ -90,10 +89,13 @@ func TestBuildEngine_AllOptionsWired_GoldenAntiRegression(t *testing.T) {
 	// (SharedProvider, CurrentCSRSeasonID).
 	memProvider := sharedprovider.FromInMemoryDB((*sql.DB)(nil), ":memory:")
 	s.WithPostSyncRunner(&stubPostSyncRunner{})
+	prestigeFired := false
+	s.WithPrestigeHook(func(_ context.Context, _, _ string) { prestigeFired = true })
 	cfg.SharedProvider = memProvider
 	cfg.CurrentCSRSeasonID = "CsrSeason42"
 
 	engine := s.BuildEngine(context.Background(), "JGtm", "2533274823110022")
+	_ = prestigeFired // évite unused si les assertions bougent
 	if engine == nil {
 		t.Fatal("BuildEngine returned nil")
 	}
@@ -111,8 +113,8 @@ func TestBuildEngine_AllOptionsWired_GoldenAntiRegression(t *testing.T) {
 	if !engine.HasMediaScanHook() {
 		t.Error("REGRESSION: MediaScanHook non câblé — captures non associées aux matchs")
 	}
-	if !engine.BatchPersistEnabled() {
-		t.Error("REGRESSION: BatchPersistMode désactivé — fallback insertFetchedMatch legacy (ART bug actif)")
+	if !engine.HasPrestigeHook() {
+		t.Error("REGRESSION: PrestigeHook non câblé — prestige.RunPostSyncHook ne tournera sur AUCUN chemin V1 (VF-1, feature morte tests verts)")
 	}
 	if engine.CSRSeasonIDForTest() != "CsrSeason42" {
 		t.Errorf("REGRESSION: CSRSeasonID = %q, want CsrSeason42", engine.CSRSeasonIDForTest())
@@ -157,6 +159,10 @@ func TestBuildEngine_NilDeps_ProducesPartiallyWiredEngine(t *testing.T) {
 	// Sans postSyncRunner injecté, pas de PostSyncRunner.
 	if engine.HasPostSyncRunner() {
 		t.Error("PostSyncRunner câblé alors que WithPostSyncRunner pas appelé — fuite")
+	}
+	// Sans WithPrestigeHook, pas de prestigeHook.
+	if engine.HasPrestigeHook() {
+		t.Error("PrestigeHook câblé alors que WithPrestigeHook pas appelé — fuite")
 	}
 }
 

@@ -53,10 +53,10 @@ func TestEnrichRegistryFromMetadata_OverridesUUIDFallback(t *testing.T) {
 	// Cas A : PlaylistName == PlaylistID (fallback UUID via coalesceStrPtr)
 	//   → doit être remplacé par "Quick Play" depuis asset_translations.
 	row := &MatchRegistryRow{
-		PlaylistID:   strPtr(playlistKnown),
-		PlaylistName: strPtr(playlistKnown), // UUID fallback à corriger
-		MapID:        strPtr(mapKnown),
-		MapName:      strPtr(mapKnown),
+		PlaylistID:   strPtrNonEmpty(playlistKnown),
+		PlaylistName: strPtrNonEmpty(playlistKnown), // UUID fallback à corriger
+		MapID:        strPtrNonEmpty(mapKnown),
+		MapName:      strPtrNonEmpty(mapKnown),
 	}
 	if err := EnrichRegistryFromMetadata(ctx, meta, row); err != nil {
 		t.Fatalf("err: %v", err)
@@ -70,8 +70,8 @@ func TestEnrichRegistryFromMetadata_OverridesUUIDFallback(t *testing.T) {
 
 	// Cas B : PlaylistName déjà rempli avec un vrai nom → on préserve.
 	rowB := &MatchRegistryRow{
-		PlaylistID:   strPtr(playlistKnown),
-		PlaylistName: strPtr("Quick Play"),
+		PlaylistID:   strPtrNonEmpty(playlistKnown),
+		PlaylistName: strPtrNonEmpty("Quick Play"),
 	}
 	if err := EnrichRegistryFromMetadata(ctx, meta, rowB); err != nil {
 		t.Fatalf("err: %v", err)
@@ -83,8 +83,8 @@ func TestEnrichRegistryFromMetadata_OverridesUUIDFallback(t *testing.T) {
 	// Cas C : PlaylistID inconnu en asset_translations → on conserve l'UUID
 	//   (fallback historique) au lieu d'écrire NULL.
 	rowC := &MatchRegistryRow{
-		PlaylistID:   strPtr(playlistUnknown),
-		PlaylistName: strPtr(playlistUnknown),
+		PlaylistID:   strPtrNonEmpty(playlistUnknown),
+		PlaylistName: strPtrNonEmpty(playlistUnknown),
 	}
 	if err := EnrichRegistryFromMetadata(ctx, meta, rowC); err != nil {
 		t.Fatalf("err: %v", err)
@@ -96,7 +96,7 @@ func TestEnrichRegistryFromMetadata_OverridesUUIDFallback(t *testing.T) {
 	// Cas D : PlaylistName nil (extractPublicName a retourné "" et coalesce a
 	// fait son boulot) → on doit aussi enrichir.
 	rowD := &MatchRegistryRow{
-		PlaylistID:   strPtr(playlistKnown),
+		PlaylistID:   strPtrNonEmpty(playlistKnown),
 		PlaylistName: nil,
 	}
 	if err := EnrichRegistryFromMetadata(ctx, meta, rowD); err != nil {
@@ -117,12 +117,12 @@ func TestEnrichRegistryFromMetadata_ConstructsPairFromParts(t *testing.T) {
 
 	pairAbsent := "pair-absent-uuid" // pas de ligne asset_translations[pair]
 	row := &MatchRegistryRow{
-		PairID:          strPtr(pairAbsent),
-		PairName:        strPtr(pairAbsent), // GUID fallback
-		GameVariantID:   strPtr("gv-known-uuid"),
-		GameVariantName: strPtr("gv-known-uuid"), // sera résolu en "Slayer"
-		MapID:           strPtr("map-known-uuid"),
-		MapName:         strPtr("map-known-uuid"), // sera résolu en "Aquarius"
+		PairID:          strPtrNonEmpty(pairAbsent),
+		PairName:        strPtrNonEmpty(pairAbsent), // GUID fallback
+		GameVariantID:   strPtrNonEmpty("gv-known-uuid"),
+		GameVariantName: strPtrNonEmpty("gv-known-uuid"), // sera résolu en "Slayer"
+		MapID:           strPtrNonEmpty("map-known-uuid"),
+		MapName:         strPtrNonEmpty("map-known-uuid"), // sera résolu en "Aquarius"
 	}
 	if err := EnrichRegistryFromMetadata(ctx, meta, row); err != nil {
 		t.Fatalf("err: %v", err)
@@ -133,12 +133,12 @@ func TestEnrichRegistryFromMetadata_ConstructsPairFromParts(t *testing.T) {
 	// La construction ne doit PAS s'appliquer quand la vraie traduction existe :
 	// pair-known-uuid → "Arena:Slayer on Aquarius" (pas la construction).
 	rowKnown := &MatchRegistryRow{
-		PairID:          strPtr("pair-known-uuid"),
-		PairName:        strPtr("pair-known-uuid"),
-		GameVariantID:   strPtr("gv-known-uuid"),
-		GameVariantName: strPtr("gv-known-uuid"),
-		MapID:           strPtr("map-known-uuid"),
-		MapName:         strPtr("map-known-uuid"),
+		PairID:          strPtrNonEmpty("pair-known-uuid"),
+		PairName:        strPtrNonEmpty("pair-known-uuid"),
+		GameVariantID:   strPtrNonEmpty("gv-known-uuid"),
+		GameVariantName: strPtrNonEmpty("gv-known-uuid"),
+		MapID:           strPtrNonEmpty("map-known-uuid"),
+		MapName:         strPtrNonEmpty("map-known-uuid"),
 	}
 	if err := EnrichRegistryFromMetadata(ctx, meta, rowKnown); err != nil {
 		t.Fatalf("err: %v", err)
@@ -150,8 +150,8 @@ func TestEnrichRegistryFromMetadata_ConstructsPairFromParts(t *testing.T) {
 
 func TestEnrichRegistryFromMetadata_NilDB_NoError(t *testing.T) {
 	row := &MatchRegistryRow{
-		PlaylistID:   strPtr("uuid-x"),
-		PlaylistName: strPtr("uuid-x"),
+		PlaylistID:   strPtrNonEmpty("uuid-x"),
+		PlaylistName: strPtrNonEmpty("uuid-x"),
 	}
 	if err := EnrichRegistryFromMetadata(context.Background(), nil, row); err != nil {
 		t.Fatalf("nil DB should be no-op, got err: %v", err)
@@ -170,8 +170,8 @@ func TestEnrichRegistryFromMetadata_TableMissing_NoError(t *testing.T) {
 	defer db.Close()
 	// Pas de CREATE TABLE asset_translations.
 	row := &MatchRegistryRow{
-		PlaylistID:   strPtr("uuid-x"),
-		PlaylistName: strPtr("uuid-x"),
+		PlaylistID:   strPtrNonEmpty("uuid-x"),
+		PlaylistName: strPtrNonEmpty("uuid-x"),
 	}
 	if err := EnrichRegistryFromMetadata(context.Background(), db, row); err != nil {
 		t.Fatalf("table missing should be no-op, got err: %v", err)
@@ -186,11 +186,11 @@ func TestNeedsRegistryNameOverride(t *testing.T) {
 		want bool
 	}{
 		{"nil", nil, true},
-		{"empty", strPtr(""), true},
-		{"whitespace", strPtr("   "), true},
-		{"== id (fallback UUID)", strPtr(id), true},
-		{"== id case insensitive", strPtr("ABCD-1234"), true},
-		{"vrai nom", strPtr("Quick Play"), false},
+		{"empty", strPtrNonEmpty(""), true},
+		{"whitespace", strPtrNonEmpty("   "), true},
+		{"== id (fallback UUID)", strPtrNonEmpty(id), true},
+		{"== id case insensitive", strPtrNonEmpty("ABCD-1234"), true},
+		{"vrai nom", strPtrNonEmpty("Quick Play"), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

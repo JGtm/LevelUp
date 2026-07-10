@@ -180,8 +180,10 @@ func (s *stubAssetURL) CSRRankImageURL(tier string, subTier int) string {
 	}
 	return s.csrPattern + tier + ":" + itoa(subTier)
 }
-func (s *stubAssetURL) CSRRankImageURLOnyx() string    { return s.onyxImg }
-func (s *stubAssetURL) WeaponImageURL(_ string) string { return "" }
+func (s *stubAssetURL) CSRRankImageURLOnyx() string          { return s.onyxImg }
+func (s *stubAssetURL) WeaponImageURL(_ string) string       { return "" }
+func (s *stubAssetURL) MatchWebURL(_ string) string          { return "" }
+func (s *stubAssetURL) PlayerMatchWebURL(_, _ string) string { return "" }
 
 func itoa(n int) string {
 	// minimal helper pour éviter strconv import dans le file de test
@@ -324,6 +326,8 @@ func (s *stubAssetURLNameAware) MedalImageURL(_ uint64) string          { return
 func (s *stubAssetURLNameAware) CSRRankImageURL(_ string, _ int) string { return "" }
 func (s *stubAssetURLNameAware) CSRRankImageURLOnyx() string            { return "" }
 func (s *stubAssetURLNameAware) WeaponImageURL(_ string) string         { return "" }
+func (s *stubAssetURLNameAware) MatchWebURL(_ string) string            { return "" }
+func (s *stubAssetURLNameAware) PlayerMatchWebURL(_, _ string) string   { return "" }
 
 // TestBuildMatchHeader_MapImageRegistry vérifie que meta.MapImageURL (registry)
 // a la priorité sur l'adapter name-based, et que l'adapter sert de fallback.

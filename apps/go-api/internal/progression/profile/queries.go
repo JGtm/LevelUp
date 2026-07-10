@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 )
 
@@ -21,6 +22,12 @@ import (
 // (= pdb.Player).
 
 const queryTimeout = 10 * time.Second
+
+// startTimeCanonicalMR : expression timezone-canonique du début de match pour
+// l'alias `mr` (E5) — jamais de `start_time` brut dans un filtre/tri temporel
+// (piège start_time_utc NULL / start_time naïf). Source unique :
+// duckdb.StartTimeCanonicalSQL (cf. reference_timezone_canonical_pattern).
+var startTimeCanonicalMR = duckdb.StartTimeCanonicalSQL("mr")
 
 // countMatchesInWindow retourne le nombre de matchs distincts du joueur dans
 // la fenêtre. Source : match_participants côté shared (filtré par xuid),
@@ -42,7 +49,7 @@ func (s *Service) countMatchesInWindow(ctx context.Context, userID string, since
 		FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
-		  AND mr.start_time >= ? AND mr.start_time <= ?
+		  AND `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
 	`, userID, since, until).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("countMatchesInWindow: %w", err)
@@ -109,7 +116,7 @@ func (s *Service) computeRadarAxesBase(
 		FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
-		  AND mr.start_time >= ? AND mr.start_time <= ?
+		  AND `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
 	`, userID, since, until).Scan(&avgKills, &avgDeaths, &avgAssists, &avgScore, &avgKillingSpree, &matchCount)
 	if err != nil {
 		return nil, 0, fmt.Errorf("computeRadarAxesBase: %w", err)
@@ -163,8 +170,8 @@ func (s *Service) applyAwardsRadarAxes(
 	}
 	defer release()
 	matchRows, err := sharedDB.QueryContext(ctx, `
-		SELECT match_id FROM match_registry
-		WHERE start_time >= ? AND start_time <= ?
+		SELECT match_id FROM match_registry mr
+		WHERE `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
 	`, since, until)
 	if err != nil {
 		return
@@ -238,7 +245,7 @@ func (s *Service) computeFKFD(ctx context.Context, userID string, since, until t
 			COALESCE(SUM(CASE WHEN he.event_type = 'first_death' AND he.victim_xuid = ? THEN 1 ELSE 0 END), 0)
 		FROM highlight_events he
 		JOIN match_registry mr ON mr.match_id = he.match_id
-		WHERE mr.start_time >= ? AND mr.start_time <= ?
+		WHERE `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
 	`, userID, userID, since, until).Scan(&fk, &fd)
 	if err != nil {
 		// La table highlight_events peut ne pas exister ou être vide selon
@@ -264,12 +271,12 @@ func (s *Service) computeEngagementSimple(ctx context.Context, userID string, si
 	}
 	defer release()
 	rows, err := sharedDB.QueryContext(ctx, `
-		SELECT mr.start_time
+		SELECT `+startTimeCanonicalMR+`
 		FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
-		  AND mr.start_time >= ? AND mr.start_time <= ?
-		ORDER BY mr.start_time ASC
+		  AND `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
+		ORDER BY `+startTimeCanonicalMR+` ASC
 	`, userID, since, until)
 	if err != nil {
 		return snap, fmt.Errorf("computeEngagementSimple: %w", err)

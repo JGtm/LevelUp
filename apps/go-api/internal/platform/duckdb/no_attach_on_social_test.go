@@ -149,6 +149,25 @@ func TestNoUnauthorizedSharedSocialMention(t *testing.T) {
 		strings.Join(violations, "\n  - "))
 }
 
+// TestSharedSocialWhitelistEntriesPointToExistingFiles (V4d, VF-6) — self-check
+// anti-pourrissement : chaque clé de sharedSocialFilesWhitelist est un CHEMIN de
+// fichier (pas un motif) ; elle doit désigner un fichier EXISTANT. Une entrée
+// dont le fichier a disparu (déplacé/supprimé par un refactor) est un trou
+// latent — c'est le défaut révélé par VF-6 (social_persister_combined.go
+// « si présent », jamais créé). Un fichier recréé plus tard à ce chemin
+// mentionnerait shared_social sans déclencher le sentinel.
+func TestSharedSocialWhitelistEntriesPointToExistingFiles(t *testing.T) {
+	root := findGoAPIRoot(t)
+	for rel := range sharedSocialFilesWhitelist {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		if _, err := os.Stat(path); err != nil {
+			t.Errorf("sharedSocialFilesWhitelist : entrée %q pointe un fichier inexistant (%v) — "+
+				"refactor de renommage/suppression ? Retirer l'entrée morte (trou latent : un fichier "+
+				"recréé à ce chemin échapperait au sentinel).", rel, err)
+		}
+	}
+}
+
 func isATTACHFuncName(name string) bool {
 	lower := strings.ToLower(name)
 	return strings.Contains(lower, "attach") &&
@@ -239,16 +258,13 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"cmd/wal_forensic_compare/main.go":                                                  "outil one-shot forensique WAL (ADR 0021 Gap 2)",
 	"cmd/duckdb_7659_repro/main.go":                                                     "outil one-shot repro bug DuckDB upstream (ADR 0021 Bonus 13)",
 	"cmd/server/main.go":                                                                "boot serveur : pool init + CHECKPOINT scheduler",
-	"internal/api/gen/types.gen.go":                                                     "généré par oapi-codegen (DO NOT EDIT) ; 'shared_social' provient d'une description OpenAPI (champ player_records_count), pas d'un accès DB",
-	"internal/api/registry_media.go":                                                    "factory MediaService + acquéreur leased writer",
-	"internal/api/registry_notifications.go":                                            "factory NotificationsService (shared_social path)",
-	"internal/api/notifications_title_ready.go":                                         "notifier MT-19 title_ready : la mention 'shared_social' est un commentaire doc (per-title via PathResolver.SharedSocialDBPath) ; l'émission passe par l'Emitter (path Persister), pas d'ATTACH/INSERT direct",
-	"internal/api/post_sync_deltas.go":                                                  "post-sync engagement/records (path Persister)",
-	"internal/api/post_sync_progression.go":                                             "post-sync prestige/records (path Persister)",
-	"internal/api/post_sync_progression_test.go":                                        "tests post-sync",
-	"internal/api/prestige_setup.go":                                                    "init prestige (path Persister)",
-	"internal/api/prestige_lazy_service.go":                                             "lazy init prestige",
-	"internal/api/server.go":                                                            "wiring API + boot",
+	"internal/api/wire/registry_media.go":                                               "factory MediaService + acquéreur leased writer (wire, ex-internal/api, K3)",
+	"internal/api/wire/registry_notifications.go":                                       "factory NotificationsService (shared_social path) (wire, ex-internal/api, K3)",
+	"internal/api/wire/notifications_title_ready.go":                                    "notifier MT-19 title_ready : la mention 'shared_social' est un commentaire doc (per-title via PathResolver.SharedSocialDBPath) ; l'émission passe par l'Emitter (path Persister), pas d'ATTACH/INSERT direct (wire, ex-internal/api, K3)",
+	"internal/api/wire/post_sync_progression.go":                                        "post-sync prestige/records (path Persister) (wire, ex-internal/api, K3)",
+	"internal/api/wire/prestige_setup.go":                                               "init prestige (path Persister) (wire, ex-internal/api, K3)",
+	"internal/api/wire/prestige_lazy_service.go":                                        "lazy init prestige (wire, ex-internal/api, K3)",
+	"internal/api/server_apiv1.go":                                                      "montage routes /api/v1 : commentaires shared_social (match favoris, init coach/prestige) — ex-server.go, split K2a",
 	"internal/games/halo_infinite/migrations/steps_shared_social.go":                    "migrations shared_social CONSOMMATRICES title-owned (Phase 1.5 b19, voie B)",
 	"internal/migration/registry.go":                                                    "framework migration (target TargetSharedSocial)",
 	"internal/migration/migration_test.go":                                              "tests framework migration",
@@ -292,6 +308,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/platform/dblease/kind.go":                                                 "type Kind=SharedSocial pour lease tracking",
 	"internal/platform/dblease/metrics.go":                                              "expvar par kind",
 	"internal/platform/duckdb/db.go":                                                    "API DB générique (commentaire sur policy)",
+	"internal/platform/duckdb/db_query.go":                                              "API DB générique — commentaire policy sur l'invalidation process-level (ex-db.go, split K3f)",
 	"internal/platform/duckdb/pool.go":                                                  "pool : SharedSocial config + ouverture",
 	"internal/platform/duckdb/pool_shared_social_recovery.go":                           "recovery WAL (ADR 0021 Phase 2)",
 	"internal/platform/duckdb/pool_writers.go":                                          "acquéreurs LeasedWriter par kind",
@@ -299,7 +316,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/platform/duckdb/social_persister_iface.go":                                "interface SocialPersister consommée",
 	"internal/platform/duckdb/notifications_repo.go":                                    "notifications repo (lit shared_social)",
 	"internal/platform/duckdb/records_repo.go":                                          "records repo (lit shared_social)",
-	"internal/platform/duckdb/prestige_social_repo.go":                                  "prestige social repo",
+	"internal/platform/duckdb/prestige/prestige_social_repo.go":                         "prestige social repo",
 	"internal/platform/duckdb/progression_diag_repo.go":                                 "progression diag repo",
 	"internal/platform/duckdb/home_repo_matches.go":                                     "home recent media (lit shared_social via SharedSocial)",
 	"internal/platform/duckdb/match_view_repo_extras.go":                                "match view media (lit shared_social)",
@@ -311,7 +328,6 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/platform/duckdb/media_repo_q37_pipeline.go":                               "pipeline Q37 (lit shared_social)",
 	"internal/platform/duckdb/media_repo_registry.go":                                   "registry helpers",
 	"internal/platform/duckdb/media_repo_translations.go":                               "translations helpers",
-	"internal/platform/duckdb/social_persister_combined.go":                             "combined persister wiring (si présent)",
 	"internal/progression/coach/types.go":                                               "coach types touchent shared_social",
 	"internal/progression/records/repository.go":                                        "records repo wiring",
 	"internal/progression/records/types.go":                                             "records types",
@@ -331,7 +347,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"pkg/duckdbbackup/exporter.go":                                                      "backup exporter",
 	// Ajoutés 2026-06-03
 	"internal/api/handlers/media.go":                    "commentaire doc : liste auteurs depuis shared_social.media_files",
-	"internal/api/post_sync_deltas_records.go":          "post-sync records (path Persister shared_social)",
+	"internal/platform/duckdb/player_record_repo.go":    "records perso (Load/UpsertPlayerRecord, path Persister shared_social) — ex-api/post_sync_deltas_records.go, déplacé K1a 2026-07-05",
 	"internal/migration/order.go":                       "ordre de migration (cible TargetSharedSocial dans la liste)",
 	"internal/persist/shared_social_persister_batch.go": "batch SocialPersister (accès shared_social via persister canonique)",
 	"internal/platform/duckdb/queries_match_detail.go":  "Q24 matchs media shared_social (commentaire)",

@@ -23,6 +23,7 @@ import (
 	"log/slog"
 	"os"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	auth_platform "levelup/go-api/internal/platform/auth"
@@ -134,7 +135,7 @@ func listMatchIDs(ctx context.Context, db *sql.DB, limit int) ([]string, error) 
 	q := `SELECT DISTINCT mp.match_id
 	      FROM match_participants mp
 	      JOIN match_registry mr ON mr.match_id = mp.match_id
-	      ORDER BY COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') DESC`
+	      ORDER BY ` + analysis.SQLStartTimeCanonical("mr") + ` DESC`
 	if limit > 0 {
 		q += fmt.Sprintf(" LIMIT %d", limit)
 	}

@@ -21,7 +21,8 @@ package temporal
 
 import (
 	"errors"
-	"sort"
+
+	"levelup/go-api/internal/analysis"
 )
 
 // Constantes de calibration pour le calcul du coefficient.
@@ -156,10 +157,10 @@ func ComputeEngagementCoefficient(samples []RatioSample) (*CoefficientResult, er
 		return nil, ErrInsufficientCoefHistory
 	}
 
-	coefTeam := clampCoef(median(teamRatios))
+	coefTeam := clampCoef(analysis.MedianFloat(teamRatios))
 	coefLobby := 1.0 // fallback neutre si pas assez de samples lobby valides
 	if len(lobbyRatios) >= MinMatchesForCoef {
-		coefLobby = clampCoef(median(lobbyRatios))
+		coefLobby = clampCoef(analysis.MedianFloat(lobbyRatios))
 	}
 
 	return &CoefficientResult{
@@ -168,19 +169,6 @@ func ComputeEngagementCoefficient(samples []RatioSample) (*CoefficientResult, er
 		NMatches:       len(teamRatios),
 		NRejected:      rejected,
 	}, nil
-}
-
-// median calcule la mediane d'un slice de float64. Fait une copie pour ne
-// pas muter l'input. Suppose len(values) > 0 (verifie en amont).
-func median(values []float64) float64 {
-	cp := make([]float64, len(values))
-	copy(cp, values)
-	sort.Float64s(cp)
-	n := len(cp)
-	if n%2 == 1 {
-		return cp[n/2]
-	}
-	return (cp[n/2-1] + cp[n/2]) / 2.0
 }
 
 // clampCoef borne le coefficient dans [CoefMin, CoefMax] pour eviter de

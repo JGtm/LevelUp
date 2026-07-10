@@ -14,6 +14,7 @@ SELECT
     COALESCE(category, 'misc')    AS category,
     image_path,
     description,
+    COALESCE(description_en, '') AS description_en,
     tier_targets,
     composite_children
 FROM citation_mappings

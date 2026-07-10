@@ -16,13 +16,17 @@ package duckdb
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 )
 
 // MatchViewRepo implémente port.MatchViewRepository.
@@ -36,6 +40,20 @@ type MatchViewRepo struct {
 	// relations shared non-match-immutables (ex. world_csr_leaderboard) lues par
 	// d'autres repos restent sur le live. Media (SharedSocial) + player (ReadDB) idem.
 	sharedReader SharedReader
+	// modeTax : classification des modes du titre, injectée au wiring pour éviter
+	// le couplage platform/duckdb → games/halo_infinite dans le filtrage neighbors
+	// (F15-2). Zéro-value = pas de classification (clause ModeCategory omise).
+	modeTax analysis.ModeTaxonomy
+	// forceLive (scoped requête) : quand true, sharedRead() ignore l'override snapshot
+	// et sert le live. Armé par GetMatchMeta lorsqu'un match EXISTE dans le shared live
+	// mais est ABSENT du snapshot immuable courant (joué après le dernier cut, ou exclu
+	// comme "partial" au moment du cut). Sans ça, la page 404 (meta introuvable) ou
+	// s'affiche à moitié vide (scoreboard/events snapshot vides) alors que le live a la
+	// donnée complète — cf. bouton « Voir les matchs » dont la liste vient du live.
+	// Le repo est instancié PAR REQUÊTE (ServiceRegistry.MatchView) : ce champ n'est
+	// jamais partagé entre requêtes, et il est armé (écrit) dans GetMatchMeta AVANT le
+	// fan-out parallèle des autres lectures (loadMatchViewDataParallel) — pas de course.
+	forceLive bool
 }
 
 // NewMatchViewRepo crée un MatchViewRepo.
@@ -50,10 +68,19 @@ func (r *MatchViewRepo) WithSharedReader(sr SharedReader) *MatchViewRepo {
 	return r
 }
 
-// sharedRead retourne le SharedReader effectif : l'override snapshot s'il est câblé,
-// sinon le reader live du pool (pdb.SharedReadDB()).
+// WithModeTaxonomy injecte la classification des modes du titre (préfixes pair_name
+// par catégorie) pour le filtrage neighbors. Sans injection, la clause ModeCategory
+// est omise (dégradation gracieuse). Câblé au wiring depuis games/halo_infinite (F15-2).
+func (r *MatchViewRepo) WithModeTaxonomy(t analysis.ModeTaxonomy) *MatchViewRepo {
+	r.modeTax = t
+	return r
+}
+
+// sharedRead retourne le SharedReader effectif : l'override snapshot s'il est câblé
+// (et que la requête n'a pas basculé sur le live), sinon le reader live du pool
+// (pdb.SharedReadDB()). forceLive prime : voir le champ (fallback snapshot-miss).
 func (r *MatchViewRepo) sharedRead() SharedReader {
-	if r.sharedReader != nil {
+	if r.sharedReader != nil && !r.forceLive {
 		return r.sharedReader
 	}
 	return r.pdb.SharedReadDB()
@@ -61,38 +88,27 @@ func (r *MatchViewRepo) sharedRead() SharedReader {
 
 // GetMatchMeta retourne les métadonnées du match (Q13).
 // Exécutée sur SharedReader (ADR 0016) — Q13 lit match_registry (shared-only).
+//
+// Fallback snapshot→live : le reader par défaut de MatchView est le snapshot immuable
+// (découplé du B-swap). Un match présent dans le shared LIVE mais absent du snapshot
+// courant (joué après le dernier cut, ou exclu comme "partial") renverrait sql.ErrNoRows
+// → 404, alors que les surfaces qui lisent le live (filters/timeseries/history, d'où
+// vient la liste du bouton « Voir les matchs ») le proposent. On re-tente donc sur le
+// live et, en cas de succès, on ARME forceLive pour que TOUTES les lectures shared
+// suivantes de cette requête (scoreboard/events/médailles…) viennent aussi du live —
+// sinon la page s'afficherait à moitié vide.
 func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*domain.MatchMetaRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	sharedDB, release, err := r.sharedRead().Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("MatchViewRepo.GetMatchMeta: shared reader: %w", err)
+	row, err := r.scanMatchMeta(ctx, r.sharedRead(), matchID)
+	if errors.Is(err, sql.ErrNoRows) && r.sharedReader != nil && !r.forceLive {
+		slog.WarnContext(ctx, "match_view: match absent du snapshot immuable → bascule lecture live",
+			"match_id", matchID, "title", r.pdb.TitleSlug)
+		observability.IncCounterT(r.pdb.TitleSlug, "match_view_snapshot_miss_live_fallback_total")
+		r.forceLive = true
+		row, err = r.scanMatchMeta(ctx, r.pdb.SharedReadDB(), matchID)
 	}
-	defer release()
-
-	var row domain.MatchMetaRaw
-	err = sharedDB.QueryRowContext(ctx, Q13MatchMeta, matchID).Scan(
-		&row.MatchID,
-		&row.StartTime,
-		&row.DurationSeconds,
-		&row.MapName,
-		&row.PairName,
-		&row.PlaylistName,
-		&row.IsFirefight,
-		&row.IsRanked,
-		&row.PlayableDurationSeconds,
-		&row.MapAssetID,
-		&row.GameVariantName,
-		&row.PlaylistAssetID,
-		&row.Team0Score,
-		&row.Team1Score,
-		&row.PairNameFR,
-		&row.PairAssetID,
-		&row.GameVariantAssetID,
-		&row.T0Ms,
-		&row.MapVersionID,
-	)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchMeta: %w", err)
 	}
@@ -167,6 +183,45 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		}
 	}
 	return &row, nil
+}
+
+// scanMatchMeta exécute Q13 sur le reader fourni et scanne les 19 colonnes brutes.
+// Isolé pour permettre le fallback snapshot→live de GetMatchMeta (on ré-exécute la
+// même query sur le live quand le snapshot immuable ne contient pas le match). Renvoie
+// l'erreur de Scan telle quelle (sql.ErrNoRows non enveloppé) pour que l'appelant
+// puisse la détecter via errors.Is. Le handle shared est relâché à la sortie : la
+// résolution d'assets qui suit dans GetMatchMeta n'utilise que la metadata (pas ce
+// handle), le release anticipé est donc sûr.
+func (r *MatchViewRepo) scanMatchMeta(ctx context.Context, reader SharedReader, matchID string) (domain.MatchMetaRaw, error) {
+	var row domain.MatchMetaRaw
+	sharedDB, release, err := reader.Get(ctx)
+	if err != nil {
+		return row, fmt.Errorf("shared reader: %w", err)
+	}
+	defer release()
+
+	err = sharedDB.QueryRowContext(ctx, Q13MatchMeta, matchID).Scan(
+		&row.MatchID,
+		&row.StartTime,
+		&row.DurationSeconds,
+		&row.MapName,
+		&row.PairName,
+		&row.PlaylistName,
+		&row.IsFirefight,
+		&row.IsRanked,
+		&row.PlayableDurationSeconds,
+		&row.MapAssetID,
+		&row.GameVariantName,
+		&row.PlaylistAssetID,
+		&row.Team0Score,
+		&row.Team1Score,
+		&row.PairNameFR,
+		&row.PairAssetID,
+		&row.GameVariantAssetID,
+		&row.T0Ms,
+		&row.MapVersionID,
+	)
+	return row, err
 }
 
 // resolveAssetName est un helper qui appelle MetadataRepo.ResolveAssetName avec

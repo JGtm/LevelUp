@@ -219,6 +219,10 @@ func TestCompareRepo_GetPlayerATH(t *testing.T) {
 			rating_deviation DOUBLE, tier VARCHAR, tier_fr VARCHAR, sub_tier SMALLINT,
 			tier_label VARCHAR, rating_delta DOUBLE, playlist_group VARCHAR,
 			start_time TIMESTAMPTZ, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ)`,
+		// Vue _latest (ADR 0026) : le reader CompareRepo.GetPlayerATH lit
+		// match_skill_rank_latest, jamais la table brute. Sur ce fixture
+		// mono-version, un simple passthrough suffit.
+		`CREATE VIEW match_skill_rank_latest AS SELECT * FROM match_skill_rank`,
 		`CREATE TABLE career_progression (
 			rank INTEGER, current_xp INTEGER, recorded_at TIMESTAMPTZ,
 			rank_name VARCHAR, rank_tier VARCHAR, xp_for_next_rank INTEGER,

@@ -4,16 +4,15 @@
  * Toutes les 168 cellules sont émises — null pour les cases vides.
  * yAxis.inverse: true (Lun en haut, Dim en bas).
  */
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, getEChartsThemeColors } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
+import { dowLabels, HOUR_LABELS, calendarChartText } from '@/lib/formatters'
+import { useAppShellStore } from '@/stores/appShellStore'
+import type { ManifestLocale } from '@/lib/i18n/format'
 import type { HeatmapCell } from '@/lib/api/types'
-
-const DOW_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-const HOUR_LABELS = ['00h','01h','02h','03h','04h','05h','06h','07h','08h','09h',
-  '10h','11h','12h','13h','14h','15h','16h','17h','18h','19h','20h','21h','22h','23h']
 
 interface Props {
   cells: HeatmapCell[]
@@ -21,8 +20,10 @@ interface Props {
   height?: number
 }
 
-function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
+function buildHeatmapOption(cells: HeatmapCell[], locale: ManifestLocale): EChartsCoreOption {
   const tc = getEChartsThemeColors()
+  const DOW_LABELS = dowLabels(locale)
+  const txt = calendarChartText(locale)
 
   // Indexer les données reçues par (dow, hour)
   const lookup = new Map<string, { win_rate: number; count: number }>()
@@ -60,20 +61,20 @@ function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
       formatter: (params: { data: { value: [number, number, number | null]; count: number } }) => {
         const [h, d, wr] = params.data.value
         const wrStr = wr == null ? 'n/a' : `${(wr * 100).toFixed(1)}%`
-        return `${DOW_LABELS[d]} ${HOUR_LABELS[h]}<br>Taux de victoire : ${wrStr}<br>Matchs : ${params.data.count}`
+        return `${DOW_LABELS[d]} ${HOUR_LABELS[h]}<br>${txt.winRate} : ${wrStr}<br>${txt.matches} : ${params.data.count}`
       },
     },
     legend: false as unknown as undefined,
     xAxis: {
       type: 'category',
-      name: 'Heure',
+      name: txt.hourAxis,
       data: HOUR_LABELS,
       splitLine: { show: true, lineStyle: { color: tc.splitLine } },
       axisLabel: { color: tc.axisLabel, fontSize: 10 },
     },
     yAxis: {
       type: 'category',
-      name: 'Jour',
+      name: txt.dayAxis,
       inverse: true,
       data: DOW_LABELS,
       splitLine: { show: true, lineStyle: { color: tc.splitLine } },
@@ -97,7 +98,7 @@ function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
         ],
       },
       formatter: (val: number) => `${(val * 100).toFixed(0)}%`,
-      text: ['Victoires', ''],
+      text: [txt.wins, ''],
       textStyle: { color: tc.axisLabel, fontSize: 10 },
     } : undefined,
     series: [
@@ -120,12 +121,14 @@ function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
 type Pt = { dow: number; hour: number }
 
 export function SynthesisHeatmapChart({ cells, title, height }: Props) {
+  const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const series: ChartSeries<Pt>[] = cells.length > 0
     ? [{ key: 'heatmap', datapoints: cells.map((c) => ({ dow: c.dow, hour: c.hour })) }]
     : []
 
+  const cellsKey = useMemo(() => JSON.stringify(cells), [cells])
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const buildOption = useCallback(() => buildHeatmapOption(cells), [JSON.stringify(cells)])
+  const buildOption = useCallback(() => buildHeatmapOption(cells, locale), [cellsKey, locale])
 
   return (
     <ChartCard

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/testutil"
 )
@@ -51,6 +52,69 @@ func TestFiltersService_Resolve_OK(t *testing.T) {
 	}
 	if resp.Counts.TotalMatchesBeforeFilters != 2 {
 		t.Errorf("TotalMatchesBeforeFilters = %d, want 2", resp.Counts.TotalMatchesBeforeFilters)
+	}
+}
+
+// TestFiltersService_Resolve_ExperienceLabelsLocaleAware prouve GH5-2 : le LABEL
+// des options d'expérience est localisé (EN sous locale EN) tandis que la VALUE
+// reste FR dans les deux locales (contrat cascade/substring intact).
+func TestFiltersService_Resolve_ExperienceLabelsLocaleAware(t *testing.T) {
+	now := time.Now()
+	repo := &mockFiltersRepo{
+		rows: []domain.FilterMatchRow{
+			{MatchID: "pve", StartTime: &now, IsFirefight: true},
+			{MatchID: "ranked", StartTime: &now, IsRanked: true},
+			{MatchID: "unranked", StartTime: &now},
+		},
+	}
+	svc := NewFiltersService(repo)
+
+	// VALUE FR canonique → LABEL EN attendu.
+	wantEN := map[string]string{
+		expTypePVPUnranked: "Unranked PvP",
+		expTypePVPRanked:   "Ranked PvP",
+		expTypePVE:         "PvE",
+	}
+
+	// Locale EN : Label localisé, Value FR.
+	respEN, err := svc.Resolve(ctxkeys.WithLocale(context.Background(), "en"), domain.FilterContextInput{FilterMode: "period"})
+	if err != nil {
+		t.Fatalf("resolve EN: %v", err)
+	}
+	optsEN := respEN.AvailableOptions.ExperienceTypes
+	if len(optsEN) != 3 {
+		t.Fatalf("EN: %d options d'expérience, want 3", len(optsEN))
+	}
+	for _, o := range optsEN {
+		if _, isFRValue := wantEN[o.Value]; !isFRValue {
+			t.Errorf("EN: Value %q n'est pas une VALUE FR canonique (la Value NE doit PAS être localisée)", o.Value)
+		}
+		if o.Label != wantEN[o.Value] {
+			t.Errorf("EN: Value %q → Label %q, want %q", o.Value, o.Label, wantEN[o.Value])
+		}
+	}
+
+	// Locale FR (défaut) : Label == Value (FR) dans les deux champs.
+	respFR, err := svc.Resolve(ctxkeys.WithLocale(context.Background(), "fr"), domain.FilterContextInput{FilterMode: "period"})
+	if err != nil {
+		t.Fatalf("resolve FR: %v", err)
+	}
+	for _, o := range respFR.AvailableOptions.ExperienceTypes {
+		if o.Label != o.Value {
+			t.Errorf("FR: Label %q != Value %q (attendu identique sous locale FR)", o.Label, o.Value)
+		}
+	}
+
+	// Chemin emptyResolved (0 row) : localisé aussi (3 options, count 0).
+	emptySvc := NewFiltersService(&mockFiltersRepo{rows: []domain.FilterMatchRow{}})
+	respEmpty, err := emptySvc.Resolve(ctxkeys.WithLocale(context.Background(), "en"), domain.FilterContextInput{FilterMode: "period"})
+	if err != nil {
+		t.Fatalf("resolve empty EN: %v", err)
+	}
+	for _, o := range respEmpty.AvailableOptions.ExperienceTypes {
+		if o.Label != wantEN[o.Value] {
+			t.Errorf("empty EN: Value %q → Label %q, want %q", o.Value, o.Label, wantEN[o.Value])
+		}
 	}
 }
 

@@ -16,9 +16,22 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite"
 )
+
+// testModeTaxonomy : la taxonomie Halo Infinite injectée dans le repo pour les
+// tests neighbors (le wiring prod l'injecte via haloInfiniteModeTaxonomy ; F15-2).
+func testModeTaxonomy() analysis.ModeTaxonomy {
+	return analysis.ModeTaxonomy{
+		InferCategory: halo_infinite.InferModeCategoryFromPairName,
+		PrefixesFor:   halo_infinite.PairNamePrefixesForCategory,
+		AllPrefixes:   halo_infinite.AllKnownPairNamePrefixes,
+		Other:         halo_infinite.ModeCategoryOther,
+	}
+}
 
 // matchSeed : description compacte d'un match pour le dataset de test.
 type matchSeed struct {
@@ -157,7 +170,7 @@ func deref(s *string) string {
 // vérifie que sans spec on retombe sur Q25 global (8 matchs).
 func TestMatchViewRepo_GetMatchNeighborsFiltered_NilSpec_GlobalChronology(t *testing.T) {
 	pdb := newTestPlayerDBForNeighborsScenario(t)
-	repo := NewMatchViewRepo(pdb, pTestXUID)
+	repo := NewMatchViewRepo(pdb, pTestXUID).WithModeTaxonomy(testModeTaxonomy())
 
 	// n4 est au milieu (idx 4 sur 8 trié DESC) : prev = n3, next = n5
 	got, err := repo.GetMatchNeighborsFiltered(context.Background(), pTestXUID, "n4", nil)
@@ -171,7 +184,7 @@ func TestMatchViewRepo_GetMatchNeighborsFiltered_NilSpec_GlobalChronology(t *tes
 // "Ranked Slayer" → 4 matchs : n8, n6, n4, n1.
 func TestMatchViewRepo_GetMatchNeighborsFiltered_FilterPlaylist(t *testing.T) {
 	pdb := newTestPlayerDBForNeighborsScenario(t)
-	repo := NewMatchViewRepo(pdb, pTestXUID)
+	repo := NewMatchViewRepo(pdb, pTestXUID).WithModeTaxonomy(testModeTaxonomy())
 
 	spec := &domain.MatchFilterSpec{PlaylistNames: []string{"Ranked Slayer"}}
 
@@ -188,7 +201,7 @@ func TestMatchViewRepo_GetMatchNeighborsFiltered_FilterPlaylist(t *testing.T) {
 // (n5=Fiesta et n2=Firefight Solo exclus). Valide la clause IN (?, ?).
 func TestMatchViewRepo_GetMatchNeighborsFiltered_MultiPlaylist(t *testing.T) {
 	pdb := newTestPlayerDBForNeighborsScenario(t)
-	repo := NewMatchViewRepo(pdb, pTestXUID)
+	repo := NewMatchViewRepo(pdb, pTestXUID).WithModeTaxonomy(testModeTaxonomy())
 
 	spec := &domain.MatchFilterSpec{
 		PlaylistNames: []string{"Ranked Slayer", "Big Team Battle"},
@@ -206,7 +219,7 @@ func TestMatchViewRepo_GetMatchNeighborsFiltered_MultiPlaylist(t *testing.T) {
 // "BTB" → préfixe BTB:* → 2 matchs : n7 (BTB:CTF), n3 (BTB:Strongholds).
 func TestMatchViewRepo_GetMatchNeighborsFiltered_FilterModeCategory_BTB(t *testing.T) {
 	pdb := newTestPlayerDBForNeighborsScenario(t)
-	repo := NewMatchViewRepo(pdb, pTestXUID)
+	repo := NewMatchViewRepo(pdb, pTestXUID).WithModeTaxonomy(testModeTaxonomy())
 
 	spec := &domain.MatchFilterSpec{ModeCategories: []string{"BTB"}}
 
@@ -229,7 +242,7 @@ func TestMatchViewRepo_GetMatchNeighborsFiltered_FilterModeCategory_BTB(t *testi
 // 2026-04-10 → 2026-04-25 inclus → 4 matchs : n6, n5, n4, n3.
 func TestMatchViewRepo_GetMatchNeighborsFiltered_FilterDateRange(t *testing.T) {
 	pdb := newTestPlayerDBForNeighborsScenario(t)
-	repo := NewMatchViewRepo(pdb, pTestXUID)
+	repo := NewMatchViewRepo(pdb, pTestXUID).WithModeTaxonomy(testModeTaxonomy())
 
 	spec := &domain.MatchFilterSpec{
 		DateFrom: timePtr("2026-04-10T00:00:00Z"),
@@ -248,7 +261,7 @@ func TestMatchViewRepo_GetMatchNeighborsFiltered_FilterDateRange(t *testing.T) {
 // outcome=win (code 2) → 4 matchs : n8, n5, n3, n1.
 func TestMatchViewRepo_GetMatchNeighborsFiltered_FilterOutcome_Win(t *testing.T) {
 	pdb := newTestPlayerDBForNeighborsScenario(t)
-	repo := NewMatchViewRepo(pdb, pTestXUID)
+	repo := NewMatchViewRepo(pdb, pTestXUID).WithModeTaxonomy(testModeTaxonomy())
 
 	spec := &domain.MatchFilterSpec{Outcome: strPtr("win")}
 
@@ -266,7 +279,7 @@ func TestMatchViewRepo_GetMatchNeighborsFiltered_FilterOutcome_Win(t *testing.T)
 // (n6=loss exclu).
 func TestMatchViewRepo_GetMatchNeighborsFiltered_Combined(t *testing.T) {
 	pdb := newTestPlayerDBForNeighborsScenario(t)
-	repo := NewMatchViewRepo(pdb, pTestXUID)
+	repo := NewMatchViewRepo(pdb, pTestXUID).WithModeTaxonomy(testModeTaxonomy())
 
 	spec := &domain.MatchFilterSpec{
 		PlaylistNames: []string{"Ranked Slayer"},
@@ -285,7 +298,7 @@ func TestMatchViewRepo_GetMatchNeighborsFiltered_Combined(t *testing.T) {
 // si le matchId courant n'est pas dans le scope filtré → MatchNeighbors zero.
 func TestMatchViewRepo_GetMatchNeighborsFiltered_MatchOutOfScope(t *testing.T) {
 	pdb := newTestPlayerDBForNeighborsScenario(t)
-	repo := NewMatchViewRepo(pdb, pTestXUID)
+	repo := NewMatchViewRepo(pdb, pTestXUID).WithModeTaxonomy(testModeTaxonomy())
 
 	// n2 est PvE Firefight ; on filtre par BTB → n2 n'y est pas
 	spec := &domain.MatchFilterSpec{ModeCategories: []string{"BTB"}}
@@ -302,7 +315,7 @@ func TestMatchViewRepo_GetMatchNeighborsFiltered_MatchOutOfScope(t *testing.T) {
 // spec vide doit donner le même résultat que nil.
 func TestMatchViewRepo_GetMatchNeighborsFiltered_EmptySpec_DelegatesToGlobal(t *testing.T) {
 	pdb := newTestPlayerDBForNeighborsScenario(t)
-	repo := NewMatchViewRepo(pdb, pTestXUID)
+	repo := NewMatchViewRepo(pdb, pTestXUID).WithModeTaxonomy(testModeTaxonomy())
 
 	got, err := repo.GetMatchNeighborsFiltered(context.Background(), pTestXUID, "n4", &domain.MatchFilterSpec{})
 	if err != nil {
@@ -340,7 +353,7 @@ func TestMatchViewRepo_GetMatchNeighborsFiltered_FilterWithPlayer(t *testing.T) 
 		}
 	}
 
-	repo := NewMatchViewRepo(pdb, pTestXUID)
+	repo := NewMatchViewRepo(pdb, pTestXUID).WithModeTaxonomy(testModeTaxonomy())
 	xuid := teammateXUID
 	spec := &domain.MatchFilterSpec{WithPlayerXuid: &xuid}
 

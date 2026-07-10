@@ -26,6 +26,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
+
 	duckdb "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -91,7 +93,7 @@ func main() {
 func runSummary(shared *sql.DB, n int) {
 	rows, err := shared.Query(`
 		SELECT r.match_id,
-		       COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')::VARCHAR,
+		       `+analysis.SQLStartTimeCanonical("r")+`::VARCHAR,
 		       COALESCE(r.map_name, ''),
 		       COALESCE(r.pair_name, ''),
 		       (SELECT COUNT(*) FROM highlight_events h WHERE h.match_id = r.match_id),
@@ -99,7 +101,7 @@ func runSummary(shared *sql.DB, n int) {
 		       (SELECT COUNT(*) FROM killer_victim_pairs k WHERE k.match_id = r.match_id),
 		       COALESCE(r.backfill_completed, 0)
 		FROM match_registry r
-		ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC NULLS LAST
+		ORDER BY `+analysis.SQLStartTimeCanonical("r")+` DESC NULLS LAST
 		LIMIT ?`, n)
 	if err != nil {
 		log.Fatalf("summary: %v", err)
@@ -256,7 +258,7 @@ func loadRecentMatches(shared *sql.DB, n int) []string {
 	rows, err := shared.Query(`
 		SELECT match_id
 		FROM match_registry
-		ORDER BY COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') DESC NULLS LAST
+		ORDER BY `+analysis.SQLStartTimeCanonical("")+` DESC NULLS LAST
 		LIMIT ?`, n)
 	if err != nil {
 		log.Fatalf("loadRecentMatches: %v", err)
@@ -287,7 +289,7 @@ func inspectMatch(shared, globalDB *sql.DB, mid string) {
 	)
 	err := shared.QueryRow(`
 		SELECT
-			COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC')::VARCHAR,
+			`+analysis.SQLStartTimeCanonical("")+`::VARCHAR,
 			map_id, map_name, pair_name,
 			pair_name_fr, map_name_fr,
 			playlist_id, playlist_name,
@@ -329,7 +331,7 @@ func inspectMatch(shared, globalDB *sql.DB, mid string) {
 	_ = shared.QueryRow(`SELECT COUNT(*) FROM match_participants WHERE match_id = ?`, mid).Scan(&participantsCount)
 	_ = shared.QueryRow(`SELECT
 		SUM(CASE WHEN gamertag IS NOT NULL AND gamertag != '' AND gamertag NOT LIKE 'bid(%' AND gamertag != xuid THEN 1 ELSE 0 END),
-		SUM(CASE WHEN (gamertag IS NULL OR gamertag = '' OR gamertag = xuid) AND xuid NOT LIKE 'bid(%' THEN 1 ELSE 0 END),
+		SUM(CASE WHEN (gamertag IS NULL OR gamertag = '' OR gamertag = xuid) AND `+analysis.SQLIsNotBotCol("xuid")+` THEN 1 ELSE 0 END),
 		SUM(CASE WHEN team_mmr IS NOT NULL THEN 1 ELSE 0 END),
 		SUM(CASE WHEN kills_expected IS NOT NULL THEN 1 ELSE 0 END)
 		FROM match_participants WHERE match_id = ?`, mid).Scan(
@@ -360,7 +362,7 @@ func inspectMatch(shared, globalDB *sql.DB, mid string) {
 	_ = shared.QueryRow(`
 		WITH players AS (
 			SELECT DISTINCT xuid FROM match_participants
-			WHERE match_id = ? AND xuid NOT LIKE 'bid(%'
+			WHERE match_id = ? AND `+analysis.SQLIsNotBotCol("xuid")+`
 		)
 		SELECT
 			SUM(CASE WHEN xa.gamertag IS NOT NULL AND xa.gamertag != '' THEN 1 ELSE 0 END),
@@ -373,7 +375,7 @@ func inspectMatch(shared, globalDB *sql.DB, mid string) {
 		var globalCovered, globalMissing int
 		// shared a aussi xuid_aliases ; on copie via ATTACH virtuel — ici on
 		// requête directement le global avec la liste de xuids.
-		xuids, err := shared.Query(`SELECT DISTINCT xuid FROM match_participants WHERE match_id = ? AND xuid NOT LIKE 'bid(%'`, mid)
+		xuids, err := shared.Query(`SELECT DISTINCT xuid FROM match_participants WHERE match_id = ? AND `+analysis.SQLIsNotBotCol("xuid")+``, mid)
 		if err == nil {
 			defer xuids.Close()
 			var ids []string
