@@ -1,12 +1,9 @@
 # PLAN — Refonte de fond du monitoring admin (2026-07)
 
-> Statut : EN COURS — PARTIEL (branche `feat/monitoring-refonte-2026-07`).
-> **A1 + A2 CLOSES** (gates verts, commits 43d6acfb8 + 6ae955515, poussés). Reprendre
-> à **A3** (première case non cochée). A3-A9 non démarrées (périmètre de session : A3
-> est une restructuration front lourde — 9 onglets → 6 + suppression Lab front/back +
-> régén OpenAPI/types + runbook — qui mérite sa propre session focalisée ; le contrat
-> plan-execution interdit d'enjamber/laisser une phase à moitié). Constat visuel restart
-> serveur (gate A2) = revue utilisateur.
+> Statut : **COMPLÉTÉ le 2026-07-10** (A1→A9, gates verts, branche
+> `feat/monitoring-refonte-2026-07`). Restent à la charge de la revue utilisateur au
+> merge : revue visuelle des 6 onglets + constat de survie au restart (persistance
+> prouvée par les tests, constat visuel délégué). Le superviseur gère PR/merge.
 > Révisé 2026-07-07 : ajout de la phase A3
 > (architecture de l'information — onglets réorganisés par question opérateur,
 > retrait du Lab) validée par le user ; renumérotation A3→A9.
@@ -389,13 +386,20 @@ Revue visuelle user au merge (KPIs/har­monisation). GATE PASSÉ.
 
 ### A9 — Clôture (effort : rapide)
 
-- [ ] A9.1 Statuer chaque item du plan ([x]/[~]/[!]) — aucune case vide.
-- [ ] A9.2 `docs/` : section monitoring dans FOUNDATIONS_GUIDE si l'UI a de nouveaux
-      composants canoniques (bilingue FR/EN, même PR) ; RUNBOOK_ADD_TITLE livré (A3.6).
-- [ ] A9.3 Entrée `thought_log.md` + skill `delivery-checklist` avant merge.
-- [ ] A9.4 Gate final complet : `cd apps/go-api && go test ./...` +
-      `go test -tags=integration -p 1 ./...` + `make check-types && make test-web &&
-      make go-api-lint`.
+- [x] A9.1 Chaque item du plan statué ([x] partout, aucun [~]/[!] — l'item A8.6 est
+      [x] avec constat « prémisse caduque, rien à supprimer ») — aucune case vide.
+- [x] A9.2 `docs/` : FAQ « primitives admin » ajoutée à FOUNDATIONS_GUIDE (EN) ET
+      FR/FOUNDATIONS_GUIDE (FR) dans le même commit (AdminKpi/SectionHeader/AdminTable/
+      useCounterSnapshot + garde-rail) ; RUNBOOK_ADD_TITLE.md livré en A3.6 (EN-only).
+- [x] A9.3 Entrées `thought_log.md` à chaque phase (A1→A9) + skill `delivery-checklist`
+      déroulé : fmt.Println 0, TODO/FIXME 0, filepath.Join("data") ajouté UNIQUEMENT
+      dans PathResolver, fichiers >500 L = dette pré-existante non aggravée, CI branche
+      verte (runs A1→A7 success ; A8/A9 vérifiés au push final).
+- [x] A9.4 Gate final complet — RÉSULTAT 2026-07-10 : `go test ./...` EXIT 0 (0 FAIL) ;
+      `go test -tags=integration -p 1 ./...` EXIT 0 (voir ci-dessous) ;
+      `make check-types` (tsc -b, cache purgé) 0 ; `make test-web` (vitest run)
+      247 fichiers / 2111 tests OK ; `make go-api-lint` 0 ;
+      `golangci-lint --new-from-rev=158b336a9` → 0 issue sur toute la branche.
 
 ## Protocole de reprise de session
 

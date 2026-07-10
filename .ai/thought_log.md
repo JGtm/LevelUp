@@ -1,3 +1,23 @@
+## [2026-07-10] PLAN MONITORING REFONTE — A9 clôture (Complété — PLAN COMPLÉTÉ A1→A9, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Plan COMPLÉTÉ intégralement (9 phases, gates verts). Déplacé vers .ai/V7/.
+
+**Décision technique principale** : clôture au contrat plan-execution — chaque item
+statué [x] (y compris A8.6 « prémisse caduque, rien à supprimer » vérifié sur pièces),
+FAQ primitives admin ajoutée à FOUNDATIONS_GUIDE EN+FR dans le même commit,
+delivery-checklist déroulée (fmt.Println 0, TODO 0, filepath.Join("data") ajouté
+uniquement dans PathResolver, CI branche verte).
+
+**Résultats (gate final)** : `go test ./...` 0 FAIL ; `go test -tags=integration -p 1
+./...` EXIT 0 ; `make check-types` 0 (cache purgé) ; `make test-web` 247 fichiers /
+2111 tests OK ; `make go-api-lint` 0 ; `golangci-lint --new-from-rev=158b336a9` 0.
+
+**Conclusion / prochaine étape** : revue visuelle utilisateur au merge (6 onglets,
+détections, fraîcheur, crons, ressources) ; le superviseur gère PR/merge. La
+persistance monitoring (data/global/monitoring.duckdb) se crée au premier boot.
+
+---
+
 ## [2026-07-10] PLAN MONITORING REFONTE — A8 alignement UI catalogue (Complété, branche feat/monitoring-refonte-2026-07)
 
 **Statut** : Phase A8 CLOSE (gates verts, morsure des garde-rails prouvée).
