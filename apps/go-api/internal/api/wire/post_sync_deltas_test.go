@@ -28,6 +28,11 @@ func (r *recordingEmitter) Emit(_ context.Context, in notifications.EmitInput) e
 	return nil
 }
 
+// EmitCoalesced : le fake ne coalesce pas (délègue à Emit en ignorant window).
+func (r *recordingEmitter) EmitCoalesced(ctx context.Context, in notifications.EmitInput, _ time.Duration) error {
+	return r.Emit(ctx, in)
+}
+
 var errInjected = error_injected{}
 
 type error_injected struct{}
