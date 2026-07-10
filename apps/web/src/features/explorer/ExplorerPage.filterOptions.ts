@@ -39,8 +39,11 @@ export function buildExplorerFilterOptions(
   t: Translator,
 ): ExplorerFilterOptions {
   return {
+    // available_experience_types est désormais LabelValue[] : Label localisé backend
+    // (EN sous UI EN), Value FR canonique = clé de filtre intacte (renvoyée telle
+    // quelle dans experience_types + cascade rankedContext FR-hardcodée). GH6-1.
     expTypeOptions: (summary?.available_experience_types ?? []).map(
-      (v) => ({ value: v, label: v }),
+      (o) => ({ value: o.value, label: o.label }),
     ),
     playlistOptions: (summary?.available_playlists ?? []).map((v) => ({
       value: v,

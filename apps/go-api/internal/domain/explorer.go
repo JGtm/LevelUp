@@ -393,10 +393,12 @@ type ExplorerMatchesRow struct {
 type ExplorerMatchesSummary struct {
 	TotalMatches int `json:"total_matches"`
 	// Options disponibles pour les filtres Explorer (valeurs distinctes triées).
-	AvailableExperienceTypes []string `json:"available_experience_types,omitempty"`
-	AvailablePlaylists       []string `json:"available_playlists,omitempty"`
-	AvailableMaps            []string `json:"available_maps,omitempty"`
-	AvailableModes           []string `json:"available_modes,omitempty"`
+	// AvailableExperienceTypes : LABEL localisé (locale de requête), VALUE FR
+	// canonique = clé de filtre intacte (GH6-1, miroir GH5-2 Omnibar).
+	AvailableExperienceTypes []LabelValue `json:"available_experience_types,omitempty"`
+	AvailablePlaylists       []string     `json:"available_playlists,omitempty"`
+	AvailableMaps            []string     `json:"available_maps,omitempty"`
+	AvailableModes           []string     `json:"available_modes,omitempty"`
 	// Options Explorer-spécifiques avec count cascade-aware (sémantique OR).
 	// Permettent au front d'afficher "Win (42)" et de griser les options à 0.
 	AvailableOutcomes       []LabelValue `json:"available_outcomes,omitempty"`

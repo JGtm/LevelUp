@@ -962,6 +962,82 @@ commentaires de contrat posés aux 3 sites couplés (EXPERIENCE_TO_CASCADE, appl
 experienceCounts). Écart documenté vs la lettre « thread jusqu'au builder » : la décision
 superviseur (Label locale-aware backend, Value FR) est respectée à l'identique.
 
+## LOT GH6 — Surface symétrique i18n : filtre expérience Explorer (miroir GH5-2, nouveau 2026-07-10)
+
+Origine : découverte consignée en §Découvertes lors de GH5-2 (« GH5-2 — SURFACE SYMÉTRIQUE
+hors périmètre »). GH5-2 a rendu locale-aware le filtre « Experience Type » de l'OMNIBAR
+(`FiltersService.Resolve`, champ déjà `[]LabelValue`). La surface JUMELLE — le filtre
+expérience du mode « matchs » de l'Explorer/Historique — est servie par un champ DISTINCT
+`AvailableExperienceTypes []string` (valeurs FR brutes) → sous UI EN elle montre les
+libellés FR. Exécutant GH6 piloté. Périmètre FERMÉ = GH6-1 ; découvertes → §Découvertes.
+
+Décision superviseur PRÉ-TRANCHÉE (miroir exact GH5-2, ne pas re-questionner) : rendre le
+LABEL affiché locale-aware en GARDANT la Value de filtre FR intacte ; MÊMES 3 libellés EN
+que GH5-2 (« Ranked PvP » / « Unranked PvP » / « PvE »), zéro nouvelle divergence.
+
+CARTO GH6-1 (sur pièces, 2026-07-10) :
+- (a) BACKEND remplit : `explorerExperienceType(row)` (match_history_service_filters.go:130)
+  renvoie une des 3 constantes FR `expTypePVE`/`expTypePVPRanked`/`expTypePVPUnranked`
+  (= « PVE » / « PVP classé » / « PVP non classé », match_history_service.go:50-52) ;
+  `computeExplorerAvailableOptions` (l.302) collecte les valeurs distinctes triées ;
+  `MatchHistoryService.GetPage` (l.220/269) les assigne à
+  `domain.MatchHistoryQuerySummary.AvailableExperienceTypes []string` ; le handler
+  `explorer.go:160` les recopie dans `domain.ExplorerMatchesSummary.AvailableExperienceTypes
+  []string`. openapi : schémas `MatchHistoryQuerySummary` (4553) + `ExplorerMatchesSummary` (9029).
+- (b) FRONT consomme : `ExplorerPage.filterOptions.ts:42` mappe `summary.available_experience_types`
+  → `{value: v, label: v}` (FR brut en Label = le bug). Rendu par MultiSelectFilter
+  (`ExplorerPage.matchesMode.tsx:242`).
+- (c) La VALUE EST la clé de filtre + couplage FR (OUI, même piège que GH5-2) : la sélection
+  est renvoyée telle quelle (`experience_types: [...expTypes]`, ExplorerPage.tsx:216) →
+  `req.ExperienceTypes` → `filterByExplorerExperienceTypes` (match_history_service_filters.go:165)
+  MATCH EXACT sur la valeur FR ; de plus ExplorerPage.tsx:141-143 dérive `rankedContext` par
+  `expTypes.has('PVP classé')`/`has('PVP non classé')` (FR hardcodé front). ⟹ la Value DOIT rester FR.
+
+VOIE RETENUE = BACKEND LabelValue (préférée par le superviseur, faisable sans casser de
+consommateur) : les 2 structs portent DÉJÀ `[]LabelValue` pour 5 dimensions sœurs (outcomes,
+perf/skill tiers, ranked, squad) → forme cohérente ; AUCUN test Go n'asserte ce champ en
+`[]string` ; 1 seul consommateur front fonctionnel (`ExplorerPage.filterOptions.ts`, via le
+généré `ExplorerMatchesQueryResponse['summary']`). Réutilise `experienceLabelForLocale`
+(GH5-2, source UNIQUE des libellés EN) → ZÉRO duplication ; la voie front aurait dupliqué
+« Ranked PvP » en TS/manifest (interdit). Localisation au SERVICE (`GetPage`, ctx dispo) via
+helper partagé `experienceTypeOptionsForLocale` co-localisé avec le mapping EN (filters_service.go).
+
+- [x] GH6-1 — `AvailableExperienceTypes` passé de `[]string` à `[]LabelValue` (Label
+  localisé, Value FR intacte) sur `domain.MatchHistoryQuerySummary` (match_history.go:138) +
+  `domain.ExplorerMatchesSummary` (explorer.go:398) + openapi (2 schémas
+  `MatchHistoryQuerySummary`/`ExplorerMatchesSummary`, `items: type: string` → `$ref LabelValue`)
+  + `generated.ts` régénéré (openapi-typescript, 2 refs LabelValue) + type front hand-written
+  `ExplorerMatchesQuerySummary` (types.ts:712) + le consommateur `ExplorerPage.filterOptions.ts:42`
+  (`{value:v,label:v}` → `{value:o.value,label:o.label}`). Localisation au SERVICE
+  `MatchHistoryService.GetPage` (match_history_service.go:222, `ctxkeys.Locale(ctx)`) via helper
+  source-unique `experienceTypeOptionsForLocale` (filters_service.go, réutilise
+  `experienceLabelForLocale` de GH5-2 → ZÉRO duplication des 3 libellés EN). Handler
+  `explorer.go:160` = recopie mécanique (`[]LabelValue`→`[]LabelValue`, inchangé). Commentaires
+  de contrat aux sites FR-couplés : helper Go + ExplorerPage.tsx:140 (`rankedContext` dérivé de
+  `has('PVP classé')`/`has('PVP non classé')`, FR canonique) + ExplorerPage.filterOptions.ts.
+  Test Go `TestMatchHistoryService_GetPage_ExperienceLabelsLocaleAware` (Label EN sous EN, Value
+  FR dans les 2 locales) — MORSURE prouvée (localisation retirée → FAIL sur les 3 libellés EN,
+  puis revert vert).
+
+Gate GH6 PASSÉ (2026-07-10) : ✅ front cache purgé (`node_modules\.tmp`) → typecheck 0 ;
+lint 0 err (68 warn baseline, aucun sur mes fichiers) ; `vitest run` 245 fichiers / 2099 pass /
+14 skip / 0 fail. ✅ Go build 0 + vet 0 ; `go test ./internal/service/... ./internal/api/handlers/...`
+0 FAIL ; `-tags=integration -p 1 -timeout 900s ./internal/api/... ./internal/service/...` exit 0
+(tous `ok`, 0 `^--- FAIL:`). ✅ drift openapi `TestOpenAPISchemaDrift` : MISSING = 0 ;
+`MatchHistoryQuerySummary`/`ExplorerMatchesSummary` ABSENTS de la liste DIVERGENT (24 pré-existants
+sans rapport) = réconciliation exacte struct Go ↔ openapi manuel. ✅ test Go EN-vs-FR mordant.
+
+Journal GH6 (2026-07-10) : surface JUMELLE de GH5-2 (Découverte « GH5-2 SURFACE SYMÉTRIQUE »).
+Carto (c) : la VALUE EST la clé de filtre — `experience_types` renvoyé tel quel (ExplorerPage.tsx:216)
+→ `filterByExplorerExperienceTypes` MATCH EXACT FR + cascade `rankedContext` FR-hardcodée front
+(ExplorerPage.tsx:141-143) → même piège que GH5-2, Value FR intacte. VOIE RETENUE = backend
+LabelValue (préférée superviseur) : les 2 structs portaient DÉJÀ `[]LabelValue` pour 5 dimensions
+sœurs (outcomes/perf/skill/ranked/squad) → forme cohérente ; 1 seul consommateur front fonctionnel ;
+AUCUN test Go n'assertait `[]string`. Écartée : la voie front (mapping value→labelEN en TS/manifest)
+aurait DUPLIQUÉ les 3 libellés EN (Go les a déjà) → divergence interdite. Localisation au SERVICE
+(GetPage, ctx dispo) et non au handler = bon découpage. Helper `experienceTypeOptionsForLocale`
+co-localisé avec le mapping EN GH5-2 = source unique partagée par les 2 surfaces expérience.
+
 ## PLAN DE MERGE & DÉPLOIEMENT (le big-bang est inévitable — le rendre sûr)
 
 Constat : les merges intermédiaires (après B, G, K) n'ont pas été faits ; ~130 commits
@@ -1161,7 +1237,7 @@ Séquence OBLIGATOIRE, dans l'ordre :
   quand `useFieldMappings` n'a pas encore répondu — la voie primaire (outcomes TOML)
   est localisée ; résiduel transitoire acceptable, noté.
 
-- **[GH5-2 — SURFACE SYMÉTRIQUE hors périmètre, NON traitée]** Le filtre « expérience »
+- **[GH5-2 — SURFACE SYMÉTRIQUE — TRAITÉE par LOT GH6-1, 2026-07-10]** Le filtre « expérience »
   du mode « matchs » de l'Explorer/Historique est servi par un champ DISTINCT :
   `MatchHistoryQuerySummary.AvailableExperienceTypes []string` (valeurs FR canoniques,
   `computeExplorerAvailableOptions`, match_history_service.go:220/269) → openapi
@@ -1176,6 +1252,14 @@ Séquence OBLIGATOIRE, dans l'ordre :
   le JETTE (`_ = resolved`) et re-filtre via `applyAllFilters` — appel entièrement inutile
   (résultat jamais lu). Pré-existant, hors périmètre GH5 (retrait de l'appel mort = nettoyage
   ultérieur).
+- **[GH6-1 — SURFACE ADJACENTE hors périmètre, NON traitée]** Le LABEL PAR MATCH de la colonne
+  « expérience » du tableau Explorer/Historique (`ExperienceTypeLabel`,
+  match_history_service_enrich.go:183 = `explorerExperienceType(r)`, constante FR ; champ
+  `experience_type_label` de `MatchHistoryRow`/`ExplorerMatchesRow`) reste FR brut sous UI EN
+  (« PVP non classé »…). GH6-1 vise le FILTRE (`AvailableExperienceTypes`, options), pas la
+  cellule par-ligne — surface distincte non flaguée par l'utilisateur, non traitée (règle 7).
+  Fix futur = localiser ce label à l'enrichissement (`enrichRow`) via `experienceLabelForLocale`
+  (le ctx locale doit y être threadé — non disponible aujourd'hui dans `enrichRows`).
 - **[GH5-1 — pas une découverte bloquante] `prevSeason`/`nextSeason` rendus ordre-indépendants.**
   Traité DANS le lot (conséquence directe du flip de `useSeasons`, comme V1c/V4a) : ce n'est
   pas un fix opportuniste mais la correction obligatoire d'une régression que le flip aurait

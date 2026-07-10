@@ -24,6 +24,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -218,6 +219,9 @@ func (s *MatchHistoryService) GetPage(
 
 	// Options Explorer disponibles calculées AVANT les filtres Explorer additionnels.
 	availExpTypes, availPlaylists, availMaps, availModes := computeExplorerAvailableOptions(filtered)
+	// GH6-1 : LABEL des types d'expérience localisé (EN sous locale EN), VALUE FR
+	// intacte (clé de filtre + cascade front). Miroir GH5-2 (Omnibar).
+	availExpTypeOpts := experienceTypeOptionsForLocale(availExpTypes, ctxkeys.Locale(ctx))
 
 	// Options Explorer-spécifiques avec count cascade-aware (sémantique OR au sein
 	// d'une dimension, AND entre dimensions). Calculées sur baseForExplorerOptions
@@ -266,7 +270,7 @@ func (s *MatchHistoryService) GetPage(
 			TotalMatchesUnfiltered:   totalUnfiltered,
 			PeriodLabel:              buildPeriodLabel(req.Filters),
 			ActiveFilterMode:         req.Filters.FilterMode,
-			AvailableExperienceTypes: availExpTypes,
+			AvailableExperienceTypes: availExpTypeOpts,
 			AvailablePlaylists:       availPlaylists,
 			AvailableMaps:            availMaps,
 			AvailableModes:           availModes,

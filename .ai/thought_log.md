@@ -1,3 +1,46 @@
+## [2026-07-10] LOT GH6 — Surface symétrique i18n : filtre expérience Explorer (miroir GH5-2)
+
+**Statut** : Complété (GH6-1 ; tous gates locaux verts ; commit + push + CI à suivre).
+
+**Contexte** : GH5-2 a rendu locale-aware le filtre « Experience Type » de l'OMNIBAR
+(`FiltersService.Resolve`, champ déjà `[]LabelValue`). La surface JUMELLE — le filtre
+expérience du mode « matchs » de l'Explorer/Historique — est servie par un champ DISTINCT
+`AvailableExperienceTypes []string` (valeurs FR brutes → FR sous UI EN). Découverte consignée
+en §Découvertes lors de GH5-2. Périmètre FERMÉ = GH6-1.
+
+**Carto (sur pièces)** : (a) backend `explorerExperienceType(row)` → 3 constantes FR
+(« PVE »/« PVP classé »/« PVP non classé ») → `computeExplorerAvailableOptions` →
+`MatchHistoryService.GetPage` → `MatchHistoryQuerySummary.AvailableExperienceTypes` → recopié
+par `explorer.go:160` dans `ExplorerMatchesSummary`. (b) front `ExplorerPage.filterOptions.ts:42`
+mappe `{value:v,label:v}` (FR brut en Label = le bug). (c) OUI la VALUE est la clé de filtre :
+renvoyée telle quelle (`experience_types`) → `filterByExplorerExperienceTypes` MATCH EXACT FR ;
+de plus cascade `rankedContext` FR-hardcodée front (ExplorerPage.tsx:141-143). ⟹ même piège
+que GH5-2, Value FR intacte obligatoire.
+
+**Décision technique principale** : VOIE BACKEND LabelValue (préférée superviseur, faisable).
+`AvailableExperienceTypes` passé `[]string`→`[]LabelValue` sur les 2 structs + openapi (2 schémas)
++ generated.ts + type front + consommateur. Localisation au SERVICE (`GetPage`, ctx dispo) via
+helper source-unique `experienceTypeOptionsForLocale` réutilisant `experienceLabelForLocale` de
+GH5-2 → ZÉRO duplication des 3 libellés EN (« Ranked PvP »/« Unranked PvP »/« PvE »). Faisabilité
+prouvée : les 2 structs portaient DÉJÀ `[]LabelValue` pour 5 dimensions sœurs (forme cohérente) ;
+1 seul consommateur front ; AUCUN test Go n'assertait `[]string`. Écartée : voie front (mapping
+value→labelEN en TS/manifest) aurait DUPLIQUÉ les libellés EN (interdit).
+
+**Résultats** : Go build/vet 0 ; service+handlers 0 FAIL ; intégration `-p 1` api+service exit 0 ;
+drift openapi `TestOpenAPISchemaDrift` MISSING=0 + les 2 schémas ABSENTS de DIVERGENT (réconciliation
+exacte struct↔manuel). Front cache purgé : typecheck 0, lint 0 err (68 warn baseline), vitest 245
+fichiers / 2099 pass / 14 skip / 0 fail. Test Go `TestMatchHistoryService_GetPage_ExperienceLabelsLocaleAware`
+EN-vs-FR (Label EN sous EN, Value FR dans les 2 locales) — MORSURE prouvée (localisation retirée →
+FAIL sur les 3 libellés, revert vert).
+
+**Découverte (non traitée, règle 7)** : le LABEL PAR MATCH `experience_type_label`
+(match_history_service_enrich.go:183) reste FR sous UI EN — surface adjacente distincte du filtre,
+consignée §Découvertes.
+
+**Conclusion / prochaine étape** : GH6 clos. Commit `cloture(GH6):` + push + watch CI.
+
+---
+
 ## [2026-07-10] LOT GH5 — Résiduels re-passe 4 gate humain (ordre saisons DESC + expérience i18n)
 
 **Statut** : Complété (GH5-1, GH5-2 ; tous gates locaux verts ; commit + push + CI à suivre).

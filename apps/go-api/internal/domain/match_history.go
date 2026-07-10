@@ -133,10 +133,12 @@ type MatchHistoryQuerySummary struct {
 	PeriodLabel            *string `json:"period_label"`
 	ActiveFilterMode       string  `json:"active_filter_mode"`
 	// Options disponibles pour les filtres Explorer (valeurs distinctes triées).
-	AvailableExperienceTypes []string `json:"available_experience_types,omitempty"`
-	AvailablePlaylists       []string `json:"available_playlists,omitempty"`
-	AvailableMaps            []string `json:"available_maps,omitempty"`
-	AvailableModes           []string `json:"available_modes,omitempty"`
+	// AvailableExperienceTypes : LABEL localisé (locale de requête), VALUE FR
+	// canonique = clé de filtre intacte (GH6-1, miroir GH5-2 Omnibar).
+	AvailableExperienceTypes []LabelValue `json:"available_experience_types,omitempty"`
+	AvailablePlaylists       []string     `json:"available_playlists,omitempty"`
+	AvailableMaps            []string     `json:"available_maps,omitempty"`
+	AvailableModes           []string     `json:"available_modes,omitempty"`
 	// Options Explorer-spécifiques avec count cascade-aware (sémantique OR au sein
 	// d'une dimension, AND entre dimensions). Permettent au front de griser les
 	// valeurs à count=0 et d'afficher le compte par option.

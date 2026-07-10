@@ -4557,7 +4557,7 @@ components:
               type: string
           available_experience_types:
               items:
-                  type: string
+                  $ref: '#/components/schemas/LabelValue'
               type: array
               nullable: true
           available_maps:
@@ -9031,7 +9031,7 @@ components:
       properties:
           available_experience_types:
               items:
-                  type: string
+                  $ref: '#/components/schemas/LabelValue'
               type: array
               nullable: true
           available_maps:

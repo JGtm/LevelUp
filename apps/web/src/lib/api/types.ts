@@ -709,7 +709,9 @@ export type ExplorerEncounterRow = components['schemas']['ExplorerEncounterRow']
 export interface ExplorerMatchesQuerySummary {
   total_matches: number
   selected_match_id: string | null
-  available_experience_types?: string[]
+  // available_experience_types : LabelValue (Label localisé backend, Value FR = clé
+  // de filtre intacte). GH6-1, miroir GH5-2 Omnibar.
+  available_experience_types?: LabelValue[]
   available_playlists?: string[]
   available_maps?: string[]
   available_modes?: string[]
