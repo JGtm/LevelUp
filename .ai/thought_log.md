@@ -1,3 +1,24 @@
+## [2026-07-10] FIX RankCatalog nil-safe — panic boot mode démo (E2E PR #53 rouge)
+
+**Statut** : Complété (superviseur de campagne, hors plan LUSR — fix de gate CI).
+
+**Décision technique principale** : l'E2E Playwright de la PR #53 échouait 2× (~37 min) :
+le backend PANIQUE au boot en mode démo (`RankCatalog.Len()` nil deref, ranks.go:67,
+appelé par buildTitleRuntime server.go:379). Cause : metadata.duckdb absente en démo CI →
+`rank_catalog_meta_db_open_failed` (chemin best-effort prévu) → hiRanks reste nil → le
+slog `adapter_loaded` appelle hiRanks.Len(). Bug PRÉ-EXISTANT sur main (chantier
+leaderboard/catalogue, E2E skipped sur main donc jamais vu) — vérifié : la PR #53 ne
+touche ni server.go ni ranks.go. Fix : méthodes de *RankCatalog nil-safe (nil = catalog
+vide, contrat documenté sur le type) + test TestRankCatalog_NilReceiverBehavesAsEmpty.
+Porté par la branche hotfix/lusr-shadow-ro pour débloquer son propre gate E2E.
+
+**Résultats observés** : gofmt/vet/test mappings = 0 ; le panic ne peut plus se produire
+(tous les accès byID gardés).
+
+**Conclusion / prochaine étape** : rerun E2E sur la PR #53 ; si vert → GO merge utilisateur.
+
+---
+
 ## [2026-07-10] HOTFIX LUSR shadow read-only — ARRÊT à H5 (GATE USER)
 
 **Statut** : H1-H4 COMPLÉTÉS ; H5 EN ATTENTE du GO utilisateur (merge main = deploy prod

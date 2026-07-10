@@ -118,3 +118,33 @@ func TestRankCatalog_EmptyConstructor(t *testing.T) {
 		t.Errorf("IDs() devrait être vide")
 	}
 }
+
+// Un *RankCatalog nil doit se comporter comme un catalog vide : le chargement
+// est best-effort (metadata absente en mode démo) et buildTitleRuntime logge
+// ranks_count via Len() sans re-vérifier le pointeur (panic boot E2E 2026-07-10).
+func TestRankCatalog_NilReceiverBehavesAsEmpty(t *testing.T) {
+	t.Parallel()
+	var c *RankCatalog
+
+	if got := c.Len(); got != 0 {
+		t.Errorf("Len() sur nil = %d, want 0", got)
+	}
+	if got := c.TitleSlug(); got != "" {
+		t.Errorf("TitleSlug() sur nil = %q, want \"\"", got)
+	}
+	if _, ok := c.Get(1); ok {
+		t.Error("Get(1) sur nil : ok = true, want false")
+	}
+	if _, ok := c.Next(1); ok {
+		t.Error("Next(1) sur nil : ok = true, want false")
+	}
+	if got := c.CumulativeXPRequired(10); got != 0 {
+		t.Errorf("CumulativeXPRequired(10) sur nil = %d, want 0", got)
+	}
+	if _, ok := c.FullLabel(1, "fr"); ok {
+		t.Error("FullLabel(1) sur nil : ok = true, want false")
+	}
+	if got := c.IDs(); got != nil {
+		t.Errorf("IDs() sur nil = %v, want nil", got)
+	}
+}
