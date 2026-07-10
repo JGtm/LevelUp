@@ -24,6 +24,7 @@ function baseOverview(): AdminMonitoringOverview {
       reads_served: 0, ready_match_count: 0, version: 1,
     } as AdminMonitoringOverview['snapshot'],
     open_detections: 0,
+    freshness_critical: 0,
   }
 }
 
@@ -91,5 +92,11 @@ describe('computeTabBadges', () => {
     const o = baseOverview()
     o.open_detections = 3
     expect(computeTabBadges(o)['/admin/detections']).toEqual({ count: 3, token: 'warning' })
+  })
+
+  it('fraîcheur critical → pastille destructive sur /admin (État, A4.3)', () => {
+    const o = baseOverview()
+    o.freshness_critical = 2
+    expect(computeTabBadges(o)['/admin']).toEqual({ count: 2, token: 'destructive' })
   })
 })

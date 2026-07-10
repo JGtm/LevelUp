@@ -1,3 +1,26 @@
+## [2026-07-10] PLAN MONITORING REFONTE — A4 fraîcheur des données (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A4 CLOSE (gates verts, constat visuel État délégué à la revue user).
+
+**Décision technique principale** : évaluation PURE `ops.EvaluatePlayerFreshness` (DC-3 :
+sync récent ≤6h → ok même joueur inactif ; sinon match >7j/aucun → critical, >48h → warn ;
+seuils surchargables app_settings.json). Orchestrateur `reg.FreshnessReport` : PIÈGE ÉVITÉ
+— `titlePkg.NewRegistry()` ne connaît que halo_infinite ; le runner itère
+`DefaultRegistry()` (registre config-driven posé au boot, halo_5 inclus), actifs
+non-internes avec capability matchmaking. Dernier match = MAX(timestamp canonique) sur
+match_registry⋈match_participants ; dernier sync OK = snapshot scheduler (H5 live-only →
+inconnu, l'âge du match fait foi). A4.2 : source backup = manifest duckdbbackup
+(Status().LastBackupAt), décision consignée (cron_runs pas encore câblé, log mtime
+fragile). Badge État via gauge `monitoring_freshness_critical` posée au calcul →
+overview zéro I/O → tabBadges `/admin`.
+
+**Résultats** : build 0 ; tests ops/handlers verts (dataset hétérogène 8 cas) ;
+contract+drift verts (path + 4 schémas) ; `tsc -b` 0 ; vitest 247/2109 OK ; lint 0.
+
+**Conclusion / prochaine étape** : A5 (ressources machine & process).
+
+---
+
 ## [2026-07-10] PLAN MONITORING REFONTE — A3 architecture 9→6 onglets + retrait Lab (Complété, branche feat/monitoring-refonte-2026-07)
 
 **Statut** : Phase A3 CLOSE (gates verts). Reprise ordonnée par le superviseur après un

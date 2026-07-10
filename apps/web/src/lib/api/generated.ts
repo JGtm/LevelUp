@@ -1868,6 +1868,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/monitoring/freshness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard monitoring — fraîcheur des données par joueur suivi et par titre actif (dernier match persisté, dernier cycle sync, statut DC-3, âge du backup) (auth admin requis) */
+        get: operations["getAdminMonitoringFreshness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/monitoring/detections/{fingerprint}": {
         parameters: {
             query?: never;
@@ -4898,6 +4915,41 @@ export interface components {
             note?: string;
             status: string;
         };
+        AdminFreshnessResponse: {
+            backup?: components["schemas"]["FreshnessBackupInfo"];
+            /** Format: int64 */
+            critical_total: number;
+            generated_at: string;
+            titles: components["schemas"]["TitleFreshnessReport"][] | null;
+        };
+        FreshnessBackupInfo: {
+            /** Format: int64 */
+            age_seconds?: number;
+            enabled: boolean;
+            last_backup_at?: string;
+        };
+        PlayerFreshness: {
+            check_error?: string;
+            gamertag: string;
+            last_match_at?: string;
+            last_sync_ok_at?: string;
+            /** Format: int64 */
+            match_age_seconds?: number;
+            reason?: string;
+            status: string;
+            /** Format: int64 */
+            sync_age_seconds?: number;
+            xuid: string;
+        };
+        TitleFreshnessReport: {
+            /** Format: int64 */
+            critical_count: number;
+            note?: string;
+            players: components["schemas"]["PlayerFreshness"][] | null;
+            title_slug: string;
+            /** Format: int64 */
+            warn_count: number;
+        };
         AdminInvariantsResponse: {
             generated_at: string;
             reports: components["schemas"]["PlayerInvariantsReport"][] | null;
@@ -4964,6 +5016,8 @@ export interface components {
             snapshot: components["schemas"]["MonitoringSnapshotSummary"];
             /** Format: int64 */
             open_detections: number;
+            /** Format: int64 */
+            freshness_critical: number;
             title_slug: string;
             tokens?: components["schemas"]["MonitoringTokensSummary"];
             tokens_error?: string;
@@ -11293,6 +11347,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminDetectionsResponse"];
+                };
+            };
+        };
+    };
+    getAdminMonitoringFreshness: {
+        parameters: {
+            query?: {
+                title?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Fraîcheur par titre (vide = tous les titres actifs) + total critical */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminFreshnessResponse"];
                 };
             };
         };

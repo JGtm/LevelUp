@@ -2206,6 +2206,23 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/AdminDetectionsResponse" }
 
+  /admin/monitoring/freshness:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringFreshness
+      summary: "Dashboard monitoring — fraîcheur des données par joueur suivi et par titre actif (dernier match persisté, dernier cycle sync, statut DC-3, âge du backup) (auth admin requis)"
+      parameters:
+        - name: title
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: "Fraîcheur par titre (vide = tous les titres actifs) + total critical"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminFreshnessResponse" }
+
   /admin/monitoring/detections/{fingerprint}:
     patch:
       tags: [admin]
@@ -7233,6 +7250,91 @@ components:
       required:
           - status
       type: object
+    AdminFreshnessResponse:
+      additionalProperties: false
+      properties:
+          backup:
+              $ref: '#/components/schemas/FreshnessBackupInfo'
+          critical_total:
+              format: int64
+              type: integer
+          generated_at:
+              type: string
+          titles:
+              items:
+                  $ref: '#/components/schemas/TitleFreshnessReport'
+              nullable: true
+              type: array
+      required:
+          - generated_at
+          - titles
+          - critical_total
+      type: object
+    FreshnessBackupInfo:
+      additionalProperties: false
+      properties:
+          age_seconds:
+              format: int64
+              type: integer
+          enabled:
+              type: boolean
+          last_backup_at:
+              type: string
+      required:
+          - enabled
+      type: object
+    PlayerFreshness:
+      additionalProperties: false
+      properties:
+          check_error:
+              type: string
+          gamertag:
+              type: string
+          last_match_at:
+              type: string
+          last_sync_ok_at:
+              type: string
+          match_age_seconds:
+              format: int64
+              type: integer
+          reason:
+              type: string
+          status:
+              type: string
+          sync_age_seconds:
+              format: int64
+              type: integer
+          xuid:
+              type: string
+      required:
+          - gamertag
+          - xuid
+          - status
+      type: object
+    TitleFreshnessReport:
+      additionalProperties: false
+      properties:
+          critical_count:
+              format: int64
+              type: integer
+          note:
+              type: string
+          players:
+              items:
+                  $ref: '#/components/schemas/PlayerFreshness'
+              nullable: true
+              type: array
+          title_slug:
+              type: string
+          warn_count:
+              format: int64
+              type: integer
+      required:
+          - title_slug
+          - players
+          - warn_count
+          - critical_count
+      type: object
     AdminInvariantsResponse:
       additionalProperties: false
       properties:
@@ -7408,6 +7510,9 @@ components:
           open_detections:
               format: int64
               type: integer
+          freshness_critical:
+              format: int64
+              type: integer
           title_slug:
               type: string
           tokens:
@@ -7423,6 +7528,7 @@ components:
           - invariants
           - snapshot
           - open_detections
+          - freshness_critical
       type: object
     AdminPerfStats:
       additionalProperties: false

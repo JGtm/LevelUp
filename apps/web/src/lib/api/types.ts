@@ -2241,6 +2241,15 @@ export type MonitoringDetection = components['schemas']['MonitoringDetection']
 /** Réponse GET /admin/monitoring/detections. Miroir de domain.AdminDetectionsResponse. */
 export type AdminDetectionsResponse = components['schemas']['AdminDetectionsResponse']
 
+/** Fraîcheur des données d'un joueur suivi. Miroir de domain.PlayerFreshness. */
+export type PlayerFreshness = components['schemas']['PlayerFreshness']
+
+/** Fraîcheur par titre actif. Miroir de domain.TitleFreshnessReport. */
+export type TitleFreshnessReport = components['schemas']['TitleFreshnessReport']
+
+/** Réponse GET /admin/monitoring/freshness. Miroir de domain.AdminFreshnessResponse. */
+export type AdminFreshnessResponse = components['schemas']['AdminFreshnessResponse']
+
 // NB : les types Watcher (WatcherStatusResponse, WatcherPlayerStatus) existent
 // déjà plus haut dans ce fichier (section watcher historique) — le dashboard
 // monitoring les réutilise via features/settings/watcher-queries.ts.

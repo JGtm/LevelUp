@@ -13,6 +13,7 @@ import { queryKeys } from '@/lib/query/keys'
 import type {
   AdminConvergenceReport,
   AdminDetectionsResponse,
+  AdminFreshnessResponse,
   AdminJobsResponse,
   AdminMonitoringOverview,
   AdminPerfStats,
@@ -129,6 +130,21 @@ export function useAdminJobs(limit = 20) {
         ? 5_000
         : 30_000,
     staleTime: 4_000,
+    retry: false,
+  })
+}
+
+/**
+ * Fraîcheur des données par joueur suivi et par titre actif (A4, DC-3).
+ * Lectures shared par joueur côté Go : pas de polling agressif — staleTime
+ * 60 s + refetch au focus (pattern convergence). Le calcul pose aussi la gauge
+ * freshness_critical lue par l'overview (badge État).
+ */
+export function useMonitoringFreshness() {
+  return useQuery({
+    queryKey: queryKeys.adminMonitoringFreshness,
+    queryFn: () => api.get<AdminFreshnessResponse>('/admin/monitoring/freshness'),
+    staleTime: 60_000,
     retry: false,
   })
 }
