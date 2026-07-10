@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
@@ -294,5 +295,62 @@ func TestServiceE2E_Emit_WithActorAndTargetSearch(t *testing.T) {
 		if decoded["map"] != "Aquarius" {
 			t.Errorf("target_search.map: %v", decoded["map"])
 		}
+	}
+}
+
+// ─── 6. EmitCoalesced (C5/DP5) : latest fusionne, history conserve les events ─
+
+func TestNotificationsE2E_EmitCoalesced_MergesLatestKeepsHistory(t *testing.T) {
+	dbPath := newNotifTestDB(t)
+	pdb := openNotifPlayerDB(t, dbPath)
+	repo := duckdb.NewNotificationsRepo(pdb)
+	svc := notifications.NewService(repo)
+	ctx := context.Background()
+
+	mediaIn := func() notifications.EmitInput {
+		return notifications.EmitInput{
+			Category: notifications.CategoryMediaAdded,
+			TitleKey: "notif.media_added.title",
+			Source:   "media_handler",
+			Actor:    &notifications.Actor{Name: "JGtm"},
+			Params:   map[string]any{"actor_name": "JGtm", "count": 1},
+		}
+	}
+	if err := svc.EmitCoalesced(ctx, mediaIn(), time.Hour); err != nil {
+		t.Fatalf("EmitCoalesced 1: %v", err)
+	}
+	if err := svc.EmitCoalesced(ctx, mediaIn(), time.Hour); err != nil {
+		t.Fatalf("EmitCoalesced 2: %v", err)
+	}
+
+	// player_notifications_latest : 1 ligne, non lue, count=2.
+	list, err := repo.List(ctx, notifications.ListFilter{Category: notifications.CategoryMediaAdded, Limit: 50})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(list.Items) != 1 {
+		t.Fatalf("latest : attendu 1 ligne coalescée, obtenu %d", len(list.Items))
+	}
+	if list.Items[0].ReadAt != nil {
+		t.Error("la notif coalescée doit rester non lue")
+	}
+	var p map[string]any
+	if err := json.Unmarshal(list.Items[0].Params, &p); err != nil {
+		t.Fatalf("params JSON: %v", err)
+	}
+	if v, _ := p["count"].(float64); v != 2 {
+		t.Errorf("count attendu 2, obtenu %v", p["count"])
+	}
+
+	// player_notifications_history : 2 events (append-only).
+	var histCount int
+	row := pdb.SharedSocial.QueryRow(ctx,
+		`SELECT COUNT(*) FROM player_notifications_history WHERE xuid = ? AND category = ?`,
+		"xuid-notif-test", "media_added")
+	if err := row.Scan(&histCount); err != nil {
+		t.Fatalf("history count: %v", err)
+	}
+	if histCount != 2 {
+		t.Errorf("history : attendu 2 events, obtenu %d", histCount)
 	}
 }

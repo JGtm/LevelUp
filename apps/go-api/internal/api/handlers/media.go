@@ -196,6 +196,10 @@ func (h *MediaHandler) WithMediaRecipientResolver(r MediaRecipientResolver) *Med
 	return h
 }
 
+// mediaCoalesceWindow : fenêtre de coalescence des notifs media_added par
+// acteur (DP5). Incident 2026-07-03 : 5 clips du même acteur en 5 min = 5 notifs.
+const mediaCoalesceWindow = time.Hour
+
 // emitMediaAdded émet media_added pour l'uploader puis fan-out vers les autres
 // joueurs associés aux matchs concernés.
 func (h *MediaHandler) emitMediaAdded(
@@ -225,7 +229,9 @@ func (h *MediaHandler) emitMediaAdded(
 		if err != nil || em == nil {
 			continue
 		}
-		_ = em.Emit(ctx, notifications.EmitInput{
+		// Coalescence 1 h par acteur (DP5) : 5 clips du même joueur en 5 min →
+		// 1 notif count=5 (incident 2026-07-03), jamais 5 notifs distinctes.
+		_ = em.EmitCoalesced(ctx, notifications.EmitInput{
 			Category:    notifications.CategoryMediaAdded,
 			Severity:    notifications.SeverityInfo,
 			TitleKey:    "notif.media_added.title",
@@ -234,7 +240,7 @@ func (h *MediaHandler) emitMediaAdded(
 			TargetRoute: fmt.Sprintf("/players/%s/media", slug),
 			Actor:       &notifications.Actor{Name: gamertag},
 			Source:      "media_handler",
-		})
+		}, mediaCoalesceWindow)
 	}
 }
 

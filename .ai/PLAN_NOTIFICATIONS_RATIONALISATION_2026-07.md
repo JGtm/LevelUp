@@ -264,11 +264,11 @@ Phase E : rapide. Total : 1 session agent.
 
 ## Phase C — Coalescence `media_added`
 
-- [ ] C1. Interface `Emitter` (`emitter.go:8`) : ajouter
+- [x] C1. Interface `Emitter` (`emitter.go:8`) : ajouter
       `EmitCoalesced(ctx context.Context, in EmitInput, window time.Duration) error`.
       Recenser et mettre à jour toutes les implémentations/fakes :
       `grep -rn "notifications.Emitter" apps/go-api/internal/ --include=*.go`.
-- [ ] C2. `Service.EmitCoalesced` (`service.go`) : sous `withWriterBestEffort`,
+- [x] C2. `Service.EmitCoalesced` (`service.go`) : sous `withWriterBestEffort`,
       lister les ~20 dernières notifs de la catégorie (`repo.List`,
       `ListFilter{Category, Limit: 20}`) ; candidate = même catégorie, **non lue**
       (`ReadAt == nil`), même acteur (`Actor.Name`/params `actor_name`),
@@ -277,20 +277,20 @@ Phase E : rapide. Total : 1 session agent.
       append-only fait le reste : nouvel event même (xuid,id) → la vue `_latest`
       sert la version à jour, la notif remonte en tête). Pas trouvée → fallback
       émission normale. Extraire le code commun avec `emitInner` (seuil 80 L).
-- [ ] C3. `media.go` `emitMediaAdded` (l.228) : remplacer `em.Emit(...)` par
+- [x] C3. `media.go` `emitMediaAdded` (l.228) : remplacer `em.Emit(...)` par
       `em.EmitCoalesced(..., mediaCoalesceWindow)` avec
       `const mediaCoalesceWindow = time.Hour` (commentaire : incident 2026-07-03,
       5 notifs en 5 min pour 5 clips du même acteur).
-- [ ] C4. Tests service (`service_test.go`, fakeRepo) : 2 émissions même acteur
+- [x] C4. Tests service (`service_test.go`, fakeRepo) : 2 émissions même acteur
       < 1 h → même ID, count sommé ; acteurs différents → 2 IDs ; > 1 h → 2 IDs ;
       candidate lue → nouvelle notif (jamais ressusciter une lue).
-- [ ] C5. Test e2e DuckDB (`notifications_service_e2e_test.go`, package
+- [x] C5. Test e2e DuckDB (`notifications_service_e2e_test.go`, package
       platform/duckdb) : 2 `EmitCoalesced` → `player_notifications_latest` contient
       1 ligne, count=2, non lue, `player_notifications_history` contient 2 events.
-- [ ] C6. Vérifier le rendu i18n : `notif.media_added.body` consomme déjà
+- [x] C6. Vérifier le rendu i18n : `notif.media_added.body` consomme déjà
       `{count}` (`apps/web/src/features/notifications/i18n.ts`) — contrôler le
       pluriel FR/EN, corriger si « 5 clip » s'affiche.
-- [ ] C7. `sync_error` coalescé (DP15) : `emitSyncError`
+- [x] C7. `sync_error` coalescé (DP15) : `emitSyncError`
       (`sync_handler.go:274-294`) → `EmitCoalesced` fenêtre
       `syncErrorCoalesceWindow = 6h`. Préciser dans C2 la règle de matching :
       même catégorie + même acteur SI acteur présent, catégorie seule sinon
@@ -301,6 +301,11 @@ Phase E : rapide. Total : 1 session agent.
 **Gate C** : `cd apps/go-api && go test ./internal/notifications/ ./internal/api/handlers/`
 puis `go test -tags=integration -p 1 -run '^TestNotifications' ./internal/platform/duckdb/`
 (filtre ANCRÉ `^`, sérialisé `-p 1` — cf. incident LOT B, faux verts sinon).
+→ OK : notifications+handlers exit 0 ; integration exit 0 (TestNotificationsE2E_EmitCoalesced
+PASS vérifié en -v). 2026-07-10.
+
+> Note C6 : `media_added.body` = « {count} fichier(s) associé(s)… » / « {count} file(s)… »
+> — pluriel géré par « (s) », aucun « 5 clip ». Aucune correction i18n requise.
 
 ## Phase D — Cycle de vie du badge (back léger + front)
 

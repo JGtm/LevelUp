@@ -1,3 +1,22 @@
+## [2026-07-10] Rationalisation notifications — Phase C (coalescence)
+
+**Statut** : En cours (Phase C close). Branche `refactor/notifications-rationalization`.
+
+**Décisions principales** : ajout `EmitCoalesced(ctx, in, window)` à l'interface Emitter
+(NoopEmitter + Service + fake). `Service.EmitCoalesced` cherche une candidate non lue même
+catégorie/acteur dans la fenêtre → réémet même ID, created_at rafraîchi, count sommé
+(append-only : la vue _latest sert la version à jour) ; sinon émission normale. media_added
+coalescé 1 h par acteur (DP5), sync_error coalescé 6 h sur catégorie seule (DP15). emitInner
+refactoré (buildNotification + insertAndSweep partagés, sous 80 L). Helpers purs coalesce.go.
+
+**Résultats** : `go test ./internal/notifications/ ./internal/api/handlers/` exit 0 ;
+`go test -tags=integration -p 1 -run '^TestNotifications' ./internal/platform/duckdb/` exit 0
+(TestNotificationsE2E_EmitCoalesced PASS vérifié en -v : latest 1 ligne count=2 non lue,
+history 2 events). C6 : i18n media_added.body gère déjà {count}, pas de fix.
+
+**Prochaine étape** : Phase D (badge_count serveur + OpenAPI + front Bell auto-read + sweep
+expiry douce D5 + match_synced severity info + suppression code mort coach).
+
 ## [2026-07-10] Rationalisation notifications — Phase B (dédoublonnage sémantique)
 
 **Statut** : En cours (Phase B close). Branche `refactor/notifications-rationalization`.
