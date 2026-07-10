@@ -1,6 +1,9 @@
 package notifications
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // Repository est le port consommé par Service. Implémenté côté
 // internal/platform/duckdb/notifications_repo.go.
@@ -35,6 +38,10 @@ type Repository interface {
 
 	// CapAndSweep purge les notifs dépassant le cap de rétention (best-effort).
 	CapAndSweep(ctx context.Context, max int) error
+
+	// SweepStaleInfoRead marque lues les notifs severity='info' non lues plus
+	// anciennes que cutoff (expiry douce DP8, best-effort). Idempotent.
+	SweepStaleInfoRead(ctx context.Context, cutoff time.Time) error
 
 	// GetPreferences charge l'état complet de notification_preferences.
 	GetPreferences(ctx context.Context) ([]Preference, error)

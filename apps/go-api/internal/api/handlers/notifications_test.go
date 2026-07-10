@@ -140,7 +140,8 @@ func (r *fakeNotifRepo) Delete(_ context.Context, id int64) error {
 	return notifications.ErrNotFound
 }
 
-func (r *fakeNotifRepo) CapAndSweep(_ context.Context, _ int) error { return nil }
+func (r *fakeNotifRepo) CapAndSweep(_ context.Context, _ int) error              { return nil }
+func (r *fakeNotifRepo) SweepStaleInfoRead(_ context.Context, _ time.Time) error { return nil }
 
 func (r *fakeNotifRepo) GetPreferences(_ context.Context) ([]notifications.Preference, error) {
 	out := []notifications.Preference{}

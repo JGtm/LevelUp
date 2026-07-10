@@ -1,3 +1,23 @@
+## [2026-07-10] Rationalisation notifications — Phase D (cycle de vie du badge)
+
+**Statut** : En cours (Phase D close). Branche `refactor/notifications-rationalization`.
+
+**Décisions principales** : (D1/DP6) `UnreadCount.BadgeCount` = non-lues severity != info
+(`COUNT(*) FILTER` dans le repo) ; badge cloche front branché dessus avec fallback count.
+(D2) openapi.yaml + generated.ts régénéré — DÉCOUVERTE : la cible Makefile generate-types
+est un no-op (echo), vraie commande = npm run generate-types. (D4/DP7) auto-read à la
+FERMETURE du dropdown : useRef<Set> accumule les ids non lus rendus, markRead au
+open→false. (D5/DP8) SweepStaleInfoNotificationsRead (persister + iface + port + repo,
+best-effort sous emitInner, staleInfoMaxAge=7j). (D8/DP15) match_synced success→info.
+(D9) constantes mortes coach MaxConcurrentUnread/AutoDismissAfter supprimées (grep=0
+consommateur).
+
+**Résultats** : go test ./... exit 0 ; tsc exit 0 ; vitest 2106 passed (5 nouveaux tests
+Bell) ; tests sweep persister + e2e PASS ; generated.ts régénéré et commité.
+
+**Prochaine étape** : Phase E (gate final : intégration -p 1 duckdb+sync, lint
+new-from-rev, relecture diff, clôture du plan + git mv V7).
+
 ## [2026-07-10] Rationalisation notifications — Phase C (coalescence)
 
 **Statut** : En cours (Phase C close). Branche `refactor/notifications-rationalization`.

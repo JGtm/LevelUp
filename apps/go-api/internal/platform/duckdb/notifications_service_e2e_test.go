@@ -354,3 +354,68 @@ func TestNotificationsE2E_EmitCoalesced_MergesLatestKeepsHistory(t *testing.T) {
 		t.Errorf("history : attendu 2 events, obtenu %d", histCount)
 	}
 }
+
+// ─── 7. Sweep expiry douce (D5/DP8) + badge_count (D1/DP6) ────────────────────
+
+func TestNotificationsE2E_SweepStaleInfo_And_BadgeCount(t *testing.T) {
+	dbPath := newNotifTestDB(t)
+	pdb := openNotifPlayerDB(t, dbPath)
+	repo := duckdb.NewNotificationsRepo(pdb)
+	svc := notifications.NewService(repo)
+	ctx := context.Background()
+
+	old := time.Now().UTC().Add(-8 * 24 * time.Hour)
+	// n1 : info vieille de 8 j, non lue → doit passer lue au sweep.
+	if err := repo.Insert(ctx, &notifications.Notification{
+		ID: 9001, Category: notifications.CategoryChallengeAdded,
+		Severity: notifications.SeverityInfo,
+		TitleKey: "notif.challenge_added.title", Source: "test", CreatedAt: old,
+	}); err != nil {
+		t.Fatalf("Insert info: %v", err)
+	}
+	// n2 : success vieille de 8 j, non lue → doit RESTER non lue.
+	if err := repo.Insert(ctx, &notifications.Notification{
+		ID: 9002, Category: notifications.CategoryPersonalRecord,
+		Severity: notifications.SeveritySuccess,
+		TitleKey: "notif.personal_record.title", Source: "test", CreatedAt: old,
+	}); err != nil {
+		t.Fatalf("Insert success: %v", err)
+	}
+
+	// Une émission fraîche (info) déclenche le sweep best-effort.
+	if err := svc.Emit(ctx, notifications.EmitInput{
+		Category: notifications.CategoryMatchSynced,
+		Severity: notifications.SeverityInfo,
+		TitleKey: "notif.match_synced.title", Source: "test",
+	}); err != nil {
+		t.Fatalf("Emit: %v", err)
+	}
+
+	list, err := repo.List(ctx, notifications.ListFilter{Limit: 50})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	byID := map[int64]notifications.Notification{}
+	for _, it := range list.Items {
+		byID[it.ID] = it
+	}
+	if n, ok := byID[9001]; !ok || n.ReadAt == nil {
+		t.Error("l'info de 8 j doit être passée lue par le sweep (DP8)")
+	}
+	if n, ok := byID[9002]; !ok || n.ReadAt != nil {
+		t.Error("la success de 8 j doit RESTER non lue (le sweep ne touche que severity=info)")
+	}
+
+	// badge_count exclut les info : non-lues = n2 (success) + match_synced (info)
+	// → count=2, badge_count=1.
+	uc, err := repo.UnreadCount(ctx)
+	if err != nil {
+		t.Fatalf("UnreadCount: %v", err)
+	}
+	if uc.Count != 2 {
+		t.Errorf("count attendu 2 (success 8 j + info fraîche), obtenu %d", uc.Count)
+	}
+	if uc.BadgeCount != 1 {
+		t.Errorf("badge_count attendu 1 (les info exclues, DP6), obtenu %d", uc.BadgeCount)
+	}
+}

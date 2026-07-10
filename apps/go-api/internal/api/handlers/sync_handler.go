@@ -261,7 +261,9 @@ func (h *SyncHandler) emitMatchSynced(ctx context.Context, slug string, inserted
 	}
 	if err := em.Emit(ctx, notifications.EmitInput{
 		Category: notifications.CategoryMatchSynced,
-		Severity: notifications.SeveritySuccess,
+		// DP15 : plomberie, pas un accomplissement → severity info. Sort du badge
+		// cloche (DP6), reste visible en liste et en toast.
+		Severity: notifications.SeverityInfo,
 		TitleKey: "notif.match_synced.title",
 		BodyKey:  "notif.match_synced.body",
 		Params:   map[string]any{jsonKeyCount: inserted},

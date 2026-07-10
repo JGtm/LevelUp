@@ -27,7 +27,9 @@ export function NotificationsBell({ playerSlug }: NotificationsBellProps) {
   const ref = useRef<HTMLDivElement>(null)
 
   const { data: countData } = useUnreadCount(playerSlug, !!playerSlug)
-  const unreadCount = countData?.count ?? 0
+  // DP6 : badge cloche = non-lues signifiantes (severity != info). Fallback sur
+  // le compteur complet si le serveur ne renvoie pas encore badge_count.
+  const unreadCount = countData?.badge_count ?? countData?.count ?? 0
 
   const { data: list, isLoading, isError, error } = useNotificationsList(
     playerSlug,
@@ -39,6 +41,31 @@ export function NotificationsBell({ playerSlug }: NotificationsBellProps) {
   const markUnread = useMarkUnread({ playerSlug })
   const dismiss = useDismiss({ playerSlug })
   const markAllRead = useMarkAllRead({ playerSlug })
+
+  // DP7 : ids non lus RENDUS pendant l'ouverture — marqués lus à la FERMETURE
+  // (pas à l'ouverture : évite le flip « Non lues » → « Anciennes » pendant la
+  // consultation).
+  const pendingReadRef = useRef<Set<number>>(new Set())
+  const markReadMutate = markRead.mutate
+
+  const items = list?.items ?? []
+  const unread = items.filter((n) => n.read_at == null)
+  const older = items.filter((n) => n.read_at != null)
+
+  // Accumule les non-lues affichées tant que le dropdown est ouvert.
+  useEffect(() => {
+    if (!open) return
+    for (const n of unread) pendingReadRef.current.add(n.id)
+  }, [open, unread])
+
+  // Transition open→false (click-outside, Esc, navigation) : marquer lues.
+  useEffect(() => {
+    if (open) return
+    if (pendingReadRef.current.size === 0) return
+    const ids = [...pendingReadRef.current]
+    pendingReadRef.current.clear()
+    markReadMutate(ids)
+  }, [open, markReadMutate])
 
   // Click-outside
   useEffect(() => {
@@ -75,10 +102,6 @@ export function NotificationsBell({ playerSlug }: NotificationsBellProps) {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [open])
-
-  const items = list?.items ?? []
-  const unread = items.filter((n) => n.read_at == null)
-  const older = items.filter((n) => n.read_at != null)
 
   const ariaLabel =
     unreadCount > 0
