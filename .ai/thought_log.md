@@ -1,3 +1,28 @@
+## [2026-07-10] Archivage .ai/V7 + lancement campagne d'exécution des plans restants (pilotage Opus)
+
+**Statut** : En cours (archivage complété ; exécution séquentielle des 9 plans démarrée).
+
+**Décision technique principale** : inventaire des plans à la racine de `.ai/` — 15 plans,
+dont 4 exclus par l'utilisateur (Ascension UX, diag apparence admin, Relations UX,
+weapon_attribution_v3) et 2 identifiés comme archivage raté : `PLAN_POSTSYNC_BURST_LEASE`
+(en-tête COMPLÉTÉ, gate validé live 2026-07-02) déplacé vers V7, et
+`PLAN_PLAYLISTS_CATALOG_ET_LEADERBOARD` racine = copie PÉRIMÉE (cases vides, A1
+pré-révision) du plan déjà exécuté dont la version à jour est dans V7 → supprimée (reste
+C3 backfill, tracé par HANDOFF_LEADERBOARD_CATALOGUE). Le commit inclut les déplacements
+d'audits vers V7 faits par l'utilisateur.
+
+**Ordre d'exécution acté (agents Opus, contrat plan-execution, strictement séquentiel —
+builds Go concurrents interdits)** : 1) HOTFIX_LUSR_SHADOW_RO · 2) MONITORING_TRIAGE_DETECTIONS ·
+3) MONITORING_REFONTE (dépend de 2) · 4) NOTIFICATIONS_RATIONALISATION ·
+5) ENGAGEMENT_REFONTE_LOBBY · 6) ENGAGEMENT_AGNOSTIC_GRADUE (bloqué par clôture de 5, section 0) ·
+7) H5_MATCHVIEW_RESIDUS (lot V restera [!] VPS) · 8) MIGRATION_SQUASH_BASELINE · 9) ADR_0030_0031.
+Chaque plan sur sa branche nommée depuis origin/main (28146aa3a) ; aucun merge main sans
+l'utilisateur (deploy prod auto).
+
+**Conclusion / prochaine étape** : lancer le plan 1 (hotfix/lusr-shadow-ro) sous agent Opus.
+
+---
+
 ## [2026-07-10] DÉPLOYÉ EN PROD — campagne audits + leaderboard fusionnés (merge 28146aa3a)
 
 **Statut** : Complété (prod à jour, one-off citations exécuté ; suivi 1er auto-sync en cours).
