@@ -12,6 +12,7 @@ package scheduler
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -32,6 +33,16 @@ type stubScraper struct {
 	fetchErr    error
 	activeCalls int
 	fetchCalls  int
+	// activePlaylists : playlists « découvertes ». nil → le cron retombe sur la liste
+	// statique (comportement par défaut des tests historiques).
+	activePlaylists     []domain.WorldPlaylistRef
+	activePlaylistsErr  error
+	activePlaylistCalls int
+	// seasons : saisons « découvertes » (C2). nil → season_catalog non rafraîchi
+	// (comportement par défaut des tests historiques).
+	seasons      []domain.WorldSeasonRef
+	seasonsErr   error
+	seasonsCalls int
 }
 
 func (s *stubScraper) FetchActiveSeason(_ context.Context, _ string) (string, error) {
@@ -40,6 +51,16 @@ func (s *stubScraper) FetchActiveSeason(_ context.Context, _ string) (string, er
 		return "", s.seasonErr
 	}
 	return s.season, nil
+}
+
+func (s *stubScraper) FetchActivePlaylists(_ context.Context, _ string) ([]domain.WorldPlaylistRef, error) {
+	s.activePlaylistCalls++
+	return s.activePlaylists, s.activePlaylistsErr
+}
+
+func (s *stubScraper) FetchSeasons(_ context.Context, _ string) ([]domain.WorldSeasonRef, error) {
+	s.seasonsCalls++
+	return s.seasons, s.seasonsErr
 }
 
 func (s *stubScraper) FetchCSRLeaderboard(_ context.Context, season, playlist string, _ int) ([]domain.LeaderboardEntry, error) {
@@ -93,6 +114,88 @@ func newTestCron(provider sharedprovider.Provider, scraper LeaderboardScraperPor
 	// tests d'un éventuel SetDefaultRegistry global posé par un autre test.
 	c.registry = titlePkg.NewRegistry()
 	return c
+}
+
+// TestWorldLeaderboardCron_DiscoversActivePlaylists vérifie que le cron scrape les
+// playlists ACTIVES découvertes sur Waypoint et non la liste statique (2 en test) :
+// sans ça, seules les playlists scrapées ont des snapshots, donc la page classement
+// n'en affiche qu'une poignée (cause racine A2).
+func TestWorldLeaderboardCron_DiscoversActivePlaylists(t *testing.T) {
+	provider, db := newSharedProviderForTest(t)
+	scraper := &stubScraper{
+		season:  "csrseason13-2",
+		entries: []domain.LeaderboardEntry{{Rank: 1, Gamertag: "Alpha", XUID: "2535000000000001", CSRValue: 1500}},
+		activePlaylists: []domain.WorldPlaylistRef{
+			{AssetID: "pl-1", DisplayName: "Ranked Arena"},
+			{AssetID: "pl-2", DisplayName: "Ranked Slayer"},
+			{AssetID: "pl-3", DisplayName: "Ranked Snipers"},
+		},
+	}
+	c := newTestCron(provider, scraper)
+	c.RunOnce(context.Background())
+
+	if scraper.activePlaylistCalls == 0 {
+		t.Errorf("FetchActivePlaylists jamais appelé (découverte non câblée)")
+	}
+	if scraper.fetchCalls != 3 {
+		t.Errorf("FetchCSRLeaderboard = %d, want 3 (playlists découvertes, pas les 2 statiques)", scraper.fetchCalls)
+	}
+	if n := countSnapshots(t, db, "csrseason13-2"); n != 3 {
+		t.Errorf("snapshots = %d, want 3 (une entrée par playlist découverte)", n)
+	}
+}
+
+// TestWorldLeaderboardCron_PersistsSeasonCatalog (C2) vérifie que les saisons
+// découvertes (nom d'Operation + FR) sont upsertées dans season_catalog dans la
+// même fenêtre writer que le snapshot CSR.
+func TestWorldLeaderboardCron_PersistsSeasonCatalog(t *testing.T) {
+	provider, db := newSharedProviderForTest(t)
+	scraper := &stubScraper{
+		season:          "csrseason13-2",
+		entries:         []domain.LeaderboardEntry{{Rank: 1, Gamertag: "Alpha", XUID: "2535000000000001", CSRValue: 1500}},
+		activePlaylists: []domain.WorldPlaylistRef{{AssetID: "pl-1", DisplayName: "Ranked Arena"}},
+		seasons: []domain.WorldSeasonRef{
+			{SeasonID: "csrseason13-2", DisplayName: "Infinite", NameFR: "Infinite"},
+			{SeasonID: "csrseason12-1", DisplayName: "Shadows", NameFR: "Ombres"},
+		},
+	}
+	c := newTestCron(provider, scraper)
+	c.RunOnce(context.Background())
+
+	if scraper.seasonsCalls == 0 {
+		t.Errorf("FetchSeasons jamais appelé (season_catalog non câblé)")
+	}
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM season_catalog WHERE title_slug = ?`, "halo_infinite").Scan(&count); err != nil {
+		t.Fatalf("count season_catalog: %v", err)
+	}
+	if count != 2 {
+		t.Errorf("season_catalog = %d lignes, want 2", count)
+	}
+	var nameFR string
+	if err := db.QueryRow(`SELECT name_fr FROM season_catalog WHERE season_id = ?`, "csrseason12-1").Scan(&nameFR); err != nil {
+		t.Fatalf("select FR: %v", err)
+	}
+	if nameFR != "Ombres" {
+		t.Errorf("name_fr csrseason12-1 = %q, want \"Ombres\"", nameFR)
+	}
+}
+
+// TestWorldLeaderboardCron_FallbackStaticPlaylists : si la découverte échoue, le cron
+// retombe sur la liste statique (jamais zéro playlist scrapée).
+func TestWorldLeaderboardCron_FallbackStaticPlaylists(t *testing.T) {
+	provider, _ := newSharedProviderForTest(t)
+	scraper := &stubScraper{
+		season:             "csrseason13-2",
+		entries:            []domain.LeaderboardEntry{{Rank: 1, Gamertag: "Alpha", CSRValue: 1500}},
+		activePlaylistsErr: errors.New("page cassée"),
+	}
+	c := newTestCron(provider, scraper) // statique = 2 playlists
+	c.RunOnce(context.Background())
+
+	if scraper.fetchCalls != 2 {
+		t.Errorf("FetchCSRLeaderboard = %d, want 2 (fallback statique sur erreur découverte)", scraper.fetchCalls)
+	}
 }
 
 // TestWorldLeaderboardCron_InsertAndFreshness couvre : insert au 1er cycle, skip

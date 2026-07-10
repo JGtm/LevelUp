@@ -98,8 +98,9 @@ func TestRequirePlayerOwnership_NoSession_PassThrough(t *testing.T) {
 }
 
 func TestRequirePlayerOwnership_UnknownSlug_NonAdmin_403(t *testing.T) {
-	// S7 : slug inconnu + utilisateur authentifié non-admin → 403 (fail-closed).
-	// Auparavant laissé passer → oracle d'existence via le 404 distinct du handler.
+	// S7 / audit A1-m1 : slug inconnu + utilisateur authentifié non-admin → 403
+	// (fail-closed anti-énumération). Auparavant laissé passer → oracle
+	// d'existence via le 404 distinct du handler.
 	rr := runOwnership(false, "password", "ghost", userSession("alice"))
 	if rr.Code != http.StatusForbidden {
 		t.Errorf("unknown slug non-admin: status = %d, want 403", rr.Code)

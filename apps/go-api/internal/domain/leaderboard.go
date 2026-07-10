@@ -5,6 +5,33 @@ package domain
 
 import "time"
 
+// WorldPlayerRef identifie un joueur du classement mondial : son gamertag et, quand
+// il est connu (scrapé du snapshot Waypoint), son xuid. XUID vide = à résoudre via
+// PeopleHub (lignes de snapshot antérieures à la persistance du xuid, cf. B1).
+type WorldPlayerRef struct {
+	Gamertag string
+	XUID     string
+}
+
+// WorldPlaylistRef identifie une playlist classée ACTIVE découverte sur la page
+// classement Waypoint (menu déroulant `__NEXT_DATA__.playlists`) : asset id + nom
+// affiché. Source directe autoritative des playlists actives (le manifest de build
+// renvoie un PlaylistLinks vide) — cf. A1/A2.
+type WorldPlaylistRef struct {
+	AssetID     string
+	DisplayName string
+}
+
+// WorldSeasonRef identifie une saison CSR exposée par le menu déroulant de la page
+// classement Waypoint : season_id (ex "csrseason13-2"), nom d'Operation EN
+// (DisplayName) et sa traduction FR déjà résolue (NameFR, fallback EN). Persisté
+// dans season_catalog pour un libellé autoritatif "Saison N · Nom" (C2).
+type WorldSeasonRef struct {
+	SeasonID    string
+	DisplayName string
+	NameFR      string
+}
+
 // LeaderboardEntry est une entrée du classement.
 //
 // Le classement est multi-catégories (cf. LeaderboardCategory). Pour la

@@ -24,7 +24,10 @@ func NewLeaderboardService(repo port.LeaderboardRepository) *LeaderboardService 
 }
 
 // defaultLeaderboardLimit borne la taille par défaut d'une page de classement.
-const defaultLeaderboardLimit = 100
+// Top 50 (2026-07-03) : classement mondial plus digeste + synchronisé avec
+// duckdb.WorldLeaderboardTopN (profondeur enrichie). Le classement mondial masque
+// en plus les joueurs privés/sans données (anti-join world_player_no_data).
+const defaultLeaderboardLimit = 50
 
 // GetPage construit la réponse du classement selon la catégorie demandée :
 //   - "csr-world" (défaut) : classement CSR mondial (snapshots Halo Waypoint).

@@ -35,7 +35,8 @@ type FamilyXUIDResolver func(ctx context.Context) map[string]bool
 // désactivé (mode demo / auth non activée).
 //
 //   - session absente (contexte non-HTTP, jamais le cas derrière RequireAuth) → laisse passer ;
-//   - slug inconnu → fail-closed (S7) : admin → passe (handler répondra 404) ; sinon 403 ;
+//   - slug inconnu → fail-closed (S7 / audit A1-m1, pas d'énumération de slugs) :
+//     admin → passe (le handler répondra 404) ; tout autre → 403 player_forbidden ;
 //   - profil possédé OU membre de la même famille → laisse passer ;
 //   - sinon → 403 player_forbidden.
 //
@@ -57,7 +58,7 @@ func RequirePlayerOwnership(demoMode bool, authMode string, resolveXUID PlayerXU
 			profileXUID, found := resolveXUID(r.Context(), slug)
 			user := authz.CurrentUser(sess, users)
 			if !found {
-				// S7 (sécurité, lot S) : slug inconnu → fail-closed. Auparavant on
+				// S7 / audit A1-m1 : slug inconnu → fail-closed. Auparavant on
 				// laissait filer (next), permettant à un utilisateur authentifié de
 				// sonder n'importe quel /players/{slug} — la réponse 404 distincte du
 				// handler servait d'oracle d'existence. Désormais seul l'admin (accès

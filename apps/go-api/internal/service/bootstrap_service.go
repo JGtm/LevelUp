@@ -342,9 +342,11 @@ func (s *BootstrapService) fetchPrivacyNonBlocking(ctx context.Context, xuid str
 	}
 }
 
-// BuildPlayersList construit la liste des joueurs pour GET /api/v1/players,
-// restreinte aux profils accessibles par l'utilisateur courant (S4, lot S — même
-// filtrage d'ownership que Build/bootstrap). No-op en démo / auth non activée.
+// BuildPlayersList construit la liste des joueurs pour GET /api/v1/players.
+// S4 / audit M2 (lot S) : la liste est restreinte aux profils possédés par
+// l'utilisateur courant (les siens + ses co-membres de groupe), comme
+// available_players dans Build. En demo/single-user, filterOwnedPlayers no-ope
+// (liste complète) — l'invariant d'onboarding est préservé.
 func (s *BootstrapService) BuildPlayersList(ctx context.Context, sess *domain.SessionData) (*domain.PlayersListResponse, error) {
 	titleSlug := ctxkeys.TitleSlug(ctx)
 	players, err := s.cfg.LoadPlayers(titleSlug)
@@ -354,9 +356,11 @@ func (s *BootstrapService) BuildPlayersList(ctx context.Context, sess *domain.Se
 	// Exclure les profils auth-only : cette liste alimente les mêmes surfaces
 	// front-facing que available_players (favoris gamertag, sélecteur joueur).
 	players = excludeAuthOnly(players)
-	// S4 : restreindre au parc possédé (xuid + famille) — un utilisateur ne doit
-	// pas énumérer les profils des autres via /players (contournait /bootstrap).
-	players = s.filterOwnedPlayers(sess, players, s.resolveCoMembers(sess))
+	// S4 / Couche A (ADR 0029) : restreindre au parc possédé (xuid + famille) —
+	// un utilisateur ne doit pas énumérer les profils des autres via /players.
+	// defaultSlug est calculé APRÈS filtrage → ne pointe jamais sur un profil non possédé.
+	familyXUIDs := s.resolveCoMembers(sess)
+	players = s.filterOwnedPlayers(sess, players, familyXUIDs)
 	var defaultSlug *string
 	if len(players) > 0 {
 		slug := players[0].PlayerSlug

@@ -67,6 +67,10 @@ func main() {
 		return
 	}
 
+	// AVERTISSEMENT SÉCURITÉ (audit S9) : ces lignes impriment le SpartanToken /
+	// ClearanceToken EN CLAIR sur stdout. C'est la raison d'être de ce CLI dev (usage :
+	// capturer la sortie pour un appel API ponctuel). Ne JAMAIS rediriger/capturer cette
+	// sortie dans un fichier de log, une CI ou un partage — token exploitable en clair.
 	fmt.Println("SPARTAN=" + result.Tokens.SpartanToken)
 	fmt.Println("CLEARANCE=" + result.Tokens.ClearanceToken)
 }

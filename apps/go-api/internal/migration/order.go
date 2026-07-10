@@ -216,12 +216,15 @@ var canonicalOrder = []string{
 	"create_world_csr_leaderboard_snapshots",                   // shared
 	"world_csr_leaderboard_latest_by_batch",                    // shared
 	"add_title_slug_to_world_csr_leaderboard",                  // shared (PMT-7)
+	"add_xuid_to_world_csr_leaderboard",                        // shared (B1)
 	"shared_create_kill_positions",                             // shared (positions monde par kill, ref inter-titres)
 	"shared_create_match_commendations",                        // shared (commendations natives par match, ref inter-titres, AXE B)
 	"shared_match_commendations_add_progress",                  // shared (total à vie absolu au match — totaux commendations)
 	"add_player_count_to_match_registry",                       // shared (roster API attendu — oracle d'intégrité, fix #10)
 	"add_weapon_accuracy",                                      // shared (précision par arme/joueur/match, dérivée des events WeaponDrop H5)
 	"add_events_empty_to_match_registry",                       // shared (statut distinct « chunk récupéré, 0 event légitime » — fin boucle parse_anomaly)
+	"create_season_catalog",                                    // shared (C2 : noms+traductions des saisons CSR Waypoint, source scrape)
+	"create_world_player_no_data",                              // shared (marqueur privés/sans-données classement mondial)
 }
 
 var canonicalIndex = func() map[string]int {

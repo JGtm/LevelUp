@@ -20,6 +20,7 @@ package halo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -148,6 +149,11 @@ func (s *LeaderboardScraper) FetchCSRLeaderboard(
 type WaypointRef struct {
 	ID          string
 	DisplayName string
+	// Translations : nom localisé par locale BCP-47 (ex "fr-FR" → "Ombres"),
+	// tel qu'exposé par le payload Waypoint. Renseigné pour les SAISONS
+	// uniquement (les playlists n'en exposent pas) ; nil sinon. DisplayName
+	// reste le nom EN canonique (la page est requêtée en en-US).
+	Translations map[string]string
 }
 
 // seedSeasonID est la saison « graine » utilisée pour bootstrapper la requête de
@@ -199,7 +205,7 @@ func (s *LeaderboardScraper) FetchCatalog(
 	}
 	for _, se := range parsed.Seasons {
 		if id := strings.TrimSpace(se.SeasonID); id != "" {
-			seasons = append(seasons, WaypointRef{ID: id, DisplayName: se.DisplayName})
+			seasons = append(seasons, WaypointRef{ID: id, DisplayName: se.DisplayName, Translations: se.Translations})
 		}
 	}
 	for _, pl := range parsed.Playlists {
@@ -208,6 +214,57 @@ func (s *LeaderboardScraper) FetchCatalog(
 		}
 	}
 	return seasons, playlists, nil
+}
+
+// FetchActivePlaylists retourne les playlists CLASSÉES ACTIVES exposées par le menu
+// déroulant de la page classement Waypoint (portion `playlists` de FetchCatalog) :
+// c'est la source directe autoritative des playlists actives (le manifest de build
+// renvoie un PlaylistLinks vide). `refPlaylistID` = une playlist connue servant de
+// graine pour charger la page. Renvoie asset id + nom affiché de chaque playlist.
+func (s *LeaderboardScraper) FetchActivePlaylists(ctx context.Context, refPlaylistID string) ([]domain.WorldPlaylistRef, error) {
+	_, playlists, err := s.FetchCatalog(ctx, refPlaylistID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.WorldPlaylistRef, 0, len(playlists))
+	for _, pl := range playlists {
+		if id := strings.TrimSpace(pl.ID); id != "" {
+			out = append(out, domain.WorldPlaylistRef{AssetID: id, DisplayName: pl.DisplayName})
+		}
+	}
+	return out, nil
+}
+
+// FetchSeasons retourne la liste des saisons CSR exposées par le menu déroulant de
+// la page classement Waypoint (portion `seasons` de FetchCatalog), dans l'ordre de
+// la page (récentes d'abord). Chaque entrée porte le nom EN (DisplayName) et sa
+// traduction FR résolue (fr-FR, fallback EN). Source autoritative pour season_catalog
+// (C2). `refPlaylistID` = une playlist classée quelconque servant de graine.
+func (s *LeaderboardScraper) FetchSeasons(ctx context.Context, refPlaylistID string) ([]domain.WorldSeasonRef, error) {
+	seasons, _, err := s.FetchCatalog(ctx, refPlaylistID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.WorldSeasonRef, 0, len(seasons))
+	for _, se := range seasons {
+		if id := strings.TrimSpace(se.ID); id != "" {
+			out = append(out, domain.WorldSeasonRef{SeasonID: id, DisplayName: se.DisplayName, NameFR: se.FrenchName()})
+		}
+	}
+	return out, nil
+}
+
+// FrenchName retourne la traduction fr-FR de la saison (insensible à la casse de la
+// clé locale), sinon le DisplayName EN en secours.
+func (r WaypointRef) FrenchName() string {
+	for k, v := range r.Translations {
+		if strings.EqualFold(strings.TrimSpace(k), "fr-FR") {
+			if fr := strings.TrimSpace(v); fr != "" {
+				return fr
+			}
+		}
+	}
+	return r.DisplayName
 }
 
 // fetchPageBytes récupère le HTML brut d'une page du classement.
@@ -227,11 +284,22 @@ func (s *LeaderboardScraper) fetchPageBytes(ctx context.Context, seasonID, playl
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		// 404 = cette playlist n'a AUCUN classement pour cette saison (pas classée /
+		// inexistante à l'époque). Cas NOMINAL d'un backfill multi-saisons × toutes
+		// playlists — pas une erreur. Sentinel pour que l'appelant skippe en silence.
+		return nil, fmt.Errorf("statut HTTP 404: %w", ErrLeaderboardPageNotFound)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("statut HTTP %d", resp.StatusCode)
 	}
 	return io.ReadAll(io.LimitReader(resp.Body, 12<<20)) // 12 MiB garde-fou
 }
+
+// ErrLeaderboardPageNotFound : la page classement d'une (saison, playlist) renvoie
+// 404 — la playlist n'était pas classée à cette saison. À traiter comme un skip
+// nominal (pas une erreur) côté appelant, via errors.Is.
+var ErrLeaderboardPageNotFound = errors.New("classement absent pour cette (saison, playlist)")
 
 // ─── Parsing du bloc __NEXT_DATA__ (point d'ajustement unique) ────────────────
 
@@ -260,8 +328,9 @@ type waypointLBEntry struct {
 // waypointSeasonRef / waypointPlaylistRef : listes exposées par la page (utiles
 // pour peupler les sélecteurs côté job/UI).
 type waypointSeasonRef struct {
-	SeasonID    string `json:"seasonId"`
-	DisplayName string `json:"displayName"`
+	SeasonID     string            `json:"seasonId"`
+	DisplayName  string            `json:"displayName"`
+	Translations map[string]string `json:"translations"`
 }
 
 type waypointPlaylistRef struct {

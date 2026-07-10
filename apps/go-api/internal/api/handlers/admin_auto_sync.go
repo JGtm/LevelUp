@@ -129,8 +129,8 @@ type TokenProbeResult struct {
 
 // fingerprintToken retourne un sha256 tronqué identifiant un token sans révéler
 // sa valeur (utile pour comparer plusieurs lectures, ex : vérifier que `.env.local`
-// n'a pas été modifié sans redémarrage du serveur). Aucun fragment en clair
-// (head/tail) : cf. S5 — un diagnostic n'expose pas de morceau de secret.
+// n'a pas été modifié sans redémarrage du serveur). S5 / audit M3 (lot S) :
+// head/tail retirés — même tronqués, ils exposaient un fragment du secret.
 func fingerprintToken(s string) string {
 	if s == "" {
 		return ""

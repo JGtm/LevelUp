@@ -140,9 +140,10 @@ func TestBootstrapBuild_AvailablePlayersFilteredByOwnership(t *testing.T) {
 	}
 }
 
-// S4 (lot S) : GET /players (BuildPlayersList) restreint la liste aux profils
-// possédés — auparavant il énumérait TOUS les joueurs sans tenir compte de la
-// session (contournait le filtrage de /bootstrap).
+// S4 / audit M2 (lot S) : GET /players (BuildPlayersList) restreint la liste aux
+// profils possédés — auparavant il énumérait TOUS les joueurs sans tenir compte
+// de la session (contournait le filtrage de /bootstrap). DefaultPlayerSlug est
+// calculé APRÈS filtrage → ne pointe jamais sur un profil non possédé.
 func TestBuildPlayersList_FilteredByOwnership(t *testing.T) {
 	dir := t.TempDir()
 	profilesPath := filepath.Join(dir, "db_profiles.json")
@@ -176,6 +177,9 @@ func TestBuildPlayersList_FilteredByOwnership(t *testing.T) {
 	if got := slugsOf(resp.Items); len(got) != 1 || got[0] != "alice" {
 		t.Fatalf("S4 : /players non filtré — attendu [alice], obtenu %v", got)
 	}
+	if resp.DefaultPlayerSlug == nil || *resp.DefaultPlayerSlug != "alice" {
+		t.Fatalf("DefaultPlayerSlug attendu alice (calcul post-filtrage), obtenu %v", resp.DefaultPlayerSlug)
+	}
 
 	// admin voit tout le parc.
 	respAdmin, err := svc.BuildPlayersList(context.Background(), &domain.SessionData{Username: strPtr("boss")})
@@ -184,5 +188,27 @@ func TestBuildPlayersList_FilteredByOwnership(t *testing.T) {
 	}
 	if got := slugsOf(respAdmin.Items); len(got) != 2 {
 		t.Fatalf("S4 : admin doit voir 2 joueurs, obtenu %v", got)
+	}
+}
+
+// Lot S : invariant demo/single-user — auth non activée → BuildPlayersList ne
+// filtre pas (liste complète), l'onboarding reste intact.
+func TestBuildPlayersList_NotEnforcedReturnsAll(t *testing.T) {
+	dir := t.TempDir()
+	profilesPath := filepath.Join(dir, "db_profiles.json")
+	profiles := `{"version":"3.0","profiles":{"halo_infinite":{
+      "alice":{"db_path":"a.duckdb","xuid":"222"},
+      "bob":{"db_path":"b.duckdb","xuid":"999"}}}}`
+	if err := os.WriteFile(profilesPath, []byte(profiles), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.AppConfig{AuthMode: "none", DBProfilesPath: profilesPath}
+	svc := NewBootstrapService(cfg, &mockBootRepo{})
+	resp, err := svc.BuildPlayersList(context.Background(), &domain.SessionData{Username: strPtr("alice")})
+	if err != nil {
+		t.Fatalf("BuildPlayersList: %v", err)
+	}
+	if got := slugsOf(resp.Items); len(got) != 2 {
+		t.Fatalf("mode none attendu 2 joueurs, obtenu %v", got)
 	}
 }

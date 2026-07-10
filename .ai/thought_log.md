@@ -2536,6 +2536,320 @@ _(NB : l'entrée « Dette logging Go » ci-dessus est le sous-détail du sweep B
 
 **Conclusion / prochaine étape** : LOT A clos côté code. Découvertes §7 : dette de type CareerTopMatchesResponse (front≠backend), revue visuelle MatchWeaponCharts. Réconcilier plan/journal S+A au merge des 2 branches. Ensuite : LOT B (lectures rating _latest + robustesse avalements).
 
+## [2026-07-02] LOT S (audit sécurité 2026-07) : endpoints /api/v1 non authentifiés fermés — COMPLÉTÉ (commit en attente autorisation)
+
+**Tâche** : premier lot du PLAN_TRAITEMENT_AUDITS_2026-07 (contrat §0 strict, skill plan-execution). Fermer les 2 Bloquants + majeurs sécurité de l'audit QUALITE. Branche dédiée `fix/security-unauth-endpoints`. Vérif sur pièces de chaque item AVANT édition (workflow multi-agents lecture-seule : cartographie routing/middleware + confirmation des 9 findings sur lignes courantes).
+
+**Décision technique** : tous les middlewares d'auth (`RequireAuth`/`RequireAdmin`/`RequirePlayerOwnership`) no-opent en DemoMode/AuthMode=none → l'ajout de gardes ne casse PAS l'onboarding demo/single-user (invariant vérifié sur pièces). Approche `r.With(mw...)` par ligne (moins fragile qu'un gros bloc).
+- **S1** /settings (PATCH + 4 POST) → `RequireAuth+RequireAdmin` (settings globaux d'instance). **S2** /_admin/progression/backfill/{slug} → idem (écriture + recompute sur joueur arbitraire). **S6** health/home + diag csr/progression → idem (sondes ops/dev ; ownership inapplicable au query-param `?player=` → admin, plus fort et cohérent avec S5 ; ÉCART documenté vs le « + ownership » du plan). **S8** /setup/* → `RequireAuth` SEUL (self-provision préservé). **S5** /_diag/auto-sync : +RequireAdmin au groupe LoopbackOnly ET retrait de `refresh_token_head/tail` du payload probe (fingerprintToken → sha-only). **S3** cause racine : tableau route→garde exhaustif (`.ai/V7/LOT_S_ROUTE_GUARD_TABLE.md`) + garde `RequireAuth` sur la mutation POST /import/openspartan surfacée.
+- **S4** GET /players : fix côté SERVICE (BuildPlayersList applique `filterOwnedPlayers`+session, defaultSlug post-filtrage) — aligne sur /bootstrap, corrige la fuite d'identité pour les users authentifiés (RequireAuth seul ne l'aurait pas corrigée). Signature propagée (handler + interface port + 3 tests).
+- **S7** `RequirePlayerOwnership` : fail-open → fail-closed (slug inconnu + session + enforcement → 403 anti-énumération). **S9** logs CLI : warm_bp_assets ne logge plus de préfixe de SpartanToken (+ safePrefix mort supprimé) ; get-token porte un avertissement « ne jamais capturer cette sortie ».
+
+**Résultats** : `go build ./...` OK ; `go test ./internal/api/... ./internal/service/...` verts ; `golangci-lint --new-from-rev=HEAD` = 0 issue nouvelle (52 baseline pré-existantes, hors fichiers touchés). Tests neufs : `handlers/security_lot_s_test.go` (401 anonyme sur S1/S2/S6/S8 + admin/demo no-op + probe sans head/tail), S7 (403 slug inconnu), S4 (filtrage + invariant demo).
+
+**Conclusion / prochaine étape** : LOT S clos côté code, non commité (attente feu vert user + décision push main = deploy prod auto, à faire VITE car 2 Bloquants exploitables). Découvertes §7 : GET /jobs/{id} + annuaire gamertag non gardés (borderline, hors findings audit). Ensuite : LOT A (bugs UI actifs + XSS + docs flags) sur branche `refactor/audits-2026-07`.
+## [2026-07-03] C3+ : top 50 + skip-existing BDD + marquage/masquage joueurs privés (worktree)
+
+**Statut** : Complété. Suite à retour utilisateur (backfill lent + re-traitait des jours de
+travail déjà en base ; « garder top 50 en excluant les privés »).
+
+**Décisions techniques** :
+- **top 50 partout** : `WorldLeaderboardTopN` 100→50 (enrich/cron) + `defaultLeaderboardLimit`
+  100→50 (affichage). ~2× moins de joueurs.
+- **`-skip-existing`** (nouveau flag backfill, BDD-aware, indépendant du checkpoint) : saute les
+  joueurs déjà dans `world_player_season_stats` ET marqués `world_player_no_data` → ne fetch que
+  le manquant. Le checkpoint seul ne connaissait pas la BDD (redonnait tout).
+- **Marqueur privés** : migration `create_world_player_no_data` (shared, PK-only INSERT-only,
+  ART-safe). Un joueur fetché avec `err==nil && len(stats)==0` (historique privé OU expiré API
+  ~6 mois pour vieilles saisons) est marqué → skip futur + masquage affichage
+  (`GetCSRWorldLeaderboard` NOT IN, avant LIMIT, best-effort si table absente).
+
+**Diagnostic lenteur (9 min/joueur)** : re-traitement complet (checkpoint quasi vide) + `-deep`
+sur la saison COURANTE (scan massif du top player) + timeouts halostats. `-skip-existing` règle
+tout : la saison courante a 0 manquant → ignorée.
+
+**Résultats observés (test RÉEL, pas 3 joueurs)** : csrseason5-1 → 12 privés marqués ; re-run
+« 262 enrichis + 12 privés ignorés → 45 à traiter » ; masquage affichage Arena 100→97.
+`-concurrency 8` = ~18 s/joueur (vs 28 s en 4), 0 err, 0 429. Tests : round-trip+idempotence
+marqueur ; suites migration/duckdb/service/scheduler vertes ; `-tags=integration` non re-lancé
+(pas de nouvelle écriture per-match critique, table marqueur INSERT-only hors surface ART).
+
+**Leçon** : mon sample initial (3 joueurs, 1 saison) était trop petit — n'a révélé ni la lenteur
+ni la redondance. Tester sur une saison entière réaliste avant de livrer une commande.
+[[feedback_integration_tests_realistic_datasets]]
+
+**Post-backfill (04)** : backfill COMPLET, top-50 quasi 100% couvert (0-6 restants/saison, tous
+enrichis OU privés). Effet de bord repéré + corrigé (07bbb42dd) : une vieille saison ENTIÈREMENT
+expirée (3-1 = 61 privés/0 enrichi ; 4-1 = 235/0) aurait un classement VIDE après masquage →
+garde `WorldSeasonHasEnriched` : masquer seulement si la saison a ≥1 enrichi, sinon CSR brut.
+
+**Vérif finale (04)** : `go build`+`go test ./...` (unit) verts ; front `tsc`+`eslint`+`vitest`
+verts ; logging OK (logs/leaderboard.log, ModuleLeaderboard, aucun print interdit ni erreur
+avalée). Ajout du test manquant `TestGetCSRWorldLeaderboard_PrivateMasking` (masquage + garde
+saison expirée, integration).
+
+**Piège concurrence go (leçon)** : `-tags=integration` a d'abord montré 2 « échecs » (service
+`[build failed]` stubResolver/stubAssetURL ; duckdb `TestGetOrOpen...` `game_variant_id`). FAUX :
+c'étaient des ARTEFACTS de cache/concurrence que j'ai causés en lançant plusieurs `go test`/
+`go vet`/`go build` EN PARALLÈLE (cache de build Go corrompu sur Windows + ~10 `link.exe`
+orphelins verrouillant le cache ; les tests DuckDB `:memory:` flakent aussi sous conns
+concurrentes). Après kill des orphelins + `go clean -cache` + relance SÉQUENTIELLE (aucun autre
+`go` en //) : `internal/service` OK (38s) et `internal/platform/duckdb` OK (195s). Règle : ne
+JAMAIS lancer des commandes `go` en concurrence sur ce repo (cache partagé) — séquentiel obligatoire.
+TOUTE la suite (unit + integration + front) est verte.
+
+**État** : commité/poussé (2e4c62ed2 feat + docs). Backfill relancé par l'utilisateur avec la
+commande finale. Migrations `add_xuid`/`create_season_catalog`/`create_world_player_no_data`
+appliquées à la DB locale.
+
+---
+
+## [2026-07-03] C3 : backfill saisons passées — SAMPLE VALIDÉ + fix auto-migration CLI (worktree)
+
+**Statut** : Complété pour la partie SAMPLE + fix outillage. Backfill COMPLET = commandes
+remises à l'utilisateur (opérationnel, plusieurs heures, off-peak — pas lancé par l'agent).
+
+**Sample validé de bout en bout** (serveur arrêté, code worktree + données repo principal via
+`LEVELUP_REPO_ROOT`) sur csrseason12-1 (Shadows) : étape 1 snapshot 6 playlists (4→6, +Tactique
+57e417dd +Duel 1v1 28bfa5f4) = 300 lignes, **300/300 avec xuid** (B1 : scraper→persister, pas de
+PeopleHub) ; étape 2 enrich 3 joueurs via **pool 7 tokens round-robin** (`-all-tokens`),
+`276/276 xuid pré-seedés du snapshot`, filtre fenêtre-date saison actif → 6 lignes persistées,
+0 erreur (B2 agrégation par-match).
+
+**Bug outillage trouvé + corrigé** : `snapshot-world-leaderboard` et `backfill-world-player-stats`
+n'appelaient PAS `migration.SetTitleStepsProvider(halomigrations.StepsFor)` → leur `RunForDB`
+n'appliquait QUE les migrations globales, ratant les title-owned (add_xuid B1, create_season_catalog
+C2a). Sur une DB non pré-migrée par le serveur (cas hors prod déployée), `InsertWorldCSRSnapshot`
+et `WorldSeasonPlayers` échouaient (« column xuid not found »). Ajout de l'appel aux 2 CLI ;
+auto-migration PROUVÉE sur DB fraîche (5 insérées sans apply_shared_migrations préalable).
+Débloquage immédiat du sample via `cmd/apply_shared_migrations` (applied=2).
+
+**Découverte (token pool)** : 3 comptes ont un RT périmé (XxDaemonGamerxX, Chocoboflor,
+Madina97294 — `invalid_grant`) — les xuids périmés connus, NE PAS re-capturer (ADR 0023) ; le
+pool tourne sur 7 comptes valides. [[feedback_token_model_rt_never_recapture]]
+
+**État data** : la DB locale a reçu les 2 migrations (add_xuid + season_catalog) + Shadows a
+maintenant 6 playlists snapshotées ; enrich Shadows partiel (3/276 joueurs, checkpoint pose le
+reste). Un run complet `-season all` complète tout.
+
+**Prochaine étape** : l'utilisateur lance le backfill complet (2 commandes dans le handoff §C3)
+quand il veut (off-peak). Reste du plan : RIEN — B1→A2→A3→B2→C1→C2→C3(sample) tous couverts.
+
+---
+
+## [2026-07-03] C2b : surfaçage "Saison N · Nom" dans les 2 sélecteurs — COMPLÉTÉ (étape C2 close, worktree)
+
+**Statut** : Complété. Étape C2 (saisons) close (C2a persistance + C2b surfaçage).
+
+**Décision produit** (validée user) : libellé « Saison 13 · Infinite » (numéro + nom
+d'Operation localisé ; FR « Saison 12 · Ombres »).
+
+**Décision technique** : helper canonique `duckdb.SeasonSelectorLabel` +
+`LoadSeasonCatalogNames` (foyer unique, règle ≤2 copies) réutilisé par les 2 sélecteurs :
+- Page classement (`GetWorldLeaderboardCatalog`) : `DisplayName` = SeasonSelectorLabel(locale,
+  id, names, fallback "Saison N" dérivé). Le front `LeaderboardBlock` PRÉFÉRAIT son mapping
+  codé en dur `KNOWN_SEASON_LABEL` (seasons.i18n.ts) au display_name ; précédence INVERSÉE
+  → backend autoritatif, le mapping front n'est plus qu'un secours (offline / saison pas
+  encore scrapée). Doc seasons.i18n.ts mise à jour.
+- Page player (`AvailableCSRSeasons`) : `Label` = SeasonSelectorLabel(...) avec fallback
+  `csrSeasonLabel` ("Saison N"). Match season_id INSENSIBLE À LA CASSE (API carrière
+  "CsrSeason13-2" vs Waypoint "csrseason13-2" → clé map en minuscules).
+
+Dégradation gracieuse : season_catalog absent/illisible → nil map → fallback libellé dérivé
+(aucun 500, aucune régression sur DB legacy).
+
+**Résultats observés** : `go build`/`go vet` OK ; tests duckdb (dont nouveaux
+`TestSeasonSelectorLabel`, `TestFallbackSeasonLabel`, `TestLoadSeasonCatalogNames_RoundTripAndCase`)
++ service career verts ; front `tsc -b` + `eslint` 0 err + `vitest LeaderboardBlock` 11/11.
+
+**Prochaine étape** : C3 (backfill saisons passées, basse priorité — cf. handoff §C3).
+
+---
+
+## [2026-07-03] C2a : persistance season_catalog (noms + FR des saisons Waypoint) — COMPLÉTÉ (backend, worktree)
+
+**Statut** : Complété (sous-tranche C2a — persistance). C2b (surfaçage des libellés
+« Saison N · Nom » dans les sélecteurs) reste à faire.
+
+**Décision architecturale clé** : `season_catalog` va dans la SHARED DB (pas metadata).
+Raison : la SOURCE est le scrape Waypoint et le SEUL writer sanctionné détenu par
+`world_leaderboard_cron` est le writer shared (`provider.AcquireWriter`). Écrire dans
+metadata depuis ce cron violerait le writer mono-process (contention sync — même hazard
+qui a fait choisir, en A3, de lire les actives depuis les snapshots plutôt que d'écrire
+`is_active` dans metadata). Co-localisé avec `world_csr_leaderboard_snapshots` (même cron,
+même scrape). Table PK-only + upsert SELECT-then-write (`ops.RefreshSeasonCatalog`) =
+ART-safe (pas d'index secondaire muté ; pattern `catalog_refresh.go`).
+
+**Données** : la fixture confirme `translations` par locale dans le payload
+(`fr-FR: "Ombres"` pour csrseason12-1, `"Dernier bastion"` pour 11-1). `displayName` = EN
+(la page est requêtée en en-US). Le scraper résout FR (`WaypointRef.FrenchName`,
+fallback EN) et expose `FetchSeasons() []domain.WorldSeasonRef`.
+
+**Câblage** : `world_leaderboard_cron` découvre les saisons (hors lease writer) et les
+upsert dans la MÊME fenêtre writer que le snapshot CSR (best-effort : un échec saisons
+n'annule pas le snapshot). Migration `create_season_catalog` (TargetShared, PK-only).
+
+**Résultats observés** : `go build` OK, `go vet` OK, tests unitaires (scheduler/ops/halo/
+migration) verts + `-tags=integration` (sync anti-ART, migration, ops, scheduler) verts.
+Nouveaux tests : `TestFetchSeasons_TranslationsFR` (fixture réelle), `TestRefreshSeasonCatalog_
+UpsertAndIdempotent`, `TestWorldLeaderboardCron_PersistsSeasonCatalog`.
+
+**Prochaine étape** : C2b — surfacer « Saison N · Nom » (localisé) dans le sélecteur de la
+page player (`AvailableCSRSeasons`, match season_id insensible à la casse) et de la page
+classement (`useLeaderboardCatalog`, match direct). Puis C3.
+
+---
+
+## [2026-07-03] C1 : delta placement saison précédente (page player) — COMPLÉTÉ (voie b frontend-only, worktree)
+
+**Statut** : Complété. Étape C1 du PLAN_PLAYLISTS_CATALOG_ET_LEADERBOARD livrée.
+
+**Décision technique principale** : voie (b) frontend-only. `CareerRankingBlock.tsx` fait un 2e
+appel `useCareerCSRs` sur la saison ANTÉRIEURE à celle sélectionnée (`availableSeasons[idx+1]`,
+tri desc backend confirmé via `sortCSRSeasonsDesc`) ; join par `playlist_id` ; helper pur
+`csrSeasonTrend` compare `current.value` (null si l'une des deux n'est pas classée) → flèche
+▲▼=. Param `enabled` ajouté à `useCareerCSRs` pour désactiver le 2e appel quand aucune saison
+antérieure (sinon collision de query key `careerCSRs(slug, undefined)`).
+
+**Anti-dette (règle ≤2 copies)** : le pattern flèche-tendance existait déjà 3× (LeaderboardBlock
+`up/down/stable`, KPIStrip + PlayerScoreCard `above/below/near`). Plutôt qu'une 4e copie, extrait
+`MetricWithTrend` (+ type `Trend`, tokens `--narrative-trend-*`) dans le foyer canonique
+`components/ui/metric-trend.tsx` ; LeaderboardBlock y est MIGRÉ (0 nouvelle copie) ; garde-rail
+`metric-trend.guard.test.ts` (import.meta.glob) interdit toute ré-inline. Les 2 copies
+`above/below/near` (sémantique « vs référence », distincte) sont notées en Découvertes, non
+fusionnées (hors périmètre).
+
+**i18n** : clé `career.ranking.vs_prev_season` (FR « Évolution vs saison précédente » / EN
+« Change vs previous season ») + regen `generated/career.ts` (2353 clés).
+
+**Reporté [!] (report VALIDE — donnée backend absente)** : tri `is_active`-d'abord exige un flag
+sur `CareerCSRRank` (full-stack) ; liste triée par `alltime_value DESC` en attendant.
+
+**Résultats observés** : gate worktree — `tsc -b` 0 err, `eslint .` 0 err (70 warnings
+pré-existants hors scope), `vitest run` HORS sandbox 237 fichiers / 2070 tests PASS (dont le
+nouveau test delta + garde-rail). Gotcha : worktree sans node_modules → jonction vers repo
+principal requise (mklink /J) ; à retirer avant `worktree remove`.
+
+**Prochaine étape** : C2 (persister la liste des saisons Waypoint : table `season_catalog`,
+upsert ART-safe SELECT-then-write) puis C3 (backfill saisons passées, cf. handoff).
+
+---
+
+## [2026-07-02] B2 : service-record par-playlist NON VIABLE (prouvé live) → pivot hardening par-match EXÉCUTÉ — worktree
+
+**Finding décisif (sonde live JGtm)** : format saison service-record = chemin CMS
+`Csr/Seasons/CsrSeason13-2.json` (367 matchs, CoreStats OK). MAIS `playlistAssetId` NON
+supporté : AUCUNE des 16 playlists ne renvoie de données malgré 367 matchs saison → le
+service-record ne donne que l'agrégat par SAISON, pas par playlist. Impossible de peupler
+`world_player_season_stats` (saison×playlist) via cet endpoint → hypothèse B2 originale
+(1 SR/(joueur,playlist)) INVALIDÉE.
+
+**Pivot exécuté** : la seule source par-playlist reste l'agrégation par-match ; on la
+DURCIT. `collectPlayerMatches` : (a) un match illisible (403/404/timeout après retries) est
+IGNORÉ (continue) au lieu d'annuler tout le joueur — LE fix des trous ; (b) erreur historique
+après collecte partielle → conserver le partiel (avant : return nil,err jetait tout) ; échec
+dès la 1re page → erreur remontée (signal préservé) ; (c) dichotomie en échec → scan linéaire.
+Compteur expvar `world_enrich.match_skipped`. Test `TestAggregate_SkipsUnreadableMatch`.
+
+**Code mort supprimé (règle 7)** : endpoint `GetSeasonPlaylistServiceRecord`,
+`domain.WorldServiceRecord`, `cmd/probe-service-record` (artefacts de la sonde) retirés — le
+finding est préservé ici + dans git (commit 3c2fe84b7).
+
+**Incident token JGtm résolu** : la 1re sonde omettait la persistance du RT roté ; vérifié
+ensuite que JGtm auth reste OK (RT survécu) ; persistance corrigée avant suppression. RAS.
+
+## [2026-07-02] B2 étape 1 (endpoint service-record) + sonde live : finding format saison + INCIDENT token — worktree
+
+**Livré** : `domain.WorldServiceRecord` + `HaloAPIClient.GetSeasonPlaylistServiceRecord`
+(endpoint `/hi/players/xuid(N)/Matchmade/servicerecord?seasonId=&playlistAssetId=`) +
+`parseSeasonPlaylistServiceRecord` + test unitaire (build/gofmt/test verts). CLI de sonde
+live `cmd/probe-service-record`.
+
+**Finding sonde live (JGtm)** : auth OK ; `seasonId` au format Waypoint `csrseason13-2`
+renvoie nil (404) → le service-record veut le **chemin CMS** (cf. compare `Seasons/Season7.json`),
+pas le format des snapshots. `playlistAssetId` NON validé (jamais atteint avec le bon format).
+Reste à résoudre le CsrSeasonFilePath courant (csr_season_calendars) avant re-sonde.
+
+**INCIDENT TOKEN (mon erreur, corrigé)** : ma 1re version de la sonde a OMIS `store.Upsert`
+après `ExchangeRefreshTokenWithRotation` → le RT roté de JGtm n'a pas été persisté (RT à usage
+unique → le RT stocké est probablement périmé). Reproduit exactement l'incident probe 2026-06-10.
+Sonde corrigée (persistance du RT roté ajoutée). **À vérifier** : l'auth de JGtm au prochain sync
+(bannière reauth_required possible) ; si mort, diagnostiquer AVANT re-capture (ADR 0023), ne pas
+re-capturer par réflexe (les autres RT du store restent valides).
+
+## [2026-07-02] A3 (page player CSR) exécutée + B2 statuée bloquée (validation live) — worktree
+
+**A3 — EXÉCUTÉE** : l'augment CSR post-sync (career.go) itérait `rankedplaylists.Active()`
+(4 en dur) pour compléter les playlists actives non-jouées d'un joueur. Désormais il itère
+les playlists ACTIVES réelles. Source dynamique choisie = `world_csr_leaderboard_snapshots`
+(dernier batch, rempli par le cron A2 avec les 7 actives), PAS `playlists_catalog`
+(metadata.duckdb = writer mono-process → contention avec la sync, ADR 0013/0016 ; écrire
+is_active depuis le cron = à éviter). `SyncEngine.activeRankedPlaylists(ctx)` lit via
+`e.sharedProvider` (RO), season-agnostic (le format saison Waypoint `csrseason13-2` diffère de
+`e.csrSeasonID` config → on lit le dernier scrape). **Fallback `Active()`** si provider nil /
+table vide / erreur (nil-safe, jamais moins que l'historique ; titres sans cron classement OK).
+Threadé runCSRSnapshotSync → syncPlayerCSRs → augment (param `activePlaylists`). Valeur
+marginale faible (la page player montre déjà les rangs des playlists jouées via GetPlayerCSRs ;
+A3 n'étend que les prompts « non classé » des actives non-jouées) mais livrée par respect de
+l'ordre du plan. Gate : build + gofmt + `go test ./internal/sync -run CSR|Playlist|Career|Augment`
+vert, dont `TestAugmentWithActiveRankedCSRs_UsesProvidedList`.
+
+**B2 — STATUÉE [!] (blocage valide, règle 3 du contrat)** : le swap agrégation-par-match →
+service-record par (saison, playlist) exige de VALIDER contre l'API live (token-gated) que
+l'endpoint `/hi/players/{p}/Matchmade/servicerecord` accepte le filtre `playlistAssetId` et
+renvoie les CoreStats complets par playlist. Le code existant (`FetchSeasonServiceRecord`) ne
+lit que `MatchesCompleted` → forme complète non prouvée. Bâtir un agrégateur de STATS sur une
+forme API non vérifiée = imprudent → sonde live requise d'abord (ressource externe = report
+VALIDE, pas « momentum »). Design turnkey + mapping validé (KDA linéaire exact ; accuracy =
+(ShotsHit/ShotsFired)×MatchCount car la lecture passe kda/accuracy bruts ; tie/dnf=0) consignés
+au plan. Item 1 (vérif existant) [x] fait.
+
+## [2026-07-02] A2 classement : le cron découvre les playlists ACTIVES réelles (7 vs 4) — COMPLÉTÉ (worktree)
+
+**Tâche** : étape A2 du plan. Cause de « peu de playlists actives sur la page classement » :
+la page dérive sa liste des SNAPSHOTS (`DISTINCT playlist_id FROM world_csr_leaderboard_latest`)
+et le cron ne scrapait que `rankedplaylists.Active()` (4 en dur) → 4 playlists avec snapshots
+→ page à 4. Pivot A1 acté : le manifest de build a un `PlaylistLinks` VIDE (OpenSpartan wiki) ;
+la source directe des playlists actives est **déjà scrapée** dans le `__NEXT_DATA__` Waypoint
+(champ `playlists` = 7 playlists : Snipers, Doubles, Slayer, Legacy, Arena, Tactical, 1v1).
+
+**Décision technique** :
+- `LeaderboardScraper.FetchActivePlaylists(ctx, ref)` mappe la portion `playlists` de la
+  méthode existante `FetchCatalog` en `[]domain.WorldPlaylistRef{AssetID, DisplayName}`.
+- Port `LeaderboardScraperPort.FetchActivePlaylists` + `WorldLeaderboardCron.discoverActivePlaylists` :
+  découverte à chaque cycle, **fallback sur la liste statique** si erreur/vide (jamais scraper
+  zéro playlist sur un hoquet de page). `runOnceForTitle` scrape les playlists découvertes.
+- Multi-titre : hérite du gate `CapWorldLeaderboard` de `RunOnce`.
+- DIFFÉRÉ (→ A3) : MAJ `playlists_catalog.is_active` (metadata) — la page ne lit pas le
+  catalogue (dérive des snapshots), le cron n'a pas de writer metadata, et le seul
+  consommateur du flag (FiltersService) relève de la migration consommateurs A3. Contrainte
+  ART notée : `playlists_catalog` sans index secondaire (ratchet) → UPDATE-or-INSERT only.
+
+**Résultats — gate** : `go build ./...` OK ; `gofmt -l` propre ; `go test ./internal/scheduler/
+./internal/platform/halo/` vert, dont `TestWorldLeaderboardCron_DiscoversActivePlaylists`
+(le cron scrape les 3 playlists découvertes du stub, pas les 2 statiques → 3 snapshots) et
+`TestWorldLeaderboardCron_FallbackStaticPlaylists` (erreur découverte → fallback 2 statiques).
+
+**Conclusion / reste** : effet utilisateur = toutes les playlists classées actives finissent
+avec des snapshots → la page classement les affiche toutes (au prochain cycle du cron).
+Minor connu : la découverte fait un fetch page-1 en plus de FetchActiveSeason (2 petits
+fetches/cycle quotidien, acceptable). Prochaine étape : A3 (consommateurs lisent le catalogue
++ CSR post-sync sur playlists dynamiques) puis B2 (service-record), C1/C2.
+
+## [2026-07-02] B1 leaderboard mondial : persister le xuid Waypoint, court-circuiter PeopleHub — COMPLÉTÉ (worktree, non commité)
+
+**Tâche** : étape B1 du plan `.ai/V7/PLAN_PLAYLISTS_CATALOG_ET_LEADERBOARD.md` (comparaison LeafApp_Infinite). Les « trous » du classement mondial (joueurs enrichis vides) venaient de la Phase C qui re-résout gamertag→xuid via PeopleHub (single-token, ~1,6 s/joueur, fragile 429) ALORS que le scraper Waypoint parse déjà le xuid — mais le persister le jetait (table sans colonne xuid, commentaire inversé prétendant « Waypoint ne publie pas de xuid »). Worktree `feat+leaderboard-catalogue` créé depuis main local (3aef23396).
+
+**Décision technique** :
+- Migration `add_xuid_to_world_csr_leaderboard` : `ALTER TABLE world_csr_leaderboard_snapshots ADD COLUMN xuid VARCHAR` (nullable, non indexé/non-PK → aucun risque ART) + recréation de la vue `world_csr_leaderboard_latest` (DuckDB fige l'expansion de `s.*` à la création → reconstruction obligatoire pour exposer la colonne). Enregistrée dans `canonicalOrder` + la liste `wanted` du helper de test.
+- `InsertWorldCSRSnapshot` persiste `e.XUID` (déjà parsé par le scraper, jamais stocké). Read display `GetCSRWorldLeaderboard` : `'' AS xuid` → `COALESCE(xuid,'')` → débloque `isLocalXUID` (mise en évidence du joueur courant) sur le classement mondial. Commentaire inversé corrigé.
+- `WorldSeasonGamertags` ([]string) → `WorldSeasonPlayers` ([]domain.WorldPlayerRef = gamertag+xuid), dédup `GROUP BY gamertag` avec `MAX(xuid)` (préfère un xuid non-NULL). Callers migrés : cron `seasonPlayers` + CLI backfill (dérive `gamertags` pour garder la logique checkpoint intacte). Ancien nom supprimé (0 référence).
+- Agrégateur : `SeedKnownXUIDs(map)` pré-remplit `xuidByGamertag` → PeopleHub court-circuité dans `PrepareWorldPlayers` ET `AggregatePlayer` ; le résolveur n'est appelé QUE pour les gamertags sans xuid (lignes pré-migration, auto-remplies au prochain scrape). Enricher + CLI seedent avant le run. Compteur expvar `world_enrich.xuid_from_snapshot` + log DebugContext.
+
+**Résultats — gate** : `go build ./...` OK ; `gofmt -l` propre (12 fichiers) ; tests verts — `internal/migration`, `internal/games/halo_infinite/migrations` (valide le step + ordering), `internal/scheduler`, `internal/platform/duckdb` (unit + `-tags=integration` : INSERT anti-ART + vue), `internal/service` (dont nouveau `TestEnrichSeason_SeededXUIDSkipsResolver` = résolveur appelé 0 fois quand xuid pré-seedé). Diff : 12 fichiers, +234/-59.
+
+**Conclusion / prochaine étape** : B1 complet et gaté, NON commité (attente feu vert utilisateur). Résiduel attendu = comptes à historique privé (403) : CSR/rang affichés, stats riches absentes (limite confidentialité, pas un bug ; sera encore réduit par B2 service-record). Étape suivante du plan : A1 (énumérateur de manifest) — nécessite une sonde live contre l'API Halo (tokens watcher valides).
+
 ## [2026-07-02] Aperçus de liens sociaux (Open Graph) — injection serveur, cartes dynamiques par page — COMPLÉTÉ (non poussé)
 
 **Tâche** : question user — pas d'aperçu quand il partage la demo sur Reddit/Facebook/WhatsApp. Cause : SPA React/Vite → le HTML servi est une coquille vide, et les robots d'aperçu (facebookexternalhit, Twitterbot, redditbot, Discordbot…) n'exécutent pas le JS → aucune balise `og:*` lue. Choix produit validé : cartes **dynamiques par page** (texte) + image de marque = capture Chrome de la demo.

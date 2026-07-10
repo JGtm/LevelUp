@@ -22,6 +22,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -31,6 +32,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability/logging"
@@ -49,6 +51,12 @@ func main() {
 	dryRun := flag.Bool("dry-run", false, "scrape et affiche les comptes sans écrire")
 	titleSlug := flag.String("title", "halo_infinite", "slug du titre (défaut halo_infinite)")
 	flag.Parse()
+
+	// Enregistre les steps de migration title-owned (halo_infinite) : sans ça,
+	// RunForDB n'applique QUE les migrations globales et rate p.ex. add_xuid /
+	// create_season_catalog → InsertWorldCSRSnapshot échoue (colonne xuid absente)
+	// sur une DB que le serveur n'a pas déjà migrée (backfill hors prod déployée).
+	migration.SetTitleStepsProvider(halomigrations.StepsFor)
 
 	closeLogs := logging.InstallCLI(os.Getenv("LEVELUP_REPO_ROOT"))
 	defer closeLogs()
@@ -100,7 +108,15 @@ func main() {
 			}
 			entries, ferr := scraper.FetchCSRLeaderboard(ctx, s, pl, *limit)
 			if ferr != nil {
-				log.ErrorContext(ctx, "scrape playlist échoué", "season", s, "playlist", pl, "err", ferr)
+				// 404 = playlist non classée cette saison : skip NOMINAL d'un backfill
+				// multi-saisons × toutes playlists (pas une erreur). Les vraies erreurs
+				// (429, 5xx, réseau) restent en ERROR.
+				if errors.Is(ferr, halo.ErrLeaderboardPageNotFound) {
+					fmt.Printf("  %s : —  (non classée cette saison)\n", pl)
+					log.InfoContext(ctx, "playlist non classée cette saison — ignorée", "season", s, "playlist", pl)
+				} else {
+					log.ErrorContext(ctx, "scrape playlist échoué", "season", s, "playlist", pl, "err", ferr)
+				}
 				continue
 			}
 			rows += len(entries)
