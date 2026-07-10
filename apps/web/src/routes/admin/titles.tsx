@@ -1,10 +1,11 @@
 /**
- * Route /admin/titles — Titres : gestion multi-titres (registre, Status
- * lifecycle, capabilities + feature-matrix). PMT-14 volet A.
+ * Route /admin/titles — REDIRECTION (A3, DC-8) : le registre des titres (et
+ * son diagnostic) est une section de l'onglet Gestion.
  */
-import { createFileRoute } from '@tanstack/react-router'
-import { AdminTitlesPage } from '@/features/admin/titles/AdminTitlesPage'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/admin/titles')({
-  component: AdminTitlesPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/admin/management', replace: true })
+  },
 })

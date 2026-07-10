@@ -1,22 +1,21 @@
 /**
- * AdminSystemPage — onglet Système : contention DB (B-swap), santé des tokens
- * auth et intégrité des données (sections extraites 1:1 de l'ancienne
- * AdminPage).
+ * AdminSystemPage — onglet Système : bas niveau (DC-8). Contention DB (B-swap),
+ * perf des phases persist, tail de logs bruts (ex-onglet Logs) et backup.
+ * TokenHealthSection a migré vers Sync, InvariantsSection vers Données (A3.3 /
+ * A3.2 — chaque information n'apparaît plus qu'à UN endroit).
  */
 import { DBContentionSection } from '../sections/DBContentionSection'
-import { TokenHealthSection } from '../sections/TokenHealthSection'
-import { InvariantsSection } from '../sections/InvariantsSection'
 import { PersistPhasesSection } from './PersistPhasesSection'
 import { AdminBackupSection } from './AdminBackupSection'
+import { AdminLogsPage } from '../logs/AdminLogsPage'
 
 export function AdminSystemPage() {
   return (
     <div className="space-y-8">
       <DBContentionSection />
       <PersistPhasesSection />
-      <TokenHealthSection />
-      <InvariantsSection />
       <AdminBackupSection />
+      <AdminLogsPage />
     </div>
   )
 }

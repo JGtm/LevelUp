@@ -1,13 +1,19 @@
-// Package lab charge les données du Lab interne depuis DuckDB et le filesystem.
+// Package lab charge le diagnostic d'instance (ex-Lab) depuis DuckDB et le
+// filesystem.
+//
+// A3.5 (DC-9, 2026-07-10) : le Lab est retiré de l'app — ne reste que
+// GetDiagnostics (rapport de parité + garde-fous médailles), consommé par le
+// panneau Diagnostics de l'onglet admin Données. Les explorateurs Resources /
+// Contracts / Waypoint sont partis avec leurs endpoints.
 package lab
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"levelup/go-api/internal/config"
@@ -20,126 +26,14 @@ import (
 
 var _ port.LabProvider = (*Provider)(nil)
 
-var pathParamRE = regexp.MustCompile(`\{[^}]+\}`)
-
-var openAPIMethods = map[string]bool{
-	"get":     true,
-	"post":    true,
-	"put":     true,
-	"patch":   true,
-	"delete":  true,
-	"head":    true,
-	"options": true,
-}
-
-// Provider charge les données du Lab interne.
+// Provider charge le diagnostic d'instance.
 type Provider struct {
 	cfg *config.AppConfig
 }
 
-// NewProvider crée un provider du Lab interne.
+// NewProvider crée un provider du diagnostic d'instance.
 func NewProvider(cfg *config.AppConfig) *Provider {
 	return &Provider{cfg: cfg}
-}
-
-// GetResources charge le panneau Explorateur interne.
-func (p *Provider) GetResources(
-	ctx context.Context,
-	titleSlug string,
-	query domain.LabResourcesQuery,
-) (*domain.LabResourcesResponse, error) {
-	metaPath := p.metadataDBPath(titleSlug)
-	// OpenReadWriteShared : partage la même instance DuckDB que le pool joueur ;
-	// OpenReadOnly créerait une 2e config sur le même fichier → erreur DuckDB.
-	metaDB, err := duckdb.OpenReadWriteShared(metaPath)
-	if err != nil {
-		return nil, fmt.Errorf("lab resources open metadata: %w", err)
-	}
-	defer metaDB.Close()
-
-	repo := duckdb.NewMetadataRepoFromDB(metaDB)
-	currentSeason, err := repo.GetCurrentSeason(ctx, titleSlug)
-	if err != nil && !isMissingRelationError(err) {
-		return nil, err
-	}
-	seasons, err := listSeasonCalendars(ctx, metaDB, titleSlug)
-	if err != nil {
-		return nil, err
-	}
-	csrSeasons, err := repo.GetCSRSeasons(ctx, titleSlug)
-	if err != nil && !isMissingRelationError(err) {
-		return nil, err
-	}
-	snapshots, err := listSnapshots(ctx, metaDB, titleSlug, query.Limit)
-	if err != nil {
-		return nil, err
-	}
-	selectedSnapshot, err := loadSelectedSnapshot(ctx, repo, titleSlug, query.SnapshotKey)
-	if err != nil {
-		return nil, err
-	}
-	assets, err := loadAssets(ctx, metaDB, repo, titleSlug, query)
-	if err != nil {
-		return nil, err
-	}
-	medals, err := loadMedals(ctx, metaDB, titleSlug, query)
-	if err != nil {
-		return nil, err
-	}
-
-	return &domain.LabResourcesResponse{
-		TitleSlug:        titleSlug,
-		MetadataDBPath:   metaPath,
-		CurrentSeason:    currentSeason,
-		Seasons:          seasons,
-		CSRSeasons:       orEmptyCSR(csrSeasons),
-		Snapshots:        snapshots,
-		SelectedSnapshot: selectedSnapshot,
-		Assets:           assets,
-		Medals:           medals,
-	}, nil
-}
-
-// GetContracts charge le diff OpenAPI côté Go.
-func (p *Provider) GetContracts(ctx context.Context) (*domain.LabContractsResponse, error) {
-	goPath := filepath.Join(p.cfg.RepoRoot, "apps", "go-api", "api", "openapi.yaml")
-	fastapiPath := filepath.Join(p.cfg.RepoRoot, "apps", "go-api", "api", "openapi_fastapi_reference.yaml")
-
-	goFile, err := buildFileStatus(goPath)
-	if err != nil {
-		return nil, err
-	}
-	fastapiFile, err := buildFileStatus(fastapiPath)
-	if err != nil {
-		return nil, err
-	}
-
-	goRoutes, err := loadOpenAPIRoutes(goPath)
-	if err != nil {
-		return nil, err
-	}
-	fastapiRoutes, err := loadOpenAPIRoutes(fastapiPath)
-	if err != nil {
-		return nil, err
-	}
-	missing, extra, mismatches := compareOpenAPIRoutes(fastapiRoutes, goRoutes)
-
-	_ = ctx
-	return &domain.LabContractsResponse{
-		GoOpenAPI:        goFile,
-		FastAPIReference: fastapiFile,
-		Summary: domain.LabOpenAPISummary{
-			FastAPIRouteCount: len(fastapiRoutes),
-			GoRouteCount:      len(goRoutes),
-			MissingInGo:       len(missing),
-			ExtraInGo:         len(extra),
-			MethodMismatches:  len(mismatches),
-			Status:            labContractStatus(missing, mismatches),
-		},
-		MissingInGo:      missing,
-		ExtraInGo:        extra,
-		MethodMismatches: mismatches,
-	}, nil
 }
 
 // GetDiagnostics charge le rapport de parité stocké et les garde-fous médailles.
@@ -172,7 +66,8 @@ func (p *Provider) loadMedalGuards(
 	ctx context.Context,
 	titleSlug string,
 ) (*domain.LabMedalGuardsReport, error) {
-	// OpenReadWriteShared : voir commentaire dans GetResources (config DuckDB unique par fichier).
+	// OpenReadWriteShared : partage la même instance DuckDB que le pool joueur ;
+	// OpenReadOnly créerait une 2e config sur le même fichier → erreur DuckDB.
 	metaDB, err := duckdb.OpenReadWriteShared(p.metadataDBPath(titleSlug))
 	if err != nil {
 		return nil, nil
@@ -227,98 +122,60 @@ func buildFileStatus(path string) (domain.LabFileStatus, error) {
 	}, nil
 }
 
-func listSeasonCalendars(
-	ctx context.Context,
-	metaDB *duckdb.DB,
-	titleSlug string,
-) ([]domain.SeasonCalendar, error) {
-	rows, err := metaDB.Query(ctx, `
-		SELECT title_id, season_id, version, name, start_date, end_date, fetched_at, content_hash, etag, source_url
-		FROM season_calendars
-		WHERE title_id = ?
-		ORDER BY start_date DESC`, titleSlug)
-	if err != nil {
-		if isMissingRelationError(err) {
-			return []domain.SeasonCalendar{}, nil
-		}
-		return nil, fmt.Errorf("list season calendars: %w", err)
-	}
-	defer rows.Close()
-
-	var seasons []domain.SeasonCalendar
-	for rows.Next() {
-		season, err := scanSeasonCalendar(rows)
-		if err != nil {
-			return nil, err
-		}
-		seasons = append(seasons, season)
-	}
-	return seasons, rows.Err()
-}
-
-func listSnapshots(
-	ctx context.Context,
-	metaDB *duckdb.DB,
-	titleSlug string,
-	limit int,
-) ([]domain.LabSnapshotSummary, error) {
-	rows, err := metaDB.Query(ctx, `
-		SELECT title_id, resource_key, version, fetched_at, content_hash, etag, source_url, payload
-		FROM waypoint_resource_snapshots
-		WHERE title_id = ?
-		ORDER BY fetched_at DESC
-		LIMIT ?`, titleSlug, limit)
-	if err != nil {
-		if isMissingRelationError(err) {
-			return []domain.LabSnapshotSummary{}, nil
-		}
-		return nil, fmt.Errorf("list snapshots: %w", err)
-	}
-	defer rows.Close()
-
-	var snapshots []domain.LabSnapshotSummary
-	for rows.Next() {
-		var titleID string
-		var item domain.LabSnapshotSummary
-		var payload string
-		if err := rows.Scan(
-			&titleID, &item.ResourceKey, &item.Version, &item.FetchedAt,
-			&item.ContentHash, &item.ETag, &item.SourceURL, &payload,
-		); err != nil {
-			return nil, fmt.Errorf("scan snapshot: %w", err)
-		}
-		item.PayloadSize = len(payload)
-		snapshots = append(snapshots, item)
-	}
-	return snapshots, rows.Err()
-}
-
-func loadSelectedSnapshot(
-	ctx context.Context,
-	repo *duckdb.MetadataRepo,
-	titleSlug string,
-	resourceKey string,
-) (*domain.LabSnapshotDetail, error) {
-	if strings.TrimSpace(resourceKey) == "" {
+func loadParityReport(file domain.LabFileStatus) (*domain.LabParityReport, error) {
+	if !file.Exists {
 		return nil, nil
 	}
-	snap, err := repo.GetSnapshot(ctx, titleSlug, resourceKey)
+	data, err := os.ReadFile(file.Path)
 	if err != nil {
-		if isMissingRelationError(err) {
-			return nil, nil
-		}
+		return nil, fmt.Errorf("read parity report: %w", err)
+	}
+	var report domain.LabParityReport
+	if err := json.Unmarshal(data, &report); err != nil {
+		return nil, fmt.Errorf("parse parity report: %w", err)
+	}
+	return &report, nil
+}
+
+// listAllMedalEntries charge les entrées waypoint_medals_raw pour les guards.
+func listAllMedalEntries(
+	ctx context.Context,
+	metaDB *duckdb.DB,
+	titleSlug string,
+) ([]metadata_guard.MedalEntry, error) {
+	rows, err := metaDB.Query(ctx, `
+		SELECT title_id, medal_id, name_id, description_id, medal_type, difficulty, '', sprite_index, raw_json
+		FROM waypoint_medals_raw
+		WHERE title_id = ?
+		ORDER BY medal_id ASC`, titleSlug)
+	if err != nil {
 		return nil, err
 	}
-	if snap == nil {
-		return nil, nil
+	defer rows.Close()
+
+	var entries []metadata_guard.MedalEntry
+	for rows.Next() {
+		var entry metadata_guard.MedalEntry
+		if err := rows.Scan(
+			&entry.TitleID, &entry.MedalID, &entry.Label, &entry.Description,
+			&entry.Category, &entry.Rarity, &entry.ImageURL,
+			&entry.SpriteIdx, &entry.RawJSON,
+		); err != nil {
+			return nil, fmt.Errorf("scan medal guard entry: %w", err)
+		}
+		entries = append(entries, entry)
 	}
-	return &domain.LabSnapshotDetail{
-		ResourceKey: snap.ResourceKey,
-		Version:     snap.Version,
-		FetchedAt:   snap.FetchedAt,
-		ContentHash: snap.ContentHash,
-		ETag:        snap.ETag,
-		SourceURL:   snap.SourceURL,
-		Payload:     snap.Payload,
-	}, nil
+	return entries, rows.Err()
+}
+
+func isMissingRelationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "catalog error") && strings.Contains(msg, "does not exist")
+}
+
+func toGuardResult(result metadata_guard.GuardResult) domain.LabGuardResult {
+	return domain.LabGuardResult{Passed: result.Passed, Reason: result.Reason, Details: result.Details}
 }

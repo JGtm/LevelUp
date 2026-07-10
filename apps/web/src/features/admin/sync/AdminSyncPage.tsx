@@ -20,6 +20,7 @@ import {
   type AdminLocale,
 } from '../format'
 import { AdminQuickActions } from '../overview/AdminQuickActions'
+import { TokenHealthSection } from '../sections/TokenHealthSection'
 import { SyncPlayersTable } from './SyncPlayersTable'
 import { SyncCycleHistory } from './SyncCycleHistory'
 import { AdminJobsTable } from './AdminJobsTable'
@@ -88,6 +89,10 @@ export function AdminSyncPage() {
       )}
 
       <WatcherSection />
+
+      {/* Santé des tokens auth (ex-Système, A3.3) : les tokens conditionnent le
+          moteur de sync — ils n'apparaissent plus qu'ici (État = verdict seul). */}
+      <TokenHealthSection />
 
       <ApiHaloSection perf={perf.data} />
 

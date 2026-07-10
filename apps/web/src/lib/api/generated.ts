@@ -1151,40 +1151,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/lab/resources": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lab interne — explorateur de ressources (snapshots, assets, médailles) */
-        get: operations["getLabResources"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/lab/contracts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lab interne — diff de contrat OpenAPI (Go vs référence FastAPI) */
-        get: operations["getLabContracts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/lab/diagnostics": {
         parameters: {
             query?: never;
@@ -1192,25 +1158,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lab interne — diagnostics d'instance (parité + garde-fous médailles) */
+        /** Diagnostic d'instance — parité + garde-fous médailles */
         get: operations["getLabDiagnostics"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/lab/waypoint": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lab — exploration live de l'API Discovery UGC (résolution d'un asset par segment/id/version) */
-        get: operations["getLabWaypoint"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6174,40 +6123,6 @@ export interface components {
             has_data: boolean;
             points: components["schemas"]["LUSRPoint"][] | null;
         };
-        LabAssetDetail: {
-            asset_id: string;
-            asset_type: string;
-            content_hash: string;
-            description: string;
-            /** Format: date-time */
-            fetched_at: string;
-            name: string;
-            raw_json: string;
-            version_id: string;
-        };
-        LabAssetExplorer: {
-            items: components["schemas"]["LabAssetSummary"][] | null;
-            search?: string;
-            selected?: components["schemas"]["LabAssetDetail"];
-            /** Format: int64 */
-            total: number;
-        };
-        LabAssetSummary: {
-            asset_id: string;
-            asset_type: string;
-            /** Format: date-time */
-            fetched_at: string;
-            name: string;
-            version_id: string;
-        };
-        LabContractsResponse: {
-            extra_in_go: components["schemas"]["LabRouteMethods"][] | null;
-            fastapi_reference: components["schemas"]["LabFileStatus"];
-            go_openapi: components["schemas"]["LabFileStatus"];
-            method_mismatches: components["schemas"]["LabMethodMismatch"][] | null;
-            missing_in_go: components["schemas"]["LabRouteMethods"][] | null;
-            summary: components["schemas"]["LabOpenAPISummary"];
-        };
         LabDiagnosticsResponse: {
             medal_guards?: components["schemas"]["LabMedalGuardsReport"];
             parity_report?: components["schemas"]["LabParityReport"];
@@ -6227,29 +6142,6 @@ export interface components {
             passed: boolean;
             reason: string;
         };
-        LabMedalDetail: {
-            content_hash: string;
-            description_id: string;
-            difficulty: string;
-            /** Format: date-time */
-            fetched_at: string;
-            /** Format: int64 */
-            medal_id: number;
-            medal_type: string;
-            name_id: string;
-            /** Format: int64 */
-            personal_score: number;
-            raw_json: string;
-            /** Format: int64 */
-            sprite_index: number;
-        };
-        LabMedalExplorer: {
-            items: components["schemas"]["LabMedalSummary"][] | null;
-            search?: string;
-            selected?: components["schemas"]["LabMedalDetail"];
-            /** Format: int64 */
-            total: number;
-        };
         LabMedalGuardsReport: {
             cardinality: components["schemas"]["LabGuardResult"];
             /** Format: int64 */
@@ -6257,39 +6149,6 @@ export interface components {
             images: components["schemas"]["LabGuardResult"];
             overall: components["schemas"]["LabGuardResult"];
             required_fields: components["schemas"]["LabGuardResult"];
-        };
-        LabMedalSummary: {
-            description_id: string;
-            difficulty: string;
-            /** Format: date-time */
-            fetched_at: string;
-            /** Format: int64 */
-            medal_id: number;
-            medal_type: string;
-            name_id: string;
-            /** Format: int64 */
-            sprite_index: number;
-        };
-        LabMethodMismatch: {
-            extra_methods: string[] | null;
-            fastapi_methods: string[] | null;
-            fastapi_path: string;
-            go_methods: string[] | null;
-            go_path: string;
-            missing_methods: string[] | null;
-        };
-        LabOpenAPISummary: {
-            /** Format: int64 */
-            extra_in_go: number;
-            /** Format: int64 */
-            fastapi_route_count: number;
-            /** Format: int64 */
-            go_route_count: number;
-            /** Format: int64 */
-            method_mismatches: number;
-            /** Format: int64 */
-            missing_in_go: number;
-            status: string;
         };
         LabParityReport: {
             generated_at: string;
@@ -6319,56 +6178,6 @@ export interface components {
             skipped: number;
             /** Format: int64 */
             total: number;
-        };
-        LabResourcesResponse: {
-            assets: components["schemas"]["LabAssetExplorer"];
-            csr_seasons: components["schemas"]["CSRSeasonCalendar"][] | null;
-            current_season?: components["schemas"]["SeasonCalendar"];
-            medals: components["schemas"]["LabMedalExplorer"];
-            metadata_db_path: string;
-            seasons: components["schemas"]["SeasonCalendar"][] | null;
-            selected_snapshot?: components["schemas"]["LabSnapshotDetail"];
-            snapshots: components["schemas"]["LabSnapshotSummary"][] | null;
-            title_slug: string;
-        };
-        LabRouteMethods: {
-            methods: string[] | null;
-            path: string;
-        };
-        LabSnapshotDetail: {
-            content_hash: string;
-            etag?: string;
-            /** Format: date-time */
-            fetched_at: string;
-            payload: string;
-            resource_key: string;
-            source_url?: string;
-            version: string;
-        };
-        LabSnapshotSummary: {
-            content_hash: string;
-            etag?: string;
-            /** Format: date-time */
-            fetched_at: string;
-            /** Format: int64 */
-            payload_size: number;
-            resource_key: string;
-            source_url?: string;
-            version: string;
-        };
-        LabWaypointResponse: {
-            asset_id: string;
-            asset_name?: string;
-            description?: string;
-            endpoint: string;
-            error?: string;
-            image_url?: string;
-            lang: string;
-            /** Format: int64 */
-            latency_ms: number;
-            resolved_ok: boolean;
-            segment: string;
-            version_id: string;
         };
         LastSeenStatus: {
             timestamp: string;
@@ -10435,63 +10244,6 @@ export interface operations {
             };
         };
     };
-    getLabResources: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Ressources du Lab pour le titre courant */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Paramètre de requête invalide */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Lab non autorisé sur cette instance (can_manage_instance) */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    getLabContracts: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Diff de contrat OpenAPI */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Lab non autorisé sur cette instance (can_manage_instance) */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     getLabDiagnostics: {
         parameters: {
             query?: never;
@@ -10508,47 +10260,8 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Lab non autorisé sur cette instance (can_manage_instance) */
+            /** @description Diagnostic non autorisé sur cette instance (can_manage_instance) */
             403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    getLabWaypoint: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Résultat de l'exploration (asset résolu, ou erreur d'appel portée dans la réponse) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Paramètres requis manquants (segment/asset_id/version_id) */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Lab non autorisé sur cette instance (can_manage_instance) */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Explorateur d'API indisponible (aucune source de token Spartan) */
-            503: {
                 headers: {
                     [name: string]: unknown;
                 };

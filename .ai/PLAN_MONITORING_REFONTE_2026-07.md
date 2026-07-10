@@ -171,37 +171,66 @@ constater visuellement). GATE PASSÉ (hors constat visuel restart, délégué à
 Applique DC-8 et DC-9. Réorganisation de coquille : on déplace des sections existantes,
 on n'en crée pas (le nouveau contenu arrive en A4-A7).
 
-- [ ] A3.1 Routes file-based : `routes/admin/` recomposé vers les 6 onglets DC-8
-      (jamais toucher `routeTree.gen.ts`) ; redirections des anciennes URLs
-      (`/admin/convergence`, `/admin/data-quality`, `/admin/logs`, `/admin/access`,
-      `/admin/titles`, `/admin/lab`) vers leur nouvelle destination.
-- [ ] A3.2 Onglet « Données » : fusion Qualité données + Convergence + Invariants en
-      sections d'une même page (les composants existants sont déplacés, pas réécrits).
-      `InvariantsSection` quitte Système ; le KPI invariants de l'overview devient un
-      verdict agrégé pointant vers Données.
-- [ ] A3.3 Onglet « Sync » : absorbe `TokenHealthSection` (quitte Système) et la santé
-      pool ; tokens n'apparaissent plus qu'ici (État n'affiche que le verdict).
-- [ ] A3.4 Onglet « Gestion » : Access (users/invites) + Titres (avec son diagnostic)
-      regroupés ; nav séparée visuellement du bloc observation (ordre : observation
-      d'abord, gestion à droite).
-- [ ] A3.5 Retrait du Lab (DC-9), inventaire sur pièces puis suppression complète :
-      front `features/admin/lab/` (AdminLabPage, WaypointExplorerPanel + tests) et
-      `features/lab/` (ResourcesPanel, LabHelp, i18n, queries), route `routes/admin/lab.tsx`,
-      clés i18n `admin.lab.*` + manifests lab, query keys lab ; back `handlers/lab.go`
-      + `lab_test.go`, `service.LabService`, routes `/lab/resources`, `/lab/contracts`
-      (déjà 0 caller front — confirmer), `/lab/diagnostics`, `/lab/waypoint`, wiring.
-      Vérifier grep zéro référence résiduelle avant suppression ET après.
-- [ ] A3.6 Runbook `docs/RUNBOOK_ADD_TITLE.md` (EN-only — politique docs) : parcours
-      « ajouter un titre » avec les CLI existantes (probe, metadata-fetch,
-      populate-assets, config/titles TOML, onglet Gestion→Titres pour le diagnostic).
-- [ ] A3.7 `tabBadges.ts` remappé sur les 6 onglets (source inchangée : overview seul) ;
-      `AdminLayout` mis à jour ; strings FR+EN.
-- [ ] A3.8 Tests : vitest nav/badges/redirects ; `go test ./internal/api/...` (routes
-      lab supprimées) ; test grep garde-rail « zéro import features/lab ».
+- [x] A3.1 Routes file-based recomposées vers les 6 onglets DC-8 : nouvelles routes
+      `/admin/detections`, `/admin/data`, `/admin/management` ; redirections
+      (`beforeLoad`+`redirect`) : convergence→data, data-quality→data, logs→system
+      (search module/level/q/n préservé — l'URL-state du viewer vit sur system),
+      access→management, titles→management, lab→management. `routeTree.gen.ts`
+      régénéré par le plugin (vite build), jamais édité à la main.
+- [x] A3.2 Onglet « Données » (`AdminDataPage`) : compose AdminDataQualityPage +
+      AdminConvergencePage + InvariantsSection en sections (composants déplacés, pas
+      réécrits). InvariantsSection quitte Système ; KPI invariants de l'overview →
+      drill-down `/admin/data` (verdict agrégé inchangé).
+- [x] A3.3 Onglet « Sync » : absorbe TokenHealthSection (quitte Système) ; KPI tokens
+      de l'overview → drill-down `/admin/sync` ; verdicts diagnostics tokens/api_auth
+      pointent vers Sync. (Santé pool/watcher/API Halo déjà présentes.)
+- [x] A3.4 Onglet « Gestion » (`AdminManagementPage`) : UsersSection (ex-Access) +
+      AdminTitlesPage (avec son diagnostic) en sections ; onglet séparé visuellement
+      (ml-auto + border-l) — observation à gauche, gestion à droite.
+      `AdminAccessPage` (wrapper devenu orphelin) supprimé.
+- [x] A3.5 Retrait du Lab (DC-9) — PÉRIMÈTRE AJUSTÉ sur pièces (cf. Découvertes,
+      validé superviseur) : `features/lab/` n'était PAS entièrement supprimable
+      (DiagnosticsPanel/getLabText/useLabDiagnostics consommés par l'onglet Données ;
+      ChartsShowcasePage par le bac à sable dev `/lab/charts`, hors plan → conservé).
+      SUPPRIMÉ front : `features/admin/lab/` (AdminLabPage, WaypointExplorerPanel +
+      test), ResourcesPanel, LabHelp, useLabResources/useLabWaypoint + types + query
+      key labResources, _labShared réduit (RouteList/JsonViewer/SelectableLists),
+      i18n lab réduit à common+diagnostics, clés `admin.lab.*` + `admin.nav.lab`,
+      fixtures MSW resources/contracts/waypoint ; `routes/admin/lab.tsx` = redirection.
+      SUPPRIMÉ back : routes `/lab/resources`, `/lab/contracts` (0 caller confirmé),
+      `/lab/waypoint` ; LabService réduit à GetDiagnostics (WaypointExplorer,
+      ErrLabWaypoint* supprimés) ; provider réduit (provider_assets_medals.go +
+      provider_contracts.go supprimés, listAllMedalEntries/loadParityReport conservés) ;
+      domain/lab.go réduit aux types diagnostics ; closure waypointExplore retirée de
+      server_apiv1.go ; openapi.yaml : 3 paths + 14 schémas orphelins supprimés,
+      types front régénérés. CONSERVÉ : `GET /lab/diagnostics` (gate
+      can_manage_instance intact). Greps avant/après verts (voir gate).
+- [x] A3.6 Runbook `docs/RUNBOOK_ADD_TITLE.md` (EN-only) : parcours complet probe →
+      déclaration registry+TOML → metadata-fetch/populate-assets → adapters →
+      routage sync (piège orchestrator mono-titre) → `levelup-titles diagnose` +
+      onglet Gestion→Titres.
+- [x] A3.7 `tabBadges.ts` remappé DC-8 : Sync = échecs cycle + tokens morts
+      (destructive) sinon jobs actifs (info pulse) ; Données = invariants FAIL
+      (destructive) sinon warn invariants + data health (warning) ; Détections =
+      `open` seul (warning). AdminLayout 6 onglets ; nav labels FR+EN mis à jour
+      (« État », « Détections », « Données », « Sync », « Système », « Gestion »).
+- [x] A3.8 Tests : tabBadges.test remappé + cas tokens/détections ;
+      `lab-removal.guard.test.ts` (garde-rail AJUSTÉ : interdit les endpoints
+      supprimés + les imports des modules supprimés — pas `features/lab` en bloc,
+      briques encore consommées — ET vérifie les 6 redirections) ;
+      `lab_routes_mounted_test.go` inversé (diagnostics montée, resources/contracts/
+      waypoint ABSENTES) ; lab_test.go réduit ; drift OpenAPI + contract routes verts.
 
 **Gate A3** : `make check-types && make test-web` + `go build ./... && go test ./...`
-verts ; `grep -rn "features/lab\|/lab/" apps/web/src apps/go-api/internal --include="*.ts*" --include="*.go"`
-→ 0 résultat applicatif ; les 6 onglets naviguent en local, anciennes URLs redirigent.
+verts ; grep gate (AJUSTÉ, cf. A3.5) → 0 résultat applicatif hors survivants déclarés ;
+les 6 onglets naviguent en local, anciennes URLs redirigent.
+RÉSULTAT 2026-07-10 : `tsc -b` EXIT 0 ; `vitest run` 247 fichiers / 2108 tests OK ;
+`go build ./...` EXIT 0 ; `go test ./...` EXIT 0 (0 FAIL) ; grep Go `"/lab/` → seule
+`/lab/diagnostics` (handlers/lab.go) ; grep web `'/lab/` → queries diagnostics +
+routes/lab/charts (sandbox conservé) ; refs Go Lab supprimées → 0 ;
+`golangci-lint --new-from-rev=158b336a9` → 0 ; vite build OK (routeTree régénéré).
+Navigation visuelle des 6 onglets = revue utilisateur (redirections couvertes par le
+garde-rail). GATE PASSÉ.
 
 ### A4 — Fraîcheur des données (effort : moyen) — atterrit dans « État »
 

@@ -3,6 +3,9 @@
  * (module/level/contains/limit partageables), auto-refresh opt-in 5 s,
  * expansion du détail JSON par ligne. Flux (pas de tri) — du plus récent au
  * plus ancien, comme un `tail -f` figé.
+ *
+ * A3 (DC-8) : rendu comme SECTION de l'onglet Système (le triage vit dans
+ * l'onglet Détections) — l'URL-state est porté par /admin/system.
  */
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
@@ -13,7 +16,6 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { AdminLogEntry } from '@/lib/api/types'
 import { useLogModules, useLogTail } from './queries'
 import { flattenLogFields, logEntryDetail, logEntryText, logLevelStatus } from './logDisplay'
-import { DetectionsPanel } from '../monitoring/DetectionsPanel'
 import { adminAbsoluteTime, adminRelativeTime } from '../format'
 import { useAdminT, useAdminLocale } from '../useAdminText'
 import { StatusBadge } from '../components/StatusBadge'
@@ -22,8 +24,8 @@ const LEVELS = ['debug', 'info', 'warn', 'error'] as const
 const LIMITS = ['50', '200', '500'] as const
 
 export function AdminLogsPage() {
-  const search = useSearch({ from: '/admin/logs' })
-  const navigate = useNavigate({ from: '/admin/logs' })
+  const search = useSearch({ from: '/admin/system' })
+  const navigate = useNavigate({ from: '/admin/system' })
   const tA = useAdminT()
 
   const [autoRefresh, setAutoRefresh] = useState(false)
@@ -60,7 +62,9 @@ export function AdminLogsPage() {
 
   return (
     <div className="space-y-6">
-      <DetectionsPanel />
+      <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+        {tA('admin.system.section_logs')}
+      </h3>
 
       <div className="space-y-4">
       {/* Barre de filtres */}

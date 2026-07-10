@@ -1,60 +1,14 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+/**
+ * Queries ex-Lab encore en service (A3.5, DC-9) : seul le diagnostic
+ * d'instance reste consommé (panneau DiagnosticsPanel dans l'onglet admin
+ * Données). Les explorateurs Resources / Waypoint sont retirés avec leurs
+ * endpoints back (garde-rail : lab-removal.guard.test.ts).
+ */
+import { useQuery } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
-import type {
-  LabDiagnosticsResponse,
-  LabResourcesResponse,
-  LabWaypointResponse,
-} from '@/lib/api/types'
+import type { LabDiagnosticsResponse } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
-
-export interface LabResourcesParams {
-  snapshotKey?: string
-  assetID?: string
-  assetSearch?: string
-  medalID?: number | null
-  medalSearch?: string
-  limit?: number
-}
-
-function buildLabResourcesPath(params: LabResourcesParams) {
-  const search = new URLSearchParams()
-  if (params.snapshotKey) {
-    search.set('snapshot_key', params.snapshotKey)
-  }
-  if (params.assetID) {
-    search.set('asset_id', params.assetID)
-  }
-  if (params.assetSearch) {
-    search.set('asset_search', params.assetSearch)
-  }
-  if (params.medalID != null) {
-    search.set('medal_id', String(params.medalID))
-  }
-  if (params.medalSearch) {
-    search.set('medal_search', params.medalSearch)
-  }
-  if (params.limit) {
-    search.set('limit', String(params.limit))
-  }
-  const qs = search.toString()
-  return qs ? `/lab/resources?${qs}` : '/lab/resources'
-}
-
-function buildLabResourcesHash(params: LabResourcesParams) {
-  return JSON.stringify(params)
-}
-
-export function useLabResources(params: LabResourcesParams, enabled = true) {
-  const requestHash = buildLabResourcesHash(params)
-
-  return useQuery({
-    queryKey: queryKeys.labResources(requestHash),
-    queryFn: () => api.get<LabResourcesResponse>(buildLabResourcesPath(params)),
-    enabled,
-    staleTime: 30 * 1000,
-  })
-}
 
 export function useLabDiagnostics(enabled = true) {
   return useQuery({
@@ -62,30 +16,5 @@ export function useLabDiagnostics(enabled = true) {
     queryFn: () => api.get<LabDiagnosticsResponse>('/lab/diagnostics'),
     enabled,
     staleTime: 60 * 1000,
-  })
-}
-
-export interface LabWaypointParams {
-  segment: string
-  assetID: string
-  versionID: string
-  lang?: string
-}
-
-/**
- * useLabWaypoint — exploration live de l'API Discovery UGC (Lab). Déclenchée
- * à la demande (bouton), donc une mutation plutôt qu'une query auto-fetch.
- */
-export function useLabWaypoint() {
-  return useMutation({
-    mutationFn: (params: LabWaypointParams) => {
-      const search = new URLSearchParams({
-        segment: params.segment,
-        asset_id: params.assetID,
-        version_id: params.versionID,
-      })
-      if (params.lang) search.set('lang', params.lang)
-      return api.get<LabWaypointResponse>(`/lab/waypoint?${search.toString()}`)
-    },
   })
 }

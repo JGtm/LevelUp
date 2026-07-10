@@ -138,7 +138,7 @@ function OverviewKpiGrid({
                 ? 'warning'
                 : 'success'
         }
-        to="/admin/system"
+        to="/admin/data"
       />
       <OverviewKpi
         label={tA('admin.overview.kpi_tokens')}
@@ -147,7 +147,7 @@ function OverviewKpiGrid({
         accent={
           tokensNeedAction === undefined ? undefined : tokensNeedAction > 0 ? 'destructive' : 'success'
         }
-        to="/admin/system"
+        to="/admin/sync"
       />
       <OverviewKpi
         label={tA('admin.overview.kpi_data_health')}

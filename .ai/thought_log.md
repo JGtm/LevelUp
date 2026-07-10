@@ -1,3 +1,32 @@
+## [2026-07-10] PLAN MONITORING REFONTE — A3 architecture 9→6 onglets + retrait Lab (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A3 CLOSE (gates verts). Reprise ordonnée par le superviseur après un
+arrêt à tort en fin d'A2 (le report A3→A9 « session dédiée » n'est pas un motif valide
+au sens du contrat plan-execution).
+
+**Décision technique principale** : DC-8 appliqué — 6 onglets par question opérateur.
+Nouvelles routes `/admin/{detections,data,management}` ; anciennes URLs = redirections
+`beforeLoad` (logs→system préserve le search du viewer, dont l'URL-state migre sur
+system). Données = composition des pages existantes (DataQuality + Convergence +
+InvariantsSection) — déplacées, pas réécrites. Sync absorbe TokenHealthSection ;
+badges/diagnostics/KPIs re-routés en conséquence. DC-9 : Lab retiré avec périmètre
+AJUSTÉ sur pièces (validé superviseur) — `features/lab/` pas supprimable en bloc :
+DiagnosticsPanel/i18n/useLabDiagnostics restent (consommés par Données), ChartsShowcase
+reste (sandbox dev /lab/charts hors plan). Supprimés : onglet front + panneaux
+Resources/Waypoint/LabHelp + back /lab/{resources,contracts,waypoint} + LabService
+waypoint + provider assets/contracts + domain types + 14 schémas OpenAPI orphelins ;
+`GET /lab/diagnostics` conservé (gate can_manage_instance). Garde-rails :
+`lab-removal.guard.test.ts` (endpoints+imports interdits + redirections vérifiées) et
+`lab_routes_mounted_test.go` inversé (anti-résurrection). Runbook
+`docs/RUNBOOK_ADD_TITLE.md` (EN-only) livré en compensation du workflow dev du Lab.
+
+**Résultats** : `tsc -b` EXIT 0 ; `vitest run` 247/2108 OK ; `go build ./...` 0 ;
+`go test ./...` 0 FAIL ; drift OpenAPI + contract routes verts ; lint new-from-rev 0.
+
+**Conclusion / prochaine étape** : A4 (fraîcheur des données, onglet État).
+
+---
+
 ## [2026-07-10] PLAN MONITORING REFONTE — A2 cycle de vie détections + UI triage (Complété, branche feat/monitoring-refonte-2026-07)
 
 **Statut** : Phase A2 CLOSE (gate passé, hors constat visuel restart délégué à l'utilisateur).

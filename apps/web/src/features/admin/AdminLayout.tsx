@@ -1,11 +1,13 @@
 /**
  * AdminLayout — layout parent de la section admin (guard isAdmin + onglets +
- * Outlet). Remplace l'ancienne AdminPage monolithique : chaque onglet est une
- * vraie sous-route (scoping du polling par page + code-splitting + URL-state).
+ * Outlet). Chaque onglet est une vraie sous-route (scoping du polling par page
+ * + code-splitting + URL-state).
  *
- * Onglets : Vue d'ensemble (/admin) · Sync & Jobs (/admin/sync) ·
- * Accès (/admin/access) · Système (/admin/system). Les onglets Convergence /
- * Qualité données / Logs arrivent avec leurs phases respectives.
+ * Architecture DC-8 (A3) — chaque onglet répond à UNE question opérateur :
+ * État (/admin) « tout va bien ? » · Détections « que dois-je traiter ? » ·
+ * Données « mon warehouse est-il intègre ? » · Sync « le moteur tourne-t-il ? » ·
+ * Système (bas niveau) · Gestion (administration, séparée visuellement du bloc
+ * observation — ordre : observation d'abord, gestion à droite, A3.4).
  */
 import { Outlet, Link, useNavigate, useMatchRoute } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
@@ -21,18 +23,17 @@ interface AdminTab {
   labelKey: AdminManifestKey
   /** Match exact pour l'index (/admin), fuzzy pour les sous-routes. */
   exact?: boolean
+  /** Bloc gestion : séparé visuellement du bloc observation (A3.4). */
+  management?: boolean
 }
 
 const TABS: AdminTab[] = [
   { to: '/admin', labelKey: 'admin.nav.overview', exact: true },
+  { to: '/admin/detections', labelKey: 'admin.nav.detections' },
+  { to: '/admin/data', labelKey: 'admin.nav.data' },
   { to: '/admin/sync', labelKey: 'admin.nav.sync' },
-  { to: '/admin/convergence', labelKey: 'admin.nav.convergence' },
-  { to: '/admin/data-quality', labelKey: 'admin.nav.data_quality' },
-  { to: '/admin/logs', labelKey: 'admin.nav.logs' },
-  { to: '/admin/access', labelKey: 'admin.nav.access' },
   { to: '/admin/system', labelKey: 'admin.nav.system' },
-  { to: '/admin/titles', labelKey: 'admin.nav.titles' },
-  { to: '/admin/lab', labelKey: 'admin.nav.lab' },
+  { to: '/admin/management', labelKey: 'admin.nav.management', management: true },
 ]
 
 export function AdminLayout() {
@@ -41,8 +42,8 @@ export function AdminLayout() {
   const t = useT()
   const tA = useAdminT()
   const matchRoute = useMatchRoute()
-  // Pastilles de compteur : query partagée avec la page Vue d'ensemble
-  // (React Query déduplique), zéro I/O DuckDB côté Go.
+  // Pastilles de compteur : query partagée avec la page État (React Query
+  // déduplique), zéro I/O DuckDB côté Go.
   const { data: overview } = useMonitoringOverview()
   const badges = computeTabBadges(overview)
 
@@ -60,7 +61,8 @@ export function AdminLayout() {
         </Button>
       </div>
 
-      {/* Navigation onglets (pattern SquadLayout) */}
+      {/* Navigation onglets (pattern SquadLayout) — le bloc gestion est poussé
+          à droite (ml-auto + séparateur) pour le distinguer de l'observation. */}
       <div className="border-b">
         <nav className="flex gap-0 overflow-x-auto">
           {TABS.map((tab) => {
@@ -72,9 +74,11 @@ export function AdminLayout() {
                 key={tab.to}
                 to={tab.to}
                 className={`flex items-center gap-1.5 whitespace-nowrap px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  tab.management ? 'ml-auto border-l pl-6' : ''
+                } ${
                   active
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                    ? 'border-b-primary text-primary'
+                    : 'border-b-transparent text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {tA(tab.labelKey)}
