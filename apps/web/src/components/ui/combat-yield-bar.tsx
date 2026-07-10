@@ -14,6 +14,10 @@
 import { useState } from 'react'
 import { tokenCssVar } from '@/lib/accessibility'
 import { useOffensiveConversionP80, useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
+import type { ManifestLocale } from '@/lib/i18n/format'
 
 /** Libellé universel (FR=EN) quand la Résistance n'est pas calculable faute de
  *  damage_taken (ex. Halo 5). Aligné sur la convention `notAvailable: 'N/A'` du
@@ -64,26 +68,28 @@ interface TooltipProps {
   damagePerDeath: number | null | undefined
   /** false (titre sans damage_taken) → Résistance affichée N/A, sans dégâts/mort. */
   providesDamageTaken: boolean
+  /** GH3-3 : locale de l'UI (labels Rendement/Résistance + dégâts/frag·mort). */
+  locale: ManifestLocale
 }
 
-function Tooltip({ offensiveConversion, defensiveResistance, damagePerKill, damagePerDeath, providesDamageTaken }: TooltipProps) {
+function Tooltip({ offensiveConversion, defensiveResistance, damagePerKill, damagePerDeath, providesDamageTaken, locale }: TooltipProps) {
   return (
     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-48 rounded-md bg-popover border border-border px-3 py-2 text-xs shadow-lg pointer-events-none">
       <div className="flex justify-between gap-2 mb-1">
-        <span className="font-semibold" style={{ color: tokenCssVar('divergent-pos') }}>Rendement</span>
+        <span className="font-semibold" style={{ color: tokenCssVar('divergent-pos') }}>{formatMessage(commonManifest, 'common.match_card.offensive_yield', locale)}</span>
         <span className="text-muted-foreground">{offensiveConversion != null ? `${Math.round(offensiveConversion * 100)}%` : '—'}</span>
       </div>
       {damagePerKill != null && (
-        <div className="text-muted-foreground mb-1">{Math.round(damagePerKill)} dégâts/frag</div>
+        <div className="text-muted-foreground mb-1">{formatMessage(commonManifest, 'common.match_card.dmg_per_kill', locale, { n: Math.round(damagePerKill) })}</div>
       )}
       <div className="flex justify-between gap-2 mb-1">
-        <span className="font-semibold" style={{ color: tokenCssVar('divergent-neutral') }}>Résistance</span>
+        <span className="font-semibold" style={{ color: tokenCssVar('divergent-neutral') }}>{formatMessage(commonManifest, 'common.match_card.defensive_resistance', locale)}</span>
         <span className="text-muted-foreground">
           {!providesDamageTaken ? DR_NA_LABEL : defensiveResistance == null ? '—' : defensiveResistance < 0 ? '∞' : `${Math.round((defensiveResistance - 1) * 100)}%`}
         </span>
       </div>
       {providesDamageTaken && damagePerDeath != null && (
-        <div className="text-muted-foreground">{Math.round(damagePerDeath)} dégâts/mort</div>
+        <div className="text-muted-foreground">{formatMessage(commonManifest, 'common.match_card.dmg_per_death', locale, { n: Math.round(damagePerDeath) })}</div>
       )}
       {/* triangle pointer */}
       <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-popover" />
@@ -99,6 +105,7 @@ export function CombatYieldBar({
   widthPx,
 }: CombatYieldBarProps) {
   const [hovered, setHovered] = useState(false)
+  const locale = useAppShellStore((s) => s.locale)
   const ocP80 = useOffensiveConversionP80() // 0.90 Infinite / 1.264 h5 (titre courant)
   // false (Halo 5 : API sans damage_taken) → la Résistance n'est pas calculable.
   // On neutralise tout le visuel DR (barre/badge à 0, tooltip N/A) au lieu
@@ -196,6 +203,7 @@ export function CombatYieldBar({
           damagePerKill={damagePerKill}
           damagePerDeath={damagePerDeath}
           providesDamageTaken={providesDamageTaken}
+          locale={locale}
         />
       )}
     </div>

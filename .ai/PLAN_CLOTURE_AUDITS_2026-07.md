@@ -789,13 +789,26 @@ libellés des suggestions). Résiduels → LOT GH3 :
 
 ## LOT GH3 — Traîne re-passe 3 (4 correctifs bornés)
 
-- [ ] GH3-1 noms de saisons locale-aware (Omnibar popover).
-- [ ] GH3-2 terme EN du bouton « Analyse » (+ section nav si concernée).
-- [ ] GH3-3 légendes dégâts/frag + dégâts/mort des tuiles localisées.
-- [ ] GH3-4 playlist/mode des suggestions de réassociation locale-aware.
+> Exécution : agent GH3 (stoppé à la toute fin, gates Go déjà passés) ; finalisation,
+> re-gates et commit par le superviseur (2026-07-10). Périmètre inchangé.
 
-Gate GH3 : front purge cache + typecheck 0 + lint 0 err + vitest 0 fail ; Go si touché :
-build+vet+tests + intégration -p 1 api/service exit 0 ; CI verte ; re-passe 4 éclair.
+- [x] GH3-1 noms de saisons locale-aware (Omnibar popover) — `seasons_catalog.go`
+  (résolution par locale) + plomberie `field_mappings.go` + `wire/registry.go` ; tests
+  handlers EN/FR ajoutés.
+- [x] GH3-2 terme EN : la valeur EN était l'orthographe britannique « Analyse » →
+  « Analyze » (bouton + 2 messages ICU du popover filtres) ; manifests régénérés.
+- [x] GH3-3 légendes « dégâts/frag » / « dégâts/mort » → clés
+  `common.match_card.dmg_per_kill/death` (EN « dmg/kill » / « dmg/death ») dans le
+  composant PARTAGÉ combat-yield (Home, tuile match, KpiGrid, Synthesis couverts d'un
+  coup) ; tests locale.
+- [x] GH3-4 playlist/mode des suggestions de réassociation locale-aware
+  (`media_repo_filters.go`, réutilise la résolution GH2-B6) + tests EN/FR.
+
+Gate GH3 PASSÉ (vérificateur, 2026-07-10) : go build/vet/tests handlers+service+duckdb
+= 0 (l'agent avait aussi passé l'intégration -p 1 api/service/duckdb avant arrêt) ;
+front purge cache : tsc 0, lint 0 err, vitest 245 fichiers / 2091 pass / 0 fail ;
+CI = commit dédié. Re-passe 4 éclair utilisateur : Omnibar saisons EN, bouton
+« Analyze », légendes tuiles EN, suggestions popup EN (+ tooltips citations EN de GH4).
 
 ## LOT GH4 — Descriptions EN des citations/commendations (nouveau, 2026-07-10)
 

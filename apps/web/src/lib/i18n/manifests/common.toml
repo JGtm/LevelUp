@@ -941,11 +941,11 @@ en = "Incompatible with active filters — click to deselect"
 
 [common.filters.with_selection_hint]
 fr = "avec la sélection actuelle. Cliquez Analyser pour"
-en = "with the current selection. Click Analyse to"
+en = "with the current selection. Click Analyze to"
 
 [common.filters.incompatible_full]
 fr = "{n, plural, one {# filtre incompatible} other {# filtres incompatibles}} avec la sélection actuelle. Cliquez Analyser pour les retirer automatiquement."
-en = "{n, plural, one {# incompatible filter} other {# incompatible filters}} with the current selection. Click Analyse to remove them automatically."
+en = "{n, plural, one {# incompatible filter} other {# incompatible filters}} with the current selection. Click Analyze to remove them automatically."
 
 [common.filters.period_session_auto]
 fr = "Sélectionner une période vide automatiquement la session active."
@@ -1062,6 +1062,14 @@ en = "Yield"
 [common.match_card.defensive_resistance]
 fr = "Résistance"
 en = "Resistance"
+
+[common.match_card.dmg_per_kill]
+fr = "{n} dégâts/frag"
+en = "{n} dmg/kill"
+
+[common.match_card.dmg_per_death]
+fr = "{n} dégâts/mort"
+en = "{n} dmg/death"
 
 [common.match_card.accuracy]
 fr = "Précision"
@@ -1861,7 +1869,7 @@ en = "Xbox/Halo connection required to start an import."
 # ─── Barre de filtres (FilterOmnibar + useLocalFilterBar) — I2, 2026-07-05 ───
 [common.filter.analyser]
 fr = "Analyser"
-en = "Analyse"
+en = "Analyze"
 
 [common.filter.applied]
 fr = "✓ Appliqué"

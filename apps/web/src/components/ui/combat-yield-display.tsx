@@ -17,6 +17,9 @@ import { useEffect, useRef, useState } from 'react'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatOffensiveConversion, formatDefensiveResistance } from '@/lib/formatters'
 import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
 import { CombatYieldBar } from './combat-yield-bar'
 
 /** Libellé universel (FR=EN) quand la Résistance n'est pas calculable faute de
@@ -74,6 +77,9 @@ export function CombatYieldDisplay({
   // N/A (au lieu de 0 trompeur) et on masque la sous-valeur dégâts/mort. La barre
   // interne se neutralise d'elle-même (même hook). Défaut true → Infinite inchangé.
   const providesDamageTaken = useProvidesDamageTaken()
+  // GH3-3 : légendes dégâts/frag · dégâts/mort locale-aware (composant partagé Home /
+  // tuile match / KpiGrid / Synthesis) — clés common.match_card.* (EN = dmg/kill · dmg/death).
+  const locale = useAppShellStore((s) => s.locale)
 
   useEffect(() => {
     const el = ref.current
@@ -109,11 +115,15 @@ export function CombatYieldDisplay({
   }
 
   const dmgFrag = dmgPerKill != null && (
-    <span className="text-2xs text-muted-foreground tabular-nums">{Math.round(dmgPerKill)} dégâts/frag</span>
+    <span className="text-2xs text-muted-foreground tabular-nums">
+      {formatMessage(commonManifest, 'common.match_card.dmg_per_kill', locale, { n: Math.round(dmgPerKill) })}
+    </span>
   )
   // dégâts/mort = sous-valeur de la Résistance : masquée si DR non calculable (h5).
   const dmgMort = providesDamageTaken && dmgPerDeath != null && (
-    <span className="text-2xs text-muted-foreground tabular-nums">{Math.round(dmgPerDeath)} dégâts/mort</span>
+    <span className="text-2xs text-muted-foreground tabular-nums">
+      {formatMessage(commonManifest, 'common.match_card.dmg_per_death', locale, { n: Math.round(dmgPerDeath) })}
+    </span>
   )
   const ocPct = (
     <span className="text-sm font-semibold tabular-nums" style={{ color: ocColor() }}>
