@@ -5,9 +5,11 @@ package wire
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"log/slog"
 	"strings"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/notifications"
 )
@@ -119,12 +121,38 @@ func TestEmitPostSyncDeltas_ObjectiveCompleted_AggregatedDelta(t *testing.T) {
 	before := &PlayerSnapshot{PersonalAwardCount: 10}
 	after := &PlayerSnapshot{PersonalAwardCount: 13}
 	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
-	// Doit emit objective_completed ET objective_assigned (delta>0 sur PSA)
+	// B1/DP2 : SEUL objective_completed est émis ; objective_assigned supprimé.
 	if !hasCategory(em.emitted, notifications.CategoryObjectiveCompleted) {
 		t.Error("expected objective_completed")
 	}
-	if !hasCategory(em.emitted, notifications.CategoryObjectiveAssigned) {
-		t.Error("expected objective_assigned (MVP : delta = both)")
+	if hasCategory(em.emitted, notifications.CategoryObjectiveAssigned) {
+		t.Error("objective_assigned ne doit plus être émis (DP2)")
+	}
+}
+
+// B3 (garde-rail) : aucun scénario post-sync ne doit émettre objective_assigned.
+// Balaye un delta large sur tous les compteurs — si quelqu'un rebranche la
+// catégorie sur un champ snapshot, ce test échoue.
+func TestPostSyncNeverEmitsObjectiveAssigned(t *testing.T) {
+	em := &recordingEmitter{}
+	before := &PlayerSnapshot{
+		CurrentRank: 5, PersonalAwardCount: 10, CitationsCount: 3,
+		ChallengePathsCount: 2, ChallengeCompletedCount: 1,
+		CitationTotalEarnedTiers: 3, CitationMasteryCount: 1,
+		SkillTierByPlaylist: map[string]string{"ranked-arena": "csr|Diamond|3"},
+		KDRatio:             1.0, Winrate: 0.5,
+	}
+	after := &PlayerSnapshot{
+		CurrentRank: 6, PersonalAwardCount: 13, CitationsCount: 5,
+		ChallengePathsCount: 4, ChallengeCompletedCount: 3,
+		BattlepassCompletedTracks: 1,
+		CitationTotalEarnedTiers:  5, CitationMasteryCount: 2,
+		SkillTierByPlaylist: map[string]string{"ranked-arena": "csr|Onyx|0"},
+		KDRatio:             1.2, Winrate: 0.6,
+	}
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	if hasCategory(em.emitted, notifications.CategoryObjectiveAssigned) {
+		t.Error("garde-rail B3 : objective_assigned ré-émise (DP2 violé)")
 	}
 }
 
@@ -200,6 +228,113 @@ func TestEmitPostSyncDeltas_SkillTier(t *testing.T) {
 	count := countCategory(em.emitted, notifications.CategorySkillTier)
 	if count != 2 {
 		t.Errorf("expected 2 skill_tier emits (1 promoted + 1 new playlist), got %d", count)
+	}
+}
+
+// ─── B9/B10/DP4 : skill_tier montées uniquement + dédup 24 h ─────────────────
+
+func skillTierEmits(t *testing.T, before, after map[string]string, opts PostSyncDeltaOptions) int {
+	t.Helper()
+	em := &recordingEmitter{}
+	b := &PlayerSnapshot{SkillTierByPlaylist: before}
+	a := &PlayerSnapshot{SkillTierByPlaylist: after}
+	EmitPostSyncDeltas(context.Background(), em, "p1", b, a, nil, opts)
+	return countCategory(em.emitted, notifications.CategorySkillTier)
+}
+
+func TestEmitPostSyncDeltas_SkillTier_DemotionSilent(t *testing.T) {
+	// Gold V → Gold IV : démotion entre rangs connus → 0.
+	n := skillTierEmits(t,
+		map[string]string{"ranked": "csr|Gold|5"},
+		map[string]string{"ranked": "csr|Gold|4"},
+		PostSyncDeltaOptions{})
+	if n != 0 {
+		t.Errorf("démotion Gold V→IV → 0 émission, got %d", n)
+	}
+}
+
+func TestEmitPostSyncDeltas_SkillTier_PromotionEmits(t *testing.T) {
+	// Gold VI → Platinum I : montée → 1.
+	n := skillTierEmits(t,
+		map[string]string{"ranked": "csr|Gold|6"},
+		map[string]string{"ranked": "csr|Platinum|1"},
+		PostSyncDeltaOptions{})
+	if n != 1 {
+		t.Errorf("montée Gold→Platinum → 1 émission, got %d", n)
+	}
+}
+
+func TestEmitPostSyncDeltas_SkillTier_UnknownTierFailOpen(t *testing.T) {
+	// Tier inconnu « Mythril » → fail-open, émet sur changement.
+	n := skillTierEmits(t,
+		map[string]string{"ranked": "csr|Gold|6"},
+		map[string]string{"ranked": "csr|Mythril|1"},
+		PostSyncDeltaOptions{})
+	if n != 1 {
+		t.Errorf("tier inconnu → fail-open émet sur changement, got %d", n)
+	}
+}
+
+func TestEmitPostSyncDeltas_SkillTier_NewPlaylistEmits(t *testing.T) {
+	// before non froid ; nouvelle playlist apparait → émet.
+	n := skillTierEmits(t,
+		map[string]string{"ranked-arena": "csr|Gold|3"},
+		map[string]string{"ranked-arena": "csr|Gold|3", "new-playlist": "csr|Silver|2"},
+		PostSyncDeltaOptions{})
+	if n != 1 {
+		t.Errorf("placement nouvelle playlist → 1 émission, got %d", n)
+	}
+}
+
+func TestEmitPostSyncDeltas_SkillTier_DedupWithin24h(t *testing.T) {
+	now := time.Now().UTC()
+	// Notif récente pour ranked / csr|Gold|5 émise il y a 1 h.
+	params, _ := json.Marshal(map[string]any{
+		"playlist_group": "ranked", "rating_type": "csr", "tier": "Gold", "sub_tier": 5,
+	})
+	recent := []notifications.Notification{{
+		Category: notifications.CategorySkillTier, Params: params, CreatedAt: now.Add(-time.Hour),
+	}}
+	n := skillTierEmits(t,
+		map[string]string{"ranked": "csr|Gold|4"},
+		map[string]string{"ranked": "csr|Gold|5"},
+		PostSyncDeltaOptions{RecentSkillTiers: recent, Now: now})
+	if n != 0 {
+		t.Errorf("montée déjà notifiée < 24 h → dédupée, got %d", n)
+	}
+}
+
+// Séquence de flapping IV→V→IV→V→IV→V en < 24 h → 1 seule émission :
+// la 1re montée émet, les démotions sont silencieuses, les montées suivantes
+// sont dédupées.
+func TestEmitPostSyncDeltas_SkillTier_FlappingCollapsesTo1(t *testing.T) {
+	now := time.Now().UTC()
+	var recent []notifications.Notification
+	total := 0
+	cycle := func(before, after string) {
+		em := &recordingEmitter{}
+		b := &PlayerSnapshot{SkillTierByPlaylist: map[string]string{"ranked": before}}
+		a := &PlayerSnapshot{SkillTierByPlaylist: map[string]string{"ranked": after}}
+		EmitPostSyncDeltas(context.Background(), em, "p1", b, a, nil,
+			PostSyncDeltaOptions{RecentSkillTiers: recent, Now: now})
+		for _, in := range em.emitted {
+			if in.Category != notifications.CategorySkillTier {
+				continue
+			}
+			total++
+			p, _ := json.Marshal(in.Params)
+			recent = append(recent, notifications.Notification{
+				Category: notifications.CategorySkillTier, Params: p, CreatedAt: now,
+			})
+		}
+	}
+	cycle("csr|Gold|4", "csr|Gold|5") // montée → émet
+	cycle("csr|Gold|5", "csr|Gold|4") // démotion → silencieuse
+	cycle("csr|Gold|4", "csr|Gold|5") // montée → dédupée
+	cycle("csr|Gold|5", "csr|Gold|4") // démotion → silencieuse
+	cycle("csr|Gold|4", "csr|Gold|5") // montée → dédupée
+	if total != 1 {
+		t.Errorf("flapping IV↔V < 24 h → 1 émission, got %d", total)
 	}
 }
 

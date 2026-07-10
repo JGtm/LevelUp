@@ -168,24 +168,27 @@ Phase E : rapide. Total : 1 session agent.
 
 ## Phase B — Dédoublonnage sémantique
 
-- [ ] B1. Supprimer l'entrée `objective_assigned` de `postSyncCounterDeltas`
-      (`post_sync_deltas.go:87`).
-- [ ] B2. `types.go:20` : commentaire de dépréciation daté sur
+> COMPLÉTÉE 2026-07-10. Tous items [x]. Gate B vert (exit 0). Garde-rail B3
+> prouvé mordant (re-ajout temporaire de l'entrée → 2 FAIL, puis retrait).
+
+- [x] B1. Supprimer l'entrée `objective_assigned` de `postSyncCounterDeltas`
+      (`post_sync_deltas.go:87`). FAIT (entrée retirée, commentaire de dépréciation).
+- [x] B2. `types.go:20` : commentaire de dépréciation daté sur
       `CategoryObjectiveAssigned` (modèle : `CategorySeasonPassLevel` l.24-27 —
       « conservée pour rétro-compat des notifs déjà en DB + seed prefs, plus émise
       depuis 2026-07 »). NE PAS la retirer de `AllCategories`.
-- [ ] B3. Garde-rail : test dans `post_sync_deltas_test.go` affirmant qu'aucun
+- [x] B3. Garde-rail : test dans `post_sync_deltas_test.go` affirmant qu'aucun
       scénario post-sync n'émet `CategoryObjectiveAssigned` (émission autorisée
       uniquement = aucune ; le test échoue si quelqu'un rebranche la catégorie).
-- [ ] B4. Adapter les tests existants qui attendent la paire assigned+completed
+- [x] B4. Adapter les tests existants qui attendent la paire assigned+completed
       (chercher : `grep -rn "objective_assigned" apps/go-api/internal/`).
-- [ ] B5. Records coach — `generator.go` : collapse par métrique sur la période la
+- [x] B5. Records coach — `generator.go` : collapse par métrique sur la période la
       plus large. Helper pur dans le package coach (ex. `keepWidestPeriod`) appliqué
       aux listes RecordBroken (l.155-170) ET RecordNearMiss (l.175-185) avant
       construction des alertes. Ordre : `all_time` > `90d` > `30d` (vérifier les
       valeurs exactes du type Period dans `internal/progression/records/` avant de
       coder — RE-VÉRIFIER).
-- [ ] B6. Near-miss écart significatif (DP11) : constante
+- [x] B6. Near-miss écart significatif (DP11) : constante
       `NearMissMinGapRatio = 0.02` dans `records/types.go` (commentaire : incident
       prod 2026-07-03 « 73.33 vs 73.333336 » rendu « 73.33 vs 73.33 » ; 2 % ≈ 0.1 de
       KDA sur un PB à 5.0) ; dans `IsNearMiss` (`detector.go:226-231`), remplacer
@@ -194,16 +197,16 @@ Phase E : rapide. Total : 1 session agent.
       stricte — même rationale étendu aux écarts insignifiants. Point de passage
       unique : détecteur ET coach passent par `IsNearMiss`, aucun autre site à
       modifier (vérifier : `grep -rn "IsNearMiss" apps/go-api/internal/`).
-- [ ] B7. Tests `records/detector_test.go` : écart 1 % sous le PB → pas de
+- [x] B7. Tests `records/detector_test.go` : écart 1 % sous le PB → pas de
       near-miss ; écart 3 % → near-miss ; écart 6 % (hors bande des 5 %) → pas de
       near-miss ; égalité stricte → pas de near-miss (cas existant à conserver) ;
       PB à 0 → pas de near-miss (garde existante).
-- [ ] B8. Tests coach (`generator_test.go` existant à compléter) : record battu sur
+- [x] B8. Tests coach (`generator_test.go` existant à compléter) : record battu sur
       3 périodes → 1 alerte (all_time) ; battu sur 30d seul → 1 alerte (30d) ;
       near-miss 90d + all_time → 1 alerte (all_time) ; broken 30d + near-miss
       all_time (métriques différentes de cas) → les deux passent ; near-miss avec
       écart sous `NearMissMinDelta` → 0 alerte.
-- [ ] B9. skill_tier montées uniquement : helper `skillTierRank(tier string,
+- [x] B9. skill_tier montées uniquement : helper `skillTierRank(tier string,
       subTier int) int` dans `post_sync_deltas.go` (map insensible à la casse :
       Bronze=1, Silver=2, Gold=3, Platinum=4, Diamond=5, Onyx=6, Champion=7 — H5 ;
       tier inconnu → -1). Ne pas émettre si `rank(after) <= rank(before)` quand les
@@ -214,7 +217,7 @@ Phase E : rapide. Total : 1 session agent.
       si un ordre de tiers canonique existe déjà (`grep -rn "Onyx" apps/go-api/internal/
       --include=*.go -l` puis inspection), le réutiliser au lieu de créer la map
       (skill `go-features`).
-- [ ] B10. skill_tier dédup 24 h : suivre le câblage de `post_sync_progression.go`
+- [x] B10. skill_tier dédup 24 h : suivre le câblage de `post_sync_progression.go`
       (qui charge les notifs récentes pour `FilterRecent`, appel l.361 — remonter à la
       source du paramètre `recent` pour réutiliser le même fetch). Dans
       `BuildPostSyncDeltaHook`, charger les notifs récentes catégorie `skill_tier`
@@ -223,15 +226,15 @@ Phase E : rapide. Total : 1 session agent.
       valeur cible `rating_type|tier|sub_tier` dans ses params. Ajouter
       `playlist_group` + valeur cible en clair dans les params émis si pas déjà le cas
       (c'est déjà le cas : l.264-272).
-- [ ] B11. Tests skill_tier : séquence IV→V→IV→V→IV→V en < 24 h → 1 émission ;
+- [x] B11. Tests skill_tier : séquence IV→V→IV→V→IV→V en < 24 h → 1 émission ;
       démotion V→IV → 0 ; montée Gold→Platinum → 1 ; tier inconnu « Mythril » →
       émet sur changement ; placement nouvelle playlist (before non froid) → 1.
-- [ ] B12. Seed silencieux des records (DP12) : dans `buildRecordAlerts`
+- [x] B12. Seed silencieux des records (DP12) : dans `buildRecordAlerts`
       (`generator.go:149-187`), le cas `r.NewPB` n'émet une alerte QUE si
       `r.PreviousValue != nil` (le détecteur a déjà persisté le PB — seed sans
       notification, `detector.go:126-167` inchangé). Commentaire renvoyant à la
       garde jumelle `oldRec.Loaded` de `post_sync_deltas.go:313`.
-- [ ] B13. Fenêtre de dédup par catégorie (DP13) : remplacer l'unique
+- [x] B13. Fenêtre de dédup par catégorie (DP13) : remplacer l'unique
       `ProgressionDedupWindow = 24h` (`post_sync_progression.go:57`) par une
       résolution par catégorie — 30 jours pour les nudges d'état
       (`record_near_miss`, `milestone_near_miss`, `lusr_tier_approach`,
@@ -243,16 +246,21 @@ Phase E : rapide. Total : 1 session agent.
       elle est temporelle et non en nombre). NB : les `threshold_crossed` émis par
       post_sync (KD/winrate) ne passent pas par FilterRecent — hors sujet ici,
       pas de collision (dedup_key différent).
-- [ ] B14. `milestones.NearMissRatio` 0.10 → 0.02 (`milestones/types.go:17`,
+- [x] B14. `milestones.NearMissRatio` 0.10 → 0.02 (`milestones/types.go:17`,
       DP14) + mise à jour du commentaire et des tests
       `milestones/detector_test.go` (cas : progress 0.95 → pas de near-miss ;
       0.985 → near-miss ; 1.0 → earned, pas de near-miss).
-- [ ] B15. Tests dédup 30 j (`coach/dedup_test.go` ou équivalent existant) : une
+- [x] B15. Tests dédup 30 j (`coach/dedup_test.go` ou équivalent existant) : une
       notif `lusr_tier_approach` émise il y a 5 jours avec le même dedup_key →
       alerte filtrée ; il y a 35 jours → alerte passe ; catégorie événement
       (`personal_record`) émise il y a 5 jours → passe (fenêtre 24 h).
 
-**Gate B** : `cd apps/go-api && go test ./internal/api/wire/ ./internal/progression/... ./internal/notifications/`.
+**Gate B** : `cd apps/go-api && go test ./internal/api/wire/ ./internal/progression/... ./internal/notifications/`. → OK (exit 0, 2026-07-10).
+
+> Note B9 : réutilisé l'ordre de tiers de `internal/games/halo_5/livesync/csr_mapper.go`
+> (Bronze<…<Onyx<Champion) pour la map `skillTierBaseRank` ; helper placé dans wire
+> (politique de notif, pas algo). B10 : dédup via nouveau paramètre variadic
+> `PostSyncDeltaOptions` (évite de churner ~25 call-sites de test).
 
 ## Phase C — Coalescence `media_added`
 

@@ -212,14 +212,18 @@ func periodCutoff(period RecordPeriod, now time.Time) time.Time {
 	}
 }
 
-// IsNearMiss retourne true si `current` est proche de `target` sans l'atteindre :
-// current >= target × (1 - NearMissRatio) ET current < target.
+// IsNearMiss retourne true si `current` est proche de `target` sans l'atteindre,
+// dans la bande SIGNIFICATIVE : target×(1-NearMissRatio) <= current <=
+// target×(1-NearMissMinGapRatio).
 //
-// L'inégalité stricte (`current < target`) est volontaire : sur la fenêtre
-// all_time, le PB stocké a été posé par un match toujours présent dans la
-// fenêtre, donc le best courant est égal au PB à chaque passe. Avec un `<=`,
-// chaque sync ré-émettait une notif « tu approches ton record (X vs X) »
-// avec value == target — du spam. On ne notifie que si on est *sous* le PB.
+// La borne haute (`<= target×(1-NearMissMinGapRatio)`, DP11) remplace l'ancien
+// `< target` : sur la fenêtre all_time le PB stocké a été posé par un match
+// toujours présent dans la fenêtre, donc le best courant est égal (ou quasi
+// égal en float) au PB à chaque passe. Avec `< target`, l'incident prod
+// 2026-07-03 portait target=73.333336, value=73.33 — strictement inférieur en
+// float mais identique à l'affichage (2 décimales) → notif « 73.33 vs 73.33 »
+// absurde. L'écart doit être significatif pour un joueur (>= 2 % du PB), pas
+// seulement non-nul en float.
 //
 // Exposé pour usage par le coach (commit 5) qui peut détecter des near-miss
 // même sur des évaluations partielles non passées par le Detector complet.
@@ -227,5 +231,5 @@ func IsNearMiss(current, target float64) bool {
 	if target <= 0 {
 		return false
 	}
-	return current >= target*(1-NearMissRatio) && current < target
+	return current >= target*(1-NearMissRatio) && current <= target*(1-NearMissMinGapRatio)
 }
