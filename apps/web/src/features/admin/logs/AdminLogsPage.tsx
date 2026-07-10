@@ -13,7 +13,7 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { AdminLogEntry } from '@/lib/api/types'
 import { useLogModules, useLogTail } from './queries'
 import { flattenLogFields, logEntryDetail, logEntryText, logLevelStatus } from './logDisplay'
-import { useMonitoringErrors } from '../monitoring/queries'
+import { DetectionsPanel } from '../monitoring/DetectionsPanel'
 import { adminAbsoluteTime, adminRelativeTime } from '../format'
 import { useAdminT, useAdminLocale } from '../useAdminText'
 import { StatusBadge } from '../components/StatusBadge'
@@ -60,7 +60,7 @@ export function AdminLogsPage() {
 
   return (
     <div className="space-y-6">
-      <RecurringErrorsPanel />
+      <DetectionsPanel />
 
       <div className="space-y-4">
       {/* Barre de filtres */}
@@ -153,72 +153,6 @@ export function AdminLogsPage() {
       )}
       </div>
     </div>
-  )
-}
-
-/**
- * RecurringErrorsPanel — résumé des logs WARN/ERROR agrégés par (niveau,
- * message) depuis le boot (collecteur mémoire). Best-effort : une erreur de
- * chargement masque le panneau sans casser le viewer. Top 12 par occurrences.
- */
-function RecurringErrorsPanel() {
-  const { data, isError } = useMonitoringErrors()
-  const tA = useAdminT()
-  const locale = useAdminLocale()
-
-  if (isError) return null
-  const buckets = data?.buckets ?? []
-
-  return (
-    <section className="space-y-2">
-      <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        {tA('admin.errors.section')}
-      </h3>
-      {buckets.length === 0 ? (
-        <EmptyStateNotice title={tA('admin.errors.empty')} description="" />
-      ) : (
-        <div className="overflow-x-auto rounded-md border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="px-3 py-2 font-medium">{tA('admin.errors.col_count')}</th>
-                <th className="px-3 py-2 font-medium">{tA('admin.logs.level')}</th>
-                <th className="px-3 py-2 font-medium">{tA('admin.errors.col_message')}</th>
-                <th className="px-3 py-2 font-medium">{tA('admin.errors.col_last')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {buckets.slice(0, 12).map((b, i) => (
-                <tr key={`${b.level}-${b.message}-${i}`} className="border-b last:border-b-0 hover:bg-muted/30">
-                  <td className="px-3 py-2 font-mono font-semibold tabular-nums text-foreground">{b.count}</td>
-                  <td className="px-3 py-2">
-                    <StatusBadge status={logLevelStatus(b.level.toLowerCase())} label={b.level} />
-                  </td>
-                  <td className="px-3 py-2">
-                    <span className="text-foreground">{b.message}</span>
-                    {b.last_detail && (
-                      <span
-                        className="ml-2 break-all font-mono text-xs"
-                        style={{ color: tokenCssVar('destructive') }}
-                        title={b.last_detail}
-                      >
-                        {b.last_detail}
-                      </span>
-                    )}
-                  </td>
-                  <td
-                    className="px-3 py-2 text-xs text-muted-foreground"
-                    title={adminAbsoluteTime(b.last_seen, locale)}
-                  >
-                    {adminRelativeTime(b.last_seen, locale)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
   )
 }
 

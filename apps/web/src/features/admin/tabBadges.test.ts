@@ -23,6 +23,7 @@ function baseOverview(): AdminMonitoringOverview {
       pending_oldest_age_seconds: 0, pending_total: 0, reads_fallback: 0,
       reads_served: 0, ready_match_count: 0, version: 1,
     } as AdminMonitoringOverview['snapshot'],
+    open_detections: 0,
   }
 }
 

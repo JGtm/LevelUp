@@ -38,6 +38,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
@@ -87,6 +88,7 @@ type ServiceRegistry struct {
 	jobStore             *jobs_platform.Store                 // nil → transcoding HLS désactivé (médias servis via remux WebM live)
 	autoSyncScheduler    *scheduler.AutoSyncScheduler         // dashboard monitoring : snapshot scheduler agrégé dans l'overview (nil → section indisponible)
 	healthScheduler      *scheduler.HealthScheduler           // dashboard monitoring : dernier audit data health + action run (nil → section indisponible)
+	monitoringStore      *ops.MonitoringStore                 // dashboard monitoring : persistance détections/crons/data-health (nil → sections dégradées, PATCH 503) — câblé au boot après NewRouter
 	startedAt            time.Time                            // boot du process (uptime overview — posé par NewServiceRegistry)
 	metaHandles          []*duckdb.DB                         // handles RW "annexes" sur metadata.duckdb (seasons/playlists catalog, ouverts hors pool joueur dans NewRouter) fermés au shutdown via Close() — sinon fuite de refCount sur le cache duckdb.openDBs (cf. INCIDENT_2026-05-21)
 	snapReaders          sync.Map                             // titleSlug → *sync.SnapshotPreferredSharedReader (pilote lecture snapshot SCOPED MatchView) — singleton par titre, cache de queriers :memory: partagé entre requêtes, fermé au shutdown

@@ -35,6 +35,13 @@ export function computeTabBadges(
     out['/admin/data-quality'] = { count: overview.data_health.warnings_total, token: 'warning' }
   }
 
+  // Détections ouvertes (persistées) — porté par l'onglet Logs tant que
+  // « Détections » n'est pas un onglet à part (A3). Seul le statut `open`
+  // colore la nav : le bruit `muted`/`resolved` n'apparaît pas (A2.5).
+  if (overview.open_detections > 0) {
+    out['/admin/logs'] = { count: overview.open_detections, token: 'warning' }
+  }
+
   // Système : invariants FAIL + tokens à problème = critique ; sinon WARN.
   const tokensBad = overview.tokens
     ? overview.tokens.expired + overview.tokens.absent + overview.tokens.reauth

@@ -1041,6 +1041,22 @@ func main() {
 	// data health + l'action POST /admin/actions/data-health/run.
 	reg.WithHealthScheduler(healthScheduler)
 
+	// Store monitoring persistant (base globale data/global/monitoring.duckdb) —
+	// survit au restart : détections avec cycle de vie, historique crons, dernier
+	// audit data-health. Best-effort : un échec d'ouverture dégrade les sections
+	// (jamais fatal). Le flush périodique du delta ErrorCollector tourne sur
+	// schedulerCtx/schedulerWG (drainé AVANT duckdb.CloseAll — écriture sûre).
+	if monStore, mErr := ops.NewMonitoringStore(ctx, pr.GlobalMonitoringDB()); mErr != nil {
+		slog.Warn("monitoring store: ouverture échouée — sections détections dégradées", "err", mErr)
+	} else {
+		reg.WithMonitoringStore(monStore)
+		schedulerWG.Add(1)
+		go func() {
+			defer schedulerWG.Done()
+			reg.RunDetectionFlushLoop(schedulerCtx)
+		}()
+	}
+
 	// Cron catalogue (hebdomadaire) : rafraîchit le catalogue (playlists / couples
 	// map-mode / maps / modes) via le drain DiscoveryUGC testé (même chemin que l'action
 	// admin catalog/ugc-drain). TOUJOURS actif (autonome, plus de flag). La

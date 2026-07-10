@@ -63,7 +63,8 @@ func (r *ServiceRegistry) MonitoringOverview(ctx context.Context, titleSlug stri
 			FailLast:  observability.LoadCounter("invariants_fail_last"),
 			WarnLast:  observability.LoadCounter("invariants_warn_last"),
 		},
-		Snapshot: monitoringSnapshotSummary(titleSlug),
+		Snapshot:       monitoringSnapshotSummary(titleSlug),
+		OpenDetections: observability.LoadCounter("monitoring_detections_open"),
 	}
 	if res, at := r.lastDataHealth(); res != nil {
 		resp.DataHealth = toMonitoringDataHealth(res, at)
