@@ -1,6 +1,7 @@
 # PLAN — Refonte de fond du monitoring admin (2026-07)
 
-> Statut : PRÊT (non démarré). Révisé 2026-07-07 : ajout de la phase A3
+> Statut : EN COURS (démarré 2026-07-10, branche `feat/monitoring-refonte-2026-07`).
+> Révisé 2026-07-07 : ajout de la phase A3
 > (architecture de l'information — onglets réorganisés par question opérateur,
 > retrait du Lab) validée par le user ; renumérotation A3→A9.
 > Exécution sous contrat du skill `plan-execution` (ordre strict, gates par phase,
@@ -97,21 +98,33 @@ le catalogue canonique (modèle Explorer).
 
 ### A1 — Socle de persistance monitoring (effort : moyen)
 
-- [ ] A1.1 `PathResolver` : méthode `GlobalMonitoringDB()` → `data/global/monitoring.duckdb`.
-- [ ] A1.2 Schéma (migration idempotente, package `internal/migration`) :
+- [x] A1.1 `PathResolver` : méthode `GlobalMonitoringDB()` → `data/global/monitoring.duckdb`.
+      (registry.go — globale, non per-titre.)
+- [x] A1.2 Schéma (migration idempotente, package `internal/migration`) :
       `detection_events` (fingerprint, level, module, message, title_slug, occurred_at,
       count_delta, sample_detail, written_at), `detection_status_events` (fingerprint,
       status, note, written_at), vues `detections_latest` + `detection_status_latest`,
       `cron_runs` (cron_name, started_at, ok, err, duration_ms, written_at),
       `data_health_runs` (résultat sérialisé du run + written_at).
-- [ ] A1.3 Writer unique : `internal/ops/monitoring_store.go` (INSERT-only, ouvert via
-      provider/lease — pas de bare connect), flush périodique de l'ErrorCollector
-      (delta depuis dernier flush) + hook d'écriture pour `HealthScheduler` et crons.
-- [ ] A1.4 Tests : DuckDB `:memory:` (schéma, append, vues `_latest` servent bien le
-      dernier statut), test garde-rail « pas de UPDATE/DELETE sur detection_events ».
+      (`internal/migration/monitoring_schema.go` — `EnsureMonitoringSchema`, séquences+PK
+      technique, vues via ROW_NUMBER/ARG_MAX. `cron_runs_latest` ajoutée pour A6. Base
+      globale hors registre title-scopé : schéma posé à l'ouverture du store.)
+- [x] A1.3 Writer unique : `internal/ops/monitoring_store.go` (INSERT-only, ouvert via
+      `duckdb.OpenReadWrite` + lease `dblease.KindMonitoring` — pas de bare connect),
+      flush du delta ErrorCollector + `RecordCronRun` + `RecordDataHealthRun` +
+      `LatestDataHealthJSON` + ré-ouverture sur occurrence après `resolved` (DC-2).
+      Le CÂBLAGE au boot (flush périodique) + hooks HealthScheduler/crons se font
+      respectivement en A2 (survie au restart), A4 (data-health) et A6 (crons) — les
+      méthodes du store sont livrées ici.
+- [x] A1.4 Tests : `monitoring_store_cgo_test.go` (cycle de vie complet dont réouverture,
+      filtres, cron+data-health), `monitoring_schema_cgo_test.go` (idempotence + vues
+      _latest servent le dernier statut), `monitoring_store_guard_test.go` (garde-rail
+      grep : aucun UPDATE/DELETE sur les tables append-only).
 
 **Gate A1** : `cd apps/go-api && go build ./... && go test ./internal/ops/... ./internal/migration/...`
 verts ; `grep -rn "filepath.Join" internal/ops/monitoring_store.go` → 0 hors PathResolver.
+RÉSULTAT 2026-07-10 : build EXIT 0 ; `ok internal/ops 10.96s` + `ok internal/migration 0.56s` ;
+grep filepath.Join → 0 ; `golangci-lint --new-from-rev=158b336a9` → 0 issues. GATE PASSÉ.
 
 ### A2 — Cycle de vie des détections + UI triage (effort : lourd)
 
@@ -276,3 +289,12 @@ non close. Une phase est close quand tous ses items sont statués ET son gate es
 - 2026-07-07 : `/lab/contracts` (handlers/lab.go) semble déjà sans appelant front
   (queries.ts n'appelle que resources/diagnostics/waypoint) — code mort probable,
   absorbé par la suppression A3.5.
+- 2026-07-10 (cartographie front A3, à intégrer à A3.5) : `features/lab/` N'EST PAS
+  entièrement supprimable. `DiagnosticsPanel`, `getLabText`/`normalizeLabLocale`,
+  `useLabDiagnostics` y sont réutilisés par `AdminDataQualityPage` (→ onglet Données), et
+  `ChartsShowcasePage` par le bac à sable dev `/lab/charts` (route hors admin). A3.5 doit
+  donc supprimer l'ONGLET Lab (`routes/admin/lab.tsx`, `features/admin/lab/*`,
+  `admin.lab.*`, `admin.nav.lab`, entrée TABS) et le back Lab (handlers/lab.go, LabService,
+  routes `/lab/*`), MAIS conserver les briques `features/lab/` encore consommées — sinon
+  casse Données + charts. Le grep de garde-rail A3.8 doit viser `features/lab/queries`
+  (endpoints back supprimés) et non `features/lab` en bloc.

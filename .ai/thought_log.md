@@ -1,3 +1,31 @@
+## [2026-07-10] PLAN MONITORING REFONTE — A1 socle de persistance (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A1 CLOSE (gate passé). Base sur `fix/monitoring-triage-2026-07` (158b336a9).
+
+**Décision technique principale** : nouvelle base GLOBALE `data/global/monitoring.duckdb`
+(chemin via `PathResolver.GlobalMonitoringDB()`, jamais per-titre : l'observabilité
+process/machine ne dépend d'aucun titre). Schéma append-only (ADR 0026) posé idempotemment
+par `migration.EnsureMonitoringSchema` À L'OUVERTURE DU STORE (la base est hors du registre
+title-scopé registry.go/order.go, qui route par target per-titre — y greffer un target global
+aurait été invasif). Tables `detection_events` / `detection_status_events` / `cron_runs` /
+`data_health_runs` : PK technique via séquence + `written_at`, INSERT pur, lecture via vues
+`_latest` (ROW_NUMBER pour le dernier statut/run, ARG_MAX pour les derniers champs agrégés).
+Writer unique `ops.MonitoringStore` ouvert via `duckdb.OpenReadWrite` (provider platform, pas
+de bare connect) + sérialisation par `dblease.KindMonitoring` (nouveau Kind). Fingerprint =
+sha256[:12] de (title,level,module,message) — sûr comme segment d'URL pour le PATCH A2.
+DC-2 (réouverture d'une détection `resolved` sur nouvelle occurrence) implémentée CÔTÉ WRITER
+(append d'un status 'open' au flush), la vue reste simple.
+
+**Résultats** : `go build ./...` EXIT 0 ; `go test ./internal/ops/... ./internal/migration/...`
+→ ok (ops 10.96s, migration 0.56s) ; grep `filepath.Join` dans monitoring_store.go → 0 ;
+`golangci-lint --new-from-rev=158b336a9` → 0 issue. Garde-rail append-only (scan source) vert.
+
+**Conclusion / prochaine étape** : A2 — endpoints `GET/PATCH /admin/monitoring/detections`,
+câblage du flush périodique au boot (critère : survie au restart), UI triage TanStack, badges
+sur `open` seul. Découverte consignée : `features/lab/` non entièrement supprimable en A3.5.
+
+---
+
 ## [2026-07-10] PLAN MONITORING TRIAGE — exécution (PARTIEL, branche fix/monitoring-triage-2026-07)
 
 **Statut** : Complété côté code déploy-indépendant ; PARTIEL global (items restants bloqués

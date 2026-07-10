@@ -449,6 +449,18 @@ func (p *PathResolver) GlobalXuidAliasesDBPath() string {
 	return filepath.Join(p.repoRoot, "data", "global", "xbox_aliases.duckdb")
 }
 
+// GlobalMonitoringDB retourne le chemin de la base monitoring globale
+// (persistance du dashboard admin : détections avec cycle de vie, historique
+// des crons, runs data-health). Globale et NON per-titre : l'observabilité du
+// process et de la machine ne dépend d'aucun titre. Un seul writer = le process
+// serveur (aucune CLI concurrente ne l'ouvre en écriture — DC-1 du plan
+// monitoring 2026-07).
+//
+// Ex: data/global/monitoring.duckdb
+func (p *PathResolver) GlobalMonitoringDB() string {
+	return filepath.Join(p.repoRoot, "data", "global", "monitoring.duckdb")
+}
+
 // MetadataDBPath retourne le chemin de la base metadata d'un titre.
 // Ex: data/titles/halo_infinite/warehouse/metadata.duckdb
 func (p *PathResolver) MetadataDBPath(titleSlug string) string {

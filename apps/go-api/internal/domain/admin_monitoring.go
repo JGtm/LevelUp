@@ -8,6 +8,66 @@
 // scheduler (déjà exposés par /_diag/auto-sync/snapshot).
 package domain
 
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"strings"
+)
+
+// Statuts du cycle de vie d'une détection (DC-2 du plan monitoring 2026-07).
+// Une occurrence après DetectionStatusResolved ré-ouvre la détection.
+const (
+	DetectionStatusOpen     = "open"
+	DetectionStatusAcked    = "acked"
+	DetectionStatusMuted    = "muted"
+	DetectionStatusResolved = "resolved"
+)
+
+// IsValidDetectionStatus valide un statut de cycle de vie de détection.
+func IsValidDetectionStatus(status string) bool {
+	switch status {
+	case DetectionStatusOpen, DetectionStatusAcked, DetectionStatusMuted, DetectionStatusResolved:
+		return true
+	default:
+		return false
+	}
+}
+
+// DetectionFingerprint calcule la clé stable d'une détection à partir de
+// (title, level, module, message) — même dimension que l'ErrorCollector (DC-2).
+// Hash hex tronqué : sûr comme segment d'URL (endpoint PATCH .../{fingerprint})
+// là où message/module bruts casseraient le routage.
+func DetectionFingerprint(title, level, module, message string) string {
+	sum := sha256.Sum256([]byte(strings.Join([]string{title, level, module, message}, "\x1f")))
+	return hex.EncodeToString(sum[:12]) // 24 hex chars, collision négligeable
+}
+
+// MonitoringDetection — détection persistée avec son cycle de vie (vue
+// detections_latest). Remplace AdminErrorBucket (mémoire, perdu au restart)
+// pour le triage : count cumulé, first/last_seen, statut actionnable.
+type MonitoringDetection struct {
+	Fingerprint  string `json:"fingerprint"`
+	Level        string `json:"level"`
+	Module       string `json:"module,omitempty"`
+	Message      string `json:"message"`
+	TitleSlug    string `json:"title_slug,omitempty"`
+	Count        int64  `json:"count"`
+	FirstSeen    string `json:"first_seen"` // RFC3339
+	LastSeen     string `json:"last_seen"`  // RFC3339
+	SampleDetail string `json:"sample_detail,omitempty"`
+	Status       string `json:"status"`
+	Note         string `json:"note,omitempty"`
+	StatusAt     string `json:"status_at,omitempty"` // RFC3339, vide si jamais statué
+}
+
+// AdminDetectionsResponse — réponse de GET /admin/monitoring/detections.
+type AdminDetectionsResponse struct {
+	GeneratedAt string                `json:"generated_at"`
+	Detections  []MonitoringDetection `json:"detections"`
+	// OpenCount : nombre de détections au statut open (source des badges nav).
+	OpenCount int `json:"open_count"`
+}
+
 // MonitoringServerInfo : identité du process serveur (overview).
 type MonitoringServerInfo struct {
 	UptimeS   int64  `json:"uptime_s"`
