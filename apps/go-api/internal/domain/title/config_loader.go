@@ -183,6 +183,14 @@ func LoadTitlesIntoRegistry(reg *Registry, repoRoot string, logger *slog.Logger)
 		// en dur fait foi, byte-identique. (Évite aussi une comparaison de slug —
 		// archlint no_slug_comparison.)
 		if reg.Exists(slug) {
+			// F11 : un title.toml pour un titre built-in est SILENCIEUSEMENT ignoré.
+			// WARN explicite pour qu'un dev ne croie pas ses edits pris en compte
+			// (le descripteur built-in fait foi ; cf. ADR 0025).
+			if _, statErr := os.Stat(filepath.Join(titlesDir, slug, "title.toml")); statErr == nil {
+				logger.Warn("title_builtin_toml_ignored",
+					"title", slug,
+					"reason", "descripteur built-in prioritaire (byte-identique) — title.toml non appliqué")
+			}
 			continue
 		}
 		desc, err := LoadTitleManifest(repoRoot, slug)

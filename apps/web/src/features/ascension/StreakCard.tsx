@@ -7,7 +7,7 @@
  * Cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §4 + §8.3.
  */
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
-import { formatDate, formatMultiplier, interpolate, nextPPTier, streakTierProgressPct } from './format'
+import { formatAscensionDate, formatMultiplier, interpolate, nextPPTier, streakTierProgressPct } from './format'
 import { getAscensionText, type AscensionLocale } from './i18n'
 import type { Streak } from './types'
 
@@ -114,9 +114,9 @@ export function StreakCard({ streak: s, locale, t, compact = false }: StreakCard
         )}
         <div className="text-muted-foreground">{interpolate(t.streakShieldsAvailable, { n: shieldsLeft })}</div>
         {s.status === 'broken' && s.broken_at && (
-          <div className="text-muted-foreground">{interpolate(t.streakBrokenAt, { date: formatDate(s.broken_at, locale) })}</div>
+          <div className="text-muted-foreground">{interpolate(t.streakBrokenAt, { date: formatAscensionDate(s.broken_at, locale) })}</div>
         )}
-        <div className="text-muted-foreground">{interpolate(t.streakStarted, { date: formatDate(s.started_at, locale) })}</div>
+        <div className="text-muted-foreground">{interpolate(t.streakStarted, { date: formatAscensionDate(s.started_at, locale) })}</div>
       </dl>
     </article>
   )

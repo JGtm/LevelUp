@@ -10,6 +10,8 @@ import (
 	"os"
 	"time"
 
+	"levelup/go-api/internal/analysis"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -69,7 +71,7 @@ func main() {
 	}
 
 	var startTime sql.NullTime
-	_ = shared.QueryRow(`SELECT COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') FROM match_registry WHERE match_id = ?`, matchID).Scan(&startTime)
+	_ = shared.QueryRow(`SELECT `+analysis.SQLStartTimeCanonical("")+` FROM match_registry WHERE match_id = ?`, matchID).Scan(&startTime)
 	if startTime.Valid {
 		ageDays := time.Since(startTime.Time).Hours() / 24.0
 		fmt.Printf("start_time = %s (âge: %.1f jours)\n", startTime.Time.Format("2006-01-02 15:04 MST"), ageDays)
@@ -199,16 +201,16 @@ func main() {
 		fmt.Println("\n[CONTEXTE] 10 matchs proches en date — état weapon_kills :")
 		rows, err := shared.Query(`
 			WITH target AS (
-				SELECT COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') AS t
+				SELECT `+analysis.SQLStartTimeCanonical("")+` AS t
 				FROM match_registry WHERE match_id = ?
 			)
 			SELECT mr.match_id,
-			       COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') AS st,
+			       `+analysis.SQLStartTimeCanonical("mr")+` AS st,
 			       COALESCE(mr.pair_name, ''),
 			       (SELECT COUNT(*) FROM weapon_kills wk WHERE wk.match_id = mr.match_id) AS wk_count
 			FROM match_registry mr, target
 			WHERE ABS(EXTRACT(EPOCH FROM (
-			    COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') - target.t
+			    `+analysis.SQLStartTimeCanonical("mr")+` - target.t
 			))) < 86400 * 7
 			ORDER BY st DESC
 			LIMIT 10`, matchID)

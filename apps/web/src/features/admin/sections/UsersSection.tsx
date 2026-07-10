@@ -11,8 +11,8 @@ import {
   useDeleteUser,
   useChangeRole,
   useResetPassword,
-  adminKeys,
 } from '@/features/auth/queries'
+import { queryKeys } from '@/lib/query/keys'
 import { useT } from '../useAdminText'
 
 export function UsersSection({ currentUsername }: { currentUsername: string | null | undefined }) {
@@ -29,7 +29,7 @@ export function UsersSection({ currentUsername }: { currentUsername: string | nu
   function handleDelete(username: string) {
     if (!confirm(`${t('common.admin.delete_user_confirm')} "${username}" ?`)) return
     deleteUser.mutate(username, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.users }),
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers }),
     })
   }
 
@@ -37,7 +37,7 @@ export function UsersSection({ currentUsername }: { currentUsername: string | nu
     const newRole = currentRole === 'admin' ? 'user' : 'admin'
     changeRole.mutate(
       { username, role: newRole as 'admin' | 'user' },
-      { onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.users }) },
+      { onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers }) },
     )
   }
 

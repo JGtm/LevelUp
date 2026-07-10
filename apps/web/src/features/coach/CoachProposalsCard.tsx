@@ -7,7 +7,7 @@
  * - Optimistic UI : invalide la query après mutation.
  *
  * À monter sur la page Ascension ou Prestige (decision UI : à la suite du
- * panneau "Streaks" ou en pied de page Prestige).
+ * panneau "Séries" ou en pied de page Prestige).
  */
 
 import { useState } from 'react'

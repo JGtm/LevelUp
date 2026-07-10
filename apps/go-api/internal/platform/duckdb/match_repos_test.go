@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 )
 
 // ---------------------------------------------------------------------------
@@ -172,6 +173,125 @@ func TestCitationsRepo_LoadCitationMappings_LocaleAware(t *testing.T) {
 	}
 	if en[0].NameDisplay != "Killing Spree (EN)" {
 		t.Errorf("EN NameDisplay = %q, want 'Killing Spree (EN)'", en[0].NameDisplay)
+	}
+}
+
+// TestCitationsRepo_LoadMatchCitationsRich_LocaleAware prouve GH2-B2 + GH4 : le nom ET
+// la description de citation servis à la Match View (drawer/tooltips) suivent la locale
+// de requête via Q26j (citation_name_display_en / description_en). Seed : m1 →
+// killing_spree (FR "Killing Spree" / "Série de kills", EN "Killing Spree (EN)" /
+// "Killing spree streak").
+func TestCitationsRepo_LoadMatchCitationsRich_LocaleAware(t *testing.T) {
+	repo := NewCitationsRepo(newTestPlayerDB(t))
+
+	fr, err := repo.LoadMatchCitationsRich(ctxkeys.WithLocale(context.Background(), "fr"), "m1")
+	if err != nil || len(fr) != 1 {
+		t.Fatalf("FR: err=%v n=%d", err, len(fr))
+	}
+	if fr[0].Display != "Killing Spree" {
+		t.Errorf("FR Display = %q, want 'Killing Spree'", fr[0].Display)
+	}
+	if fr[0].Description != "Série de kills" {
+		t.Errorf("FR Description = %q, want 'Série de kills'", fr[0].Description)
+	}
+
+	en, err := repo.LoadMatchCitationsRich(ctxkeys.WithLocale(context.Background(), "en"), "m1")
+	if err != nil || len(en) != 1 {
+		t.Fatalf("EN: err=%v n=%d", err, len(en))
+	}
+	if en[0].Display != "Killing Spree (EN)" {
+		t.Errorf("EN Display = %q, want 'Killing Spree (EN)'", en[0].Display)
+	}
+	// GH4 : sous EN la description anglaise prime ; le FR ne fuite jamais sous EN.
+	if en[0].Description != "Killing spree streak" {
+		t.Errorf("EN Description = %q, want 'Killing spree streak'", en[0].Description)
+	}
+}
+
+// TestHomeRepo_LoadMatchCitations_LocaleAware prouve GH2-B6 : le nom de citation
+// des tuiles de match Home suit la locale de requête (même chaîne Q26j que la
+// Match View — citation_name_display_en sous EN, display FR sinon).
+func TestHomeRepo_LoadMatchCitations_LocaleAware(t *testing.T) {
+	repo := NewHomeRepo(newTestPlayerDB(t))
+
+	fr, err := repo.LoadMatchCitations(ctxkeys.WithLocale(context.Background(), "fr"), []string{"m1"})
+	if err != nil || len(fr["m1"]) != 1 {
+		t.Fatalf("FR: err=%v n=%d", err, len(fr["m1"]))
+	}
+	if fr["m1"][0].Display != "Killing Spree" {
+		t.Errorf("FR Display = %q, want 'Killing Spree'", fr["m1"][0].Display)
+	}
+
+	if fr["m1"][0].Description != "Série de kills" {
+		t.Errorf("FR Description = %q, want 'Série de kills'", fr["m1"][0].Description)
+	}
+
+	en, err := repo.LoadMatchCitations(ctxkeys.WithLocale(context.Background(), "en"), []string{"m1"})
+	if err != nil || len(en["m1"]) != 1 {
+		t.Fatalf("EN: err=%v n=%d", err, len(en["m1"]))
+	}
+	if en["m1"][0].Display != "Killing Spree (EN)" {
+		t.Errorf("EN Display = %q, want 'Killing Spree (EN)'", en["m1"][0].Display)
+	}
+	// GH4 : description anglaise sous EN (jamais le FR).
+	if en["m1"][0].Description != "Killing spree streak" {
+		t.Errorf("EN Description = %q, want 'Killing spree streak'", en["m1"][0].Description)
+	}
+}
+
+// TestCitationsRepo_LoadCitationMappings_DescriptionLocaleAware prouve GH4 sur la page
+// Citations (Q34) : la description EN est servie sous UI EN quand elle existe
+// (description_en), et retombe sur le NOM SEUL (Description nil) quand aucune source EN
+// n'existe — jamais le FR (principe GH-5b). Sous UI FR, la description FR est servie.
+func TestCitationsRepo_LoadCitationMappings_DescriptionLocaleAware(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	repo := NewCitationsRepo(pdb)
+
+	// killing_spree est déjà seedé (FR "Série de kills" / EN "Killing spree streak").
+	// On ajoute une citation SANS description_en pour prouver le fallback nom-seul.
+	if _, err := pdb.Metadata.Exec(ctx,
+		`INSERT INTO citation_mappings (citation_name_norm, citation_name_display, citation_name_display_en, mapping_type, category, description, enabled)
+		 VALUES (?,?,?,?,?,?,?)`,
+		"no_en_desc", "Sans EN", "No EN", "medal", "combat", "Description FR uniquement", true); err != nil {
+		t.Fatalf("seed citation sans description_en: %v", err)
+	}
+
+	byNorm := func(rows []domain.CitationMappingRow) map[string]domain.CitationMappingRow {
+		m := make(map[string]domain.CitationMappingRow, len(rows))
+		for _, r := range rows {
+			m[r.NameNorm] = r
+		}
+		return m
+	}
+
+	frRows, err := repo.LoadCitationMappings(ctxkeys.WithLocale(ctx, "fr"))
+	if err != nil {
+		t.Fatalf("FR LoadCitationMappings: %v", err)
+	}
+	fr := byNorm(frRows)
+	if got := fr["killing_spree"].Description; got == nil || *got != "Série de kills" {
+		t.Errorf("FR killing_spree Description = %v, want 'Série de kills'", got)
+	}
+	if got := fr["no_en_desc"].Description; got == nil || *got != "Description FR uniquement" {
+		t.Errorf("FR no_en_desc Description = %v, want 'Description FR uniquement'", got)
+	}
+
+	enRows, err := repo.LoadCitationMappings(ctxkeys.WithLocale(ctx, "en"))
+	if err != nil {
+		t.Fatalf("EN LoadCitationMappings: %v", err)
+	}
+	en := byNorm(enRows)
+	if got := en["killing_spree"].Description; got == nil || *got != "Killing spree streak" {
+		t.Errorf("EN killing_spree Description = %v, want 'Killing spree streak'", got)
+	}
+	// Pas de description_en → nom seul (Description nil), aucune fuite FR.
+	if got := en["no_en_desc"].Description; got != nil {
+		t.Errorf("EN no_en_desc Description = %q, want nil (nom seul)", *got)
+	}
+	// Le nom EN reste servi.
+	if en["no_en_desc"].NameDisplay != "No EN" {
+		t.Errorf("EN no_en_desc NameDisplay = %q, want 'No EN'", en["no_en_desc"].NameDisplay)
 	}
 }
 

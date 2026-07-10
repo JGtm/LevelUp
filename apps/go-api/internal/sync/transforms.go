@@ -66,18 +66,18 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 	}
 
 	// Assets
-	row.PlaylistID = strPtr(extractAssetID(matchInfo, "Playlist"))
-	row.PlaylistName = strPtr(extractPublicName(matchInfo, "Playlist"))
-	row.PlaylistVersionID = strPtr(extractVersionID(matchInfo, "Playlist"))
-	row.MapID = strPtr(extractAssetID(matchInfo, "MapVariant"))
-	row.MapName = strPtr(extractPublicName(matchInfo, "MapVariant"))
-	row.MapVersionID = strPtr(extractVersionID(matchInfo, "MapVariant"))
-	row.PairID = strPtr(extractAssetID(matchInfo, "PlaylistMapModePair"))
-	row.PairName = strPtr(extractPublicName(matchInfo, "PlaylistMapModePair"))
-	row.PairVersionID = strPtr(extractVersionID(matchInfo, "PlaylistMapModePair"))
-	row.GameVariantID = strPtr(extractAssetID(matchInfo, "UgcGameVariant"))
-	row.GameVariantName = strPtr(extractPublicName(matchInfo, "UgcGameVariant"))
-	row.GameVariantVersionID = strPtr(extractVersionID(matchInfo, "UgcGameVariant"))
+	row.PlaylistID = strPtrNonEmpty(extractAssetID(matchInfo, "Playlist"))
+	row.PlaylistName = strPtrNonEmpty(extractPublicName(matchInfo, "Playlist"))
+	row.PlaylistVersionID = strPtrNonEmpty(extractVersionID(matchInfo, "Playlist"))
+	row.MapID = strPtrNonEmpty(extractAssetID(matchInfo, "MapVariant"))
+	row.MapName = strPtrNonEmpty(extractPublicName(matchInfo, "MapVariant"))
+	row.MapVersionID = strPtrNonEmpty(extractVersionID(matchInfo, "MapVariant"))
+	row.PairID = strPtrNonEmpty(extractAssetID(matchInfo, "PlaylistMapModePair"))
+	row.PairName = strPtrNonEmpty(extractPublicName(matchInfo, "PlaylistMapModePair"))
+	row.PairVersionID = strPtrNonEmpty(extractVersionID(matchInfo, "PlaylistMapModePair"))
+	row.GameVariantID = strPtrNonEmpty(extractAssetID(matchInfo, "UgcGameVariant"))
+	row.GameVariantName = strPtrNonEmpty(extractPublicName(matchInfo, "UgcGameVariant"))
+	row.GameVariantVersionID = strPtrNonEmpty(extractVersionID(matchInfo, "UgcGameVariant"))
 
 	// Fallback nom → ID
 	row.PlaylistName = coalesceStrPtr(row.PlaylistName, row.PlaylistID)
@@ -95,7 +95,7 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 	// ou drift API), reste nil — la migration backfill le populera via dérivation
 	// depuis start_time.
 	if sid, _ := matchInfo["SeasonId"].(string); sid != "" {
-		row.SeasonID = strPtr(sid)
+		row.SeasonID = strPtrNonEmpty(sid)
 	}
 	if row.PairName != nil {
 		row.ModeCategory = determineModeCategory(*row.PairName)

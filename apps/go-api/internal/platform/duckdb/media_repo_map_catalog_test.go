@@ -16,6 +16,7 @@ import (
 	"database/sql"
 	"testing"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 
 	_ "github.com/duckdb/duckdb-go/v2"
@@ -68,6 +69,31 @@ func TestEnrichMediaMapTranslations_ResolvesViaCatalog(t *testing.T) {
 		t.Errorf("row2 : GUID inconnu doit être masqué, got %q", *rows[2].MapName)
 	}
 	assertMapName(t, "row3 (nom propre inchangé)", rows[3].MapName, "Aquarius")
+}
+
+// TestEnrichMediaMapTranslations_LocaleAware prouve GH2-B6 (« Recent media ») :
+// le nom de carte suit la locale de requête — EN = name_canonical, FR =
+// asset_translations (fallback croisé si l'une manque).
+func TestEnrichMediaMapTranslations_LocaleAware(t *testing.T) {
+	meta := setupMetadataWithMapCatalog(t)
+	repo := NewMediaRepo(&PlayerDB{Metadata: meta})
+
+	mkRows := func() []domain.MediaFileRow {
+		return []domain.MediaFileRow{
+			{MapID: strPtr("5324364b-cliff"), MapName: strPtr("5324364b-cliff")}, // FR dispo
+			{MapID: strPtr("921aebb1-dom"), MapName: strPtr("Domicile")},         // EN seul
+		}
+	}
+
+	frRows := mkRows()
+	repo.enrichMediaMapTranslations(ctxkeys.WithLocale(context.Background(), "fr"), frRows)
+	assertMapName(t, "FR row0", frRows[0].MapName, "Dévissage")
+	assertMapName(t, "FR row1 (fallback EN)", frRows[1].MapName, "Domicile")
+
+	enRows := mkRows()
+	repo.enrichMediaMapTranslations(ctxkeys.WithLocale(context.Background(), "en"), enRows)
+	assertMapName(t, "EN row0 (jamais de FR sous EN)", enRows[0].MapName, "Cliffhanger")
+	assertMapName(t, "EN row1", enRows[1].MapName, "Domicile")
 }
 
 func TestLoadMapCatalogNames_PrefersFR(t *testing.T) {

@@ -119,16 +119,18 @@ var tablesProtegees = []string{
 // non encore migrées (cf. audit_art_writes.md), l'allowlist contient
 // les sites tolérés temporairement.
 var allowlistArtPatterns = map[string]string{
-	// Documentation interne du package persist : mentionne les patterns
-	// à risque par nature (c'est sa raison d'être).
-	"internal/persist/doc.go": "Documentation : mentionne explicitement les patterns à risque dans son rôle d'expliquer le refactor anti-ART",
-	// FAUX POSITIF file-level (append-only #23046) : writes.go co-localise
-	// UpsertPlayerEnrichment (player_match_enrichment, INSERT pur append-only) avec
-	// les ON CONFLICT LÉGITIMES sur match_registry/match_participants (NON append-only,
-	// UPSERT sérialisé par dblease — absents de tablesProtegees). La protection PRÉCISE
-	// (statement-level) de player_match_enrichment vit dans append_only_state_guard_test.go
-	// (TestNoMutationOnAppendOnlyStateTables + TestPlayerMatchEnrichmentAppendOnlyAccess).
-	"internal/sync/writes.go": "Faux positif file-level : ON CONFLICT sur match_registry/match_participants (non append-only), pas sur player_match_enrichment (INSERT pur)",
+	// (Entrée `internal/persist/doc.go` retirée en E4 : ses seuls « patterns »
+	// vivaient dans un commentaire ; le scan principal strippe les commentaires,
+	// donc l'entrée était morte — TestAllowlistJustifiesEverything la refuse
+	// désormais, bloquant + strip cohérent avec le scan.)
+	//
+	// (Entrée `internal/sync/writes.go` retirée en V4b/2026-07-07 : le trio
+	// InsertRegistryIfNotExists/InsertParticipants/InsertMedals — seuls porteurs
+	// des ON CONFLICT DO UPDATE dans ce fichier — a été supprimé (0 caller prod
+	// depuis que l'import OpenSpartan est routé via persist.SharedPersister en E1).
+	// writes.go n'a plus aucun pattern à risque → entrée morte.)
+	//
+	// L'allowlist est désormais vide : aucun pattern ART toléré en prod.
 }
 
 // allowlistRawDelete : DELETE bruts sur table append-only TOLÉRÉS, avec
@@ -136,12 +138,15 @@ var allowlistArtPatterns = map[string]string{
 // risque ART — n'ajouter ici QU'AVEC une raison documentée prouvant l'absence de
 // déclencheur (player DB single-writer + zéro concurrence + PK BIGINT, pas VARCHAR).
 var allowlistRawDelete = map[string]string{
-	// compactMatchSkillRankSuperseded : DELETE de compaction (garde MAX(id) par
-	// match_id+rating_type). Sur PLAYER DB (lease KindPlayer, single-writer, jamais
-	// partagée → zéro concurrence) + PK BIGINT id (≠ VARCHAR, le déclencheur ART
-	// historique). Justifié in-code. Blast radius = 1 player DB, pas la metadata
-	// partagée (≠ incident catalog_fetch_queue).
-	"internal/sync/skill_rating_postsync_persist.go": "compactMatchSkillRankSuperseded : DELETE compaction player DB single-writer, PK BIGINT, zéro concurrence — justifié in-code",
+	// (Entrée `internal/sync/skill_rating_postsync_persist.go` retirée en
+	// V4c/2026-07-07 : la fonction compactMatchSkillRankSuperseded (DELETE de
+	// compaction) a été SUPPRIMÉE — elle déclenchait le bug ART #23046 malgré
+	// mono-writer + PK BIGINT (crash JGtm 2026-06-20). La table match_skill_rank
+	// reste append-only pur, la vue _latest reste correcte. Le fichier a par
+	// ailleurs migré vers internal/sync/skill/ et ne contient plus aucun DELETE.
+	// Entrée doublement morte → retirée.)
+	//
+	// L'allowlist est désormais vide : aucun DELETE brut toléré sur table append-only.
 }
 
 // TestNoARTPatternsOnProtectedTables — guard-rail principal.
@@ -173,16 +178,16 @@ func TestNoARTPatternsOnProtectedTables(t *testing.T) {
 			if !strings.HasSuffix(path, ".go") {
 				return nil
 			}
-			// Exclure les fichiers de test, migrations (one-shot boot), seeds,
-			// outils CLI/scripts one-shot (cmd/, scripts/ — exécutés hors serveur,
-			// mono-processus, même statut que migration/ops), et le présent guard-rail.
+			// Exclure les fichiers de test, migrations (one-shot boot), outils
+			// CLI/scripts one-shot (cmd/, scripts/ — exécutés hors serveur,
+			// mono-processus), et le présent guard-rail. NB (E3, 2026-07-03) : ops/
+			// N'EST PLUS exclu — sa plomberie (catalog_refresh, lying_bits_reset,
+			// data_quality) tourne IN-PROCESS, donc soumise au tripwire.
 			if strings.HasSuffix(path, "_test.go") ||
 				strings.Contains(path, "/migration/") ||
 				strings.Contains(path, "\\migration\\") ||
 				strings.Contains(path, "/migrations/") ||
 				strings.Contains(path, "\\migrations\\") ||
-				strings.Contains(path, "/ops/") ||
-				strings.Contains(path, "\\ops\\") ||
 				strings.Contains(path, "/cmd/") ||
 				strings.Contains(path, "\\cmd\\") ||
 				strings.Contains(path, "/scripts/") ||
@@ -233,8 +238,8 @@ func TestNoARTPatternsOnProtectedTables(t *testing.T) {
 // (incident catalog_fetch_queue 2026-06-19 — drain DiscoveryUGC autonome au boot).
 // Sur ces tables, seuls INSERT / INSERT OR IGNORE et SELECT-then-UPDATE single-row
 // sont permis. Le motif est SCOPÉ au nom exact de la table → zéro faux positif
-// (contrairement à patternsAtRisk qui est file-level). migrations/ops/cmd/scripts
-// exclus (rebuild one-shot, mono-processus).
+// (contrairement à patternsAtRisk qui est file-level). migrations/cmd/scripts
+// exclus (rebuild one-shot, mono-processus) ; ops/ scanné depuis E3 (in-process).
 func TestNoRawDeleteOnAppendOnlyTables(t *testing.T) {
 	repoRoot := findRepoRoot(t)
 
@@ -259,7 +264,6 @@ func TestNoRawDeleteOnAppendOnlyTables(t *testing.T) {
 			if strings.HasSuffix(path, "_test.go") ||
 				strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
 				strings.Contains(path, "/migrations/") || strings.Contains(path, "\\migrations\\") ||
-				strings.Contains(path, "/ops/") || strings.Contains(path, "\\ops\\") ||
 				strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
 				strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {
 				return nil
@@ -304,7 +308,10 @@ func TestAllowlistJustifiesEverything(t *testing.T) {
 			t.Errorf("allowlist : fichier introuvable %q (raison: %q) — entrée à retirer ?", fileRel, reason)
 			continue
 		}
-		text := string(content)
+		// Détection cohérente avec le scan principal (stripGoComments) : une
+		// « justification » qui n'existe que dans un commentaire ne compte PAS —
+		// le scan strippe les commentaires, donc une telle entrée est morte.
+		text := stripGoComments(string(content))
 		hasRiskPattern := false
 		for _, pat := range patternsAtRisk {
 			if pat.MatchString(text) {
@@ -313,7 +320,35 @@ func TestAllowlistJustifiesEverything(t *testing.T) {
 			}
 		}
 		if !hasRiskPattern {
-			t.Logf("allowlist : %q n'a plus de pattern à risque → retirer l'entrée (raison historique: %q)",
+			t.Errorf("allowlist ART obsolète : %q n'a plus de pattern à risque dans son CODE "+
+				"(commentaires strippés) → retirer l'entrée (raison historique: %q)",
+				fileRel, reason)
+		}
+	}
+
+	// V4d (VF-6) : le même contrôle anti-pourrissement s'applique à
+	// allowlistRawDelete. Une entrée survivante doit encore contenir un DELETE brut
+	// sur une table protégée (sinon elle protège du code disparu — c'est exactement
+	// le trou qu'a révélé VF-6 : skill_rating_postsync_persist.go n'existait plus).
+	for fileRel, reason := range allowlistRawDelete {
+		absPath := filepath.Join(repoRoot, filepath.FromSlash(fileRel))
+		content, err := os.ReadFile(absPath)
+		if err != nil {
+			t.Errorf("allowlistRawDelete : fichier introuvable %q (raison: %q) — entrée à retirer ?", fileRel, reason)
+			continue
+		}
+		text := stripGoComments(string(content))
+		hasRawDelete := false
+		for _, table := range tablesProtegees {
+			delRegex := regexp.MustCompile(`(?i)\bDELETE\s+FROM\s+` + regexp.QuoteMeta(table) + `\b`)
+			if delRegex.MatchString(text) {
+				hasRawDelete = true
+				break
+			}
+		}
+		if !hasRawDelete {
+			t.Errorf("allowlistRawDelete obsolète : %q n'a plus de DELETE brut sur table protégée "+
+				"dans son CODE (commentaires strippés) → retirer l'entrée (raison historique: %q)",
 				fileRel, reason)
 		}
 	}
@@ -343,18 +378,30 @@ func reBulkUpdateFromValues(table string) *regexp.Regexp {
 	return regexp.MustCompile(`(?is)\bUPDATE\s+` + regexp.QuoteMeta(table) + `\b.{0,400}?\bFROM\s*\(\s*VALUES\b`)
 }
 
+// reUpdateRawSQL capture un littéral SQL brut (délimité par des backticks Go)
+// contenant `UPDATE <table>`. Le second garde-fou vérifie ensuite la présence d'au
+// moins un placeholder `?` DANS ce littéral : son absence = UPDATE set-based multi-row
+// NU (prédicat pur, aucune valeur liée), l'autre déclencheur ART direct à côté de
+// `FROM (VALUES)`. Un UPDATE row-by-row sérialisé lie toujours match_id à `?`.
+// Ancrage sur les backticks (bornes réelles du littéral SQL) → pas de faux positif
+// sur les commentaires ni de fenêtre tronquée (E2, 2026-07-03).
+func reUpdateRawSQL(table string) *regexp.Regexp {
+	return regexp.MustCompile("(?is)`[^`]*\\bUPDATE\\s+" + regexp.QuoteMeta(table) + "\\b[^`]*`")
+}
+
 // TestNoBulkMultiRowUpdateOnCriticalTables — garde-fou complémentaire à
 // TestNoARTPatternsOnProtectedTables. Les tables match-of-record ne sont pas
 // dans tablesProtegees (leurs UPDATE bitmask/row-by-row sérialisés sont sûrs),
 // mais la forme bulk `UPDATE … FROM (VALUES …)` multi-row — le vrai déclencheur
 // ART — y est INTERDITE. Ce test fail si elle réapparaît sur une table critique.
-// Périmètre identique au scan principal (hors _test/migration/ops/cmd/scripts).
+// Périmètre identique au scan principal (hors _test/migration/cmd/scripts ; ops/ inclus depuis E3).
 func TestNoBulkMultiRowUpdateOnCriticalTables(t *testing.T) {
 	repoRoot := findRepoRoot(t)
 
 	var violations []string
 	for _, table := range criticalMatchTables {
-		re := reBulkUpdateFromValues(table)
+		reValues := reBulkUpdateFromValues(table)
+		reStmt := reUpdateRawSQL(table)
 		err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
@@ -373,7 +420,6 @@ func TestNoBulkMultiRowUpdateOnCriticalTables(t *testing.T) {
 			if strings.HasSuffix(path, "_test.go") ||
 				strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
 				strings.Contains(path, "/migrations/") || strings.Contains(path, "\\migrations\\") ||
-				strings.Contains(path, "/ops/") || strings.Contains(path, "\\ops\\") ||
 				strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
 				strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {
 				return nil
@@ -383,9 +429,15 @@ func TestNoBulkMultiRowUpdateOnCriticalTables(t *testing.T) {
 				return nil
 			}
 			text := stripGoComments(string(content))
-			if re.MatchString(text) {
-				rel, _ := filepath.Rel(repoRoot, path)
-				violations = append(violations, "table="+table+" file="+filepath.ToSlash(rel))
+			rel, _ := filepath.Rel(repoRoot, path)
+			if reValues.MatchString(text) {
+				violations = append(violations, "bulk-from-values table="+table+" file="+filepath.ToSlash(rel))
+			}
+			// Bare bulk (set-based, aucun `?` dans le corps du statement) — E2.
+			for _, stmt := range reStmt.FindAllString(text, -1) {
+				if !strings.Contains(stmt, "?") {
+					violations = append(violations, "bare-bulk (aucun placeholder) table="+table+" file="+filepath.ToSlash(rel))
+				}
 			}
 			return nil
 		})
@@ -396,8 +448,24 @@ func TestNoBulkMultiRowUpdateOnCriticalTables(t *testing.T) {
 
 	if len(violations) > 0 {
 		t.Errorf("ART bulk UPDATE multi-row détecté sur table(s) critique(s) — "+
-			"utiliser N UPDATE row-by-row (PostSyncEnrichmentPersister) ou INSERT-only (persist) :\n  - %s",
+			"utiliser N UPDATE row-by-row `WHERE match_id = ?` (PostSyncEnrichmentPersister) ou "+
+			"INSERT-only (persist) :\n  - %s",
 			strings.Join(violations, "\n  - "))
+	}
+}
+
+// TestBareBulkUpdateDetection_Sanity valide que le garde-fou bare-bulk MORD :
+// il attrape un UPDATE set-based nu (aucun `?`) et LAISSE PASSER un row-by-row
+// `WHERE match_id = ?`. Un garde-fou qui ne détecte jamais rien est inutile.
+func TestBareBulkUpdateDetection_Sanity(t *testing.T) {
+	re := reUpdateRawSQL("match_registry")
+	bare := "q := `UPDATE match_registry SET pair_name = game_variant_name || map_name WHERE pair_id IS NOT NULL`"
+	rowByRow := "q := `UPDATE match_registry SET pair_name = ? WHERE match_id = ?`"
+	if m := re.FindString(bare); m == "" || strings.Contains(m, "?") {
+		t.Errorf("bare bulk devrait matcher SANS placeholder, got %q", m)
+	}
+	if m := re.FindString(rowByRow); m == "" || !strings.Contains(m, "?") {
+		t.Errorf("row-by-row devrait matcher AVEC placeholder, got %q", m)
 	}
 }
 

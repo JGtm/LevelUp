@@ -1,9 +1,12 @@
 package title
 
 import (
+	"bytes"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -188,6 +191,29 @@ status = "archived"
 	// fixtures_only n'est pas un titre.
 	if reg.Exists("fixtures_only") {
 		t.Error("fixtures_only ne doit pas être enregistré (pas de title.toml)")
+	}
+}
+
+// F11 : un title.toml pour le titre built-in doit émettre un WARN explicite
+// (sinon un dev croit ses edits pris en compte alors qu'ils sont ignorés).
+func TestLoadTitlesIntoRegistry_BuiltinTOMLWarns(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeTitleFile(t, repoRoot, "halo_infinite", "title.toml", `
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+[title]
+name = "OVERRIDE"
+status = "archived"
+`)
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	if errs := LoadTitlesIntoRegistry(NewRegistry(), repoRoot, logger); len(errs) != 0 {
+		t.Fatalf("unexpected load errors: %v", errs)
+	}
+	if !strings.Contains(buf.String(), "title_builtin_toml_ignored") {
+		t.Errorf("WARN title_builtin_toml_ignored attendu, logs: %s", buf.String())
 	}
 }
 

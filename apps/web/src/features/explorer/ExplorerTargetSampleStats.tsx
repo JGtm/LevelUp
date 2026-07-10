@@ -12,6 +12,7 @@ import { KillTypesDonut, type DonutSlice } from '@/components/charts/KillTypesDo
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
@@ -41,7 +42,7 @@ function fmtInt(value: number, locale: string): string {
 
 export function ExplorerTargetSampleStats({ sampleStats }: ExplorerTargetSampleStatsProps) {
   const appLocale = useAppShellStore((s) => s.locale)
-  const locale = appLocale === 'en' ? 'en-US' : 'fr-FR'
+  const locale = intlLocale(appLocale)
   const t: TFn = (key, values) => formatMessage(explorerManifest, key, appLocale, values)
 
   // Partition des frags par TYPE D'ARME (mutuellement exclusifs) : melee / arme
@@ -88,7 +89,7 @@ export function ExplorerTargetSampleStats({ sampleStats }: ExplorerTargetSampleS
 // ─── Top armes (à droite du donut) ───────────────────────────────────────────
 
 function WeaponsTop({ weapons, locale, t }: { weapons: ExplorerWeaponKill[]; locale: 'fr' | 'en'; t: TFn }) {
-  const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
+  const numberLocale = intlLocale(locale)
   const maxKills = Math.max(1, ...weapons.map((w) => w.kills))
   return (
     <div className="flex flex-col gap-2">
@@ -131,7 +132,7 @@ function WeaponsTop({ weapons, locale, t }: { weapons: ExplorerWeaponKill[]; loc
  */
 export function ExplorerTargetOutcome({ sampleStats }: ExplorerTargetSampleStatsProps) {
   const appLocale = useAppShellStore((s) => s.locale)
-  const locale = appLocale === 'en' ? 'en-US' : 'fr-FR'
+  const locale = intlLocale(appLocale)
   const t: TFn = (key, values) => formatMessage(explorerManifest, key, appLocale, values)
   if (sampleStats.wins + sampleStats.draws + sampleStats.losses === 0) return null
   return (
@@ -170,7 +171,7 @@ function DonutColumn({ slices, locale, t }: { slices: DonutSlice[]; locale: stri
  */
 export function ExplorerTargetSampleKpis({ sampleStats }: ExplorerTargetSampleStatsProps) {
   const appLocale = useAppShellStore((s) => s.locale)
-  const locale = appLocale === 'en' ? 'en-US' : 'fr-FR'
+  const locale = intlLocale(appLocale)
   const t: TFn = (key, values) => formatMessage(explorerManifest, key, appLocale, values)
   const providesDamageTaken = useProvidesDamageTaken()
   const dash = t('explorer.target_profile.value_unavailable')

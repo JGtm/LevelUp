@@ -33,6 +33,29 @@ func init() {
 	metricsMap = expvar.NewMap("levelup")
 }
 
+// PublishDuckDBPoolStats enregistre sous "levelup"/"duckdb_pool_stats" une metrique
+// expvar dont la valeur (sql.DBStats par handle) est produite a la demande par
+// snapshot(). Le snapshot est injecte (func() any) pour eviter un cycle
+// observability -> platform/duckdb. J1 (2026-07-05, ADR 0009) : rend visibles
+// WaitCount/WaitDuration/InUse du pool sur /debug/vars.
+func PublishDuckDBPoolStats(snapshot func() any) {
+	if metricsMap == nil || snapshot == nil {
+		return
+	}
+	metricsMap.Set("duckdb_pool_stats", expvar.Func(snapshot))
+}
+
+// PublishDuckDBBudgets enregistre sous "levelup"/"duckdb_budgets" les bornes
+// ressources DuckDB effectives (memory_limit/threads/tailles de pool). J2 : rend
+// la config mémoire/threads réellement appliquée visible sur /debug/vars, à côté
+// de duckdb_pool_stats. snapshot() injecté (anti-cycle observability -> duckdb).
+func PublishDuckDBBudgets(snapshot func() any) {
+	if metricsMap == nil || snapshot == nil {
+		return
+	}
+	metricsMap.Set("duckdb_budgets", expvar.Func(snapshot))
+}
+
 // IncCounter incremente de 1 le compteur nomme. Cree le compteur a la
 // premiere appel.
 //

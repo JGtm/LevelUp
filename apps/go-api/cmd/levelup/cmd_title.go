@@ -132,9 +132,8 @@ func createTitleDirs(repoRoot, slug string) error {
 		// Placer ici les visuels header du titre (webp/png).
 		filepath.Join(repoRoot, "apps", "web", "public", "titles", slug),
 	}
-	// PlayerDir avec gamertag vide retourne le répertoire players/ du titre.
-	// On le normalise : supprimer le trailing segment vide que filepath.Join ajouterait.
-	dirs[1] = filepath.Join(pr.TitleDataDir(slug), "players")
+	// Répertoire racine des joueurs du titre (source unique PathResolver).
+	dirs[1] = pr.PlayersRootDir(slug)
 
 	for _, d := range dirs {
 		if _, err := os.Stat(d); err == nil {

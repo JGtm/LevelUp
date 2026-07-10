@@ -279,6 +279,3 @@ func joinStrings(ss []string) string {
 	}
 	return out
 }
-
-// enrichMediaMapTranslations rÃ©sout les noms de cartes en franÃ§ais depuis asset_translations (metadata.duckdb).
-// MÃªme mÃ©canisme que HomeRepo.enrichHomeMatchTranslations.

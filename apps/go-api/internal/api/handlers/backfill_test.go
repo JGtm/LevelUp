@@ -6,7 +6,6 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/jobs"
-	go_sync "levelup/go-api/internal/sync"
 )
 
 func TestBuildSyncScope_AllData(t *testing.T) {
@@ -112,77 +111,6 @@ func TestBuildSyncScope_ForceRescanEventsAndPersonalScores(t *testing.T) {
 	}
 }
 
-// TestWarnUnimplemented_EventsNotListed (Phase 2 du plan
-// PLAN_HIGHLIGHT_EVENTS_BACKFILL.md) : régression — quand on active
-// `scope.Events=true`, le job ne doit PLUS recevoir une warning
-// "events" listant ce type comme non-implémenté.
-func TestWarnUnimplemented_EventsNotListed(t *testing.T) {
-	cfg := &config.AppConfig{}
-	store := jobs.NewStore(t.TempDir())
-	h := NewBackfillHandler(cfg, store)
-
-	job := store.Create(domain.JobTypeBackfill, "player-test")
-	scope := &go_sync.SyncScope{Events: true}
-
-	h.warnUnimplemented(job.JobID, scope)
-
-	got := store.Get(job.JobID)
-	if got == nil {
-		t.Fatalf("Get(%s) returned nil", job.JobID)
-	}
-	for _, w := range got.Warnings {
-		if containsBackfillKeyword(w, "events") {
-			t.Errorf("warning ne doit PAS lister 'events' (Phase 2 livrée) : %q", w)
-		}
-	}
-}
-
-// TestWarnUnimplemented_StillListsOthers : sanity — les autres types
-// non implémentés (medals, skill, etc.) doivent rester listés.
-func TestWarnUnimplemented_StillListsOthers(t *testing.T) {
-	cfg := &config.AppConfig{}
-	store := jobs.NewStore(t.TempDir())
-	h := NewBackfillHandler(cfg, store)
-
-	job := store.Create(domain.JobTypeBackfill, "player-test")
-	scope := &go_sync.SyncScope{Medals: true, Skill: true}
-
-	h.warnUnimplemented(job.JobID, scope)
-
-	got := store.Get(job.JobID)
-	if got == nil {
-		t.Fatalf("Get(%s) returned nil", job.JobID)
-	}
-	if len(got.Warnings) == 0 {
-		t.Fatal("attendu une warning pour medals+skill non-implémentés")
-	}
-	hasMedals := false
-	hasSkill := false
-	for _, w := range got.Warnings {
-		if containsBackfillKeyword(w, "medals") {
-			hasMedals = true
-		}
-		if containsBackfillKeyword(w, "skill") {
-			hasSkill = true
-		}
-	}
-	if !hasMedals {
-		t.Error("warning devrait mentionner medals")
-	}
-	if !hasSkill {
-		t.Error("warning devrait mentionner skill")
-	}
-}
-
-func containsBackfillKeyword(s, kw string) bool {
-	for i := 0; i+len(kw) <= len(s); i++ {
-		if s[i:i+len(kw)] == kw {
-			return true
-		}
-	}
-	return false
-}
-
 func TestNewBackfillHandler(t *testing.T) {
 	cfg := &config.AppConfig{}
 	store := jobs.NewStore(t.TempDir())
@@ -227,33 +155,5 @@ func TestBuildSyncScope_EngagementScoresImpliesCoefRecompute(t *testing.T) {
 	}
 	if scope.EngagementCoefficients {
 		t.Fatal("EngagementCoefficients should remain false (recompute is implicit)")
-	}
-}
-
-func TestWarnUnimplemented_NoTypes(t *testing.T) {
-	store := jobs.NewStore(t.TempDir())
-	h := &BackfillHandler{jobStore: store}
-	job := store.Create(domain.JobTypeBackfill, "test")
-
-	scope := &go_sync.SyncScope{} // no flags
-	h.warnUnimplemented(job.JobID, scope)
-
-	got := store.Get(job.JobID)
-	if len(got.Warnings) != 0 {
-		t.Fatalf("expected 0 warnings, got %d", len(got.Warnings))
-	}
-}
-
-func TestWarnUnimplemented_WithTypes(t *testing.T) {
-	store := jobs.NewStore(t.TempDir())
-	h := &BackfillHandler{jobStore: store}
-	job := store.Create(domain.JobTypeBackfill, "test")
-
-	scope := &go_sync.SyncScope{Medals: true, Events: true}
-	h.warnUnimplemented(job.JobID, scope)
-
-	got := store.Get(job.JobID)
-	if len(got.Warnings) != 1 {
-		t.Fatalf("expected 1 warning, got %d", len(got.Warnings))
 	}
 }

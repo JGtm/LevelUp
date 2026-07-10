@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -88,6 +89,63 @@ func TestMatchHistoryService_GetPage_PropagatesIsWithFriendsAndExperience(t *tes
 	}
 	if got := byID["pve"]; got.IsWithFriends || got.ExperienceTypeLabel != "PVE" {
 		t.Errorf("pve: IsWithFriends=%v ExperienceTypeLabel=%q", got.IsWithFriends, got.ExperienceTypeLabel)
+	}
+}
+
+// TestMatchHistoryService_GetPage_ExperienceLabelsLocaleAware prouve GH6-1 : le LABEL
+// des options d'expérience du résumé Explorer/Historique est localisé (EN sous locale
+// EN) tandis que la VALUE reste FR dans les deux locales (clé de filtre + cascade front
+// intactes). Miroir de TestFiltersService_Resolve_ExperienceLabelsLocaleAware (Omnibar).
+func TestMatchHistoryService_GetPage_ExperienceLabelsLocaleAware(t *testing.T) {
+	now := time.Now()
+	mapName := aquariusMap
+	pairName := slayerMode
+	repo := &mockMatchHistoryRepo{
+		rows: []domain.MatchHistoryRawRow{
+			{MatchID: "unranked", StartTime: &now, MapName: &mapName, PairName: &pairName, Outcome: 2},
+			{MatchID: "ranked", StartTime: &now, MapName: &mapName, PairName: &pairName, IsRanked: true, Outcome: 2},
+			{MatchID: "pve", StartTime: &now, MapName: &mapName, PairName: &pairName, IsFirefight: true, Outcome: 2},
+		},
+	}
+	svc := NewMatchHistoryService(repo, "Player")
+
+	// VALUE FR canonique → LABEL EN attendu (MÊMES libellés que GH5-2 Omnibar).
+	wantEN := map[string]string{
+		expTypePVPUnranked: "Unranked PvP",
+		expTypePVPRanked:   "Ranked PvP",
+		expTypePVE:         "PvE",
+	}
+	req := domain.MatchHistoryQueryRequest{Pagination: domain.PaginationRequest{Page: 1, PageSize: 20}}
+
+	// Locale EN : Label localisé, Value FR.
+	respEN, err := svc.GetPage(ctxkeys.WithLocale(context.Background(), "en"), req)
+	if err != nil {
+		t.Fatalf("GetPage EN: %v", err)
+	}
+	optsEN := respEN.Summary.AvailableExperienceTypes
+	if len(optsEN) != 3 {
+		t.Fatalf("EN: %d options d'expérience, want 3", len(optsEN))
+	}
+	for _, o := range optsEN {
+		want, isFRValue := wantEN[o.Value]
+		if !isFRValue {
+			t.Errorf("EN: Value %q n'est pas une VALUE FR canonique (la Value NE doit PAS être localisée)", o.Value)
+			continue
+		}
+		if o.Label != want {
+			t.Errorf("EN: Value %q → Label %q, want %q", o.Value, o.Label, want)
+		}
+	}
+
+	// Locale FR (défaut) : Label == Value (FR) dans les deux champs.
+	respFR, err := svc.GetPage(ctxkeys.WithLocale(context.Background(), "fr"), req)
+	if err != nil {
+		t.Fatalf("GetPage FR: %v", err)
+	}
+	for _, o := range respFR.Summary.AvailableExperienceTypes {
+		if o.Label != o.Value {
+			t.Errorf("FR: Label %q != Value %q (attendu identique sous locale FR)", o.Label, o.Value)
+		}
 	}
 }
 

@@ -15,27 +15,15 @@ import (
 	"time"
 	"unicode"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
-// CareerRankData contient les données d'un snapshot de rang.
-// Portage de src/data/sync/models.py CareerRankData.
-type CareerRankData struct {
-	XUID             string
-	CurrentRank      int
-	CurrentRankName  string
-	CurrentRankTier  string
-	CurrentXP        int
-	XPForNextRank    int
-	XPTotal          int
-	IsMaxRank        bool
-	AdornmentPath    string
-	SpartanID        string
-	BannerImageURL   string
-	EmblemImageURL   string
-	BackdropImageURL string
-}
+// CareerRankData : alias vers domain.CareerRankSnapshot (type promu dans domain, K1k).
+// Les usages internes de sync (et duckdb/games/port) restent inchangés via l'alias ; le
+// type canonique vit dans domain pour que la couche service ne dépende plus de sync.
+type CareerRankData = domain.CareerRankSnapshot
 
 // syncCareerRank récupère la progression du rang carrière via le client Halo.
 // Si le token joueur est absent, la sync est sautée proprement (nil, nil).
@@ -133,9 +121,13 @@ func saveCareerRank(ctx context.Context, db *sql.DB, data *CareerRankData) error
 		return fmt.Errorf("saveCareerRank: %w", err)
 	}
 
-	// Mettre à jour sync_meta
-	_ = SetSyncMeta(ctx, db, "last_career_sync_at", now.Format(time.RFC3339))
-	_ = SetSyncMeta(ctx, db, "current_rank", fmt.Sprintf("%d", data.CurrentRank))
+	// Mettre à jour sync_meta (best-effort : le snapshot est déjà persisté ci-dessus).
+	if err := SetSyncMeta(ctx, db, "last_career_sync_at", now.Format(time.RFC3339)); err != nil {
+		slog.WarnContext(ctx, "saveCareerRank: SetSyncMeta last_career_sync_at échoué (best-effort)", "err", err)
+	}
+	if err := SetSyncMeta(ctx, db, "current_rank", fmt.Sprintf("%d", data.CurrentRank)); err != nil {
+		slog.WarnContext(ctx, "saveCareerRank: SetSyncMeta current_rank échoué (best-effort)", "err", err)
+	}
 
 	return nil
 }
@@ -213,8 +205,10 @@ func syncPlayerCSRs(
 	//    par-playlist (/hi/playlist/{id}/csrs) — garantit la couverture de toutes
 	//    les playlists classées de la saison sans dériver de l'historique.
 	//    `activePlaylists` = actives découvertes par le cron (dynamique) ; vide →
-	//    fallback rankedplaylists.Active() dans l'augment.
-	csrs = augmentWithActiveRankedCSRs(ctx, client, xuid, seasonID, csrs, activePlaylists)
+	//    fallback rankedplaylists.Active() dans l'augment. Locale "en" : le nom
+	//    persisté (SaveCSRSnapshots) reste le canonique EN — résolution FR à la
+	//    lecture (GH2-B3).
+	csrs = AugmentWithActiveRankedCSRs(ctx, client, xuid, seasonID, csrs, "en", activePlaylists)
 	if len(csrs) == 0 {
 		return nil, nil
 	}
@@ -224,19 +218,28 @@ func syncPlayerCSRs(
 	return csrs, nil
 }
 
-// augmentWithActiveRankedCSRs ajoute à csrs les playlists classées ACTIVES
+// AugmentWithActiveRankedCSRs ajoute à csrs les playlists classées ACTIVES
 // (référence rankedplaylists) absentes du player-level, en interrogeant
-// l'endpoint par-playlist (Grunt Skill.GetPlaylistCsr). Nom/queue/input viennent
-// de la référence. Best-effort par playlist : une erreur n'interrompt pas.
+// l'endpoint par-playlist (Grunt Skill.GetPlaylistCsr). Queue/input viennent de
+// la référence. Best-effort par playlist : une erreur n'interrompt pas.
+//
+// locale sélectionne le libellé de playlist depuis la référence : "fr" → NameFR,
+// "en"/autre → NameEN, "" → ne PAS enrichir le nom (garder celui de l'API).
+// activePlaylists = playlists classées actives découvertes dynamiquement (cron
+// catalogue) ; vide → fallback rankedplaylists.Active() (référence statique).
+// Source unique partagée par le sync post-cycle (career.go) et le provider DI
+// Explorer (wire/registry_pages_explorer.go) — H8 (2026-07-04), dédup d'une copie
+// inline ; fusion 2026-07-10 avec le chantier leaderboard (playlists dynamiques).
 //
 // Les playlists pour lesquelles l'API ne renvoie aucune entrée (jamais jouées)
 // sont volontairement ignorées : la lecture catalogue-first (GetCSRSnapshots)
 // synthétise alors une ligne "Non classé" cohérente avec le seuil de la saison.
-func augmentWithActiveRankedCSRs(
+func AugmentWithActiveRankedCSRs(
 	ctx context.Context,
 	client HaloClient,
 	xuid, seasonID string,
 	csrs []PlayerPlaylistCSR,
+	locale string,
 	activePlaylists []rankedplaylists.Playlist,
 ) []PlayerPlaylistCSR {
 	// activePlaylists vide → fallback sur la référence statique (comportement
@@ -254,14 +257,21 @@ func augmentWithActiveRankedCSRs(
 		}
 		res, err := client.GetPlaylistCsr(ctx, pl.AssetID, xuid, seasonID)
 		if err != nil {
-			slog.WarnContext(ctx, "augmentWithActiveRankedCSRs: GetPlaylistCsr échoué",
+			slog.WarnContext(ctx, "AugmentWithActiveRankedCSRs: GetPlaylistCsr échoué",
 				"playlist", pl.AssetID, "err", err)
 			continue
 		}
 		if res == nil {
 			continue // pas d'entrée → catalogue-first affichera "Non classé"
 		}
-		res.PlaylistName = pl.NameEN
+		switch locale {
+		case "fr":
+			res.PlaylistName = pl.NameFR
+		case "":
+			// skip : garder le PlaylistName renvoyé par l'API.
+		default:
+			res.PlaylistName = pl.NameEN
+		}
 		res.Queue = pl.Queue
 		res.Input = pl.Input
 		csrs = append(csrs, *res)

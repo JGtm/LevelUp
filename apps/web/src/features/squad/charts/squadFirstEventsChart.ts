@@ -17,6 +17,7 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import {
   CHART_BG,
+  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getTooltipBase,
@@ -113,11 +114,11 @@ export function buildSquadFirstEventsOption(
             const point = p as { seriesName: string; value: unknown; color: string }
             const v = typeof point.value === 'number' ? Math.abs(point.value) : 0
             if (v === 0) return null
-            return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${point.color};margin-right:6px"></span>${point.seriesName}: ${v} ${opts.matchesSuffix}`
+            return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${point.color};margin-right:6px"></span>${escapeHtml(point.seriesName ?? '')}: ${v} ${opts.matchesSuffix}`
           })
           .filter(Boolean)
         if (lines.length === 0) return ''
-        return `<strong>${cat}</strong><br/>${lines.join('<br/>')}`
+        return `<strong>${escapeHtml(cat)}</strong><br/>${lines.join('<br/>')}`
       },
     },
     legend: { show: false },

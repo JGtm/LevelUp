@@ -323,6 +323,64 @@ func TestCareerLive_MergeCareerRow_Matrix(t *testing.T) {
 	}
 }
 
+// TestCareerLive_MergeCustom_BannerNeverEmpty cadenasse la directive produit
+// apparence côté merge (2026-07-08, cas JGtm emblème 3806589 sans nameplate
+// upstream) : les champs sont indépendants — la bannière dbLast est
+// carry-forwardée même si l'emblème live a changé ; on affiche toujours une
+// bannière (l'actuelle sinon la dernière connue), jamais un bloc vide.
+func TestCareerLive_MergeCustom_BannerNeverEmpty(t *testing.T) {
+	dbLast := &duckdb.CareerRankRow{
+		Rank: 30, CurrentXP: 500, SpartanID: "SR-DB",
+		BannerImageURL: "https://db/banner-old.png", EmblemImageURL: "https://db/emblem-old.png",
+		BackdropImageURL: "https://db/backdrop.png",
+	}
+
+	t.Run("emblème changé + banner irrésoluble → carry de la dernière bannière connue", func(t *testing.T) {
+		custom := &syncpkg.SpartanCustomizationData{
+			SpartanID:      "SR-LIVE",
+			EmblemImageURL: "https://live/emblem-new.png",
+			// BannerImageURL vide : nameplate absente upstream.
+		}
+		merged := mergeCareerRow(nil, custom, dbLast)
+		if merged == nil {
+			t.Fatal("merged attendu non-nil")
+		}
+		if merged.EmblemImageURL != "https://live/emblem-new.png" {
+			t.Errorf("emblem = %q, want live emblem-new", merged.EmblemImageURL)
+		}
+		if merged.BannerImageURL != "https://db/banner-old.png" {
+			t.Errorf("banner = %q, want dernière bannière connue (jamais vide)", merged.BannerImageURL)
+		}
+		if merged.BackdropImageURL != "https://db/backdrop.png" {
+			t.Errorf("backdrop = %q, want carry-forward DB", merged.BackdropImageURL)
+		}
+	})
+
+	t.Run("même emblème + banner vide transitoire → carry bannière (anti-flicker)", func(t *testing.T) {
+		custom := &syncpkg.SpartanCustomizationData{
+			SpartanID:      "SR-LIVE",
+			EmblemImageURL: "https://db/emblem-old.png", // inchangé
+		}
+		merged := mergeCareerRow(nil, custom, dbLast)
+		if merged == nil {
+			t.Fatal("merged attendu non-nil")
+		}
+		if merged.BannerImageURL != "https://db/banner-old.png" {
+			t.Errorf("banner = %q, want carry-forward DB (même emblème)", merged.BannerImageURL)
+		}
+	})
+
+	t.Run("custom nil → paire dbLast entière carry-forwardée", func(t *testing.T) {
+		merged := mergeCareerRow(nil, nil, dbLast)
+		if merged == nil {
+			t.Fatal("merged attendu non-nil")
+		}
+		if merged.BannerImageURL != "https://db/banner-old.png" || merged.EmblemImageURL != "https://db/emblem-old.png" {
+			t.Errorf("paire = (%q, %q), want paire dbLast complète", merged.BannerImageURL, merged.EmblemImageURL)
+		}
+	})
+}
+
 // TestCareerLive_GetIdentity_SwRBehavior valide le contrat stale-while-
 // revalidate côté service :
 //   - cache vide → DB servie immédiatement (SANS attendre live)
@@ -680,6 +738,23 @@ func TestOverlayIdentityFromFallback(t *testing.T) {
 				BannerImageURL: sPtr("/db/banner-old.png"),
 			},
 			wantBann: sPtr("/live/banner-new.png"),
+		},
+		{
+			// Directive « jamais vide » + champs indépendants (2026-07-08, cas
+			// JGtm emblème 3806589) : l'emblème live a changé et la nameplate est
+			// irrésoluble upstream → la dernière bannière connue (fallback) doit
+			// quand même être patchée.
+			name: "emblème changé sans banner → patch de la dernière bannière connue",
+			identity: &domain.HomeSpartanIdentityRow{
+				EmblemImageURL: sPtr("/live/emblem-new.png"),
+				// pas de BannerImageURL (nameplate absente upstream)
+			},
+			fallback: &domain.HomeSpartanIdentityRow{
+				EmblemImageURL: sPtr("/db/emblem-old.png"),
+				BannerImageURL: sPtr("/db/banner-old.png"),
+			},
+			wantBann: sPtr("/db/banner-old.png"),
+			wantEmbl: sPtr("/live/emblem-new.png"),
 		},
 		{
 			name: "identity complète + fallback nil → garde identity",

@@ -1,8 +1,25 @@
 # ADR 0005 — Prestige module : phased activation
 
-**Status** — Proposed (2026-04-29). Triggered by code review axe 11 + verification-finale-scaffolding.md (cas 10).
+**Status** — Accepted (2026-07-03) — Prestige activé par défaut ; gate UNIQUE sourcé `app_settings.json` avec override `PRESTIGE_ENABLED`. (Initialement Proposed 2026-04-29, code review axe 11 + verification-finale-scaffolding.md cas 10.)
 
 **Deciders** — Guillaume (GS).
+
+## Update — 2026-07-03 : activation confirmée + gate unifié (C7 / DEC-4)
+
+Prestige est **activé par défaut**. La source de vérité UNIQUE est `prestige_enabled`
+dans `app_settings.json` (le fichier racine ship `true`), avec la variable
+d'environnement `PRESTIGE_ENABLED` comme override d'urgence (valeurs falsy
+`0`/`false`/`no`/`off` = désactivé). Il existe exactement UN gate,
+`prestige.IsEnabled(settingsPath string)` (`apps/go-api/internal/prestige/sync_hook.go`),
+consommé par toutes les surfaces via `cfg.PrestigeEnabled` (montage des routes HTTP +
+boot bundle dans `server.go`, `config.go`) et par le hook post-sync via
+`PrestigeBundle.RunPostSync` / `b.enabled` (`prestige_setup.go`). Le doublon env-only
+(`prestige.IsEnabled()` sans argument) et `config.loadPrestigeEnabled` sont **supprimés**.
+
+L'alternative **A) Activation immédiate** est désormais retenue (après validation staging).
+La **clause d'expiration 2026-09-30 est annulée** : la feature étant activée, le garde-fou
+de date n'a plus d'objet — le test `apps/go-api/internal/config/prestige_expiry_test.go` est
+supprimé dans le même commit (sinon dead-guard / doc inversée).
 
 ## Context
 

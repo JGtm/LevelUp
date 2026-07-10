@@ -97,8 +97,8 @@ type SyncEngine struct {
 	// pour permettre l'enrichissement post-Extract des MatchRegistryRow via
 	// asset_translations (cf. EnrichRegistryFromMetadata, anti-régression UUIDs
 	// bruts dans match_registry.playlist_name). Nil dans les tests unitaires
-	// qui appellent processMatch directement → l'enrichissement devient no-op
-	// et la sync reste fonctionnelle (UUID préservé comme avant).
+	// qui appellent buildBatchFromFetchedMatch directement → l'enrichissement
+	// devient no-op et la sync reste fonctionnelle (UUID préservé comme avant).
 	metaDB *sql.DB
 	// csrSeasonID est l'identifiant de saison CSR courant (ex: "CsrSeason8").
 	// Vide → runCSRSnapshotSync est skippé silencieusement.
@@ -133,14 +133,7 @@ type SyncEngine struct {
 	// Injecté via WithMediaScanHook depuis scheduler + SyncHandler.
 	mediaHook func(ctx context.Context)
 
-	// batchMode (Phase 2.3 refactor Collect→Persist) — si true, la boucle
-	// d'insertion utilise `submitMatchAsBatch` (chemin INSERT-only via
-	// persist.SharedPersister + persist.PlayerPersister) au lieu de
-	// `insertFetchedMatch` legacy (UPSERT direct). Feature-flag opt-in
-	// activé par WithBatchPersistMode.
-	batchMode bool
-
-	// batchQueue (Phase 3 refactor Collect→Persist) — si non-nil ET batchMode,
+	// batchQueue (Phase 3 refactor Collect→Persist) — si non-nil,
 	// submitMatchAsBatch passe par queue.Submit (WAL + worker async) au lieu
 	// d'appeler les Persisters directement. À la fin du cycle, run() appelle
 	// queue.Drain pour attendre que tous les batches soient ACKed (parité
@@ -179,24 +172,203 @@ func (e *SyncEngine) RunFull(ctx context.Context, opts domain.SyncOptions) (doma
 }
 
 // RunBackfill, RunBackfillEngagementScores, RunBackfillEngagementCoefficients,
-// RunBackfillLUSR, RunBackfillCSR, RunBackfillPerf, RunBackfillComebackBadges,
-// loadMedalExploitMap, loadMedalExploitMapBestEffort, selectMatchesForComebackBadges,
-// loadAllMatchIDsForPlayer, loadFlaggedMatchIDs : déplacés vers engine_backfills.go
-// (refactor 2026-05-21).
+// RunBackfillLUSRDryRun (LUSR v2 : le v1 RunBackfillLUSR est mort — cf.
+// RecomputeLUSRCanonicalForPlayer), RunBackfillCSR, RunBackfillPerf,
+// RunBackfillComebackBadges, loadMedalExploitMap, loadMedalExploitMapBestEffort,
+// selectMatchesForComebackBadges, loadAllMatchIDsForPlayer, loadFlaggedMatchIDs :
+// déplacés vers engine_backfills.go (refactor 2026-05-21).
+
+// historyPaginationInputs regroupe l'état run()-local consommé par
+// paginateAndPersistHistory (garde la signature ≤ 5 params — CLAUDE.md).
+type historyPaginationInputs struct {
+	client   HaloClient
+	opts     domain.SyncOptions
+	known    map[string]bool
+	sharedDB *sql.DB
+	playerDB *sql.DB
+	isDelta  bool
+}
+
+// paginateAndPersistHistory parcourt l'historique paginé (GetMatchHistory) et, page par
+// page, filtre les matchs connus, fetche en parallèle les inconnus (borné à
+// syncFetchParallelism) puis les persiste séquentiellement (order-preserving). Arrêts :
+// MaxMatches atteint, page vide, match connu rencontré en delta (APRÈS flush des unknowns
+// déjà collectés de la page), ou page entièrement connue en delta. Extrait de run() (K2b,
+// 2026-07-06) — mute `result` (compteurs + warnings).
+//
+// la découper disperserait l'état partagé processed/toFetch/stopAfterFlush et nuirait à
+// la lisibilité du critère d'arrêt delta (bug 2026-05-21 : flush-avant-stop).
+//
+//nolint:funlen // boucle de pagination cohérente (filtre → fetch → persist par page) :
+func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPaginationInputs, result *domain.SyncResult) {
+	processed := 0
+	start := 0
+
+	for processed < in.opts.MaxMatches {
+		// Respecter le contexte d'annulation.
+		if err := ctx.Err(); err != nil {
+			break
+		}
+
+		slog.DebugContext(ctx, "sync: requête historique API",
+			"gamertag", e.gamertag, "xuid", e.xuid, "start", start, "page_size", historyPageSize,
+		)
+		// L'endpoint /hi/players/{player}/matches exige strictement le format
+		// xuid(NNN) (voir Grunt StatsModule.GetMatchHistory + SPNKr). Passer le
+		// gamertag directement renvoie une réponse stale figée — symptôme du
+		// "no inserts since 6 mai" diagnostiqué le 2026-05-20.
+		entries, err := in.client.GetMatchHistory(ctx, fmt.Sprintf("xuid(%s)", e.xuid), in.opts.MatchType, start, historyPageSize)
+		if err != nil {
+			slog.WarnContext(ctx, "sync: GetMatchHistory échoué",
+				"gamertag", e.gamertag, "start", start, "err", err,
+			)
+			result.AddWarning(fmt.Sprintf("GetMatchHistory(start=%d): %v", start, err))
+			break
+		}
+		if len(entries) == 0 {
+			slog.DebugContext(ctx, "sync: fin historique (page vide)", "gamertag", e.gamertag, "start", start)
+			break // fin de l'historique
+		}
+		slog.DebugContext(ctx, "sync: page reçue",
+			"gamertag", e.gamertag, "entries", len(entries), "start", start,
+		)
+		// Log INFO du 1er match retourné par l'API (seulement sur start=0).
+		// Sentinelle de fraîcheur : si ce StartTime ne bouge pas entre 2 cycles
+		// alors que le joueur a joué, on sait que l'API renvoie du stale
+		// (cf. incident 2026-05-20, endpoint /hi/players/{gamertag}/matches sans
+		// xuid(...) renvoyait du contenu figé).
+		if start == 0 && len(entries) > 0 {
+			slog.InfoContext(ctx, "sync: 1er match retourné par API",
+				"gamertag", e.gamertag, "xuid", e.xuid,
+				"first_match_id", entries[0].MatchID,
+				"first_match_start_time", entries[0].StartTime,
+			)
+		}
+
+		allKnown := true
+
+		// ─── Phase 1 : Filtrer et préparer les matchs à fetcher ───
+		var toFetch []string // MatchIDs à fetcher (l'ordre suit `entries`)
+		// stopAfterFlush : on a rencontré un match connu en mode delta. On
+		// arrête après avoir fetché/inséré les nouveaux déjà collectés —
+		// ne PAS goto done direct sinon on perd les entries unknown qui
+		// précèdent le connu dans la même page (bug 2026-05-21 : page
+		// renvoyait [cd89b091 (new May 11), b8c1b220 (known May 6)] →
+		// goto done sautait Phase 2 → cd89b091 jamais inséré).
+		stopAfterFlush := false
+
+		for _, entry := range entries {
+			if processed >= in.opts.MaxMatches {
+				break
+			}
+			if in.known[entry.MatchID] {
+				result.MatchesSkipped++
+				if in.isDelta {
+					slog.InfoContext(ctx, "sync: match connu rencontré — arrêt delta après flush",
+						"gamertag", e.gamertag, "match_id", entry.MatchID,
+						"processed", processed, "skipped", result.MatchesSkipped,
+						"pending_fetch", len(toFetch),
+					)
+					stopAfterFlush = true
+					break
+				}
+				continue
+			}
+			allKnown = false
+			toFetch = append(toFetch, entry.MatchID)
+		}
+
+		if len(toFetch) > 0 {
+			// ─── Phase 2 : Fetch parallèle ───
+			fetchedMatches := make([]*fetchedMatch, len(toFetch))
+			fetchErrors := make([]error, len(toFetch))
+			var mu sync.Mutex
+
+			eg, egCtx := errgroup.WithContext(ctx)
+			// Borne la concurrence du fan-out fetch : sans SetLimit, une page delta
+			// initiale lançait une goroutine PAR match inconnu (des dizaines/centaines
+			// d'un coup). Le pool cappe déjà l'API concurrente à sa taille, mais on
+			// évite ici l'explosion de goroutines et on lisse la pression (pool +
+			// exchanges XBL) pour laisser de la marge au trafic user-facing.
+			eg.SetLimit(syncFetchParallelism)
+			for i, matchID := range toFetch {
+				i, matchID := i, matchID // Capturer pour closure
+				eg.Go(func() error {
+					fm, err := e.fetchMatchData(egCtx, in.client, matchID, in.opts)
+					mu.Lock()
+					fetchedMatches[i] = fm
+					fetchErrors[i] = err
+					mu.Unlock()
+					if err != nil {
+						slog.WarnContext(egCtx, "sync: fetchMatchData échoué",
+							"gamertag", e.gamertag, "match_id", matchID, "err", err,
+						)
+						result.AddWarning(fmt.Sprintf("fetchMatchData(%s): %v", matchID, err))
+					}
+					return nil // Non-fatal : continuer même si fetch échoue
+				})
+			}
+			_ = eg.Wait() // Attendre tous les fetches (même si certains échouent)
+
+			// ─── Pré-pass : résolution des noms d'assets (primary write) ───
+			// Peuple metadata.asset_translations pour les assets neufs du cycle
+			// AVANT la phase d'insert, pour qu'EnrichRegistryFromMetadata
+			// (submitOrInsertMatch) écrive un vrai nom dès le 1er passage.
+			// Best-effort, gated (assetPool nil → no-op).
+			e.resolveCycleAssets(ctx, fetchedMatches)
+
+			// ─── Phase 3 : Insert séquentiel (order-preserving) ───
+			for i, fm := range fetchedMatches {
+				if fetchErrors[i] != nil {
+					// Fetch échoué, skip insert
+					continue
+				}
+				if fm == nil {
+					continue
+				}
+
+				if err := e.persistFetchedMatch(ctx, in.sharedDB, in.playerDB, result, fm); err != nil {
+					slog.WarnContext(ctx, "sync: persistFetchedMatch échoué",
+						"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
+					)
+					result.AddWarning(fmt.Sprintf("persistFetchedMatch(%s): %v", fm.MatchID, err))
+				} else {
+					processed++
+					slog.InfoContext(ctx, "sync: match traité (parallèle)",
+						"gamertag", e.gamertag, "match_id", fm.MatchID,
+						"processed", processed, "inserted_total", result.MatchesInserted,
+					)
+				}
+			}
+		}
+
+		if stopAfterFlush {
+			// Match connu rencontré, mais les unknowns déjà collectés ont été
+			// fetchés/insérés via Phase 2-3 ci-dessus. On peut sortir.
+			break
+		}
+		if in.isDelta && allKnown {
+			break
+		}
+		start += len(entries)
+	}
+}
 
 // run est le cÅ“ur du moteur de sync. isDelta=true → stop dès un match connu.
 func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta bool) (domain.SyncResult, error) {
 	result := domain.SyncResult{StartedAt: time.Now()}
-	mode := "full"
+	// mode + sa forme titre-case pour le nom d'event (remplace strings.Title,
+	// déprécié Go 1.18+ et cassé sur l'Unicode). Seuls 2 modes existent.
+	mode, modeTitle := "full", "Full"
 	if isDelta {
-		mode = "delta"
+		mode, modeTitle = "delta", "Delta"
 	}
 
 	// Sprint B1 commit 16 : crée un event_id qui sera ajouté à TOUS les logs
 	// émis depuis ce ctx (cf. ContextHandler) — permet de grep cross-module
 	// dans logs/{sync,provider,pool,...}.log pour reconstituer le timeline
 	// d'un sync donné.
-	ctx, eventID := logging.WithEvent(ctx, "sync.Run"+strings.Title(mode))
+	ctx, eventID := logging.WithEvent(ctx, "sync.Run"+modeTitle)
 	slog.InfoContext(ctx, "sync: démarrage",
 		"gamertag", e.gamertag,
 		"xuid", e.xuid,
@@ -352,157 +524,11 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	}
 
 	// ─── Pagination de l'historique ────────────────────────────────────────────
-	processed := 0
-	start := 0
-
-	for processed < opts.MaxMatches {
-		// Respecter le contexte d'annulation.
-		if err := ctx.Err(); err != nil {
-			break
-		}
-
-		slog.DebugContext(ctx, "sync: requête historique API",
-			"gamertag", e.gamertag, "xuid", e.xuid, "start", start, "page_size", historyPageSize,
-		)
-		// L'endpoint /hi/players/{player}/matches exige strictement le format
-		// xuid(NNN) (voir Grunt StatsModule.GetMatchHistory + SPNKr). Passer le
-		// gamertag directement renvoie une réponse stale figée — symptôme du
-		// "no inserts since 6 mai" diagnostiqué le 2026-05-20.
-		entries, err := client.GetMatchHistory(ctx, fmt.Sprintf("xuid(%s)", e.xuid), opts.MatchType, start, historyPageSize)
-		if err != nil {
-			slog.WarnContext(ctx, "sync: GetMatchHistory échoué",
-				"gamertag", e.gamertag, "start", start, "err", err,
-			)
-			result.AddWarning(fmt.Sprintf("GetMatchHistory(start=%d): %v", start, err))
-			break
-		}
-		if len(entries) == 0 {
-			slog.DebugContext(ctx, "sync: fin historique (page vide)", "gamertag", e.gamertag, "start", start)
-			break // fin de l'historique
-		}
-		slog.DebugContext(ctx, "sync: page reçue",
-			"gamertag", e.gamertag, "entries", len(entries), "start", start,
-		)
-		// Log INFO du 1er match retourné par l'API (seulement sur start=0).
-		// Sentinelle de fraîcheur : si ce StartTime ne bouge pas entre 2 cycles
-		// alors que le joueur a joué, on sait que l'API renvoie du stale
-		// (cf. incident 2026-05-20, endpoint /hi/players/{gamertag}/matches sans
-		// xuid(...) renvoyait du contenu figé).
-		if start == 0 && len(entries) > 0 {
-			slog.InfoContext(ctx, "sync: 1er match retourné par API",
-				"gamertag", e.gamertag, "xuid", e.xuid,
-				"first_match_id", entries[0].MatchID,
-				"first_match_start_time", entries[0].StartTime,
-			)
-		}
-
-		allKnown := true
-
-		// ─── Phase 1 : Filtrer et préparer les matchs à fetcher ───
-		var toFetch []string // MatchIDs à fetcher (l'ordre suit `entries`)
-		// stopAfterFlush : on a rencontré un match connu en mode delta. On
-		// arrête après avoir fetché/inséré les nouveaux déjà collectés —
-		// ne PAS goto done direct sinon on perd les entries unknown qui
-		// précèdent le connu dans la même page (bug 2026-05-21 : page
-		// renvoyait [cd89b091 (new May 11), b8c1b220 (known May 6)] →
-		// goto done sautait Phase 2 → cd89b091 jamais inséré).
-		stopAfterFlush := false
-
-		for _, entry := range entries {
-			if processed >= opts.MaxMatches {
-				break
-			}
-			if known[entry.MatchID] {
-				result.MatchesSkipped++
-				if isDelta {
-					slog.InfoContext(ctx, "sync: match connu rencontré — arrêt delta après flush",
-						"gamertag", e.gamertag, "match_id", entry.MatchID,
-						"processed", processed, "skipped", result.MatchesSkipped,
-						"pending_fetch", len(toFetch),
-					)
-					stopAfterFlush = true
-					break
-				}
-				continue
-			}
-			allKnown = false
-			toFetch = append(toFetch, entry.MatchID)
-		}
-
-		if len(toFetch) > 0 {
-			// ─── Phase 2 : Fetch parallèle ───
-			fetchedMatches := make([]*fetchedMatch, len(toFetch))
-			fetchErrors := make([]error, len(toFetch))
-			var mu sync.Mutex
-
-			eg, egCtx := errgroup.WithContext(ctx)
-			// Borne la concurrence du fan-out fetch : sans SetLimit, une page delta
-			// initiale lançait une goroutine PAR match inconnu (des dizaines/centaines
-			// d'un coup). Le pool cappe déjà l'API concurrente à sa taille, mais on
-			// évite ici l'explosion de goroutines et on lisse la pression (pool +
-			// exchanges XBL) pour laisser de la marge au trafic user-facing.
-			eg.SetLimit(syncFetchParallelism)
-			for i, matchID := range toFetch {
-				i, matchID := i, matchID // Capturer pour closure
-				eg.Go(func() error {
-					fm, err := e.fetchMatchData(egCtx, client, matchID, opts)
-					mu.Lock()
-					fetchedMatches[i] = fm
-					fetchErrors[i] = err
-					mu.Unlock()
-					if err != nil {
-						slog.WarnContext(egCtx, "sync: fetchMatchData échoué",
-							"gamertag", e.gamertag, "match_id", matchID, "err", err,
-						)
-						result.AddWarning(fmt.Sprintf("fetchMatchData(%s): %v", matchID, err))
-					}
-					return nil // Non-fatal : continuer même si fetch échoue
-				})
-			}
-			_ = eg.Wait() // Attendre tous les fetches (même si certains échouent)
-
-			// ─── Pré-pass : résolution des noms d'assets (primary write) ───
-			// Peuple metadata.asset_translations pour les assets neufs du cycle
-			// AVANT la phase d'insert, pour qu'EnrichRegistryFromMetadata
-			// (submitOrInsertMatch) écrive un vrai nom dès le 1er passage.
-			// Best-effort, gated (assetPool nil → no-op).
-			e.resolveCycleAssets(ctx, fetchedMatches)
-
-			// ─── Phase 3 : Insert séquentiel (order-preserving) ───
-			for i, fm := range fetchedMatches {
-				if fetchErrors[i] != nil {
-					// Fetch échoué, skip insert
-					continue
-				}
-				if fm == nil {
-					continue
-				}
-
-				if err := e.submitOrInsertMatch(ctx, sharedDB, playerDB, &result, fm); err != nil {
-					slog.WarnContext(ctx, "sync: submitOrInsertMatch échoué",
-						"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
-					)
-					result.AddWarning(fmt.Sprintf("submitOrInsertMatch(%s): %v", fm.MatchID, err))
-				} else {
-					processed++
-					slog.InfoContext(ctx, "sync: match traité (parallèle)",
-						"gamertag", e.gamertag, "match_id", fm.MatchID,
-						"processed", processed, "inserted_total", result.MatchesInserted,
-					)
-				}
-			}
-		}
-
-		if stopAfterFlush {
-			// Match connu rencontré, mais les unknowns déjà collectés ont été
-			// fetchés/insérés via Phase 2-3 ci-dessus. On peut sortir.
-			break
-		}
-		if isDelta && allKnown {
-			break
-		}
-		start += len(entries)
-	}
+	// Boucle filtre → fetch parallèle → persist par page, extraite en méthode (K2b).
+	e.paginateAndPersistHistory(ctx, historyPaginationInputs{
+		client: client, opts: opts, known: known,
+		sharedDB: sharedDB, playerDB: playerDB, isDelta: isDelta,
+	}, &result)
 
 	slog.InfoContext(ctx, "sync: boucle pagination terminée",
 		"gamertag", e.gamertag, "mode", mode,
@@ -715,17 +741,12 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 // runConditionalPostSync, hasMatchesNeedingScoreRefresh : déplacés vers
 // engine_postsync.go (refactor 2026-05-21).
 
-// processMatch : déplacé vers engine_process_match.go (refactor 2026-05-21).
-// Legacy séquentiel encore utilisé par engine_e2e_test.go.
+// fetchedMatch struct + fetchMatchData + hasAnyTeamMMR : dans engine_fetch.go.
+// Pipeline parallèle fetch (Phase 2 errgroup) + persist séquentiel (Phase 3 :
+// persistFetchedMatch → submitMatchAsBatch INSERT-only).
 
-// fetchedMatch struct + fetchMatchData + insertFetchedMatch + hasAnyTeamMMR :
-// déplacés vers engine_fetch.go (refactor 2026-05-21). Pipeline parallèle
-// fetch (Phase 2 errgroup) + insert séquentiel (Phase 3).
-
-// insertHighlightEventsFromData, ProcessHighlightEvents : déplacés vers
-// engine_highlight_events.go (refactor 2026-05-21). Parse + insert events
-// (path standalone via ProcessHighlightEvents pour outils de replay ; path
-// in-line via insertHighlightEventsFromData depuis insertFetchedMatch).
+// ProcessHighlightEvents : dans engine_highlight_events.go. Parse + insert
+// events (path standalone exposé pour les outils de replay).
 
 // reconcileInsertedAgainstRegistry retire de result.InsertedMatchIDs (et décrémente
 // MatchesInserted, incrémente MatchesSkipped) les match_id comptés au Submit mais
@@ -774,7 +795,7 @@ func reconcileInsertedAgainstRegistry(ctx context.Context, sharedDB *sql.DB, res
 //
 // Source 2 — sharedDB.match_participants WHERE xuid=? : matchs déjà présents
 // en shared pour ce joueur (typiquement parce qu'un AUTRE joueur du même
-// cycle de sync a déjà fait le fetch + insert via insertFetchedMatch — qui
+// cycle de sync a déjà fait le fetch + persist via le chemin batch — qui
 // écrit toutes les rows participants y compris celle de notre xuid). Avant
 // 2026-05-22 ce 2e check n'existait pas, donc Chocoboflor re-fetchait depuis
 // Halo API 21 matchs déjà insérés par Madina dans le même tick (84 calls

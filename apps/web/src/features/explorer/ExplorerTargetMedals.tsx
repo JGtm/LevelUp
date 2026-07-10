@@ -8,6 +8,7 @@
  */
 import { useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
@@ -73,7 +74,7 @@ export function ExplorerTargetMedals({ medals }: ExplorerTargetMedalsProps) {
                   {m.label || `#${m.medal_id}`}
                 </span>
                 <span className="flex-shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
-                  ×{m.total_count.toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR')}
+                  ×{m.total_count.toLocaleString(intlLocale(locale))}
                 </span>
               </li>
             )

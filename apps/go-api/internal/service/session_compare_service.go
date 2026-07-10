@@ -1,129 +1,28 @@
-// Package service — SessionCompareService : POST /pages/session-compare.
+// Package service — session_compare_service.go : infra PARTAGÉE de résumé de
+// session (label helpers + construction d'entrées/métriques/séries de comparaison).
 //
-// Sprint 33 : compare deux sessions de jeu.
-// Charge les matchs + sessions, filtre par label, calcule les métriques A vs B.
+// Le service Compare autonome (POST /pages/session-compare, ancien
+// SessionCompareService) a été supprimé. Ce fichier ne contient plus qu'un
+// jeu de helpers réutilisables, consommés par session_page_service.go :
+//   - extraction/sélection des labels de session (extractSessionLabels, keepMultiMatch…)
+//   - filtrage par label (filterBySession)
+//   - construction des entrées/métriques/séries A-vs-B (buildCompareEntry*, buildCompareMetrics…)
 //
-// Helpers extraits dans :
+// Helpers de calcul associés dans :
 //   - session_compare_stat_helpers.go   : calculs purs (winRate, avgKD, compareMetric…)
 //   - session_compare_table_helpers.go  : buildMapTable, buildModeTable, classifySessionCategory
 //   - session_compare_participation_helpers.go : profil 6 axes, lastSkillRating, avgMMR
 package service
 
 import (
-	"context"
-	"fmt"
-	"log/slog"
 	"math"
 	"sort"
 	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/legacymatch"
-	"levelup/go-api/internal/port"
 )
-
-// SessionCompareService compare deux sessions de jeu d'un joueur.
-type SessionCompareService struct {
-	sessionsRepo port.SessionsRepository
-	statsRepo    port.StatsRepository
-	// playerMatchesRepo (P4.1, ADR 0011) : loader canonical-aware optionnel.
-	// TODO P4.3 : retirer le converter quand les analyses session_compare
-	// (extractSessionLabels, buildCompareEntry, etc.) consommeront canonical.
-	playerMatchesRepo port.PlayerMatchesRepository
-	titleSlug         string
-	gamertag          string
-}
-
-// NewSessionCompareService crée un SessionCompareService.
-func NewSessionCompareService(
-	sessionsRepo port.SessionsRepository,
-	statsRepo port.StatsRepository,
-) *SessionCompareService {
-	return &SessionCompareService{
-		sessionsRepo: sessionsRepo,
-		statsRepo:    statsRepo,
-	}
-}
-
-// WithPlayerMatchesRepo (P4.1, ADR 0011) injecte le loader canonical-aware.
-func (s *SessionCompareService) WithPlayerMatchesRepo(repo port.PlayerMatchesRepository, titleSlug, gamertag string) *SessionCompareService {
-	s.playerMatchesRepo = repo
-	s.titleSlug = titleSlug
-	s.gamertag = gamertag
-	return s
-}
-
-// Compare exécute la comparaison entre deux sessions.
-func (s *SessionCompareService) Compare(
-	ctx context.Context,
-	req domain.SessionCompareRequest,
-) (domain.SessionCompareResponse, error) {
-	// 1. Charger les matchs stats (avec session_label).
-	// P4.3 finale (ADR 0011) : path canonical exclusif.
-	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
-		return domain.SessionCompareResponse{}, fmt.Errorf("SessionCompare: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
-	}
-	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
-		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
-	)
-	if err != nil {
-		slog.ErrorContext(ctx, "session_compare: échec chargement canonical", "gamertag", s.gamertag, "err", err)
-		return domain.SessionCompareResponse{}, fmt.Errorf("SessionCompare: %w", err)
-	}
-	hp := games.EffectiveHpToKill(s.titleSlug)
-	matches := filterStatsMatchRows(analysis.StatsMatchRowsFromCanonical(canonicalRows, hp), req.Filters)
-	slog.DebugContext(ctx, "session_compare: rows chargés", "gamertag", s.gamertag, "canonical", len(canonicalRows), "filtered", len(matches))
-
-	// 2. Identifier les sessions disponibles.
-	sessionLabels := extractSessionLabels(matches)
-
-	if len(sessionLabels) < 2 {
-		slog.InfoContext(ctx, "session_compare: sessions insuffisantes", "gamertag", s.gamertag, "sessions", len(sessionLabels))
-		// Init [] plutôt que nil : un slice nil sérialise en JSON `null` et
-		// crashe le front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
-		if sessionLabels == nil {
-			sessionLabels = []string{}
-		}
-		return domain.SessionCompareResponse{
-			AvailableSessions: sessionLabels,
-			Metrics:           []domain.SessionCompareMetricRow{},
-			MapsTable:         []domain.SessionCompareMapRow{},
-			ModesTable:        []domain.SessionCompareModeRow{},
-		}, nil
-	}
-
-	// Sélection automatique : dernière et avant-dernière sessions.
-	labelA := lastOrNil(sessionLabels, req.SessionA)
-	labelB := secondLastOrNil(sessionLabels, req.SessionB)
-	slog.DebugContext(ctx, "session_compare: sélection sessions", "gamertag", s.gamertag, "session_a", labelA, "session_b", labelB, "available", len(sessionLabels))
-
-	// 3. Filtrer les matchs par session.
-	matchesA := filterBySession(matches, labelA)
-	matchesB := filterBySession(matches, labelB)
-
-	// 4. Calculer les entries et métriques. provideSpree=false pour les titres sans
-	// max killing spree (Halo 5) → le radar « Folie meurtrière » est masqué.
-	provideSpree := games.ProvidesMaxKillingSpree(s.titleSlug)
-	entryA := buildCompareEntryWithObjectives(matchesA, labelA, nil, hp, provideSpree)
-	entryB := buildCompareEntryWithObjectives(matchesB, labelB, nil, hp, provideSpree)
-	metrics := buildCompareMetrics(matchesA, matchesB)
-
-	slog.InfoContext(ctx, "session_compare: comparaison terminée",
-		"gamertag", s.gamertag,
-		"matches_a", len(matchesA), "matches_b", len(matchesB),
-		"metrics", len(metrics))
-
-	return domain.SessionCompareResponse{
-		SessionA:          entryA,
-		SessionB:          entryB,
-		AvailableSessions: sessionLabels,
-		Metrics:           metrics,
-		MapsTable:         buildMapTable(matchesA, matchesB),
-		ModesTable:        buildModeTable(matchesA, matchesB),
-	}, nil
-}
 
 // ---------------------------------------------------------------------------
 // Session label helpers

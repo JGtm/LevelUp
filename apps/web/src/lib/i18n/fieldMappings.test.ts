@@ -8,8 +8,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  compareSeasonsRecentFirst,
   fieldMappingsQueryKey,
   type FieldMappingsResponse,
+  type SeasonEntry,
 } from './fieldMappings'
 
 describe('fieldMappingsQueryKey', () => {
@@ -27,6 +29,43 @@ describe('fieldMappingsQueryKey', () => {
     const c = fieldMappingsQueryKey('synthetic_b', 'fr')
     expect(a).not.toEqual(b)
     expect(a).not.toEqual(c)
+  })
+})
+
+describe('compareSeasonsRecentFirst (GH5-1 — récent d\'abord)', () => {
+  const mk = (id: string, iso: string, order: number): SeasonEntry => ({
+    id,
+    label: id,
+    shortLabel: id,
+    startDate: new Date(iso),
+    endDate: null,
+    displayOrder: order,
+  })
+
+  it('trie la plus récente en tête (startDate DESC)', () => {
+    const sorted = [
+      mk('s1', '2022-01-01T00:00:00Z', 10),
+      mk('s3', '2023-06-01T00:00:00Z', 30),
+      mk('s2', '2022-06-01T00:00:00Z', 20),
+    ].sort(compareSeasonsRecentFirst)
+    expect(sorted.map((s) => s.id)).toEqual(['s3', 's2', 's1'])
+  })
+
+  it('place une saison DB-only (displayOrder synthétique élevé) à sa date réelle, pas en tête', () => {
+    // DB-only ANCIENNE : displayOrder=140 (synthétique maxOrder+10) mais startDate 2021.
+    // Un tri par displayOrder DESC la mettrait en TÊTE à tort ; la clé startDate la
+    // renvoie en dernier (sa vraie place chronologique). Réf. piège GH5-1.
+    const dbOnlyOld = mk('db_old', '2021-01-01T00:00:00Z', 140)
+    const s13 = mk('s13', '2025-11-18T00:00:00Z', 130)
+    const s1 = mk('s1', '2022-01-01T00:00:00Z', 10)
+    const sorted = [s1, dbOnlyOld, s13].sort(compareSeasonsRecentFirst)
+    expect(sorted.map((s) => s.id)).toEqual(['s13', 's1', 'db_old'])
+  })
+
+  it('départage deux saisons de même date par displayOrder DESC', () => {
+    const a = mk('a', '2024-01-01T00:00:00Z', 10)
+    const b = mk('b', '2024-01-01T00:00:00Z', 20)
+    expect([a, b].sort(compareSeasonsRecentFirst).map((s) => s.id)).toEqual(['b', 'a'])
   })
 })
 

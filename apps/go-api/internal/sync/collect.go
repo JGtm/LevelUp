@@ -4,10 +4,9 @@
 // + parsée depuis l'API Halo, sans I/O DB) en *persist.MatchBatch prêt à
 // être Submit() dans la BatchQueue.
 //
-// **Coexistence avec insertFetchedMatch** : cette fonction est utilisée par
-// le chemin Collect→Persist (Phase 2+) — le chemin direct insertFetchedMatch
-// reste utilisé tant que le feature flag LEVELUP_PERSIST_BATCH n'est pas
-// activé. Les deux chemins partagent fetchMatchData() en entrée.
+// Chemin unique Collect→Persist : c'est la seule voie d'écriture per-match du
+// live sync (le chemin legacy insertFetchedMatch a été supprimé au lot D1b).
+// buildBatchFromFetchedMatch et fetchMatchData() forment l'entrée du pipeline.
 //
 // **Logique pure** : pas d'I/O DB, pas d'I/O API. Les seules erreurs
 // possibles viennent du parsing du chunk highlight_events (analysis.
@@ -195,7 +194,7 @@ func buildBatchFromFetchedMatchCtx(
 	if len(fm.SharedCSRs) > 0 {
 		mcInserts := make([]persist.MatchCSRInsert, 0, len(fm.SharedCSRs))
 		for _, s := range fm.SharedCSRs {
-			mcInserts = append(mcInserts, sharedCSRRowToMatchCSRInsert(s))
+			mcInserts = append(mcInserts, SharedCSRRowToMatchCSRInsert(s))
 		}
 		builder.AddMatchCSRs(mcInserts)
 	}
@@ -244,8 +243,9 @@ func buildBatchFromFetchedMatchCtx(
 // batch (Phase 3, INSERT-only — cf. doc domain.MatchRegistryRow.BackfillCompleted :
 // valeur calculée AVANT le Submit). Lit l'état RÉEL du batch construit
 // (highlight_events / killer_victim effectivement ajoutés) → backfill_completed
-// fiable sur le chemin batch, sans UPDATE post-persist. Parité legacy
-// insertFetchedMatch (MarkParticipantsDone / MarkSkillLoaded + events/kv).
+// fiable sur le chemin batch, sans UPDATE post-persist. Reproduit la parité de
+// l'ancien insertFetchedMatch (supprimé D1b : MarkParticipantsDone /
+// MarkSkillLoaded + events/kv).
 // skillOK = l'API skill a renvoyé des données (cf. buildBatchFromFetchedMatch).
 func applyCompletionBitsToBatch(batch *persist.MatchBatch, skillOK bool) {
 	m := batch.Shared.Match
@@ -271,9 +271,10 @@ func applyCompletionBitsToBatch(batch *persist.MatchBatch, skillOK bool) {
 	m.BackfillCompleted = &bits
 }
 
-// sharedCSRRowToMatchCSRInsert convertit SharedMatchCSRRow (sync) →
-// persist.MatchCSRInsert (batch).
-func sharedCSRRowToMatchCSRInsert(s SharedMatchCSRRow) persist.MatchCSRInsert {
+// SharedCSRRowToMatchCSRInsert convertit SharedMatchCSRRow (sync) →
+// persist.MatchCSRInsert (batch). Exporté : réutilisé par l'import OpenSpartan
+// (service) qui construit son propre batch persist (E1, ADR 0019).
+func SharedCSRRowToMatchCSRInsert(s SharedMatchCSRRow) persist.MatchCSRInsert {
 	tier := s.Tier
 	subTier := s.SubTier
 	tierLabel := s.TierLabel

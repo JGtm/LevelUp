@@ -7,10 +7,11 @@ export type ModalsLocale = 'fr' | 'en'
 
 export interface MatchPickerText {
   title: string
+  /** Variante quand le média n'a PAS encore de match associé (hasCurrentMatch=false). */
+  titleAssociate: string
   capturePrefix: string
   closeAriaLabel: string
   windowLabel: string
-  minutesSuffix: string
   matchesFound: (count: number) => string
   loading: string
   error: string
@@ -18,16 +19,16 @@ export interface MatchPickerText {
   lobbyUnavailable: string
   currentBadge: string
   confirmTitle: string
+  /** Variante « Confirmer l'association ? » (hasCurrentMatch=false). */
+  confirmTitleAssociate: string
   cancel: string
   confirm: string
   applying: string
-  reassociationError: string
-  unknownError: string
   deltaUnder1Min: string
   deltaMinFormat: (m: number) => string
   spectators: string
-  teamLabel: (n: number) => string
-  youSuffix: string
+  /** Libellé d'équipe — reçoit le nom officiel Halo (Eagle…) ou le numéro. */
+  teamLabel: (n: string | number) => string
 }
 
 export interface CoverFlowText {
@@ -56,10 +57,10 @@ export interface MediaModalsText {
 const FR: MediaModalsText = {
   matchPicker: {
     title: 'Réassocier ce média',
+    titleAssociate: 'Associer ce média',
     capturePrefix: 'Capture :',
     closeAriaLabel: 'Fermer',
     windowLabel: 'Fenêtre :',
-    minutesSuffix: 'min',
     matchesFound: (count) => `${count} match${count > 1 ? 's' : ''} trouvé${count > 1 ? 's' : ''}`,
     loading: 'Chargement…',
     error: 'Erreur de chargement',
@@ -67,16 +68,14 @@ const FR: MediaModalsText = {
     lobbyUnavailable: 'Lobby indisponible',
     currentBadge: 'actuel',
     confirmTitle: 'Confirmer la réassociation ?',
+    confirmTitleAssociate: "Confirmer l'association ?",
     cancel: 'Annuler',
     confirm: 'Confirmer',
     applying: 'Application…',
-    reassociationError: 'Erreur lors de la réassociation :',
-    unknownError: 'inconnue',
     deltaUnder1Min: '< 1 min',
     deltaMinFormat: (m) => `±${m} min`,
     spectators: 'Spectateurs',
     teamLabel: (n) => `Équipe ${n}`,
-    youSuffix: ' (toi)',
   },
   coverFlow: {
     reassociateButton: 'Réassocier',
@@ -100,10 +99,10 @@ const FR: MediaModalsText = {
 const EN: MediaModalsText = {
   matchPicker: {
     title: 'Reassociate this media',
+    titleAssociate: 'Associate this media',
     capturePrefix: 'Capture:',
     closeAriaLabel: 'Close',
     windowLabel: 'Window:',
-    minutesSuffix: 'min',
     matchesFound: (count) => `${count} match${count > 1 ? 'es' : ''} found`,
     loading: 'Loading…',
     error: 'Loading error',
@@ -111,16 +110,14 @@ const EN: MediaModalsText = {
     lobbyUnavailable: 'Lobby unavailable',
     currentBadge: 'current',
     confirmTitle: 'Confirm reassociation?',
+    confirmTitleAssociate: 'Confirm association?',
     cancel: 'Cancel',
     confirm: 'Confirm',
     applying: 'Applying…',
-    reassociationError: 'Reassociation error:',
-    unknownError: 'unknown',
     deltaUnder1Min: '< 1 min',
     deltaMinFormat: (m) => `±${m} min`,
     spectators: 'Spectators',
     teamLabel: (n) => `Team ${n}`,
-    youSuffix: ' (you)',
   },
   coverFlow: {
     reassociateButton: 'Reassociate',

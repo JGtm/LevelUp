@@ -9,6 +9,8 @@ import (
 	"log"
 	"time"
 
+	"levelup/go-api/internal/analysis"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -21,7 +23,7 @@ func main() {
 
 	rows, err := db.Query(`
 		SELECT r.match_id,
-		       COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS st,
+		       ` + analysis.SQLStartTimeCanonical("r") + ` AS st,
 		       COALESCE(r.is_firefight, FALSE) AS pve,
 		       (SELECT COUNT(*) FROM match_participants p WHERE p.match_id = r.match_id) AS parts,
 		       COALESCE(r.game_variant_name, '')  AS cat,

@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
@@ -74,7 +75,7 @@ func main() {
 	var xuid string
 	err = sharedDB.QueryRow(`
 		SELECT xuid FROM v_gamertag_lookup
-		WHERE gamertag ILIKE ? AND xuid NOT LIKE 'bid(%'
+		WHERE gamertag ILIKE ? AND `+analysis.SQLIsNotBotCol("xuid")+`
 		ORDER BY LENGTH(xuid) DESC LIMIT 1
 	`, gamertag).Scan(&xuid)
 	if err != nil {
@@ -92,7 +93,7 @@ func main() {
 	var pairName, playlistName sql.NullString
 	errB := sharedDB.QueryRow(`
 		SELECT mp.outcome, mp.time_played_seconds, r.is_firefight, mp.kills, mp.deaths,
-			COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+			`+analysis.SQLStartTimeCanonical("r")+` AS start_time,
 			r.pair_name, r.playlist_name
 		FROM match_participants mp
 		JOIN match_registry r ON mp.match_id = r.match_id
@@ -135,7 +136,7 @@ func main() {
 		JOIN self_team st ON mp_bot.team_id = st.team_id
 		WHERE mp_bot.match_id = ?
 		  AND mp_bot.xuid <> ?
-		  AND mp_bot.xuid LIKE 'bid(%'
+		  AND `+analysis.SQLIsBotCol("mp_bot.xuid")+`
 	`, matchID, xuid, matchID, xuid).Scan(&botSeconds, &matchDuration)
 	fmt.Println("\n=== Présence bots dans la team du joueur (seuil hybride) ===")
 	switch {
@@ -169,7 +170,7 @@ func main() {
 		JOIN self_team st ON mp_bot.team_id = st.team_id
 		WHERE mp_bot.match_id = ?
 		  AND mp_bot.xuid <> ?
-		  AND mp_bot.xuid LIKE 'bid(%'
+		  AND `+analysis.SQLIsBotCol("mp_bot.xuid")+`
 		ORDER BY mp_bot.xuid
 	`, matchID, xuid, matchID, xuid)
 	fmt.Println("\n=== ParticipationInfo des bots teammates ===")

@@ -12,16 +12,12 @@ import {
   type EvalType,
   type WindowType,
 } from '@/lib/prestige'
-
-export const squadKeys = {
-  mine: (userId: string) => ['prestige', 'squads', userId] as const,
-  challenges: (squadId: string) => ['prestige', 'squad-challenges', squadId] as const,
-}
+import { queryKeys } from '@/lib/query/keys'
 
 /** Escouades dont `userId` (player_slug) est membre-user, roster embarqué. */
 export function useMySquads(userId: string) {
   return useQuery({
-    queryKey: squadKeys.mine(userId),
+    queryKey: queryKeys.squad.mine(userId),
     queryFn: () => prestigeApi.listMySquads(userId),
     retry: false,
     enabled: !!userId,
@@ -31,7 +27,7 @@ export function useMySquads(userId: string) {
 /** Défis d'une escouade. */
 export function useSquadChallenges(squadId: string) {
   return useQuery({
-    queryKey: squadKeys.challenges(squadId),
+    queryKey: queryKeys.squad.challenges(squadId),
     queryFn: () => prestigeApi.listSquadChallenges(squadId),
     retry: false,
     enabled: !!squadId,
@@ -45,7 +41,7 @@ export function useCreateSquad(userId: string) {
     mutationFn: (body: { name: string; created_by: string; members?: SquadMemberInput[] }) =>
       prestigeApi.createSquad(body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: squadKeys.mine(userId) })
+      qc.invalidateQueries({ queryKey: queryKeys.squad.mine(userId) })
     },
   })
 }
@@ -64,7 +60,7 @@ export function useAddSquadMember(userId: string) {
       requested_by: string
     }) => prestigeApi.addSquadMember(squadId, body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: squadKeys.mine(userId) })
+      qc.invalidateQueries({ queryKey: queryKeys.squad.mine(userId) })
     },
   })
 }
@@ -83,7 +79,7 @@ export function useRemoveSquadMember(userId: string) {
       requestedBy: string
     }) => prestigeApi.removeSquadMember(squadId, xuid, requestedBy),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: squadKeys.mine(userId) })
+      qc.invalidateQueries({ queryKey: queryKeys.squad.mine(userId) })
     },
   })
 }
@@ -95,7 +91,7 @@ export function useRenameSquad(userId: string) {
     mutationFn: ({ squadId, name }: { squadId: string; name: string }) =>
       prestigeApi.renameSquad(squadId, { name, requested_by: userId }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: squadKeys.mine(userId) })
+      qc.invalidateQueries({ queryKey: queryKeys.squad.mine(userId) })
     },
   })
 }
@@ -107,7 +103,7 @@ export function useDeleteSquad(userId: string) {
     mutationFn: ({ squadId }: { squadId: string }) =>
       prestigeApi.deleteSquad(squadId, userId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: squadKeys.mine(userId) })
+      qc.invalidateQueries({ queryKey: queryKeys.squad.mine(userId) })
     },
   })
 }
@@ -119,7 +115,7 @@ export function useEvaluateSquadChallenge(squadId: string) {
     mutationFn: ({ id, requestedBy }: { id: string; requestedBy: string }) =>
       prestigeApi.evaluateSquadChallenge(id, requestedBy),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: squadKeys.challenges(squadId) })
+      qc.invalidateQueries({ queryKey: queryKeys.squad.challenges(squadId) })
     },
   })
 }
@@ -127,7 +123,7 @@ export function useEvaluateSquadChallenge(squadId: string) {
 /** Orientation coach de l'escouade : l'axe focal (le plus faible) à renforcer. */
 export function useSquadOrientation(squadId: string, requestedBy: string) {
   return useQuery({
-    queryKey: ['prestige', 'squad-orientation', squadId, requestedBy] as const,
+    queryKey: queryKeys.squad.orientation(squadId, requestedBy),
     queryFn: () => prestigeApi.squadOrientation(squadId, requestedBy),
     retry: false,
     enabled: !!squadId && !!requestedBy,
@@ -164,7 +160,7 @@ export function useCreateSquadChallenge(squadId: string) {
       created_by: string
     }) => prestigeApi.createSquadChallenge(squadId, body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: squadKeys.challenges(squadId) })
+      qc.invalidateQueries({ queryKey: queryKeys.squad.challenges(squadId) })
     },
   })
 }

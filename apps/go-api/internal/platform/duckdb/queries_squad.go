@@ -54,10 +54,10 @@ LIMIT 50`
 
 // Q30 : Squad — matchs communs entre le joueur et un coéquipier spécifique.
 // Paramètres : ?1 = xuid coéquipier (p2), ?2 = xuid joueur principal (p1).
-const Q30SquadMatches = `
+var Q30SquadMatches = `
 SELECT
     p1.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     COALESCE(r.map_name, '')                                     AS map_name,
     COALESCE(r.map_name_fr, r.map_name, '')                      AS map_ui,
     COALESCE(r.pair_name, '')                                    AS pair_name,
@@ -102,7 +102,7 @@ JOIN shared.match_participants p2
     AND p2.xuid     = ?
 LEFT JOIN player_match_enrichment_latest pme ON pme.match_id = p1.match_id
 WHERE p1.xuid = ?
-ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
+ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC`
 
 // Q30SquadMatchesSharedQuery : (ADR 0016) — partie shared du split
 // LoadSquadMatches. Toutes les tables au niveau root (catalogue
@@ -114,10 +114,10 @@ ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 // is_with_friends) sont hydratées en étape 2 via mergePlayerEnrichments.
 //
 // Paramètres : ?1 = xuid coéquipier (p2), ?2 = xuid joueur principal (p1).
-const Q30SquadMatchesSharedQuery = `
+var Q30SquadMatchesSharedQuery = `
 SELECT
     p1.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     COALESCE(r.map_name, '')                                     AS map_name,
     COALESCE(r.map_name_fr, r.map_name, '')                      AS map_ui,
     COALESCE(r.pair_name, '')                                    AS pair_name,
@@ -136,7 +136,7 @@ SELECT
     GREATEST(0, COALESCE(r.duration_seconds, 0) - CASE
         WHEN r.real_start_time IS NOT NULL THEN CAST(round(
             (epoch_ms(r.real_start_time AT TIME ZONE 'UTC')
-             - epoch_ms(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))) / 1000.0
+             - epoch_ms(` + StartTimeCanonicalSQL("r") + `)) / 1000.0
         ) AS INTEGER) ELSE 0 END)                                AS gameplay_duration_seconds,
     -- T0 offset (Match Timeline T0, §4.A-bis) : countdown pré-match en ms.
     -- NULL si real_start_time absent → fallback runtime T0=0. Même formule
@@ -144,7 +144,7 @@ SELECT
     CASE
         WHEN r.real_start_time IS NOT NULL THEN
             epoch_ms(r.real_start_time AT TIME ZONE 'UTC')
-            - epoch_ms(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))
+            - epoch_ms(` + StartTimeCanonicalSQL("r") + `)
     END                                                          AS t0_ms,
     COALESCE(p1.team_mmr, 0.0)                                   AS team_mmr,
     COALESCE(p1.headshot_kills, 0)                               AS headshot_kills,
@@ -177,7 +177,7 @@ JOIN match_participants p2
     AND p2.team_id  = p1.team_id
     AND p2.xuid     = ?
 WHERE p1.xuid = ?
-ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
+ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC`
 
 // Q31 : Squad — stats d'un coéquipier sur les matchs communs.
 //
@@ -185,10 +185,10 @@ ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 // préfixe `shared.`). Migrée vers SharedReader.Get dans LoadTeammateMatches.
 //
 // Paramètres : ?1 = xuid joueur principal (p_main), ?2 = xuid coéquipier (p).
-const Q31TeammateMatches = `
+var Q31TeammateMatches = `
 SELECT
     p.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     COALESCE(r.map_name_fr, r.map_name, '')                      AS map_ui,
     COALESCE(r.pair_name, '')                                    AS pair_name,
     COALESCE(p.outcome, 0)                                       AS outcome,
@@ -208,7 +208,7 @@ JOIN match_participants p_main
     AND p_main.team_id  = p.team_id
     AND p_main.xuid     = ?
 WHERE p.xuid = ?
-ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
+ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC`
 
 // Q32SquadImpactEventsTemplate : template SQL pour charger les events d'impact escouade.
 // Les '?' positionnels sont insérés dynamiquement (fmt.Sprintf(Q32SquadImpactEventsTemplate, placeholders)).
@@ -296,10 +296,10 @@ ORDER BY match_count DESC`
 // hydratées en étape 2.
 //
 // Paramètre : ?1 = xuid du joueur.
-const Q33bSynthesisSharedQuery = `
+var Q33bSynthesisSharedQuery = `
 SELECT
     r.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     p.outcome,
     p.kills,
     p.deaths,
@@ -313,7 +313,7 @@ SELECT
 FROM match_participants p
 JOIN match_registry r ON r.match_id = p.match_id
 WHERE p.xuid = ?
-ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
+ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC`
 
 // Q42MapStatsForSquadSharedTpl : (ADR 0016) — partie shared du
 // split LoadMapStatsForSquad. Au lieu d'agréger par map_id côté SQL

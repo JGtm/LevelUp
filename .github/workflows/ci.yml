@@ -203,6 +203,10 @@ jobs:
       # S45 T1-2 : -coverpkg=./... garantit que les tests externes (golden, contracttest)
       # remontent la couverture des packages qu'ils exercent.
       # S45 T3 : exclusions gen/ et msal-poc/ via coverage_filter.sh
+      # M2 (2026-07-05) : `-p 1` NON NÉGOCIABLE — le driver DuckDB est mono-process ;
+      # en parallèle (défaut), platform/duckdb + sync se contendent, avortent avec des
+      # durées FANTÔMES (~28000s) et MASQUENT les vraies défaillances → faux-vert
+      # (incident 2026-07-03). timeout 600s = marge par package une fois sérialisé.
       - name: go test avec couverture complète (CGO + intégration)
         run: |
           go test \
@@ -210,8 +214,9 @@ jobs:
             -covermode=atomic \
             -coverpkg=./... \
             -tags=integration \
-            -timeout 300s \
+            -timeout 600s \
             -count=1 \
+            -p 1 \
             ./...
         env:
           CGO_ENABLED: "1"
@@ -264,8 +269,9 @@ jobs:
             -covermode=atomic \
             -coverpkg=./internal/sync/... \
             -tags=integration \
-            -timeout 300s \
+            -timeout 600s \
             -count=1 \
+            -p 1 \
             ./internal/sync/...
         env:
           CGO_ENABLED: "1"

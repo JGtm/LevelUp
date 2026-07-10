@@ -1,40 +1,44 @@
 /**
  * CareerTopMatchesTable — tableau des meilleurs/pires matchs.
  * A2/A3 NATIVE_COMPONENTS — colonnes K/D/A, badge typé, clic → Match View.
+ * V8b (2026-07-07) — consomme TopMatchDTO (shape réelle de l'endpoint
+ * /pages/career/top-matches : best_matches / worst_matches). Les listes best/worst
+ * sont déjà séparées côté backend — le composant reçoit un tableau prêt à rendre.
  */
 import { useParams } from '@tanstack/react-router'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import type { CareerTopMatch } from '@/lib/api/types'
+import type { TopMatchDTO } from '@/lib/api/types'
 import { tokenCssVar } from '@/lib/accessibility'
+import { outcomeKey } from '@/lib/outcome-color'
+import { formatDate, intlLocale as toIntlLocale } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { formatMessage } from '@/lib/i18n/format'
 import { careerManifest, type CareerManifestKey } from '@/lib/i18n/generated/career'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 interface Props {
-  items: CareerTopMatch[]
-  /** Si défini, n'affiche que ce variant */
+  items: TopMatchDTO[]
+  /** 'best' | 'worst' | undefined — pilote le titre par défaut (les listes sont
+   *  déjà filtrées côté backend, ce composant ne re-filtre pas). */
   variant?: 'best' | 'worst'
   title?: string
   playerSlug?: string
 }
 
-import { getMatchNarrativeBadgeMeta } from '@/components/ui/match-card-presentation'
-
-function MatchBadge({ type }: { type: string | null }) {
-  const meta = getMatchNarrativeBadgeMeta(type)
-  if (!meta) {
-    return type ? <span className="text-xs text-muted-foreground">{type}</span> : null
+/**
+ * Variante de badge (pill) selon le CODE d'outcome — jamais sur le label
+ * localisé (CR C2 : `includes('victoire')` cassait tous les badges en EN).
+ */
+function outcomeBadgeVariant(code: number | null | undefined): 'success' | 'destructive' | 'secondary' {
+  switch (outcomeKey(code ?? 0)) {
+    case 'win':
+      return 'success'
+    case 'loss':
+      return 'destructive'
+    default:
+      return 'secondary'
   }
-  return (
-    <span
-      className="rounded px-1.5 py-0.5 text-xs font-semibold"
-      style={{ backgroundColor: meta.color, color: meta.textColor }}
-    >
-      {meta.label}
-    </span>
-  )
 }
 
 export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugProp }: Props) {
@@ -42,9 +46,9 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
   const playerSlug = slugProp ?? params.playerSlug ?? ''
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const locale = useAppShellStore((s) => s.locale)
+  const intlLocale = toIntlLocale(locale)
   const t = (key: CareerManifestKey) => formatMessage(careerManifest, key, locale)
 
-  const filtered = variant ? items.filter((m) => m.variant === variant) : items
   const defaultTitle =
     variant === 'worst'
       ? t('career.top_matches.default_title_worst')
@@ -55,12 +59,12 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
   function goToMatch(matchId: string) {
     navigateToMatch(matchId, {
       source: 'history',
-      matchIds: filtered.map((m) => m.match_id),
+      matchIds: items.map((m) => m.match_id),
       contextDescriptor: { kind: 'top_matches' },
     })
   }
 
-  if (filtered.length === 0) {
+  if (items.length === 0) {
     return null
   }
 
@@ -79,15 +83,13 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
                 <th className="pb-2 text-left">{t('career.top_matches.col_map_mode')}</th>
                 <th className="pb-2 text-right">{t('career.top_matches.col_kills_short')}</th>
                 <th className="pb-2 text-right">{t('career.top_matches.col_deaths_short')}</th>
-                <th className="pb-2 text-right">{t('career.top_matches.col_assists_short')}</th>
                 <th className="pb-2 text-right">{t('career.top_matches.col_kd')}</th>
                 <th className="pb-2 text-right">{t('career.top_matches.col_score')}</th>
                 <th className="pb-2 text-right">{t('career.top_matches.col_outcome')}</th>
-                <th className="pb-2 text-left pl-3">{t('career.top_matches.col_badge')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((m, idx) => (
+              {items.map((m, idx) => (
                 <tr
                   key={m.match_id}
                   className="cursor-pointer transition-colors hover:bg-accent"
@@ -95,9 +97,7 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
                 >
                   <td className="py-1.5 text-muted-foreground font-mono text-xs">{idx + 1}</td>
                   <td className="py-1.5 text-muted-foreground whitespace-nowrap">
-                    {m.start_time
-                      ? new Date(m.start_time).toLocaleDateString('fr-FR')
-                      : '—'}
+                    {formatDate(m.start_time, intlLocale, { dateStyle: 'short' }, '—')}
                   </td>
                   <td className="py-1.5">
                     <span className="font-medium text-foreground">{m.map_ui ?? '—'}</span>
@@ -106,35 +106,23 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
                     )}
                   </td>
                   <td className="py-1.5 text-right font-mono" style={{ color: tokenCssVar('perf-tier-2') }}>
-                    {m.kills ?? '—'}
+                    {m.kills}
                   </td>
                   <td className="py-1.5 text-right font-mono" style={{ color: tokenCssVar('divergent-neg') }}>
-                    {m.deaths ?? '—'}
-                  </td>
-                  <td className="py-1.5 text-right text-muted-foreground font-mono">
-                    {m.assists ?? '—'}
+                    {m.deaths}
                   </td>
                   <td className="py-1.5 text-right font-mono text-foreground">
-                    {m.kd_ratio != null ? m.kd_ratio.toFixed(1) : '—'}
+                    {m.kda != null ? m.kda.toFixed(1) : '—'}
                   </td>
-                  <td className="py-1.5 text-right text-muted-foreground">{m.score_label ?? '—'}</td>
+                  <td className="py-1.5 text-right text-muted-foreground">
+                    {m.performance_score != null ? m.performance_score.toFixed(1) : '—'}
+                  </td>
                   <td className="py-1.5 text-right">
                     {m.outcome_label && (
-                      <Badge
-                        variant={
-                          m.outcome_label.toLowerCase().includes('victoire')
-                            ? 'success'
-                            : m.outcome_label.toLowerCase().includes('défaite')
-                            ? 'destructive'
-                            : 'secondary'
-                        }
-                      >
+                      <Badge variant={outcomeBadgeVariant(m.outcome_code)}>
                         {m.outcome_label}
                       </Badge>
                     )}
-                  </td>
-                  <td className="py-1.5 pl-3">
-                    <MatchBadge type={m.badge_type ?? null} />
                   </td>
                 </tr>
               ))}

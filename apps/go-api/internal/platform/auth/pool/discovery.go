@@ -9,6 +9,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -154,6 +155,7 @@ func (d *discoveryImpl) scanPlayer(ctx context.Context, player domain.PlayerSumm
 		if envToken := readOAuthRefreshTokenFromEnv(player.Gamertag); envToken != "" {
 			slog.WarnContext(ctx, "pool: legacy env var utilisée — à migrer",
 				"gamertag", player.Gamertag, "deprecated_since", "ADR-0023")
+			observability.RecordLegacySourceUsed(observability.LegacySourceEnvOAuth)
 			oauth = envToken
 			sourceLabel = appendSource(sourceLabel, "env_oauth")
 		}
@@ -169,6 +171,7 @@ func (d *discoveryImpl) scanPlayer(ctx context.Context, player domain.PlayerSumm
 				slog.WarnContext(ctx, "pool: legacy mono-user store attribué (approximation)",
 					"gamertag", player.Gamertag,
 					"hint", "configurer le store via token-capture pour éviter cette ambiguïté")
+				observability.RecordLegacySourceUsed(observability.LegacySourceMonoUser)
 			}
 		}
 	}
@@ -219,6 +222,13 @@ func (d *discoveryImpl) adoptLegacySyncMeta(
 		slog.WarnContext(ctx, "pool: legacy sync_meta DuckDB utilisée — à migrer",
 			"gamertag", player.Gamertag, "fields", strings.Join(adopted, "+"),
 			"deprecated_since", "ADR-0023")
+		for _, f := range adopted {
+			if f == "msal" {
+				observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBMSAL)
+			} else {
+				observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBOAuth)
+			}
+		}
 	}
 	return msal, oauth, sourceLabel
 }
@@ -226,16 +236,19 @@ func (d *discoveryImpl) adoptLegacySyncMeta(
 // readLegacyDuckDB lit msal+oauth depuis sync_meta. Ne logue PAS : c'est le
 // caller (adoptLegacySyncMeta) qui warn, et uniquement si une valeur est adoptée.
 func (d *discoveryImpl) readLegacyDuckDB(ctx context.Context, player domain.PlayerSummary, playerDBPath string) (msal, oauth string, ok bool) {
-	playerDB, dbErr := duckdb.OpenReadOnly(playerDBPath)
+	// OpenReadForQuery (jamais OpenReadOnly nu) : réutilise un handle en cache si la
+	// player DB est déjà tenue RW dans le process, au lieu de doubler l'ouverture RO
+	// (erreur « different configuration », incident 2026-06-01) — E6, ADR 0016.
+	playerDB, release, dbErr := duckdb.OpenReadForQuery(playerDBPath)
 	if dbErr != nil {
 		slog.DebugContext(ctx, "pool: PlayerDB introuvable — fallback sources externes",
 			"gamertag", player.Gamertag, "db", playerDBPath)
 		return "", "", false
 	}
-	defer func() { _ = playerDB.Close() }()
+	defer release()
 
-	msal, _ = duckdb.ReadMSALCacheJSON(ctx, playerDB)
-	oauth, _ = duckdb.ReadOAuthRefreshToken(ctx, playerDB)
+	msal, _ = duckdb.ReadMSALCacheJSONFromSQL(ctx, playerDB)
+	oauth, _ = duckdb.ReadOAuthRefreshTokenFromSQL(ctx, playerDB)
 	return msal, oauth, true
 }
 

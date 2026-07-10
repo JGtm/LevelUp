@@ -42,7 +42,7 @@ export function RegisterPage() {
   // Instance fermée (lockdown) : aucune nouvelle inscription hors bootstrap du
   // premier admin (firstLaunch). On présente un écran « fermé » plutôt que le form.
   const lockedOut = instanceLocked && !firstLaunch
-  const instanceClosedLabel = 'Cette instance est fermée aux nouvelles inscriptions.'
+  const instanceClosedLabel = t('common.auth.register_instance_closed')
 
   const needsInvite = !firstLaunch && registrationMode === 'invite'
 
@@ -51,7 +51,7 @@ export function RegisterPage() {
     setError(null)
 
     if (password !== confirmPassword) {
-      setError('Les mots de passe ne correspondent pas.')
+      setError(t('common.auth.register_password_mismatch'))
       return
     }
 
@@ -69,14 +69,14 @@ export function RegisterPage() {
         onError: (err) => {
           const apiErr = err as unknown as ApiError
           const messages: Record<string, string> = {
-            user_exists: 'Ce nom d\'utilisateur est déjà pris.',
-            invite_required: 'Un code d\'invitation est requis.',
-            invalid_invite: 'Code d\'invitation invalide ou expiré.',
-            registration_closed: 'Les inscriptions sont fermées.',
-            instance_locked: 'Cette instance est fermée aux nouvelles inscriptions.',
+            user_exists: t('common.auth.register_err_user_exists'),
+            invite_required: t('common.auth.register_err_invite_required'),
+            invalid_invite: t('common.auth.register_err_invalid_invite'),
+            registration_closed: t('common.auth.register_err_closed'),
+            instance_locked: t('common.auth.register_instance_closed'),
             validation_error: apiErr.message,
           }
-          setError(messages[apiErr.code] ?? apiErr.message ?? 'Erreur lors de l\'inscription.')
+          setError(messages[apiErr.code] ?? apiErr.message ?? t('common.auth.register_err_generic'))
         },
       },
     )
@@ -188,7 +188,7 @@ export function RegisterPage() {
               )}
 
               <Button type="submit" className="w-full" disabled={register.isPending}>
-                {register.isPending ? 'Inscription…' : 'Créer le compte'}
+                {register.isPending ? t('common.auth.register_pending') : t('common.auth.register_submit')}
               </Button>
             </form>
 

@@ -17,9 +17,9 @@
 //	w, err := provider.AcquireWriter(ctx)
 //	defer w.Release()
 //
-// État actuel (commit 2/9) : steady state RO seulement. AcquireWriter,
-// WriterHandle, et le mécanisme de swap arrivent au commit 3.
+// État : livré. AcquireWriter, WriterHandle et le mécanisme de swap RO↔RW sont
+// implémentés (cf. l'interface Provider ci-dessous).
 //
-// Voir docs/adr/0014-shared-db-provider-b-swap.md (à créer au commit 9) pour
-// la motivation architecturale complète.
+// Voir docs/adr/0016-shared-db-provider-b-swap.md pour la motivation
+// architecturale complète.
 package sharedprovider

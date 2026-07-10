@@ -27,12 +27,14 @@ import (
 
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
 )
 
-// engagementCoefModes liste les categories de mode pour lesquelles on
-// recompute un coefficient. Aligne sur normalizeModeCategoryFromFlags.
-var engagementCoefModes = []string{"PvP_ranked", "PvP_unranked"}
+// engagementCoefModes liste les categories de mode pour lesquelles on recompute un
+// coefficient. Source unique domain.EngagementCoefModes (K1n) — partagee avec le
+// service admin (service.engagementCoefModesService).
+var engagementCoefModes = domain.EngagementCoefModes()
 
 // batchRecomputeCoefficients recalcule et persiste les coef_team_share /
 // coef_lobby_share du joueur pour chaque mode_category PvP, depuis la

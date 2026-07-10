@@ -10,6 +10,7 @@ import (
 	"context"
 	"testing"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
 )
@@ -132,6 +133,118 @@ func newTestPlayerDBForMediaScenario(t *testing.T) *PlayerDB {
 		XUID:         mediaTestPlayerXUID,
 		Gamertag:     mediaTestPlayerSlug,
 		TitleSlug:    titlepkg.DefaultSlug,
+	}
+}
+
+// newTestPlayerDBForCandidatesLocale monte un dataset minimal pour les
+// suggestions de réassociation (GH3-4) : 1 média (capture 14:00), 1 match m1 à
+// 14:00 (dans la fenêtre), pair_name EN "Slayer" + FR "Assassin", playlist EN
+// "Ranked Slayer" (playlist_id "pl-ranked" traduit FR via asset_translations).
+func newTestPlayerDBForCandidatesLocale(t *testing.T) *PlayerDB {
+	t.Helper()
+	player := openMemDB(t)
+	shared := openMemDB(t)
+	social := openMemDB(t)
+	meta := openMemDB(t)
+
+	seedSharedDBSchema(t, shared)
+	seedSharedSocialSchema(t, social)
+	seedMetaDBSchema(t, meta)
+
+	ctx := context.Background()
+	if _, err := shared.Exec(ctx, `DELETE FROM shared.match_registry`); err != nil {
+		t.Fatalf("wipe shared: %v", err)
+	}
+	for _, q := range []string{
+		`DELETE FROM media_match_associations_history`,
+		`DELETE FROM media_files`,
+	} {
+		if _, err := social.Exec(ctx, q); err != nil {
+			t.Fatalf("wipe: %v", err)
+		}
+	}
+
+	// Match : pair_name EN "Slayer" + FR "Assassin" ; playlist EN "Ranked Slayer".
+	if _, err := shared.Exec(ctx,
+		`INSERT INTO shared.match_registry
+			(match_id, start_time, start_time_utc, map_name, pair_name, pair_name_fr,
+			 playlist_name, playlist_id, is_ranked)
+		 VALUES ('m1', '2025-01-10 14:00:00', '2025-01-10 14:00:00+00', 'Aquarius',
+			 'Slayer', 'Assassin', 'Ranked Slayer', 'pl-ranked', TRUE)`,
+	); err != nil {
+		t.Fatalf("insert match: %v", err)
+	}
+	if _, err := shared.Exec(ctx,
+		`INSERT INTO shared.match_participants (match_id, xuid, gamertag, outcome, kills, deaths, team_id)
+		 VALUES ('m1', ?, ?, 2, 10, 5, 0)`,
+		mediaTestPlayerXUID, mediaTestPlayerSlug,
+	); err != nil {
+		t.Fatalf("insert participant: %v", err)
+	}
+
+	// Média capturé à 14:00 (dans la fenêtre de 15 min du match).
+	if _, err := social.Exec(ctx,
+		`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_start_utc, liked)
+		 VALUES ('med-loc', ?, '/clip.mp4', 'clip.mp4', 'video', '2025-01-10 14:00:00+00', FALSE)`,
+		mediaTestPlayerSlug,
+	); err != nil {
+		t.Fatalf("insert media: %v", err)
+	}
+
+	// mode_name_tr (FR) + asset_translations playlist (FR).
+	if _, err := meta.Exec(ctx, `CREATE TABLE mode_name_tr (lang VARCHAR, mode_en VARCHAR, name VARCHAR)`); err != nil {
+		t.Fatalf("create mode_name_tr: %v", err)
+	}
+	if _, err := meta.Exec(ctx,
+		`INSERT INTO mode_name_tr (lang, mode_en, name) VALUES ('fr', 'Slayer', 'Assassin')`); err != nil {
+		t.Fatalf("seed mode_name_tr: %v", err)
+	}
+	if _, err := meta.Exec(ctx,
+		`INSERT INTO asset_translations (asset_id, asset_type, lang, name) VALUES ('pl-ranked', 'playlist', 'fr-FR', 'Slayer classé')`); err != nil {
+		t.Fatalf("seed asset_translations: %v", err)
+	}
+
+	return &PlayerDB{
+		Player: player, Shared: shared, SharedSocial: social, Metadata: meta,
+		XUID: mediaTestPlayerXUID, Gamertag: mediaTestPlayerSlug, TitleSlug: titlepkg.DefaultSlug,
+	}
+}
+
+// TestLoadMatchCandidatesForMedia_LocaleAware prouve GH3-4 : les suggestions de
+// réassociation servent playlist + mode dans la locale de requête (EN = canonique,
+// FR = traductions), jamais de FR résiduel sous EN.
+func TestLoadMatchCandidatesForMedia_LocaleAware(t *testing.T) {
+	pdb := newTestPlayerDBForCandidatesLocale(t)
+	repo := NewMediaRepo(pdb)
+
+	frResp, err := repo.LoadMatchCandidatesForMedia(ctxkeys.WithLocale(context.Background(), "fr"), "/clip.mp4", 15)
+	if err != nil {
+		t.Fatalf("FR candidates: %v", err)
+	}
+	if len(frResp.Candidates) != 1 {
+		t.Fatalf("FR: got %d candidats, want 1", len(frResp.Candidates))
+	}
+	frC := frResp.Candidates[0]
+	if frC.ModeName == nil || *frC.ModeName != "Assassin" {
+		t.Errorf("FR mode = %v, want Assassin (mode_name_tr)", frC.ModeName)
+	}
+	if frC.PlaylistName == nil || *frC.PlaylistName != "Slayer classé" {
+		t.Errorf("FR playlist = %v, want Slayer classé (asset_translations FR)", frC.PlaylistName)
+	}
+
+	enResp, err := repo.LoadMatchCandidatesForMedia(ctxkeys.WithLocale(context.Background(), "en"), "/clip.mp4", 15)
+	if err != nil {
+		t.Fatalf("EN candidates: %v", err)
+	}
+	if len(enResp.Candidates) != 1 {
+		t.Fatalf("EN: got %d candidats, want 1", len(enResp.Candidates))
+	}
+	enC := enResp.Candidates[0]
+	if enC.ModeName == nil || *enC.ModeName != "Slayer" {
+		t.Errorf("EN mode = %v, want Slayer (canonique EN, jamais de FR sous EN)", enC.ModeName)
+	}
+	if enC.PlaylistName == nil || *enC.PlaylistName != "Ranked Slayer" {
+		t.Errorf("EN playlist = %v, want Ranked Slayer (playlist_name brut EN)", enC.PlaylistName)
 	}
 }
 

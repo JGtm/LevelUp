@@ -117,11 +117,11 @@ func (m *mockService) DisablePilotMode(ctx context.Context, _, _ string) error {
 
 func TestIsEnabled_Defaults(t *testing.T) {
 	t.Setenv(FeatureFlagEnv, "")
-	if !IsEnabled() {
+	if !IsEnabled("") {
 		t.Error("expected enabled when env var empty (default-on)")
 	}
 	t.Setenv(FeatureFlagEnv, "false")
-	if IsEnabled() {
+	if IsEnabled("") {
 		t.Error("expected disabled when explicitly false")
 	}
 }
@@ -129,7 +129,7 @@ func TestIsEnabled_Defaults(t *testing.T) {
 func TestIsEnabled_FalsyValues(t *testing.T) {
 	for _, v := range []string{"0", "false", "FALSE", "no", "off"} {
 		t.Setenv(FeatureFlagEnv, v)
-		if IsEnabled() {
+		if IsEnabled("") {
 			t.Errorf("expected disabled for %q", v)
 		}
 	}
@@ -138,23 +138,15 @@ func TestIsEnabled_FalsyValues(t *testing.T) {
 func TestIsEnabled_TruthyValues(t *testing.T) {
 	for _, v := range []string{"1", "true", "TRUE", "yes", "on"} {
 		t.Setenv(FeatureFlagEnv, v)
-		if !IsEnabled() {
+		if !IsEnabled("") {
 			t.Errorf("expected enabled for %q", v)
 		}
 	}
 }
 
-func TestRunPostSyncHook_DisabledSkipsService(t *testing.T) {
-	t.Setenv(FeatureFlagEnv, "false")
-	mock := &mockService{}
-	RunPostSyncHook(context.Background(), mock, "u1", "halo_infinite")
-	if mock.called {
-		t.Error("service should not be called when flag is off")
-	}
-}
-
 func TestRunPostSyncHook_EnabledCallsService(t *testing.T) {
-	t.Setenv(FeatureFlagEnv, "true")
+	// C7 : le hook ne re-lit plus le flag (gate unique chez l'appelant) ;
+	// il appelle toujours le service non-nil.
 	mock := &mockService{}
 	RunPostSyncHook(context.Background(), mock, "u1", "halo_infinite")
 	if !mock.called {

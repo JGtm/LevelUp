@@ -442,9 +442,24 @@ func perfColor(score float64) string {
 // formatDateFRLong formate une date en "JJ mois AAAA, HH:MM" (FR long).
 // Distinct de formatDateFR (match_history) qui utilise le format court.
 func formatDateFRLong(t time.Time) string {
-	months := [...]string{
+	return formatDateLong(t, "fr")
+}
+
+// formatDateLong formate une date en "JJ mois AAAA, HH:MM", locale-aware (mois
+// abrégés FR ou EN). Le header Match View figeait la date en FR sous UI EN (GH-9).
+// Sortie FR strictement identique à l'ancienne formatDateFRLong.
+func formatDateLong(t time.Time, locale string) string {
+	monthsFR := [...]string{
 		"janv.", "févr.", "mars", "avr.", "mai", "juin",
 		"juil.", "août", "sept.", "oct.", "nov.", "déc.",
+	}
+	monthsEN := [...]string{
+		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+	}
+	months := monthsFR
+	if locale == "en" {
+		months = monthsEN
 	}
 	local := t.Local()
 	return fmt.Sprintf("%02d %s %d, %02d:%02d",

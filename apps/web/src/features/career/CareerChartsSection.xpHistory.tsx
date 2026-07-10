@@ -12,12 +12,14 @@
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { intlLocale as toIntlLocale } from '@/lib/formatters'
 import {
   getEChartsThemeColors,
   getAxisBase,
   getTooltipBase,
   getLegendBase,
   CHART_BG,
+  escapeHtml,
 } from '@/components/charts/_utils'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { careerManifest } from '@/lib/i18n/generated/career'
@@ -226,7 +228,7 @@ function buildWeeklyCurve(
 function buildXpHistoryOption(series: ChartSeries<[string, number]>[], locale: ManifestLocale): EChartsCoreOption {
   const tc = getEChartsThemeColors()
   const axisBase = getAxisBase(tc)
-  const intlLocale = locale === 'fr' ? 'fr-FR' : 'en-US'
+  const intlLocale = toIntlLocale(locale)
 
   // Map seriesIndex → meta pour le tooltip custom.
   const metaByIdx = new Map<number, XpSeriesMeta>()
@@ -275,7 +277,7 @@ function buildXpHistoryOption(series: ChartSeries<[string, number]>[], locale: M
         const m = metaByIdx.get(p.seriesIndex as number)
         const typeLabel = m ? XP_TYPE_LABELS[m.lineType] : ''
         const name = m?.playerName ?? p.seriesName
-        return `${p.marker as string} <b>${name}</b> — ${typeLabel} : ${fmtXp(p.value[1] as number)}`
+        return `${p.marker as string} <b>${escapeHtml(name ?? '')}</b> — ${typeLabel} : ${fmtXp(p.value[1] as number)}`
       })
     return `${date}<br/>${lines.join('<br/>')}`
   }

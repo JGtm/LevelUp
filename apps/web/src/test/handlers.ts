@@ -69,8 +69,6 @@ const careerFixture = {
   projections: null,
   xp_history: [],
   lusr: null,
-  top_matches_preview: [],
-  encounters_preview: [],
 }
 
 const citationsFixture = {
@@ -162,7 +160,6 @@ const settingsFixture = {
   discord_notify_sync: false,
   discord_notify_backfill: false,
   discord_notify_new_version: false,
-  discord_notify_new_media: false,
   discord_notify_friends: false,
   spnkr_auto_sync_enabled: false,
   spnkr_auto_sync_interval_hours: 0,
@@ -467,7 +464,8 @@ export const handlers = [
 
   // Career
   http.get(p(`/players/${SLUG}/pages/career`), () => HttpResponse.json(careerFixture)),
-  http.get(p(`/players/${SLUG}/pages/career/top-matches`), () => HttpResponse.json({ items: [] })),
+  http.get(p(`/players/${SLUG}/pages/career/top-matches`), () =>
+    HttpResponse.json({ best_matches: [], worst_matches: [] })),
   http.get(p(`/players/${SLUG}/pages/career/encounters`), () =>
     HttpResponse.json({
       teammates: [

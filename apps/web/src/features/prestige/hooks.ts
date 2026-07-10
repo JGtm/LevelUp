@@ -8,15 +8,16 @@
  *
  * Ce fichier rebroadcaste tout pour les imports existants.
  */
+// NB : les clés de requête (ex-challengeKeys/arcKeys/prestigeKeys/profileKeys) sont
+// centralisées dans `@/lib/query/keys` (queryKeys.challenge/arc/prestige/playerProfile) —
+// L5, CLAUDE.md n°13. Ce barrel ne rebroadcaste plus que les hooks.
 export {
-  challengeKeys,
   useChallenges,
   useCreateChallenge,
   useUpdateChallenge,
   useAbandonChallenge,
 } from './hooks/useChallenges'
 export {
-  arcKeys,
   useArcs,
   useCreateArc,
   useDeleteArc,
@@ -24,7 +25,6 @@ export {
   useAdoptArcPreset,
 } from './hooks/useArcs'
 export {
-  prestigeKeys,
   useMyPrestige,
   useSuggestedTemplates,
   useJoinSquadChallenge,
@@ -33,7 +33,6 @@ export {
 // features/ascension/profile (refonte 2026-05-26). Re-broadcast ici pour les
 // callers prestige existants.
 export {
-  profileKeys,
   useActiveCampaign,
   useCampaignMutations,
   usePlayerProfile,

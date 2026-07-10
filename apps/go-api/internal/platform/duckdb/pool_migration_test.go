@@ -271,6 +271,8 @@ func seedSharedDBForPoolTest(t *testing.T, path string) {
 			pair_name_fr VARCHAR,
 			playlist_name VARCHAR,
 			playlist_name_fr VARCHAR,
+			game_variant_id VARCHAR,
+			game_variant_name VARCHAR,
 			is_firefight BOOLEAN DEFAULT FALSE,
 			is_ranked BOOLEAN DEFAULT FALSE,
 			team_0_score INTEGER,

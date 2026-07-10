@@ -59,7 +59,7 @@ type ParticipationT0Input struct {
 // match à partir des first_joined_time des joueurs présents au début.
 //
 // startTimeUTC doit être le début du film en UTC (pattern canonical :
-// COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') côté SQL).
+// via analysis.SQLStartTimeCanonical cote SQL).
 //
 // Filet de sécurité multi-joueurs :
 //   - exclut bots et joueurs non présents au début ;

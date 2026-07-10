@@ -5,7 +5,6 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/halo_infinite"
 )
 
 type mediaEnrichedRow struct {
@@ -98,6 +97,7 @@ func applyCrossDBMediaFilters(
 	rows []mediaEnrichedRow,
 	f domain.MediaFilters,
 	whereCfg mediaWhereConfig,
+	modeTax analysis.ModeTaxonomy,
 ) []mediaEnrichedRow {
 	out := rows[:0]
 	for _, row := range rows {
@@ -107,7 +107,7 @@ func applyCrossDBMediaFilters(
 			}
 		}
 		if whereCfg.includeModeFilter && f.ModeFilter != "" {
-			if !mediaRowMatchesMode(row, f.ModeFilter) {
+			if !mediaRowMatchesMode(row, f.ModeFilter, modeTax) {
 				continue
 			}
 		}
@@ -148,7 +148,7 @@ func mediaRowMatchesMap(row mediaEnrichedRow, filter string) bool {
 //	 "Other"           → NOT IN les préfixes connus
 //
 // Cf. buildQ37MediaWhereClause historique.
-func mediaRowMatchesMode(row mediaEnrichedRow, filter string) bool {
+func mediaRowMatchesMode(row mediaEnrichedRow, filter string, tax analysis.ModeTaxonomy) bool {
 	if row.Match == nil {
 		return false
 	}
@@ -157,7 +157,7 @@ func mediaRowMatchesMode(row mediaEnrichedRow, filter string) bool {
 		return false
 	}
 	category, submode, hasSubmode := strings.Cut(filter, "/")
-	prefixes := halo_infinite.PairNamePrefixesForCategory(category)
+	prefixes := tax.Prefixes(category)
 	pairLower := strings.ToLower(pairName)
 
 	matchesCategory := false
@@ -170,10 +170,10 @@ func mediaRowMatchesMode(row mediaEnrichedRow, filter string) bool {
 				break
 			}
 		}
-	case category == halo_infinite.ModeCategoryOther:
+	case tax.Other != "" && category == tax.Other:
 		// Other = NOT IN les préfixes connus
 		matchesCategory = true
-		for _, p := range halo_infinite.AllKnownPairNamePrefixes() {
+		for _, p := range tax.KnownPrefixes() {
 			pLower := strings.ToLower(p)
 			if strings.HasPrefix(pairLower, pLower+":") || pairLower == pLower {
 				matchesCategory = false
@@ -181,7 +181,7 @@ func mediaRowMatchesMode(row mediaEnrichedRow, filter string) bool {
 			}
 		}
 	default:
-		// Catégorie inconnue → pas de match
+		// Catégorie inconnue (ou titre sans taxonomie) → pas de match
 		return false
 	}
 	if !matchesCategory {

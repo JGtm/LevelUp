@@ -24,6 +24,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 )
 
 // LegacyAuthInputs regroupe les sources legacy déjà lues par le caller.
@@ -59,7 +60,7 @@ func RefreshHaloTokensViaStoreFirst(
 	// --- Source 1 : MultiUserTokenStore ---
 	if store != nil && xuid != "" {
 		if user, err := store.Load(xuid); err == nil && user != nil {
-			result, refreshErr := tryRefreshFromUserEntry(ctx, provider, store, xuid, user)
+			result, refreshErr := RefreshFromStoreEntry(ctx, provider, store, xuid, user)
 			if result != nil {
 				// Refresh OK → l'éventuel flag reauth_required est obsolète.
 				_ = store.ClearReauthRequired(xuid)
@@ -89,15 +90,21 @@ func RefreshHaloTokensViaStoreFirst(
 	return tryRefreshFromLegacyInputs(ctx, provider, store, xuid, gamertag, legacy), nil
 }
 
-// tryRefreshFromUserEntry tente MSAL silent puis OAuth refresh depuis l'entrée
-// store. Retourne (result, nil) sur succès ; (nil, err) si l'OAuth refresh a
-// échoué — err porte la classe d'échec (cf. ClassifyAuthError), ce qui permet au
-// caller de ne marquer reauth_required QUE pour un RT révoqué. (nil, nil) si
-// aucune source n'a produit de token sans erreur classifiable (ex. Exchange KO).
-func tryRefreshFromUserEntry(
+// RefreshFromStoreEntry tente MSAL silent puis OAuth refresh (rotation persistée)
+// depuis une entrée store DÉJÀ chargée. Retourne (result, nil) sur succès ; (nil, err)
+// si l'OAuth refresh a échoué — err porte la classe d'échec (cf. ClassifyAuthError),
+// ce qui permet au caller de ne marquer reauth_required QUE pour un RT révoqué.
+// (nil, nil) si aucune source n'a produit de token sans erreur classifiable (ex.
+// Exchange KO).
+//
+// Source UNIQUE de la cascade store MSAL→OAuth (K1b) : `store` est l'interface
+// `UserTokenStore` (seul `UpdateOAuthRefreshToken` y est appelé) → réutilisable par
+// `ServiceRegistry.tryRefreshFromAuthStore` (api), qui applique ENSUITE sa propre
+// politique reauth (clear-on-success, pas de marquage sur le chemin serveur).
+func RefreshFromStoreEntry(
 	ctx context.Context,
 	provider TokenProvider,
-	store *MultiUserTokenStore,
+	store UserTokenStore,
 	xuid string,
 	user *UserTokens,
 ) (*ExchangeResult, error) {
@@ -142,6 +149,7 @@ func tryRefreshFromLegacyInputs(
 	if legacy.MSALCache != "" {
 		slog.WarnContext(ctx, "cli_auth: legacy MSAL utilisé — à migrer",
 			"gamertag", gamertag, "source", legacy.Source, "deprecated_since", "ADR-0023")
+		observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBMSAL)
 		if at, err := provider.TrySilentRefresh(ctx, legacy.MSALCache); err == nil && at != "" {
 			if result, err := provider.Exchange(ctx, at); err == nil && result != nil {
 				return result
@@ -153,6 +161,7 @@ func tryRefreshFromLegacyInputs(
 	}
 	slog.WarnContext(ctx, "cli_auth: legacy RT utilisé — à migrer",
 		"gamertag", gamertag, "source", legacy.Source, "deprecated_since", "ADR-0023")
+	observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBOAuth)
 
 	at, rotatedRT, err := provider.TryOAuthRefreshWithRotation(ctx, legacy.OAuthRT)
 	if err != nil || at == "" {

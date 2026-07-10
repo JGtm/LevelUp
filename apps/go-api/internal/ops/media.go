@@ -459,7 +459,7 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 			WHERE id = ?
 		`, storedPath, baseName, ext, hash, kind, durationSec, captureEnd, existingID)
 		if err != nil {
-			slog.Error("insertMediaFile: UPDATE failed for format conversion",
+			slog.ErrorContext(ctx, "insertMediaFile: UPDATE failed for format conversion",
 				"err", err, "player", playerSlug, "stem", stem, "id", existingID)
 			return err
 		}

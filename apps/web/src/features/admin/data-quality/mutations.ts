@@ -19,7 +19,7 @@ import type {
 /** Invalide compteurs + toutes les listes d'inconnus (+ l'overview). */
 export function invalidateDataQuality(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: queryKeys.adminDataQuality })
-  void queryClient.invalidateQueries({ queryKey: ['admin', 'data-quality', 'issues'] })
+  void queryClient.invalidateQueries({ queryKey: queryKeys.adminDataQualityIssuesAll })
   void queryClient.invalidateQueries({ queryKey: queryKeys.adminMonitoringOverview })
 }
 

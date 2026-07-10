@@ -190,6 +190,16 @@ type TitleAssetURLAdapter interface {
 	// WeaponImageURL retourne l'URL de l'image d'une arme à partir de son
 	// nom EN officiel (ex. "BR75", "Energy Sword"). Retourne "" si non reconnu.
 	WeaponImageURL(nameEN string) string
+
+	// MatchWebURL retourne l'URL de la page publique d'un match sur le portail
+	// officiel du titre (ex: Waypoint pour Halo Infinite). "" si le titre n'a pas
+	// de page de détail publique (dégradation : pas de lien externe).
+	MatchWebURL(matchID string) string
+
+	// PlayerMatchWebURL retourne l'URL de la page publique d'un match POUR un
+	// joueur donné sur le portail officiel. "" si le titre n'a pas de page publique
+	// ou si le gamertag est vide.
+	PlayerMatchWebURL(gamertag, matchID string) string
 }
 
 // Resolver injecte les adapters d'un titre courant aux services produit.

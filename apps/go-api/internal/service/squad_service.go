@@ -10,6 +10,7 @@ import (
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
+	teammatespkg "levelup/go-api/internal/service/teammates"
 )
 
 // SquadService orchestre les données des pages Escouade et Synthèse.
@@ -71,13 +72,13 @@ func (s *SquadService) GetSquadPage(
 		// Best-effort : l'impact est optionnel (ComputeImpactSummary dégrade en
 		// Available:false), mais on trace l'échec au lieu de l'avaler (était `_`).
 		slog.WarnContext(ctx, "squad_impact_events_load_failed",
-			"err", err.Error(), "teammate_xuid", teammateXUID)
+			"err", err, "teammate_xuid", teammateXUID)
 	}
 	// T0 (§4.A-bis) : cohérence avec le système Match Timeline — events ramenés
 	// au référentiel gameplay avant ComputeImpactSummary. Sans effet observable
 	// (SquadImpact n'expose que des compteurs, gagnants invariants par T0), mais
 	// évite que ce consommateur d'events bruts diverge du reste de la pipeline.
-	impactEvents = correctSquadImpactEvents(ctx, "squad.v1", impactEvents, timeline.BuildTimelinesFromSquadRows(myMatches))
+	impactEvents = teammatespkg.CorrectSquadImpactEvents(ctx, "squad.v1", impactEvents, timeline.BuildTimelinesFromSquadRows(myMatches))
 	impact := analysis.ComputeImpactSummary(impactEvents, playerXUID, teammateXUID)
 
 	timeseries := analysis.ComputeSquadTimeseries(myMatches, 20)
@@ -221,7 +222,7 @@ func extractScoreInputs(
 		kills = append(kills, float64(r.Kills))
 	}
 	if total > 0 {
-		// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+		// TODO(expiry:2026-12-31) P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
 		winRates = append(winRates, analysis.WinRate(wins, total)*100)
 	}
 	if nKDA > 0 {

@@ -91,26 +91,56 @@ func BackfillRegistryNames(ctx context.Context, sharedDB, metadataDB *sql.DB) (B
 
 // backfillPairNamesByConstruction réécrit pair_name = "{game_variant_name} on
 // {map_name}" pour les rows où pair_name est resté un GUID (== pair_id) ALORS
-// que game_variant_name et map_name sont, eux, résolus (≠ leur id). Pur SQL,
-// idempotent. Retourne le nombre de rows mises à jour.
+// que game_variant_name et map_name sont, eux, résolus (≠ leur id). Idempotent.
+// Retourne le nombre de rows mises à jour.
+//
+// Row-by-row par match_id (ADR 0019/0026, anti-ART #23046) : SELECT des match_ids
+// cibles + de leur pair_name construit, puis N UPDATE sérialisés `WHERE match_id = ?`.
+// JAMAIS de bulk UPDATE multi-row nu (set-based) sur match_registry — même sous
+// write-lease, un statement touchant N entrées d'index est le déclencheur ART direct
+// (garde-fou : no_art_patterns_test.go::TestNoBareBulkUpdateOnCriticalTables).
 func backfillPairNamesByConstruction(ctx context.Context, sharedDB *sql.DB) (int, error) {
-	const q = `
-		UPDATE match_registry
-		SET pair_name = game_variant_name || ' on ' || map_name
+	const sel = `
+		SELECT match_id, game_variant_name || ' on ' || map_name AS pair
+		FROM match_registry
 		WHERE pair_id IS NOT NULL
 		  AND pair_name = pair_id
 		  AND game_variant_name IS NOT NULL AND game_variant_name <> game_variant_id
 		  AND map_name IS NOT NULL AND map_name <> map_id`
-	res, err := sharedDB.ExecContext(ctx, q)
+	rows, err := sharedDB.QueryContext(ctx, sel)
 	if err != nil {
 		return 0, err
 	}
-	n, _ := res.RowsAffected()
+	type pairUpdate struct{ matchID, pair string }
+	var updates []pairUpdate
+	for rows.Next() {
+		var mid, pair sql.NullString
+		if err := rows.Scan(&mid, &pair); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		if mid.Valid && mid.String != "" && pair.Valid && pair.String != "" {
+			updates = append(updates, pairUpdate{mid.String, pair.String})
+		}
+	}
+	rows.Close()
+
+	n := 0
+	for _, u := range updates {
+		res, err := sharedDB.ExecContext(ctx,
+			`UPDATE match_registry SET pair_name = ? WHERE match_id = ?`, u.pair, u.matchID)
+		if err != nil {
+			return n, err
+		}
+		if c, _ := res.RowsAffected(); c > 0 {
+			n++
+		}
+	}
 	if n > 0 {
 		slog.InfoContext(ctx, "BackfillRegistryNames: pairs construites depuis game_variant + map",
 			"rows", n)
 	}
-	return int(n), nil
+	return n, nil
 }
 
 // backfillOneColumn : (1) liste les asset_ids distincts dont *_name == *_id,

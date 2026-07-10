@@ -4,8 +4,13 @@
 //
 // Usage :
 //
-//	report := RunHealthcheck(HealthcheckOptions{RepoRoot: "/path/to/levelup"})
-//	if !report.OK { fmt.Println(report.Summary()) }
+//	report := RunHealthcheck(ctx, HealthcheckOptions{RepoRoot: "/path/to/levelup"})
+//	if !report.OK {
+//		slog.ErrorContext(ctx, "healthcheck KO", "summary", report.Summary())
+//	}
+//
+// (Le point d'entrée CLI cmd/levelup/cmd_ops.go imprime le résumé sur stdout ;
+// tout code serveur/service utilise slog — CLAUDE.md règle 3.)
 package ops
 
 import (
@@ -119,7 +124,7 @@ func titleDataChecks(ctx context.Context, pr *titlePkg.PathResolver, slug string
 	// Répertoires de données.
 	for _, dir := range []string{
 		pr.WarehouseDir(slug),
-		filepath.Join(pr.TitleDataDir(slug), "players"),
+		pr.PlayersRootDir(slug),
 	} {
 		checks = append(checks, checkDirExists(name(filepath.Base(dir)), dir))
 	}
@@ -139,7 +144,7 @@ func titleDataChecks(ctx context.Context, pr *titlePkg.PathResolver, slug string
 	}
 
 	// Joueurs configurés.
-	playersDir := filepath.Join(pr.TitleDataDir(slug), "players")
+	playersDir := pr.PlayersRootDir(slug)
 	if entries, err := os.ReadDir(playersDir); err == nil {
 		for _, e := range entries {
 			if !e.IsDir() {

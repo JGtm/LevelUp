@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -76,8 +77,12 @@ func (r *CareerRepo) GetCSRSnapshots(ctx context.Context, seasonID string) ([]do
 	return out, nil
 }
 
-// enrichCSRPlaylistNames résout les noms de playlists FR via asset_translations.
-// Même pattern que enrichLUSRPlaylistNames. Best-effort : silencieux si indisponible.
+// enrichCSRPlaylistNames résout les noms de playlists selon la locale de requête
+// (GH2-B3, symétrique de GH-8 côté LIVE). Le snapshot persiste UN SEUL nom, le
+// canonique EN (le sync appelle SaveCSRSnapshots avec "en"). On résout donc le FR
+// via asset_translations et on choisit par locale : sous UI EN, le nom persisté EN
+// prime ; sous FR, la traduction FR prime (fallback croisé si l'une manque).
+// Best-effort : silencieux si metadata indisponible.
 func (r *CareerRepo) enrichCSRPlaylistNames(ctx context.Context, playlists []domain.CareerPlaylistCSR) {
 	if r.pdb == nil || r.pdb.Metadata == nil || len(playlists) == 0 {
 		return
@@ -98,15 +103,15 @@ func (r *CareerRepo) enrichCSRPlaylistNames(ctx context.Context, playlists []dom
 	if len(ids) == 0 {
 		return
 	}
-	names, err := NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(ctx, "playlist", ids, PreferredLangsForLocale("fr"))
-	if err != nil || len(names) == 0 {
+	frNames, err := NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(ctx, "playlist", ids, PreferredLangsForLocale("fr"))
+	if err != nil {
 		return
 	}
+	locale := ctxkeys.Locale(ctx)
 	for i := range playlists {
 		id := strings.TrimSpace(playlists[i].PlaylistID)
-		if name := strings.TrimSpace(names[id]); name != "" {
-			playlists[i].PlaylistName = name
-		}
+		// PlaylistName persisté = nom canonique EN → sert de candidat EN.
+		playlists[i].PlaylistName = resolvePlaylistNameForLocale(locale, strings.TrimSpace(frNames[id]), playlists[i].PlaylistName)
 	}
 }
 

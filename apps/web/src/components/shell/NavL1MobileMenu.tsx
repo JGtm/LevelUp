@@ -114,7 +114,7 @@ export function NavL1MobileMenu({ sections, pathname, resolvePath }: NavL1Mobile
         </div>
 
         {/* Liste des sections (scrollable) */}
-        <nav className="flex-1 overflow-y-auto py-2" aria-label="Sections">
+        <nav className="flex-1 overflow-y-auto py-2" aria-label={t('common.nav.sections_aria')}>
           {sections.map((section) => {
             const isActive = section.matchPathname(pathname)
             const resolvedDefaultPath = resolvePath(section.defaultPath)
@@ -133,7 +133,7 @@ export function NavL1MobileMenu({ sections, pathname, resolvePath }: NavL1Mobile
                   ].join(' ')}
                 >
                   {section.icon}
-                  {section.label}
+                  {t(section.labelKey)}
                 </Link>
 
                 {section.tabs && (
@@ -155,7 +155,7 @@ export function NavL1MobileMenu({ sections, pathname, resolvePath }: NavL1Mobile
                               : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                           ].join(' ')}
                         >
-                          {tab.label}
+                          {t(tab.labelKey)}
                         </Link>
                       )
                     })}

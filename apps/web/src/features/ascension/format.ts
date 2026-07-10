@@ -6,6 +6,7 @@
  * la complexité actuelle ; on migrera à intl-messageformat si plural complexe.
  */
 import type { AscensionLocale } from './i18n'
+import { intlLocale } from '@/lib/formatters'
 
 /**
  * Substitue les placeholders `{key}` par la valeur correspondante.
@@ -26,11 +27,11 @@ export function interpolate(
 }
 
 /** Formate une date ISO en JJ/MM/AAAA (FR) ou MM/DD/YYYY (EN). */
-export function formatDate(iso: string | null | undefined, locale: AscensionLocale): string {
+export function formatAscensionDate(iso: string | null | undefined, locale: AscensionLocale): string {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+  return d.toLocaleDateString(intlLocale(locale), {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

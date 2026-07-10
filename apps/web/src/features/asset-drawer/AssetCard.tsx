@@ -55,7 +55,11 @@ export function AssetCard({ asset, locale, kind }: AssetCardProps) {
       <p className="truncate px-1.5 pt-1 text-3xs leading-tight text-foreground/80">
         {label}
       </p>
-      {description && (
+      {/* Médailles : pas de description tronquée sous la carte (décision GH-6,
+          2026-07-08) — image + nom seulement. La description COMPLÈTE reste
+          disponible au survol via le `title` du conteneur (« nom — description »).
+          Maps/armes : inchangé (description sous la carte si présente). */}
+      {kind !== 'medals' && description && (
         <p
           className="line-clamp-2 px-1.5 pb-1 text-3xs leading-tight text-muted-foreground"
           title={description}

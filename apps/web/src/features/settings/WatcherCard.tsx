@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { ToggleRow } from '@/features/settings/_settingsShared'
 import type { SettingsText } from '@/features/settings/i18n'
 import {
@@ -290,7 +291,7 @@ export function formatLastSeen(
     duration = locale === 'fr' ? `${diffD} j` : `${diffD} day${diffD > 1 ? 's' : ''}`
   } else {
     // Format absolu pour les dates anciennes.
-    const date = past.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+    const date = past.toLocaleDateString(intlLocale(locale), {
       day: 'numeric',
       month: 'short',
       year: 'numeric',

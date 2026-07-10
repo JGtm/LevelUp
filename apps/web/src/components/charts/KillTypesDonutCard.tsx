@@ -21,6 +21,7 @@ import { KillTypesDonut, type DonutSlice } from '@/components/charts/KillTypesDo
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 
 interface KillTypesDonutCardProps {
   /** Titre de la carte. */
@@ -61,7 +62,7 @@ export function KillTypesDonutCard({
 }: KillTypesDonutCardProps) {
   const { data: fieldMappings } = useFieldMappings()
   const appLocale = useAppShellStore((s) => s.locale)
-  const locale = appLocale === 'en' ? 'en-US' : 'fr-FR'
+  const locale = intlLocale(appLocale)
   const labelOf = (key: string, fallback: string) => fieldMappings?.fields[key]?.label ?? fallback
 
   // Mécaniques de kill (tokens 2/3/4) — DISJOINTES des catégories d'arme ; émises

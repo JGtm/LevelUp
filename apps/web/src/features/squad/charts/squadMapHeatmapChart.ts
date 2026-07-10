@@ -11,6 +11,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken } from '@/lib/accessibility'
 import {
   CHART_BG,
+  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getTooltipBase,
@@ -75,7 +76,7 @@ export function buildSquadMapHeatmapOption(
         const cell = cellByKey.get(`${players[yi]}|${mapsTopn[xi]}`)
         const perf = v === null ? opts.noScoreLabel : v.toFixed(1)
         const n = cell?.match_count ?? 0
-        return `${players[yi]} — ${mapNames[xi]}<br/>Perf: ${perf}<br/>N: ${n}`
+        return `${escapeHtml(players[yi] ?? '')} — ${escapeHtml(mapNames[xi] ?? '')}<br/>Perf: ${perf}<br/>N: ${n}`
       },
     },
     xAxis: {

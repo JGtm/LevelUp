@@ -85,7 +85,7 @@ func discoverLevelUpDBs(pr *title.PathResolver) ([]duckdbbackup.Target, error) {
 			}
 		}
 
-		playersDir := filepath.Join(pr.TitleDataDir(slug), "players")
+		playersDir := pr.PlayersRootDir(slug)
 		players, err := os.ReadDir(playersDir)
 		if err != nil {
 			continue // no players for this title is non-fatal

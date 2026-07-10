@@ -39,7 +39,8 @@ export function OpenSpartanImportCard() {
   // reliable way to clear a file input without touching refs during render.
   const [fileInputKey, setFileInputKey] = useState(0)
   const locale = useAppShellStore((s) => s.locale)
-  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+  const t = (key: CommonManifestKey, vars?: Record<string, string | number>) =>
+    formatMessage(commonManifest, key, locale, vars)
 
   const startMutation = useStartOpenSpartanImport()
   const jobQuery = useJobStatus(jobId ?? '', !!jobId)
@@ -56,11 +57,11 @@ export function OpenSpartanImportCard() {
       return
     }
     if (!file.name.toLowerCase().endsWith('.db')) {
-      setUploadError('Seuls les fichiers .db OpenSpartan sont acceptés.')
+      setUploadError(t('common.onboarding.import_only_db'))
       return
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      setUploadError(`Fichier trop volumineux (max ${MAX_FILE_SIZE_BYTES >> 30} Go).`)
+      setUploadError(t('common.onboarding.import_too_large', { max: MAX_FILE_SIZE_BYTES >> 30 }))
       return
     }
     setSelectedFile(file)
@@ -73,7 +74,7 @@ export function OpenSpartanImportCard() {
       const resp = await startMutation.mutateAsync(selectedFile)
       setJobId(resp.job_id)
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Échec du démarrage de l'import")
+      setUploadError(err instanceof Error ? err.message : t('common.onboarding.import_start_failed'))
     }
   }
 
@@ -205,7 +206,7 @@ function IdleStage(props: IdleStageProps) {
       <div className="mt-4 flex justify-end gap-2">
         {props.selectedFile && (
           <Button variant="ghost" onClick={props.onReset} disabled={props.isSubmitting}>
-            Annuler
+            {t('common.onboarding.cancel')}
           </Button>
         )}
         <Button
@@ -215,10 +216,10 @@ function IdleStage(props: IdleStageProps) {
         >
           {props.isSubmitting ? (
             <>
-              <Spinner size="sm" /> Envoi…
+              <Spinner size="sm" /> {t('common.onboarding.uploading')}
             </>
           ) : (
-            'Importer'
+            t('common.onboarding.import_action')
           )}
         </Button>
       </div>
@@ -227,16 +228,18 @@ function IdleStage(props: IdleStageProps) {
 }
 
 function PollingStage({ job }: { job: AsyncJobStatus | undefined }) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const pct = job?.progress_pct ?? null
   return (
     <div className="space-y-3" data-testid="openspartan-polling">
       <div className="flex items-center gap-2 text-sm">
         <Spinner size="sm" />
-        <span>{job?.current_step ?? 'Import en cours…'}</span>
+        <span>{job?.current_step ?? t('common.onboarding.importing')}</span>
       </div>
       {job?.matches_total !== null && job?.matches_total !== undefined && (
         <p className="text-xs text-muted-foreground">
-          {job.matches_done ?? 0} / {job.matches_total} matchs traités
+          {job.matches_done ?? 0} / {job.matches_total} {t('common.onboarding.matches_processed')}
         </p>
       )}
       {pct !== null && pct !== undefined && (
@@ -283,13 +286,13 @@ function SuccessStage({
         <dd className="font-mono">
           {result.inserted_matches} / {result.total_matches}
         </dd>
-        <dt className="text-muted-foreground">Participants</dt>
+        <dt className="text-muted-foreground">{t('common.onboarding.participants')}</dt>
         <dd className="font-mono">{result.inserted_participants}</dd>
-        <dt className="text-muted-foreground">Médailles</dt>
+        <dt className="text-muted-foreground">{t('common.onboarding.medals')}</dt>
         <dd className="font-mono">{result.inserted_medals}</dd>
         <dt className="text-muted-foreground">{t('common.onboarding.highlight_events')}</dt>
         <dd className="font-mono">{result.inserted_highlights}</dd>
-        <dt className="text-muted-foreground">Alias XUID</dt>
+        <dt className="text-muted-foreground">{t('common.onboarding.xuid_aliases')}</dt>
         <dd className="font-mono">{result.inserted_aliases}</dd>
         {post && (
           <>
@@ -325,14 +328,19 @@ function FailureStage({
   status: string | undefined
   onReset: () => void
 }) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey, vars?: Record<string, string | number>) =>
+    formatMessage(commonManifest, key, locale, vars)
   return (
     <div className="space-y-3" data-testid="openspartan-failure">
       <p className="text-sm font-medium" style={{ color: tokenCssVar('destructive') }}>
-        {status === 'interrupted' ? "Import interrompu" : "Échec de l'import"}
+        {status === 'interrupted'
+          ? t('common.onboarding.import_interrupted')
+          : t('common.onboarding.import_failed')}
       </p>
-      <p className="text-sm">{failureMessageFromCode(error)}</p>
+      <p className="text-sm">{failureMessageFromCode(error, t)}</p>
       <Button variant="ghost" onClick={onReset}>
-        Réessayer
+        {t('common.onboarding.retry')}
       </Button>
     </div>
   )
@@ -340,26 +348,29 @@ function FailureStage({
 
 /**
  * failureMessageFromCode maps the typed Error.Code returned by the backend
- * service to a user-facing French sentence. Falls back to the raw message
- * when the code is unknown.
+ * service to a localised, user-facing sentence via the injected translator.
+ * Falls back to the raw message when the code is unknown.
  */
 // eslint-disable-next-line react-refresh/only-export-components
-export function failureMessageFromCode(err: ApiErrorSchema | null): string {
-  if (!err) return 'Erreur inconnue.'
+export function failureMessageFromCode(
+  err: ApiErrorSchema | null,
+  t: (key: CommonManifestKey, vars?: Record<string, string | number>) => string,
+): string {
+  if (!err) return t('common.onboarding.import_err_unknown')
   switch (err.code) {
     case 'xuid_mismatch':
-      return "Cette base OpenSpartan n'appartient pas à ton compte Xbox connecté."
+      return t('common.onboarding.import_err_xuid_mismatch')
     case 'owner_low_confidence':
-      return 'Impossible de vérifier que cette base est bien la tienne. Renomme le fichier en <ton-xuid>.db et réessaye.'
+      return t('common.onboarding.import_err_low_confidence')
     case 'not_openspartan_db':
-      return "Ce fichier ne ressemble pas à une base OpenSpartan reconnaissable."
+      return t('common.onboarding.import_err_not_openspartan')
     case 'upload_too_large':
-      return 'Fichier trop volumineux (max 1 Go).'
+      return t('common.onboarding.import_too_large', { max: 1 })
     case 'demo_mode':
-      return "L'import OpenSpartan est désactivé en mode démo."
+      return t('common.onboarding.import_err_demo')
     case 'halo_auth_required':
-      return 'Connexion Xbox/Halo requise pour lancer un import.'
+      return t('common.onboarding.import_err_auth_required')
     default:
-      return err.message || 'Erreur inconnue.'
+      return err.message || t('common.onboarding.import_err_unknown')
   }
 }

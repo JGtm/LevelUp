@@ -28,6 +28,23 @@ import { formatNumberFixed } from '@/lib/formatters'
 
 export const CHART_BG = 'transparent'
 
+/**
+ * escapeHtml — échappe les métacaractères HTML avant interpolation dans un
+ * tooltip ECharts (rendu en innerHTML par défaut, sans sanitisation). OBLIGATOIRE
+ * sur toute donnée NON CONSTANTE interpolée dans un formatter de tooltip (noms de
+ * cartes UGC, gamertags, labels d'assets) — sinon XSS stocké (audit sécurité
+ * 2026-07 #9). Source unique : ne jamais redéfinir localement (garde-rail
+ * escapeHtml.test.ts).
+ */
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 /** Base axis style (axes X/Y). À spread avant les overrides spécifiques. */
 export function getAxisBase(tc: EChartsThemeColors) {
   return {
@@ -36,6 +53,15 @@ export function getAxisBase(tc: EChartsThemeColors) {
     splitLine: { lineStyle: { color: tc.splitLine } },
     axisLabel: { color: tc.axisLabel, fontSize: 10 },
   } as const
+}
+
+/**
+ * Socle `grid` ECharts commun (marges + containLabel) pour les charts timeseries.
+ * `overrides` ajuste ponctuellement une marge (ex: axe secondaire plus large).
+ * Factorisé H6 (2026-07-04) — remplace ~8 littéraux grid identiques/quasi-identiques.
+ */
+export function getGridBase(overrides: Record<string, number | boolean> = {}) {
+  return { top: 16, right: 16, bottom: 64, left: 48, containLabel: true, ...overrides }
 }
 
 /** Base tooltip style. À spread avant `formatter` ou `trigger`. */

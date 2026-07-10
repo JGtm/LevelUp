@@ -207,25 +207,6 @@ type UploadRequest struct {
 	Tolerance           int    // buffer association match (minutes, défaut 2)
 }
 
-// ReassociateRequest configure une ré-association forcée des médias.
-type ReassociateRequest struct {
-	DBPath              string
-	SharedSocialDBPath  string
-	SharedMatchesDBPath string
-	CapturesDir         string // répertoire captures pour le backfill thumbnail_path
-	CapturesBase        string // racine multi-player ({CapturesBase}/{slug}/...) — vide en mode legacy
-	Gamertag            string // owner gamertag, requis pour construire les paths relatifs en DB
-	BufferMin           int    // 0 → défaut 2 min
-}
-
-// ReassociateResult résume le résultat de la ré-association.
-type ReassociateResult struct {
-	BackupTable  string   `json:"backup_table"`         // nom de la table snapshot
-	DeletedAssoc int      `json:"deleted_associations"` // lignes supprimées
-	NewAssoc     int      `json:"new_associations"`     // nouvelles associations créées
-	Errors       []string `json:"errors,omitempty"`
-}
-
 // UploadResult résume le résultat d'un upload multi-fichiers.
 type UploadResult struct {
 	Saved      int      `json:"saved"`             // fichiers écrits sur disque

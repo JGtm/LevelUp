@@ -137,3 +137,35 @@ func (p *CareerProgressionPartial) MatchesLast(last *CareerRankRow) bool {
 	}
 	return true
 }
+
+// CareerRankSnapshot est le DTO brut d'un snapshot de rang carrière live (fetch Economy
+// API : rang courant, XP, IsMaxRank + images d'identité Spartan). DISTINCT de
+// CareerRankData (transfert calculé de progression, career.go) et de CareerRankRow
+// (projection DB ci-dessus). Promu depuis internal/sync (K1k) pour que la couche service
+// et l'interface CareerFetcher ne dépendent plus de sync pour ce type ; sync garde
+// l'alias `type CareerRankData = domain.CareerRankSnapshot`.
+type CareerRankSnapshot struct {
+	XUID             string
+	CurrentRank      int
+	CurrentRankName  string
+	CurrentRankTier  string
+	CurrentXP        int
+	XPForNextRank    int
+	XPTotal          int
+	IsMaxRank        bool
+	AdornmentPath    string
+	SpartanID        string
+	BannerImageURL   string
+	EmblemImageURL   string
+	BackdropImageURL string
+}
+
+// SpartanCustomizationData : identité visuelle Spartan (ServiceTag via SpartanID +
+// images banner/emblem/backdrop) résolue depuis /customization?view=public. URLs vides
+// si le resolve GameCMS a échoué. Promu depuis internal/sync (K1k) ; sync garde l'alias.
+type SpartanCustomizationData struct {
+	SpartanID        string
+	BannerImageURL   string
+	EmblemImageURL   string
+	BackdropImageURL string
+}

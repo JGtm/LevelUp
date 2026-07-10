@@ -72,6 +72,10 @@ func newMultiUserEnv(t *testing.T, nUsers int) *multiUserEnv {
 	if err != nil {
 		t.Fatalf("OpenSharedDB init: %v", err)
 	}
+	// D1b : le chemin batch (SharedPersister, unique voie d'écriture) écrit des
+	// colonnes (match_intensity, backfill_bits, mécaniques H5…) ajoutées par les
+	// migrations title-owned, absentes du schéma statique EnsureSharedSchema.
+	patchSharedSchemaForBatch(t, sharedInit.SQLDb())
 	_ = sharedInit.Close()
 
 	mgr := sharedprovider.NewManager()

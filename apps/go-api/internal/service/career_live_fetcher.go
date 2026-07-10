@@ -22,13 +22,14 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/ratebudget"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
 // fetchProgressCached retourne la progression depuis le cache si frais, sinon
 // fait l'appel live (avec singleflight). Erreurs live → log warn + nil.
-func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string) *syncpkg.CareerRankData {
+func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string) *domain.CareerRankSnapshot {
 	if s.cache != nil {
 		if cached, hit := s.cache.GetProgress(xuid); hit {
 			careerLiveProgressCache.Add(1)
@@ -46,11 +47,11 @@ func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string
 	// doPlayerGatedGet qui avale 401/403 (retourne nil pour dégrader sans poison cache).
 	// La péremption normale du token owner est déjà couverte en amont par le cache token
 	// expiry-aware (enrichWithHaloTokens / ResolveFreshPlayerTokens).
-	fetch := func() (*syncpkg.CareerRankData, error) {
+	fetch := func() (*domain.CareerRankSnapshot, error) {
 		return fetcher.GetCareerProgress(ctx, xuid)
 	}
 	var (
-		data *syncpkg.CareerRankData
+		data *domain.CareerRankSnapshot
 		err  error
 	)
 	if s.cache != nil {
@@ -80,7 +81,7 @@ func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string
 }
 
 // fetchCustomizationCached : pendant pour la customisation (TTL 6 h).
-func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid string) *syncpkg.SpartanCustomizationData {
+func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid string) *domain.SpartanCustomizationData {
 	if s.cache != nil {
 		if cached, hit := s.cache.GetCustomization(xuid); hit {
 			careerLiveCustomCache.Add(1)
@@ -96,11 +97,11 @@ func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid s
 
 	// Idem fetchProgressCached : pas de filet 401 (doPlayerGatedGet avale l'auth, et
 	// le 403 sur /appearance est un gating tiers NORMAL géré par le fallback vue publique).
-	fetch := func() (*syncpkg.SpartanCustomizationData, error) {
+	fetch := func() (*domain.SpartanCustomizationData, error) {
 		return fetcher.GetSpartanCustomization(ctx, xuid)
 	}
 	var (
-		data *syncpkg.SpartanCustomizationData
+		data *domain.SpartanCustomizationData
 		err  error
 	)
 	if s.cache != nil {

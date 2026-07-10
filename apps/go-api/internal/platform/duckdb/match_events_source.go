@@ -77,13 +77,13 @@ func (s *MatchEventsSource) GetMatchTimeline(
 // + T0 (countdown) d'un match. T0 = écart ms entre real_start_time et
 // start_time_utc (identique à Q13MatchMeta) ; NULL → 0 (fallback runtime).
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
-const matchTimelineQuery = `
+var matchTimelineQuery = `
 SELECT
     CAST(r.duration_seconds AS BIGINT) AS duration_seconds,
     CASE
         WHEN r.real_start_time IS NOT NULL THEN
             epoch_ms(r.real_start_time AT TIME ZONE 'UTC')
-            - epoch_ms(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))
+            - epoch_ms(` + StartTimeCanonicalSQL("r") + `)
     END AS t0_ms
 FROM match_registry r
 WHERE r.match_id = ?`

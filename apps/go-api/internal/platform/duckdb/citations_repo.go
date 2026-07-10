@@ -37,7 +37,8 @@ func (r *CitationsRepo) LoadCitationMappings(ctx context.Context) ([]domain.Cita
 	var result []domain.CitationMappingRow
 	for rows.Next() {
 		var row domain.CitationMappingRow
-		var displayEN string // citation_name_display_en (COALESCE '' si NULL)
+		var displayEN string     // citation_name_display_en (COALESCE '' si NULL)
+		var descriptionEN string // description_en (COALESCE '' si NULL)
 		if err := rows.Scan(
 			&row.NameNorm,
 			&row.NameDisplay,
@@ -46,16 +47,27 @@ func (r *CitationsRepo) LoadCitationMappings(ctx context.Context) ([]domain.Cita
 			&row.Category,
 			&row.ImagePath,
 			&row.Description,
+			&descriptionEN,
 			&row.TierTargets,
 			&row.CompositeChildren,
 		); err != nil {
 			return nil, fmt.Errorf("LoadCitationMappings scan: %w", err)
 		}
-		// Locale-aware : en UI anglaise, le nom anglais prime (sinon fallback FR).
-		// Les citations Infinite étant copiées de H5, leur EN vient du seed
-		// (citation_name_display_en) — cf. ops.citationDisplayEN.
-		if enLocale && displayEN != "" {
-			row.NameDisplay = displayEN
+		// Locale-aware (GH4) : en UI anglaise, le nom anglais prime (sinon fallback FR)
+		// et la description anglaise (description_en) prime ; si absente → description
+		// masquée (nom seul, pointeur nil), jamais le FR (principe GH-5b). Les citations
+		// Infinite étant copiées de H5, leur EN vient du seed — cf. ops.citationDisplayEN
+		// / citationDescriptionEN.
+		if enLocale {
+			if displayEN != "" {
+				row.NameDisplay = displayEN
+			}
+			if descriptionEN != "" {
+				enDesc := descriptionEN
+				row.Description = &enDesc
+			} else {
+				row.Description = nil
+			}
 		}
 		result = append(result, row)
 	}
@@ -412,9 +424,20 @@ func (r *CitationsRepo) loadCitationMappingMeta(ctx context.Context, norms []str
 		return result
 	}
 	defer rows.Close()
+	enLocale := ctxkeys.Locale(ctx) == "en"
 	for rows.Next() {
-		var norm, display, imagePath, tierTargets, description string
-		if err := rows.Scan(&norm, &display, &imagePath, &tierTargets, &description); err == nil {
+		var norm, display, displayEN, imagePath, tierTargets, description, descriptionEN string
+		if err := rows.Scan(&norm, &display, &displayEN, &imagePath, &tierTargets, &description, &descriptionEN); err == nil {
+			// Locale-aware (GH2-B2 + GH4) : sous UI EN, le nom anglais prime (fallback FR)
+			// et la description EN (description_en, source commendations H5 officielles +
+			// trad Infinite) prime. Si description_en est absente → nom seul (masquée) :
+			// principe GH-5b « EN n'injecte jamais de FR ».
+			if enLocale {
+				if displayEN != "" {
+					display = displayEN
+				}
+				description = descriptionEN
+			}
 			result[norm] = citationMappingMeta{
 				display:     display,
 				imagePath:   imagePath,

@@ -16,6 +16,7 @@
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import type { FilterStore } from '@/stores/createFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { computeNextWindow, computePrevWindow, getRailMode } from '@/features/filters/periodSessionNav'
 import { useSeasons, type SeasonEntry } from '@/lib/i18n/fieldMappings'
 import { findActiveSeason, isoDateUTC, nextSeason, prevSeason } from '@/lib/seasons/findSeasonAt'
@@ -114,10 +115,10 @@ const TEXTS: Record<Locale, RailText> = {
 }
 
 /** Formate une date ISO (YYYY-MM-DD) en label localisé court. */
-function formatDateShort(iso: string, locale: Locale): string {
+function formatDateMonthDay(iso: string, locale: Locale): string {
   try {
     const d = new Date(iso + 'T00:00:00Z')
-    return d.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+    return d.toLocaleDateString(intlLocale(locale), {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -146,12 +147,12 @@ function formatSessionLabel(
   try {
     const start = new Date(startedAtUTC)
     if (isNaN(start.getTime())) return sessionLabel
-    const dateFmt = new Intl.DateTimeFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+    const dateFmt = new Intl.DateTimeFormat(intlLocale(locale), {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
     })
-    const timeFmt = new Intl.DateTimeFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+    const timeFmt = new Intl.DateTimeFormat(intlLocale(locale), {
       hour: '2-digit',
       minute: '2-digit',
       hour12: locale !== 'fr',
@@ -475,8 +476,8 @@ function PeriodRail({ period, durationDays, locale, t, filterStore, centerExtra 
   const goToPrevPeriod = filterStore((s) => s.goToPrevPeriod)
   const goToNextPeriod = filterStore((s) => s.goToNextPeriod)
 
-  const startLabel = period.start_date ? formatDateShort(period.start_date, locale) : '?'
-  const endLabel = period.end_date ? formatDateShort(period.end_date, locale) : '?'
+  const startLabel = period.start_date ? formatDateMonthDay(period.start_date, locale) : '?'
+  const endLabel = period.end_date ? formatDateMonthDay(period.end_date, locale) : '?'
   const canGoPrev = !!computePrevWindow(period)
   const canGoNext = !!computeNextWindow(period)
 
@@ -536,8 +537,8 @@ function SeasonRail({ season, seasons, locale, t, filterStore, centerExtra }: Se
   const next = nextSeason(seasons, season)
   const todayUTC = isoDateUTC(new Date())
 
-  const startLabel = formatDateShort(isoDateUTC(season.startDate), locale)
-  const endLabel = formatDateShort(
+  const startLabel = formatDateMonthDay(isoDateUTC(season.startDate), locale)
+  const endLabel = formatDateMonthDay(
     season.endDate ? isoDateUTC(season.endDate) : todayUTC,
     locale,
   )

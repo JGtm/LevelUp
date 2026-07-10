@@ -12,7 +12,7 @@ import { useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
+import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import type { SessionCompareEntry } from '@/lib/api/types'
 
@@ -53,7 +53,7 @@ export function buildSessionParticipationBarsOption(
         const arr = Array.isArray(params) ? params : []
         if (arr.length === 0) return ''
         const p = arr[0] as { name: string; value: number }
-        return `${p.name}: <b>${p.value}</b>`
+        return `${escapeHtml(p.name)}: <b>${p.value}</b>`
       },
     },
     xAxis: {

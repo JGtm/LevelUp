@@ -209,9 +209,9 @@ func (pc *PooledHaloClient) GetMatchSkill(
 }
 
 // GetMatchFilm implémente HaloClient.GetMatchFilm() avec PolicyAnyPublic.
-func (pc *PooledHaloClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error) {
+func (pc *PooledHaloClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]FilmChunkData, bool, error) {
 	callStart := time.Now()
-	var result map[int]filmChunkData
+	var result map[int]FilmChunkData
 	var ok bool
 	err := pc.doPublic(ctx, func(c *HaloAPIClient) error {
 		var e error

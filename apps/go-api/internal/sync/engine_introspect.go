@@ -37,15 +37,17 @@ func (e *SyncEngine) HasMediaScanHook() bool {
 	return e.mediaHook != nil
 }
 
+// HasPrestigeHook retourne true si .WithPrestigeHook a été appelé avec une
+// closure non-nil. Test-only — garde anti-régression VF-1 (hook Prestige
+// post-sync silencieusement droppé jusqu'au 2026-07-06).
+func (e *SyncEngine) HasPrestigeHook() bool {
+	return e.prestigeHook != nil
+}
+
 // HasCustomClient retourne true si .SetCustomClient a été appelé (typique
 // pour pinned PooledHaloClient en production). Test-only.
 func (e *SyncEngine) HasCustomClient() bool {
 	return e.customClient != nil
-}
-
-// BatchPersistEnabled retourne le flag WithBatchPersistMode. Test-only.
-func (e *SyncEngine) BatchPersistEnabled() bool {
-	return e.batchMode
 }
 
 // HasBatchQueue retourne true si .WithBatchQueue a été appelé. Test-only.

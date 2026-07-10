@@ -22,16 +22,28 @@ package duckdb
 //
 // Le token /*__PERFECT_KILL_IN__*/ est résolu au runtime vers le set de médailles
 // « frag parfait » du titre du joueur (perfectKillMedalInClause ; HINF = {1512363953}).
-const Q26HomeMatchesSharedPart = `
-WITH perfect AS (
+var Q26HomeMatchesSharedPart = `
+WITH base AS (
+    -- J7 : fenêtre des 150 matchs affichés, calculée UNE fois. perfect ET la
+    -- requête principale s'y bornent → même ensemble de matchs (aucun risque de
+    -- divergence sur les ex-aequo de start_time) et perfect n'agrège plus tout
+    -- l'historique de médailles mais seulement ces 150 matchs. Résultat identique.
+    SELECT mp.match_id
+    FROM match_participants mp
+    JOIN match_registry r ON r.match_id = mp.match_id
+    WHERE mp.xuid = ?
+    ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC
+    LIMIT 150
+),
+perfect AS (
     SELECT match_id, COALESCE(SUM(count), 0) AS perfect_kills
     FROM medals_earned
-    WHERE xuid = ? AND /*__PERFECT_KILL_IN__*/
+    WHERE xuid = ? AND match_id IN (SELECT match_id FROM base) AND /*__PERFECT_KILL_IN__*/
     GROUP BY match_id
 )
 SELECT
     mp.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
     COALESCE(r.map_id, '')                                  AS map_id,
     COALESCE(r.map_name, '')                                AS map_name,
     COALESCE(r.map_name_fr, r.map_name, '')                 AS map_name_fr,
@@ -76,8 +88,8 @@ SELECT
 FROM match_participants mp
 JOIN match_registry r ON r.match_id = mp.match_id
 LEFT JOIN perfect ON perfect.match_id = mp.match_id
-WHERE mp.xuid = ?
-ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC
+WHERE mp.xuid = ? AND mp.match_id IN (SELECT match_id FROM base)
+ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC
 LIMIT 150`
 
 // Q26HomeMatchesPlayerEnrichTpl : enrichissement player (pme + msr) pour un
@@ -97,7 +109,7 @@ SELECT
     msr.rating_delta,
     msr.playlist_group
 FROM player_match_enrichment_latest pme
-LEFT JOIN match_skill_rank msr ON msr.match_id = pme.match_id
+LEFT JOIN match_skill_rank_latest msr ON msr.match_id = pme.match_id
 WHERE pme.match_id IN (%s)`
 
 // Q27HomeSessionsPlayerPart : Phase A de Q27 — sessions du joueur depuis
@@ -117,10 +129,10 @@ WHERE pme.session_label IS NOT NULL`
 
 // Q27HomeSessionsSharedStartTimesTpl : Phase B de Q27 — start_time pour
 // un lot de match_ids depuis match_registry (shared).
-const Q27HomeSessionsSharedStartTimesTpl = `
+var Q27HomeSessionsSharedStartTimesTpl = `
 SELECT
     match_id,
-    COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') AS start_time
+    ` + StartTimeCanonicalSQL("") + ` AS start_time
 FROM match_registry
 WHERE match_id IN (%s)`
 
@@ -159,17 +171,27 @@ ORDER BY mc.match_id, mc.value DESC`
 // Q26j : Home â€” mÃ©tadonnÃ©es citations depuis metadata.duckdb pour un ensemble de norms.
 // Les citation_name_norm sont injectÃ©s dynamiquement via IN (%s).
 // GROUP BY car une citation peut avoir plusieurs medal_id rows.
+//
+// GH2-B2/B6 : citation_name_display_en exposé pour la résolution locale-aware du
+// nom (les citations Infinite sont des copies de commendations H5, seul le calcul
+// diffère → l'EN vient du seed). Sous UI EN, l'appelant remplace le display FR par
+// l'EN quand il est non vide.
+// GH4 : description_en exposé (source = commendations H5 officielles + trad fidèle
+// Infinite). Sous UI EN, l'appelant sert description_en quand non vide, sinon le nom
+// seul (description masquée) — jamais le FR (principe GH-5b).
 const Q26jCitationMappingsForNormsTemplate = `
 SELECT
     citation_name_norm,
     citation_name_display,
+    COALESCE(citation_name_display_en, '') AS citation_name_display_en,
     COALESCE(image_path, '')   AS image_path,
     COALESCE(tier_targets, '') AS tier_targets,
-    COALESCE(MAX(description), '') AS description
+    COALESCE(MAX(description), '') AS description,
+    COALESCE(MAX(description_en), '') AS description_en
 FROM citation_mappings
 WHERE citation_name_norm IN (%s)
   AND enabled IS NOT FALSE
-GROUP BY citation_name_norm, citation_name_display, image_path, tier_targets`
+GROUP BY citation_name_norm, citation_name_display, citation_name_display_en, image_path, tier_targets`
 
 // Q26b : Home -- nombre total de matchs d un joueur (pas de LIMIT).
 // Parametre : ?1 = xuid du joueur.
@@ -186,6 +208,11 @@ SELECT COUNT(*) FROM match_participants WHERE xuid = ?`
 // Concaténer xuid à une chaîne vide défait le pushdown sur l'index PK (cf.
 // career_live_repo.go : index DuckDB connu corrompu, table-scan complet, < 1k rows/joueur).
 // ParamÃ¨tre : ?1 = xuid du joueur.
+// BANNIÈRE/EMBLÈME/BACKDROP : champs d'apparence INDÉPENDANTS (directive
+// produit 2026-07-08) — chacun sert sa dernière valeur non vide (« jamais
+// vide »). Pas de couplage bannière↔emblème : un emblème sans nameplate
+// upstream (nouvelle génération `<id>-SpartanEmblem`) laisse la dernière
+// bannière connue servie.
 const Q26cHomeSpartanIdentity = `
 SELECT
     ARG_MAX(rank,             recorded_at) FILTER (WHERE rank IS NOT NULL)                                  AS rank,
@@ -280,75 +307,6 @@ SELECT
 FROM match_registry mr
 WHERE mr.match_id IN (%s)`
 
-const Q26eHomeSkillPeakByType = `
-WITH classified AS (
-	SELECT
-		msr.match_id,
-		COALESCE(msr.playlist_group, '_unknown') AS playlist_group,
-		msr.rating_value,
-		msr.tier,
-		msr.sub_tier,
-		msr.tier_label,
-		msr.created_at,
-		msr.updated_at,
-		msr.start_time,
-		CASE
-			WHEN mr.match_id IS NOT NULL THEN CASE
-				WHEN COALESCE(mr.is_ranked, FALSE)
-					OR STRPOS(LOWER(COALESCE(mr.playlist_name, '')), 'ranked') > 0
-					OR STRPOS(LOWER(COALESCE(mr.pair_name, '')), 'ranked') > 0
-				THEN 'CSR'
-				ELSE 'LUSR'
-			END
-			WHEN UPPER(COALESCE(NULLIF(TRIM(msr.rating_type), ''), '')) = 'CSR' THEN 'CSR'
-			ELSE 'LUSR'
-		END AS effective_type
-	FROM match_skill_rank msr
-	LEFT JOIN shared.match_registry mr ON mr.match_id = msr.match_id
-	WHERE msr.rating_value IS NOT NULL
-),
-typed AS (
-	SELECT * FROM classified WHERE effective_type = UPPER(?)
-),
-group_counts AS (
-	SELECT playlist_group, COUNT(*) AS match_count
-	FROM typed
-	GROUP BY playlist_group
-),
-best_per_group AS (
-	SELECT
-		t.playlist_group,
-		t.rating_value,
-		t.tier,
-		t.sub_tier,
-		t.tier_label,
-		t.match_id,
-		COALESCE(t.updated_at, t.start_time, t.created_at) AS recency,
-		ROW_NUMBER() OVER (
-			PARTITION BY t.playlist_group
-			ORDER BY
-				t.rating_value DESC,
-				COALESCE(t.updated_at, t.start_time, t.created_at) DESC,
-				COALESCE(t.sub_tier, 0) DESC,
-				t.match_id DESC
-		) AS rn
-	FROM typed t
-)
-SELECT
-	bpg.rating_value,
-	NULLIF(TRIM(bpg.tier_label), '') AS tier_label,
-	NULLIF(TRIM(bpg.tier), '') AS tier,
-	COALESCE(bpg.sub_tier, 0) AS sub_tier,
-	GREATEST(0, 10 - gc.match_count) AS placement_remaining
-FROM best_per_group bpg
-JOIN group_counts gc ON gc.playlist_group = bpg.playlist_group
-WHERE bpg.rn = 1
-ORDER BY
-	CASE WHEN gc.match_count >= 10 THEN 1 ELSE 0 END DESC,
-	bpg.rating_value DESC,
-	bpg.recency DESC
-LIMIT 1`
-
 // Q26g : Home â€” 3 derniÃ¨res playlists distinctes jouÃ©es avec leur dernier rang compÃ©titif.
 // ParamÃ¨tre : ?1 = xuid du joueur.
 // Retourne (playlist_id, playlist_name, is_ranked, rating_type, rating_value, tier, tier_fr,
@@ -367,7 +325,7 @@ LIMIT 1`
 // match_registry (Social, anciens matchs non backfillés). On groupe sur
 // COALESCE(playlist_id, playlist_name) pour capturer ces cas et retourner
 // jusqu'à 3 playlists distinctes même sans playlist_id renseigné.
-const Q26gPlaylistPhaseBShared = `
+var Q26gPlaylistPhaseBShared = `
 WITH scoped AS (
 	SELECT
 		COALESCE(NULLIF(TRIM(r.playlist_id), ''), NULLIF(TRIM(r.playlist_name), '')) AS group_key,
@@ -381,10 +339,10 @@ WITH scoped AS (
 		END AS is_ranked_flag,
 		r.match_id AS match_id,
 		r.season_id AS season_id,
-		COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS played_at,
+		` + StartTimeCanonicalSQL("r") + ` AS played_at,
 		ROW_NUMBER() OVER (
 			PARTITION BY COALESCE(NULLIF(TRIM(r.playlist_id), ''), NULLIF(TRIM(r.playlist_name), ''))
-			ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC
+			ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC
 		) AS rn_recent
 	FROM match_participants mp
 	JOIN match_registry r ON r.match_id = mp.match_id
@@ -443,8 +401,13 @@ WITH exploitable AS (
 				WHEN 'LUSR' THEN 1
 				WHEN 'LUSR_V2' THEN 2
 				ELSE 3
-			END
+			END, written_at DESC, id DESC
 		) AS rn
+	-- Lecture BRUTE volontaire (allowlist B8) : le filtre H5 NOT (CSR AND
+	-- rating_value=0) (placeholder Halo 5) doit s'appliquer AVANT le choix de la
+	-- ligne ; la vue match_skill_rank_latest a deja tranche (CSR>LUSR) et
+	-- masquerait la vraie LUSR. Le tie-break written_at/id rend ce latest manuel
+	-- deterministe (anti-ADR-0026).
 	FROM match_skill_rank
 	WHERE match_id IN (%s)
 	  AND rating_value IS NOT NULL

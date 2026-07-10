@@ -48,6 +48,16 @@ func loadBackupConfig(repoRoot, settingsPath string) BackupConfig {
 // loadMultiTitleAPIEnabled lit multi_title_api_enabled depuis app_settings.json.
 // La var d'env MULTI_TITLE_API_ENABLED prend la priorité (override d'urgence).
 // Défaut : false.
+//
+// Nature : gate de déploiement progressif (rollout), PAS un kill-switch de
+// rollback. Cycle de vie :
+//   - défaut actuel : OFF (surface API multi-titre field-mappings/preview non
+//     exposée par défaut) ;
+//   - critère de bascule ON : surface multi-titre validée pour >= 2 titres
+//     (activation Halo 5, chantier multi-titre phase 1b) ;
+//   - date cible de retrait du flag : quand le multi-titre est le comportement
+//     permanent — corriger la cause et livrer actif (CLAUDE.md n°11) plutôt que
+//     de conserver un flag qui laisse la feature OFF « pour plus tard ».
 func loadMultiTitleAPIEnabled(settingsPath string) bool {
 	if v := os.Getenv("MULTI_TITLE_API_ENABLED"); v != "" {
 		vl := strings.ToLower(strings.TrimSpace(v))
@@ -67,39 +77,22 @@ func loadMultiTitleAPIEnabled(settingsPath string) bool {
 	return false
 }
 
-// loadPrestigeEnabled lit prestige_enabled depuis app_settings.json.
-// La var d'env PRESTIGE_ENABLED prend la priorité (override d'urgence).
-// Défaut : true (activé si ni JSON ni env var ne précisent la valeur).
-func loadPrestigeEnabled(settingsPath string) bool {
-	if v := os.Getenv("PRESTIGE_ENABLED"); v != "" {
-		vl := strings.ToLower(strings.TrimSpace(v))
-		switch vl {
-		case "0", "false", "no", "off":
-			return false
-		}
-		return true
-	}
-	data, err := os.ReadFile(settingsPath)
-	if err != nil {
-		return true
-	}
-	var m map[string]any
-	if err := json.Unmarshal(data, &m); err != nil {
-		return true
-	}
-	if b, ok := m["prestige_enabled"].(bool); ok {
-		return b
-	}
-	return true
-}
-
-// loadDiscordWebhookURL lit le webhook Discord depuis LEVELUP_DISCORD_WEBHOOK_URL,
-// DISCORD_WEBHOOK_URL (legacy Python) ou le champ discord_webhook_url de app_settings.json.
-func loadDiscordWebhookURL(settingsPath string) string {
+// DiscordWebhookURLFromEnv retourne le webhook Discord depuis l'environnement SEUL
+// (LEVELUP_DISCORD_WEBHOOK_URL prioritaire sur DISCORD_WEBHOOK_URL, nom legacy Python).
+// Source UNIQUE de la précédence env du webhook (CR A6) : consommée par le loader config
+// ci-dessous ET par les résolveurs notify/validation, qui conservent leur propre fallback
+// settings (map résolue par titre côté notify). Chaîne vide si aucune n'est définie.
+func DiscordWebhookURLFromEnv() string {
 	if url := os.Getenv("LEVELUP_DISCORD_WEBHOOK_URL"); url != "" {
 		return url
 	}
-	if url := os.Getenv("DISCORD_WEBHOOK_URL"); url != "" {
+	return os.Getenv("DISCORD_WEBHOOK_URL")
+}
+
+// loadDiscordWebhookURL lit le webhook Discord depuis l'environnement
+// (DiscordWebhookURLFromEnv) ou le champ discord_webhook_url de app_settings.json.
+func loadDiscordWebhookURL(settingsPath string) string {
+	if url := DiscordWebhookURLFromEnv(); url != "" {
 		return url
 	}
 	data, err := os.ReadFile(settingsPath)

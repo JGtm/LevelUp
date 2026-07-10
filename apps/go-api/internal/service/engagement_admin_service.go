@@ -23,9 +23,10 @@ type RecomputeReport struct {
 	ModesSkipped    []string `json:"modes_skipped,omitempty"` // ex. insufficient_history
 }
 
-// engagementCoefModesService liste les categories de mode prises en charge
-// par l'admin RecomputeCoefficients. Aligne avec sync.engagementCoefModes.
-var engagementCoefModesService = []string{"PvP_ranked", "PvP_unranked"}
+// engagementCoefModesService liste les categories de mode prises en charge par
+// l'admin RecomputeCoefficients. Source unique domain.EngagementCoefModes (K1n) —
+// meme liste que sync.engagementCoefModes.
+var engagementCoefModesService = domain.EngagementCoefModes()
 
 // RecomputeCoefficients force le recalcul des coefficients perso du joueur
 // pour toutes les categories de mode supportees, depuis les paces persistees

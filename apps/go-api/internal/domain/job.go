@@ -2,7 +2,11 @@
 // Sprint 17 : JobStore persistant + GET /jobs/{job_id} + POST /sync/initial.
 package domain
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/domain/title"
+)
 
 // JobStatus représente les états possibles d'un job.
 type JobStatus string
@@ -84,12 +88,12 @@ type JobMeta struct {
 	Extra     map[string]any `json:"extra,omitempty"` // champs libres pour rétrocompatibilité
 }
 
-// GetTitleSlug retourne le title_slug ou "halo_infinite" par défaut.
+// GetTitleSlug retourne le title_slug ou le titre par défaut (title.DefaultSlug).
 func (m JobMeta) GetTitleSlug() string {
 	if m.TitleSlug != "" {
 		return m.TitleSlug
 	}
-	return "halo_infinite"
+	return title.DefaultSlug
 }
 
 // WithTitleSlug retourne une copie avec le title_slug positionné.

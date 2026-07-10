@@ -3,9 +3,8 @@
 // Package sync — engine_batch_path_test.go : tests d'intégration
 // du chemin Collect→Persist (Phase 2.3) sur DuckDB :memory:.
 //
-// Vérifie qu'avec WithBatchPersistMode(true), submitOrInsertMatch utilise
-// le path INSERT-only via persist.{Shared,Player}Persister et que les
-// données arrivent en DB exactement comme avec le legacy.
+// Vérifie que persistFetchedMatch utilise le path INSERT-only via
+// persist.{Shared,Player}Persister et que les données arrivent en DB.
 
 package sync
 
@@ -88,11 +87,10 @@ func TestSubmitMatchAsBatch_SmokePath(t *testing.T) {
 
 	e := &SyncEngine{
 		gamertag: "Alice", xuid: "1111", titleSlug: "halo_infinite",
-		batchMode: true,
 	}
 
 	intPtr := func(v int) *int { return &v }
-	strPtr := func(v string) *string { return &v }
+	strPtrNonEmpty := func(v string) *string { return &v }
 
 	fm := &fetchedMatch{
 		MatchID: "m_e2e_001",
@@ -103,8 +101,8 @@ func TestSubmitMatchAsBatch_SmokePath(t *testing.T) {
 			FirstSyncBy:  "Alice",
 		},
 		Participants: []domain.MatchParticipantRow{
-			{MatchID: "m_e2e_001", XUID: "1111", Gamertag: strPtr("Alice"), Kills: intPtr(10), Deaths: intPtr(5)},
-			{MatchID: "m_e2e_001", XUID: "2222", Gamertag: strPtr("Bob"), Kills: intPtr(7), Deaths: intPtr(8)},
+			{MatchID: "m_e2e_001", XUID: "1111", Gamertag: strPtrNonEmpty("Alice"), Kills: intPtr(10), Deaths: intPtr(5)},
+			{MatchID: "m_e2e_001", XUID: "2222", Gamertag: strPtrNonEmpty("Bob"), Kills: intPtr(7), Deaths: intPtr(8)},
 		},
 		Medals: []domain.MedalRow{
 			{MatchID: "m_e2e_001", XUID: "1111", MedalNameID: 1234, Count: 2},
@@ -112,8 +110,8 @@ func TestSubmitMatchAsBatch_SmokePath(t *testing.T) {
 	}
 
 	result := &domain.SyncResult{}
-	if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, result, fm); err != nil {
-		t.Fatalf("submitOrInsertMatch: %v", err)
+	if err := e.persistFetchedMatch(context.Background(), sharedDB, playerDB, result, fm); err != nil {
+		t.Fatalf("persistFetchedMatch: %v", err)
 	}
 
 	// Shared DB
@@ -149,53 +147,11 @@ func TestSubmitMatchAsBatch_SmokePath(t *testing.T) {
 	}
 }
 
-// ─── Test : batchMode=false → fall-through (legacy path inchangé) ─────────
-//
-// Note : ne PEUT PAS exécuter le legacy ici car insertFetchedMatch nécessite
-// le full EnsurePlayerSchema (sequence career_progression, etc.). Ce test
-// vérifie juste que le switch routing fonctionne — submitMatchAsBatch ne
-// doit PAS être appelé quand batchMode=false. On vérifie indirectement
-// via l'absence de row en DB (le legacy InsertRegistry échouerait sur
-// notre schéma minimal, mais on n'attend pas son succès — on attend juste
-// qu'il SOIT appelé et non submitMatchAsBatch).
-
-func TestSubmitOrInsertMatch_BatchModeFalse_RoutesToLegacy(t *testing.T) {
-	// Pas d'assertion DB ici — on vérifie juste que batchMode=false ne
-	// crash pas via le branchement. La méthode insertFetchedMatch sera
-	// appelée et tentera ses INSERTs ; on tolère une erreur (schema
-	// minimal incomplet pour le legacy path).
-	sharedDB := openBatchPathTestDB(t, migration.TargetShared)
-	playerDB := openBatchPathTestDB(t, migration.TargetPlayer)
-
-	e := &SyncEngine{
-		gamertag: "Alice", xuid: "1111", titleSlug: "halo_infinite",
-		batchMode: false, // explicite : legacy path
-	}
-
-	strPtr := func(v string) *string { return &v }
-	fm := &fetchedMatch{
-		MatchID: "m_legacy_001",
-		Registry: &MatchRegistryRow{
-			MatchID:      "m_legacy_001",
-			StartTime:    time.Now().UTC(),
-			ModeCategory: "PVP",
-			FirstSyncBy:  "Alice",
-		},
-		Participants: []domain.MatchParticipantRow{
-			{MatchID: "m_legacy_001", XUID: "1111", Gamertag: strPtr("Alice")},
-		},
-	}
-	result := &domain.SyncResult{}
-	// Le legacy path peut écrire ou pas selon le schéma — on ne vérifie pas
-	// le résultat. On vérifie juste que submitOrInsertMatch ne panique pas.
-	_ = e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, result, fm)
-}
-
 // ─── Test E2E Phase 2.4 : fetchMatchData → submitMatchAsBatch → DB ────────
 //
 // Exerce le pipeline complet du chemin Collect→Persist avec mockHaloClient :
 // HTTP API mocked → fetchMatchData (parse JSON, build fetchedMatch) →
-// submitOrInsertMatch (batchMode=true) → SharedPersister + PlayerPersister →
+// persistFetchedMatch (batchMode=true) → SharedPersister + PlayerPersister →
 // rows en DB. Aucune dépendance réseau.
 
 // patchSharedSchemaForBatch ajoute les colonnes du Phase 2.1+ schema qui
@@ -248,7 +204,6 @@ func TestE2ECollectPersist_FetchThenBatchSubmit(t *testing.T) {
 	e := &SyncEngine{
 		gamertag: "Player0", xuid: "0000000000000000",
 		titleSlug: "halo_infinite",
-		batchMode: true, // chemin Collect→Persist
 	}
 
 	opts := domain.SyncOptions{
@@ -267,8 +222,8 @@ func TestE2ECollectPersist_FetchThenBatchSubmit(t *testing.T) {
 		if fm == nil {
 			t.Fatalf("fetchMatchData retourne nil pour %s", id)
 		}
-		if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, result, fm); err != nil {
-			t.Fatalf("submitOrInsertMatch(%s): %v", id, err)
+		if err := e.persistFetchedMatch(context.Background(), sharedDB, playerDB, result, fm); err != nil {
+			t.Fatalf("persistFetchedMatch(%s): %v", id, err)
 		}
 	}
 
@@ -329,7 +284,6 @@ func TestE2ECollectPersist_AsyncQueuePath_DrainBlocksUntilPersisted(t *testing.T
 	e := &SyncEngine{
 		gamertag: "Player0", xuid: "0000000000000000",
 		titleSlug:  "halo_infinite",
-		batchMode:  true,
 		batchQueue: q, // ← active le path async
 	}
 	opts := domain.SyncOptions{
@@ -341,8 +295,8 @@ func TestE2ECollectPersist_AsyncQueuePath_DrainBlocksUntilPersisted(t *testing.T
 		t.Fatal(err)
 	}
 	result := &domain.SyncResult{}
-	if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, result, fm); err != nil {
-		t.Fatalf("submitOrInsertMatch async: %v", err)
+	if err := e.persistFetchedMatch(context.Background(), sharedDB, playerDB, result, fm); err != nil {
+		t.Fatalf("persistFetchedMatch async: %v", err)
 	}
 
 	// Drain : attendre que le worker ait persisté.
@@ -390,7 +344,7 @@ func TestE2ECollectPersist_ReSubmitMatch_IdempotentNoOverwrite(t *testing.T) {
 
 	e := &SyncEngine{
 		gamertag: "Player0", xuid: "0000000000000000",
-		titleSlug: "halo_infinite", batchMode: true,
+		titleSlug: "halo_infinite",
 	}
 	opts := domain.SyncOptions{
 		MatchType: "matchmaking", MaxMatches: 10,
@@ -403,7 +357,7 @@ func TestE2ECollectPersist_ReSubmitMatch_IdempotentNoOverwrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	result := &domain.SyncResult{}
-	if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, result, fm1); err != nil {
+	if err := e.persistFetchedMatch(context.Background(), sharedDB, playerDB, result, fm1); err != nil {
 		t.Fatal(err)
 	}
 
@@ -418,8 +372,8 @@ func TestE2ECollectPersist_ReSubmitMatch_IdempotentNoOverwrite(t *testing.T) {
 
 	// 2e submit du MÊME match (simule retry / re-sync)
 	fm2, _ := e.fetchMatchData(context.Background(), mock, id, opts)
-	if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, result, fm2); err != nil {
-		t.Fatalf("2e submitOrInsertMatch: %v", err)
+	if err := e.persistFetchedMatch(context.Background(), sharedDB, playerDB, result, fm2); err != nil {
+		t.Fatalf("2e persistFetchedMatch: %v", err)
 	}
 
 	// La row doit toujours avoir 1 entrée registry + N participants

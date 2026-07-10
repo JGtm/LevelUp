@@ -1560,24 +1560,6 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /players/{player_slug}/pages/session-compare:
-    post:
-      tags: [timeseries]
-      operationId: postSessionCompare
-      summary: "Comparaison de sessions A/B"
-      parameters:
-        - $ref: "#/components/parameters/PlayerSlug"
-      responses:
-        "200":
-          description: Comparaison sessions A/B
-          content:
-            application/json:
-              schema:
-                type: object
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  # -------------------------------------------------------------------------
   # Last Match (Sprint 8, Sprint 33) — implémenté.
   # -------------------------------------------------------------------------
   /players/{player_slug}/pages/last-match/resolve:
@@ -4246,6 +4228,10 @@ components:
         score_label:
           type: string
           nullable: true
+        outcome_code:
+          type: integer
+          format: int64
+          nullable: true
         outcome_label:
           type: string
           nullable: true
@@ -4571,7 +4557,7 @@ components:
               type: string
           available_experience_types:
               items:
-                  type: string
+                  $ref: '#/components/schemas/LabelValue'
               type: array
               nullable: true
           available_maps:
@@ -6101,8 +6087,6 @@ components:
         discord_notify_backfill:
           type: boolean
         discord_notify_new_version:
-          type: boolean
-        discord_notify_new_media:
           type: boolean
         spnkr_auto_sync_enabled:
           type: boolean
@@ -9047,7 +9031,7 @@ components:
       properties:
           available_experience_types:
               items:
-                  type: string
+                  $ref: '#/components/schemas/LabelValue'
               type: array
               nullable: true
           available_maps:
@@ -13599,38 +13583,6 @@ components:
           - participation
           - matches
       type: object
-    SessionCompareMapRow:
-      additionalProperties: false
-      properties:
-          a_losses:
-              format: int64
-              type: integer
-          a_matches:
-              format: int64
-              type: integer
-          a_wins:
-              format: int64
-              type: integer
-          b_losses:
-              format: int64
-              type: integer
-          b_matches:
-              format: int64
-              type: integer
-          b_wins:
-              format: int64
-              type: integer
-          map_name:
-              type: string
-      required:
-          - map_name
-          - a_matches
-          - a_wins
-          - a_losses
-          - b_matches
-          - b_wins
-          - b_losses
-      type: object
     SessionCompareMetricRow:
       additionalProperties: false
       properties:
@@ -13655,65 +13607,6 @@ components:
           - value_b
           - delta
           - winner
-      type: object
-    SessionCompareModeRow:
-      additionalProperties: false
-      properties:
-          a_matches:
-              format: int64
-              type: integer
-          a_wins:
-              format: int64
-              type: integer
-          b_matches:
-              format: int64
-              type: integer
-          b_wins:
-              format: int64
-              type: integer
-          mode_name:
-              type: string
-      required:
-          - mode_name
-          - a_matches
-          - a_wins
-          - b_matches
-          - b_wins
-      type: object
-    SessionCompareResponse:
-      additionalProperties: false
-      properties:
-          available_sessions:
-              items:
-                  type: string
-              type: array
-              nullable: true
-          maps_table:
-              items:
-                  $ref: '#/components/schemas/SessionCompareMapRow'
-              type: array
-              nullable: true
-          metrics:
-              items:
-                  $ref: '#/components/schemas/SessionCompareMetricRow'
-              type: array
-              nullable: true
-          modes_table:
-              items:
-                  $ref: '#/components/schemas/SessionCompareModeRow'
-              type: array
-              nullable: true
-          session_a:
-              $ref: '#/components/schemas/SessionCompareEntry'
-          session_b:
-              $ref: '#/components/schemas/SessionCompareEntry'
-      required:
-          - session_a
-          - session_b
-          - available_sessions
-          - metrics
-          - maps_table
-          - modes_table
       type: object
     SessionCompareSuggestion:
       additionalProperties: false
@@ -16482,6 +16375,10 @@ components:
           performance_score:
               format: double
               type: number
+          start_time:
+              type: string
+              format: date-time
+              nullable: true
       required:
           - match_id
           - performance_score

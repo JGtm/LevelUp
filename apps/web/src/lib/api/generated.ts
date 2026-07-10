@@ -1041,23 +1041,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/players/{player_slug}/pages/session-compare": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Comparaison de sessions A/B */
-        post: operations["postSessionCompare"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/players/{player_slug}/pages/last-match/resolve": {
         parameters: {
             query?: never;
@@ -3653,6 +3636,8 @@ export interface components {
             performance_score?: number | null;
             badge_type?: string | null;
             score_label?: string | null;
+            /** Format: int64 */
+            outcome_code?: number | null;
             outcome_label?: string | null;
             kills?: number | null;
             deaths?: number | null;
@@ -3785,7 +3770,7 @@ export interface components {
         };
         MatchHistoryQuerySummary: {
             active_filter_mode: string;
-            available_experience_types?: string[] | null;
+            available_experience_types?: components["schemas"]["LabelValue"][] | null;
             available_maps?: string[] | null;
             available_modes?: string[] | null;
             available_outcomes?: components["schemas"]["LabelValue"][] | null;
@@ -4461,7 +4446,6 @@ export interface components {
             discord_notify_sync?: boolean;
             discord_notify_backfill?: boolean;
             discord_notify_new_version?: boolean;
-            discord_notify_new_media?: boolean;
             spnkr_auto_sync_enabled?: boolean;
             spnkr_auto_sync_interval_hours?: number;
             spnkr_auto_sync_interval_minutes?: number;
@@ -5674,7 +5658,7 @@ export interface components {
             team_mmr?: number;
         };
         ExplorerMatchesSummary: {
-            available_experience_types?: string[] | null;
+            available_experience_types?: components["schemas"]["LabelValue"][] | null;
             available_maps?: string[] | null;
             available_modes?: string[] | null;
             available_outcomes?: components["schemas"]["LabelValue"][] | null;
@@ -7529,21 +7513,6 @@ export interface components {
             with_friends: boolean;
             worst_match?: components["schemas"]["SessionDetailMatchRow"];
         };
-        SessionCompareMapRow: {
-            /** Format: int64 */
-            a_losses: number;
-            /** Format: int64 */
-            a_matches: number;
-            /** Format: int64 */
-            a_wins: number;
-            /** Format: int64 */
-            b_losses: number;
-            /** Format: int64 */
-            b_matches: number;
-            /** Format: int64 */
-            b_wins: number;
-            map_name: string;
-        };
         SessionCompareMetricRow: {
             delta: string | null;
             key: string;
@@ -7551,25 +7520,6 @@ export interface components {
             value_a: string;
             value_b: string;
             winner: string | null;
-        };
-        SessionCompareModeRow: {
-            /** Format: int64 */
-            a_matches: number;
-            /** Format: int64 */
-            a_wins: number;
-            /** Format: int64 */
-            b_matches: number;
-            /** Format: int64 */
-            b_wins: number;
-            mode_name: string;
-        };
-        SessionCompareResponse: {
-            available_sessions: string[] | null;
-            maps_table: components["schemas"]["SessionCompareMapRow"][] | null;
-            metrics: components["schemas"]["SessionCompareMetricRow"][] | null;
-            modes_table: components["schemas"]["SessionCompareModeRow"][] | null;
-            session_a: components["schemas"]["SessionCompareEntry"];
-            session_b: components["schemas"]["SessionCompareEntry"];
         };
         SessionCompareSuggestion: {
             reason: string;
@@ -8675,6 +8625,8 @@ export interface components {
             outcome_label: string;
             /** Format: double */
             performance_score: number;
+            /** Format: date-time */
+            start_time?: string | null;
         };
         TopTeammate: {
             /** Format: double */
@@ -10258,30 +10210,6 @@ export interface operations {
                             display_name?: string;
                         }[];
                     };
-                };
-            };
-            404: components["responses"]["NotFound"];
-        };
-    };
-    postSessionCompare: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
-                player_slug: components["parameters"]["PlayerSlug"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Comparaison sessions A/B */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
                 };
             };
             404: components["responses"]["NotFound"];

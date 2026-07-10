@@ -111,7 +111,7 @@ func TestOpenAPISchemaDrift_AggregatesAndReports(t *testing.T) {
 	if len(missing) > 0 {
 		t.Errorf("complétude contrat : %d schéma(s) de réponse Huma NON documenté(s) dans openapi.yaml.\n"+
 			"Régénérer : `OPENAPI_EMIT_OUT=/tmp/m.yaml CGO_ENABLED=1 go test ./internal/api/ -run TestOpenAPISchemaDrift`\n"+
-			"puis appendre /tmp/m.yaml sous components.schemas + `make gen` + `npm -w apps/web run generate-types`.\nManquants : %v",
+			"puis appendre /tmp/m.yaml sous components.schemas + `npm -w apps/web run generate-types` (Huma dérive le contrat serveur — plus de `make gen`).\nManquants : %v",
 			len(missing), missing)
 	}
 

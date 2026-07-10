@@ -70,55 +70,37 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 
 	g, gctx := errgroup.WithContext(ctx)
 
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "stats", func() error {
 		var e error
 		d.stats, e = s.repo.GetPlayerMatchStats(gctx, s.xuid, matchID)
-		if e != nil {
-			slog.Warn("match_view: stats indisponibles", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "enrichment", func() error {
 		var e error
 		d.enrich, e = s.repo.GetMatchEnrichment(gctx, matchID)
-		if e != nil {
-			slog.Warn("match_view: enrichment indisponible", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "scoreboard", func() error {
 		var e error
 		d.scoreboard, e = s.repo.GetMatchScoreboard(gctx, matchID)
-		if e != nil {
-			slog.Warn("match_view: scoreboard indisponible", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "objective score", func() error {
 		var e error
 		// Score PSA catégorie 'objective' pour le joueur courant — alimente l'axe
 		// Objective du radar synergie. Dégradation silencieuse à 0.
 		d.objectiveScore, e = s.repo.GetMatchObjectiveScore(gctx, s.xuid, matchID)
-		if e != nil {
-			slog.Warn("match_view: objective score indisponible", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "medals", func() error {
 		var e error
 		d.medals, e = s.repo.GetMatchMedals(gctx, s.xuid, matchID)
-		if e != nil {
-			slog.Warn("match_view: medals indisponibles", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "events", func() error {
 		var e error
 		d.events, e = s.repo.GetMatchEvents(gctx, matchID)
-		if e != nil {
-			slog.Warn("match_view: events indisponibles", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
 	// MV4.A : chargement parallèle des events via le loader unifié si câblé.
 	// Si l'eventsRepo n'est pas injecté, canonicalEvents reste nil et les
@@ -147,105 +129,69 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 	// MV4.B' : awards chargés après l'errgroup principal car ils dépendent du
 	// scoreboard (xuids). Voir l'appel `s.loadAwardsForScoreboard(...)` plus
 	// bas, après `g.Wait()`.
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "kv_pairs", func() error {
 		var e error
 		d.kvPairs, e = s.repo.GetMatchKVPairs(gctx, matchID)
-		if e != nil {
-			slog.Warn("match_view: kv_pairs indisponibles", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "skill_rank", func() error {
 		var e error
 		d.skillRank, e = s.repo.GetMatchSkillRank(gctx, matchID)
-		if e != nil {
-			slog.Warn("match_view: skill_rank indisponible", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "shared_csrs", func() error {
 		var e error
 		d.sharedCSRs, e = s.repo.GetMatchSharedCSRs(gctx, matchID)
-		if e != nil {
-			slog.Warn("match_view: shared_csrs indisponibles", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "encounters", func() error {
 		var e error
 		d.encounters, e = s.repo.GetMatchEncounters(gctx, matchID, s.xuid)
-		if e != nil {
-			slog.Warn("match_view: encounters indisponibles", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
 	// MV4.C' : chargement parallele des stats encounter riches (Q23b).
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "encounter_stats", func() error {
 		var e error
 		d.encounterStats, e = s.repo.GetMatchEncounterStats(gctx, matchID, s.xuid)
-		if e != nil {
-			slog.Warn("match_view: encounter_stats indisponibles", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "media", func() error {
 		var e error
 		// Q24 retourne tous les auteurs (cross-joueur) : un coéquipier peut
 		// avoir uploadé un media pour ce match.
 		d.media, e = s.repo.GetMatchMedia(gctx, matchID)
-		if e != nil {
-			slog.Warn("match_view: media indisponibles", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "expected_stats", func() error {
 		var e error
 		d.expected, e = s.repo.GetMatchExpectedStats(gctx, matchID, s.xuid)
-		if e != nil {
-			slog.Warn("match_view: expected_stats indisponibles", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "bulk_medals", func() error {
 		var e error
 		d.bulkMedals, e = s.repo.GetMatchBulkMedals(gctx, matchID)
-		if e != nil {
-			slog.Warn("match_view: bulk_medals indisponibles", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "bulk_weapons", func() error {
 		var e error
 		d.bulkWeapons, e = s.repo.GetMatchBulkWeaponKills(gctx, matchID)
-		if e != nil {
-			slog.Warn("match_view: bulk_weapons indisponibles", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
-	g.Go(func() error {
+	goLoad(gctx, g, matchID, "hist_avg", func() error {
 		var e error
 		d.histRows, e = s.repo.GetHistoryForAvg(gctx, s.xuid)
-		if e != nil {
-			slog.Warn("match_view: hist_avg indisponibles", "match_id", matchID, "err", e)
-		}
-		return nil
+		return e
 	})
 	if s.citationsRepo != nil {
-		g.Go(func() error {
+		goLoad(gctx, g, matchID, "citations", func() error {
 			var e error
 			d.matchCitations, e = s.citationsRepo.LoadMatchCitationsForView(gctx, matchID)
-			if e != nil {
-				slog.Warn("match_view: citations indisponibles", "match_id", matchID, "err", e)
-			}
-			return nil
+			return e
 		})
-		g.Go(func() error {
+		goLoad(gctx, g, matchID, "rich citations", func() error {
 			var e error
 			d.richCitations, e = s.citationsRepo.LoadMatchCitationsRich(gctx, matchID)
-			if e != nil {
-				slog.Warn("match_view: rich citations indisponibles", "match_id", matchID, "err", e)
-			}
-			return nil
+			return e
 		})
 	}
 
@@ -253,6 +199,18 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		return matchViewData{}, err
 	}
 	return d, nil
+}
+
+// goLoad lance un chargement best-effort dans l'errgroup g : exécute load(), logge
+// un WARN "match_view: <label> indisponible" sur erreur (jamais fatal) puis retourne
+// nil. Centralise ~18 blocs g.Go copiés (K2e, CR §5) et passe à slog.WarnContext.
+func goLoad(gctx context.Context, g *errgroup.Group, matchID, label string, load func() error) {
+	g.Go(func() error {
+		if err := load(); err != nil {
+			slog.WarnContext(gctx, "match_view: "+label+" indisponible", "match_id", matchID, "err", err)
+		}
+		return nil
+	})
 }
 
 // buildMatchViewFromData assemble séquentiellement la MatchViewResponse depuis
@@ -375,22 +333,47 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// que les matchs communs avec l'escouade → échantillon biaisé). Skip si l'API
 	// a déjà fourni les K/D (Infinite).
 	if curDurSec > 60 && len(friendsExtras) > 0 {
-		for i := range d.scoreboard {
+		// J3 : collecter les xuids amis éligibles, charger tout leur historique en
+		// UN seul appel (GetHistoryForAvgBulk) au lieu de ~8 GetHistoryForAvg
+		// séquentiels, puis réappliquer le même filtre d'éligibilité pour écrire
+		// l'expected K/D. Best-effort : bulk en échec → map vide → aucun expected
+		// (dégradation identique à la voie unitaire).
+		var needXUIDs []string
+		seen := make(map[string]bool)
+		eligible := func(i int) bool {
 			xuid := d.scoreboard[i].XUID
 			if xuid == s.xuid || d.scoreboard[i].KillsExpected != nil {
+				return false
+			}
+			_, tracked := friendsExtras[xuid]
+			return tracked
+		}
+		for i := range d.scoreboard {
+			if !eligible(i) {
 				continue
 			}
-			if _, tracked := friendsExtras[xuid]; !tracked {
-				continue
+			if xuid := d.scoreboard[i].XUID; !seen[xuid] {
+				seen[xuid] = true
+				needXUIDs = append(needXUIDs, xuid)
 			}
-			fh, err := s.repo.GetHistoryForAvg(ctx, xuid)
-			if err != nil || len(fh) == 0 {
-				continue
-			}
-			if ek, ed, ok := localExpectedKD(fh, meta, curDurSec); ok {
-				d.scoreboard[i].KillsExpected = ek
-				d.scoreboard[i].DeathsExpected = ed
-				d.scoreboard[i].LocallyEstimated = true
+		}
+		if len(needXUIDs) > 0 {
+			histByXUID, err := s.repo.GetHistoryForAvgBulk(ctx, needXUIDs)
+			if err == nil {
+				for i := range d.scoreboard {
+					if !eligible(i) {
+						continue
+					}
+					fh := histByXUID[d.scoreboard[i].XUID]
+					if len(fh) == 0 {
+						continue
+					}
+					if ek, ed, ok := localExpectedKD(fh, meta, curDurSec); ok {
+						d.scoreboard[i].KillsExpected = ek
+						d.scoreboard[i].DeathsExpected = ed
+						d.scoreboard[i].LocallyEstimated = true
+					}
+				}
 			}
 		}
 	}

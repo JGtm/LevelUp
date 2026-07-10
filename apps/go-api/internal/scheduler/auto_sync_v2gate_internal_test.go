@@ -15,34 +15,20 @@ func (stubCycleOrch) Run(context.Context, []syncv2.PlayerProfile) (syncv2.CycleR
 	return syncv2.CycleResult{}, nil
 }
 
-// TestShouldUseV2_DefaultOnWhenWired : V2 est le pipeline PAR DÉFAUT dès que
-// l'orchestrator est câblé et qu'aucun opt-out n'est posé.
-func TestShouldUseV2_DefaultOnWhenWired(t *testing.T) {
-	t.Setenv("LEVELUP_SYNC_PIPELINE", "")
+// TestShouldUseV2_WhenWired : V2 pilote le cycle dès que l'orchestrator est câblé
+// (unique moteur depuis la suppression du pipeline V1, lot D1c).
+func TestShouldUseV2_WhenWired(t *testing.T) {
 	s := &AutoSyncScheduler{cycleOrchestrator: stubCycleOrch{}}
 	if !s.shouldUseV2() {
-		t.Fatal("V2 doit être le pipeline PAR DÉFAUT quand l'orchestrator est câblé (flag absent)")
+		t.Fatal("V2 doit piloter le cycle quand l'orchestrator est câblé")
 	}
 }
 
-// TestShouldUseV2_OptOutForcesV1 : LEVELUP_SYNC_PIPELINE=v1 (insensible casse/espaces)
-// force le legacy V1 — l'échappatoire de rollback.
-func TestShouldUseV2_OptOutForcesV1(t *testing.T) {
-	s := &AutoSyncScheduler{cycleOrchestrator: stubCycleOrch{}}
-	for _, v := range []string{"v1", "V1", " v1 ", "V1 "} {
-		t.Setenv("LEVELUP_SYNC_PIPELINE", v)
-		if s.shouldUseV2() {
-			t.Errorf("LEVELUP_SYNC_PIPELINE=%q doit forcer le legacy V1", v)
-		}
-	}
-}
-
-// TestShouldUseV2_NilOrchestrator : sans orchestrator câblé, V2 n'est jamais tenté
-// (fallback V1 structurel, aucun crash).
+// TestShouldUseV2_NilOrchestrator : sans orchestrator câblé, V2 n'est pas piloté
+// (le cycle bascule sur le filet syncPlayer de boot, aucun crash).
 func TestShouldUseV2_NilOrchestrator(t *testing.T) {
-	t.Setenv("LEVELUP_SYNC_PIPELINE", "")
 	s := &AutoSyncScheduler{}
 	if s.shouldUseV2() {
-		t.Fatal("sans orchestrator câblé, V2 ne doit jamais être tenté")
+		t.Fatal("sans orchestrator câblé, V2 ne doit pas être piloté")
 	}
 }

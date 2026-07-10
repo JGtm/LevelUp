@@ -107,6 +107,35 @@ describe('prevSeason / nextSeason', () => {
   })
 })
 
+describe('prevSeason / nextSeason — ordre-indépendance (GH5-1)', () => {
+  // useSeasons trie désormais récent-d'abord (DESC) ; prev/next doivent rester
+  // chronologiques (prev = plus ancienne, next = plus récente) quel que soit
+  // l'ordre du tableau d'entrée. On passe le fixture INVERSÉ (récent → ancien).
+  const desc = [...fixture].reverse()
+
+  it('prevSeason = saison plus ancienne, même sur entrée DESC', () => {
+    expect(prevSeason(desc, fixture[1])?.id).toBe('s1') // avant S2 → S1
+    expect(prevSeason(desc, fixture[3])?.id).toBe('s3') // avant S_open → S3
+  })
+
+  it('nextSeason = saison plus récente, même sur entrée DESC', () => {
+    expect(nextSeason(desc, fixture[0])?.id).toBe('s2') // après S1 → S2
+    expect(nextSeason(desc, fixture[2])?.id).toBe('s_open') // après S3 → S_open
+  })
+
+  it('bornes préservées sur entrée DESC (plus ancienne sans prev, plus récente sans next)', () => {
+    expect(prevSeason(desc, fixture[0])).toBeNull() // S1 = plus ancienne
+    expect(nextSeason(desc, fixture[fixture.length - 1])).toBeNull() // S_open = plus récente
+  })
+
+  it("n'altère pas le tableau d'entrée (tri sur copie)", () => {
+    const input = [...desc]
+    prevSeason(input, fixture[1])
+    nextSeason(input, fixture[1])
+    expect(input.map((s) => s.id)).toEqual(desc.map((s) => s.id))
+  })
+})
+
 describe('findActiveSeason', () => {
   it('retourne null si start ou end est nul', () => {
     expect(findActiveSeason(fixture, null, '2022-04-01')).toBeNull()

@@ -74,7 +74,6 @@ export function DiscordCard({ merged, handleChange, t, frozen }: TabProps) {
           <ToggleRow label={t.discordEnabled} value={merged.discord_notifications_enabled ?? false} onChange={(v) => handleChange('discord_notifications_enabled', v)} disabled={frozen} />
           <ToggleRow label={t.discordNotifySync} value={merged.discord_notify_sync ?? false} onChange={(v) => handleChange('discord_notify_sync', v)} disabled={frozen || !merged.discord_notifications_enabled} />
           <ToggleRow label={t.discordNotifyBackfill} value={merged.discord_notify_backfill ?? false} onChange={(v) => handleChange('discord_notify_backfill', v)} disabled={frozen || !merged.discord_notifications_enabled} />
-          <ToggleRow label={t.discordNotifyNewMedia} value={merged.discord_notify_new_media ?? false} onChange={(v) => handleChange('discord_notify_new_media', v)} disabled={frozen || !merged.discord_notifications_enabled} />
           <ToggleRow label={t.discordNotifyFriends} value={merged.discord_notify_friends ?? false} onChange={(v) => handleChange('discord_notify_friends', v)} disabled={frozen || !merged.discord_notifications_enabled} />
         </CardContent>
       </Card>

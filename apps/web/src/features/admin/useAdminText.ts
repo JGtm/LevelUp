@@ -9,6 +9,7 @@
  */
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
+import { intlLocale } from '@/lib/formatters'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { adminManifest, type AdminManifestKey } from '@/lib/i18n/generated/admin'
 
@@ -30,7 +31,7 @@ export function useAdminT(): TAdmin {
 /** Locale BCP-47 pour toLocaleString/toLocaleDateString. */
 export function useDateLocale(): string {
   const locale = useAppShellStore((s) => s.locale)
-  return locale === 'fr' ? 'fr-FR' : 'en-US'
+  return intlLocale(locale)
 }
 
 /** Locale courte ('fr' | 'en') pour les helpers purs (format.ts). */

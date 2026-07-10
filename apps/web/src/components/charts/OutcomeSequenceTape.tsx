@@ -14,7 +14,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 
-import { CHART_BG, getEChartsThemeColors, getTooltipBase, outcomeColor } from './_utils'
+import { CHART_BG, escapeHtml, getEChartsThemeColors, getTooltipBase, outcomeColor } from './_utils'
 
 const ReactECharts = lazy(() =>
   import('echarts-for-react').then((m) => ({ default: m.default ?? m })),
@@ -100,10 +100,12 @@ export function OutcomeSequenceTape({
           const lines = r.matches
             .slice(0, 5)
             .map((m) =>
-              m.label ? `· ${m.label}` : `· ${m.map ?? m.matchId}${m.mode ? ` (${m.mode})` : ''}`,
+              m.label
+                ? `· ${escapeHtml(m.label)}`
+                : `· ${escapeHtml(m.map ?? m.matchId)}${m.mode ? ` (${escapeHtml(m.mode)})` : ''}`,
             )
           if (r.matches.length > 5) lines.push(`+${r.matches.length - 5}`)
-          return [`<b>${r.count}× ${label}</b>`, ...lines].join('<br/>')
+          return [`<b>${r.count}× ${escapeHtml(label)}</b>`, ...lines].join('<br/>')
         },
       },
       series: [

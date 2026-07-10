@@ -171,7 +171,7 @@ func (h *SetupHandler) handleCreatePlayer(ctx context.Context, in *setupCreatePl
 	// Créer le profil dans db_profiles.json
 	playerKey, warnings, err := h.profileSvc.CreatePlayer(req)
 	if err != nil {
-		slog.Error("setup.CreatePlayer: failed", "gamertag", req.Gamertag, "err", err)
+		slog.ErrorContext(ctx, "setup.CreatePlayer: failed", "gamertag", req.Gamertag, "err", err)
 		return nil, humacore.NewError(http.StatusInternalServerError, "profile_create_error",
 			"Impossible de créer le profil joueur.")
 	}

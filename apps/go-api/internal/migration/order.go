@@ -29,6 +29,7 @@ var canonicalOrder = []string{
 	"add_citation_mappings_pk",                              // metadata
 	"add_citation_mappings_v2_fields",                       // metadata
 	"add_citation_name_display_en",                          // metadata
+	"add_citation_description_en",                           // metadata
 	"add_xbox_achievement_definitions",                      // metadata
 	"add_career_rank_translations",                          // metadata
 	"medal_definitions_add_indices",                         // metadata
@@ -76,7 +77,6 @@ var canonicalOrder = []string{
 	"add_challenge_snapshots_display_path",                    // player
 	"add_battlepass_snapshots",                                // player
 	"add_dominance_flag_column",                               // player
-	"add_media_discord_notified",                              // player
 	"add_media_like_columns",                                  // player
 	"add_media_capture_start_utc",                             // player
 	"add_performance_score",                                   // player

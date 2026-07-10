@@ -36,10 +36,13 @@ export function PeriodePill({
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
-  let triggerLabel = 'Toutes les périodes'
+  let triggerLabel = t('common.period.all')
   if (hasPeriod) {
     const preset = PERIOD_PRESETS.find((p) => p.id === detected)
-    triggerLabel = preset && preset.id !== 'all' ? `Période : ${preset.label}` : 'Période : personnalisée'
+    triggerLabel =
+      preset && preset.id !== 'all'
+        ? formatMessage(commonManifest, 'common.period.prefix_named', locale, { label: t(preset.labelKey) })
+        : t('common.period.custom_label')
   }
 
   function applyPreset(days: number) {
@@ -67,12 +70,12 @@ export function PeriodePill({
       {open && (
         <div
           role="dialog"
-          aria-label="Période"
+          aria-label={t('common.period.dialog_aria')}
           className="absolute left-0 top-full z-40 mt-1 flex w-80 flex-col gap-3 rounded-md border border-border bg-background p-3 shadow-lg"
         >
           <div className="flex flex-wrap gap-3">
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              Du
+              {t('common.period.from')}
               <input
                 type="date"
                 value={period?.start_date ?? ''}
@@ -87,7 +90,7 @@ export function PeriodePill({
               />
             </label>
             <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              Au
+              {t('common.period.to')}
               <input
                 type="date"
                 value={period?.end_date ?? ''}
@@ -114,7 +117,7 @@ export function PeriodePill({
                   type="button"
                   onClick={() => !isEmpty && applyPreset(p.days)}
                   disabled={isEmpty}
-                  title={isEmpty ? '0 match sur cette période' : undefined}
+                  title={isEmpty ? t('common.period.empty_title') : undefined}
                   className={[
                     'rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors',
                     isEmpty
@@ -124,7 +127,7 @@ export function PeriodePill({
                         : 'bg-muted text-foreground hover:bg-accent',
                   ].join(' ')}
                 >
-                  {p.label}
+                  {t(p.labelKey)}
                   {count !== undefined && (
                     <span className="ml-1 text-2xs tabular-nums opacity-70">({count})</span>
                   )}

@@ -8,7 +8,6 @@ package worldenrich
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -16,11 +15,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	_ "github.com/duckdb/duckdb-go/v2"
-
 	"levelup/go-api/internal/config"
 	title "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability"
 	auth "levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/ratebudget"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
@@ -31,14 +30,16 @@ import (
 // joueur (cf. cmd/backfill-csr-history). Best-effort (vide si DB/clé absente).
 func loadLegacyInputs(cfg *config.AppConfig, gamertag string) auth.LegacyAuthInputs {
 	path := title.NewPathResolver(cfg.RepoRoot).PlayerDBPath(title.DefaultSlug, gamertag)
-	db, err := sql.Open("duckdb", path+"?access_mode=read_only")
+	// OpenReadForQuery (jamais sql.Open RO nu) : réutilise un handle en cache si la
+	// player DB est déjà tenue RW dans le process (évite l'erreur DuckDB « different
+	// configuration ») — E6, ADR 0016. Lecture sync_meta via les helpers canoniques.
+	db, release, err := duckdb.OpenReadForQuery(path)
 	if err != nil {
 		return auth.LegacyAuthInputs{}
 	}
-	defer db.Close()
-	var rt, msal string
-	_ = db.QueryRowContext(context.Background(), `SELECT value FROM sync_meta WHERE key='oauth_refresh_token'`).Scan(&rt)
-	_ = db.QueryRowContext(context.Background(), `SELECT value FROM sync_meta WHERE key='msal_token_cache'`).Scan(&msal)
+	defer release()
+	rt, _ := duckdb.ReadOAuthRefreshTokenFromSQL(context.Background(), db)
+	msal, _ := duckdb.ReadMSALCacheJSONFromSQL(context.Background(), db)
 	return auth.LegacyAuthInputs{OAuthRT: rt, MSALCache: msal, Source: "player_db.sync_meta"}
 }
 
@@ -62,7 +63,17 @@ func resolveAccessToken(ctx context.Context, provider auth.TokenProvider, store 
 			at, rot, e := provider.TryOAuthRefreshWithRotation(ctx, rt)
 			if e == nil && at != "" {
 				if persist && rot != "" && rot != rt {
-					_ = store.UpdateOAuthRefreshToken(xuid, rot)
+					if uerr := store.UpdateOAuthRefreshToken(xuid, rot); uerr != nil {
+						// Lot B (audit #3) : ne plus avaler l'échec. Retry une fois
+						// (écriture fichier watcher_tokens/{xuid}.json) ; si échec
+						// persistant, LOGUER — sans le RT roté persisté, le prochain
+						// resolveAccessToken relit l'ancien RT mort (invalid_grant) →
+						// chaîne auth du joueur morte. On retourne quand même `at`
+						// (valide pour CE run) après le log.
+						if uerr = store.UpdateOAuthRefreshToken(xuid, rot); uerr != nil {
+							slog.ErrorContext(ctx, "world-enrich: persistance du refresh token roté échouée — chaîne auth à risque au prochain refresh", "xuid", xuid, "err", uerr)
+						}
+					}
 				}
 				return at
 			}
@@ -76,6 +87,18 @@ func resolveAccessToken(ctx context.Context, provider auth.TokenProvider, store 
 		if at := try(user.MSALCacheJSON, user.OAuthRefreshToken, true); at != "" {
 			return at, nil
 		}
+	}
+	// D1a : le store canonique n'a pas résolu → fallback legacy sync_meta atteint.
+	// Signal de dépréciation (ADR 0023 Phase 5, prérequis D2).
+	if legacy.MSALCache != "" {
+		slog.WarnContext(ctx, "legacy_source_used", "source", observability.LegacySourceDuckDBMSAL,
+			"xuid", xuid, "deprecated_since", "ADR-0023")
+		observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBMSAL)
+	}
+	if legacy.OAuthRT != "" {
+		slog.WarnContext(ctx, "legacy_source_used", "source", observability.LegacySourceDuckDBOAuth,
+			"xuid", xuid, "deprecated_since", "ADR-0023")
+		observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBOAuth)
 	}
 	if at := try(legacy.MSALCache, legacy.OAuthRT, false); at != "" {
 		return at, nil

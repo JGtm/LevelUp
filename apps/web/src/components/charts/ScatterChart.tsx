@@ -18,7 +18,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
-import { CHART_BG, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase, seriesColor } from './_utils'
+import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase, seriesColor } from './_utils'
 
 export interface ChartPointScatter {
   x: number
@@ -146,7 +146,7 @@ export function buildScatterOption(
         const yLabel = yAxisLabel ?? 'Y'
         const x = p.value?.[0] ?? '—'
         const y = p.value?.[1] ?? '—'
-        return `${p.seriesName ?? ''}<br>${xLabel} : <b>${x}</b><br>${yLabel} : <b>${y}</b>`
+        return `${escapeHtml(p.seriesName ?? '')}<br>${xLabel} : <b>${x}</b><br>${yLabel} : <b>${y}</b>`
       },
     },
     legend: { ...getLegendBase(tc), data: legendNames },

@@ -1,7 +1,7 @@
 // Package service - match_history_service_enrich.go : toFilterMatchRow +
 // computeMapWinRates + enrichRows/enrichRow + sortItems/compareRows +
 // paginate + helpers de format (outcomeLabel, formatDateFR,
-// formatLifeSeconds, buildMatchURL, buildPeriodLabel, ptr/cmp helpers).
+// formatLifeSeconds, buildPeriodLabel, ptr/cmp helpers).
 // Decoupe de match_history_service.go (god-file split, refactor 2026-05-27).
 package service
 
@@ -58,15 +58,53 @@ func computeMapWinRates(rows []domain.MatchHistoryRawRow) map[string][2]int {
 // Enrichissement
 // ---------------------------------------------------------------------------
 
-func enrichRows(rows []domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint string) []domain.MatchHistoryRow {
+// rowFormatters regroupe les résolveurs title-agnostic injectés dans l'enrichissement
+// d'une ligne : URL de page publique du match (F3) et libellé d'outcome via le titre
+// (F4). Champs nil → dégradation gracieuse (URL vide ; outcome via le fallback FR dur).
+type rowFormatters struct {
+	matchURL     func(matchID string) string
+	outcomeLabel func(code int) string
+}
+
+func (f rowFormatters) matchURLFor(matchID string) string {
+	if f.matchURL == nil {
+		return ""
+	}
+	return f.matchURL(matchID)
+}
+
+func (f rowFormatters) outcomeLabelFor(code int) string {
+	if f.outcomeLabel == nil {
+		return outcomeLabel(code) // failsafe : libellés FR canoniques Halo
+	}
+	return f.outcomeLabel(code)
+}
+
+func enrichRows(rows []domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFormatters) []domain.MatchHistoryRow {
 	out := make([]domain.MatchHistoryRow, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, enrichRow(r, mapWR, waypoint))
+		out = append(out, enrichRow(r, mapWR, fmts))
 	}
 	return out
 }
 
-func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint string) domain.MatchHistoryRow {
+// enrichMapWinRate calcule le taux de victoire historique du joueur sur une map
+// (arrondi 1 déc.) + le total de matchs, depuis la table mapWR pré-agrégée.
+// (nil, nil) si map inconnue ou 0 match. Extrait d'enrichRow (L3 : funlen).
+func enrichMapWinRate(mapName string, mapWR map[string][2]int) (*float64, *int) {
+	if mapName == "" {
+		return nil, nil
+	}
+	entry, ok := mapWR[mapName]
+	if !ok || entry[1] <= 0 {
+		return nil, nil
+	}
+	v := math.Round(float64(entry[0])/float64(entry[1])*100*10) / 10
+	total := entry[1]
+	return &v, &total
+}
+
+func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFormatters) domain.MatchHistoryRow {
 	modeUI := analysis.ResolveModeUI(r.PairName, r.PairNameFR)
 	// Fallback game_variant : les titres sans pair_name (Halo 5) portent leur mode dans
 	// le game_variant. Sans ce repli, mode_ui resterait vide sur la liste Explorer/
@@ -89,17 +127,9 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint st
 		deltaMMR = &v
 	}
 
-	var winRate *float64
-	var winRateTotal *int
-	if name := derefStr(r.MapName); name != "" {
-		if entry, ok := mapWR[name]; ok && entry[1] > 0 {
-			v := math.Round(float64(entry[0])/float64(entry[1])*100*10) / 10
-			winRate = &v
-			winRateTotal = &entry[1]
-		}
-	}
+	winRate, winRateTotal := enrichMapWinRate(derefStr(r.MapName), mapWR)
 
-	matchURL := buildMatchURL(waypoint, r.MatchID)
+	matchURL := fmts.matchURLFor(r.MatchID)
 
 	var perfScore *int
 	var perfTier int
@@ -124,7 +154,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint st
 		StartTime:                startTime,
 		StartTimeLabel:           label,
 		OutcomeCode:              r.Outcome,
-		OutcomeLabel:             outcomeLabel(r.Outcome),
+		OutcomeLabel:             fmts.outcomeLabelFor(r.Outcome),
 		ScoreLabel:               scoreLabel,
 		MapUI:                    ptrStr(mapU),
 		ModeUI:                   modeUI,
@@ -268,14 +298,6 @@ func formatLifeSeconds(secs *float64) string {
 	mm := total / 60
 	ss := total % 60
 	return fmt.Sprintf("%d:%02d", mm, ss)
-}
-
-func buildMatchURL(waypoint, matchID string) string {
-	wp := strings.TrimSpace(waypoint)
-	if wp == "" {
-		return ""
-	}
-	return "https://www.halowaypoint.com/halo-infinite/players/" + wp + "/matches/" + matchID
 }
 
 func buildPeriodLabel(f domain.FilterContextInput) *string {

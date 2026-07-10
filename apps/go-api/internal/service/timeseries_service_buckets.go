@@ -211,7 +211,7 @@ func buildRollingWRBuckets(matches []legacymatch.StatsMatchRow) []domain.Distrib
 			}
 		}
 		total := i - start + 1
-		// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+		// TODO(expiry:2026-12-31) P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
 		wr := analysis.WinRate(wins, total) * 100
 		idx := int(wr / binWidth)
 		if idx >= len(counts) {

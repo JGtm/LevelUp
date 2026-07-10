@@ -8,6 +8,7 @@
  * tableau paginé (langage MatchEncountersTable) et section « Noyau dur » détaillée.
  */
 import { useMemo, useState, type ReactNode } from 'react'
+import { winRateColor, ratioColor, kdaNetColor } from '@/lib/colors/outcomePalette'
 import { useNavigate, useParams } from '@tanstack/react-router'
 
 import { KpiCard } from '@/components/cards/KpiCard'
@@ -39,18 +40,6 @@ function findRelation(relations: RelationInsight[], gamertag: string | undefined
   return relations.find((r) => r.gamertag === gamertag) ?? null
 }
 
-function winLossColor(v: number | null | undefined): string | undefined {
-  if (v == null || !Number.isFinite(v)) return undefined
-  return v >= 0.5 ? tokenCssVar('outcome-win') : tokenCssVar('outcome-loss')
-}
-
-function ratioColor(v: number | null | undefined): string | undefined {
-  if (v == null || !Number.isFinite(v)) return undefined
-  if (v > 1) return tokenCssVar('outcome-win')
-  if (v < 1) return tokenCssVar('outcome-loss')
-  return tokenCssVar('outcome-draw')
-}
-
 function formatRatio(v: number | null | undefined): string {
   if (v == null || !Number.isFinite(v)) return '—'
   return v.toFixed(2)
@@ -58,13 +47,6 @@ function formatRatio(v: number | null | undefined): string {
 
 // kdaColor : le KDA est un NET signé (peut être négatif) — vert si positif,
 // rouge si négatif, neutre à 0 (cohérent avec kdaDivergentScale).
-function kdaColor(v: number | null | undefined): string | undefined {
-  if (v == null || !Number.isFinite(v)) return undefined
-  if (v > 0) return tokenCssVar('outcome-win')
-  if (v < 0) return tokenCssVar('outcome-loss')
-  return tokenCssVar('outcome-draw')
-}
-
 // duelOutcomeToken : couleur d'un carré de la mini-frise (win/loss/neutre).
 function duelOutcomeToken(outcome: string): SemanticToken {
   if (outcome === 'win') return 'outcome-win'
@@ -209,7 +191,7 @@ function HeroRelationCard({
 
         {/* ligne métrique : % de victoires + qualificatif + chip */}
         <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className="font-mono text-xl font-bold" style={{ color: winLossColor(wr) }}>
+          <span className="font-mono text-xl font-bold" style={{ color: winRateColor(wr) }}>
             {formatPercent(wr, 0)}
           </span>
           <span className="text-xs text-muted-foreground">{winQual}</span>
@@ -243,7 +225,7 @@ function HeroRelationCard({
             <>
               {relation.avg_kda_with != null && Number.isFinite(relation.avg_kda_with) && (
                 <>
-                  <span className="font-mono font-bold" style={{ color: kdaColor(relation.avg_kda_with) }}>
+                  <span className="font-mono font-bold" style={{ color: kdaNetColor(relation.avg_kda_with) }}>
                     {formatRatio(relation.avg_kda_with)}
                   </span>{' '}
                   {labels.table.kdaTogether}
@@ -348,7 +330,7 @@ function CoreSummaryCard({
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           {avgWr != null ? (
             <>
-              <span className="font-mono text-3xl font-bold" style={{ color: winLossColor(avgWr) }}>
+              <span className="font-mono text-3xl font-bold" style={{ color: winRateColor(avgWr) }}>
                 {formatPercent(avgWr, 0)}
               </span>
               <span className="text-xs text-muted-foreground">{labels.core.withThem}</span>
@@ -391,7 +373,7 @@ function CoreSummaryCard({
                     <span className="shrink-0 font-mono text-xs text-muted-foreground">
                       {labels.hero.matchesPlayed(r.total_matches.toLocaleString(locale))}
                       {' · '}
-                      <span className="font-bold" style={{ color: winLossColor(r.teammate_win_rate) }}>
+                      <span className="font-bold" style={{ color: winRateColor(r.teammate_win_rate) }}>
                         {formatPercent(r.teammate_win_rate, 0)}
                       </span>
                     </span>
@@ -502,7 +484,7 @@ function CoreCards({
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs">
               {r.teammate_win_rate != null && Number.isFinite(r.teammate_win_rate) && (
                 <span>
-                  <span className="font-bold" style={{ color: winLossColor(r.teammate_win_rate) }}>
+                  <span className="font-bold" style={{ color: winRateColor(r.teammate_win_rate) }}>
                     {formatPercent(r.teammate_win_rate, 0)}
                   </span>{' '}
                   <span className="text-muted-foreground">{labels.table.winRateAlly}</span>
@@ -510,7 +492,7 @@ function CoreCards({
               )}
               {r.avg_kda_with != null && Number.isFinite(r.avg_kda_with) && (
                 <span>
-                  <span className="font-bold" style={{ color: kdaColor(r.avg_kda_with) }}>
+                  <span className="font-bold" style={{ color: kdaNetColor(r.avg_kda_with) }}>
                     {formatRatio(r.avg_kda_with)}
                   </span>{' '}
                   <span className="text-muted-foreground">{labels.table.kdaTogether}</span>

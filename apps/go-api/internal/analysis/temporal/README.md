@@ -23,6 +23,25 @@ type HasStartTime interface { StartTime() time.Time }
 type Numeric interface { ~int | ~int64 | ~float64 }
 ```
 
+## Engagement (score + coefficients)
+
+Le package couvre AUSSI le sous-système d'engagement (fichiers `engagement_*.go`),
+au-delà du bucketing/smoothing ci-dessus.
+
+| Function | Purpose |
+|---|---|
+| `ComputeEngagementScore(EngagementScoreInput) (domain.EngagementScoreResult, error)` | Score d'engagement d'un match (pace joueur/équipe/lobby + baseline history) |
+| `ComputeEngagementCoefficient([]RatioSample) (*CoefficientResult, error)` | Coefficient d'engagement à partir d'échantillons de ratio |
+
+Types : `EngagementScoreInput`, `CoefficientResult`, `RatioSample` (+ `domain.EngagementScoreResult`).
+
+Sentinel errors : `ErrInsufficientData`, `ErrMatchTooShort`, `ErrInvalidBoundaries`
+(`engagement_score.go`) ; `ErrInsufficientCoefHistory` (`engagement_coefficients.go`).
+
+Files: `engagement_curve.go`, `engagement_weights.go`, `engagement_score.go`,
+`engagement_coefficients.go`. Consumers: `internal/sync/engagement.go` (per-match
+persistence) and `internal/service/engagement_player_service.go`.
+
 ## Examples
 
 ### Bucket match rows by week over 1 month

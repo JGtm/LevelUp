@@ -108,8 +108,3 @@ export function formatRank(rank: number | null): string {
   if (rank == null) return '—'
   return String(rank)
 }
-
-export function formatScore(score: number | null): string {
-  if (score == null) return '—'
-  return new Intl.NumberFormat('fr-FR').format(score)
-}

@@ -111,9 +111,12 @@ func TestCareerLiveRepo_LoadLastCareerRank_EmptyDB(t *testing.T) {
 	}
 }
 
-// TestCareerLiveRepo_LoadLastCareerRank_PerFieldMerge : 2 snapshots sur le même
-// xuid avec banner manquant dans le plus récent → ARG_MAX FILTER doit remonter
-// le banner du snapshot antérieur.
+// TestCareerLiveRepo_LoadLastCareerRank_PerFieldMerge cadenasse la sémantique
+// apparence (directive produit 2026-07-08, cas JGtm emblème 3806589 sans
+// nameplate upstream) : bannière/emblème/backdrop sont des champs
+// INDÉPENDANTS — chacun remonte sa dernière valeur non vide, sans couplage
+// (« jamais vide » : un champ vide dans le snapshot le plus récent conserve
+// sa dernière valeur connue, quel que soit l'état des autres champs).
 func TestCareerLiveRepo_LoadLastCareerRank_PerFieldMerge(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
@@ -134,13 +137,14 @@ func TestCareerLiveRepo_LoadLastCareerRank_PerFieldMerge(t *testing.T) {
 		xuidLive); err != nil {
 		t.Fatalf("insert snapshot 1: %v", err)
 	}
-	// Snapshot 2 (récent) : banner_image_url vide (chaîne vide ≡ NULLIF TRIM).
+	// Snapshot 2 (récent) : banner vide (résolution nameplate échouée sur ce
+	// cycle) → carry-forward de la dernière bannière connue.
 	if _, err := pdb.Player.Exec(ctx, `
 		INSERT INTO career_progression
 		(xuid, rank, current_xp, recorded_at, rank_name, rank_tier, xp_for_next_rank, xp_total,
 		 is_max_rank, adornment_path, spartan_id, banner_image_url, emblem_image_url, backdrop_image_url)
 		VALUES (?, 11, 150, '2025-02-01 10:00:00+00', 'B', 'Bronze', 300, 1200, false,
-		'/p2.png', 'S1', '', '/emblem_v2.png', '/backdrop_v2.png')`,
+		'/p2.png', 'S1', '', '/emblem_v1.png', '/backdrop_v2.png')`,
 		xuidLive); err != nil {
 		t.Fatalf("insert snapshot 2: %v", err)
 	}
@@ -160,14 +164,78 @@ func TestCareerLiveRepo_LoadLastCareerRank_PerFieldMerge(t *testing.T) {
 	if row.CurrentXP != 150 {
 		t.Errorf("CurrentXP = %d, want 150", row.CurrentXP)
 	}
-	// Banner : ARG_MAX FILTER (NULLIF TRIM) doit remonter le snapshot 1 (non-vide).
+	// Banner : ARG_MAX FILTER (NULLIF TRIM) remonte le snapshot 1 (non-vide).
 	if row.BannerImageURL != "/banner_v1.png" {
 		t.Errorf("BannerImageURL = %q, want /banner_v1.png (per-field merge)",
 			row.BannerImageURL)
 	}
-	// Emblem : non-vide dans le snapshot 2 → c'est cette valeur qui prime.
+	if row.EmblemImageURL != "/emblem_v1.png" {
+		t.Errorf("EmblemImageURL = %q, want /emblem_v1.png", row.EmblemImageURL)
+	}
+
+	// Snapshot 3 (plus récent) : emblème mis à jour, banner vide (nameplate
+	// irrésoluble upstream). Directive « jamais vide » + indépendance des
+	// champs : l'emblème avance, la bannière conserve sa dernière valeur.
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO career_progression
+		(xuid, rank, current_xp, recorded_at, rank_name, rank_tier, xp_for_next_rank, xp_total,
+		 is_max_rank, adornment_path, spartan_id, banner_image_url, emblem_image_url, backdrop_image_url)
+		VALUES (?, 12, 50, '2025-03-01 10:00:00+00', 'C', 'Bronze', 400, 1400, false,
+		'/p3.png', 'S1', '', '/emblem_v2.png', '/backdrop_v2.png')`,
+		xuidLive); err != nil {
+		t.Fatalf("insert snapshot 3: %v", err)
+	}
+	row, err = repo.LoadLastCareerRank(ctx, xuidLive)
+	if err != nil {
+		t.Fatalf("LoadLastCareerRank (emblème changé): %v", err)
+	}
+	if row == nil {
+		t.Fatal("attendu row non-nil (emblème changé)")
+	}
 	if row.EmblemImageURL != "/emblem_v2.png" {
 		t.Errorf("EmblemImageURL = %q, want /emblem_v2.png", row.EmblemImageURL)
+	}
+	if row.BannerImageURL != "/banner_v1.png" {
+		t.Errorf("BannerImageURL = %q, want /banner_v1.png (jamais vide : dernière bannière connue)",
+			row.BannerImageURL)
+	}
+
+	// Snapshot 4 : bannière propre à l'emblème v2 → elle prend le dessus.
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO career_progression
+		(xuid, rank, current_xp, recorded_at, rank_name, rank_tier, xp_for_next_rank, xp_total,
+		 is_max_rank, adornment_path, spartan_id, banner_image_url, emblem_image_url, backdrop_image_url)
+		VALUES (?, 12, 80, '2025-04-01 10:00:00+00', 'C', 'Bronze', 400, 1430, false,
+		'/p3.png', 'S1', '/banner_v2.png', '/emblem_v2.png', '/backdrop_v2.png')`,
+		xuidLive); err != nil {
+		t.Fatalf("insert snapshot 4: %v", err)
+	}
+	// Snapshot 5 (le plus récent) : l'emblème change encore, bannière non
+	// résolue sur ce cycle. Indépendance des champs : l'emblème avance vers
+	// v1, la bannière reste la DERNIÈRE non vide (banner_v2) — aucun couplage
+	// bannière↔emblème.
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO career_progression
+		(xuid, rank, current_xp, recorded_at, rank_name, rank_tier, xp_for_next_rank, xp_total,
+		 is_max_rank, adornment_path, spartan_id, banner_image_url, emblem_image_url, backdrop_image_url)
+		VALUES (?, 13, 10, '2025-05-01 10:00:00+00', 'D', 'Bronze', 500, 1500, false,
+		'/p4.png', 'S1', '', '/emblem_v1.png', '/backdrop_v2.png')`,
+		xuidLive); err != nil {
+		t.Fatalf("insert snapshot 5: %v", err)
+	}
+	row, err = repo.LoadLastCareerRank(ctx, xuidLive)
+	if err != nil {
+		t.Fatalf("LoadLastCareerRank (emblème re-changé): %v", err)
+	}
+	if row == nil {
+		t.Fatal("attendu row non-nil (emblème re-changé)")
+	}
+	if row.EmblemImageURL != "/emblem_v1.png" {
+		t.Errorf("EmblemImageURL = %q, want /emblem_v1.png", row.EmblemImageURL)
+	}
+	if row.BannerImageURL != "/banner_v2.png" {
+		t.Errorf("BannerImageURL = %q, want /banner_v2.png (dernière bannière non vide, champs indépendants)",
+			row.BannerImageURL)
 	}
 }
 

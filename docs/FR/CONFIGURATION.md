@@ -217,11 +217,11 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 
 | Variable | Description | Défaut |
 |----------|-------------|--------|
-| `LEVELUP_PERSIST_BATCH` | Route les écritures de live-sync via le persister batch (ADR 0019/0026). | (off) |
-| `LEVELUP_PERSIST_BATCH_ASYNC` | Exécute le persister batch en asynchrone. | (off) |
-| `LEVELUP_SYNC_PIPELINE` | Sélectionne le pipeline de sync. | interne |
+| `LEVELUP_PERSIST_BATCH_ASYNC` | Exécute le persister batch en asynchrone (WAL + worker). Kill-switch : `0` pour revenir au chemin synchrone. Retrait cible >= 2026-Q4. | on |
+| `LEVELUP_EVENTS_CONVERGENCE` | Passe de convergence des highlight_events (scheduler + trigger immédiat). Kill-switch : `0` pour désactiver. Retrait cible >= 2026-Q4. | on |
+| `LEVELUP_EVENTS_CONVERGENCE_MAX` | Borne le nombre de matchs traités par tick de convergence. | `50` |
 | `LEVELUP_CSR_SEASON_ID` | Surcharge l'id de saison CSR. | depuis `app_settings.json` |
-| `MULTI_TITLE_API_ENABLED` | Expose les routes multi-titres field-mappings/preview (override de `app_settings.json`). | `false` |
+| `MULTI_TITLE_API_ENABLED` | Expose les routes multi-titres field-mappings/preview (override de `app_settings.json`). Gate de rollout (pas un kill-switch de rollback). | `false` |
 | `PRESTIGE_ENABLED` | Active le module Prestige (override de `app_settings.json`). | `true` |
 
 ### Intégrations

@@ -10,6 +10,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
   CHART_BG,
+  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getLegendBase,
@@ -122,7 +123,7 @@ function buildBipolaireOption(
       formatter: (params: unknown) => {
         const arr = Array.isArray(params) ? (params as { dataIndex?: number; name?: string }[]) : []
         const idx = arr[0]?.dataIndex ?? 0
-        const title = arr[0]?.name ?? labels[idx] ?? ''
+        const title = escapeHtml(arr[0]?.name ?? labels[idx] ?? '')
         const solo = soloTexts[idx] ?? ''
         const squad = squadTexts[idx] ?? ''
         return [

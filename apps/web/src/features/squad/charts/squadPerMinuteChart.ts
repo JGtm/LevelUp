@@ -19,6 +19,7 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import {
   CHART_BG,
+  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getTooltipBase,
@@ -91,9 +92,9 @@ export function buildSquadPerMinuteOption(
         const lines = arr.map((p) => {
           const point = p as { seriesName: string; value: number; color: string }
           const v = Math.abs(point.value)
-          return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${point.color};margin-right:6px"></span>${point.seriesName}: ${fmt(v)}${opts.perMinuteSuffix}`
+          return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${point.color};margin-right:6px"></span>${escapeHtml(point.seriesName ?? '')}: ${fmt(v)}${opts.perMinuteSuffix}`
         })
-        return `<strong>${cat}</strong><br/>${lines.join('<br/>')}`
+        return `<strong>${escapeHtml(cat)}</strong><br/>${lines.join('<br/>')}`
       },
     },
     xAxis: {

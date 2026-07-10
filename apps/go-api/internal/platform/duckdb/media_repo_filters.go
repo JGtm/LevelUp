@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -233,25 +234,28 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 	rows, err := sharedDB.QueryContext(ctx, fmt.Sprintf(`
 		SELECT
 			r.match_id,
-			COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_utc,
+			`+StartTimeCanonicalSQL("r")+` AS start_utc,
 			COALESCE(r.end_time_utc,   r.end_time   AT TIME ZONE 'UTC') AS end_utc,
 			COALESCE(r.map_name_fr, r.map_name) AS map_name,
 			COALESCE(r.map_id, '') AS map_id,
-			COALESCE(r.pair_name_fr, r.pair_name) AS pair_name,
+			-- GH3-4 : base EN-first pour la normalisation du mode (mode_name_tr est
+			-- keyé mode_en) ; la traduction FR est appliquée conditionnellement.
+			COALESCE(r.pair_name, r.pair_name_fr) AS pair_name,
 			COALESCE(r.playlist_name_fr, r.playlist_name) AS playlist_name,
+			COALESCE(r.playlist_name, '') AS playlist_name_en,
 			COALESCE(r.playlist_id, '') AS playlist_id,
 			mp.outcome,
 			mp.team_id,
 			r.team_0_score,
 			r.team_1_score,
-			ABS(DATEDIFF('second', ?, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))) AS delta_s
+			ABS(DATEDIFF('second', ?, `+StartTimeCanonicalSQL("r")+`)) AS delta_s
 		FROM match_registry r
 		JOIN match_participants mp
 			ON mp.match_id = r.match_id AND mp.xuid = ?
-		WHERE COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')
+		WHERE `+StartTimeCanonicalSQL("r")+`
 		        BETWEEN (? - INTERVAL '%d minutes')
 		            AND (? + INTERVAL '%d minutes')
-		ORDER BY ABS(DATEDIFF('second', ?, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))) ASC
+		ORDER BY ABS(DATEDIFF('second', ?, `+StartTimeCanonicalSQL("r")+`)) ASC
 		LIMIT 50
 	`, windowMinutes, windowMinutes), cap, r.pdb.XUID, cap, cap, cap)
 	if err != nil {
@@ -259,22 +263,35 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 	}
 	defer rows.Close()
 
+	// GH3-4 : locale de requête (défaut "fr"). Sous EN, les libellés mode/playlist/map
+	// des suggestions suivent la locale (jamais de FR résiduel).
+	locale := ctxkeys.Locale(ctx)
+	isEN := strings.HasPrefix(strings.ToLower(strings.TrimSpace(locale)), "en")
+
 	matchIDs := []string{}
 	mapIDByMatch := map[string]string{}
 	mapIDSet := map[string]struct{}{}
 	modeEnSet := map[string]struct{}{}
 	playlistIDByMatch := map[string]string{}
 	playlistIDSet := map[string]struct{}{}
+	// playlist_name EN brut (match_registry.playlist_name) par match — base EN pour
+	// resolvePlaylistNameForLocale.
+	playlistNameENByMatch := map[string]string{}
 	for rows.Next() {
 		var c domain.MediaMatchCandidate
-		var mapName, mapID, pairName, playlistName, playlistID sql.NullString
+		var mapName, mapID, pairName, playlistName, playlistNameEN, playlistID sql.NullString
 		var outcome sql.NullInt64
 		var deltaS sql.NullInt64
 		var startT, endT sql.NullTime
 		var teamID, team0Score, team1Score sql.NullInt64
 		if err := rows.Scan(&c.MatchID, &startT, &endT, &mapName, &mapID, &pairName, &playlistName,
-			&playlistID, &outcome, &teamID, &team0Score, &team1Score, &deltaS); err != nil {
+			&playlistNameEN, &playlistID, &outcome, &teamID, &team0Score, &team1Score, &deltaS); err != nil {
 			continue
+		}
+		if playlistNameEN.Valid {
+			if s := strings.TrimSpace(playlistNameEN.String); s != "" {
+				playlistNameENByMatch[c.MatchID] = s
+			}
 		}
 		// Scores POV joueur (team_id 0 → own=team_0_score, sinon swap).
 		// Nil si l'un des deux team_X_score est NULL côté DB (FFA, modes objectif sans score).
@@ -341,7 +358,9 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 	// Traduction FR des modes (ex: "Slayer" â†’ "Assassin") via mode_name_tr.
 	// Si pair_name_fr Ã©tait dÃ©jÃ  rempli en DB, on le prÃ©serve quand mÃªme
 	// puisqu'on substitue uniquement si une traduction existe.
-	if len(modeEnSet) > 0 {
+	// GH3-4 : la traduction FR (mode_name_tr) n'est appliquée QUE sous FR. Sous EN,
+	// ModeName reste le sous-mode EN canonique (NormalizeModeLabel sur base EN-first).
+	if len(modeEnSet) > 0 && !isEN {
 		enList := make([]string, 0, len(modeEnSet))
 		for en := range modeEnSet {
 			enList = append(enList, en)
@@ -379,15 +398,11 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 				continue
 			}
 			cat := catNames[mid]
-			// Nom affiché : FR préféré, sinon name_canonical EN ; jamais l'UUID brut.
-			switch {
-			case cat.fr != "":
-				fr := cat.fr
-				resp.Candidates[i].MapName = &fr
-			case cat.en != "":
-				en := cat.en
-				resp.Candidates[i].MapName = &en
-			case resp.Candidates[i].MapName != nil && looksLikeAssetID(*resp.Candidates[i].MapName):
+			// GH3-4 : nom affiché résolu par locale (EN = name_canonical, FR =
+			// asset_translations) via le helper partagé ; jamais l'UUID brut.
+			if resolved := resolvePlaylistNameForLocale(locale, cat.fr, cat.en); resolved != "" {
+				resp.Candidates[i].MapName = &resolved
+			} else if resp.Candidates[i].MapName != nil && looksLikeAssetID(*resp.Candidates[i].MapName) {
 				resp.Candidates[i].MapName = nil
 			}
 			// Image : map_images_registry d'abord, sinon adapter sur le name_canonical EN.
@@ -411,20 +426,31 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		}
 	}
 
-	// Traduction FR des playlists via asset_translations (asset_type='playlist').
-	if len(playlistIDSet) > 0 {
-		ids := make([]string, 0, len(playlistIDSet))
-		for id := range playlistIDSet {
-			ids = append(ids, id)
+	// Playlist locale-aware (GH3-4) : FR = asset_translations (asset_type='playlist')
+	// si un playlist_id est présent, sinon le COALESCE FR-first déjà scanné ;
+	// EN = playlist_name brut (match_registry). resolvePlaylistNameForLocale choisit
+	// selon la locale avec fallback croisé — même chemin que les cartes du rail media.
+	if len(resp.Candidates) > 0 {
+		var playlistTr map[string]string
+		if len(playlistIDSet) > 0 {
+			ids := make([]string, 0, len(playlistIDSet))
+			for id := range playlistIDSet {
+				ids = append(ids, id)
+			}
+			playlistTr = r.loadAssetTranslationNames(ctx, "playlist", ids)
 		}
-		playlistTr := r.loadAssetTranslationNames(ctx, "playlist", ids)
 		for i := range resp.Candidates {
 			pid := playlistIDByMatch[resp.Candidates[i].MatchID]
-			if pid == "" {
-				continue
+			frName := ""
+			if pid != "" {
+				frName = playlistTr[pid]
 			}
-			if fr, ok := playlistTr[pid]; ok && fr != "" {
-				resp.Candidates[i].PlaylistName = &fr
+			if frName == "" && resp.Candidates[i].PlaylistName != nil {
+				frName = *resp.Candidates[i].PlaylistName // COALESCE FR-first du scan
+			}
+			enName := playlistNameENByMatch[resp.Candidates[i].MatchID]
+			if resolved := resolvePlaylistNameForLocale(locale, frName, enName); resolved != "" {
+				resp.Candidates[i].PlaylistName = &resolved
 			}
 		}
 	}
@@ -465,7 +491,7 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 			COALESCE(vg.gamertag, ('Joueur ' || RIGHT(mp.xuid, 4))) AS gamertag,
 			mp.team_id,
 			(mp.xuid = ?) AS is_self,
-			(mp.xuid LIKE 'bid(%') AS is_bot
+			(` + analysis.SQLIsBotCol("mp.xuid") + `) AS is_bot
 		FROM match_participants mp
 		LEFT JOIN v_gamertag_lookup vg ON vg.xuid = mp.xuid
 		WHERE mp.match_id IN (` + joinStrings(placeholders) + `)

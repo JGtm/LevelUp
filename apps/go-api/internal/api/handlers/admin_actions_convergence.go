@@ -127,7 +127,7 @@ func (h *AdminConvergenceActionHandler) handleRun(ctx context.Context, in *conve
 func (h *AdminConvergenceActionHandler) runConvergence(ctx context.Context, jobID, titleSlug, playerSlug string) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			slog.Error("admin_actions: panic pendant la convergence", "job_id", jobID, "panic", rec)
+			slog.ErrorContext(ctx, "admin_actions: panic pendant la convergence", "job_id", jobID, "panic", rec)
 			h.jobs.Update(jobID, func(j *domain.AsyncJobStatus) {
 				j.Error = &domain.JobErrorDetail{Code: "panic", Message: "convergence interrompue par une erreur interne", Retryable: true}
 			})

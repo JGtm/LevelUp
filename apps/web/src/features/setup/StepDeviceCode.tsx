@@ -127,19 +127,19 @@ export function StepDeviceCode() {
   // route vers la même UI d'erreur + bouton « Réessayer » que les autres échecs.
   if (status?.status === 'failed' || status?.status === 'expired' || (secondsLeft !== null && secondsLeft <= 0) || recoveryExhausted) {
     const errorMessage: Record<string, string> = {
-      device_flow_denied: "Vous avez refusé ou annulé la demande Microsoft.",
-      device_flow_error: "Erreur lors de l'authentification Microsoft.",
-      halo_exchange_failed: "Impossible d'obtenir un accès Halo. Veuillez réessayer.",
-      identity_resolution_failed: "Impossible de résoudre votre Gamertag. Réessayez dans quelques instants.",
+      device_flow_denied: t('common.device_code.err_denied'),
+      device_flow_error: t('common.device_code.err_ms'),
+      halo_exchange_failed: t('common.device_code.err_halo'),
+      identity_resolution_failed: t('common.device_code.err_identity'),
     }
     return (
       <div className="space-y-3">
         <p className="text-destructive font-medium">
           {status?.status === 'expired' || (secondsLeft !== null && secondsLeft <= 0)
-            ? 'Le code a expiré.'
-            : (errorCode && errorMessage[errorCode]) ?? "Échec de l'authentification."}
+            ? t('common.device_code.err_expired')
+            : (errorCode && errorMessage[errorCode]) ?? t('common.device_code.err_generic')}
         </p>
-        <Button onClick={handleRetry}>Réessayer</Button>
+        <Button onClick={handleRetry}>{t('common.xbox_login.retry')}</Button>
       </div>
     )
   }

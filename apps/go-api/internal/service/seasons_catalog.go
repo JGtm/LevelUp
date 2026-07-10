@@ -41,8 +41,14 @@ import (
 // aussi le label et les extras pour pouvoir alimenter le DTO field-mappings
 // avec une saison DB-only sans entrée TOML.
 type SeasonCatalogEntry struct {
-	ID           string
-	Label        string // FR si TOML, sinon Name Waypoint brut
+	ID string
+	// Label = libellé FR si TOML, sinon Name Waypoint brut. Reste le libellé
+	// canonique/défaut (consommé par l'Explorer via short_label et les tests).
+	Label string
+	// LabelEN = libellé EN du TOML (GH3-1). Pour une saison DB-only sans
+	// traduction, vaut le même Name brut que Label. Sert la résolution
+	// locale-aware du bucket "season" servi à la SaisonPill (projectCatalogToBucket).
+	LabelEN      string
 	Start        time.Time
 	End          *time.Time        // nil = saison ouverte
 	DisplayOrder int               // ordre TOML, ou int max(displayOrders)+10 pour DB-only (en fin de liste)
@@ -103,6 +109,7 @@ func projectTOMLSeasons(assets *mappings.AssetMappingSet) []SeasonCatalogEntry {
 			continue
 		}
 		label, _ := e.Label(mappings.LocaleFR)
+		labelEN, _ := e.Label(mappings.LocaleEN)
 		extra := make(map[string]string, len(e.Extra))
 		for k, v := range e.Extra {
 			extra[k] = v
@@ -110,6 +117,7 @@ func projectTOMLSeasons(assets *mappings.AssetMappingSet) []SeasonCatalogEntry {
 		out = append(out, SeasonCatalogEntry{
 			ID:           e.ID,
 			Label:        label,
+			LabelEN:      labelEN,
 			Start:        *e.StartDate,
 			End:          e.EndDate,
 			DisplayOrder: e.DisplayOrder,
@@ -129,6 +137,14 @@ func projectTOMLSeasons(assets *mappings.AssetMappingSet) []SeasonCatalogEntry {
 //
 // Retourne toujours une slice (possiblement vide). Aucune erreur fatale —
 // les échecs de I/O sont loggués et l'appelant reçoit ce qu'on a pu collecter.
+// seasonsCatalogLoader est le contrat minimal consommé par CareerService et
+// FiltersService : charger les entrées saison d'un titre. Interface consumer-side
+// (K1i, ARCHI 8) — leurs champs ne sont plus typés sur *SeasonsCatalog concret,
+// mockables en test (même package). Implémenté par *SeasonsCatalog.
+type seasonsCatalogLoader interface {
+	Load(ctx context.Context, titleID string) []SeasonCatalogEntry
+}
+
 func (c *SeasonsCatalog) Load(ctx context.Context, titleID string) []SeasonCatalogEntry {
 	dbSeasons := c.loadDBWithFallback(ctx, titleID)
 	return mergeSeasonSources(c.static, dbSeasons)
@@ -215,7 +231,8 @@ func mergeSeasonSources(toml []SeasonCatalogEntry, db []domain.SeasonCalendar) [
 			existing.Source = SeasonSourceMerged
 			continue
 		}
-		// DB-only : libellé fallback = Name brut Waypoint, sinon ID.
+		// DB-only : libellé fallback = Name brut Waypoint, sinon ID. Pas de
+		// traduction disponible → LabelEN identique (même Name servi FR et EN).
 		fallbackLabel := dbS.Name
 		if fallbackLabel == "" {
 			fallbackLabel = id
@@ -223,6 +240,7 @@ func mergeSeasonSources(toml []SeasonCatalogEntry, db []domain.SeasonCalendar) [
 		byID[id] = &SeasonCatalogEntry{
 			ID:           id,
 			Label:        fallbackLabel,
+			LabelEN:      fallbackLabel,
 			Start:        dbS.StartDate,
 			End:          dbS.EndDate,
 			DisplayOrder: maxOrder + 10*(i+1),

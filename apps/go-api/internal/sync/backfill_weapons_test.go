@@ -181,7 +181,7 @@ func ptrU64(v uint64) *uint64 { return &v }
 
 // weaponTestClient est un mock minimal de HaloClient pour les tests BackfillWeaponKillsForMatch.
 type weaponTestClient struct {
-	filmChunks  map[int]filmChunkData
+	filmChunks  map[int]FilmChunkData
 	filmPresent bool
 	filmErr     error
 }
@@ -195,7 +195,7 @@ func (w *weaponTestClient) GetMatchStats(_ context.Context, _ string) (map[strin
 func (w *weaponTestClient) GetMatchSkill(_ context.Context, _ string, _ []string) (map[string]*MatchSkillData, error) {
 	return map[string]*MatchSkillData{}, nil
 }
-func (w *weaponTestClient) GetMatchFilm(_ context.Context, _ string) (map[int]filmChunkData, bool, error) {
+func (w *weaponTestClient) GetMatchFilm(_ context.Context, _ string) (map[int]FilmChunkData, bool, error) {
 	return w.filmChunks, w.filmPresent, w.filmErr
 }
 func (w *weaponTestClient) GetHighlightEventsChunk(_ context.Context, _ string) ([]byte, int, bool, error) {
@@ -247,7 +247,7 @@ func TestBackfillWeaponKillsForMatch_WithHighlightEvents(t *testing.T) {
 
 	client := &weaponTestClient{
 		filmPresent: true,
-		filmChunks: map[int]filmChunkData{
+		filmChunks: map[int]FilmChunkData{
 			0: {Data: []byte{}, StartMS: 0, DurationMS: 1000},
 		},
 	}
@@ -279,7 +279,7 @@ func TestBackfillWeaponKillsForMatch_EmptyHighlightEvents(t *testing.T) {
 
 	client := &weaponTestClient{
 		filmPresent: true,
-		filmChunks: map[int]filmChunkData{
+		filmChunks: map[int]FilmChunkData{
 			0: {Data: []byte{}, StartMS: 0, DurationMS: 1000},
 		},
 	}

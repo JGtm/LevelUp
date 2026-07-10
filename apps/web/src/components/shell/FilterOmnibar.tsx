@@ -300,7 +300,7 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, 
     <div
       className="flex h-9 items-center gap-2 overflow-visible px-4"
       role="toolbar"
-      aria-label="Filtres"
+      aria-label={tCommon('common.filters.pill_label')}
     >
       {available && (
         <FiltresPill
@@ -321,7 +321,7 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, 
         <div
           className="flex shrink-0 items-center gap-0.5 rounded-md border border-input bg-background p-0.5 text-xs"
           role="group"
-          aria-label="Contexte"
+          aria-label={tCommon('common.filters.context_aria')}
         >
           {CONTEXT_ORDER.map((ctx) => (
             <button
@@ -386,7 +386,7 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, 
           aria-live="polite"
           title={tCommon('common.filters.matches_count_title')}
         >
-          {totalAfter} match{totalAfter > 1 ? 's' : ''}
+          {formatMessage(commonManifest, 'common.filters.matches_count', locale, { count: totalAfter })}
         </span>
       )}
 
@@ -425,7 +425,7 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, 
               : 'border border-input bg-background text-muted-foreground hover:bg-muted',
         ].join(' ')}
       >
-        {justAnalysed ? '✓ Appliqué' : isPreviewFetching ? '…' : 'Analyser'}
+        {justAnalysed ? tCommon('common.filter.applied') : isPreviewFetching ? '…' : tCommon('common.filter.analyser')}
       </button>
 
       {hasActiveFilters && (

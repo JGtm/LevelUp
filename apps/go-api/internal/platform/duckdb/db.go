@@ -16,12 +16,60 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
+	"os"
+	"strconv"
 	"sync"
 	"sync/atomic"
 
 	duckdb "github.com/duckdb/duckdb-go/v2"
 )
+
+// Limites ressources DuckDB appliquées à CHAQUE connexion (J2, 2026-07-05).
+// Sans limite, DuckDB fixe memory_limit à ~80% de la RAM (~1.5 Go sur un VPS 2 Go) :
+// un seul gros SELECT/backfill peut alors OOM le conteneur (prod = no-swap). En
+// bornant memory_limit, DuckDB DÉBORDE sur disque au-delà (dégradation sûre, pas
+// d'échec). Défaut CONSERVATEUR calibré sur le VPS prod (2 vCPU / 2 Go ; conteneur
+// ~845 Mo au repos, ~256 Mo dispo). Override par env pour un hôte plus large :
+//
+//	LEVELUP_DUCKDB_MEMORY_LIMIT (ex. "2GB")   LEVELUP_DUCKDB_THREADS (ex. "4")
+//
+// Knob permanent (pas de date de retrait) ; critère : memory_limit doit rester
+// < (RAM - baseline conteneur - marge démo/OS).
+var (
+	duckMemoryLimit = envOr("LEVELUP_DUCKDB_MEMORY_LIMIT", "512MB")
+	duckThreads     = envIntOr("LEVELUP_DUCKDB_THREADS", 2)
+)
+
+// BudgetsSnapshot expose les bornes ressources DuckDB effectives (J2) pour
+// l'observabilité — publiées sous /debug/vars levelup/duckdb_budgets, à côté de
+// duckdb_pool_stats (J1). Valeurs statiques résolues au boot (env ou défauts) :
+// permet de vérifier en un coup d'œil la config mémoire/threads/pool RÉELLEMENT
+// appliquée sur un hôte donné (prérequis de la calibration measure-first).
+func BudgetsSnapshot() map[string]any {
+	return map[string]any{
+		"memory_limit":         duckMemoryLimit,
+		"threads":              duckThreads,
+		"pool_max_open_shared": poolMaxOpenShared,
+		"pool_max_idle_shared": poolMaxIdleShared,
+		"pool_single_conn":     poolSingleConn,
+	}
+}
+
+func envOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
+func envIntOr(key string, def int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return def
+}
 
 // DB encapsule une connexion DuckDB ouverte.
 //
@@ -75,6 +123,26 @@ func DumpCachedLeaks() map[string]int {
 	out := make(map[string]int, len(openDBs))
 	for k, c := range openDBs {
 		out[k] = c.refCount
+	}
+	return out
+}
+
+// PoolStatsSnapshot retourne les sql.DBStats de chaque handle DuckDB ouvert
+// (clé de cache "ro:"/"rw:"+path → stats). Observabilité pool (J1, ADR 0009) :
+// WaitCount/WaitDuration non nuls révèlent la contention sur le pool (lectures qui
+// attendent une connexion libre) ; InUse proche de MaxOpenConnections = saturation.
+// Snapshot instantané, sous verrou — appelé par l'endpoint expvar /debug/vars.
+func PoolStatsSnapshot() map[string]sql.DBStats {
+	openDBsMu.Lock()
+	defer openDBsMu.Unlock()
+	out := make(map[string]sql.DBStats, len(openDBs))
+	for k, c := range openDBs {
+		if c.db == nil || c.db.closed.Load() {
+			continue
+		}
+		if sdb := c.db.loadSQL(); sdb != nil {
+			out[k] = sdb.Stats()
+		}
 	}
 	return out
 }
@@ -189,15 +257,15 @@ func OpenReadOnly(path string, timezone ...string) (*DB, error) {
 		"ro:"+path,
 		path,
 		path+"?access_mode=read_only",
-		4,
-		2,
+		poolMaxOpenShared,
+		poolMaxIdleShared,
 		"OpenReadOnly",
 		tz,
 	)
 }
 
 // OpenReadWriteShared ouvre une base DuckDB en lecture-écriture avec un pool de connexions
-// (4 conns max, comme OpenReadOnly). À utiliser pour les bases partagées (ex: metadata.duckdb)
+// (poolMaxOpenShared, comme OpenReadOnly). À utiliser pour les bases partagées (ex: metadata.duckdb)
 // qui reçoivent des lectures concurrentes ET des écritures occasionnelles.
 // Partage la même clé de cache que OpenReadWrite : si l'un est déjà ouvert, l'autre le réutilise.
 func OpenReadWriteShared(path string, timezone ...string) (*DB, error) {
@@ -209,7 +277,7 @@ func OpenReadWriteShared(path string, timezone ...string) (*DB, error) {
 			slog.Warn("duckdb: timezone invalide ignorée", "input", raw, "path", path)
 		}
 	}
-	return openCachedDB("rw:"+path, path, path, 4, 2, "OpenReadWriteShared", tz)
+	return openCachedDB("rw:"+path, path, path, poolMaxOpenShared, poolMaxIdleShared, "OpenReadWriteShared", tz)
 }
 
 // OpenReadWrite ouvre une base DuckDB en lecture-écriture.
@@ -224,8 +292,18 @@ func OpenReadWrite(path string, timezone ...string) (*DB, error) {
 			slog.Warn("duckdb: timezone invalide ignorée", "input", raw, "path", path)
 		}
 	}
-	return openCachedDB("rw:"+path, path, path, 1, 1, "OpenReadWrite", tz)
+	return openCachedDB("rw:"+path, path, path, poolSingleConn, poolSingleConn, "OpenReadWrite", tz)
 }
+
+// Limites de pool DuckDB (J8, 2026-07-05 : ex-magic 4/2/1). Le driver DuckDB est
+// mono-process (ADR 0013) : les pools RO / shared-RW tolèrent quelques lectures
+// concurrentes (poolMaxOpenShared) avec réutilisation au repos (poolMaxIdleShared) ;
+// le writer RW exclusif reste à une seule connexion (poolSingleConn).
+const (
+	poolMaxOpenShared = 4
+	poolMaxIdleShared = 2
+	poolSingleConn    = 1
+)
 
 func openCachedDB(
 	key, path, dsn string,
@@ -307,147 +385,6 @@ func openCachedDB(
 	return db, nil
 }
 
-// IsInvalidatedError détecte les erreurs qui marquent une connexion comme
-// inutilisable et exigent un Reopen() pour récupérer. Trois classes :
-//
-//  1. FATAL DuckDB (ART corruption) :
-//     "database has been invalidated because of a previous fatal error."
-//     Cause racine : « Failed to delete all rows from index. Only deleted
-//     N out of M rows. » sur un index ART avec valeurs NULL (duckdb#9277).
-//
-//  2. Handle fermée côté stdlib database/sql (corrigé 2026-05-25) :
-//     "sql: database is closed" — retourné par toute opération sur un
-//     *sql.DB après un Close(). Observé en prod 2026-05-25 11:20-11:23
-//     en cascade massive (home + career + teammates + filters + explorer)
-//     sur la player DB de JGtm. La DB physique reste saine, c'est juste
-//     la handle Go périmée (close volontaire, swap RO↔RW, refcount cache).
-//     Avant ce fix : WithReopenOnInvalidated retournait directement
-//     l'erreur sans tenter Reopen → 500 cascade pendant plusieurs minutes.
-//
-//  3. Variantes driver-level "connection was closed".
-//
-// Exporté pour que les callers (repo, scheduler) puissent décider de :
-//   - logger un incident métier (corruption d'index)
-//   - tenter un Reopen() via WithReopenOnInvalidated
-//   - propager au handler HTTP qui choisira la stratégie (503 + retry, etc.)
-func IsInvalidatedError(err error) bool {
-	if err == nil {
-		return false
-	}
-	s := err.Error()
-	return strings.Contains(s, "database has been invalidated") ||
-		strings.Contains(s, "Failed to delete all rows from index") ||
-		strings.Contains(s, "database must be restarted prior") ||
-		strings.Contains(s, "sql: database is closed") ||
-		strings.Contains(s, "connection was closed") ||
-		strings.Contains(s, "database is closed")
-}
-
-// IsFileLockError détecte l'erreur DuckDB d'ouverture d'un fichier déjà
-// verrouillé en écriture par un AUTRE process (mono-writer). Distinct de
-// IsInvalidatedError (corruption/handle périmée) : ici la DB est saine, c'est
-// une contention inter-process (CLI backfill concurrent, 2e instance serveur,
-// hot-reload Air pas encore libéré). Permet aux callers d'émettre un message
-// actionnable au lieu d'un "open rw" opaque (cf. spartan_cron Madina 2026-05-31).
-func IsFileLockError(err error) bool {
-	if err == nil {
-		return false
-	}
-	s := err.Error()
-	return strings.Contains(s, "Could not set lock on file") ||
-		strings.Contains(s, "Conflicting lock is held") ||
-		strings.Contains(s, "different configuration") ||
-		// Windows/DuckDB : un autre détenteur (process distinct OU instance in-process
-		// avec une config différente) tient déjà le fichier. DuckDB ajoute toujours ce
-		// marqueur EN — "File is already open in <exe> (PID N)" — indépendamment de la
-		// locale OS (le message Win FR "utilisé par un autre processus" varie, pas lui).
-		// Sans ça, le boot Air laissant un tmp/server.exe résiduel produit un WARN
-		// par-joueur dans spartan_cron au lieu de l'ERROR agrégée. Cf. 2026-06-27.
-		strings.Contains(s, "File is already open in")
-}
-
-// Reopen ferme la connexion actuelle et en ouvre une nouvelle avec les
-// mêmes paramètres (DSN, max conns, timezone). Permet de récupérer d'une
-// invalidation fatale sans redémarrer le serveur.
-//
-// Thread-safe via le mutex du cache. Tout autre *DB existant qui pointait
-// sur la MÊME instance partagée sera également mis à jour (le pointeur
-// sqlDB est remplacé in-place et la cache entry pointe sur le même *DB).
-//
-// Limitations :
-//   - Les requêtes/transactions en cours sur l'ancien sqlDB échoueront
-//     (comportement attendu : l'invalidation a déjà cassé ces requêtes).
-//   - Si le ping de la nouvelle connexion échoue (fichier corrompu côté
-//     OS), retourne l'erreur sans toucher au sqlDB existant.
-func (db *DB) Reopen() error {
-	if db == nil {
-		return errors.New("duckdb.Reopen: nil DB")
-	}
-	openDBsMu.Lock()
-	defer openDBsMu.Unlock()
-
-	// Construit le nouveau sqlDB avec la même config qu'à l'ouverture initiale.
-	newSQLDB, err := openSQLDBFor(db.dsn, db.timezone, db.op, db.path)
-	if err != nil {
-		slog.Error("duckdb: Reopen a échoué (fichier inaccessible ?)",
-			"path", db.path, "op", db.op, "err", err)
-		return err
-	}
-	applyConnLimits(newSQLDB, db.maxOpenConns, db.maxIdleConns)
-
-	// Ferme l'ancien sqlDB en best-effort (déjà invalidé côté DuckDB).
-	if old := db.loadSQL(); old != nil {
-		_ = old.Close()
-	}
-	db.sqlDB.Store(newSQLDB)
-	db.closed.Store(false)
-
-	// Restaure l'entrée cache pointant sur cette même *DB (refCount préservé
-	// si déjà présent, sinon refCount=1).
-	if db.cacheKey != "" {
-		if cached, ok := openDBs[db.cacheKey]; ok {
-			cached.db = db
-		} else {
-			openDBs[db.cacheKey] = &cachedDB{db: db, refCount: 1}
-		}
-	}
-
-	slog.Info("duckdb: connexion ré-ouverte après invalidation",
-		"path", db.path, "op", db.op)
-	return nil
-}
-
-// WithReopenOnInvalidated exécute fn ; si fn renvoie une erreur
-// d'invalidation détectée par IsInvalidatedError, fait un Reopen() et
-// retry fn une fois. Sinon retourne l'erreur originale.
-//
-// Pattern à utiliser dans les repos qui font des opérations write sensibles
-// (UPDATE/DELETE) sur des DB partagées process-level — ainsi un bug DuckDB
-// transitoire n'invalide pas la DB pour toute la durée de vie du process.
-//
-// Le retry est borné à 1 : si la 2e tentative échoue aussi avec une
-// invalidation, on remonte l'erreur (probablement une corruption durable
-// du fichier qui nécessite intervention).
-func (db *DB) WithReopenOnInvalidated(fn func() error) error {
-	err := fn()
-	if !IsInvalidatedError(err) {
-		return err
-	}
-	slog.Warn("duckdb: connexion invalidée, tentative de reopen",
-		"path", db.path, "err", err)
-	if reopenErr := db.Reopen(); reopenErr != nil {
-		return fmt.Errorf("reopen after invalidation: %w (original: %v)", reopenErr, err)
-	}
-	retryErr := fn()
-	if retryErr != nil {
-		// Retry échoué : incident à traiter par les ops (corruption persistante ?).
-		slog.Error("duckdb: retry post-reopen a échoué",
-			"path", db.path, "err", retryErr,
-			"persistent_invalidation", IsInvalidatedError(retryErr))
-	}
-	return retryErr
-}
-
 // UpsertNoConflict réalise un SELECT d'existence puis UPDATE ou INSERT, le tout
 // sous WithReopenOnInvalidated.
 //
@@ -466,6 +403,35 @@ func (db *DB) WithReopenOnInvalidated(fn func() error) error {
 // <pk...>`). Les écritures concurrentes sur la MÊME clé doivent être sérialisées
 // par le caller (WriteQueue, write lease…) : ce helper ne protège pas la course
 // SELECT→INSERT entre goroutines.
+// UpsertRowNoConflict fait un SELECT d'existence puis UPDATE (si présent) ou INSERT
+// (sinon) sur un *sql.DB brut — ART-safe : JAMAIS d'ON CONFLICT sur la PK (qui réécrit
+// via l'index ART DuckDB, bug #23046). existsQuery doit retourner ≥1 ligne si la clé
+// existe.
+//
+// SOURCE UNIQUE (K1d, dédup #6, 2026-07-05) : ce pattern était copié-collé dans
+// ops/catalog_refresh.upsertNoConflict, service.CatalogFetcherService.upsertRowNoConflict
+// et api/registry_catalog_expand.upsertPlaylistWeight. La méthode (*DB).UpsertNoConflict
+// délègue ici depuis son wrapper reopen-on-invalidated.
+func UpsertRowNoConflict(
+	ctx context.Context, db *sql.DB,
+	existsQuery string, existsArgs []any,
+	updateQuery string, updateArgs []any,
+	insertQuery string, insertArgs []any,
+) error {
+	var dummy int
+	err := db.QueryRowContext(ctx, existsQuery, existsArgs...).Scan(&dummy)
+	switch {
+	case err == nil:
+		_, execErr := db.ExecContext(ctx, updateQuery, updateArgs...)
+		return execErr
+	case errors.Is(err, sql.ErrNoRows):
+		_, execErr := db.ExecContext(ctx, insertQuery, insertArgs...)
+		return execErr
+	default:
+		return err
+	}
+}
+
 func (db *DB) UpsertNoConflict(
 	ctx context.Context,
 	existsQuery string, existsArgs []any,
@@ -473,47 +439,50 @@ func (db *DB) UpsertNoConflict(
 	insertQuery string, insertArgs []any,
 ) error {
 	return db.WithReopenOnInvalidated(func() error {
-		var dummy int
-		err := db.loadSQL().QueryRowContext(ctx, existsQuery, existsArgs...).Scan(&dummy)
-		switch {
-		case err == nil:
-			_, execErr := db.loadSQL().ExecContext(ctx, updateQuery, updateArgs...)
-			return execErr
-		case errors.Is(err, sql.ErrNoRows):
-			_, execErr := db.loadSQL().ExecContext(ctx, insertQuery, insertArgs...)
-			return execErr
-		default:
-			return err
-		}
+		return UpsertRowNoConflict(ctx, db.loadSQL(),
+			existsQuery, existsArgs, updateQuery, updateArgs, insertQuery, insertArgs)
 	})
 }
 
 // openSQLDBFor construit un *sql.DB depuis un DSN + timezone, avec ping.
 // Extrait de openCachedDB pour réutilisation par Reopen.
 func openSQLDBFor(dsn, timezone, op, path string) (*sql.DB, error) {
-	var sqlDB *sql.DB
-	if timezone != "" {
-		tz := timezone
-		connector, err := duckdb.NewConnector(dsn, func(execer driver.ExecerContext) error {
-			_, initErr := execer.ExecContext(context.Background(), "SET TimeZone='"+tz+"'", nil)
-			return initErr
-		})
-		if err != nil {
-			return nil, fmt.Errorf("duckdb.%s connector(%s): %w", op, path, err)
-		}
-		sqlDB = sql.OpenDB(connector)
-	} else {
-		var err error
-		sqlDB, err = sql.Open("duckdb", dsn)
-		if err != nil {
-			return nil, fmt.Errorf("duckdb.%s(%s): %w", op, path, err)
-		}
+	// Toutes les connexions passent par le connector pour appliquer les limites
+	// ressources (memory_limit + threads, J2) + la timezone. Auparavant seule la
+	// branche timezone!="" avait un hook d'init → la borne mémoire manquait sur
+	// les DBs ouvertes sans TZ (ex. metadata) = risque OOM sur VPS contraint.
+	connector, err := duckdb.NewConnector(dsn, func(execer driver.ExecerContext) error {
+		return applyDuckSessionInit(execer, timezone)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("duckdb.%s connector(%s): %w", op, path, err)
 	}
+	sqlDB := sql.OpenDB(connector)
 	if err := sqlDB.PingContext(context.Background()); err != nil {
 		sqlDB.Close()
 		return nil, fmt.Errorf("duckdb.%s ping(%s): %w", op, path, err)
 	}
 	return sqlDB, nil
+}
+
+// applyDuckSessionInit borne les ressources de CHAQUE connexion (J2) puis applique
+// la timezone si fournie. memory_limit protège le conteneur d'un OOM ; threads borne
+// le parallélisme au nombre de vCPU. Cf. vars duckMemoryLimit / duckThreads.
+func applyDuckSessionInit(execer driver.ExecerContext, timezone string) error {
+	ctx := context.Background()
+	stmts := []string{
+		"SET memory_limit='" + duckMemoryLimit + "'",
+		"SET threads=" + strconv.Itoa(duckThreads),
+	}
+	if timezone != "" {
+		stmts = append(stmts, "SET TimeZone='"+timezone+"'")
+	}
+	for _, s := range stmts {
+		if _, err := execer.ExecContext(ctx, s, nil); err != nil {
+			return fmt.Errorf("duckdb session init %q: %w", s, err)
+		}
+	}
+	return nil
 }
 
 // applyConnLimits applique maxOpen/maxIdle avec la logique d'openCachedDB
@@ -528,134 +497,3 @@ func applyConnLimits(sqlDB *sql.DB, maxOpenConns, maxIdleConns int) {
 		sqlDB.SetMaxIdleConns(maxIdleConns)
 	}
 }
-
-// Close ferme la connexion DuckDB. À appeler au shutdown.
-func (db *DB) Close() error {
-	if db == nil || db.loadSQL() == nil {
-		return nil
-	}
-
-	openDBsMu.Lock()
-	defer openDBsMu.Unlock()
-
-	if db.closed.Load() {
-		return nil
-	}
-	if db.cacheKey != "" {
-		if cached, ok := openDBs[db.cacheKey]; ok {
-			if cached.refCount > 1 {
-				cached.refCount--
-				return nil
-			}
-			delete(openDBs, db.cacheKey)
-		}
-	}
-	db.closed.Store(true)
-	return db.loadSQL().Close()
-}
-
-// QueryRow exécute une requête qui retourne exactement une ligne.
-// L'erreur réelle de la requête est différée jusqu'à Scan ; on ne peut donc pas
-// la logger ici. Les call sites critiques doivent capturer err sur Scan eux-mêmes.
-func (db *DB) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
-	return db.loadSQL().QueryRowContext(ctx, query, args...)
-}
-
-// Query exécute une requête qui retourne plusieurs lignes.
-func (db *DB) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
-	rows, err := db.loadSQL().QueryContext(ctx, query, args...)
-	if err != nil {
-		logDBError(ctx, "duckdb: query failed", db, query, err)
-	}
-	return rows, err
-}
-
-// Exec exécute une instruction sans valeur de retour.
-func (db *DB) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	res, err := db.loadSQL().ExecContext(ctx, query, args...)
-	if err != nil {
-		logDBError(ctx, "duckdb: exec failed", db, query, err)
-	}
-	return res, err
-}
-
-// ExecRecovered exécute un Exec sous WithReopenOnInvalidated : si la connexion
-// est invalidée par un bug DuckDB transitoire, fait un Reopen + retry une fois.
-//
-// À utiliser par défaut dans les repos qui écrivent sur des bases partagées
-// process-level (shared_social.duckdb, notamment) — un seul incident de
-// connexion ne doit pas casser l'API jusqu'au prochain restart.
-func (db *DB) ExecRecovered(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	var res sql.Result
-	err := db.WithReopenOnInvalidated(func() error {
-		var execErr error
-		res, execErr = db.loadSQL().ExecContext(ctx, query, args...)
-		return execErr
-	})
-	if err != nil {
-		logDBError(ctx, "duckdb: exec failed (after recovery)", db, query, err)
-	}
-	return res, err
-}
-
-// QueryRecovered exécute une Query sous WithReopenOnInvalidated. Cf. ExecRecovered.
-//
-// ATTENTION : si l'invalidation se produit pendant l'itération des rows (donc
-// après QueryRecovered a retourné), le wrapper ne peut plus reagir. Seule la
-// requête initiale est protégée. Les rows.Next()/rows.Scan() restent
-// vulnérables et doivent être audités dans les chemins critiques (rare).
-func (db *DB) QueryRecovered(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
-	var rows *sql.Rows
-	err := db.WithReopenOnInvalidated(func() error {
-		var qerr error
-		rows, qerr = db.loadSQL().QueryContext(ctx, query, args...)
-		return qerr
-	})
-	if err != nil {
-		logDBError(ctx, "duckdb: query failed (after recovery)", db, query, err)
-	}
-	return rows, err
-}
-
-// logDBError centralise le log d'erreur DuckDB avec contexte standard
-// (path, op, query excerpt, err). Niveau Error — toute erreur DB est anormale
-// par défaut ; les call sites qui tolèrent une erreur (ex. : fichier absent
-// pour Stat) doivent éviter de passer par db.Query/Exec, ou wrapper l'err.
-func logDBError(ctx context.Context, msg string, db *DB, query string, err error) {
-	slog.ErrorContext(ctx, msg,
-		"path", db.path,
-		"op", db.op,
-		"query_excerpt", queryExcerpt(query),
-		"err", err,
-	)
-}
-
-// queryExcerpt retourne les ~80 premiers caractères de la query, sur une seule
-// ligne (newlines → espaces, espaces consécutifs collapsés). Évite de polluer
-// la console avec des SQL multi-lignes tout en gardant assez d'info pour
-// identifier la requête fautive.
-func queryExcerpt(q string) string {
-	const maxLen = 80
-	// Collapse whitespace (newlines, tabs, multiples spaces) en un seul espace.
-	collapsed := strings.Join(strings.Fields(q), " ")
-	if len(collapsed) <= maxLen {
-		return collapsed
-	}
-	// Tronquage avec ellipsis. Comptage byte = ok pour ASCII SQL ; runes pour
-	// les cas avec accents dans les noms de tables/colonnes (rare).
-	if cnt := 0; true {
-		for i := range collapsed {
-			if cnt == maxLen {
-				return collapsed[:i] + "…"
-			}
-			cnt++
-		}
-	}
-	return collapsed
-}
-
-// SQLDb retourne le *sql.DB sous-jacent (pour interop avec d'autres packages).
-func (db *DB) SQLDb() *sql.DB { return db.loadSQL() }
-
-// Path retourne le chemin de la base.
-func (db *DB) Path() string { return db.path }

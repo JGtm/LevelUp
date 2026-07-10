@@ -111,8 +111,8 @@ func (r *StreaksRepo) List(ctx context.Context, userID, titleSlug string) ([]str
 }
 
 // scanStreak parse une ligne de la table streak en streaks.Streak.
-// rowScanner est défini dans prestige_player_helpers.go.
-func scanStreak(row rowScanner) (streaks.Streak, error) {
+// RowScanner est défini dans sql_scan_helpers.go.
+func scanStreak(row RowScanner) (streaks.Streak, error) {
 	var (
 		s             streaks.Streak
 		streakType    string

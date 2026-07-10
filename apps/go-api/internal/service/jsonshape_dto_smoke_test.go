@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	teammatespkg "levelup/go-api/internal/service/teammates"
+
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
@@ -162,7 +164,7 @@ func TestDTOs_NoNilSlicesOnEmptyInput(t *testing.T) {
 
 	t.Run("TeammatesService.GetPage", func(t *testing.T) {
 		repo := &mockSquadRepo{topRows: []domain.TopTeammateRow{}}
-		svc := NewTeammatesService(repo, func(_ context.Context) []string { return nil }).
+		svc := teammatespkg.NewTeammatesService(repo, func(_ context.Context) []string { return nil }).
 			WithPlayerMatchesRepo(newSynthMockFromRows(nil, nil), "halo_infinite", "Test")
 		resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{})
 		if err != nil {
@@ -196,18 +198,6 @@ func TestDTOs_NoNilSlicesOnEmptyInput(t *testing.T) {
 		repo := &mockSessionPageStatsRepo{matches: []legacymatch.StatsMatchRow{}}
 		svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(nil, nil), "halo_infinite", "Test")
 		resp, err := svc.GetPage(context.Background(), domain.SessionPageRequest{})
-		if err != nil {
-			t.Fatalf("error: %v", err)
-		}
-		testutil.RequireNoNilSlicesWithoutOmitempty(t, resp)
-	})
-
-	t.Run("SessionCompareService.Compare", func(t *testing.T) {
-		sessRepo := &mockSessionCompareSessionsRepo{rows: []domain.SessionMatchRow{}}
-		statsRepo := &mockSessionCompareStatsRepo{matches: []legacymatch.StatsMatchRow{}}
-		svc := NewSessionCompareService(sessRepo, statsRepo).
-			WithPlayerMatchesRepo(newStatsMockFromRows(nil, nil), "halo_infinite", "Test")
-		resp, err := svc.Compare(context.Background(), domain.SessionCompareRequest{})
 		if err != nil {
 			t.Fatalf("error: %v", err)
 		}

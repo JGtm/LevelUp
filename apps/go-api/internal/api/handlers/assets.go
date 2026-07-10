@@ -234,10 +234,10 @@ func handleResolverError(ctx context.Context, w http.ResponseWriter, err error, 
 		slog.Warn(op+": upstream unavailable", append(ref.LogAttrs(), "err", err)...)
 		httpError(ctx, w, "source distante indisponible", http.StatusBadGateway)
 	case errors.Is(err, assets.ErrUnsupportedKind):
-		slog.Error(op+": unsupported kind", append(ref.LogAttrs(), "err", err)...)
+		slog.ErrorContext(ctx, op+": unsupported kind", append(ref.LogAttrs(), "err", err)...)
 		httpError(ctx, w, "type d'asset non supporté", http.StatusInternalServerError)
 	default:
-		slog.Error(op+": resolver error", append(ref.LogAttrs(), "err", err)...)
+		slog.ErrorContext(ctx, op+": resolver error", append(ref.LogAttrs(), "err", err)...)
 		httpError(ctx, w, "erreur interne", http.StatusInternalServerError)
 	}
 }

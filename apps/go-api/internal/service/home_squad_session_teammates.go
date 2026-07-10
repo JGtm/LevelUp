@@ -11,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/service/teammates"
 )
 
 // maxHomeSessionTeammates borne le nombre de coéquipiers attachés à une session
@@ -27,7 +28,7 @@ type mainTeamParticipantsLoader interface {
 // WithSquadSessionTeammates injecte de quoi renseigner SessionSummaryItem.Teammates
 // sur les sessions escouade : un loader de participants alliés + un résolveur d'amis
 // configurés (optionnel — restreint la composition aux amis déclarés). Chaînable.
-func (s *HomeService) WithSquadSessionTeammates(loader mainTeamParticipantsLoader, friends FriendGamertagsResolver) *HomeService {
+func (s *HomeService) WithSquadSessionTeammates(loader mainTeamParticipantsLoader, friends teammates.FriendGamertagsResolver) *HomeService {
 	s.sessionTeammatesLoader = loader
 	s.sessionFriendsResolver = friends
 	return s

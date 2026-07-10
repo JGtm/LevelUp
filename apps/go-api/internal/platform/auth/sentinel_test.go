@@ -47,8 +47,7 @@ var allowedEnvReaders = map[string]string{
 	"internal/platform/auth/pool/discovery.go":                  "Phase 3b fallback DEPRECATED : readOAuthRefreshTokenFromEnv. Retiré Phase 5.",
 	"internal/platform/auth/pool/discovery_test.go":             "Test discovery (t.Setenv).",
 	"internal/platform/auth/pool/discovery_watcher_test.go":     "Test isolation env var.",
-	"internal/api/registry.go":                                  "Phase 3a fallback DEPRECATED : oauthRefreshTokenForPlayer (avant split). Retiré Phase 5.",
-	"internal/api/registry_auth.go":                             "Phase 3a fallback DEPRECATED post god-file split : refreshTokensFromDB + oauthRefreshTokenForPlayer. Retiré Phase 5.",
+	"internal/api/wire/registry_auth.go":                        "Phase 3a fallback DEPRECATED post god-file split : refreshTokensFromDB + oauthRefreshTokenForPlayer. Retiré Phase 5.",
 	"internal/platform/auth/oauth_refresh.go":                   "Module OAuth bas-niveau : lit SPNKR_AZURE_* (pas SPNKR_OAUTH_REFRESH_TOKEN_) — string mention dans le module canonique OAuth.",
 	"internal/platform/auth/capturecli/capturecli.go":           "ParseRefreshTokenStdin détecte le format env-var-line pour extraire le RT (string match, pas os.Getenv).",
 	"internal/platform/auth/capturecli/capturecli_test.go":      "Tests du parser — strings 'SPNKR_OAUTH_REFRESH_TOKEN_X=value' utilisées comme fixtures.",
@@ -64,6 +63,7 @@ var allowedEnvReaders = map[string]string{
 	"internal/config/config_helpers_test.go": "Test du chargement env (t.Setenv).",
 	"cmd/server/main.go":                     "Wiring resolveXUIDForRotation + appel migrateLegacyAuthTokensAtBoot (Phase 2). Mention dans onRotated log.",
 	"internal/scheduler/auto_sync.go":        "Header doc qui mentionne le retrait de defaultTokenReader (referenced for historical context).",
+	"internal/scheduler/auto_sync_run.go":    "Message d'aide (K2c : extrait de auto_sync.go) citant SPNKR_OAUTH_REFRESH_TOKEN_<GT> dans checkSyncPreconditions — libellé pour l'utilisateur, PAS une lecture d'env.",
 
 	// === Sync engine ===
 	"internal/sync/engine_postsync.go": "Mention dans commentaire/log (legacy).",
@@ -151,8 +151,7 @@ var duckdbWritePattern = regexp.MustCompile(`\bduckdb\.WriteOAuthRefreshToken\b`
 // Tous transitoires (Phase 5 supprimera ces écritures au profit du store unique).
 var allowedDuckDBWriters = map[string]string{
 	"internal/platform/duckdb/queries_auth.go": "Définition de la fonction. Sera supprimée Phase 6.",
-	"internal/api/registry.go":                 "ADR 0023 compat transitoire (pré-split) : tryRefreshFromLegacy persiste aussi en DuckDB. Retiré Phase 5.",
-	"internal/api/registry_auth.go":            "ADR 0023 compat transitoire post-split : tryRefreshFromLegacy persiste aussi en DuckDB. Retiré Phase 5.",
+	"internal/api/wire/registry_auth.go":       "ADR 0023 compat transitoire post-split : tryRefreshFromLegacy persiste aussi en DuckDB. Retiré Phase 5.",
 	"internal/api/handlers/admin_auto_sync.go": "ADR 0023 compat transitoire : probe onRotated écrit double (store + DuckDB). Retiré Phase 5.",
 	"cmd/server/main.go":                       "ADR 0023 compat transitoire : autoSyncPool onRotated double-write store + DuckDB. Retiré Phase 5.",
 	"internal/scheduler/auto_sync_e2e_test.go": "Test E2E historique qui setup sync_meta directement — sera adapté Phase 5.",
@@ -284,6 +283,36 @@ func TestSentinel_NoNewClientSecretReaders(t *testing.T) {
 	})
 	if len(violations) > 0 {
 		t.Errorf("NEW SPNKR_AZURE_CLIENT_SECRET reader detected — vérifier que ce n'est pas une fuite : %v", violations)
+	}
+}
+
+// ─── Self-check anti-pourrissement (V4d, VF-6) ──────────────────────────────
+
+// TestSentinel_AllowlistEntriesPointToExistingFiles vérifie que chaque entrée
+// des allowlists du sentinel pointe un FICHIER EXISTANT. Une entrée dont le
+// fichier a disparu (déplacé/supprimé par un refactor) est un trou latent : si
+// un fichier est un jour recréé à ce chemin, il contournerait le sentinel sans
+// alerte. C'est exactement le défaut révélé par VF-6 (internal/api/registry.go
+// supprimé au lot K mais toujours allowlisté). Les clés de ces maps sont TOUTES
+// des chemins de fichiers (pas des motifs) → self-check d'existence direct.
+func TestSentinel_AllowlistEntriesPointToExistingFiles(t *testing.T) {
+	repoRoot := findRepoRootForSentinel(t)
+	apiRoot := filepath.Join(repoRoot, "apps", "go-api")
+
+	allowlists := map[string]map[string]string{
+		"allowedEnvReaders":          allowedEnvReaders,
+		"allowedDuckDBWriters":       allowedDuckDBWriters,
+		"allowedClientSecretReaders": allowedClientSecretReaders,
+	}
+	for name, allowlist := range allowlists {
+		for rel := range allowlist {
+			path := filepath.Join(apiRoot, filepath.FromSlash(rel))
+			if _, err := os.Stat(path); err != nil {
+				t.Errorf("%s : entrée %q pointe un fichier inexistant (%v) — refactor de renommage/suppression ?"+
+					" Retirer l'entrée morte (trou latent : un fichier recréé à ce chemin contournerait le sentinel).",
+					name, rel, err)
+			}
+		}
 	}
 }
 

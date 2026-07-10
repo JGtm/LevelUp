@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain"
-	syncpkg "levelup/go-api/internal/sync"
 )
 
 // FetchStatus tags the outcome of the last live fetch attempt.
@@ -46,8 +45,8 @@ const (
 // progress et custom peuvent être nil indépendamment. Retourne un Partial
 // dont IsEmpty() peut être true si l'API n'a rien rendu d'exploitable.
 func PartialFromLive(
-	progress *syncpkg.CareerRankData,
-	custom *syncpkg.SpartanCustomizationData,
+	progress *domain.CareerRankSnapshot,
+	custom *domain.SpartanCustomizationData,
 ) *domain.CareerProgressionPartial {
 	p := &domain.CareerProgressionPartial{}
 
@@ -108,7 +107,7 @@ func PartialFromLive(
 // progressHasRealData retourne true si l'objet progress contient au moins UN
 // signal positif (rank>0, XP réel, ou IsMaxRank). Sinon c'est probablement
 // une réponse API muette qu'on ne veut pas convertir en INSERT bidon.
-func progressHasRealData(p *syncpkg.CareerRankData) bool {
+func progressHasRealData(p *domain.CareerRankSnapshot) bool {
 	if p == nil {
 		return false
 	}

@@ -137,6 +137,9 @@ export function ExplorerPage() {
   // resté désactivé pour éviter le mélange CSR/LUSR ambigu.
   // Cf. thought_log 2026-05-09 P3 — fusion du single-select "Expérience" dans
   // le multi-select "Type d'expérience" (Option A).
+  // CONTRAT (GH6-1) : 'PVP classé'/'PVP non classé' sont les VALUES FR canoniques du
+  // filtre expérience (identiques en FR et EN — seul le Label affiché est localisé côté
+  // backend). Ne JAMAIS comparer sur un libellé localisé ici.
   const rankedContext: 'ranked' | 'unranked' | '' = (() => {
     if (expTypes.size !== 1) return ''
     if (expTypes.has('PVP classé')) return 'ranked'

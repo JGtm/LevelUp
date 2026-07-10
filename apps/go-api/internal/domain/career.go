@@ -193,6 +193,7 @@ type CareerCSRResponse struct {
 // TopMatchDTO représente un match dans le top/pire performance.
 type TopMatchDTO struct {
 	MatchID          string   `json:"match_id"`
+	StartTime        *string  `json:"start_time"`
 	PerformanceScore float64  `json:"performance_score"`
 	MapUI            *string  `json:"map_ui"`
 	ModeUI           *string  `json:"mode_ui"`

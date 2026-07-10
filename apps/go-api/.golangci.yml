@@ -4,17 +4,17 @@
 #   ruff (lint)                -> golangci-lint + staticcheck
 #   black / ruff-format        -> gofmt (standard Go, pas de config)
 #   pyright / mypy             -> compilateur Go (verification statique a la compile)
-#   McCabe C901 max 12         -> gocyclo max-complexity 12
-#   PLR0913 max 5 args         -> revive argument-limit 5
-#   enforce_size_limits.py     -> funlen (80 lignes) + lll (100 chars)
+#   McCabe C901                -> gocyclo max-complexity (relaxe a 15)
+#   PLR0913                    -> revive argument-limit (relaxe a 7)
+#   enforce_size_limits.py     -> funlen (80 lignes / 80 statements) + lll
 #   isort                      -> goimports (no config needed)
 #   detect-secrets             -> hook pre-commit universel (inchange)
 #
-# Seuils (identiques Python) :
-#   Complexite cyclomatique : 12
-#   Longueur de fonction     : 80 lignes  / 60 statements
-#   Longueur de ligne        : 100 caracteres
-#   Nombre d'arguments       : 5
+# Seuils EFFECTIFS (cf. bloc linters.settings ci-dessous — source de verite) :
+#   Complexite cyclomatique : 15
+#   Longueur de fonction     : 80 lignes  / 80 statements
+#   Longueur de ligne        : 220 caracteres (relaxe progressive)
+#   Nombre d'arguments       : 7
 #
 # Migration v1 -> v2 (chore/ci-stabilization, 2026-05-20) :
 #   - branche v1 abandonnee depuis mars 2025 (derniere = v1.64.8)
@@ -50,7 +50,7 @@ linters:
       min-complexity: 15  # Relaxe de 12 a 15 : fonctions de routing/sync naturellement complexes
 
     funlen:
-      lines: 100  # Relaxe de 80 a 100 : portage Python conserve certaines fonctions longues
+      lines: 80  # Standard projet (seuils Python) ; dette gelee via only-new-issues (L3, 2026-07-05)
       statements: 80
 
     lll:
@@ -64,7 +64,13 @@ linters:
     revive:
       rules:
         - name: argument-limit
-          arguments: [7]  # Relaxe de 5 a 7 : handlers/sync ont parfois 6-7 args legitimes
+          # L3 (2026-07-05) : exclusion blanket 'argument-limit' RETIREE -> la regle
+          # (jusqu'ici DESACTIVEE, cf. audit CR A20) est desormais ACTIVE. Seuil 7 (et
+          # non 5-Python) : mesure sur pieces = distribution 89 fonctions a 6 args + 29
+          # a 7 (idiome orchestration ctx+params), PUIS une queue nette de 33 a >=8
+          # (les vrais monstres, jusqu'a 14 args). 7 cible cette queue sans refactorer
+          # l'idiome 6-7 etabli. Dette gelee via only-new-issues ; nouveau code borne a 7.
+          arguments: [7]
         - name: exported
           arguments: ["checkPrivateReceivers"]
         - name: var-naming
@@ -113,10 +119,6 @@ linters:
       - linters: [revive]
         text: 'that stutters'
 
-      # argument-limit : fonctions de correlation multi-metriques, refactoring hors scope
-      - linters: [revive]
-        text: 'argument-limit'
-
       # Tests : permissifs sur fonctions longues + lll + complexite + setup DB
       # sans context + duplication de constantes (patterns idiomatiques tests).
       # noctx : tests de setup utilisent db.Ping()/db.Exec() sans ctx — acceptable.
@@ -158,12 +160,6 @@ linters:
           - unparam
           - ineffassign
           - staticcheck
-
-      # Fichiers generes par oapi-codegen : pas de lint
-      - path: "internal/api/gen/"
-        linters:
-          - lll
-          - revive
 
       # Moteur de sync : fonctions algorithmiques complexes (portage Python -> Go fidele)
       - path: "internal/sync/"
@@ -220,6 +216,16 @@ linters:
 
       # Steps de migration : SQL verbeux, funlen + gocyclo permissifs
       - path: "internal/migration/steps_"
+        linters:
+          - funlen
+          - gocyclo
+          - lll
+
+      # Steps de migration title-owned (games/*/migrations) : idem — registre de
+      # migrations ORDONNÉ (slice littéral séquentiel, ordre audité par
+      # order_audit_test.go). La longueur = nombre de migrations ; découper
+      # fragmenterait le registre ordonné sans gain (K3f, exemption justifiée).
+      - path: "internal/games/.*/migrations/steps"
         linters:
           - funlen
           - gocyclo

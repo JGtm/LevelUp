@@ -36,6 +36,9 @@ export interface MatchViewText {
   addFavorite: string
   removeFavorite: string
   mapUnknown: string
+  pageErrorTitle: string
+  pageRetry: string
+  pagePartialLoad: string
   noRank: string
   exitContext: string
   outcomeWin: string
@@ -117,6 +120,18 @@ export interface MatchViewText {
   fragDiffNoData: string
   antagonistNoData: string
   impactBadgesNoData: string
+  // Libellés des badges d'impact (Match flow), keyés par BadgeKey backend. Le
+  // moteur analysis ne produit qu'un libellé FR (BadgeFR) → sous UI EN les cartes
+  // restaient en FR (GH-7). Résolution front bilingue par clé, fallback = libellé
+  // serveur pour une clé inconnue.
+  impactBadgeNames: Record<string, string>
+  // Breadcrumb retour (MatchBreadcrumb)
+  back: string
+  // Onglets de la page (GH2-B2)
+  tabGeneral: string
+  tabDetails: string
+  // Titre du chart Antagonistes (GH2-B2)
+  antagonistTitle: string
   // Sections de l'onglet Détails (titres type-1 du catalogue d'harmonisation)
   sectionFlow: string
   sectionDuels: string
@@ -158,6 +173,20 @@ export interface MatchViewText {
   sbColShotsHit: string
   sbColAccuracy: string
   sbColCsr: string
+  sbColRank: string
+  sbColScore: string
+  sbColAssists: string
+  sbColMaxSpree: string
+  sbColHeadshots: string
+  sbColPerfectKills: string
+  sbColShotsFired: string
+  sbColPowerWeapons: string
+  sbColAvgLife: string
+  sbColPlayer: string
+  sbColTopWeapon: string
+  sbViewHistoryFmt: (gamertag: string) => string
+  /** Format du score (séparateurs locale-sensitive : "12 345" FR / "12,345" EN). */
+  sbFormatScore: (v: number) => string
   // Nav contextuelle — Phase 2c (descriptor → label compact)
   ctxRecent: string
   ctxFavorites: string
@@ -204,6 +233,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     addFavorite: 'Ajouter aux favoris',
     removeFavorite: 'Retirer des favoris',
     mapUnknown: 'Map inconnue',
+    pageErrorTitle: 'Match introuvable ou erreur de chargement.',
+    pageRetry: 'Réessayer',
+    pagePartialLoad: 'Ce match n\'a pas pu être chargé en totalité.',
     noRank: 'Pas de rang',
     exitContext: 'Sortir du contexte',
     outcomeWin: 'Victoires',
@@ -236,7 +268,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     radarTooltipCombat: 'Frags + tirs à la tête + frags parfaits, pondérés par la précision.',
     radarTooltipSurvival: 'Résistance défensive — dégâts / (225 × morts). P80 = 1,59.',
     radarTooltipSupport: 'Assists × 50.',
-    radarTooltipScore: 'Score résiduel après frags (×100) et assists (×50) : médailles et streaks.',
+    radarTooltipScore: 'Score résiduel après frags (×100) et assists (×50) : médailles et séries.',
     radarTooltipObjective: "Points d'objectif (PersonalScoreAwards).",
     radarTooltipGlossaryLink: '→ Glossaire',
     chartWeaponPieTitle: 'Frags par arme',
@@ -277,6 +309,22 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     fragDiffNoData: 'Aucun événement de combat enregistré pour ce match.',
     antagonistNoData: 'Aucune donnée de duels disponible pour ce match.',
     impactBadgesNoData: 'Aucun badge d\'impact sur ce match.',
+    impactBadgeNames: {
+      first_blood: 'Premier sang',
+      first_group_death: 'Première victime',
+      clutch_finisher: 'Finisseur',
+      last_casualty: 'Boulet',
+      last_group_kill: 'Touriste',
+      top_killer: 'Bourreau',
+      silent_hero: 'Héros silencieux',
+      false_brother: 'Faux-frère',
+      top_gun: 'Top Gun',
+      kamikaze: 'Kamikaze',
+    },
+    back: 'Retour',
+    tabGeneral: 'Général',
+    tabDetails: 'Détails',
+    antagonistTitle: 'Antagonistes',
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
     sectionEncounters: 'Historique des rencontres',
@@ -314,6 +362,19 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColShotsHit: 'Tirs au but',
     sbColAccuracy: 'Précision',
     sbColCsr: 'CSR',
+    sbColRank: 'Rang',
+    sbColScore: 'Score',
+    sbColAssists: 'Assist.',
+    sbColMaxSpree: 'Folie meurt.',
+    sbColHeadshots: 'Tirs à la Tête',
+    sbColPerfectKills: 'Frags parfaits',
+    sbColShotsFired: 'Tirs',
+    sbColPowerWeapons: 'Armes lourdes',
+    sbColAvgLife: 'Vie moy.',
+    sbColPlayer: 'Joueur',
+    sbColTopWeapon: 'Outil de destr.',
+    sbViewHistoryFmt: (gamertag) => `Voir l'historique avec ${gamertag}`,
+    sbFormatScore: (v) => new Intl.NumberFormat('fr-FR').format(v),
     ctxRecent: 'récents',
     ctxFavorites: 'favoris',
     ctxMedia: 'avec média',
@@ -356,6 +417,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     addFavorite: 'Add to favorites',
     removeFavorite: 'Remove from favorites',
     mapUnknown: 'Unknown map',
+    pageErrorTitle: 'Match not found or load error.',
+    pageRetry: 'Retry',
+    pagePartialLoad: 'This match could not be fully loaded.',
     noRank: 'No rank',
     exitContext: 'Exit context',
     outcomeWin: 'Wins',
@@ -429,6 +493,22 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     fragDiffNoData: 'No combat events recorded for this match.',
     antagonistNoData: 'No duel data available for this match.',
     impactBadgesNoData: 'No impact badges for this match.',
+    impactBadgeNames: {
+      first_blood: 'First blood',
+      first_group_death: 'First down',
+      clutch_finisher: 'Finisher',
+      last_casualty: 'Last casualty',
+      last_group_kill: 'Latecomer',
+      top_killer: 'Top killer',
+      silent_hero: 'Silent hero',
+      false_brother: 'False brother',
+      top_gun: 'Top Gun',
+      kamikaze: 'Kamikaze',
+    },
+    back: 'Back',
+    tabGeneral: 'General',
+    tabDetails: 'Details',
+    antagonistTitle: 'Antagonists',
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',
     sectionEncounters: 'Encounter history',
@@ -466,6 +546,19 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColShotsHit: 'Shots hit',
     sbColAccuracy: 'Accuracy',
     sbColCsr: 'CSR',
+    sbColRank: 'Rank',
+    sbColScore: 'Score',
+    sbColAssists: 'Assists',
+    sbColMaxSpree: 'Killing spree',
+    sbColHeadshots: 'Headshots',
+    sbColPerfectKills: 'Perfect kills',
+    sbColShotsFired: 'Shots',
+    sbColPowerWeapons: 'Power weapons',
+    sbColAvgLife: 'Avg. life',
+    sbColPlayer: 'Player',
+    sbColTopWeapon: 'Top weapon',
+    sbViewHistoryFmt: (gamertag) => `View history with ${gamertag}`,
+    sbFormatScore: (v) => new Intl.NumberFormat('en-US').format(v),
     ctxRecent: 'recent',
     ctxFavorites: 'favorites',
     ctxMedia: 'with media',

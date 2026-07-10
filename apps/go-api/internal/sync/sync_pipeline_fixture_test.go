@@ -610,7 +610,7 @@ func TestPipelineFixture_WeaponKills_FilmPresent(t *testing.T) {
 
 	client := &weaponTestClient{
 		filmPresent: true,
-		filmChunks: map[int]filmChunkData{
+		filmChunks: map[int]FilmChunkData{
 			0: {Data: []byte{}, StartMS: 0, DurationMS: 60000},
 		},
 	}
@@ -661,7 +661,7 @@ func TestPipelineFixture_WeaponKills_IdempotentRerun(t *testing.T) {
 	// (chunks vides → corrélation ne produit rien, mais le pipeline tourne)
 	client := &weaponTestClient{
 		filmPresent: true,
-		filmChunks:  map[int]filmChunkData{0: {Data: []byte{}, StartMS: 0, DurationMS: 60000}},
+		filmChunks:  map[int]FilmChunkData{0: {Data: []byte{}, StartMS: 0, DurationMS: 60000}},
 	}
 
 	for i := 0; i < 2; i++ {
@@ -1099,7 +1099,7 @@ func TestPipelineFixture_FullSequence(t *testing.T) {
 	// Étape 1 — weapon_kills (film présent pour m1)
 	weaponClient := &weaponTestClient{
 		filmPresent: true,
-		filmChunks:  map[int]filmChunkData{0: {Data: []byte{}, StartMS: 0, DurationMS: 60000}},
+		filmChunks:  map[int]FilmChunkData{0: {Data: []byte{}, StartMS: 0, DurationMS: 60000}},
 	}
 	_, err := BackfillWeaponKillsForMatchAll(ctx, weaponClient, f.shared, fixM1)
 	if err != nil {

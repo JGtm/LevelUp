@@ -28,7 +28,8 @@ import { EmptyStateCard } from '@/components/ui/empty-state'
 import { MetricWithTrend } from '@/components/ui/metric-trend'
 import type { LeaderboardEntry } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { formatMessage } from '@/lib/i18n/format'
+import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
+import { intlLocale } from '@/lib/formatters'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { csrRankImageURL } from '@/lib/staticAssets'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -84,15 +85,18 @@ interface LeaderboardBlockProps {
 type SortDir = 'asc' | 'desc'
 
 /** Formate la valeur d'une catégorie de stat. */
-function formatStatValue(entry: LeaderboardEntry, locale: string): string {
+function formatStatValue(entry: LeaderboardEntry, locale: ManifestLocale): string {
   const v = entry.value ?? 0
-  const intl = locale === 'en' ? 'en-US' : 'fr-FR'
+  const intl = intlLocale(locale)
   const decimals = entry.unit === '%' || /kd|per_game/.test(entry.category ?? '') ? 2 : 0
   return `${v.toLocaleString(intl, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}${entry.unit ?? ''}`
 }
 
-const fmtPct = (v: number, locale: string): string =>
-  `${(v * 100).toLocaleString(locale === 'en' ? 'en-US' : 'fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+// MetricWithTrend vient du composant PARTAGÉ components/ui/metric-trend (extrait
+// par le chantier leaderboard, garde-rail metric-trend.guard.test.ts) — l'ex-copie
+// locale a été retirée à la fusion campagne↔leaderboard (2026-07-10).
+const fmtPct = (v: number, locale: ManifestLocale): string =>
+  `${(v * 100).toLocaleString(intlLocale(locale), { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
 
 export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockProps) {
   const locale = useAppShellStore((s) => s.locale)
@@ -120,10 +124,7 @@ export function LeaderboardBlock({ playerSlug, onHoverEntry }: LeaderboardBlockP
     () =>
       catalog?.seasons?.length
         ? catalog.seasons.map((s) => {
-            // Backend AUTORITATIF (C2b) : display_name = "Saison N · Nom" localisé
-            // (season_catalog, scrape Waypoint). KNOWN_SEASON_LABEL ne sert plus que
-            // de secours si le catalogue n'a pas encore de nom pour cette saison.
-            const base = s.display_name || KNOWN_SEASON_LABEL[s.id] || s.id
+            const base = KNOWN_SEASON_LABEL[s.id] ?? s.display_name
             return { value: s.id, label: s.enriched ? base : `${base} (${archivedBadge})`, enriched: s.enriched }
           })
         : SEASONS.map((s) => ({ value: s.id, label: s.label, enriched: true })),
@@ -386,11 +387,11 @@ function LeaderboardRow({
   localLabel: string
   trendTooltip: string
   rankDeltaTooltip: string
-  locale: string
+  locale: ManifestLocale
   onHover?: (gamertag: string) => void
   onGamertagClick: (gamertag: string, xuid: string) => void
 }) {
-  const intl = locale === 'en' ? 'en-US' : 'fr-FR'
+  const intl = intlLocale(locale)
   // Accent podium : top-3 en gras (tokens foreground/muted, pas de hex).
   const isPodium = entry.rank <= 3
   const rankClass = isPodium ? 'font-bold text-primary' : 'text-muted-foreground'

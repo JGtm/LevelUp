@@ -11,7 +11,7 @@ import { useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
+import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
@@ -66,7 +66,7 @@ export function buildSessionPerfOption(series: ChartSeries<PerfPoint>[], opts: P
       formatter: (params: Array<{ name: string; value: number; marker: string }>) => {
         if (!Array.isArray(params) || params.length === 0) return ''
         const p = params[0]
-        return `${p.name.replace('\n', ' · ')}<br/>${p.marker} ${opts.scoreLabel}: <b>${p.value}</b>`
+        return `${escapeHtml(p.name.replace('\n', ' · '))}<br/>${p.marker} ${opts.scoreLabel}: <b>${p.value}</b>`
       },
     },
     xAxis: {

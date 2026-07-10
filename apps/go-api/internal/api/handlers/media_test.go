@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,16 +26,14 @@ import (
 
 // mockMediaService implémente port.MediaService.
 type mockMediaService struct {
-	page           *domain.MediaPageResponse
-	pageErr        error
-	like           *domain.MediaLikeResponse
-	likeErr        error
-	upload         *domain.UploadResult
-	uploadErr      error
-	reassociate    *domain.ReassociateResult
-	reassociateErr error
-	authors        []domain.MediaAuthor
-	authorsErr     error
+	page       *domain.MediaPageResponse
+	pageErr    error
+	like       *domain.MediaLikeResponse
+	likeErr    error
+	upload     *domain.UploadResult
+	uploadErr  error
+	authors    []domain.MediaAuthor
+	authorsErr error
 }
 
 func (m *mockMediaService) GetMediaPage(_ context.Context, _ domain.MediaPageRequest) (*domain.MediaPageResponse, error) {
@@ -59,16 +58,6 @@ func (m *mockMediaService) UploadMedia(_ context.Context, _ domain.UploadRequest
 		return m.upload, nil
 	}
 	return &domain.UploadResult{}, nil
-}
-
-func (m *mockMediaService) ReassociateMedia(_ context.Context, _ domain.ReassociateRequest) (*domain.ReassociateResult, error) {
-	if m.reassociateErr != nil {
-		return nil, m.reassociateErr
-	}
-	if m.reassociate != nil {
-		return m.reassociate, nil
-	}
-	return &domain.ReassociateResult{}, nil
 }
 
 func (m *mockMediaService) GetMatchCandidates(_ context.Context, _ string, _ int) (*domain.MediaMatchCandidatesResponse, error) {
@@ -509,6 +498,104 @@ func TestMediaHandler_PatchLike_BumpsVersion(t *testing.T) {
 
 // PostReassociateMedia handler + tests supprimés en revue 2026-04-29 P0.2 Q6
 // (doublon non utilisé — le front consomme /media/associate seulement).
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GH2-A2 — réassociation média : dépouillement de l'URL servable (HLS)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// spyReassocService capture le file_path reçu par les endpoints de réassociation.
+type spyReassocService struct {
+	mockMediaService
+	candidatesPath string
+	associatePath  string
+}
+
+func (s *spyReassocService) GetMatchCandidates(_ context.Context, filePath string, _ int) (*domain.MediaMatchCandidatesResponse, error) {
+	s.candidatesPath = filePath
+	return &domain.MediaMatchCandidatesResponse{}, nil
+}
+
+func (s *spyReassocService) AssociateMediaToMatch(_ context.Context, req domain.MediaAssociateRequest) (*domain.MediaAssociateResponse, error) {
+	s.associatePath = req.FilePath
+	return &domain.MediaAssociateResponse{FilePath: req.FilePath, MatchID: req.MatchID}, nil
+}
+
+// hlsServableURL est l'URL servable telle que la galerie l'expose pour une vidéo
+// (file_path = playlist HLS). storedPathHLS est le chemin RELATIF correspondant
+// stocké en DB (media_files.file_path).
+const (
+	hlsServableURL = "/api/v1/players/test-player/media/files/JGtm/hls/Replay 2026-07-07 23-03-38/master.m3u8"
+	storedPathHLS  = "JGtm/hls/Replay 2026-07-07 23-03-38/master.m3u8"
+)
+
+// TestMediaHandler_MatchCandidates_HLSUrlStrippedToStoredPath prouve le fix GH2-A2 :
+// la popup de réassociation envoie file_path sous forme d'URL servable (vidéo →
+// playlist HLS .../hls/<stem>/master.m3u8). Le handler doit dépouiller le préfixe pour
+// retrouver le chemin RELATIF stocké — sinon le lookup ne matche ni mf.file_path
+// (préfixe URL en trop) ni mf.file_name (basename = "master.m3u8") → 500 loading error.
+func TestMediaHandler_MatchCandidates_HLSUrlStrippedToStoredPath(t *testing.T) {
+	spy := &spyReassocService{}
+	factory := func(_ context.Context, slug string) (port.MediaService, error) {
+		if slug != testPlayerSlug {
+			return nil, errors.New("player_not_found")
+		}
+		return spy, nil
+	}
+	r := newMediaRouter(factory)
+	req := httptest.NewRequest(http.MethodGet,
+		"/players/test-player/media/match-candidates?file_path="+url.QueryEscape(hlsServableURL)+"&window_minutes=15", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if spy.candidatesPath != storedPathHLS {
+		t.Errorf("candidates file_path = %q, want %q (URL servable dépouillée en chemin relatif stocké)",
+			spy.candidatesPath, storedPathHLS)
+	}
+}
+
+// TestMediaHandler_Associate_HLSUrlStrippedToStoredPath : symétrie côté écriture —
+// l'association d'une vidéo doit cibler la ligne media_files par le chemin stocké,
+// pas par l'URL servable (sinon UPDATE 0 row → association perdue).
+func TestMediaHandler_Associate_HLSUrlStrippedToStoredPath(t *testing.T) {
+	spy := &spyReassocService{}
+	factory := func(_ context.Context, _ string) (port.MediaService, error) { return spy, nil }
+	r := newMediaRouter(factory)
+	body, _ := json.Marshal(domain.MediaAssociateRequest{FilePath: hlsServableURL, MatchID: "m-1"})
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/media/associate", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if spy.associatePath != storedPathHLS {
+		t.Errorf("associate file_path = %q, want %q (URL servable dépouillée)", spy.associatePath, storedPathHLS)
+	}
+}
+
+// TestMediaHandler_MatchCandidates_PlainPathPassthrough : un chemin déjà stocké
+// (appelant hors galerie / screenshot legacy) passe inchangé au service.
+func TestMediaHandler_MatchCandidates_PlainPathPassthrough(t *testing.T) {
+	spy := &spyReassocService{}
+	factory := func(_ context.Context, _ string) (port.MediaService, error) { return spy, nil }
+	r := newMediaRouter(factory)
+	plain := "JGtm/screenshot.png"
+	req := httptest.NewRequest(http.MethodGet,
+		"/players/test-player/media/match-candidates?file_path="+url.QueryEscape(plain)+"&window_minutes=15", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if spy.candidatesPath != plain {
+		t.Errorf("candidates file_path = %q, want %q (chemin non-URL inchangé)", spy.candidatesPath, plain)
+	}
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // parseUploadedFiles — capture_times

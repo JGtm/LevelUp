@@ -34,6 +34,7 @@ import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { OutcomeSequenceTape } from '@/components/charts/OutcomeSequenceTape'
@@ -193,7 +194,7 @@ export function HomePage() {
   const challengesCompletedLabel = challenges?.available
     ? `${challengesCompleted} / ${challengesTotal} complétés`
     : null
-  const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
+  const numberLocale = intlLocale(locale)
   // Séquence d'outcomes : filtrer recent_matches par le session_label de la
   // dernière session connue (solo ou squad). On prend le premier label qui
   // apparaît dans recent_matches (trié DESC) parmi les deux sessions.

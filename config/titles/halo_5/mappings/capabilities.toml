@@ -7,11 +7,15 @@
 # Has()==true mènerait à un appel qui échoue toujours (cf. review Phase 1a).
 # Valeurs : "supported" | "degraded" | "not_exposed".
 #
-# PHASE 1a (état courant) : seul career.progression est câblé (LoadCareerSnapshot,
-# CSR natif via service record). Le RESTE est encore stub -> not_exposed, et remonte
-# en Phase 2 à mesure du câblage (match.history via GetPlayerMatches, match.detail
-# via carnage, scoreboard, timeseries, engagement). La matrice OPTIMISTE cible (ce
-# que la DONNÉE h5 permet, confirmé par la sonde) vit dans le handoff §2, PAS ici :
+# ÉTAT COURANT (MAJ 2026-07-04, F15-10) : câblés "supported" = career.progression,
+# match.history, match.detail.core, commendations.native (AXE A/B prod-gate), +
+# match.events.timeline / match.killfeed.per_kill / match.events.spatial /
+# match.weapon.accuracy (natifs carnage/events). Restent "not_exposed" (Phase 2+) :
+# match.scoreboard.extra, match.skill.snapshot (CSR par match), analytics.timeseries,
+# engagement.score ; + surfaces absentes du titre (battlepass.progression,
+# challenges.surface, pve.firefight_stats modèle != FF HINF, citations.engine — h5
+# sert le NATIF commendations.native). La matrice OPTIMISTE cible (ce que la DONNÉE
+# h5 permet, confirmé par la sonde) vit dans le handoff §2, PAS ici :
 # ce fichier = ce qui est servable AUJOURD'HUI, pas l'intention.
 
 [meta]

@@ -109,7 +109,7 @@ func newTestPlayerDBWithSharedSocial(t *testing.T) *PlayerDB {
 
 // seedPlayerSchema initialise toutes les tables de la player DB.
 // Inclut le schéma shared simulé ; metadata reste sur pdb.Metadata.
-func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
+func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate (schéma player+shared simulé), pas de branchement à découper
 	t.Helper()
 	ctx := context.Background()
 	ddl := []string{
@@ -254,7 +254,11 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			rating_deviation DOUBLE, tier VARCHAR, tier_fr VARCHAR, sub_tier SMALLINT,
 			tier_label VARCHAR, rating_delta DOUBLE, playlist_group VARCHAR,
 			expected_win_prob DOUBLE,
-			start_time TIMESTAMPTZ, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ)`,
+			start_time TIMESTAMPTZ, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ,
+			-- Colonnes append-only (ADR 0026, miroir schema.go) : Q26g
+			-- (Q26gPlaylistPhaseAMSRTpl) lit match_skill_rank BRUTE — lecture
+			-- allowlistée B8 — et ordonne par written_at DESC, id DESC.
+			id BIGINT, written_at TIMESTAMP DEFAULT now())`,
 		// Vue latest (miroir de schema.go) : player_matches_repo.go la requête.
 		`CREATE OR REPLACE VIEW match_skill_rank_latest AS SELECT * FROM match_skill_rank`,
 		// match_csrs (shared, append-only) : CSR par match/participant — source
@@ -268,6 +272,12 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			measurement_matches_remaining INTEGER DEFAULT 0, season_id VARCHAR,
 			written_at TIMESTAMP DEFAULT now())`,
 		`CREATE VIEW match_csrs AS SELECT * FROM shared.match_csrs`,
+		// Vue latest (miroir de steps_appendonly_misc.go / sync.schema.go) :
+		// player_matches_loaders.go (loadMatchCSRMetaForMatches) et Q30 lisent
+		// match_csrs_latest.
+		`CREATE OR REPLACE VIEW match_csrs_latest AS
+			SELECT * FROM shared.match_csrs
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1`,
 		// Schéma append-only (Phase 2.G refactor ART) + vue latest
 		`CREATE SEQUENCE pcs_seq START 1`,
 		`CREATE TABLE player_csr_snapshots (
@@ -364,9 +374,13 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			[]interface{}{pTestXUID, 25, 5000, "2025-01-10 12:00:00+00",
 				"Platinum 1", "Platinum", 10000, 50000, false, "Progression/RewardTracks/CareerRanks/platinum1-adornment.png", "JGTM", "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/progression/Nameplates/test-banner.png", "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/progression/Emblems/test-emblem.png", "https://gamecms-hacs.svc.halowaypoint.com/hi/Waypoint/file/images/backdrops/test-backdrop.png"}},
-		{`INSERT INTO match_skill_rank VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		{`INSERT INTO match_skill_rank
+			(match_id, rating_type, rating_value, rating_deviation, tier, tier_fr, sub_tier, tier_label, rating_delta, playlist_group, expected_win_prob, start_time, created_at, updated_at)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			[]interface{}{"m1", "CSR", 1250.5, 50.0, "Gold", "Or", 3, "Gold 3", nil, "ranked", nil, "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00"}},
-		{`INSERT INTO match_skill_rank VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		{`INSERT INTO match_skill_rank
+			(match_id, rating_type, rating_value, rating_deviation, tier, tier_fr, sub_tier, tier_label, rating_delta, playlist_group, expected_win_prob, start_time, created_at, updated_at)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			[]interface{}{"m2", "LUSR", 1750.0, 40.0, "Platinum", "Platine", 5, "Platinum V", 15.0, "social", nil, "2025-01-11 14:00:00+00", "2025-01-11 14:00:00+00", "2025-01-11 14:00:00+00"}},
 		{`INSERT INTO match_citations (match_id, citation_name_norm, value) VALUES (?,?,?)`,
 			[]interface{}{"m1", "killing_spree", 3}},
@@ -634,7 +648,7 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 			citation_name_norm VARCHAR, citation_name_display VARCHAR,
 			citation_name_display_en VARCHAR,
 			mapping_type VARCHAR, category VARCHAR,
-			image_path VARCHAR, description VARCHAR, tier_targets VARCHAR,
+			image_path VARCHAR, description VARCHAR, description_en VARCHAR, tier_targets VARCHAR,
 			medal_id UBIGINT, enabled BOOLEAN DEFAULT TRUE,
 			medal_ids VARCHAR, stat_name VARCHAR, award_name VARCHAR,
 			award_category VARCHAR, custom_function VARCHAR,
@@ -697,8 +711,8 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 		args []interface{}
 	}
 	inserts := []row{
-		{`INSERT INTO citation_mappings (citation_name_norm,citation_name_display,citation_name_display_en,mapping_type,category,enabled,medal_id) VALUES (?,?,?,?,?,?,?)`,
-			[]interface{}{"killing_spree", "Killing Spree", "Killing Spree (EN)", "medal", "combat", true, uint64(1001)}},
+		{`INSERT INTO citation_mappings (citation_name_norm,citation_name_display,citation_name_display_en,mapping_type,category,description,description_en,enabled,medal_id) VALUES (?,?,?,?,?,?,?,?,?)`,
+			[]interface{}{"killing_spree", "Killing Spree", "Killing Spree (EN)", "medal", "combat", "Série de kills", "Killing spree streak", true, uint64(1001)}},
 		{`INSERT INTO medal_definitions (medal_name_id,name_fr,name_en,description_fr,description_en,difficulty) VALUES (?,?,?,?,?,?)`,
 			[]interface{}{int64(1001), "Killing Spree", "Killing Spree", "Série de kills", "Killing spree", "Normal"}},
 		{`INSERT INTO weapon_labels (weapon_id,name_en,name_fr) VALUES (?,?,?)`,
@@ -815,6 +829,32 @@ func TestHomeRepo_LoadHomeMatches_WithData(t *testing.T) {
 	}
 }
 
+// TestHomeRepo_LoadHomeMatches_PerfectKillsBounded_J7 : la CTE perfect bornée à la
+// fenêtre `base` (J7) doit toujours attribuer les frags parfaits au match affiché.
+// medal_name_id 1512363953 = frag parfait HINF (cf. Q26HomeMatchesSharedPart).
+func TestHomeRepo_LoadHomeMatches_PerfectKillsBounded_J7(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	if _, err := pdb.Player.Exec(ctx, `DELETE FROM shared.medals_earned WHERE match_id = 'm1'`); err != nil {
+		t.Fatalf("clear medals: %v", err)
+	}
+	if _, err := pdb.Player.Exec(ctx,
+		`INSERT INTO shared.medals_earned (medal_id, medal_name_id, xuid, match_id, count)
+		 VALUES (99, 1512363953, ?, 'm1', 3)`, pTestXUID); err != nil {
+		t.Fatalf("seed perfect medal: %v", err)
+	}
+	rows, err := NewHomeRepo(pdb).LoadHomeMatches(ctx)
+	if err != nil {
+		t.Fatalf("LoadHomeMatches: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("attendu 1 match, obtenu %d", len(rows))
+	}
+	if rows[0].PerfectKills != 3 {
+		t.Errorf("perfect_kills = %d, want 3 (CTE perfect bornée J7)", rows[0].PerfectKills)
+	}
+}
+
 func TestHomeRepo_LoadHomeMatches_DoesNotDependOnVMatchFull(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
@@ -896,7 +936,7 @@ func TestHomeRepo_LoadHomeMatches_FallsBackToMetadataAssetTranslations(t *testin
 }
 
 // seedMaturedSkillRankGroups insère 9 rows de padding par groupe pour que
-// "ranked" et "social" comptent 10 matchs chacun. Évite que Q26eHomeSkillPeakByType
+// "ranked" et "social" comptent 10 matchs chacun. Évite que loadHomeSkillPeak
 // (logique placement mai 2026) classe ces groupes comme en placement. Les
 // padding rows ont des ratings volontairement très bas (≤310) pour préserver
 // m1/m2 comme MAX(rating_value) du groupe.
@@ -1021,6 +1061,40 @@ func TestHomeRepo_LoadSpartanIdentity_FallsBackToLatestNonEmptyIdentityAssets(t 
 	}
 	if identity.BackdropImageURL == nil || *identity.BackdropImageURL != "/api/v1/assets/spartan/backdrop/halo_infinite/hi/Waypoint/file/images/backdrops/test-backdrop.png" {
 		t.Fatalf("BackdropImageURL = %v, want fallback backdrop", identity.BackdropImageURL)
+	}
+}
+
+// TestHomeRepo_LoadSpartanIdentity_BannerNeverEmptyWhenNewEmblemHasNone :
+// directive produit apparence (2026-07-08, cas JGtm emblème 3806589) —
+// bannière et emblème sont des champs INDÉPENDANTS : un snapshot récent
+// portant un nouvel emblème avec bannière vide (nameplate irrésoluble
+// upstream) sert le nouvel emblème ET la dernière bannière connue
+// (« jamais vide »).
+func TestHomeRepo_LoadSpartanIdentity_BannerNeverEmptyWhenNewEmblemHasNone(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO career_progression
+			(xuid,rank,current_xp,recorded_at,rank_name,rank_tier,xp_for_next_rank,xp_total,is_max_rank,adornment_path,spartan_id,banner_image_url,emblem_image_url,backdrop_image_url)
+		VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+	`, pTestXUID, 26, 6400, "2025-01-11 12:00:00+00", "Platinum 2", "Platinum", 12000, 62000, false, "", "", "",
+		"hi/images/file/progression/Inventory/Emblems/3806589-SpartanEmblem-SM.png", ""); err != nil {
+		t.Fatalf("INSERT newer career_progression: %v", err)
+	}
+
+	repo := NewHomeRepo(pdb)
+	identity, err := repo.LoadSpartanIdentity(ctx)
+	if err != nil {
+		t.Fatalf("LoadSpartanIdentity: %v", err)
+	}
+	if identity == nil {
+		t.Fatal("expected non-nil identity")
+	}
+	if identity.EmblemImageURL == nil || *identity.EmblemImageURL != "/api/v1/assets/spartan/emblem/halo_infinite/hi/images/file/progression/Inventory/Emblems/3806589-SpartanEmblem-SM.png" {
+		t.Fatalf("EmblemImageURL = %v, want nouvel emblème", identity.EmblemImageURL)
+	}
+	if identity.BannerImageURL == nil || *identity.BannerImageURL != "/api/v1/assets/spartan/banner/halo_infinite/hi/images/file/progression/Nameplates/test-banner.png" {
+		t.Fatalf("BannerImageURL = %v, want dernière bannière connue (jamais vide)", identity.BannerImageURL)
 	}
 }
 
@@ -1214,7 +1288,7 @@ func TestHomeRepo_LoadRecentPlaylistRanks_InfersCSRFromRankedPlaylistName(t *tes
 }
 
 // TestHomeRepo_LoadHomeSkillPeak_CSR_InPlacement vérifie qu'en placement
-// (groupe playlist_group avec < 10 matchs), Q26eHomeSkillPeakByType +
+// (groupe playlist_group avec < 10 matchs), le chemin Phase A/B +
 // loadHomeSkillPeak retournent un peak avec :
 //   - BadgeImageURL = unranked_(10-remaining).png
 //   - MeasurementMatchesRemaining > 0
@@ -1255,7 +1329,7 @@ func TestHomeRepo_LoadHomeSkillPeak_CSR_InPlacement(t *testing.T) {
 // TestHomeRepo_LoadHomeSkillPeak_LUSR_InPlacement : pendant que CSR a son
 // propre placement (player_csr_snapshots), LUSR le dérive de match_skill_rank
 // par playlist_group. Test parallèle au CSR ci-dessus pour cadenasser la
-// branche LUSR du chemin Q26eHomeSkillPeakByType.
+// branche LUSR du chemin Phase A/B (loadHomeSkillPeak).
 func TestHomeRepo_LoadHomeSkillPeak_LUSR_InPlacement(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
@@ -2007,7 +2081,7 @@ func TestCareerRepo_GetHighlightPool_Empty(t *testing.T) {
 
 func TestMediaRepo_CountMediaFiles(t *testing.T) {
 	pdb := newTestPlayerDB(t)
-	repo := NewMediaRepo(pdb)
+	repo := NewMediaRepo(pdb).WithModeTaxonomy(testModeTaxonomy())
 	count, err := repo.CountMediaFiles(context.Background(), domain.MediaFilters{})
 	if err != nil {
 		t.Fatalf("CountMediaFiles: %v", err)
@@ -2019,7 +2093,7 @@ func TestMediaRepo_CountMediaFiles(t *testing.T) {
 
 func TestMediaRepo_LoadMediaFiles_WithData(t *testing.T) {
 	pdb := newTestPlayerDB(t)
-	repo := NewMediaRepo(pdb)
+	repo := NewMediaRepo(pdb).WithModeTaxonomy(testModeTaxonomy())
 	rows, err := repo.LoadMediaFiles(context.Background(), domain.MediaFilters{}, 10, 0)
 	if err != nil {
 		t.Fatalf("LoadMediaFiles: %v", err)
@@ -2031,7 +2105,7 @@ func TestMediaRepo_LoadMediaFiles_WithData(t *testing.T) {
 
 func TestMediaRepo_SetMediaLike(t *testing.T) {
 	pdb := newTestPlayerDB(t)
-	repo := NewMediaRepo(pdb)
+	repo := NewMediaRepo(pdb).WithModeTaxonomy(testModeTaxonomy())
 
 	// Phase 3.bis plan stabilisation 2026-05-22 : newTestPlayerDB câble
 	// désormais SharedSocial avec son propre seed ('/clips/shared.mp4',
@@ -2060,7 +2134,7 @@ func TestMediaRepo_SetMediaLike(t *testing.T) {
 
 func TestMediaRepo_LoadMediaFiles_WithSharedSocialSchema(t *testing.T) {
 	pdb := newTestPlayerDBWithSharedSocial(t)
-	repo := NewMediaRepo(pdb)
+	repo := NewMediaRepo(pdb).WithModeTaxonomy(testModeTaxonomy())
 
 	rows, err := repo.LoadMediaFiles(context.Background(), domain.MediaFilters{}, 10, 0)
 	if err != nil {

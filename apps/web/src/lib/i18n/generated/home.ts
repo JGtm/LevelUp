@@ -136,7 +136,7 @@ export const homeManifest = {
   "home.sessions.empty_description": { fr: "Aucune session solo ou escouade n'a été calculée pour le scope actuel.", en: "No solo or squad session computed for the current scope." },
   "home.sessions.empty_title": { fr: "Aucune session récente disponible", en: "No recent session available" },
   "home.sessions.kda_label": { fr: "FDA", en: "K/D/A" },
-  "home.sessions.losses_count": { fr: "{n, plural, one {# Défaite} other {# Defeats}}", en: "{n, plural, one {# Defeat} other {# Defeats}}" },
+  "home.sessions.losses_count": { fr: "{n, plural, one {# Défaite} other {# Défaites}}", en: "{n, plural, one {# Defeat} other {# Defeats}}" },
   "home.sessions.match_count": { fr: "{n, plural, one {# match} other {# matchs}}", en: "{n, plural, one {# match} other {# matches}}" },
   "home.sessions.newer_aria": { fr: "Session plus récente", en: "More recent session" },
   "home.sessions.older_aria": { fr: "Session plus ancienne", en: "Older session" },

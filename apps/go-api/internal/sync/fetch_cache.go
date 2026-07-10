@@ -68,7 +68,7 @@ func (c *cachedHaloClient) GetMatchHistory(ctx context.Context, gamertag, matchT
 	return c.inner.GetMatchHistory(ctx, gamertag, matchType, start, count)
 }
 
-func (c *cachedHaloClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error) {
+func (c *cachedHaloClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]FilmChunkData, bool, error) {
 	// Films chunks = volume gros. Pas cachés ici — utiliser LocalFilmCache pour ça.
 	return c.inner.GetMatchFilm(ctx, matchID)
 }

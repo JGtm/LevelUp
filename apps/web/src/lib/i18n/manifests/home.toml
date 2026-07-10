@@ -200,7 +200,7 @@ fr = "{n, plural, one {# Victoire} other {# Victoires}}"
 en = "{n, plural, one {# Win} other {# Wins}}"
 
 [home.sessions.losses_count]
-fr = "{n, plural, one {# Défaite} other {# Defeats}}"
+fr = "{n, plural, one {# Défaite} other {# Défaites}}"
 en = "{n, plural, one {# Defeat} other {# Defeats}}"
 
 [home.sessions.draws_count]

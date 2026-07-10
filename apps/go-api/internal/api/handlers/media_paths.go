@@ -195,17 +195,38 @@ func relIfWithin(base, target string) (string, bool) {
 	return rel, true
 }
 
+// mediaServableURLToStoredPath est l'inverse EXACT de la branche relative
+// (post-migration) de mediaStoredPathToURL : il retire le préfixe d'URL servable
+// `/api/v1/players/{viewerSlug}/media/files/` pour recomposer le chemin RELATIF
+// (forward-slash) stocké dans la colonne media_files.file_path.
+//
+// Pour une vidéo, la galerie sert `file_path` sous forme de playlist HLS
+// (`.../hls/<stem>/master.m3u8`) qui EST le file_path stocké — donc le simple strip
+// du préfixe recompose la clé de lookup. Envoyée telle quelle à /media/match-candidates
+// ou /media/associate, l'URL ne matchait NI mf.file_path (préfixe URL en trop) NI
+// mf.file_name (basename = "master.m3u8" pour une vidéo HLS) → ErrNoRows → 500
+// « loading error ». On garde des forward-slashes (format DB), sans filepath.FromSlash.
+//
+// Idempotent : une entrée qui n'est pas une URL servable (chemin déjà stocké,
+// appelant legacy) est renvoyée inchangée.
+func mediaServableURLToStoredPath(viewerSlug, input string) string {
+	prefix := "/api/v1/players/" + viewerSlug + "/media/files/"
+	if rel := strings.TrimPrefix(input, prefix); rel != input {
+		return rel
+	}
+	return input
+}
+
 // urlToFilePath fait l'inverse de filePathToURL : convertit une URL servable
 // `/api/v1/players/{slug}/media/files/{relPath}` en chemin absolu de stockage.
 // Si l'entrée n'est pas une URL transformée (déjà un chemin absolu, par exemple),
 // retourne tel quel.
 func (h *MediaHandler) urlToFilePath(slug, input string) string {
-	prefix := "/api/v1/players/" + slug + "/media/files/"
-	if !strings.HasPrefix(input, prefix) {
-		return input
+	stored := mediaServableURLToStoredPath(slug, input)
+	if stored == input {
+		return input // pas une URL servable → passthrough
 	}
-	relPath := strings.TrimPrefix(input, prefix)
-	relPath = filepath.FromSlash(relPath)
+	relPath := filepath.FromSlash(stored)
 
 	// Tentative 1 : capturesBase configuré.
 	capturesBase := ""

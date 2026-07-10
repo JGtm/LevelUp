@@ -15,8 +15,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { OpenSpartanImportCard, failureMessageFromCode } from './OpenSpartanImportCard'
 import { server } from '@/test/setup'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 const API = '/api/v1'
+
+// Traducteur FR pour les tests unitaires de failureMessageFromCode (le composant
+// injecte le t() du store locale ; ici on force 'fr' pour asserter les libellés).
+const tFr = (key: CommonManifestKey, vars?: Record<string, string | number>) =>
+  formatMessage(commonManifest, key, 'fr', vars)
 
 function renderCard() {
   const client = new QueryClient({
@@ -207,17 +214,17 @@ describe('failureMessageFromCode — unit', () => {
       { code: 'halo_auth_required', expected: /Xbox\/Halo/i },
     ]
     for (const c of cases) {
-      const msg = failureMessageFromCode({ code: c.code, message: '', retryable: false })
+      const msg = failureMessageFromCode({ code: c.code, message: '', retryable: false }, tFr)
       expect(msg).toMatch(c.expected)
     }
   })
 
   it('falls back to the raw message for unknown codes', () => {
-    const msg = failureMessageFromCode({ code: 'unknown_code', message: 'oops', retryable: false })
+    const msg = failureMessageFromCode({ code: 'unknown_code', message: 'oops', retryable: false }, tFr)
     expect(msg).toBe('oops')
   })
 
   it('falls back to a default message when error is null', () => {
-    expect(failureMessageFromCode(null)).toMatch(/inconnue/i)
+    expect(failureMessageFromCode(null, tFr)).toMatch(/inconnue/i)
   })
 })

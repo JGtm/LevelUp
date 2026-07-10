@@ -1,6 +1,6 @@
 // cross-feature-allow: bloc Progression Prestige de la tab Réalisations —
-// consomme prestigeKeys + PRESTIGE_LEVEL_NAMES_FALLBACK depuis features/prestige
-// et useSettings (friend_gamertags) depuis features/settings.
+// consomme queryKeys.prestige (lib/query) + PRESTIGE_LEVEL_NAMES_FALLBACK depuis
+// features/prestige et useSettings (friend_gamertags) depuis features/settings.
 /**
  * PrestigeSquadProgress — bloc "Progression Prestige" de la tab Réalisations.
  *
@@ -20,9 +20,11 @@ import { useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { intlLocale } from '@/lib/formatters'
 import { useSettings } from '@/features/settings/queries'
-import { prestigeKeys } from '@/features/prestige/hooks'
+import { queryKeys } from '@/lib/query/keys'
 import { PRESTIGE_LEVEL_NAMES_FALLBACK } from '@/features/prestige/fallback.i18n'
+import { getAscensionText } from './i18n'
 import { prestigeApi, type UserPrestige } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import type { PlayerSummary } from '@/lib/api/types'
@@ -76,7 +78,7 @@ export function PrestigeSquadProgress() {
 
   const results = useQueries({
     queries: slugs.map((slug) => ({
-      queryKey: prestigeKeys.me(slug, titleSlug),
+      queryKey: queryKeys.prestige.me(slug, titleSlug),
       queryFn: () => prestigeApi.getMyPrestige(slug, titleSlug),
       retry: false,
       enabled: !!slug,
@@ -102,12 +104,13 @@ export function PrestigeSquadProgress() {
 
   if (rows.length === 0) return null
 
-  const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
+  const numberLocale = intlLocale(locale)
+  const t = getAscensionText(locale)
 
   return (
     <section className="space-y-3 rounded-lg border border-border bg-card p-4">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        {locale === 'en' ? 'Prestige progression' : 'Progression Prestige'}
+        {t.squadPrestigeTitle}
       </h2>
       <div className="space-y-3">
         {rows.map((r) => (
@@ -128,6 +131,7 @@ function SquadPrestigeRow({
   locale: 'fr' | 'en'
 }) {
   const { prestige, gamertag, isMe } = row
+  const t = getAscensionText(locale)
   const level = prestige.current_level
   const levelKey = String(level)
   const levelLabel = useAssetLabel('prestige_level', levelKey)
@@ -140,7 +144,7 @@ function SquadPrestigeRow({
   const isMax = lvl ? lvl.next_threshold_pp <= 0 : false
   const progressPct = lvl ? Math.round(lvl.progress_ratio * 100) : 0
   const nextPP = lvl?.next_threshold_pp ?? 0
-  const maxLabel = locale === 'en' ? 'Max tier' : 'Niveau max'
+  const maxLabel = t.squadPrestigeMaxTier
 
   return (
     <div
@@ -156,7 +160,7 @@ function SquadPrestigeRow({
           {gamertag}
           {isMe && (
             <span className="ml-1.5 text-2xs uppercase tracking-wide text-primary">
-              {locale === 'en' ? 'you' : 'moi'}
+              {t.squadPrestigeYou}
             </span>
           )}
           <span className="ml-2 font-normal text-muted-foreground">{levelName}</span>

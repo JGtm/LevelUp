@@ -16,7 +16,7 @@ func TestStore_List_ActiveFirstThenRecent(t *testing.T) {
 
 	oldDone := store.Create(domain.JobTypeBackfill, "p1")
 	store.SetStatus(oldDone.JobID, domain.JobStatusSucceeded, nil)
-	time.Sleep(2 * time.Millisecond) // StartedAt strictement croissants (newJobID = UnixNano)
+	time.Sleep(2 * time.Millisecond) // StartedAt strictement croissants (le tri de List repose sur StartedAt, pas sur l'ID)
 	recentDone := store.Create(domain.JobTypeScanMedia, "p2")
 	store.SetStatus(recentDone.JobID, domain.JobStatusFailed, nil)
 	time.Sleep(2 * time.Millisecond)

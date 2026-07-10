@@ -33,6 +33,7 @@ import (
 	"levelup/go-api/internal/openspartan"
 	"levelup/go-api/internal/platform/jobs"
 	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/util/pointers"
 )
 
 const (
@@ -194,7 +195,7 @@ func (h *OpenSpartanImportHandler) runImport(jobID, expectedXUID, gamertag, tmpP
 	defer func() { _ = os.Remove(tmpPath) }()
 
 	ctx := context.Background()
-	h.jobStore.SetStatus(jobID, domain.JobStatusRunning, strPtr("opening_database"))
+	h.jobStore.SetStatus(jobID, domain.JobStatusRunning, pointers.Ptr("opening_database"))
 
 	opts := service.ImportOptions{
 		Source:     "openspartan_import",
@@ -230,7 +231,7 @@ func (h *OpenSpartanImportHandler) runPostImport(
 	if h.postImportSvc == nil || gamertag == "" {
 		return service.PostImportResult{}
 	}
-	h.jobStore.SetStatus(jobID, domain.JobStatusRunning, strPtr("recomputing_sessions_and_scores"))
+	h.jobStore.SetStatus(jobID, domain.JobStatusRunning, pointers.Ptr("recomputing_sessions_and_scores"))
 	res, err := h.postImportSvc.Run(ctx, xuid, gamertag, matchIDs, service.PostImportOptions{})
 	if err != nil {
 		slog.Warn("openspartan_post_import_fatal", "job_id", jobID, "err", err)
@@ -315,5 +316,3 @@ func classifyImportError(err error) string {
 		return "import_error"
 	}
 }
-
-func strPtr(s string) *string { return &s }

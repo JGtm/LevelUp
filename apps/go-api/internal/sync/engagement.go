@@ -127,7 +127,16 @@ func batchComputeEngagementScores(
 
 		history, ok := historyByMode[modeCategory]
 		if !ok {
-			history = loadHistoryForCategory(ctx, playerDB, modeCategory, m.MatchID)
+			h, herr := loadHistoryForCategory(ctx, playerDB, modeCategory, m.MatchID)
+			if herr != nil {
+				// Lot B (audit #6) : history indisponible par erreur DB → skip ce
+				// match (score reste NULL, re-tentable via force) au lieu de
+				// persister un engagement_score dérivé d'une baseline vide erronée.
+				slog.ErrorContext(ctx, "engagement: skip match — history indisponible (pas de score faux)", "match_id", m.MatchID, "err", herr)
+				observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_history_load_error_total")
+				continue
+			}
+			history = h
 			historyByMode[modeCategory] = history
 		}
 
@@ -310,10 +319,10 @@ func loadMatchesForEngagement(ctx context.Context, sharedDB *sql.DB, xuid string
 
 // loadTeamSizes compte les humains de l'equipe alliee et du lobby pour un match.
 func loadTeamSizes(ctx context.Context, sharedDB *sql.DB, matchID string, teamID int) (nTeam, nLobby int) {
-	const q = `
+	var q = `
 		SELECT
-			SUM(CASE WHEN team_id = ? AND xuid NOT LIKE 'bid(%' THEN 1 ELSE 0 END),
-			SUM(CASE WHEN xuid NOT LIKE 'bid(%' THEN 1 ELSE 0 END)
+			SUM(CASE WHEN team_id = ? AND ` + analysis.SQLIsNotBotCol("xuid") + ` THEN 1 ELSE 0 END),
+			SUM(CASE WHEN ` + analysis.SQLIsNotBotCol("xuid") + ` THEN 1 ELSE 0 END)
 		FROM match_participants
 		WHERE match_id = ?
 	`
@@ -403,11 +412,11 @@ func loadSyntheticKillEventsForMatch(ctx context.Context, sharedDB *sql.DB, matc
 
 // loadTeamXUIDs charge les XUIDs des coequipiers humains (joueur cible exclu).
 func loadTeamXUIDs(ctx context.Context, sharedDB *sql.DB, matchID string, teamID int, targetXUID string) (map[string]bool, error) {
-	const q = `
+	var q = `
 		SELECT xuid FROM match_participants
 		WHERE match_id = ?
 		  AND team_id = ?
-		  AND xuid NOT LIKE 'bid(%'
+		  AND ` + analysis.SQLIsNotBotCol("xuid") + `
 		  AND xuid <> ?
 	`
 	rows, err := sharedDB.QueryContext(ctx, q, matchID, teamID, targetXUID)
@@ -462,7 +471,7 @@ func eventActor(e canonical.HighlightEvent) string {
 
 // loadHistoryForCategory charge les residus historiques du joueur sur une
 // categorie de mode, en excluant le match courant.
-func loadHistoryForCategory(ctx context.Context, playerDB *sql.DB, modeCategory, excludeMatchID string) []domain.HistoricalEngagementBrut {
+func loadHistoryForCategory(ctx context.Context, playerDB *sql.DB, modeCategory, excludeMatchID string) ([]domain.HistoricalEngagementBrut, error) {
 	const q = `
 		SELECT match_id, engagement_score_brut
 		FROM player_match_enrichment_latest
@@ -474,7 +483,10 @@ func loadHistoryForCategory(ctx context.Context, playerDB *sql.DB, modeCategory,
 	`
 	rows, err := playerDB.QueryContext(ctx, q, modeCategory, excludeMatchID)
 	if err != nil {
-		return nil
+		// Lot B (audit #6) : ne plus avaler l'erreur — une history vide PAR ERREUR
+		// (et non par absence réelle) fausserait la baseline, donc le score persisté.
+		slog.ErrorContext(ctx, "engagement: chargement history catégorie échoué", "mode_category", modeCategory, "err", err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -486,7 +498,11 @@ func loadHistoryForCategory(ctx context.Context, playerDB *sql.DB, modeCategory,
 		}
 		out = append(out, h)
 	}
-	return out
+	if err := rows.Err(); err != nil {
+		slog.ErrorContext(ctx, "engagement: itération history échouée", "mode_category", modeCategory, "err", err)
+		return out, err
+	}
+	return out, nil
 }
 
 // loadExistingEngagementScores retourne le set des match_id dont l'engagement a

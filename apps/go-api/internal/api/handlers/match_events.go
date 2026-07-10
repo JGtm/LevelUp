@@ -7,7 +7,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -16,7 +15,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
-	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 )
@@ -68,9 +66,8 @@ func (h *MatchEventsHandler) handleGetMatchEvents(ctx context.Context, in *match
 
 	tl, err := svc.GetMatchEvents(ctx, matchID, opts)
 	if err != nil {
-		if errors.Is(err, games.ErrCapabilityNotSupported) {
-			return nil, humacore.NewError(http.StatusServiceUnavailable, "capability_not_supported",
-				"ce titre n'expose pas la timeline d'events")
+		if mapped, ok := MapCapabilityError(ctx, err, "match.detail.events"); ok {
+			return nil, mapped
 		}
 		return nil, humacore.NewError(http.StatusInternalServerError, "match_events_error", err.Error())
 	}

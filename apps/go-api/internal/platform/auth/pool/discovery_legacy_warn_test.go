@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -60,6 +61,8 @@ func TestDiscoveryScan_SyncMetaResidue_NotAdoptedWhenStoreCovers(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	counterName := "legacy_source_used_" + credSourceDuckDBOAuth
+	before := observability.LoadCounter(counterName)
 	d := NewDiscoveryWithStores(cfg, resolver, titlePkg.DefaultSlug, store, nil)
 	sources, err := d.Scan(context.Background())
 	if err != nil {
@@ -75,6 +78,10 @@ func TestDiscoveryScan_SyncMetaResidue_NotAdoptedWhenStoreCovers(t *testing.T) {
 	if strings.Contains(src.Source, credSourceDuckDBOAuth) {
 		t.Errorf("Source = %q : duckdb_oauth ne doit pas apparaître quand le store couvre le RT (résidu non adopté)", src.Source)
 	}
+	// D1a : résidu non adopté → le compteur legacy_source_used ne bouge PAS.
+	if after := observability.LoadCounter(counterName); after != before {
+		t.Errorf("compteur %s = %d, attendu %d (résidu non adopté → aucun comptage)", counterName, after, before)
+	}
 }
 
 // TestDiscoveryScan_SyncMetaAdopted_WhenStoreEmpty : sans store, la valeur
@@ -84,6 +91,8 @@ func TestDiscoveryScan_SyncMetaAdopted_WhenStoreEmpty(t *testing.T) {
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 	seedSyncMetaRT(t, resolver.PlayerDBPath(titlePkg.DefaultSlug, "Alice"), "rt-legacy")
 
+	counterName := "legacy_source_used_" + credSourceDuckDBOAuth
+	before := observability.LoadCounter(counterName)
 	d := NewDiscoveryWithStores(cfg, resolver, titlePkg.DefaultSlug, nil, nil)
 	sources, err := d.Scan(context.Background())
 	if err != nil {
@@ -98,5 +107,9 @@ func TestDiscoveryScan_SyncMetaAdopted_WhenStoreEmpty(t *testing.T) {
 	}
 	if !strings.Contains(src.Source, credSourceDuckDBOAuth) {
 		t.Errorf("Source = %q : duckdb_oauth attendu quand la valeur legacy est adoptée", src.Source)
+	}
+	// D1a : adoption réelle du sync_meta legacy → compteur legacy_source_used +1.
+	if after := observability.LoadCounter(counterName); after != before+1 {
+		t.Errorf("compteur %s = %d, attendu %d (adoption legacy → +1)", counterName, after, before+1)
 	}
 }

@@ -16,6 +16,8 @@
 // MatchBits utilise les bits ≥ 16 pour éviter toute collision.
 package sync
 
+import "levelup/go-api/internal/sync/matchflags"
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ParticipantBits — match_participants.backfill_bits (données par joueur × match)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -67,16 +69,15 @@ const (
 // MatchBits — match_registry.backfill_completed (bits ≥ 16)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// MBit* sont désormais DÉFINIS dans le package feuille matchflags (K3c — rupture du cycle
+// sync↔snapshot) et RÉ-EXPORTÉS ici : tous les usages existants (sync + domain/ops/scheduler/
+// cmd) restent inchangés ; sync/snapshot importe matchflags directement (feuille pure).
 const (
-	MBitEvents = 1 << 16 // 65536   — highlight_events chargés
-	// bits 17 (assets) et 18 (aliases) RETIRÉS le 2026-05-08 — Phase 3 du
-	// plan PLAN_BITMASKS_AUDIT_FIX : aucune utilisation READ ou WRITE en
-	// prod. La detection assets se rabat sur des column guards
-	// (`mr.playlist_name IS NULL OR mr.map_name IS NULL ...`).
-	MBitKillerVictim      = 1 << 19 // 524288  — killer_victim_pairs chargés (global)
-	MBitPVEStats          = 1 << 20 // 1048576 — stats PvE tentées pour ce match
-	MBitWeaponKills       = 1 << 21 // 2097152 — weapon_kills chargés
-	MBitWeaponKillsNoFilm = 1 << 22 // 4194304 — film 404/expiré, 0 chunk dispo
+	MBitEvents            = matchflags.MBitEvents
+	MBitKillerVictim      = matchflags.MBitKillerVictim
+	MBitPVEStats          = matchflags.MBitPVEStats
+	MBitWeaponKills       = matchflags.MBitWeaponKills
+	MBitWeaponKillsNoFilm = matchflags.MBitWeaponKillsNoFilm
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
