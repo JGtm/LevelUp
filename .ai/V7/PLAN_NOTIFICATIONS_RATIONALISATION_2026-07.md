@@ -1,5 +1,10 @@
 # PLAN — Rationalisation des notifications in-app (2026-07)
 
+> **COMPLÉTÉ le 2026-07-10** — phases A-E exécutées sur la branche
+> `refactor/notifications-rationalization` (commits refactor(notif-A..E)), tous
+> gates verts, 10/10 critères de succès couverts par tests nommés (cf. Phase E).
+> Merge vers main laissé au superviseur (push main = deploy prod auto).
+
 > Rédigé le 2026-07-07 après audit prod (VPS). Exécution par un agent ultérieur sous le
 > contrat du skill `plan-execution` (OBLIGATOIRE : ordre strict, une phase à la fois,
 > gate passé avant la suivante, aucun report d'item exécutable, statuts
@@ -374,23 +379,43 @@ dont 5 nouveaux tests Bell) ; generated.ts régénéré (+badge_count) et commit
 
 ## Phase E — Gate final et clôture
 
-- [ ] E1. Suite complète : `cd apps/go-api && go test ./...` puis
-      `go test -tags=integration -p 1 ./internal/platform/duckdb/ ./internal/sync/`
-      (OBLIGATOIRE : les écritures shared_social sont touchées — C2/D5).
-- [ ] E2. `make go-api-lint` (dette baseline gelée : ne pas l'accroître),
-      `make check-types`, `make test-web`.
-- [ ] E3. Relire le diff complet : pas d'emoji, pas de `fmt.Println`, pas de couleur
-      en dur côté web, seuils 500 L / 80 L respectés (`EmitPostSyncDeltas` porte déjà
-      un nolint funlen documenté — ne pas l'aggraver, extraire si besoin).
-- [ ] E4. Entrée `thought_log.md` (date, statut, décision, résultats, prochaine étape).
-- [ ] E5. Skill `delivery-checklist` avant commit final. Commits par phase
-      (`refactor(notif-A): ...` etc.) sur la branche unique. Demander à l'utilisateur
-      avant merge — **push main = deploy prod automatique, prévenir**.
-- [ ] E6. Statuer tous les items du plan ; consigner les découvertes hors périmètre
-      ci-dessous sans les traiter.
+- [x] E1. Suite complète : `go test ./...` exit 0 (relancée APRÈS le refactor
+      d'extraction E3) ; `go test -tags=integration -p 1 ./internal/platform/duckdb/
+      ./internal/sync/` exit 0 (ok 89.1 s + 85.4 s).
+- [x] E2. Lint : `golangci-lint run --new-from-rev=origin/main ./...` → « 0 issues »
+      exit 0. `make check-types` (tsc) exit 0 (cache node_modules/.tmp purgé avant).
+      `make test-web` (vitest) 2106 passed / 247 fichiers. eslint : 0 erreur,
+      68 warnings tous pré-existants (aucun sur les fichiers notifications).
+- [x] E3. Diff relu : 0 emoji, 0 fmt.Println, 0 couleur en dur, 0 TODO/FIXME.
+      `EmitPostSyncDeltas` DÉGONFLÉE (146 L avant plan → 123 L) par extraction de
+      `emitCareerRankDelta` + `emitSkillTierDeltas` dans
+      `post_sync_deltas_bespoke.go` (le fichier principal repasse à 409 L < 500).
+- [x] E4. Entrées thought_log par phase (A, B, C, D, E) en tête de fichier.
+- [x] E5. Skill `delivery-checklist` passé (complétude, pièges de filtre/cache
+      couverts). Commits par phase sur la branche unique. Pas de merge — laissé au
+      superviseur (push main = deploy prod auto).
+- [x] E6. Tous les items statués ; découvertes consignées ci-dessous (non traitées).
 
 **Critère de clôture global** : les 10 points du critère de succès sont couverts par
 des tests nommés, tous les gates sont verts, aucun item sans statut.
+
+Couverture des 10 critères de succès (tests nommés) :
+1. Cold-start → 0 émission : `TestEmitPostSyncDeltas_ColdStart_SuppressesAll`.
+2. N objectifs complétés → 1 notif : `TestEmitPostSyncDeltas_ObjectiveCompleted_AggregatedDelta`
+   + garde-rail `TestPostSyncNeverEmitsObjectiveAssigned`.
+3. Flapping IV↔V < 24 h → ≤ 1 : `TestEmitPostSyncDeltas_SkillTier_FlappingCollapsesTo1`.
+4. 5 uploads même acteur < 1 h → 1 coalescée : `TestEmitCoalesced_SameActor_MergesCountAndID`
+   + `TestNotificationsE2E_EmitCoalesced_MergesLatestKeepsHistory`.
+5. Record 30d+90d+all_time → 1 (all_time) : `TestGenerate_RecordBroken_CollapseWidestPeriod`.
+6. Badge = non-lues severity != info + auto-read fermeture :
+   `TestNotificationsE2E_SweepStaleInfo_And_BadgeCount` (badge_count) +
+   `NotificationsBell.test.tsx` (« affiche badge_count », « fermeture → markRead »).
+7. Écart < 2 % → 0, entre 2 et 5 % → 1 : `TestIsNearMiss_Cases` (99→non, 97→oui, 98→oui).
+8. Première évaluation records → 0 notif : `TestGenerate_RecordBroken_SeedSilencieux`.
+9. Nudge d'état → max 1/30 j : `TestFilterRecent_StateNudge_30DayWindow` +
+   `TestDedupWindowFor_Resolution`.
+10. Sync en panne durable → 1 notif coalescée :
+    `TestEmitCoalesced_SyncError_NoActor_CategoryOnly` (3 échecs → count=3, dernier message).
 
 ---
 
