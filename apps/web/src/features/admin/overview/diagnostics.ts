@@ -86,7 +86,7 @@ function evaluateOverviewRules(o: AdminMonitoringOverview, out: Verdict[]): void
       level: 'crit',
       titleKey: 'admin.diag.invariants_fail',
       evidence: `${o.invariants.fail_last} FAIL`,
-      to: '/admin/system',
+      to: '/admin/data',
     })
   }
   const tokensBad = o.tokens ? o.tokens.expired + o.tokens.reauth + o.tokens.absent : 0
@@ -95,7 +95,7 @@ function evaluateOverviewRules(o: AdminMonitoringOverview, out: Verdict[]): void
       level: 'crit',
       titleKey: 'admin.diag.tokens',
       evidence: `${tokensBad}`,
-      to: '/admin/system',
+      to: '/admin/sync',
     })
   }
   if (o.scheduler.available && o.scheduler.last_failed > 0) {
@@ -119,7 +119,7 @@ function evaluateOverviewRules(o: AdminMonitoringOverview, out: Verdict[]): void
       level: 'warn',
       titleKey: 'admin.diag.data_health',
       evidence: `${o.data_health.warnings_total}`,
-      to: '/admin/data-quality',
+      to: '/admin/data',
     })
   }
   const failedJobs = (o.jobs.recent ?? []).filter((j) => j.status === 'failed').length
@@ -193,7 +193,7 @@ function evaluateSchedulerRules(
         level: 'info',
         titleKey: 'admin.diag.dominant_step',
         evidence: `${p.gamertag} : ${dom.step} ${Math.round(dom.durationMs / 1000)} s (${dom.pct}%)`,
-        to: '/admin/convergence',
+        to: '/admin/data',
       })
       break // un seul verdict de goulot (le premier joueur concerné)
     }
@@ -214,8 +214,9 @@ function evaluatePerfRules(perf: AdminPerfStats, out: Verdict[]): void {
     out.push({
       level: 'warn',
       titleKey: 'admin.diag.api_auth',
+      // Erreurs auth API = santé tokens → onglet Sync (les tokens y vivent, A3.3).
       evidence: `${perf.api_buckets.auth}`,
-      to: '/admin/system',
+      to: '/admin/sync',
     })
   }
   if (perf.api_buckets.server_5xx > 0) {

@@ -55,29 +55,41 @@ describe('computeTabBadges', () => {
     expect(computeTabBadges(o)['/admin/sync']).toEqual({ count: 1, token: 'destructive' })
   })
 
-  it('data health warnings → pastille warning sur /admin/data-quality', () => {
+  it('tokens morts → pastille destructive sur /admin/sync (A3.3 : les tokens vivent dans Sync)', () => {
+    const o = baseOverview()
+    o.tokens = { expired: 1, absent: 1, reauth: 0 } as AdminMonitoringOverview['tokens']
+    expect(computeTabBadges(o)['/admin/sync']).toEqual({ count: 2, token: 'destructive' })
+  })
+
+  it('data health warnings → pastille warning sur /admin/data (A3.2 : Données)', () => {
     const o = baseOverview()
     o.data_health = { warnings_total: 4 } as AdminMonitoringOverview['data_health']
-    expect(computeTabBadges(o)['/admin/data-quality']).toEqual({ count: 4, token: 'warning' })
+    expect(computeTabBadges(o)['/admin/data']).toEqual({ count: 4, token: 'warning' })
   })
 
-  it('invariants FAIL + tokens en erreur → pastille destructive cumulée sur /admin/system', () => {
+  it('invariants FAIL → pastille destructive sur /admin/data (masque les warnings)', () => {
     const o = baseOverview()
     o.invariants.fail_last = 1
-    o.tokens = { expired: 1, absent: 1, reauth: 0 } as AdminMonitoringOverview['tokens']
-    expect(computeTabBadges(o)['/admin/system']).toEqual({ count: 3, token: 'destructive' })
+    o.invariants.warn_last = 2
+    expect(computeTabBadges(o)['/admin/data']).toEqual({ count: 1, token: 'destructive' })
   })
 
-  it('invariants WARN seul (pas de critique) → pastille warning sur /admin/system', () => {
+  it('invariants WARN seul (pas de critique) → pastille warning sur /admin/data', () => {
     const o = baseOverview()
     o.invariants.warn_last = 2
-    expect(computeTabBadges(o)['/admin/system']).toEqual({ count: 2, token: 'warning' })
+    expect(computeTabBadges(o)['/admin/data']).toEqual({ count: 2, token: 'warning' })
   })
 
   it('invariants jamais lancés (runs_total=0) → fail_last ignoré', () => {
     const o = baseOverview()
     o.invariants.runs_total = 0
     o.invariants.fail_last = 5 // valeur résiduelle, non significative
-    expect(computeTabBadges(o)['/admin/system']).toBeUndefined()
+    expect(computeTabBadges(o)['/admin/data']).toBeUndefined()
+  })
+
+  it('détections open → pastille warning sur /admin/detections (open seul, A2.5)', () => {
+    const o = baseOverview()
+    o.open_detections = 3
+    expect(computeTabBadges(o)['/admin/detections']).toEqual({ count: 3, token: 'warning' })
   })
 })

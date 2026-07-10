@@ -1,20 +1,14 @@
 /**
- * Shared helpers + UI atoms for LabPage panels.
+ * Shared helpers + UI atoms des panneaux ex-Lab encore en service.
  *
- * P8.4 (revue 2026-04-29) : extraits de LabPage.tsx (~250L) pour permettre la
- * découpe en *Panel.tsx dédiés tout en partageant formatters + StatusBadge +
- * MetricCard + JsonViewer + FileStatusRow + RouteList + GuardRow.
+ * A3.5 (DC-9, 2026-07-10) : le Lab est retiré de l'app — ne restent ici que
+ * les briques consommées par DiagnosticsPanel (rendu dans l'onglet admin
+ * Données) : formatters + StatusBadge + MetricCard + FileStatusRow + GuardRow.
+ * RouteList / JsonViewer / SelectableAssetList / SelectableMedalList sont
+ * partis avec les panneaux Resources/Waypoint/Contracts.
  */
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { EmptyStateNotice } from '@/components/ui/empty-state'
-import type {
-  LabAssetSummary,
-  LabFileStatus,
-  LabGuardResult,
-  LabMedalSummary,
-  LabRouteMethods,
-} from '@/lib/api/types'
+import type { LabFileStatus, LabGuardResult } from '@/lib/api/types'
 import { getLabText, type LabLocale, type LabText } from './i18n'
 
 // ─── Formatters ──────────────────────────────────────────────────────────────
@@ -111,34 +105,6 @@ export function MetricCard({
   return <StatCard label={label} value={value} hint={hint} variant="metric" />
 }
 
-export function JsonViewer({
-  title,
-  content,
-  text,
-}: {
-  title: string
-  content?: string | null
-  text: LabText
-}) {
-  if (!content) {
-    return (
-      <EmptyStateNotice
-        title={text.common.payloadUnavailableTitle(title)}
-        description={text.common.payloadUnavailableDescription}
-      />
-    )
-  }
-
-  return (
-    <div className="space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-label text-muted-foreground">{title}</p>
-      <pre className="max-h-[420px] overflow-auto rounded-xl bg-card p-4 text-xs leading-6 text-muted-foreground">
-        {content}
-      </pre>
-    </div>
-  )
-}
-
 export function FileStatusRow({
   label,
   file,
@@ -169,46 +135,6 @@ export function FileStatusRow({
   )
 }
 
-export function RouteList({
-  title,
-  items,
-  emptyTitle,
-  emptyDescription,
-}: {
-  title: string
-  items: LabRouteMethods[]
-  emptyTitle: string
-  emptyDescription: string
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {items.length === 0 ? (
-          <EmptyStateNotice title={emptyTitle} description={emptyDescription} />
-        ) : (
-          <div className="space-y-3">
-            {items.map((item) => (
-              <div key={item.path} className="rounded-xl border border-border p-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  {(item.methods ?? []).map((method) => (
-                    <Badge key={`${item.path}-${method}`} variant="outline">
-                      {method.toUpperCase()}
-                    </Badge>
-                  ))}
-                </div>
-                <p className="mt-2 break-all text-sm text-foreground">{item.path}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
 export function GuardRow({
   label,
   result,
@@ -234,102 +160,6 @@ export function GuardRow({
           ))}
         </div>
       ) : null}
-    </div>
-  )
-}
-
-export function SelectableAssetList({
-  items,
-  selectedID,
-  onSelect,
-  text,
-}: {
-  items: LabAssetSummary[]
-  selectedID: string
-  onSelect: (assetID: string) => void
-  text: LabText
-}) {
-  if (items.length === 0) {
-    return (
-      <EmptyStateNotice
-        title={text.resources.noAssetsTitle}
-        description={text.resources.noAssetsDescription}
-      />
-    )
-  }
-
-  return (
-    <div className="space-y-2">
-      {items.map((item) => {
-        const active = item.asset_id === selectedID
-        return (
-          <button
-            key={item.asset_id}
-            onClick={() => onSelect(item.asset_id)}
-            className={[
-              'w-full rounded-xl border p-3 text-left transition-colors',
-              active
-                ? 'border-primary/30 bg-primary/10'
-                : 'border-border hover:border-border hover:bg-muted',
-            ].join(' ')}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-foreground">{item.name || item.asset_id}</p>
-              <Badge variant="outline">{item.asset_type}</Badge>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">{item.asset_id}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{text.common.version}: {item.version_id}</p>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-export function SelectableMedalList({
-  items,
-  selectedID,
-  onSelect,
-  text,
-}: {
-  items: LabMedalSummary[]
-  selectedID: number | null
-  onSelect: (medalID: number) => void
-  text: LabText
-}) {
-  if (items.length === 0) {
-    return (
-      <EmptyStateNotice
-        title={text.resources.noMedalsTitle}
-        description={text.resources.noMedalsDescription}
-      />
-    )
-  }
-
-  return (
-    <div className="space-y-2">
-      {items.map((item) => {
-        const active = item.medal_id === selectedID
-        return (
-          <button
-            key={item.medal_id}
-            onClick={() => onSelect(item.medal_id)}
-            className={[
-              'w-full rounded-xl border p-3 text-left transition-colors',
-              active
-                ? 'border-primary/30 bg-primary/10'
-                : 'border-border hover:border-border hover:bg-muted',
-            ].join(' ')}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-foreground">{item.name_id || `${text.common.id} ${item.medal_id}`}</p>
-              <Badge variant="outline">{item.medal_type || text.common.rawValue}</Badge>
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">{text.common.id}: {item.medal_id}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{text.common.sprite}: {item.sprite_index}</p>
-          </button>
-        )
-      })}
     </div>
   )
 }

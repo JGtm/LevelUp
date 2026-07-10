@@ -26,9 +26,12 @@ import { Route as LabChartsRouteImport } from './routes/lab/charts'
 import { Route as AdminTitlesRouteImport } from './routes/admin/titles'
 import { Route as AdminSystemRouteImport } from './routes/admin/system'
 import { Route as AdminSyncRouteImport } from './routes/admin/sync'
+import { Route as AdminManagementRouteImport } from './routes/admin/management'
 import { Route as AdminLogsRouteImport } from './routes/admin/logs'
 import { Route as AdminLabRouteImport } from './routes/admin/lab'
+import { Route as AdminDetectionsRouteImport } from './routes/admin/detections'
 import { Route as AdminDataQualityRouteImport } from './routes/admin/data-quality'
+import { Route as AdminDataRouteImport } from './routes/admin/data'
 import { Route as AdminConvergenceRouteImport } from './routes/admin/convergence'
 import { Route as AdminAccessRouteImport } from './routes/admin/access'
 import { Route as PlayersPlayerSlugSynthesisRouteImport } from './routes/players/$playerSlug/synthesis'
@@ -151,6 +154,11 @@ const AdminSyncRoute = AdminSyncRouteImport.update({
   path: '/sync',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminManagementRoute = AdminManagementRouteImport.update({
+  id: '/management',
+  path: '/management',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminLogsRoute = AdminLogsRouteImport.update({
   id: '/logs',
   path: '/logs',
@@ -161,9 +169,19 @@ const AdminLabRoute = AdminLabRouteImport.update({
   path: '/lab',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDetectionsRoute = AdminDetectionsRouteImport.update({
+  id: '/detections',
+  path: '/detections',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDataQualityRoute = AdminDataQualityRouteImport.update({
   id: '/data-quality',
   path: '/data-quality',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDataRoute = AdminDataRouteImport.update({
+  id: '/data',
+  path: '/data',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminConvergenceRoute = AdminConvergenceRouteImport.update({
@@ -390,9 +408,12 @@ export interface FileRoutesByFullPath {
   '/setup': typeof SetupRoute
   '/admin/access': typeof AdminAccessRoute
   '/admin/convergence': typeof AdminConvergenceRoute
+  '/admin/data': typeof AdminDataRoute
   '/admin/data-quality': typeof AdminDataQualityRoute
+  '/admin/detections': typeof AdminDetectionsRoute
   '/admin/lab': typeof AdminLabRoute
   '/admin/logs': typeof AdminLogsRoute
+  '/admin/management': typeof AdminManagementRoute
   '/admin/sync': typeof AdminSyncRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/titles': typeof AdminTitlesRoute
@@ -447,9 +468,12 @@ export interface FileRoutesByTo {
   '/setup': typeof SetupRoute
   '/admin/access': typeof AdminAccessRoute
   '/admin/convergence': typeof AdminConvergenceRoute
+  '/admin/data': typeof AdminDataRoute
   '/admin/data-quality': typeof AdminDataQualityRoute
+  '/admin/detections': typeof AdminDetectionsRoute
   '/admin/lab': typeof AdminLabRoute
   '/admin/logs': typeof AdminLogsRoute
+  '/admin/management': typeof AdminManagementRoute
   '/admin/sync': typeof AdminSyncRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/titles': typeof AdminTitlesRoute
@@ -504,9 +528,12 @@ export interface FileRoutesById {
   '/setup': typeof SetupRoute
   '/admin/access': typeof AdminAccessRoute
   '/admin/convergence': typeof AdminConvergenceRoute
+  '/admin/data': typeof AdminDataRoute
   '/admin/data-quality': typeof AdminDataQualityRoute
+  '/admin/detections': typeof AdminDetectionsRoute
   '/admin/lab': typeof AdminLabRoute
   '/admin/logs': typeof AdminLogsRoute
+  '/admin/management': typeof AdminManagementRoute
   '/admin/sync': typeof AdminSyncRoute
   '/admin/system': typeof AdminSystemRoute
   '/admin/titles': typeof AdminTitlesRoute
@@ -564,9 +591,12 @@ export interface FileRouteTypes {
     | '/setup'
     | '/admin/access'
     | '/admin/convergence'
+    | '/admin/data'
     | '/admin/data-quality'
+    | '/admin/detections'
     | '/admin/lab'
     | '/admin/logs'
+    | '/admin/management'
     | '/admin/sync'
     | '/admin/system'
     | '/admin/titles'
@@ -621,9 +651,12 @@ export interface FileRouteTypes {
     | '/setup'
     | '/admin/access'
     | '/admin/convergence'
+    | '/admin/data'
     | '/admin/data-quality'
+    | '/admin/detections'
     | '/admin/lab'
     | '/admin/logs'
+    | '/admin/management'
     | '/admin/sync'
     | '/admin/system'
     | '/admin/titles'
@@ -677,9 +710,12 @@ export interface FileRouteTypes {
     | '/setup'
     | '/admin/access'
     | '/admin/convergence'
+    | '/admin/data'
     | '/admin/data-quality'
+    | '/admin/detections'
     | '/admin/lab'
     | '/admin/logs'
+    | '/admin/management'
     | '/admin/sync'
     | '/admin/system'
     | '/admin/titles'
@@ -860,6 +896,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSyncRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/management': {
+      id: '/admin/management'
+      path: '/management'
+      fullPath: '/admin/management'
+      preLoaderRoute: typeof AdminManagementRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/logs': {
       id: '/admin/logs'
       path: '/logs'
@@ -874,11 +917,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLabRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/detections': {
+      id: '/admin/detections'
+      path: '/detections'
+      fullPath: '/admin/detections'
+      preLoaderRoute: typeof AdminDetectionsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/data-quality': {
       id: '/admin/data-quality'
       path: '/data-quality'
       fullPath: '/admin/data-quality'
       preLoaderRoute: typeof AdminDataQualityRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/data': {
+      id: '/admin/data'
+      path: '/data'
+      fullPath: '/admin/data'
+      preLoaderRoute: typeof AdminDataRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/convergence': {
@@ -1139,9 +1196,12 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminAccessRoute: typeof AdminAccessRoute
   AdminConvergenceRoute: typeof AdminConvergenceRoute
+  AdminDataRoute: typeof AdminDataRoute
   AdminDataQualityRoute: typeof AdminDataQualityRoute
+  AdminDetectionsRoute: typeof AdminDetectionsRoute
   AdminLabRoute: typeof AdminLabRoute
   AdminLogsRoute: typeof AdminLogsRoute
+  AdminManagementRoute: typeof AdminManagementRoute
   AdminSyncRoute: typeof AdminSyncRoute
   AdminSystemRoute: typeof AdminSystemRoute
   AdminTitlesRoute: typeof AdminTitlesRoute
@@ -1151,9 +1211,12 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAccessRoute: AdminAccessRoute,
   AdminConvergenceRoute: AdminConvergenceRoute,
+  AdminDataRoute: AdminDataRoute,
   AdminDataQualityRoute: AdminDataQualityRoute,
+  AdminDetectionsRoute: AdminDetectionsRoute,
   AdminLabRoute: AdminLabRoute,
   AdminLogsRoute: AdminLogsRoute,
+  AdminManagementRoute: AdminManagementRoute,
   AdminSyncRoute: AdminSyncRoute,
   AdminSystemRoute: AdminSystemRoute,
   AdminTitlesRoute: AdminTitlesRoute,
