@@ -14,6 +14,8 @@ import { useAdminT } from '../useAdminText'
 interface PostSyncColumn {
   labelKey: AdminManifestKey
   value: (p: NonNullable<SchedulerPlayerOutcome['post_sync']>) => number | string
+  /** Colonne booléenne : true → libellé i18n admin.status.ok (A8.7), false → '—'. */
+  boolean?: boolean
 }
 
 const COLUMNS: PostSyncColumn[] = [
@@ -27,8 +29,8 @@ const COLUMNS: PostSyncColumn[] = [
   { labelKey: 'admin.convergence.ps_engagement', value: (ps) => ps.engagement_scores_computed },
   { labelKey: 'admin.convergence.ps_friends', value: (ps) => Number(ps.matches_promoted_friends) },
   { labelKey: 'admin.convergence.ps_views', value: (ps) => ps.views_refreshed },
-  { labelKey: 'admin.convergence.ps_career', value: (ps) => (ps.career_synced ? 'OK' : '—') },
-  { labelKey: 'admin.convergence.ps_achievements', value: (ps) => (ps.achievements_synced ? 'OK' : '—') },
+  { labelKey: 'admin.convergence.ps_career', value: (ps) => Number(ps.career_synced), boolean: true },
+  { labelKey: 'admin.convergence.ps_achievements', value: (ps) => Number(ps.achievements_synced), boolean: true },
 ]
 
 export function PostSyncMatrix({ players }: { players: SchedulerPlayerOutcome[] }) {
@@ -70,8 +72,9 @@ export function PostSyncMatrix({ players }: { players: SchedulerPlayerOutcome[] 
                   )}
                 </td>
                 {COLUMNS.map((c) => {
-                  const v = c.value(ps)
-                  const zero = v === 0 || v === '—'
+                  const raw = c.value(ps)
+                  const v = c.boolean ? (raw ? tA('admin.status.ok') : '—') : raw
+                  const zero = raw === 0 || v === '—'
                   return (
                     <td
                       key={c.labelKey}

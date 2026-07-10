@@ -4,13 +4,11 @@
  * (+ scan à blanc), et les quatre listes actionnables (modes, assets UUID,
  * playlists hors catalogue, xuids orphelins).
  */
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
-import { KpiCard } from '@/components/cards/KpiCard'
 import { Button } from '@/components/ui/button'
-import { tokenCssVar, type SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { apiErrorMessage } from '@/lib/api/client'
 import type {
   AdminDataQualityCounts,
@@ -18,6 +16,7 @@ import type {
   RegistryNamesBackfillResult,
 } from '@/lib/api/types'
 import { AdminActionButton } from '../components/AdminActionButton'
+import { AdminKpi } from '../components/AdminKpi'
 import { useDataQualityCounts } from './queries'
 import {
   invalidateDataQuality,
@@ -32,17 +31,14 @@ import {
   RawAssetsSection,
   UntranslatedModesSection,
 } from './IssueSections'
-import {
-  counterDelta,
-  readCountersSnapshot,
-  writeCountersSnapshot,
-  type CountersSnapshot,
-} from '../countersTrend'
+import { counterDelta, type CountersSnapshot } from '../countersTrend'
+import { useCounterSnapshot } from '../useCounterSnapshot'
 import { useAdminT, type TAdmin } from '../useAdminText'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { DiagnosticsPanel } from '@/features/lab/DiagnosticsPanel'
 import { getLabText, normalizeLabLocale } from '@/features/lab/i18n'
 import { useLabDiagnostics } from '@/features/lab/queries'
+import { SectionHeader } from '../components/SectionHeader'
 
 const DQ_SNAPSHOT_KEY = 'admin-dq-snapshot'
 
@@ -56,19 +52,8 @@ export function AdminDataQualityPage() {
   const labText = getLabText(labLocale)
   const diagnostics = useLabDiagnostics(true)
 
-  // Baseline roulante (pattern invariantsTrend) : delta vs run précédent.
-  const [previous, setPrevious] = useState<CountersSnapshot>(() => readCountersSnapshot(DQ_SNAPSHOT_KEY))
-  const lastRunRef = useRef<{ generatedAt: string; snapshot: CountersSnapshot } | null>(null)
-  useEffect(() => {
-    if (!data) return
-    const snap = buildDQSnapshot(data)
-    const last = lastRunRef.current
-    if (last && last.generatedAt !== data.generated_at) {
-      setPrevious(last.snapshot)
-    }
-    lastRunRef.current = { generatedAt: data.generated_at, snapshot: snap }
-    writeCountersSnapshot(DQ_SNAPSHOT_KEY, snap)
-  }, [data])
+  // Baseline roulante (hook canonique A8.2) : delta vs run precedent.
+  const previous = useCounterSnapshot(DQ_SNAPSHOT_KEY, data?.generated_at, () => buildDQSnapshot(data!))
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">…</p>
@@ -80,22 +65,19 @@ export function AdminDataQualityPage() {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          {tA('admin.dq.counts_section')}
-        </h3>
+        <SectionHeader title={tA('admin.dq.counts_section')} />
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          <DQKpi label={tA('admin.dq.kpi_raw_uuids')} value={data.raw_uuid_total} delta={counterDelta(previous, 'raw_uuids', data.raw_uuid_total)} />
-          <DQKpi label={tA('admin.dq.kpi_untranslated')} value={data.untranslated_modes} delta={counterDelta(previous, 'untranslated', data.untranslated_modes)} />
-          <DQKpi label={tA('admin.dq.kpi_orphan_playlists')} value={data.orphan_playlists} delta={counterDelta(previous, 'orphan_playlists', data.orphan_playlists)} />
-          <DQKpi label={tA('admin.dq.kpi_orphan_xuids')} value={data.orphan_xuids} delta={counterDelta(previous, 'orphan_xuids', data.orphan_xuids)} neutral />
-          <DQKpi label={tA('admin.dq.kpi_lying_bits')} value={data.lying_bits_events + data.lying_bits_weapons} delta={counterDelta(previous, 'lying_bits', data.lying_bits_events + data.lying_bits_weapons)} />
+          {/* Accent : 0 = vert, > 0 = warning ('info' pour les compteurs informatifs). */}
+          <AdminKpi label={tA('admin.dq.kpi_raw_uuids')} value={data.raw_uuid_total} accent={data.raw_uuid_total > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'raw_uuids', data.raw_uuid_total)} />
+          <AdminKpi label={tA('admin.dq.kpi_untranslated')} value={data.untranslated_modes} accent={data.untranslated_modes > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'untranslated', data.untranslated_modes)} />
+          <AdminKpi label={tA('admin.dq.kpi_orphan_playlists')} value={data.orphan_playlists} accent={data.orphan_playlists > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'orphan_playlists', data.orphan_playlists)} />
+          <AdminKpi label={tA('admin.dq.kpi_orphan_xuids')} value={data.orphan_xuids} accent={data.orphan_xuids > 0 ? 'info' : 'success'} delta={counterDelta(previous, 'orphan_xuids', data.orphan_xuids)} />
+          <AdminKpi label={tA('admin.dq.kpi_lying_bits')} value={data.lying_bits_events + data.lying_bits_weapons} accent={data.lying_bits_events + data.lying_bits_weapons > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'lying_bits', data.lying_bits_events + data.lying_bits_weapons)} />
         </div>
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          {tA('admin.dq.actions_section')}
-        </h3>
+        <SectionHeader title={tA('admin.dq.actions_section')} />
         <RegistryNamesAction tA={tA} />
         <LyingBitsAction tA={tA} />
         <CatalogDrainAction tA={tA} />
@@ -108,9 +90,7 @@ export function AdminDataQualityPage() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-            {tA('admin.dq.diagnostics_section')}
-          </h3>
+          <SectionHeader title={tA('admin.dq.diagnostics_section')} />
           <Button
             size="sm"
             variant="outline"
@@ -143,45 +123,6 @@ function buildDQSnapshot(data: AdminDataQualityCounts): CountersSnapshot {
   }
 }
 
-/** KPI count : 0 = vert, > 0 = warning (neutral pour les compteurs informatifs). */
-function DQKpi({
-  label,
-  value,
-  delta,
-  neutral,
-}: {
-  label: string
-  value: number
-  delta?: number
-  neutral?: boolean
-}) {
-  const accent: SemanticToken | undefined = neutral
-    ? value > 0
-      ? 'info'
-      : 'success'
-    : value > 0
-      ? 'warning'
-      : 'success'
-  return (
-    <KpiCard accent={accent} className="h-full">
-      <div className="p-4">
-        <div className="text-xs text-muted-foreground">{label}</div>
-        <div className="mt-1 flex items-baseline gap-2">
-          <span className="text-2xl font-semibold tabular-nums text-foreground">{value}</span>
-          {delta !== undefined && (
-            <span
-              className="text-xs font-semibold tabular-nums"
-              style={{ color: tokenCssVar(delta < 0 ? 'success' : 'destructive') }}
-            >
-              ({delta > 0 ? '+' : ''}
-              {delta})
-            </span>
-          )}
-        </div>
-      </div>
-    </KpiCard>
-  )
-}
 
 /** Ligne d'explication courte sous une action globale (à quoi ça sert / ce que ça fait). */
 function ActionHelp({ text }: { text: string }) {

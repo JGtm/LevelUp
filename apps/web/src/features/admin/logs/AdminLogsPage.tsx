@@ -19,6 +19,7 @@ import { flattenLogFields, logEntryDetail, logEntryText, logLevelStatus } from '
 import { adminAbsoluteTime, adminRelativeTime } from '../format'
 import { useAdminT, useAdminLocale } from '../useAdminText'
 import { StatusBadge } from '../components/StatusBadge'
+import { SectionHeader } from '../components/SectionHeader'
 
 const LEVELS = ['debug', 'info', 'warn', 'error'] as const
 const LIMITS = ['50', '200', '500'] as const
@@ -62,9 +63,7 @@ export function AdminLogsPage() {
 
   return (
     <div className="space-y-6">
-      <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        {tA('admin.system.section_logs')}
-      </h3>
+      <SectionHeader title={tA('admin.system.section_logs')} />
 
       <div className="space-y-4">
       {/* Barre de filtres */}

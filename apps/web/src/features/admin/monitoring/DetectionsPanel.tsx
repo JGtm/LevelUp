@@ -25,6 +25,7 @@ import { useSetDetectionStatus, type DetectionStatus } from './mutations'
 import { detectionLevelToken, detectionStatusMeta, filterDetectionsByStatus } from './detectionDisplay'
 import { adminAbsoluteTime, adminRelativeTime } from '../format'
 import { useAdminT, useAdminLocale } from '../useAdminText'
+import { SectionHeader } from '../components/SectionHeader'
 
 const STATUS_FILTERS = ['all', 'open', 'acked', 'muted', 'resolved'] as const
 type StatusFilter = (typeof STATUS_FILTERS)[number]
@@ -151,9 +152,7 @@ export function DetectionsPanel() {
     <section className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
         <div>
-          <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-            {tA('admin.detections.section')}
-          </h3>
+          <SectionHeader title={tA('admin.detections.section')} />
           <p className="text-xs text-muted-foreground">{tA('admin.detections.subtitle')}</p>
         </div>
         <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">

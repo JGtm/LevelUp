@@ -15,6 +15,7 @@ import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i1
 import { useAppShellStore } from '@/stores/appShellStore'
 import { SyncTab } from '@/features/settings/SyncTab'
 import type { SettingsResponse } from '@/lib/api/types'
+import { SectionHeader } from '../components/SectionHeader'
 
 export function AdminSyncSettingsSection() {
   const { data: settings, isLoading } = useSettings()
@@ -36,9 +37,7 @@ export function AdminSyncSettingsSection() {
 
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        {t.tabSync}
-      </h3>
+      <SectionHeader title={t.tabSync} />
       <SyncTab merged={local} handleChange={handleChange} t={t} />
     </section>
   )

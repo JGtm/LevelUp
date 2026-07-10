@@ -15,6 +15,7 @@ import { useResolveAssetTranslation, useResolveModeTranslation } from './mutatio
 import { InlineResolveForm } from './InlineResolveForm'
 import { IssueTable, type IssueColumn } from './IssueTable'
 import { useAdminT, type TAdmin } from '../useAdminText'
+import { SectionHeader } from '../components/SectionHeader'
 
 function rowKeyOf(issue: AdminDataQualityIssue): string {
   return `${issue.kind}:${issue.asset_kind ?? ''}:${issue.id}`
@@ -45,7 +46,7 @@ function SectionShell({
   return (
     <section className="space-y-3" data-section={kind}>
       <div>
-        <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">{title}</h3>
+        <SectionHeader title={title} />
         {hint && <p className="mt-0.5 max-w-2xl text-xs text-muted-foreground">{hint}</p>}
       </div>
       {count === 0 ? <EmptyStateNotice title={emptyTitle} description={emptyDesc} /> : children}
