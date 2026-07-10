@@ -1,3 +1,29 @@
+## [2026-07-10] HOTFIX LUSR shadow read-only — H3 (tests + audit segments frères)
+
+**Statut** : En cours (phase H3 close ; H4 lint + delivery à suivre).
+
+**Décision principale** : 2 tests pérennes (`skill_v2_shadow_burst_test.go`) verrouillent le
+fix. (1) `TestLUSRV2Shadow_PersistsViaWriteBurst_WhenReadHandleIsReadOnly` : DB FICHIER,
+`roRwSplitAccess` — Read = attach READ_ONLY (sélection), Write = attach RW (persist) → le
+handle Read est réellement read-only, donc tout retour au persist-via-Read casserait le test.
+(2) `TestLUSRV2Shadow_ReleasesReadBeforeWriteBurst_MultiChunk` : garde anti-deadlock (Write
+jamais demandé avec un Read en vol), 4 matchs = 2 chunks. DDL de schéma extrait en const
+`shadowSchemaDDL` (réutilisé in-memory + fichier). AUDIT H3.4 : chaque segment `shared.Read`/
+`withSharedRead` d'engine_postsync* vérifié sur pièces — aucun n'écrit le handle shared
+(catalog_refresh écrit metadataDB pas shared, vérifié ; les autres écrivent la PLAYER DB).
+Le shadow LUSR v2 était le SEUL écrivain shared mal classé « lecture ». Aucune anomalie
+résiduelle.
+
+**Résultats observés** : `go test ./...` (racine) exit 0 ; `go test -tags=integration -p 1`
+exit 0 ; intégration anti-ART ciblée verte (persist 13.4s, sync 80.2s). Les 2 tests pérennes
+verts ; suite skill complète verte.
+
+**Prochaine étape** : H4 — `make go-api-lint` (0 nouvelle erreur vs baseline),
+delivery-checklist, puis H5 = GATE USER (présenter le diff, attendre le GO avant merge main
+= deploy prod auto).
+
+---
+
 ## [2026-07-10] HOTFIX LUSR shadow read-only — H2 (implémentation)
 
 **Statut** : En cours (phase H2 close ; H3 tests + audit à suivre).

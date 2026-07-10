@@ -326,7 +326,15 @@ func openShadowTestDB(t *testing.T) *sql.DB {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	const ddl = `
+	if _, err := db.Exec(shadowSchemaDDL); err != nil {
+		t.Fatalf("DDL: %v", err)
+	}
+	return db
+}
+
+// shadowSchemaDDL : schéma minimal partagé par les DB de test du shadow (in-memory
+// via openShadowTestDB, fichier via openShadowTestFileDB pour le test read-only).
+const shadowSchemaDDL = `
 		CREATE TABLE match_registry (
 			match_id VARCHAR PRIMARY KEY,
 			start_time TIMESTAMP,
@@ -418,11 +426,6 @@ func openShadowTestDB(t *testing.T) *sql.DB {
 		) m ON o.xuid = m.xuid AND o.partner_xuid = m.partner_xuid
 		     AND o.playlist_group = m.playlist_group AND o.written_at = m.max_written_at;
 	`
-	if _, err := db.Exec(ddl); err != nil {
-		t.Fatalf("DDL: %v", err)
-	}
-	return db
-}
 
 func TestBuildTwoTeamRosters_TwoTeamsOK(t *testing.T) {
 	db := openShadowTestDB(t)

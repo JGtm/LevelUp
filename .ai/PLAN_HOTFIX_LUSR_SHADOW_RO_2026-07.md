@@ -172,28 +172,46 @@ en H1 pour garder l'arbre buildable — cf. §7 adaptation).
 
 ### H3 — Tests et audit des segments frères (effort : moyen)
 
-- [ ] H3.1 Pérenniser le test de repro (nom explicite, ex.
-      `TestLUSRV2Shadow_PersistsViaWriteBurst_WhenReadHandleIsReadOnly`) : lease burst
-      avec `read` = handle non-inscriptible et `acquire` = handle RW → run owner-only
-      traite et persiste ; assertion aussi sur l'avance du watermark.
-- [ ] H3.2 Test anti-deadlock : le shadow ne demande jamais un burst Write pendant
-      qu'un Read du même SharedAccess est en vol (le garde de `Write` transformerait
-      le bug en erreur — vérifier qu'aucun chemin ne la déclenche, y compris quand
-      `loadShadowMatches` retourne > 1 chunk).
-- [ ] H3.3 Non-régression : suite shadow complète
-      (`go test ./internal/sync/ -run "LUSR|Shadow"` + intégration ciblée) — les tests
-      d'autonomie owner-only / anti-gap / dual-row restent verts.
-- [ ] H3.4 AUDIT des autres segments lecture du post-sync sur main : pour chaque
-      `shared.Read(` de `engine_postsync*.go`, vérifier sur pièces que le bloc
-      n'appelle AUCUN chemin qui écrit shared (events/weapons = bursts Write, OK
-      constaté ; bloc intensités/scoring L22 : vérifier où écrivent les résultats).
-      Consigner le verdict par segment ICI (tableau). Toute anomalie trouvée = la
-      corriger dans CE hotfix seulement si c'est le même défaut de classification ;
-      sinon §Découvertes.
+- [x] H3.1 Test pérenne `TestLUSRV2Shadow_PersistsViaWriteBurst_WhenReadHandleIsReadOnly`
+      (`skill_v2_shadow_burst_test.go`) : `roRwSplitAccess` sur DB FICHIER — `Read` sert
+      un attach `READ_ONLY` (sélection OK), `Write` un attach RW (persist OK). Run
+      owner-only → `processed=1`, `writeCalls>=1`, état owner persisté avec
+      `last_match_at` non NULL (watermark avancé). VERT. Garde de régression : le handle
+      Read est réellement read-only → tout retour au persist-via-Read casserait le test.
+- [x] H3.2 Test anti-deadlock `TestLUSRV2Shadow_ReleasesReadBeforeWriteBurst_MultiChunk` :
+      `orderTrackingAccess` échoue si un `Write` est demandé pendant qu'un `Read` est en
+      vol. Sur 4 matchs (2 chunks) → `processed=4`, `writeCalls>=2`, `violation=""`. VERT.
+- [x] H3.3 Non-régression : suite complète `go test -tags=cgo ./internal/sync/skill/`
+      VERTE (0.85s) — owner-only / anti-gap / held-group / dual-row / canonical / h5
+      title-aware tous verts. `./internal/sync/...` vert (cf. H2).
+- [x] H3.4 AUDIT des segments lecture d'`engine_postsync*.go` (verdict par segment) :
 
-**Gate H3** : `go test ./...` (racine apps/go-api) vert ;
-`go test -tags=integration -p 1 -timeout 900s ./...` exit 0 (OBLIGATOIRE — sync/persist
-touchés ; jamais de commandes go concurrentes sur ce poste) ; tableau H3.4 rempli.
+      | Segment (`shared.Read`/`withSharedRead`) | Callee | Écrit shared ? | Verdict |
+      |---|---|---|---|
+      | pré-checks (postsync.go:81) | `hasMatchesNeedingScoreRefresh`, `hasConvergenceBacklog` | non (lectures) | OK |
+      | scoring (scoring.go:22) | `runScoringStepsWithDB` (perf/engagement/sessions/bot) | non — écrit PLAYER ; intensités ACCUMULÉES puis flushées en burst `Write("engagement_intensity")` (scoring.go:37) | OK |
+      | LUSR v1 (scoring.go:186) | `runLUSRV1UnderRead`→`batchComputeLUSR` | non — écrit PLAYER (`match_skill_rank`) | OK |
+      | enrichment_rows (postsync.go:217) | `ensurePlayerEnrichmentRows` | non — INSERT PLAYER `player_match_enrichment` | OK |
+      | events_select (260) | `selectMatchesMissingEvents` | non ; converge en burst `Write("events")` (276) | OK |
+      | weapons_select (302) | `selectMatchesMissingWeapons` | non ; converge en burst `Write("weapons")` (315) | OK |
+      | catalog_refresh (382) | `CatalogRefreshFromRegistry(metaDB, sharedDB)` | non — LIT `sharedDB` (match_registry), ÉCRIT `metadataDB` (playlists/maps/variants catalog) | OK (vérifié sur pièces catalog_refresh.go:60/89) |
+      | citations (396) | `runPostSyncCitations` | non — écrit PLAYER (`match_citations`) | OK |
+      | dominance (420) | `BackfillDominanceFlags` | non — écrit PLAYER via `PostSyncEnrichmentPersister` (commentaire L418) | OK |
+      | friends (471) | `RecomputeIsWithFriendsCore` | non — écrit PLAYER (`is_with_friends`) | OK |
+      | snapshot_readiness (511) | `EvaluateSnapshotReadiness` | non — écrit PLAYER (marqueur readiness) | OK |
+
+      Vérification transverse : grep `sharedDB.ExecContext` sur les .go de prod → seuls
+      écrivains shared = `csr_shared_writes` (via `runCSRSnapshotSync`, writer AUTONOME hors
+      segment Read), `engagement.go:559` (`persistMatchIntensities`, appelé SOUS le burst
+      `Write`), `pve.go` (pipeline PVE distinct), `backfill_registry_names`/`lusr_full_recompute`
+      (CLI/recovery, writer tenu). AUCUN dans un segment Read post-sync. Le shadow LUSR v2
+      était le SEUL écrivain shared mal classé « lecture » — corrigé. Aucune anomalie
+      résiduelle → §Découvertes = aucune sur ce point.
+
+**Gate H3** : VERT. `go test ./...` (racine) exit 0 (aucun échec) ;
+`go test -tags=integration -p 1 -timeout 900s ./...` exit 0 ; intégration ciblée
+`./internal/persist/... ./internal/sync/...` (anti-ART) exécutée et verte (persist 13.4s,
+sync 80.2s, skill 1.1s, v2 13.2s) ; tableau H3.4 rempli.
 
 ### H4 — Gate final pré-livraison (effort : rapide)
 
