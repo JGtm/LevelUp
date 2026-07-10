@@ -1,3 +1,39 @@
+## [2026-07-10] Décisions F7/B7/N4 tranchées + 2 plans de chantiers futurs
+
+**Statut** : Complété (livrables = 2 plans + micro-fix doc allowlist ; décisions consignées).
+
+**Décisions (utilisateur + vérification sur pièces)** :
+- weapon_kills_v3 : GARDER — le nouvel algo du worktree PROLONGE v3 (pas de suppression ;
+  v3 n'est de toute façon pas sur la branche d'audit, rien ne part en prod).
+- Backup H5 : VÉRIFIÉ couvert — le snapshot restic contient data/titles/halo_5 (15
+  fichiers) ; le scope `data/titles` couvre automatiquement tout titre futur.
+- F7 (engagement H5) : direction utilisateur actée — architecture graduée title-agnostic
+  (vecteur de signaux extensible, H5 peut fournir PLUS qu'Infinite ; double porte
+  suffisance+calibration ; coefficients par titre). Plan dédié écrit (voir ci-dessous),
+  séquencé APRÈS la refonte lobby existante.
+- B7 (Q24/« Q26f ») : investigation sur pièces — le principe « CSR=ranked, LUSR=unranked »
+  EST respecté au niveau pipeline (triple garde : LUSR ne charge que is_ranked=FALSE,
+  skip si CSR existant, CSR n'écrit que ranked). Le chevauchement n'existe qu'au niveau
+  STOCKAGE append-only (match reclassé ranked = ligne LUSR périmée + ligne CSR) et la vue
+  _latest l'arbitre (CSR>LUSR). Q24 reste raw VOLONTAIRE (pipeline LUSR échelle mu ;
+  _latest injecterait des valeurs CSR ~1500 = rupture d'échelle). « Q26f » n'existe plus
+  (logique effective_type en Go sur match_registry.is_ranked, lit déjà _latest).
+  DÉCISION : statu quo (A), aucune migration ; justification allowlist mise à jour
+  (mention Q26f obsolète purgée, décision B7 datée).
+- N4 (squash migrations) : reco différer CONFIRMÉE, mais la solution propre est
+  formalisée en plan exécutable (baseline bit-identique prouvée par test d'invariant,
+  archivage, zéro perte — les migrations sont des recettes, pas des données).
+
+**Livrables** : `.ai/PLAN_ENGAGEMENT_AGNOSTIC_GRADUE_2026-07.md` (E1-E6, dépendance P0 =
+PLAN_ENGAGEMENT_REFONTE_LOBBY d'abord ; branche feat/engagement-agnostic-gradue) ;
+`.ai/PLAN_MIGRATION_SQUASH_BASELINE_2026-07.md` (M0-M6, outillage+invariant avant baseline,
+GO opérateur final ; branche refactor/migration-squash-baseline). Les deux post-merge.
+
+**Prochaine étape** : re-passe combinée GH5+GH6 (en cours côté utilisateur), puis
+répétition générale sur copie prod + gate live-sync + fenêtre de merge.
+
+---
+
 ## [2026-07-10] LOT GH6 — Surface symétrique i18n : filtre expérience Explorer (miroir GH5-2)
 
 **Statut** : Complété (GH6-1 ; tous gates locaux verts ; commit + push + CI à suivre).
