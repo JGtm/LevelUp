@@ -215,13 +215,19 @@ sync 80.2s, skill 1.1s, v2 13.2s) ; tableau H3.4 rempli.
 
 ### H4 — Gate final pré-livraison (effort : rapide)
 
-- [ ] H4.1 `make go-api-lint` : 0 nouvelle erreur vs baseline.
-- [ ] H4.2 Skill `delivery-checklist` passé ; entrée `thought_log.md` (obligatoire
-      avant commit final).
-- [ ] H4.3 Commits propres sur `hotfix/lusr-shadow-ro` (messages
-      `fix(sync): ...` explicites), CI de branche verte si disponible.
+- [x] H4.1 `golangci-lint run --new-from-rev=28146aa3a` sur tous les packages modifiés
+      (sync/..., 3 cmd, livesync) = **0 issues** (0 nouvelle erreur vs baseline). Une
+      seule issue introduite (`processShadowChunk` 8 args > max 7) CORRIGÉE en repliant
+      `squadEnabled` dans `shadowRunContext` + `withGameplayDur` calculé dans l'appelant
+      (→ 6 args). `make go-api-lint` (go vet domain/analysis) inchangé.
+- [x] H4.2 Skill `delivery-checklist` passé : Go tests/vet/intégration verts ; logging
+      slog structuré (aucun `fmt.Println`/`log.Printf`/`t.Skip` introduit) ; code mort
+      supprimé (`runSkillRatingStepsWithDB`) ; capability-gated ; frontend N/A (aucun
+      changement web). Entrées `thought_log.md` par phase.
+- [x] H4.3 5 commits propres sur `hotfix/lusr-shadow-ro` (`fix(sync)`/`test(sync)`/
+      `docs`), poussés ; CI de branche vérifiée après push (cf. thought_log H4).
 
-**Gate H4** : tous les items H1→H4 statués ; aucun `[ ]` restant.
+**Gate H4** : tous les items H1→H4 statués ; aucun `[ ]` restant dans H1-H4.
 
 ### H5 — Livraison (GATE USER — ne pas franchir sans GO explicite)
 

@@ -1,3 +1,24 @@
+## [2026-07-10] HOTFIX LUSR shadow read-only — H4 (lint + delivery-checklist)
+
+**Statut** : Complété (côté implémentation branche) ; reste H5 (GATE USER : merge main =
+deploy prod auto) + H6/H7 (post-deploy, dépendent du deploy).
+
+**Décision principale** : `golangci-lint --new-from-rev=28146aa3a` = 0 issue sur tous les
+packages modifiés → aucune dette ajoutée. La seule issue introduite (`processShadowChunk`
+8 args > 7) corrigée en repliant `squadEnabled` dans `shadowRunContext` et en calculant
+`withGameplayDur` dans l'appelant (6 args, ne touche pas la logique s/heldGroups critique).
+delivery-checklist : logging slog OK, aucun `fmt.Println`/`t.Skip`, code mort supprimé,
+frontend N/A.
+
+**Résultats observés** : build 0, vet 0, `go test ./...` 0, intégration `-p 1` 0, lint
+new-from-rev 0. 5 commits sur la branche.
+
+**Prochaine étape** : H5 — présenter à l'utilisateur (diff + gates), ATTENDRE le GO
+explicite du tour courant AVANT tout merge/push main (= deploy prod auto). H6/H7 = vérif
+post-deploy VPS (lecture seule) + clôture, après le deploy.
+
+---
+
 ## [2026-07-10] HOTFIX LUSR shadow read-only — H3 (tests + audit segments frères)
 
 **Statut** : En cours (phase H3 close ; H4 lint + delivery à suivre).
