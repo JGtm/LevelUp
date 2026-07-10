@@ -2421,3 +2421,19 @@ tests QUALITE) — consignés en §7, sans impact sur la couverture.
 technique (V1-V5) est livré et vérifié ; le tracker est réconcilié avec la réalité (V6).
 **Prête pour le GATE HUMAIN puis le PLAN DE MERGE, après clôture de V7/V8** (résiduel qualité
 + contrat front↔back) et exécution de V9/V10 (données prod + exploitation, en fenêtre VPS/user).
+
+### MERGE MAIN — exécuté le 2026-07-10 (GO utilisateur)
+
+- V7/V8/V9/V10ab livrés + lots GH1-GH6 (gate humain, 4 re-passes, toutes vertes).
+- **GATE HUMAIN : CLOS le 2026-07-10** (re-passe finale GH5/GH6 validée par Guillaume).
+- Gates de merge : CI branche verte (672960cb0) ; intégration -p 1 locale exit 0/0 FAIL ;
+  front tsc 0 / lint 0 err / vitest 2099. Répétition générale sur copie prod (restic
+  9e96ed20) : boot OK, migrations appliquées (metadata HI applied=3 dont les 2 colonnes
+  citations EN ; H5 shared applied=1), zéro erreur. Live-sync : cycles auto-sync V2 du
+  jour synced=4/failed=0, deltas success ×4, hook Prestige actif (VF-1 prouvé en réel).
+- Rollback statué : diff migrations vs main ADDITIF (1 step, colonne ignorée par l'ancien
+  binaire) → `git revert -m 1 <merge>` suffit, restauration restic NON requise.
+- **DATE D1A (mise en prod de la télémétrie legacy_source_used) = 2026-07-10.**
+  D2 (ADR 0023 Phase 5) se déclenche à partir du 2026-07-17 si `legacy_source_used` = 0.
+- One-offs prod post-deploy : `levelup seed citation-mappings` (noms+descriptions EN) +
+  `populate-assets` (playlist UUID) — exécutés au titre du PLAN DE MERGE étape 6/7.
