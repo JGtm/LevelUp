@@ -111,6 +111,7 @@ La re-vérification a déjà corrigé plusieurs erreurs de la passe d'audit init
 | MT-24 | Politique backup restic globale (1 repo/rétention, pas par titre) | minor | done | [PMT-13](PLAN_MULTITITRE_PERIPHERY.md) ✅ décision consignée (rétention globale intentionnelle, découverte déjà per-titre) + test `TestDiscoverLevelUpDBs_MultiTitle` | `internal/ops/backup_service.go` |
 | MT-25 | Cache HTTP / rate-limit sans dimension titre (bénin) | info | done | [PMT-13](PLAN_MULTITITRE_PERIPHERY.md) ✅ décision consignée (rate-limit IP-invariant ; ETag par corps → title-correct) | `rate_limit.go` + `http_cache.go` |
 | MT-20 | Adapter Halo `TitleSlug()` → `DefaultSlug` (auto-identité correcte) | info | done | [PMT-13](PLAN_MULTITITRE_PERIPHERY.md) ✅ décision consignée (self-identity, gating via registre) | `internal/games/halo_infinite/adapter_data.go:66` |
+| MT-27 | Interface source de données par titre (`TitleSyncRunner` + core HTTP `platform/httpx` partagé + `KnownSet`) — **nouvel axe 2026-07, hors audit initial** | major | ⬜ gap (ADR rédigé) | — (ADR [0031](../../docs/adr/0031-title-data-source-boundary.md)) | dualité d'orchestration V2 (`internal/sync/v2/`, Infinite) vs `internal/games/halo_5/livesync.Runner` (H5) ; duplication retry/backoff/rate-limit ~150 L (`internal/sync/haloclient/halo_client_http.go` + `internal/games/halo_5/client.go`, constantes identiques 4/800ms/10s, `HTTPError` 2x). Amende ADR 0027. Impl = lots futurs (move+httpx AVANT Phase 1.6) |
 
 ---
 
