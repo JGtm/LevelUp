@@ -191,46 +191,50 @@ Gate : `cd apps/go-api && go test ./internal/analysis/temporal/... && go vet ./.
 
 Périmètre fermé — couche analysis (pur, zéro DB) :
 
-- [ ] `temporal/engagement_response_bins.go` (nouveau) :
+- [x] `temporal/engagement_response_bins.go` (nouveau) :
       `ComputeEngagementResponseBins(samples []RatioSample) (*ResponseBinsResult, error)`
-      — terciles sur PaceLobby, médiane par bin, filtres, clamp, min 10/bin,
-      `ErrInsufficientBinHistory` par bin (le résultat porte les bins calculables).
-- [ ] `temporal/engagement_score.go` : `EngagementScoreInput` gagne
-      `ResponseBins *domain.EngagementResponseBins` ; suppression de
-      `selectExpectedReference` (D1) ; l'attendu = `resolveExpectedCoef(meanLobby)` ×
-      pace_lobby(t). ATTENTION ordre de calcul : la courbe des paces se construit
-      d'abord, l'intensité moyenne du match ensuite, l'attendu en 2e passe sur la courbe.
-- [ ] Le résultat (`domain.EngagementScoreResult`) gagne `ExpectedBasis string`
-      (`bin`/`global`/`cold_start`) + `IntensityBin string` (vide si non-bin).
-- [ ] Tests unitaires : joueur « répond mal aux matchs intenses » (coef bin chaotique <
-      coef bin calme) → attendu bas dans un match chaud ; fallback global ; cold_start ;
-      FFA (NTeam=1) identique au mode équipe côté attendu.
+      — terciles sur PaceLobby, médiane par bin, filtres, clamp, `MinMatchesForBin=10`,
+      `ErrInsufficientBinHistory`. NB : émet TOUJOURS les 3 terciles (jeu de clés
+      constant → pas de ligne orpheline à la persistence SELECT-then-UPDATE-or-INSERT) ;
+      le serving gate chaque bin sur `NMatches >= MinMatchesForBin`.
+- [x] `temporal/engagement_score.go` : `EngagementScoreInput` gagne `ResponseBins` +
+      `HasGlobalLobbyCoef` ; `selectExpectedReference` SUPPRIMÉ (D1) ; courbe sans
+      attendu en 1re passe, `resolveExpectedCoef(meanLobby)` puis `applyExpectedToCurve`
+      (attendu = coef × pace_lobby(t)) en 2e passe. Ordre respecté.
+- [x] `domain.EngagementScoreResult` gagne `ExpectedBasis` (bin/global/cold_start) +
+      `IntensityBin`.
+- [x] Tests unitaires (`engagement_response_bins_test.go` + `engagement_score_test.go`) :
+      bin chaotique < calme ; attendu bas sur match chaud ; fallback global ; cold_start ;
+      FFA identique au mode équipe côté attendu. Verts.
 
 Couche domain/port/platform :
 
-- [ ] `domain/engagement_score.go` : types `EngagementResponseBins` (bornes + coef + n
-      par bin) et champs résultat ci-dessus.
-- [ ] `port/engagement_score.go` : `LoadResponseBins(ctx, xuid, modeCategory)` ;
-      `SaveResponseBins` côté sync.
-- [ ] Migration player DB (2 titres — enregistrer dans l'ordre des deux registres de
-      migrations) : `CREATE TABLE engagement_response_bins (xuid VARCHAR, mode_category
-      VARCHAR, intensity_bin VARCHAR, lower_bound DOUBLE, upper_bound DOUBLE,
-      coef_lobby DOUBLE, n_matches INTEGER, last_updated TIMESTAMP,
-      PRIMARY KEY (xuid, mode_category, intensity_bin))` — table neuve avec PK (D6).
-- [ ] `platform/duckdb/engagement_score_repo*.go` : loader + intégration au
-      `LoadEngagementCoefficient` existant (un seul round-trip si possible).
-- [ ] Écriture sync : `engagement_recompute.go` — après le recompute des coefs globaux,
-      recompute des bins (mêmes samples, ART-safe SELECT-then-UPDATE-or-INSERT,
-      sérialisé sous lease KindPlayer comme `saveCoefficient`).
-- [ ] `service/engagement_player_service.go` : `buildInputForMatch` charge les bins
-      (best-effort, dégradation cold_start si table absente) ; `loadCoefsSafe` devient
-      `loadExpectedInputs`.
-- [ ] Tests : repo (DuckDB :memory:), service (mock port), recompute (fixture existante
-      `engagement_recompute_test.go` étendue).
+- [x] `domain/engagement_score.go` : `EngagementResponseBins` + `EngagementIntensityBin`
+      (+ `ResolveBin`) + champs résultat + constantes `ExpectedBasis*`.
+- [x] `port/engagement_score.go` : `LoadResponseBins` + `SaveResponseBins` (interface).
+- [x] Migration player DB : step title-owned `create_engagement_response_bins_table`
+      (`halo_infinite/migrations/steps_player.go`) + `canonicalOrder` (order.go). Les
+      migrations player sont title-owned mais name-keyed → appliquées aux DB player des
+      DEUX titres via `canonicalOrder` (halo_5 provisionne via les mêmes steps ; pas de
+      « second registre » distinct — cf. Découvertes). `CREATE TABLE IF NOT EXISTS` +
+      PK inline sûr (table neuve, D6). `order_audit_test` vert.
+- [x] `platform/duckdb/engagement_response_bins_repo.go` (extrait pour tenir ≤500L) :
+      `LoadResponseBins` + `SaveResponseBins` + `responseBinsTableExists`. Loader dédié
+      (2 round-trips coef+bins côté service ; les deux triviaux, pas de fusion).
+- [x] Écriture sync : `engagement_recompute.go` — `recomputeResponseBins` après
+      `saveCoefficient` (mêmes samples, ART-safe SELECT-then-UPDATE-or-INSERT, sous lease
+      KindPlayer). Compteurs expvar `engagement_bins_*`.
+- [x] `service/engagement_player_service.go` : `loadCoefsSafe` → `loadExpectedInputs`
+      (coef lobby global + `HasGlobalLobbyCoef` + bins, dégradation cold_start). Path
+      admin (`engagement_admin_service.go`) sauve aussi les bins.
+- [x] Tests : repo (`engagement_score_repo_integration_test.go` étendu), recompute
+      (`engagement_recompute_test.go` étendu, bins persistés + coefs décroissants),
+      service [~] couvert via `api/handlers/engagement_test.go` (service réel + mock port,
+      chemin cold_start/global exercé ; mock étendu aux 2 nouvelles méthodes).
 
-Gate : `go test ./internal/... ` vert + `go vet` 0. AUCUN test d'intégration encore requis
-(pas de write path partagé touché) mais lancer `-tags=integration -p 1` sur
-`./internal/sync/...` par sécurité (recompute touché).
+Gate : `go test ./internal/...` vert + `go vet ./internal/...` 0. `-tags=integration -p 1
+./internal/sync/... ./internal/platform/duckdb/...` exit 0 (anti-ART verts). golangci-lint
+`--new-from-rev=origin/main` 0 issue. → TOUS PASSÉS (2026-07-11).
 
 ### Phase 3 — Contrat API
 
@@ -331,12 +335,24 @@ Périmètre fermé :
 
 ## 6. Découvertes (à remplir en cours d'exécution)
 
-- (vide)
+- **Migrations player = un seul registre title-owned, pas deux** (Phase 2). Le plan
+  supposait « deux registres de migrations » (un par titre). En réalité les migrations
+  player vivent dans `internal/games/halo_infinite/migrations` (title-owned) mais sont
+  name-keyed dans `migration.canonicalOrder` et appliquées aux DB player des DEUX titres
+  (Halo Infinite ET Halo 5 se provisionnent via ces mêmes steps — cf. commentaires
+  fresh-provision dans order.go l.61-65 et l.172-177). Une seule entrée de migration
+  couvre donc les 2 titres. Aucun changement de périmètre requis.
+- `MatchIntensity` (champ résultat, colonne shared `match_registry.match_intensity`) et
+  `SaveMatchIntensity`/`LoadMatchIntensity` restent en place mais ne sont PAS l'ancre du
+  modèle v2 (l'intensité effective = `meanLobby` de la courbe, cf. §1). Non traité
+  (hors périmètre — pas de nettoyage opportuniste). À évaluer dans un futur passage.
 
 ## 7. AVANCEMENT (à tenir à jour par l'exécutant)
 
 - Phase 1 : COMPLÉTÉE (2026-07-11) — death→0.0, seuils→0.75 ; temporal ok, vet 0.
-- Phase 2 : non commencée
+- Phase 2 : COMPLÉTÉE (2026-07-11) — bins de réponse + attendu ancré lobby ; migration
+  create_engagement_response_bins_table ; sync+admin recompute bins ; tests unit+integ
+  verts ; lint delta 0.
 - Phase 3 : non commencée
 - Phase 4 : non commencée
 - Phase 5 : non commencée

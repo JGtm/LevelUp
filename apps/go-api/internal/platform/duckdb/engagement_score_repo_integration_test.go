@@ -57,6 +57,18 @@ func setupEngagementDB(t *testing.T) *ddb.PlayerDB {
 			last_updated     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (xuid, mode_category)
 		)`,
+		// Modele lobby-anchored v2 (mirror create_engagement_response_bins_table).
+		`CREATE TABLE engagement_response_bins (
+			xuid          VARCHAR NOT NULL,
+			mode_category VARCHAR NOT NULL,
+			intensity_bin VARCHAR NOT NULL,
+			lower_bound   DOUBLE NOT NULL,
+			upper_bound   DOUBLE NOT NULL,
+			coef_lobby    DOUBLE NOT NULL,
+			n_matches     INTEGER NOT NULL,
+			last_updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (xuid, mode_category, intensity_bin)
+		)`,
 	}
 	for _, s := range stmts {
 		if _, err := db.Exec(ctx, s); err != nil {
@@ -115,6 +127,68 @@ func TestEngagementRepo_SaveAndLoadCoefficient(t *testing.T) {
 	got, _ = repo.LoadEngagementCoefficient(ctx, "xuid-1", "PvP_ranked")
 	if got == nil || got.CoefTeamShare != 1.30 || got.NMatches != 250 {
 		t.Errorf("expected upserted values, got %+v", got)
+	}
+}
+
+// =============================================================================
+// SaveResponseBins + LoadResponseBins (modele lobby-anchored v2)
+// =============================================================================
+
+func TestEngagementRepo_SaveAndLoadResponseBins(t *testing.T) {
+	pdb := setupEngagementDB(t)
+	repo := ddb.NewEngagementScoreRepo(pdb)
+	ctx := context.Background()
+
+	// 1. Cold start : aucun bin.
+	got, err := repo.LoadResponseBins(ctx, "xuid-1", "PvP_ranked")
+	if err != nil {
+		t.Fatalf("LoadResponseBins (empty): %v", err)
+	}
+	if got != nil {
+		t.Errorf("expected nil bins on cold start, got %+v", got)
+	}
+
+	// 2. Save 3 bins.
+	bins := domain.EngagementResponseBins{
+		XUID:         "xuid-1",
+		ModeCategory: "PvP_ranked",
+		Bins: []domain.EngagementIntensityBin{
+			{Bin: "calme", LowerBound: 0, UpperBound: 4, CoefLobby: 1.5, NMatches: 20},
+			{Bin: "standard", LowerBound: 4, UpperBound: 7, CoefLobby: 1.0, NMatches: 18},
+			{Bin: "chaotique", LowerBound: 7, UpperBound: 12, CoefLobby: 0.5, NMatches: 22},
+		},
+	}
+	if err := repo.SaveResponseBins(ctx, bins); err != nil {
+		t.Fatalf("SaveResponseBins: %v", err)
+	}
+
+	// 3. Load -> 3 bins ordonnes par lower_bound, resolution correcte.
+	got, err = repo.LoadResponseBins(ctx, "xuid-1", "PvP_ranked")
+	if err != nil {
+		t.Fatalf("LoadResponseBins: %v", err)
+	}
+	if got == nil || len(got.Bins) != 3 {
+		t.Fatalf("expected 3 bins, got %+v", got)
+	}
+	if b, ok := got.ResolveBin(10.0); !ok || b.Bin != "chaotique" || b.CoefLobby != 0.5 {
+		t.Errorf("ResolveBin(10) want chaotique/0.5, got %+v (ok=%v)", b, ok)
+	}
+	if b, ok := got.ResolveBin(1.0); !ok || b.Bin != "calme" {
+		t.Errorf("ResolveBin(1) want calme, got %+v", b)
+	}
+
+	// 4. UPSERT : re-save avec valeurs differentes -> remplace (pas de doublon).
+	bins.Bins[2].CoefLobby = 0.3
+	bins.Bins[2].NMatches = 25
+	if err := repo.SaveResponseBins(ctx, bins); err != nil {
+		t.Fatalf("SaveResponseBins (upsert): %v", err)
+	}
+	got, _ = repo.LoadResponseBins(ctx, "xuid-1", "PvP_ranked")
+	if got == nil || len(got.Bins) != 3 {
+		t.Fatalf("expected still 3 bins after upsert, got %+v", got)
+	}
+	if b, _ := got.ResolveBin(10.0); b.CoefLobby != 0.3 || b.NMatches != 25 {
+		t.Errorf("expected upserted chaotique coef 0.3/n25, got %+v", b)
 	}
 }
 

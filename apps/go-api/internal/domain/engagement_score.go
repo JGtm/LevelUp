@@ -61,6 +61,86 @@ type EngagementScoreResult struct {
 	// Sert a detecter les quitters/AFK lors du calcul du coefficient
 	// (cf. temporal.PlayerActivityMin).
 	PlayerActivity int `json:"player_activity"`
+
+	// ExpectedBasis qualifie la base de calcul de l'attendu (PaceAttendu),
+	// modele lobby-anchored v2 (cf. .ai/V7/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md) :
+	//   - "bin"        : coef du bin d'intensite du match (>= MinMatchesForBin echantillons)
+	//   - "global"     : coef lobby global (fallback, >= MinMatchesForCoef echantillons)
+	//   - "cold_start" : aucun historique exploitable → coef 1.0 ; la serie
+	//     « Joueur attendu » est MASQUEE cote front (masquage indexe sur ce champ,
+	//     plus sur Confidence).
+	//
+	// Distinct de Confidence, qui qualifie l'historique du PERCENTILE (le score),
+	// pas l'attendu. Deux signaux independants.
+	ExpectedBasis string `json:"expected_basis"`
+
+	// IntensityBin est le libelle du bin d'intensite retenu quand ExpectedBasis
+	// vaut "bin" (calme / standard / chaotique). Vide sinon.
+	IntensityBin string `json:"intensity_bin"`
+}
+
+// Valeurs de EngagementScoreResult.ExpectedBasis (chaine de fallback de l'attendu).
+const (
+	ExpectedBasisBin       = "bin"
+	ExpectedBasisGlobal    = "global"
+	ExpectedBasisColdStart = "cold_start"
+)
+
+// EngagementResponseBins porte les coefficients de reponse du joueur par bin
+// d'intensite (tercile de pace_lobby), pour une categorie de mode. Modele
+// lobby-anchored v2 (2026-07-07) : l'attendu du joueur est « sa reponse
+// habituelle a un match d'intensite similaire », pas une part relative a son
+// equipe. cf .ai/V7/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md.
+type EngagementResponseBins struct {
+	XUID         string                   `json:"xuid,omitempty"`
+	ModeCategory string                   `json:"mode_category,omitempty"`
+	Bins         []EngagementIntensityBin `json:"bins"`
+}
+
+// EngagementIntensityBin est un bin d'intensite (tercile de pace_lobby) avec son
+// coefficient de reponse lobby-anchored.
+type EngagementIntensityBin struct {
+	// Bin est le libelle du tercile : calme / standard / chaotique.
+	Bin string `json:"bin"`
+	// LowerBound / UpperBound bornent l'intensite (pace_lobby moyen du match)
+	// couverte par ce bin. Bornes contiguës en terciles ; extremes ouverts a la
+	// resolution (cf. ResolveBin).
+	LowerBound float64 `json:"lower_bound"`
+	UpperBound float64 `json:"upper_bound"`
+	// CoefLobby = mediane(pace_joueur / pace_lobby) des matchs du bin, clampee.
+	CoefLobby float64 `json:"coef_lobby"`
+	// NMatches = echantillons valides dans le bin. Le serving n'exploite le coef
+	// du bin (ExpectedBasis "bin") que si NMatches >= temporal.MinMatchesForBin.
+	NMatches int `json:"n_matches"`
+}
+
+// ResolveBin retourne le bin dont la borne inferieure est la plus grande sans
+// depasser l'intensite fournie (terciles contigus ; extremes ouverts : une
+// intensite au-dela du dernier tercile reste « chaotique », en-deca du premier
+// reste « calme »). Retourne (zero, false) si aucun bin n'est defini.
+func (b *EngagementResponseBins) ResolveBin(intensity float64) (EngagementIntensityBin, bool) {
+	if b == nil || len(b.Bins) == 0 {
+		return EngagementIntensityBin{}, false
+	}
+	best := -1
+	for i := range b.Bins {
+		if b.Bins[i].LowerBound <= intensity {
+			if best < 0 || b.Bins[i].LowerBound > b.Bins[best].LowerBound {
+				best = i
+			}
+		}
+	}
+	if best < 0 {
+		// Intensite sous toutes les bornes inf (calme.lower devrait valoir 0, donc
+		// rare) : rabattre sur le bin de plus basse borne.
+		best = 0
+		for i := range b.Bins {
+			if b.Bins[i].LowerBound < b.Bins[best].LowerBound {
+				best = i
+			}
+		}
+	}
+	return b.Bins[best], true
 }
 
 // EngagementPoint est un echantillon temporel de la courbe d'engagement.

@@ -116,6 +116,11 @@ func recomputeMode(
 		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_coef_save_error_total")
 		return false
 	}
+	// Bins de reponse (modele lobby-anchored v2) : memes samples, best-effort.
+	// Absence de table ou historique insuffisant = non bloquant (l'attendu
+	// retombe sur le coef lobby global).
+	recomputeResponseBins(ctx, playerDB, xuid, mode, samples, now)
+
 	slog.DebugContext(ctx, "engagement coefs: updated",
 		"xuid", xuid, "mode", mode,
 		"coef_team", result.CoefTeamShare, "coef_lobby", result.CoefLobbyShare,
@@ -123,6 +128,81 @@ func recomputeMode(
 	observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_coef_recomputed_total")
 	observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_coef_team_bucket_"+coefBucket(result.CoefTeamShare))
 	return true
+}
+
+// recomputeResponseBins calcule et persiste les bins de reponse (terciles
+// d'intensite) pour (xuid, mode) depuis les memes samples que le coef. Best
+// effort : skip silencieux si la table est absente (migration non appliquee) ou
+// si l'historique est insuffisant pour former des terciles.
+func recomputeResponseBins(
+	ctx context.Context,
+	playerDB *sql.DB,
+	xuid, mode string,
+	samples []temporal.RatioSample,
+	now time.Time,
+) {
+	if !responseBinsTableAvailable(ctx, playerDB) {
+		return
+	}
+	binsResult, err := temporal.ComputeEngagementResponseBins(samples)
+	if errors.Is(err, temporal.ErrInsufficientBinHistory) {
+		return
+	}
+	if err != nil {
+		slog.WarnContext(ctx, "engagement bins: compute failed",
+			"xuid", xuid, "mode", mode, "err", err)
+		return
+	}
+	if err := saveResponseBins(ctx, playerDB, xuid, mode, binsResult.Bins, now); err != nil {
+		slog.ErrorContext(ctx, "engagement bins: save failed",
+			"xuid", xuid, "mode", mode, "err", err)
+		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_bins_save_error_total")
+		return
+	}
+	observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_bins_recomputed_total")
+}
+
+// responseBinsTableAvailable verifie la presence de engagement_response_bins.
+func responseBinsTableAvailable(ctx context.Context, playerDB *sql.DB) bool {
+	var count int
+	err := playerDB.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM information_schema.tables
+		WHERE table_name = 'engagement_response_bins'
+	`).Scan(&count)
+	return err == nil && count > 0
+}
+
+// saveResponseBins UPSERT (SELECT-then-UPDATE-or-INSERT, ART-safe) les bins de
+// reponse. Serialise sous lease KindPlayer cote caller (comme saveCoefficient).
+func saveResponseBins(
+	ctx context.Context,
+	playerDB *sql.DB,
+	xuid, modeCategory string,
+	bins []domain.EngagementIntensityBin,
+	now time.Time,
+) error {
+	for _, b := range bins {
+		var dummy int
+		err := playerDB.QueryRowContext(ctx,
+			`SELECT 1 FROM engagement_response_bins WHERE xuid = ? AND mode_category = ? AND intensity_bin = ?`,
+			xuid, modeCategory, b.Bin).Scan(&dummy)
+		switch {
+		case err == nil:
+			_, err = playerDB.ExecContext(ctx, `UPDATE engagement_response_bins
+				SET lower_bound = ?, upper_bound = ?, coef_lobby = ?, n_matches = ?, last_updated = ?
+				WHERE xuid = ? AND mode_category = ? AND intensity_bin = ?`,
+				b.LowerBound, b.UpperBound, b.CoefLobby, b.NMatches, now, xuid, modeCategory, b.Bin)
+		case errors.Is(err, sql.ErrNoRows):
+			_, err = playerDB.ExecContext(ctx, `INSERT INTO engagement_response_bins
+				(xuid, mode_category, intensity_bin, lower_bound, upper_bound, coef_lobby, n_matches, last_updated)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+				xuid, modeCategory, b.Bin, b.LowerBound, b.UpperBound, b.CoefLobby, b.NMatches, now)
+		}
+		if err != nil {
+			return fmt.Errorf("saveResponseBins bin %s: %w", b.Bin, err)
+		}
+	}
+	return nil
 }
 
 // coefBucket retourne le bucket nomme du coef pour les metriques expvar.

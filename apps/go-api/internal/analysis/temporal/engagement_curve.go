@@ -9,32 +9,27 @@ import (
 // struct dediee pour respecter la limite de 5 parametres par fonction (cf
 // CLAUDE.md règle 15).
 type buildCurveParams struct {
-	PlayerEvents      []canonical.HighlightEvent
-	TeamEvents        []canonical.HighlightEvent
-	LobbyEvents       []canonical.HighlightEvent
-	NTeam             int
-	NHumansLobby      int
-	MatchStartMS      int64
-	MatchEndMS        int64
-	WindowMS          int64
-	SamplingMS        int64
-	CoefForExpected   float64
-	DenominatorEvents []canonical.HighlightEvent
-	DenominatorN      int
+	PlayerEvents []canonical.HighlightEvent
+	TeamEvents   []canonical.HighlightEvent
+	LobbyEvents  []canonical.HighlightEvent
+	NTeam        int
+	NHumansLobby int
+	MatchStartMS int64
+	MatchEndMS   int64
+	WindowMS     int64
+	SamplingMS   int64
 }
 
 // buildEngagementCurve construit la serie temporelle des paces (joueur, team,
-// attendu, lobby) sur la duree du match.
+// lobby) sur la duree du match. PaceAttendu est laisse a 0 : il est pose en 2e
+// passe par applyExpectedToCurve (modele lobby-anchored — l'attendu depend de
+// l'intensite moyenne du match, connue seulement une fois la courbe construite).
 //
 // Pour chaque instant t echantillonne tous les SamplingMS sur [MatchStartMS,
 // MatchEndMS], on calcule en fenetre glissante centree de largeur WindowMS :
-//   - pace_joueur(t)  = nb_events_joueur dans [t-W/2, t+W/2] / (W/60s)
-//   - pace_team(t)    = nb_events_team dans [t-W/2, t+W/2] / NTeam / (W/60s)
-//   - pace_lobby(t)   = nb_events_lobby dans [t-W/2, t+W/2] / NHumans / (W/60s)
-//   - pace_attendu(t) = coef_for_expected * pace_denominator(t)
-//
-// Le pace_attendu utilise le denominateur (team ou lobby selon mode FFA, cf
-// selectExpectedReference dans engagement_score.go).
+//   - pace_joueur(t)  = poids_events_joueur dans [t-W/2, t+W/2] / (W/60s)
+//   - pace_team(t)    = poids_events_team dans [t-W/2, t+W/2] / NTeam / (W/60s)
+//   - pace_lobby(t)   = poids_events_lobby dans [t-W/2, t+W/2] / NHumans / (W/60s)
 //
 // Les events doivent avoir des TimeMS dans le repere du match (relatifs a 0
 // ou absolus mais coherents avec MatchStartMS/MatchEndMS).
@@ -61,7 +56,6 @@ func buildEngagementCurve(p buildCurveParams) []domain.EngagementPoint {
 	playerPts := extractWeightedPoints(p.PlayerEvents)
 	teamPts := extractWeightedPoints(p.TeamEvents)
 	lobbyPts := extractWeightedPoints(p.LobbyEvents)
-	denomPts := extractWeightedPoints(p.DenominatorEvents)
 
 	windowMin := float64(p.WindowMS) / 60_000.0
 
@@ -77,19 +71,12 @@ func buildEngagementCurve(p buildCurveParams) []domain.EngagementPoint {
 		paceTeam := safePerPlayer(paceTeamRaw, p.NTeam)
 		paceLobby := safePerPlayer(paceLobbyRaw, p.NHumansLobby)
 
-		// Pace attendu base sur le denominateur (team ou lobby selon mode).
-		var paceAttendu float64
-		if p.DenominatorN > 0 {
-			denomRaw := sumWeightInWindow(denomPts, windowStart, windowEnd) / windowMin
-			paceAttendu = p.CoefForExpected * (denomRaw / float64(p.DenominatorN))
-		}
-
+		// PaceAttendu laisse a 0 : pose en 2e passe (applyExpectedToCurve).
 		curve = append(curve, domain.EngagementPoint{
-			TimeMS:      t,
-			PaceJoueur:  paceJoueur,
-			PaceTeam:    paceTeam,
-			PaceAttendu: paceAttendu,
-			PaceLobby:   paceLobby,
+			TimeMS:     t,
+			PaceJoueur: paceJoueur,
+			PaceTeam:   paceTeam,
+			PaceLobby:  paceLobby,
 		})
 	}
 
