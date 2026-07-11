@@ -1,5 +1,11 @@
 # PLAN — Résidus Halo 5 match view (2026-07-07)
 
+> **STATUT GLOBAL : PARTIEL — chantier LOCAL COMPLÉTÉ le 2026-07-11 (lots A, B, C, D, F,
+> E tous clos, gates verts) ; RESTE LE LOT V (V2-V4, prod)** : opérations data à rejouer
+> sur le VPS APRÈS merge (dépendance explicite du plan : « après merge des lots A-F »)
+> + écriture prod = décision utilisateur (prévenir avant). Détail §6. Branche :
+> `fix/h5-matchview-residus` (6 commits, poussée, CI verte).
+
 > Exécution sous contrat du skill `plan-execution` (ordre strict, statuts obligatoires
 > `[x]`/`[~]`/`[!]`, gates par lot, zéro fix hors périmètre — les découvertes vont en §8).
 > Branche cible : `fix/h5-matchview-residus` (1 branche, commits par lot).
@@ -283,11 +289,15 @@ curl -s -X POST -H "X-LevelUp-Title: halo_5" localhost:8000/api/v1/players/JGtm/
 # attendu : map "Plaza", mode "Assassin" (plus de « Carte inconnue »)
 ```
 
-### LOT E — Clôture chantier local
-- [ ] E1. Statuer chaque item A→D+F (`[x]`/`[~]`/`[!]`), remplir §7-§8.
-- [ ] E2. `.ai/thought_log.md` : entrée de clôture (obligatoire).
-- [ ] E3. Skill `delivery-checklist` avant commit final / proposition de merge.
-Gate : gate global = tous les gates A→D+F verts dans la même session + lint + types.
+### LOT E — Clôture chantier local  [COMPLÉTÉ 2026-07-11]
+- [x] E1. Tous les items A→D+F statués (`[x]`/`[~]`/`[!]`), §7-§8 remplis.
+- [x] E2. `.ai/thought_log.md` : entrées par lot + entrée de clôture.
+- [x] E3. Skill `delivery-checklist` déroulé : go test ./... complet (0 FAIL, exit 0),
+      go test -tags=integration -p 1 (persist+halo_5+ops+duckdb), go vet 0,
+      golangci-lint --new-from-rev=origin/main ./... = 0 issue, tsc -b purgé,
+      npm run lint 0 erreur, vitest 247 fichiers / 2106 tests verts, build Vite OK.
+Gate : gate global VERT (tous les gates A→D+F re-passés dans la session + lint + types +
+CI branche verte — le job Frontend rouge du commit LOT C a été corrigé, cf. fix(C/ci)).
 
 ## 5. Réponses aux questions utilisateur (TL;DR intégré au plan)
 
@@ -308,15 +318,24 @@ Gate : gate global = tous les gates A→D+F verts dans la même session + lint +
       → traités par le LOT F. Trafic d'origine perdu (conteneur recréé) ; requête
       anonyme 403 → pas de repro authentifiée possible, confirmation visuelle par
       l'utilisateur après déploiement.
-- [ ] V2. Après merge des lots A-F : rejouer en prod les opérations data — B2 (seed
-      Tidal metadata), D2 (CSR --missing-only, 4 joueurs), F3 (purge 84 copies
-      Infinite). Fenêtre creuse, ressources serrées (2 vCPU / 2 Go), PRÉVENIR avant
-      toute écriture. Un writer par DB : passer par les CLI (jamais deux process RW).
-- [ ] V3. Vérification visuelle prod par l'utilisateur : galerie média H5 (libellés),
-      clic média → match f88f6d8b, matchs témoins (map Tidal, mode, Dominance,
-      rating/Placement).
-- [ ] V4. Déploiement des fixes : merge → push main = deploy auto (PRÉVENIR
-      l'utilisateur avant le push).
+- [!] V2. NON TRAITÉ dans ce chantier — dépendance explicite du plan (« APRÈS merge des
+      lots A-F ») + écriture prod = décision utilisateur (prévenir avant toute écriture,
+      fenêtre creuse, 2 vCPU / 2 Go, un writer par DB → arrêter le conteneur ou passer
+      par les CLI hors serveur). Commandes exactes à rejouer sur le VPS (post-merge,
+      binaires du repo déployé) :
+      1. B2 : `go run ./cmd/h5-metadata-fetch <repo> --overrides-only`
+         (local pur, AUCUN réseau ni clé API — applique l'override Tidal + garde-fou).
+      2. D2 : `LEVELUP_H5_AUTH_AS=JGtm go run ./cmd/h5-csr-match-backfill <GT> --missing-only`
+         pour JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX (~1000 fetches carnage au
+         total ; RT JGtm requis vivant). Attendu : ~100 % placement_csr_null → lignes
+         Placement.
+      3. F3 : `go run ./cmd/cleanup_media_index --foreign-only --dry-run` (vérifier ~84)
+         puis sans --dry-run. SERVEUR ARRÊTÉ (le CLI ouvre shared_social en RW).
+- [!] V3. Vérification visuelle prod par l'utilisateur (après V2/V4) : galerie média H5
+      (libellés + filtres), clic média → match f88f6d8b (l'association n'existe qu'en
+      prod), matchs témoins (map Tidal, mode, Dominance, rating/Placement).
+- [!] V4. Déploiement : merge → push main = deploy auto — DÉCISION UTILISATEUR
+      (prévenir avant le push).
 
 ## 7. Tracker (à remplir en exécution)
 
@@ -326,12 +345,9 @@ Gate : gate global = tous les gates A→D+F verts dans la même session + lint +
 | B | COMPLÉTÉ | 2026-07-11 | Tidal seedé local (--overrides-only) ; map_ui='Tidal' vérifié réel ; garde-fou 0 map non résolue. PROD : rejouer en V2 |
 | C | COMPLÉTÉ | 2026-07-11 | Résistance + Résultat attendu masqués selon capability/null ; 5 tests vitest ; 112/112 match-view ; fix CI types test (tsc -b) |
 | D | COMPLÉTÉ | 2026-07-11 | D2 ventilation : JGtm 303, Madina 293, Chocoboflor 277, XxDaemon 129 → **1002/1002 placement_csr_null** (0 carnage KO, 0 owner absent) ; lignes Placement écrites, couverture classés 100 % × 4 joueurs. PROD : rejouer D2 en V2 |
-| B | à faire | | |
-| C | à faire | | |
-| D | à faire | | D2 : ventilation skips = |
+| E | COMPLÉTÉ | 2026-07-11 | delivery-checklist déroulée ; gate global vert (tests+lint+types+CI branche) |
+| V | PARTIEL : V1 [x] ; V2-V4 [!] | 2026-07-11 | dépendance post-merge + écriture prod = utilisateur ; commandes exactes consignées en §6 |
 | F | COMPLÉTÉ | 2026-07-11 | vérifié réel local (7 clips h5 associés, copies prod du scratchpad expirées) ; purge locale 84→0 ; f88f6d8b lui-même = assoc PROD → confirmé en V3. PROD : rejouer F3 en V2 |
-| E | à faire | | |
-| V | V1 fait ; V2-V4 après merge | 2026-07-07 | prod = local ; « introuvable » = LOT F |
 
 ## 8. Découvertes hors périmètre (NE PAS traiter dans ce chantier)
 
