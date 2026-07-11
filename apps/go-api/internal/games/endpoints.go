@@ -97,6 +97,24 @@ func (r *MappingsEndpointResolver) DamageModelFor(slug string) (mappings.DamageM
 	return set.DamageModel()
 }
 
+// EngagementFor résout les poids d'events du score d'engagement d'un titre
+// (constants.toml [engagement], chantier F7). Implémente games.EngagementResolver.
+// (_, false) si le titre est inconnu ou ne déclare pas la section → le caller
+// applique le défaut byte-identique (temporal.DefaultEventWeights).
+func (r *MappingsEndpointResolver) EngagementFor(slug string) (mappings.EngagementConstants, bool) {
+	if r == nil || r.reg == nil {
+		return mappings.EngagementConstants{}, false
+	}
+	if slug == "" {
+		slug = r.defaultSlug
+	}
+	set, ok := r.reg.GetEndpoints(slug)
+	if !ok {
+		return mappings.EngagementConstants{}, false
+	}
+	return set.Engagement()
+}
+
 // CapabilitiesFor résout la CapabilityMap d'un titre (capabilities.toml).
 // Implémente games.CapabilityResolver. Même précédence de slug vide que HostFor.
 // (_, false) si le titre est inconnu, ne déclare pas de capabilities, ou si la

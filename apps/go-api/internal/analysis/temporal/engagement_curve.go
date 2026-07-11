@@ -18,6 +18,9 @@ type buildCurveParams struct {
 	MatchEndMS   int64
 	WindowMS     int64
 	SamplingMS   int64
+	// Weights : poids d'events par titre (F7). Résolu par le compute (défaut si
+	// non renseigné) — jamais zéro ici.
+	Weights EventWeights
 }
 
 // buildEngagementCurve construit la serie temporelle des paces (joueur, team,
@@ -53,9 +56,9 @@ func buildEngagementCurve(p buildCurveParams) []domain.EngagementPoint {
 	// Pre-extraction des TimeMS de chaque slice pour eviter d'iterer sur les
 	// events complets a chaque echantillon. Tries en amont par defaut (les
 	// events sont stockes par ordre chronologique dans highlight_events).
-	playerPts := extractWeightedPoints(p.PlayerEvents)
-	teamPts := extractWeightedPoints(p.TeamEvents)
-	lobbyPts := extractWeightedPoints(p.LobbyEvents)
+	playerPts := extractWeightedPoints(p.PlayerEvents, p.Weights)
+	teamPts := extractWeightedPoints(p.TeamEvents, p.Weights)
+	lobbyPts := extractWeightedPoints(p.LobbyEvents, p.Weights)
 
 	windowMin := float64(p.WindowMS) / 60_000.0
 
@@ -94,10 +97,10 @@ type weightedPoint struct {
 // Note : les events arrivent normalement deja tries par TimeMS (convention de
 // l'ingestion highlight_events). On ne re-trie pas pour eviter le coût O(n
 // log n). Si l'invariant est viole en pratique, ajouter un sort.Slice ici.
-func extractWeightedPoints(events []canonical.HighlightEvent) []weightedPoint {
+func extractWeightedPoints(events []canonical.HighlightEvent, weights EventWeights) []weightedPoint {
 	pts := make([]weightedPoint, len(events))
 	for i, e := range events {
-		pts[i] = weightedPoint{t: e.TimeMS, w: engagementEventWeight(e.EventType)}
+		pts[i] = weightedPoint{t: e.TimeMS, w: weights.For(e.EventType)}
 	}
 	return pts
 }

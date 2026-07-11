@@ -15,6 +15,17 @@ type endpointsTOML struct {
 	Meta        metaSection       `toml:"meta"`
 	Endpoints   map[string]string `toml:"endpoints"`
 	DamageModel damageModelTOML   `toml:"damage_model"`
+	Engagement  engagementTOML    `toml:"engagement"`
+}
+
+// engagementTOML projette la section [engagement] (poids d'events du score
+// d'engagement, chantier F7). Optionnelle : absente (default == 0) → poids non
+// déclarés, le caller applique temporal.DefaultEventWeights (byte-identique).
+type engagementTOML struct {
+	Objective float64 `toml:"objective"`
+	Assist    float64 `toml:"assist"`
+	Death     float64 `toml:"death"`
+	Default   float64 `toml:"default"`
 }
 
 // damageModelTOML projette la section [damage_model] (constantes de gameplay,
@@ -117,6 +128,12 @@ func LoadEndpointsFromBytes(path string, raw []byte) (*EndpointSet, error) {
 		errs = append(errs, fmt.Errorf("[damage_model].offensive_conversion_p80 doit être >= 0 (reçu %v)", doc.DamageModel.OffensiveConversionP80))
 	}
 
+	// [engagement] optionnel. Poids négatifs = absurdes (un event ne retire pas du
+	// rythme) → rejetés. default à 0/absent = section non déclarée (défaut appliqué).
+	if e := doc.Engagement; e.Objective < 0 || e.Assist < 0 || e.Death < 0 || e.Default < 0 {
+		errs = append(errs, fmt.Errorf("[engagement] : les poids doivent être >= 0 (reçu objective=%v assist=%v death=%v default=%v)", e.Objective, e.Assist, e.Death, e.Default))
+	}
+
 	if len(errs) > 0 {
 		return nil, fmt.Errorf("validation %s: %w", path, errors.Join(errs...))
 	}
@@ -128,7 +145,14 @@ func LoadEndpointsFromBytes(path string, raw []byte) (*EndpointSet, error) {
 		OffensiveConversionP80: doc.DamageModel.OffensiveConversionP80,
 		NoTeamMMR:              doc.DamageModel.NoTeamMMR,
 	}
-	return NewEndpointSet(doc.Meta.TitleSlug, doc.Meta.SchemaVersion, gamePrefix, byKey).withDamageModel(dm), nil
+	eng := EngagementConstants{
+		Objective: doc.Engagement.Objective,
+		Assist:    doc.Engagement.Assist,
+		Death:     doc.Engagement.Death,
+		Default:   doc.Engagement.Default,
+	}
+	return NewEndpointSet(doc.Meta.TitleSlug, doc.Meta.SchemaVersion, gamePrefix, byKey).
+		withDamageModel(dm).withEngagement(eng), nil
 }
 
 // isValidGamePrefix vérifie qu'un game_prefix est un segment d'URL sûr : une

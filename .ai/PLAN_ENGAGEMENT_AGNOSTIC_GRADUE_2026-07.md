@@ -126,16 +126,26 @@ Constat mémoire : le score (0-100) n'est PAS un FieldKey canonique (contraireme
   typecheck (types régénérés).
 
 ### E4 — Harnais de calibration par titre (outil, pas de magie)
-- [ ] E4a — CLI `cmd/engagement-calibrate` : sur les données d'un titre (copie locale ou
-  dev), calcule les distributions des composantes du score (par bin d'intensité post-
-  refonte), propose des coefficients par titre (méthode simple et EXPLICABLE : normalisation
-  des échelles par percentiles vs référence Infinite — pas de ML opaque), écrit un rapport
-  chiffré + le fichier de config candidat. NE l'applique PAS lui-même.
-- [ ] E4b — Format de config coefficients par titre : `config/titles/{slug}/engagement.toml`
-  (pattern damage_model/constants.toml) + loader + fallback documenté (titre sans fichier =
-  cold-start actuel). Infinite y migre ses valeurs ACTUELLES (byte-identique, prouvé golden).
-- [ ] E4c — Exécuter le harnais sur H5 (données dev/copie prod) → rapport + coefficients
-  candidats H5 commités avec le rapport dans `.ai/ENGAGEMENT_CALIBRATION_H5_<date>.md`.
+- [x] E4a — CLI `cmd/engagement-calibrate` (`//go:build cgo`) : énumère les player DBs d'un
+  titre, agrège les `RatioSample` (paces persistées) par mode, calcule les distributions par
+  bin d'intensité via la MÊME logique que le serving (`ComputeEngagementResponseBins` +
+  `ComputeEngagementCoefficient`), compare à la référence Infinite, écrit un rapport markdown
+  + le bloc TOML candidat. Méthode EXPLICABLE documentée (score = percentile intra-personnel
+  invariant d'échelle → levier = poids d'events ; le rapport juge si la dispersion/rejet du
+  titre est comparable à Infinite). N'applique RIEN.
+- [x] E4b — Config par titre = `constants.toml [engagement]` (pattern damage_model, cf.
+  §Découvertes : le repo met les constantes par-titre dans constants.toml, pas un fichier
+  séparé) : poids objective/assist/death/default. Loader (`mappings.EngagementConstants` +
+  `loader_endpoints.go`) + accessor `games.EngagementWeightsFor(slug)` → `temporal.EventWeights`,
+  fallback `DefaultEventWeights` (byte-identique) si section absente. Threadé dans le compute
+  (`EngagementScoreInput.Weights` → courbe) + les 2 points de collecte (service + sync).
+  Infinite = valeurs ACTUELLES (1.5/0.5/0.0/1.0), byte-identique prouvé (test temporal
+  `ExplicitDefaultWeightsByteIdentical` + suite temporal + intégration sync verts).
+- [x] E4c — Harnais exécuté sur H5 (données LOCALES, 4 joueurs, 5240 samples) →
+  `.ai/ENGAGEMENT_CALIBRATION_H5_2026-07-11.md` commité. Résultat : bins décroissants
+  calme→chaotique (ranked 1.043→0.916, unranked 1.011→0.879) cohérents avec Infinite, coef
+  global 0.95-0.97, rejets faibles (ranked 0.5 %, unranked 8.5 %). Candidats H5 = poids de
+  référence Infinite (dans `halo_5/constants.toml [engagement]`, provisoires jusqu'à E6).
 - Gate E4 : goldens Infinite inchangés après migration de config ; rapport H5 produit ;
   `go test ./internal/analysis/temporal/...` vert.
 
@@ -193,6 +203,11 @@ Constat mémoire : le score (0-100) n'est PAS un FieldKey canonique (contraireme
   clean ; packages touchés (analysis/service/sync/domain/api-handlers/persist) verts ; api
   (drift report-only, additif = divergent non gaté) vert ; `go vet` 0 ;
   `-tags=integration -p 1 ./internal/sync/...` exit 0 ; lint delta `--new-from-rev=3b0195df2` 0.
+- **E4 — COMPLÉTÉE (2026-07-11)**. Coefficients par titre (poids d'events) externalisés dans
+  `constants.toml [engagement]` + loader + accessor `games.EngagementWeightsFor` ; threadés
+  dans le compute (byte-identique Infinite) et les 2 collecteurs. Harnais `cmd/engagement-calibrate`
+  + rapport H5. Gate : temporal (dont byte-identical) vert ; build ./... clean ; intégration
+  sync `-p 1` exit 0 ; lint delta 0 ; rapport H5 produit.
 - **E3 — COMPLÉTÉE (2026-07-11)**. Double porte : capability fine documentée (E3a) ;
   `calibration` (validated/provisional) + `signal_basis` dans le contrat, injectés au service
   via `WithEngagementCapability` résolu title-aware par la factory (E3b) ; `not_exposed` → 503
@@ -201,6 +216,16 @@ Constat mémoire : le score (0-100) n'est PAS un FieldKey canonique (contraireme
   (generated.ts régénéré) ; lint delta 0.
 
 ## 7. Découvertes hors périmètre (à consigner, NE PAS traiter)
+- **Config par titre = `constants.toml [engagement]`, pas un `engagement.toml` séparé** (E4).
+  Le plan (E4b) nommait `config/titles/{slug}/engagement.toml`. Vérifié sur pièces : le
+  précédent `damage_model` (que le plan cite comme pattern) vit dans `constants.toml [damage_model]`,
+  chargé par `mappings.LoadEndpointsFromFile` → resolver boot → `games.EffectiveHpToKill(slug)`.
+  J'ai suivi CE pattern (section `[engagement]` dans `constants.toml`, même loader/resolver/accessor)
+  plutôt qu'un fichier + loader séparés : réutilise l'infra, un fichier de moins, cohérent repo.
+  Aucune fonctionnalité perdue.
+- **H5 PvP_unranked : taux de rejet 8.5 %** (E4c, > seuil indicatif 5 % de la refonte lobby pour
+  Infinite). Bins bien peuplés (n=538-540) et coef global exploitable → non bloquant, mais à
+  regarder au gate humain E6 (matchs unranked H5 plus bruités). Non traité (diagnostic seul).
 - **`make generate-types` est un stub** (E3). La cible Makefile `generate-types` (l.44-46) ne
   fait que vérifier `npx` et logger « Types générés » — elle N'EXÉCUTE PAS openapi-typescript.
   La vraie génération est le script npm `apps/web` : `npm run generate-types` (openapi-typescript

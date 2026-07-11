@@ -1,3 +1,26 @@
+## [2026-07-11] Engagement agnostic gradué (F7) — Phase E4 (Complété)
+
+**Statut** : E4 complétée. Harnais de calibration par titre + config par titre.
+
+**Décision technique** : les poids d'events (levier de calibration dépendant du gameplay)
+sont externalisés dans `constants.toml [engagement]` (pattern damage_model — le repo met
+les constantes par-titre dans constants.toml, PAS un fichier séparé ; déviation vs le nom
+`engagement.toml` du plan, consignée en Découvertes). Loader `mappings.EngagementConstants`
++ accessor `games.EngagementWeightsFor(slug) → temporal.EventWeights` (fallback
+`DefaultEventWeights`, byte-identique). Threadé dans `EngagementScoreInput.Weights` → courbe,
+et aux 2 collecteurs (service + sync). CLI `cmd/engagement-calibrate` (`//go:build cgo`) :
+énumère les player DBs, agrège les paces persistées, calcule les distributions par bin via la
+MÊME logique que le serving, compare à Infinite, écrit un rapport markdown. N'applique rien.
+
+**Résultat observé** : rapport H5 réel produit (`.ai/ENGAGEMENT_CALIBRATION_H5_2026-07-11.md`,
+4 joueurs, 5240 samples) — bins décroissants calme→chaotique cohérents avec Infinite, coef
+global 0.95-0.97, rejets ranked 0.5 % / unranked 8.5 % (ce dernier > 5 %, à noter pour E6).
+Candidats H5 = poids Infinite (provisoires). Byte-identique Infinite prouvé (test temporal +
+intégration sync -p 1 exit 0). Gates : temporal, build, intégration, lint delta 0 — tous verts.
+
+**Prochaine étape** : E5 — activation H5 en degraded (capability + adapter + front badge +
+backfill local).
+
 ## [2026-07-11] Engagement agnostic gradué (F7) — Phase E3 (Complété)
 
 **Statut** : E3 complétée. Double porte de dégradation (suffisance + calibration).
