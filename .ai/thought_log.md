@@ -34953,3 +34953,45 @@ cmd/tmpdbq sur les copies, test API prod anonyme, lecture des logs conteneur.
 **Conclusion / prochaine étape** : exécution des lots A→F sur
 `fix/h5-matchview-residus` après validation des DEC-1..8, puis V2-V4 (opérations data
 prod + vérification visuelle utilisateur + deploy via push main).
+
+## [2026-07-12] Plan histogramme momentum — carte Dominance (Match View)
+
+**Statut** : Complété (avis + plan rédigé — exécution non démarrée)
+
+**Décision technique principale** : l'idée utilisateur (momentum type Squeeze
+TradingView) est retenue UNIQUEMENT sur Match View et en REMPLACEMENT du rendu de la
+carte Dominance (MatchTugOfWarChart, match_view.10) — le stacked 0-100 % masque
+l'amplitude alors que la donnée exacte (delta kills par bin 30 s) est déjà calculée
+(analysis.ComputeTugOfWar) et déjà recomputée côté front depuis highlight_events.
+Version inter-matchs (Escouade/Solo) écartée avec l'utilisateur : doublon avec
+OutcomeSequenceTape / trends LOWESS-EWMA existants.
+
+**Résultats observés** (vérifications sur pièces) :
+- Couleurs : team-ally/team-enemy sont des tokens configurables par l'utilisateur
+  (AccessibilityTab -> theme-provider -> --ac-team-*) ; le momentum doit les utiliser
+  (pas divergent-pos/neg) — confirmé, la carte actuelle les utilise déjà via
+  resolveToken (lecture CSS var live, donc override utilisateur respecté).
+- Intensité 4 teintes (momentum qui se renforce/s'essouffle) : réalisable en alpha-mix
+  sur les tokens résolus, sans nouveau token.
+- Règle "≤ 2 copies" : hexToRgba(hex, alpha) existe déjà en 2 copies canvas
+  (MatchTugOfWarChart:88, MatchImpactBadgesBar:54) -> le plan impose centralisation
+  dans components/charts/_utils.ts + garde-rail *.guard.test.ts (pattern existant :
+  lib/query/keys.guard.test.ts) AVANT le rendu.
+- Zéro changement backend : bins tug_of_war + highlight_events suffisent.
+- CORRECTION (challenge utilisateur, vérifiée sur pièces le jour même) : l'hypothèse
+  initiale « H5 = souvent pas de kill-feed -> EmptyState » était FAUSSE. H5 est PLUS
+  riche qu'Infinite : kill-feed natif persisté local (killer_victim_pairs +
+  weapon_kills + kill_positions ; capabilities match.events.timeline /
+  match.killfeed.per_kill / match.events.spatial = supported). La voie repo-first du
+  Match View synthétise kill/death depuis killer_victim_pairs quand highlight_events
+  ne porte que des médailles (applyKVSynthesisIfNeeded,
+  match_view_builders_combat.go) -> combat_tab peuplé : la carte Dominance marche
+  DÉJÀ sur H5, le momentum marchera à l'identique, zéro travail spécifique. Seul cas
+  EmptyState : match servi live-only (CombatTab vide + combat_narrative_unavailable,
+  match_view_canonical.go), indépendant du titre. Section non gatée par capability
+  côté front (data-driven, guard hasKillEvents) — aucun changement requis. Plan
+  corrigé (critère de succès, invariants, item 4.2 : ajout vérif visuelle H5).
+
+**Conclusion / prochaine étape** : plan écrit dans .ai/V7/PLAN_MATCHVIEW_MOMENTUM.md
+(4 phases, DEC-1..7 tranchées, gates exacts, branche feat/matchview-momentum).
+Exécution après validation des DEC par l'utilisateur, sous contrat plan-execution.
