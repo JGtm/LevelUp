@@ -1,5 +1,14 @@
 # PLAN — Squash des migrations : baseline bit-identique prouvée (chantier N4)
 
+> **STATUT : PARTIEL — M0/M1/M2 COMPLÉTÉS le 2026-07-11 (capacité + preuve zéro-perte
+> livrées, objectif #1). M3→M6 (le SQUASH RÉEL) EN ATTENTE DU GO OPÉRATEUR** — par la
+> conception même du plan (DM-1 « gated GO humain », politique N4 point 1 « déclenchement
+> MANUEL »), M0e « Point d'étape utilisateur » et M6a « DEMANDER le GO explicite ». Ce ne
+> sont pas des reports de commodité mais des dépendances décisionnelles opérateur +
+> prod (M5c = répétition sur copie prod). L'outillage M1/M2 est réutilisable tel quel
+> (dé-risque aussi E7). Le plan reste dans `.ai/` (non déplacé en V7) tant que M3+ n'est
+> pas exécuté.
+>
 > Date : 2026-07-10. Auteur : Fable (supervision). Exécutant prévu : Opus.
 > Origine : politique N4 documentée dans `internal/migration/doc.go` (2026-07-05,
 > PROPOSITION) + exigence utilisateur 2026-07-10 : « une solution propre qui garantit
@@ -50,82 +59,112 @@ Critères de succès :
 ## 3. Phases (ordre strict ; commits `squash(MX):`)
 
 ### M0 — Cartographie et décision de périmètre (READ-ONLY, consignée)
-- [ ] M0a — Inventaire des registres : `internal/migration/order.go` (canonicalOrder) +
-  `internal/migration/steps_*.go` (globaux) + `games/halo_infinite/migrations/steps.go` +
-  `games/halo_5/migrations/steps.go` (title-owned). Pour chacun : nombre de steps, cible
-  (metadata / shared / player / social), dépendances d'ordre inter-registres.
-- [ ] M0b — État de la transition b23/b25 (ADR 0025 Phase 1.5, ownership global→title-owned,
-  raison du report E7) : quels `create_base_*_schema` existent en double, la bascule
-  est-elle terminée ? VERDICT écrit : la frontière est-elle stable ? → applique DM-4.
-- [ ] M0c — Mécanique du ledger : comment le runner marque un step appliqué (table de
-  suivi ? nom ? `RunForDB`) — établir précisément ce que DM-5 exige.
-- [ ] M0d — Mesure de référence : temps de provisioning d'une DB vierge par cible
-  (player, shared, metadata, social — 2 titres), consigné (baseline de la mesure de succès).
-- [ ] M0e — DÉSIGNER le registre v1 (DM-6) + la borne de baseline (dernier step inclus,
-  en respectant DM-2 : les 10 derniers restent dehors). Point d'étape utilisateur.
-- Gate M0 : rapport complet au Journal §J ; aucune modification de code.
+- [x] M0a — Inventaire des registres (cf. §J/M0a). 193 steps dans canonicalOrder (43 metadata,
+  61 shared, 60 player, 27 shared_social, 2 shared_pve) ; 26 steps GLOBAUX (registre
+  `internal/migration` via init/Register — append-only ADR 0026 + drop-ART, cross-titre),
+  167 title-owned Halo Infinite (`games/halo_infinite/migrations`), 12 title-owned Halo 5
+  (set ISOLÉ metadata seule). Ordre imposé par `canonicalOrder` (défaut) / `set.CanonicalOrder`.
+- [x] M0b — VERDICT : frontière b23/b25 NON stable (E7 explicitement gaté « après
+  stabilisation b23/b25 », DETTE_ASSUMEE §7). Les `create_base_*_schema` sont title-owned
+  SANS doublon global (transition des bases faite), mais les 26 steps globaux (append-only)
+  s'INTERCALENT dans l'ordre de chaque cible → DM-4 s'applique : le 1er squash NE FUSIONNE
+  PAS les deux mondes ; il ne squashe qu'un bloc CONTIGU d'UN SEUL monde.
+- [x] M0c — Ledger (cf. `registry.go`) : `schema_migrations` (PK `name`) trace chaque step
+  appliqué ; le runner SKIPPE un step dont le `name` est déjà présent. `title_schema_version`
+  (PK title_slug+target) porte version=len(order). DM-5 exige donc : une baseline au NOM
+  NOUVEAU serait rejouée sur une DB prod existante (name absent) — MAIS elle est
+  `CREATE ... IF NOT EXISTS` idempotente (no-op sur schéma déjà présent) ; l'équivalence
+  ledger (M3b) marquera la baseline comme satisfaite si le dernier step squashé est présent,
+  pour éviter tout DDL rejoué.
+- [x] M0d — Provisioning DB vierge (:memory:, best-of-3, tag integration) : metadata 697ms
+  (dominé par les SEEDS), player 229ms, shared 196ms, shared_social 92ms, shared_pve 16ms.
+  Sonde jetable supprimée (non committée). DuckDB introspection dispo :
+  duckdb_tables/columns/views/constraints/indexes/sequences (toutes OK).
+- [x] M0e — DÉSIGNÉ : registre v1 = **cible player, bloc title-owned contigu** partant de
+  `create_base_player_schema` jusqu'au dernier step title-owned PRÉCÉDANT le 1er step
+  GLOBAL de la cible player (borne exacte figée en M3a sur pièces). Respecte DM-4 (un seul
+  monde), DM-2 (prefix → les 10 derniers steps player restent hors baseline), schéma-only
+  (pas de seed data à perdre — contrairement à metadata). RECOMMANDÉ vs shared (bases plus
+  tardives, 58 vues, blocs plus entrelacés) et vs halo_5 (isolé mais 12 steps, faible
+  valeur, seed milestones data). Point d'étape utilisateur = décision opérateur (M6a GO).
+- Gate M0 : rapport complet au Journal §J ; aucune modification de code committée. [x]
 
 ### M1 — Outil de snapshot de schéma normalisé
-- [ ] M1a — `cmd/schema-snapshot` (ou fonction test-only dans `internal/migration` si plus
-  simple — décider en M0, documenter) : ouvre une DB DuckDB, extrait le schéma COMPLET et
-  le sérialise NORMALISÉ : tables (colonnes, types, defaults, NOT NULL, PK), index, vues
-  (définition SQL normalisée), séquences — trié de façon déterministe (ordre lexical),
-  indépendant de l'ordre d'exécution des steps là où l'ordre n'a pas d'effet observable.
-  Sources DuckDB : `duckdb_tables()`, `duckdb_columns()`, `duckdb_views()`,
-  `duckdb_constraints()`, `duckdb_indexes()` (vérifier la disponibilité réelle dans la
-  version embarquée).
-- [ ] M1b — Déterminisme prouvé : 2 provisionings vierges successifs (même historique) →
-  snapshots identiques octet pour octet (test).
-- [ ] M1c — Sensibilité prouvée : altérer artificiellement un schéma (1 colonne, 1 vue)
-  → diff non vide (test des deux sens, sonde jetable supprimée ensuite).
-- Gate M1 : tests M1b/M1c verts ; build+vet 0.
+- [x] M1a — DÉCIDÉ (M0) : fonction LIBRAIRIE réutilisable `migration.SchemaSnapshot(db)`
+  (`internal/migration/schema_snapshot.go`), pas un cmd — appelable par le test d'invariant
+  M2 (même package + package titre) ET par un futur `cmd/schema-snapshot` pour M5c. Extrait
+  tables (schema.table + PK flag), colonnes (POSITIONNEL, ordre observable préservé), types,
+  defaults, nullable, contraintes, index (sql normalisé), vues (sql normalisé), séquences.
+  Objets de 1er niveau triés lexicalement ; SCHÉMA SEUL (zéro donnée lue). Sources vérifiées
+  dispo : `duckdb_tables/columns/constraints/indexes/views/sequences()`.
+- [x] M1b — Déterminisme prouvé : `TestSchemaSnapshot_DeterministicIdenticalSchema` +
+  `TestSchemaSnapshot_DeterministicRunForDB` (2 provisionings RunForDB → snapshot identique
+  octet pour octet ; les lignes ledger, données, ne sont pas capturées).
+- [x] M1c — Sensibilité prouvée (morsure 2 sens) : `TestSchemaSnapshot_SensitiveToMutations`
+  (6 dimensions : colonne, default, table, vue, index, séquence — chacune → diff) +
+  `TestSchemaSnapshot_ColumnOrderIsObservable` (garde-fou fausse équivalence par tri
+  colonnes). Tests PERMANENTS (le tool est du code livré), pas de sonde résiduelle.
+- Gate M1 : tests M1b/M1c verts (8 sous-tests PASS) ; `go vet` + `go build` migration = 0. [x]
 
 ### M2 — Test d'invariant bit-identique (le verrou central — AVANT toute baseline)
-- [ ] M2a — `internal/migration/squash_invariant_test.go` : provisionne DEUX DBs vierges
-  par cible visée — (A) historique complet actuel, (B) chemin candidat (baseline + steps
-  restants ; tant que M3 n'existe pas, B = A et le test tourne en mode « harnais prêt ») —
-  snapshot M1 des deux, comparaison stricte, `t.Errorf` avec diff lisible par section.
-- [ ] M2b — Brancher le test en CI (il tourne avec la suite `-tags=integration -p 1` —
-  vérifier la durée ; s'il est lourd, le scoper au registre en cours de squash).
-- Gate M2 : harnais vert en mode A=B ; morsure prouvée (schéma altéré → rouge).
+- [x] M2a — `games/halo_infinite/migrations/squash_invariant_test.go` (DÉVIATION documentée
+  de l'emplacement plan : le provisioning complet exige StepsFor, non importable depuis
+  `internal/migration` — cycle ; même raison qu'order_audit_test.go). Provisionne DEUX DBs
+  vierges par cible (metadata/shared/pve/social/player) via `provisionFullHistory` (oracle)
+  et `provisionCandidate` (runner actif) ; snapshot M1 des deux ; comparaison stricte avec
+  `firstDiff` lisible. SEAM en place : aujourd'hui A=B (mode harnais) ; post-M3
+  provisionFullHistory rejouera le fixture des steps squashés.
+- [x] M2b — CI : le test est integration-tagged dans le package titre → tourne
+  automatiquement sous `-tags=integration -p 1 ./...` (gate CI). Durée mesurée 3.0s (2.5s
+  invariant 5 cibles + 0.4s morsure) — léger, pas de scoping nécessaire.
+- Gate M2 : harnais VERT en mode A=B (5 cibles PASS) ; morsure prouvée
+  (`TestSquashInvariant_BiteProof` : colonne ajoutée → snapshots divergents, détecté). [x]
+  Synergie E7 notée dans `DETTE_ASSUMEE_2026-Q3.md` (§4 du plan).
 
 ### M3 — Génération de la baseline (registre v1 désigné en M0e)
-- [ ] M3a — Écrire le step `create_baseline_<cible>_v<version>` : schéma « à plat »
+> [!] EN ATTENTE GO OPÉRATEUR (politique N4 point 1 : déclenchement MANUEL ; DM-1 : squash
+> réel gaté). Périmètre v1 DÉSIGNÉ (M0e) = cible player, bloc title-owned contigu. Approche
+> RECOMMANDÉE pour M3a : baseline GÉNÉRÉE (provisionner l'historique jusqu'à la borne,
+> `SchemaSnapshot` comme spec, émettre le DDL à plat) — plus sûr qu'à la main. Le SEAM M2
+> (`provisionFullHistory`) est prêt à recevoir le fixture des steps squashés. Aucun de ces
+> items n'est bloquant technique : ils attendent la DÉCISION opérateur de lancer le 1er
+> squash (risque prod au merge M6b = deploy auto). À exécuter en session dédiée post-GO.
+- [!] M3a — Écrire le step `create_baseline_<cible>_v<version>` : schéma « à plat »
   produisant EXACTEMENT l'état cumulé des steps squashés (s'appuyer sur le snapshot M1 de
   référence comme spec ; le step est écrit à la main ou généré — décider et documenter —
   mais RELU dans les deux cas).
-- [ ] M3b — Règle d'équivalence ledger (DM-5) : une DB portant le dernier step squashé
+- [!] M3b — Règle d'équivalence ledger (DM-5) : une DB portant le dernier step squashé
   est réputée porter la baseline (implémentation dans le runner + TEST dédié : DB
   provisionnée à l'ancienne → boot avec le nouveau registre → AUCUN step rejoué, schéma
   intact).
-- [ ] M3c — Câbler le registre : baseline + 10 derniers steps ; `order_audit_test.go`
+- [!] M3c — Câbler le registre : baseline + 10 derniers steps ; `order_audit_test.go`
   (audit d'ordre) mis à jour.
-- [ ] M3d — Le test d'invariant M2 passe en mode RÉEL (A = historique complet archivé,
+- [!] M3d — Le test d'invariant M2 passe en mode RÉEL (A = historique complet archivé,
   B = baseline + reste) → VERT exigé.
 - Gate M3 : invariant vert ; test ledger M3b vert ; `-tags=integration -p 1` cible verte.
 
 ### M4 — Archivage + documentation
-- [ ] M4a — Copier les steps squashés dans `.ai/migrations/squashed/<version>/` + README
+- [!] M4a — Copier les steps squashés dans `.ai/migrations/squashed/<version>/` + README
   (DM-3). Les fichiers source des steps sont RETIRÉS du registre actif seulement à ce
   stade (git garde tout de toute façon — l'archive est une commodité d'audit).
-- [ ] M4b — `internal/migration/doc.go` : la politique passe de « PROPOSITION » à
+- [!] M4b — `internal/migration/doc.go` : la politique passe de « PROPOSITION » à
   « APPLIQUÉE le <date> (registre <X>, version <V>) » + renvoi vers ce plan et l'archive.
-- [ ] M4c — Mesure après (M0d rejouée) : temps de provisioning vierge avant/après consigné.
+- [!] M4c — Mesure après (M0d rejouée) : temps de provisioning vierge avant/après consigné.
 - Gate M4 : build+vet+tests migration verts ; archive en place.
 
 ### M5 — Vérifications end-to-end (avant tout GO)
-- [ ] M5a — Suite complète `-tags=integration -p 1 -timeout 900s ./...` → exit 0.
-- [ ] M5b — SeedDemo end-to-end (intégration ops) → vert (provisionne des DBs vierges,
+- [!] M5a — Suite complète `-tags=integration -p 1 -timeout 900s ./...` → exit 0.
+- [!] M5b — SeedDemo end-to-end (intégration ops) → vert (provisionne des DBs vierges,
   c'est le consommateur réel du chemin baseline).
-- [ ] M5c — Répétition sur COPIE PROD (celle de `LevelUp-prod-copy`, restaurée V10a — la
+- [!] M5c — Répétition sur COPIE PROD (celle de `LevelUp-prod-copy`, restaurée V10a — la
   rafraîchir via restic si périmée) : booter le binaire de la branche sur la copie →
   AUCUN step rejoué (DM-5), schéma intact (snapshot M1 avant/après identiques), pages OK.
 - Gate M5 : les 3 verts, consignés.
 
 ### M6 — GO opérateur puis merge (politique N4 : déclenchement manuel)
-- [ ] M6a — Point d'étape utilisateur : mesures (M0d vs M4c), diff de registre, résultat
+- [!] M6a — Point d'étape utilisateur : mesures (M0d vs M4c), diff de registre, résultat
   M5c. DEMANDER le GO explicite (c'est LA décision opérateur de la politique).
-- [ ] M6b — Si GO : merge selon les règles projet (prévenir, deploy auto). Si NO-GO :
+- [!] M6b — Si GO : merge selon les règles projet (prévenir, deploy auto). Si NO-GO :
   la branche reste (l'outillage M1/M2 est réutilisable même sans squash — il sert aussi
   au chantier E7 futur), consigner.
 
@@ -142,7 +181,123 @@ Critères de succès :
   non désignés en M0e (ils suivront le même chemin, chantiers ultérieurs).
 
 ## 6. Journal §J
-- (vide au démarrage)
+
+### M0 — Cartographie (2026-07-11, READ-ONLY)
+
+**M0a — Inventaire des registres.** Source d'ordre unique : `canonicalOrder`
+(`internal/migration/order.go`), 193 entrées. Répartition par cible (commentaires de
+l'ordre) : metadata 43, shared 61, player 60, shared_social 27, shared_pve 2.
+
+Trois SOURCES de steps, dédupliquées par `Name` (title-owned override le global) puis triées
+par `canonicalOrder` :
+- **Registre global** (`internal/migration/steps_*.go`, `Register()` en `init()`) : 26 steps,
+  TOUS de nature « maintenance ART » (ADR 0026) : conversions append-only
+  (`*_append_only_v1`), drops d'index ART (`drop_*_art_*`), rebuilds
+  (`rebuild_match_participants_defeat_art_corruption`, `rebuild_catalog_fetch_queue_*`),
+  markers reset skill v2. Cross-titre par design (pas en transition).
+- **Title-owned Halo Infinite** (`games/halo_infinite/migrations/`, via
+  `SetTitleStepsProvider(StepsFor)`) : 167 steps (bases `create_base_*_schema`, ALTER,
+  familles metadata, prestige, progression, world leaderboard…).
+- **Title-owned Halo 5** (`games/halo_5/migrations/`, `RegisterMigrationSet`) : 12 steps
+  metadata, set ISOLÉ (`OwnsTarget==metadata` seul ; shared/player/social/pve héritent du
+  fallback HINF). CanonicalOrder propre (`metadataStepNames`).
+
+Routage runner (`RunForTitleDB`) : si un set est enregistré pour le slug ET possède la cible
+→ steps+ordre DU SET (isolation totale) ; sinon fallback legacy (registre global +
+titleStepsProvider, ordonné par canonicalOrder), byte-identique au défaut Halo.
+
+**M0b — Frontière b23/b25.** VERDICT : **NON stable**. Preuve : E7 (« DDL bootstrap
+sync/schema.go → migration », le refactor couplé à la transition b23/b25 title-ownership) est
+statué `[!]` dans DETTE_ASSUMEE_2026-Q3 §7 avec condition de reprise « chantier dédié APRÈS
+stabilisation b23/b25 ». Constat de code : les `create_base_{player,shared,shared_social}_schema`
+sont title-owned SANS doublon dans le registre global (la transition des bases elle-même est
+faite), MAIS les 26 steps globaux (append-only/ART) s'INTERCALENT dans l'ordre d'exécution de
+chaque cible (ex. player : base title-owned en tête, puis `player_append_only_match_*_v1`
+GLOBAUX plus loin). Conséquence DM-4 : le 1er squash NE traverse PAS la frontière — il ne
+fusionne pas un bloc mêlant steps globaux et title-owned. On squashe un bloc CONTIGU d'un
+SEUL monde (title-owned).
+
+**M0c — Ledger (DM-5).** `ensureMigrationTable` crée `schema_migrations(name PK, …,
+title_slug)`. `runSteps` charge `getApplied` puis, pour chaque step, `if !exists` applique le
+DDL et INSERT la ligne ; **si le name existe déjà → step SKIPPÉ** (aucun DDL). Version
+courante tracée dans `title_schema_version(title_slug,target)` = `len(order)`. Implication
+DM-5 : une baseline au NOM NOUVEAU n'est PAS dans `schema_migrations` d'une DB prod
+existante → elle serait « rejouée » au prochain boot. Comme le DDL baseline est
+`CREATE … IF NOT EXISTS` (idempotent), c'est un no-op fonctionnel ; néanmoins M3b posera une
+règle d'équivalence explicite (marquer la baseline satisfaite si le dernier step squashé est
+présent) pour garantir « zéro DDL rejoué » et un ledger cohérent.
+
+**M0d — Mesures de référence** (provisioning DB :memory: vierge, best-of-3, tag integration,
+sonde jetable supprimée non-committée) :
+
+| Cible | Temps (best-of-3) | Note |
+|---|---|---|
+| metadata | 697 ms | dominé par les SEEDS (ranked playlists, milestones, career ranks, csr thresholds) |
+| player | 229 ms | 60 steps, bases + ALTER + append-only |
+| shared | 196 ms | 61 steps, bases + 58 vues |
+| shared_social | 92 ms | 27 steps |
+| shared_pve | 16 ms | 2 steps |
+
+Introspection DuckDB (embarqué v2) : `duckdb_tables()`, `duckdb_columns()`, `duckdb_views()`,
+`duckdb_constraints()`, `duckdb_indexes()`, `duckdb_sequences()` TOUTES disponibles → M1 peut
+s'appuyer dessus.
+
+**M0e — Périmètre v1 DÉSIGNÉ.** Registre v1 = **cible player, bloc title-owned contigu** de
+`create_base_player_schema` jusqu'au dernier step title-owned précédant le 1er step GLOBAL
+player (borne exacte figée en M3a). Justification :
+- DM-4 (frontière instable) : bloc title-owned pur, ne fusionne pas les mondes.
+- DM-2 : un PREFIX → les 10 derniers steps player restent hors baseline (fenêtre rollback).
+- Schéma-only : player = CREATE/ALTER/append-only, sans seed data (contrairement à metadata
+  dont M1 — schéma seul — ne capturerait pas les seeds : risque de perte silencieuse).
+- Valeur : les player DBs sont NOMBREUSES (une par joueur) → gain de boot multiplié.
+Alternatives écartées : shared (bases plus tardives, 58 vues, blocs plus entrelacés →
+génération bit-identique plus fragile) ; halo_5 metadata (monde propre isolé mais 12 steps,
+faible valeur, seed milestones = data). La désignation finale + le GO restent une décision
+OPÉRATEUR (politique N4 point 1 ; M6a).
+
+Gate M0 : OK — rapport ci-dessus, aucune modification de code committée (sonde M0d/M1
+supprimée).
+
+### Clôture PARTIELLE (2026-07-11)
+
+M0/M1/M2 COMPLÉTÉS et livrés sur `refactor/migration-squash-baseline` (commits `squash(M0)`
+823c09e68, `squash(M1)` 949d70eb2 + fix noctx ae294e566, `squash(M2)` 7830cfafb). Objectif
+#1 (CAPACITÉ + PREUVE zéro-perte) atteint : `migration.SchemaSnapshot` + invariant
+bit-identique (5 cibles, mode A=B, morsure prouvée).
+
+**Gates de livraison (tous exécutés cette session, verts)** :
+- `golangci-lint run --new-from-rev=origin/main` = 0 issue.
+- `go test ./...` = exit 0.
+- `go test -tags=integration -p 1 -timeout 900s ./...` = exit 0 (aucun FAIL).
+- CI de branche (run 29165659241) = TOUS les jobs `success` (E2E skipped) — Go Lint inclus
+  (only-new-issues), Baseline non-régression, Build+Test ubuntu+windows, Coverage complet.
+- Aucun test supprimé/renommé → baseline `tests_pre_migration.jsonl` inchangée.
+
+**M3→M6 EN ATTENTE GO OPÉRATEUR** (dépendance décisionnelle + prod, pas report de
+commodité) : politique N4 point 1 (déclenchement MANUEL), DM-1, M0e (point d'étape user),
+M5c (copie prod), M6a (GO explicite avant merge = deploy auto). Périmètre v1 désigné (player,
+bloc title-owned contigu) + approche baseline générée recommandée : prêt à exécuter en
+session dédiée dès le GO.
+
+**Vérifications utilisateur requises AVANT le 1er squash réel** (M6a) :
+1. Confirmer le registre v1 (player) et valider la borne de baseline que M3a figera.
+2. Donner le GO explicite pour lancer M3→M5 (génération baseline + invariant réel vert).
+3. M5c : autoriser la répétition sur la copie prod (`../LevelUp-prod-copy`, à rafraîchir via
+   restic si périmée) — lecture seule, aucun écrit prod.
+4. Au merge (M6b) : push main = DEPLOY AUTO — prévenir avant.
 
 ## 7. Découvertes hors périmètre (NE PAS traiter)
-- (vide au démarrage)
+- **CI « Go Lint » = ONLY-NEW-ISSUES** : le job golangci-lint ne fait échouer QUE sur des
+  issues NEUVES vs base (comportement observé : 1er push RED sur le seul `noctx` de mon
+  code → corrigé → 2e run VERT). Il SURFACE néanmoins en annotations informationnelles une
+  dette baseline PRÉ-EXISTANTE (funlen `MetadataSteps` 204>80, `MapParticipants`,
+  `LoadFromConfigDir`, `applyModeNameTr`, `registerHalo5Adapters`, `StartInitialSync`,
+  `handleCreatePlayer`, `handlePatchSettings` ; errcheck `os.Remove`/`os.RemoveAll`). Cette
+  dette est GELÉE (CLAUDE.md règle 5) et NE fait PAS échouer la CI de branche — non traitée.
+- **Hook pre-commit go-vet** : imprime de nombreux `build constraints exclude all Go files`
+  pour `cmd/*` + `duckdb-go-bindings/lib/windows-amd64` (tags/CGO Windows) — bruit
+  pré-existant, le hook PASSE quand même. Non traité.
+- **Note M3 (pas une découverte, une contrainte confirmée)** : DM-4 (frontière instable,
+  M0b) impose que la baseline player ne couvre que le bloc title-owned CONTIGU précédant le
+  1er step GLOBAL player. La borne exacte est à figer sur pièces en M3a (post-GO) car les 26
+  steps globaux append-only s'intercalent dans l'ordre player.

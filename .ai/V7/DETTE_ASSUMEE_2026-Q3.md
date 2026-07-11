@@ -174,6 +174,12 @@ changement de résultat (J3/J4/J7) ou de wiring provider (J9).
   bugs prod documentés — attach RO/RW, xuid bruts), couplé à la transition b23/b25
   (title-ownership). Statué `[!]` au Gate E (règle 9). Condition de reprise : chantier dédié
   APRÈS stabilisation b23/b25 (détail : plan parent item E7, l.~1971).
+  SYNERGIE (2026-07-11) : l'outillage du chantier squash N4 —
+  `migration.SchemaSnapshot(db)` (snapshot de schéma normalisé déterministe) +
+  l'invariant bit-identique (`games/halo_infinite/migrations/squash_invariant_test.go`) —
+  est directement réutilisable pour dé-risquer E7 : prouver que le DDL bootstrap
+  (`sync/schema.go` Ensure*Schema) et les migrations produisent le MÊME schéma se fait
+  en comparant leurs deux snapshots. Cf. `.ai/PLAN_MIGRATION_SQUASH_BASELINE_2026-07.md` §4.
 - **F7** — activation engagement H5 (canonicalisation adapter + calibration cold-start ;
   chantier futur Halo 7).
 - **F8/F9** — Phase 1b activation multi-titre.
