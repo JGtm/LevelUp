@@ -1,18 +1,17 @@
-// Package temporal — engagement_coefficients.go : calcul des coefficients
-// d'engagement personnels (coef_team_share, coef_lobby_share).
+// Package temporal — engagement_coefficients.go : calcul du coefficient
+// d'engagement lobby global (coef_lobby_share).
 //
-// Reference plan : .ai/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md §4.4 et §6.7.
+// Reference plan : .ai/V7/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md (modele v2).
 //
-// Concept : coef_team_share = mediane glissante des ratios pace_joueur/pace_team
+// Concept : coef_lobby_share = mediane glissante des ratios pace_joueur/pace_lobby
 // sur les N derniers matchs PvP du joueur dans une categorie (PvP_ranked /
-// PvP_unranked). Caracterise "a quel point le joueur fait sa part" face a son
-// equipe sur la duree.
+// PvP_unranked). Caracterise la reponse habituelle GLOBALE du joueur a l'action
+// totale du match (toutes intensites confondues).
 //
-// Le coef_team_share est ensuite utilise par ComputeEngagementScore pour
-// construire pace_attendu = coef × pace_team. Quand le coef vaut 1.0
-// (cold-start), l'attendu = team observee → courbes superposees a l'ecran.
-// L'objectif de ce module est de remplacer ce 1.0 cold-start par une mediane
-// stable et personnalisee.
+// Il sert de FALLBACK a l'attendu (ExpectedBasis "global") quand aucun bin
+// d'intensite n'est exploitable (cf. engagement_response_bins.go pour les bins).
+// coef_team_share (part intra-equipe) a ete abandonne (D5, modele lobby-anchored) :
+// l'attendu n'est plus une part relative a l'equipe.
 //
 // Pure : aucun acces DB, aucun log, aucun side-effect. Le caller charge les
 // echantillons (RatioSample) puis appelle ComputeEngagementCoefficient.
@@ -39,16 +38,18 @@ const (
 	// percentile, pour rester coherent dans la dichotomie "cold vs warm".
 	MinMatchesForCoef = 10
 
-	// PaceTeamMinThreshold : pace de l'equipe (events/min/joueur) en dessous
-	// duquel le match est exclu de la mediane. Un lobby quasi-inactif (lag,
-	// quitters massifs, custom mode AFK) genere des ratios extremes qui
-	// polluent la mediane. 1.0 event/min/joueur = 1 kill/death toutes les 60s
-	// par joueur d'equipe : seuil tres bas, exclus seulement les vrais cas
-	// degeneres.
-	PaceTeamMinThreshold = 1.0
-
-	// PaceLobbyMinThreshold : meme idee pour le ratio lobby. Seuil identique.
-	PaceLobbyMinThreshold = 1.0
+	// PaceLobbyMinThreshold : pace du lobby (events/min/joueur) en dessous duquel
+	// le match est exclu de la mediane. Un lobby quasi-inactif (lag, quitters
+	// massifs, custom mode AFK) genere des ratios extremes qui polluent la
+	// mediane. Seuil tres bas, exclus seulement les vrais cas degeneres.
+	//
+	// 1.0 → 0.75 (2026-07-07, modele lobby-anchored) : la suppression du poids
+	// mort (death 0.4 → 0.0, cf. engagement_weights.go) baisse mecaniquement
+	// tous les paces de ~25 % sur un mix kills≈morts. Abaisser le seuil dans la
+	// meme proportion evite de rejeter des matchs auparavant valides. Gate
+	// empirique : taux de rejets hors-AFK < 5 % apres re-backfill, sinon 0.6.
+	// Partage avec le calcul des bins (engagement_response_bins.go).
+	PaceLobbyMinThreshold = 0.75
 
 	// PlayerActivityMin : activite minimale du joueur (kills+assists+deaths)
 	// pour que le match contribue a la mediane. < 3 = quitter / AFK / disco
@@ -98,25 +99,17 @@ type RatioSample struct {
 // NMatches reflete le nombre d'echantillons valides effectivement utilises
 // dans la mediane (apres filtrage outliers). NRejected = total fourni - NMatches.
 type CoefficientResult struct {
-	CoefTeamShare  float64
 	CoefLobbyShare float64
 	NMatches       int
 	NRejected      int
 }
 
-// ComputeEngagementCoefficient calcule la mediane glissante des ratios
-// pace_joueur/pace_team et pace_joueur/pace_lobby sur les echantillons
-// fournis.
+// ComputeEngagementCoefficient calcule la mediane glissante du ratio
+// pace_joueur/pace_lobby (coef lobby global) sur les echantillons fournis.
 //
 // Filtre applique avant calcul :
 //   - PlayerActivity < PlayerActivityMin → exclus (quitter/AFK)
-//   - PaceTeam < PaceTeamMinThreshold → exclus pour le ratio team (lobby AFK)
-//   - PaceLobby < PaceLobbyMinThreshold → exclus pour le ratio lobby (idem)
-//
-// Le filtre team et lobby sont independants : un sample peut contribuer au
-// coef_team mais pas au coef_lobby (ou inversement). NMatches refere au
-// nombre de samples valides pour le coef_team_share (le plus restrictif en
-// pratique car PaceTeam <= PaceLobby).
+//   - PaceLobby < PaceLobbyMinThreshold (ou <= 0) → exclus (lobby AFK)
 //
 // Si moins de MinMatchesForCoef samples valides → ErrInsufficientCoefHistory.
 //
@@ -126,7 +119,6 @@ func ComputeEngagementCoefficient(samples []RatioSample) (*CoefficientResult, er
 		return nil, ErrInsufficientCoefHistory
 	}
 
-	teamRatios := make([]float64, 0, len(samples))
 	lobbyRatios := make([]float64, 0, len(samples))
 	rejected := 0
 
@@ -135,38 +127,20 @@ func ComputeEngagementCoefficient(samples []RatioSample) (*CoefficientResult, er
 			rejected++
 			continue
 		}
-		// Le sample est conserve s'il contribue a au moins l'un des 2 ratios.
-		// Sinon (lobby AFK total), on le compte comme rejected.
-		teamOK := s.PaceTeam >= PaceTeamMinThreshold && s.PaceTeam > 0
-		lobbyOK := s.PaceLobby >= PaceLobbyMinThreshold && s.PaceLobby > 0
-		if !teamOK && !lobbyOK {
+		if s.PaceLobby < PaceLobbyMinThreshold || s.PaceLobby <= 0 {
 			rejected++
 			continue
 		}
-		if teamOK {
-			teamRatios = append(teamRatios, s.PaceJoueur/s.PaceTeam)
-		}
-		if lobbyOK {
-			lobbyRatios = append(lobbyRatios, s.PaceJoueur/s.PaceLobby)
-		}
+		lobbyRatios = append(lobbyRatios, s.PaceJoueur/s.PaceLobby)
 	}
 
-	// On exige MinMatchesForCoef samples valides pour le coef team (le plus
-	// utilise en pratique pour les modes en equipe).
-	if len(teamRatios) < MinMatchesForCoef {
+	if len(lobbyRatios) < MinMatchesForCoef {
 		return nil, ErrInsufficientCoefHistory
 	}
 
-	coefTeam := clampCoef(analysis.MedianFloat(teamRatios))
-	coefLobby := 1.0 // fallback neutre si pas assez de samples lobby valides
-	if len(lobbyRatios) >= MinMatchesForCoef {
-		coefLobby = clampCoef(analysis.MedianFloat(lobbyRatios))
-	}
-
 	return &CoefficientResult{
-		CoefTeamShare:  coefTeam,
-		CoefLobbyShare: coefLobby,
-		NMatches:       len(teamRatios),
+		CoefLobbyShare: clampCoef(analysis.MedianFloat(lobbyRatios)),
+		NMatches:       len(lobbyRatios),
 		NRejected:      rejected,
 	}, nil
 }

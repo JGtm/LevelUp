@@ -61,6 +61,113 @@ type EngagementScoreResult struct {
 	// Sert a detecter les quitters/AFK lors du calcul du coefficient
 	// (cf. temporal.PlayerActivityMin).
 	PlayerActivity int `json:"player_activity"`
+
+	// ExpectedBasis qualifie la base de calcul de l'attendu (PaceAttendu),
+	// modele lobby-anchored v2 (cf. .ai/V7/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md) :
+	//   - "bin"        : coef du bin d'intensite du match (>= MinMatchesForBin echantillons)
+	//   - "global"     : coef lobby global (fallback, >= MinMatchesForCoef echantillons)
+	//   - "cold_start" : aucun historique exploitable → coef 1.0 ; la serie
+	//     « Joueur attendu » est MASQUEE cote front (masquage indexe sur ce champ,
+	//     plus sur Confidence).
+	//
+	// Distinct de Confidence, qui qualifie l'historique du PERCENTILE (le score),
+	// pas l'attendu. Deux signaux independants.
+	ExpectedBasis string `json:"expected_basis"`
+
+	// IntensityBin est le libelle du bin d'intensite retenu quand ExpectedBasis
+	// vaut "bin" (calme / standard / chaotique). Vide sinon.
+	IntensityBin string `json:"intensity_bin"`
+
+	// SignalBasis qualifie la SUFFISANCE du vecteur de signaux du match (1re porte
+	// de degradation, chantier F7 engagement title-agnostic gradue) :
+	//   - "full"         : ensemble minimal + au moins un signal riche (objectif...)
+	//   - "partial"      : ensemble minimal seul (pas de signal riche)
+	//   - "insufficient" : ensemble minimal absent (un resultat servi n'atteint pas
+	//     ce niveau — les gardes ErrMatchTooShort/ErrInsufficientData ont deja filtre)
+	//
+	// Distinct de Confidence (historique du percentile) et de ExpectedBasis (base de
+	// l'attendu). Combine avec le statut de calibration du titre pour la 2e porte.
+	SignalBasis string `json:"signal_basis,omitempty"`
+
+	// Calibration est la 2e porte de degradation (chantier F7) : statut de calibration
+	// des coefficients d'engagement DU TITRE pour ce score :
+	//   - "validated"   : coefficients valides (gate humain passe) — score de confiance pleine
+	//   - "provisional" : coefficients provisoires (titre en calibration, ex. H5 degraded) —
+	//     le front affiche une mention « calibration provisoire » (DE-8)
+	//
+	// Vide = titre historique valide (Infinite) traite comme validated. Injecte au
+	// niveau service (title-aware) ; le moteur temporal, pur, ne le connait pas.
+	Calibration string `json:"calibration,omitempty"`
+}
+
+// Valeurs de EngagementScoreResult.ExpectedBasis (chaine de fallback de l'attendu).
+const (
+	ExpectedBasisBin       = "bin"
+	ExpectedBasisGlobal    = "global"
+	ExpectedBasisColdStart = "cold_start"
+)
+
+// Valeurs de EngagementScoreResult.Calibration (2e porte de degradation F7).
+const (
+	CalibrationValidated   = "validated"
+	CalibrationProvisional = "provisional"
+)
+
+// EngagementResponseBins porte les coefficients de reponse du joueur par bin
+// d'intensite (tercile de pace_lobby), pour une categorie de mode. Modele
+// lobby-anchored v2 (2026-07-07) : l'attendu du joueur est « sa reponse
+// habituelle a un match d'intensite similaire », pas une part relative a son
+// equipe. cf .ai/V7/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md.
+type EngagementResponseBins struct {
+	XUID         string                   `json:"xuid,omitempty"`
+	ModeCategory string                   `json:"mode_category,omitempty"`
+	Bins         []EngagementIntensityBin `json:"bins"`
+}
+
+// EngagementIntensityBin est un bin d'intensite (tercile de pace_lobby) avec son
+// coefficient de reponse lobby-anchored.
+type EngagementIntensityBin struct {
+	// Bin est le libelle du tercile : calme / standard / chaotique.
+	Bin string `json:"bin"`
+	// LowerBound / UpperBound bornent l'intensite (pace_lobby moyen du match)
+	// couverte par ce bin. Bornes contiguës en terciles ; extremes ouverts a la
+	// resolution (cf. ResolveBin).
+	LowerBound float64 `json:"lower_bound"`
+	UpperBound float64 `json:"upper_bound"`
+	// CoefLobby = mediane(pace_joueur / pace_lobby) des matchs du bin, clampee.
+	CoefLobby float64 `json:"coef_lobby"`
+	// NMatches = echantillons valides dans le bin. Le serving n'exploite le coef
+	// du bin (ExpectedBasis "bin") que si NMatches >= temporal.MinMatchesForBin.
+	NMatches int `json:"n_matches"`
+}
+
+// ResolveBin retourne le bin dont la borne inferieure est la plus grande sans
+// depasser l'intensite fournie (terciles contigus ; extremes ouverts : une
+// intensite au-dela du dernier tercile reste « chaotique », en-deca du premier
+// reste « calme »). Retourne (zero, false) si aucun bin n'est defini.
+func (b *EngagementResponseBins) ResolveBin(intensity float64) (EngagementIntensityBin, bool) {
+	if b == nil || len(b.Bins) == 0 {
+		return EngagementIntensityBin{}, false
+	}
+	best := -1
+	for i := range b.Bins {
+		if b.Bins[i].LowerBound <= intensity {
+			if best < 0 || b.Bins[i].LowerBound > b.Bins[best].LowerBound {
+				best = i
+			}
+		}
+	}
+	if best < 0 {
+		// Intensite sous toutes les bornes inf (calme.lower devrait valoir 0, donc
+		// rare) : rabattre sur le bin de plus basse borne.
+		best = 0
+		for i := range b.Bins {
+			if b.Bins[i].LowerBound < b.Bins[best].LowerBound {
+				best = i
+			}
+		}
+	}
+	return b.Bins[best], true
 }
 
 // EngagementPoint est un echantillon temporel de la courbe d'engagement.
@@ -77,8 +184,8 @@ type EngagementPoint struct {
 	// = events_team_dans_window / N_team / (W/60s)
 	PaceTeam float64 `json:"pace_team"`
 
-	// PaceAttendu est l'engagement que le joueur aurait du produire vu son
-	// style historique : coef_team_share * pace_team_per_player.
+	// PaceAttendu est l'engagement que le joueur produit D'HABITUDE dans un match
+	// d'intensite similaire (modele lobby-anchored) : coef[bin] * pace_lobby.
 	PaceAttendu float64 `json:"pace_attendu"`
 
 	// PaceLobby est le pace lobby per_player dans la fenetre. Utilise par la
@@ -189,21 +296,46 @@ type SquadPlayerEngagement struct {
 	PaceObserved []float64 `json:"pace_observed"`
 }
 
+// EngagementProfile est le profil engagement long-terme d'un joueur pour une
+// categorie de mode, expose par GET /engagement_profile (modele lobby-anchored
+// v2). Type DEDIE (cf. plan Phase 3) : distinct de EngagementCoefficient, qui
+// reste le porteur interne xuid/gamertag cote squad. Ne porte PAS coef_team_share
+// (deprecated, D5) et ajoute les bins de reponse par intensite.
+type EngagementProfile struct {
+	XUID         string `json:"xuid"`
+	Gamertag     string `json:"gamertag,omitempty"`
+	ModeCategory string `json:"mode_category"`
+
+	// CoefLobbyShare = mediane historique de (pace_joueur / pace_lobby_per_player).
+	// Coef lobby global du joueur (toutes intensites), fallback de l'attendu.
+	CoefLobbyShare float64 `json:"coef_lobby_share"`
+
+	// NMatches = matchs utilises pour la mediane globale.
+	NMatches int `json:"n_matches"`
+
+	// LastUpdated = heure du dernier recompute des coefficients.
+	LastUpdated time.Time `json:"last_updated"`
+
+	// Bins = coefs de reponse par bin d'intensite (terciles de pace_lobby).
+	// Vide si aucun bin persiste (historique insuffisant).
+	Bins []EngagementIntensityBin `json:"bins"`
+}
+
+// EngagementCoefficient est le porteur INTERNE du coef lobby global d'un joueur
+// (+ xuid/gamertag, réutilisé côté squad). coef_team_share a été abandonné (D5,
+// modèle lobby-anchored) ; il n'est plus porté par ce type. Le payload public
+// GET /engagement_profile utilise EngagementProfile (avec les bins).
 type EngagementCoefficient struct {
 	XUID         string `json:"xuid"`
 	Gamertag     string `json:"gamertag,omitempty"`
 	ModeCategory string `json:"mode_category"`
 
-	// CoefTeamShare = mediane historique de (pace_joueur / pace_team_per_player).
-	// > 1 = leader intra-equipe. < 1 = support / passif. ~1 = fait sa part.
-	CoefTeamShare float64 `json:"coef_team_share"`
-
 	// CoefLobbyShare = mediane historique de (pace_joueur / pace_lobby_per_player).
-	// Caracterise le style absolu (mixe style + skill + qualite des equipes
-	// habituelles). Comparable inter-joueurs (contrairement a CoefTeamShare).
+	// Caracterise la reponse globale du joueur a l'action totale du lobby
+	// (fallback de l'attendu, ExpectedBasis "global").
 	CoefLobbyShare float64 `json:"coef_lobby_share"`
 
-	// NMatches est le nombre de matchs utilises pour calculer ces medianes.
+	// NMatches est le nombre de matchs utilises pour calculer la mediane.
 	NMatches int `json:"n_matches"`
 
 	// LastUpdated est l'heure du dernier recalcul. Permet le check de

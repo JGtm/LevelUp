@@ -198,18 +198,17 @@ func (s *PlayerEngagementService) computeTeammateMeanPace(
 	playerEvents, teamEvents, lobbyEvents := splitMatchEvents(bundle.events, teammateXUID, mateTeamXUIDs)
 	durationMS := bundle.mctx.EndTimeMS - bundle.mctx.StartTimeMS
 	input := temporal.EngagementScoreInput{
-		PlayerEvents:   playerEvents,
-		TeamEvents:     teamEvents,
-		LobbyEvents:    lobbyEvents,
-		NTeam:          bundle.mctx.NTeam,
-		NHumansLobby:   bundle.mctx.NHumansLobby,
-		XUID:           teammateXUID,
-		MatchStartMS:   0,
-		MatchEndMS:     durationMS,
-		CoefTeamShare:  1.0, // peu importe : on ne lit que MeanPaceJoueur
-		CoefLobbyShare: 1.0,
-		Mode:           normalizeMode(bundle.mctx.IsRanked),
-		IsTeamMode:     bundle.mctx.IsTeamMode,
+		PlayerEvents: playerEvents,
+		TeamEvents:   teamEvents,
+		LobbyEvents:  lobbyEvents,
+		NTeam:        bundle.mctx.NTeam,
+		NHumansLobby: bundle.mctx.NHumansLobby,
+		XUID:         teammateXUID,
+		MatchStartMS: 0,
+		MatchEndMS:   durationMS,
+		// Cold-start (aucun coef/bin fourni) : on ne lit que MeanPaceJoueur.
+		Mode:       normalizeMode(bundle.mctx.IsRanked),
+		IsTeamMode: bundle.mctx.IsTeamMode,
 	}
 	result, err := temporal.ComputeEngagementScore(input)
 	if err != nil {

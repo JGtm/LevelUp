@@ -79,7 +79,7 @@ func TestHalo5_FineCapabilities(t *testing.T) {
 		games.CapMatchSkillSnapshot:   games.CapNotExposed,
 		games.CapCareerProgression:    games.CapSupported,
 		games.CapTimeseries:           games.CapNotExposed,
-		games.CapEngagement:           games.CapNotExposed,
+		games.CapEngagement:           games.CapDegraded, // F7 E5 : calibration provisoire → provisional
 		games.CapCitationsEngine:      games.CapNotExposed,
 		games.CapCommendationsNative:  games.CapSupported, // commendations NATIVES par match (carnage → match_commendations)
 		games.CapPveFirefight:         games.CapNotExposed,

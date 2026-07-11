@@ -44,6 +44,11 @@ schema_version = 1
 "analytics.timeseries"   = "not_exposed"
 "match.scoreboard.extra" = "not_exposed"
 "citations.engine"       = "not_exposed"
+# engagement.score (chantier F7 — double porte) : reflete ce que le titre PEUT
+# fournir. supported = coefficients calibres valides -> score servi avec
+# calibration=validated ; degraded = signaux OK mais calibration provisoire ->
+# score servi avec calibration=provisional (badge front) ; not_exposed = pas de
+# score (503 capability_not_supported). Infinite = reference calibree = supported.
 "engagement.score"       = "supported"
 "battlepass.progression" = "supported"
 "challenges.surface"     = "supported"

@@ -123,7 +123,6 @@ func TestComputeEngagementScore_PaceTeamIncludesPlayer(t *testing.T) {
 		NHumansLobby:   8,
 		MatchStartMS:   0,
 		MatchEndMS:     360_000,
-		CoefTeamShare:  1.0,
 		CoefLobbyShare: 1.0,
 		IsTeamMode:     true,
 	})
@@ -161,7 +160,6 @@ func TestComputeEngagementScore_InsufficientHistory(t *testing.T) {
 		MatchStartMS:   0,
 		MatchEndMS:     720_000,
 		History:        makeHistory(5, -1.0, 1.0), // < 10 matchs
-		CoefTeamShare:  1.0,
 		CoefLobbyShare: 1.0,
 		IsTeamMode:     true,
 	})
@@ -194,7 +192,6 @@ func TestComputeEngagementScore_PartialHistory(t *testing.T) {
 		MatchStartMS:   0,
 		MatchEndMS:     720_000,
 		History:        makeHistory(15, -1.0, 1.0), // entre 10 et 30
-		CoefTeamShare:  1.0,
 		CoefLobbyShare: 1.0,
 		IsTeamMode:     true,
 	})
@@ -220,7 +217,6 @@ func TestComputeEngagementScore_FullHistory(t *testing.T) {
 		MatchStartMS:   0,
 		MatchEndMS:     720_000,
 		History:        makeHistory(50, -2.0, 2.0), // >= 30
-		CoefTeamShare:  1.0,
 		CoefLobbyShare: 1.0,
 		IsTeamMode:     true,
 	})
@@ -265,7 +261,6 @@ func TestComputeEngagementScore_PlayerAboveExpectedScoresHigh(t *testing.T) {
 		MatchStartMS:   0,
 		MatchEndMS:     720_000,
 		History:        makeHistory(50, -2.0, 2.0),
-		CoefTeamShare:  1.0,
 		CoefLobbyShare: 1.0,
 		IsTeamMode:     true,
 	})
@@ -303,7 +298,6 @@ func TestComputeEngagementScore_PlayerBelowExpectedScoresLow(t *testing.T) {
 		MatchStartMS:   0,
 		MatchEndMS:     720_000,
 		History:        makeHistory(50, -2.0, 2.0), // mediane = 0
-		CoefTeamShare:  1.0,
 		CoefLobbyShare: 1.0,
 		IsTeamMode:     true,
 	})
@@ -332,16 +326,15 @@ func TestComputeEngagementScore_MatchIntensityComputed(t *testing.T) {
 		})
 	}
 	result, err := temporal.ComputeEngagementScore(temporal.EngagementScoreInput{
-		PlayerEvents:  playerEvents,
-		TeamEvents:    makeEvents(canonical.EventKill, 30_000),
-		LobbyEvents:   lobbyEvents,
-		NTeam:         4,
-		NHumansLobby:  8,
-		MatchStartMS:  0,
-		MatchEndMS:    720_000,
-		History:       makeHistory(50, -1.0, 1.0),
-		CoefTeamShare: 1.0,
-		IsTeamMode:    true,
+		PlayerEvents: playerEvents,
+		TeamEvents:   makeEvents(canonical.EventKill, 30_000),
+		LobbyEvents:  lobbyEvents,
+		NTeam:        4,
+		NHumansLobby: 8,
+		MatchStartMS: 0,
+		MatchEndMS:   720_000,
+		History:      makeHistory(50, -1.0, 1.0),
+		IsTeamMode:   true,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -379,7 +372,6 @@ func TestComputeEngagementScore_FFAFallbackToLobby(t *testing.T) {
 		MatchStartMS:   0,
 		MatchEndMS:     720_000,
 		History:        makeHistory(50, -1.0, 1.0),
-		CoefTeamShare:  0, // ignore en FFA
 		CoefLobbyShare: 1.05,
 		IsTeamMode:     false,
 	})
@@ -388,6 +380,174 @@ func TestComputeEngagementScore_FFAFallbackToLobby(t *testing.T) {
 	}
 	if len(result.EngagementCurve) == 0 {
 		t.Error("expected non-empty curve in FFA mode")
+	}
+}
+
+// =============================================================================
+// Attendu ancre lobby : bins d'intensite / fallback global / cold-start
+// =============================================================================
+
+// meanAttendu calcule la moyenne de PaceAttendu sur la courbe.
+func meanAttendu(curve []domain.EngagementPoint) float64 {
+	if len(curve) == 0 {
+		return 0
+	}
+	var s float64
+	for _, p := range curve {
+		s += p.PaceAttendu
+	}
+	return s / float64(len(curve))
+}
+
+// activeLobby genere un lobby actif (60 events sur 12 min) — meanLobby largement
+// au-dessus de 0.01, pour tomber dans le bin chaotique des tests ci-dessous.
+func activeLobby() []canonical.HighlightEvent {
+	ev := make([]canonical.HighlightEvent, 0, 60)
+	for i := 1; i <= 60; i++ {
+		ev = append(ev, canonical.HighlightEvent{EventType: string(canonical.EventKill), TimeMS: int64(i) * 12_000})
+	}
+	return ev
+}
+
+// TestComputeEngagementScore_BinChaotiqueLowExpected : un joueur dont le bin
+// chaotique a un coef bas (repond mal aux matchs intenses) doit avoir, sur un
+// match intense, un attendu BAS (coef du bin chaotique), et ExpectedBasis "bin".
+func TestComputeEngagementScore_BinChaotiqueLowExpected(t *testing.T) {
+	playerEvents := makeEvents(canonical.EventKill, 60_000, 180_000, 300_000, 480_000)
+	lobby := activeLobby()
+	// Bornes basses pour que meanLobby (match actif) tombe dans le bin chaotique.
+	bins := &domain.EngagementResponseBins{
+		Bins: []domain.EngagementIntensityBin{
+			{Bin: temporal.IntensityBinCalme, LowerBound: 0, UpperBound: 0.001, CoefLobby: 1.5, NMatches: 20},
+			{Bin: temporal.IntensityBinStandard, LowerBound: 0.001, UpperBound: 0.002, CoefLobby: 1.0, NMatches: 20},
+			{Bin: temporal.IntensityBinChaotique, LowerBound: 0.002, UpperBound: 1000, CoefLobby: 0.3, NMatches: 20},
+		},
+	}
+	result, err := temporal.ComputeEngagementScore(temporal.EngagementScoreInput{
+		PlayerEvents:       playerEvents,
+		LobbyEvents:        lobby,
+		NTeam:              4,
+		NHumansLobby:       8,
+		MatchStartMS:       0,
+		MatchEndMS:         720_000,
+		History:            makeHistory(50, -1.0, 1.0),
+		CoefLobbyShare:     1.2,
+		HasGlobalLobbyCoef: true, // present mais le bin doit primer
+		ResponseBins:       bins,
+		IsTeamMode:         true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.ExpectedBasis != domain.ExpectedBasisBin {
+		t.Errorf("ExpectedBasis want bin, got %q", result.ExpectedBasis)
+	}
+	if result.IntensityBin != temporal.IntensityBinChaotique {
+		t.Errorf("IntensityBin want chaotique, got %q", result.IntensityBin)
+	}
+	// Attendu = 0.3 x pace_lobby ; comparer a ce que donnerait le coef calme (1.5).
+	got := meanAttendu(result.EngagementCurve)
+	wantChaotique := 0.3 * result.MeanPaceLobby
+	if math.Abs(got-wantChaotique) > 1e-9 {
+		t.Errorf("mean attendu want %v (0.3 x lobby), got %v", wantChaotique, got)
+	}
+	if got >= 1.5*result.MeanPaceLobby {
+		t.Errorf("attendu chaotique doit etre bas (< coef calme x lobby)")
+	}
+}
+
+// TestComputeEngagementScore_FallbackGlobal : sans bins exploitables mais avec
+// un coef lobby global, l'attendu utilise le coef global (ExpectedBasis "global").
+func TestComputeEngagementScore_FallbackGlobal(t *testing.T) {
+	playerEvents := makeEvents(canonical.EventKill, 60_000, 180_000, 300_000)
+	result, err := temporal.ComputeEngagementScore(temporal.EngagementScoreInput{
+		PlayerEvents:       playerEvents,
+		LobbyEvents:        activeLobby(),
+		NTeam:              4,
+		NHumansLobby:       8,
+		MatchStartMS:       0,
+		MatchEndMS:         720_000,
+		History:            makeHistory(50, -1.0, 1.0),
+		CoefLobbyShare:     0.8,
+		HasGlobalLobbyCoef: true,
+		ResponseBins:       nil, // aucun bin persiste
+		IsTeamMode:         true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.ExpectedBasis != domain.ExpectedBasisGlobal {
+		t.Errorf("ExpectedBasis want global, got %q", result.ExpectedBasis)
+	}
+	if result.IntensityBin != "" {
+		t.Errorf("IntensityBin want empty hors bin, got %q", result.IntensityBin)
+	}
+	if got, want := meanAttendu(result.EngagementCurve), 0.8*result.MeanPaceLobby; math.Abs(got-want) > 1e-9 {
+		t.Errorf("mean attendu want %v (0.8 x lobby), got %v", want, got)
+	}
+}
+
+// TestComputeEngagementScore_ColdStartBasis : sans bins ni coef global,
+// ExpectedBasis "cold_start" et attendu = 1.0 x pace_lobby.
+func TestComputeEngagementScore_ColdStartBasis(t *testing.T) {
+	playerEvents := makeEvents(canonical.EventKill, 60_000, 180_000, 300_000)
+	result, err := temporal.ComputeEngagementScore(temporal.EngagementScoreInput{
+		PlayerEvents:       playerEvents,
+		LobbyEvents:        activeLobby(),
+		NTeam:              4,
+		NHumansLobby:       8,
+		MatchStartMS:       0,
+		MatchEndMS:         720_000,
+		History:            makeHistory(50, -1.0, 1.0),
+		HasGlobalLobbyCoef: false,
+		ResponseBins:       nil,
+		IsTeamMode:         true,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.ExpectedBasis != domain.ExpectedBasisColdStart {
+		t.Errorf("ExpectedBasis want cold_start, got %q", result.ExpectedBasis)
+	}
+	if got, want := meanAttendu(result.EngagementCurve), 1.0*result.MeanPaceLobby; math.Abs(got-want) > 1e-9 {
+		t.Errorf("mean attendu want %v (1.0 x lobby), got %v", want, got)
+	}
+}
+
+// TestComputeEngagementScore_FFASameExpectedAsTeam : l'attendu ne depend plus du
+// mode (ancre lobby unifiee D1). A lobby identique, FFA (NTeam=1) et mode equipe
+// produisent le meme attendu.
+func TestComputeEngagementScore_FFASameExpectedAsTeam(t *testing.T) {
+	playerEvents := makeEvents(canonical.EventKill, 60_000, 180_000, 300_000)
+	lobby := activeLobby()
+	base := temporal.EngagementScoreInput{
+		PlayerEvents:       playerEvents,
+		LobbyEvents:        lobby,
+		NHumansLobby:       8,
+		MatchStartMS:       0,
+		MatchEndMS:         720_000,
+		History:            makeHistory(50, -1.0, 1.0),
+		CoefLobbyShare:     1.1,
+		HasGlobalLobbyCoef: true,
+	}
+	teamInput := base
+	teamInput.NTeam = 4
+	teamInput.IsTeamMode = true
+	ffaInput := base
+	ffaInput.NTeam = 1
+	ffaInput.IsTeamMode = false
+
+	teamRes, err := temporal.ComputeEngagementScore(teamInput)
+	if err != nil {
+		t.Fatalf("team: %v", err)
+	}
+	ffaRes, err := temporal.ComputeEngagementScore(ffaInput)
+	if err != nil {
+		t.Fatalf("ffa: %v", err)
+	}
+	if math.Abs(meanAttendu(teamRes.EngagementCurve)-meanAttendu(ffaRes.EngagementCurve)) > 1e-9 {
+		t.Errorf("attendu team vs FFA doivent etre identiques (ancre lobby) : %v vs %v",
+			meanAttendu(teamRes.EngagementCurve), meanAttendu(ffaRes.EngagementCurve))
 	}
 }
 
@@ -431,16 +591,15 @@ func TestComputeEngagementScore_PassiveDeathDetected(t *testing.T) {
 		{EventType: string(canonical.EventDeath), TimeMS: 90_000},
 	}
 	result, err := temporal.ComputeEngagementScore(temporal.EngagementScoreInput{
-		PlayerEvents:  playerEvents,
-		TeamEvents:    makeEvents(canonical.EventKill, 60_000),
-		LobbyEvents:   playerEvents,
-		NTeam:         4,
-		NHumansLobby:  8,
-		MatchStartMS:  0,
-		MatchEndMS:    720_000,
-		History:       makeHistory(50, -1.0, 1.0),
-		CoefTeamShare: 1.0,
-		IsTeamMode:    true,
+		PlayerEvents: playerEvents,
+		TeamEvents:   makeEvents(canonical.EventKill, 60_000),
+		LobbyEvents:  playerEvents,
+		NTeam:        4,
+		NHumansLobby: 8,
+		MatchStartMS: 0,
+		MatchEndMS:   720_000,
+		History:      makeHistory(50, -1.0, 1.0),
+		IsTeamMode:   true,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -466,16 +625,15 @@ func TestComputeEngagementScore_ActiveDeathNotMarkedPassive(t *testing.T) {
 		{EventType: string(canonical.EventDeath), TimeMS: 100_000},
 	}
 	result, err := temporal.ComputeEngagementScore(temporal.EngagementScoreInput{
-		PlayerEvents:  playerEvents,
-		TeamEvents:    makeEvents(canonical.EventKill, 60_000),
-		LobbyEvents:   playerEvents,
-		NTeam:         4,
-		NHumansLobby:  8,
-		MatchStartMS:  0,
-		MatchEndMS:    720_000,
-		History:       makeHistory(50, -1.0, 1.0),
-		CoefTeamShare: 1.0,
-		IsTeamMode:    true,
+		PlayerEvents: playerEvents,
+		TeamEvents:   makeEvents(canonical.EventKill, 60_000),
+		LobbyEvents:  playerEvents,
+		NTeam:        4,
+		NHumansLobby: 8,
+		MatchStartMS: 0,
+		MatchEndMS:   720_000,
+		History:      makeHistory(50, -1.0, 1.0),
+		IsTeamMode:   true,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

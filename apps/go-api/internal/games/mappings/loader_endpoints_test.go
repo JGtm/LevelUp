@@ -170,4 +170,14 @@ func TestLoadHaloInfiniteEndpointsTOML(t *testing.T) {
 	if got := len(set.Keys()); got != len(want) {
 		t.Errorf("nombre d'endpoints = %d, want %d", got, len(want))
 	}
+
+	// [engagement] (chantier F7) : poids historiques Infinite déclarés (byte-identique
+	// à temporal.DefaultEventWeights).
+	eng, ok := set.Engagement()
+	if !ok {
+		t.Fatalf("section [engagement] absente du constants.toml HI")
+	}
+	if eng.Objective != 1.5 || eng.Assist != 0.5 || eng.Death != 0.0 || eng.Default != 1.0 {
+		t.Errorf("[engagement] HI = %+v, want {1.5 0.5 0.0 1.0}", eng)
+	}
 }

@@ -275,8 +275,9 @@ func (r *EngagementScoreRepo) LoadAllCoefficients(
 		return nil, port.ErrEngagementUnavailable
 	}
 
+	// coef_team_share non lu (D5, colonne inerte).
 	const q = `
-		SELECT xuid, mode_category, coef_team_share, coef_lobby_share,
+		SELECT xuid, mode_category, coef_lobby_share,
 		       n_matches, last_updated
 		FROM engagement_coefficients
 		WHERE xuid = ?
@@ -292,7 +293,7 @@ func (r *EngagementScoreRepo) LoadAllCoefficients(
 	for rows.Next() {
 		var c domain.EngagementCoefficient
 		if err := rows.Scan(
-			&c.XUID, &c.ModeCategory, &c.CoefTeamShare, &c.CoefLobbyShare,
+			&c.XUID, &c.ModeCategory, &c.CoefLobbyShare,
 			&c.NMatches, &c.LastUpdated,
 		); err != nil {
 			continue

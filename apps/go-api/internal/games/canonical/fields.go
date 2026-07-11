@@ -105,6 +105,14 @@ const (
 	FieldTimePlayedSeconds    FieldKey = "time_played_seconds"
 	FieldOffensiveConversion  FieldKey = "offensive_conversion"
 	FieldDefensiveResistance  FieldKey = "defensive_resistance"
+
+	// FieldEngagementScore est le score d'engagement intra-match (percentile
+	// 0..100 du residu joueur-attendu sur l'historique du joueur, modele
+	// lobby-anchored v2). Metrique de 1er ordre title-agnostic : chaque titre
+	// qui expose l'engagement (capability engagement.score) declare ce FieldKey
+	// dans son fields.toml. Unite = score sans dimension, bornes [0, 100].
+	// cf. internal/analysis/temporal/engagement_score.go + ADR chantier F7.
+	FieldEngagementScore FieldKey = "engagement_score"
 )
 
 // AllFieldKeys retourne la liste exhaustive des FieldKey supportés par le
@@ -146,6 +154,7 @@ func AllFieldKeys() []FieldKey {
 		FieldKDRatio, FieldKillsPerMin, FieldPerformanceScore,
 		FieldPerfectKillsPerMatch, FieldTimePlayedSeconds,
 		FieldOffensiveConversion, FieldDefensiveResistance,
+		FieldEngagementScore,
 	}
 }
 

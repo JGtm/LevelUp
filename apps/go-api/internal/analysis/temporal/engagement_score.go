@@ -77,9 +77,22 @@ type EngagementScoreInput struct {
 	MatchStartMS int64
 	MatchEndMS   int64
 
-	History        []domain.HistoricalEngagementBrut
-	CoefTeamShare  float64
+	History []domain.HistoricalEngagementBrut
+
+	// CoefLobbyShare est le coef lobby global du joueur (mediane historique de
+	// pace_joueur/pace_lobby, toutes intensites confondues). Sert de fallback
+	// (ExpectedBasis "global") quand aucun bin d'intensite n'est exploitable.
+	// N'est pris en compte que si HasGlobalLobbyCoef est vrai.
 	CoefLobbyShare float64
+
+	// HasGlobalLobbyCoef indique que CoefLobbyShare provient d'un calcul reel
+	// (>= MinMatchesForCoef echantillons), pas du defaut neutre cold-start.
+	HasGlobalLobbyCoef bool
+
+	// ResponseBins porte les coefs de reponse par bin d'intensite (terciles de
+	// pace_lobby). Nil = pas de bins persistes. C'est la source prioritaire de
+	// l'attendu (ExpectedBasis "bin"). cf engagement_response_bins.go.
+	ResponseBins *domain.EngagementResponseBins
 
 	// PersonalScore et Kills/Assists permettent de calculer les events
 	// objectif estimes pour les modes asymetriques (CTF, Strongholds, Oddball).
@@ -89,11 +102,24 @@ type EngagementScoreInput struct {
 	Assists       int
 
 	// Mode est la categorie de mode (PvP_ranked, PvP_unranked, ...).
-	// Determine si un fallback FFA/lobby_share doit s'appliquer.
 	Mode string
 
-	// IsTeamMode indique si le mode a des equipes (vs FFA / 1v1).
-	// Si false, l'attendu est calcule via lobby_share au lieu de team_share.
+	// Weights porte les poids d'events PAR TITRE (chantier F7, DE-4). Zero-value →
+	// DefaultEventWeights (byte-identique Infinite). Renseigne par le point de
+	// collecte via games.EngagementWeightsFor(slug). Le moteur reste agnostic.
+	Weights EventWeights
+
+	// Signals est le vecteur de signaux d'engagement du match (masque de presence
+	// + signaux riches optionnels), construit par le point de collecte title-owned
+	// (cf. SignalsFromEvents). Gouverne la porte de suffisance (1re porte F7). Si
+	// laisse a zero par l'appelant (tests legacy), ComputeEngagementScore le derive
+	// de ses propres inputs. Les signaux riches ne modifient PAS le score en l'etat
+	// (poids nul tant que non calibres, DE-5) : ils qualifient la confiance par match.
+	Signals EngagementSignals
+
+	// IsTeamMode indique si le mode a des equipes (vs FFA / 1v1). N'influe PLUS
+	// sur l'attendu (ancre lobby unifiee, cf. D1) ; ne sert qu'a l'affichage de
+	// la courbe « Equipe reelle » cote front.
 	IsTeamMode bool
 
 	// WindowSeconds et SamplingSeconds sont optionnels. Si 0, defauts utilises.
@@ -131,6 +157,12 @@ func ComputeEngagementScore(input EngagementScoreInput) (domain.EngagementScoreR
 
 	windowMS, samplingMS := resolveWindow(input)
 
+	// Poids d'events par titre (F7) : ceux fournis, ou defaut byte-identique.
+	weights := input.Weights
+	if weights.IsZero() {
+		weights = DefaultEventWeights()
+	}
+
 	// "Equipe reelle" = coequipiers + joueur cible. On inclut le joueur au
 	// numerateur pour rester coherent avec NTeam (qui le compte au denominateur) :
 	// pace_team = events de TOUTE l'equipe / NTeam. Sans ca, num = N-1 joueurs et
@@ -140,36 +172,49 @@ func ComputeEngagementScore(input EngagementScoreInput) (domain.EngagementScoreR
 	teamInclPlayer = append(teamInclPlayer, input.TeamEvents...)
 	teamInclPlayer = append(teamInclPlayer, input.PlayerEvents...)
 
-	// Choix du coefficient et du dénominateur "team" selon le mode.
-	// FFA / 1v1 : pas d'equipe -> attendu calcule via lobby (cf §3.4 et §6.6).
-	coefForExpected, denominatorEvents, denominatorN := selectExpectedReference(input, teamInclPlayer)
-
-	// Construction de la courbe (fonction definie dans engagement_curve.go).
+	// Construction de la courbe des paces (joueur / team / lobby). L'attendu
+	// n'est PAS calcule ici : il depend de l'intensite moyenne du match (mean
+	// pace_lobby), elle-meme derivee de la courbe. Il se pose en 2e passe.
 	curve := buildEngagementCurve(buildCurveParams{
-		PlayerEvents:      input.PlayerEvents,
-		TeamEvents:        teamInclPlayer,
-		LobbyEvents:       input.LobbyEvents,
-		NTeam:             input.NTeam,
-		NHumansLobby:      input.NHumansLobby,
-		MatchStartMS:      input.MatchStartMS,
-		MatchEndMS:        input.MatchEndMS,
-		WindowMS:          windowMS,
-		SamplingMS:        samplingMS,
-		CoefForExpected:   coefForExpected,
-		DenominatorEvents: denominatorEvents,
-		DenominatorN:      denominatorN,
+		PlayerEvents: input.PlayerEvents,
+		TeamEvents:   teamInclPlayer,
+		LobbyEvents:  input.LobbyEvents,
+		NTeam:        input.NTeam,
+		NHumansLobby: input.NHumansLobby,
+		MatchStartMS: input.MatchStartMS,
+		MatchEndMS:   input.MatchEndMS,
+		WindowMS:     windowMS,
+		SamplingMS:   samplingMS,
+		Weights:      weights,
 	})
 
 	curve = annotateDeaths(curve, input.PlayerEvents, samplingMS)
+
+	// Means agreges de la courbe — persistes dans player_match_enrichment pour
+	// alimenter le recompute des coefficients/bins (cf. engagement_coefficients.go
+	// + engagement_response_bins.go). meanLobby = intensite du match.
+	meanJoueur, meanTeam, meanLobby := meansFromCurve(curve)
+
+	// Attendu ancre lobby (2e passe) : coef (bin d'intensite / global / cold-start)
+	// x pace_lobby(t). L'ancre est le lobby partout (D1) ; le bin est choisi via
+	// meanLobby (intensite du match).
+	coef, expectedBasis, intensityBin := resolveExpectedCoef(meanLobby, input)
+	applyExpectedToCurve(curve, coef)
 
 	residualBrut := computeResidualBrut(curve)
 	matchIntensity := computeMatchIntensity(input.LobbyEvents, matchDurationMS, input.NHumansLobby)
 
 	score, confidence, nHist := scoreFromHistory(residualBrut, input.History)
 
-	// Means agreges de la courbe — persistes dans player_match_enrichment
-	// pour alimenter le recompute des coefficients (cf. engagement_coefficients.go).
-	meanJoueur, meanTeam, meanLobby := meansFromCurve(curve)
+	// Porte de suffisance (1re porte F7). On prend le vecteur fourni par le point
+	// de collecte title-owned ; a defaut (tests legacy), on le derive des inputs
+	// (meme algorithme title-agnostic). Un resultat produit ici a toujours passe
+	// les gardes ErrMatchTooShort/ErrInsufficientData -> au moins Partial.
+	signals := input.Signals
+	if signals.IsZero() {
+		signals = SignalsFromEvents(input.PlayerEvents, input.LobbyEvents, matchDurationMS)
+	}
+	signalBasis := signals.Sufficiency().String()
 
 	result := domain.EngagementScoreResult{
 		EngagementScore: score,
@@ -182,8 +227,37 @@ func ComputeEngagementScore(input EngagementScoreInput) (domain.EngagementScoreR
 		MeanPaceTeam:    meanTeam,
 		MeanPaceLobby:   meanLobby,
 		PlayerActivity:  input.Kills + input.Assists + countDeaths(input.PlayerEvents),
+		ExpectedBasis:   expectedBasis,
+		IntensityBin:    intensityBin,
+		SignalBasis:     signalBasis,
 	}
 	return result, nil
+}
+
+// resolveExpectedCoef determine le coefficient de l'attendu ancre lobby selon la
+// chaine de fallback (cf. plan §3) : bin d'intensite (>= MinMatchesForBin
+// echantillons) → coef lobby global → cold-start (1.0). Retourne le coef, la
+// base (ExpectedBasis) et le libelle du bin (vide hors basis "bin").
+func resolveExpectedCoef(meanLobby float64, input EngagementScoreInput) (coef float64, basis, bin string) {
+	if input.ResponseBins != nil {
+		if b, ok := input.ResponseBins.ResolveBin(meanLobby); ok && b.NMatches >= MinMatchesForBin {
+			return b.CoefLobby, domain.ExpectedBasisBin, b.Bin
+		}
+	}
+	if input.HasGlobalLobbyCoef {
+		return input.CoefLobbyShare, domain.ExpectedBasisGlobal, ""
+	}
+	return 1.0, domain.ExpectedBasisColdStart, ""
+}
+
+// applyExpectedToCurve pose PaceAttendu = coef x PaceLobby sur chaque point (2e
+// passe de l'attendu ancre lobby). PaceLobby est deja le pace lobby per-player
+// de la fenetre — invariant a la taille du lobby et coherent avec l'univers des
+// coefficients.
+func applyExpectedToCurve(curve []domain.EngagementPoint, coef float64) {
+	for i := range curve {
+		curve[i].PaceAttendu = coef * curve[i].PaceLobby
+	}
 }
 
 // meansFromCurve calcule en un seul passage les means des 3 paces de la courbe.
@@ -343,19 +417,6 @@ func resolveWindow(input EngagementScoreInput) (windowMS, samplingMS int64) {
 		s = DefaultSamplingSeconds
 	}
 	return int64(w) * 1000, int64(s) * 1000
-}
-
-// selectExpectedReference choisit le coefficient et le denominateur "team"
-// selon le mode. Pour FFA / 1v1 (pas d'equipe), fallback sur lobby.
-//
-// teamInclPlayer = coequipiers + joueur cible : utilise comme denominateur de
-// l'attendu en mode equipe (coherence num/denom avec pace_team, joueur inclus).
-func selectExpectedReference(input EngagementScoreInput, teamInclPlayer []canonical.HighlightEvent) (coef float64, denomEvents []canonical.HighlightEvent, denomN int) {
-	if input.IsTeamMode && input.NTeam > 0 {
-		return input.CoefTeamShare, teamInclPlayer, input.NTeam
-	}
-	// Fallback FFA/1v1 : pas d'equipe, utiliser lobby comme reference.
-	return input.CoefLobbyShare, input.LobbyEvents, input.NHumansLobby
 }
 
 // annotateDeaths positionne les flags PostDeathFlag et IsPassiveDeath sur les

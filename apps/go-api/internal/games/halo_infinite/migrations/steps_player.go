@@ -219,8 +219,13 @@ func playerSteps() []migration.Migration {
 		{
 			Name:        "create_engagement_coefficients_table",
 			TargetDB:    migration.TargetPlayer,
-			Description: "Cree la table engagement_coefficients pour stocker coef_team_share et coef_lobby_share par (xuid, mode_category)",
+			Description: "Cree la table engagement_coefficients pour stocker le coef lobby global par (xuid, mode_category)",
 			ApplySchema: func(db *sql.DB) error {
+				// coef_team_share : colonne conservee NOT NULL mais INERTE depuis le
+				// modele lobby-anchored v2 (D5, PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07) :
+				// plus calculee ni lue (on y ecrit 1.0). Pas de DROP COLUMN sur les
+				// player DB existantes. Seul coef_lobby_share alimente l'attendu (fallback
+				// global) ; les bins d'intensite vivent dans engagement_response_bins.
 				return migration.ExecScript(db, `
 					CREATE TABLE IF NOT EXISTS engagement_coefficients (
 						xuid             VARCHAR NOT NULL,
@@ -308,6 +313,32 @@ func playerSteps() []migration.Migration {
 				// lit player_match_enrichment_latest. player_append_only_match_enrichment_v1
 				// le supprime sur les DB existantes.
 				return nil
+			},
+		},
+		{
+			Name:     "create_engagement_response_bins_table",
+			TargetDB: migration.TargetPlayer,
+			Description: "Cree engagement_response_bins (modele lobby-anchored v2) : coef de reponse par" +
+				" bin d'intensite (tercile de pace_lobby), par (xuid, mode_category, intensity_bin).",
+			ApplySchema: func(db *sql.DB) error {
+				// Table NEUVE : CREATE TABLE IF NOT EXISTS avec PK inline est sûr (elle
+				// ne pré-existe jamais sans PK, donc pas de piège CREATE IF NOT EXISTS + PK).
+				// Ecritures basse fréquence via SELECT-then-UPDATE-or-INSERT sous lease
+				// (cf. engagement_coefficients) — pas d'ON CONFLICT, pas d'index secondaire
+				// muté : aucune surface ART supplémentaire (#23046).
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS engagement_response_bins (
+						xuid          VARCHAR NOT NULL,
+						mode_category VARCHAR NOT NULL,
+						intensity_bin VARCHAR NOT NULL,
+						lower_bound   DOUBLE NOT NULL,
+						upper_bound   DOUBLE NOT NULL,
+						coef_lobby    DOUBLE NOT NULL,
+						n_matches     INTEGER NOT NULL,
+						last_updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (xuid, mode_category, intensity_bin)
+					);
+				`)
 			},
 		},
 	}

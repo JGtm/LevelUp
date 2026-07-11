@@ -10,10 +10,11 @@
 import { useMemo } from 'react'
 
 import { EngagementCurve, type EngagementPoint } from '@/components/charts/EngagementCurve'
+import { buildSubtitle } from '@/features/engagement/engagementSubtitle'
 import { useMatchEngagement } from '@/features/engagement/queries'
 import type { ApiError } from '@/lib/api/client'
 import type { EngagementPointAPI, EngagementScoreResultAPI } from '@/lib/api/types'
-import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
+import { formatMessage } from '@/lib/i18n/format'
 import { engagementManifest } from '@/lib/i18n/generated/engagement'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -60,9 +61,11 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
     if (isEmpty) return null
   }
 
-  // Quand confidence === 'insufficient_history', coef = 1.0 (cold-start) =>
-  // pace_attendu = pace_team => courbes superposées => masquer Attendu.
-  const hideAttendu = query.data?.confidence === 'insufficient_history'
+  // Masquage de la série « Joueur attendu » indexé sur expected_basis (modèle
+  // lobby-anchored v2) : cold_start => aucun historique exploitable => coef 1.0
+  // par défaut => l'attendu ne veut rien dire, on le masque. (Avant : indexé sur
+  // confidence, qui qualifie l'historique du percentile, pas l'attendu.)
+  const hideAttendu = query.data?.expected_basis === 'cold_start'
 
   // Message d'indisponibilité : « migration en cours » UNIQUEMENT sur un vrai
   // 503 (code engagement_unavailable = schéma manquant). Pour une courbe vide,
@@ -88,6 +91,7 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
         team: formatMessage(engagementManifest, 'engagement.trace.team', locale),
         expected: formatMessage(engagementManifest, 'engagement.trace.expected', locale),
         player: formatMessage(engagementManifest, 'engagement.trace.player', locale),
+        lobby: formatMessage(engagementManifest, 'engagement.trace.lobby', locale),
       }}
       state={
         query.isLoading
@@ -127,23 +131,4 @@ function fmtMillisToTimeStamp(ms: number): string {
   const m = Math.floor(totalSec / 60)
   const s = totalSec % 60
   return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-function buildSubtitle(
-  data: EngagementScoreResultAPI | undefined,
-  locale: ManifestLocale,
-): string | undefined {
-  if (!data) return undefined
-  if (data.confidence === 'insufficient_history') {
-    return formatMessage(engagementManifest, 'engagement.narrative.insufficient', locale)
-  }
-  if (data.engagement_score == null) return undefined
-  const percentile = Math.round(data.engagement_score)
-  if (percentile > 60) {
-    return formatMessage(engagementManifest, 'engagement.narrative.above', locale, { percentile })
-  }
-  if (percentile < 40) {
-    return formatMessage(engagementManifest, 'engagement.narrative.below', locale, { percentile })
-  }
-  return formatMessage(engagementManifest, 'engagement.narrative.normal', locale, { percentile })
 }

@@ -41,6 +41,19 @@ type EndpointSet struct {
 	gamePrefix    string
 	byKey         map[EndpointKey]string
 	damageModel   DamageModelConstants
+	engagement    EngagementConstants
+}
+
+// EngagementConstants porte les poids d'events du score d'engagement d'un titre
+// (constants.toml [engagement], chantier F7). Ce sont les coefficients DÉPENDANTS
+// DU GAMEPLAY (importance relative objectif/assist/mort/défaut dans le rythme de la
+// courbe). Zéro-value (Default == 0) = section absente → le caller applique le défaut
+// byte-identique (temporal.DefaultEventWeights). Déclarés = surcharge par titre.
+type EngagementConstants struct {
+	Objective float64
+	Assist    float64
+	Death     float64
+	Default   float64
 }
 
 // DamageModelConstants porte les constantes de modèle de dégâts d'un titre
@@ -116,6 +129,26 @@ func (s *EndpointSet) DamageModel() (DamageModelConstants, bool) {
 func (s *EndpointSet) withDamageModel(dm DamageModelConstants) *EndpointSet {
 	if s != nil {
 		s.damageModel = dm
+	}
+	return s
+}
+
+// Engagement retourne les poids d'events du titre et true si la section est
+// déclarée (Default > 0). (_, false) si absente → le caller applique le défaut
+// byte-identique (temporal.DefaultEventWeights). Un poids « default » à 0 n'a pas
+// de sens (tout event non-spécial pèserait 0) : il sert de sentinelle de présence.
+func (s *EndpointSet) Engagement() (EngagementConstants, bool) {
+	if s == nil || s.engagement.Default <= 0 {
+		return EngagementConstants{}, false
+	}
+	return s.engagement, true
+}
+
+// withEngagement attache les poids d'engagement (appelé par le loader ; même
+// package). Chaînable.
+func (s *EndpointSet) withEngagement(e EngagementConstants) *EndpointSet {
+	if s != nil {
+		s.engagement = e
 	}
 	return s
 }
