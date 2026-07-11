@@ -172,16 +172,20 @@ Décisions produit TRANCHÉES (ne pas rouvrir en cours d'exécution) :
 
 Périmètre fermé :
 
-- [ ] `engagement_weights.go` : death 0.4 → 0.0 ; mettre à jour le commentaire de tête
+- [x] `engagement_weights.go` : death 0.4 → 0.0 ; mettre à jour le commentaire de tête
       (recensement, date, décision user 2026-07-07) — pas de doc inversée.
-- [ ] `engagement_weights_test.go` : adapter les attentes (somme fenêtre 0-1000 = 3.0).
-- [ ] `engagement_coefficients.go` : seuils 1.0 → 0.75 (constantes commentées avec la
-      justification ~-25 % de pace).
-- [ ] Vérifier que `PassiveDeathThresholdMS` / `annotateDeaths` ne dépendent PAS du poids
-      (lecture seule des event types) — confirmer par test existant.
-- [ ] Tests unitaires `temporal` verts.
+- [x] `engagement_weights_test.go` : adapter les attentes (somme fenêtre 0-1000 = 3.0).
+- [x] `engagement_coefficients.go` : seuils 1.0 → 0.75 (constantes commentées avec la
+      justification ~-25 % de pace). Commentaires `=1.0` du test coefficients corrigés en
+      `=0.75` (valeurs 0.4/0.5 restent sous seuil → comportement inchangé).
+- [x] Vérifier que `PassiveDeathThresholdMS` / `annotateDeaths` ne dépendent PAS du poids
+      (lecture seule des event types) — confirmé : `annotateDeaths`/`isPassiveDeath` ne
+      lisent que `e.EventType` ; tests `PassiveDeathDetected` / `ActiveDeathNotMarkedPassive`
+      verts.
+- [x] Tests unitaires `temporal` verts.
 
 Gate : `cd apps/go-api && go test ./internal/analysis/temporal/... && go vet ./...` = 0.
+→ PASSÉ (2026-07-11) : temporal ok ; go vet exit 0.
 
 ### Phase 2 — Bins de réponse + attendu lobby (cœur du modèle)
 
@@ -331,7 +335,7 @@ Périmètre fermé :
 
 ## 7. AVANCEMENT (à tenir à jour par l'exécutant)
 
-- Phase 1 : non commencée
+- Phase 1 : COMPLÉTÉE (2026-07-11) — death→0.0, seuils→0.75 ; temporal ok, vet 0.
 - Phase 2 : non commencée
 - Phase 3 : non commencée
 - Phase 4 : non commencée
