@@ -137,6 +137,16 @@ type TitleDescriptor struct {
 	// aligne la LECTURE (GetCSRSnapshots WHERE season_id) sur l'ÉCRITURE (sync h5).
 	// "" = non déclaré → fallback global (CurrentCSRSeasonID), comportement Infinite.
 	CSRSeasonID string `json:"csr_season_id"`
+
+	// MediaFilenamePrefixes déclare les préfixes de nom de fichier de capture qui
+	// APPARTIENNENT à ce titre (ex. Halo 5 Game Bar : "Halo_5_Guardians-"). Le dossier
+	// captures d'un joueur est PARTAGÉ entre titres : sans routage, chaque titre
+	// indexait tous les clips (les clips H5 restaient « Sans match » sous Infinite à
+	// perpétuité — DEC-8, plan résidus H5). L'indexeur d'un titre SAUTE les fichiers
+	// qui matchent le préfixe d'un AUTRE titre (Registry.ForeignMediaFilenamePrefixes).
+	// Vide = le titre ne revendique aucun motif (ses fichiers « génériques » restent
+	// indexés par tous, comportement historique).
+	MediaFilenamePrefixes []string `json:"media_filename_prefixes"`
 }
 
 // HasCapability vérifie si le titre supporte une fonctionnalité.
@@ -366,6 +376,24 @@ func (r *Registry) All() []*TitleDescriptor {
 // Default retourne le titre par défaut (halo_infinite).
 func (r *Registry) Default() *TitleDescriptor {
 	return r.Get(DefaultSlug)
+}
+
+// ForeignMediaFilenamePrefixes retourne les préfixes de nom de fichier de capture
+// revendiqués par les AUTRES titres que slug (DEC-8, plan résidus H5). L'indexeur
+// média du titre slug saute les fichiers qui matchent un de ces préfixes : un clip
+// « Halo_5_Guardians-* » n'est plus indexé sous halo_infinite. Data-driven : les
+// motifs viennent des title.toml (MediaFilenamePrefixes) — aucun slug == en dur.
+func (r *Registry) ForeignMediaFilenamePrefixes(slug string) []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var out []string
+	for _, t := range r.titles {
+		if t.Slug == slug {
+			continue
+		}
+		out = append(out, t.MediaFilenamePrefixes...)
+	}
+	return out
 }
 
 // ---------------------------------------------------------------------------

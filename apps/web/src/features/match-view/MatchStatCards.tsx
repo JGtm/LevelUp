@@ -25,10 +25,6 @@ import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generat
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useProvidesDamageTaken, useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
 
-/** Libellé universel (FR=EN) quand la Résistance n'est pas calculable faute de
- *  damage_taken (Halo 5). Aligné sur `notAvailable: 'N/A'` du module compare. */
-const DR_NA_LABEL = 'N/A'
-
 // ---------------------------------------------------------------------------
 // C3 — StatExpectedCard (réel vs attendu)
 // ---------------------------------------------------------------------------
@@ -305,43 +301,38 @@ export function MatchVsStatCard({
 // ---------------------------------------------------------------------------
 
 interface MatchWinProbCardProps {
-  /** Proba de victoire pré-match de l'équipe du joueur (LUSR v2, 0..1). */
-  winProb: number | null
+  /** Proba de victoire pré-match de l'équipe du joueur (LUSR v2, 0..1). Toujours
+   *  fournie : le call site ne rend PAS la card quand la proba est absente (une card
+   *  grisée « pas d'estimation » n'apporte rien — DEC-3). */
+  winProb: number
 }
 
 export function MatchWinProbCard({ winProb }: MatchWinProbCardProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: MatchViewManifestKey) => formatMessage(matchViewManifest, key, locale)
-  const hasData = winProb != null && Number.isFinite(winProb)
-  const pct = hasData ? Math.round(winProb * 100) : null
+  const pct = Math.round(winProb * 100)
 
   const qualitativeKey: MatchViewManifestKey =
-    pct == null
-      ? 'match_view.cards.no_win_prob_data'
-      : pct >= 55
-        ? 'match_view.cards.win_prob_favorite'
-        : pct <= 45
-          ? 'match_view.cards.win_prob_underdog'
-          : 'match_view.cards.win_prob_balanced'
+    pct >= 55
+      ? 'match_view.cards.win_prob_favorite'
+      : pct <= 45
+        ? 'match_view.cards.win_prob_underdog'
+        : 'match_view.cards.win_prob_balanced'
 
   const valueColor =
-    pct == null || (pct > 45 && pct < 55)
+    pct > 45 && pct < 55
       ? undefined
       : pct >= 55
         ? tokenCssVar('divergent-pos')
         : tokenCssVar('divergent-neg')
 
   // Accent dynamique (type 4) : barre 3px verte si favori, rouge si outsider,
-  // absente si équilibré / sans donnée.
+  // absente si équilibré.
   const accent: SemanticToken | undefined =
-    pct == null || (pct > 45 && pct < 55)
-      ? undefined
-      : pct >= 55
-        ? 'divergent-pos'
-        : 'divergent-neg'
+    pct > 45 && pct < 55 ? undefined : pct >= 55 ? 'divergent-pos' : 'divergent-neg'
 
   return (
-    <KpiCard accent={accent} className={hasData ? 'h-full' : 'h-full opacity-50'}>
+    <KpiCard accent={accent} className="h-full">
       <div className="px-3 py-2.5">
         <p className="text-2xs text-muted-foreground uppercase tracking-wide mb-1.5">
           {t('match_view.cards.expected_result')}
@@ -351,11 +342,9 @@ export function MatchWinProbCard({ winProb }: MatchWinProbCardProps) {
             className="text-lg font-bold text-foreground leading-none"
             style={valueColor ? { color: valueColor } : undefined}
           >
-            {pct != null ? `${pct} %` : '—'}
+            {`${pct} %`}
           </span>
-          {pct != null && (
-            <span className="text-2xs text-muted-foreground">{t('match_view.cards.win_prob_label')}</span>
-          )}
+          <span className="text-2xs text-muted-foreground">{t('match_view.cards.win_prob_label')}</span>
         </div>
         <p className="text-2xs text-muted-foreground mt-0.5">{t(qualitativeKey)}</p>
       </div>
@@ -474,7 +463,9 @@ export function MatchSummaryCardsSection({
         lowerIsBetter={false}
         precision={0}
       />
-      <MatchWinProbCard winProb={expected_win_prob ?? null} />
+      {expected_win_prob != null && Number.isFinite(expected_win_prob) && (
+        <MatchWinProbCard winProb={expected_win_prob} />
+      )}
       <MatchVsStatCard
         label={t('match_view.cards.avg_life')}
         primary={kpis.average_life ?? null}
@@ -486,12 +477,14 @@ export function MatchSummaryCardsSection({
         primaryLabel={dmgPerKillLabel}
         fixedAccent={combatYieldToken(offensiveConversion, null)}
       />
-      <MatchVsStatCard
-        label={t('match_view.cards.resistance')}
-        primary={providesDamageTaken ? formatDefensiveResistance(defensiveResistance) : DR_NA_LABEL}
-        primaryLabel={dmgPerDeathLabel}
-        fixedAccent={providesDamageTaken ? combatYieldToken(null, defensiveResistance) : undefined}
-      />
+      {providesDamageTaken && (
+        <MatchVsStatCard
+          label={t('match_view.cards.resistance')}
+          primary={formatDefensiveResistance(defensiveResistance)}
+          primaryLabel={dmgPerDeathLabel}
+          fixedAccent={combatYieldToken(null, defensiveResistance)}
+        />
+      )}
       </div>
       {locallyEstimated && (
         <p

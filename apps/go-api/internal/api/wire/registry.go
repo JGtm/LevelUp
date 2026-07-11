@@ -418,6 +418,27 @@ func (r *ServiceRegistry) dataAdapterForPDB(pdb *duckdb.PlayerDB) games.TitleDat
 	return build(pdb)
 }
 
+// capabilitiesForPDB retourne la CapabilityMap du titre du joueur, title-agnostic :
+// depuis l'adapter player-scoped s'il est enregistré (Halo 5 et tout 2e titre), sinon
+// les capabilities HI chargées au boot (voie legacy). Peut être nil (map non chargée)
+// — CapabilityMap.Has sur nil renvoie false (dégradation gracieuse). JAMAIS de slug ==.
+func (r *ServiceRegistry) capabilitiesForPDB(pdb *duckdb.PlayerDB) games.CapabilityMap {
+	if a := r.dataAdapterForPDB(pdb); a != nil {
+		return a.Capabilities()
+	}
+	return r.hiCapabilities
+}
+
+// newMatchViewRepo construit le MatchViewRepo title-aware : SharedReader snapshot +
+// taxonomie de modes + strip de catégorie de playlist piloté par CapabilityMap
+// (CapPlaylistCategoryStrip). Centralise le câblage des 3 sites d'usage.
+func (r *ServiceRegistry) newMatchViewRepo(pdb *duckdb.PlayerDB) *duckdb.MatchViewRepo {
+	return duckdb.NewMatchViewRepo(pdb, pdb.XUID).
+		WithSharedReader(r.matchViewSharedReader(pdb)).
+		WithModeTaxonomy(haloInfiniteModeTaxonomy()).
+		WithPlaylistCategoryStrip(r.capabilitiesForPDB(pdb).Has(games.CapPlaylistCategoryStrip))
+}
+
 // GetSessionNotifier retourne le SessionNotifier enregistré pour le xuid donné.
 // Retourne nil si aucun HomeService n'a encore été créé pour ce joueur (cold start).
 func (r *ServiceRegistry) GetSessionNotifier(xuid string) port.SessionNotifier {

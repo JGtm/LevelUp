@@ -213,6 +213,26 @@ func goLoad(gctx context.Context, g *errgroup.Group, matchID, label string, load
 	})
 }
 
+// tugDurationMS retourne la durée (ms) servant à binner la Dominance (tug-of-war).
+// playable_duration_seconds (API) est prioritaire — Infinite le fournit toujours,
+// donc son comportement est inchangé. Fallback title-agnostic quand il est NULL
+// (cas de 100 % des matchs Halo 5, dont l'adapter n'écrit jamais ce champ) : la
+// durée de gameplay dérivée (duration_seconds − T0 via headerGameplayDurationSeconds),
+// sinon 0. Sans ce fallback, ComputeTugOfWar retourne nil (durée ≤ 0) et la
+// Dominance est vide sur tout Halo 5 alors que les paires killer/victim existent.
+func tugDurationMS(meta *domain.MatchMetaRaw) int64 {
+	if meta == nil {
+		return 0
+	}
+	if meta.PlayableDurationSeconds != nil {
+		return *meta.PlayableDurationSeconds * 1000
+	}
+	if gp := headerGameplayDurationSeconds(meta); gp != nil {
+		return *gp * 1000
+	}
+	return 0
+}
+
 // buildMatchViewFromData assemble séquentiellement la MatchViewResponse depuis
 // la meta + les données chargées en parallèle. Aucun appel I/O bloquant ici à
 // l'exception du lookup IsMatchFavorite (PK indexée, cheap) et du loader
@@ -225,11 +245,8 @@ func (s *MatchViewService) buildMatchViewFromData(
 	meta *domain.MatchMetaRaw,
 	d matchViewData,
 ) domain.MatchViewResponse {
-	// Durée pour les bins tug-of-war
-	var durationMS int64
-	if meta != nil && meta.PlayableDurationSeconds != nil {
-		durationMS = *meta.PlayableDurationSeconds * 1000
-	}
+	// Durée pour les bins tug-of-war (Dominance).
+	durationMS := tugDurationMS(meta)
 
 	// Correction chronologie T0 (Phase 3 : T0 réel depuis meta.T0Ms, 0 si
 	// indisponible). Recale TOUTES les sources d'events au référentiel gameplay

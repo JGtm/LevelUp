@@ -66,6 +66,15 @@ const (
 	// not_exposed (pas d'events drop dans la timeline reconstruite → table non
 	// peuplée).
 	CapWeaponAccuracy CapabilityKey = "match.weapon.accuracy"
+
+	// CapPlaylistCategoryStrip — le libellé de playlist du titre porte un préfixe
+	// de CATÉGORIE matchmaking à retirer pour l'affichage (ex. Halo Infinite :
+	// "Arène delta : Héritage" → "Delta : Héritage"). Déclarée pour les titres dont
+	// les noms de playlist officiels sont ainsi préfixés ; ABSENTE pour un titre dont
+	// le nom officiel n'a pas de préfixe (ex. Halo 5 : "Super Fiesta Fête" doit rester
+	// entier — le strip Infinite le tronquerait en "Fête"). Lue via CapabilityMap au
+	// site de résolution du libellé (jamais de slug ==).
+	CapPlaylistCategoryStrip CapabilityKey = "playlist.label.strip_category"
 )
 
 // CapabilityMap décrit l'état des capabilities produit d'un adapter à un instant T.

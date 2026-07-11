@@ -29,6 +29,7 @@ func AllCapabilityKeys() []CapabilityKey {
 		CapMatchEventsSpatial,
 		CapCommendationsNative,
 		CapWeaponAccuracy,
+		CapPlaylistCategoryStrip,
 	}
 }
 

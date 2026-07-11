@@ -404,3 +404,31 @@ func TestMustAtoi(t *testing.T) {
 		t.Error("mustAtoi(\"\") != 0")
 	}
 }
+
+// TestMatchesForeignPrefix : (F2, résidus H5 / DEC-8) le routage titre de
+// l'indexeur saute les fichiers revendiqués par un autre titre — comparaison de
+// préfixe insensible à la casse (noms Windows), préfixes vides ignorés.
+func TestMatchesForeignPrefix(t *testing.T) {
+	prefixes := []string{"Halo_5_Guardians-", ""}
+	cases := []struct {
+		name     string
+		basename string
+		want     bool
+	}{
+		{"clip H5 exact", "Halo_5_Guardians-2019-12-12_22h27.mp4", true},
+		{"clip H5 casse différente", "halo_5_guardians-2019-12-12_22h27.MP4", true},
+		{"capture Infinite Game Bar", "Halo Infinite 2024-01-05 21-33-08.mp4", false},
+		{"capture OBS générique", "2025-01-10 14-30-00.mkv", false},
+		{"préfixe au milieu (pas en tête)", "clip-Halo_5_Guardians-x.mp4", false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := matchesForeignPrefix(c.basename, prefixes); got != c.want {
+				t.Errorf("matchesForeignPrefix(%q) = %v, want %v", c.basename, got, c.want)
+			}
+		})
+	}
+	if matchesForeignPrefix("Halo_5_Guardians-x.mp4", nil) {
+		t.Error("aucun préfixe → jamais de skip (comportement historique)")
+	}
+}

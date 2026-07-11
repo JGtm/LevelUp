@@ -311,3 +311,40 @@ func TestSetDefaultRegistry_SharedOverride(t *testing.T) {
 		t.Error("SetDefaultRegistry(nil) ne doit pas vider le registre partagé")
 	}
 }
+
+// TestMediaFilenamePrefixes_ParsedAndForeign : (F2, résidus H5 / DEC-8) le champ
+// [title].media_filename_prefixes est parsé depuis title.toml et
+// Registry.ForeignMediaFilenamePrefixes retourne les préfixes des AUTRES titres
+// (routage de l'indexeur média : un clip Halo_5_Guardians-* n'est plus indexé
+// sous halo_infinite).
+func TestMediaFilenamePrefixes_ParsedAndForeign(t *testing.T) {
+	manifest := strings.Replace(validSyntheticManifest,
+		`capabilities = ["matchmaking", "career", "media"]`,
+		"capabilities = [\"matchmaking\", \"career\", \"media\"]\nmedia_filename_prefixes = [\"Synthetic_Game-\", \"  \", \"SG_Capture-\"]",
+		1)
+	desc, err := LoadTitleManifestFromBytes("title.toml", "synthetic_title_b", []byte(manifest))
+	if err != nil {
+		t.Fatalf("manifest: %v", err)
+	}
+	// Entrées vides/espaces filtrées au parse.
+	if len(desc.MediaFilenamePrefixes) != 2 ||
+		desc.MediaFilenamePrefixes[0] != "Synthetic_Game-" ||
+		desc.MediaFilenamePrefixes[1] != "SG_Capture-" {
+		t.Fatalf("MediaFilenamePrefixes = %v, want [Synthetic_Game- SG_Capture-]", desc.MediaFilenamePrefixes)
+	}
+
+	reg := NewRegistry()
+	reg.Register(desc)
+
+	// Depuis le titre par défaut : les préfixes du titre synthétique sont ÉTRANGERS.
+	foreign := reg.ForeignMediaFilenamePrefixes(DefaultSlug)
+	if len(foreign) != 2 {
+		t.Fatalf("ForeignMediaFilenamePrefixes(%s) = %v, want les 2 préfixes synthétiques", DefaultSlug, foreign)
+	}
+	// Depuis le titre synthétique lui-même : ses propres préfixes sont EXCLUS.
+	for _, p := range reg.ForeignMediaFilenamePrefixes("synthetic_title_b") {
+		if p == "Synthetic_Game-" || p == "SG_Capture-" {
+			t.Errorf("préfixe propre %q ne doit pas être étranger pour son propre titre", p)
+		}
+	}
+}

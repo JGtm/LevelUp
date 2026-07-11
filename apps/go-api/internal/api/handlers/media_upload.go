@@ -72,6 +72,7 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 		SharedSocialDBPath:  sharedSocialDBPath,
 		SharedMatchesDBPath: sharedMatchesDBPath,
 		Tolerance:           2,
+		TitleSlug:           titleSlug,
 	}
 
 	uploadStart := time.Now().UTC()

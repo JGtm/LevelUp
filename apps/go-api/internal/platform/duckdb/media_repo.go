@@ -119,7 +119,10 @@ func (r *MediaRepo) LoadMediaFiles(ctx context.Context, filters domain.MediaFilt
 func (r *MediaRepo) enrichMediaModeCategories(rows []domain.MediaFileRow) {
 	for i := range rows {
 		if rows[i].PairNameRaw == nil || strings.TrimSpace(*rows[i].PairNameRaw) == "" {
-			rows[i].ModeName = nil
+			// Pas de pair : garder ModeName tel quel. Infinite : un mode sans pair
+			// n'existe pas (computedModeLabel vide → ModeName déjà nil, équivalent
+			// à l'ancien nil explicite). Halo 5 : ModeName vient du fallback
+			// game_variant (DEC-7) et ne doit pas être effacé par la classification.
 			continue
 		}
 		cat := r.modeTax.Classify(*rows[i].PairNameRaw)

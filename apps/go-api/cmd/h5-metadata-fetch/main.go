@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -48,6 +49,17 @@ type frLabels struct {
 	Maps              map[string]string `toml:"maps"`
 	MedalDescriptions map[string]string `toml:"medal_descriptions"`
 	Commendations     map[string]string `toml:"commendations"`
+	// MapsByID — overrides de nom de map par asset_id (canvas Forge non nommés par
+	// l'API officielle /maps : name_canonical vide). Distinct de Maps (keyé par nom
+	// EN) car ces maps N'ONT PAS de nom EN sur lequel keyer. Appliqués en fin de run.
+	MapsByID []mapIDOverride `toml:"maps_by_id"`
+}
+
+// mapIDOverride — un override de nom de map keyé par asset_id (EN canonique + FR).
+type mapIDOverride struct {
+	ID string `toml:"id"`
+	EN string `toml:"en"`
+	FR string `toml:"fr"`
 }
 
 // loadFRLabels lit les overrides FR. Fichier absent / illisible → maps vides
@@ -110,15 +122,30 @@ func lookupOr(m map[string]string, key, fallback string) string {
 }
 
 func main() {
+	// --overrides-only : applique UNIQUEMENT les overrides TOML locaux (maps_by_id)
+	// à la metadata.duckdb existante, SANS fetch réseau ni clé API. Sert à rejouer le
+	// seed d'un override (ex. nom de map Tidal) sans marteler l'API. Les autres args
+	// (config root) restent positionnels.
+	overridesOnly := false
+	var positional []string
+	for _, a := range os.Args[1:] {
+		if a == "--overrides-only" {
+			overridesOnly = true
+			continue
+		}
+		positional = append(positional, a)
+	}
+
 	key := os.Getenv("LEVELUP_HALOAPI_KEY")
-	if key == "" {
+	if key == "" && !overridesOnly {
 		fatal("LEVELUP_HALOAPI_KEY absent de l'env (clé d'abonnement www.haloapi.com)")
 	}
 	cfg, err := config.Load()
 	if err != nil {
 		fatal("config.Load: %v", err)
 	}
-	metaPath := titlePkg.NewPathResolver(cfg.RepoRoot).MetadataDBPath(halo5.TitleSlug)
+	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	metaPath := pr.MetadataDBPath(halo5.TitleSlug)
 
 	// Provisionne le schéma metadata h5 (set isolé : medal_definitions, maps_catalog,
 	// csr_designations…) avant le seed. Idempotent.
@@ -134,28 +161,112 @@ func main() {
 	}
 	fmt.Printf("metadata h5: %s\n", metaPath)
 
-	// Overrides FR (versionnés worktree). Arg1 = config root (défaut worktree).
+	// Overrides FR (versionnés worktree). Arg positionnel 1 = config root (défaut worktree).
 	configRoot := defaultConfigRoot
-	if len(os.Args) > 1 {
-		configRoot = os.Args[1]
+	if len(positional) > 0 {
+		configRoot = positional[0]
 	}
 	fr := loadFRLabels(filepath.Join(configRoot, "config", "titles", halo5.TitleSlug, "mappings", "asset_labels_fr.toml"))
-	fmt.Printf("FR overrides: %d armes, %d médailles, %d maps, %d commendations\n", len(fr.Weapons), len(fr.Medals), len(fr.Maps), len(fr.Commendations))
+	fmt.Printf("FR overrides: %d armes, %d médailles, %d maps (nom EN), %d maps (par id), %d commendations\n",
+		len(fr.Weapons), len(fr.Medals), len(fr.Maps), len(fr.MapsByID), len(fr.Commendations))
 
-	seedMedals(db, key, fr.Medals, fr.MedalDescriptions)
-	seedMaps(db, key)
-	seedWeapons(db, key, fr.Weapons)
-	seedCSRDesignations(db, key)
-	seedCommendations(db, key, fr.Commendations)
-	seedPlaylists(db, key)
+	if !overridesOnly {
+		seedMedals(db, key, fr.Medals, fr.MedalDescriptions)
+		seedMaps(db, key)
+		seedWeapons(db, key, fr.Weapons)
+		seedCSRDesignations(db, key)
+		seedCommendations(db, key, fr.Commendations)
+		seedPlaylists(db, key)
 
-	// PONT catalogue → résolveur de noms. Sans cette étape, `asset_translations`
-	// reste VIDE pour Halo 5 → ResolveAssetNamesBulk (home tile, match-view,
-	// playlist favorite) renvoie 0 ligne → mode/carte/playlist s'affichent vides
-	// PARTOUT. On peuple asset_translations depuis les catalogues déjà seedés
-	// (playlists, maps_catalog) + l'endpoint officiel game-base-variants (modes).
-	// À lancer EN DERNIER (dépend de playlists + maps_catalog seedés ci-dessus).
-	seedAssetTranslations(db, key, fr)
+		// PONT catalogue → résolveur de noms. Sans cette étape, `asset_translations`
+		// reste VIDE pour Halo 5 → ResolveAssetNamesBulk (home tile, match-view,
+		// playlist favorite) renvoie 0 ligne → mode/carte/playlist s'affichent vides
+		// PARTOUT. On peuple asset_translations depuis les catalogues déjà seedés
+		// (playlists, maps_catalog) + l'endpoint officiel game-base-variants (modes).
+		// À lancer EN DERNIER (dépend de playlists + maps_catalog seedés ci-dessus).
+		seedAssetTranslations(db, key, fr)
+	} else {
+		fmt.Println("--overrides-only : fetch réseau sauté, application des overrides locaux uniquement")
+	}
+
+	// Overrides de map par asset_id — EN DERNIER (idempotent), pour survivre à un
+	// re-fetch qui aurait réécrit name_canonical vide sur un canvas Forge.
+	applyMapIDOverrides(db, fr.MapsByID)
+
+	// Garde-fou : signale les maps référencées par le registre H5 sans nom résolu
+	// dans asset_translations (retour silencieux du problème « carte vide »).
+	logUnresolvedMaps(db, pr.SharedDBPath(halo5.TitleSlug))
+}
+
+// applyMapIDOverrides applique les overrides de nom de map keyés par asset_id :
+// name_canonical (maps_catalog) + asset_translations en-US/fr-FR. Idempotent
+// (UPDATE + INSERT OR REPLACE). Best-effort par entrée : une erreur est loguée et
+// n'interrompt pas les autres.
+func applyMapIDOverrides(db *sql.DB, overrides []mapIDOverride) {
+	if len(overrides) == 0 {
+		return
+	}
+	applied := 0
+	for _, ov := range overrides {
+		id := strings.TrimSpace(ov.ID)
+		en := strings.TrimSpace(ov.EN)
+		fr := strings.TrimSpace(ov.FR)
+		if id == "" || en == "" {
+			fmt.Printf("maps_by_id: entrée ignorée (id ou en vide): %+v\n", ov)
+			continue
+		}
+		if fr == "" {
+			fr = en
+		}
+		if _, err := db.Exec(
+			`UPDATE maps_catalog SET name_canonical = ? WHERE title_slug = ? AND lower(map_asset_id) = lower(?)`,
+			en, halo5.TitleSlug, id); err != nil {
+			fmt.Printf("maps_by_id: update name_canonical %s: %v\n", id, err)
+		}
+		upsertAssetTranslation(db, id, "map", langEN, en)
+		upsertAssetTranslation(db, id, "map", langFR, fr)
+		applied++
+	}
+	fmt.Printf("maps_by_id: %d override(s) de map appliqué(s)\n", applied)
+}
+
+// logUnresolvedMaps ouvre le registre H5 en lecture seule et WARN (slog) la liste
+// des map_id référencés par match_registry qui n'ont PAS d'entrée asset_translations
+// (map, en-US) dans la metadata — le cas d'origine du bug « carte vide » (Tidal).
+// Best-effort : registre indisponible (tenu RW par un writer) → skip loggé.
+func logUnresolvedMaps(metaDB *sql.DB, registryPath string) {
+	regDB, err := sql.Open("duckdb", registryPath+"?access_mode=read_only")
+	if err != nil {
+		slog.Warn("h5_metadata: garde-fou maps non résolues sauté (open registre)", "err", err)
+		return
+	}
+	defer regDB.Close()
+
+	resolved := readENNames(metaDB, "map") // asset_id → nom EN seedé
+	rows, err := regDB.Query(
+		`SELECT DISTINCT map_id FROM match_registry WHERE TRIM(COALESCE(map_id,'')) != ''`)
+	if err != nil {
+		slog.Warn("h5_metadata: garde-fou maps non résolues sauté (query registre)", "err", err)
+		return
+	}
+	defer rows.Close()
+
+	var unresolved []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			continue
+		}
+		if name, ok := resolved[id]; !ok || strings.TrimSpace(name) == "" {
+			unresolved = append(unresolved, id)
+		}
+	}
+	if len(unresolved) == 0 {
+		slog.Info("h5_metadata: toutes les maps du registre sont résolues", "count_registry_maps", len(resolved))
+		return
+	}
+	slog.Warn("h5_metadata: maps référencées par le registre SANS nom résolu (ajouter un override maps_by_id)",
+		"count", len(unresolved), "map_ids", unresolved)
 }
 
 // apiPlaylist — élément de l'API Metadata officielle /playlists. `isRanked` fait foi
