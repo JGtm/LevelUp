@@ -562,7 +562,11 @@ func main() {
 			slog.Error("ouverture metadata échouée", "attempts", metaOpenAttempts, "err", err)
 			os.Exit(1)
 		}
-		slog.Warn("metadata verrouillée, nouvelle tentative...", "attempt", attempt+1, "max", metaOpenAttempts, "err", err)
+		// B6.1 : retry de boot à cause connue (lock transitoire tenu par un
+		// hot-reload Air / un ancien process qui n'a pas encore libéré) → DEBUG +
+		// compteur expvar (DC-B2). L'échec DÉFINITIF reste ERROR+exit ci-dessus.
+		observability.IncCounter("boot_metadata_lock_retry_total")
+		slog.Debug("metadata verrouillée, nouvelle tentative...", "attempt", attempt+1, "max", metaOpenAttempts, "err", err)
 		time.Sleep(metaOpenDelay)
 	}
 	slog.Debug("DuckDB ouvert")
@@ -1036,6 +1040,35 @@ func main() {
 	// requête : l'ordre boot est sûr, et l'overview expose le dernier audit
 	// data health + l'action POST /admin/actions/data-health/run.
 	reg.WithHealthScheduler(healthScheduler)
+
+	// Store monitoring persistant (base globale data/global/monitoring.duckdb) —
+	// survit au restart : détections avec cycle de vie, historique crons, dernier
+	// audit data-health. Best-effort : un échec d'ouverture dégrade les sections
+	// (jamais fatal). Le flush périodique du delta ErrorCollector tourne sur
+	// schedulerCtx/schedulerWG (drainé AVANT duckdb.CloseAll — écriture sûre).
+	if monStore, mErr := ops.NewMonitoringStore(ctx, pr.GlobalMonitoringDB()); mErr != nil {
+		slog.Warn("monitoring store: ouverture échouée — sections détections dégradées", "err", mErr)
+	} else {
+		reg.WithMonitoringStore(monStore)
+		// Marqueur de démarrage (A5.1) : compteur de restarts persistant
+		// (COUNT(server_boot) dans cron_runs — exposé par /monitoring/resources).
+		if err := monStore.RecordCronRun(ctx, "server_boot", time.Now(), true, "", 0); err != nil {
+			slog.Warn("monitoring store: marqueur server_boot non écrit", "err", err)
+		}
+		// Statut unifié des crons (A6/DC-5) : chaque ReportCronRun est relayé
+		// vers cron_runs (persistance — l'historique survit au restart). Les
+		// crons tournent sur schedulerCtx, drainé AVANT duckdb.CloseAll.
+		observability.SetCronRunSink(func(name string, startedAt time.Time, ok bool, errStr string, durationMs int64) {
+			if err := monStore.RecordCronRun(context.Background(), name, startedAt, ok, errStr, durationMs); err != nil {
+				slog.Warn("monitoring store: cron run non persisté", "cron", name, "err", err)
+			}
+		})
+		schedulerWG.Add(1)
+		go func() {
+			defer schedulerWG.Done()
+			reg.RunDetectionFlushLoop(schedulerCtx)
+		}()
+	}
 
 	// Cron catalogue (hebdomadaire) : rafraîchit le catalogue (playlists / couples
 	// map-mode / maps / modes) via le drain DiscoveryUGC testé (même chemin que l'action

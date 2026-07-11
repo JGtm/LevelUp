@@ -33,6 +33,9 @@ function baseOverview(): AdminMonitoringOverview {
       pending_oldest_age_seconds: 0, pending_total: 0, reads_fallback: 0,
       reads_served: 0, ready_match_count: 0, version: 1,
     },
+    open_detections: 0,
+    freshness_critical: 0,
+    http: { status_2xx: 0, status_3xx: 0, status_4xx: 0, status_5xx: 0 },
   }
 }
 

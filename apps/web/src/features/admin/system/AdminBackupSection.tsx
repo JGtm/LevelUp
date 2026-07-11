@@ -10,6 +10,7 @@
 import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i18n'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { BackupTab } from '@/features/settings/BackupTab'
+import { SectionHeader } from '../components/SectionHeader'
 
 export function AdminBackupSection() {
   const locale = normalizeSettingsLocale(useAppShellStore((s) => s.locale))
@@ -17,9 +18,7 @@ export function AdminBackupSection() {
 
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        {t.tabBackup}
-      </h3>
+      <SectionHeader title={t.tabBackup} />
       <BackupTab t={t} frozen={false} />
     </section>
   )

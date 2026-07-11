@@ -50,30 +50,66 @@ type PerfStatsRunner func(ctx context.Context, titleSlug string) (domain.AdminPe
 // par titre (MT-05 ; implémenté par ServiceRegistry.ErrorStats — collecteur mémoire).
 type ErrorStatsRunner func(ctx context.Context, titleSlug string) (domain.AdminErrorStats, error)
 
+// DetectionsRunner liste les détections PERSISTÉES avec cycle de vie (vue
+// detections_latest, survit au restart), filtrées. Implémenté par
+// ServiceRegistry.DetectionsReport (flush de l'ErrorCollector puis lecture).
+type DetectionsRunner func(ctx context.Context, status, level, module, title string, limit int) (domain.AdminDetectionsResponse, error)
+
+// DetectionStatusRunner statue une détection (append d'un événement de cycle de
+// vie). Implémenté par ServiceRegistry.SetDetectionStatus.
+type DetectionStatusRunner func(ctx context.Context, fingerprint, status, note string) error
+
+// FreshnessRunner calcule la fraîcheur des données par joueur suivi
+// (implémenté par ServiceRegistry.FreshnessReport — lectures shared par joueur).
+type FreshnessRunner func(ctx context.Context, titleFilter string) (domain.AdminFreshnessResponse, error)
+
+// ResourcesRunner agrège l'état ressources machine & process (implémenté par
+// ServiceRegistry.ResourcesReport — os.Stat + expvar + runtime, pas de DuckDB).
+type ResourcesRunner func(ctx context.Context) (domain.AdminResourcesResponse, error)
+
+// CronsRunner agrège le statut des crons + heartbeats de features (implémenté
+// par ServiceRegistry.CronsReport — registre mémoire + cron_runs_latest).
+type CronsRunner func(ctx context.Context) (domain.AdminCronsResponse, error)
+
 // AdminMonitoringHandler sert les endpoints lecture du dashboard monitoring.
 type AdminMonitoringHandler struct {
-	overview    MonitoringOverviewRunner
-	convergence ConvergenceReportRunner
-	perf        PerfStatsRunner
-	errors      ErrorStatsRunner
-	sched       *scheduler.AutoSyncScheduler // nil → scheduler indisponible
-	jobs        *jobs.Store                  // nil → liste jobs vide
+	overview     MonitoringOverviewRunner
+	convergence  ConvergenceReportRunner
+	perf         PerfStatsRunner
+	errors       ErrorStatsRunner
+	detections   DetectionsRunner             // nil → section détections vide
+	setDetection DetectionStatusRunner        // nil → PATCH 503
+	freshness    FreshnessRunner              // nil → réponse vide
+	resources    ResourcesRunner              // nil → réponse vide
+	crons        CronsRunner                  // nil → réponse vide
+	sched        *scheduler.AutoSyncScheduler // nil → scheduler indisponible
+	jobs         *jobs.Store                  // nil → liste jobs vide
 }
 
 // NewAdminMonitoringHandler construit le handler. sched et jobs peuvent être
-// nil (sections dégradées, jamais de panic).
+// nil (sections dégradées, jamais de panic). detections/setDetection/freshness
+// peuvent être nil (dégradation propre).
 func NewAdminMonitoringHandler(
 	overview MonitoringOverviewRunner,
 	convergence ConvergenceReportRunner,
 	perf PerfStatsRunner,
 	errors ErrorStatsRunner,
+	detections DetectionsRunner,
+	setDetection DetectionStatusRunner,
+	freshness FreshnessRunner,
+	resources ResourcesRunner,
+	crons CronsRunner,
 	sched *scheduler.AutoSyncScheduler,
 	jobStore *jobs.Store,
 ) *AdminMonitoringHandler {
-	return &AdminMonitoringHandler{overview: overview, convergence: convergence, perf: perf, errors: errors, sched: sched, jobs: jobStore}
+	return &AdminMonitoringHandler{
+		overview: overview, convergence: convergence, perf: perf, errors: errors,
+		detections: detections, setDetection: setDetection, freshness: freshness,
+		resources: resources, crons: crons, sched: sched, jobs: jobStore,
+	}
 }
 
-// Mount enregistre les 6 routes via Huma sur le sous-routeur chi /admin
+// Mount enregistre les routes via Huma sur le sous-routeur chi /admin
 // (middleware RequireAuth/RequireAdmin/NoStore hérités).
 func (h *AdminMonitoringHandler) Mount(r chi.Router) {
 	api := humacore.NewAPI(r)
@@ -83,6 +119,11 @@ func (h *AdminMonitoringHandler) Mount(r chi.Router) {
 	huma.Get(api, "/monitoring/jobs", h.handleGetJobs)
 	huma.Get(api, "/monitoring/perf", h.handleGetPerf)
 	huma.Get(api, "/monitoring/errors", h.handleGetErrors)
+	huma.Get(api, "/monitoring/detections", h.handleGetDetections)
+	huma.Patch(api, "/monitoring/detections/{fingerprint}", h.handlePatchDetection)
+	huma.Get(api, "/monitoring/freshness", h.handleGetFreshness)
+	huma.Get(api, "/monitoring/resources", h.handleGetResources)
+	huma.Get(api, "/monitoring/crons", h.handleGetCrons)
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -132,6 +173,42 @@ type AdminJobsResponse struct {
 	GeneratedAt string                   `json:"generated_at"`
 	Jobs        []*domain.AsyncJobStatus `json:"jobs"`
 }
+
+// detectionsInput : filtres optionnels de GET /monitoring/detections. limit en
+// STRING (contrat souple : non numérique/<=0 → défaut store), pas de 422 Huma.
+type detectionsInput struct {
+	Status string `query:"status"`
+	Level  string `query:"level"`
+	Module string `query:"module"`
+	Title  string `query:"title"`
+	Limit  string `query:"limit"`
+}
+type adminDetectionsOutput struct {
+	Body domain.AdminDetectionsResponse
+}
+
+// detectionPatchInput : {fingerprint} + body {status, note?}.
+type detectionPatchInput struct {
+	Fingerprint string `path:"fingerprint"`
+	Body        struct {
+		Status string `json:"status"`
+		Note   string `json:"note,omitempty"`
+	}
+}
+
+// AdminDetectionPatchResponse : accusé d'un changement de statut de détection.
+type AdminDetectionPatchResponse struct {
+	Fingerprint string `json:"fingerprint"`
+	Status      string `json:"status"`
+	OK          bool   `json:"ok"`
+}
+type detectionPatchOutput struct{ Body AdminDetectionPatchResponse }
+
+type adminFreshnessOutput struct{ Body domain.AdminFreshnessResponse }
+
+type adminResourcesOutput struct{ Body domain.AdminResourcesResponse }
+
+type adminCronsOutput struct{ Body domain.AdminCronsResponse }
 
 // titleOrDefaultSlug lit ?title= avec fallback sur le titre par défaut.
 func titleOrDefaultSlug(title string) string {
@@ -230,4 +307,109 @@ func (h *AdminMonitoringHandler) handleGetErrors(ctx context.Context, in *titleI
 			"Impossible d'agréger les erreurs récentes.")
 	}
 	return &adminErrorsOutput{Body: resp}, nil
+}
+
+// handleGetDetections retourne les détections persistées avec leur cycle de vie.
+// GET /admin/monitoring/detections?status=&level=&module=&title=&limit=.
+func (h *AdminMonitoringHandler) handleGetDetections(ctx context.Context, in *detectionsInput) (*adminDetectionsOutput, error) {
+	if h.detections == nil {
+		return &adminDetectionsOutput{Body: domain.AdminDetectionsResponse{
+			GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+			Detections:  []domain.MonitoringDetection{},
+		}}, nil
+	}
+	limit := 0
+	if in.Limit != "" {
+		if n, err := strconv.Atoi(in.Limit); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	resp, err := h.detections(ctx, in.Status, in.Level, in.Module, in.Title, limit)
+	if err != nil {
+		slog.ErrorContext(ctx, "admin_monitoring: detections failed", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_detections_error",
+			"Impossible de lister les détections.")
+	}
+	return &adminDetectionsOutput{Body: resp}, nil
+}
+
+// handlePatchDetection statue une détection (Reconnaître / Sourdine / Résoudre).
+// PATCH /admin/monitoring/detections/{fingerprint} — body {status, note?}.
+func (h *AdminMonitoringHandler) handlePatchDetection(ctx context.Context, in *detectionPatchInput) (*detectionPatchOutput, error) {
+	if h.setDetection == nil {
+		return nil, humacore.NewError(http.StatusServiceUnavailable, "monitoring_store_unavailable",
+			"Le store monitoring n'est pas disponible.")
+	}
+	if !domain.IsValidDetectionStatus(in.Body.Status) {
+		return nil, humacore.NewError(http.StatusBadRequest, "invalid_status",
+			"Statut invalide (open, acked, muted ou resolved).")
+	}
+	if err := h.setDetection(ctx, in.Fingerprint, in.Body.Status, in.Body.Note); err != nil {
+		slog.ErrorContext(ctx, "admin_monitoring: patch detection failed",
+			"fingerprint", in.Fingerprint, "status", in.Body.Status, "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_detection_patch_error",
+			"Impossible de mettre à jour la détection.")
+	}
+	slog.InfoContext(ctx, "admin_monitoring: détection statuée",
+		"fingerprint", in.Fingerprint, "status", in.Body.Status)
+	return &detectionPatchOutput{Body: AdminDetectionPatchResponse{
+		Fingerprint: in.Fingerprint, Status: in.Body.Status, OK: true,
+	}}, nil
+}
+
+// handleGetFreshness retourne la fraîcheur des données par joueur suivi.
+// GET /admin/monitoring/freshness?title= (vide = tous les titres actifs).
+func (h *AdminMonitoringHandler) handleGetFreshness(ctx context.Context, in *titleInput) (*adminFreshnessOutput, error) {
+	if h.freshness == nil {
+		return &adminFreshnessOutput{Body: domain.AdminFreshnessResponse{
+			GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+			Titles:      []domain.TitleFreshnessReport{},
+		}}, nil
+	}
+	// PAS de fallback titre par défaut : vide = tous les titres actifs (le
+	// panneau État affiche halo_infinite ET halo_5 côte à côte).
+	resp, err := h.freshness(ctx, in.Title)
+	if err != nil {
+		slog.ErrorContext(ctx, "admin_monitoring: freshness failed", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_freshness_error",
+			"Impossible de calculer la fraîcheur des données.")
+	}
+	return &adminFreshnessOutput{Body: resp}, nil
+}
+
+// handleGetResources retourne l'état ressources machine & process (A5).
+// GET /admin/monitoring/resources.
+func (h *AdminMonitoringHandler) handleGetResources(ctx context.Context, _ *struct{}) (*adminResourcesOutput, error) {
+	if h.resources == nil {
+		return &adminResourcesOutput{Body: domain.AdminResourcesResponse{
+			GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+			Databases:   []domain.ResourceDBFile{},
+		}}, nil
+	}
+	resp, err := h.resources(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "admin_monitoring: resources failed", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_resources_error",
+			"Impossible d'agréger l'état des ressources.")
+	}
+	return &adminResourcesOutput{Body: resp}, nil
+}
+
+// handleGetCrons retourne le statut des crons + heartbeats de features (A6).
+// GET /admin/monitoring/crons.
+func (h *AdminMonitoringHandler) handleGetCrons(ctx context.Context, _ *struct{}) (*adminCronsOutput, error) {
+	if h.crons == nil {
+		return &adminCronsOutput{Body: domain.AdminCronsResponse{
+			GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+			Crons:       []domain.CronStatusEntry{},
+			Features:    []domain.FeatureHeartbeat{},
+		}}, nil
+	}
+	resp, err := h.crons(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "admin_monitoring: crons failed", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_crons_error",
+			"Impossible d'agréger le statut des crons.")
+	}
+	return &adminCronsOutput{Body: resp}, nil
 }

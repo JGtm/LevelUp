@@ -331,6 +331,20 @@ A:
 - Update `apps/web/src/components/charts/README.md` (catalog).
 - If the chart is page-specific (like `TimeseriesCombatYield`), keep it in `features/<page>/` instead of `components/charts/`.
 
+**Q: I'm building a panel/section for the admin monitoring dashboard. Which primitives do I use?**
+A: The admin dashboard (2026-07 overhaul) has its own canonical primitives under
+`apps/web/src/features/admin/components/` — use them instead of re-declaring locals
+(guard-rail: `admin-ui.guard.test.ts`):
+
+- `AdminKpi` — the ONLY KPI card (wraps foundations `KpiCard`; props: label, value,
+  accent, delta, sub, size, to). Never declare a local `*Kpi` component.
+- `SectionHeader` — section title (caps muted) + optional description/actions slot.
+- `AdminTable` / `AdminTh` / `AdminTr` / `AdminTd` — static native tables.
+  Interactive tables (sort/filter/actions) use TanStack Table (`DetectionsPanel`).
+- `useCounterSnapshot(storageKey, generatedAt, build)` — the rolling-baseline
+  localStorage delta pattern ("vs previous visit"). Never call
+  `readCountersSnapshot`/`writeCountersSnapshot` directly outside `countersTrend.ts`.
+
 ---
 
 ## 6. References

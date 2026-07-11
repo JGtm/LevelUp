@@ -41,7 +41,6 @@ const ALLOWLIST = new Set<string>([
   // --- lib/api/types.ts : view-models / endpoints hors OpenAPI Huma ---
   'SessionContextResponse',     // POST /session/context — non migré Huma
   'HealthResponse',             // GET /health — endpoint infra hors openapi.yaml
-  'LabWaypointResponse',        // GET /lab/waypoint — outil interne Lab
   'FilterMatchIdsResponse',     // POST /filters/match-ids — wrapper trivial { match_ids }
   'SetupStatusResponse',        // @deprecated artefact mort, à supprimer avec useSetupStatus
   'DeviceFlowStartResponse',    // POST /auth/device-flow/start — champ deprecated alias

@@ -220,6 +220,251 @@ de tous les callers (engine, lusr_full_recompute, 3 cmd, wire h5, ~20 tests).
 
 ---
 
+## [2026-07-10] PLAN MONITORING REFONTE — A9 clôture (Complété — PLAN COMPLÉTÉ A1→A9, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Plan COMPLÉTÉ intégralement (9 phases, gates verts). Déplacé vers .ai/V7/.
+
+**Décision technique principale** : clôture au contrat plan-execution — chaque item
+statué [x] (y compris A8.6 « prémisse caduque, rien à supprimer » vérifié sur pièces),
+FAQ primitives admin ajoutée à FOUNDATIONS_GUIDE EN+FR dans le même commit,
+delivery-checklist déroulée (fmt.Println 0, TODO 0, filepath.Join("data") ajouté
+uniquement dans PathResolver, CI branche verte).
+
+**Résultats (gate final)** : `go test ./...` 0 FAIL ; `go test -tags=integration -p 1
+./...` EXIT 0 ; `make check-types` 0 (cache purgé) ; `make test-web` 247 fichiers /
+2111 tests OK ; `make go-api-lint` 0 ; `golangci-lint --new-from-rev=158b336a9` 0.
+
+**Conclusion / prochaine étape** : revue visuelle utilisateur au merge (6 onglets,
+détections, fraîcheur, crons, ressources) ; le superviseur gère PR/merge. La
+persistance monitoring (data/global/monitoring.duckdb) se crée au premier boot.
+
+---
+
+## [2026-07-10] PLAN MONITORING REFONTE — A8 alignement UI catalogue (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A8 CLOSE (gates verts, morsure des garde-rails prouvée).
+
+**Décision technique principale** : 4 briques canoniques sous features/admin/components —
+`AdminKpi` (remplace les 5 variantes KPI locales), `SectionHeader` (15 fichiers migrés du
+h3-caps brut), `AdminTable/Th/Tr/Td` (tables natives statiques), + hook
+`useCounterSnapshot` (3 copies du pattern baseline roulante factorisées ;
+read/writeInvariantsSnapshot supprimés). Garde-rails vitest fs-scan
+(`admin-ui.guard.test.ts`) avec test de morsure prouvé (violation plantée → rouge).
+A8.5 : AdminTitlesPage 343→153 L (TitleDetailCards.tsx extrait). A8.6 : prémisse
+caduque — JobProgressInline N'EST PLUS orphelin (AdminActionButton), conservé. A8.7 :
+FAIL/WARN/OK en dur → clés i18n FR+EN (status_label.fail/warn + status.ok).
+
+**Résultats** : tsc 0 ; vitest 247/2111 OK ; make go-api-lint 0 ; morsure guard 2/2.
+
+**Conclusion / prochaine étape** : A9 (clôture : statuts, docs, delivery-checklist, gate final).
+
+---
+
+## [2026-07-10] PLAN MONITORING REFONTE — A7 compteurs HTTP par classe (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A7 CLOSE (gate vert).
+
+**Décision technique principale** : compteurs posés dans le middleware SlogLogger existant
+(`countHTTPStatusClass`), expvar `http_status_{2xx,3xx,4xx,5xx}_total` via IncCounterT —
+convention MT-05 respectée (défaut = clé nue, un seul incrément — piège du double comptage
+IncCounter+IncCounterT évité) ; jamais de dimension route (DC-6). Overview expose
+`http` (LoadCounterT zéro I/O) + KPI 5xx sur État (destructive si > 0).
+
+**Résultats** : go test ./internal/api/... 0 FAIL (1 flake connu vert au re-run) ;
+contract+drift verts ; tsc 0 ; vitest admin 81 OK ; lint 0.
+
+**Conclusion / prochaine étape** : A8 (alignement UI catalogue).
+
+---
+
+## [2026-07-10] PLAN MONITORING REFONTE — A6 crons unifiés + feature liveness (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A6 CLOSE (gates verts).
+
+**Décision technique principale** : registre central `observability.cronstatus`
+(ReportCronRun → last_run/success/error/consecutive_failures + Sink optionnel câblé au
+boot vers cron_runs — le registre reste utilisable sans store). 7 crons instrumentés :
+auto_sync au point de convergence storeCycleResult (échec = joueurs failed), les 4 crons
+scheduler + HealthScheduler en liveness de cycle (les erreurs par titre restent
+best-effort internes), backup via callback OnCycleDone ajouté à pkg/duckdbbackup (package
+standalone préservé). Heartbeats DC-5 posés au passage réel (prestige_hook,
+notifications_push, watcher_rta, media_pipeline). Endpoint /monitoring/crons fusionne
+mémoire (since_boot=true) + réhydratation cron_runs_latest ; seuil critical NOMMÉ
+(CronFailuresCriticalThreshold=3) ; heartbeat never = destructive. Garde-rail
+shared_social : whitelist enrichie (entrée datée — os.Stat de taille de fichier, zéro SQL).
+
+**Résultats** : go test ./internal/... 0 FAIL ; contract+drift verts ; tsc 0 ;
+vitest 247/2109 OK ; lint new-from-rev 0.
+
+**Conclusion / prochaine étape** : A7 (compteurs HTTP par classe).
+
+---
+
+## [2026-07-10] PLAN MONITORING REFONTE — A5 ressources machine & process (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A5 CLOSE (gates verts, vérif visuelle déléguée à la revue user).
+
+**Décision technique principale** : `GET /admin/monitoring/resources` — runtime Go
+(MemStats/goroutines), tailles DB+WAL via os.Stat sur chemins PathResolver (par titre
+actif du DefaultRegistry + players agrégés + globales), disque libre via nouvelle façade
+`platform/diskfree` (build tags windows/unix, x/sys déjà présent — DC-4 zéro nouvelle
+dépendance), budgets/pools DuckDB (snapshots expvar J1/J8 enfin surfacés dans l'UI).
+Compteur de restarts = COUNT(server_boot) dans cron_runs (marqueur écrit au boot —
+persistant, plus simple et fiable que parser server.crash.log). Seuils disque NOMMÉS
+(DiskFreeWarnBytes 2 Go / DiskFreeCriticalBytes 500 Mo) + EvaluateDiskStatus pur testé
+aux bornes. UI : KPI verdict disque sur État (drill-down Système) + ResourcesSection
+détaillée sur Système (table bases + WAL + total, budgets dépliables).
+
+**Résultats** : build 0 ; tests ops/handlers verts ; contract+drift verts ; tsc 0 ;
+vitest admin 81 OK ; lint new-from-rev 0.
+
+**Conclusion / prochaine étape** : A6 (statut unifié des crons + feature liveness).
+
+---
+
+## [2026-07-10] PLAN MONITORING REFONTE — A4 fraîcheur des données (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A4 CLOSE (gates verts, constat visuel État délégué à la revue user).
+
+**Décision technique principale** : évaluation PURE `ops.EvaluatePlayerFreshness` (DC-3 :
+sync récent ≤6h → ok même joueur inactif ; sinon match >7j/aucun → critical, >48h → warn ;
+seuils surchargables app_settings.json). Orchestrateur `reg.FreshnessReport` : PIÈGE ÉVITÉ
+— `titlePkg.NewRegistry()` ne connaît que halo_infinite ; le runner itère
+`DefaultRegistry()` (registre config-driven posé au boot, halo_5 inclus), actifs
+non-internes avec capability matchmaking. Dernier match = MAX(timestamp canonique) sur
+match_registry⋈match_participants ; dernier sync OK = snapshot scheduler (H5 live-only →
+inconnu, l'âge du match fait foi). A4.2 : source backup = manifest duckdbbackup
+(Status().LastBackupAt), décision consignée (cron_runs pas encore câblé, log mtime
+fragile). Badge État via gauge `monitoring_freshness_critical` posée au calcul →
+overview zéro I/O → tabBadges `/admin`.
+
+**Résultats** : build 0 ; tests ops/handlers verts (dataset hétérogène 8 cas) ;
+contract+drift verts (path + 4 schémas) ; `tsc -b` 0 ; vitest 247/2109 OK ; lint 0.
+
+**Conclusion / prochaine étape** : A5 (ressources machine & process).
+
+---
+
+## [2026-07-10] PLAN MONITORING REFONTE — A3 architecture 9→6 onglets + retrait Lab (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A3 CLOSE (gates verts). Reprise ordonnée par le superviseur après un
+arrêt à tort en fin d'A2 (le report A3→A9 « session dédiée » n'est pas un motif valide
+au sens du contrat plan-execution).
+
+**Décision technique principale** : DC-8 appliqué — 6 onglets par question opérateur.
+Nouvelles routes `/admin/{detections,data,management}` ; anciennes URLs = redirections
+`beforeLoad` (logs→system préserve le search du viewer, dont l'URL-state migre sur
+system). Données = composition des pages existantes (DataQuality + Convergence +
+InvariantsSection) — déplacées, pas réécrites. Sync absorbe TokenHealthSection ;
+badges/diagnostics/KPIs re-routés en conséquence. DC-9 : Lab retiré avec périmètre
+AJUSTÉ sur pièces (validé superviseur) — `features/lab/` pas supprimable en bloc :
+DiagnosticsPanel/i18n/useLabDiagnostics restent (consommés par Données), ChartsShowcase
+reste (sandbox dev /lab/charts hors plan). Supprimés : onglet front + panneaux
+Resources/Waypoint/LabHelp + back /lab/{resources,contracts,waypoint} + LabService
+waypoint + provider assets/contracts + domain types + 14 schémas OpenAPI orphelins ;
+`GET /lab/diagnostics` conservé (gate can_manage_instance). Garde-rails :
+`lab-removal.guard.test.ts` (endpoints+imports interdits + redirections vérifiées) et
+`lab_routes_mounted_test.go` inversé (anti-résurrection). Runbook
+`docs/RUNBOOK_ADD_TITLE.md` (EN-only) livré en compensation du workflow dev du Lab.
+
+**Résultats** : `tsc -b` EXIT 0 ; `vitest run` 247/2108 OK ; `go build ./...` 0 ;
+`go test ./...` 0 FAIL ; drift OpenAPI + contract routes verts ; lint new-from-rev 0.
+
+**Conclusion / prochaine étape** : A4 (fraîcheur des données, onglet État).
+
+---
+
+## [2026-07-10] PLAN MONITORING REFONTE — A2 cycle de vie détections + UI triage (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A2 CLOSE (gate passé, hors constat visuel restart délégué à l'utilisateur).
+
+**Décision technique principale** : deux endpoints Huma sur l'`AdminMonitoringHandler`
+existant — `GET /admin/monitoring/detections` (runner `reg.DetectionsReport` : flush du
+delta ErrorCollector PUIS lecture `detections_latest`, donc l'admin voit l'état à jour sans
+attendre le tick) et `PATCH .../{fingerprint}` (append cycle de vie, statut validé côté
+domain → 400 ; store nil → 503). Store câblé au boot (`ops.NewMonitoringStore` après
+NewRouter), flush périodique 60s sur `schedulerCtx/schedulerWG` (drainé AVANT
+`duckdb.CloseAll` — écriture sûre) + flush final à l'arrêt. Badge nav : gauge expvar
+`monitoring_detections_open` posée au flush → `overview.open_detections` (zéro I/O) →
+`tabBadges` colore `/admin/logs` sur les seules détections `open`. Front : `DetectionsPanel`
+TanStack (tri, filtre statut client-side, actions + note), remplace `RecurringErrorsPanel`
+mémoire (SUPPRIMÉ, 0 code mort ; clés `admin.errors.*` → `admin.detections.*`). openapi.yaml
+étendu manuellement (source de vérité) : 2 paths + 4 schémas (dont les 2 Huma-dérivés
+`AdminDetectionPatchResponse`/`DetectionPatchInputBody` exigés par le drift-test strict),
+types front régénérés.
+
+**Résultats** : `go test ./internal/api/handlers/` ok ; contract routes (seuil 0) + drift
+OpenAPI verts ; `npm run typecheck` EXIT 0 ; `vitest run` 247 fichiers / 2106 tests OK ;
+`golangci-lint --new-from-rev=158b336a9` → 0 ; build 0.
+
+**Conclusion / prochaine étape** : A3 — architecture de l'information (9 onglets → 6, retrait
+Lab). ATTENTION découverte A3.5 : `features/lab/` partiellement réutilisé (Données + charts)
+— supprimer l'ONGLET Lab + back `/lab/*`, PAS les briques encore consommées. Endpoint back
+`/monitoring/errors` désormais UI-orphelin (route live conservée, consignée en Découvertes).
+
+---
+
+## [2026-07-10] PLAN MONITORING REFONTE — A1 socle de persistance (Complété, branche feat/monitoring-refonte-2026-07)
+
+**Statut** : Phase A1 CLOSE (gate passé). Base sur `fix/monitoring-triage-2026-07` (158b336a9).
+
+**Décision technique principale** : nouvelle base GLOBALE `data/global/monitoring.duckdb`
+(chemin via `PathResolver.GlobalMonitoringDB()`, jamais per-titre : l'observabilité
+process/machine ne dépend d'aucun titre). Schéma append-only (ADR 0026) posé idempotemment
+par `migration.EnsureMonitoringSchema` À L'OUVERTURE DU STORE (la base est hors du registre
+title-scopé registry.go/order.go, qui route par target per-titre — y greffer un target global
+aurait été invasif). Tables `detection_events` / `detection_status_events` / `cron_runs` /
+`data_health_runs` : PK technique via séquence + `written_at`, INSERT pur, lecture via vues
+`_latest` (ROW_NUMBER pour le dernier statut/run, ARG_MAX pour les derniers champs agrégés).
+Writer unique `ops.MonitoringStore` ouvert via `duckdb.OpenReadWrite` (provider platform, pas
+de bare connect) + sérialisation par `dblease.KindMonitoring` (nouveau Kind). Fingerprint =
+sha256[:12] de (title,level,module,message) — sûr comme segment d'URL pour le PATCH A2.
+DC-2 (réouverture d'une détection `resolved` sur nouvelle occurrence) implémentée CÔTÉ WRITER
+(append d'un status 'open' au flush), la vue reste simple.
+
+**Résultats** : `go build ./...` EXIT 0 ; `go test ./internal/ops/... ./internal/migration/...`
+→ ok (ops 10.96s, migration 0.56s) ; grep `filepath.Join` dans monitoring_store.go → 0 ;
+`golangci-lint --new-from-rev=158b336a9` → 0 issue. Garde-rail append-only (scan source) vert.
+
+**Conclusion / prochaine étape** : A2 — endpoints `GET/PATCH /admin/monitoring/detections`,
+câblage du flush périodique au boot (critère : survie au restart), UI triage TanStack, badges
+sur `open` seul. Découverte consignée : `features/lab/` non entièrement supprimable en A3.5.
+
+---
+
+## [2026-07-10] PLAN MONITORING TRIAGE — exécution (PARTIEL, branche fix/monitoring-triage-2026-07)
+
+**Statut** : Complété côté code déploy-indépendant ; PARTIEL global (items restants bloqués
+par deploy prod B1 / écriture prod interdite / soak / auth live).
+
+**Décision technique principale** : après mesure de clôture (prod post-reboot 07-08→10 via
+`ssh lvelup` + endpoint data-quality local), ~95 % du bruit survivant est la cascade LUSR
+(B1, PR #53 `hotfix/lusr-shadow-ro` OUVERTE non déployée) — sync 28 422 W shadow, provider
+2 303 W writer-hold, et les 632 « http » ERROR = `GET /health → 503` (timeout 5 s), symptôme
+DIRECT du writer-hold. La tempête DNS est éteinte (0 ERROR pool). Les familles B6.1/6.2/6.3/6.5
+sont à 0 en prod ET juillet local (bruit historique juin/pré-reboot). Livré le seul code
+déploy-indépendant à valeur durable : **B6.4 anti-flood** (`observability.AllowThrottledLog` —
+clé globale par cause, 1re occurrence toujours émise DC-B2, compteur expvar exact, câblé
+rest_poller + halo_api downloadBlob + pool oauth-refresh) ; **B6.1** WARN→Debug+compteur
+metadata boot ; **B3.3** ligne agrégée spartan_cron ERROR→WARN+compteur. B5.6/B3.3 partie basse
+déjà conformes (vérifiés sur pièces).
+
+**Résultats** : `go build ./...` exit 0 ; `go test ./...` exit 0 ; `go test -tags=integration
+-p 1 ./internal/sync/... ./internal/persist/... [+touchés]` exit 0 ; gofmt/vet propres. Test
+étouffeur B6.4 vert (1re occurrence, étouffement fenêtré + compte exact, concurrent single-emit).
+Data-quality local HI : raw_uuid 24, untranslated_modes 8, orphan_xuids 131, lying_bits 580
+(inchangé — remédiation prod-gated). B2 prod : 0 reauth, 0 ERROR pool (sain, rien à blacklister).
+
+**Items [!] (bloqués)** : B1.5/B1.6 (attente deploy PR #53), B2.4 (soak), B4.1-B4.4 (écriture
+prod interdite + B4.2 auth live), B5.5 (migrate-media prod), B7.4 (soak conditionné deploy B1).
+Découvertes : détecteur data-quality H5 échoue localement (`data_quality_error`) ; orphan_xuids
+local 131 (>120).
+
+**Prochaine étape** : merge/deploy PR #53 (GO user) → puis armer B1.5/B1.6, B4 remédiation prod,
+B7.4 soak T0+30j. Plan laissé à la racine (PARTIEL). Push branche.
+
+---
+
 ## [2026-07-10] MERGE MAIN — campagne audits 2026-07 + clôture + gate humain (GO utilisateur)
 
 **Statut** : En cours (merge exécuté dans cette session ; post-deploy VPS à suivre).

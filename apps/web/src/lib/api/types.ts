@@ -67,46 +67,18 @@ export interface HealthResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Lab interne
+// Diagnostic d'instance (ex-Lab)
 // ---------------------------------------------------------------------------
 
-// Aire Lab : shimée depuis le contrat (les schémas sont auto-dérivés des structs
-// Go via le drift-detector ; openapi.yaml complété 2026-06-18). Source de vérité
-// = contrat. Oracle de compatibilité = tsc -b sur les usages de la feature Lab.
+// A3.5 (DC-9) : seuls les schémas du panneau Diagnostics (onglet admin
+// Données) survivent au retrait du Lab. Source de vérité = contrat.
 export type LabFileStatus = components['schemas']['LabFileStatus']
-export type LabSnapshotSummary = components['schemas']['LabSnapshotSummary']
-export type LabSnapshotDetail = components['schemas']['LabSnapshotDetail']
-export type LabAssetSummary = components['schemas']['LabAssetSummary']
-export type LabAssetDetail = components['schemas']['LabAssetDetail']
-export type LabAssetExplorer = components['schemas']['LabAssetExplorer']
-export type LabMedalSummary = components['schemas']['LabMedalSummary']
-export type LabMedalDetail = components['schemas']['LabMedalDetail']
-export type LabMedalExplorer = components['schemas']['LabMedalExplorer']
-export type LabResourcesResponse = components['schemas']['LabResourcesResponse']
-export type LabRouteMethods = components['schemas']['LabRouteMethods']
-export type LabMethodMismatch = components['schemas']['LabMethodMismatch']
-export type LabOpenAPISummary = components['schemas']['LabOpenAPISummary']
-export type LabContractsResponse = components['schemas']['LabContractsResponse']
 export type LabGuardResult = components['schemas']['LabGuardResult']
 export type LabMedalGuardsReport = components['schemas']['LabMedalGuardsReport']
 export type LabParitySummary = components['schemas']['LabParitySummary']
 export type LabParityResult = components['schemas']['LabParityResult']
 export type LabParityReport = components['schemas']['LabParityReport']
 export type LabDiagnosticsResponse = components['schemas']['LabDiagnosticsResponse']
-
-export interface LabWaypointResponse {
-  segment: string
-  endpoint: string
-  asset_id: string
-  version_id: string
-  lang: string
-  resolved_ok: boolean
-  asset_name?: string
-  description?: string
-  image_url?: string
-  error?: string
-  latency_ms: number
-}
 
 // ---------------------------------------------------------------------------
 // Filtres
@@ -2262,6 +2234,36 @@ export type AdminErrorStats = components['schemas']['AdminErrorStats']
 
 /** Une erreur agrégée par (niveau, message). Miroir de domain.AdminErrorBucket. */
 export type AdminErrorBucket = components['schemas']['AdminErrorBucket']
+
+/** Détection persistée avec cycle de vie. Miroir de domain.MonitoringDetection. */
+export type MonitoringDetection = components['schemas']['MonitoringDetection']
+
+/** Réponse GET /admin/monitoring/detections. Miroir de domain.AdminDetectionsResponse. */
+export type AdminDetectionsResponse = components['schemas']['AdminDetectionsResponse']
+
+/** Fraîcheur des données d'un joueur suivi. Miroir de domain.PlayerFreshness. */
+export type PlayerFreshness = components['schemas']['PlayerFreshness']
+
+/** Fraîcheur par titre actif. Miroir de domain.TitleFreshnessReport. */
+export type TitleFreshnessReport = components['schemas']['TitleFreshnessReport']
+
+/** Réponse GET /admin/monitoring/freshness. Miroir de domain.AdminFreshnessResponse. */
+export type AdminFreshnessResponse = components['schemas']['AdminFreshnessResponse']
+
+/** Taille d'une base DuckDB + WAL. Miroir de domain.ResourceDBFile. */
+export type ResourceDBFile = components['schemas']['ResourceDBFile']
+
+/** Réponse GET /admin/monitoring/resources. Miroir de domain.AdminResourcesResponse. */
+export type AdminResourcesResponse = components['schemas']['AdminResourcesResponse']
+
+/** Statut d'un cron. Miroir de domain.CronStatusEntry. */
+export type CronStatusEntry = components['schemas']['CronStatusEntry']
+
+/** Liveness d'une feature. Miroir de domain.FeatureHeartbeat. */
+export type FeatureHeartbeat = components['schemas']['FeatureHeartbeat']
+
+/** Réponse GET /admin/monitoring/crons. Miroir de domain.AdminCronsResponse. */
+export type AdminCronsResponse = components['schemas']['AdminCronsResponse']
 
 // NB : les types Watcher (WatcherStatusResponse, WatcherPlayerStatus) existent
 // déjà plus haut dans ce fichier (section watcher historique) — le dashboard

@@ -10,9 +10,10 @@ import {
   SHARED_SCOPE_KEY,
   buildInvariantsSnapshot,
   invariantDelta,
-  readInvariantsSnapshot,
-  writeInvariantsSnapshot,
 } from './invariantsTrend'
+// A8.2 : read/write locaux supprimés — la persistance passe par countersTrend
+// (utilisé par le hook canonique useCounterSnapshot).
+import { readCountersSnapshot, writeCountersSnapshot } from './countersTrend'
 
 function makeResponse(): AdminInvariantsResponse {
   return {
@@ -49,15 +50,15 @@ describe('invariantsTrend', () => {
     expect(snap['jgtm|psa_missing']).toBe(79)
   })
 
-  it('round-trip localStorage', () => {
+  it('round-trip localStorage (via countersTrend, A8.2)', () => {
     const snap = buildInvariantsSnapshot(makeResponse())
-    writeInvariantsSnapshot(snap)
-    expect(readInvariantsSnapshot()).toEqual(snap)
+    writeCountersSnapshot(INVARIANTS_SNAPSHOT_KEY, snap)
+    expect(readCountersSnapshot(INVARIANTS_SNAPSHOT_KEY)).toEqual(snap)
   })
 
-  it('readInvariantsSnapshot tolère un JSON corrompu', () => {
+  it('readCountersSnapshot tolère un JSON corrompu', () => {
     localStorage.setItem(INVARIANTS_SNAPSHOT_KEY, '{not-json')
-    expect(readInvariantsSnapshot()).toEqual({})
+    expect(readCountersSnapshot(INVARIANTS_SNAPSHOT_KEY)).toEqual({})
   })
 
   it('invariantDelta : signe correct, undefined si inchangé ou inconnu', () => {

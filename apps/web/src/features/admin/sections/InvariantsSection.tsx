@@ -2,7 +2,6 @@
  * InvariantsSection — Intégrité des données (invariants sync, plan
  * SYNC_INVARIANTS_GATE). Extraction 1:1 depuis l'ancienne AdminPage.
  */
-import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -10,6 +9,8 @@ import { intlLocale } from '@/lib/formatters'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useAdminInvariants } from '../queries'
+import { useAdminT } from '../useAdminText'
+import { useCounterSnapshot } from '../useCounterSnapshot'
 import type { components } from '@/lib/api/generated'
 
 // Le contrat (struct Go) est la source de vérité : InvariantViolation.severity
@@ -17,11 +18,10 @@ import type { components } from '@/lib/api/generated'
 // contrat plutôt que sur le mirror hand-écrit AdminInvariantViolation (périmé).
 type InvariantViolation = components['schemas']['InvariantViolation']
 import {
+  INVARIANTS_SNAPSHOT_KEY,
   SHARED_SCOPE_KEY,
   buildInvariantsSnapshot,
   invariantDelta,
-  readInvariantsSnapshot,
-  writeInvariantsSnapshot,
   type InvariantsSnapshot,
 } from '../invariantsTrend'
 
@@ -30,23 +30,10 @@ export function InvariantsSection() {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
-  // Baseline ROULANTE : au 1er run de la session, comparaison au snapshot
-  // localStorage (inter-sessions) ; ensuite chaque nouveau run (generated_at
-  // différent) compare au run PRÉCÉDENT — pas au snapshot figé au mount
-  // (sinon un refetch intra-session masquerait une régression revenue au
-  // niveau pré-mount).
-  const [previous, setPrevious] = useState<InvariantsSnapshot>(() => readInvariantsSnapshot())
-  const lastRunRef = useRef<{ generatedAt: string; snapshot: InvariantsSnapshot } | null>(null)
-  useEffect(() => {
-    if (!data) return
-    const snap = buildInvariantsSnapshot(data)
-    const last = lastRunRef.current
-    if (last && last.generatedAt !== data.generated_at) {
-      setPrevious(last.snapshot)
-    }
-    lastRunRef.current = { generatedAt: data.generated_at, snapshot: snap }
-    writeInvariantsSnapshot(snap)
-  }, [data])
+  // Baseline roulante (hook canonique A8.2) : delta vs run précédent.
+  const previous = useCounterSnapshot(INVARIANTS_SNAPSHOT_KEY, data?.generated_at, () =>
+    buildInvariantsSnapshot(data!),
+  )
 
   return (
     <Card>
@@ -126,6 +113,7 @@ function InvariantsCard({
   t: (key: CommonManifestKey) => string
 }) {
   const healthy = !checkError && failCount === 0 && warnCount === 0
+  const tA = useAdminT()
   return (
     <div className="rounded-md border px-4 py-3">
       <div className="flex items-center justify-between">
@@ -139,16 +127,16 @@ function InvariantsCard({
             <>
               {failCount > 0 && (
                 <span className="rounded bg-muted px-2 py-0.5 font-semibold text-destructive">
-                  {failCount} FAIL
+                  {failCount} {tA('admin.status_label.fail')}
                 </span>
               )}
               {warnCount > 0 && (
                 <span className="rounded bg-muted px-2 py-0.5 text-muted-foreground">
-                  {warnCount} WARN
+                  {warnCount} {tA('admin.status_label.warn')}
                 </span>
               )}
               {healthy && (
-                <span className="rounded bg-muted px-2 py-0.5 text-muted-foreground">OK</span>
+                <span className="rounded bg-muted px-2 py-0.5 text-muted-foreground">{tA('admin.status.ok')}</span>
               )}
             </>
           )}

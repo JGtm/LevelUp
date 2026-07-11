@@ -10,6 +10,7 @@ import type { AdminManifestKey } from '@/lib/i18n/generated/admin'
 import { usePerfStats } from '../monitoring/queries'
 import { formatDurationMs } from '../format'
 import { useAdminT, useAdminLocale } from '../useAdminText'
+import { SectionHeader } from '../components/SectionHeader'
 
 const PHASE_LABELS: Record<string, AdminManifestKey> = {
   shared_acquire: 'admin.persist.phase_shared_acquire',
@@ -25,9 +26,7 @@ export function PersistPhasesSection() {
 
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        {tA('admin.persist.section')}
-      </h3>
+      <SectionHeader title={tA('admin.persist.section')} />
       {!data || (data.persist_phases?.length ?? 0) === 0 ? (
         <EmptyStateNotice title={tA('admin.persist.empty')} description="" />
       ) : (

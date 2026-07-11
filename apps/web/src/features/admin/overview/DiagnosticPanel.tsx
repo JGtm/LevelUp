@@ -13,6 +13,7 @@ import { useMonitoringScheduler, usePerfStats } from '../monitoring/queries'
 import type { AdminMonitoringOverview } from '@/lib/api/types'
 import { evaluateDiagnostics, type VerdictLevel } from './diagnostics'
 import { useAdminT } from '../useAdminText'
+import { SectionHeader } from '../components/SectionHeader'
 
 const LEVEL_TOKEN: Record<VerdictLevel, SemanticToken> = {
   crit: 'destructive',
@@ -36,9 +37,7 @@ export function DiagnosticPanel({ overview }: { overview: AdminMonitoringOvervie
 
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        {tA('admin.diag.section')}
-      </h3>
+      <SectionHeader title={tA('admin.diag.section')} />
       {verdicts.length === 0 ? (
         <EmptyStateNotice title={tA('admin.diag.all_green')} description={tA('admin.diag.all_green_desc')} />
       ) : (

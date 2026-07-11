@@ -12,7 +12,10 @@ import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type {
   AdminConvergenceReport,
-  AdminErrorStats,
+  AdminDetectionsResponse,
+  AdminCronsResponse,
+  AdminFreshnessResponse,
+  AdminResourcesResponse,
   AdminJobsResponse,
   AdminMonitoringOverview,
   AdminPerfStats,
@@ -61,11 +64,18 @@ export function usePerfStats() {
   })
 }
 
-export function useMonitoringErrors() {
+/**
+ * Détections persistées avec cycle de vie (open/acked/muted/resolved) — vue
+ * detections_latest de la base monitoring, survit au restart. Remplace l'ancien
+ * panneau « erreurs récurrentes » mémoire (perdu au reboot). On récupère toutes
+ * les détections (plafond serveur) et le filtrage statut/niveau/module se fait
+ * côté table (TanStack) — pas de refetch par filtre.
+ */
+export function useMonitoringDetections() {
   return useQuery({
-    queryKey: queryKeys.adminMonitoringErrors,
-    queryFn: () => api.get<AdminErrorStats>('/admin/monitoring/errors'),
-    // Collecteur mémoire (zéro I/O) — polling tranquille aligné sur l'overview.
+    queryKey: queryKeys.adminMonitoringDetections,
+    queryFn: () => api.get<AdminDetectionsResponse>('/admin/monitoring/detections'),
+    // Le GET flush d'abord le collecteur mémoire côté serveur : cadence tranquille.
     refetchInterval: 30_000,
     staleTime: 25_000,
     retry: false,
@@ -122,6 +132,50 @@ export function useAdminJobs(limit = 20) {
         ? 5_000
         : 30_000,
     staleTime: 4_000,
+    retry: false,
+  })
+}
+
+/**
+ * Fraîcheur des données par joueur suivi et par titre actif (A4, DC-3).
+ * Lectures shared par joueur côté Go : pas de polling agressif — staleTime
+ * 60 s + refetch au focus (pattern convergence). Le calcul pose aussi la gauge
+ * freshness_critical lue par l'overview (badge État).
+ */
+export function useMonitoringFreshness() {
+  return useQuery({
+    queryKey: queryKeys.adminMonitoringFreshness,
+    queryFn: () => api.get<AdminFreshnessResponse>('/admin/monitoring/freshness'),
+    staleTime: 60_000,
+    retry: false,
+  })
+}
+
+/**
+ * Ressources machine & process (A5) : runtime Go, tailles DB + WAL, disque
+ * libre, budgets/pool DuckDB, restarts. os.Stat + expvar côté Go (pas de
+ * lecture DuckDB) — polling tranquille aligné sur l'overview.
+ */
+export function useMonitoringResources() {
+  return useQuery({
+    queryKey: queryKeys.adminMonitoringResources,
+    queryFn: () => api.get<AdminResourcesResponse>('/admin/monitoring/resources'),
+    refetchInterval: 30_000,
+    staleTime: 25_000,
+    retry: false,
+  })
+}
+
+/**
+ * Statut unifié des crons + heartbeats de features (A6, DC-5). Registre
+ * mémoire + réhydratation cron_runs côté Go — polling aligné sur l'overview.
+ */
+export function useMonitoringCrons() {
+  return useQuery({
+    queryKey: queryKeys.adminMonitoringCrons,
+    queryFn: () => api.get<AdminCronsResponse>('/admin/monitoring/crons'),
+    refetchInterval: 30_000,
+    staleTime: 25_000,
     retry: false,
   })
 }

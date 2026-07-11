@@ -1151,40 +1151,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/lab/resources": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lab interne — explorateur de ressources (snapshots, assets, médailles) */
-        get: operations["getLabResources"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/lab/contracts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lab interne — diff de contrat OpenAPI (Go vs référence FastAPI) */
-        get: operations["getLabContracts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/lab/diagnostics": {
         parameters: {
             query?: never;
@@ -1192,25 +1158,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lab interne — diagnostics d'instance (parité + garde-fous médailles) */
+        /** Diagnostic d'instance — parité + garde-fous médailles */
         get: operations["getLabDiagnostics"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/lab/waypoint": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lab — exploration live de l'API Discovery UGC (résolution d'un asset par segment/id/version) */
-        get: operations["getLabWaypoint"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1900,6 +1849,91 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/admin/monitoring/detections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard monitoring — détections persistées avec cycle de vie (open/acked/muted/resolved), survivent au restart, filtrables (auth admin requis) */
+        get: operations["getAdminMonitoringDetections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/monitoring/freshness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard monitoring — fraîcheur des données par joueur suivi et par titre actif (dernier match persisté, dernier cycle sync, statut DC-3, âge du backup) (auth admin requis) */
+        get: operations["getAdminMonitoringFreshness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/monitoring/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard monitoring — ressources machine & process : runtime Go, tailles des bases DuckDB + WAL, disque libre du volume data, budgets/pool DuckDB, uptime + compteur de restarts (auth admin requis) */
+        get: operations["getAdminMonitoringResources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/monitoring/crons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard monitoring — statut unifié des crons (dernier run/succès, échecs consécutifs, persistance cron_runs) + heartbeats de features (liste fermée DC-5) (auth admin requis) */
+        get: operations["getAdminMonitoringCrons"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/monitoring/detections/{fingerprint}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Dashboard monitoring — statuer une détection (Reconnaître / Sourdine / Résoudre) (auth admin requis) */
+        patch: operations["patchAdminMonitoringDetection"];
         trace?: never;
     };
     "/admin/monitoring/logs/modules": {
@@ -4886,6 +4920,143 @@ export interface components {
             buckets: components["schemas"]["AdminErrorBucket"][] | null;
             generated_at: string;
         };
+        MonitoringDetection: {
+            fingerprint: string;
+            level: string;
+            module?: string;
+            message: string;
+            title_slug?: string;
+            /** Format: int64 */
+            count: number;
+            first_seen: string;
+            last_seen: string;
+            sample_detail?: string;
+            status: string;
+            note?: string;
+            status_at?: string;
+        };
+        AdminDetectionsResponse: {
+            generated_at: string;
+            detections: components["schemas"]["MonitoringDetection"][] | null;
+            open_count: number;
+        };
+        AdminDetectionPatchResponse: {
+            fingerprint: string;
+            ok: boolean;
+            status: string;
+        };
+        DetectionPatchInputBody: {
+            note?: string;
+            status: string;
+        };
+        AdminFreshnessResponse: {
+            backup?: components["schemas"]["FreshnessBackupInfo"];
+            /** Format: int64 */
+            critical_total: number;
+            generated_at: string;
+            titles: components["schemas"]["TitleFreshnessReport"][] | null;
+        };
+        FreshnessBackupInfo: {
+            /** Format: int64 */
+            age_seconds?: number;
+            enabled: boolean;
+            last_backup_at?: string;
+        };
+        PlayerFreshness: {
+            check_error?: string;
+            gamertag: string;
+            last_match_at?: string;
+            last_sync_ok_at?: string;
+            /** Format: int64 */
+            match_age_seconds?: number;
+            reason?: string;
+            status: string;
+            /** Format: int64 */
+            sync_age_seconds?: number;
+            xuid: string;
+        };
+        TitleFreshnessReport: {
+            /** Format: int64 */
+            critical_count: number;
+            note?: string;
+            players: components["schemas"]["PlayerFreshness"][] | null;
+            title_slug: string;
+            /** Format: int64 */
+            warn_count: number;
+        };
+        AdminResourcesResponse: {
+            budgets?: {
+                [key: string]: unknown;
+            };
+            databases: components["schemas"]["ResourceDBFile"][] | null;
+            /** Format: int64 */
+            db_total_bytes: number;
+            disk: components["schemas"]["ResourceDisk"];
+            generated_at: string;
+            pool_stats?: {
+                [key: string]: unknown;
+            };
+            /** Format: int64 */
+            restarts: number;
+            runtime: components["schemas"]["ResourceRuntime"];
+            /** Format: int64 */
+            uptime_s: number;
+        };
+        ResourceDBFile: {
+            name: string;
+            path: string;
+            /** Format: int64 */
+            size_bytes: number;
+            /** Format: int64 */
+            wal_bytes?: number;
+        };
+        ResourceDisk: {
+            error?: string;
+            /** Format: int64 */
+            free_bytes: number;
+            path: string;
+            status: string;
+            /** Format: int64 */
+            total_bytes: number;
+        };
+        ResourceRuntime: {
+            /** Format: int64 */
+            goroutines: number;
+            /** Format: int64 */
+            heap_alloc_bytes: number;
+            /** Format: int64 */
+            heap_sys_bytes: number;
+            /** Format: int32 */
+            num_gc: number;
+            /** Format: int64 */
+            sys_bytes: number;
+        };
+        AdminCronsResponse: {
+            crons: components["schemas"]["CronStatusEntry"][] | null;
+            features: components["schemas"]["FeatureHeartbeat"][] | null;
+            generated_at: string;
+        };
+        CronStatusEntry: {
+            /** Format: int64 */
+            consecutive_failures: number;
+            /** Format: int64 */
+            last_duration_ms?: number;
+            last_error?: string;
+            last_run_at?: string;
+            last_success_at?: string;
+            name: string;
+            /** Format: int64 */
+            runs: number;
+            since_boot: boolean;
+            status: string;
+        };
+        FeatureHeartbeat: {
+            /** Format: int64 */
+            age_seconds?: number;
+            feature: string;
+            last_seen_at?: string;
+            status: string;
+        };
         AdminInvariantsResponse: {
             generated_at: string;
             reports: components["schemas"]["PlayerInvariantsReport"][] | null;
@@ -4950,9 +5121,24 @@ export interface components {
             scheduler: components["schemas"]["MonitoringSchedulerSummary"];
             server: components["schemas"]["MonitoringServerInfo"];
             snapshot: components["schemas"]["MonitoringSnapshotSummary"];
+            /** Format: int64 */
+            open_detections: number;
+            /** Format: int64 */
+            freshness_critical: number;
+            http: components["schemas"]["MonitoringHTTPSummary"];
             title_slug: string;
             tokens?: components["schemas"]["MonitoringTokensSummary"];
             tokens_error?: string;
+        };
+        MonitoringHTTPSummary: {
+            /** Format: int64 */
+            status_2xx: number;
+            /** Format: int64 */
+            status_3xx: number;
+            /** Format: int64 */
+            status_4xx: number;
+            /** Format: int64 */
+            status_5xx: number;
         };
         AdminPerfStats: {
             api_buckets: components["schemas"]["PerfAPIBuckets"];
@@ -6109,40 +6295,6 @@ export interface components {
             has_data: boolean;
             points: components["schemas"]["LUSRPoint"][] | null;
         };
-        LabAssetDetail: {
-            asset_id: string;
-            asset_type: string;
-            content_hash: string;
-            description: string;
-            /** Format: date-time */
-            fetched_at: string;
-            name: string;
-            raw_json: string;
-            version_id: string;
-        };
-        LabAssetExplorer: {
-            items: components["schemas"]["LabAssetSummary"][] | null;
-            search?: string;
-            selected?: components["schemas"]["LabAssetDetail"];
-            /** Format: int64 */
-            total: number;
-        };
-        LabAssetSummary: {
-            asset_id: string;
-            asset_type: string;
-            /** Format: date-time */
-            fetched_at: string;
-            name: string;
-            version_id: string;
-        };
-        LabContractsResponse: {
-            extra_in_go: components["schemas"]["LabRouteMethods"][] | null;
-            fastapi_reference: components["schemas"]["LabFileStatus"];
-            go_openapi: components["schemas"]["LabFileStatus"];
-            method_mismatches: components["schemas"]["LabMethodMismatch"][] | null;
-            missing_in_go: components["schemas"]["LabRouteMethods"][] | null;
-            summary: components["schemas"]["LabOpenAPISummary"];
-        };
         LabDiagnosticsResponse: {
             medal_guards?: components["schemas"]["LabMedalGuardsReport"];
             parity_report?: components["schemas"]["LabParityReport"];
@@ -6162,29 +6314,6 @@ export interface components {
             passed: boolean;
             reason: string;
         };
-        LabMedalDetail: {
-            content_hash: string;
-            description_id: string;
-            difficulty: string;
-            /** Format: date-time */
-            fetched_at: string;
-            /** Format: int64 */
-            medal_id: number;
-            medal_type: string;
-            name_id: string;
-            /** Format: int64 */
-            personal_score: number;
-            raw_json: string;
-            /** Format: int64 */
-            sprite_index: number;
-        };
-        LabMedalExplorer: {
-            items: components["schemas"]["LabMedalSummary"][] | null;
-            search?: string;
-            selected?: components["schemas"]["LabMedalDetail"];
-            /** Format: int64 */
-            total: number;
-        };
         LabMedalGuardsReport: {
             cardinality: components["schemas"]["LabGuardResult"];
             /** Format: int64 */
@@ -6192,39 +6321,6 @@ export interface components {
             images: components["schemas"]["LabGuardResult"];
             overall: components["schemas"]["LabGuardResult"];
             required_fields: components["schemas"]["LabGuardResult"];
-        };
-        LabMedalSummary: {
-            description_id: string;
-            difficulty: string;
-            /** Format: date-time */
-            fetched_at: string;
-            /** Format: int64 */
-            medal_id: number;
-            medal_type: string;
-            name_id: string;
-            /** Format: int64 */
-            sprite_index: number;
-        };
-        LabMethodMismatch: {
-            extra_methods: string[] | null;
-            fastapi_methods: string[] | null;
-            fastapi_path: string;
-            go_methods: string[] | null;
-            go_path: string;
-            missing_methods: string[] | null;
-        };
-        LabOpenAPISummary: {
-            /** Format: int64 */
-            extra_in_go: number;
-            /** Format: int64 */
-            fastapi_route_count: number;
-            /** Format: int64 */
-            go_route_count: number;
-            /** Format: int64 */
-            method_mismatches: number;
-            /** Format: int64 */
-            missing_in_go: number;
-            status: string;
         };
         LabParityReport: {
             generated_at: string;
@@ -6254,56 +6350,6 @@ export interface components {
             skipped: number;
             /** Format: int64 */
             total: number;
-        };
-        LabResourcesResponse: {
-            assets: components["schemas"]["LabAssetExplorer"];
-            csr_seasons: components["schemas"]["CSRSeasonCalendar"][] | null;
-            current_season?: components["schemas"]["SeasonCalendar"];
-            medals: components["schemas"]["LabMedalExplorer"];
-            metadata_db_path: string;
-            seasons: components["schemas"]["SeasonCalendar"][] | null;
-            selected_snapshot?: components["schemas"]["LabSnapshotDetail"];
-            snapshots: components["schemas"]["LabSnapshotSummary"][] | null;
-            title_slug: string;
-        };
-        LabRouteMethods: {
-            methods: string[] | null;
-            path: string;
-        };
-        LabSnapshotDetail: {
-            content_hash: string;
-            etag?: string;
-            /** Format: date-time */
-            fetched_at: string;
-            payload: string;
-            resource_key: string;
-            source_url?: string;
-            version: string;
-        };
-        LabSnapshotSummary: {
-            content_hash: string;
-            etag?: string;
-            /** Format: date-time */
-            fetched_at: string;
-            /** Format: int64 */
-            payload_size: number;
-            resource_key: string;
-            source_url?: string;
-            version: string;
-        };
-        LabWaypointResponse: {
-            asset_id: string;
-            asset_name?: string;
-            description?: string;
-            endpoint: string;
-            error?: string;
-            image_url?: string;
-            lang: string;
-            /** Format: int64 */
-            latency_ms: number;
-            resolved_ok: boolean;
-            segment: string;
-            version_id: string;
         };
         LastSeenStatus: {
             timestamp: string;
@@ -10370,63 +10416,6 @@ export interface operations {
             };
         };
     };
-    getLabResources: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Ressources du Lab pour le titre courant */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Paramètre de requête invalide */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Lab non autorisé sur cette instance (can_manage_instance) */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    getLabContracts: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Diff de contrat OpenAPI */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Lab non autorisé sur cette instance (can_manage_instance) */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     getLabDiagnostics: {
         parameters: {
             query?: never;
@@ -10443,47 +10432,8 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Lab non autorisé sur cette instance (can_manage_instance) */
+            /** @description Diagnostic non autorisé sur cette instance (can_manage_instance) */
             403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    getLabWaypoint: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Résultat de l'exploration (asset résolu, ou erreur d'appel portée dans la réponse) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Paramètres requis manquants (segment/asset_id/version_id) */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Lab non autorisé sur cette instance (can_manage_instance) */
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Explorateur d'API indisponible (aucune source de token Spartan) */
-            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -11486,6 +11436,136 @@ export interface operations {
         responses: {
             /** @description Buckets d'erreurs triés par occurrences décroissantes */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getAdminMonitoringDetections: {
+        parameters: {
+            query?: {
+                status?: "open" | "acked" | "muted" | "resolved";
+                level?: string;
+                module?: string;
+                title?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Détections triées par last_seen décroissant + open_count */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminDetectionsResponse"];
+                };
+            };
+        };
+    };
+    getAdminMonitoringFreshness: {
+        parameters: {
+            query?: {
+                title?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Fraîcheur par titre (vide = tous les titres actifs) + total critical */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminFreshnessResponse"];
+                };
+            };
+        };
+    };
+    getAdminMonitoringResources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description État ressources (best-effort par section) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminResourcesResponse"];
+                };
+            };
+        };
+    };
+    getAdminMonitoringCrons: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Statut des crons + liveness des features */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCronsResponse"];
+                };
+            };
+        };
+    };
+    patchAdminMonitoringDetection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fingerprint: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "open" | "acked" | "muted" | "resolved";
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Statut appliqué (fingerprint, status, ok) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Statut invalide */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Store monitoring indisponible */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

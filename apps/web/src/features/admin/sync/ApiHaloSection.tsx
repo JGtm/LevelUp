@@ -8,6 +8,7 @@ import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { AdminPerfStats } from '@/lib/api/types'
 import { formatDurationMs } from '../format'
 import { useAdminT, useAdminLocale } from '../useAdminText'
+import { SectionHeader } from '../components/SectionHeader'
 
 export function ApiHaloSection({ perf }: { perf: AdminPerfStats | undefined }) {
   const tA = useAdminT()
@@ -15,9 +16,7 @@ export function ApiHaloSection({ perf }: { perf: AdminPerfStats | undefined }) {
 
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        {tA('admin.api.section')}
-      </h3>
+      <SectionHeader title={tA('admin.api.section')} />
       {!perf || (perf.api_calls?.length ?? 0) === 0 ? (
         <EmptyStateNotice title={tA('admin.api.empty')} description="" />
       ) : (

@@ -11,6 +11,7 @@ import { StatusBadge } from '../components/StatusBadge'
 import { adminAbsoluteTime, adminRelativeTime } from '../format'
 import { useAdminT, useAdminLocale, type TAdmin } from '../useAdminText'
 import { watcherLivenessStatus, type AdminStatus } from '../statusDisplay'
+import { SectionHeader } from '../components/SectionHeader'
 
 /** État FSM watcher → statut de badge (Watching/Syncing actifs, Cooling warn). */
 function watcherStateStatus(state: string): AdminStatus {
@@ -33,9 +34,7 @@ export function WatcherSection() {
 
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        {tA('admin.watcher.section')}
-      </h3>
+      <SectionHeader title={tA('admin.watcher.section')} />
       {isError || !data ? (
         <EmptyStateNotice title={tA('admin.watcher.disabled')} description="" />
       ) : (

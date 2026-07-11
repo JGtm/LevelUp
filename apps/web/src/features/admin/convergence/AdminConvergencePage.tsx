@@ -4,23 +4,17 @@
  * compteurs post-sync du dernier cycle. Pas de polling continu (le backlog
  * résout les DBs de tous les joueurs) : staleTime 60 s + refetch au focus.
  */
-import { useEffect, useRef, useState } from 'react'
-
-import { KpiCard } from '@/components/cards/KpiCard'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { AdminConvergenceReport } from '@/lib/api/types'
 import { useMonitoringConvergence, useMonitoringScheduler } from '../monitoring/queries'
-import {
-  counterDelta,
-  readCountersSnapshot,
-  writeCountersSnapshot,
-  type CountersSnapshot,
-} from '../countersTrend'
+import { AdminKpi } from '../components/AdminKpi'
+import { counterDelta, type CountersSnapshot } from '../countersTrend'
+import { useCounterSnapshot } from '../useCounterSnapshot'
 import { useAdminT, type TAdmin } from '../useAdminText'
 import { ConvergencePlayersTable } from './ConvergencePlayersTable'
 import { PostSyncMatrix } from './PostSyncMatrix'
 import { PostSyncTimeline } from './PostSyncTimeline'
+import { SectionHeader } from '../components/SectionHeader'
 
 const CONVERGENCE_SNAPSHOT_KEY = 'admin-convergence-snapshot'
 
@@ -29,21 +23,10 @@ export function AdminConvergencePage() {
   const scheduler = useMonitoringScheduler()
   const tA = useAdminT()
 
-  // Baseline roulante (pattern invariantsTrend) : delta vs run précédent.
-  const [previous, setPrevious] = useState<CountersSnapshot>(() =>
-    readCountersSnapshot(CONVERGENCE_SNAPSHOT_KEY),
+  // Baseline roulante (hook canonique A8.2) : delta vs run precedent.
+  const previous = useCounterSnapshot(CONVERGENCE_SNAPSHOT_KEY, data?.generated_at, () =>
+    buildConvergenceSnapshot(data!),
   )
-  const lastRunRef = useRef<{ generatedAt: string; snapshot: CountersSnapshot } | null>(null)
-  useEffect(() => {
-    if (!data) return
-    const snap = buildConvergenceSnapshot(data)
-    const last = lastRunRef.current
-    if (last && last.generatedAt !== data.generated_at) {
-      setPrevious(last.snapshot)
-    }
-    lastRunRef.current = { generatedAt: data.generated_at, snapshot: snap }
-    writeCountersSnapshot(CONVERGENCE_SNAPSHOT_KEY, snap)
-  }, [data])
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">…</p>
@@ -59,25 +42,21 @@ export function AdminConvergencePage() {
     <div className="space-y-8">
       <section className="space-y-3">
         <div>
-          <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-            {tA('admin.convergence.backlog_section')}
-          </h3>
+          <SectionHeader title={tA('admin.convergence.backlog_section')} />
           <p className="mt-0.5 max-w-2xl text-xs text-muted-foreground">
             {tA('admin.convergence.backlog_desc')} (horizon : {data.horizon})
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <BacklogKpi label={tA('admin.convergence.kpi_enrichment')} value={totals.enrichment} capped={false} delta={counterDelta(previous, 'enrichment', totals.enrichment)} />
-          <BacklogKpi label={tA('admin.convergence.kpi_psa')} value={totals.psa} capped={totals.psaCapped} delta={counterDelta(previous, 'psa', totals.psa)} />
-          <BacklogKpi label={tA('admin.convergence.kpi_events')} value={totals.events} capped={totals.eventsCapped} delta={counterDelta(previous, 'events', totals.events)} />
-          <BacklogKpi label={tA('admin.convergence.kpi_weapons')} value={totals.weapons} capped={totals.weaponsCapped} delta={counterDelta(previous, 'weapons', totals.weapons)} />
+          <AdminKpi label={tA('admin.convergence.kpi_enrichment')} value={totals.enrichment} accent={totals.enrichment > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'enrichment', totals.enrichment)} />
+          <AdminKpi label={tA('admin.convergence.kpi_psa')} value={totals.psa} valueSuffix={totals.psaCapped ? '+' : ''} accent={totals.psa > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'psa', totals.psa)} />
+          <AdminKpi label={tA('admin.convergence.kpi_events')} value={totals.events} valueSuffix={totals.eventsCapped ? '+' : ''} accent={totals.events > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'events', totals.events)} />
+          <AdminKpi label={tA('admin.convergence.kpi_weapons')} value={totals.weapons} valueSuffix={totals.weaponsCapped ? '+' : ''} accent={totals.weapons > 0 ? 'warning' : 'success'} delta={counterDelta(previous, 'weapons', totals.weapons)} />
         </div>
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          {tA('admin.convergence.players_section')}
-        </h3>
+        <SectionHeader title={tA('admin.convergence.players_section')} />
         {allGreen && (data.players ?? []).every((p) => !p.check_error) ? (
           <EmptyStateNotice
             title={tA('admin.convergence.all_green_title')}
@@ -91,16 +70,12 @@ export function AdminConvergencePage() {
       <CaughtUpPanel data={data} players={scheduler.data?.snapshot?.players ?? []} tA={tA} />
 
       <section className="space-y-3">
-        <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          {tA('admin.convergence.timeline_section')}
-        </h3>
+        <SectionHeader title={tA('admin.convergence.timeline_section')} />
         <PostSyncTimeline players={scheduler.data?.snapshot?.players ?? []} />
       </section>
 
       <section className="space-y-3">
-        <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          {tA('admin.convergence.postsync_section')}
-        </h3>
+        <SectionHeader title={tA('admin.convergence.postsync_section')} />
         <PostSyncMatrix players={scheduler.data?.snapshot?.players ?? []} />
       </section>
     </div>
@@ -134,9 +109,7 @@ function CaughtUpPanel({
 
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-        {tA('admin.convergence.caught_up_section')}
-      </h3>
+      <SectionHeader title={tA('admin.convergence.caught_up_section')} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {rows.map((r) => (
           <div key={r.label} className="rounded-md border px-3 py-2">
@@ -184,39 +157,4 @@ function sumBacklog(data: AdminConvergenceReport) {
 function buildConvergenceSnapshot(data: AdminConvergenceReport): CountersSnapshot {
   const t = sumBacklog(data)
   return { enrichment: t.enrichment, psa: t.psa, events: t.events, weapons: t.weapons }
-}
-
-function BacklogKpi({
-  label,
-  value,
-  capped,
-  delta,
-}: {
-  label: string
-  value: number
-  capped: boolean
-  delta?: number
-}) {
-  return (
-    <KpiCard accent={value > 0 ? 'warning' : 'success'} className="h-full">
-      <div className="p-4">
-        <div className="text-xs text-muted-foreground">{label}</div>
-        <div className="mt-1 flex items-baseline gap-2">
-          <span className="text-2xl font-semibold tabular-nums text-foreground">
-            {value}
-            {capped ? '+' : ''}
-          </span>
-          {delta !== undefined && (
-            <span
-              className="text-xs font-semibold tabular-nums"
-              style={{ color: tokenCssVar(delta < 0 ? 'success' : 'destructive') }}
-            >
-              ({delta > 0 ? '+' : ''}
-              {delta})
-            </span>
-          )}
-        </div>
-      </div>
-    </KpiCard>
-  )
 }

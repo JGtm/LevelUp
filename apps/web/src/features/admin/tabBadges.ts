@@ -1,11 +1,14 @@
 /**
  * tabBadges.ts — dérive les pastilles de compteur des onglets admin depuis le
  * seul overview (déjà pollé, zéro I/O DuckDB ; React Query déduplique la query
- * partagée avec la page Vue d'ensemble). Fonction pure, testable sans React.
+ * partagée avec la page État). Fonction pure, testable sans React.
  *
+ * Architecture DC-8 (A3.7) — la pastille suit la question de l'onglet :
+ * Sync porte le moteur (échecs de cycle, tokens morts, jobs actifs), Données
+ * porte l'intégrité (invariants, data health), Détections porte le triage
+ * (statut `open` UNIQUEMENT — le bruit `muted`/`resolved` ne colore pas la nav).
  * Priorité de sévérité par onglet : un problème critique (destructive) masque
- * un avertissement. La Convergence n'a pas de pastille : son backlog vit dans
- * un endpoint séparé coûteux (résout toutes les player DBs) — pas chargé ici.
+ * un avertissement.
  */
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import type { AdminMonitoringOverview } from '@/lib/api/types'
@@ -23,28 +26,39 @@ export function computeTabBadges(
   const out: Record<string, TabBadge> = {}
   if (!overview) return out
 
-  // Sync & Jobs : échecs du dernier cycle prioritaires, sinon jobs actifs.
-  if (overview.scheduler.available && overview.scheduler.last_failed > 0) {
-    out['/admin/sync'] = { count: overview.scheduler.last_failed, token: 'destructive' }
+  // Sync : échecs du dernier cycle + tokens morts (les tokens vivent dans Sync,
+  // A3.3) = critique ; sinon jobs actifs = info pulsée.
+  const tokensBad = overview.tokens
+    ? overview.tokens.expired + overview.tokens.absent + overview.tokens.reauth
+    : 0
+  const syncCritical = (overview.scheduler.available ? overview.scheduler.last_failed : 0) + tokensBad
+  if (syncCritical > 0) {
+    out['/admin/sync'] = { count: syncCritical, token: 'destructive' }
   } else if (overview.jobs.active_count > 0) {
     out['/admin/sync'] = { count: overview.jobs.active_count, token: 'info', pulse: true }
   }
 
-  // Qualité données : warnings du dernier audit data health.
-  if (overview.data_health && overview.data_health.warnings_total > 0) {
-    out['/admin/data-quality'] = { count: overview.data_health.warnings_total, token: 'warning' }
+  // Données : invariants FAIL = critique ; sinon warnings (invariants WARN +
+  // audit data health).
+  const invariantsRan = overview.invariants.runs_total > 0
+  const invariantsFail = invariantsRan ? overview.invariants.fail_last : 0
+  const dataWarnings =
+    (invariantsRan ? overview.invariants.warn_last : 0) +
+    (overview.data_health?.warnings_total ?? 0)
+  if (invariantsFail > 0) {
+    out['/admin/data'] = { count: invariantsFail, token: 'destructive' }
+  } else if (dataWarnings > 0) {
+    out['/admin/data'] = { count: dataWarnings, token: 'warning' }
   }
 
-  // Système : invariants FAIL + tokens à problème = critique ; sinon WARN.
-  const tokensBad = overview.tokens
-    ? overview.tokens.expired + overview.tokens.absent + overview.tokens.reauth
-    : 0
-  const invariantsRan = overview.invariants.runs_total > 0
-  const critical = (invariantsRan ? overview.invariants.fail_last : 0) + tokensBad
-  if (critical > 0) {
-    out['/admin/system'] = { count: critical, token: 'destructive' }
-  } else if (invariantsRan && overview.invariants.warn_last > 0) {
-    out['/admin/system'] = { count: overview.invariants.warn_last, token: 'warning' }
+  // Détections : seules les détections `open` colorent la nav (A2.5).
+  if (overview.open_detections > 0) {
+    out['/admin/detections'] = { count: overview.open_detections, token: 'warning' }
+  }
+
+  // État : fraîcheur critical (gauge posée par le calcul freshness — A4.3).
+  if (overview.freshness_critical > 0) {
+    out['/admin'] = { count: overview.freshness_critical, token: 'destructive' }
   }
 
   return out

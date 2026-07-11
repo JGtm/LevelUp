@@ -1,10 +1,11 @@
 /**
- * Route /admin/data-quality — compteurs et listes d'inconnus data + actions
- * de résolution (traductions, backfill registry names).
+ * Route /admin/data-quality — REDIRECTION (A3, DC-8) : la qualité des données
+ * est une section de l'onglet Données.
  */
-import { createFileRoute } from '@tanstack/react-router'
-import { AdminDataQualityPage } from '@/features/admin/data-quality/AdminDataQualityPage'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/admin/data-quality')({
-  component: AdminDataQualityPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/admin/data', replace: true })
+  },
 })
