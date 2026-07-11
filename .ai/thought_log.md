@@ -1,3 +1,41 @@
+## [2026-07-11] ADR 0030 (persist write aggregates) + ADR 0031 (frontiere source par titre) — chantier documentaire
+
+**Statut** : En cours (etape 1 livree). Plan : `.ai/PLAN_ADR_0030_0031_AGREGATS_FRONTIERE_TITRE.md`,
+branche `docs/adr-aggregates-title-boundary` (depuis origin/main post-merge audits). Chantier
+DOC-ONLY : les livrables code (allowlist datee D-3, ratchet lecture `_latest` D-4, opacite
+batch D-1/D-5) sont ACTES dans les ADRs mais leur implementation est hors-perimetre (lots
+futurs planifies apres acceptation).
+
+**Etape 1 — ADR 0030 redige** (`docs/adr/0030-persist-write-aggregates.md`, Proposed) :
+durcissement compile-time des invariants ART (0019/0026), qui ne tiennent qu'au runtime.
+3 vecteurs de fuite verifies sur pieces : (1) batches `MatchBatch/SharedBatch/PlayerBatch`
+a champs EXPORTES + builder reutilisable (`persist/batch.go`, `builder.go:185`,
+`queue.go:167`) → mutation post-Submit possible ; (2) `duckdb.OpenReadWrite`
+(`platform/duckdb/db.go:286`) appele ~25 sites non-test, surface ouverte ; (3) ecritures
+post-sync directes (`sync/writes.go`, `career.go`, `engagement.go`, `performance.go`).
+Plus : AUCUN garde-rail sur la lecture brute des tables append-only (seul invariant sans
+filet). Decisions D-1 (types opaques mono-package) / D-2 (pilote PlayerEnrichment) / D-3
+(allowlist datee `OpenReadWrite` + ratchet facon `no_raw_outcome_literal_test.go`) / D-4
+(garde-rail lecture `_latest`, revoke DB ecarte car DuckDB embarque sans ACL multi-role) /
+D-5 (immutabilite post-Submit par transfert de propriete). Paragraphe de positionnement vs
+ADR 0013 : 0030 encapsule la construction DANS `internal/persist` (visibilite package),
+PAS de cascade de signatures `port.DBExecutor` (l'alternative A que 0013 a rejetee).
+
+**Decouvertes (consignees, non traitees)** :
+- Le client Infinite a DEJA ete deplace en sous-package `internal/sync/haloclient/` (le plan
+  supposait `internal/sync/halo_client*.go` a la racine sync). Cible ADR 0031-D1
+  (`internal/games/halo_infinite/client/`) toujours valide, source = sous-package.
+- D-1 (champs prives) entre en tension avec la serialisation JSON du WAL (durabilite ADR 0019) :
+  `encoding/json` ne marshale pas les champs non-exportes → l'implementation devra posseder
+  la serialisation (DTO prive ou `MarshalJSON` custom). Note dans l'ADR, pas un blocage.
+- Le gate etape 3 du plan grep `"2026-07-03"` (date placeholder du redacteur) ; execution
+  reelle 2026-07-11 → entree datee honnetement 2026-07-11 (intention du gate = entree existe,
+  satisfaite).
+
+**Conclusion / prochaine etape** : etape 2 (rediger ADR 0031, mesures de duplication HTTP
+sur pieces), puis etape 3 (index CLAUDE.md + MT-27 + cloture). Lot pilote 0030-D2
+PlayerEnrichment a planifier apres cloture du lot E.
+
 ## [2026-07-11] Réflexion cards de synthèse au-dessus du tableau Explorer (mode Matchs) — analyse, aucun code
 
 **Statut** : Complété (analyse + plan rédigé — exécution non démarrée, confiée à un
