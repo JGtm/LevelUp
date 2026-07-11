@@ -1,3 +1,78 @@
+## [2026-07-11] Réflexion cards de synthèse au-dessus du tableau Explorer (mode Matchs) — analyse, aucun code
+
+**Statut** : Complété (analyse + plan rédigé — exécution non démarrée, confiée à un
+agent ultérieur). Plan : `.ai/PLAN_EXPLORER_BRIEFING_CARDS_2026-07.md` (lots A-D,
+DEC-1..8, gates en commandes exactes ; revu via skill plan-review).
+
+**Question utilisateur** : ajouter des cards de lecture/narration au-dessus du tableau brut
+de l'Explorer (mode Matchs) ; tension identifiée : filtres très variés → éléments
+universels ou éléments qui varient selon les critères ?
+
+**Découvertes clés (cartographie sur pièces, 2 agents Explore)** :
+- Le backend calcule DÉJÀ des KPI sur le jeu filtré exact : `MatchHistoryService.GetPage`
+  matérialise `filtered` (match_history_service.go:236) et calcule `loadBriefingKPIs` →
+  `analysis.ComputeKPIStats`, mais la projection Explorer LES JETTE
+  (handlers/explorer.go:157-175 : BriefingKPIs droppé). Rebrancher = quasi gratuit.
+- Le filtrage est du Go pur sur rows en mémoire (match_history_service_filters.go) —
+  n'importe quel agrégat peut consommer `filtered` sans re-requête.
+- La page Synthèse est le modèle complet de cards d'agrégats mais sur un jeu de filtres
+  plus pauvre (période + cascade seulement). Ne pas dupliquer : l'Explorer doit rester
+  une « lecture du résultat de recherche », pas une 2e Synthèse.
+- Front : summary + 10 000 lignes déjà en mémoire ; point d'insertion
+  `ExplorerMatchesResultsBlock` (ExplorerPage.matchesMode.tsx:368-410) ; briques
+  réutilisables KpiCard/KpiGrid (SessionBriefing), OutcomeSequenceTape,
+  ExplorerEncounterBriefing (patron de rangée KPI).
+- Contraintes : agrégats côté serveur obligatoires (KDA agrégat ADR 0006 ≠ quotient ;
+  cap 10 000 lignes = agrégats client faux si total > cap) ; gates par capability
+  (match.skill.snapshot absent H5 → pas de cards CSR/MMR ; OC/DR neutralisé si
+  damage_taken=0) ; i18n manifest explorer.toml ; garde d'échantillon minimal.
+
+**Recommandation formulée** : hybride « socle + modules » — socle universel toujours
+affiché (N, W/L/T+winrate, KDA/KDR, perf, tape de résultats) + modules conditionnels
+activés par 3 signaux : filtres actifs (classé → CSR/ΔMMR ; carte/mode unique → delta
+vs baseline via breakdown.CompareToHistorical), capabilities du titre, forme des
+données (n minimal, étendue temporelle → tendance binning ADR 0010). La valeur
+narrative principale = comparaison sous-ensemble filtré vs baseline globale du joueur.
+
+**Conclusion / prochaine étape** : avis rendu puis plan détaillé rédigé sur demande
+utilisateur (`.ai/PLAN_EXPLORER_BRIEFING_CARDS_2026-07.md`). Décisions additionnelles
+tranchées avec lui : « note » par carte/mode/playlist = perf score moyen du groupe
+converti via PerfTier existant (DEC-2, pas de nouvelle stat) ; mini-graphes v1 = frise
+OutcomeSequenceTape + sparkline tendance, patron visuel RivalryCard (DEC-5). Exécution
+prévue par un agent Opus sur `feat/explorer-briefing-cards` sous contrat plan-execution.
+
+---
+
+## [2026-07-11] Onboarding bloqué « Démarrage du Device Code Flow… » — SISU endpoint 404
+
+**Statut** : Complété (diagnostic + contournement local ; fix produit à décider).
+
+**Symptôme** : premier lancement sur un PC neuf (`make restart`), le wizard reste bloqué sur
+le spinner « Démarrage du Device Code Flow… ». `POST /api/v1/auth/device-flow/start` renvoie
+500 `msal_init_error`. Le front n'a AUCUN `onError` sur `useStartDeviceFlow` → l'échec est
+avalé, on reste sur le spinner indéfiniment (bug UX secondaire, cf. StepDeviceCode.tsx L119).
+
+**Cause racine (vérifiée sur pièces)** : provider par défaut = **SISU** (main.go
+`buildTokenProvider`, logs boot « SISU provider activé (défaut) »). `SISUProvider.InitDeviceFlow`
+enchaîne 3 appels ; le 1er (`device.auth.xboxlive.com`) passe (« Device Token obtenu »), mais
+`StartXboxDeviceCode` → `POST https://login.live.com/oauth20_connect/device` renvoie **HTTP 404
+corps vide** (header PPServer présent = Passport atteint, chemin introuvable). Reproduit au curl
+avec les deux scopes (`Xboxlive.signin…` ET `service::user.auth.xboxlive.com::MBI_SSL`) → 404
+constant : Microsoft a retiré/déplacé ce chemin natif legacy. **Non spécifique au PC** : casse
+tout onboarding SISU. En comparaison, l'endpoint MSAL
+`login.microsoftonline.com/consumers/oauth2/v2.0/devicecode` (client `e1cb35ab`) renvoie **200**.
+
+**Contournement appliqué** : `app_settings.json` local créé (gitignored) avec
+`"auth_provider": "msal"` → au prochain `make restart`, `buildTokenProvider` bascule sur
+MSALProvider (endpoint 200). Réversible.
+
+**Prochaine étape (décision produit)** : SISU cassé côté MS pour tout le monde. Options : (a)
+corriger l'endpoint natif SISU (rechercher le nouveau device endpoint) ; (b) basculer le défaut
+sur MSAL ; (c) fallback auto SISU→MSAL sur 404. + fix UX : surfacer l'erreur de start dans
+StepDeviceCode (onError) plutôt que spinner infini.
+
+---
+
 ## [2026-07-10] MERGE MAIN — campagne audits 2026-07 + clôture + gate humain (GO utilisateur)
 
 **Statut** : En cours (merge exécuté dans cette session ; post-deploy VPS à suivre).
