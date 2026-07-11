@@ -14,34 +14,70 @@ import (
 
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/sync/skill"
 )
+
+// carnageGetter — sous-ensemble de halo5.CaptureSource réellement utilisé par le CSR
+// par match (interface-segregation). Permet de tester PersistPerMatchRatings sans
+// implémenter tout h5Source (dont un type de retour non exporté). *halo5.Client et
+// toute CaptureSource le satisfont.
+type carnageGetter interface {
+	GetMatchCarnage(ctx context.Context, matchID, mode string) (*halo5.H5CarnageResponse, error)
+}
+
+// PerMatchRatingsSummary — bilan instrumenté d'un run PersistPerMatchRatings :
+// écritures + ventilation des skips PAR RAISON. Aucun skip n'est silencieux (règle
+// logging n°3 : jamais de continue avalé) — chaque skip est compté ici ET loggé
+// (Debug par match, Info agrégé côté caller). Les compteurs départagent la cause D2
+// (carnage KO / joueur absent / placement CSR null).
+type PerMatchRatingsSummary struct {
+	Processed        int // matchs parcourus (len(matchIDs))
+	CSRWritten       int // lignes match_skill_rank CSR écrites
+	SRWritten        int // snapshots career_progression écrits
+	SkipRegistry     int // lecture match_registry KO (match absent / erreur SQL)
+	SkipCarnage      int // fetch carnage KO (token mort, 404, réseau)
+	SkipOwnerAbsent  int // joueur (gamertag) absent du carnage
+	PlacementCSRNull int // match CLASSÉ mais CurrentCsr nil (placement présumé)
+	SkipPersist      int // persist per-match échoué
+}
 
 // PersistPerMatchRatings écrit, pour chaque matchID, depuis UN SEUL fetch du carnage :
 //   - le CSR post-match (CurrentCsr) dans match_skill_rank si le match est CLASSÉ ;
 //   - le rang SR (XpInfo.SpartanRank/TotalXP) dans career_progression (snapshot par
 //     match → rang/XP carrière dans le temps, title-agnostic — C3).
 //
-// Best-effort par match (saute carnage KO, social pour le CSR, SR hors borne). xuid =
-// xuid du joueur (clé career_progression). Retourne (csrÉcrits, srÉcrits). Append-only
-// pour le CSR ; career_progression dédupliqué par (xuid, recorded_at).
-func PersistPerMatchRatings(ctx context.Context, src halo5.CaptureSource, playerDB, shared *sql.DB, gamertag, xuid string, matchIDs []string) (int, int) {
+// Best-effort par match. Retourne un PerMatchRatingsSummary : chaque skip est compté
+// par raison et loggé (aucun continue silencieux). Append-only pour le CSR ;
+// career_progression dédupliqué par (xuid, recorded_at).
+func PersistPerMatchRatings(ctx context.Context, src carnageGetter, playerDB, shared *sql.DB, gamertag, xuid string, matchIDs []string) PerMatchRatingsSummary {
 	pp := persist.NewPlayerPersister(playerDB)
-	csrN, srN := 0, 0
+	sum := PerMatchRatingsSummary{Processed: len(matchIDs)}
 	for _, id := range matchIDs {
 		var ranked sql.NullBool
 		var start sql.NullTime
 		if err := shared.QueryRowContext(ctx,
 			`SELECT COALESCE(is_ranked, FALSE), COALESCE(start_time_utc, start_time) FROM match_registry WHERE match_id = ?`,
 			id).Scan(&ranked, &start); err != nil {
+			sum.SkipRegistry++
+			slog.DebugContext(ctx, "h5 PersistPerMatchRatings: skip lecture registre", "match_id", id, "err", err)
 			continue
 		}
 		carnage, cerr := src.GetMatchCarnage(ctx, id, "arena")
 		if cerr != nil {
+			sum.SkipCarnage++
+			slog.DebugContext(ctx, "h5 PersistPerMatchRatings: skip carnage KO", "match_id", id, "err", cerr)
 			continue
 		}
 		stat := ownerStat(carnage, gamertag)
 		if stat == nil {
+			sum.SkipOwnerAbsent++
+			slog.DebugContext(ctx, "h5 PersistPerMatchRatings: skip joueur absent du carnage", "match_id", id, "gamertag", gamertag)
 			continue
+		}
+		// Match classé sans CurrentCsr = placement présumé (compté à part pour D2/DEC-4).
+		if ranked.Bool && stat.CurrentCsr == nil {
+			sum.PlacementCSRNull++
+			slog.DebugContext(ctx, "h5 PersistPerMatchRatings: classé sans CSR (placement présumé)", "match_id", id)
 		}
 		// Écritures per-match via la couche persist (PlayerPersister), jamais en
 		// ExecContext direct — invariant ADR 0019 (E8/DEC-8). Le CSR va dans
@@ -57,27 +93,55 @@ func PersistPerMatchRatings(ctx context.Context, src halo5.CaptureSource, player
 		}
 		csrW, srW, err := pp.PersistPerMatchRating(ctx, skill, career)
 		if err != nil {
+			sum.SkipPersist++
 			slog.WarnContext(ctx, "h5 PersistPerMatchRatings: persist per-match rating échoué",
 				"err", err, "match_id", id)
 			continue
 		}
 		if csrW {
-			csrN++
+			sum.CSRWritten++
 		}
 		if srW {
-			srN++
+			sum.SRWritten++
 		}
 	}
-	return csrN, srN
+	slog.InfoContext(ctx, "h5 PersistPerMatchRatings: bilan",
+		"gamertag", gamertag, "processed", sum.Processed,
+		"csr_written", sum.CSRWritten, "sr_written", sum.SRWritten,
+		"skip_registry", sum.SkipRegistry, "skip_carnage", sum.SkipCarnage,
+		"skip_owner_absent", sum.SkipOwnerAbsent, "placement_csr_null", sum.PlacementCSRNull,
+		"skip_persist", sum.SkipPersist)
+	return sum
 }
 
 // buildPerMatchCSRInsert construit la row match_skill_rank (rating_type='CSR',
-// playlist_group='h5_arena') depuis le CurrentCsr post-match. nil si pas de CSR
-// (placement). Le start_time n'est PAS porté : la vue _latest joint match_registry
-// pour le temps canonique (parité avec persistSkillRank du flux Infinite).
+// playlist_group='h5_arena') depuis le CurrentCsr post-match. Le start_time n'est
+// PAS porté : la vue _latest joint match_registry pour le temps canonique (parité
+// avec persistSkillRank du flux Infinite).
+//
+// cur == nil sur un match CLASSÉ = PLACEMENT (le carnage arena H5 ne porte pas de
+// CurrentCsr tant que le joueur n'est pas classé sur la playlist ; cause prouvée à
+// 100 % des matchs classés sans CSR — cf. LOT D). On écrit alors une ligne
+// « Placement » (tier=TierLabelPlacement, rating_value=0 pour la contrainte NOT NULL
+// de la player DB) : le header match view ignore la valeur pour ce tier (buildRankBlock,
+// isPlacement) et affiche « Placement » au lieu d'un rang vide, ET --missing-only ne
+// re-fetch plus ces matchs (ils portent désormais une ligne CSR). DEC-4.
 func buildPerMatchCSRInsert(matchID string, cur *halo5.H5Csr) *persist.SkillRankInsert {
+	pg := "h5_arena"
 	if cur == nil {
-		return nil
+		zero := 0.0
+		tier := skill.TierLabelPlacement
+		label := skill.TierLabelPlacement
+		sub := 0
+		return &persist.SkillRankInsert{
+			MatchID:       matchID,
+			RatingType:    "CSR",
+			RatingValue:   &zero,
+			Tier:          &tier,
+			SubTier:       &sub,
+			TierLabel:     &label,
+			PlaylistGroup: &pg,
+		}
 	}
 	tier := h5DesignationTierEN(cur.DesignationId)
 	sub := cur.Tier
@@ -89,7 +153,6 @@ func buildPerMatchCSRInsert(matchID string, cur *halo5.H5Csr) *persist.SkillRank
 		sub = 0
 	}
 	rv := float64(cur.Csr)
-	pg := "h5_arena"
 	return &persist.SkillRankInsert{
 		MatchID:       matchID,
 		RatingType:    "CSR",

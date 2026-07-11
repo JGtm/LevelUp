@@ -47,7 +47,10 @@ func (e mediaEnrichedRow) computedModeLabel() string {
 		raw = e.Match.PairName
 	}
 	if raw == "" {
-		return ""
+		// Titre sans pair (Halo 5) : libellé résolu via asset_translations
+		// game_variant (resolveMediaRegistryNameFallbacks, DEC-7). Déjà propre —
+		// pas de normalizeModeLabel (qui vise les formats pair Infinite).
+		return strings.TrimSpace(e.Match.ModeNameFallback)
 	}
 	return normalizeModeLabel(raw)
 }
@@ -154,7 +157,12 @@ func mediaRowMatchesMode(row mediaEnrichedRow, filter string, tax analysis.ModeT
 	}
 	pairName := row.Match.PairName
 	if pairName == "" {
-		return false
+		// Titre sans pair (Halo 5) : la classification par catégorie/préfixes ne
+		// s'applique pas — on filtre par ÉGALITÉ de libellé (le label résolu via
+		// game_variant, celui-là même qui peuple les options du filtre). Aucun
+		// impact Infinite : ses matchs avec mode ont toujours un pair.
+		label := row.computedModeLabel()
+		return label != "" && strings.EqualFold(label, filter)
 	}
 	category, submode, hasSubmode := strings.Cut(filter, "/")
 	prefixes := tax.Prefixes(category)

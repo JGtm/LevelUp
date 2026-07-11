@@ -362,10 +362,6 @@ en = "Loss likely"
 fr = "victoire"
 en = "win"
 
-[match_view.cards.no_win_prob_data]
-fr = "pas d'estimation"
-en = "no estimate"
-
 [match_view.cards.label_ally]
 fr = "allié"
 en = "ally"

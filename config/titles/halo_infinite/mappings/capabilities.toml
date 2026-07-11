@@ -65,3 +65,8 @@ schema_version = 1
 # (highlight_events ne porte ni pickup/drop ni shots par arme) → table
 # weapon_accuracy non peuplée pour Infinite.
 "match.weapon.accuracy"  = "not_exposed"
+# Libellés de playlist préfixés d'une catégorie matchmaking ("Arène delta : Héritage")
+# à retirer pour l'affichage (analysis.NormalizePlaylistLabel). Trait d'affichage du
+# titre lu au site de résolution du libellé (match_view_repo) — absente pour un titre
+# dont les noms de playlist officiels n'ont pas ce préfixe (Halo 5).
+"playlist.label.strip_category" = "supported"

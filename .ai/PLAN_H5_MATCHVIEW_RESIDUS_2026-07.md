@@ -1,5 +1,11 @@
 # PLAN — Résidus Halo 5 match view (2026-07-07)
 
+> **STATUT GLOBAL : PARTIEL — chantier LOCAL COMPLÉTÉ le 2026-07-11 (lots A, B, C, D, F,
+> E tous clos, gates verts) ; RESTE LE LOT V (V2-V4, prod)** : opérations data à rejouer
+> sur le VPS APRÈS merge (dépendance explicite du plan : « après merge des lots A-F »)
+> + écriture prod = décision utilisateur (prévenir avant). Détail §6. Branche :
+> `fix/h5-matchview-residus` (6 commits, poussée, CI verte).
+
 > Exécution sous contrat du skill `plan-execution` (ordre strict, statuts obligatoires
 > `[x]`/`[~]`/`[!]`, gates par lot, zéro fix hors périmètre — les découvertes vont en §8).
 > Branche cible : `fix/h5-matchview-residus` (1 branche, commits par lot).
@@ -138,25 +144,28 @@ first_sync_by=JGtm). Matchs témoins :
 
 ## 4. Lots (ordre d'exécution strict)
 
-### LOT A — Lecture Go : playlist, mode, durée (fixes match view)
+### LOT A — Lecture Go : playlist, mode, durée (fixes match view)  [COMPLÉTÉ 2026-07-11]
 Périmètre fermé :
-- [ ] A1. `NormalizePlaylistLabel` rendu title-aware : le strip de préfixe de catégorie
-      ne s'applique qu'aux titres qui le déclarent. Mécanisme : clé fine dans
-      `config/titles/{slug}/mappings/capabilities.toml` (posée pour halo_infinite,
-      absente pour halo_5) lue via CapabilityMap — JAMAIS de `slug == …` (ratchet).
-      Site d'appel : `internal/platform/duckdb/match_view_repo.go:133`.
-- [ ] A2. Mode H5 : dans `GetMatchMeta` (même bloc :141-169), fallback data-driven —
-      si pair (ID+nom) absent ET `GameVariantAssetID` présent, résoudre le mode via
-      `asset_translations` type `game_variant` (cascade fr-FR→fr→en-US→en existante).
-      Vérifier les 2 autres chemins qui produisent mode_ui (match history :
-      `applyMatchHistoryFRTranslations` ; explorer : `explorer_repo.go:414/440`) et
-      appliquer le même fallback s'ils servent des matchs H5.
-- [ ] A3. Dominance : fallback durée dans `buildMatchViewResponse`
-      (`match_view_data_loaders.go:229-232`) : playable → `duration_seconds − T0`
-      (réutiliser la logique `headerGameplayDurationSeconds`) → 0. Title-agnostic.
-- [ ] A4. Tests : cas H5 dans `match_view_repo_meta_test.go` (playlist non strippée,
-      mode via game_variant) + test service durée fallback + non-régression Infinite
-      (mode/playlist/tug existants inchangés).
+- [x] A1. `NormalizePlaylistLabel` rendu title-aware via capability `playlist.label.strip_category`
+      (`games.CapPlaylistCategoryStrip`) : déclarée `supported` dans le TOML halo_infinite +
+      la CapabilityMap hardcoded HI (parité), ABSENTE de halo_5. Câblage : `registry.newMatchViewRepo`
+      lit `capabilitiesForPDB(pdb).Has(CapPlaylistCategoryStrip)` → `WithPlaylistCategoryStrip`.
+      Aucun `slug ==`. Site d'appel : `match_view_repo.go` (bloc PlaylistAssetID). Vérifié réel :
+      ccf64951 → "Super Fiesta Fête" (non tronqué) ; Infinite inchangé (b955bf2a "Partie rapide").
+- [x] A2. Mode H5 : fallback data-driven en fin de `GetMatchMeta` — pair (ID+nom) absent ET
+      `GameVariantAssetID` présent → mode via `asset_translations` type `game_variant`. Vérifié réel :
+      7e3fa711 mode_ui="Assassin", ccf64951 "Capture du drapeau". Les 2 autres chemins :
+      match history H5 = [~] servi par l'ADAPTER CANONIQUE (`canonicalModeUI` priorise game_variant +
+      `enrichCanonicalDetailTranslations`), la voie repo `applyMatchHistoryFRTranslations` ne traite
+      que le player DB local (0 ligne en H5) ; explorer = [!] lit les colonnes BRUTES du registre
+      (`Q19c` : map_name/pair_name, TOUTES NULL en H5, pas seulement le mode) → hors périmètre
+      match view (cf. §8 Découvertes).
+- [x] A3. Dominance : helper `tugDurationMS(meta)` extrait dans `match_view_data_loaders.go` —
+      playable prioritaire (Infinite inchangé), fallback `headerGameplayDurationSeconds`
+      (duration−T0) sinon 0. Title-agnostic. Vérifié réel : tug_of_war 7e3fa711=18, ccf64951=13.
+- [x] A4. Tests : `match_view_repo_meta_test.go` (playlist title-aware strip, mode via game_variant,
+      non-régression pair présent) + `match_view_tug_duration_test.go` (5 cas fallback) +
+      `capabilities_test.go` count 17→18 + parité TOML/hardcoded HI. go test + lint verts.
 Gate LOT A (commandes exactes) :
 ```
 cd apps/go-api && go test ./internal/platform/duckdb/... ./internal/service/... ./internal/analysis/...
@@ -171,19 +180,22 @@ curl -s -H "X-LevelUp-Title: halo_5" localhost:8000/api/v1/players/JGtm/matches/
 # non-régression Infinite : un match Infinite au hasard, mode_ui/playlist inchangés.
 ```
 
-### LOT B — Metadata : nom de la map Tidal (data + garde-rail)
+### LOT B — Metadata : nom de la map Tidal (data + garde-rail)  [COMPLÉTÉ 2026-07-11]
 Périmètre fermé :
-- [ ] B1. Étendre le mécanisme d'override TOML de `cmd/h5-metadata-fetch` pour porter
-      un nom CANONIQUE (EN) de map en plus du FR : entrée d67fdcb9… = « Tidal »
-      (EN + FR identiques) dans `config/titles/halo_5/mappings/asset_labels_fr.toml`
-      (section maps existante + section nom EN à ajouter). L'override doit survivre à
-      un re-fetch (appliqué en fin de run, idempotent).
-- [ ] B2. Rejouer le seed metadata H5 local (`h5-metadata-fetch` ou son étape seed
-      seule) → `maps_catalog.name_canonical` et `asset_translations` (en-US + fr-FR)
-      remplis pour d67fdcb9.
-- [ ] B3. Log de garde : à la fin du fetch, WARN slog listant les maps référencées par
-      match_registry sans nom résolu (aujourd'hui : exactement 1) — évite le retour
-      silencieux du problème.
+- [x] B1. Nouveau mécanisme d'override keyé par asset_id (les canvas Forge n'ont PAS de
+      nom EN sur lequel keyer, contrairement à `[maps]`) : section `[[maps_by_id]]` dans
+      `asset_labels_fr.toml` (id/en/fr), entrée d67fdcb9 = « Tidal » (EN+FR). Struct
+      `mapIDOverride` + `frLabels.MapsByID`. `applyMapIDOverrides` (UPDATE name_canonical
+      + upsert asset_translations en-US/fr-FR) appelé EN DERNIER dans main (idempotent,
+      survit à un re-fetch qui réécrirait name_canonical vide).
+- [x] B2. Seed local rejoué via nouveau mode `--overrides-only` (local pur, sans clé API
+      ni réseau — évite de marteler l'API dont les tokens sont morts). Vérifié :
+      name_canonical='Tidal', asset_translations en-US/fr-FR='Tidal' ; curl match view
+      ccf64951 ET 7e3fa711 → map_ui='Tidal'.
+- [x] B3. Garde-fou `logUnresolvedMaps` : ouvre le registre H5 (RO), WARN slog les map_id
+      référencés sans nom résolu dans asset_translations. Après B2 : « toutes les maps du
+      registre sont résolues count_registry_maps=48 » (le 1 non résolu = Tidal, corrigé).
+Test : `TestApplyMapIDOverrides` (name_canonical + traductions + idempotence). Lint OK.
 Gate LOT B :
 ```
 cd apps/go-api && go run cmd/tmpdbq/main.go ../../data/titles/halo_5/warehouse/metadata.duckdb \
@@ -192,35 +204,44 @@ cd apps/go-api && go run cmd/tmpdbq/main.go ../../data/titles/halo_5/warehouse/m
 # requête « assets non résolus » (celle de l'investigation) → 0 ligne
 ```
 
-### LOT C — Cards front (Résistance / Résultat attendu)
+### LOT C — Cards front (Résistance / Résultat attendu)  [COMPLÉTÉ 2026-07-11]
 Périmètre fermé :
-- [ ] C1. `MatchStatCards.tsx` : card Résistance conditionnée par
-      `providesDamageTaken && (…)` (pattern MMR ligne 435) — DEC-2.
-- [ ] C2. `MatchWinProbCard` rendue seulement si `expected_win_prob != null` — DEC-3.
-      Supprimer le style « grisé » devenu mort si plus aucun cas ne le rend (règle 0
-      code mort).
-- [ ] C3. Tests vitest du composant (H5 sans damage_taken → card absente ; winProb
-      null → card absente ; Infinite avec données → présentes) + i18n intact.
+- [x] C1. `MatchStatCards.tsx` : card Résistance masquée par `providesDamageTaken && (…)`
+      (aligné card MMR) — DEC-2. Constante morte `DR_NA_LABEL` retirée (règle 0 code mort ;
+      les autres surfaces combat-yield gardent leur propre constante, hors périmètre).
+- [x] C2. `MatchWinProbCard` rendue seulement si `expected_win_prob != null && isFinite`
+      (call site) — DEC-3. Composant simplifié (prop `winProb: number`, branche null/`—`/
+      `opacity-50` supprimée) ; clé i18n morte `no_win_prob_data` retirée du TOML + régen.
+- [x] C3. Tests vitest `MatchStatCards.test.tsx` (5 cas : Infinite → Résistance+Résultat+MMR
+      présents ; H5 sans damage_taken → Résistance absente ; sans team_mmr → MMR absente ;
+      winProb null → Résultat absent ; winProb présent → « 62 % »). check-types OK ;
+      dossier match-view 112/112 verts.
 Gate LOT C :
 ```
 make check-types && make test-web
 # vitest hors sandbox (dangerouslyDisableSandbox) — cf. memoire vitest
 ```
 
-### LOT D — Ratings par match : instrumentation + backfill ciblé
+### LOT D — Ratings par match : instrumentation + backfill ciblé  [COMPLÉTÉ 2026-07-11]
 Périmètre fermé :
-- [ ] D1. `livesync.PersistPerMatchRatings` : compteurs + logs de skip par raison
-      (carnage_err / owner_absent_du_carnage / placement_csr_null / persist_err) —
-      règle n°3, plus aucun `continue` silencieux. Exposer le bilan en fin de run.
-- [ ] D2. `cmd/h5-csr-match-backfill` : flag `--missing-only` (ne traite que les
-      classés sans ligne CSR dans la player DB — ~388 matchs sur 4 joueurs au lieu de
-      ~5900 fetches). Run pour JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX ;
-      consigner la ventilation des skips dans §7.
-- [ ] D3. Selon D2 (DEC-4) : si placement majoritaire → écriture ligne « Placement »
-      (SkillRankInsert rating NULL + tier_label, via PlayerPersister, append-only
-      ADR 0019/0026) + affichage front du label ; sinon `[!]` justifié ici.
-- [ ] D4. Vérifier les 3 matchs témoins : ligne CSR (ou Placement) présente, header
-      match view non vide.
+- [x] D1. `PersistPerMatchRatings` retourne un `PerMatchRatingsSummary` : chaque skip
+      compté ET loggé par raison (skip_registry / skip_carnage / skip_owner_absent /
+      placement_csr_null / skip_persist) + bilan slog Info en fin de run. Paramètre
+      restreint à l'interface `carnageGetter` (testable). Test integration
+      `csr_match_summary_integration_test` (fake carnage, ventilation 6 cas).
+- [x] D2. Flag `--missing-only` (classés sans ligne CSR de la player DB uniquement).
+      Runs des 4 joueurs FAITS en local (auth_as=JGtm pour les 3 RT morts) —
+      ventilation §7 : **1002/1002 = placement_csr_null, 0 carnage KO, 0 owner absent**.
+- [x] D3. DEC-4 CONFIRMÉ à 100 % → `buildPerMatchCSRInsert(nil)` écrit une ligne
+      « Placement » (tier=skill.TierLabelPlacement réutilisé, rating_value=0 NOT NULL,
+      via PlayerPersister append-only). Affichage front : [~] déjà couvert —
+      `buildRankBlock` (Go) gère isPlacement (pas de valeur/progress) et
+      `MatchRankBadge` (web) affiche tier_label tel quel → « Placement » rendu sans modif.
+- [x] D4. Témoins vérifiés : 7e3fa711 / 14f762a2-970b / f6baea94-e0e9 → ligne
+      `CSR / Placement` dans match_skill_rank_latest ET `rank={rating_type:CSR,
+      tier_label:Placement}` servi par l'API ; header complet (map/mode/playlist).
+      Couverture finale : classés avec ligne = 1306/1306 (JGtm), 1100/1100 (Madina),
+      893/893 (Chocoboflor), 219/219 (XxDaemonGamerxX).
 Gate LOT D :
 ```
 cd apps/go-api && go test -tags=integration ./internal/persist/... ./internal/games/halo_5/...
@@ -230,22 +251,34 @@ go run cmd/tmpdbq/main.go "../../data/titles/halo_5/players/JGtm/stats.duckdb" \
 # comptage « classés sans ligne » par joueur : doit tendre vers 0 ou être justifié D3
 ```
 
-### LOT F — Médias : libellés match + double indexation (issu du volet VPS)
+### LOT F — Médias : libellés match + double indexation (issu du volet VPS)  [COMPLÉTÉ 2026-07-11]
 Périmètre fermé :
-- [ ] F1. Libellés match de la galerie média (DEC-7) : `computedMapLabel` /
-      `computedModeLabel` / `computedPlaylistLabel`
-      (`media_repo_q37_enrich.go:22-67`) tombent en fallback sur la cascade
-      asset_translations (ResolveAssetNamesBulk — RÉUTILISER, pas dupliquer) quand les
-      colonnes registre sont vides ; mode : même fallback game_variant que le lot A2.
-      Les filtres map/mode/playlist de la galerie doivent se peupler pour H5.
-- [ ] F2. Routage titre de l'indexeur média (DEC-8) : filtre par motif de nom de
-      fichier par titre dans `IndexMedia` (`internal/ops/media.go`), motifs déclarés
-      dans la config titre (mappings TOML), pas de `slug ==` en dur.
-- [ ] F3. Purge one-shot des 84 clips H5 du shared_social halo_infinite (cleanup avec
-      --dry-run d'abord ; vérifier `cmd/cleanup_media_index` avant d'écrire un
-      nouvel outil). Écritures shared_social = Persister + CHECKPOINT (ADR 0022).
-- [ ] F4. Tests : enrich média H5 avec registre à noms NULL → libellés résolus ;
-      indexeur ignore les fichiers d'un autre titre ; purge idempotente.
+- [x] F1. Fallback des noms au POINT DE CHARGEMENT (`loadMediaMatchRegistry` →
+      `resolveMediaRegistryNameFallbacks`) via ResolveAssetNamesBulk (RÉUTILISÉ) :
+      map par map_id, playlist par playlist_id, mode par game_variant_id (champ
+      DISTINCT `ModeNameFallback` — pas un pair : n'alimente ni PairNameRaw ni la
+      classification par catégorie Infinite). `enrichMediaModeCategories` ne nil-e
+      plus le ModeName sans pair ; filtre mode par égalité de libellé quand pas de
+      pair. Vérifié réel (serveur local, 7 clips H5 associés) : maps résolues
+      (Truth/Coliseum/Eden/Tyrant/Alpin/Plaza), mode="Assassin", filtres map/mode/
+      playlist PEUPLÉS ("Super Fiesta Fête", "Partie rapide", ...). Non-régression
+      Infinite vérifiée réel (catégories Assassin/Super Fiesta/Other inchangées).
+- [x] F2. Routage titre de l'indexeur : `[title].media_filename_prefixes` dans
+      title.toml (halo_5 = ["Halo_5_Guardians-"]) → `TitleDescriptor.MediaFilenamePrefixes`
+      + `Registry.ForeignMediaFilenamePrefixes(slug)` ; `IndexMedia` saute les fichiers
+      matchant un préfixe ÉTRANGER (opts.TitleSlug câblé aux 5 call sites : scan,
+      reindex, post-sync, upload — via UploadRequest.TitleSlug —, CLI index-media).
+      Aucun slug ==.
+- [x] F3. `cmd/cleanup_media_index --foreign-only [--title <slug>] [--dry-run]` :
+      purge des media_files matchant un préfixe étranger (+ associations_history +
+      likes) + CHECKPOINT (ADR 0022). Exécuté en LOCAL : dry-run = 84 fichiers /
+      0 assoc / 0 like → purge réelle 84 → re-run 0 (idempotence prouvée).
+      « Sans match » Infinite : 101 → 17. À REJOUER EN PROD (V2).
+- [x] F4. Tests : `media_repo_h5_fallback_test.go` (4 tests integration : libellés
+      résolus, options de filtres peuplées, filtre mode par label, non-régression
+      noms présents) ; `TestMatchesForeignPrefix` (5 cas) ;
+      `TestMediaFilenamePrefixes_ParsedAndForeign` (parse TOML + foreign) ; purge
+      idempotente prouvée en exécution réelle (run + re-run → 0).
 Gate LOT F :
 ```
 cd apps/go-api && go test ./internal/platform/duckdb/... ./internal/ops/...
@@ -256,11 +289,15 @@ curl -s -X POST -H "X-LevelUp-Title: halo_5" localhost:8000/api/v1/players/JGtm/
 # attendu : map "Plaza", mode "Assassin" (plus de « Carte inconnue »)
 ```
 
-### LOT E — Clôture chantier local
-- [ ] E1. Statuer chaque item A→D+F (`[x]`/`[~]`/`[!]`), remplir §7-§8.
-- [ ] E2. `.ai/thought_log.md` : entrée de clôture (obligatoire).
-- [ ] E3. Skill `delivery-checklist` avant commit final / proposition de merge.
-Gate : gate global = tous les gates A→D+F verts dans la même session + lint + types.
+### LOT E — Clôture chantier local  [COMPLÉTÉ 2026-07-11]
+- [x] E1. Tous les items A→D+F statués (`[x]`/`[~]`/`[!]`), §7-§8 remplis.
+- [x] E2. `.ai/thought_log.md` : entrées par lot + entrée de clôture.
+- [x] E3. Skill `delivery-checklist` déroulé : go test ./... complet (0 FAIL, exit 0),
+      go test -tags=integration -p 1 (persist+halo_5+ops+duckdb), go vet 0,
+      golangci-lint --new-from-rev=origin/main ./... = 0 issue, tsc -b purgé,
+      npm run lint 0 erreur, vitest 247 fichiers / 2106 tests verts, build Vite OK.
+Gate : gate global VERT (tous les gates A→D+F re-passés dans la session + lint + types +
+CI branche verte — le job Frontend rouge du commit LOT C a été corrigé, cf. fix(C/ci)).
 
 ## 5. Réponses aux questions utilisateur (TL;DR intégré au plan)
 
@@ -281,29 +318,46 @@ Gate : gate global = tous les gates A→D+F verts dans la même session + lint +
       → traités par le LOT F. Trafic d'origine perdu (conteneur recréé) ; requête
       anonyme 403 → pas de repro authentifiée possible, confirmation visuelle par
       l'utilisateur après déploiement.
-- [ ] V2. Après merge des lots A-F : rejouer en prod les opérations data — B2 (seed
-      Tidal metadata), D2 (CSR --missing-only, 4 joueurs), F3 (purge 84 copies
-      Infinite). Fenêtre creuse, ressources serrées (2 vCPU / 2 Go), PRÉVENIR avant
-      toute écriture. Un writer par DB : passer par les CLI (jamais deux process RW).
-- [ ] V3. Vérification visuelle prod par l'utilisateur : galerie média H5 (libellés),
-      clic média → match f88f6d8b, matchs témoins (map Tidal, mode, Dominance,
-      rating/Placement).
-- [ ] V4. Déploiement des fixes : merge → push main = deploy auto (PRÉVENIR
-      l'utilisateur avant le push).
+- [!] V2. NON TRAITÉ dans ce chantier — dépendance explicite du plan (« APRÈS merge des
+      lots A-F ») + écriture prod = décision utilisateur (prévenir avant toute écriture,
+      fenêtre creuse, 2 vCPU / 2 Go, un writer par DB → arrêter le conteneur ou passer
+      par les CLI hors serveur). Commandes exactes à rejouer sur le VPS (post-merge,
+      binaires du repo déployé) :
+      1. B2 : `go run ./cmd/h5-metadata-fetch <repo> --overrides-only`
+         (local pur, AUCUN réseau ni clé API — applique l'override Tidal + garde-fou).
+      2. D2 : `LEVELUP_H5_AUTH_AS=JGtm go run ./cmd/h5-csr-match-backfill <GT> --missing-only`
+         pour JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX (~1000 fetches carnage au
+         total ; RT JGtm requis vivant). Attendu : ~100 % placement_csr_null → lignes
+         Placement.
+      3. F3 : `go run ./cmd/cleanup_media_index --foreign-only --dry-run` (vérifier ~84)
+         puis sans --dry-run. SERVEUR ARRÊTÉ (le CLI ouvre shared_social en RW).
+- [!] V3. Vérification visuelle prod par l'utilisateur (après V2/V4) : galerie média H5
+      (libellés + filtres), clic média → match f88f6d8b (l'association n'existe qu'en
+      prod), matchs témoins (map Tidal, mode, Dominance, rating/Placement).
+- [!] V4. Déploiement : merge → push main = deploy auto — DÉCISION UTILISATEUR
+      (prévenir avant le push).
 
 ## 7. Tracker (à remplir en exécution)
 
 | Lot | Statut | Date | Notes |
 |---|---|---|---|
-| A | à faire | | |
-| B | à faire | | |
-| C | à faire | | |
-| D | à faire | | D2 : ventilation skips = |
-| F | à faire | | copies prod dispo dans le scratchpad session (h5_social etc.) |
-| E | à faire | | |
-| V | V1 fait ; V2-V4 après merge | 2026-07-07 | prod = local ; « introuvable » = LOT F |
+| A | COMPLÉTÉ | 2026-07-11 | mode/playlist/tug vérifiés réel (JGtm h5 + non-rég Infinite) ; explorer hors périmètre (§8) |
+| B | COMPLÉTÉ | 2026-07-11 | Tidal seedé local (--overrides-only) ; map_ui='Tidal' vérifié réel ; garde-fou 0 map non résolue. PROD : rejouer en V2 |
+| C | COMPLÉTÉ | 2026-07-11 | Résistance + Résultat attendu masqués selon capability/null ; 5 tests vitest ; 112/112 match-view ; fix CI types test (tsc -b) |
+| D | COMPLÉTÉ | 2026-07-11 | D2 ventilation : JGtm 303, Madina 293, Chocoboflor 277, XxDaemon 129 → **1002/1002 placement_csr_null** (0 carnage KO, 0 owner absent) ; lignes Placement écrites, couverture classés 100 % × 4 joueurs. PROD : rejouer D2 en V2 |
+| E | COMPLÉTÉ | 2026-07-11 | delivery-checklist déroulée ; gate global vert (tests+lint+types+CI branche) |
+| V | PARTIEL : V1 [x] ; V2-V4 [!] | 2026-07-11 | dépendance post-merge + écriture prod = utilisateur ; commandes exactes consignées en §6 |
+| F | COMPLÉTÉ | 2026-07-11 | vérifié réel local (7 clips h5 associés, copies prod du scratchpad expirées) ; purge locale 84→0 ; f88f6d8b lui-même = assoc PROD → confirmé en V3. PROD : rejouer F3 en V2 |
 
 ## 8. Découvertes hors périmètre (NE PAS traiter dans ce chantier)
+
+- **Explorer « matchs récents cible » (Q19c) non résolu pour H5** (constaté au LOT A2) :
+  `Q19cTargetRecentMatches` lit `r.map_name` / `r.pair_name` / `r.pair_name_fr` BRUTS du
+  registre — tous NULL sur H5 (map ET mode ET playlist vides, pas seulement le mode). Le
+  « même fallback game_variant » demandé par A2 ne suffirait pas (la map serait toujours
+  vide). Correctif propre = porter la cascade `asset_translations` complète (map+mode+
+  playlist, + fallback game_variant) à Q19c/`scanTargetRecentMatch`, distinct et plus large
+  que le périmètre match view/média. Statué [!] dans A2.
 
 - `GetMatchKVPairs`/`GetMatchEvents` avalent les erreurs SQL (`return nil, nil`,
   `match_view_repo_extras.go:56/61`) — anti-pattern « swallowed error » : un échec de

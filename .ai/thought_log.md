@@ -385,6 +385,178 @@ mis à jour (pas de doc inversée). Vérifié que `annotateDeaths`/`isPassiveDea
 
 ---
 
+## [2026-07-11] Résidus H5 match view — CLÔTURE chantier local (lots A-F+E ; reste V prod)
+
+**Statut** : Complété (local) / PARTIEL global — LOT V (V2-V4) = opérations prod
+post-merge, statuées [!] (dépendance explicite du plan + écriture prod = utilisateur).
+
+**Décision technique principale** : les 7 causes prouvées du 2026-07-07 sont toutes
+résorbées côté code + data locale, sur `fix/h5-matchview-residus` (6 commits, CI verte) :
+A (playlist title-aware par capability, mode via game_variant, durée Dominance),
+B (Tidal par override asset_id + garde-fou maps non résolues), C (cards Résistance /
+Résultat attendu masquées), D (skips instrumentés + --missing-only + lignes Placement —
+cause du CSR manquant = 100 % placement, 1002/1002 sur 4 joueurs), F (libellés média via
+asset_translations + routage titre de l'indexeur par media_filename_prefixes + purge des
+84 clips étrangers).
+
+**Résultats observés** : gate global vert — go test ./... complet, -tags=integration -p 1
+(persist/halo_5/ops/duckdb), go vet, golangci-lint --new-from-rev=origin/main = 0 issue,
+tsc -b purgé, eslint 0 erreur, vitest 2106 tests, build Vite ; vérifications réelles au
+serveur local sur les 5 matchs témoins + galerie média H5 + non-régressions Infinite.
+
+**Conclusion / prochaine étape** : lot V (prod) après merge — B2 --overrides-only,
+D2 --missing-only ×4 (auth_as=JGtm), F3 --foreign-only (dry-run d'abord, serveur arrêté),
+puis vérification visuelle utilisateur (§6 du plan : commandes exactes). Le plan reste à
+la racine .ai/ avec en-tête PARTIEL « reste lot V ».
+
+## [2026-07-11] Résidus H5 match view — LOT F (médias : libellés + routage titre + purge)
+
+**Statut** : Complété (F1-F4 ; opérations prod F3/B2/D2 à rejouer en V2).
+
+**Décision technique principale** : (F1/DEC-7) fallback des noms au point de chargement
+du registre média (`resolveMediaRegistryNameFallbacks`, ResolveAssetNamesBulk réutilisé) —
+map/playlist par ID, mode par game_variant via un champ DISTINCT `ModeNameFallback` (pas
+un pair : n'entre pas dans la classification par catégorie Infinite) ; filtre mode par
+égalité de libellé quand le titre n'a pas de pair. (F2/DEC-8) routage de l'indexeur par
+`media_filename_prefixes` déclarés dans title.toml (halo_5 = "Halo_5_Guardians-"),
+`Registry.ForeignMediaFilenamePrefixes` + skip dans IndexMedia (TitleSlug câblé aux 5
+call sites). (F3) `cleanup_media_index --foreign-only` (+ --title/--dry-run) : purge +
+CHECKPOINT ADR 0022.
+
+**Résultats observés** : réel local — galerie média H5 : maps résolues (Truth, Coliseum,
+Eden, Tyrant, Alpin, Plaza), mode "Assassin", filtres peuplés ("Super Fiesta Fête"…) ;
+non-régression Infinite (catégories intactes) ; purge locale dry-run 84/0/0 → 84 purgés
+→ re-run 0 (idempotent) ; « Sans match » Infinite 101 → 17. Tests : 4 integration
+media_repo_h5_fallback + TestMatchesForeignPrefix + TestMediaFilenamePrefixes ; suites
+unit + integration duckdb/ops vertes ; lint 0 issue (resolveMediaRegistryNameFallbacks
+décomposé en slots après gocyclo).
+
+**Conclusion / prochaine étape** : LOT E (clôture) puis LOT V (prod : rejouer B2
+--overrides-only, D2 --missing-only x4, F3 --foreign-only + vérif visuelle utilisateur).
+
+## [2026-07-11] Résidus H5 match view — LOT D code (instrumentation + --missing-only + Placement)
+
+**Statut** : Complété (code + 4 runs locaux + D4 vérifié ; CI branche verte sur le commit D).
+
+**Clôture (2026-07-11 soir)** : runs Madina97294 (293), Chocoboflor (277), XxDaemonGamerxX
+(129) via auth_as=JGtm — ventilation IDENTIQUE : 100 % placement_csr_null, 0 autre cause
+(total 1002/1002). Couverture finale classés avec ligne CSR/Placement = 100 % × 4 joueurs
+(1306/1100/893/219). D4 : les 3 témoins classés servent rank={CSR, Placement} et le front
+affiche déjà tier_label sans modif (MatchRankBadge).
+
+**Décision technique principale** : (D1) `PersistPerMatchRatings` retourne un
+`PerMatchRatingsSummary` ventilant CHAQUE skip par raison (registre KO / carnage KO /
+joueur absent / placement_csr_null / persist KO) — plus aucun continue silencieux ;
+paramètre restreint à l'interface `carnageGetter` (segregation → testable). (D2) flag
+`--missing-only` du backfill : ne traite que les CLASSÉS sans ligne CSR de la player DB.
+(D3/DEC-4) `buildPerMatchCSRInsert(nil)` écrit désormais une ligne « Placement »
+(tier=skill.TierLabelPlacement réutilisé, rating_value=0 NOT NULL) — le header
+match view gère déjà ce tier (buildRankBlock/isPlacement) et --missing-only ne
+re-fetche plus ces matchs.
+
+**Résultats observés — PREUVE DEC-4** : run JGtm --missing-only : 303 classés sans CSR,
+ventilation = placement_csr_null:303, carnage:0, joueur_absent:0 → la cause du « pas de
+LUSR/CSR » sur les classés est à 100 % le PLACEMENT (CurrentCsr null tant que non classé).
+Re-run post-D3 : 303 lignes Placement écrites (match_skill_rank CSR 2010→2313).
+Tests integration -p 1 (persist + halo_5) verts, dont le nouveau
+csr_match_summary_integration_test (fake carnage, 6 cas). Lint 0 issue.
+
+**Conclusion / prochaine étape** : runs --missing-only des 3 autres joueurs (auth
+propre par joueur ; RT Chocoboflor/Madina morts → LEVELUP_H5_AUTH_AS=JGtm, les carnages
+sont publics par match), puis D4 (vérif témoins).
+
+## [2026-07-11] Résidus H5 match view — fix CI front (types du test LOT C)
+
+**Statut** : Complété (correctif sur le commit LOT C).
+
+**Décision technique principale** : le job CI « Frontend (TypeScript + Vite build) » a
+échoué sur MatchStatCards.test.tsx : (1) `average_life` est un `string` dans le schéma
+généré (j'avais mis 42 avec un cast `as` qui masquait l'erreur) ; (2) `expected_win_prob`
+est `number | undefined`, pas `| null`. Leçon : mon gate local `tsc -p tsconfig.json
+--noEmit` était un NO-OP sur le solution file — le vrai gate est `npm run typecheck`
+(tsc -b) + `npm run build`. Correctif : types exacts sans cast (`average_life: '0:42'`,
+`has_hist_avg` requis, test winProb absent = `undefined`).
+
+**Résultats observés** : tsc -b vert, build Vite vert, vitest 5/5.
+
+**Conclusion / prochaine étape** : re-push + gh run watch --exit-status, puis suite
+LOT D (runs backfill 3 joueurs restants).
+
+## [2026-07-11] Résidus H5 match view — LOT C (cards front Résistance / Résultat attendu)
+
+**Statut** : Complété (LOT C, branche fix/h5-matchview-residus).
+
+**Décision technique principale** : deux cards du match view étaient rendues avec un
+placeholder trompeur au lieu d'être masquées. (C1/DEC-2) card Résistance : `damage_taken`
+absent en H5 → DefensiveResistance nil, mais la card affichait « N/A » ; alignée sur le
+précédent card MMR → `{providesDamageTaken && (…)}`, constante morte `DR_NA_LABEL` retirée.
+(C2/DEC-3) card Résultat attendu : `expected_win_prob` structurellement null sur les
+matchs classés (DEUX titres) → card grisée « — » ; désormais rendue seulement si winProb
+non nul (call site), composant simplifié (prop `number`), clé i18n morte `no_win_prob_data`
+retirée + régen.
+
+**Résultats observés** : tests vitest MatchStatCards (5 cas : présence Infinite,
+absence Résistance sans damage_taken, absence MMR sans team_mmr, absence Résultat si
+winProb null, « 62 % » si présent) verts ; check-types OK ; dossier match-view 112/112.
+
+**Conclusion / prochaine étape** : LOT D (ratings par match : instrumentation skips +
+backfill CSR --missing-only pour les 4 joueurs).
+
+## [2026-07-11] Résidus H5 match view — LOT B (nom de la map Tidal)
+
+**Statut** : Complété (LOT B, branche fix/h5-matchview-residus). Prod : rejeu en V2.
+
+**Décision technique principale** : les canvas Forge (ex. Tidal, d67fdcb9) ne sont pas
+nommés par l'API officielle /maps → maps_catalog.name_canonical vide et absence
+d'asset_translations → carte affichée vide. Le mécanisme d'override `[maps]` existant est
+keyé par NOM EN (inutilisable ici, il n'y a pas de nom EN). Nouveau mécanisme keyé par
+ASSET_ID : section `[[maps_by_id]]` (id/en/fr) dans asset_labels_fr.toml, appliquée EN
+FIN de run par `applyMapIDOverrides` (UPDATE name_canonical + upsert asset_translations
+en-US/fr-FR, idempotent, survit à un re-fetch). Ajout d'un mode `--overrides-only`
+(local pur, sans clé API ni réseau) pour rejouer un override sans marteler l'API + d'un
+garde-fou `logUnresolvedMaps` (WARN slog des map_id du registre sans nom résolu).
+
+**Résultats observés** : override Tidal appliqué en local ; name_canonical='Tidal',
+asset_translations en-US/fr-FR='Tidal' ; garde-fou → « toutes les maps du registre sont
+résolues count_registry_maps=48 » (le seul non résolu était Tidal). Curl match view
+ccf64951 ET 7e3fa711 → map_ui='Tidal'. Test TestApplyMapIDOverrides (idempotence) vert,
+lint 0 issue.
+
+**Conclusion / prochaine étape** : LOT C (cards front Résistance / Résultat attendu).
+En prod (V2), rejouer `h5-metadata-fetch <repo> --overrides-only` (aucun réseau requis).
+
+## [2026-07-11] Résidus H5 match view — LOT A (lecture Go : playlist, mode, durée)
+
+**Statut** : Complété (LOT A du PLAN_H5_MATCHVIEW_RESIDUS_2026-07, branche fix/h5-matchview-residus).
+
+**Décision technique principale** : 3 fixes de LECTURE title-agnostic dans la voie repo du
+match view (H5 passe par le repo, pas la voie canonique : routage repo-first, matchs H5
+présents en DuckDB local). (A1) strip du préfixe de catégorie de playlist rendu conditionnel
+à une nouvelle capability `playlist.label.strip_category` (déclarée HI, absente H5) lue via
+CapabilityMap au wiring (`registry.newMatchViewRepo` → `WithPlaylistCategoryStrip`) — jamais
+de slug==. (A2) fallback mode data-driven : pair absent + game_variant présent → mode via
+`asset_translations` type game_variant. (A3) helper `tugDurationMS` : fallback durée
+(duration−T0) quand `playable_duration_seconds` est NULL (100 % des matchs H5).
+
+**Résultats observés** (serveur local, données réelles JGtm) :
+- 7e3fa711 (Slayer classé) : mode_ui="Assassin", playlist="Assassin", tug=18 (était vide).
+- ccf64951 (Super Fiesta) : playlist="Super Fiesta Fête" (n'est plus tronqué en "Fête"),
+  mode_ui="Capture du drapeau", tug=13.
+- Non-régression Infinite : b955bf2a mode="Assassin en équipe"/playlist="Partie rapide"/
+  map="Shiro"/tug=18 ; e8d384c7 "Drapeau neutre"/"Partie rapide"/"Gouffre"/16.
+- map_ui reste vide (Tidal) → LOT B. go test (duckdb/service/games/analysis) + lint
+  --new-from-rev=origin/main = 0 issue.
+
+**Découvertes** (consignées §8, non traitées) : explorer « matchs récents cible » (Q19c)
+lit les colonnes brutes du registre (map/mode/playlist NULL en H5) — gap plus large que
+le fallback mode, hors périmètre match view. Statué [!] dans A2.
+
+**Conclusion / prochaine étape** : LOT B (nom de la map Tidal via override metadata H5 +
+garde-rail). Serveur dev local arrêté pendant l'exécution (mono-writer) ; à relancer en fin
+de chantier.
+
+---
+
 ## [2026-07-10] FIX RankCatalog nil-safe — panic boot mode démo (E2E PR #53 rouge)
 
 **Statut** : Complété (superviseur de campagne, hors plan LUSR — fix de gate CI).

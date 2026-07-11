@@ -121,6 +121,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 					ForceRescan:         true,
 					Gamertag:            gamertag,
 					Timezone:            timezone,
+					TitleSlug:           titleSlug,
 				}); err != nil {
 					jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
 						w := fmt.Sprintf("WARN reindex %s: %v", gamertag, err)
@@ -208,6 +209,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 			ForceRescan:         false,
 			Gamertag:            gamertag,
 			Timezone:            timezone,
+			TitleSlug:           titleSlug,
 		}); err != nil {
 			jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
 				w := fmt.Sprintf("WARN scan %s: %v", gamertag, err)
@@ -272,6 +274,7 @@ func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn, timezoneFn
 			ForceRescan:         false,
 			Gamertag:            gamertag,
 			Timezone:            timezone,
+			TitleSlug:           titleSlug,
 		}); err != nil {
 			slog.WarnContext(ctx, "post-sync: media scan échoué (non-fatal)", "gamertag", gamertag, "err", err)
 		}

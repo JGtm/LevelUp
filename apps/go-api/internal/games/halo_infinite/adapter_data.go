@@ -190,6 +190,10 @@ func fallbackCapabilities() games.CapabilityMap {
 		// Précision par arme : pas d'events weapon_drop dans la timeline
 		// reconstruite → table weapon_accuracy non peuplée (cf. capabilities.toml).
 		games.CapWeaponAccuracy: games.CapNotExposed,
+		// Libellés de playlist préfixés d'une catégorie matchmaking à retirer pour
+		// l'affichage (analysis.NormalizePlaylistLabel) — trait Halo Infinite,
+		// absent des autres titres (cf. capabilities.toml).
+		games.CapPlaylistCategoryStrip: games.CapSupported,
 	}
 }
 

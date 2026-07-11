@@ -205,6 +205,7 @@ type UploadRequest struct {
 	SharedSocialDBPath  string // chemin vers shared_social.duckdb (cible principale)
 	SharedMatchesDBPath string // chemin vers shared_matches_v2.duckdb (lecture match_registry)
 	Tolerance           int    // buffer association match (minutes, défaut 2)
+	TitleSlug           string // titre de l'upload — routage de l'indexeur média (DEC-8)
 }
 
 // UploadResult résume le résultat d'un upload multi-fichiers.

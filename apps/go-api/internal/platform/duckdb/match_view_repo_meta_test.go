@@ -135,6 +135,109 @@ func TestGetMatchMeta_ResolvesUUIDMapAndPlaylistViaAssetTranslations(t *testing.
 	}
 }
 
+// TestGetMatchMeta_PlaylistCategoryStrip_TitleAware couvre A1 (résidus H5) :
+// le retrait du préfixe de catégorie matchmaking du libellé de playlist ne
+// s'applique QUE si le titre déclare CapPlaylistCategoryStrip (flag câblé par le
+// wiring). Halo 5 ne le déclare pas → "Super Fiesta Fête" reste entier (sinon
+// notre normaliseur Infinite le tronque en "Fête"). Halo Infinite le déclare →
+// "Arène delta : Héritage" → "Delta : Héritage" (non-régression).
+func TestGetMatchMeta_PlaylistCategoryStrip_TitleAware(t *testing.T) {
+	seed := func(t *testing.T) *PlayerDB {
+		pdb := newMetaResolveTestPDB(t)
+		ctx := context.Background()
+		if _, err := pdb.Player.Exec(ctx, `
+			INSERT INTO shared.match_registry
+				(match_id, start_time, start_time_utc, playlist_id)
+			VALUES ('mpl', '2026-06-01 20:00:00', '2026-06-01 20:00:00+00', 'pl-fiesta')`); err != nil {
+			t.Fatalf("insert: %v", err)
+		}
+		if _, err := pdb.Metadata.Exec(ctx,
+			`INSERT INTO asset_translations VALUES ('pl-fiesta','playlist','fr-FR','Super Fiesta Fête','',now())`); err != nil {
+			t.Fatalf("seed playlist: %v", err)
+		}
+		return pdb
+	}
+	ctx := context.Background()
+
+	// Halo 5 (flag absent) : libellé officiel entier.
+	pdbH5 := seed(t)
+	metaH5, err := NewMatchViewRepo(pdbH5, "test-xuid").GetMatchMeta(ctx, "mpl")
+	if err != nil {
+		t.Fatalf("GetMatchMeta H5: %v", err)
+	}
+	if metaH5.PlaylistNameFR == nil || *metaH5.PlaylistNameFR != "Super Fiesta Fête" {
+		t.Errorf("H5 PlaylistNameFR = %v, want 'Super Fiesta Fête' (non stripée)", metaH5.PlaylistNameFR)
+	}
+
+	// Halo Infinite (flag présent) : catégorie "super fiesta" retirée.
+	pdbHI := seed(t)
+	metaHI, err := NewMatchViewRepo(pdbHI, "test-xuid").WithPlaylistCategoryStrip(true).GetMatchMeta(ctx, "mpl")
+	if err != nil {
+		t.Fatalf("GetMatchMeta HI: %v", err)
+	}
+	if metaHI.PlaylistNameFR == nil || *metaHI.PlaylistNameFR != "Fête" {
+		t.Errorf("HI PlaylistNameFR = %v, want 'Fête' (catégorie stripée)", metaHI.PlaylistNameFR)
+	}
+}
+
+// TestGetMatchMeta_ModeViaGameVariant_NoPair couvre A2 (résidus H5) : quand le
+// titre n'a PAS de pair (ni ID ni nom — Halo 5) mais porte un game_variant, le
+// mode est résolu via asset_translations type "game_variant" (cascade FR). Sans
+// ce fallback mode_ui est vide sur 100 % des matchs H5.
+func TestGetMatchMeta_ModeViaGameVariant_NoPair(t *testing.T) {
+	pdb := newMetaResolveTestPDB(t)
+	ctx := context.Background()
+
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO shared.match_registry
+			(match_id, start_time, start_time_utc, game_variant_id)
+		VALUES ('mgv', '2026-06-23 06:48:00', '2026-06-23 06:48:00+00',
+		        '257a305e-4dd3-41f1-9824-dfe7e8bd59e1')`); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+	if _, err := pdb.Metadata.Exec(ctx,
+		`INSERT INTO asset_translations VALUES ('257a305e-4dd3-41f1-9824-dfe7e8bd59e1','game_variant','fr-FR','Assassin','',now())`); err != nil {
+		t.Fatalf("seed game_variant: %v", err)
+	}
+
+	meta, err := NewMatchViewRepo(pdb, "test-xuid").GetMatchMeta(ctx, "mgv")
+	if err != nil {
+		t.Fatalf("GetMatchMeta: %v", err)
+	}
+	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Assassin" {
+		t.Errorf("ModeNameFR = %v, want 'Assassin' (fallback game_variant)", meta.ModeNameFR)
+	}
+}
+
+// TestGetMatchMeta_GameVariantFallback_NotUsedWhenPairPresent : non-régression
+// Infinite — quand un pair existe, le fallback game_variant ne prend PAS la main
+// (le mode reste celui résolu depuis le pair).
+func TestGetMatchMeta_GameVariantFallback_NotUsedWhenPairPresent(t *testing.T) {
+	pdb := newMetaResolveTestPDB(t)
+	ctx := context.Background()
+
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO shared.match_registry
+			(match_id, start_time, start_time_utc, pair_name, game_variant_id)
+		VALUES ('mpair', '2026-06-01 20:00:00', '2026-06-01 20:00:00+00',
+		        'Arena:Slayer', 'gv-ctf')`); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+	// game_variant traduit "Capture du drapeau" — ne DOIT PAS être choisi (pair présent).
+	if _, err := pdb.Metadata.Exec(ctx,
+		`INSERT INTO asset_translations VALUES ('gv-ctf','game_variant','fr-FR','Capture du drapeau','',now())`); err != nil {
+		t.Fatalf("seed game_variant: %v", err)
+	}
+
+	meta, err := NewMatchViewRepo(pdb, "test-xuid").GetMatchMeta(ctx, "mpair")
+	if err != nil {
+		t.Fatalf("GetMatchMeta: %v", err)
+	}
+	if meta.ModeNameFR == nil || *meta.ModeNameFR != "Arena:Slayer" {
+		t.Errorf("ModeNameFR = %v, want 'Arena:Slayer' (pair présent, pas de fallback game_variant)", meta.ModeNameFR)
+	}
+}
+
 // TestGetMatchMeta_T0Ms vérifie le calcul de l'offset T0 (Match Timeline T0,
 // Phase 3) dans Q13 : real_start_time renseigné → T0Ms = écart ms avec
 // start_time_utc ; real_start_time absent → T0Ms nil (fallback runtime T0=0).
