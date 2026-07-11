@@ -1,10 +1,13 @@
 ## [2026-07-11] ADR 0030 (persist write aggregates) + ADR 0031 (frontiere source par titre) — chantier documentaire
 
-**Statut** : En cours (etape 1 livree). Plan : `.ai/PLAN_ADR_0030_0031_AGREGATS_FRONTIERE_TITRE.md`,
-branche `docs/adr-aggregates-title-boundary` (depuis origin/main post-merge audits). Chantier
+**Statut** : Complété (3 etapes, plan deplace vers `.ai/V7/`). Plan :
+`.ai/V7/PLAN_ADR_0030_0031_AGREGATS_FRONTIERE_TITRE.md`, branche
+`docs/adr-aggregates-title-boundary` (depuis origin/main post-merge audits). Chantier
 DOC-ONLY : les livrables code (allowlist datee D-3, ratchet lecture `_latest` D-4, opacite
-batch D-1/D-5) sont ACTES dans les ADRs mais leur implementation est hors-perimetre (lots
-futurs planifies apres acceptation).
+batch D-1/D-5, `httpx` 0031-D2) sont ACTES dans les ADRs mais leur implementation est
+hors-perimetre (lots futurs planifies apres acceptation). AUCUN fichier de code modifie.
+Commits : ADR 0030 `54c181b4c`, ADR 0031 `a8c8feb5e`, cloture (index CLAUDE.md + MT-27 +
+git mv plan).
 
 **Etape 1 — ADR 0030 redige** (`docs/adr/0030-persist-write-aggregates.md`, Proposed) :
 durcissement compile-time des invariants ART (0019/0026), qui ne tiennent qu'au runtime.

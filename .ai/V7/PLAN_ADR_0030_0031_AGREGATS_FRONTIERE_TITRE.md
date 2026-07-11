@@ -1,5 +1,12 @@
 # Plan — ADR 0030 (agregats persist) + ADR 0031 (frontiere source de donnees par titre)
 
+> **STATUT : COMPLETE (2026-07-11)** — 2 ADRs rediges (Proposed), index CLAUDE.md + MT-27
+> a jour, journal a jour. Chantier DOC-ONLY : aucun fichier de code modifie (verifie).
+> Livrables code (allowlist D-3, ratchet lecture D-4, batch opaque D-1/D-5, httpx D-2) =
+> ACTES dans les ADRs, implementation en lots futurs (hors perimetre de ce plan).
+> Commits : ADR 0030 (54c181b4c), ADR 0031 (a8c8feb5e), cloture (ce commit).
+> Deplace vers `.ai/V7/` au commit de cloture.
+
 ## Contexte
 
 Discussion DDD → constat en 3 explorations :
@@ -46,11 +53,11 @@ Discussion DDD → constat en 3 explorations :
 - [x] Sequencement note : client move + httpx AVANT Phase 1.6 (pool auth) — `RequestDecorator` = point d'accroche du pool par titre ; multi-titre V2 reste gate par Phases 1.5/1.6 (ADR 0025) ; INTERDICTION d'une 3e architecture ; AUCUNE promesse migration H5->V2
 - **Gate** : PASSE — fichier existe ; refs 0027=15/0012=3/0025=5/0008=2 > 0 ; zero emoji ; 6 chemins cites verifies ; chiffres de duplication mesures par `wc -l` (219/450) et `sed` sur les constantes, non repris de rapports d'agents.
 
-### Etape 3 — Mises a jour d'index et journal
-- [ ] `CLAUDE.md` : ajouter 0030/0031 a la liste des ADRs (meme commit, une ligne chacun)
-- [ ] `.ai/V7/PLAN_MULTITITRE_INDEX.md` : entree MT-27 (interface source par titre → ADR 0031)
-- [ ] `.ai/thought_log.md` : entree datee [2026-07-03], titre, statut Complété, decision principale (2 ADRs, pilote PlayerEnrichment, frontiere client interne), prochaine etape (planifier lot pilote 0030-D2 apres cloture lot E)
-- **Gate** : `grep 0030 CLAUDE.md`, `grep MT-27 .ai/V7/PLAN_MULTITITRE_INDEX.md`, `grep "2026-07-03" .ai/thought_log.md` non vides. Demander a l'utilisateur avant tout commit.
+### Etape 3 — Mises a jour d'index et journal — CLOSE 2026-07-11
+- [x] `CLAUDE.md` : 0030/0031 ajoutes a la liste des ADRs (section « Decisions architecturales »)
+- [x] `.ai/V7/PLAN_MULTITITRE_INDEX.md` : entree MT-27 (interface source par titre → ADR 0031), Registre B, marquee « nouvel axe 2026-07 hors audit initial »
+- [x] `.ai/thought_log.md` : entree datee [2026-07-11] (date reelle d'execution ; le plan indiquait [2026-07-03], placeholder du redacteur — cf. Decouvertes), statut Complété, decision principale (2 ADRs, pilote PlayerEnrichment, frontiere client interne), prochaines etapes
+- **Gate** : PASSE — `grep 0030 CLAUDE.md`, `grep MT-27 .ai/V7/PLAN_MULTITITRE_INDEX.md`, `grep "2026-07-11" .ai/thought_log.md` non vides ; `git status` = seulement docs/adr/, CLAUDE.md, .ai/ (aucun code). Commit autonome (mission : pleine autonomie, commit au fil).
 
 ## Regles d'execution
 - Statuts d'item : `[x]` fait / `[~]` couvert ailleurs (reference) / `[!]` non traite (justification ecrite). Aucune case vide a la cloture.
@@ -65,4 +72,29 @@ Discussion DDD → constat en 3 explorations :
 Ordre d'execution recommande : (1) pilote 0030-D2 PlayerEnrichment (lot dedie apres cloture du lot E — eviter le churn sur `builder.go` pendant l'audit) avec golden byte-identique ; (2) 0031-D1/D2 pure move (`git mv`, zero diff logique) + httpx, commit separe du cablage ; (3) 0031-D3/D4 interface + KnownSet ; (4) generalisation 0030 SharedMatch. V2 multi-titre gate par Phases 1.5/1.6.
 
 ## Decouvertes
-(a consigner pendant l'execution, ne pas traiter)
+(consignees pendant l'execution — NON traitees, hors perimetre doc-only)
+
+1. **Client Infinite deja en sous-package `internal/sync/haloclient/`** (le plan supposait
+   `internal/sync/halo_client*.go` a la racine sync). ~2386 L non-test ; core retry/backoff
+   dans `halo_client_http.go` (219 L). La cible ADR 0031-D1
+   (`internal/games/halo_infinite/client/`) reste valide ; le move sera un `git mv` du
+   sous-package, pas de fichiers epars.
+2. **Tension D-1 (champs prives) vs serialisation JSON du WAL** : `encoding/json` ne marshale
+   pas les champs non-exportes ; l'implementation du batch opaque devra posseder la
+   serialisation (DTO prive ou `MarshalJSON`/`UnmarshalJSON` custom, WAL byte-compatible,
+   couvert par `batch_roundtrip_test.go`). Note dans l'ADR 0030 (D-1) ; pas un blocage.
+3. **`HTTPError` declare 3x** (pas 2x) : `haloclient/halo_client.go:62`, `halo_5/client.go:58`,
+   ET `internal/presence/rest_client.go:140`. Les 2 clients Halo sont la cible D-2 ; le client
+   presence est une surface distincte (REST Xbox presence), hors perimetre 0031.
+4. **`OpenReadWrite` = ~25 sites non-test** (mesure pour l'allowlist initiale D-3, a seeder au
+   lot d'implementation) : legitimes (persister, provider_writer, pool, schema bootstrap) +
+   repos post-sync. Non traite ici (doc-only).
+5. **Lint `TODO(expiry:YYYY-MM-DD)`** = `internal/archlint/todo_expiry_test.go` (pas un lint
+   externe) — referencable pour le pattern de dette datee (D-3).
+6. **Gate etape 3 du plan grep `"2026-07-03"`** : date placeholder du redacteur. Execution
+   reelle 2026-07-11 → entree thought_log datee honnetement 2026-07-11. Intention du gate
+   (entree existe) satisfaite ; le grep litteral `2026-07-03` du plan est perime, remplace
+   par `2026-07-11` dans le gate ci-dessus.
+7. **Statut de l'ADR 0027 non modifie** : 0031 PROPOSE le passage « Accepté (amendé) » mais
+   n'edite pas 0027 (engagement d'architecture long terme = decision humaine). Verification
+   utilisateur requise (cf. rapport).
