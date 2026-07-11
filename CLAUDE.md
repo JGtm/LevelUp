@@ -275,7 +275,10 @@ git commit -m "refactor(phase2): ..."
   `0024` LUSR v2 TrueSkill2 · `0025` refactor title-agnostic (master :
   `.ai/V7/PLAN_TITLE_AGNOSTIC_REFACTORING.md`) · `0026` **append-only ART eradication**
   (+ vues `_latest`) · `0027` sync pipeline V2 cycle orchestrator ·
-  `0028` template synthesis coach · `0029` ownership joueur multi-user.
+  `0028` template synthesis coach · `0029` ownership joueur multi-user ·
+  `0030` **persist write aggregates** (durcissement compile-time anti-ART : batch opaque,
+  allowlist datée `OpenReadWrite`, garde-rail lecture `_latest`) · `0031` frontière source
+  de données par titre (mutualisation HTTP `platform/httpx`, `TitleSyncRunner` ; amende 0027).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).
