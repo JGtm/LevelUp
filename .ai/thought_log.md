@@ -1,3 +1,19 @@
+## [2026-07-12] OUTILLAGE CI Lot 1 — make generate-types réel (branche chore/ci-outillage-2026-07)
+
+**Statut** : Complété. Branche `chore/ci-outillage-2026-07` (depuis integration/campagne-2026-07).
+
+**Décision principale** : la cible Makefile racine `generate-types` était un no-op (echo sans
+exécution). Remplacée par une délégation réelle `cd apps/web && npm run generate-types`
+(openapi-typescript apps/go-api/api/openapi.yaml -> apps/web/src/lib/api/generated.ts). Script
+npm vérifié sur pièces (`apps/web/package.json` L20).
+
+**Résultats (gate)** : `make generate-types` rejoué → `git diff --stat` = 0 sur
+`apps/web/src/lib/api/generated.ts` (l'intégration l'avait déjà régénéré, output déterministe).
+Mention `CLAUDE.md` L164 (« make generate-types # openapi.yaml -> ... ») désormais exacte, rien à
+corriger.
+
+**Prochaine étape** : Lot 2 (triggers CI push feat/**).
+
 ## [2026-07-11] INTÉGRATION campagne plans 2026-07 — merge des 7 branches (branche integration/campagne-2026-07)
 
 **Statut** : Complété (7 merges --no-ff + 1 commit de résolution front ; gates locaux verts ;
