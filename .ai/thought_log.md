@@ -1,3 +1,21 @@
+## [2026-07-11] Squash migrations — M1 outil snapshot schéma (chantier N4)
+
+**Statut** : Complété (M1).
+
+**Décision technique** : `migration.SchemaSnapshot(db)` = fonction LIBRAIRIE (pas cmd) dans
+`internal/migration/schema_snapshot.go`. Normalise le schéma DuckDB : tables/colonnes
+(ordre POSITIONNEL préservé = observable)/contraintes/index/vues/séquences, objets 1er niveau
+triés lexicalement, SCHÉMA SEUL (zéro donnée). Réutilisable par M2 et un futur cmd (M5c) +
+dé-risque E7.
+
+**Résultats** : 8 sous-tests verts — déterminisme (schéma identique + 2× RunForDB → snapshot
+byte-identique) et sensibilité (6 mutations détectées + ordre colonnes observable). vet+build 0.
+
+**Prochaine étape** : M2 — test d'invariant bit-identique (mode A=B « harnais prêt » +
+preuve de morsure sur schéma altéré), branché à la suite integration.
+
+---
+
 ## [2026-07-11] Squash migrations — M0 cartographie (chantier N4)
 
 **Statut** : Complété (M0). Branche `refactor/migration-squash-baseline`.

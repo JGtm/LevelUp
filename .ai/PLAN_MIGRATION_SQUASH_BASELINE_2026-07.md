@@ -81,19 +81,21 @@ Critères de succès :
 - Gate M0 : rapport complet au Journal §J ; aucune modification de code committée. [x]
 
 ### M1 — Outil de snapshot de schéma normalisé
-- [ ] M1a — `cmd/schema-snapshot` (ou fonction test-only dans `internal/migration` si plus
-  simple — décider en M0, documenter) : ouvre une DB DuckDB, extrait le schéma COMPLET et
-  le sérialise NORMALISÉ : tables (colonnes, types, defaults, NOT NULL, PK), index, vues
-  (définition SQL normalisée), séquences — trié de façon déterministe (ordre lexical),
-  indépendant de l'ordre d'exécution des steps là où l'ordre n'a pas d'effet observable.
-  Sources DuckDB : `duckdb_tables()`, `duckdb_columns()`, `duckdb_views()`,
-  `duckdb_constraints()`, `duckdb_indexes()` (vérifier la disponibilité réelle dans la
-  version embarquée).
-- [ ] M1b — Déterminisme prouvé : 2 provisionings vierges successifs (même historique) →
-  snapshots identiques octet pour octet (test).
-- [ ] M1c — Sensibilité prouvée : altérer artificiellement un schéma (1 colonne, 1 vue)
-  → diff non vide (test des deux sens, sonde jetable supprimée ensuite).
-- Gate M1 : tests M1b/M1c verts ; build+vet 0.
+- [x] M1a — DÉCIDÉ (M0) : fonction LIBRAIRIE réutilisable `migration.SchemaSnapshot(db)`
+  (`internal/migration/schema_snapshot.go`), pas un cmd — appelable par le test d'invariant
+  M2 (même package + package titre) ET par un futur `cmd/schema-snapshot` pour M5c. Extrait
+  tables (schema.table + PK flag), colonnes (POSITIONNEL, ordre observable préservé), types,
+  defaults, nullable, contraintes, index (sql normalisé), vues (sql normalisé), séquences.
+  Objets de 1er niveau triés lexicalement ; SCHÉMA SEUL (zéro donnée lue). Sources vérifiées
+  dispo : `duckdb_tables/columns/constraints/indexes/views/sequences()`.
+- [x] M1b — Déterminisme prouvé : `TestSchemaSnapshot_DeterministicIdenticalSchema` +
+  `TestSchemaSnapshot_DeterministicRunForDB` (2 provisionings RunForDB → snapshot identique
+  octet pour octet ; les lignes ledger, données, ne sont pas capturées).
+- [x] M1c — Sensibilité prouvée (morsure 2 sens) : `TestSchemaSnapshot_SensitiveToMutations`
+  (6 dimensions : colonne, default, table, vue, index, séquence — chacune → diff) +
+  `TestSchemaSnapshot_ColumnOrderIsObservable` (garde-fou fausse équivalence par tri
+  colonnes). Tests PERMANENTS (le tool est du code livré), pas de sonde résiduelle.
+- Gate M1 : tests M1b/M1c verts (8 sous-tests PASS) ; `go vet` + `go build` migration = 0. [x]
 
 ### M2 — Test d'invariant bit-identique (le verrou central — AVANT toute baseline)
 - [ ] M2a — `internal/migration/squash_invariant_test.go` : provisionne DEUX DBs vierges
