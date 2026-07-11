@@ -32,6 +32,12 @@ placement_matches = 10
 # (CSRSeasonIDForTitle → GetCSRSnapshots WHERE season_id) et ÉCRITURE (sync h5
 # persiste player_csr_snapshots.season_id = "h5-lifetime"). Saisons réelles = Phase 2.
 csr_season_id = "h5-lifetime"
+# Préfixes de nom de fichier de capture APPARTENANT à Halo 5 (Windows Game Bar :
+# "Halo_5_Guardians-2019-12-12_22h27.mp4"). Routage de l'indexeur média (DEC-8,
+# plan résidus H5) : le dossier captures d'un joueur est partagé entre titres —
+# ces fichiers ne sont indexés QUE par halo_5 (les autres titres les sautent via
+# Registry.ForeignMediaFilenamePrefixes).
+media_filename_prefixes = ["Halo_5_Guardians-"]
 # Coarse capabilities Halo 5 (cf. handoff §2). Données riches ; divergence =
 # vocab/échelle/natif. media = pipeline LOCAL (upload utilisateur + corrélation
 # par timestamp de capture vers les matchs h5 ; PAS d'UGC API). Le parsing du

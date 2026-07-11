@@ -93,6 +93,7 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 		Gamertag:            req.Gamertag,
 		BufferMin:           tol,
 		Timezone:            s.timezone,
+		TitleSlug:           req.TitleSlug,
 		CaptureTimes:        captureTimes,
 	})
 	if err != nil {

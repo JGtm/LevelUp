@@ -1,3 +1,28 @@
+## [2026-07-11] Résidus H5 match view — LOT F (médias : libellés + routage titre + purge)
+
+**Statut** : Complété (F1-F4 ; opérations prod F3/B2/D2 à rejouer en V2).
+
+**Décision technique principale** : (F1/DEC-7) fallback des noms au point de chargement
+du registre média (`resolveMediaRegistryNameFallbacks`, ResolveAssetNamesBulk réutilisé) —
+map/playlist par ID, mode par game_variant via un champ DISTINCT `ModeNameFallback` (pas
+un pair : n'entre pas dans la classification par catégorie Infinite) ; filtre mode par
+égalité de libellé quand le titre n'a pas de pair. (F2/DEC-8) routage de l'indexeur par
+`media_filename_prefixes` déclarés dans title.toml (halo_5 = "Halo_5_Guardians-"),
+`Registry.ForeignMediaFilenamePrefixes` + skip dans IndexMedia (TitleSlug câblé aux 5
+call sites). (F3) `cleanup_media_index --foreign-only` (+ --title/--dry-run) : purge +
+CHECKPOINT ADR 0022.
+
+**Résultats observés** : réel local — galerie média H5 : maps résolues (Truth, Coliseum,
+Eden, Tyrant, Alpin, Plaza), mode "Assassin", filtres peuplés ("Super Fiesta Fête"…) ;
+non-régression Infinite (catégories intactes) ; purge locale dry-run 84/0/0 → 84 purgés
+→ re-run 0 (idempotent) ; « Sans match » Infinite 101 → 17. Tests : 4 integration
+media_repo_h5_fallback + TestMatchesForeignPrefix + TestMediaFilenamePrefixes ; suites
+unit + integration duckdb/ops vertes ; lint 0 issue (resolveMediaRegistryNameFallbacks
+décomposé en slots après gocyclo).
+
+**Conclusion / prochaine étape** : LOT E (clôture) puis LOT V (prod : rejouer B2
+--overrides-only, D2 --missing-only x4, F3 --foreign-only + vérif visuelle utilisateur).
+
 ## [2026-07-11] Résidus H5 match view — LOT D code (instrumentation + --missing-only + Placement)
 
 **Statut** : Complété (code + 4 runs locaux + D4 vérifié ; CI branche verte sur le commit D).

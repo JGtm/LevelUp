@@ -26,6 +26,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/domain/title"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 )
 
@@ -78,6 +79,15 @@ type MediaIndexOptions struct {
 	Gamertag            string
 	Timezone            string            // IANA (ex: "Europe/Paris") — SET TimeZone à l'ouverture
 	CaptureTimes        map[string]*int64 // basename → unix ts client (optionnel, depuis upload)
+	// TitleSlug : titre pour lequel on indexe — active le routage DEC-8 : les fichiers
+	// dont le nom matche un préfixe revendiqué par un AUTRE titre
+	// (title.Registry.ForeignMediaFilenamePrefixes, déclaré dans les title.toml) sont
+	// SAUTÉS (un clip Halo_5_Guardians-* n'est plus indexé sous halo_infinite).
+	// Vide = pas de routage (comportement historique).
+	TitleSlug string
+	// ForeignFilenamePrefixes : override des préfixes étrangers (tests). nil = résolus
+	// depuis TitleSlug via title.DefaultRegistry().
+	ForeignFilenamePrefixes []string
 }
 
 // MediaIndexResult résume le résultat de l'indexation.
@@ -213,7 +223,20 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 			"player", opts.Gamertag, "count", reconciled)
 	}
 
+	foreignPrefixes := opts.ForeignFilenamePrefixes
+	if foreignPrefixes == nil && opts.TitleSlug != "" {
+		foreignPrefixes = title.DefaultRegistry().ForeignMediaFilenamePrefixes(opts.TitleSlug)
+	}
+	skippedForeign := 0
 	for _, path := range mediaFiles {
+		// Routage titre (DEC-8) : un fichier revendiqué par un AUTRE titre (préfixe
+		// déclaré dans son title.toml) n'est pas indexé ici — sinon chaque titre
+		// indexe tous les clips du dossier captures partagé et les clips étrangers
+		// restent « Sans match » à perpétuité.
+		if matchesForeignPrefix(filepath.Base(path), foreignPrefixes) {
+			skippedForeign++
+			continue
+		}
 		hash, err := HashFile(path)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: hash: %v", path, err))
@@ -234,7 +257,8 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 	}
 
 	slog.Debug("IndexMedia: scan terminé",
-		"scanned", result.Scanned, "new_files", result.NewFiles)
+		"scanned", result.Scanned, "new_files", result.NewFiles,
+		"skipped_foreign_title", skippedForeign)
 
 	// Association avec les matchs
 	assoc, err := AssociateMediaWithMatches(ctx, db, opts.SharedMatchesDBPath, opts.BufferMin, opts.Timezone)
@@ -293,6 +317,24 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 		"errors", len(result.Errors))
 
 	return result, nil
+}
+
+// matchesForeignPrefix indique si le basename matche un préfixe revendiqué par un
+// autre titre (comparaison insensible à la casse — noms Windows). DEC-8.
+func matchesForeignPrefix(basename string, prefixes []string) bool {
+	if len(prefixes) == 0 {
+		return false
+	}
+	lower := strings.ToLower(basename)
+	for _, p := range prefixes {
+		if p == "" {
+			continue
+		}
+		if strings.HasPrefix(lower, strings.ToLower(p)) {
+			return true
+		}
+	}
+	return false
 }
 
 // AssociateMediaWithMatches associe chaque média au match dans la fenêtre

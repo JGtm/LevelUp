@@ -245,22 +245,34 @@ go run cmd/tmpdbq/main.go "../../data/titles/halo_5/players/JGtm/stats.duckdb" \
 # comptage « classés sans ligne » par joueur : doit tendre vers 0 ou être justifié D3
 ```
 
-### LOT F — Médias : libellés match + double indexation (issu du volet VPS)
+### LOT F — Médias : libellés match + double indexation (issu du volet VPS)  [COMPLÉTÉ 2026-07-11]
 Périmètre fermé :
-- [ ] F1. Libellés match de la galerie média (DEC-7) : `computedMapLabel` /
-      `computedModeLabel` / `computedPlaylistLabel`
-      (`media_repo_q37_enrich.go:22-67`) tombent en fallback sur la cascade
-      asset_translations (ResolveAssetNamesBulk — RÉUTILISER, pas dupliquer) quand les
-      colonnes registre sont vides ; mode : même fallback game_variant que le lot A2.
-      Les filtres map/mode/playlist de la galerie doivent se peupler pour H5.
-- [ ] F2. Routage titre de l'indexeur média (DEC-8) : filtre par motif de nom de
-      fichier par titre dans `IndexMedia` (`internal/ops/media.go`), motifs déclarés
-      dans la config titre (mappings TOML), pas de `slug ==` en dur.
-- [ ] F3. Purge one-shot des 84 clips H5 du shared_social halo_infinite (cleanup avec
-      --dry-run d'abord ; vérifier `cmd/cleanup_media_index` avant d'écrire un
-      nouvel outil). Écritures shared_social = Persister + CHECKPOINT (ADR 0022).
-- [ ] F4. Tests : enrich média H5 avec registre à noms NULL → libellés résolus ;
-      indexeur ignore les fichiers d'un autre titre ; purge idempotente.
+- [x] F1. Fallback des noms au POINT DE CHARGEMENT (`loadMediaMatchRegistry` →
+      `resolveMediaRegistryNameFallbacks`) via ResolveAssetNamesBulk (RÉUTILISÉ) :
+      map par map_id, playlist par playlist_id, mode par game_variant_id (champ
+      DISTINCT `ModeNameFallback` — pas un pair : n'alimente ni PairNameRaw ni la
+      classification par catégorie Infinite). `enrichMediaModeCategories` ne nil-e
+      plus le ModeName sans pair ; filtre mode par égalité de libellé quand pas de
+      pair. Vérifié réel (serveur local, 7 clips H5 associés) : maps résolues
+      (Truth/Coliseum/Eden/Tyrant/Alpin/Plaza), mode="Assassin", filtres map/mode/
+      playlist PEUPLÉS ("Super Fiesta Fête", "Partie rapide", ...). Non-régression
+      Infinite vérifiée réel (catégories Assassin/Super Fiesta/Other inchangées).
+- [x] F2. Routage titre de l'indexeur : `[title].media_filename_prefixes` dans
+      title.toml (halo_5 = ["Halo_5_Guardians-"]) → `TitleDescriptor.MediaFilenamePrefixes`
+      + `Registry.ForeignMediaFilenamePrefixes(slug)` ; `IndexMedia` saute les fichiers
+      matchant un préfixe ÉTRANGER (opts.TitleSlug câblé aux 5 call sites : scan,
+      reindex, post-sync, upload — via UploadRequest.TitleSlug —, CLI index-media).
+      Aucun slug ==.
+- [x] F3. `cmd/cleanup_media_index --foreign-only [--title <slug>] [--dry-run]` :
+      purge des media_files matchant un préfixe étranger (+ associations_history +
+      likes) + CHECKPOINT (ADR 0022). Exécuté en LOCAL : dry-run = 84 fichiers /
+      0 assoc / 0 like → purge réelle 84 → re-run 0 (idempotence prouvée).
+      « Sans match » Infinite : 101 → 17. À REJOUER EN PROD (V2).
+- [x] F4. Tests : `media_repo_h5_fallback_test.go` (4 tests integration : libellés
+      résolus, options de filtres peuplées, filtre mode par label, non-régression
+      noms présents) ; `TestMatchesForeignPrefix` (5 cas) ;
+      `TestMediaFilenamePrefixes_ParsedAndForeign` (parse TOML + foreign) ; purge
+      idempotente prouvée en exécution réelle (run + re-run → 0).
 Gate LOT F :
 ```
 cd apps/go-api && go test ./internal/platform/duckdb/... ./internal/ops/...
@@ -317,7 +329,7 @@ Gate : gate global = tous les gates A→D+F verts dans la même session + lint +
 | B | à faire | | |
 | C | à faire | | |
 | D | à faire | | D2 : ventilation skips = |
-| F | à faire | | copies prod dispo dans le scratchpad session (h5_social etc.) |
+| F | COMPLÉTÉ | 2026-07-11 | vérifié réel local (7 clips h5 associés, copies prod du scratchpad expirées) ; purge locale 84→0 ; f88f6d8b lui-même = assoc PROD → confirmé en V3. PROD : rejouer F3 en V2 |
 | E | à faire | | |
 | V | V1 fait ; V2-V4 après merge | 2026-07-07 | prod = local ; « introuvable » = LOT F |
 
