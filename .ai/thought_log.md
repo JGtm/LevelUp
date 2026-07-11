@@ -1,3 +1,35 @@
+## [2026-07-11] Engagement refonte lobby — Phase 2 (bins de réponse + attendu lobby)
+
+**Statut** : Complété (Phase 2/6 de PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07).
+
+**Décision technique** : l'attendu du joueur devient « sa réponse habituelle à un match
+d'intensité similaire », ancré lobby partout (D1). Nouveau modèle : `pace_attendu(t) =
+coef[bin] × pace_lobby(t)`, le bin choisi par l'intensité du match (`meanLobby` de la
+courbe, terciles adaptatifs par joueur+mode). Chaîne de fallback `bin → global →
+cold_start` exposée via `ExpectedBasis`. `selectExpectedReference` supprimé (l'ancre
+n'est plus team/lobby selon le mode). Ordre de calcul : courbe des paces d'abord,
+`meanLobby` ensuite, attendu en 2e passe (`applyExpectedToCurve`).
+
+Détails : `temporal/engagement_response_bins.go` (`ComputeEngagementResponseBins`, émet
+toujours 3 terciles → jeu de clés constant, serving gate sur n>=10) ; domaine
+`EngagementResponseBins`+`ResolveBin` ; port `Load/SaveResponseBins` ; migration
+title-owned `create_engagement_response_bins_table` (name-keyed → 2 titres) ; repo DuckDB
+dédié (extrait ≤500L) ; recompute sync+admin persistent les bins (ART-safe
+SELECT-then-UPDATE-or-INSERT sous lease). `HasGlobalLobbyCoef` = présence d'une row
+engagement_coefficients (recompute ne la persiste qu'à >=10 samples).
+
+**Résultats** : `go test ./internal/...` exit 0 ; `go vet` 0 ; `-tags=integration -p 1
+./internal/sync/... ./internal/platform/duckdb/...` exit 0 (anti-ART verts) ; golangci
+`--new-from-rev=origin/main` 0 issue.
+
+**Découverte consignée** : migrations player = un seul registre title-owned appliqué aux
+2 titres (le plan supposait « deux registres »). Aucun changement de périmètre.
+
+**Prochaine étape** : Phase 3 — contrat API (expected_basis, intensity_bin, payload
+engagement_profile, régénération openapi).
+
+---
+
 ## [2026-07-11] Engagement refonte lobby — Phase 1 (poids des events)
 
 **Statut** : Complété (Phase 1/6 de PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07).

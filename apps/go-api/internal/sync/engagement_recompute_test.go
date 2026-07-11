@@ -94,9 +94,55 @@ func openPlayerForRecompute(t *testing.T, withPaces, withCoefsTable bool) *sql.D
 		if _, err := db.Exec(coefDDL); err != nil {
 			t.Fatalf("CREATE engagement_coefficients: %v", err)
 		}
+		// Bins de reponse (lobby-anchored v2) — accompagne la table coefs.
+		binsDDL := `
+			CREATE TABLE engagement_response_bins (
+				xuid          VARCHAR NOT NULL,
+				mode_category VARCHAR NOT NULL,
+				intensity_bin VARCHAR NOT NULL,
+				lower_bound   DOUBLE NOT NULL,
+				upper_bound   DOUBLE NOT NULL,
+				coef_lobby    DOUBLE NOT NULL,
+				n_matches     INTEGER NOT NULL,
+				last_updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				PRIMARY KEY (xuid, mode_category, intensity_bin)
+			);
+		`
+		if _, err := db.Exec(binsDDL); err != nil {
+			t.Fatalf("CREATE engagement_response_bins: %v", err)
+		}
 	}
 
 	return db
+}
+
+// loadBinsCount lit le nombre de bins persistes et leurs coefs par bin.
+func loadBinsCount(t *testing.T, db *sql.DB, xuid, mode string) (n int, coefByBin map[string]float64, nByBin map[string]int) {
+	t.Helper()
+	rows, err := db.Query(`
+		SELECT intensity_bin, coef_lobby, n_matches
+		FROM engagement_response_bins
+		WHERE xuid = ? AND mode_category = ?
+		ORDER BY lower_bound
+	`, xuid, mode)
+	if err != nil {
+		t.Fatalf("load bins: %v", err)
+	}
+	defer rows.Close()
+	coefByBin = map[string]float64{}
+	nByBin = map[string]int{}
+	for rows.Next() {
+		var bin string
+		var coef float64
+		var nm int
+		if err := rows.Scan(&bin, &coef, &nm); err != nil {
+			t.Fatalf("scan bin: %v", err)
+		}
+		coefByBin[bin] = coef
+		nByBin[bin] = nm
+		n++
+	}
+	return n, coefByBin, nByBin
 }
 
 // insertPaceRow insère une row avec paces — helper pour les tests.
@@ -183,6 +229,42 @@ func TestBatchRecomputeCoefficients_HappyPath(t *testing.T) {
 	// Vérifie aussi que coef != 1.0 (sinon courbes superposées à l'écran)
 	if coefTeam == 1.0 {
 		t.Errorf("BUG racine non corrigé : coef_team reste 1.0 après recompute")
+	}
+}
+
+// TestBatchRecomputeCoefficients_ResponseBinsPersisted : le recompute persiste
+// aussi les 3 bins de reponse (terciles d'intensite) avec des coefs decroissants
+// pour un joueur qui repond mal aux matchs intenses.
+func TestBatchRecomputeCoefficients_ResponseBinsPersisted(t *testing.T) {
+	db := openPlayerForRecompute(t, true, true)
+	xuid, mode := "xuid-1", "PvP_ranked"
+	// 15 matchs calmes (paceLobby~2, ratio 1.5), 15 standards (5, 1.0),
+	// 15 chaotiques (10, 0.5). paceTeam mis egal a paceLobby (>= seuil).
+	insertBinBatch := func(prefix string, n int, paceLobby, ratio float64) {
+		for i := 0; i < n; i++ {
+			insertPaceRow(t, db, fmt.Sprintf("%s_m%d", prefix, i), xuid, mode,
+				paceLobby*ratio, paceLobby, paceLobby, 30)
+		}
+	}
+	insertBinBatch("calme", 15, 2.0, 1.5)
+	insertBinBatch("standard", 15, 5.0, 1.0)
+	insertBinBatch("chaotique", 15, 10.0, 0.5)
+
+	if _, err := batchRecomputeCoefficients(context.Background(), db, xuid); err != nil {
+		t.Fatalf("batchRecomputeCoefficients: %v", err)
+	}
+
+	n, coefByBin, nByBin := loadBinsCount(t, db, xuid, mode)
+	if n != 3 {
+		t.Fatalf("want 3 bins persisted, got %d", n)
+	}
+	if !(coefByBin["calme"] > coefByBin["standard"] && coefByBin["standard"] > coefByBin["chaotique"]) {
+		t.Errorf("coefs doivent decroitre avec l'intensite : %v", coefByBin)
+	}
+	for _, bin := range []string{"calme", "standard", "chaotique"} {
+		if nByBin[bin] < 10 {
+			t.Errorf("bin %s : n want >= 10, got %d", bin, nByBin[bin])
+		}
 	}
 }
 

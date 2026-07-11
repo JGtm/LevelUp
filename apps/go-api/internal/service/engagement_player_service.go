@@ -284,27 +284,28 @@ func (s *PlayerEngagementService) buildInputForMatch(
 	playerEvents, teamEvents, lobbyEvents := splitMatchEvents(events, s.xuid, teamXUIDs)
 	modeCategory := normalizeMode(mctx.IsRanked)
 	history, _ := s.loadHistorySafeByMode(ctx, modeCategory, matchID)
-	coefTeam, coefLobby := s.loadCoefsSafe(ctx, modeCategory)
+	coefLobby, hasGlobal, bins := s.loadExpectedInputs(ctx, modeCategory)
 	// highlight_events.time_ms est relatif au debut du match (0 a durationMS),
 	// pas un epoch UTC. On normalise donc les bornes a [0, duration].
 	durationMS := mctx.EndTimeMS - mctx.StartTimeMS
 	return temporal.EngagementScoreInput{
-		PlayerEvents:   playerEvents,
-		TeamEvents:     teamEvents,
-		LobbyEvents:    lobbyEvents,
-		NTeam:          mctx.NTeam,
-		NHumansLobby:   mctx.NHumansLobby,
-		XUID:           s.xuid,
-		MatchStartMS:   0,
-		MatchEndMS:     durationMS,
-		History:        history,
-		CoefTeamShare:  coefTeam,
-		CoefLobbyShare: coefLobby,
-		PersonalScore:  mctx.PersonalScore,
-		Kills:          mctx.Kills,
-		Assists:        mctx.Assists,
-		Mode:           modeCategory,
-		IsTeamMode:     mctx.IsTeamMode,
+		PlayerEvents:       playerEvents,
+		TeamEvents:         teamEvents,
+		LobbyEvents:        lobbyEvents,
+		NTeam:              mctx.NTeam,
+		NHumansLobby:       mctx.NHumansLobby,
+		XUID:               s.xuid,
+		MatchStartMS:       0,
+		MatchEndMS:         durationMS,
+		History:            history,
+		CoefLobbyShare:     coefLobby,
+		HasGlobalLobbyCoef: hasGlobal,
+		ResponseBins:       bins,
+		PersonalScore:      mctx.PersonalScore,
+		Kills:              mctx.Kills,
+		Assists:            mctx.Assists,
+		Mode:               modeCategory,
+		IsTeamMode:         mctx.IsTeamMode,
 	}
 }
 
@@ -329,16 +330,26 @@ func (s *PlayerEngagementService) loadHistorySafeByMode(
 	return history, nil
 }
 
-// loadCoefsSafe charge les coefs avec defaut neutre 1.0/1.0 en cold start.
-func (s *PlayerEngagementService) loadCoefsSafe(
+// loadExpectedInputs charge les entrees de l'attendu ancre lobby : coef lobby
+// global (fallback), flag de disponibilite du global, et bins de reponse.
+//
+// hasGlobal = (une row engagement_coefficients existe) : le recompute n'en
+// persiste une que si >= MinMatchesForCoef samples valides, donc sa presence
+// garantit un coef lobby global reel (pas le defaut cold-start 1.0). Degradation
+// gracieuse : table/colonnes absentes → cold-start (coefLobby 1.0, bins nil).
+func (s *PlayerEngagementService) loadExpectedInputs(
 	ctx context.Context,
 	modeCategory string,
-) (coefTeam, coefLobby float64) {
-	coef, err := s.repo.LoadEngagementCoefficient(ctx, s.xuid, modeCategory)
-	if err != nil || coef == nil {
-		return 1.0, 1.0
+) (coefLobby float64, hasGlobal bool, bins *domain.EngagementResponseBins) {
+	coefLobby = 1.0
+	if coef, err := s.repo.LoadEngagementCoefficient(ctx, s.xuid, modeCategory); err == nil && coef != nil {
+		coefLobby = coef.CoefLobbyShare
+		hasGlobal = true
 	}
-	return coef.CoefTeamShare, coef.CoefLobbyShare
+	if b, err := s.repo.LoadResponseBins(ctx, s.xuid, modeCategory); err == nil {
+		bins = b
+	}
+	return coefLobby, hasGlobal, bins
 }
 
 // loadRecentPvPMatchIDs liste les match_ids PvP recents via la repo (si elle

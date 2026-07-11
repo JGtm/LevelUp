@@ -102,7 +102,38 @@ func (s *PlayerEngagementService) recomputeAdminMode(
 		report.ModesSkipped = append(report.ModesSkipped, mode+":save_failed")
 		return nil
 	}
+	// Bins de reponse (lobby-anchored v2) : memes samples, best-effort. Absence
+	// de table ou historique insuffisant = non bloquant (l'attendu retombe sur
+	// le coef lobby global).
+	s.saveResponseBinsAdmin(ctx, mode, samples)
 	report.ModesUpdated = append(report.ModesUpdated, mode)
 	report.NCoefsPersisted++
 	return nil
+}
+
+// saveResponseBinsAdmin calcule et persiste les bins de reponse pour (xuid, mode)
+// depuis les memes samples que le coef. Best effort : une table absente ou un
+// historique insuffisant ne fait pas echouer le recompute admin.
+func (s *PlayerEngagementService) saveResponseBinsAdmin(
+	ctx context.Context,
+	mode string,
+	samples []temporal.RatioSample,
+) {
+	binsResult, err := temporal.ComputeEngagementResponseBins(samples)
+	if errors.Is(err, temporal.ErrInsufficientBinHistory) {
+		return
+	}
+	if err != nil {
+		slog.WarnContext(ctx, "RecomputeCoefficients: bins compute failed",
+			"xuid", s.xuid, "mode", mode, "err", err)
+		return
+	}
+	bins := domain.EngagementResponseBins{XUID: s.xuid, ModeCategory: mode, Bins: binsResult.Bins}
+	if err := s.repo.SaveResponseBins(ctx, bins); err != nil {
+		if errors.Is(err, port.ErrEngagementUnavailable) {
+			return // table absente : non bloquant
+		}
+		slog.WarnContext(ctx, "RecomputeCoefficients: bins save failed",
+			"xuid", s.xuid, "mode", mode, "err", err)
+	}
 }

@@ -46,6 +46,12 @@ func (m *engagementMockRepo) LoadPlayerHistory(_ context.Context, _ port.Engagem
 func (m *engagementMockRepo) LoadEngagementCoefficient(_ context.Context, _, _ string) (*domain.EngagementCoefficient, error) {
 	return nil, nil
 }
+func (m *engagementMockRepo) LoadResponseBins(_ context.Context, _, _ string) (*domain.EngagementResponseBins, error) {
+	return nil, nil
+}
+func (m *engagementMockRepo) SaveResponseBins(_ context.Context, _ domain.EngagementResponseBins) error {
+	return nil
+}
 func (m *engagementMockRepo) SaveEngagementScore(_ context.Context, _, _ string, _ domain.EngagementScoreResult) error {
 	return nil
 }
