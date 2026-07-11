@@ -1,3 +1,28 @@
+## [2026-07-11] Engagement agnostic gradué (F7) — Phase E2 (Complété)
+
+**Statut** : E2 complétée. Vecteur de signaux + porte de suffisance.
+
+**Décision technique** : nouveau `temporal.EngagementSignals` (ensemble minimal
+HasTimedPlayerEvents/HasLobbyPace/DurationMS + signaux riches optionnels `*int`
+ObjectiveEvents/RichKillMechanics comme masque de présence) + `Sufficiency()` 3 niveaux
+(Insufficient/Partial/Full) + `SignalsFromEvents` (dérivation title-AGNOSTIC de la
+composition des events). `EngagementScoreInput.Signals` consommé par le compute → nouveau
+champ résultat `SignalBasis`. Câblé aux 2 seuls points de construction (service
+buildInputForMatch + sync batchComputeEngagementScores).
+
+**Constat CARTO (E2a)** : les signaux riches H5 (impulses objectif) sont DÉJÀ dans
+`highlight_events` (`event_type="mode"`, poids 1.5) via l'ingest title-owned et DÉJÀ
+consommés — le vecteur d'events EST le vecteur de signaux universel, le compute est déjà
+agnostic. Donc `SignalsFromEvents` est un dériveur agnostic (pas de builder per-titre) ;
+le title-owned est l'ingest upstream. Consigné en Découvertes.
+
+**Résultat observé** : score Infinite byte-identical (les signaux riches ne pèsent pas,
+DE-5 — prouvé par test). Gates verts : temporal unit, build ./..., packages touchés, api
+(drift additif = divergent non gaté), vet 0, intégration sync -p 1, lint delta 0.
+
+**Prochaine étape** : E3 — double porte (capability engagement.score fine + champ de
+confiance par match signal_basis/calibration) + openapi + generated.ts.
+
 ## [2026-07-11] Engagement agnostic gradué (F7) — Phase E1 (Complété)
 
 **Statut** : E1 complétée sur `feat/engagement-agnostic-gradue` (branche basée sur

@@ -104,6 +104,14 @@ type EngagementScoreInput struct {
 	// Mode est la categorie de mode (PvP_ranked, PvP_unranked, ...).
 	Mode string
 
+	// Signals est le vecteur de signaux d'engagement du match (masque de presence
+	// + signaux riches optionnels), construit par le point de collecte title-owned
+	// (cf. SignalsFromEvents). Gouverne la porte de suffisance (1re porte F7). Si
+	// laisse a zero par l'appelant (tests legacy), ComputeEngagementScore le derive
+	// de ses propres inputs. Les signaux riches ne modifient PAS le score en l'etat
+	// (poids nul tant que non calibres, DE-5) : ils qualifient la confiance par match.
+	Signals EngagementSignals
+
 	// IsTeamMode indique si le mode a des equipes (vs FFA / 1v1). N'influe PLUS
 	// sur l'attendu (ancre lobby unifiee, cf. D1) ; ne sert qu'a l'affichage de
 	// la courbe « Equipe reelle » cote front.
@@ -186,6 +194,16 @@ func ComputeEngagementScore(input EngagementScoreInput) (domain.EngagementScoreR
 
 	score, confidence, nHist := scoreFromHistory(residualBrut, input.History)
 
+	// Porte de suffisance (1re porte F7). On prend le vecteur fourni par le point
+	// de collecte title-owned ; a defaut (tests legacy), on le derive des inputs
+	// (meme algorithme title-agnostic). Un resultat produit ici a toujours passe
+	// les gardes ErrMatchTooShort/ErrInsufficientData -> au moins Partial.
+	signals := input.Signals
+	if signals.IsZero() {
+		signals = SignalsFromEvents(input.PlayerEvents, input.LobbyEvents, matchDurationMS)
+	}
+	signalBasis := signals.Sufficiency().String()
+
 	result := domain.EngagementScoreResult{
 		EngagementScore: score,
 		ResidualBrut:    residualBrut,
@@ -199,6 +217,7 @@ func ComputeEngagementScore(input EngagementScoreInput) (domain.EngagementScoreR
 		PlayerActivity:  input.Kills + input.Assists + countDeaths(input.PlayerEvents),
 		ExpectedBasis:   expectedBasis,
 		IntensityBin:    intensityBin,
+		SignalBasis:     signalBasis,
 	}
 	return result, nil
 }

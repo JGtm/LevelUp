@@ -77,6 +77,17 @@ type EngagementScoreResult struct {
 	// IntensityBin est le libelle du bin d'intensite retenu quand ExpectedBasis
 	// vaut "bin" (calme / standard / chaotique). Vide sinon.
 	IntensityBin string `json:"intensity_bin"`
+
+	// SignalBasis qualifie la SUFFISANCE du vecteur de signaux du match (1re porte
+	// de degradation, chantier F7 engagement title-agnostic gradue) :
+	//   - "full"         : ensemble minimal + au moins un signal riche (objectif...)
+	//   - "partial"      : ensemble minimal seul (pas de signal riche)
+	//   - "insufficient" : ensemble minimal absent (un resultat servi n'atteint pas
+	//     ce niveau — les gardes ErrMatchTooShort/ErrInsufficientData ont deja filtre)
+	//
+	// Distinct de Confidence (historique du percentile) et de ExpectedBasis (base de
+	// l'attendu). Combine avec le statut de calibration du titre pour la 2e porte.
+	SignalBasis string `json:"signal_basis,omitempty"`
 }
 
 // Valeurs de EngagementScoreResult.ExpectedBasis (chaine de fallback de l'attendu).

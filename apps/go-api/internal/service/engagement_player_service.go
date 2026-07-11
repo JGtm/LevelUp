@@ -325,6 +325,10 @@ func (s *PlayerEngagementService) buildInputForMatch(
 		Assists:            mctx.Assists,
 		Mode:               modeCategory,
 		IsTeamMode:         mctx.IsTeamMode,
+		// Vecteur de signaux (masque de presence + signaux riches), derive de la
+		// composition des events deja partitionnes (title-agnostic, la richesse
+		// vient de ce que le titre a projete en amont dans highlight_events).
+		Signals: temporal.SignalsFromEvents(playerEvents, lobbyEvents, durationMS),
 	}
 }
 
