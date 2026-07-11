@@ -6,9 +6,10 @@ package analysis
 
 // Valeurs possibles pour KillAttribution.AttributionPath.
 const (
-	AttributionPathFireEvent = "fire_event"
-	AttributionPathFormulaA  = "formula_a"
-	AttributionPathNone      = "none"
+	AttributionPathFireEvent    = "fire_event"
+	AttributionPathFormulaA     = "formula_a"
+	AttributionPathDamageSource = "damage_source" // corrélation same-clock (source de dégât)
+	AttributionPathNone         = "none"
 )
 
 // KillAttribution représente le résultat d'attribution d'un kill à une arme.

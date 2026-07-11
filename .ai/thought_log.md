@@ -1,3 +1,15 @@
+## [2026-07-11] Productionisation arme same-clock — Phase 1 démarrée (P5 porté)
+- **Statut : En cours.** Branche `feat/weapon-sameclock` depuis main (la branche RE feat/filmdec-continuation
+  est 1231 commits derrière main → base propre depuis main ; validation vs chiffres RE enregistrés, pas de
+  parité side-by-side). Plan : `.ai/PLAN_WEAPON_SAMECLOCK_PRODUCTIONISATION_2026-07.md`.
+- **Décision technique** : remplacer l'attribution d'arme fire-events (legacy) par la SOURCE DE DÉGÂT
+  same-clock (validée RE 94% accuracy). Phase 1 = portage algos purs vers internal/analysis/.
+- **Fait** : P5 `CorrelateKillsSameClock` (`weapon_correlation_sameclock.go`) — pour chaque kill (tueur,ts),
+  arme = dernier DamageEvent (attaquant==tueur) avant ts (reproduit `sameClockW` du tool RE). + constante
+  `AttributionPathDamageSource` + type `DamageEvent`. Test unitaire dataset hétérogène VERT (2/2), go vet propre.
+- **Prochaine étape** : P2 `ParseDamageRecord` (porter `parsePreamble` 0xd2 du tool RE — le décodeur bit-level,
+  le gros morceau) + P1 `IterFilmPackets` + P3 `weaponName` + test de parité vs chiffres RE (4 films).
+
 ## [2026-07-10] MERGE MAIN — campagne audits 2026-07 + clôture + gate humain (GO utilisateur)
 
 **Statut** : En cours (merge exécuté dans cette session ; post-deploy VPS à suivre).
