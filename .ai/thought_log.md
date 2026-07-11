@@ -1,3 +1,23 @@
+## [2026-07-12] OUTILLAGE CI Lot 3 — ratchet lint pérenne (branche chore/ci-outillage-2026-07)
+
+**Statut** : Complété.
+
+**Décision principale** : le job `Go Lint` utilisait `only-new-issues: true`, qui récupère le
+patch du diff via l'API GitHub — API qui refuse les PR > 20000 lignes → l'action retombe sur toute
+la dette gelée (~479 issues) → faux rouge (PR #54) ; job aussi rouge en push main depuis des
+semaines. Remplacé par un ratchet git-level `--new-from-*` (indépendant de la taille du diff,
+zéro dépendance API GitHub) : branches/PR → `--new-from-merge-base=origin/main` (immune à l'avance
+de main) ; push main → `--new-from-rev=<github.event.before|HEAD~1>`. Choix `--new-from-merge-base`
+justifié : golangci-lint v2.12.2 (version du workflow, vérifiée localement) le supporte (dispo
+v1.55). Étape shell `Calculer la base` qui branche selon `GITHUB_REF`/`GITHUB_EVENT_NAME`.
+Commentaire YAML daté + critère de retrait mesurable (0 issue sur run plein).
+
+**Résultats (gate)** : YAML parse OK ; exécution locale identique
+`golangci-lint run --new-from-merge-base=origin/main ./...` (CGO, v2.12.2) → **0 issues**, exit 0
+(warning nolint = dette gelée, non bloquant).
+
+**Prochaine étape** : Lot 4 (E2E CI vert-ou-signal).
+
 ## [2026-07-12] OUTILLAGE CI Lot 2 — triggers push feat/** (branche chore/ci-outillage-2026-07)
 
 **Statut** : Complété.

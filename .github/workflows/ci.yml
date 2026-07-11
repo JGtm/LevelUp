@@ -127,10 +127,9 @@ jobs:
       run:
         working-directory: apps/go-api
     steps:
-      # fetch-depth: 0 requis par golangci-lint-action avec only-new-issues :
-      # sans l'historique complet, le diff vs la base échoue sur un push de
-      # branche neuve ("failed to fetch push patch ... Not Found") et le job
-      # remonte alors toute la dette gelée au lieu des seules issues nouvelles.
+      # fetch-depth: 0 requis par le ratchet --new-from-* : le calcul de la base
+      # (merge-base contre origin/main, ou commit parent sur main) a besoin de
+      # l'historique complet et de la ref origin/main.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
@@ -145,21 +144,45 @@ jobs:
       # Règles : gocyclo max 12 / funlen 80L / lll 100c / revive argument-limit 5
       # Config en format v2 (migration 2026-05-20, branche v1 abandonnée depuis mars 2025).
       #
-      # `only-new-issues: true` (2026-05-20) : freeze la dette préexistante
-      # (~479 issues : goconst, noctx, funlen, gocyclo) post-bump v1.62 -> v2.12.2.
-      # Le bump v1.62 (compilé Go 1.23) refusait la config sur Go 1.26 depuis
-      # plusieurs commits ; la dette n'avait donc jamais été reportée. Le sprint
-      # cleanup a déjà réduit de 2413 -> 479 (-80%). Les ~479 restants seront
-      # progressivement réduits via le mécanisme normal : chaque PR doit pas
-      # ajouter de nouveaux warnings (only-new-issues bloque sur du new).
-      # TODO : repasser `only-new-issues: false` quand la dette tend vers 0.
-      - name: golangci-lint
+      # RATCHET LINT PÉRENNE (2026-07-12) — remplace `only-new-issues: true`.
+      # POURQUOI : `only-new-issues` récupérait le patch du diff via l'API GitHub,
+      # qui refuse les PR > 20 000 lignes ("failed to fetch push patch ... Not
+      # Found"). L'action retombait alors sur TOUTE la dette gelée (~479 issues :
+      # goconst, noctx, funlen, gocyclo) → faux rouge (vécu sur la PR #54) ; le job
+      # était aussi rouge en push sur main depuis des semaines. Le ratchet
+      # `--new-from-*` compare au niveau git (indépendant de la taille du diff,
+      # aucune dépendance à l'API GitHub) :
+      #   - branches / PR : base = merge-base(origin/main, HEAD) → seules les issues
+      #     AJOUTÉES par la branche rougissent, quelle que soit l'avance de main ;
+      #   - push sur main : base = commit parent (github.event.before) → toute issue
+      #     introduite par le push rougit ; main reste vert tant qu'on n'ajoute rien.
+      # La dette gelée (~479) reste invisible tant qu'aucune ligne fautive n'est
+      # ajoutée. golangci-lint v2.12.2 supporte --new-from-merge-base (dispo v1.55).
+      # RETRAIT : quand la dette tend vers 0, repasser à un `golangci-lint run ./...`
+      # plein (sans --new-from-*) — critère mesurable : 0 issue sur un run complet.
+      - name: Calculer la base du ratchet lint
+        id: lint_base
+        run: |
+          if [ "$GITHUB_REF" = "refs/heads/main" ] && [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            BEFORE="${{ github.event.before }}"
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              BEFORE="HEAD~1"
+            fi
+            echo "args=--new-from-rev=$BEFORE" >> "$GITHUB_OUTPUT"
+            echo "Ratchet main : --new-from-rev=$BEFORE"
+          else
+            echo "args=--new-from-merge-base=origin/main" >> "$GITHUB_OUTPUT"
+            echo "Ratchet branche/PR : --new-from-merge-base=origin/main"
+          fi
+
+      - name: golangci-lint (ratchet)
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.12.2
           working-directory: apps/go-api
-          args: --timeout 5m
-          only-new-issues: true
+          # only-new-issues volontairement absent (défaut false) : le ratchet passe
+          # par les flags --new-from-* ci-dessous, jamais par l'API GitHub.
+          args: --timeout 5m ${{ steps.lint_base.outputs.args }}
 
   go-lease-enforcement:
     name: Go Lease Enforcement (ADR 0013)
