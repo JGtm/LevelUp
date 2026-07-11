@@ -1,3 +1,50 @@
+## [2026-07-11] INTÉGRATION campagne plans 2026-07 — merge des 7 branches (branche integration/campagne-2026-07)
+
+**Statut** : Complété (7 merges --no-ff + 1 commit de résolution front ; gates locaux verts ;
+push + PR à suivre). Branche `integration/campagne-2026-07` (depuis origin/main f16dacffc).
+
+**Décision principale** : intégration séquentielle des 7 chantiers livrés dans l'ordre imposé :
+(1) hotfix/lusr-shadow-ro, (2) feat/monitoring-refonte-2026-07 (inclut fix/monitoring-triage),
+(3) refactor/notifications-rationalization, (4) feat/engagement-agnostic-gradue (inclut
+engagement-lobby-response), (5) fix/h5-matchview-residus, (6) refactor/migration-squash-baseline,
+(7) docs/adr-aggregates-title-boundary (ADR 0030/0031). Un commit de merge par branche, message FR.
+
+**Conflits résolus** :
+- `.ai/thought_log.md` : conflit à CHAQUE merge (journal append-top). Résolu par réassemblage
+  octet-exact (sed, pas de splice PowerShell — évite le mojibake UTF-8) : toutes les entrées
+  des deux côtés conservées, ordonnées du plus récent au plus ancien (07-11 groupés en tête,
+  puis 07-10). 0 entrée perdue, 0 duplication (vérifié par grep -c sur chaque titre d'entrée),
+  0 caractère de remplacement U+FFFD.
+- `.ai/baselines/tests_pre_migration.jsonl` : auto-mergé par git. Union des retraits vérifiée :
+  62599 (main) − 4 (notifications, near-miss renommé) − 24 (engagement) = 62571 = HEAD ;
+  0 ré-addition (comm -13 HEAD vs main = 0).
+- `apps/go-api/api/openapi.yaml` + `apps/web/src/lib/api/generated.ts` : auto-mergés
+  (notifications + engagement). Vérité = handlers Go : drift-test (`internal/api`,
+  TestOpenAPISchemaDrift) et contracttest VERTS → yaml cohérent. `npm run generate-types`
+  (apps/web) rejoué → generated.ts identique (0 diff), rien à recommitter.
+- `CLAUDE.md` : auto-mergé, index ADR contient bien 0030/0031.
+- Code Go (registry, wire, media_service, capabilities.toml, notifications/service.go) :
+  auto-mergés proprement, build OK après chaque merge.
+
+**Résolution post-merge (1 commit)** : `DetectionsPanel.tsx` (branche monitoring) portait une
+erreur lint `@typescript-eslint/no-unused-vars` — `STATUS_FILTERS` déclaré `as const` mais
+utilisé seulement comme type, les 5 `<option>` étant codées en dur (duplication). Fix : le
+`<select>` itère désormais sur STATUS_FILTERS (clé i18n `filter_all` pour 'all', sinon
+`status_<x>`), rend la constante utilisée au runtime et supprime la duplication (règle ≤2 copies).
+
+**Résultats (gates locaux)** : go build/vet 0 ; `go test ./...` vert (seul rouge =
+`TestStartImport_HappyPathReturns202WithJobID`, flake connu, VERT en isolation) ;
+`go test -tags=integration -p 1 -timeout 1200s ./...` 0 FAIL ; golangci-lint
+`--new-from-rev=origin/main` 0 issue ; front tsc 0, eslint 0 error (68 warnings pré-existants),
+vite build OK, vitest 251 fichiers / 2127 tests passés / 14 skipped.
+
+**Prochaine étape** : push branche → surveiller CI (E2E Playwright rouge toléré = fixture démo
+absente en CI) → ouvrir PR vers main (NE PAS merger, merge = deploy prod, GO utilisateur).
+Post-deploy à vérifier : logs LUSR propres (plus de `persist état échoué`), badge notifications,
+re-backfill engagement (2 titres) à relancer.
+
+---
+
 ## [2026-07-11] Rationalisation notifications — rebaseline test renommé (gate CI)
 
 **Statut** : Complété.

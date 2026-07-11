@@ -162,11 +162,11 @@ export function DetectionsPanel() {
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
             className="rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground"
           >
-            <option value="all">{tA('admin.detections.filter_all')}</option>
-            <option value="open">{tA('admin.detections.status_open')}</option>
-            <option value="acked">{tA('admin.detections.status_acked')}</option>
-            <option value="muted">{tA('admin.detections.status_muted')}</option>
-            <option value="resolved">{tA('admin.detections.status_resolved')}</option>
+            {STATUS_FILTERS.map((filter) => (
+              <option key={filter} value={filter}>
+                {tA(filter === 'all' ? 'admin.detections.filter_all' : `admin.detections.status_${filter}`)}
+              </option>
+            ))}
           </select>
         </label>
       </div>
