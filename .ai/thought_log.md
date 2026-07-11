@@ -1,3 +1,26 @@
+## [2026-07-11] Résidus H5 match view — LOT B (nom de la map Tidal)
+
+**Statut** : Complété (LOT B, branche fix/h5-matchview-residus). Prod : rejeu en V2.
+
+**Décision technique principale** : les canvas Forge (ex. Tidal, d67fdcb9) ne sont pas
+nommés par l'API officielle /maps → maps_catalog.name_canonical vide et absence
+d'asset_translations → carte affichée vide. Le mécanisme d'override `[maps]` existant est
+keyé par NOM EN (inutilisable ici, il n'y a pas de nom EN). Nouveau mécanisme keyé par
+ASSET_ID : section `[[maps_by_id]]` (id/en/fr) dans asset_labels_fr.toml, appliquée EN
+FIN de run par `applyMapIDOverrides` (UPDATE name_canonical + upsert asset_translations
+en-US/fr-FR, idempotent, survit à un re-fetch). Ajout d'un mode `--overrides-only`
+(local pur, sans clé API ni réseau) pour rejouer un override sans marteler l'API + d'un
+garde-fou `logUnresolvedMaps` (WARN slog des map_id du registre sans nom résolu).
+
+**Résultats observés** : override Tidal appliqué en local ; name_canonical='Tidal',
+asset_translations en-US/fr-FR='Tidal' ; garde-fou → « toutes les maps du registre sont
+résolues count_registry_maps=48 » (le seul non résolu était Tidal). Curl match view
+ccf64951 ET 7e3fa711 → map_ui='Tidal'. Test TestApplyMapIDOverrides (idempotence) vert,
+lint 0 issue.
+
+**Conclusion / prochaine étape** : LOT C (cards front Résistance / Résultat attendu).
+En prod (V2), rejouer `h5-metadata-fetch <repo> --overrides-only` (aucun réseau requis).
+
 ## [2026-07-11] Résidus H5 match view — LOT A (lecture Go : playlist, mode, durée)
 
 **Statut** : Complété (LOT A du PLAN_H5_MATCHVIEW_RESIDUS_2026-07, branche fix/h5-matchview-residus).

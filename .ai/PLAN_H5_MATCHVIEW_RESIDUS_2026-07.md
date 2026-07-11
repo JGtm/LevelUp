@@ -174,19 +174,22 @@ curl -s -H "X-LevelUp-Title: halo_5" localhost:8000/api/v1/players/JGtm/matches/
 # non-régression Infinite : un match Infinite au hasard, mode_ui/playlist inchangés.
 ```
 
-### LOT B — Metadata : nom de la map Tidal (data + garde-rail)
+### LOT B — Metadata : nom de la map Tidal (data + garde-rail)  [COMPLÉTÉ 2026-07-11]
 Périmètre fermé :
-- [ ] B1. Étendre le mécanisme d'override TOML de `cmd/h5-metadata-fetch` pour porter
-      un nom CANONIQUE (EN) de map en plus du FR : entrée d67fdcb9… = « Tidal »
-      (EN + FR identiques) dans `config/titles/halo_5/mappings/asset_labels_fr.toml`
-      (section maps existante + section nom EN à ajouter). L'override doit survivre à
-      un re-fetch (appliqué en fin de run, idempotent).
-- [ ] B2. Rejouer le seed metadata H5 local (`h5-metadata-fetch` ou son étape seed
-      seule) → `maps_catalog.name_canonical` et `asset_translations` (en-US + fr-FR)
-      remplis pour d67fdcb9.
-- [ ] B3. Log de garde : à la fin du fetch, WARN slog listant les maps référencées par
-      match_registry sans nom résolu (aujourd'hui : exactement 1) — évite le retour
-      silencieux du problème.
+- [x] B1. Nouveau mécanisme d'override keyé par asset_id (les canvas Forge n'ont PAS de
+      nom EN sur lequel keyer, contrairement à `[maps]`) : section `[[maps_by_id]]` dans
+      `asset_labels_fr.toml` (id/en/fr), entrée d67fdcb9 = « Tidal » (EN+FR). Struct
+      `mapIDOverride` + `frLabels.MapsByID`. `applyMapIDOverrides` (UPDATE name_canonical
+      + upsert asset_translations en-US/fr-FR) appelé EN DERNIER dans main (idempotent,
+      survit à un re-fetch qui réécrirait name_canonical vide).
+- [x] B2. Seed local rejoué via nouveau mode `--overrides-only` (local pur, sans clé API
+      ni réseau — évite de marteler l'API dont les tokens sont morts). Vérifié :
+      name_canonical='Tidal', asset_translations en-US/fr-FR='Tidal' ; curl match view
+      ccf64951 ET 7e3fa711 → map_ui='Tidal'.
+- [x] B3. Garde-fou `logUnresolvedMaps` : ouvre le registre H5 (RO), WARN slog les map_id
+      référencés sans nom résolu dans asset_translations. Après B2 : « toutes les maps du
+      registre sont résolues count_registry_maps=48 » (le 1 non résolu = Tidal, corrigé).
+Test : `TestApplyMapIDOverrides` (name_canonical + traductions + idempotence). Lint OK.
 Gate LOT B :
 ```
 cd apps/go-api && go run cmd/tmpdbq/main.go ../../data/titles/halo_5/warehouse/metadata.duckdb \
@@ -299,6 +302,7 @@ Gate : gate global = tous les gates A→D+F verts dans la même session + lint +
 | Lot | Statut | Date | Notes |
 |---|---|---|---|
 | A | COMPLÉTÉ | 2026-07-11 | mode/playlist/tug vérifiés réel (JGtm h5 + non-rég Infinite) ; explorer hors périmètre (§8) |
+| B | COMPLÉTÉ | 2026-07-11 | Tidal seedé local (--overrides-only) ; map_ui='Tidal' vérifié réel ; garde-fou 0 map non résolue. PROD : rejouer en V2 |
 | B | à faire | | |
 | C | à faire | | |
 | D | à faire | | D2 : ventilation skips = |

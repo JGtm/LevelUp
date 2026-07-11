@@ -420,3 +420,16 @@
 "Zombicide" = "Tuez 25 zombies sans mourir."
 "Zombie Hunter" = "Tuez 5 zombies sans mourir."
 "Zombie Slayer" = "Tuez 10 zombies sans mourir."
+
+# --- Overrides de nom de MAP par asset_id ---
+# Canvas Forge non nommés par l'API officielle /maps : maps_catalog.name_canonical
+# reste vide et l'asset n'apparaît PAS dans asset_translations → carte affichée
+# vide dans la match view / la galerie média. Clé = map_asset_id ; en = nom
+# canonique (EN), fr = nom FR affiché. Appliqués EN FIN de run par h5-metadata-fetch
+# (idempotent, survivent à un re-fetch qui réécrirait name_canonical vide).
+# Tidal : canvas Forge océanique (identifié visuellement via l'image officielle
+# halocdn du catalogue) — seul asset de map non résolu du registre H5 (129 matchs).
+[[maps_by_id]]
+id = "d67fdcb9-6d9c-403e-960d-04202e19b244"
+en = "Tidal"
+fr = "Tidal"
