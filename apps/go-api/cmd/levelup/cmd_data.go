@@ -177,6 +177,7 @@ func runIndexMedia(cfg *config.AppConfig, args []string) error {
 		ForceRescan:         *force,
 		BufferMin:           *bufMin,
 		Timezone:            cfg.UserTimezone,
+		TitleSlug:           *titleSlug,
 	})
 	if err != nil {
 		return err

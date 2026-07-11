@@ -76,6 +76,9 @@ type titleManifestSection struct {
 	SteamAppID       string   `toml:"steam_app_id"`
 	PlacementMatches int      `toml:"placement_matches"`
 	CSRSeasonID      string   `toml:"csr_season_id"`
+	// MediaFilenamePrefixes : préfixes de nom de fichier de capture appartenant au
+	// titre (routage de l'indexeur média, DEC-8 — cf. TitleDescriptor).
+	MediaFilenamePrefixes []string `toml:"media_filename_prefixes"`
 }
 
 // LoadTitleManifest charge le descripteur d'un titre depuis
@@ -120,6 +123,11 @@ func LoadTitleManifestFromBytes(path, slug string, raw []byte) (*TitleDescriptor
 		SteamAppID:       strings.TrimSpace(doc.Title.SteamAppID),
 		PlacementMatches: doc.Title.PlacementMatches,
 		CSRSeasonID:      strings.TrimSpace(doc.Title.CSRSeasonID),
+	}
+	for _, p := range doc.Title.MediaFilenamePrefixes {
+		if trimmed := strings.TrimSpace(p); trimmed != "" {
+			desc.MediaFilenamePrefixes = append(desc.MediaFilenamePrefixes, trimmed)
+		}
 	}
 	if desc.Name == "" {
 		errs = append(errs, fmt.Errorf("[title].name manquant"))
