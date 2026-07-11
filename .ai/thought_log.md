@@ -1,3 +1,29 @@
+## [2026-07-11] Résidus H5 match view — LOT D code (instrumentation + --missing-only + Placement)
+
+**Statut** : En cours (code livré + run JGtm fait ; restent les runs Madina97294 /
+Chocoboflor / XxDaemonGamerxX + D4).
+
+**Décision technique principale** : (D1) `PersistPerMatchRatings` retourne un
+`PerMatchRatingsSummary` ventilant CHAQUE skip par raison (registre KO / carnage KO /
+joueur absent / placement_csr_null / persist KO) — plus aucun continue silencieux ;
+paramètre restreint à l'interface `carnageGetter` (segregation → testable). (D2) flag
+`--missing-only` du backfill : ne traite que les CLASSÉS sans ligne CSR de la player DB.
+(D3/DEC-4) `buildPerMatchCSRInsert(nil)` écrit désormais une ligne « Placement »
+(tier=skill.TierLabelPlacement réutilisé, rating_value=0 NOT NULL) — le header
+match view gère déjà ce tier (buildRankBlock/isPlacement) et --missing-only ne
+re-fetche plus ces matchs.
+
+**Résultats observés — PREUVE DEC-4** : run JGtm --missing-only : 303 classés sans CSR,
+ventilation = placement_csr_null:303, carnage:0, joueur_absent:0 → la cause du « pas de
+LUSR/CSR » sur les classés est à 100 % le PLACEMENT (CurrentCsr null tant que non classé).
+Re-run post-D3 : 303 lignes Placement écrites (match_skill_rank CSR 2010→2313).
+Tests integration -p 1 (persist + halo_5) verts, dont le nouveau
+csr_match_summary_integration_test (fake carnage, 6 cas). Lint 0 issue.
+
+**Conclusion / prochaine étape** : runs --missing-only des 3 autres joueurs (auth
+propre par joueur ; RT Chocoboflor/Madina morts → LEVELUP_H5_AUTH_AS=JGtm, les carnages
+sont publics par match), puis D4 (vérif témoins).
+
 ## [2026-07-11] Résidus H5 match view — fix CI front (types du test LOT C)
 
 **Statut** : Complété (correctif sur le commit LOT C).
