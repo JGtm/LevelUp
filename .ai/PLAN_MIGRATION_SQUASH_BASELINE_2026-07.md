@@ -98,13 +98,19 @@ Critères de succès :
 - Gate M1 : tests M1b/M1c verts (8 sous-tests PASS) ; `go vet` + `go build` migration = 0. [x]
 
 ### M2 — Test d'invariant bit-identique (le verrou central — AVANT toute baseline)
-- [ ] M2a — `internal/migration/squash_invariant_test.go` : provisionne DEUX DBs vierges
-  par cible visée — (A) historique complet actuel, (B) chemin candidat (baseline + steps
-  restants ; tant que M3 n'existe pas, B = A et le test tourne en mode « harnais prêt ») —
-  snapshot M1 des deux, comparaison stricte, `t.Errorf` avec diff lisible par section.
-- [ ] M2b — Brancher le test en CI (il tourne avec la suite `-tags=integration -p 1` —
-  vérifier la durée ; s'il est lourd, le scoper au registre en cours de squash).
-- Gate M2 : harnais vert en mode A=B ; morsure prouvée (schéma altéré → rouge).
+- [x] M2a — `games/halo_infinite/migrations/squash_invariant_test.go` (DÉVIATION documentée
+  de l'emplacement plan : le provisioning complet exige StepsFor, non importable depuis
+  `internal/migration` — cycle ; même raison qu'order_audit_test.go). Provisionne DEUX DBs
+  vierges par cible (metadata/shared/pve/social/player) via `provisionFullHistory` (oracle)
+  et `provisionCandidate` (runner actif) ; snapshot M1 des deux ; comparaison stricte avec
+  `firstDiff` lisible. SEAM en place : aujourd'hui A=B (mode harnais) ; post-M3
+  provisionFullHistory rejouera le fixture des steps squashés.
+- [x] M2b — CI : le test est integration-tagged dans le package titre → tourne
+  automatiquement sous `-tags=integration -p 1 ./...` (gate CI). Durée mesurée 3.0s (2.5s
+  invariant 5 cibles + 0.4s morsure) — léger, pas de scoping nécessaire.
+- Gate M2 : harnais VERT en mode A=B (5 cibles PASS) ; morsure prouvée
+  (`TestSquashInvariant_BiteProof` : colonne ajoutée → snapshots divergents, détecté). [x]
+  Synergie E7 notée dans `DETTE_ASSUMEE_2026-Q3.md` (§4 du plan).
 
 ### M3 — Génération de la baseline (registre v1 désigné en M0e)
 - [ ] M3a — Écrire le step `create_baseline_<cible>_v<version>` : schéma « à plat »
