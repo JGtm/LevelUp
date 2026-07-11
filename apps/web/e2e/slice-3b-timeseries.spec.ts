@@ -11,9 +11,11 @@
  * 5. Pas d'erreur 500
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 test.describe('Slice 3B — Page Séries temporelles (DEMO_MODE)', () => {
   test("l'API /pages/timeseries retourne HTTP 200", async ({ request }) => {
+    await skipIfNoDemoData()
     const resp = await request.post(
       'http://localhost:8000/api/v1/players/demo-player/pages/timeseries',
       {
@@ -24,6 +26,7 @@ test.describe('Slice 3B — Page Séries temporelles (DEMO_MODE)', () => {
   })
 
   test("la réponse timeseries contient total_matches", async ({ request }) => {
+    await skipIfNoDemoData()
     const resp = await request.post(
       'http://localhost:8000/api/v1/players/demo-player/pages/timeseries',
       {
@@ -36,6 +39,7 @@ test.describe('Slice 3B — Page Séries temporelles (DEMO_MODE)', () => {
   })
 
   test("la réponse timeseries contient les 5 onglets", async ({ request }) => {
+    await skipIfNoDemoData()
     const resp = await request.post(
       'http://localhost:8000/api/v1/players/demo-player/pages/timeseries',
       {
@@ -51,6 +55,7 @@ test.describe('Slice 3B — Page Séries temporelles (DEMO_MODE)', () => {
   })
 
   test("l'onglet résumé contient des kpi_cards", async ({ request }) => {
+    await skipIfNoDemoData()
     const resp = await request.post(
       'http://localhost:8000/api/v1/players/demo-player/pages/timeseries',
       {

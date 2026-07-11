@@ -12,6 +12,7 @@
  * 5. Header / NavBar présente
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 test.describe('Slice 0a — Shell & Bootstrap (DEMO_MODE)', () => {
   test('le shell se monte sans erreur JS console', async ({ page }) => {
@@ -28,6 +29,7 @@ test.describe('Slice 0a — Shell & Bootstrap (DEMO_MODE)', () => {
   })
 
   test('le bootstrap retourne le joueur démo', async ({ page }) => {
+    await skipIfNoDemoData()
     // Intercepter et valider la réponse bootstrap
     const bootstrapPromise = page.waitForResponse(
       (resp) =>
@@ -46,6 +48,7 @@ test.describe('Slice 0a — Shell & Bootstrap (DEMO_MODE)', () => {
   test('la racine "/" redirige vers /players/demo-player/home', async ({
     page,
   }) => {
+    await skipIfNoDemoData()
     await page.goto('/')
     // Attendre la redirection TanStack Router
     await page.waitForURL(/\/players\/demo-player\/home/, { timeout: 8_000 })
@@ -53,6 +56,7 @@ test.describe('Slice 0a — Shell & Bootstrap (DEMO_MODE)', () => {
   })
 
   test('la NavBar est visible après le bootstrap', async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto('/')
     await page.waitForURL(/\/players\/demo-player\/home/, { timeout: 8_000 })
 

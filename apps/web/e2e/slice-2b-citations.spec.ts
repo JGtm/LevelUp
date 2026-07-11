@@ -10,9 +10,11 @@
  * 4. Pas d'erreur fatale dans la console
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 test.describe('Slice 2B — Page Citations (DEMO_MODE)', () => {
   test("l'API /pages/citations retourne HTTP 200", async ({ request }) => {
+    await skipIfNoDemoData()
     const resp = await request.post(
       'http://localhost:8000/api/v1/players/demo-player/pages/citations',
       {
@@ -25,6 +27,7 @@ test.describe('Slice 2B — Page Citations (DEMO_MODE)', () => {
   })
 
   test("la réponse citations contient des commendations", async ({ request }) => {
+    await skipIfNoDemoData()
     const resp = await request.post(
       'http://localhost:8000/api/v1/players/demo-player/pages/citations',
       {
@@ -37,6 +40,7 @@ test.describe('Slice 2B — Page Citations (DEMO_MODE)', () => {
   })
 
   test("la réponse citations contient des médailles", async ({ request }) => {
+    await skipIfNoDemoData()
     const resp = await request.post(
       'http://localhost:8000/api/v1/players/demo-player/pages/citations',
       {

@@ -9,6 +9,7 @@
  * 3. Le titre "Historique" est visible dans la page
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 test.describe('Slice 3 — Historique des parties (DEMO_MODE)', () => {
   test("la page Historique se charge sans erreur JS", async ({ page }) => {
@@ -24,6 +25,7 @@ test.describe('Slice 3 — Historique des parties (DEMO_MODE)', () => {
   })
 
   test("l'API match-history/query retourne des matchs", async ({ page }) => {
+    await skipIfNoDemoData()
     const historyPromise = page.waitForResponse(
       (resp) =>
         resp.url().includes('/pages/match-history/query') &&
@@ -38,6 +40,7 @@ test.describe('Slice 3 — Historique des parties (DEMO_MODE)', () => {
   })
 
   test("le titre Historique est affiché", async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto('/players/demo-player/stats/history')
     await page.waitForLoadState('networkidle')
 

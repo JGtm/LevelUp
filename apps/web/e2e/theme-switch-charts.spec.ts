@@ -21,6 +21,7 @@
  * Prérequis : `make dev` (Vite :5173 + Go :8000).
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 const PLAYER_SLUG = 'JGtm'
 const TEAMMATES = ['Madina97294', 'Chocoboflor']
@@ -69,6 +70,7 @@ test.describe('Theme switch — charts ECharts suivent le thème (pilote)', () =
   test('le radar synergy reste rendu après toggle de thème (pas de crash)', async ({
     page,
   }) => {
+    await skipIfNoDemoData()
     // Pré-set sélection coéquipiers (cf. squad-charts-render.spec.ts)
     await page.addInitScript(
       ({ slug, gamertags }) => {
