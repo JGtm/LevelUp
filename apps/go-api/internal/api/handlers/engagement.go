@@ -163,6 +163,11 @@ func (h *EngagementHandler) handleMatchEngagement(ctx context.Context, in *engMa
 
 	result, err := svc.GetMatchEngagement(ctx, in.MatchID)
 	if err != nil {
+		// Porte statique F7 : titre sans engagement.score (not_exposed) → 503 propre
+		// centralise (jamais un 500 ni un score faux), pattern B15.
+		if mapped, ok := MapCapabilityError(ctx, err, "engagement.score"); ok {
+			return nil, mapped
+		}
 		switch {
 		case errors.Is(err, service.ErrEngagementMatchNotFound):
 			return nil, humacore.NewError(http.StatusNotFound, "match_not_found", "match introuvable pour ce joueur : "+in.MatchID)

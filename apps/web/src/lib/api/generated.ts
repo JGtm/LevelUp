@@ -5548,6 +5548,8 @@ export interface components {
             time_ms: number;
         };
         EngagementScoreResult: {
+            /** @description 2e porte F7 : statut de calibration du titre (validated | provisional). Vide = validated. */
+            calibration?: string;
             confidence: string;
             engagement_curve: components["schemas"]["EngagementPoint"][] | null;
             /** Format: double */
@@ -5570,6 +5572,8 @@ export interface components {
             player_activity: number;
             /** Format: double */
             residual_brut: number;
+            /** @description 1re porte F7 : suffisance du vecteur de signaux (full | partial). Vide si non calcule. */
+            signal_basis?: string;
         };
         EngagementIntensityBin: {
             bin: string;

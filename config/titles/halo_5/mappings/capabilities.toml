@@ -29,7 +29,12 @@ schema_version = 1
 "match.skill.snapshot"   = "not_exposed" # CSR pré/post par match = carnage Arena (Phase 2)
 "career.progression"     = "supported"   # CÂBLÉ : LoadCareerSnapshot (Spartan Rank/CSR via service record)
 "analytics.timeseries"   = "not_exposed" # buildable depuis l'historique (Phase 2)
-"engagement.score"       = "not_exposed" # events présents, coefficients à recalibrer (Phase 2)
+# engagement.score (chantier F7 — double porte) : not_exposed = pas de score servi
+# (503) ; degraded = servi avec calibration=provisional (badge « calibration
+# provisoire » front) ; supported = calibration=validated. H5 = events présents mais
+# coefficients à calibrer (harnais E4) → bascule à degraded en E5 après calibration
+# provisoire, à supported en E6 après gate humain. Voir .ai/PLAN_ENGAGEMENT_AGNOSTIC_GRADUE_2026-07.md.
+"engagement.score"       = "not_exposed" # events présents, coefficients à recalibrer (chantier F7)
 "citations.engine"       = "not_exposed" # moteur de citations DÉRIVÉ d'Infinite — h5 affiche le NATIF (commendations.native), pas ce moteur
 "commendations.native"   = "supported"   # CÂBLÉ : commendations NATIVES par match (carnage ProgressiveCommendationDeltas → match_commendations + MatchDetail.Commendations), AXE B prod-gate
 "pve.firefight_stats"    = "not_exposed" # Warzone Firefight, modèle != FF HINF (Phase 2+)

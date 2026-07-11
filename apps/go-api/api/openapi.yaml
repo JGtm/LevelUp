@@ -8801,6 +8801,9 @@ components:
     EngagementScoreResult:
       additionalProperties: false
       properties:
+          calibration:
+              type: string
+              description: "2e porte F7 : statut de calibration du titre (validated | provisional). Vide = validated."
           confidence:
               type: string
           engagement_curve:
@@ -8839,6 +8842,9 @@ components:
           residual_brut:
               format: double
               type: number
+          signal_basis:
+              type: string
+              description: "1re porte F7 : suffisance du vecteur de signaux (full | partial). Vide si non calcule."
       required:
           - engagement_score
           - residual_brut

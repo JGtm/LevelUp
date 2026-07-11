@@ -21,6 +21,7 @@ import (
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
@@ -206,6 +207,84 @@ func TestEngagementHandler_GetMatchEngagement_Insufficient(t *testing.T) {
 	}
 	if !strings.Contains(w.Body.String(), "engagement_insufficient") {
 		t.Errorf("expected body code engagement_insufficient, got: %s", w.Body.String())
+	}
+}
+
+// ─── Double porte F7 : capability fine engagement.score (3 statuts) ─────────
+
+// mockEngagementMatchCtx : contexte de match valide et exploitable (12 min, events
+// fournis par le mock) — partage par les tests de la double porte.
+func mockEngagementMatchCtx() *port.MatchEngagementContext {
+	return &port.MatchEngagementContext{
+		MatchID: "m1", StartTimeMS: 0, EndTimeMS: 720_000,
+		IsRanked: true, NTeam: 4, NHumansLobby: 8, IsTeamMode: true,
+	}
+}
+
+// not_exposed → 503 capability_not_supported (jamais un score cold-start faux).
+func TestEngagementHandler_GetMatchEngagement_CapabilityNotExposed(t *testing.T) {
+	repo := &engagementMockRepo{matchCtx: mockEngagementMatchCtx()}
+	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester").
+			WithEngagementCapability(games.CapNotExposed), nil
+	}
+	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/m1/engagement", nil)
+	w := httptest.NewRecorder()
+	newEngagementRouter(factory).ServeHTTP(w, req)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 (capability_not_supported), got %d: %s", w.Code, w.Body.String())
+	}
+	if !strings.Contains(w.Body.String(), "capability_not_supported") {
+		t.Errorf("expected body code capability_not_supported, got: %s", w.Body.String())
+	}
+}
+
+// degraded → 200 avec calibration=provisional (badge front).
+func TestEngagementHandler_GetMatchEngagement_CalibrationProvisional(t *testing.T) {
+	repo := &engagementMockRepo{matchCtx: mockEngagementMatchCtx()}
+	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester").
+			WithEngagementCapability(games.CapDegraded), nil
+	}
+	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/m1/engagement", nil)
+	w := httptest.NewRecorder()
+	newEngagementRouter(factory).ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.EngagementScoreResult
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if resp.Calibration != domain.CalibrationProvisional {
+		t.Errorf("Calibration want provisional, got %q", resp.Calibration)
+	}
+}
+
+// supported → 200 avec calibration=validated.
+func TestEngagementHandler_GetMatchEngagement_CalibrationValidated(t *testing.T) {
+	repo := &engagementMockRepo{matchCtx: mockEngagementMatchCtx()}
+	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {
+		return service.NewPlayerEngagementService(repo, "xuid-test", "Tester").
+			WithEngagementCapability(games.CapSupported), nil
+	}
+	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/m1/engagement", nil)
+	w := httptest.NewRecorder()
+	newEngagementRouter(factory).ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.EngagementScoreResult
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if resp.Calibration != domain.CalibrationValidated {
+		t.Errorf("Calibration want validated, got %q", resp.Calibration)
+	}
+	// La porte de suffisance (signal_basis) est aussi renseignee (partial : pas de
+	// signal riche dans le mock — 2 kills seulement).
+	if resp.SignalBasis != temporal.SufficiencyPartial.String() {
+		t.Errorf("SignalBasis want partial, got %q", resp.SignalBasis)
 	}
 }
 

@@ -48,6 +48,12 @@ type PlayerEngagementService struct {
 	// path SQL via le repo (ListRecentPvPMatchIDs) sans filtres metier.
 	playerMatchesRepo port.PlayerMatchesRepository
 	titleSlug         string
+
+	// engagementCap est le statut de la capability fine engagement.score du titre
+	// (2e porte de degradation F7). Vide = titre historique valide (Infinite) traite
+	// comme supported/validated. degraded → score servi AVEC calibration=provisional ;
+	// not_exposed → GetMatchEngagement retourne ErrCapabilityNotSupported (503 propre).
+	engagementCap games.CapabilityStatus
 }
 
 // NewPlayerEngagementService cree un service per-player.
@@ -65,12 +71,38 @@ func (s *PlayerEngagementService) WithPlayerMatchesRepo(
 	return s
 }
 
+// WithEngagementCapability injecte le statut de la capability fine engagement.score
+// du titre (2e porte de degradation F7). Resolu par la factory title-aware ; le
+// service reste agnostic (il porte un statut, pas la logique de capability).
+func (s *PlayerEngagementService) WithEngagementCapability(status games.CapabilityStatus) *PlayerEngagementService {
+	s.engagementCap = status
+	return s
+}
+
+// calibrationForStatus mappe le statut de capability fine vers la valeur de
+// calibration exposee par match (2e porte F7). Vide/supported → validated ;
+// degraded → provisional. not_exposed est gate en amont (ErrCapabilityNotSupported).
+func calibrationForStatus(status games.CapabilityStatus) string {
+	if status == games.CapDegraded {
+		return domain.CalibrationProvisional
+	}
+	return domain.CalibrationValidated
+}
+
 // GetMatchEngagement charge le contexte du match, recompute la courbe et le
 // score (live), et retourne le resultat. Utilise par GET /matches/{id}/engagement.
 func (s *PlayerEngagementService) GetMatchEngagement(
 	ctx context.Context,
 	matchID string,
 ) (*domain.EngagementScoreResult, error) {
+	// Porte statique (1re moitie de la double porte F7) : un titre qui n'expose PAS
+	// engagement.score (not_exposed) ne sert pas de score — degradation gracieuse
+	// 503 propre (jamais un score cold-start silencieusement faux). Vide/degraded/
+	// supported passent (degraded servira avec calibration=provisional plus bas).
+	if s.engagementCap == games.CapNotExposed {
+		return nil, fmt.Errorf("engagement.score: %w", games.ErrCapabilityNotSupported)
+	}
+
 	mctx, err := s.repo.LoadMatchEngagementContext(ctx, matchID, s.xuid)
 	if err != nil {
 		return nil, fmt.Errorf("PlayerEngagementService: load match context: %w", err)
@@ -111,6 +143,8 @@ func (s *PlayerEngagementService) GetMatchEngagement(
 		}
 		return nil, fmt.Errorf("PlayerEngagementService: compute: %w", err)
 	}
+	// 2e porte F7 : statut de calibration du titre (provisional si degraded).
+	result.Calibration = calibrationForStatus(s.engagementCap)
 	return &result, nil
 }
 
