@@ -18,7 +18,6 @@ export const matchViewManifest = {
   "match_view.cards.locally_estimated_hint": { fr: "Pas d'API de compétence pour ce titre : frags et morts attendus viennent d'un modèle local (le volume monte avec la durée du match), les assistances d'un modèle local, et la probabilité de victoire du rating LUSR.", en: "No skill API for this title: expected kills and deaths come from a local model (volume scales with match length), assists from a local model, and win probability from the LUSR rating." },
   "match_view.cards.mmr_team_vs_enemy": { fr: "MMR", en: "MMR" },
   "match_view.cards.no_csr_data": { fr: "pas de données CSR", en: "no CSR data" },
-  "match_view.cards.no_win_prob_data": { fr: "pas d'estimation", en: "no estimate" },
   "match_view.cards.rendement": { fr: "Rendement", en: "Yield" },
   "match_view.cards.resistance": { fr: "Résistance", en: "Resistance" },
   "match_view.cards.win_prob_balanced": { fr: "Issue serrée", en: "Toss-up" },
