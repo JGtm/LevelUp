@@ -94,11 +94,6 @@ type EngagementScoreInput struct {
 	// l'attendu (ExpectedBasis "bin"). cf engagement_response_bins.go.
 	ResponseBins *domain.EngagementResponseBins
 
-	// CoefTeamShare : DEPRECATED (modele lobby-anchored v2). N'alimente plus
-	// l'attendu (l'ancre est le lobby, partout). Conserve le temps de la
-	// transition ; retire en Phase 6 du plan de refonte. Ne pas rebrancher.
-	CoefTeamShare float64
-
 	// PersonalScore et Kills/Assists permettent de calculer les events
 	// objectif estimes pour les modes asymetriques (CTF, Strongholds, Oddball).
 	// = (PersonalScore - 100*Kills - 50*Assists) / ObjectivePointsPerCapture

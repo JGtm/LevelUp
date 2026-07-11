@@ -88,7 +88,6 @@ func (s *PlayerEngagementService) recomputeAdminMode(
 		XUID:           s.xuid,
 		Gamertag:       s.gamertag,
 		ModeCategory:   mode,
-		CoefTeamShare:  result.CoefTeamShare,
 		CoefLobbyShare: result.CoefLobbyShare,
 		NMatches:       result.NMatches,
 		LastUpdated:    time.Now().UTC(),

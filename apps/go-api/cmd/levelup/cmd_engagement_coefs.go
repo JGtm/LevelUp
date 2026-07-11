@@ -1,5 +1,5 @@
-// cmd_engagement_coefs.go : recompute des coefficients d'engagement
-// (coef_team_share / coef_lobby_share) sans rejouer le compute des scores.
+// cmd_engagement_coefs.go : recompute du coef lobby global + des bins de reponse
+// (modele lobby-anchored v2) sans rejouer le compute des scores.
 //
 // Pourquoi : `backfill --engagement-scores` rejoue tout (compute scores +
 // recompute coefs) ET applique les migrations en amont, ce qui peut échouer

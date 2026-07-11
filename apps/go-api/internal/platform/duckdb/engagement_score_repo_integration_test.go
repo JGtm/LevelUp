@@ -104,11 +104,11 @@ func TestEngagementRepo_SaveAndLoadCoefficient(t *testing.T) {
 	}
 
 	// 2. Save un coef.
-	if err := repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_ranked", 1.12, 1.05, 200)); err != nil {
+	if err := repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_ranked", 1.05, 200)); err != nil {
 		t.Fatalf("SaveEngagementCoefficient: %v", err)
 	}
 
-	// 3. Load -> doit retourner les valeurs sauvees.
+	// 3. Load -> doit retourner les valeurs sauvees (coef_team_share non lu).
 	got, err = repo.LoadEngagementCoefficient(ctx, "xuid-1", "PvP_ranked")
 	if err != nil {
 		t.Fatalf("LoadEngagementCoefficient: %v", err)
@@ -116,16 +116,16 @@ func TestEngagementRepo_SaveAndLoadCoefficient(t *testing.T) {
 	if got == nil {
 		t.Fatal("expected non-nil coef after save")
 	}
-	if got.CoefTeamShare != 1.12 || got.CoefLobbyShare != 1.05 || got.NMatches != 200 {
+	if got.CoefLobbyShare != 1.05 || got.NMatches != 200 {
 		t.Errorf("unexpected coef values: %+v", got)
 	}
 
 	// 4. UPSERT : sauver a nouveau avec valeurs differentes -> doit remplacer.
-	if err := repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_ranked", 1.30, 1.15, 250)); err != nil {
+	if err := repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_ranked", 1.15, 250)); err != nil {
 		t.Fatalf("SaveEngagementCoefficient (upsert): %v", err)
 	}
 	got, _ = repo.LoadEngagementCoefficient(ctx, "xuid-1", "PvP_ranked")
-	if got == nil || got.CoefTeamShare != 1.30 || got.NMatches != 250 {
+	if got == nil || got.CoefLobbyShare != 1.15 || got.NMatches != 250 {
 		t.Errorf("expected upserted values, got %+v", got)
 	}
 }
@@ -202,10 +202,10 @@ func TestEngagementRepo_LoadAllCoefficients(t *testing.T) {
 	ctx := context.Background()
 
 	// Save 2 coefs sur differentes categories.
-	_ = repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_ranked", 1.12, 1.05, 200))
-	_ = repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_unranked", 0.95, 0.92, 150))
+	_ = repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_ranked", 1.05, 200))
+	_ = repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_unranked", 0.92, 150))
 	// Coef d'un autre joueur — ne doit PAS etre retourne.
-	_ = repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-OTHER", "PvP_ranked", 1.50, 1.40, 300))
+	_ = repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-OTHER", "PvP_ranked", 1.40, 300))
 
 	coefs, err := repo.LoadAllCoefficients(ctx, "xuid-1")
 	if err != nil {
@@ -313,11 +313,11 @@ func TestEngagementRepo_HasEngagementScore(t *testing.T) {
 // =============================================================================
 
 // domainCoef construit un EngagementCoefficient minimal pour les tests.
-func domainCoef(xuid, mode string, team, lobby float64, n int) domain.EngagementCoefficient {
+// coef_team_share n'est plus porté par le type (inerte, D5).
+func domainCoef(xuid, mode string, lobby float64, n int) domain.EngagementCoefficient {
 	return domain.EngagementCoefficient{
 		XUID:           xuid,
 		ModeCategory:   mode,
-		CoefTeamShare:  team,
 		CoefLobbyShare: lobby,
 		NMatches:       n,
 		LastUpdated:    time.Now().UTC(),

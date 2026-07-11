@@ -217,8 +217,9 @@ func TestBatchRecomputeCoefficients_HappyPath(t *testing.T) {
 	if !found {
 		t.Fatal("coef row not persisted")
 	}
-	if math.Abs(coefTeam-1.25) > 1e-9 {
-		t.Errorf("coef_team_share want 1.25, got %v", coefTeam)
+	// coef_team_share est INERTE (D5) : la colonne reste NOT NULL, on y écrit 1.0.
+	if coefTeam != 1.0 {
+		t.Errorf("coef_team_share doit être inerte (1.0), got %v", coefTeam)
 	}
 	if math.Abs(coefLobby-1.10) > 1e-6 {
 		t.Errorf("coef_lobby_share want ~1.10, got %v", coefLobby)
@@ -226,9 +227,9 @@ func TestBatchRecomputeCoefficients_HappyPath(t *testing.T) {
 	if nMatches != 30 {
 		t.Errorf("n_matches want 30, got %d", nMatches)
 	}
-	// Vérifie aussi que coef != 1.0 (sinon courbes superposées à l'écran)
-	if coefTeam == 1.0 {
-		t.Errorf("BUG racine non corrigé : coef_team reste 1.0 après recompute")
+	// Vérifie que le coef lobby n'est pas resté à 1.0 (sinon courbes superposées).
+	if coefLobby == 1.0 {
+		t.Errorf("BUG racine non corrigé : coef_lobby reste 1.0 après recompute")
 	}
 }
 
@@ -324,13 +325,13 @@ func TestBatchRecomputeCoefficients_TwoModesIndependent(t *testing.T) {
 		t.Errorf("nUpdated want 2 (both modes), got %d", n)
 	}
 
-	cR, lR, _, ok := loadCoef(t, db, "xuid-1", "PvP_ranked")
-	if !ok || math.Abs(cR-1.40) > 1e-9 || math.Abs(lR-1.20) > 1e-6 {
-		t.Errorf("PvP_ranked coefs unexpected: team=%v lobby=%v", cR, lR)
+	_, lR, _, ok := loadCoef(t, db, "xuid-1", "PvP_ranked")
+	if !ok || math.Abs(lR-1.20) > 1e-6 {
+		t.Errorf("PvP_ranked coef_lobby unexpected: %v", lR)
 	}
-	cU, lU, _, ok := loadCoef(t, db, "xuid-1", "PvP_unranked")
-	if !ok || math.Abs(cU-0.85) > 1e-9 || math.Abs(lU-0.90) > 1e-6 {
-		t.Errorf("PvP_unranked coefs unexpected: team=%v lobby=%v", cU, lU)
+	_, lU, _, ok := loadCoef(t, db, "xuid-1", "PvP_unranked")
+	if !ok || math.Abs(lU-0.90) > 1e-6 {
+		t.Errorf("PvP_unranked coef_lobby unexpected: %v", lU)
 	}
 }
 
@@ -390,11 +391,11 @@ func TestBatchRecomputeCoefficients_OutlierFiltering(t *testing.T) {
 	if n != 1 {
 		t.Errorf("nUpdated want 1, got %d", n)
 	}
-	coefTeam, _, nMatches, _ := loadCoef(t, db, "xuid-1", "PvP_ranked")
+	_, coefLobby, nMatches, _ := loadCoef(t, db, "xuid-1", "PvP_ranked")
 	// Sans filtre, mediane serait tirée par les outliers à 50. Avec filtre,
 	// la mediane reste à 1.0 (les 15 samples valides dominent).
-	if math.Abs(coefTeam-1.0) > 1e-9 {
-		t.Errorf("outlier filter failed: coef_team want 1.0, got %v", coefTeam)
+	if math.Abs(coefLobby-1.0) > 1e-9 {
+		t.Errorf("outlier filter failed: coef_lobby want 1.0, got %v", coefLobby)
 	}
 	if nMatches != 15 {
 		t.Errorf("n_matches want 15 (valid only), got %d", nMatches)
@@ -426,10 +427,10 @@ func TestBatchRecomputeCoefficients_RespectsLimitMostRecent(t *testing.T) {
 	if n != 1 {
 		t.Errorf("nUpdated want 1, got %d", n)
 	}
-	coefTeam, _, nMatches, _ := loadCoef(t, db, xuid, mode)
+	_, coefLobby, nMatches, _ := loadCoef(t, db, xuid, mode)
 	// 200 samples "recent_*" tous à ratio 1.5 → mediane 1.5
-	if math.Abs(coefTeam-1.5) > 1e-9 {
-		t.Errorf("limit=200 most recent should give 1.5, got %v (drift if limit ignored)", coefTeam)
+	if math.Abs(coefLobby-1.5) > 1e-9 {
+		t.Errorf("limit=200 most recent should give 1.5, got %v (drift if limit ignored)", coefLobby)
 	}
 	if nMatches != 200 {
 		t.Errorf("n_matches want 200 (limit), got %d", nMatches)
@@ -453,8 +454,8 @@ func TestBatchRecomputeCoefficients_ObservabilityCounters(t *testing.T) {
 	if got := observability.LoadCounter("engagement_coef_skipped_insufficient_history"); got != 1 {
 		t.Errorf("engagement_coef_skipped_insufficient_history want 1, got %d", got)
 	}
-	// Bucket 1.1..1.3 doit avoir +1 (coef = 1.20)
-	if got := observability.LoadCounter("engagement_coef_team_bucket_1_1_to_1_3"); got != 1 {
+	// Bucket 1.1..1.3 doit avoir +1 (coef_lobby = 1.10)
+	if got := observability.LoadCounter("engagement_coef_lobby_bucket_1_1_to_1_3"); got != 1 {
 		t.Errorf("bucket 1_1_to_1_3 want 1, got %d", got)
 	}
 }

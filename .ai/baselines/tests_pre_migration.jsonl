@@ -8052,22 +8052,10 @@
 {"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterAFKPlayerActivity","Output":"=== RUN   TestComputeEngagementCoefficient_FilterAFKPlayerActivity\n"}
 {"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterAFKPlayerActivity","Output":"=== PAUSE TestComputeEngagementCoefficient_FilterAFKPlayerActivity\n"}
 {"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterAFKPlayerActivity"}
-{"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"run","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterLowPaceTeam"}
-{"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterLowPaceTeam","Output":"=== RUN   TestComputeEngagementCoefficient_FilterLowPaceTeam\n"}
-{"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterLowPaceTeam","Output":"=== PAUSE TestComputeEngagementCoefficient_FilterLowPaceTeam\n"}
-{"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterLowPaceTeam"}
 {"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"run","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterZeroPace"}
 {"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterZeroPace","Output":"=== RUN   TestComputeEngagementCoefficient_FilterZeroPace\n"}
 {"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterZeroPace","Output":"=== PAUSE TestComputeEngagementCoefficient_FilterZeroPace\n"}
 {"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterZeroPace"}
-{"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"run","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyIndependent"}
-{"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyIndependent","Output":"=== RUN   TestComputeEngagementCoefficient_LobbyIndependent\n"}
-{"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyIndependent","Output":"=== PAUSE TestComputeEngagementCoefficient_LobbyIndependent\n"}
-{"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyIndependent"}
-{"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"run","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyFallbackWhenInsufficient"}
-{"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyFallbackWhenInsufficient","Output":"=== RUN   TestComputeEngagementCoefficient_LobbyFallbackWhenInsufficient\n"}
-{"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyFallbackWhenInsufficient","Output":"=== PAUSE TestComputeEngagementCoefficient_LobbyFallbackWhenInsufficient\n"}
-{"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyFallbackWhenInsufficient"}
 {"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"run","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_ClampHighCoef"}
 {"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_ClampHighCoef","Output":"=== RUN   TestComputeEngagementCoefficient_ClampHighCoef\n"}
 {"Time":"2026-06-26T23:45:14.8693841+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_ClampHighCoef","Output":"=== PAUSE TestComputeEngagementCoefficient_ClampHighCoef\n"}
@@ -8418,10 +8406,6 @@
 {"Time":"2026-06-26T23:45:14.8709583+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestPeriod_IsValid","Output":"=== CONT  TestPeriod_IsValid\n"}
 {"Time":"2026-06-26T23:45:14.8709583+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestLowessSmooth_AllNaN"}
 {"Time":"2026-06-26T23:45:14.8709583+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestLowessSmooth_AllNaN","Output":"=== CONT  TestLowessSmooth_AllNaN\n"}
-{"Time":"2026-06-26T23:45:14.8709583+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterLowPaceTeam"}
-{"Time":"2026-06-26T23:45:14.8709583+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterLowPaceTeam","Output":"=== CONT  TestComputeEngagementCoefficient_FilterLowPaceTeam\n"}
-{"Time":"2026-06-26T23:45:14.8709583+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyIndependent"}
-{"Time":"2026-06-26T23:45:14.8709583+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyIndependent","Output":"=== CONT  TestComputeEngagementCoefficient_LobbyIndependent\n"}
 {"Time":"2026-06-26T23:45:14.8709583+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterZeroPace"}
 {"Time":"2026-06-26T23:45:14.8709583+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterZeroPace","Output":"=== CONT  TestComputeEngagementCoefficient_FilterZeroPace\n"}
 {"Time":"2026-06-26T23:45:14.8709583+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestLowessSmooth_LinearTrend"}
@@ -8514,8 +8498,6 @@
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestPeriod_Since/2y","Output":"=== RUN   TestPeriod_Since/2y\n"}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestFilterByPeriod/1m_keeps_last_day_only","Output":"--- PASS: TestFilterByPeriod/1m_keeps_last_day_only (0.00s)\n"}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestFilterByPeriod/1m_keeps_last_day_only","Elapsed":0}
-{"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyFallbackWhenInsufficient"}
-{"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyFallbackWhenInsufficient","Output":"=== CONT  TestComputeEngagementCoefficient_LobbyFallbackWhenInsufficient\n"}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestPeriod_Since/2y","Output":"=== PAUSE TestPeriod_Since/2y\n"}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestPeriod_Since/2y"}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_OddSampleSize"}
@@ -8582,8 +8564,6 @@
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestPeriod_Since/empty","Output":"=== RUN   TestPeriod_Since/empty\n"}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestPeriod_Since/empty","Output":"=== PAUSE TestPeriod_Since/empty\n"}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"pause","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestPeriod_Since/empty"}
-{"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyIndependent","Output":"--- PASS: TestComputeEngagementCoefficient_LobbyIndependent (0.00s)\n"}
-{"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyIndependent","Elapsed":0}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestPeriod_Since/1y"}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestPeriod_Since/1y","Output":"=== CONT  TestPeriod_Since/1y\n"}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterZeroPace","Output":"--- PASS: TestComputeEngagementCoefficient_FilterZeroPace (0.00s)\n"}
@@ -8592,8 +8572,6 @@
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestPeriod_Since/1y","Elapsed":0}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"cont","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestPeriod_Since/2y"}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestPeriod_Since/2y","Output":"=== CONT  TestPeriod_Since/2y\n"}
-{"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterLowPaceTeam","Output":"--- PASS: TestComputeEngagementCoefficient_FilterLowPaceTeam (0.00s)\n"}
-{"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_FilterLowPaceTeam","Elapsed":0}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestPeriod_Since/2y","Output":"--- PASS: TestPeriod_Since/2y (0.00s)\n"}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestPeriod_Since/2y","Elapsed":0}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestLowessSmooth_LinearTrend","Output":"--- PASS: TestLowessSmooth_LinearTrend (0.00s)\n"}
@@ -8646,8 +8624,6 @@
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestBucketByGranularity_WeekStartingSunday","Elapsed":0}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestBucketByGranularity_Week","Output":"--- PASS: TestBucketByGranularity_Week (0.00s)\n"}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestBucketByGranularity_Week","Elapsed":0}
-{"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyFallbackWhenInsufficient","Output":"--- PASS: TestComputeEngagementCoefficient_LobbyFallbackWhenInsufficient (0.00s)\n"}
-{"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_LobbyFallbackWhenInsufficient","Elapsed":0}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_OddSampleSize","Output":"--- PASS: TestComputeEngagementCoefficient_OddSampleSize (0.00s)\n"}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_OddSampleSize","Elapsed":0}
 {"Time":"2026-06-26T23:45:14.8714874+02:00","Action":"output","Package":"levelup/go-api/internal/analysis/temporal","Test":"TestComputeEngagementCoefficient_BelowThreshold","Output":"--- PASS: TestComputeEngagementCoefficient_BelowThreshold (0.00s)\n"}

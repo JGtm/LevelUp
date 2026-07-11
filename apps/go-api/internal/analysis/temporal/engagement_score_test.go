@@ -123,7 +123,6 @@ func TestComputeEngagementScore_PaceTeamIncludesPlayer(t *testing.T) {
 		NHumansLobby:   8,
 		MatchStartMS:   0,
 		MatchEndMS:     360_000,
-		CoefTeamShare:  1.0,
 		CoefLobbyShare: 1.0,
 		IsTeamMode:     true,
 	})
@@ -161,7 +160,6 @@ func TestComputeEngagementScore_InsufficientHistory(t *testing.T) {
 		MatchStartMS:   0,
 		MatchEndMS:     720_000,
 		History:        makeHistory(5, -1.0, 1.0), // < 10 matchs
-		CoefTeamShare:  1.0,
 		CoefLobbyShare: 1.0,
 		IsTeamMode:     true,
 	})
@@ -194,7 +192,6 @@ func TestComputeEngagementScore_PartialHistory(t *testing.T) {
 		MatchStartMS:   0,
 		MatchEndMS:     720_000,
 		History:        makeHistory(15, -1.0, 1.0), // entre 10 et 30
-		CoefTeamShare:  1.0,
 		CoefLobbyShare: 1.0,
 		IsTeamMode:     true,
 	})
@@ -220,7 +217,6 @@ func TestComputeEngagementScore_FullHistory(t *testing.T) {
 		MatchStartMS:   0,
 		MatchEndMS:     720_000,
 		History:        makeHistory(50, -2.0, 2.0), // >= 30
-		CoefTeamShare:  1.0,
 		CoefLobbyShare: 1.0,
 		IsTeamMode:     true,
 	})
@@ -265,7 +261,6 @@ func TestComputeEngagementScore_PlayerAboveExpectedScoresHigh(t *testing.T) {
 		MatchStartMS:   0,
 		MatchEndMS:     720_000,
 		History:        makeHistory(50, -2.0, 2.0),
-		CoefTeamShare:  1.0,
 		CoefLobbyShare: 1.0,
 		IsTeamMode:     true,
 	})
@@ -303,7 +298,6 @@ func TestComputeEngagementScore_PlayerBelowExpectedScoresLow(t *testing.T) {
 		MatchStartMS:   0,
 		MatchEndMS:     720_000,
 		History:        makeHistory(50, -2.0, 2.0), // mediane = 0
-		CoefTeamShare:  1.0,
 		CoefLobbyShare: 1.0,
 		IsTeamMode:     true,
 	})
@@ -332,16 +326,15 @@ func TestComputeEngagementScore_MatchIntensityComputed(t *testing.T) {
 		})
 	}
 	result, err := temporal.ComputeEngagementScore(temporal.EngagementScoreInput{
-		PlayerEvents:  playerEvents,
-		TeamEvents:    makeEvents(canonical.EventKill, 30_000),
-		LobbyEvents:   lobbyEvents,
-		NTeam:         4,
-		NHumansLobby:  8,
-		MatchStartMS:  0,
-		MatchEndMS:    720_000,
-		History:       makeHistory(50, -1.0, 1.0),
-		CoefTeamShare: 1.0,
-		IsTeamMode:    true,
+		PlayerEvents: playerEvents,
+		TeamEvents:   makeEvents(canonical.EventKill, 30_000),
+		LobbyEvents:  lobbyEvents,
+		NTeam:        4,
+		NHumansLobby: 8,
+		MatchStartMS: 0,
+		MatchEndMS:   720_000,
+		History:      makeHistory(50, -1.0, 1.0),
+		IsTeamMode:   true,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -379,7 +372,6 @@ func TestComputeEngagementScore_FFAFallbackToLobby(t *testing.T) {
 		MatchStartMS:   0,
 		MatchEndMS:     720_000,
 		History:        makeHistory(50, -1.0, 1.0),
-		CoefTeamShare:  0, // ignore en FFA
 		CoefLobbyShare: 1.05,
 		IsTeamMode:     false,
 	})
@@ -599,16 +591,15 @@ func TestComputeEngagementScore_PassiveDeathDetected(t *testing.T) {
 		{EventType: string(canonical.EventDeath), TimeMS: 90_000},
 	}
 	result, err := temporal.ComputeEngagementScore(temporal.EngagementScoreInput{
-		PlayerEvents:  playerEvents,
-		TeamEvents:    makeEvents(canonical.EventKill, 60_000),
-		LobbyEvents:   playerEvents,
-		NTeam:         4,
-		NHumansLobby:  8,
-		MatchStartMS:  0,
-		MatchEndMS:    720_000,
-		History:       makeHistory(50, -1.0, 1.0),
-		CoefTeamShare: 1.0,
-		IsTeamMode:    true,
+		PlayerEvents: playerEvents,
+		TeamEvents:   makeEvents(canonical.EventKill, 60_000),
+		LobbyEvents:  playerEvents,
+		NTeam:        4,
+		NHumansLobby: 8,
+		MatchStartMS: 0,
+		MatchEndMS:   720_000,
+		History:      makeHistory(50, -1.0, 1.0),
+		IsTeamMode:   true,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -634,16 +625,15 @@ func TestComputeEngagementScore_ActiveDeathNotMarkedPassive(t *testing.T) {
 		{EventType: string(canonical.EventDeath), TimeMS: 100_000},
 	}
 	result, err := temporal.ComputeEngagementScore(temporal.EngagementScoreInput{
-		PlayerEvents:  playerEvents,
-		TeamEvents:    makeEvents(canonical.EventKill, 60_000),
-		LobbyEvents:   playerEvents,
-		NTeam:         4,
-		NHumansLobby:  8,
-		MatchStartMS:  0,
-		MatchEndMS:    720_000,
-		History:       makeHistory(50, -1.0, 1.0),
-		CoefTeamShare: 1.0,
-		IsTeamMode:    true,
+		PlayerEvents: playerEvents,
+		TeamEvents:   makeEvents(canonical.EventKill, 60_000),
+		LobbyEvents:  playerEvents,
+		NTeam:        4,
+		NHumansLobby: 8,
+		MatchStartMS: 0,
+		MatchEndMS:   720_000,
+		History:      makeHistory(50, -1.0, 1.0),
+		IsTeamMode:   true,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

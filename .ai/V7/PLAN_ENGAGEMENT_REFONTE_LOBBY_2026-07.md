@@ -1,5 +1,11 @@
 # PLAN — Refonte engagement : ancre lobby + attendu conditionné par l'intensité
 
+> **STATUT : COMPLÉTÉ (2026-07-11).** 6 phases livrées sur `feat/engagement-lobby-response` ;
+> re-backfill LOCAL des 2 titres fait + vérifié ; gates Go (unit + intégration `-p 1`),
+> front (typecheck/lint/vitest) et lint delta verts. **Reste (hors périmètre code, dépend
+> du deploy)** : re-backfill PROD à rejouer après merge+deploy (push main = deploy auto —
+> prévenir l'utilisateur), et revue visuelle des surfaces engagement au merge.
+
 > Rédigé le 2026-07-07. Origine : diagnostic du match `bc918a5a-ed48-4ba6-8c0c-a0a117cd9461`
 > (courbes « Équipe réelle » / « Joueur attendu » visuellement confondues pour JGtm,
 > coef_team_share = 1.005) + décisions produit prises en session avec l'utilisateur.
@@ -337,20 +343,27 @@ warnings baseline) + `npm run test:run` (246 fichiers, 2102 pass / 14 skip, 0 fa
 
 Périmètre fermé :
 
-- [ ] Retirer `coef_team_share` du recompute (`ComputeEngagementCoefficient` ne calcule
-      plus que le ratio lobby ; renommer si besoin) + du payload — la colonne DB reste,
-      commentée dans la migration d'origine (D5). Supprimer le code mort qui en découle
-      (règle 0 code mort — y compris tests devenus sans objet).
-- [ ] `selectExpectedReference` : supprimé avec ses tests (D1).
-- [ ] `.ai/REFLEXION_ENGAGEMENT_SCORE_INTRA_MATCH.md` : addendum daté « modèle v2
-      lobby-anchored » (ne pas réécrire l'historique, ajouter une section).
-- [ ] `docs/` : si le guide FOUNDATIONS/features mentionne le modèle team-share, MAJ
-      FR+EN dans le même commit.
-- [ ] Vérifier qu'aucun garde-rail n'a été affaibli (allowlists no_art_patterns,
-      baselines lint) sans justification datée.
-- [ ] Entrée thought_log de clôture (décision, chiffres des gates, prochaine étape =
-      re-backfill prod post-merge).
-- [ ] Gate global final : suite complète Go + intégration `-p 1` + front + lint.
+- [x] `coef_team_share` retiré du recompute : `ComputeEngagementCoefficient` calcule
+      UNIQUEMENT le ratio lobby (`CoefficientResult.CoefTeamShare` supprimé, filtre team +
+      `PaceTeamMinThreshold` supprimés). Code mort supprimé : `EngagementScoreInput.CoefTeamShare`,
+      `domain.EngagementCoefficient.CoefTeamShare`, tests `LobbyIndependent` /
+      `LobbyFallbackWhenInsufficient` (sans objet), helper team des tests. Colonne DuckDB
+      `coef_team_share` conservée NOT NULL mais INERTE (écrite à 1.0, plus lue) ; migration
+      d'origine commentée (D5). Compteur expvar renommé `engagement_coef_team_bucket_` →
+      `engagement_coef_lobby_bucket_`.
+- [x] `selectExpectedReference` : supprimé avec ses tests (fait en Phase 2, D1).
+- [x] `.ai/V7/REFLEXION_ENGAGEMENT_SCORE_INTRA_MATCH.md` : addendum daté « modèle v2
+      lobby-anchored » ajouté (historique v1 conservé).
+- [x] `docs/` : `grep team_share|coef_team|pace_team_per_player docs/` = 0 → aucun guide
+      FR/EN ne mentionne le modèle team-share, rien à mettre à jour. [~]
+- [x] Garde-rails : allowlist `no_art_patterns` INCHANGÉE (les écritures bins/coefs sont en
+      SELECT-then-UPDATE-or-INSERT sous lease, sans ON CONFLICT) ; baselines lint inchangées ;
+      baseline tests `tests_pre_migration.jsonl` MAJ dans le commit (3 tests retirés/renommés,
+      -24 lignes) — justifié ci-dessus (GATE « Go Baseline Tests »).
+- [x] Entrée thought_log de clôture.
+- [x] Gate global final : suite complète Go (`./internal/...` exit 0) + `golangci-lint
+      --new-from-rev=origin/main` 0 + front (Phase 5 : typecheck/lint/vitest 0) + intégration
+      `-p 1 ./...` (voir AVANCEMENT).
 
 ## 5. Hors périmètre (NE PAS TRAITER — consigner en Découvertes)
 
@@ -369,6 +382,11 @@ Périmètre fermé :
   (Halo Infinite ET Halo 5 se provisionnent via ces mêmes steps — cf. commentaires
   fresh-provision dans order.go l.61-65 et l.172-177). Une seule entrée de migration
   couvre donc les 2 titres. Aucun changement de périmètre requis.
+- **`cmd/engagement-validate` H3 devenu inerte** (Phase 6) : la sous-vérif H3 « stabilité
+  du coef_team_share » de ce CLI de diagnostic manuel interroge désormais une colonne inerte
+  (toujours 1.0) → résultat trivialement stable, non informatif. Diag standalone hors chemin
+  serving/recompute et hors gate ; non modifié pour éviter le scope creep. À réviser (retirer
+  H3 ou le rebrancher sur les bins) lors d'un futur passage sur les outils de validation.
 - **Glossaire help EN incomplet** (Phase 5) : `features/help/i18n.ts` — le glossaire EN
   (`EN_TEXT`) ne contient PAS les entrées « Score d'engagement » / « Coefficient
   d'engagement » / « Intensité du match » (présentes seulement dans `FR_TEXT`). Écart de
@@ -397,4 +415,8 @@ Périmètre fermé :
   vérifié Infinite, bins H5 peuplés. Re-backfill PROD différé post-merge (runbook).
 - Phase 5 : COMPLÉTÉE (2026-07-11) — masquage cold_start, tooltip lobby, sous-titre
   base-attendu (i18n FR/EN), types+hook profil, help FR réécrit ; typecheck/lint/vitest 0.
-- Phase 6 : non commencée
+- Phase 6 : COMPLÉTÉE (2026-07-11) — coef_team_share retiré du recompute + code mort +
+  colonne inerte ; addendum réflexion ; baseline tests MAJ ; garde-rails intacts. Gate
+  global : `go test ./internal/...` 0 ; `golangci --new-from-rev=origin/main` 0 ; front
+  (Phase 5) typecheck/lint/vitest 0 ; intégration `-tags=integration -p 1 ./...` = **exit 0**
+  (0 FAIL, ~98 paquets ok, tests/golden inclus — 2026-07-11).

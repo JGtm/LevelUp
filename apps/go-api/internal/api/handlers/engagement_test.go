@@ -216,7 +216,7 @@ func TestEngagementHandler_GetMatchEngagement_Insufficient(t *testing.T) {
 func TestEngagementHandler_GetEngagementProfile_OK(t *testing.T) {
 	repo := &engagementMockRepo{
 		allCoefs: []domain.EngagementCoefficient{
-			{XUID: "xuid-test", ModeCategory: "PvP_ranked", CoefTeamShare: 1.12, CoefLobbyShare: 1.05, NMatches: 200, LastUpdated: time.Now()},
+			{XUID: "xuid-test", ModeCategory: "PvP_ranked", CoefLobbyShare: 1.05, NMatches: 200, LastUpdated: time.Now()},
 		},
 	}
 	factory := func(_ context.Context, _ string) (*service.PlayerEngagementService, error) {

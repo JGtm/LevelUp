@@ -300,10 +300,10 @@ func splitCSV(s string) []string {
 
 // handleRecomputeCoefficients : POST /engagement/recompute_coefficients
 //
-// Force le recalcul des coefficients d'engagement (coef_team_share /
-// coef_lobby_share) pour toutes les categories de mode supportees, depuis
-// les paces persistees dans player_match_enrichment. Utile en admin / debug
-// quand un user veut rafraichir ses coefs sans attendre le prochain sync.
+// Force le recalcul du coef lobby global + des bins de reponse (modele
+// lobby-anchored v2) pour toutes les categories de mode supportees, depuis les
+// paces persistees dans player_match_enrichment. Utile en admin / debug quand un
+// user veut rafraichir ses coefs sans attendre le prochain sync.
 //
 // Reponse JSON :
 //
