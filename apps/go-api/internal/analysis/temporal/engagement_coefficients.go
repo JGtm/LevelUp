@@ -42,13 +42,19 @@ const (
 	// PaceTeamMinThreshold : pace de l'equipe (events/min/joueur) en dessous
 	// duquel le match est exclu de la mediane. Un lobby quasi-inactif (lag,
 	// quitters massifs, custom mode AFK) genere des ratios extremes qui
-	// polluent la mediane. 1.0 event/min/joueur = 1 kill/death toutes les 60s
-	// par joueur d'equipe : seuil tres bas, exclus seulement les vrais cas
+	// polluent la mediane. Seuil tres bas, exclus seulement les vrais cas
 	// degeneres.
-	PaceTeamMinThreshold = 1.0
+	//
+	// 1.0 → 0.75 (2026-07-07, modele lobby-anchored) : la suppression du poids
+	// mort (death 0.4 → 0.0, cf. engagement_weights.go) baisse mecaniquement
+	// tous les paces de ~25 % sur un mix kills≈morts. Abaisser le seuil dans la
+	// meme proportion evite de rejeter des matchs auparavant valides. Gate
+	// empirique : taux de rejets hors-AFK < 5 % apres re-backfill, sinon 0.6.
+	PaceTeamMinThreshold = 0.75
 
-	// PaceLobbyMinThreshold : meme idee pour le ratio lobby. Seuil identique.
-	PaceLobbyMinThreshold = 1.0
+	// PaceLobbyMinThreshold : meme idee pour le ratio lobby. Seuil identique
+	// (abaisse de 1.0 a 0.75 pour la meme raison, cf. PaceTeamMinThreshold).
+	PaceLobbyMinThreshold = 0.75
 
 	// PlayerActivityMin : activite minimale du joueur (kills+assists+deaths)
 	// pour que le match contribue a la mediane. < 3 = quitter / AFK / disco

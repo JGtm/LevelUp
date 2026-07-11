@@ -1,3 +1,21 @@
+## [2026-07-11] Engagement refonte lobby — Phase 1 (poids des events)
+
+**Statut** : Complété (Phase 1/6 de PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07).
+
+**Décision technique** : poids event `death` 0.4 → 0.0 (double comptage kill/mort ; la
+mort est subie, jamais une action menée — décision user 2026-07-07). Seuils de filtre des
+échantillons `PaceTeamMinThreshold`/`PaceLobbyMinThreshold` 1.0 → 0.75 (la suppression du
+poids mort baisse mécaniquement ~25 % des paces sur un mix kills≈morts). Commentaires
+mis à jour (pas de doc inversée). Vérifié que `annotateDeaths`/`isPassiveDeath`/
+`PassiveDeathThresholdMS` ne lisent que les *types* d'events, indépendants des poids
+(tests passifs/actifs verts).
+
+**Résultats** : `go test ./internal/analysis/temporal/...` ok ; `go vet ./...` exit 0.
+
+**Prochaine étape** : Phase 2 — bins de réponse + attendu ancré lobby (cœur du modèle).
+
+---
+
 ## [2026-07-10] MERGE MAIN — campagne audits 2026-07 + clôture + gate humain (GO utilisateur)
 
 **Statut** : En cours (merge exécuté dans cette session ; post-deploy VPS à suivre).

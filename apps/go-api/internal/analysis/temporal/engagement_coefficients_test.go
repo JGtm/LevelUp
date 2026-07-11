@@ -225,8 +225,8 @@ func TestComputeEngagementCoefficient_FilterLowPaceTeam(t *testing.T) {
 		samples = append(samples, RatioSample{
 			MatchID:        fmt.Sprintf("afkLobby%d", i),
 			PaceJoueur:     5,
-			PaceTeam:       0.5, // < PaceTeamMinThreshold=1.0
-			PaceLobby:      0.4, // < PaceLobbyMinThreshold=1.0
+			PaceTeam:       0.5, // < PaceTeamMinThreshold=0.75
+			PaceLobby:      0.4, // < PaceLobbyMinThreshold=0.75
 			PlayerActivity: 30,
 		})
 	}
@@ -293,7 +293,7 @@ func TestComputeEngagementCoefficient_LobbyFallbackWhenInsufficient(t *testing.T
 			MatchID:        fmt.Sprintf("m%d", i),
 			PaceJoueur:     12,
 			PaceTeam:       10,
-			PaceLobby:      0.5, // sous seuil PaceLobbyMinThreshold=1.0
+			PaceLobby:      0.5, // sous seuil PaceLobbyMinThreshold=0.75
 			PlayerActivity: 30,
 		}
 	}
