@@ -1,3 +1,26 @@
+## [2026-07-11] Squash migrations — CLÔTURE PARTIELLE M0-M2 (chantier N4)
+
+**Statut** : Complété pour M0/M1/M2 (capacité + preuve livrées) ; M3→M6 EN ATTENTE GO
+opérateur (politique N4 manuel + M5c copie prod + M6a deploy auto).
+
+**Gates verts cette session** : golangci-lint --new-from-rev=origin/main 0 ; go test ./...
+exit 0 ; go test -tags=integration -p 1 -timeout 900s ./... exit 0 ; CI branche run
+29165659241 TOUS jobs success (Go Lint only-new-issues vert après fix noctx, Baseline
+non-régression, Build+Test ubuntu+windows, Coverage complet). Aucun test supprimé →
+baseline inchangée.
+
+**Décision de clôture** : le squash RÉEL (M3+) est par conception gaté GO opérateur ; je
+livre l'outillage réutilisable et la preuve, et je m'arrête proprement au verrou (règle 9
+plan-execution + rule 3 report VALIDE : décision opérateur + dépendance prod). Plan reste
+en `.ai/` (non déplacé V7). Périmètre v1 désigné = player, bloc title-owned contigu.
+
+**Prochaine étape (post-GO, session dédiée)** : M3 baseline générée player (borne figée sur
+pièces) + règle d'équivalence ledger DM-5 + invariant en mode réel vert ; M4 archive
+`.ai/migrations/squashed/` + doc.go APPLIQUÉE ; M5 e2e + SeedDemo + répétition copie prod ;
+M6 GO + merge.
+
+---
+
 ## [2026-07-11] Squash migrations — M2 invariant bit-identique (chantier N4)
 
 **Statut** : Complété (M2). Verrou central en place.

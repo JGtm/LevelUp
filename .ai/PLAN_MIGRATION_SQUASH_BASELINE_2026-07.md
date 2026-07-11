@@ -1,5 +1,14 @@
 # PLAN — Squash des migrations : baseline bit-identique prouvée (chantier N4)
 
+> **STATUT : PARTIEL — M0/M1/M2 COMPLÉTÉS le 2026-07-11 (capacité + preuve zéro-perte
+> livrées, objectif #1). M3→M6 (le SQUASH RÉEL) EN ATTENTE DU GO OPÉRATEUR** — par la
+> conception même du plan (DM-1 « gated GO humain », politique N4 point 1 « déclenchement
+> MANUEL »), M0e « Point d'étape utilisateur » et M6a « DEMANDER le GO explicite ». Ce ne
+> sont pas des reports de commodité mais des dépendances décisionnelles opérateur +
+> prod (M5c = répétition sur copie prod). L'outillage M1/M2 est réutilisable tel quel
+> (dé-risque aussi E7). Le plan reste dans `.ai/` (non déplacé en V7) tant que M3+ n'est
+> pas exécuté.
+>
 > Date : 2026-07-10. Auteur : Fable (supervision). Exécutant prévu : Opus.
 > Origine : politique N4 documentée dans `internal/migration/doc.go` (2026-07-05,
 > PROPOSITION) + exigence utilisateur 2026-07-10 : « une solution propre qui garantit
@@ -113,42 +122,49 @@ Critères de succès :
   Synergie E7 notée dans `DETTE_ASSUMEE_2026-Q3.md` (§4 du plan).
 
 ### M3 — Génération de la baseline (registre v1 désigné en M0e)
-- [ ] M3a — Écrire le step `create_baseline_<cible>_v<version>` : schéma « à plat »
+> [!] EN ATTENTE GO OPÉRATEUR (politique N4 point 1 : déclenchement MANUEL ; DM-1 : squash
+> réel gaté). Périmètre v1 DÉSIGNÉ (M0e) = cible player, bloc title-owned contigu. Approche
+> RECOMMANDÉE pour M3a : baseline GÉNÉRÉE (provisionner l'historique jusqu'à la borne,
+> `SchemaSnapshot` comme spec, émettre le DDL à plat) — plus sûr qu'à la main. Le SEAM M2
+> (`provisionFullHistory`) est prêt à recevoir le fixture des steps squashés. Aucun de ces
+> items n'est bloquant technique : ils attendent la DÉCISION opérateur de lancer le 1er
+> squash (risque prod au merge M6b = deploy auto). À exécuter en session dédiée post-GO.
+- [!] M3a — Écrire le step `create_baseline_<cible>_v<version>` : schéma « à plat »
   produisant EXACTEMENT l'état cumulé des steps squashés (s'appuyer sur le snapshot M1 de
   référence comme spec ; le step est écrit à la main ou généré — décider et documenter —
   mais RELU dans les deux cas).
-- [ ] M3b — Règle d'équivalence ledger (DM-5) : une DB portant le dernier step squashé
+- [!] M3b — Règle d'équivalence ledger (DM-5) : une DB portant le dernier step squashé
   est réputée porter la baseline (implémentation dans le runner + TEST dédié : DB
   provisionnée à l'ancienne → boot avec le nouveau registre → AUCUN step rejoué, schéma
   intact).
-- [ ] M3c — Câbler le registre : baseline + 10 derniers steps ; `order_audit_test.go`
+- [!] M3c — Câbler le registre : baseline + 10 derniers steps ; `order_audit_test.go`
   (audit d'ordre) mis à jour.
-- [ ] M3d — Le test d'invariant M2 passe en mode RÉEL (A = historique complet archivé,
+- [!] M3d — Le test d'invariant M2 passe en mode RÉEL (A = historique complet archivé,
   B = baseline + reste) → VERT exigé.
 - Gate M3 : invariant vert ; test ledger M3b vert ; `-tags=integration -p 1` cible verte.
 
 ### M4 — Archivage + documentation
-- [ ] M4a — Copier les steps squashés dans `.ai/migrations/squashed/<version>/` + README
+- [!] M4a — Copier les steps squashés dans `.ai/migrations/squashed/<version>/` + README
   (DM-3). Les fichiers source des steps sont RETIRÉS du registre actif seulement à ce
   stade (git garde tout de toute façon — l'archive est une commodité d'audit).
-- [ ] M4b — `internal/migration/doc.go` : la politique passe de « PROPOSITION » à
+- [!] M4b — `internal/migration/doc.go` : la politique passe de « PROPOSITION » à
   « APPLIQUÉE le <date> (registre <X>, version <V>) » + renvoi vers ce plan et l'archive.
-- [ ] M4c — Mesure après (M0d rejouée) : temps de provisioning vierge avant/après consigné.
+- [!] M4c — Mesure après (M0d rejouée) : temps de provisioning vierge avant/après consigné.
 - Gate M4 : build+vet+tests migration verts ; archive en place.
 
 ### M5 — Vérifications end-to-end (avant tout GO)
-- [ ] M5a — Suite complète `-tags=integration -p 1 -timeout 900s ./...` → exit 0.
-- [ ] M5b — SeedDemo end-to-end (intégration ops) → vert (provisionne des DBs vierges,
+- [!] M5a — Suite complète `-tags=integration -p 1 -timeout 900s ./...` → exit 0.
+- [!] M5b — SeedDemo end-to-end (intégration ops) → vert (provisionne des DBs vierges,
   c'est le consommateur réel du chemin baseline).
-- [ ] M5c — Répétition sur COPIE PROD (celle de `LevelUp-prod-copy`, restaurée V10a — la
+- [!] M5c — Répétition sur COPIE PROD (celle de `LevelUp-prod-copy`, restaurée V10a — la
   rafraîchir via restic si périmée) : booter le binaire de la branche sur la copie →
   AUCUN step rejoué (DM-5), schéma intact (snapshot M1 avant/après identiques), pages OK.
 - Gate M5 : les 3 verts, consignés.
 
 ### M6 — GO opérateur puis merge (politique N4 : déclenchement manuel)
-- [ ] M6a — Point d'étape utilisateur : mesures (M0d vs M4c), diff de registre, résultat
+- [!] M6a — Point d'étape utilisateur : mesures (M0d vs M4c), diff de registre, résultat
   M5c. DEMANDER le GO explicite (c'est LA décision opérateur de la politique).
-- [ ] M6b — Si GO : merge selon les règles projet (prévenir, deploy auto). Si NO-GO :
+- [!] M6b — Si GO : merge selon les règles projet (prévenir, deploy auto). Si NO-GO :
   la branche reste (l'outillage M1/M2 est réutilisable même sans squash — il sert aussi
   au chantier E7 futur), consigner.
 
@@ -242,5 +258,46 @@ OPÉRATEUR (politique N4 point 1 ; M6a).
 Gate M0 : OK — rapport ci-dessus, aucune modification de code committée (sonde M0d/M1
 supprimée).
 
+### Clôture PARTIELLE (2026-07-11)
+
+M0/M1/M2 COMPLÉTÉS et livrés sur `refactor/migration-squash-baseline` (commits `squash(M0)`
+823c09e68, `squash(M1)` 949d70eb2 + fix noctx ae294e566, `squash(M2)` 7830cfafb). Objectif
+#1 (CAPACITÉ + PREUVE zéro-perte) atteint : `migration.SchemaSnapshot` + invariant
+bit-identique (5 cibles, mode A=B, morsure prouvée).
+
+**Gates de livraison (tous exécutés cette session, verts)** :
+- `golangci-lint run --new-from-rev=origin/main` = 0 issue.
+- `go test ./...` = exit 0.
+- `go test -tags=integration -p 1 -timeout 900s ./...` = exit 0 (aucun FAIL).
+- CI de branche (run 29165659241) = TOUS les jobs `success` (E2E skipped) — Go Lint inclus
+  (only-new-issues), Baseline non-régression, Build+Test ubuntu+windows, Coverage complet.
+- Aucun test supprimé/renommé → baseline `tests_pre_migration.jsonl` inchangée.
+
+**M3→M6 EN ATTENTE GO OPÉRATEUR** (dépendance décisionnelle + prod, pas report de
+commodité) : politique N4 point 1 (déclenchement MANUEL), DM-1, M0e (point d'étape user),
+M5c (copie prod), M6a (GO explicite avant merge = deploy auto). Périmètre v1 désigné (player,
+bloc title-owned contigu) + approche baseline générée recommandée : prêt à exécuter en
+session dédiée dès le GO.
+
+**Vérifications utilisateur requises AVANT le 1er squash réel** (M6a) :
+1. Confirmer le registre v1 (player) et valider la borne de baseline que M3a figera.
+2. Donner le GO explicite pour lancer M3→M5 (génération baseline + invariant réel vert).
+3. M5c : autoriser la répétition sur la copie prod (`../LevelUp-prod-copy`, à rafraîchir via
+   restic si périmée) — lecture seule, aucun écrit prod.
+4. Au merge (M6b) : push main = DEPLOY AUTO — prévenir avant.
+
 ## 7. Découvertes hors périmètre (NE PAS traiter)
-- (vide au démarrage)
+- **CI « Go Lint » = ONLY-NEW-ISSUES** : le job golangci-lint ne fait échouer QUE sur des
+  issues NEUVES vs base (comportement observé : 1er push RED sur le seul `noctx` de mon
+  code → corrigé → 2e run VERT). Il SURFACE néanmoins en annotations informationnelles une
+  dette baseline PRÉ-EXISTANTE (funlen `MetadataSteps` 204>80, `MapParticipants`,
+  `LoadFromConfigDir`, `applyModeNameTr`, `registerHalo5Adapters`, `StartInitialSync`,
+  `handleCreatePlayer`, `handlePatchSettings` ; errcheck `os.Remove`/`os.RemoveAll`). Cette
+  dette est GELÉE (CLAUDE.md règle 5) et NE fait PAS échouer la CI de branche — non traitée.
+- **Hook pre-commit go-vet** : imprime de nombreux `build constraints exclude all Go files`
+  pour `cmd/*` + `duckdb-go-bindings/lib/windows-amd64` (tags/CGO Windows) — bruit
+  pré-existant, le hook PASSE quand même. Non traité.
+- **Note M3 (pas une découverte, une contrainte confirmée)** : DM-4 (frontière instable,
+  M0b) impose que la baseline player ne couvre que le bloc title-owned CONTIGU précédant le
+  1er step GLOBAL player. La borne exacte est à figer sur pièces en M3a (post-GO) car les 26
+  steps globaux append-only s'intercalent dans l'ordre player.
