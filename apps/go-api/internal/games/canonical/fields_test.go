@@ -12,7 +12,7 @@ import (
 // dérive non documentée (ajout/suppression sans mise à jour du plan).
 func TestAllFieldKeysCount(t *testing.T) {
 	t.Parallel()
-	const expected = 59 // bumped pour ranked_match_count + offensive_conversion + defensive_resistance (TOML halo_infinite fields.toml) — voir golden fields.golden.txt
+	const expected = 60 // bumped pour engagement_score (metrique 1er ordre, chantier F7 title-agnostic gradue) — voir golden fields.golden.txt
 	if got := len(AllFieldKeys()); got != expected {
 		t.Fatalf("AllFieldKeys count = %d, want %d (mettre à jour fields.golden.txt + annexe §17 si intentionnel)", got, expected)
 	}
