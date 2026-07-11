@@ -1,8 +1,27 @@
 name: CI
 
 on:
+  # Push : couvre les conventions de branches réellement utilisées dans le repo
+  # (git branch -r au 2026-07-12). Historiquement seuls feature/* / refactor/* /
+  # fix/* / docs/* / chore/* déclenchaient la CI en push : les branches `feat/*`
+  # (préfixe majoritaire, 37 branches) n'étaient PAS couvertes → 2 chantiers de la
+  # campagne 2026-07 ont navigué sans CI complète. `**` (au lieu de `*`) matche aussi
+  # les sous-segments. Les branches bot (copilot/*, dependabot/*) passent par la CI
+  # via le trigger pull_request, inutile de les déclencher en push.
   push:
-    branches: [main, feature/*, refactor/*, fix/*, docs/*, chore/*]
+    branches:
+      [
+        main,
+        feat/**,
+        feature/**,
+        fix/**,
+        hotfix/**,
+        refactor/**,
+        perf/**,
+        docs/**,
+        chore/**,
+        integration/**,
+      ]
   pull_request:
     branches: [main]
 

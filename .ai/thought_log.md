@@ -1,3 +1,21 @@
+## [2026-07-12] OUTILLAGE CI Lot 2 — triggers push feat/** (branche chore/ci-outillage-2026-07)
+
+**Statut** : Complété.
+
+**Décision principale** : le trigger push de `.github/workflows/ci.yml` ne couvrait que
+`feature/* refactor/* fix/* docs/* chore/*`. Le préfixe majoritaire réel `feat/*` (37 branches
+via `git branch -r`) n'était PAS couvert → 2 chantiers ont navigué sans CI complète. Liste
+complétée aux conventions réelles : `feat/** feature/** fix/** hotfix/** refactor/** perf/**
+docs/** chore/** integration/**` + `main`. `**` (au lieu de `*`) pour matcher aussi les
+sous-segments. Branches bot (copilot/*, dependabot/*) exclues du push : couvertes via le trigger
+pull_request. Triggers PR et conditions par job NON touchés (E2E = Lot 4).
+
+**Résultats (gate)** : yamllint absent → fallback parse js-yaml OK ; push.branches et
+pull_request.branches vérifiés, 9 jobs intacts. Test réel = la CI de cette branche `chore/*` doit
+se déclencher au push final.
+
+**Prochaine étape** : Lot 3 (ratchet lint pérenne).
+
 ## [2026-07-12] OUTILLAGE CI Lot 1 — make generate-types réel (branche chore/ci-outillage-2026-07)
 
 **Statut** : Complété. Branche `chore/ci-outillage-2026-07` (depuis integration/campagne-2026-07).
