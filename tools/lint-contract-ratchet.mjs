@@ -56,11 +56,8 @@ const BASELINE_COLLISIONS = new Set([
   'ExplorerPlayerQueryRequest',
   'FilterContextInput',
   'HealthResponse',
-  // 2026-06-23 : view-model manuel admin/lab (types.ts LabWaypointResponse) doublonnant
-  // le schéma OpenAPI — collision PRÉ-EXISTANTE accumulée sur integration/h5-x-livefetch
-  // (jamais poussée → ratchet jamais enforced). Baseline pour débloquer le 1er push ;
-  // shim/réconciliation à la fusion vers main.
-  'LabWaypointResponse',
+  // 2026-07-10 (A3.5) : LabWaypointResponse retiré de la baseline — le type manuel
+  // ET son endpoint /lab/waypoint sont supprimés avec le retrait du Lab (DC-9).
   'MatchCombatTab',
   'MatchEncounterBadge',
   'MatchHighlightEvent',

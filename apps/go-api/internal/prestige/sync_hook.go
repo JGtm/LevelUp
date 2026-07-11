@@ -3,6 +3,7 @@ package prestige
 import (
 	"context"
 	"encoding/json"
+	"levelup/go-api/internal/observability"
 	"log/slog"
 	"os"
 	"strings"
@@ -67,6 +68,9 @@ func IsEnabled(settingsPath string) bool {
 // Best-effort : log les erreurs mais ne casse pas le flux sync. Le sync
 // engine ne doit pas dépendre du résultat de Prestige.
 func RunPostSyncHook(ctx context.Context, svc Service, userID, titleSlug string) {
+	// Heartbeat feature (A6/DC-5) : pose au PASSAGE REEL — le cas « hook cable
+	// mais jamais invoque » devient visible dans le panneau Crons & features.
+	observability.Heartbeat("prestige_hook")
 	if svc == nil {
 		slog.WarnContext(ctx, "prestige: sync hook called with nil service")
 		return

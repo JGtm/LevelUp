@@ -23,7 +23,6 @@ export const queryKeys = {
   // Groupes/familles (accès mutuel) — gestion end-user
   groups: ['groups'] as const,
   labDiagnostics: ['lab', 'diagnostics'] as const,
-  labResources: (requestHash: string) => ['lab', 'resources', requestHash] as const,
 
   // Par joueur
   player: (playerSlug: string) => ['player', playerSlug] as const,
@@ -203,6 +202,10 @@ export const queryKeys = {
   adminMonitoringConvergence: ['admin', 'monitoring', 'convergence'] as const,
   adminMonitoringPerf: ['admin', 'monitoring', 'perf'] as const,
   adminMonitoringErrors: ['admin', 'monitoring', 'errors'] as const,
+  adminMonitoringDetections: ['admin', 'monitoring', 'detections'] as const,
+  adminMonitoringFreshness: ['admin', 'monitoring', 'freshness'] as const,
+  adminMonitoringResources: ['admin', 'monitoring', 'resources'] as const,
+  adminMonitoringCrons: ['admin', 'monitoring', 'crons'] as const,
   adminWeaponCoverage: (slug: string) => ['admin', 'monitoring', 'weapon-coverage', slug] as const,
   adminDataQuality: ['admin', 'data-quality', 'counts'] as const,
   adminDataQualityIssues: (kind: string) => ['admin', 'data-quality', 'issues', kind] as const,

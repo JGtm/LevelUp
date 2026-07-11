@@ -10,6 +10,7 @@
 package scheduler
 
 import (
+	"fmt"
 	"time"
 
 	"levelup/go-api/internal/observability"
@@ -107,6 +108,14 @@ func (after cycleLoadSnapshot) deltaSince(before cycleLoadSnapshot) cycleLoadSna
 // passage UNIQUE des deux paths V1/V2 de RunOnceTrigger — thread-safe via
 // snapshotMu.
 func (s *AutoSyncScheduler) storeCycleResult(res *RunOnceResult, trigger string, load cycleLoadSnapshot) {
+	// Statut unifié des crons (A6/DC-5) : point de convergence des deux paths
+	// (V2 orchestrator + filet syncPlayer). Échec = au moins un joueur failed.
+	var cycleErr error
+	if res.Failed > 0 {
+		cycleErr = fmt.Errorf("%d/%d joueurs en échec", res.Failed, res.Total)
+	}
+	observability.ReportCronRun("auto_sync", time.Now().Add(-res.Duration), cycleErr, res.Duration.Milliseconds())
+
 	s.snapshotMu.Lock()
 	defer s.snapshotMu.Unlock()
 	s.lastCycleAt = time.Now()

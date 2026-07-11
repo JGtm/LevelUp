@@ -86,3 +86,15 @@ export function formatIntervalMinutes(minutes: number | undefined, locale: Admin
   if (rest === 0) return `${hours} h`
   return locale === 'fr' ? `${hours} h ${rest} min` : `${hours} h ${rest} min`
 }
+
+/** Formate un volume d'octets en unité lisible (Ko/Mo/Go — décimal, FR). */
+export function formatBytes(bytes: number | undefined, locale: AdminLocale): string {
+  if (bytes == null || Number.isNaN(bytes)) return '—'
+  const abs = Math.abs(bytes)
+  const fmt = (v: number, unit: string) =>
+    `${v.toLocaleString(intlLocale(locale), { maximumFractionDigits: 1 })} ${unit}`
+  if (abs < 1_000) return fmt(bytes, locale === 'fr' ? 'o' : 'B')
+  if (abs < 1_000_000) return fmt(bytes / 1_000, locale === 'fr' ? 'Ko' : 'KB')
+  if (abs < 1_000_000_000) return fmt(bytes / 1_000_000, locale === 'fr' ? 'Mo' : 'MB')
+  return fmt(bytes / 1_000_000_000, locale === 'fr' ? 'Go' : 'GB')
+}

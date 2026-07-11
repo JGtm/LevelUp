@@ -331,6 +331,20 @@ R :
 - Update `apps/web/src/components/charts/README.md` (catalogue).
 - Si le chart est page-specific (comme `TimeseriesCombatYield`), garde-le dans `features/<page>/` plutôt que `components/charts/`.
 
+**Q : Je construis un panneau/une section pour le dashboard monitoring admin. Quelles primitives utiliser ?**
+R : Le dashboard admin (refonte 2026-07) a ses propres primitives canoniques sous
+`apps/web/src/features/admin/components/` — les utiliser au lieu de re-déclarer des
+composants locaux (garde-rail : `admin-ui.guard.test.ts`) :
+
+- `AdminKpi` — LA carte KPI unique (enveloppe la primitive foundations `KpiCard` ;
+  props : label, value, accent, delta, sub, size, to). Ne jamais déclarer un `*Kpi` local.
+- `SectionHeader` — titre de section (caps muted) + description/actions optionnelles.
+- `AdminTable` / `AdminTh` / `AdminTr` / `AdminTd` — tables natives statiques.
+  Les tables interactives (tri/filtre/actions) restent TanStack Table (`DetectionsPanel`).
+- `useCounterSnapshot(storageKey, generatedAt, build)` — LE hook du pattern « baseline
+  roulante » localStorage (delta vs visite précédente). Ne jamais appeler
+  `readCountersSnapshot`/`writeCountersSnapshot` directement hors de `countersTrend.ts`.
+
 ---
 
 ## 6. Références

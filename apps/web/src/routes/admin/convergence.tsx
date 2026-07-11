@@ -1,10 +1,11 @@
 /**
- * Route /admin/convergence — backlog d'enrichissement par joueur + compteurs
- * post-sync du dernier cycle.
+ * Route /admin/convergence — REDIRECTION (A3, DC-8) : la convergence est une
+ * section de l'onglet Données.
  */
-import { createFileRoute } from '@tanstack/react-router'
-import { AdminConvergencePage } from '@/features/admin/convergence/AdminConvergencePage'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/admin/convergence')({
-  component: AdminConvergencePage,
+  beforeLoad: () => {
+    throw redirect({ to: '/admin/data', replace: true })
+  },
 })

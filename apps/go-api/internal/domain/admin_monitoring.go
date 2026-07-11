@@ -8,6 +8,207 @@
 // scheduler (déjà exposés par /_diag/auto-sync/snapshot).
 package domain
 
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"strings"
+)
+
+// Statuts du cycle de vie d'une détection (DC-2 du plan monitoring 2026-07).
+// Une occurrence après DetectionStatusResolved ré-ouvre la détection.
+const (
+	DetectionStatusOpen     = "open"
+	DetectionStatusAcked    = "acked"
+	DetectionStatusMuted    = "muted"
+	DetectionStatusResolved = "resolved"
+)
+
+// IsValidDetectionStatus valide un statut de cycle de vie de détection.
+func IsValidDetectionStatus(status string) bool {
+	switch status {
+	case DetectionStatusOpen, DetectionStatusAcked, DetectionStatusMuted, DetectionStatusResolved:
+		return true
+	default:
+		return false
+	}
+}
+
+// DetectionFingerprint calcule la clé stable d'une détection à partir de
+// (title, level, module, message) — même dimension que l'ErrorCollector (DC-2).
+// Hash hex tronqué : sûr comme segment d'URL (endpoint PATCH .../{fingerprint})
+// là où message/module bruts casseraient le routage.
+func DetectionFingerprint(title, level, module, message string) string {
+	sum := sha256.Sum256([]byte(strings.Join([]string{title, level, module, message}, "\x1f")))
+	return hex.EncodeToString(sum[:12]) // 24 hex chars, collision négligeable
+}
+
+// MonitoringDetection — détection persistée avec son cycle de vie (vue
+// detections_latest). Remplace AdminErrorBucket (mémoire, perdu au restart)
+// pour le triage : count cumulé, first/last_seen, statut actionnable.
+type MonitoringDetection struct {
+	Fingerprint  string `json:"fingerprint"`
+	Level        string `json:"level"`
+	Module       string `json:"module,omitempty"`
+	Message      string `json:"message"`
+	TitleSlug    string `json:"title_slug,omitempty"`
+	Count        int64  `json:"count"`
+	FirstSeen    string `json:"first_seen"` // RFC3339
+	LastSeen     string `json:"last_seen"`  // RFC3339
+	SampleDetail string `json:"sample_detail,omitempty"`
+	Status       string `json:"status"`
+	Note         string `json:"note,omitempty"`
+	StatusAt     string `json:"status_at,omitempty"` // RFC3339, vide si jamais statué
+}
+
+// AdminDetectionsResponse — réponse de GET /admin/monitoring/detections.
+type AdminDetectionsResponse struct {
+	GeneratedAt string                `json:"generated_at"`
+	Detections  []MonitoringDetection `json:"detections"`
+	// OpenCount : nombre de détections au statut open (source des badges nav).
+	OpenCount int `json:"open_count"`
+}
+
+// Statuts de fraîcheur des données d'un joueur (A4, seuils DC-3).
+const (
+	FreshnessStatusOK       = "ok"
+	FreshnessStatusWarn     = "warn"
+	FreshnessStatusCritical = "critical"
+	FreshnessStatusUnknown  = "unknown"
+)
+
+// PlayerFreshness — fraîcheur des données d'un joueur suivi.
+type PlayerFreshness struct {
+	Gamertag string `json:"gamertag"`
+	XUID     string `json:"xuid"`
+	// LastMatchAt : dernier match persisté (RFC3339, vide si aucun).
+	LastMatchAt     string `json:"last_match_at,omitempty"`
+	MatchAgeSeconds int64  `json:"match_age_seconds,omitempty"`
+	// LastSyncOKAt : dernier cycle sync réussi (RFC3339, vide si inconnu —
+	// titre hors scheduler V2 ou jamais couru depuis le boot).
+	LastSyncOKAt   string `json:"last_sync_ok_at,omitempty"`
+	SyncAgeSeconds int64  `json:"sync_age_seconds,omitempty"`
+	// Status : ok / warn / critical / unknown (DB inaccessible).
+	Status     string `json:"status"`
+	Reason     string `json:"reason,omitempty"`
+	CheckError string `json:"check_error,omitempty"`
+}
+
+// TitleFreshnessReport — fraîcheur par titre actif.
+type TitleFreshnessReport struct {
+	TitleSlug string            `json:"title_slug"`
+	Players   []PlayerFreshness `json:"players"`
+	// Note non vide = titre sans la capability requise / sans joueur suivi
+	// (dégradation gracieuse, jamais d'erreur globale).
+	Note          string `json:"note,omitempty"`
+	WarnCount     int    `json:"warn_count"`
+	CriticalCount int    `json:"critical_count"`
+}
+
+// FreshnessBackupInfo — âge du dernier backup réussi (A4.2 ; source :
+// manifest du scheduler duckdbbackup — décision consignée au plan).
+type FreshnessBackupInfo struct {
+	Enabled      bool   `json:"enabled"`
+	LastBackupAt string `json:"last_backup_at,omitempty"` // RFC3339, vide si jamais
+	AgeSeconds   int64  `json:"age_seconds,omitempty"`
+}
+
+// AdminFreshnessResponse — réponse de GET /admin/monitoring/freshness.
+type AdminFreshnessResponse struct {
+	GeneratedAt string                 `json:"generated_at"`
+	Titles      []TitleFreshnessReport `json:"titles"`
+	// Backup : nil si scheduler backup non câblé.
+	Backup *FreshnessBackupInfo `json:"backup,omitempty"`
+	// CriticalTotal : joueurs critical tous titres (source du badge État).
+	CriticalTotal int `json:"critical_total"`
+}
+
+// CronFailuresCriticalThreshold : échecs consécutifs à partir desquels une
+// ligne cron passe critical (A6.3).
+const CronFailuresCriticalThreshold = 3
+
+// CronStatusEntry — statut d'un cron (A6, DC-5). Fusion registre mémoire
+// (depuis le boot) + dernier run persisté (cron_runs — survit au restart).
+type CronStatusEntry struct {
+	Name          string `json:"name"`
+	LastRunAt     string `json:"last_run_at,omitempty"`     // RFC3339, vide si jamais vu
+	LastSuccessAt string `json:"last_success_at,omitempty"` // RFC3339
+	LastError     string `json:"last_error,omitempty"`
+	// ConsecutiveFailures : depuis le boot (le registre mémoire fait foi).
+	ConsecutiveFailures int   `json:"consecutive_failures"`
+	Runs                int64 `json:"runs"`
+	LastDurationMs      int64 `json:"last_duration_ms,omitempty"`
+	// Status : ok / warn (dernier run en échec) / critical (>= seuil consécutif)
+	// / unknown (jamais vu, ni en mémoire ni persisté).
+	Status string `json:"status"`
+	// SinceBoot : false = donnée réhydratée depuis cron_runs (pas encore couru
+	// depuis ce boot).
+	SinceBoot bool `json:"since_boot"`
+}
+
+// FeatureHeartbeat — liveness d'une feature (A6.2, liste fermée DC-5).
+type FeatureHeartbeat struct {
+	Feature    string `json:"feature"`
+	LastSeenAt string `json:"last_seen_at,omitempty"` // RFC3339, vide si jamais vu
+	AgeSeconds int64  `json:"age_seconds,omitempty"`
+	// Status : ok / never (jamais vu depuis le boot → accent destructive).
+	Status string `json:"status"`
+}
+
+// AdminCronsResponse — réponse de GET /admin/monitoring/crons (A6.3).
+type AdminCronsResponse struct {
+	GeneratedAt string             `json:"generated_at"`
+	Crons       []CronStatusEntry  `json:"crons"`
+	Features    []FeatureHeartbeat `json:"features"`
+}
+
+// ResourceRuntime — état runtime Go du process (A5, DC-4).
+type ResourceRuntime struct {
+	Goroutines     int    `json:"goroutines"`
+	HeapAllocBytes uint64 `json:"heap_alloc_bytes"`
+	HeapSysBytes   uint64 `json:"heap_sys_bytes"`
+	// SysBytes : total demandé à l'OS par le runtime (approx. RSS).
+	SysBytes uint64 `json:"sys_bytes"`
+	NumGC    uint32 `json:"num_gc"`
+}
+
+// ResourceDisk — espace libre du volume data (A5.3 : seuils nommés côté ops).
+type ResourceDisk struct {
+	Path       string `json:"path"`
+	FreeBytes  uint64 `json:"free_bytes"`
+	TotalBytes uint64 `json:"total_bytes"`
+	// Status : ok / warn (< seuil warn) / critical (< seuil critical) / unknown.
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
+}
+
+// ResourceDBFile — taille d'une base DuckDB + WAL éventuel.
+type ResourceDBFile struct {
+	// Name : libellé stable "{title}/{base}" ou "global/{base}".
+	Name      string `json:"name"`
+	Path      string `json:"path"`
+	SizeBytes int64  `json:"size_bytes"`
+	// WalBytes : taille du .wal adjacent (0 = absent).
+	WalBytes int64 `json:"wal_bytes,omitempty"`
+}
+
+// AdminResourcesResponse — réponse de GET /admin/monitoring/resources (A5).
+type AdminResourcesResponse struct {
+	GeneratedAt string          `json:"generated_at"`
+	Runtime     ResourceRuntime `json:"runtime"`
+	UptimeS     int64           `json:"uptime_s"`
+	// Restarts : démarrages du serveur enregistrés dans la base monitoring
+	// (marqueur server_boot dans cron_runs — persiste au restart). 0 si store absent.
+	Restarts int64        `json:"restarts"`
+	Disk     ResourceDisk `json:"disk"`
+	// Databases : shared/metadata/pve/social par titre actif + players agrégés
+	// + bases globales (aliases, monitoring).
+	Databases    []ResourceDBFile `json:"databases"`
+	DBTotalBytes int64            `json:"db_total_bytes"`
+	// Budgets / PoolStats : relecture des snapshots expvar existants (J1/J8).
+	Budgets   map[string]interface{} `json:"budgets,omitempty"`
+	PoolStats map[string]interface{} `json:"pool_stats,omitempty"`
+}
+
 // MonitoringServerInfo : identité du process serveur (overview).
 type MonitoringServerInfo struct {
 	UptimeS   int64  `json:"uptime_s"`
@@ -41,6 +242,29 @@ type AdminMonitoringOverview struct {
 	// Snapshot : état du substrat immuable (durabilité / lecture découplée du B-swap).
 	// Gauges = état courant (version, ready, backlog) ; cumuls = cuts depuis le boot.
 	Snapshot MonitoringSnapshotSummary `json:"snapshot"`
+
+	// OpenDetections : nombre de détections persistées au statut open (gauge posé
+	// par le flush du store monitoring — source du badge nav « Détections »).
+	// Zéro I/O DuckDB ici : simple lecture d'un compteur expvar.
+	OpenDetections int64 `json:"open_detections"`
+
+	// FreshnessCritical : joueurs en fraîcheur critical tous titres (gauge posé
+	// par le calcul de GET /admin/monitoring/freshness — source du badge « État »).
+	// Zéro I/O DuckDB ici. 0 tant que la fraîcheur n'a jamais été calculée.
+	FreshnessCritical int64 `json:"freshness_critical"`
+
+	// HTTP : compteurs de requêtes par classe de statut depuis le boot (A7,
+	// DC-6 — middleware SlogLogger, titre-aware, jamais par route).
+	HTTP MonitoringHTTPSummary `json:"http"`
+}
+
+// MonitoringHTTPSummary — compteurs HTTP par classe de statut depuis le boot
+// (expvar http_status_*_total, posés par le middleware — zéro I/O).
+type MonitoringHTTPSummary struct {
+	Status2xx int64 `json:"status_2xx"`
+	Status3xx int64 `json:"status_3xx"`
+	Status4xx int64 `json:"status_4xx"`
+	Status5xx int64 `json:"status_5xx"`
 }
 
 // MonitoringSnapshotSummary expose l'état du producteur de snapshot immuable (gauges +
