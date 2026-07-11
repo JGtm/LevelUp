@@ -396,6 +396,11 @@ dont 5 nouveaux tests Bell) ; generated.ts régénéré (+badge_count) et commit
       superviseur (push main = deploy prod auto).
 - [x] E6. Tous les items statués ; découvertes consignées ci-dessous (non traitées).
 
+> Post-clôture 2026-07-11 : le gate CI « Go Baseline Tests » exigeait le retrait de
+> `TestDetect_NearMiss_Within10Percent` (renommé `Within2Percent` par B14/DP14) de
+> `.ai/baselines/tests_pre_migration.jsonl` — fait (commit fix(baseline), 4 entrées,
+> aucun autre test du diff en baseline).
+
 **Critère de clôture global** : les 10 points du critère de succès sont couverts par
 des tests nommés, tous les gates sont verts, aucun item sans statut.
 
