@@ -1,3 +1,27 @@
+## [2026-07-11] Squash migrations — M0 cartographie (chantier N4)
+
+**Statut** : Complété (M0). Branche `refactor/migration-squash-baseline`.
+
+**Décision technique principale** : cartographie READ-ONLY des 3 sources de migrations
+(registre global 26 steps ART/append-only cross-titre ; title-owned HINF 167 ; set isolé
+Halo 5 12 metadata), ordre unifié `canonicalOrder` = 193 steps. VERDICT M0b : frontière
+b23/b25 NON stable (E7 gaté dessus, DETTE_ASSUMEE §7) → DM-4 s'applique, 1er squash = bloc
+CONTIGU d'un seul monde. Ledger (M0c) : `schema_migrations` PK name (skip si présent) +
+`title_schema_version` ; DM-5 nécessitera une règle d'équivalence baseline↔dernier step
+squashé. M0e : périmètre v1 DÉSIGNÉ = cible player, bloc title-owned contigu (schéma-only,
+DM-4/DM-2 respectés, forte valeur car player DBs nombreuses).
+
+**Résultats observés** : mesures M0d (provisioning vierge :memory:) metadata 697ms / player
+229 / shared 196 / social 92 / pve 16. Introspection DuckDB (duckdb_tables/columns/views/
+constraints/indexes/sequences) toutes disponibles → base de M1. Sonde jetable supprimée
+(rien de committé côté code en M0).
+
+**Conclusion / prochaine étape** : M1 — outil de snapshot de schéma normalisé déterministe
+(fonction test-only dans `internal/migration`), puis M2 (invariant bit-identique, mode A=B +
+morsure). Le squash réel (M3+) reste gaté GO opérateur (politique N4).
+
+---
+
 ## [2026-07-10] MERGE MAIN — campagne audits 2026-07 + clôture + gate humain (GO utilisateur)
 
 **Statut** : En cours (merge exécuté dans cette session ; post-deploy VPS à suivre).

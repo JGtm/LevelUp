@@ -50,20 +50,35 @@ Critères de succès :
 ## 3. Phases (ordre strict ; commits `squash(MX):`)
 
 ### M0 — Cartographie et décision de périmètre (READ-ONLY, consignée)
-- [ ] M0a — Inventaire des registres : `internal/migration/order.go` (canonicalOrder) +
-  `internal/migration/steps_*.go` (globaux) + `games/halo_infinite/migrations/steps.go` +
-  `games/halo_5/migrations/steps.go` (title-owned). Pour chacun : nombre de steps, cible
-  (metadata / shared / player / social), dépendances d'ordre inter-registres.
-- [ ] M0b — État de la transition b23/b25 (ADR 0025 Phase 1.5, ownership global→title-owned,
-  raison du report E7) : quels `create_base_*_schema` existent en double, la bascule
-  est-elle terminée ? VERDICT écrit : la frontière est-elle stable ? → applique DM-4.
-- [ ] M0c — Mécanique du ledger : comment le runner marque un step appliqué (table de
-  suivi ? nom ? `RunForDB`) — établir précisément ce que DM-5 exige.
-- [ ] M0d — Mesure de référence : temps de provisioning d'une DB vierge par cible
-  (player, shared, metadata, social — 2 titres), consigné (baseline de la mesure de succès).
-- [ ] M0e — DÉSIGNER le registre v1 (DM-6) + la borne de baseline (dernier step inclus,
-  en respectant DM-2 : les 10 derniers restent dehors). Point d'étape utilisateur.
-- Gate M0 : rapport complet au Journal §J ; aucune modification de code.
+- [x] M0a — Inventaire des registres (cf. §J/M0a). 193 steps dans canonicalOrder (43 metadata,
+  61 shared, 60 player, 27 shared_social, 2 shared_pve) ; 26 steps GLOBAUX (registre
+  `internal/migration` via init/Register — append-only ADR 0026 + drop-ART, cross-titre),
+  167 title-owned Halo Infinite (`games/halo_infinite/migrations`), 12 title-owned Halo 5
+  (set ISOLÉ metadata seule). Ordre imposé par `canonicalOrder` (défaut) / `set.CanonicalOrder`.
+- [x] M0b — VERDICT : frontière b23/b25 NON stable (E7 explicitement gaté « après
+  stabilisation b23/b25 », DETTE_ASSUMEE §7). Les `create_base_*_schema` sont title-owned
+  SANS doublon global (transition des bases faite), mais les 26 steps globaux (append-only)
+  s'INTERCALENT dans l'ordre de chaque cible → DM-4 s'applique : le 1er squash NE FUSIONNE
+  PAS les deux mondes ; il ne squashe qu'un bloc CONTIGU d'UN SEUL monde.
+- [x] M0c — Ledger (cf. `registry.go`) : `schema_migrations` (PK `name`) trace chaque step
+  appliqué ; le runner SKIPPE un step dont le `name` est déjà présent. `title_schema_version`
+  (PK title_slug+target) porte version=len(order). DM-5 exige donc : une baseline au NOM
+  NOUVEAU serait rejouée sur une DB prod existante (name absent) — MAIS elle est
+  `CREATE ... IF NOT EXISTS` idempotente (no-op sur schéma déjà présent) ; l'équivalence
+  ledger (M3b) marquera la baseline comme satisfaite si le dernier step squashé est présent,
+  pour éviter tout DDL rejoué.
+- [x] M0d — Provisioning DB vierge (:memory:, best-of-3, tag integration) : metadata 697ms
+  (dominé par les SEEDS), player 229ms, shared 196ms, shared_social 92ms, shared_pve 16ms.
+  Sonde jetable supprimée (non committée). DuckDB introspection dispo :
+  duckdb_tables/columns/views/constraints/indexes/sequences (toutes OK).
+- [x] M0e — DÉSIGNÉ : registre v1 = **cible player, bloc title-owned contigu** partant de
+  `create_base_player_schema` jusqu'au dernier step title-owned PRÉCÉDANT le 1er step
+  GLOBAL de la cible player (borne exacte figée en M3a sur pièces). Respecte DM-4 (un seul
+  monde), DM-2 (prefix → les 10 derniers steps player restent hors baseline), schéma-only
+  (pas de seed data à perdre — contrairement à metadata). RECOMMANDÉ vs shared (bases plus
+  tardives, 58 vues, blocs plus entrelacés) et vs halo_5 (isolé mais 12 steps, faible
+  valeur, seed milestones data). Point d'étape utilisateur = décision opérateur (M6a GO).
+- Gate M0 : rapport complet au Journal §J ; aucune modification de code committée. [x]
 
 ### M1 — Outil de snapshot de schéma normalisé
 - [ ] M1a — `cmd/schema-snapshot` (ou fonction test-only dans `internal/migration` si plus
@@ -142,7 +157,82 @@ Critères de succès :
   non désignés en M0e (ils suivront le même chemin, chantiers ultérieurs).
 
 ## 6. Journal §J
-- (vide au démarrage)
+
+### M0 — Cartographie (2026-07-11, READ-ONLY)
+
+**M0a — Inventaire des registres.** Source d'ordre unique : `canonicalOrder`
+(`internal/migration/order.go`), 193 entrées. Répartition par cible (commentaires de
+l'ordre) : metadata 43, shared 61, player 60, shared_social 27, shared_pve 2.
+
+Trois SOURCES de steps, dédupliquées par `Name` (title-owned override le global) puis triées
+par `canonicalOrder` :
+- **Registre global** (`internal/migration/steps_*.go`, `Register()` en `init()`) : 26 steps,
+  TOUS de nature « maintenance ART » (ADR 0026) : conversions append-only
+  (`*_append_only_v1`), drops d'index ART (`drop_*_art_*`), rebuilds
+  (`rebuild_match_participants_defeat_art_corruption`, `rebuild_catalog_fetch_queue_*`),
+  markers reset skill v2. Cross-titre par design (pas en transition).
+- **Title-owned Halo Infinite** (`games/halo_infinite/migrations/`, via
+  `SetTitleStepsProvider(StepsFor)`) : 167 steps (bases `create_base_*_schema`, ALTER,
+  familles metadata, prestige, progression, world leaderboard…).
+- **Title-owned Halo 5** (`games/halo_5/migrations/`, `RegisterMigrationSet`) : 12 steps
+  metadata, set ISOLÉ (`OwnsTarget==metadata` seul ; shared/player/social/pve héritent du
+  fallback HINF). CanonicalOrder propre (`metadataStepNames`).
+
+Routage runner (`RunForTitleDB`) : si un set est enregistré pour le slug ET possède la cible
+→ steps+ordre DU SET (isolation totale) ; sinon fallback legacy (registre global +
+titleStepsProvider, ordonné par canonicalOrder), byte-identique au défaut Halo.
+
+**M0b — Frontière b23/b25.** VERDICT : **NON stable**. Preuve : E7 (« DDL bootstrap
+sync/schema.go → migration », le refactor couplé à la transition b23/b25 title-ownership) est
+statué `[!]` dans DETTE_ASSUMEE_2026-Q3 §7 avec condition de reprise « chantier dédié APRÈS
+stabilisation b23/b25 ». Constat de code : les `create_base_{player,shared,shared_social}_schema`
+sont title-owned SANS doublon dans le registre global (la transition des bases elle-même est
+faite), MAIS les 26 steps globaux (append-only/ART) s'INTERCALENT dans l'ordre d'exécution de
+chaque cible (ex. player : base title-owned en tête, puis `player_append_only_match_*_v1`
+GLOBAUX plus loin). Conséquence DM-4 : le 1er squash NE traverse PAS la frontière — il ne
+fusionne pas un bloc mêlant steps globaux et title-owned. On squashe un bloc CONTIGU d'un
+SEUL monde (title-owned).
+
+**M0c — Ledger (DM-5).** `ensureMigrationTable` crée `schema_migrations(name PK, …,
+title_slug)`. `runSteps` charge `getApplied` puis, pour chaque step, `if !exists` applique le
+DDL et INSERT la ligne ; **si le name existe déjà → step SKIPPÉ** (aucun DDL). Version
+courante tracée dans `title_schema_version(title_slug,target)` = `len(order)`. Implication
+DM-5 : une baseline au NOM NOUVEAU n'est PAS dans `schema_migrations` d'une DB prod
+existante → elle serait « rejouée » au prochain boot. Comme le DDL baseline est
+`CREATE … IF NOT EXISTS` (idempotent), c'est un no-op fonctionnel ; néanmoins M3b posera une
+règle d'équivalence explicite (marquer la baseline satisfaite si le dernier step squashé est
+présent) pour garantir « zéro DDL rejoué » et un ledger cohérent.
+
+**M0d — Mesures de référence** (provisioning DB :memory: vierge, best-of-3, tag integration,
+sonde jetable supprimée non-committée) :
+
+| Cible | Temps (best-of-3) | Note |
+|---|---|---|
+| metadata | 697 ms | dominé par les SEEDS (ranked playlists, milestones, career ranks, csr thresholds) |
+| player | 229 ms | 60 steps, bases + ALTER + append-only |
+| shared | 196 ms | 61 steps, bases + 58 vues |
+| shared_social | 92 ms | 27 steps |
+| shared_pve | 16 ms | 2 steps |
+
+Introspection DuckDB (embarqué v2) : `duckdb_tables()`, `duckdb_columns()`, `duckdb_views()`,
+`duckdb_constraints()`, `duckdb_indexes()`, `duckdb_sequences()` TOUTES disponibles → M1 peut
+s'appuyer dessus.
+
+**M0e — Périmètre v1 DÉSIGNÉ.** Registre v1 = **cible player, bloc title-owned contigu** de
+`create_base_player_schema` jusqu'au dernier step title-owned précédant le 1er step GLOBAL
+player (borne exacte figée en M3a). Justification :
+- DM-4 (frontière instable) : bloc title-owned pur, ne fusionne pas les mondes.
+- DM-2 : un PREFIX → les 10 derniers steps player restent hors baseline (fenêtre rollback).
+- Schéma-only : player = CREATE/ALTER/append-only, sans seed data (contrairement à metadata
+  dont M1 — schéma seul — ne capturerait pas les seeds : risque de perte silencieuse).
+- Valeur : les player DBs sont NOMBREUSES (une par joueur) → gain de boot multiplié.
+Alternatives écartées : shared (bases plus tardives, 58 vues, blocs plus entrelacés →
+génération bit-identique plus fragile) ; halo_5 metadata (monde propre isolé mais 12 steps,
+faible valeur, seed milestones = data). La désignation finale + le GO restent une décision
+OPÉRATEUR (politique N4 point 1 ; M6a).
+
+Gate M0 : OK — rapport ci-dessus, aucune modification de code committée (sonde M0d/M1
+supprimée).
 
 ## 7. Découvertes hors périmètre (NE PAS traiter)
 - (vide au démarrage)
