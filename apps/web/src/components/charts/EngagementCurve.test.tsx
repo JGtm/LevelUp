@@ -35,9 +35,9 @@ vi.mock('echarts/core', () => ({
 
 describe('EngagementCurve', () => {
   const samplePoints: EngagementPoint[] = [
-    { x: 0, paceTeam: 10, paceAttendu: 11, paceJoueur: 9 },
-    { x: 60_000, paceTeam: 12, paceAttendu: 13, paceJoueur: 14 },
-    { x: 120_000, paceTeam: 11, paceAttendu: 12, paceJoueur: 13 },
+    { x: 0, paceTeam: 10, paceAttendu: 11, paceJoueur: 9, paceLobby: 10.5 },
+    { x: 60_000, paceTeam: 12, paceAttendu: 13, paceJoueur: 14, paceLobby: 12.2 },
+    { x: 120_000, paceTeam: 11, paceAttendu: 12, paceJoueur: 13, paceLobby: 11.4 },
   ]
 
   it('rend sans erreur en mode intra-match', () => {
@@ -56,6 +56,18 @@ describe('EngagementCurve', () => {
 
   it('rend sans erreur avec points vides', () => {
     const { container } = render(<EngagementCurve title="Engagement" points={[]} />)
+    expect(container).toBeTruthy()
+  })
+
+  it('rend sans erreur avec hideAttendu (cold_start) et labels lobby', () => {
+    const { container } = render(
+      <EngagementCurve
+        title="Engagement"
+        points={samplePoints}
+        hideAttendu
+        seriesLabels={{ team: 'Équipe', expected: 'Attendu', player: 'Joueur', lobby: 'Lobby' }}
+      />,
+    )
     expect(container).toBeTruthy()
   })
 

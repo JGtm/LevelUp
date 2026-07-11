@@ -91,6 +91,300 @@ StepDeviceCode (onError) plutôt que spinner infini.
 
 ---
 
+## [2026-07-11] Engagement agnostic gradué (F7) — E6 + garde-rails + CLÔTURE PARTIELLE
+
+**Statut** : chantier F7 PARTIEL — E1→E5 + E6a + garde-rails §4 LIVRÉS ; E6b = décision
+utilisateur en attente (non automatisable). Plan NON déplacé vers V7 (PARTIEL).
+
+**E6a** : protocole de gate humain écrit dans le plan (quels matchs H5 regarder — intense
+dominé/subi, calme, forme du jour — et à quoi un score « qui a du sens » ressemble).
+
+**Garde-rails §4 livrés** :
+- `internal/archlint/no_temporal_title_import_test.go` : le moteur temporal n'importe aucun
+  package games titre (seul games/canonical toléré) → title-agnostic verrouillé.
+- `internal/games/engagement_capability_mirror_test.go` : cohérence coarse↔fine engagement
+  (tous titres) — un titre servant l'engagement (fine Has) doit déclarer le coarse. Ferme
+  F15-12/L2-(3) pour cette capability.
+- Goldens : couverts par composition (byte-identical Infinite + tests halo_5/ingest + rapport
+  E4c) — pas de fixture golden H5 dédié (redondant, algo agnostic).
+
+**E6b** [!] : H5 reste `degraded`/provisional (score servi avec mention discrète — sûr).
+Passage `supported` = décision utilisateur sur ses parties (protocole E6a).
+
+**Restes non automatisables (vérifications utilisateur)** : gate humain E6b, smoke visuel H5
+(courbe + profil + badge), re-backfill PROD (post-merge, push main = deploy auto).
+
+**Gates de clôture** : Go unit `./internal/...` ALL GREEN ; intégration `-p 1` (touched
+packages) exit 0 ; front typecheck/eslint/vitest verts ; lint delta 0 ; byte-identité Infinite
+prouvée. Baseline tests inchangée (aucun test retiré/renommé).
+
+## [2026-07-11] Engagement agnostic gradué (F7) — Phase E5 (Complété local)
+
+**Statut** : E5 complétée en LOCAL. Activation H5 en `degraded`.
+
+**Décision technique** : H5 `engagement.score` passé de `not_exposed` à `degraded` dans les
+3 miroirs (capabilities.toml, adapter fallbackCapabilities, skeleton_test parity). Le coarse
+`title.CapEngagement` était déjà présent (title.toml) → la route sert déjà ; la fine=degraded
+pilote (via E3) `calibration=provisional` + le feature matrix `degraded` (front rend avec
+badge). Front : mention discrète « calibration provisoire » (FR+EN, manifest régénéré) apposée
+au sous-titre quand `calibration === 'provisional'` ; logique extraite dans
+`engagementSubtitle.ts` (évite le warning react-refresh, convention *_logic) + test 5 cas.
+
+**E5d** : les poids E4 de H5 = défauts Infinite = poids du re-backfill de la refonte lobby →
+les 5240 samples H5 locaux sont déjà conformes E4 (recompute = no-op numérique ; le harnais
+E4c les a lus). Re-backfill PROD différé post-merge (dépend deploy).
+
+**Résultat observé** : gates verts — H5/games ; intégration api `-p 1` exit 0 ; front
+typecheck 0 / eslint 0 / vitest. Restes non automatisables (gate E5/E6) : smoke visuel H5 +
+re-backfill prod = vérifications utilisateur.
+
+**Prochaine étape** : E6 — protocole de gate humain écrit (E6a), puis décision utilisateur
+(E6b, non automatisable) → `supported` si validé.
+
+## [2026-07-11] Engagement agnostic gradué (F7) — Phase E4 (Complété)
+
+**Statut** : E4 complétée. Harnais de calibration par titre + config par titre.
+
+**Décision technique** : les poids d'events (levier de calibration dépendant du gameplay)
+sont externalisés dans `constants.toml [engagement]` (pattern damage_model — le repo met
+les constantes par-titre dans constants.toml, PAS un fichier séparé ; déviation vs le nom
+`engagement.toml` du plan, consignée en Découvertes). Loader `mappings.EngagementConstants`
++ accessor `games.EngagementWeightsFor(slug) → temporal.EventWeights` (fallback
+`DefaultEventWeights`, byte-identique). Threadé dans `EngagementScoreInput.Weights` → courbe,
+et aux 2 collecteurs (service + sync). CLI `cmd/engagement-calibrate` (`//go:build cgo`) :
+énumère les player DBs, agrège les paces persistées, calcule les distributions par bin via la
+MÊME logique que le serving, compare à Infinite, écrit un rapport markdown. N'applique rien.
+
+**Résultat observé** : rapport H5 réel produit (`.ai/ENGAGEMENT_CALIBRATION_H5_2026-07-11.md`,
+4 joueurs, 5240 samples) — bins décroissants calme→chaotique cohérents avec Infinite, coef
+global 0.95-0.97, rejets ranked 0.5 % / unranked 8.5 % (ce dernier > 5 %, à noter pour E6).
+Candidats H5 = poids Infinite (provisoires). Byte-identique Infinite prouvé (test temporal +
+intégration sync -p 1 exit 0). Gates : temporal, build, intégration, lint delta 0 — tous verts.
+
+**Prochaine étape** : E5 — activation H5 en degraded (capability + adapter + front badge +
+backfill local).
+
+## [2026-07-11] Engagement agnostic gradué (F7) — Phase E3 (Complété)
+
+**Statut** : E3 complétée. Double porte de dégradation (suffisance + calibration).
+
+**Décision technique** : `EngagementScoreResult` gagne `calibration` (validated/provisional,
+2e porte) en plus de `signal_basis` (E2, 1re porte). Le statut de calibration = capability
+fine `engagement.score` du titre, injecté au service par `WithEngagementCapability(status)`
+que la factory `Engagement` (registry_pages.go) résout title-aware via
+`titleResolver.Data(slug).Capabilities()[CapEngagement]` (nil-safe). Règle de service :
+fine=not_exposed → `games.ErrCapabilityNotSupported` → handler `MapCapabilityError` → 503
+capability_not_supported (jamais un score cold-start faux) ; degraded → servi avec
+calibration=provisional ; supported/vide → validated. Headers capabilities.toml des 2 titres
+documentent le mapping. openapi.yaml + generated.ts régénérés.
+
+**Découverte** : `make generate-types` est un stub Makefile (ne lance pas openapi-typescript) ;
+la vraie génération = `npm run generate-types` dans apps/web. Consigné.
+
+**Résultat observé** : gates verts — api (drift réconcilié, guards Huma, tests 3 statuts),
+service, front typecheck 0 (types régénérés), lint delta 0.
+
+**Prochaine étape** : E4 — harnais de calibration `cmd/engagement-calibrate` + format
+`config/titles/{slug}/engagement.toml` + loader ; exécuter sur H5.
+
+## [2026-07-11] Engagement agnostic gradué (F7) — Phase E2 (Complété)
+
+**Statut** : E2 complétée. Vecteur de signaux + porte de suffisance.
+
+**Décision technique** : nouveau `temporal.EngagementSignals` (ensemble minimal
+HasTimedPlayerEvents/HasLobbyPace/DurationMS + signaux riches optionnels `*int`
+ObjectiveEvents/RichKillMechanics comme masque de présence) + `Sufficiency()` 3 niveaux
+(Insufficient/Partial/Full) + `SignalsFromEvents` (dérivation title-AGNOSTIC de la
+composition des events). `EngagementScoreInput.Signals` consommé par le compute → nouveau
+champ résultat `SignalBasis`. Câblé aux 2 seuls points de construction (service
+buildInputForMatch + sync batchComputeEngagementScores).
+
+**Constat CARTO (E2a)** : les signaux riches H5 (impulses objectif) sont DÉJÀ dans
+`highlight_events` (`event_type="mode"`, poids 1.5) via l'ingest title-owned et DÉJÀ
+consommés — le vecteur d'events EST le vecteur de signaux universel, le compute est déjà
+agnostic. Donc `SignalsFromEvents` est un dériveur agnostic (pas de builder per-titre) ;
+le title-owned est l'ingest upstream. Consigné en Découvertes.
+
+**Résultat observé** : score Infinite byte-identical (les signaux riches ne pèsent pas,
+DE-5 — prouvé par test). Gates verts : temporal unit, build ./..., packages touchés, api
+(drift additif = divergent non gaté), vet 0, intégration sync -p 1, lint delta 0.
+
+**Prochaine étape** : E3 — double porte (capability engagement.score fine + champ de
+confiance par match signal_basis/calibration) + openapi + generated.ts.
+
+## [2026-07-11] Engagement agnostic gradué (F7) — Phase E1 (Complété)
+
+**Statut** : E1 complétée sur `feat/engagement-agnostic-gradue` (branche basée sur
+`feat/engagement-lobby-response`, refonte lobby CLOSE en amont).
+
+**Décision technique** : `engagement_score` devient un FieldKey canonique de 1er ordre
+(`canonical/fields.go`, groupe `derived`, unité sans dimension, bornes [0,100]) — c'était le
+verrou n°1 (le score n'était pas dans le canonique contrairement à `performance_score`). Ajout
+des sections `[fields.engagement_score]` dans les fields.toml des DEUX titres (H5 le déclare, F6
+sous-ensemble par capability-group). Count test 59→60, golden MAJ.
+
+**Résultat observé** : le libellé FR/EN de `engagement_score` est désormais servi
+AUTOMATIQUEMENT par `GET /titles/{slug}/field-mappings` (handler générique `set.All()`), sans
+code Go supplémentaire (E1c data-driven). Le score VALEUR continue de circuler via
+`player_match_enrichment.engagement_score` (persist) + l'API engagement (numérique brut, sans
+libellé). Gates E1 verts : games+analysis, parité fields, ratchet anti-slug, golden, vet 0.
+
+**Prochaine étape** : E2 — vecteur de signaux `EngagementSignals` + masque de présence
+(couche analysis pure).
+
+## [2026-07-11] Engagement refonte lobby — Phase 6 + CLÔTURE (COMPLÉTÉ)
+
+**Statut** : Complété. Les 6 phases de PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07 sont livrées
+sur `feat/engagement-lobby-response`. Plan déplacé vers `.ai/V7/`.
+
+**Phase 6 (nettoyage/doc)** : `coef_team_share` retiré du recompute —
+`ComputeEngagementCoefficient` ne calcule plus que le ratio lobby ; code mort supprimé
+(`CoefficientResult.CoefTeamShare`, `EngagementScoreInput.CoefTeamShare`,
+`domain.EngagementCoefficient.CoefTeamShare`, `PaceTeamMinThreshold`, tests
+LobbyIndependent/LobbyFallbackWhenInsufficient). Colonne DuckDB `coef_team_share` conservée
+NOT NULL mais INERTE (écrite à 1.0, plus lue) — commentée dans la migration ; pas de DROP
+COLUMN. Compteur expvar renommé team→lobby. Addendum daté ajouté à la réflexion v1.
+Baseline tests MAJ (3 tests retirés/renommés, -24 lignes) dans le commit.
+
+**Modèle final** : attendu ancré lobby partout ; `pace_attendu = coef[bin_intensité] ×
+pace_lobby`, fallback bin→global→cold_start (`expected_basis`) ; death ×0 ; nouvelle table
+`engagement_response_bins`. Correctif clé Phase 4 : le compute sync persiste désormais le
+résidu dans le MÊME univers que le serving.
+
+**Gates de clôture** : `go test ./internal/...` exit 0 ; `golangci --new-from-rev=origin/main`
+0 issue ; front (Phase 5) typecheck 0 / lint 0 err / vitest 2102 pass ; intégration
+`-p 1 ./...` (gate obligatoire) exécutée en clôture.
+
+**Décision / prochaine étape** : re-backfill LOCAL des 2 titres fait et vérifié. Le
+re-backfill PROD se rejoue APRÈS merge+deploy (push main = deploy auto — prévenir
+l'utilisateur). Revue visuelle des surfaces engagement à faire au merge. Ce chantier
+débloque le plan engagement agnostic gradué (prérequis section 0 = CLOSE).
+
+---
+
+## [2026-07-11] Engagement refonte lobby — Phase 5 (front)
+
+**Statut** : Complété (Phase 5/6).
+
+**Décision technique** : masquage de la série « Joueur attendu » rekeyé sur
+`expected_basis === 'cold_start'` (plus sur confidence). Tooltip enrichi d'une ligne
+« Lobby » (l'ancre, non dessinée — D4). Sous-titre du graphe = « {forme percentile} —
+{base de l'attendu} » où la base décrit le bin d'intensité (calme/standard/chaotique),
+le repli global, ou l'insuffisance. Type dédié `EngagementProfileAPI` (bins, sans
+coef_team_share) remplace `EngagementCoefficientAPI` (supprimé). Help FR réécrit
+(lobby+bins, death ×0). Le glossaire EN n'a pas d'entrées équivalentes (gap pré-existant).
+
+**Résultats** : typecheck 0 ; lint 0 err (68 warnings baseline) ; vitest 246 fichiers /
+2102 pass / 14 skip / 0 fail. Manifest engagement régénéré (nouvelles clés
+`engagement.expected.*` FR+EN).
+
+**Prochaine étape** : Phase 6 — nettoyage coef_team_share (recompute + payload), doc,
+addendum réflexion, clôture + gate global.
+
+---
+
+## [2026-07-11] Engagement refonte lobby — Phase 4 (re-backfill 2 titres LOCAL)
+
+**Statut** : Complété en LOCAL (Phase 4/6). Re-backfill PROD différé post-merge.
+
+**Correctif cœur (découvert, complète Phase 2)** : `batchComputeEngagementScores`
+(chemin sync qui persiste le résidu = historique du percentile) codait en dur les coefs
+à 1.0 (cold-start). Le résidu persisté restait donc en univers cold-start alors que le
+serving live utilise le modèle réel → percentile incohérent. Corrigé via
+`loadExpectedInputsForMode` (coef lobby global + bins, caché par mode) : compute et
+serving dans le même univers. Sans ça le re-backfill 2 passes ne converge pas.
+
+**CLI** : ajout d'un flag `--title` au backfill engagement (`NewSyncEngineForTitle`) — la
+CLI codait `DefaultSlug` (Infinite only), nécessaire pour le re-backfill H5 (D7).
+
+**Exécution** : serveur dev local arrêté (lease mono-process), 2 passes force par titre
+via `levelup backfill --all --engagement-scores --force --title <slug>`, serveur
+redémarré (air, port 8000).
+- Infinite : 8 joueurs, 0 échec, 4246 matchs ×2.
+- H5 : 0 échec, 10480 matchs ×2.
+
+**Vérif chiffrée (Infinite, cmd/tmpdbq)** : (a) 3 bins n=66 PvP_unranked pour
+JGtm/Madina/Chocoboflor ; (b) rejets hors-AFK 0/0.5/0 % (<5 %, seuil 0.75 gardé) ;
+(c) match témoin bc918a5a JGtm → bin chaotique, expected_basis=bin, pace_attendu 2.70 ≠
+pace_team 2.597 (confond levé) ; (d) 0 coef hors [0.1,5.0]. H5 : 6 bins/joueur peuplés.
+
+**Gate** : `go test -tags=integration -p 1 ./internal/sync/...` exit 0 (compute path).
+Régression B3 (source-grep) rendue tolérante au whitespace (gofmt réaligne les champs).
+
+**Prochaine étape** : Phase 5 — front (masquage cold_start, tooltip lobby, i18n, page profil).
+
+---
+
+## [2026-07-11] Engagement refonte lobby — Phase 3 (contrat API)
+
+**Statut** : Complété (Phase 3/6 de PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07).
+
+**Décision technique** : `EngagementScoreResult` expose `expected_basis` + `intensity_bin`
+(schéma openapi + generated.ts). `GET /engagement_profile` bascule sur un type DÉDIÉ
+`domain.EngagementProfile` (coef_lobby_share + bins par mode, sans coef_team_share — D5) ;
+`EngagementCoefficient` conservé intact (porteur squad, coef_team_share retiré en Phase 6).
+openapi.yaml (manuel) enrichi de `EngagementIntensityBin` + `EngagementProfile` ;
+generated.ts régénéré via openapi-typescript.
+
+**Résultats** : `go test ./internal/api/... ./internal/service/...` verts (flake pré-existant
+`TestStartImport_HappyPath` OpenSpartan, passe en isolation, sans rapport) ; `go vet` 0 ;
+garde-fou `TestNoJSONRouteBypassesHuma` vert ; generate-types sans diff hors fichiers
+générés.
+
+**Prochaine étape** : Phase 4 — re-backfill local des 2 titres (2 passes) + vérif chiffrée.
+
+---
+
+## [2026-07-11] Engagement refonte lobby — Phase 2 (bins de réponse + attendu lobby)
+
+**Statut** : Complété (Phase 2/6 de PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07).
+
+**Décision technique** : l'attendu du joueur devient « sa réponse habituelle à un match
+d'intensité similaire », ancré lobby partout (D1). Nouveau modèle : `pace_attendu(t) =
+coef[bin] × pace_lobby(t)`, le bin choisi par l'intensité du match (`meanLobby` de la
+courbe, terciles adaptatifs par joueur+mode). Chaîne de fallback `bin → global →
+cold_start` exposée via `ExpectedBasis`. `selectExpectedReference` supprimé (l'ancre
+n'est plus team/lobby selon le mode). Ordre de calcul : courbe des paces d'abord,
+`meanLobby` ensuite, attendu en 2e passe (`applyExpectedToCurve`).
+
+Détails : `temporal/engagement_response_bins.go` (`ComputeEngagementResponseBins`, émet
+toujours 3 terciles → jeu de clés constant, serving gate sur n>=10) ; domaine
+`EngagementResponseBins`+`ResolveBin` ; port `Load/SaveResponseBins` ; migration
+title-owned `create_engagement_response_bins_table` (name-keyed → 2 titres) ; repo DuckDB
+dédié (extrait ≤500L) ; recompute sync+admin persistent les bins (ART-safe
+SELECT-then-UPDATE-or-INSERT sous lease). `HasGlobalLobbyCoef` = présence d'une row
+engagement_coefficients (recompute ne la persiste qu'à >=10 samples).
+
+**Résultats** : `go test ./internal/...` exit 0 ; `go vet` 0 ; `-tags=integration -p 1
+./internal/sync/... ./internal/platform/duckdb/...` exit 0 (anti-ART verts) ; golangci
+`--new-from-rev=origin/main` 0 issue.
+
+**Découverte consignée** : migrations player = un seul registre title-owned appliqué aux
+2 titres (le plan supposait « deux registres »). Aucun changement de périmètre.
+
+**Prochaine étape** : Phase 3 — contrat API (expected_basis, intensity_bin, payload
+engagement_profile, régénération openapi).
+
+---
+
+## [2026-07-11] Engagement refonte lobby — Phase 1 (poids des events)
+
+**Statut** : Complété (Phase 1/6 de PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07).
+
+**Décision technique** : poids event `death` 0.4 → 0.0 (double comptage kill/mort ; la
+mort est subie, jamais une action menée — décision user 2026-07-07). Seuils de filtre des
+échantillons `PaceTeamMinThreshold`/`PaceLobbyMinThreshold` 1.0 → 0.75 (la suppression du
+poids mort baisse mécaniquement ~25 % des paces sur un mix kills≈morts). Commentaires
+mis à jour (pas de doc inversée). Vérifié que `annotateDeaths`/`isPassiveDeath`/
+`PassiveDeathThresholdMS` ne lisent que les *types* d'events, indépendants des poids
+(tests passifs/actifs verts).
+
+**Résultats** : `go test ./internal/analysis/temporal/...` ok ; `go vet ./...` exit 0.
+
+**Prochaine étape** : Phase 2 — bins de réponse + attendu ancré lobby (cœur du modèle).
+
+---
+
 ## [2026-07-10] FIX RankCatalog nil-safe — panic boot mode démo (E2E PR #53 rouge)
 
 **Statut** : Complété (superviseur de campagne, hors plan LUSR — fix de gate CI).

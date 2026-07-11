@@ -120,7 +120,7 @@ type engSquadInput struct {
 
 type engMatchOutput struct{ Body *domain.EngagementScoreResult }
 type engProfileOutput struct {
-	Body []domain.EngagementCoefficient
+	Body []domain.EngagementProfile
 }
 type engTimeseriesOutput struct {
 	Body *domain.EngagementTimeseriesResponse
@@ -163,6 +163,11 @@ func (h *EngagementHandler) handleMatchEngagement(ctx context.Context, in *engMa
 
 	result, err := svc.GetMatchEngagement(ctx, in.MatchID)
 	if err != nil {
+		// Porte statique F7 : titre sans engagement.score (not_exposed) → 503 propre
+		// centralise (jamais un 500 ni un score faux), pattern B15.
+		if mapped, ok := MapCapabilityError(ctx, err, "engagement.score"); ok {
+			return nil, mapped
+		}
 		switch {
 		case errors.Is(err, service.ErrEngagementMatchNotFound):
 			return nil, humacore.NewError(http.StatusNotFound, "match_not_found", "match introuvable pour ce joueur : "+in.MatchID)
@@ -300,10 +305,10 @@ func splitCSV(s string) []string {
 
 // handleRecomputeCoefficients : POST /engagement/recompute_coefficients
 //
-// Force le recalcul des coefficients d'engagement (coef_team_share /
-// coef_lobby_share) pour toutes les categories de mode supportees, depuis
-// les paces persistees dans player_match_enrichment. Utile en admin / debug
-// quand un user veut rafraichir ses coefs sans attendre le prochain sync.
+// Force le recalcul du coef lobby global + des bins de reponse (modele
+// lobby-anchored v2) pour toutes les categories de mode supportees, depuis les
+// paces persistees dans player_match_enrichment. Utile en admin / debug quand un
+// user veut rafraichir ses coefs sans attendre le prochain sync.
 //
 // Reponse JSON :
 //
@@ -344,10 +349,14 @@ func (h *EngagementHandler) handleRecomputeCoefficients(ctx context.Context, in 
 
 // handleEngagementProfile : GET /engagement_profile
 //
-// Reponse JSON : tableau de coefficients par categorie de mode.
+// Reponse JSON : tableau de profils par categorie de mode (modele lobby-anchored
+// v2). Chaque profil porte le coef lobby global + les bins de reponse par bin
+// d'intensite. coef_team_share n'est plus expose (D5).
 //
 //	[
-//	  {"xuid": "...", "mode_category": "PvP_ranked", "coef_team_share": 1.12, "coef_lobby_share": 1.05, "n_matches": 187, "last_updated": "..."},
+//	  {"xuid": "...", "mode_category": "PvP_ranked", "coef_lobby_share": 1.05, "n_matches": 187,
+//	   "last_updated": "...", "bins": [{"bin": "calme", "lower_bound": 0, "upper_bound": 4.2,
+//	   "coef_lobby": 1.3, "n_matches": 62}, ...]},
 //	  ...
 //	]
 //

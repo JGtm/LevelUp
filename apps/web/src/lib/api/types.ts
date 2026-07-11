@@ -274,6 +274,19 @@ export interface EngagementScoreResultAPI {
   mean_pace_team?: number
   mean_pace_lobby?: number
   player_activity?: number
+  /** Base de l'attendu (modèle lobby-anchored v2). `cold_start` → la série
+   *  « Joueur attendu » est masquée (pas d'historique exploitable). */
+  expected_basis: 'bin' | 'global' | 'cold_start'
+  /** Libellé du bin d'intensité quand `expected_basis === 'bin'`
+   *  (calme | standard | chaotique). Vide sinon. */
+  intensity_bin: string
+  /** 2e porte F7 : statut de calibration des coefficients du titre.
+   *  `provisional` → mention « calibration provisoire » (badge discret) ; absent
+   *  ou `validated` → confiance pleine (rien affiché). */
+  calibration?: 'validated' | 'provisional'
+  /** 1re porte F7 : suffisance du vecteur de signaux (`full` | `partial`).
+   *  Absent si non calculé. */
+  signal_basis?: 'full' | 'partial'
 }
 
 /** EngagementTimeseriesRequest — body de POST /engagement/timeseries.
@@ -330,13 +343,25 @@ export interface SquadEngagementSessionAPI {
   players: SquadPlayerEngagementAPI[]
 }
 
-export interface EngagementCoefficientAPI {
-  XUID: string
-  ModeCategory: string
-  CoefTeamShare: number
-  CoefLobbyShare: number
-  NMatches: number
-  LastUpdated: string
+/** Un bin d'intensité (tercile de pace_lobby) avec son coef de réponse. */
+export interface EngagementIntensityBinAPI {
+  bin: string
+  lower_bound: number
+  upper_bound: number
+  coef_lobby: number
+  n_matches: number
+}
+
+/** Profil engagement par catégorie de mode (modèle lobby-anchored v2). Exposé
+ *  par GET /engagement_profile. coef_team_share n'est plus exposé (D5). */
+export interface EngagementProfileAPI {
+  xuid: string
+  gamertag?: string
+  mode_category: string
+  coef_lobby_share: number
+  n_matches: number
+  last_updated: string
+  bins: EngagementIntensityBinAPI[] | null
 }
 
 export interface BackfillStartRequest {

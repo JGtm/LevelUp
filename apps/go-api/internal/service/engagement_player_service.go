@@ -48,6 +48,12 @@ type PlayerEngagementService struct {
 	// path SQL via le repo (ListRecentPvPMatchIDs) sans filtres metier.
 	playerMatchesRepo port.PlayerMatchesRepository
 	titleSlug         string
+
+	// engagementCap est le statut de la capability fine engagement.score du titre
+	// (2e porte de degradation F7). Vide = titre historique valide (Infinite) traite
+	// comme supported/validated. degraded → score servi AVEC calibration=provisional ;
+	// not_exposed → GetMatchEngagement retourne ErrCapabilityNotSupported (503 propre).
+	engagementCap games.CapabilityStatus
 }
 
 // NewPlayerEngagementService cree un service per-player.
@@ -65,12 +71,38 @@ func (s *PlayerEngagementService) WithPlayerMatchesRepo(
 	return s
 }
 
+// WithEngagementCapability injecte le statut de la capability fine engagement.score
+// du titre (2e porte de degradation F7). Resolu par la factory title-aware ; le
+// service reste agnostic (il porte un statut, pas la logique de capability).
+func (s *PlayerEngagementService) WithEngagementCapability(status games.CapabilityStatus) *PlayerEngagementService {
+	s.engagementCap = status
+	return s
+}
+
+// calibrationForStatus mappe le statut de capability fine vers la valeur de
+// calibration exposee par match (2e porte F7). Vide/supported → validated ;
+// degraded → provisional. not_exposed est gate en amont (ErrCapabilityNotSupported).
+func calibrationForStatus(status games.CapabilityStatus) string {
+	if status == games.CapDegraded {
+		return domain.CalibrationProvisional
+	}
+	return domain.CalibrationValidated
+}
+
 // GetMatchEngagement charge le contexte du match, recompute la courbe et le
 // score (live), et retourne le resultat. Utilise par GET /matches/{id}/engagement.
 func (s *PlayerEngagementService) GetMatchEngagement(
 	ctx context.Context,
 	matchID string,
 ) (*domain.EngagementScoreResult, error) {
+	// Porte statique (1re moitie de la double porte F7) : un titre qui n'expose PAS
+	// engagement.score (not_exposed) ne sert pas de score — degradation gracieuse
+	// 503 propre (jamais un score cold-start silencieusement faux). Vide/degraded/
+	// supported passent (degraded servira avec calibration=provisional plus bas).
+	if s.engagementCap == games.CapNotExposed {
+		return nil, fmt.Errorf("engagement.score: %w", games.ErrCapabilityNotSupported)
+	}
+
 	mctx, err := s.repo.LoadMatchEngagementContext(ctx, matchID, s.xuid)
 	if err != nil {
 		return nil, fmt.Errorf("PlayerEngagementService: load match context: %w", err)
@@ -111,24 +143,45 @@ func (s *PlayerEngagementService) GetMatchEngagement(
 		}
 		return nil, fmt.Errorf("PlayerEngagementService: compute: %w", err)
 	}
+	// 2e porte F7 : statut de calibration du titre (provisional si degraded).
+	result.Calibration = calibrationForStatus(s.engagementCap)
 	return &result, nil
 }
 
-// GetEngagementProfile retourne tous les coefficients du joueur.
+// GetEngagementProfile retourne le profil engagement du joueur par categorie de
+// mode : coef lobby global + bins de reponse par intensite (modele lobby-anchored
+// v2). coef_team_share n'est plus expose (D5).
 func (s *PlayerEngagementService) GetEngagementProfile(
 	ctx context.Context,
-) ([]domain.EngagementCoefficient, error) {
+) ([]domain.EngagementProfile, error) {
 	if s.xuid == "" {
 		return nil, errors.New("PlayerEngagementService.GetEngagementProfile: xuid required")
 	}
 	coefs, err := s.repo.LoadAllCoefficients(ctx, s.xuid)
 	if err != nil {
 		if errors.Is(err, port.ErrEngagementUnavailable) {
-			return []domain.EngagementCoefficient{}, nil
+			return []domain.EngagementProfile{}, nil
 		}
 		return nil, fmt.Errorf("PlayerEngagementService.GetEngagementProfile: %w", err)
 	}
-	return coefs, nil
+	profiles := make([]domain.EngagementProfile, 0, len(coefs))
+	for _, c := range coefs {
+		p := domain.EngagementProfile{
+			XUID:           c.XUID,
+			Gamertag:       s.gamertag,
+			ModeCategory:   c.ModeCategory,
+			CoefLobbyShare: c.CoefLobbyShare,
+			NMatches:       c.NMatches,
+			LastUpdated:    c.LastUpdated,
+		}
+		// Bins best-effort : table absente (migration non appliquee) → profil
+		// sans bins, jamais d'echec (degradation gracieuse).
+		if bins, berr := s.repo.LoadResponseBins(ctx, s.xuid, c.ModeCategory); berr == nil && bins != nil {
+			p.Bins = bins.Bins
+		}
+		profiles = append(profiles, p)
+	}
+	return profiles, nil
 }
 
 // GetTimeseries retourne la serie temporelle d'engagement du joueur (Mock 11)
@@ -284,27 +337,35 @@ func (s *PlayerEngagementService) buildInputForMatch(
 	playerEvents, teamEvents, lobbyEvents := splitMatchEvents(events, s.xuid, teamXUIDs)
 	modeCategory := normalizeMode(mctx.IsRanked)
 	history, _ := s.loadHistorySafeByMode(ctx, modeCategory, matchID)
-	coefTeam, coefLobby := s.loadCoefsSafe(ctx, modeCategory)
+	coefLobby, hasGlobal, bins := s.loadExpectedInputs(ctx, modeCategory)
 	// highlight_events.time_ms est relatif au debut du match (0 a durationMS),
 	// pas un epoch UTC. On normalise donc les bornes a [0, duration].
 	durationMS := mctx.EndTimeMS - mctx.StartTimeMS
 	return temporal.EngagementScoreInput{
-		PlayerEvents:   playerEvents,
-		TeamEvents:     teamEvents,
-		LobbyEvents:    lobbyEvents,
-		NTeam:          mctx.NTeam,
-		NHumansLobby:   mctx.NHumansLobby,
-		XUID:           s.xuid,
-		MatchStartMS:   0,
-		MatchEndMS:     durationMS,
-		History:        history,
-		CoefTeamShare:  coefTeam,
-		CoefLobbyShare: coefLobby,
-		PersonalScore:  mctx.PersonalScore,
-		Kills:          mctx.Kills,
-		Assists:        mctx.Assists,
-		Mode:           modeCategory,
-		IsTeamMode:     mctx.IsTeamMode,
+		PlayerEvents:       playerEvents,
+		TeamEvents:         teamEvents,
+		LobbyEvents:        lobbyEvents,
+		NTeam:              mctx.NTeam,
+		NHumansLobby:       mctx.NHumansLobby,
+		XUID:               s.xuid,
+		MatchStartMS:       0,
+		MatchEndMS:         durationMS,
+		History:            history,
+		CoefLobbyShare:     coefLobby,
+		HasGlobalLobbyCoef: hasGlobal,
+		ResponseBins:       bins,
+		PersonalScore:      mctx.PersonalScore,
+		Kills:              mctx.Kills,
+		Assists:            mctx.Assists,
+		Mode:               modeCategory,
+		IsTeamMode:         mctx.IsTeamMode,
+		// Vecteur de signaux (masque de presence + signaux riches), derive de la
+		// composition des events deja partitionnes (title-agnostic, la richesse
+		// vient de ce que le titre a projete en amont dans highlight_events).
+		Signals: temporal.SignalsFromEvents(playerEvents, lobbyEvents, durationMS),
+		// Poids d'events PAR TITRE (F7) : constants.toml [engagement], defaut
+		// byte-identique Infinite si non declare.
+		Weights: games.EngagementWeightsFor(s.titleSlug),
 	}
 }
 
@@ -329,16 +390,26 @@ func (s *PlayerEngagementService) loadHistorySafeByMode(
 	return history, nil
 }
 
-// loadCoefsSafe charge les coefs avec defaut neutre 1.0/1.0 en cold start.
-func (s *PlayerEngagementService) loadCoefsSafe(
+// loadExpectedInputs charge les entrees de l'attendu ancre lobby : coef lobby
+// global (fallback), flag de disponibilite du global, et bins de reponse.
+//
+// hasGlobal = (une row engagement_coefficients existe) : le recompute n'en
+// persiste une que si >= MinMatchesForCoef samples valides, donc sa presence
+// garantit un coef lobby global reel (pas le defaut cold-start 1.0). Degradation
+// gracieuse : table/colonnes absentes → cold-start (coefLobby 1.0, bins nil).
+func (s *PlayerEngagementService) loadExpectedInputs(
 	ctx context.Context,
 	modeCategory string,
-) (coefTeam, coefLobby float64) {
-	coef, err := s.repo.LoadEngagementCoefficient(ctx, s.xuid, modeCategory)
-	if err != nil || coef == nil {
-		return 1.0, 1.0
+) (coefLobby float64, hasGlobal bool, bins *domain.EngagementResponseBins) {
+	coefLobby = 1.0
+	if coef, err := s.repo.LoadEngagementCoefficient(ctx, s.xuid, modeCategory); err == nil && coef != nil {
+		coefLobby = coef.CoefLobbyShare
+		hasGlobal = true
 	}
-	return coef.CoefTeamShare, coef.CoefLobbyShare
+	if b, err := s.repo.LoadResponseBins(ctx, s.xuid, modeCategory); err == nil {
+		bins = b
+	}
+	return coefLobby, hasGlobal, bins
 }
 
 // loadRecentPvPMatchIDs liste les match_ids PvP recents via la repo (si elle

@@ -85,6 +85,17 @@ type EngagementScoreRepository interface {
 	// si aucun coefficient stocke (cas cold start).
 	LoadEngagementCoefficient(ctx context.Context, xuid, modeCategory string) (*domain.EngagementCoefficient, error)
 
+	// LoadResponseBins charge les bins de reponse (terciles d'intensite) du
+	// joueur pour une categorie de mode (modele lobby-anchored v2). Retourne
+	// (nil, nil) si aucun bin persiste. ErrEngagementUnavailable si la table
+	// engagement_response_bins est absente (migration non appliquee).
+	LoadResponseBins(ctx context.Context, xuid, modeCategory string) (*domain.EngagementResponseBins, error)
+
+	// SaveResponseBins persiste / met a jour les bins de reponse d'un joueur
+	// pour une categorie de mode (SELECT-then-UPDATE-or-INSERT par bin, sous
+	// lease). ErrEngagementUnavailable si la table est absente.
+	SaveResponseBins(ctx context.Context, bins domain.EngagementResponseBins) error
+
 	// SaveEngagementScore persiste le score 0-100, le residu brut et la
 	// confidence pour un (xuid, match_id). Idempotent : un appel ulterieur
 	// avec les memes valeurs n'a pas d'effet (UPSERT).

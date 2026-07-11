@@ -57,6 +57,18 @@ func setupEngagementDB(t *testing.T) *ddb.PlayerDB {
 			last_updated     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (xuid, mode_category)
 		)`,
+		// Modele lobby-anchored v2 (mirror create_engagement_response_bins_table).
+		`CREATE TABLE engagement_response_bins (
+			xuid          VARCHAR NOT NULL,
+			mode_category VARCHAR NOT NULL,
+			intensity_bin VARCHAR NOT NULL,
+			lower_bound   DOUBLE NOT NULL,
+			upper_bound   DOUBLE NOT NULL,
+			coef_lobby    DOUBLE NOT NULL,
+			n_matches     INTEGER NOT NULL,
+			last_updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (xuid, mode_category, intensity_bin)
+		)`,
 	}
 	for _, s := range stmts {
 		if _, err := db.Exec(ctx, s); err != nil {
@@ -92,11 +104,11 @@ func TestEngagementRepo_SaveAndLoadCoefficient(t *testing.T) {
 	}
 
 	// 2. Save un coef.
-	if err := repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_ranked", 1.12, 1.05, 200)); err != nil {
+	if err := repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_ranked", 1.05, 200)); err != nil {
 		t.Fatalf("SaveEngagementCoefficient: %v", err)
 	}
 
-	// 3. Load -> doit retourner les valeurs sauvees.
+	// 3. Load -> doit retourner les valeurs sauvees (coef_team_share non lu).
 	got, err = repo.LoadEngagementCoefficient(ctx, "xuid-1", "PvP_ranked")
 	if err != nil {
 		t.Fatalf("LoadEngagementCoefficient: %v", err)
@@ -104,17 +116,79 @@ func TestEngagementRepo_SaveAndLoadCoefficient(t *testing.T) {
 	if got == nil {
 		t.Fatal("expected non-nil coef after save")
 	}
-	if got.CoefTeamShare != 1.12 || got.CoefLobbyShare != 1.05 || got.NMatches != 200 {
+	if got.CoefLobbyShare != 1.05 || got.NMatches != 200 {
 		t.Errorf("unexpected coef values: %+v", got)
 	}
 
 	// 4. UPSERT : sauver a nouveau avec valeurs differentes -> doit remplacer.
-	if err := repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_ranked", 1.30, 1.15, 250)); err != nil {
+	if err := repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_ranked", 1.15, 250)); err != nil {
 		t.Fatalf("SaveEngagementCoefficient (upsert): %v", err)
 	}
 	got, _ = repo.LoadEngagementCoefficient(ctx, "xuid-1", "PvP_ranked")
-	if got == nil || got.CoefTeamShare != 1.30 || got.NMatches != 250 {
+	if got == nil || got.CoefLobbyShare != 1.15 || got.NMatches != 250 {
 		t.Errorf("expected upserted values, got %+v", got)
+	}
+}
+
+// =============================================================================
+// SaveResponseBins + LoadResponseBins (modele lobby-anchored v2)
+// =============================================================================
+
+func TestEngagementRepo_SaveAndLoadResponseBins(t *testing.T) {
+	pdb := setupEngagementDB(t)
+	repo := ddb.NewEngagementScoreRepo(pdb)
+	ctx := context.Background()
+
+	// 1. Cold start : aucun bin.
+	got, err := repo.LoadResponseBins(ctx, "xuid-1", "PvP_ranked")
+	if err != nil {
+		t.Fatalf("LoadResponseBins (empty): %v", err)
+	}
+	if got != nil {
+		t.Errorf("expected nil bins on cold start, got %+v", got)
+	}
+
+	// 2. Save 3 bins.
+	bins := domain.EngagementResponseBins{
+		XUID:         "xuid-1",
+		ModeCategory: "PvP_ranked",
+		Bins: []domain.EngagementIntensityBin{
+			{Bin: "calme", LowerBound: 0, UpperBound: 4, CoefLobby: 1.5, NMatches: 20},
+			{Bin: "standard", LowerBound: 4, UpperBound: 7, CoefLobby: 1.0, NMatches: 18},
+			{Bin: "chaotique", LowerBound: 7, UpperBound: 12, CoefLobby: 0.5, NMatches: 22},
+		},
+	}
+	if err := repo.SaveResponseBins(ctx, bins); err != nil {
+		t.Fatalf("SaveResponseBins: %v", err)
+	}
+
+	// 3. Load -> 3 bins ordonnes par lower_bound, resolution correcte.
+	got, err = repo.LoadResponseBins(ctx, "xuid-1", "PvP_ranked")
+	if err != nil {
+		t.Fatalf("LoadResponseBins: %v", err)
+	}
+	if got == nil || len(got.Bins) != 3 {
+		t.Fatalf("expected 3 bins, got %+v", got)
+	}
+	if b, ok := got.ResolveBin(10.0); !ok || b.Bin != "chaotique" || b.CoefLobby != 0.5 {
+		t.Errorf("ResolveBin(10) want chaotique/0.5, got %+v (ok=%v)", b, ok)
+	}
+	if b, ok := got.ResolveBin(1.0); !ok || b.Bin != "calme" {
+		t.Errorf("ResolveBin(1) want calme, got %+v", b)
+	}
+
+	// 4. UPSERT : re-save avec valeurs differentes -> remplace (pas de doublon).
+	bins.Bins[2].CoefLobby = 0.3
+	bins.Bins[2].NMatches = 25
+	if err := repo.SaveResponseBins(ctx, bins); err != nil {
+		t.Fatalf("SaveResponseBins (upsert): %v", err)
+	}
+	got, _ = repo.LoadResponseBins(ctx, "xuid-1", "PvP_ranked")
+	if got == nil || len(got.Bins) != 3 {
+		t.Fatalf("expected still 3 bins after upsert, got %+v", got)
+	}
+	if b, _ := got.ResolveBin(10.0); b.CoefLobby != 0.3 || b.NMatches != 25 {
+		t.Errorf("expected upserted chaotique coef 0.3/n25, got %+v", b)
 	}
 }
 
@@ -128,10 +202,10 @@ func TestEngagementRepo_LoadAllCoefficients(t *testing.T) {
 	ctx := context.Background()
 
 	// Save 2 coefs sur differentes categories.
-	_ = repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_ranked", 1.12, 1.05, 200))
-	_ = repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_unranked", 0.95, 0.92, 150))
+	_ = repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_ranked", 1.05, 200))
+	_ = repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-1", "PvP_unranked", 0.92, 150))
 	// Coef d'un autre joueur — ne doit PAS etre retourne.
-	_ = repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-OTHER", "PvP_ranked", 1.50, 1.40, 300))
+	_ = repo.SaveEngagementCoefficient(ctx, domainCoef("xuid-OTHER", "PvP_ranked", 1.40, 300))
 
 	coefs, err := repo.LoadAllCoefficients(ctx, "xuid-1")
 	if err != nil {
@@ -239,11 +313,11 @@ func TestEngagementRepo_HasEngagementScore(t *testing.T) {
 // =============================================================================
 
 // domainCoef construit un EngagementCoefficient minimal pour les tests.
-func domainCoef(xuid, mode string, team, lobby float64, n int) domain.EngagementCoefficient {
+// coef_team_share n'est plus porté par le type (inerte, D5).
+func domainCoef(xuid, mode string, lobby float64, n int) domain.EngagementCoefficient {
 	return domain.EngagementCoefficient{
 		XUID:           xuid,
 		ModeCategory:   mode,
-		CoefTeamShare:  team,
 		CoefLobbyShare: lobby,
 		NMatches:       n,
 		LastUpdated:    time.Now().UTC(),

@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
@@ -193,7 +194,24 @@ func (r *ServiceRegistry) Engagement(ctx context.Context, slug string) (*service
 	}
 	repo := duckdb.NewEngagementScoreRepo(pdb)
 	return service.NewPlayerEngagementService(repo, pdb.XUID, pdb.Gamertag).
-		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug), nil
+		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug).
+		WithEngagementCapability(r.engagementCapabilityFor(pdb.TitleSlug)), nil
+}
+
+// engagementCapabilityFor resout le statut de la capability fine engagement.score
+// du titre (double porte F7). Title-agnostic : lit la CapabilityMap de l'adapter
+// data via le resolver, jamais une comparaison de slug. Degradation gracieuse :
+// resolver absent / titre inconnu → "" (traite comme supported/validated cote
+// service, chemin Infinite legacy).
+func (r *ServiceRegistry) engagementCapabilityFor(slug string) games.CapabilityStatus {
+	if r.titleResolver == nil {
+		return ""
+	}
+	data, err := r.titleResolver.Data(slug)
+	if err != nil || data == nil {
+		return ""
+	}
+	return data.Capabilities()[games.CapEngagement]
 }
 
 // Sessions retourne un SessionsService pour le joueur.

@@ -731,3 +731,43 @@ Demonstration chiffree (4v4, 110 events lobby) :
 | Equipe dominante, joueur passager | 80 | 30 | 25 | 1.82 (haut) | **1.25** (modere) | Le joueur beneficie du contexte mais ne porte pas |
 
 `team_share` est structurellement le bon denominateur pour la **engagement individuelle**. `lobby_share` est plus utile comme metric de **profil/style** (dans EngagementCoefficient) car il capture l'effet equipe ET l'effet individuel ensemble.
+
+---
+
+## Addendum 2026-07-11 — Modèle v2 « lobby-anchored » (refonte)
+
+> Ne réécrit pas l'analyse ci-dessus (modèle v1 team-share) : la consigne. Cet addendum
+> acte le pivot livré par `.ai/V7/PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07.md`.
+
+**Décision produit (session 2026-07-07)** : l'attendu individuel n'est plus une part
+relative à l'équipe (`coef_team_share × pace_team`) mais **la réponse HABITUELLE du joueur
+à un match d'intensité similaire**, ancrée sur le lobby. Motivation : avec la référence
+équipe, le cas « l'adversaire nous écrase et toute l'équipe (moi inclus) répond mal » est
+invisible — l'attendu s'effondre avec l'équipe. L'ancre lobby rend ce trait visible.
+
+**Modèle v2** (formalisé) :
+
+```
+I = mean_t pace_lobby(t)                         # intensité du match
+b = bin(I) ∈ {calme, standard, chaotique}        # terciles des intensités DU JOUEUR, par mode
+pace_attendu(t) = coef[b] × pace_lobby(t)         # coef[b] = médiane(pace_joueur/pace_lobby) du bin
+résidu = mean_t (pace_joueur(t) − pace_attendu(t))
+score  = percentile(résidu, historique 200 matchs même mode)   # inchangé
+```
+
+Chaîne de fallback de l'attendu (champ API `expected_basis`) : `bin` (≥10 échantillons dans
+le bin) → `global` (coef lobby global, ≥10) → `cold_start` (1.0, série masquée côté front).
+
+**Changements structurels** :
+- Poids `death` 1.0→**0.0** (double comptage kill/mort ; chaque affrontement compté une fois,
+  côté acteur). Objectif 1.5, assist 0.5 inchangés. Seuils de filtre 1.0→0.75 (compense la
+  baisse ~25 % des paces).
+- `coef_team_share` **abandonné** : plus calculé, plus exposé (payload `EngagementProfile`),
+  plus dans les textes d'aide. Colonne DuckDB conservée mais **inerte** (NOT NULL, on y écrit
+  1.0 ; pas de DROP COLUMN).
+- Nouvelle table player `engagement_response_bins` (bins par intensité, PK
+  xuid+mode+intensity_bin, écritures ART-safe sous lease).
+- L'ancre est le lobby **partout** (équipe/FFA unifiés) : `selectExpectedReference` supprimé.
+- Le tableau d'exemple v1 ci-dessus (« team_share bon dénominateur pour l'engagement
+  individuelle ») est **caduc** pour la production : conservé à titre d'historique du
+  raisonnement, non de la doctrine courante.

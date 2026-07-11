@@ -33,6 +33,7 @@ import (
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -84,6 +85,12 @@ func batchComputeEngagementScores(
 
 	existing := loadExistingEngagementScores(ctx, playerDB)
 	historyByMode := make(map[string][]domain.HistoricalEngagementBrut)
+	// Entrees de l'attendu ancre lobby par mode (coef lobby global + bins),
+	// chargees une fois par mode. Le compute persiste le residu (history du
+	// percentile) : il DOIT utiliser le meme modele que le serving live, sinon
+	// l'historique melange deux univers. Cold-start au 1er passe (tables vides),
+	// resolu en universe bin apres recompute + 2e passe (cf. plan Phase 4).
+	expectedByMode := make(map[string]expectedInputs)
 	updated := 0
 	var intensities []matchIntensityUpdate
 	now := time.Now().UTC()
@@ -93,6 +100,9 @@ func batchComputeEngagementScores(
 	// flush via PostSyncEnrichmentPersister (1 single UPDATE multi-row
 	// multi-col).
 	hasPaces := pacesColumnsAvailable(ctx, playerDB)
+	// Poids d'events PAR TITRE (F7), resolus une fois (le titre est constant sur le
+	// batch). Defaut byte-identique Infinite si non declare dans constants.toml.
+	weights := games.EngagementWeightsFor(ctxkeys.TitleSlug(ctx))
 	var pendingUpdates []persist.EnrichmentMultiColumnUpdate
 
 	for _, m := range matches {
@@ -143,24 +153,36 @@ func batchComputeEngagementScores(
 		// highlight_events.time_ms est relatif au debut du match (0 a durationMS),
 		// pas un epoch UTC. On normalise donc les bornes a [0, duration] pour
 		// rester dans le meme repere que les events.
+		exp, ok := expectedByMode[modeCategory]
+		if !ok {
+			exp = loadExpectedInputsForMode(ctx, playerDB, xuid, modeCategory)
+			expectedByMode[modeCategory] = exp
+		}
+
 		durationMS := m.EndTimeMS - m.StartTimeMS
 		input := temporal.EngagementScoreInput{
-			PlayerEvents:   playerEvents,
-			TeamEvents:     teamEvents,
-			LobbyEvents:    lobbyEvents,
-			NTeam:          m.NTeam,
-			NHumansLobby:   m.NHumansLobby,
-			XUID:           xuid,
-			MatchStartMS:   0,
-			MatchEndMS:     durationMS,
-			History:        history,
-			CoefTeamShare:  1.0, // cold start neutre
-			CoefLobbyShare: 1.0,
-			PersonalScore:  m.PersonalScore,
-			Kills:          m.Kills,
-			Assists:        m.Assists,
-			Mode:           modeCategory,
-			IsTeamMode:     m.IsTeamMode,
+			PlayerEvents:       playerEvents,
+			TeamEvents:         teamEvents,
+			LobbyEvents:        lobbyEvents,
+			NTeam:              m.NTeam,
+			NHumansLobby:       m.NHumansLobby,
+			XUID:               xuid,
+			MatchStartMS:       0,
+			MatchEndMS:         durationMS,
+			History:            history,
+			CoefLobbyShare:     exp.coefLobby,
+			HasGlobalLobbyCoef: exp.hasGlobal,
+			ResponseBins:       exp.bins,
+			PersonalScore:      m.PersonalScore,
+			Kills:              m.Kills,
+			Assists:            m.Assists,
+			Mode:               modeCategory,
+			IsTeamMode:         m.IsTeamMode,
+			// Vecteur de signaux (masque de presence + signaux riches), derive de la
+			// composition des events deja partitionnes (title-agnostic).
+			Signals: temporal.SignalsFromEvents(playerEvents, lobbyEvents, durationMS),
+			// Poids d'events PAR TITRE (F7), constants.toml [engagement].
+			Weights: weights,
 		}
 
 		result, err := temporal.ComputeEngagementScore(input)
@@ -232,6 +254,62 @@ func buildEngagementUpdate(matchID, modeCategory string, result domain.Engagemen
 		MatchID: matchID,
 		Fields:  fields,
 	}
+}
+
+// expectedInputs regroupe les entrees de l'attendu ancre lobby pour un mode :
+// coef lobby global (fallback), flag de disponibilite, et bins de reponse.
+type expectedInputs struct {
+	coefLobby float64
+	hasGlobal bool
+	bins      *domain.EngagementResponseBins
+}
+
+// loadExpectedInputsForMode charge le coef lobby global + les bins de reponse
+// pour (xuid, mode) depuis la player DB. Best-effort : tables absentes ou pas de
+// row → cold-start (coef 1.0, hasGlobal=false, bins nil). hasGlobal=true implique
+// >= MinMatchesForCoef samples (le recompute ne persiste la row qu'a ce seuil).
+//
+// Miroir de service.loadExpectedInputs (chemin serving), pour que le residu
+// persiste par le compute soit dans le meme univers que le residu servi live.
+func loadExpectedInputsForMode(ctx context.Context, playerDB *sql.DB, xuid, modeCategory string) expectedInputs {
+	out := expectedInputs{coefLobby: 1.0}
+	if coefficientsTableAvailable(ctx, playerDB) {
+		var coefLobby float64
+		err := playerDB.QueryRowContext(ctx,
+			`SELECT coef_lobby_share FROM engagement_coefficients WHERE xuid = ? AND mode_category = ?`,
+			xuid, modeCategory).Scan(&coefLobby)
+		if err == nil {
+			out.coefLobby = coefLobby
+			out.hasGlobal = true
+		}
+	}
+	if responseBinsTableAvailable(ctx, playerDB) {
+		out.bins = loadResponseBinsRows(ctx, playerDB, xuid, modeCategory)
+	}
+	return out
+}
+
+// loadResponseBinsRows lit les bins persistes pour (xuid, mode). nil si aucun.
+func loadResponseBinsRows(ctx context.Context, playerDB *sql.DB, xuid, modeCategory string) *domain.EngagementResponseBins {
+	rows, err := playerDB.QueryContext(ctx,
+		`SELECT intensity_bin, lower_bound, upper_bound, coef_lobby, n_matches
+		 FROM engagement_response_bins WHERE xuid = ? AND mode_category = ? ORDER BY lower_bound`,
+		xuid, modeCategory)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var bins []domain.EngagementIntensityBin
+	for rows.Next() {
+		var b domain.EngagementIntensityBin
+		if scanErr := rows.Scan(&b.Bin, &b.LowerBound, &b.UpperBound, &b.CoefLobby, &b.NMatches); scanErr == nil {
+			bins = append(bins, b)
+		}
+	}
+	if err := rows.Err(); err != nil || len(bins) == 0 {
+		return nil
+	}
+	return &domain.EngagementResponseBins{XUID: xuid, ModeCategory: modeCategory, Bins: bins}
 }
 
 // engagementColumnsAvailable verifie la presence de la colonne engagement_score

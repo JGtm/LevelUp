@@ -73,3 +73,17 @@ no_team_mmr = true
 # kills horodatés peut DÉRIVER la spree via analysis.ComputeMaxKillingSpree. La valeur
 # native fait foi quand elle existe (Infinite, pas de recalcul) ; sinon on calcule.
 # Cf. games.ProvidesMaxKillingSpree (dérivé de CapMatchEventsTimeline, pas d'un flag).
+
+# ─── Poids d'events du score d'engagement (chantier F7, DE-4) ────────────────
+# Coefficients d'engagement PAR TITRE (cf. halo_infinite/constants.toml [engagement]
+# pour la sémantique). CANDIDATS PROVISOIRES (chantier F7 E4) : initialisés aux poids
+# de référence Infinite. La capability engagement.score h5 reste DEGRADED (calibration
+# provisoire) jusqu'au gate humain E6 ; ces poids sont à valider/ajuster contre la
+# distribution réelle h5 (assists NATIVES, impulses objectif allowlist) — cf. rapport
+# .ai/ENGAGEMENT_CALIBRATION_H5_2026-07-11.md. Modèle events title-agnostic (H5 kills
+# synthétisés via killer_victim_pairs, objectifs via impulses → event_type "mode").
+[engagement]
+objective = 1.5
+assist    = 0.5
+death     = 0.0
+default   = 1.0

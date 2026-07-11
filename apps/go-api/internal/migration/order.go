@@ -67,6 +67,7 @@ var canonicalOrder = []string{
 	"create_engagement_coefficients_table",                    // player
 	"repair_engagement_coefficients_primary_key",              // player
 	"add_engagement_pace_columns_to_player_match_enrichment",  // player
+	"create_engagement_response_bins_table",                   // player (modele lobby-anchored v2)
 	"add_bot_teammate_column",                                 // player
 	"add_career_progression_sequence",                         // player
 	"add_career_identity_assets",                              // player

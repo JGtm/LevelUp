@@ -94,9 +94,55 @@ func openPlayerForRecompute(t *testing.T, withPaces, withCoefsTable bool) *sql.D
 		if _, err := db.Exec(coefDDL); err != nil {
 			t.Fatalf("CREATE engagement_coefficients: %v", err)
 		}
+		// Bins de reponse (lobby-anchored v2) — accompagne la table coefs.
+		binsDDL := `
+			CREATE TABLE engagement_response_bins (
+				xuid          VARCHAR NOT NULL,
+				mode_category VARCHAR NOT NULL,
+				intensity_bin VARCHAR NOT NULL,
+				lower_bound   DOUBLE NOT NULL,
+				upper_bound   DOUBLE NOT NULL,
+				coef_lobby    DOUBLE NOT NULL,
+				n_matches     INTEGER NOT NULL,
+				last_updated  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+				PRIMARY KEY (xuid, mode_category, intensity_bin)
+			);
+		`
+		if _, err := db.Exec(binsDDL); err != nil {
+			t.Fatalf("CREATE engagement_response_bins: %v", err)
+		}
 	}
 
 	return db
+}
+
+// loadBinsCount lit le nombre de bins persistes et leurs coefs par bin.
+func loadBinsCount(t *testing.T, db *sql.DB, xuid, mode string) (n int, coefByBin map[string]float64, nByBin map[string]int) {
+	t.Helper()
+	rows, err := db.Query(`
+		SELECT intensity_bin, coef_lobby, n_matches
+		FROM engagement_response_bins
+		WHERE xuid = ? AND mode_category = ?
+		ORDER BY lower_bound
+	`, xuid, mode)
+	if err != nil {
+		t.Fatalf("load bins: %v", err)
+	}
+	defer rows.Close()
+	coefByBin = map[string]float64{}
+	nByBin = map[string]int{}
+	for rows.Next() {
+		var bin string
+		var coef float64
+		var nm int
+		if err := rows.Scan(&bin, &coef, &nm); err != nil {
+			t.Fatalf("scan bin: %v", err)
+		}
+		coefByBin[bin] = coef
+		nByBin[bin] = nm
+		n++
+	}
+	return n, coefByBin, nByBin
 }
 
 // insertPaceRow insère une row avec paces — helper pour les tests.
@@ -171,8 +217,9 @@ func TestBatchRecomputeCoefficients_HappyPath(t *testing.T) {
 	if !found {
 		t.Fatal("coef row not persisted")
 	}
-	if math.Abs(coefTeam-1.25) > 1e-9 {
-		t.Errorf("coef_team_share want 1.25, got %v", coefTeam)
+	// coef_team_share est INERTE (D5) : la colonne reste NOT NULL, on y écrit 1.0.
+	if coefTeam != 1.0 {
+		t.Errorf("coef_team_share doit être inerte (1.0), got %v", coefTeam)
 	}
 	if math.Abs(coefLobby-1.10) > 1e-6 {
 		t.Errorf("coef_lobby_share want ~1.10, got %v", coefLobby)
@@ -180,9 +227,45 @@ func TestBatchRecomputeCoefficients_HappyPath(t *testing.T) {
 	if nMatches != 30 {
 		t.Errorf("n_matches want 30, got %d", nMatches)
 	}
-	// Vérifie aussi que coef != 1.0 (sinon courbes superposées à l'écran)
-	if coefTeam == 1.0 {
-		t.Errorf("BUG racine non corrigé : coef_team reste 1.0 après recompute")
+	// Vérifie que le coef lobby n'est pas resté à 1.0 (sinon courbes superposées).
+	if coefLobby == 1.0 {
+		t.Errorf("BUG racine non corrigé : coef_lobby reste 1.0 après recompute")
+	}
+}
+
+// TestBatchRecomputeCoefficients_ResponseBinsPersisted : le recompute persiste
+// aussi les 3 bins de reponse (terciles d'intensite) avec des coefs decroissants
+// pour un joueur qui repond mal aux matchs intenses.
+func TestBatchRecomputeCoefficients_ResponseBinsPersisted(t *testing.T) {
+	db := openPlayerForRecompute(t, true, true)
+	xuid, mode := "xuid-1", "PvP_ranked"
+	// 15 matchs calmes (paceLobby~2, ratio 1.5), 15 standards (5, 1.0),
+	// 15 chaotiques (10, 0.5). paceTeam mis egal a paceLobby (>= seuil).
+	insertBinBatch := func(prefix string, n int, paceLobby, ratio float64) {
+		for i := 0; i < n; i++ {
+			insertPaceRow(t, db, fmt.Sprintf("%s_m%d", prefix, i), xuid, mode,
+				paceLobby*ratio, paceLobby, paceLobby, 30)
+		}
+	}
+	insertBinBatch("calme", 15, 2.0, 1.5)
+	insertBinBatch("standard", 15, 5.0, 1.0)
+	insertBinBatch("chaotique", 15, 10.0, 0.5)
+
+	if _, err := batchRecomputeCoefficients(context.Background(), db, xuid); err != nil {
+		t.Fatalf("batchRecomputeCoefficients: %v", err)
+	}
+
+	n, coefByBin, nByBin := loadBinsCount(t, db, xuid, mode)
+	if n != 3 {
+		t.Fatalf("want 3 bins persisted, got %d", n)
+	}
+	if !(coefByBin["calme"] > coefByBin["standard"] && coefByBin["standard"] > coefByBin["chaotique"]) {
+		t.Errorf("coefs doivent decroitre avec l'intensite : %v", coefByBin)
+	}
+	for _, bin := range []string{"calme", "standard", "chaotique"} {
+		if nByBin[bin] < 10 {
+			t.Errorf("bin %s : n want >= 10, got %d", bin, nByBin[bin])
+		}
 	}
 }
 
@@ -242,13 +325,13 @@ func TestBatchRecomputeCoefficients_TwoModesIndependent(t *testing.T) {
 		t.Errorf("nUpdated want 2 (both modes), got %d", n)
 	}
 
-	cR, lR, _, ok := loadCoef(t, db, "xuid-1", "PvP_ranked")
-	if !ok || math.Abs(cR-1.40) > 1e-9 || math.Abs(lR-1.20) > 1e-6 {
-		t.Errorf("PvP_ranked coefs unexpected: team=%v lobby=%v", cR, lR)
+	_, lR, _, ok := loadCoef(t, db, "xuid-1", "PvP_ranked")
+	if !ok || math.Abs(lR-1.20) > 1e-6 {
+		t.Errorf("PvP_ranked coef_lobby unexpected: %v", lR)
 	}
-	cU, lU, _, ok := loadCoef(t, db, "xuid-1", "PvP_unranked")
-	if !ok || math.Abs(cU-0.85) > 1e-9 || math.Abs(lU-0.90) > 1e-6 {
-		t.Errorf("PvP_unranked coefs unexpected: team=%v lobby=%v", cU, lU)
+	_, lU, _, ok := loadCoef(t, db, "xuid-1", "PvP_unranked")
+	if !ok || math.Abs(lU-0.90) > 1e-6 {
+		t.Errorf("PvP_unranked coef_lobby unexpected: %v", lU)
 	}
 }
 
@@ -308,11 +391,11 @@ func TestBatchRecomputeCoefficients_OutlierFiltering(t *testing.T) {
 	if n != 1 {
 		t.Errorf("nUpdated want 1, got %d", n)
 	}
-	coefTeam, _, nMatches, _ := loadCoef(t, db, "xuid-1", "PvP_ranked")
+	_, coefLobby, nMatches, _ := loadCoef(t, db, "xuid-1", "PvP_ranked")
 	// Sans filtre, mediane serait tirée par les outliers à 50. Avec filtre,
 	// la mediane reste à 1.0 (les 15 samples valides dominent).
-	if math.Abs(coefTeam-1.0) > 1e-9 {
-		t.Errorf("outlier filter failed: coef_team want 1.0, got %v", coefTeam)
+	if math.Abs(coefLobby-1.0) > 1e-9 {
+		t.Errorf("outlier filter failed: coef_lobby want 1.0, got %v", coefLobby)
 	}
 	if nMatches != 15 {
 		t.Errorf("n_matches want 15 (valid only), got %d", nMatches)
@@ -344,10 +427,10 @@ func TestBatchRecomputeCoefficients_RespectsLimitMostRecent(t *testing.T) {
 	if n != 1 {
 		t.Errorf("nUpdated want 1, got %d", n)
 	}
-	coefTeam, _, nMatches, _ := loadCoef(t, db, xuid, mode)
+	_, coefLobby, nMatches, _ := loadCoef(t, db, xuid, mode)
 	// 200 samples "recent_*" tous à ratio 1.5 → mediane 1.5
-	if math.Abs(coefTeam-1.5) > 1e-9 {
-		t.Errorf("limit=200 most recent should give 1.5, got %v (drift if limit ignored)", coefTeam)
+	if math.Abs(coefLobby-1.5) > 1e-9 {
+		t.Errorf("limit=200 most recent should give 1.5, got %v (drift if limit ignored)", coefLobby)
 	}
 	if nMatches != 200 {
 		t.Errorf("n_matches want 200 (limit), got %d", nMatches)
@@ -371,8 +454,8 @@ func TestBatchRecomputeCoefficients_ObservabilityCounters(t *testing.T) {
 	if got := observability.LoadCounter("engagement_coef_skipped_insufficient_history"); got != 1 {
 		t.Errorf("engagement_coef_skipped_insufficient_history want 1, got %d", got)
 	}
-	// Bucket 1.1..1.3 doit avoir +1 (coef = 1.20)
-	if got := observability.LoadCounter("engagement_coef_team_bucket_1_1_to_1_3"); got != 1 {
+	// Bucket 1.1..1.3 doit avoir +1 (coef_lobby = 1.10)
+	if got := observability.LoadCounter("engagement_coef_lobby_bucket_1_1_to_1_3"); got != 1 {
 		t.Errorf("bucket 1_1_to_1_3 want 1, got %d", got)
 	}
 }
