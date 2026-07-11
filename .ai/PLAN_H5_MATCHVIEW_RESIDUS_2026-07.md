@@ -198,15 +198,18 @@ cd apps/go-api && go run cmd/tmpdbq/main.go ../../data/titles/halo_5/warehouse/m
 # requête « assets non résolus » (celle de l'investigation) → 0 ligne
 ```
 
-### LOT C — Cards front (Résistance / Résultat attendu)
+### LOT C — Cards front (Résistance / Résultat attendu)  [COMPLÉTÉ 2026-07-11]
 Périmètre fermé :
-- [ ] C1. `MatchStatCards.tsx` : card Résistance conditionnée par
-      `providesDamageTaken && (…)` (pattern MMR ligne 435) — DEC-2.
-- [ ] C2. `MatchWinProbCard` rendue seulement si `expected_win_prob != null` — DEC-3.
-      Supprimer le style « grisé » devenu mort si plus aucun cas ne le rend (règle 0
-      code mort).
-- [ ] C3. Tests vitest du composant (H5 sans damage_taken → card absente ; winProb
-      null → card absente ; Infinite avec données → présentes) + i18n intact.
+- [x] C1. `MatchStatCards.tsx` : card Résistance masquée par `providesDamageTaken && (…)`
+      (aligné card MMR) — DEC-2. Constante morte `DR_NA_LABEL` retirée (règle 0 code mort ;
+      les autres surfaces combat-yield gardent leur propre constante, hors périmètre).
+- [x] C2. `MatchWinProbCard` rendue seulement si `expected_win_prob != null && isFinite`
+      (call site) — DEC-3. Composant simplifié (prop `winProb: number`, branche null/`—`/
+      `opacity-50` supprimée) ; clé i18n morte `no_win_prob_data` retirée du TOML + régen.
+- [x] C3. Tests vitest `MatchStatCards.test.tsx` (5 cas : Infinite → Résistance+Résultat+MMR
+      présents ; H5 sans damage_taken → Résistance absente ; sans team_mmr → MMR absente ;
+      winProb null → Résultat absent ; winProb présent → « 62 % »). check-types OK ;
+      dossier match-view 112/112 verts.
 Gate LOT C :
 ```
 make check-types && make test-web
@@ -303,6 +306,7 @@ Gate : gate global = tous les gates A→D+F verts dans la même session + lint +
 |---|---|---|---|
 | A | COMPLÉTÉ | 2026-07-11 | mode/playlist/tug vérifiés réel (JGtm h5 + non-rég Infinite) ; explorer hors périmètre (§8) |
 | B | COMPLÉTÉ | 2026-07-11 | Tidal seedé local (--overrides-only) ; map_ui='Tidal' vérifié réel ; garde-fou 0 map non résolue. PROD : rejouer en V2 |
+| C | COMPLÉTÉ | 2026-07-11 | Résistance + Résultat attendu masqués selon capability/null ; 5 tests vitest ; 112/112 match-view |
 | B | à faire | | |
 | C | à faire | | |
 | D | à faire | | D2 : ventilation skips = |

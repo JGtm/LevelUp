@@ -1,3 +1,23 @@
+## [2026-07-11] Résidus H5 match view — LOT C (cards front Résistance / Résultat attendu)
+
+**Statut** : Complété (LOT C, branche fix/h5-matchview-residus).
+
+**Décision technique principale** : deux cards du match view étaient rendues avec un
+placeholder trompeur au lieu d'être masquées. (C1/DEC-2) card Résistance : `damage_taken`
+absent en H5 → DefensiveResistance nil, mais la card affichait « N/A » ; alignée sur le
+précédent card MMR → `{providesDamageTaken && (…)}`, constante morte `DR_NA_LABEL` retirée.
+(C2/DEC-3) card Résultat attendu : `expected_win_prob` structurellement null sur les
+matchs classés (DEUX titres) → card grisée « — » ; désormais rendue seulement si winProb
+non nul (call site), composant simplifié (prop `number`), clé i18n morte `no_win_prob_data`
+retirée + régen.
+
+**Résultats observés** : tests vitest MatchStatCards (5 cas : présence Infinite,
+absence Résistance sans damage_taken, absence MMR sans team_mmr, absence Résultat si
+winProb null, « 62 % » si présent) verts ; check-types OK ; dossier match-view 112/112.
+
+**Conclusion / prochaine étape** : LOT D (ratings par match : instrumentation skips +
+backfill CSR --missing-only pour les 4 joueurs).
+
 ## [2026-07-11] Résidus H5 match view — LOT B (nom de la map Tidal)
 
 **Statut** : Complété (LOT B, branche fix/h5-matchview-residus). Prod : rejeu en V2.
