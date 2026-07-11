@@ -138,25 +138,28 @@ first_sync_by=JGtm). Matchs témoins :
 
 ## 4. Lots (ordre d'exécution strict)
 
-### LOT A — Lecture Go : playlist, mode, durée (fixes match view)
+### LOT A — Lecture Go : playlist, mode, durée (fixes match view)  [COMPLÉTÉ 2026-07-11]
 Périmètre fermé :
-- [ ] A1. `NormalizePlaylistLabel` rendu title-aware : le strip de préfixe de catégorie
-      ne s'applique qu'aux titres qui le déclarent. Mécanisme : clé fine dans
-      `config/titles/{slug}/mappings/capabilities.toml` (posée pour halo_infinite,
-      absente pour halo_5) lue via CapabilityMap — JAMAIS de `slug == …` (ratchet).
-      Site d'appel : `internal/platform/duckdb/match_view_repo.go:133`.
-- [ ] A2. Mode H5 : dans `GetMatchMeta` (même bloc :141-169), fallback data-driven —
-      si pair (ID+nom) absent ET `GameVariantAssetID` présent, résoudre le mode via
-      `asset_translations` type `game_variant` (cascade fr-FR→fr→en-US→en existante).
-      Vérifier les 2 autres chemins qui produisent mode_ui (match history :
-      `applyMatchHistoryFRTranslations` ; explorer : `explorer_repo.go:414/440`) et
-      appliquer le même fallback s'ils servent des matchs H5.
-- [ ] A3. Dominance : fallback durée dans `buildMatchViewResponse`
-      (`match_view_data_loaders.go:229-232`) : playable → `duration_seconds − T0`
-      (réutiliser la logique `headerGameplayDurationSeconds`) → 0. Title-agnostic.
-- [ ] A4. Tests : cas H5 dans `match_view_repo_meta_test.go` (playlist non strippée,
-      mode via game_variant) + test service durée fallback + non-régression Infinite
-      (mode/playlist/tug existants inchangés).
+- [x] A1. `NormalizePlaylistLabel` rendu title-aware via capability `playlist.label.strip_category`
+      (`games.CapPlaylistCategoryStrip`) : déclarée `supported` dans le TOML halo_infinite +
+      la CapabilityMap hardcoded HI (parité), ABSENTE de halo_5. Câblage : `registry.newMatchViewRepo`
+      lit `capabilitiesForPDB(pdb).Has(CapPlaylistCategoryStrip)` → `WithPlaylistCategoryStrip`.
+      Aucun `slug ==`. Site d'appel : `match_view_repo.go` (bloc PlaylistAssetID). Vérifié réel :
+      ccf64951 → "Super Fiesta Fête" (non tronqué) ; Infinite inchangé (b955bf2a "Partie rapide").
+- [x] A2. Mode H5 : fallback data-driven en fin de `GetMatchMeta` — pair (ID+nom) absent ET
+      `GameVariantAssetID` présent → mode via `asset_translations` type `game_variant`. Vérifié réel :
+      7e3fa711 mode_ui="Assassin", ccf64951 "Capture du drapeau". Les 2 autres chemins :
+      match history H5 = [~] servi par l'ADAPTER CANONIQUE (`canonicalModeUI` priorise game_variant +
+      `enrichCanonicalDetailTranslations`), la voie repo `applyMatchHistoryFRTranslations` ne traite
+      que le player DB local (0 ligne en H5) ; explorer = [!] lit les colonnes BRUTES du registre
+      (`Q19c` : map_name/pair_name, TOUTES NULL en H5, pas seulement le mode) → hors périmètre
+      match view (cf. §8 Découvertes).
+- [x] A3. Dominance : helper `tugDurationMS(meta)` extrait dans `match_view_data_loaders.go` —
+      playable prioritaire (Infinite inchangé), fallback `headerGameplayDurationSeconds`
+      (duration−T0) sinon 0. Title-agnostic. Vérifié réel : tug_of_war 7e3fa711=18, ccf64951=13.
+- [x] A4. Tests : `match_view_repo_meta_test.go` (playlist title-aware strip, mode via game_variant,
+      non-régression pair présent) + `match_view_tug_duration_test.go` (5 cas fallback) +
+      `capabilities_test.go` count 17→18 + parité TOML/hardcoded HI. go test + lint verts.
 Gate LOT A (commandes exactes) :
 ```
 cd apps/go-api && go test ./internal/platform/duckdb/... ./internal/service/... ./internal/analysis/...
@@ -295,7 +298,7 @@ Gate : gate global = tous les gates A→D+F verts dans la même session + lint +
 
 | Lot | Statut | Date | Notes |
 |---|---|---|---|
-| A | à faire | | |
+| A | COMPLÉTÉ | 2026-07-11 | mode/playlist/tug vérifiés réel (JGtm h5 + non-rég Infinite) ; explorer hors périmètre (§8) |
 | B | à faire | | |
 | C | à faire | | |
 | D | à faire | | D2 : ventilation skips = |
@@ -304,6 +307,14 @@ Gate : gate global = tous les gates A→D+F verts dans la même session + lint +
 | V | V1 fait ; V2-V4 après merge | 2026-07-07 | prod = local ; « introuvable » = LOT F |
 
 ## 8. Découvertes hors périmètre (NE PAS traiter dans ce chantier)
+
+- **Explorer « matchs récents cible » (Q19c) non résolu pour H5** (constaté au LOT A2) :
+  `Q19cTargetRecentMatches` lit `r.map_name` / `r.pair_name` / `r.pair_name_fr` BRUTS du
+  registre — tous NULL sur H5 (map ET mode ET playlist vides, pas seulement le mode). Le
+  « même fallback game_variant » demandé par A2 ne suffirait pas (la map serait toujours
+  vide). Correctif propre = porter la cascade `asset_translations` complète (map+mode+
+  playlist, + fallback game_variant) à Q19c/`scanTargetRecentMatch`, distinct et plus large
+  que le périmètre match view/média. Statué [!] dans A2.
 
 - `GetMatchKVPairs`/`GetMatchEvents` avalent les erreurs SQL (`return nil, nil`,
   `match_view_repo_extras.go:56/61`) — anti-pattern « swallowed error » : un échec de

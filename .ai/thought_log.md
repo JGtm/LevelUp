@@ -1,3 +1,33 @@
+## [2026-07-11] Résidus H5 match view — LOT A (lecture Go : playlist, mode, durée)
+
+**Statut** : Complété (LOT A du PLAN_H5_MATCHVIEW_RESIDUS_2026-07, branche fix/h5-matchview-residus).
+
+**Décision technique principale** : 3 fixes de LECTURE title-agnostic dans la voie repo du
+match view (H5 passe par le repo, pas la voie canonique : routage repo-first, matchs H5
+présents en DuckDB local). (A1) strip du préfixe de catégorie de playlist rendu conditionnel
+à une nouvelle capability `playlist.label.strip_category` (déclarée HI, absente H5) lue via
+CapabilityMap au wiring (`registry.newMatchViewRepo` → `WithPlaylistCategoryStrip`) — jamais
+de slug==. (A2) fallback mode data-driven : pair absent + game_variant présent → mode via
+`asset_translations` type game_variant. (A3) helper `tugDurationMS` : fallback durée
+(duration−T0) quand `playable_duration_seconds` est NULL (100 % des matchs H5).
+
+**Résultats observés** (serveur local, données réelles JGtm) :
+- 7e3fa711 (Slayer classé) : mode_ui="Assassin", playlist="Assassin", tug=18 (était vide).
+- ccf64951 (Super Fiesta) : playlist="Super Fiesta Fête" (n'est plus tronqué en "Fête"),
+  mode_ui="Capture du drapeau", tug=13.
+- Non-régression Infinite : b955bf2a mode="Assassin en équipe"/playlist="Partie rapide"/
+  map="Shiro"/tug=18 ; e8d384c7 "Drapeau neutre"/"Partie rapide"/"Gouffre"/16.
+- map_ui reste vide (Tidal) → LOT B. go test (duckdb/service/games/analysis) + lint
+  --new-from-rev=origin/main = 0 issue.
+
+**Découvertes** (consignées §8, non traitées) : explorer « matchs récents cible » (Q19c)
+lit les colonnes brutes du registre (map/mode/playlist NULL en H5) — gap plus large que
+le fallback mode, hors périmètre match view. Statué [!] dans A2.
+
+**Conclusion / prochaine étape** : LOT B (nom de la map Tidal via override metadata H5 +
+garde-rail). Serveur dev local arrêté pendant l'exécution (mono-writer) ; à relancer en fin
+de chantier.
+
 ## [2026-07-10] MERGE MAIN — campagne audits 2026-07 + clôture + gate humain (GO utilisateur)
 
 **Statut** : En cours (merge exécuté dans cette session ; post-deploy VPS à suivre).
