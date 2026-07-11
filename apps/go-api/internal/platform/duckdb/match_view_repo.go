@@ -54,11 +54,25 @@ type MatchViewRepo struct {
 	// jamais partagé entre requêtes, et il est armé (écrit) dans GetMatchMeta AVANT le
 	// fan-out parallèle des autres lectures (loadMatchViewDataParallel) — pas de course.
 	forceLive bool
+	// stripPlaylistCategory : le titre déclare-t-il CapPlaylistCategoryStrip
+	// (libellés de playlist préfixés d'une catégorie matchmaking à retirer pour
+	// l'affichage) ? Câblé au wiring depuis la CapabilityMap du titre — jamais de
+	// slug ==. Zéro-value false = pas de strip (un titre dont les noms officiels
+	// n'ont pas de préfixe, ex. Halo 5, garde "Super Fiesta Fête" entier).
+	stripPlaylistCategory bool
 }
 
 // NewMatchViewRepo crée un MatchViewRepo.
 func NewMatchViewRepo(pdb *PlayerDB, xuid string) *MatchViewRepo {
 	return &MatchViewRepo{pdb: pdb, xuid: xuid}
+}
+
+// WithPlaylistCategoryStrip active/désactive le retrait du préfixe de catégorie
+// matchmaking du libellé de playlist (CapPlaylistCategoryStrip). Câblé au wiring
+// depuis la CapabilityMap du titre. Retourne le repo pour chaînage.
+func (r *MatchViewRepo) WithPlaylistCategoryStrip(enabled bool) *MatchViewRepo {
+	r.stripPlaylistCategory = enabled
+	return r
 }
 
 // WithSharedReader injecte un SharedReader override pour les lectures shared (pilote
@@ -132,8 +146,10 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 	if row.PlaylistAssetID != nil {
 		row.PlaylistNameFR = r.resolveAssetName(ctx, "playlist", *row.PlaylistAssetID)
 		// Retire la catégorie matchmaking de tête ("Arène delta : Héritage" →
-		// "Delta : Héritage") pour l'affichage.
-		if row.PlaylistNameFR != nil {
+		// "Delta : Héritage") pour l'affichage — UNIQUEMENT si le titre déclare
+		// CapPlaylistCategoryStrip (title-aware). Halo 5 ne la déclare pas : son
+		// nom officiel "Super Fiesta Fête" doit rester entier (sinon → "Fête").
+		if row.PlaylistNameFR != nil && r.stripPlaylistCategory {
 			norm := analysis.NormalizePlaylistLabel(*row.PlaylistNameFR)
 			row.PlaylistNameFR = &norm
 		}
@@ -180,6 +196,19 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 			row.ModeNameFR = &fr
 		} else if fr := analysis.ResolvePairNameFR(rawPairName, derefString(row.PairNameFR), pairAssetName, modeFR); fr != "" {
 			row.ModeNameFR = &fr
+		}
+	}
+	// Fallback mode data-driven (title-agnostic) : quand le titre n'a PAS de pair
+	// (ni ID ni nom — cas Halo 5, PairMode nil dans l'adapter) mais porte un
+	// game_variant, le mode est résolu via asset_translations type "game_variant"
+	// (même cascade FR-FR→fr→en-US→en). Sans ça mode_ui reste vide sur 100 % des
+	// matchs H5. N'affecte pas les titres à pair (Infinite : PairAssetID présent →
+	// condition fausse, comportement inchangé).
+	if (row.ModeNameFR == nil || strings.TrimSpace(*row.ModeNameFR) == "") &&
+		row.PairAssetID == nil && strings.TrimSpace(derefString(row.PairName)) == "" &&
+		row.GameVariantAssetID != nil && strings.TrimSpace(*row.GameVariantAssetID) != "" {
+		if gv := r.resolveAssetName(ctx, "game_variant", *row.GameVariantAssetID); gv != nil {
+			row.ModeNameFR = gv
 		}
 	}
 	return &row, nil
