@@ -455,6 +455,19 @@ format        = "integer"
 display_order = 95
 group         = "derived"
 
+# H5 declare engagement_score (il l'expose a terme — capability engagement.score
+# passe a degraded au chantier F7, activation graduee). Sous-ensemble par
+# capability-group (F6) : la section existe, le serving reste gate par la
+# capability fine.
+[fields.engagement_score]
+labels        = { en = "Engagement score", fr = "Score d'engagement" }
+description   = { en = "Intra-match engagement (0-100 percentile of the player-vs-expected residual, lobby-anchored).", fr = "Engagement intra-match (percentile 0-100 de l'écart joueur-attendu, ancré lobby)." }
+storage_unit  = ""
+display_unit  = ""
+format        = "integer"
+display_order = 96
+group         = "derived"
+
 [fields.time_played_seconds]
 labels        = { en = "Time played", fr = "Temps de jeu" }
 storage_unit  = "seconds"

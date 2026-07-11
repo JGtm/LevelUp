@@ -19,6 +19,7 @@ defensive_resistance
 duration_seconds
 elite_kills
 enemy_mmr
+engagement_score
 grenade_kills
 grunt_kills
 headshot_kills

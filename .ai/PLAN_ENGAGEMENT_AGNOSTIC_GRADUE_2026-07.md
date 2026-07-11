@@ -61,14 +61,21 @@ Critères de succès mesurables :
 ### E1 — Canonicalisation : l'engagement devient un métrique de 1er ordre
 Constat mémoire : le score (0-100) n'est PAS un FieldKey canonique (contrairement à
 `performance_score`, `offensive_conversion`, `defensive_resistance`) — c'est le verrou n°1.
-- [ ] E1a — `internal/games/canonical/fields.go` : FieldKey `engagement_score` (+ unité,
-  bornes) — suivre la recette du skill `canonical-types` (FieldKey + TOML dans le MÊME commit).
-- [ ] E1b — `config/titles/halo_infinite/mappings/fields.toml` + `halo_5/mappings/fields.toml` :
-  section `engagement_score` (labels FR/EN, format, display_order). H5 le déclare (il l'expose
-  à terme) — cohérent avec la règle F6 « sous-ensemble par capability-group ».
-- [ ] E1c — Vérifier sur pièces où le score circule aujourd'hui HORS canonical
-  (`player_match_enrichment.engagement_score`, service engagement, API) et brancher la
-  lecture via le FieldKey (labels via `FieldMappingSet.Get`) là où un label est servi.
+- [x] E1a — `internal/games/canonical/fields.go` : FieldKey `engagement_score` (unité sans
+  dimension, bornes [0,100] documentées dans le commentaire) ajouté au groupe `derived` +
+  `AllFieldKeys()` ; count test 59→60 ; golden `fields.golden.txt` MAJ (FieldKey + TOML dans
+  le MÊME commit, recette `canonical-types`).
+- [x] E1b — `config/titles/halo_infinite/mappings/fields.toml` + `halo_5/mappings/fields.toml` :
+  section `[fields.engagement_score]` (labels FR/EN, description FR/EN, format `integer`,
+  `display_order = 96` unique dans `derived`). H5 le déclare avec commentaire F6 « sous-ensemble
+  par capability-group » (serving gaté par la capability fine).
+- [x] E1c — Vérifié sur pièces : le score VALEUR circule via `player_match_enrichment.engagement_score`
+  (persist, `rows.go`/`player_persister.go`) et l'API engagement (numérique brut, JSON key, PAS
+  de libellé localisé). Le SEUL surface Go qui sert un LIBELLÉ de champ est
+  `GET /titles/{slug}/field-mappings` (`handlers/field_mappings.go`), qui itère `set.All()`
+  génériquement → le label FR/EN de `engagement_score` est désormais servi automatiquement via
+  `FieldMappingSet` (branchement data-driven, aucun code à modifier). Rien d'autre ne sert de
+  libellé engagement côté Go.
 - Gate E1 : `go test ./internal/games/... ./internal/analysis/...` vert ; test de parité
   fields.toml vert ; ratchet anti-slug vert ; score Infinite inchangé (goldens).
 
@@ -164,7 +171,12 @@ Constat mémoire : le score (0-100) n'est PAS un FieldKey canonique (contraireme
 - Halo 7 / titres futurs (le chantier les REND possibles, il ne les câble pas).
 
 ## 6. Journal §J (à remplir par l'exécutant à chaque clôture de phase)
-- (vide au démarrage)
+- **E1 — COMPLÉTÉE (2026-07-11)**. `engagement_score` promu FieldKey canonique de 1er ordre
+  (groupe `derived`, bornes [0,100]) + sections `fields.toml` des 2 titres + count/golden MAJ.
+  E1c : libellé servi data-driven par `field_mappings.go` (générique `set.All()`), aucun
+  branchement Go à ajouter. Gate : `go test ./internal/games/... ./internal/analysis/...`
+  ALL GREEN ; parité fields (loader smoke réel) verte ; ratchet anti-slug (`archlint`) vert ;
+  golden FieldKey vert ; `go vet` 0.
 
 ## 7. Découvertes hors périmètre (à consigner, NE PAS traiter)
 - (vide au démarrage)

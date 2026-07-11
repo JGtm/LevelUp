@@ -1,3 +1,23 @@
+## [2026-07-11] Engagement agnostic gradué (F7) — Phase E1 (Complété)
+
+**Statut** : E1 complétée sur `feat/engagement-agnostic-gradue` (branche basée sur
+`feat/engagement-lobby-response`, refonte lobby CLOSE en amont).
+
+**Décision technique** : `engagement_score` devient un FieldKey canonique de 1er ordre
+(`canonical/fields.go`, groupe `derived`, unité sans dimension, bornes [0,100]) — c'était le
+verrou n°1 (le score n'était pas dans le canonique contrairement à `performance_score`). Ajout
+des sections `[fields.engagement_score]` dans les fields.toml des DEUX titres (H5 le déclare, F6
+sous-ensemble par capability-group). Count test 59→60, golden MAJ.
+
+**Résultat observé** : le libellé FR/EN de `engagement_score` est désormais servi
+AUTOMATIQUEMENT par `GET /titles/{slug}/field-mappings` (handler générique `set.All()`), sans
+code Go supplémentaire (E1c data-driven). Le score VALEUR continue de circuler via
+`player_match_enrichment.engagement_score` (persist) + l'API engagement (numérique brut, sans
+libellé). Gates E1 verts : games+analysis, parité fields, ratchet anti-slug, golden, vet 0.
+
+**Prochaine étape** : E2 — vecteur de signaux `EngagementSignals` + masque de présence
+(couche analysis pure).
+
 ## [2026-07-11] Engagement refonte lobby — Phase 6 + CLÔTURE (COMPLÉTÉ)
 
 **Statut** : Complété. Les 6 phases de PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07 sont livrées
