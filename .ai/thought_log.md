@@ -1,7 +1,12 @@
 ## [2026-07-11] Résidus H5 match view — LOT D code (instrumentation + --missing-only + Placement)
 
-**Statut** : En cours (code livré + run JGtm fait ; restent les runs Madina97294 /
-Chocoboflor / XxDaemonGamerxX + D4).
+**Statut** : Complété (code + 4 runs locaux + D4 vérifié ; CI branche verte sur le commit D).
+
+**Clôture (2026-07-11 soir)** : runs Madina97294 (293), Chocoboflor (277), XxDaemonGamerxX
+(129) via auth_as=JGtm — ventilation IDENTIQUE : 100 % placement_csr_null, 0 autre cause
+(total 1002/1002). Couverture finale classés avec ligne CSR/Placement = 100 % × 4 joueurs
+(1306/1100/893/219). D4 : les 3 témoins classés servent rank={CSR, Placement} et le front
+affiche déjà tier_label sans modif (MatchRankBadge).
 
 **Décision technique principale** : (D1) `PersistPerMatchRatings` retourne un
 `PerMatchRatingsSummary` ventilant CHAQUE skip par raison (registre KO / carnage KO /

@@ -216,20 +216,26 @@ make check-types && make test-web
 # vitest hors sandbox (dangerouslyDisableSandbox) — cf. memoire vitest
 ```
 
-### LOT D — Ratings par match : instrumentation + backfill ciblé
+### LOT D — Ratings par match : instrumentation + backfill ciblé  [COMPLÉTÉ 2026-07-11]
 Périmètre fermé :
-- [ ] D1. `livesync.PersistPerMatchRatings` : compteurs + logs de skip par raison
-      (carnage_err / owner_absent_du_carnage / placement_csr_null / persist_err) —
-      règle n°3, plus aucun `continue` silencieux. Exposer le bilan en fin de run.
-- [ ] D2. `cmd/h5-csr-match-backfill` : flag `--missing-only` (ne traite que les
-      classés sans ligne CSR dans la player DB — ~388 matchs sur 4 joueurs au lieu de
-      ~5900 fetches). Run pour JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX ;
-      consigner la ventilation des skips dans §7.
-- [ ] D3. Selon D2 (DEC-4) : si placement majoritaire → écriture ligne « Placement »
-      (SkillRankInsert rating NULL + tier_label, via PlayerPersister, append-only
-      ADR 0019/0026) + affichage front du label ; sinon `[!]` justifié ici.
-- [ ] D4. Vérifier les 3 matchs témoins : ligne CSR (ou Placement) présente, header
-      match view non vide.
+- [x] D1. `PersistPerMatchRatings` retourne un `PerMatchRatingsSummary` : chaque skip
+      compté ET loggé par raison (skip_registry / skip_carnage / skip_owner_absent /
+      placement_csr_null / skip_persist) + bilan slog Info en fin de run. Paramètre
+      restreint à l'interface `carnageGetter` (testable). Test integration
+      `csr_match_summary_integration_test` (fake carnage, ventilation 6 cas).
+- [x] D2. Flag `--missing-only` (classés sans ligne CSR de la player DB uniquement).
+      Runs des 4 joueurs FAITS en local (auth_as=JGtm pour les 3 RT morts) —
+      ventilation §7 : **1002/1002 = placement_csr_null, 0 carnage KO, 0 owner absent**.
+- [x] D3. DEC-4 CONFIRMÉ à 100 % → `buildPerMatchCSRInsert(nil)` écrit une ligne
+      « Placement » (tier=skill.TierLabelPlacement réutilisé, rating_value=0 NOT NULL,
+      via PlayerPersister append-only). Affichage front : [~] déjà couvert —
+      `buildRankBlock` (Go) gère isPlacement (pas de valeur/progress) et
+      `MatchRankBadge` (web) affiche tier_label tel quel → « Placement » rendu sans modif.
+- [x] D4. Témoins vérifiés : 7e3fa711 / 14f762a2-970b / f6baea94-e0e9 → ligne
+      `CSR / Placement` dans match_skill_rank_latest ET `rank={rating_type:CSR,
+      tier_label:Placement}` servi par l'API ; header complet (map/mode/playlist).
+      Couverture finale : classés avec ligne = 1306/1306 (JGtm), 1100/1100 (Madina),
+      893/893 (Chocoboflor), 219/219 (XxDaemonGamerxX).
 Gate LOT D :
 ```
 cd apps/go-api && go test -tags=integration ./internal/persist/... ./internal/games/halo_5/...
@@ -306,7 +312,8 @@ Gate : gate global = tous les gates A→D+F verts dans la même session + lint +
 |---|---|---|---|
 | A | COMPLÉTÉ | 2026-07-11 | mode/playlist/tug vérifiés réel (JGtm h5 + non-rég Infinite) ; explorer hors périmètre (§8) |
 | B | COMPLÉTÉ | 2026-07-11 | Tidal seedé local (--overrides-only) ; map_ui='Tidal' vérifié réel ; garde-fou 0 map non résolue. PROD : rejouer en V2 |
-| C | COMPLÉTÉ | 2026-07-11 | Résistance + Résultat attendu masqués selon capability/null ; 5 tests vitest ; 112/112 match-view |
+| C | COMPLÉTÉ | 2026-07-11 | Résistance + Résultat attendu masqués selon capability/null ; 5 tests vitest ; 112/112 match-view ; fix CI types test (tsc -b) |
+| D | COMPLÉTÉ | 2026-07-11 | D2 ventilation : JGtm 303, Madina 293, Chocoboflor 277, XxDaemon 129 → **1002/1002 placement_csr_null** (0 carnage KO, 0 owner absent) ; lignes Placement écrites, couverture classés 100 % × 4 joueurs. PROD : rejouer D2 en V2 |
 | B | à faire | | |
 | C | à faire | | |
 | D | à faire | | D2 : ventilation skips = |
