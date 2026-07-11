@@ -40,6 +40,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	gamertag := fs.String("gamertag", "", "Gamertag du joueur (mutuellement exclusif avec --all)")
 	allPlayers := fs.Bool("all", false, "Applique le backfill a tous les joueurs configures")
 	engagementScores := fs.Bool("engagement-scores", false, "Backfill du score d'engagement (Phase 6 plan engagement)")
+	engagementTitle := fs.String("title", titlePkg.DefaultSlug, "Slug du titre pour --engagement-scores (halo_infinite | halo_5)")
 	citations := fs.Bool("citations", false, "Backfill des citations (match_citations) depuis citation_mappings + medals + stats + awards")
 	lusr := fs.Bool("lusr", false, "Backfill LUSR TrueSkill 2 avec poids medailles v5")
 	csr := fs.Bool("csr", false, "Backfill CSR par-match via GetMatchSkill (RankRecap). Idempotent ; --force re-fetche tous les matchs ranked")
@@ -73,7 +74,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	ctx := context.Background()
 	if *engagementScores {
 		if *allPlayers {
-			if err := runBackfillAllEngagement(ctx, cfg, *force); err != nil {
+			if err := runBackfillAllEngagement(ctx, cfg, *engagementTitle, *force); err != nil {
 				return err
 			}
 		} else {
@@ -81,7 +82,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 			if err != nil {
 				return err
 			}
-			if err := runBackfillEngagementForPlayer(ctx, cfg, player.Gamertag, player.XUID, *force); err != nil {
+			if err := runBackfillEngagementForPlayer(ctx, cfg, *engagementTitle, player.Gamertag, player.XUID, *force); err != nil {
 				return err
 			}
 		}
@@ -221,7 +222,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	return nil
 }
 
-func runBackfillAllEngagement(ctx context.Context, cfg *config.AppConfig, force bool) error {
+func runBackfillAllEngagement(ctx context.Context, cfg *config.AppConfig, titleSlug string, force bool) error {
 	players, err := cfg.LoadPlayers()
 	if err != nil {
 		return fmt.Errorf("chargement db_profiles.json: %w", err)
@@ -238,38 +239,38 @@ func runBackfillAllEngagement(ctx context.Context, cfg *config.AppConfig, force 
 	totalUpdated := 0
 
 	for _, player := range players {
-		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
+		dbPath := resolver.PlayerDBPath(titleSlug, player.Gamertag)
 		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
 			skipped++
-			fmt.Printf("backfill engagement SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
+			fmt.Printf("backfill engagement SKIP: title=%s gamertag=%s reason=no_player_db\n", titleSlug, player.Gamertag)
 			continue
 		}
 
-		updated, runErr := runBackfillEngagementOne(ctx, cfg, player.Gamertag, player.XUID, force)
+		updated, runErr := runBackfillEngagementOne(ctx, cfg, titleSlug, player.Gamertag, player.XUID, force)
 		if runErr != nil {
 			failed++
-			fmt.Printf("backfill engagement FAIL: gamertag=%s err=%v\n", player.Gamertag, runErr)
+			fmt.Printf("backfill engagement FAIL: title=%s gamertag=%s err=%v\n", titleSlug, player.Gamertag, runErr)
 			continue
 		}
 		processed++
 		totalUpdated += updated
-		fmt.Printf("backfill engagement OK: gamertag=%s updated=%d\n", player.Gamertag, updated)
+		fmt.Printf("backfill engagement OK: title=%s gamertag=%s updated=%d\n", titleSlug, player.Gamertag, updated)
 	}
 
-	fmt.Printf("backfill engagement batch: total=%d processed=%d skipped=%d failed=%d total_updated=%d\n",
-		total, processed, skipped, failed, totalUpdated)
+	fmt.Printf("backfill engagement batch: title=%s total=%d processed=%d skipped=%d failed=%d total_updated=%d\n",
+		titleSlug, total, processed, skipped, failed, totalUpdated)
 	if failed > 0 {
 		return fmt.Errorf("backfill engagement: %d joueur(s) en echec", failed)
 	}
 	return nil
 }
 
-func runBackfillEngagementForPlayer(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string, force bool) error {
-	updated, err := runBackfillEngagementOne(ctx, cfg, gamertag, xuid, force)
+func runBackfillEngagementForPlayer(ctx context.Context, cfg *config.AppConfig, titleSlug, gamertag, xuid string, force bool) error {
+	updated, err := runBackfillEngagementOne(ctx, cfg, titleSlug, gamertag, xuid, force)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("backfill engagement OK: gamertag=%s updated=%d force=%t\n", gamertag, updated, force)
+	fmt.Printf("backfill engagement OK: title=%s gamertag=%s updated=%d force=%t\n", titleSlug, gamertag, updated, force)
 	return nil
 }
 
@@ -279,10 +280,13 @@ func runBackfillEngagementForPlayer(ctx context.Context, cfg *config.AppConfig, 
 // Applique les migrations Phase 2 engagement (colonnes player + match_intensity
 // shared) avant le backfill, car sync.OpenPlayerDB/OpenSharedDB ne lance pas
 // migration.RunForDB (contrairement au pool DuckDB / boot serveur).
-func runBackfillEngagementOne(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string, force bool) (int, error) {
+func runBackfillEngagementOne(ctx context.Context, cfg *config.AppConfig, titleSlug, gamertag, xuid string, force bool) (int, error) {
+	if titleSlug == "" {
+		titleSlug = titlePkg.DefaultSlug
+	}
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
-	playerDBPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, gamertag)
-	sharedDBPath := resolver.SharedDBPath(titlePkg.DefaultSlug)
+	playerDBPath := resolver.PlayerDBPath(titleSlug, gamertag)
+	sharedDBPath := resolver.SharedDBPath(titleSlug)
 
 	if err := applyMigrationsOnDB(playerDBPath, migration.TargetPlayer); err != nil {
 		return 0, fmt.Errorf("migrations player %s: %w", gamertag, err)
@@ -291,7 +295,7 @@ func runBackfillEngagementOne(ctx context.Context, cfg *config.AppConfig, gamert
 		return 0, fmt.Errorf("migrations shared: %w", err)
 	}
 
-	engine := go_sync.NewSyncEngine(cfg.RepoRoot, gamertag, xuid, nil, nil)
+	engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, gamertag, xuid, nil, nil)
 	return engine.RunBackfillEngagementScores(ctx, force)
 }
 

@@ -261,29 +261,43 @@ generate-types` (diff confiné à openapi.yaml + engagement + generated.ts). →
 
 Le résidu persisté dépend des coefs, les coefs dépendent des paces persistées. Séquence :
 
-- [ ] Passe A : recompute force des enrichments engagement (nouveaux poids → nouvelles
-      paces ; résidus provisoirement calculés avec les coefs périmés) — chemin force
-      existant (`enrichment_backfill.go` l.122 / `engine_backfills.go` l.93) via la CLI
-      `levelup` (identifier la commande exacte : `go run ./apps/go-api/cmd/levelup --help`,
-      c'est un backfill enrichment par joueur ; la documenter ici à l'exécution).
-- [ ] Recompute coefficients + bins pour tous les joueurs des 2 titres
-      (`POST /engagement/recompute_coefficients` par joueur, ou l'équivalent CLI).
-- [ ] Passe B : recompute force à nouveau (paces identiques, résidus/scores recalculés
-      avec les coefs/bins définitifs).
-- [ ] Vérification chiffrée (gate) : sur Madina/JGtm/Chocoboflor Infinite —
-      (a) `engagement_response_bins` porte 3 bins × modes éligibles avec n ≥ 10 ;
-      (b) taux de rejets d'échantillons hors-AFK < 5 % (sinon seuil 0.6, documenter) ;
-      (c) sur le match témoin `bc918a5a-…` vu JGtm : `pace_attendu ≠ pace_team`
-      (définitions désormais indépendantes) et `expected_basis` ∈ {bin, global} ;
-      (d) aucun coef hors [0.1, 5.0].
-- [ ] Écritures via le chemin existant (BatchBuilder/Persister append-only) — aucun
-      UPSERT nouveau sur table partagée. Les tests anti-ART restent verts.
+- [x] **CORRECTIF cœur (découvert ici, complète Phase 2)** : le chemin de compute SYNC
+      (`internal/sync/engagement.go::batchComputeEngagementScores`) codait en dur
+      `CoefTeamShare/CoefLobbyShare = 1.0` (cold-start), donc le résidu PERSISTÉ
+      (`engagement_score_brut`, historique du percentile) restait dans l'univers
+      cold-start alors que le serving live utilise le modèle réel → percentile mélangeait
+      deux univers. Corrigé : `loadExpectedInputsForMode` (coef lobby global + bins,
+      caché par mode) → le compute persiste dans le MÊME univers que le serving. C'est ce
+      qui rend le re-backfill 2 passes convergent.
+- [x] Passe A : `levelup backfill --all --engagement-scores --force --title halo_infinite`
+      (chemin `RunBackfillEngagementScores` = compute paces nouveaux poids PUIS recompute
+      coefs+bins, en un appel). Ajout d'un flag `--title` à la CLI (elle codait `DefaultSlug`
+      → Infinite-only ; nécessaire pour D7). Résultat : 8 joueurs, 0 échec, 4246 matchs.
+- [x] Recompute coefficients + bins : inclus dans `RunBackfillEngagementScores`
+      (`batchRecomputeCoefficients` → `recomputeResponseBins`), pas besoin d'appel séparé.
+- [x] Passe B : re-run identique (paces stables, résidus recalculés avec coefs/bins
+      définitifs). 0 échec, 4246 matchs.
+- [x] Vérification chiffrée (Infinite, via `go run cmd/tmpdbq`) :
+      (a) JGtm/Madina/Chocoboflor PvP_unranked = 3 bins n=66 chacun (≥10) ; ranked
+      sous-peuplé (Madina n=4/4/5) persisté mais gaté au serving (n<10 → global) ;
+      (b) taux de rejets hors-AFK : JGtm 0 % / Madina 0.5 % / Chocoboflor 0 % (<5 % →
+      seuil 0.75 conservé) ;
+      (c) match témoin `bc918a5a` JGtm : PvP_unranked, meanLobby=2.902 → bin **chaotique**
+      (coef 0.931, n=66) → `expected_basis=bin` ; `pace_attendu`=0.931×2.902=**2.70** ≠
+      `pace_team`=2.597 (définitions indépendantes, l'ancien confondu coef_team≈1.005 est
+      levé) ;
+      (d) 0 coef hors [0.1, 5.0] sur les 3 joueurs.
+- [x] H5 (D7) : Passe A+B `--title halo_5`, 0 échec, 10480 matchs. Bins peuplés (6/joueur,
+      3×2 modes, n=59-67, 0 hors bornes) — compute title-agnostic confirmé.
+- [x] Écritures via le chemin existant (Persister append-only + SELECT-then-UPDATE-or-INSERT
+      bins/coefs sous lease) — aucun UPSERT nouveau sur table partagée. Tests anti-ART verts.
 
-Gate : `go test -tags=integration -p 1 ./...` (OBLIGATOIRE ici — sync/persist touchés),
-code de sortie vérifié, filtre `^--- FAIL:` ancré.
+Gate : `go test -tags=integration -p 1 ./internal/sync/...` exit 0 (compute path touché ;
+full `./...` au gate global Phase 6). Serveur dev local arrêté le temps du backfill (lease
+mono-process) puis redémarré (air, port 8000 OK).
 
 Note prod : le re-backfill prod se rejoue APRÈS merge (push main = deploy auto — prévenir
-l'utilisateur avant). Étape listée mais exécution différée au runbook de merge.
+l'utilisateur avant). Étape LOCALE faite ; exécution PROD différée au runbook de merge.
 
 ### Phase 5 — Front
 
@@ -359,6 +373,8 @@ Périmètre fermé :
 - Phase 3 : COMPLÉTÉE (2026-07-11) — expected_basis/intensity_bin dans le contrat ;
   EngagementProfile dédié (bins, sans coef_team_share) ; openapi.yaml + generated.ts
   régénérés ; tests api/service verts.
-- Phase 4 : non commencée
+- Phase 4 : COMPLÉTÉE en LOCAL (2026-07-11) — correctif compute-path sync + flag CLI
+  --title ; re-backfill 2 passes Infinite (4246×2) + H5 (10480×2), 0 échec ; gate (a)-(d)
+  vérifié Infinite, bins H5 peuplés. Re-backfill PROD différé post-merge (runbook).
 - Phase 5 : non commencée
 - Phase 6 : non commencée

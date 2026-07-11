@@ -1,3 +1,35 @@
+## [2026-07-11] Engagement refonte lobby — Phase 4 (re-backfill 2 titres LOCAL)
+
+**Statut** : Complété en LOCAL (Phase 4/6). Re-backfill PROD différé post-merge.
+
+**Correctif cœur (découvert, complète Phase 2)** : `batchComputeEngagementScores`
+(chemin sync qui persiste le résidu = historique du percentile) codait en dur les coefs
+à 1.0 (cold-start). Le résidu persisté restait donc en univers cold-start alors que le
+serving live utilise le modèle réel → percentile incohérent. Corrigé via
+`loadExpectedInputsForMode` (coef lobby global + bins, caché par mode) : compute et
+serving dans le même univers. Sans ça le re-backfill 2 passes ne converge pas.
+
+**CLI** : ajout d'un flag `--title` au backfill engagement (`NewSyncEngineForTitle`) — la
+CLI codait `DefaultSlug` (Infinite only), nécessaire pour le re-backfill H5 (D7).
+
+**Exécution** : serveur dev local arrêté (lease mono-process), 2 passes force par titre
+via `levelup backfill --all --engagement-scores --force --title <slug>`, serveur
+redémarré (air, port 8000).
+- Infinite : 8 joueurs, 0 échec, 4246 matchs ×2.
+- H5 : 0 échec, 10480 matchs ×2.
+
+**Vérif chiffrée (Infinite, cmd/tmpdbq)** : (a) 3 bins n=66 PvP_unranked pour
+JGtm/Madina/Chocoboflor ; (b) rejets hors-AFK 0/0.5/0 % (<5 %, seuil 0.75 gardé) ;
+(c) match témoin bc918a5a JGtm → bin chaotique, expected_basis=bin, pace_attendu 2.70 ≠
+pace_team 2.597 (confond levé) ; (d) 0 coef hors [0.1,5.0]. H5 : 6 bins/joueur peuplés.
+
+**Gate** : `go test -tags=integration -p 1 ./internal/sync/...` exit 0 (compute path).
+Régression B3 (source-grep) rendue tolérante au whitespace (gofmt réaligne les champs).
+
+**Prochaine étape** : Phase 5 — front (masquage cold_start, tooltip lobby, i18n, page profil).
+
+---
+
 ## [2026-07-11] Engagement refonte lobby — Phase 3 (contrat API)
 
 **Statut** : Complété (Phase 3/6 de PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07).
