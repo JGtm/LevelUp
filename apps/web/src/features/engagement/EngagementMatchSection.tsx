@@ -60,9 +60,11 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
     if (isEmpty) return null
   }
 
-  // Quand confidence === 'insufficient_history', coef = 1.0 (cold-start) =>
-  // pace_attendu = pace_team => courbes superposées => masquer Attendu.
-  const hideAttendu = query.data?.confidence === 'insufficient_history'
+  // Masquage de la série « Joueur attendu » indexé sur expected_basis (modèle
+  // lobby-anchored v2) : cold_start => aucun historique exploitable => coef 1.0
+  // par défaut => l'attendu ne veut rien dire, on le masque. (Avant : indexé sur
+  // confidence, qui qualifie l'historique du percentile, pas l'attendu.)
+  const hideAttendu = query.data?.expected_basis === 'cold_start'
 
   // Message d'indisponibilité : « migration en cours » UNIQUEMENT sur un vrai
   // 503 (code engagement_unavailable = schéma manquant). Pour une courbe vide,
@@ -88,6 +90,7 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
         team: formatMessage(engagementManifest, 'engagement.trace.team', locale),
         expected: formatMessage(engagementManifest, 'engagement.trace.expected', locale),
         player: formatMessage(engagementManifest, 'engagement.trace.player', locale),
+        lobby: formatMessage(engagementManifest, 'engagement.trace.lobby', locale),
       }}
       state={
         query.isLoading
@@ -129,14 +132,52 @@ function fmtMillisToTimeStamp(ms: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+// buildSubtitle compose « forme (percentile) — base de l'attendu ». La base de
+// l'attendu (modèle lobby-anchored v2) décrit ce que représente la courbe
+// « Joueur attendu » : la réponse habituelle du joueur à un match d'intensité
+// similaire (bin), ou sa réponse globale (fallback). cold_start → historique
+// insuffisant (l'attendu est masqué).
 function buildSubtitle(
   data: EngagementScoreResultAPI | undefined,
   locale: ManifestLocale,
 ): string | undefined {
   if (!data) return undefined
-  if (data.confidence === 'insufficient_history') {
+  if (data.expected_basis === 'cold_start') {
     return formatMessage(engagementManifest, 'engagement.narrative.insufficient', locale)
   }
+  const basis =
+    data.expected_basis === 'bin'
+      ? formatMessage(engagementManifest, binSubtitleKey(data.intensity_bin), locale)
+      : formatMessage(engagementManifest, 'engagement.expected.global', locale)
+  const form = formNarrative(data, locale)
+  return form ? `${form} — ${basis}` : basis
+}
+
+// binSubtitleKey mappe le libellé de bin (API : calme/standard/chaotique) sur la
+// clé manifest de la phrase d'attendu. Type de retour = union littérale des clés
+// (requis par formatMessage, qui exige une clé connue du manifest).
+type BinSubtitleKey =
+  | 'engagement.expected.bin_calme'
+  | 'engagement.expected.bin_standard'
+  | 'engagement.expected.bin_chaotique'
+
+function binSubtitleKey(bin: string): BinSubtitleKey {
+  switch (bin) {
+    case 'calme':
+      return 'engagement.expected.bin_calme'
+    case 'chaotique':
+      return 'engagement.expected.bin_chaotique'
+    default:
+      return 'engagement.expected.bin_standard'
+  }
+}
+
+// formNarrative rend la phrase de forme (percentile vs habitude). undefined si
+// pas de score (historique partiel sans percentile calculable).
+function formNarrative(
+  data: EngagementScoreResultAPI,
+  locale: ManifestLocale,
+): string | undefined {
   if (data.engagement_score == null) return undefined
   const percentile = Math.round(data.engagement_score)
   if (percentile > 60) {

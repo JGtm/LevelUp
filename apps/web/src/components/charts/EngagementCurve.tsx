@@ -60,18 +60,21 @@ export interface EngagementCurveProps {
   /** Hauteur en px. Default 280 (chart-tall). */
   height?: number
   /**
-   * Masque la serie "Attendu" quand le coefficient est au cold-start (1.0) —
-   * c'est-a-dire quand confidence === 'insufficient_history'. Dans ce cas
-   * pace_attendu = 1.0 × pace_team et les deux courbes se superposent, ce
-   * qui est trompeur visuellement.
+   * Masque la serie "Attendu" quand l'attendu n'a pas de base fiable —
+   * c'est-a-dire quand expected_basis === 'cold_start' (aucun historique
+   * exploitable → coef 1.0 par defaut, l'attendu ne veut rien dire). Indexe
+   * sur expected_basis (modele lobby-anchored v2), plus sur confidence (qui
+   * qualifie l'historique du PERCENTILE, pas l'attendu).
    */
   hideAttendu?: boolean
   /**
-   * Libellés localisés des 3 courbes. Fournis par le parent (qui a la locale)
+   * Libellés localisés des courbes. Fournis par le parent (qui a la locale)
    * via le manifest engagement.trace.*. Défaut FR si absent.
    *   - team     : « Équipe réelle » (moyenne par joueur, joueur INCLUS)
-   *   - expected : « Joueur attendu » (coef × équipe réelle)
+   *   - expected : « Joueur attendu » (coef × pace lobby — réponse habituelle)
    *   - player   : « Joueur réel » (rythme observé du joueur)
+   *   - lobby    : « Lobby » (pace lobby per-player, l'ancre — TOOLTIP seulement,
+   *     pas dessiné, cf. D4 : 3 courbes max)
    */
   seriesLabels?: EngagementSeriesLabels
   /**
@@ -87,12 +90,15 @@ export interface EngagementSeriesLabels {
   team: string
   expected: string
   player: string
+  /** Libellé de la ligne « Lobby » du tooltip (l'ancre, non dessinée). */
+  lobby: string
 }
 
 const DEFAULT_SERIES_LABELS: EngagementSeriesLabels = {
   team: 'Équipe réelle',
   expected: 'Joueur attendu',
   player: 'Joueur réel',
+  lobby: 'Lobby',
 }
 
 /**
@@ -196,12 +202,21 @@ function buildEngagementOption(
           seriesName?: string
           marker?: string
           value?: number | null
+          dataIndex?: number
         }>
         const head = escapeHtml(items[0]?.axisValueLabel ?? '')
         const lines = items.map((p) => {
           const v = typeof p.value === 'number' && Number.isFinite(p.value) ? p.value.toFixed(2) : '—'
           return `${p.marker ?? ''} ${escapeHtml(p.seriesName ?? '')}: <b>${v}</b>`
         })
+        // Ligne « Lobby » (l'ancre de l'attendu) : non dessinée (D4 : 3 courbes
+        // max) mais exposée dans le tooltip. Récupérée par dataIndex sur les
+        // points d'origine (paceLobby n'est pas une série ECharts).
+        const idx = items[0]?.dataIndex
+        const lobby = typeof idx === 'number' ? points[idx]?.paceLobby : undefined
+        if (typeof lobby === 'number' && Number.isFinite(lobby)) {
+          lines.push(`${escapeHtml(labels.lobby)}: <b>${lobby.toFixed(2)}</b>`)
+        }
         return [head, ...lines].join('<br/>')
       },
     },

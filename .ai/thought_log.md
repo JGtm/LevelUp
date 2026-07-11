@@ -1,3 +1,24 @@
+## [2026-07-11] Engagement refonte lobby — Phase 5 (front)
+
+**Statut** : Complété (Phase 5/6).
+
+**Décision technique** : masquage de la série « Joueur attendu » rekeyé sur
+`expected_basis === 'cold_start'` (plus sur confidence). Tooltip enrichi d'une ligne
+« Lobby » (l'ancre, non dessinée — D4). Sous-titre du graphe = « {forme percentile} —
+{base de l'attendu} » où la base décrit le bin d'intensité (calme/standard/chaotique),
+le repli global, ou l'insuffisance. Type dédié `EngagementProfileAPI` (bins, sans
+coef_team_share) remplace `EngagementCoefficientAPI` (supprimé). Help FR réécrit
+(lobby+bins, death ×0). Le glossaire EN n'a pas d'entrées équivalentes (gap pré-existant).
+
+**Résultats** : typecheck 0 ; lint 0 err (68 warnings baseline) ; vitest 246 fichiers /
+2102 pass / 14 skip / 0 fail. Manifest engagement régénéré (nouvelles clés
+`engagement.expected.*` FR+EN).
+
+**Prochaine étape** : Phase 6 — nettoyage coef_team_share (recompute + payload), doc,
+addendum réflexion, clôture + gate global.
+
+---
+
 ## [2026-07-11] Engagement refonte lobby — Phase 4 (re-backfill 2 titres LOCAL)
 
 **Statut** : Complété en LOCAL (Phase 4/6). Re-backfill PROD différé post-merge.

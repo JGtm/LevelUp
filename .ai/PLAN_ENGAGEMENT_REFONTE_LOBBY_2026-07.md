@@ -303,25 +303,35 @@ l'utilisateur avant). Étape LOCALE faite ; exécution PROD différée au runboo
 
 Périmètre fermé :
 
-- [ ] `EngagementCurve.tsx` : la série « Joueur attendu » se masque sur
-      `expected_basis === 'cold_start'` (le prop `hideAttendu` est rekeyé côté
-      `EngagementMatchSection` — le commentaire actuel décrivant confidence devient
-      FAUX, le mettre à jour) ; tooltip : ajouter la ligne « Lobby » (paceLobby déjà
-      dans les points).
-- [ ] Sous-titre du graphe : afficher la base de l'attendu — ex. FR « attendu : ta
-      réponse habituelle aux matchs {calmes|standards|chaotiques} », EN équivalent.
-      Clés dans `manifests/engagement.toml` (FR + EN, parité typée).
-- [ ] `types.ts` / `generated.ts` : régénérés (`make generate-types`).
-- [ ] Textes d'aide (`features/help/i18n.ts` l.140-155) : réécrire les 3 blocs qui
-      décrivent le modèle team-share (formule, exemple chiffré, coefficients) pour le
-      modèle lobby+bins — FR ET EN.
-- [ ] Page profil engagement (consommateur de `engagement_profile`) : adapter à
-      `EngagementProfile` (retrait coef_team_share, affichage des bins).
-- [ ] `EngagementCurve.test.tsx` + tests sections adaptés.
-- [ ] Aucun hex/classe couleur ; tokens uniquement ; aucune string UI hors manifests.
+- [x] `EngagementCurve.tsx` : série « Joueur attendu » masquée sur
+      `expected_basis === 'cold_start'` (rekeyé côté `EngagementMatchSection`, JSDoc du
+      prop `hideAttendu` corrigée : plus indexé sur confidence) ; tooltip : ligne
+      « Lobby » ajoutée (paceLobby récupéré par `dataIndex`, non dessiné — D4) ; label
+      `lobby` ajouté à `EngagementSeriesLabels`.
+- [x] Sous-titre du graphe : « {forme} — {base de l'attendu} ». Base = phrase par bin
+      (calme/standard/chaotique) ou globale ou insuffisant (cold_start). Clés
+      `engagement.expected.*` dans `manifests/engagement.toml` (FR + EN), manifest
+      régénéré (`build_i18n_manifests.mjs`).
+- [x] `types.ts` : `expected_basis` + `intensity_bin` sur `EngagementScoreResultAPI` ;
+      nouveaux `EngagementProfileAPI` + `EngagementIntensityBinAPI` (remplacent
+      `EngagementCoefficientAPI`, supprimé = 0 code mort) ; `queries.ts` retype le hook.
+      `generated.ts` déjà régénéré (Phase 3).
+- [x] Textes d'aide (`features/help/i18n.ts`) : blocs « Score d'engagement » +
+      « Coefficient de réponse (bins + coef lobby) » réécrits pour le modèle lobby+bins
+      (formule I=mean pace_lobby → bin → coef×lobby, exemple chiffré aligné sur les
+      données réelles, death ×0). Manifest `glossary.coef_explanation` FR+EN aussi mis à
+      jour. EN [~] : le glossaire help EN n'a PAS d'entrées engagement-score/coefficient
+      (sous-ensemble réduit, écart de parité PRÉ-EXISTANT — hors périmètre, cf. Découvertes).
+- [x] Page profil engagement : [~] aucune UI ne consomme `useEngagementProfile` (hook
+      défini, jamais rendu) → rien à adapter côté rendu ; seul le type du hook est passé
+      à `EngagementProfileAPI[]`.
+- [x] `EngagementCurve.test.tsx` : samplePoints avec paceLobby + test hideAttendu/labels
+      lobby. Tests sections : `SessionEngagementChart.test.tsx` vert (défaut lobby).
+- [x] Aucun hex/classe couleur ajouté ; strings via manifest.
 
-Gate : purge `node_modules\.tmp` puis `npm run typecheck && npm run lint && npm run test`
-= 0 (vitest hors sandbox, cf. reference_vitest_outside_sandbox).
+Gate : purge `node_modules\.tmp` puis `npm run typecheck` (0) + `npm run lint` (0 err,
+warnings baseline) + `npm run test:run` (246 fichiers, 2102 pass / 14 skip, 0 fail).
+→ PASSÉ (2026-07-11, vitest hors sandbox).
 
 ### Phase 6 — Nettoyage, doc, clôture
 
@@ -359,6 +369,15 @@ Périmètre fermé :
   (Halo Infinite ET Halo 5 se provisionnent via ces mêmes steps — cf. commentaires
   fresh-provision dans order.go l.61-65 et l.172-177). Une seule entrée de migration
   couvre donc les 2 titres. Aucun changement de périmètre requis.
+- **Glossaire help EN incomplet** (Phase 5) : `features/help/i18n.ts` — le glossaire EN
+  (`EN_TEXT`) ne contient PAS les entrées « Score d'engagement » / « Coefficient
+  d'engagement » / « Intensité du match » (présentes seulement dans `FR_TEXT`). Écart de
+  parité PRÉ-EXISTANT (le glossaire EN est un sous-ensemble réduit). Non traité : créer
+  ces entrées EN serait du contenu neuf hors périmètre « réécrire les blocs existants ».
+  Les clés du manifest engagement (subtitle, tooltip) sont, elles, en parité FR/EN.
+- Clés manifest `engagement.coef.team_share_label`/`_desc` désormais dormantes (aucune UI
+  ne les rend depuis le retrait de coef_team_share du payload). Laissées en place (pas de
+  suppression opportuniste) ; candidates à nettoyage si un futur profil UI est bâti.
 - `MatchIntensity` (champ résultat, colonne shared `match_registry.match_intensity`) et
   `SaveMatchIntensity`/`LoadMatchIntensity` restent en place mais ne sont PAS l'ancre du
   modèle v2 (l'intensité effective = `meanLobby` de la courbe, cf. §1). Non traité
@@ -376,5 +395,6 @@ Périmètre fermé :
 - Phase 4 : COMPLÉTÉE en LOCAL (2026-07-11) — correctif compute-path sync + flag CLI
   --title ; re-backfill 2 passes Infinite (4246×2) + H5 (10480×2), 0 échec ; gate (a)-(d)
   vérifié Infinite, bins H5 peuplés. Re-backfill PROD différé post-merge (runbook).
-- Phase 5 : non commencée
+- Phase 5 : COMPLÉTÉE (2026-07-11) — masquage cold_start, tooltip lobby, sous-titre
+  base-attendu (i18n FR/EN), types+hook profil, help FR réécrit ; typecheck/lint/vitest 0.
 - Phase 6 : non commencée
