@@ -1,3 +1,27 @@
+## [2026-07-11] Résidus H5 match view — CLÔTURE chantier local (lots A-F+E ; reste V prod)
+
+**Statut** : Complété (local) / PARTIEL global — LOT V (V2-V4) = opérations prod
+post-merge, statuées [!] (dépendance explicite du plan + écriture prod = utilisateur).
+
+**Décision technique principale** : les 7 causes prouvées du 2026-07-07 sont toutes
+résorbées côté code + data locale, sur `fix/h5-matchview-residus` (6 commits, CI verte) :
+A (playlist title-aware par capability, mode via game_variant, durée Dominance),
+B (Tidal par override asset_id + garde-fou maps non résolues), C (cards Résistance /
+Résultat attendu masquées), D (skips instrumentés + --missing-only + lignes Placement —
+cause du CSR manquant = 100 % placement, 1002/1002 sur 4 joueurs), F (libellés média via
+asset_translations + routage titre de l'indexeur par media_filename_prefixes + purge des
+84 clips étrangers).
+
+**Résultats observés** : gate global vert — go test ./... complet, -tags=integration -p 1
+(persist/halo_5/ops/duckdb), go vet, golangci-lint --new-from-rev=origin/main = 0 issue,
+tsc -b purgé, eslint 0 erreur, vitest 2106 tests, build Vite ; vérifications réelles au
+serveur local sur les 5 matchs témoins + galerie média H5 + non-régressions Infinite.
+
+**Conclusion / prochaine étape** : lot V (prod) après merge — B2 --overrides-only,
+D2 --missing-only ×4 (auth_as=JGtm), F3 --foreign-only (dry-run d'abord, serveur arrêté),
+puis vérification visuelle utilisateur (§6 du plan : commandes exactes). Le plan reste à
+la racine .ai/ avec en-tête PARTIEL « reste lot V ».
+
 ## [2026-07-11] Résidus H5 match view — LOT F (médias : libellés + routage titre + purge)
 
 **Statut** : Complété (F1-F4 ; opérations prod F3/B2/D2 à rejouer en V2).
