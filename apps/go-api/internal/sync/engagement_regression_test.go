@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -85,16 +86,14 @@ func TestRegressionB3_RelativeTimeWindow(t *testing.T) {
 	source := readSourceFile(t, "engagement.go")
 
 	// Le code DOIT passer MatchStartMS:0 (pas un epoch UTC) parce que
-	// highlight_events.time_ms est relatif au début du match.
-	if !strings.Contains(source, "MatchStartMS:   0,") &&
-		!strings.Contains(source, "MatchStartMS: 0,") &&
-		!strings.Contains(source, "MatchStartMS:0,") {
+	// highlight_events.time_ms est relatif au début du match. Tolérant au
+	// whitespace (gofmt réaligne les champs de struct selon le plus long).
+	if !regexp.MustCompile(`MatchStartMS:\s*0,`).MatchString(source) {
 		t.Errorf("régression B3 : engagement.go ne passe plus MatchStartMS:0 — risque de fenêtre vide")
 	}
 
 	// MatchEndMS doit être durationMS (relatif), pas m.EndTimeMS (absolu).
-	if strings.Contains(source, "MatchEndMS:     m.EndTimeMS,") ||
-		strings.Contains(source, "MatchEndMS: m.EndTimeMS,") {
+	if regexp.MustCompile(`MatchEndMS:\s*m\.EndTimeMS,`).MatchString(source) {
 		t.Errorf("régression B3 : engagement.go passe `MatchEndMS: m.EndTimeMS` (epoch UTC) — utiliser `durationMS`")
 	}
 	if !strings.Contains(source, "durationMS") {
