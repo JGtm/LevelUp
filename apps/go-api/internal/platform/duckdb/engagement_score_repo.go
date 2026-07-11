@@ -97,8 +97,9 @@ func (r *EngagementScoreRepo) LoadEngagementCoefficient(
 		return nil, port.ErrEngagementUnavailable
 	}
 
+	// coef_team_share non lu (D5, colonne inerte). Seul coef_lobby_share sert.
 	const q = `
-		SELECT coef_team_share, coef_lobby_share, n_matches, last_updated
+		SELECT coef_lobby_share, n_matches, last_updated
 		FROM engagement_coefficients
 		WHERE xuid = ? AND mode_category = ?
 	`
@@ -107,7 +108,6 @@ func (r *EngagementScoreRepo) LoadEngagementCoefficient(
 	coef.ModeCategory = modeCategory
 
 	err := r.pdb.ReadDB().QueryRow(ctx, q, xuid, modeCategory).Scan(
-		&coef.CoefTeamShare,
 		&coef.CoefLobbyShare,
 		&coef.NMatches,
 		&coef.LastUpdated,
@@ -234,6 +234,10 @@ func (r *EngagementScoreRepo) SaveEngagementCoefficient(
 		updated = time.Now().UTC()
 	}
 
+	// coef_team_share : colonne NOT NULL conservée mais INERTE (D5) — on y écrit
+	// 1.0 neutre, plus jamais lue (l'attendu est ancré lobby + bins).
+	const inertTeamShare = 1.0
+
 	// ART-safe : SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT, qui réécrit via
 	// l'index ART de la PK). engagement_coefficients : PK (xuid, mode_category), pas
 	// d'index secondaire muté. Sous lease KindPlayer (sérialisé), basse fréquence.
@@ -242,10 +246,10 @@ func (r *EngagementScoreRepo) SaveEngagementCoefficient(
 		[]any{coef.XUID, coef.ModeCategory},
 		`UPDATE engagement_coefficients SET coef_team_share = ?, coef_lobby_share = ?, n_matches = ?, last_updated = ?
 		 WHERE xuid = ? AND mode_category = ?`,
-		[]any{coef.CoefTeamShare, coef.CoefLobbyShare, coef.NMatches, updated, coef.XUID, coef.ModeCategory},
+		[]any{inertTeamShare, coef.CoefLobbyShare, coef.NMatches, updated, coef.XUID, coef.ModeCategory},
 		`INSERT INTO engagement_coefficients (xuid, mode_category, coef_team_share, coef_lobby_share, n_matches, last_updated)
 		 VALUES (?, ?, ?, ?, ?, ?)`,
-		[]any{coef.XUID, coef.ModeCategory, coef.CoefTeamShare, coef.CoefLobbyShare, coef.NMatches, updated},
+		[]any{coef.XUID, coef.ModeCategory, inertTeamShare, coef.CoefLobbyShare, coef.NMatches, updated},
 	); err != nil {
 		return fmt.Errorf("EngagementScoreRepo.SaveEngagementCoefficient: %w", err)
 	}

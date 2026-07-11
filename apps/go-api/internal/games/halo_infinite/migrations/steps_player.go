@@ -219,8 +219,13 @@ func playerSteps() []migration.Migration {
 		{
 			Name:        "create_engagement_coefficients_table",
 			TargetDB:    migration.TargetPlayer,
-			Description: "Cree la table engagement_coefficients pour stocker coef_team_share et coef_lobby_share par (xuid, mode_category)",
+			Description: "Cree la table engagement_coefficients pour stocker le coef lobby global par (xuid, mode_category)",
 			ApplySchema: func(db *sql.DB) error {
+				// coef_team_share : colonne conservee NOT NULL mais INERTE depuis le
+				// modele lobby-anchored v2 (D5, PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07) :
+				// plus calculee ni lue (on y ecrit 1.0). Pas de DROP COLUMN sur les
+				// player DB existantes. Seul coef_lobby_share alimente l'attendu (fallback
+				// global) ; les bins d'intensite vivent dans engagement_response_bins.
 				return migration.ExecScript(db, `
 					CREATE TABLE IF NOT EXISTS engagement_coefficients (
 						xuid             VARCHAR NOT NULL,

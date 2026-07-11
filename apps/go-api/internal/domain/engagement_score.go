@@ -157,8 +157,8 @@ type EngagementPoint struct {
 	// = events_team_dans_window / N_team / (W/60s)
 	PaceTeam float64 `json:"pace_team"`
 
-	// PaceAttendu est l'engagement que le joueur aurait du produire vu son
-	// style historique : coef_team_share * pace_team_per_player.
+	// PaceAttendu est l'engagement que le joueur produit D'HABITUDE dans un match
+	// d'intensite similaire (modele lobby-anchored) : coef[bin] * pace_lobby.
 	PaceAttendu float64 `json:"pace_attendu"`
 
 	// PaceLobby est le pace lobby per_player dans la fenetre. Utilise par la
@@ -294,21 +294,21 @@ type EngagementProfile struct {
 	Bins []EngagementIntensityBin `json:"bins"`
 }
 
+// EngagementCoefficient est le porteur INTERNE du coef lobby global d'un joueur
+// (+ xuid/gamertag, réutilisé côté squad). coef_team_share a été abandonné (D5,
+// modèle lobby-anchored) ; il n'est plus porté par ce type. Le payload public
+// GET /engagement_profile utilise EngagementProfile (avec les bins).
 type EngagementCoefficient struct {
 	XUID         string `json:"xuid"`
 	Gamertag     string `json:"gamertag,omitempty"`
 	ModeCategory string `json:"mode_category"`
 
-	// CoefTeamShare = mediane historique de (pace_joueur / pace_team_per_player).
-	// > 1 = leader intra-equipe. < 1 = support / passif. ~1 = fait sa part.
-	CoefTeamShare float64 `json:"coef_team_share"`
-
 	// CoefLobbyShare = mediane historique de (pace_joueur / pace_lobby_per_player).
-	// Caracterise le style absolu (mixe style + skill + qualite des equipes
-	// habituelles). Comparable inter-joueurs (contrairement a CoefTeamShare).
+	// Caracterise la reponse globale du joueur a l'action totale du lobby
+	// (fallback de l'attendu, ExpectedBasis "global").
 	CoefLobbyShare float64 `json:"coef_lobby_share"`
 
-	// NMatches est le nombre de matchs utilises pour calculer ces medianes.
+	// NMatches est le nombre de matchs utilises pour calculer la mediane.
 	NMatches int `json:"n_matches"`
 
 	// LastUpdated est l'heure du dernier recalcul. Permet le check de

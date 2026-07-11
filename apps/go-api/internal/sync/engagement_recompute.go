@@ -36,9 +36,9 @@ import (
 // service admin (service.engagementCoefModesService).
 var engagementCoefModes = domain.EngagementCoefModes()
 
-// batchRecomputeCoefficients recalcule et persiste les coef_team_share /
-// coef_lobby_share du joueur pour chaque mode_category PvP, depuis la
-// mediane glissante des paces stockees dans player_match_enrichment.
+// batchRecomputeCoefficients recalcule et persiste le coef lobby global (+ les
+// bins de reponse via recomputeResponseBins) du joueur pour chaque mode_category
+// PvP, depuis la mediane glissante des paces stockees dans player_match_enrichment.
 //
 // Doit etre appele APRES batchComputeEngagementScores (les paces sont
 // renseignees par le compute, le recompute lit ensuite l'historique).
@@ -123,10 +123,10 @@ func recomputeMode(
 
 	slog.DebugContext(ctx, "engagement coefs: updated",
 		"xuid", xuid, "mode", mode,
-		"coef_team", result.CoefTeamShare, "coef_lobby", result.CoefLobbyShare,
+		"coef_lobby", result.CoefLobbyShare,
 		"n_matches", result.NMatches, "n_rejected", result.NRejected)
 	observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_coef_recomputed_total")
-	observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_coef_team_bucket_"+coefBucket(result.CoefTeamShare))
+	observability.IncCounterT(ctxkeys.TitleSlug(ctx), "engagement_coef_lobby_bucket_"+coefBucket(result.CoefLobbyShare))
 	return true
 }
 
@@ -282,6 +282,11 @@ func loadRatioSamples(
 	return out, rows.Err()
 }
 
+// inertTeamShare : valeur ecrite dans la colonne coef_team_share, conservee NOT
+// NULL mais INERTE (D5, modele lobby-anchored — plus calculee ni lue). La colonne
+// reste en place (pas de DROP COLUMN sur les player DB) ; on y ecrit 1.0 neutre.
+const inertTeamShare = 1.0
+
 // saveCoefficient UPSERT le coefficient calcule dans engagement_coefficients.
 func saveCoefficient(
 	ctx context.Context,
@@ -302,12 +307,12 @@ func saveCoefficient(
 		_, err = playerDB.ExecContext(ctx, `UPDATE engagement_coefficients
 			SET coef_team_share = ?, coef_lobby_share = ?, n_matches = ?, last_updated = ?
 			WHERE xuid = ? AND mode_category = ?`,
-			result.CoefTeamShare, result.CoefLobbyShare, result.NMatches, now, xuid, modeCategory)
+			inertTeamShare, result.CoefLobbyShare, result.NMatches, now, xuid, modeCategory)
 	case errors.Is(err, sql.ErrNoRows):
 		_, err = playerDB.ExecContext(ctx, `INSERT INTO engagement_coefficients
 			(xuid, mode_category, coef_team_share, coef_lobby_share, n_matches, last_updated)
 			VALUES (?, ?, ?, ?, ?, ?)`,
-			xuid, modeCategory, result.CoefTeamShare, result.CoefLobbyShare, result.NMatches, now)
+			xuid, modeCategory, inertTeamShare, result.CoefLobbyShare, result.NMatches, now)
 	}
 	return err
 }

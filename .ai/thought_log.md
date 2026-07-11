@@ -1,3 +1,33 @@
+## [2026-07-11] Engagement refonte lobby — Phase 6 + CLÔTURE (COMPLÉTÉ)
+
+**Statut** : Complété. Les 6 phases de PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07 sont livrées
+sur `feat/engagement-lobby-response`. Plan déplacé vers `.ai/V7/`.
+
+**Phase 6 (nettoyage/doc)** : `coef_team_share` retiré du recompute —
+`ComputeEngagementCoefficient` ne calcule plus que le ratio lobby ; code mort supprimé
+(`CoefficientResult.CoefTeamShare`, `EngagementScoreInput.CoefTeamShare`,
+`domain.EngagementCoefficient.CoefTeamShare`, `PaceTeamMinThreshold`, tests
+LobbyIndependent/LobbyFallbackWhenInsufficient). Colonne DuckDB `coef_team_share` conservée
+NOT NULL mais INERTE (écrite à 1.0, plus lue) — commentée dans la migration ; pas de DROP
+COLUMN. Compteur expvar renommé team→lobby. Addendum daté ajouté à la réflexion v1.
+Baseline tests MAJ (3 tests retirés/renommés, -24 lignes) dans le commit.
+
+**Modèle final** : attendu ancré lobby partout ; `pace_attendu = coef[bin_intensité] ×
+pace_lobby`, fallback bin→global→cold_start (`expected_basis`) ; death ×0 ; nouvelle table
+`engagement_response_bins`. Correctif clé Phase 4 : le compute sync persiste désormais le
+résidu dans le MÊME univers que le serving.
+
+**Gates de clôture** : `go test ./internal/...` exit 0 ; `golangci --new-from-rev=origin/main`
+0 issue ; front (Phase 5) typecheck 0 / lint 0 err / vitest 2102 pass ; intégration
+`-p 1 ./...` (gate obligatoire) exécutée en clôture.
+
+**Décision / prochaine étape** : re-backfill LOCAL des 2 titres fait et vérifié. Le
+re-backfill PROD se rejoue APRÈS merge+deploy (push main = deploy auto — prévenir
+l'utilisateur). Revue visuelle des surfaces engagement à faire au merge. Ce chantier
+débloque le plan engagement agnostic gradué (prérequis section 0 = CLOSE).
+
+---
+
 ## [2026-07-11] Engagement refonte lobby — Phase 5 (front)
 
 **Statut** : Complété (Phase 5/6).
