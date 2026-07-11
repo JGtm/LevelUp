@@ -39,12 +39,12 @@ Discussion DDD → constat en 3 explorations :
 - [x] Consequences + esquisse d'execution (pilote PlayerEnrichment, generalisation SharedMatch) marquee « future lots, hors ADR »
 - **Gate** : PASSE — fichier existe ; grep refs 0013=7/0019=5/0026=5 > 0 ; zero emoji (seuls des tirets cadratins en titres, comme ADR 0026) ; 15 chemins de fichier cites verifies existants.
 
-### Etape 2 — Rediger `docs/adr/0031-title-data-source-boundary.md` (EN-only, pas d'emojis)
-- [ ] Statut *Proposed* ; Context : dualite d'orchestration, duplication HTTP **re-chiffree sur pieces avant redaction** (les ~350 L agregent plusieurs fichiers `halo_client*.go` — mesurer precisement), client H5 zero-import comme propriete a preserver
-- [ ] Decisions D-1..D-5 avec options ecartees
-- [ ] Section « Amends ADR 0027 » (statut Proposé → proposer Accepté amendé)
-- [ ] Sequencement note : client move + httpx AVANT Phase 1.6 (pool auth) — le `RequestDecorator` devient le point d'accroche du pool par titre ; multi-titre V2 reste gate par Phases 1.5/1.6 (ADR 0025)
-- **Gate** : memes verifications qu'Etape 1 + chiffres de duplication mesures (commande `wc -l` sur les fichiers concernes) et non repris des rapports d'agents.
+### Etape 2 — Rediger `docs/adr/0031-title-data-source-boundary.md` (EN-only, pas d'emojis) — CLOSE 2026-07-11
+- [x] Statut *Proposed* ; Context : dualite d'orchestration (V2/CycleOrchestrator vs livesync.Runner), duplication HTTP **re-chiffree sur pieces** : Infinite `halo_client_http.go`=219 L (deja migre en sous-package `haloclient/`, pas racine sync — DECOUVERTE) ; H5 `client.go`=450 L dont ~160 L retry/backoff/rate/HTTPError (doGet 301-354, doGetBinary 361-415, waitRetry 419-431, parseRetryAfterSeconds 436-450) ; constantes IDENTIQUES (4/800ms/10s) verifiees ; `HTTPError` declare 2x (haloclient:62 + halo_5:58) ; client H5 zero-import LevelUp confirme (stdlib + x/time/rate)
+- [x] Decisions D-1..D-5 avec options ecartees (interface fine niveau source ecartee → 0027)
+- [x] Section « Amends ADR 0027 » (statut Proposé → proposer Accepté amendé ; l'ADR ne modifie PAS le statut de 0027 lui-meme = decision humaine)
+- [x] Sequencement note : client move + httpx AVANT Phase 1.6 (pool auth) — `RequestDecorator` = point d'accroche du pool par titre ; multi-titre V2 reste gate par Phases 1.5/1.6 (ADR 0025) ; INTERDICTION d'une 3e architecture ; AUCUNE promesse migration H5->V2
+- **Gate** : PASSE — fichier existe ; refs 0027=15/0012=3/0025=5/0008=2 > 0 ; zero emoji ; 6 chemins cites verifies ; chiffres de duplication mesures par `wc -l` (219/450) et `sed` sur les constantes, non repris de rapports d'agents.
 
 ### Etape 3 — Mises a jour d'index et journal
 - [ ] `CLAUDE.md` : ajouter 0030/0031 a la liste des ADRs (meme commit, une ligne chacun)

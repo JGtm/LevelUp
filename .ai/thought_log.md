@@ -32,9 +32,24 @@ PAS de cascade de signatures `port.DBExecutor` (l'alternative A que 0013 a rejet
   reelle 2026-07-11 → entree datee honnetement 2026-07-11 (intention du gate = entree existe,
   satisfaite).
 
-**Conclusion / prochaine etape** : etape 2 (rediger ADR 0031, mesures de duplication HTTP
-sur pieces), puis etape 3 (index CLAUDE.md + MT-27 + cloture). Lot pilote 0030-D2
-PlayerEnrichment a planifier apres cloture du lot E.
+**Etape 2 — ADR 0031 redige** (`docs/adr/0031-title-data-source-boundary.md`, Proposed) :
+frontiere source de donnees par titre + mutualisation sync. Context re-chiffre sur pieces :
+Infinite `haloclient/halo_client_http.go`=219 L (client deja en sous-package), H5
+`halo_5/client.go`=450 L dont ~160 L de plomberie retry/backoff/rate/HTTPError DUPLIQUEE,
+constantes strictement identiques (4/800ms/10s), `HTTPError` declare 2x, client H5
+zero-import LevelUp (propriete a preserver). Decisions : D-1 (move `haloclient/` →
+`games/halo_infinite/client/`, core partage `platform/httpx` leaf, guard import) / D-2 (core
+HTTP ~150 L + `RequestDecorator` auth par titre, pas de client generique) / D-3 (interface
+`TitleSyncRunner` calquee sur l'existant ; interface fine niveau source ECARTEE → 0027) /
+D-4 (`KnownSet` partage depuis v2/known_loader, H5 remplace son isKnown) / D-5 (cible = V2
+parametre `titleSlug`, `livesync.Runner` = adaptateur transitoire, 3e archi INTERDITE,
+AUCUNE promesse H5->V2). Section « Amends ADR 0027 » : propose Proposé → Accepté (amendé)
+SANS editer 0027 (decision humaine). Sequencement : move+httpx AVANT Phase 1.6 (pool auth),
+V2 multi-titre gate par Phases 1.5/1.6 (ADR 0025). MT-27 a creer dans l'index (etape 3).
+
+**Conclusion / prochaine etape** : etape 3 (index CLAUDE.md + MT-27 dans PLAN_MULTITITRE_INDEX
++ cloture plan + git mv vers .ai/V7/). Lot pilote 0030-D2 PlayerEnrichment a planifier apres
+cloture du lot E ; lot 0031-D1/D2 (pure move + httpx) avant Phase 1.6.
 
 ## [2026-07-11] Réflexion cards de synthèse au-dessus du tableau Explorer (mode Matchs) — analyse, aucun code
 
