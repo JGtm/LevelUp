@@ -240,19 +240,22 @@ Gate : `go test ./internal/...` vert + `go vet ./internal/...` 0. `-tags=integra
 
 Périmètre fermé :
 
-- [ ] `EngagementScoreResult` JSON : + `expected_basis`, + `intensity_bin`. Handler
-      inchangé (aucune logique métier dedans).
-- [ ] `GET /engagement_profile` : payload évolue — retire `coef_team_share` (D5),
-      ajoute les bins (bornes + coef + n par bin et par mode). Adapter
-      `domain.EngagementCoefficient` ou introduire `EngagementProfile` dédié (préférer
-      le type dédié, l'existant est aussi utilisé comme porteur xuid/gamertag côté
-      squad — NE PAS le casser, cf. `engagement_squad_service.go`).
-- [ ] openapi : régénérer (`make generate-types`) ; garde-fou
-      `TestNoJSONRouteBypassesHuma` vert.
-- [ ] Tests handlers (`engagement_test.go`) adaptés.
+- [x] `EngagementScoreResult` JSON : + `expected_basis`, + `intensity_bin` (fait en
+      Phase 2 sur le type domain ; schéma openapi + generated.ts mis à jour ici). Handler
+      inchangé.
+- [x] `GET /engagement_profile` : type DÉDIÉ `domain.EngagementProfile` (coef_lobby_share
+      + bins par mode, PAS de coef_team_share — D5). `EngagementCoefficient` conservé
+      intact (porteur squad). Service `GetEngagementProfile` charge coefs + bins par mode.
+- [x] openapi : `api/openapi.yaml` (manuel) — ajout `expected_basis`/`intensity_bin` sur
+      `EngagementScoreResult`, nouveaux schémas `EngagementIntensityBin` + `EngagementProfile` ;
+      `generated.ts` régénéré (openapi-typescript). Garde-fou `TestNoJSONRouteBypassesHuma`
+      vert. Test drift openapi (report-mode) vert.
+- [x] Tests handlers (`engagement_test.go`) adaptés : profil = `EngagementProfile`,
+      assertion absence `coef_team_share`, `ExpectedBasis == cold_start` sur match cold.
 
-Gate : `go test ./internal/api/... ./internal/service/...` + `make generate-types` sans
-diff inattendu hors fichiers générés.
+Gate : `go test ./internal/api/... ./internal/service/...` vert (flake pré-existant
+`TestStartImport_*` OpenSpartan, passe en isolation — hors périmètre) + `make
+generate-types` (diff confiné à openapi.yaml + engagement + generated.ts). → PASSÉ (2026-07-11).
 
 ### Phase 4 — Re-backfill 2 titres (séquence en DEUX passes — ordre critique)
 
@@ -353,7 +356,9 @@ Périmètre fermé :
 - Phase 2 : COMPLÉTÉE (2026-07-11) — bins de réponse + attendu ancré lobby ; migration
   create_engagement_response_bins_table ; sync+admin recompute bins ; tests unit+integ
   verts ; lint delta 0.
-- Phase 3 : non commencée
+- Phase 3 : COMPLÉTÉE (2026-07-11) — expected_basis/intensity_bin dans le contrat ;
+  EngagementProfile dédié (bins, sans coef_team_share) ; openapi.yaml + generated.ts
+  régénérés ; tests api/service verts.
 - Phase 4 : non commencée
 - Phase 5 : non commencée
 - Phase 6 : non commencée
