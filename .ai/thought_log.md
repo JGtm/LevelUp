@@ -1,3 +1,23 @@
+## [2026-07-11] Squash migrations — M2 invariant bit-identique (chantier N4)
+
+**Statut** : Complété (M2). Verrou central en place.
+
+**Décision technique** : invariant dans `games/halo_infinite/migrations/squash_invariant_test.go`
+(déviation d'emplacement vs plan : provisioning complet exige StepsFor, cycle d'import depuis
+internal/migration — même raison qu'order_audit). Deux chemins provisionFullHistory (oracle) /
+provisionCandidate (runner actif) ; aujourd'hui A=B (harnais prêt) ; SEAM documenté pour M3
+(préfixer le fixture des steps squashés à full history). Morsure prouvée par un test dédié.
+
+**Résultats** : 5 cibles PASS (metadata/shared/pve/social/player) + BiteProof PASS, 3.0s.
+Auto-inclus dans la suite `-tags=integration -p 1` → M2b sans câblage supplémentaire.
+Synergie E7 consignée dans DETTE_ASSUMEE_2026-Q3.
+
+**Conclusion / prochaine étape** : la CAPACITÉ + la PREUVE de squash zéro-perte sont
+livrées (objectif #1). M3 (génération baseline player) reste gaté GO opérateur (politique N4
+point 1) — le squash réel touchera la prod au 1er merge. Décision opérateur requise (M0e/M6a).
+
+---
+
 ## [2026-07-11] Squash migrations — M1 outil snapshot schéma (chantier N4)
 
 **Statut** : Complété (M1).
