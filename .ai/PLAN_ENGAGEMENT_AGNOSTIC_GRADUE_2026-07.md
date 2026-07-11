@@ -80,24 +80,30 @@ Constat mémoire : le score (0-100) n'est PAS un FieldKey canonique (contraireme
   fields.toml vert ; ratchet anti-slug vert ; score Infinite inchangé (goldens).
 
 ### E2 — Vecteur de signaux + masque de présence (le cœur agnostic)
-- [ ] E2a — CARTO sur pièces d'abord (30-60 min, consignée au Journal) : inventorier les
-  inputs ACTUELS de `temporal.ComputeEngagementScore`/`ComputeEngagementCoefficient`
-  (post-refonte lobby : pace joueur/équipe/lobby, bins d'intensité, damage model, deaths
-  annotées…) + les signaux H5 DISPONIBLES non consommés (events carnage : kill mechanics,
-  impulses, objectifs — cf. mémoires H5 events) + ce que Infinite expose d'équivalent.
-- [ ] E2b — `internal/analysis/temporal/engagement_signals.go` (nouveau) : struct
-  `EngagementSignals` = vecteur typé de signaux optionnels (pointeurs/`Valid bool`) +
-  masque de présence + méthode `Sufficiency() SignalSufficiency` (enum : Insufficient /
-  Partial / Full) selon l'ensemble minimal (à définir en E2a : au minimum pace + durée +
-  frags/morts datés). AUCUNE référence à un titre dans ce package (analysis pur).
-- [ ] E2c — `ComputeEngagementScore` consomme `EngagementSignals` (signature étendue ou
-  struct d'input enrichie — suivre le style de la refonte lobby `EngagementScoreInput`).
-  Les signaux absents ne pèsent PAS (poids nul, pas de valeur par défaut déguisée).
-- [ ] E2d — Câblage adapters : côté collecte (sync/enrichment), chaque titre construit
-  ses `EngagementSignals` — Infinite = mapping des inputs existants (byte-identique),
-  H5 = mapping des inputs existants + signaux riches marqués présents quand disponibles.
-  Le POINT de construction est title-owned (`games/{slug}/…` ou le livesync runner),
-  jamais le moteur.
+- [x] E2a — CARTO faite (consignée §J). Inputs ACTUELS de `ComputeEngagementScore` :
+  PlayerEvents/TeamEvents/LobbyEvents (`canonical.HighlightEvent`), NTeam/NHumansLobby,
+  MatchStart/End, History, CoefLobbyShare+HasGlobalLobbyCoef, ResponseBins (bins d'intensité
+  post-refonte), PersonalScore/Kills/Assists, Mode/IsTeamMode, Window/Sampling. **Constat
+  clé** : les signaux riches H5 (impulses objectif) sont DÉJÀ projetés en amont dans
+  `highlight_events` comme `event_type="mode"` (poids 1.5) par l'ingest title-owned
+  (`games/halo_5/ingest/objective_impulses.go`) et DÉJÀ consommés par la courbe — le
+  **vecteur d'events EST le vecteur de signaux universel**, le compute est déjà agnostic
+  (confirme mémoire 2026-07-04). 2 points de construction de l'input :
+  `service/…::buildInputForMatch` + `sync/engagement.go::batchComputeEngagementScores`.
+- [x] E2b — `internal/analysis/temporal/engagement_signals.go` (nouveau) : `EngagementSignals`
+  = vecteur (ensemble minimal `HasTimedPlayerEvents`/`HasLobbyPace`/`DurationMS` + signaux
+  riches optionnels `*int` `ObjectiveEvents`/`RichKillMechanics` = masque de présence) +
+  `SignalSufficiency` (Insufficient/Partial/Full) + `Sufficiency()` + `SignalsFromEvents`
+  (dérivation title-AGNOSTIC depuis la composition des events). 0 référence à un titre.
+- [x] E2c — `EngagementScoreInput` gagne `Signals EngagementSignals` ; `ComputeEngagementScore`
+  dérive le vecteur effectif (fourni par l'appelant, ou dérivé des inputs si `IsZero`) et
+  expose `SignalBasis` (= `Sufficiency().String()`) sur le résultat. Les signaux riches ne
+  modifient PAS le score (poids nul, DE-5) — prouvé par test byte-identical.
+- [x] E2d — Câblage aux 2 points de construction (service + sync) via
+  `temporal.SignalsFromEvents(playerEvents, lobbyEvents, durationMS)`. La construction reste
+  dans le chemin agnostic partagé (comme TOUT le sous-système engagement) — voir §Découvertes :
+  le title-owned est UPSTREAM (l'ingest qui projette les events du titre), le dériveur est
+  agnostic (0 modif du moteur pour un titre futur = critère de succès respecté).
 - Gate E2 : goldens Infinite inchangés ; tests unitaires `EngagementSignals` (suffisance
   3 niveaux, signaux absents = poids nul) ; build+vet ; `-tags=integration -p 1
   ./internal/sync/...` vert.
@@ -177,6 +183,22 @@ Constat mémoire : le score (0-100) n'est PAS un FieldKey canonique (contraireme
   branchement Go à ajouter. Gate : `go test ./internal/games/... ./internal/analysis/...`
   ALL GREEN ; parité fields (loader smoke réel) verte ; ratchet anti-slug (`archlint`) vert ;
   golden FieldKey vert ; `go vet` 0.
+- **E2 — COMPLÉTÉE (2026-07-11)**. Vecteur de signaux `EngagementSignals` + `Sufficiency()`
+  (3 niveaux) + `SignalsFromEvents` (dérivation agnostic) ; `EngagementScoreInput.Signals`
+  consommé par le compute → `SignalBasis` sur le résultat ; câblage aux 2 points de
+  construction (service + sync). Gate : temporal (unit + byte-identical) vert ; `go build ./...`
+  clean ; packages touchés (analysis/service/sync/domain/api-handlers/persist) verts ; api
+  (drift report-only, additif = divergent non gaté) vert ; `go vet` 0 ;
+  `-tags=integration -p 1 ./internal/sync/...` exit 0 ; lint delta `--new-from-rev=3b0195df2` 0.
 
 ## 7. Découvertes hors périmètre (à consigner, NE PAS traiter)
-- (vide au démarrage)
+- **Construction des signaux : agnostic partagé, pas de builder per-titre** (E2). Le plan
+  (E2d) supposait un point de construction « title-owned (`games/{slug}/…`) ». Vérifié sur
+  pièces : TOUT le sous-système engagement (input, compute, recompute) est déjà agnostic —
+  la spécificité titre vit UPSTREAM dans l'ingest qui projette les events du titre dans
+  `highlight_events` (H5 : `games/halo_5/ingest/objective_impulses.go` mappe les impulses
+  objectif en `event_type="mode"`). Forcer un builder engagement per-titre forkerait le
+  compte agnostic sans bénéfice et risquerait la byte-identité Infinite. `SignalsFromEvents`
+  est donc un helper agnostic dans `analysis/temporal` (pur). Le critère de succès « un titre
+  futur s'active sans modifier le moteur temporal » reste satisfait : il fournit son ingest
+  (title-owned) + ses coefficients (E4). Aucun périmètre changé, non traité au-delà.

@@ -174,6 +174,9 @@ func batchComputeEngagementScores(
 			Assists:            m.Assists,
 			Mode:               modeCategory,
 			IsTeamMode:         m.IsTeamMode,
+			// Vecteur de signaux (masque de presence + signaux riches), derive de la
+			// composition des events deja partitionnes (title-agnostic).
+			Signals: temporal.SignalsFromEvents(playerEvents, lobbyEvents, durationMS),
 		}
 
 		result, err := temporal.ComputeEngagementScore(input)
