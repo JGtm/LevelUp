@@ -24,6 +24,7 @@ package migration
 // même schéma) — cf. plan §4 Synergies.
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"sort"
@@ -65,7 +66,8 @@ func SchemaSnapshot(db *sql.DB) (string, error) {
 // collectLines exécute q et applique scan à chaque ligne, retournant les chaînes
 // produites (non triées — l'appelant/SchemaSnapshot trie).
 func collectLines(db *sql.DB, q string, scan func(*sql.Rows) (string, error)) ([]string, error) {
-	rows, err := db.Query(q)
+	// Introspection au boot/en outil : contexte de fond suffisant (pas de scope HTTP).
+	rows, err := db.QueryContext(context.Background(), q)
 	if err != nil {
 		return nil, err
 	}
