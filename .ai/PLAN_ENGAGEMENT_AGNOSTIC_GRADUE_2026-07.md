@@ -150,18 +150,24 @@ Constat mémoire : le score (0-100) n'est PAS un FieldKey canonique (contraireme
   `go test ./internal/analysis/temporal/...` vert.
 
 ### E5 — Activation H5 en `degraded`
-- [ ] E5a — Adapter H5 : `CapEngagement` passe de `CapNotExposed` à la surface réelle ;
-  `capabilities.toml` halo_5 : `engagement.score = degraded` (commentaire : calibration
-  provisoire E4, validation humaine en attente).
-- [ ] E5b — Vérifier le pipeline complet H5 sur pièces : le sync H5 calcule et persiste
-  déjà l'enrichment engagement (mémoire) — VALIDER sur données réelles (dev) que les
-  scores H5 sortent avec les coefficients E4, et que les surfaces (courbe engagement,
-  profil) rendent le champ de confiance.
-- [ ] E5c — Front : badge/mention « calibration provisoire » (FR+EN, i18n manifest) sur
-  les surfaces engagement quand `degraded`/provisional (DE-8) ; masqué quand validated.
-- [ ] E5d — Backfill H5 : recompute engagement des matchs H5 existants avec les
-  coefficients E4 (chemin recompute existant post-refonte-lobby, append-only). Dev
-  d'abord ; prod = fenêtre convenue.
+- [x] E5a — H5 `engagement.score` passé à `degraded` dans les 3 miroirs : `capabilities.toml`
+  halo_5, adapter `fallbackCapabilities()` (`games.CapDegraded`), et le parity test
+  `skeleton_test.go` (TestHalo5_FineCapabilities). Coarse `title.CapEngagement` déjà présent
+  (title.toml) → route servie. Commentaires : calibration provisoire E4, gate humain E6.
+- [x] E5b — Pipeline H5 vérifié sur pièces : coarse cap présent (route sert) ; fine=degraded →
+  service (E3) mappe `calibration=provisional` (test handler) ; feature matrix H5 =
+  `degraded` (cascade `CapDegraded`→`StatusDegraded`) → front rend avec badge ; 5240 paces H5
+  persistées (harnais E4c les a lues). `-tags=integration -p 1 ./internal/api/...` exit 0.
+- [x] E5c — Front : mention discrète « calibration provisoire » / « provisional calibration »
+  (manifest `engagement.calibration.provisional` FR+EN, régénéré) apposée au sous-titre du
+  graphe quand `calibration === 'provisional'`, masquée sinon (DE-8). Logique extraite dans
+  `engagementSubtitle.ts` (+ champ `calibration`/`signal_basis` sur `EngagementScoreResultAPI`).
+  Test `EngagementMatchSection.test.tsx` (5 cas). typecheck 0, eslint 0, vitest verts.
+- [x] E5d — Backfill H5 LOCAL : les coefficients E4 (poids) = défauts Infinite, byte-identiques
+  au re-backfill de la refonte lobby qui a produit les 5240 samples locaux → un recompute est un
+  no-op numérique (données locales déjà conformes E4 ; harnais E4c les a lues et validées). [!]
+  PROD : re-backfill différé à la fenêtre post-merge (dépend du deploy — même différé que la
+  refonte lobby ; vérification utilisateur requise).
 - Gate E5 : `-tags=integration -p 1 ./internal/sync/... ./internal/api/...` vert ; front
   typecheck+vitest verts ; smoke visuel H5 (courbe + profil) par l'utilisateur.
 
@@ -203,6 +209,11 @@ Constat mémoire : le score (0-100) n'est PAS un FieldKey canonique (contraireme
   clean ; packages touchés (analysis/service/sync/domain/api-handlers/persist) verts ; api
   (drift report-only, additif = divergent non gaté) vert ; `go vet` 0 ;
   `-tags=integration -p 1 ./internal/sync/...` exit 0 ; lint delta `--new-from-rev=3b0195df2` 0.
+- **E5 — COMPLÉTÉE en LOCAL (2026-07-11)**. H5 `engagement.score` → `degraded` (3 miroirs) ;
+  service mappe `calibration=provisional` ; front badge « calibration provisoire » FR+EN
+  (logique extraite `engagementSubtitle.ts` + test). Gate : H5/games verts ; intégration api
+  `-p 1` exit 0 ; front typecheck 0 / eslint 0 / vitest verts. Reste : re-backfill PROD
+  (post-merge) + smoke visuel H5 par l'utilisateur (gate E5 non automatisable).
 - **E4 — COMPLÉTÉE (2026-07-11)**. Coefficients par titre (poids d'events) externalisés dans
   `constants.toml [engagement]` + loader + accessor `games.EngagementWeightsFor` ; threadés
   dans le compute (byte-identique Infinite) et les 2 collecteurs. Harnais `cmd/engagement-calibrate`

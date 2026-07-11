@@ -10,10 +10,11 @@
 import { useMemo } from 'react'
 
 import { EngagementCurve, type EngagementPoint } from '@/components/charts/EngagementCurve'
+import { buildSubtitle } from '@/features/engagement/engagementSubtitle'
 import { useMatchEngagement } from '@/features/engagement/queries'
 import type { ApiError } from '@/lib/api/client'
 import type { EngagementPointAPI, EngagementScoreResultAPI } from '@/lib/api/types'
-import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
+import { formatMessage } from '@/lib/i18n/format'
 import { engagementManifest } from '@/lib/i18n/generated/engagement'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -130,61 +131,4 @@ function fmtMillisToTimeStamp(ms: number): string {
   const m = Math.floor(totalSec / 60)
   const s = totalSec % 60
   return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-// buildSubtitle compose « forme (percentile) — base de l'attendu ». La base de
-// l'attendu (modèle lobby-anchored v2) décrit ce que représente la courbe
-// « Joueur attendu » : la réponse habituelle du joueur à un match d'intensité
-// similaire (bin), ou sa réponse globale (fallback). cold_start → historique
-// insuffisant (l'attendu est masqué).
-function buildSubtitle(
-  data: EngagementScoreResultAPI | undefined,
-  locale: ManifestLocale,
-): string | undefined {
-  if (!data) return undefined
-  if (data.expected_basis === 'cold_start') {
-    return formatMessage(engagementManifest, 'engagement.narrative.insufficient', locale)
-  }
-  const basis =
-    data.expected_basis === 'bin'
-      ? formatMessage(engagementManifest, binSubtitleKey(data.intensity_bin), locale)
-      : formatMessage(engagementManifest, 'engagement.expected.global', locale)
-  const form = formNarrative(data, locale)
-  return form ? `${form} — ${basis}` : basis
-}
-
-// binSubtitleKey mappe le libellé de bin (API : calme/standard/chaotique) sur la
-// clé manifest de la phrase d'attendu. Type de retour = union littérale des clés
-// (requis par formatMessage, qui exige une clé connue du manifest).
-type BinSubtitleKey =
-  | 'engagement.expected.bin_calme'
-  | 'engagement.expected.bin_standard'
-  | 'engagement.expected.bin_chaotique'
-
-function binSubtitleKey(bin: string): BinSubtitleKey {
-  switch (bin) {
-    case 'calme':
-      return 'engagement.expected.bin_calme'
-    case 'chaotique':
-      return 'engagement.expected.bin_chaotique'
-    default:
-      return 'engagement.expected.bin_standard'
-  }
-}
-
-// formNarrative rend la phrase de forme (percentile vs habitude). undefined si
-// pas de score (historique partiel sans percentile calculable).
-function formNarrative(
-  data: EngagementScoreResultAPI,
-  locale: ManifestLocale,
-): string | undefined {
-  if (data.engagement_score == null) return undefined
-  const percentile = Math.round(data.engagement_score)
-  if (percentile > 60) {
-    return formatMessage(engagementManifest, 'engagement.narrative.above', locale, { percentile })
-  }
-  if (percentile < 40) {
-    return formatMessage(engagementManifest, 'engagement.narrative.below', locale, { percentile })
-  }
-  return formatMessage(engagementManifest, 'engagement.narrative.normal', locale, { percentile })
 }
