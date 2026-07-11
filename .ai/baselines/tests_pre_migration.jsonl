@@ -10800,34 +10800,10 @@
 {"Time":"2026-06-26T23:45:41.1016114+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestNoJSONRouteBypassesHuma","Output":"=== RUN   TestNoJSONRouteBypassesHuma\n"}
 {"Time":"2026-06-26T23:45:41.1103982+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestNoJSONRouteBypassesHuma","Output":"--- PASS: TestNoJSONRouteBypassesHuma (0.01s)\n"}
 {"Time":"2026-06-26T23:45:41.1103982+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestNoJSONRouteBypassesHuma","Elapsed":0.01}
-{"Time":"2026-06-26T23:45:41.1103982+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetResources_OK"}
-{"Time":"2026-06-26T23:45:41.1103982+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetResources_OK","Output":"=== RUN   TestLabHandler_GetResources_OK\n"}
-{"Time":"2026-06-26T23:45:41.1103982+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetResources_OK","Output":"--- PASS: TestLabHandler_GetResources_OK (0.00s)\n"}
-{"Time":"2026-06-26T23:45:41.1103982+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetResources_OK","Elapsed":0}
-{"Time":"2026-06-26T23:45:41.1103982+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetResources_InvalidMedalID"}
-{"Time":"2026-06-26T23:45:41.1103982+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetResources_InvalidMedalID","Output":"=== RUN   TestLabHandler_GetResources_InvalidMedalID\n"}
-{"Time":"2026-06-26T23:45:41.1109154+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetResources_InvalidMedalID","Output":"--- PASS: TestLabHandler_GetResources_InvalidMedalID (0.00s)\n"}
-{"Time":"2026-06-26T23:45:41.1109154+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetResources_InvalidMedalID","Elapsed":0}
-{"Time":"2026-06-26T23:45:41.1109154+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetContracts_OK"}
-{"Time":"2026-06-26T23:45:41.1109154+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetContracts_OK","Output":"=== RUN   TestLabHandler_GetContracts_OK\n"}
-{"Time":"2026-06-26T23:45:41.1114298+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetContracts_OK","Output":"--- PASS: TestLabHandler_GetContracts_OK (0.00s)\n"}
-{"Time":"2026-06-26T23:45:41.111942+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetContracts_OK","Elapsed":0}
 {"Time":"2026-06-26T23:45:41.111942+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetDiagnostics_OK"}
 {"Time":"2026-06-26T23:45:41.111942+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetDiagnostics_OK","Output":"=== RUN   TestLabHandler_GetDiagnostics_OK\n"}
 {"Time":"2026-06-26T23:45:41.111942+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetDiagnostics_OK","Output":"--- PASS: TestLabHandler_GetDiagnostics_OK (0.00s)\n"}
 {"Time":"2026-06-26T23:45:41.111942+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetDiagnostics_OK","Elapsed":0}
-{"Time":"2026-06-26T23:45:41.111942+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetWaypoint_OK"}
-{"Time":"2026-06-26T23:45:41.111942+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetWaypoint_OK","Output":"=== RUN   TestLabHandler_GetWaypoint_OK\n"}
-{"Time":"2026-06-26T23:45:41.1124584+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetWaypoint_OK","Output":"--- PASS: TestLabHandler_GetWaypoint_OK (0.00s)\n"}
-{"Time":"2026-06-26T23:45:41.1124584+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetWaypoint_OK","Elapsed":0}
-{"Time":"2026-06-26T23:45:41.1124584+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetWaypoint_InvalidSegment"}
-{"Time":"2026-06-26T23:45:41.1124584+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetWaypoint_InvalidSegment","Output":"=== RUN   TestLabHandler_GetWaypoint_InvalidSegment\n"}
-{"Time":"2026-06-26T23:45:41.1124584+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetWaypoint_InvalidSegment","Output":"--- PASS: TestLabHandler_GetWaypoint_InvalidSegment (0.00s)\n"}
-{"Time":"2026-06-26T23:45:41.1124584+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetWaypoint_InvalidSegment","Elapsed":0}
-{"Time":"2026-06-26T23:45:41.1124584+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetWaypoint_Unavailable"}
-{"Time":"2026-06-26T23:45:41.1124584+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetWaypoint_Unavailable","Output":"=== RUN   TestLabHandler_GetWaypoint_Unavailable\n"}
-{"Time":"2026-06-26T23:45:41.1129748+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetWaypoint_Unavailable","Output":"--- PASS: TestLabHandler_GetWaypoint_Unavailable (0.00s)\n"}
-{"Time":"2026-06-26T23:45:41.1129748+02:00","Action":"pass","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_GetWaypoint_Unavailable","Elapsed":0}
 {"Time":"2026-06-26T23:45:41.1129748+02:00","Action":"run","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_Forbidden"}
 {"Time":"2026-06-26T23:45:41.1129748+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_Forbidden","Output":"=== RUN   TestLabHandler_Forbidden\n"}
 {"Time":"2026-06-26T23:45:41.1175304+02:00","Action":"output","Package":"levelup/go-api/internal/api/handlers","Test":"TestLabHandler_Forbidden","Output":"--- PASS: TestLabHandler_Forbidden (0.00s)\n"}
@@ -40907,38 +40883,10 @@
 {"Time":"2026-06-26T23:50:42.5584934+02:00","Action":"output","Package":"levelup/go-api/internal/platform/jobs","Output":"ok  \tlevelup/go-api/internal/platform/jobs\t0.301s\n"}
 {"Time":"2026-06-26T23:50:42.5584934+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/jobs","Elapsed":0.301}
 {"Time":"2026-06-26T23:50:45.4377502+02:00","Action":"start","Package":"levelup/go-api/internal/platform/lab"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"run","Package":"levelup/go-api/internal/platform/lab","Test":"TestCompareOpenAPIRoutes"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestCompareOpenAPIRoutes","Output":"=== RUN   TestCompareOpenAPIRoutes\n"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestCompareOpenAPIRoutes","Output":"--- PASS: TestCompareOpenAPIRoutes (0.00s)\n"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/lab","Test":"TestCompareOpenAPIRoutes","Elapsed":0}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"run","Package":"levelup/go-api/internal/platform/lab","Test":"TestCompareOpenAPIRoutes_Identical"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestCompareOpenAPIRoutes_Identical","Output":"=== RUN   TestCompareOpenAPIRoutes_Identical\n"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestCompareOpenAPIRoutes_Identical","Output":"--- PASS: TestCompareOpenAPIRoutes_Identical (0.00s)\n"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/lab","Test":"TestCompareOpenAPIRoutes_Identical","Elapsed":0}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"run","Package":"levelup/go-api/internal/platform/lab","Test":"TestLabContractStatus"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestLabContractStatus","Output":"=== RUN   TestLabContractStatus\n"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestLabContractStatus","Output":"--- PASS: TestLabContractStatus (0.00s)\n"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/lab","Test":"TestLabContractStatus","Elapsed":0}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"run","Package":"levelup/go-api/internal/platform/lab","Test":"TestSameMethods"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestSameMethods","Output":"=== RUN   TestSameMethods\n"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestSameMethods","Output":"--- PASS: TestSameMethods (0.00s)\n"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/lab","Test":"TestSameMethods","Elapsed":0}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"run","Package":"levelup/go-api/internal/platform/lab","Test":"TestDiffMethods"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestDiffMethods","Output":"=== RUN   TestDiffMethods\n"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestDiffMethods","Output":"--- PASS: TestDiffMethods (0.00s)\n"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/lab","Test":"TestDiffMethods","Elapsed":0}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"run","Package":"levelup/go-api/internal/platform/lab","Test":"TestLikeQuery"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestLikeQuery","Output":"=== RUN   TestLikeQuery\n"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestLikeQuery","Output":"--- PASS: TestLikeQuery (0.00s)\n"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/lab","Test":"TestLikeQuery","Elapsed":0}
 {"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"run","Package":"levelup/go-api/internal/platform/lab","Test":"TestIsMissingRelationError"}
 {"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestIsMissingRelationError","Output":"=== RUN   TestIsMissingRelationError\n"}
 {"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestIsMissingRelationError","Output":"--- PASS: TestIsMissingRelationError (0.00s)\n"}
 {"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/lab","Test":"TestIsMissingRelationError","Elapsed":0}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"run","Package":"levelup/go-api/internal/platform/lab","Test":"TestOrEmptyCSR"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestOrEmptyCSR","Output":"=== RUN   TestOrEmptyCSR\n"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Test":"TestOrEmptyCSR","Output":"--- PASS: TestOrEmptyCSR (0.00s)\n"}
-{"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/lab","Test":"TestOrEmptyCSR","Elapsed":0}
 {"Time":"2026-06-26T23:50:45.4933697+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Output":"PASS\n"}
 {"Time":"2026-06-26T23:50:45.4959546+02:00","Action":"output","Package":"levelup/go-api/internal/platform/lab","Output":"ok  \tlevelup/go-api/internal/platform/lab\t0.058s\n"}
 {"Time":"2026-06-26T23:50:45.4959546+02:00","Action":"pass","Package":"levelup/go-api/internal/platform/lab","Elapsed":0.059}

@@ -38,10 +38,27 @@ utilisé seulement comme type, les 5 `<option>` étant codées en dur (duplicati
 `--new-from-rev=origin/main` 0 issue ; front tsc 0, eslint 0 error (68 warnings pré-existants),
 vite build OK, vitest 251 fichiers / 2127 tests passés / 14 skipped.
 
-**Prochaine étape** : push branche → surveiller CI (E2E Playwright rouge toléré = fixture démo
-absente en CI) → ouvrir PR vers main (NE PAS merger, merge = deploy prod, GO utilisateur).
-Post-deploy à vérifier : logs LUSR propres (plus de `persist état échoué`), badge notifications,
-re-backfill engagement (2 titres) à relancer.
+**Vérdict CI (PR #54) + 2 corrections post-push** :
+- **Go Baseline Tests ROUGE → corrigé** : 13 tests `Lab` (`TestLabHandler_Get{Contracts,Resources,Waypoint}_*`
+  + `internal/platform/lab::Test{CompareOpenAPIRoutes,DiffMethods,LabContractStatus,LikeQuery,OrEmptyCSR,SameMethods}`)
+  présents en baseline mais SUPPRIMÉS du code par la refonte monitoring A3 (`77c05f534`
+  « retrait du Lab » — Lab réduit aux diagnostics). La branche monitoring avait omis de
+  purger ces 13 entrées de `tests_pre_migration.jsonl`. Retrait des 52 lignes (13×4)
+  → baseline 62571 → 62519. Tests conservés (GetDiagnostics_OK, Forbidden,
+  IsMissingRelationError) intacts. Complète l'union des retraits.
+- **Go Lint ROUGE = faux positif de taille de PR (NON corrigeable, à relire humainement)** :
+  `golangci-lint-action` (`only-new-issues: true`) échoue à récupérer le patch de la PR
+  (`diff exceeded the maximum number of lines (20000): too_large` — la PR fait ~24 091 lignes)
+  et retombe sur TOUTES les issues, déversant la ~479 dette gelée (funlen/errcheck ancienne).
+  Aucune issue nouvelle : `golangci-lint run --new-from-rev=origin/main ./...` local = 0 ;
+  spot-check (seed_citation_data, handlePatchSettings, hls_audio_migrate) = présentes sur main,
+  0 ligne modifiée par la PR. Limite dure de l'API GitHub, insoluble sans amputer la PR ;
+  toléré au même titre que l'E2E Playwright.
+
+**Prochaine étape** : re-push (fix baseline) → CI re-run (baseline attendu VERT, lint reste rouge
+= artefact de taille). NE PAS merger (merge = deploy prod, GO utilisateur). Post-deploy à
+vérifier : logs LUSR propres (plus de `persist état échoué`), badge notifications, re-backfill
+engagement (2 titres) à relancer.
 
 ---
 
