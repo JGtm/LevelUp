@@ -1,3 +1,19 @@
+## [2026-07-11] Rationalisation notifications — rebaseline test renommé (gate CI)
+
+**Statut** : Complété.
+
+**Décision principale** : le gate CI « Go Baseline Tests (non-régression) » signalait
+`milestones::TestDetect_NearMiss_Within10Percent` absent — suppression VOLONTAIRE
+(B14/DP14 : NearMissRatio 0.10→0.02, test renommé `TestDetect_NearMiss_Within2Percent`
+qui couvre 95 %→rien, 98,5 %→near-miss, 100 %→earned). Application de la leçon 6c35a37cc :
+retrait des 4 entrées correspondantes de `.ai/baselines/tests_pre_migration.jsonl`
+(62599→62595 lignes). Vérifié qu'AUCUN autre test supprimé par le diff ne figure en
+baseline (seul renommage du chantier).
+
+**Résultats** : baseline propre (0 occurrence restante). CI de branche relancée après push.
+
+**Prochaine étape** : verdict CI vert → rapport final ; merge laissé au superviseur.
+
 ## [2026-07-10] Rationalisation notifications — Phase E + CLÔTURE (plan COMPLÉTÉ)
 
 **Statut** : Complété. Branche `refactor/notifications-rationalization` (5 commits
