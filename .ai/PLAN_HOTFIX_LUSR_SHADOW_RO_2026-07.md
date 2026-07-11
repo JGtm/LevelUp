@@ -1,9 +1,10 @@
 # PLAN HOTFIX — LUSR v2 shadow écrit sur un attach read-only (prod, régression 2026-07-03)
 
-> Statut : PRÊT — exécutable par une session agent autonome (Opus), AUCUN contexte
-> conversationnel requis : tout est dans ce fichier. Exécution sous contrat du skill
-> `plan-execution` (ordre strict, une phase à la fois, gates exacts, statuts
-> [x]/[~]/[!], zéro fix hors périmètre — consigner en §Découvertes).
+> Statut : **H1-H4 COMPLÉTÉS (2026-07-10)** ; **H5 EN ATTENTE — GATE USER** (merge main =
+> deploy prod auto, GO explicite requis) ; H6/H7 dépendent du deploy. Branche
+> `hotfix/lusr-shadow-ro` poussée (5 commits) ; **PR #53** ouverte vers main, CI 13/14
+> verte (seul E2E Playwright pending, frontend, sans lien avec ce diff Go-only).
+> Exécution sous contrat du skill `plan-execution`.
 >
 > **Branche : `hotfix/lusr-shadow-ro` créée depuis `origin/main`** (PAS depuis
 > `refactor/audits-2026-07` — la branche d'audits n'est pas mergée et son arborescence
@@ -103,84 +104,144 @@ API `SharedAccess` (`internal/sync/shared_access.go`) :
 
 ### H1 — Préparation et vérification sur pièces (effort : rapide)
 
-- [ ] H1.1 `git fetch origin && git checkout -b hotfix/lusr-shadow-ro origin/main`.
-- [ ] H1.2 Vérifier sur pièces (la topologie main ≠ branche audits) : localisation
-      réelle de `runSkillRatingSteps` / `runSkillRatingStepsWithDB`
-      (`engine_postsync_scoring.go`), `runLUSRV2Shadow` + `persistComputedMatchSkillV2`
-      (`skill_v2_shadow.go`), `SharedAccess` (`shared_access.go`),
-      `postsyncEventsBurstChunk` (valeur), tous les callers de
-      `RunLUSRV2Shadow(OwnerOnly)?` (`grep -rn "RunLUSRV2Shadow" apps/go-api`).
-      Consigner les chemins/lignes constatés ici.
-- [ ] H1.3 Reproduire le symptôme en local AVANT fix : test d'intégration provisoire
-      ou scénario existant adapté — un `SharedAccess` burst dont `read` sert un handle
-      où `shared_matches_v2` n'est pas inscriptible → `UpsertState` échoue avec le
-      message de prod. (Ce test devient le test pérenne en H3 — rouge ici, vert
-      après H2.)
+- [x] H1.1 Branche `hotfix/lusr-shadow-ro` déjà créée depuis `origin/main` (HEAD
+      `28146aa3a`, qui contient le merge audits) et checkoutée. Vérifié
+      `git branch --show-current` = `hotfix/lusr-shadow-ro`.
+- [x] H1.2 Vérifié sur pièces (topologie RÉELLE = sous-package, cf. §7 déviation) :
+      - `runSkillRatingSteps` / `runSkillRatingStepsWithDB` : `internal/sync/engine_postsync_scoring.go`
+        L135 / L151 (package `sync`). Caller : `engine_postsync.go:438`.
+      - `runLUSRV2Shadow` + `RunLUSRV2Shadow` + `RunLUSRV2ShadowOwnerOnly` +
+        `persistComputedMatchSkillV2` : `internal/sync/skill/skill_v2_shadow.go`
+        (L83 / L102 / L106 / L695) — **package `skill`**, pas `sync`.
+      - `SharedAccess` (+ `NewPinnedSharedAccess`, `Read`, `Write`) :
+        `internal/sync/shared_access.go` (package `sync`, L42/L69/L90/L118). Méthodes
+        exactement `Read(ctx)(*sql.DB,func(),error)` + `Write(ctx,string)(*sql.DB,func(),error)`
+        → `*sync.SharedAccess` satisfait structurellement l'interface `skill.SharedAccessor`.
+      - `postsyncEventsBurstChunk = 3` : `internal/sync/engine.go:50` (package `sync`).
+        → nouvelle constante `postsyncLUSRBurstChunk = 3` déclarée côté `skill` (pas
+        d'accès cross-package).
+      - Callers de `RunLUSRV2Shadow(OwnerOnly)?` : engine_postsync_scoring.go:194 (fix),
+        lusr_full_recompute.go:46, cmd/lusr_v2_replay:89, cmd/h5-lusr-smoke:67,
+        cmd/lusr_v2_canonical_backfill:110, internal/games/halo_5/livesync/wire.go:107,
+        + ~20 sites de test dans internal/sync/skill/skill_v2_shadow_test.go &
+        skill_v2_capability_test.go. Re-exports : skill_reexport.go:101/117.
+- [x] H1.3 Repro observé ROUGE contre l'ANCIENNE signature (handle unique) : DB fichier
+      seedée (1 match 2v2 éligible), attachée READ_ONLY (`ATTACH ... (READ_ONLY); USE s`),
+      passée à `RunLUSRV2Shadow(ctx, nil, roHandle, "owner")`. Résultat : `loadShadowMatches`
+      + `LoadState` OK (SELECT), `persistComputedMatchSkillV2` → `UpsertState` échoue
+      `Cannot execute statement of type "INSERT" on database "s" which is attached in
+      read-only mode!` → `processed=0`, aucune ligne `player_skill_state_v2` écrite
+      (message prod reproduit). La version pérenne VERTE (accès scindé) est livrée en
+      H3.1 (cf. §7 adaptation).
 
 **Gate H1** : chemins consignés ; test de repro ROUGE avec l'erreur
 `read-only`/non-inscriptible attendue.
 
 ### H2 — Implémentation (effort : moyen)
 
-- [ ] H2.1 Signatures + plombage (DC-H2) : `runLUSRV2Shadow(ctx, playerDB,
-      shared *SharedAccess, xuid, ownerOnlyPersist)` ; suppression du paramètre
-      `sharedDB *sql.DB` ; `shadowRunContext` transporte ce qu'il faut (handle du
-      burst courant passé aux étapes, pas stocké globalement).
-- [ ] H2.2 Découpage Read/Write (DC-H3) : sélection sous Read (release immédiat) ;
-      chunks sous `shared.Write(ctx, "lusr")` ; repos (`NewSkillV2Repo`,
-      `NewSquadOffsetRepo`) construits sur le handle du burst courant ;
-      `heldGroups`/watermark : sémantique INCHANGÉE (anti-gap 2026-06-07 préservé —
-      les tests existants le verrouillent).
-- [ ] H2.3 `runSkillRatingSteps` (DC-H4) : v1 + medal map sous Read, release, puis
-      `RunLUSRV2ShadowOwnerOnly(scoringCtx, playerDB, shared, e.xuid)` ; le
-      commentaire de classification est CORRIGÉ (doc inversée = anti-pattern n°9).
-- [ ] H2.4 Callers migrés (DC-H2) : `lusr_full_recompute.go`, `cmd/lusr_v2_replay`,
-      chemin H5 livesync de main, tests → `NewPinnedSharedAccess(db)`.
-- [ ] H2.5 Grep de contrôle : plus AUCUN appel `RunLUSRV2Shadow*(..., *sql.DB, ...)` ;
-      `go vet ./...` propre.
+- [x] H2.1 Signatures + plombage (DC-H2, ADAPTÉ interface seam §7) :
+      `runLUSRV2Shadow(ctx, playerDB *sql.DB, shared SharedAccessor, xuid, ownerOnlyPersist)` ;
+      suppression du paramètre `sharedDB *sql.DB`. Interface `SharedAccessor`
+      (Read/Write) déclarée côté `skill` (`skill_v2_shared_access.go`), satisfaite
+      structurellement par `*sync.SharedAccess`. `shadowRunContext.repo/squadRepo/sharedDB`
+      câblés PAR CHUNK sur le handle du burst (pas globalement).
+- [x] H2.2 Découpage Read/Write (DC-H3) : sélection sous `loadShadowMatchesUnderRead`
+      (Read, release immédiat) ; `processShadowChunk` par chunks de
+      `postsyncLUSRBurstChunk=3` sous `shared.Write(ctx, "lusr")` ; repos
+      `NewSkillV2Repo`/`NewSquadOffsetRepo` construits sur le handle du burst ;
+      `heldGroups`/watermark sémantique INCHANGÉE (map partagée entre chunks, ordre
+      chrono ASC préservé) ; 0 match candidat → AUCUN burst. Tests anti-gap/held/dual-row
+      existants restent verts (cf. gate).
+- [x] H2.3 `runSkillRatingSteps` (DC-H4) : v1 + medal map sous Read (helper
+      `runLUSRV1UnderRead`, defer release), PUIS `RunLUSRV2ShadowOwnerOnly(scoringCtx,
+      playerDB, shared, e.xuid)` (reçoit le `*SharedAccess`), PUIS sentinelle
+      (`runDualRowSentinelBestEffort`, playerDB-only). Commentaire de classification
+      CORRIGÉ (le v2 écrit shared → burst Write dédié). `runSkillRatingStepsWithDB`
+      SUPPRIMÉ (code mort).
+- [x] H2.4 Callers migrés : `engine_postsync_scoring.go` (passe `shared`),
+      `lusr_full_recompute.go` (`NewPinnedSharedAccess`), `cmd/lusr_v2_replay`,
+      `cmd/h5-lusr-smoke`, `cmd/lusr_v2_canonical_backfill` (`lusync.NewPinnedSharedAccess`),
+      `internal/games/halo_5/livesync/wire.go` (`syncpkg.NewPinnedSharedAccess`), ~21 sites
+      de test (`newPinnedSharedAccessor`, skill-local).
+- [x] H2.5 Grep de contrôle : plus AUCUN caller ne passe un `*sql.DB` brut au shadow
+      (build type-check garantit la signature `SharedAccessor`) ; `go vet ./...` propre.
 
-**Gate H2** : `cd apps/go-api && go build ./... && go vet ./...` verts ; test de repro
-H1.3 devenu VERT ; suite `go test ./internal/sync/...` verte.
+**Gate H2** : `cd apps/go-api && CGO_ENABLED=1 go build ./... && go vet ./...` verts (exit 0/0) ;
+suite `go test -tags=cgo ./internal/sync/...` verte (sync 24.5s, skill 0.8s, v2 13.3s, tous ok).
+Test de repro devenu VERT : couvert par la version pérenne H3.1 [~] (le repro a été retiré
+en H1 pour garder l'arbre buildable — cf. §7 adaptation).
 
 ### H3 — Tests et audit des segments frères (effort : moyen)
 
-- [ ] H3.1 Pérenniser le test de repro (nom explicite, ex.
-      `TestLUSRV2Shadow_PersistsViaWriteBurst_WhenReadHandleIsReadOnly`) : lease burst
-      avec `read` = handle non-inscriptible et `acquire` = handle RW → run owner-only
-      traite et persiste ; assertion aussi sur l'avance du watermark.
-- [ ] H3.2 Test anti-deadlock : le shadow ne demande jamais un burst Write pendant
-      qu'un Read du même SharedAccess est en vol (le garde de `Write` transformerait
-      le bug en erreur — vérifier qu'aucun chemin ne la déclenche, y compris quand
-      `loadShadowMatches` retourne > 1 chunk).
-- [ ] H3.3 Non-régression : suite shadow complète
-      (`go test ./internal/sync/ -run "LUSR|Shadow"` + intégration ciblée) — les tests
-      d'autonomie owner-only / anti-gap / dual-row restent verts.
-- [ ] H3.4 AUDIT des autres segments lecture du post-sync sur main : pour chaque
-      `shared.Read(` de `engine_postsync*.go`, vérifier sur pièces que le bloc
-      n'appelle AUCUN chemin qui écrit shared (events/weapons = bursts Write, OK
-      constaté ; bloc intensités/scoring L22 : vérifier où écrivent les résultats).
-      Consigner le verdict par segment ICI (tableau). Toute anomalie trouvée = la
-      corriger dans CE hotfix seulement si c'est le même défaut de classification ;
-      sinon §Découvertes.
+- [x] H3.1 Test pérenne `TestLUSRV2Shadow_PersistsViaWriteBurst_WhenReadHandleIsReadOnly`
+      (`skill_v2_shadow_burst_test.go`) : `roRwSplitAccess` sur DB FICHIER — `Read` sert
+      un attach `READ_ONLY` (sélection OK), `Write` un attach RW (persist OK). Run
+      owner-only → `processed=1`, `writeCalls>=1`, état owner persisté avec
+      `last_match_at` non NULL (watermark avancé). VERT. Garde de régression : le handle
+      Read est réellement read-only → tout retour au persist-via-Read casserait le test.
+- [x] H3.2 Test anti-deadlock `TestLUSRV2Shadow_ReleasesReadBeforeWriteBurst_MultiChunk` :
+      `orderTrackingAccess` échoue si un `Write` est demandé pendant qu'un `Read` est en
+      vol. Sur 4 matchs (2 chunks) → `processed=4`, `writeCalls>=2`, `violation=""`. VERT.
+- [x] H3.3 Non-régression : suite complète `go test -tags=cgo ./internal/sync/skill/`
+      VERTE (0.85s) — owner-only / anti-gap / held-group / dual-row / canonical / h5
+      title-aware tous verts. `./internal/sync/...` vert (cf. H2).
+- [x] H3.4 AUDIT des segments lecture d'`engine_postsync*.go` (verdict par segment) :
 
-**Gate H3** : `go test ./...` (racine apps/go-api) vert ;
-`go test -tags=integration -p 1 -timeout 900s ./...` exit 0 (OBLIGATOIRE — sync/persist
-touchés ; jamais de commandes go concurrentes sur ce poste) ; tableau H3.4 rempli.
+      | Segment (`shared.Read`/`withSharedRead`) | Callee | Écrit shared ? | Verdict |
+      |---|---|---|---|
+      | pré-checks (postsync.go:81) | `hasMatchesNeedingScoreRefresh`, `hasConvergenceBacklog` | non (lectures) | OK |
+      | scoring (scoring.go:22) | `runScoringStepsWithDB` (perf/engagement/sessions/bot) | non — écrit PLAYER ; intensités ACCUMULÉES puis flushées en burst `Write("engagement_intensity")` (scoring.go:37) | OK |
+      | LUSR v1 (scoring.go:186) | `runLUSRV1UnderRead`→`batchComputeLUSR` | non — écrit PLAYER (`match_skill_rank`) | OK |
+      | enrichment_rows (postsync.go:217) | `ensurePlayerEnrichmentRows` | non — INSERT PLAYER `player_match_enrichment` | OK |
+      | events_select (260) | `selectMatchesMissingEvents` | non ; converge en burst `Write("events")` (276) | OK |
+      | weapons_select (302) | `selectMatchesMissingWeapons` | non ; converge en burst `Write("weapons")` (315) | OK |
+      | catalog_refresh (382) | `CatalogRefreshFromRegistry(metaDB, sharedDB)` | non — LIT `sharedDB` (match_registry), ÉCRIT `metadataDB` (playlists/maps/variants catalog) | OK (vérifié sur pièces catalog_refresh.go:60/89) |
+      | citations (396) | `runPostSyncCitations` | non — écrit PLAYER (`match_citations`) | OK |
+      | dominance (420) | `BackfillDominanceFlags` | non — écrit PLAYER via `PostSyncEnrichmentPersister` (commentaire L418) | OK |
+      | friends (471) | `RecomputeIsWithFriendsCore` | non — écrit PLAYER (`is_with_friends`) | OK |
+      | snapshot_readiness (511) | `EvaluateSnapshotReadiness` | non — écrit PLAYER (marqueur readiness) | OK |
+
+      Vérification transverse : grep `sharedDB.ExecContext` sur les .go de prod → seuls
+      écrivains shared = `csr_shared_writes` (via `runCSRSnapshotSync`, writer AUTONOME hors
+      segment Read), `engagement.go:559` (`persistMatchIntensities`, appelé SOUS le burst
+      `Write`), `pve.go` (pipeline PVE distinct), `backfill_registry_names`/`lusr_full_recompute`
+      (CLI/recovery, writer tenu). AUCUN dans un segment Read post-sync. Le shadow LUSR v2
+      était le SEUL écrivain shared mal classé « lecture » — corrigé. Aucune anomalie
+      résiduelle → §Découvertes = aucune sur ce point.
+
+**Gate H3** : VERT. `go test ./...` (racine) exit 0 (aucun échec) ;
+`go test -tags=integration -p 1 -timeout 900s ./...` exit 0 ; intégration ciblée
+`./internal/persist/... ./internal/sync/...` (anti-ART) exécutée et verte (persist 13.4s,
+sync 80.2s, skill 1.1s, v2 13.2s) ; tableau H3.4 rempli.
 
 ### H4 — Gate final pré-livraison (effort : rapide)
 
-- [ ] H4.1 `make go-api-lint` : 0 nouvelle erreur vs baseline.
-- [ ] H4.2 Skill `delivery-checklist` passé ; entrée `thought_log.md` (obligatoire
-      avant commit final).
-- [ ] H4.3 Commits propres sur `hotfix/lusr-shadow-ro` (messages
-      `fix(sync): ...` explicites), CI de branche verte si disponible.
+- [x] H4.1 `golangci-lint run --new-from-rev=28146aa3a` sur tous les packages modifiés
+      (sync/..., 3 cmd, livesync) = **0 issues** (0 nouvelle erreur vs baseline). Une
+      seule issue introduite (`processShadowChunk` 8 args > max 7) CORRIGÉE en repliant
+      `squadEnabled` dans `shadowRunContext` + `withGameplayDur` calculé dans l'appelant
+      (→ 6 args). `make go-api-lint` (go vet domain/analysis) inchangé.
+- [x] H4.2 Skill `delivery-checklist` passé : Go tests/vet/intégration verts ; logging
+      slog structuré (aucun `fmt.Println`/`log.Printf`/`t.Skip` introduit) ; code mort
+      supprimé (`runSkillRatingStepsWithDB`) ; capability-gated ; frontend N/A (aucun
+      changement web). Entrées `thought_log.md` par phase.
+- [x] H4.3 5 commits propres sur `hotfix/lusr-shadow-ro` (`fix(sync)`/`test(sync)`/
+      `docs`), poussés ; CI de branche vérifiée après push (cf. thought_log H4).
 
-**Gate H4** : tous les items H1→H4 statués ; aucun `[ ]` restant.
+**Gate H4** : tous les items H1→H4 statués ; aucun `[ ]` restant dans H1-H4.
 
 ### H5 — Livraison (GATE USER — ne pas franchir sans GO explicite)
 
-- [ ] H5.1 Présenter au user : diff résumé, résultats des gates, rappel « push main =
-      deploy prod auto ». ATTENDRE le GO dans le tour courant.
+> **EN ATTENTE DU GO UTILISATEUR (2026-07-10).** L'agent autonome s'arrête ici : H5.2/H5.3
+> exigent le merge/push main = deploy prod AUTOMATIQUE, qui requiert un GO explicite de
+> l'utilisateur dans le tour courant (non acquis d'une session précédente — protocole H5).
+> Présentation faite via **PR #53** (diff résumé + gates + rappel deploy) + rapport final
+> de session. CI de branche 13/14 verte (E2E Playwright pending, frontend). H6/H7 (vérif
+> post-deploy VPS lecture seule + clôture + git mv vers `.ai/V7/`) s'exécutent APRÈS le
+> deploy. NE PAS clôturer (git mv + COMPLÉTÉ) tant que H5-H7 ne sont pas verts.
+
+- [~] H5.1 Présentation faite (PR #53 + rapport final). ATTENTE du GO utilisateur pour
+      H5.2/H5.3 — [~] car le GO n'est pas acquis en session autonome (référence : gate user).
 - [ ] H5.2 Après GO : merge dans main (se placer sur main à jour, merger la branche,
       pousser — jamais de push direct branche→main sans synchroniser main local).
 - [ ] H5.3 Surveiller le déploiement (conteneur redéployé, `docker ps` healthy,
@@ -234,4 +295,22 @@ précédente.
 
 ## 7. Découvertes hors périmètre
 
-- (vide)
+- **DÉVIATION MAJEURE DE TOPOLOGIE (constatée 2026-07-10, sur pièces)** : contrairement
+  à l'hypothèse de l'en-tête du plan (« sur main tout est encore à plat dans
+  `internal/sync/` »), la branche `hotfix/lusr-shadow-ro` a été créée depuis un
+  `origin/main` qui **contient déjà le merge de la campagne audits** (commit
+  `28146aa3a`, déployé prod 2026-07-10). La topologie réelle = celle de la branche
+  audits : le cluster skill (dont `RunLUSRV2Shadow`) vit dans le **sous-package**
+  `internal/sync/skill/` (package `skill`), ré-exporté vers `sync` via
+  `skill_reexport.go`. `SharedAccess` reste dans package `sync`
+  (`internal/sync/shared_access.go`). Le sous-package `skill` NE PEUT PAS importer
+  `sync` (cycle sync→skill). Conséquence : DC-H2 est appliqué via l'**interface seam**
+  décrit en H7.2 (petite interface `SharedAccessor` déclarée côté `skill`, satisfaite
+  STRUCTURELLEMENT par `*sync.SharedAccess`), et NON par passage direct d'un
+  `*sync.SharedAccess` au runner. H7.2 (report du fix sur la branche audits) devient
+  **sans objet** : la branche audits est déjà mergée dans main. Voir thought_log
+  2026-07-10.
+- Adaptation du test de repro (H1.3) : la topologie sous-package impose que la version
+  pérenne du test utilise la nouvelle API (`SharedAccessor`). Le repro ROUGE est observé
+  contre l'ANCIENNE signature (handle unique RO), puis la version pérenne VERTE (accès
+  scindé Read RO / Write RW) est livrée en H2/H3 — même intention, API adaptée.

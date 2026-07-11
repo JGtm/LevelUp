@@ -45,6 +45,10 @@ func (e RankEntry) FullLabel(locale string) (string, bool) {
 //
 // L'ordre d'itération (Next) suit l'ordre numérique de `rank_id` qui correspond
 // à la progression de carrière côté Halo Waypoint.
+//
+// Un *RankCatalog nil est valide et se comporte comme un catalog vide : le
+// chargement est best-effort (metadata absente en mode démo / titre sans rangs)
+// et les consommateurs ne re-vérifient pas le pointeur.
 type RankCatalog struct {
 	titleSlug string
 	byID      map[int]RankEntry
@@ -61,13 +65,26 @@ func NewRankCatalog(titleSlug string, entries []RankEntry) *RankCatalog {
 }
 
 // TitleSlug retourne le slug du titre porteur du catalog.
-func (c *RankCatalog) TitleSlug() string { return c.titleSlug }
+func (c *RankCatalog) TitleSlug() string {
+	if c == nil {
+		return ""
+	}
+	return c.titleSlug
+}
 
 // Len retourne le nombre de rangs chargés.
-func (c *RankCatalog) Len() int { return len(c.byID) }
+func (c *RankCatalog) Len() int {
+	if c == nil {
+		return 0
+	}
+	return len(c.byID)
+}
 
 // Get retourne le RankEntry pour rank_id (ok = false si absent).
 func (c *RankCatalog) Get(id int) (RankEntry, bool) {
+	if c == nil {
+		return RankEntry{}, false
+	}
 	e, ok := c.byID[id]
 	return e, ok
 }
@@ -75,6 +92,9 @@ func (c *RankCatalog) Get(id int) (RankEntry, bool) {
 // Next retourne le rang suivant dans la progression (rank_id + 1).
 // Retourne (zero, false) si id est le dernier rang du catalog.
 func (c *RankCatalog) Next(id int) (RankEntry, bool) {
+	if c == nil {
+		return RankEntry{}, false
+	}
 	e, ok := c.byID[id+1]
 	return e, ok
 }
@@ -84,6 +104,9 @@ func (c *RankCatalog) Next(id int) (RankEntry, bool) {
 // cumulée au rang max (où la progression intra-rang est nulle). 0 si le catalog n'a
 // pas les seuils (XPRequired non chargé).
 func (c *RankCatalog) CumulativeXPRequired(uptoRankInclusive int) int {
+	if c == nil {
+		return 0
+	}
 	total := 0
 	for id := 1; id <= uptoRankInclusive; id++ {
 		if e, ok := c.byID[id]; ok {
@@ -96,6 +119,9 @@ func (c *RankCatalog) CumulativeXPRequired(uptoRankInclusive int) int {
 // FullLabel résout le libellé complet d'un rang dans la locale demandée.
 // Retourne ("", false) si rank_id est absent.
 func (c *RankCatalog) FullLabel(id int, locale string) (string, bool) {
+	if c == nil {
+		return "", false
+	}
 	e, ok := c.byID[id]
 	if !ok {
 		return "", false
@@ -106,6 +132,9 @@ func (c *RankCatalog) FullLabel(id int, locale string) (string, bool) {
 
 // IDs retourne la liste triée des rank_id chargés (utile pour debug/tests).
 func (c *RankCatalog) IDs() []int {
+	if c == nil {
+		return nil
+	}
 	out := make([]int, 0, len(c.byID))
 	for id := range c.byID {
 		out = append(out, id)
