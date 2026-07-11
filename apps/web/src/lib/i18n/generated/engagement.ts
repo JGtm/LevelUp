@@ -3,6 +3,7 @@
 
 export const engagementManifest = {
   "engagement.axis.events_per_min": { fr: "events / min", en: "events / min" },
+  "engagement.calibration.provisional": { fr: "calibration provisoire", en: "provisional calibration" },
   "engagement.chips.afficher_joueur": { fr: "Afficher joueur :", en: "Show player:" },
   "engagement.chips.aria_label": { fr: "Selecteur de joueur a afficher", en: "Player display selector" },
   "engagement.chips.hide_player": { fr: "Masquer {name}", en: "Hide {name}" },

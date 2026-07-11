@@ -239,7 +239,7 @@ func fallbackCapabilities() games.CapabilityMap {
 		games.CapMatchSkillSnapshot: games.CapNotExposed,
 		games.CapCareerProgression:  games.CapSupported,
 		games.CapTimeseries:         games.CapNotExposed,
-		games.CapEngagement:         games.CapNotExposed,
+		games.CapEngagement:         games.CapDegraded, // F7 E5 : calibration provisoire (candidats Infinite) → provisional ; supported au gate humain E6
 		games.CapCitationsEngine:    games.CapNotExposed,
 		// Commendations NATIVES par match : CÂBLÉ (AXE B). carnage
 		// ProgressiveCommendationDeltas → shared.match_commendations (ingest) +

@@ -1,3 +1,26 @@
+## [2026-07-11] Engagement agnostic gradué (F7) — Phase E5 (Complété local)
+
+**Statut** : E5 complétée en LOCAL. Activation H5 en `degraded`.
+
+**Décision technique** : H5 `engagement.score` passé de `not_exposed` à `degraded` dans les
+3 miroirs (capabilities.toml, adapter fallbackCapabilities, skeleton_test parity). Le coarse
+`title.CapEngagement` était déjà présent (title.toml) → la route sert déjà ; la fine=degraded
+pilote (via E3) `calibration=provisional` + le feature matrix `degraded` (front rend avec
+badge). Front : mention discrète « calibration provisoire » (FR+EN, manifest régénéré) apposée
+au sous-titre quand `calibration === 'provisional'` ; logique extraite dans
+`engagementSubtitle.ts` (évite le warning react-refresh, convention *_logic) + test 5 cas.
+
+**E5d** : les poids E4 de H5 = défauts Infinite = poids du re-backfill de la refonte lobby →
+les 5240 samples H5 locaux sont déjà conformes E4 (recompute = no-op numérique ; le harnais
+E4c les a lus). Re-backfill PROD différé post-merge (dépend deploy).
+
+**Résultat observé** : gates verts — H5/games ; intégration api `-p 1` exit 0 ; front
+typecheck 0 / eslint 0 / vitest. Restes non automatisables (gate E5/E6) : smoke visuel H5 +
+re-backfill prod = vérifications utilisateur.
+
+**Prochaine étape** : E6 — protocole de gate humain écrit (E6a), puis décision utilisateur
+(E6b, non automatisable) → `supported` si validé.
+
 ## [2026-07-11] Engagement agnostic gradué (F7) — Phase E4 (Complété)
 
 **Statut** : E4 complétée. Harnais de calibration par titre + config par titre.

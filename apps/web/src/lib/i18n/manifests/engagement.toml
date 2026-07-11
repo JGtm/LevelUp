@@ -84,6 +84,15 @@ en = "expected: your usual response in chaotic matches"
 fr = "attendu : ta reponse habituelle (toutes intensites)"
 en = "expected: your usual response (all intensities)"
 
+# ─── Calibration provisoire (chantier F7 E5, DE-8) ──────────────────────────
+# Mention discrete affichee quand le titre est en calibration provisoire
+# (capability engagement.score = degraded, ex. Halo 5 avant le gate humain E6).
+# Masquee quand la calibration est validee.
+
+[engagement.calibration.provisional]
+fr = "calibration provisoire"
+en = "provisional calibration"
+
 # ─── Squad chips (Mock 15 v2) ───────────────────────────────────────────────
 
 [engagement.chips.afficher_joueur]

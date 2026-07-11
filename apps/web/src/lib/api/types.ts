@@ -308,6 +308,13 @@ export interface EngagementScoreResultAPI {
   /** Libellé du bin d'intensité quand `expected_basis === 'bin'`
    *  (calme | standard | chaotique). Vide sinon. */
   intensity_bin: string
+  /** 2e porte F7 : statut de calibration des coefficients du titre.
+   *  `provisional` → mention « calibration provisoire » (badge discret) ; absent
+   *  ou `validated` → confiance pleine (rien affiché). */
+  calibration?: 'validated' | 'provisional'
+  /** 1re porte F7 : suffisance du vecteur de signaux (`full` | `partial`).
+   *  Absent si non calculé. */
+  signal_basis?: 'full' | 'partial'
 }
 
 /** EngagementTimeseriesRequest — body de POST /engagement/timeseries.
