@@ -14,7 +14,11 @@ import "time"
 
 // NearMissRatio est la distance relative au seuil considérée comme "proche".
 // Si valeur courante >= seuil × (1 - NearMissRatio), on émet une notif near-miss.
-const NearMissRatio = 0.10
+//
+// DP14 (2026-07) : 0.10 → 0.02. « Proche » à 90 % de 10 000 kills = 1 000 kills
+// restants (des semaines) — pas une approche. À 98 % (200 kills restants) le
+// dénouement est imminent, le nudge a du sens.
+const NearMissRatio = 0.02
 
 // CatalogEntry est une définition de milestone dans le référentiel.
 //

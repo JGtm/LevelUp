@@ -8705,6 +8705,8 @@ export interface components {
             wins: number;
         };
         UnreadCount: {
+            /** Format: int64 */
+            badge_count: number;
             by_category: {
                 [key: string]: number;
             };

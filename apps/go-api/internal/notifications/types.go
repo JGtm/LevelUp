@@ -13,10 +13,14 @@ import (
 type Category string
 
 const (
-	CategoryAppRelease         Category = "app_release"
-	CategoryMatchSynced        Category = "match_synced"
-	CategoryMediaAdded         Category = "media_added"
-	CategoryMediaLiked         Category = "media_liked"
+	CategoryAppRelease  Category = "app_release"
+	CategoryMatchSynced Category = "match_synced"
+	CategoryMediaAdded  Category = "media_added"
+	CategoryMediaLiked  Category = "media_liked"
+	// CategoryObjectiveAssigned : conservée pour rétro-compat des notifs déjà en DB
+	// + seed des préférences — n'est PLUS émise depuis 2026-07 (DP2 : doublon exact
+	// de objective_completed, les deux étaient branchés sur PersonalAwardCount).
+	// Modèle : CategorySeasonPassLevel.
 	CategoryObjectiveAssigned  Category = "objective_assigned"
 	CategoryObjectiveCompleted Category = "objective_completed"
 	CategoryChallengeAdded     Category = "challenge_added"
@@ -176,8 +180,13 @@ type ListResult struct {
 }
 
 // UnreadCount expose le total et la répartition par catégorie.
+//
+// BadgeCount (DP6) = non-lues de severity != 'info' — ce qui alimente le badge
+// cloche « signifiant » (une info de plomberie ne fait pas clignoter la cloche).
+// Count reste le total complet exposé (page Notifications, aria-label).
 type UnreadCount struct {
 	Count      int            `json:"count"`
+	BadgeCount int            `json:"badge_count"`
 	ByCategory map[string]int `json:"by_category"`
 }
 

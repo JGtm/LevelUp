@@ -230,7 +230,9 @@ func (r *NotificationsRepo) UnreadCount(ctx context.Context) (notifications.Unre
 	err := r.readDB().WithReopenOnInvalidated(func() error {
 		var qerr error
 		rows, qerr = r.readDB().Query(ctx, `
-			SELECT category, COUNT(*) AS n
+			SELECT category,
+			       COUNT(*) AS n,
+			       COUNT(*) FILTER (WHERE severity <> 'info') AS badge_n
 			FROM player_notifications_latest
 			WHERE xuid = ? AND read_at IS NULL
 			GROUP BY category
@@ -245,12 +247,13 @@ func (r *NotificationsRepo) UnreadCount(ctx context.Context) (notifications.Unre
 	out := notifications.UnreadCount{ByCategory: map[string]int{}}
 	for rows.Next() {
 		var cat string
-		var n int
-		if err := rows.Scan(&cat, &n); err != nil {
+		var n, badgeN int
+		if err := rows.Scan(&cat, &n, &badgeN); err != nil {
 			return notifications.UnreadCount{}, err
 		}
 		out.ByCategory[cat] = n
 		out.Count += n
+		out.BadgeCount += badgeN // DP6 : exclut severity=info du badge cloche
 	}
 	return out, rows.Err()
 }
@@ -507,6 +510,56 @@ func (r *NotificationsRepo) CapAndSweep(ctx context.Context, max int) error {
 	})
 	if err != nil {
 		slog.Warn("NotificationsRepo.CapAndSweep: exec", "err", err)
+	}
+	return nil
+}
+
+// SweepStaleInfoRead marque lues les notifs severity='info' non lues plus
+// anciennes que cutoff (expiry douce DP8). Best-effort — les erreurs sont
+// loguées, jamais propagées (appelée sous emitInner à côté de CapAndSweep).
+func (r *NotificationsRepo) SweepStaleInfoRead(ctx context.Context, cutoff time.Time) error {
+	if r.sharedSocialPath() == "" {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, notifWriteTimeout)
+	defer cancel()
+
+	if r.pdb.SocialPersister != nil {
+		if _, err := r.pdb.SocialPersister.SweepStaleInfoNotificationsRead(ctx, r.xuid, cutoff); err != nil {
+			slog.WarnContext(ctx, "NotificationsRepo.SweepStaleInfoRead: persister", "err", err)
+		}
+		return nil
+	}
+	if RequireSocialPersister {
+		slog.WarnContext(ctx, "NotificationsRepo.SweepStaleInfoRead: SocialPersister non wired — sweep ignoré")
+		return nil
+	}
+
+	// Fallback legacy (tests sans wiring).
+	rwDB, err := OpenReadWrite(r.sharedSocialPath())
+	if err != nil {
+		slog.Warn("NotificationsRepo.SweepStaleInfoRead: open rw", "err", err)
+		return nil
+	}
+	defer rwDB.Close()
+
+	now := time.Now().UTC()
+	err = rwDB.WithReopenOnInvalidated(func() error {
+		_, execErr := rwDB.Exec(ctx, `
+			INSERT INTO player_notifications_history (
+				xuid, id, category, severity, title_key, body_key, params,
+				target_route, target_search, actor_xuid, actor_name, source,
+				created_at, read_at, is_deleted, written_at)
+			SELECT xuid, id, category, severity, title_key, body_key, params,
+			       target_route, target_search, actor_xuid, actor_name, source,
+			       created_at, ?, FALSE, CURRENT_TIMESTAMP
+			FROM player_notifications_latest
+			WHERE xuid = ? AND read_at IS NULL AND severity = 'info' AND created_at < ?
+		`, now, r.xuid, cutoff)
+		return execErr
+	})
+	if err != nil {
+		slog.Warn("NotificationsRepo.SweepStaleInfoRead: exec", "err", err)
 	}
 	return nil
 }

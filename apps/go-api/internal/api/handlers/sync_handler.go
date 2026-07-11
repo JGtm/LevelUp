@@ -261,7 +261,9 @@ func (h *SyncHandler) emitMatchSynced(ctx context.Context, slug string, inserted
 	}
 	if err := em.Emit(ctx, notifications.EmitInput{
 		Category: notifications.CategoryMatchSynced,
-		Severity: notifications.SeveritySuccess,
+		// DP15 : plomberie, pas un accomplissement → severity info. Sort du badge
+		// cloche (DP6), reste visible en liste et en toast.
+		Severity: notifications.SeverityInfo,
 		TitleKey: "notif.match_synced.title",
 		BodyKey:  "notif.match_synced.body",
 		Params:   map[string]any{jsonKeyCount: inserted},
@@ -280,7 +282,10 @@ func (h *SyncHandler) emitSyncError(ctx context.Context, slug, jobID, message st
 	if err != nil || em == nil {
 		return
 	}
-	if err := em.Emit(ctx, notifications.EmitInput{
+	// Coalescence 6 h (DP15) : une panne durable = UNE notif dont le count
+	// s'incrémente (dernier message conservé), pas une par tentative de sync.
+	// sync_error n'a pas d'acteur → coalescence sur la catégorie seule.
+	if err := em.EmitCoalesced(ctx, notifications.EmitInput{
 		Category:    notifications.CategorySyncError,
 		Severity:    notifications.SeverityError,
 		TitleKey:    "notif.sync_error.title",
@@ -288,10 +293,13 @@ func (h *SyncHandler) emitSyncError(ctx context.Context, slug, jobID, message st
 		Params:      map[string]any{"message": truncate(message, 200), "job_id": jobID},
 		TargetRoute: fmt.Sprintf("/players/%s/sync", slug),
 		Source:      "sync_handler",
-	}); err != nil {
+	}, syncErrorCoalesceWindow); err != nil {
 		slog.WarnContext(ctx, "notifications: sync_error emit", "err", err)
 	}
 }
+
+// syncErrorCoalesceWindow : fenêtre de coalescence des notifs sync_error (DP15).
+const syncErrorCoalesceWindow = 6 * time.Hour
 
 func truncate(s string, max int) string {
 	if len(s) <= max {

@@ -3,6 +3,7 @@ package notifications
 import (
 	"context"
 	"errors"
+	"sort"
 	"testing"
 	"time"
 
@@ -22,6 +23,7 @@ type fakeRepo struct {
 	lastAllCat    Category
 	lastDeleteID  int64
 	unread        UnreadCount
+	sweepCalls    int
 }
 
 func newFakeRepo() *fakeRepo {
@@ -43,7 +45,20 @@ func (r *fakeRepo) Insert(_ context.Context, n *Notification) error {
 
 func (r *fakeRepo) List(_ context.Context, f ListFilter) (ListResult, error) {
 	r.lastListLimit = f.Limit
-	return ListResult{}, nil
+	// Vue "latest par ID" (append-only) filtrée par catégorie, plus récent d'abord.
+	latest := map[int64]*Notification{}
+	for _, n := range r.inserted {
+		if f.Category != "" && n.Category != f.Category {
+			continue
+		}
+		latest[n.ID] = n // le dernier inséré pour cet ID gagne
+	}
+	items := make([]Notification, 0, len(latest))
+	for _, n := range latest {
+		items = append(items, *n)
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].CreatedAt.After(items[j].CreatedAt) })
+	return ListResult{Items: items}, nil
 }
 func (r *fakeRepo) UnreadCount(_ context.Context) (UnreadCount, error) {
 	return r.unread, nil
@@ -62,6 +77,10 @@ func (r *fakeRepo) Delete(_ context.Context, id int64) error {
 	return nil
 }
 func (r *fakeRepo) CapAndSweep(_ context.Context, _ int) error { return nil }
+func (r *fakeRepo) SweepStaleInfoRead(_ context.Context, _ time.Time) error {
+	r.sweepCalls++
+	return nil
+}
 func (r *fakeRepo) GetPreferences(_ context.Context) ([]Preference, error) {
 	return r.prefs, nil
 }
@@ -462,5 +481,112 @@ func TestService_Emit_NoAcquirer_BehavesLikeBefore(t *testing.T) {
 	}
 	if len(repo.inserted) != 1 {
 		t.Errorf("expected 1 insertion, got %d", len(repo.inserted))
+	}
+}
+
+// ─── C4 : EmitCoalesced ──────────────────────────────────────────────────────
+
+func mediaInput(actor string) EmitInput {
+	return EmitInput{
+		Category: CategoryMediaAdded,
+		TitleKey: "notif.media_added.title",
+		Source:   "media_handler",
+		Actor:    &Actor{Name: actor},
+		Params:   map[string]any{"actor_name": actor, "count": 1},
+	}
+}
+
+// latestFor retourne la vue latest d'une catégorie (via le Service.List).
+func latestFor(t *testing.T, svc *Service, cat Category) []Notification {
+	t.Helper()
+	lr, err := svc.List(context.Background(), ListFilter{Category: cat, Limit: 50})
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	return lr.Items
+}
+
+func TestEmitCoalesced_SameActor_MergesCountAndID(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+	ctx := context.Background()
+	if err := svc.EmitCoalesced(ctx, mediaInput("JGtm"), time.Hour); err != nil {
+		t.Fatalf("emit 1: %v", err)
+	}
+	if err := svc.EmitCoalesced(ctx, mediaInput("JGtm"), time.Hour); err != nil {
+		t.Fatalf("emit 2: %v", err)
+	}
+	items := latestFor(t, svc, CategoryMediaAdded)
+	if len(items) != 1 {
+		t.Fatalf("attendu 1 notif coalescée, got %d", len(items))
+	}
+	if got := coalescedCountOf(&items[0]); got != 2 {
+		t.Errorf("count sommé attendu 2, got %d", got)
+	}
+}
+
+func TestEmitCoalesced_DifferentActors_TwoNotifs(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+	ctx := context.Background()
+	_ = svc.EmitCoalesced(ctx, mediaInput("JGtm"), time.Hour)
+	_ = svc.EmitCoalesced(ctx, mediaInput("Madina"), time.Hour)
+	if items := latestFor(t, svc, CategoryMediaAdded); len(items) != 2 {
+		t.Errorf("acteurs différents → 2 notifs, got %d", len(items))
+	}
+}
+
+func TestEmitCoalesced_OutsideWindow_TwoNotifs(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+	ctx := context.Background()
+	_ = svc.EmitCoalesced(ctx, mediaInput("JGtm"), time.Hour)
+	// Vieillir la candidate au-delà de la fenêtre.
+	repo.inserted[0].CreatedAt = time.Now().UTC().Add(-2 * time.Hour)
+	_ = svc.EmitCoalesced(ctx, mediaInput("JGtm"), time.Hour)
+	if items := latestFor(t, svc, CategoryMediaAdded); len(items) != 2 {
+		t.Errorf("candidate hors fenêtre → 2 notifs, got %d", len(items))
+	}
+}
+
+func TestEmitCoalesced_ReadCandidate_NeverResurrected(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+	ctx := context.Background()
+	_ = svc.EmitCoalesced(ctx, mediaInput("JGtm"), time.Hour)
+	// Marquer la candidate comme lue.
+	now := time.Now().UTC()
+	repo.inserted[0].ReadAt = &now
+	_ = svc.EmitCoalesced(ctx, mediaInput("JGtm"), time.Hour)
+	if items := latestFor(t, svc, CategoryMediaAdded); len(items) != 2 {
+		t.Errorf("candidate lue → nouvelle notif (jamais ressuscitée), got %d", len(items))
+	}
+}
+
+// C7 : sync_error (sans acteur) coalesce sur la catégorie seule, count incrémenté.
+func TestEmitCoalesced_SyncError_NoActor_CategoryOnly(t *testing.T) {
+	repo := newFakeRepo()
+	svc := NewService(repo)
+	ctx := context.Background()
+	syncErr := func(msg string) EmitInput {
+		return EmitInput{
+			Category: CategorySyncError,
+			TitleKey: "notif.sync_error.title",
+			Source:   "sync_handler",
+			Params:   map[string]any{"message": msg, "job_id": "j1"},
+		}
+	}
+	_ = svc.EmitCoalesced(ctx, syncErr("boom 1"), 6*time.Hour)
+	_ = svc.EmitCoalesced(ctx, syncErr("boom 2"), 6*time.Hour)
+	_ = svc.EmitCoalesced(ctx, syncErr("boom 3"), 6*time.Hour)
+	items := latestFor(t, svc, CategorySyncError)
+	if len(items) != 1 {
+		t.Fatalf("3 échecs → 1 notif coalescée, got %d", len(items))
+	}
+	if got := coalescedCountOf(&items[0]); got != 3 {
+		t.Errorf("count attendu 3, got %d", got)
+	}
+	if msg, _ := jsonStringField(items[0].Params, "message"); msg != "boom 3" {
+		t.Errorf("dernier message attendu 'boom 3', got %q", msg)
 	}
 }

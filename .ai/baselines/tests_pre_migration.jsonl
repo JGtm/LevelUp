@@ -43169,10 +43169,6 @@
 {"Time":"2026-06-26T23:50:53.9731998+02:00","Action":"output","Package":"levelup/go-api/internal/progression/milestones","Test":"TestDetect_AlreadyEarned_NoDuplicate","Output":"=== RUN   TestDetect_AlreadyEarned_NoDuplicate\n"}
 {"Time":"2026-06-26T23:50:53.9731998+02:00","Action":"output","Package":"levelup/go-api/internal/progression/milestones","Test":"TestDetect_AlreadyEarned_NoDuplicate","Output":"--- PASS: TestDetect_AlreadyEarned_NoDuplicate (0.00s)\n"}
 {"Time":"2026-06-26T23:50:53.9737172+02:00","Action":"pass","Package":"levelup/go-api/internal/progression/milestones","Test":"TestDetect_AlreadyEarned_NoDuplicate","Elapsed":0}
-{"Time":"2026-06-26T23:50:53.9737172+02:00","Action":"run","Package":"levelup/go-api/internal/progression/milestones","Test":"TestDetect_NearMiss_Within10Percent"}
-{"Time":"2026-06-26T23:50:53.9737172+02:00","Action":"output","Package":"levelup/go-api/internal/progression/milestones","Test":"TestDetect_NearMiss_Within10Percent","Output":"=== RUN   TestDetect_NearMiss_Within10Percent\n"}
-{"Time":"2026-06-26T23:50:53.9737172+02:00","Action":"output","Package":"levelup/go-api/internal/progression/milestones","Test":"TestDetect_NearMiss_Within10Percent","Output":"--- PASS: TestDetect_NearMiss_Within10Percent (0.00s)\n"}
-{"Time":"2026-06-26T23:50:53.9737172+02:00","Action":"pass","Package":"levelup/go-api/internal/progression/milestones","Test":"TestDetect_NearMiss_Within10Percent","Elapsed":0}
 {"Time":"2026-06-26T23:50:53.9737172+02:00","Action":"run","Package":"levelup/go-api/internal/progression/milestones","Test":"TestDetect_FarFromThreshold_NoSignal"}
 {"Time":"2026-06-26T23:50:53.9737172+02:00","Action":"output","Package":"levelup/go-api/internal/progression/milestones","Test":"TestDetect_FarFromThreshold_NoSignal","Output":"=== RUN   TestDetect_FarFromThreshold_NoSignal\n"}
 {"Time":"2026-06-26T23:50:53.9737172+02:00","Action":"output","Package":"levelup/go-api/internal/progression/milestones","Test":"TestDetect_FarFromThreshold_NoSignal","Output":"--- PASS: TestDetect_FarFromThreshold_NoSignal (0.00s)\n"}

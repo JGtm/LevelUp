@@ -58,6 +58,12 @@ const (
 	// bestKDARecordEpsilon : amélioration minimale du best_kda pour compter comme
 	// un nouveau record personnel (filtre le bruit de flottant). Nommé K1a (ex-0.01).
 	bestKDARecordEpsilon = 0.01
+	// maxPlausibleCounterDelta : borne de vraisemblance d'un delta compteur par
+	// cycle de sync. Le max légitime observé en prod = 6 ; l'incident cold-start
+	// 2026-07-03 portait objective_completed=3434. Au-delà de ce seuil le delta
+	// est presque toujours un artefact de snapshot « before » faussement bas —
+	// on log et on supprime l'émission (DP9).
+	maxPlausibleCounterDelta = 20
 )
 
 // counterDelta décrit une notification post-sync « compteur » : émise quand
@@ -84,7 +90,11 @@ var postSyncCounterDeltas = []counterDelta{
 	{field: func(s *PlayerSnapshot) int { return s.CitationTotalEarnedTiers }, category: notifications.CategoryCitationTier, severity: notifications.SeveritySuccess, titleKey: "notif.citation_tier.title", bodyKey: "notif.citation_tier.body", routeSuffix: "citations", logLabel: "citation_tier"},
 	{field: func(s *PlayerSnapshot) int { return s.CitationMasteryCount }, category: notifications.CategoryCitationMastery, severity: notifications.SeveritySuccess, titleKey: "notif.citation_mastery.title", bodyKey: "notif.citation_mastery.body", routeSuffix: "citations", logLabel: "citation_mastery"},
 	{field: func(s *PlayerSnapshot) int { return s.ChallengePathsCount }, category: notifications.CategoryChallengeAdded, severity: notifications.SeverityInfo, titleKey: "notif.challenge_added.title", bodyKey: "notif.challenge_added.body", routeSuffix: "ascension", search: map[string]any{"tab": "challenges"}, logLabel: "challenge_added"},
-	{field: func(s *PlayerSnapshot) int { return s.PersonalAwardCount }, category: notifications.CategoryObjectiveAssigned, severity: notifications.SeverityInfo, titleKey: "notif.objective_assigned.title", bodyKey: "notif.objective_assigned.body", routeSuffix: "ascension", logLabel: "objective_assigned"},
+	// B1/DP2 (2026-07) : objective_assigned SUPPRIMÉ — doublon exact de
+	// objective_completed (les deux étaient branchés sur PersonalAwardCount, une
+	// paire de notifs à chaque cycle de sync). Catégorie conservée en rétro-compat
+	// (types.go) mais plus jamais émise post-sync. Garde-rail :
+	// TestPostSyncNeverEmitsObjectiveAssigned.
 }
 
 // BuildPostSyncDeltaHook construit la closure consommée par sync_handler :
@@ -122,7 +132,10 @@ func BuildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 				slog.WarnContext(ctx, "post_sync: emitter", "slug", slug, "err", err)
 				return
 			}
-			EmitPostSyncDeltas(ctx, emitter, slug, before, after, pdb2)
+			EmitPostSyncDeltas(ctx, emitter, slug, before, after, pdb2, PostSyncDeltaOptions{
+				RecentSkillTiers: loadRecentSkillTierNotifs(ctx, pdb2),
+				Now:              time.Now().UTC(),
+			})
 
 			// Couche progression V2 (Ascension) — pipeline streaks/records/
 			// milestones/coach + coach_advisor (Phase 8 ADR 0020). Non
@@ -178,6 +191,66 @@ func thresholdCrossed(before, after, step float64) (crossed bool, level float64)
 	return false, 0
 }
 
+// snapshotLooksCold retourne vrai si le snapshot ne porte AUCUN signal joueur :
+// tous les compteurs à 0, aucune playlist classée, KD nul. Un « before » froid
+// (échec de lecture de la DB, ou premier passage) fait apparaître tout
+// l'historique comme delta positif au cycle suivant → burst de notifications
+// (incident cold-start 2026-07-03 : 22 notifs en 1 s). DP1 : garde en mémoire,
+// pas de baseline persistée.
+func snapshotLooksCold(s *PlayerSnapshot) bool {
+	if s == nil {
+		return true
+	}
+	return s.PersonalAwardCount == 0 &&
+		s.CitationsCount == 0 &&
+		s.ChallengePathsCount == 0 &&
+		s.ChallengeCompletedCount == 0 &&
+		s.BattlepassCompletedTracks == 0 &&
+		s.CitationTotalEarnedTiers == 0 &&
+		s.CitationMasteryCount == 0 &&
+		s.CurrentRank == 0 &&
+		len(s.SkillTierByPlaylist) == 0 &&
+		s.KDRatio == 0
+}
+
+// persistBestKDASeed persiste le record best_kda SANS émettre de notification —
+// seed silencieux. Utilisé au cold-start (before froid : on supprime toutes les
+// émissions mais on veut quand même semer le PB pour ne pas le notifier au cycle
+// suivant) ; la garde `!oldRec.Loaded` évite d'écraser un record existant.
+func persistBestKDASeed(ctx context.Context, pdb *duckdb.PlayerDB, after *PlayerSnapshot) {
+	if pdb == nil || after == nil || after.BestKDA <= 0 {
+		return
+	}
+	oldRec, err := duckdb.LoadPlayerRecord(ctx, pdb, "best_kda")
+	if err != nil {
+		slog.DebugContext(ctx, "post_sync: load best_kda record (cold-start seed)", "err", err)
+	}
+	if !oldRec.Loaded || after.BestKDA > oldRec.Value+bestKDARecordEpsilon {
+		if err := duckdb.UpsertPlayerRecord(ctx, pdb, "best_kda", after.BestKDA, after.BestKDAMatchID); err != nil {
+			slog.WarnContext(ctx, "post_sync: persist best_kda (cold-start seed)", "err", err)
+		}
+	}
+}
+
+// loadRecentSkillTierNotifs charge les dernières notifs skill_tier du joueur
+// (limite 50) pour la dédup 24 h (B10). Best-effort : retourne nil si la DB
+// sociale n'est pas attachée ou si la lecture échoue.
+func loadRecentSkillTierNotifs(ctx context.Context, pdb *duckdb.PlayerDB) []notifications.Notification {
+	if pdb == nil || pdb.SharedSocial == nil {
+		return nil
+	}
+	repo := duckdb.NewNotificationsRepo(pdb)
+	lr, err := repo.List(ctx, notifications.ListFilter{
+		Category: notifications.CategorySkillTier,
+		Limit:    50,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "post_sync: load recent skill_tier notifs", "err", err)
+		return nil
+	}
+	return lr.Items
+}
+
 // EmitPostSyncDeltas compare 2 snapshots et émet les notifications applicables.
 //
 // Best-effort : toute erreur est loguée et n'interrompt pas le flux de sync.
@@ -187,6 +260,16 @@ func thresholdCrossed(before, after, step float64) (crossed bool, level float64)
 // et émet 1 notification par delta significatif. Complexité reflète le nombre
 // de KPIs surveillés, pas un défaut de conception.
 //
+// PostSyncDeltaOptions porte les entrées optionnelles de l'émission delta —
+// le contexte de dédup skill_tier (B10/DP4). Variadic pour éviter la refonte
+// des nombreux call-sites de test ; la prod passe les notifs skill_tier récentes.
+type PostSyncDeltaOptions struct {
+	// RecentSkillTiers : notifs skill_tier récentes (< 24 h utile) pour la dédup.
+	RecentSkillTiers []notifications.Notification
+	// Now : horloge injectée (défaut time.Now().UTC()).
+	Now time.Time
+}
+
 //nolint:funlen,gocyclo // Émetteur multi-événements : compare ~12 snapshots delta
 func EmitPostSyncDeltas(
 	ctx context.Context,
@@ -194,8 +277,26 @@ func EmitPostSyncDeltas(
 	slug string,
 	before, after *PlayerSnapshot,
 	pdb *duckdb.PlayerDB,
+	opts ...PostSyncDeltaOptions,
 ) {
 	if emitter == nil || before == nil || after == nil {
+		return
+	}
+	var o PostSyncDeltaOptions
+	if len(opts) > 0 {
+		o = opts[0]
+	}
+	if o.Now.IsZero() {
+		o.Now = time.Now().UTC()
+	}
+
+	// Anti-burst cold-start (DP1) : un snapshot « before » froid (échec de lecture
+	// DB ou premier passage) transforme tout l'historique en delta positif → burst.
+	// On supprime toutes les émissions de ce cycle mais on sème silencieusement le
+	// PB best_kda pour ne pas le notifier au cycle suivant.
+	if snapshotLooksCold(before) && !snapshotLooksCold(after) {
+		slog.WarnContext(ctx, "post_sync: snapshot before froid — émissions supprimées (cold-start)", "slug", slug)
+		persistBestKDASeed(ctx, pdb, after)
 		return
 	}
 
@@ -207,12 +308,20 @@ func EmitPostSyncDeltas(
 		if newV <= oldV {
 			continue
 		}
+		delta := newV - oldV
+		// Cap de vraisemblance (DP9) : un delta > maxPlausibleCounterDelta trahit
+		// presque toujours un snapshot « before » faussement bas — on supprime.
+		if delta > maxPlausibleCounterDelta {
+			slog.WarnContext(ctx, "post_sync: delta compteur invraisemblable supprimé",
+				"category", d.category, "delta", delta, "log_label", d.logLabel)
+			continue
+		}
 		in := notifications.EmitInput{
 			Category:    d.category,
 			Severity:    d.severity,
 			TitleKey:    d.titleKey,
 			BodyKey:     d.bodyKey,
-			Params:      map[string]any{paramKeyCount: newV - oldV},
+			Params:      map[string]any{paramKeyCount: delta},
 			TargetRoute: fmt.Sprintf("/players/%s/%s", slug, d.routeSuffix),
 			Source:      postSyncSource,
 		}
@@ -224,58 +333,8 @@ func EmitPostSyncDeltas(
 		}
 	}
 
-	// career_rank : nouveau rang Halo lifetime franchi (career_progression).
-	// Remplace l'ancien câblage CategorySeasonPassLevel qui pointait à tort sur
-	// career_progression — déprécié depuis 2026-05-16.
-	if after.CurrentRank > before.CurrentRank && after.CurrentRank > 0 {
-		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category: notifications.CategoryCareerRank,
-			Severity: notifications.SeveritySuccess,
-			TitleKey: "notif.career_rank.title",
-			BodyKey:  "notif.career_rank.body",
-			Params: map[string]any{
-				"rank":      after.CurrentRank,
-				"rank_name": rankSubRoman(after.CurrentRankName),
-				"previous":  before.CurrentRank,
-			},
-			TargetRoute: fmt.Sprintf("/players/%s/career", slug),
-			Source:      postSyncSource,
-		}); err != nil {
-			slog.WarnContext(ctx, "post_sync: career_rank", "err", err)
-		}
-	}
-
-	// skill_tier (CSR / LUSR unifié) : une notif par playlist_group dont le
-	// tier|sub_tier|rating_type a changé entre les 2 snapshots. Les apparitions
-	// inédites (playlist absente avant, présente après) sont aussi émises.
-	for _, playlist := range sortedPlaylistKeys(after.SkillTierByPlaylist) {
-		newVal := after.SkillTierByPlaylist[playlist]
-		oldVal := before.SkillTierByPlaylist[playlist]
-		if newVal == oldVal {
-			continue
-		}
-		ratingType, tier, subTier := splitSkillTier(newVal)
-		oldRT, oldTier, oldSub := splitSkillTier(oldVal)
-		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category: notifications.CategorySkillTier,
-			Severity: notifications.SeveritySuccess,
-			TitleKey: "notif.skill_tier.title",
-			BodyKey:  "notif.skill_tier.body",
-			Params: map[string]any{
-				"playlist_group":    playlist,
-				"rating_type":       ratingType,
-				"tier":              tier,
-				"sub_tier":          subTier,
-				"previous_type":     oldRT,
-				"previous_tier":     oldTier,
-				"previous_sub_tier": oldSub,
-			},
-			TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
-			Source:      postSyncSource,
-		}); err != nil {
-			slog.WarnContext(ctx, "post_sync: skill_tier", "playlist", playlist, "err", err)
-		}
-	}
+	emitCareerRankDelta(ctx, emitter, slug, before, after)
+	emitSkillTierDeltas(ctx, emitter, slug, before, after, o)
 
 	// threshold_crossed — KD ratio (palier 0.05). On envoie metric_key (clé i18n)
 	// + value formaté ; le frontend résout metric_label via i18n.metricLabel.

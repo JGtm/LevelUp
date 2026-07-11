@@ -80,14 +80,6 @@ func AllAlertTypes() []AlertType {
 // dans cette fenêtre. Cf. PLAN §10.1 (risque "notifications trop spammy").
 const DedupWindow = 24 * time.Hour
 
-// MaxConcurrentUnread est le plafond d'alertes coach non lues simultanément
-// par joueur. Au-delà, les anciennes sont auto-dismissed.
-const MaxConcurrentUnread = 3
-
-// AutoDismissAfter est le délai après lequel une alerte non lue est
-// automatiquement marquée comme dismissed (purge passive).
-const AutoDismissAfter = 7 * 24 * time.Hour
-
 // ComebackPauseThreshold est la durée d'inactivité au-delà de laquelle on
 // émet une AlertTypeComebackWelcome au retour.
 const ComebackPauseThreshold = 5 * 24 * time.Hour
