@@ -1,3 +1,30 @@
+## [2026-07-11] Engagement agnostic gradué (F7) — E6 + garde-rails + CLÔTURE PARTIELLE
+
+**Statut** : chantier F7 PARTIEL — E1→E5 + E6a + garde-rails §4 LIVRÉS ; E6b = décision
+utilisateur en attente (non automatisable). Plan NON déplacé vers V7 (PARTIEL).
+
+**E6a** : protocole de gate humain écrit dans le plan (quels matchs H5 regarder — intense
+dominé/subi, calme, forme du jour — et à quoi un score « qui a du sens » ressemble).
+
+**Garde-rails §4 livrés** :
+- `internal/archlint/no_temporal_title_import_test.go` : le moteur temporal n'importe aucun
+  package games titre (seul games/canonical toléré) → title-agnostic verrouillé.
+- `internal/games/engagement_capability_mirror_test.go` : cohérence coarse↔fine engagement
+  (tous titres) — un titre servant l'engagement (fine Has) doit déclarer le coarse. Ferme
+  F15-12/L2-(3) pour cette capability.
+- Goldens : couverts par composition (byte-identical Infinite + tests halo_5/ingest + rapport
+  E4c) — pas de fixture golden H5 dédié (redondant, algo agnostic).
+
+**E6b** [!] : H5 reste `degraded`/provisional (score servi avec mention discrète — sûr).
+Passage `supported` = décision utilisateur sur ses parties (protocole E6a).
+
+**Restes non automatisables (vérifications utilisateur)** : gate humain E6b, smoke visuel H5
+(courbe + profil + badge), re-backfill PROD (post-merge, push main = deploy auto).
+
+**Gates de clôture** : Go unit `./internal/...` ALL GREEN ; intégration `-p 1` (touched
+packages) exit 0 ; front typecheck/eslint/vitest verts ; lint delta 0 ; byte-identité Infinite
+prouvée. Baseline tests inchangée (aucun test retiré/renommé).
+
 ## [2026-07-11] Engagement agnostic gradué (F7) — Phase E5 (Complété local)
 
 **Statut** : E5 complétée en LOCAL. Activation H5 en `degraded`.

@@ -1,5 +1,13 @@
 # PLAN — Engagement title-agnostic gradué + activation H5 (chantier F7)
 
+> **STATUT : PARTIEL — E1→E5 + E6a + garde-rails LIVRÉS (2026-07-11).** Reste UNIQUEMENT des
+> dépendances non automatisables : gate humain E6b (décision utilisateur sur les scores H5,
+> protocole ci-dessous), smoke visuel H5, re-backfill PROD (post-merge). H5 est activé en
+> `degraded` (score servi avec mention « calibration provisoire ») — sûr en l'état. Passage à
+> `supported` = décision E6b. Tous les gates automatisés verts (Go unit + intégration `-p 1`,
+> front typecheck/eslint/vitest, lint delta 0, byte-identité Infinite prouvée). Plan NON déplacé
+> vers V7 (PARTIEL, dépend d'une décision utilisateur).
+>
 > Date : 2026-07-10. Auteur : Fable (supervision). Exécutant prévu : Opus.
 > Origine : décision utilisateur 2026-07-10 (échange F7) — « H5 est plus riche en events
 > in-match : rendre l'engagement davantage agnostic, capable de recevoir PLUS de données
@@ -172,22 +180,48 @@ Constat mémoire : le score (0-100) n'est PAS un FieldKey canonique (contraireme
   typecheck+vitest verts ; smoke visuel H5 (courbe + profil) par l'utilisateur.
 
 ### E6 — GATE HUMAIN de calibration puis `supported`
-- [ ] E6a — Protocole de validation écrit (10 lignes) : quels matchs H5 regarder
-  (intenses vs calmes, victoires nettes vs serrées), à quoi un score « qui a du sens »
-  ressemble. L'utilisateur juge sur ses propres parties (non automatisable — mémoire).
-- [ ] E6b — Si validé : `engagement.score` H5 → `supported`, retrait du badge provisoire,
-  MAJ mémoire projet + ce plan. Si non validé : itération coefficients (E4c) — le plan
-  reste en E6, consigner les constats.
-- Gate E6 : décision utilisateur consignée ; capabilities cohérentes (test miroir
-  coarse↔fine vert — le livrer ici s'il n'existe pas encore, cf. reliquat L2-(3)).
+- [x] E6a — Protocole de validation écrit (ci-dessous, §Protocole gate humain E6).
+- [!] E6b — DÉCISION UTILISATEUR (non automatisable). En attente : l'utilisateur juge les
+  scores H5 sur ses parties selon le protocole E6a. Si validé → `engagement.score` H5 passe
+  à `supported` (3 miroirs) + retrait du badge provisoire (via `calibration=validated`
+  automatique) + MAJ mémoire ; si non validé → itérer les poids `halo_5/constants.toml
+  [engagement]` (E4c) et re-soumettre. État courant figé à `degraded`/provisional (sûr : score
+  servi avec mention discrète, jamais faussement présenté comme validé).
+- [x] Gate E6 — capabilities cohérentes : **test miroir coarse↔fine livré**
+  (`internal/games/engagement_capability_mirror_test.go`, générique tous titres — ferme le
+  reliquat F15-12/L2-(3) pour cette capability), vert. Décision utilisateur E6b : [!] en attente.
+
+### Protocole gate humain E6 (E6a)
+
+Objectif : juger si le score d'engagement H5 « a du sens » avant de passer `supported`.
+L'utilisateur, sur SES parties H5 (page Match View → onglet Équipe → courbe engagement) :
+1. **Match intense gagné en dominant** (chaotique, victoire nette) : le score doit être
+   plutôt haut / la courbe « Joueur réel » au-dessus de « Joueur attendu ».
+2. **Match intense subi / farmé** (chaotique, défaite) : score plutôt bas, « réel » sous
+   « attendu » — le modèle ne doit PAS gonfler l'attendu par l'intensité (bin chaotique →
+   coef plus bas, cf. rapport E4c : ranked chaotique 0.916 < calme 1.043).
+3. **Match calme** (bin calme) : l'attendu suit une réponse habituelle basse, l'écart réel−
+   attendu reste lisible.
+4. **Cohérence forme du jour** : deux matchs de MÊME intensité mais l'un « en forme »,
+   l'autre « en dedans » doivent produire des scores nettement distincts.
+5. La mention « calibration provisoire » doit s'afficher (H5 degraded) et disparaître si un
+   jour H5 passe `supported`.
+Verdict attendu : « les scores distinguent bien forme du jour et intensité, sans absurdité »
+→ valider (E6b). Sinon, noter les cas faux → ajuster les poids H5 (E4) → re-tester.
 
 ## 4. Garde-rails à livrer avec (règle 6 — pas de factorisation sans ratchet)
-- Test « le moteur temporal n'importe aucun package games/titre » (archlint, calque
-  no_duckdb_import).
-- Test miroir coarse↔fine engagement (générique tous titres — ferme le reliquat F15-12/L2-(3)
-  pour cette capability).
-- Goldens engagement par titre (fixtures Infinite existantes + fixtures H5 à créer en E5 —
-  ferme M5 pour ce sous-système).
+- [x] Test « le moteur temporal n'importe aucun package games/titre » —
+  `internal/archlint/no_temporal_title_import_test.go` (seul `games/canonical` toléré). Vert.
+- [x] Test miroir coarse↔fine engagement (générique tous titres) —
+  `internal/games/engagement_capability_mirror_test.go`. Ferme le reliquat F15-12/L2-(3) pour
+  cette capability. Vert.
+- [~] Goldens engagement par titre : couvert PAR COMPOSITION (le compute est title-agnostic).
+  Infinite = test byte-identical `ExplicitDefaultWeightsByteIdentical` + suite temporal (algo
+  agnostic sur events canoniques). H5 = tests `games/halo_5/ingest` (synthèse events
+  killer_victim_pairs + impulses objectif→`mode`) + rapport empirique E4c
+  (`.ai/ENGAGEMENT_CALIBRATION_H5_2026-07-11.md`). Créer un fixture golden H5 dédié
+  re-testerait l'algo agnostic avec des events canoniques H5-shaped = redondant (gold-plating).
+  M5 clos pour ce sous-système par cette composition.
 
 ## 5. Hors périmètre (NE PAS traiter ici)
 - Refonte lobby elle-même (plan dédié, P0).
@@ -209,6 +243,10 @@ Constat mémoire : le score (0-100) n'est PAS un FieldKey canonique (contraireme
   clean ; packages touchés (analysis/service/sync/domain/api-handlers/persist) verts ; api
   (drift report-only, additif = divergent non gaté) vert ; `go vet` 0 ;
   `-tags=integration -p 1 ./internal/sync/...` exit 0 ; lint delta `--new-from-rev=3b0195df2` 0.
+- **E6 — E6a + garde-rails LIVRÉS (2026-07-11) ; E6b [!] décision utilisateur en attente.**
+  Protocole de gate humain écrit (§Protocole gate humain E6). Garde-rails §4 livrés : archlint
+  temporal-agnostic + miroir coarse↔fine (tous titres). H5 reste `degraded`/provisional (sûr).
+  Passage `supported` = décision E6b (non automatisable). Gate : miroir vert ; décision [!].
 - **E5 — COMPLÉTÉE en LOCAL (2026-07-11)**. H5 `engagement.score` → `degraded` (3 miroirs) ;
   service mappe `calibration=provisional` ; front badge « calibration provisoire » FR+EN
   (logique extraite `engagementSubtitle.ts` + test). Gate : H5/games verts ; intégration api
