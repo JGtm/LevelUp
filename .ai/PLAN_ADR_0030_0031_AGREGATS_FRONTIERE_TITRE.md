@@ -31,13 +31,13 @@ Discussion DDD → constat en 3 explorations :
 
 ## Etapes (ordre strict, gate avant l'etape suivante — contrat skill `plan-execution`)
 
-### Etape 1 — Rediger `docs/adr/0030-persist-write-aggregates.md` (EN-only, pas d'emojis)
-- [ ] Statut *Proposed* ; Context : bug ART #23046, invariants runtime 0019/0026, les 3 vecteurs de bypass avec chemins de fichiers, trou lecture `_latest`
-- [ ] Decisions D-1..D-5 avec options ecartees et justifications
-- [ ] Paragraphe de positionnement vs ADR 0013 (pas de cascade de signatures)
-- [ ] References croisees exactes : ADR 0019, 0026, 0013, 0025/D-MV2, `internal/persist/doc.go` (section « Hors scope MatchBatch » = frontiere de l'agregat), `no_art_patterns_test.go`
-- [ ] Consequences + esquisse d'execution (pilote PlayerEnrichment, generalisation SharedMatch) marquee « future lots, hors ADR »
-- **Gate** : fichier existe ; `grep -c` des references 0013/0019/0026 > 0 ; zero caractere emoji ; chaque chemin de fichier cite existe (verification sur pieces).
+### Etape 1 — Rediger `docs/adr/0030-persist-write-aggregates.md` (EN-only, pas d'emojis) — CLOSE 2026-07-11
+- [x] Statut *Proposed* ; Context : bug ART #23046, invariants runtime 0019/0026, les 3 vecteurs de bypass avec chemins de fichiers, trou lecture `_latest` (verifies sur pieces : batch.go champs exportes, builder.go:185 Build, queue.go:167 Submit, db.go:286 OpenReadWrite ~25 sites, sync/{writes,career,engagement,performance}.go)
+- [x] Decisions D-1..D-5 avec options ecartees et justifications (revoke DB ecarte D-4 ; DTO/MarshalJSON note D-1)
+- [x] Paragraphe de positionnement vs ADR 0013 (pas de cascade de signatures — encapsulation mono-package)
+- [x] References croisees exactes : ADR 0019, 0026, 0013, 0025/D-MV2, `internal/persist/doc.go` (section « Hors scope MatchBatch »), `no_art_patterns_test.go` + `append_only_state_guard_test.go` + `no_raw_outcome_literal_test.go` + `todo_expiry_test.go`
+- [x] Consequences + esquisse d'execution (pilote PlayerEnrichment, generalisation SharedMatch) marquee « future lots, hors ADR »
+- **Gate** : PASSE — fichier existe ; grep refs 0013=7/0019=5/0026=5 > 0 ; zero emoji (seuls des tirets cadratins en titres, comme ADR 0026) ; 15 chemins de fichier cites verifies existants.
 
 ### Etape 2 — Rediger `docs/adr/0031-title-data-source-boundary.md` (EN-only, pas d'emojis)
 - [ ] Statut *Proposed* ; Context : dualite d'orchestration, duplication HTTP **re-chiffree sur pieces avant redaction** (les ~350 L agregent plusieurs fichiers `halo_client*.go` — mesurer precisement), client H5 zero-import comme propriete a preserver
