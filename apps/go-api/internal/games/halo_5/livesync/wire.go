@@ -111,8 +111,8 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 			// CSR par match (classés → match_skill_rank, priorité CSR>LUSR) + rang SR
 			// (career_progression, title-agnostic) des nouveaux matchs, depuis 1 fetch
 			// carnage chacun. src déjà authentifié (peu de matchs en delta).
-			if csrN, srN := PersistPerMatchRatings(runCtx, src, playerDB.SQLDb(), shared, gamertag, xuid, inserted); csrN > 0 || srN > 0 {
-				slog.InfoContext(runCtx, "h5 post-score: ratings par match écrits", "gamertag", gamertag, "csr", csrN, "sr", srN)
+			if sum := PersistPerMatchRatings(runCtx, src, playerDB.SQLDb(), shared, gamertag, xuid, inserted); sum.CSRWritten > 0 || sum.SRWritten > 0 {
+				slog.InfoContext(runCtx, "h5 post-score: ratings par match écrits", "gamertag", gamertag, "csr", sum.CSRWritten, "sr", sum.SRWritten)
 			}
 			// Progression V2 (streaks/records/milestones/coach) title-agnostic, via le
 			// hook injecté au boot (cfg.ProgressionAfterSync = api.BuildProgressionAfterSyncHook).
