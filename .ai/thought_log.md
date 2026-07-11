@@ -1,3 +1,20 @@
+## [2026-07-11] Résidus H5 match view — fix CI front (types du test LOT C)
+
+**Statut** : Complété (correctif sur le commit LOT C).
+
+**Décision technique principale** : le job CI « Frontend (TypeScript + Vite build) » a
+échoué sur MatchStatCards.test.tsx : (1) `average_life` est un `string` dans le schéma
+généré (j'avais mis 42 avec un cast `as` qui masquait l'erreur) ; (2) `expected_win_prob`
+est `number | undefined`, pas `| null`. Leçon : mon gate local `tsc -p tsconfig.json
+--noEmit` était un NO-OP sur le solution file — le vrai gate est `npm run typecheck`
+(tsc -b) + `npm run build`. Correctif : types exacts sans cast (`average_life: '0:42'`,
+`has_hist_avg` requis, test winProb absent = `undefined`).
+
+**Résultats observés** : tsc -b vert, build Vite vert, vitest 5/5.
+
+**Conclusion / prochaine étape** : re-push + gh run watch --exit-status, puis suite
+LOT D (runs backfill 3 joueurs restants).
+
 ## [2026-07-11] Résidus H5 match view — LOT C (cards front Résistance / Résultat attendu)
 
 **Statut** : Complété (LOT C, branche fix/h5-matchview-residus).

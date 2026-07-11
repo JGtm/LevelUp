@@ -23,8 +23,8 @@ const kpis: MatchSummaryKpis = {
   team_mmr: 1500,
   enemy_mmr: 1450,
   delta_mmr: 50,
-  average_life: 42,
-} as MatchSummaryKpis
+  average_life: '0:42',
+}
 
 function renderSection(overrides?: {
   expected?: Partial<MatchExpectedStats>
@@ -33,14 +33,15 @@ function renderSection(overrides?: {
 }) {
   caps.damageTaken = overrides?.damageTaken ?? true
   caps.teamMmr = overrides?.teamMmr ?? true
-  const expectedStats = {
+  const expectedStats: MatchExpectedStats = {
     expected_kills: 12,
     expected_deaths: 11,
     expected_assists: 6,
     expected_win_prob: 0.62,
+    has_hist_avg: false,
     locally_estimated: false,
     ...overrides?.expected,
-  } as MatchExpectedStats
+  }
   return render(
     <MatchSummaryCardsSection
       kpis={kpis}
@@ -78,8 +79,8 @@ describe('MatchSummaryCardsSection — masquage des cards par capability (résid
     expect(screen.queryByText('MMR')).not.toBeInTheDocument()
   })
 
-  it('winProb null : card Résultat attendu ABSENTE (C2/DEC-3)', () => {
-    renderSection({ expected: { expected_win_prob: null } })
+  it('winProb absent : card Résultat attendu ABSENTE (C2/DEC-3)', () => {
+    renderSection({ expected: { expected_win_prob: undefined } })
     expect(screen.queryByText('Résultat attendu')).not.toBeInTheDocument()
   })
 
