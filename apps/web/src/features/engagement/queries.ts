@@ -9,7 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
 import type {
-  EngagementCoefficientAPI,
+  EngagementProfileAPI,
   EngagementScoreResultAPI,
   EngagementTimeseriesRequest,
   EngagementTimeseriesResponse,
@@ -37,7 +37,7 @@ export function useEngagementProfile(playerSlug: string) {
   return useQuery({
     queryKey: queryKeys.engagementProfile(playerSlug),
     queryFn: () =>
-      api.get<EngagementCoefficientAPI[]>(`/players/${playerSlug}/engagement_profile`),
+      api.get<EngagementProfileAPI[]>(`/players/${playerSlug}/engagement_profile`),
     enabled: !!playerSlug,
     staleTime: 30 * 60 * 1000,
     retry: false,
