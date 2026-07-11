@@ -557,6 +557,91 @@ de chantier.
 
 ---
 
+## [2026-07-11] Squash migrations — CLÔTURE PARTIELLE M0-M2 (chantier N4)
+
+**Statut** : Complété pour M0/M1/M2 (capacité + preuve livrées) ; M3→M6 EN ATTENTE GO
+opérateur (politique N4 manuel + M5c copie prod + M6a deploy auto).
+
+**Gates verts cette session** : golangci-lint --new-from-rev=origin/main 0 ; go test ./...
+exit 0 ; go test -tags=integration -p 1 -timeout 900s ./... exit 0 ; CI branche run
+29165659241 TOUS jobs success (Go Lint only-new-issues vert après fix noctx, Baseline
+non-régression, Build+Test ubuntu+windows, Coverage complet). Aucun test supprimé →
+baseline inchangée.
+
+**Décision de clôture** : le squash RÉEL (M3+) est par conception gaté GO opérateur ; je
+livre l'outillage réutilisable et la preuve, et je m'arrête proprement au verrou (règle 9
+plan-execution + rule 3 report VALIDE : décision opérateur + dépendance prod). Plan reste
+en `.ai/` (non déplacé V7). Périmètre v1 désigné = player, bloc title-owned contigu.
+
+**Prochaine étape (post-GO, session dédiée)** : M3 baseline générée player (borne figée sur
+pièces) + règle d'équivalence ledger DM-5 + invariant en mode réel vert ; M4 archive
+`.ai/migrations/squashed/` + doc.go APPLIQUÉE ; M5 e2e + SeedDemo + répétition copie prod ;
+M6 GO + merge.
+
+---
+
+## [2026-07-11] Squash migrations — M2 invariant bit-identique (chantier N4)
+
+**Statut** : Complété (M2). Verrou central en place.
+
+**Décision technique** : invariant dans `games/halo_infinite/migrations/squash_invariant_test.go`
+(déviation d'emplacement vs plan : provisioning complet exige StepsFor, cycle d'import depuis
+internal/migration — même raison qu'order_audit). Deux chemins provisionFullHistory (oracle) /
+provisionCandidate (runner actif) ; aujourd'hui A=B (harnais prêt) ; SEAM documenté pour M3
+(préfixer le fixture des steps squashés à full history). Morsure prouvée par un test dédié.
+
+**Résultats** : 5 cibles PASS (metadata/shared/pve/social/player) + BiteProof PASS, 3.0s.
+Auto-inclus dans la suite `-tags=integration -p 1` → M2b sans câblage supplémentaire.
+Synergie E7 consignée dans DETTE_ASSUMEE_2026-Q3.
+
+**Conclusion / prochaine étape** : la CAPACITÉ + la PREUVE de squash zéro-perte sont
+livrées (objectif #1). M3 (génération baseline player) reste gaté GO opérateur (politique N4
+point 1) — le squash réel touchera la prod au 1er merge. Décision opérateur requise (M0e/M6a).
+
+---
+
+## [2026-07-11] Squash migrations — M1 outil snapshot schéma (chantier N4)
+
+**Statut** : Complété (M1).
+
+**Décision technique** : `migration.SchemaSnapshot(db)` = fonction LIBRAIRIE (pas cmd) dans
+`internal/migration/schema_snapshot.go`. Normalise le schéma DuckDB : tables/colonnes
+(ordre POSITIONNEL préservé = observable)/contraintes/index/vues/séquences, objets 1er niveau
+triés lexicalement, SCHÉMA SEUL (zéro donnée). Réutilisable par M2 et un futur cmd (M5c) +
+dé-risque E7.
+
+**Résultats** : 8 sous-tests verts — déterminisme (schéma identique + 2× RunForDB → snapshot
+byte-identique) et sensibilité (6 mutations détectées + ordre colonnes observable). vet+build 0.
+
+**Prochaine étape** : M2 — test d'invariant bit-identique (mode A=B « harnais prêt » +
+preuve de morsure sur schéma altéré), branché à la suite integration.
+
+---
+
+## [2026-07-11] Squash migrations — M0 cartographie (chantier N4)
+
+**Statut** : Complété (M0). Branche `refactor/migration-squash-baseline`.
+
+**Décision technique principale** : cartographie READ-ONLY des 3 sources de migrations
+(registre global 26 steps ART/append-only cross-titre ; title-owned HINF 167 ; set isolé
+Halo 5 12 metadata), ordre unifié `canonicalOrder` = 193 steps. VERDICT M0b : frontière
+b23/b25 NON stable (E7 gaté dessus, DETTE_ASSUMEE §7) → DM-4 s'applique, 1er squash = bloc
+CONTIGU d'un seul monde. Ledger (M0c) : `schema_migrations` PK name (skip si présent) +
+`title_schema_version` ; DM-5 nécessitera une règle d'équivalence baseline↔dernier step
+squashé. M0e : périmètre v1 DÉSIGNÉ = cible player, bloc title-owned contigu (schéma-only,
+DM-4/DM-2 respectés, forte valeur car player DBs nombreuses).
+
+**Résultats observés** : mesures M0d (provisioning vierge :memory:) metadata 697ms / player
+229 / shared 196 / social 92 / pve 16. Introspection DuckDB (duckdb_tables/columns/views/
+constraints/indexes/sequences) toutes disponibles → base de M1. Sonde jetable supprimée
+(rien de committé côté code en M0).
+
+**Conclusion / prochaine étape** : M1 — outil de snapshot de schéma normalisé déterministe
+(fonction test-only dans `internal/migration`), puis M2 (invariant bit-identique, mode A=B +
+morsure). Le squash réel (M3+) reste gaté GO opérateur (politique N4).
+
+---
+
 ## [2026-07-10] FIX RankCatalog nil-safe — panic boot mode démo (E2E PR #53 rouge)
 
 **Statut** : Complété (superviseur de campagne, hors plan LUSR — fix de gate CI).
@@ -1040,7 +1125,6 @@ best_kda (`persistBestKDASeed`). Cap de vraisemblance `maxPlausibleCounterDelta=
 (cold-start, cap, career previous=0, both-cold sans warn).
 
 **Prochaine étape** : Phase B (dédoublonnage sémantique — objective_assigned, records
-coach période la plus large, near-miss significatif, skill_tier montées+dédup 24 h).
 
 ---
 
