@@ -73,6 +73,153 @@ StepDeviceCode (onError) plutôt que spinner infini.
 
 ---
 
+## [2026-07-10] FIX RankCatalog nil-safe — panic boot mode démo (E2E PR #53 rouge)
+
+**Statut** : Complété (superviseur de campagne, hors plan LUSR — fix de gate CI).
+
+**Décision technique principale** : l'E2E Playwright de la PR #53 échouait 2× (~37 min) :
+le backend PANIQUE au boot en mode démo (`RankCatalog.Len()` nil deref, ranks.go:67,
+appelé par buildTitleRuntime server.go:379). Cause : metadata.duckdb absente en démo CI →
+`rank_catalog_meta_db_open_failed` (chemin best-effort prévu) → hiRanks reste nil → le
+slog `adapter_loaded` appelle hiRanks.Len(). Bug PRÉ-EXISTANT sur main (chantier
+leaderboard/catalogue, E2E skipped sur main donc jamais vu) — vérifié : la PR #53 ne
+touche ni server.go ni ranks.go. Fix : méthodes de *RankCatalog nil-safe (nil = catalog
+vide, contrat documenté sur le type) + test TestRankCatalog_NilReceiverBehavesAsEmpty.
+Porté par la branche hotfix/lusr-shadow-ro pour débloquer son propre gate E2E.
+
+**Résultats observés** : gofmt/vet/test mappings = 0 ; le panic ne peut plus se produire
+(tous les accès byID gardés).
+
+**Conclusion / prochaine étape** : rerun E2E sur la PR #53 ; si vert → GO merge utilisateur.
+
+---
+
+## [2026-07-10] HOTFIX LUSR shadow read-only — ARRÊT à H5 (GATE USER)
+
+**Statut** : H1-H4 COMPLÉTÉS ; H5 EN ATTENTE du GO utilisateur (merge main = deploy prod
+auto) ; H6/H7 après deploy. NON clôturé (pas de git mv vers V7 tant que H5-H7 non verts).
+
+**Décision principale** : la CI ne se déclenche PAS sur push d'une branche `hotfix/*`
+(ci.yml : `push branches [main, feature/*, refactor/*, fix/*, docs/*, chore/*]`) — j'ai
+donc ouvert **PR #53** vers main (déclenche `pull_request`) pour obtenir le signal CI SANS
+merger (le deploy n'a lieu qu'au push sur main). Ouvrir une PR ≠ deploy.
+
+**Résultats observés** : CI PR #53 = 13/14 jobs VERTS (Go Build+Test ubuntu+windows, Go
+Baseline non-régression, Go Coverage full ./... CGO, Go Lint golangci, Contract, Lease
+ADR 0013, OpenAPI, Frontend tsc+Vite, Docker Build, Permissions gosu, regen-demo, Syntaxe).
+Seul E2E React (Playwright) encore pending — frontend, sans lien avec ce diff Go-only.
+Aucun échec.
+
+**Prochaine étape (requiert l'utilisateur)** : GO explicite → merge `hotfix/lusr-shadow-ro`
+dans main (se placer sur main à jour, merger, push = deploy auto) → surveiller deploy
+(`docker ps` healthy, `/health` 200) → H6 vérif VPS lecture seule (plus de `persist état
+échoué`, writer RW retombé, plus de 503, backlog LUSR résorbé) → H7 clôture (statuer tout,
+git mv plan vers `.ai/V7/`, MAJ `PLAN_MONITORING_TRIAGE_DETECTIONS_2026-07.md` B1). Repli
+post-deploy : `LEVELUP_POSTSYNC_BURST=0` (mode pinned).
+
+---
+
+## [2026-07-10] HOTFIX LUSR shadow read-only — H4 (lint + delivery-checklist)
+
+**Statut** : Complété (côté implémentation branche) ; reste H5 (GATE USER : merge main =
+deploy prod auto) + H6/H7 (post-deploy, dépendent du deploy).
+
+**Décision principale** : `golangci-lint --new-from-rev=28146aa3a` = 0 issue sur tous les
+packages modifiés → aucune dette ajoutée. La seule issue introduite (`processShadowChunk`
+8 args > 7) corrigée en repliant `squadEnabled` dans `shadowRunContext` et en calculant
+`withGameplayDur` dans l'appelant (6 args, ne touche pas la logique s/heldGroups critique).
+delivery-checklist : logging slog OK, aucun `fmt.Println`/`t.Skip`, code mort supprimé,
+frontend N/A.
+
+**Résultats observés** : build 0, vet 0, `go test ./...` 0, intégration `-p 1` 0, lint
+new-from-rev 0. 5 commits sur la branche.
+
+**Prochaine étape** : H5 — présenter à l'utilisateur (diff + gates), ATTENDRE le GO
+explicite du tour courant AVANT tout merge/push main (= deploy prod auto). H6/H7 = vérif
+post-deploy VPS (lecture seule) + clôture, après le deploy.
+
+---
+
+## [2026-07-10] HOTFIX LUSR shadow read-only — H3 (tests + audit segments frères)
+
+**Statut** : En cours (phase H3 close ; H4 lint + delivery à suivre).
+
+**Décision principale** : 2 tests pérennes (`skill_v2_shadow_burst_test.go`) verrouillent le
+fix. (1) `TestLUSRV2Shadow_PersistsViaWriteBurst_WhenReadHandleIsReadOnly` : DB FICHIER,
+`roRwSplitAccess` — Read = attach READ_ONLY (sélection), Write = attach RW (persist) → le
+handle Read est réellement read-only, donc tout retour au persist-via-Read casserait le test.
+(2) `TestLUSRV2Shadow_ReleasesReadBeforeWriteBurst_MultiChunk` : garde anti-deadlock (Write
+jamais demandé avec un Read en vol), 4 matchs = 2 chunks. DDL de schéma extrait en const
+`shadowSchemaDDL` (réutilisé in-memory + fichier). AUDIT H3.4 : chaque segment `shared.Read`/
+`withSharedRead` d'engine_postsync* vérifié sur pièces — aucun n'écrit le handle shared
+(catalog_refresh écrit metadataDB pas shared, vérifié ; les autres écrivent la PLAYER DB).
+Le shadow LUSR v2 était le SEUL écrivain shared mal classé « lecture ». Aucune anomalie
+résiduelle.
+
+**Résultats observés** : `go test ./...` (racine) exit 0 ; `go test -tags=integration -p 1`
+exit 0 ; intégration anti-ART ciblée verte (persist 13.4s, sync 80.2s). Les 2 tests pérennes
+verts ; suite skill complète verte.
+
+**Prochaine étape** : H4 — `make go-api-lint` (0 nouvelle erreur vs baseline),
+delivery-checklist, puis H5 = GATE USER (présenter le diff, attendre le GO avant merge main
+= deploy prod auto).
+
+---
+
+## [2026-07-10] HOTFIX LUSR shadow read-only — H2 (implémentation)
+
+**Statut** : En cours (phase H2 close ; H3 tests + audit à suivre).
+
+**Décision principale** : interface seam `skill.SharedAccessor` (Read/Write) satisfaite
+structurellement par `*sync.SharedAccess` (sous-package skill ne peut pas importer sync).
+`runLUSRV2Shadow` réécrit : sélection sous `loadShadowMatchesUnderRead` (Read, release
+immédiat) → chunks de 3 (`postsyncLUSRBurstChunk`) sous `shared.Write(ctx,"lusr")`, repos
++ lectures per-match sur le handle du burst (persist va sur RW, plus jamais RO). 0 candidat
+→ aucun burst. `runSkillRatingSteps` (engine) découpé DC-H4 : v1 sous Read (helper), shadow
+v2 via bursts (reçoit le `*SharedAccess`), sentinelle playerDB-only ; `runSkillRatingStepsWithDB`
+supprimé ; commentaire de classification corrigé. Nouveau fichier `skill_v2_shared_access.go`
+(interface + pinned skill-local + 2 helpers) pour ne pas accroître skill_v2_shadow.go (déjà
+>500L) ; import `duckdb` retiré de skill_v2_shadow.go. Callers migrés : engine,
+lusr_full_recompute, 3 cmd, wire h5, ~21 tests.
+
+**Résultats observés** : `CGO_ENABLED=1 go build ./...` exit 0 ; `go vet ./...` exit 0 ;
+`go test -tags=cgo ./internal/sync/...` tous ok (sync 24.5s, skill 0.8s, v2 13.3s) — les
+tests anti-gap/held-group/dual-row/owner-only existants restent verts (sémantique watermark
+inchangée).
+
+**Prochaine étape** : H3 — test pérenne read-only VERT (accès scindé Read RO / Write RW,
+watermark avance), test anti-deadlock (Read relâché avant Write, incl. >1 chunk), audit des
+segments frères `shared.Read(` de engine_postsync*, gate intégration `-p 1`.
+
+---
+
+## [2026-07-10] HOTFIX LUSR shadow read-only — H1 (prep + repro ROUGE)
+
+**Statut** : En cours (phase H1 close ; H2 implémentation à suivre).
+
+**Décision principale** : hotfix de la régression prod 2026-07-03 (LUSR v2 shadow persiste
+`player_skill_state_v2` sur un attach shared read-only → ~6500 WARN/j, watermark figé,
+writer RW tenu, /health 503). DÉVIATION MAJEURE constatée sur pièces : la branche
+`hotfix/lusr-shadow-ro` part d'un `origin/main` qui contient DÉJÀ le merge audits
+(`28146aa3a`), donc le cluster skill (`RunLUSRV2Shadow`) est dans le sous-package
+`internal/sync/skill/` (pas « à plat » comme le supposait l'en-tête du plan). Le
+sous-package ne peut pas importer `sync` (cycle) → DC-H2 appliqué via l'INTERFACE SEAM de
+H7.2 (`skill.SharedAccessor` satisfaite structurellement par `*sync.SharedAccess`), pas
+par passage direct. H7.2 (report branche audits) devient sans objet (déjà mergée).
+
+**Résultats observés** : repro ROUGE fidèle contre l'ancienne signature (handle unique) :
+DB fichier seedée + attach READ_ONLY → `RunLUSRV2Shadow` retourne `processed=0` avec le
+message prod EXACT `persist état échoué — watermark non avancé ... Cannot execute statement
+of type "INSERT" on database "s" which is attached in read-only mode!`. Test de repro
+supprimé après capture (arbre buildable) ; version pérenne VERTE (accès scindé) en H3.1.
+
+**Prochaine étape** : H2 — interface `SharedAccessor` côté skill, signatures
+`runLUSRV2Shadow(ctx, playerDB, shared SharedAccessor, xuid, ownerOnly)`, découpage
+Read(sélection)/Write-burst(persist per-match chunké `postsyncLUSRBurstChunk=3`), migration
+de tous les callers (engine, lusr_full_recompute, 3 cmd, wire h5, ~20 tests).
+
+---
+
 ## [2026-07-10] MERGE MAIN — campagne audits 2026-07 + clôture + gate humain (GO utilisateur)
 
 **Statut** : En cours (merge exécuté dans cette session ; post-deploy VPS à suivre).
