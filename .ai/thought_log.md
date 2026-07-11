@@ -1,3 +1,23 @@
+## [2026-07-11] Engagement refonte lobby — Phase 3 (contrat API)
+
+**Statut** : Complété (Phase 3/6 de PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07).
+
+**Décision technique** : `EngagementScoreResult` expose `expected_basis` + `intensity_bin`
+(schéma openapi + generated.ts). `GET /engagement_profile` bascule sur un type DÉDIÉ
+`domain.EngagementProfile` (coef_lobby_share + bins par mode, sans coef_team_share — D5) ;
+`EngagementCoefficient` conservé intact (porteur squad, coef_team_share retiré en Phase 6).
+openapi.yaml (manuel) enrichi de `EngagementIntensityBin` + `EngagementProfile` ;
+generated.ts régénéré via openapi-typescript.
+
+**Résultats** : `go test ./internal/api/... ./internal/service/...` verts (flake pré-existant
+`TestStartImport_HappyPath` OpenSpartan, passe en isolation, sans rapport) ; `go vet` 0 ;
+garde-fou `TestNoJSONRouteBypassesHuma` vert ; generate-types sans diff hors fichiers
+générés.
+
+**Prochaine étape** : Phase 4 — re-backfill local des 2 titres (2 passes) + vérif chiffrée.
+
+---
+
 ## [2026-07-11] Engagement refonte lobby — Phase 2 (bins de réponse + attendu lobby)
 
 **Statut** : Complété (Phase 2/6 de PLAN_ENGAGEMENT_REFONTE_LOBBY_2026-07).

@@ -134,6 +134,11 @@ func TestEngagementHandler_GetMatchEngagement_OK(t *testing.T) {
 	if resp.Confidence == "" {
 		t.Error("expected non-empty Confidence")
 	}
+	// Modele lobby-anchored v2 : sans coef ni bins (mock cold), ExpectedBasis
+	// doit valoir cold_start, distinct de Confidence.
+	if resp.ExpectedBasis != domain.ExpectedBasisColdStart {
+		t.Errorf("ExpectedBasis want cold_start, got %q", resp.ExpectedBasis)
+	}
 }
 
 func TestEngagementHandler_GetMatchEngagement_PlayerNotFound(t *testing.T) {
@@ -224,12 +229,19 @@ func TestEngagementHandler_GetEngagementProfile_OK(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
-	var coefs []domain.EngagementCoefficient
-	if err := json.Unmarshal(w.Body.Bytes(), &coefs); err != nil {
+	var profiles []domain.EngagementProfile
+	if err := json.Unmarshal(w.Body.Bytes(), &profiles); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(coefs) != 1 || coefs[0].ModeCategory != "PvP_ranked" {
-		t.Errorf("unexpected coefs: %+v", coefs)
+	if len(profiles) != 1 || profiles[0].ModeCategory != "PvP_ranked" {
+		t.Errorf("unexpected profiles: %+v", profiles)
+	}
+	if profiles[0].CoefLobbyShare != 1.05 {
+		t.Errorf("coef_lobby_share want 1.05, got %v", profiles[0].CoefLobbyShare)
+	}
+	// coef_team_share ne doit plus etre serialise (D5).
+	if strings.Contains(w.Body.String(), "coef_team_share") {
+		t.Errorf("coef_team_share ne doit plus apparaitre dans engagement_profile")
 	}
 }
 
@@ -246,12 +258,12 @@ func TestEngagementHandler_GetEngagementProfile_EmptyOnUnavailable(t *testing.T)
 	if w.Code != http.StatusOK {
 		t.Errorf("expected 200 (empty profile on unavailable), got %d", w.Code)
 	}
-	var coefs []domain.EngagementCoefficient
-	if err := json.Unmarshal(w.Body.Bytes(), &coefs); err != nil {
+	var profiles []domain.EngagementProfile
+	if err := json.Unmarshal(w.Body.Bytes(), &profiles); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(coefs) != 0 {
-		t.Errorf("expected empty slice, got %d coefs", len(coefs))
+	if len(profiles) != 0 {
+		t.Errorf("expected empty slice, got %d profiles", len(profiles))
 	}
 }
 

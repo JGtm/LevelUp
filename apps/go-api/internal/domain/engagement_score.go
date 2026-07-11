@@ -269,6 +269,31 @@ type SquadPlayerEngagement struct {
 	PaceObserved []float64 `json:"pace_observed"`
 }
 
+// EngagementProfile est le profil engagement long-terme d'un joueur pour une
+// categorie de mode, expose par GET /engagement_profile (modele lobby-anchored
+// v2). Type DEDIE (cf. plan Phase 3) : distinct de EngagementCoefficient, qui
+// reste le porteur interne xuid/gamertag cote squad. Ne porte PAS coef_team_share
+// (deprecated, D5) et ajoute les bins de reponse par intensite.
+type EngagementProfile struct {
+	XUID         string `json:"xuid"`
+	Gamertag     string `json:"gamertag,omitempty"`
+	ModeCategory string `json:"mode_category"`
+
+	// CoefLobbyShare = mediane historique de (pace_joueur / pace_lobby_per_player).
+	// Coef lobby global du joueur (toutes intensites), fallback de l'attendu.
+	CoefLobbyShare float64 `json:"coef_lobby_share"`
+
+	// NMatches = matchs utilises pour la mediane globale.
+	NMatches int `json:"n_matches"`
+
+	// LastUpdated = heure du dernier recompute des coefficients.
+	LastUpdated time.Time `json:"last_updated"`
+
+	// Bins = coefs de reponse par bin d'intensite (terciles de pace_lobby).
+	// Vide si aucun bin persiste (historique insuffisant).
+	Bins []EngagementIntensityBin `json:"bins"`
+}
+
 type EngagementCoefficient struct {
 	XUID         string `json:"xuid"`
 	Gamertag     string `json:"gamertag,omitempty"`

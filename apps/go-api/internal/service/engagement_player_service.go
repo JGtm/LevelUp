@@ -114,21 +114,40 @@ func (s *PlayerEngagementService) GetMatchEngagement(
 	return &result, nil
 }
 
-// GetEngagementProfile retourne tous les coefficients du joueur.
+// GetEngagementProfile retourne le profil engagement du joueur par categorie de
+// mode : coef lobby global + bins de reponse par intensite (modele lobby-anchored
+// v2). coef_team_share n'est plus expose (D5).
 func (s *PlayerEngagementService) GetEngagementProfile(
 	ctx context.Context,
-) ([]domain.EngagementCoefficient, error) {
+) ([]domain.EngagementProfile, error) {
 	if s.xuid == "" {
 		return nil, errors.New("PlayerEngagementService.GetEngagementProfile: xuid required")
 	}
 	coefs, err := s.repo.LoadAllCoefficients(ctx, s.xuid)
 	if err != nil {
 		if errors.Is(err, port.ErrEngagementUnavailable) {
-			return []domain.EngagementCoefficient{}, nil
+			return []domain.EngagementProfile{}, nil
 		}
 		return nil, fmt.Errorf("PlayerEngagementService.GetEngagementProfile: %w", err)
 	}
-	return coefs, nil
+	profiles := make([]domain.EngagementProfile, 0, len(coefs))
+	for _, c := range coefs {
+		p := domain.EngagementProfile{
+			XUID:           c.XUID,
+			Gamertag:       s.gamertag,
+			ModeCategory:   c.ModeCategory,
+			CoefLobbyShare: c.CoefLobbyShare,
+			NMatches:       c.NMatches,
+			LastUpdated:    c.LastUpdated,
+		}
+		// Bins best-effort : table absente (migration non appliquee) → profil
+		// sans bins, jamais d'echec (degradation gracieuse).
+		if bins, berr := s.repo.LoadResponseBins(ctx, s.xuid, c.ModeCategory); berr == nil && bins != nil {
+			p.Bins = bins.Bins
+		}
+		profiles = append(profiles, p)
+	}
+	return profiles, nil
 }
 
 // GetTimeseries retourne la serie temporelle d'engagement du joueur (Mock 11)

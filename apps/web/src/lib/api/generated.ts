@@ -5552,6 +5552,10 @@ export interface components {
             engagement_curve: components["schemas"]["EngagementPoint"][] | null;
             /** Format: double */
             engagement_score: number | null;
+            /** @description Base de l'attendu (modele lobby-anchored v2) : bin | global | cold_start. */
+            expected_basis: string;
+            /** @description Libelle du bin d'intensite quand expected_basis=bin (calme|standard|chaotique). Vide sinon. */
+            intensity_bin: string;
             /** Format: double */
             match_intensity: number;
             /** Format: double */
@@ -5566,6 +5570,29 @@ export interface components {
             player_activity: number;
             /** Format: double */
             residual_brut: number;
+        };
+        EngagementIntensityBin: {
+            bin: string;
+            /** Format: double */
+            coef_lobby: number;
+            /** Format: double */
+            lower_bound: number;
+            /** Format: int64 */
+            n_matches: number;
+            /** Format: double */
+            upper_bound: number;
+        };
+        EngagementProfile: {
+            bins?: components["schemas"]["EngagementIntensityBin"][] | null;
+            /** Format: double */
+            coef_lobby_share: number;
+            gamertag?: string;
+            /** Format: date-time */
+            last_updated: string;
+            mode_category: string;
+            /** Format: int64 */
+            n_matches: number;
+            xuid: string;
         };
         EngagementSnapshot: {
             /** Format: double */

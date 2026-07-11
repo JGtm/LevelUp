@@ -120,7 +120,7 @@ type engSquadInput struct {
 
 type engMatchOutput struct{ Body *domain.EngagementScoreResult }
 type engProfileOutput struct {
-	Body []domain.EngagementCoefficient
+	Body []domain.EngagementProfile
 }
 type engTimeseriesOutput struct {
 	Body *domain.EngagementTimeseriesResponse
@@ -344,10 +344,14 @@ func (h *EngagementHandler) handleRecomputeCoefficients(ctx context.Context, in 
 
 // handleEngagementProfile : GET /engagement_profile
 //
-// Reponse JSON : tableau de coefficients par categorie de mode.
+// Reponse JSON : tableau de profils par categorie de mode (modele lobby-anchored
+// v2). Chaque profil porte le coef lobby global + les bins de reponse par bin
+// d'intensite. coef_team_share n'est plus expose (D5).
 //
 //	[
-//	  {"xuid": "...", "mode_category": "PvP_ranked", "coef_team_share": 1.12, "coef_lobby_share": 1.05, "n_matches": 187, "last_updated": "..."},
+//	  {"xuid": "...", "mode_category": "PvP_ranked", "coef_lobby_share": 1.05, "n_matches": 187,
+//	   "last_updated": "...", "bins": [{"bin": "calme", "lower_bound": 0, "upper_bound": 4.2,
+//	   "coef_lobby": 1.3, "n_matches": 62}, ...]},
 //	  ...
 //	]
 //

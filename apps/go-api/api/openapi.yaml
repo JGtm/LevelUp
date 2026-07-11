@@ -8812,6 +8812,12 @@ components:
               format: double
               type: number
               nullable: true
+          expected_basis:
+              type: string
+              description: "Base de l'attendu (modele lobby-anchored v2) : bin | global | cold_start."
+          intensity_bin:
+              type: string
+              description: "Libelle du bin d'intensite quand expected_basis=bin (calme|standard|chaotique). Vide sinon."
           match_intensity:
               format: double
               type: number
@@ -8844,6 +8850,62 @@ components:
           - mean_pace_team
           - mean_pace_lobby
           - player_activity
+          - expected_basis
+          - intensity_bin
+      type: object
+    EngagementIntensityBin:
+      additionalProperties: false
+      properties:
+          bin:
+              type: string
+          coef_lobby:
+              format: double
+              type: number
+          lower_bound:
+              format: double
+              type: number
+          n_matches:
+              format: int64
+              type: integer
+          upper_bound:
+              format: double
+              type: number
+      required:
+          - bin
+          - lower_bound
+          - upper_bound
+          - coef_lobby
+          - n_matches
+      type: object
+    EngagementProfile:
+      additionalProperties: false
+      properties:
+          bins:
+              items:
+                  $ref: '#/components/schemas/EngagementIntensityBin'
+              type: array
+              nullable: true
+          coef_lobby_share:
+              format: double
+              type: number
+          gamertag:
+              type: string
+          last_updated:
+              format: date-time
+              type: string
+          mode_category:
+              type: string
+          n_matches:
+              format: int64
+              type: integer
+          xuid:
+              type: string
+      required:
+          - xuid
+          - mode_category
+          - coef_lobby_share
+          - n_matches
+          - last_updated
       type: object
     EngagementSnapshot:
       additionalProperties: false
