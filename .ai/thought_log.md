@@ -1,3 +1,21 @@
+## [2026-07-11] Rationalisation notifications — rebaseline test renommé (gate CI)
+
+**Statut** : Complété.
+
+**Décision principale** : le gate CI « Go Baseline Tests (non-régression) » signalait
+`milestones::TestDetect_NearMiss_Within10Percent` absent — suppression VOLONTAIRE
+(B14/DP14 : NearMissRatio 0.10→0.02, test renommé `TestDetect_NearMiss_Within2Percent`
+qui couvre 95 %→rien, 98,5 %→near-miss, 100 %→earned). Application de la leçon 6c35a37cc :
+retrait des 4 entrées correspondantes de `.ai/baselines/tests_pre_migration.jsonl`
+(62599→62595 lignes). Vérifié qu'AUCUN autre test supprimé par le diff ne figure en
+baseline (seul renommage du chantier).
+
+**Résultats** : baseline propre (0 occurrence restante). CI de branche relancée après push.
+
+**Prochaine étape** : verdict CI vert → rapport final ; merge laissé au superviseur.
+
+---
+
 ## [2026-07-11] Réflexion cards de synthèse au-dessus du tableau Explorer (mode Matchs) — analyse, aucun code
 
 **Statut** : Complété (analyse + plan rédigé — exécution non démarrée, confiée à un
@@ -462,6 +480,101 @@ local 131 (>120).
 
 **Prochaine étape** : merge/deploy PR #53 (GO user) → puis armer B1.5/B1.6, B4 remédiation prod,
 B7.4 soak T0+30j. Plan laissé à la racine (PARTIEL). Push branche.
+
+---
+
+## [2026-07-10] Rationalisation notifications — Phase E + CLÔTURE (plan COMPLÉTÉ)
+
+**Statut** : Complété. Branche `refactor/notifications-rationalization` (5 commits
+refactor(notif-A..E)), plan déplacé vers `.ai/V7/`.
+
+**Décision principale** : E3 — extraction `emitCareerRankDelta` + `emitSkillTierDeltas`
+vers `post_sync_deltas_bespoke.go` : `EmitPostSyncDeltas` dégonflée 146→123 L, fichier
+principal 409 L (< 500). Les 10 critères de succès du plan sont couverts par des tests
+nommés (mapping consigné dans le plan, Phase E).
+
+**Résultats** : go test ./... exit 0 (relancé post-extraction) ; intégration -p 1
+duckdb+sync exit 0 (89 s + 85 s) ; golangci-lint --new-from-rev=origin/main « 0 issues » ;
+tsc exit 0 ; vitest 2106 passed ; eslint 0 erreur (68 warnings pré-existants, aucun sur
+notifications). Découvertes consignées : Makefile generate-types = no-op (echo).
+
+**Prochaine étape** : merge par le superviseur (push main = deploy prod auto) ; revue
+visuelle utilisateur (badge, auto-read fermeture, toasts) ; en prod, DP7+DP8 résorbent
+les 57 non-lues de JGtm sans purge manuelle (DP10).
+
+## [2026-07-10] Rationalisation notifications — Phase D (cycle de vie du badge)
+
+**Statut** : En cours (Phase D close). Branche `refactor/notifications-rationalization`.
+
+**Décisions principales** : (D1/DP6) `UnreadCount.BadgeCount` = non-lues severity != info
+(`COUNT(*) FILTER` dans le repo) ; badge cloche front branché dessus avec fallback count.
+(D2) openapi.yaml + generated.ts régénéré — DÉCOUVERTE : la cible Makefile generate-types
+est un no-op (echo), vraie commande = npm run generate-types. (D4/DP7) auto-read à la
+FERMETURE du dropdown : useRef<Set> accumule les ids non lus rendus, markRead au
+open→false. (D5/DP8) SweepStaleInfoNotificationsRead (persister + iface + port + repo,
+best-effort sous emitInner, staleInfoMaxAge=7j). (D8/DP15) match_synced success→info.
+(D9) constantes mortes coach MaxConcurrentUnread/AutoDismissAfter supprimées (grep=0
+consommateur).
+
+**Résultats** : go test ./... exit 0 ; tsc exit 0 ; vitest 2106 passed (5 nouveaux tests
+Bell) ; tests sweep persister + e2e PASS ; generated.ts régénéré et commité.
+
+**Prochaine étape** : Phase E (gate final : intégration -p 1 duckdb+sync, lint
+new-from-rev, relecture diff, clôture du plan + git mv V7).
+
+## [2026-07-10] Rationalisation notifications — Phase C (coalescence)
+
+**Statut** : En cours (Phase C close). Branche `refactor/notifications-rationalization`.
+
+**Décisions principales** : ajout `EmitCoalesced(ctx, in, window)` à l'interface Emitter
+(NoopEmitter + Service + fake). `Service.EmitCoalesced` cherche une candidate non lue même
+catégorie/acteur dans la fenêtre → réémet même ID, created_at rafraîchi, count sommé
+(append-only : la vue _latest sert la version à jour) ; sinon émission normale. media_added
+coalescé 1 h par acteur (DP5), sync_error coalescé 6 h sur catégorie seule (DP15). emitInner
+refactoré (buildNotification + insertAndSweep partagés, sous 80 L). Helpers purs coalesce.go.
+
+**Résultats** : `go test ./internal/notifications/ ./internal/api/handlers/` exit 0 ;
+`go test -tags=integration -p 1 -run '^TestNotifications' ./internal/platform/duckdb/` exit 0
+(TestNotificationsE2E_EmitCoalesced PASS vérifié en -v : latest 1 ligne count=2 non lue,
+history 2 events). C6 : i18n media_added.body gère déjà {count}, pas de fix.
+
+**Prochaine étape** : Phase D (badge_count serveur + OpenAPI + front Bell auto-read + sweep
+expiry douce D5 + match_synced severity info + suppression code mort coach).
+
+## [2026-07-10] Rationalisation notifications — Phase B (dédoublonnage sémantique)
+
+**Statut** : En cours (Phase B close). Branche `refactor/notifications-rationalization`.
+
+**Décisions principales** : (B1/DP2) objective_assigned supprimé de postSyncCounterDeltas,
+catégorie conservée en rétro-compat + garde-rail TestPostSyncNeverEmitsObjectiveAssigned
+(morsure prouvée). (B5/DP3) `keepWidestPeriod` dans coach : 1 alerte par métrique sur la
+période la plus large (all_time>90d>30d). (B6/DP11) `NearMissMinGapRatio=0.02`, IsNearMiss
+borne haute `<= target×0.98` (fin du spam « 73.33 vs 73.33 »). (B9/DP4) skill_tier montées
+uniquement via `skillTierRank` (ordre csr_mapper H5) + fail-open tier inconnu. (B10/DP4)
+dédup 24 h via `PostSyncDeltaOptions{RecentSkillTiers}` variadic. (B12/DP12) seed silencieux
+records (PreviousValue==nil → pas d'alerte). (B13/DP13) `DedupWindowFor` : 30 j pour les
+nudges d'état, 24 h sinon. (B14/DP14) `milestones.NearMissRatio` 0.10→0.02.
+
+**Résultats** : `go test ./internal/api/wire/ ./internal/progression/... ./internal/notifications/`
+exit 0. Nouveaux tests B7/B8/B11/B15 + adaptation détecteurs records/milestones.
+
+**Prochaine étape** : Phase C (coalescence media_added + sync_error via EmitCoalesced).
+
+## [2026-07-10] Rationalisation notifications — Phase A (anti-burst cold-start)
+
+**Statut** : En cours (Phase A close). Branche `refactor/notifications-rationalization`.
+
+**Décision principale** : anti-burst par GARDES en mémoire (DP1), pas de baseline
+persistée. `snapshotLooksCold` (tous compteurs + rank + skill tier + KD à 0) →
+cold-start supprime toutes les émissions du cycle mais sème silencieusement le PB
+best_kda (`persistBestKDASeed`). Cap de vraisemblance `maxPlausibleCounterDelta=20`
+(DP9) sur les counter deltas ; garde career_rank `before.CurrentRank==0`.
+
+**Résultats** : `go test ./internal/api/wire/` exit 0. 8 nouveaux tests A5
+(cold-start, cap, career previous=0, both-cold sans warn).
+
+**Prochaine étape** : Phase B (dédoublonnage sémantique — objective_assigned, records
+coach période la plus large, near-miss significatif, skill_tier montées+dédup 24 h).
 
 ---
 

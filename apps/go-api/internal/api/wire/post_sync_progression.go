@@ -52,12 +52,11 @@ const (
 	// (utilisé pour HasNewActivity et le calcul comeback).
 	ProgressionFreshnessThreshold = 6 * time.Hour
 
-	// ProgressionDedupWindow : fenêtre pendant laquelle une même alerte
-	// (catégorie + dedup_key) ne sera pas ré-émise.
-	ProgressionDedupWindow = 24 * time.Hour
-
 	// ProgressionRecentNotifsLimit : nombre de notifs récentes lues pour la
-	// dédup. Largement supérieur au volume coach attendu sur 24h.
+	// dédup. La fenêtre de dédup est désormais résolue PAR CATÉGORIE via
+	// coach.DedupWindowFor (DP13 : jusqu'à 30 jours pour les nudges d'état).
+	// La limite est un COMPTE (pas une borne temporelle) : 200 notifs couvrent
+	// largement 30 jours au volume observé (~59 notifs / 6 semaines).
 	ProgressionRecentNotifsLimit = 200
 )
 
@@ -358,7 +357,7 @@ func dedupCoachAlerts(
 			recent = lr.Items
 		}
 	}
-	return coach.FilterRecent(alerts, recent, now, ProgressionDedupWindow)
+	return coach.FilterRecent(alerts, recent, now, coach.DedupWindowFor)
 }
 
 // emitCoachAlerts émet les alertes via deps.Emitter. Retourne le nombre émis.

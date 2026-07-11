@@ -1,5 +1,10 @@
 # PLAN — Rationalisation des notifications in-app (2026-07)
 
+> **COMPLÉTÉ le 2026-07-10** — phases A-E exécutées sur la branche
+> `refactor/notifications-rationalization` (commits refactor(notif-A..E)), tous
+> gates verts, 10/10 critères de succès couverts par tests nommés (cf. Phase E).
+> Merge vers main laissé au superviseur (push main = deploy prod auto).
+
 > Rédigé le 2026-07-07 après audit prod (VPS). Exécution par un agent ultérieur sous le
 > contrat du skill `plan-execution` (OBLIGATOIRE : ordre strict, une phase à la fois,
 > gate passé avant la suivante, aucun report d'item exécutable, statuts
@@ -145,52 +150,50 @@ Phase E : rapide. Total : 1 session agent.
 
 ## Phase A — Anti-burst cold-start (`post_sync_deltas.go`)
 
-- [ ] A1. Helper `snapshotLooksCold(s *PlayerSnapshot) bool` dans
+- [x] A1. Helper `snapshotLooksCold(s *PlayerSnapshot) bool` dans
       `post_sync_deltas.go` : vrai si TOUS les compteurs (`PersonalAwardCount`,
       `CitationsCount`, `ChallengePathsCount`, `ChallengeCompletedCount`,
       `BattlepassCompletedTracks`, `CitationTotalEarnedTiers`, `CitationMasteryCount`,
       `CurrentRank`) sont à 0 ET `len(SkillTierByPlaylist) == 0` ET `KDRatio == 0`.
-- [ ] A2. Dans `EmitPostSyncDeltas` (l.191), tout en haut après le nil-check : si
-      `snapshotLooksCold(before) && !snapshotLooksCold(after)` →
-      `slog.WarnContext(ctx, "post_sync: snapshot before froid — émissions supprimées (cold-start)", "slug", slug)`,
-      exécuter UNIQUEMENT le sous-bloc de persistance du record best_kda
-      (l.329-335, seed silencieux — il a déjà sa garde `!oldRec.Loaded`), puis `return`.
-- [ ] A3. Cap de vraisemblance dans la boucle counter deltas (l.205-225) : constante
-      `maxPlausibleCounterDelta = 20` (commentée : max légitime observé = 6, incident
-      prod 2026-07-03 = 3434) ; si `newV-oldV > maxPlausibleCounterDelta` →
-      `slog.WarnContext` avec le delta + `continue` (pas d'émission).
-- [ ] A4. Garde career_rank (l.230) : ne pas émettre si `before.CurrentRank == 0`
-      (rang inconnu/non initialisé — l'incident montrait `previous:0`).
-      `slog.DebugContext` en trace.
-- [ ] A5. Tests `post_sync_deltas_test.go` (compléter l'existant, suivre ses
-      helpers/patterns) : (a) before froid + after riche → 0 émission ;
-      (b) delta objectifs = 25 → supprimé, les autres deltas du même cycle passent ;
-      (c) delta = 5 → émis ; (d) career_rank previous=0 → supprimé ;
-      (e) career_rank 190→192 → émis ; (f) before froid ET after froid (nouveau
-      joueur vide) → 0 émission, pas de warn cold-start.
+      FAIT : helper + garde nil.
+- [x] A2. Dans `EmitPostSyncDeltas`, tout en haut après le nil-check : si
+      `snapshotLooksCold(before) && !snapshotLooksCold(after)` → warn + `persistBestKDASeed`
+      (seed silencieux, garde `!oldRec.Loaded`) + `return`. FAIT.
+- [x] A3. Cap de vraisemblance dans la boucle counter deltas : constante
+      `maxPlausibleCounterDelta = 20` ; `delta > cap` → `slog.WarnContext` + `continue`. FAIT.
+- [x] A4. Garde career_rank : ne pas émettre si `before.CurrentRank == 0`
+      (`slog.DebugContext` en trace). FAIT.
+- [x] A5. Tests `post_sync_deltas_test.go` : (a) cold-start → 0 ; (b) delta=25
+      supprimé, challenge_added du même cycle passe ; (c) delta=5 émis ;
+      (d) career_rank previous=0 supprimé ; (e) career_rank 190→192 émis ;
+      (f) before+after froids → 0 émission ET pas de warn (capture slog).
+      + `TestSnapshotLooksCold`. FAIT.
 
-**Gate A** : `cd apps/go-api && go test ./internal/api/wire/`. Vert = phase close.
+**Gate A** : `cd apps/go-api && go test ./internal/api/wire/`. Vert = phase close. → OK (exit 0, 2026-07-10).
 
 ## Phase B — Dédoublonnage sémantique
 
-- [ ] B1. Supprimer l'entrée `objective_assigned` de `postSyncCounterDeltas`
-      (`post_sync_deltas.go:87`).
-- [ ] B2. `types.go:20` : commentaire de dépréciation daté sur
+> COMPLÉTÉE 2026-07-10. Tous items [x]. Gate B vert (exit 0). Garde-rail B3
+> prouvé mordant (re-ajout temporaire de l'entrée → 2 FAIL, puis retrait).
+
+- [x] B1. Supprimer l'entrée `objective_assigned` de `postSyncCounterDeltas`
+      (`post_sync_deltas.go:87`). FAIT (entrée retirée, commentaire de dépréciation).
+- [x] B2. `types.go:20` : commentaire de dépréciation daté sur
       `CategoryObjectiveAssigned` (modèle : `CategorySeasonPassLevel` l.24-27 —
       « conservée pour rétro-compat des notifs déjà en DB + seed prefs, plus émise
       depuis 2026-07 »). NE PAS la retirer de `AllCategories`.
-- [ ] B3. Garde-rail : test dans `post_sync_deltas_test.go` affirmant qu'aucun
+- [x] B3. Garde-rail : test dans `post_sync_deltas_test.go` affirmant qu'aucun
       scénario post-sync n'émet `CategoryObjectiveAssigned` (émission autorisée
       uniquement = aucune ; le test échoue si quelqu'un rebranche la catégorie).
-- [ ] B4. Adapter les tests existants qui attendent la paire assigned+completed
+- [x] B4. Adapter les tests existants qui attendent la paire assigned+completed
       (chercher : `grep -rn "objective_assigned" apps/go-api/internal/`).
-- [ ] B5. Records coach — `generator.go` : collapse par métrique sur la période la
+- [x] B5. Records coach — `generator.go` : collapse par métrique sur la période la
       plus large. Helper pur dans le package coach (ex. `keepWidestPeriod`) appliqué
       aux listes RecordBroken (l.155-170) ET RecordNearMiss (l.175-185) avant
       construction des alertes. Ordre : `all_time` > `90d` > `30d` (vérifier les
       valeurs exactes du type Period dans `internal/progression/records/` avant de
       coder — RE-VÉRIFIER).
-- [ ] B6. Near-miss écart significatif (DP11) : constante
+- [x] B6. Near-miss écart significatif (DP11) : constante
       `NearMissMinGapRatio = 0.02` dans `records/types.go` (commentaire : incident
       prod 2026-07-03 « 73.33 vs 73.333336 » rendu « 73.33 vs 73.33 » ; 2 % ≈ 0.1 de
       KDA sur un PB à 5.0) ; dans `IsNearMiss` (`detector.go:226-231`), remplacer
@@ -199,16 +202,16 @@ Phase E : rapide. Total : 1 session agent.
       stricte — même rationale étendu aux écarts insignifiants. Point de passage
       unique : détecteur ET coach passent par `IsNearMiss`, aucun autre site à
       modifier (vérifier : `grep -rn "IsNearMiss" apps/go-api/internal/`).
-- [ ] B7. Tests `records/detector_test.go` : écart 1 % sous le PB → pas de
+- [x] B7. Tests `records/detector_test.go` : écart 1 % sous le PB → pas de
       near-miss ; écart 3 % → near-miss ; écart 6 % (hors bande des 5 %) → pas de
       near-miss ; égalité stricte → pas de near-miss (cas existant à conserver) ;
       PB à 0 → pas de near-miss (garde existante).
-- [ ] B8. Tests coach (`generator_test.go` existant à compléter) : record battu sur
+- [x] B8. Tests coach (`generator_test.go` existant à compléter) : record battu sur
       3 périodes → 1 alerte (all_time) ; battu sur 30d seul → 1 alerte (30d) ;
       near-miss 90d + all_time → 1 alerte (all_time) ; broken 30d + near-miss
       all_time (métriques différentes de cas) → les deux passent ; near-miss avec
       écart sous `NearMissMinDelta` → 0 alerte.
-- [ ] B9. skill_tier montées uniquement : helper `skillTierRank(tier string,
+- [x] B9. skill_tier montées uniquement : helper `skillTierRank(tier string,
       subTier int) int` dans `post_sync_deltas.go` (map insensible à la casse :
       Bronze=1, Silver=2, Gold=3, Platinum=4, Diamond=5, Onyx=6, Champion=7 — H5 ;
       tier inconnu → -1). Ne pas émettre si `rank(after) <= rank(before)` quand les
@@ -219,7 +222,7 @@ Phase E : rapide. Total : 1 session agent.
       si un ordre de tiers canonique existe déjà (`grep -rn "Onyx" apps/go-api/internal/
       --include=*.go -l` puis inspection), le réutiliser au lieu de créer la map
       (skill `go-features`).
-- [ ] B10. skill_tier dédup 24 h : suivre le câblage de `post_sync_progression.go`
+- [x] B10. skill_tier dédup 24 h : suivre le câblage de `post_sync_progression.go`
       (qui charge les notifs récentes pour `FilterRecent`, appel l.361 — remonter à la
       source du paramètre `recent` pour réutiliser le même fetch). Dans
       `BuildPostSyncDeltaHook`, charger les notifs récentes catégorie `skill_tier`
@@ -228,15 +231,15 @@ Phase E : rapide. Total : 1 session agent.
       valeur cible `rating_type|tier|sub_tier` dans ses params. Ajouter
       `playlist_group` + valeur cible en clair dans les params émis si pas déjà le cas
       (c'est déjà le cas : l.264-272).
-- [ ] B11. Tests skill_tier : séquence IV→V→IV→V→IV→V en < 24 h → 1 émission ;
+- [x] B11. Tests skill_tier : séquence IV→V→IV→V→IV→V en < 24 h → 1 émission ;
       démotion V→IV → 0 ; montée Gold→Platinum → 1 ; tier inconnu « Mythril » →
       émet sur changement ; placement nouvelle playlist (before non froid) → 1.
-- [ ] B12. Seed silencieux des records (DP12) : dans `buildRecordAlerts`
+- [x] B12. Seed silencieux des records (DP12) : dans `buildRecordAlerts`
       (`generator.go:149-187`), le cas `r.NewPB` n'émet une alerte QUE si
       `r.PreviousValue != nil` (le détecteur a déjà persisté le PB — seed sans
       notification, `detector.go:126-167` inchangé). Commentaire renvoyant à la
       garde jumelle `oldRec.Loaded` de `post_sync_deltas.go:313`.
-- [ ] B13. Fenêtre de dédup par catégorie (DP13) : remplacer l'unique
+- [x] B13. Fenêtre de dédup par catégorie (DP13) : remplacer l'unique
       `ProgressionDedupWindow = 24h` (`post_sync_progression.go:57`) par une
       résolution par catégorie — 30 jours pour les nudges d'état
       (`record_near_miss`, `milestone_near_miss`, `lusr_tier_approach`,
@@ -248,24 +251,29 @@ Phase E : rapide. Total : 1 session agent.
       elle est temporelle et non en nombre). NB : les `threshold_crossed` émis par
       post_sync (KD/winrate) ne passent pas par FilterRecent — hors sujet ici,
       pas de collision (dedup_key différent).
-- [ ] B14. `milestones.NearMissRatio` 0.10 → 0.02 (`milestones/types.go:17`,
+- [x] B14. `milestones.NearMissRatio` 0.10 → 0.02 (`milestones/types.go:17`,
       DP14) + mise à jour du commentaire et des tests
       `milestones/detector_test.go` (cas : progress 0.95 → pas de near-miss ;
       0.985 → near-miss ; 1.0 → earned, pas de near-miss).
-- [ ] B15. Tests dédup 30 j (`coach/dedup_test.go` ou équivalent existant) : une
+- [x] B15. Tests dédup 30 j (`coach/dedup_test.go` ou équivalent existant) : une
       notif `lusr_tier_approach` émise il y a 5 jours avec le même dedup_key →
       alerte filtrée ; il y a 35 jours → alerte passe ; catégorie événement
       (`personal_record`) émise il y a 5 jours → passe (fenêtre 24 h).
 
-**Gate B** : `cd apps/go-api && go test ./internal/api/wire/ ./internal/progression/... ./internal/notifications/`.
+**Gate B** : `cd apps/go-api && go test ./internal/api/wire/ ./internal/progression/... ./internal/notifications/`. → OK (exit 0, 2026-07-10).
+
+> Note B9 : réutilisé l'ordre de tiers de `internal/games/halo_5/livesync/csr_mapper.go`
+> (Bronze<…<Onyx<Champion) pour la map `skillTierBaseRank` ; helper placé dans wire
+> (politique de notif, pas algo). B10 : dédup via nouveau paramètre variadic
+> `PostSyncDeltaOptions` (évite de churner ~25 call-sites de test).
 
 ## Phase C — Coalescence `media_added`
 
-- [ ] C1. Interface `Emitter` (`emitter.go:8`) : ajouter
+- [x] C1. Interface `Emitter` (`emitter.go:8`) : ajouter
       `EmitCoalesced(ctx context.Context, in EmitInput, window time.Duration) error`.
       Recenser et mettre à jour toutes les implémentations/fakes :
       `grep -rn "notifications.Emitter" apps/go-api/internal/ --include=*.go`.
-- [ ] C2. `Service.EmitCoalesced` (`service.go`) : sous `withWriterBestEffort`,
+- [x] C2. `Service.EmitCoalesced` (`service.go`) : sous `withWriterBestEffort`,
       lister les ~20 dernières notifs de la catégorie (`repo.List`,
       `ListFilter{Category, Limit: 20}`) ; candidate = même catégorie, **non lue**
       (`ReadAt == nil`), même acteur (`Actor.Name`/params `actor_name`),
@@ -274,20 +282,20 @@ Phase E : rapide. Total : 1 session agent.
       append-only fait le reste : nouvel event même (xuid,id) → la vue `_latest`
       sert la version à jour, la notif remonte en tête). Pas trouvée → fallback
       émission normale. Extraire le code commun avec `emitInner` (seuil 80 L).
-- [ ] C3. `media.go` `emitMediaAdded` (l.228) : remplacer `em.Emit(...)` par
+- [x] C3. `media.go` `emitMediaAdded` (l.228) : remplacer `em.Emit(...)` par
       `em.EmitCoalesced(..., mediaCoalesceWindow)` avec
       `const mediaCoalesceWindow = time.Hour` (commentaire : incident 2026-07-03,
       5 notifs en 5 min pour 5 clips du même acteur).
-- [ ] C4. Tests service (`service_test.go`, fakeRepo) : 2 émissions même acteur
+- [x] C4. Tests service (`service_test.go`, fakeRepo) : 2 émissions même acteur
       < 1 h → même ID, count sommé ; acteurs différents → 2 IDs ; > 1 h → 2 IDs ;
       candidate lue → nouvelle notif (jamais ressusciter une lue).
-- [ ] C5. Test e2e DuckDB (`notifications_service_e2e_test.go`, package
+- [x] C5. Test e2e DuckDB (`notifications_service_e2e_test.go`, package
       platform/duckdb) : 2 `EmitCoalesced` → `player_notifications_latest` contient
       1 ligne, count=2, non lue, `player_notifications_history` contient 2 events.
-- [ ] C6. Vérifier le rendu i18n : `notif.media_added.body` consomme déjà
+- [x] C6. Vérifier le rendu i18n : `notif.media_added.body` consomme déjà
       `{count}` (`apps/web/src/features/notifications/i18n.ts`) — contrôler le
       pluriel FR/EN, corriger si « 5 clip » s'affiche.
-- [ ] C7. `sync_error` coalescé (DP15) : `emitSyncError`
+- [x] C7. `sync_error` coalescé (DP15) : `emitSyncError`
       (`sync_handler.go:274-294`) → `EmitCoalesced` fenêtre
       `syncErrorCoalesceWindow = 6h`. Préciser dans C2 la règle de matching :
       même catégorie + même acteur SI acteur présent, catégorie seule sinon
@@ -298,27 +306,32 @@ Phase E : rapide. Total : 1 session agent.
 **Gate C** : `cd apps/go-api && go test ./internal/notifications/ ./internal/api/handlers/`
 puis `go test -tags=integration -p 1 -run '^TestNotifications' ./internal/platform/duckdb/`
 (filtre ANCRÉ `^`, sérialisé `-p 1` — cf. incident LOT B, faux verts sinon).
+→ OK : notifications+handlers exit 0 ; integration exit 0 (TestNotificationsE2E_EmitCoalesced
+PASS vérifié en -v). 2026-07-10.
+
+> Note C6 : `media_added.body` = « {count} fichier(s) associé(s)… » / « {count} file(s)… »
+> — pluriel géré par « (s) », aucun « 5 clip ». Aucune correction i18n requise.
 
 ## Phase D — Cycle de vie du badge (back léger + front)
 
-- [ ] D1. Backend `badge_count` : struct `UnreadCount` (`types.go`) — champ
+- [x] D1. Backend `badge_count` : struct `UnreadCount` (`types.go`) — champ
       `BadgeCount int` json `badge_count` (« non-lues severity != 'info' »).
       Requête `NotificationsRepo.UnreadCount` (`notifications_repo.go:232-237`) :
       ajouter `COUNT(*) FILTER (severity <> 'info')` par catégorie et sommer dans
       la boucle de scan.
-- [ ] D2. OpenAPI : ajouter `badge_count` au schéma unread-count dans
+- [x] D2. OpenAPI : ajouter `badge_count` au schéma unread-count dans
       `apps/go-api/api/openapi.yaml`, puis `make generate-types` (le garde-fou
       TestNoJSONRouteBypassesHuma existe — le laisser guider si autre chose est requis).
-- [ ] D3. Front badge : `NotificationsBell.tsx:30` →
+- [x] D3. Front badge : `NotificationsBell.tsx:30` →
       `const unreadCount = countData?.badge_count ?? countData?.count ?? 0`.
       La page Notifications continue d'afficher le compteur complet.
-- [ ] D4. Front auto-read à la fermeture : dans `NotificationsBell`, accumuler dans
+- [x] D4. Front auto-read à la fermeture : dans `NotificationsBell`, accumuler dans
       un `useRef<Set<number>>` les ids non lus rendus pendant l'ouverture ; sur
       transition open→false (click-outside, Esc, navigation), si le set est non vide
       → `markRead.mutate([...set])` puis vider. Vérifier que `mutations.ts` invalide
       bien le préfixe `notificationsAll` (keys.ts:161) pour rafraîchir badge + liste.
       Le bouton « tout marquer lu » reste.
-- [ ] D5. Sweep expiry douce (DP8) : méthode persister
+- [x] D5. Sweep expiry douce (DP8) : méthode persister
       `SweepStaleInfoNotificationsRead(ctx, xuid string, cutoff time.Time) error`
       (iface `social_persister_iface.go` + implémentation à côté de
       `MarkAllNotificationsRead` — la retrouver :
@@ -329,19 +342,19 @@ puis `go test -tags=integration -p 1 -run '^TestNotifications' ./internal/platfo
       best-effort dans `emitInner` à côté de `CapAndSweep` (l.178) avec
       `const staleInfoMaxAge = 7 * 24 * time.Hour`. Erreur → log warn, jamais propagée
       (même contrat que CapAndSweep, écriture idempotente).
-- [ ] D6. Tests : repo/e2e — une info vieille de 8 j non lue + une émission → l'info
+- [x] D6. Tests : repo/e2e — une info vieille de 8 j non lue + une émission → l'info
       passe lue, une `success` vieille de 8 j reste non lue ; UnreadCount →
       `badge_count` exclut les info. Front — test composant Bell (vitest, patterns
       des tests existants du dossier) : ouverture avec liste mockée (2 non lues) →
       fermeture → `markRead` appelé avec les 2 ids ; badge affiche `badge_count`.
       NB : vitest se lance HORS sandbox (`dangerouslyDisableSandbox`) ; typecheck OK
       en sandbox.
-- [ ] D7. i18n : si de nouvelles strings UI apparaissent (a priori aucune), parité
+- [x] D7. i18n : si de nouvelles strings UI apparaissent (a priori aucune), parité
       FR **et** EN dans `i18n.ts` (`Record<Locale, T>`), FR sans anglicisme.
-- [ ] D8. `match_synced` severity `success` → `info` (DP15) : `emitMatchSynced`
+- [x] D8. `match_synced` severity `success` → `info` (DP15) : `emitMatchSynced`
       (`sync_handler.go:252-272`). Sort du badge via DP6, reste visible en
       liste. Adapter les tests qui vérifient la severity.
-- [ ] D9. Code mort coach (règle CLAUDE.md n°7) : `MaxConcurrentUnread` et
+- [x] D9. Code mort coach (règle CLAUDE.md n°7) : `MaxConcurrentUnread` et
       `AutoDismissAfter` (`coach/types.go:83-89`) ne sont consommées nulle part
       (vérifier : `grep -rn "AutoDismissAfter\|MaxConcurrentUnread"
       apps/go-api/`). Les SUPPRIMER — l'intention d'`AutoDismissAfter` (purge
@@ -351,26 +364,63 @@ puis `go test -tags=integration -p 1 -run '^TestNotifications' ./internal/platfo
 **Gate D** : `cd apps/go-api && go test ./...` ; `make check-types` ; `make test-web` ;
 `make generate-types` puis `git diff --exit-code apps/web/src/lib/api/generated.ts`
 (le commit doit contenir les types régénérés).
+→ OK 2026-07-10 : go test ./... exit 0 ; tsc exit 0 ; vitest 2106 passed (247 fichiers,
+dont 5 nouveaux tests Bell) ; generated.ts régénéré (+badge_count) et commité.
+
+> Note D2 (découverte) : la cible Makefile `generate-types` est un NO-OP (echo sans
+> exécuter le générateur) — la vraie commande est `npm run generate-types` dans apps/web
+> (openapi-typescript). Consigné en Découvertes, non corrigé (hors périmètre).
+> Note D6 : sweep testé aux 2 niveaux — persister (TestSharedSocialPersister_
+> SweepStaleInfoNotificationsRead, chemin prod) ET e2e repo fallback
+> (TestNotificationsE2E_SweepStaleInfo_And_BadgeCount).
+> Note D7 : aucune nouvelle string UI (aria-labels existants réutilisés) — rien à ajouter.
+> Note D8 : aucun test n'assertait severity=success sur match_synced ; le toastBridge
+> affiche aussi les info (DP15 « reste visible en toast » vérifié sur pièces).
 
 ## Phase E — Gate final et clôture
 
-- [ ] E1. Suite complète : `cd apps/go-api && go test ./...` puis
-      `go test -tags=integration -p 1 ./internal/platform/duckdb/ ./internal/sync/`
-      (OBLIGATOIRE : les écritures shared_social sont touchées — C2/D5).
-- [ ] E2. `make go-api-lint` (dette baseline gelée : ne pas l'accroître),
-      `make check-types`, `make test-web`.
-- [ ] E3. Relire le diff complet : pas d'emoji, pas de `fmt.Println`, pas de couleur
-      en dur côté web, seuils 500 L / 80 L respectés (`EmitPostSyncDeltas` porte déjà
-      un nolint funlen documenté — ne pas l'aggraver, extraire si besoin).
-- [ ] E4. Entrée `thought_log.md` (date, statut, décision, résultats, prochaine étape).
-- [ ] E5. Skill `delivery-checklist` avant commit final. Commits par phase
-      (`refactor(notif-A): ...` etc.) sur la branche unique. Demander à l'utilisateur
-      avant merge — **push main = deploy prod automatique, prévenir**.
-- [ ] E6. Statuer tous les items du plan ; consigner les découvertes hors périmètre
-      ci-dessous sans les traiter.
+- [x] E1. Suite complète : `go test ./...` exit 0 (relancée APRÈS le refactor
+      d'extraction E3) ; `go test -tags=integration -p 1 ./internal/platform/duckdb/
+      ./internal/sync/` exit 0 (ok 89.1 s + 85.4 s).
+- [x] E2. Lint : `golangci-lint run --new-from-rev=origin/main ./...` → « 0 issues »
+      exit 0. `make check-types` (tsc) exit 0 (cache node_modules/.tmp purgé avant).
+      `make test-web` (vitest) 2106 passed / 247 fichiers. eslint : 0 erreur,
+      68 warnings tous pré-existants (aucun sur les fichiers notifications).
+- [x] E3. Diff relu : 0 emoji, 0 fmt.Println, 0 couleur en dur, 0 TODO/FIXME.
+      `EmitPostSyncDeltas` DÉGONFLÉE (146 L avant plan → 123 L) par extraction de
+      `emitCareerRankDelta` + `emitSkillTierDeltas` dans
+      `post_sync_deltas_bespoke.go` (le fichier principal repasse à 409 L < 500).
+- [x] E4. Entrées thought_log par phase (A, B, C, D, E) en tête de fichier.
+- [x] E5. Skill `delivery-checklist` passé (complétude, pièges de filtre/cache
+      couverts). Commits par phase sur la branche unique. Pas de merge — laissé au
+      superviseur (push main = deploy prod auto).
+- [x] E6. Tous les items statués ; découvertes consignées ci-dessous (non traitées).
+
+> Post-clôture 2026-07-11 : le gate CI « Go Baseline Tests » exigeait le retrait de
+> `TestDetect_NearMiss_Within10Percent` (renommé `Within2Percent` par B14/DP14) de
+> `.ai/baselines/tests_pre_migration.jsonl` — fait (commit fix(baseline), 4 entrées,
+> aucun autre test du diff en baseline).
 
 **Critère de clôture global** : les 10 points du critère de succès sont couverts par
 des tests nommés, tous les gates sont verts, aucun item sans statut.
+
+Couverture des 10 critères de succès (tests nommés) :
+1. Cold-start → 0 émission : `TestEmitPostSyncDeltas_ColdStart_SuppressesAll`.
+2. N objectifs complétés → 1 notif : `TestEmitPostSyncDeltas_ObjectiveCompleted_AggregatedDelta`
+   + garde-rail `TestPostSyncNeverEmitsObjectiveAssigned`.
+3. Flapping IV↔V < 24 h → ≤ 1 : `TestEmitPostSyncDeltas_SkillTier_FlappingCollapsesTo1`.
+4. 5 uploads même acteur < 1 h → 1 coalescée : `TestEmitCoalesced_SameActor_MergesCountAndID`
+   + `TestNotificationsE2E_EmitCoalesced_MergesLatestKeepsHistory`.
+5. Record 30d+90d+all_time → 1 (all_time) : `TestGenerate_RecordBroken_CollapseWidestPeriod`.
+6. Badge = non-lues severity != info + auto-read fermeture :
+   `TestNotificationsE2E_SweepStaleInfo_And_BadgeCount` (badge_count) +
+   `NotificationsBell.test.tsx` (« affiche badge_count », « fermeture → markRead »).
+7. Écart < 2 % → 0, entre 2 et 5 % → 1 : `TestIsNearMiss_Cases` (99→non, 97→oui, 98→oui).
+8. Première évaluation records → 0 notif : `TestGenerate_RecordBroken_SeedSilencieux`.
+9. Nudge d'état → max 1/30 j : `TestFilterRecent_StateNudge_30DayWindow` +
+   `TestDedupWindowFor_Resolution`.
+10. Sync en panne durable → 1 notif coalescée :
+    `TestEmitCoalesced_SyncError_NoActor_CategoryOnly` (3 échecs → count=3, dernier message).
 
 ---
 
@@ -386,7 +436,17 @@ des tests nommés, tous les gates sont verts, aucun item sans statut.
 
 ## Découvertes en cours d'exécution (à consigner, ne pas traiter)
 
-- (vide — à remplir par l'agent exécutant)
+- **Makefile `generate-types` = no-op** : la cible affiche « Types générés » sans
+  exécuter openapi-typescript (elle ne fait qu'un `command -v npx` + echo). La vraie
+  commande est `npm run generate-types` dans `apps/web/`. Toute session qui s'appuie
+  sur `make generate-types` croit régénérer les types sans le faire — à corriger dans
+  un chantier outillage.
+- **`recordingEmitter` (post_sync_deltas_test.go) est le seul fake Emitter du repo** :
+  l'ajout d'une méthode à l'interface `notifications.Emitter` ne casse que lui + les
+  implémentations réelles (Service, NoopEmitter). Peu de friction, mais aucun
+  garde-rail ne signale les implémentations structurelles hors compile-time.
+- **`prestige.TelemetryRepo.Emit`** partage le nom `Emit` avec `notifications.Emitter`
+  mais est une interface distincte (aucun impact, noté pour éviter une confusion grep).
 
 ## Protocole de reprise de session
 

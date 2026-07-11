@@ -44,6 +44,15 @@ const MinMatchesForRecord = 10
 // Si valeur courante >= PB × (1 - NearMissRatio), on émet une notif near-miss.
 const NearMissRatio = 0.05
 
+// NearMissMinGapRatio (DP11) est l'écart relatif MINIMAL sous le PB pour qu'un
+// near-miss soit significatif pour un joueur. Sous ce seuil (value trop proche
+// du PB), la notif est du bruit : incident prod 2026-07-03 « 73.33 vs 73.333336 »
+// rendu « 73.33 vs 73.33 ». La bande d'émission est donc
+// PB×(1-NearMissRatio) <= value <= PB×(1-NearMissMinGapRatio). 2 % ≈ 0.1 de KDA
+// sur un PB à 5.0, ~1.5 pt d'accuracy sur un PB à 73. Relatif (pas d'absolu :
+// insignifiant sur toutes les échelles).
+const NearMissMinGapRatio = 0.02
+
 // PersonalRecord représente le meilleur score d'une métrique sur une période.
 //
 // Stocké dans `player_records` (shared_social.duckdb). La clé primaire est

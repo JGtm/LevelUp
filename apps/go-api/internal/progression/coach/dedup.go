@@ -14,31 +14,62 @@ import (
 // des notifs récentes (typ. 24h) ; ce module filtre les alertes dont la
 // catégorie + dedup_key est déjà présente.
 
-// FilterRecent retire les alertes qui ont déjà été émises dans `window`
-// (typ. DedupWindow = 24h). Compare la catégorie + le dedup_key encodé
+// StateNudgeDedupWindow (DP13) est la fenêtre de dédup des nudges d'ÉTAT — une
+// condition qui persiste (μ proche d'un palier, milestone à 98 %, tendance
+// positive/négative) ne doit pas re-notifier chaque jour. Max 1 nudge par cible
+// par mois, contre 24 h pour les catégories ÉVÉNEMENT (records battus, streaks).
+const StateNudgeDedupWindow = 30 * 24 * time.Hour
+
+// stateNudgeCategories est l'ensemble des catégories « ÉTAT » soumises à la
+// fenêtre de 30 jours (DP13). Les autres restent à DedupWindow (24 h).
+var stateNudgeCategories = map[notifications.Category]bool{
+	notifications.CategoryRecordNearMiss:    true,
+	notifications.CategoryMilestoneNearMiss: true,
+	notifications.CategoryLUSRTierApproach:  true,
+	notifications.CategoryThresholdCrossed:  true, // source coach/LOWESS
+	notifications.CategoryTrendConsolidate:  true,
+}
+
+// DedupWindowFor résout la fenêtre de dédup applicable à une catégorie (DP13) :
+// 30 jours pour les nudges d'état, 24 h sinon.
+func DedupWindowFor(cat notifications.Category) time.Duration {
+	if stateNudgeCategories[cat] {
+		return StateNudgeDedupWindow
+	}
+	return DedupWindow
+}
+
+// FilterRecent retire les alertes déjà émises dans leur fenêtre de dédup, résolue
+// PAR CATÉGORIE via windowFor (DP13). Compare la catégorie + le dedup_key encodé
 // dans les params de la notification existante (champ `dedup_key`).
 //
 // Comportement :
-//   - Si une notif récente partage (Category, dedup_key) avec l'alerte
-//     ET sa date d'émission est dans la fenêtre → alerte filtrée.
+//   - Si une notif récente partage (Category, dedup_key) avec l'alerte ET sa date
+//     d'émission est dans la fenêtre de CETTE catégorie → alerte filtrée.
 //   - dedup_key vide → 1 seule alerte de ce type par fenêtre
 //     (utilisé pour comeback_welcome).
-func FilterRecent(alerts []Alert, recent []notifications.Notification, now time.Time, window time.Duration) []Alert {
-	cutoff := now.Add(-window)
-	// Index : (category, dedup_key) → existence dans la fenêtre.
-	seen := make(map[string]bool, len(recent))
+//
+// `windowFor` peut être nil → DedupWindowFor par défaut.
+func FilterRecent(alerts []Alert, recent []notifications.Notification, now time.Time, windowFor func(notifications.Category) time.Duration) []Alert {
+	if windowFor == nil {
+		windowFor = DedupWindowFor
+	}
+	// Index : (category, dedup_key) → date d'émission la plus récente.
+	latest := make(map[string]time.Time, len(recent))
 	for _, n := range recent {
-		if n.CreatedAt.Before(cutoff) {
-			continue
-		}
 		dedupKey := extractDedupKey(n.Params)
-		seen[notifKey(n.Category, dedupKey)] = true
+		k := notifKey(n.Category, dedupKey)
+		if t, ok := latest[k]; !ok || n.CreatedAt.After(t) {
+			latest[k] = n.CreatedAt
+		}
 	}
 	out := alerts[:0]
 	for _, a := range alerts {
-		k := notifKey(a.Type.NotificationCategory(), a.DedupKey)
-		if seen[k] {
-			continue
+		cat := a.Type.NotificationCategory()
+		if t, ok := latest[notifKey(cat, a.DedupKey)]; ok {
+			if !t.Before(now.Add(-windowFor(cat))) {
+				continue // dans la fenêtre → filtrée
+			}
 		}
 		out = append(out, a)
 	}

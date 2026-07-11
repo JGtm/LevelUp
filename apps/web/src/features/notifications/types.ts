@@ -103,6 +103,8 @@ export interface NotificationListResult {
 
 export interface UnreadCount {
   count: number
+  /** Non-lues de severity != 'info' — alimente le badge cloche (DP6). */
+  badge_count: number
   by_category: Record<string, number>
 }
 

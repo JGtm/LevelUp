@@ -143,23 +143,76 @@ func buildStreakAlerts(input GenerateInput) []Alert {
 	return out
 }
 
+// recordPeriodRank ordonne les fenêtres de la plus large à la plus étroite :
+// all_time (3) > 90d (2) > 30d (1). Utilisé par keepWidestPeriod (DP3).
+func recordPeriodRank(p records.RecordPeriod) int {
+	switch p {
+	case records.RecordPeriodAllTime:
+		return 3
+	case records.RecordPeriod90d:
+		return 2
+	case records.RecordPeriod30d:
+		return 1
+	default:
+		return 0
+	}
+}
+
+// keepWidestPeriod (DP3) collapse les DetectionResult actionnables (NewPB ou
+// NearMiss) par métrique en ne gardant que la fenêtre la PLUS LARGE. Un record
+// KDA battu simultanément sur 30d+90d+all_time ne doit produire qu'UNE alerte
+// (all_time), pas trois. Ordre de sortie déterministe (parcours des résultats
+// d'entrée). Les résultats non actionnables sont écartés (buildRecordAlerts les
+// ignorait déjà).
+func keepWidestPeriod(results []records.DetectionResult) []records.DetectionResult {
+	widest := make(map[records.TrackedMetric]int, len(results))
+	for _, r := range results {
+		if !r.NewPB && !r.NearMiss {
+			continue
+		}
+		if rank := recordPeriodRank(r.Period); rank > widest[r.Metric] {
+			widest[r.Metric] = rank
+		}
+	}
+	out := make([]records.DetectionResult, 0, len(results))
+	emitted := make(map[records.TrackedMetric]bool, len(results))
+	for _, r := range results {
+		if !r.NewPB && !r.NearMiss {
+			continue
+		}
+		if recordPeriodRank(r.Period) != widest[r.Metric] || emitted[r.Metric] {
+			continue
+		}
+		emitted[r.Metric] = true
+		out = append(out, r)
+	}
+	return out
+}
+
 // buildRecordAlerts émet :
-//   - personal_record (RecordBroken) si NewPB=true
+//   - personal_record (RecordBroken) si NewPB=true ET PreviousValue != nil
+//     (DP12 : premier record = seed silencieux, le PB est persisté sans notif)
 //   - record_near_miss si NearMiss=true (et NewPB=false)
+//
+// DP3 : une seule alerte par métrique, sur la fenêtre la plus large (keepWidestPeriod).
 func buildRecordAlerts(input GenerateInput) []Alert {
 	var out []Alert
-	for _, r := range input.RecordResults {
+	for _, r := range keepWidestPeriod(input.RecordResults) {
 		switch {
 		case r.NewPB:
+			// DP12 : un NewPB sans référence antérieure (première évaluation,
+			// player_records vide) n'est pas une nouvelle — seed silencieux.
+			// Garde jumelle de oldRec.Loaded dans post_sync_deltas.go.
+			if r.PreviousValue == nil {
+				continue
+			}
 			params := map[string]any{
 				alertParamMetric: string(r.Metric),
 				"period":         string(r.Period),
 				"value":          r.Value,
 				"match_id":       r.MatchID,
 			}
-			if r.PreviousValue != nil {
-				params["previous_value"] = *r.PreviousValue
-			}
+			params["previous_value"] = *r.PreviousValue
 			out = append(out, Alert{
 				Type:     AlertTypeRecordBroken,
 				Severity: notifications.SeveritySuccess,
