@@ -88,6 +88,16 @@ type EngagementScoreResult struct {
 	// Distinct de Confidence (historique du percentile) et de ExpectedBasis (base de
 	// l'attendu). Combine avec le statut de calibration du titre pour la 2e porte.
 	SignalBasis string `json:"signal_basis,omitempty"`
+
+	// Calibration est la 2e porte de degradation (chantier F7) : statut de calibration
+	// des coefficients d'engagement DU TITRE pour ce score :
+	//   - "validated"   : coefficients valides (gate humain passe) — score de confiance pleine
+	//   - "provisional" : coefficients provisoires (titre en calibration, ex. H5 degraded) —
+	//     le front affiche une mention « calibration provisoire » (DE-8)
+	//
+	// Vide = titre historique valide (Infinite) traite comme validated. Injecte au
+	// niveau service (title-aware) ; le moteur temporal, pur, ne le connait pas.
+	Calibration string `json:"calibration,omitempty"`
 }
 
 // Valeurs de EngagementScoreResult.ExpectedBasis (chaine de fallback de l'attendu).
@@ -95,6 +105,12 @@ const (
 	ExpectedBasisBin       = "bin"
 	ExpectedBasisGlobal    = "global"
 	ExpectedBasisColdStart = "cold_start"
+)
+
+// Valeurs de EngagementScoreResult.Calibration (2e porte de degradation F7).
+const (
+	CalibrationValidated   = "validated"
+	CalibrationProvisional = "provisional"
 )
 
 // EngagementResponseBins porte les coefficients de reponse du joueur par bin

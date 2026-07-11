@@ -109,16 +109,19 @@ Constat mémoire : le score (0-100) n'est PAS un FieldKey canonique (contraireme
   ./internal/sync/...` vert.
 
 ### E3 — Double porte de dégradation (suffisance + calibration)
-- [ ] E3a — Porte statique (par titre) : la capability fine `engagement.score` du
-  `capabilities.toml` reflète ce que le titre PEUT fournir : `not_exposed` (signaux
-  minimaux impossibles), `degraded` (signaux OK, calibration non validée), `supported`.
-  Documenter la sémantique dans le header du TOML.
-- [ ] E3b — Porte dynamique (par match) : la réponse engagement gagne un champ de
-  confiance (`signal_basis` : full/partial + calibration : provisional/validated) dérivé
-  de `Sufficiency()` + du statut de calibration du titre. Openapi + `make generate-types`.
-- [ ] E3c — Règle de service : capability `not_exposed` → 204/section absente (comme
-  aujourd'hui) ; `degraded` → score servi AVEC le champ de confiance ; jamais d'erreur 500.
-  Réutiliser `MapCapabilityError`/les patterns B15.
+- [x] E3a — Porte statique documentée dans les headers `capabilities.toml` des 2 titres
+  (mapping engagement.score → calibration : supported=validated, degraded=provisional+badge,
+  not_exposed=503). Infinite reste `supported` ; H5 reste `not_exposed` (bascule E5).
+- [x] E3b — Porte dynamique par match : `EngagementScoreResult` gagne `calibration`
+  (validated/provisional) en plus de `signal_basis` (E2). `signal_basis` = `Sufficiency()`
+  (compute) ; `calibration` = statut de calibration du titre, injecté au service via
+  `WithEngagementCapability(status)` résolu par la factory (title-aware, `titleResolver.Data(slug)
+  .Capabilities()[CapEngagement]`, nil-safe). openapi.yaml + `generated.ts` régénérés
+  (openapi-typescript ; `make generate-types` est un stub — noté §Découvertes).
+- [x] E3c — Règle de service : `GetMatchEngagement` retourne `games.ErrCapabilityNotSupported`
+  si fine=`not_exposed` → handler mappe via `MapCapabilityError` → 503 `capability_not_supported`
+  (pattern B15, jamais 500 ni score faux) ; `degraded` → score servi AVEC `calibration=provisional` ;
+  `supported`/vide → validated. Tests handlers (mock port) sur les 3 statuts ajoutés.
 - Gate E3 : tests service (mock port) sur les 3 statuts ; drift openapi vert ; front
   typecheck (types régénérés).
 
@@ -190,8 +193,19 @@ Constat mémoire : le score (0-100) n'est PAS un FieldKey canonique (contraireme
   clean ; packages touchés (analysis/service/sync/domain/api-handlers/persist) verts ; api
   (drift report-only, additif = divergent non gaté) vert ; `go vet` 0 ;
   `-tags=integration -p 1 ./internal/sync/...` exit 0 ; lint delta `--new-from-rev=3b0195df2` 0.
+- **E3 — COMPLÉTÉE (2026-07-11)**. Double porte : capability fine documentée (E3a) ;
+  `calibration` (validated/provisional) + `signal_basis` dans le contrat, injectés au service
+  via `WithEngagementCapability` résolu title-aware par la factory (E3b) ; `not_exposed` → 503
+  `capability_not_supported` via `MapCapabilityError`, `degraded` → provisional (E3c). Gate :
+  api (drift ↔ Huma réconcilié, guards Huma, 3-statuts) vert ; service vert ; front typecheck 0
+  (generated.ts régénéré) ; lint delta 0.
 
 ## 7. Découvertes hors périmètre (à consigner, NE PAS traiter)
+- **`make generate-types` est un stub** (E3). La cible Makefile `generate-types` (l.44-46) ne
+  fait que vérifier `npx` et logger « Types générés » — elle N'EXÉCUTE PAS openapi-typescript.
+  La vraie génération est le script npm `apps/web` : `npm run generate-types` (openapi-typescript
+  openapi.yaml → generated.ts). Utilisé ici. La cible Makefile devrait déléguer au script npm
+  (dette doc/outillage — non traitée, hors périmètre).
 - **Construction des signaux : agnostic partagé, pas de builder per-titre** (E2). Le plan
   (E2d) supposait un point de construction « title-owned (`games/{slug}/…`) ». Vérifié sur
   pièces : TOUT le sous-système engagement (input, compute, recompute) est déjà agnostic —

@@ -1,3 +1,26 @@
+## [2026-07-11] Engagement agnostic gradué (F7) — Phase E3 (Complété)
+
+**Statut** : E3 complétée. Double porte de dégradation (suffisance + calibration).
+
+**Décision technique** : `EngagementScoreResult` gagne `calibration` (validated/provisional,
+2e porte) en plus de `signal_basis` (E2, 1re porte). Le statut de calibration = capability
+fine `engagement.score` du titre, injecté au service par `WithEngagementCapability(status)`
+que la factory `Engagement` (registry_pages.go) résout title-aware via
+`titleResolver.Data(slug).Capabilities()[CapEngagement]` (nil-safe). Règle de service :
+fine=not_exposed → `games.ErrCapabilityNotSupported` → handler `MapCapabilityError` → 503
+capability_not_supported (jamais un score cold-start faux) ; degraded → servi avec
+calibration=provisional ; supported/vide → validated. Headers capabilities.toml des 2 titres
+documentent le mapping. openapi.yaml + generated.ts régénérés.
+
+**Découverte** : `make generate-types` est un stub Makefile (ne lance pas openapi-typescript) ;
+la vraie génération = `npm run generate-types` dans apps/web. Consigné.
+
+**Résultat observé** : gates verts — api (drift réconcilié, guards Huma, tests 3 statuts),
+service, front typecheck 0 (types régénérés), lint delta 0.
+
+**Prochaine étape** : E4 — harnais de calibration `cmd/engagement-calibrate` + format
+`config/titles/{slug}/engagement.toml` + loader ; exécuter sur H5.
+
 ## [2026-07-11] Engagement agnostic gradué (F7) — Phase E2 (Complété)
 
 **Statut** : E2 complétée. Vecteur de signaux + porte de suffisance.
