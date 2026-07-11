@@ -64,3 +64,17 @@ offensive_conversion_p80 = 0.90
 # dans internal/games/halo_infinite/mode_category.go (constantes PerfChain*).
 # À externaliser ici lors de la Phase 1.5/2 (non bloquant pour le 2e titre tant
 # que mode_category.go reste dans le package halo_infinite).
+
+# ─── Poids d'events du score d'engagement (chantier F7, DE-4) ────────────────
+# Coefficients DÉPENDANTS DU GAMEPLAY : importance relative de chaque famille
+# d'action dans le RYTHME de la courbe d'engagement (pace pondéré). Externalisés
+# par titre (un gameplay au rythme d'objectif / aux assists différents peut vouloir
+# d'autres poids). Consommés via games.EngagementWeightsFor(slug) → EngagementScoreInput.
+# Weights. Section absente (ou default absent) → temporal.DefaultEventWeights (défaut
+# byte-identique). Infinite = valeurs historiques validées (mode 1.5 / assist 0.5 /
+# death 0.0 / défaut 1.0, décisions user 2026-06-26 + 2026-07-07 modèle lobby-anchored).
+[engagement]
+objective = 1.5   # event_type "mode" (objectif, leadership — porter > fragger)
+assist    = 0.5   # support (action menée, pas un double comptage du frag)
+death     = 0.0   # mort subie (chaque affrontement compte une fois, côté acteur)
+default   = 1.0   # kill, medal, first_kill/death, finisher, clutch…

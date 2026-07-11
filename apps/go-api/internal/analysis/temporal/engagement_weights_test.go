@@ -34,7 +34,7 @@ func TestExtractWeightedPoints_AndSum(t *testing.T) {
 		{EventType: "assist", TimeMS: 400},
 		{EventType: "kill", TimeMS: 50_000}, // hors fenêtre
 	}
-	pts := extractWeightedPoints(events)
+	pts := extractWeightedPoints(events, DefaultEventWeights())
 	if len(pts) != len(events) {
 		t.Fatalf("points = %d, attendu %d", len(pts), len(events))
 	}

@@ -104,6 +104,11 @@ type EngagementScoreInput struct {
 	// Mode est la categorie de mode (PvP_ranked, PvP_unranked, ...).
 	Mode string
 
+	// Weights porte les poids d'events PAR TITRE (chantier F7, DE-4). Zero-value →
+	// DefaultEventWeights (byte-identique Infinite). Renseigne par le point de
+	// collecte via games.EngagementWeightsFor(slug). Le moteur reste agnostic.
+	Weights EventWeights
+
 	// Signals est le vecteur de signaux d'engagement du match (masque de presence
 	// + signaux riches optionnels), construit par le point de collecte title-owned
 	// (cf. SignalsFromEvents). Gouverne la porte de suffisance (1re porte F7). Si
@@ -152,6 +157,12 @@ func ComputeEngagementScore(input EngagementScoreInput) (domain.EngagementScoreR
 
 	windowMS, samplingMS := resolveWindow(input)
 
+	// Poids d'events par titre (F7) : ceux fournis, ou defaut byte-identique.
+	weights := input.Weights
+	if weights.IsZero() {
+		weights = DefaultEventWeights()
+	}
+
 	// "Equipe reelle" = coequipiers + joueur cible. On inclut le joueur au
 	// numerateur pour rester coherent avec NTeam (qui le compte au denominateur) :
 	// pace_team = events de TOUTE l'equipe / NTeam. Sans ca, num = N-1 joueurs et
@@ -174,6 +185,7 @@ func ComputeEngagementScore(input EngagementScoreInput) (domain.EngagementScoreR
 		MatchEndMS:   input.MatchEndMS,
 		WindowMS:     windowMS,
 		SamplingMS:   samplingMS,
+		Weights:      weights,
 	})
 
 	curve = annotateDeaths(curve, input.PlayerEvents, samplingMS)

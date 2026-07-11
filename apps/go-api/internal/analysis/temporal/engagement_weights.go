@@ -1,7 +1,5 @@
 package temporal
 
-import "levelup/go-api/internal/games/canonical"
-
 // engagementEventWeight — poids d'un event highlight dans le RYTHME de la courbe
 // d'engagement (« meneur » vs « en retrait »). Pondère l'action MENÉE plutôt que
 // subie / logistique :
@@ -27,16 +25,11 @@ import "levelup/go-api/internal/games/canonical"
 // conséquence, cf. engagement_coefficients.go).
 //
 // Poids validés user : objectif 1.5 / assist 0.5 (2026-06-26), death 0.0 (2026-07-07,
-// modèle lobby-anchored). Calibrables, mêmes valeurs les 2 titres.
+// modèle lobby-anchored). CALIBRABLES PAR TITRE depuis le chantier F7 : les valeurs
+// vivent dans DefaultEventWeights (défaut byte-identique) et sont surchargeables par
+// titre via constants.toml [engagement] (cf. engagement_calibration.go +
+// games.EngagementWeightsFor). Cette fonction retourne le DÉFAUT partagé — le compute
+// paramétré passe désormais par EventWeights.For (EngagementScoreInput.Weights).
 func engagementEventWeight(eventType string) float64 {
-	switch eventType {
-	case "mode": // objectif (Infinite event_type "mode" + impulses objectif H5)
-		return 1.5
-	case string(canonical.EventAssist):
-		return 0.5
-	case string(canonical.EventDeath):
-		return 0.0
-	default:
-		return 1.0
-	}
+	return DefaultEventWeights().For(eventType)
 }

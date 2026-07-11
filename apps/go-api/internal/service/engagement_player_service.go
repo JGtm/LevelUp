@@ -363,6 +363,9 @@ func (s *PlayerEngagementService) buildInputForMatch(
 		// composition des events deja partitionnes (title-agnostic, la richesse
 		// vient de ce que le titre a projete en amont dans highlight_events).
 		Signals: temporal.SignalsFromEvents(playerEvents, lobbyEvents, durationMS),
+		// Poids d'events PAR TITRE (F7) : constants.toml [engagement], defaut
+		// byte-identique Infinite si non declare.
+		Weights: games.EngagementWeightsFor(s.titleSlug),
 	}
 }
 

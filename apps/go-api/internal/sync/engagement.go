@@ -33,6 +33,7 @@ import (
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -99,6 +100,9 @@ func batchComputeEngagementScores(
 	// flush via PostSyncEnrichmentPersister (1 single UPDATE multi-row
 	// multi-col).
 	hasPaces := pacesColumnsAvailable(ctx, playerDB)
+	// Poids d'events PAR TITRE (F7), resolus une fois (le titre est constant sur le
+	// batch). Defaut byte-identique Infinite si non declare dans constants.toml.
+	weights := games.EngagementWeightsFor(ctxkeys.TitleSlug(ctx))
 	var pendingUpdates []persist.EnrichmentMultiColumnUpdate
 
 	for _, m := range matches {
@@ -177,6 +181,8 @@ func batchComputeEngagementScores(
 			// Vecteur de signaux (masque de presence + signaux riches), derive de la
 			// composition des events deja partitionnes (title-agnostic).
 			Signals: temporal.SignalsFromEvents(playerEvents, lobbyEvents, durationMS),
+			// Poids d'events PAR TITRE (F7), constants.toml [engagement].
+			Weights: weights,
 		}
 
 		result, err := temporal.ComputeEngagementScore(input)
