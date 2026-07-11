@@ -11,6 +11,7 @@
  * 4. Pas d'erreur fatale React dans la console
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 test.describe('Slice 2 — Page Carrière (DEMO_MODE)', () => {
   test("la page Carrière se charge sans erreur JS", async ({ page }) => {
@@ -28,6 +29,7 @@ test.describe('Slice 2 — Page Carrière (DEMO_MODE)', () => {
   test("l'API career retourne HTTP 200 avec les données du joueur", async ({
     page,
   }) => {
+    await skipIfNoDemoData()
     const careerPromise = page.waitForResponse(
       (resp) =>
         resp.url().includes('/api/v1/players/demo-player/pages/career') &&
@@ -46,6 +48,7 @@ test.describe('Slice 2 — Page Carrière (DEMO_MODE)', () => {
   })
 
   test("le rang du joueur est visible dans la page", async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto('/players/demo-player/career')
     await page.waitForLoadState('networkidle')
 
@@ -63,6 +66,7 @@ test.describe('Slice 2 — Page Carrière (DEMO_MODE)', () => {
   })
 
   test("le titre Carrière est affiché", async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto('/players/demo-player/career')
     await page.waitForLoadState('networkidle')
 

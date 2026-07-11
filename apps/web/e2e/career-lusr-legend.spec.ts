@@ -8,6 +8,12 @@
  *      filtrage UUIDs).
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
+
+// Fixtures démo absentes en CI (data/demo gitignoré) → spec entière data-dépendante.
+test.beforeEach(async () => {
+  await skipIfNoDemoData()
+})
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const FR_GROUP_LABELS = new Set(['Arène', 'Grand combat', 'Social', 'Classé'])

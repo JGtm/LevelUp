@@ -13,6 +13,7 @@
  *     et n'envoient PAS le filterContext du store solo dans leurs requêtes.
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 const PLAYER = 'demo-player'
 
@@ -52,6 +53,7 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
   })
 
   test('2a. Filtre cascade Squad ne pollue pas Stats Solo', async ({ page }) => {
+    await skipIfNoDemoData()
     // Étape 1 : sur Squad, set la cascade côté store squad via injection directe
     // (équivaut à un user qui coche des modes et clique Analyser)
     await page.goto(`/players/${PLAYER}/squad`)
@@ -91,6 +93,7 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
   })
 
   test('2b. Filtre cascade Solo ne pollue pas Squad', async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto(`/players/${PLAYER}/stats/timeseries`)
     await page.waitForLoadState('networkidle')
 
@@ -132,6 +135,7 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
   })
 
   test('3a. CitationsPage a sa propre barre filtres locale (Expérience visible)', async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto(`/players/${PLAYER}/citations`)
     await page.waitForLoadState('networkidle')
 
@@ -144,6 +148,7 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
   })
 
   test('3b. CitationsPage envoie un filterContext local (pas hérité du store solo)', async ({ page }) => {
+    await skipIfNoDemoData()
     // Pollue le store solo avec une cascade
     await page.goto(`/players/${PLAYER}/home`)
     await page.evaluate(() => {
@@ -181,6 +186,7 @@ test.describe('Split stores filtres — architecture solo/squad isolée', () => 
   })
 
   test('3c. ExplorerPage envoie un filterContext local par défaut', async ({ page }) => {
+    await skipIfNoDemoData()
     // Pollue le store solo
     await page.goto(`/players/${PLAYER}/home`)
     await page.evaluate(() => {

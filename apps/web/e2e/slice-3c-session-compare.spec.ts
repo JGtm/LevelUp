@@ -10,9 +10,11 @@
  * 4. Pas d'erreur 500
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 test.describe('Slice 3C — Comparaison de sessions (DEMO_MODE)', () => {
   test("l'API /pages/session-compare retourne HTTP 200", async ({ request }) => {
+    await skipIfNoDemoData()
     const resp = await request.post(
       'http://localhost:8000/api/v1/players/demo-player/pages/session-compare',
       {
@@ -23,6 +25,7 @@ test.describe('Slice 3C — Comparaison de sessions (DEMO_MODE)', () => {
   })
 
   test("la réponse session-compare contient available_sessions", async ({ request }) => {
+    await skipIfNoDemoData()
     const resp = await request.post(
       'http://localhost:8000/api/v1/players/demo-player/pages/session-compare',
       {
@@ -35,6 +38,7 @@ test.describe('Slice 3C — Comparaison de sessions (DEMO_MODE)', () => {
   })
 
   test("la réponse session-compare contient metrics", async ({ request }) => {
+    await skipIfNoDemoData()
     const resp = await request.post(
       'http://localhost:8000/api/v1/players/demo-player/pages/session-compare',
       {
@@ -49,6 +53,7 @@ test.describe('Slice 3C — Comparaison de sessions (DEMO_MODE)', () => {
   test("session_a et session_b sont retournés si données disponibles", async ({
     request,
   }) => {
+    await skipIfNoDemoData()
     const resp = await request.post(
       'http://localhost:8000/api/v1/players/demo-player/pages/session-compare',
       {

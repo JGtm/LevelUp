@@ -408,6 +408,14 @@ jobs:
         env:
           CGO_ENABLED: "1"
 
+      # NOTE (2026-07-12) — pas de seed démo en CI. Le générateur `levelup seed-demo`
+      # extrait des données RÉELLES de prod (non déterministe, non auto-suffisant) et
+      # ne tourne que sur l'hôte de prod. `data/demo/` étant gitignoré, il est absent
+      # ici. Les specs data-dépendantes se SKIPENT donc proprement via le garde
+      # e2e/_helpers/demoData.ts (sonde /api/v1/healthz/home?player=demo-player :
+      # 404 ⇒ skip, 200/503 ⇒ exécuté) — le rapport montre « N skipped » au lieu de
+      # ~60 failed. Les specs infra (shell, contrat HTTP, i18n, onboarding) restent
+      # exécutées et doivent être vertes. Détail : apps/web/e2e/README.md.
       - name: Start backend in demo mode
         working-directory: apps/go-api
         run: |

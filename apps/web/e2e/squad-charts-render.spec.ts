@@ -14,6 +14,12 @@
  * pour le joueur JGtm + Madina97294 + Chocoboflor.
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
+
+// Fixtures démo absentes en CI (data/demo gitignoré) → spec entière data-dépendante.
+test.beforeEach(async () => {
+  await skipIfNoDemoData()
+})
 
 const PLAYER_SLUG = 'JGtm'
 const TEAMMATES = ['Madina97294', 'Chocoboflor']

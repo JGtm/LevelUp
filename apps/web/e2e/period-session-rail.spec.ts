@@ -8,6 +8,12 @@
  *  - Le rail vient APRÈS NavL2 dans le DOM (rendu en dessous des filtres)
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
+
+// Fixtures démo absentes en CI (data/demo gitignoré) → spec entière data-dépendante.
+test.beforeEach(async () => {
+  await skipIfNoDemoData()
+})
 
 test('Stats : rail rendu DANS NavL2, après FilterOmnibar, en mode all-time au cold load', async ({ page }) => {
   await page.addInitScript(() => {

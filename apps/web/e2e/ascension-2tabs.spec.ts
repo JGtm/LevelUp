@@ -11,6 +11,7 @@
  * 5. TipsTicker présent avec liens vers /help#glossary-entry-*
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 let PLAYER = 'demo-player'
 
@@ -29,6 +30,7 @@ test.beforeAll(async ({ request }) => {
 
 test.describe('Ascension — 2 onglets (Profil & objectifs + Réalisations)', () => {
   test('landing on /ascension renders H1, layer headers and tabs', async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto(`/players/${PLAYER}/ascension`)
     await page.waitForLoadState('networkidle')
 
@@ -45,6 +47,7 @@ test.describe('Ascension — 2 onglets (Profil & objectifs + Réalisations)', ()
   })
 
   test('tab switch /ascension → /ascension/realisations updates URL and content', async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto(`/players/${PLAYER}/ascension`)
     await page.waitForLoadState('networkidle')
 
@@ -58,6 +61,7 @@ test.describe('Ascension — 2 onglets (Profil & objectifs + Réalisations)', ()
   })
 
   test('tab switch back /ascension/realisations → /ascension', async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto(`/players/${PLAYER}/ascension/realisations`)
     await page.waitForLoadState('networkidle')
 
@@ -75,6 +79,7 @@ test.describe('Ascension — 2 onglets (Profil & objectifs + Réalisations)', ()
   })
 
   test('TipsTicker is visible with stable links to /help glossary', async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto(`/players/${PLAYER}/ascension`)
     await page.waitForLoadState('networkidle')
 
@@ -90,6 +95,7 @@ test.describe('Ascension — 2 onglets (Profil & objectifs + Réalisations)', ()
   })
 
   test('Prestige layer renders before Ascension layer (Option D ordering)', async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto(`/players/${PLAYER}/ascension`)
     await page.waitForLoadState('networkidle')
 
