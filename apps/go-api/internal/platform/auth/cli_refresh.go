@@ -33,6 +33,10 @@ type LegacyAuthInputs struct {
 	OAuthRT   string // sync_meta.oauth_refresh_token OU env var
 	MSALCache string // sync_meta.msal_token_cache
 	Source    string // label pour les logs (ex: "duckdb", "env_var")
+	// OAuthRTFromEnv distingue la provenance du RT legacy pour la télémétrie de
+	// dépréciation : true → compteur legacy_source_used_env_oauth ;
+	// false (défaut) → legacy_source_used_duckdb_oauth. Sans effet si OAuthRT vide.
+	OAuthRTFromEnv bool
 }
 
 // RefreshHaloTokensViaStoreFirst tente d'obtenir des HaloTokens (Spartan +
