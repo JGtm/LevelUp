@@ -57,96 +57,62 @@ var canonicalOrder = []string{
 	"seed_ranked_playlists_catalog",                         // metadata
 	"challenge_template_add_source_column",                  // metadata
 	"add_template_tagging_columns",                          // metadata
-	"create_base_player_schema",                             // player
-	// Les ALTER d'enrichissement DOIVENT suivre create_base_player_schema : sur une
-	// DB fraîche (1er provisioning d'un titre, ex. Halo 5) elles étaient ordonnées
-	// AVANT la création de player_match_enrichment → l'ALTER no-opait (table absente)
-	// et engagement_score_brut/pace n'étaient jamais ajoutées (bug match history h5).
-	// Name-keyed → Infinite (déjà migré incrémentalement) intact.
-	"add_engagement_score_columns_to_player_match_enrichment", // player
-	"create_engagement_coefficients_table",                    // player
-	"repair_engagement_coefficients_primary_key",              // player
-	"add_engagement_pace_columns_to_player_match_enrichment",  // player
-	"create_engagement_response_bins_table",                   // player (modele lobby-anchored v2)
-	"add_bot_teammate_column",                                 // player
-	"add_career_progression_sequence",                         // player
-	"add_career_identity_assets",                              // player
-	"add_career_banner_image",                                 // player
-	"add_career_last_fetch_status",                            // player
-	"add_challenge_snapshots",                                 // player
-	"add_challenge_snapshots_render_columns",                  // player
-	"add_challenge_snapshots_display_path",                    // player
-	"add_battlepass_snapshots",                                // player
-	"add_dominance_flag_column",                               // player
-	"add_media_like_columns",                                  // player
-	"add_media_capture_start_utc",                             // player
-	"add_performance_score",                                   // player
-	"add_player_performance_indexes",                          // player
-	"add_pme_session_label",                                   // player
-	"add_pme_session_index",                                   // player
-	"add_skill_rating_table",                                  // player
-	"fix_mv_session_stats_varchar",                            // player
-	"add_match_exclusion_flag",                                // player
-	"add_player_privacy_state",                                // player
-	"drop_media_from_player_db",                               // player
-	"add_player_achievements",                                 // player
-	"fix_match_citations_schema",                              // player
-	"cleanup_spartan_customization_garbage_urls",              // player
-	"add_msr_measurement_matches_remaining",                   // player
-	"player_add_expected_win_prob",                            // player
-	"player_append_only_csr_snapshots_v1",                     // player
-	"player_append_only_match_citations_v1",                   // player
-	"player_append_only_match_enrichment_v1",                  // player
-	"player_append_only_match_skill_rank_v1",                  // player
-	"msr_written_at_default_now_repair_v1",                    // player
-	"player_append_only_personal_score_awards_v1",             // player
-	"create_streak_history_append_only",                       // player
-	"add_player_assists_model",                                // player
-	"create_coach_proposal_player_schema",                     // player
-	"dedup_record_history_v1",                                 // player
-	"drop_challenge_mutated_art_indexes_v1",                   // player
-	"drop_coach_proposal_status_art_index_v1",                 // player
-	"drop_engagement_coefficients_xuid_art_index_v1",          // player
-	"fix_career_xp_total_default_zero",                        // player
-	"lusr_chain_rework_v1",                                    // player
-	"create_lusr_component_history",                           // player
-	"player_append_only_lusr_component_history_v1",            // player
-	"player_msr_view_lusr_over_v2_v1",                         // player
-	"player_msr_view_priority_csr_v1",                         // player
-	"create_notifications_in_shared_social",                   // shared_social
-	"drop_notifications_from_player_db",                       // player
-	"drop_idx_pn_xuid_unread",                                 // shared_social
-	"player_match_enrichment_performance_chain_v1",            // player
-	"create_prestige_player_schema",                           // player
-	"create_arc_titles_join",                                  // player (cross-titre arcs backend)
-	"create_improvement_campaign_schema",                      // player
-	"create_progression_player_schema",                        // player
-	"player_match_enrichment_psa_checked_v1",                  // player
-	"rebuild_career_progression_defeat_art_corruption",        // player
-	"repair_player_match_enrichment_primary_key",              // player
-	"repair_match_citations_primary_key",                      // player
-	"create_base_shared_schema",                               // shared
-	"add_film_match_start",                                    // shared
-	"add_highlight_events_autoincrement",                      // shared
-	"add_match_participants_columns",                          // shared
-	"add_h5_kill_mechanics_columns",                           // shared (Halo 5 kill mechanics)
-	"add_medals_bigint",                                       // shared
-	"add_mv_player_matches_fr_cols",                           // shared
-	"add_mv_player_matches_view",                              // shared
-	"add_shared_performance_indexes",                          // shared
-	"add_playable_duration",                                   // shared
-	"add_playlist_fr_name_fallback",                           // shared
-	"add_spnkr_version",                                       // shared
-	"add_team_ps_scores",                                      // shared
-	"add_weapon_kills",                                        // shared
-	"add_weapon_kills_reconciled_as",                          // shared
-	"drop_highlight_events_gamertag",                          // shared
-	"fix_bot_xuid",                                            // shared
-	"fix_bot_gamertags",                                       // shared
-	"fix_events_loaded_inconsistency",                         // shared
-	"fix_mv_player_matches_scores",                            // shared
-	"add_mv_player_matches_pair_id",                           // shared
-	"migrate_weapon_kills_to_ubigint",                         // shared
+	// Baseline squashée v1 (chantier N4, plan PLAN_MIGRATION_SQUASH_BASELINE_2026-07) :
+	// remplace les 33 steps title-owned contigus create_base_player_schema..
+	// player_append_only_csr_snapshots_v1 (bornes M3a). Cf. steps_player_baseline.go.
+	"create_baseline_player_v1",                        // player
+	"player_append_only_match_citations_v1",            // player
+	"player_append_only_match_enrichment_v1",           // player
+	"player_append_only_match_skill_rank_v1",           // player
+	"msr_written_at_default_now_repair_v1",             // player
+	"player_append_only_personal_score_awards_v1",      // player
+	"create_streak_history_append_only",                // player
+	"add_player_assists_model",                         // player
+	"create_coach_proposal_player_schema",              // player
+	"dedup_record_history_v1",                          // player
+	"drop_challenge_mutated_art_indexes_v1",            // player
+	"drop_coach_proposal_status_art_index_v1",          // player
+	"drop_engagement_coefficients_xuid_art_index_v1",   // player
+	"fix_career_xp_total_default_zero",                 // player
+	"lusr_chain_rework_v1",                             // player
+	"create_lusr_component_history",                    // player
+	"player_append_only_lusr_component_history_v1",     // player
+	"player_msr_view_lusr_over_v2_v1",                  // player
+	"player_msr_view_priority_csr_v1",                  // player
+	"create_notifications_in_shared_social",            // shared_social
+	"drop_notifications_from_player_db",                // player
+	"drop_idx_pn_xuid_unread",                          // shared_social
+	"player_match_enrichment_performance_chain_v1",     // player
+	"create_prestige_player_schema",                    // player
+	"create_arc_titles_join",                           // player (cross-titre arcs backend)
+	"create_improvement_campaign_schema",               // player
+	"create_progression_player_schema",                 // player
+	"player_match_enrichment_psa_checked_v1",           // player
+	"rebuild_career_progression_defeat_art_corruption", // player
+	"repair_player_match_enrichment_primary_key",       // player
+	"repair_match_citations_primary_key",               // player
+	"create_base_shared_schema",                        // shared
+	"add_film_match_start",                             // shared
+	"add_highlight_events_autoincrement",               // shared
+	"add_match_participants_columns",                   // shared
+	"add_h5_kill_mechanics_columns",                    // shared (Halo 5 kill mechanics)
+	"add_medals_bigint",                                // shared
+	"add_mv_player_matches_fr_cols",                    // shared
+	"add_mv_player_matches_view",                       // shared
+	"add_shared_performance_indexes",                   // shared
+	"add_playable_duration",                            // shared
+	"add_playlist_fr_name_fallback",                    // shared
+	"add_spnkr_version",                                // shared
+	"add_team_ps_scores",                               // shared
+	"add_weapon_kills",                                 // shared
+	"add_weapon_kills_reconciled_as",                   // shared
+	"drop_highlight_events_gamertag",                   // shared
+	"fix_bot_xuid",                                     // shared
+	"fix_bot_gamertags",                                // shared
+	"fix_events_loaded_inconsistency",                  // shared
+	"fix_mv_player_matches_scores",                     // shared
+	"add_mv_player_matches_pair_id",                    // shared
+	"migrate_weapon_kills_to_ubigint",                  // shared
 	// L'éradication ART append-only de weapon_kills DOIT suivre la migration UBIGINT
 	// (donc la création/ALTER de weapon_kills) — sinon sur DB FRAÎCHE le rebuild
 	// no-ope (table absente). Name-keyed → no-op sur DB déjà migrées.

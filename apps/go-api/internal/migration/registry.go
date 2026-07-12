@@ -33,6 +33,15 @@ type Migration struct {
 	ApplySchema   func(db *sql.DB) error // DDL obligatoire
 	ApplyBackfill func(db *sql.DB) error // Backfill optionnel
 	RequiresAPI   bool                   // Si true, backfill ignoré sans API
+
+	// SupersededByAll — équivalence ledger d'un SQUASH (DM-5, chantier N4). Si non
+	// vide, ce step est une BASELINE squashée : sur une DB EXISTANTE qui porte déjà
+	// la SENTINELLE (dernier nom de la liste = dernier step squashé) dans
+	// schema_migrations, la baseline est réputée DÉJÀ SATISFAITE — le runner
+	// l'enregistre sans rejouer son DDL (aucun DDL flat rejoué sur une DB prod). Sur
+	// une DB VIERGE (sentinelle absente), le DDL est appliqué normalement. La liste
+	// (steps squashés, ordonnés) sert aussi de trace d'audit du périmètre du squash.
+	SupersededByAll []string
 }
 
 // registry est le registre ordonné (ordre d'insertion = ordre d'exécution).
@@ -211,6 +220,14 @@ func runSteps(db *sql.DB, slug string, target TargetDB, steps []Migration, order
 	for i := range steps {
 		state, exists := applied[steps[i].Name]
 		if !exists {
+			// DM-5 : une baseline squashée dont la sentinelle (dernier step squashé)
+			// est déjà appliquée est réputée satisfaite → enregistrée sans DDL rejoué.
+			if supersededBaselineSatisfied(applied, steps[i]) {
+				if err := recordSupersededBaseline(ctx, db, slug, steps[i]); err != nil {
+					return err
+				}
+				continue
+			}
 			newState, err := applyStepSchema(ctx, db, slug, target, steps[i])
 			if err != nil {
 				return err
@@ -230,6 +247,37 @@ func runSteps(db *sql.DB, slug string, target TargetDB, steps []Migration, order
 		"title", slug, "target", target, "applied", appliedCount,
 		"total", len(steps), "schema_version", len(order),
 		"duration_ms", time.Since(cycleStart).Milliseconds())
+	return nil
+}
+
+// supersededBaselineSatisfied indique si m est une baseline squashée dont la
+// sentinelle (dernier step squashé) est déjà appliquée sur cette DB — auquel cas le
+// schéma cumulé est déjà présent et rejouer le DDL flat de la baseline est inutile
+// (DM-5). Les steps squashés étant séquentiels, la présence de la sentinelle implique
+// celle de tous ses prédécesseurs.
+func supersededBaselineSatisfied(applied map[string]migrationState, m Migration) bool {
+	if len(m.SupersededByAll) == 0 {
+		return false
+	}
+	sentinel := m.SupersededByAll[len(m.SupersededByAll)-1]
+	_, ok := applied[sentinel]
+	return ok
+}
+
+// recordSupersededBaseline enregistre une baseline squashée comme appliquée SANS
+// rejouer son DDL (DM-5) : la DB porte déjà le schéma cumulé via les steps squashés
+// historiques. schema_done=TRUE, backfill_done=TRUE (une baseline n'a pas de backfill).
+func recordSupersededBaseline(ctx context.Context, db *sql.DB, slug string, m Migration) error {
+	slog.InfoContext(ctx, "migration: baseline squashée réputée satisfaite (DM-5, DDL non rejoué)",
+		"name", m.Name, "title", slug, "sentinel", m.SupersededByAll[len(m.SupersededByAll)-1])
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO schema_migrations (title_slug, name, description, applied_at, schema_done, backfill_done)
+		 VALUES (?, ?, ?, ?, TRUE, TRUE)`,
+		slug, m.Name, m.Description, time.Now(),
+	)
+	if err != nil {
+		return fmt.Errorf("migration %s record (superseded baseline): %w", m.Name, err)
+	}
 	return nil
 }
 
