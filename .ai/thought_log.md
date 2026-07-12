@@ -1,3 +1,41 @@
+## [2026-07-12] Salve post-deploy campagne — bilan
+
+**Statut** : Complété.
+
+**Contexte** : la campagne 2026-07 (PR #54) a été mergée dans main et déployée en prod le
+2026-07-12 (~09:25 UTC). Salve post-deploy exécutée par le superviseur ; bilan consigné,
+plans clôturés (`docs/cloture-salve-2026-07-12`).
+
+**Résultats observés** :
+- **Backfill engagement prod** : COMPLET — halo_infinite ×2 passes + halo_5 ×2 passes
+  (10 480 matchs H5 pass 2), schema_version 194, fenêtre 09:33→09:40 UTC.
+- **Lot V (plan H5 matchview)** : COMPLET — V1 overrides prod (26 armes / 184 médailles /
+  1 map par id Tidal) → 48/48 maps résolues ; V2 : 1002 lignes « Placement » écrites
+  (JGtm 303 / Madina97294 293 / Chocoboflor 277 / XxDaemonGamerxX 129, placement_csr_null
+  = 100 %, zéro skip) ; V3 : purge 84 media_files étrangers + CHECKPOINT (dry-run préalable
+  = 84 exactement). Reste utilisateur : vérif VISUELLE prod (galerie/média/témoins).
+- **Hotfix LUSR (H6)** : critères mesurables VERTS (3 h de logs post-deploy) — zéro
+  `persist état échoué`, zéro `read-only mode`, writer-holds 2000-2001 ms (vs 21 909 avant),
+  un seul 503 ponctuel (vs 632 pendant l'incident), post-syncs réels à 09:56 et 10:24-26.
+  UNE observation ouverte : shadow silencieux = 0 candidat, ambigu entre backlog vide (sain)
+  et watermark désync (piège connu) — départage au prochain match ou via
+  `lusr_v2_canonical_backfill` dry-run.
+- **Télémétrie ADR 0023** : `legacy_source_used source=duckdb_oauth` observé pour les 4
+  joueurs au post-sync du 2026-07-12 → la condition « legacy_source_used = 0 » de la Phase 5
+  (lot D2) n'est PAS remplie.
+
+**Clôture documentaire** : plans H5 matchview (COMPLÉTÉ, git mv → `.ai/V7/`) et hotfix LUSR
+(COMPLÉTÉ, git mv → `.ai/V7/`) archivés ; plan monitoring triage reste PARTIEL (B1 déployé
+et vérifié, B1.5 [x] ; restent B1.6 départage, B4.x/B5.5 actions prod utilisateur, B2.4/B7.4
+soaks — B7.4 ré-armé T0=2026-07-12).
+
+**Prochaine étape** : départage de l'observation LUSR « 0 candidat » (prochaine session de
+jeu ou dry-run backfill) ; gates utilisateur (vérif visuelle H5 V3, actions data-quality
+admin B4.x/B5.5). La Phase 5 ADR 0023 (D2, retrait des fallbacks legacy) reste bloquée tant
+que `legacy_source_used > 0`.
+
+---
+
 ## [2026-07-12] Repli du chantier outillage CI dans l'integration campagne (PR #54)
 
 **Statut** : Complété (superviseur de campagne).
@@ -1361,6 +1399,63 @@ best_kda (`persistBestKDASeed`). Cap de vraisemblance `maxPlausibleCounterDelta=
 (cold-start, cap, career previous=0, both-cold sans warn).
 
 **Prochaine étape** : Phase B (dédoublonnage sémantique — objective_assigned, records
+## [2026-07-10] Archivage .ai/V7 + lancement campagne d'exécution des plans restants (pilotage Opus)
+
+**Statut** : En cours (archivage complété ; exécution séquentielle des 9 plans démarrée).
+
+**Décision technique principale** : inventaire des plans à la racine de `.ai/` — 15 plans,
+dont 4 exclus par l'utilisateur (Ascension UX, diag apparence admin, Relations UX,
+weapon_attribution_v3) et 2 identifiés comme archivage raté : `PLAN_POSTSYNC_BURST_LEASE`
+(en-tête COMPLÉTÉ, gate validé live 2026-07-02) déplacé vers V7, et
+`PLAN_PLAYLISTS_CATALOG_ET_LEADERBOARD` racine = copie PÉRIMÉE (cases vides, A1
+pré-révision) du plan déjà exécuté dont la version à jour est dans V7 → supprimée (reste
+C3 backfill, tracé par HANDOFF_LEADERBOARD_CATALOGUE). Le commit inclut les déplacements
+d'audits vers V7 faits par l'utilisateur.
+
+**Ordre d'exécution acté (agents Opus, contrat plan-execution, strictement séquentiel —
+builds Go concurrents interdits)** : 1) HOTFIX_LUSR_SHADOW_RO · 2) MONITORING_TRIAGE_DETECTIONS ·
+3) MONITORING_REFONTE (dépend de 2) · 4) NOTIFICATIONS_RATIONALISATION ·
+5) ENGAGEMENT_REFONTE_LOBBY · 6) ENGAGEMENT_AGNOSTIC_GRADUE (bloqué par clôture de 5, section 0) ·
+7) H5_MATCHVIEW_RESIDUS (lot V restera [!] VPS) · 8) MIGRATION_SQUASH_BASELINE · 9) ADR_0030_0031.
+Chaque plan sur sa branche nommée depuis origin/main (28146aa3a) ; aucun merge main sans
+l'utilisateur (deploy prod auto).
+
+**Conclusion / prochaine étape** : lancer le plan 1 (hotfix/lusr-shadow-ro) sous agent Opus.
+
+---
+
+## [2026-07-10] DÉPLOYÉ EN PROD — campagne audits + leaderboard fusionnés (merge 28146aa3a)
+
+**Statut** : Complété (prod à jour, one-off citations exécuté ; suivi 1er auto-sync en cours).
+
+**Décision technique principale** : le merge vers main a révélé que main portait DÉJÀ le
+chantier leaderboard/catalogue dynamique (mergé par la session parallèle, CI de main
+ROUGE depuis le 02/07 — baseline jamais mise à jour après suppression d'un test).
+Protocole appliqué : abort sur main → fusion main→branche → résolution des 14 conflits
+en COMBINANT les intentions (AugmentWithActiveRankedCSRs = locale H8/GH-8 + activePlaylists
+dynamiques ; server_apiv1 porte les gardes S, prouvé par diff base..main ; ownership S7
+version testée admin-pass-through ; metric-trend = composant partagé de main adopté,
+copie locale retirée ; season_catalog_refresh branché sur UpsertRowNoConflict canonique) ;
+INCIDENT ENCODAGE attrapé et réparé (splices PowerShell = mojibake UTF-8-sans-BOM sur 4
+fichiers → restauration octets git + ré-application UTF-8-safe, 0 mojibake vérifié) ;
+baseline purgée du test fantôme hérité (TestWorldSeasonGamertags_TopNPerPlaylist, supprimé
+côté main sans rebaseline). Gates fusion : build/vet/tests/intégration -p 1 = 0 ;
+tsc 0 ; vitest 2101/246. CI branche VERTE puis merge main --no-ff + push.
+
+**Résultats observés (post-deploy)** : Deploy to VPS = success ; conteneurs healthy ;
+healthz interne 200 ; https://lvelup.info = 200 ; migrations prod schema_version 190→193
+(2 colonnes citations EN + seed médaille, conforme répétition générale) ; one-off
+`levelup seed citation-mappings` exécuté en fenêtre d'arrêt (~1 min) : **88 citations
+mises à jour** (noms + descriptions EN) ; app re-healthy. Seule ERROR au boot = cron
+leaderboard 404 saison (comportement connu du chantier parallèle). populate-assets
+ABSENT de l'image prod → follow-up (le fallback UI « Unknown playlist » couvre).
+main a retrouvé une CI verte pour la première fois depuis le 02/07.
+
+**Conclusion / prochaine étape** : suivi du 1er cycle auto-sync prod (+ hook Prestige en
+réel) ; DATE D1A = 2026-07-10 → D2 (ADR 0023 Phase 5) armable au 2026-07-17 si
+`legacy_source_used` = 0 ; V10c (lecture budgets sous charge → statuer J4/J6) ; follow-up
+populate-assets dans l'image ; chantiers plannifiés post-merge : engagement gradué (F7),
+squash migrations (N4), V9d rebuild DROP.
 
 ---
 

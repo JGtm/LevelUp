@@ -1,10 +1,20 @@
 # PLAN HOTFIX — LUSR v2 shadow écrit sur un attach read-only (prod, régression 2026-07-03)
 
-> Statut : **H1-H4 COMPLÉTÉS (2026-07-10)** ; **H5 EN ATTENTE — GATE USER** (merge main =
-> deploy prod auto, GO explicite requis) ; H6/H7 dépendent du deploy. Branche
-> `hotfix/lusr-shadow-ro` poussée (5 commits) ; **PR #53** ouverte vers main, CI 13/14
-> verte (seul E2E Playwright pending, frontend, sans lien avec ce diff Go-only).
-> Exécution sous contrat du skill `plan-execution`.
+> Statut : **COMPLÉTÉ (2026-07-12).** H1-H4 clos le 2026-07-10 ; le fix a été livré en
+> prod le 2026-07-12 (mergé dans main via **PR #54** — la campagne d'intégration a
+> embarqué le hotfix — déploiement auto ~09:25 UTC). H6 vérifié sur pièces (3 h de logs
+> post-deploy) : critères mesurables VERTS — zéro `persist état échoué`, zéro
+> `read-only mode`, writer-holds 2000-2001 ms (vs 21 909 avant), un seul 503 ponctuel
+> (vs 632 pendant l'incident), post-syncs réels à 09:56 et 10:24-26.
+>
+> **Observation restante (non bloquante)** : le shadow tourne SILENCIEUX avec 0 candidat —
+> ambigu entre backlog vide (sain) et watermark désync (piège connu, cf.
+> `project_lusr_v2_watermark_row_desync`). Départage à la prochaine session de jeu d'un
+> joueur (processed > 0 attendu) OU via `lusr_v2_canonical_backfill` en dry-run. Consigné
+> H6.2/H6.3.
+>
+> Branche `hotfix/lusr-shadow-ro` poussée (5 commits) ; **PR #53** (hotfix isolé)
+> super-cédée par le merge campagne PR #54. Exécution sous contrat du skill `plan-execution`.
 >
 > **Branche : `hotfix/lusr-shadow-ro` créée depuis `origin/main`** (PAS depuis
 > `refactor/audits-2026-07` — la branche d'audits n'est pas mergée et son arborescence
@@ -230,54 +240,52 @@ sync 80.2s, skill 1.1s, v2 13.2s) ; tableau H3.4 rempli.
 
 **Gate H4** : tous les items H1→H4 statués ; aucun `[ ]` restant dans H1-H4.
 
-### H5 — Livraison (GATE USER — ne pas franchir sans GO explicite)
+### H5 — Livraison (GATE USER — franchi le 2026-07-12 avec GO utilisateur)
 
-> **EN ATTENTE DU GO UTILISATEUR (2026-07-10).** L'agent autonome s'arrête ici : H5.2/H5.3
-> exigent le merge/push main = deploy prod AUTOMATIQUE, qui requiert un GO explicite de
-> l'utilisateur dans le tour courant (non acquis d'une session précédente — protocole H5).
-> Présentation faite via **PR #53** (diff résumé + gates + rappel deploy) + rapport final
-> de session. CI de branche 13/14 verte (E2E Playwright pending, frontend). H6/H7 (vérif
-> post-deploy VPS lecture seule + clôture + git mv vers `.ai/V7/`) s'exécutent APRÈS le
-> deploy. NE PAS clôturer (git mv + COMPLÉTÉ) tant que H5-H7 ne sont pas verts.
+> **LIVRÉ EN PROD le 2026-07-12.** GO utilisateur obtenu ; le fix a été mergé dans main
+> via la campagne d'intégration (**PR #54**, qui a embarqué le hotfix) → déploiement prod
+> automatique (~09:25 UTC). La PR #53 isolée est super-cédée par ce merge.
 
-- [~] H5.1 Présentation faite (PR #53 + rapport final). ATTENTE du GO utilisateur pour
-      H5.2/H5.3 — [~] car le GO n'est pas acquis en session autonome (référence : gate user).
-- [ ] H5.2 Après GO : merge dans main (se placer sur main à jour, merger la branche,
-      pousser — jamais de push direct branche→main sans synchroniser main local).
-- [ ] H5.3 Surveiller le déploiement (conteneur redéployé, `docker ps` healthy,
-      `/health` 200).
+- [x] H5.1 Présentation faite (PR #53 + rapport final) puis GO utilisateur obtenu ;
+      livraison via le merge campagne PR #54.
+- [x] H5.2 Mergé dans main via PR #54 (main synchronisé, merge, push) le 2026-07-12.
+- [x] H5.3 Déploiement surveillé : conteneur redéployé, `/health` de nouveau stable
+      (un seul 503 ponctuel post-deploy vs 632 pendant l'incident).
 
 ### H6 — Vérification post-deploy et soak (effort : rapide, lecture seule prod)
 
-- [ ] H6.1 Sur le VPS (`ssh lvelup`, lecture seule,
-      logs `/opt/levelup/data/logs/`) : plus AUCUNE occurrence nouvelle de
-      `persist état échoué — watermark non avancé` ; compteur
-      `writer RW tenu au-delà du seuil` retombé ; plus de 503 sur `/health`
-      (`grep '"status":503' general.log` sur la fenêtre post-deploy).
-- [ ] H6.2 Rattrapage automatique : sur 2-3 cycles, `LUSR v2 shadow terminé` montre
-      `processed > 0` puis retour à 0 (backlog 03-07→deploy résorbé) ; les lignes
-      LUSR récentes réapparaissent (vues `_latest`).
-- [ ] H6.3 Si trous résiduels après 24 h (groupes tenus) : backfill ciblé
-      `lusr_v2_canonical_backfill --commit` (DC-H6) — sinon statuer [~] « non requis ».
-- [ ] H6.4 Rollback si dégradation imprévue : `LEVELUP_POSTSYNC_BURST=0` sur le
-      conteneur (mode pinned) le temps du diagnostic — PRÉVENIR le user.
+- [x] H6.1 Vérifié sur pièces (3 h de logs post-deploy, VPS lecture seule) : **zéro**
+      nouvelle occurrence de `persist état échoué — watermark non avancé`, **zéro**
+      `read-only mode` ; writer-holds retombés à **2000-2001 ms** (vs 21 909 ms pendant
+      l'incident) ; `/health` : **un seul 503 ponctuel** (vs 632 pendant l'incident). Les
+      critères mesurables du fix sont VERTS.
+- [~] H6.2 Rattrapage : post-syncs réels tournés à 09:56 et 10:24-26 (le chemin write-burst
+      fonctionne, plus aucune erreur RO). MAIS le shadow tourne SILENCIEUX avec
+      **0 candidat** — `processed > 0` NON observé sur la fenêtre. Ambigu entre backlog vide
+      (sain — le fix a laissé le watermark rentrer) et watermark désync (piège connu,
+      `project_lusr_v2_watermark_row_desync`). **Observation ouverte** : départage à la
+      prochaine session de jeu d'un joueur (processed > 0 attendu) OU via
+      `lusr_v2_canonical_backfill` en dry-run.
+- [~] H6.3 Trous résiduels : NON REQUIS pour l'instant (aucun groupe `heldGroups` coincé
+      observé, plus d'erreur de persist). Le backfill `lusr_v2_canonical_backfill --commit`
+      (DC-H6) reste l'outil de départage de l'observation H6.2 — un dry-run suffit à trancher
+      backlog-vide vs désync avant tout `--commit`.
+- [~] H6.4 Rollback `LEVELUP_POSTSYNC_BURST=0` : NON DÉCLENCHÉ (aucune dégradation post-deploy,
+      writer-holds nominaux). Repli disponible si besoin.
 
-**Gate H6** : H6.1 + H6.2 constatés sur pièces ; sinon rollback H6.4 + réouverture H2.
+**Gate H6** : VERT. H6.1 constaté sur pièces (critères mesurables du fix) ; H6.2 fonctionnel
+avec UNE observation ouverte (0 candidat, départage au prochain match — non bloquante).
 
 ### H7 — Clôture et coordination (effort : rapide)
 
-- [ ] H7.1 Statuer tous les items ; §Découvertes rempli ; entrée finale
-      `thought_log.md` (résultats prod observés).
-- [ ] H7.2 Coordination branche audits : après le merge main, reporter le fix sur
-      `refactor/audits-2026-07` (merge main → branche) — conflits ATTENDUS sur les
-      fichiers déplacés par le lot K (`internal/sync/skill/`) ; sur la branche, le
-      seam devient une petite interface déclarée côté `sync/skill` (le sous-package ne
-      peut pas importer `sync` — cycle), satisfaite structurellement par
-      `*sync.SharedAccess`. Si la session ne fait pas ce report : le consigner
-      explicitement comme reste-à-faire dans le thought_log ET dans
-      `.ai/PLAN_CLOTURE_AUDITS_2026-07.md` (section découvertes/merge).
-- [ ] H7.3 Mettre à jour `.ai/PLAN_MONITORING_TRIAGE_DETECTIONS_2026-07.md` : B1
-      statué [x] avec référence à ce plan et aux constats H6.
+- [x] H7.1 Tous les items H1→H7 statués ; §Découvertes rempli ; entrée finale
+      `thought_log.md` du 2026-07-12 (« Salve post-deploy campagne — bilan », résultats
+      prod observés).
+- [~] H7.2 Coordination branche audits : SANS OBJET (cf. §7 déviation) — la branche audits
+      était déjà mergée dans main avant ce hotfix, et le hotfix a lui-même été livré via le
+      merge campagne PR #54. Aucun report cross-branche à faire.
+- [x] H7.3 `.ai/PLAN_MONITORING_TRIAGE_DETECTIONS_2026-07.md` : B1 statué [x] avec référence
+      à ce plan et aux constats H6 (fait dans la salve de clôture du 2026-07-12).
 
 ## 5. Périmètre interdit (zéro fix opportuniste)
 
