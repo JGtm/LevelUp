@@ -60,6 +60,11 @@ type MatchViewRepo struct {
 	// slug ==. Zéro-value false = pas de strip (un titre dont les noms officiels
 	// n'ont pas de préfixe, ex. Halo 5, garde "Super Fiesta Fête" entier).
 	stripPlaylistCategory bool
+	// playlistLabelOverrides : table data-driven nom brut -> libelle court, chargee
+	// depuis config/titles/{slug}/mappings/playlist_labels.toml (ex. Halo 5
+	// "Super Fiesta Fete" -> "Super Fiesta"). nil/vide = no-op. Appliquee APRES le
+	// strip eventuel : correction explicite par nom, jamais heuristique.
+	playlistLabelOverrides map[string]string
 }
 
 // NewMatchViewRepo crée un MatchViewRepo.
@@ -72,6 +77,14 @@ func NewMatchViewRepo(pdb *PlayerDB, xuid string) *MatchViewRepo {
 // depuis la CapabilityMap du titre. Retourne le repo pour chaînage.
 func (r *MatchViewRepo) WithPlaylistCategoryStrip(enabled bool) *MatchViewRepo {
 	r.stripPlaylistCategory = enabled
+	return r
+}
+
+// WithPlaylistLabelOverrides injecte la table data-driven des overrides de
+// libellé de playlist (nom brut -> libellé court, playlist_labels.toml). nil = no-op.
+// Retourne le repo pour chaînage.
+func (r *MatchViewRepo) WithPlaylistLabelOverrides(overrides map[string]string) *MatchViewRepo {
+	r.playlistLabelOverrides = overrides
 	return r
 }
 
@@ -152,6 +165,15 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 		if row.PlaylistNameFR != nil && r.stripPlaylistCategory {
 			norm := analysis.NormalizePlaylistLabel(*row.PlaylistNameFR)
 			row.PlaylistNameFR = &norm
+		}
+		// Override data-driven (playlist_labels.toml) : correction explicite par
+		// nom, appliquée APRÈS le strip. Halo 5 « Super Fiesta Fête » → « Super
+		// Fiesta » (le strip de préfixe Infinite mangeait le mauvais mot, d'où le
+		// mapping explicite plutôt qu'une heuristique). No-op si table vide/absente.
+		if row.PlaylistNameFR != nil && len(r.playlistLabelOverrides) > 0 {
+			if disp, ok := r.playlistLabelOverrides[*row.PlaylistNameFR]; ok {
+				row.PlaylistNameFR = &disp
+			}
 		}
 	}
 	// Résolution du libellé de mode — même cascade que applyMatchHistoryFRTranslations :

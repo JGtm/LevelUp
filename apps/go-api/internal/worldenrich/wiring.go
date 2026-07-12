@@ -17,7 +17,6 @@ import (
 
 	"levelup/go-api/internal/config"
 	title "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/observability"
 	auth "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/ratebudget"
@@ -44,71 +43,20 @@ func loadLegacyInputs(cfg *config.AppConfig, gamertag string) auth.LegacyAuthInp
 }
 
 // resolveAccessToken obtient un access_token Microsoft frais pour xuid : store
-// watcher_tokens d'abord (canonique ADR 0023), puis legacy sync_meta. Pour chaque
-// source, MSAL silent puis refresh token (rotation persistée si store). C'est
-// exactement la résolution des backfills qui marchent — pas de pool reconstruit.
+// watcher_tokens d'abord (canonique ADR 0023), puis legacy sync_meta. Délègue à
+// auth.ResolveMSAccessTokenStoreFirst (source UNIQUE de l'ordre de résolution,
+// partagée avec le post-sync achievements — cf. arch-rules « ≤ 2 copies »).
+// Adapte le contrat historique du caller : un ("", nil) du helper (aucun credential
+// exploitable, sans erreur) devient une erreur explicite ici.
 func resolveAccessToken(ctx context.Context, provider auth.TokenProvider, store *auth.MultiUserTokenStore, xuid string, legacy auth.LegacyAuthInputs) (string, error) {
-	var lastErr error // dernière erreur OAuth sous-jacente — surfacée pour le diagnostic
-	try := func(msal, rt string, persist bool) string {
-		if msal != "" {
-			at, e := provider.TrySilentRefresh(ctx, msal)
-			if e == nil && at != "" {
-				return at
-			}
-			if e != nil {
-				lastErr = e
-			}
-		}
-		if rt != "" {
-			at, rot, e := provider.TryOAuthRefreshWithRotation(ctx, rt)
-			if e == nil && at != "" {
-				if persist && rot != "" && rot != rt {
-					if uerr := store.UpdateOAuthRefreshToken(xuid, rot); uerr != nil {
-						// Lot B (audit #3) : ne plus avaler l'échec. Retry une fois
-						// (écriture fichier watcher_tokens/{xuid}.json) ; si échec
-						// persistant, LOGUER — sans le RT roté persisté, le prochain
-						// resolveAccessToken relit l'ancien RT mort (invalid_grant) →
-						// chaîne auth du joueur morte. On retourne quand même `at`
-						// (valide pour CE run) après le log.
-						if uerr = store.UpdateOAuthRefreshToken(xuid, rot); uerr != nil {
-							slog.ErrorContext(ctx, "world-enrich: persistance du refresh token roté échouée — chaîne auth à risque au prochain refresh", "xuid", xuid, "err", uerr)
-						}
-					}
-				}
-				return at
-			}
-			if e != nil {
-				lastErr = e
-			}
-		}
-		return ""
+	at, err := auth.ResolveMSAccessTokenStoreFirst(ctx, provider, store, xuid, "", legacy)
+	if err != nil {
+		return "", err
 	}
-	if user, _ := store.Load(xuid); user != nil {
-		if at := try(user.MSALCacheJSON, user.OAuthRefreshToken, true); at != "" {
-			return at, nil
-		}
+	if at == "" {
+		return "", fmt.Errorf("aucun access_token frais pour xuid(%s) (aucun refresh token exploitable)", xuid)
 	}
-	// D1a : le store canonique n'a pas résolu → fallback legacy sync_meta atteint.
-	// Signal de dépréciation (ADR 0023 Phase 5, prérequis D2).
-	if legacy.MSALCache != "" {
-		slog.WarnContext(ctx, "legacy_source_used", "source", observability.LegacySourceDuckDBMSAL,
-			"xuid", xuid, "deprecated_since", "ADR-0023")
-		observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBMSAL)
-	}
-	if legacy.OAuthRT != "" {
-		slog.WarnContext(ctx, "legacy_source_used", "source", observability.LegacySourceDuckDBOAuth,
-			"xuid", xuid, "deprecated_since", "ADR-0023")
-		observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBOAuth)
-	}
-	if at := try(legacy.MSALCache, legacy.OAuthRT, false); at != "" {
-		return at, nil
-	}
-	if lastErr != nil {
-		// Surface la cause réelle (ex. invalid_grant = RT minté par un autre client
-		// Azure ou révoqué) plutôt que le générique — sinon le skip est indiagnosticable.
-		return "", fmt.Errorf("aucun access_token frais pour xuid(%s): %w", xuid, lastErr)
-	}
-	return "", fmt.Errorf("aucun access_token frais pour xuid(%s) (aucun refresh token exploitable)", xuid)
+	return at, nil
 }
 
 // refreshingHaloSource : client Halo single-token (Spartan/Clearance) ré-résolu

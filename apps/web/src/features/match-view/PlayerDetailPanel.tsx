@@ -25,6 +25,7 @@ import type {
   PlayerWeaponKillRow,
 } from '@/lib/api/types'
 import type { MatchViewText } from './i18n'
+import { displayTierLabel } from './MatchHeader.utils'
 
 const _LIMIT_MEDALS = 6
 const _LIMIT_WEAPONS = 5
@@ -317,13 +318,15 @@ function LocalSection({ data, t }: { data: LocalRow; t: MatchViewText }) {
   if (data.tierLabel) {
     const label = data.ratingType === 'CSR' ? t.sbDetailCsr : t.sbDetailLusr
     const deltaStr = data.ratingDelta != null ? ` (${formatRankDelta(data.ratingDelta, data.ratingType ?? '')} pts)` : ''
+    // « Placement » (sentinelle back) → « En placement » localisé (displayTierLabel).
+    const tierLabelDisplay = displayTierLabel(data.tierLabel, t.rankPlacement) ?? data.tierLabel
     rows.push(
       <KvRow key="rank" label={label} value={
         <span className="flex items-center gap-1.5">
           {data.iconUrl && (
-            <img src={data.iconUrl} alt={data.tierLabel} className="h-6 w-6 object-contain" loading="lazy" />
+            <img src={data.iconUrl} alt={tierLabelDisplay} className="h-6 w-6 object-contain" loading="lazy" />
           )}
-          <span>{data.tierLabel}{deltaStr}</span>
+          <span>{tierLabelDisplay}{deltaStr}</span>
         </span>
       } />
     )

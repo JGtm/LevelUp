@@ -3,13 +3,13 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"os"
 	"strings"
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
-	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
@@ -87,13 +87,27 @@ func (e *SyncEngine) runCSRSnapshotSync(ctx context.Context, playerDB *sql.DB, c
 	return csrs, nil
 }
 
+// achievementsOutcome distingue les issues du sync achievements. Motivation : le hook
+// runner Halo 5 (buildAchievementsHook) ne doit remonter une erreur (« sync terminée
+// avec erreurs partielles ») QUE sur un échec RÉEL — pas sur un skip bénin (pas de
+// provider/capability/token), attendu et récurrent pour H5 (les tokens sync_meta sont
+// souvent indisponibles un cycle donné ; ils se resynchronisent ensuite). Sans cette
+// distinction, chaque cycle sans token émettait un WARN + un status=failure trompeurs.
+type achievementsOutcome int
+
+const (
+	achievementsSynced  achievementsOutcome = iota // succès du fetch + persist Xbox
+	achievementsSkipped                            // skip bénin : provider/capability/token absent
+	achievementsFailed                             // échec réel : XSTS, metadata, HTTP, DB
+)
+
 // runAchievementsSync récupère les achievements Xbox pour le joueur et les persiste.
-// Retourne true si la sync a réussi, false en cas d'erreur (non bloquante).
-// Nécessite e.provider non nil ; skippé silencieusement sinon.
-func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) bool {
+// Retourne l'issue (synced / skipped / failed). Nécessite e.provider non nil ; skippé
+// (achievementsSkipped) sinon.
+func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) achievementsOutcome {
 	if e.provider == nil {
 		slog.DebugContext(ctx, "achievements: provider nil — sync ignorée", "gamertag", e.gamertag)
-		return false
+		return achievementsSkipped
 	}
 	// Gate title-agnostic (skill arch-rules) : ne tenter le fetch Xbox que si le
 	// titre déclare la capability achievements. Un futur titre sans succès Xbox
@@ -102,20 +116,23 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 	if desc := titlePkg.DefaultRegistry().Get(e.titleSlug); desc != nil && !desc.HasCapability(titlePkg.CapAchievements) {
 		slog.DebugContext(ctx, "achievements: capability absente — sync ignorée",
 			"gamertag", e.gamertag, "title_slug", e.titleSlug)
-		return false
+		return achievementsSkipped
 	}
 
-	// Résoudre l'access_token depuis sync_meta DuckDB.
-	accessToken, err := resolveAccessTokenFromDB(ctx, playerDB, e.gamertag, e.provider)
+	// Résoudre l'access_token Xbox Live : store watcher_tokens d'abord (ADR 0023),
+	// puis résidus legacy sync_meta / env var.
+	accessToken, err := e.resolveAchievementsAccessToken(ctx, playerDB)
 	if err != nil {
 		slog.WarnContext(ctx, "achievements: échec résolution access_token",
 			"gamertag", e.gamertag, "err", err)
-		return false
+		return achievementsFailed
 	}
 	if accessToken == "" {
-		slog.InfoContext(ctx, "achievements: aucun access_token disponible — sync ignorée",
+		// Skip bénin, attendu et récurrent (H5) : Debug uniquement, pas d'erreur
+		// remontée — le token se resynchronisera à un cycle ultérieur.
+		slog.DebugContext(ctx, "achievements: aucun access_token disponible — sync ignorée",
 			"gamertag", e.gamertag)
-		return false
+		return achievementsSkipped
 	}
 
 	// Obtenir un XSTS token pour Xbox Live.
@@ -123,7 +140,7 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 	if err != nil {
 		slog.WarnContext(ctx, "achievements: échec acquisition XSTS",
 			"gamertag", e.gamertag, "err", err)
-		return false
+		return achievementsFailed
 	}
 
 	// Phase 2 du PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : cache duckdbpkg pour
@@ -143,7 +160,7 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 	if err != nil {
 		slog.WarnContext(ctx, "achievements: acquisition lease metadata échouée",
 			"gamertag", e.gamertag, "err", err)
-		return false
+		return achievementsFailed
 	}
 	defer metadataLease.Release()
 
@@ -151,7 +168,7 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 	if err != nil {
 		slog.WarnContext(ctx, "achievements: ouverture metadata DB échouée",
 			"gamertag", e.gamertag, "err", err)
-		return false
+		return achievementsFailed
 	}
 	defer metadataHandle.Close()
 	metadataDB := metadataHandle.SQLDb()
@@ -160,31 +177,50 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 	if err := SyncAchievements(ctx, client, e.resolver, metadataDB, playerDB, e.xuid, e.titleSlug); err != nil {
 		slog.WarnContext(ctx, "achievements: sync échouée",
 			"gamertag", e.gamertag, "err", err)
-		return false
+		return achievementsFailed
 	}
 
 	slog.InfoContext(ctx, "achievements: sync terminée avec succès", "gamertag", e.gamertag)
-	return true
+	return achievementsSynced
 }
 
 // RunAchievementsOnly synchronise uniquement les achievements Xbox du joueur,
 // indépendamment du sync des matchs. Utilisé par le CLI sync-achievements pour
-// le backfill admin one-shot. Best-effort : retourne false sur erreur (logguée).
-//
-// Acquiert le dblease sur la player DB pour éviter les collisions avec un sync
-// concurrent. Le provider doit être non nil ; sinon retourne false silencieusement.
+// le backfill admin one-shot. Retourne true UNIQUEMENT si la sync a réussi (un skip
+// bénin — pas de token ce cycle — rend false, cohérent avec l'usage CLI historique).
 func (e *SyncEngine) RunAchievementsOnly(ctx context.Context) bool {
+	return e.runAchievementsOnlyOutcome(ctx) == achievementsSynced
+}
+
+// RunAchievementsHook exécute le sync achievements pour un hook post-sync (runner
+// live, ex. Halo 5) et retourne une erreur UNIQUEMENT sur un échec RÉEL (XSTS /
+// metadata / HTTP / DB). Un skip bénin (pas de provider/capability/token ce cycle)
+// → nil : le runner ne doit PAS marquer le cycle en « erreurs partielles » pour un
+// cas attendu et récurrent (les tokens sync_meta H5 se resynchronisent au fil des
+// cycles). Supprime le bruit d'erreur prod à chaque sync H5.
+func (e *SyncEngine) RunAchievementsHook(ctx context.Context) error {
+	if e.runAchievementsOnlyOutcome(ctx) == achievementsFailed {
+		return fmt.Errorf("sync achievements échoué (voir logs)")
+	}
+	return nil
+}
+
+// runAchievementsOnlyOutcome acquiert le dblease sur la player DB (évite les collisions
+// avec un sync concurrent), ouvre la player DB, puis délègue à runAchievementsSync.
+// Provider nil / échec lease / échec ouverture → skip ou échec typé (voir godoc du
+// type achievementsOutcome).
+func (e *SyncEngine) runAchievementsOnlyOutcome(ctx context.Context) achievementsOutcome {
 	if e.provider == nil {
 		slog.WarnContext(ctx, "achievements: provider nil — sync ignorée",
 			"gamertag", e.gamertag)
-		return false
+		return achievementsSkipped
 	}
 
 	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
 		slog.ErrorContext(ctx, "achievements: lease player DB échoué",
 			"gamertag", e.gamertag, "err", err)
-		return false
+		return achievementsFailed
 	}
 	defer writerPlayer.Release()
 
@@ -192,7 +228,7 @@ func (e *SyncEngine) RunAchievementsOnly(ctx context.Context) bool {
 	if err != nil {
 		slog.ErrorContext(ctx, "achievements: ouverture player DB échouée",
 			"gamertag", e.gamertag, "err", err)
-		return false
+		return achievementsFailed
 	}
 	defer playerHandle.Close() //nolint:errcheck
 
@@ -273,57 +309,53 @@ func (e *SyncEngine) seedCatalogFromCSRs(ctx context.Context, csrs []PlayerPlayl
 	seedPlaylistsCatalog(ctx, mh.SQLDb(), csrs, e.titleSlug)
 }
 
-// resolveAccessTokenFromDB lit le cache MSAL et le refresh token depuis sync_meta (DB déjà ouverte),
-// puis tente TrySilentRefresh ou TryOAuthRefresh selon ce qui est disponible.
-// Retourne ("", nil) si aucun token n'est disponible (non fatal).
+// resolveAchievementsAccessToken résout l'access_token Xbox Live (achievements)
+// selon la priorité ADR 0023 : store watcher_tokens d'abord, puis les résidus
+// legacy sync_meta / env var. Délègue à auth.ResolveMSAccessTokenStoreFirst
+// (source UNIQUE de l'ordre de résolution, partagée avec world-enrich).
 //
-//nolint:unparam // contrat documenté : second retour non-nil est réservé aux futures erreurs fatales (DB)
-func resolveAccessTokenFromDB(
-	ctx context.Context,
-	playerDB *sql.DB,
-	gamertag string,
-	provider auth.TokenProvider,
-) (string, error) {
+// Avant ce câblage, ce chemin lisait EXCLUSIVEMENT sync_meta et n'a jamais
+// consulté le store → il servait toujours un RT legacy et comptait la télémétrie
+// de dépréciation duckdb_oauth à chaque post-sync des 4 joueurs (incident prod
+// 2026-07-12), alors que le store watcher_tokens couvrait ces joueurs. Store-first,
+// la télémétrie ne se déclenche plus qu'en vraie absence de RT store.
+//
+// Retourne ("", nil) si aucun token n'est disponible (non fatal — skip achievements).
+func (e *SyncEngine) resolveAchievementsAccessToken(ctx context.Context, playerDB *sql.DB) (string, error) {
+	legacy := e.readLegacyAuthInputs(ctx, playerDB)
+	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(e.repoRoot).WatcherTokensDir())
+	return auth.ResolveMSAccessTokenStoreFirst(ctx, e.provider, store, e.xuid, e.gamertag, legacy)
+}
+
+// readLegacyAuthInputs lit les résidus legacy depuis sync_meta (DB déjà ouverte)
+// + le fallback env var SPNKR_OAUTH_REFRESH_TOKEN_<GT>. Best-effort (champs vides
+// si absents). Ces valeurs ne servent QUE si le store watcher_tokens ne couvre pas
+// le joueur (cf. ResolveMSAccessTokenStoreFirst) → à supprimer en Phase 5 (D2).
+func (e *SyncEngine) readLegacyAuthInputs(ctx context.Context, playerDB *sql.DB) auth.LegacyAuthInputs {
 	var cacheJSON, refreshToken string
-	rtSource := observability.LegacySourceDuckDBOAuth
 	if err := playerDB.QueryRowContext(ctx,
 		"SELECT value FROM sync_meta WHERE key = 'msal_token_cache'").Scan(&cacheJSON); err != nil {
-		slog.DebugContext(ctx, "achievements: msal_token_cache absent", "gamertag", gamertag)
+		slog.DebugContext(ctx, "achievements: msal_token_cache absent", "gamertag", e.gamertag)
 	}
 	if err := playerDB.QueryRowContext(ctx,
 		"SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'").Scan(&refreshToken); err != nil {
-		slog.DebugContext(ctx, "achievements: oauth_refresh_token absent", "gamertag", gamertag)
+		slog.DebugContext(ctx, "achievements: oauth_refresh_token absent", "gamertag", e.gamertag)
 	}
 
-	// Fallback env var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>
-	if refreshToken == "" && gamertag != "" {
-		key := strings.ToUpper(strings.NewReplacer(" ", "_", "-", "_", ".", "_").Replace(gamertag))
+	// Fallback env var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> (résidu dev/transition).
+	fromEnv := false
+	if refreshToken == "" && e.gamertag != "" {
+		key := strings.ToUpper(strings.NewReplacer(" ", "_", "-", "_", ".", "_").Replace(e.gamertag))
 		if v := os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + key); v != "" {
 			refreshToken = v
-			rtSource = observability.LegacySourceEnvOAuth
+			fromEnv = true
 		}
 	}
 
-	if cacheJSON != "" {
-		// D1a : source legacy sync_meta atteinte — signal de dépréciation (ADR 0023 Phase 5, prérequis D2).
-		slog.WarnContext(ctx, "legacy_source_used", "source", observability.LegacySourceDuckDBMSAL,
-			"gamertag", gamertag, "deprecated_since", "ADR-0023")
-		observability.RecordLegacySourceUsed(observability.LegacySourceDuckDBMSAL)
-		token, err := provider.TrySilentRefresh(ctx, cacheJSON)
-		if err == nil && token != "" {
-			return token, nil
-		}
+	return auth.LegacyAuthInputs{
+		OAuthRT:        refreshToken,
+		MSALCache:      cacheJSON,
+		Source:         "player_db.sync_meta",
+		OAuthRTFromEnv: fromEnv,
 	}
-
-	if refreshToken != "" {
-		slog.WarnContext(ctx, "legacy_source_used", "source", rtSource,
-			"gamertag", gamertag, "deprecated_since", "ADR-0023")
-		observability.RecordLegacySourceUsed(rtSource)
-		token, err := provider.TryOAuthRefresh(ctx, refreshToken)
-		if err == nil && token != "" {
-			return token, nil
-		}
-	}
-
-	return "", nil
 }
