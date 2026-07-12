@@ -1,6 +1,6 @@
 # ADR 0030 — Persist write aggregates: compile-time enforcement of the anti-ART boundary
 
-**Status**: Proposed (2026-07-03)
+**Status**: Accepted (2026-07-12)
 
 **Branch**: `docs/adr-aggregates-title-boundary`
 

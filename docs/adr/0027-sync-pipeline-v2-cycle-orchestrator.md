@@ -5,7 +5,12 @@
 > code « ADR 0020 » mentionnant `pipeline V2` / `D6.x` / le package `internal/sync/v2` désignent
 > ce document (0027).
 
-**Statut** : Proposé (2026-05-25) — D0 préparation en cours, livraison phasée D1-D8.
+**Statut** : Accepted (amended by ADR 0031, 2026-07-12).
+
+> **Amendment (2026-07-12)** — [ADR 0031](0031-title-data-source-boundary.md) (title
+> data-source boundary and sync mutualization) amends this ADR: see 0031 for the shared
+> title data-source seam and the cross-title mutualization of the sync path. The V2 cycle
+> orchestrator described here is in production for Infinite; 0031 generalizes it.
 
 **Branche source** : `fix/art-eradication-and-home-resilience` (préparation), puis branche dédiée si nécessaire pour les phases suivantes.
 
