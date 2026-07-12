@@ -1,3 +1,39 @@
+## [2026-07-13] Train de merge 2026-07-13 assemblé — 6 chantiers embarqués
+
+**Statut** : Complété (branche `integration/train-2026-07-13`, PR ouverte — NON mergée).
+
+**Décision technique principale** : intégration séquentielle (merge --no-ff, un commit par
+branche) de 3 têtes de branches depuis origin/main, dans l'ordre imposé : (1) clôture
+documentaire `docs/cloture-salve-2026-07-12` ; (2) pile empilée `refactor/auth-store-first-postsync`
+(embarque fix/retouches-post-campagne → chore/lot-rapide-2026-07-12 → fix/h5-parite-residuel
+→ auth store-first, tête unique — les branches intermédiaires NON mergées séparément) ;
+(3) `refactor/migration-squash-m3` (squash baseline player v1).
+
+**Conflits résolus (relecture humaine ciblée)** :
+- `.ai/thought_log.md` (merges 2 et 3) : journal append-top. Réassemblé par éditions de
+  fichier propres (aucun splice PowerShell — risque mojibake). Merge 2 : réordonnancement
+  anté-chronologique (entrée 07-13 auth en tête, puis salve post-deploy 07-12, parité H5,
+  lot rapide). Merge 3 : deux entrées 07-12 distinctes (retouches post-campagne + squash
+  migrations) conservées au même point d'ancrage, séparateur `---`. Zéro perte, zéro doublon
+  (vérifié : 0 marqueur résiduel, headers ordonnés).
+- `.ai/baselines/tests_pre_migration.jsonl` : auto-merge = union des suppressions (12 lignes,
+  3 tests TestRepairEngCoefsPK* retirés par le squash). Aucune ré-addition (vérifié : 0 occurrence).
+- Aucun conflit sémantique Go : la pile ne touche pas `internal/migration/` ; build + vet
+  verts après chaque merge.
+
+**Gates (tous verts)** : go build + go vet = 0 ; go test ./... = exit 0 (2e run intégration
+propre après un flake transitoire au 1er run — aucun `--- FAIL` capturé) ;
+`go test -tags=integration -p 1 -timeout 1200s ./...` = exit 0, 0 FAIL ;
+golangci-lint --new-from-rev=origin/main = 0 issue ; front : typecheck 0, lint 0 erreur,
+build OK, vitest 2127 passed / 14 skipped.
+
+**Conclusion / prochaine étape** : push branche + CI en avant-plan ; PR vers main ouverte,
+NON mergée (merge = deploy prod, GO utilisateur). Post-deploy : observer `legacy_source_used=0`
+≥ 7 j (T0 = date de deploy) avant d'armer D2 (ADR 0023 Phase 5) ; re-vérifs visuelles
+utilisateur (Explorer H5, /admin/data, « En placement », Super Fiesta, grille KPI).
+
+---
+
 ## [2026-07-13] legacy_source_used → 0 : post-sync achievements store-first (branche refactor/auth-store-first-postsync)
 
 **Statut** : Complété (pré-requis Phase 5 ADR 0023 / gate D2).
