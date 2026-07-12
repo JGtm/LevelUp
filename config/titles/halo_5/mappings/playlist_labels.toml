@@ -13,6 +13,19 @@
 # qu'affiché aujourd'hui ; valeur = libellé court voulu. Zéro heuristique : seules
 # les entrées listées sont raccourcies (aucun risque sur une playlist inconnue).
 # Ajouter une ligne par playlist concernée. Halo 5 = jeu figé → liste stable.
+#
+# NB : le libellé est TOUJOURS résolu en fr-FR (match_view_repo.resolveAssetName →
+# PreferredLangsForLocale("fr"), champ PlaylistNameFR), et les 73 playlists ont une
+# entrée fr-FR : seules les CLÉS fr-FR peuvent matcher (une clé en-US serait morte).
+#
+# AUDIT 2026-07-12 (metadata.duckdb déverrouillée) : énumération des 73 libellés
+# fr-FR de asset_translations. Un SEUL présente le pattern « nom + mot de catégorie
+# redondant accolé » : « Super Fiesta Fête » (en-US « Super Fiesta Party », « Fête »
+# = tag catégorie redondant avec « Fiesta »). Les autres variantes Super Fiesta
+# portent un qualificatif SIGNIFIANT (distinctif, pas un tag redondant) → NON
+# raccourcies : « Super Fiesta Hardcore » (ranked), « Super Fiesta en équipe » (Big
+# Team). Idem « Fiesta des fêtes » (Holiday Fiesta) = nom propre. Aucune autre
+# playlist à raccourcir.
 
 [meta]
 title_slug     = "halo_5"
