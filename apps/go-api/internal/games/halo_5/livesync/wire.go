@@ -142,10 +142,11 @@ func newHalo5Runner(cfg *config.AppConfig, gamertag, xuid string) *Runner {
 // buildAchievementsHook construit le hook de sync des achievements Xbox du titre
 // Halo 5, ou nil si le titre ne déclare PAS la capability achievements (gate
 // title-agnostic AU CÂBLAGE, jamais slug==literal — archlint). Réutilise le chemin
-// title-aware existant (SyncEngineForTitle.RunAchievementsOnly), qui gère le lease
-// player DB, le gate capability interne et l'ouverture metadata. RunAchievementsOnly
-// retourne false sur erreur (déjà loggée) — on la remonte en err best-effort pour
-// que le runner la trace dans le SyncResult.
+// title-aware existant (SyncEngineForTitle.RunAchievementsHook), qui gère le lease
+// player DB, le gate capability interne et l'ouverture metadata. RunAchievementsHook
+// ne retourne une erreur QUE sur un échec réel : un skip bénin (pas de token Xbox ce
+// cycle — cas récurrent H5, les tokens sync_meta se resynchronisent) → nil, donc plus
+// de « erreurs partielles » trompeuses à chaque cycle de sync H5.
 func buildAchievementsHook(cfg *config.AppConfig, gamertag, xuid string) func(ctx context.Context) error {
 	desc := titlePkg.DefaultRegistry().Get(halo5.TitleSlug)
 	if desc == nil || !desc.HasCapability(titlePkg.CapAchievements) {
@@ -156,10 +157,7 @@ func buildAchievementsHook(cfg *config.AppConfig, gamertag, xuid string) func(ct
 		// sync-achievements (cmd_sync_achievements.go). NewSyncEngineForTitle résout
 		// tous les chemins DB via PathResolver + titleSlug.
 		engine := syncpkg.NewSyncEngineForTitle(cfg.RepoRoot, halo5.TitleSlug, gamertag, xuid, nil, auth.NewMSALProvider())
-		if !engine.RunAchievementsOnly(ctx) {
-			return fmt.Errorf("RunAchievementsOnly a échoué (voir logs)")
-		}
-		return nil
+		return engine.RunAchievementsHook(ctx)
 	}
 }
 

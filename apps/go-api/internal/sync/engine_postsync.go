@@ -104,7 +104,7 @@ func (e *SyncEngine) runConditionalPostSync(
 	} else if len(csrs) > 0 {
 		e.seedCatalogFromCSRs(ctx, csrs)
 	}
-	res.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
+	res.AchievementsSynced = e.runAchievementsSync(ctx, playerDB) == achievementsSynced
 	res.DurationMs = time.Since(lightStart).Milliseconds()
 	return res
 }
@@ -501,7 +501,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	clock.lap("media_scan", 0)
 
 	// 5. Achievements Xbox (fire-and-forget, non bloquant en cas d'erreur token)
-	r.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
+	r.AchievementsSynced = e.runAchievementsSync(ctx, playerDB) == achievementsSynced
 	clock.lap("achievements", 0)
 
 	// 6. Snapshot readiness (Phase 2) — marque les matchs complets (toutes
