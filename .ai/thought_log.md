@@ -36286,3 +36286,74 @@ OutcomeSequenceTape / trends LOWESS-EWMA existants.
 **Conclusion / prochaine étape** : plan écrit dans .ai/V7/PLAN_MATCHVIEW_MOMENTUM.md
 (4 phases, DEC-1..7 tranchées, gates exacts, branche feat/matchview-momentum).
 Exécution après validation des DEC par l'utilisateur, sous contrat plan-execution.
+
+## [2026-07-12] Revue critique Timeseries + Escouade — angles manques et defauts
+
+**Statut** : Complété (revue — aucune exécution)
+
+**Décision technique principale** : triple exploration (Timeseries, Squad, gisement
+backend) pour répondre à « suis-je passé à côté de quelque chose ? ». Constat
+structurant : la page Escouade LIVE consomme POST /pages/teammates (service
+teammates/), PAS squad_service_v2.go — le stack V2 (form score LOWESS, impact
+ranking 8 rôles, cadence agrégée) est bâti, servi sur /pages/squad/v2, mais
+jamais câblé au front (seul /squad/v2/engagement est consommé). Deux stacks
+squad en parallèle = dette de migration inachevée.
+
+**Résultats observés (échantillon, détail dans la synthèse utilisateur)** :
+- Même famille de défaut que la Dominance : heatmaps d'intensité (2 pages)
+  normalisées par le max DE CHAQUE match -> amplitude inter-matchs détruite
+  (NormalizeIntensityBuckets, narrative/intensity.go:117).
+- Timeseries : WR% et MMR sur le même axe Y2 (SessionPerf) ; durée de vie =
+  proxy time_played/(deaths+1) alors qu'AvgLifeSeconds existe non propagé ;
+  TimeseriesCombatYield orphelin (monté seulement dans lab) ; cumul_tab /
+  intensity_tab / outcomes_over_time calculés à chaque requête et jamais
+  affichés (data morte).
+- Plus gros angle manqué (2 pages) : tout le pipeline expected/TrueSkill2
+  (KillsExpected/DeathsExpected, SkillExpectedWinProb, SkillRatingDelta, sigma)
+  stocké mais jamais agrégé — pas de sur/sous-performance vs attendu, pas de
+  calibration, pas de bande d'incertitude. ComputeSquadOffset (résidu de
+  synergie PAR PAIRE, table player_squad_offset) = matrice de synergie déjà
+  calculée, jamais surfacée.
+- dominance_flag (remontada/débâcle) stocké per-match, jamais agrégé nulle part.
+- Tilt/fatigue de session : detectTilt/detectSessionFatigue existent mais ne
+  servent que la page Ascension.
+- PLAN_TIMESERIES_GO_PORTAGE.md largement périmé (statuts faux, page réelle
+  plus avancée que le plan sur certains points, régressée sur d'autres).
+
+**Conclusion / prochaine étape** : synthèse remise à l'utilisateur avec
+hiérarchie (câbler l'existant V2 > corriger les défauts > nouveaux angles
+expected/comeback). Aucun fix appliqué (revue seulement).
+
+## [2026-07-12] Plan revue analytique Timeseries + Escouade (suite de la revue)
+
+**Statut** : Complété (plan rédigé — exécution non démarrée, DEC en attente)
+
+**Décision technique principale** : plan écrit dans
+.ai/PLAN_REVUE_ANALYTIQUE_TIMESERIES_SQUAD_2026-07.md sur la base de la revue du
+jour + remarques utilisateur : (1) RIEN n'est supprimé — mécanisme de surlignage
+(manifest chart-review.ts + ReviewBadge sur les titres ChartCard, statuts
+verify/new/removal) pour que la tournée visuelle post-implem ne rate rien ;
+(2) expected_win_prob jugé peu fiable par l'utilisateur -> cantonné à sa cellule,
+aucune feature dessus (F7 = SkillRatingDelta observé + option sigma) ;
+(3) /pages/squad/v2 = reliquat non identifié -> prudence : portage au cas par cas
+vers le stack teammates (form score LOWESS en premier), jamais de bascule
+d'endpoint, sort du V2 = DEC-7 chantier séparé ; (4) redondances non actées ->
+badges de doute seulement ; (5) angles flous (tilt, first blood, contribution,
+comeback, solo vs escouade) spécifiés concrètement (Données/Représentation/
+Narratif/Emplacement), penchant narratif (tuiles KPI + phrases FR/EN).
+
+**Résultats observés** :
+- .ai/V7 = dossier d'ARCHIVAGE (précision utilisateur) — le plan momentum y était
+  à tort : déplacé vers .ai/PLAN_MATCHVIEW_MOMENTUM_2026-07.md (convention
+  PLAN_*_2026-07 confirmée par le contenu de .ai/).
+- Axe Score du radar synergie souvent à zéro : confirmé comme axe d'intérêt
+  utilisateur -> item B3 avec diagnostic donnée-vs-seuil avant recalibrage P80.
+- Durée de vie (proxy au lieu d'AvgLifeSeconds) et rendement (Combat Yield
+  orphelin) qualifiés « très grave » par l'utilisateur -> lot B prioritaire.
+- ChartCard.title est un ReactNode avec barre de titre dédiée -> prop review
+  optionnelle, badge accolé au titre, surfaces non-ChartCard via <ReviewBadge>.
+
+**Conclusion / prochaine étape** : validation des DEC-1..9 par l'utilisateur,
+puis exécution lot par lot (A d'abord) sur feat/analytics-review-ts-squad, sous
+contrat plan-execution. Dépendance croisée avec le chantier momentum : extraction
+du wrapper DivergingBarChart à la 2e occurrence du patron.
