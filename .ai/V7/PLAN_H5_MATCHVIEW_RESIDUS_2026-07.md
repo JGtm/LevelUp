@@ -1,10 +1,18 @@
 # PLAN — Résidus Halo 5 match view (2026-07-07)
 
-> **STATUT GLOBAL : PARTIEL — chantier LOCAL COMPLÉTÉ le 2026-07-11 (lots A, B, C, D, F,
-> E tous clos, gates verts) ; RESTE LE LOT V (V2-V4, prod)** : opérations data à rejouer
-> sur le VPS APRÈS merge (dépendance explicite du plan : « après merge des lots A-F »)
-> + écriture prod = décision utilisateur (prévenir avant). Détail §6. Branche :
-> `fix/h5-matchview-residus` (6 commits, poussée, CI verte).
+> **STATUT GLOBAL : COMPLÉTÉ (2026-07-12) — opérationnellement clos.** Chantier LOCAL
+> clos le 2026-07-11 (lots A, B, C, D, F, E, gates verts) ; LOT V (volet prod) exécuté
+> le 2026-07-12 lors de la salve post-deploy (merge PR #54 → main → prod ~09:25 UTC) :
+> V2 rejoué sur le VPS (overrides Tidal → 48/48 maps résolues, 1002 lignes Placement,
+> purge 84 clips média étrangers). Détail §6.
+>
+> **Restes utilisateur** (n'empêchent pas la clôture opérationnelle) :
+> - V3 — vérification VISUELLE en prod par l'utilisateur (galerie média H5 + libellés +
+>   filtres, clic média → match f88f6d8b dont l'association n'existe qu'en prod, matchs
+>   témoins : map Tidal / mode / Dominance / rating Placement). Requête anonyme = 403
+>   (ownership) → pas de repro authentifiée automatisable ; départage utilisateur.
+>
+> Branche du chantier local : `fix/h5-matchview-residus` (6 commits, poussée, CI verte).
 
 > Exécution sous contrat du skill `plan-execution` (ordre strict, statuts obligatoires
 > `[x]`/`[~]`/`[!]`, gates par lot, zéro fix hors périmètre — les découvertes vont en §8).
@@ -318,24 +326,23 @@ CI branche verte — le job Frontend rouge du commit LOT C a été corrigé, cf.
       → traités par le LOT F. Trafic d'origine perdu (conteneur recréé) ; requête
       anonyme 403 → pas de repro authentifiée possible, confirmation visuelle par
       l'utilisateur après déploiement.
-- [!] V2. NON TRAITÉ dans ce chantier — dépendance explicite du plan (« APRÈS merge des
-      lots A-F ») + écriture prod = décision utilisateur (prévenir avant toute écriture,
-      fenêtre creuse, 2 vCPU / 2 Go, un writer par DB → arrêter le conteneur ou passer
-      par les CLI hors serveur). Commandes exactes à rejouer sur le VPS (post-merge,
-      binaires du repo déployé) :
-      1. B2 : `go run ./cmd/h5-metadata-fetch <repo> --overrides-only`
-         (local pur, AUCUN réseau ni clé API — applique l'override Tidal + garde-fou).
-      2. D2 : `LEVELUP_H5_AUTH_AS=JGtm go run ./cmd/h5-csr-match-backfill <GT> --missing-only`
-         pour JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX (~1000 fetches carnage au
-         total ; RT JGtm requis vivant). Attendu : ~100 % placement_csr_null → lignes
-         Placement.
-      3. F3 : `go run ./cmd/cleanup_media_index --foreign-only --dry-run` (vérifier ~84)
-         puis sans --dry-run. SERVEUR ARRÊTÉ (le CLI ouvre shared_social en RW).
-- [!] V3. Vérification visuelle prod par l'utilisateur (après V2/V4) : galerie média H5
-      (libellés + filtres), clic média → match f88f6d8b (l'association n'existe qu'en
-      prod), matchs témoins (map Tidal, mode, Dominance, rating/Placement).
-- [!] V4. Déploiement : merge → push main = deploy auto — DÉCISION UTILISATEUR
-      (prévenir avant le push).
+- [x] V2. EXÉCUTÉ EN PROD le 2026-07-12 (salve post-deploy, après merge PR #54 → main →
+      déploiement ~09:25 UTC). Les trois opérations rejouées sur le VPS :
+      1. B2 (overrides metadata, `--overrides-only`, local pur) : 26 armes / 184 médailles /
+         1 map par id (Tidal, d67fdcb9) appliqués → **48/48 maps du registre H5 résolues**
+         (garde-fou `logUnresolvedMaps` : 0 map non résolue).
+      2. D2 (`h5-csr-match-backfill --missing-only`, 4 joueurs) : **1002 lignes « Placement »
+         écrites** — JGtm 303 / Madina97294 293 / Chocoboflor 277 / XxDaemonGamerxX 129 ;
+         `placement_csr_null = 100 %`, **zéro skip** (0 carnage KO, 0 owner absent). DEC-4
+         confirmé en prod comme en local.
+      3. F3 (`cleanup_media_index --foreign-only`) : dry-run préalable = **84 fichiers exacts**,
+         puis purge réelle de **84 media_files étrangers** + CHECKPOINT (ADR 0022).
+- [!] V3. Vérification VISUELLE prod par l'utilisateur (reste utilisateur — cf. en-tête) :
+      galerie média H5 (libellés + filtres), clic média → match f88f6d8b (l'association
+      n'existe qu'en prod), matchs témoins (map Tidal, mode, Dominance, rating/Placement).
+      Requête anonyme = 403 (ownership) → départage utilisateur, non automatisable.
+- [x] V4. Déploiement FAIT : merge PR #54 → main → deploy prod automatique le 2026-07-12
+      (~09:25 UTC), avec accord utilisateur préalable.
 
 ## 7. Tracker (à remplir en exécution)
 
@@ -346,7 +353,7 @@ CI branche verte — le job Frontend rouge du commit LOT C a été corrigé, cf.
 | C | COMPLÉTÉ | 2026-07-11 | Résistance + Résultat attendu masqués selon capability/null ; 5 tests vitest ; 112/112 match-view ; fix CI types test (tsc -b) |
 | D | COMPLÉTÉ | 2026-07-11 | D2 ventilation : JGtm 303, Madina 293, Chocoboflor 277, XxDaemon 129 → **1002/1002 placement_csr_null** (0 carnage KO, 0 owner absent) ; lignes Placement écrites, couverture classés 100 % × 4 joueurs. PROD : rejouer D2 en V2 |
 | E | COMPLÉTÉ | 2026-07-11 | delivery-checklist déroulée ; gate global vert (tests+lint+types+CI branche) |
-| V | PARTIEL : V1 [x] ; V2-V4 [!] | 2026-07-11 | dépendance post-merge + écriture prod = utilisateur ; commandes exactes consignées en §6 |
+| V | COMPLÉTÉ : V1/V2/V4 [x] ; V3 [!] user | 2026-07-12 | salve post-deploy : overrides Tidal → 48/48 maps, 1002 lignes Placement (JGtm 303/Madina 293/Choco 277/XxDaemon 129, 100 % placement_csr_null, 0 skip), purge 84 média (dry-run=84) ; V3 = vérif visuelle utilisateur |
 | F | COMPLÉTÉ | 2026-07-11 | vérifié réel local (7 clips h5 associés, copies prod du scratchpad expirées) ; purge locale 84→0 ; f88f6d8b lui-même = assoc PROD → confirmé en V3. PROD : rejouer F3 en V2 |
 
 ## 8. Découvertes hors périmètre (NE PAS traiter dans ce chantier)
