@@ -69,6 +69,10 @@ type ServiceRegistry struct {
 	notifiers      sync.Map            // xuid → port.SessionNotifier (HomeService par joueur)
 	titleResolver  games.Resolver      // nil → services tournent sans semantic adapter (libellés via fallbacks)
 	hiCapabilities games.CapabilityMap // capabilities.toml HI chargées au boot (Phase 1.7a) ; nil → adapter player-scoped retombe sur son fallback
+	// playlistLabelOverrides : PAR TITRE (slug → nom brut → libellé court), chargé
+	// depuis playlist_labels.toml au boot. Injecté dans MatchViewRepo (ex. Halo 5
+	// « Super Fiesta Fête » → « Super Fiesta »). Map manquante/nil → no-op.
+	playlistLabelOverrides map[string]map[string]string
 	// MT-09 (PMT-12) : factory player-scoped PAR TITRE. Le slug est une CLÉ de
 	// map (lookup title-agnostic), jamais une comparaison littérale — un 2e titre
 	// enregistre son builder au boot, sans toucher aux factories. Remplace les
@@ -433,10 +437,23 @@ func (r *ServiceRegistry) capabilitiesForPDB(pdb *duckdb.PlayerDB) games.Capabil
 // taxonomie de modes + strip de catégorie de playlist piloté par CapabilityMap
 // (CapPlaylistCategoryStrip). Centralise le câblage des 3 sites d'usage.
 func (r *ServiceRegistry) newMatchViewRepo(pdb *duckdb.PlayerDB) *duckdb.MatchViewRepo {
+	var playlistOverrides map[string]string
+	if r.playlistLabelOverrides != nil {
+		playlistOverrides = r.playlistLabelOverrides[pdb.TitleSlug]
+	}
 	return duckdb.NewMatchViewRepo(pdb, pdb.XUID).
 		WithSharedReader(r.matchViewSharedReader(pdb)).
 		WithModeTaxonomy(haloInfiniteModeTaxonomy()).
-		WithPlaylistCategoryStrip(r.capabilitiesForPDB(pdb).Has(games.CapPlaylistCategoryStrip))
+		WithPlaylistCategoryStrip(r.capabilitiesForPDB(pdb).Has(games.CapPlaylistCategoryStrip)).
+		WithPlaylistLabelOverrides(playlistOverrides)
+}
+
+// WithPlaylistLabelOverrides injecte la table PAR TITRE des overrides de libellé
+// de playlist (slug → nom brut → libellé court), chargée depuis playlist_labels.toml
+// au boot. Retourne le registry pour chaînage.
+func (r *ServiceRegistry) WithPlaylistLabelOverrides(byTitle map[string]map[string]string) *ServiceRegistry {
+	r.playlistLabelOverrides = byTitle
+	return r
 }
 
 // GetSessionNotifier retourne le SessionNotifier enregistré pour le xuid donné.

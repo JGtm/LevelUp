@@ -27,6 +27,7 @@ import type {
 import { formatDurationMMSS } from '@/lib/formatters'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { MatchViewText } from './i18n'
+import { displayTierLabel } from './MatchHeader.utils'
 import { parseTeamSideID, resolveTeamName } from '@/lib/halo/teamNames'
 import {
   cellState,
@@ -279,7 +280,9 @@ function TeamScoreboard({
       header: isRanked ? t.sbColCsr : t.sbDetailLusr,
       cell: (ctx) => {
         const url = ctx.row.original.skill_rank?.icon_url
-        const label = ctx.row.original.skill_rank?.tier_label
+        // « Placement » (sentinelle back) → « En placement » localisé, cohérent
+        // avec le header (displayTierLabel).
+        const label = displayTierLabel(ctx.row.original.skill_rank?.tier_label, t.rankPlacement)
         // Pas d'icône mais un palier connu (CSR Halo 5 sans badge résolu) → afficher le
         // libellé de palier plutôt qu'un « — » (cf. signalement #2). « — » réservé au cas
         // sans icône NI palier.
