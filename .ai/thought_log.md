@@ -1,3 +1,50 @@
+## [2026-07-13] legacy_source_used → 0 : post-sync achievements store-first (branche refactor/auth-store-first-postsync)
+
+**Statut** : Complété (pré-requis Phase 5 ADR 0023 / gate D2).
+
+**Décision technique principale** : centraliser l'ordre de résolution « access_token MS
+brut, store→legacy » dans le package `auth` et brancher le post-sync achievements dessus,
+au lieu de sa résolution legacy-only.
+
+**Cause racine (prouvée sur pièces + logs prod)** : la télémétrie D1a n'était PAS à 0.
+`grep legacy_source_used` sur `sync.log` (ssh lvelup, lecture seule) → 100 % des occurrences
+émises par `levelup/go-api/internal/sync.resolveAccessTokenFromDB` (`engine_postsync_csr.go`),
+`source=duckdb_oauth`, pour les 4 joueurs, à chaque post-sync (event `sync.postSync:<GT>`,
+étape achievements ligne 504). Jamais depuis worldenrich. Le chemin achievements résolvait
+l'access_token Xbox Live EXCLUSIVEMENT depuis `sync_meta` (msal_token_cache / oauth_refresh_token
++ fallback env), sans JAMAIS consulter `MultiUserTokenStore` (watcher_tokens). Vérifié VPS :
+les 4 fichiers `watcher_tokens/{xuid}.json` existent avec `oauth_refresh_token` rempli (le store
+COUVRE ces joueurs) → le résidu sync_meta était servi et compté à tort.
+
+**Fix (fichiers)** :
+- `internal/platform/auth/access_token_store_first.go` (NOUVEAU) — `ResolveMSAccessTokenStoreFirst`
+  (store MSAL→OAuth avec rotation persistée, PUIS legacy ; télémétrie legacy émise UNIQUEMENT
+  quand le store n'a pas résolu). Source UNIQUE de l'ordre (règle « ≤ 2 copies »). Retourne
+  l'access_token MS brut (pas d'Exchange Halo) car achievements → `AcquireXSTSForRTA` (Xbox Live).
+- `internal/sync/engine_postsync_csr.go` — `resolveAccessTokenFromDB` (legacy-only) SUPPRIMÉ ;
+  remplacé par `resolveAchievementsAccessToken` (store-first via le helper) + `readLegacyAuthInputs`
+  (lit sync_meta/env comme `LegacyAuthInputs`, jamais servi si le store couvre). Import `observability`
+  retiré (plus d'émission locale).
+- `internal/sync/engine{,_options}.go` — champ `repoRoot` ajouté (résout `WatcherTokensDir`).
+- `internal/worldenrich/wiring.go` — `resolveAccessToken` délègue au helper (copie de l'ordre
+  supprimée) ; import `observability` retiré.
+- `internal/platform/auth/cli_refresh.go` — `LegacyAuthInputs.OAuthRTFromEnv` (télémétrie env_oauth vs duckdb_oauth).
+
+**Garde-rails** : `sync/no_legacy_source_used_test.go` (interdit `RecordLegacySourceUsed` /
+littéral `legacy_source_used` dans le package sync — la résolution DOIT déléguer au helper auth) ;
+`auth/access_token_store_first_test.go` (8 tests : store couvre → compteur legacy INCHANGÉ =
+non-régression des 4 joueurs prod ; store vide → legacy adopté +1 ; env vs duckdb ; rotation
+store + migration legacy→store persistées ; invalid_grant surfacé).
+
+**Résultats observés** : build complet OK ; lint `--new-from-rev=fix/h5-parite-residuel` = 0 ;
+tests auth + sync (unit) verts ; gate `-tags=integration -p 1` sync+auth+worldenrich vert.
+
+**Conclusion / prochaine étape** : après deploy prod, surveiller `/debug/vars` (clé `levelup`)
+compteurs `legacy_source_used_*` — doivent rester à 0 (store MSAL/OAuth résout les 4 joueurs).
+**T0 de la fenêtre d'observation D1a→D2 = date de deploy de CE fix (pas 2026-07-10).** Armer D2
+(ADR 0023 Phase 5, suppression des fallbacks) uniquement après ≥7 j à 0. Consigné dans
+`.ai/V7/DETTE_ASSUMEE_2026-Q3.md` §7 (D1a→D2).
+
 ## [2026-07-12] PARITÉ H5 RÉSIDUEL — 3 items (branche fix/h5-parite-residuel)
 
 **Statut** : Complété (Items 1-3).

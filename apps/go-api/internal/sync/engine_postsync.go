@@ -9,9 +9,9 @@
 //     pas des heals : ils tournent pour chaque nouveau match et comblent le backlog.
 //   - runCSRSnapshotSync : CSR snapshots best-effort si csrSeasonID renseigné.
 //   - runAchievementsSync + RunAchievementsOnly : sync Xbox achievements via
-//     TokenProvider (resolveAccessTokenFromDB → XSTS → SyncAchievements).
+//     TokenProvider (resolveAchievementsAccessToken → XSTS → SyncAchievements).
 //   - hasMatchesNeedingScoreRefresh : heuristique heal-only path.
-//   - resolveAccessTokenFromDB : lecture cache MSAL/refresh + fallback env.
+//   - resolveAchievementsAccessToken : store-first (ADR 0023) + résidus legacy.
 //
 // Voir engine.go (struct SyncEngine + run()) pour le contexte.
 package sync
