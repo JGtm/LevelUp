@@ -1,10 +1,16 @@
 # PLAN — Triage et traitement des détections monitoring (2026-07)
 
 > Statut : PARTIEL (exécuté le 2026-07-10 sur `fix/monitoring-triage-2026-07`). Le code
-> déploy-indépendant est livré et testé (B6.4 anti-flood, B6.1/B3.3 démotions+compteurs) ;
-> les items restants sont bloqués par une dépendance explicite — deploy prod de B1 (PR #53
-> `hotfix/lusr-shadow-ro` OUVERTE, non mergée), écriture prod interdite (B4/B5.5),
-> soak prescrit (B2.4/B7.4), ou auth live locale en recovery (B4.2). Voir statuts par item.
+> déploy-indépendant est livré et testé (B6.4 anti-flood, B6.1/B3.3 démotions+compteurs).
+> **B1 déployé en prod le 2026-07-12** (mergé via PR #54 → deploy auto) : cascade LUSR
+> ÉTEINTE, `/health` stabilisé (un seul 503 ponctuel vs 632 pendant l'incident),
+> writer-holds retombés — B1.5 vérifié sur pièces (cf. plan hotfix H6). Reste ouvert :
+> - **B1.6** backfill de rattrapage — SUSPENDU au départage de l'observation « 0 candidat »
+>   (shadow silencieux, ambigu backlog-vide vs watermark désync ; départage au prochain
+>   match du joueur ou via `lusr_v2_canonical_backfill` dry-run — cf. hotfix H6.2/H6.3).
+> - **B4.1-B4.4 / B5.5** actions d'ÉCRITURE prod via l'admin UI (utilisateur) : assets UUID
+>   bruts, xuids orphelins, lying-bits reset, modes non traduits, remap chemins média.
+> - **B2.4 / B7.4** soaks datés (délai prescrit, pas un report). B7.4 ré-armé T0=2026-07-12.
 > Exécution sous contrat du skill `plan-execution`.
 > Branche cible : `fix/monitoring-triage-2026-07` (1 branche, N commits) — SAUF B1
 > (régression prod active) : hotfix depuis `origin/main` (voir DC-B6).
@@ -121,16 +127,20 @@ le chunk borne la fenêtre RW, les lecteurs passent entre les chunks, comme even
       chunkés ; 0 match → aucun burst).
 - [~] B1.3 Tests — couvert par PR #53 (test reproduisant le bug prod RO + non-régression +
       audit des autres segments `shared.Read(`).
-- [~] B1.4 Livraison hotfix — branche `hotfix/lusr-shadow-ro` créée depuis origin/main,
-      **PR #53 OUVERTE (non mergée)**. Attend le GO explicite du user avant push main
-      (deploy prod auto). NON déployée à ce jour (2026-07-10).
-- [!] B1.5 Post-deploy — EN ATTENTE DEPLOY (PR #53 non mergée). Vérif prod à faire APRÈS
-      merge : disparition du message, watermark avance, `/health` sans 503, writer-hold
-      retombe. Symptôme /health 503 confirmé actif en prod post-reboot (échantillon relevé).
-- [!] B1.6 Rattrapage backfill — EN ATTENTE DEPLOY (à lancer APRÈS le fix seulement).
+- [x] B1.4 Livraison hotfix — DÉPLOYÉ EN PROD le 2026-07-12 : le fix a été mergé dans main
+      via la campagne d'intégration (**PR #54** l'a embarqué ; PR #53 isolée super-cédée) →
+      deploy prod auto (~09:25 UTC), avec GO utilisateur préalable.
+- [x] B1.5 Post-deploy — VÉRIFIÉ SUR PIÈCES (3 h de logs post-deploy, cf. plan hotfix H6.1) :
+      **zéro** `persist état échoué`, **zéro** `read-only mode` ; writer-holds retombés à
+      2000-2001 ms (vs 21 909 pendant l'incident) ; `/health` **un seul 503 ponctuel**
+      (vs 632 pendant l'incident) ; post-syncs réels tournés à 09:56 et 10:24-26.
+- [!] B1.6 Rattrapage backfill — SUSPENDU au départage de l'observation « 0 candidat » : le
+      shadow tourne silencieux (processed = 0), ambigu entre backlog vide (sain) et watermark
+      désync (piège connu). Départage au prochain match du joueur ou via
+      `lusr_v2_canonical_backfill` dry-run AVANT tout `--commit` (cf. hotfix H6.2/H6.3).
 
-**Gate B1** : [!] PARTIEL — fix implémenté et testé (PR #53), deploy prod non effectué
-(protocole GO user requis, push main = deploy auto). Les B1.5/B1.6 restent [!] jusqu'au deploy.
+**Gate B1** : VERT (fix déployé + B1.5 vérifié sur pièces). Reste B1.6 [!] suspendu au
+départage de l'observation « 0 candidat » (non bloquant — la cascade LUSR est éteinte).
 
 ### B2 — Pool auth / tokens (effort : réduit après B0)
 
@@ -263,9 +273,9 @@ vert ; messages démotés absents de prod/juillet.
 - [x] B7.3 Gate final : `cd apps/go-api && go test ./...` = exit 0 ;
       `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... [+touchés]`
       = exit 0 ; gofmt/vet propres ; skill `delivery-checklist` ; entrée `thought_log.md`.
-- [!] B7.4 Cible mensuelle — T0 = 2026-07-10. Re-mesure T0+30 j (2026-08-09) : DÉLAI PRESCRIT
-      (pas un report) ; MAIS conditionné au deploy de B1 (« ERROR ≈ 0/jour » suppose la cascade
-      LUSR éteinte). À ré-armer une fois PR #53 déployée.
+- [!] B7.4 Cible mensuelle — RÉ-ARMÉ T0 = 2026-07-12 (B1 déployé, cascade LUSR éteinte).
+      Re-mesure T0+30 j (2026-08-11) : DÉLAI PRESCRIT (pas un report). Attendu : ERROR prod
+      ≈ 0/jour hors incidents externes attestés (script §Mesure).
 
 ## Mesure (script canonique, réutilisable prod/local)
 

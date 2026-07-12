@@ -1,3 +1,41 @@
+## [2026-07-12] Salve post-deploy campagne — bilan
+
+**Statut** : Complété.
+
+**Contexte** : la campagne 2026-07 (PR #54) a été mergée dans main et déployée en prod le
+2026-07-12 (~09:25 UTC). Salve post-deploy exécutée par le superviseur ; bilan consigné,
+plans clôturés (`docs/cloture-salve-2026-07-12`).
+
+**Résultats observés** :
+- **Backfill engagement prod** : COMPLET — halo_infinite ×2 passes + halo_5 ×2 passes
+  (10 480 matchs H5 pass 2), schema_version 194, fenêtre 09:33→09:40 UTC.
+- **Lot V (plan H5 matchview)** : COMPLET — V1 overrides prod (26 armes / 184 médailles /
+  1 map par id Tidal) → 48/48 maps résolues ; V2 : 1002 lignes « Placement » écrites
+  (JGtm 303 / Madina97294 293 / Chocoboflor 277 / XxDaemonGamerxX 129, placement_csr_null
+  = 100 %, zéro skip) ; V3 : purge 84 media_files étrangers + CHECKPOINT (dry-run préalable
+  = 84 exactement). Reste utilisateur : vérif VISUELLE prod (galerie/média/témoins).
+- **Hotfix LUSR (H6)** : critères mesurables VERTS (3 h de logs post-deploy) — zéro
+  `persist état échoué`, zéro `read-only mode`, writer-holds 2000-2001 ms (vs 21 909 avant),
+  un seul 503 ponctuel (vs 632 pendant l'incident), post-syncs réels à 09:56 et 10:24-26.
+  UNE observation ouverte : shadow silencieux = 0 candidat, ambigu entre backlog vide (sain)
+  et watermark désync (piège connu) — départage au prochain match ou via
+  `lusr_v2_canonical_backfill` dry-run.
+- **Télémétrie ADR 0023** : `legacy_source_used source=duckdb_oauth` observé pour les 4
+  joueurs au post-sync du 2026-07-12 → la condition « legacy_source_used = 0 » de la Phase 5
+  (lot D2) n'est PAS remplie.
+
+**Clôture documentaire** : plans H5 matchview (COMPLÉTÉ, git mv → `.ai/V7/`) et hotfix LUSR
+(COMPLÉTÉ, git mv → `.ai/V7/`) archivés ; plan monitoring triage reste PARTIEL (B1 déployé
+et vérifié, B1.5 [x] ; restent B1.6 départage, B4.x/B5.5 actions prod utilisateur, B2.4/B7.4
+soaks — B7.4 ré-armé T0=2026-07-12).
+
+**Prochaine étape** : départage de l'observation LUSR « 0 candidat » (prochaine session de
+jeu ou dry-run backfill) ; gates utilisateur (vérif visuelle H5 V3, actions data-quality
+admin B4.x/B5.5). La Phase 5 ADR 0023 (D2, retrait des fallbacks legacy) reste bloquée tant
+que `legacy_source_used > 0`.
+
+---
+
 ## [2026-07-12] Repli du chantier outillage CI dans l'integration campagne (PR #54)
 
 **Statut** : Complété (superviseur de campagne).
