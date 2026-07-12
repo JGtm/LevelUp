@@ -11,6 +11,12 @@
  * Prérequis : `make dev` (API :8000 + Vite :5173), LEVELUP_DEMO_MODE=true.
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
+
+// Fixtures démo absentes en CI (data/demo gitignoré) → spec entière data-dépendante.
+test.beforeEach(async () => {
+  await skipIfNoDemoData()
+})
 
 const API = 'http://localhost:8000/api/v1'
 const PLAYER = 'demo-player'

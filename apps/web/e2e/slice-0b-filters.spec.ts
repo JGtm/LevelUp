@@ -9,11 +9,13 @@
  * 3. La page home charge sans erreur
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 const API_BASE = 'http://localhost:8000/api/v1'
 
 test.describe('Slice 0b — Contrat de filtres (DEMO_MODE)', () => {
   test('filters/resolve retourne HTTP 200 avec des options', async ({ request }) => {
+    await skipIfNoDemoData()
     const resp = await request.post(
       `${API_BASE}/players/demo-player/filters/resolve`,
       { data: { filter_mode: 'period' } },
@@ -28,6 +30,7 @@ test.describe('Slice 0b — Contrat de filtres (DEMO_MODE)', () => {
   })
 
   test('la réponse filters/resolve contient des session_options', async ({ request }) => {
+    await skipIfNoDemoData()
     const resp = await request.post(
       `${API_BASE}/players/demo-player/filters/resolve`,
       { data: { filter_mode: 'period' } },

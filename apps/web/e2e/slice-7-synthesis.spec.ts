@@ -9,6 +9,7 @@
  * 3. La page se charge sans crash
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 test.describe('Slice 7 — Synthèse (DEMO_MODE)', () => {
   test("la page Synthèse se charge sans erreur JS", async ({ page }) => {
@@ -24,6 +25,7 @@ test.describe('Slice 7 — Synthèse (DEMO_MODE)', () => {
   })
 
   test("l'API pages/synthesis retourne HTTP 200", async ({ page }) => {
+    await skipIfNoDemoData()
     const synthPromise = page.waitForResponse(
       (resp) =>
         resp.url().includes('/pages/synthesis') && resp.status() === 200,

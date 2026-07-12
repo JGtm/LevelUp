@@ -10,6 +10,7 @@
  * 4. L'API gamertags/search répond à une recherche
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 test.describe('Slice 4 — Explorer (DEMO_MODE)', () => {
   test("la page Explorer se charge sans erreur JS", async ({ page }) => {
@@ -27,6 +28,7 @@ test.describe('Slice 4 — Explorer (DEMO_MODE)', () => {
   test("l'API explorer/matches-query retourne des données", async ({
     page,
   }) => {
+    await skipIfNoDemoData()
     const explorerPromise = page.waitForResponse(
       (resp) =>
         resp.url().includes('/pages/explorer/matches-query') &&
@@ -41,6 +43,7 @@ test.describe('Slice 4 — Explorer (DEMO_MODE)', () => {
   })
 
   test("le titre Explorer est affiché", async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto('/players/demo-player/explorer')
     await page.waitForLoadState('networkidle')
 

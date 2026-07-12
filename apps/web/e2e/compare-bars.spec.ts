@@ -5,6 +5,12 @@
  * Lance avec : npx playwright test e2e/compare-bars.spec.ts
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
+
+// Fixtures démo absentes en CI (data/demo gitignoré) → spec entière data-dépendante.
+test.beforeEach(async () => {
+  await skipIfNoDemoData()
+})
 
 const PLAYER_SLUG = 'demo-player'
 const TARGET = 'TestPlayer'

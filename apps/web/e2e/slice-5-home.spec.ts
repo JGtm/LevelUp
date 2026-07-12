@@ -13,6 +13,7 @@
  * 6. Smoke endpoint /api/v1/healthz/home renvoie 200 + ok=true
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 test.describe('Slice 5 — Accueil / Home (DEMO_MODE)', () => {
   test("la page Home se charge sans erreur JS", async ({ page }) => {
@@ -28,6 +29,7 @@ test.describe('Slice 5 — Accueil / Home (DEMO_MODE)', () => {
   })
 
   test("l'API pages/home retourne HTTP 200", async ({ page }) => {
+    await skipIfNoDemoData()
     const homePromise = page.waitForResponse(
       (resp) =>
         resp.url().includes('/pages/home') && resp.status() === 200,
@@ -41,6 +43,7 @@ test.describe('Slice 5 — Accueil / Home (DEMO_MODE)', () => {
   })
 
   test("le joueur DemoPlayer est visible dans la page", async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto('/players/demo-player/home')
     await page.waitForLoadState('networkidle')
 
@@ -61,6 +64,7 @@ test.describe('Slice 5 — Accueil / Home (DEMO_MODE)', () => {
   // ──────────────────────────────────────────────────────────────────────
 
   test('les 4 sections critiques de la home rendent du contenu', async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto('/players/demo-player/home')
     await page.waitForLoadState('networkidle')
 
@@ -100,6 +104,7 @@ test.describe('Slice 5 — Accueil / Home (DEMO_MODE)', () => {
   })
 
   test('/api/v1/healthz/home retourne 200 ou 503 avec diagnostic', async ({ request }) => {
+    await skipIfNoDemoData()
     // Le smoke endpoint inspecte les 5 sections critiques côté backend.
     // En DEMO_MODE avec fixture complète : 200 + ok=true. Sinon : 503 + liste.
     // Dans les deux cas la réponse doit être structurée — pas de 500.
