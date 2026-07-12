@@ -1,6 +1,6 @@
 ## [2026-07-12] PARITÉ H5 RÉSIDUEL — 3 items (branche fix/h5-parite-residuel)
 
-**Statut** : En cours (Items 1-2 complétés ; Item 3 à suivre).
+**Statut** : Complété (Items 1-3).
 
 **Décision technique principale** : 3 corrections H5 indépendantes, 1 commit par item,
 diagnostic sur pièces (code + logs prod /app/data/logs/*.log via ssh lvelup, lecture seule).
@@ -32,8 +32,28 @@ diagnostic sur pièces (code + logs prod /app/data/logs/*.log via ssh lvelup, le
   known-set + aliases-seed réussissent AVEC un lecteur RO concurrent tenu, provider reste
   StateRO (aucun swap) — l'ancien code aurait drainé ce lecteur puis échoué.
 
-**Gates (Items 1-2)** : go build/vet OK ; test -tags=integration -p 1
-`./internal/platform/duckdb` (Q19c) + `./internal/games/halo_5/...` verts.
+- Item 3 — « RunAchievementsOnly a échoué » ×4 joueurs + « erreurs partielles » à CHAQUE
+  cycle H5. VRAIE cause (sync.log prod) : `achievements: aucun access_token disponible —
+  sync ignorée` (INFO), INTERMITTENT — le sync réussit régulièrement (count=144). Ce n'est
+  PAS une limitation externe (l'API sert les succès H5, title_id 219630713) : les tokens
+  legacy sync_meta H5 sont juste indisponibles certains cycles et se resynchronisent. Le
+  bug : `runAchievementsSync` retournait un bool, le hook `buildAchievementsHook` traduisait
+  tout `false` en erreur → « erreurs partielles » même pour un skip bénin. Fix : type
+  `achievementsOutcome {synced, skipped, failed}` ; le « no token »/provider-nil/capability
+  absente → `skipped` (Debug, plus INFO) ; XSTS/metadata/HTTP/DB → `failed`. Nouveau
+  `RunAchievementsHook` (erreur SEULEMENT sur `failed`) câblé au hook H5 ; `RunAchievementsOnly`
+  (CLI) = `== synced` (sémantique inchangée). `res.AchievementsSynced` = `== synced` (parité
+  Infinite). Résultat : plus de bruit d'erreur récurrent H5 ; les vrais échecs restent visibles.
+  Test `TestRunAchievementsHook_BenignSkipIsNotAnError` (skip → hook nil, bool false).
+
+**Gates** : go build ./... + go vet ./... = 0 ; tests ciblés verts (Q19c integration,
+known-set cgo, achievements outcome) ; suite complète + lint --new-from-rev + CI branche
+= voir ci-dessous.
+
+**Conclusion / prochaine étape** : push fix/h5-parite-residuel + attente CI verte. Prod
+non touchée (VPS lecture seule) : les 3 fixes prennent effet au prochain déploiement
+(décision utilisateur). Vérification visuelle Explorer H5 (Item 1) à confirmer par
+l'utilisateur au merge (parité cascade déjà validée par le chantier match-view).
 
 ---
 
