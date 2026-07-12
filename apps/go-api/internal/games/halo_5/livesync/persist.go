@@ -2,6 +2,7 @@ package livesync
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"levelup/go-api/internal/ctxkeys"
@@ -10,17 +11,28 @@ import (
 	syncpkg "levelup/go-api/internal/sync"
 )
 
+// acquireSharedReader ouvre le shared d'un titre en LECTURE SEULE via provider.Get
+// (mode RO du B-swap) pour les opérations known-set / aliases-seed, qui ne font que
+// des SELECT. AUCUN swap RW n'est déclenché : c'est ce qui élimine l'erreur DuckDB
+// « Can't open a connection to same database file with a different configuration »
+// quand les 4 joueurs h5 synchronisent en parallèle (chacun forçait auparavant un
+// swap RO→RW pour une simple lecture) et que des lecteurs HTTP servent le shared h5
+// — N connexions RO coexistent nativement. provider == nil (mode legacy / kill-switch
+// LEVELUP_USE_SHARED_PROVIDER=0) → fallback writer standalone : comportement legacy
+// inchangé, sûr tant qu'aucun pool ne tient le shared en RO concurremment.
+func acquireSharedReader(ctx context.Context, provider sharedprovider.Provider, sharedDBPath string) (*sql.DB, func(), error) {
+	if provider != nil {
+		return provider.Get(ctx)
+	}
+	return syncpkg.AcquireSharedWriterStandalone(ctx, nil, sharedDBPath)
+}
+
 // loadKnownMatchIDs lit les match_id déjà persistés du shared d'un titre (delta-stop).
-// Lease RW COURT, path-keyé (relâché AVANT le fetch réseau).
-//
-// provider : provider per-titre du shared h5 (résolu via le Manager au câblage).
-// Quand non-nil, AcquireSharedWriterStandalone route par provider.AcquireWriter
-// (PreSwap → drain RO → RW → reopen RO au release) : c'est ce qui rend le B-swap
-// sûr dès qu'un pool joueur lit AUSSI le shared h5 en RO (sinon RO+RW non
-// coordonnés → "different configuration"). provider == nil → fallback legacy
-// (mode kill-switch / Manager absent).
+// LECTURE SEULE via provider.Get (RO) — voir acquireSharedReader : un SELECT ne doit
+// JAMAIS déclencher de swap RW (source du « different configuration » quand 4 joueurs
+// h5 synchronisent en parallèle). provider == nil → fallback legacy.
 func loadKnownMatchIDs(ctx context.Context, provider sharedprovider.Provider, sharedDBPath string) (map[string]bool, error) {
-	db, release, err := syncpkg.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "h5_livesync_known"), provider, sharedDBPath)
+	db, release, err := acquireSharedReader(ctx, provider, sharedDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("h5 known-set: acquire shared: %w", err)
 	}
@@ -48,7 +60,8 @@ func loadKnownMatchIDs(ctx context.Context, provider sharedprovider.Provider, sh
 // re-résoudre tout le roster à chaque run). Best-effort : toute erreur → graine vide.
 func loadXUIDAliasesSeed(ctx context.Context, provider sharedprovider.Provider, sharedDBPath string) map[string]string {
 	seed := make(map[string]string, 1024)
-	db, release, err := syncpkg.AcquireSharedWriterStandalone(ctxkeys.WithDBWriterLabel(ctx, "h5_livesync_aliases_seed"), provider, sharedDBPath)
+	// LECTURE SEULE (SELECT xuid_aliases) → provider.Get (RO), pas de swap RW.
+	db, release, err := acquireSharedReader(ctx, provider, sharedDBPath)
 	if err != nil {
 		return seed
 	}
