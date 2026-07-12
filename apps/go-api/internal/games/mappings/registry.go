@@ -16,22 +16,24 @@ import (
 // GetOutcomes(slug) → OutcomeMappingSet.
 // Une erreur de chargement pour un titre n'invalide pas les autres.
 type Registry struct {
-	mu           sync.RWMutex
-	fields       map[string]*FieldMappingSet
-	assets       map[string]*AssetMappingSet
-	outcomes     map[string]*OutcomeMappingSet
-	capabilities map[string]*CapabilityMappingSet
-	endpoints    map[string]*EndpointSet
+	mu             sync.RWMutex
+	fields         map[string]*FieldMappingSet
+	assets         map[string]*AssetMappingSet
+	outcomes       map[string]*OutcomeMappingSet
+	capabilities   map[string]*CapabilityMappingSet
+	endpoints      map[string]*EndpointSet
+	playlistLabels map[string]*PlaylistLabelSet
 }
 
 // NewRegistry crée un registre vide.
 func NewRegistry() *Registry {
 	return &Registry{
-		fields:       make(map[string]*FieldMappingSet),
-		assets:       make(map[string]*AssetMappingSet),
-		outcomes:     make(map[string]*OutcomeMappingSet),
-		capabilities: make(map[string]*CapabilityMappingSet),
-		endpoints:    make(map[string]*EndpointSet),
+		fields:         make(map[string]*FieldMappingSet),
+		assets:         make(map[string]*AssetMappingSet),
+		outcomes:       make(map[string]*OutcomeMappingSet),
+		capabilities:   make(map[string]*CapabilityMappingSet),
+		endpoints:      make(map[string]*EndpointSet),
+		playlistLabels: make(map[string]*PlaylistLabelSet),
 	}
 }
 
@@ -120,6 +122,24 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 			)
 		}
 
+		// playlist_labels.toml — optionnel : overrides d'affichage du libellé de
+		// playlist (data-driven, ex. Halo 5 « Super Fiesta Fête » → « Super Fiesta »).
+		playlistLabelsPath := filepath.Join(mappingsDir, "playlist_labels.toml")
+		if plset, loadErr := loadPlaylistLabelsIfExists(playlistLabelsPath); loadErr != nil {
+			logger.Error("mappings_validation_failed", "title_slug", slug, "path", playlistLabelsPath, "err", loadErr)
+			errs = append(errs, fmt.Errorf("load playlist_labels %s: %w", slug, loadErr))
+		} else if plset != nil {
+			r.mu.Lock()
+			r.playlistLabels[slug] = plset
+			r.mu.Unlock()
+			logger.Info("mappings_loaded",
+				"title_slug", slug,
+				"kind", "playlist_labels",
+				"overrides_count", len(plset.OverridesMap()),
+				"schema_version", plset.SchemaVersion(),
+			)
+		}
+
 		// constants.toml — optionnel ; section [endpoints] (MT-01). Au niveau
 		// du dossier titre (pas mappings/), aligné sur le constants.toml
 		// documentaire existant.
@@ -169,6 +189,13 @@ func loadEndpointsIfExists(path string) (*EndpointSet, error) {
 	return LoadEndpointsFromFile(path)
 }
 
+func loadPlaylistLabelsIfExists(path string) (*PlaylistLabelSet, error) {
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	return LoadPlaylistLabelsFromFile(path)
+}
+
 // Get retourne le FieldMappingSet d'un titre s'il a été chargé.
 func (r *Registry) Get(slug string) (*FieldMappingSet, bool) {
 	r.mu.RLock()
@@ -206,6 +233,14 @@ func (r *Registry) GetEndpoints(slug string) (*EndpointSet, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	v, ok := r.endpoints[slug]
+	return v, ok
+}
+
+// GetPlaylistLabels retourne le PlaylistLabelSet d'un titre s'il a été chargé.
+func (r *Registry) GetPlaylistLabels(slug string) (*PlaylistLabelSet, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	v, ok := r.playlistLabels[slug]
 	return v, ok
 }
 

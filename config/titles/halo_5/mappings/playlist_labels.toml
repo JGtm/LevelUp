@@ -1,0 +1,22 @@
+# config/titles/halo_5/mappings/playlist_labels.toml
+#
+# Overrides d'affichage du libellé de playlist Halo 5 (data-driven).
+#
+# POURQUOI : l'API Halo 5 sert des noms de playlist « nom + catégorie » accolés,
+# localisés (ex. FR « Super Fiesta Fête »). Le strip de préfixe de catégorie
+# Infinite (analysis.NormalizePlaylistLabel) ne convient PAS ici : « Super Fiesta »
+# est justement un préfixe de catégorie connu → le strip laissait « Fête » (le
+# mauvais mot). Halo 5 ne déclare donc PAS la capability playlist.label.strip_category ;
+# à la place, on mappe EXPLICITEMENT le nom brut vers le nom court d'affichage.
+#
+# RÈGLE : clé = nom BRUT résolu depuis asset_translations (metadata.duckdb), tel
+# qu'affiché aujourd'hui ; valeur = libellé court voulu. Zéro heuristique : seules
+# les entrées listées sont raccourcies (aucun risque sur une playlist inconnue).
+# Ajouter une ligne par playlist concernée. Halo 5 = jeu figé → liste stable.
+
+[meta]
+title_slug     = "halo_5"
+schema_version = 1
+
+[overrides]
+"Super Fiesta Fête" = "Super Fiesta"

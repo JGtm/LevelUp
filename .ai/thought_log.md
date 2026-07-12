@@ -36357,3 +36357,58 @@ Narratif/Emplacement), penchant narratif (tuiles KPI + phrases FR/EN).
 puis exécution lot par lot (A d'abord) sur feat/analytics-review-ts-squad, sous
 contrat plan-execution. Dépendance croisée avec le chantier momentum : extraction
 du wrapper DivergingBarChart à la 2e occurrence du patron.
+
+## [2026-07-12] Retouches post-campagne (revue visuelle) — 7 items
+
+**Statut** : Complété (branche fix/retouches-post-campagne)
+
+**Décision technique principale** : lot de retouches issu de la revue utilisateur.
+Diagnostics sur pièces avant tout code ; 4 corrections front + 1 mécanisme Go
+data-driven + 2 diagnostics sans code.
+
+**Résultats observés (par item)** :
+- 1a NavL1 séparateur admin : déjà correctement gaté dans isAdmin (blame juin,
+  desktop+mobile) — AUCUN code. 1b isAdmin false : `users.json` n'a QUE `jgtm`
+  (role=admin, compte MOT DE PASSE, SANS xuid). Le SSO Xbox résout par xuid →
+  ne matche pas le compte admin → session role=user. Remédiation LOCALE (pas de
+  fix code) : se connecter via le compte password JGtm, ou ajouter le xuid au
+  record admin dans data/auth/users.json.
+- 2 Engagement bc918a5a : PAS le masquage phase 5, PAS un match trop court. Log
+  prouve un HTTP 500 (B-swap « swap timeout RW→RO », ADR 0016) — erreur infra
+  transitoire. Le front mappait TOUT échec non-503 sur « trop court ou peu
+  d'action » (mensonger). Fix : EngagementMatchSection distingue un 5xx (status
+  >= 500) → message neutre `engagement.error.temporary`.
+- 3 « Placement » → « En placement » : sentinelle back skill.TierLabelPlacement
+  (littéral, aussi utilisé comme valeur machine). Localisée à l'affichage via
+  helper displayTierLabel (MatchHeader.utils) + i18n MatchViewText.rankPlacement
+  (FR « En placement » / EN « In placement », = career.ranking.placement), appliqué
+  header + scoreboard + PlayerDetailPanel. Pas de littéral FR ajouté côté Go.
+- 4 Playlist H5 « Super Fiesta Fête » → « Super Fiesta » : nom BRUT confirmé par
+  match_view_repo (asset_translations FR). Strip préfixe Infinite mangeait le bon
+  mot (« Super Fiesta » = préfixe catégorie). Mécanisme data-driven :
+  playlist_labels.toml (overrides nom brut→libellé) chargé par mappings.Registry,
+  injecté dans MatchViewRepo via ServiceRegistry, appliqué après le strip. Zéro
+  heuristique. metadata.duckdb H5 étant verrouillée par le serveur, une seule
+  entrée confirmée — table extensible.
+- 5 Cards KPI Match View : grille fixe xl:grid-cols-8 → auto-fit minmax(9rem,1fr)
+  (MatchSummaryCardsSection) : les cartes rendues se partagent la largeur, plus de
+  trous quand MMR/Résistance/Résultat attendu sont masqués (H5).
+- 6 BUG bloquant /admin/data (freeze) : REPRODUIT (chrome-devtools) → console
+  « Cannot update a component (Transitioner) while rendering AdminLayout ».
+  AdminLayout appelait navigate({to:'/'}) PENDANT le render quand !isAdmin
+  (setState-in-render → boucle). Déclenché par une session non-admin (lien item 1b)
+  ET par le render pré-bootstrap. Fix : redirection dans un useEffect, gatée sur
+  isBootstrapped.
+- 7 Badge « calibration provisoire » H5 : PAS un bug. API renvoie bien
+  calibration=provisional (CapEngagement=CapDegraded H5). Le front l'affiche comme
+  mention TEXTE discrète dans le sous-titre du graphe (« … · calibration
+  provisoire »), pas un badge/pill → l'utilisateur ne l'a pas remarqué. Aucun code
+  (décision badge/supported = superviseur).
+
+**Gates** : go build/vet/test ./... = 0 ; golangci-lint --new-from-rev=origin/main
+= 0 issues ; tsc = 0 ; npm run lint = 0 erreur ; vitest 2127 passed / 0 fail.
+
+**Conclusion / prochaine étape** : push fix/retouches-post-campagne + attente CI.
+Items 1b et 7 = réponses à l'utilisateur (état local / mention discrète), pas de
+code. Item 4 : étendre playlist_labels.toml quand la liste complète des playlists
+H5 sera lisible (DB déverrouillée).
