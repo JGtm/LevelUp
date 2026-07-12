@@ -219,11 +219,23 @@ func (c *SpartanCustomizationCron) runOnceForTitle(ctx context.Context, titleSlu
 	}
 
 	start := time.Now()
-	players, err := c.cfg.LoadPlayers(titleSlug)
+	allPlayers, err := c.cfg.LoadPlayers(titleSlug)
 	if err != nil {
 		slog.ErrorContext(ctx, "spartan_cron: load players failed",
 			"titleSlug", titleSlug, "err", err)
 		return
+	}
+	// Filtre CANONIQUE des chemins de refresh (domain.SyncablePlayers) : exclut les
+	// titres en pause ET les profils AuthOnly. Un profil AuthOnly n'existe que pour
+	// fournir des refresh tokens au pool (comptes DankerGlue/QuiteSiren/UppedJoker/
+	// GeleJugefi/Trimbutton) : il n'a PAS de player DB (stats.duckdb absent), donc le
+	// refresher échoue systématiquement en "No such file or directory" et polluait les
+	// cycles d'un WARN par joueur. Le refresh de customisation est un chemin de refresh
+	// au même titre que le sync : on applique le même filtre à la SOURCE.
+	players := domain.SyncablePlayers(allPlayers)
+	if skippedProfiles := len(allPlayers) - len(players); skippedProfiles > 0 {
+		slog.DebugContext(ctx, "spartan_cron: profils non-refreshables ignorés (AuthOnly / titre en pause)",
+			"titleSlug", titleSlug, "skipped_profiles", skippedProfiles)
 	}
 
 	var succeeded, skipped, failed int
