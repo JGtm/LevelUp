@@ -36655,3 +36655,68 @@ data-driven + 2 diagnostics sans code.
 Items 1b et 7 = réponses à l'utilisateur (état local / mention discrète), pas de
 code. Item 4 : étendre playlist_labels.toml quand la liste complète des playlists
 H5 sera lisible (DB déverrouillée).
+
+---
+
+## [2026-07-12] Squash migrations — baseline player v1 (chantier N4, plan M3→M5) — Complété (M6 en attente train superviseur)
+
+**Statut** : Complété (M3a→M5c). M6 (merge=deploy prod) HORS mandat → superviseur.
+Branche `refactor/migration-squash-m3` (depuis origin/main ; M0/M1/M2 déjà mergés PR #54).
+
+**Décision technique principale** : 1er squash réel = cible PLAYER, bloc CONTIGU
+title-owned. Borne figée M3a SUR PIÈCES (classification machine-vérifiée) :
+`create_base_player_schema` → `player_append_only_csr_snapshots_v1` = **33 steps** ;
+1er step GLOBAL suivant = `player_append_only_match_citations_v1` (DM-4 : la baseline ne
+traverse pas la frontière global→title). Le bloc est un PRÉFIXE → DM-2 satisfait (tout le
+reste préservé). Correctif cartographie M0 confirmé sur pièces : `create_base_player_schema`
+EST title-owned (b25) — le commentaire legacy de steps_player.go était périmé.
+
+Baseline `create_baseline_player_v1` (steps_player_baseline.go) : DDL « à plat » du schéma
+CUMULÉ des 33 steps, GÉNÉRÉE depuis le golden (capturé de l'historique réel avant retrait).
+Reproduit les quirks non triviaux (career_progression sans id/PK mais séquence
+career_progression_id_seq présente ; media_files net-absente car créée-puis-droppée).
+Équivalence bit-identique golden↔baseline dès le 1er essai.
+
+DM-5 (équivalence ledger) : champ `Migration.SupersededByAll` + `supersededBaselineSatisfied`
+(registry.go) → une DB portant la sentinelle (dernier step squashé) est réputée porter la
+baseline → enregistrée SANS rejouer le DDL. Prouvé décisivement par test « poison »
+(ApplySchema qui échoue s'il est appelé à tort).
+
+**Résultats observés** :
+- Preuve zéro-perte : `TestSquashInvariant_PlayerBaselineEquivalent` (SchemaSnapshot(baseline)
+  == golden, octet pour octet) + bite proof + garde anti-réintroduction des 33 noms.
+  Preuve compositionnelle : steps post-borne inchangés (byte-identique) ⇒ égalité bloc ⇒
+  égalité provisioning player complet.
+- DM-5 : `internal/migration/squash_dm5_test.go` (skip-DDL si sentinelle présente ; DDL
+  rejoué sur DB vierge). Verts.
+- Boot player vierge : 61→29 steps ; ~229 ms (M0d) → ~111-117 ms best-of-5 (:memory:).
+  schema_version 194→162.
+- Retrait chirurgical des 33 steps (3 fonctions : playerBaseSteps -26, engagement de
+  playerSteps -5, playerMatchSkillRank -1, appendOnlyMisc -1) + 4 helpers orphelins
+  (applyCareerProgressionSequence/*IdentityAssets/applyFixMvSessionStats/
+  applyAppendOnlyPlayerCSRSnapshots). Archive .ai/migrations/squashed/player_v1/
+  (sources pré-squash HEAD 9296496c9 + golden + README).
+- Tests de steps squashés retirés (player_engagement_pkfix_test.go : repair PK sur DB
+  legacy, obsolète — toute DB prod l'a appliqué depuis b17 ; PK couverte par l'invariant).
+  Baseline CI (tests_pre_migration.jsonl) : 12 lignes retirées (3 tests TestRepairEngCoefsPK*).
+  Helper openEngMemDB relocalisé (testhelpers_test.go).
+- doc.go : politique N4 PROPOSITION → APPLIQUÉE 2026-07-12.
+
+**Robustesse E7 (découverte en M5a, corrigée)** : le CREATE-IF-NOT-EXISTS à plat no-opait
+sur une table pré-existante partielle (sync EnsureSchema / bootstraps de test créant
+match_skill_rank sans start_time, player_match_enrichment sans colonnes engagement). Les
+steps historiques la patchaient via AddColumnIfMissing → la baseline reproduit ce contrat
+idempotent-additif (`ensureBaselinePlayerV1AdditiveColumns`, no-op sur DB vierge). A corrigé
+14 échecs convergence/batch. + reword doc.go (garde TestNoUnauthorizedSharedSocialMention).
+
+M5c : rehearsal sur les 4 player DB de ../LevelUp-prod-copy (runner réel, copies temp) →
+sentinel présent, schéma intact (before==after), seule nouvelle ligne ledger =
+create_baseline_player_v1 (0 DDL rejoué). Copie à schema_version 190 (~4 steps de retard vs
+pré-squash 194) — non bloquant cible player. Sonde M5c supprimée (non committée, modèle M0d).
+
+**Gates** : go build ./... = 0 ; golangci-lint --new-from-rev=origin/main (packages changés)
+= 0 ; suite intégration complète `-tags=integration -p 1 -timeout 900s ./...` = exit 0, 0 FAIL ;
+DM-5 + invariant + order audit + M5c verts. Baseline CI : 3 tests obsolètes retirés.
+
+**Conclusion / prochaine étape** : M3-M5 complétés, TOUT VERT. M6 (merge sur main =
+deploy prod auto) laissé au train de merge superviseur — NE PAS merger.
