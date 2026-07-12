@@ -1367,8 +1367,12 @@ func Steps() []migration.Migration {
 			},
 		},
 	}
-	// Steps player CONSOMMATEURS (perf_chain, psa_checked, fix_career_xp) → b15.
-	// Le schéma de base player reste global (racine, déplacé en dernier).
+	// Baseline squashée v1 : racine player title-owned « à plat » (remplace les 33
+	// steps create_base_player_schema..player_append_only_csr_snapshots_v1 sur DB vierge).
+	// Cf. steps_player_baseline.go + plan PLAN_MIGRATION_SQUASH_BASELINE_2026-07 (M3).
+	steps = append(steps, playerBaselineSteps()...)
+	// Steps player CONSOMMATEURS restants (perf_chain, psa_checked, fix_career_xp,
+	// dedup/streak) — post-baseline dans canonicalOrder.
 	steps = append(steps, playerSteps()...)
 	// Chaîne match_skill_rank player CONSOMMATRICE (append-only + vues) → b20.
 	steps = append(steps, playerMatchSkillRankSteps()...)
