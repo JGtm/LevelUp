@@ -170,6 +170,13 @@ type ExplorerTargetRecentMatch struct {
 	// mode depuis cet AssetId via shared.match_registry (pair_id → pair_name) côté
 	// repo (translateModeUIsFR). Vide pour la source locale (mode déjà résolu).
 	ModePairAssetID string `json:"-"`
+	// MapAssetID / GameVariantAssetID : AssetIds bruts du registre (source LOCALE),
+	// transient (non sérialisés). Servent au fallback de résolution des libellés via
+	// asset_translations quand les colonnes noms du registre sont NULL — cas Halo 5,
+	// où map_name/pair_name sont vides sur 100 % des matchs (cf. resolveTargetRecentAssetNames).
+	// Vides pour la source live (résolution via ModePairAssetID).
+	MapAssetID         string `json:"-"`
+	GameVariantAssetID string `json:"-"`
 }
 
 // SeasonMatchCount : nombre de matchs matchmade joués sur une saison donnée par

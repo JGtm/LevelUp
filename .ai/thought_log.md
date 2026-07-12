@@ -1,3 +1,28 @@
+## [2026-07-12] PARITÉ H5 RÉSIDUEL — 3 items (branche fix/h5-parite-residuel)
+
+**Statut** : En cours (Item 1 complété ; Items 2-3 à suivre).
+
+**Décision technique principale** : 3 corrections H5 indépendantes, 1 commit par item,
+diagnostic sur pièces (code + logs prod /app/data/logs/*.log via ssh lvelup, lecture seule).
+
+**Résultats observés (par item)** :
+- Item 1 — Explorer « matchs récents cible » (Q19c) vide pour H5. Cause prouvée : Q19c
+  lit `r.map_name`/`r.pair_name`/`r.pair_name_fr` BRUTS du registre, NULL sur 100 % des
+  matchs H5 (vérifié réel : 3032/3032 map_name NULL, map_id + game_variant_id présents).
+  Fix : Q19c sélectionne aussi `map_id` + `game_variant_id` ; `scanTargetRecentMatch` les
+  scanne dans 2 champs transient (json:"-") ; nouveau `resolveTargetRecentAssetNames`
+  remplit MapUI/ModeUI encore vides via `ResolveAssetNamesBulk` (map + game_variant,
+  cascade fr-FR→fr→en-US→en) — MÊME primitive centralisée que le pipeline média (DEC-7)
+  et le fallback mode de GetMatchMeta (lot A2), pas de 3e copie de la cascade. No-op sur
+  Infinite (map_name/pair_name remplis → 0 requête metadata). Test integration
+  `TestExplorerRepo_GetTargetRecentMatches_H5AssetFallback` (map_id/game_variant_id +
+  asset_translations → « Tidal »/« Assassin »). Non-régression : tests Q19c existants verts.
+
+**Gates (Item 1)** : go build/vet OK ; test -tags=integration ./internal/platform/duckdb
+`TestExplorerRepo_GetTargetRecentMatches*` verts.
+
+---
+
 ## [2026-07-12] LOT RAPIDE — 4 items indépendants (branche chore/lot-rapide-2026-07-12)
 
 **Statut** : Complété.

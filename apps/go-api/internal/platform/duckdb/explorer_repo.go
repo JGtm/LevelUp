@@ -285,7 +285,69 @@ func (r *ExplorerRepo) GetTargetRecentMatches(
 	// applique la traduction FR canonique (metadata.mode_name_tr), même source
 	// que l'historique de matchs / la home, pour le donut "Répartition des modes".
 	r.translateModeUIsFR(ctx, out)
+	// Fallback libellés via asset_translations pour les matchs dont map/mode restent
+	// vides après la résolution ci-dessus — cas Halo 5, où map_name/pair_name sont
+	// NULL sur 100 % des matchs du registre (l'Explorer affichait des lignes vides).
+	r.resolveTargetRecentAssetNames(ctx, out)
 	return out, nil
+}
+
+// resolveTargetRecentAssetNames remplit MapUI / ModeUI encore vides via la cascade
+// asset_translations (ResolveAssetNamesBulk, fr-FR→fr→en-US→en) — MÊME primitive
+// partagée que le pipeline média (DEC-7 résidus H5) et le fallback mode de
+// GetMatchMeta (lot A2) :
+//   - map  : type "map" par MapAssetID ;
+//   - mode : type "game_variant" par GameVariantAssetID (les titres sans pair — Halo 5
+//     — n'ont pas de pair_name ; le mode vit dans le game_variant).
+//
+// No-op quand tous les libellés sont déjà présents (Infinite : map_name/pair_name
+// remplis → MapUI/ModeUI non vides → aucune requête metadata). Best-effort :
+// metadata indisponible → rows inchangées (dégradation identique à avant).
+func (r *ExplorerRepo) resolveTargetRecentAssetNames(ctx context.Context, rows []domain.ExplorerTargetRecentMatch) {
+	if r.pdb == nil || r.pdb.Metadata == nil || len(rows) == 0 {
+		return
+	}
+	var mapIDs, gvIDs []string
+	for i := range rows {
+		if rows[i].MapUI == "" && rows[i].MapAssetID != "" {
+			mapIDs = append(mapIDs, rows[i].MapAssetID)
+		}
+		if rows[i].ModeUI == "" && rows[i].GameVariantAssetID != "" {
+			gvIDs = append(gvIDs, rows[i].GameVariantAssetID)
+		}
+	}
+	if len(mapIDs) == 0 && len(gvIDs) == 0 {
+		return // libellés déjà présents (Infinite) → aucune requête metadata.
+	}
+	meta := NewMetadataRepoFromDB(r.pdb.Metadata)
+	langs := PreferredLangsForLocale("fr")
+	var mapNames, modeNames map[string]string
+	if len(mapIDs) > 0 {
+		if names, err := meta.ResolveAssetNamesBulk(ctx, assetTypeMap, mapIDs, langs); err != nil {
+			slog.WarnContext(ctx, "explorer_target_recent_map_fallback_failed", "err", err)
+		} else {
+			mapNames = names
+		}
+	}
+	if len(gvIDs) > 0 {
+		if names, err := meta.ResolveAssetNamesBulk(ctx, assetTypeGameVariant, gvIDs, langs); err != nil {
+			slog.WarnContext(ctx, "explorer_target_recent_mode_fallback_failed", "err", err)
+		} else {
+			modeNames = names
+		}
+	}
+	for i := range rows {
+		if rows[i].MapUI == "" && rows[i].MapAssetID != "" {
+			if n := strings.TrimSpace(mapNames[rows[i].MapAssetID]); n != "" {
+				rows[i].MapUI = n
+			}
+		}
+		if rows[i].ModeUI == "" && rows[i].GameVariantAssetID != "" {
+			if n := strings.TrimSpace(modeNames[rows[i].GameVariantAssetID]); n != "" {
+				rows[i].ModeUI = n
+			}
+		}
+	}
 }
 
 // TranslateModeUIsFR expose translateModeUIsFR (port.ExplorerRepository) pour que
@@ -431,6 +493,7 @@ func scanTargetRecentMatch(rows *sql.Rows) (domain.ExplorerTargetRecentMatch, er
 		&m.Kills, &m.Deaths, &m.Assists, &m.KDA,
 		&m.Score, &damageDealt, &damageTaken,
 		&m.MaxKillingSpree, &m.PerfectKills,
+		&m.MapAssetID, &m.GameVariantAssetID,
 	); err != nil {
 		return m, err
 	}
