@@ -9,6 +9,7 @@
  * 3. Le titre "Médias" est visible dans la page
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 const API_BASE = 'http://localhost:8000/api/v1'
 
@@ -26,6 +27,7 @@ test.describe('Slice 8 — Médias (DEMO_MODE)', () => {
   })
 
   test("l'API POST pages/media retourne HTTP 200", async ({ request }) => {
+    await skipIfNoDemoData()
     const resp = await request.post(
       `${API_BASE}/players/demo-player/pages/media`,
       { data: {} },
@@ -37,6 +39,7 @@ test.describe('Slice 8 — Médias (DEMO_MODE)', () => {
   })
 
   test("le titre Médias est affiché", async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto('/players/demo-player/media')
     await page.waitForLoadState('networkidle')
 

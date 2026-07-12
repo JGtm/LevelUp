@@ -10,6 +10,12 @@
  * Capture screenshot + DOM avant/après pour debug visuel.
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
+
+// Fixtures démo absentes en CI (data/demo gitignoré) → spec entière data-dépendante.
+test.beforeEach(async () => {
+  await skipIfNoDemoData()
+})
 
 test.describe('Bug : like change la vidéo', () => {
   test('clic like → la même vidéo reste affichée', async ({ page }) => {

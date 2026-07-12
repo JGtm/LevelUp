@@ -16,6 +16,7 @@
  *   - E2E_DEMO_MODE=1 : skip ces tests (mode demo n'a pas les fixtures)
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 const API = process.env.E2E_API_URL ?? 'http://localhost:8000/api/v1'
 const PLAYER_SLUG = process.env.E2E_PLAYER_SLUG ?? 'JGtm'
@@ -27,6 +28,7 @@ test.describe('Engagement - Phase 4 endpoints', () => {
   test('GET /engagement/timeseries renvoie 200 avec items pace_*', async ({
     request,
   }) => {
+    await skipIfNoDemoData()
     const resp = await request.get(
       `${API}/players/${PLAYER_SLUG}/engagement/timeseries?limit=20`,
     )
@@ -46,6 +48,7 @@ test.describe('Engagement - Phase 4 endpoints', () => {
   test('GET /matches/{id}/engagement renvoie 200 avec courbe non vide', async ({
     request,
   }) => {
+    await skipIfNoDemoData()
     // 1. Pick un match_id depuis la timeseries
     const tsResp = await request.get(
       `${API}/players/${PLAYER_SLUG}/engagement/timeseries?limit=5`,
@@ -76,6 +79,7 @@ test.describe('Engagement - Phase 4 endpoints', () => {
   test('GET /pages/squad/v2/engagement renvoie 200 avec labels + means', async ({
     request,
   }) => {
+    await skipIfNoDemoData()
     const resp = await request.get(
       `${API}/players/${PLAYER_SLUG}/pages/squad/v2/engagement`,
     )
@@ -91,6 +95,7 @@ test.describe('Engagement - Phase 4 endpoints', () => {
   test('GET /engagement_profile renvoie 200 (array, possiblement vide)', async ({
     request,
   }) => {
+    await skipIfNoDemoData()
     const resp = await request.get(
       `${API}/players/${PLAYER_SLUG}/engagement_profile`,
     )
@@ -114,6 +119,7 @@ test.describe('Engagement - Phase 4 endpoints', () => {
   test("la courbe d'engagement contient un signal non-trivial (pace_joueur ou pace_team > 0 quelque part)", async ({
     request,
   }) => {
+    await skipIfNoDemoData()
     const tsResp = await request.get(
       `${API}/players/${PLAYER_SLUG}/engagement/timeseries?limit=5`,
     )

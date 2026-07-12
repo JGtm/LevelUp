@@ -10,6 +10,7 @@
  * 4. L'API settings retourne HTTP 200 avec une config valide
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 const API_BASE = 'http://localhost:8000/api/v1'
 
@@ -35,6 +36,7 @@ test.describe('Slice 1 — Setup / Settings (DEMO_MODE)', () => {
   })
 
   test('la page /settings affiche le titre Paramètres', async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto('/settings')
     await page.waitForLoadState('networkidle')
 
@@ -42,6 +44,7 @@ test.describe('Slice 1 — Setup / Settings (DEMO_MODE)', () => {
   })
 
   test("l'API settings retourne HTTP 200 avec une config", async ({ page }) => {
+    await skipIfNoDemoData()
     const settingsPromise = page.waitForResponse(
       (resp) =>
         resp.url().includes('/api/v1/settings') && resp.status() === 200,

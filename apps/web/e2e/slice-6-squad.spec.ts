@@ -9,6 +9,7 @@
  * 3. Le titre "Escouade" est visible dans la page
  */
 import { test, expect } from '@playwright/test'
+import { skipIfNoDemoData } from './_helpers/demoData'
 
 test.describe('Slice 6 — Escouade / Teammates (DEMO_MODE)', () => {
   test("la page Escouade se charge sans erreur JS", async ({ page }) => {
@@ -24,6 +25,7 @@ test.describe('Slice 6 — Escouade / Teammates (DEMO_MODE)', () => {
   })
 
   test("l'API pages/teammates retourne HTTP 200", async ({ page }) => {
+    await skipIfNoDemoData()
     const squadPromise = page.waitForResponse(
       (resp) =>
         resp.url().includes('/pages/teammates') && resp.status() === 200,
@@ -37,6 +39,7 @@ test.describe('Slice 6 — Escouade / Teammates (DEMO_MODE)', () => {
   })
 
   test("le titre Escouade est affiché", async ({ page }) => {
+    await skipIfNoDemoData()
     await page.goto('/players/demo-player/squad')
     await page.waitForLoadState('networkidle')
 

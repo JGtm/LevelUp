@@ -41,9 +41,10 @@ go-api-dev: _go-api-run
 
 ## Génère le fichier de types TypeScript depuis le schéma OpenAPI Go
 ## Usage : make generate-types
+## Délègue au script npm generate-types (openapi-typescript
+## apps/go-api/api/openapi.yaml -> apps/web/src/lib/api/generated.ts).
 generate-types:
-	@command -v npx >/dev/null 2>&1 || (echo "npx requis" && exit 1)
-	@echo "✓ Types générés dans apps/web/src/lib/api/generated.ts"
+	cd apps/web && npm run generate-types
 
 ## Installe les dépendances npm dans apps/web/
 install-web:
