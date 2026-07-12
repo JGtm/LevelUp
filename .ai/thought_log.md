@@ -1,3 +1,43 @@
+## [2026-07-12] LOT RAPIDE — 4 items indépendants (branche chore/lot-rapide-2026-07-12)
+
+**Statut** : Complété.
+
+**Décision technique principale** : 4 corrections courtes, 1 commit par item, vérifiées
+sur pièces avant/après.
+
+**Résultats observés (par item)** :
+- 1 `.dockerignore` : le contexte de build scannait ~17 Go (data/) alors que le
+  Dockerfile ne COPY jamais depuis data/ (seuls COPY : apps/, scripts, config, static,
+  docs — vérifié). Exclu data/ (remplace data/players/ + data/cache/), logs/, node_modules/
+  (+ `**/node_modules/` : évite d'écraser la node_modules Linux npm-ci'd par celle win32
+  de l'hôte via COPY apps/web/), *.exe, levelup.exe~, bin/, .coverage, test-results/.
+  Gate : pas de `docker build --dry-run` ; vérifié par lecture croisée Dockerfile (COPY)
+  + docker-compose (data monté en bind-volume APRÈS build, ne transite pas par le contexte).
+- 2 Bruit spartan_cron : les WARN « refresher failed: No such file or directory » pour
+  Trimbutton/GeleJugefi/DankerGlue/QuiteSiren/UppedJoker = profils `auth_only` (comptes
+  token-only, db_path vide, PAS de player DB). Le cron itérait `LoadPlayers` BRUT ;
+  correction à la SOURCE : `domain.SyncablePlayers` (filtre canonique des chemins de
+  refresh : exclut SyncEnabled=false ET AuthOnly) appliqué dans runOnceForTitle, +
+  1 log Debug agrégé au skip. Structurel (champ AuthOnly), zéro comparaison de gamertag.
+  Test ajouté : TestSpartanCron_RunOnce_SkipsAuthOnlyProfile.
+- 3 Statuts ADR (validés utilisateur) : 0030 + 0031 Proposed→Accepted (2026-07-12) ;
+  0027 Proposé→Accepted (amended by ADR 0031, 2026-07-12) + note d'amendement renvoyant
+  à 0031 (contenu inchangé). Index ADR de CLAUDE.md : aucun statut listé → non touché.
+- 4 playlist_labels.toml H5 : serveur air arrêté (déverrouille metadata.duckdb),
+  énumération des 73 libellés fr-FR de asset_translations (outil Go cmd/tmpdbq, RO).
+  UN SEUL match le pattern « nom + tag catégorie redondant » : « Super Fiesta Fête »
+  (déjà mappé). Les autres variantes Super Fiesta portent un qualificatif signifiant
+  (Hardcore/en équipe) → non raccourcies. Résolution TOUJOURS fr-FR (PlaylistNameFR) →
+  clés en-US seraient mortes, non ajoutées. Aucune entrée à ajouter ; audit consigné
+  dans l'en-tête du TOML. Serveur air relancé en fin de lot.
+
+**Gates** : go build/vet/test ./... = 0 ; golangci-lint --new-from-rev=fix/retouches-post-campagne
+= 0 nouvelle issue. Pas de front touché (tsc/vitest non requis).
+
+**Conclusion / prochaine étape** : push chore/lot-rapide-2026-07-12 + attente CI verte.
+
+---
+
 ## [2026-07-12] Repli du chantier outillage CI dans l'integration campagne (PR #54)
 
 **Statut** : Complété (superviseur de campagne).
