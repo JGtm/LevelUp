@@ -1,6 +1,6 @@
 ## [2026-07-12] PARITÉ H5 RÉSIDUEL — 3 items (branche fix/h5-parite-residuel)
 
-**Statut** : En cours (Item 1 complété ; Items 2-3 à suivre).
+**Statut** : En cours (Items 1-2 complétés ; Item 3 à suivre).
 
 **Décision technique principale** : 3 corrections H5 indépendantes, 1 commit par item,
 diagnostic sur pièces (code + logs prod /app/data/logs/*.log via ssh lvelup, lecture seule).
@@ -18,8 +18,22 @@ diagnostic sur pièces (code + logs prod /app/data/logs/*.log via ssh lvelup, le
   `TestExplorerRepo_GetTargetRecentMatches_H5AssetFallback` (map_id/game_variant_id +
   asset_translations → « Tidal »/« Assassin »). Non-régression : tests Q19c existants verts.
 
-**Gates (Item 1)** : go build/vet OK ; test -tags=integration ./internal/platform/duckdb
-`TestExplorerRepo_GetTargetRecentMatches*` verts.
+- Item 2 — « known-set indisponible (collecte sans delta) » : WARN prod récurrent
+  `sharedprovider: open RW after RO close: ... Can't open a connection to same database
+  file with a different configuration than existing connections`. Cause racine prouvée
+  (provider.log 21:39:52) : `loadKnownMatchIDs` et `loadXUIDAliasesSeed` ne font que des
+  SELECT mais acquéraient un WRITER (`AcquireSharedWriterStandalone` → swap RO→RW→RO). Les
+  4 joueurs h5 synchronisant en parallèle déclenchaient 4 swaps simultanés du MÊME provider
+  h5 ; l'OpenReadWrite échouait car des connexions RO (autres readers / HTTP) coexistaient
+  → StateError → « recovered from StateError » 1 s plus tard, delta perdu entre-temps. Fix :
+  helper `acquireSharedReader` → `provider.Get` (RO du B-swap, N lecteurs coexistent), utilisé
+  par les 2 lectures. `persistBatches` (vraie écriture) garde le writer. provider == nil
+  (legacy) → fallback writer inchangé. Test cgo `TestLoadKnownMatchIDs_ReadOnlyNoSwap` :
+  known-set + aliases-seed réussissent AVEC un lecteur RO concurrent tenu, provider reste
+  StateRO (aucun swap) — l'ancien code aurait drainé ce lecteur puis échoué.
+
+**Gates (Items 1-2)** : go build/vet OK ; test -tags=integration -p 1
+`./internal/platform/duckdb` (Q19c) + `./internal/games/halo_5/...` verts.
 
 ---
 
