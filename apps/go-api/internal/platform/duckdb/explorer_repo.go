@@ -307,44 +307,60 @@ func (r *ExplorerRepo) resolveTargetRecentAssetNames(ctx context.Context, rows [
 	if r.pdb == nil || r.pdb.Metadata == nil || len(rows) == 0 {
 		return
 	}
-	var mapIDs, gvIDs []string
-	for i := range rows {
-		if rows[i].MapUI == "" && rows[i].MapAssetID != "" {
-			mapIDs = append(mapIDs, rows[i].MapAssetID)
-		}
-		if rows[i].ModeUI == "" && rows[i].GameVariantAssetID != "" {
-			gvIDs = append(gvIDs, rows[i].GameVariantAssetID)
-		}
-	}
-	if len(mapIDs) == 0 && len(gvIDs) == 0 {
-		return // libellés déjà présents (Infinite) → aucune requête metadata.
-	}
 	meta := NewMetadataRepoFromDB(r.pdb.Metadata)
 	langs := PreferredLangsForLocale("fr")
-	var mapNames, modeNames map[string]string
-	if len(mapIDs) > 0 {
-		if names, err := meta.ResolveAssetNamesBulk(ctx, assetTypeMap, mapIDs, langs); err != nil {
-			slog.WarnContext(ctx, "explorer_target_recent_map_fallback_failed", "err", err)
-		} else {
-			mapNames = names
+	// map : MapUI vide ← type "map" par MapAssetID.
+	fillRecentAssetNames(ctx, meta, langs, rows, recentAssetSlot{
+		assetType: assetTypeMap,
+		id:        func(m *domain.ExplorerTargetRecentMatch) string { return m.MapAssetID },
+		missing:   func(m *domain.ExplorerTargetRecentMatch) bool { return m.MapUI == "" },
+		set:       func(m *domain.ExplorerTargetRecentMatch, n string) { m.MapUI = n },
+	})
+	// mode : ModeUI vide ← type "game_variant" par GameVariantAssetID (titres sans pair).
+	fillRecentAssetNames(ctx, meta, langs, rows, recentAssetSlot{
+		assetType: assetTypeGameVariant,
+		id:        func(m *domain.ExplorerTargetRecentMatch) string { return m.GameVariantAssetID },
+		missing:   func(m *domain.ExplorerTargetRecentMatch) bool { return m.ModeUI == "" },
+		set:       func(m *domain.ExplorerTargetRecentMatch, n string) { m.ModeUI = n },
+	})
+}
+
+// recentAssetSlot décrit la résolution de fallback d'UN type d'asset des matchs
+// récents cible : quel ID sert de clé, le libellé est-il manquant, où l'écrire.
+type recentAssetSlot struct {
+	assetType string
+	id        func(*domain.ExplorerTargetRecentMatch) string
+	missing   func(*domain.ExplorerTargetRecentMatch) bool
+	set       func(*domain.ExplorerTargetRecentMatch, string)
+}
+
+// fillRecentAssetNames résout en bulk les libellés d'un slot (map ou game_variant)
+// pour les rows dont le champ cible est encore vide, via ResolveAssetNamesBulk
+// (cascade fr-FR→fr→en-US→en). Best-effort : metadata en erreur → rows inchangées.
+// No-op si aucun id manquant.
+func fillRecentAssetNames(
+	ctx context.Context, meta *MetadataRepo, langs []string,
+	rows []domain.ExplorerTargetRecentMatch, slot recentAssetSlot,
+) {
+	var ids []string
+	for i := range rows {
+		if slot.missing(&rows[i]) && slot.id(&rows[i]) != "" {
+			ids = append(ids, slot.id(&rows[i]))
 		}
 	}
-	if len(gvIDs) > 0 {
-		if names, err := meta.ResolveAssetNamesBulk(ctx, assetTypeGameVariant, gvIDs, langs); err != nil {
-			slog.WarnContext(ctx, "explorer_target_recent_mode_fallback_failed", "err", err)
-		} else {
-			modeNames = names
-		}
+	if len(ids) == 0 {
+		return // libellés déjà présents (Infinite) → aucune requête metadata.
+	}
+	names, err := meta.ResolveAssetNamesBulk(ctx, slot.assetType, ids, langs)
+	if err != nil {
+		slog.WarnContext(ctx, "explorer_target_recent_asset_fallback_failed",
+			"asset_type", slot.assetType, "err", err)
+		return
 	}
 	for i := range rows {
-		if rows[i].MapUI == "" && rows[i].MapAssetID != "" {
-			if n := strings.TrimSpace(mapNames[rows[i].MapAssetID]); n != "" {
-				rows[i].MapUI = n
-			}
-		}
-		if rows[i].ModeUI == "" && rows[i].GameVariantAssetID != "" {
-			if n := strings.TrimSpace(modeNames[rows[i].GameVariantAssetID]); n != "" {
-				rows[i].ModeUI = n
+		if slot.missing(&rows[i]) && slot.id(&rows[i]) != "" {
+			if n := strings.TrimSpace(names[slot.id(&rows[i])]); n != "" {
+				slot.set(&rows[i], n)
 			}
 		}
 	}
