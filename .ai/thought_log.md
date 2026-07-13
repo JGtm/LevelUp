@@ -1,3 +1,33 @@
+## [2026-07-13] Momentum Match View — Phase 2 : logique pure `_momentum.ts` + tests (branche feat/matchview-momentum)
+
+**Statut** : Complété (Phase 2/4 du PLAN_MATCHVIEW_MOMENTUM).
+
+**Décision technique principale** : `computeMomentumBins(bins, events, xuidMeta)` isolé en
+module pur (zéro React/ECharts), retourne `{ momentum: MomentumBin[], kills:
+MomentumKill[] }`. `MomentumBin = { delta, teamKills, enemyKills, cumTeam, cumEnemy, trend
+}`. `trend` (DEC-4) via `computeTrend(delta, prevDelta)` avec `prevDelta = delta[i-1]`
+(0 avant le 1er bin, ce qui rend « up » le 1er bin non nul quel que soit son côté) :
+delta>0 → up si delta>prevDelta ; delta<0 → up si delta<prevDelta ; delta=0 → down
+(neutralisé, pas de barre DEC-5). `xuidMeta` typé `ReadonlyMap<string, { ally: boolean }>`
+(la map riche du composant reste assignable). La boucle kill→bin/équipe n'est pas encore
+retirée du composant (option « pas encore touché » du gate Phase 2) : le débranchement
+effectif se fait en Phase 3 avec la réécriture de `buildOption`. Les types
+`MomentumBin/Kill/Data/Trend` restent INTERNES en Phase 2 (garde-rail pre-push
+`knip-ratchet` : un type exporté sans consommateur = régression code mort ; ils seront
+exportés en Phase 3 à l'import par le composant). Seul `computeMomentumBins` est exporté.
+
+**Résultats observés** : `_momentum.test.ts` 7 tests verts couvrant a–g (nominal 2 équipes,
+1er bin non nul=up, delta 0 intercalé sans barre + cumuls conservés, event hors bornes
+ignoré, event sans actor/temps + non-kill + acteur hors scoreboard ignorés, une seule
+équipe, renforcement/essoufflement côté négatif −2→−5=up puis −5→−1=down). Gate : typecheck
+OK ; vitest global 254 fichiers / 2151 tests verts ; eslint 0 sur les 2 fichiers.
+
+**Conclusion / prochaine étape** : Phase 3 — réécriture de `buildOption`
+(`MatchTugOfWarChart.tsx`) : consommer `computeMomentumBins`, supprimer normalisation
+0–100 % + markPoints cumul + markLine 50 % + constantes de layout figées ; 2 séries bar
+signées (positifs team-ally / négatifs team-enemy) avec opacité DEC-4, échelle Y symétrique
+dynamique (DEC-6), markLine y=0 (DEC-7), lanes/scatter/vagues repositionnés sur yMax.
+
 ## [2026-07-13] Momentum Match View — Phase 1 : centralisation hexToRgba + garde-rail (branche feat/matchview-momentum)
 
 **Statut** : Complété (Phase 1/4 du PLAN_MATCHVIEW_MOMENTUM).

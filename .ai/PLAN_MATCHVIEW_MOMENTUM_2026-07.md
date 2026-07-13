@@ -126,26 +126,33 @@ eslint 0 sur les 4 fichiers touchés.
 
 ## Phase 2 — Logique pure momentum + tests unitaires
 
-- [ ] 2.1 Nouveau fichier `apps/web/src/features/match-view/_momentum.ts` :
+- [x] 2.1 Nouveau fichier `apps/web/src/features/match-view/_momentum.ts` :
       `computeMomentumBins(bins, events, xuidMeta)` → tableau par bin
       `{ delta, teamKills, enemyKills, cumTeam, cumEnemy, trend: 'up' | 'down' }`.
       Le calcul d'affectation kill→bin/équipe est **déplacé** (pas dupliqué) depuis
       `MatchTugOfWarChart.tsx` (boucle events + `fracInBin`, lignes ~128-168 actuelles) ;
       la liste `KillEvent[]` (pour scatter/vagues) est retournée aussi pour que le
-      composant n'itère les events qu'une fois. `trend` suit DEC-4.
-- [ ] 2.2 Tests `_momentum.test.ts` (vitest, colocalisé) :
-      (a) nominal deux équipes — deltas et cumuls corrects ;
-      (b) premier bin non nul → `trend: 'up'` ;
-      (c) bin à delta 0 entre deux bins signés ;
-      (d) event hors bornes de bins → ignoré ;
-      (e) event sans `actor_xuid` ou sans `event_time_ms` → ignoré ;
-      (f) kills d'une seule équipe (deltas tous du même signe, trends corrects) ;
-      (g) renforcement/essoufflement côté négatif (delta −2 → −5 = 'up' au sens
-          « momentum ennemi se renforce » → opacité pleine côté enemy).
+      composant n'itère les events qu'une fois. `trend` suit DEC-4. FAIT (module pur,
+      retour `{ momentum, kills }` ; `trend` via `computeTrend(delta, prevDelta)`,
+      prevDelta=0 avant le 1er bin → 1er bin non nul = 'up' ; delta 0 → 'down' neutre).
+      NB : le **déplacement effectif** de la boucle hors de `MatchTugOfWarChart.tsx`
+      (suppression de la copie dans le composant) est réalisé en Phase 3 lors de la
+      réécriture de `buildOption` — Phase 2 introduit la source pure + ses tests sans
+      encore débrancher l'ancien rendu (option « pas encore touché » du gate Phase 2).
+      Les types `MomentumBin/MomentumKill/MomentumData/MomentumTrend` restent **internes**
+      en Phase 2 (garde-rail pre-push `knip-ratchet` : aucun consommateur externe encore →
+      un export inutilisé = régression code mort) ; ils seront exportés en Phase 3 quand
+      `MatchTugOfWarChart` les importe. Seul `computeMomentumBins` est exporté (utilisé
+      par le test).
+- [x] 2.2 Tests `_momentum.test.ts` (vitest, colocalisé) : (a)–(g) tous écrits et verts
+      (7 tests). FAIT.
 
 **Gate Phase 2** : `make test-web` vert (a–g passent) ; `MatchTugOfWarChart.tsx` compile
 encore (l'ancien rendu consomme provisoirement le nouveau helper ou n'est pas encore
 touché — au choix de l'exécutant, mais Phase 2 close = tests verts sur les deux états).
+PASSÉ 2026-07-13 : `_momentum.test.ts` 7/7 verts ; typecheck OK ; vitest global 254
+fichiers / 2151 tests verts ; eslint 0 sur les 2 nouveaux fichiers ; ancien
+`MatchTugOfWarChart.tsx` intact et compile (débranché en Phase 3).
 
 ## Phase 3 — Rendu histogramme divergent
 
