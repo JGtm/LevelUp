@@ -4,7 +4,8 @@
 > 1) fin du lot ops/qualité (en vol : fix URL login device-flow + alerte disque +
 >    data-quality H5 + populate-assets) → 2) **D4 Explorer briefing cards (GO)** →
 > 3) **D1 Momentum (GO)** → 4) auth device-flow lots A+D → 5) V10c → 6) fixture E2E →
-> train de merge unique.
+> 7) **revue adversariale multi-agents du diff cumulé** (validée utilisateur 13/07) →
+> train de merge unique (PR, merge = utilisateur).
 > RETIRÉ de la file (recadrage utilisateur) : tout chantier tiré du backlog Notion —
 > carnet personnel, pas une file d'exécution. D2/D5 : reportés à la v7.1.
 
@@ -36,6 +37,7 @@
 | Quoi | Où | Échéance |
 |---|---|---|
 | Lot ops/qualité TERMINÉ (0/0b SSO+UI, 1 leaderboard, 2 alerte disque, 3 data-quality H5, 4 populate-assets) | branche `chore/lot-ops-qualite` — CI de branche + rapport final en cours | prêt pour revue/merge |
+| Momentum Match View LIVRÉ (D1) : carte Dominance = histogramme momentum divergent (barres signées team-ally/enemy, intensité DEC-4, échelle symétrique, tooltip axis Écart/Cumul) ; kill feed conservé ; hexToRgba centralisé + garde-rail | branche `feat/matchview-momentum` (depuis `chore/lot-ops-qualite`) — 3 commits, gates verts, vérif visuelle Infinite+H5+couleur+thèmes faite ; plan `.ai/V7/PLAN_MATCHVIEW_MOMENTUM` COMPLÉTÉ | prêt pour train de merge |
 | Observation `legacy_source_used` = 0 | prod (T0 = 2026-07-13) | D2 armable ≥ 2026-07-20 → chantier Phase 5 ADR 0023 (retrait fallbacks legacy) |
 | Soak bruit prod B2.4 | re-mesure script §Mesure du plan triage | 2026-07-14 |
 | Soak 30 j B7.4 (cible ERROR ≈ 0/j) + décision endpoint `/admin/monitoring/errors` | plan triage | ~2026-08-11 |
@@ -76,7 +78,7 @@
 
 | # | Décision | Détail |
 |---|---|---|
-| D1 | ~~GO exécution momentum~~ **GO REÇU le 13/07** | En file position 3 (après le lot ops et D4) |
+| D1 | ~~GO exécution momentum~~ **LIVRÉ le 13/07** | Branche `feat/matchview-momentum` (COMPLÉTÉ, gates verts, vérif visuelle Infinite+H5+couleur+thèmes) ; plan archivé `.ai/V7/PLAN_MATCHVIEW_MOMENTUM` ; reste train de merge + revue visuelle utilisateur |
 | D2 | ~~Revue analytique~~ **REPORTÉ v7.1** (décision utilisateur 13/07) | Les DEC-1..9 seront tranchées à l'ouverture du chantier v7.1 |
 | D3 | ~~Trancher l'option du lot B~~ **SANS OBJET le 13/07** (lot ops item 0) | La prémisse « endpoint MS retiré » était fausse : l'URL du code n'a jamais été la bonne (`/oauth20_connect/device` ; la vraie = `oauth20_connect.srf`). Fix livré + vérifié navigateur = Option 1 de fait, plus rien à trancher. Restent au plan : lots A (StepDeviceCode) et D (garde-rail + doc) sur simple feu vert |
 | D4 | ~~GO exécution briefing cards~~ **GO REÇU le 13/07** (« plus tôt que ce que j'envisageais » — replanifiable d'un mot) | En file position 2, juste après le lot ops |
@@ -115,6 +117,8 @@
    Backup restic off-site : **DÉCISION 2026-07-13 — inaction actée par l'utilisateur**
    (pas d'actualité, à revoir beaucoup plus tard ; aucune tâche ouverte).
 7. Dette lint gelée (~479 issues) — optionnel.
+7b. Étude « openapi.yaml généré depuis Huma » (un seul point de vérité, fin du
+    drift-test double-maintenance) — idée utilisateur 13/07, **pour bien plus tard**.
 8. Gros morceaux Notion v7.1 (Replay 2D, NAScode, télémétrie coaching, spartan
    abilities, score/objectifs match view, flag prolongations, armes d'épaule) —
    nécessitent des plans dédiés.
