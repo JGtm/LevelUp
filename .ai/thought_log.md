@@ -40,6 +40,23 @@ donc sans logout — à surveiller (non reproductible en local `auth_mode:none`)
 **Conclusion / prochaine étape** : pousser la branche, vérifier CI verte, ouvrir PR (ne pas
 merger main sans accord — deploy auto). Re-vérif user : l'URL exacte de repro doit afficher
 un état 100 % cohérent avec le titre actif.
+## [2026-07-13] Consolidation du reste-a-faire + rangement .ai
+
+**Statut** : Complété (superviseur).
+
+**Décision technique principale** : création de `.ai/ETAT_CONSOLIDE_2026-07-13.md` =
+source unique du reste-à-faire (remplace la checklist du 12/07, marquée supersédée).
+Rangement : PLAN_MIGRATION_SQUASH archivé en V7 (M6 était exécuté via le train PR #55
+mais jamais statué — corrigé : M6a/M6b [x], en-tête COMPLÉTÉ) ; rapport
+ENGAGEMENT_CALIBRATION_H5 archivé en V7 (chantier F7 clos) ; plan triage : B1.6 [!]→[x]
+(départage fait le 12/07 : canonical backfill --commit, 2 551 matchs, couverture LUSR
+garantie) — restes du triage = actions admin utilisateur (B4/B5.5) + soaks datés.
+
+**Résultats observés** : racine .ai réduite aux plans réellement en attente + trackers
+actifs ; miroir Notion à jour (4 blocs rayés le 13/07).
+
+**Conclusion / prochaine étape** : replier cette branche docs au prochain train ; en
+vol : fix fuite inter-titres deep-link + bouton logout (agent en cours).
 
 ---
 
