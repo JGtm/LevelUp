@@ -25,6 +25,7 @@ import {
   scopeWinRate,
   signOf,
 } from './ExplorerBriefing.logic'
+import { ExplorerBriefingModules } from './ExplorerBriefingModules'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
 
@@ -202,11 +203,13 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
         />
       )}
 
-      {/* Échantillon faible : socle seul, aucun module (Lot C ajoutera les modules). */}
-      {briefing.low_sample && (
+      {/* Échantillon faible : socle seul + mention ; sinon modules conditionnels. */}
+      {briefing.low_sample ? (
         <p className="text-2xs text-muted-foreground">
           {t('explorer.briefing.low_sample', { n: matchesCount })}
         </p>
+      ) : (
+        <ExplorerBriefingModules briefing={briefing} t={t} />
       )}
     </div>
   )

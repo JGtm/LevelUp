@@ -1,3 +1,22 @@
+## [2026-07-13] Explorer briefing cards — LOT C modules conditionnels (branche feat/explorer-briefing-cards)
+
+**Statut** : En cours — Lot C (modules front) COMPLÉTÉ + gaté vert ; reste Lot D (vérif visuelle + livraison).
+
+**Décision technique principale** : `ExplorerBriefingModules.tsx` orchestre 3 modules sous le
+socle : dimensions (carte/mode/playlist, top/flop avec note = badge palier 1..5 réutilisant
+les libellés du filtre de perf + tokens perf-tier-N), tendance (sparkline via wrapper existant
+`TimeseriesLineChart`, série taux de victoire, height 120), classé (gaté `useCapability('ranked')`
++ présence de `briefing.ranked`, delta CSR + attendu vs réel). Piège évité : la couleur de
+série ECharts passe par `colorToken` (résolu en hex par le wrapper via `resolveToken`), PAS
+`tokenCssVar` qui produit un `var(--...)` non résoluble en canvas.
+
+**Résultats observés (gates Lot C)** : `check-types` OK (après guard `?? []` sur entries/points
+typés nullable) ; eslint 0 erreur ; grep hex 0 ; vitest complet 2161 verts.
+
+**Conclusion / prochaine étape** : commit Lot C, puis Lot D — vérification visuelle navigateur
+(auth_mode=none temporaire) sur Infinite ET H5, 6 scénarios ; MAJ ETAT_CONSOLIDE (§2 + ligne D4) ;
+en-tête COMPLÉTÉ + git mv du plan vers .ai/V7/ ; push final.
+
 ## [2026-07-13] Explorer briefing cards — LOT B front socle (branche feat/explorer-briefing-cards)
 
 **Statut** : En cours — Lot B (socle front) COMPLÉTÉ + gaté vert ; restent Lot C (modules) + D.
