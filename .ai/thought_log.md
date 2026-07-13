@@ -1,3 +1,26 @@
+## [2026-07-13] Auth device-flow — LOT A : spinner infini au start (branche fix/auth-deviceflow-lots-ad)
+
+**Statut** : Complété — Lot A du `PLAN_AUTH_DEVICE_FLOW_SISU_404_2026-07` livré + gaté.
+
+**Décision technique** : dans `StepDeviceCode.tsx`, l'échec du POST `/device-flow/start`
+(500 `msal_init_error`, ou 503 retryable du single-flight corrigé côté serveur le 13/07)
+était avalé — la garde spinner `startFlow.isPending || (!status && !deviceFlowUserCode)`
+restait vraie sans fin. Ajout d'un état `startError` alimenté par un `onError` centralisé
+dans un helper `startDeviceFlow()` (remplace 3 copies inline d'`onSuccess`), et early-return
+de l'UI d'erreur + « Réessayer » AVANT la garde spinner. `startError` remis à zéro dans
+`handleRetry` (event handler) et non dans le helper — sinon setState synchrone dans l'effet
+de montage (warning `react-hooks/set-state-in-effect`). `XboxLoginPage` surfait déjà l'échec
+(`startError`) : garde-rail de régression ajouté. Nouvelle clé i18n FR+EN
+`common.setup.device_start_failed`.
+
+**Résultats** : check-types OK ; eslint 0 erreur/0 warning sur fichiers touchés ; vitest
+complet 2159 passés / 14 skipped ; vérif navigateur `/login` : happy path (code H9JLGNV6 +
+`microsoft.com/link`), échec simulé (fetch override 500) → message + « Réessayer » sans
+spinner infini, reload propre restaure le code.
+
+**Conclusion / prochaine étape** : Lot A clos. Enchaîner Lot D (garde-rail joignabilité
+endpoint device-code + doc `auth_provider` FR/EN + D3 contournement local) puis clôture du plan.
+
 ## [2026-07-13] Explorer briefing cards — LOT D livraison + CLÔTURE (branche feat/explorer-briefing-cards)
 
 **Statut** : Complété — plan `PLAN_EXPLORER_BRIEFING_CARDS_2026-07` SOLDÉ (A/B/C/D), déplacé en `.ai/V7/`.
