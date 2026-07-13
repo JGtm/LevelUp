@@ -63,7 +63,9 @@
 4. Fixture E2E synthétique (réactiverait ~60 specs actuellement skippées en CI).
 5. Détecteur data-quality H5 en erreur en LOCAL (schéma shared H5 absent ?).
 6. Hérités pré-campagne : V10c (budgets sous charge → statuer J4/J6) ·
-   `populate-assets` absent de l'image prod · backup restic off-site.
+   `populate-assets` absent de l'image prod.
+   Backup restic off-site : **DÉCISION 2026-07-13 — inaction actée par l'utilisateur**
+   (pas d'actualité, à revoir beaucoup plus tard ; aucune tâche ouverte).
 7. Dette lint gelée (~479 issues) — optionnel.
 8. Gros morceaux Notion v7.1 (Replay 2D, NAScode, télémétrie coaching, spartan
    abilities, score/objectifs match view, flag prolongations, armes d'épaule) —
