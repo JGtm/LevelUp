@@ -1,3 +1,32 @@
+## [2026-07-13] Auth device-flow — LOT D + CLÔTURE du plan (branche fix/auth-deviceflow-lots-ad)
+
+**Statut** : Complété — `PLAN_AUTH_DEVICE_FLOW_SISU_404_2026-07` SOLDÉ (lots A + D ; B
+sans objet ; C déjà fait par le lot ops item 0), déplacé en `.ai/V7/`.
+
+**Décision technique** :
+- D1 (garde-rail) : j'ai choisi un test taggé `integration` + opt-in réseau (env
+  `LEVELUP_DEVICE_ENDPOINT_LIVE_CHECK`) plutôt qu'une sonde de santé au boot. Justif :
+  coût runtime nul, zéro faux WARN en dev offline (une sonde bruiterait chaque démarrage
+  sans réseau → fatigue d'alerte), aucune dépendance réseau au démarrage du serveur, et
+  double-gate (tag + env) qui SKIP dans le gate anti-ART `-tags=integration` sans jamais
+  le flaker. Le test exerce la constante RÉELLE `xboxDeviceCodeURL` via
+  `StartXboxDeviceCode` → referme exactement le blind spot « tests à URLs mockées »
+  (conclusion D du plan). Vérifié : SKIP sans env, PASS en réel (endpoint joignable,
+  user_code, expires_in=900 s).
+- D2 : `auth_provider` (SISU défaut vs MSAL fallback config-only) documenté en parité
+  FR+EN (règle §15) sur `docs/INSTALL.md`, `docs/FR/INSTALL.md`, `docs/CONFIGURATION.md`,
+  `docs/FR/CONFIGURATION.md`.
+- D3 : contournement local `auth_provider=msal` (11/07) déjà retiré — `app_settings.json`
+  (gitignored) vaut `""`. Rien à supprimer, consigné.
+
+**Résultats gates** : go vet `-tags=integration` + tests package `auth` verts ;
+garde-rail réel PASS ; golangci-lint `--new-from-rev=feat/explorer-briefing-cards
+--build-tags=integration` = 0 issue ; docs-fr-sync pré-commit OK (parité).
+
+**Conclusion / prochaine étape** : plan clos, branche `fix/auth-deviceflow-lots-ad`
+poussée pour le train de merge (pas de PR — merge = utilisateur). ETAT consolidé MAJ
+(section 2 + ligne D3).
+
 ## [2026-07-13] Auth device-flow — LOT A : spinner infini au start (branche fix/auth-deviceflow-lots-ad)
 
 **Statut** : Complété — Lot A du `PLAN_AUTH_DEVICE_FLOW_SISU_404_2026-07` livré + gaté.

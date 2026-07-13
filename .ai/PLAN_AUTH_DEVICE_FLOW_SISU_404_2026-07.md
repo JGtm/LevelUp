@@ -1,5 +1,12 @@
 # PLAN — Onboarding Device Code Flow cassé (SISU endpoint 404) + fix UX spinner infini
 
+> **STATUT : COMPLÉTÉ — 2026-07-13.** Tous les lots soldés : lot ops item 0/0b
+> (URL device-code `.srf` + race single-flight + lien de vérif court, commits
+> `a94fa3269`/`ba37cbe56`), lot A (UI d'erreur StepDeviceCode), lot D (garde-rail
+> réseau opt-in + doc `auth_provider` FR/EN + D3 vérifié). Lot B SANS OBJET
+> (endpoint jamais retiré — l'URL du code était fausse). Tracker §4 intégralement
+> statué. Branche `fix/auth-deviceflow-lots-ad`.
+>
 > Date de rédaction : 2026-07-11. Exécutant prévu : Opus. Superviseur : Guillaume.
 > Origine : investigation du 2026-07-11 — wizard bloqué sur « Démarrage du Device Code Flow… »
 > au premier lancement sur un PC neuf. Cause racine tracée sur pièces (cf. §1).
@@ -180,10 +187,23 @@ Selon l'option :
       identifiants Microsoft de l'utilisateur : à confirmer par Guillaume à sa reconnexion.
 - [x] C4 — gates du commit item 0 : go build/vet + tests handlers/auth + platform/auth
       verts ; lint --new-from-rev=origin/main 0 issue.
-- [ ] D1 — garde-rail joignabilité endpoint device-code
-- [ ] D2 — doc onboarding + `auth_provider` MAJ (FR+EN)
-- [ ] D3 — retrait/consignation du contournement local `app_settings.json` (le
-      contournement `auth_provider=msal` local peut être retiré : SISU refonctionne)
+- [x] D1 — garde-rail joignabilité endpoint device-code : test taggé `integration`
+      + opt-in réseau (env `LEVELUP_DEVICE_ENDPOINT_LIVE_CHECK`) dans
+      `xbox_device_code_reachability_integration_test.go` (package `auth`), qui
+      exerce la constante RÉELLE `xboxDeviceCodeURL` via `StartXboxDeviceCode` et
+      asserte 2xx + `device_code`. CHOIX justifié (en-tête du fichier) : test opt-in
+      plutôt que sonde de santé au boot — coût runtime nul, zéro faux WARN offline,
+      aucune dépendance réseau au démarrage, double-gate (tag + env) qui SKIP dans
+      le CI anti-ART sans jamais flaker. Vérifié : SKIP sans env ; PASS en réel
+      (endpoint `oauth20_connect.srf` joignable, user_code obtenu, expires_in=900 s).
+- [x] D2 — doc onboarding MAJ en parité FR+EN (règle §15, même commit) sur 4 fichiers :
+      `docs/INSTALL.md`, `docs/FR/INSTALL.md` (note « fournisseur d'auth SISU défaut vs
+      MSAL »), `docs/CONFIGURATION.md`, `docs/FR/CONFIGURATION.md` (sous-section
+      « fournisseur de tokens » + ligne `auth_provider` dans la table `app_settings`).
+- [x] D3 — contournement local `auth_provider=msal` (posé le 11/07 dans
+      `app_settings.json`, gitignored) VÉRIFIÉ SUR PIÈCES : la clé vaut aujourd'hui
+      `""` (= SISU défaut) — le contournement a déjà été retiré (SISU refonctionne).
+      Rien à supprimer ; consigné au rapport de clôture.
 
 ---
 
@@ -227,6 +247,19 @@ Selon l'option :
   Gate vert (check-types, eslint 0/0, vitest 2159 passés). Vérif navigateur `/login` :
   happy path (code + `microsoft.com/link`) OK ; échec simulé (fetch override 500) →
   message d'erreur + « Réessayer », aucun spinner infini ; reload propre restaure le code.
+- **2026-07-13 (soir)** — LOT D livré + PLAN CLOS. D1 : garde-rail réseau opt-in
+  `xbox_device_code_reachability_integration_test.go` (tag `integration` + env
+  `LEVELUP_DEVICE_ENDPOINT_LIVE_CHECK`) — exerce la vraie constante `xboxDeviceCodeURL`,
+  referme le blind spot « tests mockés » (conclusion D §1). Choisi vs sonde de boot :
+  coût nul, pas de faux WARN offline, pas de dépendance réseau au démarrage, SKIP
+  garanti dans le gate anti-ART. Vérifié SKIP-sans-env + PASS-en-réel. D2 : doc
+  `auth_provider` (SISU défaut / MSAL fallback config-only) en parité FR+EN sur
+  INSTALL + CONFIGURATION (4 fichiers, même commit). D3 : contournement local
+  `auth_provider=msal` déjà retiré (`app_settings.json` = `""`), rien à faire.
+  Gate : go vet `-tags=integration` + tests package auth verts ; golangci-lint
+  `--new-from-rev=feat/explorer-briefing-cards --build-tags=integration` = 0 issue.
+  Lot B (décision produit) SANS OBJET (endpoint jamais retiré, cf. requalif du 13/07).
+  Tracker §4 intégralement statué. Plan déplacé en `.ai/V7/`.
 
 ## 6. DÉCOUVERTES (hors périmètre — à ne pas traiter ici)
 

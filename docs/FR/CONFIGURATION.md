@@ -152,6 +152,24 @@ adresser l'entrée.
 > pour que le serveur re-dérive les Spartan tokens depuis la chaîne fraîche.
 > `token-capture` et `token-import` le font automatiquement.
 
+### Fournisseur de tokens — `auth_provider` (SISU défaut vs MSAL)
+
+Le fournisseur qui **démarre** le Device Code Flow d'onboarding est choisi par la clé
+`auth_provider` d'`app_settings.json` :
+
+| Valeur | Fournisseur | App Azure | Quand |
+|--------|-------------|-----------|-------|
+| `""` / `sisu` (défaut) | SISU — device-code natif Xbox | **Aucune requise** | Défaut. Les self-hosters n'ont besoin d'aucune inscription Azure. |
+| `msal` | MSAL (Microsoft Authentication Library) | Client ID embarqué/le vôtre | Repli config-only si l'endpoint natif Xbox casse. Aucun bouton d'UI. |
+
+Les deux fournisseurs écrivent dans le même store de tokens ; seul le *démarrage* du
+device-code diffère. SISU est le défaut car LevelUp est distribué à des self-hosters qui ne
+peuvent pas tous enregistrer une app Azure. L'endpoint natif de démarrage est
+`https://login.live.com/oauth20_connect.srf` ; un garde-rail réseau opt-in
+(`go test -tags=integration ./internal/platform/auth/` avec
+`LEVELUP_DEVICE_ENDPOINT_LIVE_CHECK=1`) vérifie qu'il reste joignable — un changement côté
+Microsoft se manifeste ainsi par un test en échec plutôt que par un spinner d'onboarding.
+
 ---
 
 ## Variables d'environnement
@@ -257,6 +275,7 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 
 | Paramètre | Type | Défaut | Description |
 |-----------|------|--------|-------------|
+| `auth_provider` | string | `""` (= `sisu`) | Fournisseur du Device Code Flow d'onboarding. `""`/`sisu` : natif Xbox, **aucune app Azure**. `msal` : repli config-only via le client ID Azure. Voir « Fournisseur de tokens » ci-dessus. |
 | `media_enabled` | bool | `false` | Active l'intégration média (captures Xbox). |
 | `media_captures_base_dir` | string | `""` | Chemin du dossier de captures Xbox. |
 | `media_buffer_minutes` | int | `1` | Fenêtre de tolérance pour associer captures et matchs. |

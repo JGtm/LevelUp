@@ -99,6 +99,15 @@ This env var takes precedence over the bundled ID. Note that `.env.local` is con
 (client ID): it is **not** a credential store — refresh tokens live in the token store
 (see [ADR 0023](adr/0023-auth-tokens-single-source.md)).
 
+#### Auth provider — SISU (default) vs MSAL
+
+The onboarding Device Code Flow uses the **SISU** provider by default: the native Xbox
+device-code flow, which needs **no Azure app** at all — this is why "Xbox Express" above
+requires zero Azure configuration. A config-only fallback (`app_settings.json`:
+`"auth_provider": "msal"`) switches to the MSAL provider (bundled/own Azure client ID) should
+the native Xbox endpoint ever break. There is no UI toggle — leave it empty (`sisu`) unless
+you specifically need MSAL. See [CONFIGURATION.md](CONFIGURATION.md) for the details.
+
 ### Step 5 — Smoke test (automatic check on 20 matches)
 
 After Xbox sign-in, the wizard automatically runs a **3-phase smoke test**:
