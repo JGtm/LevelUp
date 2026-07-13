@@ -749,6 +749,8 @@ export interface ExplorerMatchesQueryRequest {
   match_id_search?: string
   /** Whitelist exacte de match_id (mode Joueur : matchs en commun). */
   match_ids?: string[]
+  /** Opt-in du bandeau de briefing (mode Matchs) : le mode Matchs l'envoie à true. */
+  include_briefing?: boolean
 }
 
 export interface ExplorerPlayerQueryRequest {
@@ -814,6 +816,16 @@ export interface ExplorerWeaponKill {
 }
 
 export type ExplorerMatchesQueryResponse = components['schemas']['ExplorerMatchesQueryResponse']
+
+// ─── Bandeau de briefing (mode Matchs) — alias des schémas auto-dérivés ────────
+export type ExplorerBriefing = components['schemas']['ExplorerBriefing']
+export type ExplorerBriefingBaseline = components['schemas']['ExplorerBriefingBaseline']
+export type ExplorerBriefingDimension = components['schemas']['ExplorerBriefingDimension']
+export type ExplorerBriefingDimensionEntry = components['schemas']['ExplorerBriefingDimensionEntry']
+export type ExplorerBriefingOutcome = components['schemas']['ExplorerBriefingOutcome']
+export type ExplorerBriefingTrend = components['schemas']['ExplorerBriefingTrend']
+export type ExplorerBriefingTrendPoint = components['schemas']['ExplorerBriefingTrendPoint']
+export type ExplorerBriefingRanked = components['schemas']['ExplorerBriefingRanked']
 
 // ---------------------------------------------------------------------------
 // Accueil Mission Control (Slice 5)

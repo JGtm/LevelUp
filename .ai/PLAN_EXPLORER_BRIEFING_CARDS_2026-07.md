@@ -292,12 +292,20 @@ Aucun item sans statut. Commit(s) du lot avec accord utilisateur.
 
 ## LOT B — Front : socle du bandeau
 
-- [ ] **B1 — Types + requête** : types `ExplorerBriefing*` dans `types.ts` (si non faits
+- [x] **B1 — Types + requête** : alias `ExplorerBriefing*` (depuis `components['schemas']`,
+  generated.ts régénéré en A10) + `include_briefing?: boolean` dans `types.ts` ;
+  `ExplorerPage.tsx` envoie `include_briefing: true` (mode Matchs uniquement, pas ally/enemy).
+  Query key inchangée (flag constant → confirmé sur pièces dans queries.ts). Détail plan :
+  types `ExplorerBriefing*` dans `types.ts` (si non faits
   en A10) ; `ExplorerPage.tsx` envoie `include_briefing: true` dans la requête (~l.205-227).
   Vérifier que la clé de query (`filterHash` / queryKey dans `queries.ts` +
   `lib/query/keys.ts`) reste correcte — le flag étant constant, pas d'entrée de clé
   nécessaire, le confirmer sur pièces.
-- [ ] **B2 — Composant `ExplorerBriefingStrip.tsx`** (nouveau fichier sous
+- [x] **B2 — Composant `ExplorerBriefingStrip.tsx`** : rangée socle 4 tuiles (Matchs+période,
+  Taux de victoire+V-D-N+delta, FDA agrégat+delta, Perf. moyenne+delta) via `KpiCard` (chrome
+  partagé) + frise `OutcomeSequenceTape` (height 64). Deltas colorés par signe (tokens),
+  `winRateColor`/`kdaNetColor`. low_sample → socle + mention. briefing absent → rien. Logique
+  pure extraite dans `ExplorerBriefing.logic.ts`. Détail plan : nouveau fichier sous
   `features/explorer/`, ≤ 500 L ; extraire des sous-fichiers si dépassement) :
   - Rangée socle de 4 cards `KpiCard` (pattern `ExplorerEncounterBriefing`) :
     Matchs (n + période), Bilan (V-D-N + taux de victoire), FDA (agrégat), Perf moyenne.
@@ -309,15 +317,22 @@ Aucun item sans statut. Commit(s) du lot avec accord utilisateur.
     (i18n), aucun module.
   - Briefing absent (réponse sans le champ) → le composant ne rend rien (aucune
     régression d'affichage).
-- [ ] **B3 — Insertion** : rendu dans `ExplorerMatchesResultsBlock`
+- [x] **B3 — Insertion** : `<ExplorerBriefingStrip>` rendu en tête de
+  `ExplorerMatchesResultsBlock`, au-dessus du compteur/tri/export (fichier matchesMode non
+  gonflé, composant dans son propre fichier). Détail plan : rendu dans `ExplorerMatchesResultsBlock`
   (`ExplorerPage.matchesMode.tsx`) au-dessus du bandeau compteur/tri/export, sans
   gonfler ce fichier au-delà du seuil (le composant vit dans son propre fichier).
-- [ ] **B4 — i18n + couleurs** : toutes les strings dans `explorer.toml` (fr + en, FR
+- [x] **B4 — i18n + couleurs** : section `[explorer.briefing.*]` (fr+en, « Bilan », « Taux
+  de victoire », « Échantillon faible », séries) régénérée. Zéro hex/classe couleur (grep OK),
+  tokens sémantiques uniquement. Détail plan : toutes les strings dans `explorer.toml` (fr + en, FR
   sans anglicismes : « Bilan », « Taux de victoire », « Échantillon faible », « Série » —
   jamais « streak »/« winrate ») puis régénération du manifest
   (`node apps/web/scripts/build_i18n_manifests.mjs`). Aucune couleur hex ni classe
   Tailwind couleur : tokens sémantiques uniquement (skill `color-tokens`).
-- [ ] **B5 — Tests front** : vitest sur la logique extraite (formatage deltas, choix
+- [x] **B5 — Tests front** : `ExplorerBriefing.logic.test.ts` (10 cas : KDA agrégat,
+  winrate, formatage deltas signés, mapping outcome, palier). `make check-types` OK ;
+  vitest complet 2161 passés / 0 échec ; eslint 0 erreur (2 warnings pré-existants hors
+  périmètre). Détail plan : vitest sur la logique extraite (formatage deltas, choix
   d'affichage low-sample — extraire en helper pur testable si nécessaire) ;
   `make check-types` ; `make test-web`.
 
