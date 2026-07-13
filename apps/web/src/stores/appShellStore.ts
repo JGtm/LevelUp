@@ -142,6 +142,14 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
       oauthCodeFlowEnabled: data.oauth_code_flow_enabled ?? false,
       demoMode: data.demo_mode ?? false,
     })
+    // Garde deep-link (fresh-load / bookmark) : si un `?f=` (share-link) a hydraté
+    // le store solo avec un filtre généré pour un AUTRE titre, le reset. Le reset
+    // au switch de titre (switchTitle) ne couvre PAS ce chemin — au fresh-load,
+    // seul le bootstrap connaît le titre actif réel. setApiTitleSlug(titleSlug) a
+    // déjà été appelé ci-dessus → un éventuel resetFilters ré-estampille l'URL au
+    // bon titre. Squad n'a pas de deep-link (urlEnabled=false) → no-op inoffensif.
+    useSoloFilterStore.getState().reconcileActiveTitle(titleSlug)
+    useSquadFilterStore.getState().reconcileActiveTitle(titleSlug)
   },
 
   setCurrentPlayer: (player) => {

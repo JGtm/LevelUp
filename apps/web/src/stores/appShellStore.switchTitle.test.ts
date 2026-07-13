@@ -22,6 +22,7 @@ vi.mock('@/lib/api/client', () => ({
   setApiTitleSlug: vi.fn((slug: string) => {
     calls.push(`setApiTitleSlug:${slug}`)
   }),
+  getApiTitleSlug: vi.fn(() => 'halo_infinite'),
   setApiLocale: vi.fn(),
 }))
 
@@ -40,6 +41,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
+import type { BootstrapResponse } from '@/lib/api/types'
 
 const PLAYER = {
   player_slug: 'p1', gamertag: 'P1', xuid: '1', waypoint_player: 'P1', is_demo: false, sync_enabled: true,
@@ -130,5 +132,32 @@ describe('switchTitle (correction #10)', () => {
 
     expect(calls).toHaveLength(0)
     expect(useSoloFilterStore.getState().filterContext).toEqual(polluted)
+  })
+
+  // Garde deep-link : le fresh-load / bookmark passe par hydrateFromBootstrap (pas
+  // par switchTitle). Un ?f= généré pour un AUTRE titre a hydraté le store solo
+  // (urlHydratedTitleSlug posé par onRehydrateStorage) → le bootstrap doit le reset.
+  it('hydrateFromBootstrap reset le filtre solo hydraté depuis un deep-link d’un autre titre', () => {
+    useSoloFilterStore.getState().setSessions({ picked_sessions: ['sess-infinite'], gap_minutes: 120 })
+    // Simule l'état posé par onRehydrateStorage au fresh-load d'un deep-link Infinite.
+    useSoloFilterStore.setState({ urlHydratedTitleSlug: 'halo_infinite' })
+    expect(useSoloFilterStore.getState().filterContext).not.toEqual(DEFAULT_FILTER_CONTEXT)
+
+    // BOOTSTRAP_H5.current_title_slug === 'halo_5' → mismatch → reset.
+    useAppShellStore.getState().hydrateFromBootstrap(BOOTSTRAP_H5 as unknown as BootstrapResponse)
+
+    expect(useSoloFilterStore.getState().filterContext).toEqual(DEFAULT_FILTER_CONTEXT)
+    expect(useSoloFilterStore.getState().urlHydratedTitleSlug).toBeNull()
+  })
+
+  it('hydrateFromBootstrap CONSERVE le filtre solo si le deep-link correspond au titre bootstrap', () => {
+    const infiniteBootstrap = { ...BOOTSTRAP_H5, current_title_slug: 'halo_infinite' } as unknown as BootstrapResponse
+    useSoloFilterStore.getState().setSessions({ picked_sessions: ['sess-infinite'], gap_minutes: 120 })
+    useSoloFilterStore.setState({ urlHydratedTitleSlug: 'halo_infinite' })
+
+    useAppShellStore.getState().hydrateFromBootstrap(infiniteBootstrap)
+
+    expect(useSoloFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['sess-infinite'])
+    expect(useSoloFilterStore.getState().urlHydratedTitleSlug).toBeNull()
   })
 })

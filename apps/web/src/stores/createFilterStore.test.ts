@@ -136,3 +136,126 @@ describe('createFilterStore', () => {
     expect(window.location.search).toBe(before)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Garde deep-link ?f= par titre — fix fuite inter-titres au fresh-load.
+// Le reset au switch de titre (switchTitle) ne couvre PAS le fresh-load /
+// bookmark : là, seul le titre estampillé dans ?f= + le titre résolu au
+// bootstrap permettent de rejeter un filtre généré pour un AUTRE titre.
+// ---------------------------------------------------------------------------
+
+describe('createFilterStore — garde deep-link ?f= par titre', () => {
+  let counter = 0
+  const nextName = () => `levelup-deeplink-filter-${++counter}`
+  const originalHref = window.location.href
+
+  // Contexte de session (label purement temporel → title-agnostic, donc fuiterait
+  // sans estampille de titre) utilisé comme deep-link « d'un autre titre ».
+  const SESSION_CTX = {
+    filter_mode: 'sessions' as const,
+    period: { start_date: null, end_date: null },
+    sessions: { picked_sessions: ['03/07/2026 18:32–18:57 (3)'], gap_minutes: 120 },
+    cascade: { experience_types: [], playlists: [], modes: [], maps: [] },
+  }
+
+  function setUrl(param: string, payload: unknown) {
+    const encoded = btoa(encodeURIComponent(JSON.stringify(payload)))
+    window.history.replaceState(null, '', `/players/p/home?${param}=${encoded}`)
+  }
+
+  beforeEach(() => {
+    localStorage.clear()
+    window.history.replaceState(null, '', '/')
+  })
+  afterEach(() => {
+    localStorage.clear()
+    window.history.replaceState(null, '', originalHref)
+  })
+
+  it('hydrate le filtre depuis un deep-link enveloppe v2 et mémorise le titre estampillé', () => {
+    setUrl('f', { t: 'halo_5', c: SESSION_CTX })
+    const store = createFilterStore({
+      name: nextName(), urlEnabled: true, urlParam: 'f', getActiveTitleSlug: () => 'halo_5',
+    })
+    expect(store.getState().filterContext.sessions?.picked_sessions).toEqual(['03/07/2026 18:32–18:57 (3)'])
+    expect(store.getState().urlHydratedTitleSlug).toBe('halo_5')
+  })
+
+  it('décode un deep-link legacy (payload = ctx brut, sans titre) comme Halo Infinite', () => {
+    setUrl('f', SESSION_CTX)
+    const store = createFilterStore({ name: nextName(), urlEnabled: true, urlParam: 'f' })
+    expect(store.getState().filterContext.filter_mode).toBe('sessions')
+    expect(store.getState().urlHydratedTitleSlug).toBe('halo_infinite')
+  })
+
+  it('reconcileActiveTitle RESET le filtre si le titre du deep-link ≠ titre actif', () => {
+    setUrl('f', { t: 'halo_5', c: SESSION_CTX })
+    const store = createFilterStore({
+      name: nextName(), urlEnabled: true, urlParam: 'f', getActiveTitleSlug: () => 'halo_infinite',
+    })
+    expect(store.getState().filterContext.filter_mode).toBe('sessions') // hydraté (avant reconcile)
+    store.getState().reconcileActiveTitle('halo_infinite') // actif = infinite, deep-link = h5 → mismatch
+    expect(store.getState().filterContext).toEqual(DEFAULT_FILTER_CONTEXT)
+    expect(store.getState().urlHydratedTitleSlug).toBeNull() // consommé one-shot
+  })
+
+  it('reconcileActiveTitle CONSERVE le filtre si titre du deep-link == titre actif (non-régression share-link)', () => {
+    setUrl('f', { t: 'halo_5', c: SESSION_CTX })
+    const store = createFilterStore({
+      name: nextName(), urlEnabled: true, urlParam: 'f', getActiveTitleSlug: () => 'halo_5',
+    })
+    store.getState().reconcileActiveTitle('halo_5')
+    expect(store.getState().filterContext.sessions?.picked_sessions).toEqual(['03/07/2026 18:32–18:57 (3)'])
+    expect(store.getState().urlHydratedTitleSlug).toBeNull()
+  })
+
+  it('deep-link legacy CONSERVÉ sur Halo Infinite (non-régression des shares existants)', () => {
+    setUrl('f', SESSION_CTX)
+    const store = createFilterStore({ name: nextName(), urlEnabled: true, urlParam: 'f' })
+    store.getState().reconcileActiveTitle('halo_infinite')
+    expect(store.getState().filterContext.filter_mode).toBe('sessions')
+  })
+
+  it('deep-link legacy RESET sur un autre titre (share Infinite-only chargé sur Halo 5)', () => {
+    setUrl('f', SESSION_CTX)
+    const store = createFilterStore({
+      name: nextName(), urlEnabled: true, urlParam: 'f', getActiveTitleSlug: () => 'halo_5',
+    })
+    store.getState().reconcileActiveTitle('halo_5')
+    expect(store.getState().filterContext).toEqual(DEFAULT_FILTER_CONTEXT)
+  })
+
+  it('reconcileActiveTitle no-op si le filtre ne vient pas d’un deep-link (localStorage seul)', () => {
+    // Pas de ?f= → hydraté depuis localStorage/défaut → urlHydratedTitleSlug null.
+    const store = createFilterStore({
+      name: nextName(), urlEnabled: true, urlParam: 'f', getActiveTitleSlug: () => 'halo_5',
+    })
+    store.getState().setSessions({ picked_sessions: ['manuel'], gap_minutes: 120 })
+    store.getState().reconcileActiveTitle('halo_infinite') // titre différent mais AUCUN deep-link
+    expect(store.getState().filterContext.sessions?.picked_sessions).toEqual(['manuel'])
+  })
+
+  it('encodeToUrl estampille le titre actif dans ?f= (enveloppe v2)', () => {
+    const store = createFilterStore({
+      name: nextName(), urlEnabled: true, urlParam: 'f', getActiveTitleSlug: () => 'halo_5',
+    })
+    store.getState().setSessions({ picked_sessions: ['s'], gap_minutes: 120 })
+    const f = new URL(window.location.href).searchParams.get('f')!
+    const payload = JSON.parse(decodeURIComponent(atob(f)))
+    expect(payload.t).toBe('halo_5')
+    expect(payload.c.sessions.picked_sessions).toEqual(['s'])
+  })
+
+  it('roundtrip encode→decode préserve le contexte ET le titre', () => {
+    const store = createFilterStore({
+      name: nextName(), urlEnabled: true, urlParam: 'f', getActiveTitleSlug: () => 'halo_5',
+    })
+    store.getState().setCascade({ experience_types: ['PVE'], playlists: [], modes: [], maps: [] })
+    // Recréer un store sur la MÊME URL simule un fresh-load : decodeFromUrl relit ?f=.
+    const store2 = createFilterStore({
+      name: nextName(), urlEnabled: true, urlParam: 'f', getActiveTitleSlug: () => 'halo_5',
+    })
+    expect(store2.getState().filterContext.cascade?.experience_types).toEqual(['PVE'])
+    expect(store2.getState().urlHydratedTitleSlug).toBe('halo_5')
+  })
+})
