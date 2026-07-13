@@ -1,9 +1,12 @@
 # ÉTAT CONSOLIDÉ — 2026-07-13 (source unique du reste-à-faire) — MAJ 13/07 soir
 
-> PAUSE LEVÉE le 13/07 soir (« ok je te laisse continuer ») — file Opus séquentielle :
-> 1) vérif admin local SSO (navigateur) → 2) fin du lot ops/qualité (items 2-4) →
-> 3) lots petits items Notion / i18n / auth A+D / V10c / fixture E2E.
-> En parallèle (worktree, docs seulement) : écriture du plan D7 (titre dans l'URL).
+> FILE OPUS (MAJ 13/07 soir, après arbitrages utilisateur) :
+> 1) fin du lot ops/qualité (en vol : fix URL login device-flow + alerte disque +
+>    data-quality H5 + populate-assets) → 2) **D4 Explorer briefing cards (GO)** →
+> 3) **D1 Momentum (GO)** → 4) auth device-flow lots A+D → 5) V10c → 6) fixture E2E →
+> train de merge unique.
+> RETIRÉ de la file (recadrage utilisateur) : tout chantier tiré du backlog Notion —
+> carnet personnel, pas une file d'exécution. D2/D5 : reportés à la v7.1.
 
 > Ce document REMPLACE `CHECKLIST_POST_CAMPAGNE_2026-07-12.md` (partiellement périmée)
 > comme vue consolidée. Mise à jour : à chaque clôture de chantier, ce fichier est le
@@ -43,14 +46,18 @@
       habituelle — ce sont des actions sur les données prod, le local n'est pas le bon
       endroit) : DRY-RUN d'abord — B4.1 registry-names · B4.2 aliases/orphelins ·
       B4.3 lying-bits · B4.4 mode translations · B5.5 migrate-media-paths.
-- [ ] Admin en LOCAL — VÉRIFIÉ + RÉPARÉ le 13/07 (lot ops item 0) : `.env.local` en
-      `LEVELUP_AUTH_MODE=xbox` pris en compte (serveur redémarré), et le login SSO
-      Xbox — qui était CASSÉ pour tout le monde (URL device-code 404 depuis
+- [ ] Admin en LOCAL — VÉRIFIÉ + RÉPARÉ le 13/07 (lot ops item 0 + retouche UI) :
+      `.env.local` en `LEVELUP_AUTH_MODE=xbox` pris en compte (serveur redémarré) ;
+      le login SSO Xbox — CASSÉ pour tout le monde (URL device-code 404 depuis
       l'introduction de SISU, cf. `PLAN_AUTH_DEVICE_FLOW_SISU_404` requalifié) — est
-      corrigé + vérifié au navigateur jusqu'à la page Microsoft. **Toi : ouvre
-      `http://localhost:5173/login`, clique le lien `login.live.com…` affiché,
-      connecte-toi avec ton compte Microsoft (JGtm) — la session locale devient
-      automatiquement ADMIN (ton xuid 2533274823110022 est dans `users.json`).**
+      corrigé ; et ton signalement UI est réglé : le lien affiché est maintenant
+      court (`microsoft.com/link`) ET pointe la vraie page de SAISIE du code
+      (`oauth20_remoteconnect.srf`, vérifié navigateur) — l'ancienne URL authorize
+      interminable ne demandait jamais le code. **Toi : ouvre
+      `http://localhost:5173/login`, va sur `microsoft.com/link` (lien affiché),
+      connecte-toi avec ton compte Microsoft et saisis le code affiché par LevelUp —
+      la session locale devient automatiquement ADMIN (ton xuid 2533274823110022 est
+      dans `users.json`).**
       NOTE produit (retour utilisateur) : « un admin est un joueur » — modes exclusifs
       = UX discutable ; coexistence SSO+password notée au backlog (item 9, §5).
 - [x] ~~Fuite inter-titres~~ : confirmée corrigée par l'utilisateur le 13/07.
@@ -63,11 +70,11 @@
 
 | # | Décision | Détail |
 |---|---|---|
-| D1 | GO exécution `PLAN_MATCHVIEW_MOMENTUM_2026-07` | DEC-1..7 déjà tranchées dans le plan (graphe momentum match view / escouade / solo) |
-| D2 | Trancher DEC-1..9 de `PLAN_REVUE_ANALYTIQUE_TIMESERIES_SQUAD_2026-07` | Couvre les items Notion : graphes Synthesis/Timeseries, ordre chronologique Escouade, radar synergie |
+| D1 | ~~GO exécution momentum~~ **GO REÇU le 13/07** | En file position 3 (après le lot ops et D4) |
+| D2 | ~~Revue analytique~~ **REPORTÉ v7.1** (décision utilisateur 13/07) | Les DEC-1..9 seront tranchées à l'ouverture du chantier v7.1 |
 | D3 | ~~Trancher l'option du lot B~~ **SANS OBJET le 13/07** (lot ops item 0) | La prémisse « endpoint MS retiré » était fausse : l'URL du code n'a jamais été la bonne (`/oauth20_connect/device` ; la vraie = `oauth20_connect.srf`). Fix livré + vérifié navigateur = Option 1 de fait, plus rien à trancher. Restent au plan : lots A (StepDeviceCode) et D (garde-rail + doc) sur simple feu vert |
-| D4 | GO exécution `PLAN_EXPLORER_BRIEFING_CARDS_2026-07` | Plan prêt pour agent |
-| D5 | Prioriser les plans exclus de la campagne | `PLAN_ASCENSION_UX` (item Notion « Finir la page Ascension ») · `PLAN_DIAG_APPARENCE_ADMIN` (probable réponse à « nameplate ne se met pas à jour ») · `PLAN_RELATIONS_UX` (item Notion « joueurs croisés multi-jeux ») · `PLAN_WEAPON_ATTRIBUTION_V3` (à requalifier : approche supersédée par same-clock) |
+| D4 | ~~GO exécution briefing cards~~ **GO REÇU le 13/07** (« plus tôt que ce que j'envisageais » — replanifiable d'un mot) | En file position 2, juste après le lot ops |
+| D5 | ~~Prioriser les plans exclus~~ **REPORTÉ v7.1** (décision utilisateur 13/07) | Ascension UX · Diag apparence admin · Relations UX · weapon_attribution_v3 — dossier v7.1 |
 | D7 | ~~Titre dans l'URL~~ **PRINCIPE APPROUVÉ le 13/07** | Plan en cours d'écriture (agent Opus, worktree). Sera soumis à relecture avant exécution. Routes `/t/{slug}/...`, la garde deep-link #59 reste en défense en profondeur |
 
 ## 5. BACKLOG PILOTABLE SANS DÉCISION (sur simple feu vert, par valeur estimée)
@@ -76,11 +83,9 @@
    `f4721be0f` — en attente de merge avec le reste du lot).
 2. Alerte disque VPS > 80 % → notification push (aujourd'hui : journald que personne
    ne lit ; l'incident du 13/07 l'a prouvé).
-3. Items Notion sans plan : notif Discord · badges « Historique des rencontres » ·
-   « Enregistrer cette compo » 404 · couleurs d'équipes H5 · image unranked H5 ·
-   likes Médias · i18n EN restante (menu L1, rangs, battlepass/défis, glossaire
-   markdown) · heatmap accessibilité/motifs · pills « Rôle » · tooltip durée de vie
-   XmYYs · axe nombre de parties · intensité contributions ordre inversé.
+3. ~~Items Notion sans plan~~ **RETIRÉ (recadrage utilisateur 13/07)** : le backlog
+   Notion est le carnet personnel de Guillaume — aucun chantier n'en sera tiré sans
+   demande explicite de sa part.
 4. Fixture E2E synthétique (réactiverait ~60 specs actuellement skippées en CI).
 5. Détecteur data-quality H5 en erreur en LOCAL (schéma shared H5 absent ?).
 6. Hérités pré-campagne : V10c (budgets sous charge → statuer J4/J6) ·

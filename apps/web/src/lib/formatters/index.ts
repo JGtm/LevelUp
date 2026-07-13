@@ -23,3 +23,4 @@ export {
   calendarChartText,
 } from './calendar'
 export { intlLocale } from './intlLocale'
+export { verificationLinkLabel } from './url'
