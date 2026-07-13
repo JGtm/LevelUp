@@ -35,7 +35,7 @@
 
 | Quoi | Où | Échéance |
 |---|---|---|
-| Lot ops/qualité (items 0/0b SSO+UI FAITS ; item 1 leaderboard 404 FAIT ; item 2 alerte disque FAIT ; restent : data-quality H5 local, populate-assets) | agent Opus sur `chore/lot-ops-qualite` | rapport final à la fin du lot |
+| Lot ops/qualité (items 0/0b SSO+UI, 1 leaderboard, 2 alerte disque, 3 data-quality H5 FAITS ; reste : populate-assets) | agent Opus sur `chore/lot-ops-qualite` | rapport final à la fin du lot |
 | Observation `legacy_source_used` = 0 | prod (T0 = 2026-07-13) | D2 armable ≥ 2026-07-20 → chantier Phase 5 ADR 0023 (retrait fallbacks legacy) |
 | Soak bruit prod B2.4 | re-mesure script §Mesure du plan triage | 2026-07-14 |
 | Soak 30 j B7.4 (cible ERROR ≈ 0/j) + décision endpoint `/admin/monitoring/errors` | plan triage | ~2026-08-11 |
@@ -99,7 +99,13 @@
    Notion est le carnet personnel de Guillaume — aucun chantier n'en sera tiré sans
    demande explicite de sa part.
 4. Fixture E2E synthétique (réactiverait ~60 specs actuellement skippées en CI).
-5. Détecteur data-quality H5 en erreur en LOCAL (schéma shared H5 absent ?).
+5. ~~Détecteur data-quality H5 en erreur en LOCAL~~ FAIT (lot ops item 3) : cause =
+   la metadata H5 (schéma PROPRE, PMT-9) n'a NI `mode_name_tr` NI `playlists_catalog`
+   (prouvé on-disk : 13 tables, `playlists` à la place) → Catalog Error → tout
+   l'endpoint en 500. Fix title-agnostic : introspection de schéma → détecteurs
+   `untranslated_modes`/`orphan_playlists` NON APPLICABLES pour le titre → 0 sans
+   erreur (les détecteurs shared continuent de compter). Test de régression
+   metadata H5-like.
 6. Hérités pré-campagne : V10c (budgets sous charge → statuer J4/J6) ·
    `populate-assets` absent de l'image prod.
    Backup restic off-site : **DÉCISION 2026-07-13 — inaction actée par l'utilisateur**

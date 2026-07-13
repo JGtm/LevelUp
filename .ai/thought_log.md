@@ -1,3 +1,43 @@
+## [2026-07-13] Détecteur data-quality H5 en erreur locale : référentiels HINF absents du schéma metadata H5 — LOT OPS/QUALITÉ item 3 (branche chore/lot-ops-qualite)
+
+**Statut** : Complété (cause prouvée on-disk, fix title-agnostic, test de régression).
+
+**Diagnostic** : `GET /api/v1/admin/monitoring/data-quality?title=halo_5` → 500
+`data_quality_error`. L'hypothèse consignée (« schéma/table absent côté shared H5 ») était
+presque juste mais visait la mauvaise DB : le shared H5 a TOUTES les tables des détecteurs
+(match_registry, match_participants, xuid_aliases, highlight_events, weapon_kills — requêtes
+testées une à une via diag_q, toutes passent). La vraie cause est côté METADATA : le set de
+migrations PROPRE à H5 (PMT-9, `internal/games/halo_5/migrations/metadata.go` — créé
+précisément pour NE PAS injecter les référentiels HINF) ne crée ni `mode_name_tr` ni
+`playlists_catalog`. Or `listUntranslatedModes` et `listOrphanPlaylists`
+(`internal/ops/data_quality.go`) les requêtent sans garde → `Catalog Error: Table with name
+… does not exist` → `CountDataQuality` remonte l'erreur → tout l'endpoint en 500. Preuves :
+(a) listing on-disk de la metadata H5 (13 tables, `playlists` à la place de
+`playlists_catalog`, 0 des 2 tables HINF) ; (b) même Catalog Error déjà loggée par
+`seedPlaylistsCatalog` (sync H5, 2026-06-26).
+
+**Décision technique principale** : fix title-agnostic par INTROSPECTION DE SCHÉMA (aucun
+slug==) : nouveau helper `metaTableExists` (information_schema) ; si la table référentielle
+est absente DU SCHÉMA du titre, le détecteur est NON APPLICABLE → liste vide/compteur 0 +
+log Debug, jamais une erreur. Distinction sémantique documentée : metaDB nil (metadata
+absente/illisible) garde la dégradation PESSIMISTE existante (« tout non traduit / tout
+orphelin ») ; table absente = signal déterministe de non-support → 0 (un « tout non
+traduit » aurait poussé l'admin à écrire du mode_name_tr HINF sur un titre qui gère ses
+traductions via asset_translations/pair_name_fr — faux positif nocif).
+
+**Résultats observés** : test de régression `TestDataQuality_MetaWithoutHINFReferentials`
+(metadata H5-like sans les 2 tables) : CountDataQuality passe, untranslated/orphan à 0, les
+détecteurs shared comptent toujours (raw_uuid=1) ; listes détaillées vides sans erreur.
+Tests HINF existants inchangés verts. Sanity on-disk : metadata Infinite = les 2 tables
+présentes (chemin normal intact). Test HTTP live impossible en anonyme (endpoint admin,
+mode xbox) — couvert par le test + vérif schéma réel des DEUX titres. Serveur dev arrêté
+pour l'inspection puis RELANCÉ (binaire frais 15:56, port 8000 OK). Gates : vet 0, tests
+ops verts, lint new-from-rev 0 issue.
+
+**Conclusion / prochaine étape** : au premier chargement admin par l'utilisateur, l'onglet
+data-quality H5 doit répondre 200 avec les compteurs shared. Enchaîner item 4
+(populate-assets image prod).
+
 ## [2026-07-13] Alerte disque VPS → détection monitoring + notification Discord — LOT OPS/QUALITÉ item 2 (branche chore/lot-ops-qualite)
 
 **Statut** : Complété (fix livré actif ; config webhook PROD = action utilisateur documentée).
