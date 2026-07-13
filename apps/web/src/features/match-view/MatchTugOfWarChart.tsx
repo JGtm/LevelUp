@@ -22,7 +22,7 @@
 import type { EChartsCoreOption } from 'echarts/core'
 import { useCallback } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, escapeHtml, getEChartsThemeColors, getLegendBase, getTooltipBase } from '@/components/charts/_utils'
+import { CHART_BG, escapeHtml, getEChartsThemeColors, getLegendBase, getTooltipBase, hexToRgba } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import { displayPlayerName } from '@/lib/players/displayName'
 import type {
@@ -78,17 +78,6 @@ function formatMmSs(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.max(0, Math.floor(seconds % 60))
   return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-/**
- * Convertit un hex `#RRGGBB` en `rgba(r,g,b,alpha)`. Utilisé pour générer
- * un fond tinté (alpha 0.18) à partir d'un hex résolu via tokens — pas un
- * choix sémantique, juste un alpha-mix structural pour le badge encadré.
- */
-function hexToRgba(hex: string, alpha: number): string {
-  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex)
-  if (!m) return `rgba(0,0,0,${alpha})`
-  return `rgba(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)}, ${alpha})`
 }
 
 export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, t }: Props) {

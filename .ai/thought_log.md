@@ -1,3 +1,25 @@
+## [2026-07-13] Momentum Match View — Phase 1 : centralisation hexToRgba + garde-rail (branche feat/matchview-momentum)
+
+**Statut** : Complété (Phase 1/4 du PLAN_MATCHVIEW_MOMENTUM).
+
+**Décision technique principale** : pré-requis règle « ≤ 2 copies » avant le rendu
+histogramme momentum (Phase 3 en ajoute un 3e usage intensif). Le helper `hexToRgba(hex,
+alpha)` (alpha-mix STRUCTUREL sur un hex déjà résolu via token, contexte canvas/ECharts)
+devient source unique dans `components/charts/_utils.ts`. Les 2 copies locales
+(`MatchTugOfWarChart.tsx`, `MatchImpactBadgesBar.tsx` — qui avaient déjà divergé : regex
+`#?` vs `#`, espacement) sont supprimées et importées. La variante `color-mix(...)` de
+`components/ui/match-card-presentation.ts` reste en place (autre pattern : CSS var en
+contexte DOM, pas un hex résolu) — hors périmètre et hors champ du garde-rail.
+
+**Résultats observés** : garde-rail `hex-alpha.guard.test.ts` (node-env, scan
+`src/features/**`, interdit `function hexToRgba(` / `const hexToRgba` local) = 1 test vert.
+Gate Phase 1 : typecheck OK ; vitest 253 fichiers / 2144 tests (14 skipped) verts ; eslint
+0 sur les 4 fichiers touchés.
+
+**Conclusion / prochaine étape** : Phase 2 — logique pure `_momentum.ts`
+(`computeMomentumBins`) + tests unitaires (a–g), déplacement (pas duplication) de la boucle
+kill→bin/équipe depuis `MatchTugOfWarChart.tsx`.
+
 ## [2026-07-13] populate-assets → sous-commande de la CLI levelup (image prod) — LOT OPS/QUALITÉ item 4 (branche chore/lot-ops-qualite)
 
 **Statut** : Complété (sous-commande livrée, standalone supprimé, vérif Docker via CI).
