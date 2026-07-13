@@ -1,30 +1,18 @@
-// cmd/populate-assets — CLI pour peupler asset_translations (multilingue).
+// cmd_populate_assets.go — sous-commande `levelup populate-assets` : peuple
+// asset_translations (multilingue) depuis l'API Discovery UGC.
 //
-// Remplace le script Python populate_asset_translations.py.
-// Récupère les noms localisés des assets (maps, playlists, pairs, game_variants)
-// depuis l'API Discovery UGC en 14 langues BCP-47.
+// Historique : vivait dans cmd/populate-assets (binaire standalone, réécriture
+// Go du script Python, Sprint 54). Migré en sous-commande de la CLI levelup
+// (lot ops 2026-07-13) : le binaire standalone n'était PAS dans l'image Docker
+// prod (journal deploy 2026-07-10) → le one-off était inexécutable en prod,
+// alors que la CLI levelup y est déjà embarquée (/usr/local/bin/levelup).
+// Logique inchangée, seul le wrapping CLI change (flag.NewFlagSet + cfg reçu).
 //
-// Usage:
+// Usage :
 //
-//	populate-assets [flags]
-//
-// Flags:
-//
-//	--types         Types d'assets à traiter (ex: "map,playlist") [défaut: tous]
-//	--langs         Langues BCP-47 (ex: "fr-FR,de-DE") [défaut: toutes]
-//	--dry-run       Simule sans écrire dans la DB
-//	--force         Re-fetch même si déjà présent (ignore fraîcheur)
-//	--concurrency   Nombre de requêtes parallèles [défaut: 10]
-//	--freshness     Fraîcheur en jours (re-fetch si plus ancien) [défaut: 30]
-//
-// Exemples:
-//
-//	populate-assets --dry-run --types map --langs fr-FR
-//	populate-assets --types map,playlist
-//	populate-assets --force
-//	populate-assets --concurrency 5
-//
-// Sprint 54 : réécriture Go du script Python.
+//	levelup populate-assets [--types map,playlist] [--langs fr-FR,de-DE]
+//	                        [--dry-run] [--force] [--concurrency N]
+//	                        [--freshness JOURS] [--title-id slug]
 package main
 
 import (
@@ -32,7 +20,6 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 	"sync"
 
@@ -45,22 +32,20 @@ import (
 	"levelup/go-api/internal/platform/halo"
 )
 
-func main() {
+// runPopulateAssets est le point d'entrée de la sous-commande.
+func runPopulateAssets(cfg *config.AppConfig, args []string) error {
+	fs := flag.NewFlagSet("populate-assets", flag.ExitOnError)
 	var (
-		typesFlag       = flag.String("types", "", "Types d'assets (ex: map,playlist) — vide = tous")
-		langsFlag       = flag.String("langs", "", "Langues BCP-47 (ex: fr-FR,de-DE) — vide = toutes")
-		dryRun          = flag.Bool("dry-run", false, "Simule sans écrire")
-		force           = flag.Bool("force", false, "Re-fetch même si déjà présent")
-		concurrencyFlag = flag.Int("concurrency", 10, "Requêtes parallèles max")
-		freshnessFlag   = flag.Int("freshness", 30, "Fraîcheur en jours")
-		titleID         = flag.String("title-id", titlePkg.DefaultSlug, "Slug du titre (ex: halo_infinite)")
+		typesFlag       = fs.String("types", "", "Types d'assets (ex: map,playlist) — vide = tous")
+		langsFlag       = fs.String("langs", "", "Langues BCP-47 (ex: fr-FR,de-DE) — vide = toutes")
+		dryRun          = fs.Bool("dry-run", false, "Simule sans écrire")
+		force           = fs.Bool("force", false, "Re-fetch même si déjà présent")
+		concurrencyFlag = fs.Int("concurrency", 10, "Requêtes parallèles max")
+		freshnessFlag   = fs.Int("freshness", 30, "Fraîcheur en jours")
+		titleID         = fs.String("title-id", titlePkg.DefaultSlug, "Slug du titre (ex: halo_infinite)")
 	)
-	flag.Parse()
-
-	cfg, err := config.Load()
-	if err != nil {
-		slog.Error("config.Load", "err", err)
-		os.Exit(1)
+	if err := fs.Parse(args); err != nil {
+		return err
 	}
 
 	types := parseAssetTypes(*typesFlag)
@@ -77,16 +62,17 @@ func main() {
 	)
 
 	ctx := context.Background()
-
-	if err := run(ctx, cfg, types, langs, *dryRun, *force, *concurrencyFlag, *freshnessFlag, *titleID); err != nil {
-		slog.Error("populate-assets failed", "err", err)
-		os.Exit(1)
+	if err := runPopulateAssetsPipeline(
+		ctx, cfg, types, langs, *dryRun, *force, *concurrencyFlag, *freshnessFlag, *titleID,
+	); err != nil {
+		return fmt.Errorf("populate-assets: %w", err)
 	}
-
 	slog.Info("populate-assets: terminé avec succès")
+	return nil
 }
 
-func run(
+//nolint:gocyclo // orchestrateur : boucle par asset_type avec rapport final (héritée du binaire standalone)
+func runPopulateAssetsPipeline(
 	ctx context.Context,
 	cfg *config.AppConfig,
 	types []halo.AssetType,

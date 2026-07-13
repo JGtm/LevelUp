@@ -35,7 +35,7 @@
 
 | Quoi | Où | Échéance |
 |---|---|---|
-| Lot ops/qualité (items 0/0b SSO+UI, 1 leaderboard, 2 alerte disque, 3 data-quality H5 FAITS ; reste : populate-assets) | agent Opus sur `chore/lot-ops-qualite` | rapport final à la fin du lot |
+| Lot ops/qualité TERMINÉ (0/0b SSO+UI, 1 leaderboard, 2 alerte disque, 3 data-quality H5, 4 populate-assets) | branche `chore/lot-ops-qualite` — CI de branche + rapport final en cours | prêt pour revue/merge |
 | Observation `legacy_source_used` = 0 | prod (T0 = 2026-07-13) | D2 armable ≥ 2026-07-20 → chantier Phase 5 ADR 0023 (retrait fallbacks legacy) |
 | Soak bruit prod B2.4 | re-mesure script §Mesure du plan triage | 2026-07-14 |
 | Soak 30 j B7.4 (cible ERROR ≈ 0/j) + décision endpoint `/admin/monitoring/errors` | plan triage | ~2026-08-11 |
@@ -107,7 +107,11 @@
    erreur (les détecteurs shared continuent de compter). Test de régression
    metadata H5-like.
 6. Hérités pré-campagne : V10c (budgets sous charge → statuer J4/J6) ·
-   `populate-assets` absent de l'image prod.
+   ~~`populate-assets` absent de l'image prod~~ FAIT (lot ops item 4) : devenu
+   sous-commande `levelup populate-assets` (logique inchangée, binaire standalone
+   supprimé, runbooks à jour) — la CLI `levelup` est déjà dans l'image
+   (`/usr/local/bin/levelup`) → exécutable en prod via
+   `docker compose exec levelup levelup populate-assets --dry-run …`.
    Backup restic off-site : **DÉCISION 2026-07-13 — inaction actée par l'utilisateur**
    (pas d'actualité, à revoir beaucoup plus tard ; aucune tâche ouverte).
 7. Dette lint gelée (~479 issues) — optionnel.
