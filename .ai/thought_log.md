@@ -1,3 +1,41 @@
+## [2026-07-13] Momentum Match View — Phase 3 : rendu histogramme divergent (branche feat/matchview-momentum)
+
+**Statut** : Complété côté code (Phase 3/4) ; vérification visuelle = Phase 4.
+
+**Décision technique principale** : `buildOption` de `MatchTugOfWarChart.tsx` réécrit en
+histogramme momentum divergent. Suppressions (DEC-3/6/7 + code mort) : normalisation
+`teamPct/enemyPct`, `cumulMarkPoints` (labels cumul encadrés), markLine 50 %, constantes de
+layout figées 0–100, boucle events inline (déplacée en Phase 2 → `computeMomentumBins`).
+Ajouts : 2 séries bar signées même stack `momentum` (B1 : positifs team-ally / négatifs
+team-enemy → 2 entrées de légende sans nouvelle string) ; opacité par point DEC-4 via
+`hexToRgba(color, trend==='up'?0.9:0.45)` (le 3e usage qui justifiait la centralisation
+Phase 1) ; côté inactif d'un bin = `{ value: 0 }` (invisible mais présent → ancre le
+tooltip axis à CHAQUE catégorie, y compris delta 0) ; échelle Y symétrique dynamique
+`yMax=max(1,max|delta|)`, lane alliée `yMax×1.5` / top `×1.95` / bottom `−yMax×1.15` ;
+markLine dashed à `y=0` (DEC-7) ; tooltip `trigger:'axis'` (delta signé + X/Y kills +
+cumuls, remplace DEC-3) ancré via `binTooltipFormatter` sur le param `seriesType==='bar'` ;
+scatter/vagues gardent `tooltip.trigger='item'`. Kill feed (lanes/scatter/vagues, grille
+double) conservé intégralement (DEC-2), lanes repositionnées sur `yMax`. Extraction en
+sous-fonctions (`resolveXuidMeta`, `buildBinTooltips`, `buildBarSeries`,
+`buildKillFeedSeries`, `buildWaveSeries`, `buildXAxes`) → fichier 336 L, `buildOption`
+~42 L (seuils OK). 2 libellés i18n de tooltip ajoutés FR+EN : `combatMomentumDelta`
+(Écart/Delta), `combatMomentumCumul` (Cumul/Cumulative). Titre carte inchangé « Dominance »
+(DEC-1). Types `MomentumBin/MomentumKill` exportés (consommés par le composant → knip OK).
+
+**Résultats observés** : typecheck OK ; vitest 254 fichiers / 2151 tests verts ; eslint 0 ;
+knip-ratchet types 85/86 (aucune régression) ; grep périmètre : aucune déclaration locale
+`hexToRgba` ni hex en dur introduit (seuls import + usage ; hex restants = exceptions
+`color-allow` pré-existantes hors périmètre).
+
+**Point de vigilance (à lever en Phase 4)** : cohabitation `trigger:'axis'` (barres) et
+`trigger:'item'` (scatter/vagues) — comportement du hover à confirmer au navigateur ; si le
+tooltip item des kills ne se déclenche pas sous axis, ce n'est pas bloquant (barres + kill
+feed restent lisibles) mais à ajuster.
+
+**Conclusion / prochaine étape** : Phase 4 — i18n (fait), vérification visuelle (Infinite +
+H5 + toggle couleur équipe + EmptyState live-only + thème clair/sombre), delivery-checklist,
+clôture (statuts, Découvertes, en-tête COMPLÉTÉ, `git mv` vers `.ai/V7/`).
+
 ## [2026-07-13] Momentum Match View — Phase 2 : logique pure `_momentum.ts` + tests (branche feat/matchview-momentum)
 
 **Statut** : Complété (Phase 2/4 du PLAN_MATCHVIEW_MOMENTUM).

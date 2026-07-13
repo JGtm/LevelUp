@@ -158,26 +158,39 @@ fichiers / 2151 tests verts ; eslint 0 sur les 2 nouveaux fichiers ; ancien
 
 Réécriture de `buildOption` dans `MatchTugOfWarChart.tsx` :
 
-- [ ] 3.1 Supprimer : normalisation `teamPct`/`enemyPct`, markPoints de cumul
+- [x] 3.1 Supprimer : normalisation `teamPct`/`enemyPct`, markPoints de cumul
       (`cumulMarkPoints`, DEC-3), markLine 50 %, constantes de layout 0–100
-      (`teamCumLabelY = 112`, etc.). Zéro code mort résiduel.
-- [ ] 3.2 Deux séries bar signées (B1) : positifs `team-ally`, négatifs `team-enemy`,
+      (`teamCumLabelY = 112`, etc.). Zéro code mort résiduel. FAIT (tout supprimé ; la
+      boucle events inline débranchée au profit de `computeMomentumBins`).
+- [x] 3.2 Deux séries bar signées (B1) : positifs `team-ally`, négatifs `team-enemy`,
       `itemStyle` par point avec opacité DEC-4 via `hexToRgba(resolveToken(...), α)` ;
-      `barCategoryGap` serré pour l'effet histogramme (cf. screenshot de référence).
-- [ ] 3.3 `markLine` à `y = 0` (DEC-7) ; échelle symétrique dynamique (DEC-6) ;
+      `barCategoryGap` serré pour l'effet histogramme. FAIT (`buildBarSeries`, même stack
+      `momentum` ; côté inactif = `{ value: 0 }` invisible mais présent → ancre le tooltip
+      axis à chaque catégorie ; `barCategoryGap: '20%'`).
+- [x] 3.3 `markLine` à `y = 0` (DEC-7) ; échelle symétrique dynamique (DEC-6) ;
       lanes/scatter/vagues repositionnés en fonction de `yMax` (grille double conservée).
-- [ ] 3.4 Tooltip `trigger: 'axis'` sur les barres : tranche horaire, delta signé,
-      détail `X kills / Y kills`, cumuls `cumTeam` / `cumEnemy` (remplace les labels
-      supprimés). Tooltips scatter/vagues inchangés (`trigger: 'item'` par série).
-- [ ] 3.5 Mettre à jour l'en-tête doc du fichier (match_view.10 : décrire le rendu
-      momentum, plus le stacked 0–100 %).
-- [ ] 3.6 Seuils : fichier ≤ 500 L et `buildOption` ≤ 80 L après réécriture — 
-      l'extraction `_momentum.ts` y contribue ; si `buildOption` dépasse, extraire des
-      sous-fonctions de construction de séries dans le même fichier ou `_momentum.ts`.
+      FAIT (`yMax = max(1, max|delta|)` ; lane alliée `yMax×1.5`, top `×1.95`, bottom
+      `−yMax×1.15` ; markLine dashed `tc.splitLine` à `yAxis:0`).
+- [x] 3.4 Tooltip `trigger: 'axis'` sur les barres : tranche horaire, delta signé,
+      détail `X kills / Y kills`, cumuls `cumTeam` / `cumEnemy`. Tooltips scatter/vagues
+      inchangés (`trigger: 'item'` par série). FAIT (`buildBinTooltips` +
+      `binTooltipFormatter` ancré sur le param bar ; scatter/vagues gardent
+      `tooltip.trigger='item'`). Rendu du hover à confirmer en Phase 4 (mixage
+      axis/item — vérif écran prévue).
+- [x] 3.5 Mettre à jour l'en-tête doc du fichier. FAIT (en-tête réécrit : histogramme
+      momentum divergent, DEC-2/4/5/6/7, plus de stacked 0–100 %).
+- [x] 3.6 Seuils : fichier ≤ 500 L et `buildOption` ≤ 80 L. FAIT (fichier 336 L ;
+      `buildOption` ~42 L ; extraction `resolveXuidMeta`/`buildBinTooltips`/`buildBarSeries`/
+      `buildKillFeedSeries`/`buildWaveSeries`/`buildXAxes`/`binTooltipFormatter`).
 
 **Gate Phase 3** : `make check-types` + `make test-web` verts ;
 `grep -rn "hexToRgba\|#[0-9a-fA-F]\{6\}" apps/web/src/features/match-view/` ne montre
 aucune déclaration locale ni hex en dur (hors commentaires).
+PASSÉ 2026-07-13 : typecheck OK ; vitest 254 fichiers / 2151 tests verts ; eslint 0
+sur les 3 fichiers ; knip-ratchet types 85/86 (aucune régression). Grep : dans
+`MatchTugOfWarChart.tsx` seuls l'import + l'usage de `hexToRgba` (aucune déclaration
+locale) ; hex restants du dossier = exceptions `color-allow` pré-existantes
+(MatchHeader étoile amber §20 ; MatchSummaryCharts hex en commentaires) hors périmètre.
 
 ## Phase 4 — i18n, vérification visuelle, clôture
 

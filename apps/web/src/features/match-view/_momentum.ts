@@ -21,15 +21,11 @@
  */
 import type { MatchHighlightEvent, MatchTugOfWarBin } from '@/lib/api/types'
 
-/**
- * Sens du momentum d'une tranche relativement à la précédente (DEC-4).
- * Types internes en Phase 2 (aucun consommateur externe encore — garde-rail
- * knip-ratchet) ; exportés en Phase 3 quand `MatchTugOfWarChart` les importe.
- */
+/** Sens du momentum d'une tranche relativement à la précédente (DEC-4). */
 type MomentumTrend = 'up' | 'down'
 
 /** Résultat momentum d'une tranche temporelle. */
-interface MomentumBin {
+export interface MomentumBin {
   /** kills alliés − kills ennemis dans la tranche (barre signée). */
   delta: number
   teamKills: number
@@ -43,7 +39,7 @@ interface MomentumBin {
 }
 
 /** Un kill affecté à un bin, avec sa position fractionnaire (scatter/vagues). */
-interface MomentumKill {
+export interface MomentumKill {
   tMs: number
   xuid: string
   ally: boolean
