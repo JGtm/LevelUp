@@ -58,6 +58,16 @@ export const DEFAULT_FILTER_CONTEXT: FilterContextInput = {
   cascade: DEFAULT_CASCADE,
 }
 
+// Titre par défaut (convention partagée avec le client API : le header
+// X-LevelUp-Title est omis pour ce titre). Un deep-link `?f=` legacy (généré
+// avant le multi-titre, donc sans estampille de titre) est réputé appartenir à
+// ce titre — c'était le seul titre existant à l'époque de la feature share-link.
+const DEFAULT_TITLE_SLUG = 'halo_infinite'
+
+function isValidFilterMode(mode: unknown): mode is 'period' | 'sessions' {
+  return mode === 'period' || mode === 'sessions'
+}
+
 // ---------------------------------------------------------------------------
 // Types du store
 // ---------------------------------------------------------------------------
@@ -80,6 +90,13 @@ export interface FilterStoreState {
    *  donnée détectée. Reset à false dès qu'un user interagit manuellement. */
   isAutoSnappingToLatest: boolean
 
+  /** Titre pour lequel le `filterContext` courant a été hydraté depuis un
+   *  deep-link `?f=` (share-link). Non persisté, transitoire : posé par
+   *  onRehydrateStorage au fresh-load, consommé une seule fois par
+   *  reconcileActiveTitle une fois le titre actif résolu par le bootstrap.
+   *  null = pas hydraté depuis l'URL (rien à valider). */
+  urlHydratedTitleSlug: string | null
+
   // --- Mutations ---
   setPeriod: (period: PeriodInput) => void
   setSessions: (sessions: SessionsInput) => void
@@ -88,6 +105,12 @@ export interface FilterStoreState {
   setFilterContext: (ctx: FilterContextInput) => void
   setResolvedContext: (resolved: FilterContextResolved) => void
   resetFilters: () => void
+  /** Valide le filtre hydraté depuis un deep-link `?f=` contre le titre ACTIF
+   *  (résolu par le bootstrap). Si le deep-link a été généré pour un AUTRE titre,
+   *  reset le filtre (son état — sessions/cascade — n'a aucun sens hors de son
+   *  titre). No-op si le filtre ne vient pas d'un deep-link. Consommation
+   *  one-shot. Cf. appShellStore.hydrateFromBootstrap / switchTitle. */
+  reconcileActiveTitle: (activeTitleSlug: string) => void
 
   // --- Auto-snap on new data ---
   setLastKnownLatestSessionId: (id: string | null) => void
@@ -137,6 +160,11 @@ interface CreateFilterStoreOptions {
   urlEnabled?: boolean
   /** Paramètre URL pour le share-link. Défaut : 'f'. */
   urlParam?: string
+  /** Titre actif courant, estampillé dans le deep-link `?f=` à l'encodage pour
+   *  que le filtre ne se réapplique qu'au titre pour lequel il a été généré.
+   *  Injecté (plutôt qu'importé) pour garder la factory découplée/testable.
+   *  Défaut : titre par défaut (utile aux stores sans URL / aux tests). */
+  getActiveTitleSlug?: () => string
 }
 
 /**
@@ -147,12 +175,19 @@ interface CreateFilterStoreOptions {
  * des `name` distincts.
  */
 export function createFilterStore(options: CreateFilterStoreOptions): FilterStore {
-  const { name, urlEnabled = false, urlParam = 'f' } = options
+  const { name, urlEnabled = false, urlParam = 'f', getActiveTitleSlug } = options
+
+  const activeTitle = (): string => getActiveTitleSlug?.() ?? DEFAULT_TITLE_SLUG
 
   function encodeToUrl(ctx: FilterContextInput): void {
     if (!urlEnabled || typeof window === 'undefined') return
     try {
-      const encoded = btoa(encodeURIComponent(JSON.stringify(ctx)))
+      // Enveloppe v2 : { t: titre actif, c: FilterContextInput }. Estampiller le
+      // titre permet, au fresh-load, de rejeter un deep-link généré pour un AUTRE
+      // titre (cf. decodeFromUrl / reconcileActiveTitle) — les labels de session
+      // sont purement temporels, donc title-agnostic, et fuiteraient sinon.
+      const payload = { t: activeTitle(), c: ctx }
+      const encoded = btoa(encodeURIComponent(JSON.stringify(payload)))
       const url = new URL(window.location.href)
       url.searchParams.set(urlParam, encoded)
       window.history.replaceState(null, '', url.toString())
@@ -161,15 +196,27 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
     }
   }
 
-  function decodeFromUrl(): FilterContextInput | null {
+  function decodeFromUrl(): { context: FilterContextInput; titleSlug: string } | null {
     if (!urlEnabled || typeof window === 'undefined') return null
     try {
       const url = new URL(window.location.href)
       const encoded = url.searchParams.get(urlParam)
       if (!encoded) return null
-      const raw = JSON.parse(decodeURIComponent(atob(encoded)))
-      if (raw.filter_mode !== 'period' && raw.filter_mode !== 'sessions') return null
-      return raw as FilterContextInput
+      const raw: unknown = JSON.parse(decodeURIComponent(atob(encoded)))
+      if (typeof raw !== 'object' || raw === null) return null
+      const obj = raw as Record<string, unknown>
+      // Enveloppe v2 : { t: titleSlug, c: FilterContextInput }.
+      const inner = obj.c as Record<string, unknown> | undefined
+      if (inner && isValidFilterMode(inner.filter_mode)) {
+        const titleSlug = typeof obj.t === 'string' && obj.t ? obj.t : DEFAULT_TITLE_SLUG
+        return { context: inner as unknown as FilterContextInput, titleSlug }
+      }
+      // Legacy (pré-multi-titre) : le payload EST le FilterContextInput brut,
+      // sans estampille de titre → titre implicite = défaut (Halo Infinite).
+      if (isValidFilterMode(obj.filter_mode)) {
+        return { context: raw as FilterContextInput, titleSlug: DEFAULT_TITLE_SLUG }
+      }
+      return null
     } catch {
       return null
     }
@@ -183,6 +230,7 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
         filterContextHash: computeHash(DEFAULT_FILTER_CONTEXT),
         lastKnownLatestSessionId: null,
         isAutoSnappingToLatest: false,
+        urlHydratedTitleSlug: null,
 
         setPeriod: (period) => {
           // Auto-derive filter_mode et exclusivité Période ↔ Session.
@@ -245,6 +293,19 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
             filterContextHash: computeHash(next),
             isAutoSnappingToLatest: false,
           })
+        },
+
+        reconcileActiveTitle: (activeTitleSlug) => {
+          const urlTitle = get().urlHydratedTitleSlug
+          if (urlTitle == null) return // pas hydraté depuis un deep-link → rien à valider
+          // Consommation one-shot : quel que soit le verdict, on ne re-valide pas
+          // (une éventuelle mutation utilisateur ultérieure ré-estampille l'URL).
+          set({ urlHydratedTitleSlug: null })
+          if (urlTitle === activeTitleSlug) return // deep-link valide pour le titre actif → conservé
+          // Deep-link d'un AUTRE titre : reset propre (réécrit aussi l'URL/localStorage
+          // au titre actif via resetFilters → encodeToUrl).
+          log.debug(`reconcile:reset store=${name} urlTitle=${urlTitle} active=${activeTitleSlug}`)
+          get().resetFilters()
         },
 
         setLastKnownLatestSessionId: (id) => set({ lastKnownLatestSessionId: id }),
@@ -368,9 +429,13 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
           if (!state) return
           const fromUrl = decodeFromUrl()
           if (fromUrl) {
-            state.filterContext = fromUrl
-            state.filterContextHash = computeHash(fromUrl)
-            log.debug(`hydrate:source=url store=${name}`)
+            state.filterContext = fromUrl.context
+            state.filterContextHash = computeHash(fromUrl.context)
+            // Le titre actif RÉEL n'est pas encore connu ici (bootstrap async) :
+            // on mémorise le titre du deep-link, validé plus tard par
+            // reconcileActiveTitle (appelé par hydrateFromBootstrap).
+            state.urlHydratedTitleSlug = fromUrl.titleSlug
+            log.debug(`hydrate:source=url store=${name} urlTitle=${fromUrl.titleSlug}`)
           } else {
             log.debug(`hydrate:source=localStorage store=${name}`)
           }

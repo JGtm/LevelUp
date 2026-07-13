@@ -1,3 +1,48 @@
+## [2026-07-13] Fuite de filtre inter-titres via deep-link `?f=` (branche fix/title-switch-deeplink-leak)
+
+**Statut** : Complété (fix + tests + repro navigateur avant/après).
+
+**Décision technique principale** : le reset des filtres au switch de titre (Fix 1
+historique, `switchTitle()` → `resetFilters()`, cf. `PLAN_TITLE_SWITCH_FILTER_LEAK.md`)
+ne couvre PAS le fresh-load / bookmark. `createFilterStore.onRehydrateStorage` →
+`decodeFromUrl()` réhydratait le store solo depuis `?f=` en ne validant QUE `filter_mode`,
+jamais le titre. Or les labels de session sont purement temporels (« 03/07/2026 18:32–18:57
+(3) »), donc title-agnostic → un filtre d'un autre titre se réappliquait tel quel au fresh-
+load, avant même que le bootstrap ne résolve le titre actif réel (le titre par défaut du
+client API = `halo_infinite` au moment de la réhydratation, timing async). Fix : estampiller
+le titre actif dans `?f=` (enveloppe v2 `{t,c}`, rétro-compat legacy = `halo_infinite`
+implicite), mémoriser le titre du deep-link (`urlHydratedTitleSlug`, transitoire non
+persisté), puis `reconcileActiveTitle(titleSlug)` appelé par `hydrateFromBootstrap` : si le
+titre du deep-link ≠ titre résolu → reset propre (one-shot). Modèle = extension du reset-au-
+chokepoint historique, appliqué au chokepoint bootstrap. Fichiers : `client.ts`
+(`getApiTitleSlug`), `createFilterStore.ts`, `soloFilterStore.ts`, `appShellStore.ts`.
+
+**Résultats observés** : repro navigateur (dev local :5173/:8000, JGtm). AVANT : chargement
+d'un deep-link Infinite sur titre actif H5 → le store réhydratait le filtre étranger (self-
+heal partiel via follow-latest, mais pas pour période/cascade/pin manuel). APRÈS : deep-link
+Infinite (période 2025-01) chargé sur H5 → `leakedInfinitePeriod=false`, reset → snap sur la
+dernière session H5, `?f=` ré-estampillé `t=halo_5`. Non-régression : l'URL exacte du user
+(legacy `?f=` session Infinite) sur titre Infinite → session conservée, home 100 % cohérente
+Infinite. Gates : `tsc -b` OK, `eslint` 0, vitest complet 251 fichiers / 2138 passés / 14
+skip. Go non touché (pas de gate Go).
+
+**Extension de périmètre — bouton « Se déconnecter » disparu** : investigué, PAS un bug.
+`LogoutButton` retourne `null` si `!currentUsername` (par design, mode `none`/`demo`). Le
+dev local tourne en `auth_mode:none` (`current_username:null`) → pas de bouton, normal (rien
+à déconnecter). Vérifié : NON gaté derrière `isAdmin` (rendu inconditionnel NavL1 L233), n'a
+PAS migré vers Admin, et pour une vraie session SSO/password `sess.Username` est bien posé
+(`xbox_auth_service.go:169`) → bouton présent. Confirmé au navigateur (dropdown réglages
+ouvert : ni « Administration » car is_admin=false, ni « Se déconnecter »). Non lié à la fuite
+inter-titres. Aucun changement de code. Reco au rapport : si un jour une session SSO échoue à
+résoudre le xuid/gamertag (OnAuthSuccess early-return), l'utilisateur reste sans username
+donc sans logout — à surveiller (non reproductible en local `auth_mode:none`).
+
+**Conclusion / prochaine étape** : pousser la branche, vérifier CI verte, ouvrir PR (ne pas
+merger main sans accord — deploy auto). Re-vérif user : l'URL exacte de repro doit afficher
+un état 100 % cohérent avec le titre actif.
+
+---
+
 ## [2026-07-13] INCIDENT deploy — disque VPS 100%, prod down ~15 min, cause = prune du mauvais builder
 
 **Statut** : Complété (service rétabli, fix durable posé).
