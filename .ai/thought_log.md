@@ -1,3 +1,130 @@
+## [2026-07-13] Momentum Match View — Phase 4 + CLÔTURE : i18n, vérif visuelle, plan COMPLÉTÉ (branche feat/matchview-momentum)
+
+**Statut** : Complété — PLAN_MATCHVIEW_MOMENTUM SOLDÉ (4/4 phases), déplacé en .ai/V7/.
+
+**Décision technique principale** : Phase 4 = i18n (2 libellés tooltip FR+EN déjà en Phase 3)
++ vérification visuelle au navigateur + clôture. Vérif visuelle menée en basculant le
+serveur dev LOCAL en `LEVELUP_AUTH_MODE=none` (mode dev-open supporté, ownership désactivé)
+le temps des captures, puis restauration `xbox` : l'auth SSO Xbox / mot de passe admin
+n'était pas actionnable par l'agent (device-code interactif). Binaire `tmp/server.exe`
+réutilisé tel quel (chantier 100 % frontend → aucun rebuild Go), lancé avec msys64 ucrt64
+dans le PATH ; DuckDB mono-process respecté (serveur unique à la fois).
+
+**Résultats observés (vérif écran)** :
+- (a) Infinite (Super Fiesta/Streets, 28-50) : histogramme divergent net — barres bleu
+  haut (Mon équipe) / rouge bas (Adversaires), zéro au centre, intensité DEC-4 visible
+  (barres vives = momentum qui se renforce, atténuées = essoufflement), kill feed conservé
+  (lanes + vagues ×N), tooltip axis « Écart : -7 (Adversaires) / Mon équipe 0 / Adversaires
+  7 / Cumul : 6 – 19 », zéro erreur console.
+- (b) Halo 5 (Tidal/Super Fiesta, 8-27, CSR) : rendu IDENTIQUE depuis le kill-feed
+  synthétisé (killer_victim_pairs → highlight_events), affectation équipe correcte, zéro
+  erreur console → confirme le title-agnostic (aucun `slug==`).
+- (c) couleur équipe (alliés=Herbe/vert, ennemis=Soleil/jaune) : histogramme reflète
+  IMMÉDIATEMENT (ChartCard rebuild sur paletteVersion, resolveToken live). Restauré défaut.
+- (e) thème clair ET sombre : l'histogramme s'adapte (fond/axes/texte via useThemeVersion).
+  Restauré sombre.
+- (d) EmptyState live-only : garde `hasKillEvents` inchangé (préservé) → [~].
+Gate final : `.tsbuildinfo` purgé ; check-types OK ; lint 0 erreur ; test-web 254 fichiers
+/ 2151 tests verts. Environnement dev restauré (air :8000 xbox, thème sombre, couleurs défaut).
+
+**Découvertes** (consignées, non traitées — règle 7) : tooltip item scatter/vagues sous
+trigger axis global à re-confirmer à la revue merge (non bloquant, kill feed lisible) ;
+`barCategoryGap 20%` + facteurs de lane calés à l'estime (ajustables).
+
+**Conclusion / prochaine étape** : chantier momentum livré et poussé (branche
+feat/matchview-momentum). Reste hors de mon périmètre : merge (train superviseur) + revue
+visuelle utilisateur. Plan `git mv` vers `.ai/V7/`.
+
+## [2026-07-13] Momentum Match View — Phase 3 : rendu histogramme divergent (branche feat/matchview-momentum)
+
+**Statut** : Complété côté code (Phase 3/4) ; vérification visuelle = Phase 4.
+
+**Décision technique principale** : `buildOption` de `MatchTugOfWarChart.tsx` réécrit en
+histogramme momentum divergent. Suppressions (DEC-3/6/7 + code mort) : normalisation
+`teamPct/enemyPct`, `cumulMarkPoints` (labels cumul encadrés), markLine 50 %, constantes de
+layout figées 0–100, boucle events inline (déplacée en Phase 2 → `computeMomentumBins`).
+Ajouts : 2 séries bar signées même stack `momentum` (B1 : positifs team-ally / négatifs
+team-enemy → 2 entrées de légende sans nouvelle string) ; opacité par point DEC-4 via
+`hexToRgba(color, trend==='up'?0.9:0.45)` (le 3e usage qui justifiait la centralisation
+Phase 1) ; côté inactif d'un bin = `{ value: 0 }` (invisible mais présent → ancre le
+tooltip axis à CHAQUE catégorie, y compris delta 0) ; échelle Y symétrique dynamique
+`yMax=max(1,max|delta|)`, lane alliée `yMax×1.5` / top `×1.95` / bottom `−yMax×1.15` ;
+markLine dashed à `y=0` (DEC-7) ; tooltip `trigger:'axis'` (delta signé + X/Y kills +
+cumuls, remplace DEC-3) ancré via `binTooltipFormatter` sur le param `seriesType==='bar'` ;
+scatter/vagues gardent `tooltip.trigger='item'`. Kill feed (lanes/scatter/vagues, grille
+double) conservé intégralement (DEC-2), lanes repositionnées sur `yMax`. Extraction en
+sous-fonctions (`resolveXuidMeta`, `buildBinTooltips`, `buildBarSeries`,
+`buildKillFeedSeries`, `buildWaveSeries`, `buildXAxes`) → fichier 336 L, `buildOption`
+~42 L (seuils OK). 2 libellés i18n de tooltip ajoutés FR+EN : `combatMomentumDelta`
+(Écart/Delta), `combatMomentumCumul` (Cumul/Cumulative). Titre carte inchangé « Dominance »
+(DEC-1). Types `MomentumBin/MomentumKill` exportés (consommés par le composant → knip OK).
+
+**Résultats observés** : typecheck OK ; vitest 254 fichiers / 2151 tests verts ; eslint 0 ;
+knip-ratchet types 85/86 (aucune régression) ; grep périmètre : aucune déclaration locale
+`hexToRgba` ni hex en dur introduit (seuls import + usage ; hex restants = exceptions
+`color-allow` pré-existantes hors périmètre).
+
+**Point de vigilance (à lever en Phase 4)** : cohabitation `trigger:'axis'` (barres) et
+`trigger:'item'` (scatter/vagues) — comportement du hover à confirmer au navigateur ; si le
+tooltip item des kills ne se déclenche pas sous axis, ce n'est pas bloquant (barres + kill
+feed restent lisibles) mais à ajuster.
+
+**Conclusion / prochaine étape** : Phase 4 — i18n (fait), vérification visuelle (Infinite +
+H5 + toggle couleur équipe + EmptyState live-only + thème clair/sombre), delivery-checklist,
+clôture (statuts, Découvertes, en-tête COMPLÉTÉ, `git mv` vers `.ai/V7/`).
+
+## [2026-07-13] Momentum Match View — Phase 2 : logique pure `_momentum.ts` + tests (branche feat/matchview-momentum)
+
+**Statut** : Complété (Phase 2/4 du PLAN_MATCHVIEW_MOMENTUM).
+
+**Décision technique principale** : `computeMomentumBins(bins, events, xuidMeta)` isolé en
+module pur (zéro React/ECharts), retourne `{ momentum: MomentumBin[], kills:
+MomentumKill[] }`. `MomentumBin = { delta, teamKills, enemyKills, cumTeam, cumEnemy, trend
+}`. `trend` (DEC-4) via `computeTrend(delta, prevDelta)` avec `prevDelta = delta[i-1]`
+(0 avant le 1er bin, ce qui rend « up » le 1er bin non nul quel que soit son côté) :
+delta>0 → up si delta>prevDelta ; delta<0 → up si delta<prevDelta ; delta=0 → down
+(neutralisé, pas de barre DEC-5). `xuidMeta` typé `ReadonlyMap<string, { ally: boolean }>`
+(la map riche du composant reste assignable). La boucle kill→bin/équipe n'est pas encore
+retirée du composant (option « pas encore touché » du gate Phase 2) : le débranchement
+effectif se fait en Phase 3 avec la réécriture de `buildOption`. Les types
+`MomentumBin/Kill/Data/Trend` restent INTERNES en Phase 2 (garde-rail pre-push
+`knip-ratchet` : un type exporté sans consommateur = régression code mort ; ils seront
+exportés en Phase 3 à l'import par le composant). Seul `computeMomentumBins` est exporté.
+
+**Résultats observés** : `_momentum.test.ts` 7 tests verts couvrant a–g (nominal 2 équipes,
+1er bin non nul=up, delta 0 intercalé sans barre + cumuls conservés, event hors bornes
+ignoré, event sans actor/temps + non-kill + acteur hors scoreboard ignorés, une seule
+équipe, renforcement/essoufflement côté négatif −2→−5=up puis −5→−1=down). Gate : typecheck
+OK ; vitest global 254 fichiers / 2151 tests verts ; eslint 0 sur les 2 fichiers.
+
+**Conclusion / prochaine étape** : Phase 3 — réécriture de `buildOption`
+(`MatchTugOfWarChart.tsx`) : consommer `computeMomentumBins`, supprimer normalisation
+0–100 % + markPoints cumul + markLine 50 % + constantes de layout figées ; 2 séries bar
+signées (positifs team-ally / négatifs team-enemy) avec opacité DEC-4, échelle Y symétrique
+dynamique (DEC-6), markLine y=0 (DEC-7), lanes/scatter/vagues repositionnés sur yMax.
+
+## [2026-07-13] Momentum Match View — Phase 1 : centralisation hexToRgba + garde-rail (branche feat/matchview-momentum)
+
+**Statut** : Complété (Phase 1/4 du PLAN_MATCHVIEW_MOMENTUM).
+
+**Décision technique principale** : pré-requis règle « ≤ 2 copies » avant le rendu
+histogramme momentum (Phase 3 en ajoute un 3e usage intensif). Le helper `hexToRgba(hex,
+alpha)` (alpha-mix STRUCTUREL sur un hex déjà résolu via token, contexte canvas/ECharts)
+devient source unique dans `components/charts/_utils.ts`. Les 2 copies locales
+(`MatchTugOfWarChart.tsx`, `MatchImpactBadgesBar.tsx` — qui avaient déjà divergé : regex
+`#?` vs `#`, espacement) sont supprimées et importées. La variante `color-mix(...)` de
+`components/ui/match-card-presentation.ts` reste en place (autre pattern : CSS var en
+contexte DOM, pas un hex résolu) — hors périmètre et hors champ du garde-rail.
+
+**Résultats observés** : garde-rail `hex-alpha.guard.test.ts` (node-env, scan
+`src/features/**`, interdit `function hexToRgba(` / `const hexToRgba` local) = 1 test vert.
+Gate Phase 1 : typecheck OK ; vitest 253 fichiers / 2144 tests (14 skipped) verts ; eslint
+0 sur les 4 fichiers touchés.
+
+**Conclusion / prochaine étape** : Phase 2 — logique pure `_momentum.ts`
+(`computeMomentumBins`) + tests unitaires (a–g), déplacement (pas duplication) de la boucle
+kill→bin/équipe depuis `MatchTugOfWarChart.tsx`.
+
 ## [2026-07-13] populate-assets → sous-commande de la CLI levelup (image prod) — LOT OPS/QUALITÉ item 4 (branche chore/lot-ops-qualite)
 
 **Statut** : Complété (sous-commande livrée, standalone supprimé, vérif Docker via CI).
