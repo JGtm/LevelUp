@@ -1,3 +1,32 @@
+## [2026-07-13] Retouche UI login Xbox : lien de vérification court ET correct — LOT OPS/QUALITÉ item 0b (branche chore/lot-ops-qualite)
+
+**Statut** : Complété (signalement utilisateur avec capture, 2 causes distinctes corrigées).
+
+**Décisions techniques principales** : le signalement (« URL en clair qui déborde » + « l'URL
+n'est pas bonne ») recouvrait DEUX bugs :
+1. **Fond (backend)** : `sisu_provider.go` préférait `sisuSession.MsaOauthRedirect` (URL
+   d'AUTHORIZE PKCE — flow par redirection, ne demande jamais de code) à la
+   `verification_uri` du device flow. Incohérence UX totale : « Code à saisir : XXXX » +
+   lien vers une page qui n'en veut pas, pendant que le backend polle le grant
+   device_code. Fix : toujours `dcResult.VerificationURL` (= `https://www.microsoft.com/link`,
+   la page de saisie), MsaOauthRedirect en simple secours si la réponse device n'a pas
+   d'URL. Tests SISU inversés en conséquence (HappyPath verrouillait le mauvais choix).
+2. **Forme (front)** : les 2 surfaces (XboxLoginPage + StepDeviceCode) affichaient l'URL
+   brute `uri.replace('https://','')` avec tous ses query params → overflow massif.
+   Nouveau helper pur `verificationLinkLabel` (`lib/formatters/url.ts`, host+chemin sans
+   protocole/www/query/hash, fallback défensif sans throw, 5 tests) appliqué aux 2
+   composants (+ `break-all` défensif). Anti-phishing préservé : le DOMAINE réel reste
+   visible ; l'URL complète est dans le href. Aucun nouveau libellé (clés i18n existantes).
+
+**Résultats observés** : navigateur (contexte anonyme neuf) — « Rendez-vous sur
+microsoft.com/link » + « Code à saisir : 65D7J9MV » ; le lien mène à
+`login.live.com/oauth20_remoteconnect.srf` = « Saisir le code pour autoriser l'accès »
+(champ code + bouton Autoriser) : COHÉRENCE prouvée. `/setup` non atteignable localement
+(app configurée → redirect) : StepDeviceCode couvert par le même helper + tsc + tests
+SetupPage. Gates : tsc OK, vitest ciblé 12+4 tests OK, go test auth OK, lint 0 issue.
+
+**Conclusion / prochaine étape** : reprendre l'item 2 du lot (alerte disque VPS).
+
 ## [2026-07-13] Vérif auth locale xbox + fix SSO device-flow (URL 404 + race single-flight) — LOT OPS/QUALITÉ item 0 (branche chore/lot-ops-qualite)
 
 **Statut** : Complété (vérifications a-d faites ; 2 fix serveur nécessaires en chemin).

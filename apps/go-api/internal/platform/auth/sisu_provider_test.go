@@ -188,8 +188,11 @@ func TestSISUProvider_InitDeviceFlowWithURLs_HappyPath(t *testing.T) {
 	if got := flow.GetUserCode(); got != "TEST99" {
 		t.Errorf("GetUserCode = %q, want TEST99", got)
 	}
-	if got := flow.GetVerificationURL(); got != "https://login.live.com/oauth20_authorize.srf?sisu=1" {
-		t.Errorf("GetVerificationURL = %q, want URL SISU", got)
+	// La verification URL doit être celle du DEVICE flow (page de saisie du code),
+	// PAS le MsaOauthRedirect SISU (URL d'authorize PKCE qui ne demande jamais le
+	// code) — incohérence UX corrigée le 2026-07-13.
+	if got := flow.GetVerificationURL(); got != "https://microsoft.com/link" {
+		t.Errorf("GetVerificationURL = %q, want https://microsoft.com/link (page de saisie du code, pas l'authorize SISU)", got)
 	}
 	if got := flow.GetFlowType(); got != "sisu" {
 		t.Errorf("GetFlowType = %q, want sisu", got)
@@ -213,8 +216,9 @@ func TestSISUProvider_InitDeviceFlowWithURLs_HappyPath(t *testing.T) {
 	}
 }
 
-// TestSISUProvider_InitDeviceFlow_VerificationURLFallback vérifie que si SISU ne retourne
-// pas de MsaOauthRedirect, on utilise l'URL du Device Code Xbox.
+// TestSISUProvider_InitDeviceFlow_VerificationURLFallback vérifie que si la réponse
+// device n'expose AUCUNE verification_uri (défensif), on retombe sur le
+// MsaOauthRedirect SISU plutôt que de renvoyer une URL vide.
 func TestSISUProvider_InitDeviceFlow_VerificationURLFallback(t *testing.T) {
 	srvDeviceToken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -222,24 +226,23 @@ func TestSISUProvider_InitDeviceFlow_VerificationURLFallback(t *testing.T) {
 	}))
 	defer srvDeviceToken.Close()
 
+	// Réponse device SANS verification_uri.
 	srvXboxDeviceCode := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		b, _ := json.Marshal(map[string]any{
-			"device_code":      "dc",
-			"user_code":        "FALLBACK",
-			"verification_uri": "https://xbox.com/activate",
-			"expires_in":       600,
-			"interval":         5,
+			"device_code": "dc",
+			"user_code":   "FALLBACK",
+			"expires_in":  600,
+			"interval":    5,
 		})
 		w.Write(b) //nolint:errcheck
 	}))
 	defer srvXboxDeviceCode.Close()
 
-	// SISU retourne MsaOauthRedirect vide
 	srvSISU := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("X-SessionId", "s1")
 		w.Header().Set("Content-Type", "application/json")
-		b, _ := json.Marshal(map[string]any{"MsaOauthRedirect": ""})
+		b, _ := json.Marshal(map[string]any{"MsaOauthRedirect": "https://login.live.com/oauth20_authorize.srf?sisu=1"})
 		w.Write(b) //nolint:errcheck
 	}))
 	defer srvSISU.Close()
@@ -253,8 +256,8 @@ func TestSISUProvider_InitDeviceFlow_VerificationURLFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("erreur inattendue : %v", err)
 	}
-	if got := flow.GetVerificationURL(); got != "https://xbox.com/activate" {
-		t.Errorf("URL fallback = %q, want https://xbox.com/activate", got)
+	if got := flow.GetVerificationURL(); got != "https://login.live.com/oauth20_authorize.srf?sisu=1" {
+		t.Errorf("URL fallback = %q, want MsaOauthRedirect (secours quand la réponse device n'a pas d'URL)", got)
 	}
 }
 

@@ -12,6 +12,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
 import { useStartDeviceFlow, useDeviceFlowStatus } from './queries'
 import { apiErrorCode } from '@/lib/api/client'
+import { verificationLinkLabel } from '@/lib/formatters'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -168,8 +169,11 @@ export function StepDeviceCode() {
       <h2 className="text-lg font-semibold">{t('common.setup.microsoft_connection_title')}</h2>
       <p className="text-sm text-muted-foreground">
         {t('common.setup.go_to')}{' '}
-        <a href={uri} target="_blank" rel="noopener noreferrer" className="text-primary underline">
-          {uri.replace('https://', '')}
+        {/* Jamais l'URL brute (query params PKCE illisibles + overflow) : libellé
+            court host/chemin — le domaine reste visible (anti-phishing), l'URL
+            complète est portée par le href. break-all = défense anti-overflow. */}
+        <a href={uri} target="_blank" rel="noopener noreferrer" className="text-primary underline break-all">
+          {verificationLinkLabel(uri)}
         </a>{' '}
         {t('common.setup.enter_this_code')}
       </p>

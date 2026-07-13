@@ -146,10 +146,19 @@ func (p *SISUProvider) initDeviceFlowWithURLs(ctx context.Context, urls sisuProv
 	}
 	p.mu.Unlock()
 
-	// Vérification URL : préférer MsaOauthRedirect (SISU) si disponible, sinon VerificationURI Xbox.
-	verificationURL := sisuSession.MsaOauthRedirect
+	// Vérification URL : TOUJOURS celle du Device Code Flow (dcResult) — c'est la
+	// page Microsoft où l'utilisateur SAISIT le user_code affiché par l'UI
+	// (typiquement https://www.microsoft.com/link). L'ancienne préférence pour
+	// sisuSession.MsaOauthRedirect était une incohérence UX (bug constaté
+	// 2026-07-13) : MsaOauthRedirect est une URL d'AUTHORIZE PKCE (flow par
+	// redirection, jamais de saisie de code) — l'afficher à côté de « Code à
+	// saisir : XXXX » envoyait l'utilisateur sur une page qui ne demanderait
+	// jamais ce code, pendant que le backend polle le grant device_code.
+	// MsaOauthRedirect ne sert que de secours si la réponse device n'expose
+	// aucune URL (défensif — jamais observé).
+	verificationURL := dcResult.VerificationURL
 	if verificationURL == "" {
-		verificationURL = dcResult.VerificationURL
+		verificationURL = sisuSession.MsaOauthRedirect
 	}
 
 	slog.InfoContext(ctx, "sisu_provider: Device Code Flow + session SISU initiés",
