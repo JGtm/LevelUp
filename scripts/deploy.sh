@@ -77,8 +77,13 @@ docker image prune -f
 # deploy (chaque build empile ses couches) et finit par saturer le disque du VPS
 # — incident disque 2026-06-27 : 33 Go de cache accumulé. On garde 5 Go de cache
 # récent pour des builds incrémentaux rapides ; au-delà, BuildKit évince le plus ancien.
+# PIÈGE (incident 2026-07-13, disque 100%, prod down) : `docker buildx prune` vide le
+# cache du builder BUILDX, mais `docker compose build` passe par le builder du DAEMON —
+# deux stores distincts. L'éviction ne touchait donc jamais le bon cache (46 Go
+# accumulés en 2 semaines). `docker builder prune` cible le builder du daemon.
 echo "[deploy] Bornage du cache de build Docker (keep 5GB)..."
-docker buildx prune -f --keep-storage=5GB || true
+docker builder prune -f --keep-storage=5GB || true
+docker buildx prune -f --keep-storage=1GB || true
 
 # Helper : attendre qu'un endpoint HTTP réponde (retry jusqu'à max_seconds)
 _wait_for_http() {
