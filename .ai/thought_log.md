@@ -1,3 +1,24 @@
+## [2026-07-13] Explorer briefing cards — LOT B front socle (branche feat/explorer-briefing-cards)
+
+**Statut** : En cours — Lot B (socle front) COMPLÉTÉ + gaté vert ; restent Lot C (modules) + D.
+
+**Décision technique principale** : `ExplorerBriefingStrip` = rangée socle 4 tuiles (Matchs+
+période, Taux de victoire+V-D-N+delta, FDA agrégat+delta, Perf. moyenne+delta) + frise
+`OutcomeSequenceTape` (height 64). Chrome via `KpiCard` partagé (comme KpiGrid) plutôt qu'un
+3e composant de tuile. Logique pure (KDA agrégat, winrate, deltas signés, mapping outcome)
+extraite dans `ExplorerBriefing.logic.ts` (testée). Réponse `ExplorerMatchesQueryResponse`
+déjà typée avec `briefing` (generated.ts régénéré en Lot A) → `matchesQuery.data.briefing`
+directement consommable. `include_briefing: true` posé sur la SEULE requête du mode Matchs
+(pas ally/enemy du mode Joueur, hors périmètre).
+
+**Résultats observés (gates Lot B)** : `make check-types` OK ; eslint 0 erreur (2 warnings
+pré-existants sur du code non touché) ; grep hex ExplorerBriefing* = 0 ; vitest complet
+255 fichiers / 2161 passés / 14 skipped / 0 échec.
+
+**Conclusion / prochaine étape** : commit Lot B, puis Lot C (dimensions top/flop + notes
+paliers, sparkline tendance, module classé gaté useCapability('ranked')), puis Lot D (vérif
+visuelle Infinite+H5, MAJ ETAT_CONSOLIDE, archivage plan).
+
 ## [2026-07-13] Explorer briefing cards — LOT A backend (reprise WIP interrompu, branche feat/explorer-briefing-cards)
 
 **Statut** : En cours — Lot A (backend) COMPLÉTÉ + gaté vert ; restent Lots B/C (front) + D (livraison).

@@ -2,6 +2,18 @@
 // Source : apps/web/src/lib/i18n/manifests/explorer.toml
 
 export const explorerManifest = {
+  "explorer.briefing.fda_label": { fr: "FDA", en: "KDA" },
+  "explorer.briefing.low_sample": { fr: "Échantillon faible ({n} matchs)", en: "Small sample ({n} matches)" },
+  "explorer.briefing.matches_label": { fr: "Matchs", en: "Matches" },
+  "explorer.briefing.perf_label": { fr: "Perf. moyenne", en: "Avg. performance" },
+  "explorer.briefing.record_label": { fr: "Bilan", en: "Record" },
+  "explorer.briefing.record_vdn": { fr: "{w} V · {l} D · {t} N", en: "{w} W · {l} L · {t} T" },
+  "explorer.briefing.series_dnf": { fr: "Abandon", en: "DNF" },
+  "explorer.briefing.series_loss": { fr: "Défaite", en: "Loss" },
+  "explorer.briefing.series_tie": { fr: "Égalité", en: "Tie" },
+  "explorer.briefing.series_win": { fr: "Victoire", en: "Win" },
+  "explorer.briefing.vs_baseline": { fr: "vs habituel", en: "vs usual" },
+  "explorer.briefing.win_rate_label": { fr: "Taux de victoire", en: "Win rate" },
   "explorer.combat.axis_count": { fr: "Nombre", en: "Count" },
   "explorer.combat.axis_fda": { fr: "FDA", en: "KDA" },
   "explorer.combat.axis_placement": { fr: "Placement", en: "Placement" },

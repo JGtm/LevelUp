@@ -11,6 +11,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { MultiSelectFilter, type MultiSelectOption } from './MultiSelectFilter'
 import { ExplorerMatchesTable } from './ExplorerMatchesTable'
+import { ExplorerBriefingStrip } from './ExplorerBriefingStrip'
 import { SaisonPill } from '@/components/shell/FilterOmnibar'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import type { ContextDescriptor, MatchFilterSpec } from '@/lib/match-nav/navContext'
@@ -367,6 +368,9 @@ function ExplorerMatchesResultsBlock({
   }
   return (
     <div className="space-y-2">
+      {/* Bandeau de briefing (mode Matchs) — au-dessus du compteur/tri/export */}
+      <ExplorerBriefingStrip briefing={matchesQuery.data.briefing} t={t} />
+
       {/* Barre résultats + tri + export */}
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
