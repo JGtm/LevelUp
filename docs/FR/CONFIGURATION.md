@@ -274,6 +274,7 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 | `discord_lang` | string | `"fr"` | Langue des notifications Discord. |
 | `discord_notifications_enabled` | bool | `false` | Active les notifications de sync Discord. |
 | `discord_notify_new_media` | bool | `true` | Notifie sur nouveau média. |
+| `discord_notify_disk` | bool | `true` | Alertes disque (warn > 80 % utilisés ou < 2 Go libres, critical > 90 % ou < 500 Mo) sur le volume data, envoyées au changement de statut + rappel quotidien + rétablissement. |
 | `discord_webhook_url` | string | `""` | URL webhook Discord (les vars d'env priment). |
 | `tailscale_enabled` | bool | `false` | Active l'accès distant Tailscale Funnel. |
 | `user_timezone` | string | `"Europe/Paris"` | Timezone IANA pour l'affichage. |

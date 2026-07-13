@@ -1,3 +1,38 @@
+## [2026-07-13] Alerte disque VPS → détection monitoring + notification Discord — LOT OPS/QUALITÉ item 2 (branche chore/lot-ops-qualite)
+
+**Statut** : Complété (fix livré actif ; config webhook PROD = action utilisateur documentée).
+
+**Décision technique principale** : remplacer l'alerte hôte invisible (levelup-disk-check.sh
+→ journald, cron horaire — l'incident disque-plein du 2026-07-13 a prouvé que personne ne la
+lit) par une surveillance CÔTÉ SERVEUR Go : le volume data est un bind mount du FS hôte, donc
+l'espace libre mesuré dans le conteneur EST celui de l'hôte. Réutilisation maximale de
+l'existant (règle 14) : mesure = resourceDisk (façade diskfree, A5) ; alerte visible =
+détection persistée du monitoring (le WARN/ERROR slog à message STABLE passe par le pipeline
+ErrorCollector→FlushDetections→detections_latest→badge admin, zéro nouvelle plomberie) ;
+push = webhook Discord existant (notify.SendWebhook).
+- Seuils A5.3 ÉTENDUS : `EvaluateDiskStatus(free, total)` combine absolus (2 Go/500 Mo) et
+  POURCENTAGE (80 %/90 % — au profil de l'incident : 82 % le 07-07, aucune alerte absolue).
+- `ops.ShouldNotifyDisk` (politique pure testée, 7 cas) : notif sur TRANSITION de statut +
+  rappel 24 h en breach persistant + rétablissement ; unknown = no-op sans écraser l'état.
+- `wire.RunDiskWatchLoop` (15 min, premier check au boot, schedulerCtx/WG comme le flush
+  détections) + gauges expvar `disk_data_free_bytes`/`disk_data_used_percent` + compteur
+  `disk_watch_notifications_total`.
+- `notify.NotifyDiskAlert` (failsafe, FR/EN, toggle `discord_notify_disk` défaut true,
+  gate global `discord_notifications_enabled` + webhook). Docs CONFIGURATION EN+FR à parité.
+
+**Résultats observés** : preuve VIVANTE en local dès le boot — disque de dev à 85 % → WARN
+stable dans monitoring.log (`disk_watch: espace disque faible sur le volume data`,
+free=145,7 Go / total=999,1 Go / 85 %), transition boot→warn décidée, trace « alerte sans
+notification (webhook Discord non configuré) ». Gates : build/vet 0, tests ops+notify+wire
+ok (dont TestShouldNotifyDisk 7 sous-cas et TestEvaluateDiskStatus 9 cas), lint
+new-from-rev 0 issue.
+
+**Conclusion / prochaine étape** : PROD vérifiée en lecture seule : `discord_notifications_
+enabled=false`, pas de webhook → action utilisateur documentée (ETAT §3) pour activer le
+push ; sans webhook l'alerte reste visible dans Admin > Monitoring. Script hôte + cron
+journald = redondance inoffensive, retrait optionnel (écriture VPS = utilisateur). Enchaîner
+item 3 (data-quality H5 local).
+
 ## [2026-07-13] Retouche UI login Xbox : lien de vérification court ET correct — LOT OPS/QUALITÉ item 0b (branche chore/lot-ops-qualite)
 
 **Statut** : Complété (signalement utilisateur avec capture, 2 causes distinctes corrigées).

@@ -35,7 +35,7 @@
 
 | Quoi | Où | Échéance |
 |---|---|---|
-| Lot ops/qualité (item 0 vérif SSO local FAIT + fix 404 device-flow ; item 1 leaderboard 404 FAIT ; restent : alerte disque→notif, data-quality H5 local, populate-assets) | agent Opus sur `chore/lot-ops-qualite` — repris après pause | rapport final à la fin du lot |
+| Lot ops/qualité (items 0/0b SSO+UI FAITS ; item 1 leaderboard 404 FAIT ; item 2 alerte disque FAIT ; restent : data-quality H5 local, populate-assets) | agent Opus sur `chore/lot-ops-qualite` | rapport final à la fin du lot |
 | Observation `legacy_source_used` = 0 | prod (T0 = 2026-07-13) | D2 armable ≥ 2026-07-20 → chantier Phase 5 ADR 0023 (retrait fallbacks legacy) |
 | Soak bruit prod B2.4 | re-mesure script §Mesure du plan triage | 2026-07-14 |
 | Soak 30 j B7.4 (cible ERROR ≈ 0/j) + décision endpoint `/admin/monitoring/errors` | plan triage | ~2026-08-11 |
@@ -60,6 +60,12 @@
       dans `users.json`).**
       NOTE produit (retour utilisateur) : « un admin est un joueur » — modes exclusifs
       = UX discutable ; coexistence SSO+password notée au backlog (item 9, §5).
+- [ ] **Webhook Discord en PROD pour l'alerte disque** (après merge+deploy du lot ops) :
+      dans `/opt/levelup/app_settings.json`, passer `"discord_notifications_enabled": true`
+      et renseigner `"discord_webhook_url": "https://discord.com/api/webhooks/…"`
+      (ou env `LEVELUP_DISCORD_WEBHOOK_URL`), puis redémarrer le conteneur. Vérifié
+      le 13/07 (lecture seule) : actuellement `false` + pas d'URL → sans ça, l'alerte
+      disque reste visible UNIQUEMENT dans Admin > Monitoring (détections + badge).
 - [x] ~~Fuite inter-titres~~ : confirmée corrigée par l'utilisateur le 13/07.
 - [ ] Passe visuelle restante (prod à jour) : Explorer « matchs récents » profil H5 ·
       « En placement » · « Super Fiesta » · grille KPI sans trous · mention
@@ -81,8 +87,14 @@
 
 1. ~~Requalifier le cron leaderboard 404 saison~~ FAIT (lot ops item 1, commit
    `f4721be0f` — en attente de merge avec le reste du lot).
-2. Alerte disque VPS > 80 % → notification push (aujourd'hui : journald que personne
-   ne lit ; l'incident du 13/07 l'a prouvé).
+2. ~~Alerte disque VPS > 80 % → notification push~~ FAIT (lot ops item 2) : boucle
+   serveur `RunDiskWatchLoop` (15 min, volume data = FS hôte via bind mount) →
+   détection persistée + badge admin (WARN/ERROR stable) + notif Discord
+   (transition + rappel 24 h + rétablissement, toggle `discord_notify_disk`).
+   Seuils A5.3 étendus : 80 %/90 % d'occupation EN PLUS des absolus 2 Go/500 Mo.
+   **Pour la notif push en PROD, config requise (§3)** ; sans webhook l'alerte
+   reste visible (détections admin). Script hôte journald = redondance, retrait
+   optionnel.
 3. ~~Items Notion sans plan~~ **RETIRÉ (recadrage utilisateur 13/07)** : le backlog
    Notion est le carnet personnel de Guillaume — aucun chantier n'en sera tiré sans
    demande explicite de sa part.

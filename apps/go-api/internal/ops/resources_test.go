@@ -10,20 +10,29 @@ import (
 )
 
 func TestEvaluateDiskStatus(t *testing.T) {
+	const total100G = uint64(100) << 30
 	cases := []struct {
-		name string
-		free uint64
-		want string
+		name  string
+		free  uint64
+		total uint64
+		want  string
 	}{
-		{"confortable (10 Go)", 10 << 30, domain.FreshnessStatusOK},
-		{"juste au seuil warn (2 Go)", DiskFreeWarnBytes, domain.FreshnessStatusOK},
-		{"sous le seuil warn (1 Go)", 1 << 30, domain.FreshnessStatusWarn},
-		{"juste au seuil critical (500 Mo)", DiskFreeCriticalBytes, domain.FreshnessStatusWarn},
-		{"sous le seuil critical (100 Mo)", 100 << 20, domain.FreshnessStatusCritical},
+		// Seuils absolus (total inconnu → % ignoré).
+		{"confortable (10 Go, total inconnu)", 10 << 30, 0, domain.FreshnessStatusOK},
+		{"juste au seuil warn (2 Go)", DiskFreeWarnBytes, 0, domain.FreshnessStatusOK},
+		{"sous le seuil warn (1 Go)", 1 << 30, 0, domain.FreshnessStatusWarn},
+		{"juste au seuil critical (500 Mo)", DiskFreeCriticalBytes, 0, domain.FreshnessStatusWarn},
+		{"sous le seuil critical (100 Mo)", 100 << 20, 0, domain.FreshnessStatusCritical},
+		// Seuils pourcentage (disque 100 Go : l'absolu est loin, le % déclenche).
+		{"50 % utilisé (50 Go libres)", 50 << 30, total100G, domain.FreshnessStatusOK},
+		{"82 % utilisé (18 Go libres) — profil incident VPS", 18 << 30, total100G, domain.FreshnessStatusWarn},
+		{"91 % utilisé (9 Go libres)", 9 << 30, total100G, domain.FreshnessStatusCritical},
+		// Combiné : le pire des deux gagne (75 % utilisé = ok en %, mais 1 Go libre = warn absolu).
+		{"75 % utilisé MAIS 1 Go libre (petit disque)", 1 << 30, 4 << 30, domain.FreshnessStatusWarn},
 	}
 	for _, tc := range cases {
-		if got := EvaluateDiskStatus(tc.free); got != tc.want {
-			t.Errorf("%s : EvaluateDiskStatus(%d) = %q, attendu %q", tc.name, tc.free, got, tc.want)
+		if got := EvaluateDiskStatus(tc.free, tc.total); got != tc.want {
+			t.Errorf("%s : EvaluateDiskStatus(%d, %d) = %q, attendu %q", tc.name, tc.free, tc.total, got, tc.want)
 		}
 	}
 }

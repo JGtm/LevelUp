@@ -1070,6 +1070,16 @@ func main() {
 		}()
 	}
 
+	// Surveillance disque du volume data (lot ops 2026-07-13, suite incident
+	// disque-plein VPS) : dépassement de seuil (A5.3 : 80 %/90 % ou 2 Go/500 Mo)
+	// → log WARN/ERROR (détection persistée + badge admin) + notification Discord
+	// si webhook configuré. Indépendante du monitoring store (log-driven).
+	schedulerWG.Add(1)
+	go func() {
+		defer schedulerWG.Done()
+		reg.RunDiskWatchLoop(schedulerCtx)
+	}()
+
 	// Cron catalogue (hebdomadaire) : rafraîchit le catalogue (playlists / couples
 	// map-mode / maps / modes) via le drain DiscoveryUGC testé (même chemin que l'action
 	// admin catalog/ugc-drain). TOUJOURS actif (autonome, plus de flag). La

@@ -82,6 +82,10 @@ type NotifyConfig struct {
 	// NotifyReauth active la notification « reconnexion Xbox requise » quand le
 	// refresh_token d'un joueur meurt (PR-B). Défaut : true.
 	NotifyReauth bool
+	// NotifyDisk active les alertes disque (warn > 80 % / critical > 90 %,
+	// seuils ops A5.3 — lot ops 2026-07-13, suite incident disque-plein VPS).
+	// Défaut : true.
+	NotifyDisk bool
 	// SettingsPath est le chemin vers app_settings.json pour l'anti-spam de version.
 	SettingsPath string
 	// Labels fournit les libellés title-aware des embeds (PMT-11). nil → libellés
@@ -160,6 +164,7 @@ func notifyConfigFromMap(settingsPath string, s map[string]any) NotifyConfig {
 	cfg.NotifyFriends = boolValDefault(s, "discord_notify_friends", true)
 	cfg.NotifyVersion = boolValDefault(s, "discord_notify_new_version", true)
 	cfg.NotifyReauth = boolValDefault(s, "discord_notify_reauth", true)
+	cfg.NotifyDisk = boolValDefault(s, "discord_notify_disk", true)
 	return cfg
 }
 
@@ -263,6 +268,18 @@ var discordStrings = map[string]map[string]string{
 	"discord_bf_perf_scores":     {"fr": "⚡  {count} perf score(s)", "en": "⚡  {count} perf score(s)"},
 	"discord_bf_aliases":         {"fr": "👤  {count} alias(es)", "en": "👤  {count} alias(es)"},
 	"discord_bf_pve":             {"fr": "🤖  {count} stat(s) PvE", "en": "🤖  {count} PvE stat(s)"},
+
+	"discord_disk_warn_title":     {"fr": "💾  Disque serveur : espace faible", "en": "💾  Server disk: low space"},
+	"discord_disk_critical_title": {"fr": "🚨  Disque serveur : espace CRITIQUE", "en": "🚨  Server disk: CRITICAL space"},
+	"discord_disk_ok_title":       {"fr": "✅  Disque serveur : espace rétabli", "en": "✅  Server disk: space recovered"},
+	"discord_disk_alert_desc": {
+		"fr": "Le volume de données est rempli à **{used_pct} %** — **{free}** libres sur {total} (`{path}`). Libérer de l'espace avant saturation (incident du 2026-07-13 : prod down disque plein).",
+		"en": "Data volume is **{used_pct}%** full — **{free}** free of {total} (`{path}`). Free up space before saturation.",
+	},
+	"discord_disk_ok_desc": {
+		"fr": "Le volume de données est revenu sous les seuils d'alerte : **{free}** libres sur {total} ({used_pct} % utilisés).",
+		"en": "Data volume is back under alert thresholds: **{free}** free of {total} ({used_pct}% used).",
+	},
 
 	"discord_reauth_title": {"fr": "🔑  Reconnexion Xbox requise", "en": "🔑  Xbox reconnection required"},
 	"discord_reauth_desc": {
