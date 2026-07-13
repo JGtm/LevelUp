@@ -5,24 +5,7 @@
  * deltas signés, KDA agrégat, mapping de la frise). Les composants du bandeau
  * consomment ces helpers.
  */
-import type { KPIStats } from '@/lib/api/types'
 import type { OutcomeValue } from '@/components/charts/OutcomeSequenceTape'
-
-/**
- * KDA AGRÉGAT canonique (ADR 0006) à partir des KPIStats : la valeur par match
- * = frags/match + assists/match ÷ 3 − morts/match. JAMAIS un quotient par les
- * morts. Miroir exact de analysis.AggregateKDA côté Go (les per-game valent
- * total/n, donc kpg + apg/3 − dpg est identique).
- */
-export function aggregateKda(kpis: KPIStats): number {
-  return kpis.kills_per_game + kpis.assists_per_game / 3 - kpis.deaths_per_game
-}
-
-/** Taux de victoire du scope (wins / matchs). null si aucun match. */
-export function scopeWinRate(kpis: KPIStats): number | null {
-  if (kpis.matches_count <= 0) return null
-  return kpis.outcomes.wins / kpis.matches_count
-}
 
 /**
  * Formate un delta signé numérique avec préfixe explicite (+/−/±) et N décimales.

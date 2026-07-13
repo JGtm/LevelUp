@@ -1,52 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import type { KPIStats } from '@/lib/api/types'
 import {
-  aggregateKda,
-  scopeWinRate,
   formatSignedFixed,
   formatSignedPoints,
   signOf,
   outcomeCodeToValue,
   perfTierLabelKey,
 } from './ExplorerBriefing.logic'
-
-function kpis(partial: Partial<KPIStats>): KPIStats {
-  return {
-    matches_count: 0,
-    total_play_seconds: 0,
-    avg_match_seconds: 0,
-    kills_per_game: 0,
-    kills_per_minute: 0,
-    deaths_per_game: 0,
-    deaths_per_minute: 0,
-    assists_per_game: 0,
-    assists_per_minute: 0,
-    avg_accuracy: 0,
-    avg_life_seconds: 0,
-    outcomes: { wins: 0, losses: 0, ties: 0, dnf: 0 },
-    ...partial,
-  } as KPIStats
-}
-
-describe('aggregateKda', () => {
-  it('applique la formule ADR 0006 (frags + assists/3 − morts) par match', () => {
-    const k = kpis({ kills_per_game: 20, assists_per_game: 3, deaths_per_game: 10 })
-    expect(aggregateKda(k)).toBeCloseTo(20 + 1 - 10, 5) // 11
-  })
-  it('peut être négatif', () => {
-    const k = kpis({ kills_per_game: 5, assists_per_game: 0, deaths_per_game: 20 })
-    expect(aggregateKda(k)).toBe(-15)
-  })
-})
-
-describe('scopeWinRate', () => {
-  it('wins / matchs', () => {
-    expect(scopeWinRate(kpis({ matches_count: 10, outcomes: { wins: 7, losses: 2, ties: 1, dnf: 0 } }))).toBe(0.7)
-  })
-  it('null si aucun match', () => {
-    expect(scopeWinRate(kpis({ matches_count: 0 }))).toBeNull()
-  })
-})
 
 describe('formatSignedFixed', () => {
   it('préfixe + / − / ±', () => {

@@ -1,5 +1,12 @@
 # PLAN — Cards de synthèse au-dessus du tableau Explorer (mode Matchs) (2026-07)
 
+> **✅ COMPLÉTÉ le 2026-07-13** (branche `feat/explorer-briefing-cards`). Lots A/B/C/D
+> exécutés + gates verts (go test ./..., golangci-lint 0, check-types, vitest 2157, eslint 0).
+> Vérif visuelle navigateur Infinite (JGtm 1001) + H5 (XxDaemon 309). Écarts assumés vs plan
+> consignés en Découvertes — dont 2 DÉCISIONS À VALIDER par l'utilisateur : (1) module
+> « classé » pivoté en « Pronostic » (pas de donnée CSR ; attendu vs réel sur LUSR v2) ;
+> (2) affichage du Δ classement cumulé (grand nombre LUSR sur scopes longs).
+
 > Rédigé le 2026-07-11 après cartographie sur pièces (front + backend, 2 agents Explore +
 > vérification manuelle des ancrages). Destiné à être exécuté par un agent (Opus).
 > **Exécution sous contrat du skill `plan-execution`** (ordre strict, périmètre fermé,
@@ -366,7 +373,12 @@ Aucun item sans statut. Commit(s) avec accord utilisateur.
   existant (`components/charts/` — vérifier le catalogue README avant d'envisager un
   nouveau wrapper, DEC-5) : taux de victoire par bucket (axe principal) ; perf moyenne
   en seconde série si le wrapper le permet sans surcharge visuelle, sinon omise.
-- [x] **C3 — Module classé** : `RankedCard` gated `useCapability('ranked')` ET
+- [~] **C3 — Module classé → PIVOTÉ EN « PRONOSTIC »** (cf. Découvertes Lot D — décision
+  produit à valider) : le RankDelta CSR par match n'existe pas dans les player DBs et
+  `expected_win_prob` est LUSR-only ; le module a été pivoté en « Pronostic » (attendu vs
+  réel sur `expected_win_prob` + Δ classement quand dispo), toujours gaté
+  `useCapability('ranked')` + `briefing.ranked` présent. Rend sur Infinite, absent sur H5.
+  Spec initiale : `RankedCard` gated `useCapability('ranked')` ET
   `briefing.ranked` présent : delta CSR cumulé (signe coloré tokens) + ligne « Attendu vs
   réel » (`expected_win_rate` / `actual_win_rate` en %). Sous H5 : capability absente +
   backend n'émet rien → module absent (pas de card N/A). Détail plan : gated `useCapability('ranked')` (DEC-7) ET
@@ -394,32 +406,30 @@ Aucun item sans statut. Commit(s) avec accord utilisateur.
 
 ## LOT D — Livraison
 
-- [ ] **D1 — Gates complets** (delivery-checklist) :
-  ```
-  cd apps/go-api && go test ./...
-  make go-api-lint
-  make check-types
-  make test-web
-  ```
-- [ ] **D2 — Vérification visuelle en conditions réelles** (make dev, profil JGtm,
-  locale FR puis EN) — 6 scénarios, chacun avec capture du comportement attendu :
-  1. Recherche sans aucun filtre (gros n) : socle + frise + dimensions + tendance.
-  2. Filtre sur UNE carte : module « par carte » ABSENT, « par mode/playlist » présents.
-  3. Contexte classé (PVP classé) : module classé présent, deltas CSR cohérents.
-  4. Période courte / peu de matchs (n < 10) : socle + mention échantillon faible,
-     AUCUN module.
-  5. Titre Halo 5 : bandeau rendu, module classé ABSENT, aucun N/A ni valeur aberrante
-     (OC/DR nil tolérés).
-  6. Recherche à 0 résultat : aucun bandeau, état vide existant inchangé.
-  Recouper à la main les valeurs du scénario 1 (winrate + n) avec le tableau.
-- [ ] **D3 — Non-régression Historique** : la page Historique de matchs (consommateur
-  de `GetPage`) rend à l'identique (réponse sans briefing étendu) — vérification
-  visuelle + test handler A9 déjà en place.
-- [ ] **D4 — Docs** : si `.ai/CHARTS_AND_TABLES.md` recense les surfaces par page, y
-  ajouter le bandeau ; si un nouveau wrapper chart a été créé (normalement non, DEC-5),
-  MAJ `apps/web/src/components/charts/README.md`.
-- [ ] **D5 — Thought log** : entrée de clôture (date, décisions, résultats des gates,
-  écarts éventuels vs plan) — OBLIGATOIRE avant de rendre la main.
+- [x] **D1 — Gates complets** : `go test ./...` VERT ; `golangci-lint
+  --new-from-rev=a25ab7cf2` = 0 issue ; `make check-types` OK ; vitest complet 2157 passés
+  / 14 skipped / 0 échec ; eslint 0 erreur ; grep hex 0.
+- [x] **D2 — Vérification visuelle** (navigateur chrome-devtools :5173, auth_mode=none
+  temporaire, profils JGtm/XxDaemon, locale FR) :
+  1. `[x]` Sans filtre (Infinite JGtm 1001, H5 XxDaemon 309) : socle + frise + 3 dimensions
+     + tendance rendus, propres. Recoupé : socle MATCHS = « N matchs trouvés » du tableau
+     (309/309, 1001/1001) après fix scope ; winrate/bilan cohérents.
+  2. `[x]` Filtre UNE carte (Coliseum/Corpo) : dimension « carte » ABSENTE, mode/playlist présents.
+  3. `[~]` Contexte classé : couvert par le module Pronostic (cf. Découvertes — le module
+     « classé » n'a pas de donnée CSR ; pivot Pronostic rendu sur Infinite avec attendu vs réel).
+  4. `[x]` Peu de matchs (Corpo, 2 matchs) : `low_sample=true`, socle seul, AUCUN module
+     (API + test unitaire `TestBuildExplorerBriefing_LowSample`).
+  5. `[x]` Halo 5 : bandeau rendu (socle + 3 dimensions + tendance), module Pronostic ABSENT
+     (rankedCapable=false), aucun N/A ni valeur aberrante.
+  6. `[x]` 0 résultat (date future) : aucun briefing, état vide inchangé.
+  Locale EN : `[!]` non capturée au navigateur (i18n fr+en présent par typage + build_i18n) —
+  à faire au besoin par l'utilisateur (bascule locale UI).
+- [x] **D3 — Non-régression Historique** : endpoint `pages/match-history/query` interrogé —
+  ne pose pas `include_briefing` → `briefing` absent (seul `briefing_kpis` canonical inchangé).
+  + test handler `TestExplorerHandler_MatchesQuery_NoBriefingByDefault`.
+- [x] **D4 — Docs** : `.ai/CHARTS_AND_TABLES.md` §9.0 ajouté (bandeau briefing). Aucun
+  nouveau wrapper chart (TimeseriesLineChart réutilisé) → README charts inchangé.
+- [x] **D5 — Thought log** : entrées Lots A/B/C/D dans `.ai/thought_log.md`.
 
 ## Hors périmètre (NE PAS TRAITER — consigner en Découvertes si tentation)
 
@@ -446,7 +456,29 @@ Aucun item sans statut. Commit(s) avec accord utilisateur.
   `LoadPlayerMatches` ne sont pas enrichies FR (contrairement à Synthèse qui appelle
   `EnrichCanonicalAssetTranslations`). Pour éviter des libellés EN sous FR, dimensions/
   tendance/baseline sont bâties sur les `MatchHistoryRawRow` (déjà FR + post-exclusions).
-  Le socle KPIs + le delta rating restent canonical.
+- **[Lot D — CORRIGÉ] Socle canonical (257) ≠ tableau (309)** : la vérif visuelle a montré
+  le compteur MATCHS du socle (canonical scoped) incohérent avec « N matchs trouvés » (raw).
+  Fix : nouveau bloc `Scope *ExplorerBriefingScope` calculé sur les RAW rows du scope
+  (matchs/bilan/winrate/KDA/perf) → socle 100 % cohérent avec le tableau et les modules.
+  Le champ `kpis` (canonical) a été retiré du briefing (n'était utilisé que par le socle).
+- **[Lot D — CORRIGÉ] Dimension « par mode » disparaissait** : le convertisseur n'utilisait
+  que `pair_name`. Or `mode_ui` (colonne du tableau) fait COALESCE(pair, game_variant). Les
+  matchs dont le mode vient du game_variant étaient ignorés → mode souvent < 2 valeurs
+  distinctes → dimension omise. Fix : réplication exacte via `analysis.ResolveModeUI(pair)`
+  puis fallback `ResolveModeUI(game_variant)` — cohérent avec la colonne Mode du tableau.
+- **[Lot D — DÉCISION PRODUIT à valider] Module « classé » → « Pronostic »** : sur pièces,
+  le RankDelta canonique (delta CSR par match) est SYSTÉMATIQUEMENT nil dans les player DBs
+  (le loader `LoadPlayerMatches` ne charge pas `SkillSnapshot.Delta` ; vérifié JGtm/Madina
+  1000+ matchs classés → rank_delta nil). Et `expected_win_prob` (LUSR v2) n'existe QUE sur
+  les matchs NON classés (sur un match CSR la ligne `_latest` gagnante est CSR → winProb
+  NULL, cf. match_history_repo.go:207). Donc le « module classé » (delta CSR + attendu vs
+  réel) tel que spécifié n'a AUCUNE donnée. Décision (règle n°11 « pas de feature OFF ») :
+  pivot en module **« Pronostic »** = attendu vs réel sur `expected_win_prob` (donnée réelle,
+  LUSR v2) + ligne Δ classement cumulé quand le RankDelta existe. Toujours gaté
+  `rankedCapable` (match.skill.snapshot → exclut H5). Rend avec données réelles sur Infinite ;
+  absent sur H5 (conforme scénario 5). À VALIDER par l'utilisateur : (a) le renommage
+  « Classé »→« Pronostic », (b) l'affichage du Δ LUSR cumulé (grand nombre sur un scope long,
+  ex. −1380 sur 1001 matchs ; envisager de ne garder que « attendu vs réel »).
 
 ## Protocole de reprise de session
 

@@ -157,32 +157,46 @@ function TrendCard({ trend, t }: { trend: ExplorerBriefingTrend; t: T }) {
 // ─── Module classé (C3) ───────────────────────────────────────────────────────
 
 function RankedCard({ ranked, t }: { ranked: ExplorerBriefingRanked; t: T }) {
+  const hasDelta = (ranked.rating_kind ?? '') !== ''
+  const hasPrediction = (ranked.matches_with_prediction ?? 0) > 0
   return (
     <KpiCard className="h-full">
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-3 py-2">
-        <div>
-          <p className="text-3xs uppercase tracking-wide text-muted-foreground">
-            {t('explorer.briefing.ranked_delta')}
-          </p>
-          <p
-            className="text-lg font-bold tabular-nums"
-            style={{ color: tokenCssVar(deltaToken(ranked.delta_sum)) }}
-          >
-            {formatSignedFixed(ranked.delta_sum, 0)}
-          </p>
-        </div>
-        <div>
-          <p className="text-3xs uppercase tracking-wide text-muted-foreground">
-            {t('explorer.briefing.ranked_expected_vs_actual')}
-          </p>
-          <p className="text-sm tabular-nums text-foreground">
-            {t('explorer.briefing.ranked_expected')} {formatPercentInt(ranked.expected_win_rate)}
-            {' · '}
-            {t('explorer.briefing.ranked_actual')}{' '}
-            <span className="font-semibold" style={{ color: winRateColor(ranked.actual_win_rate) }}>
-              {formatPercentInt(ranked.actual_win_rate)}
-            </span>
-          </p>
+      <div className="px-3 py-2">
+        <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {t('explorer.briefing.ranked_title')}
+        </p>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          {hasDelta && (
+            <div>
+              <p className="text-3xs uppercase tracking-wide text-muted-foreground">
+                {t('explorer.briefing.ranked_delta')}
+              </p>
+              <p
+                className="text-lg font-bold tabular-nums"
+                style={{ color: tokenCssVar(deltaToken(ranked.delta_sum)) }}
+              >
+                {formatSignedFixed(ranked.delta_sum, 0)}
+              </p>
+            </div>
+          )}
+          {hasPrediction && (
+            <div>
+              <p className="text-3xs uppercase tracking-wide text-muted-foreground">
+                {t('explorer.briefing.ranked_expected_vs_actual')}
+              </p>
+              <p className="text-sm tabular-nums text-foreground">
+                {t('explorer.briefing.ranked_expected')} {formatPercentInt(ranked.expected_win_rate)}
+                {' · '}
+                {t('explorer.briefing.ranked_actual')}{' '}
+                <span
+                  className="font-semibold"
+                  style={{ color: winRateColor(ranked.actual_win_rate) }}
+                >
+                  {formatPercentInt(ranked.actual_win_rate)}
+                </span>
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </KpiCard>
