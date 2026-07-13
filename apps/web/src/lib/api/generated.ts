@@ -3966,7 +3966,6 @@ export interface components {
         ExplorerBriefing: {
             baseline?: components["schemas"]["ExplorerBriefingBaseline"];
             dimensions?: components["schemas"]["ExplorerBriefingDimension"][] | null;
-            kpis?: components["schemas"]["KPIStats"];
             low_sample?: boolean;
             outcome_sequence?: components["schemas"]["ExplorerBriefingOutcome"][] | null;
             /** Format: date-time */
@@ -3974,7 +3973,26 @@ export interface components {
             /** Format: date-time */
             period_start?: string;
             ranked?: components["schemas"]["ExplorerBriefingRanked"];
+            scope?: components["schemas"]["ExplorerBriefingScope"];
             trend?: components["schemas"]["ExplorerBriefingTrend"];
+        };
+        ExplorerBriefingScope: {
+            /** Format: double */
+            avg_perf?: number;
+            /** Format: int64 */
+            dnf: number;
+            /** Format: double */
+            kda: number;
+            /** Format: int64 */
+            losses: number;
+            /** Format: int64 */
+            matches: number;
+            /** Format: int64 */
+            ties: number;
+            /** Format: double */
+            win_rate: number;
+            /** Format: int64 */
+            wins: number;
         };
         ExplorerBriefingBaseline: {
             /** Format: double */

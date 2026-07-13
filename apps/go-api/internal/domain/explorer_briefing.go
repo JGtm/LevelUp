@@ -19,8 +19,10 @@ import "time"
 // sous-ensemble filtré est non vide. Les modules conditionnels sont nil quand
 // leur seuil d'échantillon / capability n'est pas atteint.
 type ExplorerBriefing struct {
-	// KPIs : indicateurs personnels agrégés sur le sous-ensemble filtré.
-	KPIs *KPIStats `json:"kpis,omitempty"`
+	// Scope : agrégats du sous-ensemble filtré (socle) calculés sur les MÊMES raw
+	// rows que le tableau — le compteur, le bilan et les indicateurs sont donc
+	// cohérents avec « N matchs trouvés » et avec les modules baseline/dimensions.
+	Scope *ExplorerBriefingScope `json:"scope,omitempty"`
 	// LowSample : vrai quand le sous-ensemble est sous MinBriefingModulesMatches.
 	// Dans ce cas seuls KPIs + frise + période sont émis (les autres blocs nil).
 	LowSample bool `json:"low_sample,omitempty"`
@@ -41,6 +43,22 @@ type ExplorerBriefing struct {
 	// Ranked : module classé (delta rating cumulé + attendu vs réel). Nil si le
 	// titre n'expose pas la capability ranked ou si aucun match rangé dans le scope.
 	Ranked *ExplorerBriefingRanked `json:"ranked,omitempty"`
+}
+
+// ExplorerBriefingScope porte les agrégats socle du sous-ensemble filtré,
+// calculés sur les raw rows (même source que le tableau et les modules). Unités
+// ADR 0006 : WinRate en ratio 0..1, KDA = net agrégat ((frags + assists/3) −
+// morts)/matchs, AvgPerf en 0..100.
+type ExplorerBriefingScope struct {
+	Matches int     `json:"matches"`
+	Wins    int     `json:"wins"`
+	Losses  int     `json:"losses"`
+	Ties    int     `json:"ties"`
+	DNF     int     `json:"dnf"`
+	WinRate float64 `json:"win_rate"`
+	KDA     float64 `json:"kda"`
+	// AvgPerf : perf moyenne 0..100. Nil si aucun match du scope n'a de score.
+	AvgPerf *float64 `json:"avg_perf,omitempty"`
 }
 
 // ExplorerBriefingOutcome est un point de la frise des résultats.

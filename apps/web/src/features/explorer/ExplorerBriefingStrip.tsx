@@ -18,11 +18,9 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import type { ExplorerBriefing } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import {
-  aggregateKda,
   formatSignedFixed,
   formatSignedPoints,
   outcomeCodeToValue,
-  scopeWinRate,
   signOf,
 } from './ExplorerBriefing.logic'
 import { ExplorerBriefingModules } from './ExplorerBriefingModules'
@@ -81,19 +79,19 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   if (!briefing) return null
 
-  const kpis = briefing.kpis
+  const scope = briefing.scope
   const baseline = briefing.baseline
   const period = formatPeriod(briefing.period_start, briefing.period_end, locale)
-  const matchesCount = kpis?.matches_count ?? briefing.outcome_sequence?.length ?? 0
+  const matchesCount = scope?.matches ?? briefing.outcome_sequence?.length ?? 0
 
   const tapePoints: OutcomePoint[] = (briefing.outcome_sequence ?? []).map((o) => ({
     outcome: outcomeCodeToValue(o.outcome_code),
     matchId: o.match_id,
   }))
 
-  const wr = kpis ? scopeWinRate(kpis) : null
-  const kda = kpis ? aggregateKda(kpis) : null
-  const perf = kpis?.performance_score ?? null
+  const wr = scope?.win_rate ?? null
+  const kda = scope?.kda ?? null
+  const perf = scope?.avg_perf ?? null
   const vs = t('explorer.briefing.vs_baseline')
 
   return (
@@ -108,7 +106,7 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
         />
 
         {/* Bilan : taux de victoire + V-D-N + delta */}
-        {kpis && (
+        {scope && (
           <BriefingTile
             label={t('explorer.briefing.win_rate_label')}
             value={
@@ -119,9 +117,9 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
             sub={
               <>
                 {t('explorer.briefing.record_vdn', {
-                  w: kpis.outcomes.wins,
-                  l: kpis.outcomes.losses,
-                  t: kpis.outcomes.ties,
+                  w: scope.wins,
+                  l: scope.losses,
+                  t: scope.ties,
                 })}
                 {baseline && (
                   <>
@@ -142,7 +140,7 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
         )}
 
         {/* FDA agrégat + delta */}
-        {kpis && (
+        {scope && (
           <BriefingTile
             label={t('explorer.briefing.fda_label')}
             value={
@@ -168,7 +166,7 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
         )}
 
         {/* Perf. moyenne + delta */}
-        {kpis && (
+        {scope && (
           <BriefingTile
             label={t('explorer.briefing.perf_label')}
             value={perf != null ? perf.toFixed(0) : '—'}

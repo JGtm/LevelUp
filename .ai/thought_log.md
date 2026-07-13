@@ -1,3 +1,29 @@
+## [2026-07-13] Explorer briefing cards — LOT D livraison + CLÔTURE (branche feat/explorer-briefing-cards)
+
+**Statut** : Complété — plan `PLAN_EXPLORER_BRIEFING_CARDS_2026-07` SOLDÉ (A/B/C/D), déplacé en `.ai/V7/`.
+
+**Vérification visuelle (navigateur chrome-devtools, auth_mode=none temporaire puis xbox
+restauré)** : Infinite (JGtm 1001 matchs) ET H5 (XxDaemon 309). Le contexte de titre est
+piloté par le header `X-LevelUp-Title` (absent = halo_infinite par défaut) + session
+serveur (`POST /session/context`) — j'avais d'abord testé H5 sans le savoir (session=halo_5),
+ce qui a en fait validé le scénario 5 (H5 : bandeau rendu, module classé absent).
+
+**3 corrections issues de la vérif visuelle (dans le périmètre livraison)** :
+1. Socle canonical (257) ≠ tableau (309) → nouveau bloc `Scope` calculé sur les RAW rows du
+   scope ; `kpis` canonical retiré du briefing. Socle 100 % cohérent avec « N matchs trouvés ».
+2. Dimension « par mode » disparaissait (convertisseur pair-only) → réplication de
+   `ResolveModeUI(pair)` + fallback `ResolveModeUI(game_variant)` = colonne Mode du tableau.
+3. Module « classé » sans donnée (RankDelta CSR nil dans les player DBs ; `expected_win_prob`
+   LUSR-only) → PIVOT en « Pronostic » (attendu vs réel + Δ classement quand dispo), gaté
+   `rankedCapable`. **2 décisions produit à valider par l'utilisateur** (renommage + Δ LUSR).
+
+**Résultats gates finaux** : `go test ./...` VERT ; `golangci-lint --new-from-rev=a25ab7cf2`
+= 0 ; `make check-types` OK ; vitest 2157 passés / 0 échec ; eslint 0 erreur.
+
+**Conclusion** : bandeau livré et fonctionnel sur Infinite + H5. Restent 2 arbitrages produit
+(Pronostic renommage + Δ LUSR) et une passe locale EN au besoin. Prêt pour le train de merge
+(pas de PR — merge = utilisateur).
+
 ## [2026-07-13] Explorer briefing cards — LOT C modules conditionnels (branche feat/explorer-briefing-cards)
 
 **Statut** : En cours — Lot C (modules front) COMPLÉTÉ + gaté vert ; reste Lot D (vérif visuelle + livraison).

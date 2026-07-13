@@ -16,7 +16,6 @@ package service
 
 import (
 	"sort"
-	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -60,7 +59,7 @@ func (s *MatchHistoryService) buildExplorerBriefing(
 	if len(filtered) == 0 {
 		return nil
 	}
-	b := &domain.ExplorerBriefing{KPIs: scopedKPIs}
+	b := &domain.ExplorerBriefing{Scope: buildBriefingScope(filtered)}
 	b.PeriodStart, b.PeriodEnd = scopePeriod(filtered)
 	b.OutcomeSequence = buildOutcomeSequence(filtered)
 	b.LowSample = len(filtered) < MinBriefingModulesMatches
@@ -120,56 +119,89 @@ func buildOutcomeSequence(rows []domain.MatchHistoryRawRow) []domain.ExplorerBri
 	return seq
 }
 
+// buildBriefingScope agrège le socle du sous-ensemble filtré (raw rows) — même
+// source que le tableau, pour un compteur/bilan/indicateurs cohérents.
+func buildBriefingScope(scope []domain.MatchHistoryRawRow) *domain.ExplorerBriefingScope {
+	if len(scope) == 0 {
+		return nil
+	}
+	a := aggregateRawStats(scope)
+	return &domain.ExplorerBriefingScope{
+		Matches: a.matches,
+		Wins:    a.wins,
+		Losses:  a.losses,
+		Ties:    a.ties,
+		DNF:     a.dnf,
+		WinRate: analysis.WinRate(a.wins, a.matches),
+		KDA:     a.kda,
+		AvgPerf: a.perf,
+	}
+}
+
 // buildBriefingBaseline compare le scope à l'historique complet (post-exclusions).
 // Deltas signés = valeur(scope) − valeur(baseline). nil si l'un des deux est vide.
 func buildBriefingBaseline(scope, all []domain.MatchHistoryRawRow) *domain.ExplorerBriefingBaseline {
 	if len(scope) == 0 || len(all) == 0 {
 		return nil
 	}
-	baseWins, baseTotal, baseKDA, basePerf := aggregateRawStats(all)
-	scopeWins, scopeTotal, scopeKDA, scopePerf := aggregateRawStats(scope)
-	baseWR := analysis.WinRate(baseWins, baseTotal)
-	scopeWR := analysis.WinRate(scopeWins, scopeTotal)
+	base := aggregateRawStats(all)
+	sc := aggregateRawStats(scope)
+	baseWR := analysis.WinRate(base.wins, base.matches)
+	scopeWR := analysis.WinRate(sc.wins, sc.matches)
 	out := &domain.ExplorerBriefingBaseline{
-		Matches:      baseTotal,
+		Matches:      base.matches,
 		WinRate:      baseWR,
-		KDA:          baseKDA,
-		AvgPerf:      basePerf,
+		KDA:          base.kda,
+		AvgPerf:      base.perf,
 		DeltaWinRate: scopeWR - baseWR,
-		DeltaKDA:     scopeKDA - baseKDA,
+		DeltaKDA:     sc.kda - base.kda,
 	}
-	if scopePerf != nil && basePerf != nil {
-		d := *scopePerf - *basePerf
+	if sc.perf != nil && base.perf != nil {
+		d := *sc.perf - *base.perf
 		out.DeltaPerf = &d
 	}
 	return out
 }
 
-// aggregateRawStats agrège wins, total, KDA agrégat ADR 0006 et perf moyenne d'un
-// ensemble de raw rows. perf est nil si aucune row ne porte de performance_score.
-func aggregateRawStats(rows []domain.MatchHistoryRawRow) (wins, total int, kda float64, perf *float64) {
+// rawAgg agrège les compteurs socle d'un ensemble de raw rows.
+type rawAgg struct {
+	matches, wins, losses, ties, dnf int
+	kda                              float64
+	perf                             *float64 // nil si aucun score de perf
+}
+
+// aggregateRawStats agrège matchs, outcomes, KDA agrégat ADR 0006 et perf moyenne.
+func aggregateRawStats(rows []domain.MatchHistoryRawRow) rawAgg {
 	var k, a, d int
 	var perfSum float64
 	var perfN int
+	out := rawAgg{}
 	for _, r := range rows {
-		total++
+		out.matches++
 		k += r.Kills
 		a += r.Assists
 		d += r.Deaths
-		if r.Outcome == domain.OutcomeWin {
-			wins++
+		switch r.Outcome {
+		case domain.OutcomeWin:
+			out.wins++
+		case domain.OutcomeLoss:
+			out.losses++
+		case domain.OutcomeDraw:
+			out.ties++
+		case domain.OutcomeDNF:
+			out.dnf++
 		}
 		if r.PerformanceScore != nil {
 			perfSum += *r.PerformanceScore
 			perfN++
 		}
 	}
-	kda = analysis.AggregateKDA(k, a, d, total)
+	out.kda = analysis.AggregateKDA(k, a, d, out.matches)
 	if perfN > 0 {
 		avg := perfSum / float64(perfN)
-		perf = &avg
+		out.perf = &avg
 	}
-	return wins, total, kda, perf
+	return out
 }
 
 // buildBriefingDimensions émet une carte par dimension LIBRE (≥ 2 valeurs
@@ -325,43 +357,44 @@ type trendRow struct {
 
 func (t trendRow) GetStartTime() time.Time { return t.start }
 
-// buildBriefingRanked émet le module classé si le scope est majoritairement CSR
-// (RankDelta.Kind == "csr", DEC-7). DeltaSum réutilise le RankDelta canonique ;
-// attendu vs réel calculés sur les matchs CSR du scope (probas pré-match des raw
-// rows). nil hors contexte classé.
+// buildBriefingRanked émet le module « Pronostic » (skill LevelUp) sur les matchs
+// du scope portant une prédiction pré-match (SkillExpectedWinProb, LUSR v2) :
+// attendu (moyenne des probas) vs réel (winrate de ces matchs). La ligne Δ rating
+// cumulé n'est jointe QUE si le RankDelta canonique est disponible (per-match CSR
+// delta ; absent dans les player DBs actuelles, cf. journal). L'appelant a déjà
+// gaté sur rankedCapable (capability match.skill.snapshot, exclut H5). Retourne
+// nil si aucune prédiction ET aucun delta rating (rien à afficher).
 func buildBriefingRanked(scope []domain.MatchHistoryRawRow, scopedKPIs *domain.KPIStats) *domain.ExplorerBriefingRanked {
-	if scopedKPIs == nil || scopedKPIs.RankDelta == nil {
-		return nil
-	}
-	rd := scopedKPIs.RankDelta
-	if !strings.EqualFold(rd.Kind, "csr") {
-		return nil
-	}
 	var probs []float64
 	var wins, total int
 	for _, r := range scope {
-		if r.SkillRatingType == nil || !strings.EqualFold(*r.SkillRatingType, "csr") {
+		if r.SkillExpectedWinProb == nil {
 			continue
 		}
 		total++
 		if r.Outcome == domain.OutcomeWin {
 			wins++
 		}
-		if r.SkillExpectedWinProb != nil {
-			probs = append(probs, *r.SkillExpectedWinProb)
-		}
+		probs = append(probs, *r.SkillExpectedWinProb)
 	}
-	if total == 0 {
+	var rd *domain.RankDelta
+	if scopedKPIs != nil {
+		rd = scopedKPIs.RankDelta
+	}
+	if total == 0 && rd == nil {
 		return nil
 	}
 	expected, actual := analysis.ExpectedVsActual(probs, wins, total)
-	return &domain.ExplorerBriefingRanked{
-		RatingKind:            rd.Kind,
-		DeltaSum:              rd.Value,
+	out := &domain.ExplorerBriefingRanked{
 		ExpectedWinRate:       expected,
 		ActualWinRate:         actual,
-		MatchesWithPrediction: len(probs),
+		MatchesWithPrediction: total,
 	}
+	if rd != nil {
+		out.RatingKind = rd.Kind
+		out.DeltaSum = rd.Value
+	}
+	return out
 }
 
 // ─── conversion raw row → breakdown.Row (libellés FR) ────────────────────────
@@ -381,8 +414,16 @@ func rawRowsToBreakdownRows(rows []domain.MatchHistoryRawRow) []breakdown.Row {
 			br.MapID = *r.MapID
 		}
 		br.MapLabel = coalesceStr(r.MapNameFR, r.MapName)
-		if mode := analysis.NormalizeModeLabel(coalesceStr(r.PairNameFR, r.PairName)); mode != "" {
-			br.ModeName = mode
+		// Mode : MÊME résolution que la colonne mode_ui du tableau — pair_name (FR)
+		// puis fallback game_variant (titres/matchs sans pair, ex. H5). Sans le
+		// fallback, les matchs dont le mode vient du game_variant sont écartés du
+		// regroupement et la dimension « par mode » peut dégénérer / disparaître.
+		modeUI := analysis.ResolveModeUI(r.PairName, r.PairNameFR)
+		if modeUI == nil {
+			modeUI = analysis.ResolveModeUI(r.GameVariantName, r.GameVariantNameFR)
+		}
+		if modeUI != nil {
+			br.ModeName = *modeUI
 		}
 		if r.PlaylistName != nil {
 			br.PlaylistName = *r.PlaylistName

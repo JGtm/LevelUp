@@ -5026,8 +5026,6 @@ components:
                   $ref: '#/components/schemas/ExplorerBriefingDimension'
               nullable: true
               type: array
-          kpis:
-              $ref: '#/components/schemas/KPIStats'
           low_sample:
               type: boolean
           outcome_sequence:
@@ -5043,8 +5041,46 @@ components:
               type: string
           ranked:
               $ref: '#/components/schemas/ExplorerBriefingRanked'
+          scope:
+              $ref: '#/components/schemas/ExplorerBriefingScope'
           trend:
               $ref: '#/components/schemas/ExplorerBriefingTrend'
+      type: object
+    ExplorerBriefingScope:
+      additionalProperties: false
+      properties:
+          avg_perf:
+              format: double
+              type: number
+          dnf:
+              format: int64
+              type: integer
+          kda:
+              format: double
+              type: number
+          losses:
+              format: int64
+              type: integer
+          matches:
+              format: int64
+              type: integer
+          ties:
+              format: int64
+              type: integer
+          win_rate:
+              format: double
+              type: number
+          wins:
+              format: int64
+              type: integer
+      required:
+          - matches
+          - wins
+          - losses
+          - ties
+          - dnf
+          - win_rate
+          - kda
       type: object
     ExplorerBriefingBaseline:
       additionalProperties: false

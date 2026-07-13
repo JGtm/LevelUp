@@ -909,12 +909,12 @@ fr = "Tendance"
 en = "Trend"
 
 [explorer.briefing.ranked_title]
-fr = "Classé"
-en = "Ranked"
+fr = "Pronostic"
+en = "Prognosis"
 
 [explorer.briefing.ranked_delta]
-fr = "Δ CSR cumulé"
-en = "Cumulative CSR Δ"
+fr = "Δ classement cumulé"
+en = "Cumulative rating Δ"
 
 [explorer.briefing.ranked_expected]
 fr = "Attendu"

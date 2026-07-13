@@ -52,8 +52,10 @@ func TestBuildExplorerBriefing_LowSample(t *testing.T) {
 	if !b.LowSample {
 		t.Error("LowSample should be true for 8 < 10")
 	}
-	if b.KPIs == nil {
-		t.Error("socle KPIs should be served")
+	if b.Scope == nil {
+		t.Error("socle scope should be served")
+	} else if b.Scope.Matches != 8 {
+		t.Errorf("scope matches = %d, want 8 (raw filtered count)", b.Scope.Matches)
 	}
 	if len(b.OutcomeSequence) != 8 {
 		t.Errorf("outcome sequence len = %d, want 8", len(b.OutcomeSequence))
@@ -170,15 +172,45 @@ func TestBuildExplorerBriefing_RankedGating(t *testing.T) {
 	}
 }
 
-func TestBuildExplorerBriefing_RankedAbsentWhenLUSR(t *testing.T) {
+func TestBuildExplorerBriefing_RankedAbsentWhenNoData(t *testing.T) {
+	// Aucune prédiction (SkillExpectedWinProb) ET aucun RankDelta → module nil.
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 15; i++ {
 		filtered = append(filtered, briefingRaw("m"+string(rune('a'+i)), i, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène"))
 	}
-	kpis := &domain.KPIStats{MatchesCount: 15, RankDelta: &domain.RankDelta{Kind: "lusr", Value: 5, Count: 15}}
+	kpis := &domain.KPIStats{MatchesCount: 15} // pas de RankDelta
 	b := svcWithRanked(true).buildExplorerBriefing(filtered, filtered, kpis)
 	if b.Ranked != nil {
-		t.Error("Ranked must be nil when majority rating is LUSR (unranked scope)")
+		t.Error("Ranked must be nil when neither prediction nor rank delta is available")
+	}
+}
+
+func TestBuildExplorerBriefing_RankedFromPredictionsOnly(t *testing.T) {
+	// Prédictions présentes, PAS de RankDelta → module présent avec attendu vs réel
+	// mais sans ligne delta rating (RatingKind vide).
+	var filtered []domain.MatchHistoryRawRow
+	for i := 0; i < 15; i++ {
+		r := briefingRaw("m"+string(rune('a'+i)), i, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène")
+		prob := 0.4
+		r.SkillExpectedWinProb = &prob
+		filtered = append(filtered, r)
+	}
+	kpis := &domain.KPIStats{MatchesCount: 15} // pas de RankDelta
+	b := svcWithRanked(true).buildExplorerBriefing(filtered, filtered, kpis)
+	if b.Ranked == nil {
+		t.Fatal("Ranked should be present when predictions exist")
+	}
+	if b.Ranked.RatingKind != "" {
+		t.Errorf("RatingKind should be empty without RankDelta, got %q", b.Ranked.RatingKind)
+	}
+	if b.Ranked.ExpectedWinRate == nil {
+		t.Fatal("ExpectedWinRate nil, want ~0.4")
+	}
+	if e := *b.Ranked.ExpectedWinRate; e < 0.399 || e > 0.401 {
+		t.Errorf("ExpectedWinRate want ~0.4, got %v", e)
+	}
+	if b.Ranked.ActualWinRate != 1.0 {
+		t.Errorf("ActualWinRate want 1.0, got %v", b.Ranked.ActualWinRate)
 	}
 }
 
