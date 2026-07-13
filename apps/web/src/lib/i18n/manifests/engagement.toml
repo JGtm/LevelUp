@@ -255,6 +255,10 @@ en = "The Engagement metric is not yet available (migration pending)"
 fr = "Engagement indisponible pour ce match (trop court ou peu d'action)"
 en = "Engagement unavailable for this match (too short or little action)"
 
+[engagement.error.temporary]
+fr = "Engagement momentanement indisponible, reessayez"
+en = "Engagement temporarily unavailable, please retry"
+
 [engagement.error.pve_not_supported]
 fr = "L'engagement n'est pas calcule sur les matchs Firefight (couverture v2)"
 en = "Engagement is not computed on Firefight matches (v2 coverage)"

@@ -1,6 +1,6 @@
 # ADR 0031 — Title data-source boundary and sync mutualization
 
-**Status**: Proposed (2026-07-03)
+**Status**: Accepted (2026-07-12)
 
 **Branch**: `docs/adr-aggregates-title-boundary`
 

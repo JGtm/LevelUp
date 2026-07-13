@@ -33,6 +33,8 @@ export interface MatchViewText {
   excludeErrorGeneric: string
   performance: string
   rank: string
+  /** Libellé localisé de la sentinelle de tier « Placement » (phase de placement). */
+  rankPlacement: string
   addFavorite: string
   removeFavorite: string
   mapUnknown: string
@@ -230,6 +232,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     excludeErrorGeneric: "Impossible de mettre à jour l'exclusion. Réessaie plus tard.",
     performance: 'Performance',
     rank: 'Rang',
+    rankPlacement: 'En placement',
     addFavorite: 'Ajouter aux favoris',
     removeFavorite: 'Retirer des favoris',
     mapUnknown: 'Map inconnue',
@@ -414,6 +417,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     excludeErrorGeneric: 'Could not update exclusion. Try again later.',
     performance: 'Performance',
     rank: 'Rank',
+    rankPlacement: 'In placement',
     addFavorite: 'Add to favorites',
     removeFavorite: 'Remove from favorites',
     mapUnknown: 'Unknown map',

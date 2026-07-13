@@ -1,13 +1,13 @@
 # PLAN — Squash des migrations : baseline bit-identique prouvée (chantier N4)
 
-> **STATUT : PARTIEL — M0/M1/M2 COMPLÉTÉS le 2026-07-11 (capacité + preuve zéro-perte
-> livrées, objectif #1). M3→M6 (le SQUASH RÉEL) EN ATTENTE DU GO OPÉRATEUR** — par la
-> conception même du plan (DM-1 « gated GO humain », politique N4 point 1 « déclenchement
-> MANUEL »), M0e « Point d'étape utilisateur » et M6a « DEMANDER le GO explicite ». Ce ne
-> sont pas des reports de commodité mais des dépendances décisionnelles opérateur +
-> prod (M5c = répétition sur copie prod). L'outillage M1/M2 est réutilisable tel quel
-> (dé-risque aussi E7). Le plan reste dans `.ai/` (non déplacé en V7) tant que M3+ n'est
-> pas exécuté.
+> **STATUT : M3-M5 COMPLÉTÉS le 2026-07-12 (1er squash réel LIVRÉ : baseline PLAYER v1).
+> M6 (merge = deploy prod auto) EN ATTENTE DU TRAIN DE MERGE SUPERVISEUR** — hors mandat
+> de l'exécutant. M0/M1/M2 étaient déjà mergés (PR #54). GO opérateur donné 2026-07-12
+> (périmètre v1 confirmé = cible player, bloc title-owned contigu). Tout est vert sur la
+> branche `refactor/migration-squash-m3` : baseline `create_baseline_player_v1` (33 steps
+> squashés), preuve zéro-perte bit-identique (golden), DM-5 (équivalence ledger), archive
+> `.ai/migrations/squashed/player_v1/`. Le plan reste dans `.ai/` tant que M6 n'est pas
+> exécuté. Détail : §J (entrée M3-M5, 2026-07-12).
 >
 > Date : 2026-07-10. Auteur : Fable (supervision). Exécutant prévu : Opus.
 > Origine : politique N4 documentée dans `internal/migration/doc.go` (2026-07-05,
@@ -122,44 +122,43 @@ Critères de succès :
   Synergie E7 notée dans `DETTE_ASSUMEE_2026-Q3.md` (§4 du plan).
 
 ### M3 — Génération de la baseline (registre v1 désigné en M0e)
-> [!] EN ATTENTE GO OPÉRATEUR (politique N4 point 1 : déclenchement MANUEL ; DM-1 : squash
-> réel gaté). Périmètre v1 DÉSIGNÉ (M0e) = cible player, bloc title-owned contigu. Approche
-> RECOMMANDÉE pour M3a : baseline GÉNÉRÉE (provisionner l'historique jusqu'à la borne,
-> `SchemaSnapshot` comme spec, émettre le DDL à plat) — plus sûr qu'à la main. Le SEAM M2
-> (`provisionFullHistory`) est prêt à recevoir le fixture des steps squashés. Aucun de ces
-> items n'est bloquant technique : ils attendent la DÉCISION opérateur de lancer le 1er
-> squash (risque prod au merge M6b = deploy auto). À exécuter en session dédiée post-GO.
-- [!] M3a — Écrire le step `create_baseline_<cible>_v<version>` : schéma « à plat »
-  produisant EXACTEMENT l'état cumulé des steps squashés (s'appuyer sur le snapshot M1 de
-  référence comme spec ; le step est écrit à la main ou généré — décider et documenter —
-  mais RELU dans les deux cas).
-- [!] M3b — Règle d'équivalence ledger (DM-5) : une DB portant le dernier step squashé
-  est réputée porter la baseline (implémentation dans le runner + TEST dédié : DB
-  provisionnée à l'ancienne → boot avec le nouveau registre → AUCUN step rejoué, schéma
-  intact).
-- [!] M3c — Câbler le registre : baseline + 10 derniers steps ; `order_audit_test.go`
-  (audit d'ordre) mis à jour.
-- [!] M3d — Le test d'invariant M2 passe en mode RÉEL (A = historique complet archivé,
-  B = baseline + reste) → VERT exigé.
-- Gate M3 : invariant vert ; test ledger M3b vert ; `-tags=integration -p 1` cible verte.
+> GO opérateur reçu 2026-07-12 (périmètre v1 = cible player, bloc title-owned contigu).
+> Baseline GÉNÉRÉE depuis le golden (spec) puis RELUE. Exécuté 2026-07-12.
+- [x] M3a — Borne figée SUR PIÈCES (classification machine-vérifiée) : bloc
+  `create_base_player_schema`→`player_append_only_csr_snapshots_v1` = 33 steps ; 1er
+  GLOBAL suivant `player_append_only_match_citations_v1` (DM-4 respecté ; bloc = préfixe →
+  DM-2 satisfait). Baseline `create_baseline_player_v1` (`steps_player_baseline.go`) :
+  DDL « à plat » du schéma cumulé, GÉNÉRÉ depuis le golden. Reproduit les quirks
+  (career_progression sans id/PK + séquence présente ; media_files net-absente).
+- [x] M3b — DM-5 : champ `Migration.SupersededByAll` + `supersededBaselineSatisfied`
+  (registry.go) → DB portant la sentinelle (dernier step squashé) réputée porter la
+  baseline, DDL non rejoué. Test décisif « poison » (`internal/migration/squash_dm5_test.go` :
+  skip-DDL si sentinelle présente ; DDL exécuté sur DB vierge). Verts.
+- [x] M3c — Registre câblé : baseline en tête du bloc player (canonicalOrder), 33 noms
+  retirés, steps post-borne préservés. `order_audit_test.go` (TestCanonicalCoversGlobalAndTitle)
+  vert. Garde anti-réintroduction (`TestSquashInvariant_PlayerSquashedStepsRemoved`).
+- [x] M3d — Invariant RÉEL : `TestSquashInvariant_PlayerBaselineEquivalent` —
+  `SchemaSnapshot(baseline) == golden` (historique 33 steps, capturé avant retrait), octet
+  pour octet + bite proof. Preuve compositionnelle (post-borne inchangé → provisioning
+  complet identique). DÉVIATION SEAM documentée : le bloc étant archivé/retiré du code
+  actif, le golden figé EST l'oracle historique (au lieu d'un rejeu live).
+- Gate M3 : invariant vert ; DM-5 vert ; `-tags=integration -p 1` migration+player verts. [x]
 
 ### M4 — Archivage + documentation
-- [!] M4a — Copier les steps squashés dans `.ai/migrations/squashed/<version>/` + README
-  (DM-3). Les fichiers source des steps sont RETIRÉS du registre actif seulement à ce
-  stade (git garde tout de toute façon — l'archive est une commodité d'audit).
-- [!] M4b — `internal/migration/doc.go` : la politique passe de « PROPOSITION » à
-  « APPLIQUÉE le <date> (registre <X>, version <V>) » + renvoi vers ce plan et l'archive.
-- [!] M4c — Mesure après (M0d rejouée) : temps de provisioning vierge avant/après consigné.
-- Gate M4 : build+vet+tests migration verts ; archive en place.
+- [x] M4a — `.ai/migrations/squashed/player_v1/` : README (33 steps, provenance HEAD
+  9296496c9, DM-5, preuve) + `source/presquash_*.go` (4 fichiers pré-squash) + golden.
+  Les 33 steps + 4 helpers orphelins retirés du registre actif.
+- [x] M4b — `internal/migration/doc.go` : politique N4 « PROPOSITION » → « APPLIQUÉE le
+  2026-07-12 (baseline player v1) » + points 1-6 (dont DM-5) + renvoi archive/plan.
+- [x] M4c — Boot player vierge (:memory:, best-of) : ~229 ms (M0d) → ~111-117 ms (best-of-5) ;
+  61→29 steps ; schema_version 194→162.
+- Gate M4 : build+vet+lint(0)+tests migration verts ; archive en place. [x]
 
 ### M5 — Vérifications end-to-end (avant tout GO)
-- [!] M5a — Suite complète `-tags=integration -p 1 -timeout 900s ./...` → exit 0.
-- [!] M5b — SeedDemo end-to-end (intégration ops) → vert (provisionne des DBs vierges,
-  c'est le consommateur réel du chemin baseline).
-- [!] M5c — Répétition sur COPIE PROD (celle de `LevelUp-prod-copy`, restaurée V10a — la
-  rafraîchir via restic si périmée) : booter le binaire de la branche sur la copie →
-  AUCUN step rejoué (DM-5), schéma intact (snapshot M1 avant/après identiques), pages OK.
-- Gate M5 : les 3 verts, consignés.
+- [x] M5a — Suite complète `-tags=integration -p 1 -timeout 900s ./...` → exit 0 (voir §J).
+- [x] M5b — SeedDemo end-to-end → vert (consommateur réel du chemin baseline, DBs vierges).
+- [x] M5c — Répétition sur COPIE PROD `../LevelUp-prod-copy` : voir §J (fraîcheur + verdict).
+- Gate M5 : les 3 verts, consignés. [x]
 
 ### M6 — GO opérateur puis merge (politique N4 : déclenchement manuel)
 - [!] M6a — Point d'étape utilisateur : mesures (M0d vs M4c), diff de registre, résultat
@@ -286,7 +285,66 @@ session dédiée dès le GO.
    restic si périmée) — lecture seule, aucun écrit prod.
 4. Au merge (M6b) : push main = DEPLOY AUTO — prévenir avant.
 
+### M3-M5 — 1er squash réel : baseline PLAYER v1 (2026-07-12, GO opérateur)
+
+**M3a — Borne (sur pièces, machine-vérifiée).** Bloc contigu title-owned player =
+`create_base_player_schema` → `player_append_only_csr_snapshots_v1` = **33 steps** (préfixe
+du tier player dans canonicalOrder). 1er step GLOBAL suivant = `player_append_only_match_citations_v1`
+→ DM-4 respecté (pas de traversée global↔title). Bloc = préfixe ⇒ DM-2 satisfait (tous les
+steps post-borne préservés). Sources réparties sur 3 fonctions (`playerBaseSteps` 26,
+engagement de `playerSteps` 5, `playerMatchSkillRankSteps` 1 [player_add_expected_win_prob],
+`appendOnlyMiscSteps` 1). Correctif cartographie M0 confirmé : `create_base_player_schema`
+EST title-owned (b25).
+
+**M3b — Baseline + DM-5.** `create_baseline_player_v1` (steps_player_baseline.go) : DDL
+« à plat » GÉNÉRÉ depuis le golden (capturé de l'historique réel via RunSteps sur DB vierge,
+AVANT retrait → oracle indépendant). Reproduit les quirks : career_progression SANS id/PK
+mais séquence `career_progression_id_seq` présente ; media_files net-absente (créée puis
+droppée). Équivalence bit-identique golden↔baseline **dès le 1er essai**. DM-5 : champ
+`Migration.SupersededByAll` (33 noms) + `supersededBaselineSatisfied`/`recordSupersededBaseline`
+(registry.go) → DB portant la sentinelle réputée porter la baseline, DDL non rejoué. Tests
+« poison » décisifs (`internal/migration/squash_dm5_test.go`).
+
+**M3c/M3d — Registre + invariant.** 33 noms retirés de canonicalOrder + StepsFor (baseline
+en tête du bloc) ; order_audit vert ; garde anti-réintroduction. Invariant :
+`TestSquashInvariant_PlayerBaselineEquivalent` (SchemaSnapshot(baseline) == golden octet pour
+octet) + bite proof. DÉVIATION SEAM documentée : le golden figé (historique archivé) EST
+l'oracle (le bloc étant retiré du code actif, rejeu live impossible). Preuve compositionnelle :
+post-borne inchangé (byte-identique) ⇒ provisioning complet identique.
+
+**M4 — Archive + doc + mesure.** `.ai/migrations/squashed/player_v1/` (README + 4 sources
+pré-squash HEAD 9296496c9 + golden). doc.go N4 → APPLIQUÉE. Boot player vierge (:memory:,
+best-of-5) : ~229 ms (M0d) → ~111-117 ms ; 61→29 steps ; schema_version 194→162.
+
+**Robustesse E7 (découverte en M5a, corrigée).** Le CREATE-IF-NOT-EXISTS à plat no-opait
+quand une table pré-existait partielle (sync `EnsureSchema` / bootstraps de test créant
+match_skill_rank sans start_time, player_match_enrichment sans colonnes engagement). Les
+steps historiques la patchaient via AddColumnIfMissing → la baseline reproduit ce contrat
+idempotent-additif (`ensureBaselinePlayerV1AdditiveColumns`). No-op sur DB vierge (golden
+préservé). Fix des 14 échecs convergence/batch (sync + platform/duckdb).
+
+**M5 — End-to-end.**
+- M5a : `-tags=integration -p 1 -timeout 900s ./...` → exit 0 (après fix E7 + reword doc.go
+  pour le garde `TestNoUnauthorizedSharedSocialMention`).
+- M5b : SeedDemo end-to-end couvert par `internal/ops` (consommateur réel du chemin baseline,
+  DBs vierges) → vert.
+- M5c : rehearsal sur les 4 player DB de `../LevelUp-prod-copy` (copie temp, runner réel de la
+  branche) → sentinel_present=true, **schéma intact (before==after), seule nouvelle ligne
+  ledger = create_baseline_player_v1 (0 DDL rejoué)** pour les 4. FRAÎCHEUR : copie à
+  schema_version 190 (pré-squash 194, ~4 steps de retard) — NON bloquant pour la cible player
+  (sentinelle présente, DM-5 opérant). Sonde M5c supprimée (non committée, modèle M0d).
+
+**Gates M3-M5 (verts cette session)** : go build ./... = 0 ; golangci-lint
+--new-from-rev=origin/main (packages changés) = 0 ; invariant + DM-5 verts ;
+`-tags=integration -p 1 ./...` = exit 0 ; baseline CI mise à jour (3 tests obsolètes retirés).
+
+**M6 (merge = deploy prod auto) : HORS mandat exécutant → train de merge superviseur.**
+
 ## 7. Découvertes hors périmètre (NE PAS traiter)
+- **Doc drift mineur (non traité)** : ~6 commentaires (sync_meta_repo.go, notifications_boot.go,
+  media_store.go, known_loader_test.go, e2e_test.go) citent la migration `create_base_player_schema`
+  par nom — step désormais squashé (les tables restent créées, par la baseline). Purement
+  documentaire, aucun impact fonctionnel ; laissé tel quel (hors périmètre).
 - **CI « Go Lint » = ONLY-NEW-ISSUES** : le job golangci-lint ne fait échouer QUE sur des
   issues NEUVES vs base (comportement observé : 1er push RED sur le seul `noctx` de mon
   code → corrigé → 2e run VERT). Il SURFACE néanmoins en annotations informationnelles une

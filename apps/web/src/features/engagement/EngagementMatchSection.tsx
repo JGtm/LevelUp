@@ -67,15 +67,24 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
   // confidence, qui qualifie l'historique du percentile, pas l'attendu.)
   const hideAttendu = query.data?.expected_basis === 'cold_start'
 
-  // Message d'indisponibilité : « migration en cours » UNIQUEMENT sur un vrai
-  // 503 (code engagement_unavailable = schéma manquant). Pour une courbe vide,
-  // un 422 (match trop court / peu d'action) ou tout autre échec, message
-  // neutre — ne plus accuser la migration à tort (cf. thought_log 2026-06-18).
-  const errorCode = (query.error as unknown as ApiError | null)?.code
+  // Message d'indisponibilité, indexé sur la NATURE de l'échec (ne pas accuser à
+  // tort le contenu du match) :
+  //  - 503 engagement_unavailable → « migration en cours » (schéma manquant).
+  //  - 5xx / erreur serveur transitoire (ex. B-swap RW→RO swap timeout côté
+  //    DuckDB, ADR 0016) → message neutre « momentanément indisponible » : le
+  //    match est valide, la lecture a juste échoué → NE PAS afficher « trop court
+  //    ou peu d'action » (mensonger, cf. retour utilisateur match bc918a5a).
+  //  - 422 engagement_insufficient / courbe vide (200) → « trop court ou peu
+  //    d'action » (là c'est bien le contenu du match qui est en cause).
+  const apiError = query.error as unknown as ApiError | null
+  const errorCode = apiError?.code
+  const isServerError = (apiError?.status ?? 0) >= 500
   const unavailableMessage =
     errorCode === 'engagement_unavailable'
       ? formatMessage(engagementManifest, 'engagement.error.unavailable', locale)
-      : (emptyMessage ?? formatMessage(engagementManifest, 'engagement.error.match_unavailable', locale))
+      : isServerError
+        ? formatMessage(engagementManifest, 'engagement.error.temporary', locale)
+        : (emptyMessage ?? formatMessage(engagementManifest, 'engagement.error.match_unavailable', locale))
 
   return (
     <EngagementCurve

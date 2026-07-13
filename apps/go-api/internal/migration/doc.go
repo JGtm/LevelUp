@@ -7,24 +7,32 @@
 // idempotentes et appliquées au boot ; l'ajout d'une table append-only suit la
 // recette ADR 0026.
 //
-// ─── Politique de cycle-out des migrations (N4, 2026-07-05 — PROPOSITION) ──────
+// ─── Politique de cycle-out des migrations (N4) — APPLIQUÉE le 2026-07-12 ───────
 //
-// Le registre accumule les steps historiques (~une centaine, appliqués au boot).
-// À terme, un squash contrôlé réduit le coût de boot et la charge cognitive. La
-// politique PROPOSÉE PAR DÉFAUT ci-dessous est à CONFIRMER par l'opérateur avant
-// toute exécution — le squash est une opération DESTRUCTIVE sur l'historique de
-// schéma (risque : perte de la reproductibilité d'un état legacy).
+// 1re application : baseline PLAYER v1 (registre player, cible du 1er squash — cf.
+// plan `.ai/PLAN_MIGRATION_SQUASH_BASELINE_2026-07.md` M3-M5). Politique confirmée par
+// l'opérateur (GO 2026-07-12). Le registre accumulait ~une centaine de steps appliqués
+// au boot ; un squash contrôlé réduit le coût de boot et la charge cognitive. Le squash
+// est DESTRUCTIF sur l'historique de schéma actif → chaque invariant ci-dessous est
+// NON NÉGOCIABLE.
 //
 //  1. Déclenchement MANUEL uniquement (jamais au boot, jamais automatique).
-//  2. Squash par VERSION MAJEURE (ex. baseline "7.0.0") : les steps antérieurs à
-//     la baseline sont fusionnés en un seul step de création de schéma « à plat ».
-//  3. PRÉSERVER les 10 derniers steps hors baseline (fenêtre de rollback récent).
-//  4. ARCHIVER les steps squashés sous `.ai/migrations/squashed/<version>/` (audit
-//     + reconstruction d'un état legacy si besoin), jamais supprimés du dépôt.
-//  5. Invariant : un boot sur une base VIERGE après squash produit un schéma
-//     BIT-IDENTIQUE à un boot sur l'historique complet (test de non-régression
-//     obligatoire avant de committer un squash).
+//  2. Squash d'un BLOC CONTIGU d'UN SEUL monde (title-owned OU global, jamais à cheval —
+//     DM-4) : les steps du bloc sont fusionnés en un seul step de création « à plat »
+//     (`create_baseline_<cible>_v<N>`), positionné à la place du bloc dans canonicalOrder.
+//  3. PRÉSERVER les steps hors bloc (post-borne) — fenêtre de rollback récent (DM-2 ;
+//     pour la baseline player v1 la borne est un PRÉFIXE, tout le reste est préservé).
+//  4. ARCHIVER les steps squashés sous `.ai/migrations/squashed/<version>/` (audit +
+//     reconstruction d'un état legacy), jamais supprimés du dépôt. Player v1 :
+//     `.ai/migrations/squashed/player_v1/`.
+//  5. Invariant BIT-IDENTIQUE (test de non-régression obligatoire, VERT avant tout
+//     commit) : `SchemaSnapshot(baseline)` == `SchemaSnapshot(steps squashés)` (golden
+//     figé de l'historique réel). Player v1 : `TestSquashInvariant_PlayerBaselineEquivalent`.
+//  6. ÉQUIVALENCE LEDGER (DM-5) : une DB EXISTANTE portant la sentinelle (dernier step
+//     squashé) est réputée porter la baseline → le runner l'enregistre sans rejouer son
+//     DDL (`Migration.SupersededByAll` + `supersededBaselineSatisfied`, registry.go).
+//     Tests : `internal/migration/squash_dm5_test.go`.
 //
-// Livrable N4 = cette politique documentée. Le squash lui-même reste un chantier
-// opérateur distinct, hors de ce commit.
+// Reste à squasher (chantiers ultérieurs, même chemin) : metadata (attention SEEDS —
+// le snapshot ne capture pas les données), shared, la base sociale, halo_5.
 package migration

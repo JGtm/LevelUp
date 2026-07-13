@@ -9,6 +9,7 @@
  * Système (bas niveau) · Gestion (administration, séparée visuellement du bloc
  * observation — ordre : observation d'abord, gestion à droite, A3.4).
  */
+import { useEffect } from 'react'
 import { Outlet, Link, useNavigate, useMatchRoute } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -39,16 +40,31 @@ const TABS: AdminTab[] = [
 export function AdminLayout() {
   const navigate = useNavigate()
   const isAdmin = useAppShellStore((s) => s.isAdmin)
+  const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
   const t = useT()
   const tA = useAdminT()
   const matchRoute = useMatchRoute()
+
+  // Garde admin : redirection dans un EFFET (post-commit), jamais pendant le
+  // render. Un navigate() en cours de render met à jour le Transitioner du
+  // routeur PENDANT le rendu d'AdminLayout → « Cannot update a component while
+  // rendering a different component » + boucle de re-render (page figée). On
+  // attend aussi la fin du bootstrap : avant hydratation isAdmin=false par
+  // défaut, sans ce garde un admin serait rebondi vers '/' au premier render.
+  useEffect(() => {
+    if (isBootstrapped && !isAdmin) {
+      navigate({ to: '/' })
+    }
+  }, [isBootstrapped, isAdmin, navigate])
+
   // Pastilles de compteur : query partagée avec la page État (React Query
   // déduplique), zéro I/O DuckDB côté Go.
   const { data: overview } = useMonitoringOverview()
   const badges = computeTabBadges(overview)
 
+  // Non-admin (ou bootstrap en cours) : ne rien rendre — l'effet ci-dessus
+  // redirige dès que le statut est connu.
   if (!isAdmin) {
-    navigate({ to: '/' })
     return null
   }
 

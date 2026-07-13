@@ -420,7 +420,12 @@ export function MatchSummaryCardsSection({
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
+      {/* Répartition fluide : auto-fit + minmax(1fr) → les cartes RÉELLEMENT
+          rendues se partagent équitablement la largeur, sans trous quand des
+          cartes sont masquées (H5 : pas de MMR/Résistance, éventuellement pas de
+          Résultat attendu). Remplace la grille fixe xl:grid-cols-8 qui laissait
+          des colonnes vides à droite. */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-3">
       {providesTeamMmr && (
         <MatchVsStatCard
           label={t('match_view.cards.mmr_team_vs_enemy')}

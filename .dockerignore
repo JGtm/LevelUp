@@ -23,10 +23,29 @@ dist
 .mypy_cache
 .ruff_cache
 
-# === Données joueurs (montées en volume, pas buildées dans l'image) ===
-data/players/
-data/cache/
+# === Données (montées en volume au runtime, JAMAIS buildées dans l'image) ===
+# data/ pèse ~17 Go sur le VPS (DuckDB/Parquet par titre + caches + démo). Le
+# Dockerfile ne COPY jamais rien depuis data/ (les seuls COPY sont apps/, scripts,
+# config, static, docs) : data/ est monté en bind-volume par docker-compose APRÈS
+# le build (levelup: ./data:/app/data ; levelup-demo: ./data/demo). Un volume ne
+# transite PAS par le contexte de build → exclure tout data/ ne change rien au
+# runtime et évite de scanner 17 Go à chaque `docker build`.
+data/
+logs/
 backups/
+
+# === Dépendances Node (réinstallées par `npm ci` dans le stage web-builder) ===
+# La node_modules de l'hôte (binaires natifs win32) n'a rien à faire dans l'image
+# Linux ; le Dockerfile fait son propre `npm ci`.
+node_modules/
+**/node_modules/
+
+# === Binaires & artefacts locaux (jamais copiés dans l'image) ===
+*.exe
+levelup.exe~
+bin/
+.coverage
+test-results/
 
 # === Secrets (ne jamais inclure dans l'image) ===
 .env

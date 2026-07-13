@@ -64,8 +64,12 @@ const (
 type FriendsLoader func() ([]string, error)
 
 type SyncEngine struct {
-	gamertag       string
-	xuid           string
+	gamertag string
+	xuid     string
+	// repoRoot : racine du repo (cfg.RepoRoot). Sert à résoudre le dossier global
+	// watcher_tokens (data/auth/watcher_tokens/) pour la résolution store-first de
+	// l'access_token achievements (ADR 0023). Cf. resolveAchievementsAccessToken.
+	repoRoot       string
 	titleSlug      string
 	playerDBPath   string
 	sharedDBPath   string
@@ -870,4 +874,4 @@ func loadKnownMatchIDs(ctx context.Context, playerDB, sharedDB *sql.DB, xuid str
 // coef reste à 1.0 cold-start (cf. TestRegressionB5_RecomputeCoefHookWired).
 
 // runCSRSnapshotSync, runAchievementsSync, RunAchievementsOnly,
-// resolveAccessTokenFromDB : déplacés vers engine_postsync.go (refactor 2026-05-21).
+// resolveAchievementsAccessToken : déplacés vers engine_postsync.go (refactor 2026-05-21).

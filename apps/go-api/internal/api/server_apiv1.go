@@ -956,12 +956,23 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// Sprint 37 : wire.ServiceRegistry — câblage par injection de dépendances.
 	// titleResolver est attaché pour que les services puissent résoudre les
 	// SemanticAdapter (libellés rangs etc.) selon le titre courant.
+	// Overrides de libellé de playlist PAR TITRE (playlist_labels.toml), chargés
+	// au boot depuis le registre des mappings. Ex. Halo 5 « Super Fiesta Fête » →
+	// « Super Fiesta ». Titre sans fichier → absent de la map → no-op.
+	playlistLabelOverrides := make(map[string]map[string]string)
+	for _, slug := range multiTitleSlugs {
+		if plset, ok := fieldMappingsRegistry.GetPlaylistLabels(slug); ok {
+			playlistLabelOverrides[slug] = plset.OverridesMap()
+		}
+	}
+
 	reg := wire.NewServiceRegistry(cfg, tokenProvider).
 		WithTitleResolver(titleResolver).
 		WithCapabilities(hiCaps).
 		WithSettingsStore(settingsStore).
 		WithRankCatalog(hiRanks).
-		WithRankImageURLsByTitle(rankImageURLsByTitle)
+		WithRankImageURLsByTitle(rankImageURLsByTitle).
+		WithPlaylistLabelOverrides(playlistLabelOverrides)
 
 	// MT-09 (PMT-12) : factory player-scoped de Halo enregistrée par SLUG (clé de
 	// map, pas de comparaison littérale). Le builder lit reg.HiCapabilities() à la

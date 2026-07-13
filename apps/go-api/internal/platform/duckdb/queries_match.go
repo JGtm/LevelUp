@@ -391,7 +391,9 @@ SELECT
     COALESCE(mp.damage_dealt, 0.0)    AS damage_dealt,
     COALESCE(mp.damage_taken, 0.0)    AS damage_taken,
     COALESCE(mp.max_killing_spree, 0) AS max_killing_spree,
-    COALESCE(p.perfect_kills, 0)      AS perfect_kills
+    COALESCE(p.perfect_kills, 0)      AS perfect_kills,
+    COALESCE(r.map_id, '')            AS map_id,
+    COALESCE(r.game_variant_id, '')   AS game_variant_id
 FROM match_participants mp
 JOIN match_registry r ON r.match_id = mp.match_id
 LEFT JOIN perfect p ON p.match_id = mp.match_id
