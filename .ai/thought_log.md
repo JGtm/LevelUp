@@ -1,3 +1,25 @@
+## [2026-07-13] INCIDENT deploy — disque VPS 100%, prod down ~15 min, cause = prune du mauvais builder
+
+**Statut** : Complété (service rétabli, fix durable posé).
+
+**Décision technique principale** : le deploy du flip H5 supported (PR #56) a échoué en
+plein build (« no space left on device », / à 100%, 0 conteneur — le script down avant
+build). Récupération : `docker builder prune -af` (46,6 Go libérés, disque à 45%) puis
+`docker compose up -d` sur l'image existante (service rétabli en ~2 min), puis rerun du
+deploy. CAUSE RACINE de l'accumulation : deploy.sh purgait avec `docker buildx prune`
+(cache du builder buildx) alors que `docker compose build` utilise le builder du DAEMON
+— deux stores distincts, l'éviction posée le 2026-06-27 ne touchait jamais le bon cache.
+Le cron hebdo (`until=168h`) épargnait les couches récentes. Fix : `docker builder prune
+-f --keep-storage=5GB` dans deploy.sh (+ buildx conservé en ceinture). Le .dockerignore
+du lot rapide (contexte 17 Go → ~Mo) réduit aussi l'alimentation du cache.
+
+**Résultats observés** : site 200, conteneurs healthy, disque 45%.
+
+**Conclusion / prochaine étape** : merger fix/deploy-prune-builder après le redeploy du
+flip ; surveiller le disque au prochain deploy.
+
+---
+
 ## [2026-07-13] Engagement H5 : gate humain E6b validé → `supported` (chantier F7, clôture)
 
 **Statut** : Complété (branche `feat/h5-engagement-supported`).
