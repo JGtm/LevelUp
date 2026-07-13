@@ -1,3 +1,37 @@
+## [2026-07-13] Engagement H5 : gate humain E6b validé → `supported` (chantier F7, clôture)
+
+**Statut** : Complété (branche `feat/h5-engagement-supported`).
+
+**Décision technique principale** : le gate humain E6b du plan
+`PLAN_ENGAGEMENT_AGNOSTIC_GRADUE_2026-07.md` est validé par l'utilisateur (scores
+d'engagement H5 jugés cohérents sur ses matchs). Conséquence prévue par le plan (DE-6) :
+`engagement.score` H5 passé de `degraded` à `supported` dans les **3 miroirs exacts**
+(vérifiés sur pièces) : (1) `config/titles/halo_5/mappings/capabilities.toml` ;
+(2) `fallbackCapabilities()` dans `internal/games/halo_5/adapter_data.go` (filet boot) ;
+(3) parity test `internal/games/halo_5/skeleton_test.go` (TestHalo5_FineCapabilities). La
+parité TOML↔fallback (`capabilities_parity_test.go`) et le miroir coarse↔fine
+(`engagement_capability_mirror_test.go`) restent verts car les 3 sont changés de façon
+cohérente et H5 déclare bien la coarse `title.CapEngagement`.
+
+**Retrait automatique du badge** : AUCUN code front ni service modifié. Le service
+`calibrationForStatus(CapSupported)` renvoie `CalibrationValidated` (et non `Provisional`),
+et le front `engagementSubtitle.ts::withProvisionalMention` n'appose la mention « calibration
+provisoire » QUE si `calibration === 'provisional'` → le badge disparaît par le seul flux de
+données. Front non touché → pas de tsc/vitest requis.
+
+**Résultats observés** : `go build ./...` + `go vet ./...` + `go test ./...` = ALL GREEN
+(exit 0) ; test miroir `TestEngagementCoarseFineMirror` (halo_infinite + halo_5) PASS ;
+`golangci-lint run --new-from-rev=origin/main ./...` = 0 issue. Re-backfill PROD fait le
+2026-07-12 (post-deploy train) : les poids H5 = candidats Infinite (E4c), recompute no-op
+numérique.
+
+**Conclusion / prochaine étape** : plan passé à COMPLÉTÉ (2026-07-13), déplacé vers `.ai/V7/`.
+Point de surveillance conservé en §Découvertes : rejets PvP_unranked H5 8,5 % (> seuil
+indicatif 5 %), non bloquant mais à ré-examiner si retours utilisateur incohérents sur
+l'unranked. Reste : commit + push branche + CI de branche.
+
+---
+
 ## [2026-07-13] Train de merge 2026-07-13 assemblé — 6 chantiers embarqués
 
 **Statut** : Complété (branche `integration/train-2026-07-13`, PR ouverte — NON mergée).
