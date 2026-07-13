@@ -1,3 +1,51 @@
+## [2026-07-14] Fixture démo E2E SYNTHÉTIQUE — réactivation des specs data-dépendantes (branche test/e2e-fixture-synthetique)
+
+**Statut** : Complété — `levelup seed-demo --synthetic` livré, CI e2e-react câblée,
+preuve locale **76 passed / 31 skipped / 0 failed** (baseline 42/65).
+
+**Décision technique** :
+- Générateur `SeedDemoSynthetic` (internal/ops/seed_demo_synthetic*.go) : DuckDB VIERGES
+  migrées via les MÊMES migrations que la prod (`RunForTitleDB` → vues `_latest`, schéma
+  append-only) + INSERT synthétiques DÉTERMINISTES (ancre fixe 2026-07-10, seed PRNG fixe,
+  aucun `time.Now()` non ancré). 60 matchs / 5 sessions (dont 3 escouade) / 3 joueurs
+  (DemoPlayer + 2 coéquipiers). Anti-ART respecté : DB fraîches NON partagées, INSERT-only,
+  `written_at` posé sur les tables append-only, lecture via `_latest`.
+- Metadata (verdict d'investigation) : noms carte/mode/playlist DÉNORMALISÉS dans
+  match_registry (`*_fr`) → aucune lecture metadata au rendu ; référentiels seedés par
+  migration (weapon_labels, mode_name_tr, csr thresholds) + `seed citation-mappings`/
+  `rank-translations` (Go embarqué, CI-safe) + INSERT synthétiques medal_definitions +
+  career_ranks (schéma complet → évite le Binder Error du piège ops/seed.go).
+- 2 tables base-schema absentes de RunForTitleDB (personal_score_awards, player_csr_snapshots)
+  provisionnées AVANT migrations (ordre du boot) — DDL inlinée depuis sync/schema.go car
+  ops ne peut importer sync (cycle sync→ops).
+- `LEVELUP_DEMO_LOCALE` (config, défaut "en" = comportement prod inchangé) : le bootstrap
+  démo forçait "en" en dur (vitrine internationale) ; les specs vérifient l'UI FR → CI pinne
+  `=fr`. Sinon toute l'app rendait en anglais et les checks « Carrière/Historique/… » cassaient.
+- Fix latent CI : `VITE_API_BASE_URL=http://localhost:8000` cassait le préfixe `/api/v1`
+  (jamais détecté car les specs data skippaient) → passage au proxy Vite relatif.
+
+**Découverte majeure** : réactiver les specs a révélé que ~9 d'entre elles sont STALE —
+elles visent des routes/endpoints/UI qui ont CHANGÉ depuis leur écriture (route
+`/stats/history` supprimée, endpoint `/pages/session-compare` fusionné dans timeseries,
+Ascension redessinée 2→3 onglets, onglet « Combat » du match view → « Général/Détails »).
+La dérive n'avait jamais été vue car ces specs skippaient toujours (pas de démo en CI).
+Traitées par skip DOCUMENTÉ (`skipObsoleteSpec` — à réécrire, backlog séparé). Les specs
+exigeant un joueur RÉEL (JGtm + coéquipiers nommés + synergies) : `skipRequiresRealPlayer`
+(skip si `E2E_SYNTHETIC_DEMO=1`, s'exécutent contre une démo réelle). Vérif navigateur :
+Home/Carrière/Sessions/Explorer/Escouade/Match View/Synthèse rendent richement en FR.
+
+**Résultats gates** : go test config+service+ops(intégration `-p 1`) verts ; test
+d'intégration dédié (structure + déterminisme) vert ; golangci-lint
+`--new-from-rev=fix/auth-deviceflow-lots-ad` = 0 issue ; tsc (typecheck web) vert.
+
+**Restauration** : serveur dev user (air, port 8000, mode xbox) arrêté le temps du test
+E2E sur 8000, RELANCÉ via Start-Process à la clôture ; `data/demo` local de l'utilisateur
+NON touché (fixture générée dans un repo scratch isolé).
+
+**Conclusion / prochaine étape** : branche prête pour le train de merge (pas de PR — merge
+= utilisateur). Le job E2E ne tournera qu'à la PR du train. Backlog : réécrire les ~9 specs
+stale pour l'UI courante. ETAT consolidé MAJ (section 2 + item 4 §5).
+
 ## [2026-07-13] Auth device-flow — LOT D + CLÔTURE du plan (branche fix/auth-deviceflow-lots-ad)
 
 **Statut** : Complété — `PLAN_AUTH_DEVICE_FLOW_SISU_404_2026-07` SOLDÉ (lots A + D ; B
