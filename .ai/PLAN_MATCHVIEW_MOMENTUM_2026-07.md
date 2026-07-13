@@ -107,17 +107,22 @@ rendu. NB : la variante `hexToRgba(cssVar, alpha)` de
 `components/ui/match-card-presentation.ts:16` est un autre pattern (CSS `color-mix`
 sur var, contexte DOM) — elle reste en place, hors périmètre.
 
-- [ ] 1.1 Ajouter `hexToRgba(hex: string, alpha: number): string` dans
+- [x] 1.1 Ajouter `hexToRgba(hex: string, alpha: number): string` dans
       `apps/web/src/components/charts/_utils.ts`, avec le commentaire justificatif
       existant (alpha-mix structurel sur hex résolu via token, pas un choix sémantique)
-      et une note distinguant la variante `color-mix` CSS.
-- [ ] 1.2 Migrer `MatchTugOfWarChart.tsx` et `MatchImpactBadgesBar.tsx` vers l'import ;
-      supprimer les deux copies locales.
-- [ ] 1.3 Garde-rail : `apps/web/src/components/charts/hex-alpha.guard.test.ts` sur le
+      et une note distinguant la variante `color-mix` CSS. FAIT (`_utils.ts`, note
+      color-mix + renvoi au garde-rail).
+- [x] 1.2 Migrer `MatchTugOfWarChart.tsx` et `MatchImpactBadgesBar.tsx` vers l'import ;
+      supprimer les deux copies locales. FAIT (import depuis `@/components/charts/_utils`,
+      les 2 copies locales supprimées).
+- [x] 1.3 Garde-rail : `apps/web/src/components/charts/hex-alpha.guard.test.ts` sur le
       modèle de `lib/query/keys.guard.test.ts` — scan de `apps/web/src/features/**` :
-      interdire toute déclaration locale `function hexToRgba(` / `const hexToRgba`.
+      interdire toute déclaration locale `function hexToRgba(` / `const hexToRgba`. FAIT
+      (test node-env, 1 test vert).
 
 **Gate Phase 1** : `make check-types` + `make test-web` verts (le nouveau guard passe).
+PASSÉ 2026-07-13 : typecheck OK ; vitest 253 fichiers / 2144 tests verts (14 skipped) ;
+eslint 0 sur les 4 fichiers touchés.
 
 ## Phase 2 — Logique pure momentum + tests unitaires
 
