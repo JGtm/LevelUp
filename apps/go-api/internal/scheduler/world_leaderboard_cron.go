@@ -222,12 +222,16 @@ func (c *WorldLeaderboardCron) runOnceForTitle(ctx context.Context, titleSlug st
 	// scrapées ont des snapshots, donc la page classement n'en affiche qu'une poignée.
 	playlists := c.discoverActivePlaylists(ctx, static)
 
-	// 1. Découvrir la saison active (autonome) via une playlist de référence.
-	season, err := c.scraper.FetchActiveSeason(ctx, playlists[0])
-	if err != nil {
-		slog.ErrorContext(ctx, "world_leaderboard_cron: découverte saison active échouée — cycle ignoré",
-			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "err", err)
-		return
+	// 1. Découvrir la saison active (autonome) en essayant plusieurs playlists de
+	//    référence. Le scraper construit l'URL de découverte avec une saison-graine
+	//    FIXE (seedSeasonID) : une playlist qui n'était pas classée dans cette saison
+	//    renvoie un 404 NOMINAL. L'ancien code n'essayait qu'une seule playlist et
+	//    abandonnait tout le cycle sur ce 404 en loguant une ERROR quotidienne (bruit
+	//    prod B3.1). On tente maintenant les candidates successives (cf.
+	//    discoverActiveSeason).
+	season, ok := c.discoverActiveSeason(ctx, titleSlug, static, playlists)
+	if !ok {
+		return // dégradation (WARN + compteur expvar) déjà loguée dans discoverActiveSeason
 	}
 
 	// 2. Garde-fou fraîcheur (lecture RO, sans lease writer).
@@ -292,6 +296,72 @@ func (c *WorldLeaderboardCron) discoverActivePlaylists(ctx context.Context, stat
 	slog.InfoContext(ctx, "world_leaderboard_cron: playlists actives découvertes (Waypoint)",
 		"module", logging.ModuleLeaderboard, "discovered", len(ids), "static", len(static))
 	return ids
+}
+
+// discoverActiveSeason découvre la saison CSR active en essayant tour à tour
+// plusieurs playlists de référence. Le scraper rend le menu de saisons via une URL
+// (saison-graine FIXE × playlist) : si la playlist n'était pas classée dans la
+// saison-graine, la page renvoie 404 — cas NOMINAL, pas une panne. Plutôt que
+// d'abandonner tout le cycle sur la première playlist qui échoue (ancien
+// comportement, source d'une ERROR quotidienne en prod, réf triage B3.1), on tente
+// les candidates suivantes et on retient le premier succès.
+//
+// Ordre des candidats : les playlists STATIQUES (classées de longue date, donc les
+// plus susceptibles d'exister dans la saison-graine) d'abord, puis les playlists
+// découvertes dynamiquement. Doublons et entrées vides retirés.
+//
+// Dégradation (DC-B2) : si TOUTES les candidates échouent — état rare et
+// auto-résolutif (page-graine Waypoint globalement indisponible) — on émet UN WARN
+// agrégé + un compteur expvar `world_leaderboard_season_discovery_failed_total`,
+// jamais une ERROR récurrente pour un cas attendu. Le dernier snapshot append-only
+// reste servi entre-temps.
+func (c *WorldLeaderboardCron) discoverActiveSeason(ctx context.Context, titleSlug string, candidateLists ...[]string) (string, bool) {
+	var lastErr error
+	tried := 0
+	for _, pl := range dedupeNonEmpty(candidateLists...) {
+		season, err := c.scraper.FetchActiveSeason(ctx, pl)
+		if err == nil {
+			if tried > 0 {
+				slog.DebugContext(ctx, "world_leaderboard_cron: saison active découverte après repli sur une playlist de référence",
+					"module", logging.ModuleLeaderboard, "titleSlug", titleSlug,
+					"playlist", pl, "season", season, "skipped", tried)
+			}
+			return season, true
+		}
+		lastErr = err
+		tried++
+		// Chaque échec de candidate est NOMINAL tant qu'une autre peut rendre la page
+		// (404 « non classée dans la saison-graine » le plus souvent) : Debug, avec
+		// l'erreur pour diagnostic — la synthèse est loguée en fin de boucle si besoin.
+		slog.DebugContext(ctx, "world_leaderboard_cron: playlist de référence sans page-graine — essai suivant",
+			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "playlist", pl, "err", err)
+	}
+	observability.IncCounter("world_leaderboard_season_discovery_failed_total")
+	slog.WarnContext(ctx, "world_leaderboard_cron: saison active indécouvrable sur toutes les playlists candidates — cycle ignoré "+
+		"(page-graine Waypoint indisponible ; le dernier snapshot append-only reste servi ; auto-résolutif)",
+		"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "candidates", tried, "err", lastErr)
+	return "", false
+}
+
+// dedupeNonEmpty aplatit plusieurs listes en une seule, retire les entrées vides et
+// les doublons, en préservant l'ordre de première apparition (la première liste est
+// prioritaire).
+func dedupeNonEmpty(lists ...[]string) []string {
+	seen := make(map[string]struct{})
+	out := make([]string, 0)
+	for _, l := range lists {
+		for _, s := range l {
+			if s == "" {
+				continue
+			}
+			if _, dup := seen[s]; dup {
+				continue
+			}
+			seen[s] = struct{}{}
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // discoverSeasons récupère la liste des saisons (nom d'Operation EN + FR) du menu
