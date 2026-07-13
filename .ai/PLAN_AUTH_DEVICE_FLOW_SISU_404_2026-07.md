@@ -149,13 +149,23 @@ Selon l'option :
 
 ## 4. TRACKER (aucune case vide à la clôture)
 
-- [ ] A1 — `onError`/`isError` surfacé dans StepDeviceCode (plus de spinner infini)
-- [ ] A2 — garde L119 revue pour ne pas masquer l'erreur
-- [~] A3 — XboxLoginPage surfe DÉJÀ l'échec de start (observé au navigateur 2026-07-13 :
-      « internal error » + bouton Réessayer via `startError`) ; reste le spinner
-      single-flight, corrigé côté SERVEUR le 2026-07-13 (cf. Journal)
-- [ ] A4 — tests web « start 500 → erreur affichée » (StepDeviceCode)
-- [ ] A5 — gate lot A (check-types + test-web) vert
+- [x] A1 — `onError` surfacé dans StepDeviceCode via helper `startDeviceFlow()` +
+      état `startError` (message i18n `common.setup.device_start_failed`, ou
+      `err_demo` si `demo_mode`) → bascule sur l'UI d'erreur + « Réessayer ».
+      Bonus DRY : les 3 copies d'`onSuccess` (montage/récup/retry) factorisées.
+- [x] A2 — garde spinner (ex-L119) revue : early-return `if (startError)` placé
+      AVANT `if (startFlow.isPending || (!status && !deviceFlowUserCode))` — le
+      spinner ne peut plus masquer un start en échec.
+- [x] A3 — XboxLoginPage surfe DÉJÀ l'échec de start (`startError`, vérifié sur
+      pièces + au navigateur 2026-07-13 : 500 simulé → message + « Réessayer »,
+      pas de spinner) ; garde-rail de régression ajouté (`XboxLoginPage.test.tsx`).
+      Le spinner single-flight a été corrigé côté SERVEUR le 2026-07-13 (Journal).
+- [x] A4 — tests web « start 500 → erreur + Réessayer » : `SetupPage.test.tsx`
+      (StepDeviceCode) + `XboxLoginPage.test.tsx`. Asserte aussi l'absence du
+      spinner de démarrage.
+- [x] A5 — gate lot A vert : check-types (tsc -b) OK ; eslint 0 erreur/0 warning
+      sur les fichiers touchés ; vitest complet 2159 passés / 14 skipped ;
+      vérif navigateur `/login` (happy path + échec simulé).
 - [~] B1 — décision SANS OBJET : la prémisse « endpoint retiré » était fausse (cf. Journal
       2026-07-13) — l'endpoint natif existe, c'est l'URL du code qui n'a jamais été la bonne.
       Option 1 exécutée de fait ; Options 2/3 sans objet. À confirmer par Guillaume (rayer D3
@@ -203,7 +213,26 @@ Selon l'option :
   (`auth_device_flow_singleflight_test.go`). C2 (swallowed error) réglé au passage.
   Restent ouverts : lot A (StepDeviceCode), D1/D2 (garde-rail + doc) — hors périmètre du
   lot ops. Le lot B (décision produit) est SANS OBJET.
+- **2026-07-13 (soir)** — LOT A livré (branche `fix/auth-deviceflow-lots-ad`).
+  `StepDeviceCode.tsx` : le start en échec (500 `msal_init_error` / 503 retryable du
+  single-flight) était avalé — la garde spinner `startFlow.isPending || (!status &&
+  !deviceFlowUserCode)` restait vraie indéfiniment. Correctif : état `startError`
+  alimenté par un `onError` centralisé dans le helper `startDeviceFlow()` (qui remplace
+  les 3 copies inline d'`onSuccess`), et early-return de l'UI d'erreur + « Réessayer »
+  AVANT la garde spinner. Reset de `startError` dans `handleRetry` (event handler) —
+  PAS dans le helper, pour éviter un setState synchrone dans l'effet de montage
+  (warning `react-hooks/set-state-in-effect`). Nouvelle clé i18n FR+EN
+  `common.setup.device_start_failed`. Tests : `SetupPage.test.tsx` +
+  `XboxLoginPage.test.tsx` (start 500 → message + « Réessayer », pas de spinner).
+  Gate vert (check-types, eslint 0/0, vitest 2159 passés). Vérif navigateur `/login` :
+  happy path (code + `microsoft.com/link`) OK ; échec simulé (fetch override 500) →
+  message d'erreur + « Réessayer », aucun spinner infini ; reload propre restaure le code.
 
 ## 6. DÉCOUVERTES (hors périmètre — à ne pas traiter ici)
 
-- (aucune pour l'instant)
+- **Mock MSW `device-flow/start` sur l'alias déprécié** : le contrat réel est sain — le
+  backend renvoie `expires_in` (vérifié au navigateur : compte à rebours actif) et le front
+  lit `data.expires_in`. En revanche le mock de test (`handlers.ts`) renvoie
+  `expires_in_seconds` (l'alias marqué `@deprecated` dans `types.ts`), donc les tests
+  vitest n'exercent jamais le compte à rebours (part de `null`). Cosmétique/test-only,
+  pré-existant, hors périmètre A/D — aligner le mock sur `expires_in` un jour.

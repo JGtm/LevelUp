@@ -11,7 +11,7 @@ import { useSetupFlowStore } from '@/stores/setupFlowStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
 import { useStartDeviceFlow, useDeviceFlowStatus } from './queries'
-import { apiErrorCode } from '@/lib/api/client'
+import { apiErrorCode, type ApiError } from '@/lib/api/client'
 import { verificationLinkLabel } from '@/lib/formatters'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
@@ -41,6 +41,36 @@ export function StepDeviceCode() {
   const recoveryCountRef = useRef(0)
   const [recoveryExhausted, setRecoveryExhausted] = useState(false)
 
+  // Échec du démarrage du flow (POST /device-flow/start en 500/503) : sans état
+  // dédié, un start en erreur laissait la garde spinner tourner à l'infini
+  // (l'erreur était avalée). On la surface vers l'UI d'erreur + « Réessayer ».
+  const [startError, setStartError] = useState<string | null>(null)
+
+  // Lance (ou relance) le Device Code Flow. Centralise onSuccess + onError pour
+  // les 3 points d'appel (montage, récupération auto, retry manuel). Ne remet
+  // PAS startError à zéro ici : ce serait un setState synchrone dans l'effet de
+  // montage (cascading render) — le reset se fait dans handleRetry (event).
+  function startDeviceFlow() {
+    startFlow.mutate(undefined, {
+      onSuccess: (data) => {
+        setCurrentAttemptId(data.attempt_id)
+        setDeviceFlowCodes(
+          data.user_code,
+          data.verification_uri,
+          data.expires_in ? Date.now() + data.expires_in * 1000 : null,
+        )
+      },
+      onError: (err) => {
+        const apiErr = err as unknown as ApiError
+        setStartError(
+          apiErr.code === 'demo_mode'
+            ? t('common.xbox_login.err_demo')
+            : t('common.setup.device_start_failed'),
+        )
+      },
+    })
+  }
+
   useEffect(() => {
     if (!deviceFlowExpiresAt) return
     const update = () => {
@@ -58,16 +88,7 @@ export function StepDeviceCode() {
   // Démarrer le flow au montage si pas encore en cours
   useEffect(() => {
     if (!currentAttemptId) {
-      startFlow.mutate(undefined, {
-        onSuccess: (data) => {
-          setCurrentAttemptId(data.attempt_id)
-          setDeviceFlowCodes(
-            data.user_code,
-            data.verification_uri,
-            data.expires_in ? Date.now() + data.expires_in * 1000 : null,
-          )
-        },
-      })
+      startDeviceFlow()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -82,16 +103,7 @@ export function StepDeviceCode() {
     }
     recoveryCountRef.current += 1
     setCurrentAttemptId(null)
-    startFlow.mutate(undefined, {
-      onSuccess: (data) => {
-        setCurrentAttemptId(data.attempt_id)
-        setDeviceFlowCodes(
-          data.user_code,
-          data.verification_uri,
-          data.expires_in ? Date.now() + data.expires_in * 1000 : null,
-        )
-      },
-    })
+    startDeviceFlow()
   }, [error, currentAttemptId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Quand le flow réussit : invalider le bootstrap pour que setupState avance
@@ -104,17 +116,20 @@ export function StepDeviceCode() {
   function handleRetry() {
     recoveryCountRef.current = 0
     setRecoveryExhausted(false)
+    setStartError(null)
     setCurrentAttemptId(null)
-    startFlow.mutate(undefined, {
-      onSuccess: (data) => {
-        setCurrentAttemptId(data.attempt_id)
-        setDeviceFlowCodes(
-          data.user_code,
-          data.verification_uri,
-          data.expires_in ? Date.now() + data.expires_in * 1000 : null,
-        )
-      },
-    })
+    startDeviceFlow()
+  }
+
+  // Échec du start (500/503) : surfacer AVANT la garde spinner, sinon
+  // `!status && !deviceFlowUserCode` maintiendrait le spinner indéfiniment.
+  if (startError) {
+    return (
+      <div className="space-y-3">
+        <p className="text-destructive font-medium">{startError}</p>
+        <Button onClick={handleRetry}>{t('common.xbox_login.retry')}</Button>
+      </div>
+    )
   }
 
   if (startFlow.isPending || (!status && !deviceFlowUserCode)) {
