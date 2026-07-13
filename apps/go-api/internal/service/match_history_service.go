@@ -98,6 +98,11 @@ type MatchHistoryService struct {
 	// libellés d'outcome depuis outcomes.toml (source de vérité) plutôt qu'en dur
 	// (F4). nil → fallback FR canonique via outcomeLabel().
 	semantic games.TitleSemanticAdapter
+	// rankedCapable indique si le titre expose la capability match.skill.snapshot
+	// (gate du module classé du briefing Explorer, DEC-7). Injecté par le wiring
+	// via WithRankedCapable, jamais dérivé d'un slug (ratchet ADR 0025). Faux par
+	// défaut → module classé toujours omis (dégradation propre H5).
+	rankedCapable bool
 }
 
 // outcomeCodeToKey mappe le code outcome Halo (domain.Outcome*) vers la clé
@@ -175,6 +180,14 @@ func (s *MatchHistoryService) WithPlayerMatchesRepo(repo port.PlayerMatchesRepos
 // pour valider le fallback ; côté prod : passer (*duckdb.CSRThresholdsRepo).Get.
 func (s *MatchHistoryService) WithCSRThresholds(resolver CSRThresholdResolver) *MatchHistoryService {
 	s.csrThreshold = resolver
+	return s
+}
+
+// WithRankedCapable déclare que le titre expose la capability match.skill.snapshot
+// (gate du module classé du briefing Explorer, DEC-7). Câblé par le wiring depuis
+// titleSupportsLiveCSR. Sans appel : module classé toujours omis.
+func (s *MatchHistoryService) WithRankedCapable(capable bool) *MatchHistoryService {
+	s.rankedCapable = capable
 	return s
 }
 
@@ -262,7 +275,20 @@ func (s *MatchHistoryService) GetPage(
 	// solo/squad indépendamment du filtre période courant.
 	sessionLabels := buildMatchHistorySessionLabels(rawRows)
 
-	briefingKPIs := s.loadBriefingKPIs(ctx, filtered)
+	// Chargement canonical unique du scope → KPIs personnels (BriefingKPIs,
+	// consommé par la page Stats à l'identique). Best-effort : nil si indisponible.
+	scoped := s.loadCanonicalForScope(ctx, filtered)
+	briefingKPIs := s.kpisFromScoped(scoped)
+
+	// Briefing étendu de l'Explorer (mode Matchs) : uniquement sur opt-in de la
+	// requête (IncludeExplorerBriefing). La page Historique/Stats ne pose pas le
+	// flag → réponse inchangée. Baseline/dimensions/tendance sont bâtis sur les
+	// raw rows (libellés FR déjà résolus, post-exclusions = baseline DEC-3) ;
+	// socle KPIs + module classé réutilisent les canonical KPIs.
+	var briefing *domain.ExplorerBriefing
+	if req.IncludeExplorerBriefing {
+		briefing = s.buildExplorerBriefing(filtered, rawRows, briefingKPIs)
+	}
 
 	return domain.MatchHistoryPageResponse{
 		Summary: domain.MatchHistoryQuerySummary{
@@ -289,14 +315,17 @@ func (s *MatchHistoryService) GetPage(
 		ExportHint:          exportHint,
 		SessionLabels:       sessionLabels,
 		BriefingKPIs:        briefingKPIs,
+		Briefing:            briefing,
 	}, nil
 }
 
-// loadBriefingKPIs charge les canonical rows + filtre par match_ids du scope filtré
-// puis calcule les KPIs. Best-effort : nil si playerMatchesRepo absent ou échec.
-func (s *MatchHistoryService) loadBriefingKPIs(
+// loadCanonicalForScope charge une seule fois les canonical rows du joueur et
+// retourne le sous-ensemble dont le match_id appartient au scope filtré. Best-
+// effort : nil si le loader canonical n'est pas câblé ou si le chargement échoue
+// (le briefing dégrade proprement — socle sans KPIs plutôt que 500).
+func (s *MatchHistoryService) loadCanonicalForScope(
 	ctx context.Context, filtered []domain.MatchHistoryRawRow,
-) *domain.KPIStats {
+) []canonical.PlayerMatchRow {
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" || len(filtered) == 0 {
 		return nil
 	}
@@ -317,6 +346,12 @@ func (s *MatchHistoryService) loadBriefingKPIs(
 			scoped = append(scoped, c)
 		}
 	}
+	return scoped
+}
+
+// kpisFromScoped agrège les KPIs personnels du scope canonical (BriefingKPIs,
+// consommé à l'identique par la page Stats). nil si le scope est vide.
+func (s *MatchHistoryService) kpisFromScoped(scoped []canonical.PlayerMatchRow) *domain.KPIStats {
 	if len(scoped) == 0 {
 		return nil
 	}

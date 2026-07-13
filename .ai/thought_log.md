@@ -1,3 +1,39 @@
+## [2026-07-13] Explorer briefing cards — LOT A backend (reprise WIP interrompu, branche feat/explorer-briefing-cards)
+
+**Statut** : En cours — Lot A (backend) COMPLÉTÉ + gaté vert ; restent Lots B/C (front) + D (livraison).
+
+**Reprise** : agent précédent tué après le commit WIP `c7ccda510` (couvrait EXACTEMENT
+l'item A1 : DTOs `explorer_briefing.go` + 4 champs sur explorer.go/match_history.go).
+Vérifié sur pièces + compile → A1 GARDÉ tel quel (conforme spec). A2-A10 écrits par moi.
+
+**Décision technique principale** : le socle KPIs du briefing reste canonical
+(`kpisFromScoped` = `ComputeKPIStats`), mais baseline/dimensions/tendance sont bâtis sur
+les `MatchHistoryRawRow` et non les canonical rows. Raison : les canonical de
+`LoadPlayerMatches` ne sont PAS enrichies FR (Synthèse le fait via
+`EnrichCanonicalAssetTranslations`, pas l'historique), donc dimensions par carte/mode/
+playlist auraient affiché des libellés EN sous locale FR — violation directe du critère de
+succès. Les raw rows portent déjà MapNameFR/PairNameFR/PlaylistName (COALESCE FR) ET sont
+post-exclusions (= baseline DEC-3). Le module classé réutilise `KPIStats.RankDelta`
+(delta CSR) + les `SkillExpectedWinProb` des raw rows. Écarts documentés item par item
+dans le plan.
+
+**Helpers créés (purs, testés)** : `analysis.AggregateKDA` (KDA agrégat ADR 0006 canonique,
+formule jusque-là inlinée), `analysis.ExpectedVsActual` (attendu vs réel), `breakdown.CompareByKey`
+(comparateur générique par clé — `CompareToHistorical` étant map-only). Wiring capability
+via `WithRankedCapable(titleSupportsLiveCSR)` — gate par capability match.skill.snapshot,
+jamais slug.
+
+**Résultats observés (gates Lot A, séquentiels, air stoppé)** : `go build ./internal/...`
+OK ; `go vet` OK ; `go test ./...` (go-api complet) VERT ; `golangci-lint
+--new-from-rev=a25ab7cf2` = 0 issue. Drift OpenAPI : 8 schémas `ExplorerBriefing*`
+auto-dérivés par Huma étaient MISSING → ajoutés au openapi.yaml manuel + `generated.ts`
+régénéré → test drift vert. Tests briefing : 10 cas service + 2 handler + 3 analysis, verts.
+
+**Conclusion / prochaine étape** : commit Lot A (backend), puis Lot B (front socle :
+types.ts, ExplorerPage envoie include_briefing, composant ExplorerBriefingStrip, i18n FR/EN,
+tokens sémantiques), puis Lot C (modules conditionnels + sparkline), puis D (vérif visuelle
+Infinite+H5, MAJ ETAT_CONSOLIDE, archivage plan).
+
 ## [2026-07-13] Momentum Match View — Phase 4 + CLÔTURE : i18n, vérif visuelle, plan COMPLÉTÉ (branche feat/matchview-momentum)
 
 **Statut** : Complété — PLAN_MATCHVIEW_MOMENTUM SOLDÉ (4/4 phases), déplacé en .ai/V7/.
