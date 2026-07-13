@@ -1,3 +1,40 @@
+## [2026-07-13] Requalif. cron leaderboard « découverte saison active échouée » (404) — LOT OPS/QUALITÉ item 1 (branche chore/lot-ops-qualite)
+
+**Statut** : Complété (fix réel + dégradation propre + test de régression).
+
+**Requalification** : le triage monitoring (B3.1) attribuait l'ERROR quotidienne prod
+`world_leaderboard_cron: découverte saison active échouée — cycle ignoré`
+(`FetchCatalog: statut HTTP 404: classement absent pour cette (saison, playlist)`) au
+reste-à-faire C3 (backfill saisons passées). VERDICT : ce n'est PAS C3. C3 concerne le
+backfill des snapshots de saisons PASSÉES (où le 404 est déjà un skip nominal côté CLI, fix
+23f3c3c58). L'ERROR prod est un autre chemin : la découverte de la SAISON ACTIVE. Cause
+racine (sur pièces) : `runOnceForTitle` appelait `FetchActiveSeason(ctx, playlists[0])` avec
+UNE seule playlist de référence ; le scraper construit l'URL de découverte avec une
+saison-graine FIXE (`seedSeasonID = "csrseason13-2"`) — si cette playlist n'était pas classée
+dans la saison-graine (typiquement une playlist récemment ajoutée, renvoyée en tête par la
+découverte dynamique Waypoint), la page-graine renvoie 404 et TOUT le cycle avortait sur une
+ERROR récurrente. Cas ATTENDU, pas une panne.
+
+**Décision technique principale** : fix réel (pas juste un rebadge de log). Nouveau helper
+`discoverActiveSeason(ctx, titleSlug, static, dynamic)` : essaie les playlists candidates tour
+à tour (statiques d'abord — classées de longue date, donc les plus susceptibles d'exister dans
+la saison-graine — puis dynamiques ; doublons/vides retirés via `dedupeNonEmpty`) et retient
+le premier succès. Au moins une playlist classée de longue date (Arène) rend la page-graine
+csrseason13-2, donc le cycle ne s'interrompt plus. Dégradation DC-B2 pour le résidu (page-graine
+globalement indisponible pour TOUTES les candidates, rare et auto-résolutif) : UN WARN agrégé +
+compteur expvar `world_leaderboard_season_discovery_failed_total`, plus jamais d'ERROR — le
+dernier snapshot append-only reste servi. Fichier : `internal/scheduler/world_leaderboard_cron.go`.
+
+**Résultats observés** : nouveau test `TestWorldLeaderboardCron_SeasonDiscoveryFallsThrough404`
+(stub enrichi `seasonErrForPlaylists`) : 3 playlists de référence 404 puis la 4e rend la page →
+saison découverte, snapshots insérés, ≥2 appels `FetchActiveSeason` (repli prouvé). Non-régression :
+les 8 tests existants du cron passent (dont `CapabilityGated` activeCalls==1 et `SeasonDiscoveryError`
+fetchCalls==0). Gates : `go build ./...`=0, `go vet ./...`=0, `go test ./internal/scheduler/...`=ok,
+`golangci-lint --new-from-rev=origin/main ./internal/scheduler/...`=0 issue.
+
+**Conclusion / prochaine étape** : plan monitoring B3.1 requalifié `[x]` (n'était pas C3).
+LOT OPS/QUALITÉ mis en PAUSE par le coordinateur après cet item — items 2/3/4 NON commencés.
+
 ## [2026-07-13] Fuite de filtre inter-titres via deep-link `?f=` (branche fix/title-switch-deeplink-leak)
 
 **Statut** : Complété (fix + tests + repro navigateur avant/après).
