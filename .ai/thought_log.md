@@ -1,3 +1,49 @@
+## [2026-07-13] Vérif auth locale xbox + fix SSO device-flow (URL 404 + race single-flight) — LOT OPS/QUALITÉ item 0 (branche chore/lot-ops-qualite)
+
+**Statut** : Complété (vérifications a-d faites ; 2 fix serveur nécessaires en chemin).
+
+**Contexte** : `.env.local` passé à `LEVELUP_AUTH_MODE=xbox` par le superviseur ; mission =
+redémarrer le serveur, vérifier le flow SSO au navigateur, vérifier `/admin/data` anonyme,
+et vérifier sur pièces que le SSO de JGtm produira une session admin.
+
+**Décisions techniques principales** :
+1. **Redémarrage serveur** : piège découvert — l'env du tool PowerShell n'a pas gcc dans le
+   PATH → le build d'air échouait (`cgo: C compiler "gcc" not found`, build-errors.log) et
+   air relançait le BINAIRE PÉRIMÉ de la veille. Remède : relancer air détaché avec
+   `C:\msys64\ucrt64\bin` prépendu au PATH. `.env.local` est lu par le serveur au boot
+   (config.BootstrapEnvLocal) mais SANS override d'une var déjà posée — ne jamais laisser
+   un vieux LEVELUP_AUTH_MODE dans l'env du parent.
+2. **Fix 1 — URL device-code 404** : le login SSO Xbox n'a JAMAIS pu s'amorcer —
+   `xboxDeviceCodeURL = login.live.com/oauth20_connect/device` renvoie HTTP 404 chez
+   Microsoft (l'URL correcte est `oauth20_connect.srf`, vérifiée par POST direct : 200 +
+   device_code, les deux variantes de scopes passent). Introduite fausse par le commit SISU
+   `16e7d2922` ; jamais détectée car les tests injectent des URLs mockées. Ceci REQUALIFIE
+   `PLAN_AUTH_DEVICE_FLOW_SISU_404_2026-07` : la prémisse « endpoint retiré » tombe, la
+   décision D3 (Option 1/2/3) est SANS OBJET — Option 1 exécutée de fait (C1/C2/C4 statués,
+   journal du plan à jour).
+3. **Fix 2 — race single-flight** : 2e cause de blocage (« Génération du code… » infini) —
+   `handleStartDeviceFlow` répondait au start concurrent (double-fire React dev / 2e onglet)
+   AVANT que le créateur ait rempli la tentative → 200 avec user_code VIDE écrasant l'état
+   UI. Fix : `waitDeviceFlowReady` (attente bornée 15 s par Snapshot — supprime aussi la
+   lecture non verrouillée de l'objet vivant —, propagation de l'échec créateur, 503
+   retryable au timeout) + slog.ErrorContext sur l'échec InitDeviceFlow (erreur avalée qui
+   avait rendu ce diagnostic pénible) + 2 tests (`auth_device_flow_singleflight_test.go`).
+
+**Résultats observés** : bootstrap `auth_mode:"xbox"` ; page /login anonyme (contexte
+navigateur isolé) → panneau « Connexion Xbox » complet (code, compte à rebours, lien
+`login.live.com/oauth20_authorize.srf` SISU/PKCE) → page Microsoft « Se connecter » rendue
+(login NON complété : identifiants utilisateur). `/admin/data` anonyme : jamais de contenu
+admin, pas de gel — redirection vers `/` puis `/login` au chargement frais. Vérif (d) sur
+pièces : `server_apiv1.go:270-291` (mode xbox → XboxSSOLinkStrategy) ;
+`xbox_auth_service.go:138` GetByXUID → users.json `jgtm` (xuid 2533274823110022,
+role=admin) → `sess.Role` admin (l.167-170), CurrentPlayerSlug=JGtm (l.173-177) ;
+verrou d'instance inopérant pour un xuid CONNU (l.143 : branche ErrUserNotFound seulement).
+Gates : build/vet OK, tests handlers + platform/auth OK, lint new-from-rev 0 issue.
+
+**Conclusion / prochaine étape** : l'utilisateur peut se reconnecter (phrase exacte dans
+l'ETAT consolidé §3). Enchaîner items 2/3/4 du lot. Reste du plan auth (lots A StepDeviceCode,
+D garde-rail/doc) : ouvert, sur feu vert utilisateur.
+
 ## [2026-07-13] Requalif. cron leaderboard « découverte saison active échouée » (404) — LOT OPS/QUALITÉ item 1 (branche chore/lot-ops-qualite)
 
 **Statut** : Complété (fix réel + dégradation propre + test de régression).

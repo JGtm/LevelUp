@@ -30,6 +30,13 @@ import (
 
 const (
 	deviceFlowPollIntervalSec = 5
+	// deviceFlowReadyTimeout borne l'attente d'un start single-flight sur une
+	// tentative encore en cours d'initialisation par la requête créatrice
+	// (InitDeviceFlow = 3 appels réseau, typiquement 1-3 s). Au-delà, on renvoie
+	// une erreur retryable plutôt qu'un payload sans user_code (client bloqué).
+	deviceFlowReadyTimeout = 15 * time.Second
+	// deviceFlowReadyPollInterval est le pas de scrutation de l'attente ci-dessus.
+	deviceFlowReadyPollInterval = 150 * time.Millisecond
 )
 
 // AuthHandler gère les endpoints d'authentification Halo via Device Code Flow.
@@ -120,12 +127,27 @@ func (h *AuthHandler) handleStartDeviceFlow(ctx context.Context, _ *struct{}) (*
 	sess.DeviceFlowAttemptID = &attempt.AttemptID
 	sess.PendingDeviceFlowAttempt = attempt.AttemptID
 	if !isNew {
-		return &deviceFlowStartOutput{Body: deviceFlowStartResponse(attempt)}, nil
+		// Single-flight : la tentative pending peut être ENCORE en cours
+		// d'initialisation par la requête créatrice concurrente (2e onglet,
+		// double-fire des effets React en dev). Répondre immédiatement renverrait
+		// user_code/verification_uri VIDES et le client resterait bloqué sur le
+		// spinner (le GET status ne porte pas le code). On attend qu'elle soit
+		// prête (ou en échec) avant de répondre.
+		snap, herr := h.waitDeviceFlowReady(ctx, attempt.AttemptID)
+		if herr != nil {
+			return nil, herr
+		}
+		return &deviceFlowStartOutput{Body: deviceFlowStartResponse(snap)}, nil
 	}
 
 	// Nouvelle tentative : initier le Device Code Flow via le provider configuré.
 	flow, err := h.provider.InitDeviceFlow(ctx)
 	if err != nil {
+		// Logger AVANT la dégradation (règle n°3) : sans ce log, la cause réelle
+		// (ex. endpoint Microsoft en 404) n'existe que dans l'attempt en mémoire,
+		// que le client d'un start 500 ne peut jamais relire (pas d'attempt_id).
+		slog.ErrorContext(ctx, "auth: InitDeviceFlow échoué — start device-flow refusé",
+			"attempt_id", attempt.AttemptID, "err", err)
 		h.attempts.Update(attempt.AttemptID, func(a *auth_platform.Attempt) {
 			a.Status = auth_platform.AttemptStatusFailed
 			a.ErrorCode = "msal_init_error"
@@ -147,6 +169,45 @@ func (h *AuthHandler) handleStartDeviceFlow(ctx context.Context, _ *struct{}) (*
 
 	snapshot := h.attempts.Snapshot(attempt.AttemptID)
 	return &deviceFlowStartOutput{Body: deviceFlowStartResponse(snapshot)}, nil
+}
+
+// waitDeviceFlowReady attend qu'une tentative single-flight soit initialisée par
+// la requête créatrice (user_code rempli après InitDeviceFlow) ou en échec.
+// Lit des Snapshot (copies sous mutex) — jamais l'objet vivant, dont la lecture
+// hors verrou pendant que le créateur le remplit serait un data race.
+//   - prête (user_code posé ou statut ≠ pending) → snapshot
+//   - échec du créateur → même 500 msal_init_error que le chemin créateur
+//   - timeout (créateur anormalement lent) → 503 retryable, jamais un payload vide
+func (h *AuthHandler) waitDeviceFlowReady(ctx context.Context, attemptID string) (*auth_platform.Attempt, error) {
+	deadline := time.After(deviceFlowReadyTimeout)
+	tick := time.NewTicker(deviceFlowReadyPollInterval)
+	defer tick.Stop()
+	for {
+		snap := h.attempts.Snapshot(attemptID)
+		if snap == nil {
+			// Purgée entre-temps (TTL) — le client relance un start propre.
+			return nil, humacore.NewError(http.StatusNotFound, "attempt_not_found", "tentative introuvable")
+		}
+		if snap.Status == auth_platform.AttemptStatusFailed {
+			code := snap.ErrorCode
+			if code == "" {
+				code = "msal_init_error"
+			}
+			return nil, humacore.NewError(http.StatusInternalServerError, code, "impossible de démarrer le Device Code Flow")
+		}
+		if snap.UserCode != "" || snap.Status != auth_platform.AttemptStatusPending {
+			return snap, nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-deadline:
+			slog.WarnContext(ctx, "auth: tentative device-flow single-flight toujours vide après attente — 503 retryable",
+				"attempt_id", attemptID, "timeout", deviceFlowReadyTimeout)
+			return nil, humacore.NewError(http.StatusServiceUnavailable, "device_flow_not_ready", "tentative en cours d'initialisation, réessayer")
+		case <-tick.C:
+		}
+	}
 }
 
 // handleGetDeviceFlowStatus retourne l'état d'une tentative Device Code Flow.
