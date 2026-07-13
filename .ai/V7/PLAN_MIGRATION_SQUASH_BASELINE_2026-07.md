@@ -1,13 +1,12 @@
 # PLAN — Squash des migrations : baseline bit-identique prouvée (chantier N4)
 
-> **STATUT : M3-M5 COMPLÉTÉS le 2026-07-12 (1er squash réel LIVRÉ : baseline PLAYER v1).
-> M6 (merge = deploy prod auto) EN ATTENTE DU TRAIN DE MERGE SUPERVISEUR** — hors mandat
-> de l'exécutant. M0/M1/M2 étaient déjà mergés (PR #54). GO opérateur donné 2026-07-12
-> (périmètre v1 confirmé = cible player, bloc title-owned contigu). Tout est vert sur la
-> branche `refactor/migration-squash-m3` : baseline `create_baseline_player_v1` (33 steps
-> squashés), preuve zéro-perte bit-identique (golden), DM-5 (équivalence ledger), archive
-> `.ai/migrations/squashed/player_v1/`. Le plan reste dans `.ai/` tant que M6 n'est pas
-> exécuté. Détail : §J (entrée M3-M5, 2026-07-12).
+> **STATUT : COMPLÉTÉ le 2026-07-13 — M6 EXÉCUTÉ : mergé dans main via le train
+> 2026-07-13 (PR #55, GO merge utilisateur) et DÉPLOYÉ EN PROD** (~10:26 UTC, boot
+> propre : baseline `create_baseline_player_v1` reconnue sur les player DBs prod via la
+> sentinelle DM-5, zéro DDL rejoué, aucune erreur de migration observée). M0/M1/M2
+> mergés via PR #54 ; M3-M5 exécutés le 2026-07-12 (GO opérateur, périmètre player
+> 33 steps) : preuve zéro-perte bit-identique (golden) + archive
+> `.ai/migrations/squashed/player_v1/`. Plan archivé en V7 le 2026-07-13.
 >
 > Date : 2026-07-10. Auteur : Fable (supervision). Exécutant prévu : Opus.
 > Origine : politique N4 documentée dans `internal/migration/doc.go` (2026-07-05,
@@ -161,11 +160,12 @@ Critères de succès :
 - Gate M5 : les 3 verts, consignés. [x]
 
 ### M6 — GO opérateur puis merge (politique N4 : déclenchement manuel)
-- [!] M6a — Point d'étape utilisateur : mesures (M0d vs M4c), diff de registre, résultat
-  M5c. DEMANDER le GO explicite (c'est LA décision opérateur de la politique).
-- [!] M6b — Si GO : merge selon les règles projet (prévenir, deploy auto). Si NO-GO :
-  la branche reste (l'outillage M1/M2 est réutilisable même sans squash — il sert aussi
-  au chantier E7 futur), consigner.
+- [x] M6a — Point d'étape fait le 2026-07-12 (rapport M3-M5 : mesures M0d vs M4c,
+  invariant, résultat M5c) ; GO opérateur explicite reçu (« dry-run + tests, si tout est
+  bon on y va » — conditions remplies, tout vert).
+- [x] M6b — MERGÉ le 2026-07-13 via le train PR #55 (GO merge utilisateur, deploy prod
+  auto ~10:26 UTC). Boot prod propre : sentinelle DM-5 opérante sur les 4 player DBs,
+  zéro DDL rejoué, aucune erreur de migration. Clôture et archivage V7 le 2026-07-13.
 
 ## 4. Synergies (à noter, PAS à traiter ici)
 - **E7** (DDL bootstrap `sync/schema.go` → migration, différé « après b23/b25 ») : le

@@ -1,4 +1,4 @@
-# CHECKLIST POST-CAMPAGNE — 2026-07-12
+# CHECKLIST POST-CAMPAGNE — 2026-07-12 (SUPERSÉDÉE le 2026-07-13 par ETAT_CONSOLIDE_2026-07-13.md)
 
 > Campagne d'exécution des 9 plans + outillage CI : mergée (PR #54), déployée en prod le
 > 2026-07-12, salve post-deploy exécutée (backfill engagement, lot V H5, vérifs H6 LUSR).
