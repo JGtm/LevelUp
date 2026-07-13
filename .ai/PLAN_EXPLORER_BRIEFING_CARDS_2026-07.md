@@ -347,26 +347,42 @@ Aucun item sans statut. Commit(s) avec accord utilisateur.
 
 ## LOT C — Front : modules conditionnels + mini-graphes
 
-- [ ] **C1 — Module dimensions (notes)** : sous la rangée socle, une carte par dimension
+- [x] **C1 — Module dimensions (notes)** : `ExplorerBriefingModules.tsx` → `DimensionCard`
+  (1 carte/dimension) + `DimensionRow` : libellé, n, taux de victoire (coloré), delta signé
+  ▲/▼ (tokens), note = badge palier 1..5 avec les MÊMES libellés que le filtre
+  (`explorer.filters.perf_tier_*`, token `perf-tier-N`). note_tier nil → n + delta sans note
+  (tiret). Détail plan : sous la rangée socle, une carte par dimension
   servie (carte/mode/playlist) : top 3 / flop 3 avec libellé, n, taux de victoire,
   delta signé vs baseline (▲/▼, tokens), et la note (palier 1..5) rendue avec les MÊMES
   libellés que le filtre « Palier de performance » (réutiliser la source de labels des
   options de filtre — pas de nouveau mapping). Note absente (`note_tier` nil) →
   afficher n + delta sans note.
-- [ ] **C2 — Module tendance** : sparkline compacte (~120 px de haut, pattern
+- [x] **C2 — Module tendance** : `TrendCard` via wrapper existant `TimeseriesLineChart`
+  (height 120, xAxisType time), série taux de victoire par bucket (couleur via
+  `colorToken: 'outcome-win'`, résolu en hex par le wrapper — PAS `tokenCssVar` qui donnerait
+  un `var()` non résolu en canvas). Perf omise en v1 (DEC-5 : seconde série optionnelle,
+  écartée pour lisibilité à 120px). Aucun nouveau wrapper. Détail plan : sparkline compacte (~120 px de haut, pattern
   mini-chart RivalryCard) à partir de `trend.points` via le wrapper timeseries
   existant (`components/charts/` — vérifier le catalogue README avant d'envisager un
   nouveau wrapper, DEC-5) : taux de victoire par bucket (axe principal) ; perf moyenne
   en seconde série si le wrapper le permet sans surcharge visuelle, sinon omise.
-- [ ] **C3 — Module classé** : gated `useCapability('ranked')` (DEC-7) ET
+- [x] **C3 — Module classé** : `RankedCard` gated `useCapability('ranked')` ET
+  `briefing.ranked` présent : delta CSR cumulé (signe coloré tokens) + ligne « Attendu vs
+  réel » (`expected_win_rate` / `actual_win_rate` en %). Sous H5 : capability absente +
+  backend n'émet rien → module absent (pas de card N/A). Détail plan : gated `useCapability('ranked')` (DEC-7) ET
   `briefing.ranked` présent : card delta CSR cumulé (signe coloré tokens outcome) +
   ligne « Attendu vs réel » (`expected_win_rate` vs `actual_win_rate`, formatés %).
   Sous Halo 5 : module absent (le backend n'émet rien, le front n'affiche rien — pas
   de card N/A).
-- [ ] **C4 — États dégradés** : chaque module s'omet proprement quand son bloc est nil
+- [x] **C4 — États dégradés** : `ExplorerBriefingModules` retourne null si aucun module ;
+  chaque module gaté sur présence de son bloc (`dimensions.length`, `trend != null`,
+  `ranked != null` + capability). Deltas nil → formatteurs renvoient '' ; perf nil → note
+  absente. Aucun NaN/undefined rendu. Détail plan : chaque module s'omet proprement quand son bloc est nil
   (aucun placeholder vide) ; vérifier qu'aucun module ne rend de NaN/undefined avec
   des blocs partiels (perf nil, expected nil).
-- [ ] **C5 — i18n des modules** : idem B4 (fr + en dans `explorer.toml`, régénération).
+- [x] **C5 — i18n des modules** : clés `[explorer.briefing.dim_*|trend_*|ranked_*]` (fr+en)
+  + réutilisation des `explorer.filters.perf_tier_*` pour les notes ; manifest régénéré.
+  Gate : `check-types` OK, eslint 0 erreur, hex 0, vitest complet 2161 verts.
 
 **Gate Lot C** :
 ```
