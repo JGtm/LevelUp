@@ -68,6 +68,15 @@ export function setApiTitleSlug(slug: string): void {
   _currentTitleSlug = slug
 }
 
+/**
+ * Titre courant tel que vu par le client API. Exposé pour que les stores de
+ * filtres estampillent le titre actif dans le deep-link `?f=` (share-link), afin
+ * qu'un filtre ne se réapplique qu'au titre pour lequel il a été généré.
+ */
+export function getApiTitleSlug(): string {
+  return _currentTitleSlug
+}
+
 function getTitleHeader(): Record<string, string> {
   if (_currentTitleSlug && _currentTitleSlug !== 'halo_infinite') {
     return { 'X-LevelUp-Title': _currentTitleSlug }
