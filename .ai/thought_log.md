@@ -1,3 +1,28 @@
+## [2026-07-13] populate-assets → sous-commande de la CLI levelup (image prod) — LOT OPS/QUALITÉ item 4 (branche chore/lot-ops-qualite)
+
+**Statut** : Complété (sous-commande livrée, standalone supprimé, vérif Docker via CI).
+
+**Décision technique principale** : intégration PRÉFÉRÉE retenue (sur pièces) —
+`populate-assets` devient une sous-commande de la CLI `levelup` (pattern identique à
+seed/backfill : `flag.NewFlagSet` + cfg injecté par main). Le Dockerfile builde DÉJÀ la CLI
+(`RUN go build … ./cmd/levelup/` → `/usr/local/bin/levelup`) → la sous-commande est
+embarquée dans l'image prod sans toucher au Dockerfile. Logique métier inchangée
+(déplacée telle quelle dans `cmd/levelup/cmd_populate_assets.go`, ~470 L < 500) ; le
+binaire standalone `cmd/populate-assets/` est SUPPRIMÉ (règle 7 : zéro code mort — aucune
+collision de symboles, aucune référence build). Runbooks EN mis à jour
+(RUNBOOK_ADD_TITLE, RUNBOOK_OPS_DUCKDB_CLI_TOOLS) ; usage + en-tête de main.go à jour.
+
+**Résultats observés** : `go build ./cmd/levelup/` + vet + lint new-from-rev 0 issue.
+Docker indisponible localement (pas de démon) → vérification croisée : (a) l'image
+buildait déjà `cmd/levelup` (CGO statique linux) et ma sous-commande n'ajoute AUCUNE
+dépendance nouvelle (config/domain/title/duckdb/halo/x-sync déjà compilées linux dans
+l'image via cmd/server) ; (b) le job CI « Deploy Pre-Check / docker-build » builde l'image
+COMPLÈTE sur la branche à chaque push → verdict réel au CI de ce commit (surveillé en
+avant-plan). Usage prod : `docker compose exec levelup levelup populate-assets --dry-run`.
+
+**Conclusion / prochaine étape** : lot ops/qualité SOLDÉ (0/0b/1/2/3/4). Gates finaux
+complets + CI de branche verte, puis rapport final.
+
 ## [2026-07-13] Détecteur data-quality H5 en erreur locale : référentiels HINF absents du schéma metadata H5 — LOT OPS/QUALITÉ item 3 (branche chore/lot-ops-qualite)
 
 **Statut** : Complété (cause prouvée on-disk, fix title-agnostic, test de régression).
