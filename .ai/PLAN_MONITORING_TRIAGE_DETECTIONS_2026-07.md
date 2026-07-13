@@ -4,10 +4,10 @@
 > déploy-indépendant est livré et testé (B6.4 anti-flood, B6.1/B3.3 démotions+compteurs).
 > **B1 déployé en prod le 2026-07-12** (mergé via PR #54 → deploy auto) : cascade LUSR
 > ÉTEINTE, `/health` stabilisé (un seul 503 ponctuel vs 632 pendant l'incident),
-> writer-holds retombés — B1.5 vérifié sur pièces (cf. plan hotfix H6). Reste ouvert :
-> - **B1.6** backfill de rattrapage — SUSPENDU au départage de l'observation « 0 candidat »
->   (shadow silencieux, ambigu backlog-vide vs watermark désync ; départage au prochain
->   match du joueur ou via `lusr_v2_canonical_backfill` dry-run — cf. hotfix H6.2/H6.3).
+> writer-holds retombés — B1.5 vérifié sur pièces (cf. plan hotfix H6). **B1.6 SOLDÉ le
+> 2026-07-12** (départage fait : dry-run puis `--commit` du canonical backfill en fenêtre
+> prod — 2 551 matchs réécrits sur les 4 joueurs, couverture LUSR garantie par
+> construction). Reste ouvert :
 > - **B4.1-B4.4 / B5.5** actions d'ÉCRITURE prod via l'admin UI (utilisateur) : assets UUID
 >   bruts, xuids orphelins, lying-bits reset, modes non traduits, remap chemins média.
 > - **B2.4 / B7.4** soaks datés (délai prescrit, pas un report). B7.4 ré-armé T0=2026-07-12.
@@ -134,13 +134,15 @@ le chunk borne la fenêtre RW, les lecteurs passent entre les chunks, comme even
       **zéro** `persist état échoué`, **zéro** `read-only mode` ; writer-holds retombés à
       2000-2001 ms (vs 21 909 pendant l'incident) ; `/health` **un seul 503 ponctuel**
       (vs 632 pendant l'incident) ; post-syncs réels tournés à 09:56 et 10:24-26.
-- [!] B1.6 Rattrapage backfill — SUSPENDU au départage de l'observation « 0 candidat » : le
-      shadow tourne silencieux (processed = 0), ambigu entre backlog vide (sain) et watermark
-      désync (piège connu). Départage au prochain match du joueur ou via
-      `lusr_v2_canonical_backfill` dry-run AVANT tout `--commit` (cf. hotfix H6.2/H6.3).
+- [x] B1.6 Rattrapage backfill — SOLDÉ le 2026-07-12 : départage fait par
+      `lusr_v2_canonical_backfill` en fenêtre prod (serveur arrêté) — dry-run d'abord
+      (2 547 comptés) puis `--commit` : **2 551 matchs réécrits** (JGtm 946,
+      Madina97294 1 081, Chocoboflor 493, XxDaemonGamerxX 31), couverture LUSR garantie
+      par construction (reset par joueur + persist owner-only, append-only + vues
+      `_latest`). Serveur relancé, site 200.
 
-**Gate B1** : VERT (fix déployé + B1.5 vérifié sur pièces). Reste B1.6 [!] suspendu au
-départage de l'observation « 0 candidat » (non bloquant — la cascade LUSR est éteinte).
+**Gate B1** : VERT — fix déployé, B1.5 vérifié sur pièces, B1.6 soldé (couverture
+complète). La cascade LUSR est éteinte et rattrapée.
 
 ### B2 — Pool auth / tokens (effort : réduit après B0)
 
