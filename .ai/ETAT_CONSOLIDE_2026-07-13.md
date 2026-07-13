@@ -32,7 +32,7 @@
 
 | Quoi | Où | Échéance |
 |---|---|---|
-| Lot ops/qualité (leaderboard 404, alerte disque→notif, data-quality H5 local, populate-assets) | agent Opus sur `chore/lot-ops-qualite` — **en clôture propre (pause)** : finit l'item en cours puis stop | rapport partiel imminent |
+| Lot ops/qualité (item 0 vérif SSO local FAIT + fix 404 device-flow ; item 1 leaderboard 404 FAIT ; restent : alerte disque→notif, data-quality H5 local, populate-assets) | agent Opus sur `chore/lot-ops-qualite` — repris après pause | rapport final à la fin du lot |
 | Observation `legacy_source_used` = 0 | prod (T0 = 2026-07-13) | D2 armable ≥ 2026-07-20 → chantier Phase 5 ADR 0023 (retrait fallbacks legacy) |
 | Soak bruit prod B2.4 | re-mesure script §Mesure du plan triage | 2026-07-14 |
 | Soak 30 j B7.4 (cible ERROR ≈ 0/j) + décision endpoint `/admin/monitoring/errors` | plan triage | ~2026-08-11 |
@@ -43,11 +43,14 @@
       habituelle — ce sont des actions sur les données prod, le local n'est pas le bon
       endroit) : DRY-RUN d'abord — B4.1 registry-names · B4.2 aliases/orphelins ·
       B4.3 lying-bits · B4.4 mode translations · B5.5 migrate-media-paths.
-- [ ] Admin en LOCAL — CORRIGÉ par le superviseur le 13/07 : `.env.local` passé à
-      `LEVELUP_AUTH_MODE=xbox` (l'essai `password` désactivait le SSO — les modes sont
-      exclusifs, erreur de proposition). En mode `xbox` : connexion SSO habituelle →
-      xuid résolu → session ADMIN (le xuid est dans `users.json`). Vérification
-      navigateur par agent en cours ; toi : juste te reconnecter quand je confirme.
+- [ ] Admin en LOCAL — VÉRIFIÉ + RÉPARÉ le 13/07 (lot ops item 0) : `.env.local` en
+      `LEVELUP_AUTH_MODE=xbox` pris en compte (serveur redémarré), et le login SSO
+      Xbox — qui était CASSÉ pour tout le monde (URL device-code 404 depuis
+      l'introduction de SISU, cf. `PLAN_AUTH_DEVICE_FLOW_SISU_404` requalifié) — est
+      corrigé + vérifié au navigateur jusqu'à la page Microsoft. **Toi : ouvre
+      `http://localhost:5173/login`, clique le lien `login.live.com…` affiché,
+      connecte-toi avec ton compte Microsoft (JGtm) — la session locale devient
+      automatiquement ADMIN (ton xuid 2533274823110022 est dans `users.json`).**
       NOTE produit (retour utilisateur) : « un admin est un joueur » — modes exclusifs
       = UX discutable ; coexistence SSO+password notée au backlog (item 9, §5).
 - [x] ~~Fuite inter-titres~~ : confirmée corrigée par l'utilisateur le 13/07.
@@ -62,7 +65,7 @@
 |---|---|---|
 | D1 | GO exécution `PLAN_MATCHVIEW_MOMENTUM_2026-07` | DEC-1..7 déjà tranchées dans le plan (graphe momentum match view / escouade / solo) |
 | D2 | Trancher DEC-1..9 de `PLAN_REVUE_ANALYTIQUE_TIMESERIES_SQUAD_2026-07` | Couvre les items Notion : graphes Synthesis/Timeseries, ordre chronologique Escouade, radar synergie |
-| D3 | `PLAN_AUTH_DEVICE_FLOW_SISU_404_2026-07` : trancher l'option du lot B | Onboarding device-flow cassé (endpoint MS retiré). Reco exécutant : Option 3 (fallback auto SISU→MSAL) + ticket recherche Option 1. Lots A (fix spinner) et D (garde-rail) exécutables dès le GO |
+| D3 | ~~Trancher l'option du lot B~~ **SANS OBJET le 13/07** (lot ops item 0) | La prémisse « endpoint MS retiré » était fausse : l'URL du code n'a jamais été la bonne (`/oauth20_connect/device` ; la vraie = `oauth20_connect.srf`). Fix livré + vérifié navigateur = Option 1 de fait, plus rien à trancher. Restent au plan : lots A (StepDeviceCode) et D (garde-rail + doc) sur simple feu vert |
 | D4 | GO exécution `PLAN_EXPLORER_BRIEFING_CARDS_2026-07` | Plan prêt pour agent |
 | D5 | Prioriser les plans exclus de la campagne | `PLAN_ASCENSION_UX` (item Notion « Finir la page Ascension ») · `PLAN_DIAG_APPARENCE_ADMIN` (probable réponse à « nameplate ne se met pas à jour ») · `PLAN_RELATIONS_UX` (item Notion « joueurs croisés multi-jeux ») · `PLAN_WEAPON_ATTRIBUTION_V3` (à requalifier : approche supersédée par same-clock) |
 | D7 | ~~Titre dans l'URL~~ **PRINCIPE APPROUVÉ le 13/07** | Plan en cours d'écriture (agent Opus, worktree). Sera soumis à relecture avant exécution. Routes `/t/{slug}/...`, la garde deep-link #59 reste en défense en profondeur |

@@ -151,17 +151,29 @@ Selon l'option :
 
 - [ ] A1 — `onError`/`isError` surfacé dans StepDeviceCode (plus de spinner infini)
 - [ ] A2 — garde L119 revue pour ne pas masquer l'erreur
-- [ ] A3 — même correctif vérifié/appliqué dans XboxLoginPage
-- [ ] A4 — tests web « start 500 → erreur affichée »
+- [~] A3 — XboxLoginPage surfe DÉJÀ l'échec de start (observé au navigateur 2026-07-13 :
+      « internal error » + bouton Réessayer via `startError`) ; reste le spinner
+      single-flight, corrigé côté SERVEUR le 2026-07-13 (cf. Journal)
+- [ ] A4 — tests web « start 500 → erreur affichée » (StepDeviceCode)
 - [ ] A5 — gate lot A (check-types + test-web) vert
-- [ ] B1 — décision produit §2 actée par Guillaume
-- [ ] C1 — implémentation option retenue
-- [ ] C2 — log explicite de l'erreur InitDeviceFlow (fix swallowed error auth.go)
-- [ ] C3 — onboarding device-flow réussi bout-en-bout en réel
-- [ ] C4 — gate lot C (go test ./...) vert
+- [~] B1 — décision SANS OBJET : la prémisse « endpoint retiré » était fausse (cf. Journal
+      2026-07-13) — l'endpoint natif existe, c'est l'URL du code qui n'a jamais été la bonne.
+      Option 1 exécutée de fait ; Options 2/3 sans objet. À confirmer par Guillaume (rayer D3
+      de l'ETAT consolidé).
+- [x] C1 — Option 1 de fait : `xboxDeviceCodeURL` corrigée `/oauth20_connect/device` →
+      `oauth20_connect.srf` (vérif curl : .srf → 200 + device_code ; /device → 404 ;
+      les DEUX variantes de scopes passent). Commit lot ops item 0 (2026-07-13).
+- [x] C2 — log explicite `slog.ErrorContext` de l'erreur InitDeviceFlow ajouté dans
+      handleStartDeviceFlow (même commit).
+- [~] C3 — vérifié jusqu'à la page Microsoft « Se connecter » incluse (code généré,
+      polling pending, page login.live.com rendue) — la complétion `authorized` exige les
+      identifiants Microsoft de l'utilisateur : à confirmer par Guillaume à sa reconnexion.
+- [x] C4 — gates du commit item 0 : go build/vet + tests handlers/auth + platform/auth
+      verts ; lint --new-from-rev=origin/main 0 issue.
 - [ ] D1 — garde-rail joignabilité endpoint device-code
 - [ ] D2 — doc onboarding + `auth_provider` MAJ (FR+EN)
-- [ ] D3 — retrait/consignation du contournement local `app_settings.json` selon décision
+- [ ] D3 — retrait/consignation du contournement local `app_settings.json` (le
+      contournement `auth_provider=msal` local peut être retiré : SISU refonctionne)
 
 ---
 
@@ -171,6 +183,26 @@ Selon l'option :
   → 404 ; MSAL `consumers/…/devicecode` → 200). Contournement local `auth_provider=msal`
   posé dans `app_settings.json` (gitignored) — actif au prochain `make restart`. Plan rédigé.
   Aucun code applicatif modifié à ce stade.
+- **2026-07-13** — REQUALIFICATION (lot ops/qualité item 0, branche `chore/lot-ops-qualite`,
+  vérification du mode auth local `xbox`). La conclusion A du §1 (« endpoint retiré/déplacé,
+  recherche coûteuse ») était fausse sur un point clé : l'endpoint natif Xbox device-code
+  EXISTE — c'est `https://login.live.com/oauth20_connect.srf` ; l'URL du code
+  (`/oauth20_connect/device`) n'a JAMAIS été la bonne (introduite telle quelle par le commit
+  SISU `16e7d2922`, jamais exercée en réel : les tests injectent des URLs mockées, conclusion
+  D du §1). Vérifié par POST direct : `.srf` → 200 + device_code/user_code/verification_uri
+  (avec `service::user.auth.xboxlive.com::MBI_SSL` ET `Xboxlive.signin Xboxlive.offline_access`) ;
+  `/device` → 404 corps vide. **Fix livré** (= Option 1, triviale) : constante corrigée,
+  flow re-testé bout-en-bout au navigateur (page /login anonyme → code + lien
+  `login.live.com/oauth20_authorize.srf` SISU/PKCE → page Microsoft « Se connecter » rendue).
+  **Découverte + fix bonus (même commit)** : 2e cause de spinner infini sur /login — le
+  single-flight de `handleStartDeviceFlow` répondait au start concurrent (double-fire des
+  effets React en dev, 2e onglet) AVANT que la requête créatrice ait rempli la tentative →
+  200 avec user_code VIDE, l'UI écrasait le code et restait sur « Génération du code… ».
+  Fix : `waitDeviceFlowReady` (attente bornée 15 s, lecture par Snapshot, propagation de
+  l'échec créateur, 503 retryable au timeout) + 2 tests de régression
+  (`auth_device_flow_singleflight_test.go`). C2 (swallowed error) réglé au passage.
+  Restent ouverts : lot A (StepDeviceCode), D1/D2 (garde-rail + doc) — hors périmètre du
+  lot ops. Le lot B (décision produit) est SANS OBJET.
 
 ## 6. DÉCOUVERTES (hors périmètre — à ne pas traiter ici)
 
