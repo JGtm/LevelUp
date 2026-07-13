@@ -31,10 +31,11 @@ schema_version = 1
 "analytics.timeseries"   = "not_exposed" # buildable depuis l'historique (Phase 2)
 # engagement.score (chantier F7 — double porte) : not_exposed = pas de score servi
 # (503) ; degraded = servi avec calibration=provisional (badge « calibration
-# provisoire » front) ; supported = calibration=validated. H5 = events présents mais
-# coefficients à calibrer (harnais E4) → bascule à degraded en E5 après calibration
-# provisoire, à supported en E6 après gate humain. Voir .ai/PLAN_ENGAGEMENT_AGNOSTIC_GRADUE_2026-07.md.
-"engagement.score"       = "degraded"    # F7 E5 : calibration provisoire (poids = candidats Infinite, rapport E4c) → score servi avec calibration=provisional (badge). supported au gate humain E6.
+# provisoire » front) ; supported = calibration=validated. H5 = events présents,
+# coefficients calibrés (harnais E4c) → supported après gate humain E6b VALIDÉ
+# 2026-07-13 (utilisateur : scores H5 cohérents sur ses matchs). Le badge « calibration
+# provisoire » disparaît automatiquement (calibration=validated). Voir .ai/V7/PLAN_ENGAGEMENT_AGNOSTIC_GRADUE_2026-07.md.
+"engagement.score"       = "supported"   # F7 E6b (2026-07-13) : gate humain validé → calibration=validated (badge retiré). Poids = candidats Infinite (rapport E4c).
 "citations.engine"       = "not_exposed" # moteur de citations DÉRIVÉ d'Infinite — h5 affiche le NATIF (commendations.native), pas ce moteur
 "commendations.native"   = "supported"   # CÂBLÉ : commendations NATIVES par match (carnage ProgressiveCommendationDeltas → match_commendations + MatchDetail.Commendations), AXE B prod-gate
 "pve.firefight_stats"    = "not_exposed" # Warzone Firefight, modèle != FF HINF (Phase 2+)

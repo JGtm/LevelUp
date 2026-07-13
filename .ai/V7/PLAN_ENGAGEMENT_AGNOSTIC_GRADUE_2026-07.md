@@ -1,12 +1,12 @@
 # PLAN — Engagement title-agnostic gradué + activation H5 (chantier F7)
 
-> **STATUT : PARTIEL — E1→E5 + E6a + garde-rails LIVRÉS (2026-07-11).** Reste UNIQUEMENT des
-> dépendances non automatisables : gate humain E6b (décision utilisateur sur les scores H5,
-> protocole ci-dessous), smoke visuel H5, re-backfill PROD (post-merge). H5 est activé en
-> `degraded` (score servi avec mention « calibration provisoire ») — sûr en l'état. Passage à
-> `supported` = décision E6b. Tous les gates automatisés verts (Go unit + intégration `-p 1`,
-> front typecheck/eslint/vitest, lint delta 0, byte-identité Infinite prouvée). Plan NON déplacé
-> vers V7 (PARTIEL, dépend d'une décision utilisateur).
+> **STATUT : COMPLÉTÉ (2026-07-13).** E1→E5 + E6 livrés. Gate humain E6b VALIDÉ le 2026-07-13
+> (utilisateur : scores d'engagement H5 jugés cohérents sur ses matchs — « c'était bien un
+> match H5 » ; distinction forme/intensité correcte, aucune absurdité) → H5 `engagement.score`
+> passé de `degraded` à `supported` (3 miroirs), le badge « calibration provisoire » disparaît
+> automatiquement (service renvoie `calibration=validated`). Re-backfill PROD fait le 2026-07-12
+> (post-deploy train). Tous les gates automatisés verts (Go build/vet/test ./..., test miroir
+> coarse↔fine, lint delta 0, byte-identité Infinite prouvée). Plan déplacé vers `.ai/V7/`.
 >
 > Date : 2026-07-10. Auteur : Fable (supervision). Exécutant prévu : Opus.
 > Origine : décision utilisateur 2026-07-10 (échange F7) — « H5 est plus riche en events
@@ -173,23 +173,27 @@ Constat mémoire : le score (0-100) n'est PAS un FieldKey canonique (contraireme
   Test `EngagementMatchSection.test.tsx` (5 cas). typecheck 0, eslint 0, vitest verts.
 - [x] E5d — Backfill H5 LOCAL : les coefficients E4 (poids) = défauts Infinite, byte-identiques
   au re-backfill de la refonte lobby qui a produit les 5240 samples locaux → un recompute est un
-  no-op numérique (données locales déjà conformes E4 ; harnais E4c les a lues et validées). [!]
-  PROD : re-backfill différé à la fenêtre post-merge (dépend du deploy — même différé que la
-  refonte lobby ; vérification utilisateur requise).
+  no-op numérique (données locales déjà conformes E4 ; harnais E4c les a lues et validées). [x]
+  PROD : re-backfill exécuté le 2026-07-12 (fenêtre post-deploy du train, confirmé utilisateur —
+  les 2 passes/titre du post-deploy engagement lobby couvrent H5).
 - Gate E5 : `-tags=integration -p 1 ./internal/sync/... ./internal/api/...` vert ; front
   typecheck+vitest verts ; smoke visuel H5 (courbe + profil) par l'utilisateur.
 
 ### E6 — GATE HUMAIN de calibration puis `supported`
 - [x] E6a — Protocole de validation écrit (ci-dessous, §Protocole gate humain E6).
-- [!] E6b — DÉCISION UTILISATEUR (non automatisable). En attente : l'utilisateur juge les
-  scores H5 sur ses parties selon le protocole E6a. Si validé → `engagement.score` H5 passe
-  à `supported` (3 miroirs) + retrait du badge provisoire (via `calibration=validated`
-  automatique) + MAJ mémoire ; si non validé → itérer les poids `halo_5/constants.toml
-  [engagement]` (E4c) et re-soumettre. État courant figé à `degraded`/provisional (sûr : score
-  servi avec mention discrète, jamais faussement présenté comme validé).
-- [x] Gate E6 — capabilities cohérentes : **test miroir coarse↔fine livré**
+- [x] E6b — DÉCISION UTILISATEUR VALIDÉE (2026-07-13). Verdict : les scores d'engagement H5
+  sont jugés cohérents sur les matchs de l'utilisateur (« c'était bien un match H5 » ; la
+  distinction forme du jour / intensité tient, sans absurdité). Conséquence appliquée :
+  `engagement.score` H5 passé à `supported` dans les 3 miroirs (`capabilities.toml` halo_5 +
+  `fallbackCapabilities()` adapter + parity `skeleton_test.go` TestHalo5_FineCapabilities). Le
+  badge « calibration provisoire » disparaît AUTOMATIQUEMENT : `calibrationForStatus(CapSupported)`
+  → `CalibrationValidated` (service), et front `withProvisionalMention` ne l'appose que si
+  `calibration === 'provisional'` (aucun code front à modifier). Poids H5 conservés (candidats
+  Infinite E4c). Point de surveillance reporté §Découvertes (rejets PvP_unranked 8,5 %).
+- [x] Gate E6 — capabilities cohérentes : **test miroir coarse↔fine**
   (`internal/games/engagement_capability_mirror_test.go`, générique tous titres — ferme le
-  reliquat F15-12/L2-(3) pour cette capability), vert. Décision utilisateur E6b : [!] en attente.
+  reliquat F15-12/L2-(3) pour cette capability) vert avec H5=supported (coarse `title.CapEngagement`
+  présent → invariant respecté). Décision utilisateur E6b : [x] validée 2026-07-13.
 
 ### Protocole gate humain E6 (E6a)
 
@@ -243,15 +247,18 @@ Verdict attendu : « les scores distinguent bien forme du jour et intensité, sa
   clean ; packages touchés (analysis/service/sync/domain/api-handlers/persist) verts ; api
   (drift report-only, additif = divergent non gaté) vert ; `go vet` 0 ;
   `-tags=integration -p 1 ./internal/sync/...` exit 0 ; lint delta `--new-from-rev=3b0195df2` 0.
-- **E6 — E6a + garde-rails LIVRÉS (2026-07-11) ; E6b [!] décision utilisateur en attente.**
-  Protocole de gate humain écrit (§Protocole gate humain E6). Garde-rails §4 livrés : archlint
-  temporal-agnostic + miroir coarse↔fine (tous titres). H5 reste `degraded`/provisional (sûr).
-  Passage `supported` = décision E6b (non automatisable). Gate : miroir vert ; décision [!].
+- **E6 — COMPLÉTÉE (2026-07-13).** E6a (protocole) + garde-rails §4 livrés 2026-07-11. E6b :
+  gate humain VALIDÉ le 2026-07-13 (utilisateur : scores H5 cohérents, distinction forme/intensité
+  OK). H5 `engagement.score` → `supported` dans les 3 miroirs (capabilities.toml + fallbackCapabilities
+  + skeleton_test) ; badge « calibration provisoire » retiré automatiquement (calibration=validated
+  côté service, aucun code front modifié). Gate : `go build/vet/test ./...` ALL GREEN ; test miroir
+  coarse↔fine (halo_infinite + halo_5) PASS ; lint delta `--new-from-rev=origin/main` 0 issue.
 - **E5 — COMPLÉTÉE en LOCAL (2026-07-11)**. H5 `engagement.score` → `degraded` (3 miroirs) ;
   service mappe `calibration=provisional` ; front badge « calibration provisoire » FR+EN
   (logique extraite `engagementSubtitle.ts` + test). Gate : H5/games verts ; intégration api
-  `-p 1` exit 0 ; front typecheck 0 / eslint 0 / vitest verts. Reste : re-backfill PROD
-  (post-merge) + smoke visuel H5 par l'utilisateur (gate E5 non automatisable).
+  `-p 1` exit 0 ; front typecheck 0 / eslint 0 / vitest verts. CLOS 2026-07-13 : re-backfill
+  PROD fait 2026-07-12 (post-deploy train) ; smoke visuel H5 couvert par le gate humain E6b
+  (l'utilisateur a jugé les scores sur ses matchs H5 → validation).
 - **E4 — COMPLÉTÉE (2026-07-11)**. Coefficients par titre (poids d'events) externalisés dans
   `constants.toml [engagement]` + loader + accessor `games.EngagementWeightsFor` ; threadés
   dans le compute (byte-identique Infinite) et les 2 collecteurs. Harnais `cmd/engagement-calibrate`
@@ -272,9 +279,13 @@ Verdict attendu : « les scores distinguent bien forme du jour et intensité, sa
   J'ai suivi CE pattern (section `[engagement]` dans `constants.toml`, même loader/resolver/accessor)
   plutôt qu'un fichier + loader séparés : réutilise l'infra, un fichier de moins, cohérent repo.
   Aucune fonctionnalité perdue.
-- **H5 PvP_unranked : taux de rejet 8.5 %** (E4c, > seuil indicatif 5 % de la refonte lobby pour
-  Infinite). Bins bien peuplés (n=538-540) et coef global exploitable → non bloquant, mais à
-  regarder au gate humain E6 (matchs unranked H5 plus bruités). Non traité (diagnostic seul).
+- **[POINT DE SURVEILLANCE post-archivage] H5 PvP_unranked : taux de rejet 8,5 %** (E4c, >
+  seuil indicatif 5 % de la refonte lobby pour Infinite). Bins bien peuplés (n=538-540) et coef
+  global exploitable → non bloquant au gate E6b (2026-07-13 validé : les scores unranked n'ont
+  pas été jugés absurdes). CONSERVÉ comme point de surveillance : les matchs unranked H5 sont
+  plus bruités que ranked ; si un futur re-backfill ou retour utilisateur signale des scores
+  unranked incohérents, ré-examiner les poids `halo_5/constants.toml [engagement]` (E4c) et/ou
+  le seuil de rejet. Diagnostic seul — non traité (aucune action requise à l'archivage).
 - **`make generate-types` est un stub** (E3). La cible Makefile `generate-types` (l.44-46) ne
   fait que vérifier `npx` et logger « Types générés » — elle N'EXÉCUTE PAS openapi-typescript.
   La vraie génération est le script npm `apps/web` : `npm run generate-types` (openapi-typescript
