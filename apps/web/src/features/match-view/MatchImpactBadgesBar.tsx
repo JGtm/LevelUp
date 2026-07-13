@@ -17,6 +17,7 @@
  * xuid → gamertag se fait via le scoreboard du match.
  */
 import { BadgeIcon } from '@/components/feedback/BadgeIcon'
+import { hexToRgba } from '@/components/charts/_utils'
 import { Tooltip } from '@/components/ui/tooltip'
 import { resolveToken } from '@/lib/accessibility'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -48,13 +49,6 @@ const BADGE_META: Record<string, BadgeMeta> = {
   tourist:           { order: 5, valence: 'neutral' },
   finisher:          { order: 3, valence: 'positive' },
   first_victim:      { order: 2, valence: 'negative' },
-}
-
-// color-allow: alpha-mix structurel depuis un hex de token — pas de sens sémantique propre.
-function hexToRgba(hex: string, alpha: number): string {
-  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex)
-  if (!m) return `rgba(0,0,0,${alpha})`
-  return `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${alpha})`
 }
 
 function valenceColorToken(v: Valence | undefined): 'success' | 'destructive' | null {
