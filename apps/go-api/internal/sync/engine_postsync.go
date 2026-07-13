@@ -9,9 +9,9 @@
 //     pas des heals : ils tournent pour chaque nouveau match et comblent le backlog.
 //   - runCSRSnapshotSync : CSR snapshots best-effort si csrSeasonID renseigné.
 //   - runAchievementsSync + RunAchievementsOnly : sync Xbox achievements via
-//     TokenProvider (resolveAccessTokenFromDB → XSTS → SyncAchievements).
+//     TokenProvider (resolveAchievementsAccessToken → XSTS → SyncAchievements).
 //   - hasMatchesNeedingScoreRefresh : heuristique heal-only path.
-//   - resolveAccessTokenFromDB : lecture cache MSAL/refresh + fallback env.
+//   - resolveAchievementsAccessToken : store-first (ADR 0023) + résidus legacy.
 //
 // Voir engine.go (struct SyncEngine + run()) pour le contexte.
 package sync
@@ -104,7 +104,7 @@ func (e *SyncEngine) runConditionalPostSync(
 	} else if len(csrs) > 0 {
 		e.seedCatalogFromCSRs(ctx, csrs)
 	}
-	res.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
+	res.AchievementsSynced = e.runAchievementsSync(ctx, playerDB) == achievementsSynced
 	res.DurationMs = time.Since(lightStart).Milliseconds()
 	return res
 }
@@ -501,7 +501,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	clock.lap("media_scan", 0)
 
 	// 5. Achievements Xbox (fire-and-forget, non bloquant en cas d'erreur token)
-	r.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
+	r.AchievementsSynced = e.runAchievementsSync(ctx, playerDB) == achievementsSynced
 	clock.lap("achievements", 0)
 
 	// 6. Snapshot readiness (Phase 2) — marque les matchs complets (toutes

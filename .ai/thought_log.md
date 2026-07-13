@@ -1,3 +1,225 @@
+## [2026-07-13] Train de merge 2026-07-13 assemblé — 6 chantiers embarqués
+
+**Statut** : Complété (branche `integration/train-2026-07-13`, PR ouverte — NON mergée).
+
+**Décision technique principale** : intégration séquentielle (merge --no-ff, un commit par
+branche) de 3 têtes de branches depuis origin/main, dans l'ordre imposé : (1) clôture
+documentaire `docs/cloture-salve-2026-07-12` ; (2) pile empilée `refactor/auth-store-first-postsync`
+(embarque fix/retouches-post-campagne → chore/lot-rapide-2026-07-12 → fix/h5-parite-residuel
+→ auth store-first, tête unique — les branches intermédiaires NON mergées séparément) ;
+(3) `refactor/migration-squash-m3` (squash baseline player v1).
+
+**Conflits résolus (relecture humaine ciblée)** :
+- `.ai/thought_log.md` (merges 2 et 3) : journal append-top. Réassemblé par éditions de
+  fichier propres (aucun splice PowerShell — risque mojibake). Merge 2 : réordonnancement
+  anté-chronologique (entrée 07-13 auth en tête, puis salve post-deploy 07-12, parité H5,
+  lot rapide). Merge 3 : deux entrées 07-12 distinctes (retouches post-campagne + squash
+  migrations) conservées au même point d'ancrage, séparateur `---`. Zéro perte, zéro doublon
+  (vérifié : 0 marqueur résiduel, headers ordonnés).
+- `.ai/baselines/tests_pre_migration.jsonl` : auto-merge = union des suppressions (12 lignes,
+  3 tests TestRepairEngCoefsPK* retirés par le squash). Aucune ré-addition (vérifié : 0 occurrence).
+- Aucun conflit sémantique Go : la pile ne touche pas `internal/migration/` ; build + vet
+  verts après chaque merge.
+
+**Gates (tous verts)** : go build + go vet = 0 ; go test ./... = exit 0 (2e run intégration
+propre après un flake transitoire au 1er run — aucun `--- FAIL` capturé) ;
+`go test -tags=integration -p 1 -timeout 1200s ./...` = exit 0, 0 FAIL ;
+golangci-lint --new-from-rev=origin/main = 0 issue ; front : typecheck 0, lint 0 erreur,
+build OK, vitest 2127 passed / 14 skipped.
+
+**Conclusion / prochaine étape** : push branche + CI en avant-plan ; PR vers main ouverte,
+NON mergée (merge = deploy prod, GO utilisateur). Post-deploy : observer `legacy_source_used=0`
+≥ 7 j (T0 = date de deploy) avant d'armer D2 (ADR 0023 Phase 5) ; re-vérifs visuelles
+utilisateur (Explorer H5, /admin/data, « En placement », Super Fiesta, grille KPI).
+
+---
+
+## [2026-07-13] legacy_source_used → 0 : post-sync achievements store-first (branche refactor/auth-store-first-postsync)
+
+**Statut** : Complété (pré-requis Phase 5 ADR 0023 / gate D2).
+
+**Décision technique principale** : centraliser l'ordre de résolution « access_token MS
+brut, store→legacy » dans le package `auth` et brancher le post-sync achievements dessus,
+au lieu de sa résolution legacy-only.
+
+**Cause racine (prouvée sur pièces + logs prod)** : la télémétrie D1a n'était PAS à 0.
+`grep legacy_source_used` sur `sync.log` (ssh lvelup, lecture seule) → 100 % des occurrences
+émises par `levelup/go-api/internal/sync.resolveAccessTokenFromDB` (`engine_postsync_csr.go`),
+`source=duckdb_oauth`, pour les 4 joueurs, à chaque post-sync (event `sync.postSync:<GT>`,
+étape achievements ligne 504). Jamais depuis worldenrich. Le chemin achievements résolvait
+l'access_token Xbox Live EXCLUSIVEMENT depuis `sync_meta` (msal_token_cache / oauth_refresh_token
++ fallback env), sans JAMAIS consulter `MultiUserTokenStore` (watcher_tokens). Vérifié VPS :
+les 4 fichiers `watcher_tokens/{xuid}.json` existent avec `oauth_refresh_token` rempli (le store
+COUVRE ces joueurs) → le résidu sync_meta était servi et compté à tort.
+
+**Fix (fichiers)** :
+- `internal/platform/auth/access_token_store_first.go` (NOUVEAU) — `ResolveMSAccessTokenStoreFirst`
+  (store MSAL→OAuth avec rotation persistée, PUIS legacy ; télémétrie legacy émise UNIQUEMENT
+  quand le store n'a pas résolu). Source UNIQUE de l'ordre (règle « ≤ 2 copies »). Retourne
+  l'access_token MS brut (pas d'Exchange Halo) car achievements → `AcquireXSTSForRTA` (Xbox Live).
+- `internal/sync/engine_postsync_csr.go` — `resolveAccessTokenFromDB` (legacy-only) SUPPRIMÉ ;
+  remplacé par `resolveAchievementsAccessToken` (store-first via le helper) + `readLegacyAuthInputs`
+  (lit sync_meta/env comme `LegacyAuthInputs`, jamais servi si le store couvre). Import `observability`
+  retiré (plus d'émission locale).
+- `internal/sync/engine{,_options}.go` — champ `repoRoot` ajouté (résout `WatcherTokensDir`).
+- `internal/worldenrich/wiring.go` — `resolveAccessToken` délègue au helper (copie de l'ordre
+  supprimée) ; import `observability` retiré.
+- `internal/platform/auth/cli_refresh.go` — `LegacyAuthInputs.OAuthRTFromEnv` (télémétrie env_oauth vs duckdb_oauth).
+
+**Garde-rails** : `sync/no_legacy_source_used_test.go` (interdit `RecordLegacySourceUsed` /
+littéral `legacy_source_used` dans le package sync — la résolution DOIT déléguer au helper auth) ;
+`auth/access_token_store_first_test.go` (8 tests : store couvre → compteur legacy INCHANGÉ =
+non-régression des 4 joueurs prod ; store vide → legacy adopté +1 ; env vs duckdb ; rotation
+store + migration legacy→store persistées ; invalid_grant surfacé).
+
+**Résultats observés** : build complet OK ; lint `--new-from-rev=fix/h5-parite-residuel` = 0 ;
+tests auth + sync (unit) verts ; gate `-tags=integration -p 1` sync+auth+worldenrich vert.
+
+**Conclusion / prochaine étape** : après deploy prod, surveiller `/debug/vars` (clé `levelup`)
+compteurs `legacy_source_used_*` — doivent rester à 0 (store MSAL/OAuth résout les 4 joueurs).
+**T0 de la fenêtre d'observation D1a→D2 = date de deploy de CE fix (pas 2026-07-10).** Armer D2
+(ADR 0023 Phase 5, suppression des fallbacks) uniquement après ≥7 j à 0. Consigné dans
+`.ai/V7/DETTE_ASSUMEE_2026-Q3.md` §7 (D1a→D2).
+
+---
+
+## [2026-07-12] Salve post-deploy campagne — bilan
+
+**Statut** : Complété.
+
+**Contexte** : la campagne 2026-07 (PR #54) a été mergée dans main et déployée en prod le
+2026-07-12 (~09:25 UTC). Salve post-deploy exécutée par le superviseur ; bilan consigné,
+plans clôturés (`docs/cloture-salve-2026-07-12`).
+
+**Résultats observés** :
+- **Backfill engagement prod** : COMPLET — halo_infinite ×2 passes + halo_5 ×2 passes
+  (10 480 matchs H5 pass 2), schema_version 194, fenêtre 09:33→09:40 UTC.
+- **Lot V (plan H5 matchview)** : COMPLET — V1 overrides prod (26 armes / 184 médailles /
+  1 map par id Tidal) → 48/48 maps résolues ; V2 : 1002 lignes « Placement » écrites
+  (JGtm 303 / Madina97294 293 / Chocoboflor 277 / XxDaemonGamerxX 129, placement_csr_null
+  = 100 %, zéro skip) ; V3 : purge 84 media_files étrangers + CHECKPOINT (dry-run préalable
+  = 84 exactement). Reste utilisateur : vérif VISUELLE prod (galerie/média/témoins).
+- **Hotfix LUSR (H6)** : critères mesurables VERTS (3 h de logs post-deploy) — zéro
+  `persist état échoué`, zéro `read-only mode`, writer-holds 2000-2001 ms (vs 21 909 avant),
+  un seul 503 ponctuel (vs 632 pendant l'incident), post-syncs réels à 09:56 et 10:24-26.
+  UNE observation ouverte : shadow silencieux = 0 candidat, ambigu entre backlog vide (sain)
+  et watermark désync (piège connu) — départage au prochain match ou via
+  `lusr_v2_canonical_backfill` dry-run.
+- **Télémétrie ADR 0023** : `legacy_source_used source=duckdb_oauth` observé pour les 4
+  joueurs au post-sync du 2026-07-12 → la condition « legacy_source_used = 0 » de la Phase 5
+  (lot D2) n'est PAS remplie.
+
+**Clôture documentaire** : plans H5 matchview (COMPLÉTÉ, git mv → `.ai/V7/`) et hotfix LUSR
+(COMPLÉTÉ, git mv → `.ai/V7/`) archivés ; plan monitoring triage reste PARTIEL (B1 déployé
+et vérifié, B1.5 [x] ; restent B1.6 départage, B4.x/B5.5 actions prod utilisateur, B2.4/B7.4
+soaks — B7.4 ré-armé T0=2026-07-12).
+
+**Prochaine étape** : départage de l'observation LUSR « 0 candidat » (prochaine session de
+jeu ou dry-run backfill) ; gates utilisateur (vérif visuelle H5 V3, actions data-quality
+admin B4.x/B5.5). La Phase 5 ADR 0023 (D2, retrait des fallbacks legacy) reste bloquée tant
+que `legacy_source_used > 0`.
+
+---
+
+## [2026-07-12] PARITÉ H5 RÉSIDUEL — 3 items (branche fix/h5-parite-residuel)
+
+**Statut** : Complété (Items 1-3).
+
+**Décision technique principale** : 3 corrections H5 indépendantes, 1 commit par item,
+diagnostic sur pièces (code + logs prod /app/data/logs/*.log via ssh lvelup, lecture seule).
+
+**Résultats observés (par item)** :
+- Item 1 — Explorer « matchs récents cible » (Q19c) vide pour H5. Cause prouvée : Q19c
+  lit `r.map_name`/`r.pair_name`/`r.pair_name_fr` BRUTS du registre, NULL sur 100 % des
+  matchs H5 (vérifié réel : 3032/3032 map_name NULL, map_id + game_variant_id présents).
+  Fix : Q19c sélectionne aussi `map_id` + `game_variant_id` ; `scanTargetRecentMatch` les
+  scanne dans 2 champs transient (json:"-") ; nouveau `resolveTargetRecentAssetNames`
+  remplit MapUI/ModeUI encore vides via `ResolveAssetNamesBulk` (map + game_variant,
+  cascade fr-FR→fr→en-US→en) — MÊME primitive centralisée que le pipeline média (DEC-7)
+  et le fallback mode de GetMatchMeta (lot A2), pas de 3e copie de la cascade. No-op sur
+  Infinite (map_name/pair_name remplis → 0 requête metadata). Test integration
+  `TestExplorerRepo_GetTargetRecentMatches_H5AssetFallback` (map_id/game_variant_id +
+  asset_translations → « Tidal »/« Assassin »). Non-régression : tests Q19c existants verts.
+
+- Item 2 — « known-set indisponible (collecte sans delta) » : WARN prod récurrent
+  `sharedprovider: open RW after RO close: ... Can't open a connection to same database
+  file with a different configuration than existing connections`. Cause racine prouvée
+  (provider.log 21:39:52) : `loadKnownMatchIDs` et `loadXUIDAliasesSeed` ne font que des
+  SELECT mais acquéraient un WRITER (`AcquireSharedWriterStandalone` → swap RO→RW→RO). Les
+  4 joueurs h5 synchronisant en parallèle déclenchaient 4 swaps simultanés du MÊME provider
+  h5 ; l'OpenReadWrite échouait car des connexions RO (autres readers / HTTP) coexistaient
+  → StateError → « recovered from StateError » 1 s plus tard, delta perdu entre-temps. Fix :
+  helper `acquireSharedReader` → `provider.Get` (RO du B-swap, N lecteurs coexistent), utilisé
+  par les 2 lectures. `persistBatches` (vraie écriture) garde le writer. provider == nil
+  (legacy) → fallback writer inchangé. Test cgo `TestLoadKnownMatchIDs_ReadOnlyNoSwap` :
+  known-set + aliases-seed réussissent AVEC un lecteur RO concurrent tenu, provider reste
+  StateRO (aucun swap) — l'ancien code aurait drainé ce lecteur puis échoué.
+
+- Item 3 — « RunAchievementsOnly a échoué » ×4 joueurs + « erreurs partielles » à CHAQUE
+  cycle H5. VRAIE cause (sync.log prod) : `achievements: aucun access_token disponible —
+  sync ignorée` (INFO), INTERMITTENT — le sync réussit régulièrement (count=144). Ce n'est
+  PAS une limitation externe (l'API sert les succès H5, title_id 219630713) : les tokens
+  legacy sync_meta H5 sont juste indisponibles certains cycles et se resynchronisent. Le
+  bug : `runAchievementsSync` retournait un bool, le hook `buildAchievementsHook` traduisait
+  tout `false` en erreur → « erreurs partielles » même pour un skip bénin. Fix : type
+  `achievementsOutcome {synced, skipped, failed}` ; le « no token »/provider-nil/capability
+  absente → `skipped` (Debug, plus INFO) ; XSTS/metadata/HTTP/DB → `failed`. Nouveau
+  `RunAchievementsHook` (erreur SEULEMENT sur `failed`) câblé au hook H5 ; `RunAchievementsOnly`
+  (CLI) = `== synced` (sémantique inchangée). `res.AchievementsSynced` = `== synced` (parité
+  Infinite). Résultat : plus de bruit d'erreur récurrent H5 ; les vrais échecs restent visibles.
+  Test `TestRunAchievementsHook_BenignSkipIsNotAnError` (skip → hook nil, bool false).
+
+**Gates** : go build ./... + go vet ./... = 0 ; tests ciblés verts (Q19c integration,
+known-set cgo, achievements outcome) ; suite complète + lint --new-from-rev + CI branche
+= voir ci-dessous.
+
+**Conclusion / prochaine étape** : push fix/h5-parite-residuel + attente CI verte. Prod
+non touchée (VPS lecture seule) : les 3 fixes prennent effet au prochain déploiement
+(décision utilisateur). Vérification visuelle Explorer H5 (Item 1) à confirmer par
+l'utilisateur au merge (parité cascade déjà validée par le chantier match-view).
+
+---
+
+## [2026-07-12] LOT RAPIDE — 4 items indépendants (branche chore/lot-rapide-2026-07-12)
+
+**Statut** : Complété.
+
+**Décision technique principale** : 4 corrections courtes, 1 commit par item, vérifiées
+sur pièces avant/après.
+
+**Résultats observés (par item)** :
+- 1 `.dockerignore` : le contexte de build scannait ~17 Go (data/) alors que le
+  Dockerfile ne COPY jamais depuis data/ (seuls COPY : apps/, scripts, config, static,
+  docs — vérifié). Exclu data/ (remplace data/players/ + data/cache/), logs/, node_modules/
+  (+ `**/node_modules/` : évite d'écraser la node_modules Linux npm-ci'd par celle win32
+  de l'hôte via COPY apps/web/), *.exe, levelup.exe~, bin/, .coverage, test-results/.
+  Gate : pas de `docker build --dry-run` ; vérifié par lecture croisée Dockerfile (COPY)
+  + docker-compose (data monté en bind-volume APRÈS build, ne transite pas par le contexte).
+- 2 Bruit spartan_cron : les WARN « refresher failed: No such file or directory » pour
+  Trimbutton/GeleJugefi/DankerGlue/QuiteSiren/UppedJoker = profils `auth_only` (comptes
+  token-only, db_path vide, PAS de player DB). Le cron itérait `LoadPlayers` BRUT ;
+  correction à la SOURCE : `domain.SyncablePlayers` (filtre canonique des chemins de
+  refresh : exclut SyncEnabled=false ET AuthOnly) appliqué dans runOnceForTitle, +
+  1 log Debug agrégé au skip. Structurel (champ AuthOnly), zéro comparaison de gamertag.
+  Test ajouté : TestSpartanCron_RunOnce_SkipsAuthOnlyProfile.
+- 3 Statuts ADR (validés utilisateur) : 0030 + 0031 Proposed→Accepted (2026-07-12) ;
+  0027 Proposé→Accepted (amended by ADR 0031, 2026-07-12) + note d'amendement renvoyant
+  à 0031 (contenu inchangé). Index ADR de CLAUDE.md : aucun statut listé → non touché.
+- 4 playlist_labels.toml H5 : serveur air arrêté (déverrouille metadata.duckdb),
+  énumération des 73 libellés fr-FR de asset_translations (outil Go cmd/tmpdbq, RO).
+  UN SEUL match le pattern « nom + tag catégorie redondant » : « Super Fiesta Fête »
+  (déjà mappé). Les autres variantes Super Fiesta portent un qualificatif signifiant
+  (Hardcore/en équipe) → non raccourcies. Résolution TOUJOURS fr-FR (PlaylistNameFR) →
+  clés en-US seraient mortes, non ajoutées. Aucune entrée à ajouter ; audit consigné
+  dans l'en-tête du TOML. Serveur air relancé en fin de lot.
+
+**Gates** : go build/vet/test ./... = 0 ; golangci-lint --new-from-rev=fix/retouches-post-campagne
+= 0 nouvelle issue. Pas de front touché (tsc/vitest non requis).
+
+**Conclusion / prochaine étape** : push chore/lot-rapide-2026-07-12 + attente CI verte.
+
+---
+
 ## [2026-07-12] Repli du chantier outillage CI dans l'integration campagne (PR #54)
 
 **Statut** : Complété (superviseur de campagne).
@@ -1361,6 +1583,63 @@ best_kda (`persistBestKDASeed`). Cap de vraisemblance `maxPlausibleCounterDelta=
 (cold-start, cap, career previous=0, both-cold sans warn).
 
 **Prochaine étape** : Phase B (dédoublonnage sémantique — objective_assigned, records
+## [2026-07-10] Archivage .ai/V7 + lancement campagne d'exécution des plans restants (pilotage Opus)
+
+**Statut** : En cours (archivage complété ; exécution séquentielle des 9 plans démarrée).
+
+**Décision technique principale** : inventaire des plans à la racine de `.ai/` — 15 plans,
+dont 4 exclus par l'utilisateur (Ascension UX, diag apparence admin, Relations UX,
+weapon_attribution_v3) et 2 identifiés comme archivage raté : `PLAN_POSTSYNC_BURST_LEASE`
+(en-tête COMPLÉTÉ, gate validé live 2026-07-02) déplacé vers V7, et
+`PLAN_PLAYLISTS_CATALOG_ET_LEADERBOARD` racine = copie PÉRIMÉE (cases vides, A1
+pré-révision) du plan déjà exécuté dont la version à jour est dans V7 → supprimée (reste
+C3 backfill, tracé par HANDOFF_LEADERBOARD_CATALOGUE). Le commit inclut les déplacements
+d'audits vers V7 faits par l'utilisateur.
+
+**Ordre d'exécution acté (agents Opus, contrat plan-execution, strictement séquentiel —
+builds Go concurrents interdits)** : 1) HOTFIX_LUSR_SHADOW_RO · 2) MONITORING_TRIAGE_DETECTIONS ·
+3) MONITORING_REFONTE (dépend de 2) · 4) NOTIFICATIONS_RATIONALISATION ·
+5) ENGAGEMENT_REFONTE_LOBBY · 6) ENGAGEMENT_AGNOSTIC_GRADUE (bloqué par clôture de 5, section 0) ·
+7) H5_MATCHVIEW_RESIDUS (lot V restera [!] VPS) · 8) MIGRATION_SQUASH_BASELINE · 9) ADR_0030_0031.
+Chaque plan sur sa branche nommée depuis origin/main (28146aa3a) ; aucun merge main sans
+l'utilisateur (deploy prod auto).
+
+**Conclusion / prochaine étape** : lancer le plan 1 (hotfix/lusr-shadow-ro) sous agent Opus.
+
+---
+
+## [2026-07-10] DÉPLOYÉ EN PROD — campagne audits + leaderboard fusionnés (merge 28146aa3a)
+
+**Statut** : Complété (prod à jour, one-off citations exécuté ; suivi 1er auto-sync en cours).
+
+**Décision technique principale** : le merge vers main a révélé que main portait DÉJÀ le
+chantier leaderboard/catalogue dynamique (mergé par la session parallèle, CI de main
+ROUGE depuis le 02/07 — baseline jamais mise à jour après suppression d'un test).
+Protocole appliqué : abort sur main → fusion main→branche → résolution des 14 conflits
+en COMBINANT les intentions (AugmentWithActiveRankedCSRs = locale H8/GH-8 + activePlaylists
+dynamiques ; server_apiv1 porte les gardes S, prouvé par diff base..main ; ownership S7
+version testée admin-pass-through ; metric-trend = composant partagé de main adopté,
+copie locale retirée ; season_catalog_refresh branché sur UpsertRowNoConflict canonique) ;
+INCIDENT ENCODAGE attrapé et réparé (splices PowerShell = mojibake UTF-8-sans-BOM sur 4
+fichiers → restauration octets git + ré-application UTF-8-safe, 0 mojibake vérifié) ;
+baseline purgée du test fantôme hérité (TestWorldSeasonGamertags_TopNPerPlaylist, supprimé
+côté main sans rebaseline). Gates fusion : build/vet/tests/intégration -p 1 = 0 ;
+tsc 0 ; vitest 2101/246. CI branche VERTE puis merge main --no-ff + push.
+
+**Résultats observés (post-deploy)** : Deploy to VPS = success ; conteneurs healthy ;
+healthz interne 200 ; https://lvelup.info = 200 ; migrations prod schema_version 190→193
+(2 colonnes citations EN + seed médaille, conforme répétition générale) ; one-off
+`levelup seed citation-mappings` exécuté en fenêtre d'arrêt (~1 min) : **88 citations
+mises à jour** (noms + descriptions EN) ; app re-healthy. Seule ERROR au boot = cron
+leaderboard 404 saison (comportement connu du chantier parallèle). populate-assets
+ABSENT de l'image prod → follow-up (le fallback UI « Unknown playlist » couvre).
+main a retrouvé une CI verte pour la première fois depuis le 02/07.
+
+**Conclusion / prochaine étape** : suivi du 1er cycle auto-sync prod (+ hook Prestige en
+réel) ; DATE D1A = 2026-07-10 → D2 (ADR 0023 Phase 5) armable au 2026-07-17 si
+`legacy_source_used` = 0 ; V10c (lecture budgets sous charge → statuer J4/J6) ; follow-up
+populate-assets dans l'image ; chantiers plannifiés post-merge : engagement gradué (F7),
+squash migrations (N4), V9d rebuild DROP.
 
 ---
 
@@ -36357,3 +36636,123 @@ Narratif/Emplacement), penchant narratif (tuiles KPI + phrases FR/EN).
 puis exécution lot par lot (A d'abord) sur feat/analytics-review-ts-squad, sous
 contrat plan-execution. Dépendance croisée avec le chantier momentum : extraction
 du wrapper DivergingBarChart à la 2e occurrence du patron.
+
+## [2026-07-12] Retouches post-campagne (revue visuelle) — 7 items
+
+**Statut** : Complété (branche fix/retouches-post-campagne)
+
+**Décision technique principale** : lot de retouches issu de la revue utilisateur.
+Diagnostics sur pièces avant tout code ; 4 corrections front + 1 mécanisme Go
+data-driven + 2 diagnostics sans code.
+
+**Résultats observés (par item)** :
+- 1a NavL1 séparateur admin : déjà correctement gaté dans isAdmin (blame juin,
+  desktop+mobile) — AUCUN code. 1b isAdmin false : `users.json` n'a QUE `jgtm`
+  (role=admin, compte MOT DE PASSE, SANS xuid). Le SSO Xbox résout par xuid →
+  ne matche pas le compte admin → session role=user. Remédiation LOCALE (pas de
+  fix code) : se connecter via le compte password JGtm, ou ajouter le xuid au
+  record admin dans data/auth/users.json.
+- 2 Engagement bc918a5a : PAS le masquage phase 5, PAS un match trop court. Log
+  prouve un HTTP 500 (B-swap « swap timeout RW→RO », ADR 0016) — erreur infra
+  transitoire. Le front mappait TOUT échec non-503 sur « trop court ou peu
+  d'action » (mensonger). Fix : EngagementMatchSection distingue un 5xx (status
+  >= 500) → message neutre `engagement.error.temporary`.
+- 3 « Placement » → « En placement » : sentinelle back skill.TierLabelPlacement
+  (littéral, aussi utilisé comme valeur machine). Localisée à l'affichage via
+  helper displayTierLabel (MatchHeader.utils) + i18n MatchViewText.rankPlacement
+  (FR « En placement » / EN « In placement », = career.ranking.placement), appliqué
+  header + scoreboard + PlayerDetailPanel. Pas de littéral FR ajouté côté Go.
+- 4 Playlist H5 « Super Fiesta Fête » → « Super Fiesta » : nom BRUT confirmé par
+  match_view_repo (asset_translations FR). Strip préfixe Infinite mangeait le bon
+  mot (« Super Fiesta » = préfixe catégorie). Mécanisme data-driven :
+  playlist_labels.toml (overrides nom brut→libellé) chargé par mappings.Registry,
+  injecté dans MatchViewRepo via ServiceRegistry, appliqué après le strip. Zéro
+  heuristique. metadata.duckdb H5 étant verrouillée par le serveur, une seule
+  entrée confirmée — table extensible.
+- 5 Cards KPI Match View : grille fixe xl:grid-cols-8 → auto-fit minmax(9rem,1fr)
+  (MatchSummaryCardsSection) : les cartes rendues se partagent la largeur, plus de
+  trous quand MMR/Résistance/Résultat attendu sont masqués (H5).
+- 6 BUG bloquant /admin/data (freeze) : REPRODUIT (chrome-devtools) → console
+  « Cannot update a component (Transitioner) while rendering AdminLayout ».
+  AdminLayout appelait navigate({to:'/'}) PENDANT le render quand !isAdmin
+  (setState-in-render → boucle). Déclenché par une session non-admin (lien item 1b)
+  ET par le render pré-bootstrap. Fix : redirection dans un useEffect, gatée sur
+  isBootstrapped.
+- 7 Badge « calibration provisoire » H5 : PAS un bug. API renvoie bien
+  calibration=provisional (CapEngagement=CapDegraded H5). Le front l'affiche comme
+  mention TEXTE discrète dans le sous-titre du graphe (« … · calibration
+  provisoire »), pas un badge/pill → l'utilisateur ne l'a pas remarqué. Aucun code
+  (décision badge/supported = superviseur).
+
+**Gates** : go build/vet/test ./... = 0 ; golangci-lint --new-from-rev=origin/main
+= 0 issues ; tsc = 0 ; npm run lint = 0 erreur ; vitest 2127 passed / 0 fail.
+
+**Conclusion / prochaine étape** : push fix/retouches-post-campagne + attente CI.
+Items 1b et 7 = réponses à l'utilisateur (état local / mention discrète), pas de
+code. Item 4 : étendre playlist_labels.toml quand la liste complète des playlists
+H5 sera lisible (DB déverrouillée).
+
+---
+
+## [2026-07-12] Squash migrations — baseline player v1 (chantier N4, plan M3→M5) — Complété (M6 en attente train superviseur)
+
+**Statut** : Complété (M3a→M5c). M6 (merge=deploy prod) HORS mandat → superviseur.
+Branche `refactor/migration-squash-m3` (depuis origin/main ; M0/M1/M2 déjà mergés PR #54).
+
+**Décision technique principale** : 1er squash réel = cible PLAYER, bloc CONTIGU
+title-owned. Borne figée M3a SUR PIÈCES (classification machine-vérifiée) :
+`create_base_player_schema` → `player_append_only_csr_snapshots_v1` = **33 steps** ;
+1er step GLOBAL suivant = `player_append_only_match_citations_v1` (DM-4 : la baseline ne
+traverse pas la frontière global→title). Le bloc est un PRÉFIXE → DM-2 satisfait (tout le
+reste préservé). Correctif cartographie M0 confirmé sur pièces : `create_base_player_schema`
+EST title-owned (b25) — le commentaire legacy de steps_player.go était périmé.
+
+Baseline `create_baseline_player_v1` (steps_player_baseline.go) : DDL « à plat » du schéma
+CUMULÉ des 33 steps, GÉNÉRÉE depuis le golden (capturé de l'historique réel avant retrait).
+Reproduit les quirks non triviaux (career_progression sans id/PK mais séquence
+career_progression_id_seq présente ; media_files net-absente car créée-puis-droppée).
+Équivalence bit-identique golden↔baseline dès le 1er essai.
+
+DM-5 (équivalence ledger) : champ `Migration.SupersededByAll` + `supersededBaselineSatisfied`
+(registry.go) → une DB portant la sentinelle (dernier step squashé) est réputée porter la
+baseline → enregistrée SANS rejouer le DDL. Prouvé décisivement par test « poison »
+(ApplySchema qui échoue s'il est appelé à tort).
+
+**Résultats observés** :
+- Preuve zéro-perte : `TestSquashInvariant_PlayerBaselineEquivalent` (SchemaSnapshot(baseline)
+  == golden, octet pour octet) + bite proof + garde anti-réintroduction des 33 noms.
+  Preuve compositionnelle : steps post-borne inchangés (byte-identique) ⇒ égalité bloc ⇒
+  égalité provisioning player complet.
+- DM-5 : `internal/migration/squash_dm5_test.go` (skip-DDL si sentinelle présente ; DDL
+  rejoué sur DB vierge). Verts.
+- Boot player vierge : 61→29 steps ; ~229 ms (M0d) → ~111-117 ms best-of-5 (:memory:).
+  schema_version 194→162.
+- Retrait chirurgical des 33 steps (3 fonctions : playerBaseSteps -26, engagement de
+  playerSteps -5, playerMatchSkillRank -1, appendOnlyMisc -1) + 4 helpers orphelins
+  (applyCareerProgressionSequence/*IdentityAssets/applyFixMvSessionStats/
+  applyAppendOnlyPlayerCSRSnapshots). Archive .ai/migrations/squashed/player_v1/
+  (sources pré-squash HEAD 9296496c9 + golden + README).
+- Tests de steps squashés retirés (player_engagement_pkfix_test.go : repair PK sur DB
+  legacy, obsolète — toute DB prod l'a appliqué depuis b17 ; PK couverte par l'invariant).
+  Baseline CI (tests_pre_migration.jsonl) : 12 lignes retirées (3 tests TestRepairEngCoefsPK*).
+  Helper openEngMemDB relocalisé (testhelpers_test.go).
+- doc.go : politique N4 PROPOSITION → APPLIQUÉE 2026-07-12.
+
+**Robustesse E7 (découverte en M5a, corrigée)** : le CREATE-IF-NOT-EXISTS à plat no-opait
+sur une table pré-existante partielle (sync EnsureSchema / bootstraps de test créant
+match_skill_rank sans start_time, player_match_enrichment sans colonnes engagement). Les
+steps historiques la patchaient via AddColumnIfMissing → la baseline reproduit ce contrat
+idempotent-additif (`ensureBaselinePlayerV1AdditiveColumns`, no-op sur DB vierge). A corrigé
+14 échecs convergence/batch. + reword doc.go (garde TestNoUnauthorizedSharedSocialMention).
+
+M5c : rehearsal sur les 4 player DB de ../LevelUp-prod-copy (runner réel, copies temp) →
+sentinel présent, schéma intact (before==after), seule nouvelle ligne ledger =
+create_baseline_player_v1 (0 DDL rejoué). Copie à schema_version 190 (~4 steps de retard vs
+pré-squash 194) — non bloquant cible player. Sonde M5c supprimée (non committée, modèle M0d).
+
+**Gates** : go build ./... = 0 ; golangci-lint --new-from-rev=origin/main (packages changés)
+= 0 ; suite intégration complète `-tags=integration -p 1 -timeout 900s ./...` = exit 0, 0 FAIL ;
+DM-5 + invariant + order audit + M5c verts. Baseline CI : 3 tests obsolètes retirés.
+
+**Conclusion / prochaine étape** : M3-M5 complétés, TOUT VERT. M6 (merge sur main =
+deploy prod auto) laissé au train de merge superviseur — NE PAS merger.

@@ -10,7 +10,7 @@ import { gridForRatingTypes, subTierPosition } from '@/lib/skillTiers'
 import { formatRankDelta } from '@/lib/formatters'
 import { MATCH_VIEW_TEXT, type MatchViewLocale } from './i18n'
 import type { MatchViewHeader as MatchViewHeaderData, MatchViewRank } from '@/lib/api/types'
-import { nextTierLabel } from './MatchHeader.utils'
+import { nextTierLabel, displayTierLabel } from './MatchHeader.utils'
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
 
@@ -23,6 +23,9 @@ interface PerfRankRowProps {
 
 export function PerfRankRow({ header, rank, perfColor, locale }: PerfRankRowProps) {
   const t = MATCH_VIEW_TEXT[locale]
+  // « Placement » (sentinelle back) → libellé localisé « En placement », aligné
+  // sur les cards d'accueil.
+  const tierLabel = displayTierLabel(rank.tier_label, t.rankPlacement)
 
   const deltaColor =
     rank.delta_value != null
@@ -98,7 +101,7 @@ export function PerfRankRow({ header, rank, perfColor, locale }: PerfRankRowProp
           {rank.icon_url && (
             <img
               src={rank.icon_url}
-              alt={rank.tier_label ?? rank.rating_type}
+              alt={tierLabel ?? rank.rating_type}
               className="h-[44px] w-[44px] shrink-0 object-contain"
               loading="lazy"
             />
@@ -107,9 +110,9 @@ export function PerfRankRow({ header, rank, perfColor, locale }: PerfRankRowProp
             <span className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
               {t.rank}
             </span>
-            {rank.tier_label && (
+            {tierLabel && (
               <span className="text-base font-bold text-foreground leading-none">
-                {rank.tier_label}
+                {tierLabel}
               </span>
             )}
             <div className="flex items-center gap-2 text-xs">
@@ -158,7 +161,7 @@ export function PerfRankRow({ header, rank, perfColor, locale }: PerfRankRowProp
                 )}
               </div>
               <div className="absolute inset-x-0 top-full mt-1 flex justify-between text-2xs text-muted-foreground tabular-nums">
-                <span>{rank.tier_label ?? ''}</span>
+                <span>{tierLabel ?? ''}</span>
                 <span>{nextTierLabel(rank.tier_label)}</span>
               </div>
             </div>

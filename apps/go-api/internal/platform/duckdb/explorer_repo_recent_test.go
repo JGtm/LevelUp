@@ -106,6 +106,59 @@ func TestExplorerRepo_GetTargetRecentMatches_PvPOrderingAndPerfect(t *testing.T)
 	}
 }
 
+// TestExplorerRepo_GetTargetRecentMatches_H5AssetFallback vérifie le fallback
+// libellés via asset_translations pour un match dont map_name/pair_name sont NULL
+// (cas Halo 5 : 100 % du registre) mais qui porte map_id + game_variant_id.
+// L'Explorer affichait des lignes vides ; map/mode doivent maintenant être résolus.
+func TestExplorerRepo_GetTargetRecentMatches_H5AssetFallback(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+
+	// map_name / pair_name absents (NULL) ; map_id + game_variant_id présents.
+	if _, err := pdb.Player.Exec(ctx,
+		`INSERT INTO shared.match_registry (match_id, start_time_utc, map_id, game_variant_id, is_firefight)
+		 VALUES (?, ?::TIMESTAMPTZ, ?, ?, ?)`,
+		"h5m1", "2025-03-10 18:00:00+00", "d67fdcb9-map", "257a305e-gv", false,
+	); err != nil {
+		t.Fatalf("seed registry h5m1: %v", err)
+	}
+	if _, err := pdb.Player.Exec(ctx,
+		`INSERT INTO shared.match_participants
+		   (match_id, xuid, outcome, kills, deaths, assists, kda, personal_score,
+		    damage_dealt, damage_taken, max_killing_spree, rank)
+		 VALUES (?, ?, 2, 15, 6, 4, 12.0, 1500, 4000.0, 2500.0, 5, 1)`,
+		"h5m1", recentTgtXUID,
+	); err != nil {
+		t.Fatalf("seed participant h5m1: %v", err)
+	}
+	// asset_translations fr-FR pour la map et le game_variant (mode).
+	for _, ins := range [][]any{
+		{"d67fdcb9-map", assetTypeMap, "fr-FR", "Tidal"},
+		{"257a305e-gv", assetTypeGameVariant, "fr-FR", "Assassin"},
+	} {
+		if _, err := pdb.Metadata.Exec(ctx,
+			`INSERT INTO asset_translations (asset_id, asset_type, lang, name, description, fetched_at)
+			 VALUES (?, ?, ?, ?, '', now())`, ins...); err != nil {
+			t.Fatalf("seed asset_translations: %v", err)
+		}
+	}
+
+	repo := NewExplorerRepo(pdb, pTestXUID)
+	rows, err := repo.GetTargetRecentMatches(ctx, recentTgtXUID, 20)
+	if err != nil {
+		t.Fatalf("GetTargetRecentMatches: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("len = %d, want 1", len(rows))
+	}
+	if rows[0].MapUI != "Tidal" {
+		t.Errorf("map_ui = %q, want Tidal (résolu via asset_translations map_id)", rows[0].MapUI)
+	}
+	if rows[0].ModeUI != "Assassin" {
+		t.Errorf("mode_ui = %q, want Assassin (résolu via asset_translations game_variant)", rows[0].ModeUI)
+	}
+}
+
 func TestExplorerRepo_GetTargetRecentMatches_LimitAndGuards(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()

@@ -60,6 +60,7 @@ func NewSyncEngineForTitle(
 	return &SyncEngine{
 		gamertag:       gamertag,
 		xuid:           xuid,
+		repoRoot:       repoRoot,
 		titleSlug:      titleSlug,
 		playerDBPath:   pr.PlayerDBPath(titleSlug, gamertag),
 		sharedDBPath:   pr.SharedDBPath(titleSlug),

@@ -168,6 +168,19 @@ changement de résultat (J3/J4/J7) ou de wiring provider (J9).
   prod de D1a. Condition de reprise : télémétrie `legacy_source_used` observée ≥7 j après la date
   de deploy notée (branche `refactor/adr0023-phase5`). [Anciennement mal étiquetée « E7 » — le
   contenu décrivait D1a/D2 ; corrigé 2026-07-07/V6c.]
+  - **DÉFAUT DÉCOUVERT (2026-07-12) — fenêtre d'observation RÉINITIALISÉE.** La télémétrie
+    D1a n'était PAS à 0 : `legacy_source_used=duckdb_oauth` était émis à CHAQUE post-sync des
+    4 joueurs (JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX). Cause racine : le post-sync
+    achievements (`sync.resolveAccessTokenFromDB`, supprimé) résolvait l'access_token Xbox Live
+    EXCLUSIVEMENT depuis `sync_meta` sans jamais consulter le store `watcher_tokens` — il servait
+    donc toujours le RT legacy alors que le store couvrait ces joueurs. **Fix (branche
+    `refactor/auth-store-first-postsync`)** : centralisation de l'ordre de résolution dans
+    `auth.ResolveMSAccessTokenStoreFirst` (store-first, source unique partagée avec world-enrich) ;
+    le post-sync délègue désormais à ce helper. La télémétrie ne peut plus se déclencher qu'en
+    VRAIE absence de RT store (garde-rail `sync/no_legacy_source_used_test.go` + tests unitaires
+    ordre de résolution). **CONSÉQUENCE : T0 (départ de la fenêtre ≥7 j pour armer D2) = date de
+    deploy prod de CE fix, PAS le 2026-07-10.** Reprise D2 uniquement après ≥quelques jours à
+    `legacy_source_used_*` = 0 constaté sur `/debug/vars` (clé `levelup`) post-deploy.
 - **E7 (le VRAI)** — DDL bootstrap `sync/schema.go` → `internal/migration`. Item MAL labellisé
   « mineur » par l'audit : en réalité refactor PROFOND du boot/provisioning de TOUTES les DBs
   (DDL dupliqué-mais-aligné avec `create_base_*_schema`, logique de vues au boot corrigeant des

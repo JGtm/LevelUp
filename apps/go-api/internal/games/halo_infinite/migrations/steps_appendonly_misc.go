@@ -1,8 +1,12 @@
 package migrations
 
-// steps_appendonly_misc.go — 3 conversions append-only CONSOMMATRICES (player_csr_snapshots,
-// match_csrs, pve_match_stats), déplacées depuis internal/migration/steps_*_append_only*.go
+// steps_appendonly_misc.go — 2 conversions append-only CONSOMMATRICES (match_csrs,
+// pve_match_stats), déplacées depuis internal/migration/steps_*_append_only*.go
 // (Phase 1.5 b22, voie B — regroupe les ex-b22/b24/b25 du plan, structurellement identiques).
+//
+// SQUASH v1 (chantier N4, 2026-07-12) : la 3e conversion, player_append_only_csr_snapshots_v1,
+// faisait partie du bloc squashé dans create_baseline_player_v1 (elle no-opait sur DB vierge —
+// player_csr_snapshots n'existe pas encore dans le bloc) → retirée ici (archive player_v1).
 //
 // Chaque step DÉLÈGUE au helper unique migration.ApplyAppendOnlyRebuild (cf.
 // append_only_rebuild.go, doctrine « helper unique » ADR 0026) : swap CTAS
@@ -31,12 +35,6 @@ import (
 func appendOnlyMiscSteps() []migration.Migration {
 	return []migration.Migration{
 		{
-			Name:        "player_append_only_csr_snapshots_v1",
-			TargetDB:    migration.TargetPlayer,
-			Description: "Rebuild player_csr_snapshots en append-only (id PK + written_at + vue latest)",
-			ApplySchema: applyAppendOnlyPlayerCSRSnapshots,
-		},
-		{
 			Name:        "shared_append_only_match_csrs_v1",
 			TargetDB:    migration.TargetShared,
 			Description: "Rebuild shared.match_csrs en append-only (id PK + written_at + vue latest) — élimine bug ART par construction",
@@ -49,23 +47,6 @@ func appendOnlyMiscSteps() []migration.Migration {
 			ApplySchema: applyAppendOnlyPveMatchStats,
 		},
 	}
-}
-
-// applyAppendOnlyPlayerCSRSnapshots délègue au helper commun (mécanisme written_at,
-// dernière version par playlist_id+season_id).
-func applyAppendOnlyPlayerCSRSnapshots(db *sql.DB) error {
-	return migration.ApplyAppendOnlyRebuild(db, migration.AppendOnlyRebuild{
-		Table:         "player_csr_snapshots",
-		IDSeq:         "pcs_seq",
-		SyntheticCols: migration.SynthWrittenAt,
-		PostSwap: []string{
-			`ALTER TABLE player_csr_snapshots ALTER COLUMN written_at SET DEFAULT now()`,
-			`CREATE INDEX IF NOT EXISTS idx_pcs_lookup ON player_csr_snapshots(playlist_id, season_id, written_at)`,
-		},
-		ViewSQL: `CREATE OR REPLACE VIEW player_csr_snapshots_latest AS
-			SELECT * FROM player_csr_snapshots
-			QUALIFY ROW_NUMBER() OVER (PARTITION BY playlist_id, season_id ORDER BY written_at DESC, id DESC) = 1`,
-	})
 }
 
 // applyAppendOnlyMatchCSRs délègue au helper commun (mécanisme written_at, dernière

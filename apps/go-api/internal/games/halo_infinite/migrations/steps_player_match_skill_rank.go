@@ -28,14 +28,10 @@ import (
 // playerMatchSkillRankSteps retourne la chaîne match_skill_rank title-owned (b20).
 func playerMatchSkillRankSteps() []migration.Migration {
 	return []migration.Migration{
-		{
-			Name:        "player_add_expected_win_prob",
-			TargetDB:    migration.TargetPlayer,
-			Description: "Colonne expected_win_prob sur match_skill_rank — proba de victoire pré-match (LUSR v2 Sprint 1.A)",
-			ApplySchema: func(db *sql.DB) error {
-				return migration.AddColumnIfMissing(db, "match_skill_rank", "expected_win_prob", "FLOAT")
-			},
-		},
+		// NB (squash v1, N4) : player_add_expected_win_prob était le 1er step de cette
+		// chaîne mais appartient au bloc squashé (borne M3a) → il est désormais dans
+		// create_baseline_player_v1 (steps_player_baseline.go). expected_win_prob est donc
+		// posée par la baseline sur DB vierge ; les steps ci-dessous (post-borne) restent.
 		{
 			Name:     "lusr_chain_rework_v1",
 			TargetDB: migration.TargetPlayer,
