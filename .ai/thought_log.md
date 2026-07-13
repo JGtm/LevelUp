@@ -1,3 +1,39 @@
+## [2026-07-13] Plan D7 — titre dans l'URL (rédaction du plan, worktree isolé)
+
+**Statut** : Complété (plan rédigé, aucun code). Livrable : `.ai/PLAN_TITLE_SLUG_URL_2026-07.md`.
+
+**Décision technique principale** : chantier D7 « titre dans l'URL » — principe approuvé par
+l'utilisateur le 2026-07-13. Plan d'implémentation FRONTEND seul rédigé après lecture sur
+pièces du routing réel. Schéma d'URL retenu : `/t/{slug}/players/{playerSlug}/…` (segment
+préfixe sous namespace court `/t/`, titre au-dessus du joueur — hiérarchie DBs par titre
+ADR 0008 ; slug interne verbatim, pas d'alias). Inversion de contrôle : l'URL devient la
+source de vérité du titre, un nouveau layout `routes/t/$titleSlug.tsx` réconcilie le store et
+le client API (`setApiTitleSlug`) depuis le SEGMENT (extraction de la logique de
+`switchTitle`, `appShellStore.ts:165-218`), au lieu du bootstrap implicite
+(`hydrateFromBootstrap` + module-level `_currentTitleSlug` de `client.ts:64`). Décisions
+tranchées : pages agnostiques (admin/settings/setup/login/…) HORS segment, restent à la
+racine ; LANGUE hors périmètre (pointeur : chantier jumeau, langue au-dessus du titre
+`/{lang}/t/{slug}/`) ; redirections legacy `/players/*` → `/t/{active}/players/*` par splat
+redirect préservant suffixe + `?f=` + hash (pattern `objectifs/index.tsx`) ; garde deep-link
+`?f=` PR #59 (`0b2e5cdb8`, enveloppe v2 `{t,c}` + `reconcileActiveTitle`) CONSERVÉE intacte en
+défense en profondeur — le segment devient la source de vérité mais la garde reste (rétro-compat
+des `?f=` partagés). Backend NON touché : déjà header/session-driven (`title.go:55-72`,
+`require_active_title.go`).
+
+**Résultats observés** : plan conforme à la grille plan-review (dont §9 exécutabilité) —
+objectif + 9 critères mesurables, 5 phases à périmètre fermé avec gates exacts (`make
+check-types` = juge d'exhaustivité de la migration des ≈ 69 fichiers à littéraux de route
+typés ; `make test-web` ; `npm run lint` ; vérif chrome-devtools 2 titres + redirections),
+statuts `[x]`/`[~]`/`[!]`, protocole de reprise, section Découvertes, branche cible
+`feat/title-slug-in-url`, renvoi plan-execution. Effort estimé : LOURD, risque concentré et
+BORNÉ en Phase 1 (le typecheck énumère chaque littéral cassé — aucune omission silencieuse).
+
+**Conclusion / prochaine étape** : plan prêt à exécuter par Opus sous plan-execution. Points à
+faire relire à l'utilisateur en priorité : le schéma `/t/{slug}/` (vs alternatives), la mise
+hors périmètre de la langue, et la conservation (non-refactor) de la garde `?f=` PR #59.
+
+---
+
 ## [2026-07-13] Fuite de filtre inter-titres via deep-link `?f=` (branche fix/title-switch-deeplink-leak)
 
 **Statut** : Complété (fix + tests + repro navigateur avant/après).
