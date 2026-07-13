@@ -4732,6 +4732,8 @@ components:
                   type: string
               type: array
               nullable: true
+          briefing:
+              $ref: '#/components/schemas/ExplorerBriefing'
           briefing_kpis:
               $ref: '#/components/schemas/KPIStats'
           export_hint:
@@ -5002,6 +5004,8 @@ components:
     ExplorerMatchesQueryResponse:
       additionalProperties: false
       properties:
+          briefing:
+              $ref: '#/components/schemas/ExplorerBriefing'
           export_hint:
               $ref: '#/components/schemas/ExportHint'
           summary:
@@ -5011,6 +5015,180 @@ components:
       required:
           - summary
           - table
+      type: object
+    ExplorerBriefing:
+      additionalProperties: false
+      properties:
+          baseline:
+              $ref: '#/components/schemas/ExplorerBriefingBaseline'
+          dimensions:
+              items:
+                  $ref: '#/components/schemas/ExplorerBriefingDimension'
+              nullable: true
+              type: array
+          kpis:
+              $ref: '#/components/schemas/KPIStats'
+          low_sample:
+              type: boolean
+          outcome_sequence:
+              items:
+                  $ref: '#/components/schemas/ExplorerBriefingOutcome'
+              nullable: true
+              type: array
+          period_end:
+              format: date-time
+              type: string
+          period_start:
+              format: date-time
+              type: string
+          ranked:
+              $ref: '#/components/schemas/ExplorerBriefingRanked'
+          trend:
+              $ref: '#/components/schemas/ExplorerBriefingTrend'
+      type: object
+    ExplorerBriefingBaseline:
+      additionalProperties: false
+      properties:
+          avg_perf:
+              format: double
+              type: number
+          delta_kda:
+              format: double
+              type: number
+          delta_perf:
+              format: double
+              type: number
+          delta_win_rate:
+              format: double
+              type: number
+          kda:
+              format: double
+              type: number
+          matches:
+              format: int64
+              type: integer
+          win_rate:
+              format: double
+              type: number
+      required:
+          - matches
+          - win_rate
+          - kda
+          - delta_win_rate
+          - delta_kda
+      type: object
+    ExplorerBriefingDimension:
+      additionalProperties: false
+      properties:
+          dimension:
+              type: string
+          entries:
+              items:
+                  $ref: '#/components/schemas/ExplorerBriefingDimensionEntry'
+              nullable: true
+              type: array
+      required:
+          - dimension
+          - entries
+      type: object
+    ExplorerBriefingDimensionEntry:
+      additionalProperties: false
+      properties:
+          avg_perf:
+              format: double
+              type: number
+          delta_win_rate:
+              format: double
+              type: number
+          label:
+              type: string
+          matches:
+              format: int64
+              type: integer
+          note_tier:
+              format: int64
+              type: integer
+          win_rate:
+              format: double
+              type: number
+      required:
+          - label
+          - matches
+          - win_rate
+          - delta_win_rate
+      type: object
+    ExplorerBriefingOutcome:
+      additionalProperties: false
+      properties:
+          match_id:
+              type: string
+          outcome_code:
+              format: int64
+              type: integer
+          start_time:
+              format: date-time
+              type: string
+      required:
+          - match_id
+          - outcome_code
+          - start_time
+      type: object
+    ExplorerBriefingRanked:
+      additionalProperties: false
+      properties:
+          actual_win_rate:
+              format: double
+              type: number
+          delta_sum:
+              format: double
+              type: number
+          expected_win_rate:
+              format: double
+              type: number
+          matches_with_prediction:
+              format: int64
+              type: integer
+          rating_kind:
+              type: string
+      required:
+          - rating_kind
+          - delta_sum
+          - actual_win_rate
+          - matches_with_prediction
+      type: object
+    ExplorerBriefingTrend:
+      additionalProperties: false
+      properties:
+          granularity:
+              type: string
+          points:
+              items:
+                  $ref: '#/components/schemas/ExplorerBriefingTrendPoint'
+              nullable: true
+              type: array
+      required:
+          - granularity
+          - points
+      type: object
+    ExplorerBriefingTrendPoint:
+      additionalProperties: false
+      properties:
+          avg_perf:
+              format: double
+              type: number
+          bucket_start:
+              format: date-time
+              type: string
+          matches:
+              format: int64
+              type: integer
+          win_rate:
+              format: double
+              type: number
+      required:
+          - bucket_start
+          - matches
+          - win_rate
       type: object
     ExplorerPlayerQueryRequest:
       type: object

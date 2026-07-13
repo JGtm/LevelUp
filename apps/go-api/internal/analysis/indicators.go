@@ -28,6 +28,20 @@ func CombatEfficiency(kills, assists, deaths int) float64 {
 	return float64(kills+assists) / float64(d)
 }
 
+// AggregateKDA retourne le KDA AGRÉGAT canonique (ADR 0006) sur un ensemble de
+// matchs : ((frags + assists/3) − morts) / nb_matchs. Ce N'EST JAMAIS un
+// quotient par les morts (cf. CombatEfficiency) : c'est un NET moyen par match,
+// possiblement négatif. Renvoie 0 si matches == 0.
+//
+// À utiliser partout où un KDA agrégé est nécessaire plutôt que de réinliner la
+// formule (elle existe déjà inlinée dans explorer_target_stats.go — dette notée).
+func AggregateKDA(kills, assists, deaths, matches int) float64 {
+	if matches <= 0 {
+		return 0
+	}
+	return (float64(kills) + float64(assists)/3.0 - float64(deaths)) / float64(matches)
+}
+
 // KDR retourne le K/D ratio canonique kills / max(1, deaths). Distinct du
 // KDA — exclut les assists. Halo expose les deux indicateurs en parallèle.
 func KDR(kills, deaths int) float64 {

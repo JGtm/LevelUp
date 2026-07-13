@@ -146,7 +146,8 @@ l'un d'eux est en cours sur `match_history_service*.go`, se coordonner avant de 
 Gate d'entrée : brancher sur `feat/explorer-briefing-cards`, relire ce plan, re-vérifier
 les ancrages ci-dessus sur pièces.
 
-- [ ] **A1 — DTOs domaine** : nouveau fichier `internal/domain/explorer_briefing.go`
+- [x] **A1 — DTOs domaine** (couvert par le WIP hérité `c7ccda510`, vérifié sur pièces +
+  compile) : nouveau fichier `internal/domain/explorer_briefing.go`
   (domaine pur, pas de logique) :
   - `ExplorerBriefing { KPIs *KPIStats; LowSample bool; PeriodStart/PeriodEnd *time.Time;
     OutcomeSequence []ExplorerBriefingOutcome; Baseline *ExplorerBriefingBaseline;
@@ -169,15 +170,22 @@ les ancrages ci-dessus sur pièces.
     `ExplorerMatchesQueryResponse` ; champ `IncludeBriefing bool` sur
     `ExplorerMatchesQueryRequest` (json `include_briefing`) et
     `IncludeExplorerBriefing bool` sur `MatchHistoryQueryRequest`.
-- [ ] **A2 — Refactor du chargement canonical (pré-requis, aucun comportement modifié)** :
+- [x] **A2 — Refactor du chargement canonical (pré-requis, aucun comportement modifié)** :
+  `loadBriefingKPIs` scindé en `loadCanonicalForScope` (charge + filtre par match_id) +
+  `kpisFromScoped`. ÉCART assumé : ne retourne QUE `scoped` (pas `all` canonical) — la
+  baseline/dimensions/tendance sont bâties sur les raw rows (cf. journal), donc `all`
+  canonical serait mort. Best-effort conservé (WarnContext + nil).
   dans `match_history_service.go`, scinder `loadBriefingKPIs` en (a)
   `loadCanonicalForScope(ctx, filtered) (scoped, all []canonical.PlayerMatchRow)`
   (charge une seule fois, filtre par match_id) et (b) le calcul KPI existant. `GetPage`
   appelle (a) une fois ; `BriefingKPIs` reste servi à l'identique (la page Historique ne
   change pas d'un octet de réponse). Best-effort conservé : échec de chargement → log
   `slog.WarnContext` existant + briefing nil, jamais d'erreur 500.
-- [ ] **A3 — Constructeur du briefing (socle)** : nouveau fichier
-  `internal/service/match_history_service_briefing.go` (≤ 500 L),
+- [x] **A3 — Constructeur du briefing (socle)** : `match_history_service_briefing.go`
+  (~430 L), méthode `s.buildExplorerBriefing(filtered, allRaw, scopedKPIs)`. Socle
+  (KPIs socle canonical + période + frise 60 chrono asc + LowSample) livré. Constantes
+  seuils nommées/commentées. ÉCART de signature assumé (raw rows + scopedKPIs au lieu de
+  scoped/all canonical — cf. journal).
   `buildExplorerBriefing(ctx, filtered []domain.MatchHistoryRawRow, scoped, all
   []canonical.PlayerMatchRow, rankedCapable bool) *domain.ExplorerBriefing`, appelé
   depuis `GetPage` UNIQUEMENT si `req.IncludeExplorerBriefing`. Socle :
@@ -187,12 +195,24 @@ les ancrages ci-dessus sur pièces.
   - `LowSample` : `len(filtered) < MinBriefingModulesMatches` → seuls KPIs + frise +
     période sont émis, tous les autres blocs nil.
   - Constantes de seuils déclarées ici, nommées, commentées (DEC-4).
-- [ ] **A4 — Module baseline** : `Baseline` calculé sur `all` (canonical complet,
+- [x] **A4 — Module baseline** : deltas signés scope − baseline via `aggregateRawStats`
+  (wins/total, KDA agrégat `analysis.AggregateKDA` NOUVEAU helper canonique, perf moyenne).
+  ÉCART : baseline sur `allRaw` (historique complet post-exclusions = DEC-3) au lieu de
+  `all` canonical → mêmes chiffres, évite l'I/O canonical inutile. NB : `Baseline` calculé sur `all` (canonical complet,
   DEC-3) avec les helpers agrégés canoniques existants de `analysis/indicators.go`
   (WinRate, KDA agrégat ADR 0006 — vérifier les noms exacts sur pièces, ne PAS
   recalculer ad hoc) ; deltas = valeur(scoped) − valeur(all). Perf moyenne : moyenne
   des per-match scores disponibles (même convention que `KPIStats.PerformanceScore`).
-- [ ] **A5 — Module dimensions + notes** : conversion des canonical rows vers
+- [x] **A5 — Module dimensions + notes** : dimension libre (≥2 valeurs distinctes),
+  top 3 + flop 3 des groupes ≥ MinDimensionGroupMatches triés par delta winrate,
+  NoteTier via `analysis.PerfTier` (nil si perf absente). Comparateur générique
+  `breakdown.CompareByKey` AJOUTÉ (+ tests) car `CompareToHistorical` est map-only.
+  ÉCART MAJEUR assumé : conversion depuis les **raw rows** (`rawRowsToBreakdownRows`,
+  libellés FR MapNameFR/PairNameFR/PlaylistName) et NON les canonical rows — les
+  canonical de `LoadPlayerMatches` ne sont pas enrichies FR → auraient affiché des
+  libellés EN sous locale FR (violation critère de succès). Le convertisseur canonical
+  `rowsToBreakdownInputs` (squad) reste map-only et intouché (pas de 3e copie créée).
+  Détail plan initial : conversion des canonical rows vers
   `breakdown.Row` via le convertisseur EXISTANT de la page Synthèse (le localiser ;
   s'il est privé, l'extraire vers un helper partagé sans dupliquer — règle n°6). Pour
   chaque dimension libre (DEC-8) : agrégats scoped via
@@ -202,12 +222,19 @@ les ancrages ci-dessus sur pièces.
   `internal/analysis/breakdown/` un équivalent générique par clé — algo pur + tests
   unitaires purs, PAS dans le service). `NoteTier` via `analysis.PerfTier` sur la
   moyenne de perf du groupe, nil sous `MinDimensionGroupMatches` (DEC-2/DEC-4).
-- [ ] **A6 — Module tendance** : si seuils DEC-4 atteints, binning via
+- [x] **A6 — Module tendance** : gate `len>=20 && span>=14j` (DEC-4), granularité via
+  `temporal.ResolveAdaptive` (période dérivée de l'étendue : ≤31j→1d, ≤366j→1w, sinon 1m),
+  `temporal.BucketByGranularity` sur un wrapper `trendRow` (HasStartTime). Par bucket :
+  matchs, winrate, perf moyenne. Aucun lissage serveur. Détail : binning via
   `analysis/temporal` (`ResolveAdaptive` pour la granularité, `BucketByGranularity`
   pour les buckets — signatures à re-vérifier sur pièces) sur `scoped` ; par bucket :
   matchs, winrate, perf moyenne. Aucun lissage côté serveur en v1 (le front trace la
   série brute par bucket).
-- [ ] **A7 — Module classé** : émis si `rankedCapable` (capability
+- [x] **A7 — Module classé** : émis si `rankedCapable` ET scope majoritairement CSR
+  (`RankDelta.Kind=="csr"` → absent en scope non-classé ou LUSR, cf. scénarios D2).
+  `DeltaSum`/`RatingKind` réutilisent `KPIStats.RankDelta` ; attendu vs réel via NOUVEAU
+  helper pur `analysis.ExpectedVsActual` (+ test) sur les `SkillExpectedWinProb` des raw
+  rows CSR. Détail : émis si `rankedCapable` (capability
   `match.skill.snapshot` injectée au service via le wiring, pattern
   `titleSupportsLiveCSR` — DEC-7) ET si le scope contient des matchs avec rating CSR.
   `DeltaSum`/`RatingKind` : réutiliser `KPIStats.RankDelta` (déjà calculé) ;
@@ -216,12 +243,22 @@ les ancrages ci-dessus sur pièces.
   `ActualWinRate` : winrate réel du scope. Nouveau helper pur dans
   `internal/analysis/` si le calcul attendu-vs-réel n'existe pas (grep d'abord — skill
   `go-features`) + test unitaire.
-- [ ] **A8 — Handler + wiring** : `handleQueryMatches` recopie
+- [x] **A8 — Handler + wiring** : `handleQueryMatches` propage `include_briefing` →
+  `IncludeExplorerBriefing` et recopie `mhResp.Briefing`. Capability câblée via
+  `WithRankedCapable(r.titleSupportsLiveCSR(pdb))` dans `MatchHistoryCtx`
+  (registry_pages_home.go) — partagé Explorer+Historique, inoffensif pour l'Historique
+  (flag absent → briefing non construit, non-régression testée A9). Détail : recopie
   `mhResp.Briefing` dans la réponse Explorer (mapping pur, zéro logique) ; le flag
   `include_briefing` de la requête Explorer est propagé (A1). Wiring de la capability
   vers le service dans `registry_pages_*` (suivre le pattern existant). Vérifier que la
   page Historique (handler match-history) ne sert PAS le briefing étendu (flag absent).
-- [ ] **A9 — Tests backend** :
+- [x] **A9 — Tests backend** : analysis (`ExpectedVsActual`, `AggregateKDA`,
+  `CompareByKey` — nominal/vide/données manquantes) ; service
+  (`match_history_service_briefing_test.go` : low-sample, dimension mono-valeur non émise,
+  groupe <10 exclu, ranked false→nil + LUSR→nil, span<14j→nil, deltas baseline signés,
+  frise cappée+triée) ; handler (`explorer_briefing_test.go` : propagation flag +
+  briefing recopié / absent). NB : cas testés directement sur la méthode + fixtures raw
+  (pas de repo mock nécessaire). Détail plan :
   - analysis : tests unitaires purs des nouveaux helpers (comparaison par clé A5,
     attendu-vs-réel A7) — cas nominal, vide, données manquantes.
   - service : tests de `buildExplorerBriefing` sur fixtures (repo mocké via `port`) —
@@ -231,7 +268,13 @@ les ancrages ci-dessus sur pièces.
     connue ; (7) frise cappée à 60 et triée chrono asc.
   - handler : httptest — `include_briefing:true` → briefing présent ;
     absent/false → réponse identique à l'existant (non-régression Historique incluse).
-- [ ] **A10 — Contrat OpenAPI / types front** : vérifier le workflow (grep `openapi`
+- [x] **A10 — Contrat OpenAPI** (fait en Lot A car GATÉ par
+  `openapi_schema_drift_test.go`) : les 8 schémas `ExplorerBriefing*` auto-dérivés par
+  Huma étaient MISSING → ajoutés au `api/openapi.yaml` manuel (émis via l'outil intégré
+  `OPENAPI_EMIT_OUT`), + propriété `briefing` sur `ExplorerMatchesQueryResponse` et
+  `MatchHistoryPageResponse` ; `generated.ts` régénéré (`make generate-types`). Types
+  miroir manuels `types.ts` → traités en B1 (front). Détail plan initial :
+  vérifier le workflow (grep `openapi`
   dans le Makefile et `docs/COMMANDS.md`) : si `openapi.yaml` est dumpé depuis Huma,
   le régénérer puis `make generate-types` ; dans tous les cas, MAJ manuelle des types
   miroir dans `apps/web/src/lib/api/types.ts` (pattern des types Explorer existants,
@@ -361,7 +404,18 @@ Aucun item sans statut. Commit(s) avec accord utilisateur.
 > Consigner ici (ou en thought log) toute anomalie/opportunité rencontrée hors
 > périmètre. NE PAS la traiter dans ce chantier.
 
-- (vide)
+- **[Lot A] KDA agrégat inliné** : `internal/analysis/explorer_target_stats.go:69` réinline
+  la formule ADR 0006 `((k+a/3)−d)/n`. Helper canonique `analysis.AggregateKDA` créé et
+  utilisé par le briefing ; l'inline legacy N'A PAS été migré (hors périmètre). Dette : à
+  la prochaine occurrence, migrer + garde-rail (règle n°6).
+- **[Lot A] Convertisseurs canonical→breakdown.Row multiples** : `rowsToBreakdownInputs`
+  (squad, map-only) + `rawRowsToBreakdownRows` (briefing, raw→FR). Non factorisés (sources
+  et champs différents) — 2 copies, sous le seuil règle n°6.
+- **[Lot A] Décision raw-rows vs canonical pour dimensions/baseline** : les canonical de
+  `LoadPlayerMatches` ne sont pas enrichies FR (contrairement à Synthèse qui appelle
+  `EnrichCanonicalAssetTranslations`). Pour éviter des libellés EN sous FR, dimensions/
+  tendance/baseline sont bâties sur les `MatchHistoryRawRow` (déjà FR + post-exclusions).
+  Le socle KPIs + le delta rating restent canonical.
 
 ## Protocole de reprise de session
 
