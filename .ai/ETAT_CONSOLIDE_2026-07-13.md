@@ -40,6 +40,7 @@
 | Momentum Match View LIVRÉ (D1) : carte Dominance = histogramme momentum divergent (barres signées team-ally/enemy, intensité DEC-4, échelle symétrique, tooltip axis Écart/Cumul) ; kill feed conservé ; hexToRgba centralisé + garde-rail | branche `feat/matchview-momentum` (depuis `chore/lot-ops-qualite`) — 3 commits, gates verts, vérif visuelle Infinite+H5+couleur+thèmes faite ; plan `.ai/V7/PLAN_MATCHVIEW_MOMENTUM` COMPLÉTÉ | prêt pour train de merge |
 | Explorer briefing cards LIVRÉ (D4) : bandeau mode Matchs = socle 4 KPI (raw-cohérent) + frise + dimensions (carte/mode/playlist + notes palier) + tendance (sparkline) + Pronostic (attendu vs réel, gaté ranked) ; opt-in `include_briefing` | branche `feat/explorer-briefing-cards` (depuis `main`+momentum) — 4 commits lot A/B/C + 1 commit lot D/fixes, gates verts, vérif visuelle Infinite+H5 ; plan `.ai/V7/PLAN_EXPLORER_BRIEFING_CARDS` COMPLÉTÉ ; **2 arbitrages produit en attente (Pronostic + Δ LUSR)** | prêt pour train de merge |
 | Auth device-flow lots A+D LIVRÉS : lot A (UI d'erreur StepDeviceCode = fin du spinner infini au start + tests + i18n) ; lot D (garde-rail réseau opt-in `xbox_device_code_reachability_integration_test.go` + doc `auth_provider` SISU/MSAL FR+EN sur INSTALL/CONFIGURATION) ; D3 contournement local déjà retiré. Plan `PLAN_AUTH_DEVICE_FLOW_SISU_404` COMPLÉTÉ, archivé `.ai/V7/`. Lot B sans objet, C fait par lot ops item 0 | branche `fix/auth-deviceflow-lots-ad` (depuis `feat/explorer-briefing-cards`) — 3 commits, gates verts, vérif navigateur | prêt pour train de merge |
+| Fixture E2E synthétique LIVRÉE (item 4 §5) : générateur `levelup seed-demo --synthetic` (DuckDB vierges migrées + INSERT déterministes, 60 matchs/5 sessions/3 joueurs, aucune donnée réelle) + `LEVELUP_DEMO_LOCALE` (défaut en, CI=fr) + CI e2e-react seede la fixture avant le backend + fix proxy Vite. Preuve locale : **76 passed / 31 skipped / 0 failed** (baseline 42/65). Skips résiduels DOCUMENTÉS (helpers `skipObsoleteSpec`/`skipRequiresRealPlayer`) : ~6 specs stale (dérive route/endpoint/UI — à réécrire), 3 real-player (JGtm/synergies), engagement (demo). Le job E2E ne tourne qu'à la PR du train | branche `test/e2e-fixture-synthetique` (depuis `fix/auth-deviceflow-lots-ad`) — gates Go+lint+typecheck verts | prêt pour train de merge |
 | Observation `legacy_source_used` = 0 | prod (T0 = 2026-07-13) | D2 armable ≥ 2026-07-20 → chantier Phase 5 ADR 0023 (retrait fallbacks legacy) |
 | Soak bruit prod B2.4 | re-mesure script §Mesure du plan triage | 2026-07-14 |
 | Soak 30 j B7.4 (cible ERROR ≈ 0/j) + décision endpoint `/admin/monitoring/errors` | plan triage | ~2026-08-11 |
@@ -102,7 +103,13 @@
 3. ~~Items Notion sans plan~~ **RETIRÉ (recadrage utilisateur 13/07)** : le backlog
    Notion est le carnet personnel de Guillaume — aucun chantier n'en sera tiré sans
    demande explicite de sa part.
-4. Fixture E2E synthétique (réactiverait ~60 specs actuellement skippées en CI).
+4. ~~Fixture E2E synthétique~~ **FAIT** (branche `test/e2e-fixture-synthetique`) :
+   `levelup seed-demo --synthetic` génère `data/demo/` (DuckDB vierges migrées + INSERT
+   déterministes) ; CI e2e-react la seede avant le backend (locale `fr`). **76 passed /
+   31 skipped / 0 failed** en local (baseline 42/65). Découverte : ~9 des specs
+   réactivées sont STALE (dérive route/endpoint/UI jamais détectée car toujours
+   skippées) → skippées avec motif documenté + À RÉÉCRIRE (backlog séparé). Restent
+   `git commit` + train de merge.
 5. ~~Détecteur data-quality H5 en erreur en LOCAL~~ FAIT (lot ops item 3) : cause =
    la metadata H5 (schéma PROPRE, PMT-9) n'a NI `mode_name_tr` NI `playlists_catalog`
    (prouvé on-disk : 13 tables, `playlists` à la place) → Catalog Error → tout
