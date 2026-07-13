@@ -273,6 +273,7 @@ Keys read by the Go backend from `app_settings.json` (some are not in the exampl
 | `discord_lang` | string | `"fr"` | Discord notification language. |
 | `discord_notifications_enabled` | bool | `false` | Enable Discord sync notifications. |
 | `discord_notify_new_media` | bool | `true` | Notify on new media. |
+| `discord_notify_disk` | bool | `true` | Disk space alerts (warn > 80 % used or < 2 GB free, critical > 90 % or < 500 MB) on the data volume, sent on status change + daily reminder + recovery. |
 | `discord_webhook_url` | string | `""` | Discord webhook URL (env vars take precedence). |
 | `tailscale_enabled` | bool | `false` | Enable Tailscale Funnel remote access. |
 | `user_timezone` | string | `"Europe/Paris"` | IANA timezone for display. |

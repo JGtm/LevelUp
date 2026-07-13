@@ -11,23 +11,42 @@ import (
 )
 
 // Seuils disque A5.3 (nommés, jamais de littéral chez les callers).
+// Deux familles COMBINÉES (pire des deux gagne) :
+//   - plancher ABSOLU d'espace libre (fin de partie sur tout disque) ;
+//   - POURCENTAGE d'occupation (alerte précoce sur un disque qui se remplit —
+//     ajouté après l'incident disque-plein VPS du 2026-07-13 : à 82 % le
+//     2026-07-07, seuls les seuils absolus étaient loin, aucune alerte).
 const (
 	// DiskFreeWarnBytes : en-dessous, statut warn (2 Go).
 	DiskFreeWarnBytes = 2 << 30
 	// DiskFreeCriticalBytes : en-dessous, statut critical (500 Mo).
 	DiskFreeCriticalBytes = 500 << 20
+	// DiskUsedWarnPercent : au-delà de 80 % d'occupation, statut warn.
+	DiskUsedWarnPercent = 80.0
+	// DiskUsedCriticalPercent : au-delà de 90 % d'occupation, statut critical.
+	DiskUsedCriticalPercent = 90.0
 )
 
-// EvaluateDiskStatus mappe l'espace libre vers ok/warn/critical (A5.3).
-func EvaluateDiskStatus(freeBytes uint64) string {
+// EvaluateDiskStatus mappe (libre, total) vers ok/warn/critical (A5.3).
+// totalBytes == 0 (info indisponible) → seuls les seuils absolus s'appliquent.
+func EvaluateDiskStatus(freeBytes, totalBytes uint64) string {
+	usedPct := DiskUsedPercent(freeBytes, totalBytes)
 	switch {
-	case freeBytes < DiskFreeCriticalBytes:
+	case freeBytes < DiskFreeCriticalBytes || usedPct >= DiskUsedCriticalPercent:
 		return domain.FreshnessStatusCritical
-	case freeBytes < DiskFreeWarnBytes:
+	case freeBytes < DiskFreeWarnBytes || usedPct >= DiskUsedWarnPercent:
 		return domain.FreshnessStatusWarn
 	default:
 		return domain.FreshnessStatusOK
 	}
+}
+
+// DiskUsedPercent calcule le pourcentage d'occupation (0 si total inconnu).
+func DiskUsedPercent(freeBytes, totalBytes uint64) float64 {
+	if totalBytes == 0 || freeBytes > totalBytes {
+		return 0
+	}
+	return float64(totalBytes-freeBytes) / float64(totalBytes) * 100
 }
 
 // CollectRuntimeStats lit l'état runtime Go du process (DC-4).
