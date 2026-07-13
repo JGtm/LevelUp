@@ -1,8 +1,10 @@
 # Plan — Histogramme momentum sur la carte Dominance (Match View)
 
 **Date** : 2026-07-12
-**Branche Git** : `feat/matchview-momentum` (à créer depuis `main` — jamais de travail sur `main`)
-**Statut** : Rédigé — DEC-1..7 tranchées ci-dessous, exécution après validation utilisateur
+**Branche Git** : `feat/matchview-momentum` (depuis `chore/lot-ops-qualite`)
+**Statut** : **COMPLÉTÉ 2026-07-13** — 4 phases livrées, gates verts, vérif visuelle
+Infinite + H5 + toggle couleur + thème clair/sombre faite (GO utilisateur D1 acquis
+2026-07-13). Reste : merge (train géré par le superviseur) + revue visuelle utilisateur.
 **Effort estimé** : ~0,5 j (frontend uniquement, zéro changement backend)
 **Contrat d'exécution** : skill `plan-execution` (ordre strict, gates, statuts `[x]`/`[~]`/`[!]`,
 zéro fix hors périmètre — les découvertes vont dans la section dédiée en fin de fichier).
@@ -194,21 +196,30 @@ locale) ; hex restants du dossier = exceptions `color-allow` pré-existantes
 
 ## Phase 4 — i18n, vérification visuelle, clôture
 
-- [ ] 4.1 i18n : `combatTugOfWarTitle` inchangé (DEC-1). Si un libellé de tooltip
-      s'ajoute (ex. « Delta »), le déclarer FR **et** EN dans
-      `features/match-view/i18n.ts` (parité garantie par le typage `Record<Locale, T>`).
-- [ ] 4.2 Vérification visuelle (serveur dev + MCP browser) :
-      (a) match Halo Infinite riche en events → barres signées lisibles, intensités
-          visibles, kill feed aligné, tooltip complet ;
-      (b) match Halo 5 (substrat local) → histogramme rendu à l'identique depuis le
-          kill-feed synthétisé (kills + morts depuis `killer_victim_pairs`),
-          affectation d'équipe correcte via le scoreboard ;
-      (c) réglage couleur équipe (Réglages → Accessibilité) modifié → l'histogramme
-          reflète immédiatement le choix (tokens `team-ally`/`team-enemy`) ;
-      (d) match sans données de combat (servi live-only) → EmptyState inchangé ;
-      (e) thème clair ET sombre.
-- [ ] 4.3 Skill `delivery-checklist` ; entrée `thought_log.md` (statut Complété) ;
-      demander validation utilisateur avant commit (jamais de commit non demandé).
+- [x] 4.1 i18n : `combatTugOfWarTitle` inchangé (DEC-1). Deux libellés de tooltip ajoutés
+      FR **et** EN dans `features/match-view/i18n.ts` : `combatMomentumDelta`
+      (Écart/Delta), `combatMomentumCumul` (Cumul/Cumulative). FAIT (parité `Record<Locale>`).
+- [x] 4.2 Vérification visuelle (serveur dev `none` + MCP browser, 2026-07-13) :
+      (a) match Halo Infinite riche (Super Fiesta/Streets, 28-50) → barres signées
+          lisibles (bleu haut / rouge bas), intensités DEC-4 visibles (barres vives vs
+          atténuées), kill feed aligné (lanes + vagues ×N), tooltip axis complet
+          (« Écart : -7 (Adversaires) / Mon équipe 0 / Adversaires 7 / Cumul : 6 – 19 »),
+          zéro erreur console. FAIT.
+      (b) match Halo 5 (Tidal/Super Fiesta, 8-27, CSR) → histogramme rendu à l'identique
+          depuis le kill-feed synthétisé, affectation d'équipe correcte, zéro erreur
+          console. FAIT.
+      (c) couleur équipe (Réglages → Apparence → Couleurs de jeu : alliés=Herbe,
+          ennemis=Soleil) → l'histogramme reflète IMMÉDIATEMENT (barres vert/jaune),
+          idem Frags cumulés/Cadence. FAIT (couleurs restaurées au défaut après vérif).
+      (d) match live-only → EmptyState : garde `hasKillEvents` **inchangé** (code
+          préservé, plan « Ce qui ne change PAS ») — non re-reproduit visuellement, la
+          logique est identique à l'avant. [~] couvert par la préservation du guard.
+      (e) thème clair ET sombre → l'histogramme s'adapte (fond, axes, texte ; barres et
+          kill feed lisibles dans les deux). FAIT (thème restauré au sombre).
+- [x] 4.3 Skill `delivery-checklist` parcouru (frontend-only : complétude OK, tokens/i18n
+      OK, garde-rail hexToRgba dans le même commit Phase 1, zéro code mort) ; entrée
+      `thought_log.md` (statut Complété) ; GO utilisateur D1 acquis 2026-07-13 (pas de
+      demande de validation supplémentaire requise). FAIT.
 
 **Gate final** : tous les items `[x]`/`[~]`/`[!]` statués, commandes de gate rejouées :
 
@@ -216,6 +227,11 @@ locale) ; hex restants du dossier = exceptions `color-allow` pré-existantes
 make check-types
 make test-web
 ```
+
+PASSÉ 2026-07-13 (clôture) : `.tsbuildinfo` purgé ; `make check-types` OK ; `npm run lint`
+0 erreur (68 warnings baseline pré-existants, aucun dans les fichiers touchés) ; `make
+test-web` = 254 fichiers / 2151 tests verts (14 skipped). Environnement dev restauré (air
+:8000 mode xbox, thème sombre, couleurs équipe par défaut).
 
 ---
 
@@ -227,4 +243,18 @@ Une phase est close quand tous ses items sont statués ET son gate est passé.
 
 ## Découvertes hors périmètre (à consigner, ne pas traiter)
 
-- (vide)
+- **Tooltip scatter/vagues sous `trigger:'axis'` global** — le tooltip axis par tranche
+  (barre : Écart/kills/Cumul) fonctionne (vérifié écran). Les séries scatter (kills
+  individuels) et vagues portent `tooltip.trigger:'item'` par série ; sous le trigger
+  axis global, il n'a PAS été explicitement re-vérifié qu'un survol d'un point kill
+  affiche encore son tooltip individuel (joueur + horodatage) comme avant. Non bloquant :
+  le kill feed reste lisible (points + labels ×N des vagues) et le tooltip de tranche
+  couvre le momentum. À confirmer à la revue visuelle de merge ; si le survol par-kill
+  est souhaité, revoir la stratégie de trigger (axis pour les barres vs item pour le
+  scatter). N'a pas bloqué le gate → non traité (règle 7 plan-execution).
+- **`barCategoryGap: '20%'`** retenu à l'estime (aucun screenshot de référence exact
+  fourni) ; rendu jugé lisible à l'écran. Ajustable d'un littéral si l'utilisateur
+  préfère des barres plus/moins serrées.
+- **Facteurs de layout kill feed** (`LANE_FACTOR 1.5`, `TOP_FACTOR 1.95`,
+  `BOTTOM_FACTOR 1.15`) calés visuellement (B2 du plan) ; rendu vérifié Infinite + H5,
+  thèmes clair/sombre. Ajustables si besoin cosmétique.

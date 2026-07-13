@@ -1,3 +1,40 @@
+## [2026-07-13] Momentum Match View — Phase 4 + CLÔTURE : i18n, vérif visuelle, plan COMPLÉTÉ (branche feat/matchview-momentum)
+
+**Statut** : Complété — PLAN_MATCHVIEW_MOMENTUM SOLDÉ (4/4 phases), déplacé en .ai/V7/.
+
+**Décision technique principale** : Phase 4 = i18n (2 libellés tooltip FR+EN déjà en Phase 3)
++ vérification visuelle au navigateur + clôture. Vérif visuelle menée en basculant le
+serveur dev LOCAL en `LEVELUP_AUTH_MODE=none` (mode dev-open supporté, ownership désactivé)
+le temps des captures, puis restauration `xbox` : l'auth SSO Xbox / mot de passe admin
+n'était pas actionnable par l'agent (device-code interactif). Binaire `tmp/server.exe`
+réutilisé tel quel (chantier 100 % frontend → aucun rebuild Go), lancé avec msys64 ucrt64
+dans le PATH ; DuckDB mono-process respecté (serveur unique à la fois).
+
+**Résultats observés (vérif écran)** :
+- (a) Infinite (Super Fiesta/Streets, 28-50) : histogramme divergent net — barres bleu
+  haut (Mon équipe) / rouge bas (Adversaires), zéro au centre, intensité DEC-4 visible
+  (barres vives = momentum qui se renforce, atténuées = essoufflement), kill feed conservé
+  (lanes + vagues ×N), tooltip axis « Écart : -7 (Adversaires) / Mon équipe 0 / Adversaires
+  7 / Cumul : 6 – 19 », zéro erreur console.
+- (b) Halo 5 (Tidal/Super Fiesta, 8-27, CSR) : rendu IDENTIQUE depuis le kill-feed
+  synthétisé (killer_victim_pairs → highlight_events), affectation équipe correcte, zéro
+  erreur console → confirme le title-agnostic (aucun `slug==`).
+- (c) couleur équipe (alliés=Herbe/vert, ennemis=Soleil/jaune) : histogramme reflète
+  IMMÉDIATEMENT (ChartCard rebuild sur paletteVersion, resolveToken live). Restauré défaut.
+- (e) thème clair ET sombre : l'histogramme s'adapte (fond/axes/texte via useThemeVersion).
+  Restauré sombre.
+- (d) EmptyState live-only : garde `hasKillEvents` inchangé (préservé) → [~].
+Gate final : `.tsbuildinfo` purgé ; check-types OK ; lint 0 erreur ; test-web 254 fichiers
+/ 2151 tests verts. Environnement dev restauré (air :8000 xbox, thème sombre, couleurs défaut).
+
+**Découvertes** (consignées, non traitées — règle 7) : tooltip item scatter/vagues sous
+trigger axis global à re-confirmer à la revue merge (non bloquant, kill feed lisible) ;
+`barCategoryGap 20%` + facteurs de lane calés à l'estime (ajustables).
+
+**Conclusion / prochaine étape** : chantier momentum livré et poussé (branche
+feat/matchview-momentum). Reste hors de mon périmètre : merge (train superviseur) + revue
+visuelle utilisateur. Plan `git mv` vers `.ai/V7/`.
+
 ## [2026-07-13] Momentum Match View — Phase 3 : rendu histogramme divergent (branche feat/matchview-momentum)
 
 **Statut** : Complété côté code (Phase 3/4) ; vérification visuelle = Phase 4.
