@@ -44,12 +44,17 @@ type AppConfig struct {
 	SessionDir      string
 	DemoMode        bool
 	DemoFixturesDir string
-	APIHost         string
-	APIPort         int
-	SessionSecret   string
-	CORSOrigins     []string
-	Lang            string
-	AppVersion      string
+	// DemoLocale : locale UI forcée en mode démo (vitrine publique). Défaut "en"
+	// (audience internationale). Surchargeable via LEVELUP_DEMO_LOCALE — les tests
+	// E2E la pinnent à "fr" pour exercer l'UI française (specs FR). Le visiteur peut
+	// toujours basculer la langue en session côté client.
+	DemoLocale    string
+	APIHost       string
+	APIPort       int
+	SessionSecret string
+	CORSOrigins   []string
+	Lang          string
+	AppVersion    string
 	// SharedProvider (commit 8g, retypé 8i) — injecté au boot par main.go en
 	// mode B-swap (LEVELUP_USE_SHARED_PROVIDER=1). Provider du shared Halo
 	// Infinite (DefaultSlug), source unique des writes Infinite + recherche
@@ -214,6 +219,7 @@ func Load() (*AppConfig, error) {
 		SessionDir:        getEnvOrDefault("LEVELUP_SESSION_DIR", filepath.Join(repoRoot, "data", "sessions")),
 		DemoMode:          demoMode,
 		DemoFixturesDir:   getEnvOrDefault("LEVELUP_DEMO_FIXTURES_DIR", filepath.Join(repoRoot, "data", "demo")),
+		DemoLocale:        getEnvOrDefault("LEVELUP_DEMO_LOCALE", "en"),
 		APIHost:           getEnvOrDefault("LEVELUP_API_HOST", "127.0.0.1"),
 		APIPort:           getEnvInt("LEVELUP_API_PORT", 8000),
 		SessionSecret:     getEnvOrDefault("LEVELUP_SESSION_SECRET", "CHANGE_ME_IN_PRODUCTION"),

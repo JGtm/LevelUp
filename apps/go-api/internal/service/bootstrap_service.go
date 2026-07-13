@@ -196,13 +196,17 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		}
 	}
 
-	// Locale par défaut : en démo, on force l'anglais (audience internationale de
-	// la vitrine publique). Le visiteur peut toujours basculer la langue en session
-	// côté client (store appShell + header X-LevelUp-Locale) ; le PATCH /settings
-	// restant refusé en démo, ce choix n'est pas persisté côté serveur.
+	// Locale par défaut : en démo, on force la locale vitrine (cfg.DemoLocale, défaut
+	// "en" — audience internationale de la vitrine publique). Le visiteur peut toujours
+	// basculer la langue en session côté client (store appShell + header X-LevelUp-Locale) ;
+	// le PATCH /settings restant refusé en démo, ce choix n'est pas persisté côté serveur.
+	// Les tests E2E pinnent LEVELUP_DEMO_LOCALE=fr pour exercer l'UI française.
 	locale := settingsExcerpt.Lang
 	if s.cfg.DemoMode {
-		locale = "en"
+		locale = s.cfg.DemoLocale
+		if locale == "" {
+			locale = "en"
+		}
 	}
 
 	return &domain.BootstrapResponse{
