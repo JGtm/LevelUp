@@ -20,6 +20,8 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -28,6 +30,14 @@ const (
 	sisuAuthorizeURL    = "https://sisu.xboxlive.com/authorize"
 	sisuRedirectURI     = "https://login.live.com/oauth20_desktop.srf"
 	sisuSandbox         = "RETAIL"
+	// sisuMSAScope est le scope MSA natif de la chaîne SISU : c'est à la fois
+	// l'Offer déclarée à /authenticate ET le scope du device-flow login.live.com
+	// qui produit l'access_token présenté à /authorize (RpsTicket "t=", famille
+	// MSA). Cross-référencé sur XAL/OpenXbox : les scopes Azure AD
+	// (Xboxlive.signin …) produisent un JWT AAD que SISU rejette en 401.
+	sisuMSAScope = "service::user.auth.xboxlive.com::MBI_SSL"
+	// sisuLogBodyMax borne la taille du corps d'erreur serveur relogué (diagnostic).
+	sisuLogBodyMax = 512
 )
 
 // SISUSession contient le résultat de l'initialisation d'une session SISU.
@@ -81,7 +91,7 @@ func initSISUSessionWithURL(
 		"AppId":            appID,
 		"TitleId":          titleID,
 		"DeviceToken":      deviceToken,
-		"Offers":           []string{"service::user.auth.xboxlive.com::MBI_SSL"},
+		"Offers":           []string{sisuMSAScope},
 		"ProofKey":         kp.GetProofKey(),
 		"RedirectUri":      sisuRedirectURI,
 		"Sandbox":          sisuSandbox,
@@ -173,7 +183,11 @@ func completeSISUFlowWithURL(
 	appID, sessionID string,
 	targetURL string,
 ) (*XSTSResult, error) {
-	slog.DebugContext(ctx, "sisu: complétion flow", "session_id", sessionID)
+	slog.DebugContext(ctx, "sisu: complétion flow",
+		"session_id", sessionID,
+		"access_token_format", accessTokenFormat(accessToken),
+		"access_token_len", len(accessToken),
+	)
 
 	body := map[string]any{
 		"AppId":             appID,
@@ -219,7 +233,16 @@ func completeSISUFlowWithURL(
 		return nil, fmt.Errorf("sisu: lecture réponse complete: %w", err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		slog.ErrorContext(ctx, "sisu: échec complétion", "status", resp.StatusCode)
+		// Corps + header d'erreur du serveur Xbox (XErr/Message) : diagnostiques,
+		// sans secret — aucun token n'y figure, seul le code d'erreur serveur.
+		slog.ErrorContext(ctx, "sisu: échec complétion",
+			"status", resp.StatusCode,
+			"session_id", sessionID,
+			"www_authenticate", resp.Header.Get("WWW-Authenticate"),
+			"raw", truncateForLog(string(raw), sisuLogBodyMax),
+			"access_token_format", accessTokenFormat(accessToken),
+			"access_token_len", len(accessToken),
+		)
 		return nil, fmt.Errorf("sisu: HTTP %d complete: %s", resp.StatusCode, raw)
 	}
 
@@ -227,6 +250,12 @@ func completeSISUFlowWithURL(
 	if err := json.Unmarshal(raw, &data); err != nil {
 		return nil, fmt.Errorf("sisu: décodage JSON complete: %w", err)
 	}
+
+	// Diagnostic itératif (noms de clés uniquement, jamais les valeurs) : la
+	// réponse /authorize porte plusieurs tokens (AuthorizationToken, UserToken,
+	// TitleToken…) — savoir lesquels sont présents guide la suite de la chaîne.
+	slog.InfoContext(ctx, "sisu: complétion HTTP OK",
+		"session_id", sessionID, "response_keys", sortedKeys(data))
 
 	// SISU retourne le XSTS dans "AuthorizationToken"
 	authToken, ok := data["AuthorizationToken"].(map[string]any)
@@ -256,4 +285,38 @@ func completeSISUFlowWithURL(
 		"gamertag", result.Gamertag,
 	)
 	return result, nil
+}
+
+// accessTokenFormat classe un access_token Microsoft par famille pour le
+// diagnostic (jamais le token lui-même) : un JWT Azure AD commence par "eyJ"
+// (header JSON en base64), un compact ticket MSA natif par "Ew". SISU
+// (/authorize, préfixe "t=") n'accepte que la famille MSA.
+func accessTokenFormat(token string) string {
+	switch {
+	case strings.HasPrefix(token, "eyJ"):
+		return "jwt_aad"
+	case strings.HasPrefix(token, "Ew"):
+		return "msa_compact"
+	default:
+		return "inconnu"
+	}
+}
+
+// truncateForLog borne une chaîne destinée aux logs de diagnostic.
+func truncateForLog(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max] + "…(tronqué)"
+}
+
+// sortedKeys retourne les clés d'une map triées — pour logger la FORME d'une
+// réponse serveur sans jamais en logger les valeurs.
+func sortedKeys(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
