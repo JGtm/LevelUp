@@ -49,21 +49,3 @@ export function outcomeCodeToValue(code: number): OutcomeValue {
       return 'tie' // 1 = égalité
   }
 }
-
-/** Palier de performance 1..5 → clé de label du filtre « Palier de performance ». */
-export function perfTierLabelKey(
-  tier: number,
-): 'excellent' | 'bon' | 'correct' | 'faible' | 'mauvais' {
-  switch (tier) {
-    case 1:
-      return 'excellent'
-    case 2:
-      return 'bon'
-    case 3:
-      return 'correct'
-    case 4:
-      return 'faible'
-    default:
-      return 'mauvais'
-  }
-}
