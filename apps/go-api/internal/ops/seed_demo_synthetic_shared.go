@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 
@@ -128,9 +129,9 @@ func buildMatchParticipants(m synthMatch) []synthParticipant {
 		outcome: m.outcome, accuracy: m.accuracy,
 	}
 	parts := []synthParticipant{main}
-	oppOutcome := 3
-	if m.outcome == 3 {
-		oppOutcome = 2
+	oppOutcome := domain.OutcomeLoss
+	if m.outcome == domain.OutcomeLoss {
+		oppOutcome = domain.OutcomeWin
 	}
 	if m.squad {
 		// Coéquipiers DemoPlayer2/3 (même équipe, même issue).
@@ -198,10 +199,12 @@ func insertMatchMedals(ctx context.Context, db *sql.DB, m synthMatch) error {
 // Lecture home via v_weapon_kills → weapon_labels (seed migration).
 func insertMatchWeaponKills(ctx context.Context, db *sql.DB, m synthMatch) error {
 	for i := 0; i < m.favWeaponKills; i++ {
+		// written_at ancré sur synthAnchor : weapon_kills est append-only (DEFAULT
+		// now() posé par la migration) ; sans valeur explicite chaque run diverge.
 		if _, err := db.ExecContext(ctx, `
-			INSERT INTO weapon_kills (match_id, xuid, time_ms, weapon_id, confidence, attribution_path)
-			VALUES (?, ?, ?, ?, 'high', 'demo')`,
-			m.matchID, demoXUIDForIndex(0), (i+1)*20000, int64(m.favWeaponID)); err != nil {
+			INSERT INTO weapon_kills (match_id, xuid, time_ms, weapon_id, confidence, attribution_path, written_at)
+			VALUES (?, ?, ?, ?, 'high', 'demo', ?)`,
+			m.matchID, demoXUIDForIndex(0), (i+1)*20000, int64(m.favWeaponID), synthAnchor); err != nil {
 			return err
 		}
 	}

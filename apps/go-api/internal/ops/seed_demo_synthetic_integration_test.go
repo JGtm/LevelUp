@@ -10,6 +10,8 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
@@ -81,33 +83,184 @@ func TestSeedDemoSynthetic_Structure(t *testing.T) {
 	assertCountAtLeast(t, meta, "SELECT COUNT(*) FROM citation_mappings", 10)
 }
 
-// TestSeedDemoSynthetic_Deterministic : deux générations → données identiques
-// (agrégats stables). DuckDB peut différer byte-à-byte ; on compare la donnée.
+// detDBs : DBs comparées entre deux runs (toutes les surfaces produites par le
+// seeder, pas seulement shared_matches_v2). Le déterminisme byte-identique doit
+// couvrir métadonnées + les 3 player DBs, sinon une dérive d'horloge / d'ordre de
+// map dans un writer player/meta passe inaperçue (piège fetched_at).
+var detDBs = []string{
+	filepath.Join("warehouse", "metadata.duckdb"),
+	filepath.Join("warehouse", "shared_matches_v2.duckdb"),
+	filepath.Join("warehouse", "shared_social.duckdb"),
+	filepath.Join("players", "DEMO", "stats.duckdb"),
+	filepath.Join("players", "DEMO2", "stats.duckdb"),
+	filepath.Join("players", "DEMO3", "stats.duckdb"),
+}
+
+// detAuditCols : colonnes d'AUDIT (bookkeeping) à défaut horloge non ancrable
+// (DEFAULT CURRENT_TIMESTAMP dans les DDL de migration, jamais posées par le
+// seeder ni assertées par une spec E2E). Exclues du dump — toutes les colonnes
+// MÉTIER (kills, match_id, rank, CSR, fetched_at, written_at, recorded_at,
+// start_time, id…) sont comparées octet à octet.
+var detAuditCols = map[string]bool{"created_at": true, "updated_at": true}
+
+// detSeededTables : tables réellement ÉCRITES par le seeder synthétique (grep des
+// INSERT de seed_demo_synthetic*.go) — le périmètre du déterminisme. On NE compare
+// PAS les tables de référence seedées par les migrations (asset_translations,
+// lusr_hyperparams_v2, …) : leur colonne d'horodatage (written_at CURRENT_TIMESTAMP)
+// reflète l'instant d'exécution des migrations, pas la donnée fixture, et diverge
+// légitimement d'un run à l'autre. Ni les registres du runner (schema_migrations,
+// title_schema_version). Une nouvelle table écrite par le seeder doit être ajoutée
+// ici (et rendue déterministe).
+var detSeededTables = map[string]bool{
+	"career_progression":      true,
+	"career_ranks":            true,
+	"highlight_events":        true,
+	"killer_victim_pairs":     true,
+	"match_citations":         true,
+	"match_csrs":              true,
+	"match_participants":      true,
+	"match_registry":          true,
+	"match_skill_rank":        true,
+	"medal_definitions":       true,
+	"medals_earned":           true,
+	"player_csr_snapshots":    true,
+	"player_match_enrichment": true,
+	"sessions":                true,
+	"sync_meta":               true,
+	"weapon_kills":            true,
+	"xuid_aliases":            true,
+}
+
+// TestSeedDemoSynthetic_Deterministic : deux générations → DONNÉES identiques,
+// table par table, sur toutes les DBs. Compare le contenu réel (chaque ligne
+// sérialisée, triée) et non une empreinte agrégée faible — un writer qui laisse
+// fuiter l'horloge (time.Now / DEFAULT CURRENT_TIMESTAMP non ancré) ou un ordre de
+// map dans une colonne métier fait diverger deux runs et échoue ici.
 func TestSeedDemoSynthetic_Deterministic(t *testing.T) {
 	setSyntheticProviders()
-	sig := func() string {
+	dump := func() map[string]string {
 		out := t.TempDir()
 		if _, err := SeedDemoSynthetic(context.Background(), SyntheticDemoOptions{OutDir: out, ServiceTag: "DEMO"}); err != nil {
 			t.Fatalf("SeedDemoSynthetic: %v", err)
 		}
-		db := openRO(t, filepath.Join(out, "warehouse", "shared_matches_v2.duckdb"))
-		defer db.Close()
-		var s string
-		// Empreinte : somme des stats + concat ordonnée des match_ids/maps.
-		if err := db.QueryRow(`
-			SELECT CONCAT(
-				(SELECT SUM(kills*1000 + deaths*10 + assists) FROM match_participants), '|',
-				(SELECT STRING_AGG(match_id, ',' ORDER BY match_id) FROM match_registry), '|',
-				(SELECT STRING_AGG(map_name || pair_name, ',' ORDER BY match_id) FROM match_registry)
-			)`).Scan(&s); err != nil {
-			t.Fatalf("signature: %v", err)
+		sigs := map[string]string{}
+		for _, rel := range detDBs {
+			db := openRO(t, filepath.Join(out, rel))
+			sigs[rel] = dumpDBData(t, db)
+			db.Close()
 		}
-		return s
+		return sigs
 	}
-	a, b := sig(), sig()
-	if a != b {
-		t.Errorf("génération non déterministe:\n run1=%.120s\n run2=%.120s", a, b)
+	a, b := dump(), dump()
+	for _, rel := range detDBs {
+		if a[rel] != b[rel] {
+			t.Errorf("DB %s non déterministe entre deux runs:\n%s", rel, firstDivergentTable(a[rel], b[rel]))
+		}
 	}
+}
+
+// dumpDBData sérialise TOUTES les tables de base d'une DB (contenu réel, lignes
+// triées) — pour comparaison byte-à-byte entre deux runs.
+func dumpDBData(t *testing.T, db *sql.DB) string {
+	t.Helper()
+	rows, err := db.Query(`
+		SELECT table_name FROM information_schema.tables
+		WHERE table_schema = 'main' AND table_type = 'BASE TABLE'
+		ORDER BY table_name`)
+	if err != nil {
+		t.Fatalf("liste tables: %v", err)
+	}
+	var tables []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			rows.Close()
+			t.Fatalf("scan table: %v", err)
+		}
+		tables = append(tables, name)
+	}
+	rows.Close()
+
+	var sb strings.Builder
+	for _, table := range tables {
+		if !detSeededTables[table] {
+			continue
+		}
+		sb.WriteString("### ")
+		sb.WriteString(table)
+		sb.WriteByte('\n')
+		sb.WriteString(dumpTableData(t, db, table))
+		sb.WriteByte('\n')
+	}
+	return sb.String()
+}
+
+// dumpTableData sérialise le contenu d'une table (colonnes métier uniquement,
+// lignes triées) en une chaîne stable comparable entre deux runs.
+func dumpTableData(t *testing.T, db *sql.DB, table string) string {
+	t.Helper()
+	colRows, err := db.Query(
+		`SELECT column_name FROM information_schema.columns
+		 WHERE table_schema = 'main' AND table_name = ? ORDER BY ordinal_position`, table)
+	if err != nil {
+		t.Fatalf("colonnes %s: %v", table, err)
+	}
+	var cols []string
+	for colRows.Next() {
+		var c string
+		if err := colRows.Scan(&c); err != nil {
+			colRows.Close()
+			t.Fatalf("scan colonne %s: %v", table, err)
+		}
+		if !detAuditCols[c] {
+			cols = append(cols, c)
+		}
+	}
+	colRows.Close()
+	if len(cols) == 0 {
+		return "<aucune colonne métier>"
+	}
+
+	exprs := make([]string, len(cols))
+	for i, c := range cols {
+		exprs[i] = `COALESCE("` + c + `"::VARCHAR, '∅')`
+	}
+	q := `SELECT CONCAT_WS('|', ` + strings.Join(exprs, ", ") + `) FROM "` + table + `"`
+	dataRows, err := db.Query(q)
+	if err != nil {
+		t.Fatalf("dump %s: %v", table, err)
+	}
+	defer dataRows.Close()
+	var lines []string
+	for dataRows.Next() {
+		var s sql.NullString
+		if err := dataRows.Scan(&s); err != nil {
+			t.Fatalf("scan ligne %s: %v", table, err)
+		}
+		lines = append(lines, s.String)
+	}
+	sort.Strings(lines)
+	return strings.Join(lines, "\n")
+}
+
+// firstDivergentTable retourne le bloc de la première table qui diffère (aide au
+// diagnostic sans noyer la sortie de test).
+func firstDivergentTable(a, b string) string {
+	as := strings.Split(a, "### ")
+	bs := strings.Split(b, "### ")
+	for i := 0; i < len(as) && i < len(bs); i++ {
+		if as[i] != bs[i] {
+			return "run1[" + truncate(as[i]) + "]\nrun2[" + truncate(bs[i]) + "]"
+		}
+	}
+	return "(divergence hors table alignée)"
+}
+
+func truncate(s string) string {
+	if len(s) > 400 {
+		return s[:400] + "…"
+	}
+	return s
 }
 
 // ── helpers ──

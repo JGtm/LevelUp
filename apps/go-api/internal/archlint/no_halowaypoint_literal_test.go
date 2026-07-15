@@ -83,6 +83,10 @@ var halowaypointAllowlist = map[string]bool{
 	"cmd/snapshot-world-leaderboard/main.go":  true,
 	// scripts/ — warm-up d'assets (URLs gamecms).
 	"scripts/warm_bp_assets/main.go": true,
+	// ops/ — seeder démo synthétique : URL blob-infiniteugc FACTICE d'assets démo
+	// (bannière/emblème/backdrop de l'identité Spartan démo, jamais fetchée — data
+	// fixture déterministe, cf. seed_demo_synthetic.go). Ajoutée 2026-07-15.
+	"internal/ops/seed_demo_synthetic_player.go": true,
 }
 
 var halowaypointRE = regexp.MustCompile(`halowaypoint`)
