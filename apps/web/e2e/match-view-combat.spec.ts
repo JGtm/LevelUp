@@ -13,8 +13,15 @@
  * joueur synchronisé.
  */
 import { test, expect } from '@playwright/test'
+import { skipObsoleteSpec } from './_helpers/demoData'
 
 test.describe('Match view — onglet Combat (refonte 2026-05-06)', () => {
+  // Le match view a été redessiné : plus d'onglet "Combat" (onglets actuels :
+  // "Général" / "Détails"). Les charts kd_timeline/tug_of_war existent toujours
+  // mais sous une autre structure — spec à réécrire pour les onglets courants.
+  test.beforeEach(() => {
+    skipObsoleteSpec("onglet 'Combat' du match view remplacé par 'Général'/'Détails'")
+  })
   test('rend la barre de badges et les 4 charts en tête de l\'onglet', async ({
     page,
     request,

@@ -749,7 +749,7 @@ func readAccessTokenFromProfiles(ctx context.Context, dbProfilesPath, titleSlug,
 		return "", fmt.Errorf("aucun joueur pour le titre %q dans db_profiles.json", titleSlug)
 	}
 
-	provider := auth.NewMSALProvider()
+	provider := auth.NewSISUProvider()
 
 	for gamertag, p := range players {
 		dbPath := filepath.Join(repoRoot, filepath.FromSlash(p.DBPath))
@@ -805,10 +805,10 @@ func readAccessTokenFromProfiles(ctx context.Context, dbProfilesPath, titleSlug,
 	return "", nil
 }
 
-// runDeviceFlow déclenche un Device Code Flow interactif et retourne l'access_token.
+// runDeviceFlow déclenche un Device Code Flow interactif (SISU) et retourne l'access_token.
 func runDeviceFlow(ctx context.Context) (string, error) {
 	slog.Info("auth: init Device Code Flow…")
-	flow, err := auth.InitDeviceFlow(ctx, nil)
+	flow, err := auth.NewSISUProvider().InitDeviceFlow(ctx)
 	if err != nil {
 		return "", fmt.Errorf("device flow init: %w", err)
 	}

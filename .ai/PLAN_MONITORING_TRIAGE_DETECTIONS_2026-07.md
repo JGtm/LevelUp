@@ -175,11 +175,15 @@ cible. `go test ./internal/platform/auth/... ./internal/sync/...` verts (exit 0)
 Recalibrage : leaderboard prod juillet = 2 ERROR / 3 WARN seulement — l'essentiel du
 bruit leaderboard était local (dev). catalog prod juillet = 0 ERROR.
 
-- [~] B3.1 `world_leaderboard_cron` — cron PROD tourne (dernier cycle 2026-07-10 14:15,
-      quotidien) et dégrade gracieusement (fallback statique). 5 E + 2 W post-reboot, TOUS =
-      `FetchCatalog: statut HTTP 404: classement absent pour cette (saison, playlist)` = le
-      reste-à-faire **C3** du chantier leaderboard-catalogue → réf HANDOFF_LEADERBOARD_CATALOGUE.
-      Bruit local (scrape ×26) = dev, hors périmètre prod.
+- [x] B3.1 `world_leaderboard_cron` — REQUALIFIÉ le 2026-07-13 (LOT OPS/QUALITÉ item 1,
+      branche `chore/lot-ops-qualite`). Le 404 `FetchCatalog: ... classement absent pour cette
+      (saison, playlist)` n'était PAS le reste-à-faire C3 (backfill saisons passées) : c'était
+      la **découverte de la saison ACTIVE** qui abandonnait tout le cycle sur une ERROR
+      quotidienne quand la playlist de référence unique (`playlists[0]`) n'était pas classée
+      dans la saison-graine fixe `csrseason13-2`. Fix réel : `discoverActiveSeason` essaie
+      plusieurs playlists candidates (statiques d'abord) et retient le 1er succès ; dégradation
+      DC-B2 (WARN + compteur `world_leaderboard_season_discovery_failed_total`) si toutes
+      échouent — plus d'ERROR récurrente. Bruit local (scrape ×26) = dev, hors périmètre prod.
 - [x] B3.2 `catalog_refresh_cron` — prod post-reboot = 0 ERROR (49 E historiques ÉTEINTS).
       Résidu 6 W `catalog_expand: terminé avec échecs` = expansion partielle gracieuse (asset
       manquant), non bloquant. Confirmé éteint.

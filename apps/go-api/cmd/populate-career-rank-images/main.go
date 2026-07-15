@@ -270,7 +270,7 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string
 		return nil, fmt.Errorf("résoudre player %q: %w", playerSlug, err)
 	}
 
-	provider := authpkg.NewMSALProvider()
+	provider := authpkg.NewSISUProvider()
 
 	// ADR 0023 — pipeline canonique via MultiUserTokenStore puis legacy DuckDB/env.
 	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())

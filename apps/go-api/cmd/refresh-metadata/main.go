@@ -374,7 +374,7 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string
 		return nil, fmt.Errorf("SPARTAN_TOKEN absent ET --player non fourni")
 	}
 
-	provider := authpkg.NewMSALProvider()
+	provider := authpkg.NewSISUProvider()
 
 	pdb, err := config.ResolvePlayer(ctx, cfg, playerSlug, titlePkg.DefaultSlug)
 	if err != nil {

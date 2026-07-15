@@ -16,8 +16,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -148,7 +150,28 @@ func ExchangeXSTSForHaloTokensWithDescriptor(ctx context.Context, xstsToken stri
 // =============================================================================
 
 // requestUserToken obtient un User Token XBL depuis un access_token Microsoft.
+//
+// Le préfixe RpsTicket dépend du CLIENT OAuth qui a émis l'access_token — "d="
+// pour l'app Azure (MSAL, SSO web, refresh v2), "t=" pour le client Xbox natif
+// (SISU, refresh MSA) — PAS de son format : les deux familles émettent des
+// compact tickets "EwA…" indistinguables (une heuristique par format a cassé le
+// refresh du pool le 2026-07-15). Ce chokepoint recevant les deux familles sans
+// connaître leur provenance, on tente "d=" puis on retente UNE fois en "t="
+// sur 401. Coût borné : un aller-retour de plus pour la famille MSA, qui
+// s'inverse au retrait de MSAL si besoin.
 func requestUserToken(ctx context.Context, client *http.Client, accessToken string) (string, error) {
+	token, err := requestUserTokenPrefixed(ctx, client, accessToken, "d=")
+	var herr *xblHTTPError
+	if err != nil && errors.As(err, &herr) && herr.Status == http.StatusUnauthorized {
+		slog.DebugContext(ctx, "halo_exchange: RpsTicket d= refusé (401) — retry t= (client Xbox natif)")
+		return requestUserTokenPrefixed(ctx, client, accessToken, "t=")
+	}
+	return token, err
+}
+
+// requestUserTokenPrefixed exécute l'échange XBL user-token avec un préfixe
+// RpsTicket explicite ("d=" ou "t=").
+func requestUserTokenPrefixed(ctx context.Context, client *http.Client, accessToken, prefix string) (string, error) {
 	// Concurrence bornée sur l'endpoint XBL user-token (anti-429 « currentRequests »).
 	// Sérialise le refresher du pool ET le chemin user-facing sur le même sémaphore.
 	release, err := acquireXBLUserAuthSlot(ctx)
@@ -163,7 +186,7 @@ func requestUserToken(ctx context.Context, client *http.Client, accessToken stri
 		xboxFieldProperties: map[string]string{
 			"AuthMethod": "RPS",
 			"SiteName":   "user.auth.xboxlive.com",
-			"RpsTicket":  "d=" + accessToken,
+			"RpsTicket":  prefix + accessToken,
 		},
 	}
 	resp, err := postJSON(ctx, client, xblUserAuthURL, map[string]string{
@@ -327,6 +350,20 @@ func requestClearanceTokenWith(ctx context.Context, client *http.Client, spartan
 // Helpers HTTP
 // =============================================================================
 
+// xblHTTPError porte le statut d'une réponse non-2xx d'un endpoint Xbox/Halo
+// (postJSON). Le message reste identique à l'ancien fmt.Errorf pour ne pas
+// changer les logs ; le type permet aux callers de brancher sur le statut
+// (ex. retry d=/t= de requestUserToken).
+type xblHTTPError struct {
+	Status int
+	URL    string
+	Body   string
+}
+
+func (e *xblHTTPError) Error() string {
+	return fmt.Sprintf("HTTP %d depuis %s: %s", e.Status, e.URL, e.Body)
+}
+
 // postJSON effectue un POST JSON et retourne le body décodé.
 func postJSON(ctx context.Context, client *http.Client, url string, headers map[string]string, body any) (map[string]any, error) {
 	b, err := json.Marshal(body)
@@ -353,7 +390,7 @@ func postJSON(ctx context.Context, client *http.Client, url string, headers map[
 		return nil, fmt.Errorf("lecture réponse %s: %w", url, err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("HTTP %d depuis %s: %s", resp.StatusCode, url, raw)
+		return nil, &xblHTTPError{Status: resp.StatusCode, URL: url, Body: string(raw)}
 	}
 
 	var data map[string]any

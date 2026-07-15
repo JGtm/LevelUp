@@ -285,7 +285,7 @@ func loadTokens(ctx context.Context, authFile, gamertag string) (*struct {
 
 	envKey := "SPNKR_OAUTH_REFRESH_TOKEN_" + strings.ToUpper(gamertag)
 	if rt := os.Getenv(envKey); rt != "" {
-		tok, err := auth.NewMSALProvider().TryOAuthRefresh(ctx, rt)
+		tok, err := auth.NewSISUProvider().TryOAuthRefresh(ctx, rt)
 		if err == nil && tok != "" {
 			result, err := auth.ExchangeAccessToken(ctx, tok)
 			if err == nil {

@@ -64,9 +64,9 @@ func BuildSampleStats(
 	}
 	// KDA agrégé = moyenne NETTE pour TOUS les titres (le KDA par match est figé à
 	// l'ingestion et NET ; on agrège, on ne refabrique pas la forme par match).
-	// ((k + a/3) − d)/N (sampleSize > 0 garanti ci-dessus), peut être négatif —
-	// JAMAIS le quotient (k+a/3)/d.
-	kda := (float64(agg.Kills) + float64(agg.Assists)/3.0 - float64(agg.Deaths)) / float64(sampleSize)
+	// Helper canonique AggregateKDA (ADR 0006) : ((k + a/3) − d)/N (sampleSize > 0
+	// garanti ci-dessus), peut être négatif — JAMAIS le quotient (k+a/3)/d.
+	kda := AggregateKDA(agg.Kills, agg.Assists, agg.Deaths, sampleSize)
 	stats.KDA = &kda
 
 	// WinRate = wins / (wins + losses + draws). On exclut les DNF du

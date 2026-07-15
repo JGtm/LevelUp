@@ -61,7 +61,8 @@ the title's reference client documentation.
 go run ./apps/go-api/cmd/h5-metadata-fetch --help
 
 # Populate image assets (medals, ranks, playlists)
-go run ./apps/go-api/cmd/populate-assets --help
+# populate-assets is a `levelup` CLI subcommand (also shipped in the prod image)
+go run ./apps/go-api/cmd/levelup populate-assets --help
 go run ./apps/go-api/cmd/populate-playlists-catalog --help
 ```
 

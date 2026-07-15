@@ -785,7 +785,7 @@ func refreshHaloTokensForPlayer(ctx context.Context, gamertag string) (*domain.H
 	if refreshToken == "" {
 		return nil, fmt.Errorf("no_refresh_token (%s)", oauthRefreshEnvKey(gamertag))
 	}
-	provider := auth.NewMSALProvider()
+	provider := auth.NewSISUProvider()
 	accessToken, err := provider.TryOAuthRefresh(ctx, refreshToken)
 	if err != nil || accessToken == "" {
 		return nil, fmt.Errorf("oauth_refresh_failed: %w", err)
@@ -937,7 +937,7 @@ func runBackfillAllWeapons(ctx context.Context, cfg *config.AppConfig, force boo
 			continue
 		}
 
-		provider := auth.NewMSALProvider()
+		provider := auth.NewSISUProvider()
 		accessToken, err := provider.TryOAuthRefresh(ctx, refreshToken)
 		if err != nil || accessToken == "" {
 			fmt.Printf("backfill weapons SKIP: gamertag=%s reason=oauth_refresh_failed err=%v\n", player.Gamertag, err)

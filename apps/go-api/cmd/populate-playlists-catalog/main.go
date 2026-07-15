@@ -218,7 +218,7 @@ func loadTokensFromPlayerDB(ctx context.Context, dbPath string) (*domain.HaloTok
 	_ = db.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = 'msal_token_cache'`).Scan(&cacheJSON)
 	_ = db.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'`).Scan(&refreshToken)
 
-	provider := auth.NewMSALProvider()
+	provider := auth.NewSISUProvider()
 
 	// Extraire le gamertag depuis le chemin pour vérifier l'env var.
 	gamertag := extractGamertag(dbPath)

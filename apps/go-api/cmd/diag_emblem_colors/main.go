@@ -26,7 +26,7 @@ import (
 // acquireDiagTokens fait le pipeline ADR 0023 : MultiUserTokenStore → env var fallback.
 // Persiste la rotation au store si applicable. Pour CLI diagnostic one-shot.
 func acquireDiagTokens(ctx context.Context, gamertag string) (*domain.HaloTokens, error) {
-	provider := auth.NewMSALProvider()
+	provider := auth.NewSISUProvider()
 	cfg, err := config.Load()
 	if err != nil {
 		return nil, fmt.Errorf("config.Load: %w", err)

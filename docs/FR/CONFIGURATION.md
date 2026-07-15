@@ -152,6 +152,23 @@ adresser l'entrée.
 > pour que le serveur re-dérive les Spartan tokens depuis la chaîne fraîche.
 > `token-capture` et `token-import` le font automatiquement.
 
+### Fournisseur de tokens — SISU (seul fournisseur)
+
+Le Device Code Flow d'onboarding est démarré par le fournisseur **SISU** (device-code
+natif Xbox, scope MSA `service::user.auth.xboxlive.com::MBI_SSL`, client ID Xbox officiel) :
+les self-hosters n'ont besoin d'**aucune inscription Azure**. L'ancien fournisseur MSAL a
+été retiré le 2026-07-15 après validation de SISU bout-en-bout ; une valeur héritée
+`auth_provider: "msal"` dans `app_settings.json` est ignorée avec un avertissement au
+démarrage. Les refresh tokens Azure existants continuent de se rafraîchir via l'endpoint
+OAuth v2 ; les refresh tokens SISU natifs passent par `login.live.com` (repli automatique
+sur `invalid_grant`).
+
+L'endpoint natif de démarrage est
+`https://login.live.com/oauth20_connect.srf` ; un garde-rail réseau opt-in
+(`go test -tags=integration ./internal/platform/auth/` avec
+`LEVELUP_DEVICE_ENDPOINT_LIVE_CHECK=1`) vérifie qu'il reste joignable — un changement côté
+Microsoft se manifeste ainsi par un test en échec plutôt que par un spinner d'onboarding.
+
 ---
 
 ## Variables d'environnement
@@ -257,6 +274,7 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 
 | Paramètre | Type | Défaut | Description |
 |-----------|------|--------|-------------|
+| `auth_provider` | string | `""` (= `sisu`) | Clé héritée. SISU (natif Xbox, **aucune app Azure**) est le seul fournisseur depuis le retrait de MSAL le 2026-07-15 ; `msal` est ignoré avec un avertissement au démarrage. Voir « Fournisseur de tokens » ci-dessus. |
 | `media_enabled` | bool | `false` | Active l'intégration média (captures Xbox). |
 | `media_captures_base_dir` | string | `""` | Chemin du dossier de captures Xbox. |
 | `media_buffer_minutes` | int | `1` | Fenêtre de tolérance pour associer captures et matchs. |
@@ -274,6 +292,7 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 | `discord_lang` | string | `"fr"` | Langue des notifications Discord. |
 | `discord_notifications_enabled` | bool | `false` | Active les notifications de sync Discord. |
 | `discord_notify_new_media` | bool | `true` | Notifie sur nouveau média. |
+| `discord_notify_disk` | bool | `true` | Alertes disque (warn > 80 % utilisés ou < 2 Go libres, critical > 90 % ou < 500 Mo) sur le volume data, envoyées au changement de statut + rappel quotidien + rétablissement. |
 | `discord_webhook_url` | string | `""` | URL webhook Discord (les vars d'env priment). |
 | `tailscale_enabled` | bool | `false` | Active l'accès distant Tailscale Funnel. |
 | `user_timezone` | string | `"Europe/Paris"` | Timezone IANA pour l'affichage. |

@@ -18,6 +18,7 @@
 //	levelup sync-full      (--gamertag X | --all) [--max-matches N] [--match-type T] [--rps N]
 //	levelup sync-achievements (--gamertag X | --all) [--dry-run]
 //	levelup add-title      --name "Nom du jeu" [--slug s] [--capabilities c1,c2] [--xbox-id X] [--steam-id S]
+//	levelup populate-assets [--types map,playlist] [--langs fr-FR] [--dry-run] [--force] [--title-id slug]
 //
 // Variables d'environnement : LEVELUP_REPO_ROOT (auto-detecte si absent).
 //
@@ -27,6 +28,7 @@
 //   - cmd_sync.go    - sync-delta, sync-full
 //   - cmd_notify.go  - notify-version, notify-sync
 //   - cmd_title.go   - add-title
+//   - cmd_populate_assets.go - populate-assets (traductions d'assets Discovery UGC)
 package main
 
 import (
@@ -117,6 +119,8 @@ func main() {
 		exitErr = runRestoreCSR(cfg, args)
 	case "add-title":
 		exitErr = runAddTitle(cfg, args)
+	case "populate-assets":
+		exitErr = runPopulateAssets(cfg, args)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -164,6 +168,7 @@ Commandes:
   migrate         Migrer les donnees vers le namespace multi-titres
   restore-csr     Restaurer les CSR historiques depuis un backup DuckDB legacy (--gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite])
   add-title       Initialiser l'arborescence d'un nouveau titre de jeu
+  populate-assets Peupler asset_translations (noms localises des assets via Discovery UGC)
 
 Options globales:
   LEVELUP_REPO_ROOT        Racine du repo (auto-detecte si absent)

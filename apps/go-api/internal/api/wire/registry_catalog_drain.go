@@ -151,7 +151,7 @@ func (r *ServiceRegistry) reopenMetadataIfInvalidated(ctx context.Context, title
 func (r *ServiceRegistry) haloTokensForDrain(ctx context.Context, titleSlug string) (*domain.HaloTokens, error) {
 	pr := titlePkg.NewPathResolver(r.cfg.RepoRoot)
 	store := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
-	provider := auth.NewMSALProvider()
+	provider := auth.NewSISUProvider()
 
 	players, err := r.cfg.LoadPlayers(titleSlug)
 	if err != nil {

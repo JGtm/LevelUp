@@ -89,6 +89,10 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 		// saison CSR). Fallback à 5 si absent. Cf. csr_thresholds_repo.go.
 		svc = svc.WithCSRThresholds(duckdb.NewCSRThresholdsRepo(pdb.Metadata).Get)
 	}
+	// Gate du module classé du briefing Explorer (DEC-7) : capability
+	// match.skill.snapshot, jamais le slug. Inoffensif pour la page Historique
+	// (elle ne pose pas include_briefing → briefing étendu non construit).
+	svc = svc.WithRankedCapable(r.titleSupportsLiveCSR(pdb))
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 

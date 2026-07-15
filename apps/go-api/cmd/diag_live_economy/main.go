@@ -49,7 +49,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	provider := authpkg.NewMSALProvider()
+	provider := authpkg.NewSISUProvider()
 	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
 	legacy := authpkg.LegacyAuthInputs{Source: "duckdb"}
 	legacy.MSALCache, _ = duckdb.ReadMSALCacheJSON(ctx, pdb.Player)
