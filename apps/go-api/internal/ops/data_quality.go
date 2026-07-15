@@ -210,12 +210,17 @@ func listRawUUIDs(ctx context.Context, sharedDB *sql.DB, limit int) ([]DataQuali
 // asset_translations/pair_name_fr). Un détecteur qui dépend d'un référentiel
 // absent du SCHÉMA du titre est NON APPLICABLE : introspection plutôt que
 // Catalog Error (qui faisait tomber tout l'endpoint en 500 pour le titre).
-func metaTableExists(ctx context.Context, metaDB *sql.DB, table string) bool {
+func metaTableExists(ctx context.Context, metaDB *sql.DB, table string) (bool, error) {
 	var n int
-	err := metaDB.QueryRowContext(ctx,
+	if err := metaDB.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?`, table,
-	).Scan(&n)
-	return err == nil && n > 0
+	).Scan(&n); err != nil {
+		// Une erreur d'introspection (handle fermé, IO, timeout) N'EST PAS une table
+		// absente : la remonter (règle n°3 — jamais d'erreur avalée), sinon un faux
+		// vert masque des détecteurs data-quality (untranslated_modes = 0 à tort).
+		return false, fmt.Errorf("introspection metadata table %s: %w", table, err)
+	}
+	return n > 0, nil
 }
 
 // listUntranslatedModes liste les modes (clé normalisée via
@@ -227,10 +232,16 @@ func metaTableExists(ctx context.Context, metaDB *sql.DB, table string) bool {
 //
 // limit <= 0 → pas de limite (usage comptage).
 func listUntranslatedModes(ctx context.Context, sharedDB, metaDB *sql.DB, limit int) ([]DataQualityIssue, error) {
-	if metaDB != nil && !metaTableExists(ctx, metaDB, "mode_name_tr") {
-		slog.DebugContext(ctx, "data_quality: mode_name_tr absente du schéma metadata — détecteur untranslated_modes non applicable",
-			"module", "monitoring")
-		return []DataQualityIssue{}, nil
+	if metaDB != nil {
+		exists, err := metaTableExists(ctx, metaDB, "mode_name_tr")
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			slog.DebugContext(ctx, "data_quality: mode_name_tr absente du schéma metadata — détecteur untranslated_modes non applicable",
+				"module", "monitoring")
+			return []DataQualityIssue{}, nil
+		}
 	}
 	frSet := map[string]struct{}{}
 	if metaDB != nil {
@@ -345,10 +356,16 @@ func aggregateUntranslatedModes(
 func listOrphanPlaylists(
 	ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug string, limit int,
 ) ([]DataQualityIssue, error) {
-	if metaDB != nil && !metaTableExists(ctx, metaDB, "playlists_catalog") {
-		slog.DebugContext(ctx, "data_quality: playlists_catalog absente du schéma metadata — détecteur orphan_playlists non applicable",
-			"module", "monitoring", "title", titleSlug)
-		return []DataQualityIssue{}, nil
+	if metaDB != nil {
+		exists, err := metaTableExists(ctx, metaDB, "playlists_catalog")
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			slog.DebugContext(ctx, "data_quality: playlists_catalog absente du schéma metadata — détecteur orphan_playlists non applicable",
+				"module", "monitoring", "title", titleSlug)
+			return []DataQualityIssue{}, nil
+		}
 	}
 	catalog := map[string]struct{}{}
 	if metaDB != nil {
