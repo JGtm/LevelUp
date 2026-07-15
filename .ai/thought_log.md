@@ -1,3 +1,39 @@
+## [2026-07-15] Train de merge 2026-07-15 assemblé — file post-campagne + SISU/MSAL + revue adversariale (branche integration/train-2026-07-15)
+
+**Statut** : Complété (train assemblé, tous gates verts, PR ouverte vers main — attente merge utilisateur = deploy prod).
+
+**Décision technique principale** : assemblage du train de merge final depuis `origin/main`
+(`1ae7a3103`, PR #59). GATE DE SANTÉ DE LA SOURCE `fix/revue-adversariale` AVANT montage (auth
+critique) : `go build`/`go vet`/`go test ./...`/`go test -tags=integration -p 1 -timeout 1200s`/
+`golangci-lint --new-from-rev=origin/main` — TOUS VERTS. Retrait de MSALProvider confirmé propre
+(0 réf `NewMSALProvider`/`MSALProvider{` hors tests ; aucun test obsolète cassant : les tests auth
+utilisent `NewSISUProvider`, `halo/provider_test.go` sans réf MSAL ; le cache MSAL du store —
+`MSALCacheJSON`/silent refresh — CONSERVÉ, légitime ADR 0023). 3 merges `--no-ff` (un commit par
+branche, messages FR) dans l'ordre : (1) `fix/revue-adversariale` = pile complète (lot ops/qualité,
+momentum D1, briefing D4, auth A+D, fixture E2E synthétique + CI, revue adversariale 10 fixes,
+réparation SISU + retrait MSAL, session parallèle utilisateur) — descendant direct de main donc
+SANS conflit ; (2) `worktree-agent-acf7a6f0e70cf7b7f` = plan D7 ; (3) `worktree-agent-a8821b41c581e797d`
+= rapport V10c + soldes audits. Conflits `.ai/thought_log.md` (merges 2 et 3) résolus en append-top
+anté-chronologique (entrées D7 et V10c conservées, zéro perte/doublon, marqueurs retirés
+proprement) ; plans V7 auto-mergés (les deux côtés). Commit `docs(etat)` séparé sur
+ETAT_CONSOLIDE (section 2 = train assemblé + SISU/MSAL + HANDOFF à archiver ; D4 arbitrages en
+attente ; D7 plan rédigé/embarqué à relire ; §5 item 10 = perf B-swap write-side post-sync).
+
+**Résultats observés** : gates finaux SUR LE TRAIN ASSEMBLÉ — `go build`/`go vet` = 0 ;
+`go test ./...` = 0 FAIL ; `go test -tags=integration -p 1 -timeout 1200s ./...` = 0 `--- FAIL:` ;
+`golangci-lint --new-from-rev=origin/main` = 0 issue ; front (`node_modules/.tmp` purgé) : `tsc -b`
+= 0, `eslint` = 0 erreur (68 warnings baseline), `vite build` = 0, `vitest run` = 255 fichiers /
+2159 passés / 14 skipped. Code du train byte-identique à la source déjà gated (seuls des fichiers
+`.ai/` diffèrent entre le train et `origin/fix/revue-adversariale`).
+
+**Conclusion / prochaine étape** : PR ouverte vers `main` (NE PAS merger — merge = deploy =
+utilisateur). Branches `worktree-agent-*` supprimées côté origin après ouverture de la PR. À la
+charge de l'utilisateur au merge : re-tester SISU en PROD (login réel post-deploy), configurer le
+webhook Discord (alerte disque), archiver `HANDOFF_SISU_401_COMPLETION.md` en V7. Questions ouvertes
+mergeur : arbitrage D4 (« Pronostic » + Δ LUSR cumulé), relecture du plan D7 avant exécution.
+Observation `legacy_source_used` (D2 ≥ 20/07, INCHANGÉE par le retrait MSALProvider — cache MSAL du
+store distinct) ; soak B2.4 à rattraper.
+
 ## [2026-07-15] Retrait de MSAL — SISU seul provider (branche fix/revue-adversariale)
 
 **Statut** : Complété — SISU validé bout-en-bout par l'utilisateur (login réel → session
