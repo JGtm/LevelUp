@@ -97,8 +97,13 @@ func writeOnePlayer(ctx context.Context, path string, spec synthPlayerSpec, matc
 		return fmt.Errorf("psa append-only: %w", err)
 	}
 
+	// INSERT pur : la player DB est fraîche (os.Remove ci-dessus + migrations qui ne
+	// seedent jamais la clé 'xuid') → aucune collision possible. Surtout, INSERT OR
+	// REPLACE est un pattern ART interdit (garde-rail TestNoARTPatternsOnProtectedTables,
+	// scan file-level de internal/ops/) : ce fichier écrit aussi match_skill_rank /
+	// player_csr_snapshots / player_match_enrichment (tables protégées).
 	if _, err := db.ExecContext(ctx,
-		`INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('xuid', ?)`, spec.xuid); err != nil {
+		`INSERT INTO sync_meta (key, value) VALUES ('xuid', ?)`, spec.xuid); err != nil {
 		return fmt.Errorf("sync_meta: %w", err)
 	}
 	if err := insertCareerProgression(ctx, db, spec); err != nil {
@@ -278,9 +283,11 @@ func insertPlayerCitations(ctx context.Context, db *sql.DB, matches []synthMatch
 		n := 1 + m.idx%3
 		for i := 0; i < n; i++ {
 			norm := synthCitations[(m.idx+i)%len(synthCitations)]
+			// written_at ancré sur synthAnchor : la table est append-only (DEFAULT
+			// now() posé par la migration), sans valeur explicite chaque run diverge.
 			if _, err := db.ExecContext(ctx,
-				`INSERT OR IGNORE INTO match_citations (match_id, citation_name_norm, value) VALUES (?, ?, ?)`,
-				m.matchID, norm, 1+i); err != nil {
+				`INSERT OR IGNORE INTO match_citations (match_id, citation_name_norm, value, written_at) VALUES (?, ?, ?, ?)`,
+				m.matchID, norm, 1+i, synthAnchor); err != nil {
 				return fmt.Errorf("citation %s/%s: %w", m.matchID, norm, err)
 			}
 		}
@@ -291,14 +298,17 @@ func insertPlayerCitations(ctx context.Context, db *sql.DB, matches []synthMatch
 // insertPlayerCSRSnapshot écrit un snapshot CSR alltime (playlist Arène) — source du
 // pic CSR home (loadCSRAlltimePeak lit player_csr_snapshots.alltime_*).
 func insertPlayerCSRSnapshot(ctx context.Context, db *sql.DB, spec synthPlayerSpec) error {
+	// fetched_at ancré sur synthAnchor : sans valeur explicite il retombe sur son
+	// DEFAULT CURRENT_TIMESTAMP → player DBs différentes à chaque run (déterminisme
+	// cassé, cf. TestSeedDemoSynthetic_Deterministic).
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO player_csr_snapshots
 			(playlist_id, playlist_name, queue, input, season_id,
 			 current_value, current_tier, current_sub_tier, current_measurement_remaining,
 			 season_value, season_tier, season_sub_tier,
-			 alltime_value, alltime_tier, alltime_sub_tier, written_at)
+			 alltime_value, alltime_tier, alltime_sub_tier, fetched_at, written_at)
 		VALUES ('demo-ranked-arena', 'Arène classée', 'open', 'crossplay', ?,
-			1420, ?, 1, 0, 1420, ?, 1, 1460, ?, 1, ?)`,
-		synthDemoSeason, spec.rankTier, spec.rankTier, spec.rankTier, synthAnchor)
+			1420, ?, 1, 0, 1420, ?, 1, 1460, ?, 1, ?, ?)`,
+		synthDemoSeason, spec.rankTier, spec.rankTier, spec.rankTier, synthAnchor, synthAnchor)
 	return err
 }

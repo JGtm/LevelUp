@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 )
 
@@ -192,10 +193,10 @@ func buildSynthMatch(rng *rand.Rand, idx int, s synthSession, pl synthPlaylist, 
 	deaths := 5 + rng.Intn(12)
 	assists := rng.Intn(8)
 	// Issue : ~55% victoires (win_rate crédible, wins ET losses).
-	outcome := 3 // loss
+	outcome := domain.OutcomeLoss
 	t0, t1 := 40+rng.Intn(10), 50
 	if rng.Float64() < 0.55 {
-		outcome = 2 // win
+		outcome = domain.OutcomeWin
 		t0, t1 = 50, 40+rng.Intn(10)
 	}
 	dur := 480 + rng.Intn(360) // 8-14 min
@@ -203,7 +204,7 @@ func buildSynthMatch(rng *rand.Rand, idx int, s synthSession, pl synthPlaylist, 
 	shotsFired := 200 + rng.Intn(300)
 	// CSR progression : +~8 en victoire, -~7 en défaite (borné 1050..1500).
 	delta := -7.0 - rng.Float64()*4
-	if outcome == 2 {
+	if outcome == domain.OutcomeWin {
 		delta = 7.0 + rng.Float64()*4
 	}
 	*csr += delta
