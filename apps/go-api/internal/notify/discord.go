@@ -8,9 +8,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -188,6 +190,26 @@ func NotifyReauthRequired(cfg NotifyConfig, gamertag string) {
 
 var httpClient = &http.Client{Timeout: 10 * time.Second}
 
+// sanitizeSendError expurge l'URL du webhook (secret : le token d'écriture du canal
+// est dans le path) d'une erreur d'envoi avant tout log. http.Client.Do et
+// http.NewRequest retournent un *url.Error dont Error() concatène l'URL complète ;
+// on ne conserve que l'opération + l'erreur interne (transport / parse), qui ne
+// portent jamais le token. Toute autre erreur est renvoyée telle quelle.
+func sanitizeSendError(err error) string {
+	if err == nil {
+		return ""
+	}
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		inner := "erreur inconnue"
+		if urlErr.Err != nil {
+			inner = urlErr.Err.Error()
+		}
+		return fmt.Sprintf("%s (webhook expurgé): %s", urlErr.Op, inner)
+	}
+	return err.Error()
+}
+
 // SendWebhook envoie un payload JSON au webhook Discord.
 // Retourne true si Discord répond 200 ou 204.
 func SendWebhook(webhookURL string, payload WebhookPayload) bool {
@@ -202,7 +224,7 @@ func SendWebhook(webhookURL string, payload WebhookPayload) bool {
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, bytes.NewReader(data))
 	if err != nil {
-		slog.WarnContext(ctx, "discord_build_request_failed", "op", "send", "err", err)
+		slog.WarnContext(ctx, "discord_build_request_failed", "op", "send", "err", sanitizeSendError(err))
 		return false
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
@@ -210,7 +232,10 @@ func SendWebhook(webhookURL string, payload WebhookPayload) bool {
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		slog.WarnContext(ctx, "discord_send_failed", "op", "send", "err", err)
+		// httpClient.Do retourne un *url.Error dont Error() concatène l'URL COMPLÈTE
+		// (token du webhook dans le path = secret d'écriture du canal). On expurge
+		// avant tout log (logs persistés sur le VPS, lisibles par backup/diagnostic).
+		slog.WarnContext(ctx, "discord_send_failed", "op", "send", "err", sanitizeSendError(err))
 		return false
 	}
 	defer resp.Body.Close()
