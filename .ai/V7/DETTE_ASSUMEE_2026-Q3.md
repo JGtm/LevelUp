@@ -126,16 +126,20 @@ changement de résultat (J3/J4/J7) ou de wiring provider (J9).
   **J2** budgets mémoire/threads (`df5832d60`+`305b6b959`) · **J3** `GetHistoryForAvgBulk`
   (`dfeb199f3`) · **J7** CTE Q26 bornée (`f6b8cce4a`) · **J9** emprunt cross-titre revu +
   documenté (`8d385cc70`, sûr en opération normale, aucun changement de code justifié).
-- **RESTENT différés measure-first** (VPS requis) :
-  - **J1(2)** — pool lecture player DBs 2-4 conns : BLOQUÉ RUNTIME (lecture des stats SOUS
-    CHARGE + audit des UPSERT reposant sur MaxOpenConns(1)). Impossible en test local.
-  - **J4** — `LoadSquadMatchesBulk` : petit-N (1-4 coéquipiers sélectionnés), refacto LOURD +
-    correctness-sensible → measure-first (optimiser à l'aveugle proscrit).
-  - **J6** — 8 N+1 batchables : TOUS des chemins d'arrière-plan petit-N (sync/backfill/catalog),
-    pas HTTP chauds → measure-first.
+- **SOLDÉS measure-first (2026-07-13, V10c — mesure prod sous charge 7 h 44)** :
+  - **J1(2)** — RÉSOLU : garder `poolSingleConn=1` (player DBs plafonnent à 64 waits/261 ms,
+    0 timeout ; single-conn = sérialisation UPSERT anti-ART voulue).
+  - **J4** — RETIRÉ : chemin HTTP lecture non contendu (`WaitCount` 0 sur shared RO), gain
+    mesurable nul.
+  - **J6** — RETIRÉ : N+1 d'arrière-plan dans des steps <100 ms ; goulot sync = compute
+    (skill_rating 32,6 s + weapon_kills 33,2 s), pas le compte de requêtes.
+  - Rapport : `.ai/RAPPORT_V10C_BUDGETS_2026-07-13.md`.
+- **RESTE différé** :
   - **J5** — `LoadAll` full-history par hit → CHANTIER DÉDIÉ (décision produit cache, cf. §1 K).
-- **Reprise** : lire `/debug/vars` `duckdb_pool_stats`+`duckdb_budgets` sous charge réelle
-  (LOT V10c du plan de clôture, VPS requis), puis optimiser J1(2)/J4/J6 + valider avant/après.
+- **Découverte V10c reportée (backlog perf distinct, hors J4/J6)** : B-swap thrash write-side du
+  post-sync (~205 fenêtres RW/post-sync, 24 768 swaps RO↔RW sur 7 h 44, ~51 min de stall lecteur
+  cumulé, 150 watchdogs) + steps compute lourds skill_rating/weapon_kills = vrai levier perf sous
+  charge, successeur du LOT J.
 
 ## 5. Gouvernance — L1 (re-scope), L2-(3/4/5), L5
 
