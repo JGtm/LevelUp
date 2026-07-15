@@ -311,6 +311,12 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 	if msalFlow, ok := flow.(interface{ MSALCacheJSON() string }); ok {
 		msalCacheJSON = msalFlow.MSALCacheJSON()
 	}
+	// Refresh token OAuth brut (flow SISU natif : pas de cache MSAL, le RT est
+	// exposé directement par le device flow après AcquireToken).
+	var oauthRefreshToken string
+	if rtFlow, ok := flow.(interface{ OAuthRefreshToken() string }); ok {
+		oauthRefreshToken = rtFlow.OAuthRefreshToken()
+	}
 	// XSTS audience xboxlive.com (RTA) — distinct du XSTS Halo retourné par provider.Exchange.
 	// L'access_token Microsoft est encore valide ici (~1h), on l'utilise pour l'acquisition.
 	xstsRTAResult, xstsErr := auth_platform.AcquireXSTSForRTA(ctx, accessToken)
@@ -334,6 +340,7 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 		// PR 2.5a : transport vers OnAuthSuccess (jamais exposé via HTTP).
 		a.MicrosoftAccessToken = accessToken
 		a.MSALCacheJSON = msalCacheJSON
+		a.OAuthRefreshToken = oauthRefreshToken
 		if xstsRTA != nil {
 			a.XSTSRTAToken = xstsRTA.Token
 			a.XSTSRTAUserHash = xstsRTA.UserHash

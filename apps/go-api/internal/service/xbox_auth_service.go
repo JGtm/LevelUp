@@ -280,14 +280,27 @@ func (s *XboxSSOLinkStrategy) persistRTATokens(ctx context.Context, attempt *aut
 	}
 
 	tokens := &auth.UserTokens{
-		XUID:           attempt.XUID,
-		Gamertag:       attempt.Gamertag,
-		XSTSToken:      attempt.XSTSRTAToken,
-		XSTSUserHash:   attempt.XSTSRTAUserHash,
-		XSTSExpiresAt:  attempt.XSTSRTAExpiresAt,
-		AccessToken:    attempt.MicrosoftAccessToken,
-		OAuthExpiresAt: time.Now().Add(50 * time.Minute), // conservateur (Microsoft expires_in ~1h)
-		MSALCacheJSON:  attempt.MSALCacheJSON,
+		XUID:              attempt.XUID,
+		Gamertag:          attempt.Gamertag,
+		XSTSToken:         attempt.XSTSRTAToken,
+		XSTSUserHash:      attempt.XSTSRTAUserHash,
+		XSTSExpiresAt:     attempt.XSTSRTAExpiresAt,
+		AccessToken:       attempt.MicrosoftAccessToken,
+		OAuthExpiresAt:    time.Now().Add(50 * time.Minute), // conservateur (Microsoft expires_in ~1h)
+		MSALCacheJSON:     attempt.MSALCacheJSON,
+		OAuthRefreshToken: attempt.OAuthRefreshToken,
+	}
+	// Upsert remplace le fichier ENTIER (ADR 0023 : source unique par xuid).
+	// Préserver les credentials durables que CE flow ne porte pas : le flow SISU
+	// n'a pas de cache MSAL, le flow MSAL n'expose pas de RT brut — sans ce
+	// merge, chaque login écraserait le credential semé par l'autre provider.
+	if existing, err := s.tokenStore.Load(attempt.XUID); err == nil && existing != nil {
+		if tokens.OAuthRefreshToken == "" {
+			tokens.OAuthRefreshToken = existing.OAuthRefreshToken
+		}
+		if tokens.MSALCacheJSON == "" {
+			tokens.MSALCacheJSON = existing.MSALCacheJSON
+		}
 	}
 	if err := s.tokenStore.Upsert(tokens); err != nil {
 		slog.WarnContext(ctx, "xbox_sso: persistance tokens RTA échouée (non bloquant)",

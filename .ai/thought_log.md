@@ -1,3 +1,41 @@
+## [2026-07-15] SISU 401 à la complétion — cause racine scope + instrumentation (branche fix/revue-adversariale)
+
+**Statut** : En cours — correctifs livrés, EN ATTENTE d'un essai de login réel par l'utilisateur
+(la complétion exige son identité Microsoft ; cf. `.ai/HANDOFF_SISU_401_COMPLETION.md`).
+
+**Décision technique principale** :
+- **Cause racine (quasi certaine, cross-référencée sur XAL/OpenXbox)** : le device-flow
+  `login.live.com/oauth20_connect.srf` demandait les scopes Azure AD (`Xboxlive.signin
+  Xboxlive.offline_access` = `xboxScopes`) alors que la chaîne SISU est MSA native : l'Offer
+  déclarée à `/authenticate` est `service::user.auth.xboxlive.com::MBI_SSL` et `/authorize`
+  présente le ticket en `"t="+access_token` (préfixe réservé aux tickets MSA). Le JWT AAD
+  obtenu était donc rejeté en 401. Fix : scope `sisuMSAScope` (const partagée avec l'Offer)
+  + garde-rail test sur le form du device-code.
+- **Préfixe RpsTicket par famille** : `requestUserToken` (chokepoint unique XBL : stateless +
+  RTA) choisit `d=` (JWT AAD, "eyJ…") vs `t=` (ticket MSA) — sinon `AcquireXSTSForRTA`
+  échouait avec le nouveau token MSA et la persistance watcher_tokens sautait.
+- **Persistance du RT SISU (ADR 0023)** : `sisuDeviceFlow` conserve le refresh_token du
+  polling (il était JETÉ) et l'expose via `OAuthRefreshToken()` → attempt → `persistRTATokens`.
+  Merge préservant dans `persistRTATokens` : `Upsert` remplace le fichier ENTIER, un login
+  SISU aurait écrasé le cache MSAL existant (et réciproquement).
+- **Fallback refresh MSA natif** : un RT SISU (client Xbox `000000004c20a908`) est inconnu de
+  l'app Azure (`invalid_grant`) → `ExchangeRefreshTokenWithRotation` retente UNE fois sur
+  `login.live.com/oauth20_token.srf` (client Xbox, scope MBI_SSL, sans secret). L'erreur Azure
+  initiale est propagée si le fallback échoue (classification pool intacte). Compteur expvar
+  `levelup.auth.oauth_refresh_retry_msa_total`.
+- **Instrumentation (itération sur logs utilisateur)** : le 401 de complétion logge désormais
+  le corps raw serveur (XErr/Message, borné 512), `WWW-Authenticate`, la famille du token
+  (`jwt_aad`/`msa_compact` — jamais le token) ; succès HTTP → clés de la réponse `/authorize`
+  (pour vérifier l'audience de l'AuthorizationToken à l'étape Spartan si besoin).
+
+**Résultats observés** : build + tests `platform/auth`, `service`, `handlers` verts ;
+`golangci-lint --new-from-rev=origin/main` = 0 ; gofmt propre.
+
+**Conclusion / prochaine étape** : essai de login réel utilisateur (auth_mode=xbox,
+auth_provider SISU) → lire les logs `sisu:` ; si nouvel échec, le raw/XErr guide l'itération
+(candidats suivants : audience de l'AuthorizationToken pour Spartan, en-tête contract-version).
+Après validation utilisateur : retrait MSAL (provider + câblage + tests + doc bilingue).
+
 ## [2026-07-15] Revue adversariale du train — corrections (branche fix/revue-adversariale)
 
 **Statut** : Complété — 14 défauts confirmés → 10 corrigés, 4 écartés. Rapport complet :
