@@ -1,4 +1,4 @@
-# ÉTAT CONSOLIDÉ — 2026-07-13 (source unique du reste-à-faire) — MAJ 13/07 soir
+# ÉTAT CONSOLIDÉ — 2026-07-13 (source unique du reste-à-faire) — MAJ 15/07 (train 2026-07-15 assemblé)
 
 > FILE OPUS (MAJ 13/07 soir, après arbitrages utilisateur) :
 > 1) fin du lot ops/qualité (en vol : fix URL login device-flow + alerte disque +
@@ -36,14 +36,9 @@
 
 | Quoi | Où | Échéance |
 |---|---|---|
-| **Revue adversariale du train FAITE + corrections LIVRÉES (2026-07-15)** : 14 défauts confirmés → **10 corrigés, 4 écartés** (rapport `.ai/REVUE_ADVERSARIALE_TRAIN_2026-07-15.md`). Majeurs corrigés : ART `INSERT OR REPLACE` du seeder (CI rouge évitée), slot SISU global `p.current` → per-flow, test déterminisme seeder renforcé (3 non-déterminations ancrées). + 3 garde-rails file-level préexistants du seeder synthétique réparés (shared_social/halowaypoint/raw-outcome, `go test ./...` était rouge). Tous les gates verts (build/vet/test/intégration-p1/golangci 0 ; tsc/eslint/vitest 2159). | branche `fix/revue-adversariale` (depuis `test/e2e-fixture-synthetique`) | prêt pour train de merge |
-| Lot ops/qualité TERMINÉ (0/0b SSO+UI, 1 leaderboard, 2 alerte disque, 3 data-quality H5, 4 populate-assets) | branche `chore/lot-ops-qualite` — CI de branche + rapport final en cours | prêt pour revue/merge |
-| Momentum Match View LIVRÉ (D1) : carte Dominance = histogramme momentum divergent (barres signées team-ally/enemy, intensité DEC-4, échelle symétrique, tooltip axis Écart/Cumul) ; kill feed conservé ; hexToRgba centralisé + garde-rail | branche `feat/matchview-momentum` (depuis `chore/lot-ops-qualite`) — 3 commits, gates verts, vérif visuelle Infinite+H5+couleur+thèmes faite ; plan `.ai/V7/PLAN_MATCHVIEW_MOMENTUM` COMPLÉTÉ | prêt pour train de merge |
-| Explorer briefing cards LIVRÉ (D4) : bandeau mode Matchs = socle 4 KPI (raw-cohérent) + frise + dimensions (carte/mode/playlist + notes palier) + tendance (sparkline) + Pronostic (attendu vs réel, gaté ranked) ; opt-in `include_briefing` | branche `feat/explorer-briefing-cards` (depuis `main`+momentum) — 4 commits lot A/B/C + 1 commit lot D/fixes, gates verts, vérif visuelle Infinite+H5 ; plan `.ai/V7/PLAN_EXPLORER_BRIEFING_CARDS` COMPLÉTÉ ; **2 arbitrages produit en attente (Pronostic + Δ LUSR)** | prêt pour train de merge |
-| Auth device-flow lots A+D LIVRÉS : lot A (UI d'erreur StepDeviceCode = fin du spinner infini au start + tests + i18n) ; lot D (garde-rail réseau opt-in `xbox_device_code_reachability_integration_test.go` + doc `auth_provider` SISU/MSAL FR+EN sur INSTALL/CONFIGURATION) ; D3 contournement local déjà retiré. Plan `PLAN_AUTH_DEVICE_FLOW_SISU_404` COMPLÉTÉ, archivé `.ai/V7/`. Lot B sans objet, C fait par lot ops item 0 | branche `fix/auth-deviceflow-lots-ad` (depuis `feat/explorer-briefing-cards`) — 3 commits, gates verts, vérif navigateur | prêt pour train de merge |
-| Fixture E2E synthétique LIVRÉE (item 4 §5) : générateur `levelup seed-demo --synthetic` (DuckDB vierges migrées + INSERT déterministes, 60 matchs/5 sessions/3 joueurs, aucune donnée réelle) + `LEVELUP_DEMO_LOCALE` (défaut en, CI=fr) + CI e2e-react seede la fixture avant le backend + fix proxy Vite. Preuve locale : **76 passed / 31 skipped / 0 failed** (baseline 42/65). Skips résiduels DOCUMENTÉS (helpers `skipObsoleteSpec`/`skipRequiresRealPlayer`) : ~6 specs stale (dérive route/endpoint/UI — à réécrire), 3 real-player (JGtm/synergies), engagement (demo). Le job E2E ne tourne qu'à la PR du train | branche `test/e2e-fixture-synthetique` (depuis `fix/auth-deviceflow-lots-ad`) — gates Go+lint+typecheck verts | prêt pour train de merge |
+| **Train 2026-07-15 ASSEMBLÉ + PR ouverte vers `main`** — embarque toute la file post-campagne : revue adversariale (16 examinées, 14 confirmées, **10 corrigées dont 3 majeures**, 4 écartées ; rapport `.ai/REVUE_ADVERSARIALE_TRAIN_2026-07-15.md`), lot ops/qualité (SSO device-flow réparé, alerte disque, data-quality H5 title-agnostic, populate-assets CLI, leaderboard 404), momentum Match View (D1), briefing cards Explorer (D4), auth device-flow lots A+D, fixture E2E synthétique + CI, plan D7 (docs), rapport V10c + soldes audits (docs). Travaux de la session parallèle utilisateur embarqués (combat, session stats, suppression PLAN_WEAPON_ATTRIBUTION_V3). Tous les gates verts (build/vet/test/intégration-p1/golangci 0 ; tsc/eslint/vitest ; E2E à la PR). **2 arbitrages produit D4 restent en attente (Pronostic + Δ LUSR) ; plan D7 à relire avant exécution.** | branche `integration/train-2026-07-15` → PR vers `main` | **attente merge utilisateur (merge = deploy prod)** |
 | Observation `legacy_source_used` = 0 | prod (T0 = 2026-07-13) | D2 armable ≥ 2026-07-20 → chantier Phase 5 ADR 0023 (retrait fallbacks legacy) |
-| Soak bruit prod B2.4 | re-mesure script §Mesure du plan triage | 2026-07-14 |
+| Soak bruit prod B2.4 | re-mesure script §Mesure du plan triage | **à rattraper** (échéance 2026-07-14 dépassée) |
 | Soak 30 j B7.4 (cible ERROR ≈ 0/j) + décision endpoint `/admin/monitoring/errors` | plan triage | ~2026-08-11 |
 
 ## 3. POUR GUILLAUME — actions rapides
@@ -87,7 +82,7 @@
 | D3 | ~~Trancher l'option du lot B~~ **SANS OBJET le 13/07** (lot ops item 0) — **lots A+D LIVRÉS le 13/07** | La prémisse « endpoint MS retiré » était fausse : l'URL du code n'a jamais été la bonne (`/oauth20_connect/device` ; la vraie = `oauth20_connect.srf`). Fix livré + vérifié navigateur = Option 1 de fait. Lots A (UI d'erreur StepDeviceCode) et D (garde-rail réseau opt-in + doc `auth_provider` FR/EN) SOLDÉS (branche `fix/auth-deviceflow-lots-ad`) ; contournement local `auth_provider=msal` déjà retiré (`app_settings.json` = `""`). Plan `PLAN_AUTH_DEVICE_FLOW_SISU_404` COMPLÉTÉ + archivé V7. Plus rien à décider |
 | D4 | ~~GO exécution briefing cards~~ **LIVRÉ le 13/07** (branche `feat/explorer-briefing-cards`) | Bandeau Explorer mode Matchs : socle + frise + dimensions + tendance + Pronostic. Gates verts, vérif visuelle Infinite+H5. **2 arbitrages produit en attente** : (1) module « classé »→« Pronostic » (pas de donnée CSR) ; (2) affichage Δ classement LUSR cumulé. Prêt pour train de merge |
 | D5 | ~~Prioriser les plans exclus~~ **REPORTÉ v7.1** (décision utilisateur 13/07) | Ascension UX · Diag apparence admin · Relations UX · weapon_attribution_v3 — dossier v7.1 |
-| D7 | ~~Titre dans l'URL~~ **PRINCIPE APPROUVÉ le 13/07** | Plan en cours d'écriture (agent Opus, worktree). Sera soumis à relecture avant exécution. Routes `/t/{slug}/...`, la garde deep-link #59 reste en défense en profondeur |
+| D7 | ~~Titre dans l'URL~~ **PLAN RÉDIGÉ + EMBARQUÉ dans le train 2026-07-15 (docs)** | Plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md` écrit (front seul, routes `/t/{slug}/...`, garde deep-link #59 conservée en défense en profondeur). **À RELIRE avant exécution** (schéma `/t/{slug}/`, langue hors périmètre, non-refactor de la garde `?f=`). Exécution par Opus sous plan-execution une fois relu |
 
 ## 5. BACKLOG PILOTABLE SANS DÉCISION (sur simple feu vert, par valeur estimée)
 
@@ -118,7 +113,10 @@
    `untranslated_modes`/`orphan_playlists` NON APPLICABLES pour le titre → 0 sans
    erreur (les détecteurs shared continuent de compter). Test de régression
    metadata H5-like.
-6. Hérités pré-campagne : V10c (budgets sous charge → statuer J4/J6) ·
+6. Hérités pré-campagne : ~~V10c (budgets sous charge → statuer J4/J6)~~ **FAIT**
+   (rapport `.ai/RAPPORT_V10C_BUDGETS_2026-07-13.md`, embarqué au train) : mesure prod
+   lecture seule → **J1(2) RÉSOLU** (garder single-conn), **J4 + J6 RETIRÉS** (chemin
+   HTTP lecture non contendu / goulot = compute, pas N+1). Découverte reportée → item 10. ·
    ~~`populate-assets` absent de l'image prod~~ FAIT (lot ops item 4) : devenu
    sous-commande `levelup populate-assets` (logique inchangée, binaire standalone
    supprimé, runbooks à jour) — la CLI `levelup` est déjà dans l'image
@@ -134,6 +132,10 @@
    nécessitent des plans dédiés.
 9. Coexistence des modes d'auth (SSO Xbox ET password sur la même instance, au lieu
    de modes exclusifs) — retour UX utilisateur du 13/07 (« un admin est un joueur »).
+10. **Perf B-swap write-side du post-sync** (~205 acquisitions RW/cycle, ~51 min de
+    stall lecteur/8 h — mesure V10c) — chantier candidat, sur GO. Levier perf réel sous
+    charge identifié par la mesure V10c (contention côté écriture du `sync_v2_postsync`,
+    24 768 swaps RO↔RW / 7 h 44) ; hors périmètre J4/J6 (retirés). Sur simple feu vert.
 
 ## 6. RANGEMENT .ai (état après ce commit)
 
