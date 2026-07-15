@@ -5,8 +5,8 @@
 // avant de compléter le flow SISU.
 //
 // Endpoints :
-//   - POST https://login.live.com/oauth20_connect/device  (start)
-//   - POST https://login.live.com/oauth20_token.srf       (poll)
+//   - POST https://login.live.com/oauth20_connect.srf  (start)
+//   - POST https://login.live.com/oauth20_token.srf    (poll)
 package auth
 
 import (
@@ -22,7 +22,12 @@ import (
 )
 
 const (
-	xboxDeviceCodeURL = "https://login.live.com/oauth20_connect/device"
+	// xboxDeviceCodeURL : endpoint MSA de démarrage du Device Code Flow natif Xbox.
+	// ATTENTION : c'est bien oauth20_connect.srf — l'URL "/oauth20_connect/device"
+	// (présente depuis l'introduction du SISU provider) renvoie HTTP 404 chez
+	// Microsoft : le login SSO Xbox ne s'amorçait JAMAIS (constaté en local
+	// 2026-07-13, vérifié par POST direct : .srf → 200 + device_code, /device → 404).
+	xboxDeviceCodeURL = "https://login.live.com/oauth20_connect.srf"
 	xboxTokenURL      = "https://login.live.com/oauth20_token.srf"
 	// pollSlowDownIncrement est l'augmentation d'intervalle sur slow_down (RFC 8628 §3.5).
 	pollSlowDownIncrement = 5

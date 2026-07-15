@@ -1190,6 +1190,17 @@ Tous les graphiques partagent :
 ## 9. Page EXPLORER (Moteur de recherche)
 
 **Fichiers** : `src/ui/pages/explorer.py`, `explorer_results.py`, `match_table_html.py`
+(note : refs Python périmées post-migration ; stack actuelle = `apps/web/src/features/explorer/`).
+
+### 9.0 Bandeau de briefing (mode Matchs) — 2026-07
+
+| Propriété | Valeur |
+|-----------|--------|
+| Type | Bandeau au-dessus du tableau : rangée socle 4 KPI + frise + modules conditionnels |
+| Socle | Matchs+période, Taux de victoire+bilan, FDA agrégat, Perf. moyenne (deltas vs baseline) |
+| Frise | `OutcomeSequenceTape` (résultats du scope, 60 max) |
+| Modules | Dimensions (carte/mode/playlist top·flop + note palier), Tendance (sparkline `TimeseriesLineChart`), Pronostic (attendu vs réel + Δ classement, gaté capability ranked) |
+| **Source** | `apps/web/src/features/explorer/ExplorerBriefingStrip.tsx` + `ExplorerBriefingModules.tsx` ; backend `match_history_service_briefing.go` (opt-in `include_briefing`) |
 
 ### 9.1 Tableau HTML : Résultats de recherche matchs
 

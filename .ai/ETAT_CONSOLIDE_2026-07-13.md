@@ -1,4 +1,13 @@
-# ÉTAT CONSOLIDÉ — 2026-07-13 (source unique du reste-à-faire)
+# ÉTAT CONSOLIDÉ — 2026-07-13 (source unique du reste-à-faire) — MAJ 13/07 soir
+
+> FILE OPUS (MAJ 13/07 soir, après arbitrages utilisateur) :
+> 1) fin du lot ops/qualité (en vol : fix URL login device-flow + alerte disque +
+>    data-quality H5 + populate-assets) → 2) **D4 Explorer briefing cards (GO)** →
+> 3) **D1 Momentum (GO)** → 4) auth device-flow lots A+D → 5) V10c → 6) fixture E2E →
+> 7) **revue adversariale multi-agents du diff cumulé** (validée utilisateur 13/07) →
+> train de merge unique (PR, merge = utilisateur).
+> RETIRÉ de la file (recadrage utilisateur) : tout chantier tiré du backlog Notion —
+> carnet personnel, pas une file d'exécution. D2/D5 : reportés à la v7.1.
 
 > Ce document REMPLACE `CHECKLIST_POST_CAMPAGNE_2026-07-12.md` (partiellement périmée)
 > comme vue consolidée. Mise à jour : à chaque clôture de chantier, ce fichier est le
@@ -16,60 +25,115 @@
   parité H5 (Q19c, known-set, achievements).
 - Incident disque VPS 2026-07-13 (deploy #56) : récupéré + cause racine fixée
   (`docker builder prune` dans deploy.sh, PR #57) — cache borné à ~5 Go, vérifié.
+- **Fuite inter-titres via deep-link `?f=` : CORRIGÉE, mergée (PR #59) et déployée**
+  — titre estampillé dans `?f=` + réconciliation au bootstrap (reset si titre
+  différent), rétro-compat des liens existants, 12 tests. **Confirmé par l'utilisateur
+  le 13/07 : plus de mélange entre les jeux.** Bouton « Se déconnecter » : PAS un bug
+  (local en `auth_mode: none` = aucune session, donc ni logout ni admin — par design).
+- Consolidation + rangement .ai mergés (PR #58).
 
 ## 2. EN COURS (machine — rien à décider)
 
 | Quoi | Où | Échéance |
 |---|---|---|
-| BUG fuite inter-titres home (deep-link `f=` post-switch) + bouton déconnexion disparu | agent Opus sur `fix/title-switch-deeplink-leak`, repro navigateur | rapport imminent |
+| **Revue adversariale du train FAITE + corrections LIVRÉES (2026-07-15)** : 14 défauts confirmés → **10 corrigés, 4 écartés** (rapport `.ai/REVUE_ADVERSARIALE_TRAIN_2026-07-15.md`). Majeurs corrigés : ART `INSERT OR REPLACE` du seeder (CI rouge évitée), slot SISU global `p.current` → per-flow, test déterminisme seeder renforcé (3 non-déterminations ancrées). + 3 garde-rails file-level préexistants du seeder synthétique réparés (shared_social/halowaypoint/raw-outcome, `go test ./...` était rouge). Tous les gates verts (build/vet/test/intégration-p1/golangci 0 ; tsc/eslint/vitest 2159). | branche `fix/revue-adversariale` (depuis `test/e2e-fixture-synthetique`) | prêt pour train de merge |
+| Lot ops/qualité TERMINÉ (0/0b SSO+UI, 1 leaderboard, 2 alerte disque, 3 data-quality H5, 4 populate-assets) | branche `chore/lot-ops-qualite` — CI de branche + rapport final en cours | prêt pour revue/merge |
+| Momentum Match View LIVRÉ (D1) : carte Dominance = histogramme momentum divergent (barres signées team-ally/enemy, intensité DEC-4, échelle symétrique, tooltip axis Écart/Cumul) ; kill feed conservé ; hexToRgba centralisé + garde-rail | branche `feat/matchview-momentum` (depuis `chore/lot-ops-qualite`) — 3 commits, gates verts, vérif visuelle Infinite+H5+couleur+thèmes faite ; plan `.ai/V7/PLAN_MATCHVIEW_MOMENTUM` COMPLÉTÉ | prêt pour train de merge |
+| Explorer briefing cards LIVRÉ (D4) : bandeau mode Matchs = socle 4 KPI (raw-cohérent) + frise + dimensions (carte/mode/playlist + notes palier) + tendance (sparkline) + Pronostic (attendu vs réel, gaté ranked) ; opt-in `include_briefing` | branche `feat/explorer-briefing-cards` (depuis `main`+momentum) — 4 commits lot A/B/C + 1 commit lot D/fixes, gates verts, vérif visuelle Infinite+H5 ; plan `.ai/V7/PLAN_EXPLORER_BRIEFING_CARDS` COMPLÉTÉ ; **2 arbitrages produit en attente (Pronostic + Δ LUSR)** | prêt pour train de merge |
+| Auth device-flow lots A+D LIVRÉS : lot A (UI d'erreur StepDeviceCode = fin du spinner infini au start + tests + i18n) ; lot D (garde-rail réseau opt-in `xbox_device_code_reachability_integration_test.go` + doc `auth_provider` SISU/MSAL FR+EN sur INSTALL/CONFIGURATION) ; D3 contournement local déjà retiré. Plan `PLAN_AUTH_DEVICE_FLOW_SISU_404` COMPLÉTÉ, archivé `.ai/V7/`. Lot B sans objet, C fait par lot ops item 0 | branche `fix/auth-deviceflow-lots-ad` (depuis `feat/explorer-briefing-cards`) — 3 commits, gates verts, vérif navigateur | prêt pour train de merge |
+| Fixture E2E synthétique LIVRÉE (item 4 §5) : générateur `levelup seed-demo --synthetic` (DuckDB vierges migrées + INSERT déterministes, 60 matchs/5 sessions/3 joueurs, aucune donnée réelle) + `LEVELUP_DEMO_LOCALE` (défaut en, CI=fr) + CI e2e-react seede la fixture avant le backend + fix proxy Vite. Preuve locale : **76 passed / 31 skipped / 0 failed** (baseline 42/65). Skips résiduels DOCUMENTÉS (helpers `skipObsoleteSpec`/`skipRequiresRealPlayer`) : ~6 specs stale (dérive route/endpoint/UI — à réécrire), 3 real-player (JGtm/synergies), engagement (demo). Le job E2E ne tourne qu'à la PR du train | branche `test/e2e-fixture-synthetique` (depuis `fix/auth-deviceflow-lots-ad`) — gates Go+lint+typecheck verts | prêt pour train de merge |
 | Observation `legacy_source_used` = 0 | prod (T0 = 2026-07-13) | D2 armable ≥ 2026-07-20 → chantier Phase 5 ADR 0023 (retrait fallbacks legacy) |
 | Soak bruit prod B2.4 | re-mesure script §Mesure du plan triage | 2026-07-14 |
 | Soak 30 j B7.4 (cible ERROR ≈ 0/j) + décision endpoint `/admin/monitoring/errors` | plan triage | ~2026-08-11 |
 
 ## 3. POUR GUILLAUME — actions rapides
 
-- [ ] Session admin locale : se déconnecter/reconnecter après l'ajout du xuid dans
-      `data/auth/users.json` (fait) ; si besoin vider `data/sessions/` + relancer.
-      (Bloqué tant que le bouton logout manque — fix en cours, sinon vider les cookies.)
-- [ ] Passe visuelle (prod à jour) : Explorer « matchs récents » profil H5 ·
-      `/admin/data` (après session admin) · « En placement » · « Super Fiesta » ·
-      grille KPI sans trous · mention « calibration provisoire » disparue (H5) ·
-      match `bc918a5a` (courbe affichée) · galerie médias H5.
-- [ ] Actions data-quality (admin > Données, DRY-RUN d'abord) : B4.1 registry-names ·
-      B4.2 aliases/orphelins · B4.3 lying-bits · B4.4 mode translations ·
-      B5.5 migrate-media-paths. (Solde le plan triage côté actions.)
+- [ ] **Actions data-quality → SUR PROD** (`https://lvelup.info/admin/data`, session
+      habituelle — ce sont des actions sur les données prod, le local n'est pas le bon
+      endroit) : DRY-RUN d'abord — B4.1 registry-names · B4.2 aliases/orphelins ·
+      B4.3 lying-bits · B4.4 mode translations · B5.5 migrate-media-paths.
+- [ ] Admin en LOCAL — VÉRIFIÉ + RÉPARÉ le 13/07 (lot ops item 0 + retouche UI) :
+      `.env.local` en `LEVELUP_AUTH_MODE=xbox` pris en compte (serveur redémarré) ;
+      le login SSO Xbox — CASSÉ pour tout le monde (URL device-code 404 depuis
+      l'introduction de SISU, cf. `PLAN_AUTH_DEVICE_FLOW_SISU_404` requalifié) — est
+      corrigé ; et ton signalement UI est réglé : le lien affiché est maintenant
+      court (`microsoft.com/link`) ET pointe la vraie page de SAISIE du code
+      (`oauth20_remoteconnect.srf`, vérifié navigateur) — l'ancienne URL authorize
+      interminable ne demandait jamais le code. **Toi : ouvre
+      `http://localhost:5173/login`, va sur `microsoft.com/link` (lien affiché),
+      connecte-toi avec ton compte Microsoft et saisis le code affiché par LevelUp —
+      la session locale devient automatiquement ADMIN (ton xuid 2533274823110022 est
+      dans `users.json`).**
+      NOTE produit (retour utilisateur) : « un admin est un joueur » — modes exclusifs
+      = UX discutable ; coexistence SSO+password notée au backlog (item 9, §5).
+- [ ] **Webhook Discord en PROD pour l'alerte disque** (après merge+deploy du lot ops) :
+      dans `/opt/levelup/app_settings.json`, passer `"discord_notifications_enabled": true`
+      et renseigner `"discord_webhook_url": "https://discord.com/api/webhooks/…"`
+      (ou env `LEVELUP_DISCORD_WEBHOOK_URL`), puis redémarrer le conteneur. Vérifié
+      le 13/07 (lecture seule) : actuellement `false` + pas d'URL → sans ça, l'alerte
+      disque reste visible UNIQUEMENT dans Admin > Monitoring (détections + badge).
+- [x] ~~Fuite inter-titres~~ : confirmée corrigée par l'utilisateur le 13/07.
+- [ ] Passe visuelle restante (prod à jour) : Explorer « matchs récents » profil H5 ·
+      « En placement » · « Super Fiesta » · grille KPI sans trous · mention
+      « calibration provisoire » disparue (H5) · match `bc918a5a` (courbe affichée) ·
+      galerie médias H5.
 
 ## 4. POUR GUILLAUME — décisions attendues (chacune débloque un chantier pilotable)
 
 | # | Décision | Détail |
 |---|---|---|
-| D1 | GO exécution `PLAN_MATCHVIEW_MOMENTUM_2026-07` | DEC-1..7 déjà tranchées dans le plan (graphe momentum match view / escouade / solo) |
-| D2 | Trancher DEC-1..9 de `PLAN_REVUE_ANALYTIQUE_TIMESERIES_SQUAD_2026-07` | Couvre les items Notion : graphes Synthesis/Timeseries, ordre chronologique Escouade, radar synergie |
-| D3 | `PLAN_AUTH_DEVICE_FLOW_SISU_404_2026-07` : trancher l'option du lot B | Onboarding device-flow cassé (endpoint MS retiré). Reco exécutant : Option 3 (fallback auto SISU→MSAL) + ticket recherche Option 1. Lots A (fix spinner) et D (garde-rail) exécutables dès le GO |
-| D4 | GO exécution `PLAN_EXPLORER_BRIEFING_CARDS_2026-07` | Plan prêt pour agent |
-| D5 | Prioriser les plans exclus de la campagne | `PLAN_ASCENSION_UX` (item Notion « Finir la page Ascension ») · `PLAN_DIAG_APPARENCE_ADMIN` (probable réponse à « nameplate ne se met pas à jour ») · `PLAN_RELATIONS_UX` (item Notion « joueurs croisés multi-jeux ») · `PLAN_WEAPON_ATTRIBUTION_V3` (à requalifier : approche supersédée par same-clock) |
+| D1 | ~~GO exécution momentum~~ **LIVRÉ le 13/07** | Branche `feat/matchview-momentum` (COMPLÉTÉ, gates verts, vérif visuelle Infinite+H5+couleur+thèmes) ; plan archivé `.ai/V7/PLAN_MATCHVIEW_MOMENTUM` ; reste train de merge + revue visuelle utilisateur |
+| D2 | ~~Revue analytique~~ **REPORTÉ v7.1** (décision utilisateur 13/07) | Les DEC-1..9 seront tranchées à l'ouverture du chantier v7.1 |
+| D3 | ~~Trancher l'option du lot B~~ **SANS OBJET le 13/07** (lot ops item 0) — **lots A+D LIVRÉS le 13/07** | La prémisse « endpoint MS retiré » était fausse : l'URL du code n'a jamais été la bonne (`/oauth20_connect/device` ; la vraie = `oauth20_connect.srf`). Fix livré + vérifié navigateur = Option 1 de fait. Lots A (UI d'erreur StepDeviceCode) et D (garde-rail réseau opt-in + doc `auth_provider` FR/EN) SOLDÉS (branche `fix/auth-deviceflow-lots-ad`) ; contournement local `auth_provider=msal` déjà retiré (`app_settings.json` = `""`). Plan `PLAN_AUTH_DEVICE_FLOW_SISU_404` COMPLÉTÉ + archivé V7. Plus rien à décider |
+| D4 | ~~GO exécution briefing cards~~ **LIVRÉ le 13/07** (branche `feat/explorer-briefing-cards`) | Bandeau Explorer mode Matchs : socle + frise + dimensions + tendance + Pronostic. Gates verts, vérif visuelle Infinite+H5. **2 arbitrages produit en attente** : (1) module « classé »→« Pronostic » (pas de donnée CSR) ; (2) affichage Δ classement LUSR cumulé. Prêt pour train de merge |
+| D5 | ~~Prioriser les plans exclus~~ **REPORTÉ v7.1** (décision utilisateur 13/07) | Ascension UX · Diag apparence admin · Relations UX · weapon_attribution_v3 — dossier v7.1 |
+| D7 | ~~Titre dans l'URL~~ **PRINCIPE APPROUVÉ le 13/07** | Plan en cours d'écriture (agent Opus, worktree). Sera soumis à relecture avant exécution. Routes `/t/{slug}/...`, la garde deep-link #59 reste en défense en profondeur |
 
 ## 5. BACKLOG PILOTABLE SANS DÉCISION (sur simple feu vert, par valeur estimée)
 
-1. Requalifier le cron leaderboard 404 saison (2 ERROR/j résiduels — reste C3 du
-   chantier leaderboard, réf HANDOFF_LEADERBOARD_CATALOGUE).
-2. Alerte disque VPS > 80 % → notification push (aujourd'hui : journald que personne
-   ne lit ; l'incident du 13/07 l'a prouvé).
-3. Items Notion sans plan : notif Discord · badges « Historique des rencontres » ·
-   « Enregistrer cette compo » 404 · couleurs d'équipes H5 · image unranked H5 ·
-   likes Médias · i18n EN restante (menu L1, rangs, battlepass/défis, glossaire
-   markdown) · heatmap accessibilité/motifs · pills « Rôle » · tooltip durée de vie
-   XmYYs · axe nombre de parties · intensité contributions ordre inversé.
-4. Fixture E2E synthétique (réactiverait ~60 specs actuellement skippées en CI).
-5. Détecteur data-quality H5 en erreur en LOCAL (schéma shared H5 absent ?).
+1. ~~Requalifier le cron leaderboard 404 saison~~ FAIT (lot ops item 1, commit
+   `f4721be0f` — en attente de merge avec le reste du lot).
+2. ~~Alerte disque VPS > 80 % → notification push~~ FAIT (lot ops item 2) : boucle
+   serveur `RunDiskWatchLoop` (15 min, volume data = FS hôte via bind mount) →
+   détection persistée + badge admin (WARN/ERROR stable) + notif Discord
+   (transition + rappel 24 h + rétablissement, toggle `discord_notify_disk`).
+   Seuils A5.3 étendus : 80 %/90 % d'occupation EN PLUS des absolus 2 Go/500 Mo.
+   **Pour la notif push en PROD, config requise (§3)** ; sans webhook l'alerte
+   reste visible (détections admin). Script hôte journald = redondance, retrait
+   optionnel.
+3. ~~Items Notion sans plan~~ **RETIRÉ (recadrage utilisateur 13/07)** : le backlog
+   Notion est le carnet personnel de Guillaume — aucun chantier n'en sera tiré sans
+   demande explicite de sa part.
+4. ~~Fixture E2E synthétique~~ **FAIT** (branche `test/e2e-fixture-synthetique`) :
+   `levelup seed-demo --synthetic` génère `data/demo/` (DuckDB vierges migrées + INSERT
+   déterministes) ; CI e2e-react la seede avant le backend (locale `fr`). **76 passed /
+   31 skipped / 0 failed** en local (baseline 42/65). Découverte : ~9 des specs
+   réactivées sont STALE (dérive route/endpoint/UI jamais détectée car toujours
+   skippées) → skippées avec motif documenté + À RÉÉCRIRE (backlog séparé). Restent
+   `git commit` + train de merge.
+5. ~~Détecteur data-quality H5 en erreur en LOCAL~~ FAIT (lot ops item 3) : cause =
+   la metadata H5 (schéma PROPRE, PMT-9) n'a NI `mode_name_tr` NI `playlists_catalog`
+   (prouvé on-disk : 13 tables, `playlists` à la place) → Catalog Error → tout
+   l'endpoint en 500. Fix title-agnostic : introspection de schéma → détecteurs
+   `untranslated_modes`/`orphan_playlists` NON APPLICABLES pour le titre → 0 sans
+   erreur (les détecteurs shared continuent de compter). Test de régression
+   metadata H5-like.
 6. Hérités pré-campagne : V10c (budgets sous charge → statuer J4/J6) ·
-   `populate-assets` absent de l'image prod.
+   ~~`populate-assets` absent de l'image prod~~ FAIT (lot ops item 4) : devenu
+   sous-commande `levelup populate-assets` (logique inchangée, binaire standalone
+   supprimé, runbooks à jour) — la CLI `levelup` est déjà dans l'image
+   (`/usr/local/bin/levelup`) → exécutable en prod via
+   `docker compose exec levelup levelup populate-assets --dry-run …`.
    Backup restic off-site : **DÉCISION 2026-07-13 — inaction actée par l'utilisateur**
    (pas d'actualité, à revoir beaucoup plus tard ; aucune tâche ouverte).
 7. Dette lint gelée (~479 issues) — optionnel.
+7b. Étude « openapi.yaml généré depuis Huma » (un seul point de vérité, fin du
+    drift-test double-maintenance) — idée utilisateur 13/07, **pour bien plus tard**.
 8. Gros morceaux Notion v7.1 (Replay 2D, NAScode, télémétrie coaching, spartan
    abilities, score/objectifs match view, flag prolongations, armes d'épaule) —
    nécessitent des plans dédiés.
+9. Coexistence des modes d'auth (SSO Xbox ET password sur la même instance, au lieu
+   de modes exclusifs) — retour UX utilisateur du 13/07 (« un admin est un joueur »).
 
 ## 6. RANGEMENT .ai (état après ce commit)
 

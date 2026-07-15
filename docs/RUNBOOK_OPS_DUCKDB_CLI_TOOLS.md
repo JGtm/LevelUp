@@ -28,7 +28,7 @@ Les CLI suivants modifient des DBs **partagées** (metadata.duckdb, shared_match
 - `cmd/refresh-career-ranks` — career_ranks
 - `cmd/populate-career-rank-images` — assets images
 - `cmd/populate-playlists-catalog` — playlists_catalog
-- `cmd/populate-assets` — assets génériques
+- `levelup populate-assets` — assets génériques (subcommand of the `levelup` CLI since 2026-07-13, shipped in the prod image ; ex-`cmd/populate-assets`)
 
 ### Shared matches v2 + xuid_aliases global
 - `cmd/migrate-xuid-aliases-global` — globalise xuid_aliases

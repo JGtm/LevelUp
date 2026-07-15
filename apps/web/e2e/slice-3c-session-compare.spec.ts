@@ -10,9 +10,16 @@
  * 4. Pas d'erreur 500
  */
 import { test, expect } from '@playwright/test'
-import { skipIfNoDemoData } from './_helpers/demoData'
+import { skipIfNoDemoData, skipObsoleteSpec } from './_helpers/demoData'
 
 test.describe('Slice 3C — Comparaison de sessions (DEMO_MODE)', () => {
+  // L'endpoint POST /pages/session-compare a été supprimé côté Go (couvert par
+  // /pages/timeseries — cf. openapi.yaml) → 404. Spec à réécrire sur /pages/timeseries.
+  test.beforeEach(() => {
+    skipObsoleteSpec(
+      'endpoint POST /pages/session-compare supprimé (couvert par /pages/timeseries — cf. openapi.yaml)',
+    )
+  })
   test("l'API /pages/session-compare retourne HTTP 200", async ({ request }) => {
     await skipIfNoDemoData()
     const resp = await request.post(

@@ -25,6 +25,16 @@ type DeviceFlow interface {
 	AcquireToken(ctx context.Context) (string, error)
 }
 
+// FlowExchanger est un DeviceFlow qui complète LUI-MÊME l'échange en tokens Halo,
+// en portant son propre contexte éphémère (flow SISU : kp/deviceToken/sessionID/
+// codeVerifier). Il n'existe alors AUCUN slot partagé sur le provider — deux
+// onboardings concurrents ou un refresh stateless du pool ne peuvent plus se
+// consommer/écraser mutuellement. Un flow qui n'implémente pas FlowExchanger
+// (MSAL, stub) retombe sur TokenProvider.Exchange (échange stateless standard).
+type FlowExchanger interface {
+	ExchangeFlow(ctx context.Context, accessToken string) (*ExchangeResult, error)
+}
+
 // stubDeviceFlow implémente DeviceFlow pour les tests unitaires.
 type stubDeviceFlow struct {
 	message         string

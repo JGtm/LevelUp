@@ -1,3 +1,583 @@
+## [2026-07-15] Revue adversariale du train — corrections (branche fix/revue-adversariale)
+
+**Statut** : Complété — 14 défauts confirmés → 10 corrigés, 4 écartés. Rapport complet :
+`.ai/REVUE_ADVERSARIALE_TRAIN_2026-07-15.md`. Tous les gates verts.
+
+**Décision technique principale** :
+- **ART (majeur, CI rouge évitée)** : `INSERT OR REPLACE INTO sync_meta` du seeder synthétique
+  → `INSERT` pur (DB vierge). Débloque `TestNoARTPatternsOnProtectedTables`.
+- **SISU per-flow (majeur, sécu)** : suppression du slot GLOBAL `SISUProvider.current` — le
+  contexte SISU est porté par le `sisuDeviceFlow` (interface `auth.FlowExchanger`, routée par
+  `handlers/auth.go`), `Exchange` devient toujours stateless. Élimine la course où le pool
+  auto-sync (ou un 2e onboarding) consommait le contexte du device-flow interactif. Single-flight
+  `waitDeviceFlowReady` préservé (stub → fallback stateless). Régression `PerFlowContextIsolation`.
+- **Déterminisme seeder (majeur, test)** : `TestSeedDemoSynthetic_Deterministic` dumpe désormais
+  les données réelles (17 tables seedées × 6 DBs, ligne à ligne triée) entre 2 runs → 3 vraies
+  non-déterminations débusquées et ancrées sur `synthAnchor` (`fetched_at`, `match_citations.written_at`,
+  `weapon_kills.written_at`).
+- Mineurs : `metaTableExists`→`(bool,error)` (erreur remontée, plus de faux vert data-quality) ;
+  débounce anti-oscillation de l'alerte disque (améliorations confirmées sur 2 ticks) ;
+  `AggregateKDA` migré (copie explorer_target_stats + garde-rail grep) ; helper mort
+  `perfTierLabelKey` supprimé ; URL webhook Discord expurgée des logs (`sanitizeSendError`) ;
+  momentum front aligné sur le clamp backend `tug_of_war.go` ; README breakdown à jour.
+- **Bonus (bloquaient `go test ./...`)** : 3 garde-rails file-level préexistants du seeder
+  synthétique réparés — `shared_social` whitelist, `halowaypoint` allowlist, littéraux outcome
+  → constantes `domain.Outcome*`. Le chantier fixture avait introduit ces 4 violations (ART inclus)
+  sans mettre à jour les allowlists ; la revue n'avait trouvé que l'ART.
+- **Écartés (4)** : populate-assets locks (runbook one-off serveur-arrêté ; ligne thought_log
+  corrigée), disk notify-on-send-failure (canal primaire = détection persistée), specs e2e stale
+  (backlog réécriture tracké), reachability opt-in (commande manuelle ajoutée au RUNBOOK_DEPLOY_CHECKLIST).
+
+**Résultats observés** : `go build/vet/test ./...` verts ; `go test -tags=integration -p 1 ./...`
+vert ; `golangci-lint --new-from-rev=test/e2e-fixture-synthetique` = 0 ; front `tsc`/`eslint` 0,
+`vitest` 255 fichiers / 2159 passés / 14 skipped.
+
+**Conclusion / prochaine étape** : corrections livrées, prêtes pour le train de merge. Ne pas
+pousser sur `main` (deploy prod auto).
+
+## [2026-07-14] Fixture démo E2E SYNTHÉTIQUE — réactivation des specs data-dépendantes (branche test/e2e-fixture-synthetique)
+
+**Statut** : Complété — `levelup seed-demo --synthetic` livré, CI e2e-react câblée,
+preuve locale **76 passed / 31 skipped / 0 failed** (baseline 42/65).
+
+**Décision technique** :
+- Générateur `SeedDemoSynthetic` (internal/ops/seed_demo_synthetic*.go) : DuckDB VIERGES
+  migrées via les MÊMES migrations que la prod (`RunForTitleDB` → vues `_latest`, schéma
+  append-only) + INSERT synthétiques DÉTERMINISTES (ancre fixe 2026-07-10, seed PRNG fixe,
+  aucun `time.Now()` non ancré). 60 matchs / 5 sessions (dont 3 escouade) / 3 joueurs
+  (DemoPlayer + 2 coéquipiers). Anti-ART respecté : DB fraîches NON partagées, INSERT-only,
+  `written_at` posé sur les tables append-only, lecture via `_latest`.
+- Metadata (verdict d'investigation) : noms carte/mode/playlist DÉNORMALISÉS dans
+  match_registry (`*_fr`) → aucune lecture metadata au rendu ; référentiels seedés par
+  migration (weapon_labels, mode_name_tr, csr thresholds) + `seed citation-mappings`/
+  `rank-translations` (Go embarqué, CI-safe) + INSERT synthétiques medal_definitions +
+  career_ranks (schéma complet → évite le Binder Error du piège ops/seed.go).
+- 2 tables base-schema absentes de RunForTitleDB (personal_score_awards, player_csr_snapshots)
+  provisionnées AVANT migrations (ordre du boot) — DDL inlinée depuis sync/schema.go car
+  ops ne peut importer sync (cycle sync→ops).
+- `LEVELUP_DEMO_LOCALE` (config, défaut "en" = comportement prod inchangé) : le bootstrap
+  démo forçait "en" en dur (vitrine internationale) ; les specs vérifient l'UI FR → CI pinne
+  `=fr`. Sinon toute l'app rendait en anglais et les checks « Carrière/Historique/… » cassaient.
+- Fix latent CI : `VITE_API_BASE_URL=http://localhost:8000` cassait le préfixe `/api/v1`
+  (jamais détecté car les specs data skippaient) → passage au proxy Vite relatif.
+
+**Découverte majeure** : réactiver les specs a révélé que ~9 d'entre elles sont STALE —
+elles visent des routes/endpoints/UI qui ont CHANGÉ depuis leur écriture (route
+`/stats/history` supprimée, endpoint `/pages/session-compare` fusionné dans timeseries,
+Ascension redessinée 2→3 onglets, onglet « Combat » du match view → « Général/Détails »).
+La dérive n'avait jamais été vue car ces specs skippaient toujours (pas de démo en CI).
+Traitées par skip DOCUMENTÉ (`skipObsoleteSpec` — à réécrire, backlog séparé). Les specs
+exigeant un joueur RÉEL (JGtm + coéquipiers nommés + synergies) : `skipRequiresRealPlayer`
+(skip si `E2E_SYNTHETIC_DEMO=1`, s'exécutent contre une démo réelle). Vérif navigateur :
+Home/Carrière/Sessions/Explorer/Escouade/Match View/Synthèse rendent richement en FR.
+
+**Résultats gates** : go test config+service+ops(intégration `-p 1`) verts ; test
+d'intégration dédié (structure + déterminisme) vert ; golangci-lint
+`--new-from-rev=fix/auth-deviceflow-lots-ad` = 0 issue ; tsc (typecheck web) vert.
+
+**Restauration** : serveur dev user (air, port 8000, mode xbox) arrêté le temps du test
+E2E sur 8000, RELANCÉ via Start-Process à la clôture ; `data/demo` local de l'utilisateur
+NON touché (fixture générée dans un repo scratch isolé).
+
+**Conclusion / prochaine étape** : branche prête pour le train de merge (pas de PR — merge
+= utilisateur). Le job E2E ne tournera qu'à la PR du train. Backlog : réécrire les ~9 specs
+stale pour l'UI courante. ETAT consolidé MAJ (section 2 + item 4 §5).
+
+## [2026-07-13] Auth device-flow — LOT D + CLÔTURE du plan (branche fix/auth-deviceflow-lots-ad)
+
+**Statut** : Complété — `PLAN_AUTH_DEVICE_FLOW_SISU_404_2026-07` SOLDÉ (lots A + D ; B
+sans objet ; C déjà fait par le lot ops item 0), déplacé en `.ai/V7/`.
+
+**Décision technique** :
+- D1 (garde-rail) : j'ai choisi un test taggé `integration` + opt-in réseau (env
+  `LEVELUP_DEVICE_ENDPOINT_LIVE_CHECK`) plutôt qu'une sonde de santé au boot. Justif :
+  coût runtime nul, zéro faux WARN en dev offline (une sonde bruiterait chaque démarrage
+  sans réseau → fatigue d'alerte), aucune dépendance réseau au démarrage du serveur, et
+  double-gate (tag + env) qui SKIP dans le gate anti-ART `-tags=integration` sans jamais
+  le flaker. Le test exerce la constante RÉELLE `xboxDeviceCodeURL` via
+  `StartXboxDeviceCode` → referme exactement le blind spot « tests à URLs mockées »
+  (conclusion D du plan). Vérifié : SKIP sans env, PASS en réel (endpoint joignable,
+  user_code, expires_in=900 s).
+- D2 : `auth_provider` (SISU défaut vs MSAL fallback config-only) documenté en parité
+  FR+EN (règle §15) sur `docs/INSTALL.md`, `docs/FR/INSTALL.md`, `docs/CONFIGURATION.md`,
+  `docs/FR/CONFIGURATION.md`.
+- D3 : contournement local `auth_provider=msal` (11/07) déjà retiré — `app_settings.json`
+  (gitignored) vaut `""`. Rien à supprimer, consigné.
+
+**Résultats gates** : go vet `-tags=integration` + tests package `auth` verts ;
+garde-rail réel PASS ; golangci-lint `--new-from-rev=feat/explorer-briefing-cards
+--build-tags=integration` = 0 issue ; docs-fr-sync pré-commit OK (parité).
+
+**Conclusion / prochaine étape** : plan clos, branche `fix/auth-deviceflow-lots-ad`
+poussée pour le train de merge (pas de PR — merge = utilisateur). ETAT consolidé MAJ
+(section 2 + ligne D3).
+
+## [2026-07-13] Auth device-flow — LOT A : spinner infini au start (branche fix/auth-deviceflow-lots-ad)
+
+**Statut** : Complété — Lot A du `PLAN_AUTH_DEVICE_FLOW_SISU_404_2026-07` livré + gaté.
+
+**Décision technique** : dans `StepDeviceCode.tsx`, l'échec du POST `/device-flow/start`
+(500 `msal_init_error`, ou 503 retryable du single-flight corrigé côté serveur le 13/07)
+était avalé — la garde spinner `startFlow.isPending || (!status && !deviceFlowUserCode)`
+restait vraie sans fin. Ajout d'un état `startError` alimenté par un `onError` centralisé
+dans un helper `startDeviceFlow()` (remplace 3 copies inline d'`onSuccess`), et early-return
+de l'UI d'erreur + « Réessayer » AVANT la garde spinner. `startError` remis à zéro dans
+`handleRetry` (event handler) et non dans le helper — sinon setState synchrone dans l'effet
+de montage (warning `react-hooks/set-state-in-effect`). `XboxLoginPage` surfait déjà l'échec
+(`startError`) : garde-rail de régression ajouté. Nouvelle clé i18n FR+EN
+`common.setup.device_start_failed`.
+
+**Résultats** : check-types OK ; eslint 0 erreur/0 warning sur fichiers touchés ; vitest
+complet 2159 passés / 14 skipped ; vérif navigateur `/login` : happy path (code H9JLGNV6 +
+`microsoft.com/link`), échec simulé (fetch override 500) → message + « Réessayer » sans
+spinner infini, reload propre restaure le code.
+
+**Conclusion / prochaine étape** : Lot A clos. Enchaîner Lot D (garde-rail joignabilité
+endpoint device-code + doc `auth_provider` FR/EN + D3 contournement local) puis clôture du plan.
+
+## [2026-07-13] Explorer briefing cards — LOT D livraison + CLÔTURE (branche feat/explorer-briefing-cards)
+
+**Statut** : Complété — plan `PLAN_EXPLORER_BRIEFING_CARDS_2026-07` SOLDÉ (A/B/C/D), déplacé en `.ai/V7/`.
+
+**Vérification visuelle (navigateur chrome-devtools, auth_mode=none temporaire puis xbox
+restauré)** : Infinite (JGtm 1001 matchs) ET H5 (XxDaemon 309). Le contexte de titre est
+piloté par le header `X-LevelUp-Title` (absent = halo_infinite par défaut) + session
+serveur (`POST /session/context`) — j'avais d'abord testé H5 sans le savoir (session=halo_5),
+ce qui a en fait validé le scénario 5 (H5 : bandeau rendu, module classé absent).
+
+**3 corrections issues de la vérif visuelle (dans le périmètre livraison)** :
+1. Socle canonical (257) ≠ tableau (309) → nouveau bloc `Scope` calculé sur les RAW rows du
+   scope ; `kpis` canonical retiré du briefing. Socle 100 % cohérent avec « N matchs trouvés ».
+2. Dimension « par mode » disparaissait (convertisseur pair-only) → réplication de
+   `ResolveModeUI(pair)` + fallback `ResolveModeUI(game_variant)` = colonne Mode du tableau.
+3. Module « classé » sans donnée (RankDelta CSR nil dans les player DBs ; `expected_win_prob`
+   LUSR-only) → PIVOT en « Pronostic » (attendu vs réel + Δ classement quand dispo), gaté
+   `rankedCapable`. **2 décisions produit à valider par l'utilisateur** (renommage + Δ LUSR).
+
+**Résultats gates finaux** : `go test ./...` VERT ; `golangci-lint --new-from-rev=a25ab7cf2`
+= 0 ; `make check-types` OK ; vitest 2157 passés / 0 échec ; eslint 0 erreur.
+
+**Conclusion** : bandeau livré et fonctionnel sur Infinite + H5. Restent 2 arbitrages produit
+(Pronostic renommage + Δ LUSR) et une passe locale EN au besoin. Prêt pour le train de merge
+(pas de PR — merge = utilisateur).
+
+## [2026-07-13] Explorer briefing cards — LOT C modules conditionnels (branche feat/explorer-briefing-cards)
+
+**Statut** : En cours — Lot C (modules front) COMPLÉTÉ + gaté vert ; reste Lot D (vérif visuelle + livraison).
+
+**Décision technique principale** : `ExplorerBriefingModules.tsx` orchestre 3 modules sous le
+socle : dimensions (carte/mode/playlist, top/flop avec note = badge palier 1..5 réutilisant
+les libellés du filtre de perf + tokens perf-tier-N), tendance (sparkline via wrapper existant
+`TimeseriesLineChart`, série taux de victoire, height 120), classé (gaté `useCapability('ranked')`
++ présence de `briefing.ranked`, delta CSR + attendu vs réel). Piège évité : la couleur de
+série ECharts passe par `colorToken` (résolu en hex par le wrapper via `resolveToken`), PAS
+`tokenCssVar` qui produit un `var(--...)` non résoluble en canvas.
+
+**Résultats observés (gates Lot C)** : `check-types` OK (après guard `?? []` sur entries/points
+typés nullable) ; eslint 0 erreur ; grep hex 0 ; vitest complet 2161 verts.
+
+**Conclusion / prochaine étape** : commit Lot C, puis Lot D — vérification visuelle navigateur
+(auth_mode=none temporaire) sur Infinite ET H5, 6 scénarios ; MAJ ETAT_CONSOLIDE (§2 + ligne D4) ;
+en-tête COMPLÉTÉ + git mv du plan vers .ai/V7/ ; push final.
+
+## [2026-07-13] Explorer briefing cards — LOT B front socle (branche feat/explorer-briefing-cards)
+
+**Statut** : En cours — Lot B (socle front) COMPLÉTÉ + gaté vert ; restent Lot C (modules) + D.
+
+**Décision technique principale** : `ExplorerBriefingStrip` = rangée socle 4 tuiles (Matchs+
+période, Taux de victoire+V-D-N+delta, FDA agrégat+delta, Perf. moyenne+delta) + frise
+`OutcomeSequenceTape` (height 64). Chrome via `KpiCard` partagé (comme KpiGrid) plutôt qu'un
+3e composant de tuile. Logique pure (KDA agrégat, winrate, deltas signés, mapping outcome)
+extraite dans `ExplorerBriefing.logic.ts` (testée). Réponse `ExplorerMatchesQueryResponse`
+déjà typée avec `briefing` (generated.ts régénéré en Lot A) → `matchesQuery.data.briefing`
+directement consommable. `include_briefing: true` posé sur la SEULE requête du mode Matchs
+(pas ally/enemy du mode Joueur, hors périmètre).
+
+**Résultats observés (gates Lot B)** : `make check-types` OK ; eslint 0 erreur (2 warnings
+pré-existants sur du code non touché) ; grep hex ExplorerBriefing* = 0 ; vitest complet
+255 fichiers / 2161 passés / 14 skipped / 0 échec.
+
+**Conclusion / prochaine étape** : commit Lot B, puis Lot C (dimensions top/flop + notes
+paliers, sparkline tendance, module classé gaté useCapability('ranked')), puis Lot D (vérif
+visuelle Infinite+H5, MAJ ETAT_CONSOLIDE, archivage plan).
+
+## [2026-07-13] Explorer briefing cards — LOT A backend (reprise WIP interrompu, branche feat/explorer-briefing-cards)
+
+**Statut** : En cours — Lot A (backend) COMPLÉTÉ + gaté vert ; restent Lots B/C (front) + D (livraison).
+
+**Reprise** : agent précédent tué après le commit WIP `c7ccda510` (couvrait EXACTEMENT
+l'item A1 : DTOs `explorer_briefing.go` + 4 champs sur explorer.go/match_history.go).
+Vérifié sur pièces + compile → A1 GARDÉ tel quel (conforme spec). A2-A10 écrits par moi.
+
+**Décision technique principale** : le socle KPIs du briefing reste canonical
+(`kpisFromScoped` = `ComputeKPIStats`), mais baseline/dimensions/tendance sont bâtis sur
+les `MatchHistoryRawRow` et non les canonical rows. Raison : les canonical de
+`LoadPlayerMatches` ne sont PAS enrichies FR (Synthèse le fait via
+`EnrichCanonicalAssetTranslations`, pas l'historique), donc dimensions par carte/mode/
+playlist auraient affiché des libellés EN sous locale FR — violation directe du critère de
+succès. Les raw rows portent déjà MapNameFR/PairNameFR/PlaylistName (COALESCE FR) ET sont
+post-exclusions (= baseline DEC-3). Le module classé réutilise `KPIStats.RankDelta`
+(delta CSR) + les `SkillExpectedWinProb` des raw rows. Écarts documentés item par item
+dans le plan.
+
+**Helpers créés (purs, testés)** : `analysis.AggregateKDA` (KDA agrégat ADR 0006 canonique,
+formule jusque-là inlinée), `analysis.ExpectedVsActual` (attendu vs réel), `breakdown.CompareByKey`
+(comparateur générique par clé — `CompareToHistorical` étant map-only). Wiring capability
+via `WithRankedCapable(titleSupportsLiveCSR)` — gate par capability match.skill.snapshot,
+jamais slug.
+
+**Résultats observés (gates Lot A, séquentiels, air stoppé)** : `go build ./internal/...`
+OK ; `go vet` OK ; `go test ./...` (go-api complet) VERT ; `golangci-lint
+--new-from-rev=a25ab7cf2` = 0 issue. Drift OpenAPI : 8 schémas `ExplorerBriefing*`
+auto-dérivés par Huma étaient MISSING → ajoutés au openapi.yaml manuel + `generated.ts`
+régénéré → test drift vert. Tests briefing : 10 cas service + 2 handler + 3 analysis, verts.
+
+**Conclusion / prochaine étape** : commit Lot A (backend), puis Lot B (front socle :
+types.ts, ExplorerPage envoie include_briefing, composant ExplorerBriefingStrip, i18n FR/EN,
+tokens sémantiques), puis Lot C (modules conditionnels + sparkline), puis D (vérif visuelle
+Infinite+H5, MAJ ETAT_CONSOLIDE, archivage plan).
+
+## [2026-07-13] Momentum Match View — Phase 4 + CLÔTURE : i18n, vérif visuelle, plan COMPLÉTÉ (branche feat/matchview-momentum)
+
+**Statut** : Complété — PLAN_MATCHVIEW_MOMENTUM SOLDÉ (4/4 phases), déplacé en .ai/V7/.
+
+**Décision technique principale** : Phase 4 = i18n (2 libellés tooltip FR+EN déjà en Phase 3)
++ vérification visuelle au navigateur + clôture. Vérif visuelle menée en basculant le
+serveur dev LOCAL en `LEVELUP_AUTH_MODE=none` (mode dev-open supporté, ownership désactivé)
+le temps des captures, puis restauration `xbox` : l'auth SSO Xbox / mot de passe admin
+n'était pas actionnable par l'agent (device-code interactif). Binaire `tmp/server.exe`
+réutilisé tel quel (chantier 100 % frontend → aucun rebuild Go), lancé avec msys64 ucrt64
+dans le PATH ; DuckDB mono-process respecté (serveur unique à la fois).
+
+**Résultats observés (vérif écran)** :
+- (a) Infinite (Super Fiesta/Streets, 28-50) : histogramme divergent net — barres bleu
+  haut (Mon équipe) / rouge bas (Adversaires), zéro au centre, intensité DEC-4 visible
+  (barres vives = momentum qui se renforce, atténuées = essoufflement), kill feed conservé
+  (lanes + vagues ×N), tooltip axis « Écart : -7 (Adversaires) / Mon équipe 0 / Adversaires
+  7 / Cumul : 6 – 19 », zéro erreur console.
+- (b) Halo 5 (Tidal/Super Fiesta, 8-27, CSR) : rendu IDENTIQUE depuis le kill-feed
+  synthétisé (killer_victim_pairs → highlight_events), affectation équipe correcte, zéro
+  erreur console → confirme le title-agnostic (aucun `slug==`).
+- (c) couleur équipe (alliés=Herbe/vert, ennemis=Soleil/jaune) : histogramme reflète
+  IMMÉDIATEMENT (ChartCard rebuild sur paletteVersion, resolveToken live). Restauré défaut.
+- (e) thème clair ET sombre : l'histogramme s'adapte (fond/axes/texte via useThemeVersion).
+  Restauré sombre.
+- (d) EmptyState live-only : garde `hasKillEvents` inchangé (préservé) → [~].
+Gate final : `.tsbuildinfo` purgé ; check-types OK ; lint 0 erreur ; test-web 254 fichiers
+/ 2151 tests verts. Environnement dev restauré (air :8000 xbox, thème sombre, couleurs défaut).
+
+**Découvertes** (consignées, non traitées — règle 7) : tooltip item scatter/vagues sous
+trigger axis global à re-confirmer à la revue merge (non bloquant, kill feed lisible) ;
+`barCategoryGap 20%` + facteurs de lane calés à l'estime (ajustables).
+
+**Conclusion / prochaine étape** : chantier momentum livré et poussé (branche
+feat/matchview-momentum). Reste hors de mon périmètre : merge (train superviseur) + revue
+visuelle utilisateur. Plan `git mv` vers `.ai/V7/`.
+
+## [2026-07-13] Momentum Match View — Phase 3 : rendu histogramme divergent (branche feat/matchview-momentum)
+
+**Statut** : Complété côté code (Phase 3/4) ; vérification visuelle = Phase 4.
+
+**Décision technique principale** : `buildOption` de `MatchTugOfWarChart.tsx` réécrit en
+histogramme momentum divergent. Suppressions (DEC-3/6/7 + code mort) : normalisation
+`teamPct/enemyPct`, `cumulMarkPoints` (labels cumul encadrés), markLine 50 %, constantes de
+layout figées 0–100, boucle events inline (déplacée en Phase 2 → `computeMomentumBins`).
+Ajouts : 2 séries bar signées même stack `momentum` (B1 : positifs team-ally / négatifs
+team-enemy → 2 entrées de légende sans nouvelle string) ; opacité par point DEC-4 via
+`hexToRgba(color, trend==='up'?0.9:0.45)` (le 3e usage qui justifiait la centralisation
+Phase 1) ; côté inactif d'un bin = `{ value: 0 }` (invisible mais présent → ancre le
+tooltip axis à CHAQUE catégorie, y compris delta 0) ; échelle Y symétrique dynamique
+`yMax=max(1,max|delta|)`, lane alliée `yMax×1.5` / top `×1.95` / bottom `−yMax×1.15` ;
+markLine dashed à `y=0` (DEC-7) ; tooltip `trigger:'axis'` (delta signé + X/Y kills +
+cumuls, remplace DEC-3) ancré via `binTooltipFormatter` sur le param `seriesType==='bar'` ;
+scatter/vagues gardent `tooltip.trigger='item'`. Kill feed (lanes/scatter/vagues, grille
+double) conservé intégralement (DEC-2), lanes repositionnées sur `yMax`. Extraction en
+sous-fonctions (`resolveXuidMeta`, `buildBinTooltips`, `buildBarSeries`,
+`buildKillFeedSeries`, `buildWaveSeries`, `buildXAxes`) → fichier 336 L, `buildOption`
+~42 L (seuils OK). 2 libellés i18n de tooltip ajoutés FR+EN : `combatMomentumDelta`
+(Écart/Delta), `combatMomentumCumul` (Cumul/Cumulative). Titre carte inchangé « Dominance »
+(DEC-1). Types `MomentumBin/MomentumKill` exportés (consommés par le composant → knip OK).
+
+**Résultats observés** : typecheck OK ; vitest 254 fichiers / 2151 tests verts ; eslint 0 ;
+knip-ratchet types 85/86 (aucune régression) ; grep périmètre : aucune déclaration locale
+`hexToRgba` ni hex en dur introduit (seuls import + usage ; hex restants = exceptions
+`color-allow` pré-existantes hors périmètre).
+
+**Point de vigilance (à lever en Phase 4)** : cohabitation `trigger:'axis'` (barres) et
+`trigger:'item'` (scatter/vagues) — comportement du hover à confirmer au navigateur ; si le
+tooltip item des kills ne se déclenche pas sous axis, ce n'est pas bloquant (barres + kill
+feed restent lisibles) mais à ajuster.
+
+**Conclusion / prochaine étape** : Phase 4 — i18n (fait), vérification visuelle (Infinite +
+H5 + toggle couleur équipe + EmptyState live-only + thème clair/sombre), delivery-checklist,
+clôture (statuts, Découvertes, en-tête COMPLÉTÉ, `git mv` vers `.ai/V7/`).
+
+## [2026-07-13] Momentum Match View — Phase 2 : logique pure `_momentum.ts` + tests (branche feat/matchview-momentum)
+
+**Statut** : Complété (Phase 2/4 du PLAN_MATCHVIEW_MOMENTUM).
+
+**Décision technique principale** : `computeMomentumBins(bins, events, xuidMeta)` isolé en
+module pur (zéro React/ECharts), retourne `{ momentum: MomentumBin[], kills:
+MomentumKill[] }`. `MomentumBin = { delta, teamKills, enemyKills, cumTeam, cumEnemy, trend
+}`. `trend` (DEC-4) via `computeTrend(delta, prevDelta)` avec `prevDelta = delta[i-1]`
+(0 avant le 1er bin, ce qui rend « up » le 1er bin non nul quel que soit son côté) :
+delta>0 → up si delta>prevDelta ; delta<0 → up si delta<prevDelta ; delta=0 → down
+(neutralisé, pas de barre DEC-5). `xuidMeta` typé `ReadonlyMap<string, { ally: boolean }>`
+(la map riche du composant reste assignable). La boucle kill→bin/équipe n'est pas encore
+retirée du composant (option « pas encore touché » du gate Phase 2) : le débranchement
+effectif se fait en Phase 3 avec la réécriture de `buildOption`. Les types
+`MomentumBin/Kill/Data/Trend` restent INTERNES en Phase 2 (garde-rail pre-push
+`knip-ratchet` : un type exporté sans consommateur = régression code mort ; ils seront
+exportés en Phase 3 à l'import par le composant). Seul `computeMomentumBins` est exporté.
+
+**Résultats observés** : `_momentum.test.ts` 7 tests verts couvrant a–g (nominal 2 équipes,
+1er bin non nul=up, delta 0 intercalé sans barre + cumuls conservés, event hors bornes
+ignoré, event sans actor/temps + non-kill + acteur hors scoreboard ignorés, une seule
+équipe, renforcement/essoufflement côté négatif −2→−5=up puis −5→−1=down). Gate : typecheck
+OK ; vitest global 254 fichiers / 2151 tests verts ; eslint 0 sur les 2 fichiers.
+
+**Conclusion / prochaine étape** : Phase 3 — réécriture de `buildOption`
+(`MatchTugOfWarChart.tsx`) : consommer `computeMomentumBins`, supprimer normalisation
+0–100 % + markPoints cumul + markLine 50 % + constantes de layout figées ; 2 séries bar
+signées (positifs team-ally / négatifs team-enemy) avec opacité DEC-4, échelle Y symétrique
+dynamique (DEC-6), markLine y=0 (DEC-7), lanes/scatter/vagues repositionnés sur yMax.
+
+## [2026-07-13] Momentum Match View — Phase 1 : centralisation hexToRgba + garde-rail (branche feat/matchview-momentum)
+
+**Statut** : Complété (Phase 1/4 du PLAN_MATCHVIEW_MOMENTUM).
+
+**Décision technique principale** : pré-requis règle « ≤ 2 copies » avant le rendu
+histogramme momentum (Phase 3 en ajoute un 3e usage intensif). Le helper `hexToRgba(hex,
+alpha)` (alpha-mix STRUCTUREL sur un hex déjà résolu via token, contexte canvas/ECharts)
+devient source unique dans `components/charts/_utils.ts`. Les 2 copies locales
+(`MatchTugOfWarChart.tsx`, `MatchImpactBadgesBar.tsx` — qui avaient déjà divergé : regex
+`#?` vs `#`, espacement) sont supprimées et importées. La variante `color-mix(...)` de
+`components/ui/match-card-presentation.ts` reste en place (autre pattern : CSS var en
+contexte DOM, pas un hex résolu) — hors périmètre et hors champ du garde-rail.
+
+**Résultats observés** : garde-rail `hex-alpha.guard.test.ts` (node-env, scan
+`src/features/**`, interdit `function hexToRgba(` / `const hexToRgba` local) = 1 test vert.
+Gate Phase 1 : typecheck OK ; vitest 253 fichiers / 2144 tests (14 skipped) verts ; eslint
+0 sur les 4 fichiers touchés.
+
+**Conclusion / prochaine étape** : Phase 2 — logique pure `_momentum.ts`
+(`computeMomentumBins`) + tests unitaires (a–g), déplacement (pas duplication) de la boucle
+kill→bin/équipe depuis `MatchTugOfWarChart.tsx`.
+
+## [2026-07-13] populate-assets → sous-commande de la CLI levelup (image prod) — LOT OPS/QUALITÉ item 4 (branche chore/lot-ops-qualite)
+
+**Statut** : Complété (sous-commande livrée, standalone supprimé, vérif Docker via CI).
+
+**Décision technique principale** : intégration PRÉFÉRÉE retenue (sur pièces) —
+`populate-assets` devient une sous-commande de la CLI `levelup` (pattern identique à
+seed/backfill : `flag.NewFlagSet` + cfg injecté par main). Le Dockerfile builde DÉJÀ la CLI
+(`RUN go build … ./cmd/levelup/` → `/usr/local/bin/levelup`) → la sous-commande est
+embarquée dans l'image prod sans toucher au Dockerfile. Logique métier inchangée
+(déplacée telle quelle dans `cmd/levelup/cmd_populate_assets.go`, ~470 L < 500) ; le
+binaire standalone `cmd/populate-assets/` est SUPPRIMÉ (règle 7 : zéro code mort — aucune
+collision de symboles, aucune référence build). Runbooks EN mis à jour
+(RUNBOOK_ADD_TITLE, RUNBOOK_OPS_DUCKDB_CLI_TOOLS) ; usage + en-tête de main.go à jour.
+
+**Résultats observés** : `go build ./cmd/levelup/` + vet + lint new-from-rev 0 issue.
+Docker indisponible localement (pas de démon) → vérification croisée : (a) l'image
+buildait déjà `cmd/levelup` (CGO statique linux) et ma sous-commande n'ajoute AUCUNE
+dépendance nouvelle (config/domain/title/duckdb/halo/x-sync déjà compilées linux dans
+l'image via cmd/server) ; (b) le job CI « Deploy Pre-Check / docker-build » builde l'image
+COMPLÈTE sur la branche à chaque push → verdict réel au CI de ce commit (surveillé en
+avant-plan). Usage prod : serveur ARRÊTÉ d'abord (one-off DuckDB mono-process, cf.
+`docs/RUNBOOK_OPS_DUCKDB_CLI_TOOLS.md` — un `docker compose exec` serveur allumé
+échouerait sur le lock metadata RW), puis `levelup populate-assets --dry-run`.
+
+**Conclusion / prochaine étape** : lot ops/qualité SOLDÉ (0/0b/1/2/3/4). Gates finaux
+complets + CI de branche verte, puis rapport final.
+
+## [2026-07-13] Détecteur data-quality H5 en erreur locale : référentiels HINF absents du schéma metadata H5 — LOT OPS/QUALITÉ item 3 (branche chore/lot-ops-qualite)
+
+**Statut** : Complété (cause prouvée on-disk, fix title-agnostic, test de régression).
+
+**Diagnostic** : `GET /api/v1/admin/monitoring/data-quality?title=halo_5` → 500
+`data_quality_error`. L'hypothèse consignée (« schéma/table absent côté shared H5 ») était
+presque juste mais visait la mauvaise DB : le shared H5 a TOUTES les tables des détecteurs
+(match_registry, match_participants, xuid_aliases, highlight_events, weapon_kills — requêtes
+testées une à une via diag_q, toutes passent). La vraie cause est côté METADATA : le set de
+migrations PROPRE à H5 (PMT-9, `internal/games/halo_5/migrations/metadata.go` — créé
+précisément pour NE PAS injecter les référentiels HINF) ne crée ni `mode_name_tr` ni
+`playlists_catalog`. Or `listUntranslatedModes` et `listOrphanPlaylists`
+(`internal/ops/data_quality.go`) les requêtent sans garde → `Catalog Error: Table with name
+… does not exist` → `CountDataQuality` remonte l'erreur → tout l'endpoint en 500. Preuves :
+(a) listing on-disk de la metadata H5 (13 tables, `playlists` à la place de
+`playlists_catalog`, 0 des 2 tables HINF) ; (b) même Catalog Error déjà loggée par
+`seedPlaylistsCatalog` (sync H5, 2026-06-26).
+
+**Décision technique principale** : fix title-agnostic par INTROSPECTION DE SCHÉMA (aucun
+slug==) : nouveau helper `metaTableExists` (information_schema) ; si la table référentielle
+est absente DU SCHÉMA du titre, le détecteur est NON APPLICABLE → liste vide/compteur 0 +
+log Debug, jamais une erreur. Distinction sémantique documentée : metaDB nil (metadata
+absente/illisible) garde la dégradation PESSIMISTE existante (« tout non traduit / tout
+orphelin ») ; table absente = signal déterministe de non-support → 0 (un « tout non
+traduit » aurait poussé l'admin à écrire du mode_name_tr HINF sur un titre qui gère ses
+traductions via asset_translations/pair_name_fr — faux positif nocif).
+
+**Résultats observés** : test de régression `TestDataQuality_MetaWithoutHINFReferentials`
+(metadata H5-like sans les 2 tables) : CountDataQuality passe, untranslated/orphan à 0, les
+détecteurs shared comptent toujours (raw_uuid=1) ; listes détaillées vides sans erreur.
+Tests HINF existants inchangés verts. Sanity on-disk : metadata Infinite = les 2 tables
+présentes (chemin normal intact). Test HTTP live impossible en anonyme (endpoint admin,
+mode xbox) — couvert par le test + vérif schéma réel des DEUX titres. Serveur dev arrêté
+pour l'inspection puis RELANCÉ (binaire frais 15:56, port 8000 OK). Gates : vet 0, tests
+ops verts, lint new-from-rev 0 issue.
+
+**Conclusion / prochaine étape** : au premier chargement admin par l'utilisateur, l'onglet
+data-quality H5 doit répondre 200 avec les compteurs shared. Enchaîner item 4
+(populate-assets image prod).
+
+## [2026-07-13] Alerte disque VPS → détection monitoring + notification Discord — LOT OPS/QUALITÉ item 2 (branche chore/lot-ops-qualite)
+
+**Statut** : Complété (fix livré actif ; config webhook PROD = action utilisateur documentée).
+
+**Décision technique principale** : remplacer l'alerte hôte invisible (levelup-disk-check.sh
+→ journald, cron horaire — l'incident disque-plein du 2026-07-13 a prouvé que personne ne la
+lit) par une surveillance CÔTÉ SERVEUR Go : le volume data est un bind mount du FS hôte, donc
+l'espace libre mesuré dans le conteneur EST celui de l'hôte. Réutilisation maximale de
+l'existant (règle 14) : mesure = resourceDisk (façade diskfree, A5) ; alerte visible =
+détection persistée du monitoring (le WARN/ERROR slog à message STABLE passe par le pipeline
+ErrorCollector→FlushDetections→detections_latest→badge admin, zéro nouvelle plomberie) ;
+push = webhook Discord existant (notify.SendWebhook).
+- Seuils A5.3 ÉTENDUS : `EvaluateDiskStatus(free, total)` combine absolus (2 Go/500 Mo) et
+  POURCENTAGE (80 %/90 % — au profil de l'incident : 82 % le 07-07, aucune alerte absolue).
+- `ops.ShouldNotifyDisk` (politique pure testée, 7 cas) : notif sur TRANSITION de statut +
+  rappel 24 h en breach persistant + rétablissement ; unknown = no-op sans écraser l'état.
+- `wire.RunDiskWatchLoop` (15 min, premier check au boot, schedulerCtx/WG comme le flush
+  détections) + gauges expvar `disk_data_free_bytes`/`disk_data_used_percent` + compteur
+  `disk_watch_notifications_total`.
+- `notify.NotifyDiskAlert` (failsafe, FR/EN, toggle `discord_notify_disk` défaut true,
+  gate global `discord_notifications_enabled` + webhook). Docs CONFIGURATION EN+FR à parité.
+
+**Résultats observés** : preuve VIVANTE en local dès le boot — disque de dev à 85 % → WARN
+stable dans monitoring.log (`disk_watch: espace disque faible sur le volume data`,
+free=145,7 Go / total=999,1 Go / 85 %), transition boot→warn décidée, trace « alerte sans
+notification (webhook Discord non configuré) ». Gates : build/vet 0, tests ops+notify+wire
+ok (dont TestShouldNotifyDisk 7 sous-cas et TestEvaluateDiskStatus 9 cas), lint
+new-from-rev 0 issue.
+
+**Conclusion / prochaine étape** : PROD vérifiée en lecture seule : `discord_notifications_
+enabled=false`, pas de webhook → action utilisateur documentée (ETAT §3) pour activer le
+push ; sans webhook l'alerte reste visible dans Admin > Monitoring. Script hôte + cron
+journald = redondance inoffensive, retrait optionnel (écriture VPS = utilisateur). Enchaîner
+item 3 (data-quality H5 local).
+
+## [2026-07-13] Retouche UI login Xbox : lien de vérification court ET correct — LOT OPS/QUALITÉ item 0b (branche chore/lot-ops-qualite)
+
+**Statut** : Complété (signalement utilisateur avec capture, 2 causes distinctes corrigées).
+
+**Décisions techniques principales** : le signalement (« URL en clair qui déborde » + « l'URL
+n'est pas bonne ») recouvrait DEUX bugs :
+1. **Fond (backend)** : `sisu_provider.go` préférait `sisuSession.MsaOauthRedirect` (URL
+   d'AUTHORIZE PKCE — flow par redirection, ne demande jamais de code) à la
+   `verification_uri` du device flow. Incohérence UX totale : « Code à saisir : XXXX » +
+   lien vers une page qui n'en veut pas, pendant que le backend polle le grant
+   device_code. Fix : toujours `dcResult.VerificationURL` (= `https://www.microsoft.com/link`,
+   la page de saisie), MsaOauthRedirect en simple secours si la réponse device n'a pas
+   d'URL. Tests SISU inversés en conséquence (HappyPath verrouillait le mauvais choix).
+2. **Forme (front)** : les 2 surfaces (XboxLoginPage + StepDeviceCode) affichaient l'URL
+   brute `uri.replace('https://','')` avec tous ses query params → overflow massif.
+   Nouveau helper pur `verificationLinkLabel` (`lib/formatters/url.ts`, host+chemin sans
+   protocole/www/query/hash, fallback défensif sans throw, 5 tests) appliqué aux 2
+   composants (+ `break-all` défensif). Anti-phishing préservé : le DOMAINE réel reste
+   visible ; l'URL complète est dans le href. Aucun nouveau libellé (clés i18n existantes).
+
+**Résultats observés** : navigateur (contexte anonyme neuf) — « Rendez-vous sur
+microsoft.com/link » + « Code à saisir : 65D7J9MV » ; le lien mène à
+`login.live.com/oauth20_remoteconnect.srf` = « Saisir le code pour autoriser l'accès »
+(champ code + bouton Autoriser) : COHÉRENCE prouvée. `/setup` non atteignable localement
+(app configurée → redirect) : StepDeviceCode couvert par le même helper + tsc + tests
+SetupPage. Gates : tsc OK, vitest ciblé 12+4 tests OK, go test auth OK, lint 0 issue.
+
+**Conclusion / prochaine étape** : reprendre l'item 2 du lot (alerte disque VPS).
+
+## [2026-07-13] Vérif auth locale xbox + fix SSO device-flow (URL 404 + race single-flight) — LOT OPS/QUALITÉ item 0 (branche chore/lot-ops-qualite)
+
+**Statut** : Complété (vérifications a-d faites ; 2 fix serveur nécessaires en chemin).
+
+**Contexte** : `.env.local` passé à `LEVELUP_AUTH_MODE=xbox` par le superviseur ; mission =
+redémarrer le serveur, vérifier le flow SSO au navigateur, vérifier `/admin/data` anonyme,
+et vérifier sur pièces que le SSO de JGtm produira une session admin.
+
+**Décisions techniques principales** :
+1. **Redémarrage serveur** : piège découvert — l'env du tool PowerShell n'a pas gcc dans le
+   PATH → le build d'air échouait (`cgo: C compiler "gcc" not found`, build-errors.log) et
+   air relançait le BINAIRE PÉRIMÉ de la veille. Remède : relancer air détaché avec
+   `C:\msys64\ucrt64\bin` prépendu au PATH. `.env.local` est lu par le serveur au boot
+   (config.BootstrapEnvLocal) mais SANS override d'une var déjà posée — ne jamais laisser
+   un vieux LEVELUP_AUTH_MODE dans l'env du parent.
+2. **Fix 1 — URL device-code 404** : le login SSO Xbox n'a JAMAIS pu s'amorcer —
+   `xboxDeviceCodeURL = login.live.com/oauth20_connect/device` renvoie HTTP 404 chez
+   Microsoft (l'URL correcte est `oauth20_connect.srf`, vérifiée par POST direct : 200 +
+   device_code, les deux variantes de scopes passent). Introduite fausse par le commit SISU
+   `16e7d2922` ; jamais détectée car les tests injectent des URLs mockées. Ceci REQUALIFIE
+   `PLAN_AUTH_DEVICE_FLOW_SISU_404_2026-07` : la prémisse « endpoint retiré » tombe, la
+   décision D3 (Option 1/2/3) est SANS OBJET — Option 1 exécutée de fait (C1/C2/C4 statués,
+   journal du plan à jour).
+3. **Fix 2 — race single-flight** : 2e cause de blocage (« Génération du code… » infini) —
+   `handleStartDeviceFlow` répondait au start concurrent (double-fire React dev / 2e onglet)
+   AVANT que le créateur ait rempli la tentative → 200 avec user_code VIDE écrasant l'état
+   UI. Fix : `waitDeviceFlowReady` (attente bornée 15 s par Snapshot — supprime aussi la
+   lecture non verrouillée de l'objet vivant —, propagation de l'échec créateur, 503
+   retryable au timeout) + slog.ErrorContext sur l'échec InitDeviceFlow (erreur avalée qui
+   avait rendu ce diagnostic pénible) + 2 tests (`auth_device_flow_singleflight_test.go`).
+
+**Résultats observés** : bootstrap `auth_mode:"xbox"` ; page /login anonyme (contexte
+navigateur isolé) → panneau « Connexion Xbox » complet (code, compte à rebours, lien
+`login.live.com/oauth20_authorize.srf` SISU/PKCE) → page Microsoft « Se connecter » rendue
+(login NON complété : identifiants utilisateur). `/admin/data` anonyme : jamais de contenu
+admin, pas de gel — redirection vers `/` puis `/login` au chargement frais. Vérif (d) sur
+pièces : `server_apiv1.go:270-291` (mode xbox → XboxSSOLinkStrategy) ;
+`xbox_auth_service.go:138` GetByXUID → users.json `jgtm` (xuid 2533274823110022,
+role=admin) → `sess.Role` admin (l.167-170), CurrentPlayerSlug=JGtm (l.173-177) ;
+verrou d'instance inopérant pour un xuid CONNU (l.143 : branche ErrUserNotFound seulement).
+Gates : build/vet OK, tests handlers + platform/auth OK, lint new-from-rev 0 issue.
+
+**Conclusion / prochaine étape** : l'utilisateur peut se reconnecter (phrase exacte dans
+l'ETAT consolidé §3). Enchaîner items 2/3/4 du lot. Reste du plan auth (lots A StepDeviceCode,
+D garde-rail/doc) : ouvert, sur feu vert utilisateur.
+
+## [2026-07-13] Requalif. cron leaderboard « découverte saison active échouée » (404) — LOT OPS/QUALITÉ item 1 (branche chore/lot-ops-qualite)
+
+**Statut** : Complété (fix réel + dégradation propre + test de régression).
+
+**Requalification** : le triage monitoring (B3.1) attribuait l'ERROR quotidienne prod
+`world_leaderboard_cron: découverte saison active échouée — cycle ignoré`
+(`FetchCatalog: statut HTTP 404: classement absent pour cette (saison, playlist)`) au
+reste-à-faire C3 (backfill saisons passées). VERDICT : ce n'est PAS C3. C3 concerne le
+backfill des snapshots de saisons PASSÉES (où le 404 est déjà un skip nominal côté CLI, fix
+23f3c3c58). L'ERROR prod est un autre chemin : la découverte de la SAISON ACTIVE. Cause
+racine (sur pièces) : `runOnceForTitle` appelait `FetchActiveSeason(ctx, playlists[0])` avec
+UNE seule playlist de référence ; le scraper construit l'URL de découverte avec une
+saison-graine FIXE (`seedSeasonID = "csrseason13-2"`) — si cette playlist n'était pas classée
+dans la saison-graine (typiquement une playlist récemment ajoutée, renvoyée en tête par la
+découverte dynamique Waypoint), la page-graine renvoie 404 et TOUT le cycle avortait sur une
+ERROR récurrente. Cas ATTENDU, pas une panne.
+
+**Décision technique principale** : fix réel (pas juste un rebadge de log). Nouveau helper
+`discoverActiveSeason(ctx, titleSlug, static, dynamic)` : essaie les playlists candidates tour
+à tour (statiques d'abord — classées de longue date, donc les plus susceptibles d'exister dans
+la saison-graine — puis dynamiques ; doublons/vides retirés via `dedupeNonEmpty`) et retient
+le premier succès. Au moins une playlist classée de longue date (Arène) rend la page-graine
+csrseason13-2, donc le cycle ne s'interrompt plus. Dégradation DC-B2 pour le résidu (page-graine
+globalement indisponible pour TOUTES les candidates, rare et auto-résolutif) : UN WARN agrégé +
+compteur expvar `world_leaderboard_season_discovery_failed_total`, plus jamais d'ERROR — le
+dernier snapshot append-only reste servi. Fichier : `internal/scheduler/world_leaderboard_cron.go`.
+
+**Résultats observés** : nouveau test `TestWorldLeaderboardCron_SeasonDiscoveryFallsThrough404`
+(stub enrichi `seasonErrForPlaylists`) : 3 playlists de référence 404 puis la 4e rend la page →
+saison découverte, snapshots insérés, ≥2 appels `FetchActiveSeason` (repli prouvé). Non-régression :
+les 8 tests existants du cron passent (dont `CapabilityGated` activeCalls==1 et `SeasonDiscoveryError`
+fetchCalls==0). Gates : `go build ./...`=0, `go vet ./...`=0, `go test ./internal/scheduler/...`=ok,
+`golangci-lint --new-from-rev=origin/main ./internal/scheduler/...`=0 issue.
+
+**Conclusion / prochaine étape** : plan monitoring B3.1 requalifié `[x]` (n'était pas C3).
+LOT OPS/QUALITÉ mis en PAUSE par le coordinateur après cet item — items 2/3/4 NON commencés.
+
 ## [2026-07-13] Fuite de filtre inter-titres via deep-link `?f=` (branche fix/title-switch-deeplink-leak)
 
 **Statut** : Complété (fix + tests + repro navigateur avant/après).

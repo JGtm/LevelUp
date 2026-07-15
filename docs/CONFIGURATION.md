@@ -151,6 +151,23 @@ address the entry.
 > so the server re-derives Spartan tokens from the fresh chain. `token-capture`
 > and `token-import` do this automatically.
 
+### Token provider — `auth_provider` (SISU default vs MSAL)
+
+The provider that **starts** the onboarding Device Code Flow is selected by the
+`app_settings.json` key `auth_provider`:
+
+| Value | Provider | Azure app | When |
+|-------|----------|-----------|------|
+| `""` / `sisu` (default) | SISU — native Xbox device-code | **None required** | Default. Self-hosters need no Azure registration. |
+| `msal` | MSAL (Microsoft Authentication Library) | Bundled/own client ID | Config-only fallback if the native Xbox endpoint breaks. No UI toggle. |
+
+Both providers write to the same token store; only the device-code *start* path differs.
+SISU is the default because LevelUp is distributed to self-hosters who cannot all register an
+Azure app. The native start endpoint is `https://login.live.com/oauth20_connect.srf`; an
+opt-in network guard (`go test -tags=integration ./internal/platform/auth/` with
+`LEVELUP_DEVICE_ENDPOINT_LIVE_CHECK=1`) asserts it stays reachable, so a Microsoft-side
+change surfaces as a failed test instead of an onboarding spinner.
+
 ---
 
 ## Environment Variables
@@ -256,6 +273,7 @@ Keys read by the Go backend from `app_settings.json` (some are not in the exampl
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
+| `auth_provider` | string | `""` (= `sisu`) | Onboarding Device Code Flow provider. `""`/`sisu`: native Xbox, **zero Azure app**. `msal`: config-only fallback via the Azure client ID. See "Token provider" above. |
 | `media_enabled` | bool | `false` | Enable media (Xbox captures) integration. |
 | `media_captures_base_dir` | string | `""` | Path to the Xbox captures folder. |
 | `media_buffer_minutes` | int | `1` | Tolerance window matching captures to games. |
@@ -273,6 +291,7 @@ Keys read by the Go backend from `app_settings.json` (some are not in the exampl
 | `discord_lang` | string | `"fr"` | Discord notification language. |
 | `discord_notifications_enabled` | bool | `false` | Enable Discord sync notifications. |
 | `discord_notify_new_media` | bool | `true` | Notify on new media. |
+| `discord_notify_disk` | bool | `true` | Disk space alerts (warn > 80 % used or < 2 GB free, critical > 90 % or < 500 MB) on the data volume, sent on status change + daily reminder + recovery. |
 | `discord_webhook_url` | string | `""` | Discord webhook URL (env vars take precedence). |
 | `tailscale_enabled` | bool | `false` | Enable Tailscale Funnel remote access. |
 | `user_timezone` | string | `"Europe/Paris"` | IANA timezone for display. |

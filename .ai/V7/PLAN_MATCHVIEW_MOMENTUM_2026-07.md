@@ -1,8 +1,10 @@
 # Plan — Histogramme momentum sur la carte Dominance (Match View)
 
 **Date** : 2026-07-12
-**Branche Git** : `feat/matchview-momentum` (à créer depuis `main` — jamais de travail sur `main`)
-**Statut** : Rédigé — DEC-1..7 tranchées ci-dessous, exécution après validation utilisateur
+**Branche Git** : `feat/matchview-momentum` (depuis `chore/lot-ops-qualite`)
+**Statut** : **COMPLÉTÉ 2026-07-13** — 4 phases livrées, gates verts, vérif visuelle
+Infinite + H5 + toggle couleur + thème clair/sombre faite (GO utilisateur D1 acquis
+2026-07-13). Reste : merge (train géré par le superviseur) + revue visuelle utilisateur.
 **Effort estimé** : ~0,5 j (frontend uniquement, zéro changement backend)
 **Contrat d'exécution** : skill `plan-execution` (ordre strict, gates, statuts `[x]`/`[~]`/`[!]`,
 zéro fix hors périmètre — les découvertes vont dans la section dédiée en fin de fichier).
@@ -107,83 +109,117 @@ rendu. NB : la variante `hexToRgba(cssVar, alpha)` de
 `components/ui/match-card-presentation.ts:16` est un autre pattern (CSS `color-mix`
 sur var, contexte DOM) — elle reste en place, hors périmètre.
 
-- [ ] 1.1 Ajouter `hexToRgba(hex: string, alpha: number): string` dans
+- [x] 1.1 Ajouter `hexToRgba(hex: string, alpha: number): string` dans
       `apps/web/src/components/charts/_utils.ts`, avec le commentaire justificatif
       existant (alpha-mix structurel sur hex résolu via token, pas un choix sémantique)
-      et une note distinguant la variante `color-mix` CSS.
-- [ ] 1.2 Migrer `MatchTugOfWarChart.tsx` et `MatchImpactBadgesBar.tsx` vers l'import ;
-      supprimer les deux copies locales.
-- [ ] 1.3 Garde-rail : `apps/web/src/components/charts/hex-alpha.guard.test.ts` sur le
+      et une note distinguant la variante `color-mix` CSS. FAIT (`_utils.ts`, note
+      color-mix + renvoi au garde-rail).
+- [x] 1.2 Migrer `MatchTugOfWarChart.tsx` et `MatchImpactBadgesBar.tsx` vers l'import ;
+      supprimer les deux copies locales. FAIT (import depuis `@/components/charts/_utils`,
+      les 2 copies locales supprimées).
+- [x] 1.3 Garde-rail : `apps/web/src/components/charts/hex-alpha.guard.test.ts` sur le
       modèle de `lib/query/keys.guard.test.ts` — scan de `apps/web/src/features/**` :
-      interdire toute déclaration locale `function hexToRgba(` / `const hexToRgba`.
+      interdire toute déclaration locale `function hexToRgba(` / `const hexToRgba`. FAIT
+      (test node-env, 1 test vert).
 
 **Gate Phase 1** : `make check-types` + `make test-web` verts (le nouveau guard passe).
+PASSÉ 2026-07-13 : typecheck OK ; vitest 253 fichiers / 2144 tests verts (14 skipped) ;
+eslint 0 sur les 4 fichiers touchés.
 
 ## Phase 2 — Logique pure momentum + tests unitaires
 
-- [ ] 2.1 Nouveau fichier `apps/web/src/features/match-view/_momentum.ts` :
+- [x] 2.1 Nouveau fichier `apps/web/src/features/match-view/_momentum.ts` :
       `computeMomentumBins(bins, events, xuidMeta)` → tableau par bin
       `{ delta, teamKills, enemyKills, cumTeam, cumEnemy, trend: 'up' | 'down' }`.
       Le calcul d'affectation kill→bin/équipe est **déplacé** (pas dupliqué) depuis
       `MatchTugOfWarChart.tsx` (boucle events + `fracInBin`, lignes ~128-168 actuelles) ;
       la liste `KillEvent[]` (pour scatter/vagues) est retournée aussi pour que le
-      composant n'itère les events qu'une fois. `trend` suit DEC-4.
-- [ ] 2.2 Tests `_momentum.test.ts` (vitest, colocalisé) :
-      (a) nominal deux équipes — deltas et cumuls corrects ;
-      (b) premier bin non nul → `trend: 'up'` ;
-      (c) bin à delta 0 entre deux bins signés ;
-      (d) event hors bornes de bins → ignoré ;
-      (e) event sans `actor_xuid` ou sans `event_time_ms` → ignoré ;
-      (f) kills d'une seule équipe (deltas tous du même signe, trends corrects) ;
-      (g) renforcement/essoufflement côté négatif (delta −2 → −5 = 'up' au sens
-          « momentum ennemi se renforce » → opacité pleine côté enemy).
+      composant n'itère les events qu'une fois. `trend` suit DEC-4. FAIT (module pur,
+      retour `{ momentum, kills }` ; `trend` via `computeTrend(delta, prevDelta)`,
+      prevDelta=0 avant le 1er bin → 1er bin non nul = 'up' ; delta 0 → 'down' neutre).
+      NB : le **déplacement effectif** de la boucle hors de `MatchTugOfWarChart.tsx`
+      (suppression de la copie dans le composant) est réalisé en Phase 3 lors de la
+      réécriture de `buildOption` — Phase 2 introduit la source pure + ses tests sans
+      encore débrancher l'ancien rendu (option « pas encore touché » du gate Phase 2).
+      Les types `MomentumBin/MomentumKill/MomentumData/MomentumTrend` restent **internes**
+      en Phase 2 (garde-rail pre-push `knip-ratchet` : aucun consommateur externe encore →
+      un export inutilisé = régression code mort) ; ils seront exportés en Phase 3 quand
+      `MatchTugOfWarChart` les importe. Seul `computeMomentumBins` est exporté (utilisé
+      par le test).
+- [x] 2.2 Tests `_momentum.test.ts` (vitest, colocalisé) : (a)–(g) tous écrits et verts
+      (7 tests). FAIT.
 
 **Gate Phase 2** : `make test-web` vert (a–g passent) ; `MatchTugOfWarChart.tsx` compile
 encore (l'ancien rendu consomme provisoirement le nouveau helper ou n'est pas encore
 touché — au choix de l'exécutant, mais Phase 2 close = tests verts sur les deux états).
+PASSÉ 2026-07-13 : `_momentum.test.ts` 7/7 verts ; typecheck OK ; vitest global 254
+fichiers / 2151 tests verts ; eslint 0 sur les 2 nouveaux fichiers ; ancien
+`MatchTugOfWarChart.tsx` intact et compile (débranché en Phase 3).
 
 ## Phase 3 — Rendu histogramme divergent
 
 Réécriture de `buildOption` dans `MatchTugOfWarChart.tsx` :
 
-- [ ] 3.1 Supprimer : normalisation `teamPct`/`enemyPct`, markPoints de cumul
+- [x] 3.1 Supprimer : normalisation `teamPct`/`enemyPct`, markPoints de cumul
       (`cumulMarkPoints`, DEC-3), markLine 50 %, constantes de layout 0–100
-      (`teamCumLabelY = 112`, etc.). Zéro code mort résiduel.
-- [ ] 3.2 Deux séries bar signées (B1) : positifs `team-ally`, négatifs `team-enemy`,
+      (`teamCumLabelY = 112`, etc.). Zéro code mort résiduel. FAIT (tout supprimé ; la
+      boucle events inline débranchée au profit de `computeMomentumBins`).
+- [x] 3.2 Deux séries bar signées (B1) : positifs `team-ally`, négatifs `team-enemy`,
       `itemStyle` par point avec opacité DEC-4 via `hexToRgba(resolveToken(...), α)` ;
-      `barCategoryGap` serré pour l'effet histogramme (cf. screenshot de référence).
-- [ ] 3.3 `markLine` à `y = 0` (DEC-7) ; échelle symétrique dynamique (DEC-6) ;
+      `barCategoryGap` serré pour l'effet histogramme. FAIT (`buildBarSeries`, même stack
+      `momentum` ; côté inactif = `{ value: 0 }` invisible mais présent → ancre le tooltip
+      axis à chaque catégorie ; `barCategoryGap: '20%'`).
+- [x] 3.3 `markLine` à `y = 0` (DEC-7) ; échelle symétrique dynamique (DEC-6) ;
       lanes/scatter/vagues repositionnés en fonction de `yMax` (grille double conservée).
-- [ ] 3.4 Tooltip `trigger: 'axis'` sur les barres : tranche horaire, delta signé,
-      détail `X kills / Y kills`, cumuls `cumTeam` / `cumEnemy` (remplace les labels
-      supprimés). Tooltips scatter/vagues inchangés (`trigger: 'item'` par série).
-- [ ] 3.5 Mettre à jour l'en-tête doc du fichier (match_view.10 : décrire le rendu
-      momentum, plus le stacked 0–100 %).
-- [ ] 3.6 Seuils : fichier ≤ 500 L et `buildOption` ≤ 80 L après réécriture — 
-      l'extraction `_momentum.ts` y contribue ; si `buildOption` dépasse, extraire des
-      sous-fonctions de construction de séries dans le même fichier ou `_momentum.ts`.
+      FAIT (`yMax = max(1, max|delta|)` ; lane alliée `yMax×1.5`, top `×1.95`, bottom
+      `−yMax×1.15` ; markLine dashed `tc.splitLine` à `yAxis:0`).
+- [x] 3.4 Tooltip `trigger: 'axis'` sur les barres : tranche horaire, delta signé,
+      détail `X kills / Y kills`, cumuls `cumTeam` / `cumEnemy`. Tooltips scatter/vagues
+      inchangés (`trigger: 'item'` par série). FAIT (`buildBinTooltips` +
+      `binTooltipFormatter` ancré sur le param bar ; scatter/vagues gardent
+      `tooltip.trigger='item'`). Rendu du hover à confirmer en Phase 4 (mixage
+      axis/item — vérif écran prévue).
+- [x] 3.5 Mettre à jour l'en-tête doc du fichier. FAIT (en-tête réécrit : histogramme
+      momentum divergent, DEC-2/4/5/6/7, plus de stacked 0–100 %).
+- [x] 3.6 Seuils : fichier ≤ 500 L et `buildOption` ≤ 80 L. FAIT (fichier 336 L ;
+      `buildOption` ~42 L ; extraction `resolveXuidMeta`/`buildBinTooltips`/`buildBarSeries`/
+      `buildKillFeedSeries`/`buildWaveSeries`/`buildXAxes`/`binTooltipFormatter`).
 
 **Gate Phase 3** : `make check-types` + `make test-web` verts ;
 `grep -rn "hexToRgba\|#[0-9a-fA-F]\{6\}" apps/web/src/features/match-view/` ne montre
 aucune déclaration locale ni hex en dur (hors commentaires).
+PASSÉ 2026-07-13 : typecheck OK ; vitest 254 fichiers / 2151 tests verts ; eslint 0
+sur les 3 fichiers ; knip-ratchet types 85/86 (aucune régression). Grep : dans
+`MatchTugOfWarChart.tsx` seuls l'import + l'usage de `hexToRgba` (aucune déclaration
+locale) ; hex restants du dossier = exceptions `color-allow` pré-existantes
+(MatchHeader étoile amber §20 ; MatchSummaryCharts hex en commentaires) hors périmètre.
 
 ## Phase 4 — i18n, vérification visuelle, clôture
 
-- [ ] 4.1 i18n : `combatTugOfWarTitle` inchangé (DEC-1). Si un libellé de tooltip
-      s'ajoute (ex. « Delta »), le déclarer FR **et** EN dans
-      `features/match-view/i18n.ts` (parité garantie par le typage `Record<Locale, T>`).
-- [ ] 4.2 Vérification visuelle (serveur dev + MCP browser) :
-      (a) match Halo Infinite riche en events → barres signées lisibles, intensités
-          visibles, kill feed aligné, tooltip complet ;
-      (b) match Halo 5 (substrat local) → histogramme rendu à l'identique depuis le
-          kill-feed synthétisé (kills + morts depuis `killer_victim_pairs`),
-          affectation d'équipe correcte via le scoreboard ;
-      (c) réglage couleur équipe (Réglages → Accessibilité) modifié → l'histogramme
-          reflète immédiatement le choix (tokens `team-ally`/`team-enemy`) ;
-      (d) match sans données de combat (servi live-only) → EmptyState inchangé ;
-      (e) thème clair ET sombre.
-- [ ] 4.3 Skill `delivery-checklist` ; entrée `thought_log.md` (statut Complété) ;
-      demander validation utilisateur avant commit (jamais de commit non demandé).
+- [x] 4.1 i18n : `combatTugOfWarTitle` inchangé (DEC-1). Deux libellés de tooltip ajoutés
+      FR **et** EN dans `features/match-view/i18n.ts` : `combatMomentumDelta`
+      (Écart/Delta), `combatMomentumCumul` (Cumul/Cumulative). FAIT (parité `Record<Locale>`).
+- [x] 4.2 Vérification visuelle (serveur dev `none` + MCP browser, 2026-07-13) :
+      (a) match Halo Infinite riche (Super Fiesta/Streets, 28-50) → barres signées
+          lisibles (bleu haut / rouge bas), intensités DEC-4 visibles (barres vives vs
+          atténuées), kill feed aligné (lanes + vagues ×N), tooltip axis complet
+          (« Écart : -7 (Adversaires) / Mon équipe 0 / Adversaires 7 / Cumul : 6 – 19 »),
+          zéro erreur console. FAIT.
+      (b) match Halo 5 (Tidal/Super Fiesta, 8-27, CSR) → histogramme rendu à l'identique
+          depuis le kill-feed synthétisé, affectation d'équipe correcte, zéro erreur
+          console. FAIT.
+      (c) couleur équipe (Réglages → Apparence → Couleurs de jeu : alliés=Herbe,
+          ennemis=Soleil) → l'histogramme reflète IMMÉDIATEMENT (barres vert/jaune),
+          idem Frags cumulés/Cadence. FAIT (couleurs restaurées au défaut après vérif).
+      (d) match live-only → EmptyState : garde `hasKillEvents` **inchangé** (code
+          préservé, plan « Ce qui ne change PAS ») — non re-reproduit visuellement, la
+          logique est identique à l'avant. [~] couvert par la préservation du guard.
+      (e) thème clair ET sombre → l'histogramme s'adapte (fond, axes, texte ; barres et
+          kill feed lisibles dans les deux). FAIT (thème restauré au sombre).
+- [x] 4.3 Skill `delivery-checklist` parcouru (frontend-only : complétude OK, tokens/i18n
+      OK, garde-rail hexToRgba dans le même commit Phase 1, zéro code mort) ; entrée
+      `thought_log.md` (statut Complété) ; GO utilisateur D1 acquis 2026-07-13 (pas de
+      demande de validation supplémentaire requise). FAIT.
 
 **Gate final** : tous les items `[x]`/`[~]`/`[!]` statués, commandes de gate rejouées :
 
@@ -191,6 +227,11 @@ aucune déclaration locale ni hex en dur (hors commentaires).
 make check-types
 make test-web
 ```
+
+PASSÉ 2026-07-13 (clôture) : `.tsbuildinfo` purgé ; `make check-types` OK ; `npm run lint`
+0 erreur (68 warnings baseline pré-existants, aucun dans les fichiers touchés) ; `make
+test-web` = 254 fichiers / 2151 tests verts (14 skipped). Environnement dev restauré (air
+:8000 mode xbox, thème sombre, couleurs équipe par défaut).
 
 ---
 
@@ -202,4 +243,18 @@ Une phase est close quand tous ses items sont statués ET son gate est passé.
 
 ## Découvertes hors périmètre (à consigner, ne pas traiter)
 
-- (vide)
+- **Tooltip scatter/vagues sous `trigger:'axis'` global** — le tooltip axis par tranche
+  (barre : Écart/kills/Cumul) fonctionne (vérifié écran). Les séries scatter (kills
+  individuels) et vagues portent `tooltip.trigger:'item'` par série ; sous le trigger
+  axis global, il n'a PAS été explicitement re-vérifié qu'un survol d'un point kill
+  affiche encore son tooltip individuel (joueur + horodatage) comme avant. Non bloquant :
+  le kill feed reste lisible (points + labels ×N des vagues) et le tooltip de tranche
+  couvre le momentum. À confirmer à la revue visuelle de merge ; si le survol par-kill
+  est souhaité, revoir la stratégie de trigger (axis pour les barres vs item pour le
+  scatter). N'a pas bloqué le gate → non traité (règle 7 plan-execution).
+- **`barCategoryGap: '20%'`** retenu à l'estime (aucun screenshot de référence exact
+  fourni) ; rendu jugé lisible à l'écran. Ajustable d'un littéral si l'utilisateur
+  préfère des barres plus/moins serrées.
+- **Facteurs de layout kill feed** (`LANE_FACTOR 1.5`, `TOP_FACTOR 1.95`,
+  `BOTTOM_FACTOR 1.15`) calés visuellement (B2 du plan) ; rendu vérifié Infinite + H5,
+  thèmes clair/sombre. Ajustables si besoin cosmétique.
