@@ -61,8 +61,14 @@ func startXboxDeviceCodeWithURL(ctx context.Context, client *http.Client, client
 
 	form := url.Values{
 		oauthFieldClientID: {clientID},
-		oauthFieldScope:    {xboxScopes},
-		"response_type":    {oauthFieldDeviceCode},
+		// Scope MSA natif (sisuMSAScope) et NON les scopes Azure AD (xboxScopes) :
+		// l'access_token issu de ce flow est présenté à sisu.xboxlive.com/authorize
+		// en "t=<ticket>" (famille MSA). Avec Xboxlive.signin, login.live.com
+		// émettait un JWT AAD → SISU répondait 401 à la complétion (cause racine
+		// du bug 2026-07-15 ; cross-référencé sur XAL/OpenXbox : scope MBI_SSL,
+		// client_id = AppId Xbox).
+		oauthFieldScope: {sisuMSAScope},
+		"response_type": {oauthFieldDeviceCode},
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, targetURL, strings.NewReader(form.Encode()))

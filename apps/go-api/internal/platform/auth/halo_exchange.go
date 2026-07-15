@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -163,7 +164,7 @@ func requestUserToken(ctx context.Context, client *http.Client, accessToken stri
 		xboxFieldProperties: map[string]string{
 			"AuthMethod": "RPS",
 			"SiteName":   "user.auth.xboxlive.com",
-			"RpsTicket":  "d=" + accessToken,
+			"RpsTicket":  rpsTicketPrefix(accessToken) + accessToken,
 		},
 	}
 	resp, err := postJSON(ctx, client, xblUserAuthURL, map[string]string{
@@ -177,6 +178,18 @@ func requestUserToken(ctx context.Context, client *http.Client, accessToken stri
 		return "", fmt.Errorf("token absent dans la réponse XBL")
 	}
 	return token, nil
+}
+
+// rpsTicketPrefix retourne le préfixe RpsTicket attendu par user.auth.xboxlive.com
+// selon la famille de l'access_token : "d=" pour un JWT Azure AD (app Azure,
+// scope Xboxlive.signin), "t=" pour un ticket MSA natif (client Xbox, scope
+// MBI_SSL — flow SISU). Chokepoint unique : tous les échanges XBL (stateless,
+// RTA) passent par requestUserToken, les deux familles y cohabitent.
+func rpsTicketPrefix(accessToken string) string {
+	if strings.HasPrefix(accessToken, "eyJ") {
+		return "d="
+	}
+	return "t="
 }
 
 // requestXSTSToken échange un User Token XBL contre un XSTS Token.
