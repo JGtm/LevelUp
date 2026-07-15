@@ -408,18 +408,27 @@ jobs:
         env:
           CGO_ENABLED: "1"
 
-      # NOTE (2026-07-12) — pas de seed démo en CI. Le générateur `levelup seed-demo`
-      # extrait des données RÉELLES de prod (non déterministe, non auto-suffisant) et
-      # ne tourne que sur l'hôte de prod. `data/demo/` étant gitignoré, il est absent
-      # ici. Les specs data-dépendantes se SKIPENT donc proprement via le garde
-      # e2e/_helpers/demoData.ts (sonde /api/v1/healthz/home?player=demo-player :
-      # 404 ⇒ skip, 200/503 ⇒ exécuté) — le rapport montre « N skipped » au lieu de
-      # ~60 failed. Les specs infra (shell, contrat HTTP, i18n, onboarding) restent
-      # exécutées et doivent être vertes. Détail : apps/web/e2e/README.md.
+      # Fixture démo SYNTHÉTIQUE (2026-07-13) — remplace le skip des specs
+      # data-dépendantes. `levelup seed-demo --synthetic` construit data/demo/ (DuckDB
+      # vierges migrées + INSERT déterministes ; aucune donnée réelle, aucune DB de
+      # prod, aucun fichier externe). La sonde e2e/_helpers/demoData.ts résout alors
+      # demo-player (200/503) → les ~60 specs data-dépendantes s'exécutent au lieu de
+      # skipper. Détail : apps/web/e2e/README.md + internal/ops/seed_demo_synthetic.go.
+      - name: Seed synthetic demo fixture
+        working-directory: apps/go-api
+        # CGO_ENABLED=1 : le générateur ouvre des DuckDB (binding C). ubuntu fournit gcc.
+        run: |
+          CGO_ENABLED=1 go build -o levelup ./cmd/levelup/
+          ./levelup seed-demo --synthetic
+        env:
+          CGO_ENABLED: "1"
+
       - name: Start backend in demo mode
         working-directory: apps/go-api
+        # LEVELUP_DEMO_LOCALE=fr : la vitrine démo force l'anglais par défaut (audience
+        # internationale) ; les specs E2E vérifient l'UI FR → on pinne la locale française.
         run: |
-          LEVELUP_DEMO_MODE=true LEVELUP_API_PORT=8000 ./levelup-api &
+          LEVELUP_DEMO_MODE=true LEVELUP_DEMO_LOCALE=fr LEVELUP_API_PORT=8000 ./levelup-api &
           echo "Backend PID: $!"
           # Attendre que l'API réponde (max 30s)
           for _ in $(seq 1 30); do
@@ -428,10 +437,15 @@ jobs:
           done
         env:
           LEVELUP_DEMO_MODE: "true"
+          LEVELUP_DEMO_LOCALE: "fr"
 
       - name: Start frontend dev server
+        # NE PAS définir VITE_API_BASE_URL : il remplacerait le préfixe `/api/v1` du
+        # client par `http://localhost:8000`, produisant des URLs sans `/api/v1` (404).
+        # L'app utilise donc le défaut relatif `/api/v1` → proxy Vite → backend démo.
+        # VITE_API_PROXY_TARGET pointe le proxy sur le backend (défaut déjà 127.0.0.1:8000).
         run: |
-          VITE_API_BASE_URL=http://localhost:8000 npm run dev &
+          npm run dev &
           echo "Frontend PID: $!"
           # Attendre que Vite soit prêt (max 30s)
           for _ in $(seq 1 30); do
@@ -439,7 +453,7 @@ jobs:
             sleep 1
           done
         env:
-          VITE_API_BASE_URL: "http://localhost:8000"
+          VITE_API_PROXY_TARGET: "http://127.0.0.1:8000"
 
       - name: Run Playwright tests
         run: |
@@ -451,6 +465,11 @@ jobs:
         env:
           CI: "true"
           PLAYWRIGHT_BASE_URL: "http://localhost:5173"
+          # Démo SYNTHÉTIQUE : certaines specs exigent des données d'un joueur RÉEL
+          # (gamertags nommés, synergies, backfill engagement) et skippent alors avec
+          # un motif (skipRequiresRealPlayer / engagement E2E_DEMO_MODE). Voir e2e/README.md.
+          E2E_DEMO_MODE: "1"
+          E2E_SYNTHETIC_DEMO: "1"
 
       - name: Upload Playwright report (on failure)
         if: failure()

@@ -66,6 +66,31 @@ export async function skipIfNoDemoData(): Promise<void> {
   test.skip(
     !available,
     'Fixture démo absente (data/demo non peuplé) — spec data-dépendante non exécutable en CI. ' +
-      'Générer via `levelup seed-demo` (hôte de prod). Voir e2e/README.md.',
+      'Générer via `levelup seed-demo --synthetic`. Voir e2e/README.md.',
+  )
+}
+
+/**
+ * Skip une spec devenue OBSOLÈTE (drift) : la fixture démo synthétique a rendu la
+ * spec exécutable et révélé qu'elle vise une route / un endpoint / une structure UI
+ * qui a changé depuis son écriture (elle skippait toujours faute de démo, donc la
+ * dérive n'a jamais été détectée). Skip inconditionnel + raison : la spec doit être
+ * RÉÉCRITE pour l'UI courante (hors périmètre du chantier fixture E2E). Voir e2e/README.md.
+ */
+export function skipObsoleteSpec(reason: string): void {
+  test.skip(true, `Spec obsolète (dérive UI/route/endpoint — à réécrire) : ${reason}`)
+}
+
+/**
+ * Skip une spec qui exige les données d'un JOUEUR RÉEL spécifique (gamertags réels
+ * codés en dur, coéquipiers nommés + synergies, backfill engagement, médias réels)
+ * — non reproductibles par une fixture SYNTHÉTIQUE. Skip UNIQUEMENT quand la démo est
+ * synthétique (E2E_SYNTHETIC_DEMO=1, posé par la CI) ; contre une démo réelle
+ * (`seed-demo` sur l'hôte de prod), la spec s'exécute normalement.
+ */
+export function skipRequiresRealPlayer(reason: string): void {
+  test.skip(
+    process.env.E2E_SYNTHETIC_DEMO === '1',
+    `Nécessite un joueur réel (non synthétisable) : ${reason}`,
   )
 }

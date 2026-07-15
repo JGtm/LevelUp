@@ -14,10 +14,14 @@
  * pour le joueur JGtm + Madina97294 + Chocoboflor.
  */
 import { test, expect } from '@playwright/test'
-import { skipIfNoDemoData } from './_helpers/demoData'
+import { skipIfNoDemoData, skipRequiresRealPlayer } from './_helpers/demoData'
 
-// Fixtures démo absentes en CI (data/demo gitignoré) → spec entière data-dépendante.
+// Vise JGtm + coéquipiers NOMMÉS (Madina97294, Chocoboflor) avec synergies calculées
+// sur matchs communs réels — non reproductible par une fixture synthétique (le radar
+// de synergie et les libellés « Avec <coéquipier> » dépendent de vraies relations).
+// Contre une démo réelle, la spec s'exécute.
 test.beforeEach(async () => {
+  skipRequiresRealPlayer('escouade JGtm + coéquipiers nommés (Madina97294/Chocoboflor) et synergies réelles')
   await skipIfNoDemoData()
 })
 

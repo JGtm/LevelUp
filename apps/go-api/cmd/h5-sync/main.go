@@ -58,7 +58,7 @@ func main() {
 
 	// Token store-first (identique à probe-h5) → ctx (l'adapter h5 lit le token du ctx).
 	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewMSALProvider(), xuid, gt, auth.LegacyAuthInputs{})
+	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), xuid, gt, auth.LegacyAuthInputs{})
 	if err != nil || res == nil || res.Tokens == nil {
 		fatal("refresh tokens %s: err=%v", gt, err)
 	}

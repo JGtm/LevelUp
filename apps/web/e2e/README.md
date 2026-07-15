@@ -16,15 +16,26 @@ cd apps/web && npx playwright test --project=chromium
 
 En CI comme en local, le backend tourne en `LEVELUP_DEMO_MODE=true` et lit les fixtures
 démo dans `LEVELUP_DEMO_FIXTURES_DIR` (défaut `<repo>/data/demo`). **Ce dossier est
-gitignoré** : il n'existe donc pas en CI. Le seul générateur (`levelup seed-demo`) extrait
-des données RÉELLES du joueur de prod et ne tourne que sur l'hôte de prod (job
-`deploy-demo`) — il n'est ni déterministe ni auto-suffisant, donc **non exécutable en CI**.
+gitignoré.**
 
-Sans fixture, toutes les routes `/players/<slug>/pages/*` échouent : ~60 specs
-data-dépendantes cassaient structurellement (rouge permanent qui masquait les vrais
-signaux). Correctif : ces specs appellent le garde
-[`_helpers/demoData.ts`](./_helpers/demoData.ts) et sont **SKIP (visibles, motivées)**
-quand les fixtures sont absentes, au lieu de FAIL.
+Deux générateurs de fixtures démo :
+
+- `levelup seed-demo` (défaut) — extrait des données RÉELLES du joueur de prod, anonymisées.
+  Ni déterministe ni auto-suffisant (CGO + DBs prod) → **non exécutable en CI** ; ne tourne
+  que sur l'hôte de prod (job `deploy-demo`).
+- **`levelup seed-demo --synthetic`** — construit `data/demo/` DE ZÉRO : DuckDB vierges
+  migrées (mêmes migrations que la prod → mêmes vues `_latest`) + INSERT SYNTHÉTIQUES
+  déterministes (60 matchs / 5 sessions / 3 joueurs, aucune donnée réelle, aucune DB de
+  prod, aucun fichier externe). **C'est la voie CI** : le job `e2e-react` le lance avant de
+  démarrer le backend → la sonde résout `demo-player` → les ~60 specs data-dépendantes
+  s'exécutent. Détail : `apps/go-api/internal/ops/seed_demo_synthetic.go`.
+
+La démo force par défaut la locale UI **anglaise** (vitrine internationale) ; les specs E2E
+vérifiant l'UI française, la CI pinne `LEVELUP_DEMO_LOCALE=fr` au démarrage du backend.
+
+Politique de skip conservée : quand les fixtures sont absentes (ex. run local sans seed),
+les specs data-dépendantes appellent le garde [`_helpers/demoData.ts`](./_helpers/demoData.ts)
+et sont **SKIP (visibles, motivées)** au lieu de FAIL.
 
 - **Specs infra** (montage du shell, absence d'erreur 500, i18n, redirections,
   onboarding) : n'appellent PAS le garde → toujours exécutées (~42 tests verts).
@@ -34,9 +45,28 @@ quand les fixtures sont absentes, au lieu de FAIL.
   - `404` (joueur démo non résolvable → fixture absente) ⇒ **skip** ;
   - `200` / `503` (joueur résolu, home complète ou partielle) ⇒ **exécuté**.
 
-Résultat attendu sans fixture : `42 passed, 65 skipped, 0 failed`. Avec un démo seedé
-(local/prod), la sonde renvoie 200/503 et les specs data-dépendantes s'exécutent
-normalement.
+Résultat attendu sans fixture : `42 passed, 65 skipped, 0 failed`. Avec la fixture
+SYNTHÉTIQUE (CI + local `seed-demo --synthetic`, locale `fr`) : `76 passed, ~31 skipped,
+0 failed` — les specs data-dépendantes s'exécutent vraiment contre les pages.
+
+### Skips résiduels documentés (fixture synthétique)
+
+Certaines specs restent skippées avec un motif explicite (helpers de
+[`_helpers/demoData.ts`](./_helpers/demoData.ts)) :
+
+- **`skipObsoleteSpec(reason)`** — spec devenue OBSOLÈTE : la fixture l'a rendue exécutable
+  et a révélé qu'elle vise une route / un endpoint / une structure UI **qui a changé** depuis
+  son écriture (elle skippait toujours faute de démo, la dérive n'avait jamais été détectée).
+  À RÉÉCRIRE pour l'UI courante. Concernées : `slice-3-match-history` (route `/stats/history`
+  supprimée), `slice-3c-session-compare` (endpoint fusionné dans `/pages/timeseries`),
+  `ascension-2tabs` (page redessinée 2→3 onglets), `match-view-combat` (onglet « Combat » →
+  « Général »/« Détails »), `period-session-rail` (route `/stats/history`), 1 test
+  `p7-dto-rename` (sélecteur canvas du graphique bipolaire).
+- **`skipRequiresRealPlayer(reason)`** — exige les données d'un JOUEUR RÉEL spécifique
+  (gamertags nommés + synergies, chart LUSR multi-groupes) non reproductibles en synthétique ;
+  skip UNIQUEMENT quand `E2E_SYNTHETIC_DEMO=1` (posé par la CI), s'exécute contre une démo
+  réelle. Concernées : `career-lusr-legend`, `squad-charts-render`, `theme-switch-charts`.
+- **`engagement`** — skip via `E2E_DEMO_MODE=1` (backfill engagement absent en démo).
 
 ### Ajouter une spec
 
@@ -50,6 +80,8 @@ normalement.
 ## CI
 
 Le job `e2e-react` (`.github/workflows/ci.yml`) ne tourne **que sur pull_request** (coût +
-flakiness ; les tests auth exigent des identifiants absents en CI). Il n'y a pas de seed
-démo en CI : les specs data-dépendantes y apparaissent en `skipped`, les specs infra
-doivent rester vertes.
+flakiness ; les tests auth exigent des identifiants absents en CI). Le job **seede la
+fixture synthétique** (`levelup seed-demo --synthetic`) AVANT de démarrer le backend
+(`LEVELUP_DEMO_MODE=true LEVELUP_DEMO_LOCALE=fr`) → les specs data-dépendantes s'exécutent
+réellement. Le front dev utilise le proxy Vite `/api/v1` (NE PAS définir `VITE_API_BASE_URL`,
+qui casserait le préfixe `/api/v1`).

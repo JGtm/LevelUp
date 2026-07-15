@@ -1105,6 +1105,10 @@ en = "Date:"
 fr = "Démarrage du Device Code Flow…"
 en = "Starting Device Code Flow…"
 
+[common.setup.device_start_failed]
+fr = "Impossible de démarrer la connexion Microsoft. Veuillez réessayer."
+en = "Unable to start Microsoft sign-in. Please try again."
+
 [common.setup.device_auth_success]
 fr = "✓ Authentification réussie !"
 en = "✓ Authentication successful!"

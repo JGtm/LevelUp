@@ -54,7 +54,7 @@ func main() {
 		return
 	}
 
-	provider := auth.NewMSALProvider()
+	provider := auth.NewSISUProvider()
 	tok, err := provider.TryOAuthRefresh(context.Background(), rt)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

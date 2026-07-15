@@ -208,6 +208,7 @@ export function ExplorerPage() {
       filters: explorerFilterContext,
       pagination: { page: 1, page_size: 10000 },
       include_export_hint: true,
+      include_briefing: true,
       perf_tiers: perfTiers.size > 0 ? [...perfTiers].map(Number) : undefined,
       skill_tiers: skillTiers.size > 0 ? [...skillTiers] : undefined,
       ranked_context: rankedContext || undefined,

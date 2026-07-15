@@ -80,21 +80,12 @@ func main() {
 	if err != nil {
 		fatal("chargement tokens %s : %v", *tokenXUID, err)
 	}
-	// access_token FRAIS via le chemin adapté à la forme du token stocké :
-	//   - cache MSAL présent → AcquireTokenSilent ;
-	//   - sinon RT brut (cas JGtm, cf. oauth_refresh.go) → ExchangeRefreshTokenWithRotation.
-	// UN SEUL refresh (pas de double rotation de RT), puis persistance de l'état tourné.
+	// access_token FRAIS via le RT brut (post-retrait MSAL 2026-07-15 : la voie
+	// cache MSAL a disparu, ExchangeRefreshTokenWithRotation couvre RTs Azure et
+	// MSA natifs). UN SEUL refresh (pas de double rotation de RT), puis
+	// persistance de l'état tourné.
 	var accessToken string
-	if bearer.MSALCacheJSON != "" {
-		accessor := auth.NewInMemoryCacheAccessorFromJSON(bearer.MSALCacheJSON)
-		if at, _ := auth.AcquireTokenSilent(ctx, accessor); at != "" {
-			accessToken = at
-			if updated, serr := accessor.Serialize(); serr == nil && updated != "" {
-				bearer.MSALCacheJSON = updated
-			}
-		}
-	}
-	if accessToken == "" && bearer.OAuthRefreshToken != "" {
+	if bearer.OAuthRefreshToken != "" {
 		at, rotatedRT, rerr := auth.ExchangeRefreshTokenWithRotation(ctx, bearer.OAuthRefreshToken)
 		if rerr != nil {
 			fatal("refresh RT brut (%s) : %v", *tokenXUID, rerr)
@@ -105,7 +96,7 @@ func main() {
 		}
 	}
 	if strings.TrimSpace(accessToken) == "" {
-		fatal("aucun access_token frais pour %s (ni cache MSAL ni RT brut exploitable)\n→ re-capture : `go run ./cmd/token-capture/ %s` (ADR 0023).", *tokenXUID, *tokenGamertag)
+		fatal("aucun access_token frais pour %s (pas de refresh_token exploitable)\n→ re-login SSO Xbox ou `go run ./cmd/token-capture/ %s` (ADR 0023).", *tokenXUID, *tokenGamertag)
 	}
 	bearer.AccessToken = accessToken
 	bearer.OAuthExpiresAt = time.Now().Add(50 * time.Minute)

@@ -99,6 +99,15 @@ Cette variable d'environnement prend le pas sur l'ID embarqué. Notez que `.env.
 (client ID) : ce n'est **pas** un store de credentials — les refresh tokens vivent dans le store de tokens
 (voir [ADR 0023](../adr/0023-auth-tokens-single-source.md)).
 
+#### Fournisseur d'authentification — SISU (seul fournisseur)
+
+Le Device Code Flow d'onboarding utilise le fournisseur **SISU** : le flux device-code
+natif Xbox, qui ne requiert **aucune app Azure** — c'est pourquoi « Xbox Express »
+ci-dessus ne demande aucune configuration Azure. L'ancien repli MSAL a été retiré le
+2026-07-15 après validation de SISU bout-en-bout ; un `"auth_provider": "msal"` hérité
+dans `app_settings.json` est désormais ignoré (avec un avertissement au démarrage).
+Voir [CONFIGURATION.md](CONFIGURATION.md) pour le détail.
+
 ### Étape 5 — Smoke test (vérification automatique sur 20 matchs)
 
 Après la connexion Xbox, le wizard lance automatiquement un **smoke test en 3 phases** :

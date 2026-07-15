@@ -8,10 +8,13 @@
  *  - Le rail vient APRÈS NavL2 dans le DOM (rendu en dessous des filtres)
  */
 import { test, expect } from '@playwright/test'
-import { skipIfNoDemoData } from './_helpers/demoData'
+import { skipIfNoDemoData, skipObsoleteSpec } from './_helpers/demoData'
 
-// Fixtures démo absentes en CI (data/demo gitignoré) → spec entière data-dépendante.
+// La spec navigue vers /players/{slug}/stats/history — route supprimée (routes
+// actuelles : stats/{index,sessions,synthesis,timeseries}) → contenu "Not Found".
+// À réécrire sur une route Stats existante. Skip inconditionnel en attendant.
 test.beforeEach(async () => {
+  skipObsoleteSpec('route /players/{slug}/stats/history supprimée (la spec y navigue)')
   await skipIfNoDemoData()
 })
 

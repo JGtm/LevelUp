@@ -23,7 +23,7 @@ func TestExchangeRefreshToken_EmptyToken(t *testing.T) {
 // TestMSALProvider_TryOAuthRefresh_EmptyToken vérifie que TryOAuthRefresh délègue
 // correctement avec un token vide.
 func TestMSALProvider_TryOAuthRefresh_EmptyToken(t *testing.T) {
-	p := auth.NewMSALProvider()
+	p := auth.NewSISUProvider()
 	token, err := p.TryOAuthRefresh(context.Background(), "")
 	if err != nil {
 		t.Fatalf("attendu err=nil, got: %v", err)

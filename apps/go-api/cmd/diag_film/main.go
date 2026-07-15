@@ -347,7 +347,7 @@ func loadTokens(ctx context.Context, authFile, gamertag string) (*struct {
 		}
 	}
 
-	provider := auth.NewMSALProvider()
+	provider := auth.NewSISUProvider()
 	_ = margin
 
 	// Try env var refresh token for gamertag

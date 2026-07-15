@@ -20,6 +20,7 @@ import { storePasswordCredential } from '@/features/auth/credentials'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
 import { API_BASE_URL, apiErrorCode, type ApiError } from '@/lib/api/client'
+import { verificationLinkLabel } from '@/lib/formatters'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -296,8 +297,11 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
       <h2 className="text-lg font-semibold text-center">{t('common.xbox_login.title')}</h2>
       <p className="text-sm text-muted-foreground text-center">
         {t('common.setup.go_to')}{' '}
-        <a href={uri} target="_blank" rel="noopener noreferrer" className="text-primary underline">
-          {uri.replace('https://', '')}
+        {/* Jamais l'URL brute (query params PKCE illisibles + overflow) : libellé
+            court host/chemin — le domaine reste visible (anti-phishing), l'URL
+            complète est portée par le href. break-all = défense anti-overflow. */}
+        <a href={uri} target="_blank" rel="noopener noreferrer" className="text-primary underline break-all">
+          {verificationLinkLabel(uri)}
         </a>
       </p>
       <div className="rounded-lg bg-card border px-6 py-4 text-center">

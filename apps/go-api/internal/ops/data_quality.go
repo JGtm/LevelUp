@@ -13,6 +13,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -203,11 +204,45 @@ func listRawUUIDs(ctx context.Context, sharedDB *sql.DB, limit int) ([]DataQuali
 	return out, nil
 }
 
+// metaTableExists indique si une table existe dans la metadata du titre.
+// Certains titres ont un schéma metadata PROPRE (PMT-9 : Halo 5 n'a ni
+// mode_name_tr ni playlists_catalog — ses référentiels vivent ailleurs,
+// asset_translations/pair_name_fr). Un détecteur qui dépend d'un référentiel
+// absent du SCHÉMA du titre est NON APPLICABLE : introspection plutôt que
+// Catalog Error (qui faisait tomber tout l'endpoint en 500 pour le titre).
+func metaTableExists(ctx context.Context, metaDB *sql.DB, table string) (bool, error) {
+	var n int
+	if err := metaDB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?`, table,
+	).Scan(&n); err != nil {
+		// Une erreur d'introspection (handle fermé, IO, timeout) N'EST PAS une table
+		// absente : la remonter (règle n°3 — jamais d'erreur avalée), sinon un faux
+		// vert masque des détecteurs data-quality (untranslated_modes = 0 à tort).
+		return false, fmt.Errorf("introspection metadata table %s: %w", table, err)
+	}
+	return n > 0, nil
+}
+
 // listUntranslatedModes liste les modes (clé normalisée via
-// analysis.NormalizeModeLabel) absents de mode_name_tr[lang='fr']. metaDB nil
-// → tout est considéré non traduit (dégradation explicite plutôt que faux
-// vert). limit <= 0 → pas de limite (usage comptage).
+// analysis.NormalizeModeLabel) absents de mode_name_tr[lang='fr']. Dégradations :
+//   - metaDB nil (metadata absente/illisible) → tout est considéré non traduit
+//     (dégradation explicite plutôt que faux vert) ;
+//   - table mode_name_tr ABSENTE DU SCHÉMA du titre → détecteur non applicable
+//     (le titre gère ses traductions autrement) → liste vide, jamais une erreur.
+//
+// limit <= 0 → pas de limite (usage comptage).
 func listUntranslatedModes(ctx context.Context, sharedDB, metaDB *sql.DB, limit int) ([]DataQualityIssue, error) {
+	if metaDB != nil {
+		exists, err := metaTableExists(ctx, metaDB, "mode_name_tr")
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			slog.DebugContext(ctx, "data_quality: mode_name_tr absente du schéma metadata — détecteur untranslated_modes non applicable",
+				"module", "monitoring")
+			return []DataQualityIssue{}, nil
+		}
+	}
 	frSet := map[string]struct{}{}
 	if metaDB != nil {
 		rows, err := metaDB.QueryContext(ctx, `SELECT mode_en FROM mode_name_tr WHERE lang = 'fr'`)
@@ -312,11 +347,26 @@ func aggregateUntranslatedModes(
 }
 
 // listOrphanPlaylists liste les playlist_id de match_registry absents de
-// metadata.playlists_catalog pour ce titre. metaDB nil → catalogue vide
-// (tout orphelin). limit <= 0 → pas de limite (usage comptage).
+// metadata.playlists_catalog pour ce titre. Dégradations :
+//   - metaDB nil (metadata absente/illisible) → catalogue vide (tout orphelin) ;
+//   - table playlists_catalog ABSENTE DU SCHÉMA du titre → détecteur non
+//     applicable (pas de catalogue de playlists pour ce titre) → liste vide.
+//
+// limit <= 0 → pas de limite (usage comptage).
 func listOrphanPlaylists(
 	ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug string, limit int,
 ) ([]DataQualityIssue, error) {
+	if metaDB != nil {
+		exists, err := metaTableExists(ctx, metaDB, "playlists_catalog")
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			slog.DebugContext(ctx, "data_quality: playlists_catalog absente du schéma metadata — détecteur orphan_playlists non applicable",
+				"module", "monitoring", "title", titleSlug)
+			return []DataQualityIssue{}, nil
+		}
+	}
 	catalog := map[string]struct{}{}
 	if metaDB != nil {
 		rows, err := metaDB.QueryContext(ctx,

@@ -23,16 +23,21 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/platform/halo"
 )
 
 // stubScraper retourne des entrées canned et compte les appels.
 type stubScraper struct {
-	season      string
-	seasonErr   error
-	entries     []domain.LeaderboardEntry
-	fetchErr    error
-	activeCalls int
-	fetchCalls  int
+	season    string
+	seasonErr error
+	// seasonErrForPlaylists : playlists de référence qui font échouer FetchActiveSeason
+	// (simule un 404 « non classée dans la saison-graine »). Prioritaire sur seasonErr ;
+	// les playlists absentes de la map réussissent normalement.
+	seasonErrForPlaylists map[string]error
+	entries               []domain.LeaderboardEntry
+	fetchErr              error
+	activeCalls           int
+	fetchCalls            int
 	// activePlaylists : playlists « découvertes ». nil → le cron retombe sur la liste
 	// statique (comportement par défaut des tests historiques).
 	activePlaylists     []domain.WorldPlaylistRef
@@ -45,8 +50,11 @@ type stubScraper struct {
 	seasonsCalls int
 }
 
-func (s *stubScraper) FetchActiveSeason(_ context.Context, _ string) (string, error) {
+func (s *stubScraper) FetchActiveSeason(_ context.Context, refPlaylistID string) (string, error) {
 	s.activeCalls++
+	if err, ok := s.seasonErrForPlaylists[refPlaylistID]; ok {
+		return "", err
+	}
 	if s.seasonErr != nil {
 		return "", s.seasonErr
 	}
@@ -253,6 +261,41 @@ func TestWorldLeaderboardCron_SeasonDiscoveryError(t *testing.T) {
 	}
 	if got := countSnapshots(t, db, "csrseason13-2"); got != 0 {
 		t.Errorf("aucune ligne attendue sur échec de découverte, got %d", got)
+	}
+}
+
+// TestWorldLeaderboardCron_SeasonDiscoveryFallsThrough404 : une playlist de
+// référence non classée dans la saison-graine renvoie un 404 (cas nominal). Le cron
+// NE DOIT PAS avorter le cycle dessus — il essaie la playlist candidate suivante
+// jusqu'à trouver une page rendue. Régression du bruit prod B3.1 (ERROR quotidienne
+// « découverte saison active échouée »).
+func TestWorldLeaderboardCron_SeasonDiscoveryFallsThrough404(t *testing.T) {
+	provider, db := newSharedProviderForTest(t)
+	scraper := &stubScraper{
+		season:  "csrseason13-2",
+		entries: []domain.LeaderboardEntry{{Rank: 1, Gamertag: "Alpha", XUID: "2535000000000001", CSRValue: 1500}},
+		activePlaylists: []domain.WorldPlaylistRef{
+			{AssetID: "pl-new", DisplayName: "Ranked Nouvelle"}, // récente : 404 sur la saison-graine
+			{AssetID: "pl-old", DisplayName: "Ranked Arène"},    // ancienne : rend la page
+		},
+		// Les statiques (pl-a, pl-b, essayées d'abord) et la playlist récente 404 ;
+		// seule pl-old rend le menu de saisons.
+		seasonErrForPlaylists: map[string]error{
+			"pl-a":   halo.ErrLeaderboardPageNotFound,
+			"pl-b":   halo.ErrLeaderboardPageNotFound,
+			"pl-new": halo.ErrLeaderboardPageNotFound,
+		},
+	}
+	c := newTestCron(provider, scraper)
+	c.RunOnce(context.Background())
+
+	// La saison a été découverte via pl-old → le cycle a scrapé + inséré (pas avorté).
+	if got := countSnapshots(t, db, "csrseason13-2"); got == 0 {
+		t.Fatalf("aucun snapshot : le cycle a avorté sur le 404 de la 1re playlist au lieu de basculer sur une candidate valide")
+	}
+	// Plusieurs playlists de référence ont été essayées avant le succès (repli).
+	if scraper.activeCalls < 2 {
+		t.Errorf("FetchActiveSeason appelé %d× — le cron n'a pas essayé de playlist de repli après le 404", scraper.activeCalls)
 	}
 }
 

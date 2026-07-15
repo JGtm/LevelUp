@@ -194,6 +194,12 @@ type MatchHistoryQueryRequest struct {
 	// rows dont match_id ∈ MatchIDs sont gardées (filtre exact). Utilisé par
 	// l'Explorer mode Joueur pour scoper aux matchs en commun avec une cible.
 	MatchIDs []string `json:"match_ids,omitempty"`
+	// IncludeExplorerBriefing : quand vrai, GetPage construit le bloc Briefing
+	// étendu (KPIs + baseline + dimensions + tendance + classé) sur le
+	// sous-ensemble filtré. Faux (défaut) = réponse strictement identique à
+	// aujourd'hui (la page Historique/Stats ne paie rien). Propagé depuis
+	// ExplorerMatchesQueryRequest.IncludeBriefing (opt-in Explorer).
+	IncludeExplorerBriefing bool `json:"-"`
 }
 
 // maxPageSize est la taille de page maximale acceptée.
@@ -236,6 +242,10 @@ type MatchHistoryPageResponse struct {
 	// Stats Solo (mode solo : pas de squad verdict). Calculé sur les canonical
 	// rows correspondant aux match_id filtrés. Nil si aucun match.
 	BriefingKPIs *KPIStats `json:"briefing_kpis,omitempty"`
+	// Briefing : bandeau de briefing ÉTENDU de l'Explorer (mode Matchs). Émis
+	// uniquement quand la requête pose IncludeExplorerBriefing=true ET que le
+	// scope est non vide. Nil pour la page Historique/Stats (flag absent).
+	Briefing *ExplorerBriefing `json:"briefing,omitempty"`
 }
 
 // ExportHint indique qu'un export CSV est disponible.
