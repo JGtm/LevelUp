@@ -1,3 +1,40 @@
+## [2026-07-15] Revue adversariale du train — corrections (branche fix/revue-adversariale)
+
+**Statut** : Complété — 14 défauts confirmés → 10 corrigés, 4 écartés. Rapport complet :
+`.ai/REVUE_ADVERSARIALE_TRAIN_2026-07-15.md`. Tous les gates verts.
+
+**Décision technique principale** :
+- **ART (majeur, CI rouge évitée)** : `INSERT OR REPLACE INTO sync_meta` du seeder synthétique
+  → `INSERT` pur (DB vierge). Débloque `TestNoARTPatternsOnProtectedTables`.
+- **SISU per-flow (majeur, sécu)** : suppression du slot GLOBAL `SISUProvider.current` — le
+  contexte SISU est porté par le `sisuDeviceFlow` (interface `auth.FlowExchanger`, routée par
+  `handlers/auth.go`), `Exchange` devient toujours stateless. Élimine la course où le pool
+  auto-sync (ou un 2e onboarding) consommait le contexte du device-flow interactif. Single-flight
+  `waitDeviceFlowReady` préservé (stub → fallback stateless). Régression `PerFlowContextIsolation`.
+- **Déterminisme seeder (majeur, test)** : `TestSeedDemoSynthetic_Deterministic` dumpe désormais
+  les données réelles (17 tables seedées × 6 DBs, ligne à ligne triée) entre 2 runs → 3 vraies
+  non-déterminations débusquées et ancrées sur `synthAnchor` (`fetched_at`, `match_citations.written_at`,
+  `weapon_kills.written_at`).
+- Mineurs : `metaTableExists`→`(bool,error)` (erreur remontée, plus de faux vert data-quality) ;
+  débounce anti-oscillation de l'alerte disque (améliorations confirmées sur 2 ticks) ;
+  `AggregateKDA` migré (copie explorer_target_stats + garde-rail grep) ; helper mort
+  `perfTierLabelKey` supprimé ; URL webhook Discord expurgée des logs (`sanitizeSendError`) ;
+  momentum front aligné sur le clamp backend `tug_of_war.go` ; README breakdown à jour.
+- **Bonus (bloquaient `go test ./...`)** : 3 garde-rails file-level préexistants du seeder
+  synthétique réparés — `shared_social` whitelist, `halowaypoint` allowlist, littéraux outcome
+  → constantes `domain.Outcome*`. Le chantier fixture avait introduit ces 4 violations (ART inclus)
+  sans mettre à jour les allowlists ; la revue n'avait trouvé que l'ART.
+- **Écartés (4)** : populate-assets locks (runbook one-off serveur-arrêté ; ligne thought_log
+  corrigée), disk notify-on-send-failure (canal primaire = détection persistée), specs e2e stale
+  (backlog réécriture tracké), reachability opt-in (commande manuelle ajoutée au RUNBOOK_DEPLOY_CHECKLIST).
+
+**Résultats observés** : `go build/vet/test ./...` verts ; `go test -tags=integration -p 1 ./...`
+vert ; `golangci-lint --new-from-rev=test/e2e-fixture-synthetique` = 0 ; front `tsc`/`eslint` 0,
+`vitest` 255 fichiers / 2159 passés / 14 skipped.
+
+**Conclusion / prochaine étape** : corrections livrées, prêtes pour le train de merge. Ne pas
+pousser sur `main` (deploy prod auto).
+
 ## [2026-07-14] Fixture démo E2E SYNTHÉTIQUE — réactivation des specs data-dépendantes (branche test/e2e-fixture-synthetique)
 
 **Statut** : Complété — `levelup seed-demo --synthetic` livré, CI e2e-react câblée,
@@ -347,7 +384,9 @@ buildait déjà `cmd/levelup` (CGO statique linux) et ma sous-commande n'ajoute 
 dépendance nouvelle (config/domain/title/duckdb/halo/x-sync déjà compilées linux dans
 l'image via cmd/server) ; (b) le job CI « Deploy Pre-Check / docker-build » builde l'image
 COMPLÈTE sur la branche à chaque push → verdict réel au CI de ce commit (surveillé en
-avant-plan). Usage prod : `docker compose exec levelup levelup populate-assets --dry-run`.
+avant-plan). Usage prod : serveur ARRÊTÉ d'abord (one-off DuckDB mono-process, cf.
+`docs/RUNBOOK_OPS_DUCKDB_CLI_TOOLS.md` — un `docker compose exec` serveur allumé
+échouerait sur le lock metadata RW), puis `levelup populate-assets --dry-run`.
 
 **Conclusion / prochaine étape** : lot ops/qualité SOLDÉ (0/0b/1/2/3/4). Gates finaux
 complets + CI de branche verte, puis rapport final.
