@@ -31,6 +31,10 @@ import (
 // msalTokenURL est une var (pas une const) pour permettre l'override httptest.
 var msalTokenURL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
 
+// msaTokenURL — endpoint OAuth 2.0 MSA legacy (login.live.com), celui du client
+// Xbox natif du flow SISU. var (pas const) pour l'override httptest.
+var msaTokenURL = "https://login.live.com/oauth20_token.srf"
+
 // xboxScopes — scopes Xbox Live joints par espace (form bodies), dérivés du
 // descripteur (MT-02, source unique avec XboxScopes []string → zéro dérive).
 var xboxScopes = title.DefaultHaloAuthDescriptor().OAuthScopesParam()
@@ -117,11 +121,32 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 			accessToken, rotatedRefreshToken, err = postTokenExchange(ctx, clientID, refreshToken, "")
 		}
 	}
+
+	// Fallback MSA natif (flow SISU) : un RT émis par le client Xbox natif
+	// (device-flow SISU, scope MBI_SSL) est inconnu de l'app Azure — le endpoint
+	// v2 le refuse en invalid_grant (« RT étranger », type AADSTS70000). On
+	// retente alors UNE fois sur login.live.com avec le client Xbox et le scope
+	// MSA d'origine. Stateless, symétrique du retry AADSTS90023. Si le fallback
+	// échoue aussi, on propage l'erreur Azure INITIALE (classification intacte
+	// pour le pool/resolver) et on logge l'échec MSA avant dégradation.
+	if err != nil {
+		var oerr *OAuthExchangeError
+		if errors.As(err, &oerr) && oerr.Class() == AuthErrorRevoked {
+			oauthRefreshRetryMSATotal.Add(1)
+			slog.InfoContext(ctx, "oauth_refresh: invalid_grant côté Azure — retry refresh MSA natif (client Xbox/SISU)")
+			at, rt, msaErr := postMSATokenExchange(ctx, refreshToken)
+			if msaErr == nil && at != "" {
+				accessToken, rotatedRefreshToken, err = at, rt, nil
+			} else {
+				slog.DebugContext(ctx, "oauth_refresh: retry MSA natif échoué", "err", msaErr)
+			}
+		}
+	}
 	return accessToken, rotatedRefreshToken, err
 }
 
-// postTokenExchange exécute un POST /oauth2/v2.0/token et décode la réponse.
-// secret vide = flux client public (pas de champ client_secret).
+// postTokenExchange exécute un POST /oauth2/v2.0/token (endpoint Azure v2) et
+// décode la réponse. secret vide = flux client public (pas de champ client_secret).
 func postTokenExchange(ctx context.Context, clientID, refreshToken, secret string) (string, string, error) {
 	body := url.Values{
 		oauthFieldClientID:     {clientID},
@@ -132,8 +157,26 @@ func postTokenExchange(ctx context.Context, clientID, refreshToken, secret strin
 	if secret != "" {
 		body.Set("client_secret", secret)
 	}
+	return postOAuthTokenForm(ctx, msalTokenURL, body)
+}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, msalTokenURL,
+// postMSATokenExchange rafraîchit un refresh_token MSA natif (émis par le
+// device-flow SISU : client Xbox, scope MBI_SSL) sur login.live.com. Flux
+// client public — jamais de secret. Même contrat de retour que postTokenExchange.
+func postMSATokenExchange(ctx context.Context, refreshToken string) (string, string, error) {
+	body := url.Values{
+		oauthFieldClientID:     {SISUDefaultAppID},
+		"grant_type":           {oauthFieldRefreshToken},
+		oauthFieldRefreshToken: {refreshToken},
+		oauthFieldScope:        {sisuMSAScope},
+	}
+	return postOAuthTokenForm(ctx, msaTokenURL, body)
+}
+
+// postOAuthTokenForm exécute un POST form-encoded sur un endpoint token OAuth 2.0
+// et décode la réponse (partagé Azure v2 / MSA legacy — même contrat JSON).
+func postOAuthTokenForm(ctx context.Context, tokenURL string, body url.Values) (string, string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL,
 		strings.NewReader(body.Encode()))
 	if err != nil {
 		return "", "", fmt.Errorf("oauth_refresh: construction requête: %w", err)
@@ -159,7 +202,8 @@ func postTokenExchange(ctx context.Context, clientID, refreshToken, secret strin
 
 	if tok.ErrorCode != "" {
 		slog.DebugContext(ctx, "oauth_refresh: erreur serveur",
-			"error", tok.ErrorCode, "description", tok.ErrorDesc, "public_flow", secret == "")
+			"error", tok.ErrorCode, "description", tok.ErrorDesc,
+			"public_flow", body.Get("client_secret") == "")
 		return "", "", &OAuthExchangeError{ErrorCode: tok.ErrorCode, Description: tok.ErrorDesc}
 	}
 

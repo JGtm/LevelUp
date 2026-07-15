@@ -51,6 +51,11 @@ type sisuDeviceFlow struct {
 
 	provider *SISUProvider    // pour compléter l'échange SISU (ExchangeFlow)
 	flowCtx  *sisuFlowContext // contexte éphémère propre à CE flow
+
+	// refreshToken est le refresh_token Microsoft rendu par le polling
+	// (client Xbox natif, scope MSA). Écrit par AcquireToken, lu ensuite par
+	// OAuthRefreshToken dans la même goroutine de polling — pas de concurrence.
+	refreshToken string
 }
 
 // ExchangeFlow complète le flow SISU interactif porté par ce device flow, à partir
@@ -78,10 +83,22 @@ func (f *sisuDeviceFlow) GetExpiresIn() int          { return f.expiresIn }
 func (f *sisuDeviceFlow) GetFlowType() string        { return "sisu" }
 
 // AcquireToken attend la validation Xbox Device Code et retourne l'access_token Microsoft.
+// Conserve aussi le refresh_token pour la persistance ADR 0023 (cf. OAuthRefreshToken).
 func (f *sisuDeviceFlow) AcquireToken(ctx context.Context) (string, error) {
-	accessToken, _, err := PollXboxDeviceCode(ctx, f.appID, f.deviceCode, f.interval)
-	return accessToken, err
+	accessToken, refreshToken, err := PollXboxDeviceCode(ctx, f.appID, f.deviceCode, f.interval)
+	if err != nil {
+		return "", err
+	}
+	f.refreshToken = refreshToken
+	return accessToken, nil
 }
+
+// OAuthRefreshToken expose le refresh_token Microsoft obtenu par le polling —
+// l'équivalent SISU du RT encapsulé dans le cache MSAL. Consommé par le handler
+// device-flow pour la persistance dans watcher_tokens (ADR 0023) ; le pool le
+// rafraîchit ensuite via le fallback MSA natif de ExchangeRefreshTokenWithRotation.
+// Vide tant qu'AcquireToken n'a pas abouti.
+func (f *sisuDeviceFlow) OAuthRefreshToken() string { return f.refreshToken }
 
 // Vérification compile-time : sisuDeviceFlow implémente DeviceFlow.
 var _ DeviceFlow = (*sisuDeviceFlow)(nil)
