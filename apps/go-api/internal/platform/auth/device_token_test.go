@@ -38,8 +38,13 @@ func TestRequestDeviceToken_Success(t *testing.T) {
 		if props["AuthMethod"] != "ProofOfPossession" {
 			t.Errorf("AuthMethod inattendu: %v", props["AuthMethod"])
 		}
-		if props["DeviceType"] != "Win32" {
+		// "Android" obligatoire : SISU /authorize ne fait pas confiance aux
+		// device tokens Win32 (attestation TPM requise) — fix 401 2026-07-15.
+		if props["DeviceType"] != "Android" {
 			t.Errorf("DeviceType inattendu: %v", props["DeviceType"])
+		}
+		if _, present := props["Version"]; present {
+			t.Error("Version ne doit plus être envoyée (aligné MinecraftAuth)")
 		}
 
 		w.Header().Set("Content-Type", "application/json")

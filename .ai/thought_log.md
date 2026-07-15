@@ -28,13 +28,31 @@
   (`jwt_aad`/`msa_compact` — jamais le token) ; succès HTTP → clés de la réponse `/authorize`
   (pour vérifier l'audience de l'AuthorizationToken à l'étape Spartan si besoin).
 
+**Itération 2 (2026-07-15 soir, après 1er essai utilisateur)** : l'essai a prouvé le fix du
+scope (log `access_token_format=msa_compact`) mais 401 persistant, corps VIDE et pas de
+WWW-Authenticate. Cross-référence approfondie (MinecraftAuth/RaphiMC `XblSisuAuthorizeRequest`
+— la référence de MCXboxBroadcast — sources lues via gh api) : la variante DEVICE-CODE de
+SISU n'a PAS de session — pas de `/authenticate`, pas de `SessionId`, pas de `SiteName` ;
+`/authorize` se fait en un seul POST avec `RelyingParty` (audience XSTS du titre, l'
+AuthorizationToken retourné est directement le XSTS du titre) ; le device token doit être
+`DeviceType=Android` (Win32 = attestation TPM exigée), sans champ `Version`. Notre code
+mélangeait les deux modes SISU : il initiait une session du flux par REDIRECTION (PKCE,
+SessionId) puis la complétait avec un token device-code — rejeté 401 corps vide.
+Correctif : suppression du leg `/authenticate` (InitSISUSession supprimée — 0 code mort,
+GeneratePKCE conservée pour le SSO web), `/authorize` aligné sur la référence
+(RelyingParty=XSTSAudience du descripteur, sans SessionId/SiteName), device token Android.
+sisuFlowContext réduit à {kp, deviceToken}.
+
 **Résultats observés** : build + tests `platform/auth`, `service`, `handlers` verts ;
 `golangci-lint --new-from-rev=origin/main` = 0 ; gofmt propre.
 
-**Conclusion / prochaine étape** : essai de login réel utilisateur (auth_mode=xbox,
-auth_provider SISU) → lire les logs `sisu:` ; si nouvel échec, le raw/XErr guide l'itération
-(candidats suivants : audience de l'AuthorizationToken pour Spartan, en-tête contract-version).
-Après validation utilisateur : retrait MSAL (provider + câblage + tests + doc bilingue).
+**Conclusion / prochaine étape** : 2e essai de login réel utilisateur → lire les logs `sisu:`
+(le raw/XErr est maintenant loggé). Après validation utilisateur : retrait MSAL (provider +
+câblage + tests + doc bilingue). Question produit tranchée avec l'utilisateur : l'UX
+device-code (code à saisir) est structurelle pour une web-app self-hostée — le mode
+« bouton » SISU (redirection PKCE) exige les redirect URIs du client Xbox officiel,
+inaccessibles à un domaine arbitraire ; OpenSpartan Workshop a le bouton parce que c'est une
+app DESKTOP (broker WAM + app Azure de son auteur).
 
 ## [2026-07-15] Revue adversariale du train — corrections (branche fix/revue-adversariale)
 

@@ -38,15 +38,6 @@ func TestSISUDeviceFlow_Getters(t *testing.T) {
 	}
 }
 
-// TestSISUDeviceFlow_VerificationURLFallback vérifie que si MsaOauthRedirect est vide
-// la verificationURL est celle du Device Code Xbox.
-func TestSISUDeviceFlow_VerificationURLFallback(t *testing.T) {
-	f := &sisuDeviceFlow{verificationURL: "https://xbox.com/activate"}
-	if got := f.GetVerificationURL(); got != "https://xbox.com/activate" {
-		t.Errorf("fallback URL = %q, want https://xbox.com/activate", got)
-	}
-}
-
 // ─── NewSISUProviderWithIDs ───────────────────────────────────────────────────
 
 func TestNewSISUProviderWithIDs(t *testing.T) {
@@ -157,23 +148,10 @@ func TestSISUProvider_InitDeviceFlowWithURLs_HappyPath(t *testing.T) {
 	}))
 	defer srvXboxDeviceCode.Close()
 
-	// 3. Serveur SISU authenticate
-	srvSISU := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-SessionId", "session-abc")
-		w.Header().Set("Content-Type", "application/json")
-		resp := map[string]any{
-			"MsaOauthRedirect": "https://login.live.com/oauth20_authorize.srf?sisu=1",
-		}
-		b, _ := json.Marshal(resp)
-		w.Write(b) //nolint:errcheck
-	}))
-	defer srvSISU.Close()
-
 	p := NewSISUProviderWithIDs("000000004c20a908", "144209987")
 	urls := sisuProviderURLs{
 		deviceAuth: srvDeviceToken.URL,
 		xboxDevice: srvXboxDeviceCode.URL,
-		sisuAuth:   srvSISU.URL,
 	}
 
 	flow, err := p.initDeviceFlowWithURLs(context.Background(), urls)
@@ -210,11 +188,11 @@ func TestSISUProvider_InitDeviceFlowWithURLs_HappyPath(t *testing.T) {
 	if sf.flowCtx == nil {
 		t.Fatal("sisuFlowContext non stocké dans le flow après InitDeviceFlow")
 	}
-	if sf.flowCtx.sessionID != "session-abc" {
-		t.Errorf("sessionID = %q, want session-abc", sf.flowCtx.sessionID)
-	}
 	if sf.flowCtx.deviceToken != "device-token-test" {
 		t.Errorf("deviceToken = %q, want device-token-test", sf.flowCtx.deviceToken)
+	}
+	if sf.flowCtx.kp == nil {
+		t.Error("paire PoP absente du contexte de flow (requise pour signer /authorize)")
 	}
 }
 
@@ -224,39 +202,33 @@ func TestSISUProvider_InitDeviceFlowWithURLs_HappyPath(t *testing.T) {
 // du 1er, et un Exchange stateless (pool auto-sync) consommait le contexte du
 // device-flow interactif. Ici chaque flow reste indépendant.
 func TestSISUProvider_PerFlowContextIsolation(t *testing.T) {
-	newSISUServers := func(sessionID string) (urls sisuProviderURLs, closeAll func()) {
+	newSISUServers := func(id string) (urls sisuProviderURLs, closeAll func()) {
 		srvDeviceToken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
-			w.Write(deviceTokenResponseBody("dt-" + sessionID)) //nolint:errcheck
+			w.Write(deviceTokenResponseBody("dt-" + id)) //nolint:errcheck
 		}))
 		srvXbox := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			b, _ := json.Marshal(map[string]any{
-				"device_code": "dc-" + sessionID, "user_code": "UC-" + sessionID,
+				"device_code": "dc-" + id, "user_code": "UC-" + id,
 				"verification_uri": "https://microsoft.com/link", "expires_in": 900, "interval": 5,
 			})
 			w.Write(b) //nolint:errcheck
 		}))
-		srvSISU := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.Header().Set("X-SessionId", sessionID)
-			w.Header().Set("Content-Type", "application/json")
-			b, _ := json.Marshal(map[string]any{"MsaOauthRedirect": "https://login.live.com/x"})
-			w.Write(b) //nolint:errcheck
-		}))
-		return sisuProviderURLs{deviceAuth: srvDeviceToken.URL, xboxDevice: srvXbox.URL, sisuAuth: srvSISU.URL},
-			func() { srvDeviceToken.Close(); srvXbox.Close(); srvSISU.Close() }
+		return sisuProviderURLs{deviceAuth: srvDeviceToken.URL, xboxDevice: srvXbox.URL},
+			func() { srvDeviceToken.Close(); srvXbox.Close() }
 	}
 
 	p := NewSISUProvider()
 
-	urlsA, closeA := newSISUServers("sess-A")
+	urlsA, closeA := newSISUServers("flow-A")
 	defer closeA()
 	flowA, err := p.initDeviceFlowWithURLs(context.Background(), urlsA)
 	if err != nil {
 		t.Fatalf("flowA init: %v", err)
 	}
 
-	urlsB, closeB := newSISUServers("sess-B")
+	urlsB, closeB := newSISUServers("flow-B")
 	defer closeB()
 	flowB, err := p.initDeviceFlowWithURLs(context.Background(), urlsB)
 	if err != nil {
@@ -273,59 +245,11 @@ func TestSISUProvider_PerFlowContextIsolation(t *testing.T) {
 	if sfA.flowCtx == sfB.flowCtx {
 		t.Fatal("les deux flows partagent le MÊME contexte (slot global non éliminé)")
 	}
-	if sfA.flowCtx.sessionID != "sess-A" {
-		t.Errorf("flowA sessionID = %q, want sess-A (écrasé par flowB ?)", sfA.flowCtx.sessionID)
-	}
-	if sfB.flowCtx.sessionID != "sess-B" {
-		t.Errorf("flowB sessionID = %q, want sess-B", sfB.flowCtx.sessionID)
-	}
-	if sfA.flowCtx.deviceToken != "dt-sess-A" || sfB.flowCtx.deviceToken != "dt-sess-B" {
+	if sfA.flowCtx.deviceToken != "dt-flow-A" || sfB.flowCtx.deviceToken != "dt-flow-B" {
 		t.Errorf("device tokens croisés : A=%q B=%q", sfA.flowCtx.deviceToken, sfB.flowCtx.deviceToken)
 	}
-}
-
-// TestSISUProvider_InitDeviceFlow_VerificationURLFallback vérifie que si la réponse
-// device n'expose AUCUNE verification_uri (défensif), on retombe sur le
-// MsaOauthRedirect SISU plutôt que de renvoyer une URL vide.
-func TestSISUProvider_InitDeviceFlow_VerificationURLFallback(t *testing.T) {
-	srvDeviceToken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(deviceTokenResponseBody("tok")) //nolint:errcheck
-	}))
-	defer srvDeviceToken.Close()
-
-	// Réponse device SANS verification_uri.
-	srvXboxDeviceCode := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		b, _ := json.Marshal(map[string]any{
-			"device_code": "dc",
-			"user_code":   "FALLBACK",
-			"expires_in":  600,
-			"interval":    5,
-		})
-		w.Write(b) //nolint:errcheck
-	}))
-	defer srvXboxDeviceCode.Close()
-
-	srvSISU := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("X-SessionId", "s1")
-		w.Header().Set("Content-Type", "application/json")
-		b, _ := json.Marshal(map[string]any{"MsaOauthRedirect": "https://login.live.com/oauth20_authorize.srf?sisu=1"})
-		w.Write(b) //nolint:errcheck
-	}))
-	defer srvSISU.Close()
-
-	p := NewSISUProvider()
-	flow, err := p.initDeviceFlowWithURLs(context.Background(), sisuProviderURLs{
-		deviceAuth: srvDeviceToken.URL,
-		xboxDevice: srvXboxDeviceCode.URL,
-		sisuAuth:   srvSISU.URL,
-	})
-	if err != nil {
-		t.Fatalf("erreur inattendue : %v", err)
-	}
-	if got := flow.GetVerificationURL(); got != "https://login.live.com/oauth20_authorize.srf?sisu=1" {
-		t.Errorf("URL fallback = %q, want MsaOauthRedirect (secours quand la réponse device n'a pas d'URL)", got)
+	if sfA.flowCtx.kp == sfB.flowCtx.kp {
+		t.Error("les deux flows partagent la MÊME paire PoP")
 	}
 }
 
@@ -341,7 +265,6 @@ func TestSISUProvider_InitDeviceFlow_DeviceTokenError(t *testing.T) {
 	_, err := p.initDeviceFlowWithURLs(context.Background(), sisuProviderURLs{
 		deviceAuth: srvFail.URL,
 		xboxDevice: "http://unused",
-		sisuAuth:   "http://unused",
 	})
 	if err == nil {
 		t.Fatal("erreur attendue quand Device Token endpoint renvoie 500")
@@ -366,44 +289,8 @@ func TestSISUProvider_InitDeviceFlow_XboxDeviceCodeError(t *testing.T) {
 	_, err := p.initDeviceFlowWithURLs(context.Background(), sisuProviderURLs{
 		deviceAuth: srvDeviceToken.URL,
 		xboxDevice: srvFail.URL,
-		sisuAuth:   "http://unused",
 	})
 	if err == nil {
 		t.Fatal("erreur attendue quand XboxDeviceCode endpoint renvoie 400")
-	}
-}
-
-// TestSISUProvider_InitDeviceFlow_SISUSessionError vérifie la propagation d'erreur
-// si le SISU authenticate endpoint retourne une erreur.
-func TestSISUProvider_InitDeviceFlow_SISUSessionError(t *testing.T) {
-	srvDeviceToken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(deviceTokenResponseBody("tok")) //nolint:errcheck
-	}))
-	defer srvDeviceToken.Close()
-
-	srvXboxDeviceCode := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		b, _ := json.Marshal(map[string]any{
-			"device_code": "dc", "user_code": "U1",
-			"verification_uri": "https://x.com", "expires_in": 600, "interval": 5,
-		})
-		w.Write(b) //nolint:errcheck
-	}))
-	defer srvXboxDeviceCode.Close()
-
-	srvFail := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "sisu error", http.StatusUnauthorized)
-	}))
-	defer srvFail.Close()
-
-	p := NewSISUProvider()
-	_, err := p.initDeviceFlowWithURLs(context.Background(), sisuProviderURLs{
-		deviceAuth: srvDeviceToken.URL,
-		xboxDevice: srvXboxDeviceCode.URL,
-		sisuAuth:   srvFail.URL,
-	})
-	if err == nil {
-		t.Fatal("erreur attendue quand SISU authenticate endpoint renvoie 401")
 	}
 }
