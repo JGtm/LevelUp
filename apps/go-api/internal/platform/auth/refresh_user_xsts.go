@@ -1,16 +1,13 @@
 // Package auth — refresh_user_xsts.go : refresh XSTS RTA pour un user multi-user.
 //
-// Différent de watcher_refresh.go (mono-user, basé sur tokens.RefreshToken brut) :
-// ce helper utilise le cache MSAL JSON sérialisé pour rafraîchir l'access_token
-// Microsoft via AcquireTokenSilent, puis acquérir un nouveau XSTS RTA.
-//
-// Flux :
+// Flux (post-retrait MSAL 2026-07-15 : la voie cache MSAL/AcquireTokenSilent a
+// été remplacée par le refresh_token brut, qui couvre RTs Azure ET MSA natifs
+// via ExchangeRefreshTokenWithRotation) :
 //  1. Charger UserTokens depuis MultiUserTokenStore
-//  2. Si MSALCacheJSON présent : reconstruire InMemoryCacheAccessor, AcquireTokenSilent
-//     → nouvel access_token (MSAL peut tourner le RT en interne dans le cache)
+//  2. Si OAuthRefreshToken présent : refresh → nouvel access_token (+ RT rotaté persisté)
 //  3. Sinon mode dégradé : utiliser AccessToken stocké tel quel si encore valide
 //  4. AcquireXSTSForRTA(accessToken) → nouveau XSTS RTA
-//  5. Persister UserTokens à jour (nouvel access_token, MSAL cache, XSTS)
+//  5. Persister UserTokens à jour (nouvel access_token, RT rotaté, XSTS)
 //  6. Retourner le nouvel auth header
 package auth
 
@@ -24,13 +21,13 @@ import (
 // xstsRefreshTTL est utilisé comme expiresAt fallback si NotAfter absent.
 const xstsRefreshTTL = 55 * time.Minute
 
-// RefreshUserXSTS rafraîchit le XSTS RTA d'un user en utilisant son cache MSAL persisté.
+// RefreshUserXSTS rafraîchit le XSTS RTA d'un user depuis son refresh_token persisté.
 // Persiste les nouveaux tokens via store.Upsert. Retourne le nouvel auth header XBL3.0.
 //
 // Retourne ("", err) si :
 //   - le user est introuvable dans le store
-//   - le MSAL cache est absent ET l'access_token stocké est expiré
-//   - AcquireTokenSilent ou AcquireXSTSForRTA échouent
+//   - le refresh_token est absent ET l'access_token stocké est expiré
+//   - le refresh OAuth ou AcquireXSTSForRTA échouent
 //
 // Cette fonction est conçue pour être branchée comme callback OnAuthExpired d'un
 // ReconnectManager (cf. PR 2.5c).
@@ -74,27 +71,26 @@ func RefreshUserXSTS(ctx context.Context, store *MultiUserTokenStore, xuid strin
 }
 
 // refreshAccessTokenForUser obtient un access_token Microsoft frais pour ce user.
-// 1. Si MSALCacheJSON présent → AcquireTokenSilent (utilise le RT depuis le cache).
-// 2. Sinon, si tokens.AccessToken encore valide → retourne tel quel.
-// 3. Sinon : "" (l'appelant retournera une erreur, user doit re-login Xbox SSO).
+//  1. Si OAuthRefreshToken présent → refresh OAuth (Azure ou MSA natif, avec rotation :
+//     le RT rotaté est écrit dans tokens pour que le caller le persiste).
+//  2. Sinon, si tokens.AccessToken encore valide → retourne tel quel.
+//  3. Sinon : "" (l'appelant retournera une erreur, user doit re-login Xbox SSO).
 //
-// Les erreurs intermédiaires (AcquireTokenSilent) sont loguées en WARN et ignorées
-// — la fonction tombe sur le fallback access_token stocké ou retourne "" pour
+// Les erreurs intermédiaires (refresh) sont loguées en WARN et ignorées — la
+// fonction tombe sur le fallback access_token stocké ou retourne "" pour
 // signaler "pas de token, re-login requis".
 func refreshAccessTokenForUser(ctx context.Context, tokens *UserTokens) string {
-	if tokens.MSALCacheJSON != "" {
-		accessor := NewInMemoryCacheAccessorFromJSON(tokens.MSALCacheJSON)
-		token, err := AcquireTokenSilent(ctx, accessor)
+	if tokens.OAuthRefreshToken != "" {
+		token, rotatedRT, err := ExchangeRefreshTokenWithRotation(ctx, tokens.OAuthRefreshToken)
 		if err != nil {
-			slog.WarnContext(ctx, "refresh_user_xsts: AcquireTokenSilent erreur",
+			slog.WarnContext(ctx, "refresh_user_xsts: refresh OAuth erreur",
 				"xuid", tokens.XUID, "err", err)
 		}
 		if token != "" {
-			// Note : on ne re-sérialise PAS le cache ici — le MSAL SDK le mutate en
-			// interne via l'accessor.Export(), donc tokens.MSALCacheJSON sera mis à
-			// jour si on appelle accessor.Serialize() avant de persister.
-			if updatedCache, serr := accessor.Serialize(); serr == nil && updatedCache != "" {
-				tokens.MSALCacheJSON = updatedCache
+			// RT à usage unique : écrire la rotation dans tokens AVANT le Upsert
+			// du caller, sinon le prochain refresh relit un RT révoqué.
+			if rotatedRT != "" && rotatedRT != tokens.OAuthRefreshToken {
+				tokens.OAuthRefreshToken = rotatedRT
 			}
 			return token
 		}

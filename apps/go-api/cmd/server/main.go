@@ -74,16 +74,11 @@ import (
 // version est injectée au build via -ldflags "-X main.version=X.Y.Z".
 var version = "dev"
 
-// buildTokenProvider instancie le TokenProvider selon app_settings.json:auth_provider.
-//
-// PR-D : SISU est le défaut (authentification native Xbox, ZÉRO app Azure) — car
-// LevelUp est distribué à des self-hosters qui ne peuvent pas tous enregistrer
-// une app Azure. MSAL reste conservé en code et activable explicitement via
-// auth_provider="msal" (déprécié, sans entrée UI) : fallback si SISU casse
-// (client_id Xbox natif non officiel — risque que Microsoft le modifie).
-//
-//	"" (défaut) | "sisu" → SISUProvider
-//	"msal"               → MSALProvider (fallback config-only)
+// buildTokenProvider instancie le TokenProvider : SISU, seul provider depuis le
+// retrait de MSAL (2026-07-15, SISU validé bout-en-bout — authentification
+// native Xbox, ZÉRO app Azure : LevelUp est distribué à des self-hosters qui ne
+// peuvent pas tous enregistrer une app Azure). L'ancien réglage
+// app_settings.json:auth_provider="msal" est ignoré avec un warning.
 func buildTokenProvider(settingsStore *settings.Store, authDesc title.AuthDescriptor) auth.TokenProvider {
 	// MT-02 (PMT-2 leg 3) : les SISU app/title id viennent du descripteur du titre
 	// (byte-identique au défaut Halo). Descripteur incomplet → garde NewSISUProvider().
@@ -93,19 +88,13 @@ func buildTokenProvider(settingsStore *settings.Store, authDesc title.AuthDescri
 		}
 		return auth.NewSISUProvider()
 	}
-	s, err := settingsStore.Load()
-	if err != nil {
+	if s, err := settingsStore.Load(); err != nil {
 		slog.Warn("buildTokenProvider: lecture settings échouée, défaut SISU", "err", err)
-		return newSISU()
+	} else if s.AuthProvider != "" && s.AuthProvider != "sisu" {
+		slog.Warn("buildTokenProvider: auth_provider obsolète ignoré (MSAL retiré 2026-07-15) — SISU",
+			"value", s.AuthProvider)
 	}
-	if s.AuthProvider == "msal" {
-		slog.Info("buildTokenProvider: MSAL provider activé (fallback config)")
-		return auth.NewMSALProvider()
-	}
-	if s.AuthProvider != "" && s.AuthProvider != "sisu" {
-		slog.Warn("buildTokenProvider: valeur auth_provider inconnue, défaut SISU", "value", s.AuthProvider)
-	}
-	slog.Info("buildTokenProvider: SISU provider activé (défaut)",
+	slog.Info("buildTokenProvider: SISU provider activé",
 		"sisu_title_id", authDesc.SISUTitleID)
 	return newSISU()
 }

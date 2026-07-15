@@ -47,7 +47,7 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("aucun refresh token OAuth trouvé pour %s (%s)", player.Gamertag, oauthRefreshEnvKey(player.Gamertag))
 	}
 
-	provider := auth_platform.NewMSALProvider()
+	provider := auth_platform.NewSISUProvider()
 	accessToken, err := provider.TryOAuthRefresh(ctx, refreshToken)
 	if err != nil {
 		return fmt.Errorf("oauth refresh: %w", err)
@@ -113,7 +113,7 @@ func runSyncDeltaAll(
 		return fmt.Errorf("aucun joueur configuré")
 	}
 
-	provider := auth_platform.NewMSALProvider()
+	provider := auth_platform.NewSISUProvider()
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 	opts := buildSyncOptions(maxMatches, matchType, rps)
 
@@ -238,7 +238,7 @@ func runSyncFull(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("aucun refresh token OAuth trouvé pour %s (%s)", player.Gamertag, oauthRefreshEnvKey(player.Gamertag))
 	}
 
-	provider := auth_platform.NewMSALProvider()
+	provider := auth_platform.NewSISUProvider()
 	accessToken, err := provider.TryOAuthRefresh(ctx, refreshToken)
 	if err != nil {
 		return fmt.Errorf("oauth refresh: %w", err)
@@ -304,7 +304,7 @@ func runSyncFullAll(
 		return fmt.Errorf("aucun joueur configuré")
 	}
 
-	provider := auth_platform.NewMSALProvider()
+	provider := auth_platform.NewSISUProvider()
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 	opts := buildSyncOptions(maxMatches, matchType, rps)
 

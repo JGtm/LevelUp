@@ -147,7 +147,7 @@ func loadHaloTokens(ctx context.Context, watcherTokensDir, xuid, gamertag string
 	_ = playerDB.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = 'msal_token_cache'`).Scan(&msal)
 
 	store := auth.NewMultiUserTokenStore(watcherTokensDir)
-	provider := auth.NewMSALProvider()
+	provider := auth.NewSISUProvider()
 	legacy := auth.LegacyAuthInputs{OAuthRT: rt, MSALCache: msal, Source: "player_db.sync_meta"}
 
 	result, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, gamertag, legacy)

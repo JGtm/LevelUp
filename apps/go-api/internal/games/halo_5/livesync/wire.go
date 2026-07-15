@@ -156,7 +156,7 @@ func buildAchievementsHook(cfg *config.AppConfig, gamertag, xuid string) func(ct
 		// Provider MSAL config-only (zéro dépendance injectée), comme le CLI
 		// sync-achievements (cmd_sync_achievements.go). NewSyncEngineForTitle résout
 		// tous les chemins DB via PathResolver + titleSlug.
-		engine := syncpkg.NewSyncEngineForTitle(cfg.RepoRoot, halo5.TitleSlug, gamertag, xuid, nil, auth.NewMSALProvider())
+		engine := syncpkg.NewSyncEngineForTitle(cfg.RepoRoot, halo5.TitleSlug, gamertag, xuid, nil, auth.NewSISUProvider())
 		return engine.RunAchievementsHook(ctx)
 	}
 }

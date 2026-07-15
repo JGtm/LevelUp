@@ -85,7 +85,7 @@ func runReplayEvents(cfg *config.AppConfig, args []string) error {
 	}
 
 	// 4. Auth OAuth + exchange Halo.
-	provider := auth_platform.NewMSALProvider()
+	provider := auth_platform.NewSISUProvider()
 	tok, err := provider.TryOAuthRefresh(ctx, refreshToken)
 	if err != nil {
 		return fmt.Errorf("oauth refresh: %w", err)

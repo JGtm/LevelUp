@@ -106,7 +106,7 @@ func main() {
 
 	// Token store-first → ctx (l'adapter h5 lit le token du ctx). Identique à h5-backfill.
 	store := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
-	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewMSALProvider(), authXUID, authGT, auth.LegacyAuthInputs{})
+	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT, auth.LegacyAuthInputs{})
 	if err != nil || res == nil || res.Tokens == nil {
 		fatal("refresh tokens auth_as=%s: err=%v", authGT, err)
 	}

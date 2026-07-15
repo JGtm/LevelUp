@@ -1,7 +1,42 @@
+## [2026-07-15] Retrait de MSAL — SISU seul provider (branche fix/revue-adversariale)
+
+**Statut** : Complété — SISU validé bout-en-bout par l'utilisateur (login réel → session
+admin, « parfait tout fonctionne »), MSAL retiré le soir même (décision produit du 15/07).
+
+**Décision technique principale** :
+- **Supprimés** : `MSALProvider` (provider.go), `msal_client.go` (SDK MSAL : InitDeviceFlow,
+  AcquireTokenSilent, InMemoryCacheAccessor), `msal_cache_test.go`, `provider_test.go`
+  (ne testait que MSAL), `cmd/msal-poc`, dépendance `AzureAD/microsoft-authentication-library-for-go`
+  (go mod tidy). Constantes d'app Azure encore vivantes (`LevelUpClientID`, `MSALAuthority`,
+  `XboxScopes`) rapatriées dans `azure_credentials.go` — les flux OAuth v2 Azure restent
+  actifs (SSO web par code + refresh des RT Azure existants).
+- **~45 call sites `NewMSALProvider()` → `NewSISUProvider()`** (CLIs backfill/diag/h5,
+  server.go, worldenrich, livesync…) : pour eux les deux providers étaient équivalents
+  (TryOAuthRefresh*/Exchange identiques) ; SISU ajoute le fallback refresh MSA natif.
+- **`refresh_user_xsts.go`** : la voie cache-MSAL/AcquireTokenSilent remplacée par le
+  refresh RT brut (rotation persistée via le tokens du caller). `probe-world-stats` : branche
+  cache retirée (la branche RT existait). `pollDeviceFlow` : capture MSALCacheJSON retirée
+  (plus aucun flow ne l'expose).
+- **`buildTokenProvider`** : SISU inconditionnel ; `auth_provider:"msal"` hérité → warning.
+- **Voie morte documentée avec échéance** : `TokenProvider.TrySilentRefresh` (no-op SISU) et
+  les champs `MSALCacheJSON` du store restent jusqu'au lot D2 de purge legacy (armable
+  ≥ 2026-07-20, critère legacy_source_used) — retrait interface + call sites + champs à ce
+  moment-là. Garde-rail archlint : allowlist halowaypoint décrue (provider.go retiré).
+- **Docs bilingues** : INSTALL + CONFIGURATION (EN/FR) — SISU seul fournisseur, clé
+  `auth_provider` héritée ignorée.
+
+**Résultats observés** : `go build ./...` + `go test ./internal/... ./cmd/...` verts ;
+`golangci-lint --new-from-rev=origin/main` = 0 ; gofmt propre ; go.mod/go.sum sans le SDK.
+Pool auto-sync vérifié couvert : RT Azure → endpoint v2 (inchangé), RT SISU → fallback
+login.live.com ; logs post-fix sans « échec Exchange » ni reauth_required.
+
+**Conclusion / prochaine étape** : chantier SISU clos. Restes trackés : lot D2 (purge
+TrySilentRefresh/MSALCacheJSON + codes d'erreur `msal_*` du wire, renommage coordonné avec le
+front) ; surveiller un cycle de refresh SISU (~50 min) pour confirmer la rotation MSA native.
+
 ## [2026-07-15] SISU 401 à la complétion — cause racine scope + instrumentation (branche fix/revue-adversariale)
 
-**Statut** : En cours — correctifs livrés, EN ATTENTE d'un essai de login réel par l'utilisateur
-(la complétion exige son identité Microsoft ; cf. `.ai/HANDOFF_SISU_401_COMPLETION.md`).
+**Statut** : Complété — 3 itérations sur essais réels, SISU validé (voir entrée de clôture ci-dessus).
 
 **Décision technique principale** :
 - **Cause racine (quasi certaine, cross-référencée sur XAL/OpenXbox)** : le device-flow

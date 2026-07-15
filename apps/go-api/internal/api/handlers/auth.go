@@ -303,16 +303,8 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 
 	// PR 2.5a : capture des éléments nécessaires pour persistance RTA via SSO Xbox.
 	// Best-effort : tout échec ici est non bloquant (l'user peut quand même se connecter).
-	var (
-		msalCacheJSON string
-		xstsRTA       *auth_platform.XSTSResult
-	)
-	// Cache MSAL (contient le refresh_token Microsoft pour rafraîchir l'access_token plus tard).
-	if msalFlow, ok := flow.(interface{ MSALCacheJSON() string }); ok {
-		msalCacheJSON = msalFlow.MSALCacheJSON()
-	}
-	// Refresh token OAuth brut (flow SISU natif : pas de cache MSAL, le RT est
-	// exposé directement par le device flow après AcquireToken).
+	var xstsRTA *auth_platform.XSTSResult
+	// Refresh token OAuth brut, exposé par le device flow SISU après AcquireToken.
 	var oauthRefreshToken string
 	if rtFlow, ok := flow.(interface{ OAuthRefreshToken() string }); ok {
 		oauthRefreshToken = rtFlow.OAuthRefreshToken()
@@ -362,7 +354,6 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 
 		// PR 2.5a : transport vers OnAuthSuccess (jamais exposé via HTTP).
 		a.MicrosoftAccessToken = accessToken
-		a.MSALCacheJSON = msalCacheJSON
 		a.OAuthRefreshToken = oauthRefreshToken
 		if xstsRTA != nil {
 			a.XSTSRTAToken = xstsRTA.Token

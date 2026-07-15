@@ -85,7 +85,7 @@ func main() {
 	}
 
 	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewMSALProvider(), authXUID, authGT, auth.LegacyAuthInputs{})
+	res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), authXUID, authGT, auth.LegacyAuthInputs{})
 	if err != nil || res == nil || res.Tokens == nil {
 		fatal("refresh tokens (auth_as=%s): %v", authGT, err)
 	}
