@@ -54,15 +54,21 @@ func TestShouldNotifyDisk(t *testing.T) {
 		}
 	})
 
-	t.Run("recovery breach→ok : notifie le rétablissement", func(t *testing.T) {
+	t.Run("recovery breach→ok : confirmée après 2 ticks (débounce)", func(t *testing.T) {
 		st := DiskWatchState{LastStatus: domain.FreshnessStatusCritical, LastNotifiedAt: t0}
+		// 1er ok : amélioration en attente de confirmation, pas encore de notif.
 		notify, st := ShouldNotifyDisk(st, domain.FreshnessStatusOK, t0.Add(time.Hour))
-		if !notify {
-			t.Fatal("critical→ok : notification de recovery attendue")
-		}
-		notify, _ = ShouldNotifyDisk(st, domain.FreshnessStatusOK, t0.Add(2*time.Hour))
 		if notify {
-			t.Fatal("ok après recovery : silence attendu")
+			t.Fatal("critical→ok (1er tick) : recovery pas encore confirmée (débounce)")
+		}
+		// 2e ok consécutif : rétablissement confirmé → notif.
+		notify, st = ShouldNotifyDisk(st, domain.FreshnessStatusOK, t0.Add(2*time.Hour))
+		if !notify {
+			t.Fatal("critical→ok (2e tick consécutif) : notification de recovery attendue")
+		}
+		notify, _ = ShouldNotifyDisk(st, domain.FreshnessStatusOK, t0.Add(3*time.Hour))
+		if notify {
+			t.Fatal("ok après recovery confirmée : silence attendu")
 		}
 	})
 
@@ -80,10 +86,11 @@ func TestShouldNotifyDisk(t *testing.T) {
 		if notify {
 			t.Fatal("warn après unknown transitoire : pas une nouvelle transition")
 		}
-		// ... mais un retour en ok notifie bien le rétablissement.
-		notify, _ = ShouldNotifyDisk(next, domain.FreshnessStatusOK, t0.Add(2*time.Hour))
+		// ... et un retour en ok se confirme sur 2 ticks (débounce) avant de notifier.
+		_, afterOK := ShouldNotifyDisk(next, domain.FreshnessStatusOK, t0.Add(2*time.Hour))
+		notify, _ = ShouldNotifyDisk(afterOK, domain.FreshnessStatusOK, t0.Add(3*time.Hour))
 		if !notify {
-			t.Fatal("recovery après unknown transitoire : notification attendue")
+			t.Fatal("recovery (2 ticks ok) après unknown transitoire : notification attendue")
 		}
 	})
 
@@ -91,6 +98,65 @@ func TestShouldNotifyDisk(t *testing.T) {
 		notify, _ := ShouldNotifyDisk(DiskWatchState{}, domain.FreshnessStatusCritical, t0)
 		if !notify {
 			t.Fatal("boot en critical : notification attendue")
+		}
+	})
+
+	t.Run("oscillation ok↔warn (jitter 1 tick) : pas de spam", func(t *testing.T) {
+		// Volume à ~80 % : warn confirmé une fois, puis dips ok isolés absorbés
+		// (jamais 2 ok consécutifs → aucune recovery, LastStatus reste warn → aucun
+		// re-warn). Zéro notification supplémentaire malgré l'alternance à chaque tick.
+		st := DiskWatchState{LastStatus: domain.FreshnessStatusOK}
+		notify, st := ShouldNotifyDisk(st, domain.FreshnessStatusWarn, t0)
+		if !notify {
+			t.Fatal("1re entrée en warn : notif attendue")
+		}
+		for i := 1; i <= 10; i++ {
+			status := domain.FreshnessStatusOK
+			if i%2 == 0 {
+				status = domain.FreshnessStatusWarn
+			}
+			notify, st = ShouldNotifyDisk(st, status, t0.Add(time.Duration(i)*15*time.Minute))
+			if notify {
+				t.Fatalf("tick %d (%s) : oscillation ok↔warn ne doit pas notifier", i, status)
+			}
+		}
+	})
+
+	t.Run("oscillation warn↔critical (jitter 1 tick) : une seule alerte critique", func(t *testing.T) {
+		st := DiskWatchState{LastStatus: domain.FreshnessStatusWarn, LastNotifiedAt: t0}
+		notify, st := ShouldNotifyDisk(st, domain.FreshnessStatusCritical, t0.Add(time.Minute))
+		if !notify {
+			t.Fatal("warn→critical : notif attendue")
+		}
+		// Dips critical→warn isolés : débouncés, LastStatus reste critical → pas de
+		// ré-aggravation, aucune notif supplémentaire.
+		for i := 1; i <= 8; i++ {
+			status := domain.FreshnessStatusWarn
+			if i%2 == 0 {
+				status = domain.FreshnessStatusCritical
+			}
+			notify, st = ShouldNotifyDisk(st, status, t0.Add(time.Duration(i)*15*time.Minute))
+			if notify {
+				t.Fatalf("tick %d (%s) : oscillation warn↔critical ne doit pas re-notifier", i, status)
+			}
+		}
+	})
+
+	t.Run("amélioration interrompue : débounce réinitialisé", func(t *testing.T) {
+		// critical, ok (pending=1), critical (reset), ok (pending=1) : jamais 2 ok
+		// consécutifs → aucune recovery notifiée.
+		st := DiskWatchState{LastStatus: domain.FreshnessStatusCritical, LastNotifiedAt: t0}
+		notify, st := ShouldNotifyDisk(st, domain.FreshnessStatusOK, t0.Add(time.Hour))
+		if notify {
+			t.Fatal("1er ok : pas encore confirmé")
+		}
+		notify, st = ShouldNotifyDisk(st, domain.FreshnessStatusCritical, t0.Add(2*time.Hour))
+		if notify {
+			t.Fatal("retour critical (== dernier confirmé) : pas de notif")
+		}
+		notify, _ = ShouldNotifyDisk(st, domain.FreshnessStatusOK, t0.Add(3*time.Hour))
+		if notify {
+			t.Fatal("ok après reset : compteur repart à 1, pas de recovery")
 		}
 	})
 }
