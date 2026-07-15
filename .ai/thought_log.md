@@ -1,3 +1,31 @@
+## [2026-07-15] Train de merge 2026-07-15 — assemblage de la file post-campagne (branche integration/train-2026-07-15)
+
+**Statut** : Complété (assemblage + gates verts + PR ouverte). NE PAS merger : merge = deploy
+prod (réservé à l'utilisateur).
+
+**Décision technique principale** : train final de la file post-campagne, assemblé depuis
+`origin/main` par 3 merges `--no-ff` dans l'ordre : (1) `origin/fix/revue-adversariale` (pile
+complète, 32 commits, 0 de retard sur main — merge propre) ; (2) `origin/worktree-agent-acf7a6f0e70cf7b7f`
+(plan D7, docs) ; (3) `origin/worktree-agent-a8821b41c581e797d` (rapport V10c + soldes audits,
+docs). Conflits `.ai/thought_log.md` aux merges 2 et 3 : résolus en append-top anté-chronologique
+(toutes les entrées des deux côtés conservées, zéro perte, zéro doublon, éditions ciblées — jamais
+de splice). Aucun conflit code (les branches worktree = docs only sur des fichiers non touchés par
+la pile). `.ai/ETAT_CONSOLIDE_2026-07-13.md` mis à jour (commit dédié `docs(etat)`) : section 2
+consolidée en « train assemblé, PR ouverte, attente merge », §4 D7 (plan rédigé/embarqué), §5
+V10c soldé + item 10 = chantier candidat perf B-swap write-side du post-sync.
+
+**Résultats observés** : gates tous verts sur la branche assemblée — `go build ./...`=0,
+`go vet ./...`=0, `go test ./...`=exit 0 (0 échec ; flake connu `TestStartImport_HappyPath` non
+survenu), `go test -tags=integration -p 1 -timeout 1200s ./...`=exit 0 (0 ligne `^--- FAIL:`),
+`golangci-lint run --new-from-rev=origin/main ./...`=0 issue ; front `tsc -b`=0, `eslint .`=0,
+`vite build`=0, `vitest run`=255 fichiers / 2159 passés / 14 skipped. E2E React (Playwright)
+tourne à la PR (trigger `pull_request`) — première vraie exécution CI de la fixture synthétique.
+
+**Conclusion / prochaine étape** : PR ouverte vers `main`. Relecture humaine attendue : arbitrages
+produit D4 (libellé « Pronostic » + sort du Δ LUSR cumulé) et plan D7 avant exécution. Post-deploy :
+webhook Discord (§3 ETAT), observation `legacy_source_used` (D2 ≥ 20/07), soak B2.4 à rattraper.
+Branches worktree supprimées sur origin après merge dans le train.
+
 ## [2026-07-15] Revue adversariale du train — corrections (branche fix/revue-adversariale)
 
 **Statut** : Complété — 14 défauts confirmés → 10 corrigés, 4 écartés. Rapport complet :
