@@ -719,6 +719,34 @@ hors périmètre de la langue, et la conservation (non-refactor) de la garde `?f
 
 ---
 
+## [2026-07-13] V10c — Lecture budgets DuckDB sous charge réelle + verdict J4/J6 (branche worktree-agent-a8821b41c581e797d)
+
+**Statut** : Complété (mesure prod lecture seule + verdict chiffré + docs soldées ; aucun code applicatif).
+
+**Décision technique principale** : solde de l'item hérité V10c de la campagne d'audits 2026-07
+(« lire `duckdb_pool_stats` + `duckdb_budgets` sous charge → statuer J1(2)/J4/J6 measure-first »).
+Mesure prod `levelup-levelup-1` via GET admin `/debug/vars` (session admin JGtm existante, cookie
+HMAC calculé côté VPS, secret jamais exfiltré ; endpoint = `Lock()`+lecture, zéro écriture).
+Fenêtre ~7 h 44 (conteneur boot 12:16Z → 20:00Z) : 30 cycles sync_v2, 120 post-syncs joueur,
+24 768 B-swaps. Budgets confirmés = défauts db.go (aucun override env) : memory_limit 512MB /
+threads 2 / pool 4-2-1.
+
+**Résultats observés** : pool DuckDB partagé (pool 4) = `WaitCount` 0 partout (aucune saturation
+lecture). Player DBs `halo_infinite` (pool 1 = single-conn) = 176 waits / ~624 ms cumulés sur
+7 h 44, 0 timeout de lease (sérialisation single-conn voulue). La contention RÉELLE est
+write-side : `sync_v2_postsync` acquiert la fenêtre RW ~205×/post-sync (24 640 fenêtres →
+24 768 swaps RO↔RW, 150 watchdogs, ~51 min de stall lecteur cumulé, 131 échecs acquire_writer).
+Coût sync dominé par le COMPUTE : skill_rating 32,6 s + weapon_kills 33,2 s = 66 s des 90 s de
+post-sync. HTTP ~9 req/min.
+
+**Conclusion / prochaine étape** : critère measure-first objectif et satisfait → **J1(2) RÉSOLU**
+(garder single-conn), **J4 RETIRÉ** (chemin HTTP lecture non contendu, gain nul), **J6 RETIRÉ**
+(N+1 dans steps <100 ms, goulot = compute). Aucune décision utilisateur bloquée. Découverte
+reportée en backlog (hors J4/J6) : B-swap thrash write-side du post-sync = vrai levier perf sous
+charge. Rapport autoporteur : `.ai/RAPPORT_V10C_BUDGETS_2026-07-13.md`. Docs soldées : V10c [x]
+(PLAN_CLOTURE), J4/J6 [x] retirés (PLAN_TRAITEMENT), DETTE §4 mise à jour. À porter à
+l'utilisateur (non bloquant) : ouvrir un item backlog perf B-swap/post-sync ; investiguer 32 5xx.
+
 ## [2026-07-13] Fuite de filtre inter-titres via deep-link `?f=` (branche fix/title-switch-deeplink-leak)
 
 **Statut** : Complété (fix + tests + repro navigateur avant/après).
