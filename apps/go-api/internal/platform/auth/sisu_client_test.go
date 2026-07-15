@@ -12,100 +12,30 @@ import (
 	"time"
 )
 
-// TestInitSISUSession_ExtractsSessionID vérifie l'extraction du header X-SessionId.
-func TestInitSISUSession_ExtractsSessionID(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("x-xbl-contract-version") != "2" {
-			t.Errorf("x-xbl-contract-version attendu '2', obtenu %q", r.Header.Get("x-xbl-contract-version"))
-		}
-		if r.Header.Get("Signature") == "" {
-			t.Error("header Signature absent")
-		}
-
-		// Vérifier que le body contient les champs requis
-		var body map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			t.Errorf("body JSON invalide: %v", err)
-		}
-		if body["AppId"] != "test-app-id" {
-			t.Errorf("AppId inattendu: %v", body["AppId"])
-		}
-		if body["Sandbox"] != "RETAIL" {
-			t.Errorf("Sandbox inattendu: %v", body["Sandbox"])
-		}
-
-		w.Header().Set("X-SessionId", "session-abc-123")
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{ //nolint:errcheck
-			"MsaOauthRedirect": "https://login.live.com/oauth20_authorize.srf?...",
-		})
-	}))
-	defer srv.Close()
-
-	kp, _ := GeneratePoPKeyPair()
-	session, err := initSISUSessionWithURL(
-		context.Background(), srv.Client(), kp,
-		"device-token-test", "test-app-id", "144209987",
-		"challenge", "state", srv.URL+"/authenticate",
-	)
-	if err != nil {
-		t.Fatalf("InitSISUSession: %v", err)
-	}
-	if session.SessionID != "session-abc-123" {
-		t.Errorf("SessionID attendu 'session-abc-123', obtenu %q", session.SessionID)
-	}
-	if session.MsaOauthRedirect == "" {
-		t.Error("MsaOauthRedirect ne doit pas être vide")
-	}
-}
-
-// TestInitSISUSession_MissingSessionIDHeader vérifie l'erreur si X-SessionId absent.
-func TestInitSISUSession_MissingSessionIDHeader(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Pas de header X-SessionId
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"MsaOauthRedirect": "https://..."}) //nolint:errcheck
-	}))
-	defer srv.Close()
-
-	kp, _ := GeneratePoPKeyPair()
-	_, err := initSISUSessionWithURL(
-		context.Background(), srv.Client(), kp,
-		"device-token", "app-id", "title-id",
-		"challenge", "state", srv.URL+"/authenticate",
-	)
-	if err == nil {
-		t.Fatal("attendu une erreur si X-SessionId absent")
-	}
-}
-
-// TestInitSISUSession_HTTPError vérifie le comportement sur HTTP 401.
-func TestInitSISUSession_HTTPError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-	}))
-	defer srv.Close()
-
-	kp, _ := GeneratePoPKeyPair()
-	_, err := initSISUSessionWithURL(
-		context.Background(), srv.Client(), kp,
-		"device-token", "app-id", "title-id",
-		"challenge", "state", srv.URL+"/authenticate",
-	)
-	if err == nil {
-		t.Fatal("attendu une erreur sur HTTP 401")
-	}
-}
-
-// TestCompleteSISUFlow_ExtractsXSTSFields vérifie l'extraction complète du XSTSResult.
+// TestCompleteSISUFlow_ExtractsXSTSFields vérifie l'extraction complète du XSTSResult
+// et le corps /authorize aligné sur la référence device-code (MinecraftAuth) :
+// RelyingParty présent, PAS de SessionId ni SiteName (le mélange session PKCE +
+// token device-code était rejeté 401 corps vide — fix 2026-07-15).
 func TestCompleteSISUFlow_ExtractsXSTSFields(t *testing.T) {
 	notAfterStr := time.Now().Add(1 * time.Hour).UTC().Format(time.RFC3339)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Signature") == "" {
+			t.Error("header Signature absent")
+		}
 		// Vérifier le body
 		var body map[string]any
 		json.NewDecoder(r.Body).Decode(&body) //nolint:errcheck
-		if body["SessionId"] != "session-test" {
-			t.Errorf("SessionId inattendu: %v", body["SessionId"])
+		if body["RelyingParty"] != "https://prod.xsts.halowaypoint.com/" {
+			t.Errorf("RelyingParty inattendu: %v", body["RelyingParty"])
+		}
+		if _, present := body["SessionId"]; present {
+			t.Error("SessionId ne doit PAS être envoyé (flux device-code sans session)")
+		}
+		if _, present := body["SiteName"]; present {
+			t.Error("SiteName ne doit PAS être envoyé (aligné MinecraftAuth)")
+		}
+		if body["Sandbox"] != "RETAIL" {
+			t.Errorf("Sandbox inattendu: %v", body["Sandbox"])
 		}
 		// AccessToken doit être préfixé par "t="
 		if at, _ := body["AccessToken"].(string); at != "t=my-access-token" {
@@ -135,7 +65,7 @@ func TestCompleteSISUFlow_ExtractsXSTSFields(t *testing.T) {
 	result, err := completeSISUFlowWithURL(
 		context.Background(), srv.Client(), kp,
 		"device-token", "my-access-token",
-		"app-id", "session-test",
+		"app-id", "https://prod.xsts.halowaypoint.com/",
 		srv.URL+"/authorize",
 	)
 	if err != nil {
@@ -172,7 +102,7 @@ func TestCompleteSISUFlow_MissingToken(t *testing.T) {
 	_, err := completeSISUFlowWithURL(
 		context.Background(), srv.Client(), kp,
 		"device-token", "access-token",
-		"app-id", "session-id",
+		"app-id", "https://prod.xsts.halowaypoint.com/",
 		srv.URL+"/authorize",
 	)
 	if err == nil {
@@ -192,7 +122,7 @@ func TestCompleteSISUFlow_MissingAuthorizationToken(t *testing.T) {
 	_, err := completeSISUFlowWithURL(
 		context.Background(), srv.Client(), kp,
 		"device-token", "access-token",
-		"app-id", "session-id",
+		"app-id", "https://prod.xsts.halowaypoint.com/",
 		srv.URL+"/authorize",
 	)
 	if err == nil {

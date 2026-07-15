@@ -2,7 +2,7 @@
 //
 // SISUProvider implémente TokenProvider via :
 //  1. RFC 8628 Device Code Flow sur login.live.com (AcquireToken)
-//  2. Session SISU pour la récupération du XSTS Xbox Live (Exchange)
+//  2. SISU /authorize pour échanger le ticket MSA contre le XSTS du titre (ExchangeFlow)
 //
 // Contrairement à MSALProvider, SISUProvider ne dépend pas de MSAL ni d'un app Azure enregistré.
 // Il utilise le client_id Xbox officiel (same as the Xbox app).
@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 )
 
 const (
@@ -26,13 +27,12 @@ const (
 )
 
 // sisuFlowContext contient l'état éphémère créé par InitDeviceFlow et consommé par
-// ExchangeFlow. Porté PAR le sisuDeviceFlow (per-flow) — jamais un slot partagé sur
-// le provider.
+// ExchangeFlow : la paire PoP et le device token, qui doivent être CEUX présentés
+// à /authorize (la signature et le ProofKey doivent correspondre). Porté PAR le
+// sisuDeviceFlow (per-flow) — jamais un slot partagé sur le provider.
 type sisuFlowContext struct {
-	kp           *PoPKeyPair
-	deviceToken  string
-	sessionID    string
-	codeVerifier string
+	kp          *PoPKeyPair
+	deviceToken string
 }
 
 // sisuDeviceFlow implémente DeviceFlow pour le flow SISU.
@@ -112,7 +112,11 @@ var _ DeviceFlow = (*sisuDeviceFlow)(nil)
 // auto-sync qui rafraîchit le token d'un joueur ne peut plus consommer/écraser le
 // contexte du device-flow interactif d'un autre.
 type SISUProvider struct {
-	appID   string
+	appID string
+	// titleID est conservé comme identité de configuration (MT-02 : injecté
+	// depuis le descripteur du titre, loggé au boot). La variante device-code
+	// n'envoie plus TitleId sur le fil : l'association au titre est implicite
+	// au client_id (« title client id », cf. MinecraftAuth).
 	titleID string
 }
 
@@ -137,17 +141,18 @@ var _ TokenProvider = (*SISUProvider)(nil)
 type sisuProviderURLs struct {
 	deviceAuth string
 	xboxDevice string
-	sisuAuth   string
 }
 
 var defaultSISUProviderURLs = sisuProviderURLs{
 	deviceAuth: deviceAuthURL,
 	xboxDevice: xboxDeviceCodeURL,
-	sisuAuth:   sisuAuthenticateURL,
 }
 
-// InitDeviceFlow démarre un Device Code Flow Xbox natif + initialise la session SISU.
-// Stocke le sisuFlowContext (kp, deviceToken, sessionID, codeVerifier) pour Exchange.
+// InitDeviceFlow démarre un Device Code Flow Xbox natif (paire PoP + device token
+// + device code). Stocke le sisuFlowContext (kp, deviceToken) pour ExchangeFlow.
+// AUCUN appel SISU ici : la variante device-code n'a pas de session /authenticate
+// (cf. sisu_client.go) — l'échange se fait en un seul POST /authorize à la
+// complétion.
 func (p *SISUProvider) InitDeviceFlow(ctx context.Context) (DeviceFlow, error) {
 	return p.initDeviceFlowWithURLs(ctx, defaultSISUProviderURLs)
 }
@@ -171,41 +176,18 @@ func (p *SISUProvider) initDeviceFlowWithURLs(ctx context.Context, urls sisuProv
 		return nil, fmt.Errorf("sisu_provider: StartXboxDeviceCode: %w", err)
 	}
 
-	codeVerifier, codeChallenge, err := GeneratePKCE()
-	if err != nil {
-		return nil, fmt.Errorf("sisu_provider: GeneratePKCE: %w", err)
-	}
-
-	sisuSession, err := initSISUSessionWithURL(ctx, nil, kp, deviceToken, p.appID, p.titleID, codeChallenge, "sisu-state", urls.sisuAuth)
-	if err != nil {
-		return nil, fmt.Errorf("sisu_provider: InitSISUSession: %w", err)
-	}
-
 	flowCtx := &sisuFlowContext{
-		kp:           kp,
-		deviceToken:  deviceToken,
-		sessionID:    sisuSession.SessionID,
-		codeVerifier: codeVerifier,
+		kp:          kp,
+		deviceToken: deviceToken,
 	}
 
-	// Vérification URL : TOUJOURS celle du Device Code Flow (dcResult) — c'est la
-	// page Microsoft où l'utilisateur SAISIT le user_code affiché par l'UI
-	// (typiquement https://www.microsoft.com/link). L'ancienne préférence pour
-	// sisuSession.MsaOauthRedirect était une incohérence UX (bug constaté
-	// 2026-07-13) : MsaOauthRedirect est une URL d'AUTHORIZE PKCE (flow par
-	// redirection, jamais de saisie de code) — l'afficher à côté de « Code à
-	// saisir : XXXX » envoyait l'utilisateur sur une page qui ne demanderait
-	// jamais ce code, pendant que le backend polle le grant device_code.
-	// MsaOauthRedirect ne sert que de secours si la réponse device n'expose
-	// aucune URL (défensif — jamais observé).
+	// Vérification URL : celle du Device Code Flow — la page Microsoft où
+	// l'utilisateur SAISIT le user_code affiché par l'UI (typiquement
+	// https://www.microsoft.com/link).
 	verificationURL := dcResult.VerificationURL
-	if verificationURL == "" {
-		verificationURL = sisuSession.MsaOauthRedirect
-	}
 
-	slog.InfoContext(ctx, "sisu_provider: Device Code Flow + session SISU initiés",
+	slog.InfoContext(ctx, "sisu_provider: Device Code Flow initié",
 		"user_code", dcResult.UserCode,
-		"session_id", sisuSession.SessionID,
 	)
 
 	return &sisuDeviceFlow{
@@ -231,13 +213,17 @@ func (p *SISUProvider) Exchange(ctx context.Context, accessToken string) (*Excha
 	return ExchangeAccessToken(ctx, accessToken)
 }
 
-// completeSISUExchange complète la session SISU d'un flow interactif (CompleteSISUFlow
+// completeSISUExchange complète le flow SISU interactif (CompleteSISUFlow
 // → Spartan → Clearance) à partir du contexte éphémère du flow. Appelé uniquement par
 // sisuDeviceFlow.ExchangeFlow : le flowCtx appartient au flow, jamais partagé.
+// Le RelyingParty demandé à /authorize est l'audience XSTS du titre (même source
+// que les jambes Spartan/Clearance ci-dessous : descripteur Halo par défaut) —
+// l'AuthorizationToken retourné est donc directement le XSTS attendu par Spartan.
 func (p *SISUProvider) completeSISUExchange(ctx context.Context, flowCtx *sisuFlowContext, accessToken string) (*ExchangeResult, error) {
 	slog.DebugContext(ctx, "sisu_provider: ExchangeFlow — CompleteSISUFlow")
+	relyingParty := title.DefaultHaloAuthDescriptor().XSTSAudience
 	xstsResult, err := CompleteSISUFlow(ctx, nil, flowCtx.kp, flowCtx.deviceToken, accessToken,
-		p.appID, flowCtx.sessionID, flowCtx.codeVerifier)
+		p.appID, relyingParty)
 	if err != nil {
 		return nil, fmt.Errorf("sisu_provider: CompleteSISUFlow: %w", err)
 	}

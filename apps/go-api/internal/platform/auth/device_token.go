@@ -19,14 +19,18 @@ import (
 )
 
 const (
-	deviceAuthURL      = "https://device.auth.xboxlive.com/device/authenticate"
-	deviceType         = "Win32"
-	deviceOSVersion    = "10.0.22000"
+	deviceAuthURL = "https://device.auth.xboxlive.com/device/authenticate"
+	// deviceType "Android" (pas "Win32") : SISU /authorize ne fait confiance
+	// qu'aux device tokens des plateformes mobiles/console (Android, iOS,
+	// Nintendo) — un device token Win32 exige une attestation TPM que nous
+	// n'avons pas. Aligné sur MinecraftAuth (XblDeviceAuthenticateRequest,
+	// défaut "Android") et XAL.
+	deviceType         = "Android"
 	deviceRelyingParty = "http://auth.xboxlive.com"
 )
 
 // RequestDeviceToken obtient un Device Token Xbox signé avec la paire PoP.
-// Retourne le token JWT opaque à passer à InitSISUSession.
+// Retourne le token JWT opaque à passer à CompleteSISUFlow (/authorize).
 func RequestDeviceToken(ctx context.Context, client *http.Client, kp *PoPKeyPair) (string, error) {
 	return requestDeviceTokenWithURL(ctx, client, kp, deviceAuthURL)
 }
@@ -44,7 +48,6 @@ func requestDeviceTokenWithURL(ctx context.Context, client *http.Client, kp *PoP
 			"DeviceType": deviceType,
 			"Id":         deviceID,
 			"ProofKey":   kp.GetProofKey(),
-			"Version":    deviceOSVersion,
 		},
 	}
 
