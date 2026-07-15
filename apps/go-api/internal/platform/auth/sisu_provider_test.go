@@ -201,18 +201,86 @@ func TestSISUProvider_InitDeviceFlowWithURLs_HappyPath(t *testing.T) {
 		t.Errorf("GetExpiresIn = %d, want 900", got)
 	}
 
-	// Vérification que le contexte SISU a bien été stocké.
-	p.mu.Lock()
-	ctx := p.current
-	p.mu.Unlock()
-	if ctx == nil {
-		t.Fatal("sisuFlowContext non stocké après InitDeviceFlow")
+	// Vérification que le contexte SISU a bien été stocké DANS LE FLOW (per-flow,
+	// pas un slot partagé sur le provider — cf. suppression de p.current).
+	sf, ok := flow.(*sisuDeviceFlow)
+	if !ok {
+		t.Fatalf("flow n'est pas un *sisuDeviceFlow : %T", flow)
 	}
-	if ctx.sessionID != "session-abc" {
-		t.Errorf("sessionID = %q, want session-abc", ctx.sessionID)
+	if sf.flowCtx == nil {
+		t.Fatal("sisuFlowContext non stocké dans le flow après InitDeviceFlow")
 	}
-	if ctx.deviceToken != "device-token-test" {
-		t.Errorf("deviceToken = %q, want device-token-test", ctx.deviceToken)
+	if sf.flowCtx.sessionID != "session-abc" {
+		t.Errorf("sessionID = %q, want session-abc", sf.flowCtx.sessionID)
+	}
+	if sf.flowCtx.deviceToken != "device-token-test" {
+		t.Errorf("deviceToken = %q, want device-token-test", sf.flowCtx.deviceToken)
+	}
+}
+
+// TestSISUProvider_PerFlowContextIsolation : deux InitDeviceFlow concurrents portent
+// chacun LEUR propre contexte SISU. Régression du slot global p.current (revue
+// adversariale 2026-07-15) : avant le fix, le 2e InitDeviceFlow écrasait le contexte
+// du 1er, et un Exchange stateless (pool auto-sync) consommait le contexte du
+// device-flow interactif. Ici chaque flow reste indépendant.
+func TestSISUProvider_PerFlowContextIsolation(t *testing.T) {
+	newSISUServers := func(sessionID string) (urls sisuProviderURLs, closeAll func()) {
+		srvDeviceToken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(deviceTokenResponseBody("dt-" + sessionID)) //nolint:errcheck
+		}))
+		srvXbox := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			b, _ := json.Marshal(map[string]any{
+				"device_code": "dc-" + sessionID, "user_code": "UC-" + sessionID,
+				"verification_uri": "https://microsoft.com/link", "expires_in": 900, "interval": 5,
+			})
+			w.Write(b) //nolint:errcheck
+		}))
+		srvSISU := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("X-SessionId", sessionID)
+			w.Header().Set("Content-Type", "application/json")
+			b, _ := json.Marshal(map[string]any{"MsaOauthRedirect": "https://login.live.com/x"})
+			w.Write(b) //nolint:errcheck
+		}))
+		return sisuProviderURLs{deviceAuth: srvDeviceToken.URL, xboxDevice: srvXbox.URL, sisuAuth: srvSISU.URL},
+			func() { srvDeviceToken.Close(); srvXbox.Close(); srvSISU.Close() }
+	}
+
+	p := NewSISUProvider()
+
+	urlsA, closeA := newSISUServers("sess-A")
+	defer closeA()
+	flowA, err := p.initDeviceFlowWithURLs(context.Background(), urlsA)
+	if err != nil {
+		t.Fatalf("flowA init: %v", err)
+	}
+
+	urlsB, closeB := newSISUServers("sess-B")
+	defer closeB()
+	flowB, err := p.initDeviceFlowWithURLs(context.Background(), urlsB)
+	if err != nil {
+		t.Fatalf("flowB init: %v", err)
+	}
+
+	sfA := flowA.(*sisuDeviceFlow)
+	sfB := flowB.(*sisuDeviceFlow)
+
+	// Le 2e init NE DOIT PAS avoir écrasé le contexte du 1er.
+	if sfA.flowCtx == nil || sfB.flowCtx == nil {
+		t.Fatal("un des deux flows a un contexte nil")
+	}
+	if sfA.flowCtx == sfB.flowCtx {
+		t.Fatal("les deux flows partagent le MÊME contexte (slot global non éliminé)")
+	}
+	if sfA.flowCtx.sessionID != "sess-A" {
+		t.Errorf("flowA sessionID = %q, want sess-A (écrasé par flowB ?)", sfA.flowCtx.sessionID)
+	}
+	if sfB.flowCtx.sessionID != "sess-B" {
+		t.Errorf("flowB sessionID = %q, want sess-B", sfB.flowCtx.sessionID)
+	}
+	if sfA.flowCtx.deviceToken != "dt-sess-A" || sfB.flowCtx.deviceToken != "dt-sess-B" {
+		t.Errorf("device tokens croisés : A=%q B=%q", sfA.flowCtx.deviceToken, sfB.flowCtx.deviceToken)
 	}
 }
 

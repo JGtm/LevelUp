@@ -253,6 +253,20 @@ func (h *AuthHandler) handleGetDeviceFlowStatus(ctx context.Context, in *deviceF
 	return &deviceFlowStatusOutput{Body: deviceFlowStatusResponse(snapshot)}, nil
 }
 
+// exchangeAfterAcquire complète l'échange en tokens Halo après l'acquisition de
+// l'access_token. Un DeviceFlow qui porte son propre contexte d'échange
+// (auth.FlowExchanger — flow SISU interactif) le complète lui-même (contexte
+// per-flow, jamais un slot partagé) ; sinon on retombe sur l'échange stateless du
+// provider (MSAL, stub).
+func exchangeAfterAcquire(
+	ctx context.Context, provider auth_platform.TokenProvider, flow auth_platform.DeviceFlow, accessToken string,
+) (*auth_platform.ExchangeResult, error) {
+	if fe, ok := flow.(auth_platform.FlowExchanger); ok {
+		return fe.ExchangeFlow(ctx, accessToken)
+	}
+	return provider.Exchange(ctx, accessToken)
+}
+
 // =============================================================================
 // Goroutine de polling MSAL
 // =============================================================================
@@ -273,8 +287,11 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 		return
 	}
 
-	// Chaîne d'échange : access_token → tokens Halo + identité.
-	result, err := h.provider.Exchange(ctx, accessToken)
+	// Chaîne d'échange : access_token → tokens Halo + identité. Un flow qui porte son
+	// propre contexte d'échange (FlowExchanger, ex. SISU interactif) le complète
+	// lui-même — pas de slot partagé sur le provider, donc pas de course avec le pool
+	// auto-sync. Les autres flows (MSAL, stub) retombent sur l'échange stateless.
+	result, err := exchangeAfterAcquire(ctx, h.provider, flow, accessToken)
 	if err != nil {
 		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
 			a.Status = auth_platform.AttemptStatusFailed
