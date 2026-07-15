@@ -62,7 +62,7 @@ func run(gamertag, matchID, outPath, manifestPath string) error {
 
 	ctx := context.Background()
 
-	provider := auth_platform.NewMSALProvider()
+	provider := auth_platform.NewSISUProvider()
 	tok, err := provider.TryOAuthRefresh(ctx, refreshToken)
 	if err != nil {
 		return fmt.Errorf("oauth refresh: %w", err)

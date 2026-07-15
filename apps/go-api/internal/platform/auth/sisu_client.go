@@ -54,8 +54,8 @@ func GeneratePKCE() (string, string, error) {
 }
 
 // CompleteSISUFlow échange le ticket MSA du device-code flow contre un XSTS du
-// titre via SISU /authorize. relyingParty = audience XSTS du titre (ex. Halo :
-// https://prod.xsts.halowaypoint.com/) — l'AuthorizationToken retourné est
+// titre via SISU /authorize. relyingParty = audience XSTS du titre (source :
+// title.AuthDescriptor.XSTSAudience) — l'AuthorizationToken retourné est
 // directement le XSTS de cette audience, pas besoin de l'étape User Token →
 // XSTS séparée. Retourne un XSTSResult (même struct qu'AcquireXSTSForRTA).
 func CompleteSISUFlow(

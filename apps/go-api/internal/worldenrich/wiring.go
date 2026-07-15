@@ -110,7 +110,7 @@ func BuildHaloSource(cfg *config.AppConfig, gamertag string, rps int, eager bool
 	if err != nil {
 		return nil, err
 	}
-	provider := auth.NewMSALProvider()
+	provider := auth.NewSISUProvider()
 	store := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
 	legacy := loadLegacyInputs(cfg, gamertag)
 	src := &refreshingHaloSource{
@@ -202,7 +202,7 @@ func BuildResolver(cfg *config.AppConfig, tokenGamertag string) (XUIDResolver, e
 	if err != nil {
 		return nil, err
 	}
-	provider := auth.NewMSALProvider()
+	provider := auth.NewSISUProvider()
 	store := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
 	legacy := loadLegacyInputs(cfg, tokenGamertag)
 	hp := auth.NewCachedHeaderProvider(0, func(ctx context.Context) (string, error) {

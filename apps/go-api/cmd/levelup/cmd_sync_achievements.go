@@ -72,7 +72,7 @@ func runSyncAchievementsForPlayer(ctx context.Context, cfg *config.AppConfig, pl
 		return fmt.Errorf("migrations metadata: %w", err)
 	}
 
-	provider := auth_platform.NewMSALProvider()
+	provider := auth_platform.NewSISUProvider()
 	engine := go_sync.NewSyncEngineForTitle(cfg.RepoRoot, titleSlug, player.Gamertag, player.XUID, nil, provider)
 
 	start := time.Now()
@@ -140,7 +140,7 @@ func runSyncAchievementsAll(ctx context.Context, cfg *config.AppConfig, titleSlu
 		return nil
 	}
 
-	provider := auth_platform.NewMSALProvider()
+	provider := auth_platform.NewSISUProvider()
 	total := len(players)
 	synced := 0
 	skipped := 0

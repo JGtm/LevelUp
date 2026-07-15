@@ -59,8 +59,8 @@ var halowaypointAllowlist = map[string]bool{
 	"internal/platform/halo/provider.go":            true,
 	"internal/platform/halo/season_provider.go":     true,
 	// platform/auth/ — échange tokens Xbox↔Spartan (audiences/hôtes officiels).
+	// (provider.go retiré de l'allowlist au retrait de MSAL 2026-07-15 : plus de littéral.)
 	"internal/platform/auth/halo_exchange.go": true,
-	"internal/platform/auth/provider.go":      true,
 	// domain/title/ — defaults documentés des descripteurs d'auth.
 	"internal/domain/title/auth_descriptor.go": true,
 	// assets/ — fetchers gamecms-hacs (URLs d'assets).
