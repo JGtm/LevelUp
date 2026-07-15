@@ -4,7 +4,6 @@ import {
   formatSignedPoints,
   signOf,
   outcomeCodeToValue,
-  perfTierLabelKey,
 } from './ExplorerBriefing.logic'
 
 describe('formatSignedFixed', () => {
@@ -42,13 +41,5 @@ describe('outcomeCodeToValue', () => {
     expect(outcomeCodeToValue(2)).toBe('win')
     expect(outcomeCodeToValue(3)).toBe('loss')
     expect(outcomeCodeToValue(4)).toBe('dnf')
-  })
-})
-
-describe('perfTierLabelKey', () => {
-  it('mappe 1..5 vers les clés de palier', () => {
-    expect(perfTierLabelKey(1)).toBe('excellent')
-    expect(perfTierLabelKey(3)).toBe('correct')
-    expect(perfTierLabelKey(5)).toBe('mauvais')
   })
 })

@@ -59,7 +59,10 @@ type XuidAllyMeta = ReadonlyMap<string, { ally: boolean }>
  * Calcule le momentum par bin depuis les events `kill` et les bornes de bins.
  * `xuidMeta` résout l'appartenance d'équipe (allié vs ennemi) d'un acteur.
  * Un event ignoré (mauvais type, xuid/temps manquant, acteur hors scoreboard,
- * temps hors de toute borne de bin) ne contribue ni au delta ni aux kills.
+ * temps AVANT le premier bin) ne contribue ni au delta ni aux kills. Un event
+ * AU-DELÀ du dernier bin est CLAMPÉ dans le dernier bin — parité stricte avec le
+ * binning serveur (`tug_of_war.go` : `if idx >= nBins { idx = nBins - 1 }`), pour
+ * que l'histogramme front et le delta net backend comptent les mêmes kills.
  */
 export function computeMomentumBins(
   bins: MatchTugOfWarBin[],
@@ -76,8 +79,18 @@ export function computeMomentumBins(
     const meta = xuidMeta.get(e.actor_xuid)
     if (!meta) continue
     const tSec = e.event_time_ms / 1000
-    const idx = bins.findIndex((b) => tSec >= b.bin_start && tSec < b.bin_end)
-    if (idx < 0) continue
+    let idx = bins.findIndex((b) => tSec >= b.bin_start && tSec < b.bin_end)
+    if (idx < 0) {
+      // Parité avec le clamp backend (tug_of_war.go) : un event au-delà du dernier
+      // bin est compté dans le dernier bin ; un temps avant le premier bin est
+      // ignoré (le backend saute TimeMS < 0).
+      const last = bins.length - 1
+      if (last >= 0 && tSec >= bins[last].bin_end) {
+        idx = last
+      } else {
+        continue
+      }
+    }
     const bin = bins[idx]
     const span = Math.max(1, bin.bin_end - bin.bin_start)
     const frac = Math.min(0.999, Math.max(0, (tSec - bin.bin_start) / span))

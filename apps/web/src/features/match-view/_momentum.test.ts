@@ -79,9 +79,21 @@ describe('computeMomentumBins', () => {
     expect(momentum[2].trend).toBe('up')
   })
 
-  it('(d) event hors bornes de bins → ignoré', () => {
+  it('(d) event au-delà du dernier bin → clampé dans le dernier bin (parité backend)', () => {
+    const bins = [bin(0, 30), bin(30, 60)]
+    const events = [killEvent('ally1', 80_000)] // 80 s au-delà du dernier bin [30,60)
+    const { momentum, kills } = computeMomentumBins(bins, events, META)
+
+    // tug_of_war.go clampe l'event dans le dernier bin : le front fait de même.
+    expect(kills).toHaveLength(1)
+    expect(kills[0].binIdx).toBe(1)
+    expect(momentum[1].delta).toBe(1)
+    expect(momentum[1].teamKills).toBe(1)
+  })
+
+  it('(d2) event avant le premier bin → ignoré (parité backend TimeMS < 0)', () => {
     const bins = [bin(0, 30)]
-    const events = [killEvent('ally1', 50_000)] // 50 s hors [0,30)
+    const events = [killEvent('ally1', -5_000)] // -5 s, avant le premier bin
     const { momentum, kills } = computeMomentumBins(bins, events, META)
 
     expect(kills).toHaveLength(0)
