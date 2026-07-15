@@ -327,6 +327,29 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 		xstsRTA = xstsRTAResult
 	}
 
+	// Identité : le XSTS du titre retourné par SISU /authorize ne porte PAS
+	// gtg/xid dans ses DisplayClaims (constaté 2026-07-15 — l'UI restait sur
+	// « Chargement… » car OnAuthSuccess refuse une identité vide). On complète
+	// depuis le XSTS Xbox Live (RTA) acquis juste au-dessus, qui les porte
+	// toujours. Si les deux manquent, l'attempt échoue explicitement plutôt
+	// que de laisser le client poller un authorized inutilisable.
+	gamertag, xuid := result.Gamertag, result.XUID
+	if (gamertag == "" || xuid == "") && xstsRTA != nil {
+		gamertag, xuid = xstsRTA.Gamertag, xstsRTA.XUID
+		slog.InfoContext(ctx, "auth: identité complétée depuis le XSTS Xbox Live (RTA)",
+			"attempt_id", attemptID, "gamertag", gamertag, "xuid", xuid)
+	}
+	if gamertag == "" || xuid == "" {
+		slog.ErrorContext(ctx, "auth: identité introuvable après échange (XSTS titre ET RTA muets)",
+			"attempt_id", attemptID)
+		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
+			a.Status = auth_platform.AttemptStatusFailed
+			a.ErrorCode = "identity_missing"
+			a.ErrorDetail = "gamertag/xuid absents des réponses XSTS"
+		})
+		return
+	}
+
 	// Marquer comme autorisé et stocker tokens + identité dans l'attempt store.
 	// GetDeviceFlowStatus les transférera dans la session lors du prochain poll.
 	h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
@@ -334,8 +357,8 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 		a.SpartanToken = result.Tokens.SpartanToken
 		a.ClearanceToken = result.Tokens.ClearanceToken
 		a.SpartanExpiresAt = result.Tokens.SpartanExpiresAt
-		a.Gamertag = result.Gamertag
-		a.XUID = result.XUID
+		a.Gamertag = gamertag
+		a.XUID = xuid
 
 		// PR 2.5a : transport vers OnAuthSuccess (jamais exposé via HTTP).
 		a.MicrosoftAccessToken = accessToken

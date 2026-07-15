@@ -46,9 +46,23 @@ sisuFlowContext réduit à {kp, deviceToken}.
 **Résultats observés** : build + tests `platform/auth`, `service`, `handlers` verts ;
 `golangci-lint --new-from-rev=origin/main` = 0 ; gofmt propre.
 
-**Conclusion / prochaine étape** : 2e essai de login réel utilisateur → lire les logs `sisu:`
-(le raw/XErr est maintenant loggé). Après validation utilisateur : retrait MSAL (provider +
-câblage + tests + doc bilingue). Question produit tranchée avec l'utilisateur : l'UX
+**Itération 3 (2026-07-15, après 2e essai utilisateur)** : SISU /authorize PASSE (« complétion
+HTTP OK », réponse = AuthorizationToken/TitleToken/UserToken/WebPage ; XSTS + Spartan +
+Clearance OK) mais (a) l'UI restait sur « Chargement… » : le XSTS du titre SISU ne porte pas
+gtg/xid dans ses DisplayClaims → ExchangeFlow OK avec identité VIDE → OnAuthSuccess refuse.
+Fix : pollDeviceFlow complète gamertag/xuid depuis le XSTS Xbox Live (RTA) qui les porte
+toujours ; si les deux manquent → attempt failed `identity_missing` (fin du spinner infini).
+(b) RÉGRESSION de l'itération 1 détectée dans les logs : l'heuristique de préfixe RpsTicket
+par FORMAT était fausse — les tokens de l'app Azure (scope Xboxlive.signin) sont AUSSI des
+compact tickets « EwA… » → ils recevaient « t= » → 401 en boucle sur le refresh du pool des
+3 autres joueurs (+ reauth_required posés à tort, auto-guéris au prochain refresh OK). Le
+préfixe dépend du CLIENT ÉMETTEUR (app Azure → d=, client Xbox natif → t=), indécidable sur
+le token seul. Fix : requestUserToken tente d= puis retente UNE fois en t= sur 401
+(xblHTTPError typée dans postJSON) ; heuristique rpsTicketPrefix supprimée.
+
+**Conclusion / prochaine étape** : 3e essai de login utilisateur (l'identité doit suivre) +
+vérifier la disparition des 401 XBL du pool dans les logs. Après validation utilisateur :
+retrait MSAL (provider + câblage + tests + doc bilingue). Question produit tranchée avec l'utilisateur : l'UX
 device-code (code à saisir) est structurelle pour une web-app self-hostée — le mode
 « bouton » SISU (redirection PKCE) exige les redirect URIs du client Xbox officiel,
 inaccessibles à un domaine arbitraire ; OpenSpartan Workshop a le bouton parce que c'est une
