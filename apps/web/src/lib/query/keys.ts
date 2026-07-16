@@ -89,7 +89,11 @@ export const queryKeys = {
     ['engagement', 'squad-session', playerSlug, matchIds.join(','), teammates.join(',')] as const,
 
   // Accueil / Home (Slice 5)
-  home: (playerSlug: string) => ['home', playerSlug] as const,
+  // Le titre courant fait partie de la clé : la réponse /pages/home est
+  // spécifique au titre (Spartan ID, playlists récentes, rangs). Sans lui, un
+  // switch de titre servait les données périmées du titre précédent (la clé ne
+  // changeant pas, TanStack Query réutilisait le cache pendant le staleTime).
+  home: (playerSlug: string, titleSlug: string) => ['home', playerSlug, titleSlug] as const,
   battlepass: (playerSlug: string) => ['home', playerSlug, 'battlepass'] as const,
 
   // Palmares
