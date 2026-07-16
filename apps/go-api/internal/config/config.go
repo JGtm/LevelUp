@@ -314,6 +314,35 @@ func (c *AppConfig) Validate() error {
 	return nil
 }
 
+// EnvMediaDeleteSource est le nom de la variable d'environnement qui force la
+// politique de suppression du fichier source après transcodage HLS (override
+// process-global, priorité maximale). Valeur permissive (1/true/yes/on → supprime).
+const EnvMediaDeleteSource = "LEVELUP_MEDIA_DELETE_SOURCE"
+
+// ResolveMediaDeleteSource résout la politique effective de suppression du fichier
+// source (.mkv/.avi…) après un transcodage HLS réussi. Fonction PURE (aucune IO)
+// pour rester testable. Précédence :
+//  1. envRaw (LEVELUP_MEDIA_DELETE_SOURCE) : s'il est renseigné, il gagne
+//     (parseBoolEnv permissif) ;
+//  2. sinon storeVal (app_settings.json:media_delete_source_after_transcode) si
+//     non-nil : la valeur explicite de l'opérateur ;
+//  3. sinon défaut par environnement = isProd (supprime en prod — disque rare, HLS
+//     = forme canonique servie ; conserve en local — le source est la copie maître).
+//
+// envRaw vide N'EST PAS traité comme « false » : une var non définie doit laisser
+// la main au store puis au défaut env (sinon toute instance sans la var forcerait
+// la conservation, y compris en prod). La distinction « défini/non défini » se fait
+// donc sur la chaîne brute (vide = non défini), pas sur le booléen parsé.
+func ResolveMediaDeleteSource(envRaw string, storeVal *bool, isProd bool) bool {
+	if strings.TrimSpace(envRaw) != "" {
+		return parseBoolEnv(envRaw)
+	}
+	if storeVal != nil {
+		return *storeVal
+	}
+	return isProd
+}
+
 // parseBoolEnv interprète une valeur d'environnement comme un booléen permissif
 // (1/true/yes/on, insensible à la casse). Vide ou non reconnu → false.
 func parseBoolEnv(s string) bool {

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -38,6 +39,7 @@ func (m *mockMediaIndexer) ResetAndReindex(
 	_ string,
 	_ string,
 	_ bool,
+	_ bool,
 	jobStore *jobs.Store,
 	jobID string,
 ) error {
@@ -58,6 +60,7 @@ func (m *mockMediaIndexer) ScanAllMedia(
 	_ string,
 	_ string,
 	_ string,
+	_ bool,
 	jobStore *jobs.Store,
 	jobID string,
 ) error {
@@ -90,14 +93,14 @@ type titleCapturingIndexer struct {
 	scan  string
 }
 
-func (m *titleCapturingIndexer) ResetAndReindex(ctx context.Context, _ string, _ string, _ string, _ bool, _ *jobs.Store, _ string) error {
+func (m *titleCapturingIndexer) ResetAndReindex(ctx context.Context, _ string, _ string, _ string, _ bool, _ bool, _ *jobs.Store, _ string) error {
 	m.mu.Lock()
 	m.reset = ctxkeys.TitleSlug(ctx)
 	m.mu.Unlock()
 	return nil
 }
 
-func (m *titleCapturingIndexer) ScanAllMedia(ctx context.Context, _ string, _ string, _ string, _ *jobs.Store, _ string) error {
+func (m *titleCapturingIndexer) ScanAllMedia(ctx context.Context, _ string, _ string, _ string, _ bool, _ *jobs.Store, _ string) error {
 	m.mu.Lock()
 	m.scan = ctxkeys.TitleSlug(ctx)
 	m.mu.Unlock()
@@ -277,6 +280,67 @@ func TestPostMediaResetIndex_IndexerError(t *testing.T) {
 	}
 	if finalJob.Error == nil {
 		t.Error("Error attendu non nil pour un job échoué")
+	}
+}
+
+// getSettingsDeleteSource monte un handler GET /settings avec un app_settings.json
+// donné (writeStore=false ⇒ champ absent = store nil) + un Environment, exécute
+// GET /settings et retourne la valeur résolue media_delete_source_after_transcode.
+func getSettingsDeleteSource(t *testing.T, environment string, storeVal *bool) bool {
+	t.Helper()
+	dir := t.TempDir()
+	cfg := &config.AppConfig{DemoMode: false, RepoRoot: dir, Environment: environment}
+	settingsPath := filepath.Join(dir, "app_settings.json")
+	if storeVal != nil {
+		body := `{"media_delete_source_after_transcode": false}`
+		if *storeVal {
+			body = `{"media_delete_source_after_transcode": true}`
+		}
+		if err := os.WriteFile(settingsPath, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	settingsStore := settings_platform.NewStore(settingsPath)
+	jobStore := jobs.NewStore(filepath.Join(dir, "jobs.json"))
+	h := handlers.NewSettingsHandlerWithIndexer(cfg, settingsStore, jobStore, &mockMediaIndexer{})
+	r := chi.NewRouter()
+	h.Mount(r)
+
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /settings: attendu 200, obtenu %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.SettingsResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("décodage réponse: %v", err)
+	}
+	return resp.MediaDeleteSourceAfterTranscode
+}
+
+// TestGetSettings_MediaDeleteSource_Resolved vérifie la valeur EFFECTIVE renvoyée par
+// GET /settings : store nil → défaut isProd ; store explicite → store ; env → prime.
+func TestGetSettings_MediaDeleteSource_Resolved(t *testing.T) {
+	bptr := func(b bool) *bool { return &b }
+
+	if got := getSettingsDeleteSource(t, "", nil); got != false {
+		t.Errorf("store nil + dev : got %v, want false", got)
+	}
+	if got := getSettingsDeleteSource(t, "production", nil); got != true {
+		t.Errorf("store nil + production : got %v, want true", got)
+	}
+	if got := getSettingsDeleteSource(t, "", bptr(true)); got != true {
+		t.Errorf("store=true + dev : got %v, want true (store prime sur défaut env)", got)
+	}
+	if got := getSettingsDeleteSource(t, "production", bptr(false)); got != false {
+		t.Errorf("store=false + production : got %v, want false (store prime sur isProd)", got)
+	}
+
+	// env LEVELUP_MEDIA_DELETE_SOURCE=0 prime sur store=true + isProd=production.
+	t.Setenv(config.EnvMediaDeleteSource, "0")
+	if got := getSettingsDeleteSource(t, "production", bptr(true)); got != false {
+		t.Errorf("env=0 : got %v, want false (env prime sur store/isProd)", got)
 	}
 }
 

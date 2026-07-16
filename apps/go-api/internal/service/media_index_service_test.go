@@ -61,7 +61,7 @@ func TestBuildMediaScanHook_PropagatesTimezone(t *testing.T) {
 		return "Europe/Paris"
 	}
 
-	hook := BuildMediaScanHook("/tmp/nonexistent-repo", "fake-gamertag", capturesFn, timezoneFn)
+	hook := BuildMediaScanHook("/tmp/nonexistent-repo", "fake-gamertag", capturesFn, timezoneFn, nil)
 	hook(context.Background())
 
 	if capturesFnCalls.Load() != 1 {
@@ -84,6 +84,7 @@ func TestBuildMediaScanHook_NilTimezoneFn_DoesNotPanic(t *testing.T) {
 	hook := BuildMediaScanHook("/tmp/nonexistent-repo", "fake-gamertag",
 		func() string { return "" },
 		nil, // timezoneFn nil
+		nil, // deleteSourceFn nil
 	)
 	hook(context.Background())
 }

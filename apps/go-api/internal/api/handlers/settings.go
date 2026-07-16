@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -145,12 +146,12 @@ func (h *SettingsHandler) handleGetSettings(ctx context.Context, _ *struct{}) (*
 		// afficher la démo en anglais. Fallback Defaults+fr si lecture échoue.
 		if h.settingsStore != nil {
 			if cfg, err := h.settingsStore.Load(); err == nil {
-				return &settingsJSONOutput{Body: settings_platform.ToResponse(cfg)}, nil
+				return &settingsJSONOutput{Body: h.settingsResponse(cfg)}, nil
 			}
 		}
 		d := settings_platform.Defaults()
 		d.Lang = "fr"
-		return &settingsJSONOutput{Body: settings_platform.ToResponse(d)}, nil
+		return &settingsJSONOutput{Body: h.settingsResponse(d)}, nil
 	}
 
 	// PMT-4 PR-3c : résout l'overlay per-titre (ShowProgression / OutcomeExclude*).
@@ -160,7 +161,22 @@ func (h *SettingsHandler) handleGetSettings(ctx context.Context, _ *struct{}) (*
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 	}
-	return &settingsJSONOutput{Body: settings_platform.ToResponse(cfg)}, nil
+	return &settingsJSONOutput{Body: h.settingsResponse(cfg)}, nil
+}
+
+// settingsResponse construit la réponse GET/PATCH à partir d'un AppSettings, en
+// écrasant media_delete_source_after_transcode par sa valeur EFFECTIVE résolue
+// (config.ResolveMediaDeleteSource : env > store > isProd). Le *bool brut du store
+// (nil = auto) n'est jamais exposé tel quel — le toggle UI reflète la réalité du
+// runtime même quand le champ n'est pas défini.
+func (h *SettingsHandler) settingsResponse(cfg *settings_platform.AppSettings) *domain.SettingsResponse {
+	resp := settings_platform.ToResponse(cfg)
+	resp.MediaDeleteSourceAfterTranscode = config.ResolveMediaDeleteSource(
+		os.Getenv(config.EnvMediaDeleteSource),
+		cfg.MediaDeleteSourceAfterTranscode,
+		h.cfg.IsProduction(),
+	)
+	return resp
 }
 
 // perTitleOverlayKeys — champs « valeur » per-titre (PMT-4 PR-3c) : un PATCH sur un
@@ -309,7 +325,7 @@ func (h *SettingsHandler) handlePatchSettings(ctx context.Context, in *settingsB
 	if rerr != nil {
 		resolved = cfg
 	}
-	return &settingsJSONOutput{Body: settings_platform.ToResponse(resolved)}, nil
+	return &settingsJSONOutput{Body: h.settingsResponse(resolved)}, nil
 }
 
 // newFriendsAdded retourne les gamertags présents dans next mais pas dans prev
@@ -406,12 +422,18 @@ func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *set
 	// datetime des noms OBS/Xbox ; sans elle, capture_start_utc=NULL → 0 assoc.
 	capturesBaseDir := ""
 	timezone := ""
+	var deleteSourceVal *bool
 	if h.settingsStore != nil {
 		if cfg, err := h.settingsStore.Load(); err == nil {
 			capturesBaseDir = cfg.MediaCapturesBaseDir
 			timezone = cfg.UserTimezone
+			deleteSourceVal = cfg.MediaDeleteSourceAfterTranscode
 		}
 	}
+	// Politique de rétention du source résolue LIVE (env > store > isProd) : un
+	// toggle UI prend effet sans redémarrage (le store est relu à chaque déclenchement).
+	deleteSource := config.ResolveMediaDeleteSource(
+		os.Getenv(config.EnvMediaDeleteSource), deleteSourceVal, h.cfg.IsProduction())
 
 	// Le titre courant (X-LevelUp-Title / session) vit dans le ctx de la REQUÊTE,
 	// mais le job tourne en async sur context.Background() → on capture le slug ICI
@@ -430,6 +452,7 @@ func (h *SettingsHandler) handlePostMediaResetIndex(ctx context.Context, in *set
 			capturesBaseDir,
 			timezone,
 			req.ReindexAfterReset,
+			deleteSource,
 			h.jobStore,
 			job.JobID,
 		)
@@ -471,12 +494,17 @@ func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) 
 	// Cf. PostMediaResetIndex : timezone REQUISE pour la regex filename.
 	capturesBaseDir := ""
 	timezone := ""
+	var deleteSourceVal *bool
 	if h.settingsStore != nil {
 		if cfg, err := h.settingsStore.Load(); err == nil {
 			capturesBaseDir = cfg.MediaCapturesBaseDir
 			timezone = cfg.UserTimezone
+			deleteSourceVal = cfg.MediaDeleteSourceAfterTranscode
 		}
 	}
+	// Politique de rétention résolue LIVE (env > store > isProd), cf. handlePostMediaResetIndex.
+	deleteSource := config.ResolveMediaDeleteSource(
+		os.Getenv(config.EnvMediaDeleteSource), deleteSourceVal, h.cfg.IsProduction())
 
 	// Cf. handlePostMediaResetIndex : ré-injecter le titre courant dans le job async
 	// (sinon halo_infinite par défaut → médias des autres titres jamais scannés).
@@ -491,6 +519,7 @@ func (h *SettingsHandler) handlePostMediaScan(ctx context.Context, _ *struct{}) 
 			h.cfg.RepoRoot,
 			capturesBaseDir,
 			timezone,
+			deleteSource,
 			h.jobStore,
 			job.JobID,
 		)

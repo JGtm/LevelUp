@@ -670,6 +670,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		media := handlers.NewMediaHandler(reg.Media, reg.MediaUpload, cfg.RepoRoot).
 			WithSettingsStore(settingsStore).
 			WithDemoMode(cfg.DemoMode).
+			WithProduction(cfg.IsProduction()).
 			WithAuthorsContext(reg.MediaPlayerCtx, func(_ context.Context, titleSlug string) ([]domain.PlayerSummary, error) {
 				return cfg.LoadPlayers(titleSlug)
 			}).

@@ -7,14 +7,18 @@ package domain
 // SettingsResponse est le payload retourné par GET /settings.
 // discord_webhook_url n'est JAMAIS inclus — seulement discord_webhook_url_present.
 type SettingsResponse struct {
-	Lang                               string   `json:"lang"`
-	DiscordLang                        string   `json:"discord_lang"`
-	UserTimezone                       string   `json:"user_timezone"`
-	NormalizeModeLabels                bool     `json:"normalize_mode_labels"`
-	ShowRecords                        bool     `json:"show_records"`
-	RefreshClearsCaches                bool     `json:"refresh_clears_caches"`
-	CareerTopExcludeBTB                bool     `json:"career_top_exclude_btb"`
-	MediaCapturesBaseDir               string   `json:"media_captures_base_dir"`
+	Lang                 string `json:"lang"`
+	DiscordLang          string `json:"discord_lang"`
+	UserTimezone         string `json:"user_timezone"`
+	NormalizeModeLabels  bool   `json:"normalize_mode_labels"`
+	ShowRecords          bool   `json:"show_records"`
+	RefreshClearsCaches  bool   `json:"refresh_clears_caches"`
+	CareerTopExcludeBTB  bool   `json:"career_top_exclude_btb"`
+	MediaCapturesBaseDir string `json:"media_captures_base_dir"`
+	// MediaDeleteSourceAfterTranscode : valeur EFFECTIVE résolue (bool, pas un
+	// pointeur) de la politique de suppression du source après transcodage HLS.
+	// Résolue par le handler via config.ResolveMediaDeleteSource (env > store > isProd).
+	MediaDeleteSourceAfterTranscode    bool     `json:"media_delete_source_after_transcode"`
 	MediaToleranceMinutes              int      `json:"media_tolerance_minutes"`
 	MediaWatcherEnabled                bool     `json:"media_watcher_enabled"`
 	MediaWatcherDebounceSeconds        int      `json:"media_watcher_debounce_seconds"`
@@ -76,14 +80,17 @@ type SettingsResponse struct {
 // UpdateSettingsRequest contient les champs modifiables (tous optionnels).
 // discord_webhook_url peut être envoyé ici (écriture) mais n'est jamais retourné.
 type UpdateSettingsRequest struct {
-	Lang                               *string  `json:"lang,omitempty"`
-	DiscordLang                        *string  `json:"discord_lang,omitempty"`
-	UserTimezone                       *string  `json:"user_timezone,omitempty"`
-	NormalizeModeLabels                *bool    `json:"normalize_mode_labels,omitempty"`
-	ShowRecords                        *bool    `json:"show_records,omitempty"`
-	RefreshClearsCaches                *bool    `json:"refresh_clears_caches,omitempty"`
-	CareerTopExcludeBTB                *bool    `json:"career_top_exclude_btb,omitempty"`
-	MediaCapturesBaseDir               *string  `json:"media_captures_base_dir,omitempty"`
+	Lang                 *string `json:"lang,omitempty"`
+	DiscordLang          *string `json:"discord_lang,omitempty"`
+	UserTimezone         *string `json:"user_timezone,omitempty"`
+	NormalizeModeLabels  *bool   `json:"normalize_mode_labels,omitempty"`
+	ShowRecords          *bool   `json:"show_records,omitempty"`
+	RefreshClearsCaches  *bool   `json:"refresh_clears_caches,omitempty"`
+	CareerTopExcludeBTB  *bool   `json:"career_top_exclude_btb,omitempty"`
+	MediaCapturesBaseDir *string `json:"media_captures_base_dir,omitempty"`
+	// MediaDeleteSourceAfterTranscode : *bool (nil = auto). PATCH persiste le pointeur
+	// dans app_settings.json ; la résolution effective reste au déclenchement.
+	MediaDeleteSourceAfterTranscode    *bool    `json:"media_delete_source_after_transcode,omitempty"`
 	MediaToleranceMinutes              *int     `json:"media_tolerance_minutes,omitempty"`
 	MediaWatcherEnabled                *bool    `json:"media_watcher_enabled,omitempty"`
 	MediaWatcherDebounceSeconds        *int     `json:"media_watcher_debounce_seconds,omitempty"`
