@@ -153,7 +153,7 @@ func (r *MatchExclusionRepo) ListExcluded(ctx context.Context) ([]domain.Exclude
 func (r *MatchExclusionRepo) loadExcludedPMERows(ctx context.Context) ([]excludedPMERow, []string, error) {
 	// Append-only #23046 : lire la vue _latest — sinon un match exclu puis ré-inclus
 	// (row FALSE plus récente) resterait listé si une vieille row TRUE subsiste.
-	rows, err := r.pdb.Player.Query(ctx, `
+	rows, err := r.pdb.Player.QueryRecovered(ctx, `
 		SELECT match_id, updated_at
 		FROM player_match_enrichment_latest
 		WHERE is_excluded = TRUE`)

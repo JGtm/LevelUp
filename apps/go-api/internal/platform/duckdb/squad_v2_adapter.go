@@ -265,12 +265,16 @@ func (a *SquadV2LoaderAdapter) LoadEmblemURLs(
 				return
 			}
 			var rawURL sql.NullString
-			err = pdb.Player.QueryRow(ctx,
+			rows, err := pdb.Player.QueryRowRecovered(ctx,
 				`SELECT ARG_MAX(emblem_image_url, recorded_at)
 				 FILTER (WHERE NULLIF(TRIM(emblem_image_url), '') IS NOT NULL)
 				 FROM career_progression`,
-			).Scan(&rawURL)
-			if err != nil || !rawURL.Valid || rawURL.String == "" {
+			)
+			if err != nil {
+				return
+			}
+			defer rows.Close()
+			if err := rows.Scan(&rawURL); err != nil || !rawURL.Valid || rawURL.String == "" {
 				return
 			}
 			built := buildHomeIdentityAssetURL("emblem", titleSlug, rawURL.String)
@@ -304,10 +308,16 @@ func (a *SquadV2LoaderAdapter) LoadObjectiveScores(
 	}
 
 	var tableCount int
-	if err := pdb.ReadDB().QueryRow(ctx, `
+	tableRows, err := pdb.ReadDB().QueryRowRecovered(ctx, `
 		SELECT COUNT(*) FROM information_schema.tables
 		WHERE table_name = 'personal_score_awards'
-	`).Scan(&tableCount); err != nil || tableCount == 0 {
+	`)
+	if err != nil {
+		return map[string]int{}, nil
+	}
+	scanErr := tableRows.Scan(&tableCount)
+	tableRows.Close()
+	if scanErr != nil || tableCount == 0 {
 		return map[string]int{}, nil
 	}
 
@@ -324,7 +334,7 @@ func (a *SquadV2LoaderAdapter) LoadObjectiveScores(
 		    AND match_id IN (` + ph + `)
 		  GROUP BY match_id`
 
-	rows, err := pdb.ReadDB().Query(ctx, q, args...)
+	rows, err := pdb.ReadDB().QueryRecovered(ctx, q, args...)
 	if err != nil {
 		slog.WarnContext(ctx, "LoadObjectiveScores: query failed",
 			"gamertag", gamertag, "titleSlug", titleSlug, "err", err)

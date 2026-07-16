@@ -61,7 +61,7 @@ func (r *PersonalScoreAwardsRepo) LoadPersonalScoreAwards(
 	}
 
 	q, args := buildAwardsQuery(filters)
-	dbRows, err := r.pdb.ReadDB().Query(ctx, q, args...)
+	dbRows, err := r.pdb.ReadDB().QueryRecovered(ctx, q, args...)
 	if err != nil {
 		slog.ErrorContext(ctx, "PersonalScoreAwardsRepo: query failed",
 			"slug", slug,
@@ -125,12 +125,16 @@ func (r *PersonalScoreAwardsRepo) awardsTableExists(ctx context.Context) bool {
 		return false
 	}
 	var count int
-	err := r.pdb.ReadDB().QueryRow(ctx, `
+	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, `
 		SELECT COUNT(*)
 		FROM information_schema.tables
 		WHERE table_name = 'personal_score_awards'
-	`).Scan(&count)
+	`)
 	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	if err := rows.Scan(&count); err != nil {
 		return false
 	}
 	return count > 0

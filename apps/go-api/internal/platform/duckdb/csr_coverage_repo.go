@@ -38,37 +38,39 @@ func (r *CSRCoverageRepo) GetCoverage(ctx context.Context, playerSlug, xuid stri
 	// 1) player_csr_snapshots — 3 compteurs en une query.
 	// Lecture via vue _latest (Phase 2.G) : la table physique est
 	// append-only, on veut le compte fonctionnel par (playlist_id, season_id).
-	if row := r.pdb.ReadDB().QueryRow(ctx, `
+	if rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, `
 		SELECT
 			COUNT(*),
 			SUM(CASE WHEN COALESCE(alltime_value,0) > 0 THEN 1 ELSE 0 END),
 			SUM(CASE WHEN COALESCE(current_measurement_remaining,0) > 0 THEN 1 ELSE 0 END)
 		FROM player_csr_snapshots_latest
-	`); row != nil {
+	`); err == nil {
 		var total, alltime, placement sql.NullInt64
-		if err := row.Scan(&total, &alltime, &placement); err == nil {
+		if err := rows.Scan(&total, &alltime, &placement); err == nil {
 			cov.Snapshots.Total = int(total.Int64)
 			cov.Snapshots.WithAlltimeValue = int(alltime.Int64)
 			cov.Snapshots.WithPlacementRem = int(placement.Int64)
 		}
-		// (table absente → scan err → champs restent à 0, comportement attendu)
+		rows.Close()
+		// (table absente → lecture err → champs restent à 0, comportement attendu)
 	}
 
 	// 2) match_skill_rank rating_type='CSR' — 3 compteurs
-	if row := r.pdb.ReadDB().QueryRow(ctx, `
+	if rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, `
 		SELECT
 			COUNT(*),
 			SUM(CASE WHEN tier IS NOT NULL AND tier <> '' AND tier <> 'Placement' THEN 1 ELSE 0 END),
 			SUM(CASE WHEN tier = 'Placement' THEN 1 ELSE 0 END)
 		FROM match_skill_rank_latest
 		WHERE rating_type = 'CSR'
-	`); row != nil {
+	`); err == nil {
 		var total, matured, placement sql.NullInt64
-		if err := row.Scan(&total, &matured, &placement); err == nil {
+		if err := rows.Scan(&total, &matured, &placement); err == nil {
 			cov.MatchSkillRankCSR.Total = int(total.Int64)
 			cov.MatchSkillRankCSR.Matured = int(matured.Int64)
 			cov.MatchSkillRankCSR.Placement = int(placement.Int64)
 		}
+		rows.Close()
 	}
 
 	// 3) match_registry (shared) — count ranked matches pour ce xuid

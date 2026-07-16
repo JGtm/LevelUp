@@ -118,7 +118,7 @@ func (r *CareerRepo) enrichCSRPlaylistNames(ctx context.Context, playlists []dom
 // loadCSRSnapshotRows lit player_csr_snapshots (logique historique). Retourne
 // nil sans erreur si la table n'existe pas (joueur jamais syncé pour CSR).
 func (r *CareerRepo) loadCSRSnapshotRows(ctx context.Context, seasonID string) ([]domain.CareerPlaylistCSR, error) {
-	rows, err := r.pdb.ReadDB().Query(ctx, Q26csrSnapshots, seasonID, seasonID)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, Q26csrSnapshots, seasonID, seasonID)
 	if err != nil {
 		if isTableNotFoundErr(err) {
 			return nil, nil

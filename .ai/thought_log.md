@@ -1,3 +1,135 @@
+## [2026-07-16] Sweep recovery lectures player-DB — Lots A-D TERMINÉS (systémique)
+
+**Statut** : Complété (code, branche `fix/player-db-recovery-sweep`, NON mergé). Suite du fix
+prestige (Découverte d). Plan `.ai/PLAN_PLAYER_DB_RECOVERY_SWEEP_2026-07.md`.
+
+**Bilan** : 77 lectures player-DB (`pdb.Player`/`ReadDB()`) routées en `*Recovered` (~40
+fichiers) pour tolérer un `Reopen()` concurrent (`old.Close()` → « database is closed »). 4 lots
+(agents Opus séquentiels ; revue + gates superviseur) :
+- Lot A `af6ccdd6` career/home (14) · Lot B `8750dfcc8` match-view/stats (17) · Lot C
+  `15e8f7e72` engagement/squad/citations (37) · Lot D `b179b8b1` garde-rail + 9 stragglers
+  (dont `api/wire/post_sync_deltas_snapshot.go` ×7, hors couche duckdb).
+- **Garde-rail** `player_db_recovery_routing_test.go` : ratchet des formes explicites
+  `.Player`/`.ReadDB()` en méthode plate ; allowlist datée (2× `sync_meta`, DC-3) ; 3 tests
+  (principal + anti-stale + sanity). Limite : handles bare-`db` (prestige/streaks/
+  record_history) non couverts (documenté).
+- **Scope** : LECTURES player-DB seulement (DC-2 : writes lease/ART non touchés ; DC-3 :
+  shared/metadata/shared_social/sync_meta laissés). Classification par fichier.
+- **Gates** : `go build/vet/test ./...` + `go test -tags=integration -p 1 duckdb/sync/persist`
+  = exit 0 (agents + re-run superviseur : build/vet + 3 tests garde-rail).
+
+**Prochaine étape** : accord user pour landing (merge main = deploy). NB : des commits docs
+CONCURRENTS (`PLAN_DIAG_APPARENCE`, `EXPLORER_BRIEFING`, thought_log) ont atterri sur CETTE
+branche entre les lots B et C (`06dc3b48a`, `36f3cde6c`) — à démêler avant merge (point d'étape).
+
+---
+
+## [2026-07-16] Révision du PLAN_DIAG_APPARENCE_ADMIN — intégration des retours « Rapports page Admin »
+
+**Statut** : Complété (docs-only, aucune ligne de code). Demande utilisateur : lire la
+section « Rapports page Admin » du backlog Notion et ajuster/mettre à jour le plan.
+
+**Constats sur pièces** :
+- Le volet diag apparence n'est PAS implémenté (aucun `AppearanceDiagnosis` /
+  `appearance_diag*` / panneau front) → le plan reste actif, pas d'archivage `.ai/v7.1`.
+- Ex-dépendance dure LEVÉE : `resolvePositiveEmblemCfg → (cfg, definitive)` en prod
+  depuis le merge audits du 2026-07-10 (`spartan_nameplate_resolver.go:210`).
+- Références périmées corrigées : routes admin = sous-routeur `/admin` + Huma
+  (`admin_invariants.go:44` modèle) — l'ancien `_admin/*` du plan est legacy (S2 a muté
+  `POST /_admin/progression/backfill`) ; capability H5 `spartan_customizer` vit dans
+  `title.toml:64` ; `parity_check.py` n'existe PLUS dans le repo (panneau lab = résidu).
+
+**Décision principale** : le plan devient bi-volet sur une seule branche
+`feat/admin-retours-diag`. Volet 1 (lots A-D) = traitement des 24 retours Notion
+(cartographiés fichier:ligne par exploration : AdminLayout `ml-auto` pour Gestion
+excentré, h2 dans Cards pour les cases-dans-cases, `window.prompt` DetectionsPanel:49,
+post-sync in-memory `auto_sync.go:311` perdu au boot, etc.), avec table de traçabilité
+retour→item en annexe. Volet 2 (lots E-H) = diag apparence d'origine, références
+re-vérifiées + piège `HaloXUID(ctx)` (PR #63) documenté. Décisions actées 2026-07-16 :
+titres HORS cartes (`SectionHeader` canon), suppression panneau parité, dialog in-app à
+la place de `window.prompt`, persistance JSON légère hors DuckDB pour l'amnésie
+post-boot (anti-ART intouché), libellés locale-agnostiques + exemples de matchs
+cliquables pour la qualité de données.
+
+**Prochaine étape** : exécution du plan par agent sous contrat `plan-execution`
+(lots A→I séquentiels). Le fichier plan garde son nom (traçabilité Notion/mémoire).
+
+## [2026-07-16] Révision 3 du PLAN_EXPLORER_BRIEFING_V2 — cartes Séries + Moments forts validées
+
+**Statut** : Complété (docs-only). L'utilisateur valide les cartes « Séries » (meilleure/pire
+série du scope) et « Moments forts » (compteurs DominanceFlag) → intégrées au plan comme
+items 8/9, nouvelle Phase 5b, règles P-9 (séries rompues par tout non-win ; segments zéro
+omis ; dominance nil si tout-zéro ; grep des libellés badges dominance existants avant
+nouvelles clés). « Records du scope » écarté. Piège consigné : la frise `outcome_sequence`
+est cappée à 60 → séries calculées backend sur tout le scope.
+
+**MVP/LVP tableau (question pagination)** : idée validée dans son principe mais CHANTIER
+SÉPARÉ (surface tableau, pas briefing). Architecture recommandée consignée au §6 du plan :
+extrêmes calculés backend sur TOUT le scope filtré (jamais par page — trompeur/instable),
+renvoyés comme match_id+colonne, surlignage front quand la row est visible.
+
+**Ajout (même jour, demande utilisateur)** : item 6e — mise à jour `docs/CHANGELOG.md` +
+`docs/FR/CHANGELOG.md`, entrée `[Unreleased]` v7.0 (= « What's new » rendu par la page
+Changelog in-app), bullet Explorer briefing V2 ; critère de succès §1.14 + gate Phase 6.
+
+**Prochaine étape** : exécution du plan (`feat/explorer-briefing-v2`). Restent D-B/D-C
+(défauts fournis).
+
+## [2026-07-16] Révision 2 du PLAN_EXPLORER_BRIEFING_V2 — suppression du bloc attendu vs réel
+
+**Statut** : Complété (docs-only). Décision produit utilisateur après explication concrète du
+module « Pronostic » : `expected_win_prob` (proba de victoire pré-match LUSR v2) est jugé
+**non fiable à ce jour** → le bloc « attendu vs réel » est SUPPRIMÉ de l'UI briefing, pas
+seulement renommé. Le module devient la carte « Classement » (progression par type CSR/LUSR
+uniquement). D-A tranché/obsolète.
+
+**Répercussions plan** : Phase 1b réduite (titre « Classement »/« Ranking », pas de tooltip) ;
+Phase 4 purge DTO (`ExpectedWinRate`/`ActualWinRate`/`MatchesWithPrediction`), calcul service
+(`analysis.ExpectedVsActual` — à supprimer si plus aucun consommateur, idem
+`SkillExpectedWinProb` raw row + lecture repo Q5, grep en exécution), rendu + clés i18n
+`ranked_expected*`. Module émis ssi ≥ 1 entrée de type. Critères §1.3/§1.11 réécrits.
+
+**Backlog ouvert (§6 du plan)** : cartes candidates de remplacement proposées à l'utilisateur —
+« Séries » (frise), « Moments forts » (DominanceFlag), « Records du scope ». Aucune retenue
+tant que non arbitrée.
+
+**Prochaine étape** : réponse utilisateur sur les cartes candidates, puis exécution du plan
+(`feat/explorer-briefing-v2`). Restent D-B (seuil) et D-C (formulation), avec défauts.
+
+## [2026-07-16] Révision 1 du PLAN_EXPLORER_BRIEFING_V2 — revue sur pièces + arbitrages user
+
+**Statut** : Complété (docs-only, plan toujours PLANIFIE — aucune ligne de code).
+
+**Contexte** : revue du plan (`.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`) demandée par
+l'utilisateur avant exécution. Grille `plan-review` passée, constat §2 re-vérifié sur pièces
+(exact). 4 écarts trouvés + 3 polish, tous intégrés au plan après arbitrage utilisateur.
+
+**Décisions techniques principales** :
+- **Classement PAR TYPE de rating (arbitrage user)** : une ligne CSR et une ligne LUSR si
+  significatif (seuil `minRankedKindMatches = 10`, majoritaire toujours émis) — jamais de
+  paliers de deux systèmes mélangés. Quasi gratuit : `ComputeKPIStats` accumule DÉJÀ les
+  buckets par RatingType (`kpi_stats.go:45-52`) et jette tout sauf le majoritaire → champ
+  additif `KPIStats.RankDeltas []RankDelta`. DTO : `Kinds []ExplorerBriefingRankedKind`.
+- **P-8 (nouveau)** : en plein historique, le top/flop des dimensions dégénère (deltas tous
+  nuls → tri par clé = GUID) ; re-tri par WinRate côté service briefing, `CompareByKey`
+  intouché.
+- **D-D placement (arbitrage user : ni cacher, ni brut)** : début en placement → « Placement »
+  sans compteur ; fin en placement → « Placement (N restants) » ; flags backend
+  (`TierStartIsPlacement`, `TierEndPlacementRemaining`) + clés i18n, pas de parsing du
+  libellé FR.
+- **`formatDateRange`** : nouveau helper canonique dans `date.ts` (Intl.formatRange) —
+  `formatDate` ne sait pas factoriser « 3 – 12 mars 2025 ».
+- Polish actés : sous-libellé `ranked_expected_vs_actual` redondant retiré (Phase 4f) ;
+  équilibre tuiles socle + spot-check EN ajoutés en Phase 6 ; limitation actée
+  `SkillTierLabel` FR-en-base sous locale EN.
+
+**Pédagogie consignée** : « Attendu vs réel » = moyenne des `expected_win_prob` pré-match
+(LUSR v2) vs winrate réel du scope — bilan de sur/sous-performance vs difficulté des lobbies,
+pas une prédiction (d'où le renommage de « Pronostic »).
+
+**Prochaine étape** : exécution du plan sur `feat/explorer-briefing-v2` (Phase 0), sous
+`plan-execution`. D-A/D-B/D-C restent à confirmer (défauts fournis) ; D-D tranché.
+
 ## [2026-07-16] Clôture PLAN_MONITORING_TRIAGE_DETECTIONS — soaks soldés en prod (mesure ssh)
 
 **Statut** : Complété (branche `docs/b4-data-quality-solde`). Plan

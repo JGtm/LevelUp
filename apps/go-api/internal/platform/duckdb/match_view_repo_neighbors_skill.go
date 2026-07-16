@@ -109,7 +109,13 @@ func (r *MatchViewRepo) GetMatchSkillRank(ctx context.Context, matchID string) (
 		row           domain.SkillRankRaw
 		ratingTypeRaw string
 	)
-	err := r.pdb.ReadDB().QueryRow(ctx, Q22aMatchSkillRankPlayer, matchID).Scan(
+	rrows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, Q22aMatchSkillRankPlayer, matchID)
+	if err != nil {
+		// Absent pour les matchs non-ranked ou sans donnée skill (ou Reopen concurrent) → nil sans erreur
+		return nil, nil //nolint:nilerr
+	}
+	defer rrows.Close()
+	if err := rrows.Scan(
 		&ratingTypeRaw,
 		&row.TierLabel,
 		&row.RatingValue,
@@ -118,9 +124,7 @@ func (r *MatchViewRepo) GetMatchSkillRank(ctx context.Context, matchID string) (
 		&row.Tier,
 		&row.SubTier,
 		&row.ExpectedWinProb,
-	)
-	if err != nil {
-		// Absent pour les matchs non-ranked ou sans donnée skill → nil sans erreur
+	); err != nil {
 		return nil, nil //nolint:nilerr
 	}
 

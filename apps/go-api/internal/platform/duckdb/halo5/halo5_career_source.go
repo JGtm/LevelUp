@@ -60,7 +60,11 @@ func (s *Halo5CareerSource) GetLatestCareer(ctx context.Context) (*domain.H5Care
 
 	var tier sql.NullString
 	var sub, val sql.NullInt64
-	err := s.pdb.ReadDB().QueryRow(ctx, h5BestCSRQuery).Scan(&tier, &sub, &val)
+	csrRows, err := s.pdb.ReadDB().QueryRowRecovered(ctx, h5BestCSRQuery)
+	if err == nil {
+		err = csrRows.Scan(&tier, &sub, &val)
+		csrRows.Close()
+	}
 	switch {
 	case err == nil:
 		if tier.Valid && tier.String != "" {
@@ -76,7 +80,11 @@ func (s *Halo5CareerSource) GetLatestCareer(ctx context.Context) (*domain.H5Care
 	}
 
 	var rank, xp sql.NullInt64
-	err = s.pdb.ReadDB().QueryRow(ctx, h5LatestSRQuery).Scan(&rank, &xp)
+	srRows, err := s.pdb.ReadDB().QueryRowRecovered(ctx, h5LatestSRQuery)
+	if err == nil {
+		err = srRows.Scan(&rank, &xp)
+		srRows.Close()
+	}
 	switch {
 	case err == nil:
 		if rank.Valid {

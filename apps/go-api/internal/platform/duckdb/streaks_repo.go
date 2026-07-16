@@ -43,15 +43,19 @@ FROM streak_latest`
 func (r *StreaksRepo) GetActive(ctx context.Context, userID, titleSlug string, st streaks.StreakType) (*streaks.Streak, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	row := r.db.QueryRow(ctx, streaksSelectColumns+`
+	rows, err := r.db.QueryRowRecovered(ctx, streaksSelectColumns+`
 		WHERE user_id = ? AND title_slug = ? AND type = ? AND status != 'broken'
 		ORDER BY started_at DESC LIMIT 1`,
 		userID, titleSlug, string(st),
 	)
-	s, err := scanStreak(row)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
+	if err != nil {
+		return nil, fmt.Errorf("StreaksRepo.GetActive: %w", err)
+	}
+	defer rows.Close()
+	s, err := scanStreak(rows)
 	if err != nil {
 		return nil, fmt.Errorf("StreaksRepo.GetActive: %w", err)
 	}
@@ -90,7 +94,7 @@ func (r *StreaksRepo) Upsert(ctx context.Context, s streaks.Streak) error {
 func (r *StreaksRepo) List(ctx context.Context, userID, titleSlug string) ([]streaks.Streak, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	rows, err := r.db.Query(ctx, streaksSelectColumns+`
+	rows, err := r.db.QueryRecovered(ctx, streaksSelectColumns+`
 		WHERE user_id = ? AND title_slug = ?
 		ORDER BY started_at DESC`,
 		userID, titleSlug,

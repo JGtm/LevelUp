@@ -392,14 +392,18 @@ func (r *MatchViewRepo) GetMatchEnrichment(ctx context.Context, matchID string) 
 	defer cancel()
 
 	var e domain.MatchEnrichmentRaw
-	err := r.pdb.ReadDB().QueryRow(ctx, Q18MatchEnrichment, matchID).Scan(
+	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, Q18MatchEnrichment, matchID)
+	if err != nil {
+		// Pas d'enrichissement (ou Reopen concurrent) → retourner vide
+		return &domain.MatchEnrichmentRaw{}, nil
+	}
+	defer rows.Close()
+	if err := rows.Scan(
 		&e.PerformanceScore,
 		&e.IsWithFriends,
 		&e.IsExcluded,
 		&e.DominanceFlag,
-	)
-	if err != nil {
-		// Pas d'enrichissement → retourner vide
+	); err != nil {
 		return &domain.MatchEnrichmentRaw{}, nil
 	}
 	return &e, nil
