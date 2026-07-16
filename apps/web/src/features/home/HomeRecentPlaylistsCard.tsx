@@ -6,6 +6,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { unrankedBadgeURL } from '@/lib/staticAssets'
+import { localizeTierLabel } from '@/lib/skillTiers'
 
 // GH2-A3 : une playlist dont le nom n'a pas été résolu côté backend (asset_translations
 // sans entrée pour la locale de requête) retombe sur le playlist_id brut = un UUID. On
@@ -123,7 +124,7 @@ export function HomeRecentPlaylistsCard({
                       {badgeImageURL ? (
                         <RankBadge
                           imageUrl={badgeImageURL}
-                          label={isPlacement ? (placementCompleted === 0 ? 'Non classé' : 'En placement') : (item.tier_label ?? 'Rang')}
+                          label={isPlacement ? (placementCompleted === 0 ? 'Non classé' : 'En placement') : (localizeTierLabel(item.tier_label, locale) ?? 'Rang')}
                           testId={isPlacement ? 'home-rank-unranked-image' : undefined}
                           opacity={isPlacement ? 'dim' : 'full'}
                         />
@@ -148,7 +149,7 @@ export function HomeRecentPlaylistsCard({
                           data-testid="home-rank-tier-label"
                           className="truncate text-sm font-semibold text-foreground"
                         >
-                          {item.tier_label}
+                          {localizeTierLabel(item.tier_label, locale)}
                         </p>
                       ) : isPlacement ? (
                         <p
@@ -195,7 +196,7 @@ export function HomeRecentPlaylistsCard({
                             data-testid="home-recent-playlist-next-tier"
                             className="shrink-0 truncate text-2xs font-medium text-muted-foreground"
                           >
-                            {item.next_tier_label}
+                            {localizeTierLabel(item.next_tier_label, locale)}
                           </span>
                         )}
                       </div>

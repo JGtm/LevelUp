@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
@@ -29,6 +30,18 @@ const queryTimeout = 10 * time.Second
 // duckdb.StartTimeCanonicalSQL (cf. reference_timezone_canonical_pattern).
 var startTimeCanonicalMR = duckdb.StartTimeCanonicalSQL("mr")
 
+// campaignExcl retourne la clause littérale de masquage des matchs Campagne pour
+// l'alias registre donné (title-aware via le titre du joueur ; no-op Infinite).
+// Source unique analysis.SQLExcludeCampaignVariants (item H1). La page Ascension
+// (profil radar / engagement / cadence) agrège les matchs de la fenêtre → sans ce
+// filtre les matchs Campagne (Halo 5) biaiseraient les axes et compteurs.
+func (s *Service) campaignExcl(alias string) string {
+	if s.pdb == nil {
+		return ""
+	}
+	return analysis.SQLExcludeCampaignVariants(s.pdb.TitleSlug, alias)
+}
+
 // countMatchesInWindow retourne le nombre de matchs distincts du joueur dans
 // la fenêtre. Source : match_participants côté shared (filtré par xuid),
 // lu via SharedReader (ADR 0016).
@@ -48,7 +61,7 @@ func (s *Service) countMatchesInWindow(ctx context.Context, userID string, since
 		SELECT COUNT(DISTINCT mp.match_id)
 		FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
-		WHERE mp.xuid = ?
+		WHERE mp.xuid = ?`+s.campaignExcl("mr")+`
 		  AND `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
 	`, userID, since, until).Scan(&count)
 	if err != nil {
@@ -115,7 +128,7 @@ func (s *Service) computeRadarAxesBase(
 			COUNT(*)
 		FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
-		WHERE mp.xuid = ?
+		WHERE mp.xuid = ?`+s.campaignExcl("mr")+`
 		  AND `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
 	`, userID, since, until).Scan(&avgKills, &avgDeaths, &avgAssists, &avgScore, &avgKillingSpree, &matchCount)
 	if err != nil {
@@ -171,7 +184,7 @@ func (s *Service) applyAwardsRadarAxes(
 	defer release()
 	matchRows, err := sharedDB.QueryContext(ctx, `
 		SELECT match_id FROM match_registry mr
-		WHERE `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
+		WHERE `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?`+s.campaignExcl("mr")+`
 	`, since, until)
 	if err != nil {
 		return
@@ -245,7 +258,7 @@ func (s *Service) computeFKFD(ctx context.Context, userID string, since, until t
 			COALESCE(SUM(CASE WHEN he.event_type = 'first_death' AND he.victim_xuid = ? THEN 1 ELSE 0 END), 0)
 		FROM highlight_events he
 		JOIN match_registry mr ON mr.match_id = he.match_id
-		WHERE `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
+		WHERE `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?`+s.campaignExcl("mr")+`
 	`, userID, userID, since, until).Scan(&fk, &fd)
 	if err != nil {
 		// La table highlight_events peut ne pas exister ou être vide selon
@@ -274,7 +287,7 @@ func (s *Service) computeEngagementSimple(ctx context.Context, userID string, si
 		SELECT `+startTimeCanonicalMR+`
 		FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
-		WHERE mp.xuid = ?
+		WHERE mp.xuid = ?`+s.campaignExcl("mr")+`
 		  AND `+startTimeCanonicalMR+` >= ? AND `+startTimeCanonicalMR+` <= ?
 		ORDER BY `+startTimeCanonicalMR+` ASC
 	`, userID, since, until)

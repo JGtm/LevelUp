@@ -30,7 +30,8 @@ func (r *SessionsRepo) LoadSessionMatches(ctx context.Context) ([]domain.Session
 		return nil, fmt.Errorf("SessionsRepo.LoadSessionMatches: shared reader: %w", err)
 	}
 	defer release()
-	rows, err := sharedDB.QueryContext(ctx, Q22SessionMatches, r.pdb.XUID, r.pdb.XUID)
+	q := resolveCampaignExclusion(Q22SessionMatches, r.pdb.TitleSlug, "r")
+	rows, err := sharedDB.QueryContext(ctx, q, r.pdb.XUID, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("SessionsRepo.LoadSessionMatches: %w", err)
 	}

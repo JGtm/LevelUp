@@ -60,3 +60,24 @@ export function formatDurationMinSec(seconds?: number | null, fallback = '-'): s
   const s = Math.floor(seconds % 60)
   return `${m}min${s}s`
 }
+
+/**
+ * Format durée compact "XmYYs" avec secondes sur 2 chiffres (utile en tooltip
+ * pour lever l'ambiguïté d'un MM:SS où "1:05" pourrait se lire 1h05).
+ *
+ * Diffère de formatDurationMinSec : lettre "m" (pas "min") et secondes zero-paddées.
+ *
+ * @example
+ *   formatDurationMShort(65)    // "1m05s"
+ *   formatDurationMShort(37)    // "0m37s"
+ *   formatDurationMShort(125)   // "2m05s"
+ *   formatDurationMShort(0)     // "-"
+ */
+export function formatDurationMShort(seconds?: number | null, fallback = '-'): string {
+  if (seconds == null || seconds <= 0 || !Number.isFinite(seconds)) {
+    return fallback
+  }
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return `${m}m${s.toString().padStart(2, '0')}s`
+}

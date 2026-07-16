@@ -291,6 +291,7 @@ export function HomeSpartanIdentityBanner({
                 label={labels.highestCsr}
                 peak={highestCSR}
                 numberLocale={numberLocale}
+                locale={locale}
                 testIdPrefix="home-highest-csr"
                 state={csrState.state}
                 detail={csrState.detail}
@@ -301,6 +302,7 @@ export function HomeSpartanIdentityBanner({
                 label={labels.highestLusr}
                 peak={highestLUSR}
                 numberLocale={numberLocale}
+                locale={locale}
                 testIdPrefix="home-highest-lusr"
                 state={lusrState.state}
                 detail={lusrState.detail}

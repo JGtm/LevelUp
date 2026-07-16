@@ -259,7 +259,7 @@ func (r *MatchHistoryRepo) LoadMapWinRates(ctx context.Context) (map[string][2]i
 	       COUNT(*) AS total
 	FROM match_registry r
 	JOIN match_participants p ON r.match_id = p.match_id
-	WHERE p.xuid = ? AND r.map_name IS NOT NULL
+	WHERE p.xuid = ?` + excludeCampaignClause(r.pdb.TitleSlug, "r") + ` AND r.map_name IS NOT NULL
 	GROUP BY r.map_name`
 
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)

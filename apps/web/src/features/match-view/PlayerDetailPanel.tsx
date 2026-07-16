@@ -26,6 +26,8 @@ import type {
 } from '@/lib/api/types'
 import type { MatchViewText } from './i18n'
 import { displayTierLabel } from './MatchHeader.utils'
+import { localizeTierLabel } from '@/lib/skillTiers'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 const _LIMIT_MEDALS = 6
 const _LIMIT_WEAPONS = 5
@@ -310,6 +312,7 @@ function buildLocalRow(row: MatchScoreboardRow, header?: MatchViewHeader, mainRa
 }
 
 function LocalSection({ data, t }: { data: LocalRow; t: MatchViewText }) {
+  const locale = useAppShellStore((s) => s.locale)
   const rows: React.ReactNode[] = []
   if (data.perfDisplay) {
     const colorVar = data.perfColorToken ? `var(--ac-${data.perfColorToken})` : undefined
@@ -318,8 +321,10 @@ function LocalSection({ data, t }: { data: LocalRow; t: MatchViewText }) {
   if (data.tierLabel) {
     const label = data.ratingType === 'CSR' ? t.sbDetailCsr : t.sbDetailLusr
     const deltaStr = data.ratingDelta != null ? ` (${formatRankDelta(data.ratingDelta, data.ratingType ?? '')} pts)` : ''
-    // « Placement » (sentinelle back) → « En placement » localisé (displayTierLabel).
-    const tierLabelDisplay = displayTierLabel(data.tierLabel, t.rankPlacement) ?? data.tierLabel
+    // Palier baké au sync (FR Infinite / EN H5) → nom localisé, puis sentinelle
+    // « Placement » → « En placement » (localizeTierLabel + displayTierLabel).
+    const tierLabelDisplay =
+      displayTierLabel(localizeTierLabel(data.tierLabel, locale), t.rankPlacement) ?? data.tierLabel
     rows.push(
       <KvRow key="rank" label={label} value={
         <span className="flex items-center gap-1.5">

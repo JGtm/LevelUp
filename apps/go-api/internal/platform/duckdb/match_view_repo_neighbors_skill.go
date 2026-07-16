@@ -26,7 +26,8 @@ func (r *MatchViewRepo) GetMatchNeighbors(ctx context.Context, xuid, matchID str
 		return &domain.MatchNeighbors{TotalMatches: 0}, nil
 	}
 	defer release()
-	row := sharedDB.QueryRowContext(ctx, Q25NeighborMatches, xuid, matchID)
+	q := resolveCampaignExclusion(Q25NeighborMatches, r.pdb.TitleSlug, "mr")
+	row := sharedDB.QueryRowContext(ctx, q, xuid, matchID)
 	var nextID, prevID *string
 	var currentIdx, total int
 	if err := row.Scan(&nextID, &prevID, &currentIdx, &total); err != nil {
@@ -66,7 +67,10 @@ func (r *MatchViewRepo) GetMatchNeighborsFiltered(
 			"match_id", matchID, "ignored", clauseRes.IgnoredFilters)
 	}
 
-	query := strings.Replace(Q25NeighborMatchesTemplate, "/*EXTRA_WHERE*/", clauseRes.SQL, 1)
+	// Masquage Campagne (alias mr = match_registry dans Q25) : concaténé au
+	// fragment de filtres, injecté dans /*EXTRA_WHERE*/. No-op pour Infinite.
+	extraWhere := clauseRes.SQL + excludeCampaignClause(r.pdb.TitleSlug, "mr")
+	query := strings.Replace(Q25NeighborMatchesTemplate, "/*EXTRA_WHERE*/", extraWhere, 1)
 	args := make([]any, 0, len(clauseRes.Args)+2)
 	args = append(args, xuid)
 	args = append(args, clauseRes.Args...)

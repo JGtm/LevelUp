@@ -64,6 +64,16 @@ describe('buildHeatmap2DOption', () => {
     ])
   })
 
+  it('palette CVD : une heatmap séquentielle bascule sur la rampe fréquence (CVD-safe)', () => {
+    const opt = buildHeatmap2DOption(series, { colorPalette: 'cividis' }) as {
+      visualMap: { inRange: { color: string[] } }
+    }
+    expect(opt.visualMap.inRange.color).toEqual([
+      'var(heatmap-freq-low)',
+      'var(heatmap-freq-high)',
+    ])
+  })
+
   it('valueRange override min/max', () => {
     const opt = buildHeatmap2DOption(series, { valueRange: [0, 100] }) as {
       visualMap: { min: number; max: number }

@@ -45,6 +45,7 @@ export interface PalmaresText {
       allies: string
       rivals: string
       recent: string
+      cross: string
     }
     filters: {
       experience: string
@@ -233,6 +234,7 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         allies: t(loc, 'palmares.relations.chip.allies'),
         rivals: t(loc, 'palmares.relations.chip.rivals'),
         recent: t(loc, 'palmares.relations.chip.recent'),
+        cross: t(loc, 'palmares.relations.chip.cross'),
       },
       filters: {
         experience: t(loc, 'palmares.relations.filters.experience'),

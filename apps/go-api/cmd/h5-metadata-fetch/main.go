@@ -175,6 +175,7 @@ func main() {
 		seedMaps(db, key)
 		seedWeapons(db, key, fr.Weapons)
 		seedCSRDesignations(db, key)
+		seedTeamColors(db, key)
 		seedCommendations(db, key, fr.Commendations)
 		seedPlaylists(db, key)
 
@@ -518,6 +519,85 @@ func seedCSRDesignations(db *sql.DB, key string) {
 		}
 	}
 	fmt.Printf("csr-designations: %d tiers seedés (sur %d désignations)\n", n, len(desigs))
+}
+
+// apiTeamColor — élément de l'API Metadata officielle /team-colors. `id` = le TeamId
+// porté par chaque équipe des résultats Stats API Halo 5 (H5Team.Id → match_participants.team_id).
+// `name` (+ `description`) sont localisés via Accept-Language ; `color` est un hex
+// "#RRGGBB" ; `iconUrl` est nullable. On persiste name/color/icône (la description
+// n'est pas consommée par la Match View). NB : `id` est attendu numérique (spec API) ;
+// si l'API le sérialisait en string, l'unmarshal échouerait proprement → SKIP + table
+// vide → l'exposition retombe sur le libellé d'équipe existant (dégradation gracieuse).
+type apiTeamColor struct {
+	Name    string `json:"name"`
+	Color   string `json:"color"`
+	IconURL string `json:"iconUrl"`
+	ID      int    `json:"id"`
+}
+
+// fetchTeamColorsFR refetch /team-colors en fr-FR (l'API HONORE Accept-Language, cf.
+// fetchMetaLang) et indexe le nom FR par TeamId. Best-effort : échec/parse KO → map
+// vide (le seed retombe alors sur le nom EN).
+func fetchTeamColorsFR(key string) map[int]string {
+	out := map[int]string{}
+	body, err := fetchMetaLang(key, "team-colors", langFR)
+	if err != nil {
+		fmt.Printf("team-colors[fr-FR]: SKIP (%v)\n", err)
+		return out
+	}
+	var colors []apiTeamColor
+	if err := json.Unmarshal(body, &colors); err != nil {
+		fmt.Printf("team-colors[fr-FR]: parse %v\n", err)
+		return out
+	}
+	for _, c := range colors {
+		if n := strings.TrimSpace(c.Name); n != "" {
+			out[c.ID] = n
+		}
+	}
+	return out
+}
+
+// seedTeamColors peuple team_colors depuis l'API Metadata officielle (/team-colors) :
+// TeamId → couleur (#RRGGBB) + nom localisé EN/FR + icône. Source des libellés d'équipe
+// « Rouge/Bleu » de la Match View H5 (jointure read-time sur team_id). Best-effort.
+func seedTeamColors(db *sql.DB, key string) {
+	body, err := fetchMeta(key, "team-colors")
+	if err != nil {
+		fmt.Printf("team-colors: SKIP (%v)\n", err)
+		return
+	}
+	var colors []apiTeamColor
+	if err := json.Unmarshal(body, &colors); err != nil {
+		fmt.Printf("team-colors: parse %v\n", err)
+		return
+	}
+	n := persistTeamColors(db, colors, fetchTeamColorsFR(key))
+	fmt.Printf("team-colors: %d seedées (sur %d)\n", n, len(colors))
+}
+
+// persistTeamColors écrit les team_colors en INSERT OR REPLACE (idempotent). frByID
+// porte les noms FR localisés par l'API (Accept-Language) ; fallback sur le nom EN
+// (jamais name_fr vide). Retourne le nombre de lignes écrites. Best-effort par entrée.
+func persistTeamColors(db *sql.DB, colors []apiTeamColor, frByID map[int]string) int {
+	n := 0
+	for _, c := range colors {
+		nameEN := strings.TrimSpace(c.Name)
+		// Pas d'override TOML pour les couleurs d'équipe (contrairement aux
+		// armes/médailles) → sélection directe : nom FR de l'API sinon EN.
+		nameFR := strings.TrimSpace(frByID[c.ID])
+		if nameFR == "" {
+			nameFR = nameEN
+		}
+		if _, err := db.Exec(`INSERT OR REPLACE INTO team_colors
+			(team_id, name_en, name_fr, color, icon_url) VALUES (?,?,?,?,?)`,
+			c.ID, nameEN, nameFR, strings.TrimSpace(c.Color), strings.TrimSpace(c.IconURL)); err != nil {
+			fmt.Printf("team-colors: insert %d: %v\n", c.ID, err)
+			continue
+		}
+		n++
+	}
+	return n
 }
 
 // apiCommendation — élément de l'API Metadata officielle /commendations. `id` (UUID)

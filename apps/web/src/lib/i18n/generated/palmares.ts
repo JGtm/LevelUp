@@ -14,6 +14,7 @@ export const palmaresManifest = {
   "palmares.relations.chip.all": { fr: "Tous", en: "All" },
   "palmares.relations.chip.allies": { fr: "Alliés", en: "Allies" },
   "palmares.relations.chip.core": { fr: "Noyau dur", en: "Inner circle" },
+  "palmares.relations.chip.cross": { fr: "Multi-jeux", en: "Multi-game" },
   "palmares.relations.chip.recent": { fr: "Vus récemment", en: "Seen recently" },
   "palmares.relations.chip.rivals": { fr: "Rivaux", en: "Rivals" },
   "palmares.relations.core.collapse": { fr: "réduire", en: "collapse" },

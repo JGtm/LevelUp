@@ -5798,6 +5798,8 @@ components:
               type: integer
           skill_rank:
               $ref: '#/components/schemas/MatchScoreboardSkillRank'
+          team_name:
+              type: string
           team_side:
               type: string
           top_weapon_id:
@@ -11119,6 +11121,9 @@ components:
     MapBreakdownRow:
       additionalProperties: false
       properties:
+          historical_match_count:
+              format: int64
+              type: integer
           historical_performance_avg:
               format: double
               type: number

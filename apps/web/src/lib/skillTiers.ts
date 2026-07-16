@@ -115,3 +115,72 @@ export function subTierPosition(grid: SkillTierGrid, ratingValue: number): SubTi
   const subTierMin = tier.min + subIndex * subTierWidth
   return { pct: (ratingValue - subTierMin) / subTierWidth, subTierMin, subTierWidth }
 }
+
+// ── Localisation des libellés de palier (chokepoint FR↔EN) ────────────────────
+//
+// Les libellés de palier de skill (CSR/LUSR) arrivent du backend soit comme nom
+// de palier canonique EN (ex. `CareerCSRRank.tier` = "Gold"/"Platinum"), soit
+// comme libellé COMPOSÉ baké à l'écriture — et ce bake n'est PAS locale-aware :
+// Halo Infinite bake en FR ("Or IV", "Platine"), Halo 5 bake en EN ("Platinum",
+// "Platinum 4"). D'où deux symptômes selon la surface : « Or IV » sous UI EN, et
+// « Platinum » sous UI FR (H5).
+//
+// Ces helpers localisent À L'AFFICHAGE, à partir de la donnée déjà reçue (aucun
+// champ backend supplémentaire) : le nom de palier appartient à un ensemble fini
+// et stable (les grilles ci-dessus + Champion H5), et le sous-palier n'est qu'un
+// chiffre (romain ou arabe) préservé tel quel. Toute entrée non reconnue
+// (sentinelle « Placement », valeur brute, vide) est renvoyée inchangée.
+
+interface TierNamePair {
+  fr: string
+  en: string
+}
+
+// Index des noms de palier connus (toute casse FR ou EN) → paire localisée.
+// Dérivé de LUSR_TIER_GRID (porte les 6 paires fr/en) + Champion (apex Halo 5,
+// au-dessus d'Onyx ; identique dans les deux langues).
+const TIER_NAME_BY_KEY: Record<string, TierNamePair> = (() => {
+  const out: Record<string, TierNamePair> = {}
+  for (const t of LUSR_TIER_GRID.tiers) {
+    const pair: TierNamePair = { fr: t.fr, en: t.en }
+    out[t.fr.toLowerCase()] = pair
+    out[t.en.toLowerCase()] = pair
+  }
+  out['champion'] = { fr: 'Champion', en: 'Champion' }
+  return out
+})()
+
+/**
+ * Localise un NOM de palier seul (« Or »/« Gold »/« Platinum »…) vers la locale
+ * cible. Sert aux surfaces qui composent le libellé côté web depuis un tier
+ * canonique EN + sous-palier séparé (ex. colonne CSR de la carrière). Une entrée
+ * inconnue (vide, palier hors grille) est renvoyée telle quelle.
+ */
+export function localizeTierName(name: string, locale: 'fr' | 'en'): string {
+  const pair = TIER_NAME_BY_KEY[name.trim().toLowerCase()]
+  if (!pair) return name
+  return locale === 'en' ? pair.en : pair.fr
+}
+
+/**
+ * Localise un LIBELLÉ de palier complet baké (« Or IV », « Platinum 4 », « Onyx »,
+ * « Onyx 1500 ») : mappe le NOM du palier vers la locale, préserve le suffixe de
+ * sous-palier (romain I–VI ou arabe) tel quel. Une entrée dont le nom n'est pas un
+ * palier connu (sentinelle « Placement », « Placement (2 restants) », null/vide)
+ * est renvoyée INCHANGÉE — sûr pour les consommateurs qui gèrent ces cas à part.
+ */
+export function localizeTierLabel(
+  label: string | null | undefined,
+  locale: 'fr' | 'en',
+): string | null | undefined {
+  if (label == null || label.trim() === '') return label
+  const trimmed = label.trim()
+  // Sépare un éventuel suffixe : romain (I–VI) ou numérique (sous-palier arabe ou
+  // valeur CSR d'Onyx). Le reste = nom du palier candidat.
+  const m = trimmed.match(/^(.+?)\s+([IVX]+|\d+)$/)
+  const namePart = (m ? m[1] : trimmed).trim()
+  const pair = TIER_NAME_BY_KEY[namePart.toLowerCase()]
+  if (!pair) return label // nom inconnu → inchangé (placement, brut…)
+  const localized = locale === 'en' ? pair.en : pair.fr
+  return m ? `${localized} ${m[2]}` : localized
+}

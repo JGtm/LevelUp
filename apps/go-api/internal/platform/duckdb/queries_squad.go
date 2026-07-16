@@ -286,7 +286,7 @@ SELECT
     SUM(CASE WHEN %s THEN 1 ELSE 0 END)    AS wins
 FROM match_participants p
 JOIN v_match_full r ON r.match_id = p.match_id
-WHERE p.xuid = ?
+WHERE p.xuid = ? ` + campaignExclusionToken + `
 GROUP BY 1, 2
 ORDER BY match_count DESC`
 
@@ -312,7 +312,7 @@ SELECT
     COALESCE(r.playlist_name, '')         AS playlist_name
 FROM match_participants p
 JOIN match_registry r ON r.match_id = p.match_id
-WHERE p.xuid = ?
+WHERE p.xuid = ? ` + campaignExclusionToken + `
 ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC`
 
 // Q42MapStatsForSquadSharedTpl : (ADR 0016) — partie shared du

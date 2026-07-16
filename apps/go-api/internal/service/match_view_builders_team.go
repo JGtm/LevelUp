@@ -2,8 +2,9 @@
 //
 // Extrait de match_view_service.go (audit #1 god files). Couvre :
 //   - buildTeamTabFull : scoreboard rows + nemesis + encounters.
-//   - convertEncounters + buildEncounterBadgesFrom* + encounterWinrate +
-//     convertNarrativeBadges : conversion encounters raw -> domain.
+//   - convertEncounters + relationStatsFromEncounter + encounterWinrate +
+//     convertRelationBadges : conversion encounters raw -> domain (badges via
+//     relations.ComputeBadges, parité avec le hub Relations).
 //   - buildMediaTab : onglet médias (proche par taille, garder ensemble).
 //   - buildNemesisMap : agrégation kvPairs -> nemesis par adversaire.
 package service
@@ -11,9 +12,10 @@ package service
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/analysis/relations"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
@@ -182,7 +184,7 @@ func buildTeamTabFull(
 		Roster:     []domain.MatchRosterRow{},
 		Scoreboard: rows,
 		Nemesis:    nemesisList,
-		Encounters: convertEncounters(encounters, encounterStats),
+		Encounters: convertEncounters(encounters, encounterStats, time.Now()),
 	}
 }
 
@@ -213,12 +215,13 @@ func sharedCSRToScoreboardRank(raw *domain.SkillRankRaw, assetURL games.TitleAss
 func convertEncounters(
 	raw []domain.EncounterRaw,
 	stats []domain.EncounterStatsRaw,
+	now time.Time,
 ) []domain.MatchEncounterRow {
 	if len(raw) == 0 {
 		return []domain.MatchEncounterRow{}
 	}
-	// Index stats par xuid pour O(1) lookup. Optionnel : si stats nil ou
-	// vide, on retombe sur le badge ordinal seul (chunk MV4.C legacy).
+	// Index stats par xuid pour O(1) lookup. Si stats nil/vide, la relation
+	// dégrade sur le seul badge ordinal (calculable depuis CountTogether).
 	statsByXUID := make(map[string]domain.EncounterStatsRaw, len(stats))
 	for _, s := range stats {
 		statsByXUID[s.XUID] = s
@@ -227,20 +230,20 @@ func convertEncounters(
 	result := make([]domain.MatchEncounterRow, 0, len(raw))
 	for _, e := range raw {
 		s, hasStats := statsByXUID[e.XUID]
-		var badges []domain.MatchEncounterBadge
-		if hasStats {
-			badges = buildEncounterBadgesFromStats(e, s)
-		} else {
-			// MV4.C fallback : seul le badge ordinal attribuable.
-			badges = buildEncounterBadgesFromRaw(e)
-		}
+		// Réutilise relations.ComputeBadges (hub Communauté > Relations) : le
+		// tableau « Historique des rencontres » affiche ainsi le MÊME jeu de
+		// badges que la page Relations — les 4 badges de rencontre (ordinal /
+		// allié+ / dur à cuire / coriace) ET les 5 badges « solid » (duo gagnant
+		// / caméléon / ancien / recrue / proie favorite). Le badge cross-jeu
+		// reste propre au hub Relations (dépendance cross-titre non câblée ici).
+		relStats := relationStatsFromEncounterStats(e.XUID, e.Gamertag, e.CountTogether, s, hasStats)
 		row := domain.MatchEncounterRow{
 			XUID:          e.XUID,
 			Gamertag:      e.Gamertag,
 			IsBot:         e.IsBot,
 			CountTogether: e.CountTogether,
 			IsAlly:        e.IsAlly,
-			Badges:        badges,
+			Badges:        convertRelationBadges(relations.ComputeBadges(relStats, now)),
 		}
 		if hasStats {
 			ally, enemy := s.AllyCount, s.EnemyCount
@@ -259,77 +262,6 @@ func convertEncounters(
 		result = append(result, row)
 	}
 	return result
-}
-
-// buildEncounterBadgesFromRaw : fallback MV4.C — sans stats riches, seul le
-// badge ordinal est attribuable.
-func buildEncounterBadgesFromRaw(e domain.EncounterRaw) []domain.MatchEncounterBadge {
-	stats := narrative.EncounterStats{
-		XUID:            e.XUID,
-		Gamertag:        e.Gamertag,
-		TotalEncounters: e.CountTogether,
-	}
-	ordinal := e.CountTogether - 1
-	if ordinal < 0 {
-		ordinal = 0
-	}
-	return convertNarrativeBadges(narrative.ComputeEncounterBadges(stats, ordinal))
-}
-
-// buildEncounterBadgesFromStats : MV4.C' — utilise les stats riches Q23b
-// pour permettre à narrative.ComputeEncounterBadges d'attribuer ally_plus
-// et tough_enemy en plus d'ordinal.
-func buildEncounterBadgesFromStats(
-	e domain.EncounterRaw,
-	s domain.EncounterStatsRaw,
-) []domain.MatchEncounterBadge {
-	winrateAsAlly := encounterWinrate(s.WinsAsAlly, s.LossesAsAlly)
-	winrateVsEnemy := encounterWinrate(s.WinsVsEnemy, s.LossesVsEnemy)
-	stats := narrative.EncounterStats{
-		XUID:            e.XUID,
-		Gamertag:        e.Gamertag,
-		TotalEncounters: e.CountTogether,
-		AllyCount:       s.AllyCount,
-		EnemyCount:      s.EnemyCount,
-		WinrateAsAlly:   winrateAsAlly,
-		WinrateVsEnemy:  winrateVsEnemy,
-		KillsDealt:      s.KillsDealt,
-		DeathsSuffered:  s.DeathsSuffered,
-	}
-	ordinal := e.CountTogether - 1
-	if ordinal < 0 {
-		ordinal = 0
-	}
-	return convertNarrativeBadges(narrative.ComputeEncounterBadges(stats, ordinal))
-}
-
-// encounterWinrate : nil si W+L == 0 (pas assez de matchs pour calculer),
-// sinon ratio. narrative.ComputeEncounterBadges traite nil comme "pas
-// d'attribution ally_plus".
-func encounterWinrate(wins, losses int) *float64 {
-	total := wins + losses
-	if total == 0 {
-		return nil
-	}
-	rate := analysis.WinRate(wins, total)
-	return &rate
-}
-
-// convertNarrativeBadges : narrative.EncounterBadge -> domain.MatchEncounterBadge.
-func convertNarrativeBadges(raw []narrative.EncounterBadge) []domain.MatchEncounterBadge {
-	if len(raw) == 0 {
-		return nil
-	}
-	out := make([]domain.MatchEncounterBadge, 0, len(raw))
-	for _, b := range raw {
-		out = append(out, domain.MatchEncounterBadge{
-			Kind:       string(b.Kind),
-			LabelKey:   b.LabelKey,
-			ColorToken: b.ColorToken,
-			Detail:     b.Detail,
-		})
-	}
-	return out
 }
 
 // ---------------------------------------------------------------------------

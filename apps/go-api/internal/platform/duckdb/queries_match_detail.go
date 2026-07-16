@@ -124,6 +124,7 @@ encounter_stats AS (
         COUNT(DISTINCT CASE WHEN eh.is_ally_in_hist AND %s THEN eh.match_id END) AS losses_as_ally,
         COUNT(DISTINCT CASE WHEN NOT eh.is_ally_in_hist AND %s THEN eh.match_id END) AS wins_vs_enemy,
         COUNT(DISTINCT CASE WHEN NOT eh.is_ally_in_hist AND %s THEN eh.match_id END) AS losses_vs_enemy,
+        MIN(eh.hist_start_time) AS first_seen_at,
         MAX(eh.hist_start_time) AS last_seen_at
     FROM encounter_history eh
     GROUP BY eh.xuid
@@ -149,6 +150,7 @@ SELECT
     COALESCE(es.losses_vs_enemy, 0) AS losses_vs_enemy,
     COALESCE(kv.kills_dealt, 0) AS kills_dealt,
     COALESCE(kv.deaths_suffered, 0) AS deaths_suffered,
+    es.first_seen_at,
     es.last_seen_at
 FROM this_match tm
 LEFT JOIN encounter_stats es ON es.xuid = tm.xuid

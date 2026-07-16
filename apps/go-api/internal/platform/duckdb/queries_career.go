@@ -246,7 +246,7 @@ FROM match_participants mp
 JOIN match_registry r ON mp.match_id = r.match_id
 WHERE mp.xuid = ?
   AND COALESCE(mp.time_played_seconds, 0) >= 180
-  AND COALESCE(r.is_firefight, FALSE) = FALSE
+  AND COALESCE(r.is_firefight, FALSE) = FALSE` + campaignExclusionToken + `
   AND mp.match_id IN (%s)`
 
 // Q9bHighlightSharedTpl : Phase B partagée entre GetHighlightMatchIDs et
@@ -268,7 +268,7 @@ FROM match_participants mp
 JOIN match_registry r ON mp.match_id = r.match_id
 WHERE mp.xuid = ?
   AND COALESCE(mp.time_played_seconds, 0) >= 180
-  AND COALESCE(r.is_firefight, FALSE) = FALSE
+  AND COALESCE(r.is_firefight, FALSE) = FALSE` + campaignExclusionToken + `
   AND COALESCE(mp.outcome, 0) IN (2, 3)
   AND mp.match_id IN (%s)
   %s`

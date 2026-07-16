@@ -11,8 +11,9 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 // Miroir de relationsFilter.RelationFilter (évite un import stores → features ;
-// même union littérale → structurellement compatible).
-export type RelationFilter = 'all' | 'core' | 'allies' | 'rivals' | 'recent'
+// même union littérale → structurellement compatible). Valeur 'cross' additive :
+// aucune migration nécessaire (les états persistés existants restent valides).
+export type RelationFilter = 'all' | 'core' | 'allies' | 'rivals' | 'recent' | 'cross'
 export type RelationsHeatmapMode = 'hour' | 'day'
 
 interface RelationsPrefsState {

@@ -86,6 +86,7 @@ export interface SquadText {
     winRateVsHistoryBulletTitle: string
     winRateVsHistoryBulletParity: string
     winRateVsHistoryBulletZero: string
+    winRateVsHistoryBulletCounts: (session: number, history?: number) => string
     mapPerfVsHistoryTitle: string
     mapPerfVsHistorySession: string
     mapPerfVsHistoryHistory: string
@@ -319,6 +320,10 @@ const FR_TEXT: SquadText = {
     winRateVsHistoryBulletTitle: 'Taux de victoire session vs historique',
     winRateVsHistoryBulletParity: 'Parité 50 %',
     winRateVsHistoryBulletZero: '0 % (toutes défaites)',
+    winRateVsHistoryBulletCounts: (session, history) =>
+      `Session : ${session} ${session <= 1 ? 'partie' : 'parties'} · Historique : ${
+        history === undefined ? '—' : `${history} ${history <= 1 ? 'partie' : 'parties'}`
+      }`,
     mapPerfVsHistoryTitle: 'Performance par carte — Session vs Historique',
     mapPerfVsHistorySession: 'Session actuelle',
     mapPerfVsHistoryHistory: 'Historique',
@@ -426,7 +431,7 @@ const FR_TEXT: SquadText = {
       combat: 'Frags + tirs à la tête + frags parfaits, pondérés par la précision.',
       survival: 'Résistance défensive — dégâts / (225 × morts). P80 = 1,59.',
       support: 'Assists × 50.',
-      score: 'Score résiduel après frags (×100) et assists (×50) : médailles et séries.',
+      score: 'Score personnel par minute jouée. P80 ≈ 195/min.',
       objective: 'Points d\'objectif (PersonalScoreAwards).',
       glossaryLink: '→ Glossaire',
     },
@@ -588,6 +593,10 @@ const EN_TEXT: SquadText = {
     winRateVsHistoryBulletTitle: 'Session winrate vs history',
     winRateVsHistoryBulletParity: '50% parity',
     winRateVsHistoryBulletZero: '0% (all losses)',
+    winRateVsHistoryBulletCounts: (session, history) =>
+      `Session: ${session} ${session <= 1 ? 'game' : 'games'} · History: ${
+        history === undefined ? '—' : `${history} ${history <= 1 ? 'game' : 'games'}`
+      }`,
     mapPerfVsHistoryTitle: 'Performance per map — Session vs History',
     mapPerfVsHistorySession: 'Current session',
     mapPerfVsHistoryHistory: 'History',
@@ -695,7 +704,7 @@ const EN_TEXT: SquadText = {
       combat: 'Kills + headshots + perfect kills, weighted by accuracy.',
       survival: 'Defensive resistance — damage / (225 × deaths). P80 = 1.59.',
       support: 'Assists × 50.',
-      score: 'Residual score after kills (×100) and assists (×50): medals and streaks.',
+      score: 'Personal score per minute played. P80 ≈ 195/min.',
       objective: 'Objective points (PersonalScoreAwards).',
       glossaryLink: '→ Glossary',
     },

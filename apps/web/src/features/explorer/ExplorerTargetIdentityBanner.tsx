@@ -297,6 +297,7 @@ export function ExplorerTargetIdentityBanner({
               label={labels.highestCsr}
               peak={highestCSR}
               numberLocale={numberLocale}
+              locale={locale}
               testIdPrefix="explorer-target-csr"
               state={csrState.state}
               detail={csrState.detail}
@@ -307,6 +308,7 @@ export function ExplorerTargetIdentityBanner({
               label={labels.highestLusr}
               peak={highestLUSR}
               numberLocale={numberLocale}
+              locale={locale}
               testIdPrefix="explorer-target-lusr"
               state={lusrState.state}
               detail={lusrState.detail}

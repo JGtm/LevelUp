@@ -12,9 +12,13 @@ import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { resolveTitle, resolveLabel, resolveDetail, resolveColSpan, resolveUnit } from './highlights.i18n'
 
 // Rangée flex sur lg+ : chaque tuile grandit proportionnellement à son poids
-// (flex-grow) avec une largeur de base proportionnelle (flex-basis ≈ poids/20).
-// final_width ∝ poids → largeurs relatives conservées ET la ligne remplit 100 %
-// quel que soit le sous-ensemble de tuiles (ex. H5 sans la case MMR/skill).
+// (flex-grow) sur une base NULLE (flex-basis: 0). Largeur finale ∝ poids →
+// largeurs relatives conservées ET la ligne remplit 100 % quel que soit le
+// sous-ensemble de tuiles (ex. H5 sans la case MMR/skill), sans jamais wrapper.
+// Régression corrigée : une flex-basis en % (poids×5 %) sommait ~100 % (8 tuiles,
+// poids total 20) puis débordait de la somme des gaps (gap-2) — la dernière tuile
+// « Séries » passait alors seule sur une 2e ligne. flex-basis: 0 laisse flex-grow
+// absorber les gaps, donc une seule ligne.
 // Classes LITTÉRALES (pas de template dynamique) pour être détectées par le JIT.
 const HIGHLIGHT_GROW_CLASS: Record<number, string> = {
   1: 'lg:grow-[1]',
@@ -23,19 +27,11 @@ const HIGHLIGHT_GROW_CLASS: Record<number, string> = {
   4: 'lg:grow-[4]',
   5: 'lg:grow-[5]',
 }
-const HIGHLIGHT_BASIS_CLASS: Record<number, string> = {
-  1: 'lg:basis-[5%]',
-  2: 'lg:basis-[10%]',
-  3: 'lg:basis-[15%]',
-  4: 'lg:basis-[20%]',
-  5: 'lg:basis-[25%]',
-}
 
 function highlightFlexClass(titleKey: string | undefined): string {
   const weight = resolveColSpan(titleKey)
   const grow = HIGHLIGHT_GROW_CLASS[weight] ?? 'lg:grow'
-  const basis = HIGHLIGHT_BASIS_CLASS[weight] ?? 'lg:basis-[10%]'
-  return `${grow} ${basis} lg:min-w-0`
+  return `${grow} lg:basis-0 lg:min-w-0`
 }
 
 // Mapping unique sentiment → token sémantique. Sert à la FOIS la couleur de la

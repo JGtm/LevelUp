@@ -4331,6 +4331,7 @@ export interface components {
             /** Format: int64 */
             shots_hit?: number;
             skill_rank?: components["schemas"]["MatchScoreboardSkillRank"];
+            team_name?: string;
             team_side?: string;
             /** Format: int64 */
             top_weapon_id?: number;
@@ -6531,6 +6532,8 @@ export interface components {
             weapons_bits_cleared: number;
         };
         MapBreakdownRow: {
+            /** Format: int64 */
+            historical_match_count?: number;
             /** Format: double */
             historical_performance_avg?: number;
             /** Format: double */

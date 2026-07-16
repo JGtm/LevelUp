@@ -802,6 +802,39 @@ func TestBuildSquadMapHeatmap_NoCapOnMaps(t *testing.T) {
 	}
 }
 
+// TestBuildSquadMapHeatmap_MapsOrderedByFirstAppearance verrouille le tri des
+// cartes par ordre CHRONOLOGIQUE de première apparition (verbatim utilisateur :
+// « pas dans l'ordre et je veux pas de regroupement »). "Early" (1 match) est
+// jouée avant "Mid" (2 matchs) avant "Late" (3 matchs) : l'ordre fréquence serait
+// l'inverse (Late>Mid>Early), donc ce test distingue les deux tris.
+func TestBuildSquadMapHeatmap_MapsOrderedByFirstAppearance(t *testing.T) {
+	base := time.Date(2026, 5, 1, 18, 0, 0, 0, time.UTC)
+	perf := 60.0
+	rows := []domain.SquadMatchRow{
+		{MatchID: "e1", StartTime: base, MapUI: "Early", PerformanceScore: &perf},
+		{MatchID: "m1", StartTime: base.Add(1 * time.Hour), MapUI: "Mid", PerformanceScore: &perf},
+		{MatchID: "m2", StartTime: base.Add(90 * time.Minute), MapUI: "Mid", PerformanceScore: &perf},
+		{MatchID: "l1", StartTime: base.Add(2 * time.Hour), MapUI: "Late", PerformanceScore: &perf},
+		{MatchID: "l2", StartTime: base.Add(150 * time.Minute), MapUI: "Late", PerformanceScore: &perf},
+		{MatchID: "l3", StartTime: base.Add(3 * time.Hour), MapUI: "Late", PerformanceScore: &perf},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main"}
+	heatmap := svc.buildSquadMapHeatmap(context.Background(), rows, nil, nil)
+	if heatmap == nil {
+		t.Fatal("heatmap should be non-nil")
+	}
+	want := []string{"Early", "Mid", "Late"}
+	if len(heatmap.MapsTopN) != len(want) {
+		t.Fatalf("want %d cartes, got %d (%v)", len(want), len(heatmap.MapsTopN), heatmap.MapsTopN)
+	}
+	for i, w := range want {
+		if heatmap.MapsTopN[i] != w {
+			t.Errorf("MapsTopN[%d]: want %q, got %q (ordre chronologique cassé: %v)",
+				i, w, heatmap.MapsTopN[i], heatmap.MapsTopN)
+		}
+	}
+}
+
 // ---------- SynergyOffensiveConversion / SynergyDefensiveResistance ----------
 
 func TestSynergyOffensiveConversion_ZeroDamage(t *testing.T) {
@@ -980,6 +1013,56 @@ func TestBuildSquadSynergyRadar_ObjectiveSumsFromPSA(t *testing.T) {
 	}
 	if f1Obj != 0 {
 		t.Errorf("friend1 objective raw: want 0 (aucun PSA), got %v", f1Obj)
+	}
+}
+
+// ---------- Radar synergie — axe Score (score personnel par minute) ----------
+
+// TestBuildSquadSynergyRadar_ScoreIsPersonalScorePerMinute vérifie que l'axe score
+// est le score personnel par minute jouée (ΣPS / (Σtime_played/60)) : vivant et
+// différenciant entre joueurs, et non plus le résiduel medals/streaks ≈ 0.
+func TestBuildSquadSynergyRadar_ScoreIsPersonalScorePerMinute(t *testing.T) {
+	t0 := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	// main : PS=2000 sur 600 s → 200/min ; friend1 : PS=1000 sur 600 s → 100/min.
+	loader := &fakeSquadLoader{
+		rowsByGT: map[string][]canonical.PlayerMatchRow{
+			"main":    {rowWithPersonalScore("m1", t0, 5, 3, 2, 600, 2000)},
+			"friend1": {rowWithPersonalScore("m1", t0, 5, 3, 2, 600, 1000)},
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", squadLoader: loader}
+	allRows := []domain.SquadMatchRow{{MatchID: "m1", StartTime: t0, Kills: 5, Deaths: 3}}
+
+	got := svc.buildSquadSynergyRadar(context.Background(), allRows, "main", []string{"friend1"})
+	if len(got) != 2 {
+		t.Fatalf("want 2 series, got %d", len(got))
+	}
+	axis := func(s domain.SquadSynergyRadarSeries, name string) domain.SquadSynergyRadarAxis {
+		for _, a := range s.Axes {
+			if a.Axis == name {
+				return a
+			}
+		}
+		return domain.SquadSynergyRadarAxis{Raw: -1, Value: -1}
+	}
+	byPlayer := map[string]domain.SquadSynergyRadarSeries{}
+	for _, s := range got {
+		byPlayer[s.Player] = s
+	}
+	mainScore := axis(byPlayer["main"], "score")
+	f1Score := axis(byPlayer["friend1"], "score")
+	if mainScore.Raw != 200 {
+		t.Errorf("main score raw (PS/min): want 200, got %v", mainScore.Raw)
+	}
+	if f1Score.Raw != 100 {
+		t.Errorf("friend1 score raw (PS/min): want 100, got %v", f1Score.Raw)
+	}
+	if mainScore.Value <= f1Score.Value {
+		t.Errorf("main PS/min supérieur → score value devrait être > friend1: main=%v f1=%v",
+			mainScore.Value, f1Score.Value)
+	}
+	if f1Score.Value <= 0 {
+		t.Errorf("friend1 score value devrait être vivant (> 0), got %v", f1Score.Value)
 	}
 }
 

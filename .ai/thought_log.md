@@ -1,3 +1,314 @@
+## [2026-07-16] SYNTHESE — Backlog Notion « Corrections v7 » complet (22 items, branche fix/corrections-v7-backlog)
+
+**Statut** : Complété (non commité — en attente de validation utilisateur).
+
+**Contexte** : traitement orchestré multi-agents de la section « Corrections v7 » du backlog
+Notion (et UNIQUEMENT elle). 22 items, 128 fichiers, +2105/-675. Les 5 entrées suivantes
+de ce journal (match-view/E, i18n/A, Campagne/H, home/F, Synthesis-Timeseries/B) détaillent
+les gros lots ; les lots sans entrée dédiée sont résumés ici :
+- **C (Escouade)** : 404 « Enregistrer cette compo » = routes Prestige squad appelées
+  top-level alors que le module est monté sous /players/{slug} → 12 routes préfixées via
+  chokepoint scopedToPlayer (client), garde-rail prestige.paths.test.ts. Audit ordre
+  chronologique des graphes 2 onglets : déjà conforme (signalement périmé).
+- **D (Contributions)** : graphe Intensité — .reverse() erroné côté web supprimé (le back
+  envoie déjà ASC). Radar synergie « Score vide » : plomberie déjà corrigée (ac4a7e358),
+  mais métrique résiduelle structurellement ~0 → redéfinie (voir 3a).
+- **G (Médias/divers)** : likes Médias déjà conformes (fix 4f6defa66 antérieur, signalement
+  périmé) ; formatDurationMShort (XmYYs) créé + tooltips ; unranked_0 H5 = badges partagés
+  résolus sous DefaultSlug (le dossier halo_5 n'existe pas) ; glossaire nettoyé du markdown
+  mort (FR+EN, fichier entier).
+- **3a (retouches squad)** : axe Score radar = score/min normalisé P80x1.25 (mesuré sur
+  26 258 perfs, helper unique 2 surfaces) ; heatmap joueur x carte triée par première
+  apparition chronologique ; bullet winrate = counts session/historique (DTO
+  HistoricalMatchCount + tooltip + suffixe (n)).
+- **3b (Relations/accessibilité)** : joueurs croisés multi-jeux = CHIP « Multi-jeux »
+  (filtre, pas toggle — converge avec PLAN_RELATIONS_UX_2026-07 lot H, données déjà
+  servies par badge cross_game/xuid global) ; heatmaps CVD = rampe mono-teinte à luminance
+  monotone via helper central heatmapColors.ts (decals ECharts écartés : par série, pas
+  par cellule) + garde-rail heatmapColors.guard.test.ts ; 6 heatmaps traitées (4 migrées,
+  2 justifiées hors helper).
+- **3c (progression H5)** : diagnostic « streak_latest absente → 500 » PÉRIMÉ — le target
+  player H5 retombe sur le fallback de steps partagé (vérifié sur les 4 player DBs
+  réelles) ; test de régression TestHalo5Player_InheritsProgressionV2Schema ajouté. Le
+  widget Ascension H5 s'affiche vide avant peuplement (backfill admin
+  POST /_admin/progression/backfill/halo_5 disponible).
+- **Coutures coordinateur** : localizeTierLabel appliqué aux 3 surfaces scoreboard
+  restantes (MatchScoreboard, PlayerDetailPanel/LocalSection, MatchRankBadge) ;
+  MatchVsStatCard extrait de MatchStatCards.tsx (518 → 425 L, règle 500 L).
+
+**Méthode** : chaque signalement re-vérifié sur le code actuel avant fix (consigne
+utilisateur : certains feedbacks venaient d'une branche périmée) — 5 items statués « déjà
+conforme » avec preuve (menu L1, likes Médias, ordre graphes squad, Relations EN, schéma
+progression H5). Zéro DELETE sur les DBs (Campagne = masquage read-side 33 requêtes /
+20 surfaces, 4 formes de clause centralisées + garde-rail token).
+
+**Gates finaux (session)** : tsc OK ; vitest 2207/2207 (14 skipped) ; go build + go test
+./... OK ; go test -tags=integration persist+sync OK ; go vet/lint OK ; gofmt OK ; regen
+i18n stable (2523 clés, diff limité à home.ts/palmares.ts attendus).
+
+**Post-merge à faire (utilisateur)** : (1) run `LEVELUP_HALOAPI_KEY=<clé> go run
+./cmd/h5-metadata-fetch` pour peupler team_colors (→ « Rouge vs Bleu » match view H5) ;
+(2) backfill progression H5 si peuplement immédiat souhaité ; (3) boot serveur = migrations
+h5_add_weapon_registry + h5_add_team_colors appliquées (donut « Frags par type d'arme » H5).
+
+**Découvertes hors périmètre consignées (non traitées)** : routes d'écriture Ascension
+non-squad (création défis/arcs) probablement toutes en 404 (même cause que C) — décision
+archi/sécurité à prendre ; couverture registre armes H5 35/66 weapon_ids (long-tail
+variantes UGC) ; PLAN_RELATIONS_UX_2026-07 non exécuté hors lot H ; thought_log > 38 000 L
+(rotation trimestrielle à faire) ; duplication mapping tiers FR à centraliser (grille
+skillTiers + CSR_TIER_FR explorer).
+
+---
+
+## [2026-07-16] Backlog v7 — match-view + référentiels rangs/équipes H5 (E1-E4 + réouverture E1 + unif. badges)
+
+**Statut** : Complété (branche fix/corrections-v7-backlog, travail parallèle laissé intact).
+Zone = match-view + rangs/équipes H5. Chaque item reproduit sur le code réel avant fix.
+
+**E2 — badges manquants « Historique des rencontres »** : la match-view ne calculait que les 4
+badges narratifs (`narrative.ComputeEncounterBadges`) alors que la page Relations en produit 9
+(`relations.ComputeBadges` = 4 + 5 « solid » duo_gagnant/caméléon/ancien/recrue/proie_favorite).
+Fix : `convertEncounters` réutilise `relations.ComputeBadges` ; ajout `first_seen_at` à Q23b
+(`EncounterStatsRaw.FirstSeen`) pour les badges temporels. Front inchangé (rendu générique via
+squadManifest).
+
+**E3 — pills « Rôle »** : remplacées par `NarrativeBadge solid` + tokens
+`narrative-encounter-ally-plus`/`tough-enemy` (validés WCAG sur blanc ; team-ally/team-enemy
+exclus car configurables → texte blanc non garanti).
+
+**E4 — image rang Onyx H5** : `halo5.AssetURLAdapter.CSRRankImageURLOnyx` passait
+`csrResolver("Onyx", 0)` mais `csr_designations` stocke Onyx à `tier_id=1` → clé `onyx|0` en miss
+→ image absente. Fix `0→1` (aligné `home_repo_skill_peak.go:510`).
+
+**E1 (rouvert, endpoint officiel /team-colors)** : ingestion dans `cmd/h5-metadata-fetch`
+(`apiTeamColor` + `seedTeamColors`/`persistTeamColors` + `fetchTeamColorsFR`, pattern
+`seedCSRDesignations` + Accept-Language FR/EN) → table metadata `team_colors` (migration
+`h5_add_team_colors`). Exposition : `loadTeamNames` (server.go) → `WithTeamNameResolver` sur
+l'adapter H5 → capability OPTIONNELLE `teamNameResolver` type-assertée dans le service (PAS
+d'élargissement de l'interface partagée, PAS de branche slug) → `applyTeamNames` post-pass sur
+les 2 voies (canonique live + repo persisté) → DTO `MatchScoreboardRow.team_name` (openapi +
+generate-types + types.ts manuscrit) → front `MatchScoreboard` préfère `team_name` sinon
+`resolveTeamName`. Couleurs = tokens conservés (pas de hex backend dans features/). Dégradation
+gracieuse (team_colors vide → fallback Eagle/Cobra). Visible APRÈS run `cmd/h5-metadata-fetch`.
+
+**Unif. badges carrière (règle ≤2 copies)** : `computeCareerEncounterBadges` dupliquait narrative
++ `encounterBadgeWinrate`. Calcul partagé extrait dans `internal/service/encounter_badges.go`
+(`relationStatsFromEncounterStats` + `convertRelationBadges` + `encounterWinrate` +
+`badgeKindFromLabelKey`), consommé par match-view ET carrière. `first_seen_at` ajouté à
+`Q26CareerTopEncountersTpl` (token `/*__EXCLUDE_CAMPAIGN__*/` préservé).
+
+**Gates** : `go build ./...` OK ; `go test` service/halo_5/migrations/domain/cmd/api(drift)/sync
+(anti-ART) OK ; gofmt clean ; `generate-types` OK (diff = team_name seul). `check-types` + vitest
+`MatchHeader.test` échouent UNIQUEMENT sur du cross-agent (HomeSkillPeakCard prop `locale` +
+`MatchHeader.perfRank.tsx`, zones interdites) — zéro erreur dans mes fichiers.
+
+**Prochaine étape** : lancer `cmd/h5-metadata-fetch` (clé `LEVELUP_HALOAPI_KEY`) pour peupler
+team_colors ; recommandation couleurs Infinite documentée dans le rapport (non implémentée).
+
+## [2026-07-16] Backlog v7 — LOT I18N (A1–A6 : menu L1, tiers CSR/LUSR, rangs XP, aperçu OG, battlepass, Relations)
+
+**Statut** : Complété (branche fix/corrections-v7-backlog, partagée — zones agents parallèles
+H5-colors / heatmaps laissées intactes). Chaque item vérifié sur le code ACTUEL avant fix.
+
+**A1 (menu L1) & A6 (Relations)** : DÉJÀ CONFORME (signalements périmés — collègue sur branche
+ancienne). NavL1/NavL1MobileMenu rendent via `commonManifest` (common.toml `nav.section_*` /
+`nav.tab_*` bilingues, GH-4 2026-07-08). `tab_relations` en="Relations" (mot EN valide), page
+palmares en="Palmares", chip cross en="Multi-game". Aucun code.
+
+**A2 (tiers CSR/LUSR : « Or IV » en EN ; « Platinum » en FR sur H5)** : root cause = libellé de
+palier baké au sync NON locale-aware (Infinite → FR « Or IV » via FormatTierSubLabel /
+formatCSRTierLabel ; H5 match-CSR → EN brut « Platinum 4 » via csr_match.go). Chokepoint choisi =
+localisation À L'AFFICHAGE côté web (le libellé baké porte déjà le sous-palier ; le nom de palier
+∈ ensemble fini). Helper unique `localizeTierName`/`localizeTierLabel` (lib/skillTiers.ts, dérivé
+de la grille existante + tests). Web plutôt que serveur : zéro changement de schéma → zéro
+openapi/generated.ts (exclusif agent H5-colors) → zéro fichier en zone agent / git-status.
+Appliqué : match view header, carrière (colonne CSR + LUSR), home skill peak (+ explorer identity
+banner), sélections récentes home, explorer/sessions table, Ascension, Face-à-face. DÉJÀ CONFORME :
+ExplorerTargetSeasonCSR. REPORTÉ (zone active agent H5-colors « match view teams ») : scoreboard
+expander (MatchScoreboardSkillRank) — même helper applicable une fois la zone libérée.
+
+**A3 (rangs XP carrière)** : `buildCareerSummaryEnriched` résolvait le rang courant avec "fr" EN
+DUR (next_rank_name_{fr,en} envoyait déjà les 2 langues). Fix serveur : threading
+`ctxkeys.Locale(ctx)` (cohérent avec home BuildSpartanIdentity(locale)). Le catalogue career_ranks
+est serveur-only → localisation serveur obligatoire (pas de grille côté web).
+
+**A4 (aperçu enrichi OG)** : ogmeta est DÉJÀ locale-aware via Accept-Language — mais la locale
+suit le CRAWLER, pas le partageur, et le titre actif (header X-LevelUp-Title) est absent côté
+robot. Implémenté le seul bout trivial/sûr : override `?lang=fr|en` prioritaire sur
+Accept-Language (ogmeta.LocaleFromParams + og_inject, +test). RECOMMANDATION (non implémentée) :
+langue + titre actif dans l'URL de partage — cadrage dans le rapport de lot.
+
+**A5 (battlepass / rewards / défis)** : titres pass+items résolus `COALESCE(t_fr,t_en)` FR-first
+(ignore la locale) alors que battlepass_{track,item}_translations portent fr-FR ET en-US → COALESCE
+ré-ordonné par locale (season_pass_repo_tracks.go). Défis : `buildActiveChallengeItems` figeait
+`lang := langFR` → `normalizeChallengeLang(ctxkeys.Locale(ctx))`. Front : `itemTypeLabel` n'avait
+AUCUNE map EN + `rarityLabel`/`itemTypeLabel` appelés sans locale (PassContentSummary,
+BattlePassRewardLightbox) → ajout ITEM_TYPE_LABELS_EN + threading locale (tolère l'Intl locale).
+
+**Gates** : make check-types OK ; vitest ciblé (home/match-view/career/explorer/palmares/ascension/
+compare/session-detail + skillTiers) 100% (1 test MatchHeader mis à jour : "Diamond 1" baké EN →
+"Diamant 1" localisé FR = le fix) ; lint:fields 0 violation ; eslint 0 erreur (2 warnings
+pré-existants) ; go build ./... = 0 ; go vet (service/duckdb/halo/ogmeta/wire) = 0 ; go test
+ogmeta/halo/wire/service(Career)/duckdb(SeasonPass) verts. Aucun .toml touché → pas de regen i18n.
+
+**Découvertes hors périmètre (non traitées)** : (1) HomeRecentPlaylistsCard : « Non classé » /
+« En placement » hardcodés FR (état placement, pas un tier — `common.home.unranked` existe déjà).
+(2) Duplication du mapping tier FR : skillTiers grid + ExplorerTargetSeasonCSR CSR_TIER_FR + le
+nouveau helper (dérivé) — candidat centralisation (règle #6) une fois la surface stabilisée.
+(3) Scoreboard tier label reporté (zone agent). (4) Cache des défis : titres bakés à la langue du
+fetch background (FR) — le chemin LIVE est corrigé, pas le cache.
+
+**Prochaine étape** : superviseur — merge = deploy prod. Reprendre le scoreboard tier (A2) après
+merge de l'agent H5-colors.
+
+---
+
+## [2026-07-16] Backlog v7 — item H1 : masquage read-side des matchs Campagne (Halo 5)
+
+**Statut** : Complété (branche fix/corrections-v7-backlog, travail parallèle laissé intact).
+Périmètre = 1 item. Reproduit sur données réelles avant fix.
+
+**Constat (READ_ONLY, serveur arrêté)** : Halo 5 = **287 matchs Campagne** (game_variant_id
+`00000003-...389b71` Campaign + `67ffc2ff-...961061` Campaign Score Attack) sur 3032, 239 solo
++ 48 co-op, is_firefight=0 / is_ranked=0 / game_variant_name & mode_category NULL → seul
+`game_variant_id` discrimine. **399 lignes match_participants** (JGtm 115, Chocoboflor 149,
+Madina97294 79, XxDaemonGamerxX 52...) + **player_match_enrichment_latest pollué** (mêmes
+volumes) → biais des agrégats. **match_skill_rank campagne=0** (LUSR/CSR carrière NON pollués).
+Infinite : 0 match Campagne dans match_registry (PvE Firefight isolé dans shared_pve). Pas de
+DELETE (anti-ART ADR 0019/0026) → masquage à la LECTURE.
+
+**Déjà en place (vérifié)** : filtre d'ingestion `isExcludedH5GameMode` (Campaign+Warzone
+non collectés) ; masquage read-side sur 2 sites seulement (match history via
+Halo5MatchHistorySource + player_matches_repo). Le reste des surfaces fuyait → complété.
+
+**Décision technique** : source UNIQUE des GUID + fragment SQL dans
+`internal/analysis/campaign_exclusion.go` (`SQLExcludeCampaignVariants` clause littérale
+sans placeholder = zéro désalignement d'args ; `SQLResolveCampaignExclusion` + token
+`/*__EXCLUDE_CAMPAIGN__*/` pour les constantes à trous ; title-aware, no-op Infinite). Hébergé
+dans `analysis` (comme SQLStartTimeCanonical) → importable sans cycle par platform/duckdb,
+analysis, progression. Alias package-local dans `platform/duckdb/campaign_exclusion.go`.
+Ancien `ExcludedVariantClause` (forme `?`) supprimé + 2 sites migrés (0 code mort).
+
+**Surfaces couvertes (18 sites de lecture)** : home (matchs Q26, playlists Q26g, compteur
+total Q26b), carrière (top matchs Q9, highlights Q9b), synthèse (heatmap Q33, top-weeks Q33b),
+sessions (Q22), stats/perf (Q23), filtres (playlists/cartes dispo), explorer (buckets saison,
+Q19c cibles), winrate/carte (LoadMapWinRates), catalogue playlists jouées, Ascension profil
+radar (countMatchesInWindow, computeRadarAxesBase, computeEngagementSimple). Non modifié
+(impact négligeable/justifié) : applyAwardsRadarAxes + computeFKFD (campagne PvE ~sans awards
+/highlight_events), surfaces à co-participation (encounters/relations/squad), et sites
+participants-only à jointure (compare local, relations WR, leaderboard stats, weapon-kills,
+match nav Q25, match-avg Q29, patterns) — listés dans le rapport pour suite éventuelle.
+
+**Garde-rail (règle #6)** : test structurel non-taggé (token présent dans 10 constantes) +
+test comportemental integration (:memory: duckdb : match Campagne EXCLU pour halo_5, no-op
+Infinite) + unit analysis. Ingestion future déjà bloquée (aucune modif sync/persist).
+
+**Gates** : `go build ./...` = 0 ; `go vet` (analysis/duckdb/halo5/profile/halo_5) = 0 ; tests
+campagne (unit+guard+behavioral) verts ; régression integration duckdb Home/Sessions/Stats/
+Career/Synthesis/Highlight/TopMatch/Filter/Explorer/Catalog/MapWinRate + profile = verts.
+
+**Prochaine étape** : superviseur — merge = deploy prod (recrée les vues au boot ? non : aucune
+migration ajoutée, masquage 100% côté requêtes). Sites participants-only restants = lot suivant
+si « nulle part » strict exigé.
+
+---
+
+## [2026-07-16] Backlog v7 — items F1/F2/F3 (Faits marquants « Séries », Ascension H5, hero KPI bar)
+
+**Statut** : F1 Complété, F3 Complété, F2 diagnostiqué (fix backend hors zone). Branche
+fix/corrections-v7-backlog (partagée, travail parallèle laissé intact). Chaque item vérifié
+reproductible sur le code ACTUEL avant fix.
+
+**F1 — card « Séries » (Faits marquants) seule sur une 2e ligne** : régression du commit
+4eef2cbff (migration grille CSS 20-cols → rangée flex-wrap). Les tuiles portaient
+`flex-basis: poids×5 %` sommant ~100 % (8 tuiles, poids total 20 : perf 2 + skill_delta 2 +
+underdog 3 + kda 3 + maîtrise 2 + per_minute 2 + volume 3 + série 3) ; en flex-wrap la somme
+des gaps (gap-2) débordait → dernière tuile (« Série ») wrappée. Fix : `flex-basis: 0`
+(grow-only) dans `highlightFlexClass` (HomeHighlightTile.tsx) — flex-grow absorbe les gaps,
+largeurs toujours ∝ poids, une seule ligne quel que soit le sous-ensemble. Map
+HIGHLIGHT_BASIS_CLASS supprimée (devenue code mort).
+
+**F2 — sections Ascension absentes sur H5 (home)** : RACINE = plomberie backend hors zone.
+`HomeAscensionWidget` s'auto-masque sur erreur (`if (isError) return null`) ; `useStreaks`
+appelle `GET /players/{slug}/streaks` → `StreaksRepo.List` lit `FROM streak_latest` → 500 sur
+H5 car la vue n'existe pas. Les migrations progression V2 (`create_progression_player_schema`
++ `create_streak_history_append_only`, qui créent streak/streak_history/streak_latest) sont
+title-owned halo_infinite (internal/games/halo_infinite/migrations/steps_player{,_base}.go) et
+`internal/games/halo_5/migrations/` n'a PAS de steps_player → schéma progression non
+provisionné pour H5. Le hook post-sync (`BuildProgressionAfterSyncHook`) se dit pourtant
+title-agnostic (« Halo 5+ »). Décision : NE PAS forcer — le fix correct (schéma append-only
+streak title-agnostic / provisionné pour H5) est une migration hors zone « côté home », qui
+recoupe le chantier H5-migrations parallèle et exige les tests -tags=integration. La home
+dégrade déjà proprement (masque). Documenté pour le lot backend.
+
+**F3a — « kills » (EN) sous UI FR (card Arme favorite, hero KPI bar)** : clé i18n
+`home.kpi.kills_word` avait fr = "kills". Corrigé → fr = "frags" (terme canonique du repo, cf.
+fields.toml `{en=Kills, fr=Frags}`), en = "kills" inchangé. Manifest régénéré
+(build_i18n_manifests.mjs) → generated/home.ts (1 ligne).
+
+**F3b — plafonner la taille de texte de la hero KPI bar à « m »** : `KPI_VALUE_CLS` text-xl
+(20px) → text-base (16px = medium) dans HomeHeroKPIGrid.tsx. Seule taille > m portée en direct
+par la grille ; libellés (text-2xs) et sous-comptes (text-xs/sm) < m inchangés.
+CombatYieldDisplay (text-lg) laissé intact : primitive partagée (match-card, Compare,
+Synthesis, SessionBriefing…) → hors « hero KPI bar uniquement / pas globalement ».
+
+**Gates** : make check-types (tsc) OK ; vitest src/features/home 40/40 OK ; aucune couleur
+hex/Tailwind ni emoji ajoutés ; parité i18n fr/en OK. Zéro fix opportuniste hors périmètre.
+
+## [2026-07-16] Backlog v7 — items B1/B2/B3 (graphes armes Synthesis + donut Timeseries)
+
+**Statut** : Complété (branche fix/corrections-v7-backlog, partagée — autres changements
+prestige/squad d'un travail parallèle laissés intacts). Chaque item vérifié reproductible
+sur le code ACTUEL avant fix.
+
+**B1 — « Précision par arme » limité comme « Frags par arme »** : la référence
+`buildTopWeaponKills` cappe top 20 (`resolved[:n]`), mais `buildWeaponAccuracy` ne cappait
+PAS (test verrouillait « aucun seuil de volume »). Fix backend : constante partagée
+`synthesisWeaponChartTopN=20` + cap top N appliqué APRÈS le tri par précision (même
+mécanique que la référence ; reste un cap de COMPTE, pas un seuil de volume — la décision
+« aucun seuil » est préservée). Décision : NE PAS combiner les deux graphes — divergence de
+capability (weapon_accuracy = H5-only, weapon_kills = les deux titres → chart asymétrique qui
+dégrade mal) + sources/tables distinctes (weapon_accuracy vs weapon_kills, jeux d'armes
+indépendants) + échelles/ordres incompatibles. La limitation seule traite l'item.
+
+**B2a — « Frags par type d'arme » à droite de « Répartition des frags »** : le
+`SynthesisRoleKillsDonut` était en bloc bas isolé (`mt-4 max-w-[28rem]`). Déplacé en colonne
+`flex-1` immédiatement à droite du `SynthesisKillTypesDonut` dans la première rangée flex
+(→ deux donuts côte à côte, cartes stat win/FDA/incidents à droite). Null-safe (rend null si
+aucun rôle).
+
+**B2b — donut « Frags par type d'arme » vide sur H5** : RACINE trouvée (diagnostic Go
+read-only sur les DB H5). Le set metadata isolé de H5 (`OwnsTarget(metadata)=true`) créait
+`weapon_labels` (→ « Frags par arme » OK) mais AUCUNE table registre
+(`weapons`/`weapon_ids`/`weapon_families` absentes en base). `resolveWeaponMeta` retombait
+donc sur weapon_labels seul → 0 rôle → `buildKillsByRole` nil → donut masqué. Le registre
+`add_weapon_registry` (global) seede pourtant déjà les 30 armes H5 + stock_ids + rôles, mais
+il n'était jamais appliqué à H5 (oubli lors de l'isolation metadata H5, antérieure au
+registre). Fix : step `h5_add_weapon_registry` ajouté au set metadata H5 (réutilise
+`halomigrations.ApplyWeaponRegistry`, idempotent, cross-titre par conception — lectures
+title-scopées). Simulation :memory: sur les 66 weapon_ids H5 réels → 35 résolvent un rôle,
+donut = 8 catégories (sidearm/precision/automatic/power/melee/sniper/shotgun/special),
+233 274 frags couverts. Test dédié `TestHalo5Metadata_WeaponRegistrySeeded`. NB : effet en
+prod au prochain boot (migration idempotente) — pas de write DB data/ en local.
+
+**B3 — donut « Répartition des frags » (Timeseries) trop petit** : grille
+`lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]` (donut fixé ~20rem ≈ 21-31% selon largeur)
+→ `lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]` (donut 40% / progression 60%, +~15 points,
+stable en largeur ; le SVG `KillTypesDonut` se cappe seul à 700px → pas de blow-up ultrawide).
+Rendu uniquement sur titres SANS native_kill_mechanics (Infinite, là où « Progression LUSR »
+s'affiche) — inchangé.
+
+**Gates** : go build ./... OK ; go test service + games/halo_5/... OK ; make check-types
+(tsc) OK ; vitest synthesis+timeseries 62 passés/14 skipped. Aucune nouvelle chaîne UI (labels
+role_* déjà au manifest) → pas de i18n à ajouter. Aucune couleur touchée.
+
+**Prochaine étape** : revue/commit par le coordinateur (train). Découverte hors périmètre non
+traitée : le registre H5 ne couvre que 35/66 weapon_ids réels — le long-tail (~31 IDs, armes
+variantes/UGC) reste sans rôle (dégradation gracieuse, identique au long-tail Infinite) ;
+étendre `weaponRegistryH5Stock` est un chantier data séparé.
+
+---
+
 ## [2026-07-16] Lot fixes UI post-train — bugs 2/5/6 (+ constats 3/4)
 
 **Statut** : Complété (branche fix/ui-post-train). Bug 1 déjà commité (aa5458fb7).
