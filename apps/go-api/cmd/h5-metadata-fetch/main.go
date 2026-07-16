@@ -525,21 +525,22 @@ func seedCSRDesignations(db *sql.DB, key string) {
 // porté par chaque équipe des résultats Stats API Halo 5 (H5Team.Id → match_participants.team_id).
 // `name` (+ `description`) sont localisés via Accept-Language ; `color` est un hex
 // "#RRGGBB" ; `iconUrl` est nullable. On persiste name/color/icône (la description
-// n'est pas consommée par la Match View). NB : `id` est attendu numérique (spec API) ;
-// si l'API le sérialisait en string, l'unmarshal échouerait proprement → SKIP + table
-// vide → l'exposition retombe sur le libellé d'équipe existant (dégradation gracieuse).
+// n'est pas consommée par la Match View). NB : l'API sérialise `id` en STRING (ex.
+// "0","1"), comme tous les autres id de cette API (medals/weapons/csr/commendations) →
+// typé string et converti en int au persist (team_id INTEGER) ; un id non numérique est
+// ignoré (dégradation gracieuse → l'exposition retombe sur le libellé d'équipe existant).
 type apiTeamColor struct {
 	Name    string `json:"name"`
 	Color   string `json:"color"`
 	IconURL string `json:"iconUrl"`
-	ID      int    `json:"id"`
+	ID      string `json:"id"`
 }
 
 // fetchTeamColorsFR refetch /team-colors en fr-FR (l'API HONORE Accept-Language, cf.
 // fetchMetaLang) et indexe le nom FR par TeamId. Best-effort : échec/parse KO → map
 // vide (le seed retombe alors sur le nom EN).
-func fetchTeamColorsFR(key string) map[int]string {
-	out := map[int]string{}
+func fetchTeamColorsFR(key string) map[string]string {
+	out := map[string]string{}
 	body, err := fetchMetaLang(key, "team-colors", langFR)
 	if err != nil {
 		fmt.Printf("team-colors[fr-FR]: SKIP (%v)\n", err)
@@ -577,11 +578,19 @@ func seedTeamColors(db *sql.DB, key string) {
 }
 
 // persistTeamColors écrit les team_colors en INSERT OR REPLACE (idempotent). frByID
-// porte les noms FR localisés par l'API (Accept-Language) ; fallback sur le nom EN
-// (jamais name_fr vide). Retourne le nombre de lignes écrites. Best-effort par entrée.
-func persistTeamColors(db *sql.DB, colors []apiTeamColor, frByID map[int]string) int {
+// porte les noms FR localisés par l'API (Accept-Language), indexés par l'id string de
+// l'API ; fallback sur le nom EN (jamais name_fr vide). L'id string est converti en int
+// pour team_id (INTEGER) ; un id non numérique est ignoré (best-effort par entrée).
+// Retourne le nombre de lignes écrites.
+func persistTeamColors(db *sql.DB, colors []apiTeamColor, frByID map[string]string) int {
 	n := 0
 	for _, c := range colors {
+		// id officiel = entier sérialisé en string (spec API /team-colors) → team_id INTEGER.
+		teamID, perr := strconv.Atoi(strings.TrimSpace(c.ID))
+		if perr != nil {
+			fmt.Printf("team-colors: id non numérique %q: %v\n", c.ID, perr)
+			continue
+		}
 		nameEN := strings.TrimSpace(c.Name)
 		// Pas d'override TOML pour les couleurs d'équipe (contrairement aux
 		// armes/médailles) → sélection directe : nom FR de l'API sinon EN.
@@ -591,8 +600,8 @@ func persistTeamColors(db *sql.DB, colors []apiTeamColor, frByID map[int]string)
 		}
 		if _, err := db.Exec(`INSERT OR REPLACE INTO team_colors
 			(team_id, name_en, name_fr, color, icon_url) VALUES (?,?,?,?,?)`,
-			c.ID, nameEN, nameFR, strings.TrimSpace(c.Color), strings.TrimSpace(c.IconURL)); err != nil {
-			fmt.Printf("team-colors: insert %d: %v\n", c.ID, err)
+			teamID, nameEN, nameFR, strings.TrimSpace(c.Color), strings.TrimSpace(c.IconURL)); err != nil {
+			fmt.Printf("team-colors: insert %d: %v\n", teamID, err)
 			continue
 		}
 		n++

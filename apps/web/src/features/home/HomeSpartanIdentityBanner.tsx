@@ -89,7 +89,7 @@ export function HomeSpartanIdentityBanner({
       <div
         data-testid="home-spartan-banner-surface"
         className={[
-          'overflow-hidden rounded-2xl border border-border bg-muted/60 bg-cover bg-center shadow-sm',
+          'overflow-hidden rounded-lg border border-border bg-muted/60 bg-cover bg-center shadow-sm',
           onSpartanClick
             ? 'cursor-pointer transition-shadow hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring'
             : '',
@@ -279,7 +279,7 @@ export function HomeSpartanIdentityBanner({
           !hasAnySkillHistory ? (
           <div
             data-testid="home-skill-peaks-empty"
-            className="rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-4 text-foreground shadow-[0_12px_30px_rgba(8,15,28,0.2)]"
+            className="rounded-lg border border-dashed border-border bg-muted/40 px-4 py-4 text-foreground shadow-[0_12px_30px_rgba(8,15,28,0.2)]"
           >
             <p className="text-sm font-semibold">{emptySkillPanelTitle}</p>
             <p className="mt-2 text-sm text-muted-foreground">{emptySkillPanelDescription}</p>

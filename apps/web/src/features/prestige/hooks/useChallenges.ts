@@ -40,7 +40,7 @@ export function useUpdateChallenge(userId: string, titleSlug: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: UpdateChallengeBody }) =>
-      prestigeApi.updateChallenge(id, body),
+      prestigeApi.updateChallenge(id, body, userId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.challenge.list(userId, titleSlug) })
     },
@@ -50,7 +50,7 @@ export function useUpdateChallenge(userId: string, titleSlug: string) {
 export function useAbandonChallenge(userId: string, titleSlug: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => prestigeApi.abandonChallenge(id),
+    mutationFn: (id: string) => prestigeApi.abandonChallenge(id, userId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.challenge.list(userId, titleSlug) })
     },

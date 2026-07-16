@@ -1,12 +1,20 @@
 // Package handlers — handler HTTP du module Prestige (Phase 3).
 //
 // MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le routeur chi
-// fourni et enregistre les 26 routes via huma.*. Logique métier inchangée
+// fourni et enregistre les 28 routes via huma.*. Logique métier inchangée
 // (prestige.Service), seul le wrapping HTTP change. Les routes sont relatives au
-// point de montage (le routeur racine dans server.go / un sous-routeur de test) —
-// aucun préfixe /players/{player_slug} ici, le module Prestige est cross-joueur.
+// point de montage : server_apiv1.go appelle ph.Mount(r) DANS le groupe
+// r.Route("/players/{player_slug}", …), gardé par ownershipMW (ADR 0029). Le
+// préfixe /players/{player_slug} n'apparaît donc pas dans les littéraux ci-dessous
+// (chemins relatifs), mais TOUTE route est effectivement servie sous ce préfixe et
+// protégée par la propriété joueur — le segment {player_slug} porte l'ownership et
+// le client DOIT le fournir (côté web : chokepoint scopedToPlayer de
+// apps/web/src/lib/prestige.ts, figé par prestige.paths.test.ts). Les handlers qui
+// ont besoin de l'acteur pour leur logique métier le relisent depuis le body/la
+// query (user_id / created_by / requested_by) ; les routes unitaires par {id} ne
+// lisent pas d'acteur — le slug ne sert alors qu'à ownershipMW.
 //
-// Couvre les endpoints REST :
+// Couvre les endpoints REST (chemins relatifs, tous sous /players/{player_slug}) :
 //
 //	POST   /challenges                 — créer un défi (avec quotas mode pilote)
 //	GET    /challenges/{id}            — détail d'un défi
