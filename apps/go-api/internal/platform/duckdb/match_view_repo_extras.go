@@ -373,14 +373,18 @@ func (r *MatchViewRepo) GetPlayerAssistsModel(ctx context.Context, gameVariantNa
 		LIMIT 1
 	`
 	var m domain.PlayerAssistsModel
-	err := r.pdb.ReadDB().QueryRow(ctx, q, gameVariantName).Scan(
+	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, q, gameVariantName)
+	if err != nil {
+		return nil, nil //nolint:nilerr — table absente, mode inconnu ou Reopen concurrent : dégradation gracieuse
+	}
+	defer rows.Close()
+	if err := rows.Scan(
 		&m.GameVariantName,
 		&m.Intercept, &m.CoefKills, &m.CoefDeaths,
 		&m.CoefDamageDealt, &m.CoefDamageTaken, &m.CoefMMRDelta,
 		&m.R2, &m.N,
-	)
-	if err != nil {
-		return nil, nil //nolint:nilerr — table absente ou mode inconnu : dégradation gracieuse
+	); err != nil {
+		return nil, nil //nolint:nilerr
 	}
 	return &m, nil
 }

@@ -132,8 +132,12 @@ func (r *CompareRepo) GetPlayerATH(ctx context.Context) (*domain.PlayerATH, erro
 
 	var perfATH, lusrATH float64
 	var careerRank int64
-	err := r.pdb.Player.QueryRow(ctx, q).Scan(&careerRank, &perfATH, &lusrATH)
+	rows, err := r.pdb.Player.QueryRowRecovered(ctx, q)
 	if err != nil {
+		return nil, fmt.Errorf("CompareRepo.GetPlayerATH: %w", err)
+	}
+	defer rows.Close()
+	if err := rows.Scan(&careerRank, &perfATH, &lusrATH); err != nil {
 		return nil, fmt.Errorf("CompareRepo.GetPlayerATH: %w", err)
 	}
 	return &domain.PlayerATH{
@@ -173,8 +177,12 @@ func (r *CompareRepo) GetPlayerATHFor(ctx context.Context, gamertag, titleSlug s
 
 	var perfATH, lusrATH float64
 	var careerRank int64
-	err := pdb.Player.QueryRow(ctx, q).Scan(&careerRank, &perfATH, &lusrATH)
+	rows, err := pdb.Player.QueryRowRecovered(ctx, q)
 	if err != nil {
+		return nil, fmt.Errorf("CompareRepo.GetPlayerATHFor %s: %w", gamertag, err)
+	}
+	defer rows.Close()
+	if err := rows.Scan(&careerRank, &perfATH, &lusrATH); err != nil {
 		return nil, fmt.Errorf("CompareRepo.GetPlayerATHFor %s: %w", gamertag, err)
 	}
 	return &domain.PlayerATH{

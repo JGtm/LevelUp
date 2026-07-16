@@ -61,7 +61,7 @@ func (r *RecordHistoryRepo) ListRecent(ctx context.Context, userID, titleSlug st
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	rows, err := r.db.Query(ctx, `
+	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT id, user_id, title_slug, metric, period, value, achieved_at
 		FROM record_history
 		WHERE user_id = ? AND title_slug = ?
