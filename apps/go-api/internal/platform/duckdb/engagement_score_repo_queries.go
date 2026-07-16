@@ -283,7 +283,7 @@ func (r *EngagementScoreRepo) LoadAllCoefficients(
 		WHERE xuid = ?
 		ORDER BY mode_category
 	`
-	rows, err := r.pdb.ReadDB().Query(ctx, q, xuid)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, q, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("LoadAllCoefficients: %w", err)
 	}

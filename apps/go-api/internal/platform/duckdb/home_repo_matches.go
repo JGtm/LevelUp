@@ -170,7 +170,7 @@ func (r *HomeRepo) loadHomeMatchesPlayerEnrich(ctx context.Context, matchIDs []s
 	}
 	query := fmt.Sprintf(Q26HomeMatchesPlayerEnrichTpl, strings.Join(placeholders, ", "))
 
-	rows, err := r.pdb.ReadDB().Query(ctx, query, args...)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, query, args...)
 	if err != nil {
 		// Table pme peut être absente sur DB fraîche → dégradation gracieuse.
 		if isTableNotFoundErr(err) {
@@ -300,7 +300,7 @@ func (r *HomeRepo) CountPlayerMatches(ctx context.Context) (int, error) {
 //   - Merge + sort by start_time DESC Go-side.
 func (r *HomeRepo) LoadHomeSessions(ctx context.Context) ([]legacymatch.HomeSessionRow, error) {
 	// ── Phase A — player conn ──────────────────────────────────────────────
-	rows, err := r.pdb.ReadDB().Query(ctx, Q27HomeSessionsPlayerPart)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, Q27HomeSessionsPlayerPart)
 	if err != nil {
 		return nil, err
 	}

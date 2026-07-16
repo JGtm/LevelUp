@@ -64,10 +64,16 @@ func (r *PlayerMatchesRepo) ObjectiveScores(ctx context.Context, matchIDs []stri
 	defer cancel()
 
 	var tableCount int
-	if err := r.pdb.ReadDB().QueryRow(ctx, `
+	tblRows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, `
 		SELECT COUNT(*) FROM information_schema.tables
 		WHERE table_name = 'personal_score_awards'
-	`).Scan(&tableCount); err != nil || tableCount == 0 {
+	`)
+	if err != nil {
+		return out, nil
+	}
+	scanErr := tblRows.Scan(&tableCount)
+	_ = tblRows.Close()
+	if scanErr != nil || tableCount == 0 {
 		return out, nil
 	}
 
@@ -84,7 +90,7 @@ func (r *PlayerMatchesRepo) ObjectiveScores(ctx context.Context, matchIDs []stri
 	        AND match_id IN (` + ph + `)
 	      GROUP BY match_id`
 
-	rows, err := r.pdb.ReadDB().Query(ctx, q, args...)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("objective scores query: %w", err)
 	}

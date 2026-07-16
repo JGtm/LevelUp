@@ -40,7 +40,7 @@ WHERE xuid = ? AND season_id IS NOT NULL AND TRIM(season_id) != ''`
 func (r *CareerRepo) AvailableCSRSeasons(ctx context.Context) ([]domain.CSRSeasonOption, error) {
 	seen := make(map[string]struct{})
 
-	rows, err := r.pdb.ReadDB().Query(ctx, qDistinctCSRSeasons)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, qDistinctCSRSeasons)
 	if err != nil {
 		if !isTableNotFoundErr(err) {
 			return nil, fmt.Errorf("AvailableCSRSeasons: %w", err)

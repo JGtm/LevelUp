@@ -30,7 +30,7 @@ func (r *AchievementsRepo) GetPlayerAchievements(ctx context.Context) ([]domain.
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, `
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, `
 		SELECT achievement_id, unlocked, unlocked_at, current_progress, target_progress
 		FROM player_achievements
 		ORDER BY achievement_id`)

@@ -58,7 +58,7 @@ func (r *EngagementScoreRepo) LoadPlayerHistory(
 	}
 
 	q, args := buildEngagementHistoryQuery(filter)
-	rows, err := r.pdb.ReadDB().Query(ctx, q, args...)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, q, args...)
 	if err != nil {
 		slog.ErrorContext(ctx, "EngagementScoreRepo: history query failed",
 			"xuid", filter.XUID, "mode", filter.ModeCategory, "err", err)
@@ -107,15 +107,19 @@ func (r *EngagementScoreRepo) LoadEngagementCoefficient(
 	coef.XUID = xuid
 	coef.ModeCategory = modeCategory
 
-	err := r.pdb.ReadDB().QueryRow(ctx, q, xuid, modeCategory).Scan(
-		&coef.CoefLobbyShare,
-		&coef.NMatches,
-		&coef.LastUpdated,
-	)
+	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, q, xuid, modeCategory)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
+		return nil, fmt.Errorf("EngagementScoreRepo.LoadEngagementCoefficient: %w", err)
+	}
+	defer rows.Close()
+	if err := rows.Scan(
+		&coef.CoefLobbyShare,
+		&coef.NMatches,
+		&coef.LastUpdated,
+	); err != nil {
 		return nil, fmt.Errorf("EngagementScoreRepo.LoadEngagementCoefficient: %w", err)
 	}
 	return &coef, nil
@@ -343,11 +347,15 @@ func (r *EngagementScoreRepo) HasEngagementScore(
 		WHERE match_id = ?
 	`
 	var has bool
-	err := r.pdb.ReadDB().QueryRow(ctx, q, matchID).Scan(&has)
+	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, q, matchID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {
+		return false, fmt.Errorf("EngagementScoreRepo.HasEngagementScore: %w", err)
+	}
+	defer rows.Close()
+	if err := rows.Scan(&has); err != nil {
 		return false, fmt.Errorf("EngagementScoreRepo.HasEngagementScore: %w", err)
 	}
 	return has, nil
@@ -391,7 +399,7 @@ func (r *EngagementScoreRepo) LoadRatioSamples(
 		ORDER BY match_id DESC
 		LIMIT ?
 	`
-	rows, err := r.pdb.ReadDB().Query(ctx, q, modeCategory, limit)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, q, modeCategory, limit)
 	if err != nil {
 		return nil, fmt.Errorf("EngagementScoreRepo.LoadRatioSamples: query: %w", err)
 	}
@@ -428,12 +436,16 @@ func (r *EngagementScoreRepo) engagementColumnsExist(ctx context.Context) bool {
 		return false
 	}
 	var count int
-	err := r.pdb.ReadDB().QueryRow(ctx, `
+	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, `
 		SELECT COUNT(*) FROM information_schema.columns
 		WHERE table_name = 'player_match_enrichment'
 		  AND column_name = 'engagement_score'
-	`).Scan(&count)
+	`)
 	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	if err := rows.Scan(&count); err != nil {
 		return false
 	}
 	return count > 0
@@ -446,12 +458,16 @@ func (r *EngagementScoreRepo) pacesColumnsExist(ctx context.Context) bool {
 		return false
 	}
 	var count int
-	err := r.pdb.ReadDB().QueryRow(ctx, `
+	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, `
 		SELECT COUNT(*) FROM information_schema.columns
 		WHERE table_name = 'player_match_enrichment'
 		  AND column_name = 'engagement_pace_team'
-	`).Scan(&count)
+	`)
 	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	if err := rows.Scan(&count); err != nil {
 		return false
 	}
 	return count > 0
@@ -463,12 +479,16 @@ func (r *EngagementScoreRepo) matchIntensityColumnExists(ctx context.Context) bo
 		return false
 	}
 	var count int
-	err := r.pdb.ReadDB().QueryRow(ctx, `
+	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, `
 		SELECT COUNT(*) FROM information_schema.columns
 		WHERE table_name = 'match_registry'
 		  AND column_name = 'match_intensity'
-	`).Scan(&count)
+	`)
 	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	if err := rows.Scan(&count); err != nil {
 		return false
 	}
 	return count > 0
@@ -480,11 +500,15 @@ func (r *EngagementScoreRepo) coefficientsTableExists(ctx context.Context) bool 
 		return false
 	}
 	var count int
-	err := r.pdb.ReadDB().QueryRow(ctx, `
+	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, `
 		SELECT COUNT(*) FROM information_schema.tables
 		WHERE table_name = 'engagement_coefficients'
-	`).Scan(&count)
+	`)
 	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	if err := rows.Scan(&count); err != nil {
 		return false
 	}
 	return count > 0

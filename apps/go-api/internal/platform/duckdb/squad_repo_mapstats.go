@@ -129,7 +129,7 @@ func (r *SquadRepo) loadMatchPerformanceScores(ctx context.Context, matchIDs []s
 		FROM player_match_enrichment_latest
 		WHERE match_id IN (%s) AND performance_score IS NOT NULL`,
 		Placeholders(len(matchIDs)))
-	rows, err := r.pdb.Player.Query(ctx, query, ToAnySlice(matchIDs)...)
+	rows, err := r.pdb.Player.QueryRecovered(ctx, query, ToAnySlice(matchIDs)...)
 	if err != nil {
 		return nil, fmt.Errorf("performance scores query: %w", err)
 	}

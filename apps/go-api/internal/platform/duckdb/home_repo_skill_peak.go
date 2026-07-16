@@ -357,12 +357,17 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 	// threshold de la saison courante — acceptable dans 99% des cas (joueur en
 	// placement = saison récente).
 	var minRemaining sql.NullInt32
-	if err := r.pdb.ReadDB().QueryRow(ctx, `
+	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, `
 		SELECT MIN(current_measurement_remaining)
 		FROM player_csr_snapshots_latest
 		WHERE current_measurement_remaining IS NOT NULL
 		  AND current_measurement_remaining > 0
-	`).Scan(&minRemaining); err != nil || !minRemaining.Valid {
+	`)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	if err := rows.Scan(&minRemaining); err != nil || !minRemaining.Valid {
 		return nil
 	}
 	remaining := int(minRemaining.Int32)
@@ -381,7 +386,7 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 // un titre à valeur (Infinite) départage les ex-aequo de palier/sous-palier par
 // la valeur. Pas de CASE SQL : l'ordre des paliers a UNE seule source (Go).
 func (r *HomeRepo) pickBestCSRAlltime(ctx context.Context) (tier string, sub int, val float64, ok bool) {
-	rows, err := r.pdb.ReadDB().Query(ctx, Q26csrAlltimePeak)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, Q26csrAlltimePeak)
 	if err != nil {
 		return "", 0, 0, false
 	}
