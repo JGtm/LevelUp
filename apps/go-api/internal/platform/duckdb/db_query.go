@@ -98,6 +98,37 @@ func (db *DB) QueryRecovered(ctx context.Context, query string, args ...interfac
 	return rows, err
 }
 
+// QueryRowRecovered exécute une requête mono-ligne sous WithReopenOnInvalidated
+// (cf. QueryRecovered) puis avance le curseur sur la première ligne. Si aucune
+// ligne, ferme le curseur et retourne sql.ErrNoRows — le caller peut alors le
+// mapper vers son erreur domaine (ErrChallengeNotFound, ErrArcNotFound, …).
+//
+// Remplace db.QueryRow(...).Scan(...) dans les repos player-DB qui doivent
+// tolérer un Reopen concurrent (old.Close() transitoire pendant un B-swap ou une
+// recovery ART sur la même handle partagée pdb.Player). QueryRow ne peut pas être
+// protégé : son erreur est différée jusqu'à Scan, donc WithReopenOnInvalidated ne
+// peut ni la voir ni rejouer la requête.
+//
+// Contrat caller : sur succès (err == nil), le curseur EST déjà positionné —
+// appeler rows.Scan(dest...) SANS rappeler rows.Next(), puis rows.Close()
+// (defer). Même limite que QueryRecovered : une invalidation survenant après le
+// retour (pendant Scan) n'est plus rejouable.
+func (db *DB) QueryRowRecovered(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	rows, err := db.QueryRecovered(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	if !rows.Next() {
+		iterErr := rows.Err()
+		_ = rows.Close()
+		if iterErr != nil {
+			return nil, iterErr
+		}
+		return nil, sql.ErrNoRows
+	}
+	return rows, nil
+}
+
 // logDBError centralise le log d'erreur DuckDB avec contexte standard
 // (path, op, query excerpt, err). Niveau Error — toute erreur DB est anormale
 // par défaut ; les call sites qui tolèrent une erreur (ex. : fichier absent
