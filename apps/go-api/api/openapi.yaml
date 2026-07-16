@@ -5021,6 +5021,8 @@ components:
       properties:
           baseline:
               $ref: '#/components/schemas/ExplorerBriefingBaseline'
+          context_split:
+              $ref: '#/components/schemas/ExplorerBriefingContextSplit'
           dimensions:
               items:
                   $ref: '#/components/schemas/ExplorerBriefingDimension'
@@ -5203,6 +5205,37 @@ components:
       required:
           - kind
           - matches
+      type: object
+    ExplorerBriefingContextSplit:
+      additionalProperties: false
+      properties:
+          solo:
+              $ref: '#/components/schemas/ExplorerBriefingContextGroup'
+          squad:
+              $ref: '#/components/schemas/ExplorerBriefingContextGroup'
+      required:
+          - solo
+          - squad
+      type: object
+    ExplorerBriefingContextGroup:
+      additionalProperties: false
+      properties:
+          avg_perf:
+              format: double
+              type: number
+          kda:
+              format: double
+              type: number
+          matches:
+              format: int64
+              type: integer
+          win_rate:
+              format: double
+              type: number
+      required:
+          - matches
+          - win_rate
+          - kda
       type: object
     ExplorerBriefingTrend:
       additionalProperties: false

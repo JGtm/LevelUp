@@ -1,3 +1,55 @@
+## [2026-07-16] Explorer briefing V2 — Phase 5 (carte contexte solo/escouade, item 6)
+
+**Statut** : Complété (Phase 5 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items
+5a-5f). Worktree isolé `feat/explorer-briefing-v2`. NON committé (le superviseur commite).
+
+**Décision technique principale** : nouveau module « Solo vs Escouade » calculé côté BACKEND
+sur les raw rows du scope (le briefing agrège sur TOUT le scope filtré, pas sur la page de
+table paginée → le front ne peut pas reconstituer les deux sous-groupes depuis les lignes
+visibles — P-5). Partition sur `IsWithFriends`, agrégation via l'`aggregateRawStats` existant.
+Émis UNIQUEMENT si les deux sous-groupes atteignent `minContextSplitMatches = 10` (D-B, défaut
+retenu) ; ce seul test couvre aussi le scope mono-contexte (un sous-groupe vide est < seuil).
+P-7 : AUCUN gate capability (IsWithFriends dispo tous titres) — dégradation par omission.
+
+**Symétrie socle** : `ExplorerBriefingContextGroup` porte `Matches`/`WinRate`/`KDA`/`AvgPerf`
+comme `ExplorerBriefingScope` (unités ADR 0006 : WinRate ratio 0..1, KDA net agrégat, AvgPerf
+0..100). Le front rend par ligne : libellé · n matchs · WR (coloré `winRateColor`, tokens) · KDA.
+
+**Modularité (CLAUDE.md §5)** : le fichier service principal était à 481 L après l'extraction
+Phase 4 ; le module contexte est allé dans NOUVEAU `match_history_service_briefing_context.go`
+(56 L) plutôt que de pousser le principal vers 500 (le câblage = 1 ligne dans
+`buildExplorerBriefing`, sous le retour anticipé `!LowSample`).
+
+**i18n** : libellés « Solo »/« Escouade » RÉUTILISÉS depuis `explorer.filters.context_solo`/
+`context_squad` (déjà FR/EN, règle « vérifier l'existant ») ; seule clé neuve =
+`explorer.briefing.context_split_title` (FR « Solo vs Escouade » / EN « Solo vs Squad »).
+
+**OpenAPI** : `ExplorerBriefingContextSplit` + `ExplorerBriefingContextGroup` émis exact via
+`OPENAPI_EMIT_OUT` (préfixe filtré) puis appendus ; champ `context_split` ($ref) ajouté à
+`ExplorerBriefing`. `generate-types` régénéré (+15 L generated.ts), `types.ts` : 2 exports
+ajoutés. `TestOpenAPISchemaDrift` : 0 MISSING, `ExplorerBriefing` réconcilié (plus divergent).
+
+**Résultats observés** :
+- `explorer_briefing.go` : `ExplorerBriefingContextSplit`/`…ContextGroup` + champ `ContextSplit`.
+- Service : `buildBriefingContextSplit`/`briefingContextGroup` (fichier dédié) ; câblage.
+- 4 tests service neufs (pertinent, mono-contexte, sous seuil, low_sample) + helper `briefingCtxRaw`.
+- Front : `ContextSplitCard`/`ContextSplitRow` dans `ExplorerBriefingModules` (early-return
+  étendu) ; 2 tests de rendu présent/absent dans `ExplorerBriefingStrip.test.tsx`.
+
+**Gates** (racine worktree) : `go test ./...` = exit 0 (0 FAIL) ; `make go-api-lint` = 0
+(+ vet service/api = 0 ; golangci-lint --new-from-rev service/domain = 0 issues) ;
+`make generate-types` idempotent (re-run diff stable 15 L) ; `make check-types` = 0 ;
+`make test-web` = 257 fichiers / 2180 passés / 14 skipped / 0 échec ; `npm run lint` = 0 erreur
+(68 warnings baseline).
+
+**Découvertes** : aucune hors périmètre. Constat §2 re-vérifié sur pièces avant édition (Phase 4
+avait bougé domain/service/composants comme annoncé — cibles conformes).
+
+**Conclusion / prochaine étape** : Phase 5 close, tout vert. Reste Phases 5b (Séries/Moments
+forts, items 8/9) et 6 (vérif navigateur + changelog). NON committé — attente superviseur.
+
+---
+
 ## [2026-07-16] Explorer briefing V2 — Phase 4 (classement en grades PAR TYPE, item 4)
 
 **Statut** : Complété (Phase 4 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items

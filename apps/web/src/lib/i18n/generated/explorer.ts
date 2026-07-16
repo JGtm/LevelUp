@@ -2,6 +2,7 @@
 // Source : apps/web/src/lib/i18n/manifests/explorer.toml
 
 export const explorerManifest = {
+  "explorer.briefing.context_split_title": { fr: "Solo vs Escouade", en: "Solo vs Squad" },
   "explorer.briefing.dim_map": { fr: "Par carte", en: "By map" },
   "explorer.briefing.dim_matches": { fr: "{n, plural, one {# match} other {# matchs}}", en: "{n, plural, one {# match} other {# matches}}" },
   "explorer.briefing.dim_mode": { fr: "Par mode", en: "By mode" },

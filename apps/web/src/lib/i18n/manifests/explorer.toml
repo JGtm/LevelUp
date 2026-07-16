@@ -923,3 +923,7 @@ en = "Placement"
 [explorer.briefing.placement_remaining]
 fr = "Placement ({n, plural, one {# match restant} other {# matchs restants}})"
 en = "Placement ({n, plural, one {# match left} other {# matches left}})"
+
+[explorer.briefing.context_split_title]
+fr = "Solo vs Escouade"
+en = "Solo vs Squad"

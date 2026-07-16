@@ -44,6 +44,9 @@ type ExplorerBriefing struct {
 	// Nil si le titre n'expose pas la capability ranked ou si aucun match rangé
 	// dans le scope.
 	Ranked *ExplorerBriefingRanked `json:"ranked,omitempty"`
+	// ContextSplit : comparaison solo vs escouade du scope. Nil si non pertinent
+	// (un sous-groupe sous le seuil, ou scope déjà réduit à un seul contexte).
+	ContextSplit *ExplorerBriefingContextSplit `json:"context_split,omitempty"`
 }
 
 // ExplorerBriefingScope porte les agrégats socle du sous-ensemble filtré,
@@ -154,4 +157,28 @@ type ExplorerBriefingRankedKind struct {
 	// DeltaPerMatch : moyenne signée du delta de rating par match (Value/Count du
 	// bucket). Nil si aucun match compté. Unité = points de rating natifs du type.
 	DeltaPerMatch *float64 `json:"delta_per_match,omitempty"`
+}
+
+// ExplorerBriefingContextSplit compare les performances du scope selon le
+// contexte social (solo vs escouade, signal IsWithFriends). Émis UNIQUEMENT
+// quand les deux sous-groupes atteignent minContextSplitMatches (scope
+// réellement multi-contexte ET fiabilité minimale) ; nil sinon (dégradation par
+// omission). Sans capability rang requise (IsWithFriends dispo tous titres).
+type ExplorerBriefingContextSplit struct {
+	// Solo : agrégats des matchs joués en solo (IsWithFriends = false).
+	Solo ExplorerBriefingContextGroup `json:"solo"`
+	// Squad : agrégats des matchs joués en escouade (IsWithFriends = true).
+	Squad ExplorerBriefingContextGroup `json:"squad"`
+}
+
+// ExplorerBriefingContextGroup porte les agrégats socle d'un contexte social
+// (solo ou escouade). Symétrique du socle (ExplorerBriefingScope). Unités
+// ADR 0006 : WinRate en ratio 0..1, KDA = net agrégat ((frags + assists/3) −
+// morts)/matchs, AvgPerf en 0..100.
+type ExplorerBriefingContextGroup struct {
+	Matches int     `json:"matches"`
+	WinRate float64 `json:"win_rate"` // ratio 0..1
+	KDA     float64 `json:"kda"`      // KDA agrégat ADR 0006
+	// AvgPerf : perf moyenne 0..100. Nil si aucun match du groupe n'a de score.
+	AvgPerf *float64 `json:"avg_perf,omitempty"`
 }

@@ -21,6 +21,8 @@ import { winRateColor } from '@/lib/colors/outcomePalette'
 import { formatPercentInt } from '@/lib/formatters'
 import type {
   ExplorerBriefing,
+  ExplorerBriefingContextGroup,
+  ExplorerBriefingContextSplit,
   ExplorerBriefingDimension,
   ExplorerBriefingDimensionEntry,
   ExplorerBriefingRanked,
@@ -66,7 +68,9 @@ export function ExplorerBriefingModules({
   const hasRanked = useCapability('ranked')
   const dimensions = briefing.dimensions ?? []
   const showRanked = hasRanked && briefing.ranked != null
-  if (dimensions.length === 0 && briefing.trend == null && !showRanked) return null
+  const contextSplit = briefing.context_split ?? null
+  if (dimensions.length === 0 && briefing.trend == null && !showRanked && contextSplit == null)
+    return null
 
   return (
     <div className="space-y-2 pt-1">
@@ -79,6 +83,7 @@ export function ExplorerBriefingModules({
       )}
       {briefing.trend != null && <TrendCard trend={briefing.trend} t={t} />}
       {showRanked && <RankedCard ranked={briefing.ranked as ExplorerBriefingRanked} t={t} />}
+      {contextSplit != null && <ContextSplitCard split={contextSplit} t={t} />}
     </div>
   )
 }
@@ -241,6 +246,52 @@ function RankedKindRow({ kind, t }: { kind: ExplorerBriefingRankedKind; t: T }) 
           </span>
         </>
       )}
+    </li>
+  )
+}
+
+// ─── Module contexte solo/escouade (C4) : une ligne par contexte social ────────
+// Rendu uniquement si le bloc backend est présent (les deux sous-groupes ≥ seuil,
+// scope multi-contexte — item 6, P-5). Libellés « Solo »/« Escouade » réutilisant
+// les clés de filtre existantes ; WR coloré via winRateColor (tokens).
+
+function ContextSplitCard({ split, t }: { split: ExplorerBriefingContextSplit; t: T }) {
+  return (
+    <BriefingSectionCard className="h-full" title={t('explorer.briefing.context_split_title')}>
+      <ul className="space-y-1">
+        <ContextSplitRow label={t('explorer.filters.context_solo')} group={split.solo} t={t} />
+        <ContextSplitRow label={t('explorer.filters.context_squad')} group={split.squad} t={t} />
+      </ul>
+    </BriefingSectionCard>
+  )
+}
+
+function ContextSplitRow({
+  label,
+  group,
+  t,
+}: {
+  label: string
+  group: ExplorerBriefingContextGroup
+  t: T
+}) {
+  return (
+    <li className="flex items-center gap-2 text-xs">
+      <span className="min-w-0 flex-1 truncate text-foreground" title={label}>
+        {label}
+      </span>
+      <span className="shrink-0 tabular-nums text-muted-foreground">
+        {t('explorer.briefing.dim_matches', { n: group.matches })}
+      </span>
+      <span
+        className="w-10 shrink-0 text-right tabular-nums font-semibold"
+        style={{ color: winRateColor(group.win_rate) }}
+      >
+        {formatPercentInt(group.win_rate)}
+      </span>
+      <span className="w-12 shrink-0 text-right tabular-nums text-muted-foreground">
+        {group.kda.toFixed(2)}
+      </span>
     </li>
   )
 }

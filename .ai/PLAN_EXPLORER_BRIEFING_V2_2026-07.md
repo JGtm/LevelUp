@@ -588,29 +588,46 @@ résiduel) ; `make check-types` = 0 ; `make test-web` = 257 fichiers / 2178 pass
 
 ### Phase 5 — Carte contexte solo/escouade conditionnelle (lourd, backend + frontend) — item 6
 
-- [ ] **5a (domain).** Nouveau type `ExplorerBriefingContextSplit` (solo & escouade : `Matches`,
-      `WinRate`, optionnellement `KDA`/`AvgPerf` par symétrie avec le socle) + champ
-      `ContextSplit *ExplorerBriefingContextSplit` dans `ExplorerBriefing` (JSON `omitempty`,
-      commentaire « nil si non pertinent »).
-- [ ] **5b (service).** `buildBriefingContextSplit(scope []MatchHistoryRawRow)` : partition sur
-      `IsWithFriends`, agréger via l'`aggregateRawStats` existant. Émettre nil si l'un des deux
-      sous-groupes < seuil D-B, ou si l'un est vide (scope déjà mono-contexte). Constante nommée
-      `minContextSplitMatches` (valeur D-B, pas de magic number — CLAUDE.md §Magic number).
-      Câbler dans `buildExplorerBriefing` (`:62-75`) après les autres modules, sous garde
-      `!LowSample`.
-- [ ] **5c (tests service).** Cas pertinent (les deux ≥ seuil → bloc présent) ; cas mono-contexte
-      (un sous-groupe vide → nil) ; cas sous le seuil (→ nil) ; cas low_sample (→ nil car modules
-      omis).
-- [ ] **5d (OpenAPI).** `make generate-types` → regénérer + drift test vert.
-- [ ] **5e (frontend).** Nouvelle carte via `BriefingSectionCard` (Phase 3), rendue seulement si
-      `briefing.context_split != null`, dans `ExplorerBriefingModules`. Libellés « Solo » /
-      « Escouade » réutilisant les clés existantes (`explorer.filters.context_solo/squad` ou
-      `explorer.matches.squad_solo/squad_party`) ; nouveau titre de section i18n
-      `explorer.briefing.context_split_title` (FR/EN). WR coloré via `winRateColor` (tokens).
-- [ ] **5f (tests frontend).** Rendu présent/absent selon la présence du bloc.
+- [x] **5a (domain).** FAIT. `explorer_briefing.go` : type `ExplorerBriefingContextSplit`
+      (`Solo`/`Squad` de type `ExplorerBriefingContextGroup`) + `ExplorerBriefingContextGroup`
+      (`Matches`/`WinRate`/`KDA`/`AvgPerf` — symétrique du socle `ExplorerBriefingScope`,
+      unités ADR 0006 annotées) ; champ `ContextSplit *ExplorerBriefingContextSplit` ajouté à
+      `ExplorerBriefing` (`json:"context_split,omitempty"`, commentaire « nil si non pertinent »).
+- [x] **5b (service).** FAIT. `buildBriefingContextSplit(scope)` + `briefingContextGroup(rows)`
+      extraits dans NOUVEAU fichier `match_history_service_briefing_context.go` (le fichier
+      principal était à 481 L — extraction plutôt qu'accroître vers le seuil 500, CLAUDE.md §5).
+      Partition sur `IsWithFriends`, agrégation via `aggregateRawStats` existant. Constante nommée
+      `minContextSplitMatches = 10` (D-B, pas de magic number). Nil si l'un des deux sous-groupes
+      `< minContextSplitMatches` (couvre aussi le scope mono-contexte : sous-groupe vide < seuil).
+      Câblé dans `buildExplorerBriefing` après le module ranked, sous garde `!LowSample` (retour
+      anticipé si LowSample) ; P-7 respecté : AUCUN gate capability.
+- [x] **5c (tests service).** FAIT. Nouveau `match_history_service_briefing_context_test.go` :
+      `_RelevantBothAboveThreshold` (les deux = 10 → bloc présent, WinRate solo 1.0 / squad 0.0,
+      KDA ≈ 5.667, AvgPerf non nil) ; `_MonoContextNil` (tout solo → nil) ; `_BelowThresholdNil`
+      (9 escouade < seuil → nil) ; `_ContextSplitOmittedWhenLowSample` (via `buildExplorerBriefing`,
+      8 rows mixtes → LowSample true + ContextSplit nil). Helper `briefingCtxRaw` (IsWithFriends).
+- [x] **5d (OpenAPI).** FAIT. `openapi.yaml` : `ExplorerBriefingContextSplit` +
+      `ExplorerBriefingContextGroup` ajoutés (YAML émis exact via `OPENAPI_EMIT_OUT`), champ
+      `context_split` ($ref) ajouté à `ExplorerBriefing`. `make generate-types` régénéré (15 L) ;
+      `types.ts` : exports `ExplorerBriefingContextSplit`/`…ContextGroup` ajoutés ;
+      `TestOpenAPISchemaDrift` vert (0 MISSING ; ExplorerBriefing réconcilié, plus divergent).
+- [x] **5e (frontend).** FAIT. `ContextSplitCard`/`ContextSplitRow` ajoutés à
+      `ExplorerBriefingModules`, rendus ssi `briefing.context_split != null` (early-return du
+      module étendu). Libellés réutilisant `explorer.filters.context_solo`/`context_squad`
+      (FR Solo/Escouade, EN Solo/Squad) ; nouveau titre `explorer.briefing.context_split_title`
+      (FR « Solo vs Escouade » / EN « Solo vs Squad »), manifests régénérés (1 clé). Rendu par
+      ligne : libellé · n matchs · WR (coloré `winRateColor`, tokens) · KDA. Aucun hex/Tailwind
+      couleur ; aucun gate capability (P-7).
+- [x] **5f (tests frontend).** FAIT. Nouveau describe dans `ExplorerBriefingStrip.test.tsx` :
+      carte rendue quand `context_split` présent (titre + libellés solo/escouade) ; omise quand
+      absent.
 
-Gate Phase 5 : `cd apps/go-api && go test ./...` = 0 ; `make go-api-lint` = 0 ; `make
-generate-types` propre ; `make check-types` = 0 ; `make test-web` vert ; `npm run lint` = 0.
+Gate Phase 5 : PASSÉ (2026-07-16, racine du worktree). `go test ./...` = exit 0 (0 FAIL) ;
+`make go-api-lint` = 0 (+ `go vet ./internal/service/... ./internal/api/...` = 0 ;
+`golangci-lint --new-from-rev=origin/main` service/domain = 0 issues) ; `make generate-types`
+idempotent (re-run → diff stable 15 L, 0 résiduel) ; `make check-types` = 0 ; `make test-web`
+= 257 fichiers / 2180 passés / 14 skipped / 0 échec (dont les 2 tests contexte neufs) ;
+`npm run lint` = 0 erreur (68 warnings baseline pré-existants, 0 sur les fichiers touchés).
 
 ### Phase 5b — Cartes « Séries » et « Moments forts » (moyen, backend + frontend) — items 8, 9
 
