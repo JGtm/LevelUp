@@ -16,14 +16,14 @@
 //
 // Couvre les endpoints REST (chemins relatifs, tous sous /players/{player_slug}) :
 //
-//	POST   /challenges                 — créer un défi (avec quotas mode pilote)
-//	GET    /challenges/{id}            — détail d'un défi
-//	GET    /challenges                 — liste filtrée
-//	PATCH  /challenges/{id}            — édition (cible recalcule palier en mode libre)
-//	DELETE /challenges/{id}            — abandon
-//	POST   /challenges/{id}/suggest-next — alternatives palier supérieur
-//	GET    /prestige/me                — total PP + niveau (par titre ou cross-titre)
-//	GET    /templates/suggest          — propositions catalogue
+//	POST   /prestige/challenges                 — créer un défi (avec quotas mode pilote)
+//	GET    /prestige/challenges/{id}            — détail d'un défi
+//	GET    /prestige/challenges                 — liste filtrée
+//	PATCH  /prestige/challenges/{id}            — édition (cible recalcule palier en mode libre)
+//	DELETE /prestige/challenges/{id}            — abandon
+//	POST   /prestige/challenges/{id}/suggest-next — alternatives palier supérieur
+//	GET    /prestige/me                          — total PP + niveau (par titre ou cross-titre)
+//	GET    /templates/suggest                    — propositions catalogue
 package handlers
 
 import (
@@ -82,12 +82,12 @@ func (h *PrestigeHandler) WithActorGuard(g ActorGuard) *PrestigeHandler {
 func (h *PrestigeHandler) Mount(r chi.Router) {
 	api := humacore.NewAPI(r)
 
-	huma.Post(api, "/challenges", h.CreateChallenge)
-	huma.Get(api, "/challenges", h.ListActiveChallenges)
-	huma.Get(api, "/challenges/{id}", h.GetChallenge)
-	huma.Patch(api, "/challenges/{id}", h.UpdateChallenge)
-	huma.Delete(api, "/challenges/{id}", h.AbandonChallenge)
-	huma.Post(api, "/challenges/{id}/suggest-next", h.SuggestNext)
+	huma.Post(api, "/prestige/challenges", h.CreateChallenge)
+	huma.Get(api, "/prestige/challenges", h.ListActiveChallenges)
+	huma.Get(api, "/prestige/challenges/{id}", h.GetChallenge)
+	huma.Patch(api, "/prestige/challenges/{id}", h.UpdateChallenge)
+	huma.Delete(api, "/prestige/challenges/{id}", h.AbandonChallenge)
+	huma.Post(api, "/prestige/challenges/{id}/suggest-next", h.SuggestNext)
 
 	huma.Post(api, "/arcs", h.CreateArc)
 	huma.Get(api, "/arcs", h.ListArcs)
@@ -202,7 +202,7 @@ type squadIDBodyInput struct {
 
 // ─────────── CreateChallenge ───────────
 
-// CreateChallenge gère POST /challenges.
+// CreateChallenge gère POST /prestige/challenges.
 func (h *PrestigeHandler) CreateChallenge(ctx context.Context, in *rawBodyInput) (*challengeCreatedOutput, error) {
 	var body createChallengeBody
 	if err := json.Unmarshal(in.RawBody, &body); err != nil {
@@ -297,7 +297,7 @@ func (h *PrestigeHandler) AbandonChallenge(ctx context.Context, in *idInput) (*n
 
 // ─────────── SuggestNext ───────────
 
-// SuggestNext gère POST /challenges/{id}/suggest-next. Ne lit pas de corps
+// SuggestNext gère POST /prestige/challenges/{id}/suggest-next. Ne lit pas de corps
 // (input path seul) → pas de RawBody (sinon Huma rendrait un corps requis).
 func (h *PrestigeHandler) SuggestNext(ctx context.Context, in *idInput) (*mapOutput, error) {
 	if in.ID == "" {

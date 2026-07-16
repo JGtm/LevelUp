@@ -1,3 +1,38 @@
+## [2026-07-16] Salve 4 — collision route challenges resolue + code mort web (branche fix/corrections-v7-backlog)
+
+**Statut** : Complété.
+
+**Collision GET /players/{slug}/challenges (Home vs Prestige)** : version Home prouvée
+morte (la home lit seasonPass.challenges via /pages/palmares/season-pass ; le mock de
+test affirmait lui-même 0 appel) → route + handler + DTO + tests dédiés supprimés
+(svc.GetChallenges/ChallengesResponse CONSERVÉS — utilisés par season_pass) ; openapi
+path retiré + generate-types. Groupe challenges Prestige déplacé au complet :
+/challenges* → /prestige/challenges* (6 routes, backend + prestige.ts + garde-rail
+chemins + tests). LEÇON TECHNIQUE : chi v5 écrase silencieusement les routes dupliquées
+AVANT que chi.Walk puisse les voir → le garde-rail « walk + détecte doublon » ne marche
+PAS ; implémenté à l'enregistrement via hook test humacore.OnAPICreatedRouter (nil en
+prod) + route_collision_test.go (3 tests : routeur assemblé 157 opérations 0 collision ;
+paire home+prestige montée comme en prod ; contrôle positif du détecteur — sonde
+prouvant l'échec sur collision réelle). Effet de bord assaini : smoke test prestige
+FAUX-VERT (validait les routes prestige en tapant l'ex-route Home) retiré/corrigé.
+Limite documentée : en mode démo le bundle prestige ne se monte pas → couverture de la
+paire via test ciblé.
+
+**Code mort web supprimé** : squad/v2/HistoryTable (+test, types orphelins, champ
+SquadTables.history) ; TimeseriesCombatYield + useCombatYieldHistory (+query key,
+8 clés i18n timeseries.combat.* regen propre, référence sandbox /lab/charts, entrée
+catalogue README). Endpoint Go LAISSÉ : c'est /pages/match-history/query, partagé
+(match-history, Explorer) — multi-consommateurs.
+
+**Découvertes non traitées** : squad/v2 largement mort (knip signale types.ts,
+SquadCombatProfileRow, queries — dette baseline) ; GET /battlepass (Home) possiblement
+sans consommateur web direct.
+
+**Gates** : go build/test (api/service/contracttest) OK ; tsc OK ; vitest 380/380 ;
+regen i18n propre ; generate-types OK ; gofmt/eslint propres.
+
+---
+
 ## [2026-07-16] Salve 3 — audit release + hardening ffmpeg, audit ordre matchs 3 pages (branche fix/corrections-v7-backlog)
 
 **Statut** : Complété.

@@ -151,21 +151,6 @@ func TestHomeHandler_GetBattlePass_OK(t *testing.T) {
 	}
 }
 
-func TestHomeHandler_GetChallenges_OK(t *testing.T) {
-	mock := &mockHomeService{challenges: domain.ChallengesResponse{}}
-	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
-		return mock, ctx, testXUID, "gt", nil
-	}
-	r := newHomeRouter(factory, nil)
-	req := httptest.NewRequest(http.MethodGet, "/players/test-player/challenges", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
-	}
-}
-
 func TestHomeHandler_GetHomePage_UsesSettingsLanguage(t *testing.T) {
 	dir := t.TempDir()
 	settingsPath := filepath.Join(dir, "app_settings.json")

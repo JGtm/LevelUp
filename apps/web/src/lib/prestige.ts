@@ -319,24 +319,24 @@ export const prestigeApi = {
   // Défis. Le body (createChallenge) porte user_id ; les routes unitaires par id
   // reçoivent le slug de l'acteur (joueur courant) pour ownershipMW.
   createChallenge: (body: CreateChallengeBody) =>
-    api.post<Challenge>(`${scopedToPlayer(body.user_id)}/challenges`, body),
+    api.post<Challenge>(`${scopedToPlayer(body.user_id)}/prestige/challenges`, body),
 
   getChallenge: (id: string, actorSlug: string) =>
-    api.get<Challenge>(`${scopedToPlayer(actorSlug)}/challenges/${id}`),
+    api.get<Challenge>(`${scopedToPlayer(actorSlug)}/prestige/challenges/${id}`),
 
   listActiveChallenges: (userId: string, titleSlug: string) =>
     api.get<{ challenges: Challenge[]; count: number }>(
-      `${scopedToPlayer(userId)}/challenges?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`,
+      `${scopedToPlayer(userId)}/prestige/challenges?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`,
     ),
 
   updateChallenge: (id: string, body: UpdateChallengeBody, actorSlug: string) =>
-    api.patch<Challenge>(`${scopedToPlayer(actorSlug)}/challenges/${id}`, body),
+    api.patch<Challenge>(`${scopedToPlayer(actorSlug)}/prestige/challenges/${id}`, body),
 
   abandonChallenge: (id: string, actorSlug: string) =>
-    api.delete<void>(`${scopedToPlayer(actorSlug)}/challenges/${id}`),
+    api.delete<void>(`${scopedToPlayer(actorSlug)}/prestige/challenges/${id}`),
 
   suggestNext: (id: string, actorSlug: string) =>
-    api.post<{ suggestions: Template[] }>(`${scopedToPlayer(actorSlug)}/challenges/${id}/suggest-next`),
+    api.post<{ suggestions: Template[] }>(`${scopedToPlayer(actorSlug)}/prestige/challenges/${id}/suggest-next`),
 
   // Arcs. Le body (createArc) porte user_id ; getArc reçoit le slug de l'acteur.
   createArc: (body: CreateArcBody) => api.post<Arc>(`${scopedToPlayer(body.user_id)}/arcs`, body),
