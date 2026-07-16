@@ -827,6 +827,7 @@ export type ExplorerBriefingOutcome = components['schemas']['ExplorerBriefingOut
 export type ExplorerBriefingTrend = components['schemas']['ExplorerBriefingTrend']
 export type ExplorerBriefingTrendPoint = components['schemas']['ExplorerBriefingTrendPoint']
 export type ExplorerBriefingRanked = components['schemas']['ExplorerBriefingRanked']
+export type ExplorerBriefingRankedKind = components['schemas']['ExplorerBriefingRankedKind']
 
 // ---------------------------------------------------------------------------
 // Accueil Mission Control (Slice 5)

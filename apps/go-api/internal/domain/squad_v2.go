@@ -134,8 +134,16 @@ type KPIStats struct {
 	// RankDelta : delta de skill rating sur le scope (somme signee des
 	// per-match deltas). Kind = "csr" ou "lusr" — exclusifs au sein d'un
 	// scope cohérent (une session est soit classee soit non, par construction
-	// metier). Nil si aucun match avec rating dans le scope.
+	// metier). Nil si aucun match avec rating dans le scope. C'est le bucket
+	// MAJORITAIRE (cf. RankDeltas pour le détail par type).
 	RankDelta *RankDelta `json:"rank_delta,omitempty"`
+	// RankDeltas : un delta agrégé par type de rating rencontré dans le scope
+	// (CSR et LUSR séparés, jamais fusionnés). Ordre déterministe : type
+	// majoritaire d'abord, puis par Count décroissant, tie-break Kind. Vide si
+	// aucun match avec rating. Consommé par le module « Classement » du briefing
+	// Explorer (une ligne par type) ; RankDelta reste le majoritaire pour les
+	// consommateurs qui n'en veulent qu'un.
+	RankDeltas []RankDelta `json:"rank_deltas,omitempty"`
 	// PerformanceScore : score 0-100 du joueur sur le scope filtre.
 	// Moyenne des performance_score par match (sync). Nil si aucun match enrichi.
 	PerformanceScore *float64 `json:"performance_score,omitempty"`

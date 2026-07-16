@@ -15,6 +15,7 @@
 package service
 
 import (
+	"context"
 	"sort"
 	"time"
 
@@ -35,6 +36,11 @@ const (
 	// MinDimensionGroupMatches est le seuil sous lequel un groupe (carte/mode/
 	// playlist) n'a pas de note et n'apparaît pas en top/flop.
 	MinDimensionGroupMatches = 10
+	// minRankedKindMatches est le seuil de signifiance d'un type de rating
+	// SECONDAIRE dans le module « Classement » (P-3, aligné MinDimensionGroupMatches) :
+	// un type non majoritaire n'a sa propre ligne que s'il atteint ce seuil. Le
+	// type majoritaire est toujours émis (pas de régression vs V1).
+	minRankedKindMatches = 10
 	// minTrendMatches / minTrendSpanDays : activation du module tendance (DEC-4) —
 	// assez de matchs ET d'étalement temporel pour une courbe lisible.
 	minTrendMatches  = 20
@@ -53,6 +59,7 @@ const (
 //
 // Retourne nil si le scope est vide. LowSample (scope < seuil) → socle seul.
 func (s *MatchHistoryService) buildExplorerBriefing(
+	ctx context.Context,
 	filtered, allRaw []domain.MatchHistoryRawRow,
 	scopedKPIs *domain.KPIStats,
 ) *domain.ExplorerBriefing {
@@ -70,7 +77,7 @@ func (s *MatchHistoryService) buildExplorerBriefing(
 	b.Dimensions = buildBriefingDimensions(filtered, allRaw)
 	b.Trend = buildBriefingTrend(filtered, b.PeriodStart, b.PeriodEnd)
 	if s.rankedCapable {
-		b.Ranked = buildBriefingRanked(filtered, scopedKPIs)
+		b.Ranked = buildBriefingRanked(ctx, filtered, scopedKPIs)
 	}
 	return b
 }
@@ -373,46 +380,6 @@ type trendRow struct {
 }
 
 func (t trendRow) GetStartTime() time.Time { return t.start }
-
-// buildBriefingRanked émet le module « Pronostic » (skill LevelUp) sur les matchs
-// du scope portant une prédiction pré-match (SkillExpectedWinProb, LUSR v2) :
-// attendu (moyenne des probas) vs réel (winrate de ces matchs). La ligne Δ rating
-// cumulé n'est jointe QUE si le RankDelta canonique est disponible (per-match CSR
-// delta ; absent dans les player DBs actuelles, cf. journal). L'appelant a déjà
-// gaté sur rankedCapable (capability match.skill.snapshot, exclut H5). Retourne
-// nil si aucune prédiction ET aucun delta rating (rien à afficher).
-func buildBriefingRanked(scope []domain.MatchHistoryRawRow, scopedKPIs *domain.KPIStats) *domain.ExplorerBriefingRanked {
-	var probs []float64
-	var wins, total int
-	for _, r := range scope {
-		if r.SkillExpectedWinProb == nil {
-			continue
-		}
-		total++
-		if r.Outcome == domain.OutcomeWin {
-			wins++
-		}
-		probs = append(probs, *r.SkillExpectedWinProb)
-	}
-	var rd *domain.RankDelta
-	if scopedKPIs != nil {
-		rd = scopedKPIs.RankDelta
-	}
-	if total == 0 && rd == nil {
-		return nil
-	}
-	expected, actual := analysis.ExpectedVsActual(probs, wins, total)
-	out := &domain.ExplorerBriefingRanked{
-		ExpectedWinRate:       expected,
-		ActualWinRate:         actual,
-		MatchesWithPrediction: total,
-	}
-	if rd != nil {
-		out.RatingKind = rd.Kind
-		out.DeltaSum = rd.Value
-	}
-	return out
-}
 
 // ─── conversion raw row → breakdown.Row (libellés FR) ────────────────────────
 

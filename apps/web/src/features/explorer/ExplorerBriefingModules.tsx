@@ -4,7 +4,8 @@
  * Rendus sous le socle quand l'échantillon est suffisant :
  *   - Dimensions (par carte / mode / playlist) : top/flop avec note (palier 1..5).
  *   - Tendance : sparkline du taux de victoire par bucket.
- *   - Classé : delta CSR cumulé + attendu vs réel — gaté useCapability('ranked').
+ *   - Classement : progression de paliers PAR TYPE de rating (CSR / LUSR) +
+ *     moyenne par match — gaté useCapability('ranked').
  *
  * Chaque module s'omet proprement si son bloc backend est nil (dégradation par
  * omission, jamais de placeholder vide ni de NaN). Tokens sémantiques uniquement.
@@ -23,6 +24,7 @@ import type {
   ExplorerBriefingDimension,
   ExplorerBriefingDimensionEntry,
   ExplorerBriefingRanked,
+  ExplorerBriefingRankedKind,
   ExplorerBriefingTrend,
 } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
@@ -177,46 +179,68 @@ function TrendCard({ trend, t }: { trend: ExplorerBriefingTrend; t: T }) {
   )
 }
 
-// ─── Module classé (C3) ───────────────────────────────────────────────────────
+// ─── Module « Classement » (C3) : une ligne par type de rating (CSR / LUSR) ────
 
 function RankedCard({ ranked, t }: { ranked: ExplorerBriefingRanked; t: T }) {
-  const hasDelta = (ranked.rating_kind ?? '') !== ''
-  const hasPrediction = (ranked.matches_with_prediction ?? 0) > 0
+  const kinds = ranked.kinds ?? []
+  if (kinds.length === 0) return null
   return (
     <BriefingSectionCard className="h-full" title={t('explorer.briefing.ranked_title')}>
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        {hasDelta && (
-          <div>
-            <p className="text-3xs uppercase tracking-wide text-muted-foreground">
-              {t('explorer.briefing.ranked_delta')}
-            </p>
-            <p
-              className="text-lg font-bold tabular-nums"
-              style={{ color: tokenCssVar(deltaToken(ranked.delta_sum)) }}
-            >
-              {formatSignedFixed(ranked.delta_sum, 0)}
-            </p>
-          </div>
-        )}
-        {hasPrediction && (
-          <div>
-            <p className="text-3xs uppercase tracking-wide text-muted-foreground">
-              {t('explorer.briefing.ranked_expected_vs_actual')}
-            </p>
-            <p className="text-sm tabular-nums text-foreground">
-              {t('explorer.briefing.ranked_expected')} {formatPercentInt(ranked.expected_win_rate)}
-              {' · '}
-              {t('explorer.briefing.ranked_actual')}{' '}
-              <span
-                className="font-semibold"
-                style={{ color: winRateColor(ranked.actual_win_rate) }}
-              >
-                {formatPercentInt(ranked.actual_win_rate)}
-              </span>
-            </p>
-          </div>
-        )}
-      </div>
+      <ul className="space-y-1.5">
+        {kinds.map((k) => (
+          <RankedKindRow key={k.kind} kind={k} t={t} />
+        ))}
+      </ul>
     </BriefingSectionCard>
+  )
+}
+
+// rankedProgression compose « palier début → palier fin » (D-C), en résolvant les
+// paliers de placement via clés i18n (D-D : jamais parser le libellé FR). Null si
+// aucun palier n'est résolvable (segment omis). Paliers égaux → palier seul.
+function rankedProgression(k: ExplorerBriefingRankedKind, t: T): string | null {
+  const start = k.tier_start_is_placement
+    ? t('explorer.briefing.placement')
+    : (k.tier_start_label ?? null)
+  const end =
+    k.tier_end_placement_remaining != null
+      ? t('explorer.briefing.placement_remaining', { n: k.tier_end_placement_remaining })
+      : (k.tier_end_label ?? null)
+  if (start == null && end == null) return null
+  if (start != null && end != null) return start === end ? start : `${start} → ${end}`
+  return start ?? end
+}
+
+function RankedKindRow({ kind, t }: { kind: ExplorerBriefingRankedKind; t: T }) {
+  const progression = rankedProgression(kind, t)
+  const perMatch =
+    kind.delta_per_match != null
+      ? t('explorer.briefing.ranked_per_match', {
+          delta: formatSignedFixed(kind.delta_per_match, 1),
+        })
+      : null
+  return (
+    <li className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs">
+      <span className="font-semibold uppercase text-foreground">{kind.kind}</span>
+      {progression != null && (
+        <>
+          <span className="text-muted-foreground">·</span>
+          <span className="min-w-0 truncate text-foreground" title={progression}>
+            {progression}
+          </span>
+        </>
+      )}
+      {perMatch != null && (
+        <>
+          <span className="text-muted-foreground">·</span>
+          <span
+            className="shrink-0 tabular-nums"
+            style={{ color: tokenCssVar(deltaToken(kind.delta_per_match)) }}
+          >
+            {perMatch}
+          </span>
+        </>
+      )}
+    </li>
   )
 }
