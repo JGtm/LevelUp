@@ -7025,3 +7025,61 @@ DM-5 + invariant + order audit + M5c verts. Baseline CI : 3 tests obsolètes ret
 
 **Conclusion / prochaine étape** : M3-M5 complétés, TOUT VERT. M6 (merge sur main =
 deploy prod auto) laissé au train de merge superviseur — NE PAS merger.
+
+---
+
+## [2026-07-17] LOT A — Durcissement pipeline média : concurrence transcodage + décisions persistées
+
+**Statut** : Complété (LOT A du PLAN_MEDIA_PIPELINE_HARDENING_2026-07 ; branche
+fix/media-pipeline-hardening, worktree dédié). Pas de commit (superviseur).
+
+**Décision technique principale** : rendre le transcodage HLS idempotent en persistant
+la décision par média dans `media_files.transcode_status` (+ nouvel horodatage
+`transcode_started_at`), au lieu de re-prober/re-transcoder à chaque sync.
+- Nouveau statut `TranscodeDirect = "direct"` : marqué quand `DetectHLSNeeded`=false
+  (upload ET sweep) → exclu des balayages suivants (fin des ffprobe infinies).
+- `MarkTranscodeProcessing` (status='processing' + horodatage UTC) posé AVANT
+  `RunHLSTranscode` par les DEUX chemins (upload worker + sweep, qui ne marquait rien) :
+  verrou d'idempotence contre le double-ffmpeg upload-vs-sweep sur le même outDir.
+  [Revue superviseur 2026-07-17] durci en COMPARE-AND-SET : UPDATE conditionnel
+  (ne s'applique que si la ligne n'est pas déjà 'processing' frais — même prédicat
+  que la sélection, fragment SQL partagé `transcodeNotFreshProcessingSQL` dans
+  media_hls.go), retour `(acquired, err)` via RowsAffected ; les deux callers
+  sautent le transcodage (log Info « déjà en cours ») sur acquired=false. Ferme le
+  TOCTOU sélection-de-sweep→marquage : le sweep sélectionne UNE fois puis transcode
+  pendant de longues minutes ; un upload marquant entre-temps était écrasé par
+  l'ancien UPDATE inconditionnel. `transcodeStaleAfter` déplacée dans media_hls.go
+  (source unique, zéro copie du littéral 2 h).
+- Sélection sweep durcie : exclut direct/failed/processing FRAIS ; un 'processing'
+  périmé (`transcode_started_at` > `transcodeStaleAfter` = 2 h) ou sans horodatage
+  (orphelin legacy/crash) redevient éligible ; NULL reste éligible (historique).
+  Seuil de péremption comparé Go-side (`time.Now().UTC().Add(-transcodeStaleAfter)`),
+  COALESCE pour neutraliser la logique tri-valuée SQL ; prédicat 'processing' =
+  fragment partagé avec le CAS.
+- Convention commentaires (revue superviseur) : AUCUN numéro de trouvaille d'audit
+  dans le code/les tests (descriptions concrètes) — les numéros ne survivent pas au
+  contexte de l'audit ; ils ne restent que dans le plan qui les définit.
+- 'failed' : plus de retry auto ; réarmement opérateur via `ops.ResetFailedTranscodes`
+  (failed → NULL, scope --slug) branché sur `backfill-media-hls --retry-failed`.
+- Schéma : `transcode_started_at TIMESTAMPTZ` ajoutée à la boucle ALTER idempotente de
+  `ensureMediaTables` (media_store.go), même pattern que `hls_path`/`transcode_status`.
+- CHECKPOINT avalés (2×) → helper `checkpointBestEffort` (WARN slog module "media",
+  jamais d'erreur avalée) ; littéral CHECKPOINT centralisé (pas de 3e copie).
+
+**Résultats observés** : Gate A vert, code de sortie 0 vérifié pour les 3 commandes —
+REJOUÉ intégralement après les corrections de revue (CAS + commentaires).
+- `go vet ./...` = exit 0.
+- `go test ./internal/ops/... ./internal/service/... ./internal/media/...` = exit 0.
+- `go test -tags=integration -p 1 ./internal/ops/...` = exit 0, 0 ligne `^--- FAIL:`.
+- ffmpeg/ffprobe présents → tests HLS gated RÉELLEMENT exécutés (0 skip) :
+  TestEnsurePendingHLS_DirectMarkingPersists, TestEnsurePendingHLS_TranscodesScannedVideo
+  (assertion transcode_started_at non-NULL), TestUploadHLSTranscoding_* verts.
+- TestMarkTranscodeProcessing_CompareAndSet vert : 1re acquisition true (status +
+  horodatage), 2e refusée sur 'processing' frais (ligne inchangée, timestamp intact),
+  ré-acquisition true après vieillissement artificiel > 2 h (orphelin simulé).
+- Garde-rails anti-ART (internal/sync) re-vérifiés verts : `media_files` hors
+  tablesProtegees/criticalMatchTables, UPDATE mono-ligne paramétrés → aucun motif
+  déclenché, allowlist inchangée.
+
+**Conclusion / prochaine étape** : LOT A soldé, cases A1-A6 cochées. LOTS B (lightbox web)
+et C (durcissements ffmpeg/serving) restent à faire. Pas de merge (revue utilisateur).

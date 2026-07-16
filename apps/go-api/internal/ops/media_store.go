@@ -73,10 +73,15 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 		{"file_ext", colTypeVarchar},
 		// HLS (transcoding à l'ingestion) : hls_path = pointeur {slug}/hls/{stem}/master.m3u8
 		// (NULL = média servi en direct, non transcodé) ; transcode_status =
-		// processing|ready|failed (NULL = pas de transcodage). Colonnes dédiées :
+		// processing|ready|failed|direct (NULL = pas encore évalué). Colonnes dédiées :
 		// ne PAS réutiliser `status` (sémantique 'active' déjà filtrée par le rail home).
 		{"hls_path", colTypeVarchar},
 		{"transcode_status", colTypeVarchar},
+		// transcode_started_at : horodatage (UTC) du passage à 'processing', posé par
+		// MarkTranscodeProcessing (upload ET balayage). Sert la récupération d'orphelins
+		// de crash — un 'processing' plus vieux que transcodeStaleAfter redevient
+		// éligible au balayage (media_hls_sweep.go).
+		{"transcode_started_at", colTypeTimestampTZ},
 	} {
 		if _, err := db.ExecContext(ctx, "ALTER TABLE media_files ADD COLUMN IF NOT EXISTS "+col.name+" "+col.typ); err != nil {
 			return fmt.Errorf("ensureMediaTables: ajout colonne %s: %w", col.name, err)

@@ -11,7 +11,12 @@
 // Usage :
 //
 //	backfill-media-hls --db data/.../shared_social.duckdb [--captures-base C:\Captures]
-//	                   [--slug JGtm] [--limit 0] [--dry-run]
+//	                   [--slug JGtm] [--limit 0] [--dry-run] [--retry-failed]
+//
+// --retry-failed : réarme d'abord les transcodages en échec (transcode_status
+// 'failed' → NULL) dans le périmètre --slug, puis balaie. Le retry des 'failed'
+// n'est plus automatique (un échec permanent était re-transcodé à chaque sync) :
+// c'est désormais un geste opérateur explicite.
 package main
 
 import (
@@ -49,6 +54,8 @@ func main() {
 	onlySlug := flag.String("slug", "", "ne traiter qu'un seul joueur (optionnel)")
 	limit := flag.Int("limit", 0, "nombre max de clips à transcoder (0 = tous)")
 	dryRun := flag.Bool("dry-run", false, "lister sans transcoder")
+	retryFailed := flag.Bool("retry-failed", false,
+		"réarme les transcodages en échec (transcode_status 'failed' -> NULL) dans le périmètre --slug avant le balayage ; le retry des échecs n'est plus automatique")
 	flag.Parse()
 
 	if *dbPath == "" {
@@ -65,6 +72,19 @@ func main() {
 	}
 
 	fmt.Printf("DB: %s\nCapturesBase: %s\nDryRun: %v\n\n", *dbPath, base, *dryRun)
+
+	// --retry-failed : réarmer les 'failed' AVANT le balayage (jamais en dry-run,
+	// qui ne doit écrire nulle part).
+	if *retryFailed && !*dryRun {
+		n, err := ops.ResetFailedTranscodes(context.Background(), *dbPath, *onlySlug)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "retry-failed:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("retry-failed : %d ligne(s) 'failed' réarmée(s)\n\n", n)
+	} else if *retryFailed && *dryRun {
+		fmt.Println("retry-failed ignoré en dry-run (aucune écriture)")
+	}
 
 	st, err := ops.EnsurePendingHLS(context.Background(), ops.EnsureHLSParams{
 		DBPath:       *dbPath,

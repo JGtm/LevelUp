@@ -136,16 +136,28 @@ func (s *MediaService) launchHLSTranscoding(ctx context.Context, req domain.Uplo
 			log.WarnContext(ctx, "hls: détection échouée", "file", dest, "err", err)
 			continue
 		}
-		if !needed {
-			continue
-		}
 		fileRel := store.ToRel(dest, req.Gamertag)
 		if fileRel == "" {
 			fileRel = dest
 		}
+		if !needed {
+			// Média web-natif servi en direct : on persiste 'direct' pour que le
+			// balayage post-sync ne le re-probe jamais.
+			if err := ops.MarkTranscodeStatus(ctx, req.SharedSocialDBPath, fileRel, ops.TranscodeDirect); err != nil {
+				log.WarnContext(ctx, "hls: mark direct échoué", "file", fileRel, "err", err)
+			}
+			continue
+		}
 		outDir, hlsRel := ops.HLSPathsFor(req.CapturesDir, req.CapturesBase, req.Gamertag, dest)
-		if err := ops.MarkTranscodeStatus(ctx, req.SharedSocialDBPath, fileRel, ops.TranscodeProcessing); err != nil {
+		// Compare-and-set : verrou refusé = un balayage post-sync (ou un autre
+		// upload) transcode déjà ce fichier — ne pas lancer un second ffmpeg.
+		acquired, err := ops.MarkTranscodeProcessing(ctx, req.SharedSocialDBPath, fileRel)
+		if err != nil {
 			log.WarnContext(ctx, "hls: mark processing échoué", "file", fileRel, "err", err)
+			continue
+		}
+		if !acquired {
+			log.InfoContext(ctx, "hls: transcodage déjà en cours (verrou non acquis) — sauté", "file", fileRel)
 			continue
 		}
 		job := s.jobStore.Create(domain.JobTypeTranscodeMedia, req.Gamertag)
