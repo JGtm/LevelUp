@@ -33,15 +33,19 @@ func (r *MilestoneEarnedRepo) IsEarned(ctx context.Context, userID, titleSlug, m
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	var dummy string
-	err := r.db.QueryRow(ctx, `
+	rows, err := r.db.QueryRowRecovered(ctx, `
 		SELECT milestone_id FROM milestone_earned
 		WHERE user_id = ? AND title_slug = ? AND milestone_id = ?
 		LIMIT 1
-	`, userID, titleSlug, milestoneID).Scan(&dummy)
+	`, userID, titleSlug, milestoneID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {
+		return false, fmt.Errorf("MilestoneEarnedRepo.IsEarned: %w", err)
+	}
+	defer rows.Close()
+	if err := rows.Scan(&dummy); err != nil {
 		return false, fmt.Errorf("MilestoneEarnedRepo.IsEarned: %w", err)
 	}
 	return true, nil
@@ -85,7 +89,7 @@ func (r *MilestoneEarnedRepo) Append(ctx context.Context, e milestones.Earned) e
 func (r *MilestoneEarnedRepo) ListByUser(ctx context.Context, userID, titleSlug string) ([]milestones.Earned, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	rows, err := r.db.Query(ctx, `
+	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT user_id, title_slug, milestone_id, earned_at
 		FROM milestone_earned
 		WHERE user_id = ? AND title_slug = ?

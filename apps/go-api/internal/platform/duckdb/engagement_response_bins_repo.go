@@ -42,7 +42,7 @@ func (r *EngagementScoreRepo) LoadResponseBins(
 		WHERE xuid = ? AND mode_category = ?
 		ORDER BY lower_bound
 	`
-	rows, err := r.pdb.ReadDB().Query(ctx, q, xuid, modeCategory)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, q, xuid, modeCategory)
 	if err != nil {
 		return nil, fmt.Errorf("EngagementScoreRepo.LoadResponseBins: query: %w", err)
 	}
@@ -113,11 +113,15 @@ func (r *EngagementScoreRepo) responseBinsTableExists(ctx context.Context) bool 
 		return false
 	}
 	var count int
-	err := r.pdb.ReadDB().QueryRow(ctx, `
+	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, `
 		SELECT COUNT(*) FROM information_schema.tables
 		WHERE table_name = 'engagement_response_bins'
-	`).Scan(&count)
+	`)
 	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	if err := rows.Scan(&count); err != nil {
 		return false
 	}
 	return count > 0

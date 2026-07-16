@@ -79,7 +79,7 @@ func (r *CitationsRepo) LoadCitationTotals(ctx context.Context) ([]domain.Citati
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q35CitationTotals)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, Q35CitationTotals)
 	if err != nil {
 		return nil, fmt.Errorf("LoadCitationTotals: %w", err)
 	}
@@ -201,7 +201,7 @@ func (r *CitationsRepo) LoadMatchCitationsForView(ctx context.Context, matchID s
 	defer cancel()
 
 	// Étape 1 : top 4 citations bruts sur player DB.
-	rows, err := r.pdb.ReadDB().Query(ctx, Q38MatchViewCitationsPlayer, matchID)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, Q38MatchViewCitationsPlayer, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("LoadMatchCitationsForView player query: %w", err)
 	}
@@ -260,7 +260,7 @@ func (r *CitationsRepo) LoadMatchCitationsRich(ctx context.Context, matchID stri
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q41SummaryTabCitations, matchID)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, Q41SummaryTabCitations, matchID)
 	if err != nil {
 		return nil, nil //nolint:nilerr
 	}
