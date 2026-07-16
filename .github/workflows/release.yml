@@ -139,6 +139,12 @@ jobs:
             - **macOS (Apple Silicon)** : `levelup-server-darwin-arm64`
             - **Windows (x86_64)** : `levelup-server-windows-amd64.exe`
 
+            > **Note — binaires non autosuffisants.** Ils requièrent `ffmpeg`/`ffprobe`
+            > dans le PATH (miniatures WebP, transcodage HLS, remux live) et les dossiers
+            > `config/` et `static/` adjacents au binaire (mappings de titres, assets UI).
+            > L'artefact de production de référence reste l'**image Docker** (ci-dessus),
+            > qui embarque déjà ffmpeg, `config/` et `static/`.
+
             ```bash
             chmod +x levelup-server-linux-amd64
             LEVELUP_REPO_ROOT=/chemin/vers/levelup ./levelup-server-linux-amd64

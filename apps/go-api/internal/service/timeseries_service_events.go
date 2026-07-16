@@ -5,7 +5,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"sort"
 	"time"
@@ -114,20 +113,28 @@ func buildIntensityRows(
 
 	// Index match_rows pour récupérer le label « #N nom de map » — même convention
 	// que les autres graphes Progression (buildMatchCategories : numéro de match +
-	// carte). N = position dans `matches` (DESC, #1 = plus récent), aligné sur la
-	// numérotation des autres charts. La date est retirée (portée par l'axe X ailleurs).
+	// carte). `matches` est déjà trié ASC (cf. GetPage), donc N = position ASC :
+	// #1 = plus ancien, aligné sur la numérotation des autres charts. La date est
+	// retirée (portée par l'axe X ailleurs).
 	type matchMeta struct {
 		label    string
 		startUTC time.Time
 	}
 	metaByID := make(map[string]matchMeta, len(matches))
-	for i, m := range matches {
+	for _, m := range matches {
 		mapName := m.MapNameFR
 		if mapName == "" {
 			mapName = m.MapName
 		}
+		// Contrat du builder heatmap (squadIntensityHeatmapChart) : label
+		// "Carte — date" ; le numéro #N est posé par le builder web (le
+		// doubler ici rendait "#1 #1 Carte" à l'écran).
+		label := m.StartTime.Format("02/01")
+		if mapName != "" {
+			label = mapName + " — " + label
+		}
 		metaByID[m.MatchID] = matchMeta{
-			label:    fmt.Sprintf("#%d %s", i+1, mapName),
+			label:    label,
 			startUTC: m.StartTime,
 		}
 	}
@@ -150,12 +157,15 @@ func buildIntensityRows(
 		}
 		out = append(out, row)
 	}
-	// Tri chronologique (plus récent en premier — DESC) cohérent avec
-	// match_rows et LoadPlayerMatches (ORDER BY start_time DESC).
+	// Tri chronologique ASC (plus ancien en premier) — cohérent avec match_rows
+	// (buildMatchRows préserve l'ordre ASC de `matches`) et la numérotation #N
+	// (#1 = plus ancien). ComputeMatchIntensityProfiles trie par MatchID, donc on
+	// ré-ordonne ici par start_time. Le heatmap front consomme cet ordre tel quel
+	// (#1 en haut via yAxis.inverse), comme la page Escouade — pas de reverse client.
 	sort.SliceStable(out, func(i, j int) bool {
 		mi := metaByID[out[i].MatchID]
 		mj := metaByID[out[j].MatchID]
-		return mi.startUTC.After(mj.startUTC)
+		return mi.startUTC.Before(mj.startUTC)
 	})
 	return out
 }

@@ -70,6 +70,13 @@ func runCheckEnv(cfg *config.AppConfig) error {
 	// Healthcheck rapide
 	report := ops.RunHealthcheck(context.Background(), ops.HealthcheckOptions{RepoRoot: cfg.RepoRoot})
 	fmt.Print(report.Summary())
+
+	// Capacités de l'outillage média (ffmpeg/ffprobe) : présence + encodeurs
+	// (libwebp/libx264/aac) et muxers (hls/mp4) requis par les miniatures, le
+	// transcodage HLS et le remux. Informatif — n'altère pas le code de sortie.
+	fmt.Println()
+	fmt.Print(ops.InspectMediaTooling(context.Background()).Summary())
+
 	if !report.OK {
 		return fmt.Errorf("environnement incomplet")
 	}

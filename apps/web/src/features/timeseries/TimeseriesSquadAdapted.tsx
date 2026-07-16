@@ -239,10 +239,11 @@ export function TimeseriesIntensityHeatmap({
 
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (rows.length === 0) return null
-    // Les matchs arrivent en DESC (récent → ancien) ; on inverse pour lire la
-    // heatmap du plus ancien (haut) au plus récent (bas), comme les autres graphes.
-    const ordered = [...rows].reverse()
-    return buildSquadIntensityHeatmapOption(ordered as SquadIntensityMatchRow[], { zLabel })
+    // L'API renvoie déjà les matchs en ordre chronologique ancien→récent
+    // (buildIntensityRows trie start_time ASC, comme buildSquadIntensityProfile).
+    // Le builder consomme cet ordre tel quel : #1 (ancien) en haut → #N (récent)
+    // en bas via yAxis.inverse. Ne PAS réinverser (même contrat que la page Escouade).
+    return buildSquadIntensityHeatmapOption(rows as SquadIntensityMatchRow[], { zLabel })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, zLabel, themeVersion])
   return <ChartRender option={option} height={height} title={title} emptyMessage={emptyMessage} />

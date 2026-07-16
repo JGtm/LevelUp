@@ -1,3 +1,49 @@
+## [2026-07-16] Salve 3 — audit release + hardening ffmpeg, audit ordre matchs 3 pages (branche fix/corrections-v7-backlog)
+
+**Statut** : Complété.
+
+**Audit release (lecture seule) → verdict** : l'app appelle réellement ffmpeg/ffprobe
+(miniatures WebP toujours via IndexMedia ; transcodage HLS conditionnel — copy pour
+av1/opus ; remux WebM live pour MKV/AVI non transcodés). Le chemin prod Docker
+EMPAQUETTE ffmpeg (Dockerfile) et DuckDB est statiquement lié — l'inquiétude
+« empaqueté dedans » était couverte au packaging mais PAS observable (aucun check
+boot/health ; POC validé sur ffmpeg 8.x vs Debian ~5.1 en prod ; binaires GitHub
+Releases NON autosuffisants ; nginx template sans client_max_body_size → 413 sur
+uploads vidéo).
+
+**Hardening implémenté (recos validées utilisateur)** : LogMediaToolingStatus au boot
+(Info + version / Warn actionnable, non-bloquant, timeout 5s) ; InspectMediaTooling
+(encodeurs libwebp/libx264/aac + muxers hls/mp4-fmp4, un exec par sous-commande,
+garde anti-faux-positif) exposé boot + check-env ; helper lookupBinary factorisé
+(≤2 copies) ; 10 tests parsing sur fixtures (zéro dépendance à un ffmpeg installé) ;
+nginx template client_max_body_size 2g + commentaires FastAPI/uvicorn rafraîchis ;
+RUNBOOK_DEPLOY_CHECKLIST étape « media tooling » ; packaging/thumbnails-watcher.service
++ INSTALL_SERVICES.md supprimés (service Python mort, zéro référence active prouvée,
+archive annotée) ; release.yml note de non-autosuffisance. NON FAIT (documenté) :
+migration build CI→GHCR.
+
+**Audit ordre des matchs (Sessions/Timeseries/Escouade), chaîne SQL→écran** (consigne
+utilisateur : le frontend réordonne parfois — commentaires vérifiés, pas crus) :
+Sessions conforme (toutes surfaces re-trient ASC à l'écran) ; Escouade conforme
+(re-vérifiée) ; Timeseries : UNE double inversion trouvée — TimeseriesIntensityHeatmap
+(backend re-triait DESC avec 2 commentaires FAUX + reverse frontend compensatoire)
+→ corrigée net-zéro à l'écran : tri backend ASC (timeseries_service_events.go),
+.reverse() supprimé (TimeseriesSquadAdapted.tsx), test d'ordre
+TestBuildIntensityRows_OrdersOldestFirst. Tableaux compagnons de graphes laissés
+ancien→récent (= demande utilisateur « tableaux et graphes dans le même ordre ») ;
+tables de navigation restent récent-en-haut. + Fix coordinateur : étiquette Y doublée
+« #1 #1 Carte » de cette heatmap (le Go préfixait #N ET le builder web aussi) → label
+Go aligné sur le contrat builder « Carte — JJ/MM » + test ajusté.
+
+**Signalé non traité** : code mort squad/v2/HistoryTable.tsx + TimeseriesCombatYield
+(dead-code museum) ; collision route GET /players/{slug}/challenges (Home vs Prestige)
+toujours en attente d'arbitrage.
+
+**Gates assemblage** : tsc OK ; go build ./... OK ; go test service+ops+cmd OK ;
+vitest timeseries+session-detail 98/98.
+
+---
+
 ## [2026-07-16] Salve 2 post-lot v7 — activation locale, routes Ascension, bonus (branche fix/corrections-v7-backlog)
 
 **Statut** : Complété (suite du commit 642ef31f8).
