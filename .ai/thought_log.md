@@ -1,3 +1,96 @@
+## [2026-07-16] Fix P0 — identité Spartan partagée entre joueurs + fuite cross-titre (régression train 2026-07-15)
+
+**Statut** : Complété (branche fix/spartan-appearance-per-player). Gates Go verts, pas encore commité (superviseur gère git).
+
+**Symptôme prod** : tous les joueurs (H5 ET Infinite) affichaient le MÊME Spartan ID /
+emblème / nameplate sur leur accueil — l'identité était devenue un état global = celui du
+COMPTE CONNECTÉ. Perçu aussi comme une fuite cross-titre (identité vue « ailleurs »).
+
+**Cause racine (fichier:ligne)** : `internal/api/wire/registry_auth.go`, `HomeCtxWithAuth`.
+`HomeService.GetSpartanIdentity(ctx)` résout l'identité via `ctxkeys.HaloXUID(ctx)` (et non
+un xuid explicite de la page). Le garde-fou historique ne forçait `pdb.XUID` que si
+`HaloXUID(enriched) == ""`. Or `enrichWithHaloTokens` réutilise le token de SESSION quand il
+est frais (`TokensFreshStrict`) et retourne le ctx INCHANGÉ → `HaloXUID` reste celui de la
+session. Un admin/membre de groupe (ADR 0029) consultant la page d'un autre joueur servait
+donc l'identité du compte connecté, pour TOUTES les pages, TOUS titres.
+
+**Déclencheur = train 2026-07-15 (PR #61)**, commit `a5c6eb8c2` (SISU) : `pollDeviceFlow`
+complète désormais gamertag/xuid depuis le XSTS RTA. Avant, le flow SISU échouait en
+`identity_missing` et la session ne portait AUCUNE `LinkedHaloIdentity.XUID` → `enrich`
+retombait sur `ResolveFreshPlayerTokens(pdb.XUID)` → xuid de la page (correct). Le train a
+« complété » l'identité de session → le xuid du compte connecté est désormais présent et
+prend le dessus (bug jusque-là dormant). `session.go:51` pose `WithHaloAuth(sess.HaloTokens,
+LinkedHaloIdentity.XUID)`.
+
+**Fix (title-agnostic, minimal)** : `HomeCtxWithAuth` force désormais TOUJOURS le xuid de la
+page via un helper testable `forcePageIdentityXUID(ctx, pdb.XUID)` (remplace le garde
+`== ""`). Sûr : `GetCareerProgress`/`GetSpartanCustomization` (`halo_client_career.go`)
+ciblent `xuid(<pdb>)` DANS l'URL — un token d'un autre compte renvoie les données de la cible
+(ou 403 → vue publique), jamais celles du porteur. Aucun couplage de paire réintroduit (règle
+apparence : champs indépendants). Explorer/Compare/SeasonPass non touchés : ils passent déjà
+`pdb.XUID` explicitement (audit fait).
+
+**Cross-titre** : aucune fuite serveur distincte trouvée. Lecture Q26c scopée (player DB +
+xuid) ; persist H5 `PersistAppearance` par gamertag/xuid + chemins PathResolver par titre ;
+cron cible `p.XUID` (correct). Le `CareerLiveCache` est keyé par xuid SEUL (pas de titre) mais
+le chemin home gate H5 hors cache (`ProvidesLiveCareerProgression`/`CapCareerRankCatalog`) →
+il ne contient que des réponses economy Infinite : pas la cause observée (noté comme aléa
+latent, non traité — hors périmètre). La fuite cross-titre perçue = manifestation de la cause
+racine (identité globale du compte connecté) + staleness front déjà corrigée `ec36e7b40`
+(clé query `['home', slug, titleSlug]`, légitime, ne crée pas le partage).
+
+**Tests** : `registry_auth_enrich_test.go` — 3 tests `TestForcePageIdentityXUID_*` verrouillent
+le scoping par joueur (page tierce → xuid page ; démo → xuid page ; page propre → inchangé +
+tokens préservés). Le 1er aurait attrapé la régression.
+
+**Résultats** : `go test ./...` (apps/go-api) VERT (séquentiel). golangci-lint : seulement la
+dette baseline pré-existante, 0 nouvelle issue sur le code ajouté.
+
+**Découverte hors périmètre (traitée dans le volet OG ci-dessous)** : `og_inject.go` utilise
+`HomeCtx` (non-auth) qui ne pose jamais `pdb.XUID` → identité résolue sur xuid="". Mécanisme
+réel, mais la conséquence supposée (« pas d'image Spartan sur la carte OG ») était INEXACTE —
+voir volet OG.
+
+---
+
+## [2026-07-16] Volet OG — pin xuid de page sur le chemin OpenGraph (crawler)
+
+**Statut** : Complété (branche fix/spartan-appearance-per-player). Gates Go verts, pas commité
+(superviseur gère git).
+
+**Vérification du constat (fichier:ligne)** — le MÉCANISME est confirmé, la CONSÉQUENCE ne l'est
+pas :
+- `internal/api/wire/registry_pages_home.go:18` `HomeCtx` ne pose jamais `pdb.XUID` dans le ctx
+  (et ne retourne même pas de ctx). Son SEUL appelant de prod est `og_inject.go:98`
+  (`registry_career.go:253` = commentaire ; `registry_test.go:99` = test).
+- `og_inject.go` → `GetHomePage` → `career_live_service.go:167` `GetSpartanIdentity(ctx)` résout
+  via `ctxkeys.HaloXUID(ctx)`. Crawler anonyme = ctx sans xuid → `GetSpartanIdentityFor(ctx, "")`
+  → `serveDBFallback` tolère xuid="" et rend `nil` (ligne 193-195). `SpartanIdentity` de la
+  réponse home revient donc nil sur ce chemin.
+- MAIS `ogmeta.PlayerMeta` (builder.go:68) NE consomme PAS `SpartanIdentity`. L'image OG est un
+  asset FIXE auto-hébergé `/og-default.png` (builder.go:27-30, choix délibéré : les URLs de
+  bannière Waypoint/CDN expirent / exigent une auth). La carte n'utilise que `Hero.PlayerName` +
+  KPIs, tous scopés à la player DB de `pdb` (indépendants du xuid ambiant). → « cartes sans image
+  Spartan » = par conception, pas un bug ; sortie OG déjà correcte pour le bon joueur.
+
+**Fix (minimal, invariant-alignment)** : `playerOGMeta` capture désormais le xuid retourné par
+`HomeCtx` et le force via `forcePageIdentityXUID(ctx, xuid)` (helper existant, réutilisé — pas
+de duplication) avant `GetHomePage`. Logique extraite dans `ogMetaFromHome` (seam testable). Pose
+l'invariant « ce chemin résout l'identité sur le xuid de la PAGE » — même contrat que
+`HomeCtxWithAuth`, title-agnostic. Effet observable sur les octets OG servis AUJOURD'HUI : nul
+(SpartanIdentity non émis, enrichissement DemoMode-gated) ; valeur = cohérence de l'invariant +
+robustesse si un futur consommateur de `SpartanIdentity` est ajouté au chemin OG.
+
+**Tests** : `og_inject_test.go` — 2 tests `TestOGMetaFromHome_*` (fake HomeService capturant le
+ctx) verrouillent que `GetHomePage` voit le xuid de la page (crawler sans xuid ; xuid ambiant
+étranger écrasé). Esprit des `TestForcePageIdentityXUID_*`.
+
+**Résultats** : `go test ./...` (apps/go-api) VERT (séquentiel). `go vet ./internal/api/wire/...
+./internal/ogmeta/...` propre. Vérif comportementale curl non faite : serveur :8000 éteint (pas
+lancé — risque build go concurrent) ET la sortie OG ne changerait pas (raisons ci-dessus).
+
+---
+
 ## [2026-07-16] Lot fixes UI post-train — bugs 2/5/6 (+ constats 3/4)
 
 **Statut** : Complété (branche fix/ui-post-train). Bug 1 déjà commité (aa5458fb7).
