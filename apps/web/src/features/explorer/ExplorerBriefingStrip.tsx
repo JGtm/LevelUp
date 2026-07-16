@@ -13,7 +13,7 @@ import { KpiCard } from '@/components/cards/KpiCard'
 import { OutcomeSequenceTape, type OutcomePoint } from '@/components/charts/OutcomeSequenceTape'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { kdaNetColor, winRateColor } from '@/lib/colors/outcomePalette'
-import { formatPercentInt } from '@/lib/formatters'
+import { formatDateRange, formatPercentInt } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { ExplorerBriefing } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
@@ -44,14 +44,9 @@ function formatPeriod(
   locale: string,
 ): string | undefined {
   if (!start) return undefined
-  const fmt = new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'fr-FR', {
-    day: 'numeric',
-    month: 'short',
-  })
-  const s = fmt.format(new Date(start))
-  if (!end) return s
-  const e = fmt.format(new Date(end))
-  return s === e ? s : `${s} – ${e}`
+  // Intervalle daté COMPLET (année incluse) via le helper canonique formatDateRange —
+  // factorise mois/année (« 3–12 mars 2025 ») ; date simple si end absent/égal.
+  return formatDateRange(start, end, locale === 'en' ? 'en-US' : 'fr-FR')
 }
 
 interface TileProps {

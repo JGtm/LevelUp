@@ -1,3 +1,57 @@
+## [2026-07-16] Explorer briefing V2 — Phases 0 + 1 (branche feat/explorer-briefing-v2)
+
+**Statut** : Complété (Phases 0 et 1 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`).
+Worktree isolé `feat/explorer-briefing-v2`. Périmètre limité aux Phases 0-1 ; NON committé
+(le superviseur commite).
+
+**Phase 0 (constat re-vérifié sur pièces)** : tous les fichier:ligne frontend du §2 EXACTS
+(formatPeriod ExplorerBriefingStrip `:41-55` sans année ; explorer.toml dim_playlist
+`:899-901` « Par playlist », ranked_title `:911-913` « Pronostic »/« Prognosis » ;
+logic.ts `formatSignedFixed:17`/`formatSignedPoints:29` ; ExplorerBriefingModules
+DimensionRow `:94-130`, RankedCard `:159-204`). Seule divergence : `ExplorerBriefingRanked`
+struct à `explorer_briefing.go:121` (§2 citait `:120`, décalage d'1 ligne, champs
+identiques — consigné §6 Découverte-1). **Vérification clé** : les commits « sweep recovery
+player-DB » de la base (021f24a7b, af6ccdd6f, 8750dfcc8) N'ONT touché AUCUN fichier
+explorer/briefing (service briefing + domain = Lot D 01f71104b ; kpi_stats = chantier H5) →
+aucun impact sur l'explorer, CONFIRMÉ. Décisions AWAIT-USER : **D-B = défaut 10**,
+**D-C = défaut** (« CSR · Bronze I → Platine VI · −1.4 pt/match », titre « Classement ») —
+s'appliquent par défaut (transmis par le superviseur).
+
+**Phase 1 (terminologie, renommage, année — frontend-only)** :
+- 1a : `dim_playlist` FR « Par playlist » → « Par sélection » (EN « By playlist » inchangé).
+- 1b : `ranked_title` FR « Pronostic »/EN « Prognosis » → « Classement »/« Ranking ». Pas de
+  tooltip. Clés `ranked_expected*`/`ranked_delta` laissées pour la Phase 4 (typecheck).
+- 1c : nouveau helper canonique `formatDateRange(start, end, locale, fallback?)` dans
+  `lib/formatters/date.ts` (`Intl.DateTimeFormat.prototype.formatRange`, opts
+  jour/mois-court/année) — factorise mois/année sur un intervalle (« 3–12 mars 2025 »), date
+  simple si end absent/égal/invalide, fallback « — » si start invalide. Ré-exporté depuis
+  `formatters/index.ts` ; en-tête de doc mise à jour ; 4 tests dans `formatters.test.ts`.
+  `ExplorerBriefingStrip.formatPeriod` délègue au helper (retrait de l'Intl local sans année).
+- 1d : garde-rail `features/explorer/explorerBriefingTerminology.guard.test.ts` (test node,
+  scanne `explorer.toml` + composants `*briefing*`, hors tests) interdisant « Par playlist » /
+  « Pronostic » / « Prognosis ».
+
+**Décision d'exécution consignée** : `formatDateRange` accepte une locale BCP-47 (comme
+`formatDate`) ; `formatPeriod` continue de mapper 'fr'/'en' → 'fr-FR'/'en-US'. Point décimal
+FR/EN natif de `formatRange` accepté (native = source, cohérent avec les autres helpers).
+
+**Gates (tous verts, worktree, 2026-07-16)** : `build_i18n_manifests.mjs` OK (seul
+`explorer.ts` régénéré, 2 valeurs, 0 clé touchée) ; `make check-types` = 0 ; `make test-web`
+= 256 fichiers / 2172 passés / 14 skipped / 0 fail (tests 1c + 1d inclus) ; `npm run lint` =
+0 erreur (68 warnings baseline pré-existants, aucun sur les fichiers touchés) ; greps de
+clôture = 0 occurrence des littéraux retirés (hors le garde-rail).
+
+**Fichiers modifiés** : `apps/web/src/lib/i18n/manifests/explorer.toml`,
+`apps/web/src/lib/i18n/generated/explorer.ts` (régénéré),
+`apps/web/src/lib/formatters/date.ts`, `apps/web/src/lib/formatters/index.ts`,
+`apps/web/src/lib/formatters/formatters.test.ts`,
+`apps/web/src/features/explorer/ExplorerBriefingStrip.tsx`,
+`apps/web/src/features/explorer/explorerBriefingTerminology.guard.test.ts` (nouveau),
+`.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md` (cases Phases 0-1 statuées + §6 Découverte-1).
+
+**Prochaine étape** : Phase 2 (delta « vs habituel » dégénéré en plein historique, front +
+service, item 1). Aucun fix hors périmètre effectué. Commit laissé au superviseur.
+
 ## [2026-07-16] Révision du PLAN_DIAG_APPARENCE_ADMIN — intégration des retours « Rapports page Admin »
 
 **Statut** : Complété (docs-only, aucune ligne de code). Demande utilisateur : lire la
