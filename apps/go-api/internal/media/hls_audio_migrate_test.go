@@ -79,8 +79,8 @@ func TestMigrateHLSAudioToAAC_Integration(t *testing.T) {
 	if segs, _ := filepath.Glob(filepath.Join(outDir, "seg_game_*.m4s")); len(segs) == 0 {
 		t.Error("aucun segment game après migration")
 	}
-	// L'arbre migré reste démultiplexable (master + sous-playlists + segments).
-	if err := VerifyHLSPlayable(context.Background(), filepath.Join(outDir, "master.m3u8")); err != nil {
+	// L'arbre migré reste démultiplexable et garde ses 2 renditions (game + full).
+	if err := VerifyHLSPlayable(context.Background(), filepath.Join(outDir, "master.m3u8"), 2); err != nil {
 		t.Errorf("VerifyHLSPlayable après migration = %v, want nil", err)
 	}
 

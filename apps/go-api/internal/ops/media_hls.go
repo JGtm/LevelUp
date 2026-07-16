@@ -88,6 +88,14 @@ func DetectHLSNeeded(ctx context.Context, srcAbs string) (bool, error) {
 // master.m3u8 (format MediaPathStore : {gamertag}/hls/{stem}/master.m3u8).
 // Pure : aucune IO. En mode legacy (capturesBase vide), hlsRel retombe sur le
 // chemin absolu du master.
+//
+// Limite connue (collision de stem) : le dossier de sortie ne dépend que du stem
+// (nom sans extension). Deux sources au même stem dans un même dossier joueur
+// (clip.mkv et clip.mp4) résolvent vers le MÊME hls/{stem} — la seconde
+// transcodée écrase l'arbre de la première. Pas de correctif structurel ici :
+// désambiguïser le nom (inclure l'extension) casserait les arbres HLS déjà
+// produits et référencés en DB. En pratique une capture porte une extension
+// stable ; la collision suppose deux conteneurs jumeaux, cas non observé.
 func HLSPathsFor(capturesDir, capturesBase, gamertag, sourceAbs string) (outDir, hlsRel string) {
 	stem := strings.TrimSuffix(filepath.Base(sourceAbs), filepath.Ext(sourceAbs))
 	outDir = filepath.Join(capturesDir, "hls", stem)
@@ -217,10 +225,11 @@ func RunHLSTranscode(ctx context.Context, p HLSTranscodeParams) error {
 
 	// Garde anti-perte de données : BuildHLS ne fait que stat les fichiers
 	// produits ; on prouve ici que le master est réellement démultiplexable
-	// (ffprobe) AVANT de supprimer le source. Sinon un manifest produit mais
-	// cassé (init/segments manquants, segment tronqué) deviendrait illisible et
-	// irrécupérable (source détruit, plus de fallback remux, plus de miniature).
-	if err := mediapkg.VerifyHLSPlayable(ctx, res.MasterPath); err != nil {
+	// (ffprobe) ET qu'il déclare toutes les renditions audio attendues AVANT de
+	// supprimer le source. Sinon un manifest produit mais cassé (init/segments
+	// manquants, rendition perdue) deviendrait illisible et irrécupérable (source
+	// détruit, plus de fallback remux, plus de miniature).
+	if err := mediapkg.VerifyHLSPlayable(ctx, res.MasterPath, res.AudioTracks); err != nil {
 		log.ErrorContext(ctx, "RunHLSTranscode: HLS produit illisible (ffprobe) — source conservé, remux legacy",
 			"source", p.SourceAbs, "master", res.MasterPath, "err", err)
 		if markErr := MarkTranscodeStatus(ctx, p.DBPath, p.FileRel, TranscodeFailed); markErr != nil {
