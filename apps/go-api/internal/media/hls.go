@@ -7,9 +7,18 @@ package media
 // plats. Permet la sélection de piste audio (EXT-X-MEDIA TYPE=AUDIO) et le seek
 // (Range sur les segments), ce que le remux WebM ne permet pas.
 //
-// Policy codec (cible Chrome/Firefox/Edge via hls.js) : copy par défaut. Le
-// réencodage n'est déclenché que pour les codecs incompatibles avec fMP4/HLS
-// (vidéo VP8/VP9 → H.264, audio exotique → AAC). L'Opus est copié tel quel.
+// Cible navigateur : Chrome/Firefox/Edge via hls.js (MSE) — c'est là que la
+// sélection de piste audio (game/voices/full) et l'adaptatif sont pilotés. Safari
+// et iOS lisent le HLS EN NATIF, en best-effort seulement : le lecteur natif
+// n'expose PAS de sélecteur de pistes (l'utilisateur reste sur la rendition
+// DEFAULT) et n'accepte pas tous les codecs (HEVC selon le matériel, Opus-in-fMP4
+// non lu). D'où deux durcissements pour rester audible/lisible en natif : l'audio
+// est UNIFORMISÉ en AAC (aacUniformAction), et la vidéo HEVC copiée reçoit le
+// sample entry hvc1 (buildHLSArgs) que Safari exige à la place du hev1 par défaut.
+//
+// Policy codec : copy par défaut, réencodage ciblé pour ce qui n'est pas lisible
+// partout en HLS-fMP4 — vidéo VP8/VP9 → H.264 ; audio non-AAC (Opus/MP3/…) → AAC.
+// La vidéo H.264/HEVC/AV1 est copiée (HEVC avec tag hvc1).
 //
 // La logique de décision (planHLS, NeedsHLS, buildVarStreamMap,
 // rewriteMasterAudioNames) est pure et testable sans ffmpeg ; seuls
@@ -35,6 +44,15 @@ const defaultSegmentDuration = 4
 // aacRenditionBitrate est le débit cible du réencodage AAC des renditions audio
 // (réencode amix `full`/`voices`, et migration des renditions Opus legacy).
 const aacRenditionBitrate = "192k"
+
+// amixLimiterCeiling est le plafond linéaire (0..1) appliqué par alimiter à la
+// SORTIE de chaque amix. amix somme les entrées SANS les diviser (normalize=0,
+// choisi pour ne pas affaiblir le volume) : la somme jeu+voix peut dépasser le
+// plein-échelle et écrêter. Le limiteur borne les crêtes juste sous 1.0.
+// level=false → limiteur de crête pur, sans re-normalisation auto qui annulerait
+// le normalize=0. NE concerne PAS les amix d'ANALYSE (hls_audio_analyze.go) : la
+// corrélation d'enveloppe doit mesurer le signal brut.
+const amixLimiterCeiling = "0.98"
 
 // AVStreamDetail décrit une piste (vidéo ou audio) retournée par ffprobe,
 // enrichie des tags utiles au nommage des pistes audio dans le master.
@@ -71,6 +89,7 @@ type audioRendition struct {
 type hlsPlan struct {
 	VideoAction   streamAction
 	VideoCodec    string // codec cible si réencode ("h264") ; "" si copy
+	VideoSrcCodec string // codec vidéo SOURCE (ex. "hevc") ; pilote le tag hvc1 en copy
 	Audios        []audioRendition
 	FilterComplex string // -filter_complex (amix) ; "" si aucune agrégation
 	VarStreamMap  string
@@ -135,6 +154,7 @@ func planHLS(streams []AVStreamDetail, layout audioLayout) (hlsPlan, error) {
 				continue // une seule piste vidéo (la première)
 			}
 			hasVideo = true
+			plan.VideoSrcCodec = s.CodecName
 			plan.VideoAction, plan.VideoCodec = planVideo(s.CodecName)
 		case "audio":
 			srcAudios = append(srcAudios, s)
@@ -173,12 +193,14 @@ func planAudioRenditions(src []AVStreamDetail, layout audioLayout) ([]audioRendi
 	return componentRenditions(src)
 }
 
-// singleAudioRendition produit l'unique rendition `a0` d'une piste directe (pas de
-// switch côté lecteur → copy tolérée pour les codecs fMP4-compatibles).
+// singleAudioRendition produit l'unique rendition `a0` d'une piste directe. Codec
+// uniformisé AAC (aacUniformAction) : même sans switch de piste, un Opus copié
+// dans fMP4 est INAUDIBLE en HLS natif Safari/iOS — la copy n'est donc tolérée que
+// si la source est déjà AAC, sinon réencodage AAC.
 func singleAudioRendition(s AVStreamDetail) audioRendition {
 	return audioRendition{
 		Slug: "a0", Display: audioDisplay(s, 0), MapSpec: "0:a:0",
-		Action: planAudio(s.CodecName), Default: true, Language: sanitizeLanguage(s.Language),
+		Action: aacUniformAction(s.CodecName), Default: true, Language: sanitizeLanguage(s.Language),
 	}
 }
 
@@ -258,13 +280,17 @@ func rangeIdx(from, to int) []int {
 
 // amixFilter construit un segment -filter_complex amix mixant les pistes audio
 // source d'indices donnés vers le label de sortie nommé. normalize=0 conserve
-// les niveaux d'origine (sinon amix divise le volume par le nombre d'entrées).
+// les niveaux d'origine (sinon amix divise le volume par le nombre d'entrées),
+// suivi d'un alimiter (amixLimiterCeiling) qui borne les crêtes de la somme pour
+// éviter l'écrêtage. C'est un amix de SORTIE (rendition servie) : à distinguer des
+// amix d'analyse de hls_audio_analyze.go, volontairement sans limiteur.
 func amixFilter(srcIdx []int, label string) string {
 	var ins strings.Builder
 	for _, i := range srcIdx {
 		fmt.Fprintf(&ins, "[0:a:%d]", i)
 	}
-	return fmt.Sprintf("%samix=inputs=%d:normalize=0:duration=longest[%s]", ins.String(), len(srcIdx), label)
+	return fmt.Sprintf("%samix=inputs=%d:normalize=0:duration=longest,alimiter=limit=%s:level=false[%s]",
+		ins.String(), len(srcIdx), amixLimiterCeiling, label)
 }
 
 // planVideo décide copy/réencode pour la vidéo. H.264/AV1/HEVC passent en fMP4
@@ -279,23 +305,18 @@ func planVideo(codec string) (streamAction, string) {
 	}
 }
 
-// planAudio décide copy/réencode pour une piste audio. Opus/AAC/MP3 sont
-// conteneurisables en fMP4 et lus par hls.js → copy. Le reste → AAC.
-func planAudio(codec string) streamAction {
-	switch strings.ToLower(codec) {
-	case "opus", "aac", "mp3":
-		return actionCopy
-	default:
-		return actionReencode
-	}
+// isHEVCCodec reconnaît un codec vidéo HEVC (H.265) — les deux noms que ffprobe
+// peut retourner. Pilote l'ajout du tag hvc1 quand la vidéo est copiée.
+func isHEVCCodec(codec string) bool {
+	c := strings.ToLower(codec)
+	return c == "hevc" || c == "h265"
 }
 
-// aacUniformAction décide copy/réencode pour une rendition d'un groupe audio
-// MULTIPISTE, où toutes les renditions doivent partager le même codec (AAC) :
-// copy uniquement si la source est déjà AAC, sinon réencode AAC. Garantit un
-// groupe audio mono-codec → la bascule de piste fonctionne sur Firefox/Safari
-// (pas de SourceBuffer.changeType). À distinguer de planAudio (mono-piste, où
-// la copy Opus/MP3 est sans conséquence puisqu'il n'y a pas de switch).
+// aacUniformAction décide copy/réencode pour une rendition audio HLS-fMP4 : copy
+// uniquement si la source est déjà AAC, sinon réencode AAC. Deux raisons de forcer
+// l'AAC : (1) sur un groupe MULTIPISTE, un codec unique est requis pour que la
+// bascule de piste fonctionne sur Firefox/Safari (pas de SourceBuffer.changeType) ;
+// (2) même en MONO-piste, l'Opus-in-fMP4 est inaudible en HLS natif Safari/iOS.
 func aacUniformAction(codec string) streamAction {
 	if strings.EqualFold(codec, "aac") {
 		return actionCopy
@@ -418,24 +439,43 @@ func ProbeStreamsDetailed(ctx context.Context, absPath string) ([]AVStreamDetail
 	return streams, nil
 }
 
-// VerifyHLSPlayable confirme qu'un master.m3u8 produit est réellement
-// démultiplexable par ffprobe (pas seulement présent sur disque) et expose au
-// moins une piste vidéo. ffprobe suit la playlist : un manifest mal formé, des
-// init/segments manquants ou des segments corrompus le font échouer.
+// VerifyHLSPlayable confirme qu'un master.m3u8 produit est exploitable AVANT la
+// suppression irréversible du fichier source (tant que la lecture n'est pas
+// prouvée, on conserve le source — fallback remux). Deux gardes :
 //
-// Utilisé comme garde AVANT la suppression irréversible du fichier source : tant
-// que la lecture HLS n'est pas prouvée, on conserve le source (fallback remux).
-func VerifyHLSPlayable(ctx context.Context, masterPath string) error {
+//  1. ffprobe démultiplexe le master et y trouve une piste vidéo — un manifest mal
+//     formé ou un arbre amputé de ses sous-playlists/segments ne remonte alors
+//     AUCUN flux (ffprobe n'énumère que ce qu'il peut ouvrir) → pas de vidéo → rejet.
+//  2. le master déclare EXACTEMENT expectedAudioTracks renditions audio. Le compte
+//     vient du master lui-même (parseMasterAudioRenditions), pas de ffprobe : sur un
+//     master sain ffprobe liste bien les renditions, mais son énumération dépend de
+//     la version/du démuxeur HLS et reflète les sous-playlists OUVRABLES, pas celles
+//     DÉCLARÉES (vérifié : master amputé → 0 flux, exit 0). Le master m3u8 est la
+//     source de vérité déterministe du groupe audio → on y compte les EXT-X-MEDIA.
+//     Attrape une rendition perdue au transcodage que le seul check vidéo manquait.
+func VerifyHLSPlayable(ctx context.Context, masterPath string, expectedAudioTracks int) error {
 	streams, err := ProbeStreamsDetailed(ctx, masterPath)
 	if err != nil {
 		return fmt.Errorf("ffprobe master HLS %q: %w", masterPath, err)
 	}
+	hasVideo := false
 	for _, s := range streams {
 		if s.CodecType == "video" {
-			return nil
+			hasVideo = true
+			break
 		}
 	}
-	return fmt.Errorf("master HLS sans piste vidéo lisible: %s", masterPath)
+	if !hasVideo {
+		return fmt.Errorf("master HLS sans piste vidéo lisible: %s", masterPath)
+	}
+	raw, err := os.ReadFile(masterPath)
+	if err != nil {
+		return fmt.Errorf("lecture master HLS %q: %w", masterPath, err)
+	}
+	if got := len(parseMasterAudioRenditions(string(raw))); got != expectedAudioTracks {
+		return fmt.Errorf("master HLS %q: %d renditions audio, attendu %d", masterPath, got, expectedAudioTracks)
+	}
+	return nil
 }
 
 // BuildHLS transcode srcPath en arbre HLS-fMP4 dans outDir (master.m3u8 +
@@ -525,6 +565,12 @@ func buildHLSArgs(plan hlsPlan, src, outDir string, segDur int) []string {
 	}
 	if plan.VideoAction == actionCopy {
 		args = append(args, "-c:v", "copy")
+		// HEVC copié depuis un MKV : ffmpeg écrit par défaut le sample entry hev1,
+		// que Safari refuse. hvc1 (config codec dans le sample description) est le
+		// seul accepté en HLS-fMP4. Sans effet sur H.264/AV1.
+		if isHEVCCodec(plan.VideoSrcCodec) {
+			args = append(args, "-tag:v", "hvc1")
+		}
 	} else {
 		args = append(args, "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p")
 	}

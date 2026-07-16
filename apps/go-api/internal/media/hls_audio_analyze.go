@@ -53,6 +53,13 @@ const (
 	envFrameSamples = 800
 )
 
+// envMaxAnalysisSeconds borne la durée décodée par audioEnvelope. audioEnvelope
+// bufferise TOUT le PCM décodé en RAM (~115 Mo/h/passe à 8 kHz f32, 2+N passes par
+// clip) : sur le VPS 2 Go, un clip de plusieurs heures épuiserait la mémoire. La
+// corrélation d'enveloppe et le taux de silence convergent bien avant 10 min —
+// cette borne est une garde mémoire, pas un paramètre d'analyse.
+const envMaxAnalysisSeconds = 600
+
 // silenceDropDB : une trame est « silencieuse » si son RMS est plus de 25 dB sous le
 // niveau fort (90ᵉ centile) de SA piste. Capture la CONTINUITÉ indépendamment du
 // volume absolu : le son de jeu est continu (peu de trames silencieuses), la voix
@@ -152,15 +159,9 @@ func rmsFramesDB(raw []byte, frameSamples int) []float64 {
 // audioEnvelope décode un flux audio en PCM mono 8 kHz via ffmpeg et retourne son
 // enveloppe RMS par trame (dB). filterComplex/mapSpec sélectionnent le flux :
 // filterComplex vide → map direct (ex. "0:a:0") ; sinon le filtre produit mapSpec
-// (ex. "[mix]"). IO ffmpeg.
+// (ex. "[mix]"). Décode au plus envMaxAnalysisSeconds (garde mémoire). IO ffmpeg.
 func audioEnvelope(ctx context.Context, src, filterComplex, mapSpec string) ([]float64, error) {
-	args := []string{"-hide_banner", "-loglevel", "error", "-y", "-i", src}
-	if filterComplex != "" {
-		args = append(args, "-filter_complex", filterComplex)
-	}
-	args = append(args, "-map", mapSpec, "-ac", "1", "-ar",
-		fmt.Sprintf("%d", envSampleRate), "-f", "f32le", "-")
-	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
+	cmd := exec.CommandContext(ctx, "ffmpeg", buildEnvelopeArgs(src, filterComplex, mapSpec)...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -168,6 +169,20 @@ func audioEnvelope(ctx context.Context, src, filterComplex, mapSpec string) ([]f
 		return nil, fmt.Errorf("ffmpeg pcm: %w (stderr: %s)", err, stderr.String())
 	}
 	return rmsFramesDB(stdout.Bytes(), envFrameSamples), nil
+}
+
+// buildEnvelopeArgs construit les arguments ffmpeg d'audioEnvelope. Extrait pour
+// être testable sans lancer ffmpeg. `-t` est placé en option d'ENTRÉE (avant -i)
+// pour ARRÊTER le décodage à envMaxAnalysisSeconds — borne la RAM à la source,
+// que l'entrée soit un fichier direct ou une sous-playlist HLS (collapse).
+func buildEnvelopeArgs(src, filterComplex, mapSpec string) []string {
+	args := []string{"-hide_banner", "-loglevel", "error", "-y",
+		"-t", fmt.Sprintf("%d", envMaxAnalysisSeconds), "-i", src}
+	if filterComplex != "" {
+		args = append(args, "-filter_complex", filterComplex)
+	}
+	return append(args, "-map", mapSpec, "-ac", "1", "-ar",
+		fmt.Sprintf("%d", envSampleRate), "-f", "f32le", "-")
 }
 
 // restMixFilter retourne le couple (filterComplex, mapSpec) extrayant le mix des

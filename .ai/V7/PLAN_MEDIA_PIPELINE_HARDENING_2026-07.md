@@ -170,49 +170,98 @@ Fichiers : `apps/go-api/internal/media/hls.go`, `hls_audio_analyze.go`,
 `remux.go`, `apps/go-api/internal/api/handlers/media_serve.go`,
 `apps/go-api/internal/ops/media_hls.go` (VerifyHLSPlayable caller) + tests.
 
-- [ ] C1 (#5a). Mono-piste : `singleAudioRendition` passe par
-      `aacUniformAction` (copy si déjà AAC, sinon réencode AAC) — supprime le
-      cas Opus copié inaudible en HLS natif Safari. Supprimer `planAudio` si
-      plus aucun caller (règle 0 code mort) ; adapter les tests existants.
-- [ ] C2 (#5b). Vidéo HEVC copiée : ajouter `-tag:v hvc1` dans `buildHLSArgs`
-      quand action=copy ET codec source hevc/h265 (nécessite de propager le
-      codec source dans le plan). Test sur les args générés.
-- [ ] C3 (#5c). Commentaire d'en-tête hls.go : acter que la cible navigateur
-      est Chrome/Firefox/Edge via hls.js, Safari natif = best-effort (sélecteur
-      de pistes absent en natif).
-- [ ] C4 (#6). Clipping : chaque sortie amix (voices multi-composantes, full
-      historique) est suivie d'un `alimiter` dans le filter_complex (limite
-      nommée en constante, ~0.98). Tests des chaînes de filtre générées
-      (amixFilter/componentRenditions/fullMixRenditions).
-- [ ] C5 (#7). `audioEnvelope` : borner la lecture à 600 s (constante nommée,
-      commentaire : la corrélation d'enveloppe converge bien avant ; évite de
-      bufferiser des heures de PCM en RAM sur le VPS 2 Go).
-- [ ] C6 (#8). `serveRemuxedWebM` : pre-flight (probe + chooseAudioMap) AVANT
-      d'écrire tout header → 415 si codecs incompatibles, 502/500 si probe
-      échoue ; streaming ensuite inchangé. Nécessite de scinder
-      `StreamRemuxAsWebM` (plan pur exposé + exécution) — pas de duplication de
-      la logique de probe. Test handler httptest (415 sur codec incompatible).
-- [ ] C7 (#11). `VerifyHLSPlayable` : vérifier AUSSI que le nombre de pistes
-      audio du master == attendu (paramètre depuis `HLSResult.AudioTracks`)
-      avant la suppression du source. Adapter le caller RunHLSTranscode + tests.
-- [ ] C8 (#9). Collision de stem `hls/{stem}` (clip.mkv + clip.mp4 coexistants) :
-      documenter la limite en commentaire de `HLSPathsFor`. Statut [~] accepté
-      (pas de correctif structurel dans ce chantier — le renommage impacterait
-      les arbres existants).
+- [x] C1 (#5a). Mono-piste : `singleAudioRendition` passe par `aacUniformAction`
+      (copy si déjà AAC, sinon réencode AAC) — supprime le cas Opus copié
+      inaudible en HLS natif Safari. → `planAudio` SUPPRIMÉ (plus aucun caller,
+      règle 0 code mort) ; commentaires de `singleAudioRendition` et
+      `aacUniformAction` réécrits à l'état présent (l'AAC uniforme sert désormais
+      AUSSI le mono-piste). `TestPlanHLS_SingleAudioTrackLegacy` utilisait en fait
+      du Vorbis (réencodé dans les DEUX régimes) → resté vert sans modification,
+      pas la copy Opus supposée ; l'invariant AAC est déjà couvert par les tests
+      MultiTrackUniformAAC + le golden d'intégration.
+- [x] C2 (#5b). Vidéo HEVC copiée : `-tag:v hvc1` ajouté dans `buildHLSArgs`
+      quand action=copy ET source hevc/h265. → champ `VideoSrcCodec` ajouté à
+      `hlsPlan` (renseigné dans `planHLS` pour TOUTE vidéo, plus seulement au
+      réencode) ; helper `isHEVCCodec`. `TestBuildHLSArgs_HEVCTag` : hevc/h265
+      copy → tag présent ; h264 copy → absent ; hevc réencodé (sortie h264) → absent.
+- [x] C3 (#5c). En-tête hls.go réécrit : cible Chrome/Firefox/Edge via hls.js ;
+      Safari/iOS natif = best-effort (pas de sélecteur de pistes en natif, HEVC
+      selon matériel, Opus-in-fMP4 non lu). La policy codec est mise à jour (AAC
+      uniforme + hvc1) ; l'ancienne phrase « l'Opus est copié tel quel », devenue
+      fausse après C1, est corrigée.
+- [x] C4 (#6). Clipping : constante `amixLimiterCeiling = "0.98"` +
+      `alimiter=limit=0.98:level=false` ajouté DANS `amixFilter` → couvre
+      exactement les amix de SORTIE (componentRenditions voices-amixé + full ;
+      fullMixRenditions voices-amixé). `level=false` = limiteur de crête pur (pas
+      de re-normalisation qui annulerait `normalize=0`). L'amix d'ANALYSE
+      (`restMixFilter`, hls_audio_analyze.go) N'est PAS touché. Attentes
+      filter_complex MAJ (4 tests) + `TestAmixFilter_LimiterOnOutputRenditions`
+      (frontière sortie=limitée / analyse=brute). Chaîne validée sur ffmpeg réel
+      (le golden `TestBuildHLS_Integration` exécute l'amix limité).
+- [x] C5 (#7). `audioEnvelope` bornée : constante `envMaxAnalysisSeconds = 600`
+      + option `-t` en ENTRÉE (avant `-i` → arrête le décodage) dans un helper
+      extrait `buildEnvelopeArgs` (testable sans ffmpeg). S'applique aussi au
+      collapse (`renditionEnvelope` → `audioEnvelope`), sans cas particulier.
+      `TestBuildEnvelopeArgs` : `-t 600` précède `-i`, filter_complex conditionnel.
+- [x] C6 (#8). Remux scindé dans internal/media : `PlanRemuxWebM` (probe +
+      validation codecs + choix map audio, erreurs sentinelles
+      `ErrRemuxProbeFailed` / `ErrRemuxIncompatibleCodec`) puis
+      `StreamRemuxWebMPlan` (ne re-probe PAS). `StreamRemuxAsWebM` SUPPRIMÉ (0
+      code mort). Handler `serveRemuxedWebM` : pré-flight AVANT tout header →
+      **415** si codecs incompatibles WebM, **502** si probe échoue. Statut 502
+      (et non 500) justifié en commentaire : le handler agit en passerelle devant
+      le sous-processus ffprobe/ffmpeg ; un probe sans résultat = défaillance de
+      cette dépendance, à distinguer d'un bug handler (500). Tests : remux_test.go
+      réécrit (plan/stream + `errors.Is`) ; `TestServeMediaFile_RemuxIncompatibleCodec`
+      (415) + `TestServeMediaFile_RemuxProbeFailure` (502), gated ffmpeg/ffprobe,
+      exécutés réellement.
+- [x] C7 (#11). `VerifyHLSPlayable(ctx, master, expectedAudioTracks)` : check
+      vidéo par ffprobe + comptage des renditions par **parse du master**
+      (`parseMasterAudioRenditions`, réutilisé), PAS par ffprobe show_streams.
+      Preuve empirique (ffmpeg 8.0.1) : arbre sain → master déclare 3 EXT-X-MEDIA
+      et ffprobe énumère 3 ; arbre amputé (sous-playlists/segments retirés) →
+      ffprobe énumère 0 flux avec exit 0 (PAS une erreur). L'énumération ffprobe
+      reflète donc les sous-playlists OUVRABLES (dépend version/démuxeur), pas
+      celles DÉCLARÉES ; le master m3u8 est la source de vérité déterministe du
+      groupe audio. Caller `RunHLSTranscode` passe `res.AudioTracks`. Tests MAJ :
+      integration (3 OK / attendu-2 rejeté / master absent / arbre amputé + log
+      empirique) ; migrate (=2 renditions) ; collapse (=1 rendition).
+- [~] C8 (#9). Collision de stem documentée en commentaire de `HLSPathsFor` :
+      deux sources au même stem (clip.mkv + clip.mp4) → même dossier hls/{stem},
+      la seconde transcodée écrase la première. Pas de correctif structurel
+      (désambiguïser le nom casserait les arbres HLS déjà produits et référencés
+      en DB) — statut [~] comme prévu.
 
 Gate C : `cd apps/go-api && go vet ./... && go test ./internal/media/... ./internal/api/handlers/... ./internal/ops/...`
 + si ffmpeg présent dans le PATH, vérifier que les tests d'intégration media ne
 sont PAS skippés (sinon les lancer explicitement).
 
+> Clôture LOT C [2026-07-17] : les 4 commandes de gate exécutées, code de sortie 0
+> vérifié pour chacune (aucune ligne `^--- FAIL:`) : (1) `go vet ./...` ; (2)
+> `go test ./internal/media/... ./internal/api/handlers/... ./internal/ops/...
+> ./internal/service/...` ; (3) `go test -tags=integration -p 1 ./internal/ops/...`
+> (58 s) ; (4) `go test ./...` complet. ffmpeg/ffprobe 8.0.1 présents dans le PATH
+> → tous les tests media/handlers gated ffmpeg RÉELLEMENT exécutés (vérifié en -v :
+> BuildHLS/VerifyHLSPlayable/AnalyzeAudioLayout/Migrate/Collapse/Remux + les 3
+> ServeMediaFile_Remux — PASS, aucun SKIP). Décisions notables : C6 statut probe
+> échoué = 502 (passerelle devant ffprobe/ffmpeg) ; C7 mécanisme = parse du master
+> (preuve empirique : ffprobe énumère l'ouvrable, pas le déclaré). Zéro garde-rail
+> affaibli ; aucun fix hors périmètre. Pas de commit (superviseur).
+
 ---
 
 ## Clôture chantier
 
-- [ ] Relecture diff complet par le superviseur (altitude : cohérence inter-lots).
-- [ ] `go test ./...` complet depuis apps/go-api (pas seulement les packages touchés).
-- [ ] Entrée `.ai/thought_log.md` (date, titre, décisions, résultats, suite).
-- [ ] Commits par lot sur `fix/media-pipeline-hardening`, push, PR SANS merge
-      (revue visuelle utilisateur au merge — push main = deploy prod).
+- [!] Relecture diff complet par le superviseur (altitude : cohérence inter-lots).
+      Réservé au superviseur — les 3 lots A/B/C sont codés et gated ; à faire
+      avant PR.
+- [x] `go test ./...` complet depuis apps/go-api (pas seulement les packages
+      touchés) : exécuté à la clôture LOT C, exit 0, aucun `^--- FAIL:`.
+- [x] Entrée `.ai/thought_log.md` (date, titre, décisions, résultats, suite) —
+      Lot C + bilan chantier ajoutés le 2026-07-17.
+- [!] Commits par lot sur `fix/media-pipeline-hardening`, push, PR SANS merge
+      (revue visuelle utilisateur au merge — push main = deploy prod). Réservé au
+      superviseur : aucun commit fait par les agents (lots A/B/C en working tree).
 
 ## Protocole de reprise
 

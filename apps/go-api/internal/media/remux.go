@@ -4,63 +4,78 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"os/exec"
 )
 
-// StreamRemuxAsWebM lance ffmpeg en sous-processus pour remuxer un fichier
-// vidéo non-web-natif (MKV, AVI) vers WebM sans réencodage (-c copy) et
-// streame le résultat dans w.
+// ErrRemuxProbeFailed et ErrRemuxIncompatibleCodec distinguent les deux modes
+// d'échec du pré-flight (PlanRemuxWebM) pour que l'appelant HTTP choisisse son
+// status AVANT d'écrire le moindre octet : probe cassé (source illisible / ffprobe
+// indisponible) vs codecs source incompatibles WebM.
+var (
+	ErrRemuxProbeFailed       = errors.New("remux: pré-flight ffprobe échoué")
+	ErrRemuxIncompatibleCodec = errors.New("remux: codecs source incompatibles WebM")
+)
+
+// RemuxPlan porte la décision de remux validée par le pré-flight (codecs
+// compatibles WebM confirmés) : le seul paramètre variable est le -map audio.
+// Construit par PlanRemuxWebM, consommé par StreamRemuxWebMPlan.
+type RemuxPlan struct {
+	AudioMap string // argument ffmpeg -map audio (0:a, 0:a:0 ou 0:a?)
+}
+
+// PlanRemuxWebM exécute le PRÉ-FLIGHT du remux WebM (ffprobe + validation codecs)
+// SANS produire d'octet : c'est le point où l'appelant HTTP peut encore répondre
+// un status d'erreur. Retourne une erreur enveloppant ErrRemuxProbeFailed (probe
+// impossible) ou ErrRemuxIncompatibleCodec (vidéo non av1/vp8/vp9, ou aucune piste
+// audio compatible). ffmpeg + ffprobe doivent être dans le PATH.
 //
-// Préconditions :
-//   - Le codec vidéo doit être AV1, VP8 ou VP9 (compatible WebM)
-//   - Au moins une piste audio doit être Opus ou Vorbis
-//   - ffmpeg + ffprobe doivent être dans le PATH
-//
-// Stratégie pistes audio (décidée via ffprobe pre-flight) :
+// Stratégie pistes audio :
 //   - Toutes les pistes Opus/Vorbis → -map 0:a (toutes copiées)
 //   - Première piste Opus/Vorbis mais pas toutes → -map 0:a:0 (première seule)
-//   - Aucune piste compatible → erreur
-//
-// Le caller est responsable du Content-Type (video/webm) et de la gestion du
-// status code HTTP. ServeFile-style Range requests ne sont pas supportés sur
-// le flux remuxé.
-func StreamRemuxAsWebM(ctx context.Context, absPath string, w io.Writer) error {
+//   - Aucune piste compatible → ErrRemuxIncompatibleCodec
+func PlanRemuxWebM(ctx context.Context, absPath string) (RemuxPlan, error) {
 	info, err := probeAVStreams(ctx, absPath)
 	if err != nil {
-		return fmt.Errorf("ffprobe: %w", err)
+		return RemuxPlan{}, fmt.Errorf("%w: %v", ErrRemuxProbeFailed, err)
 	}
-
 	if !isWebMCompatibleVideoCodec(info.VideoCodec) {
-		return fmt.Errorf("video codec %q non compatible WebM (attendu : av1, vp8, vp9)", info.VideoCodec)
+		return RemuxPlan{}, fmt.Errorf("%w: vidéo %q (attendu av1/vp8/vp9)", ErrRemuxIncompatibleCodec, info.VideoCodec)
 	}
-
 	audioMap, err := chooseAudioMap(info.AudioCodecs)
 	if err != nil {
-		return err
+		return RemuxPlan{}, fmt.Errorf("%w: %v", ErrRemuxIncompatibleCodec, err)
 	}
+	return RemuxPlan{AudioMap: audioMap}, nil
+}
 
+// StreamRemuxWebMPlan lance ffmpeg (remux -c copy vers WebM) selon un RemuxPlan
+// DÉJÀ validé par PlanRemuxWebM et streame le résultat dans w. Ne re-probe PAS :
+// l'appelant a déjà tranché codecs et status. Un échec ici survient en cours de
+// flux (status HTTP déjà envoyé) → l'appelant ne peut plus que logger. Le caller
+// est responsable du Content-Type (video/webm) ; les Range requests ne sont pas
+// supportés sur le flux remuxé.
+func StreamRemuxWebMPlan(ctx context.Context, absPath string, plan RemuxPlan, w io.Writer) error {
 	args := []string{
 		"-hide_banner", "-loglevel", "error",
 		"-i", absPath,
 		"-map", "0:v:0",
-		"-map", audioMap,
+		"-map", plan.AudioMap,
 		"-c", "copy",
 		"-f", "webm",
 		"pipe:1",
 	}
-
 	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
 	cmd.Stdout = w
 	stderr := &bytes.Buffer{}
 	cmd.Stderr = stderr
-
 	if err := cmd.Run(); err != nil {
 		slog.ErrorContext(ctx, "remux ffmpeg failed",
 			"path", absPath,
-			"audio_map", audioMap,
+			"audio_map", plan.AudioMap,
 			"stderr", stderr.String(),
 			"err", err)
 		return fmt.Errorf("ffmpeg remux: %w (stderr: %s)", err, stderr.String())

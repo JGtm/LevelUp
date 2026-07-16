@@ -7141,3 +7141,77 @@ ClipPlayer) — le commentaire « ClipPlayer remonte par clip donc l'état se r�
 (durcissements ffmpeg/serving : mono-piste AAC, tag hvc1, alimiter, borne audioEnvelope,
 pre-flight remux WebM, VerifyHLSPlayable pistes). Pas de merge (revue visuelle utilisateur).
 Aucune découverte hors périmètre lors du LOT B.
+
+## [2026-07-17] LOT C — Durcissement pipeline média : ffmpeg / serving (mono-piste AAC, hvc1, alimiter, borne RAM, pré-flight remux, garde suppression)
+
+**Statut** : Complété (LOT C du PLAN_MEDIA_PIPELINE_HARDENING_2026-07 ; branche
+fix/media-pipeline-hardening, worktree dédié). Pas de commit (superviseur). Fichiers :
+`internal/media/hls.go`, `hls_audio_analyze.go`, `remux.go`,
+`internal/api/handlers/media_serve.go`, `internal/ops/media_hls.go` + tests
+(hls_test.go, hls_audio_analyze_test.go, remux_test.go, hls_audio_migrate_test.go,
+hls_audio_collapse_test.go, media_serve_test.go).
+
+**Décisions techniques principales** :
+- C1 (mono-piste inaudible Safari) : `singleAudioRendition` bascule de `planAudio` à
+  `aacUniformAction` (copy si déjà AAC, sinon réencode AAC). `planAudio` SUPPRIMÉ (plus
+  aucun caller, 0 code mort). Commentaires réécrits état présent. Nuance vérifiée sur
+  pièces : `TestPlanHLS_SingleAudioTrackLegacy` utilisait du Vorbis (réencodé dans les
+  DEUX régimes), pas la copy Opus supposée par le plan → resté vert sans modification.
+- C2 (Safari refuse hev1) : champ `VideoSrcCodec` propagé dans `hlsPlan` (renseigné pour
+  TOUTE vidéo, plus seulement au réencode) ; `-tag:v hvc1` en copy HEVC dans
+  `buildHLSArgs` ; helper `isHEVCCodec`. Test args : hevc/h265 copy → tag ; h264 copy →
+  absent ; réencode → absent.
+- C3 (doc cible) : en-tête hls.go acte Chrome/Firefox/Edge via hls.js ; Safari/iOS natif
+  best-effort (pas de sélecteur, HEVC selon matériel, Opus-in-fMP4 non lu). Phrase « Opus
+  copié tel quel » devenue fausse après C1 → corrigée.
+- C4 (écrêtage amix) : constante `amixLimiterCeiling = "0.98"` +
+  `alimiter=limit=0.98:level=false` ajouté DANS `amixFilter` → couvre exactement les amix
+  de SORTIE (componentRenditions voices-amixé + full ; fullMixRenditions voices-amixé).
+  `level=false` = limiteur de crête pur (pas de re-normalisation qui annulerait
+  normalize=0). L'amix d'ANALYSE (`restMixFilter`) N'est PAS touché (corrélation
+  d'enveloppe sur signal brut). Chaîne validée sur ffmpeg 8.0.1 réel avant édition.
+- C5 (RAM VPS 2 Go) : constante `envMaxAnalysisSeconds = 600` + option `-t` en ENTRÉE
+  (avant `-i` → arrête le décodage) dans un helper extrait `buildEnvelopeArgs` (testable).
+  S'applique aussi au collapse (renditionEnvelope → audioEnvelope), sans cas particulier.
+- C6 (200 corps vide) : remux scindé — `PlanRemuxWebM` (probe + validation codecs + map
+  audio, erreurs sentinelles `ErrRemuxProbeFailed`/`ErrRemuxIncompatibleCodec`) puis
+  `StreamRemuxWebMPlan` (ne re-probe PAS). `StreamRemuxAsWebM` SUPPRIMÉ. Handler
+  `serveRemuxedWebM` : pré-flight AVANT tout header → 415 (codec incompatible) / 502
+  (probe échoué). Statut 502 (et non 500) justifié : handler = passerelle devant le
+  sous-processus ffprobe/ffmpeg ; probe sans résultat = défaillance de dépendance,
+  distinguée d'un bug handler dans les alertes.
+- C7 (garde suppression source) : `VerifyHLSPlayable(ctx, master, expectedAudioTracks)` —
+  check vidéo ffprobe + comptage renditions par PARSE DU MASTER
+  (`parseMasterAudioRenditions`), PAS par ffprobe show_streams. Preuve empirique
+  (ffmpeg 8.0.1) : arbre sain → master déclare 3 EXT-X-MEDIA et ffprobe énumère 3 ; arbre
+  amputé (sous-playlists/segments retirés) → ffprobe énumère 0 flux, exit 0 (PAS une
+  erreur). L'énumération ffprobe reflète l'OUVRABLE (version/démuxeur-dépendant), pas le
+  DÉCLARÉ ; le master m3u8 est la source de vérité déterministe. Caller `RunHLSTranscode`
+  passe `res.AudioTracks`.
+- C8 [~] : collision de stem (clip.mkv + clip.mp4 → même hls/{stem}, 2e écrase 1re)
+  documentée en commentaire de `HLSPathsFor`. Pas de correctif structurel (renommer
+  casserait arbres/DB existants).
+
+**Résultats observés** : Gate C vert, code de sortie 0 vérifié pour les 4 commandes,
+0 ligne `^--- FAIL:`.
+- `go vet ./...` = exit 0.
+- `go test ./internal/media/... ./internal/api/handlers/... ./internal/ops/...
+  ./internal/service/...` = exit 0.
+- `go test -tags=integration -p 1 ./internal/ops/...` = exit 0 (58 s).
+- `go test ./...` complet = exit 0.
+- ffmpeg/ffprobe 8.0.1 dans le PATH → tests media/handlers gated RÉELLEMENT exécutés
+  (vérifié en -v, aucun SKIP) : BuildHLS_Integration, VerifyHLSPlayable_Integration
+  (log empirique renditions déclarées=3/énumérées=3), AnalyzeAudioLayout, Migrate,
+  Collapse, RemuxWebM_AV1Opus, PlanRemuxWebM_*, et les 3 ServeMediaFile_Remux
+  (WebM 200, incompatible 415, probe 502).
+- Zéro garde-rail affaibli ; aucun fix opportuniste hors périmètre.
+
+**Bilan chantier (lots A+B+C)** : les 11 trouvailles de l'audit pipeline média sont
+traitées (code ou justification écrite : C8 en [~]). Backend Go (A+C) et front web (B)
+gated verts, `go test ./...` complet vert. Aucun merge (push main = deploy prod) : réservé
+au superviseur — relecture diff inter-lots + commits/PR à faire. Aucune découverte hors
+périmètre sur les 3 lots.
+
+**Conclusion / prochaine étape** : chantier soldé côté code, cases C1-C8 statuées
+([x] sauf C8 [~]). Reste au superviseur : relecture diff complet, commits par lot,
+PR sans merge (revue visuelle utilisateur).

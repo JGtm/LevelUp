@@ -112,6 +112,39 @@ func TestRestMixFilter(t *testing.T) {
 	}
 }
 
+func TestBuildEnvelopeArgs(t *testing.T) {
+	// La borne mémoire `-t 600` doit précéder `-i` (option d'ENTRÉE → arrête le
+	// décodage), et le map direct ne pas injecter de -filter_complex.
+	args := buildEnvelopeArgs("clip.mkv", "", "0:a:0")
+	ti, ii := indexOf(args, "-t"), indexOf(args, "-i")
+	if ti < 0 || ii < 0 || ti+1 >= len(args) {
+		t.Fatalf("args sans -t/-i: %v", args)
+	}
+	if args[ti+1] != "600" {
+		t.Errorf("-t = %q, want 600", args[ti+1])
+	}
+	if ti > ii {
+		t.Errorf("-t (%d) doit précéder -i (%d) pour borner le décodage: %v", ti, ii, args)
+	}
+	if indexOf(args, "-filter_complex") != -1 {
+		t.Errorf("map direct: pas de -filter_complex attendu: %v", args)
+	}
+	// Avec filterComplex, le filtre est injecté.
+	if a := buildEnvelopeArgs("clip.mkv", "[0:a:1][0:a:2]amix=inputs=2:normalize=0[mix]", "[mix]"); indexOf(a, "-filter_complex") == -1 {
+		t.Errorf("filterComplex fourni mais -filter_complex absent: %v", a)
+	}
+}
+
+// indexOf retourne l'index de la première occurrence de s dans args, ou -1.
+func indexOf(args []string, s string) int {
+	for i, a := range args {
+		if a == s {
+			return i
+		}
+	}
+	return -1
+}
+
 func TestPlanAudioRenditions_FullMixFourTracks(t *testing.T) {
 	// OBS : piste 0 = capture de sortie (mix complet), 1 = jeu, 2 = micro, 3 = Discord.
 	src := []AVStreamDetail{
@@ -135,8 +168,8 @@ func TestPlanAudioRenditions_FullMixFourTracks(t *testing.T) {
 	if v.Slug != "voices" || v.MapSpec != "[voices]" {
 		t.Errorf("voices = (%q,%q), want (voices,[voices])", v.Slug, v.MapSpec)
 	}
-	// voices = amix des pistes 2..3 (micro + Discord).
-	wantFC := "[0:a:2][0:a:3]amix=inputs=2:normalize=0:duration=longest[voices]"
+	// voices = amix des pistes 2..3 (micro + Discord), suivi du limiteur anti-écrêtage.
+	wantFC := "[0:a:2][0:a:3]amix=inputs=2:normalize=0:duration=longest,alimiter=limit=0.98:level=false[voices]"
 	if fc != wantFC {
 		t.Errorf("FilterComplex = %q, want %q", fc, wantFC)
 	}
@@ -215,7 +248,7 @@ func TestPlanAudioRenditions_FullMixGameNotFirst(t *testing.T) {
 	if audios[0].Slug != "game" || audios[0].MapSpec != "0:a:2" {
 		t.Errorf("game = (%q,%q), want (game,0:a:2)", audios[0].Slug, audios[0].MapSpec)
 	}
-	wantFC := "[0:a:1][0:a:3]amix=inputs=2:normalize=0:duration=longest[voices]"
+	wantFC := "[0:a:1][0:a:3]amix=inputs=2:normalize=0:duration=longest,alimiter=limit=0.98:level=false[voices]"
 	if fc != wantFC {
 		t.Errorf("FilterComplex = %q, want %q (voix = composantes hors jeu)", fc, wantFC)
 	}

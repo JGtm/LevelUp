@@ -100,7 +100,8 @@ func TestCollapseRedundantHLSAudio_Integration(t *testing.T) {
 	if !strings.Contains(master, `NAME="game"`) || !strings.Contains(master, "DEFAULT=YES") {
 		t.Errorf("game/DEFAULT=YES manquant après collapse\n%s", master)
 	}
-	if err := VerifyHLSPlayable(context.Background(), filepath.Join(redundant, "master.m3u8")); err != nil {
+	// Après collapse, le master n'expose plus qu'une rendition (game).
+	if err := VerifyHLSPlayable(context.Background(), filepath.Join(redundant, "master.m3u8"), 1); err != nil {
 		t.Errorf("VerifyHLSPlayable après collapse = %v, want nil", err)
 	}
 
