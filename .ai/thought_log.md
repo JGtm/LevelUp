@@ -46,9 +46,48 @@ tokens préservés). Le 1er aurait attrapé la régression.
 **Résultats** : `go test ./...` (apps/go-api) VERT (séquentiel). golangci-lint : seulement la
 dette baseline pré-existante, 0 nouvelle issue sur le code ajouté.
 
-**Découverte hors périmètre (non traitée)** : `og_inject.go` utilise `HomeCtx` (non-auth) qui
-ne pose jamais `pdb.XUID` → cartes OpenGraph d'un crawler anonyme = identité résolue sur
-xuid="" (pas d'image Spartan). Pré-existant, sans lien avec la régression.
+**Découverte hors périmètre (traitée dans le volet OG ci-dessous)** : `og_inject.go` utilise
+`HomeCtx` (non-auth) qui ne pose jamais `pdb.XUID` → identité résolue sur xuid="". Mécanisme
+réel, mais la conséquence supposée (« pas d'image Spartan sur la carte OG ») était INEXACTE —
+voir volet OG.
+
+---
+
+## [2026-07-16] Volet OG — pin xuid de page sur le chemin OpenGraph (crawler)
+
+**Statut** : Complété (branche fix/spartan-appearance-per-player). Gates Go verts, pas commité
+(superviseur gère git).
+
+**Vérification du constat (fichier:ligne)** — le MÉCANISME est confirmé, la CONSÉQUENCE ne l'est
+pas :
+- `internal/api/wire/registry_pages_home.go:18` `HomeCtx` ne pose jamais `pdb.XUID` dans le ctx
+  (et ne retourne même pas de ctx). Son SEUL appelant de prod est `og_inject.go:98`
+  (`registry_career.go:253` = commentaire ; `registry_test.go:99` = test).
+- `og_inject.go` → `GetHomePage` → `career_live_service.go:167` `GetSpartanIdentity(ctx)` résout
+  via `ctxkeys.HaloXUID(ctx)`. Crawler anonyme = ctx sans xuid → `GetSpartanIdentityFor(ctx, "")`
+  → `serveDBFallback` tolère xuid="" et rend `nil` (ligne 193-195). `SpartanIdentity` de la
+  réponse home revient donc nil sur ce chemin.
+- MAIS `ogmeta.PlayerMeta` (builder.go:68) NE consomme PAS `SpartanIdentity`. L'image OG est un
+  asset FIXE auto-hébergé `/og-default.png` (builder.go:27-30, choix délibéré : les URLs de
+  bannière Waypoint/CDN expirent / exigent une auth). La carte n'utilise que `Hero.PlayerName` +
+  KPIs, tous scopés à la player DB de `pdb` (indépendants du xuid ambiant). → « cartes sans image
+  Spartan » = par conception, pas un bug ; sortie OG déjà correcte pour le bon joueur.
+
+**Fix (minimal, invariant-alignment)** : `playerOGMeta` capture désormais le xuid retourné par
+`HomeCtx` et le force via `forcePageIdentityXUID(ctx, xuid)` (helper existant, réutilisé — pas
+de duplication) avant `GetHomePage`. Logique extraite dans `ogMetaFromHome` (seam testable). Pose
+l'invariant « ce chemin résout l'identité sur le xuid de la PAGE » — même contrat que
+`HomeCtxWithAuth`, title-agnostic. Effet observable sur les octets OG servis AUJOURD'HUI : nul
+(SpartanIdentity non émis, enrichissement DemoMode-gated) ; valeur = cohérence de l'invariant +
+robustesse si un futur consommateur de `SpartanIdentity` est ajouté au chemin OG.
+
+**Tests** : `og_inject_test.go` — 2 tests `TestOGMetaFromHome_*` (fake HomeService capturant le
+ctx) verrouillent que `GetHomePage` voit le xuid de la page (crawler sans xuid ; xuid ambiant
+étranger écrasé). Esprit des `TestForcePageIdentityXUID_*`.
+
+**Résultats** : `go test ./...` (apps/go-api) VERT (séquentiel). `go vet ./internal/api/wire/...
+./internal/ogmeta/...` propre. Vérif comportementale curl non faite : serveur :8000 éteint (pas
+lancé — risque build go concurrent) ET la sortie OG ne changerait pas (raisons ci-dessus).
 
 ---
 

@@ -1,6 +1,7 @@
 package wire
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -9,6 +10,9 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/ogmeta"
 )
 
 const testIndexHTML = `<!doctype html>
@@ -127,5 +131,73 @@ func TestServeIndexWithOG_NonPlayerRouteNoDB(t *testing.T) {
 
 	if body := rec.Body.String(); !strings.Contains(body, `content="https://demo.lvelup.info/"`) {
 		t.Errorf("og:url racine attendu:\n%s", body)
+	}
+}
+
+// ── Invariant identité de PAGE sur le chemin OG ──────────────────────────────
+//
+// serveIndexWithOG passe par HomeCtx (variante NON authentifiée) : le contexte
+// crawler ne porte aucun xuid. ogMetaFromHome doit forcer le xuid du joueur de la
+// PAGE avant GetHomePage, sinon la résolution d'identité Spartan
+// (GetSpartanIdentity, scopée sur ctxkeys.HaloXUID) cible "" (identité vide).
+// Même invariant que HomeCtxWithAuth (forcePageIdentityXUID).
+
+// ctxCapturingHomeService enregistre le xuid porté par le contexte reçu par
+// GetHomePage, pour vérifier l'identité posée dessus.
+type ctxCapturingHomeService struct {
+	seenXUID string
+	page     *domain.HomePageResponse
+}
+
+func (f *ctxCapturingHomeService) GetHomePage(ctx context.Context, _, _ string) (*domain.HomePageResponse, error) {
+	f.seenXUID = ctxkeys.HaloXUID(ctx)
+	return f.page, nil
+}
+
+func (f *ctxCapturingHomeService) GetBattlePass(context.Context) domain.BattlePassResponse {
+	return domain.BattlePassResponse{}
+}
+
+func (f *ctxCapturingHomeService) GetChallenges(context.Context) domain.ChallengesResponse {
+	return domain.ChallengesResponse{}
+}
+
+func (f *ctxCapturingHomeService) RefreshTrack(context.Context, string) {}
+
+// Crawler anonyme (aucun xuid en contexte) : ogMetaFromHome impose le xuid du
+// joueur de la page avant GetHomePage. Verrouille que la carte OG résout
+// l'identité sur le bon joueur et non sur "".
+func TestOGMetaFromHome_NoContextXUID_PinsPageXUID(t *testing.T) {
+	const pageXUID = "xuid-og-page"
+	svc := &ctxCapturingHomeService{page: &domain.HomePageResponse{Hero: domain.HomeHeroCard{PlayerName: "JGtm"}}}
+
+	meta, ok := ogMetaFromHome(context.Background(), svc, pageXUID, "JGtm",
+		"https://lvelup.info", "/players/jgtm/home", ogmeta.LocaleFR)
+
+	if !ok {
+		t.Fatal("ogMetaFromHome doit réussir avec un HomeService qui rend une page")
+	}
+	if svc.seenXUID != pageXUID {
+		t.Errorf("GetHomePage doit voir le xuid de la PAGE %q, got %q (identité résolue sur \"\")", pageXUID, svc.seenXUID)
+	}
+	if meta.URL != "https://lvelup.info/players/jgtm/home" {
+		t.Errorf("meta.URL = %q", meta.URL)
+	}
+}
+
+// xuid ambiant étranger (défense en profondeur) : écrasé par celui de la page —
+// jamais l'identité d'un autre compte sur la carte OG.
+func TestOGMetaFromHome_ForeignContextXUID_OverriddenByPage(t *testing.T) {
+	const pageXUID = "xuid-og-page"
+	const ambientXUID = "xuid-autre-compte"
+	svc := &ctxCapturingHomeService{page: &domain.HomePageResponse{Hero: domain.HomeHeroCard{PlayerName: "JGtm"}}}
+	ctx := ctxkeys.WithHaloXUID(context.Background(), ambientXUID)
+
+	if _, ok := ogMetaFromHome(ctx, svc, pageXUID, "JGtm",
+		"https://lvelup.info", "/players/jgtm/home", ogmeta.LocaleFR); !ok {
+		t.Fatal("ogMetaFromHome doit réussir")
+	}
+	if svc.seenXUID != pageXUID {
+		t.Errorf("xuid ambiant %q doit être écrasé par le xuid de la page %q, got %q", ambientXUID, pageXUID, svc.seenXUID)
 	}
 }
