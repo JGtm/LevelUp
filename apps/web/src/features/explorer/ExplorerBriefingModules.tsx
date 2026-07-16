@@ -9,7 +9,6 @@
  * Chaque module s'omet proprement si son bloc backend est nil (dégradation par
  * omission, jamais de placeholder vide ni de NaN). Tokens sémantiques uniquement.
  */
-import { KpiCard } from '@/components/cards/KpiCard'
 import {
   TimeseriesLineChart,
   type ChartPoint2D,
@@ -27,6 +26,7 @@ import type {
   ExplorerBriefingTrend,
 } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
+import { BriefingSectionCard } from './BriefingSectionCard'
 import { formatSignedFixed, formatSignedPoints, signOf } from './ExplorerBriefing.logic'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
@@ -94,18 +94,13 @@ function DimensionCard({
 }) {
   const titleKey = DIM_TITLE_KEY[dim.dimension]
   return (
-    <KpiCard className="h-full">
-      <div className="px-3 py-2">
-        <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {titleKey ? t(titleKey) : dim.dimension}
-        </p>
-        <ul className="space-y-1">
-          {(dim.entries ?? []).map((e) => (
-            <DimensionRow key={e.label} entry={e} t={t} hideDelta={hideDelta} />
-          ))}
-        </ul>
-      </div>
-    </KpiCard>
+    <BriefingSectionCard className="h-full" title={titleKey ? t(titleKey) : dim.dimension}>
+      <ul className="space-y-1">
+        {(dim.entries ?? []).map((e) => (
+          <DimensionRow key={e.label} entry={e} t={t} hideDelta={hideDelta} />
+        ))}
+      </ul>
+    </BriefingSectionCard>
   )
 }
 
@@ -188,45 +183,40 @@ function RankedCard({ ranked, t }: { ranked: ExplorerBriefingRanked; t: T }) {
   const hasDelta = (ranked.rating_kind ?? '') !== ''
   const hasPrediction = (ranked.matches_with_prediction ?? 0) > 0
   return (
-    <KpiCard className="h-full">
-      <div className="px-3 py-2">
-        <p className="mb-1 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {t('explorer.briefing.ranked_title')}
-        </p>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          {hasDelta && (
-            <div>
-              <p className="text-3xs uppercase tracking-wide text-muted-foreground">
-                {t('explorer.briefing.ranked_delta')}
-              </p>
-              <p
-                className="text-lg font-bold tabular-nums"
-                style={{ color: tokenCssVar(deltaToken(ranked.delta_sum)) }}
+    <BriefingSectionCard className="h-full" title={t('explorer.briefing.ranked_title')}>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        {hasDelta && (
+          <div>
+            <p className="text-3xs uppercase tracking-wide text-muted-foreground">
+              {t('explorer.briefing.ranked_delta')}
+            </p>
+            <p
+              className="text-lg font-bold tabular-nums"
+              style={{ color: tokenCssVar(deltaToken(ranked.delta_sum)) }}
+            >
+              {formatSignedFixed(ranked.delta_sum, 0)}
+            </p>
+          </div>
+        )}
+        {hasPrediction && (
+          <div>
+            <p className="text-3xs uppercase tracking-wide text-muted-foreground">
+              {t('explorer.briefing.ranked_expected_vs_actual')}
+            </p>
+            <p className="text-sm tabular-nums text-foreground">
+              {t('explorer.briefing.ranked_expected')} {formatPercentInt(ranked.expected_win_rate)}
+              {' · '}
+              {t('explorer.briefing.ranked_actual')}{' '}
+              <span
+                className="font-semibold"
+                style={{ color: winRateColor(ranked.actual_win_rate) }}
               >
-                {formatSignedFixed(ranked.delta_sum, 0)}
-              </p>
-            </div>
-          )}
-          {hasPrediction && (
-            <div>
-              <p className="text-3xs uppercase tracking-wide text-muted-foreground">
-                {t('explorer.briefing.ranked_expected_vs_actual')}
-              </p>
-              <p className="text-sm tabular-nums text-foreground">
-                {t('explorer.briefing.ranked_expected')} {formatPercentInt(ranked.expected_win_rate)}
-                {' · '}
-                {t('explorer.briefing.ranked_actual')}{' '}
-                <span
-                  className="font-semibold"
-                  style={{ color: winRateColor(ranked.actual_win_rate) }}
-                >
-                  {formatPercentInt(ranked.actual_win_rate)}
-                </span>
-              </p>
-            </div>
-          )}
-        </div>
+                {formatPercentInt(ranked.actual_win_rate)}
+              </span>
+            </p>
+          </div>
+        )}
       </div>
-    </KpiCard>
+    </BriefingSectionCard>
   )
 }
