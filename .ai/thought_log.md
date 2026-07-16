@@ -84,6 +84,52 @@ hors de ce train.
 
 ---
 
+## [2026-07-16] Fix race lecture player-DB Prestige — routage vers variantes *Recovered
+
+**Statut** : Complété (branche `fix/prestige-player-db-closed-race`, depuis origin/main).
+Issu de la Découverte (d) du plan monitoring triage → chantier dédié. Fix implémenté par
+agent Opus, revu + gates re-vérifiés par le superviseur.
+
+**Symptôme prod** : `sql: database is closed` sur player `stats.duckdb` (op=OpenReadWrite),
+~50/j depuis le 07-14 (0/0→47/11/54 sur 07-12..16), query = `challengeSelectColumns`. Bruit +
+données Prestige transitoirement absentes (la lecture échoue, PAS de corruption).
+
+**Cause racine (re-vérifiée sur pièces — hypothèse initiale corrigée)** : `PlayerDB.Player`
+est l'UNIQUE handle RW partagé par tous les repos joueur (`ReadDB()` le renvoie). Un writer
+concurrent qui déclenche `db.Reopen()` (invalidation ART, ou fermeture transitoire) fait
+`old.Close()` (`db_recovery.go:102`) → une lecture Prestige en vol voit `database is closed`.
+Les repos Prestige utilisaient les méthodes PLATES (`Query`/`QueryRow`/`Exec`) qui NE passent
+PAS par `WithReopenOnInvalidated` → aucun retry. (Nuance : le B-swap ferme `pdb.Shared`, pas
+`pdb.Player` ; c'est le Reopen concurrent sur la handle player qui la ferme.)
+
+**Fix (minimal, réutilise le mécanisme recovery existant)** :
+- `db_query.go` : helper `QueryRowRecovered` (QueryRecovered + curseur mono-ligne, `sql.ErrNoRows`
+  si vide) — centralise la recovery mono-ligne (règle ≤2 copies : 8 callers).
+- `prestige_player_repo.go` : tous les accès `pdb.Player` → variantes recovered (writes
+  `ExecRecovered`, lectures multi `QueryRecovered`, mono `QueryRowRecovered`). Mapping domaine
+  préservé (`ErrChallengeNotFound`/`ErrArcNotFound`, zero-value BaselineState). 493 L (< 500).
+- `BaselineStateRepo.Upsert` déjà recovered (`UpsertNoConflict` enveloppe WithReopenOnInvalidated,
+  ART-safe SELECT-then-UPDATE-or-INSERT) — inchangé. Aucune synchro ajoutée au chemin B-swap/pool
+  (invariant deadlock-free `prestige_setup.go:190-197` préservé).
+
+**Test** : `prestige_player_reopen_test.go` (cgo, DB fichier réelle) — ferme la handle AVANT
+chaque appel, vérifie que List/Get/ListByUser/UpdateStatus récupèrent + que `ErrChallengeNotFound`
+survit au Reopen (la recovery ne masque pas ErrNoRows en succès). FAIL pré-fix (vérifié par
+revert), PASS post-fix + re-run superviseur `-count=1`.
+
+**Gates** : `go build ./...`, `go vet ./...`, `go test ./...`, `go test -tags=integration -p 1
+./internal/platform/duckdb/...` = tous exit 0.
+
+**Découverte consignée (hors périmètre — chantier de suivi)** : le pattern « méthode plate sur
+`pdb.Player` » est SYSTÉMIQUE (~40 fichiers prod : `career_*`, `home_*`, `match_view_*`,
+`engagement_score_repo`, `squad_v2_adapter`, `privacy_state_repo.LoadPrivacyState` côté read,
+etc.). Même course latente. Suivi = router TOUS les lecteurs player-DB vers *Recovered +
+garde-rail grep interdisant les méthodes plates sur `pdb.Player` hors couche DB.
+
+**Prochaine étape** : accord user pour landing (PR de revue vs merge main = deploy prod auto).
+
+---
+
 ## [2026-07-16] Fix P0 — identité Spartan partagée entre joueurs + fuite cross-titre (régression train 2026-07-15)
 
 **Statut** : Complété (branche fix/spartan-appearance-per-player). Gates Go verts, pas encore commité (superviseur gère git).

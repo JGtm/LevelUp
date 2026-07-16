@@ -32,7 +32,7 @@ var _ prestige.ChallengeRepo = (*PrestigeChallengeRepo)(nil)
 func (r *PrestigeChallengeRepo) Create(ctx context.Context, c prestige.Challenge) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO challenge (
 			id, user_id, title_slug, arc_id, position, template_id,
 			metric, target, target_per_member, window_type, window_value,
@@ -57,19 +57,22 @@ func (r *PrestigeChallengeRepo) Create(ctx context.Context, c prestige.Challenge
 func (r *PrestigeChallengeRepo) Get(ctx context.Context, id string) (prestige.Challenge, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	row := r.db.QueryRow(ctx, challengeSelectColumns+" WHERE id = ?", id)
-	c, err := scanChallenge(row)
+	rows, err := r.db.QueryRowRecovered(ctx, challengeSelectColumns+" WHERE id = ?", id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return prestige.Challenge{}, prestige.ErrChallengeNotFound
 	}
-	return c, err
+	if err != nil {
+		return prestige.Challenge{}, err
+	}
+	defer rows.Close()
+	return scanChallenge(rows)
 }
 
 func (r *PrestigeChallengeRepo) List(ctx context.Context, f prestige.ChallengeFilter) ([]prestige.Challenge, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	q, args := buildChallengeListQuery(f)
-	rows, err := r.db.Query(ctx, q, args...)
+	rows, err := r.db.QueryRecovered(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("ChallengeRepo.List: %w", err)
 	}
@@ -90,18 +93,18 @@ func (r *PrestigeChallengeRepo) UpdateStatus(ctx context.Context, id string, sta
 	defer cancel()
 	col := timestampColumnFor(status)
 	if col == "" {
-		_, err := r.db.Exec(ctx, `UPDATE challenge SET status = ? WHERE id = ?`, string(status), id)
+		_, err := r.db.ExecRecovered(ctx, `UPDATE challenge SET status = ? WHERE id = ?`, string(status), id)
 		return err
 	}
 	q := fmt.Sprintf(`UPDATE challenge SET status = ?, %s = ? WHERE id = ?`, col)
-	_, err := r.db.Exec(ctx, q, string(status), at, id)
+	_, err := r.db.ExecRecovered(ctx, q, string(status), at, id)
 	return err
 }
 
 func (r *PrestigeChallengeRepo) UpdateLabel(ctx context.Context, id, label string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `UPDATE challenge SET label = ? WHERE id = ?`, label, id)
+	_, err := r.db.ExecRecovered(ctx, `UPDATE challenge SET label = ? WHERE id = ?`, label, id)
 	return err
 }
 
@@ -115,7 +118,7 @@ func (r *PrestigeChallengeRepo) UpdateTarget(
 ) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		UPDATE challenge
 		SET target = ?, tier = ?, data_tier = ?, last_palier_recompute_at = ?
 		WHERE id = ?
@@ -126,22 +129,32 @@ func (r *PrestigeChallengeRepo) UpdateTarget(
 func (r *PrestigeChallengeRepo) CountActiveByCadence(ctx context.Context, userID, titleSlug string, cadence prestige.Cadence) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	var n int
-	err := r.db.QueryRow(ctx, `
+	rows, err := r.db.QueryRowRecovered(ctx, `
 		SELECT COUNT(*) FROM challenge
 		WHERE user_id = ? AND title_slug = ? AND cadence = ? AND status = 'active'
-	`, userID, titleSlug, string(cadence)).Scan(&n)
+	`, userID, titleSlug, string(cadence))
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	var n int
+	err = rows.Scan(&n)
 	return n, err
 }
 
 func (r *PrestigeChallengeRepo) CountActiveTotal(ctx context.Context, userID, titleSlug string) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	var n int
-	err := r.db.QueryRow(ctx, `
+	rows, err := r.db.QueryRowRecovered(ctx, `
 		SELECT COUNT(*) FROM challenge
 		WHERE user_id = ? AND title_slug = ? AND status = 'active'
-	`, userID, titleSlug).Scan(&n)
+	`, userID, titleSlug)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	var n int
+	err = rows.Scan(&n)
 	return n, err
 }
 
@@ -153,25 +166,30 @@ func (r *PrestigeChallengeRepo) CountCreatedSince(
 ) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	var n int
-	err := r.db.QueryRow(ctx, `
+	rows, err := r.db.QueryRowRecovered(ctx, `
 		SELECT COUNT(*) FROM challenge
 		WHERE user_id = ? AND title_slug = ? AND mode = ? AND created_at >= ?
-	`, userID, titleSlug, string(mode), since).Scan(&n)
+	`, userID, titleSlug, string(mode), since)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	var n int
+	err = rows.Scan(&n)
 	return n, err
 }
 
 func (r *PrestigeChallengeRepo) DetachFromArc(ctx context.Context, arcID string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `UPDATE challenge SET arc_id = NULL WHERE arc_id = ?`, arcID)
+	_, err := r.db.ExecRecovered(ctx, `UPDATE challenge SET arc_id = NULL WHERE arc_id = ?`, arcID)
 	return err
 }
 
 func (r *PrestigeChallengeRepo) DeleteByArc(ctx context.Context, arcID string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `DELETE FROM challenge WHERE arc_id = ?`, arcID)
+	_, err := r.db.ExecRecovered(ctx, `DELETE FROM challenge WHERE arc_id = ?`, arcID)
 	return err
 }
 
@@ -190,7 +208,7 @@ var (
 func (r *PrestigeArcRepo) Create(ctx context.Context, a prestige.Arc) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	if _, err := r.db.Exec(ctx, `
+	if _, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO arc (id, user_id, title_slug, title, description, is_preset, preset_id, created_at, completed_at)
 		VALUES (?,?,?,?,?,?,?,?,?)
 	`, a.ID, a.UserID, a.TitleSlug, a.Title, a.Description, a.IsPreset, duckdb.NullableStr(a.PresetID), a.CreatedAt, a.CompletedAt); err != nil {
@@ -199,7 +217,7 @@ func (r *PrestigeArcRepo) Create(ctx context.Context, a prestige.Arc) error {
 	// Invariant cross-titre : 1 ligne (arc.id, arc.title_slug) par arc. La voie
 	// arc_titles reste ainsi un sur-ensemble des lectures mono-titre (cf.
 	// PLAN_CROSS_TITLE_ARCS_BACKEND Phase 2). ON CONFLICT DO NOTHING = idempotent.
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO arc_titles (arc_id, title_slug) VALUES (?, ?) ON CONFLICT DO NOTHING
 	`, a.ID, a.TitleSlug)
 	return err
@@ -211,7 +229,7 @@ func (r *PrestigeArcRepo) Create(ctx context.Context, a prestige.Arc) error {
 func (r *PrestigeArcRepo) ArcTitles(ctx context.Context, arcID string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	rows, err := r.db.Query(ctx, `SELECT title_slug FROM arc_titles WHERE arc_id = ? ORDER BY title_slug`, arcID)
+	rows, err := r.db.QueryRecovered(ctx, `SELECT title_slug FROM arc_titles WHERE arc_id = ? ORDER BY title_slug`, arcID)
 	if err != nil {
 		return nil, fmt.Errorf("ArcTitles: %w", err)
 	}
@@ -229,12 +247,16 @@ func (r *PrestigeArcRepo) ArcTitles(ctx context.Context, arcID string) ([]string
 	}
 	if len(out) == 0 {
 		// Fallback pré-backfill : titre primaire de l'arc.
-		var primary string
-		err := r.db.QueryRow(ctx, `SELECT title_slug FROM arc WHERE id = ?`, arcID).Scan(&primary)
+		frows, err := r.db.QueryRowRecovered(ctx, `SELECT title_slug FROM arc WHERE id = ?`, arcID)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, prestige.ErrArcNotFound
 		}
 		if err != nil {
+			return nil, fmt.Errorf("ArcTitles fallback: %w", err)
+		}
+		defer frows.Close()
+		var primary string
+		if err := frows.Scan(&primary); err != nil {
 			return nil, fmt.Errorf("ArcTitles fallback: %w", err)
 		}
 		return []string{primary}, nil
@@ -248,7 +270,7 @@ func (r *PrestigeArcRepo) ArcTitles(ctx context.Context, arcID string) ([]string
 func (r *PrestigeArcRepo) ArcsByTitle(ctx context.Context, userID, titleSlug string) ([]prestige.Arc, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	rows, err := r.db.Query(ctx, `
+	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT a.id, a.user_id, a.title_slug, a.title, COALESCE(a.description, ''),
 		       a.is_preset, COALESCE(a.preset_id, ''), a.created_at, a.completed_at
 		FROM arc a
@@ -274,21 +296,24 @@ func (r *PrestigeArcRepo) ArcsByTitle(ctx context.Context, userID, titleSlug str
 func (r *PrestigeArcRepo) Get(ctx context.Context, id string) (prestige.Arc, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	row := r.db.QueryRow(ctx, `
+	rows, err := r.db.QueryRowRecovered(ctx, `
 		SELECT id, user_id, title_slug, title, COALESCE(description, ''),
 		       is_preset, COALESCE(preset_id, ''), created_at, completed_at
 		FROM arc WHERE id = ?`, id)
-	a, err := scanArc(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return prestige.Arc{}, prestige.ErrArcNotFound
 	}
-	return a, err
+	if err != nil {
+		return prestige.Arc{}, err
+	}
+	defer rows.Close()
+	return scanArc(rows)
 }
 
 func (r *PrestigeArcRepo) ListByUser(ctx context.Context, userID, titleSlug string) ([]prestige.Arc, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	rows, err := r.db.Query(ctx, `
+	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT id, user_id, title_slug, title, COALESCE(description, ''),
 		       is_preset, COALESCE(preset_id, ''), created_at, completed_at
 		FROM arc WHERE user_id = ? AND title_slug = ? ORDER BY created_at DESC
@@ -311,14 +336,14 @@ func (r *PrestigeArcRepo) ListByUser(ctx context.Context, userID, titleSlug stri
 func (r *PrestigeArcRepo) MarkCompleted(ctx context.Context, id string, at time.Time) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `UPDATE arc SET completed_at = ? WHERE id = ?`, at, id)
+	_, err := r.db.ExecRecovered(ctx, `UPDATE arc SET completed_at = ? WHERE id = ?`, at, id)
 	return err
 }
 
 func (r *PrestigeArcRepo) Delete(ctx context.Context, id string) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `DELETE FROM arc WHERE id = ?`, id)
+	_, err := r.db.ExecRecovered(ctx, `DELETE FROM arc WHERE id = ?`, id)
 	return err
 }
 
@@ -336,7 +361,7 @@ var _ prestige.MomentCardRepo = (*PrestigeMomentCardRepo)(nil)
 func (r *PrestigeMomentCardRepo) Create(ctx context.Context, mc prestige.MomentCard) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO moment_card (id, challenge_id, blob_path, created_at) VALUES (?, ?, ?, ?)
 	`, mc.ID, mc.ChallengeID, mc.BlobPath, mc.CreatedAt)
 	return err
@@ -345,11 +370,16 @@ func (r *PrestigeMomentCardRepo) Create(ctx context.Context, mc prestige.MomentC
 func (r *PrestigeMomentCardRepo) GetByChallenge(ctx context.Context, challengeID string) (prestige.MomentCard, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	row := r.db.QueryRow(ctx, `
+	rows, err := r.db.QueryRowRecovered(ctx, `
 		SELECT id, challenge_id, COALESCE(blob_path, ''), created_at
 		FROM moment_card WHERE challenge_id = ?`, challengeID)
+	if err != nil {
+		// Inclut sql.ErrNoRows : contrat inchangé, le caller le mappe lui-même.
+		return prestige.MomentCard{}, err
+	}
+	defer rows.Close()
 	var mc prestige.MomentCard
-	err := row.Scan(&mc.ID, &mc.ChallengeID, &mc.BlobPath, &mc.CreatedAt)
+	err = rows.Scan(&mc.ID, &mc.ChallengeID, &mc.BlobPath, &mc.CreatedAt)
 	return mc, err
 }
 
@@ -359,7 +389,7 @@ func (r *PrestigeMomentCardRepo) ListRecent(ctx context.Context, userID, titleSl
 	if limit <= 0 {
 		limit = 10
 	}
-	rows, err := r.db.Query(ctx, `
+	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT mc.id, mc.challenge_id, COALESCE(mc.blob_path, ''), mc.created_at
 		FROM moment_card mc
 		JOIN challenge c ON c.id = mc.challenge_id
@@ -395,7 +425,7 @@ var _ prestige.TelemetryRepo = (*PrestigeTelemetryRepo)(nil)
 func (r *PrestigeTelemetryRepo) Emit(ctx context.Context, ev prestige.PrestigeTelemetry) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO prestige_telemetry (
 			id, user_id, challenge_id, event_type, palier, stretch_ratio,
 			baseline_value, mode, cadence, eval_type, time_since_create_seconds, created_at
@@ -423,19 +453,23 @@ var _ prestige.BaselineStateRepo = (*PrestigeBaselineStateRepo)(nil)
 func (r *PrestigeBaselineStateRepo) Get(ctx context.Context, userID, titleSlug, metric string) (prestige.BaselineState, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	row := r.db.QueryRow(ctx, `
+	rows, err := r.db.QueryRowRecovered(ctx, `
 		SELECT user_id, title_slug, metric, last_match_at, is_stale,
 		       recovery_matches_remaining, updated_at
 		FROM baseline_state WHERE user_id = ? AND title_slug = ? AND metric = ?
 	`, userID, titleSlug, metric)
-	var st prestige.BaselineState
-	err := row.Scan(&st.UserID, &st.TitleSlug, &st.Metric, &st.LastMatchAt,
-		&st.IsStale, &st.RecoveryMatchesRemaining, &st.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return prestige.BaselineState{
 			UserID: userID, TitleSlug: titleSlug, Metric: metric,
 		}, nil
 	}
+	if err != nil {
+		return prestige.BaselineState{}, err
+	}
+	defer rows.Close()
+	var st prestige.BaselineState
+	err = rows.Scan(&st.UserID, &st.TitleSlug, &st.Metric, &st.LastMatchAt,
+		&st.IsStale, &st.RecoveryMatchesRemaining, &st.UpdatedAt)
 	return st, err
 }
 
