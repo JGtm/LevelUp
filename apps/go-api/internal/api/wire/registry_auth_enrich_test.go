@@ -98,3 +98,51 @@ func TestEnrichWithHaloTokens_RemintFails_KeepsSessionToken(t *testing.T) {
 		t.Errorf("re-mint impossible → fallback sur le token de session existant, got %v", got)
 	}
 }
+
+// forcePageIdentityXUID — garde-fou du SCOPING PAR JOUEUR de l'identité Spartan
+// (régression 2026-07-16 : toutes les pages home partageaient la même identité —
+// celle du compte connecté). Depuis que SISU complète l'identité de session, le
+// ctx porte le xuid du compte APPELANT ; la home doit néanmoins servir l'identité
+// du joueur de la PAGE. Ces tests verrouillent ce contrat.
+
+// Compte connecté A consultant la page du joueur B (admin/groupe) : l'identité
+// résolue doit être celle de B (pdb), jamais A. C'est le test qui aurait attrapé
+// la régression.
+func TestForcePageIdentityXUID_ThirdPartyPage_UsesPageXUID(t *testing.T) {
+	const connectedXUID = "xuid-compte-A"
+	const pageXUID = "xuid-joueur-B"
+	// Session du compte connecté A (tokens frais + xuid A), comme après login SISO.
+	ctx := ctxkeys.WithHaloAuth(context.Background(),
+		&domain.HaloTokens{SpartanToken: "session-A", SpartanExpiresAt: time.Now().Add(time.Hour)},
+		connectedXUID)
+
+	got := forcePageIdentityXUID(ctx, pageXUID)
+	if x := ctxkeys.HaloXUID(got); x != pageXUID {
+		t.Errorf("identité de la home = joueur de la PAGE attendu %q, got %q (fuite du compte connecté)", pageXUID, x)
+	}
+	// Les tokens de session restent disponibles (URL careerranks/customization = xuid(page)).
+	if toks := ctxkeys.HaloTokens(got); toks == nil || toks.SpartanToken != "session-A" {
+		t.Errorf("les tokens de session doivent être préservés, got %v", toks)
+	}
+}
+
+// Démo / crawler : aucun xuid en session → on impose celui de la page (sinon
+// lectures xuid-filtrées ciblant "" → bannière/emblème absents).
+func TestForcePageIdentityXUID_NoSessionXUID_UsesPageXUID(t *testing.T) {
+	const pageXUID = "xuid-joueur-demo"
+	got := forcePageIdentityXUID(context.Background(), pageXUID)
+	if x := ctxkeys.HaloXUID(got); x != pageXUID {
+		t.Errorf("sans xuid de session, la page doit imposer %q, got %q", pageXUID, x)
+	}
+}
+
+// Propriétaire consultant SA propre page : xuid inchangé (pas de re-écriture inutile).
+func TestForcePageIdentityXUID_OwnPage_Unchanged(t *testing.T) {
+	const xuid = "xuid-proprietaire"
+	ctx := ctxkeys.WithHaloAuth(context.Background(),
+		&domain.HaloTokens{SpartanToken: "session-own", SpartanExpiresAt: time.Now().Add(time.Hour)}, xuid)
+	got := forcePageIdentityXUID(ctx, xuid)
+	if x := ctxkeys.HaloXUID(got); x != xuid {
+		t.Errorf("page du propriétaire : xuid attendu %q, got %q", xuid, x)
+	}
+}

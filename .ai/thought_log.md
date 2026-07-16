@@ -1,3 +1,57 @@
+## [2026-07-16] Fix P0 — identité Spartan partagée entre joueurs + fuite cross-titre (régression train 2026-07-15)
+
+**Statut** : Complété (branche fix/spartan-appearance-per-player). Gates Go verts, pas encore commité (superviseur gère git).
+
+**Symptôme prod** : tous les joueurs (H5 ET Infinite) affichaient le MÊME Spartan ID /
+emblème / nameplate sur leur accueil — l'identité était devenue un état global = celui du
+COMPTE CONNECTÉ. Perçu aussi comme une fuite cross-titre (identité vue « ailleurs »).
+
+**Cause racine (fichier:ligne)** : `internal/api/wire/registry_auth.go`, `HomeCtxWithAuth`.
+`HomeService.GetSpartanIdentity(ctx)` résout l'identité via `ctxkeys.HaloXUID(ctx)` (et non
+un xuid explicite de la page). Le garde-fou historique ne forçait `pdb.XUID` que si
+`HaloXUID(enriched) == ""`. Or `enrichWithHaloTokens` réutilise le token de SESSION quand il
+est frais (`TokensFreshStrict`) et retourne le ctx INCHANGÉ → `HaloXUID` reste celui de la
+session. Un admin/membre de groupe (ADR 0029) consultant la page d'un autre joueur servait
+donc l'identité du compte connecté, pour TOUTES les pages, TOUS titres.
+
+**Déclencheur = train 2026-07-15 (PR #61)**, commit `a5c6eb8c2` (SISU) : `pollDeviceFlow`
+complète désormais gamertag/xuid depuis le XSTS RTA. Avant, le flow SISU échouait en
+`identity_missing` et la session ne portait AUCUNE `LinkedHaloIdentity.XUID` → `enrich`
+retombait sur `ResolveFreshPlayerTokens(pdb.XUID)` → xuid de la page (correct). Le train a
+« complété » l'identité de session → le xuid du compte connecté est désormais présent et
+prend le dessus (bug jusque-là dormant). `session.go:51` pose `WithHaloAuth(sess.HaloTokens,
+LinkedHaloIdentity.XUID)`.
+
+**Fix (title-agnostic, minimal)** : `HomeCtxWithAuth` force désormais TOUJOURS le xuid de la
+page via un helper testable `forcePageIdentityXUID(ctx, pdb.XUID)` (remplace le garde
+`== ""`). Sûr : `GetCareerProgress`/`GetSpartanCustomization` (`halo_client_career.go`)
+ciblent `xuid(<pdb>)` DANS l'URL — un token d'un autre compte renvoie les données de la cible
+(ou 403 → vue publique), jamais celles du porteur. Aucun couplage de paire réintroduit (règle
+apparence : champs indépendants). Explorer/Compare/SeasonPass non touchés : ils passent déjà
+`pdb.XUID` explicitement (audit fait).
+
+**Cross-titre** : aucune fuite serveur distincte trouvée. Lecture Q26c scopée (player DB +
+xuid) ; persist H5 `PersistAppearance` par gamertag/xuid + chemins PathResolver par titre ;
+cron cible `p.XUID` (correct). Le `CareerLiveCache` est keyé par xuid SEUL (pas de titre) mais
+le chemin home gate H5 hors cache (`ProvidesLiveCareerProgression`/`CapCareerRankCatalog`) →
+il ne contient que des réponses economy Infinite : pas la cause observée (noté comme aléa
+latent, non traité — hors périmètre). La fuite cross-titre perçue = manifestation de la cause
+racine (identité globale du compte connecté) + staleness front déjà corrigée `ec36e7b40`
+(clé query `['home', slug, titleSlug]`, légitime, ne crée pas le partage).
+
+**Tests** : `registry_auth_enrich_test.go` — 3 tests `TestForcePageIdentityXUID_*` verrouillent
+le scoping par joueur (page tierce → xuid page ; démo → xuid page ; page propre → inchangé +
+tokens préservés). Le 1er aurait attrapé la régression.
+
+**Résultats** : `go test ./...` (apps/go-api) VERT (séquentiel). golangci-lint : seulement la
+dette baseline pré-existante, 0 nouvelle issue sur le code ajouté.
+
+**Découverte hors périmètre (non traitée)** : `og_inject.go` utilise `HomeCtx` (non-auth) qui
+ne pose jamais `pdb.XUID` → cartes OpenGraph d'un crawler anonyme = identité résolue sur
+xuid="" (pas d'image Spartan). Pré-existant, sans lien avec la régression.
+
+---
+
 ## [2026-07-16] Lot fixes UI post-train — bugs 2/5/6 (+ constats 3/4)
 
 **Statut** : Complété (branche fix/ui-post-train). Bug 1 déjà commité (aa5458fb7).
