@@ -174,6 +174,7 @@ var weaponRegistryFamilies = []weaponFamilyRow{
 	{"frag_grenade", "Frag Grenade", "Grenade à fragmentation"},
 	{"plasma_grenade", "Plasma Grenade", "Grenade à plasma"},
 	{"dynamo_grenade", "Dynamo Grenade", "Grenade Dynamo"},
+	{"splinter_grenade", "Splinter Grenade", "Grenade Splinter"},
 	{"grenade_launcher", "Grenade Launcher", "Lance-grenades"},
 	{"railgun", "Railgun", "Railgun"},
 	{"saw", "SAW", "SAW"},
@@ -189,10 +190,14 @@ var weaponRegistryFamilies = []weaponFamilyRow{
 	{"incineration_cannon", "Incineration Cannon", "Canon incendiaire"},
 	{"suppressor", "Suppressor", "Éradicateur"},
 	{"scattershot", "Scattershot", "Répercuteur"},
+	// Long-tail H5 (frags v_weapon_kills réels) : armes de mêlée d'objectif / REQ.
+	{"golf_club", "Golf Club", "Club de golf"},
+	{"oddball", "Oddball", "Oddball"},
 }
 
-// weaponRegistryWeapons — 59 armes (29 Infinite §6.1 + 30 Halo 5 §6.2), vérifiées
-// halopedia.org + wiki.halo.fr. faction = ORIGINE de conception (pas le porteur).
+// weaponRegistryWeapons — 64 armes (29 Infinite §6.1 + 35 Halo 5 §6.2 dont 5
+// long-tail v_weapon_kills : grenades + mêlée d'objectif), vérifiées halopedia.org
+// + wiki.halo.fr. faction = ORIGINE de conception (pas le porteur).
 var weaponRegistryWeapons = []weaponRow{
 	// Colonnes : key, title, name, name_fr, class, role, family, faction, damage, manufacturer.
 	// ── Halo Infinite (§6.1) ──
@@ -256,6 +261,16 @@ var weaponRegistryWeapons = []weaponRow{
 	{"h5_sentinel_beam", titleH5, "Sentinel Beam", "Laser de Sentinelle", "heavy", "special", "sentinel_beam", "forerunner", "particle_beam", "Ferrarius Assembler Vats"},
 	{"h5_suppressor", titleH5, "Suppressor (Z-130)", "Éradicateur", "shoulder", "automatic", "suppressor", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
 	{"h5_scattershot", titleH5, "Scattershot (Z-180)", "Répercuteur", "shoulder", "shotgun", "scattershot", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
+	// ── Halo 5 long-tail (frags v_weapon_kills réels, mappage 2026-07-17) ──
+	// Grenades : rôle `grenade` (parité HINF), class `grenade`. NON double-comptées
+	// avec les sentinels match_participants (grenade_kills) car le donut synthesis
+	// n'active PAS IncludeGrenadeMelee (buildKillsByRole ignore IsGrenadeMelee).
+	{"h5_frag_grenade", titleH5, "Frag Grenade", "Grenade à fragmentation", "grenade", "grenade", "frag_grenade", "human", "explosive", "Misriah Armory"},
+	{"h5_plasma_grenade", titleH5, "Plasma Grenade", "Grenade à plasma", "grenade", "grenade", "plasma_grenade", "covenant", "plasma", ""},
+	{"h5_splinter_grenade", titleH5, "Splinter Grenade", "Grenade Splinter", "grenade", "grenade", "splinter_grenade", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
+	// Mêlée d'objectif / REQ : rôle `melee`, class `melee`.
+	{"h5_golf_club", titleH5, "Golf Club", "Club de golf", "melee", "melee", "golf_club", "human", "kinetic", ""},
+	{"h5_oddball", titleH5, "Oddball", "Oddball", "melee", "melee", "oddball", "human", "kinetic", ""},
 }
 
 // weaponRegistryInfiniteFilmshell — ids filmshell Infinite (source weapon_labels.go,
@@ -339,4 +354,35 @@ var weaponRegistryH5Stock = []weaponNumericID{
 	{"h5_sentinel_beam", 3143603656},
 	{"h5_suppressor", 2681172411},
 	{"h5_scattershot", 3808094875},
+	// ── Long-tail v_weapon_kills (audit 2026-07-17, stock_ids réels) ──
+	// Grenades (armes tenues, rôle `grenade`) — gros volume du long-tail.
+	{"h5_frag_grenade", 4106030681},     // "FRAG GRENADE"    (~10.5k frags)
+	{"h5_plasma_grenade", 2460880172},   // "PLASMA GRENADE"  (~5.3k frags)
+	{"h5_splinter_grenade", 3190813201}, // "SPLINTER GRENADE" (~2.1k frags)
+	// Mêlée d'objectif / REQ (armes tenues, rôle `melee`).
+	{"h5_golf_club", 409331533}, // "Golf Club" (~0.36k frags)
+	{"h5_oddball", 393532233},   // "Ball" = Oddball (~0.18k frags)
+	//
+	// INTENTIONNELLEMENT NON MAPPÉS (dégradation gracieuse : effective_weapon_id
+	// sans rôle → exclu de kills_by_role, cf. buildKillsByRole). Ce ne sont PAS des
+	// armes d'arsenal : leur affecter un rôle de combat fausserait le donut « Frags
+	// par type d'arme » ET l'insight coach blind_spot_power (rôle `power`). Créer un
+	// rôle `vehicle`/`turret` est hors périmètre (ratchet enum rôles). Recensés ici
+	// pour la traçabilité (id "libellé weapon_labels", ~frags) :
+	//   Véhicules   : 3010146366 "Ghost" (~1.2k) · 1063919886 "Mongoose" (~0.9k) ·
+	//                 4028516791 "Warthog" (~0.8k) · 419783896 "Banshee" (~0.4k) ·
+	//                 3227919741 "Mantis" (~0.25k) · 1730553442 "Scorpion" (~0.24k) ·
+	//                 1206711506 "Wraith" (~0.1k) · 3207900961 "Wasp" (~0.1k) ·
+	//                 3394982816 "Phaeton" (~5)
+	//   Tourelles   : 2988661926 "Chaingun Turret" (~0.36k) · 1749823285 "Splinter
+	//                 Turret" (~0.24k) · 2907783784 "Rocket Pod Turret" (~0.2k) ·
+	//                 4233134183 "Gauss Turret" (~68) · 698769165 "Shade Plasma
+	//                 Turret" (~25) · 244872079 "Scorpion Anti Infantry Turret" (~8) ·
+	//                 2023669721 "Plasma Turret" (~7) · 1351500565 "Hunter Arm Turret" (~6)
+	//   Attribution : 3168248199 "Spartan" (~8.8k, bucket générique melee/splatter/
+	//                 environnement, nature ambiguë) · 47178948 "Environmental
+	//                 Explosives" (~0.6k, hasard de map)
+	//   UGC/inconnus: 2457457776 (~2.3k) · 390856427 (~11) · 3541732101 (~6) ·
+	//                 642449794 (~4) · 2497647768 (~4) · 2631958027 (~2) ·
+	//                 2957796559 (~2) — absents de weapon_labels, non identifiables.
 }

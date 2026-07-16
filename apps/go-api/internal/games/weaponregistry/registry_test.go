@@ -37,8 +37,8 @@ func loadTestRegistry(t *testing.T) *MemRegistry {
 func TestRegistry_Counts(t *testing.T) {
 	reg := loadTestRegistry(t)
 	w, i, f := reg.Counts()
-	if w != 59 || i != 71 || f != 43 {
-		t.Errorf("Counts = (%d,%d,%d), want (59,71,43)", w, i, f)
+	if w != 64 || i != 76 || f != 46 {
+		t.Errorf("Counts = (%d,%d,%d), want (64,76,46)", w, i, f)
 	}
 }
 

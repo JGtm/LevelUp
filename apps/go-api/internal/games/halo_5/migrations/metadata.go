@@ -269,7 +269,7 @@ func MetadataSteps() []migration.Migration {
 		// weapon_labels… isolés car les données HINF sont FAUSSES pour H5), le registre
 		// est CROSS-TITRE par conception : PK (title_slug, weapon_key), lectures
 		// title-scopées (resolveWeaponMeta filtre wi.title_slug). Son seed inclut déjà
-		// les 30 armes Halo 5 + leurs stock_ids (weaponRegistryH5Stock). Sans lui, la
+		// les 35 armes Halo 5 + leurs stock_ids (weaponRegistryH5Stock). Sans lui, la
 		// metadata H5 n'a pas de rôles → resolveWeaponMeta retombe sur weapon_labels
 		// seul → kills_by_role vide → donut « Frags par type d'arme » masqué sur H5.
 		// On réutilise l'apply idempotent partagé (INSERT OR IGNORE) plutôt que de
