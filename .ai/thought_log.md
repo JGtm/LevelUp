@@ -1,3 +1,26 @@
+## [2026-07-15] Fix UI P0 — déconnexion en mode xbox laisse une page sans nav L1
+
+**Statut** : Complété (bug 1 du lot fixes UI post-train).
+
+**Décision principale** : après logout (mode xbox), le bootstrap anonyme renvoie
+available_players vide (filtrage ownership ADR 0029) ; __root rend l'anonyme via un
+Outlet nu (pas d'AppShell → pas de NavL1), et à `/` l'IndexPage affichait le fallback
+« Aucun joueur configuré » sans lien /login. La seule redirection vers /login était
+IMPÉRATIVE (useEffect navigate) → course avec le settle du routeur TanStack au
+rechargement plein, perdue → utilisateur bloqué sans échappatoire. Fix : redirection
+DÉCLARATIVE (`<Navigate to="/login" replace>`) via helper pur `resolveIndexRedirect`
+(shellNavigation.ts, verdict wait|login|player|setup, garde login prioritaire pour
+password/xbox anonyme), projeté par IndexPage. 8 tests de la matrice. Suite web
+2167 verts, tsc/eslint OK.
+
+**Reste** : re-vérif visuelle du cycle déconnexion en prod (l'agent n'a pas pu rejouer
+la boucle SSO complète en local). Découverte non traitée : __root a le même pattern de
+redirection impérative pour first_launch→/register et setup_required→/setup (mêmes
+courses théoriques). Prochaine étape : bugs 2-6 du lot (Spartan ID switch, nameplate
+vide, libellés En placement/Super Fiesta à centraliser, onboarding post-login).
+
+---
+
 ## [2026-07-15] Train de merge 2026-07-15 assemblé — file post-campagne + SISU/MSAL + revue adversariale (branche integration/train-2026-07-15)
 
 **Statut** : Complété (train assemblé, tous gates verts, PR ouverte vers main — attente merge utilisateur = deploy prod).
