@@ -7083,3 +7083,61 @@ REJOUÉ intégralement après les corrections de revue (CAS + commentaires).
 
 **Conclusion / prochaine étape** : LOT A soldé, cases A1-A6 cochées. LOTS B (lightbox web)
 et C (durcissements ffmpeg/serving) restent à faire. Pas de merge (revue utilisateur).
+
+## [2026-07-17] LOT B — Durcissement pipeline média : lecteur lightbox (désync toggles + préchargement)
+
+**Statut** : Complété (LOT B du PLAN_MEDIA_PIPELINE_HARDENING_2026-07 ; branche
+fix/media-pipeline-hardening, worktree dédié). Pas de commit (superviseur).
+Fichiers touchés : `apps/web/src/features/media/CoverFlowModal.tsx` (code + 3
+commentaires), `CoverFlowModal.hls.test.tsx` (mock étendu + 2 describes).
+
+**Décision technique principale** : corriger deux défauts du carrousel coverflow, dont
+la cause commune est que l'instance `ClipPlayer` PERSISTE tant que le clip reste dans la
+fenêtre de proximité ±2 (la key est portée par la div de slot du parent, PAS par
+ClipPlayer) — le commentaire « ClipPlayer remonte par clip donc l'état se réinitialise »
+était faux (doc inversée, corrigé aux 2 sites).
+
+- B1 (désync toggles/mute) : les deux interrupteurs Jeu/Voix persistent (décision produit
+  tranchée : pas de reset ON/ON) et doivent être réappliqués fidèlement au recentrage.
+  Piège d'ordre des effets React : l'effet PARENT `[currentItem]` (qui force
+  `vid.muted=false` sur le clip recentré) s'exécute APRÈS l'effet enfant du même commit —
+  réappliquer `.muted` côté enfant seul ne suffit pas, le parent le démuterait derrière.
+  MÉCANISME RETENU : marqueur DOM `video.dataset.audioOff='1'` posé par l'effet enfant
+  quand les deux toggles sont OFF (retiré via `delete` sinon) ; le parent ne démute QUE
+  si `vid.dataset.audioOff !== '1'`. L'enfant ÉCRIT le marqueur pendant son effet (avant
+  le parent), le parent le LIT et s'abstient → le mute survit au recentrage. `isCenter`
+  ajouté aux deps de l'effet enfant pour la réapplication au centrage. Zéro état global,
+  zéro nouvelle prop (dataset local au node video, déjà accessible via la Map de refs).
+- B2 (préchargement voisins) : l'effet d'attache hls.js instanciait `new Hls` pour TOUS
+  les slots HLS rendus (±2), chaque instance préchargeant ~30 s de segments (jusqu'à 5
+  flux + 5 workers en parallèle sur le VPS). Instances désormais créées avec
+  `autoStartLoad: false` ; nouvel effet dédié `[isHls, isCenter]` appelle
+  `startLoad()` au centrage et `stopLoad()` au décentrage. `loadSource()` INCHANGÉ dans
+  l'effet d'attache : il charge le manifest (peuple encore AUDIO_TRACKS_UPDATED → le
+  sélecteur des voisins), seuls les segments sont gatés. Effet start/stop déclaré APRÈS
+  l'effet d'attache → `hlsRef.current` déjà posé au montage. Repli natif Safari + priorité
+  hls.js sur le quirk Chrome canPlayType « maybe » intacts.
+- B3 (tests) : mock hls.js étendu (`startLoad`/`stopLoad` = vi.fn + interface). (a)
+  scénario both-OFF → navigation A→B→A (flèches, fake timers pour ANIM_MS) → assertion
+  vidéo TOUJOURS muette + `dataset.audioOff='1'` + toggles aria-pressed=false. (b)
+  startLoad pour le clip centré seulement (instances[0]=A) + stopLoad du voisin
+  (instances[1]=B) au montage, puis inversion après navigation. (c) les 4 combos toggles
+  existants restent verts.
+
+**Résultats observés** : Gate B vert, codes de sortie vérifiés (worktree apps/web).
+- purge `node_modules/.tmp` : fait.
+- `npm run typecheck` (tsc -b) = exit 0.
+- `npm run lint` = exit 0 : 68 warnings baseline pré-existants, 0 erreur ; les 4 warnings
+  restants sur CoverFlowModal.tsx (set-state-in-effect sur pendingPageAdvance ; 2 deps
+  `navigate` manquantes sur les effets keydown/autoChain) sont antérieurs et intentionnels,
+  mes effets (start/stop HLS `[isHls, isCenter]`, effet toggles `+isCenter`, parent
+  `[currentItem]`) n'en ajoutent aucun.
+- `npm run test` (vitest, hors sandbox) = exit 0 : 257 fichiers, 2239 passed, 14 skipped
+  (skips pré-existants, aucun introduit), 0 failed. Ciblé média : 36/36 verts.
+- Aucune string UI ajoutée (le marqueur data-audio-off n'est pas un label) ; aucune
+  couleur hex/classe Tailwind couleur introduite.
+
+**Conclusion / prochaine étape** : LOT B soldé, cases B1-B3 cochées. Reste LOT C
+(durcissements ffmpeg/serving : mono-piste AAC, tag hvc1, alimiter, borne audioEnvelope,
+pre-flight remux WebM, VerifyHLSPlayable pistes). Pas de merge (revue visuelle utilisateur).
+Aucune découverte hors périmètre lors du LOT B.

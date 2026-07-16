@@ -105,7 +105,7 @@ Fichiers : `apps/web/src/features/media/CoverFlowModal.tsx` + tests
 (`CoverFlowModal.hls.test.tsx`, `CoverFlowModal.test.tsx`).
 Pré-requis : `npm install` dans `apps/web` du worktree (node_modules absent).
 
-- [ ] B1. Désync toggles/mute : au recentrage d'un clip (isCenter redevient
+- [x] B1. Désync toggles/mute : au recentrage d'un clip (isCenter redevient
       true), l'état des DEUX interrupteurs est réappliqué (muted si les deux
       OFF, rendition correspondante sinon). Décision produit TRANCHÉE :
       l'état choisi persiste (pas de reset à ON/ON). Attention à l'ordre des
@@ -114,17 +114,55 @@ Pré-requis : `npm install` dans `apps/web` du worktree (node_modules absent).
       démuter un clip dont les deux toggles sont OFF — mécanisme au choix de
       l'implémentation (ex. dataset sur l'élément video consulté par le parent),
       mais SANS état global ni prop drilling nouveau.
-- [ ] B2. Chargement voisins : les instances hls.js sont créées avec
+      → MÉCANISME RETENU : marqueur DOM `video.dataset.audioOff='1'` posé par
+      l'effet enfant des toggles quand les deux sont OFF (retiré via `delete`
+      sinon) ; l'effet parent [currentItem] ne démute (`vid.muted=false`) QUE si
+      `vid.dataset.audioOff !== '1'`. Résiste à l'ordre parent-après-enfant :
+      l'enfant écrit le marqueur pendant son effet (qui court AVANT le parent
+      dans le même commit), le parent le LIT et s'abstient — réappliquer `.muted`
+      côté enfant seul ne suffirait pas (le parent le démuterait derrière).
+      `isCenter` ajouté aux deps de l'effet enfant pour la réapplication au
+      recentrage. Zéro état global, zéro prop nouvelle (dataset local au node).
+      Commentaire mensonger « ClipPlayer remonte par clip » corrigé aux 2 sites
+      (déclaration gameOn/voiceOn + effet d'application) : l'instance PERSISTE
+      dans la fenêtre ±2 (key sur la div de slot, pas sur ClipPlayer).
+- [x] B2. Chargement voisins : les instances hls.js sont créées avec
       `autoStartLoad: false` ; `startLoad()` uniquement quand le clip est
       centré, `stopLoad()` quand il quitte le centre. Décision TRANCHÉE :
       chargement centre uniquement (pas de préchargement ±1).
-- [ ] B3. Tests vitest : (a) scénario both-OFF → navigation ailleurs → retour →
+      → `new Hls({ enableWorker: true, autoStartLoad: false })` ; nouvel effet
+      dédié `[isHls, isCenter]` : `hlsRef.current.startLoad()` si isCenter,
+      `stopLoad()` sinon. `loadSource()` INCHANGÉ dans l'effet d'attache (charge
+      le manifest → AUDIO_TRACKS_UPDATED peuple encore le sélecteur des voisins ;
+      seuls les segments sont gatés). Effet start/stop déclaré APRÈS l'effet
+      d'attache → hlsRef.current déjà posé au montage. Repli natif Safari et
+      priorité hls.js (quirk Chrome canPlayType "maybe") intacts.
+- [x] B3. Tests vitest : (a) scénario both-OFF → navigation ailleurs → retour →
       vidéo toujours muette et toggles OFF ; (b) startLoad appelé pour le clip
       centré seulement (étendre le mock hls.js existant).
+      → Mock hls.js étendu (`startLoad`/`stopLoad` = vi.fn, + interface). (a)
+      nouveau describe « persistance du mute deux OFF au recentrage » : 2 clips
+      HLS, A both-OFF (assert muted + dataset.audioOff='1'), navigation
+      A→B→A via flèches (fake timers pour libérer animatingRef sur ANIM_MS),
+      re-assertion muted=true + toggles aria-pressed=false. (b) describe
+      « chargement HLS réservé au clip centré » : instances[0]=A startLoad et
+      pas stopLoad, instances[1]=B jamais startLoad + stopLoad ; après navigation
+      A→B, instances[0].stopLoad et instances[1].startLoad. (c) les 4 combos
+      toggles existants restent verts (36/36 sur les 2 fichiers média).
 
 Gate B : depuis `apps/web` : purge `node_modules\.tmp` puis
 `npm run typecheck && npm run lint && npm run test` (vitest hors sandbox,
 cf. mémoire). Zéro nouvelle string UI attendue (sinon i18n FR+EN).
+
+> Clôture LOT B [2026-07-17] : 4 commandes de gate exécutées, codes de sortie
+> vérifiés — purge .tmp (fait), `npm run typecheck` exit 0, `npm run lint` exit 0
+> (68 warnings baseline pré-existants, 0 erreur ; les 4 warnings sur
+> CoverFlowModal.tsx — set-state-in-effect ligne pendingPageAdvance + 2 deps
+> `navigate` manquantes sur keydown/autoChain — sont antérieurs et intentionnels,
+> mes effets n'en ajoutent aucun), `npm run test` exit 0 (2239 passed, 14 skipped
+> pré-existants, 0 failed). Aucune string UI ajoutée (le marqueur data-audio-off
+> n'est pas un label). Aucune couleur hex/classe Tailwind couleur introduite.
+> Pas de commit (superviseur).
 
 ## LOT C — Durcissements ffmpeg / serving (trouvailles #5, #6, #7, #8, #9, #11)
 

@@ -13,6 +13,8 @@ interface MockHlsInstance {
   loadSource: ReturnType<typeof vi.fn>
   attachMedia: ReturnType<typeof vi.fn>
   destroy: ReturnType<typeof vi.fn>
+  startLoad: ReturnType<typeof vi.fn>
+  stopLoad: ReturnType<typeof vi.fn>
   handlers: Record<string, ((evt?: unknown, data?: unknown) => void) | undefined>
   audioTracks: { name: string; lang: string }[]
   audioTrack: number
@@ -35,6 +37,10 @@ vi.mock('hls.js', () => {
     loadSource = vi.fn()
     attachMedia = vi.fn()
     destroy = vi.fn()
+    // autoStartLoad:false côté prod → le composant pilote start/stopLoad selon
+    // le centrage du clip (chargement des segments réservé au clip centré).
+    startLoad = vi.fn()
+    stopLoad = vi.fn()
     on(evt: string, cb: (evt?: unknown, data?: unknown) => void) {
       this.handlers[evt] = cb
     }
@@ -173,5 +179,107 @@ describe('CoverFlowModal — interrupteurs Jeu/Voix (layout game/voices/full)', 
     })
     const video = document.querySelector('video') as HTMLVideoElement
     expect(video.muted).toBe(true)
+  })
+})
+
+describe('CoverFlowModal — persistance du mute "deux OFF" au recentrage', () => {
+  beforeEach(() => {
+    instances.length = 0
+  })
+
+  // Régression : l'instance ClipPlayer persiste tant que le clip reste dans la
+  // fenêtre ±2 (key portée par la div de slot). Scénario : deux toggles OFF →
+  // navigation vers un voisin → retour. L'effet parent [currentItem] forçait
+  // muted=false sur le clip recentré (et s'exécute APRÈS l'effet enfant du même
+  // commit) → le son revenait alors que l'UI affichait Jeu OFF / Voix OFF. Le
+  // marqueur data-audio-off, consulté par le parent, ferme la fenêtre.
+  it('both-OFF → navigation ailleurs → retour : vidéo TOUJOURS muette et toggles OFF', () => {
+    vi.useFakeTimers()
+    try {
+      const items = [
+        makeClip('/x/A/master.m3u8'),
+        makeClip('/x/B/master.m3u8'),
+      ]
+      const { container } = renderWithProviders(
+        <CoverFlowModal items={items} startIndex={0} onClose={vi.fn()} onToggleLike={vi.fn()} />,
+      )
+      // A est centré → instances[0]. Peupler les 3 renditions → layout 2 toggles.
+      act(() => {
+        instances[0].handlers['audioTracksUpdated']?.(undefined, {
+          audioTracks: [{ name: 'game' }, { name: 'voices' }, { name: 'full' }],
+        })
+      })
+      // Couper Jeu ET Voix → A muet + marqueur data-audio-off posé.
+      act(() => {
+        fireEvent.click(screen.getByRole('button', { name: 'Voix' }))
+      })
+      act(() => {
+        fireEvent.click(screen.getByRole('button', { name: 'Jeu' }))
+      })
+      const videoA = container.querySelector('video[controls]') as HTMLVideoElement
+      expect(videoA.muted).toBe(true)
+      expect(videoA.dataset.audioOff).toBe('1')
+
+      // Naviguer vers B (A se décentre mais son instance persiste dans la ±2).
+      act(() => {
+        fireEvent.keyDown(window, { key: 'ArrowRight' })
+      })
+      act(() => {
+        vi.advanceTimersByTime(500) // ANIM_MS : libère animatingRef
+      })
+
+      // Retour sur A : le parent NE doit PAS le démuter (data-audio-off respecté).
+      act(() => {
+        fireEvent.keyDown(window, { key: 'ArrowLeft' })
+      })
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+
+      const videoABack = container.querySelector('video[controls]') as HTMLVideoElement
+      expect(videoABack.muted).toBe(true)
+      expect(screen.getByRole('button', { name: 'Jeu', pressed: false })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Voix', pressed: false })).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
+describe('CoverFlowModal — chargement HLS réservé au clip centré', () => {
+  beforeEach(() => {
+    instances.length = 0
+  })
+
+  it('startLoad pour le clip centré seulement, stopLoad au décentrage', () => {
+    vi.useFakeTimers()
+    try {
+      const items = [
+        makeClip('/x/A/master.m3u8'),
+        makeClip('/x/B/master.m3u8'),
+      ]
+      renderWithProviders(
+        <CoverFlowModal items={items} startIndex={0} onClose={vi.fn()} onToggleLike={vi.fn()} />,
+      )
+      // A centré (instances[0]) → startLoad. B voisin (instances[1]) → jamais
+      // startLoad (segments non préchargés), explicitement stoppé.
+      expect(instances[0].startLoad).toHaveBeenCalled()
+      expect(instances[0].stopLoad).not.toHaveBeenCalled()
+      expect(instances[1].startLoad).not.toHaveBeenCalled()
+      expect(instances[1].stopLoad).toHaveBeenCalled()
+
+      // Naviguer vers B : A quitte le centre → stopLoad ; B centré → startLoad.
+      act(() => {
+        fireEvent.keyDown(window, { key: 'ArrowRight' })
+      })
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+
+      expect(instances[0].stopLoad).toHaveBeenCalled()
+      expect(instances[1].startLoad).toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
