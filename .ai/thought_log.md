@@ -1,3 +1,45 @@
+## [2026-07-16] B4.1-B4.4 / B5.5 — actions data-quality SOLDÉES en prod (endpoint admin)
+
+**Statut** : Complété (branche `docs/b4-data-quality-solde`, GO utilisateur B4 autonome prod).
+Plan : `.ai/PLAN_MONITORING_TRIAGE_DETECTIONS_2026-07.md` (§B4, §B5.5 et en-tête statués).
+
+**Méthode** : endpoint admin `POST /api/v1/admin/actions/*` sur le VPS (prod, mode xbox). Session
+admin obtenue CÔTÉ VPS : cookie `levelup_session` = `<sessionID>.<HMAC-SHA256(secret,sessionID)>`,
+signature calculée DANS le conteneur (`openssl` + `$LEVELUP_SESSION_SECRET`) — **secret jamais
+exfiltré ni loggé**. Session admin existante (role=admin, auth_ready=true) réutilisée. Le serveur
+écrit lui-même (writer unique dblease, anti-ART) — AUCUNE ouverture DuckDB RW externe.
+
+**Résultats prod (avant → après)** :
+- B4.1 `registry-names/backfill` [x] : raw_uuid **24 → 4** (20 corrigés : maps/pairs/variants
+  100 %, playlists 2/6). Les 4 playlists restantes sans `asset_translations` → drain DiscoveryUGC
+  réseau (`catalog/ugc-drain`, hors périmètre endpoint zéro-réseau).
+- B4.2 `convergence/run` ×4 joueurs [!] : **4/4 succeeded, auth live SISU OK** (error_count=0),
+  mais `converged_psa=0` partout → orphan_xuids **144 → 144**. Mécanisme d'alias OPPORTUNISTE
+  (upsert xuid_aliases depuis les JSON PSA re-fetchés, seulement matchs `psa_checked_at IS NULL`)
+  ÉPUISÉ depuis le fix B1 (07-12, pipeline a tout stampé). Résidu = ré-résolution PeopleHub
+  dédiée, NON exposée par endpoint.
+- B4.3 `lying-bits/reset` [x] : lying_bits_events **580 → 0** (1159 nettoyés row-by-row anti-ART),
+  puis rebond **13** post-convergences. DÉCOUVERTE : détecteur = FAUX POSITIF pour matchs
+  no-film/vides (`MarkNoFilmDefinitive`/`MarkEventsEmptyDefinitive` posent MBitEvents SANS
+  highlight_events ; détecteur ne teste pas `events_empty`) → reset+convergence oscille. Backlog
+  vidé (−97,8 %) ; les 13 = no-film légitimes, pas une donnée cassée. Fix = exclure
+  `events_empty=TRUE` du détecteur+reset (code, hors périmètre).
+- B4.4 `translations/mode` [x] : `Legacy Slayer BR` → « Massacre BR hérité » (untranslated 2→1,
+  convention Slayer→Massacre). Résidu `Arena` (pair INVERSÉ « CTF:Arena », vrai mode CTF) =
+  artefact, non traduit ([!], besoin `mode_pair_override` non exposé).
+- B5.5 `migrate-media-paths` [!] : binaire ABSENT du conteneur (non buildé) + `duckdb` CLI absent
+  → dry-run non obtenable ; `shared_social` tenu RW (downtime interdit) ; **0 warning legacy en
+  prod** → fallback `relFromSlugMarker` couvre déjà = pas de casse. Prod-gated (cosmétique).
+
+**Découvertes (consignées, non traitées)** : (a) détecteur lying_bits_events faux-positif
+no-film ; (b) orphelins non résorbables par convergence opportuniste (besoin alias-backfill
+PeopleHub dédié) ; (c) 4 playlists raw restantes = drain réseau `catalog/ugc-drain`.
+
+**Prochaine étape** : merge branche par superviseur (docs-only, pas de deploy). Suivis (a)/(b)/(c)
+hors de ce train.
+
+---
+
 ## [2026-07-16] Fix P0 — identité Spartan partagée entre joueurs + fuite cross-titre (régression train 2026-07-15)
 
 **Statut** : Complété (branche fix/spartan-appearance-per-player). Gates Go verts, pas encore commité (superviseur gère git).
