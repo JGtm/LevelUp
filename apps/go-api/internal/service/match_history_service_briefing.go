@@ -214,14 +214,19 @@ func buildBriefingDimensions(scope, all []domain.MatchHistoryRawRow) []domain.Ex
 	}
 	scopeRows := rawRowsToBreakdownRows(scope)
 	allRows := rawRowsToBreakdownRows(all)
+	// Plein historique = scope égal à l'historique complet (un filtre ne peut que
+	// rétrécir → cardinalités égales ⟺ ensembles identiques). Les deltas vs baseline
+	// sont alors tous nuls et le tri de CompareByKey dégénère : la sélection top/flop
+	// bascule sur le taux de victoire (P-8, cf. buildDimension).
+	fullHistory := len(scope) == len(all)
 	out := make([]domain.ExplorerBriefingDimension, 0, 3)
-	if d := buildDimension("map", mapKeyed(breakdown.ByMap(scopeRows)), mapKeyed(breakdown.ByMap(allRows))); d != nil {
+	if d := buildDimension("map", mapKeyed(breakdown.ByMap(scopeRows)), mapKeyed(breakdown.ByMap(allRows)), fullHistory); d != nil {
 		out = append(out, *d)
 	}
-	if d := buildDimension("mode", modeKeyed(breakdown.ByMode(scopeRows)), modeKeyed(breakdown.ByMode(allRows))); d != nil {
+	if d := buildDimension("mode", modeKeyed(breakdown.ByMode(scopeRows)), modeKeyed(breakdown.ByMode(allRows)), fullHistory); d != nil {
 		out = append(out, *d)
 	}
-	if d := buildDimension("playlist", playlistKeyed(breakdown.ByPlaylist(scopeRows)), playlistKeyed(breakdown.ByPlaylist(allRows))); d != nil {
+	if d := buildDimension("playlist", playlistKeyed(breakdown.ByPlaylist(scopeRows)), playlistKeyed(breakdown.ByPlaylist(allRows)), fullHistory); d != nil {
 		out = append(out, *d)
 	}
 	if len(out) == 0 {
@@ -233,7 +238,7 @@ func buildBriefingDimensions(scope, all []domain.MatchHistoryRawRow) []domain.Ex
 // buildDimension construit une dimension à partir de ses agrégats scope / historique
 // génériques par clé. Retourne nil si la dimension n'est pas libre (< 2 valeurs
 // distinctes) ou si aucune entrée qualifiée.
-func buildDimension(dim string, sessionKA, histKA []breakdown.KeyedAggregate) *domain.ExplorerBriefingDimension {
+func buildDimension(dim string, sessionKA, histKA []breakdown.KeyedAggregate, fullHistory bool) *domain.ExplorerBriefingDimension {
 	distinct := 0
 	for _, a := range sessionKA {
 		if a.Played > 0 {
@@ -253,6 +258,18 @@ func buildDimension(dim string, sessionKA, histKA []breakdown.KeyedAggregate) *d
 		if d.Session.Played >= MinDimensionGroupMatches {
 			qualified = append(qualified, d)
 		}
+	}
+	// En plein historique, tous les WinRateDelta valent 0 (scope == historique) et
+	// CompareByKey retombe sur un tri par clé (GUID de map → pseudo-aléatoire). On
+	// re-trie par taux de victoire du groupe décroissant (tie-break libellé) pour
+	// une sélection top/flop signifiante (P-8). Sous filtre : tri V1 (delta) conservé.
+	if fullHistory {
+		sort.SliceStable(qualified, func(i, j int) bool {
+			if qualified[i].Session.WinRate != qualified[j].Session.WinRate {
+				return qualified[i].Session.WinRate > qualified[j].Session.WinRate
+			}
+			return qualified[i].Label < qualified[j].Label
+		})
 	}
 	qualified = selectTopFlop(qualified, dimensionTopFlopCount)
 	entries := make([]domain.ExplorerBriefingDimensionEntry, 0, len(qualified))

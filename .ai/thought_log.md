@@ -1,3 +1,56 @@
+## [2026-07-16] Explorer briefing V2 — Phase 2 (delta « vs habituel » dégénéré, item 1)
+
+**Statut** : Complété (Phase 2 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items
+2a-2e). Worktree isolé `feat/explorer-briefing-v2`. NON committé (le superviseur commite).
+
+**Décision technique principale** : le « ±0 pts » systématique en plein historique est
+mathématiquement justifié (scope == baseline ⟹ deltas nuls), pas un bug → on MASQUE le
+fragment plutôt que de changer le formatage. Frontend : helper PUR
+`isFullHistoryScope(scopeMatches, baselineMatches)` extrait dans `ExplorerBriefing.logic.ts`
+(mirroir exact de P-1 : `scopeMatches != null && baselineMatches === scopeMatches` ; faux
+sans baseline). Le Strip dérive `fullHistory` une fois, gate les 3 fragments socle
+(Bilan/FDA/Perf) sur `!fullHistory`, et passe `hideDelta=fullHistory` aux modules. Prop
+`hideDelta` threadée `ExplorerBriefingModules` → `DimensionCard` → `DimensionRow` ; colonne
+delta rendue sous `{!hideDelta && …}`. `formatSignedPoints`/`formatSignedFixed` NON touchés
+(le masquage dépend du flag, pas de la valeur — un delta réellement nul SOUS filtre reste
+affiché « ±0 »).
+
+Backend (P-8, service SEUL) : le tri de `breakdown.CompareByKey` dégénère en tri par clé
+(GUID de map, pseudo-aléatoire) quand tous les deltas valent 0. Booléen nommé
+`fullHistory := len(scope) == len(all)` dans `buildBriefingDimensions`, passé en param à
+`buildDimension` ; re-tri `sort.SliceStable` par `Session.WinRate` desc + tie-break `Label`
+AVANT `selectTopFlop`, uniquement en plein historique. `breakdown.CompareByKey` (analysis
+partagé) inchangé. Sous filtre : tri par delta V1 strictement conservé.
+
+**Résultats observés** :
+- Frontend : `ExplorerBriefingStrip.tsx` (import + `fullHistory` + 3 gates socle + prop
+  passée), `ExplorerBriefingModules.tsx` (`hideDelta` threadé sur 2 niveaux, colonne delta
+  conditionnelle), `ExplorerBriefing.logic.ts` (+ `isFullHistoryScope`). Tests :
+  `ExplorerBriefing.logic.test.ts` (+ describe 4 cas), `ExplorerBriefingStrip.test.tsx`
+  (NOUVEAU, 2 états ; deltas posés NON NULS en plein historique pour prouver le masquage par
+  flag).
+- Backend : `match_history_service_briefing.go` (`buildBriefingDimensions`/`buildDimension`
+  + re-tri), `match_history_service_briefing_test.go` (+ `TestBuildDimension_FullHistory
+  SortsByWinRate` MapIDs a1<m1<z1 ordre inverse du WR ; + `TestBuildDimension_FilteredSorts
+  ByDelta` scope⊊all, WR-desc ≠ delta-desc).
+
+**Piège rencontré (corrigé)** : premières exécutions de `make check-types`/`make test-web`
+lancées depuis la racine du dépôt PRINCIPAL (`…/LevelUp-go-migration`) au lieu du worktree
+(`…/.claude/worktrees/explorer-briefing-v2`) → testaient le code NON modifié (255 fichiers,
+tests neufs absents/introuvables). Tous les gates re-exécutés depuis la racine du worktree.
+Leçon : toujours ancrer les commandes au worktree pour un chantier en worktree isolé.
+
+**Gates** (depuis la racine du worktree) : `make check-types` = 0 ; `make test-web` = 257
+fichiers / 2178 passés / 14 skipped / 0 échec ; `npm run lint` = 0 erreur (68 warnings
+baseline, 0 sur fichiers touchés) ; `go test ./...` = exit 0, 111 packages ok, 0 FAIL ;
+`make go-api-lint` = exit 0 (+ `go vet ./internal/service/...` = 0).
+
+**Conclusion / prochaine étape** : Phase 2 CLÔTURÉE, tout vert. Aucune Découverte hors
+périmètre. Prochaine phase = Phase 3 (unification de mise en forme des cartes-sections,
+wrapper `BriefingSectionCard`, item 7). NON committé — remise au superviseur.
+
+---
+
 ## [2026-07-16] Explorer briefing V2 — Phases 0 + 1 (branche feat/explorer-briefing-v2)
 
 **Statut** : Complété (Phases 0 et 1 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`).

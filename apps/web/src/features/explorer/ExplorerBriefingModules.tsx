@@ -50,7 +50,17 @@ function deltaToken(v: number | null | undefined): SemanticToken {
   return s > 0 ? 'outcome-win' : s < 0 ? 'outcome-loss' : 'outcome-draw'
 }
 
-export function ExplorerBriefingModules({ briefing, t }: { briefing: ExplorerBriefing; t: T }) {
+export function ExplorerBriefingModules({
+  briefing,
+  t,
+  hideDelta,
+}: {
+  briefing: ExplorerBriefing
+  t: T
+  // hideDelta : plein historique (scope == baseline) → deltas « vs habituel »
+  // nuls par construction, colonne delta des lignes de dimension masquée (P-1).
+  hideDelta: boolean
+}) {
   const hasRanked = useCapability('ranked')
   const dimensions = briefing.dimensions ?? []
   const showRanked = hasRanked && briefing.ranked != null
@@ -61,7 +71,7 @@ export function ExplorerBriefingModules({ briefing, t }: { briefing: ExplorerBri
       {dimensions.length > 0 && (
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
           {dimensions.map((d) => (
-            <DimensionCard key={d.dimension} dim={d} t={t} />
+            <DimensionCard key={d.dimension} dim={d} t={t} hideDelta={hideDelta} />
           ))}
         </div>
       )}
@@ -73,7 +83,15 @@ export function ExplorerBriefingModules({ briefing, t }: { briefing: ExplorerBri
 
 // ─── Module dimensions (C1) ──────────────────────────────────────────────────
 
-function DimensionCard({ dim, t }: { dim: ExplorerBriefingDimension; t: T }) {
+function DimensionCard({
+  dim,
+  t,
+  hideDelta,
+}: {
+  dim: ExplorerBriefingDimension
+  t: T
+  hideDelta: boolean
+}) {
   const titleKey = DIM_TITLE_KEY[dim.dimension]
   return (
     <KpiCard className="h-full">
@@ -83,7 +101,7 @@ function DimensionCard({ dim, t }: { dim: ExplorerBriefingDimension; t: T }) {
         </p>
         <ul className="space-y-1">
           {(dim.entries ?? []).map((e) => (
-            <DimensionRow key={e.label} entry={e} t={t} />
+            <DimensionRow key={e.label} entry={e} t={t} hideDelta={hideDelta} />
           ))}
         </ul>
       </div>
@@ -91,10 +109,17 @@ function DimensionCard({ dim, t }: { dim: ExplorerBriefingDimension; t: T }) {
   )
 }
 
-function DimensionRow({ entry, t }: { entry: ExplorerBriefingDimensionEntry; t: T }) {
+function DimensionRow({
+  entry,
+  t,
+  hideDelta,
+}: {
+  entry: ExplorerBriefingDimensionEntry
+  t: T
+  hideDelta: boolean
+}) {
   const wr = entry.win_rate
   const dw = entry.delta_win_rate
-  const arrow = signOf(dw) > 0 ? '▲' : signOf(dw) < 0 ? '▼' : '='
   return (
     <li className="flex items-center gap-2 text-xs">
       <span className="min-w-0 flex-1 truncate text-foreground" title={entry.label}>
@@ -106,12 +131,15 @@ function DimensionRow({ entry, t }: { entry: ExplorerBriefingDimensionEntry; t: 
       <span className="w-10 shrink-0 text-right tabular-nums font-semibold" style={{ color: winRateColor(wr) }}>
         {formatPercentInt(wr)}
       </span>
-      <span
-        className="w-16 shrink-0 text-right tabular-nums"
-        style={{ color: tokenCssVar(deltaToken(dw)) }}
-      >
-        {arrow} {formatSignedPoints(dw)}
-      </span>
+      {/* Colonne delta « vs habituel » masquée en plein historique (P-1). */}
+      {!hideDelta && (
+        <span
+          className="w-16 shrink-0 text-right tabular-nums"
+          style={{ color: tokenCssVar(deltaToken(dw)) }}
+        >
+          {signOf(dw) > 0 ? '▲' : signOf(dw) < 0 ? '▼' : '='} {formatSignedPoints(dw)}
+        </span>
+      )}
       {entry.note_tier != null ? (
         <span
           className="w-20 shrink-0 rounded border px-1.5 py-0.5 text-center text-3xs font-semibold"
