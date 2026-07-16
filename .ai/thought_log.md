@@ -1,3 +1,49 @@
+## [2026-07-16] Réalignement vhost nginx prod ↔ template sur cible unique (branche ops/nginx-vhost-realign)
+
+**Statut** : Complété.
+
+**Contexte** : le vhost prod actif (`/etc/nginx/sites-enabled/levelup` — fichier RÉEL, pas
+un symlink vers sites-available ; il a divergé de `sites-available/levelup`) s'était écarté
+du template versionné `packaging/nginx/levelup.conf`. Audit : locations consolidées côté
+prod vs split `/api/` + `/assets/` côté template ; en-têtes de sécurité doublonnés ;
+timeouts 3600s partout ; reliquats Streamlit (proxy Upgrade WebSocket + commentaire
+obsolète) ; `auth_basic` incohérent (commenté prod / actif template).
+
+**Croisement code (avant écriture)** :
+- Upload médias = `POST /api/v1/players/{slug}/media/upload` (multipart, cap Go 500 Mo/req).
+  Transcodage HLS ASYNCHRONE (goroutine, `context.Background`) → la requête bloque sur
+  réception du corps + save disque + probe HLS synchrone, PAS sur le transcode. Justifie
+  `client_max_body_size 2g` + timeouts longs sur `/api/` uniquement.
+- En-têtes sécurité posés par middleware Go GLOBAL (`server.go:575` r.Use SecurityHeaders) :
+  X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy, COOP, HSTS (si
+  HTTPS + trustProxy). Vérifié en prod : XFO sortait EN DOUBLE (DENY Go + SAMEORIGIN nginx).
+  → nginx ne garde QUE `X-Permitted-Cross-Domain-Policies "none"` (Go ne le pose pas). HSTS
+  déjà émis par Go (LEVELUP_TRUST_PROXY_HEADERS actif) → NON ajouté à nginx (sinon doublon).
+- WebSocket/SSE : AUCUN usage réel (Go + web) → purge des `proxy_set_header Upgrade/Connection`
+  hérités de Streamlit.
+- Assets : nginx ne sert aucun fichier local (tout proxifié `:8000`, y compris `/static` et
+  `/assets` Vite servis par `http.FileServer`). La location `/assets/` du template avait un
+  `proxy_cache_valid` INERTE (pas de zone cache) → supprimée.
+
+**Cible appliquée** (`sites-enabled/levelup`) : blocs certbot/301/TLS préservés à
+l'identique ; `add_header XPCDP none` ; `proxy_set_header X-Forwarded-*` conservés
+(X-Forwarded-Proto requis pour Secure cookies + HSTS Go) ; timeouts défaut 60/300/300 ;
+`location /api/` (2g + 3600s r/s) ; `location /auth/xbox/` (access_log off) ; `location /`
+(SPA + statiques). 3 locations justifiées, zéro reliquat Streamlit.
+
+**Application** : backup `sites-available/levelup.pre-realign-2026-07-16` → écriture (heredoc
+stdin, byte-transparent) → `nginx -t` OK → `systemctl reload` (sans coupure). Vérifs : /health
+200 JSON, / et /players 200 HTML, HTTP→301, asset `/assets/*.js` 200 ; chaque en-tête sécurité
+compté à 1 (doublon XFO éradiqué). Template mis au diapason EXACT (seuls diffèrent les ajouts
+certbot machine : `if ($host)` du bloc :80 et les `ssl_certificate` réels). Commit local, NON
+poussé (le coordinateur pousse).
+
+**Conclusion** : prod et template convergés sur une cible unique justifiée. Amélioration
+différée (hors périmètre) : cache immutable des assets hashés (le `http.FileServer` Go ne pose
+pas de `Cache-Control`) — à faire côté Go plutôt qu'en surcouche nginx.
+
+---
+
 ## [2026-07-16] Salve 4 — collision route challenges resolue + code mort web (branche fix/corrections-v7-backlog)
 
 **Statut** : Complété.
