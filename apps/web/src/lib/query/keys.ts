@@ -94,7 +94,6 @@ export const queryKeys = {
   // switch de titre servait les données périmées du titre précédent (la clé ne
   // changeant pas, TanStack Query réutilisait le cache pendant le staleTime).
   home: (playerSlug: string, titleSlug: string) => ['home', playerSlug, titleSlug] as const,
-  battlepass: (playerSlug: string) => ['home', playerSlug, 'battlepass'] as const,
 
   // Palmares
   seasonPass: (playerSlug: string) => ['palmares', playerSlug, 'season-pass'] as const,

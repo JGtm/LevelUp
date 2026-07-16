@@ -1,7 +1,7 @@
 // Package handlers — home.go : handlers HTTP pour la page d'accueil Mission Control.
 //
 // MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
-// /players/{player_slug} (ownership/title hérités) et enregistre les 2 GET. Les
+// /players/{player_slug} (ownership/title hérités) et enregistre l'unique GET. Les
 // en-têtes de cache (anciens middlewares CacheMaxAge/NoStore) sont posés dans les
 // Output. /pages/home conserve son ETag/304 byte-exact via un Body []byte
 // passthrough (writeJSONCached n'ajoute pas de trailing newline, contrairement à
@@ -10,7 +10,6 @@
 // Endpoints :
 //
 //	GET /api/v1/players/{player_slug}/pages/home     → HomePageResponse (ETag/304, max-age 30)
-//	GET /api/v1/players/{player_slug}/battlepass     → BattlePassResponse (no-store)
 package handlers
 
 import (
@@ -27,7 +26,6 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/humacore"
-	"levelup/go-api/internal/domain"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -51,20 +49,14 @@ func NewHomeHandler(newSvc HomeAuthFactory, settingsStore *settings_platform.Sto
 	return &HomeHandler{newSvc: newSvc, settingsStore: settingsStore}
 }
 
-// Mount enregistre les 2 GET via Huma sur le sous-routeur chi (préfixe
+// Mount enregistre l'unique GET via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *HomeHandler) Mount(r chi.Router) {
 	api := humacore.NewAPI(r)
 	huma.Get(api, "/pages/home", h.handleGetHomePage)
-	huma.Get(api, "/battlepass", h.handleGetBattlePass)
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
-
-// homePlayerInput : {player_slug} seul (battlepass, challenges).
-type homePlayerInput struct {
-	PlayerSlug string `path:"player_slug"`
-}
 
 // homePageInput : {player_slug} + X-LevelUp-Locale (résolution locale) + If-None-Match (ETag).
 type homePageInput struct {
@@ -81,11 +73,6 @@ type homePageOutput struct {
 	CacheControl string `header:"Cache-Control"`
 	ETag         string `header:"ETag"`
 	Body         []byte
-}
-
-type homeBattlePassOutput struct {
-	CacheControl string `header:"Cache-Control"`
-	Body         domain.BattlePassResponse
 }
 
 // resolveLocaleFromHeader détermine la locale à utiliser pour cette requête.
@@ -202,14 +189,4 @@ func isSharedSwapContention(err error) bool {
 	return errors.Is(err, sharedprovider.ErrSwapTimeout) ||
 		errors.Is(err, sharedprovider.ErrSwapFailed) ||
 		errors.Is(err, sharedprovider.ErrProviderClosed)
-}
-
-// handleGetBattlePass retourne les informations Battle Pass (best-effort, migré Huma).
-// GET /api/v1/players/{player_slug}/battlepass
-func (h *HomeHandler) handleGetBattlePass(ctx context.Context, in *homePlayerInput) (*homeBattlePassOutput, error) {
-	svc, sctx, _, _, err := h.newSvc(ctx, in.PlayerSlug)
-	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", "joueur introuvable")
-	}
-	return &homeBattlePassOutput{CacheControl: "no-store", Body: svc.GetBattlePass(sctx)}, nil
 }
