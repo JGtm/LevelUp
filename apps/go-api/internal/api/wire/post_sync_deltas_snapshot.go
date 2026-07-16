@@ -68,17 +68,30 @@ func SnapshotPlayerState(
 	}
 	s := &PlayerSnapshot{SkillTierByPlaylist: map[string]string{}}
 
-	// Career rank : dernière entrée career_progression
+	// scanSnapshotRow exécute une lecture mono-ligne best-effort sur la player DB
+	// via QueryRowRecovered (tolère un Reopen() concurrent — sweep recovery
+	// player-DB 2026-07-16, PLAN_PLAYER_DB_RECOVERY_SWEEP). Les tables peuvent être
+	// vides ou absentes (DB legacy) : une erreur non-ErrNoRows est loggée en Debug et
+	// les dest restent en zero-value. Centralise les 6 lectures mono-ligne du snapshot
+	// (CLAUDE.md règle 6 : ≤ 2 copies d'un même pattern).
+	scanSnapshotRow := func(logMsg, query string, dest ...any) {
+		rows, err := pdb.ReadDB().QueryRowRecovered(ctx, query)
+		if err == nil {
+			err = rows.Scan(dest...)
+			rows.Close()
+		}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			slog.DebugContext(ctx, logMsg, "err", err)
+		}
+	}
+
+	// Career rank : dernière entrée career_progression (table peut être vide/absente).
 	var rank sql.NullInt64
 	var rankName sql.NullString
-	err := pdb.ReadDB().QueryRow(ctx,
+	scanSnapshotRow("snapshot: career_progression query",
 		`SELECT rank, rank_name FROM career_progression
 		 ORDER BY recorded_at DESC LIMIT 1`,
-	).Scan(&rank, &rankName)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		// Table peut être vide ou absente — log mais continue
-		slog.DebugContext(ctx, "snapshot: career_progression query", "err", err)
-	}
+		&rank, &rankName)
 	if rank.Valid {
 		s.CurrentRank = int(rank.Int64)
 	}
@@ -88,33 +101,24 @@ func SnapshotPlayerState(
 
 	// Awards : count total
 	var awardCount sql.NullInt64
-	if err := pdb.ReadDB().QueryRow(ctx,
-		`SELECT COUNT(*) FROM personal_score_awards_latest`,
-	).Scan(&awardCount); err != nil {
-		slog.DebugContext(ctx, "snapshot: psa count", "err", err)
-	}
+	scanSnapshotRow("snapshot: psa count",
+		`SELECT COUNT(*) FROM personal_score_awards_latest`, &awardCount)
 	if awardCount.Valid {
 		s.PersonalAwardCount = int(awardCount.Int64)
 	}
 
 	// Citations : count total (pour challenges_completed)
 	var citationsCount sql.NullInt64
-	if err := pdb.ReadDB().QueryRow(ctx,
-		`SELECT COUNT(*) FROM match_citations_latest`,
-	).Scan(&citationsCount); err != nil {
-		slog.DebugContext(ctx, "snapshot: citations count", "err", err)
-	}
+	scanSnapshotRow("snapshot: citations count",
+		`SELECT COUNT(*) FROM match_citations_latest`, &citationsCount)
 	if citationsCount.Valid {
 		s.CitationsCount = int(citationsCount.Int64)
 	}
 
 	// Challenge paths distincts (pour challenge_added)
 	var pathsCount sql.NullInt64
-	if err := pdb.ReadDB().QueryRow(ctx,
-		`SELECT COUNT(DISTINCT challenge_path) FROM challenge_snapshots`,
-	).Scan(&pathsCount); err != nil {
-		slog.DebugContext(ctx, "snapshot: challenge paths", "err", err)
-	}
+	scanSnapshotRow("snapshot: challenge paths",
+		`SELECT COUNT(DISTINCT challenge_path) FROM challenge_snapshots`, &pathsCount)
 	if pathsCount.Valid {
 		s.ChallengePathsCount = int(pathsCount.Int64)
 	}
@@ -123,15 +127,13 @@ func SnapshotPlayerState(
 	// status='Completed' (vrai détecteur de défi termin, vs. compteur citations
 	// utilisé auparavant). Insensible à la casse pour matcher 'Completed'/'COMPLETED'.
 	var completedCount sql.NullInt64
-	if err := pdb.ReadDB().QueryRow(ctx, `
+	scanSnapshotRow("snapshot: challenge completed", `
 		SELECT COUNT(*) FROM (
 			SELECT challenge_path, LAST(status ORDER BY snapshot_at) AS last_status
 			FROM challenge_snapshots
 			GROUP BY challenge_path
 		) WHERE UPPER(last_status) = 'COMPLETED'
-	`).Scan(&completedCount); err != nil {
-		slog.DebugContext(ctx, "snapshot: challenge completed", "err", err)
-	}
+	`, &completedCount)
 	if completedCount.Valid {
 		s.ChallengeCompletedCount = int(completedCount.Int64)
 	}
@@ -139,7 +141,7 @@ func SnapshotPlayerState(
 	// Skill tier (CSR / LUSR) : dernière entrée par playlist_group dans
 	// match_skill_rank. La map est (playlist_group → "rating_type|tier|sub_tier")
 	// — toute transition de cette valeur déclenche un emit skill_tier.
-	rows, err := pdb.ReadDB().Query(ctx, `
+	rows, err := pdb.ReadDB().QueryRecovered(ctx, `
 		SELECT playlist_group, rating_type, tier, sub_tier
 		FROM (
 			SELECT
@@ -174,16 +176,14 @@ func SnapshotPlayerState(
 
 	// Battle pass : nb de tracks dont le DERNIER snapshot a has_reached_max_rank=TRUE.
 	var bpCompleted sql.NullInt64
-	if err := pdb.ReadDB().QueryRow(ctx, `
+	scanSnapshotRow("snapshot: battlepass completed", `
 		SELECT COUNT(*) FROM (
 			SELECT reward_track_path,
 			       LAST(has_reached_max_rank ORDER BY snapshot_at) AS last_max
 			FROM battlepass_snapshots
 			GROUP BY reward_track_path
 		) WHERE last_max = TRUE
-	`).Scan(&bpCompleted); err != nil {
-		slog.DebugContext(ctx, "snapshot: battlepass completed", "err", err)
-	}
+	`, &bpCompleted)
 	if bpCompleted.Valid {
 		s.BattlepassCompletedTracks = int(bpCompleted.Int64)
 	}

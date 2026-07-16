@@ -64,7 +64,7 @@ func (r *LeaderboardRepo) GetLocalLeaderboard(ctx context.Context, titleSlug, se
 		       start_time, updated_at, created_at
 		FROM match_skill_rank_latest
 		WHERE rating_value > 0`
-	rows, err := r.pdb.Player.Query(ctx, qMSR)
+	rows, err := r.pdb.Player.QueryRecovered(ctx, qMSR)
 	if err != nil {
 		return nil, fmt.Errorf("LeaderboardRepo.GetLocalLeaderboard: phase A: %w", err)
 	}
