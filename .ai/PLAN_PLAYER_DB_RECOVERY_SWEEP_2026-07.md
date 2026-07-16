@@ -1,9 +1,16 @@
 # PLAN — Sweep recovery des lectures player-DB (race Reopen) (2026-07)
 
-> Statut : OUVERT (2026-07-16). Branche : `fix/player-db-recovery-sweep` (depuis main
+> Statut : EN COURS (2026-07-16). Branche : `fix/player-db-recovery-sweep` (depuis main
 > post-fix prestige `535ee437a`). Suite de la Découverte (d) du plan monitoring triage :
 > le fix prestige (`acf60b179`, déployé prod) a corrigé UN instance ; le pattern est
 > systémique. Exécution sous contrat du skill `plan-execution`.
+>
+> **Lot A CLOS (`af6ccdd6`, 2026-07-16)** : career/home hot-paths — 14 lectures player-DB
+> converties (10 fichiers), semantiques ErrNoRows/best-effort préservées, gates verts
+> (build/vet/test exit 0). 2 fichiers hors périmètre (highlights déjà recovered ;
+> career_progression_partial = write). AMBIGU consigné : `progression_diag_repo.go:63`
+> (`ReadDB().QueryRow` sur table `sync_meta` — handle player mais table exclue DC-3 → laissé).
+> **Restent : Lot B (match view/stats), Lot C (engagement/squad/citations), Lot D (garde-rail).**
 
 ## Contexte
 
