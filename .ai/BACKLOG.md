@@ -10,11 +10,49 @@
 
 ---
 
-### [sécurité/autZ] Routes prestige pré-existantes : identité acteur client-asserted (BOLA) — à corriger avant exposition élargie
+### [dette/web] squad/v2 largement mort (post-HistoryTable) — inventaire knip à purger
 
-> Noté le 2026-06-10 (revue `feat/coach-v3-squad`). Le fix **squad-only** a été livré sur cette branche (`ActorGuard` sur les 6 routes squad) ; **les routes prestige pré-existantes restent vulnérables**. Priorité haute mais blast radius limité (instance invités-only + lockdown).
+> Noté le 2026-07-16 (train corrections v7, salve 4). `HistoryTable` v2 et `TimeseriesCombatYield` ont été supprimés ; knip signale le reste de `squad/v2` comme inutilisé : exports de `types.ts` (`AssetReference`, `SquadHeader`, `SquadPageV2Response`…), `SquadCombatProfileRow.tsx`, `squad/v2/queries.ts`. Vérifier les consommateurs réels puis purger (règle 0 code mort — git garde l'historique). **Effort** : rapide.
 
-**Problème** : les routes `/api/v1/{challenges,arcs,prestige/me,templates/suggest,pilot-mode,...}` sont montées à plat sous `/api/v1` (middleware `WithSession` + CSRF + RateLimit), **hors** du groupe `/players/{player_slug}` donc **sans** `RequirePlayerOwnership` (ADR 0024). L'identité de l'acteur vient du **client** (`user_id` en query/body) et n'est jamais réconciliée avec la session → un utilisateur authentifié peut lire/muter les données prestige d'un autre (BOLA / IDOR horizontal). Incohérent avec le contrôle d'ownership appliqué partout ailleurs.
+---
+
+### [dette/api] `GET /players/{slug}/battlepass` (Home) — consommateur à vérifier, supprimer si mort
+
+> Noté le 2026-07-16 (train corrections v7, salve 4). La home lit ses défis via `/pages/palmares/season-pass` ; `/battlepass` semble sans consommateur web direct. Vérifier (web + CLI + tests métier) puis supprimer si mort — même traitement que l'ex-route `/challenges` Home (supprimée salve 4 après preuve de mort). **Effort** : rapide.
+
+---
+
+### [data/h5] Registre d'armes H5 — long-tail de 31 weapon_ids sans rôle
+
+> Noté le 2026-07-16 (fix donut « Frags par type d'arme » H5). Le registre couvre 35/66 `weapon_id` réels de `v_weapon_kills` (233 274 frags répartis sur 8 rôles) ; ~31 IDs restants (variantes/UGC) restent sans rôle — dégradation gracieuse, absents du donut. Étendre `weaponRegistryH5Stock` si l'exhaustivité est voulue. Chantier data (mapping manuel). **Effort** : moyen.
+
+---
+
+### [ux/relations] PLAN_RELATIONS_UX_2026-07 — lots restants non exécutés
+
+> Noté le 2026-07-16. Seul le lot H (chip « Multi-jeux ») a été livré (train corrections v7). Le reste du plan — renommage du toggle `includeFriends`, refonte des CoreCards, tri du tableau, etc. — est en attente : voir [.ai/PLAN_RELATIONS_UX_2026-07.md](.ai/PLAN_RELATIONS_UX_2026-07.md).
+
+---
+
+### [i18n] Tiers de rangs — duplication du mapping FR + cache des défis mono-langue
+
+> Noté le 2026-07-16 (lot i18n du train corrections v7). Deux suites : (1) le mapping des noms de tiers existe en 3 endroits (grille `lib/skillTiers.ts`, `CSR_TIER_FR` d'`ExplorerTargetSeasonCSR`, helper `localizeTierLabel` dérivé) → centraliser en source unique + garde-rail (règle ≤2 copies, la 3e impose le helper) ; (2) les titres de défis mis en cache par le fetch background sont bakés à la langue du fetch (FR) — seul le chemin live est locale-aware ; invalider ou re-résoudre à la bascule de langue. **Effort** : rapide à moyen.
+
+---
+
+### [infra/release] Build de l'image en CI → pull registry (au lieu de `docker build` sur le VPS)
+
+> Noté le 2026-07-16 (audit release, reco P3). Aujourd'hui l'image est reconstruite sur le VPS à chaque deploy : un `apt-get` cassé ne se découvre qu'en prod, pendant le déploiement. Pré-builder en CI (GHCR) attrape l'échec avant et accélère le deploy. Déjà esquissé dans `RUNBOOK_GO_LIVE.md` (§ évolutions). **Effort** : moyen (workflow + deploy.sh).
+
+---
+
+### [sécurité/autZ] Routes prestige : réconciliation acteur user_id ↔ chemin (BOLA résiduel) — à corriger avant exposition élargie
+
+> Noté le 2026-06-10 (revue `feat/coach-v3-squad`). **MàJ 2026-07-16 (train corrections v7)** : l'état décrit initialement est périmé — les routes prestige sont aujourd'hui montées **SOUS** `/players/{player_slug}` (ownershipMW, ADR 0029) et tout le client passe par le chokepoint `scopedToPlayer` (challenges déplacées sous `/prestige/challenges*`, garde-rail anti-collision `route_collision_test.go`). Le fix squad-only `ActorGuard` est livré.
+
+**Problème (résiduel)** : les handlers non-squad lisent l'acteur depuis le **body/query** (`user_id`, `created_by`) sans le réconcilier avec le `{player_slug}` du chemin. `ownershipMW` vérifie le segment d'URL, pas le payload : un utilisateur authentifié A peut passer la garde avec SON slug dans le chemin et cibler B via `user_id` dans le body (BOLA horizontal). Blast radius limité (instance invités-only + lockdown) mais incohérent avec le reste.
+
+**Note harness** : en mode démo le bundle prestige ne se monte pas (pas de DuckDB) → le test anti-collision générique ne couvre pas prestige-vs-autres ; la paire home+prestige est couverte par un test ciblé.
 
 **Déjà fait (squad-only, cette branche)** : helper `squadActorGuard` (`server.go`) + `PrestigeHandler.WithActorGuard` → 403 `player_forbidden` si l'acteur n'est pas un profil possédé par la session (réutilise `authz.Enforced`/`CurrentUser`/`CanAccessPlayer`, multi-profil famille). Transparent demo/auth-off. Tests httptest 403 sur les 6 routes squad.
 
