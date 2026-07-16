@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/ogmeta"
+	"levelup/go-api/internal/port"
 )
 
 // ogInjectTimeout borne le cout de l'enrichissement OG (appel DB GetHomePage)
@@ -95,14 +96,29 @@ func (reg *ServiceRegistry) playerOGMeta(ctx context.Context, origin, path, slug
 	ctx, cancel := context.WithTimeout(ctx, ogInjectTimeout)
 	defer cancel()
 
-	svc, _, gamertag, err := reg.HomeCtx(ctx, slug)
+	svc, xuid, gamertag, err := reg.HomeCtx(ctx, slug)
 	if err != nil {
 		slog.DebugContext(ctx, "og_inject: resolve player failed", "slug", slug, "err", err)
 		return ogmeta.Meta{}, false
 	}
+	return ogMetaFromHome(ctx, svc, xuid, gamertag, origin, path, loc)
+}
+
+// ogMetaFromHome pose l'invariant d'identité de PAGE puis construit la carte
+// enrichie depuis un HomeService déjà résolu. Extrait de playerOGMeta pour
+// isoler (et tester) le forçage du xuid.
+//
+// HomeCtx est la variante NON authentifiée : le contexte d'un crawler anonyme ne
+// porte aucun xuid. GetHomePage résout l'identité Spartan (SpartanIdentity) via
+// GetSpartanIdentity, scopée sur ctxkeys.HaloXUID ; sans forçage cette résolution
+// cible "" (identité vide). On pose donc le xuid du joueur de la PAGE — même
+// invariant que HomeCtxWithAuth (cf. forcePageIdentityXUID, registry_auth.go),
+// et title-agnostic (aucune dépendance au slug).
+func ogMetaFromHome(ctx context.Context, svc port.HomeService, xuid, gamertag, origin, path string, loc ogmeta.Locale) (ogmeta.Meta, bool) {
+	ctx = forcePageIdentityXUID(ctx, xuid)
 	page, err := svc.GetHomePage(ctx, gamertag, string(loc))
 	if err != nil {
-		slog.DebugContext(ctx, "og_inject: GetHomePage failed", "slug", slug, "err", err)
+		slog.DebugContext(ctx, "og_inject: GetHomePage failed", "gamertag", gamertag, "err", err)
 		return ogmeta.Meta{}, false
 	}
 
@@ -112,6 +128,6 @@ func (reg *ServiceRegistry) playerOGMeta(ctx context.Context, origin, path, slug
 		WinRate:      kpis.WinRate,
 		TotalMatches: kpis.TotalMatches,
 	}, loc)
-	slog.DebugContext(ctx, "og_inject: enriched player card", "slug", slug, "gamertag", gamertag)
+	slog.DebugContext(ctx, "og_inject: enriched player card", "gamertag", gamertag)
 	return meta, true
 }
