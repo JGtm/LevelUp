@@ -500,24 +500,31 @@ pré-existants, 0 sur les fichiers touchés) ; `go test ./...` = exit 0, 111 pac
 
 ### Phase 3 — Unification de mise en forme des cartes-sections (moyen, frontend-only) — item 7
 
-- [ ] **3a.** Créer `BriefingSectionCard` (dans `features/explorer/`) : carte `rounded-lg border
-      border-border bg-card` + en-tête bordurée `flex-none border-b border-border px-3 py-2
-      text-sm font-medium` (miroir de `ChartCard` `:125-131`), avec slot titre (acceptant un
-      `ReactNode` pour un `InfoTooltip` — cf. `ChartCardProps.title`) et slot contenu. Tokens
-      sémantiques uniquement (aucune couleur hex/Tailwind couleur — skill `color-tokens`).
-- [ ] **3b.** Migrer `DimensionCard` (`:76-92`) et `RankedCard` (`:159-204`) vers
-      `BriefingSectionCard` (remplacer les titres `text-3xs uppercase …` par l'en-tête
-      bordurée). Le slot titre accepte un `ReactNode` (InfoTooltip possible plus tard), mais
-      aucun tooltip n'est posé dans ce chantier (D-A).
-- [ ] **3c.** Vérifier visuellement la cohérence avec « Tendance » (même graisse/bordure de
-      titre). Ne PAS toucher les micro-tuiles socle (P-6).
-- [ ] **3d.** Garde-rail anti-divergence (CLAUDE.md §6 « ≤ 2 copies ») : le pattern d'en-tête
-      bordurée existe désormais en 2 endroits canoniques (`ChartCard` + `BriefingSectionCard`) ;
-      documenter en commentaire que toute 3ᵉ carte-section du briefing DOIT passer par
-      `BriefingSectionCard` (les cartes des Phases 4, 5 et 5b s'y conforment).
+- [x] **3a.** Créé `BriefingSectionCard` dans `apps/web/src/features/explorer/BriefingSectionCard.tsx` :
+      carte `rounded-lg border border-border bg-card` + en-tête bordurée `flex-none border-b
+      border-border px-3 py-2 text-sm font-medium` (byte-identique à `ChartCard:128`), slot
+      titre `ReactNode` (compatible InfoTooltip futur) + slot contenu (`p-3`, comme le corps
+      `ChartCard`). Tokens sémantiques uniquement (aucun hex/Tailwind couleur).
+- [x] **3b.** Migré `DimensionCard` et `RankedCard` (`ExplorerBriefingModules.tsx`, lignes
+      re-vérifiées après Phase 2) vers `BriefingSectionCard` : titres de carte `text-3xs
+      uppercase …` supprimés (déplacés dans l'en-tête bordurée). Import `KpiCard` retiré (plus
+      aucun usage — 0 code mort). AUCUN tooltip posé (D-A). Sous-labels internes du corps
+      `RankedCard` (`ranked_delta`/`ranked_expected_vs_actual`) laissés en l'état — ils relèvent
+      de la refonte du corps en Phase 4 (D-A), hors périmètre Phase 3.
+- [x] **3c.** Cohérence avec « Tendance » vérifiée par lecture : l'en-tête de `BriefingSectionCard`
+      réutilise la className EXACTE de l'en-tête `ChartCard` (`flex-none border-b border-border
+      px-3 py-2 text-sm font-medium`) que rend `TrendCard` via `TimeseriesLineChart`. Même
+      graisse (`font-medium`), même bordure. Micro-tuiles socle NON touchées (P-6). Alignement
+      pixel confirmé en revue visuelle Phase 6.
+- [x] **3d.** Garde-rail anti-divergence documenté en tête de `BriefingSectionCard.tsx` (bloc
+      « GARDE-RAIL ANTI-DIVERGENCE », CLAUDE.md §6) : le pattern d'en-tête bordurée existe en 2
+      endroits canoniques (`ChartCard` + `BriefingSectionCard`) ; toute 3ᵉ carte-section du
+      briefing (Phases 4/5/5b) DOIT passer par `BriefingSectionCard`, jamais ré-inliner un
+      `text-3xs uppercase …` ni recopier l'en-tête à la main.
 
-Gate Phase 3 : `make check-types` = 0 ; `make test-web` vert ; `npm run lint` = 0 ; revue
-visuelle (Phase 6) confirmera l'alignement.
+Gate Phase 3 : `make check-types` = 0 (CLOS) ; `make test-web` vert 257 fichiers / 2178 passés /
+14 skipped / 0 échec (CLOS) ; `npm run lint` = 0 erreur (68 warnings baseline, 0 sur fichiers
+touchés) (CLOS) ; revue visuelle (Phase 6) confirmera l'alignement.
 
 ### Phase 4 — Classement en grades PAR TYPE (lourd, backend + frontend) — item 4
 

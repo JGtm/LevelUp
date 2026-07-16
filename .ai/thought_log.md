@@ -1,3 +1,44 @@
+## [2026-07-16] Explorer briefing V2 — Phase 3 (unification des cartes-sections, item 7)
+
+**Statut** : Complété (Phase 3 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items
+3a-3d). Worktree isolé `feat/explorer-briefing-v2`. NON committé (le superviseur commite).
+
+**Décision technique principale** : introduire un wrapper partagé `BriefingSectionCard`
+(`features/explorer/BriefingSectionCard.tsx`) dont l'en-tête réutilise la className
+BYTE-IDENTIQUE de l'en-tête `ChartCard` (`flex-none border-b border-border px-3 py-2 text-sm
+font-medium`) — la référence esthétique étant le module « Tendance » (rendu via `ChartCard`).
+Corps en `p-3` (miroir du corps `ChartCard`). Slot titre `ReactNode` (compatible InfoTooltip
+futur, aucun tooltip posé — D-A). Les deux cartes-sections existantes (`DimensionCard`,
+`RankedCard`) migrent de `KpiCard` + titre `text-3xs uppercase …` vers ce wrapper : le titre
+de carte devient l'en-tête bordurée. L'import `KpiCard` du fichier est retiré (plus aucun
+usage → 0 code mort).
+
+**Périmètre tenu (anti-débordement)** : seuls les CHROMES de carte et les TITRES de carte
+sont migrés. Les sous-labels internes du corps `RankedCard` (`ranked_delta`,
+`ranked_expected_vs_actual`, bloc attendu/réel) sont laissés intacts — leur refonte relève de
+la Phase 4 (D-A : suppression du bloc attendu/réel + classement par type). Micro-tuiles socle
+(KpiCard) NON touchées (P-6). Garde-rail anti-divergence (CLAUDE.md §6 « ≤ 2 copies »)
+documenté en tête de `BriefingSectionCard.tsx` : l'en-tête bordurée du briefing existe en 2
+endroits canoniques (`ChartCard` + `BriefingSectionCard`) ; toute 3ᵉ carte-section (Phases
+4/5/5b) DOIT passer par le wrapper.
+
+**Résultats observés** :
+- NOUVEAU `features/explorer/BriefingSectionCard.tsx` (wrapper + JSDoc garde-rail).
+- `ExplorerBriefingModules.tsx` : import `KpiCard` → `BriefingSectionCard` ; `DimensionCard`
+  et `RankedCard` migrés (titres `text-3xs uppercase` retirés, corps préservés).
+- Tests `ExplorerBriefingStrip.test.tsx` inchangés (assertions sur le texte, pas la structure
+  de carte) → toujours verts.
+
+**Gates** (depuis la racine du worktree) : `make check-types` = 0 ; `make test-web` = 257
+fichiers / 2178 passés / 14 skipped / 0 échec ; `npm run lint` = 0 erreur (68 warnings
+baseline, 0 sur `BriefingSectionCard.tsx` / `ExplorerBriefingModules.tsx`).
+
+**Conclusion / prochaine étape** : Phase 3 CLÔTURÉE, tout vert. Aucune Découverte hors
+périmètre. Le wrapper est prêt à être réutilisé par les cartes des Phases 4 (classement par
+type), 5 (solo/escouade) et 5b (séries, moments forts). NON committé — remise au superviseur.
+
+---
+
 ## [2026-07-16] Explorer briefing V2 — Phase 2 (delta « vs habituel » dégénéré, item 1)
 
 **Statut** : Complété (Phase 2 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items
