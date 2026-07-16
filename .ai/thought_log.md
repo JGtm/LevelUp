@@ -1,3 +1,29 @@
+## [2026-07-16] Sweep recovery lectures player-DB — Lots A-D TERMINÉS (systémique)
+
+**Statut** : Complété (code, branche `fix/player-db-recovery-sweep`, NON mergé). Suite du fix
+prestige (Découverte d). Plan `.ai/PLAN_PLAYER_DB_RECOVERY_SWEEP_2026-07.md`.
+
+**Bilan** : 77 lectures player-DB (`pdb.Player`/`ReadDB()`) routées en `*Recovered` (~40
+fichiers) pour tolérer un `Reopen()` concurrent (`old.Close()` → « database is closed »). 4 lots
+(agents Opus séquentiels ; revue + gates superviseur) :
+- Lot A `af6ccdd6` career/home (14) · Lot B `8750dfcc8` match-view/stats (17) · Lot C
+  `15e8f7e72` engagement/squad/citations (37) · Lot D `b179b8b1` garde-rail + 9 stragglers
+  (dont `api/wire/post_sync_deltas_snapshot.go` ×7, hors couche duckdb).
+- **Garde-rail** `player_db_recovery_routing_test.go` : ratchet des formes explicites
+  `.Player`/`.ReadDB()` en méthode plate ; allowlist datée (2× `sync_meta`, DC-3) ; 3 tests
+  (principal + anti-stale + sanity). Limite : handles bare-`db` (prestige/streaks/
+  record_history) non couverts (documenté).
+- **Scope** : LECTURES player-DB seulement (DC-2 : writes lease/ART non touchés ; DC-3 :
+  shared/metadata/shared_social/sync_meta laissés). Classification par fichier.
+- **Gates** : `go build/vet/test ./...` + `go test -tags=integration -p 1 duckdb/sync/persist`
+  = exit 0 (agents + re-run superviseur : build/vet + 3 tests garde-rail).
+
+**Prochaine étape** : accord user pour landing (merge main = deploy). NB : des commits docs
+CONCURRENTS (`PLAN_DIAG_APPARENCE`, `EXPLORER_BRIEFING`, thought_log) ont atterri sur CETTE
+branche entre les lots B et C (`06dc3b48a`, `36f3cde6c`) — à démêler avant merge (point d'étape).
+
+---
+
 ## [2026-07-16] Révision du PLAN_DIAG_APPARENCE_ADMIN — intégration des retours « Rapports page Admin »
 
 **Statut** : Complété (docs-only, aucune ligne de code). Demande utilisateur : lire la
