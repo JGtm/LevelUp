@@ -1,3 +1,47 @@
+## [2026-07-17] Purge dette : squad/v2 mort + route battlepass sans consommateur (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Contexte** : deux items de backlog indépendants, un commit par item, après retrait de
+HistoryTable v2 / TimeseriesCombatYield.
+
+**Item 1 — purge squad/v2 (commit 42b317cd8)**. Le module n'était PAS entièrement mort :
+grep + knip croisés ont isolé les vivants (SquadEngagementView consommé par
+features/engagement ; types SquadHeader→lib/api/types.ts, KPIStats→SquadLayout,
+SquadScoreCard/PlayerScoreCard→SessionBriefing). Piège knip : il signalait SquadHeader
+comme inutilisé alors qu'un `import('...')` dynamique dans lib/api/types.ts le consomme
+réellement (knip ne suit pas cette forme) → décision : vérifier chaque export au grep, pas
+au knip seul. Supprimés (aucun consommateur prod) : queries.ts (+ test, hook useSquadV2),
+composants SquadCombatProfileRow / WeaponsTable / MedalsGallery / FloatingLegend (+ tests),
+et les exports orphelins de types.ts (SquadPageV2Response, SquadCharts, SquadTables,
+ImpactRoles*, AssetReference, CapabilityGap, Outcome, SquadPeriod, Weapons/Medals*).
+Effets de bord traités : query key squadV2 (keys.ts), entrée d'allowlist
+SquadPageV2Response (guard test à self-check décroissant), clé i18n orpheline
+squad.combat_profile.title (squad.toml + regen squad.ts). Gates verts : typecheck, lint
+(0 err), vitest 243.
+
+**Item 2 — route battlepass (commit c9bfa0e7d)**. Preuve de mort : aucun hook web
+n'appelle GET /players/{slug}/battlepass (la Home lit via /pages/palmares/season-pass) ;
+le seul appel à svc.GetBattlePass vient de season_pass_service (fallback live + peuplement
+track definitions), donc la MÉTHODE service est vivante, seule la surface HTTP est morte.
+Modèle calqué sur le retrait /challenges (1c0117707). Retirés : home.go (route, handler,
+DTO homeBattlePassOutput, input homePlayerInput seul appelant, import domain), openapi path
+getBattlePass, tests dédiés, et artefacts web morts (query key battlepass, mock MSW,
+re-shim BattlePassResponse) + regen generated.ts. Conservés : port/provider/domain
+GetBattlePass, home_service_battlepass, season_pass_service, live_refresh, route assets
+/assets/battlepass/*, schéma openapi nommé BattlePassResponse (documente le type domaine).
+Gates verts : go build/vet/test ./... ; web typecheck ; vitest.
+
+**Découverte hors périmètre (notée, non traitée)** : le schéma openapi nommé
+`BattlePassResponse` (openapi.yaml ~6956) est orphelin de longue date — jamais `$ref`é
+(la route battlepass utilisait un schéma inline). Conservé volontairement car il documente
+le type domaine vivant `domain.BattlePassResponse` ; à arbitrer séparément si on veut
+purger le contrat. knip signale par ailleurs une large dette d'exports inutilisés hors
+squad/v2 (accessibility, match-view, prestige, ...) — hors périmètre.
+
+**Conclusion / prochaine étape** : deux items soldés, branche non poussée (le superviseur
+gère BACKLOG.md et le push).
+
 ## [2026-07-16] Réalignement vhost nginx prod ↔ template sur cible unique (branche ops/nginx-vhost-realign)
 
 **Statut** : Complété.
