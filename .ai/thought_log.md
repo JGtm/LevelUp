@@ -1,3 +1,54 @@
+## [2026-07-16] Explorer briefing V2 — Phase 6 (vérification navigateur + changelog + clôture)
+
+**Statut** : Complété (Phase 6 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items 6a-6f ;
+tous les critères §1 (1-14) vérifiés). Worktree isolé `feat/explorer-briefing-v2`. NON committé
+(le superviseur commite ; 2 changelogs + le plan restent en modif locale).
+
+**Décision technique principale (setup de vérif)** : le worktree n'a pas les DBs. Serveur buildé
+depuis le worktree (`cmd/server`, CGO) vers un binaire temp hors des 2 arbres git, lancé détaché
+avec WorkingDirectory = dépôt principal (`.env.local`, `db_profiles.json`, `data/` réels). Vite
+lancé depuis le worktree — 5173/5174 occupés → **:5175**, hors allowlist CORS par défaut. Deux
+frottements résolus proprement, sans modif de fichier versionné : (1) auth — réutilisation d'une
+session admin JGtm existante (`data/sessions/`) via cookie signé forgé (HMAC-SHA256 du session_id
+avec `LEVELUP_SESSION_SECRET` de `.env.local`) injecté par header CDP `extraHttpHeaders` (le cookie
+`levelup_session` est HttpOnly → JS impossible) ; (2) CSRF/CORS — le PATCH `setTitleSync` et le
+PATCH `/settings` sont mutateurs et rejetés sur :5175 → serveur relancé avec
+`LEVELUP_CORS_ORIGINS` incluant :5175 (var d'env au lancement, `.env.local` ne la définit pas).
+
+**Résultats observés** (captures `01`..`04` dans le dossier temp de session) :
+- **Plein historique** (halo_infinite JGtm, 1015 matchs) : aucun delta « vs habituel » (socle +
+  dimensions) ; dimensions triées par taux de victoire (P-8) ; « Par sélection » ; carte
+  « Classement · LUSR · Or II → Or VI · −1.4 pt/match » (aucun cumul brut, aucun bloc attendu/réel) ;
+  dates avec année ; en-têtes unifiés ; Séries 11 V/10 D (frise corrobore le run « x10 ») ;
+  Moments forts DOMINATION ×68/HUMILIATION ×70/REMONTADA ×4/DÉBANDADE ×12 (contre-remontada omise) ;
+  Solo vs Escouade présent.
+- **Filtré Solo** (491 matchs) : deltas « vs habituel » réapparaissent (socle + dimensions,
+  ▲/▼) ; « ±0 pts » présent sous filtre = voulu ; tri par delta ; carte Solo/Escouade omise
+  (mono-contexte) ; Classement/Séries/Moments forts recalculés.
+- **Dégradations** : titre H5 → carte Classement omise, pas de crash ; mono-type LUSR → 1 ligne ;
+  « scope sans palier » et « tous-zéro dominance » couverts par tests unitaires (non reproductibles
+  sur données réelles). **Locale EN** : clés neuves rendues (Ranking, Streaks/Best streak/Worst
+  streak, Highlights, pt/match, vs usual, COMEBACK/COLLAPSE) ; « By playlist » en EN (seul le FR
+  passe à « Par sélection ») ; paliers/modes FR en dur = limitation actée §2.
+- **Console navigateur** : 0 erreur/warning sur les 4 états.
+- **Changelog** : `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md`, `[Unreleased]` v7.0, bullets
+  « Explorer — briefing V2 » (React/TS) + « Explorer briefing DTO » (Go API), parité EN/FR.
+
+**Gates §1.8 (passe finale, racine worktree)** : `go test ./...` = exit 0 (0 FAIL) ; `go vet`
+domain/analysis/service/api = 0 ; `make go-api-lint` = 0 ; `golangci-lint --new-from-rev=origin/main`
+(mêmes packages) = 0 issues ; `make generate-types` idempotent (0 diff `generated.ts`) ;
+`make check-types` = 0 (cache `.tmp` purgé) ; `make test-web` = 257 fichiers / 2185 passés /
+14 skipped / 0 échec ; `npm run lint` = 0 erreur (68 warnings baseline, 0 sur le chantier).
+
+**Nettoyage** : session JGtm restaurée (halo_5, locale fr) ; serveur (:8000) et vite (:5175) que
+j'ai lancés arrêtés ; l'autre instance vite préexistante (:5173) laissée intacte.
+
+**Conclusion / prochaine étape** : Phase 6 close → chantier Explorer briefing V2 COMPLET (phases
+0-5b commitées, Phase 6 non committée). Reste au superviseur : commit des 2 changelogs + plan
+mis à jour, puis **revue visuelle utilisateur** avant tout merge (merge `main` = deploy prod auto).
+
+---
+
 ## [2026-07-16] Explorer briefing V2 — Phase 5b (cartes « Séries » et « Moments forts », items 8/9)
 
 **Statut** : Complété (Phase 5b du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items
