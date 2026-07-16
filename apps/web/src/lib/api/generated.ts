@@ -752,23 +752,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/players/{player_slug}/battlepass": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Battle Pass courant */
-        get: operations["getBattlePass"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/players/{player_slug}/pages/sessions": {
         parameters: {
             query?: never;
@@ -9935,30 +9918,6 @@ export interface operations {
             };
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
-        };
-    };
-    getBattlePass: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
-                player_slug: components["parameters"]["PlayerSlug"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Battle Pass (auth_required si non connecté) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
-                };
-            };
-            404: components["responses"]["NotFound"];
         };
     };
     getSessions: {

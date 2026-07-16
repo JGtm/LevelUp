@@ -1048,9 +1048,6 @@ export interface HomePageResponse {
   recent_playlist_ranks?: HomePlaylistRank[]
 }
 
-// Phase D — re-shim : contrat OpenAPI (BattlePassResponse auto-dérivé, migration Huma home).
-export type BattlePassResponse = components['schemas']['BattlePassResponse']
-
 export type ChallengeItem = components['schemas']['ChallengeItem']
 
 export type ChallengesResponse = components['schemas']['ChallengesResponse']

@@ -1177,24 +1177,6 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /players/{player_slug}/battlepass:
-    get:
-      tags: [home]
-      operationId: getBattlePass
-      summary: Battle Pass courant
-      parameters:
-        - $ref: "#/components/parameters/PlayerSlug"
-      responses:
-        "200":
-          description: "Battle Pass (auth_required si non connecté)"
-          content:
-            application/json:
-              schema:
-                type: object
-                description: "TODO Sprint 32 : schéma BattlePassResponse complet"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
   # -------------------------------------------------------------------------
   # Sessions (Sprint 9) — ajoutées au contrat sprint 29
   # Go-only : FastAPI expose /pages/timeseries (POST) qui couvre session-compare.
