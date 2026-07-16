@@ -290,6 +290,94 @@ func TestBuildExplorerBriefing_BaselineDeltasSigned(t *testing.T) {
 	}
 }
 
+// mapDimEntries récupère les entrées de la dimension « map » d'un briefing.
+func mapDimEntries(t *testing.T, b *domain.ExplorerBriefing) []domain.ExplorerBriefingDimensionEntry {
+	t.Helper()
+	for i := range b.Dimensions {
+		if b.Dimensions[i].Dimension == "map" {
+			return b.Dimensions[i].Entries
+		}
+	}
+	t.Fatal("map dimension should be emitted")
+	return nil
+}
+
+func TestBuildDimension_FullHistorySortsByWinRate(t *testing.T) {
+	// Plein historique (scope == all) : deltas vs baseline tous nuls → CompareByKey
+	// trie par MapID (pseudo-aléatoire). La sélection doit basculer sur le taux de
+	// victoire décroissant (P-8). Les MapIDs (a1 < m1 < z1) sont volontairement dans
+	// l'ordre INVERSE du WR (Alpha .9 > Charlie .6 > Bravo .3) pour prouver le re-tri.
+	var scope []domain.MatchHistoryRawRow
+	add := func(mapID, mapFR string, wins, losses int) {
+		for i := 0; i < wins; i++ {
+			scope = append(scope, briefingRaw(mapID+"w"+string(rune('a'+i)), len(scope), domain.OutcomeWin, 12, 6, 3, 60, mapID, mapFR, "Slayer", "Arène"))
+		}
+		for i := 0; i < losses; i++ {
+			scope = append(scope, briefingRaw(mapID+"l"+string(rune('a'+i)), len(scope), domain.OutcomeLoss, 6, 12, 1, 40, mapID, mapFR, "Slayer", "Arène"))
+		}
+	}
+	add("z1", "Alpha", 9, 1)   // WR 0.9
+	add("a1", "Bravo", 3, 7)   // WR 0.3
+	add("m1", "Charlie", 6, 4) // WR 0.6
+
+	kpis := &domain.KPIStats{MatchesCount: len(scope)}
+	b := svcWithRanked(false).buildExplorerBriefing(scope, scope, kpis)
+	entries := mapDimEntries(t, b)
+	want := []string{"Alpha", "Charlie", "Bravo"}
+	if len(entries) != len(want) {
+		t.Fatalf("entries = %d, want %d", len(entries), len(want))
+	}
+	for i, w := range want {
+		if entries[i].Label != w {
+			t.Errorf("entry[%d].Label = %q, want %q (tri WR décroissant en plein historique)", i, entries[i].Label, w)
+		}
+	}
+}
+
+func TestBuildDimension_FilteredSortsByDelta(t *testing.T) {
+	// Sous filtre (scope ⊊ all) : l'ordre V1 par WinRateDelta est conservé.
+	// MapA : scope WR .5, hist WR .1 → delta +.4. MapB : scope WR .8, hist WR .8 → delta 0.
+	// Ordre par WR : B(.8) > A(.5) ; ordre par delta : A(+.4) > B(0). On attend A puis B.
+	var scope, all []domain.MatchHistoryRawRow
+	addScope := func(mapID, mapFR string, wins, losses int) {
+		for i := 0; i < wins; i++ {
+			r := briefingRaw(mapID+"sw"+string(rune('a'+i)), len(all), domain.OutcomeWin, 12, 6, 3, 60, mapID, mapFR, "Slayer", "Arène")
+			scope = append(scope, r)
+			all = append(all, r)
+		}
+		for i := 0; i < losses; i++ {
+			r := briefingRaw(mapID+"sl"+string(rune('a'+i)), len(all), domain.OutcomeLoss, 6, 12, 1, 40, mapID, mapFR, "Slayer", "Arène")
+			scope = append(scope, r)
+			all = append(all, r)
+		}
+	}
+	addHistOnly := func(mapID, mapFR string, wins, losses int) {
+		for i := 0; i < wins; i++ {
+			all = append(all, briefingRaw(mapID+"hw"+string(rune('a'+i)), 500+len(all), domain.OutcomeWin, 12, 6, 3, 60, mapID, mapFR, "Slayer", "Arène"))
+		}
+		for i := 0; i < losses; i++ {
+			all = append(all, briefingRaw(mapID+"hl"+string(rune('a'+i)), 500+len(all), domain.OutcomeLoss, 6, 12, 1, 40, mapID, mapFR, "Slayer", "Arène"))
+		}
+	}
+	addScope("ma", "MapA", 5, 5)     // scope WR .5
+	addScope("mb", "MapB", 8, 2)     // scope WR .8
+	addHistOnly("ma", "MapA", 0, 40) // A hist total : 5W / 50 = .1
+	addHistOnly("mb", "MapB", 32, 8) // B hist total : 40W / 50 = .8
+
+	kpis := &domain.KPIStats{MatchesCount: len(scope)}
+	b := svcWithRanked(false).buildExplorerBriefing(scope, all, kpis)
+	entries := mapDimEntries(t, b)
+	want := []string{"MapA", "MapB"}
+	if len(entries) != len(want) {
+		t.Fatalf("entries = %d, want %d", len(entries), len(want))
+	}
+	for i, w := range want {
+		if entries[i].Label != w {
+			t.Errorf("entry[%d].Label = %q, want %q (tri par delta sous filtre)", i, entries[i].Label, w)
+		}
+	}
+}
+
 func TestBuildExplorerBriefing_OutcomeSequenceCappedAndSorted(t *testing.T) {
 	var filtered []domain.MatchHistoryRawRow
 	// 80 matchs, daysAgo décroissant pour brouiller l'ordre d'insertion.

@@ -20,6 +20,7 @@ import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import {
   formatSignedFixed,
   formatSignedPoints,
+  isFullHistoryScope,
   outcomeCodeToValue,
   signOf,
 } from './ExplorerBriefing.logic'
@@ -88,6 +89,10 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
   const kda = scope?.kda ?? null
   const perf = scope?.avg_perf ?? null
   const vs = t('explorer.briefing.vs_baseline')
+  // Plein historique (scope == baseline) → deltas « vs habituel » nuls par
+  // construction : on masque le fragment (valeur + flèche + libellé) sur le socle
+  // ET les lignes de dimension (P-1). Sous filtre, comportement V1 inchangé.
+  const fullHistory = isFullHistoryScope(scope?.matches, baseline?.matches)
 
   return (
     <div className="space-y-2">
@@ -116,7 +121,7 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
                   l: scope.losses,
                   t: scope.ties,
                 })}
-                {baseline && (
+                {baseline && !fullHistory && (
                   <>
                     {' · '}
                     <span
@@ -144,7 +149,7 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
               </span>
             }
             sub={
-              baseline ? (
+              baseline && !fullHistory ? (
                 <>
                   <span
                     className="font-semibold"
@@ -166,7 +171,7 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
             label={t('explorer.briefing.perf_label')}
             value={perf != null ? perf.toFixed(0) : '—'}
             sub={
-              baseline && baseline.delta_perf != null ? (
+              baseline && !fullHistory && baseline.delta_perf != null ? (
                 <>
                   <span
                     className="font-semibold"
@@ -202,7 +207,7 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
           {t('explorer.briefing.low_sample', { n: matchesCount })}
         </p>
       ) : (
-        <ExplorerBriefingModules briefing={briefing} t={t} />
+        <ExplorerBriefingModules briefing={briefing} t={t} hideDelta={fullHistory} />
       )}
     </div>
   )

@@ -452,28 +452,51 @@ greps de clôture = 0 occurrence (hors le garde-rail lui-même).
 
 ### Phase 2 — Delta « vs habituel » dégénéré (moyen, frontend + service) — item 1
 
-- [ ] **2a.** Dériver `isFullHistoryScope = scope.matches != null && baseline?.matches ===
-      scope.matches` dans `ExplorerBriefingStrip.tsx` (le composant a `scope` et `baseline`).
-- [ ] **2b.** Socle : quand `isFullHistoryScope`, ne rendre AUCUN fragment « vs habituel »
+- [x] **2a.** Dériver `isFullHistoryScope = scope.matches != null && baseline?.matches ===
+      scope.matches` dans `ExplorerBriefingStrip.tsx` (le composant a `scope` et `baseline`). —
+      FAIT : helper PUR `isFullHistoryScope(scopeMatches, baselineMatches)` extrait dans
+      `ExplorerBriefing.logic.ts` (testable isolé) ; le Strip dérive `fullHistory` une fois et
+      le réutilise pour le socle ET le passe aux modules.
+- [x] **2b.** Socle : quand `isFullHistoryScope`, ne rendre AUCUN fragment « vs habituel »
       (Bilan `:124-135`, FDA `:152-163`, Perf `:174-185`) — retirer la valeur, la flèche et le
-      «  vs habituel  ». Sinon, comportement V1 inchangé.
-- [ ] **2c.** Dimensions : passer `isFullHistoryScope` (ou l'info baseline) à
+      «  vs habituel  ». Sinon, comportement V1 inchangé. — FAIT : les 3 fragments socle gatés
+      `… && !fullHistory` (Bilan) / `… && !fullHistory ?` (FDA) / `… && !fullHistory && …`
+      (Perf). Le socle (Matchs/WR/FDA/Perf + V-D-N) reste rendu.
+- [x] **2c.** Dimensions : passer `isFullHistoryScope` (ou l'info baseline) à
       `ExplorerBriefingModules` → `DimensionRow` (`:94-130`). Quand vrai, masquer la colonne
-      delta (flèche + `formatSignedPoints`) — garder libellé / n matchs / WR / note.
-- [ ] **2d.** Vérifier que `formatSignedPoints`/`formatSignedFixed` restent inchangés (le « ±0 »
+      delta (flèche + `formatSignedPoints`) — garder libellé / n matchs / WR / note. — FAIT :
+      prop `hideDelta` threadée `ExplorerBriefingModules` → `DimensionCard` → `DimensionRow` ;
+      la colonne delta est rendue sous `{!hideDelta && (…)}`, le reste (label / n matchs / WR /
+      note) inchangé.
+- [x] **2d.** Vérifier que `formatSignedPoints`/`formatSignedFixed` restent inchangés (le « ±0 »
       reste correct pour le cas rare d'un delta réellement nul SOUS filtre actif — on ne masque
       QUE le cas plein-historique, pas tout zéro). Ajouter un test de rendu / logique couvrant
-      les deux états (plein historique → pas de delta ; filtré → delta présent).
-- [ ] **2e (P-8, service).** `buildBriefingDimensions`/`buildDimension`
+      les deux états (plein historique → pas de delta ; filtré → delta présent). — FAIT :
+      `formatSignedPoints`/`formatSignedFixed` NON modifiés (masquage porté par le flag, pas par
+      la valeur). Tests : `ExplorerBriefing.logic.test.ts` (nouveau describe `isFullHistoryScope`,
+      4 cas) + `ExplorerBriefingStrip.test.tsx` (nouveau, 2 états : filtré → `+30 pts`/`+20 pts`/
+      `vs_baseline` présents ; plein historique → absents, socle + dimensions conservés — deltas
+      posés NON NULS pour prouver que le masquage dépend du flag).
+- [x] **2e (P-8, service).** `buildBriefingDimensions`/`buildDimension`
       (`match_history_service_briefing.go:211-278`) : quand `len(scope) == len(all)` (plein
       historique), re-trier les groupes qualifiés par `Session.WinRate` décroissant (tie-break
       libellé) avant `selectTopFlop` ; sous filtre, comportement V1 inchangé. Ne PAS toucher
       `breakdown.CompareByKey`. Test service des deux états (plein historique → ordre par
-      taux de victoire ; filtré → ordre par delta).
+      taux de victoire ; filtré → ordre par delta). — FAIT : booléen nommé `fullHistory :=
+      len(scope) == len(all)` calculé dans `buildBriefingDimensions`, passé en param à
+      `buildDimension` ; re-tri `sort.SliceStable` par `Session.WinRate` desc + tie-break
+      `Label` AVANT `selectTopFlop`, uniquement si `fullHistory`. `breakdown.CompareByKey`
+      inchangé. Tests : `TestBuildDimension_FullHistorySortsByWinRate` (MapIDs a1<m1<z1 en ordre
+      INVERSE du WR → prouve le re-tri) + `TestBuildDimension_FilteredSortsByDelta` (scope⊊all,
+      WR-desc ≠ delta-desc → ordre par delta conservé).
 
 Gate Phase 2 : `make check-types` = 0 ; `make test-web` vert (nouveau test des deux états) ;
 `npm run lint` = 0 ; `cd apps/go-api && go test ./...` = 0 (test 2e inclus) ;
-`make go-api-lint` = 0.
+`make go-api-lint` = 0. — PASSÉ (2026-07-16, depuis la racine du worktree) : `make check-types`
+= 0 ; `make test-web` = 257 fichiers / 2178 passés / 14 skipped / 0 échec (dont
+`ExplorerBriefingStrip.test.tsx` neuf) ; `npm run lint` = 0 erreur (68 warnings baseline
+pré-existants, 0 sur les fichiers touchés) ; `go test ./...` = exit 0, 111 packages ok, 0 FAIL
+(tests 2e inclus) ; `make go-api-lint` = exit 0 (+ `go vet ./internal/service/...` = 0).
 
 ### Phase 3 — Unification de mise en forme des cartes-sections (moyen, frontend-only) — item 7
 

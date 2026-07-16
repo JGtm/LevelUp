@@ -30,6 +30,22 @@ export function formatSignedPoints(v: number | null | undefined): string {
   return pts > 0 ? `+${pts} pts` : `−${Math.abs(pts)} pts`
 }
 
+/**
+ * Vrai quand le scope affiché couvre TOUT l'historique (aucun filtre narrowing).
+ *
+ * Le scope est toujours un SOUS-ENSEMBLE de la baseline (un filtre ne peut que
+ * rétrécir) : des cardinalités égales impliquent donc des ensembles identiques,
+ * d'où des deltas « vs habituel » nuls par construction — à masquer (P-1). Faux
+ * si la baseline est absente (`undefined !== number`) : sans baseline il n'y a de
+ * toute façon aucun delta à afficher.
+ */
+export function isFullHistoryScope(
+  scopeMatches: number | null | undefined,
+  baselineMatches: number | null | undefined,
+): boolean {
+  return scopeMatches != null && baselineMatches === scopeMatches
+}
+
 /** Signe d'un nombre : -1 / 0 / 1 (0 pour nul, absent ou non fini). */
 export function signOf(v: number | null | undefined): -1 | 0 | 1 {
   if (v == null || !Number.isFinite(v) || v === 0) return 0
