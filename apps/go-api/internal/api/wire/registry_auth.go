@@ -50,16 +50,32 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug)).
 		WithDemoMode(r.cfg.DemoMode)
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(svc))
-	enriched := r.enrichWithHaloTokens(ctx, pdb)
-	// Démo / non-authentifié : enrichWithHaloTokens ne pose pas de HaloXUID sans
-	// session/tokens. Sans ça, les lectures xuid-filtrées (identité Spartan via
-	// careerLive) ciblent xuid="" et ne trouvent jamais la row → bannière/emblème
-	// absents. On garantit que le xuid du joueur de la page est dans le contexte.
-	// Le contrôle d'accès (403 slug étranger) est appliqué en amont, indépendamment.
-	if ctxkeys.HaloXUID(enriched) == "" {
-		enriched = ctxkeys.WithHaloXUID(enriched, pdb.XUID)
-	}
+	enriched := forcePageIdentityXUID(r.enrichWithHaloTokens(ctx, pdb), pdb.XUID)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
+}
+
+// forcePageIdentityXUID garantit que le contexte porte le xuid du joueur de la
+// PAGE (pdb.XUID) — jamais celui du compte connecté. HomeService.GetSpartanIdentity
+// résout l'identité Spartan via ctxkeys.HaloXUID ; deux cas imposent ce forçage :
+//
+//   - Démo / non authentifié : enrichWithHaloTokens ne pose aucun xuid → les
+//     lectures xuid-filtrées ciblent "" (bannière/emblème introuvables).
+//   - Consultation d'un AUTRE joueur (admin ou membre de groupe, ADR 0029) :
+//     depuis que SISU complète l'identité de session (train 2026-07-15), la
+//     session porte le xuid du COMPTE CONNECTÉ, qu'enrichWithHaloTokens conserve
+//     tel quel (token de session frais → réutilisé). Sans ce forçage, TOUTES les
+//     pages home affichaient alors la MÊME identité Spartan — celle du compte
+//     appelant (régression 2026-07-16, tous titres confondus).
+//
+// Les tokens (de session ou re-mintés) restent utilisables tels quels : les
+// endpoints careerranks/customization ciblent xuid(<pdb>) dans l'URL et ne
+// dérivent jamais l'identité du token porteur. Le contrôle d'accès (403 slug
+// étranger) est appliqué en amont, indépendamment de ce forçage.
+func forcePageIdentityXUID(ctx context.Context, pageXUID string) context.Context {
+	if pageXUID == "" || ctxkeys.HaloXUID(ctx) == pageXUID {
+		return ctx
+	}
+	return ctxkeys.WithHaloXUID(ctx, pageXUID)
 }
 
 // SeasonPassCtxWithAuth retourne un SeasonPassService + contexte enrichi avec les HaloTokens.
