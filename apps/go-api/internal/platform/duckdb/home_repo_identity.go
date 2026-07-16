@@ -31,7 +31,15 @@ func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartan
 	var backdropImageURL sql.NullString
 	var adornmentImagePath sql.NullString
 
-	err := r.pdb.ReadDB().QueryRow(ctx, Q26cHomeSpartanIdentity, r.pdb.XUID).Scan(
+	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, Q26cHomeSpartanIdentity, r.pdb.XUID)
+	if err != nil {
+		if err == sql.ErrNoRows || isTableNotFoundErr(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+	if err := rows.Scan(
 		&row.RankNumber,
 		&row.CurrentXP,
 		&row.XPForNextRank,
@@ -43,11 +51,7 @@ func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartan
 		&emblemImageURL,
 		&backdropImageURL,
 		&adornmentImagePath,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows || isTableNotFoundErr(err) {
-			return nil, nil
-		}
+	); err != nil {
 		return nil, err
 	}
 

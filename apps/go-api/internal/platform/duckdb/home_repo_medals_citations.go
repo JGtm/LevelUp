@@ -230,7 +230,7 @@ func (r *HomeRepo) LoadMatchCitations(ctx context.Context, matchIDs []string) (m
 	}
 	query := fmt.Sprintf(Q26iMatchCitationsTemplate, strings.Join(placeholders, ", "))
 
-	rows, err := r.pdb.ReadDB().Query(ctx, query, args...)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, query, args...)
 	if err != nil {
 		if isTableNotFoundErr(err) {
 			return result, nil

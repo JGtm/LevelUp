@@ -34,7 +34,7 @@ func (r *HomeRepo) LoadCachedBattlePass(ctx context.Context, ttl time.Duration) 
 	var trackPath string
 	var rank, progress int
 	var snapshotAt time.Time
-	err := r.pdb.ReadDB().QueryRow(ctx, query, r.pdb.XUID).Scan(&trackPath, &rank, &progress, &snapshotAt)
+	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, query, r.pdb.XUID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, false, nil
@@ -42,6 +42,10 @@ func (r *HomeRepo) LoadCachedBattlePass(ctx context.Context, ttl time.Duration) 
 		if isTableNotFoundErr(err) {
 			return nil, false, nil
 		}
+		return nil, false, fmt.Errorf("home_repo: cache BP query: %w", err)
+	}
+	defer rows.Close()
+	if err := rows.Scan(&trackPath, &rank, &progress, &snapshotAt); err != nil {
 		return nil, false, fmt.Errorf("home_repo: cache BP query: %w", err)
 	}
 
@@ -105,7 +109,7 @@ func (r *HomeRepo) queryRecentChallengeSnapshots(ctx context.Context, ttl time.D
 		) t
 		WHERE rn = 1`, secs)
 
-	rows, err := r.pdb.ReadDB().Query(ctx, query, r.pdb.XUID)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, query, r.pdb.XUID)
 	if err != nil {
 		if isTableNotFoundErr(err) {
 			return nil, nil

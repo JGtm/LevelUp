@@ -107,7 +107,15 @@ func (r *CareerLiveRepo) LoadLastCareerRank(ctx context.Context, xuid string) (*
 		backdropURL   sql.NullString
 		adornmentPath sql.NullString
 	)
-	err := r.pdb.Player.QueryRow(ctx, qLoadLastCareerRank, xuid).Scan(
+	rows, err := r.pdb.Player.QueryRowRecovered(ctx, qLoadLastCareerRank, xuid)
+	if err != nil {
+		if err == sql.ErrNoRows || isTableNotFoundErr(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("LoadLastCareerRank: %w", err)
+	}
+	defer rows.Close()
+	if err := rows.Scan(
 		&row.Rank,
 		&rankName,
 		&rankTier,
@@ -120,11 +128,7 @@ func (r *CareerLiveRepo) LoadLastCareerRank(ctx context.Context, xuid string) (*
 		&emblemURL,
 		&backdropURL,
 		&adornmentPath,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows || isTableNotFoundErr(err) {
-			return nil, nil
-		}
+	); err != nil {
 		return nil, fmt.Errorf("LoadLastCareerRank: %w", err)
 	}
 	if rankName.Valid {
