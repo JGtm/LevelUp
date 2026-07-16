@@ -49,6 +49,48 @@ func NormalizePlaylistLabel(name string) string {
 	return trimmed
 }
 
+// PlaylistLabelConfig porte la configuration d'affichage du libellé de playlist
+// d'un titre : retrait du préfixe de catégorie (capability, Infinite) + overrides
+// data-driven (playlist_labels.toml, Halo 5). Zéro-valeur = no-op (rend le brut).
+// Câblée par titre depuis wire/ServiceRegistry.
+type PlaylistLabelConfig struct {
+	// StripCategory : le titre déclare CapPlaylistCategoryStrip (retire "Arène ",
+	// "Fiesta ", … en tête). Infinite = true, Halo 5 = false.
+	StripCategory bool
+	// Overrides : nom FR brut → libellé court (Halo 5 « Super Fiesta Fête » →
+	// « Super Fiesta »). Appliqué APRÈS le strip. nil/vide = no-op.
+	Overrides map[string]string
+}
+
+// Display résout le libellé d'affichage d'un nom FR brut via ce config.
+func (c PlaylistLabelConfig) Display(rawFR string) string {
+	return DisplayPlaylistLabel(rawFR, c.StripCategory, c.Overrides)
+}
+
+// DisplayPlaylistLabel est le CHOKEPOINT UNIQUE de résolution du libellé
+// d'affichage d'une playlist depuis son nom FR brut (asset_translations) : retrait
+// du préfixe de catégorie (si stripCategory) PUIS override explicite data-driven.
+//
+// TOUTES les surfaces (Match View, tuiles home, sessions, playlists récentes,
+// Explorer, historique) DOIVENT passer par ici pour afficher le même libellé —
+// ne JAMAIS ré-appliquer NormalizePlaylistLabel + un lookup d'override inline
+// ailleurs (garde-rail : no_inline_playlist_label_test.go). rawFR vide → "".
+func DisplayPlaylistLabel(rawFR string, stripCategory bool, overrides map[string]string) string {
+	s := strings.TrimSpace(rawFR)
+	if s == "" {
+		return ""
+	}
+	if stripCategory {
+		s = NormalizePlaylistLabel(s)
+	}
+	if len(overrides) > 0 {
+		if disp, ok := overrides[s]; ok {
+			return disp
+		}
+	}
+	return s
+}
+
 // capitalizeFirstRune met la 1re rune en majuscule (gère les accents : "delta" →
 // "Delta", "élite" → "Élite").
 func capitalizeFirstRune(s string) string {

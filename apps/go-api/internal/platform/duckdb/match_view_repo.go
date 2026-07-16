@@ -158,22 +158,14 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 	}
 	if row.PlaylistAssetID != nil {
 		row.PlaylistNameFR = r.resolveAssetName(ctx, "playlist", *row.PlaylistAssetID)
-		// Retire la catégorie matchmaking de tête ("Arène delta : Héritage" →
-		// "Delta : Héritage") pour l'affichage — UNIQUEMENT si le titre déclare
-		// CapPlaylistCategoryStrip (title-aware). Halo 5 ne la déclare pas : son
-		// nom officiel "Super Fiesta Fête" doit rester entier (sinon → "Fête").
-		if row.PlaylistNameFR != nil && r.stripPlaylistCategory {
-			norm := analysis.NormalizePlaylistLabel(*row.PlaylistNameFR)
-			row.PlaylistNameFR = &norm
-		}
-		// Override data-driven (playlist_labels.toml) : correction explicite par
-		// nom, appliquée APRÈS le strip. Halo 5 « Super Fiesta Fête » → « Super
-		// Fiesta » (le strip de préfixe Infinite mangeait le mauvais mot, d'où le
-		// mapping explicite plutôt qu'une heuristique). No-op si table vide/absente.
-		if row.PlaylistNameFR != nil && len(r.playlistLabelOverrides) > 0 {
-			if disp, ok := r.playlistLabelOverrides[*row.PlaylistNameFR]; ok {
-				row.PlaylistNameFR = &disp
-			}
+		// Libellé d'affichage via le CHOKEPOINT UNIQUE partagé (strip de catégorie
+		// title-aware + override data-driven playlist_labels.toml) — même résolution
+		// que les tuiles home / sessions / Explorer (analysis.DisplayPlaylistLabel).
+		// Halo 5 « Super Fiesta Fête » → « Super Fiesta » ; Infinite « Arène delta :
+		// Héritage » → « Delta : Héritage ». No-op si nom absent.
+		if row.PlaylistNameFR != nil {
+			disp := analysis.DisplayPlaylistLabel(*row.PlaylistNameFR, r.stripPlaylistCategory, r.playlistLabelOverrides)
+			row.PlaylistNameFR = &disp
 		}
 	}
 	// Résolution du libellé de mode — même cascade que applyMatchHistoryFRTranslations :

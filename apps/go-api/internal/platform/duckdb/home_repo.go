@@ -20,6 +20,7 @@ import (
 	"database/sql"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	titlepkg "levelup/go-api/internal/domain/title"
 )
 
@@ -37,6 +38,11 @@ type HomeRepo struct {
 	assetURL       homeAssetURLAdapter
 	thresholdsRepo *CSRThresholdsRepo // optionnel : sans repo, le seuil par défaut (5) est utilisé
 	currentCSRSID  string             // saison CSR courante (ex "CsrSeason13-1") ; vide → fallback default
+	// playlistDisplay : résolution title-aware du libellé de playlist (strip de
+	// catégorie + override playlist_labels.toml), câblée par le ServiceRegistry.
+	// Zéro-valeur = no-op (libellé brut). Appliquée aux tuiles de match, sessions
+	// et playlists récentes — même chokepoint que la Match View.
+	playlistDisplay analysis.PlaylistLabelConfig
 }
 
 // homeAssetURLAdapter expose l'unique méthode dont HomeRepo a besoin de
@@ -59,6 +65,15 @@ func NewHomeRepo(pdb *PlayerDB) *HomeRepo {
 // dépend de cmd/migrate-static-maps).
 func (r *HomeRepo) WithAssetURL(a homeAssetURLAdapter) *HomeRepo {
 	r.assetURL = a
+	return r
+}
+
+// WithPlaylistDisplay injecte la config d'affichage title-aware du libellé de
+// playlist (strip catégorie + overrides data-driven). Optionnel : zéro-valeur =
+// libellés bruts. Câblé par le ServiceRegistry avec la capability + le
+// playlist_labels.toml du titre. Retourne le repo pour chaînage.
+func (r *HomeRepo) WithPlaylistDisplay(cfg analysis.PlaylistLabelConfig) *HomeRepo {
+	r.playlistDisplay = cfg
 	return r
 }
 
