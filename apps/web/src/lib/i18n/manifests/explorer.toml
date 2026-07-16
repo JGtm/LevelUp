@@ -897,7 +897,7 @@ fr = "Par mode"
 en = "By mode"
 
 [explorer.briefing.dim_playlist]
-fr = "Par playlist"
+fr = "Par sélection"
 en = "By playlist"
 
 [explorer.briefing.dim_matches]
@@ -909,8 +909,8 @@ fr = "Tendance"
 en = "Trend"
 
 [explorer.briefing.ranked_title]
-fr = "Pronostic"
-en = "Prognosis"
+fr = "Classement"
+en = "Ranking"
 
 [explorer.briefing.ranked_delta]
 fr = "Δ classement cumulé"

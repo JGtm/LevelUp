@@ -389,40 +389,66 @@ reconstituer paliers début/fin ni split solo/escouade depuis les lignes visible
 
 ### Phase 0 — Cadrage & branche (rapide)
 
-- [ ] Créer `feat/explorer-briefing-v2` depuis `main` à jour (`git fetch` ; vérifier
-      `git log --oneline -1 origin/main`).
-- [ ] Relire §2 (constat) sur pièces : rouvrir chaque fichier:ligne cité et confirmer qu'il n'a
-      pas bougé depuis le 2026-07-16 (le code a pu être modifié).
-- [ ] Confirmer l'état des décisions AWAIT-USER restantes (D-B, D-C) : noter au journal la
-      valeur retenue (confirmée ou défaut). D-A et D-D sont tranchées (2026-07-16).
+- [x] Créer `feat/explorer-briefing-v2` depuis `main` à jour (`git fetch` ; vérifier
+      `git log --oneline -1 origin/main`). — Branche déjà créée (item git fait par le
+      superviseur) ; `git branch --show-current` = `feat/explorer-briefing-v2` ; worktree propre.
+- [x] Relire §2 (constat) sur pièces : rouvrir chaque fichier:ligne cité et confirmer qu'il n'a
+      pas bougé depuis le 2026-07-16 (le code a pu être modifié). — Re-vérifié 2026-07-16.
+      Fichiers frontend EXACTS (formatPeriod `:41-55` sans année ; dim_playlist `:899-901`
+      « Par playlist » ; ranked_title `:911-913` « Pronostic »/« Prognosis » ; ranked_delta
+      `:915-917` ; ranked_expected* `:919-929` ; vs_baseline `:865-867` ; logic.ts
+      `formatSignedFixed:17` / `formatSignedPoints:29` ; DimensionRow `:94-130` ; RankedCard
+      `:159-204`). Backend : `ExplorerBriefingRanked` désormais à `:121-133` (le plan citait
+      `:120-133` — décalage d'1 ligne, champs `RatingKind`/`DeltaSum`/`ExpectedWinRate`
+      inchangés ; voir §6 Découverte-1). Les commits « sweep recovery player-DB » de la branche
+      de base (021f24a7b, af6ccdd6f, 8750dfcc8) N'ONT touché AUCUN fichier explorer/briefing
+      (service briefing + domain datent du Lot D 01f71104b, kpi_stats du chantier H5) → aucun
+      impact sur l'explorer, confirmé.
+- [x] Confirmer l'état des décisions AWAIT-USER restantes (D-B, D-C) : noter au journal la
+      valeur retenue (confirmée ou défaut). D-A et D-D sont tranchées (2026-07-16). —
+      **D-B = défaut 10** (≥ 10 matchs par sous-groupe, aligné `MinDimensionGroupMatches`).
+      **D-C = défaut** (une ligne par type préfixée : « CSR · Bronze I → Platine VI · −1.4
+      pt/match » ; point décimal accepté ; titre de section « Classement »). Décisions
+      transmises par le superviseur au lancement du chantier ; s'appliquent par défaut.
 
 Gate Phase 0 : `git branch --show-current` = `feat/explorer-briefing-v2` ; constat re-vérifié ;
-décisions notées.
+décisions notées. — PASSÉ (2026-07-16).
 
 ### Phase 1 — Terminologie, renommage & année (rapide, frontend-only) — items 2, 3, 5
 
-- [ ] **1a (item 2).** `explorer.toml` `explorer.briefing.dim_playlist` → FR « Par sélection »
-      (EN inchangé « By playlist »). Régénérer les manifests.
-- [ ] **1b (item 3, D-A tranché).** `explorer.toml` : `explorer.briefing.ranked_title` → FR
+- [x] **1a (item 2).** `explorer.toml` `explorer.briefing.dim_playlist` → FR « Par sélection »
+      (EN inchangé « By playlist »). Régénérer les manifests. — FAIT ; `explorer.ts` régénéré
+      (diff = seule valeur FR changée).
+- [x] **1b (item 3, D-A tranché).** `explorer.toml` : `explorer.briefing.ranked_title` → FR
       « Classement » / EN « Ranking ». PAS de clé tooltip. La suppression du bloc « attendu vs
       réel » (rendu + clés `ranked_expected*` + champs DTO) se fait en Phase 4 — le composant
       les consomme encore, les clés restent jusque-là pour ne pas casser le typecheck ;
-      `ranked_delta` idem (Phase 4).
-- [ ] **1c (item 5).** Ajouter `formatDateRange(start, end, locale, fallback?)` dans
+      `ranked_delta` idem (Phase 4). — FAIT ; seul le libellé de titre changé, clés
+      `ranked_expected*`/`ranked_delta` laissées intactes pour la Phase 4.
+- [x] **1c (item 5).** Ajouter `formatDateRange(start, end, locale, fallback?)` dans
       `lib/formatters/date.ts` (mettre à jour l'en-tête de doc du fichier), basé sur
       `Intl.DateTimeFormat.prototype.formatRange` avec `{ day:'numeric', month:'short',
       year:'numeric' }` — factorisation année/mois native (« 3 – 12 mars 2025 » ;
       « 3 mars 2024 – 12 janv. 2025 » si années différentes ; date simple si end absent ou
       égal à start). Test unitaire du helper. Puis `ExplorerBriefingStrip.tsx` `formatPeriod`
-      (`:41-55`) : remplacer le `Intl.DateTimeFormat` local par ce helper.
-- [ ] **1d.** Garde-rail terminologie : ajouter/étendre un test (ou grep de clôture) vérifiant
+      (`:41-55`) : remplacer le `Intl.DateTimeFormat` local par ce helper. — FAIT : helper
+      ajouté + ré-exporté depuis `formatters/index.ts` ; en-tête de doc du fichier mise à
+      jour ; 4 tests dans `formatters.test.ts` (même mois factorisé, années différentes, date
+      simple, fallback) ; `formatPeriod` délègue désormais à `formatDateRange`.
+- [x] **1d.** Garde-rail terminologie : ajouter/étendre un test (ou grep de clôture) vérifiant
       l'absence des littéraux « Par playlist » et « Pronostic »/« Prognosis » dans le manifest et
-      les composants briefing.
+      les composants briefing. — FAIT : nouveau test node
+      `features/explorer/explorerBriefingTerminology.guard.test.ts` (scanne `explorer.toml` +
+      composants `*briefing*`, hors fichiers de test).
 
 Gate Phase 1 : `node apps/web/scripts/build_i18n_manifests.mjs` sans diff inattendu ;
 `make check-types` = 0 ; `make test-web` (dangerouslyDisableSandbox) vert ;
 `cd apps/web && npm run lint` = 0 ; grep de clôture : 0 occurrence « Par playlist » /
 « Pronostic » / « Prognosis » sous `apps/web/src/features/explorer` et dans `explorer.toml`.
+— PASSÉ (2026-07-16) : manifests régénérés (seul `explorer.ts` modifié, 2 valeurs) ;
+`make check-types` = 0 ; `make test-web` = 256 fichiers / 2172 passés / 14 skipped / 0 fail ;
+`npm run lint` = 0 erreur (68 warnings baseline pré-existants, aucun sur les fichiers touchés) ;
+greps de clôture = 0 occurrence (hors le garde-rail lui-même).
 
 ### Phase 2 — Delta « vs habituel » dégénéré (moyen, frontend + service) — item 1
 
@@ -619,7 +645,11 @@ EN+FR mis à jour (critère §1.14) ; gates §1.8 tous verts une dernière fois 
 
 ## 6. Découvertes (à remplir en exécution — ne pas traiter hors périmètre)
 
-- (aucune découverte d'exécution pour l'instant)
+- Découverte-1 (Phase 0, 2026-07-16, sans impact) : `type ExplorerBriefingRanked struct` est à
+  `explorer_briefing.go:121` (le §2 citait `:120-133`) — décalage d'1 ligne, champs identiques
+  (`RatingKind`/`DeltaSum`/`ExpectedWinRate`/`ActualWinRate`/`MatchesWithPrediction`). Aucune
+  action : à traiter en Phase 4 sur pièces. Les commits « sweep recovery player-DB » de la base
+  n'ont touché aucun fichier explorer/briefing (vérifié `git log -- <fichier>`).
 - Arbitrage Révision 3 (2026-07-16) : « Séries » et « Moments forts » VALIDÉES → intégrées au
   périmètre (items 8/9, Phase 5b, P-9). « Records du scope » ÉCARTÉ (pas le bon endroit).
 - CHANTIER SÉPARÉ (validé dans son principe par l'utilisateur, à planifier À PART — ne pas

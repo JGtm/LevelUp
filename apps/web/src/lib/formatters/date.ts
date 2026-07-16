@@ -9,6 +9,10 @@
  *
  * Convention : passer la locale en argument explicite (pas de defaut FR/EN
  * hardcoded — le composant doit la résoudre via le store i18n).
+ *
+ * `formatDateRange` (ajout 2026-07-16) factorise année/mois sur un INTERVALLE via
+ * `Intl.DateTimeFormat.prototype.formatRange` — un `formatDate` par borne ne sait
+ * pas produire « 3–12 mars 2025 » (mois/année communs affichés une seule fois).
  */
 
 /** Locale BCP-47 (ex: 'fr-FR', 'en-US'). */
@@ -38,6 +42,42 @@ export function formatDate(
   const d = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(d.getTime())) return fallback
   return new Intl.DateTimeFormat(locale, opts).format(d)
+}
+
+/**
+ * Formate un INTERVALLE de dates en factorisant les parties communes (année/mois)
+ * via `Intl.DateTimeFormat.prototype.formatRange`. Options figées : jour numérique,
+ * mois court, année — pour dater complètement une période (année incluse).
+ *
+ * @param start    borne de début (Date | ISO | ms | null/undefined)
+ * @param end      borne de fin ; si absente, invalide ou égale à start → date simple
+ * @param locale   BCP-47 (ex: 'fr-FR')
+ * @param fallback chaîne renvoyée si start invalide (défaut "—")
+ *
+ * @example
+ *   formatDateRange('2025-03-03', '2025-03-12', 'fr-FR')  // "3–12 mars 2025"
+ *   formatDateRange('2024-03-03', '2025-01-12', 'fr-FR')  // "3 mars 2024 – 12 janv. 2025"
+ *   formatDateRange('2025-03-03', '2025-03-03', 'fr-FR')  // "3 mars 2025"
+ *   formatDateRange('2025-03-03', null, 'fr-FR')          // "3 mars 2025"
+ */
+export function formatDateRange(
+  start: Date | string | number | null | undefined,
+  end: Date | string | number | null | undefined,
+  locale: Locale,
+  fallback = '—',
+): string {
+  if (start == null || start === '') return fallback
+  const s = start instanceof Date ? start : new Date(start)
+  if (Number.isNaN(s.getTime())) return fallback
+  const fmt = new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+  if (end == null || end === '') return fmt.format(s)
+  const e = end instanceof Date ? end : new Date(end)
+  if (Number.isNaN(e.getTime()) || s.getTime() === e.getTime()) return fmt.format(s)
+  return fmt.formatRange(s, e)
 }
 
 /**
