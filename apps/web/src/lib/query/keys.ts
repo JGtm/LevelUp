@@ -105,8 +105,6 @@ export const queryKeys = {
     ['teammates', playerSlug, filterHash, [...selectedGts].sort().join(','), [...sessionLabels].sort().join(','), locale] as const,
   /** Préfixe broad — invalide toutes les queries teammates (ex. après ajout d'ami). */
   teammatesAll: ['teammates'] as const,
-  squadV2: (playerSlug: string, teammates: string[], period: string, experienceTypes: string[], playlists: string[], maps: string[] = [], modes: string[] = []) =>
-    ['squad-v2', playerSlug, [...teammates].sort().join(','), period, [...experienceTypes].sort().join(','), [...playlists].sort().join(','), [...maps].sort().join(','), [...modes].sort().join(',')] as const,
 
   // Synthèse (Slice 7 — Sprint 55 D8 : scopeHash = period + filtres)
   synthesis: (playerSlug: string, scopeHash: string) =>

@@ -315,12 +315,6 @@ en = "Match"
 fr = "Phase du match"
 en = "Match phase"
 
-# ─── Profil de combat (grille par joueur) ───────────────────────────────────
-
-[squad.combat_profile.title]
-fr = "Profil de combat"
-en = "Combat profile"
-
 # ─── S8 : Radar 6 axes ──────────────────────────────────────────────────────
 
 [squad.radar.section_title]
