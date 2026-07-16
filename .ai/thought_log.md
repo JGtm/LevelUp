@@ -1,3 +1,89 @@
+## [2026-07-16] Clôture PLAN_MONITORING_TRIAGE_DETECTIONS — soaks soldés en prod (mesure ssh)
+
+**Statut** : Complété (branche `docs/b4-data-quality-solde`). Plan
+`.ai/PLAN_MONITORING_TRIAGE_DETECTIONS_2026-07.md` : PARTIEL → **QUASI-SOLDÉ**. Clôture
+DOCS-ONLY (statues + journal + Découvertes), aucun code, aucun deploy.
+
+**Méthode** : mesure prod `ssh lvelup` (logs `/opt/levelup/data/logs`, fenêtre 07-13→16 =
+4 jours pleins post-deploy B1 du 07-12). Lecture logs SEULE — aucune écriture, aucune
+ouverture DuckDB (respect mono-process).
+
+**Items soldés sur pièces** :
+- B2.4 `[!]→[x]` : soak reauth CLEAN — 0 `reauth_required`, 0 `AADSTS` sur 07-13→16 et
+  aujourd'hui. Délai 24-48 h écoulé, RT valides se rafraîchissent.
+- B5.1 `[~]→[x]` : cascade LUSR ÉTEINTE — 0 `read-only mode`/jour depuis 07-11 (dernière
+  occurrence 07-10T14:02) ; writer-holds nominaux `held_ms=2000` (seuil 2 s, burst-lease
+  `sync_v2_postsync`), PLUS le runaway 21 909 ms de l'incident.
+- B5.2 `[~]→[x]` : `/health` 503 STORM éteint (632 incident → baseline STABLE ~90/j :
+  94/73/91/120/122/86 sur 07-11→16). Résidu = gate-window bénin, PAS LUSR → Découverte (f).
+- B7.4 : lecture INTERIM T0+4 j (general 101 dont 97 `/health` bénin ; duckdb 93 ; sync/
+  provider/pool/persist/service = 0 E) ; mesure finale prescrite au 2026-08-11.
+
+**Découvertes NOUVELLES post-B1 (consignées, NON traitées — rule 7)** :
+- (d) `database is closed` sur player `stats.duckdb` (op=OpenReadWrite), apparue le 07-14
+  (5/0/0/47/11/54 sur 07-11→16), chemin lecture défis prestige
+  (`prestige/prestige_player_helpers.go:18-22`). Introduite par un deploy du 07-13 (train
+  #55/#56), manifeste le 07-14 (pas de deploy ce jour). Race lease/B-swap → chantier dédié.
+- (e) tables `mode_name_tr` (9/j) + `battlepass_track_definitions` (1/j) absentes (metadata).
+- (f) `/health` 503 résiduel baseline bénin → refonte (healthcheck Docker sur `/healthz`).
+
+**B5.5 EXÉCUTÉ (mandat downtime user) → SOLDÉ no-op** : binaire `migrate-media-paths` buildé
+côté VPS (image `levelup-go-builder`, CGO, `-buildvcs=false`), dry-run READ_ONLY contre une
+COPIE des DB (jamais d'ouverture cross-process de la DB tenue RW ; 0 downtime, serveur healthy).
+**0 chemin absolu** dans les 2 titres prod (HI 139/139, H5 84/84 déjà relatifs) → migration sans
+effet, stock déjà canonique. C'est pourquoi 0 warning `mediaStoredPathToURL`. `[!]→[x]`.
+
+**B4.2 (orphelins 144) reste `[!]`** → chantier alias-backfill PeopleHub dédié.
+
+**Reste ouvert** : soak final B7.4 (2026-08-11) ; chantiers de suivi B4.2, (d), (e), (f).
+
+**Prochaine étape** : commit docs-only `docs/b4-data-quality-solde` (accord user), puis fix de la
+race prestige (d) sur branche dédiée (accord user « investiguer maintenant »).
+
+---
+
+## [2026-07-16] B4.1-B4.4 / B5.5 — actions data-quality SOLDÉES en prod (endpoint admin)
+
+**Statut** : Complété (branche `docs/b4-data-quality-solde`, GO utilisateur B4 autonome prod).
+Plan : `.ai/PLAN_MONITORING_TRIAGE_DETECTIONS_2026-07.md` (§B4, §B5.5 et en-tête statués).
+
+**Méthode** : endpoint admin `POST /api/v1/admin/actions/*` sur le VPS (prod, mode xbox). Session
+admin obtenue CÔTÉ VPS : cookie `levelup_session` = `<sessionID>.<HMAC-SHA256(secret,sessionID)>`,
+signature calculée DANS le conteneur (`openssl` + `$LEVELUP_SESSION_SECRET`) — **secret jamais
+exfiltré ni loggé**. Session admin existante (role=admin, auth_ready=true) réutilisée. Le serveur
+écrit lui-même (writer unique dblease, anti-ART) — AUCUNE ouverture DuckDB RW externe.
+
+**Résultats prod (avant → après)** :
+- B4.1 `registry-names/backfill` [x] : raw_uuid **24 → 4** (20 corrigés : maps/pairs/variants
+  100 %, playlists 2/6). Les 4 playlists restantes sans `asset_translations` → drain DiscoveryUGC
+  réseau (`catalog/ugc-drain`, hors périmètre endpoint zéro-réseau).
+- B4.2 `convergence/run` ×4 joueurs [!] : **4/4 succeeded, auth live SISU OK** (error_count=0),
+  mais `converged_psa=0` partout → orphan_xuids **144 → 144**. Mécanisme d'alias OPPORTUNISTE
+  (upsert xuid_aliases depuis les JSON PSA re-fetchés, seulement matchs `psa_checked_at IS NULL`)
+  ÉPUISÉ depuis le fix B1 (07-12, pipeline a tout stampé). Résidu = ré-résolution PeopleHub
+  dédiée, NON exposée par endpoint.
+- B4.3 `lying-bits/reset` [x] : lying_bits_events **580 → 0** (1159 nettoyés row-by-row anti-ART),
+  puis rebond **13** post-convergences. DÉCOUVERTE : détecteur = FAUX POSITIF pour matchs
+  no-film/vides (`MarkNoFilmDefinitive`/`MarkEventsEmptyDefinitive` posent MBitEvents SANS
+  highlight_events ; détecteur ne teste pas `events_empty`) → reset+convergence oscille. Backlog
+  vidé (−97,8 %) ; les 13 = no-film légitimes, pas une donnée cassée. Fix = exclure
+  `events_empty=TRUE` du détecteur+reset (code, hors périmètre).
+- B4.4 `translations/mode` [x] : `Legacy Slayer BR` → « Massacre BR hérité » (untranslated 2→1,
+  convention Slayer→Massacre). Résidu `Arena` (pair INVERSÉ « CTF:Arena », vrai mode CTF) =
+  artefact, non traduit ([!], besoin `mode_pair_override` non exposé).
+- B5.5 `migrate-media-paths` [!] : binaire ABSENT du conteneur (non buildé) + `duckdb` CLI absent
+  → dry-run non obtenable ; `shared_social` tenu RW (downtime interdit) ; **0 warning legacy en
+  prod** → fallback `relFromSlugMarker` couvre déjà = pas de casse. Prod-gated (cosmétique).
+
+**Découvertes (consignées, non traitées)** : (a) détecteur lying_bits_events faux-positif
+no-film ; (b) orphelins non résorbables par convergence opportuniste (besoin alias-backfill
+PeopleHub dédié) ; (c) 4 playlists raw restantes = drain réseau `catalog/ugc-drain`.
+
+**Prochaine étape** : merge branche par superviseur (docs-only, pas de deploy). Suivis (a)/(b)/(c)
+hors de ce train.
+
+---
+
 ## [2026-07-16] Fix P0 — identité Spartan partagée entre joueurs + fuite cross-titre (régression train 2026-07-15)
 
 **Statut** : Complété (branche fix/spartan-appearance-per-player). Gates Go verts, pas encore commité (superviseur gère git).
