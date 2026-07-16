@@ -194,11 +194,23 @@ func checkFileExists(name, path string) HealthCheck {
 	return HealthCheck{Name: name, OK: true, Message: "présent"}
 }
 
+// lookupBinary résout un exécutable dans le PATH. Point de vérité unique de la
+// détection binaire, partagé entre le healthcheck (checkBinary) et l'inspection
+// de l'outillage média (media_tooling.go) — évite de dupliquer exec.LookPath
+// (CLAUDE.md règle ≤2 copies).
+func lookupBinary(name string) (path string, ok bool) {
+	p, err := exec.LookPath(name)
+	if err != nil {
+		return "", false
+	}
+	return p, true
+}
+
 // checkBinary vérifie qu'un exécutable est présent dans le PATH. ffmpeg/ffprobe
 // sont requis pour le transcoding média HLS et la génération des miniatures.
 func checkBinary(name string) HealthCheck {
-	path, err := exec.LookPath(name)
-	if err != nil {
+	path, ok := lookupBinary(name)
+	if !ok {
 		return HealthCheck{Name: name, OK: false, Message: "introuvable dans le PATH — transcoding média désactivé"}
 	}
 	return HealthCheck{Name: name, OK: true, Message: path}
