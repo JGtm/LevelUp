@@ -1,9 +1,10 @@
 //go:build cgo
 
 // weapon_registry_test.go — applique le seed du registre d'armes sur DuckDB
-// :memory: et verrouille : cardinalités (59 armes / 42 familles / 36 ids),
+// :memory: et verrouille : cardinalités (64 armes / 46 familles / 76 ids),
 // intégrité référentielle (family_key ∈ weapon_families, weapon_ids → weapons),
-// enums class/faction, idempotence (double apply), et quelques résolutions.
+// enums class/faction, idempotence (double apply), et quelques résolutions
+// (dont le long-tail H5 : grenades/mêlée mappés depuis v_weapon_kills).
 
 package migrations
 
@@ -42,23 +43,23 @@ func queryCount(t *testing.T, db *sql.DB, query string, args ...any) int {
 
 func TestWeaponRegistry_SeedCardinalities(t *testing.T) {
 	db := openWeaponRegistryDB(t)
-	if got := queryCount(t, db, "SELECT count(*) FROM weapons"); got != 59 {
-		t.Errorf("weapons = %d, want 59", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapons"); got != 64 {
+		t.Errorf("weapons = %d, want 64", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapon_families"); got != 43 {
-		t.Errorf("weapon_families = %d, want 43", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapon_families"); got != 46 {
+		t.Errorf("weapon_families = %d, want 46", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids"); got != 71 {
-		t.Errorf("weapon_ids = %d, want 71 (36 filmshell + 35 stock_id)", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids"); got != 76 {
+		t.Errorf("weapon_ids = %d, want 76 (36 filmshell + 40 stock_id)", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids WHERE id_kind='stock_id'"); got != 35 {
-		t.Errorf("weapon_ids stock_id = %d, want 35", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids WHERE id_kind='stock_id'"); got != 40 {
+		t.Errorf("weapon_ids stock_id = %d, want 40", got)
 	}
 	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_infinite'"); got != 29 {
 		t.Errorf("weapons HINF = %d, want 29", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_5'"); got != 30 {
-		t.Errorf("weapons H5 = %d, want 30", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_5'"); got != 35 {
+		t.Errorf("weapons H5 = %d, want 35", got)
 	}
 }
 
@@ -94,6 +95,44 @@ func TestWeaponRegistry_Enums(t *testing.T) {
 	}
 	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE role IS NULL OR role = ''"); got != 0 {
 		t.Errorf("%d armes sans role", got)
+	}
+}
+
+// TestWeaponRegistry_H5LongTailResolution — fige la couverture du long-tail H5
+// (audit v_weapon_kills 2026-07-17) : chaque stock_id nouvellement mappé résout
+// vers le rôle de combat attendu (grenade / melee). Sans ce gate, une régression
+// du registre re-ouvrirait le trou du donut « Frags par type d'arme » H5.
+func TestWeaponRegistry_H5LongTailResolution(t *testing.T) {
+	db := openWeaponRegistryDB(t)
+	cases := map[string]string{ // stock_id -> rôle attendu
+		"4106030681": "grenade", // FRAG GRENADE
+		"2460880172": "grenade", // PLASMA GRENADE
+		"3190813201": "grenade", // SPLINTER GRENADE
+		"409331533":  "melee",   // Golf Club
+		"393532233":  "melee",   // Oddball
+	}
+	for id, want := range cases {
+		var role string
+		if err := db.QueryRow(`
+			SELECT COALESCE(w.role, '')
+			FROM weapon_ids wi
+			JOIN weapons w ON w.title_slug = wi.title_slug AND w.weapon_key = wi.weapon_key
+			WHERE wi.title_slug = 'halo_5' AND wi.id_kind = 'stock_id' AND wi.id_value = ?`, id,
+		).Scan(&role); err != nil {
+			t.Fatalf("résolution stock_id %s: %v", id, err)
+		}
+		if role != want {
+			t.Errorf("stock_id %s → rôle %q, want %q", id, role, want)
+		}
+	}
+	// Aucun stock_id H5 dupliqué (un id = un weapon_key unique).
+	if got := queryCount(t, db, `
+		SELECT count(*) FROM (
+			SELECT id_value FROM weapon_ids
+			WHERE title_slug = 'halo_5' AND id_kind = 'stock_id'
+			GROUP BY id_value HAVING count(*) > 1
+		)`); got != 0 {
+		t.Errorf("%d stock_id H5 dupliqués", got)
 	}
 }
 

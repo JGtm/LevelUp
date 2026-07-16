@@ -1,3 +1,42 @@
+## [2026-07-17] Extension registre H5 au long-tail v_weapon_kills (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Contexte** : item backlog [data/h5] — le registre `weaponRegistryH5Stock`
+(halo_infinite/migrations/weapon_registry.go, référentiel CROSS-TITRE) couvrait 35/66
+`effective_weapon_id` réels de `v_weapon_kills` H5 (233 274 frags / 8 rôles) ; 31 ids
+restants (35 053 frags) sans rôle → exclus du donut « Frags par type d'arme ».
+
+**Découverte clé (contre-hypothèse)** : le backlog supposait des variantes REQ héritant du
+rôle de l'arme de base. En réalité l'audit (copie shared_matches_v2.duckdb + weapon_labels
+du metadata-prebuilt.zip, requêtés hors process car serveur :8000 tenait les DB en RW) montre
+que le long-tail N'EST PAS de l'arsenal : grenades (17 865 frags), véhicules + tourelles
+(~16 k), buckets d'attribution générique (« Spartan » 8.8k, « Environmental Explosives »),
+et 7 ids UGC sans libellé.
+
+**Décision de mapping** : mappé vers rôles EXISTANTS les seules vraies armes tenues —
+3 grenades → `grenade` (parité HINF ; PAS de double comptage car le donut synthesis n'active
+pas IncludeGrenadeMelee, buildKillsByRole ignore IsGrenadeMelee), Golf Club + Oddball →
+`melee`. +5 armes H5 (30→35), +3 familles (splinter_grenade, golf_club, oddball), +5 stock_ids
+(35→40). Véhicules/tourelles/attributions/UGC laissés NON MAPPÉS et documentés en commentaire :
+leur affecter un rôle d'arme fausserait le donut et l'insight coach `blind_spot_power` ; créer
+un rôle `vehicle`/`turret` est hors ratchet enum. Trou résiduel = kills hors arsenal, par
+conception (dégradation gracieuse).
+
+**Gates** : go build ./... = 0 ; go test migrations halo_infinite/halo_5 + weaponregistry +
+service + domain = OK ; gofmt/vet propres. Test de couverture ajouté
+(TestWeaponRegistry_H5LongTailResolution : 5 stock_ids → rôle attendu + no-dup) ; cardinalités
+figées mises à jour (2 tests). Web (consommateur) : typecheck OK, lint 0 erreur, vitest
+synthesis 22 OK — manifest role_grenade/role_melee déjà présents, aucune modif web requise.
+
+**Note scope** : le commit porte le préfixe `feat(web)` demandé par le train de backlog, mais
+le changement est 100% Go (le registre vit côté Go, le web consomme kills_by_role agrégé).
+
+**Conclusion / prochaine étape** : item soldé. Reste hors périmètre (noté, non traité) : le
+gros bucket « Spartan » (~8.8k frags, nature ambiguë) et l'id UGC 2457457776 (~2.3k) — un
+rôle `vehicle`/`turret` dédié serait la seule voie pour capter véhicules/tourelles, à arbitrer
+produit si jamais souhaité.
+
 ## [2026-07-17] Purge dette : squad/v2 mort + route battlepass sans consommateur (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété.
