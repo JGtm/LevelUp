@@ -11,6 +11,7 @@ Pure Go helpers for grouping match rows by structural dimensions (map, mode, pla
 | `ByModeCategory(rows) []ModeAggregate` | Group by mode category (custom Halo : `Slayer`, `BTB`, `Ranked`, `Fiesta`, `Husky Raid`, `Firefight`, `Other`) |
 | `ByPlaylist(rows) []PlaylistAggregate` | Group by playlist (Halo Infinite playlist UUID) |
 | `CompareToHistorical(session, historical) []MapDelta` | Per-map delta : current session vs historical baseline (winrate diff, KDA diff) |
+| `CompareByKey(session, historical []KeyedAggregate) []KeyedDelta` | Generic per-key delta : session vs historical for ANY dimension (mode, playlist…) where `CompareToHistorical` (map-only) does not apply |
 
 ## Types
 
@@ -47,6 +48,25 @@ type MapDelta struct {
     HistKDA        *float64
     DeltaKDA       *float64
 }
+
+// Forme pivot générique (map / mode / playlist) identifiée par une clé stable.
+type KeyedAggregate struct {
+    Key   string
+    Label string
+    Counts
+    AvgPerformanceScore *float64
+}
+
+// KeyedDelta : session vs historique pour une même Key (sémantique de MapDelta,
+// générique à toute dimension). WinRateDelta = session.WinRate − historical.WinRate.
+type KeyedDelta struct {
+    Key                      string
+    Label                    string
+    Session                  Counts
+    Historical               Counts
+    WinRateDelta             float64
+    AvgPerformanceScoreDelta *float64
+}
 ```
 
 ## Examples
@@ -70,6 +90,15 @@ sessionAggs := breakdown.ByMap(sessionRows)
 historicalAggs := breakdown.ByMap(allHistoricalRows)
 deltas := breakdown.CompareToHistorical(sessionAggs, historicalAggs)
 // deltas[i].DeltaWinrate > 0 → session better on this map than historical
+```
+
+### Compare a session to historical baseline on a NON-map dimension (mode, playlist)
+
+```go
+// Build KeyedAggregate slices (Key = mode / playlist id), then:
+deltas := breakdown.CompareByKey(sessionAggs, historicalAggs)
+// Generic form of CompareToHistorical : same delta semantics, any dimension.
+// Keys absent from the session are ignored (we only rank what was played in scope).
 ```
 
 ### Mode categories on the home dashboard

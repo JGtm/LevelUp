@@ -2,12 +2,47 @@ package notify
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+// TestSanitizeSendError_RedactsWebhookToken : une erreur d'envoi *url.Error ne doit
+// JAMAIS exposer le token du webhook (dans le path de l'URL) au log.
+func TestSanitizeSendError_RedactsWebhookToken(t *testing.T) {
+	const secret = "SUPERSECRETTOKEN123"
+	urlErr := &url.Error{
+		Op:  "Post",
+		URL: "https://discord.com/api/webhooks/999888/" + secret,
+		Err: errors.New("dial tcp 1.2.3.4:443: i/o timeout"),
+	}
+	got := sanitizeSendError(urlErr)
+	if strings.Contains(got, secret) {
+		t.Fatalf("token webhook fuité dans l'erreur expurgée: %q", got)
+	}
+	if strings.Contains(got, "discord.com/api/webhooks") {
+		t.Fatalf("URL webhook présente dans l'erreur expurgée: %q", got)
+	}
+	if !strings.Contains(got, "timeout") {
+		t.Errorf("l'erreur interne (transport) devrait subsister: %q", got)
+	}
+}
+
+// TestSanitizeSendError_PassthroughNonURL : une erreur qui n'est pas un *url.Error
+// est renvoyée telle quelle (pas de perte d'information de diagnostic).
+func TestSanitizeSendError_PassthroughNonURL(t *testing.T) {
+	if got := sanitizeSendError(errors.New("json: unsupported type")); got != "json: unsupported type" {
+		t.Errorf("passthrough attendu, got %q", got)
+	}
+	if got := sanitizeSendError(nil); got != "" {
+		t.Errorf("nil → chaîne vide attendue, got %q", got)
+	}
+}
 
 func TestLoadNotifyConfig_MissingFile(t *testing.T) {
 	cfg := LoadNotifyConfig("/nonexistent/path.json")

@@ -59,8 +59,8 @@ var halowaypointAllowlist = map[string]bool{
 	"internal/platform/halo/provider.go":            true,
 	"internal/platform/halo/season_provider.go":     true,
 	// platform/auth/ — échange tokens Xbox↔Spartan (audiences/hôtes officiels).
+	// (provider.go retiré de l'allowlist au retrait de MSAL 2026-07-15 : plus de littéral.)
 	"internal/platform/auth/halo_exchange.go": true,
-	"internal/platform/auth/provider.go":      true,
 	// domain/title/ — defaults documentés des descripteurs d'auth.
 	"internal/domain/title/auth_descriptor.go": true,
 	// assets/ — fetchers gamecms-hacs (URLs d'assets).
@@ -83,6 +83,10 @@ var halowaypointAllowlist = map[string]bool{
 	"cmd/snapshot-world-leaderboard/main.go":  true,
 	// scripts/ — warm-up d'assets (URLs gamecms).
 	"scripts/warm_bp_assets/main.go": true,
+	// ops/ — seeder démo synthétique : URL blob-infiniteugc FACTICE d'assets démo
+	// (bannière/emblème/backdrop de l'identité Spartan démo, jamais fetchée — data
+	// fixture déterministe, cf. seed_demo_synthetic.go). Ajoutée 2026-07-15.
+	"internal/ops/seed_demo_synthetic_player.go": true,
 }
 
 var halowaypointRE = regexp.MustCompile(`halowaypoint`)

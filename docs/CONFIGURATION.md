@@ -151,6 +151,21 @@ address the entry.
 > so the server re-derives Spartan tokens from the fresh chain. `token-capture`
 > and `token-import` do this automatically.
 
+### Token provider — SISU (sole provider)
+
+The onboarding Device Code Flow is started by the **SISU** provider (native Xbox
+device-code, MSA scope `service::user.auth.xboxlive.com::MBI_SSL`, official Xbox client ID):
+self-hosters need **no Azure registration**. The former MSAL provider was removed on
+2026-07-15 after SISU was validated end-to-end; a legacy `auth_provider: "msal"` value in
+`app_settings.json` is ignored with a boot warning. Existing Azure refresh tokens keep
+refreshing through the OAuth v2 endpoint; SISU-native refresh tokens go through
+`login.live.com` (automatic fallback on `invalid_grant`).
+
+The native start endpoint is `https://login.live.com/oauth20_connect.srf`; an
+opt-in network guard (`go test -tags=integration ./internal/platform/auth/` with
+`LEVELUP_DEVICE_ENDPOINT_LIVE_CHECK=1`) asserts it stays reachable, so a Microsoft-side
+change surfaces as a failed test instead of an onboarding spinner.
+
 ---
 
 ## Environment Variables
@@ -256,6 +271,7 @@ Keys read by the Go backend from `app_settings.json` (some are not in the exampl
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
+| `auth_provider` | string | `""` (= `sisu`) | Legacy key. SISU (native Xbox, **zero Azure app**) is the sole provider since MSAL was removed on 2026-07-15; `msal` is ignored with a boot warning. See "Token provider" above. |
 | `media_enabled` | bool | `false` | Enable media (Xbox captures) integration. |
 | `media_captures_base_dir` | string | `""` | Path to the Xbox captures folder. |
 | `media_buffer_minutes` | int | `1` | Tolerance window matching captures to games. |
@@ -273,6 +289,7 @@ Keys read by the Go backend from `app_settings.json` (some are not in the exampl
 | `discord_lang` | string | `"fr"` | Discord notification language. |
 | `discord_notifications_enabled` | bool | `false` | Enable Discord sync notifications. |
 | `discord_notify_new_media` | bool | `true` | Notify on new media. |
+| `discord_notify_disk` | bool | `true` | Disk space alerts (warn > 80 % used or < 2 GB free, critical > 90 % or < 500 MB) on the data volume, sent on status change + daily reminder + recovery. |
 | `discord_webhook_url` | string | `""` | Discord webhook URL (env vars take precedence). |
 | `tailscale_enabled` | bool | `false` | Enable Tailscale Funnel remote access. |
 | `user_timezone` | string | `"Europe/Paris"` | IANA timezone for display. |

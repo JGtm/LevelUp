@@ -134,6 +134,9 @@ func (h *ExplorerHandler) handleQueryMatches(ctx context.Context, in *explorerQu
 		SquadScope:        req.SquadScope,
 		MatchIDSearch:     req.MatchIDSearch,
 		MatchIDs:          req.MatchIDs,
+		// Opt-in du bandeau de briefing étendu (mode Matchs). L'Explorer l'envoie
+		// à true ; la page Historique (autre handler) ne pose pas le flag.
+		IncludeExplorerBriefing: req.IncludeBriefing,
 	}
 
 	mhResp, err := mhSvc.GetPage(ctx, mhReq)
@@ -172,6 +175,8 @@ func (h *ExplorerHandler) handleQueryMatches(ctx context.Context, in *explorerQu
 			Items:      rows,
 			Pagination: mhResp.Table.Pagination,
 		},
+		// Bandeau de briefing (mapping pur) : nil si non demandé ou scope vide.
+		Briefing: mhResp.Briefing,
 	}
 	return &explorerMatchesQueryOutput{Body: resp}, nil
 }

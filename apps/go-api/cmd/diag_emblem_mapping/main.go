@@ -27,7 +27,7 @@ import (
 // en fallback legacy). Persiste la rotation au store. Même helper que
 // diag_emblem_colors.
 func acquireDiagTokens(ctx context.Context, gamertag string) (*auth.ExchangeResult, error) {
-	provider := auth.NewMSALProvider()
+	provider := auth.NewSISUProvider()
 	cfg, err := config.Load()
 	if err != nil {
 		return nil, fmt.Errorf("config.Load: %w", err)

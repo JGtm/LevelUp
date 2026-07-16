@@ -303,6 +303,8 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/ops/media_hls.go":                                                         "transcoding HLS média : commentaire sur DBPath = shared_social.duckdb (cible UPDATE media_files)",
 	"internal/ops/seed_demo.go":                                                         "seed démo : construit le chemin + copie/recrée data/demo/warehouse/shared_social.duckdb (fichier + path, pas d'ATTACH sur RW)",
 	"internal/ops/seed_demo_media.go":                                                   "seed démo média : recrée le shared_social démo et lit la SOURCE prod pour les media_files (pas d'ATTACH sur RW)",
+	"internal/ops/seed_demo_synthetic.go":                                               "seed démo synthétique : construit le chemin data/demo/warehouse/shared_social.duckdb (path + création, pas d'ATTACH sur RW)",
+	"internal/ops/seed_demo_synthetic_shared.go":                                        "seed démo synthétique : crée shared_social.duckdb migré (vide) via RunForTitleDB, aucun INSERT/ATTACH sur RW",
 	"internal/config/player_resolver.go":                                                "résolution du chemin data/demo/warehouse/shared_social.duckdb en mode démo (construction de path, pas d'accès DB)",
 	"internal/persist/shared_social_persister.go":                                       "SocialPersister canonique (CHECKPOINT garanti)",
 	"internal/persist/shared_social_rows.go":                                            "types batch SocialPersister",

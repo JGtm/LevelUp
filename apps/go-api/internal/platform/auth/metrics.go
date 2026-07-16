@@ -9,6 +9,7 @@ var (
 	oauthRefreshFailTotal        = expvar.NewInt("levelup.auth.oauth_refresh_fail_total")
 	oauthRefreshFailByClass      = expvar.NewMap("levelup.auth.oauth_refresh_fail_by_class")
 	oauthRefreshRetryPublicTotal = expvar.NewInt("levelup.auth.oauth_refresh_retry_public_total")
+	oauthRefreshRetryMSATotal    = expvar.NewInt("levelup.auth.oauth_refresh_retry_msa_total")
 )
 
 // recordOAuthRefreshOutcome incrémente les compteurs d'issue d'un échange.

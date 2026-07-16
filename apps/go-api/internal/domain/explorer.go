@@ -332,6 +332,10 @@ type ExplorerMatchesQueryRequest struct {
 	MatchIDSearch   string     `json:"match_id_search,omitempty"`
 	// MatchIDs : whitelist exacte de match_id à conserver (Explorer mode Joueur).
 	MatchIDs []string `json:"match_ids,omitempty"`
+	// IncludeBriefing : opt-in du bandeau de briefing (mode Matchs). Propagé au
+	// service via MatchHistoryQueryRequest.IncludeExplorerBriefing. Faux (défaut)
+	// = réponse sans le bloc Briefing (aucun surcoût). L'Explorer l'envoie à true.
+	IncludeBriefing bool `json:"include_briefing,omitempty"`
 }
 
 // ExplorerMatchesRow : une ligne dans la liste des matchs filtrés (Explorer).
@@ -426,6 +430,9 @@ type ExplorerMatchesQueryResponse struct {
 	Summary    ExplorerMatchesSummary `json:"summary"`
 	Table      ExplorerMatchesTable   `json:"table"`
 	ExportHint *ExportHint            `json:"export_hint,omitempty"`
+	// Briefing : bandeau de briefing au-dessus du tableau. Nil quand la requête
+	// ne l'a pas demandé (include_briefing=false) ou scope vide.
+	Briefing *ExplorerBriefing `json:"briefing,omitempty"`
 }
 
 // ---------------------------------------------------------------------------

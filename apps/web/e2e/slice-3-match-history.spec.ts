@@ -9,9 +9,16 @@
  * 3. Le titre "Historique" est visible dans la page
  */
 import { test, expect } from '@playwright/test'
-import { skipIfNoDemoData } from './_helpers/demoData'
+import { skipIfNoDemoData, skipObsoleteSpec } from './_helpers/demoData'
 
 test.describe('Slice 3 — Historique des parties (DEMO_MODE)', () => {
+  // La route /players/{slug}/stats/history n'existe plus (routes actuelles :
+  // stats/{index,sessions,synthesis,timeseries}) → contenu principal "Not Found".
+  test.beforeEach(() => {
+    skipObsoleteSpec(
+      'route /players/{slug}/stats/history supprimée (routes actuelles : stats/{index,sessions,synthesis,timeseries})',
+    )
+  })
   test("la page Historique se charge sans erreur JS", async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))

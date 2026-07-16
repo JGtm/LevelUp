@@ -113,6 +113,9 @@ export interface MatchViewText {
   combatDeathsLabel: string
   combatTeamLabel: string
   combatEnemyLabel: string
+  // Histogramme momentum (carte Dominance) — libellés de tooltip.
+  combatMomentumDelta: string
+  combatMomentumCumul: string
   combatNemesisTitle: string
   combatBullyTitle: string
   combatNoNemesis: string
@@ -303,6 +306,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatDeathsLabel: 'Morts',
     combatTeamLabel: 'Mon équipe',
     combatEnemyLabel: 'Adversaires',
+    combatMomentumDelta: 'Écart',
+    combatMomentumCumul: 'Cumul',
     combatNemesisTitle: 'Némésis',
     combatBullyTitle: 'Souffre-douleur',
     combatNoNemesis: '—',
@@ -488,6 +493,8 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     combatDeathsLabel: 'Deaths',
     combatTeamLabel: 'My team',
     combatEnemyLabel: 'Opponents',
+    combatMomentumDelta: 'Delta',
+    combatMomentumCumul: 'Cumulative',
     combatNemesisTitle: 'Nemesis',
     combatBullyTitle: 'Bully target',
     combatNoNemesis: '—',

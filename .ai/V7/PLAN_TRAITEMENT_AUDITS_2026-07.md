@@ -1025,13 +1025,12 @@ des chemins HTTP chauds.
   PARTITION BY xuid, Q29HistoryForAvgBulkTpl) — 1 requête au lieu de ~8 dans la boucle amis
   du Match View (`match_view_data_loaders.go`). Test `match_view_history_bulk_test.go`
   (bulk == single par xuid, multiset). Gate build+test+intégration duckdb verts.
-- [!] J4 — ARCHI 47 : **DIFFÉRÉ (2026-07-06, measure-first)**. N est PETIT (1-4 coéquipiers
-  SÉLECTIONNÉS, pas un fan-out large) → gain modeste ; le refacto est LOURD (Q30 bulk groupé
-  par teammate_xuid + résolution gamertag batch + merge 2-DB shared/player + logique
-  d'intersection/KPI par coéquipier à préserver à l'identique). Optimiser un chemin petit-N,
-  correctness-sensitive, SANS mesure sous charge (VPS injoignable) = exactement ce que
-  measure-first proscrit. Cibles mappées (`teammates_service.go:185`,
-  `teammates_service_kpis.go:84`, `squad_repo.go:167`) → session dédiée + validation VPS.
+- [x] J4 — ARCHI 47 : **RETIRÉ measure-first (2026-07-13, V10c)**. Mesure prod sous charge
+  (7 h 44) : le handle lu par ce chemin (`ro shared_matches_v2`) affiche `WaitCount` 0 /
+  `InUse` 0 avec 4 conns dispo → zéro contention de pool ; HTTP global ~9 req/min. Les stalls
+  lecteurs observés viennent du writer B-swap (post-sync), que réduire le compte de requêtes
+  de la vue (4→1) ne soulage pas. Le refacto lourd correctness-sensible n'apporterait aucun
+  gain mesurable → NON traité (justification chiffrée : `.ai/RAPPORT_V10C_BUDGETS_2026-07-13.md`).
 - [ ] J5 — ARCHI 44 [CHANTIER DÉDIÉ — décidé 2026-07-04] : `LoadAll` full-history par hit
   (`match_history_repo.go:32`, confirmé sans LIMIT ni cache) → cache par joueur invalidé
   post-sync (option A recommandée : entrée PlayerCache invalidée si MatchesInserted>0 via
@@ -1040,14 +1039,14 @@ des chemins HTTP chauds.
   PRODUIT à trancher au chantier : TTL (invalidation immédiate vs 30 min), propriétaire de
   l'invalidation (finalizer engine.run vs sync result handler). À traiter avec le chantier
   K (risque données périmées servies).
-- [!] J6 — ARCHI mineurs N+1 batchables : **DIFFÉRÉ (2026-07-06, measure-first)**. Les 8
-  sites sont TOUS des chemins d'arrière-plan (sync/backfill/catalog) à petit-N — pas des
-  chemins HTTP chauds. « ARCHI mineurs » par l'audit lui-même. Cibles re-mappées post-K :
-  `sync/engine.go`, `sync/skill/skill_v2_helpers.go:27`, `relations_moments_service.go:139`
-  (N≤3), `fanout_service.go:68`, `sync/session_recalc.go:76`,
-  `sync/backfill_registry_names.go:182`, `handlers/prestige.go`, `wire/registry_catalog_expand.go:71`.
-  Batcher un chemin d'arrière-plan petit-N sans preuve runtime = optimisation à l'aveugle
-  (measure-first). À traiter en lot ciblé avec mesures VPS.
+- [x] J6 — ARCHI mineurs N+1 batchables : **RETIRÉ measure-first (2026-07-13, V10c)**. Mesure
+  prod sous charge (7 h 44, 120 post-syncs) : `dblease` player = 5 ms de wait cumulé / 0
+  timeout ; les steps hôtes de ces N+1 sont déjà <100 ms (aggregates 61 ms, dominance 19 ms,
+  enrichment 45 ms, convergence 28-367 ms). Le coût sync réel est du COMPUTE (`skill_rating`
+  32,6 s + `weapon_kills` 33,2 s = 66 s des 90 s de post-sync), pas le compte de requêtes.
+  Batcher un N+1 dans un step <100 ms = 0 gain → aucun chantier perf dédié justifié. Exception
+  pragmatique : batcher opportunément si un site est touché pour lisibilité en refacto K.
+  Justification chiffrée : `.ai/RAPPORT_V10C_BUDGETS_2026-07-13.md`.
 - [x] J7 — ARCHI mineur : **LIVRÉ (2026-07-06)**. CTE `perfect` de Q26 bornée à la fenêtre
   `base` (150 matchs) : perfect ET la requête principale bornées à `match_id IN base` →
   même ensemble (zéro divergence ex-aequo), perfect n'agrège plus tout l'historique.

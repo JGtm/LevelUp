@@ -81,6 +81,27 @@ describe('XboxLoginPage', () => {
     expect(screen.getByLabelText(/Mot de passe/i)).toBeInTheDocument()
   })
 
+  it('affiche une erreur + bouton Réessayer quand le start échoue (500)', async () => {
+    // Garde-rail anti-régression (Lot A) : un start en 500 ne doit jamais
+    // laisser le spinner « préparation » tourner indéfiniment.
+    server.use(
+      http.post('/api/v1/auth/device-flow/start', () =>
+        HttpResponse.json(
+          { code: 'msal_init_error', message: 'impossible de démarrer le Device Code Flow', retryable: false },
+          { status: 500 },
+        ),
+      ),
+    )
+
+    renderWithProviders(<XboxLoginPage />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Réessayer/i })).toBeInTheDocument()
+    })
+    // Pas de code affiché : le flow n'a pas démarré.
+    expect(screen.queryByText(/ABCD-1234/i)).not.toBeInTheDocument()
+  })
+
   it('relance automatiquement le flow sur attempt_not_found (récupération gracieuse)', async () => {
     // 1er start → attempt-1 (que le polling déclarera introuvable) ;
     // 2e start (relance auto) → attempt-2 avec un nouveau code.

@@ -8,11 +8,14 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
 // withMockTokenEndpoint redirige msalTokenURL vers un httptest.Server le temps
-// du test, et pose les env vars client_id/secret.
+// du test, et pose les env vars client_id/secret. Stub aussi msaTokenURL (mort
+// par défaut) : un invalid_grant Azure déclenche le fallback MSA natif — sans
+// stub, les tests taperaient le vrai login.live.com.
 func withMockTokenEndpoint(t *testing.T, handler http.HandlerFunc, clientID, secret string) {
 	t.Helper()
 	srv := httptest.NewServer(handler)
@@ -20,8 +23,22 @@ func withMockTokenEndpoint(t *testing.T, handler http.HandlerFunc, clientID, sec
 	prev := msalTokenURL
 	msalTokenURL = srv.URL
 	t.Cleanup(func() { msalTokenURL = prev })
+	withMockMSAEndpoint(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"RT inconnu du client MSA (stub test)"}`))
+	})
 	t.Setenv("LEVELUP_OAUTH_CLIENT_ID", clientID)
 	t.Setenv("SPNKR_AZURE_CLIENT_SECRET", secret)
+}
+
+// withMockMSAEndpoint redirige msaTokenURL (fallback MSA natif SISU) vers un
+// httptest.Server le temps du test.
+func withMockMSAEndpoint(t *testing.T, handler http.HandlerFunc) {
+	t.Helper()
+	srv := httptest.NewServer(handler)
+	t.Cleanup(srv.Close)
+	prev := msaTokenURL
+	msaTokenURL = srv.URL
+	t.Cleanup(func() { msaTokenURL = prev })
 }
 
 const aadsts90023JSON = `{"error":"invalid_request","error_description":"AADSTS90023: Public clients can't send a client secret. Trace ID: x"}`
@@ -137,6 +154,90 @@ func TestExchangeRefreshToken_CanonicalClientSendsSecret(t *testing.T) {
 
 	if _, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-1"); err != nil {
 		t.Fatalf("err inattendue : %v", err)
+	}
+}
+
+// TestExchangeRefreshToken_FallbackMSAOnInvalidGrant : un RT émis par le client
+// Xbox natif (device-flow SISU) est refusé en invalid_grant par l'endpoint Azure
+// v2 → le fallback MSA natif (login.live.com, client Xbox, scope MBI_SSL, sans
+// secret) doit prendre le relais et réussir.
+func TestExchangeRefreshToken_FallbackMSAOnInvalidGrant(t *testing.T) {
+	withMockTokenEndpoint(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"AADSTS70000: grant issued to a different client"}`))
+	}, "custom-app-id", "")
+
+	msaCalls := 0
+	withMockMSAEndpoint(t, func(w http.ResponseWriter, r *http.Request) {
+		msaCalls++
+		_ = r.ParseForm()
+		if got := r.PostForm.Get("client_id"); got != SISUDefaultAppID {
+			t.Errorf("client_id MSA : attendu %q (client Xbox), obtenu %q", SISUDefaultAppID, got)
+		}
+		if got := r.PostForm.Get("scope"); got != sisuMSAScope {
+			t.Errorf("scope MSA : attendu %q, obtenu %q", sisuMSAScope, got)
+		}
+		if r.PostForm.Get("client_secret") != "" {
+			t.Errorf("client_secret interdit sur le flux MSA natif (client public)")
+		}
+		_, _ = w.Write([]byte(`{"access_token":"at-msa","refresh_token":"rt-msa-2","expires_in":86400}`))
+	})
+
+	at, rt, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-msa-1")
+	if err != nil {
+		t.Fatalf("err inattendue : %v", err)
+	}
+	if at != "at-msa" || rt != "rt-msa-2" {
+		t.Errorf("tokens : obtenu (%q, %q), attendu (at-msa, rt-msa-2)", at, rt)
+	}
+	if msaCalls != 1 {
+		t.Errorf("appels endpoint MSA : attendu 1, obtenu %d", msaCalls)
+	}
+}
+
+// TestExchangeRefreshToken_FallbackMSAAlsoDead : Azure ET MSA refusent le RT →
+// l'erreur Azure INITIALE est propagée (classification revoked intacte pour le
+// pool/resolver).
+func TestExchangeRefreshToken_FallbackMSAAlsoDead(t *testing.T) {
+	withMockTokenEndpoint(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"AADSTS70000: token expired"}`))
+	}, "custom-app-id", "")
+	// Le stub MSA par défaut de withMockTokenEndpoint répond déjà invalid_grant.
+
+	_, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-dead")
+	if err == nil {
+		t.Fatalf("erreur attendue")
+	}
+	var oerr *OAuthExchangeError
+	if !errors.As(err, &oerr) {
+		t.Fatalf("erreur typée OAuthExchangeError attendue, obtenu %T", err)
+	}
+	if !strings.Contains(oerr.Description, "AADSTS70000") {
+		t.Errorf("l'erreur Azure initiale doit être propagée, obtenu %q", oerr.Description)
+	}
+	if got := ClassifyAuthError(err); got != AuthErrorRevoked {
+		t.Errorf("classe : attendu revoked, obtenu %s", got)
+	}
+}
+
+// TestExchangeRefreshToken_NoFallbackOnConfigError : une erreur de classe config
+// (invalid_client…) ne déclenche PAS le fallback MSA.
+func TestExchangeRefreshToken_NoFallbackOnConfigError(t *testing.T) {
+	withMockTokenEndpoint(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"error":"invalid_client","error_description":"app inconnue"}`))
+	}, "custom-app-id", "")
+
+	msaCalls := 0
+	withMockMSAEndpoint(t, func(w http.ResponseWriter, _ *http.Request) {
+		msaCalls++
+		_, _ = w.Write([]byte(`{"access_token":"at-msa"}`))
+	})
+
+	_, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-1")
+	if err == nil {
+		t.Fatalf("erreur attendue")
+	}
+	if msaCalls != 0 {
+		t.Errorf("le fallback MSA ne doit pas être tenté sur une erreur config, obtenu %d appels", msaCalls)
 	}
 }
 

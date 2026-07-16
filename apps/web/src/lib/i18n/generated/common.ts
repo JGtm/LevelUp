@@ -423,6 +423,7 @@ export const commonManifest = {
   "common.setup.config_title": { fr: "Configuration de LevelUp", en: "LevelUp setup" },
   "common.setup.create_player_profile": { fr: "Créer votre profil joueur", en: "Create your player profile" },
   "common.setup.device_auth_success": { fr: "✓ Authentification réussie !", en: "✓ Authentication successful!" },
+  "common.setup.device_start_failed": { fr: "Impossible de démarrer la connexion Microsoft. Veuillez réessayer.", en: "Unable to start Microsoft sign-in. Please try again." },
   "common.setup.device_starting": { fr: "Démarrage du Device Code Flow…", en: "Starting Device Code Flow…" },
   "common.setup.enter_gamertag": { fr: "Entrez votre Gamertag Xbox pour créer votre profil.", en: "Enter your Xbox Gamertag to create your profile." },
   "common.setup.enter_this_code": { fr: "et entrez ce code :", en: "and enter this code:" },

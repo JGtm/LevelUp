@@ -210,8 +210,31 @@ func runSeedDemo(cfg *config.AppConfig, args []string) error {
 	titlesFlag := fs.String("titles", "", "Titres à seeder (CSV de slugs ; vide = tous les titres où le gamertag a des données)")
 	emitManifest := fs.Bool("emit-manifest", false, "Émettre les manifestes figés (config/demo/<gamertag>/<slug>.json) depuis la sélection dynamique, sans seeder — à curer puis committer")
 	ignoreManifest := fs.Bool("ignore-manifest", false, "Forcer la sélection dynamique même si un manifeste figé existe")
+	synthetic := fs.Bool("synthetic", false, "Générer une fixture SYNTHÉTIQUE déterministe (aucune donnée réelle, aucune DB de prod) — voie CI ; le défaut reste l'extraction d'un joueur réel anonymisé")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+
+	// Voie synthétique (CI) : DuckDB vierges migrées + INSERT déterministes. Ne lit
+	// aucun db_profiles/DB source ; ignore --gamertag/--titles/--max-matches/--media.
+	if *synthetic {
+		// --out relatif → sous RepoRoot (CI : data/demo) ; absolu → tel quel (tests).
+		outPath := *outDir
+		if !filepath.IsAbs(outPath) {
+			outPath = filepath.Join(cfg.RepoRoot, *outDir)
+		}
+		res, err := ops.SeedDemoSynthetic(context.Background(), ops.SyntheticDemoOptions{
+			OutDir:     outPath,
+			ServiceTag: *serviceTag,
+		})
+		if err != nil {
+			return err
+		}
+		fmt.Printf("✅ Fixture démo SYNTHÉTIQUE générée dans %s\n", res.OutDir)
+		fmt.Printf("   %d matchs, %d sessions, %d joueurs (déterministe, ancre %s)\n",
+			res.Matches, res.Sessions, res.Players, ops.SyntheticAnchor().Format("2006-01-02"))
+		fmt.Printf("   Durée: %s\n", res.Duration.Round(time.Millisecond))
+		return nil
 	}
 
 	profilesPath := cfg.DBProfilesPath

@@ -452,10 +452,16 @@ sync+service = 0 FAIL (V9c import re-vérifié). Aucune écriture sur la copie p
   Emplacement TODO explicite « DATE DE MISE EN PROD DE D1A » présent dans la checklist
   (arme D2 ≥ 7 j). Relue à blanc une fois (dry-run de lecture : chaque étape exécutable
   telle quelle).
-- [!] V10c — POST-merge (différé par conception : nécessite la prod post-merge sous charge
-  réelle). Hors périmètre de l'exécutant V10ab. Fenêtre d'observation runtime — lire
-  `duckdb_pool_stats` + `duckdb_budgets` sous charge réelle (débloque J1(2)) et statuer
-  J4/J6 (measure-first) avec des chiffres. À traiter après le merge (Gate J définitif).
+- [x] V10c — SOLDÉ (2026-07-13). `duckdb_pool_stats` + `duckdb_budgets` lus SOUS CHARGE
+  RÉELLE sur prod (`levelup-levelup-1`, fenêtre ~7 h 44 : 30 cycles sync_v2, 120 post-syncs
+  joueur) via GET admin `/debug/vars`. Chiffres consignés dans
+  `.ai/RAPPORT_V10C_BUDGETS_2026-07-13.md`. Verdict measure-first (chiffré) :
+  **J1(2) RÉSOLU** (garder `poolSingleConn=1` — player DBs plafonnent à 64 waits/261 ms sur
+  7 h 44, 0 timeout) ; **J4 RETIRÉ** (chemin HTTP lecture non contendu, `WaitCount` 0 sur
+  shared RO, gain nul) ; **J6 RETIRÉ** (N+1 d'arrière-plan dans des steps <100 ms ; goulot
+  sync = compute skill_rating 32,6 s + weapon_kills 33,2 s). Découverte reportée (backlog
+  perf distinct, hors J4/J6) : B-swap thrash write-side du post-sync (~205 fenêtres RW /
+  post-sync, 24 768 swaps, ~51 min stall lecteur cumulé). Gate J définitif : CLOS.
 
 Gate V10 (partiel — V10c différé post-merge) : restauration PROUVÉE (DB ouvertes +
 counts consignés ci-dessus) ; 2 runbooks écrits ; checklist rejouée à blanc une fois.
