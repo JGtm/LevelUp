@@ -1,3 +1,47 @@
+## [2026-07-16] Clôture PLAN_MONITORING_TRIAGE_DETECTIONS — soaks soldés en prod (mesure ssh)
+
+**Statut** : Complété (branche `docs/b4-data-quality-solde`). Plan
+`.ai/PLAN_MONITORING_TRIAGE_DETECTIONS_2026-07.md` : PARTIEL → **QUASI-SOLDÉ**. Clôture
+DOCS-ONLY (statues + journal + Découvertes), aucun code, aucun deploy.
+
+**Méthode** : mesure prod `ssh lvelup` (logs `/opt/levelup/data/logs`, fenêtre 07-13→16 =
+4 jours pleins post-deploy B1 du 07-12). Lecture logs SEULE — aucune écriture, aucune
+ouverture DuckDB (respect mono-process).
+
+**Items soldés sur pièces** :
+- B2.4 `[!]→[x]` : soak reauth CLEAN — 0 `reauth_required`, 0 `AADSTS` sur 07-13→16 et
+  aujourd'hui. Délai 24-48 h écoulé, RT valides se rafraîchissent.
+- B5.1 `[~]→[x]` : cascade LUSR ÉTEINTE — 0 `read-only mode`/jour depuis 07-11 (dernière
+  occurrence 07-10T14:02) ; writer-holds nominaux `held_ms=2000` (seuil 2 s, burst-lease
+  `sync_v2_postsync`), PLUS le runaway 21 909 ms de l'incident.
+- B5.2 `[~]→[x]` : `/health` 503 STORM éteint (632 incident → baseline STABLE ~90/j :
+  94/73/91/120/122/86 sur 07-11→16). Résidu = gate-window bénin, PAS LUSR → Découverte (f).
+- B7.4 : lecture INTERIM T0+4 j (general 101 dont 97 `/health` bénin ; duckdb 93 ; sync/
+  provider/pool/persist/service = 0 E) ; mesure finale prescrite au 2026-08-11.
+
+**Découvertes NOUVELLES post-B1 (consignées, NON traitées — rule 7)** :
+- (d) `database is closed` sur player `stats.duckdb` (op=OpenReadWrite), apparue le 07-14
+  (5/0/0/47/11/54 sur 07-11→16), chemin lecture défis prestige
+  (`prestige/prestige_player_helpers.go:18-22`). Introduite par un deploy du 07-13 (train
+  #55/#56), manifeste le 07-14 (pas de deploy ce jour). Race lease/B-swap → chantier dédié.
+- (e) tables `mode_name_tr` (9/j) + `battlepass_track_definitions` (1/j) absentes (metadata).
+- (f) `/health` 503 résiduel baseline bénin → refonte (healthcheck Docker sur `/healthz`).
+
+**B5.5 EXÉCUTÉ (mandat downtime user) → SOLDÉ no-op** : binaire `migrate-media-paths` buildé
+côté VPS (image `levelup-go-builder`, CGO, `-buildvcs=false`), dry-run READ_ONLY contre une
+COPIE des DB (jamais d'ouverture cross-process de la DB tenue RW ; 0 downtime, serveur healthy).
+**0 chemin absolu** dans les 2 titres prod (HI 139/139, H5 84/84 déjà relatifs) → migration sans
+effet, stock déjà canonique. C'est pourquoi 0 warning `mediaStoredPathToURL`. `[!]→[x]`.
+
+**B4.2 (orphelins 144) reste `[!]`** → chantier alias-backfill PeopleHub dédié.
+
+**Reste ouvert** : soak final B7.4 (2026-08-11) ; chantiers de suivi B4.2, (d), (e), (f).
+
+**Prochaine étape** : commit docs-only `docs/b4-data-quality-solde` (accord user), puis fix de la
+race prestige (d) sur branche dédiée (accord user « investiguer maintenant »).
+
+---
+
 ## [2026-07-16] B4.1-B4.4 / B5.5 — actions data-quality SOLDÉES en prod (endpoint admin)
 
 **Statut** : Complété (branche `docs/b4-data-quality-solde`, GO utilisateur B4 autonome prod).
