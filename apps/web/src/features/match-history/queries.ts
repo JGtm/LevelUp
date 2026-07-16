@@ -8,6 +8,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 interface SetExclusionVars {
   matchId: string
@@ -65,7 +66,9 @@ export function useSetMatchFavorite(playerSlug: string) {
         { favorited: favorite },
       ),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.home(playerSlug) })
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.home(playerSlug, useAppShellStore.getState().currentTitleSlug),
+      })
       void queryClient.invalidateQueries({ queryKey: queryKeys.matchHistoryAll(playerSlug) })
     },
   })

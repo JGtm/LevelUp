@@ -9,6 +9,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { api } from '@/lib/api/client'
 import { queryKeys } from './keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type {
   CareerPageResponse,
   HomePageResponse,
@@ -26,7 +27,7 @@ export function useNavPrefetch(playerSlug: string) {
   const prefetchHome = useCallback(() => {
     if (!playerSlug) return
     void queryClient.prefetchQuery({
-      queryKey: queryKeys.home(playerSlug),
+      queryKey: queryKeys.home(playerSlug, useAppShellStore.getState().currentTitleSlug),
       queryFn: () => api.get<HomePageResponse>(`/players/${playerSlug}/pages/home`),
       staleTime: PREFETCH_STALE_MS,
     })
