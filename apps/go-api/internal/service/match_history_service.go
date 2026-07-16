@@ -103,6 +103,10 @@ type MatchHistoryService struct {
 	// via WithRankedCapable, jamais dérivé d'un slug (ratchet ADR 0025). Faux par
 	// défaut → module classé toujours omis (dégradation propre H5).
 	rankedCapable bool
+	// playlistDisplay : résolution title-aware du libellé de playlist (strip de
+	// catégorie + override playlist_labels.toml), même chokepoint que la Match View
+	// et les tuiles home. Zéro-valeur = no-op. Alimente l'Explorer + l'historique.
+	playlistDisplay analysis.PlaylistLabelConfig
 }
 
 // outcomeCodeToKey mappe le code outcome Halo (domain.Outcome*) vers la clé
@@ -133,12 +137,24 @@ func (s *MatchHistoryService) WithSemantic(a games.TitleSemanticAdapter) *MatchH
 	return s
 }
 
+// WithPlaylistDisplay injecte la config d'affichage title-aware du libellé de
+// playlist (strip catégorie + overrides data-driven). Optionnel : zéro-valeur =
+// libellés bruts. Même chokepoint que la Match View et les tuiles home. BUG-5.
+func (s *MatchHistoryService) WithPlaylistDisplay(cfg analysis.PlaylistLabelConfig) *MatchHistoryService {
+	s.playlistDisplay = cfg
+	return s
+}
+
 // rowFormatters construit les résolveurs title-agnostic injectés dans
 // l'enrichissement d'une ligne : URL de page publique du match (F3, via l'adapter
 // d'assets + gamertag) et libellé d'outcome (F4, via l'adapter sémantique). Champs
 // nil si l'adapter correspondant n'est pas câblé → dégradation gracieuse.
 func (s *MatchHistoryService) rowFormatters() rowFormatters {
 	f := rowFormatters{}
+	// Libellé de playlist résolu via le chokepoint unique (strip + override) —
+	// même « Super Fiesta » que la Match View / les tuiles home.
+	cfg := s.playlistDisplay
+	f.playlistLabel = func(rawFR string) string { return cfg.Display(rawFR) }
 	if s.assetURL != nil {
 		gt := s.waypointPlayer
 		f.matchURL = func(matchID string) string { return s.assetURL.PlayerMatchWebURL(gt, matchID) }

@@ -32,6 +32,7 @@ import (
 	"sync"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/config"
@@ -437,15 +438,28 @@ func (r *ServiceRegistry) capabilitiesForPDB(pdb *duckdb.PlayerDB) games.Capabil
 // taxonomie de modes + strip de catégorie de playlist piloté par CapabilityMap
 // (CapPlaylistCategoryStrip). Centralise le câblage des 3 sites d'usage.
 func (r *ServiceRegistry) newMatchViewRepo(pdb *duckdb.PlayerDB) *duckdb.MatchViewRepo {
-	var playlistOverrides map[string]string
-	if r.playlistLabelOverrides != nil {
-		playlistOverrides = r.playlistLabelOverrides[pdb.TitleSlug]
-	}
+	cfg := r.playlistLabelConfigFor(pdb)
 	return duckdb.NewMatchViewRepo(pdb, pdb.XUID).
 		WithSharedReader(r.matchViewSharedReader(pdb)).
 		WithModeTaxonomy(haloInfiniteModeTaxonomy()).
-		WithPlaylistCategoryStrip(r.capabilitiesForPDB(pdb).Has(games.CapPlaylistCategoryStrip)).
-		WithPlaylistLabelOverrides(playlistOverrides)
+		WithPlaylistCategoryStrip(cfg.StripCategory).
+		WithPlaylistLabelOverrides(cfg.Overrides)
+}
+
+// playlistLabelConfigFor construit la config d'affichage title-aware du libellé
+// de playlist (strip de catégorie via CapPlaylistCategoryStrip + overrides
+// data-driven playlist_labels.toml). SOURCE UNIQUE partagée par le MatchViewRepo,
+// le HomeRepo (tuiles/sessions/playlists) et le MatchHistoryService (Explorer/
+// historique) — garantit le même libellé résolu sur toutes les surfaces.
+func (r *ServiceRegistry) playlistLabelConfigFor(pdb *duckdb.PlayerDB) analysis.PlaylistLabelConfig {
+	var overrides map[string]string
+	if r.playlistLabelOverrides != nil {
+		overrides = r.playlistLabelOverrides[pdb.TitleSlug]
+	}
+	return analysis.PlaylistLabelConfig{
+		StripCategory: r.capabilitiesForPDB(pdb).Has(games.CapPlaylistCategoryStrip),
+		Overrides:     overrides,
+	}
 }
 
 // WithPlaylistLabelOverrides injecte la table PAR TITRE des overrides de libellé

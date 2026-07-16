@@ -117,7 +117,9 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 
 	result := make([]domain.HomePlaylistRank, 0, len(raws))
 	for _, raw := range raws {
-		nameFR := strings.TrimSpace(assetNames[raw.playlistID])
+		// Libellé d'affichage via le chokepoint unique (strip + override) — même
+		// résolution que les tuiles de match : « Super Fiesta Fête » → « Super Fiesta ».
+		nameFR := r.playlistDisplay.Display(strings.TrimSpace(assetNames[raw.playlistID]))
 		raw.item.PlaylistName = resolvePlaylistNameForLocale(locale, nameFR, raw.playlistName)
 		result = append(result, raw.item)
 	}
