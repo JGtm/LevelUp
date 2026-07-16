@@ -34,8 +34,12 @@
 
 ## 2. EN COURS (machine — rien à décider)
 
-**TRAIN DE MERGE 2026-07-15 ASSEMBLÉ — PR ouverte, attente merge utilisateur (merge = deploy prod).**
-Branche `integration/train-2026-07-15` (depuis `origin/main`). Embarqué dans l'ordre
+**TRAIN DE MERGE 2026-07-15 : MERGÉ (PR #61, commit `0980f681a`) — deploy prod en cours au
+15/07. Post-deploy à vérifier : boot propre (SISU seul provider), logs auth, disque ; ET
+RE-TEST SISU EN PROD par l'utilisateur (login réel — validé seulement en local).**
+Rangement .ai fait le 15/07 : 4 docs de campagne clos archivés en V7 (CHECKLIST_POST_CAMPAGNE
+supersédée, HANDOFF_SISU_401 [SISU clos], RAPPORT_V10C [soldé], REVUE_ADVERSARIALE_TRAIN [close]).
+Contenu du train, dans l'ordre
 (`--no-ff`, un commit par branche) : (1) la pile complète `fix/revue-adversariale` — lot
 ops/qualité (SSO device-flow, alerte disque, data-quality H5, populate-assets CLI, leaderboard
 404), momentum Match View (D1), briefing cards Explorer (D4, **2 arbitrages produit en attente :
