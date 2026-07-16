@@ -1,6 +1,6 @@
 ## [2026-07-17] Lot i18n tiers de rangs — centralisation mapping + defis locale-aware (branche chore/backlog-train-2026-07)
 
-**Statut** : En cours (sous-tache 1 Completee ; sous-tache 2 En cours).
+**Statut** : Complété (deux sous-taches).
 
 **Contexte** : item backlog [i18n] — deux sous-taches independantes, un commit chacune.
 
@@ -20,6 +20,31 @@ vitest skillTiers + guard + explorer = 95 tests OK.
 Decouverte hors perimetre (non traitee) : `SUBTIER_ROMAN` (romain I..VI) est duplique entre
 `ExplorerTargetSeasonCSR.tsx` et `features/career/CareerRankingBlock.tsx` (`SUB_TIER_ROMAN`) —
 c'est le mapping des SOUS-paliers, pas des noms de tiers ; hors perimetre de cet item.
+
+**Sous-tache 2 — Cache des defis locale-aware a la bascule de langue (Completee)** :
+Diagnostic (sous-agent + verif sur pieces) : la locale voyage par header HTTP
+`X-LevelUp-Locale` (`_currentLocale` module-level, `lib/api/client.ts`), le backend baque
+les libelles localises (titres de defis, map/mode, nom du pass) DANS le payload a l'instant
+du fetch. Les query keys `home` et `seasonPass` n'incluaient PAS la locale -> a la bascule de
+langue, le cache restait baken dans l'ancienne langue. Le « fetch background » du constat =
+`prefetchHome` (prefetch speculatif au survol, `lib/query/prefetch.ts`) + loader de route
+(`routes/.../home.tsx`) + poll `refetchInterval` (`home/queries.ts`), tous ecrivant sous la
+cle `home` (qui porte les defis de `HomeChallengesList`). Le seul filet existant etait le
+`invalidateQueries()` global de la mutation settings (`settings/queries.ts`) — fragile car
+`setLocale` du store ne l'appelle pas, et le prefetch rechauffe la cle locale-agnostique.
+Correction (option a, alignee sur `sessionDetail`/`teammates`/`releaseNotes`/`field-mappings`
+qui portent deja la locale) : locale ajoutee en dernier segment de `queryKeys.home` et
+`queryKeys.seasonPass` -> invalidation NATURELLE a la bascule (la cle change, TanStack refetch
+avec le nouveau header). 6 appelants migres : `home/queries.ts` (useHomePage +
+useSeasonPassPreview), `prefetch.ts`, `routes/.../home.tsx`, `match-history/queries.ts`
+(invalidation favori), `palmares/queries.ts` (useSeasonPassPage). Test ajoute
+`lib/query/keys.locale.test.ts` (FR!=EN -> cles distinctes, locale identique -> cle stable).
+Limitation connue (acceptee) : l'invalidation du toggle favori (`match-history`) ne cible que
+la locale courante ; l'autre locale (si en cache) refetch a son staleTime 5min ou au switch —
+severite negligeable (le payload favori vit dans la reponse home). `invalidateQueries()` global
+de settings devient redondant pour ces payloads mais reste inoffensif (garde pour les autres
+queries locale-dependantes sans locale dans la cle). Gates : typecheck OK ; lint 0 erreur ;
+vitest lib/query + home + palmares + match-history = 62 tests OK (garde-rail keys inclus).
 
 ## [2026-07-17] Extension registre H5 au long-tail v_weapon_kills (branche chore/backlog-train-2026-07)
 
