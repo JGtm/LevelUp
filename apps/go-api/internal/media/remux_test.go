@@ -27,14 +27,14 @@ func requireFFmpeg(t *testing.T) {
 // synthétiques (testsrc + sine) — léger et déterministe.
 func generateMKVAV1Opus(t *testing.T, path string, durationSec int) {
 	t.Helper()
-	args := []string{
-		"-y", "-hide_banner", "-loglevel", "error",
-		"-f", "lavfi", "-i", "testsrc=size=320x240:rate=10:duration=" + itoa(durationSec),
-		"-f", "lavfi", "-i", "sine=frequency=440:duration=" + itoa(durationSec),
+	args := ffmpegQuietArgs(
+		"-y",
+		"-f", "lavfi", "-i", "testsrc=size=320x240:rate=10:duration="+itoa(durationSec),
+		"-f", "lavfi", "-i", "sine=frequency=440:duration="+itoa(durationSec),
 		"-c:v", "libaom-av1", "-cpu-used", "8", "-b:v", "100k",
 		"-c:a", "libopus", "-b:a", "32k",
 		path,
-	}
+	)
 	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
@@ -98,11 +98,11 @@ func TestPlanRemuxWebM_IncompatibleVideoCodec(t *testing.T) {
 
 	// Encode un H.264 — incompatible WebM : le pré-flight doit le rejeter AVANT
 	// tout octet, avec l'erreur typée qui pilote le 415 côté handler.
-	args := []string{
-		"-y", "-hide_banner", "-loglevel", "error",
+	args := ffmpegQuietArgs(
+		"-y",
 		"-f", "lavfi", "-i", "testsrc=size=320x240:rate=10:duration=1",
 		"-c:v", "libx264", "-preset", "ultrafast", src,
-	}
+	)
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	if out, err := exec.CommandContext(ctx, "ffmpeg", args...).CombinedOutput(); err != nil {

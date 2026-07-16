@@ -176,8 +176,7 @@ func audioEnvelope(ctx context.Context, src, filterComplex, mapSpec string) ([]f
 // pour ARRÊTER le décodage à envMaxAnalysisSeconds — borne la RAM à la source,
 // que l'entrée soit un fichier direct ou une sous-playlist HLS (collapse).
 func buildEnvelopeArgs(src, filterComplex, mapSpec string) []string {
-	args := []string{"-hide_banner", "-loglevel", "error", "-y",
-		"-t", fmt.Sprintf("%d", envMaxAnalysisSeconds), "-i", src}
+	args := ffmpegQuietArgs("-y", "-t", fmt.Sprintf("%d", envMaxAnalysisSeconds), "-i", src)
 	if filterComplex != "" {
 		args = append(args, "-filter_complex", filterComplex)
 	}

@@ -555,7 +555,7 @@ func renditionSlugs(audios []audioRendition) []string {
 // buildHLSArgs construit les arguments ffmpeg depuis le plan. Découpé de
 // BuildHLS pour rester sous la limite de taille et faciliter les tests.
 func buildHLSArgs(plan hlsPlan, src, outDir string, segDur int) []string {
-	args := []string{"-hide_banner", "-loglevel", "error", "-y", "-i", src}
+	args := ffmpegQuietArgs("-y", "-i", src)
 	if plan.FilterComplex != "" {
 		args = append(args, "-filter_complex", plan.FilterComplex)
 	}
