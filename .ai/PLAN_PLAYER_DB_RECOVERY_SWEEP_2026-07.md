@@ -1,16 +1,23 @@
 # PLAN — Sweep recovery des lectures player-DB (race Reopen) (2026-07)
 
-> Statut : EN COURS (2026-07-16). Branche : `fix/player-db-recovery-sweep` (depuis main
-> post-fix prestige `535ee437a`). Suite de la Découverte (d) du plan monitoring triage :
-> le fix prestige (`acf60b179`, déployé prod) a corrigé UN instance ; le pattern est
-> systémique. Exécution sous contrat du skill `plan-execution`.
+> Statut : TERMINÉ (code, 2026-07-16) — NON mergé (attend accord user ; merge main = deploy).
+> Branche : `fix/player-db-recovery-sweep` (depuis main post-fix prestige `535ee437a`). Suite
+> de la Découverte (d) du plan monitoring triage : le fix prestige (`acf60b179`, déployé prod)
+> a corrigé UN instance ; ce sweep généralise. Exécution sous contrat `plan-execution`.
 >
-> **Lot A CLOS (`af6ccdd6`, 2026-07-16)** : career/home hot-paths — 14 lectures player-DB
-> converties (10 fichiers), semantiques ErrNoRows/best-effort préservées, gates verts
-> (build/vet/test exit 0). 2 fichiers hors périmètre (highlights déjà recovered ;
-> career_progression_partial = write). AMBIGU consigné : `progression_diag_repo.go:63`
-> (`ReadDB().QueryRow` sur table `sync_meta` — handle player mais table exclue DC-3 → laissé).
-> **Restent : Lot B (match view/stats), Lot C (engagement/squad/citations), Lot D (garde-rail).**
+> **BILAN : 77 lectures player-DB routées en `*Recovered` (~40 fichiers) + garde-rail.**
+> - **Lot A** `af6ccdd6` : career/home — 14 lectures / 10 fichiers.
+> - **Lot B** `8750dfcc8` : match-view/stats — 17 lectures / 11 fichiers.
+> - **Lot C** `15e8f7e72` : engagement/squad/citations — 37 lectures / 16 fichiers.
+> - **Lot D** `b179b8b1` : garde-rail `player_db_recovery_routing_test.go` (ratchet formes
+>   explicites `.Player`/`.ReadDB()` + allowlist datée sync_meta, 3 tests) + **9 STRAGGLERS**
+>   convertis (dont `internal/api/wire/post_sync_deltas_snapshot.go` ×7, hors couche duckdb).
+> - **Gates FINAUX verts** : `go build/vet/test ./...` + `go test -tags=integration -p 1
+>   ./internal/platform/duckdb/... ./internal/sync/... ./internal/persist/...` = exit 0
+>   (re-vérifié superviseur : build/vet + les 3 tests garde-rail).
+> - HORS PÉRIMÈTRE (DC-3, laissés) : lectures shared/metadata/shared_social ; `sync_meta`
+>   (2 allowlist) ; writes (lease/ART, DC-2). Handles bare-`db` (prestige/streaks/
+>   record_history) convertis mais non couverts par le garde-rail (limite documentée).
 
 ## Contexte
 
