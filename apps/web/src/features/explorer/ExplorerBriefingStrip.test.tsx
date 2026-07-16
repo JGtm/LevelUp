@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { renderWithProviders } from '@/test/render-utils'
-import type { ExplorerBriefing } from '@/lib/api/types'
+import type { ExplorerBriefing, ExplorerBriefingContextSplit } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 
 import { ExplorerBriefingStrip } from './ExplorerBriefingStrip'
@@ -77,5 +77,29 @@ describe('ExplorerBriefingStrip — deltas vs habituel', () => {
     expect(text).not.toContain('+20 pts')
     // Le reste demeure : libellé de dimension + label d'entrée.
     expect(text).toContain('MapA')
+  })
+})
+
+const contextSplit: ExplorerBriefingContextSplit = {
+  solo: { matches: 25, win_rate: 0.68, kda: 1.8 },
+  squad: { matches: 15, win_rate: 0.4, kda: 1.1 },
+}
+
+describe('ExplorerBriefingStrip — carte contexte solo/escouade (item 6)', () => {
+  it('rend la carte quand context_split est présent', () => {
+    const briefing = { ...makeBriefing(120, 120), context_split: contextSplit }
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('explorer.briefing.context_split_title')
+    expect(text).toContain('explorer.filters.context_solo')
+    expect(text).toContain('explorer.filters.context_squad')
+  })
+
+  it('omet la carte quand context_split est absent', () => {
+    const { container } = renderWithProviders(
+      <ExplorerBriefingStrip briefing={makeBriefing(120, 120)} t={t} />,
+    )
+    const text = container.textContent ?? ''
+    expect(text).not.toContain('explorer.briefing.context_split_title')
   })
 })

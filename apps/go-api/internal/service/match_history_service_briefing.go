@@ -79,6 +79,8 @@ func (s *MatchHistoryService) buildExplorerBriefing(
 	if s.rankedCapable {
 		b.Ranked = buildBriefingRanked(ctx, filtered, scopedKPIs)
 	}
+	// Split solo/escouade : aucun gate capability (P-7), omission si non pertinent.
+	b.ContextSplit = buildBriefingContextSplit(filtered)
 	return b
 }
 

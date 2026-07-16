@@ -3965,6 +3965,7 @@ export interface components {
         };
         ExplorerBriefing: {
             baseline?: components["schemas"]["ExplorerBriefingBaseline"];
+            context_split?: components["schemas"]["ExplorerBriefingContextSplit"];
             dimensions?: components["schemas"]["ExplorerBriefingDimension"][] | null;
             low_sample?: boolean;
             outcome_sequence?: components["schemas"]["ExplorerBriefingOutcome"][] | null;
@@ -4048,6 +4049,20 @@ export interface components {
             tier_end_placement_remaining?: number;
             tier_start_is_placement?: boolean;
             tier_start_label?: string;
+        };
+        ExplorerBriefingContextSplit: {
+            solo: components["schemas"]["ExplorerBriefingContextGroup"];
+            squad: components["schemas"]["ExplorerBriefingContextGroup"];
+        };
+        ExplorerBriefingContextGroup: {
+            /** Format: double */
+            avg_perf?: number;
+            /** Format: double */
+            kda: number;
+            /** Format: int64 */
+            matches: number;
+            /** Format: double */
+            win_rate: number;
         };
         ExplorerBriefingTrend: {
             granularity: string;
