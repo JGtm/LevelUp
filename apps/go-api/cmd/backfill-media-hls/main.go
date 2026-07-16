@@ -49,6 +49,9 @@ func main() {
 	onlySlug := flag.String("slug", "", "ne traiter qu'un seul joueur (optionnel)")
 	limit := flag.Int("limit", 0, "nombre max de clips à transcoder (0 = tous)")
 	dryRun := flag.Bool("dry-run", false, "lister sans transcoder")
+	// Rattrapage serveur (disque rare) : supprimer le source après HLS par défaut
+	// (comportement legacy). --delete-source=false pour conserver les originaux.
+	deleteSource := flag.Bool("delete-source", true, "supprimer le fichier source après transcodage HLS réussi")
 	flag.Parse()
 
 	if *dbPath == "" {
@@ -72,6 +75,7 @@ func main() {
 		OnlySlug:     *onlySlug,
 		Limit:        *limit,
 		DryRun:       *dryRun,
+		DeleteSource: *deleteSource,
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "sweep:", err)

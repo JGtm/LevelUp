@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	gosync "sync"
 	"time"
 
@@ -206,6 +207,14 @@ func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *dom
 					return s.UserTimezone
 				}
 				return ""
+			},
+			func() bool {
+				var v *bool
+				if s, _ := h.settingsStore.Load(); s != nil {
+					v = s.MediaDeleteSourceAfterTranscode
+				}
+				return config.ResolveMediaDeleteSource(
+					os.Getenv(config.EnvMediaDeleteSource), v, h.cfg.IsProduction())
 			},
 		))
 	}

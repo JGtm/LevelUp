@@ -78,6 +78,8 @@ export interface SettingsText {
   mediaBaseDirLabel: string
   mediaBaseDirPlaceholder: string
   mediaBaseDirHint: string
+  mediaDeleteSource: string
+  mediaDeleteSourceHint: string
   mediaScanButton: string
   mediaScanRunning: string
   mediaScanDone: string
@@ -338,7 +340,11 @@ const FR_TEXT: SettingsText = {
   mediaNoBaseDir: "La surveillance des médias est activée mais aucun dossier source n'est défini.",
   mediaBaseDirLabel: 'Dossier des captures',
   mediaBaseDirPlaceholder: 'Ex : C:\\Users\\Moi\\Videos\\Captures ou /mnt/captures',
-  mediaBaseDirHint: 'Sous-dossiers par gamertag attendus : {chemin}/{gamertag}/',  mediaScanButton: 'Indexer les médias',
+  mediaBaseDirHint: 'Sous-dossiers par gamertag attendus : {chemin}/{gamertag}/',
+  mediaDeleteSource: 'Supprimer les originaux après conversion HLS',
+  mediaDeleteSourceHint:
+    "Recommandé sur le serveur (espace disque limité). À désactiver en local pour conserver les fichiers d'enregistrement d'origine.",
+  mediaScanButton: 'Indexer les médias',
   mediaScanRunning: 'Indexation en cours…',
   mediaScanDone: '✓ Indexation lancée',
   mediaScanError: '✗ Échec de l’indexation',
@@ -623,6 +629,9 @@ const EN_TEXT: SettingsText = {
   mediaBaseDirLabel: 'Captures folder',
   mediaBaseDirPlaceholder: 'e.g. C:\\Users\\Me\\Videos\\Captures or /mnt/captures',
   mediaBaseDirHint: 'Subfolders by gamertag expected: {path}/{gamertag}/',
+  mediaDeleteSource: 'Delete originals after HLS conversion',
+  mediaDeleteSourceHint:
+    'Recommended on the server (limited disk space). Disable locally to keep the original recording files.',
   mediaScanButton: 'Index media',
   mediaScanRunning: 'Indexing…',
   mediaScanDone: '✓ Indexation started',

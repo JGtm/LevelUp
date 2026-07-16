@@ -33,12 +33,14 @@ type MediaIndexer interface {
 	// extraie correctement la datetime depuis les noms de fichier OBS/Xbox (sinon
 	// la regex est skip → capture_start_utc=NULL → 0 associations match).
 	// Rapporte la progression via jobStore pour le job jobID.
-	ResetAndReindex(ctx context.Context, repoRoot string, capturesBaseDir string, timezone string, reindexAfter bool, jobStore *jobs.Store, jobID string) error
+	// deleteSource : politique de rétention du source après transcodage HLS (résolue
+	// par l'appelant via config.ResolveMediaDeleteSource), propagée au sweep post-reindex.
+	ResetAndReindex(ctx context.Context, repoRoot string, capturesBaseDir string, timezone string, reindexAfter bool, deleteSource bool, jobStore *jobs.Store, jobID string) error
 
 	// ScanAllMedia indexe les médias de tous les joueurs sans supprimer les entrées
 	// existantes (opération non-destructive). ForceRescan=false : seuls les nouveaux
-	// fichiers sont insérés. Cf. ResetAndReindex pour le param timezone.
-	ScanAllMedia(ctx context.Context, repoRoot string, capturesBaseDir string, timezone string, jobStore *jobs.Store, jobID string) error
+	// fichiers sont insérés. Cf. ResetAndReindex pour les params timezone/deleteSource.
+	ScanAllMedia(ctx context.Context, repoRoot string, capturesBaseDir string, timezone string, deleteSource bool, jobStore *jobs.Store, jobID string) error
 }
 
 // DirMediaIndexer est l'implémentation par défaut de MediaIndexer.
@@ -57,6 +59,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 	capturesBaseDir string,
 	timezone string,
 	reindexAfter bool,
+	deleteSource bool,
 	jobStore *jobs.Store,
 	jobID string,
 ) error {
@@ -136,7 +139,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 	// les vidéos réindexées encore sans HLS (HEVC/AVI/multipiste). Supprime
 	// l'asymétrie upload/scan à l'origine de "media remux failed" sur HEVC.
 	if reindexAfter {
-		triggerHLSSweep(capturesBaseDir, pr.SharedSocialDBPath(titleSlug), "")
+		triggerHLSSweep(capturesBaseDir, pr.SharedSocialDBPath(titleSlug), "", deleteSource)
 	}
 	return nil
 }
@@ -147,6 +150,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 	repoRoot string,
 	capturesBaseDir string,
 	timezone string,
+	deleteSource bool,
 	jobStore *jobs.Store,
 	jobID string,
 ) error {
@@ -220,7 +224,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 
 	// Transcoder en HLS, en arrière-plan, les vidéos scannées encore sans HLS
 	// (HEVC/AVI/multipiste) — symétrique du transcoding déclenché à l'upload.
-	triggerHLSSweep(capturesBaseDir, pr.SharedSocialDBPath(titleSlug), "")
+	triggerHLSSweep(capturesBaseDir, pr.SharedSocialDBPath(titleSlug), "", deleteSource)
 	return nil
 }
 
@@ -248,7 +252,11 @@ func (d *DirMediaIndexer) ScanAllMedia(
 //	    },
 //	)
 //	engine.WithMediaScanHook(hook)
-func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn, timezoneFn func() string) func(ctx context.Context) {
+//
+// deleteSourceFn est un chargeur paresseux de la politique de rétention du source
+// après transcodage HLS (résolue live via config.ResolveMediaDeleteSource par
+// l'appelant, qui a accès au store + isProd). nil ⇒ false (défaut sûr : conserver).
+func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn, timezoneFn func() string, deleteSourceFn func() bool) func(ctx context.Context) {
 	return func(ctx context.Context) {
 		capturesBaseDir := ""
 		if capturesBaseDirFn != nil {
@@ -257,6 +265,10 @@ func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn, timezoneFn
 		timezone := ""
 		if timezoneFn != nil {
 			timezone = timezoneFn()
+		}
+		deleteSource := false
+		if deleteSourceFn != nil {
+			deleteSource = deleteSourceFn()
 		}
 		pr := titlePkg.NewPathResolver(repoRoot)
 		titleSlug := ctxkeys.TitleSlug(ctx) // titre courant (sync/admin) ; repli halo_infinite si absent
@@ -280,7 +292,7 @@ func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn, timezoneFn
 		}
 		// Transcoder en HLS, en arrière-plan, les captures fraîchement scannées
 		// encore sans HLS (HEVC/AVI/multipiste) — comme à l'upload.
-		triggerHLSSweep(capturesBaseDir, pr.SharedSocialDBPath(titleSlug), gamertag)
+		triggerHLSSweep(capturesBaseDir, pr.SharedSocialDBPath(titleSlug), gamertag, deleteSource)
 	}
 }
 
@@ -316,7 +328,7 @@ func effectiveMediaBase(ctx context.Context, pr *titlePkg.PathResolver, configur
 // "media remux failed" sur les captures HEVC. No-op si capturesBaseDir est vide
 // (mode legacy interne : HLSPathsFor exige une base multi-player). Le single-flight
 // est géré dans EnsurePendingHLS (un seul balayage à la fois dans le process).
-func triggerHLSSweep(capturesBaseDir, sharedSocialDBPath, onlySlug string) {
+func triggerHLSSweep(capturesBaseDir, sharedSocialDBPath, onlySlug string, deleteSource bool) {
 	if capturesBaseDir == "" || sharedSocialDBPath == "" {
 		return
 	}
@@ -327,6 +339,7 @@ func triggerHLSSweep(capturesBaseDir, sharedSocialDBPath, onlySlug string) {
 			DBPath:       sharedSocialDBPath,
 			CapturesBase: capturesBaseDir,
 			OnlySlug:     onlySlug,
+			DeleteSource: deleteSource,
 		})
 		if err != nil {
 			log.ErrorContext(ctx, "post-scan hls sweep échoué", "err", err)

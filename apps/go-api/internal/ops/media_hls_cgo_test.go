@@ -51,11 +51,12 @@ func TestRunHLSTranscode_Success(t *testing.T) {
 	mkv := genHLSSourceMKV(t, dir, "source.mkv")
 	outDir := filepath.Join(dir, "hls", "source")
 	params := HLSTranscodeParams{
-		SourceAbs: mkv,
-		OutDir:    outDir,
-		DBPath:    dbPath,
-		FileRel:   "source.mkv",
-		HLSRel:    "GT/hls/source/master.m3u8",
+		SourceAbs:    mkv,
+		OutDir:       outDir,
+		DBPath:       dbPath,
+		FileRel:      "source.mkv",
+		HLSRel:       "GT/hls/source/master.m3u8",
+		DeleteSource: true, // politique de rétention : supprimer après HLS prouvé
 	}
 	if err := RunHLSTranscode(ctx, params); err != nil {
 		t.Fatalf("RunHLSTranscode: %v", err)
@@ -79,6 +80,52 @@ func TestRunHLSTranscode_Success(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(outDir, "master.m3u8")); err != nil {
 		t.Errorf("master.m3u8 absent: %v", err)
+	}
+}
+
+// TestRunHLSTranscode_DeleteSourceFalse_KeepsSource : transcoding RÉUSSI avec
+// miniature liée (les 3 gardes anti-perte passent) MAIS DeleteSource=false → le HLS
+// est finalisé (status ready) et le source est CONSERVÉ (4e garde : politique de
+// rétention). Défaut sûr en local. Nécessite ffmpeg.
+func TestRunHLSTranscode_DeleteSourceFalse_KeepsSource(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg absent — test d'intégration RunHLSTranscode ignoré")
+	}
+	ctx := context.Background()
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "shared_social.duckdb")
+	// Miniature liée : sans le 4e garde, le source SERAIT supprimé.
+	setupMediaDB(t, ctx, dbPath, "source.mkv", "processing", "GT/thumbs/source.webp")
+
+	mkv := genHLSSourceMKV(t, dir, "source.mkv")
+	outDir := filepath.Join(dir, "hls", "source")
+	params := HLSTranscodeParams{
+		SourceAbs:    mkv,
+		OutDir:       outDir,
+		DBPath:       dbPath,
+		FileRel:      "source.mkv",
+		HLSRel:       "GT/hls/source/master.m3u8",
+		DeleteSource: false, // conservation demandée
+	}
+	if err := RunHLSTranscode(ctx, params); err != nil {
+		t.Fatalf("RunHLSTranscode: %v", err)
+	}
+
+	db, err := sql.Open("duckdb", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var fp, ts string
+	if err := db.QueryRowContext(ctx,
+		`SELECT file_path, transcode_status FROM media_files WHERE id=1`).Scan(&fp, &ts); err != nil {
+		t.Fatal(err)
+	}
+	if fp != "GT/hls/source/master.m3u8" || ts != TranscodeReady {
+		t.Errorf("DB = (%q,%q), want (GT/hls/source/master.m3u8, ready)", fp, ts)
+	}
+	if _, err := os.Stat(mkv); err != nil {
+		t.Errorf("source supprimé alors que DeleteSource=false: %v", err)
 	}
 }
 

@@ -398,6 +398,8 @@ export interface SettingsResponse {
   refresh_clears_caches: boolean
   career_top_exclude_btb: boolean
   media_captures_base_dir: string
+  // Valeur effective résolue (env > réglage > défaut prod). PATCH persiste le réglage.
+  media_delete_source_after_transcode: boolean
   media_tolerance_minutes: number
   media_watcher_enabled: boolean
   media_watcher_debounce_seconds: number

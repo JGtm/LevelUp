@@ -6,12 +6,14 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 )
 
@@ -55,11 +57,16 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 
 	capturesDir := h.resolveCapturesDir(titleSlug, gamertag)
 	capturesBase := ""
+	var deleteSourceVal *bool
 	if h.settingsStore != nil {
 		if cfg, err := h.settingsStore.Load(); err == nil {
 			capturesBase = cfg.MediaCapturesBaseDir
+			deleteSourceVal = cfg.MediaDeleteSourceAfterTranscode
 		}
 	}
+	// Politique de rétention du source résolue LIVE (env > store > isProd).
+	deleteSource := config.ResolveMediaDeleteSource(
+		os.Getenv(config.EnvMediaDeleteSource), deleteSourceVal, h.isProduction)
 	slog.InfoContext(r.Context(), "upload: requête reçue",
 		"player", gamertag, "files", len(files), "captures_dir", capturesDir)
 
@@ -73,6 +80,7 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 		SharedMatchesDBPath: sharedMatchesDBPath,
 		Tolerance:           2,
 		TitleSlug:           titleSlug,
+		DeleteSource:        deleteSource,
 	}
 
 	uploadStart := time.Now().UTC()

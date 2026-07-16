@@ -47,6 +47,43 @@ func TestBuildPoolConfig_HaloInfinite(t *testing.T) {
 	}
 }
 
+// ── ResolveMediaDeleteSource ─────────────────────────────────────────────────
+
+// TestResolveMediaDeleteSource couvre la matrice env{unset,"1","0"} ×
+// store{nil,true,false} × isProd{true,false} : env prime, sinon store, sinon isProd.
+func TestResolveMediaDeleteSource(t *testing.T) {
+	bptr := func(b bool) *bool { return &b }
+	cases := []struct {
+		name   string
+		envRaw string
+		storeV *bool
+		isProd bool
+		want   bool
+	}{
+		// env défini → gagne toujours, quels que soient store/isProd.
+		{"env1_overrides_store_false_prodfalse", "1", bptr(false), false, true},
+		{"env0_overrides_store_true_prodtrue", "0", bptr(true), true, false},
+		{"env_true_word", "true", nil, false, true},
+		{"env_off_word", "off", bptr(true), true, false},
+		{"env_whitespace_is_unset", "   ", bptr(true), false, true}, // vide-après-trim → store
+		// env non défini → store gagne si non-nil.
+		{"unset_store_true", "", bptr(true), false, true},
+		{"unset_store_false_prodtrue", "", bptr(false), true, false},
+		// env non défini + store nil → défaut isProd.
+		{"unset_nil_prodtrue", "", nil, true, true},
+		{"unset_nil_prodfalse", "", nil, false, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ResolveMediaDeleteSource(tc.envRaw, tc.storeV, tc.isProd)
+			if got != tc.want {
+				t.Fatalf("ResolveMediaDeleteSource(%q, %v, %v) = %v, want %v",
+					tc.envRaw, tc.storeV, tc.isProd, got, tc.want)
+			}
+		})
+	}
+}
+
 // ── loadPlayersV2 ────────────────────────────────────────────────────────────
 
 func TestLoadPlayersV2_ValidJSON(t *testing.T) {

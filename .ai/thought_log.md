@@ -1,3 +1,34 @@
+## [2026-07-17] Rétention source après transcodage HLS paramétrable (media_delete_source_after_transcode)
+
+**Statut** : Complété (code, branche `feat/media-keep-source-toggle`, NON mergé — revue superviseur
++ commit à venir). Plan `scratchpad/PLAN_MEDIA_KEEP_SOURCE.md`, blocs A→H exécutés dans l'ordre.
+
+**Décision technique** : la suppression du `.mkv` source après HLS (`ops/media_hls.go` `os.Remove`)
+devient un 4e garde anti-perte piloté par un réglage. Résolveur PUR
+`config.ResolveMediaDeleteSource(envRaw, storeVal *bool, isProd) bool` (précédence env
+`LEVELUP_MEDIA_DELETE_SOURCE` > `app_settings.json:media_delete_source_after_transcode` (*bool,
+nil=auto) > défaut `isProd`). Résolution LIVE au déclenchement (handlers settings + 3 câblages
+`BuildMediaScanHook` + upload), jamais figée au boot → toggle UI effectif sans redémarrage.
+Défaut SÛR : supprime en prod (disque rare, HLS = forme servie), conserve en local.
+
+**Plomberie** : flag threadé `HLSTranscodeParams.DeleteSource` ← `EnsureHLSParams.DeleteSource`
+← `triggerHLSSweep(...,deleteSource)` ← `ResetAndReindex`/`ScanAllMedia` (interface+impl+mocks)
+et closure `BuildMediaScanHook(...,deleteSourceFn func() bool)`. Upload : `domain.UploadRequest.
+DeleteSource` résolu dans `PostUploadMedia` (nouvelle option `MediaHandler.WithProduction`). CLI
+`backfill-media-hls` : flag `--delete-source` (défaut true = legacy). GET/PATCH `/settings`
+renvoient la valeur EFFECTIVE (helper `settingsResponse`). OpenAPI + `generate-types` régénérés.
+
+**Résultats gates** (tous exécutés, verts) : `go build ./...` OK ; `go test
+./internal/config/... ./internal/ops/... ./internal/platform/settings/... ./internal/api/
+handlers/...` OK ; service+scheduler OK ; `go test -tags=integration ./internal/ops/...
+./internal/media/...` OK (56s) ; `make check-types` OK ; vitest settings 65/65 OK ;
+`generated.ts` contient le champ. Tests ajoutés : matrice résolveur (config), keep/delete
+`RunHLSTranscode` (CGO), GET `/settings` valeur résolue (4 cas + env override).
+
+**Prochaine étape** : revue superviseur + commit (worktree laissé sale, aucun commit/push par l'agent).
+
+---
+
 ## [2026-07-16] Sweep recovery lectures player-DB — Lots A-D TERMINÉS (systémique)
 
 **Statut** : Complété (code, branche `fix/player-db-recovery-sweep`, NON mergé). Suite du fix

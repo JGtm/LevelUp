@@ -16,14 +16,20 @@ import (
 // Seuls les champs exposés par l'API sont typés — les champs inconnus sont
 // préservés dans Extra pour ne pas les effacer lors d'un PATCH.
 type AppSettings struct {
-	Lang                               string   `json:"lang"`
-	DiscordLang                        string   `json:"discord_lang"`
-	UserTimezone                       string   `json:"user_timezone"`
-	NormalizeModeLabels                bool     `json:"normalize_mode_labels"`
-	ShowRecords                        bool     `json:"show_records"`
-	RefreshClearsCaches                bool     `json:"refresh_clears_caches"`
-	CareerTopExcludeBTB                bool     `json:"career_top_exclude_btb"`
-	MediaCapturesBaseDir               string   `json:"media_captures_base_dir"`
+	Lang                 string `json:"lang"`
+	DiscordLang          string `json:"discord_lang"`
+	UserTimezone         string `json:"user_timezone"`
+	NormalizeModeLabels  bool   `json:"normalize_mode_labels"`
+	ShowRecords          bool   `json:"show_records"`
+	RefreshClearsCaches  bool   `json:"refresh_clears_caches"`
+	CareerTopExcludeBTB  bool   `json:"career_top_exclude_btb"`
+	MediaCapturesBaseDir string `json:"media_captures_base_dir"`
+	// MediaDeleteSourceAfterTranscode pilote la suppression du fichier source
+	// (.mkv/.avi…) après un transcodage HLS réussi. *bool : nil = « auto » (défaut
+	// résolu par environnement — supprime en prod, conserve en local). La résolution
+	// effective se fait au déclenchement via config.ResolveMediaDeleteSource
+	// (env > store > isProd), jamais figée ici.
+	MediaDeleteSourceAfterTranscode    *bool    `json:"media_delete_source_after_transcode,omitempty"`
 	MediaBufferMinutes                 int      `json:"media_buffer_minutes"`
 	MediaWatcherEnabled                bool     `json:"media_watcher_enabled"`
 	MediaWatcherDebounceSeconds        int      `json:"media_watcher_debounce_seconds"`
@@ -294,6 +300,10 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.MediaCapturesBaseDir != nil {
 		cfg.MediaCapturesBaseDir = *req.MediaCapturesBaseDir
 	}
+	if req.MediaDeleteSourceAfterTranscode != nil {
+		// Copie du pointeur : champ optionnel *bool (nil = auto conservé si non touché).
+		cfg.MediaDeleteSourceAfterTranscode = req.MediaDeleteSourceAfterTranscode
+	}
 	if req.MediaToleranceMinutes != nil {
 		cfg.MediaBufferMinutes = *req.MediaToleranceMinutes
 	}
@@ -404,14 +414,18 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 // ToResponse convertit AppSettings en SettingsResponse (sans discord_webhook_url).
 func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 	return &domain.SettingsResponse{
-		Lang:                                cfg.Lang,
-		DiscordLang:                         cfg.DiscordLang,
-		UserTimezone:                        cfg.UserTimezone,
-		NormalizeModeLabels:                 cfg.NormalizeModeLabels,
-		ShowRecords:                         cfg.ShowRecords,
-		RefreshClearsCaches:                 cfg.RefreshClearsCaches,
-		CareerTopExcludeBTB:                 cfg.CareerTopExcludeBTB,
-		MediaCapturesBaseDir:                cfg.MediaCapturesBaseDir,
+		Lang:                 cfg.Lang,
+		DiscordLang:          cfg.DiscordLang,
+		UserTimezone:         cfg.UserTimezone,
+		NormalizeModeLabels:  cfg.NormalizeModeLabels,
+		ShowRecords:          cfg.ShowRecords,
+		RefreshClearsCaches:  cfg.RefreshClearsCaches,
+		CareerTopExcludeBTB:  cfg.CareerTopExcludeBTB,
+		MediaCapturesBaseDir: cfg.MediaCapturesBaseDir,
+		// Placeholder : nil (*bool auto) → false ici ; le handler GET /settings écrase
+		// ce champ par la valeur RÉSOLUE (config.ResolveMediaDeleteSource). Le *bool
+		// brut du store n'est JAMAIS exposé tel quel dans la réponse (cf. handleGetSettings).
+		MediaDeleteSourceAfterTranscode:     cfg.MediaDeleteSourceAfterTranscode != nil && *cfg.MediaDeleteSourceAfterTranscode,
 		MediaToleranceMinutes:               cfg.MediaBufferMinutes,
 		MediaWatcherEnabled:                 cfg.MediaWatcherEnabled,
 		MediaWatcherDebounceSeconds:         cfg.MediaWatcherDebounceSeconds,
