@@ -10,16 +10,18 @@
 
 ---
 
-### [prod/VPS] Constats audit post-deploy 2026-07-16 (lecture seule) — 4 suites à traiter
+### [prod/VPS] Constats audit post-deploy 2026-07-16 — restes à traiter
 
-> Noté le 2026-07-16 (post-deploy c3f2aa6fb, audit ssh en lecture seule — rien modifié).
+> Noté le 2026-07-16 (post-deploy c3f2aa6fb, audit ssh). **Soldés le jour même** : clé
+> `LEVELUP_HALOAPI_KEY` transférée en prod + `team_colors` H5 seedé 8/8 (fenêtre d'arrêt
+> 7,1 s) ; fichier nginx mort `levelup.bak-*` retiré de sites-enabled (0 warning
+> `nginx -t`, reload OK).
 
 1. **AUCUNE sauvegarde automatique en prod** : `restic` absent de l'hôte → le scheduler backup se désactive au boot (WARN). Décider et installer une stratégie (restic + dépôt distant + secrets) — priorité haute pour un service avec données joueurs.
-2. **`LEVELUP_HALOAPI_KEY` absente du VPS** → seed `team_colors` H5 impossible en prod en l'état. Options : (a) ajouter la clé au `.env.local` prod + one-shot `h5-metadata-fetch` pendant une fenêtre d'arrêt courte ; (b) régénérer `metadata-prebuilt.zip` depuis la DB locale déjà seedée et remplacer la metadata prod pendant l'arrêt (attention : `extractPrebuiltMetadataIfAbsent` ne réextrait pas si le fichier existe). Tant que non fait : la match view H5 garde le fallback d'équipes.
-3. **nginx** : fichier mort `sites-enabled/levelup.bak-1781365391` (même `server_name` que le vhost actif → warnings « conflicting server name » à chaque `nginx -t`) à supprimer ; vhost réel très divergent du template `packaging/nginx/levelup.conf` (locations consolidées, `auth_basic` commenté, timeouts 3600s, commentaire « Streamlit » obsolète) — réaligner ou assumer et documenter.
-4. **Observabilité media tooling** : la prod loggue en `LEVELUP_LOG_LEVEL=warn` → la ligne INFO « ffmpeg disponibles » du boot est invisible (seuls les problèmes sortiraient en WARN — le contrat d'alerte est rempli, mais le positif est silencieux). Si l'on veut la preuve positive au boot en prod : passer cette ligne en WARN-neutre ou l'exposer dans /health. Confort, pas un bug. Vérifié par ailleurs : ffmpeg Debian 5.1.9 possède tous les encodeurs/muxers requis (`check-env` tout [OK]).
+2. **nginx : vhost réel divergent du template** `packaging/nginx/levelup.conf` (locations consolidées, `auth_basic` commenté, timeouts 3600s, commentaire « Streamlit » obsolète) — réaligner ou assumer et documenter.
+3. **Observabilité media tooling** : la prod loggue en `LEVELUP_LOG_LEVEL=warn` → la ligne INFO « ffmpeg disponibles » du boot est invisible (seuls les problèmes sortiraient en WARN — contrat d'alerte rempli, positif silencieux). Si preuve positive voulue au boot prod : exposer dans /health ou ligne WARN-neutre. Confort, pas un bug. Vérifié : ffmpeg Debian 5.1.9 a tous les encodeurs/muxers requis (`check-env` tout [OK]).
 
-**Effort** : 1 = chantier dédié (secrets/politique) ; 2 = décision + 15 min ; 3 = rapide ; 4 = cosmétique.
+**Effort** : 1 = chantier dédié (secrets/politique) ; 2 = rapide-moyen ; 3 = cosmétique.
 
 ---
 
