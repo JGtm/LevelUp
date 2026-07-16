@@ -148,6 +148,58 @@ func TestRequestUserToken_Success(t *testing.T) {
 	}
 }
 
+// TestRequestUserToken_RetryTPrefixOn401 : les deux familles de tokens (app
+// Azure → d=, client Xbox natif/SISU → t=) sont indistinguables par format —
+// sur un 401 en d=, l'échange DOIT être retenté en t= (fix 2026-07-15 : une
+// heuristique par format envoyait t= aux tokens Azure et cassait le pool).
+func TestRequestUserToken_RetryTPrefixOn401(t *testing.T) {
+	var prefixes []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		props, _ := body["Properties"].(map[string]any)
+		ticket, _ := props["RpsTicket"].(string)
+		prefixes = append(prefixes, ticket[:2])
+		if ticket[:2] == "d=" {
+			http.Error(w, "", http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"Token": "user_tok_msa"})
+	}))
+	defer srv.Close()
+
+	token, err := requestUserToken(context.Background(), mockClient(srv.URL), "EwAmsa_ticket")
+	if err != nil {
+		t.Fatalf("retry t= attendu après 401 en d= : %v", err)
+	}
+	if token != "user_tok_msa" {
+		t.Errorf("token = %q, want user_tok_msa", token)
+	}
+	if len(prefixes) != 2 || prefixes[0] != "d=" || prefixes[1] != "t=" {
+		t.Errorf("préfixes essayés = %v, want [d= t=]", prefixes)
+	}
+}
+
+// TestRequestUserToken_NoRetryOnOtherError : un 429/5xx ne déclenche PAS le
+// retry de famille (seul un 401 signale un mauvais préfixe).
+func TestRequestUserToken_NoRetryOnOtherError(t *testing.T) {
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		http.Error(w, "throttled", http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+
+	_, err := requestUserToken(context.Background(), mockClient(srv.URL), "tok")
+	if err == nil {
+		t.Fatal("erreur attendue")
+	}
+	if calls != 1 {
+		t.Errorf("appels = %d, want 1 (pas de retry hors 401)", calls)
+	}
+}
+
 func TestRequestUserToken_MissingToken(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

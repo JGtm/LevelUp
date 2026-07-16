@@ -2,7 +2,7 @@
 //
 // SISUProvider implémente TokenProvider via :
 //  1. RFC 8628 Device Code Flow sur login.live.com (AcquireToken)
-//  2. Session SISU pour la récupération du XSTS Xbox Live (Exchange)
+//  2. SISU /authorize pour échanger le ticket MSA contre le XSTS du titre (ExchangeFlow)
 //
 // Contrairement à MSALProvider, SISUProvider ne dépend pas de MSAL ni d'un app Azure enregistré.
 // Il utilise le client_id Xbox officiel (same as the Xbox app).
@@ -13,10 +13,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"sync"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 )
 
 const (
@@ -26,18 +26,21 @@ const (
 	SISUDefaultTitleID = "144209987"
 )
 
-// sisuFlowContext contient l'état éphémère créé par InitDeviceFlow et consommé par Exchange.
-// Protégé par le mutex de SISUProvider.
+// sisuFlowContext contient l'état éphémère créé par InitDeviceFlow et consommé par
+// ExchangeFlow : la paire PoP et le device token, qui doivent être CEUX présentés
+// à /authorize (la signature et le ProofKey doivent correspondre). Porté PAR le
+// sisuDeviceFlow (per-flow) — jamais un slot partagé sur le provider.
 type sisuFlowContext struct {
-	kp           *PoPKeyPair
-	deviceToken  string
-	sessionID    string
-	codeVerifier string
+	kp          *PoPKeyPair
+	deviceToken string
 }
 
 // sisuDeviceFlow implémente DeviceFlow pour le flow SISU.
 // L'utilisateur visite GetVerificationURL() (MsaOauthRedirect de SISU) dans son navigateur,
 // ou entre GetUserCode() sur login.live.com/devicelogin (identique au Device Code Flow Xbox).
+//
+// Porte son PROPRE contexte SISU (flowCtx) + une référence au provider pour compléter
+// l'échange (ExchangeFlow) : deux flows concurrents n'interfèrent jamais.
 type sisuDeviceFlow struct {
 	verificationURL string // MsaOauthRedirect de SISU
 	userCode        string // code RFC 8628 de l'Xbox Device Code Flow
@@ -45,7 +48,31 @@ type sisuDeviceFlow struct {
 	interval        int    // intervalle de polling en secondes
 	appID           string
 	expiresIn       int
+
+	provider *SISUProvider    // pour compléter l'échange SISU (ExchangeFlow)
+	flowCtx  *sisuFlowContext // contexte éphémère propre à CE flow
+
+	// refreshToken est le refresh_token Microsoft rendu par le polling
+	// (client Xbox natif, scope MSA). Écrit par AcquireToken, lu ensuite par
+	// OAuthRefreshToken dans la même goroutine de polling — pas de concurrence.
+	refreshToken string
 }
+
+// ExchangeFlow complète le flow SISU interactif porté par ce device flow, à partir
+// de l'access_token Microsoft acquis. Le contexte (kp/deviceToken/sessionID/
+// codeVerifier) vit dans le flow lui-même : aucun slot partagé, aucune course avec
+// un refresh stateless du pool ou un second onboarding. Honore auth.FlowExchanger.
+func (f *sisuDeviceFlow) ExchangeFlow(ctx context.Context, accessToken string) (*ExchangeResult, error) {
+	if f.provider == nil || f.flowCtx == nil {
+		// Défensif : flow sans contexte (jamais en pratique) → échange stateless.
+		slog.WarnContext(ctx, "sisu_provider: ExchangeFlow sans contexte — fallback stateless")
+		return ExchangeAccessToken(ctx, accessToken)
+	}
+	return f.provider.completeSISUExchange(ctx, f.flowCtx, accessToken)
+}
+
+// Vérification compile-time : sisuDeviceFlow honore FlowExchanger.
+var _ FlowExchanger = (*sisuDeviceFlow)(nil)
 
 func (f *sisuDeviceFlow) GetMessage() string {
 	return "Ouvrez l'URL ou entrez le code pour vous authentifier."
@@ -56,20 +83,41 @@ func (f *sisuDeviceFlow) GetExpiresIn() int          { return f.expiresIn }
 func (f *sisuDeviceFlow) GetFlowType() string        { return "sisu" }
 
 // AcquireToken attend la validation Xbox Device Code et retourne l'access_token Microsoft.
+// Conserve aussi le refresh_token pour la persistance ADR 0023 (cf. OAuthRefreshToken).
 func (f *sisuDeviceFlow) AcquireToken(ctx context.Context) (string, error) {
-	accessToken, _, err := PollXboxDeviceCode(ctx, f.appID, f.deviceCode, f.interval)
-	return accessToken, err
+	accessToken, refreshToken, err := PollXboxDeviceCode(ctx, f.appID, f.deviceCode, f.interval)
+	if err != nil {
+		return "", err
+	}
+	f.refreshToken = refreshToken
+	return accessToken, nil
 }
+
+// OAuthRefreshToken expose le refresh_token Microsoft obtenu par le polling —
+// l'équivalent SISU du RT encapsulé dans le cache MSAL. Consommé par le handler
+// device-flow pour la persistance dans watcher_tokens (ADR 0023) ; le pool le
+// rafraîchit ensuite via le fallback MSA natif de ExchangeRefreshTokenWithRotation.
+// Vide tant qu'AcquireToken n'a pas abouti.
+func (f *sisuDeviceFlow) OAuthRefreshToken() string { return f.refreshToken }
 
 // Vérification compile-time : sisuDeviceFlow implémente DeviceFlow.
 var _ DeviceFlow = (*sisuDeviceFlow)(nil)
 
 // SISUProvider implémente TokenProvider via SISU/PoP natif Xbox.
+//
+// Sans état de flow partagé : chaque InitDeviceFlow retourne un sisuDeviceFlow qui
+// porte son propre contexte SISU (cf. sisuFlowContext) et se complète via
+// ExchangeFlow. Le provider n'a donc PAS de slot p.current — supprimé pour
+// éliminer la course inter-appelants (revue adversariale 2026-07-15) : le pool
+// auto-sync qui rafraîchit le token d'un joueur ne peut plus consommer/écraser le
+// contexte du device-flow interactif d'un autre.
 type SISUProvider struct {
-	appID   string
+	appID string
+	// titleID est conservé comme identité de configuration (MT-02 : injecté
+	// depuis le descripteur du titre, loggé au boot). La variante device-code
+	// n'envoie plus TitleId sur le fil : l'association au titre est implicite
+	// au client_id (« title client id », cf. MinecraftAuth).
 	titleID string
-	mu      sync.Mutex
-	current *sisuFlowContext // nil entre deux flows
 }
 
 // NewSISUProvider crée un SISUProvider avec les IDs Xbox par défaut.
@@ -93,17 +141,18 @@ var _ TokenProvider = (*SISUProvider)(nil)
 type sisuProviderURLs struct {
 	deviceAuth string
 	xboxDevice string
-	sisuAuth   string
 }
 
 var defaultSISUProviderURLs = sisuProviderURLs{
 	deviceAuth: deviceAuthURL,
 	xboxDevice: xboxDeviceCodeURL,
-	sisuAuth:   sisuAuthenticateURL,
 }
 
-// InitDeviceFlow démarre un Device Code Flow Xbox natif + initialise la session SISU.
-// Stocke le sisuFlowContext (kp, deviceToken, sessionID, codeVerifier) pour Exchange.
+// InitDeviceFlow démarre un Device Code Flow Xbox natif (paire PoP + device token
+// + device code). Stocke le sisuFlowContext (kp, deviceToken) pour ExchangeFlow.
+// AUCUN appel SISU ici : la variante device-code n'a pas de session /authenticate
+// (cf. sisu_client.go) — l'échange se fait en un seul POST /authorize à la
+// complétion.
 func (p *SISUProvider) InitDeviceFlow(ctx context.Context) (DeviceFlow, error) {
 	return p.initDeviceFlowWithURLs(ctx, defaultSISUProviderURLs)
 }
@@ -127,34 +176,18 @@ func (p *SISUProvider) initDeviceFlowWithURLs(ctx context.Context, urls sisuProv
 		return nil, fmt.Errorf("sisu_provider: StartXboxDeviceCode: %w", err)
 	}
 
-	codeVerifier, codeChallenge, err := GeneratePKCE()
-	if err != nil {
-		return nil, fmt.Errorf("sisu_provider: GeneratePKCE: %w", err)
+	flowCtx := &sisuFlowContext{
+		kp:          kp,
+		deviceToken: deviceToken,
 	}
 
-	sisuSession, err := initSISUSessionWithURL(ctx, nil, kp, deviceToken, p.appID, p.titleID, codeChallenge, "sisu-state", urls.sisuAuth)
-	if err != nil {
-		return nil, fmt.Errorf("sisu_provider: InitSISUSession: %w", err)
-	}
+	// Vérification URL : celle du Device Code Flow — la page Microsoft où
+	// l'utilisateur SAISIT le user_code affiché par l'UI (typiquement
+	// https://www.microsoft.com/link).
+	verificationURL := dcResult.VerificationURL
 
-	p.mu.Lock()
-	p.current = &sisuFlowContext{
-		kp:           kp,
-		deviceToken:  deviceToken,
-		sessionID:    sisuSession.SessionID,
-		codeVerifier: codeVerifier,
-	}
-	p.mu.Unlock()
-
-	// Vérification URL : préférer MsaOauthRedirect (SISU) si disponible, sinon VerificationURI Xbox.
-	verificationURL := sisuSession.MsaOauthRedirect
-	if verificationURL == "" {
-		verificationURL = dcResult.VerificationURL
-	}
-
-	slog.InfoContext(ctx, "sisu_provider: Device Code Flow + session SISU initiés",
+	slog.InfoContext(ctx, "sisu_provider: Device Code Flow initié",
 		"user_code", dcResult.UserCode,
-		"session_id", sisuSession.SessionID,
 	)
 
 	return &sisuDeviceFlow{
@@ -164,37 +197,33 @@ func (p *SISUProvider) initDeviceFlowWithURLs(ctx context.Context, urls sisuProv
 		interval:        dcResult.Interval,
 		appID:           p.appID,
 		expiresIn:       dcResult.ExpiresIn,
+		provider:        p,
+		flowCtx:         flowCtx,
 	}, nil
 }
 
-// Exchange convertit un access_token Microsoft en tokens Halo Infinite.
-//
-// Deux chemins selon l'état du provider :
-//
-//   - Device flow interactif : si un sisuFlowContext a été posé par
-//     InitDeviceFlow, Exchange complète la session SISU (CompleteSISUFlow)
-//     puis l'efface. C'est le chemin d'onboarding (SSO web / device code).
-//   - Échange stateless : si aucun flow n'est en cours (flowCtx == nil),
-//     Exchange fait la chaîne XSTS standard via ExchangeAccessToken, identique
-//     à MSALProvider. C'est le chemin du pool auto-sync / scheduler / watcher,
-//     qui fournit un access_token déjà obtenu par OAuth refresh — sans passer
-//     par InitDeviceFlow. Honore le contrat de TokenProvider.Exchange.
+// Exchange convertit un access_token Microsoft en tokens Halo Infinite via la chaîne
+// XSTS standard (ExchangeAccessToken), identique à MSALProvider. TOUJOURS stateless :
+// c'est le chemin du pool auto-sync / scheduler / SSO web, qui fournit un
+// access_token déjà obtenu (OAuth refresh / auth code). Le device-flow interactif ne
+// passe PAS par ici : il complète sa session SISU via sisuDeviceFlow.ExchangeFlow
+// (contexte porté par le flow). Aucun état partagé → aucune course inter-appelants.
 func (p *SISUProvider) Exchange(ctx context.Context, accessToken string) (*ExchangeResult, error) {
-	p.mu.Lock()
-	flowCtx := p.current
-	p.current = nil
-	p.mu.Unlock()
+	slog.DebugContext(ctx, "sisu_provider: Exchange stateless — ExchangeAccessToken")
+	return ExchangeAccessToken(ctx, accessToken)
+}
 
-	if flowCtx == nil {
-		// Pas de session SISU interactive en cours : échange stateless standard
-		// (access_token Microsoft → XBL → XSTS Halo → Spartan → Clearance).
-		slog.DebugContext(ctx, "sisu_provider: Exchange stateless (pas de device flow) — ExchangeAccessToken")
-		return ExchangeAccessToken(ctx, accessToken)
-	}
-
-	slog.DebugContext(ctx, "sisu_provider: Exchange — CompleteSISUFlow")
+// completeSISUExchange complète le flow SISU interactif (CompleteSISUFlow
+// → Spartan → Clearance) à partir du contexte éphémère du flow. Appelé uniquement par
+// sisuDeviceFlow.ExchangeFlow : le flowCtx appartient au flow, jamais partagé.
+// Le RelyingParty demandé à /authorize est l'audience XSTS du titre (même source
+// que les jambes Spartan/Clearance ci-dessous : descripteur Halo par défaut) —
+// l'AuthorizationToken retourné est donc directement le XSTS attendu par Spartan.
+func (p *SISUProvider) completeSISUExchange(ctx context.Context, flowCtx *sisuFlowContext, accessToken string) (*ExchangeResult, error) {
+	slog.DebugContext(ctx, "sisu_provider: ExchangeFlow — CompleteSISUFlow")
+	relyingParty := title.DefaultHaloAuthDescriptor().XSTSAudience
 	xstsResult, err := CompleteSISUFlow(ctx, nil, flowCtx.kp, flowCtx.deviceToken, accessToken,
-		p.appID, flowCtx.sessionID, flowCtx.codeVerifier)
+		p.appID, relyingParty)
 	if err != nil {
 		return nil, fmt.Errorf("sisu_provider: CompleteSISUFlow: %w", err)
 	}
@@ -211,7 +240,7 @@ func (p *SISUProvider) Exchange(ctx context.Context, accessToken string) (*Excha
 		return nil, fmt.Errorf("sisu_provider: requestClearanceToken: %w", err)
 	}
 
-	slog.InfoContext(ctx, "sisu_provider: Exchange OK",
+	slog.InfoContext(ctx, "sisu_provider: ExchangeFlow OK",
 		"gamertag", xstsResult.Gamertag,
 		"xuid", xstsResult.XUID,
 	)

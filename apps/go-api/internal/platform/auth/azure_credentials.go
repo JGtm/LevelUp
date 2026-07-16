@@ -12,7 +12,27 @@
 // utilisée. Le changement est documenté par le diff des golden tests.
 package auth
 
-import "os"
+import (
+	"os"
+
+	"levelup/go-api/internal/domain/title"
+)
+
+// Constantes de l'app Azure (rapatriées de msal_client.go lors du retrait de
+// MSAL, 2026-07-15 — elles servent les flux OAuth v2 Azure encore actifs :
+// SSO web par code d'autorisation + refresh des RT Azure existants).
+const (
+	// LevelUpClientID est le client_id de l'app Azure "LevelUp Halo".
+	LevelUpClientID = "e1cb35ab-c41a-4ee5-a7a1-22ea4e94cdca" // pragma: allowlist secret
+
+	// MSALAuthority pour les comptes personnels Microsoft (Xbox Live) —
+	// endpoint v2 « consumers », utilisé par l'URL d'authorize du SSO web.
+	MSALAuthority = "https://login.microsoftonline.com/consumers"
+)
+
+// XboxScopes — scopes Xbox Live de l'app Azure, dérivés du descripteur
+// (MT-02, source unique).
+var XboxScopes = title.DefaultHaloAuthDescriptor().OAuthScopes
 
 // AzureOAuthClient est le client Azure utilisé pour les échanges OAuth v2
 // Microsoft (Authorization Code Flow SSO web + refresh token). Construire via

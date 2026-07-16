@@ -351,7 +351,7 @@ func loadEnvLocal() {
 // exchangeTokens convertit un refresh_token OAuth en (Spartan, Clearance) tokens
 // frais via le pipeline MSAL + Halo Waypoint exchange. Réplique cmd/get-token.
 func exchangeTokens(ctx context.Context, refreshToken string) (spartan, clearance string, err error) {
-	provider := auth.NewMSALProvider()
+	provider := auth.NewSISUProvider()
 	tok, err := provider.TryOAuthRefresh(ctx, refreshToken)
 	if err != nil {
 		return "", "", fmt.Errorf("TryOAuthRefresh: %w", err)

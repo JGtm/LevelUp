@@ -200,6 +200,68 @@ func TestXboxSSOLinkStrategy_WithTokenStore_PersistsRTATokens(t *testing.T) {
 	}
 }
 
+// TestXboxSSOLinkStrategy_PersistRTA_MergePreserveCredentials : Upsert remplace
+// le fichier entier — un login SISU (RT brut, pas de cache MSAL) ne doit pas
+// écraser le cache MSAL existant, et réciproquement (fix 2026-07-15).
+func TestXboxSSOLinkStrategy_PersistRTA_MergePreserveCredentials(t *testing.T) {
+	users := newXboxStore(t)
+	tokenStore := auth.NewMultiUserTokenStore(filepath.Join(t.TempDir(), "watcher_tokens"))
+	s := service.NewXboxSSOLinkStrategy(users).WithTokenStore(tokenStore)
+
+	// État existant : credentials des deux providers déjà semés.
+	if err := tokenStore.Upsert(&auth.UserTokens{
+		XUID:              "2535471234567890",
+		Gamertag:          "Spartan42",
+		OAuthRefreshToken: "rt-ancien",
+		MSALCacheJSON:     `{"cache":"ancien"}`,
+	}); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	// Login SISU : RT brut frais, PAS de cache MSAL.
+	attempt := &auth.Attempt{
+		Gamertag:          "Spartan42",
+		XUID:              "2535471234567890",
+		XSTSRTAToken:      "xsts-rta-token",
+		OAuthRefreshToken: "rt-sisu-frais",
+	}
+	if err := s.OnAuthSuccess(context.Background(), attempt, &domain.SessionData{}); err != nil {
+		t.Fatalf("OnAuthSuccess: %v", err)
+	}
+
+	stored, err := tokenStore.Load("2535471234567890")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if stored.OAuthRefreshToken != "rt-sisu-frais" {
+		t.Errorf("OAuthRefreshToken = %q, attendu le RT SISU frais", stored.OAuthRefreshToken)
+	}
+	if stored.MSALCacheJSON != `{"cache":"ancien"}` {
+		t.Errorf("MSALCacheJSON = %q, le cache MSAL existant doit être préservé", stored.MSALCacheJSON)
+	}
+
+	// Login MSAL ensuite : cache frais, PAS de RT brut → le RT SISU est préservé.
+	attempt2 := &auth.Attempt{
+		Gamertag:      "Spartan42",
+		XUID:          "2535471234567890",
+		XSTSRTAToken:  "xsts-rta-token-2",
+		MSALCacheJSON: `{"cache":"frais"}`,
+	}
+	if err := s.OnAuthSuccess(context.Background(), attempt2, &domain.SessionData{}); err != nil {
+		t.Fatalf("OnAuthSuccess (2e): %v", err)
+	}
+	stored, err = tokenStore.Load("2535471234567890")
+	if err != nil {
+		t.Fatalf("Load (2e): %v", err)
+	}
+	if stored.OAuthRefreshToken != "rt-sisu-frais" {
+		t.Errorf("OAuthRefreshToken = %q, le RT SISU doit être préservé", stored.OAuthRefreshToken)
+	}
+	if stored.MSALCacheJSON != `{"cache":"frais"}` {
+		t.Errorf("MSALCacheJSON = %q, attendu le cache frais", stored.MSALCacheJSON)
+	}
+}
+
 func TestXboxSSOLinkStrategy_WithTokenStore_SkipPersistanceIfNoXSTSRTA(t *testing.T) {
 	users := newXboxStore(t)
 	tokenStore := auth.NewMultiUserTokenStore(filepath.Join(t.TempDir(), "watcher_tokens"))

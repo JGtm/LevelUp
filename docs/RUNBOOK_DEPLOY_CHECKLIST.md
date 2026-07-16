@@ -89,6 +89,18 @@ Each item cites its source so it can be re-verified against the code. Structure:
       after boot (source: merge plan step 6).
 - [ ] Smoke the key pages on prod: Home, Career, Squad, Explorer, Sessions (FR + EN, one
       Infinite + one H5 player).
+- [ ] **Xbox device-code endpoint reachable (SSO login).** The `xboxDeviceCodeURL` constant
+      is only exercised by an opt-in network guard (double-gated: `integration` build tag +
+      `LEVELUP_DEVICE_ENDPOINT_LIVE_CHECK` env — it never runs in `go test ./...` nor in the
+      anti-ART `-tags=integration` suite, so no CI flake). It is NOT run by any pipeline —
+      run it by hand when validating SSO or after touching the auth/device-code path
+      (incident 2026-07-13: the URL regressed to 404 while all mocked tests stayed green):
+
+      ```bash
+      LEVELUP_DEVICE_ENDPOINT_LIVE_CHECK=1 \
+        go test -tags=integration -run TestXboxDeviceCodeEndpointReachable \
+        ./apps/go-api/internal/platform/auth/
+      ```
 
 ## Rollback
 

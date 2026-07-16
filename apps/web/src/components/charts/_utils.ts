@@ -122,6 +122,26 @@ export function seriesColor(index: number): string {
 }
 
 /**
+ * hexToRgba — convertit un hex `#RRGGBB` (ou `RRGGBB`) en `rgba(r,g,b,alpha)`.
+ *
+ * Usage : générer un fond/trait/opacité tinté à partir d'un hex DÉJÀ résolu via
+ * token (`resolveToken(...)`), dans un contexte canvas/ECharts qui n'accepte pas
+ * les CSS vars (fond de badge encadré, intensité d'un histogramme momentum).
+ * C'est un alpha-mix STRUCTUREL, pas un choix sémantique : la couleur reste
+ * celle du token, seule la transparence varie.
+ *
+ * NB : distinct de la variante `color-mix(...)` de
+ * `components/ui/match-card-presentation.ts`, qui opère sur une CSS var en
+ * contexte DOM (pas un hex résolu) — les deux coexistent volontairement.
+ * Source unique : ne jamais redéfinir localement (garde-rail hex-alpha.guard.test.ts).
+ */
+export function hexToRgba(hex: string, alpha: number): string {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex)
+  if (!m) return `rgba(0,0,0,${alpha})`
+  return `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${alpha})`
+}
+
+/**
  * Composant générique d'axe X catégoriel — paramètre les ticks selon le
  * nombre de catégories (rotation labels au-delà de 60 entrées).
  */

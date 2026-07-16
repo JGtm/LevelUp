@@ -63,7 +63,7 @@ func (c chainResolver) ResolveXUID(ctx context.Context, gamertag string) (string
 // ~N× le quota. Miroir de BuildMultiHaloSource côté fetch de matchs. Les comptes sans
 // token résolu sont sautés (warn) ; erreur seulement si AUCUN compte n'est résolu.
 func BuildMultiResolver(cfg *config.AppConfig, tokenGamertags []string) ([]XUIDResolver, []string, error) {
-	provider := auth.NewMSALProvider()
+	provider := auth.NewSISUProvider()
 	store := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
 	var resolvers []XUIDResolver
 	var ok []string

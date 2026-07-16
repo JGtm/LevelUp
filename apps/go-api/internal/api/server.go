@@ -558,7 +558,7 @@ func NewRouter(
 	groupStore *groupstore.GroupStore,
 ) (http.Handler, *wire.ServiceRegistry) {
 	if tokenProvider == nil {
-		tokenProvider = auth_platform.NewMSALProvider()
+		tokenProvider = auth_platform.NewSISUProvider()
 	}
 	// Sprint 14 : session store + Sprint 15 : attempt store auth
 	// Le flag Secure du cookie + HSTS sont décidés PAR REQUÊTE selon le schéma réel

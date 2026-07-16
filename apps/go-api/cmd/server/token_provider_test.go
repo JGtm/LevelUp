@@ -28,7 +28,7 @@ func newSettingsStoreWithProvider(t *testing.T, provider string) *settings.Store
 	return settings.NewStore(path)
 }
 
-func TestBuildTokenProvider_DefaultIsSISU(t *testing.T) {
+func TestBuildTokenProvider_AlwaysSISU(t *testing.T) {
 	cases := []struct {
 		name     string
 		provider string
@@ -36,6 +36,8 @@ func TestBuildTokenProvider_DefaultIsSISU(t *testing.T) {
 		{"vide -> SISU", ""},
 		{"sisu explicite -> SISU", "sisu"},
 		{"inconnu -> SISU (défaut)", "banane"},
+		// MSAL retiré (2026-07-15) : la valeur legacy est ignorée avec un warning.
+		{"msal legacy -> SISU", "msal"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -44,12 +46,5 @@ func TestBuildTokenProvider_DefaultIsSISU(t *testing.T) {
 				t.Errorf("attendu *SISUProvider, got %T", p)
 			}
 		})
-	}
-}
-
-func TestBuildTokenProvider_MsalExplicit(t *testing.T) {
-	p := buildTokenProvider(newSettingsStoreWithProvider(t, "msal"), title.DefaultHaloAuthDescriptor())
-	if _, ok := p.(*auth.MSALProvider); !ok {
-		t.Errorf("attendu *MSALProvider pour auth_provider=msal, got %T", p)
 	}
 }

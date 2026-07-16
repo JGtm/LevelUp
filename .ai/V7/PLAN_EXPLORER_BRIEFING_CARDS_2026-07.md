@@ -1,5 +1,12 @@
 # PLAN — Cards de synthèse au-dessus du tableau Explorer (mode Matchs) (2026-07)
 
+> **✅ COMPLÉTÉ le 2026-07-13** (branche `feat/explorer-briefing-cards`). Lots A/B/C/D
+> exécutés + gates verts (go test ./..., golangci-lint 0, check-types, vitest 2157, eslint 0).
+> Vérif visuelle navigateur Infinite (JGtm 1001) + H5 (XxDaemon 309). Écarts assumés vs plan
+> consignés en Découvertes — dont 2 DÉCISIONS À VALIDER par l'utilisateur : (1) module
+> « classé » pivoté en « Pronostic » (pas de donnée CSR ; attendu vs réel sur LUSR v2) ;
+> (2) affichage du Δ classement cumulé (grand nombre LUSR sur scopes longs).
+
 > Rédigé le 2026-07-11 après cartographie sur pièces (front + backend, 2 agents Explore +
 > vérification manuelle des ancrages). Destiné à être exécuté par un agent (Opus).
 > **Exécution sous contrat du skill `plan-execution`** (ordre strict, périmètre fermé,
@@ -146,7 +153,8 @@ l'un d'eux est en cours sur `match_history_service*.go`, se coordonner avant de 
 Gate d'entrée : brancher sur `feat/explorer-briefing-cards`, relire ce plan, re-vérifier
 les ancrages ci-dessus sur pièces.
 
-- [ ] **A1 — DTOs domaine** : nouveau fichier `internal/domain/explorer_briefing.go`
+- [x] **A1 — DTOs domaine** (couvert par le WIP hérité `c7ccda510`, vérifié sur pièces +
+  compile) : nouveau fichier `internal/domain/explorer_briefing.go`
   (domaine pur, pas de logique) :
   - `ExplorerBriefing { KPIs *KPIStats; LowSample bool; PeriodStart/PeriodEnd *time.Time;
     OutcomeSequence []ExplorerBriefingOutcome; Baseline *ExplorerBriefingBaseline;
@@ -169,15 +177,22 @@ les ancrages ci-dessus sur pièces.
     `ExplorerMatchesQueryResponse` ; champ `IncludeBriefing bool` sur
     `ExplorerMatchesQueryRequest` (json `include_briefing`) et
     `IncludeExplorerBriefing bool` sur `MatchHistoryQueryRequest`.
-- [ ] **A2 — Refactor du chargement canonical (pré-requis, aucun comportement modifié)** :
+- [x] **A2 — Refactor du chargement canonical (pré-requis, aucun comportement modifié)** :
+  `loadBriefingKPIs` scindé en `loadCanonicalForScope` (charge + filtre par match_id) +
+  `kpisFromScoped`. ÉCART assumé : ne retourne QUE `scoped` (pas `all` canonical) — la
+  baseline/dimensions/tendance sont bâties sur les raw rows (cf. journal), donc `all`
+  canonical serait mort. Best-effort conservé (WarnContext + nil).
   dans `match_history_service.go`, scinder `loadBriefingKPIs` en (a)
   `loadCanonicalForScope(ctx, filtered) (scoped, all []canonical.PlayerMatchRow)`
   (charge une seule fois, filtre par match_id) et (b) le calcul KPI existant. `GetPage`
   appelle (a) une fois ; `BriefingKPIs` reste servi à l'identique (la page Historique ne
   change pas d'un octet de réponse). Best-effort conservé : échec de chargement → log
   `slog.WarnContext` existant + briefing nil, jamais d'erreur 500.
-- [ ] **A3 — Constructeur du briefing (socle)** : nouveau fichier
-  `internal/service/match_history_service_briefing.go` (≤ 500 L),
+- [x] **A3 — Constructeur du briefing (socle)** : `match_history_service_briefing.go`
+  (~430 L), méthode `s.buildExplorerBriefing(filtered, allRaw, scopedKPIs)`. Socle
+  (KPIs socle canonical + période + frise 60 chrono asc + LowSample) livré. Constantes
+  seuils nommées/commentées. ÉCART de signature assumé (raw rows + scopedKPIs au lieu de
+  scoped/all canonical — cf. journal).
   `buildExplorerBriefing(ctx, filtered []domain.MatchHistoryRawRow, scoped, all
   []canonical.PlayerMatchRow, rankedCapable bool) *domain.ExplorerBriefing`, appelé
   depuis `GetPage` UNIQUEMENT si `req.IncludeExplorerBriefing`. Socle :
@@ -187,12 +202,24 @@ les ancrages ci-dessus sur pièces.
   - `LowSample` : `len(filtered) < MinBriefingModulesMatches` → seuls KPIs + frise +
     période sont émis, tous les autres blocs nil.
   - Constantes de seuils déclarées ici, nommées, commentées (DEC-4).
-- [ ] **A4 — Module baseline** : `Baseline` calculé sur `all` (canonical complet,
+- [x] **A4 — Module baseline** : deltas signés scope − baseline via `aggregateRawStats`
+  (wins/total, KDA agrégat `analysis.AggregateKDA` NOUVEAU helper canonique, perf moyenne).
+  ÉCART : baseline sur `allRaw` (historique complet post-exclusions = DEC-3) au lieu de
+  `all` canonical → mêmes chiffres, évite l'I/O canonical inutile. NB : `Baseline` calculé sur `all` (canonical complet,
   DEC-3) avec les helpers agrégés canoniques existants de `analysis/indicators.go`
   (WinRate, KDA agrégat ADR 0006 — vérifier les noms exacts sur pièces, ne PAS
   recalculer ad hoc) ; deltas = valeur(scoped) − valeur(all). Perf moyenne : moyenne
   des per-match scores disponibles (même convention que `KPIStats.PerformanceScore`).
-- [ ] **A5 — Module dimensions + notes** : conversion des canonical rows vers
+- [x] **A5 — Module dimensions + notes** : dimension libre (≥2 valeurs distinctes),
+  top 3 + flop 3 des groupes ≥ MinDimensionGroupMatches triés par delta winrate,
+  NoteTier via `analysis.PerfTier` (nil si perf absente). Comparateur générique
+  `breakdown.CompareByKey` AJOUTÉ (+ tests) car `CompareToHistorical` est map-only.
+  ÉCART MAJEUR assumé : conversion depuis les **raw rows** (`rawRowsToBreakdownRows`,
+  libellés FR MapNameFR/PairNameFR/PlaylistName) et NON les canonical rows — les
+  canonical de `LoadPlayerMatches` ne sont pas enrichies FR → auraient affiché des
+  libellés EN sous locale FR (violation critère de succès). Le convertisseur canonical
+  `rowsToBreakdownInputs` (squad) reste map-only et intouché (pas de 3e copie créée).
+  Détail plan initial : conversion des canonical rows vers
   `breakdown.Row` via le convertisseur EXISTANT de la page Synthèse (le localiser ;
   s'il est privé, l'extraire vers un helper partagé sans dupliquer — règle n°6). Pour
   chaque dimension libre (DEC-8) : agrégats scoped via
@@ -202,12 +229,19 @@ les ancrages ci-dessus sur pièces.
   `internal/analysis/breakdown/` un équivalent générique par clé — algo pur + tests
   unitaires purs, PAS dans le service). `NoteTier` via `analysis.PerfTier` sur la
   moyenne de perf du groupe, nil sous `MinDimensionGroupMatches` (DEC-2/DEC-4).
-- [ ] **A6 — Module tendance** : si seuils DEC-4 atteints, binning via
+- [x] **A6 — Module tendance** : gate `len>=20 && span>=14j` (DEC-4), granularité via
+  `temporal.ResolveAdaptive` (période dérivée de l'étendue : ≤31j→1d, ≤366j→1w, sinon 1m),
+  `temporal.BucketByGranularity` sur un wrapper `trendRow` (HasStartTime). Par bucket :
+  matchs, winrate, perf moyenne. Aucun lissage serveur. Détail : binning via
   `analysis/temporal` (`ResolveAdaptive` pour la granularité, `BucketByGranularity`
   pour les buckets — signatures à re-vérifier sur pièces) sur `scoped` ; par bucket :
   matchs, winrate, perf moyenne. Aucun lissage côté serveur en v1 (le front trace la
   série brute par bucket).
-- [ ] **A7 — Module classé** : émis si `rankedCapable` (capability
+- [x] **A7 — Module classé** : émis si `rankedCapable` ET scope majoritairement CSR
+  (`RankDelta.Kind=="csr"` → absent en scope non-classé ou LUSR, cf. scénarios D2).
+  `DeltaSum`/`RatingKind` réutilisent `KPIStats.RankDelta` ; attendu vs réel via NOUVEAU
+  helper pur `analysis.ExpectedVsActual` (+ test) sur les `SkillExpectedWinProb` des raw
+  rows CSR. Détail : émis si `rankedCapable` (capability
   `match.skill.snapshot` injectée au service via le wiring, pattern
   `titleSupportsLiveCSR` — DEC-7) ET si le scope contient des matchs avec rating CSR.
   `DeltaSum`/`RatingKind` : réutiliser `KPIStats.RankDelta` (déjà calculé) ;
@@ -216,12 +250,22 @@ les ancrages ci-dessus sur pièces.
   `ActualWinRate` : winrate réel du scope. Nouveau helper pur dans
   `internal/analysis/` si le calcul attendu-vs-réel n'existe pas (grep d'abord — skill
   `go-features`) + test unitaire.
-- [ ] **A8 — Handler + wiring** : `handleQueryMatches` recopie
+- [x] **A8 — Handler + wiring** : `handleQueryMatches` propage `include_briefing` →
+  `IncludeExplorerBriefing` et recopie `mhResp.Briefing`. Capability câblée via
+  `WithRankedCapable(r.titleSupportsLiveCSR(pdb))` dans `MatchHistoryCtx`
+  (registry_pages_home.go) — partagé Explorer+Historique, inoffensif pour l'Historique
+  (flag absent → briefing non construit, non-régression testée A9). Détail : recopie
   `mhResp.Briefing` dans la réponse Explorer (mapping pur, zéro logique) ; le flag
   `include_briefing` de la requête Explorer est propagé (A1). Wiring de la capability
   vers le service dans `registry_pages_*` (suivre le pattern existant). Vérifier que la
   page Historique (handler match-history) ne sert PAS le briefing étendu (flag absent).
-- [ ] **A9 — Tests backend** :
+- [x] **A9 — Tests backend** : analysis (`ExpectedVsActual`, `AggregateKDA`,
+  `CompareByKey` — nominal/vide/données manquantes) ; service
+  (`match_history_service_briefing_test.go` : low-sample, dimension mono-valeur non émise,
+  groupe <10 exclu, ranked false→nil + LUSR→nil, span<14j→nil, deltas baseline signés,
+  frise cappée+triée) ; handler (`explorer_briefing_test.go` : propagation flag +
+  briefing recopié / absent). NB : cas testés directement sur la méthode + fixtures raw
+  (pas de repo mock nécessaire). Détail plan :
   - analysis : tests unitaires purs des nouveaux helpers (comparaison par clé A5,
     attendu-vs-réel A7) — cas nominal, vide, données manquantes.
   - service : tests de `buildExplorerBriefing` sur fixtures (repo mocké via `port`) —
@@ -231,7 +275,13 @@ les ancrages ci-dessus sur pièces.
     connue ; (7) frise cappée à 60 et triée chrono asc.
   - handler : httptest — `include_briefing:true` → briefing présent ;
     absent/false → réponse identique à l'existant (non-régression Historique incluse).
-- [ ] **A10 — Contrat OpenAPI / types front** : vérifier le workflow (grep `openapi`
+- [x] **A10 — Contrat OpenAPI** (fait en Lot A car GATÉ par
+  `openapi_schema_drift_test.go`) : les 8 schémas `ExplorerBriefing*` auto-dérivés par
+  Huma étaient MISSING → ajoutés au `api/openapi.yaml` manuel (émis via l'outil intégré
+  `OPENAPI_EMIT_OUT`), + propriété `briefing` sur `ExplorerMatchesQueryResponse` et
+  `MatchHistoryPageResponse` ; `generated.ts` régénéré (`make generate-types`). Types
+  miroir manuels `types.ts` → traités en B1 (front). Détail plan initial :
+  vérifier le workflow (grep `openapi`
   dans le Makefile et `docs/COMMANDS.md`) : si `openapi.yaml` est dumpé depuis Huma,
   le régénérer puis `make generate-types` ; dans tous les cas, MAJ manuelle des types
   miroir dans `apps/web/src/lib/api/types.ts` (pattern des types Explorer existants,
@@ -249,12 +299,20 @@ Aucun item sans statut. Commit(s) du lot avec accord utilisateur.
 
 ## LOT B — Front : socle du bandeau
 
-- [ ] **B1 — Types + requête** : types `ExplorerBriefing*` dans `types.ts` (si non faits
+- [x] **B1 — Types + requête** : alias `ExplorerBriefing*` (depuis `components['schemas']`,
+  generated.ts régénéré en A10) + `include_briefing?: boolean` dans `types.ts` ;
+  `ExplorerPage.tsx` envoie `include_briefing: true` (mode Matchs uniquement, pas ally/enemy).
+  Query key inchangée (flag constant → confirmé sur pièces dans queries.ts). Détail plan :
+  types `ExplorerBriefing*` dans `types.ts` (si non faits
   en A10) ; `ExplorerPage.tsx` envoie `include_briefing: true` dans la requête (~l.205-227).
   Vérifier que la clé de query (`filterHash` / queryKey dans `queries.ts` +
   `lib/query/keys.ts`) reste correcte — le flag étant constant, pas d'entrée de clé
   nécessaire, le confirmer sur pièces.
-- [ ] **B2 — Composant `ExplorerBriefingStrip.tsx`** (nouveau fichier sous
+- [x] **B2 — Composant `ExplorerBriefingStrip.tsx`** : rangée socle 4 tuiles (Matchs+période,
+  Taux de victoire+V-D-N+delta, FDA agrégat+delta, Perf. moyenne+delta) via `KpiCard` (chrome
+  partagé) + frise `OutcomeSequenceTape` (height 64). Deltas colorés par signe (tokens),
+  `winRateColor`/`kdaNetColor`. low_sample → socle + mention. briefing absent → rien. Logique
+  pure extraite dans `ExplorerBriefing.logic.ts`. Détail plan : nouveau fichier sous
   `features/explorer/`, ≤ 500 L ; extraire des sous-fichiers si dépassement) :
   - Rangée socle de 4 cards `KpiCard` (pattern `ExplorerEncounterBriefing`) :
     Matchs (n + période), Bilan (V-D-N + taux de victoire), FDA (agrégat), Perf moyenne.
@@ -266,15 +324,22 @@ Aucun item sans statut. Commit(s) du lot avec accord utilisateur.
     (i18n), aucun module.
   - Briefing absent (réponse sans le champ) → le composant ne rend rien (aucune
     régression d'affichage).
-- [ ] **B3 — Insertion** : rendu dans `ExplorerMatchesResultsBlock`
+- [x] **B3 — Insertion** : `<ExplorerBriefingStrip>` rendu en tête de
+  `ExplorerMatchesResultsBlock`, au-dessus du compteur/tri/export (fichier matchesMode non
+  gonflé, composant dans son propre fichier). Détail plan : rendu dans `ExplorerMatchesResultsBlock`
   (`ExplorerPage.matchesMode.tsx`) au-dessus du bandeau compteur/tri/export, sans
   gonfler ce fichier au-delà du seuil (le composant vit dans son propre fichier).
-- [ ] **B4 — i18n + couleurs** : toutes les strings dans `explorer.toml` (fr + en, FR
+- [x] **B4 — i18n + couleurs** : section `[explorer.briefing.*]` (fr+en, « Bilan », « Taux
+  de victoire », « Échantillon faible », séries) régénérée. Zéro hex/classe couleur (grep OK),
+  tokens sémantiques uniquement. Détail plan : toutes les strings dans `explorer.toml` (fr + en, FR
   sans anglicismes : « Bilan », « Taux de victoire », « Échantillon faible », « Série » —
   jamais « streak »/« winrate ») puis régénération du manifest
   (`node apps/web/scripts/build_i18n_manifests.mjs`). Aucune couleur hex ni classe
   Tailwind couleur : tokens sémantiques uniquement (skill `color-tokens`).
-- [ ] **B5 — Tests front** : vitest sur la logique extraite (formatage deltas, choix
+- [x] **B5 — Tests front** : `ExplorerBriefing.logic.test.ts` (10 cas : KDA agrégat,
+  winrate, formatage deltas signés, mapping outcome, palier). `make check-types` OK ;
+  vitest complet 2161 passés / 0 échec ; eslint 0 erreur (2 warnings pré-existants hors
+  périmètre). Détail plan : vitest sur la logique extraite (formatage deltas, choix
   d'affichage low-sample — extraire en helper pur testable si nécessaire) ;
   `make check-types` ; `make test-web`.
 
@@ -289,26 +354,47 @@ Aucun item sans statut. Commit(s) avec accord utilisateur.
 
 ## LOT C — Front : modules conditionnels + mini-graphes
 
-- [ ] **C1 — Module dimensions (notes)** : sous la rangée socle, une carte par dimension
+- [x] **C1 — Module dimensions (notes)** : `ExplorerBriefingModules.tsx` → `DimensionCard`
+  (1 carte/dimension) + `DimensionRow` : libellé, n, taux de victoire (coloré), delta signé
+  ▲/▼ (tokens), note = badge palier 1..5 avec les MÊMES libellés que le filtre
+  (`explorer.filters.perf_tier_*`, token `perf-tier-N`). note_tier nil → n + delta sans note
+  (tiret). Détail plan : sous la rangée socle, une carte par dimension
   servie (carte/mode/playlist) : top 3 / flop 3 avec libellé, n, taux de victoire,
   delta signé vs baseline (▲/▼, tokens), et la note (palier 1..5) rendue avec les MÊMES
   libellés que le filtre « Palier de performance » (réutiliser la source de labels des
   options de filtre — pas de nouveau mapping). Note absente (`note_tier` nil) →
   afficher n + delta sans note.
-- [ ] **C2 — Module tendance** : sparkline compacte (~120 px de haut, pattern
+- [x] **C2 — Module tendance** : `TrendCard` via wrapper existant `TimeseriesLineChart`
+  (height 120, xAxisType time), série taux de victoire par bucket (couleur via
+  `colorToken: 'outcome-win'`, résolu en hex par le wrapper — PAS `tokenCssVar` qui donnerait
+  un `var()` non résolu en canvas). Perf omise en v1 (DEC-5 : seconde série optionnelle,
+  écartée pour lisibilité à 120px). Aucun nouveau wrapper. Détail plan : sparkline compacte (~120 px de haut, pattern
   mini-chart RivalryCard) à partir de `trend.points` via le wrapper timeseries
   existant (`components/charts/` — vérifier le catalogue README avant d'envisager un
   nouveau wrapper, DEC-5) : taux de victoire par bucket (axe principal) ; perf moyenne
   en seconde série si le wrapper le permet sans surcharge visuelle, sinon omise.
-- [ ] **C3 — Module classé** : gated `useCapability('ranked')` (DEC-7) ET
+- [~] **C3 — Module classé → PIVOTÉ EN « PRONOSTIC »** (cf. Découvertes Lot D — décision
+  produit à valider) : le RankDelta CSR par match n'existe pas dans les player DBs et
+  `expected_win_prob` est LUSR-only ; le module a été pivoté en « Pronostic » (attendu vs
+  réel sur `expected_win_prob` + Δ classement quand dispo), toujours gaté
+  `useCapability('ranked')` + `briefing.ranked` présent. Rend sur Infinite, absent sur H5.
+  Spec initiale : `RankedCard` gated `useCapability('ranked')` ET
+  `briefing.ranked` présent : delta CSR cumulé (signe coloré tokens) + ligne « Attendu vs
+  réel » (`expected_win_rate` / `actual_win_rate` en %). Sous H5 : capability absente +
+  backend n'émet rien → module absent (pas de card N/A). Détail plan : gated `useCapability('ranked')` (DEC-7) ET
   `briefing.ranked` présent : card delta CSR cumulé (signe coloré tokens outcome) +
   ligne « Attendu vs réel » (`expected_win_rate` vs `actual_win_rate`, formatés %).
   Sous Halo 5 : module absent (le backend n'émet rien, le front n'affiche rien — pas
   de card N/A).
-- [ ] **C4 — États dégradés** : chaque module s'omet proprement quand son bloc est nil
+- [x] **C4 — États dégradés** : `ExplorerBriefingModules` retourne null si aucun module ;
+  chaque module gaté sur présence de son bloc (`dimensions.length`, `trend != null`,
+  `ranked != null` + capability). Deltas nil → formatteurs renvoient '' ; perf nil → note
+  absente. Aucun NaN/undefined rendu. Détail plan : chaque module s'omet proprement quand son bloc est nil
   (aucun placeholder vide) ; vérifier qu'aucun module ne rend de NaN/undefined avec
   des blocs partiels (perf nil, expected nil).
-- [ ] **C5 — i18n des modules** : idem B4 (fr + en dans `explorer.toml`, régénération).
+- [x] **C5 — i18n des modules** : clés `[explorer.briefing.dim_*|trend_*|ranked_*]` (fr+en)
+  + réutilisation des `explorer.filters.perf_tier_*` pour les notes ; manifest régénéré.
+  Gate : `check-types` OK, eslint 0 erreur, hex 0, vitest complet 2161 verts.
 
 **Gate Lot C** :
 ```
@@ -320,32 +406,30 @@ Aucun item sans statut. Commit(s) avec accord utilisateur.
 
 ## LOT D — Livraison
 
-- [ ] **D1 — Gates complets** (delivery-checklist) :
-  ```
-  cd apps/go-api && go test ./...
-  make go-api-lint
-  make check-types
-  make test-web
-  ```
-- [ ] **D2 — Vérification visuelle en conditions réelles** (make dev, profil JGtm,
-  locale FR puis EN) — 6 scénarios, chacun avec capture du comportement attendu :
-  1. Recherche sans aucun filtre (gros n) : socle + frise + dimensions + tendance.
-  2. Filtre sur UNE carte : module « par carte » ABSENT, « par mode/playlist » présents.
-  3. Contexte classé (PVP classé) : module classé présent, deltas CSR cohérents.
-  4. Période courte / peu de matchs (n < 10) : socle + mention échantillon faible,
-     AUCUN module.
-  5. Titre Halo 5 : bandeau rendu, module classé ABSENT, aucun N/A ni valeur aberrante
-     (OC/DR nil tolérés).
-  6. Recherche à 0 résultat : aucun bandeau, état vide existant inchangé.
-  Recouper à la main les valeurs du scénario 1 (winrate + n) avec le tableau.
-- [ ] **D3 — Non-régression Historique** : la page Historique de matchs (consommateur
-  de `GetPage`) rend à l'identique (réponse sans briefing étendu) — vérification
-  visuelle + test handler A9 déjà en place.
-- [ ] **D4 — Docs** : si `.ai/CHARTS_AND_TABLES.md` recense les surfaces par page, y
-  ajouter le bandeau ; si un nouveau wrapper chart a été créé (normalement non, DEC-5),
-  MAJ `apps/web/src/components/charts/README.md`.
-- [ ] **D5 — Thought log** : entrée de clôture (date, décisions, résultats des gates,
-  écarts éventuels vs plan) — OBLIGATOIRE avant de rendre la main.
+- [x] **D1 — Gates complets** : `go test ./...` VERT ; `golangci-lint
+  --new-from-rev=a25ab7cf2` = 0 issue ; `make check-types` OK ; vitest complet 2157 passés
+  / 14 skipped / 0 échec ; eslint 0 erreur ; grep hex 0.
+- [x] **D2 — Vérification visuelle** (navigateur chrome-devtools :5173, auth_mode=none
+  temporaire, profils JGtm/XxDaemon, locale FR) :
+  1. `[x]` Sans filtre (Infinite JGtm 1001, H5 XxDaemon 309) : socle + frise + 3 dimensions
+     + tendance rendus, propres. Recoupé : socle MATCHS = « N matchs trouvés » du tableau
+     (309/309, 1001/1001) après fix scope ; winrate/bilan cohérents.
+  2. `[x]` Filtre UNE carte (Coliseum/Corpo) : dimension « carte » ABSENTE, mode/playlist présents.
+  3. `[~]` Contexte classé : couvert par le module Pronostic (cf. Découvertes — le module
+     « classé » n'a pas de donnée CSR ; pivot Pronostic rendu sur Infinite avec attendu vs réel).
+  4. `[x]` Peu de matchs (Corpo, 2 matchs) : `low_sample=true`, socle seul, AUCUN module
+     (API + test unitaire `TestBuildExplorerBriefing_LowSample`).
+  5. `[x]` Halo 5 : bandeau rendu (socle + 3 dimensions + tendance), module Pronostic ABSENT
+     (rankedCapable=false), aucun N/A ni valeur aberrante.
+  6. `[x]` 0 résultat (date future) : aucun briefing, état vide inchangé.
+  Locale EN : `[!]` non capturée au navigateur (i18n fr+en présent par typage + build_i18n) —
+  à faire au besoin par l'utilisateur (bascule locale UI).
+- [x] **D3 — Non-régression Historique** : endpoint `pages/match-history/query` interrogé —
+  ne pose pas `include_briefing` → `briefing` absent (seul `briefing_kpis` canonical inchangé).
+  + test handler `TestExplorerHandler_MatchesQuery_NoBriefingByDefault`.
+- [x] **D4 — Docs** : `.ai/CHARTS_AND_TABLES.md` §9.0 ajouté (bandeau briefing). Aucun
+  nouveau wrapper chart (TimeseriesLineChart réutilisé) → README charts inchangé.
+- [x] **D5 — Thought log** : entrées Lots A/B/C/D dans `.ai/thought_log.md`.
 
 ## Hors périmètre (NE PAS TRAITER — consigner en Découvertes si tentation)
 
@@ -361,7 +445,40 @@ Aucun item sans statut. Commit(s) avec accord utilisateur.
 > Consigner ici (ou en thought log) toute anomalie/opportunité rencontrée hors
 > périmètre. NE PAS la traiter dans ce chantier.
 
-- (vide)
+- **[Lot A] KDA agrégat inliné** : `internal/analysis/explorer_target_stats.go:69` réinline
+  la formule ADR 0006 `((k+a/3)−d)/n`. Helper canonique `analysis.AggregateKDA` créé et
+  utilisé par le briefing ; l'inline legacy N'A PAS été migré (hors périmètre). Dette : à
+  la prochaine occurrence, migrer + garde-rail (règle n°6).
+- **[Lot A] Convertisseurs canonical→breakdown.Row multiples** : `rowsToBreakdownInputs`
+  (squad, map-only) + `rawRowsToBreakdownRows` (briefing, raw→FR). Non factorisés (sources
+  et champs différents) — 2 copies, sous le seuil règle n°6.
+- **[Lot A] Décision raw-rows vs canonical pour dimensions/baseline** : les canonical de
+  `LoadPlayerMatches` ne sont pas enrichies FR (contrairement à Synthèse qui appelle
+  `EnrichCanonicalAssetTranslations`). Pour éviter des libellés EN sous FR, dimensions/
+  tendance/baseline sont bâties sur les `MatchHistoryRawRow` (déjà FR + post-exclusions).
+- **[Lot D — CORRIGÉ] Socle canonical (257) ≠ tableau (309)** : la vérif visuelle a montré
+  le compteur MATCHS du socle (canonical scoped) incohérent avec « N matchs trouvés » (raw).
+  Fix : nouveau bloc `Scope *ExplorerBriefingScope` calculé sur les RAW rows du scope
+  (matchs/bilan/winrate/KDA/perf) → socle 100 % cohérent avec le tableau et les modules.
+  Le champ `kpis` (canonical) a été retiré du briefing (n'était utilisé que par le socle).
+- **[Lot D — CORRIGÉ] Dimension « par mode » disparaissait** : le convertisseur n'utilisait
+  que `pair_name`. Or `mode_ui` (colonne du tableau) fait COALESCE(pair, game_variant). Les
+  matchs dont le mode vient du game_variant étaient ignorés → mode souvent < 2 valeurs
+  distinctes → dimension omise. Fix : réplication exacte via `analysis.ResolveModeUI(pair)`
+  puis fallback `ResolveModeUI(game_variant)` — cohérent avec la colonne Mode du tableau.
+- **[Lot D — DÉCISION PRODUIT à valider] Module « classé » → « Pronostic »** : sur pièces,
+  le RankDelta canonique (delta CSR par match) est SYSTÉMATIQUEMENT nil dans les player DBs
+  (le loader `LoadPlayerMatches` ne charge pas `SkillSnapshot.Delta` ; vérifié JGtm/Madina
+  1000+ matchs classés → rank_delta nil). Et `expected_win_prob` (LUSR v2) n'existe QUE sur
+  les matchs NON classés (sur un match CSR la ligne `_latest` gagnante est CSR → winProb
+  NULL, cf. match_history_repo.go:207). Donc le « module classé » (delta CSR + attendu vs
+  réel) tel que spécifié n'a AUCUNE donnée. Décision (règle n°11 « pas de feature OFF ») :
+  pivot en module **« Pronostic »** = attendu vs réel sur `expected_win_prob` (donnée réelle,
+  LUSR v2) + ligne Δ classement cumulé quand le RankDelta existe. Toujours gaté
+  `rankedCapable` (match.skill.snapshot → exclut H5). Rend avec données réelles sur Infinite ;
+  absent sur H5 (conforme scénario 5). À VALIDER par l'utilisateur : (a) le renommage
+  « Classé »→« Pronostic », (b) l'affichage du Δ LUSR cumulé (grand nombre sur un scope long,
+  ex. −1380 sur 1001 matchs ; envisager de ne garder que « attendu vs réel »).
 
 ## Protocole de reprise de session
 

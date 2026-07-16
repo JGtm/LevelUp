@@ -59,7 +59,7 @@ func (r *ServiceRegistry) resourceDisk() domain.ResourceDisk {
 	}
 	out.FreeBytes = free
 	out.TotalBytes = total
-	out.Status = ops.EvaluateDiskStatus(free)
+	out.Status = ops.EvaluateDiskStatus(free, total)
 	return out
 }
 

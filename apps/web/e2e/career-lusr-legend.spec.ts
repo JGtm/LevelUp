@@ -8,10 +8,13 @@
  *      filtrage UUIDs).
  */
 import { test, expect } from '@playwright/test'
-import { skipIfNoDemoData } from './_helpers/demoData'
+import { skipIfNoDemoData, skipRequiresRealPlayer } from './_helpers/demoData'
 
-// Fixtures démo absentes en CI (data/demo gitignoré) → spec entière data-dépendante.
+// Vise un joueur réel codé en dur (JGtm) avec des checkpoints LUSR/CSR répartis sur
+// les groupes de playlists canoniques + libellés FR spécifiques — non reproductible
+// fidèlement par une fixture synthétique. Contre une démo réelle, la spec s'exécute.
 test.beforeEach(async () => {
+  skipRequiresRealPlayer('chart LUSR/CSR du joueur JGtm (checkpoints par groupe de playlists canonique)')
   await skipIfNoDemoData()
 })
 
