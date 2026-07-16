@@ -1,3 +1,62 @@
+## [2026-07-16] Lot fixes UI post-train — bugs 2/5/6 (+ constats 3/4)
+
+**Statut** : Complété (branche fix/ui-post-train). Bug 1 déjà commité (aa5458fb7).
+
+**Bug 2 — Spartan ID / accueil périmés au switch de titre (H5↔Infinite)** : la clé de
+query `useHomePage` était `['home', playerSlug]` SANS le titre. `switchTitle` fait bien
+`queryClient.clear()`, mais l'observateur home ne re-fetchait pas (une seule requête
+`/pages/home` sur 3 switchs constatée au réseau), servant les données du titre précédent
+pendant le staleTime (5 min) : rangs de playlists, adornment de rang carrière, tuiles.
+Fix title-agnostic (famille PR #59) : clé `['home', playerSlug, titleSlug]` → un changement
+de titre re-clé → fetch frais par titre. 4 appelants MAJ (hook, 2 loaders route/prefetch
+via `useAppShellStore.getState().currentTitleSlug`, invalidation favori). Vérif navigateur :
+switch Infinite→H5 → l'accueil montre bien SR 147 + gold nameplate + playlists H5
+(Super Fiesta/SWAT/Partie rapide), plus aucune fuite Infinite (« Arène delta »).
+
+**Bug 5 — libellé playlist résolu surface par surface** (« Super Fiesta Fête » raccourci
+seulement sur la Match View, pas ailleurs ; idem strip Infinite « Arène delta : Héritage »).
+Cause : override `playlist_labels.toml` + `NormalizePlaylistLabel` appliqués INLINE
+uniquement dans `match_view_repo`. CHOKEPOINT UNIQUE créé : `analysis.DisplayPlaylistLabel`
+(+ `PlaylistLabelConfig`) = strip title-aware PUIS override. Câblé par titre via
+`ServiceRegistry.playlistLabelConfigFor` sur : match_view (refactor), HomeRepo
+(`EnrichCanonicalAssetTranslations` → `applyCanonicalPlaylistDisplay` INCONDITIONNEL sur
+`Labels["fr"]` ET `DefaultLabel` — sinon les sessions dominantes retombaient sur l'EN brut ;
++ `LoadRecentPlaylistRanks`), MatchHistoryService (`enrichRow` → Explorer/historique/carrière).
+Garde-rail `no_inline_playlist_label` : interdit tout appel de `NormalizePlaylistLabel` hors
+du chokepoint. Vérif navigateur (H5) : tuiles de match, sessions solo/escouade, « Sélections
+récentes » ET Explorer affichent tous « Super Fiesta » ; Infinite affiche « Delta : Héritage »
+partout (parité Match View).
+
+**Bug 6 — onboarding après login pour un joueur déjà peuplé** : `XboxLoginPage.onAuthorized`
+naviguait INCONDITIONNELLEMENT vers `/onboarding/openspartan`. Fix : helper unique
+`postLoginDestination(boot)` (établi = `setup_state==='ready' && current_player` → `/`, sinon
+onboarding) ; `onAuthorized` recharge le bootstrap frais (`fetchQuery`) et route en
+conséquence. Garde défense-en-profondeur sur `OnboardingOpenSpartanPage` (établi qui l'atteint
+→ `/`). Flux redirect SSO (`RedirectFlowPanel`) va déjà vers `/` → cohérent pour l'existant.
+Vérif navigateur : /onboarding/openspartan en tant que JGtm (établi) → redirige vers le
+dashboard.
+
+**Bug 3 — « toujours afficher la nameplate »** : PAS de régression constatée. Le carry-forward
+per-champ inconditionnel existe déjà backend (`overlayIdentityFromFallback` +
+`mergeCustomInto`, title-isolé) ; la nameplate de JGtm sur Infinite S'AFFICHE (dernière connue
+104-001-gothic servie malgré l'emblème new-gen sans nameplate upstream). Aucun code — conforme
+à la directive apparence 2026-07-08.
+
+**Bug 4 — « En placement » dans « Sélections récentes »** : déjà correct. La carte playlists
+récentes (`HomeRecentPlaylistsCard`) localise le placement via `measurement_matches_remaining`
+(« En placement (X/Y) » / « Non classé »). Aucune surface home n'affiche le littéral brut
+« Placement » (le chemin canonical rend un tier nil pour le placement). Aucun code.
+
+**Gates** : tsc OK ; eslint 0 erreur ; vitest 2167 passés/0 échec ; go build/vet OK ;
+golangci-lint --new-from-rev=origin/main 0 issue ; go test analysis/service/wire/duckdb OK ;
+gofmt OK. Vérif navigateur (JGtm, session forgée localement) pour bugs 2/5/6.
+
+**Prochaine étape** : push branche + attente CI ; merge = superviseur (train). Re-vérif prod
+utilisateur : switch de titre (Spartan ID reflète le titre actif) + « Super Fiesta »/« Delta »
+partout + login SISU d'un joueur existant → dashboard direct.
+
+---
+
 ## [2026-07-15] Fix UI P0 — déconnexion en mode xbox laisse une page sans nav L1
 
 **Statut** : Complété (bug 1 du lot fixes UI post-train).
