@@ -1,3 +1,26 @@
+## [2026-07-17] Lot i18n tiers de rangs — centralisation mapping + defis locale-aware (branche chore/backlog-train-2026-07)
+
+**Statut** : En cours (sous-tache 1 Completee ; sous-tache 2 En cours).
+
+**Contexte** : item backlog [i18n] — deux sous-taches independantes, un commit chacune.
+
+**Sous-tache 1 — Centralisation mapping des noms de tiers CSR (Completee)** :
+Verification sur pieces : la source unique existait deja (`lib/skillTiers.ts` :
+`LUSR_TIER_GRID`/`CSR_TIER_GRID` + `localizeTierName`/`localizeTierLabel` via
+`TIER_NAME_BY_KEY`). La 3e « copie » citee (`localizeTierLabel`) y etait DEJA centralisee ;
+`CareerRankingBlock` consommait deja ces helpers. Il restait UNE seule duplication reelle :
+`CSR_TIER_FR` (+ `tierLabel` local) dans `features/explorer/ExplorerTargetSeasonCSR.tsx`,
+qui re-derivait le mapping FR depuis `CSR_TIER_GRID`. Migre vers `localizeTierName` (import
+skillTiers), `CSR_TIER_FR` supprime (0 code mort). Garde-rail pose :
+`lib/skillTiers.guard.test.ts` interdit tout litteral de nom de tier FR distinctif
+(« Argent »/« Platine »/« Diamant ») sous `src/features/**` — la couche i18n legitime
+(`lib/i18n/manifests|generated`) vit sous `lib/`, hors scan.
+Gates : typecheck OK ; lint 0 erreur (68 warnings baseline, fichiers non touches) ;
+vitest skillTiers + guard + explorer = 95 tests OK.
+Decouverte hors perimetre (non traitee) : `SUBTIER_ROMAN` (romain I..VI) est duplique entre
+`ExplorerTargetSeasonCSR.tsx` et `features/career/CareerRankingBlock.tsx` (`SUB_TIER_ROMAN`) —
+c'est le mapping des SOUS-paliers, pas des noms de tiers ; hors perimetre de cet item.
+
 ## [2026-07-17] Extension registre H5 au long-tail v_weapon_kills (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété.
