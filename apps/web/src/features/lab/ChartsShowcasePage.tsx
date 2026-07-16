@@ -1,5 +1,5 @@
 /**
- * ChartsShowcasePage — galerie des 11 wrappers ECharts du projet.
+ * ChartsShowcasePage — galerie des 10 wrappers ECharts du projet.
  *
  * Phase 3 Option C : alternative légère à Storybook. Rend chaque wrapper
  * avec des données de démo statiques pour servir de :
@@ -27,9 +27,8 @@ import { RadarChart } from '@/components/charts/RadarChart'
 import { ScatterChart } from '@/components/charts/ScatterChart'
 import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
 
-import { TimeseriesCombatYield } from '@/features/timeseries/TimeseriesCombatYield'
 import { TimeseriesKdaBars } from '@/features/timeseries/TimeseriesKdaBars'
-import type { MatchHistoryRow, TimeseriesMatchRow } from '@/lib/api/types'
+import type { TimeseriesMatchRow } from '@/lib/api/types'
 import { DOW_LABELS_FR } from '@/lib/formatters'
 
 // ─── Sample data ───────────────────────────────────────────────────────────
@@ -182,18 +181,6 @@ const OUTCOME_TAPE = [
   { matchId: '8', outcome: 'win' as const, map: 'Bazaar' },
 ]
 
-const COMBAT_YIELD_ROWS: MatchHistoryRow[] = Array.from({ length: 8 }, (_, i) => ({
-  match_id: String(i),
-  start_time: new Date(2026, 0, 1 + i).toISOString(),
-  outcome: i % 3 === 0 ? 3 : 2,
-  outcome_label: '',
-  outcome_tone: 'positive',
-  detail: '',
-  is_favorite: false,
-  offensive_conversion: 0.6 + Math.sin(i / 2) * 0.3,
-  defensive_resistance: 1.2 + Math.cos(i / 2) * 0.5,
-})) as unknown as MatchHistoryRow[]
-
 const KDA_ROWS: TimeseriesMatchRow[] = Array.from({ length: 10 }, (_, i) => ({
   match_id: String(i),
   index: i,
@@ -343,24 +330,6 @@ export function ChartsShowcasePage() {
           <OutcomeSequenceTape
             matches={OUTCOME_TAPE}
             labels={{ win: 'Win', loss: 'Loss', tie: 'Tie', dnf: 'DNF' }}
-          />
-        </ShowcaseSection>
-
-        <ShowcaseSection
-          title="TimeseriesCombatYield"
-          description="2 courbes OC + DR avec markLine références p80"
-        >
-          <TimeseriesCombatYield
-            rows={COMBAT_YIELD_ROWS}
-            height={260}
-            labels={{
-              ocSeries: 'Offensive (OC)',
-              drSeries: 'Defensive (DR)',
-              ocReference: 'p80 OC',
-              drReference: 'p80 DR',
-              emptyTitle: '',
-              emptyDescription: '',
-            }}
           />
         </ShowcaseSection>
 

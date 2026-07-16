@@ -228,6 +228,21 @@ func IsCrawler(userAgent string) bool {
 	return false
 }
 
+// LocaleFromParams resout la locale d'un apercu de lien. Un parametre de requete
+// ?lang= explicite (fr/en) PRIME sur l'Accept-Language : le crawler social envoie
+// SA propre langue (souvent en/absente), pas celle du partageur — un lien portant
+// ?lang=fr permet donc a l'auteur du partage de figer la langue de la carte. Vide
+// ou inconnu -> repli sur l'Accept-Language (ParseLocale, defaut FR).
+func LocaleFromParams(queryLang, acceptLanguage string) Locale {
+	switch strings.ToLower(strings.TrimSpace(queryLang)) {
+	case "en":
+		return LocaleEN
+	case "fr":
+		return LocaleFR
+	}
+	return ParseLocale(acceptLanguage)
+}
+
 // ParseLocale deduit la locale depuis un en-tete Accept-Language. Defaut FR
 // (audience primaire) ; EN seulement si la langue preferee est l'anglais.
 func ParseLocale(acceptLanguage string) Locale {

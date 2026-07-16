@@ -118,8 +118,9 @@ describe('MatchHeaderCard', () => {
     expect(screen.getByText('87 - 62')).toBeInTheDocument()
     expect(screen.getByText('Classée')).toBeInTheDocument()
     expect(screen.getByText('76')).toBeInTheDocument()
-    // "Diamond 1" apparaît 2× : libellé du rang + label bas-gauche de la barre.
-    expect(screen.getAllByText('Diamond 1').length).toBeGreaterThan(0)
+    // tier_label baké "Diamond 1" (EN, cas H5) localisé en FR → "Diamant 1",
+    // affiché 2× : libellé du rang + label bas-gauche de la barre.
+    expect(screen.getAllByText('Diamant 1').length).toBeGreaterThan(0)
     expect(screen.getByText('CSR 1452')).toBeInTheDocument()
     expect(screen.getByText('▲ +34')).toBeInTheDocument()
     expect(screen.getByText('Performance')).toBeInTheDocument()

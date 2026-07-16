@@ -16,6 +16,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken, tokenCssVar } from '@/lib/accessibility'
 import {
   CHART_BG,
+  escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
   getLegendBase,
@@ -32,6 +33,8 @@ export interface WinRateVsHistoryBulletOpts {
   historyLabel: string
   parityLabel?: string
   zeroWinrateLabel?: string
+  /** Ligne « Session : X parties · Historique : Y parties » du tooltip. */
+  countsLabel?: (session: number, history?: number) => string
 }
 
 function sessionItemColor(row: MapBreakdownRow): string {
@@ -46,6 +49,36 @@ function toPercent(v: number): number {
   return parseFloat((v * 100).toFixed(1))
 }
 
+type BulletTooltipParam = { dataIndex?: number; marker?: string; seriesName?: string; value?: number | null }
+
+/**
+ * bulletTooltipFormatter — tooltip custom : titre carte + valeurs par série +
+ * ligne « nombre de parties » (session ET historique). escapeHtml sur les
+ * données non constantes (nom de carte UGC) — garde-rail XSS tooltip.
+ */
+function bulletTooltipFormatter(
+  sorted: MapBreakdownRow[],
+  mapLabelOf: (mapUI: string) => string,
+  countsLabel?: (session: number, history?: number) => string,
+) {
+  return (params: unknown): string => {
+    const arr = (Array.isArray(params) ? params : [params]) as BulletTooltipParam[]
+    const row = sorted[arr[0]?.dataIndex ?? 0]
+    if (!row) return ''
+    const header = escapeHtml(mapLabelOf(row.map_ui))
+    const lines = arr
+      .map((p) => {
+        const val = typeof p.value === 'number' ? `${p.value.toFixed(1)}%` : '-'
+        return `${p.marker ?? ''}${escapeHtml(p.seriesName ?? '')}: ${val}`
+      })
+      .join('<br/>')
+    const counts = countsLabel
+      ? `<br/>${escapeHtml(countsLabel(row.match_count, row.historical_match_count))}`
+      : ''
+    return `${header}<br/>${lines}${counts}`
+  }
+}
+
 export function buildWinRateVsHistoryBulletOption(
   series: ChartSeries<MapBreakdownRow>[],
   opts: WinRateVsHistoryBulletOpts,
@@ -53,9 +86,11 @@ export function buildWinRateVsHistoryBulletOption(
   const rows = series[0]?.datapoints ?? []
   if (rows.length === 0) return { backgroundColor: CHART_BG }
 
-  const { mapLabelOf, sessionLabel, historyLabel, parityLabel, zeroWinrateLabel } = opts
+  const { mapLabelOf, sessionLabel, historyLabel, parityLabel, zeroWinrateLabel, countsLabel } = opts
   const sorted = [...rows].sort((a, b) => b.match_count - a.match_count)
-  const mapLabels = sorted.map((r) => mapLabelOf(r.map_ui))
+  // Suffixe « (n) » = nombre de parties de la session sur la carte (indicateur
+  // discret toujours visible ; le tooltip détaille session + historique).
+  const mapLabels = sorted.map((r) => `${mapLabelOf(r.map_ui)} (${r.match_count})`)
   const negColor = resolveToken('divergent-neg')
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
@@ -82,7 +117,7 @@ export function buildWinRateVsHistoryBulletOption(
       ...getTooltipBase(tc),
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      valueFormatter: (v: unknown) => (typeof v === 'number' ? `${v.toFixed(1)}%` : '-'),
+      formatter: bulletTooltipFormatter(sorted, mapLabelOf, countsLabel),
     },
     legend: { ...getLegendBase(tc), data: [historyLabel, sessionLabel] },
     xAxis: {

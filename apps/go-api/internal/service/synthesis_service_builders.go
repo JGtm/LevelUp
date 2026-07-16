@@ -178,6 +178,14 @@ func buildSynthesisDetailedStatsFromCanonical(rows []canonical.PlayerMatchRow, p
 	return stats
 }
 
+// synthesisWeaponChartTopN plafonne le nombre de barres des DEUX graphes d'armes
+// « Frags par arme » (buildTopWeaponKills) ET « Précision par arme »
+// (buildWeaponAccuracy) — même limitation par titre (demande utilisateur B1 :
+// « limiter de la même manière », Frags par arme = référence). C'est un cap de
+// COMPTE (top N après tri par la métrique du graphe), pas un seuil de volume :
+// l'exclusion volume-based reste refusée (cf. buildWeaponAccuracy).
+const synthesisWeaponChartTopN = 20
+
 // buildSynthesisFunStatsFromAwards agrege les fun stats depuis personal_score_awards.
 // buildTopWeaponKills filtre les rows sans label (weapon ID non résolu), trie
 // par kills desc et retourne les top N entrées.
@@ -227,12 +235,15 @@ func buildKillsByRole(rows []port.WeaponKillRow) []domain.SynthesisRoleKillEntry
 	return out
 }
 
-// buildWeaponAccuracy construit le classement précision par arme : TOUTES les
-// armes effectivement tirées (Label résolu ET ShotsFired > 0 — aucun seuil de
-// volume, conformément à la demande utilisateur). Accuracy = landed / fired en
-// unité 0..1. Tri par précision décroissante (tie-break Label alpha pour un ordre
-// stable). nil si aucune arme valide (→ champ omis de la réponse).
-func buildWeaponAccuracy(rows []port.WeaponAccuracyRow) []domain.SynthesisWeaponAccuracyEntry {
+// buildWeaponAccuracy construit le classement précision par arme : armes
+// effectivement tirées (Label résolu ET ShotsFired > 0 — AUCUN seuil de volume,
+// conformément à la demande utilisateur). Accuracy = landed / fired en unité
+// 0..1. Tri par précision décroissante (tie-break Label alpha pour un ordre
+// stable), PUIS cap top N (n = synthesisWeaponChartTopN) — même limitation que
+// « Frags par arme » (buildTopWeaponKills), demande utilisateur B1. Le cap est un
+// plafond de COMPTE appliqué après tri (identique au reference), pas un filtre de
+// volume. nil si aucune arme valide (→ champ omis de la réponse).
+func buildWeaponAccuracy(rows []port.WeaponAccuracyRow, n int) []domain.SynthesisWeaponAccuracyEntry {
 	out := make([]domain.SynthesisWeaponAccuracyEntry, 0, len(rows))
 	for _, r := range rows {
 		if r.Label == "" || r.ShotsFired <= 0 {
@@ -254,6 +265,9 @@ func buildWeaponAccuracy(rows []port.WeaponAccuracyRow) []domain.SynthesisWeapon
 		}
 		return out[i].Label < out[j].Label
 	})
+	if len(out) > n {
+		out = out[:n]
+	}
 	return out
 }
 

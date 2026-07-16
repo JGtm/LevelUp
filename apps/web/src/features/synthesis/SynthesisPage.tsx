@@ -304,6 +304,15 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                 <div className="flex-1 min-w-0">
                   <SynthesisKillTypesDonut stats={detailedStats} totalKills={overview.total_kills} />
                 </div>
+                {/* « Frags par type d'arme » (rôle de combat, registre) — placé à
+                    DROITE de « Répartition des frags » (B2a). Colonne montée
+                    seulement s'il y a des rôles : dans une rangée flex, un wrapper
+                    flex-1 vide claimerait de l'espace (colonne fantôme). */}
+                {killsByRole && killsByRole.length > 0 && (
+                  <div className="flex-1 min-w-0">
+                    <SynthesisRoleKillsDonut roles={killsByRole} />
+                  </div>
+                )}
                 <div className="flex flex-col gap-3 w-[22rem] shrink-0">
 
                   {/* Taux de victoire */}
@@ -447,11 +456,6 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                 )}
               </div>
 
-              {/* Frags par rôle de combat (registre d'armes) — premier consommateur
-                  UI du registre, title-agnostic (Halo Infinite + Halo 5). */}
-              <div className="mt-4 max-w-[28rem]">
-                <SynthesisRoleKillsDonut roles={killsByRole} />
-              </div>
             </div>
 
           </div>

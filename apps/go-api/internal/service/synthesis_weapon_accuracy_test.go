@@ -2,14 +2,16 @@ package service
 
 import (
 	"math"
+	"strconv"
 	"testing"
 
 	"levelup/go-api/internal/port"
 )
 
 // TestBuildWeaponAccuracy verrouille l'agrégation précision par arme : accuracy =
-// landed/fired (0..1), TOUTES les armes tirées (aucun seuil de volume), exclusion
-// des rows sans label ou sans tir, tri par précision décroissante (tie-break label).
+// landed/fired (0..1), armes tirées sans SEUIL DE VOLUME (faible volume conservé),
+// exclusion des rows sans label ou sans tir, tri par précision décroissante
+// (tie-break label). Le cap top N est couvert par TestBuildWeaponAccuracy_TopNCap.
 func TestBuildWeaponAccuracy(t *testing.T) {
 	rows := []port.WeaponAccuracyRow{
 		{WeaponID: 100, Label: "BR75", ShotsFired: 100, ShotsLanded: 40},  // 0.40
@@ -18,7 +20,7 @@ func TestBuildWeaponAccuracy(t *testing.T) {
 		{WeaponID: 103, Label: "", ShotsFired: 80, ShotsLanded: 80},       // sans label → ignoré
 		{WeaponID: 104, Label: "Sword", ShotsFired: 0, ShotsLanded: 0},    // jamais tirée → ignorée
 	}
-	out := buildWeaponAccuracy(rows)
+	out := buildWeaponAccuracy(rows, synthesisWeaponChartTopN)
 	if len(out) != 3 {
 		t.Fatalf("len = %d, want 3 (%+v)", len(out), out)
 	}
@@ -36,11 +38,42 @@ func TestBuildWeaponAccuracy(t *testing.T) {
 	if out[0].ShotsFired != 50 || out[0].ShotsLanded != 45 {
 		t.Errorf("out[0] shots = %d/%d, want 50/45", out[0].ShotsLanded, out[0].ShotsFired)
 	}
-	if buildWeaponAccuracy(nil) != nil {
+	if buildWeaponAccuracy(nil, synthesisWeaponChartTopN) != nil {
 		t.Error("nil rows → nil")
 	}
-	if buildWeaponAccuracy([]port.WeaponAccuracyRow{{Label: "", ShotsFired: 9}}) != nil {
+	if buildWeaponAccuracy([]port.WeaponAccuracyRow{{Label: "", ShotsFired: 9}}, synthesisWeaponChartTopN) != nil {
 		t.Error("rows sans label → nil attendu")
+	}
+}
+
+// TestBuildWeaponAccuracy_TopNCap verrouille le cap top N (demande B1 : même
+// limitation que « Frags par arme »). Au-delà de N armes valides, seules les N
+// plus précises sont conservées, dans l'ordre décroissant.
+func TestBuildWeaponAccuracy_TopNCap(t *testing.T) {
+	// N+5 armes valides, précision croissante avec l'index (0.01 .. 0.25).
+	total := synthesisWeaponChartTopN + 5
+	rows := make([]port.WeaponAccuracyRow, 0, total)
+	for i := 1; i <= total; i++ {
+		rows = append(rows, port.WeaponAccuracyRow{
+			WeaponID:    int64(i),
+			Label:       "W" + strconv.Itoa(i),
+			ShotsFired:  100,
+			ShotsLanded: i, // accuracy = i/100 → distincte et croissante
+		})
+	}
+	out := buildWeaponAccuracy(rows, synthesisWeaponChartTopN)
+	if len(out) != synthesisWeaponChartTopN {
+		t.Fatalf("len = %d, want cap %d", len(out), synthesisWeaponChartTopN)
+	}
+	// La plus précise (W{total}, accuracy total/100) doit être en tête ; les 5
+	// moins précises (W1..W5) doivent être coupées.
+	if out[0].Label != "W"+strconv.Itoa(total) {
+		t.Errorf("out[0] = %q, want la plus précise W%d", out[0].Label, total)
+	}
+	last := out[len(out)-1]
+	if math.Abs(last.Accuracy-float64(total-synthesisWeaponChartTopN+1)/100) > 1e-9 {
+		t.Errorf("out[last] accuracy = %.4f, want %.4f (W%d, seuil du cap)",
+			last.Accuracy, float64(total-synthesisWeaponChartTopN+1)/100, total-synthesisWeaponChartTopN+1)
 	}
 }
 

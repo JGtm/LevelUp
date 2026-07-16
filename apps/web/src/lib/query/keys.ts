@@ -282,8 +282,6 @@ export const queryKeys = {
     filePath: string | null,
     windowMinutes: number,
   ) => ['media', 'match-candidates', playerSlug, filePath, windowMinutes] as const,
-  combatYieldHistory: (playerSlug: string, filterHash: string) =>
-    ['combatYieldHistory', playerSlug, filterHash] as const,
   /** Préfixe broad — invalide tous les `filtersResolve(playerSlug, *)`. */
   filtersResolveAll: (playerSlug: string) => ['filters-resolve', playerSlug] as const,
   /** Préfixe broad — invalide tous les `adminDataQualityIssues(*)`. */

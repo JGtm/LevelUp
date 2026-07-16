@@ -3,13 +3,15 @@
  * avec un joueur cible (Explorer mode Joueur).
  *
  * Variante intensité de SynthesisHeatmapChart : la couleur reflète le `count`
- * (nombre de matchs croisés) via la rampe sémantique heatmap-cold → heatmap-hot,
- * pas le win-rate — l'intention produit est « quand se croise-t-on le plus ? ».
- * Le tooltip rappelle le win-rate à titre informatif.
+ * (nombre de matchs croisés) via la rampe NEUTRE de fréquence (mono-teinte,
+ * luminance monotone, CVD-safe), pas le win-rate — l'intention produit est
+ * « quand se croise-t-on le plus ? ». Le tooltip rappelle le win-rate à titre
+ * informatif.
  */
 import { useCallback, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { heatmapRampTokens } from '@/components/charts/heatmapColors'
 import { CHART_BG, getEChartsThemeColors } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import { dowLabels, HOUR_LABELS, calendarChartText } from '@/lib/formatters'
@@ -97,12 +99,10 @@ function buildHeatmapOption(cells: HeatmapCell[], locale: ManifestLocale): EChar
       top: 'center',
       itemWidth: 12,
       itemHeight: 140,
-      inRange: {
-        color: [
-          resolveToken('heatmap-cold'),
-          resolveToken('heatmap-hot'),
-        ],
-      },
+      // Rampe NEUTRE de fréquence (mono-teinte, luminance monotone, CVD-safe) :
+      // intensité de rencontre, pas une perf → rampe centralisée
+      // (cf. components/charts/heatmapColors).
+      inRange: { color: heatmapRampTokens('frequency').map(resolveToken) },
       formatter: (val: number) => `${Math.round(val)}`,
       text: [txt.matches, ''],
       textStyle: { color: tc.axisLabel, fontSize: 10 },

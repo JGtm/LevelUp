@@ -63,6 +63,15 @@ Each item cites its source so it can be re-verified against the code. Structure:
       `grep -riE 'FATAL|panic' /opt/levelup/data/logs/*.log`. Check `migration.log`,
       `duckdb.log`, `provider.log`, `server.crash.log` in particular (source: memory
       `auth_logs_per_category_file`; log set verified on the VPS).
+- [ ] **Media tooling present (ffmpeg/ffprobe + codecs).** Run
+      `docker compose exec levelup levelup check-env` and confirm ffmpeg AND ffprobe both
+      resolve, and the required encoders (`libwebp`, `libx264`, `aac`) and muxers (`hls`,
+      `mp4`) are all `[OK]`. A missing component silently breaks WebP thumbnails, HLS
+      transcode or live remux at the first media upload (source:
+      `internal/ops/media_tooling.go`; the server also logs this non-blocking at boot —
+      grep `media tooling` in the console/boot logs). NOTE: the live VPS nginx config must
+      mirror `packaging/nginx/levelup.conf` — in particular `client_max_body_size 2g;` on
+      `location /api/`, or video uploads fail with HTTP 413.
 - [ ] **`/debug/vars` reachable admin-only.** Mounted behind `RequireAuth` +
       `RequireAdmin`, exposes the `levelup` expvar namespace (source:
       `internal/api/server_apiv1.go` `r.Mount("/debug/vars", http.DefaultServeMux)` inside

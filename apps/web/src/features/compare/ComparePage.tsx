@@ -12,6 +12,7 @@ import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
 import { formatMessage } from '@/lib/i18n/format'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
+import { localizeTierLabel } from '@/lib/skillTiers'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { CompareMetricRow, CompareResponse, MatchEncounterBadge } from '@/lib/api/types'
 
@@ -35,7 +36,13 @@ function formatMetricValue(
 ) {
   if (!available) return text.notAvailable
   // Libellé prêt-à-afficher fourni par le back (rang carrière → titre, CSR → tier).
-  if (display) return display
+  // Le palier CSR/LUSR est composé en FR au sync (non locale-aware) → on localise le
+  // NOM de palier à l'affichage. Un titre de rang carrière (déjà localisé côté back)
+  // ou tout libellé sans palier connu est renvoyé inchangé par localizeTierLabel.
+  if (display) {
+    const loc = text.intlLocale.toLowerCase().startsWith('en') ? 'en' : 'fr'
+    return localizeTierLabel(display, loc) ?? display
+  }
   if (typeof value !== 'number') return String(value)
   if (metric === 'win_rate' || metric === 'accuracy') {
     return `${(value * 100).toLocaleString(text.intlLocale, { maximumFractionDigits: 1 })} %`

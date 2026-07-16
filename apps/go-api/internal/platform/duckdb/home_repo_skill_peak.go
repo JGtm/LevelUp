@@ -436,6 +436,20 @@ func unrankedBadgeURL(placementsCompleted int, titleSlug string) *string {
 //	threshold=5  : completed * 10 / 5  = 0,2,4,6,8 (5 images utilisées)
 //
 // N est ensuite clampé [0, 9] pour les bornes (completed négatif ou ≥ threshold).
+//
+// Résolution du titre : les badges unranked_N.png sont des visuels GÉNÉRIQUES LevelUp
+// (gris, N/seuil de placement), PAS des insignes CSR title-specific. Ils ne sont livrés
+// que sous le dossier du titre par défaut (static/ranks/halo_infinite/). Un titre
+// additionnel (ex. halo_5) n'a pas de dossier ranks/ propre : composer l'URL avec son
+// slug produisait /static/ranks/halo_5/unranked_0.png → 404 (file-server nu, sans
+// fallback) → le front affichait « ? » sur les playlists « Non classé » H5. On résout
+// donc toujours vers le titre par défaut — cohérent avec le fallback static HINF des
+// insignes CSR matured (buildHomeSkillPeakBadgeURLForThreshold ci-dessus).
+//
+// builder d'insignes matured ; les badges unranked sont des assets partagés → toujours
+// résolus sous le titre par défaut (voir doc ci-dessus).
+//
+//nolint:unparam // titleSlug conservé pour la symétrie de signature title-aware avec le
 func unrankedBadgeURLForThreshold(placementsCompleted, threshold int, titleSlug string) *string {
 	if threshold <= 0 {
 		threshold = 10 // garde-fou
@@ -448,11 +462,7 @@ func unrankedBadgeURLForThreshold(placementsCompleted, threshold int, titleSlug 
 	if n > 9 {
 		n = 9
 	}
-	slug := titleSlug
-	if slug == "" {
-		slug = titlepkg.DefaultSlug
-	}
-	url := static.URL(static.KindCSRRank, slug, fmt.Sprintf("unranked_%d", n), ".png")
+	url := static.URL(static.KindCSRRank, titlepkg.DefaultSlug, fmt.Sprintf("unranked_%d", n), ".png")
 	return &url
 }
 

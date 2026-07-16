@@ -137,12 +137,13 @@ export function TimeseriesProgressionTab({
 
       {/* Progression CSR (classé) ou LUSR (non classé) — masquée pour un titre
           sans système de rang (CSR/LUSR). Quand la ventilation des frags est
-          disponible : donut (gauche) | progression (droite), colonne donut plus
-          étroite pour laisser respirer la time-series ; sinon la progression
-          reprend toute la largeur. */}
+          disponible : donut « Répartition des frags » (gauche) | progression
+          (droite). Répartition ~40/60 (B3 : le donut était trop petit — élargi
+          de ~15 points vs l'ancien 20rem fixe, le SVG se cappe seul à 700px) ;
+          sinon la progression reprend toute la largeur. */}
       {hasSkillRating &&
         (data.detailed_stats && !hasKillMechanics ? (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
             <KillTypesDonutCard
               title={t('timeseries.progression.kill_types_title')}
               otherLabel={t('timeseries.progression.kill_type_other')}

@@ -31,6 +31,7 @@ encounter_stats AS (
         COUNT(DISTINCT CASE WHEN e.opp_team_id  = e.my_team_id AND %s THEN e.match_id END) AS losses_as_ally,
         COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id AND %s THEN e.match_id END) AS wins_vs_enemy,
         COUNT(DISTINCT CASE WHEN e.opp_team_id <> e.my_team_id AND %s THEN e.match_id END) AS losses_vs_enemy,
+        MIN(e.start_time) AS first_seen_at,
         MAX(e.start_time) AS last_seen_at
     FROM encounters e
     GROUP BY e.xuid
@@ -64,6 +65,7 @@ SELECT
     es.losses_vs_enemy,
     COALESCE(kv.kills_dealt, 0)    AS kills_dealt,
     COALESCE(kv.deaths_suffered,0) AS deaths_suffered,
+    es.first_seen_at,
     es.last_seen_at
 FROM encounter_stats es
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = es.xuid
@@ -380,7 +382,7 @@ SELECT
     END                                                 AS end_time
 FROM match_participants mp
 JOIN match_registry r ON r.match_id = mp.match_id
-WHERE mp.xuid = ?
+WHERE mp.xuid = ? ` + campaignExclusionToken + `
 ORDER BY ` + StartTimeCanonicalSQL("r") + ` ASC`
 
 // Q23 : Stats series — chargement des matchs avec metriques pour perf score.
@@ -424,7 +426,7 @@ SELECT
     END AS defensive_resistance
 FROM match_participants mp
 JOIN match_registry r ON r.match_id = mp.match_id
-WHERE mp.xuid = ?
+WHERE mp.xuid = ? ` + campaignExclusionToken + `
 ORDER BY ` + StartTimeCanonicalSQL("r") + ` ASC`
 
 // Q23StatsMatchesPlayerEnrich : Phase B de Q23 — performance_score + session

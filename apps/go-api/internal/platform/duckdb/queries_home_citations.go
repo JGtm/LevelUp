@@ -31,7 +31,7 @@ WITH base AS (
     SELECT mp.match_id
     FROM match_participants mp
     JOIN match_registry r ON r.match_id = mp.match_id
-    WHERE mp.xuid = ?
+    WHERE mp.xuid = ? ` + campaignExclusionToken + `
     ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC
     LIMIT 150
 ),
@@ -194,9 +194,15 @@ WHERE citation_name_norm IN (%s)
 GROUP BY citation_name_norm, citation_name_display, citation_name_display_en, image_path, tier_targets`
 
 // Q26b : Home -- nombre total de matchs d un joueur (pas de LIMIT).
-// Parametre : ?1 = xuid du joueur.
-const Q26bCountPlayerMatches = `
-SELECT COUNT(*) FROM match_participants WHERE xuid = ?`
+// Parametre : ?1 = xuid du joueur. JOIN match_registry pour exposer game_variant_id
+// (le token d'exclusion Campagne exige l'alias registre — match_participants seul
+// ne porte pas la colonne). Le JOIN est INNER : tout match_participants a un
+// match_registry parent, donc il ne retire que les matchs Campagne (via le token).
+var Q26bCountPlayerMatches = `
+SELECT COUNT(*)
+FROM match_participants mp
+JOIN match_registry r ON r.match_id = mp.match_id
+WHERE mp.xuid = ? ` + campaignExclusionToken
 
 // Q26c : Home -- identitÃ© record compacte depuis career_progression.
 // Un seul scan via ARG_MAX â€” remplace les 5 sous-requÃªtes corrÃ©lÃ©es de l'ancienne version.
@@ -346,7 +352,7 @@ WITH scoped AS (
 		) AS rn_recent
 	FROM match_participants mp
 	JOIN match_registry r ON r.match_id = mp.match_id
-	WHERE mp.xuid = ?
+	WHERE mp.xuid = ? ` + campaignExclusionToken + `
 	  AND COALESCE(NULLIF(TRIM(r.playlist_id), ''), NULLIF(TRIM(r.playlist_name), '')) IS NOT NULL
 ),
 recent AS (

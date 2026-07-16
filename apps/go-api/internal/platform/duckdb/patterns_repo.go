@@ -133,7 +133,7 @@ SELECT
     p.team_mmr IS NOT NULL AS is_ranked
 FROM match_participants p
 JOIN match_registry r USING (match_id)
-WHERE p.xuid = ?
+WHERE p.xuid = ?` + excludeCampaignClause(r.pdb.TitleSlug, "r") + `
 ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC
 LIMIT ?`
 

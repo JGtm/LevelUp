@@ -422,19 +422,6 @@ func TestHomeHandler_GetBattlePass_PlayerNotFound(t *testing.T) {
 	}
 }
 
-func TestHomeHandler_GetChallenges_PlayerNotFound(t *testing.T) {
-	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
-		return nil, ctx, "", "", errors.New("not_found")
-	}
-	r := newHomeRouter(factory, nil)
-	req := httptest.NewRequest(http.MethodGet, "/players/unknown/challenges", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", w.Code)
-	}
-}
-
 // NB (Phase 3b) : les tests TestSquadHandler_GetSynthesisPage_* ont été retirés —
 // la route POST /pages/synthesis est servie par SynthesisHandler (server.go), pas
 // par SquadHandler ; sa méthode HTTP côté squad était morte (jamais montée en prod)

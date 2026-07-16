@@ -6,6 +6,14 @@
  * visualMap discret (5 paliers) sur les seuils SCORE_THRESHOLDS (75/60/45/30).
  * yAxis = joueurs (moi en haut). xAxis = toutes les cartes jouées en escouade,
  * triées par fréquence décroissante.
+ *
+ * Accessibilité (CVD) : ce heatmap reste volontairement HORS du helper
+ * heatmapRampTokens — ce dernier ne couvre que les rampes CONTINUES
+ * (sequential/frequency/divergent). Ici l'échelle est ORDINALE discrète à 5
+ * paliers, encodée par les tokens sémantiques perf-tier-* (palette-aware et
+ * CVD-safe par construction : axe bleu→jaune→vermillon en palette daltonienne,
+ * cf. palettes/okabe-ito) ET chaque palier porte un label texte (opts.pieceLabels)
+ * qui désambiguïse même à teintes proches. Migration non pertinente.
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { resolveToken } from '@/lib/accessibility'

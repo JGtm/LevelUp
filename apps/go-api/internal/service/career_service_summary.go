@@ -4,11 +4,13 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -61,7 +63,7 @@ func buildCareerSummary(rank *domain.CareerRankData) domain.CareerRankSummary {
 // snapshot), `rankCatalogApplies` est false : on NE consulte ni le catalogue ni les
 // images, sinon on écraserait « SR N » par un career rank HINF (et collerait une
 // image de rang HINF erronée). Le SR s'affiche alors en texte seul (by design h5).
-func (s *CareerService) buildCareerSummaryEnriched(rank *domain.CareerRankData) domain.CareerRankSummary {
+func (s *CareerService) buildCareerSummaryEnriched(ctx context.Context, rank *domain.CareerRankData) domain.CareerRankSummary {
 	summary := buildCareerSummary(rank)
 	if rank == nil {
 		return summary
@@ -73,7 +75,11 @@ func (s *CareerService) buildCareerSummaryEnriched(rank *domain.CareerRankData) 
 		summary.RankImageURL = img
 	}
 	if s.rankCatalog != nil {
-		if label, ok := s.rankCatalog.FullLabel(rank.RankNumber, "fr"); ok && label != "" {
+		// Libellé du rang COURANT dans la locale de requête (header X-LevelUp-Locale
+		// → ctxkeys.Locale). Auparavant figé en "fr" : sous UI EN le rang de carrière
+		// restait en français (« Colonel Platine 2 » au lieu de « Colonel Platinum 2 »),
+		// alors que next_rank_name_{fr,en} portait déjà les deux langues.
+		if label, ok := s.rankCatalog.FullLabel(rank.RankNumber, ctxkeys.Locale(ctx)); ok && label != "" {
 			summary.RankLabel = rankSubRoman(strings.TrimSpace(label))
 		}
 	}

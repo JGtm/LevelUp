@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -126,12 +127,10 @@ func (s *Halo5MatchHistorySource) loadRows(ctx context.Context, matchIDs []strin
 
 	query := h5MatchSummarySelect
 	args := []any{s.gamertag}
-	// Masquage read-side des modes Campagne (cf. match_read_exclusions). Source
-	// h5-only → titre fixe "halo_5". Alias "r" = match_registry dans le SELECT.
-	if clause, exArgs := duckdb.ExcludedVariantClause("halo_5", "r"); clause != "" {
-		query += clause
-		args = append(args, exArgs...)
-	}
+	// Masquage read-side des matchs Campagne (source unique
+	// analysis.SQLExcludeCampaignVariants). Source h5-only → titre fixe "halo_5".
+	// Alias "r" = match_registry dans le SELECT. Clause littérale (aucun arg).
+	query += analysis.SQLExcludeCampaignVariants("halo_5", "r")
 	if len(matchIDs) > 0 {
 		query += fmt.Sprintf(" AND p.match_id IN (%s)", duckdb.Placeholders(len(matchIDs)))
 		args = append(args, duckdb.ToAnySlice(matchIDs)...)

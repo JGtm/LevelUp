@@ -86,6 +86,8 @@ func (r *HomeRepo) loadHomeMatchesSharedPart(ctx context.Context) ([]legacymatch
 	// Set perfect-kill résolu pour le titre du joueur (HINF byte-identique).
 	// J7 : 3 params xuid — base (fenêtre 150), perfect (médailles bornées), principale.
 	q := resolvePerfectKillClause(Q26HomeMatchesSharedPart, "medal_name_id", r.titleSlug())
+	// Masquage read-side des matchs Campagne (Halo 5) dans la fenêtre CTE `base`.
+	q = resolveCampaignExclusion(q, r.titleSlug(), "r")
 	rows, err := sharedDB.QueryContext(ctx, q, r.pdb.XUID, r.pdb.XUID, r.pdb.XUID)
 	if err != nil {
 		return nil, err
@@ -284,7 +286,8 @@ func (r *HomeRepo) CountPlayerMatches(ctx context.Context) (int, error) {
 	}
 	defer release()
 	var count int
-	err = sharedDB.QueryRowContext(ctx, Q26bCountPlayerMatches, r.pdb.XUID).Scan(&count)
+	q := resolveCampaignExclusion(Q26bCountPlayerMatches, r.titleSlug(), "r")
+	err = sharedDB.QueryRowContext(ctx, q, r.pdb.XUID).Scan(&count)
 	return count, err
 }
 

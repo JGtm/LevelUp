@@ -155,28 +155,6 @@ export interface SquadCharts {
 }
 
 /** Tableaux + galerie (S9). */
-export interface HistoryPlayerCell {
-  kills?: number
-  deaths?: number
-  assists?: number
-  kda?: number
-  outcome?: Outcome
-}
-
-export interface HistoryTableRow {
-  match_id: string
-  started_at_utc: string
-  duration_seconds?: number
-  /** Durée réelle de gameplay (countdown pré-match retranché). Préférée à
-   *  duration_seconds pour l'affichage de la durée du match. */
-  gameplay_duration_seconds?: number
-  map_label?: string
-  mode_label?: string
-  playlist_label?: string
-  main_outcome: Outcome
-  player_stats: Record<string, HistoryPlayerCell>
-}
-
 export interface WeaponsTableRow {
   weapon_id: number
   label?: string
@@ -197,7 +175,6 @@ export interface MedalsGalleryEntry {
 }
 
 export interface SquadTables {
-  history?: HistoryTableRow[]
   weapons?: WeaponsTableRow[]
   medals?: MedalsGalleryEntry[]
 }

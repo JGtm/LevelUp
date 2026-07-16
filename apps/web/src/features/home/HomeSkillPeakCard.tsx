@@ -8,6 +8,7 @@
  */
 import type { HomeSkillPeakSummary } from '@/lib/api/types'
 import { unrankedBadgeURL } from '@/lib/staticAssets'
+import { localizeTierLabel } from '@/lib/skillTiers'
 import { KpiCard } from '@/components/cards/KpiCard'
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
 
@@ -15,6 +16,8 @@ export interface HomeSkillPeakCardProps {
   label: string
   peak: HomeSkillPeakSummary | null
   numberLocale: string
+  /** Locale UI ('fr'/'en') — localise le libellé de palier (tier_label baké). */
+  locale: 'fr' | 'en'
   testIdPrefix: string
   state: 'value' | 'placement' | 'neutral' | 'absent'
   detail: string
@@ -24,6 +27,7 @@ export function HomeSkillPeakCard({
   label,
   peak,
   numberLocale,
+  locale,
   testIdPrefix,
   state,
   detail,
@@ -91,7 +95,7 @@ export function HomeSkillPeakCard({
                 data-testid={peak?.tier_label && !isPlacement ? `${testIdPrefix}-tier` : `${testIdPrefix}-detail`}
                 className="truncate text-xl font-semibold text-foreground sm:text-2xl"
               >
-                {isPlacement ? detail : (peak?.tier_label ?? detail)}
+                {isPlacement ? detail : (localizeTierLabel(peak?.tier_label, locale) ?? detail)}
               </p>
             )}
             {isTierOnlyRating ? null : (
@@ -116,7 +120,7 @@ export function HomeSkillPeakCard({
                   data-testid={`${testIdPrefix}-next-tier`}
                   className="shrink-0 truncate text-2xs font-medium text-muted-foreground"
                 >
-                  {peak!.next_tier_label}
+                  {localizeTierLabel(peak!.next_tier_label, locale)}
                 </span>
               )}
             </div>

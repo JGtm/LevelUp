@@ -22,7 +22,9 @@ func newTestAdapter() *AssetURLAdapter {
 		}).
 		WithCSRResolver(func(designation string, subTier int) string {
 			switch {
-			case designation == "Onyx" && subTier == 0:
+			// Onyx est stocké à tier_id=1 dans csr_designations (sous-paliers
+			// 1-indexés) — le résolveur réel est keyé `onyx|1`, pas `onyx|0`.
+			case designation == "Onyx" && subTier == 1:
 				return "https://cdn/csr/onyx.png"
 			case designation == "Diamond" && subTier == 3:
 				return "https://cdn/csr/diamond-3.png"
@@ -94,6 +96,32 @@ func TestAssetURLAdapter_CSRRankImageURL(t *testing.T) {
 	}
 	if got := a.CSRRankImageURL("Bronze", 1); got != "" {
 		t.Errorf("CSRRankImageURL(Bronze,1) = %q, want \"\" (inconnu)", got)
+	}
+}
+
+func TestAssetURLAdapter_TeamName(t *testing.T) {
+	a := NewAssetURLAdapter().WithTeamNameResolver(func(teamID int, locale string) string {
+		names := map[int]map[string]string{
+			0: {"en": "Red", "fr": "Rouge"},
+			1: {"en": "Blue", "fr": "Bleu"},
+		}
+		if m, ok := names[teamID]; ok {
+			return m[locale]
+		}
+		return ""
+	})
+	if got := a.TeamName(0, "fr"); got != "Rouge" {
+		t.Errorf("TeamName(0,fr) = %q, want Rouge", got)
+	}
+	if got := a.TeamName(1, "en"); got != "Blue" {
+		t.Errorf("TeamName(1,en) = %q, want Blue", got)
+	}
+	if got := a.TeamName(9, "fr"); got != "" {
+		t.Errorf("TeamName(9,fr) = %q, want \"\" (team inconnu)", got)
+	}
+	// Sans résolveur injecté → "" (nil-safe, dégradation gracieuse).
+	if got := NewAssetURLAdapter().TeamName(0, "fr"); got != "" {
+		t.Errorf("TeamName sans résolveur = %q, want \"\"", got)
 	}
 }
 

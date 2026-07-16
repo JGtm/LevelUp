@@ -89,7 +89,8 @@ func (r *CareerRepo) loadTopMatchSharedRows(
 		return nil, fmt.Errorf("CareerRepo.GetTopMatches: shared reader: %w", err)
 	}
 	defer release()
-	query := fmt.Sprintf(Q9TopMatchesSharedTpl, Placeholders(len(matchIDs)))
+	query := resolveCampaignExclusion(
+		fmt.Sprintf(Q9TopMatchesSharedTpl, Placeholders(len(matchIDs))), r.titleSlug(), "r")
 	sharedArgs := make([]any, 0, len(matchIDs)+1)
 	sharedArgs = append(sharedArgs, r.pdb.XUID)
 	sharedArgs = append(sharedArgs, ToAnySlice(matchIDs)...)

@@ -244,7 +244,7 @@ WITH recent AS (
         COALESCE(r.duration_seconds, 0) AS duration_seconds
     FROM match_participants p
     JOIN match_registry r ON r.match_id = p.match_id
-    WHERE p.xuid = ?
+    WHERE p.xuid = ? ` + campaignExclusionToken + `
     ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC NULLS LAST
     LIMIT 50
 ),
@@ -296,7 +296,7 @@ WITH recent AS (
         ROW_NUMBER() OVER (PARTITION BY p.xuid ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC NULLS LAST) AS rn
     FROM match_participants p
     JOIN match_registry r ON r.match_id = p.match_id
-    WHERE p.xuid IN (%s)
+    WHERE p.xuid IN (%s) ` + campaignExclusionToken + `
 ),
 recent_capped AS (
     SELECT * FROM recent WHERE rn <= 50
@@ -398,7 +398,7 @@ FROM match_participants mp
 JOIN match_registry r ON r.match_id = mp.match_id
 LEFT JOIN perfect p ON p.match_id = mp.match_id
 WHERE mp.xuid = ?
-  AND COALESCE(r.is_firefight, FALSE) = FALSE
+  AND COALESCE(r.is_firefight, FALSE) = FALSE` + campaignExclusionToken + `
 ORDER BY start_time DESC
 LIMIT ?`
 
@@ -466,6 +466,7 @@ WITH ordered AS (
     FROM match_registry mr
     JOIN match_participants mp
         ON mr.match_id = mp.match_id AND mp.xuid = ?
+    WHERE TRUE ` + campaignExclusionToken + `
 ),
 current AS (
     SELECT idx, total FROM ordered WHERE match_id = ?

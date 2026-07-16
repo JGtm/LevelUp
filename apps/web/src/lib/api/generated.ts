@@ -769,23 +769,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/players/{player_slug}/challenges": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Challenges actifs */
-        get: operations["getChallenges"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/players/{player_slug}/pages/sessions": {
         parameters: {
             query?: never;
@@ -4331,6 +4314,7 @@ export interface components {
             /** Format: int64 */
             shots_hit?: number;
             skill_rank?: components["schemas"]["MatchScoreboardSkillRank"];
+            team_name?: string;
             team_side?: string;
             /** Format: int64 */
             top_weapon_id?: number;
@@ -6531,6 +6515,8 @@ export interface components {
             weapons_bits_cleared: number;
         };
         MapBreakdownRow: {
+            /** Format: int64 */
+            historical_match_count?: number;
             /** Format: double */
             historical_performance_avg?: number;
             /** Format: double */
@@ -9964,30 +9950,6 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Battle Pass (auth_required si non connecté) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
-                };
-            };
-            404: components["responses"]["NotFound"];
-        };
-    };
-    getChallenges: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
-                player_slug: components["parameters"]["PlayerSlug"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Challenges (auth_required si non connecté) */
             200: {
                 headers: {
                     [name: string]: unknown;

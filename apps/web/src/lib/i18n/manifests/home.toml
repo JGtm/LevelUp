@@ -394,7 +394,7 @@ fr = "matchs"
 en = "matches"
 
 [home.kpi.kills_word]
-fr = "kills"
+fr = "frags"
 en = "kills"
 
 # ─── Identité Spartan (anciennement spartanIdentity.i18n.ts) ──────────────

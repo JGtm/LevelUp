@@ -13,7 +13,7 @@
 //   - match_view_builders_header.go  : buildMatchHeader + buildScoreLabelFromMeta + buildRankBlock.
 //   - match_view_builders_summary.go : buildSummaryTabFull + computeExpectedAssists + buildExpectedStats + convertMedals + buildCitationsTab + toIntPtr.
 //   - match_view_builders_combat.go  : buildCombatTabFull + buildKillerVictimPairs + buildTugEvents + buildImpactInput + buildKDEvents.
-//   - match_view_builders_team.go    : buildTeamTabFull + convertEncounters + buildEncounterBadges* + buildMediaTab + buildNemesisMap.
+//   - match_view_builders_team.go    : buildTeamTabFull + convertEncounters + convertRelationBadges + buildMediaTab + buildNemesisMap.
 //   - match_view_converters.go       : convertTugBinsToDomain + convertImpactBadgesToDomain + convertKDPointsToDomain + computeScoreboardRowCombatYield + indexBulk{Medals,Weapons}ByXUID.
 package service
 
