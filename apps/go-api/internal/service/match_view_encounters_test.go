@@ -2,6 +2,7 @@ package service
 
 import (
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/domain"
 )
@@ -13,7 +14,7 @@ func TestConvertEncounters_OrdinalBadgeAttributed(t *testing.T) {
 		{XUID: "x_p2", Gamertag: "PlayerTwo", CountTogether: 2, IsAlly: false},
 		{XUID: "x_p3", Gamertag: "PlayerThree", CountTogether: 1, IsAlly: true}, // 1 seul match = pas d'ordinal
 	}
-	rows := convertEncounters(raw, nil)
+	rows := convertEncounters(raw, nil, time.Now())
 	if len(rows) != 3 {
 		t.Fatalf("want 3 rows, got %d", len(rows))
 	}
@@ -50,7 +51,7 @@ func TestConvertEncounters_BadgesEmptyForFreshEncounter(t *testing.T) {
 	raw := []domain.EncounterRaw{
 		{XUID: "x_new", Gamertag: "NewPlayer", CountTogether: 0, IsAlly: true},
 	}
-	rows := convertEncounters(raw, nil)
+	rows := convertEncounters(raw, nil, time.Now())
 	if len(rows[0].Badges) != 0 {
 		t.Errorf("count_together=0 should yield no badges, got %+v", rows[0].Badges)
 	}
@@ -61,7 +62,7 @@ func TestConvertEncounters_TypedLabelKey(t *testing.T) {
 	raw := []domain.EncounterRaw{
 		{XUID: "x", Gamertag: "P", CountTogether: 3, IsAlly: true},
 	}
-	rows := convertEncounters(raw, nil)
+	rows := convertEncounters(raw, nil, time.Now())
 	for _, b := range rows[0].Badges {
 		if b.Kind == "ordinal" && b.LabelKey != "narrative.encounter.ordinal" {
 			t.Errorf("LabelKey want narrative.encounter.ordinal, got %s", b.LabelKey)
@@ -88,7 +89,7 @@ func TestConvertEncounters_AllyPlusBadge_FromRichStats(t *testing.T) {
 			LossesVsEnemy: 1,
 		},
 	}
-	rows := convertEncounters(raw, stats)
+	rows := convertEncounters(raw, stats, time.Now())
 	hasAllyPlus := false
 	for _, b := range rows[0].Badges {
 		if b.Kind == "ally_plus" {
@@ -116,7 +117,7 @@ func TestConvertEncounters_ToughEnemyBadge_FromRichStats(t *testing.T) {
 			DeathsSuffered: 8, // Nemesis tue moi 8 fois -> kd_against_me = 4 > 1.5 seuil
 		},
 	}
-	rows := convertEncounters(raw, stats)
+	rows := convertEncounters(raw, stats, time.Now())
 	hasToughEnemy := false
 	for _, b := range rows[0].Badges {
 		if b.Kind == "tough_enemy" {
@@ -137,7 +138,7 @@ func TestConvertEncounters_NoAllyPlus_BelowThreshold(t *testing.T) {
 	stats := []domain.EncounterStatsRaw{
 		{XUID: "x", AllyCount: 5, WinsAsAlly: 2, LossesAsAlly: 3}, // 0.4 < 0.7
 	}
-	rows := convertEncounters(raw, stats)
+	rows := convertEncounters(raw, stats, time.Now())
 	for _, b := range rows[0].Badges {
 		if b.Kind == "ally_plus" {
 			t.Errorf("ally_plus should NOT be attributed when winrate < 0.7, got %+v", b)
@@ -157,7 +158,7 @@ func TestConvertEncounters_DegradesGracefullyWhenStatsMissing(t *testing.T) {
 	stats := []domain.EncounterStatsRaw{
 		{XUID: "x_with_stats", AllyCount: 2, WinsAsAlly: 2, LossesAsAlly: 0},
 	}
-	rows := convertEncounters(raw, stats)
+	rows := convertEncounters(raw, stats, time.Now())
 	if len(rows) != 2 {
 		t.Fatalf("want 2 rows, got %d", len(rows))
 	}
@@ -181,4 +182,50 @@ func TestEncounterWinrate_NilWhenEmpty(t *testing.T) {
 	if got := encounterWinrate(3, 1); got == nil || *got != 0.75 {
 		t.Errorf("(3+1): want 0.75, got %v", got)
 	}
+}
+
+// TestConvertEncounters_RelationSolidBadge_DuoGagnant : parité avec le hub
+// Communauté > Relations — le tableau « Historique des rencontres » attribue
+// désormais les badges « solid » (ici duo_gagnant : taux de victoire allié
+// >= 0.60 sur >= 10 matchs en allié).
+func TestConvertEncounters_RelationSolidBadge_DuoGagnant(t *testing.T) {
+	t.Parallel()
+	raw := []domain.EncounterRaw{
+		{XUID: "x_duo", Gamertag: "Duo", CountTogether: 12, IsAlly: true},
+	}
+	stats := []domain.EncounterStatsRaw{
+		{XUID: "x_duo", AllyCount: 12, WinsAsAlly: 8, LossesAsAlly: 4}, // 0.667 >= 0.60
+	}
+	rows := convertEncounters(raw, stats, time.Now())
+	if !hasEncounterBadgeKind(rows[0].Badges, "duo_gagnant") {
+		t.Errorf("duo_gagnant attendu (winrate allié 0.667 sur 12 matchs), got %+v", rows[0].Badges)
+	}
+}
+
+// TestConvertEncounters_RelationSolidBadge_Recrue vérifie le câblage de FirstSeen
+// (Q23b -> EncounterStatsRaw -> relations) : badge recrue quand la relation est
+// récente (< 30 j) et déjà significative (>= 4 matchs).
+func TestConvertEncounters_RelationSolidBadge_Recrue(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 7, 16, 12, 0, 0, 0, time.UTC)
+	raw := []domain.EncounterRaw{
+		{XUID: "x_new", Gamertag: "Rookie", CountTogether: 5, IsAlly: true},
+	}
+	stats := []domain.EncounterStatsRaw{
+		{XUID: "x_new", AllyCount: 5, FirstSeen: now.AddDate(0, 0, -10)}, // il y a 10 j (< 30)
+	}
+	rows := convertEncounters(raw, stats, now)
+	if !hasEncounterBadgeKind(rows[0].Badges, "recrue") {
+		t.Errorf("recrue attendu (first_seen il y a 10 j, 5 matchs), got %+v", rows[0].Badges)
+	}
+}
+
+// hasEncounterBadgeKind : helper test — vrai si un badge du kind donné est présent.
+func hasEncounterBadgeKind(badges []domain.MatchEncounterBadge, kind string) bool {
+	for _, b := range badges {
+		if b.Kind == kind {
+			return true
+		}
+	}
+	return false
 }

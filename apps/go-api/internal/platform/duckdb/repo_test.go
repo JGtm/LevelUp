@@ -47,7 +47,8 @@ func seedShared(t *testing.T, db *DB) {
 		`CREATE TABLE IF NOT EXISTS match_registry (
 			match_id VARCHAR PRIMARY KEY,
 			start_time TIMESTAMPTZ,
-			last_updated_at TIMESTAMPTZ
+			last_updated_at TIMESTAMPTZ,
+			game_variant_id VARCHAR
 		)`,
 		`CREATE TABLE IF NOT EXISTS match_participants (
 			match_id VARCHAR,
@@ -79,7 +80,7 @@ func seedShared(t *testing.T, db *DB) {
 	}
 
 	inserts := []string{
-		`INSERT INTO match_registry VALUES
+		`INSERT INTO match_registry (match_id, start_time, last_updated_at) VALUES
 			('m1', TIMESTAMPTZ '2025-01-10 14:00:00+00', TIMESTAMPTZ '2025-01-10 14:30:00+00'),
 			('m2', TIMESTAMPTZ '2025-01-11 18:00:00+00', TIMESTAMPTZ '2025-01-11 18:45:00+00'),
 			('m3', TIMESTAMPTZ '2025-01-12 20:00:00+00', TIMESTAMPTZ '2025-01-12 20:15:00+00')`,

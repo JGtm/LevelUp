@@ -118,12 +118,10 @@ func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string,
 	if err := appendPlayerMatchSetFilters(&sb, &args, f); err != nil {
 		return "", nil, sharedQueryHints{}, err
 	}
-	// Masquage read-side des modes exclus du titre (Halo 5 : Campagne). Alias "r" =
-	// v_match_full dans playerMatchesSharedBaseSelect.
-	if clause, exArgs := ExcludedVariantClause(pdbTitleSlug(r.pdb), "r"); clause != "" {
-		sb.WriteString(clause)
-		args = append(args, exArgs...)
-	}
+	// Masquage read-side des matchs Campagne du titre (Halo 5). Alias "r" =
+	// v_match_full dans playerMatchesSharedBaseSelect. Clause littérale (aucun arg,
+	// source unique analysis.SQLExcludeCampaignVariants) ; no-op pour Infinite.
+	sb.WriteString(analysis.SQLExcludeCampaignVariants(pdbTitleSlug(r.pdb), "r"))
 
 	hints, orderBy, err := classifyOrderBy(f.OrderBy)
 	if err != nil {

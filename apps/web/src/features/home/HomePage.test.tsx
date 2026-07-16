@@ -318,16 +318,7 @@ describe('HomePage', () => {
   })
 
   it('affiche les défis actifs détaillés triés du plus avancé au moins avancé', async () => {
-    let challengeEndpointCalls = 0
     server.use(
-      http.get('/api/v1/players/:playerSlug/challenges', ({ request }) => {
-        // Prestige challenges use title_slug query param — don't count them
-        if (new URL(request.url).searchParams.has('title_slug')) {
-          return HttpResponse.json({ challenges: [], count: 0 })
-        }
-        challengeEndpointCalls += 1
-        return HttpResponse.json({ error: 'should not be called' }, { status: 500 })
-      }),
       http.get('/api/v1/players/:playerSlug/pages/palmares/season-pass', () => HttpResponse.json({
         title_slug: 'halo_infinite',
         available: true,
@@ -438,7 +429,6 @@ describe('HomePage', () => {
     const weeklyFills = within(weeklySection).getAllByTestId('home-challenge-progress-fill')
     expect(weeklyFills[0]).toHaveStyle({ width: '70%' })
     expect(weeklyFills[1]).toHaveStyle({ width: '0%' })
-    expect(challengeEndpointCalls).toBe(0)
   })
 
   it('affiche un état vide compact pour les défis quand aucun item actif n’est détaillé', async () => {

@@ -234,7 +234,8 @@ func (r *HomeRepo) loadPlaylistPhaseB(ctx context.Context) ([]playlistPhaseBRow,
 	}
 	defer release()
 
-	rows, err := sharedDB.QueryContext(ctx, Q26gPlaylistPhaseBShared, r.pdb.XUID)
+	q := resolveCampaignExclusion(Q26gPlaylistPhaseBShared, r.titleSlug(), "r")
+	rows, err := sharedDB.QueryContext(ctx, q, r.pdb.XUID)
 	if err != nil {
 		return nil, err
 	}

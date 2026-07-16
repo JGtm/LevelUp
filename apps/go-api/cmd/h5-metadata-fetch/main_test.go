@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"testing"
 
 	halo5 "levelup/go-api/internal/games/halo_5"
@@ -36,6 +37,92 @@ func TestChooseFR(t *testing.T) {
 				t.Errorf("chooseFR(en=%q, apiFR=%q) = %q, want %q", c.en, c.apiFR, got, c.want)
 			}
 		})
+	}
+}
+
+// TestPersistTeamColors couvre l'ingestion team-colors (E1) : parsing de la réponse
+// API officielle /team-colors (fixture EN) + noms FR localisés (Accept-Language),
+// persistance idempotente dans metadata.duckdb, iconUrl null toléré. Ces libellés
+// alimentent l'affichage « Rouge/Bleu » de la Match View H5.
+func TestPersistTeamColors(t *testing.T) {
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+
+	if _, err := db.Exec(`CREATE TABLE team_colors (
+		team_id INTEGER PRIMARY KEY, name_en VARCHAR NOT NULL DEFAULT '',
+		name_fr VARCHAR NOT NULL DEFAULT '', color VARCHAR, icon_url VARCHAR)`); err != nil {
+		t.Fatalf("create team_colors: %v", err)
+	}
+
+	// Fixture : forme RÉELLE de la réponse EN de l'API /team-colors — `id` est sérialisé
+	// en STRING ("0","1"), iconUrl nullable. Verrouille le parsing string→int (régression
+	// : un retour de apiTeamColor.ID à int ferait échouer cet unmarshal).
+	payload := `[
+		{"id":"0","name":"Red","description":"Red team","color":"#E64C4C","iconUrl":"https://cdn/red.png","contentId":"a"},
+		{"id":"1","name":"Blue","description":"Blue team","color":"#4C7FE6","iconUrl":null,"contentId":"b"}
+	]`
+	var colors []apiTeamColor
+	if err := json.Unmarshal([]byte(payload), &colors); err != nil {
+		t.Fatalf("unmarshal fixture: %v", err)
+	}
+	// Noms FR issus du pass Accept-Language: fr-FR (indexés par l'id string de l'API).
+	frByID := map[string]string{"0": "Rouge", "1": "Bleu"}
+
+	if got := persistTeamColors(db, colors, frByID); got != 2 {
+		t.Fatalf("persistTeamColors a écrit %d lignes, want 2", got)
+	}
+	// Idempotence : rejouer ne diverge pas (INSERT OR REPLACE).
+	if got := persistTeamColors(db, colors, frByID); got != 2 {
+		t.Fatalf("persistTeamColors (rejeu) a écrit %d lignes, want 2", got)
+	}
+
+	var nameEN, nameFR, color string
+	if err := db.QueryRow(
+		`SELECT name_en, name_fr, color FROM team_colors WHERE team_id=0`).Scan(&nameEN, &nameFR, &color); err != nil {
+		t.Fatalf("read team 0: %v", err)
+	}
+	if nameEN != "Red" || nameFR != "Rouge" || color != "#E64C4C" {
+		t.Errorf("team 0 = {en=%q fr=%q color=%q}, want {Red Rouge #E64C4C}", nameEN, nameFR, color)
+	}
+
+	// team 1 : iconUrl null → chaîne vide persistée, pas d'erreur ; name_fr localisé.
+	var nameFR1, iconURL string
+	if err := db.QueryRow(
+		`SELECT name_fr, COALESCE(icon_url,'') FROM team_colors WHERE team_id=1`).Scan(&nameFR1, &iconURL); err != nil {
+		t.Fatalf("read team 1: %v", err)
+	}
+	if nameFR1 != "Bleu" {
+		t.Errorf("team 1 name_fr = %q, want 'Bleu'", nameFR1)
+	}
+	if iconURL != "" {
+		t.Errorf("team 1 icon_url = %q, want '' (iconUrl null)", iconURL)
+	}
+}
+
+// TestPersistTeamColors_FrenchFallsBackToEN : sans nom FR de l'API, name_fr = name_en
+// (jamais vide — même convention que chooseFR).
+func TestPersistTeamColors_FrenchFallsBackToEN(t *testing.T) {
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`CREATE TABLE team_colors (
+		team_id INTEGER PRIMARY KEY, name_en VARCHAR NOT NULL DEFAULT '',
+		name_fr VARCHAR NOT NULL DEFAULT '', color VARCHAR, icon_url VARCHAR)`); err != nil {
+		t.Fatalf("create team_colors: %v", err)
+	}
+	colors := []apiTeamColor{{ID: "2", Name: "Green", Color: "#4CE67F"}}
+	persistTeamColors(db, colors, map[string]string{}) // aucun nom FR
+	var nameFR string
+	if err := db.QueryRow(`SELECT name_fr FROM team_colors WHERE team_id=2`).Scan(&nameFR); err != nil {
+		t.Fatalf("read team 2: %v", err)
+	}
+	if nameFR != "Green" {
+		t.Errorf("name_fr = %q, want fallback 'Green'", nameFR)
 	}
 }
 

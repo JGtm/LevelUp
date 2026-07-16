@@ -109,7 +109,7 @@ func (r *WeaponKillsRepo) LoadKillMechanicsAggregated(
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	q, args := buildKillMechanicsQuery(filters)
+	q, args := buildKillMechanicsQuery(filters, r.pdb.TitleSlug)
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("shared reader: %w", err)
@@ -138,7 +138,7 @@ func (r *WeaponKillsRepo) LoadKillMechanicsAggregated(
 
 // buildKillMechanicsQuery construit le SELECT agrégé des mécaniques par xuid
 // (même forme que la branche grenade/melee de buildWeaponKillsQuery).
-func buildKillMechanicsQuery(f port.WeaponKillFilters) (string, []any) {
+func buildKillMechanicsQuery(f port.WeaponKillFilters, titleSlug string) (string, []any) {
 	var sb strings.Builder
 	args := make([]any, 0, len(f.MatchIDs)+len(f.XUIDs))
 	matchPlaceholders := Placeholders(len(f.MatchIDs))
@@ -155,6 +155,7 @@ FROM match_participants mp
 WHERE mp.match_id IN (`)
 	sb.WriteString(matchPlaceholders)
 	sb.WriteString(`)`)
+	sb.WriteString(excludeCampaignByMatchID(titleSlug, "mp.match_id"))
 	appendXUIDFilter(&sb, &args, "mp", f)
 	sb.WriteString(`
 GROUP BY mp.xuid`)
@@ -167,7 +168,7 @@ func (r *WeaponKillsRepo) queryWeaponKills(
 	ctx context.Context,
 	filters port.WeaponKillFilters,
 ) ([]port.WeaponKillRow, error) {
-	q, args := buildWeaponKillsQuery(filters)
+	q, args := buildWeaponKillsQuery(filters, r.pdb.TitleSlug)
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("shared reader: %w", err)
@@ -219,7 +220,7 @@ func (r *WeaponKillsRepo) queryWeaponKills(
 // (sentinel des armes "no weapon"). Quand IncludeGrenadeMelee=true on injecte
 // les sentinels 0 (grenade) et 1 (melee) via UNION ALL — ces rows portent
 // le flag is_grenade_melee=true cote SQL.
-func buildWeaponKillsQuery(f port.WeaponKillFilters) (string, []any) {
+func buildWeaponKillsQuery(f port.WeaponKillFilters, titleSlug string) (string, []any) {
 	var sb strings.Builder
 	args := make([]any, 0, len(f.MatchIDs)*2+len(f.XUIDs)*2+2)
 
@@ -244,6 +245,7 @@ WHERE wk.match_id IN (`)
 	sb.WriteString(matchPlaceholders)
 	sb.WriteString(`)
   AND wk.effective_weapon_id NOT IN (0, 1, 2)`)
+	sb.WriteString(excludeCampaignByMatchID(titleSlug, "wk.match_id"))
 
 	appendXUIDFilter(&sb, &args, "wk", f)
 
@@ -272,6 +274,7 @@ FROM match_participants mp
 WHERE mp.match_id IN (`)
 	sb.WriteString(matchPlaceholders)
 	sb.WriteString(`)`)
+	sb.WriteString(excludeCampaignByMatchID(titleSlug, "mp.match_id"))
 	appendXUIDFilter(&sb, &args, "mp", f)
 	sb.WriteString(`
 GROUP BY mp.xuid
@@ -293,6 +296,7 @@ FROM match_participants mp
 WHERE mp.match_id IN (`)
 	sb.WriteString(matchPlaceholders)
 	sb.WriteString(`)`)
+	sb.WriteString(excludeCampaignByMatchID(titleSlug, "mp.match_id"))
 	appendXUIDFilter(&sb, &args, "mp", f)
 	sb.WriteString(`
 GROUP BY mp.xuid

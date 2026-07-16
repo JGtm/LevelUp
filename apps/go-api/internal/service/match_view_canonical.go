@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 
 	"levelup/go-api/internal/ctxkeys"
@@ -45,6 +46,56 @@ type assetNameResolver interface {
 	ResolveAssetNamesBulk(
 		ctx context.Context, assetType string, assetIDs, preferredLangs []string,
 	) (map[string]string, error)
+}
+
+// teamNameResolver est une capability OPTIONNELLE d'un TitleAssetURLAdapter : résout un
+// team_id en libellé d'équipe localisé (Halo 5 : « Rouge »/« Red » depuis team_colors).
+// Seul l'adapter H5 l'implémente ; HINF ne l'implémente pas → team_name reste vide et
+// le front retombe sur sa résolution existante (Eagle/Cobra). Même pattern optionnel
+// (type-assertion) que assetNameResolver / participantChecker : la capability n'élargit
+// PAS l'interface games.TitleAssetURLAdapter (HINF n'a rien à stubber).
+type teamNameResolver interface {
+	TeamName(teamID int, locale string) string
+}
+
+// applyTeamNames renseigne row.TeamName sur chaque ligne de scoreboard quand l'adapter
+// d'assets du titre expose teamNameResolver (Halo 5). No-op si l'adapter ne l'implémente
+// pas (HINF), est nil, ou renvoie "" (team_colors vide) → dégradation gracieuse (le
+// front garde son libellé d'équipe existant). Title-agnostic : aucune comparaison de
+// slug, la capability seule décide. Appelée sur les DEUX voies (canonique live + repo
+// persisté) car un match H5 peut emprunter l'une ou l'autre selon le substrat DuckDB.
+func (s *MatchViewService) applyTeamNames(ctx context.Context, rows []domain.MatchScoreboardRow) {
+	resolver, ok := s.assetURL.(teamNameResolver)
+	if !ok {
+		return
+	}
+	locale := ctxkeys.Locale(ctx)
+	for i := range rows {
+		id, ok := teamSideToID(rows[i].TeamSide)
+		if !ok {
+			continue
+		}
+		if name := resolver.TeamName(id, locale); name != "" {
+			rows[i].TeamName = name
+		}
+	}
+}
+
+// teamSideToID parse le team_side DTO "t{N}" en son entier N. (0, false) si nil ou
+// format inattendu (le backend émet toujours fmt.Sprintf("t%d", teamID)).
+func teamSideToID(teamSide *string) (int, bool) {
+	if teamSide == nil {
+		return 0, false
+	}
+	s := *teamSide
+	if len(s) < 2 || s[0] != 't' {
+		return 0, false
+	}
+	n, err := strconv.Atoi(s[1:])
+	if err != nil {
+		return 0, false
+	}
+	return n, true
 }
 
 // canonicalAssetLangs : ordre de préférence des langues d'asset_translations.
@@ -131,12 +182,14 @@ func (s *MatchViewService) buildMatchViewFromCanonical(ctx context.Context, deta
 	self := canonicalSelfParticipant(ctx, detail.Participants)
 	comms := s.loadCanonicalCommendations(ctx, detail)
 	citationsTab, citationsUnavailable := buildCanonicalCitationsTab(comms)
+	teamTab := buildCanonicalTeamTab(detail, self)
+	s.applyTeamNames(ctx, teamTab.Scoreboard) // Halo 5 : « Rouge/Bleu » si team_colors seedé
 	return domain.MatchViewResponse{
 		Header:         s.buildCanonicalHeader(detail, self),
 		Rank:           buildCanonicalRank(detail.Skill),
 		SummaryTab:     buildCanonicalSummaryTab(self),
 		CombatTab:      domain.MatchCombatTab{},
-		TeamTab:        buildCanonicalTeamTab(detail, self),
+		TeamTab:        teamTab,
 		MediaTab:       domain.MatchMediaTab{MediaItems: []domain.MatchAssociatedMedia{}},
 		CitationsTab:   citationsTab,
 		IsPartial:      true,

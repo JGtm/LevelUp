@@ -37,6 +37,7 @@ import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { accuracyScale, assistsScale, kdScale, lifespanScale } from '@/lib/accessibility/scales'
 import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
 import { combatYieldToken } from '@/lib/formatters/combatYield'
+import { formatDurationMShort } from '@/lib/formatters'
 import { KpiCard } from '@/components/cards/KpiCard'
 import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 
@@ -70,9 +71,12 @@ interface CellProps {
    *  solo quand il n'y a pas de tendance vs équipe — évalue la valeur dans
    *  l'absolu (30% précision → rouge, ≥55% → vert). */
   absoluteAccent?: SemanticToken
+  /** Tooltip natif (attribut title) affiché au survol de la cellule. Utilisé pour
+   *  lever l'ambiguïté d'une valeur MM:SS (ex. "1:05" → tooltip "1m05s"). */
+  valueTitle?: string
 }
 
-function KpiCell({ label, value, sub, inlineSub, trend = 'none', valueColorToken, absoluteAccent }: CellProps) {
+function KpiCell({ label, value, sub, inlineSub, trend = 'none', valueColorToken, absoluteAccent, valueTitle }: CellProps) {
   const trendToken: SemanticToken | null =
     trend === 'above'
       ? 'divergent-pos'
@@ -94,7 +98,7 @@ function KpiCell({ label, value, sub, inlineSub, trend = 'none', valueColorToken
 
   return (
     <KpiCard accent={accent} className="h-full">
-      <div className="px-3 py-2">
+      <div className="px-3 py-2" title={valueTitle}>
         <p className="text-3xs uppercase tracking-wide text-muted-foreground">{label}</p>
         <div className="mt-0.5 flex items-baseline">
           <span className="text-lg font-bold" style={valueStyle}>{value}</span>
@@ -240,6 +244,7 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint, omitSummaryCard
         <KpiCell
           label={texts.grid.lifespan}
           value={formatMmss(kpis.avg_life_seconds)}
+          valueTitle={formatDurationMShort(kpis.avg_life_seconds)}
           trend={trendLife}
           absoluteAccent={lifespanScale(kpis.avg_life_seconds)}
         />

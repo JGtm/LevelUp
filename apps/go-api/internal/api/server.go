@@ -163,6 +163,38 @@ func loadCSRBadgeResolver(metaPath, slug string) func(string, string, int) strin
 	}
 }
 
+// loadTeamNames construit un résolveur de libellé d'équipe (team_id, locale → nom
+// localisé) pour un titre additionnel depuis sa metadata (team_colors, seedé par
+// cmd/h5-metadata-fetch depuis l'API Metadata officielle /team-colors). Retourne nil si
+// la DB est absente / vide → l'adapter n'expose pas la capability → la Match View garde
+// son libellé d'équipe existant. Le résolveur est déjà scopé au titre (attaché au seul
+// adapter du titre), d'où l'absence de garde slug (contrairement à loadCSRBadgeResolver,
+// posé globalement via SetCSRBadgeResolver).
+func loadTeamNames(metaPath string) func(int, string) string {
+	metaDB, err := platform_duckdb.OpenReadWriteShared(metaPath)
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = metaDB.Close() }()
+	m := platform_duckdb.LoadTeamColorNames(context.Background(), metaDB)
+	if len(m) == 0 {
+		return nil
+	}
+	return func(teamID int, locale string) string {
+		tc, ok := m[teamID]
+		if !ok {
+			return ""
+		}
+		if locale == "en" {
+			return tc.NameEN
+		}
+		if tc.NameFR != "" {
+			return tc.NameFR
+		}
+		return tc.NameEN
+	}
+}
+
 // loadTitleRankImageURLs charge les images de rang carrière d'un titre additionnel
 // depuis sa metadata.duckdb ISOLÉE (career_ranks.large_icon_path/icon_path). Pattern
 // best-effort calqué sur loadTitleAssetDrawerData : DB absente / table vide / erreur
@@ -261,9 +293,12 @@ func wireHalo5AssetAdapters(cfg *config.AppConfig, titleResolver *games.StaticRe
 	h5CSRResolver := loadCSRBadgeResolver(config.MetadataDBPath(cfg, halo5.TitleSlug), halo5.TitleSlug)
 	platform_duckdb.SetCSRBadgeResolver(h5CSRResolver)
 
+	// Libellés d'équipe localisés (team_colors → « Rouge/Bleu ») pour la Match View H5.
+	h5TeamNames := loadTeamNames(config.MetadataDBPath(cfg, halo5.TitleSlug))
+
 	// C0 / G1 : TitleAssetURLAdapter pour Halo 5. Sans lui, titleResolver.AssetURL("halo_5")
 	// renvoie ErrTitleNotResolved → assetURL==nil sur la Match View. Adapter PUR (couche 3).
-	if h5CSRResolver != nil || len(h5Maps) > 0 || len(h5Weapons) > 0 {
+	if h5CSRResolver != nil || len(h5Maps) > 0 || len(h5Weapons) > 0 || h5TeamNames != nil {
 		h5AssetURL := halo5.NewAssetURLAdapter().
 			WithMaps(h5Maps).
 			WithWeapons(h5Weapons)
@@ -273,10 +308,14 @@ func wireHalo5AssetAdapters(cfg *config.AppConfig, titleResolver *games.StaticRe
 					return h5CSRResolver(halo5.TitleSlug, designation, subTier)
 				})
 		}
+		if h5TeamNames != nil {
+			h5AssetURL = h5AssetURL.WithTeamNameResolver(h5TeamNames)
+		}
 		titleResolver.RegisterAssetURL(h5AssetURL)
 		slog.Info("adapter_loaded",
 			"title_slug", h5AssetURL.TitleSlug(), "kind", "asset_url",
-			"maps", len(h5Maps), "weapons", len(h5Weapons), "csr", h5CSRResolver != nil)
+			"maps", len(h5Maps), "weapons", len(h5Weapons), "csr", h5CSRResolver != nil,
+			"teams", h5TeamNames != nil)
 	}
 
 	// G2/G7/D.1 : sprite médaille title-aware. Les médailles H5 sont des SPRITES (feuille +

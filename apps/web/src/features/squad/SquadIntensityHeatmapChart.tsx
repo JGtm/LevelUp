@@ -34,10 +34,13 @@ export function SquadIntensityHeatmapChart({
   const [selectedKey, setSelectedKey] = useState<string>(defaultKey)
 
   const rows = useMemo<SquadIntensityMatchRow[]>(
-    // Inversé : l'API renvoie les matchs récent→ancien ; on passe ancien→récent
-    // pour que (via yAxis.inverse) le plus récent soit en bas et le plus vieux en
-    // haut, avec une numérotation #1 (haut, ancien) → #N (bas, récent).
-    () => [...(profile.rows[selectedKey] ?? [])].reverse(),
+    // L'API renvoie déjà les matchs en ordre chronologique ancien→récent
+    // (buildSquadIntensityProfile trie par start_time ASC). Le builder consomme
+    // cet ordre tel quel : #1 (ancien) en haut → #N (récent) en bas via
+    // yAxis.inverse. Ne PAS réinverser — un .reverse() ici (assumant à tort un
+    // ordre récent→ancien) remontait le plus récent en tête et affichait la
+    // chronologie inversée à l'écran.
+    () => profile.rows[selectedKey] ?? [],
     [profile.rows, selectedKey],
   )
 

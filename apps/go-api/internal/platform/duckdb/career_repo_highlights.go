@@ -129,7 +129,8 @@ func (r *CareerRepo) loadHighlightCandidates(
 		return nil, nil, fmt.Errorf("loadHighlightCandidates: shared reader: %w", err)
 	}
 	defer release()
-	query := fmt.Sprintf(Q9bHighlightSharedTpl, Placeholders(len(matchIDs)), extraClause)
+	query := resolveCampaignExclusion(
+		fmt.Sprintf(Q9bHighlightSharedTpl, Placeholders(len(matchIDs)), extraClause), r.titleSlug(), "r")
 	args := make([]any, 0, 1+len(matchIDs)+len(extraArgs))
 	args = append(args, r.pdb.XUID)
 	args = append(args, ToAnySlice(matchIDs)...)

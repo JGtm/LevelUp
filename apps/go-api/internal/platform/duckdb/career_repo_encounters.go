@@ -62,13 +62,13 @@ func (r *CareerRepo) GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []
 			countTogether, allyCount, enemyCount                 int
 			winsAsAlly, lossesAsAlly, winsVsEnemy, lossesVsEnemy int
 			killsDealt, deathsSuffered                           int
-			lastSeenAt                                           sql.NullTime
+			firstSeenAt, lastSeenAt                              sql.NullTime
 		)
 		if err := rows.Scan(
 			&xuid, &gamertag, &countTogether,
 			&allyCount, &enemyCount,
 			&winsAsAlly, &lossesAsAlly, &winsVsEnemy, &lossesVsEnemy,
-			&killsDealt, &deathsSuffered, &lastSeenAt,
+			&killsDealt, &deathsSuffered, &firstSeenAt, &lastSeenAt,
 		); err != nil {
 			return nil, nil, fmt.Errorf("CareerRepo.GetTopEncountersGlobal scan: %w", err)
 		}

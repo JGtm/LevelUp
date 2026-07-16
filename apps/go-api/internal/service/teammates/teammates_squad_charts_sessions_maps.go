@@ -186,11 +186,13 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 	// 1. Toutes les cartes jouées en escouade (dédup match_id).
 	// Clé interne = MapID (UUID, language-agnostic) si dispo, sinon MapUI.
 	// mapIDToUI assure la correspondance UUID → label d'affichage (FR).
+	// firstSeen = plus ancien StartTime de la carte (StartTime = timestamp
+	// canonique UTC, chargé via StartTimeCanonicalSQL côté repo).
 	type mapStats struct {
-		mapUI string
-		count int
+		mapUI     string
+		firstSeen time.Time
 	}
-	mapCounts := make(map[string]int)
+	mapFirstSeen := make(map[string]time.Time)
 	mapIDToUI := make(map[string]string)
 	matchIDByID := make(map[string]struct{}, len(allSquadRows))
 	for _, m := range allSquadRows {
@@ -205,25 +207,30 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 		if key == "" {
 			continue
 		}
-		mapCounts[key]++
+		if prev, ok := mapFirstSeen[key]; !ok || m.StartTime.Before(prev) {
+			mapFirstSeen[key] = m.StartTime
+		}
 		if m.MapUI != "" {
 			mapIDToUI[key] = m.MapUI
 		}
 	}
-	if len(mapCounts) == 0 {
+	if len(mapFirstSeen) == 0 {
 		return nil
 	}
-	all := make([]mapStats, 0, len(mapCounts))
-	for k, c := range mapCounts {
+	all := make([]mapStats, 0, len(mapFirstSeen))
+	for k, first := range mapFirstSeen {
 		ui := mapIDToUI[k]
 		if ui == "" {
 			ui = k
 		}
-		all = append(all, mapStats{mapUI: ui, count: c})
+		all = append(all, mapStats{mapUI: ui, firstSeen: first})
 	}
+	// Ordre CHRONOLOGIQUE de première apparition (carte jouée en premier en tête).
+	// Verbatim utilisateur : « pas dans l'ordre et je veux pas de regroupement » —
+	// on abandonne le tri par fréquence décroissante. Tie-break mapUI (déterminisme).
 	sort.Slice(all, func(i, j int) bool {
-		if all[i].count != all[j].count {
-			return all[i].count > all[j].count
+		if !all[i].firstSeen.Equal(all[j].firstSeen) {
+			return all[i].firstSeen.Before(all[j].firstSeen)
 		}
 		return all[i].mapUI < all[j].mapUI
 	})

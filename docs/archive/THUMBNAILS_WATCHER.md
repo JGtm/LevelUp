@@ -1,5 +1,7 @@
 # Guide d'installation du Watcher Thumbnails
 
+> **Obsolete — replaced by in-app generation (IndexMedia); systemd unit removed 2026-07-16.**
+
 Ce guide explique comment configurer le service de génération automatique de thumbnails GIF pour les vidéos de gameplay Halo Infinite.
 
 ## Prérequis

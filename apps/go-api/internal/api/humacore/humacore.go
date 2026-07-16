@@ -242,6 +242,19 @@ func MarkRequestBodyOptional(api huma.API, method, path string) {
 // références API → garder nil hors test.
 var OnAPICreated func(huma.API)
 
+// OnAPICreatedRouter, s'il est non-nil, est invoqué avec le routeur chi ET la
+// huma.API de CHAQUE NewAPI. Nil par défaut → ZÉRO impact prod (le serveur ne le
+// branche jamais).
+//
+// SEUL le garde-rail anti-collision de routes (route_collision_test) le branche
+// temporairement. Il groupe les opérations Huma par IDENTITÉ DE ROUTEUR (pointeur
+// du *chi.Mux passé à NewAPI) : deux enregistrements du même (méthode, chemin) sur
+// le même routeur = collision par écrasement silencieux de chi. Un chi.Walk de
+// l'arbre final NE PEUT PAS détecter ce cas (chi remplace l'endpoint, une seule
+// visite au walk) — d'où la capture au moment de l'enregistrement plutôt qu'au
+// parcours.
+var OnAPICreatedRouter func(chi.Router, huma.API)
+
 // NewAPI crée une API Huma adossée au routeur chi `r` (qui peut être le routeur
 // racine OU un sous-routeur d'un r.Route/r.Group — les routes Huma héritent alors
 // du middleware du sous-groupe et lisent les path params parents, cf.
@@ -267,6 +280,9 @@ func NewAPI(r chi.Router) huma.API {
 	api := humachi.New(r, config)
 	if OnAPICreated != nil {
 		OnAPICreated(api)
+	}
+	if OnAPICreatedRouter != nil {
+		OnAPICreatedRouter(r, api)
 	}
 	return api
 }

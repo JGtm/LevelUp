@@ -318,11 +318,12 @@ func (s *SynthesisService) loadTopWeaponKills(
 		}
 		return nil, nil
 	}
-	return buildTopWeaponKills(rows, 20), buildKillsByRole(rows)
+	return buildTopWeaponKills(rows, synthesisWeaponChartTopN), buildKillsByRole(rows)
 }
 
-// loadWeaponAccuracy agrège, sur le scope filtré, la précision par arme (toutes
-// les armes tirées). Calqué sur loadTopWeaponKills. Best-effort : nil si repo
+// loadWeaponAccuracy agrège, sur le scope filtré, la précision par arme (top N
+// armes, même cap que « Frags par arme »). Calqué sur loadTopWeaponKills.
+// Best-effort : nil si repo
 // absent, gamertag/scope vide, ou capability manquante (titre sans table
 // weapon_accuracy, ex. Infinite).
 func (s *SynthesisService) loadWeaponAccuracy(
@@ -351,7 +352,7 @@ func (s *SynthesisService) loadWeaponAccuracy(
 		}
 		return nil
 	}
-	return buildWeaponAccuracy(rows)
+	return buildWeaponAccuracy(rows, synthesisWeaponChartTopN)
 }
 
 // =============================================================================

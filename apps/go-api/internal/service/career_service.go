@@ -212,7 +212,7 @@ func (s *CareerService) GetCareerPage(ctx context.Context) (domain.CareerPageRes
 		return domain.CareerPageResponse{}, fmt.Errorf("CareerService.GetCareerPage: %w", err)
 	}
 
-	summary := s.buildCareerSummaryEnriched(rank)
+	summary := s.buildCareerSummaryEnriched(ctx, rank)
 	xpTotal := summaryXPTotal(rank)
 	xpHeroMax := heroXPTotal(rank)
 	hero := buildHeroProgress(xpTotal, rankIDFromData(rank), xpHeroMax, heroRankMax(rank))

@@ -236,6 +236,19 @@ func TestUnrankedBadgeURL_BordersZeroAndNine(t *testing.T) {
 	}
 }
 
+// Régression G3 : un titre additionnel (halo_5) n'a pas de dossier ranks/ propre.
+// Le badge de placement unranked_N.png doit se résoudre sous le titre par DÉFAUT
+// (static/ranks/halo_infinite/), sinon /static/ranks/halo_5/unranked_0.png → 404 →
+// le front affiche « ? » au lieu de l'image unranked_0.
+func TestUnrankedBadgeURL_AdditionalTitleUsesDefaultFolder(t *testing.T) {
+	t.Parallel()
+	got := unrankedBadgeURL(0, "halo_5")
+	want := "/static/ranks/" + titlepkg.DefaultSlug + "/unranked_0.png"
+	if got == nil || *got != want {
+		t.Errorf("unrankedBadgeURL(0, halo_5) = %v, want %q", got, want)
+	}
+}
+
 // ─── buildHomeSkillPeakBadgeURL ─────────────────────────────────────────
 
 func TestBuildHomeSkillPeakBadgeURL_OnyxIgnoresSubTier(t *testing.T) {

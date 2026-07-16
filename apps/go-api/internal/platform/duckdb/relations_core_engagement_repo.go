@@ -42,7 +42,8 @@ func (r *CareerRepo) GetCoreEngagement(ctx context.Context, coreXUIDs []string, 
 func (r *CareerRepo) queryPlayerWinRate(ctx context.Context) (*float64, error) {
 	winExpr := outcomeSQLEq(ctx, "outcome", canonical.OutcomeWin, "outcome = 2")
 	lossExpr := outcomeSQLEq(ctx, "outcome", canonical.OutcomeLoss, "outcome = 3")
-	sqlText := fmt.Sprintf(QRelationsPlayerWinRateTpl, winExpr, winExpr, lossExpr)
+	sqlText := fmt.Sprintf(QRelationsPlayerWinRateTpl, winExpr, winExpr, lossExpr) +
+		excludeCampaignByMatchID(r.pdb.TitleSlug, "match_id")
 
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {

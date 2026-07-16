@@ -107,8 +107,14 @@ export function rarityStyle(tier: RarityTier | null): RarityStyle | null {
   return tier == null ? null : RARITY_STYLES[tier]
 }
 
-export function rarityLabel(tier: RarityTier, locale: 'fr' | 'en' = 'fr'): string {
-  return locale === 'en' ? RARITY_LABELS_EN[tier] : RARITY_LABELS_FR[tier]
+// preferEN accepte une locale courte ('fr'/'en') OU Intl ('fr-FR'/'en-US') —
+// certains appelants (PassContentSummary) passent l'Intl locale.
+function preferEN(locale: string): boolean {
+  return locale.toLowerCase().startsWith('en')
+}
+
+export function rarityLabel(tier: RarityTier, locale: string = 'fr'): string {
+  return preferEN(locale) ? RARITY_LABELS_EN[tier] : RARITY_LABELS_FR[tier]
 }
 
 /**
@@ -146,6 +152,39 @@ const ITEM_TYPE_LABELS_FR: Record<string, string> = {
   ChallengeSwap: 'Relance défi',
 }
 
+// Miroir EN (termes officiels Halo Infinite). Sans lui, les types d'items du
+// Battle Pass restaient en FR sous UI EN (« Revêtement d'armure » au lieu de
+// « Armor Coating »).
+const ITEM_TYPE_LABELS_EN: Record<string, string> = {
+  ArmorCoating: 'Armor Coating',
+  ArmorHelmet: 'Helmet',
+  ArmorHelmetAttachment: 'Helmet Attachment',
+  ArmorChestAttachment: 'Chest Attachment',
+  ArmorLeftShoulderPad: 'Left Shoulder Pad',
+  ArmorRightShoulderPad: 'Right Shoulder Pad',
+  ArmorKneePad: 'Knee Pad',
+  ArmorHipAttachment: 'Hip Attachment',
+  ArmorVisor: 'Visor',
+  ArmorWristAttachment: 'Wrist Attachment',
+  ArmorGlove: 'Gloves',
+  ArmorMythicEffect: 'Mythic Effect',
+  WeaponCoating: 'Weapon Coating',
+  WeaponCharm: 'Weapon Charm',
+  WeaponEmblem: 'Weapon Emblem',
+  VehicleCoating: 'Vehicle Coating',
+  VehicleEmblem: 'Vehicle Emblem',
+  SpartanEmblem: 'Spartan Emblem',
+  SpartanBackdropImage: 'Backdrop Image',
+  SpartanActionPose: 'Action Pose',
+  SpartanVoice: 'Spartan Voice',
+  SpartanBody: 'Spartan Body',
+  AiTheme: 'AI Theme',
+  AiModel: 'AI Model',
+  Currency: 'Currency',
+  XpBoost: 'XP Boost',
+  ChallengeSwap: 'Challenge Swap',
+}
+
 /**
  * Catégorise un ItemType brut en "armure" (pièces et revêtements qui modifient
  * l'apparence du Spartan en jeu) ou "cosmétique" (le reste : armes, véhicules,
@@ -173,11 +212,12 @@ export function isArmorItemType(raw?: string | null): boolean {
   return ARMOR_ITEM_TYPES.has(raw.trim())
 }
 
-export function itemTypeLabel(raw?: string | null): string | null {
+export function itemTypeLabel(raw?: string | null, locale: string = 'fr'): string | null {
   if (!raw) return null
   const trimmed = raw.trim()
   if (!trimmed) return null
-  if (ITEM_TYPE_LABELS_FR[trimmed]) return ITEM_TYPE_LABELS_FR[trimmed]
+  const map = preferEN(locale) ? ITEM_TYPE_LABELS_EN : ITEM_TYPE_LABELS_FR
+  if (map[trimmed]) return map[trimmed]
   // Fallback : transformer PascalCase en mots espacés ("ArmorVisor" → "Armor visor").
   const spaced = trimmed.replace(/([a-z])([A-Z])/g, '$1 $2')
   return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase()

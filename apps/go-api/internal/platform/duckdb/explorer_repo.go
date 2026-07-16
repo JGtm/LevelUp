@@ -125,7 +125,9 @@ func (r *ExplorerRepo) GetParticipantStatsForMatches(
 			COALESCE(SUM(personal_score), 0)      AS personal_score
 		FROM match_participants
 		WHERE xuid = ? AND match_id IN (%s)
-	`, winExpr, lossExpr, drawExpr, placeholders)
+	`, winExpr, lossExpr, drawExpr, placeholders) +
+		// Masquage Campagne (sous-requête, participants-only). No-op Infinite.
+		excludeCampaignByMatchID(r.pdb.TitleSlug, "match_id")
 
 	args := make([]any, 0, 1+len(matchIDs))
 	args = append(args, xuid)
@@ -221,7 +223,7 @@ func (r *ExplorerRepo) GetMatchStartTimesForXUID(ctx context.Context, xuid strin
 		SELECT ` + StartTimeCanonicalSQL("reg") + ` AS start_time
 		FROM match_participants p
 		JOIN match_registry reg ON reg.match_id = p.match_id
-		WHERE p.xuid = ?`
+		WHERE p.xuid = ?` + excludeCampaignClause(r.pdb.TitleSlug, "reg")
 
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
@@ -264,6 +266,7 @@ func (r *ExplorerRepo) GetTargetRecentMatches(
 
 	// Set perfect-kill résolu pour le titre du joueur (HINF byte-identique).
 	q := resolvePerfectKillClause(Q19cTargetRecentMatches, "medal_name_id", pdbTitleSlug(r.pdb))
+	q = resolveCampaignExclusion(q, pdbTitleSlug(r.pdb), "r")
 	rows, err := db.QueryContext(ctx, q, xuid, xuid, limit)
 	if err != nil {
 		return nil, fmt.Errorf("ExplorerRepo.GetTargetRecentMatches: query: %w", err)

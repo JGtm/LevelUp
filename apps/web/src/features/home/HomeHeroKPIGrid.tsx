@@ -37,8 +37,11 @@ const KPI_LABEL_CLS = 'min-h-[1lh] text-2xs uppercase tracking-label-xl text-mut
 /** Conteneur interne d'une tuile : titre aligné en haut (cf. demande user :
  *  tous les titres alignés), contenu qui descend ; remplit la carte en hauteur. */
 const KPI_CONTENT_CLS = 'flex flex-1 flex-col items-center justify-start py-3 text-center'
-/** Valeur neutre : la couleur de sentiment est portée par la barre d'accent. */
-const KPI_VALUE_CLS = 'text-xl font-bold text-foreground'
+/** Valeur neutre : la couleur de sentiment est portée par la barre d'accent.
+ *  Taille plafonnée à « m » (text-base) : dans la hero KPI bar, la plus grande
+ *  taille de texte ne dépasse pas medium (cf. demande user) ; les tailles plus
+ *  petites (libellés, sous-comptes) restent inchangées. */
+const KPI_VALUE_CLS = 'text-base font-bold text-foreground'
 
 function formatPlaytime(secs: number, kpiText: ReturnType<typeof getKPIText>): string {
   if (secs <= 0) return '—'
