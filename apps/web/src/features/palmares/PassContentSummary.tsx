@@ -133,10 +133,12 @@ function RarityChips({
   breakdown,
   remaining,
   fmt,
+  locale,
 }: {
   breakdown: Record<string, number>
   remaining: Record<string, number> | null | undefined
   fmt: ValueFormatter
+  locale: string
 }) {
   const ordered = RARITY_ORDER
     .map((tier) => ({ tier, count: breakdown[tier] ?? 0, rem: remaining?.[tier] ?? 0 }))
@@ -153,7 +155,7 @@ function RarityChips({
             <span className="flex items-center gap-1.5">
               <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${styles?.segment ?? 'bg-muted'}`} />
               <span className="text-xs text-muted-foreground">
-                {rarityLabel(tier)}{' '}
+                {rarityLabel(tier, locale)}{' '}
                 <span className="font-semibold tabular-nums text-foreground">{fmt(count, rem)}</span>
               </span>
             </span>
@@ -178,7 +180,7 @@ function TypeTags({ breakdown, locale, title }: { breakdown: Record<string, numb
             key={type}
             className="inline-flex items-center gap-1.5 rounded border border-border/50 bg-muted/40 px-2 py-0.5 text-3xs"
           >
-            <span className="text-muted-foreground">{itemTypeLabel(type) ?? type}</span>
+            <span className="text-muted-foreground">{itemTypeLabel(type, locale) ?? type}</span>
             <span className="font-medium tabular-nums text-foreground">{count.toLocaleString(locale)}</span>
           </span>
         ))}
@@ -222,7 +224,7 @@ export function PassContentSummary({
     return (
       <div className="space-y-2">
         {/* Raretés EN PREMIER, puis la ligne combinée cosmétiques/devises (cf. demande user). */}
-        {hasRarity && <RarityChips breakdown={content.rarity_breakdown!} remaining={rem?.rarity_breakdown} fmt={fmt} />}
+        {hasRarity && <RarityChips breakdown={content.rarity_breakdown!} remaining={rem?.rarity_breakdown} fmt={fmt} locale={locale} />}
         {allChips.length > 0 && <ChipRow chips={allChips} compact />}
       </div>
     )
@@ -231,7 +233,7 @@ export function PassContentSummary({
   return (
     <div className="space-y-3">
       {/* Raretés EN PREMIER, puis items (cosmétiques), puis devises (cf. demande user). */}
-      {hasRarity && <RarityChips breakdown={content.rarity_breakdown!} remaining={rem?.rarity_breakdown} fmt={fmt} />}
+      {hasRarity && <RarityChips breakdown={content.rarity_breakdown!} remaining={rem?.rarity_breakdown} fmt={fmt} locale={locale} />}
       <ChipRow chips={itemChips} />
       <ChipRow chips={currencyChips} />
       {hasTypes && <TypeTags breakdown={content.type_breakdown!} locale={locale} title={labels.typeTitle} />}

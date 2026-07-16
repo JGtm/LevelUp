@@ -33,6 +33,10 @@ type AssetURLAdapter struct {
 	// csrResolver retourne l'URL du badge CSR pour (designation, tier_id).
 	// Injecté depuis csr_designations (server.go). Nil = pas de seed CSR.
 	csrResolver func(designation string, subTier int) string
+	// teamNameResolver retourne le libellé d'équipe localisé pour (team_id, locale).
+	// Injecté depuis team_colors (server.go). Nil = pas de seed team_colors → la
+	// Match View retombe sur son libellé d'équipe existant (dégradation gracieuse).
+	teamNameResolver func(teamID int, locale string) string
 }
 
 // NewAssetURLAdapter construit un AssetURLAdapter Halo 5 vide. Les données sont
@@ -83,6 +87,25 @@ func (a *AssetURLAdapter) WithWeapons(weapons []canonical.AssetMeta) *AssetURLAd
 func (a *AssetURLAdapter) WithCSRResolver(f func(designation string, subTier int) string) *AssetURLAdapter {
 	a.csrResolver = f
 	return a
+}
+
+// WithTeamNameResolver injecte le résolveur de libellé d'équipe (team_id, locale → nom
+// localisé), construit depuis team_colors au boot. Sans lui, TeamName renvoie "" et la
+// Match View garde son libellé d'équipe existant.
+func (a *AssetURLAdapter) WithTeamNameResolver(f func(teamID int, locale string) string) *AssetURLAdapter {
+	a.teamNameResolver = f
+	return a
+}
+
+// TeamName retourne le libellé d'équipe localisé pour un team_id (Halo 5 :
+// « Rouge »/« Red »). "" si aucun résolveur n'est injecté (team_colors vide/absent) ou
+// team_id inconnu. `locale` : "en" → nom EN, sinon nom FR (défaut projet FR-first).
+// Implémente la capability optionnelle consommée par le service Match View.
+func (a *AssetURLAdapter) TeamName(teamID int, locale string) string {
+	if a.teamNameResolver == nil {
+		return ""
+	}
+	return a.teamNameResolver(teamID, locale)
 }
 
 // TitleSlug retourne "halo_5".
@@ -140,11 +163,15 @@ func (a *AssetURLAdapter) CSRRankImageURL(tier string, subTier int) string {
 	return a.csrResolver(tier, subTier)
 }
 
-// CSRRankImageURLOnyx retourne l'URL du badge Onyx. Onyx n'a pas de sous-palier
-// (subTier=0), cohérent avec la clé `onyx|0` de csr_designations.
+// CSRRankImageURLOnyx retourne l'URL du badge Onyx. Onyx est un palier unique
+// (pas de sous-palier I-IV) mais csr_designations le stocke à tier_id=1 — les
+// sous-paliers y sont 1-indexés (pas de tier_id=0) → la clé de lookup est
+// `onyx|1`. Aligné sur la compensation du chemin Home/Explorer
+// (home_repo_skill_peak.go : sub=1 pour Onyx). Passer 0 provoquait un miss de
+// lookup → badge Onyx sans image sur la Match View (scoreboard/header/amis).
 func (a *AssetURLAdapter) CSRRankImageURLOnyx() string {
 	if a.csrResolver == nil {
 		return ""
 	}
-	return a.csrResolver("Onyx", 0)
+	return a.csrResolver("Onyx", 1)
 }

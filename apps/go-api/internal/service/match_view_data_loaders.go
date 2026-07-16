@@ -395,6 +395,9 @@ func (s *MatchViewService) buildMatchViewFromData(
 		}
 	}
 	team := buildTeamTabFull(d.scoreboard, d.kvPairs, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, d.sharedCSRs, s.assetURL)
+	// Halo 5 persisté : libellés d'équipe « Rouge/Bleu » depuis team_colors (no-op HINF
+	// et si le référentiel est vide → le front garde son libellé existant).
+	s.applyTeamNames(ctx, team.Scoreboard)
 	mediaTab := buildMediaTab(d.media)
 
 	// MV4.B' : radar 6 axes calculé depuis le scoreboard (kills/HS/PK/assists/

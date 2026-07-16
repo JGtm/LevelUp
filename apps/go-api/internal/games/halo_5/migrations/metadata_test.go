@@ -98,6 +98,75 @@ func TestHalo5Metadata_IsolatedFromInfinite(t *testing.T) {
 	}
 }
 
+// TestHalo5Metadata_WeaponRegistrySeeded : le set metadata h5 crée le registre
+// d'armes CROSS-TITRE (weapons/weapon_ids/weapon_families) et le seede avec les
+// armes Halo 5 + leurs stock_ids et RÔLES. Sans lui, resolveWeaponMeta retombe
+// sur weapon_labels seul (aucun rôle) → kills_by_role vide → donut « Frags par
+// type d'arme » masqué sur H5 (bug B2b). Le registre est cross-titre par
+// conception (PK title_slug+weapon_key, lectures title-scopées) : la présence de
+// lignes halo_infinite dans la même table n'est PAS une pollution (≠ des
+// référentiels title-specific isolés type career_ranks/playlists).
+func TestHalo5Metadata_WeaponRegistrySeeded(t *testing.T) {
+	migration.SetTitleStepsProvider(halomigrations.StepsFor)
+	Register()
+
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open duckdb: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	if err := migration.RunForTitleDB(db, halo5.TitleSlug, migration.TargetMetadata); err != nil {
+		t.Fatalf("RunForTitleDB(%s, metadata): %v", halo5.TitleSlug, err)
+	}
+
+	// Les 3 tables du registre existent.
+	for _, tbl := range []string{"weapons", "weapon_ids", "weapon_families"} {
+		if !tableExists(t, db, tbl) {
+			t.Errorf("table registre %q absente — h5_add_weapon_registry non appliqué", tbl)
+		}
+	}
+
+	// Des armes Halo 5 avec un RÔLE non vide sont seedées (sans elles, aucun rôle
+	// ne résout → donut vide).
+	var h5WithRole int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM weapons WHERE title_slug = ? AND role IS NOT NULL AND role <> ''`,
+		halo5.TitleSlug,
+	).Scan(&h5WithRole); err != nil {
+		t.Fatalf("count weapons halo_5 avec rôle: %v", err)
+	}
+	if h5WithRole == 0 {
+		t.Error("aucune arme halo_5 avec rôle dans le registre — le donut « Frags par type d'arme » resterait vide")
+	}
+
+	// Des stock_ids Halo 5 sont mappés (résolution effective_weapon_id → weapon_key).
+	var h5Ids int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM weapon_ids WHERE title_slug = ?`, halo5.TitleSlug,
+	).Scan(&h5Ids); err != nil {
+		t.Fatalf("count weapon_ids halo_5: %v", err)
+	}
+	if h5Ids == 0 {
+		t.Error("aucun weapon_ids halo_5 — les kills H5 ne peuvent pas résoudre de rôle")
+	}
+
+	// Résolution de bout en bout : un stock_id H5 réel (Assault Rifle = 313138863,
+	// cf. weaponRegistryH5Stock) doit joindre vers un rôle non vide.
+	var role string
+	if err := db.QueryRow(`
+		SELECT COALESCE(w.role, '')
+		FROM weapon_ids wi
+		JOIN weapons w ON w.title_slug = wi.title_slug AND w.weapon_key = wi.weapon_key
+		WHERE wi.title_slug = ? AND wi.id_value = '313138863'`, halo5.TitleSlug,
+	).Scan(&role); err != nil {
+		t.Fatalf("résolution stock_id 313138863: %v", err)
+	}
+	if role == "" {
+		t.Error("stock_id H5 313138863 (Assault Rifle) ne résout aucun rôle")
+	}
+}
+
 // TestHalo5Metadata_MilestoneCatalogSeeded : avec la racine config/titles injectée
 // (SetMilestonesSeedRoot), le set metadata h5 SEED milestone_catalog depuis
 // config/titles/halo_5/milestones/catalog.toml (C5). Sans ce seed, la couche

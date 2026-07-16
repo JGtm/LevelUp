@@ -16,7 +16,7 @@ import { KpiCard } from '@/components/cards/KpiCard'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { accuracyScale, kdScale, lifespanScale, perfScale } from '@/lib/accessibility/scales'
-import { formatDurationMMSS, displayRatingLabel } from '@/lib/formatters'
+import { formatDurationMMSS, formatDurationMShort, displayRatingLabel } from '@/lib/formatters'
 import { combatYieldToken } from '@/lib/formatters/combatYield'
 import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 import type { SessionCompareEntry } from '@/lib/api/types'
@@ -85,6 +85,9 @@ export function SessionSummaryCard({ entry, compact = false }: Props) {
       <KpiStat
         label={t('session.detail.stat_avg_life')}
         value={entry.avg_life_seconds != null ? formatDurationMMSS(entry.avg_life_seconds) : '—'}
+        // Tooltip désambiguïsant le MM:SS (ex. "1:05" → "1m05s"), même formatter canonique
+        // que la tuile Durée de vie du SessionBriefing.
+        valueTitle={entry.avg_life_seconds != null ? formatDurationMShort(entry.avg_life_seconds) : undefined}
         accent={entry.avg_life_seconds != null ? lifespanScale(entry.avg_life_seconds) : undefined}
       />
       <KpiStat
@@ -137,16 +140,19 @@ function KpiStat({
   value,
   token,
   accent,
+  valueTitle,
 }: {
   label: string
   value: string
   token?: SemanticToken
   /** Barre d'accent du catalogue (qualité de la métrique). */
   accent?: SemanticToken
+  /** Tooltip natif (attribut title) au survol — lève l'ambiguïté d'un MM:SS. */
+  valueTitle?: string
 }) {
   return (
     <KpiCard accent={accent} className="flex-1 min-w-[5rem]">
-      <div className="px-3 py-2">
+      <div className="px-3 py-2" title={valueTitle}>
         <p className="text-3xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
         <p className="mt-0.5 text-lg font-bold text-foreground" style={token ? { color: tokenCssVar(token) } : undefined}>
           {value}

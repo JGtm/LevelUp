@@ -162,3 +162,24 @@ func TestParseLocale(t *testing.T) {
 		}
 	}
 }
+
+func TestLocaleFromParams(t *testing.T) {
+	cases := []struct {
+		name       string
+		queryLang  string
+		acceptLang string
+		want       Locale
+	}{
+		{"lang=en prime sur Accept-Language fr", "en", "fr-FR,fr;q=0.9", LocaleEN},
+		{"lang=fr prime sur Accept-Language en", "fr", "en-US,en;q=0.9", LocaleFR},
+		{"lang insensible a la casse + espaces", " EN ", "fr-FR", LocaleEN},
+		{"lang vide → repli Accept-Language en", "", "en-US,en;q=0.9", LocaleEN},
+		{"lang inconnu → repli Accept-Language fr", "de", "fr-FR", LocaleFR},
+		{"tout vide → defaut FR", "", "", LocaleFR},
+	}
+	for _, c := range cases {
+		if got := LocaleFromParams(c.queryLang, c.acceptLang); got != c.want {
+			t.Errorf("%s: LocaleFromParams(%q, %q) = %v, want %v", c.name, c.queryLang, c.acceptLang, got, c.want)
+		}
+	}
+}

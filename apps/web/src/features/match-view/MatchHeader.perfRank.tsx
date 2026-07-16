@@ -6,7 +6,7 @@
  */
 import { tokenCssVar } from '@/lib/accessibility'
 import { skillDeltaScale } from '@/lib/accessibility/scales'
-import { gridForRatingTypes, subTierPosition } from '@/lib/skillTiers'
+import { gridForRatingTypes, subTierPosition, localizeTierLabel } from '@/lib/skillTiers'
 import { formatRankDelta } from '@/lib/formatters'
 import { MATCH_VIEW_TEXT, type MatchViewLocale } from './i18n'
 import type { MatchViewHeader as MatchViewHeaderData, MatchViewRank } from '@/lib/api/types'
@@ -25,7 +25,7 @@ export function PerfRankRow({ header, rank, perfColor, locale }: PerfRankRowProp
   const t = MATCH_VIEW_TEXT[locale]
   // « Placement » (sentinelle back) → libellé localisé « En placement », aligné
   // sur les cards d'accueil.
-  const tierLabel = displayTierLabel(rank.tier_label, t.rankPlacement)
+  const tierLabel = displayTierLabel(localizeTierLabel(rank.tier_label, locale), t.rankPlacement)
 
   const deltaColor =
     rank.delta_value != null
@@ -162,7 +162,7 @@ export function PerfRankRow({ header, rank, perfColor, locale }: PerfRankRowProp
               </div>
               <div className="absolute inset-x-0 top-full mt-1 flex justify-between text-2xs text-muted-foreground tabular-nums">
                 <span>{tierLabel ?? ''}</span>
-                <span>{nextTierLabel(rank.tier_label)}</span>
+                <span>{localizeTierLabel(nextTierLabel(rank.tier_label), locale)}</span>
               </div>
             </div>
           )}

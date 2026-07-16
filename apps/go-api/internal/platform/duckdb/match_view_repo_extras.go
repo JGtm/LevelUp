@@ -154,8 +154,9 @@ func (r *MatchViewRepo) GetMatchEncounterStats(ctx context.Context, matchID, myX
 	var out []domain.EncounterStatsRaw
 	for rows.Next() {
 		var (
-			s          domain.EncounterStatsRaw
-			lastSeenAt sql.NullTime
+			s           domain.EncounterStatsRaw
+			firstSeenAt sql.NullTime
+			lastSeenAt  sql.NullTime
 		)
 		if err := rows.Scan(
 			&s.XUID,
@@ -167,9 +168,13 @@ func (r *MatchViewRepo) GetMatchEncounterStats(ctx context.Context, matchID, myX
 			&s.LossesVsEnemy,
 			&s.KillsDealt,
 			&s.DeathsSuffered,
+			&firstSeenAt,
 			&lastSeenAt,
 		); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounterStats scan: %w", err)
+		}
+		if firstSeenAt.Valid {
+			s.FirstSeen = firstSeenAt.Time
 		}
 		if lastSeenAt.Valid {
 			s.LastSeenAt = lastSeenAt.Time
@@ -267,6 +272,7 @@ func (r *MatchViewRepo) GetHistoryForAvg(ctx context.Context, xuid string) ([]do
 
 	// Set perfect-kill résolu pour le titre du joueur (HINF byte-identique).
 	q := resolvePerfectKillClause(Q29HistoryForAvg, "m.medal_name_id", pdbTitleSlug(r.pdb))
+	q = resolveCampaignExclusion(q, pdbTitleSlug(r.pdb), "r")
 	rows, err := sharedDB.QueryContext(ctx, q, xuid, xuid)
 	if err != nil {
 		slog.WarnContext(ctx, "GetHistoryForAvg query failed", "err", err)
@@ -318,6 +324,7 @@ func (r *MatchViewRepo) GetHistoryForAvgBulk(ctx context.Context, xuids []string
 	ph := strings.TrimRight(strings.Repeat("?,", len(xuids)), ",")
 	q := resolvePerfectKillClause(
 		fmt.Sprintf(Q29HistoryForAvgBulkTpl, ph, ph), "m.medal_name_id", pdbTitleSlug(r.pdb))
+	q = resolveCampaignExclusion(q, pdbTitleSlug(r.pdb), "r")
 	// La liste xuid alimente les DEUX clauses IN (recent puis perfect), dans l'ordre.
 	args := make([]any, 0, len(xuids)*2)
 	for _, x := range xuids {

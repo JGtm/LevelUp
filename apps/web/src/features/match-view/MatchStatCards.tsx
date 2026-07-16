@@ -4,15 +4,16 @@
  * C3 : StatExpectedCard     — réel vs attendu (K/D/A)
  * C4 : MatchRankBadge       — delta rang CSR/LUSR après match
  * C5 : KdIndicatorCard      — K/D vs nemesis principal
- * C6 : MatchVsStatCard      — générique "X vs Y + delta" (MMR, frags, morts, vie)
+ * C6 : MatchVsStatCard      — extrait dans MatchVsStatCard.tsx (règle 500 lignes)
  * C7 : MatchSummaryCardsSection — grille 4 cartes onglet Résumé
  *
- * NATIVE_COMPONENTS items C3, C4, C5, C6, C7.
+ * NATIVE_COMPONENTS items C3, C4, C5, C7 (C6 : voir MatchVsStatCard.tsx).
  */
 import type { MatchViewRank, MatchExpectedStats, MatchNemesisRow, MatchSummaryKpis } from '@/lib/api/types'
 import { skillDeltaScale, kdScale } from '@/lib/accessibility/scales'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
-import { formatRankDelta } from '@/lib/formatters'
+import { formatRankDelta, formatDurationMShort } from '@/lib/formatters'
+import { localizeTierLabel } from '@/lib/skillTiers'
 import {
   formatOffensiveConversion,
   formatDefensiveResistance,
@@ -24,6 +25,17 @@ import { formatMessage } from '@/lib/i18n/format'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useProvidesDamageTaken, useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
+import { MatchVsStatCard } from './MatchVsStatCard'
+
+// Tooltip "Vie moy." : MatchSummaryKpis n'expose la vie moyenne qu'en chaîne M:SS
+// (pas de champ secondes) : on la reparse pour le formatter canonique
+// formatDurationMShort ("1:05" -> "1m05s"), levant l'ambiguïté d'un MM:SS.
+function avgLifeTitle(mmss?: string | null): string | undefined {
+  if (!mmss?.includes(':')) return undefined
+  const [m, s] = mmss.split(':').map(Number)
+  const short = formatDurationMShort(m * 60 + s)
+  return short === '-' ? undefined : short
+}
 
 // ---------------------------------------------------------------------------
 // C3 — StatExpectedCard (réel vs attendu)
@@ -147,7 +159,7 @@ export function MatchRankBadge({ rank, hadBotTeammate = false }: MatchRankBadgeP
       <div className="flex-1">
         <p className="text-xs text-muted-foreground uppercase tracking-wide">{rank.rating_type}</p>
         <div className="flex items-baseline gap-2 mt-0.5">
-          <span className="text-lg font-bold text-foreground">{rank.tier_label}</span>
+          <span className="text-lg font-bold text-foreground">{localizeTierLabel(rank.tier_label, locale)}</span>
           {rank.numeric_value != null && (
             <span className="text-sm text-muted-foreground">{rank.numeric_value.toFixed(0)} pts</span>
           )}
@@ -201,98 +213,6 @@ export function KdIndicatorCard({ nemesis }: KdIndicatorCardProps) {
         {nemesis.i_killed} kills · {nemesis.killed_me} morts
       </p>
     </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// C6 — MatchVsStatCard (générique "X vs Y + delta")
-// ---------------------------------------------------------------------------
-
-interface MatchVsStatCardProps {
-  label: string
-  /** Valeur principale (gauche ou seule) */
-  primary: number | string | null
-  /** Valeur secondaire (droite, optionnelle) */
-  secondary?: number | string | null
-  /** Libellé sous la valeur primaire */
-  primaryLabel?: string
-  /** Libellé sous la valeur secondaire */
-  secondaryLabel?: string
-  /** Delta affiché en dessous */
-  delta?: number | null
-  /** Si true, un delta négatif est favorable (morts, durée de vie basse) */
-  lowerIsBetter?: boolean
-  /** Formater la valeur (ex. décimales) */
-  precision?: number
-  /**
-   * Accent FIXE (type 2 du catalogue) appliqué quand il n'y a pas de delta —
-   * ex. métrique sans comparaison (vie moyenne). Ignoré dès qu'un delta existe
-   * (l'accent dynamique type 4 prend le dessus).
-   */
-  fixedAccent?: SemanticToken
-}
-
-export function MatchVsStatCard({
-  label,
-  primary,
-  secondary,
-  primaryLabel,
-  secondaryLabel,
-  delta,
-  lowerIsBetter = false,
-  precision = 0,
-  fixedAccent,
-}: MatchVsStatCardProps) {
-  const fmt = (v: number | string | null | undefined) => {
-    if (v == null) return '—'
-    if (typeof v === 'string') return v
-    return precision > 0 ? v.toFixed(precision) : Math.round(v).toString()
-  }
-
-  const isFavorable =
-    delta == null ? null : lowerIsBetter ? delta < 0 : delta > 0
-
-  // Accent dynamique (type 4 du catalogue) : barre 3px verte si favorable,
-  // rouge si défavorable. Sans delta, on retombe sur l'accent fixe éventuel
-  // (type 2 — ex. barre neutre pour une métrique sans comparaison).
-  const accent: SemanticToken | undefined =
-    isFavorable === null ? fixedAccent : isFavorable ? 'divergent-pos' : 'divergent-neg'
-
-  const deltaStyle =
-    isFavorable === null
-      ? undefined
-      : { color: tokenCssVar(isFavorable ? 'divergent-pos' : 'divergent-neg') }
-
-  return (
-    <KpiCard accent={accent} className="h-full">
-      <div className="px-3 py-2.5">
-        <p className="text-2xs text-muted-foreground uppercase tracking-wide mb-1.5">{label}</p>
-        <div className="flex items-baseline gap-1.5">
-          <div>
-            <span className="text-lg font-bold text-foreground leading-none">{fmt(primary)}</span>
-            {primaryLabel && (
-              <p className="text-2xs text-muted-foreground mt-0.5">{primaryLabel}</p>
-            )}
-          </div>
-          {secondary != null && (
-            <>
-              <span className="text-muted-foreground text-xs font-light">vs</span>
-              <div>
-                <span className="text-lg font-bold text-foreground leading-none">{fmt(secondary)}</span>
-                {secondaryLabel && (
-                  <p className="text-2xs text-muted-foreground mt-0.5">{secondaryLabel}</p>
-                )}
-              </div>
-            </>
-          )}
-          {delta != null && (
-            <span className="ml-auto text-xs font-semibold" style={deltaStyle}>
-              {delta > 0 ? '+' : ''}{fmt(delta)}
-            </span>
-          )}
-        </div>
-      </div>
-    </KpiCard>
   )
 }
 
@@ -474,6 +394,7 @@ export function MatchSummaryCardsSection({
       <MatchVsStatCard
         label={t('match_view.cards.avg_life')}
         primary={kpis.average_life ?? null}
+        primaryTitle={avgLifeTitle(kpis.average_life)}
         fixedAccent="divergent-neutral"
       />
       <MatchVsStatCard

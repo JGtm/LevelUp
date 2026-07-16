@@ -361,10 +361,15 @@ type MatchScoreboardRow struct {
 	XUID     string  `json:"xuid"`
 	Gamertag string  `json:"gamertag"`
 	TeamSide *string `json:"team_side,omitempty"`
-	IsMe     bool    `json:"is_me"`
-	IsBot    bool    `json:"is_bot,omitempty"`
-	IsMVP    bool    `json:"is_mvp,omitempty"`
-	IsLVP    bool    `json:"is_lvp,omitempty"`
+	// TeamName : libellé d'équipe localisé fourni par le backend (Halo 5 :
+	// « Rouge »/« Red » depuis le référentiel team_colors). Vide pour les titres
+	// sans référentiel d'équipes (Halo Infinite) → le front retombe sur sa
+	// résolution de nom d'équipe existante (Eagle/Cobra).
+	TeamName string `json:"team_name,omitempty"`
+	IsMe     bool   `json:"is_me"`
+	IsBot    bool   `json:"is_bot,omitempty"`
+	IsMVP    bool   `json:"is_mvp,omitempty"`
+	IsLVP    bool   `json:"is_lvp,omitempty"`
 	// PerformanceScore : score de performance (0..100) calculé sur l'historique
 	// du joueur. Disponible uniquement pour les joueurs trackés (main + amis).
 	// Source : player_match_enrichment.performance_score de la player DB.

@@ -289,6 +289,22 @@ export interface CreateArcBody {
 // ──────────────────────── API client ────────────────────────
 
 /**
+ * Préfixe player-scoped des routes Prestige/Escouade.
+ *
+ * Le module Prestige est monté côté serveur SOUS /players/{player_slug}
+ * (server_apiv1.go — groupe gardé par ownershipMW, ADR 0029). L'acteur de la
+ * requête (created_by / requested_by / user_id) sert de {player_slug} : le
+ * handler lit l'acteur depuis le body/la query, le segment de path ne sert
+ * qu'à ownershipMW. Un appel top-level (sans ce préfixe) tombe donc en 404
+ * (cause du bug « Enregistrer cette compo » — les routes squad l'oubliaient
+ * alors que les lectures défis/arcs/prestige le posaient déjà).
+ *
+ * Chokepoint unique — ne pas inliner `/players/${...}` pour une route squad
+ * (garde-rail : prestige.paths.test.ts).
+ */
+const scopedToPlayer = (actorSlug: string) => `/players/${encodeURIComponent(actorSlug)}`
+
+/**
  * Section api.prestige — toutes les requêtes vers les endpoints Prestige.
  *
  * Si le backend retourne 404 (PRESTIGE_ENABLED désactivé), les fonctions
@@ -371,62 +387,62 @@ export const prestigeApi = {
       target_per_member?: number
       created_by: string
     },
-  ) => api.post<SquadChallenge>(`/squads/${squadId}/challenges`, body),
+  ) => api.post<SquadChallenge>(`${scopedToPlayer(body.created_by)}/squads/${squadId}/challenges`, body),
 
-  listSquadChallenges: (squadId: string) =>
+  listSquadChallenges: (squadId: string, requestedBy: string) =>
     api.get<{ squad_challenges: SquadChallenge[]; count: number }>(
-      `/squads/${squadId}/challenges`,
+      `${scopedToPlayer(requestedBy)}/squads/${squadId}/challenges`,
     ),
 
   joinSquadChallenge: (id: string, body: { user_id: string; chosen_tier?: Tier; is_private?: boolean }) =>
-    api.post<void>(`/squad-challenges/${id}/join`, body),
+    api.post<void>(`${scopedToPlayer(body.user_id)}/squad-challenges/${id}/join`, body),
 
   // Squad roster (CRUD) — clé xuid, cf. backend Phase C.
   createSquad: (body: { name: string; created_by: string; members?: SquadMemberInput[] }) =>
-    api.post<Squad>(`/squads`, body),
+    api.post<Squad>(`${scopedToPlayer(body.created_by)}/squads`, body),
 
   listMySquads: (userId: string) =>
     api.get<{ squads: SquadWithMembers[]; count: number }>(
-      `/squads?user_id=${encodeURIComponent(userId)}`,
+      `${scopedToPlayer(userId)}/squads?user_id=${encodeURIComponent(userId)}`,
     ),
 
   addSquadMember: (
     squadId: string,
     body: { xuid: string; gamertag?: string; requested_by: string },
-  ) => api.post<void>(`/squads/${encodeURIComponent(squadId)}/members`, body),
+  ) => api.post<void>(`${scopedToPlayer(body.requested_by)}/squads/${encodeURIComponent(squadId)}/members`, body),
 
   removeSquadMember: (squadId: string, xuid: string, requestedBy: string) =>
     api.delete<void>(
-      `/squads/${encodeURIComponent(squadId)}/members/${encodeURIComponent(xuid)}?requested_by=${encodeURIComponent(requestedBy)}`,
+      `${scopedToPlayer(requestedBy)}/squads/${encodeURIComponent(squadId)}/members/${encodeURIComponent(xuid)}?requested_by=${encodeURIComponent(requestedBy)}`,
     ),
 
   // Renommer une escouade (membre-user requis côté backend).
   renameSquad: (squadId: string, body: { name: string; requested_by: string }) =>
-    api.patch<void>(`/squads/${encodeURIComponent(squadId)}`, body),
+    api.patch<void>(`${scopedToPlayer(body.requested_by)}/squads/${encodeURIComponent(squadId)}`, body),
 
   // Supprimer une escouade (retrait append-only de tous les membres).
   deleteSquad: (squadId: string, requestedBy: string) =>
     api.delete<void>(
-      `/squads/${encodeURIComponent(squadId)}?requested_by=${encodeURIComponent(requestedBy)}`,
+      `${scopedToPlayer(requestedBy)}/squads/${encodeURIComponent(squadId)}?requested_by=${encodeURIComponent(requestedBy)}`,
     ),
 
   // Évaluation de progression d'un défi d'escouade (recalcule + persiste).
   evaluateSquadChallenge: (id: string, requestedBy: string) =>
     api.post<{ progress: SquadParticipantProgress[] }>(
-      `/squad-challenges/${encodeURIComponent(id)}/evaluate`,
+      `${scopedToPlayer(requestedBy)}/squad-challenges/${encodeURIComponent(id)}/evaluate`,
       { requested_by: requestedBy },
     ),
 
   // Pool de défis suggérés pour l'escouade (biaisé coach). À consommer pour créer.
   refreshSquadPool: (squadId: string, body: { title_slug: string; requested_by: string }) =>
     api.post<{ pool: Template[]; count: number }>(
-      `/squads/${encodeURIComponent(squadId)}/challenges/pool/refresh`,
+      `${scopedToPlayer(body.requested_by)}/squads/${encodeURIComponent(squadId)}/challenges/pool/refresh`,
       body,
     ),
 
   // Orientation coach de l'escouade : axe focal (le plus faible) à renforcer.
   squadOrientation: (squadId: string, requestedBy: string) =>
     api.get<{ axis: string }>(
-      `/squads/${encodeURIComponent(squadId)}/orientation?requested_by=${encodeURIComponent(requestedBy)}`,
+      `${scopedToPlayer(requestedBy)}/squads/${encodeURIComponent(squadId)}/orientation?requested_by=${encodeURIComponent(requestedBy)}`,
     ),
 }

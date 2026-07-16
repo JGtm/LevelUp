@@ -40,7 +40,8 @@ func (r *StatsRepo) LoadStatsMatches(ctx context.Context) ([]legacymatch.StatsMa
 	// Baseline rendement/résistance title-aware (225 Infinite, 115 h5) — liée 2×
 	// (offensive_conversion + defensive_resistance) AVANT le xuid de la clause WHERE.
 	hp := games.EffectiveHpToKill(r.pdb.TitleSlug)
-	rows, err := sharedDB.QueryContext(ctx, Q23StatsMatchesShared, hp, hp, r.pdb.XUID)
+	statsQ := resolveCampaignExclusion(Q23StatsMatchesShared, r.pdb.TitleSlug, "r")
+	rows, err := sharedDB.QueryContext(ctx, statsQ, hp, hp, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("StatsRepo.LoadStatsMatches: %w", err)
 	}

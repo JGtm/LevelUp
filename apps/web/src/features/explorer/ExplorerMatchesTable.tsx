@@ -31,6 +31,7 @@ import {
 import type { ExplorerMatchRow } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { localizeTierLabel } from '@/lib/skillTiers'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { mmrDeltaScale, kdaDivergentScale } from '@/lib/accessibility/scales'
 import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
@@ -483,7 +484,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
           if (r.placement_done != null && r.placement_total != null) {
             return <span className="font-mono">{r.placement_done}/{r.placement_total}</span>
           }
-          return ctx.getValue<string | null | undefined>() ?? '-'
+          return localizeTierLabel(ctx.getValue<string | null | undefined>(), locale) ?? '-'
         },
       },
       // Colonnes MMR (équipe / adverse / Δ) : incluses uniquement si le titre

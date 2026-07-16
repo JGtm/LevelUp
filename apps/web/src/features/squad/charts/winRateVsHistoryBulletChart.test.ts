@@ -18,8 +18,15 @@ function row(
   winRate: number,
   historicalWinRate?: number,
   matchCount = 10,
+  historicalMatchCount?: number,
 ): MapBreakdownRow {
-  return { map_ui: mapUI, match_count: matchCount, win_rate: winRate, historical_win_rate: historicalWinRate }
+  return {
+    map_ui: mapUI,
+    match_count: matchCount,
+    win_rate: winRate,
+    historical_win_rate: historicalWinRate,
+    historical_match_count: historicalMatchCount,
+  }
 }
 
 const OPTS = {
@@ -67,7 +74,13 @@ describe('buildWinRateVsHistoryBulletOption', () => {
   it('applique mapLabelOf sur les noms de cartes', () => {
     const opt = buildWinRateVsHistoryBulletOption(makeSeries([row('aquarius', 0.5, 0.5)]), OPTS)
     const yAxis = opt.yAxis as { data: string[] }
-    expect(yAxis.data).toContain('AQUARIUS')
+    expect(yAxis.data[0]).toContain('AQUARIUS')
+  })
+
+  it('suffixe (n) = nombre de parties de la session sur le libellé d\'axe', () => {
+    const opt = buildWinRateVsHistoryBulletOption(makeSeries([row('aquarius', 0.6, 0.5, 7)]), OPTS)
+    const yAxis = opt.yAxis as { data: string[] }
+    expect(yAxis.data).toEqual(['AQUARIUS (7)'])
   })
 
   it('trie par match_count desc (ordre canonique de fréquence)', () => {
@@ -78,7 +91,36 @@ describe('buildWinRateVsHistoryBulletOption', () => {
     ]
     const opt = buildWinRateVsHistoryBulletOption(makeSeries(rows), OPTS)
     const yAxis = opt.yAxis as { data: string[] }
-    expect(yAxis.data).toEqual(['A', 'C', 'B'])
+    expect(yAxis.data).toEqual(['A (20)', 'C (10)', 'B (5)'])
+  })
+
+  it('tooltip formatter → titre carte + ligne counts session/historique', () => {
+    const countsLabel = vi.fn(
+      (s: number, h?: number) => `Session : ${s} parties · Historique : ${h === undefined ? '—' : `${h} parties`}`,
+    )
+    const opt = buildWinRateVsHistoryBulletOption(
+      makeSeries([row('aquarius', 0.6, 0.5, 7, 40)]),
+      { ...OPTS, countsLabel },
+    )
+    const formatter = (opt.tooltip as { formatter: (p: unknown) => string }).formatter
+    const html = formatter([
+      { dataIndex: 0, marker: '', seriesName: 'Historique', value: 50 },
+      { dataIndex: 0, marker: '', seriesName: 'Session', value: 60 },
+    ])
+    expect(countsLabel).toHaveBeenCalledWith(7, 40)
+    expect(html).toContain('AQUARIUS')
+    expect(html).toContain('Session : 7 parties · Historique : 40 parties')
+  })
+
+  it('tooltip counts : historique absent → passe undefined à countsLabel', () => {
+    const countsLabel = vi.fn((s: number, h?: number) => `${s}/${h ?? 'na'}`)
+    const opt = buildWinRateVsHistoryBulletOption(
+      makeSeries([row('x', 0.6, undefined, 3)]),
+      { ...OPTS, countsLabel },
+    )
+    const formatter = (opt.tooltip as { formatter: (p: unknown) => string }).formatter
+    formatter([{ dataIndex: 0, marker: '', seriesName: 'Session', value: 60 }])
+    expect(countsLabel).toHaveBeenCalledWith(3, undefined)
   })
 
   it('yAxis inverse activé (carte la plus jouée en haut)', () => {

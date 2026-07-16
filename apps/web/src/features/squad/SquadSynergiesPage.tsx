@@ -91,6 +91,7 @@ export function SquadSynergiesPage() {
           historyLabel={t.charts.winRateVsHistoryHistory}
           parityLabel={t.charts.winRateVsHistoryBulletParity}
           zeroWinrateLabel={t.charts.winRateVsHistoryBulletZero}
+          countsLabel={t.charts.winRateVsHistoryBulletCounts}
         />
         <MapPerfVsHistoryChart
           title={t.charts.mapPerfVsHistoryTitle}

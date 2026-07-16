@@ -11,8 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/analysis/relations"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -137,9 +136,9 @@ func (s *CareerService) GetEncounters(ctx context.Context) (domain.CareerEncount
 }
 
 // GetTopEncounters retourne les 10 joueurs les plus croisés au niveau carrière
-// globale, hors amis configurés (FriendGamertags). Enrichit chaque encounter
-// avec les badges narratifs (ally_plus / tough_enemy / ordinal) via le même
-// algorithme que MatchView.
+// globale, hors amis configurés (FriendGamertags). Enrichit chaque encounter avec
+// le MÊME jeu de badges que la Match View et le hub Relations (4 badges de rencontre
+// + 5 badges « solid »), via le calcul partagé relations.ComputeBadges.
 func (s *CareerService) GetTopEncounters(ctx context.Context) (domain.CareerTopEncountersResponse, error) {
 	excludeXUIDs := s.resolveFriendXUIDs(ctx)
 	encounters, stats, err := s.repo.GetTopEncountersGlobal(ctx, excludeXUIDs)
@@ -151,6 +150,7 @@ func (s *CareerService) GetTopEncounters(ctx context.Context) (domain.CareerTopE
 	for _, st := range stats {
 		statsByXUID[st.XUID] = st
 	}
+	now := time.Now()
 	out := make([]domain.MatchEncounterRow, 0, len(encounters))
 	for _, e := range encounters {
 		st, ok := statsByXUID[e.XUID]
@@ -158,7 +158,7 @@ func (s *CareerService) GetTopEncounters(ctx context.Context) (domain.CareerTopE
 			out = append(out, e)
 			continue
 		}
-		e.Badges = computeCareerEncounterBadges(e, st)
+		e.Badges = computeCareerEncounterBadges(e, st, now)
 		out = append(out, e)
 	}
 	return domain.CareerTopEncountersResponse{Items: out}, nil
@@ -213,52 +213,13 @@ func (s *CareerService) resolveFriendXUIDs(ctx context.Context) []string {
 	return out
 }
 
-// computeCareerEncounterBadges applique narrative.ComputeEncounterBadges
-// (ordinal + ally_plus + tough_enemy) avec le même protocole que MatchView.
-func computeCareerEncounterBadges(e domain.MatchEncounterRow, st domain.EncounterStatsRaw) []domain.MatchEncounterBadge {
-	winrateAsAlly := encounterBadgeWinrate(st.WinsAsAlly, st.LossesAsAlly)
-	winrateVsEnemy := encounterBadgeWinrate(st.WinsVsEnemy, st.LossesVsEnemy)
-	stats := narrative.EncounterStats{
-		XUID:            e.XUID,
-		Gamertag:        e.Gamertag,
-		TotalEncounters: e.CountTogether,
-		AllyCount:       st.AllyCount,
-		EnemyCount:      st.EnemyCount,
-		WinrateAsAlly:   winrateAsAlly,
-		WinrateVsEnemy:  winrateVsEnemy,
-		KillsDealt:      st.KillsDealt,
-		DeathsSuffered:  st.DeathsSuffered,
-	}
-	ordinal := e.CountTogether - 1
-	if ordinal < 0 {
-		ordinal = 0
-	}
-	raw := narrative.ComputeEncounterBadges(stats, ordinal)
-	if len(raw) == 0 {
-		return nil
-	}
-	out := make([]domain.MatchEncounterBadge, 0, len(raw))
-	for _, b := range raw {
-		out = append(out, domain.MatchEncounterBadge{
-			Kind:       string(b.Kind),
-			LabelKey:   b.LabelKey,
-			ColorToken: b.ColorToken,
-			Detail:     b.Detail,
-		})
-	}
-	return out
-}
-
-// encounterBadgeWinrate : retourne nil si W+L == 0, sinon le ratio (0..1).
-// Mirror de service.encounterWinrate (match_view_service.go) — duplication
-// volontaire pour éviter le couplage entre les deux services.
-func encounterBadgeWinrate(wins, losses int) *float64 {
-	total := wins + losses
-	if total == 0 {
-		return nil
-	}
-	rate := analysis.WinRate(wins, total)
-	return &rate
+// computeCareerEncounterBadges attribue les badges de rencontre de la page Carrière
+// via le calcul PARTAGÉ (relations.ComputeBadges) — MÊME jeu de badges que la Match
+// View et le hub Relations (les 4 badges de rencontre + les 5 « solid »). now sert
+// aux badges temporels (recrue / ancien) alimentés par st.FirstSeen.
+func computeCareerEncounterBadges(e domain.MatchEncounterRow, st domain.EncounterStatsRaw, now time.Time) []domain.MatchEncounterBadge {
+	relStats := relationStatsFromEncounterStats(e.XUID, e.Gamertag, e.CountTogether, st, true)
+	return convertRelationBadges(relations.ComputeBadges(relStats, now))
 }
 
 // convertRivals projette CareerRivalRawRow → CareerRival (calcule le ratio).

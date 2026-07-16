@@ -596,7 +596,10 @@ func (r *LeaderboardRepo) GetStatLeaderboard(
 		GROUP BY mp.xuid, vg.gamertag
 		HAVING COUNT(DISTINCT mp.match_id) >= ? AND value IS NOT NULL
 		ORDER BY value DESC
-		LIMIT ?`, metric.expr, registryJoin, registryWhere.String())
+		LIMIT ?`, metric.expr, registryJoin,
+		// Masquage Campagne via sous-requête (self-contained : n'ajoute pas la
+		// jointure registre conditionnelle ci-dessus). No-op pour Infinite.
+		registryWhere.String()+excludeCampaignByMatchID(titleSlug, "mp.match_id"))
 	args = append(args, statLeaderboardMinMatches, limit)
 
 	rows, err := sharedDB.QueryContext(ctx, q, args...)

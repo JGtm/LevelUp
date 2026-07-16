@@ -14,8 +14,9 @@ package duckdb
 
 import "levelup/go-api/internal/analysis"
 
-// Q1 : Bootstrap — nombre de matchs dans shared_matches_v2.
-const Q1MatchCount = `SELECT COUNT(*) FROM match_registry`
+// Q1 : Bootstrap — nombre de matchs dans shared_matches_v2. Le compteur exclut
+// les matchs Campagne (Halo 5) : le token est résolu par le caller avec le titre.
+const Q1MatchCount = `SELECT COUNT(*) FROM match_registry mr WHERE TRUE ` + campaignExclusionToken
 
 // Q2 : Bootstrap — version DuckDB embarquée.
 const Q2DBVersion = `SELECT version()`
@@ -64,7 +65,7 @@ SELECT
     m.xuid,
     COUNT(DISTINCT mp.match_id) AS match_count
 FROM matched m
-LEFT JOIN match_participants mp ON m.xuid = mp.xuid
+LEFT JOIN match_participants mp ON m.xuid = mp.xuid` + excludeAllCampaignByMatchID("mp.match_id") + `
 GROUP BY m.gamertag, m.xuid, m.score
 ORDER BY m.score DESC, match_count DESC, m.gamertag ASC
 LIMIT 20`

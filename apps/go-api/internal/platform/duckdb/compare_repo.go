@@ -68,7 +68,7 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 			WHERE ` + perfectKillMedalInClause("medal_name_id", titleSlug) + `
 			GROUP BY match_id, xuid
 		) me ON me.match_id = mp.match_id AND me.xuid = mp.xuid
-		WHERE mp.xuid = ?
+		WHERE mp.xuid = ?` + excludeCampaignByMatchID(titleSlug, "mp.match_id") + `
 		GROUP BY mp.xuid, COALESCE(vg.gamertag, xa.gamertag, '')`
 
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)

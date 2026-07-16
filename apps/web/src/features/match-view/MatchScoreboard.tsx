@@ -28,6 +28,8 @@ import { formatDurationMMSS } from '@/lib/formatters'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { MatchViewText } from './i18n'
 import { displayTierLabel } from './MatchHeader.utils'
+import { localizeTierLabel } from '@/lib/skillTiers'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { parseTeamSideID, resolveTeamName } from '@/lib/halo/teamNames'
 import {
   cellState,
@@ -236,6 +238,7 @@ function TeamScoreboard({
   rank,
   t,
 }: TeamScoreboardProps) {
+  const locale = useAppShellStore((s) => s.locale)
 
   const data: ScoreboardRowVM[] = useMemo(
     () =>
@@ -280,9 +283,13 @@ function TeamScoreboard({
       header: isRanked ? t.sbColCsr : t.sbDetailLusr,
       cell: (ctx) => {
         const url = ctx.row.original.skill_rank?.icon_url
-        // « Placement » (sentinelle back) → « En placement » localisé, cohérent
-        // avec le header (displayTierLabel).
-        const label = displayTierLabel(ctx.row.original.skill_rank?.tier_label, t.rankPlacement)
+        // Palier baké au sync (FR Infinite / EN H5) → nom localisé, puis
+        // « Placement » (sentinelle back) → « En placement », cohérent avec le
+        // header (localizeTierLabel + displayTierLabel).
+        const label = displayTierLabel(
+          localizeTierLabel(ctx.row.original.skill_rank?.tier_label, locale),
+          t.rankPlacement,
+        )
         // Pas d'icône mais un palier connu (CSR Halo 5 sans badge résolu) → afficher le
         // libellé de palier plutôt qu'un « — » (cf. signalement #2). « — » réservé au cas
         // sans icône NI palier.
@@ -394,7 +401,7 @@ function TeamScoreboard({
     // top_weapon) ne figurent pas dans highlightCols → toujours conservées.
     const hlKeys = new Set(highlightCols.map((c) => String(c.key)))
     return cols.filter((c) => !hlKeys.has(c.id ?? '') || presentKeys.has(c.id ?? ''))
-  }, [highlightCols, presentKeys, expandedXuid, playerSlug, onPlayerClick, isRanked, t])
+  }, [highlightCols, presentKeys, expandedXuid, playerSlug, onPlayerClick, isRanked, t, locale])
 
   const table = useReactTable<ScoreboardRowVM>({
     data,
@@ -402,10 +409,13 @@ function TeamScoreboard({
     getCoreRowModel: getCoreRowModel(),
   })
 
-  // Résolution du nom officiel d'équipe (Eagle / Cobra / ...) depuis team_side.
-  // Fallback : "Équipe N" si team_id connu mais hors map, "Équipe inconnue"
-  // si team_side malformé. Aligné sur src/config.py::TEAM_MAP (Python main).
-  const officialName = resolveTeamName(teamSide)
+  // Résolution du nom d'équipe. Priorité au libellé fourni par le backend (Halo 5 :
+  // « Rouge/Bleu » depuis team_colors, déjà localisé côté serveur via team_name) ; à
+  // défaut, résolution front des noms officiels Halo Infinite (Eagle / Cobra / ...).
+  // Fallback : "Équipe N" si team_id connu mais hors map, "Équipe inconnue" si
+  // team_side malformé.
+  const backendTeamName = rows.find((r) => r.team_name)?.team_name ?? null
+  const officialName = backendTeamName ?? resolveTeamName(teamSide)
   const teamID = parseTeamSideID(teamSide)
   const teamLabel = officialName
     ? t.teamLabelFmt(officialName)
