@@ -78,7 +78,7 @@ export function ExplorerTargetIdentityBanner({
     // (emblème + nameplate recolorisés #160) plutôt qu'un placeholder vide.
     if (synthesizeBanner) {
       return (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
           <div className="relative overflow-hidden">
             <RecoloredMask
               src={`/titles/${currentTitleSlug}/spartan/nameplates/${spartanNameplateId}.png`}
@@ -111,7 +111,7 @@ export function ExplorerTargetIdentityBanner({
       )
     }
     return (
-      <div className="overflow-hidden rounded-2xl border border-dashed border-border bg-muted/30 px-5 py-6">
+      <div className="overflow-hidden rounded-lg border border-dashed border-border bg-muted/30 px-5 py-6">
         <div className="flex items-center gap-4">
           <div
             className="flex h-16 w-16 items-center justify-center rounded-full border border-border bg-background text-2xl font-bold text-muted-foreground"
@@ -139,7 +139,7 @@ export function ExplorerTargetIdentityBanner({
     >
       <div
         data-testid="explorer-target-banner-image"
-        className="overflow-hidden rounded-2xl border border-border bg-card bg-cover bg-center shadow-sm"
+        className="overflow-hidden rounded-lg border border-border bg-card bg-cover bg-center shadow-sm"
         style={bannerUrl ? { backgroundImage: `url('${bannerUrl}')` } : undefined}
       >
         {/* Wrapper hero interne (parité HomeSpartanIdentityBanner) : fournit un

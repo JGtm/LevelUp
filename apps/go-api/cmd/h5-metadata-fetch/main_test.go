@@ -57,17 +57,19 @@ func TestPersistTeamColors(t *testing.T) {
 		t.Fatalf("create team_colors: %v", err)
 	}
 
-	// Fixture : forme de la réponse EN de l'API /team-colors (id int, iconUrl nullable).
+	// Fixture : forme RÉELLE de la réponse EN de l'API /team-colors — `id` est sérialisé
+	// en STRING ("0","1"), iconUrl nullable. Verrouille le parsing string→int (régression
+	// : un retour de apiTeamColor.ID à int ferait échouer cet unmarshal).
 	payload := `[
-		{"id":0,"name":"Red","description":"Red team","color":"#E64C4C","iconUrl":"https://cdn/red.png","contentId":"a"},
-		{"id":1,"name":"Blue","description":"Blue team","color":"#4C7FE6","iconUrl":null,"contentId":"b"}
+		{"id":"0","name":"Red","description":"Red team","color":"#E64C4C","iconUrl":"https://cdn/red.png","contentId":"a"},
+		{"id":"1","name":"Blue","description":"Blue team","color":"#4C7FE6","iconUrl":null,"contentId":"b"}
 	]`
 	var colors []apiTeamColor
 	if err := json.Unmarshal([]byte(payload), &colors); err != nil {
 		t.Fatalf("unmarshal fixture: %v", err)
 	}
-	// Noms FR issus du pass Accept-Language: fr-FR.
-	frByID := map[int]string{0: "Rouge", 1: "Bleu"}
+	// Noms FR issus du pass Accept-Language: fr-FR (indexés par l'id string de l'API).
+	frByID := map[string]string{"0": "Rouge", "1": "Bleu"}
 
 	if got := persistTeamColors(db, colors, frByID); got != 2 {
 		t.Fatalf("persistTeamColors a écrit %d lignes, want 2", got)
@@ -113,8 +115,8 @@ func TestPersistTeamColors_FrenchFallsBackToEN(t *testing.T) {
 		name_fr VARCHAR NOT NULL DEFAULT '', color VARCHAR, icon_url VARCHAR)`); err != nil {
 		t.Fatalf("create team_colors: %v", err)
 	}
-	colors := []apiTeamColor{{ID: 2, Name: "Green", Color: "#4CE67F"}}
-	persistTeamColors(db, colors, map[int]string{}) // aucun nom FR
+	colors := []apiTeamColor{{ID: "2", Name: "Green", Color: "#4CE67F"}}
+	persistTeamColors(db, colors, map[string]string{}) // aucun nom FR
 	var nameFR string
 	if err := db.QueryRow(`SELECT name_fr FROM team_colors WHERE team_id=2`).Scan(&nameFR); err != nil {
 		t.Fatalf("read team 2: %v", err)
