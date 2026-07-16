@@ -1,6 +1,8 @@
 # PLAN — Triage et traitement des détections monitoring (2026-07)
 
-> Statut : PARTIEL (exécuté le 2026-07-10 sur `fix/monitoring-triage-2026-07`). Le code
+> Statut : QUASI-SOLDÉ — clôture prod le 2026-07-16 (`docs/b4-data-quality-solde`) ; seul
+> reste le soak FINAL B7.4 (2026-08-11) et UN [!] renvoyé en chantier de suivi (B4.2
+> orphelins). Historique : exécuté le 2026-07-10 sur `fix/monitoring-triage-2026-07`. Le code
 > déploy-indépendant est livré et testé (B6.4 anti-flood, B6.1/B3.3 démotions+compteurs).
 > **B1 déployé en prod le 2026-07-12** (mergé via PR #54 → deploy auto) : cascade LUSR
 > ÉTEINTE, `/health` stabilisé (un seul 503 ponctuel vs 632 pendant l'incident),
@@ -12,9 +14,15 @@
 >   endpoint admin, session signée côté VPS) : B4.1 [x] 20/24 UUID résolus (4 playlists → drain
 >   réseau), B4.3 [x] 580 lying-bits vidés (floor no-film ~13 = découverte détecteur), B4.4 [x]
 >   1 mode traduit (1 artefact pair-inversé [!]) ; B4.2 [!] convergence 4/4 OK mais mécanisme
->   opportuniste épuisé (orphelins 144 inchangés) ; B5.5 [!] binaire absent + 0 casse (fallback
->   read-path actif). Détail §B4 / §B5.5.
-> - **B2.4 / B7.4** soaks datés (délai prescrit, pas un report). B7.4 ré-armé T0=2026-07-12.
+>   opportuniste épuisé (orphelins 144 inchangés) ; **B5.5 [x] no-op vérifié le 2026-07-16**
+>   (dry-run : 0 chemin absolu prod HI 139/139 + H5 84/84 déjà relatifs). Détail §B4 / §B5.5.
+> - **B2.4 SOLDÉ le 2026-07-16** (soak 4 j : 0 reauth 07-13→16, 0 AADSTS). **B5.1/B5.2
+>   CONFIRMÉS résolus** post-deploy B1 (0 `read-only mode` depuis le 07-11 ; writer-holds
+>   nominaux `held_ms=2000` ; `/health` 503 résiduel = gate-window bénin → refonte). **B7.4** =
+>   seul soak restant (lecture interim 07-16 OK ; mesure finale 2026-08-11). Découvertes
+>   NOUVELLES consignées : (d) `database is closed` race prestige (apparue 07-14), (e) tables
+>   metadata `mode_name_tr`/`battlepass_track_definitions` absentes, (f) `/health`→`/healthz`.
+>   Chantiers de suivi : B4.2 (orphelins) + (d)/(e) (voir §Découvertes). B5.5 SOLDÉ (no-op).
 > Exécution sous contrat du skill `plan-execution`.
 > Branche cible : `fix/monitoring-triage-2026-07` (1 branche, N commits) — SAUF B1
 > (régression prod active) : hotfix depuis `origin/main` (voir DC-B6).
@@ -53,6 +61,17 @@ diffèrent fortement — le plan est calibré sur la PROD, là où la page monit
 compteur, ou acceptée avec justification datée ; (3) data-quality HI : raw_uuid = 0,
 lying_bits_events = 0, orphan_xuids réduit > 90 % ; (4) un mois glissant après
 livraison : ERROR prod ≈ 0/jour hors incidents externes attestés (script §Mesure).
+
+**Bilan des critères à la clôture (2026-07-16, prod 4 j)** :
+- (1) **ATTEINT** (partie LUSR) — 0 `read-only mode`/jour depuis le 07-11, watermark avance.
+  Nuance : le `/health` 503 résiduel (~90/j, baseline STABLE 07-11→16, non causé par LUSR)
+  = gate-window bénin → Découverte (f), renvoyé au plan REFONTE (`/healthz`). Le STORM 632 de
+  l'incident est bien éteint.
+- (2) **ATTEINT** — chaque famille statuée `[x]`/`[~]`/`[!]` justifié.
+- (3) **PARTIEL** — raw_uuid 24→4 (4 playlists = drain réseau `catalog/ugc-drain`),
+  lying_bits 580→~13 (−97,8 %, floor no-film = faux positif détecteur), orphan_xuids 144
+  INCHANGÉ (mécanisme opportuniste épuisé). Résidus → chantiers de suivi (B4.2 + §Découvertes).
+- (4) **DÉLAI PRESCRIT** — soak final 2026-08-11 (lecture interim 07-16 OK, cf. B7.4).
 
 ## Décisions pré-tranchées (DC)
 
@@ -167,12 +186,15 @@ slots morts au boot, `refresh_token mort — reauth_required` ×45, `world-enric
       désormais le flood oauth-refresh (clé par classe) si un RT venait à mourir.
 - [x] B2.3 RT valides se rafraîchissent — prouvé en prod : syncs OK, 0 reauth post-reboot ;
       helper `RefreshHaloTokensViaStoreFirst` en place.
-- [!] B2.4 Soak 24-48 h — DÉLAI PRESCRIT + non pertinent en local (env recovery) ; à mesurer
-      en prod (déjà 0 reauth post-reboot). Reste [!] jusqu'à observation prod post-deploy B1.
+- [x] B2.4 Soak post-deploy B1 — MESURÉ le 2026-07-16 sur 4 jours pleins (fenêtre 07-13→16,
+      `ssh lvelup`, auth.log) : **0 `reauth_required`, 0 `AADSTS`** (07-13..16 ET aujourd'hui).
+      Le délai prescrit (24-48 h post-deploy B1 du 07-12) est largement écoulé, la mesure est
+      propre : RT valides se rafraîchissent, aucun RT mort actif. Soak SOLDÉ.
 - [~] B2.5 Warn legacy sync_meta → lots D1a/D2 plan audits (DC-B4).
 
-**Gate B2** : prod pool sain (0 ERROR, 0 reauth). Familles locales = env recovery, hors
-cible. `go test ./internal/platform/auth/... ./internal/sync/...` verts (exit 0).
+**Gate B2** : VERT + soak SOLDÉ. Prod pool sain (0 ERROR, 0 reauth) ; soak B2.4 4 jours
+propres (0 reauth 07-13→16). Familles locales = env recovery, hors cible.
+`go test ./internal/platform/auth/... ./internal/sync/...` verts (exit 0).
 
 ### B3 — Crons en échec (effort : réduit après B0)
 
@@ -255,26 +277,34 @@ opportuniste épuisé (0 résolu) — résidu 144 hors portée endpoint.
 
 Liste FERMÉE (relevés 06-07 local + 07-07 prod) :
 
-- [~] B5.1 `duckdb: query failed` / `loadHomeSkillPeak` / `SharedReader unavailable` —
-      downstream du writer-hold LUSR (B1). Prod post-reboot duckdb.log = 9 E, loadHomeSkillPeak
-      13+6 W : gonflé par le writer-hold. À re-mesurer APRÈS deploy B1 → réf B1 (vérif post-deploy).
-- [~] B5.2 `general "http"` ERROR ×632 post-reboot — PROUVÉ = `GET /health → 503` (timeout
-      5 s), symptôme DIRECT du writer-hold LUSR (échantillon : 2 lignes /health 503/5000ms).
-      → résolu par B1, vérif post-deploy. (Les ×3000 juillet = essentiellement tempête DNS.)
+- [x] B5.1 `duckdb: query failed` — RE-MESURÉ post-deploy B1 le 2026-07-16 (prod, duckdb.log).
+      Cause LUSR ÉTEINTE : **0 `read-only mode` par jour depuis le 07-11** (dernière occurrence
+      2026-07-10T14:02) ; writer-holds retombés au régime NOMINAL (`held_ms=2000` au seuil de 2 s,
+      label `sync_v2_postsync` = burst-lease attendu, PLUS le runaway 21 909 ms de l'incident). Le
+      résidu duckdb (93 E le 07-16) N'EST PAS la cascade LUSR mais deux familles NOUVELLES
+      post-plan, consignées en §Découvertes : (d) `database is closed` sur player `stats.duckdb`
+      (race prestige, apparue le 07-14) et (e) tables `mode_name_tr` / `battlepass_track_definitions`
+      absentes. Downstream LUSR = résolu.
+- [x] B5.2 `general "http"` ERROR = `GET /health → 503` (timeout 5 s) — RE-MESURÉ le 2026-07-16.
+      Le STORM LUSR est éteint (632 pendant l'incident → **97/j le 07-16**, ~5/h RÉGULIERS, non
+      groupés sur les cycles sync). Ce résidu n'est PLUS causé par le writer-hold LUSR : c'est le
+      comportement nominal du burst-lease (gate lecture ~2 s en post-sync) croisé au budget 5 s de
+      `/health` qui fait un vrai travail DB = la Découverte déjà consignée (`/health` → `/healthz`
+      pour le healthcheck Docker), routée au plan REFONTE. LUSR résolu ; résidu hors périmètre triage.
 - [x] B5.3 `augmentWithActiveRankedCSRs: GetPlaylistCsr échoué` — 7370 juillet (~99.7 %
       tempête DNS, éteinte) → **19 post-reboot** sur 3 j (~6/j, 401/données transitoires).
       Résidu négligeable ; l'anti-flood B6.4 couvre le flood réseau amont si récidive.
 - [~] B5.4 `highlight_events parse_anomaly` ×32 local — limite connue du décodeur film →
       réf chantier filmdec (HANDOFF_FILM_EXTRACTION).
-- [!] B5.5 `mediaStoredPathToURL: aucun mapping (path legacy)` — `migrate-media-paths`. Évalué
-      en PROD le 2026-07-16 : (1) binaire `migrate-media-paths` ABSENT du conteneur (non buildé —
-      le Dockerfile ne build que `levelup-server` + `levelup`) ET `duckdb` CLI absent hôte+
-      conteneur → dry-run (compte des chemins legacy) NON obtenable sans build ; (2)
-      `shared_social.duckdb` tenu RW par le serveur (mono-process) → run réel = arrêt serveur
-      (downtime), interdit hors mandat downtime explicite ; (3) **0 warning `mediaStoredPathToURL`
-      en logs prod (fenêtre juillet)** → le fallback read-path `relFromSlugMarker` sert déjà les
-      chemins legacy résiduels au format canonique = AUCUNE casse fonctionnelle. Reste [!]
-      prod-gated : nettoyage DB cosmétique, non prioritaire (pas de bug utilisateur).
+- [x] B5.5 `mediaStoredPathToURL: aucun mapping (path legacy)` — `migrate-media-paths`. EXÉCUTÉ
+      (scope) en prod le 2026-07-16 sous mandat downtime : binaire buildé côté VPS (image
+      `levelup-go-builder`, CGO, `-buildvcs=false`), **dry-run READ_ONLY contre une COPIE** des DB
+      (jamais d'ouverture cross-process de la DB tenue RW — copies 20 M/6,6 M, ZÉRO downtime).
+      RÉSULTAT DÉFINITIF : **0 chemin absolu dans les DEUX titres prod** — halo_infinite 139/139
+      `file_path` + 139/139 `thumbnail` DÉJÀ relatifs ; halo_5 84/84 relatifs. La migration est un
+      **no-op intégral** : c'est précisément pourquoi il y a 0 warning `mediaStoredPathToURL` (les
+      chemins stockés sont déjà canoniques, le fallback read-path n'a même rien à rattraper).
+      Aucun run réel ni downtime requis ; serveur resté healthy ; binaire + copies nettoyés. SOLDÉ.
 - [x] B5.6 `configuration non sûre pour un déploiement multi-user exposé` — DÉJÀ log
       une-fois-au-boot (`cmd/server/main.go:320`, séquence boot après `cfg.Validate()`) :
       vérifié sur pièces. DC-B2 satisfait (le nombre d'occurrences = nombre de boots dev).
@@ -282,8 +312,10 @@ Liste FERMÉE (relevés 06-07 local + 07-07 prod) :
       service.log = **11 W** (career_live LoadLastCareerRank/EnrichFromMetadata, live-fetch
       transitoire). Sous le seuil 100/j. Stock historique non re-généré.
 
-**Gate B5** : chaque item statué. Familles tempête-DNS éteintes ; familles cascade-LUSR
-en [~] B1 (vérif post-deploy) ; B5.6 déjà conforme ; B5.5 prod-gated.
+**Gate B5** : VERT. Chaque item statué. Familles tempête-DNS éteintes ; cascade-LUSR
+(B5.1/B5.2) CONFIRMÉE résolue post-deploy B1 le 07-16 (0 `read-only mode` depuis 07-11 ;
+writer-holds nominaux 2 s) ; résidus duckdb = 2 Découvertes NOUVELLES (d/e) hors périmètre ;
+B5.6 déjà conforme ; B5.5 SOLDÉ (no-op vérifié : 0 chemin absolu prod, dry-run 07-16).
 
 ### B6 — Démotions de bruit et anti-flood (effort : rapide)
 
@@ -317,14 +349,20 @@ vert ; messages démotés absents de prod/juillet.
 ### B7 — Vérification finale et clôture (effort : rapide)
 
 - [x] B7.1 Script §Mesure exécuté (logs local + prod post-reboot + data-quality endpoint) —
-      résultats archivés dans l'en-tête « Mesure de clôture » et le thought_log.
+      résultats archivés dans l'en-tête « Mesure de clôture » et le thought_log. RE-EXÉCUTÉ en
+      prod le 2026-07-16 (`ssh lvelup`, fenêtre 07-13→16) pour solder les soaks : résultats
+      dans B2.4 (reauth), B5.1/B5.2 (LUSR/`/health` post-deploy) et B7.4 (interim).
 - [x] B7.2 Tous les items statués ; découvertes consignées ci-dessous.
 - [x] B7.3 Gate final : `cd apps/go-api && go test ./...` = exit 0 ;
       `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... [+touchés]`
       = exit 0 ; gofmt/vet propres ; skill `delivery-checklist` ; entrée `thought_log.md`.
 - [!] B7.4 Cible mensuelle — RÉ-ARMÉ T0 = 2026-07-12 (B1 déployé, cascade LUSR éteinte).
-      Re-mesure T0+30 j (2026-08-11) : DÉLAI PRESCRIT (pas un report). Attendu : ERROR prod
-      ≈ 0/jour hors incidents externes attestés (script §Mesure).
+      **Lecture INTERIM T0+4 j (2026-07-16, prod)** : ERROR/jour = general.log 101 (dont 97 =
+      `/health` 503 gate-window bénin, 4 = `halo_api` transitoire), duckdb.log 93 (races gate
+      bénignes + Découvertes d/e), leaderboard 1 ; sync/provider/pool/persist/service = 0 ERROR.
+      Hors `/health`-gate : ERROR ≈ 0. Re-mesure FINALE T0+30 j (2026-08-11) : DÉLAI PRESCRIT
+      (pas un report), attendu ERROR ≈ 0/j hors incidents externes + résorption des Découvertes
+      d/e si traitées.
 
 ## Mesure (script canonique, réutilisable prod/local)
 
@@ -372,3 +410,22 @@ quand items statués + gate passé. B7.4 est un soak daté, pas un report.
 - 2026-07-10 : la démotion B3.3 (ERROR→WARN de la ligne agrégée spartan_cron) touche un
   chemin de contention LOCAL (2e writer air/worktree) ; en prod ce chemin est absent. Choix
   conforme au plan (le lock de dev n'est pas un incident serveur).
+- 2026-07-16 (d) : **`database is closed` sur player `stats.duckdb` (op=OpenReadWrite)** —
+  NOUVEAU, apparu le 07-14 (0 les 07-12/13 → 47 le 07-14, 11 le 07-15, 54 le 07-16). Chemin =
+  lecture des défis prestige (`internal/platform/duckdb/prestige/prestige_player_helpers.go:18-22`,
+  `challengeSelectColumns`) : le handle player DB est fermé (lease/B-swap) sous une requête en vol.
+  Race de concurrence POST-B1, hors périmètre triage → chantier dédié (candidat : lire sous
+  `OpenReadForQuery`/lease plutôt qu'un `OpenReadWrite` exposé à la fermeture concurrente).
+- 2026-07-16 (e) : **tables `mode_name_tr` (9/j) et `battlepass_track_definitions` (1/j)
+  absentes** (`Catalog Error: Table ... does not exist`) sur des requêtes metadata — lacune de
+  schéma/timing bas volume. Hors périmètre → à investiguer (migration manquante, ou requête sur
+  un attach metadata avant création de la table).
+- 2026-07-16 (f) : `/health` 503 CONFIRMÉ résiduel (97/j, ~5/h réguliers) APRÈS B1 — NON causé
+  par LUSR (writer-holds au seuil nominal 2 s), = la Découverte `/health` vs `/healthz` déjà notée
+  (07-07). Confirmé pour le plan REFONTE (onglet État / signaux santé) : le healthcheck Docker
+  devrait cibler `/healthz` (liveness pure) et non `/health` (travail DB réel).
+- 2026-07-16 : B5.5 SOLDÉ (no-op) — sous mandat downtime, binaire buildé côté VPS + dry-run
+  READ_ONLY contre une COPIE des DB (0 downtime) : **0 chemin absolu** dans les 2 titres prod
+  (HI 139/139, H5 84/84 déjà relatifs). Migration sans effet — le stock est déjà canonique. Le
+  binaire `cmd/migrate-media-paths` reste pertinent si un import legacy réintroduisait des chemins
+  absolus (garde-fou), mais aucune action prod requise aujourd'hui. Cf. §B5.5.
