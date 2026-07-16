@@ -8,7 +8,7 @@
  * If desired later, a redirect-on-second-visit guard can be added by
  * checking bootstrap.user.created_at.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -25,6 +25,21 @@ export function OnboardingOpenSpartanPage() {
   const hasPassword = useAppShellStore((s) => s.hasPassword)
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
+
+  // Garde défense-en-profondeur : un joueur DÉJÀ établi (profil prêt + données
+  // synchronisées) ne doit jamais rester coincé sur l'onboarding « on synchronise
+  // tes derniers matchs » — il y va parfois par un vieux lien ou le flux redirect
+  // SSO. On le renvoie direct au dashboard. Le vrai nouveau joueur (setup_state
+  // != 'ready') reste sur cette page. Gaté sur isBootstrapped pour éviter une
+  // redirection prématurée pré-hydratation.
+  const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
+  const setupState = useAppShellStore((s) => s.setupState)
+  const currentPlayer = useAppShellStore((s) => s.currentPlayer)
+  useEffect(() => {
+    if (isBootstrapped && setupState === 'ready' && currentPlayer) {
+      navigate({ to: '/' })
+    }
+  }, [isBootstrapped, setupState, currentPlayer, navigate])
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
