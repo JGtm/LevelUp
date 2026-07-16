@@ -53,12 +53,15 @@ func (r *CampaignRepo) Insert(ctx context.Context, c campaign.ImprovementCampaig
 func (r *CampaignRepo) GetByID(ctx context.Context, id string) (campaign.ImprovementCampaign, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	row := r.db.QueryRow(ctx, campaignSelectColumns+" WHERE id = ?", id)
-	c, err := scanCampaign(row)
+	rows, err := r.db.QueryRowRecovered(ctx, campaignSelectColumns+" WHERE id = ?", id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return campaign.ImprovementCampaign{}, campaign.ErrNotFound
 	}
-	return c, err
+	if err != nil {
+		return campaign.ImprovementCampaign{}, err
+	}
+	defer rows.Close()
+	return scanCampaign(rows)
 }
 
 // GetActive retourne la campagne active du joueur (1 max attendue par titre).
@@ -66,15 +69,18 @@ func (r *CampaignRepo) GetByID(ctx context.Context, id string) (campaign.Improve
 func (r *CampaignRepo) GetActive(ctx context.Context, userID, titleSlug string) (campaign.ImprovementCampaign, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	row := r.db.QueryRow(ctx, campaignSelectColumns+`
+	rows, err := r.db.QueryRowRecovered(ctx, campaignSelectColumns+`
 		WHERE user_id = ? AND title_slug = ? AND status = 'active'
 		ORDER BY started_at DESC LIMIT 1
 	`, userID, titleSlug)
-	c, err := scanCampaign(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return campaign.ImprovementCampaign{}, campaign.ErrNotFound
 	}
-	return c, err
+	if err != nil {
+		return campaign.ImprovementCampaign{}, err
+	}
+	defer rows.Close()
+	return scanCampaign(rows)
 }
 
 // UpdateStatus change le status (+ ended_at si terminé).
@@ -114,7 +120,7 @@ func (r *CampaignRepo) UpdateEvaluation(ctx context.Context, id string, eval cam
 func (r *CampaignRepo) LinkedChallengeIDs(ctx context.Context, campaignID string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	rows, err := r.db.Query(ctx, `
+	rows, err := r.db.QueryRecovered(ctx, `
 		SELECT id FROM challenge WHERE campaign_id = ? ORDER BY created_at DESC
 	`, campaignID)
 	if err != nil {
@@ -374,7 +380,7 @@ func (p *CampaignSampleProvider) loadLUSRValuesByMatch(
 	args := make([]any, 0, 1+len(matchIDs))
 	args = append(args, component)
 	args = append(args, ToAnySlice(matchIDs)...)
-	rows, err := p.pdb.Player.Query(ctx, playerQ, args...)
+	rows, err := p.pdb.Player.QueryRecovered(ctx, playerQ, args...)
 	if err != nil {
 		slog.WarnContext(ctx, "campaign: loadLUSRComponentSamples player query failed (best-effort, retour vide)",
 			"component", component, "match_count", len(matchIDs), "err", err)

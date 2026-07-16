@@ -75,11 +75,15 @@ func (r *CoachProposalRepo) Get(ctx context.Context, id string) (coach_advisor.P
 	ctx, cancel := context.WithTimeout(ctx, coachProposalReadTimeout)
 	defer cancel()
 
-	row := r.db.QueryRow(ctx, baseSelectCoachProposal+" WHERE id = ?", id)
-	p, err := scanCoachProposal(row)
+	rows, err := r.db.QueryRowRecovered(ctx, baseSelectCoachProposal+" WHERE id = ?", id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return coach_advisor.Proposal{}, coach_advisor.ErrProposalNotFound
 	}
+	if err != nil {
+		return coach_advisor.Proposal{}, fmt.Errorf("CoachProposalRepo.Get: %w", err)
+	}
+	defer rows.Close()
+	p, err := scanCoachProposal(rows)
 	if err != nil {
 		return coach_advisor.Proposal{}, fmt.Errorf("CoachProposalRepo.Get: %w", err)
 	}
@@ -99,7 +103,7 @@ func (r *CoachProposalRepo) ListByUser(ctx context.Context, userID, titleSlug st
 	}
 	q += " ORDER BY created_at DESC"
 
-	rows, err := r.db.Query(ctx, q, args...)
+	rows, err := r.db.QueryRecovered(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("CoachProposalRepo.ListByUser: %w", err)
 	}
@@ -113,7 +117,7 @@ func (r *CoachProposalRepo) ListPendingBySignalScope(ctx context.Context, userID
 	ctx, cancel := context.WithTimeout(ctx, coachProposalReadTimeout)
 	defer cancel()
 
-	rows, err := r.db.Query(ctx, baseSelectCoachProposal+`
+	rows, err := r.db.QueryRecovered(ctx, baseSelectCoachProposal+`
 		WHERE user_id = ?
 		  AND title_slug = ?
 		  AND status = 'pending'
@@ -132,7 +136,7 @@ func (r *CoachProposalRepo) ListPendingByAxis(ctx context.Context, userID, title
 	ctx, cancel := context.WithTimeout(ctx, coachProposalReadTimeout)
 	defer cancel()
 
-	rows, err := r.db.Query(ctx, baseSelectCoachProposal+`
+	rows, err := r.db.QueryRecovered(ctx, baseSelectCoachProposal+`
 		WHERE user_id = ?
 		  AND title_slug = ?
 		  AND status = 'pending'

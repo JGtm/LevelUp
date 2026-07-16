@@ -68,19 +68,21 @@ func (r *PrivacyStateRepo) LoadPrivacyState(ctx context.Context, xuid string) (*
 	defer cancel()
 
 	var s domain.PlayerPrivacyState
-	err := r.pdb.ReadDB().QueryRow(ctx,
+	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx,
 		`SELECT xuid, is_private, observed_at, source
 		   FROM player_privacy_state
 		  WHERE xuid = ?`,
 		xuid,
-	).Scan(&s.XUID, &s.IsPrivate, &s.ObservedAt, &s.Source)
-
-	switch err {
-	case nil:
-		return &s, nil
-	case sql.ErrNoRows:
+	)
+	if err == sql.ErrNoRows {
 		return nil, nil
-	default:
+	}
+	if err != nil {
 		return nil, fmt.Errorf("PrivacyStateRepo.LoadPrivacyState: scan: %w", err)
 	}
+	defer rows.Close()
+	if err := rows.Scan(&s.XUID, &s.IsPrivate, &s.ObservedAt, &s.Source); err != nil {
+		return nil, fmt.Errorf("PrivacyStateRepo.LoadPrivacyState: scan: %w", err)
+	}
+	return &s, nil
 }
