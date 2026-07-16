@@ -94,7 +94,12 @@ func (r *CareerRepo) GetLatestRank(ctx context.Context) (*domain.CareerRankData,
 		rankName   sql.NullString
 		rankTier   sql.NullString
 	)
-	err := r.pdb.ReadDB().QueryRow(ctx, Q6CareerLatestRank).Scan(
+	rows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, Q6CareerLatestRank)
+	if err != nil {
+		return nil, fmt.Errorf("CareerRepo.GetLatestRank: %w", err)
+	}
+	defer rows.Close()
+	if err := rows.Scan(
 		&row.Rank,
 		&row.CurrentXP,
 		&recordedAt,
@@ -103,8 +108,7 @@ func (r *CareerRepo) GetLatestRank(ctx context.Context) (*domain.CareerRankData,
 		&row.XPForNextRank,
 		&row.XPTotal,
 		&row.IsMaxRank,
-	)
-	if err != nil {
+	); err != nil {
 		return nil, fmt.Errorf("CareerRepo.GetLatestRank: %w", err)
 	}
 	if !recordedAt.Valid {
@@ -163,7 +167,7 @@ func (r *CareerRepo) GetXPHistory(ctx context.Context) ([]domain.XPHistoryPoint,
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q7CareerXPHistory, r.pdb.XUID)
+	rows, err := r.pdb.ReadDB().QueryRecovered(ctx, Q7CareerXPHistory, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("CareerRepo.GetXPHistory: %w", err)
 	}

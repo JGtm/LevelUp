@@ -73,10 +73,14 @@ func (r *ProgressionDiagRepo) GetProgressionDiag(ctx context.Context, slug strin
 // countTableBestEffort compte les rows d'une table ; retourne 0 si la table
 // n'existe pas (DB legacy avant migration V2). Idiomatic best-effort.
 func countTableBestEffort(ctx context.Context, db interface {
-	QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row
+	QueryRowRecovered(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
 }, table string) int {
 	var n int
-	row := db.QueryRow(ctx, fmt.Sprintf(`SELECT COUNT(*) FROM "%s"`, table))
-	_ = row.Scan(&n) // erreur (table absente) → n reste 0
+	rows, err := db.QueryRowRecovered(ctx, fmt.Sprintf(`SELECT COUNT(*) FROM "%s"`, table))
+	if err != nil {
+		return 0 // table absente / Reopen concurrent → n reste 0 (best-effort)
+	}
+	defer rows.Close()
+	_ = rows.Scan(&n) // erreur de scan → n reste 0
 	return n
 }
