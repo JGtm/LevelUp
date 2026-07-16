@@ -103,3 +103,51 @@ describe('ExplorerBriefingStrip — carte contexte solo/escouade (item 6)', () =
     expect(text).not.toContain('explorer.briefing.context_split_title')
   })
 })
+
+describe('ExplorerBriefingStrip — carte « Séries » (item 8)', () => {
+  it('rend meilleure et pire série quand les deux segments sont non nuls', () => {
+    const briefing = { ...makeBriefing(120, 120), streaks: { best_win_streak: 7, worst_loss_streak: 4 } }
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('explorer.briefing.streaks_title')
+    expect(text).toContain('explorer.briefing.streak_best')
+    expect(text).toContain('explorer.briefing.streak_worst')
+  })
+
+  it('omet le segment à zéro (scope 100 % victoires → pas de pire série)', () => {
+    const briefing = { ...makeBriefing(120, 120), streaks: { best_win_streak: 5, worst_loss_streak: 0 } }
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('explorer.briefing.streak_best')
+    expect(text).not.toContain('explorer.briefing.streak_worst')
+  })
+
+  it('omet la carte quand les deux segments sont à zéro', () => {
+    const briefing = { ...makeBriefing(120, 120), streaks: { best_win_streak: 0, worst_loss_streak: 0 } }
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const text = container.textContent ?? ''
+    expect(text).not.toContain('explorer.briefing.streaks_title')
+  })
+})
+
+describe('ExplorerBriefingStrip — carte « Moments forts » (item 9)', () => {
+  it('rend les catégories non nulles avec leur compteur', () => {
+    const briefing = {
+      ...makeBriefing(120, 120),
+      dominance: { dominations: 3, remontadas: 1 },
+    }
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('explorer.briefing.highlights_title')
+    expect(text).toContain('×3')
+    expect(text).toContain('×1')
+  })
+
+  it('omet la carte quand tous les compteurs sont à zéro/absents', () => {
+    const { container } = renderWithProviders(
+      <ExplorerBriefingStrip briefing={makeBriefing(120, 120)} t={t} />,
+    )
+    const text = container.textContent ?? ''
+    expect(text).not.toContain('explorer.briefing.highlights_title')
+  })
+})

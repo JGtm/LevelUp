@@ -1,3 +1,47 @@
+## [2026-07-16] Explorer briefing V2 — Phase 5b (cartes « Séries » et « Moments forts », items 8/9)
+
+**Statut** : Complété (Phase 5b du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items
+5b-a → 5b-d). Worktree isolé `feat/explorer-briefing-v2`. NON committé (le superviseur commite).
+
+**Décision technique principale** : deux modules additifs calculés côté BACKEND sur TOUT le
+scope filtré (jamais depuis la frise `outcome_sequence` cappée à 60 — P-9) : séries (meilleure
+série de victoires / pire série de défaites) et moments forts (compteurs `DominanceFlag` 1..5).
+Domain : `ExplorerBriefingStreaks` + `ExplorerBriefingDominance` (int `omitempty`), champs
+`Streaks`/`Dominance` sur `ExplorerBriefing`. Service : `buildBriefingStreaks`/`longestOutcomeRun`
+/`buildBriefingDominance` extraits dans un nouveau fichier `_briefing_streaks.go` (le fichier
+principal était à 486 L — extraction pour rester < 500, CLAUDE.md §5, cohérent avec _ranked/
+_context) ; câblés sous garde `!LowSample`. Règles P-9 respectées : rows non datées écartées, tri
+`StartTime`, série rompue par TOUT autre outcome (pas seulement défaite), nil si aucune row
+datée ; dominance nil si tous compteurs à zéro. Constantes nommées `analysis.DominanceFlag*`
+(pas de magic number).
+
+**Réutilisation d'existant (go-features)** :
+- Séries : AUCUN helper pur réutilisable — les 3 usages du motif max-run (`detectTilt`,
+  `sliceBestWinStreakCanonical`, `currentStreak`) sont couplés à leurs types/besoins. Logique
+  locale (Découverte-2 : centralisation possible mais hors périmètre, règle 7).
+- Libellés dominance : RÉUTILISÉS tels quels — `narrative.dominance.*` (manifest match_view)
+  + tokens `narrative-dominant/humiliation/remontada/debacle/contre-remontada`, déjà employés
+  par `ExplorerMatchesTable`. Mapping `DOMINANCE_ITEMS` (2ᵉ copie, dans la limite CLAUDE.md §6 ;
+  Découverte-3). ZÉRO clé i18n dominance créée.
+- Clés i18n neuves (FR/EN) : `streaks_title`, `streak_best`, `streak_worst`, `streak_wins`
+  (`{n} V`/`{n} W`, aligné `record_vdn`), `streak_losses`, `highlights_title`.
+
+**Résultats observés** : `StreaksCard` (lignes Meilleure/Pire série, segment zéro omis) et
+`DominanceCard` (pastilles colorées par token, catégorie zéro omise) rendues ssi contenu non
+vide (items 12/13). OpenAPI : 2 schémas ajoutés, `ExplorerBriefing` réconcilié (plus divergent),
+`generate-types` idempotent (md5 stable), drift 0 MISSING.
+
+**Gates** (racine du worktree) : `go test ./...` = exit 0 (0 FAIL) ; `make go-api-lint` = 0
+(+ `go vet` service/api = 0 ; golangci-lint `--new-from-rev=origin/main` service/domain = 0) ;
+`make check-types` = 0 ; `make test-web` = 257 fichiers / 2185 passés / 14 skipped / 0 échec ;
+`npm run lint` = 0 erreur (68 warnings baseline, 0 sur les fichiers touchés).
+
+**Conclusion / prochaine étape** : Phase 5b close. Reste Phase 6 (vérification navigateur
+`:8000` items 1-9, changelog EN+FR « What's new » v7.0, delivery-checklist, revue visuelle
+utilisateur avant tout merge). Commit laissé au superviseur.
+
+---
+
 ## [2026-07-16] Explorer briefing V2 — Phase 5 (carte contexte solo/escouade, item 6)
 
 **Statut** : Complété (Phase 5 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items

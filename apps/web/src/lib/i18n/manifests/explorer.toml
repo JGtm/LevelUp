@@ -927,3 +927,30 @@ en = "Placement ({n, plural, one {# match left} other {# matches left}})"
 [explorer.briefing.context_split_title]
 fr = "Solo vs Escouade"
 en = "Solo vs Squad"
+
+# ─── Bandeau briefing : cartes « Séries » et « Moments forts » (Phase 5b) ───────
+
+[explorer.briefing.streaks_title]
+fr = "Séries"
+en = "Streaks"
+
+[explorer.briefing.streak_best]
+fr = "Meilleure série"
+en = "Best streak"
+
+[explorer.briefing.streak_worst]
+fr = "Pire série"
+en = "Worst streak"
+
+# Abréviations V/D alignées sur record_vdn (« {w} V · {l} D »).
+[explorer.briefing.streak_wins]
+fr = "{n} V"
+en = "{n} W"
+
+[explorer.briefing.streak_losses]
+fr = "{n} D"
+en = "{n} L"
+
+[explorer.briefing.highlights_title]
+fr = "Moments forts"
+en = "Highlights"

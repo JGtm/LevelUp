@@ -47,6 +47,13 @@ type ExplorerBriefing struct {
 	// ContextSplit : comparaison solo vs escouade du scope. Nil si non pertinent
 	// (un sous-groupe sous le seuil, ou scope déjà réduit à un seul contexte).
 	ContextSplit *ExplorerBriefingContextSplit `json:"context_split,omitempty"`
+	// Streaks : séries extrêmes du scope (meilleure série de victoires / pire série
+	// de défaites), calculées sur TOUT le scope filtré (P-9). Nil si non pertinent
+	// (low sample, ou aucune row datée). Un segment à zéro est omis côté front.
+	Streaks *ExplorerBriefingStreaks `json:"streaks,omitempty"`
+	// Dominance : compteurs de moments forts (DominanceFlag 1..5) du scope. Nil si
+	// non pertinent (low sample, ou tous les compteurs à zéro).
+	Dominance *ExplorerBriefingDominance `json:"dominance,omitempty"`
 }
 
 // ExplorerBriefingScope porte les agrégats socle du sous-ensemble filtré,
@@ -181,4 +188,28 @@ type ExplorerBriefingContextGroup struct {
 	KDA     float64 `json:"kda"`      // KDA agrégat ADR 0006
 	// AvgPerf : perf moyenne 0..100. Nil si aucun match du groupe n'a de score.
 	AvgPerf *float64 `json:"avg_perf,omitempty"`
+}
+
+// ExplorerBriefingStreaks porte les séries extrêmes du scope, calculées sur TOUT
+// le scope filtré (jamais depuis la frise cappée) après tri chronologique. Une
+// série est rompue par TOUT autre outcome (P-9). Émis hors low_sample ; nil si
+// aucune row datée. Un segment à zéro (aucune victoire / aucune défaite) reste à
+// 0 (omitempty) et le front l'omet.
+type ExplorerBriefingStreaks struct {
+	// BestWinStreak : plus longue série de victoires consécutives. 0 si aucune.
+	BestWinStreak int `json:"best_win_streak,omitempty"`
+	// WorstLossStreak : plus longue série de défaites consécutives. 0 si aucune.
+	WorstLossStreak int `json:"worst_loss_streak,omitempty"`
+}
+
+// ExplorerBriefingDominance compte les moments forts (DominanceFlag 1..5,
+// cf. analysis.DominanceFlag*) du scope. Émis hors low_sample ; nil si tous les
+// compteurs sont à zéro (dégradation par omission). Les catégories à zéro sont
+// omises côté front (les libellés réutilisent narrative.dominance.*).
+type ExplorerBriefingDominance struct {
+	Dominations      int `json:"dominations,omitempty"`
+	Humiliations     int `json:"humiliations,omitempty"`
+	Remontadas       int `json:"remontadas,omitempty"`
+	Debandades       int `json:"debandades,omitempty"`
+	ContreRemontadas int `json:"contre_remontadas,omitempty"`
 }

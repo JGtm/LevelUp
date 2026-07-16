@@ -5028,6 +5028,8 @@ components:
                   $ref: '#/components/schemas/ExplorerBriefingDimension'
               nullable: true
               type: array
+          dominance:
+              $ref: '#/components/schemas/ExplorerBriefingDominance'
           low_sample:
               type: boolean
           outcome_sequence:
@@ -5045,6 +5047,8 @@ components:
               $ref: '#/components/schemas/ExplorerBriefingRanked'
           scope:
               $ref: '#/components/schemas/ExplorerBriefingScope'
+          streaks:
+              $ref: '#/components/schemas/ExplorerBriefingStreaks'
           trend:
               $ref: '#/components/schemas/ExplorerBriefingTrend'
       type: object
@@ -5236,6 +5240,35 @@ components:
           - matches
           - win_rate
           - kda
+      type: object
+    ExplorerBriefingStreaks:
+      additionalProperties: false
+      properties:
+          best_win_streak:
+              format: int64
+              type: integer
+          worst_loss_streak:
+              format: int64
+              type: integer
+      type: object
+    ExplorerBriefingDominance:
+      additionalProperties: false
+      properties:
+          contre_remontadas:
+              format: int64
+              type: integer
+          debandades:
+              format: int64
+              type: integer
+          dominations:
+              format: int64
+              type: integer
+          humiliations:
+              format: int64
+              type: integer
+          remontadas:
+              format: int64
+              type: integer
       type: object
     ExplorerBriefingTrend:
       additionalProperties: false
