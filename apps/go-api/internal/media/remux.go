@@ -59,15 +59,14 @@ func PlanRemuxWebM(ctx context.Context, absPath string) (RemuxPlan, error) {
 // est responsable du Content-Type (video/webm) ; les Range requests ne sont pas
 // supportés sur le flux remuxé.
 func StreamRemuxWebMPlan(ctx context.Context, absPath string, plan RemuxPlan, w io.Writer) error {
-	args := []string{
-		"-hide_banner", "-loglevel", "error",
+	args := ffmpegQuietArgs(
 		"-i", absPath,
 		"-map", "0:v:0",
 		"-map", plan.AudioMap,
 		"-c", "copy",
 		"-f", "webm",
 		"pipe:1",
-	}
+	)
 	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
 	cmd.Stdout = w
 	stderr := &bytes.Buffer{}

@@ -330,7 +330,7 @@ func generateAudioMKV(t *testing.T, dir, name, filter string, maps []string) str
 	src := func(c, l string) []string {
 		return []string{"-f", "lavfi", "-i", "aevalsrc=" + amExpr(c, l) + ":d=3:s=8000"}
 	}
-	args := []string{"-hide_banner", "-loglevel", "error", "-y"}
+	args := ffmpegQuietArgs("-y")
 	args = append(args, src("440", "0.7")...)
 	args = append(args, src("880", "1.1")...)
 	args = append(args, src("660", "0.5")...)
@@ -358,15 +358,15 @@ func generateGameVoiceMKV(t *testing.T, dir string) string {
 	// → reste près de 0 longtemps, salves brèves = intermittent.
 	burst := "(0.5+0.5*sin(2*PI*0.4*t))"
 	voice := "0.5*sin(2*PI*350*t)*" + burst + "*" + burst + "*" + burst
-	args := []string{"-hide_banner", "-loglevel", "error", "-y",
-		"-f", "lavfi", "-i", "aevalsrc=" + game + ":d=5:s=8000",
-		"-f", "lavfi", "-i", "aevalsrc=" + voice + ":d=5:s=8000",
+	args := ffmpegQuietArgs("-y",
+		"-f", "lavfi", "-i", "aevalsrc="+game+":d=5:s=8000",
+		"-f", "lavfi", "-i", "aevalsrc="+voice+":d=5:s=8000",
 		"-f", "lavfi", "-i", "testsrc=size=320x240:rate=15:duration=5",
 		// piste 0 = amix(jeu, voix) ; 0:a:1 = voix ; 0:a:2 = jeu (jeu non premier).
-		"-filter_complex", "[0:a]asplit=2[ga][gb];[1:a]asplit=2[va][vb];" +
+		"-filter_complex", "[0:a]asplit=2[ga][gb];[1:a]asplit=2[va][vb];"+
 			"[ga][va]amix=inputs=2:normalize=0[mix]",
 		"-map", "2:v", "-map", "[mix]", "-map", "[vb]", "-map", "[gb]",
-		"-c:v", "libx264", "-preset", "ultrafast", "-c:a", "libopus", out}
+		"-c:v", "libx264", "-preset", "ultrafast", "-c:a", "libopus", out)
 	if o, err := exec.Command("ffmpeg", args...).CombinedOutput(); err != nil {
 		t.Fatalf("génération gamevoice.mkv: %v\n%s", err, o)
 	}

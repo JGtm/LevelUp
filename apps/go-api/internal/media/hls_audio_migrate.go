@@ -137,16 +137,16 @@ func reencodeRenditionToAAC(ctx context.Context, dir string, ref audioRenditionR
 	// résolution des segments relatifs de la playlist d'entrée — cf. hls.go).
 	tmpSlash := filepath.ToSlash(tmp)
 	out := filepath.Base(ref.URI)
-	args := []string{
-		"-hide_banner", "-loglevel", "error", "-y",
+	args := ffmpegQuietArgs(
+		"-y",
 		"-i", filepath.ToSlash(filepath.Join(dir, ref.URI)),
 		"-map", "0:a:0", "-c:a", "aac", "-b:a", aacRenditionBitrate,
 		"-f", "hls", "-hls_segment_type", "fmp4", "-hls_playlist_type", "vod",
 		"-hls_time", strconv.Itoa(segDur), "-hls_flags", "independent_segments",
-		"-hls_fmp4_init_filename", "init_" + ref.Slug + ".mp4",
-		"-hls_segment_filename", tmpSlash + "/seg_" + ref.Slug + "_%03d.m4s",
-		tmpSlash + "/" + out,
-	}
+		"-hls_fmp4_init_filename", "init_"+ref.Slug+".mp4",
+		"-hls_segment_filename", tmpSlash+"/seg_"+ref.Slug+"_%03d.m4s",
+		tmpSlash+"/"+out,
+	)
 	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
 	stderr := &bytes.Buffer{}
 	cmd.Stderr = stderr

@@ -510,14 +510,14 @@ func TestVerifyHLSPlayable_Integration(t *testing.T) {
 func generateTestMKV(t *testing.T, dir string) string {
 	t.Helper()
 	src := filepath.Join(dir, "source.mkv")
-	cmd := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+	cmd := exec.Command("ffmpeg", ffmpegQuietArgs("-y",
 		"-f", "lavfi", "-i", "testsrc=size=320x240:rate=15:duration=2",
 		"-f", "lavfi", "-i", "sine=frequency=440:duration=2",
 		"-f", "lavfi", "-i", "sine=frequency=880:duration=2",
 		"-map", "0:v", "-map", "1:a", "-map", "2:a",
 		"-c:v", "libx264", "-preset", "ultrafast", "-c:a", "libopus",
 		"-metadata:s:a:0", "title=Game", "-metadata:s:a:1", "title=Mic",
-		src)
+		src)...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("génération MKV test: %v\n%s", err, out)
 	}

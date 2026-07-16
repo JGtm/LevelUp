@@ -7215,3 +7215,51 @@ périmètre sur les 3 lots.
 **Conclusion / prochaine étape** : chantier soldé côté code, cases C1-C8 statuées
 ([x] sauf C8 [~]). Reste au superviseur : relecture diff complet, commits par lot,
 PR sans merge (revue visuelle utilisateur).
+
+## [2026-07-17] LOT D — Correctifs CI de branche PR #64 (goconst + baseline + gate lint)
+
+**Statut** : Complété (lot correctif dicté par le superviseur, PLAN_MEDIA_PIPELINE
+_HARDENING_2026-07 ; branche fix/media-pipeline-hardening, worktree). Pas de commit.
+CI rouge sur 2 causes nôtres + 1 héritée ; E2E Playwright slice-2-career = hors
+périmètre (géré superviseur).
+
+**Décisions techniques principales** :
+- D1 (goconst, ratchet --new-from-merge-base) : ma `buildEnvelopeArgs` (Lot C, C5)
+  ajoutait une occurrence de `-hide_banner` au-dessus du seuil goconst
+  (min-occurrences 4). Leçon de config : l'exclusion goconst des `_test.go` ne
+  filtre que le REPORTING, pas le COMPTAGE — après centralisation des seuls sites
+  prod, goconst re-flaggait le helper lui-même (« 6 occurrences », les littéraux
+  test comptaient encore). Forme retenue : `ffmpegQuietArgs(extra ...string)
+  []string` dans un nouveau fichier court `internal/media/ffmpeg_args.go` (hls.go
+  en dépassement gelé ; une var slice serait mutable par aliasing — le helper
+  retourne un slice frais). Migré : 4 sites prod (buildHLSArgs, buildEnvelopeArgs,
+  reencodeRenditionToAAC, StreamRemuxWebMPlan) + 7 sites test (même package). Les
+  probes ffprobe (`-v error`) = motif distinct, non touchés. Pas de garde-rail
+  grep : goconst est le garde-rail. Résultat : 1 occurrence du littéral (helper).
+- D2 (Go Baseline) : `.ai/baselines/tests_pre_migration.jsonl` purgé de 47 lignes
+  (62 425 → 62 378) par match exact `"Test":"NAME"` : (a) nos 3 renommages Lot C
+  TestStreamRemuxAsWebM_* (remplacés par PlanRemuxWebM_*/StreamRemuxWebMPlan ; RIEN
+  ajouté — la baseline est un plancher) ; (b) casse HÉRITÉE de main (1c0117707
+  « collision route challenges » : tests supprimés sans purge baseline) :
+  TestHomeHandler_GetChallenges_{OK,PlayerNotFound}, sous-tests FlagOff
+  {challenges,leaderboard} (URLs mortes — le smoke actuel teste
+  /prestige/challenges, /arcs, /prestige/me : vérifié sur pièces),
+  TestSmoke_Prestige_FlagOn_RoutesRegistered. Rattrapage conventionnel du repo
+  (précédents « fix(baseline): retire... ») — consigné aussi en Découvertes du plan.
+- D3 (gate lint local, manquait à nos gates) : `golangci-lint run --timeout 5m
+  --new-from-merge-base=origin/main` (v2.12.2 locale).
+
+**Résultats observés** :
+- Lint : exit 1 avant D1 (goconst sur ffmpeg_args.go) → exit 0 « 0 issues » après
+  migration des sites test. Warning nolint_filter (gosec/plr0913) préexistant.
+- gofmt propre, `go vet ./internal/media/` exit 0.
+- Baseline : rejeu de `scripts/check_test_baseline.sh tests` comme la CI
+  (CGO_ENABLED=1, LEVELUP_DEMO_MODE=true, MULTI_TITLE_API_ENABLED=true,
+  PRESTIGE_ENABLED=true ; gcc msys64 géré par le script ; suite complète
+  `-tags=integration -p 1 -json ./...`, ~13 min, attendue en foreground) —
+  VERDICT : exit 0 ; baseline 8 828 tests, courant 10 002 tests ; « Tous les
+  tests baseline présents dans le run courant » (0 manquant). La purge des 8
+  tests est exhaustive.
+
+**Conclusion / prochaine étape** : correctifs CI livrés dans le working tree ;
+commits/push/re-CI côté superviseur.

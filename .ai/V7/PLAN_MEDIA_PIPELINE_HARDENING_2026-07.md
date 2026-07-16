@@ -28,6 +28,14 @@ aucun garde-rail affaibli. Pas de merge dans main ici (revue utilisateur ensuite
   depuis le déploiement. Contrat identique à l'existant, pas de régression
   introduite ; si on veut rendre le CLI auto-suffisant, exposer un `EnsureSchema`
   serait le geste — hors périmètre LOT A.
+- (LOT D) Casse baseline HÉRITÉE de main, rattrapée ici pour rendre la CI de
+  branche verte (rattrapage conventionnel du repo, précédents « fix(baseline):
+  retire... ») : le commit 1c0117707 (« collision route challenges resolue ») a
+  supprimé `TestHomeHandler_GetChallenges_OK`/`_PlayerNotFound` et
+  `TestSmoke_Prestige_FlagOn_RoutesRegistered`, et changé les sous-tests du smoke
+  FlagOff (`/challenges` → `/prestige/challenges`, `leaderboard` retiré) SANS
+  purger `.ai/baselines/tests_pre_migration.jsonl` → le job « Go Baseline »
+  échouait sur toute branche. Entrées retirées dans ce chantier (note Lot D).
 
 ---
 
@@ -247,6 +255,49 @@ sont PAS skippés (sinon les lancer explicitement).
 > échoué = 502 (passerelle devant ffprobe/ffmpeg) ; C7 mécanisme = parse du master
 > (preuve empirique : ffprobe énumère l'ouvrable, pas le déclaré). Zéro garde-rail
 > affaibli ; aucun fix hors périmètre. Pas de commit (superviseur).
+
+## LOT D — Correctifs CI de branche (PR #64) [2026-07-17]
+
+Lot correctif dicté par le superviseur après premier passage CI (2 causes nôtres
++ 1 héritée). Pas de commit (superviseur).
+
+- [x] D1 (goconst). La 9e occurrence de `-hide_banner` (buildEnvelopeArgs, C5)
+      déclenchait goconst (min-occurrences 4 ; les `_test.go` sont exclus du
+      REPORTING mais comptés dans le total). Forme retenue : helper variadique
+      `ffmpegQuietArgs(extra ...string) []string` dans un nouveau fichier court
+      `internal/media/ffmpeg_args.go` (hls.go est en dépassement gelé ; une `var`
+      slice package-level serait mutable par aliasing — le helper retourne un
+      slice frais). Migré : les 4 sites prod (buildHLSArgs, buildEnvelopeArgs,
+      reencodeRenditionToAAC, StreamRemuxWebMPlan) ET les 7 sites test (même
+      package → helper accessible ; sinon le littéral test maintenait le compte
+      au-dessus du seuil et re-flaggait la ligne du helper). Les probes ffprobe
+      (`-v error`) = motif distinct, non concernés. Pas de garde-rail grep :
+      goconst EST le garde-rail. Résultat : 1 seule occurrence du littéral dans
+      le package (le helper).
+- [x] D2 (Go Baseline). `.ai/baselines/tests_pre_migration.jsonl` purgé de 47
+      lignes (62 425 → 62 378) : (a) nos 3 renommages Lot C
+      (`TestStreamRemuxAsWebM_{AV1Opus,IncompatibleVideoCodec,FileMissing}` →
+      remplacés par PlanRemuxWebM_*/StreamRemuxWebMPlan, PAS ajoutés à la
+      baseline — c'est un plancher) ; (b) casse héritée de main (commit
+      1c0117707, cf. Découvertes) : `TestHomeHandler_GetChallenges_OK`,
+      `TestHomeHandler_GetChallenges_PlayerNotFound`,
+      `TestSmoke_Prestige_FlagOff_RoutesAbsent/GET_/api/v1/players/test-player/{challenges,leaderboard}`,
+      `TestSmoke_Prestige_FlagOn_RoutesRegistered`. Vérifié sur pièces : le smoke
+      FlagOff actuel teste `/prestige/challenges`, `/arcs`, `/prestige/me` → le
+      sous-test `arcs` et le top-level restent en baseline. Vérification globale :
+      rejeu de `scripts/check_test_baseline.sh tests` (comme la CI, env
+      CGO_ENABLED=1 + LEVELUP_DEMO_MODE=true + MULTI_TITLE_API_ENABLED=true +
+      PRESTIGE_ENABLED=true, gcc msys64 géré par le script) — VERDICT
+      [2026-07-17] : exit 0 ; baseline 8 828 tests, courant 10 002 tests ;
+      « Tous les tests baseline présents dans le run courant » (0 manquant).
+      La purge des 8 tests est exhaustive, aucune autre entrée ne manque.
+- [x] D3 (gate lint local manquant). `golangci-lint run --timeout 5m
+      --new-from-merge-base=origin/main` (v2.12.2) : exit 1 avant D1 (goconst),
+      exit 0 « 0 issues » après. Le warning `nolint_filter` (gosec/plr0913) est
+      préexistant sur main, pas une issue.
+
+Hors périmètre confirmé : échec E2E Playwright slice-2-career (page Carrière,
+diff non concerné) — géré côté superviseur.
 
 ---
 
