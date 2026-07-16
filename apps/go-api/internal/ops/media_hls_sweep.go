@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 // hlsSweepMu garantit qu'un seul balayage EnsurePendingHLS tourne à la fois dans
@@ -103,11 +104,24 @@ func EnsurePendingHLS(ctx context.Context, p EnsureHLSParams) (EnsureHLSStats, e
 // withSharedSocialDB retombe sur un sql.Open classique.
 func selectPendingHLSCandidates(ctx context.Context, dbPath, onlySlug string) ([]hlsCandidate, error) {
 	var out []hlsCandidate
+	// Éligibilité :
+	//   - transcode_status NULL  → éligible (ligne historique jamais évaluée) ;
+	//   - 'direct' / 'failed'    → exclus (web-natif servi direct, plus de re-probe ;
+	//     échec = plus de retry auto, réarmable via backfill-media-hls --retry-failed) ;
+	//   - 'processing' FRAIS     → exclu (transcodage réellement en cours) ;
+	//   - 'processing' PÉRIMÉ ou sans horodatage (orphelin legacy/crash) → éligible
+	//     (récupération, cf. transcodeStaleAfter).
+	// Le prédicat 'processing' vient du fragment PARTAGÉ avec le compare-and-set
+	// MarkTranscodeProcessing (transcodeNotFreshProcessingSQL, media_hls.go) — même
+	// définition de « déjà en cours » des deux côtés, sinon la course renaît.
+	staleBefore := time.Now().UTC().Add(-transcodeStaleAfter)
 	err := withSharedSocialDB(ctx, dbPath, func(db *sql.DB) error {
 		q := `SELECT id, COALESCE(player_slug, ''), COALESCE(file_path, '')
 		      FROM media_files
-		      WHERE kind = 'video' AND hls_path IS NULL`
-		args := []any{}
+		      WHERE kind = 'video' AND hls_path IS NULL
+		        AND COALESCE(transcode_status, '') NOT IN ('direct', 'failed')
+		        AND ` + transcodeNotFreshProcessingSQL
+		args := []any{staleBefore}
 		if onlySlug != "" {
 			q += ` AND player_slug = ?`
 			args = append(args, onlySlug)
@@ -150,6 +164,13 @@ func processHLSCandidate(ctx context.Context, c hlsCandidate, store MediaPathSto
 		return
 	}
 	if !needed {
+		// Média web-natif servi en direct : on persiste 'direct' (hors dry-run) pour
+		// que les prochains balayages l'excluent — plus jamais re-probé.
+		if !p.DryRun {
+			if err := MarkTranscodeStatus(ctx, p.DBPath, c.filePath, TranscodeDirect); err != nil {
+				log.WarnContext(ctx, "hls sweep: mark direct échoué", "file", c.filePath, "err", err)
+			}
+		}
 		st.SkippedDirect++
 		return
 	}
@@ -157,6 +178,20 @@ func processHLSCandidate(ctx context.Context, c hlsCandidate, store MediaPathSto
 	if p.DryRun {
 		log.InfoContext(ctx, "hls sweep: serait transcodé", "file", c.filePath, "hls", hlsRel)
 		st.Transcoded++
+		return
+	}
+	// Acquérir le verrou de transcodage (compare-and-set 'processing' + horodatage)
+	// AVANT ffmpeg. Refusé = un upload a marqué ce fichier ENTRE la sélection des
+	// candidats (une fois, en début de balayage) et ce tour de boucle — son worker
+	// transcode déjà, relancer ffmpeg écrirait les mêmes segments en parallèle.
+	acquired, err := MarkTranscodeProcessing(ctx, p.DBPath, c.filePath)
+	if err != nil {
+		log.WarnContext(ctx, "hls sweep: mark processing échoué — transcodage sauté", "file", c.filePath, "err", err)
+		st.Failed++
+		return
+	}
+	if !acquired {
+		log.InfoContext(ctx, "hls sweep: transcodage déjà en cours (verrou non acquis) — sauté", "file", c.filePath)
 		return
 	}
 	if err := RunHLSTranscode(ctx, HLSTranscodeParams{
@@ -167,4 +202,30 @@ func processHLSCandidate(ctx context.Context, c hlsCandidate, store MediaPathSto
 		return
 	}
 	st.Transcoded++
+}
+
+// ResetFailedTranscodes réarme les lignes 'failed' (transcode_status → NULL),
+// optionnellement bornées à onlySlug, les rendant de nouveau éligibles au
+// balayage. Le retry des 'failed' n'est PLUS automatique — un échec permanent
+// (codec non supporté, source corrompu) subissait un transcodage ffmpeg complet
+// en pure perte à chaque sync : c'est devenu une action opérateur maîtrisée via
+// le CLI backfill-media-hls --retry-failed. Retourne le nombre de lignes réarmées.
+func ResetFailedTranscodes(ctx context.Context, dbPath, onlySlug string) (int64, error) {
+	var n int64
+	err := withSharedSocialDB(ctx, dbPath, func(db *sql.DB) error {
+		q := `UPDATE media_files SET transcode_status = NULL WHERE transcode_status = ?`
+		args := []any{TranscodeFailed}
+		if onlySlug != "" {
+			q += ` AND player_slug = ?`
+			args = append(args, onlySlug)
+		}
+		res, err := db.ExecContext(ctx, q, args...)
+		if err != nil {
+			return fmt.Errorf("ResetFailedTranscodes: %w", err)
+		}
+		n, _ = res.RowsAffected()
+		checkpointBestEffort(ctx, db, "ResetFailedTranscodes")
+		return nil
+	})
+	return n, err
 }
