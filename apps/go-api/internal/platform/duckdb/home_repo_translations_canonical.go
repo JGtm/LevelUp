@@ -45,10 +45,38 @@ func (r *HomeRepo) EnrichCanonicalAssetTranslations(ctx context.Context, rows []
 	for i := range rows {
 		applyCanonicalAssetFRBatch(&rows[i], t)
 		applyCanonicalAssetENBatch(&rows[i], t)
+		r.applyCanonicalPlaylistDisplay(rows[i].Summary.Playlist)
 		r.applyCanonicalMapIconURL(rows[i].Summary.Map, t)
 		applyCanonicalPairModeFR(rows[i].Summary.PairMode, t)
 	}
 	return nil
+}
+
+// applyCanonicalPlaylistDisplay applique le CHOKEPOINT UNIQUE de libellé de
+// playlist (strip de catégorie + override playlist_labels.toml) sur Labels["fr"]
+// APRÈS résolution (DB ou asset_translations) — INCONDITIONNEL, contrairement à
+// applyCanonicalAssetFR gaté par needsHomeAssetTranslation. Sans ça, une playlist
+// dont le nom FR est déjà peuplé en DB (« Super Fiesta Fête », « Arène delta :
+// Héritage ») échappait au raccourcissement sur les tuiles de match et les
+// sessions dominantes. Idempotent (Display d'un libellé déjà résolu = lui-même).
+func (r *HomeRepo) applyCanonicalPlaylistDisplay(ref *canonical.AssetReference) {
+	if ref == nil {
+		return
+	}
+	// DefaultLabel : pour Halo 5, match_registry.playlist_name est synced en
+	// FR-localisé (« Super Fiesta Fête ») et sert de repli quand Labels["fr"] est
+	// absent (sessions dominantes → dominantNameFromRows retombe sur `en`). On le
+	// résout donc aussi. Labels["en"] (vrai EN) reste intact — parité Match View
+	// qui ne transforme que le FR.
+	if ref.DefaultLabel != "" {
+		ref.DefaultLabel = r.playlistDisplay.Display(ref.DefaultLabel)
+	}
+	if ref.Labels == nil {
+		return
+	}
+	if fr := ref.Labels["fr"]; fr != "" {
+		ref.Labels["fr"] = r.playlistDisplay.Display(fr)
+	}
 }
 
 // resolveCanonicalAssetTranslations collecte les IDs nécessaires + résout les

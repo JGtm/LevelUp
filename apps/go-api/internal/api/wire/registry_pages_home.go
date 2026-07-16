@@ -41,7 +41,8 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 // gracieuse : sans titleResolver ou sans adapter, le HomeRepo reste nu et
 // ne fait que le lookup registry.
 func (r *ServiceRegistry) newHomeRepo(pdb *duckdb.PlayerDB) *duckdb.HomeRepo {
-	repo := duckdb.NewHomeRepo(pdb)
+	repo := duckdb.NewHomeRepo(pdb).
+		WithPlaylistDisplay(r.playlistLabelConfigFor(pdb))
 	// Phase 6 du plan CSR : injection du repo thresholds + saison courante.
 	// Sans cette injection, le seuil par défaut (5) est utilisé partout, ce qui
 	// est juste pour les saisons S3+ mais incorrect pour les historiques S1-S2.
@@ -70,7 +71,8 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 		return nil, "", "", err
 	}
 	svc := service.NewMatchHistoryService(duckdb.NewMatchHistoryRepo(pdb), pdb.Gamertag).
-		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag)
+		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
+		WithPlaylistDisplay(r.playlistLabelConfigFor(pdb))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
