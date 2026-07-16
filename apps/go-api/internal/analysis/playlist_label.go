@@ -74,7 +74,8 @@ func (c PlaylistLabelConfig) Display(rawFR string) string {
 // TOUTES les surfaces (Match View, tuiles home, sessions, playlists récentes,
 // Explorer, historique) DOIVENT passer par ici pour afficher le même libellé —
 // ne JAMAIS ré-appliquer NormalizePlaylistLabel + un lookup d'override inline
-// ailleurs (garde-rail : no_inline_playlist_label_test.go). rawFR vide → "".
+// ailleurs (garde-rail : TestNoInlinePlaylistLabelResolution dans
+// playlist_label_display_test.go). rawFR vide → "".
 func DisplayPlaylistLabel(rawFR string, stripCategory bool, overrides map[string]string) string {
 	s := strings.TrimSpace(rawFR)
 	if s == "" {
