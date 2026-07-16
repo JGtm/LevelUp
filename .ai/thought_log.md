@@ -57,6 +57,38 @@ partout + login SISU d'un joueur existant → dashboard direct.
 
 ---
 
+## [2026-07-16] Plan rédigé — Explorer briefing V2 (ajustements post-revue visuelle)
+
+**Statut** : Complété (plan rédigé, aucune ligne de code ; à exécuter en autre conversation).
+
+**Décision technique principale** : rédaction de `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`,
+chantier d'ajustements du bandeau de briefing Explorer (mode Matchs) livré au train 2026-07-15
+(`feat/explorer-briefing-cards`). Sept items cadrés sur pièces, branche cible
+`feat/explorer-briefing-v2`. Investigations clés tranchées : (1) le delta « = ±0 pts » des
+cartes de dimension est JUSTIFIÉ mathématiquement (scope = tout l'historique ⟹ référence
+« habituel » = scope ⟹ delta 0), pas un bug → remède frontend-only : masquer le delta
+« vs habituel » (socle + dimensions) quand `scope.matches === baseline.matches` ; (4) le Δ LUSR
+cumulé brut (« −1380 ») se remplace par une progression de paliers dérivée du `SkillTierLabel`
+premier/dernier match du scope (déjà résolu FR côté repo — NE PAS recalculer μ→grade via
+`skill_v2/tier.go`) + moyenne/match = `RankDelta.Value/Count` → enrichissement DTO
+`ExplorerBriefingRanked` (backend) ; (6) split solo/escouade = nouveau bloc backend calculé sur
+`IsWithFriends` des raw rows du scope, émis seulement si les deux sous-groupes ≥ seuil. Items 1,
+2, 3, 5, 7 = frontend-only ; items 4 et 6 = dépendance backend (DTO + OpenAPI regen). Ordre des
+phases : rapides (terminologie/année) → garde delta → unification de forme (wrapper
+`BriefingSectionCard` calqué sur l'en-tête `ChartCard` du bloc « Tendance ») → grades → split →
+vérif navigateur. Trois décisions laissées à l'utilisateur avec DÉFAUT recommandé pour ne pas
+bloquer l'exécution : D-A nom du module (« Attendu vs réel »), D-B seuil split (≥ 10), D-C
+formulation grades.
+
+**Résultats observés** : plan conforme à la grille `plan-review` (objectif + critères mesurables,
+constat fichier:ligne vérifié, décisions pré-tranchées vs AWAIT-USER, périmètre fermé, gates
+exacts par phase, statuts d'item, protocole de reprise, renvoi `plan-execution`, phase de vérif
+navigateur). Aucune commande build/test lancée (worktree lecture seule).
+
+**Conclusion / prochaine étape** : exécuter en conversation dédiée sous `plan-execution`, sur
+`feat/explorer-briefing-v2` depuis `main`. Recueillir les arbitrages D-A/D-B/D-C avant les phases
+concernées (défauts appliqués sinon). Pas de deploy dans ce chantier (merge `main` = décision
+utilisateur après revue visuelle).
 ## [2026-07-15] Fix UI P0 — déconnexion en mode xbox laisse une page sans nav L1
 
 **Statut** : Complété (bug 1 du lot fixes UI post-train).
