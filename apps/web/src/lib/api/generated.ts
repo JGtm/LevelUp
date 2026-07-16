@@ -4035,15 +4035,19 @@ export interface components {
             start_time: string;
         };
         ExplorerBriefingRanked: {
+            kinds: components["schemas"]["ExplorerBriefingRankedKind"][] | null;
+        };
+        ExplorerBriefingRankedKind: {
             /** Format: double */
-            actual_win_rate: number;
-            /** Format: double */
-            delta_sum: number;
-            /** Format: double */
-            expected_win_rate?: number;
+            delta_per_match?: number;
+            kind: string;
             /** Format: int64 */
-            matches_with_prediction: number;
-            rating_kind: string;
+            matches: number;
+            tier_end_label?: string;
+            /** Format: int64 */
+            tier_end_placement_remaining?: number;
+            tier_start_is_placement?: boolean;
+            tier_start_label?: string;
         };
         ExplorerBriefingTrend: {
             granularity: string;

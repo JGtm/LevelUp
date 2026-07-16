@@ -5172,25 +5172,37 @@ components:
     ExplorerBriefingRanked:
       additionalProperties: false
       properties:
-          actual_win_rate:
+          kinds:
+              items:
+                  $ref: '#/components/schemas/ExplorerBriefingRankedKind'
+              nullable: true
+              type: array
+      required:
+          - kinds
+      type: object
+    ExplorerBriefingRankedKind:
+      additionalProperties: false
+      properties:
+          delta_per_match:
               format: double
               type: number
-          delta_sum:
-              format: double
-              type: number
-          expected_win_rate:
-              format: double
-              type: number
-          matches_with_prediction:
+          kind:
+              type: string
+          matches:
               format: int64
               type: integer
-          rating_kind:
+          tier_end_label:
+              type: string
+          tier_end_placement_remaining:
+              format: int64
+              type: integer
+          tier_start_is_placement:
+              type: boolean
+          tier_start_label:
               type: string
       required:
-          - rating_kind
-          - delta_sum
-          - actual_win_rate
-          - matches_with_prediction
+          - kind
+          - matches
       type: object
     ExplorerBriefingTrend:
       additionalProperties: false

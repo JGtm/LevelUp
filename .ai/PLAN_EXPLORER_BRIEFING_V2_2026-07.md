@@ -528,61 +528,63 @@ touchés) (CLOS) ; revue visuelle (Phase 6) confirmera l'alignement.
 
 ### Phase 4 — Classement en grades PAR TYPE (lourd, backend + frontend) — item 4
 
-- [ ] **4a (domain + analysis).** `explorer_briefing.go` : nouveau type
-      `ExplorerBriefingRankedKind` (`Kind string`, `Matches int`, `TierStartLabel *string`,
-      `TierEndLabel *string`, `TierStartIsPlacement bool`, `TierEndPlacementRemaining *int`,
-      `DeltaPerMatch *float64` — tags JSON `omitempty`, commentaires d'unité) ; champ
-      `Kinds []ExplorerBriefingRankedKind` sur `ExplorerBriefingRanked` (`:120-133`).
-      `analysis/kpi_stats.go` : exposer les buckets par type via champ additif
-      `KPIStats.RankDeltas []RankDelta` (ordre déterministe ; le `RankDelta` majoritaire
-      reste, consommateurs existants intacts) + test analysis. RETRAIT (D-A) des champs
-      `ExpectedWinRate`, `ActualWinRate`, `MatchesWithPrediction` du DTO. Sort de
-      `DeltaSum`/`RatingKind` : item 4g.
-- [ ] **4b (service).** `buildBriefingRanked` (`match_history_service_briefing.go:367-398`) :
-      pour chaque entrée de `KPIStats.RankDeltas` retenue (type majoritaire toujours ; autres
-      types si `Count >= minRankedKindMatches`, constante nommée §3 P-3), scanner les rows du
-      scope triées par `StartTime`, restreintes à `SkillRatingType` == type (confronter la
-      casse aux constantes `canonical.RatingType*` sur pièces), pour extraire le premier et le
-      dernier `SkillTierLabel` non nil → `TierStartLabel`/`TierEndLabel` + flags placement D-D
-      (via `PlacementDone/PlacementTotal` de la row concernée) ; `DeltaPerMatch = Value /
-      Count` si `Count > 0`. Journaliser en `slog.DebugContext` si un palier attendu est
-      absent (dégradation best-effort documentée, jamais d'erreur avalée — CLAUDE.md §3).
-      Ne PAS recalculer μ→grade. RETRAIT (D-A) du calcul attendu/réel : boucle
-      `SkillExpectedWinProb` + appel `analysis.ExpectedVsActual` supprimés ; le module est
-      émis ssi au moins une entrée de type existe (sinon nil). Si `analysis.ExpectedVsActual`
-      n'a plus de consommateur : le supprimer avec ses tests (« 0 code mort ») ; même
-      vérification (grep) pour `MatchHistoryRawRow.SkillExpectedWinProb` et sa lecture repo Q5
-      (`match_history_repo.go:222-226`) — purger si plus aucun lecteur, sinon les laisser.
-- [ ] **4c (tests service).** `match_history_service_briefing_test.go` : scope mono-type (une
-      entrée) ; scope MIXTE CSR+LUSR (deux entrées, paliers jamais mélangés entre types) ; type
-      secondaire sous le seuil (omis) ; aucun palier (labels nil, moyenne présente) ; début en
-      placement (`TierStartIsPlacement`) ; fin en placement (`TierEndPlacementRemaining`) ;
-      cas `rd == nil` (module nil — plus d'émission via prédictions seules) ; MAJ/suppression
-      des assertions existantes sur `DeltaSum` (`:150-162`) et sur attendu/réel selon 4g et
-      D-A. Dataset hétérogène réaliste (mémoire
-      `feedback_integration_tests_realistic_datasets`).
-- [ ] **4d (OpenAPI).** `make generate-types` → `apps/web/src/lib/api/generated.ts` régénéré ;
-      vérifier le test de drift OpenAPI (`internal/api/openapi_schema_drift_test.go`) vert.
-- [ ] **4e (frontend).** `RankedCard` : remplacer le rendu `formatSignedFixed(ranked.delta_sum,
-      0)` (`:178`) par une ligne PAR entrée de `kinds`, selon D-C : « {KIND} · {progression} ·
-      {moyenne} » — progression « `tier_start_label` → `tier_end_label` » (égaux → palier
-      seul ; absents → segment omis ; placement → clés i18n D-D) ; moyenne
-      « `formatSignedFixed(delta_per_match, 1)` pt/match » (si présente). Libellé de section
-      D-C (défaut « Classement »). Nouvelles clés i18n `explorer.briefing.ranked_progress_*` /
-      `ranked_per_match` / `placement*` (FR/EN).
-- [ ] **4f (frontend).** Retirer tout affichage résiduel du nombre cumulé brut ET tout le bloc
-      « attendu vs réel » (D-A) : rendu `expected_win_rate`/`actual_win_rate`/
-      `matches_with_prediction` supprimé de `RankedCard` (`:182-199`), clés i18n
-      `ranked_expected` / `ranked_actual` / `ranked_expected_vs_actual` supprimées du manifest
-      (+ régénération).
-- [ ] **4g (nettoyage).** Retirer `DeltaSum` ET `RatingKind` du DTO et de leurs lecteurs si
-      plus aucun consommateur (défaut, « 0 code mort » — remplacés par `Kinds`) OU documenter
-      par commentaire pourquoi ils restent. Mettre à jour les tests.
+- [x] **4a (domain + analysis).** FAIT. `explorer_briefing.go` : type
+      `ExplorerBriefingRankedKind` ajouté (Kind/Matches/TierStartLabel/TierEndLabel/
+      TierStartIsPlacement/TierEndPlacementRemaining/DeltaPerMatch, JSON `omitempty` +
+      commentaires d'unité) ; `ExplorerBriefingRanked` réduit à `Kinds []…` (RatingKind/DeltaSum/
+      ExpectedWinRate/ActualWinRate/MatchesWithPrediction TOUS retirés — 4a+4g fusionnés,
+      état final = `Kinds` seul). `domain.KPIStats.RankDeltas []RankDelta` additif
+      (`squad_v2.go`), peuplé dans `analysis/kpi_stats.go` (ordre déterministe : Count desc,
+      tie-break CSR ; majoritaire en tête = cohérent avec `RankDelta` singulier conservé).
+      Tests analysis : `TestComputeKPIStats_RankDeltas_SplitByTypeDeterministic` +
+      `_NilWhenNoRatedMatches`.
+- [x] **4b (service).** FAIT. `buildBriefingRanked` réécrit + extrait dans nouveau fichier
+      `match_history_service_briefing_ranked.go` (fichier principal repassait à 600 L > 500 —
+      CLAUDE.md §5 ; extraction plutôt qu'accroître la dette). Émet une entrée par bucket de
+      `KPIStats.RankDeltas` (majoritaire toujours ; secondaire si `Count >= minRankedKindMatches`
+      = 10, constante nommée). Scan des rows de CE type triées `StartTime` ; casse confrontée
+      sur pièces : raw rows « CSR »/« LUSR » (maj) vs `canonical.RatingType` « csr »/« lusr »
+      (min) → `strings.EqualFold`. Premier/dernier `SkillTierLabel` non nil → labels ; flags
+      placement D-D via `PlacementDone/PlacementTotal` (remaining = Total−Done, clampé ≥ 0).
+      `DeltaPerMatch = Value/Count`. `slog.DebugContext` si aucun palier. Calcul attendu/réel
+      supprimé. `analysis.ExpectedVsActual` : plus aucun consommateur → `expected_win.go` +
+      `expected_win_test.go` SUPPRIMÉS. `MatchHistoryRawRow.SkillExpectedWinProb` + lecture repo
+      Q5 : CONSERVÉS (lecteurs restants = session_page_service, match_history_service_enrich —
+      grep sur pièces), notés ici.
+- [x] **4c (tests service).** FAIT. Nouveaux tests : `_RankedMonoTypeProgression` (+ gating
+      rankedCapable) ; `_RankedMixedTypesNeverMerged` (CSR+LUSR, paliers jamais croisés) ;
+      `_RankedSecondaryTypeBelowThresholdOmitted` ; `_RankedNoTierLabels` (labels nil, moyenne
+      présente) ; `_RankedStartInPlacement` ; `_RankedEndInPlacement` ;
+      `_RankedNilWhenNoRankDeltas`. Anciens tests DeltaSum/ExpectedWinRate/predictions-only
+      supprimés. Helper `briefingRankedRaw`. Tous les call-sites `buildExplorerBriefing`
+      threadés `context.Background()`.
+- [x] **4d (OpenAPI).** FAIT. `openapi.yaml` (manuel) : `ExplorerBriefingRanked` remplacé +
+      `ExplorerBriefingRankedKind` ajouté (YAML émis exact via `OPENAPI_EMIT_*`). `make
+      generate-types` régénéré ; `types.ts` : export `ExplorerBriefingRankedKind` ajouté ;
+      `TestOpenAPISchemaDrift` vert (0 MISSING).
+- [x] **4e (frontend).** FAIT. `RankedCard` réécrit : `<ul>` d'une ligne `RankedKindRow` par
+      entrée de `kinds` — « {KIND maj} · {progression} · {moyenne} ». `rankedProgression`
+      compose « début → fin » (égaux → palier seul ; absents → segment omis ; placement → clés
+      i18n `placement`/`placement_remaining`, jamais parser le FR). Moyenne via
+      `ranked_per_match` (`formatSignedFixed(delta_per_match, 1)` + « pt/match »). Titre section
+      = `ranked_title` (« Classement »). Clés i18n neuves FR/EN : `ranked_per_match`,
+      `placement`, `placement_remaining` (ICU plural). Pas de clé `ranked_progress_*` inventée
+      (l'« → » est un littéral language-neutral — 0 clé morte).
+- [x] **4f (frontend).** FAIT. Bloc attendu/réel + cumul brut entièrement retirés de
+      `RankedCard`. Clés `ranked_delta`/`ranked_expected`/`ranked_actual`/
+      `ranked_expected_vs_actual` supprimées de `explorer.toml` + manifests régénérés. Grep de
+      clôture : 0 occurrence dans `features/explorer` ET `explorer.toml`.
+- [x] **4g (nettoyage).** FAIT (fusionné dans 4a). `DeltaSum` ET `RatingKind` retirés du DTO
+      (plus aucun consommateur après bascule front — grep). État final `ExplorerBriefingRanked`
+      = `Kinds` seul. Tests MAJ.
 
-Gate Phase 4 : `cd apps/go-api && go test ./...` = 0 ; `make go-api-lint` = 0 ; `make
-generate-types` sans diff non commité résiduel ; `make check-types` = 0 ; `make test-web` vert ;
-`npm run lint` = 0 ; grep : 0 rendu de `delta_sum` brut, 0 occurrence de `ranked_expected` /
-`expected_win_rate` dans les composants briefing ET dans `explorer.toml`.
+Gate Phase 4 : PASSÉ (2026-07-16, racine du worktree). `go test ./...` = exit 0 (0 FAIL) ;
+`make go-api-lint` (= `go vet ./internal/domain/... ./internal/analysis/...`) = 0 (+ `go vet
+./internal/service/... ./internal/api/...` = 0 ; `golangci-lint --new-from-rev=origin/main`
+service/analysis/domain = 0 issues) ; `make generate-types` idempotent (re-run → 0 diff
+résiduel) ; `make check-types` = 0 ; `make test-web` = 257 fichiers / 2178 passés / 14 skipped /
+0 échec ; `npm run lint` = 0 erreur (68 warnings baseline, 0 sur fichiers touchés) ; greps :
+0 `delta_sum`/`ranked_expected`/`expected_win_rate` dans `features/explorer` + `explorer.toml`.
 
 ### Phase 5 — Carte contexte solo/escouade conditionnelle (lourd, backend + frontend) — item 6
 

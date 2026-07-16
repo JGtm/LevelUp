@@ -303,7 +303,7 @@ func (s *MatchHistoryService) GetPage(
 	// socle KPIs + module classé réutilisent les canonical KPIs.
 	var briefing *domain.ExplorerBriefing
 	if req.IncludeExplorerBriefing {
-		briefing = s.buildExplorerBriefing(filtered, rawRows, briefingKPIs)
+		briefing = s.buildExplorerBriefing(ctx, filtered, rawRows, briefingKPIs)
 	}
 
 	return domain.MatchHistoryPageResponse{

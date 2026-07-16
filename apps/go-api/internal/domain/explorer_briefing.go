@@ -40,8 +40,9 @@ type ExplorerBriefing struct {
 	Dimensions []ExplorerBriefingDimension `json:"dimensions,omitempty"`
 	// Trend : tendance temporelle bucketée. Nil si seuils non atteints.
 	Trend *ExplorerBriefingTrend `json:"trend,omitempty"`
-	// Ranked : module classé (delta rating cumulé + attendu vs réel). Nil si le
-	// titre n'expose pas la capability ranked ou si aucun match rangé dans le scope.
+	// Ranked : module « Classement » (progression de paliers PAR TYPE de rating).
+	// Nil si le titre n'expose pas la capability ranked ou si aucun match rangé
+	// dans le scope.
 	Ranked *ExplorerBriefingRanked `json:"ranked,omitempty"`
 }
 
@@ -117,17 +118,40 @@ type ExplorerBriefingTrendPoint struct {
 	AvgPerf     *float64  `json:"avg_perf,omitempty"`
 }
 
-// ExplorerBriefingRanked est le module classé (delta rating + attendu vs réel).
+// ExplorerBriefingRanked est le module « Classement » : progression de paliers
+// PAR TYPE de rating (CSR, LUSR) sur le scope. Une entrée par type suffisamment
+// représenté (P-3) — jamais de paliers de deux systèmes mélangés sur une même
+// ligne. Le bloc « attendu vs réel » (expected_win_prob) a été retiré (décision
+// produit 2026-07-16 : donnée jugée non fiable).
 type ExplorerBriefingRanked struct {
-	// RatingKind : "csr" | "lusr" (type majoritaire du scope).
-	RatingKind string `json:"rating_kind"`
-	// DeltaSum : somme signée des deltas de rating du scope.
-	DeltaSum float64 `json:"delta_sum"`
-	// ExpectedWinRate : moyenne des expected_win_prob disponibles (ratio 0..1).
-	// Nil si aucun match du scope ne porte de prédiction.
-	ExpectedWinRate *float64 `json:"expected_win_rate,omitempty"`
-	// ActualWinRate : taux de victoire réel du scope (ratio 0..1).
-	ActualWinRate float64 `json:"actual_win_rate"`
-	// MatchesWithPrediction : nombre de matchs du scope portant un expected_win_prob.
-	MatchesWithPrediction int `json:"matches_with_prediction"`
+	// Kinds : une entrée par type de rating retenu. Ordre déterministe (type
+	// majoritaire du scope d'abord). Toujours au moins une entrée quand le bloc
+	// est émis (sinon Ranked est nil).
+	Kinds []ExplorerBriefingRankedKind `json:"kinds"`
+}
+
+// ExplorerBriefingRankedKind est la progression du scope pour UN type de rating.
+type ExplorerBriefingRankedKind struct {
+	// Kind : "csr" | "lusr" — la métrique connue du joueur (affichée telle quelle).
+	Kind string `json:"kind"`
+	// Matches : nombre de matchs du scope portant ce type de rating.
+	Matches int `json:"matches"`
+	// TierStartLabel : palier du premier match chronologique portant un palier
+	// (label FR déjà résolu en base, ex. « Bronze I »). Nil si non résolvable ou
+	// si le début est en placement (voir TierStartIsPlacement).
+	TierStartLabel *string `json:"tier_start_label,omitempty"`
+	// TierEndLabel : palier du dernier match chronologique portant un palier.
+	// Nil si non résolvable ou si la fin est en placement (voir
+	// TierEndPlacementRemaining).
+	TierEndLabel *string `json:"tier_end_label,omitempty"`
+	// TierStartIsPlacement : vrai si le premier match du scope est en phase de
+	// placement (rendu « Placement » sans compteur côté front — D-D).
+	TierStartIsPlacement bool `json:"tier_start_is_placement,omitempty"`
+	// TierEndPlacementRemaining : nombre de matchs de placement restants si le
+	// dernier match du scope est encore en placement (rendu « Placement (N
+	// restants) » côté front — D-D). Nil hors placement en fin de scope.
+	TierEndPlacementRemaining *int `json:"tier_end_placement_remaining,omitempty"`
+	// DeltaPerMatch : moyenne signée du delta de rating par match (Value/Count du
+	// bucket). Nil si aucun match compté. Unité = points de rating natifs du type.
+	DeltaPerMatch *float64 `json:"delta_per_match,omitempty"`
 }

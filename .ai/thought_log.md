@@ -1,3 +1,64 @@
+## [2026-07-16] Explorer briefing V2 — Phase 4 (classement en grades PAR TYPE, item 4)
+
+**Statut** : Complété (Phase 4 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items
+4a-4g). Worktree isolé `feat/explorer-briefing-v2`. NON committé (le superviseur commite).
+
+**Décision technique principale** : le module ex-« Pronostic »/« attendu vs réel » devient la
+carte « Classement » qui n'affiche QUE la progression de paliers PAR TYPE de rating (CSR/LUSR
+séparés, jamais fusionnés — P-3). Source = buckets par `RatingType` DÉJÀ accumulés dans
+`analysis.ComputeKPIStats`, exposés via champ additif `domain.KPIStats.RankDeltas []RankDelta`
+(ordre déterministe : Count desc, tie-break CSR ; le `RankDelta` majoritaire singulier reste,
+consommateurs intacts). Le service scanne les rows du scope restreintes au type pour extraire
+premier/dernier `SkillTierLabel` (déjà résolu FR en base) + flags placement.
+
+**Pièges tranchés sur pièces** :
+- CASSE : raw rows portent `SkillRatingType` « CSR »/« LUSR » (majuscule) ; `RankDelta.Kind`
+  et `canonical.RatingType` valent « csr »/« lusr » (minuscule) → filtrage par
+  `strings.EqualFold`, jamais `==`.
+- D-D placement BILINGUE : backend émet `TierStartIsPlacement bool` +
+  `TierEndPlacementRemaining *int` (dérivés de `PlacementDone/PlacementTotal`, remaining =
+  Total−Done clampé ≥ 0) ; le front rend des clés i18n `placement`/`placement_remaining`
+  (ICU plural), JAMAIS de parsing du libellé FR.
+- Début en placement → « Placement » sans compteur ; fin en placement → « Placement (N
+  restants) » avec compteur (D-D tranché).
+
+**Sort des symboles (0 code mort — CLAUDE.md §7)** :
+- `ExpectedWinRate`/`ActualWinRate`/`MatchesWithPrediction`/`DeltaSum`/`RatingKind` : TOUS
+  retirés du DTO `ExplorerBriefingRanked` (état final = `Kinds []ExplorerBriefingRankedKind`
+  seul). 4a et 4g fusionnés.
+- `analysis.ExpectedVsActual` : plus AUCUN consommateur après retrait (grep) →
+  `expected_win.go` + `expected_win_test.go` SUPPRIMÉS.
+- `MatchHistoryRawRow.SkillExpectedWinProb` + lecture repo Q5 (`match_history_repo.go`) :
+  CONSERVÉS — lecteurs restants confirmés sur pièces (`session_page_service.go:478`,
+  `match_history_service_enrich.go:185`, `stats_canonical.go:164`).
+
+**Modularité** : la réécriture faisait repasser `match_history_service_briefing.go` à 600 L
+(> seuil 500 CLAUDE.md §5). Plutôt qu'accroître la dette, extraction du module classé dans
+NOUVEAU `match_history_service_briefing_ranked.go` (138 L) ; fichier principal ramené à 480 L.
+
+**Résultats observés** :
+- `explorer_briefing.go` : `ExplorerBriefingRankedKind` + `ExplorerBriefingRanked.Kinds`.
+- `squad_v2.go` : `KPIStats.RankDeltas` ; `kpi_stats.go` : peuplement ordonné + 2 tests.
+- Service : `buildBriefingRanked`/`buildRankedKind`/helpers dans le fichier extrait ;
+  `buildExplorerBriefing` threade `ctx` (caller `match_history_service.go` passe `ctx`).
+- 7 tests service ranked neufs (mono-type, mixte non fusionné, secondaire sous seuil, sans
+  palier, début/fin placement, RankDeltas vide → nil).
+- OpenAPI : `openapi.yaml` MAJ (bloc `ExplorerBriefingRanked` remplacé + `…RankedKind` ajouté,
+  YAML émis exact) ; `generate-types` régénéré ; `types.ts` export ajouté ; drift test vert.
+- Front : `RankedCard` réécrit (une ligne `RankedKindRow` par `kind`) ; i18n `ranked_per_match`/
+  `placement`/`placement_remaining` FR+EN ; clés `ranked_delta`/`ranked_expected*` supprimées.
+
+**Gates** (racine worktree) : `go test ./...` = 0 ; `go vet` domain/analysis/service/api = 0 ;
+`golangci-lint --new-from-rev=origin/main` (service/analysis/domain) = 0 issues ;
+`make generate-types` idempotent ; `make check-types` = 0 ; `make test-web` = 257 fichiers /
+2178 passés / 14 skipped / 0 échec ; `npm run lint` = 0 erreur (68 warnings baseline) ; greps
+de clôture = 0 (delta_sum/ranked_expected/expected_win_rate dans features/explorer + toml).
+
+**Conclusion / prochaine étape** : Phase 4 close, tout vert. Reprendre à la Phase 5 (carte
+contexte solo/escouade, item 6). NON committé — attente superviseur.
+
+---
+
 ## [2026-07-16] Explorer briefing V2 — Phase 3 (unification des cartes-sections, item 7)
 
 **Statut** : Complété (Phase 3 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items
