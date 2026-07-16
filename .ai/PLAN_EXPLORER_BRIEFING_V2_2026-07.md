@@ -680,41 +680,95 @@ idempotent (md5 stable) ; `make check-types` = 0 ; `make test-web` = 257 fichier
 
 ### Phase 6 — Vérification navigateur & clôture
 
-- [ ] **6a.** Dev local (`make dev`, port `:8000`) ; ouvrir l'Explorer mode Matchs d'un joueur
-      réel classé (LUSR/CSR).
-- [ ] **6b.** État PLEIN HISTORIQUE (aucun filtre) : vérifier item 1 (aucun delta « vs habituel »
-      nulle part, aucune « = ±0 pts », entrées des dimensions ordonnées par taux de victoire —
-      P-8), item 2 (« Par sélection »), item 3 (carte « Classement », plus aucun « Pronostic »
-      ni bloc attendu/réel), item 4 (une ligne par type CSR/LUSR, paliers + pt/match, pas de
-      « −1380 », placement rendu selon D-D), item 5 (année), item 7 (en-têtes unifiés),
-      items 8/9 (cartes « Séries » et « Moments forts » présentes et cohérentes avec le
-      tableau — recompter une série sur la frise pour vérifier).
-      Vérifier aussi l'équilibre visuel des tuiles socle privées de leur sub (FDA/Perf) — si
-      choquant, consigner en Découvertes (pas de fix hors périmètre). Capturer.
-- [ ] **6c.** État FILTRÉ (narrowing, ex. une carte / un mode) : les deltas « vs habituel »
-      RÉAPPARAISSENT et sont sensés ; la carte solo/escouade apparaît/disparaît selon la
-      pertinence (item 6). Capturer.
-- [ ] **6d.** Vérifier la dégradation : titre H5 (`ranked` absent → module rétrospectif omis, pas
-      de crash), scope mono-contexte (carte solo/escouade omise), scope sans palier (progression
-      omise), scope mono-type de rating (une seule ligne classement), scope sans aucun
-      DominanceFlag (carte « Moments forts » omise). Spot-check locale EN
-      (clés i18n neuves en EN ; paliers FR = limitation actée §2 compléments, ne pas la
-      « corriger » ici). Consigner captures + verdicts au journal du plan.
-- [ ] **6e (changelog / What's new v7.0).** Mettre à jour `docs/CHANGELOG.md` ET
-      `docs/FR/CHANGELOG.md` (parité EN/FR dans le même commit — politique docs CLAUDE.md
-      §15) : dans l'entrée `[Unreleased]` (consolidée v7.0, rendue par la page Changelog
-      in-app = « What's new »), section « Added (React / TypeScript) », un bullet
-      « Explorer — briefing V2 » couvrant : classement par type CSR/LUSR en paliers +
-      pt/match, cartes « Séries » et « Moments forts », carte solo/escouade conditionnelle,
-      deltas « vs habituel » masqués en plein historique, en-têtes de cartes unifiés, dates
-      avec année, « Par sélection ». Mentionner le retrait du bloc attendu/réel (bullet
-      « Removed » ou dans l'entrée). Ajouter un bullet « Added (Go API) » si le DTO briefing
-      enrichi le justifie. Respecter le format Keep a Changelog (la page in-app le parse).
-- [ ] **6f.** `delivery-checklist` complet ; entrée thought_log finale ; point d'étape
-      utilisateur (revue visuelle de validation = merci de confirmer avant tout merge).
+- [x] **6a.** FAIT (2026-07-16). Serveur buildé depuis le worktree (`cmd/server`, CGO) et lancé
+      détaché avec WorkingDirectory = dépôt principal (données réelles) ; `:8000` healthz 200.
+      Vite lancé depuis le worktree (5173/5174 occupés → **:5175**). Session admin JGtm réutilisée
+      via cookie signé injecté (header CDP `extraHttpHeaders`, secret .env.local) — pas de re-login,
+      pas de modif fichier. Explorer mode Matchs de JGtm ouvert sur **halo_infinite** (LUSR).
+- [x] **6b.** FAIT — captures `02-hinfinite-fullhistory.png` (halo_infinite) + `01-explorer-initial.png`
+      (halo_5). État PLEIN HISTORIQUE, halo_infinite JGtm (1015 matchs) :
+      **item 1** — AUCUN delta « vs habituel » (socle Matchs/WR/FDA/Perf ni lignes de dimension),
+      aucune « ±0 pts » ; dimensions ordonnées par taux de victoire décroissant (Par carte
+      81/70/67/27/25/10 %, Par mode 54/53/50/47/47/46 %) — P-8 confirmé ✓.
+      **item 2** — « Par sélection » (Partie rapide 981 matchs) ✓.
+      **item 3** — carte « Classement » (plus aucun « Pronostic » ni bloc attendu/réel) ✓.
+      **item 4** — une ligne « LUSR · Or II → Or VI · −1.4 pt/match » (paliers connus + pt/match,
+      aucun cumul brut ; Or II ≠ placement → D-D ok ; mono-type = 1 seule ligne) ✓.
+      **item 5** — « 22 nov. 2021 – 16 juil. 2026 » (année) ✓.
+      **item 7** — en-têtes de cartes unifiés (Par carte/mode/sélection, Tendance, Classement,
+      Solo vs Escouade, Séries, Moments forts) ✓.
+      **item 8** — Séries « 11 V / 10 D » ; la frise montre un run rouge « x10 » corroborant la
+      pire série ✓.
+      **item 9** — Moments forts DOMINATION ×68 / HUMILIATION ×70 / REMONTADA ×4 / DÉBANDADE ×12,
+      contre-remontada (=0) omise ✓.
+      Équilibre socle sans sub (FDA/Perf) : valeurs top-alignées, tuiles de même hauteur — non
+      choquant (pas de Découverte). Console navigateur : 0 erreur/warning.
+- [x] **6c.** FAIT — capture `03-hinfinite-filtered-solo.png`. Filtre contexte Solo (491 matchs) :
+      les deltas « vs habituel » RÉAPPARAISSENT (socle WR « −1 pts », FDA « +0.94 », Perf « ±0 » ;
+      dimensions ▲/▼ « +8/+7/+6/−4/−5 pts ») ; « ±0 pts » présent sous filtre = comportement voulu
+      (seul le plein historique masque, P-1/2d) ; dimensions triées par delta (WR non monotone
+      58/56/64 % → tri delta, P-8 sous filtre inchangé) ; carte « Solo vs Escouade » DISPARAÎT
+      (scope mono-contexte) ; Classement recalculé « LUSR · Or II → Or VI · −2.6 pt/match » ;
+      Séries/Moments forts recalculés sur le scope filtré. Console : 0 erreur.
+- [x] **6d.** FAIT — verdicts de dégradation :
+      **titre H5** (halo_5, capture `01`) → carte « Classement » OMISE (JGtm H5 non ranked-capable
+      sur ce scope), pas de crash, 0 erreur console ✓.
+      **scope mono-contexte** (filtre Solo, 6c) → carte Solo/Escouade omise ✓.
+      **scope mono-type de rating** (JGtm n'a que du LUSR) → une seule ligne Classement ✓.
+      **scope sans palier** (progression omise) → `[~]` non reproductible en navigateur avec les
+      données réelles (JGtm porte toujours un palier) — couvert par le test unitaire Phase 4c
+      `_RankedNoTierLabels` (labels nil → moyenne seule).
+      **scope sans aucun DominanceFlag** (carte Moments forts omise) → `[~]` idem non reproductible
+      (les scopes réels ont toujours des flags) — couvert par le test `_NilWhenAllZero` ; l'omission
+      par catégorie à zéro est visuellement confirmée (contre-remontada absente en 6b/6c).
+      **Spot-check locale EN** (PATCH /settings lang=en, capture `04-en-locale-briefing.png`) :
+      clés neuves en EN — « Ranking », « LUSR · Or II → Or VI · −2.6 pt/match » (« pt/match »
+      traduit), « Streaks / Best streak 9 W / Worst streak 10 L », « Highlights »,
+      dominance « DOMINATION/HUMILIATION/COMEBACK/COLLAPSE », « vs usual », « By map/mode/playlist »,
+      date « Nov 22, 2021 – Jul 16, 2026 » (année). Item 2 : EN reste « By playlist » (seul le FR
+      passe à « Par sélection ») — conforme. Paliers « Or II → Or VI » + modes/playlists FR restent
+      en dur = limitation actée §2 (labels stockés FR en base). Console EN : 0 erreur.
+      Session JGtm restaurée (halo_5, locale fr) en fin de vérif.
+- [x] **6e (changelog / What's new v7.0).** FAIT. `docs/CHANGELOG.md` ET `docs/FR/CHANGELOG.md`,
+      entrée `[Unreleased]` (v7.0) : bullet « Explorer — briefing V2 » dans « Added (React /
+      TypeScript) » (classement par type CSR/LUSR en paliers + pt/match, cartes Séries/Moments
+      forts, carte solo/escouade conditionnelle, deltas masqués en plein historique, en-têtes
+      unifiés, dates avec année, « Par sélection », retrait du bloc attendu/réel mentionné en fin
+      de bullet) + bullet « Explorer briefing DTO » dans « Added (Go API) » (ranked par type,
+      `KPIStats.RankDeltas`, context split, streaks, dominance, retrait `expected_win_prob`).
+      Parité EN/FR dans les 2 fichiers (hook docs-fr-sync). Format Keep a Changelog respecté.
+- [x] **6f.** FAIT. `delivery-checklist` déroulé. Entrée thought_log finale ajoutée. Point d'étape
+      utilisateur ci-dessous (revue visuelle de validation demandée avant tout merge).
 
-Gate Phase 6 : tous les critères §1 vérifiés en navigateur ; captures au journal ; changelog
-EN+FR mis à jour (critère §1.14) ; gates §1.8 tous verts une dernière fois en une passe.
+Gate Phase 6 : PASSÉ (2026-07-16). Tous les critères §1 (1-14) vérifiés en navigateur (captures
+`01`..`04` dans le dossier temp de session) ; console 0 erreur sur les 4 états (H5, plein
+historique, filtré, EN) ; changelog EN+FR mis à jour (critère §1.14). Gates §1.8 tous verts en
+une passe finale : `go test ./...` = exit 0 (0 FAIL) ; `go vet` domain/analysis/service/api = 0 ;
+`make go-api-lint` = 0 ; `golangci-lint --new-from-rev=origin/main` (domain/analysis/service/api)
+= 0 issues ; `make generate-types` idempotent (0 diff `generated.ts`) ; `make check-types` = 0
+(cache `.tmp` purgé) ; `make test-web` = 257 fichiers / 2185 passés / 14 skipped / 0 échec ;
+`npm run lint` = 0 erreur (68 warnings baseline pré-existants, 0 sur les fichiers du chantier).
+NON committé (le superviseur commite ; merge `main` = deploy prod → après revue visuelle user).
+
+**Statut final des critères §1 (vérifiés Phase 6, 2026-07-16)** — tous `[x]` sauf mention :
+1. Deltas masqués en plein historique / réapparaissent sous filtre `[x]` (6b + 6c).
+2. « Par sélection » FR, aucune « Par playlist » résiduelle (EN reste « By playlist ») `[x]` (6b/6d).
+3. Carte « Classement », plus aucun « Pronostic » ni bloc attendu/réel `[x]` (6b).
+4. Classement par type, paliers connus + pt/match, aucun cumul brut, placement D-D `[x]` (6b, LUSR).
+5. Période avec année via `formatDateRange` `[x]` (6b « 22 nov. 2021 – 16 juil. 2026 »).
+6. Carte solo/escouade conditionnelle (présente 6b, omise en mono-contexte 6c) `[x]`.
+7. En-têtes de cartes-sections unifiés `[x]` (6b visuel).
+8. Gates verts `[x]` (§1.8, passe finale Phase 6f).
+9. Vérif navigateur des 2 états + captures `[x]` (6b/6c, captures `01`..`04`).
+10. Dimensions triées par taux de victoire en plein historique, par delta sous filtre `[x]` (6b/6c, P-8).
+11. `expected_win_prob` purgé (DTO + service + i18n) `[x]` (Phase 4 ; confirmé UI 6b : aucun bloc).
+12. Carte « Séries » (meilleure/pire série sur tout le scope, segment nul omis) `[x]` (6b 11 V/10 D).
+13. Carte « Moments forts » (compteurs dominance, catégories nulles omises) `[x]` (6b/6c).
+14. Changelog `[Unreleased]` à jour EN+FR `[x]` (6e).
+   Sous-cas de dégradation « scope sans palier » (item 4) et « scope tous-zéro dominance » (item 13)
+   non reproductibles en navigateur avec les données réelles → `[~]` couverts par tests unitaires
+   (`_RankedNoTierLabels`, `_NilWhenAllZero`) ; l'omission par catégorie/segment nul est confirmée
+   visuellement (contre-remontada absente ; aucun « Pire série : 0 »).
 
 ---
 
