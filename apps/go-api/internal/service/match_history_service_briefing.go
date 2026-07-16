@@ -81,6 +81,10 @@ func (s *MatchHistoryService) buildExplorerBriefing(
 	}
 	// Split solo/escouade : aucun gate capability (P-7), omission si non pertinent.
 	b.ContextSplit = buildBriefingContextSplit(filtered)
+	// Séries + moments forts : calculés sur TOUT le scope filtré (P-9), omission
+	// si non pertinent (aucune row datée / tous les compteurs à zéro).
+	b.Streaks = buildBriefingStreaks(filtered)
+	b.Dominance = buildBriefingDominance(filtered)
 	return b
 }
 

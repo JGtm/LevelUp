@@ -3967,6 +3967,7 @@ export interface components {
             baseline?: components["schemas"]["ExplorerBriefingBaseline"];
             context_split?: components["schemas"]["ExplorerBriefingContextSplit"];
             dimensions?: components["schemas"]["ExplorerBriefingDimension"][] | null;
+            dominance?: components["schemas"]["ExplorerBriefingDominance"];
             low_sample?: boolean;
             outcome_sequence?: components["schemas"]["ExplorerBriefingOutcome"][] | null;
             /** Format: date-time */
@@ -3975,6 +3976,7 @@ export interface components {
             period_start?: string;
             ranked?: components["schemas"]["ExplorerBriefingRanked"];
             scope?: components["schemas"]["ExplorerBriefingScope"];
+            streaks?: components["schemas"]["ExplorerBriefingStreaks"];
             trend?: components["schemas"]["ExplorerBriefingTrend"];
         };
         ExplorerBriefingScope: {
@@ -4063,6 +4065,24 @@ export interface components {
             matches: number;
             /** Format: double */
             win_rate: number;
+        };
+        ExplorerBriefingStreaks: {
+            /** Format: int64 */
+            best_win_streak?: number;
+            /** Format: int64 */
+            worst_loss_streak?: number;
+        };
+        ExplorerBriefingDominance: {
+            /** Format: int64 */
+            contre_remontadas?: number;
+            /** Format: int64 */
+            debandades?: number;
+            /** Format: int64 */
+            dominations?: number;
+            /** Format: int64 */
+            humiliations?: number;
+            /** Format: int64 */
+            remontadas?: number;
         };
         ExplorerBriefingTrend: {
             granularity: string;

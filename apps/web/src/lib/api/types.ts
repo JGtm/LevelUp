@@ -830,6 +830,8 @@ export type ExplorerBriefingRanked = components['schemas']['ExplorerBriefingRank
 export type ExplorerBriefingRankedKind = components['schemas']['ExplorerBriefingRankedKind']
 export type ExplorerBriefingContextSplit = components['schemas']['ExplorerBriefingContextSplit']
 export type ExplorerBriefingContextGroup = components['schemas']['ExplorerBriefingContextGroup']
+export type ExplorerBriefingStreaks = components['schemas']['ExplorerBriefingStreaks']
+export type ExplorerBriefingDominance = components['schemas']['ExplorerBriefingDominance']
 
 // ---------------------------------------------------------------------------
 // Accueil Mission Control (Slice 5)

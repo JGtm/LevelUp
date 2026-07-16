@@ -631,26 +631,52 @@ idempotent (re-run → diff stable 15 L, 0 résiduel) ; `make check-types` = 0 ;
 
 ### Phase 5b — Cartes « Séries » et « Moments forts » (moyen, backend + frontend) — items 8, 9
 
-- [ ] **5b-a (domain).** `ExplorerBriefingStreaks` (`BestWinStreak int`, `WorstLossStreak int`)
-      et `ExplorerBriefingDominance` (compteurs `Dominations`, `Humiliations`, `Remontadas`,
-      `Debandades`, `ContreRemontadas` int) ; champs `Streaks *…` / `Dominance *…` dans
-      `ExplorerBriefing` (JSON `omitempty`, commentaire « nil si non pertinent »).
-- [ ] **5b-b (service).** `buildBriefingStreaks(scope)` et `buildBriefingDominance(scope)`
-      selon P-9 ; câblage dans `buildExplorerBriefing` sous garde `!LowSample`. Tests : série
-      en tête et en queue de scope ; scope 100 % victoires (pire série absente) ; rows non
-      datées écartées ; dominance tous-zéro → nil ; dataset hétérogène réaliste (mémoire
-      `feedback_integration_tests_realistic_datasets`).
-- [ ] **5b-c (OpenAPI).** `make generate-types` régénéré + drift test vert.
-- [ ] **5b-d (frontend).** Deux cartes via `BriefingSectionCard` dans
-      `ExplorerBriefingModules`, rendues ssi leur bloc est présent. « Séries » : « Meilleure
-      série : 7 V · Pire série : 4 D » (segments à zéro omis ; clés i18n FR/EN neuves,
-      réutiliser `explorer.briefing.series_win/loss` si adaptées). « Moments forts » :
-      compteurs par catégorie, zéros omis, libellés dominance existants si trouvés (P-9),
-      couleurs via tokens sémantiques uniquement. Tests de rendu présent/absent.
+- [x] **5b-a (domain).** FAIT. `explorer_briefing.go` : `ExplorerBriefingStreaks`
+      (`BestWinStreak`/`WorstLossStreak int`, `json:",omitempty"` → segment à zéro omis) +
+      `ExplorerBriefingDominance` (`Dominations`/`Humiliations`/`Remontadas`/`Debandades`/
+      `ContreRemontadas int`, `omitempty`) ; champs `Streaks *ExplorerBriefingStreaks` /
+      `Dominance *ExplorerBriefingDominance` ajoutés à `ExplorerBriefing` (`omitempty`,
+      commentaire « nil si non pertinent »).
+- [x] **5b-b (service).** FAIT. `buildBriefingStreaks` + `longestOutcomeRun` +
+      `buildBriefingDominance` extraits dans NOUVEAU fichier
+      `match_history_service_briefing_streaks.go` (le fichier principal était à 486 L —
+      extraction plutôt qu'accroître vers 500, CLAUDE.md §5, cohérent avec _ranked/_context).
+      Séries : rows non datées écartées, tri `StartTime` asc, série rompue par TOUT autre
+      outcome (P-9), nil si aucune row datée. Dominance : `switch` sur les constantes nommées
+      `analysis.DominanceFlag*` (pas de magic number), nil si tous compteurs à zéro. Câblé dans
+      `buildExplorerBriefing` après le module contexte, sous garde `!LowSample` (retour anticipé
+      LowSample). Tests (`match_history_service_briefing_streaks_test.go`) : `_HeadStreak`,
+      `_TailStreak`, `_AllWinsNoLossStreak`, `_BrokenByAnyOutcome`, `_UndatedRowsDiscarded`,
+      `_NilWhenNoDatedRows`, `_Counts`, `_NilWhenAllZero`, `_StreaksAndDominanceHeterogeneous`
+      (dataset réaliste via `buildExplorerBriefing`), `_StreaksOmittedWhenLowSample`.
+      RÉUTILISATION : pas de helper pur streaks existant réutilisable (les 3 usages
+      `detectTilt`/`sliceBestWinStreakCanonical`/`currentStreak` sont couplés à leurs types)
+      → logique locale (cf. Découverte-2).
+- [x] **5b-c (OpenAPI).** FAIT. `openapi.yaml` : `ExplorerBriefingStreaks` +
+      `ExplorerBriefingDominance` ajoutés (YAML émis exact via `OPENAPI_EMIT_OUT`), champs
+      `streaks`/`dominance` ($ref) ajoutés à `ExplorerBriefing` (réconcilié — plus divergent).
+      `make generate-types` régénéré + idempotent (hash stable) ; `types.ts` : re-exports
+      `ExplorerBriefingStreaks`/`…Dominance` ajoutés ; `TestOpenAPISchemaDrift` vert (0 MISSING).
+- [x] **5b-d (frontend).** FAIT. `StreaksCard` + `DominanceCard` ajoutés à
+      `ExplorerBriefingModules`, rendus ssi leur bloc a du contenu (`showStreaks` = au moins un
+      segment > 0 ; `showDominance` = au moins une catégorie > 0 — items 12/13 « carte omise si
+      rien à afficher »). « Séries » : lignes « Meilleure série » / « Pire série » avec valeur
+      `{n} V` / `{n} D` (segments à zéro omis), tokens `outcome-win`/`outcome-loss`. « Moments
+      forts » : une pastille par catégorie non nulle, libellés RÉUTILISÉS de
+      `narrative.dominance.*` (manifest match_view) + tokens `narrative-*` (mapping
+      `DOMINANCE_ITEMS` calqué sur `ExplorerMatchesTable` — cf. Découverte-3), compteur `×N`
+      language-neutral. Clés i18n neuves FR/EN : `streaks_title`, `streak_best`, `streak_worst`,
+      `streak_wins` (`{n} V`/`{n} W`), `streak_losses` (`{n} D`/`{n} L`), `highlights_title` ;
+      manifests régénérés. Tokens sémantiques uniquement (aucun hex/Tailwind couleur). Tests
+      (`ExplorerBriefingStrip.test.tsx`) : séries présentes (2 segments), segment zéro omis,
+      carte omise si 2 zéros ; dominance présente (compteurs `×3`/`×1`), carte omise si absente.
 
-Gate Phase 5b : mêmes gates que Phase 5 (`go test ./...` = 0 ; `make go-api-lint` = 0 ;
-`make generate-types` propre ; `make check-types` = 0 ; `make test-web` vert ;
-`npm run lint` = 0).
+Gate Phase 5b : PASSÉ (2026-07-16, racine du worktree). `go test ./...` = exit 0 (0 FAIL) ;
+`make go-api-lint` = 0 (+ `go vet ./internal/service/... ./internal/api/...` = 0 ;
+`golangci-lint --new-from-rev=origin/main` service/domain = 0 issues) ; `make generate-types`
+idempotent (md5 stable) ; `make check-types` = 0 ; `make test-web` = 257 fichiers / 2185 passés /
+14 skipped / 0 échec (dont les 5 tests séries/dominance neufs) ; `npm run lint` = 0 erreur
+(68 warnings baseline pré-existants, 0 sur les fichiers touchés).
 
 ### Phase 6 — Vérification navigateur & clôture
 
@@ -701,6 +727,21 @@ EN+FR mis à jour (critère §1.14) ; gates §1.8 tous verts une dernière fois 
   n'ont touché aucun fichier explorer/briefing (vérifié `git log -- <fichier>`).
 - Arbitrage Révision 3 (2026-07-16) : « Séries » et « Moments forts » VALIDÉES → intégrées au
   périmètre (items 8/9, Phase 5b, P-9). « Records du scope » ÉCARTÉ (pas le bon endroit).
+- Découverte-2 (Phase 5b, 2026-07-16, hors périmètre — NE PAS traiter) : le motif « plus longue
+  série consécutive » (boucle max-run) existe en 3 endroits aux types/besoins distincts :
+  `analysis/patterns/behavioral.go` `detectTilt` (renvoie run+start, couplé au tilt),
+  `analysis/home_canonical_highlights_tiles.go` `sliceBestWinStreakCanonical` (canonical rows →
+  HighlightSlide), et désormais `service/…_briefing_streaks.go` `longestOutcomeRun`
+  (`MatchHistoryRawRow`). Aucun n'est un helper pur réutilisable en l'état (P-9 : « réutiliser
+  si existe » → rien de réutilisable). Une centralisation `analysis.LongestRun`/`LongestOutcomeRun`
+  + migration des 2 autres copies (CLAUDE.md §6, garde-rail) serait un refactor à part — noté ici,
+  non traité (règle 7 : zéro fix hors périmètre).
+- Découverte-3 (Phase 5b, 2026-07-16, hors périmètre) : le mapping DominanceFlag → clé i18n
+  `narrative.dominance.*` + token `narrative-*` existe désormais en 2 endroits
+  (`ExplorerMatchesTable` `DOMINANCE_LABEL_KEYS`/`DOMINANCE_COLOR_TOKENS` et
+  `ExplorerBriefingModules` `DOMINANCE_ITEMS`). 2 copies = dans la limite CLAUDE.md §6 ; une 3ᵉ
+  surface devra centraliser (helper partagé `features/explorer/dominance.ts` + garde-rail) ET
+  migrer les deux copies dans le même commit (anti-pattern « factorisation abandonnée »).
 - CHANTIER SÉPARÉ (validé dans son principe par l'utilisateur, à planifier À PART — ne pas
   traiter ici) : « lisibilité des extrêmes » du tableau des matchs de l'Explorer, en deux lots.
   **Lot 1 — tri par en-têtes de colonnes** (premier pas recommandé, discuté 2026-07-16) : le

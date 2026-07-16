@@ -19,21 +19,29 @@ import { useCapability } from '@/lib/capabilities/capabilities'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { winRateColor } from '@/lib/colors/outcomePalette'
 import { formatPercentInt } from '@/lib/formatters'
+import { formatMessage } from '@/lib/i18n/format'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type {
   ExplorerBriefing,
   ExplorerBriefingContextGroup,
   ExplorerBriefingContextSplit,
   ExplorerBriefingDimension,
   ExplorerBriefingDimensionEntry,
+  ExplorerBriefingDominance,
   ExplorerBriefingRanked,
   ExplorerBriefingRankedKind,
+  ExplorerBriefingStreaks,
   ExplorerBriefingTrend,
 } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
+import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 import { BriefingSectionCard } from './BriefingSectionCard'
 import { formatSignedFixed, formatSignedPoints, signOf } from './ExplorerBriefing.logic'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
+// TMV : résout un libellé du manifest match_view (réutilisé pour les libellés
+// dominance narrative.dominance.* — item 9, P-9 : ne pas recréer de clés).
+type TMV = (key: MatchViewManifestKey) => string
 
 const DIM_TITLE_KEY: Record<string, ExplorerManifestKey> = {
   map: 'explorer.briefing.dim_map',
@@ -54,6 +62,27 @@ function deltaToken(v: number | null | undefined): SemanticToken {
   return s > 0 ? 'outcome-win' : s < 0 ? 'outcome-loss' : 'outcome-draw'
 }
 
+// Catégories de moments forts : chaque compteur de ExplorerBriefingDominance,
+// avec son libellé (manifest match_view narrative.dominance.*) et son token
+// sémantique — RÉUTILISE le mapping du tableau Explorer (ExplorerMatchesTable
+// DOMINANCE_LABEL_KEYS / DOMINANCE_COLOR_TOKENS, item 9 / P-9). L'ordre suit la
+// priorité narrative (domination → contre-remontada).
+const DOMINANCE_ITEMS: {
+  field: keyof ExplorerBriefingDominance
+  labelKey: MatchViewManifestKey
+  token: SemanticToken
+}[] = [
+  { field: 'dominations', labelKey: 'narrative.dominance.domination', token: 'narrative-dominant' },
+  { field: 'humiliations', labelKey: 'narrative.dominance.humiliation', token: 'narrative-humiliation' },
+  { field: 'remontadas', labelKey: 'narrative.dominance.remontada', token: 'narrative-remontada' },
+  { field: 'debandades', labelKey: 'narrative.dominance.debandade', token: 'narrative-debacle' },
+  {
+    field: 'contre_remontadas',
+    labelKey: 'narrative.dominance.contre_remontada',
+    token: 'narrative-contre-remontada',
+  },
+]
+
 export function ExplorerBriefingModules({
   briefing,
   t,
@@ -65,11 +94,27 @@ export function ExplorerBriefingModules({
   // nuls par construction, colonne delta des lignes de dimension masquée (P-1).
   hideDelta: boolean
 }) {
+  const locale = useAppShellStore((s) => s.locale)
+  const tMV: TMV = (key) => formatMessage(matchViewManifest, key, locale)
   const hasRanked = useCapability('ranked')
   const dimensions = briefing.dimensions ?? []
   const showRanked = hasRanked && briefing.ranked != null
   const contextSplit = briefing.context_split ?? null
-  if (dimensions.length === 0 && briefing.trend == null && !showRanked && contextSplit == null)
+  // Séries : carte omise si rien à afficher (les deux segments à zéro — item 12).
+  const streaks = briefing.streaks ?? null
+  const showStreaks =
+    streaks != null && ((streaks.best_win_streak ?? 0) > 0 || (streaks.worst_loss_streak ?? 0) > 0)
+  // Moments forts : carte omise si aucune catégorie non nulle (item 13).
+  const dominance = briefing.dominance ?? null
+  const showDominance = dominance != null && DOMINANCE_ITEMS.some((it) => (dominance[it.field] ?? 0) > 0)
+  if (
+    dimensions.length === 0 &&
+    briefing.trend == null &&
+    !showRanked &&
+    contextSplit == null &&
+    !showStreaks &&
+    !showDominance
+  )
     return null
 
   return (
@@ -84,6 +129,10 @@ export function ExplorerBriefingModules({
       {briefing.trend != null && <TrendCard trend={briefing.trend} t={t} />}
       {showRanked && <RankedCard ranked={briefing.ranked as ExplorerBriefingRanked} t={t} />}
       {contextSplit != null && <ContextSplitCard split={contextSplit} t={t} />}
+      {showStreaks && <StreaksCard streaks={streaks as ExplorerBriefingStreaks} t={t} />}
+      {showDominance && (
+        <DominanceCard dominance={dominance as ExplorerBriefingDominance} t={t} tMV={tMV} />
+      )}
     </div>
   )
 }
@@ -293,5 +342,83 @@ function ContextSplitRow({
         {group.kda.toFixed(2)}
       </span>
     </li>
+  )
+}
+
+// ─── Module « Séries » (C5) : meilleure série de victoires / pire série de défaites ─
+// Calculées côté backend sur TOUT le scope filtré (P-9). Un segment à zéro est omis
+// (scope 100 % victoires → pas de « Pire série »). Rendu uniquement si au moins un
+// segment est non nul (garde showStreaks côté parent).
+
+function StreaksCard({ streaks, t }: { streaks: ExplorerBriefingStreaks; t: T }) {
+  const best = streaks.best_win_streak ?? 0
+  const worst = streaks.worst_loss_streak ?? 0
+  return (
+    <BriefingSectionCard className="h-full" title={t('explorer.briefing.streaks_title')}>
+      <ul className="space-y-1 text-xs">
+        {best > 0 && (
+          <li className="flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-foreground">{t('explorer.briefing.streak_best')}</span>
+            <span
+              className="shrink-0 tabular-nums font-semibold"
+              style={{ color: tokenCssVar('outcome-win') }}
+            >
+              {t('explorer.briefing.streak_wins', { n: best })}
+            </span>
+          </li>
+        )}
+        {worst > 0 && (
+          <li className="flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-foreground">{t('explorer.briefing.streak_worst')}</span>
+            <span
+              className="shrink-0 tabular-nums font-semibold"
+              style={{ color: tokenCssVar('outcome-loss') }}
+            >
+              {t('explorer.briefing.streak_losses', { n: worst })}
+            </span>
+          </li>
+        )}
+      </ul>
+    </BriefingSectionCard>
+  )
+}
+
+// ─── Module « Moments forts » (C6) : compteurs de dominance du scope ────────────
+// Une pastille par catégorie NON NULLE (zéros omis, item 13), libellés réutilisant
+// narrative.dominance.* (manifest match_view) + tokens narrative-* (P-9).
+
+function DominanceCard({
+  dominance,
+  t,
+  tMV,
+}: {
+  dominance: ExplorerBriefingDominance
+  t: T
+  tMV: TMV
+}) {
+  return (
+    <BriefingSectionCard className="h-full" title={t('explorer.briefing.highlights_title')}>
+      <div className="flex flex-wrap gap-1.5">
+        {DOMINANCE_ITEMS.map((it) => {
+          const count = dominance[it.field] ?? 0
+          if (count <= 0) return null
+          const color = tokenCssVar(it.token)
+          return (
+            <span
+              key={it.field}
+              className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-2xs font-bold uppercase tracking-wider leading-none whitespace-nowrap"
+              style={{
+                backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`,
+                borderColor: `color-mix(in oklab, ${color} 55%, transparent)`,
+                color,
+              }}
+            >
+              {tMV(it.labelKey)}
+              <span className="tabular-nums">×{count}</span>
+            </span>
+          )
+        })}
+      </div>
+    </BriefingSectionCard>
   )
 }
