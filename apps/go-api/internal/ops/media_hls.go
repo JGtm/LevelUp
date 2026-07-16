@@ -40,6 +40,11 @@ type HLSTranscodeParams struct {
 	DBPath    string // shared_social.duckdb — cible de l'UPDATE media_files
 	FileRel   string // file_path actuel en DB (clé WHERE) = source relatif stable
 	HLSRel    string // futur file_path + hls_path = master.m3u8 relatif stable
+	// DeleteSource : supprimer le fichier source après un transcodage HLS prouvé
+	// lisible (4e garde anti-perte). false = conserver le source (défaut sûr en
+	// local ; le HLS reste servi, le source reste la copie maître). Résolu en amont
+	// par config.ResolveMediaDeleteSource (env > store > isProd).
+	DeleteSource bool
 }
 
 // DetectHLSNeeded probe le fichier et décide s'il doit être transcodé en HLS
@@ -169,6 +174,15 @@ func RunHLSTranscode(ctx context.Context, p HLSTranscodeParams) error {
 	if !hasThumb {
 		log.WarnContext(ctx, "RunHLSTranscode: aucune miniature liée — source conservé pour régénération ultérieure",
 			"hls", p.HLSRel)
+		return nil
+	}
+
+	// Quatrième garde : politique de rétention. Le source n'est supprimé que si
+	// l'opérateur l'a demandé (media_delete_source_after_transcode). Défaut sûr en
+	// local = conservation (le source reste la copie maître ; le HLS est déjà servi).
+	if !p.DeleteSource {
+		log.InfoContext(ctx, "RunHLSTranscode: source conservé (politique de rétention: media_delete_source_after_transcode=false)",
+			"source", p.SourceAbs, "hls", p.HLSRel)
 		return nil
 	}
 

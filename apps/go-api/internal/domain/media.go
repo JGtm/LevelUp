@@ -206,6 +206,10 @@ type UploadRequest struct {
 	SharedMatchesDBPath string // chemin vers shared_matches_v2.duckdb (lecture match_registry)
 	Tolerance           int    // buffer association match (minutes, défaut 2)
 	TitleSlug           string // titre de l'upload — routage de l'indexeur média (DEC-8)
+	// DeleteSource : politique de rétention du source après transcodage HLS, résolue
+	// par le handler (config.ResolveMediaDeleteSource : env > store > isProd). Propagée
+	// à HLSTranscodeParams.DeleteSource. false = conserver (défaut sûr en local).
+	DeleteSource bool
 }
 
 // UploadResult résume le résultat d'un upload multi-fichiers.

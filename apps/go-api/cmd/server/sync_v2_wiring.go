@@ -317,6 +317,14 @@ func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngi
 					}
 					return ""
 				},
+				func() bool {
+					var v *bool
+					if cfg, _ := deps.Settings.Load(); cfg != nil {
+						v = cfg.MediaDeleteSourceAfterTranscode
+					}
+					return config.ResolveMediaDeleteSource(
+						os.Getenv(config.EnvMediaDeleteSource), v, deps.Cfg.IsProduction())
+				},
 			))
 		}
 

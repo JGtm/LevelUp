@@ -30,7 +30,7 @@ func TestEnsurePendingHLS_TranscodesScannedVideo(t *testing.T) {
 	dbPath := filepath.Join(base, "shared_social.duckdb")
 	setupSweepDB(t, ctx, dbPath)
 
-	st, err := EnsurePendingHLS(ctx, EnsureHLSParams{DBPath: dbPath, CapturesBase: base})
+	st, err := EnsurePendingHLS(ctx, EnsureHLSParams{DBPath: dbPath, CapturesBase: base, DeleteSource: true})
 	if err != nil {
 		t.Fatalf("EnsurePendingHLS: %v", err)
 	}

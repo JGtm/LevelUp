@@ -109,6 +109,15 @@ export function MediaCard({ merged, handleChange, t, frozen }: TabProps) {
             />
             <span className="text-xs text-muted-foreground">{t.mediaBaseDirHint}</span>
           </div>
+          <div>
+            <ToggleRow
+              label={t.mediaDeleteSource}
+              value={merged.media_delete_source_after_transcode ?? false}
+              onChange={(v) => handleChange('media_delete_source_after_transcode', v)}
+              disabled={frozen}
+            />
+            <span className="block pb-2 text-xs text-muted-foreground">{t.mediaDeleteSourceHint}</span>
+          </div>
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-foreground">{t.mediaToleranceLabel}</span>
             <input

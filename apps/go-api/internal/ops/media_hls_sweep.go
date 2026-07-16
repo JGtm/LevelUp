@@ -38,6 +38,9 @@ type EnsureHLSParams struct {
 	OnlySlug     string // ne traiter qu'un joueur ("" = tous)
 	Limit        int    // nombre max de clips transcodés (0 = illimité)
 	DryRun       bool   // lister sans transcoder
+	// DeleteSource : propagé tel quel à HLSTranscodeParams.DeleteSource (politique de
+	// rétention du source après transcodage). Résolu en amont par l'appelant.
+	DeleteSource bool
 }
 
 // EnsureHLSStats résume un balayage.
@@ -161,6 +164,7 @@ func processHLSCandidate(ctx context.Context, c hlsCandidate, store MediaPathSto
 	}
 	if err := RunHLSTranscode(ctx, HLSTranscodeParams{
 		SourceAbs: abs, OutDir: outDir, DBPath: p.DBPath, FileRel: c.filePath, HLSRel: hlsRel,
+		DeleteSource: p.DeleteSource,
 	}); err != nil {
 		log.WarnContext(ctx, "hls sweep: transcodage échoué", "file", c.filePath, "err", err)
 		st.Failed++
