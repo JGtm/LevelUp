@@ -138,6 +138,7 @@ type MediaHandler struct {
 	notifierFor       NotificationsEmitterFactory // optionnel : émission media_added
 	recipientResolver MediaRecipientResolver      // optionnel : fan-out aux autres joueurs
 	demoMode          bool                        // true = upload figé (vitrine publique)
+	isProduction      bool                        // défaut de rétention source (env LEVELUP_ENV=production)
 }
 
 // NewMediaHandler crée un MediaHandler.
@@ -160,6 +161,14 @@ func (h *MediaHandler) WithSettingsStore(store *settings.Store) *MediaHandler {
 // Sans appel : false (upload autorisé).
 func (h *MediaHandler) WithDemoMode(demo bool) *MediaHandler {
 	h.demoMode = demo
+	return h
+}
+
+// WithProduction fournit le défaut de résolution de la politique de rétention du
+// source après transcodage HLS (config.ResolveMediaDeleteSource : env > store >
+// isProd). Sans appel : false (conserver le source — défaut sûr hors prod).
+func (h *MediaHandler) WithProduction(isProd bool) *MediaHandler {
+	h.isProduction = isProd
 	return h
 }
 

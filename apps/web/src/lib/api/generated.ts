@@ -4570,6 +4570,8 @@ export interface components {
             refresh_clears_caches?: boolean;
             career_top_exclude_btb?: boolean;
             media_captures_base_dir?: string;
+            /** @description Supprimer le fichier source (.mkv/.avi…) après un transcodage HLS réussi. GET renvoie la valeur effective résolue (env > réglage > défaut prod). PATCH persiste le réglage (omis = auto). */
+            media_delete_source_after_transcode?: boolean;
             media_tolerance_minutes?: number;
             media_watcher_enabled?: boolean;
             media_watcher_debounce_seconds?: number;

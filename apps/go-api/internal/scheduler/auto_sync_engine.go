@@ -6,7 +6,9 @@ package scheduler
 
 import (
 	"context"
+	"os"
 
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -91,6 +93,14 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 					return cfg.UserTimezone
 				}
 				return ""
+			},
+			func() bool {
+				var v *bool
+				if cfg, _ := s.settings.Load(); cfg != nil {
+					v = cfg.MediaDeleteSourceAfterTranscode
+				}
+				return config.ResolveMediaDeleteSource(
+					os.Getenv(config.EnvMediaDeleteSource), v, s.cfg.IsProduction())
 			},
 		))
 	}

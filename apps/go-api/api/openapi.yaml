@@ -6359,6 +6359,9 @@ components:
           type: boolean
         media_captures_base_dir:
           type: string
+        media_delete_source_after_transcode:
+          type: boolean
+          description: Supprimer le fichier source (.mkv/.avi…) après un transcodage HLS réussi. GET renvoie la valeur effective résolue (env > réglage > défaut prod). PATCH persiste le réglage (omis = auto).
         media_tolerance_minutes:
           type: integer
         media_watcher_enabled:

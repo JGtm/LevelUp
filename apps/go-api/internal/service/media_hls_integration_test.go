@@ -19,7 +19,8 @@ import (
 // la galerie. Nécessite ffmpeg. Cas AVEC miniature → source supprimé.
 func TestUploadHLSTranscoding_EndToEnd(t *testing.T) {
 	// thumbnail non-NULL : reflète la miniature générée par IndexMedia AVANT le transcode.
-	mkv, dbPath, capturesDir := runHLSTranscodeFixture(t, "GT/thumbs/multi.jpg")
+	// DeleteSource=true : les 4 gardes passent → suppression attendue.
+	mkv, dbPath, capturesDir := runHLSTranscodeFixture(t, "GT/thumbs/multi.jpg", true)
 
 	assertHLSFinalized(t, dbPath, capturesDir)
 	if _, err := os.Stat(mkv); !os.IsNotExist(err) {
@@ -31,8 +32,9 @@ func TestUploadHLSTranscoding_EndToEnd(t *testing.T) {
 // ed1b1e982 : sans miniature liée, le source MKV est CONSERVÉ (seul moyen de régénérer
 // la miniature plus tard), tout en finalisant le HLS en DB.
 func TestUploadHLSTranscoding_NoThumbnail_ConservesSource(t *testing.T) {
-	// thumbnail vide → SQL NULL → garde déclenchée → source conservé.
-	mkv, dbPath, capturesDir := runHLSTranscodeFixture(t, "")
+	// thumbnail vide → SQL NULL → garde miniature déclenchée → source conservé, MÊME
+	// avec DeleteSource=true (la garde anti-perte miniature précède la politique de rétention).
+	mkv, dbPath, capturesDir := runHLSTranscodeFixture(t, "", true)
 
 	assertHLSFinalized(t, dbPath, capturesDir)
 	if _, err := os.Stat(mkv); err != nil {
@@ -42,7 +44,7 @@ func TestUploadHLSTranscoding_NoThumbnail_ConservesSource(t *testing.T) {
 
 // runHLSTranscodeFixture monte le décor commun (MKV multipiste + media_files avec
 // thumbnailValue, "" = NULL) et exécute le transcode async jusqu'à complétion.
-func runHLSTranscodeFixture(t *testing.T, thumbnailValue string) (mkv, dbPath, capturesDir string) {
+func runHLSTranscodeFixture(t *testing.T, thumbnailValue string, deleteSource bool) (mkv, dbPath, capturesDir string) {
 	t.Helper()
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
 		t.Skip("ffmpeg absent — test d'intégration transcoding ignoré")
@@ -92,6 +94,7 @@ func runHLSTranscodeFixture(t *testing.T, thumbnailValue string) (mkv, dbPath, c
 		CapturesBase:       base,
 		Gamertag:           gamertag,
 		SharedSocialDBPath: dbPath,
+		DeleteSource:       deleteSource,
 	}
 	svc.launchHLSTranscoding(ctx, req, []string{mkv})
 
