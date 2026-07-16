@@ -192,7 +192,7 @@ SELECT match_id, performance_score, session_id, is_with_friends,
 FROM player_match_enrichment_latest
 WHERE match_id IN (%s)`, ph)
 
-	sqlRows, err := r.pdb.Player.Query(ctx, q, ToAnySlice(matchIDs)...)
+	sqlRows, err := r.pdb.Player.QueryRecovered(ctx, q, ToAnySlice(matchIDs)...)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +245,7 @@ SELECT match_id, rating_value, rating_type
 FROM match_skill_rank_latest
 WHERE match_id IN (%s)`, ph)
 
-	sqlRows, err := r.pdb.Player.Query(ctx, q, ToAnySlice(matchIDs)...)
+	sqlRows, err := r.pdb.Player.QueryRecovered(ctx, q, ToAnySlice(matchIDs)...)
 	if err != nil {
 		return nil, err
 	}

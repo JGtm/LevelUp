@@ -127,22 +127,32 @@ func (r *MatchViewRepo) GetMatchObjectiveScore(ctx context.Context, xuid, matchI
 	defer cancel()
 
 	var tableCount int
-	if err := r.pdb.ReadDB().QueryRow(ctx, `
+	tblRows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, `
 		SELECT COUNT(*) FROM information_schema.tables
 		WHERE table_name = 'personal_score_awards'
-	`).Scan(&tableCount); err != nil || tableCount == 0 {
+	`)
+	if err != nil {
+		return 0, nil
+	}
+	scanErr := tblRows.Scan(&tableCount)
+	_ = tblRows.Close()
+	if scanErr != nil || tableCount == 0 {
 		return 0, nil
 	}
 
 	var total int
-	err := r.pdb.ReadDB().QueryRow(ctx, `
+	totalRows, err := r.pdb.ReadDB().QueryRowRecovered(ctx, `
 		SELECT COALESCE(SUM(award_score), 0)::INTEGER
 		FROM personal_score_awards_latest
 		WHERE award_category = 'objective'
 		  AND xuid = ?
 		  AND match_id = ?
-	`, xuid, matchID).Scan(&total)
+	`, xuid, matchID)
 	if err != nil {
+		return 0, nil
+	}
+	defer totalRows.Close()
+	if err := totalRows.Scan(&total); err != nil {
 		return 0, nil
 	}
 	return total, nil
