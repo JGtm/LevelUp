@@ -632,8 +632,10 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		stats := handlers.NewStatsHandler(reg.Stats)
 		stats.Mount(r)
 
-		// Sprint 11 : Accueil/Home + Battle Pass + Challenges (migrés Huma ;
-		// en-têtes de cache ETag/max-age/no-store posés dans les Output).
+		// Sprint 11 : Accueil/Home + Battle Pass (migrés Huma ; en-têtes de cache
+		// ETag/max-age/no-store posés dans les Output). Le défunt GET /challenges
+		// (doublon de collision avec le module Prestige) a été retiré : la home web
+		// lit les défis via le payload season pass (pages/palmares/season-pass).
 		home := handlers.NewHomeHandler(reg.HomeCtxWithAuth, settingsStore)
 		home.Mount(r)
 

@@ -1195,24 +1195,6 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /players/{player_slug}/challenges:
-    get:
-      tags: [home]
-      operationId: getChallenges
-      summary: Challenges actifs
-      parameters:
-        - $ref: "#/components/parameters/PlayerSlug"
-      responses:
-        "200":
-          description: "Challenges (auth_required si non connecté)"
-          content:
-            application/json:
-              schema:
-                type: object
-                description: "TODO Sprint 32 : schéma ChallengesResponse complet"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
   # -------------------------------------------------------------------------
   # Sessions (Sprint 9) — ajoutées au contrat sprint 29
   # Go-only : FastAPI expose /pages/timeseries (POST) qui couvre session-compare.

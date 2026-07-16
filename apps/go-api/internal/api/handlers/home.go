@@ -1,7 +1,7 @@
 // Package handlers — home.go : handlers HTTP pour la page d'accueil Mission Control.
 //
 // MIGRÉ vers Huma (Phase 3b) : Mount crée humacore.NewAPI(r) sur le sous-routeur
-// /players/{player_slug} (ownership/title hérités) et enregistre les 3 GET. Les
+// /players/{player_slug} (ownership/title hérités) et enregistre les 2 GET. Les
 // en-têtes de cache (anciens middlewares CacheMaxAge/NoStore) sont posés dans les
 // Output. /pages/home conserve son ETag/304 byte-exact via un Body []byte
 // passthrough (writeJSONCached n'ajoute pas de trailing newline, contrairement à
@@ -11,7 +11,6 @@
 //
 //	GET /api/v1/players/{player_slug}/pages/home     → HomePageResponse (ETag/304, max-age 30)
 //	GET /api/v1/players/{player_slug}/battlepass     → BattlePassResponse (no-store)
-//	GET /api/v1/players/{player_slug}/challenges     → ChallengesResponse (no-store)
 package handlers
 
 import (
@@ -52,13 +51,12 @@ func NewHomeHandler(newSvc HomeAuthFactory, settingsStore *settings_platform.Sto
 	return &HomeHandler{newSvc: newSvc, settingsStore: settingsStore}
 }
 
-// Mount enregistre les 3 GET via Huma sur le sous-routeur chi (préfixe
+// Mount enregistre les 2 GET via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middleware ownership/title hérités).
 func (h *HomeHandler) Mount(r chi.Router) {
 	api := humacore.NewAPI(r)
 	huma.Get(api, "/pages/home", h.handleGetHomePage)
 	huma.Get(api, "/battlepass", h.handleGetBattlePass)
-	huma.Get(api, "/challenges", h.handleGetChallenges)
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -88,10 +86,6 @@ type homePageOutput struct {
 type homeBattlePassOutput struct {
 	CacheControl string `header:"Cache-Control"`
 	Body         domain.BattlePassResponse
-}
-type homeChallengesOutput struct {
-	CacheControl string `header:"Cache-Control"`
-	Body         domain.ChallengesResponse
 }
 
 // resolveLocaleFromHeader détermine la locale à utiliser pour cette requête.
@@ -218,14 +212,4 @@ func (h *HomeHandler) handleGetBattlePass(ctx context.Context, in *homePlayerInp
 		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", "joueur introuvable")
 	}
 	return &homeBattlePassOutput{CacheControl: "no-store", Body: svc.GetBattlePass(sctx)}, nil
-}
-
-// handleGetChallenges retourne les défis actifs (best-effort, migré Huma).
-// GET /api/v1/players/{player_slug}/challenges
-func (h *HomeHandler) handleGetChallenges(ctx context.Context, in *homePlayerInput) (*homeChallengesOutput, error) {
-	svc, sctx, _, _, err := h.newSvc(ctx, in.PlayerSlug)
-	if err != nil {
-		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", "joueur introuvable")
-	}
-	return &homeChallengesOutput{CacheControl: "no-store", Body: svc.GetChallenges(sctx)}, nil
 }

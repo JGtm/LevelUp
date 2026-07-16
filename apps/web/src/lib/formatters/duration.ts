@@ -1,8 +1,8 @@
 /**
  * Helpers canoniques pour le formatage de durées (revue 2026-04-29 P2.6bis).
  *
- * Centralise le pattern dispersé dans :
- *   - features/squad/v2/components/HistoryTable.tsx::formatDuration (M:SS)
+ * Format canonique M:SS des durées de match, consommé par les tableaux de matchs
+ * et de sessions (explorer, match-view, session-detail).
  *
  * Convention : entrée en secondes (le DTO API `time_played_seconds` est
  * une convention interne stable).

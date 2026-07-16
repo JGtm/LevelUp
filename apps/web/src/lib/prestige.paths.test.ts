@@ -61,34 +61,34 @@ beforeEach(() => {
 })
 
 describe('prestigeApi — routes Défis/Arcs/Prestige/Templates player-scoped', () => {
-  it('createChallenge → POST /players/{user_id}/challenges', () => {
+  it('createChallenge → POST /players/{user_id}/prestige/challenges', () => {
     prestigeApi.createChallenge(CHALLENGE_BODY)
-    expect(calls[0]).toEqual({ method: 'post', path: `/players/${ENC}/challenges` })
+    expect(calls[0]).toEqual({ method: 'post', path: `/players/${ENC}/prestige/challenges` })
   })
 
-  it('getChallenge → GET /players/{actor}/challenges/{id}', () => {
+  it('getChallenge → GET /players/{actor}/prestige/challenges/{id}', () => {
     prestigeApi.getChallenge('c1', SLUG)
-    expect(calls[0]).toEqual({ method: 'get', path: `/players/${ENC}/challenges/c1` })
+    expect(calls[0]).toEqual({ method: 'get', path: `/players/${ENC}/prestige/challenges/c1` })
   })
 
-  it('listActiveChallenges → GET /players/{userId}/challenges', () => {
+  it('listActiveChallenges → GET /players/{userId}/prestige/challenges', () => {
     prestigeApi.listActiveChallenges(SLUG, 'halo_infinite')
-    expect(calls[0].path).toBe(`/players/${ENC}/challenges?user_id=${ENC}&title_slug=halo_infinite`)
+    expect(calls[0].path).toBe(`/players/${ENC}/prestige/challenges?user_id=${ENC}&title_slug=halo_infinite`)
   })
 
-  it('updateChallenge → PATCH /players/{actor}/challenges/{id}', () => {
+  it('updateChallenge → PATCH /players/{actor}/prestige/challenges/{id}', () => {
     prestigeApi.updateChallenge('c1', { target: 2 }, SLUG)
-    expect(calls[0]).toEqual({ method: 'patch', path: `/players/${ENC}/challenges/c1` })
+    expect(calls[0]).toEqual({ method: 'patch', path: `/players/${ENC}/prestige/challenges/c1` })
   })
 
-  it('abandonChallenge → DELETE /players/{actor}/challenges/{id}', () => {
+  it('abandonChallenge → DELETE /players/{actor}/prestige/challenges/{id}', () => {
     prestigeApi.abandonChallenge('c1', SLUG)
-    expect(calls[0]).toEqual({ method: 'delete', path: `/players/${ENC}/challenges/c1` })
+    expect(calls[0]).toEqual({ method: 'delete', path: `/players/${ENC}/prestige/challenges/c1` })
   })
 
-  it('suggestNext → POST /players/{actor}/challenges/{id}/suggest-next', () => {
+  it('suggestNext → POST /players/{actor}/prestige/challenges/{id}/suggest-next', () => {
     prestigeApi.suggestNext('c1', SLUG)
-    expect(calls[0]).toEqual({ method: 'post', path: `/players/${ENC}/challenges/c1/suggest-next` })
+    expect(calls[0]).toEqual({ method: 'post', path: `/players/${ENC}/prestige/challenges/c1/suggest-next` })
   })
 
   it('createArc → POST /players/{user_id}/arcs', () => {
