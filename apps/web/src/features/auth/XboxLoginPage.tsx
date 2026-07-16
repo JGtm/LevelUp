@@ -19,7 +19,9 @@ import { useLogin } from '@/features/auth/queries'
 import { storePasswordCredential } from '@/features/auth/credentials'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
-import { API_BASE_URL, apiErrorCode, type ApiError } from '@/lib/api/client'
+import { api, API_BASE_URL, apiErrorCode, type ApiError } from '@/lib/api/client'
+import type { BootstrapResponse } from '@/lib/api/types'
+import { postLoginDestination } from '@/features/auth/postLoginDestination'
 import { verificationLinkLabel } from '@/lib/formatters'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
@@ -58,12 +60,23 @@ export function XboxLoginPage() {
             ) : (
               <XboxFlowPanel
                 onAuthorized={async () => {
-                  await queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })
-                  // PR 4 OpenSpartan: route users through the onboarding
-                  // landing so they can opt into the OpenSpartan import
-                  // before reaching the dashboard. Returning users just
-                  // click "Continuer →".
-                  navigate({ to: '/onboarding/openspartan' })
+                  // Recharge le bootstrap frais (post-login autoritatif) pour
+                  // décider la destination : un joueur DÉJÀ établi (données
+                  // synchronisées) va direct au dashboard ; seul un vrai nouveau
+                  // joueur voit la page d'onboarding OpenSpartan. fetchQuery
+                  // repeuple aussi le cache lu par __root (pas de double fetch).
+                  let boot: BootstrapResponse | null = null
+                  try {
+                    boot = await queryClient.fetchQuery({
+                      queryKey: queryKeys.bootstrap,
+                      queryFn: () => api.get<BootstrapResponse>('/bootstrap'),
+                    })
+                  } catch {
+                    // Bootstrap injoignable : ne pas bloquer le login abouti —
+                    // l'onboarding reste un atterrissage sûr (CTA « Continuer »).
+                    await queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })
+                  }
+                  navigate({ to: postLoginDestination(boot) })
                 }}
               />
             )}

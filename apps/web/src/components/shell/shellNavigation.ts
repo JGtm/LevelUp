@@ -88,6 +88,53 @@ export function isCommunityPath(pathname: string): boolean {
   return community || legacy
 }
 
+/**
+ * Verdict de routage de la route index ('/'). Fonction pure (logique hors
+ * composant, règle 7) : IndexPage se contente de projeter le résultat.
+ *
+ * Gardes, du plus prioritaire au moins prioritaire :
+ *  1. `wait`   — bootstrap pas encore hydraté. Avant hydratation `authMode` vaut son
+ *               défaut 'none', donc la garde `login` ne serait pas fiable : on attend.
+ *  2. `login`  — auth requise (password|xbox) mais session anonyme. Typiquement juste
+ *               après « Se déconnecter » (qui recharge sur '/'). En anonyme xbox
+ *               `available_players` est vide (filtrage ownership, ADR 0029) : sans
+ *               cette garde on tombait sur `setup`, rendu via le <Outlet/> nu de
+ *               __root — donc SANS NavL1 — et la redirection impérative de __root
+ *               (navigate dans un useEffect) pouvait se perdre dans la course avec le
+ *               settle initial du routeur au rechargement plein, bloquant l'utilisateur
+ *               sur une page sans barre de nav ni lien de reconnexion.
+ *  3. `player` — un joueur est actif (courant, sinon 1er disponible) : sa home.
+ *  4. `setup`  — aucun joueur configuré : inviter à configurer l'application.
+ */
+export type IndexRedirect =
+  | { kind: 'wait' }
+  | { kind: 'login' }
+  | { kind: 'player'; slug: string }
+  | { kind: 'setup' }
+
+export interface IndexRedirectInput {
+  isBootstrapped: boolean
+  authMode: 'none' | 'password' | 'xbox'
+  currentUsername: string | null
+  currentPlayerSlug?: string | null
+  firstAvailablePlayerSlug?: string | null
+}
+
+export function resolveIndexRedirect(input: IndexRedirectInput): IndexRedirect {
+  if (!input.isBootstrapped) {
+    return { kind: 'wait' }
+  }
+  const authRequired = input.authMode === 'password' || input.authMode === 'xbox'
+  if (authRequired && !input.currentUsername) {
+    return { kind: 'login' }
+  }
+  const slug = input.currentPlayerSlug ?? input.firstAvailablePlayerSlug
+  if (slug) {
+    return { kind: 'player', slug }
+  }
+  return { kind: 'setup' }
+}
+
 export function buildPlayerDestination(
   pathname: string,
   currentPlayerSlug: string | null | undefined,

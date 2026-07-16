@@ -62,8 +62,9 @@ func computeMapWinRates(rows []domain.MatchHistoryRawRow) map[string][2]int {
 // d'une ligne : URL de page publique du match (F3) et libellé d'outcome via le titre
 // (F4). Champs nil → dégradation gracieuse (URL vide ; outcome via le fallback FR dur).
 type rowFormatters struct {
-	matchURL     func(matchID string) string
-	outcomeLabel func(code int) string
+	matchURL      func(matchID string) string
+	outcomeLabel  func(code int) string
+	playlistLabel func(rawFR string) string
 }
 
 func (f rowFormatters) matchURLFor(matchID string) string {
@@ -71,6 +72,15 @@ func (f rowFormatters) matchURLFor(matchID string) string {
 		return ""
 	}
 	return f.matchURL(matchID)
+}
+
+// playlistLabelFor résout le libellé d'affichage de la playlist via le chokepoint
+// unique injecté (strip + override). nil → renvoie le brut (dégradation gracieuse).
+func (f rowFormatters) playlistLabelFor(rawFR string) string {
+	if f.playlistLabel == nil {
+		return rawFR
+	}
+	return f.playlistLabel(rawFR)
 }
 
 func (f rowFormatters) outcomeLabelFor(code int) string {
@@ -113,7 +123,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		modeUI = analysis.ResolveModeUI(r.GameVariantName, r.GameVariantNameFR)
 	}
 	mapU := coalesce(r.MapNameFR, r.MapName)
-	playlist := coalesce(r.PlaylistName, nil)
+	playlist := fmts.playlistLabelFor(coalesce(r.PlaylistName, nil))
 
 	var startTime time.Time
 	if r.StartTime != nil {

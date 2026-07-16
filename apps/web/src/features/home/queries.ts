@@ -4,11 +4,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import type { HomePageResponse, SeasonPassPageResponse } from '@/lib/api/types'
 
 export function useHomePage(playerSlug: string) {
+  // Le titre courant scope la clé : au switch de titre, la clé change → refetch
+  // des données du bon titre (plus de Spartan ID / playlists périmées).
+  const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
-    queryKey: queryKeys.home(playerSlug),
+    queryKey: queryKeys.home(playerSlug, titleSlug),
     queryFn: () => api.get<HomePageResponse>(`/players/${playerSlug}/pages/home`),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
