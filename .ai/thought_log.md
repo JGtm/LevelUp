@@ -1,3 +1,50 @@
+## [2026-07-17] Release — pre-build image en CI (GHCR) + pull au deploy avec fallback build local (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Contexte** : item backlog [infra/release] (audit release 2026-07-16, reco P3). Aujourd'hui
+`deploy.sh` fait `docker compose up -d --build` SUR le VPS a chaque deploy — un apt-get/npm/go
+casse ne se decouvre qu'en pleine prod. Objectif : builder l'image en CI (GHCR), le VPS `pull`.
+
+**Cartographie (verif sur pieces)** : remote `JGtm/LevelUp` -> image `ghcr.io/jgtm/levelup`
+(lowercase). `deploy.yml` = pre-check -> deploy (SSH `deploy.sh`) -> deploy-demo. Runbook cible
+`docs/RUNBOOK_GO_LIVE.md` absent (l'esquisse vivait dans `.ai/V7/RUNBOOK_GO_LIVE.md` § amelioration
+recommandee). Inspection VPS (lecture seule, ssh lvelup) : docker 29.4, compose v5.1.2, AUCUN login
+GHCR (`~/.docker/config.json` vide cote deploy), conteneurs sur images `levelup-levelup` /
+`levelup-levelup-demo` (= `basename(/opt/levelup)-{service}`).
+
+**Decision technique** :
+- `deploy.yml` : trigger `pull_request` ajoute + job `build-image` (docker/build-push-action@v6,
+  cache `type=gha`). Sur PR -> build SEUL (attrape l'echec tot, pas de push). Sur push main ->
+  build + push GHCR (metadata-action tags `latest`+`sha`, `packages: write` via GITHUB_TOKEN).
+  `deploy` gagne `needs:[pre-check,build-image]` + `if: push main`, transmet
+  `LEVELUP_IMAGE=ghcr.io/jgtm/levelup@<digest>` (immuable) a `deploy.sh` via `envs`.
+- `deploy.sh` : si `LEVELUP_IMAGE` -> `docker pull` puis tag sous les 2 noms compose par defaut
+  (prod+demo, image identique) + `up --no-build` ; sinon / si pull echoue -> FALLBACK
+  `up --build` (kill-switch date : bascule 2026-07-17, retrait cible 2026-Q4, critere = plus de
+  ligne "Pull GHCR echoue" sur >=4 deploys). Belt-and-suspenders : `up --no-build` qui echoue
+  retombe aussi sur `up --build` (jamais prod down).
+- `docs/RUNBOOK_GO_LIVE.md` cree (EN-only) : flux avant/apres + 2 options d'activation VPS
+  (A: `docker login ghcr.io` PAT read:packages ; B: package public) — NON executees.
+
+**Surete au merge (sans action VPS)** : au 1er merge, l'ancien `deploy.sh` (deja en cours
+d'execution, FD ouvert avant son propre `git reset --hard`) ignore `LEVELUP_IMAGE` et build en
+local. Aux merges suivants, le nouveau `deploy.sh` tente le pull -> pas de login VPS -> fallback
+build local. Dans tous les cas la prod reste servie. Le push GHCR (CI) ne depend d'aucune action
+VPS (GITHUB_TOKEN auto).
+
+**Resultats** : `bash -n scripts/deploy.sh` OK ; actionlint 1.7.12 sur TOUS les workflows = exit 0
+(deploy/release/ci + autres). Zero modif VPS (inspection lecture seule uniquement).
+
+**Decouvertes hors perimetre (non traitees)** : (1) `release.yml` (tags v*) builde les binaires Go
+mais PAS d'image Docker — pourrait aussi pousser l'image sur tag ; hors perimetre. (2) demo et prod
+buildent aujourd'hui 2 images identiques (meme Dockerfile, aucun build-arg divergent) — le pull GHCR
+les unifie deja de fait ; le `build: .` du service demo pourrait etre remplace par un
+`image:`/`extends` mais hors perimetre.
+
+**Prochaine etape (utilisateur)** : activer le pull cote VPS (Option A ou B du runbook) pour passer
+du fallback build local au pull GHCR nominal.
+
 ## [2026-07-17] Lot i18n tiers de rangs — centralisation mapping + defis locale-aware (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété (deux sous-taches).
