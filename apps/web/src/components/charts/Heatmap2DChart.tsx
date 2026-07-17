@@ -18,8 +18,10 @@ import { useCallback } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { resolveToken } from '@/lib/accessibility'
+import { useSettingsDraftStore, type ColorPalette } from '@/stores/settingsDraftStore'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
+import { heatmapRampTokens } from './heatmapColors'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getTooltipBase } from './_utils'
 
 export interface ChartPointHeatmap {
@@ -54,10 +56,13 @@ export function Heatmap2DChart({
   paletteMode = 'sequential',
   valueRange,
 }: Heatmap2DChartProps) {
+  // Palette d'accessibilité active : pilote la rampe CVD-safe (rebuild via
+  // useColorPaletteVersion dans ChartCard + ce sélecteur au changement de palette).
+  const colorPalette = useSettingsDraftStore((s) => s.localUiPrefs.colorPalette)
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointHeatmap>[]) =>
-      buildHeatmap2DOption(s, { paletteMode, valueRange }),
-    [paletteMode, valueRange],
+      buildHeatmap2DOption(s, { paletteMode, valueRange, colorPalette }),
+    [paletteMode, valueRange, colorPalette],
   )
 
   return (
@@ -76,6 +81,8 @@ export function Heatmap2DChart({
 interface BuildOpts {
   paletteMode?: HeatmapPaletteMode
   valueRange?: [number, number]
+  /** Palette d'accessibilité active — pilote la rampe CVD-safe (cf. heatmapColors). */
+  colorPalette?: ColorPalette
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -83,7 +90,7 @@ export function buildHeatmap2DOption(
   series: ChartSeries<ChartPointHeatmap>[],
   opts: BuildOpts = {},
 ): EChartsCoreOption {
-  const { paletteMode = 'sequential', valueRange } = opts
+  const { paletteMode = 'sequential', valueRange, colorPalette = 'default' } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }
@@ -112,14 +119,9 @@ export function buildHeatmap2DOption(
   const minV = valueRange?.[0] ?? Math.min(...dps.map((d) => d.value))
   const maxV = valueRange?.[1] ?? Math.max(...dps.map((d) => d.value))
 
-  const colors =
-    paletteMode === 'divergent'
-      ? [
-          resolveToken('heatmap-divergent-low'),
-          resolveToken('divergent-neutral'),
-          resolveToken('heatmap-divergent-high'),
-        ]
-      : [resolveToken('heatmap-cold'), resolveToken('heatmap-hot')]
+  // Rampe centralisée : en palette d'accessibilité, une heatmap séquentielle
+  // bascule sur la rampe de fréquence (luminance monotone, CVD-safe).
+  const colors = heatmapRampTokens(paletteMode, colorPalette).map(resolveToken)
 
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)

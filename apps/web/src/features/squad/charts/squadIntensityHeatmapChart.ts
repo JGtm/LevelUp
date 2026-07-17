@@ -6,7 +6,8 @@
  *   - Y axis : matchs (label = "Carte — date").
  *   - X axis : 10 phases (0-10%, ..., 90-100%).
  *   - Z value : densité de kills normalisée 0..1 par match.
- *   - visualMap continu cyan→jaune→ambre→orange→rouge (5 stops).
+ *   - visualMap continu sur la rampe NEUTRE de fréquence (mono-teinte, luminance
+ *     monotone → CVD-safe partout) via le helper central heatmapRampTokens.
  *   - Toggle (cf. wrapper) : "all" ou un joueur spécifique.
  */
 import type { EChartsCoreOption } from 'echarts/core'
@@ -17,21 +18,14 @@ import {
   getEChartsThemeColors,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { heatmapRampTokens } from '@/components/charts/heatmapColors'
+import { resolveToken } from '@/lib/accessibility'
 import type { SquadIntensityMatchRow } from '@/lib/api/types'
 import { truncateMap } from '@/lib/charts/matchLabels'
 
 const PHASE_LABELS = [
   '0-10%', '10-20%', '20-30%', '30-40%', '40-50%',
   '50-60%', '60-70%', '70-80%', '80-90%', '90-100%',
-]
-
-// color-allow: échelle d'intensité 5 paliers (cyan→jaune→ambre→orange→rouge) — pas de token AC pour scale 5-stops
-const COLOR_STOPS = [
-  { color: '#38C8C8' }, // color-allow: cyan (intensité min)
-  { color: '#FFFF00' }, // color-allow: jaune (intensité 2)
-  { color: '#FFB300' }, // color-allow: ambre (intensité 3)
-  { color: '#FF5500' }, // color-allow: orange (intensité 4)
-  { color: '#FF1A00' }, // color-allow: rouge (intensité max)
 ]
 
 export interface SquadIntensityOpts {
@@ -96,7 +90,10 @@ export function buildSquadIntensityHeatmapOption(
       orient: 'vertical',
       right: 4,
       top: 'middle',
-      inRange: { color: COLOR_STOPS.map((c) => c.color) },
+      // Rampe NEUTRE de fréquence (mono-teinte, luminance monotone, CVD-safe) :
+      // l'intensité de kills est une mesure de volume, pas une perf bien/mal →
+      // pas de rampe cold→hot. Rampe centralisée (cf. components/charts/heatmapColors).
+      inRange: { color: heatmapRampTokens('frequency').map(resolveToken) },
       textStyle: { color: tc.axisLabel, fontSize: 10 },
       formatter: (v: number) => `${(v * 100).toFixed(0)}%`,
     },

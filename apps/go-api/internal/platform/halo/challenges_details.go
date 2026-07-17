@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/assets"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -57,7 +58,10 @@ type challengeDefinitionRaw struct {
 func (p *HaloProvider) buildActiveChallengeItems(ctx context.Context, tokens *domain.HaloTokens, decks []challengeDeckRaw) []domain.ChallengeItem {
 	seen := make(map[string]struct{})
 	items := make([]domain.ChallengeItem, 0)
-	lang := langFR
+	// Langue de résolution des titres/descriptions de défis = locale de requête
+	// (header X-LevelUp-Locale → ctxkeys ; défaut FR hors requête HTTP, ex. watcher).
+	// Auparavant figée FR → « les défis non plus » [traduits] sous UI EN.
+	lang := normalizeChallengeLang(ctxkeys.Locale(ctx))
 
 	for _, deck := range decks {
 		for _, ch := range deck.ActiveChallenges {

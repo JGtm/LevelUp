@@ -417,6 +417,9 @@ func TestEnrichMapBreakdownWithSquadStats_JoinByMapID(t *testing.T) {
 	if enriched[0].HistoricalPerformanceAvg == nil || *enriched[0].HistoricalPerformanceAvg != 65.5 {
 		t.Errorf("HistoricalPerformanceAvg: want 65.5, got %v", enriched[0].HistoricalPerformanceAvg)
 	}
+	if enriched[0].HistoricalMatchCount == nil || *enriched[0].HistoricalMatchCount != 20 {
+		t.Errorf("HistoricalMatchCount: want 20 (= Total), got %v", enriched[0].HistoricalMatchCount)
+	}
 }
 
 // TestEnrichMapBreakdownWithSquadStats_FallbackMapUI vérifie le fallback
@@ -448,6 +451,9 @@ func TestEnrichMapBreakdownWithSquadStats_NoMatchLeaveNil(t *testing.T) {
 	}
 	if enriched[0].HistoricalPerformanceAvg != nil {
 		t.Errorf("HistoricalPerformanceAvg: want nil, got %v", enriched[0].HistoricalPerformanceAvg)
+	}
+	if enriched[0].HistoricalMatchCount != nil {
+		t.Errorf("HistoricalMatchCount: want nil, got %v", enriched[0].HistoricalMatchCount)
 	}
 }
 

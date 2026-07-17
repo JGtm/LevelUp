@@ -90,7 +90,7 @@ func (r *CatalogRepo) playlistsPlayedByXUID(ctx context.Context, titleSlug, xuid
 		SELECT mr.playlist_id, COUNT(DISTINCT mr.match_id)
 		FROM match_registry mr
 		JOIN match_participants mp ON mp.match_id = mr.match_id
-		WHERE mp.xuid = ? AND mr.playlist_id IS NOT NULL
+		WHERE mp.xuid = ?`+excludeCampaignClause(titleSlug, "mr")+` AND mr.playlist_id IS NOT NULL
 		GROUP BY mr.playlist_id
 	`, xuid)
 	if err != nil {

@@ -66,6 +66,11 @@ type MapBreakdownRow struct {
 	MatchCount        int      `json:"match_count"`
 	WinRate           float64  `json:"win_rate"`
 	HistoricalWinRate *float64 `json:"historical_win_rate,omitempty"`
+	// HistoricalMatchCount : nombre de matchs du joueur principal sur cette carte
+	// avec exactement l'escouade sélectionnée sur TOUT l'historique (dénominateur
+	// de HistoricalWinRate). Nil si aucune donnée historique. Alimente l'affichage
+	// « Historique : N parties » du bullet chart teammates.02.
+	HistoricalMatchCount *int `json:"historical_match_count,omitempty"`
 	// PerformanceAvg : moyenne du performance_score sur les matchs escouade
 	// filtrés (session courante). Nil si aucun match n'a de score renseigné.
 	PerformanceAvg *float64 `json:"performance_avg,omitempty"`

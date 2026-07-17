@@ -17,6 +17,7 @@ import type { CareerLusrSection, CareerCSRRank } from '@/lib/api/types'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { careerManifest } from '@/lib/i18n/generated/career'
 import { staticAssetURL } from '@/lib/staticAssets'
+import { localizeTierName, localizeTierLabel } from '@/lib/skillTiers'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useCareerCSRs } from './queries'
@@ -27,7 +28,12 @@ interface Props {
   lusrData: CareerLusrSection | null | undefined
 }
 
-function csrTierLabel(rank: CareerCSRRank, placementLabel: string, unrankedLabel: string): string {
+function csrTierLabel(
+  rank: CareerCSRRank,
+  locale: ManifestLocale,
+  placementLabel: string,
+  unrankedLabel: string,
+): string {
   if (!rank.tier) {
     // placement_total (5 ou 10 selon la saison / le titre) est TOUJOURS fourni
     // par le backend (Pass A : par-titre, type requis non-nullable).
@@ -35,7 +41,10 @@ function csrTierLabel(rank: CareerCSRRank, placementLabel: string, unrankedLabel
     const completed = Math.min(total - 1, Math.max(0, total - rank.measurement_matches_remaining))
     return completed === 0 ? unrankedLabel : `${placementLabel} (${completed}/${total})`
   }
-  return rank.sub_tier > 0 ? `${rank.tier} ${toRoman(rank.sub_tier)}` : rank.tier
+  // rank.tier est le palier canonique EN ("Gold"/"Platinum") — localisé à
+  // l'affichage (sinon « Gold IV » restait en anglais sous UI FR).
+  const name = localizeTierName(rank.tier, locale)
+  return rank.sub_tier > 0 ? `${name} ${toRoman(rank.sub_tier)}` : name
 }
 
 function formatCSRValue(rank: CareerCSRRank): string {
@@ -158,10 +167,10 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
                 {playlists.map((pl) => {
                   const prevRank = prevByPlaylist.get(pl.playlist_id)
                   const trend = csrSeasonTrend(pl.current, prevRank)
-                  const csrText = `${csrTierLabel(pl.current, t('career.ranking.placement'), t('career.ranking.unranked'))}${formatCSRValue(pl.current)}`
+                  const csrText = `${csrTierLabel(pl.current, locale, t('career.ranking.placement'), t('career.ranking.unranked'))}${formatCSRValue(pl.current)}`
                   const trendTooltip =
                     trend && prevRank
-                      ? `${t('career.ranking.vs_prev_season')} : ${csrTierLabel(prevRank, t('career.ranking.placement'), t('career.ranking.unranked'))}${formatCSRValue(prevRank)}`
+                      ? `${t('career.ranking.vs_prev_season')} : ${csrTierLabel(prevRank, locale, t('career.ranking.placement'), t('career.ranking.unranked'))}${formatCSRValue(prevRank)}`
                       : undefined
                   return (
                     <li key={pl.playlist_id} className="flex items-center gap-2">
@@ -205,6 +214,8 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
             <ul className="space-y-2">
               {lusrGroups.map((group) => {
                 const cp = lusrByGroup.get(group)
+                // tier_label LUSR baké en FR au sync → localisé à l'affichage.
+                const cpTierLabel = localizeTierLabel(cp?.tier_label, locale)
                 return (
                   <li key={group} className="flex items-center gap-2">
                     <img
@@ -218,10 +229,10 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {cp
-                          ? cp.tier_label
+                          ? cpTierLabel
                             ? cp.rating_value > 0
-                              ? `${cp.tier_label} · ${Math.round(cp.rating_value).toLocaleString()}`
-                              : cp.tier_label
+                              ? `${cpTierLabel} · ${Math.round(cp.rating_value).toLocaleString()}`
+                              : cpTierLabel
                             : cp.rating_value > 0
                               ? Math.round(cp.rating_value).toLocaleString()
                               : t('career.ranking.unranked')

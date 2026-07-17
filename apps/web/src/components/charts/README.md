@@ -17,8 +17,7 @@ ADR : `docs/adr/0001-charts-stack-echarts.md`. Live sandbox : `/lab/charts`.
 | 7 | `<Heatmap2DChart>` | 2D heatmap (sequential or divergent palette) | TimeseriesPage intensity day×hour, Synthesis activity, Squad V2 player×map |
 | 8 | `<RadarChart>` | N-series 6-axis radar | MatchView participation, Squad V2 radar |
 | 9 | `<OutcomeSequenceTape>` | RLE narrative band of recent outcomes | HomePage, MatchHistoryPage, SquadV2Page |
-| 10 | `<TimeseriesCombatYield>` (page-specific) | OC + DR with p80 markLines | TimeseriesPage combat |
-| 11 | `<TimeseriesKdaBars>` (page-specific) | Bars K + bars D + line K/D ratio (dual yAxis) | TimeseriesPage summary |
+| 10 | `<TimeseriesKdaBars>` (page-specific) | Bars K + bars D + line K/D ratio (dual yAxis) | TimeseriesPage summary |
 
 > Wrappers 10–11 are kept in `features/timeseries/` (not in this folder) because they compose `<ChartCard>` directly with custom `buildOption` and aren't reusable elsewhere.
 
@@ -139,7 +138,7 @@ expect(opt.series?.[0].type).toBe('bar')
 expect(opt.xAxis?.data).toEqual(['0–1', '1–2'])
 ```
 
-Test counts (commit `b655d0f2` and after) : 8 Histogram + 9 Scatter + 9 Donut + 6 CombatYield + 9 KdaBars = **41 unit tests** covering builder logic without React.
+Test counts (commit `b655d0f2` and after) : 8 Histogram + 9 Scatter + 9 Donut + 9 KdaBars = **35 unit tests** covering builder logic without React.
 
 ## Adding a new wrapper
 

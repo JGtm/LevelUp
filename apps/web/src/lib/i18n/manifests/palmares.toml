@@ -134,6 +134,10 @@ en = "Rivals"
 fr = "Vus récemment"
 en = "Seen recently"
 
+[palmares.relations.chip.cross]
+fr = "Multi-jeux"
+en = "Multi-game"
+
 # ─── Relations - Barre de segmentation serveur (Phase 2) ───────────────────
 
 [palmares.relations.filters.experience]

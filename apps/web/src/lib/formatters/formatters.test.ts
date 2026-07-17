@@ -14,6 +14,7 @@ import {
   formatKDA,
   formatDurationMMSS,
   formatDurationHMS,
+  formatDurationMShort,
   displayRatingLabel,
   formatRankDelta,
   formatOffensiveConversion,
@@ -136,6 +137,22 @@ describe('formatDurationHMS', () => {
   it('fallback sur invalide', () => {
     expect(formatDurationHMS(undefined)).toBe('-')
     expect(formatDurationHMS(0)).toBe('-')
+  })
+})
+
+describe('formatDurationMShort', () => {
+  it('format XmYYs avec secondes sur 2 chiffres', () => {
+    expect(formatDurationMShort(65)).toBe('1m05s')
+    expect(formatDurationMShort(37)).toBe('0m37s')
+    expect(formatDurationMShort(125)).toBe('2m05s')
+  })
+
+  it('fallback sur invalide', () => {
+    expect(formatDurationMShort(undefined)).toBe('-')
+    expect(formatDurationMShort(null)).toBe('-')
+    expect(formatDurationMShort(0)).toBe('-')
+    expect(formatDurationMShort(-5)).toBe('-')
+    expect(formatDurationMShort(NaN)).toBe('-')
   })
 })
 

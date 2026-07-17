@@ -1,12 +1,16 @@
 /**
  * SynthesisHeatmapChart — synthesis.03.
- * Heatmap 2D heure × jour (X=heure, Y=jour) colorée par win_rate.
+ * Heatmap 2D heure × jour (X=heure, Y=jour) colorée par win_rate via la rampe
+ * DIVERGENTE centralisée (perdant → neutre 50 % → gagnant) : le win_rate est un
+ * indicateur signé autour de 0,5, et la rampe divergente est CVD-safe par
+ * construction — neutre gris en palette daltonienne (cf. heatmapColors).
  * Toutes les 168 cellules sont émises — null pour les cases vides.
  * yAxis.inverse: true (Lun en haut, Dim en bas).
  */
 import { useCallback, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { heatmapRampTokens } from '@/components/charts/heatmapColors'
 import { CHART_BG, getEChartsThemeColors } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import { dowLabels, HOUR_LABELS, calendarChartText } from '@/lib/formatters'
@@ -90,13 +94,9 @@ function buildHeatmapOption(cells: HeatmapCell[], locale: ManifestLocale): EChar
       top: 'center',
       itemWidth: 12,
       itemHeight: 140,
-      inRange: {
-        color: [
-          resolveToken('outcome-loss'),
-          resolveToken('outcome-draw'),
-          resolveToken('outcome-win'),
-        ],
-      },
+      // Rampe DIVERGENTE centralisée (bas → neutre → haut) : le win_rate est un
+      // indicateur signé autour de 0,5 → neutre gris en CVD (cf. heatmapColors).
+      inRange: { color: heatmapRampTokens('divergent').map(resolveToken) },
       formatter: (val: number) => `${(val * 100).toFixed(0)}%`,
       text: [txt.wins, ''],
       textStyle: { color: tc.axisLabel, fontSize: 10 },

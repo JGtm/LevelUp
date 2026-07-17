@@ -27,6 +27,7 @@ export function WinRateVsHistoryBulletChart({
   historyLabel,
   parityLabel,
   zeroWinrateLabel,
+  countsLabel,
 }: WinRateVsHistoryBulletChartProps) {
   const series = useMemo<ChartSeries<MapBreakdownRow>[]>(
     () => (rows.length > 0 ? [{ key: 'win-rate-vs-history-bullet', datapoints: rows }] : []),
@@ -41,8 +42,9 @@ export function WinRateVsHistoryBulletChart({
         historyLabel,
         parityLabel,
         zeroWinrateLabel,
+        countsLabel,
       }),
-    [mapLabelOf, sessionLabel, historyLabel, parityLabel, zeroWinrateLabel],
+    [mapLabelOf, sessionLabel, historyLabel, parityLabel, zeroWinrateLabel, countsLabel],
   )
 
   const height = Math.max(200, Math.min(600, rows.length * 32 + 60))

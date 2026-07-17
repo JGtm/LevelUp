@@ -266,13 +266,18 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
         header: labels.role,
         cell: (ctx) => {
           const r = ctx.row.original
-          const cls = r.is_ally
-            ? 'bg-success/30 text-success border border-success/50'
-            : 'bg-destructive/30 text-destructive border border-destructive/50'
-          const txt = r.is_ally ? labels.roleAlly : labels.roleEnemy
-          return (
-            <span className={`inline-block rounded-full px-2 py-0.5 text-[0.75em] ${cls}`}>{txt}</span>
+          // Pill Rôle harmonisée sur NarrativeBadge (même composant + rendu solid
+          // que les badges de la colonne Joueur et de la page Relations). Couleurs
+          // via les tokens encounter validés WCAG AA sur texte blanc
+          // (cf. wcagContrast.test.ts) : vert ally-plus = allié, rouge tough-enemy
+          // = ennemi. team-ally/team-enemy sont volontairement exclus ici car
+          // configurables par l'utilisateur → le texte blanc forcé du mode solid
+          // ne garantirait plus le contraste.
+          const colorVar = tokenVar(
+            r.is_ally ? 'narrative-encounter-ally-plus' : 'narrative-encounter-tough-enemy',
           )
+          const txt = r.is_ally ? labels.roleAlly : labels.roleEnemy
+          return <NarrativeBadge label={txt} colorVar={colorVar} solid size="sm" />
         },
       },
       {

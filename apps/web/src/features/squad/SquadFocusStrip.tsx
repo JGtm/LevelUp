@@ -323,7 +323,7 @@ function SquadObjectivesPanel({
 }) {
   const locale = useAppShellStore((s) => s.locale)
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
-  const { data } = useSquadChallenges(squadId)
+  const { data } = useSquadChallenges(squadId, playerSlug)
   const join = useJoinSquadChallenge()
   const evaluate = useEvaluateSquadChallenge(squadId)
   const refreshPool = useRefreshSquadPool()

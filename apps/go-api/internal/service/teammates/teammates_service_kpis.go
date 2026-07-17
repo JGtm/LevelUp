@@ -232,10 +232,10 @@ func round2(v float64) float64 {
 	return math.Round(v*100) / 100
 }
 
-// enrichMapBreakdownWithSquadStats injecte HistoricalWinRate et
-// HistoricalPerformanceAvg depuis la map de stats agrégées par le repo
-// (LoadMapStatsForSquad). Une seule jointure par MapID — fallback MapUI si
-// le map_id n'est pas exposé (cas dégradé).
+// enrichMapBreakdownWithSquadStats injecte HistoricalWinRate,
+// HistoricalMatchCount et HistoricalPerformanceAvg depuis la map de stats
+// agrégées par le repo (LoadMapStatsForSquad). Une seule jointure par MapID —
+// fallback MapUI si le map_id n'est pas exposé (cas dégradé).
 //
 // Aucune ligne n'est ajoutée : seules les MapBreakdownRow déjà présentes
 // dans la session courante (computeMapBreakdown) reçoivent leur enrichissement.
@@ -254,6 +254,8 @@ func enrichMapBreakdownWithSquadStats(rows []domain.MapBreakdownRow, stats map[s
 		}
 		wr := round2(float64(s.Wins) / float64(s.Total))
 		rows[i].HistoricalWinRate = &wr
+		total := s.Total
+		rows[i].HistoricalMatchCount = &total
 		if s.PerfAvg != nil {
 			v := *s.PerfAvg
 			rows[i].HistoricalPerformanceAvg = &v

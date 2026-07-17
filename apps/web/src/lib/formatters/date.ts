@@ -4,7 +4,6 @@
  * Centralise les patterns dispersés dans :
  *   - features/lab/LabPage.tsx::formatDate (avec text fallback)
  *   - features/palmares/PalmaresRelationsPage.tsx::formatDate (medium)
- *   - features/squad/v2/components/HistoryTable.tsx::formatDate (DD/MM/YY)
  *   - components/charts/_utils.ts::formatDateShort (DD/MM)
  *
  * Convention : passer la locale en argument explicite (pas de defaut FR/EN

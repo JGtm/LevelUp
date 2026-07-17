@@ -7,6 +7,7 @@ import type { SquadIntensityMatchRow } from '@/lib/api/types'
 
 vi.mock('@/lib/accessibility', () => ({
   tokenCssVar: (token: string) => `color:${token}`,
+  resolveToken: (token: string) => `color:${token}`,
 }))
 
 function row(matchID: string, label: string, phases: number[]): SquadIntensityMatchRow {
@@ -52,7 +53,7 @@ describe('buildSquadIntensityHeatmapOption', () => {
     expect(cellPeak?.[2]).toBe(1)
   })
 
-  it('visualMap continu cyan→rouge (5 stops)', () => {
+  it('visualMap continu rampe fréquence (mono-teinte CVD-safe, via heatmapRampTokens)', () => {
     const opt = buildSquadIntensityHeatmapOption(
       [row('m1', 'A', [0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0])],
       { zLabel: 'Cadence' },
@@ -61,9 +62,8 @@ describe('buildSquadIntensityHeatmapOption', () => {
     expect(vm.type).toBe('continuous')
     expect(vm.min).toBe(0)
     expect(vm.max).toBe(1)
-    expect(vm.inRange.color).toHaveLength(5)
-    expect(vm.inRange.color[0]).toBe('#38C8C8') // cyan
-    expect(vm.inRange.color[4]).toBe('#FF1A00') // rouge
+    // Rampe NEUTRE de fréquence : heatmap-freq-low → heatmap-freq-high (2 stops).
+    expect(vm.inRange.color).toEqual(['color:heatmap-freq-low', 'color:heatmap-freq-high'])
   })
 
   it('phases manquantes (length<10) → 0 par défaut', () => {
