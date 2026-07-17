@@ -36,6 +36,12 @@ aucun garde-rail affaibli. Pas de merge dans main ici (revue utilisateur ensuite
   FlagOff (`/challenges` → `/prestige/challenges`, `leaderboard` retiré) SANS
   purger `.ai/baselines/tests_pre_migration.jsonl` → le job « Go Baseline »
   échouait sur toute branche. Entrées retirées dans ce chantier (note Lot D).
+- (LOT E) E2E carrière cassée sur MAIN par 642ef31f8 (train corrections v7,
+  « i18n EN : tiers CSR/LUSR localisés à l'affichage » via localizeTierName) :
+  en UI FR la page Carrière affiche « Or IV » là où `slice-2-career.spec.ts`
+  attendait la substring EN « Gold ». Invisible sur main car les E2E Playwright
+  ne tournent qu'en contexte PR, jamais sur push main — rattrapée ici (note
+  Lot E), comme la baseline.
 
 ---
 
@@ -297,7 +303,36 @@ Lot correctif dicté par le superviseur après premier passage CI (2 causes nôt
       préexistant sur main, pas une issue.
 
 Hors périmètre confirmé : échec E2E Playwright slice-2-career (page Carrière,
-diff non concerné) — géré côté superviseur.
+diff non concerné) — géré côté superviseur. [MàJ : requalifié en Lot E après
+identification de la cause racine par le superviseur.]
+
+## LOT E — Correctif E2E carrière (casse i18n héritée de main) [2026-07-17]
+
+Lot correctif dicté par le superviseur (cause racine : 642ef31f8, cf.
+Découvertes). Pas de commit.
+
+- [x] E1. `apps/web/e2e/slice-2-career.spec.ts` : l'attente
+      `toContainText('Gold')` devient
+      `toContainText(/\b(Gold|Or)\s+(I|II|III|IV|V|VI)\b/)` — couvre le libellé
+      localisé FR/EN sans faux positif (« Or » nu matcherait « Ordre »…), ancrée
+      sur le format RÉEL du DOM vérifié sur pièces : `csrTierLabel`
+      (CareerRankingBlock.tsx) compose `localizeTierName(tier, locale)` + espace
+      + sous-palier ROMAIN (SUB_TIER_ROMAN I..VI) → « Or IV » (FR) / « Gold IV »
+      (EN). Style du fichier conservé (locator body + toContainText, pas de
+      sélecteur nouveau). Les 2 commentaires (en-tête + test) actualisés « tier
+      localisé FR/EN ». Regex sanity-testée (5 positifs matchés, 6 pièges
+      rejetés : Ordre, Orange III, Or/Gold nus…). Balayage du reste de
+      `apps/web/e2e/` : AUCUNE autre attente sur
+      Gold/Platinum/Diamond/Onyx/Bronze/Silver/Unranked — occurrence unique.
+- [x] E2. Gates locaux (apps/web, worktree) : `npm run typecheck` exit 0 ;
+      `npm run lint` exit 0 (68 warnings baseline, 0 erreur). CONSTAT : ni tsc
+      (`include: src`) ni eslint (e2e/ ignoré par pattern) ne couvrent le
+      dossier e2e → gate équivalent exécuté : `npx playwright test --list` =
+      exit 0, 107 tests / 27 fichiers transpilés et listés (erreurs TS/syntaxe
+      des specs détectées à ce stade). Exécution Playwright réelle NON faite en
+      local : elle exige `make dev` (API :8000 + Vite) + données démo
+      (skipIfNoDemoData) — la CI PR est le gate d'exécution.
+- [x] E3. Plan (item + découverte 642ef31f8) + thought_log consignés.
 
 ---
 

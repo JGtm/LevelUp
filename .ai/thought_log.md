@@ -7263,3 +7263,35 @@ périmètre (géré superviseur).
 
 **Conclusion / prochaine étape** : correctifs CI livrés dans le working tree ;
 commits/push/re-CI côté superviseur.
+
+## [2026-07-17] LOT E — Correctif E2E carrière : tier localisé FR/EN (casse i18n héritée de main)
+
+**Statut** : Complété (lot correctif dicté par le superviseur, PLAN_MEDIA_PIPELINE
+_HARDENING_2026-07 ; branche fix/media-pipeline-hardening, worktree). Pas de commit.
+Fichier : `apps/web/e2e/slice-2-career.spec.ts` (1 attente + 2 commentaires).
+
+**Décision technique principale** : cause racine identifiée par le superviseur —
+le commit main 642ef31f8 (« i18n EN : tiers CSR/LUSR localisés à l'affichage »,
+localizeTierName) fait qu'en UI FR (défaut) la page Carrière affiche « Or IV » là
+où le spec attendait la substring EN `'Gold'`. Casse INVISIBLE sur main : les E2E
+Playwright ne tournent qu'en contexte PR, jamais sur push main. Fix : attente
+remplacée par la regex `/\b(Gold|Or)\s+(I|II|III|IV|V|VI)\b/` — vérifié sur pièces
+que le DOM réel est bien « tier + espace + sous-palier ROMAIN » (`csrTierLabel` de
+CareerRankingBlock.tsx : `localizeTierName(tier, locale)` + `toRoman(sub_tier)`,
+SUB_TIER_ROMAN I..VI). Ancrage nécessaire : « Or » nu matcherait « Ordre »,
+« Orange III » est rejeté par le \b. Style du fichier conservé (body +
+toContainText). Regex sanity-testée en node (5 positifs, 6 pièges rejetés).
+Balayage `apps/web/e2e/` : aucune autre attente sur les libellés de tiers EN
+(Gold/Platinum/Diamond/Onyx/Bronze/Silver/Unranked) — occurrence unique.
+
+**Résultats observés** :
+- `npm run typecheck` exit 0 ; `npm run lint` exit 0 (68 warnings baseline, 0
+  erreur). CONSTAT : ces deux gates ne couvrent PAS e2e/ (tsc include: src ;
+  eslint ignore e2e/ par pattern) → gate équivalent : `npx playwright test
+  --list` exit 0 (107 tests / 27 fichiers transpilés-listés).
+- Exécution Playwright réelle non faite en local (exige make dev + données démo,
+  skipIfNoDemoData) — la CI PR est le gate d'exécution.
+
+**Conclusion / prochaine étape** : les 3 causes CI de la PR #64 (goconst,
+baseline, E2E carrière) sont traitées dans le working tree ; commits/push/re-CI
+côté superviseur.
