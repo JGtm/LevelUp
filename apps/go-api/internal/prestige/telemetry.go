@@ -11,11 +11,13 @@ import (
 // telemetry.go — émission d'événements de télémétrie pour le calage post-alpha.
 //
 // Référence : Annexe E du plan conceptuel.
-// Le script scripts/analyze_prestige_tuning.py lira ces événements depuis
-// la table prestige_telemetry pour produire le rapport de calibration.
+// Ces événements sont agrégés par l'endpoint diag
+// GET /api/v1/_diag/prestige/telemetry/{player_slug} (taux d'acceptation/complétion
+// par origine — coach vs user vs pilot_mode, ADR 0020).
 //
 // Le helper expose des constructions typées pour chaque type d'événement
-// (created/rejected/completed/...). L'écriture est déléguée au TelemetryRepo.
+// (created/rejected/completed/...). Chaque événement recopie Challenge.Source
+// (origine du défi). L'écriture est déléguée au TelemetryRepo.
 
 // TelemetryEmitter encapsule un repo et un horloge pour des tests faciles.
 type TelemetryEmitter struct {
@@ -46,6 +48,7 @@ func (e *TelemetryEmitter) EmitCreated(ctx context.Context, c Challenge, stretch
 		Mode:          c.Mode,
 		Cadence:       c.Cadence,
 		EvalType:      c.EvalType,
+		Source:        c.Source,
 		CreatedAt:     e.now(),
 	})
 }
@@ -62,6 +65,7 @@ func (e *TelemetryEmitter) EmitRejected(ctx context.Context, userID string, c Ch
 		Mode:          c.Mode,
 		Cadence:       c.Cadence,
 		EvalType:      c.EvalType,
+		Source:        c.Source,
 		CreatedAt:     e.now(),
 	})
 }
@@ -82,6 +86,7 @@ func (e *TelemetryEmitter) EmitTransition(ctx context.Context, c Challenge, even
 		Cadence:                c.Cadence,
 		EvalType:               c.EvalType,
 		TimeSinceCreateSeconds: tsc,
+		Source:                 c.Source,
 		CreatedAt:              e.now(),
 	})
 }
@@ -99,6 +104,7 @@ func (e *TelemetryEmitter) EmitPalierRecomputed(ctx context.Context, c Challenge
 		Mode:          c.Mode,
 		Cadence:       c.Cadence,
 		EvalType:      c.EvalType,
+		Source:        c.Source,
 		CreatedAt:     e.now(),
 	})
 }

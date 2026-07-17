@@ -56,6 +56,12 @@ type Challenge struct {
 	LastPalierRecomputeAt *time.Time `json:"last_palier_recompute_at,omitempty"`
 
 	IsPrivate bool `json:"is_private"`
+
+	// Source trace l'origine du défi (ChallengeSource*: "user" | "pilot_mode" |
+	// "coach"), renseignée à la création depuis CreateChallengeRequest.Source et
+	// figée (jamais mutée). Recopiée sur chaque événement prestige_telemetry pour
+	// le calage coach (ADR 0020). Vide pour les défis créés avant le plumbing.
+	Source string `json:"source,omitempty"`
 }
 
 // ---------- Arc ----------
@@ -288,10 +294,13 @@ type SquadChallengeParticipant struct {
 
 // ---------- PrestigeTelemetry ----------
 
-// PrestigeTelemetry est un événement structurel utilisé pour le calage post-alpha
-// (script `analyze_prestige_tuning.py`).
+// PrestigeTelemetry est un événement structurel utilisé pour le calage post-alpha.
 //
-// Persistance : table `prestige_telemetry` dans stats.duckdb (par joueur).
+// Consommé par l'endpoint diag GET /api/v1/_diag/prestige/telemetry/{player_slug}
+// (agrégation acceptation/complétion par origine, ADR 0020).
+//
+// Persistance : table `prestige_telemetry` dans stats.duckdb (par joueur),
+// append-only INSERT-only (un événement = une ligne distincte).
 type PrestigeTelemetry struct {
 	ID                     string        `json:"id"`
 	UserID                 string        `json:"user_id"`
@@ -304,7 +313,10 @@ type PrestigeTelemetry struct {
 	Cadence                Cadence       `json:"cadence,omitempty"`
 	EvalType               EvalType      `json:"eval_type,omitempty"`
 	TimeSinceCreateSeconds int           `json:"time_since_create_seconds,omitempty"`
-	CreatedAt              time.Time     `json:"created_at"`
+	// Source recopie Challenge.Source (origine du défi) sur l'événement — permet
+	// d'agréger les taux par origine sans jointure. Vide pour l'historique.
+	Source    string    `json:"source,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // ---------- BaselineState ----------

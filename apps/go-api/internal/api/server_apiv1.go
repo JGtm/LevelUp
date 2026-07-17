@@ -159,6 +159,13 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	handlers.NewDiagProgressionHandler(reg.ProgressionDiagProvider).Mount(
 		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode), ownershipMW))
 
+	// ADR 0020 (coach→pont Prestige) : agrège prestige_telemetry par origine du
+	// défi (coach / user / pilot_mode / unknown) → taux d'acceptation/complétion.
+	// Permet de mesurer l'efficacité du coach proactif sans schéma dédié.
+	// S6 : diagnostic par {player_slug} → RequireAuth + ownership.
+	handlers.NewDiagPrestigeTelemetryHandler(reg.PrestigeTelemetryDiagProvider).Mount(
+		r.With(middleware.NoStore, middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode), ownershipMW))
+
 	// Fix 2026-05-30 : backfill progression V2 in-process. Force une
 	// évaluation idempotente (streaks/records/milestones) pour un joueur
 	// dont l'historique existe mais dont le pipeline post-sync n'avait
