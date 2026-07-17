@@ -117,7 +117,14 @@ var canonicalOrder = []string{
 	// L'éradication ART append-only de weapon_kills DOIT suivre la migration UBIGINT
 	// (donc la création/ALTER de weapon_kills) — sinon sur DB FRAÎCHE le rebuild
 	// no-ope (table absente). Name-keyed → no-op sur DB déjà migrées.
-	"shared_append_only_weapon_kills_v1",              // shared
+	"shared_append_only_weapon_kills_v1", // shared
+	// Capture de la mecanique de kill Halo 5 (kill_kind) : ALTER weapon_kills +
+	// recreation v_weapon_kills. DOIT suivre shared_append_only_weapon_kills_v1
+	// (vue generationnelle + generation_id deja crees). Phase 1 (capture seule) ;
+	// backfill + exploitation donut = Phase 2. Fichier steps_shared_h5_* → l'ordre
+	// init (alphabetique) le place entre append_only_weapon_kills et rebuild_match_
+	// participants, coherent avec cette position (TestSortByCanonicalIsNoOp).
+	"shared_h5_weapon_kill_kind_v1",                   // shared
 	"add_media_likes",                                 // shared
 	"drop_media_likes_from_shared",                    // shared
 	"add_match_registry_i18n_columns",                 // shared

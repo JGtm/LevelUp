@@ -285,12 +285,14 @@ func persistWeaponKills(ctx context.Context, tx *sql.Tx, rows []WeaponKillInsert
 				match_id, xuid, time_ms,
 				weapon_id, reconciled_as,
 				delta_ms, confidence, attribution_path,
-				swap_detected, delayed_damage, player_index, generation_id
-			) VALUES (?, ?, ?, CAST(? AS UBIGINT), CAST(? AS UBIGINT), ?, ?, ?, ?, ?, ?, ?)`,
+				swap_detected, delayed_damage, player_index, generation_id,
+				kill_kind
+			) VALUES (?, ?, ?, CAST(? AS UBIGINT), CAST(? AS UBIGINT), ?, ?, ?, ?, ?, ?, ?, ?)`,
 			r.MatchID, r.XUID, r.TimeMS,
 			ubigintArg(r.WeaponID), ubigintArg(r.ReconciledAs),
 			r.DeltaMS, r.Confidence, r.AttributionPath,
 			r.SwapDetected, r.DelayedDamage, r.PlayerIndex, gen,
+			nullableStr(r.KillKind),
 		)
 		if err != nil {
 			return fmt.Errorf("persist: INSERT weapon_kills %s/%s/%d: %w",
@@ -463,4 +465,14 @@ func ubigintArg(p *uint64) any {
 		return nil
 	}
 	return strconv.FormatUint(*p, 10)
+}
+
+// nullableStr mappe une string vide sur NULL (sinon la valeur telle quelle). Sert
+// aux colonnes optionnelles ou "vide == absent" (ex. weapon_kills.kill_kind : le
+// chemin Infinite ne porte pas la mecanique de kill → NULL, pas chaine vide).
+func nullableStr(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
 }
