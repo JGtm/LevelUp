@@ -1,3 +1,24 @@
+## [2026-07-17] LOT C — correctifs revue : filets squash migrations (C1-C4, branche fix/revue-2026-07-correctifs)
+
+**Statut** : Complété (worktree `LevelUp-wt-revue-correctifs`, enchaîné sur les commits lot A `b497befc1` / lot B `033ba5f4c` ; NON mergé — merge + push superviseur).
+
+**Périmètre** : les 4 items du LOT C du plan `.ai/PLAN_CORRECTIFS_REVUE_2026-07.md` (findings M2/M3 : DB player restaurée d'un backup pré-squash irréparable — bind de `player_csr_snapshots_latest` échoue sur l'ancien schéma → `OpenPlayerDB` mort définitif). Décision D3 appliquée sans ré-arbitrage : réparation par INTROSPECTION du schéma (jamais de sentinelle), auto-guérison au boot, idempotente, pas de cmd manuel.
+
+**Décisions techniques principales** :
+- C1 : la conversion append-only de `player_csr_snapshots` (squashée avec `player_append_only_csr_snapshots_v1`, code d'origine `37264462f`) est réintroduite comme RÉPARATION DE BOOT `migration.EnsurePlayerCSRSnapshotsAppendOnly` — pas un step de registre. Détection = introspection des colonnes (marqueur `id` absent = ancien schéma) ; conversion via le helper unique ADR 0026 `applyAppendOnlyRebuild` (CTAS transactionnel + garde anti-perte rebuilt==before + recoverOrphan + idempotence) — PAS le code inline historique, qui était non-transactionnel (le helper est strictement plus sûr, à résultat identique). ViewSQL vide : la vue reste possédée par playerSchemaSQL (source unique, pas de 2e définition).
+- EMPLACEMENT C1 (justifié) : en TÊTE de `sync.EnsurePlayerSchema`, AVANT `playerSchemaSQL` — c'est LE point que tout chemin d'ouverture player traverse (`OpenPlayerDB` : provider, sync, H5 livesync, tests) et le seul qui garantisse l'exécution AVANT la création de l'index `idx_pcs_lookup(...written_at)` et de la vue `player_csr_snapshots_latest` (les 2 instructions qui échouent au bind sur l'ancien schéma). La couche migration seule (RunForDB, boot 3b) ne suffit pas : elle ne tourne pas sur tous les chemins d'ouverture et le step squashé ne se rejoue plus.
+- C4 : filet `recoverPlayerSchemaBoot` dans `sync/schema.go` — un échec de DDL/bind au boot player n'est plus un échec permanent silencieux : `slog.ErrorContext` (vue + cause brute), rejeu de la réparation C1, retry du script UNE fois, sinon erreur EXPLICITE « intervention requise ». Jamais de panic, jamais d'avalement. Chemin nominal non impacté (C1 proactif a déjà converti).
+- C3 : fixtures PROGRAMMATIQUES (aucun binaire committé), DDL historique EXACT tiré de `git show 37264462f^` : (a) ancien `player_csr_snapshots` PK(playlist_id,season_id) sans id/written_at ; (b) sentinelle DM-5 sans `expected_win_prob` ; (c) sans colonnes render `challenge_snapshots` ; (d) sans `engagement_response_bins`. Les fixtures (b)-(d) matérialisent le skew M4 en rebasculant le ledger (baseline retirée, sentinelle insérée) puis en droppant l'additif — les DROP COLUMN DuckDB exigent de retirer d'abord vue/_index_ dépendants (piège documenté dans le test).
+- C2 : statué `[~]` — couvert par l'ensure additif A4 (`EnsureAdditive` sur le chemin DM-5), PREUVE apportée par le subtest (c) : boot sur fixture mi-bloc → INSERT challenges avec les 4 colonnes render OK.
+
+**Résultats observés (gates, tous verts)** : les 4 fixtures convergent (boot complet : RunForDB(player) + OpenPlayerDB OK, vue `_latest` liée et requêtable, INSERT persist LUSR avec expected_win_prob OK, INSERT challenges avec colonnes render OK) ET sont idempotentes (2e boot sans échec, counts stables, pas d'orphelin `__appendonly`) — 4/4 PASS. Tests unitaires C1 : sanity « la vue NE binde PAS sur l'ancien schéma » puis binde après réparation, zéro perte 3/3, idempotence re-run, no-op sur DB vierge. Test C4 : vue squattée par une table → erreur explicite (pas de panic/avalement). Gates : gofmt clean ; `go vet` migration+sync OK ; `go test -tags=integration -p 1 ./internal/migration/... ./internal/games/halo_infinite/migrations/... ./internal/sync/... ./internal/persist/...` = tout ok ; `go test ./internal/platform/duckdb/...` ok ; `golangci-lint --new-from-merge-base=main` = 0 issues.
+
+**Découvertes consignées (non traitées)** : aucune nouvelle.
+
+**Conclusion / prochaine étape** : LOT C soldé (C1 `[x]`, C2 `[~]`→A4+preuve, C3 `[x]`, C4 `[x]`). Prochain = LOT D (efficacité VPS) OU merge intermédiaire superviseur (push main = deploy prod → prévenir).
+
+---
+
 ## [2026-07-17] LOT B — correctifs revue : identité en profondeur (B1-B2, branche fix/revue-2026-07-correctifs)
 
 **Statut** : Complété (worktree `LevelUp-wt-revue-correctifs`, enchaîné sur le commit lot A `b497befc1` ; NON mergé — merge + push superviseur).
