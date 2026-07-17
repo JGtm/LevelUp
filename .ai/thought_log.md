@@ -1,3 +1,44 @@
+## [2026-07-17] Format des `<input type="date">` — binding `<html lang>` sur la locale app (branche fix/date-input-locale-format)
+
+**Statut** : Complété (code, branche `fix/date-input-locale-format`, NON mergé — revue + commit superviseur).
+
+**Verdict empirique Chrome (décisif, testé sur ce poste via chrome-devtools)** : Chromium IGNORE
+l'attribut `lang` pour le format d'affichage d'un `<input type="date">`. Test rigoureux : input
+frais créé APRÈS avoir posé `document.documentElement.lang='en-US'` ET `lang='en-US'` sur l'input
+lui-même → le placeholder est resté `jj/mm/aaaa` (= `navigator.language` fr-FR), jamais `mm/dd/yyyy`.
+Chrome suit donc la locale navigateur/OS, pas `lang`. (Firefox, lui, respecte `lang` — le binding
+reste utile pour lui + l'a11y.) Conséquence : le binding est correct sémantiquement mais NE CORRIGE
+PAS le format date sous Chrome ; arbitrage d'un éventuel composant date custom laissé au superviseur.
+
+**Décision technique** : le fix canonique = refléter la locale applicative sur `<html lang>` en
+BCP-47 via la SOURCE UNIQUE `intlLocale` (`fr → fr-FR`, `en → en-US`) — pas de ternaire dupliqué
+(CLAUDE.md n°6). Nouveau provider dédié `app/providers/document-lang-provider.tsx` (un provider =
+une responsabilité, calqué sur `ThemeProvider` qui fait déjà du side-effect DOM au niveau racine),
+`useLayoutEffect` observant `useAppShellStore(s => s.locale)`, câblé dans `app/providers/index.tsx`
+(imbriqué dans `ThemeProvider`, autour du `RouterProvider`). Défaut statique `index.html` corrigé
+`lang="en"` → `lang="fr-FR"` (défaut app = FR ; le binding runtime prime de toute façon).
+
+**Anomalie notée (hors périmètre, non traitée)** : sur `:8000` (serveur Go/air) la page servie est
+VIDE (aucun script) — le vrai front dev + HMR est sur Vite `:5173`. La vérif visuelle a donc été
+faite sur `:5173`. `ogmeta.Render` (splice de chaîne) préserve `<html lang>`, donc en prod le `lang`
+de la source ship bien.
+
+**Fichiers** : `apps/web/src/app/providers/document-lang-provider.tsx` (nouveau) ;
+`apps/web/src/app/providers/document-lang-provider.test.tsx` (garde-rail, nouveau) ;
+`apps/web/src/app/providers/index.tsx` (câblage) ; `apps/web/index.html` (défaut fr-FR).
+
+**Résultats gates** (tous verts) : `make check-types` (tsc -b) OK ; vitest `src/app/providers/`
+10/10 (3 nouveaux garde-rails locale→lang + 7 theme-provider). Vérif visuelle `:5173` : app FR →
+`html lang=fr-FR`, placeholder `jj/mm/aaaa` ; `setLocale('en')` sur le VRAI store → provider met
+`html lang=en-US`, UI bascule en anglais, MAIS placeholder date INCHANGÉ `jj/mm/aaaa` (limitation
+Chrome reproduite sur l'app réelle) ; round-trip retour FR → `fr-FR` OK.
+
+**Prochaine étape** : revue + commit par le superviseur. Si le format date EN sous Chrome est jugé
+requis, prévoir un composant date custom (arbitrage superviseur) — le binding `lang` seul n'y suffit
+pas.
+
+---
+
 ## [2026-07-17] Landing train — 4 merges dans main LOCAL (origin/main, sweep, media-hardening, explorer-briefing)
 
 **Statut** : Complété (main local ahead 21, NON poussé — push = deploy prod, décision utilisateur).
