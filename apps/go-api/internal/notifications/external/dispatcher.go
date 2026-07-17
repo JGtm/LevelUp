@@ -91,7 +91,7 @@ func (d *Dispatcher) Forward(ctx context.Context, n *notifications.Notification)
 		Player:    d.player,
 		XUID:      d.xuid,
 		TitleSlug: d.titleSlug,
-		Params:    decodeParams(n.Params),
+		Params:    decodeParams(ctx, n.Params),
 		AppURL:    d.appLink(n.TargetRoute),
 		Lang:      ncfg.Lang,
 	}
@@ -134,13 +134,16 @@ func (d *Dispatcher) appLink(targetRoute string) string {
 }
 
 // decodeParams déserialise les params JSON de la notification en map (best-effort :
-// payload vide/illisible → map nil, jamais d'erreur propagée).
-func decodeParams(raw json.RawMessage) map[string]any {
+// payload vide → map nil sans bruit ; payload illisible → map nil APRÈS un log Debug
+// — un params interne corrompu est un bug applicatif rare, jamais avalé en silence).
+func decodeParams(ctx context.Context, raw json.RawMessage) map[string]any {
 	if len(raw) == 0 {
 		return nil
 	}
 	var m map[string]any
 	if err := json.Unmarshal(raw, &m); err != nil {
+		slog.DebugContext(ctx, "notifications.external: params notification illisibles, embed sans détails",
+			"err", err)
 		return nil
 	}
 	return m

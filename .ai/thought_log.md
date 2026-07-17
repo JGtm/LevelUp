@@ -1,3 +1,57 @@
+## [2026-07-17] Audit + correction couverture de logging du train backlog 2026-07 (routing best-effort) (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Contexte** : audit exhaustif des fichiers Go non-test modifiés/ajoutés par le train
+(`git diff main..HEAD`) sous l'angle CLAUDE.md n°3 (logger AVANT toute dégradation best-effort) +
+routing multi-module (`internal/observability/logging/module.go` : package → `logs/{module}.log`).
+
+**Constat vérifié** : 5 flux best-effort du train tombaient en `general.log` faute de mapping,
+alors qu'ils sont métier-identifiables et devraient être diagnosticables dans un fichier dédié :
+`internal/notifications/external` (dispatcher Discord coach), `internal/notify` (client webhook),
+`internal/api/wire` (émission rival post-sync), `cmd/prestige-tuning-analyze` (CLI analyseur),
+`internal/ops/media_tooling.go` (sonde ffmpeg au boot).
+
+**Décision de routing (2 leviers, choisis au cas par cas)** :
+- `external` + `notify` → ajoutés à `packageToModuleMap` (`ModuleNotif`) : packages entiers
+  sémantiquement notifications. Test ajouté dans `module_routing_test.go` (verrou anti-régression).
+- `wire` (flux rival) → tag EXPLICITE `slog.With("module", logging.ModuleNotif)` (var `rivalNotifLog`) :
+  seul le flux d'émission rival est redirigé, le reste du post-sync reste en general.log (le package
+  wire est hétérogène). Co-localise « pourquoi ma notif rival n'est pas partie » avec le dispatcher.
+- CLI prestige-tuning → tag explicite `ModulePrestige` (var `tuningLog`), pattern identique à la CLI
+  `snapshot-world-leaderboard` → `ModuleLeaderboard`. Skips de collecte (DB absente/verrouillée/agrégation)
+  visibles dans `logs/prestige.log`.
+- `media_tooling.go` → tag explicite `logModuleMedia` dans `LogMediaToolingStatus` (package ops
+  hétérogène : snapshot/general). Boot ffmpeg dans `logs/media.log`.
+
+**Trou de log comblé (code neuf du train)** : `dispatcher.go` (fichier AJOUTÉ) `decodeParams`
+avalait `json.Unmarshal` en silence → ajout d'un `slog.DebugContext` avant dégradation (params
+notification illisibles → embed sans détails). Signature passée à `(ctx, raw)`.
+
+**Sécurité vérifiée** : aucun secret loggué. Le client `notify.SendWebhookCtx` expurge déjà l'URL
+du webhook (token d'écriture dans le path) via `sanitizeSendError` sur *url.Error ; le dispatcher ne
+loggue jamais le webhook (LogBootState loggue seulement `actif` bool + nb catégories).
+
+**Contrat best-effort chantier E (vérifié conforme, aucune correction)** :
+`post_sync_rival_encounters.go` + `relations_rival_notif_service.go` : une notif rival qui échoue
+est loguée (WarnContext) et n'interrompt JAMAIS la sync (return sans propagation) ; skip watermark
+tracé en Debug, émissions en Info. `notifications/service.go` (package notifications, déjà routé)
+conforme.
+
+**Découvertes HORS PÉRIMÈTRE (notées, non traitées — règle « zéro fix opportuniste »)** : swallows
+PRÉEXISTANTS (git antérieur au train, hunks du train sur d'autres lignes) dans des fichiers
+tangentiellement modifiés : `coach_advisor/service_generate.go` (resolveSingleSignal L293-309 —
+incohérent avec la variante async qui logge ; acceptArc L407 json.Unmarshal `_ =`), `prestige/service.go`
+(computeCurrentValue L600 `return 0`), `service_pilot_pool.go` (squadFocusAxis L219), `prestige_squads.go`
+(L166/L189 annuaire best-effort), `home.go` (L96 locale fallback), `health.go` (L97-99 enrichissement
+`/health` `_ :=`). À traiter dans un lot dédié si souhaité.
+
+**Gates** : `go build ./...` OK, `go vet ./...` OK, `go test ./...` exit 0 (0 FAIL), test routing
+(`TestMapPackageToModule` external+notify) PASS.
+
+**Conclusion** : 6 fichiers corrigés (module.go + test, dispatcher.go, post_sync_rival_encounters.go,
+media_tooling.go, cmd/prestige-tuning-analyze/main.go). Zéro changement de logique métier.
+
 ## [2026-07-17] coach/prestige V3 — notifications push externes : canal Discord webhook pour proposals coach (opt-in, OFF par défaut) (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété.

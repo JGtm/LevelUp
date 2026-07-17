@@ -139,6 +139,8 @@ var packageToModuleMap = map[string]string{
 	"media":          ModuleMedia,
 	"mediaservice":   ModuleMedia,
 	"notifications":  ModuleNotif,
+	"external":       ModuleNotif, // relais Discord des notifications coach → logs/notifications.log
+	"notify":         ModuleNotif, // client webhook Discord (embed + envoi) → logs/notifications.log
 	"migration":      ModuleMigration,
 	"persist":        ModulePersist,
 	"api":            ModuleHTTP,

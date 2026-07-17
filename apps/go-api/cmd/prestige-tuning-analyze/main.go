@@ -34,9 +34,16 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/progression/coach_advisor"
 )
+
+// tuningLog route les logs de la CLI vers logs/prestige.log (tag explicite : le
+// package main n'a pas de module dédié → general.log). Les skips de collecte
+// best-effort (DB absente, verrouillée, agrégation échouée) restent diagnosticables
+// avec le reste du sous-système Prestige.
+var tuningLog = slog.With("module", logging.ModulePrestige)
 
 type options struct {
 	format        string
@@ -50,7 +57,7 @@ type options struct {
 
 func main() {
 	if err := run(context.Background()); err != nil {
-		slog.Error("prestige-tuning-analyze failed", "err", err)
+		tuningLog.Error("prestige-tuning-analyze failed", "err", err)
 		os.Exit(1)
 	}
 }
@@ -156,19 +163,19 @@ func collectAll(ctx context.Context, cfg *config.AppConfig, titleSlug string, pl
 	for _, p := range players {
 		dbPath := pr.PlayerDBPath(titleSlug, p.Gamertag)
 		if _, err := os.Stat(dbPath); err != nil {
-			slog.WarnContext(ctx, "player DB absente, ignorée", "player", p.Gamertag, "path", dbPath)
+			tuningLog.WarnContext(ctx, "player DB absente, ignorée", "player", p.Gamertag, "path", dbPath)
 			continue
 		}
 		db, release, err := duckdb.OpenReadForQuery(dbPath)
 		if err != nil {
-			slog.WarnContext(ctx, "ouverture lecture échouée (verrou ?), joueur ignoré",
+			tuningLog.WarnContext(ctx, "ouverture lecture échouée (verrou ?), joueur ignoré",
 				"player", p.Gamertag, "path", dbPath, "err", err)
 			continue
 		}
 		c, a, err := prestigetuning.CollectFromDB(ctx, db)
 		release()
 		if err != nil {
-			slog.WarnContext(ctx, "agrégation télémétrie échouée, joueur ignoré",
+			tuningLog.WarnContext(ctx, "agrégation télémétrie échouée, joueur ignoré",
 				"player", p.Gamertag, "err", err)
 			continue
 		}

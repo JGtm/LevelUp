@@ -10,6 +10,8 @@ func TestMapPackageToModule(t *testing.T) {
 		"api":            ModuleHTTP,
 		"handlers":       ModuleHandlers,
 		"service":        ModuleService,
+		"external":       ModuleNotif, // relais Discord coach → logs/notifications.log
+		"notify":         ModuleNotif, // client webhook Discord → logs/notifications.log
 		"sync":           ModuleSync,
 		"duckdb":         ModuleDuckDB,
 		"sharedprovider": ModuleProvider,
