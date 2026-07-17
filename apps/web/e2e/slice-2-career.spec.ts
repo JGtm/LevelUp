@@ -7,7 +7,7 @@
  * Couverture :
  * 1. La page /players/demo-player/career se charge sans erreur
  * 2. L'API retourne un rang valide (HTTP 200)
- * 3. Le rang du joueur est affiché dans la page (Gold)
+ * 3. Le rang du joueur est affiché dans la page (tier localisé FR/EN : « Or IV »/« Gold IV »)
  * 4. Pas d'erreur fatale React dans la console
  */
 import { test, expect } from '@playwright/test'
@@ -52,8 +52,11 @@ test.describe('Slice 2 — Page Carrière (DEMO_MODE)', () => {
     await page.goto('/players/demo-player/career')
     await page.waitForLoadState('networkidle')
 
-    // Le tier Gold doit apparaître quelque part dans la page
-    await expect(page.locator('body')).toContainText('Gold')
+    // Le tier Gold du demo-player doit apparaître quelque part dans la page,
+    // LOCALISÉ à l'affichage (localizeTierName) : « Or IV » sous UI FR (défaut),
+    // « Gold IV » sous UI EN. Regex ancrée tier + sous-palier romain — « Or » nu
+    // matcherait « Ordre », « Score »…
+    await expect(page.locator('body')).toContainText(/\b(Gold|Or)\s+(I|II|III|IV|V|VI)\b/)
   })
 
   test("la page ne contient pas d'erreur fatale", async ({ page }) => {
