@@ -9,7 +9,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
-import { OutcomeSequenceTape, type OutcomePoint, type OutcomeValue } from '@/components/charts/OutcomeSequenceTape'
+import { OutcomeSequenceTape, type OutcomePoint } from '@/components/charts/OutcomeSequenceTape'
+import { outcomeCodeToTapeValue } from '@/lib/outcome'
 import { useSquadContext } from './SquadContext'
 import { getSquadText } from './i18n'
 import { WinRateVsHistoryBulletChart } from './WinRateVsHistoryBulletChart'
@@ -19,13 +20,6 @@ import { SquadSessionTimelineChart } from './SquadSessionTimelineChart'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
-
-function outcomeNumToValue(n: number): OutcomeValue {
-  if (n === 2) return 'win'
-  if (n === 3) return 'loss'
-  if (n === 1) return 'tie'
-  return 'dnf'
-}
 
 export function SquadSynergiesPage() {
   const { selectedRows, confirmedGamertags, pageData, playerSlug } = useSquadContext()
@@ -113,7 +107,7 @@ export function SquadSynergiesPage() {
             // matchHistory arrive DESC (récent→ancien) ; on inverse pour afficher
             // du plus vieux au plus récent (gauche→droite).
             matches={[...matchHistory].reverse().map<OutcomePoint>((m) => ({
-              outcome: outcomeNumToValue(m.outcome),
+              outcome: outcomeCodeToTapeValue(m.outcome),
               matchId: m.match_id,
               map: m.map_ui || undefined,
               mode: m.mode_ui || m.pair_name || undefined,

@@ -59,6 +59,36 @@ export function formatNumberFixed(
 }
 
 /**
+ * Format d'un delta SIGNÉ à N décimales avec préfixe explicite et glyphe UNIQUE
+ * '−' (U+2212, jamais le tiret ASCII) : le signe doit rester lisible sans dépendre
+ * de la seule couleur. Zéro → '±0' / '±0.00' (jamais '-0'). null/undefined/non
+ * fini → `fallback` (défaut '' — les deltas absents n'affichent rien).
+ *
+ * Source UNIQUE des deltas signés à décimales fixes (delta de rang CSR/LUSR, deltas
+ * de briefing) — garde-rail `signed-format.guard.test.ts`. NE PAS confondre avec
+ * `formatSignedPoints` (points entiers '±0 pts', ExplorerBriefing.logic) ni avec le
+ * `formatDelta` de delta-card (précision dynamique selon magnitude + objet couleur).
+ *
+ * @example
+ *   formatSignedFixed(0.3, 2)   // "+0.30"
+ *   formatSignedFixed(-1.5, 2)  // "−1.50"  (U+2212)
+ *   formatSignedFixed(0, 2)     // "±0.00"
+ *   formatSignedFixed(45, 0)    // "+45"
+ *   formatSignedFixed(null, 2)  // ""
+ */
+export function formatSignedFixed(
+  value: number | null | undefined,
+  decimals: number,
+  fallback = '',
+): string {
+  if (value == null || !Number.isFinite(value)) return fallback
+  const rounded = Number(value.toFixed(decimals))
+  if (rounded === 0) return `±${(0).toFixed(decimals)}`
+  const abs = Math.abs(rounded).toFixed(decimals)
+  return rounded > 0 ? `+${abs}` : `−${abs}`
+}
+
+/**
  * Format ratio sub-unitaire (KDA, KDR) avec 2 décimales locale-sensitive.
  *
  * @example

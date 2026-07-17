@@ -173,7 +173,10 @@ func (s *HomeService) WithMatchesCache(cache *HomeMatchesCache, xuid string) *Ho
 // consumer-side (K1i, ARCHI 8) — le champ n'est plus typé sur le concret, mockable
 // en test (même package).
 type homeSpartanIdentityProvider interface {
-	GetSpartanIdentity(ctx context.Context) (*domain.HomeSpartanIdentityRow, error)
+	// GetSpartanIdentityFor résout l'identité Spartan du SUJET passé explicitement
+	// (finding ID4) : la home fournit le xuid de la PAGE (s.xuid = pdb.XUID), jamais
+	// une valeur lue du contexte ambiant.
+	GetSpartanIdentityFor(ctx context.Context, xuid string) (*domain.HomeSpartanIdentityRow, error)
 }
 
 func (s *HomeService) WithCareerLive(svc *CareerLiveService) *HomeService {
@@ -272,9 +275,12 @@ func (s *HomeService) fetchHomePageData(ctx context.Context, locale string) (hom
 		// per-field garanti. Fallback : repo.LoadSpartanIdentity (DB-only)
 		// pour les bootstraps sans careerLive (tests, instances minimales).
 		if s.careerLive != nil {
-			row, err := s.careerLive.GetSpartanIdentity(gctx)
+			// Sujet EXPLICITE = joueur de la PAGE (s.xuid = pdb.XUID). Identique au
+			// forcePageIdentityXUID appliqué au wire (HaloXUID = pdb.XUID) mais sans
+			// dépendre de la valeur ambiante (finding ID4).
+			row, err := s.careerLive.GetSpartanIdentityFor(gctx, s.xuid)
 			if err != nil {
-				slog.WarnContext(gctx, "home: CareerLive.GetSpartanIdentity failed", "err", err)
+				slog.WarnContext(gctx, "home: CareerLive.GetSpartanIdentityFor failed", "err", err)
 			}
 			d.spartanIdent = row
 			return nil

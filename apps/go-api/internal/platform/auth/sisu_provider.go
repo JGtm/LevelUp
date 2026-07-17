@@ -278,7 +278,7 @@ func (p *SISUProvider) TryOAuthRefreshWithRotation(ctx context.Context, refreshT
 		return "", "", nil
 	}
 	slog.DebugContext(ctx, "sisu_provider: tentative OAuth v2 refresh + rotation")
-	accessToken, rotatedRT, err := ExchangeRefreshTokenWithRotation(ctx, refreshToken)
+	accessToken, rotatedRT, _, err := ExchangeRefreshTokenWithRotation(ctx, refreshToken)
 	if err != nil {
 		// Debug : l'erreur est propagée et loguée une seule fois par le caller
 		// (pool/resolver) avec sa classe — cf. plan anti-bruit 2026-06-11.

@@ -84,6 +84,10 @@ func playerBaselineSteps() []migration.Migration {
 			Description:     "Baseline squashée v1 du bloc player title-owned (33 steps create_base_player_schema..player_append_only_csr_snapshots_v1)",
 			SupersededByAll: squashedPlayerV1Steps,
 			ApplySchema:     applyBaselinePlayerV1,
+			// DM-5 heal (M3/M4) : rejoue le même ensure additif idempotent sur une DB
+			// porteuse de la sentinelle mais au schéma partiel (expected_win_prob,
+			// colonnes render challenge_snapshots, engagement_response_bins).
+			EnsureAdditive: ensureBaselinePlayerV1AdditiveColumns,
 		},
 	}
 }
@@ -113,6 +117,7 @@ const (
 	tblMSR                = "match_skill_rank"
 	tblPME                = "player_match_enrichment"
 	tblCareer             = "career_progression"
+	tblChallenge          = "challenge_snapshots"
 	tyFloat               = "FLOAT"
 	tyVarchar             = "VARCHAR"
 	tyDouble              = "DOUBLE"
@@ -120,8 +125,29 @@ const (
 	tyVarcharEmptyDefault = "VARCHAR DEFAULT ''"
 )
 
+// ddlEngagementResponseBins — DDL UNIQUE de engagement_response_bins (create_engagement_
+// response_bins_table). Source unique partagée par la baseline (fresh DB) ET le heal
+// DM-5 (ensureBaselinePlayerV1AdditiveColumns) : CREATE IF NOT EXISTS idempotent, donc
+// no-op sur une DB qui la porte déjà. Centralisé pour qu'un seul schéma fasse foi (pas
+// de divergence entre le chemin création et le chemin heal).
+const ddlEngagementResponseBins = `
+	CREATE TABLE IF NOT EXISTS engagement_response_bins (
+		xuid VARCHAR NOT NULL,
+		mode_category VARCHAR NOT NULL,
+		intensity_bin VARCHAR NOT NULL,
+		lower_bound DOUBLE NOT NULL,
+		upper_bound DOUBLE NOT NULL,
+		coef_lobby DOUBLE NOT NULL,
+		n_matches INTEGER NOT NULL,
+		last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		PRIMARY KEY (xuid, mode_category, intensity_bin)
+	);`
+
 // ensureBaselinePlayerV1AdditiveColumns reproduit les ALTER idempotents du bloc squashé
-// sur les tables susceptibles de pré-exister partiellement (E7). No-op sur DB vierge.
+// sur les tables susceptibles de pré-exister partiellement (E7) et garantit la table
+// engagement_response_bins. No-op sur DB vierge (colonnes déjà émises par le CREATE, table
+// créée ici). Rejoué sur le chemin DM-5 (heal M3/M4) pour une DB porteuse de la sentinelle
+// au schéma partiel — les tables ciblées existent alors déjà (steps squashés appliqués).
 func ensureBaselinePlayerV1AdditiveColumns(db *sql.DB) error {
 	cols := []struct{ table, name, typ string }{
 		// match_skill_rank : ALTER de add_skill_rating_table / add_msr_measurement_matches_remaining
@@ -153,11 +179,25 @@ func ensureBaselinePlayerV1AdditiveColumns(db *sql.DB) error {
 		{tblCareer, "emblem_image_url", tyVarcharEmptyDefault},
 		{tblCareer, "backdrop_image_url", tyVarcharEmptyDefault},
 		{tblCareer, "last_fetch_status", tyVarchar},
+		// challenge_snapshots : ALTER de add_challenge_snapshots_render_columns (title /
+		// description / image_url, 06-22) + add_challenge_snapshots_display_path — absents
+		// des DBs dont la sentinelle précède ces steps (skew M4). Sans eux, INSERT challenges
+		// casse (colonnes render manquantes).
+		{tblChallenge, "title", tyVarchar},
+		{tblChallenge, "description", tyVarchar},
+		{tblChallenge, "image_url", tyVarchar},
+		{tblChallenge, "display_path", tyVarchar},
 	}
 	for _, c := range cols {
 		if err := migration.AddColumnIfMissing(db, c.table, c.name, c.typ); err != nil {
 			return fmt.Errorf("baseline player v1: ensure %s.%s: %w", c.table, c.name, err)
 		}
+	}
+	// engagement_response_bins : create_engagement_response_bins_table. CREATE IF NOT
+	// EXISTS (source unique ddlEngagementResponseBins) → couvre à la fois la création sur
+	// DB vierge et le heal DM-5 d'une DB porteuse de la sentinelle mais sans la table.
+	if err := migration.ExecScript(db, ddlEngagementResponseBins); err != nil {
+		return fmt.Errorf("baseline player v1: ensure engagement_response_bins: %w", err)
 	}
 	return nil
 }
@@ -337,18 +377,7 @@ func applyBaselinePlayerV1Tables(db *sql.DB) error {
 			last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (xuid, mode_category)
 		);
-
-		-- engagement_response_bins (PK xuid, mode_category, intensity_bin).
-		CREATE TABLE IF NOT EXISTS engagement_response_bins (
-			xuid VARCHAR NOT NULL,
-			mode_category VARCHAR NOT NULL,
-			intensity_bin VARCHAR NOT NULL,
-			lower_bound DOUBLE NOT NULL,
-			upper_bound DOUBLE NOT NULL,
-			coef_lobby DOUBLE NOT NULL,
-			n_matches INTEGER NOT NULL,
-			last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			PRIMARY KEY (xuid, mode_category, intensity_bin)
-		);
+		-- engagement_response_bins : émise par ensureBaselinePlayerV1AdditiveColumns
+		-- (source unique ddlEngagementResponseBins, partagée avec le heal DM-5).
 	`)
 }

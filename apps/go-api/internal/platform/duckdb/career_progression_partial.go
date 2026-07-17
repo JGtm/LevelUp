@@ -83,7 +83,9 @@ func (r *CareerLiveRepo) InsertCareerProgressionPartial(
 	sql := fmt.Sprintf(`INSERT INTO career_progression (%s) VALUES (%s)`,
 		strings.Join(cols, ", "), strings.Join(placeholders, ", "))
 
-	if _, err := r.pdb.Player.Exec(ctx, sql, args...); err != nil {
+	// E5 (revue 2026-07) : ExecRecovered (Reopen+retry) — écriture player-DB tolérant
+	// un Reopen concurrent (« database is closed »), comme les lectures du sweep.
+	if _, err := r.pdb.Player.ExecRecovered(ctx, sql, args...); err != nil {
 		return false, fmt.Errorf("InsertCareerProgressionPartial exec: %w", err)
 	}
 	return true, nil

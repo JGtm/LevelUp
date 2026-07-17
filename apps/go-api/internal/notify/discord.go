@@ -252,6 +252,12 @@ func SendWebhook(webhookURL string, payload WebhookPayload) bool {
 
 // discordStrings contient toutes les chaînes bilingues FR/EN.
 // Structure : map[clé]map[lang]template
+//
+// EXEMPTION EMOJIS (D2, revue 2026-07-17) : les emojis ci-dessous sont le CONTENU des
+// messages Discord (payload produit envoyé au webhook), PAS de la décoration de code
+// source. Ils sont donc exemptés de la règle « pas d'emojis dans les fichiers versionnés »
+// (CLAUDE.md) — au même titre qu'un libellé UI. Convention locale préexistante du fichier ;
+// toute décoration de code (logs, commentaires, sortie CLI) reste, elle, sans emoji.
 var discordStrings = map[string]map[string]string{
 	"discord_outcome_draw": {"fr": "Égalité", "en": "Draw"},
 	"discord_outcome_win":  {"fr": "Victoire", "en": "Win"},

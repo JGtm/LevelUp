@@ -18,12 +18,12 @@ import (
 
 // RecordHistoryRepo persiste l'historique des PB dans stats.duckdb (par joueur).
 type RecordHistoryRepo struct {
-	db *DB
+	db PlayerReadHandle
 }
 
 // NewRecordHistoryRepo construit le repo.
 func NewRecordHistoryRepo(db *DB) *RecordHistoryRepo {
-	return &RecordHistoryRepo{db: db}
+	return &RecordHistoryRepo{db: NewPlayerReadHandle(db)}
 }
 
 // Compile-time assertion.
@@ -41,7 +41,7 @@ func (r *RecordHistoryRepo) Append(ctx context.Context, h records.RecordHistory)
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO record_history (id, user_id, title_slug, metric, period, value, achieved_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`,

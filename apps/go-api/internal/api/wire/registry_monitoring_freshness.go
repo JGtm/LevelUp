@@ -18,6 +18,7 @@ package wire
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -25,8 +26,13 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/pkg/duckdbbackup"
 )
+
+// freshnessLastMatchReadErr : message best-effort quand la lecture groupée du
+// dernier match échoue (shared absent/illisible). Posé sur chaque joueur du titre.
+const freshnessLastMatchReadErr = "lecture du dernier match impossible"
 
 // WithBackupScheduler attache le scheduler de backup au registry (âge du
 // dernier backup dans la réponse fraîcheur). Nil possible : section absente.
@@ -100,15 +106,28 @@ func (r *ServiceRegistry) titleFreshness(
 		report.Note = "aucun joueur suivi pour ce titre"
 		return report
 	}
+	// E3 (revue 2026-07) : UNE requête groupée par titre sur le shared reader.
+	// On ne résout AUCUNE player-DB ici (avant : une résolution jetée par joueur,
+	// qui CRÉAIT même la DB des profils auth_only, + un scan MAX+JOIN par joueur).
+	xuids := make([]string, 0, len(players))
+	for _, p := range players {
+		if p.XUID != "" {
+			xuids = append(xuids, p.XUID)
+		}
+	}
+	lastByXUID, sharedErr := r.lastMatchByXUID(ctx, desc.Slug, xuids)
 	for _, p := range players {
 		in := ops.PlayerFreshnessInput{Gamertag: p.Gamertag, XUID: p.XUID}
 		if syncAt, ok := lastSyncOK[p.XUID]; ok {
 			t := syncAt
 			in.LastSyncOKAt = &t
 		}
-		lastMatch, errMsg := r.lastMatchAt(ctx, desc.Slug, p.Gamertag, p.XUID)
-		in.LastMatchAt = lastMatch
-		in.CheckError = errMsg
+		if sharedErr != "" {
+			in.CheckError = sharedErr
+		} else if t, ok := lastByXUID[p.XUID]; ok {
+			tt := t
+			in.LastMatchAt = &tt
+		}
 		pf := ops.EvaluatePlayerFreshness(in, now, th)
 		switch pf.Status {
 		case domain.FreshnessStatusWarn:
@@ -121,29 +140,63 @@ func (r *ServiceRegistry) titleFreshness(
 	return report
 }
 
-// lastMatchAt lit le dernier match persisté d'un joueur (timestamp canonique,
-// règle CLAUDE.md n°8 — jamais start_time brut). Best-effort : erreur → message.
-func (r *ServiceRegistry) lastMatchAt(ctx context.Context, titleSlug, gamertag, xuid string) (*time.Time, string) {
-	_, sharedSQL, release, errMsg := r.resolveMonitoringDBs(ctx, titleSlug, gamertag, xuid)
-	if errMsg != "" {
-		return nil, errMsg
+// lastMatchByXUID lit, en UNE requête groupée par titre, le dernier match
+// persisté de chaque joueur (timestamp canonique, règle CLAUDE.md n°8 — jamais
+// start_time brut). Lit le shared reader du titre via OpenReadForQuery (réutilise
+// le handle en cache RO/RW s'il est tenu — B-swap-safe, jamais OpenReadOnly
+// forcé). Ne résout AUCUNE player-DB : un profil auth_only (sans match) est
+// simplement absent du résultat, et AUCUNE DB n'est créée pour lui (E3). Best-
+// effort : shared absent/illisible → message d'erreur global, jamais de panic.
+func (r *ServiceRegistry) lastMatchByXUID(ctx context.Context, titleSlug string, xuids []string) (map[string]time.Time, string) {
+	out := map[string]time.Time{}
+	if len(xuids) == 0 {
+		return out, ""
+	}
+	sharedPath := titlePkg.NewPathResolver(r.cfg.RepoRoot).SharedDBPath(titleSlug)
+	sqlDB, release, err := duckdb.OpenReadForQuery(sharedPath)
+	if err != nil {
+		monitoringLog.WarnContext(ctx, "admin_freshness: shared reader indisponible",
+			"title", titleSlug, "err", err)
+		return out, freshnessLastMatchReadErr
 	}
 	defer release()
-	var last sql.NullTime
-	q := `SELECT MAX(` + analysis.SQLStartTimeCanonical("mr") + `)
+
+	placeholders := make([]string, len(xuids))
+	args := make([]any, len(xuids))
+	for i, x := range xuids {
+		placeholders[i] = "?"
+		args[i] = x
+	}
+	q := `SELECT mp.xuid, MAX(` + analysis.SQLStartTimeCanonical("mr") + `)
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id
-		WHERE mp.xuid = ?`
-	if err := sharedSQL.QueryRowContext(ctx, q, xuid).Scan(&last); err != nil {
-		monitoringLog.WarnContext(ctx, "admin_freshness: last match query failed",
-			"title", titleSlug, "gamertag", gamertag, "err", err)
-		return nil, "lecture du dernier match impossible"
+		WHERE mp.xuid IN (` + strings.Join(placeholders, ", ") + `)
+		GROUP BY mp.xuid`
+	rows, err := sqlDB.QueryContext(ctx, q, args...)
+	if err != nil {
+		monitoringLog.WarnContext(ctx, "admin_freshness: requête groupée dernier match échouée",
+			"title", titleSlug, "err", err)
+		return out, freshnessLastMatchReadErr
 	}
-	if !last.Valid {
-		return nil, ""
+	defer rows.Close()
+	for rows.Next() {
+		var xuid string
+		var last sql.NullTime
+		if err := rows.Scan(&xuid, &last); err != nil {
+			monitoringLog.WarnContext(ctx, "admin_freshness: scan dernier match",
+				"title", titleSlug, "err", err)
+			return out, freshnessLastMatchReadErr
+		}
+		if last.Valid {
+			out[xuid] = last.Time
+		}
 	}
-	t := last.Time
-	return &t, ""
+	if err := rows.Err(); err != nil {
+		monitoringLog.WarnContext(ctx, "admin_freshness: itération dernier match",
+			"title", titleSlug, "err", err)
+		return out, freshnessLastMatchReadErr
+	}
+	return out, ""
 }
 
 // lastSyncOKByXUID indexe le dernier cycle sync réussi par joueur depuis le

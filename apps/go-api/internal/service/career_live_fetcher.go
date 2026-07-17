@@ -153,9 +153,15 @@ func CareerFetcherFactoryFromTokens(requestsPerSecond int) CareerFetcherFactory 
 		// Sujet 2 T1 : budget PAR COMPTE partagé — le fetch career live dépense
 		// le quota du même compte Xbox que le pool de sync ; sans limiteur
 		// partagé, le pool ne voyait jamais cette pression (429 « surprises »).
-		// xuid absent du ctx → limiteur local (comportement historique).
-		if xuid := ctxkeys.HaloXUID(ctx); xuid != "" {
-			client = client.WithLimiter(ratebudget.ForXUID(xuid, float64(requestsPerSecond)))
+		//
+		// Finding ID3 (revue 2026-07) : le débit s'impute au PORTEUR RÉEL des
+		// tokens (tokensOwnerXUID = compte connecté), PAS au sujet HaloXUID — qui,
+		// après forcePageIdentityXUID, est le xuid de la PAGE. Clé sur le sujet, le
+		// quota du compte connecté était dépensé hors comptage et le bucket de la
+		// page faussement throttlé (retour possible des 429 que Sujet 2 éliminait).
+		// Porteur absent du ctx → limiteur local (comportement historique).
+		if owner := ctxkeys.TokensOwnerXUID(ctx); owner != "" {
+			client = client.WithLimiter(ratebudget.ForXUID(owner, float64(requestsPerSecond)))
 		}
 		return client
 	}

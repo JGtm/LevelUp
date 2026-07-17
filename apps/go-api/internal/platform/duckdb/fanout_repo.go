@@ -90,7 +90,9 @@ func (r *FanoutRepo) InsertStubEnrichments(
 
 	inserted := 0
 	for _, mid := range matchIDs {
-		_, err := r.pdb.Player.Exec(ctx,
+		// E5 (revue 2026-07) : ExecRecovered (Reopen+retry) — écriture player-DB tolérant
+		// un Reopen concurrent (« database is closed »), comme les lectures du sweep.
+		_, err := r.pdb.Player.ExecRecovered(ctx,
 			`INSERT INTO player_match_enrichment (match_id, stage) VALUES (?, 'live')`,
 			mid,
 		)

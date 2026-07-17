@@ -10,7 +10,13 @@ import { Link } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getNotificationsText } from './i18n'
 import { useNotificationsList, useUnreadCount } from './queries'
-import { useDismiss, useMarkAllRead, useMarkRead, useMarkUnread } from './mutations'
+import {
+  markNotificationsReadKeepalive,
+  useDismiss,
+  useMarkAllRead,
+  useMarkRead,
+  useMarkUnread,
+} from './mutations'
 import { NotificationItem } from './NotificationItem'
 import type { Notification } from './types'
 
@@ -46,19 +52,28 @@ export function NotificationsBell({ playerSlug }: NotificationsBellProps) {
   // (pas à l'ouverture : évite le flip « Non lues » → « Anciennes » pendant la
   // consultation).
   const pendingReadRef = useRef<Set<number>>(new Set())
+  // Ids déjà flushés via keepalive (W5) : anti double-envoi tant que l'onglet
+  // reste ouvert (le keepalive ne patche pas le cache → `unread` les contient
+  // encore, l'accumulation ci-dessous doit les ignorer).
+  const flushedReadRef = useRef<Set<number>>(new Set())
   const markReadMutate = markRead.mutate
 
   const items = list?.items ?? []
   const unread = items.filter((n) => n.read_at == null)
   const older = items.filter((n) => n.read_at != null)
 
-  // Accumule les non-lues affichées tant que le dropdown est ouvert.
+  // Accumule les non-lues affichées tant que le dropdown est ouvert (hors ids
+  // déjà flushés en keepalive).
   useEffect(() => {
     if (!open) return
-    for (const n of unread) pendingReadRef.current.add(n.id)
+    for (const n of unread) {
+      if (!flushedReadRef.current.has(n.id)) pendingReadRef.current.add(n.id)
+    }
   }, [open, unread])
 
   // Transition open→false (click-outside, Esc, navigation) : marquer lues.
+  // Chemin NOMINAL — inchangé (pas de flushedReadRef : un rollback d'erreur doit
+  // pouvoir re-tenter au cycle suivant, le dropdown fermé stoppant l'accumulation).
   useEffect(() => {
     if (open) return
     if (pendingReadRef.current.size === 0) return
@@ -66,6 +81,30 @@ export function NotificationsBell({ playerSlug }: NotificationsBellProps) {
     pendingReadRef.current.clear()
     markReadMutate(ids)
   }, [open, markReadMutate])
+
+  // Filet F5 / fermeture d'onglet (W5, décision D5) : si l'onglet passe en
+  // arrière-plan ou se ferme avec des non-lues en attente, flusher via keepalive.
+  // Le ref est vidé AVANT l'envoi et les ids marqués « flushés » → aucun double
+  // envoi avec le chemin nominal ni ré-accumulation tant que le dropdown reste
+  // ouvert (onglet re-visible sans fermeture).
+  useEffect(() => {
+    function flushKeepalive() {
+      if (pendingReadRef.current.size === 0) return
+      const ids = [...pendingReadRef.current]
+      pendingReadRef.current.clear()
+      for (const id of ids) flushedReadRef.current.add(id)
+      markNotificationsReadKeepalive(playerSlug, ids)
+    }
+    function onVisibility() {
+      if (document.visibilityState === 'hidden') flushKeepalive()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', flushKeepalive)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flushKeepalive)
+    }
+  }, [playerSlug])
 
   // Click-outside
   useEffect(() => {

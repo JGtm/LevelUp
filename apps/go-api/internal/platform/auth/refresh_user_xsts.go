@@ -37,11 +37,17 @@ func RefreshUserXSTS(ctx context.Context, store *MultiUserTokenStore, xuid strin
 		return "", fmt.Errorf("refresh_user_xsts: load %s: %w", xuid, err)
 	}
 
-	// Étape 1 : obtenir un access_token Microsoft frais.
-	accessToken := refreshAccessTokenForUser(ctx, tokens)
+	// Étape 1 : obtenir un access_token Microsoft frais. Le RT roté est persisté
+	// IMMÉDIATEMENT dans le store (AU1) — cf. refreshAccessTokenForUser.
+	accessToken := refreshAccessTokenForUser(ctx, store, tokens)
 	if accessToken == "" {
 		return "", fmt.Errorf("refresh_user_xsts: aucun access_token obtenu (cache vide ou expiré)")
 	}
+
+	// Provenance connue (AU4/F12) → préfixe RpsTicket déterministe pour l'échange XBL
+	// user-token en aval (withTokenClientFamily lu par requestUserToken). Vide = repli
+	// sur le retry d=→t= (migration douce).
+	ctx = withTokenClientFamily(ctx, tokens.TokenClientFamily)
 
 	// Étape 2 : acquérir un nouveau XSTS RTA.
 	xstsResult, err := AcquireXSTSForRTA(ctx, accessToken)
@@ -72,25 +78,41 @@ func RefreshUserXSTS(ctx context.Context, store *MultiUserTokenStore, xuid strin
 
 // refreshAccessTokenForUser obtient un access_token Microsoft frais pour ce user.
 //  1. Si OAuthRefreshToken présent → refresh OAuth (Azure ou MSA natif, avec rotation :
-//     le RT rotaté est écrit dans tokens pour que le caller le persiste).
+//     le RT rotaté est écrit dans tokens ET persisté IMMÉDIATEMENT dans le store, AU1).
 //  2. Sinon, si tokens.AccessToken encore valide → retourne tel quel.
 //  3. Sinon : "" (l'appelant retournera une erreur, user doit re-login Xbox SSO).
 //
 // Les erreurs intermédiaires (refresh) sont loguées en WARN et ignorées — la
 // fonction tombe sur le fallback access_token stocké ou retourne "" pour
 // signaler "pas de token, re-login requis".
-func refreshAccessTokenForUser(ctx context.Context, tokens *UserTokens) string {
+//
+// store peut être nil (chemin sans persistance : le caller n'a pas de store) ; la
+// rotation reste alors écrite en mémoire (tokens) pour un Upsert ultérieur.
+func refreshAccessTokenForUser(ctx context.Context, store *MultiUserTokenStore, tokens *UserTokens) string {
 	if tokens.OAuthRefreshToken != "" {
-		token, rotatedRT, err := ExchangeRefreshTokenWithRotation(ctx, tokens.OAuthRefreshToken)
+		token, rotatedRT, family, err := ExchangeRefreshTokenWithRotation(ctx, tokens.OAuthRefreshToken)
 		if err != nil {
 			slog.WarnContext(ctx, "refresh_user_xsts: refresh OAuth erreur",
 				"xuid", tokens.XUID, "err", err)
 		}
 		if token != "" {
+			// Provenance apprise (AU4/F12) : le client qui a répondu fixe le préfixe
+			// RpsTicket du prochain échange XBL. Persisté par le Upsert du caller.
+			if family != "" {
+				tokens.TokenClientFamily = family
+			}
 			// RT à usage unique : écrire la rotation dans tokens AVANT le Upsert
 			// du caller, sinon le prochain refresh relit un RT révoqué.
 			if rotatedRT != "" && rotatedRT != tokens.OAuthRefreshToken {
 				tokens.OAuthRefreshToken = rotatedRT
+				// AU1 (revue 2026-07) : persister le RT roté IMMÉDIATEMENT (avant le
+				// XSTS). Un échec XSTS transitoire retournerait sinon SANS atteindre le
+				// store.Upsert de RefreshUserXSTS → le store garderait le RT consommé →
+				// invalid_grant au prochain refresh. Modèle : persistRotatedRT
+				// (access_token_store_first.go). Idempotent avec l'Upsert final.
+				if store != nil && tokens.XUID != "" {
+					persistRotatedRT(ctx, store, tokens.XUID, rotatedRT)
+				}
 			}
 			return token
 		}

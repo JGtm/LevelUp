@@ -2,6 +2,8 @@ package scheduler
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -133,12 +135,11 @@ func (c *CatalogRefreshCron) RunOnce(ctx context.Context) {
 	if c == nil || c.run == nil {
 		return
 	}
-	// Statut unifie des crons (A6/DC-5) : liveness du cycle — les erreurs par
-	// titre restent best-effort internes (loguees).
+	// Statut des crons (A6/DC-5, décision D1) : le cycle rapporte l'erreur AGRÉGÉE
+	// réelle par titre — un cycle partiellement échoué = échec avec cause. Les titres
+	// sans catalog adapter sont des skips nominaux (pas des échecs).
 	start := time.Now()
-	defer func() {
-		observability.ReportCronRun("catalog_refresh", start, nil, time.Since(start).Milliseconds())
-	}()
+	var errs []error
 	reg := c.registry
 	if reg == nil {
 		reg = titlePkg.DefaultRegistry()
@@ -156,8 +157,11 @@ func (c *CatalogRefreshCron) RunOnce(ctx context.Context) {
 				"titleSlug", desc.Slug)
 			continue
 		}
-		c.runOnceForTitle(ctx, desc.Slug)
+		if err := c.runOnceForTitle(ctx, desc.Slug); err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", desc.Slug, err))
+		}
 	}
+	observability.ReportCronRun("catalog_refresh", start, errors.Join(errs...), time.Since(start).Milliseconds())
 }
 
 // titleHasCatalogAdapter applique le gate : test RÉEL de présence d'un catalog
@@ -171,18 +175,20 @@ func (c *CatalogRefreshCron) titleHasCatalogAdapter(desc *titlePkg.TitleDescript
 }
 
 // runOnceForTitle exécute le drain catalogue pour UN titre dont l'adapter est
-// résolvable. Best-effort : une erreur n'interrompt pas l'itération sur les autres.
-func (c *CatalogRefreshCron) runOnceForTitle(ctx context.Context, titleSlug string) {
+// résolvable. Retourne l'erreur réelle du cycle (décision D1) ; une erreur
+// n'interrompt pas l'itération sur les autres titres (agrégée par RunOnce).
+func (c *CatalogRefreshCron) runOnceForTitle(ctx context.Context, titleSlug string) error {
 	start := time.Now()
 	c.log.InfoContext(ctx, "catalog_refresh_cron: cycle démarré", "titleSlug", titleSlug)
 	res, err := c.run(ctx, titleSlug)
 	if err != nil {
 		c.log.ErrorContext(ctx, "catalog_refresh_cron: cycle échoué", "titleSlug", titleSlug,
 			"err", err, "duration", time.Since(start))
-		return
+		return err
 	}
 	c.log.InfoContext(ctx, "catalog_refresh_cron: cycle terminé", "titleSlug", titleSlug,
 		"seeded", res.Seeded, "playlists", res.Playlists, "pairs", res.Pairs,
 		"maps", res.Maps, "game_variants", res.GameVariants, "errors", res.Errors,
 		"duration", time.Since(start))
+	return nil
 }

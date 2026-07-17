@@ -71,6 +71,11 @@ func (r *ServiceRegistry) HomeCtxWithAuth(ctx context.Context, slug string) (por
 // endpoints careerranks/customization ciblent xuid(<pdb>) dans l'URL et ne
 // dérivent jamais l'identité du token porteur. Le contrôle d'accès (403 slug
 // étranger) est appliqué en amont, indépendamment de ce forçage.
+//
+// Consommateurs OWNERSHIP-SCOPED (SeasonPassCtxWithAuth : BP/défis) : le forçage
+// aligne le SUJET (xuid dans l'URL players/xuid(<sujet>)/{decks,rewardtracks}) sur
+// le xuid persisté par le sink → jamais d'écriture des données d'un porteur étranger
+// sous le xuid de la page ; porteur≠page → 403 upstream → fallback cache DB du sujet.
 func forcePageIdentityXUID(ctx context.Context, pageXUID string) context.Context {
 	if pageXUID == "" || ctxkeys.HaloXUID(ctx) == pageXUID {
 		return ctx
@@ -81,6 +86,17 @@ func forcePageIdentityXUID(ctx context.Context, pageXUID string) context.Context
 // SeasonPassCtxWithAuth retourne un SeasonPassService + contexte enrichi avec les HaloTokens.
 // Réutilise HomeCtxWithAuth pour la résolution des tokens et le cacheRepo BP/challenges.
 // Le HomeService créé est enregistré comme SessionNotifier pour ce joueur (TTL dynamique).
+//
+// Le contexte porte le xuid de la PAGE (forcePageIdentityXUID) — même invariant que
+// HomeCtxWithAuth. Les fetches BP/défis (GetBattlePass/GetChallenges) ciblent
+// players/xuid(<sujet>)/rewardtracks|decks où <sujet> = ctxkeys.HaloXUID, et les
+// snapshots sont persistés sous pdb.XUID (sink). Ces endpoints economy sont
+// OWNERSHIP-SCOPED (fetchables uniquement pour le porteur du token) : sans forçage, un
+// compte connecté consultant la page d'un AUTRE joueur fetchait SES défis puis les
+// persistait sous le xuid de la page (pollution, 4e occurrence du bug PR #63). Avec le
+// forçage, le sujet == page : porteur=page → fetch/persist corrects ; porteur≠page →
+// fetch xuid(page) avec un token étranger → 403 → fallback cache DB du sujet, aucune
+// écriture croisée.
 func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string) (port.SeasonPassService, context.Context, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
@@ -102,7 +118,7 @@ func (r *ServiceRegistry) SeasonPassCtxWithAuth(ctx context.Context, slug string
 	r.notifiers.Store(pdb.XUID, port.SessionNotifier(homeSvc))
 	spRepo := duckdb.NewSeasonPassRepo(pdb)
 	svc := service.NewSeasonPassService(spRepo, homeSvc, pdb.XUID, pdb.TitleSlug)
-	enriched := r.enrichWithHaloTokens(ctx, pdb)
+	enriched := forcePageIdentityXUID(r.enrichWithHaloTokens(ctx, pdb), pdb.XUID)
 	return svc, enriched, nil
 }
 

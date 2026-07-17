@@ -8,6 +8,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"net/http"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -92,7 +93,7 @@ func TestRefreshAccessTokenForUser_NoCache_AccessTokenStillValid(t *testing.T) {
 		AccessToken:    "still-valid",
 		OAuthExpiresAt: time.Now().Add(30 * time.Minute),
 	}
-	got := refreshAccessTokenForUser(context.Background(), tokens)
+	got := refreshAccessTokenForUser(context.Background(), nil, tokens)
 	if got != "still-valid" {
 		t.Errorf("got = %q, want still-valid (réutilise stocké)", got)
 	}
@@ -104,7 +105,7 @@ func TestRefreshAccessTokenForUser_NoCache_AccessTokenExpired(t *testing.T) {
 		AccessToken:    "expired",
 		OAuthExpiresAt: time.Now().Add(-1 * time.Hour),
 	}
-	got := refreshAccessTokenForUser(context.Background(), tokens)
+	got := refreshAccessTokenForUser(context.Background(), nil, tokens)
 	if got != "" {
 		t.Errorf("got = %q, want vide (token expiré ne devrait pas être réutilisé)", got)
 	}
@@ -116,8 +117,42 @@ func TestRefreshAccessTokenForUser_NoCache_NoToken(t *testing.T) {
 		AccessToken:    "",
 		OAuthExpiresAt: time.Now().Add(30 * time.Minute),
 	}
-	got := refreshAccessTokenForUser(context.Background(), tokens)
+	got := refreshAccessTokenForUser(context.Background(), nil, tokens)
 	if got != "" {
 		t.Errorf("got = %q, want vide (pas de token et pas de cache)", got)
+	}
+}
+
+// TestRefreshUserXSTS_RotatedRTPersistedBeforeXSTS — AU1 (revue 2026-07). Le refresh
+// OAuth rote le RT ; l'acquisition XSTS échoue ENSUITE (endpoint Xbox injoignable en
+// test). Le RT roté doit DÉJÀ être persisté dans le store — sans le persist immédiat,
+// l'échec XSTS retourne avant le store.Upsert final et le store garde le RT consommé
+// (invalid_grant au prochain refresh).
+func TestRefreshUserXSTS_RotatedRTPersistedBeforeXSTS(t *testing.T) {
+	// Endpoint OAuth mocké : refresh réussi avec un RT ROTÉ.
+	withMockTokenEndpoint(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"access_token":"at-fresh","refresh_token":"rt-rotated","expires_in":3600}`))
+	}, "app-id", "s3cret")
+
+	store := newTestMultiUserStore(t)
+	if err := store.Upsert(&UserTokens{
+		XUID:              "12345",
+		Gamertag:          "TestUser",
+		OAuthRefreshToken: "rt-old",
+	}); err != nil {
+		t.Fatalf("seed store: %v", err)
+	}
+
+	// AcquireXSTSForRTA échoue (pas de vrai Xbox / at bidon) → XSTS transitoire.
+	if _, err := RefreshUserXSTS(context.Background(), store, "12345"); err == nil {
+		t.Fatal("attendu échec XSTS (endpoint Xbox injoignable en test)")
+	}
+
+	reloaded, err := store.Load("12345")
+	if err != nil {
+		t.Fatalf("reload store: %v", err)
+	}
+	if reloaded.OAuthRefreshToken != "rt-rotated" {
+		t.Errorf("RT persisté = %q, attendu rt-rotated (persist immédiat avant XSTS, AU1)", reloaded.OAuthRefreshToken)
 	}
 }

@@ -111,10 +111,11 @@ func (reg *ServiceRegistry) playerOGMeta(ctx context.Context, origin, path, slug
 // isoler (et tester) le forçage du xuid.
 //
 // HomeCtx est la variante NON authentifiée : le contexte d'un crawler anonyme ne
-// porte aucun xuid. GetHomePage résout l'identité Spartan (SpartanIdentity) via
-// GetSpartanIdentity, scopée sur ctxkeys.HaloXUID ; sans forçage cette résolution
-// cible "" (identité vide). On pose donc le xuid du joueur de la PAGE — même
-// invariant que HomeCtxWithAuth (cf. forcePageIdentityXUID, registry_auth.go),
+// porte aucun xuid. HomeService résout l'identité Spartan avec le sujet EXPLICITE
+// s.xuid (= pdb.XUID, finding ID4) ; le forçage pose HaloXUID = xuid de la PAGE pour
+// aligner le garde-fou d'ownership (subjectIsOwner → skill peaks inclus) sur ce même
+// joueur. Sans forçage, HaloXUID resterait "" et l'identité serait servie sans peaks.
+// Même invariant que HomeCtxWithAuth (cf. forcePageIdentityXUID, registry_auth.go),
 // et title-agnostic (aucune dépendance au slug).
 func ogMetaFromHome(ctx context.Context, svc port.HomeService, xuid, gamertag, origin, path string, loc ogmeta.Locale) (ogmeta.Meta, bool) {
 	ctx = forcePageIdentityXUID(ctx, xuid)

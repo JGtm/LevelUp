@@ -256,6 +256,9 @@ func strPtrNonEmpty(s string) *string {
 	return &s
 }
 
+// coalesceStrPtr conserve un CONTRAT DISTINCT de service.coalesceStr : il retourne
+// un *string (préserve nil vs "" pour l'aval du pipeline de transforms), là où
+// coalesceStr aplatit vers string. Volontairement non fusionné (F4, revue 2026-07-17).
 func coalesceStrPtr(a, b *string) *string {
 	if a != nil && *a != "" {
 		return a
