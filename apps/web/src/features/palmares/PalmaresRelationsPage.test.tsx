@@ -25,7 +25,7 @@ describe('PalmaresRelationsPage', () => {
   // Isolation : le filtre de chips est un store persisté global — le remettre à
   // l'état par défaut après chaque test évite la pollution inter-tests.
   afterEach(() => {
-    useRelationsPrefsStore.setState({ filter: 'all', includeFriends: true })
+    useRelationsPrefsStore.setState({ filter: 'all', includeNeverFaced: false })
   })
 
   it('monte sans erreur', () => {
@@ -158,6 +158,24 @@ describe('PalmaresRelationsPage', () => {
     expect(screen.queryByRole('button', { name: 'Multi-jeux' })).not.toBeInTheDocument()
     // Garde-fou : le filtre 'cross' persisté est neutralisé → la relation reste visible.
     expect(screen.getAllByText('SoloOnly').length).toBeGreaterThan(0)
+  })
+
+  it('toggle « jamais affrontés » : défaut masqué + bascule du libellé', async () => {
+    renderWithProviders(<PalmaresRelationsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('palmares-relations-chips')).toBeInTheDocument()
+    })
+
+    // Défaut = masqué : le bouton propose de LES INCLURE.
+    const toggle = screen.getByRole('button', { name: 'Inclure les jamais affrontés' })
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+
+    // Bascule → libellé « inclus » + aria-pressed true.
+    fireEvent.click(toggle)
+    expect(
+      screen.getByRole('button', { name: 'Jamais affrontés inclus' }),
+    ).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('rend la barre de segmentation serveur (Vue + Analyser)', async () => {

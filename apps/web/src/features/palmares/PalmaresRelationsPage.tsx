@@ -4,7 +4,7 @@
  * Consomme l'endpoint backend réel POST /pages/palmares/relations (forme
  * {overview, relations[]}). Barre de segmentation serveur (useLocalFilterBar :
  * expérience / saison / période / playlist / mode / vue solo-escouade), hero
- * enrichi (binôme / bête noire / noyau dur), segmented control + toggle « amis »,
+ * enrichi (binôme / bête noire / noyau dur), segmented control + toggle « jamais affrontés »,
  * tableau paginé (langage MatchEncountersTable) et section « Noyau dur » détaillée.
  */
 import { useMemo, useState, type ReactNode } from 'react'
@@ -520,8 +520,8 @@ export function PalmaresRelationsPage() {
   const navigate = useNavigate()
   const filter = useRelationsPrefsStore((s) => s.filter)
   const setFilter = useRelationsPrefsStore((s) => s.setFilter)
-  const includeFriends = useRelationsPrefsStore((s) => s.includeFriends)
-  const setIncludeFriends = useRelationsPrefsStore((s) => s.setIncludeFriends)
+  const includeNeverFaced = useRelationsPrefsStore((s) => s.includeNeverFaced)
+  const setIncludeNeverFaced = useRelationsPrefsStore((s) => s.setIncludeNeverFaced)
 
   const { committedFilterContext, committedHash, bar } = useLocalFilterBar({
     playerSlug,
@@ -565,12 +565,12 @@ export function PalmaresRelationsPage() {
   // sans réécrire le store (la préférence reste, réactivée si la donnée revient).
   const effectiveFilter: RelationFilter = filter === 'cross' && !showCross ? 'all' : filter
 
-  // Filtre segment (client) + toggle « amis » : sans les amis, on masque les
-  // relations purement coéquipières (jamais affrontées).
+  // Filtre segment (client) + toggle « jamais affrontés » : OFF (défaut), on masque
+  // les relations purement coéquipières (jamais affrontées, enemy_matches === 0).
   const visibleRows = useMemo(() => {
     const base = filterRelations(relations, effectiveFilter)
-    return includeFriends ? base : base.filter((r) => r.enemy_matches > 0)
-  }, [relations, effectiveFilter, includeFriends])
+    return includeNeverFaced ? base : base.filter((r) => r.enemy_matches > 0)
+  }, [relations, effectiveFilter, includeNeverFaced])
   const coreRows = useMemo(() => coreRelations(relations), [relations])
 
   let body: ReactNode
@@ -600,8 +600,8 @@ export function PalmaresRelationsPage() {
         filter={effectiveFilter}
         setFilter={setFilter}
         showCross={showCross}
-        includeFriends={includeFriends}
-        setIncludeFriends={setIncludeFriends}
+        includeNeverFaced={includeNeverFaced}
+        setIncludeNeverFaced={setIncludeNeverFaced}
         visibleRows={visibleRows}
         coreRows={coreRows}
         onPlayerClick={goToExplorer}
@@ -627,8 +627,8 @@ function RelationsContent({
   filter,
   setFilter,
   showCross,
-  includeFriends,
-  setIncludeFriends,
+  includeNeverFaced,
+  setIncludeNeverFaced,
   visibleRows,
   coreRows,
   onPlayerClick,
@@ -642,8 +642,8 @@ function RelationsContent({
   filter: RelationFilter
   setFilter: (f: RelationFilter) => void
   showCross: boolean
-  includeFriends: boolean
-  setIncludeFriends: (v: boolean) => void
+  includeNeverFaced: boolean
+  setIncludeNeverFaced: (v: boolean) => void
   visibleRows: RelationInsight[]
   coreRows: RelationInsight[]
   onPlayerClick: (gamertag: string) => void
@@ -712,15 +712,15 @@ function RelationsContent({
         <SegmentedFilter active={filter} onChange={setFilter} labels={rel.chips} showCross={showCross} />
         <button
           type="button"
-          aria-pressed={includeFriends}
-          onClick={() => setIncludeFriends(!includeFriends)}
+          aria-pressed={includeNeverFaced}
+          onClick={() => setIncludeNeverFaced(!includeNeverFaced)}
           className={`rounded-lg border px-3 py-1 text-sm font-medium transition-colors ${
-            includeFriends
+            includeNeverFaced
               ? 'border-info text-foreground'
               : 'border-border text-muted-foreground hover:text-foreground'
           }`}
         >
-          {includeFriends ? rel.filters.friendsIncluded : rel.filters.includeFriends}
+          {includeNeverFaced ? rel.filters.neverFacedIncluded : rel.filters.includeNeverFaced}
         </button>
       </div>
 
