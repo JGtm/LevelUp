@@ -5,7 +5,7 @@
  * {overview, relations[]}). Barre de segmentation serveur (useLocalFilterBar :
  * expérience / saison / période / playlist / mode / vue solo-escouade), hero
  * enrichi (binôme / bête noire / noyau dur), segmented control + toggle « jamais affrontés »,
- * tableau paginé (langage MatchEncountersTable) et section « Noyau dur » détaillée.
+ * tableau paginé (langage MatchEncountersTable) et section Moments & Rivalités.
  */
 import { useMemo, useState, type ReactNode } from 'react'
 import { winRateColor, ratioColor, kdaNetColor } from '@/lib/colors/outcomePalette'
@@ -286,6 +286,7 @@ function CoreSummaryCard({
   labels,
   locale,
   onPlayerClick,
+  onViewSquad,
   playerWinRate,
   recentForm,
 }: {
@@ -294,6 +295,7 @@ function CoreSummaryCard({
   labels: RelationsText
   locale: 'fr' | 'en'
   onPlayerClick: (gamertag: string) => void
+  onViewSquad: () => void
   playerWinRate?: number | null
   recentForm?: string[] | null
 }) {
@@ -393,6 +395,15 @@ function CoreSummaryCard({
             )}
           </div>
         )}
+
+        {/* Pont vers Escouade (« nous » = groupe déclaré) : lien discret en pied de carte. */}
+        <button
+          type="button"
+          className="mt-3 self-start text-xs font-medium text-muted-foreground hover:text-info hover:underline"
+          onClick={onViewSquad}
+        >
+          {labels.core.viewSquad}
+        </button>
       </div>
     </KpiCard>
   )
@@ -446,72 +457,6 @@ function SegmentedFilter({
   )
 }
 
-/** CoreCards — section détaillée du noyau dur (mini-cards gris foncé). */
-function CoreCards({
-  rows,
-  labels,
-  locale,
-  onPlayerClick,
-}: {
-  rows: RelationInsight[]
-  labels: RelationsText
-  locale: 'fr' | 'en'
-  onPlayerClick: (gamertag: string) => void
-}) {
-  if (rows.length === 0) {
-    return <p className="text-sm text-muted-foreground">{labels.core.empty}</p>
-  }
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {rows.map((r) => (
-        <div key={r.xuid} className="rounded-lg bg-card p-4">
-          <span className="whitespace-nowrap">
-            <button
-              type="button"
-              className="truncate text-sm font-semibold text-info hover:underline"
-              onClick={() => onPlayerClick(r.gamertag)}
-            >
-              {r.gamertag}
-            </button>
-            <RelationBadges badges={r.badges} locale={locale} />
-          </span>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {labels.core.together(r.total_matches.toLocaleString(locale))}
-          </p>
-          <div className="mt-2 flex flex-col gap-1.5">
-            <RelationSplitBar
-              label={labels.table.encounters}
-              leftValue={r.teammate_matches}
-              rightValue={r.enemy_matches}
-              leftToken="team-ally"
-              rightToken="team-enemy"
-              locale={locale}
-            />
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs">
-              {r.teammate_win_rate != null && Number.isFinite(r.teammate_win_rate) && (
-                <span>
-                  <span className="font-bold" style={{ color: winRateColor(r.teammate_win_rate) }}>
-                    {formatPercent(r.teammate_win_rate, 0)}
-                  </span>{' '}
-                  <span className="text-muted-foreground">{labels.table.winRateAlly}</span>
-                </span>
-              )}
-              {r.avg_kda_with != null && Number.isFinite(r.avg_kda_with) && (
-                <span>
-                  <span className="font-bold" style={{ color: kdaNetColor(r.avg_kda_with) }}>
-                    {formatRatio(r.avg_kda_with)}
-                  </span>{' '}
-                  <span className="text-muted-foreground">{labels.table.kdaTogether}</span>
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 export function PalmaresRelationsPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const locale = normalizePalmaresLocale(useAppShellStore((state) => state.locale))
@@ -555,6 +500,10 @@ export function PalmaresRelationsPage() {
       params: { playerSlug },
       search: { mode: 'player', target: gamertag },
     })
+  }
+
+  function goToSquad() {
+    void navigate({ to: '/players/$playerSlug/squad', params: { playerSlug } })
   }
 
   // Relations déjà servies par le backend — tout le filtrage ci-dessous est client.
@@ -605,6 +554,7 @@ export function PalmaresRelationsPage() {
         visibleRows={visibleRows}
         coreRows={coreRows}
         onPlayerClick={goToExplorer}
+        onViewSquad={goToSquad}
         playerSlug={playerSlug}
         filterContext={committedFilterContext}
         filterHash={committedHash}
@@ -632,6 +582,7 @@ function RelationsContent({
   visibleRows,
   coreRows,
   onPlayerClick,
+  onViewSquad,
   playerSlug,
   filterContext,
   filterHash,
@@ -647,6 +598,7 @@ function RelationsContent({
   visibleRows: RelationInsight[]
   coreRows: RelationInsight[]
   onPlayerClick: (gamertag: string) => void
+  onViewSquad: () => void
   playerSlug: string
   filterContext: FilterContextInput
   filterHash: string
@@ -702,6 +654,7 @@ function RelationsContent({
             labels={rel}
             locale={locale}
             onPlayerClick={onPlayerClick}
+            onViewSquad={onViewSquad}
             playerWinRate={ov.player_win_rate}
             recentForm={ov.core_recent_form}
           />
@@ -731,14 +684,6 @@ function RelationsContent({
         onPlayerClick={onPlayerClick}
         emptyMessage={rel.filterEmptyDescription}
       />
-
-      <section className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">{rel.core.sectionTitle}</h2>
-          <p className="text-sm text-muted-foreground">{rel.core.sectionDescription}</p>
-        </div>
-        <CoreCards rows={coreRows} labels={rel} locale={locale} onPlayerClick={onPlayerClick} />
-      </section>
 
       <RelationsMomentsSection
         playerSlug={playerSlug}

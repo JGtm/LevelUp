@@ -236,17 +236,27 @@ Le noyau dur apparaît 3 fois sur la page ; la section détaillée n'ajoute rien
 > Note d'ordre : F est exécuté AVANT D pour stabiliser la structure de page avant d'y
 > ajouter le volet « Quoi de neuf ».
 
-- [ ] F1. Supprimer la section « Noyau dur » détaillée : composant `CoreCards` + son
+- [x] F1. Supprimer la section « Noyau dur » détaillée : composant `CoreCards` + son
       rendu dans `RelationsContent` + le bloc titre/description de section. Supprimer
       les clés i18n devenues orphelines (`core.sectionTitle`, `core.sectionDescription`,
       `core.together`, `core.empty` — VÉRIFIER par grep qu'elles ne sont pas utilisées
       ailleurs avant suppression ; celles partagées avec la carte hero restent).
-- [ ] F2. La carte hero « Noyau dur » et le chip « noyau » du tableau restent inchangés.
+      FAIT : composant + section + les 4 clés orphelines supprimés (grep préalable :
+      les 4 n'étaient utilisées que par la section supprimée ; `core.*` partagées avec
+      la carte résumé conservées). i18n.ts (type + getters) + palmares.toml + manifest
+      régénéré. Docstring d'en-tête de page mise à jour.
+- [x] F2. La carte hero « Noyau dur » et le chip « noyau » du tableau restent inchangés.
       Ajouter dans le pied de la carte hero noyau un lien discret vers la page Escouade :
       FR « Voir l'escouade » / EN « View squad » → route `/players/$playerSlug/squad`
       (nouvelles clés i18n FR+EN).
-- [ ] F3. Purger les tests/snapshots qui référencent CoreCards ; ajouter l'assertion
+      FAIT : clé `core.view_squad` ; `CoreSummaryCard` prend `onViewSquad` (threadé
+      via `RelationsContent` depuis `goToSquad` de la page, même pattern que
+      `goToExplorer`) ; bouton discret en pied de carte (tokens sémantiques only).
+- [x] F3. Purger les tests/snapshots qui référencent CoreCards ; ajouter l'assertion
       inverse (la section n'est plus rendue) dans le test de page.
+      FAIT : aucun test/snapshot ne référençait le composant (grep préalable = 0) ;
+      2 tests ajoutés à `PalmaresRelationsPage.test.tsx` (section absente + pont
+      « Voir l'escouade » présent).
 
 **Gate F** : GATE-WEB + GATE-I18N + grep `CoreCards` = 0 occurrence hors historique git.
 

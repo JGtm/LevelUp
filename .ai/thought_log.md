@@ -1,3 +1,29 @@
+## [2026-07-17] Relations UX — Lot F : dé-redondance noyau dur + pont Escouade (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Décision technique principale** : le noyau dur apparaissait 3 fois (carte hero résumé,
+chip « noyau » du tableau, section détaillée `CoreCards` en bas). Section détaillée
+supprimée (composant + rendu + bloc titre/description). Les 4 clés i18n devenues
+orphelines (`core.section_title`, `core.section_description`, `core.empty`,
+`core.together`) supprimées après grep de non-usage ; les clés `core.*` partagées avec la
+carte résumé conservées. Pont vers Escouade acté : lien discret « Voir l'escouade » /
+« View squad » en pied de la carte résumé noyau (nouvelle clé `core.view_squad`), route
+`/players/$playerSlug/squad` via `goToSquad` threadé (`onViewSquad`) selon le même pattern
+que `goToExplorer`. F exécuté AVANT D (note d'ordre du plan) pour stabiliser la structure
+de page avant le volet « Quoi de neuf ».
+
+**Résultat observé** : `CoreSummaryCard` prend `onViewSquad` (obligatoire) ; couleurs par
+tokens sémantiques uniquement. Grep `CoreCards` sur `apps/` = 0. 2 tests de page ajoutés
+(section détaillée absente + pont Escouade présent).
+
+**Gate F (GATE-WEB + GATE-I18N + grep CoreCards=0)** : manifest régénéré (diff propre :
+4 clés retirées, `view_squad` ajoutée) ; typecheck vert ; lint 0 erreur / 68 warnings
+(baseline, 0 nouveau en zone F) ; vitest `palmares + notifications + stores` → 11 fichiers
+/ 103 tests verts ; grep `CoreCards` = 0.
+
+**Prochaine étape** : lot D (volet « Quoi de neuf », full-stack).
+
 ## [2026-07-17] Relations UX — Lot C : toggle « jamais affrontés » (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété.

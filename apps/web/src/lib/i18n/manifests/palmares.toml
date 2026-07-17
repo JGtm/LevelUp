@@ -304,24 +304,6 @@ en = "{count} frags dealt"
 fr = "{count} morts subies"
 en = "{count} deaths suffered"
 
-# ─── Relations - Section noyau dur ─────────────────────────────────────────
-
-[palmares.relations.core.section_title]
-fr = "Noyau dur"
-en = "Inner circle"
-
-[palmares.relations.core.section_description]
-fr = "Les joueurs que tu retrouves le plus souvent, parfois avec toi, parfois en face."
-en = "The players you keep running into, sometimes with you, sometimes against you."
-
-[palmares.relations.core.empty]
-fr = "Aucun joueur ne remplit encore les critères du noyau dur."
-en = "No player meets the inner-circle criteria yet."
-
-[palmares.relations.core.together]
-fr = "{count} matchs ensemble"
-en = "{count} matches together"
-
 # ─── Relations - Carte résumé noyau dur (KPI) ──────────────────────────────
 
 [palmares.relations.core.with_them]
@@ -351,6 +333,10 @@ en = "show {count} more"
 [palmares.relations.core.collapse]
 fr = "réduire"
 en = "collapse"
+
+[palmares.relations.core.view_squad]
+fr = "Voir l'escouade"
+en = "View squad"
 
 # ─── Relations - Filtre vide (chip sans résultat) ──────────────────────────
 
