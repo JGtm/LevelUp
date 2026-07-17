@@ -111,3 +111,38 @@ func TestPrestigeTelemetryDiagRepo_AggregatesBySource(t *testing.T) {
 		t.Errorf("pilot_mode acceptance: got %v want 0", pilot.AcceptanceRate)
 	}
 }
+
+// TestPrestigeTelemetryDiagRepo_MissingTableReturnsEmpty : sur une player DB sans
+// la table prestige_telemetry (legacy pré-migration), le diag doit être best-effort
+// — un diag VIDE sans erreur, jamais un 500. Contrat de dégradation ADR 0020.
+func TestPrestigeTelemetryDiagRepo_MissingTableReturnsEmpty(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "stats.duckdb")
+	db, err := OpenReadWrite(path) // aucune migration → table absente
+	if err != nil {
+		t.Fatalf("OpenReadWrite: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	repo := NewPrestigeTelemetryDiagRepo(&PlayerDB{Player: db})
+	diag, err := repo.GetPrestigeTelemetryDiag(context.Background(), "JGtm")
+	if err != nil {
+		t.Fatalf("table absente → best-effort nil error attendu, obtenu %v", err)
+	}
+	if diag == nil || len(diag.BySource) != 0 || diag.TotalEvents != 0 {
+		t.Fatalf("table absente → diag vide attendu, obtenu %+v", diag)
+	}
+	if diag.PlayerSlug != "JGtm" {
+		t.Errorf("slug propagé attendu même sur diag vide, obtenu %q", diag.PlayerSlug)
+	}
+}
+
+// TestPrestigeTelemetryDiagRepo_NilPlayerDBErrors : garde nil — une PlayerDB nil ou
+// sans connexion Player produit une erreur explicite (pas de déréférencement nil).
+func TestPrestigeTelemetryDiagRepo_NilPlayerDBErrors(t *testing.T) {
+	if _, err := NewPrestigeTelemetryDiagRepo(nil).GetPrestigeTelemetryDiag(context.Background(), "x"); err == nil {
+		t.Error("PlayerDB nil → erreur attendue")
+	}
+	if _, err := NewPrestigeTelemetryDiagRepo(&PlayerDB{}).GetPrestigeTelemetryDiag(context.Background(), "x"); err == nil {
+		t.Error("PlayerDB.Player nil → erreur attendue")
+	}
+}

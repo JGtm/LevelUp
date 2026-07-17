@@ -1,3 +1,53 @@
+## [2026-07-17] Audit + renforcement couverture de tests du train backlog 2026-07 (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Contexte** : passe de vérification INDÉPENDANTE de la couverture de tests du code neuf/modifié
+du train (23 commits). Mesure par fonction (`go tool cover -func`) sur les packages neufs + audit
+web (sous-agent, vitest v8 coverage), pour combler les trous CRITIQUES réels (branches best-effort,
+cas limites) sans gonfler la métrique. Aucun code applicatif touché — tests uniquement.
+
+**Mesures avant (packages neufs)** : prestigetuning 89.4%, relations 97.0%, notifications/external
+78.6%, notify 75.0%, prestige 83.9%, api/handlers 66.9%, ops 45.1%, halo_5/migrations 93.3%,
+platform/duckdb 20.5% (largement I/O CGO). Constat : la LOGIQUE PURE du train était déjà bien
+couverte par les sous-agents ; les trous restants étaient des BRANCHES DE DÉGRADATION best-effort
+et des gardes nil, non exercées.
+
+**Trous réels comblés (7 fichiers de test, +323 L, 0 code applicatif)** :
+- `internal/prestige/enums_test.go` — `IsValidChallengeSource` (aucun test direct) : garde-rail
+  « user/pilot_mode/coach valides ; unknown/vide/casse/garbage rejetés » (invariant « unknown jamais écrit »).
+- `internal/ops/media_tooling_test.go` — branche `Summary` « capacités non vérifiées » (ProbeErr,
+  non couverte) + `InspectMediaTooling` ffmpeg ABSENT (PATH vide → dégradation gracieuse, 0 exec, 0 panic).
+- `internal/api/wire/post_sync_rival_encounters_test.go` — best-effort : erreur détecteur absorbée,
+  erreur d'émission `continue`, `newRivalDetectorForPDB(nil/pdb sans Player)` → nil (était 0%).
+- `internal/notifications/external/dispatcher_test.go` — `decodeParams` (nil/vide/JSON valide/illisible),
+  `appLink` (construction + normalisation slashes + cas « pas de lien »), branche erreur `deliver`
+  (appel synchrone direct pour éviter la course goroutine). Couverture external 78.6% → 96.4%.
+- `internal/notify/coach_test.go` — `coachCategoryLabel` (lang vide/non gérée → repli FR ; catégorie
+  vide → "-"), `CategoryOrRaw`, `coachColor` (branche "error" non couverte).
+- `internal/platform/duckdb/prestige_telemetry_diag_repo_test.go` (integration) — best-effort table
+  absente (legacy pré-migration → diag vide, pas de 500) + garde nil PlayerDB.
+- `apps/web/.../OutcomeSequenceTape.test.tsx` — GAP #1 (glue `handleClick` non testée) : chemin nominal
+  convertFromPixel→matchIndexAtX + fallback dataIndex (conversion qui lève / NaN / sans chart / aucune résolution).
+
+**Déjà suffisant (preuves, non gonflé)** : `relations.IsRevived` (revived_test.go), fallback télémétrie
+`unknown` (diag integration test), pattern immutable assets (spa_static_cache_test.go : hashé/index.html/304),
+weaponRegistry H5 (module Go avec tests dédiés — PAS un module web malgré le libellé `feat(web)`),
+skillTiers + query keys locale (garde-rails web verts). Web : 218 tests scope touché, 0 échec.
+GAP web #2 (payload prefs corrompu) / #3 (tri reunions) laissés : quasi-doublons d'un helper déjà
+validé, risque admis faible — pas de test cosmétique (CLAUDE.md).
+
+**Bugs réels découverts** : aucun. Toutes les assertions matchent le comportement réel du code.
+
+**Gates** : `go build ./...` OK, `go vet ./...` OK, `go test ./...` PASS (exit 0),
+`go test -tags=integration ./internal/platform/duckdb/ -run PrestigeTelemetryDiagRepo` PASS ;
+web `tsc -b` OK, `vitest run` scope touché 218/218 + OutcomeSequenceTape 11/11.
+
+**Conclusion** : logique du train couverte ; les branches de dégradation best-effort et gardes nil
+qui restaient muettes sont désormais verrouillées. Prochaine étape : none (train prêt côté tests).
+
+---
+
 ## [2026-07-17] Audit + correction couverture de logging du train backlog 2026-07 (routing best-effort) (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété.

@@ -121,3 +121,49 @@ func TestBuildCoachEmbed_LinkFieldOptional(t *testing.T) {
 		}
 	}
 }
+
+// TestCoachCategoryLabel_LangFallback : lang vide → défaut FR (un relais sans lang
+// configuré doit rester humanisé, pas retomber sur la clé brute) ; catégorie
+// inconnue → clé brute ; catégorie vide → "-" (jamais un libellé vide dans l'embed).
+func TestCoachCategoryLabel_LangFallback(t *testing.T) {
+	if got := coachCategoryLabel("milestone_unlocked", ""); got != "Palier débloqué" {
+		t.Errorf("lang vide → libellé FR par défaut attendu, obtenu %q", got)
+	}
+	if got := coachCategoryLabel("milestone_unlocked", "es"); got != "Palier débloqué" {
+		t.Errorf("lang non gérée → repli FR attendu, obtenu %q", got)
+	}
+	if got := coachCategoryLabel("cat_inconnue", "fr"); got != "cat_inconnue" {
+		t.Errorf("catégorie inconnue → clé brute attendue, obtenu %q", got)
+	}
+	if got := coachCategoryLabel("", "fr"); got != "-" {
+		t.Errorf("catégorie vide → \"-\" attendu, obtenu %q", got)
+	}
+}
+
+// TestCategoryOrRaw : champ « code » technique — clé brute si présente, "-" sinon.
+func TestCategoryOrRaw(t *testing.T) {
+	if got := (CoachEmbedInput{Category: "pattern_lever"}).CategoryOrRaw(); got != "pattern_lever" {
+		t.Errorf("catégorie présente → clé brute, obtenu %q", got)
+	}
+	if got := (CoachEmbedInput{}).CategoryOrRaw(); got != "-" {
+		t.Errorf("catégorie vide → \"-\", obtenu %q", got)
+	}
+}
+
+// TestCoachColor_AllSeverities verrouille le mapping severity→couleur, dont la
+// branche "error" (colorError) non couverte par les embeds ci-dessus.
+func TestCoachColor_AllSeverities(t *testing.T) {
+	cases := map[string]int{
+		"success":  colorSuccess,
+		"warn":     colorWarning,
+		"error":    colorError,
+		"info":     colorBlurple,
+		"":         colorBlurple,
+		"inconnue": colorBlurple,
+	}
+	for sev, want := range cases {
+		if got := coachColor(sev); got != want {
+			t.Errorf("coachColor(%q) = %d, want %d", sev, got, want)
+		}
+	}
+}
