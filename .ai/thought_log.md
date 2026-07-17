@@ -1,3 +1,52 @@
+## [2026-07-17] Explorer briefing V4 — bloc FINITIONS + DETTES + CLÔTURE (Phases 5-8) (branche feat/explorer-briefing-compact)
+
+**Statut** : Complété (bloc FINITIONS Phases 5-8 CLOSES ; le chantier V4 est intégralement
+exécuté côté agent). NON committé (superviseur committe le bloc + clôture git ; merge main =
+deploy prod auto → après revue visuelle utilisateur). Plan :
+`.ai/V7/PLAN_EXPLORER_BRIEFING_V4_2026-07.md` (Phases 5-8 cochées + blocs GATE VERT + Découvertes 16-18).
+
+**Décisions techniques principales** :
+- Phase 5 (DEC-TOOLTIP) : `info-tooltip.tsx` réécrit en `createPortal(panel, document.body)` +
+  `position: fixed` (calquée sur `components/ui/tooltip.tsx`) — position calculée en
+  `useLayoutEffect` depuis `buttonRef.getBoundingClientRect()` (centré au-dessus, repli en
+  dessous ; flèche pointant le centre du bouton via `arrowLeft`). Fermeture clic extérieur +
+  scroll(capture) + resize + blur/mouseleave. `role`/aria/tokens conservés. `KpiCard` NON touché.
+  Test neuf `info-tooltip.test.tsx` (portal hors clippeur, ouverture/fermeture, scroll, aria).
+- Phase 6 (DEC-MVP) : `ExplorerMatchesTable.highlight.ts` neuf IMPORTE `cellState`/`cellStyle`
+  de `MatchScoreboard.logic` (3e surface, 0 recopie — CLAUDE.md §6) ; `computeColumnExtremes`
+  sur TOUT le scope (`rows`), garde ≥ 2 ; colonnes kills/deaths(inversé)/kda/perf_score/
+  score_label. Câblage : `highlightExtremes = useMemo(…,[rows])` → `style` sur le `<td>` (calqué
+  leaderboard), indépendant du tri/pagination. Score = `ownTeamScore` (1er entier « A - B ») ;
+  réserve unité multi-modes = Découverte-16. Tests : 7 purs + 3 rendu (`fontWeight`, jsdom-safe).
+- Phase 7 (DEC-PAD/DEC-10) : padding `td`/`th` `py-1.5`→`py-1` (`px-2` conservé) ; `tip_dimensions`
+  reformulé FR « Où vous performez le mieux et le moins bien selon la carte, le mode ou la
+  sélection. » + EN parité (remplace l'édition intermédiaire committée) ; manifests régénérés.
+- Phase 8 (DEC-DEBT) : `record_label` (morte, 0 lecteur) purgée (226 clés) ; eslint-disable
+  d'`ExplorerPage` = `[!]` AUCUN inutile (vérifié `--report-unused-disable-directives`) ;
+  god-file split = `[!]` DIFFÉRÉ (chantier séparé documenté, recette Découverte-18 — issue OR de
+  §1.10, « ne pas forcer un split risqué en fin de chantier ») ; dette `SquadImpactScoreboard`
+  (2e copie du style) consignée Découverte-17 ; changelogs EN+FR (bullets React+Go V4, parité).
+
+**Gates (bloc Phases 5-8, exécutés ce jour, un par phase + passe finale)** : `npm run typecheck`
+(`.tmp` purgé) = exit 0, 0 erreur ; `npm run test:run` (hors sandbox) = **264 fichiers, 2313
+passed, 14 skipped** (+15 tests vs Phase 4 : 5 info-tooltip + 7 highlight purs + 3 rendu ; AUCUN
+skip ajouté) ; `npm run lint` = **0 erreur** (68 warnings baseline gelée) ; greps de clôture
+tous verts (`createPortal` présent ; `MatchScoreboard.logic` importé par le sibling ; 0 nouveau
+`color-mix(in oklab` sous features/explorer ; 0 `record_label` ; 0 `Sparkline`/`trend` sous
+features/explorer ; 0 `RankDeltas` go-api ; `KpiCard.tsx` intact). **AUCUN fichier Go touché**
+(git status = 0 `.go`) → gate Go inchangé depuis le VERT de la Phase 2.
+
+**Résultats observés** : worktree = 8 modifiés (plan, info-tooltip.tsx, ExplorerMatchesTable.tsx
++ .test.tsx, explorer.toml + generated, CHANGELOG EN+FR) + 3 neufs (info-tooltip.test.tsx,
+ExplorerMatchesTable.highlight.ts + .test.ts). Nouveaux fichiers ≤ 500 L. Padding `th`/`td`
+compacté, tooltips non clippés, MVP/LVP surlignés — tous à confirmer en revue visuelle.
+
+**Prochaine étape / conclusion** : commit du bloc par le superviseur + clôture git ; revue
+VISUELLE utilisateur (Explorer mode Matchs, dev local :8000) des 5 points « À vérifier
+visuellement » du plan (dont réserve highlight Score multi-modes Découverte-16), PUIS décision
+de merge main (= deploy prod auto). Chantier différé à planifier : split `ExplorerMatchesTable`
+(Découverte-18).
+
 ## [2026-07-17] Explorer briefing V4 — bloc frontend structure (Phases 3-4) (branche feat/explorer-briefing-compact)
 
 **Statut** : En cours (bloc FRONTEND STRUCTURE Phases 3-4 COMPLÉTÉ ; restent finitions Phases

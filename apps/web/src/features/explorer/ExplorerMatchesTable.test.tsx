@@ -201,3 +201,41 @@ describe('ExplorerMatchesTable — tri CLIENT par en-têtes (mode Matchs)', () =
     expect(within(dateBtn).getByText('▲')).toBeInTheDocument()
   })
 })
+
+describe('ExplorerMatchesTable — surlignage MVP/LVP (DEC-MVP)', () => {
+  // NB : on assert `td.style.fontWeight` (600 best / 500 worst / '' neutre) plutôt
+  // que backgroundColor : le CSSOM jsdom peut ignorer les valeurs `color-mix(...)`.
+  // La teinte/couleur du token est vérifiée dans ExplorerMatchesTable.highlight.test.ts.
+  it('surligne le meilleur (600) et le pire (500) des Frags sur tout le scope', () => {
+    const rows = [
+      makeRow(1, { map_ui: 'Alpha', kills: 33 }),
+      makeRow(2, { map_ui: 'Bravo', kills: 17 }),
+      makeRow(3, { map_ui: 'Charlie', kills: 25 }),
+    ]
+    renderWithProviders(<ExplorerMatchesTable rows={rows} playerSlug="me" sortable />)
+    expect((screen.getByText('33').closest('td') as HTMLElement).style.fontWeight).toBe('600')
+    expect((screen.getByText('17').closest('td') as HTMLElement).style.fontWeight).toBe('500')
+    // Valeur intermédiaire → neutre.
+    expect((screen.getByText('25').closest('td') as HTMLElement).style.fontWeight).toBe('')
+  })
+
+  it('colonne uniforme (Morts toutes égales) → aucune cellule surlignée', () => {
+    const rows = [makeRow(1, { deaths: 5 }), makeRow(2, { deaths: 5 })]
+    renderWithProviders(<ExplorerMatchesTable rows={rows} playerSlug="me" />)
+    for (const cell of screen.getAllByText('5')) {
+      expect((cell.closest('td') as HTMLElement).style.fontWeight).toBe('')
+    }
+  })
+
+  it('surlignage indépendant du tri : le max des Frags reste surligné après tri', () => {
+    const rows = [
+      makeRow(1, { map_ui: 'Alpha', kills: 33 }),
+      makeRow(2, { map_ui: 'Bravo', kills: 17 }),
+      makeRow(3, { map_ui: 'Charlie', kills: 25 }),
+    ]
+    renderWithProviders(<ExplorerMatchesTable rows={rows} playerSlug="me" sortable />)
+    fireEvent.click(screen.getByRole('button', { name: 'Trier par Frags' }))
+    expect((screen.getByText('33').closest('td') as HTMLElement).style.fontWeight).toBe('600')
+    expect((screen.getByText('17').closest('td') as HTMLElement).style.fontWeight).toBe('500')
+  })
+})
