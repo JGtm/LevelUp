@@ -135,25 +135,32 @@ figé (matchs communs DESC). Objectif : en-têtes cliquables, tri client.
 mais n'a aucun clic. Les cartes rivaux deviennent le seul endroit cliquable (la
 mini-frise `OutcomeSparkline` du hero bête noire reste décorative `aria-hidden`).
 
-- [ ] B1. `OutcomeSequenceTape.tsx` : prop optionnelle `onMatchClick?: (matchId: string) => void`.
+- [x] B1. `OutcomeSequenceTape.tsx` : prop optionnelle `onMatchClick?: (matchId: string) => void`.
       Sans la prop, comportement STRICTEMENT identique (5 autres consommateurs — zéro
       régression : ne rien changer d'autre à l'option ECharts par défaut).
-- [ ] B2. Résolution du match cliqué : extraire un helper pur exporté
+      FAIT : `onEvents`/`onChartReady` passés SEULEMENT si la prop est fournie
+      (`interactiveProps` conditionnel) ; option ECharts inchangée hors curseur (B3).
+- [x] B2. Résolution du match cliqué : extraire un helper pur exporté
       `matchIndexAtX(runs, xValue)` (xValue continu 0..xMax → index global borné →
       match). Câblage : `onEvents={{ click }}` + instance chart (`onChartReady`) +
       `convertFromPixel` pour retrouver xValue depuis `event.event.offsetX/offsetY`.
       Cas dégradé : si la conversion échoue, retomber sur le premier match du run
-      cliqué (`params.dataIndex`).
-- [ ] B3. Quand `onMatchClick` est fourni : `cursor: 'pointer'` sur les rects du
+      cliqué (`params.dataIndex`). FAIT : helper (+ `toRuns`/`startOf`/types) déplacé
+      dans `outcomeSequence.ts` (module pur — évite un export de valeur depuis un
+      fichier composant, react-refresh) ; le tape ré-exporte les TYPES pour les 5
+      consommateurs.
+- [x] B3. Quand `onMatchClick` est fourni : `cursor: 'pointer'` sur les rects du
       renderItem (propriété zrender par élément), pas de changement visuel autre.
-- [ ] B4. `RelationsRivalryCards.tsx` : accepter `onMatchClick` et le passer au tape ;
+      FAIT : `rect.cursor` posé uniquement si `interactive` (sinon clé absente).
+- [x] B4. `RelationsRivalryCards.tsx` : accepter `onMatchClick` et le passer au tape ;
       `RelationsMomentsSection.tsx` : construire la navigation
       `navigate({ to: '/players/$playerSlug/matches/$matchId', params })` (playerSlug
-      déjà en props) et la passer aux cartes.
-- [ ] B5. Tests : (a) test unitaire pur de `matchIndexAtX` (bornes : x négatif, x ≥ xMax,
+      déjà en props) et la passer aux cartes. FAIT.
+- [x] B5. Tests : (a) test unitaire pur de `matchIndexAtX` (bornes : x négatif, x ≥ xMax,
       runs vides, run unique) ; (b) test vitest de non-régression : tape SANS prop rend
-      comme avant (mocker `echarts-for-react` — cf. mémoire jsdom, `vi.mock` sinon crash
-      canvas).
+      comme avant (mocker `echarts-for-react`). FAIT : `OutcomeSequenceTape.test.tsx`
+      (a : 4 tests helper ; b : sans prop → aucun `onEvents`/`onChartReady`, avec prop →
+      câblés).
 
 **Gate B** : GATE-WEB + vérification manuelle rapide de 2 consommateurs non modifiés
 (Home, squad synergies) en typecheck (aucune prop requise ajoutée = aucun changement).

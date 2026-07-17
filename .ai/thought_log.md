@@ -1,3 +1,29 @@
+## [2026-07-17] Relations UX — Lot B : duels cliquables vers la match view (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Décision technique principale** : `OutcomeSequenceTape` reçoit une prop optionnelle
+`onMatchClick`. Le câblage ECharts (`onEvents.click` + `onChartReady` pour capter
+l'instance + `convertFromPixel` offset→valeur X) n'est ajouté QUE si la prop est fournie
+→ les 5 autres consommateurs (Home, session-detail, lab, timeseries, squad) sont
+strictement inchangés. Le curseur `pointer` sur les rects du renderItem n'est posé qu'en
+mode interactif. Résolution du match via helper pur `matchIndexAtX(runs, xValue)` (index
+global borné, cas dégradé = 1er match du run via `params.dataIndex`).
+
+**Point de propreté notable** : exporter une VALEUR (`matchIndexAtX`) depuis un fichier de
+composant déclenche `react-refresh/only-export-components`. Extraction du modèle pur
+(types + `toRuns`/`startOf`/`matchIndexAtX`) dans un nouveau module `outcomeSequence.ts` ;
+le tape ré-exporte uniquement les TYPES (frontière stable pour les consommateurs). Conflit
+de types `EChartsType` entre echarts/core et le paquet embarqué par echarts-for-react
+(propriété privée `_ssr`) contourné en typant le param `onChartReady` en `unknown` (cast).
+
+**Gate B (GATE-WEB + typecheck des 2 consommateurs non modifiés)** : typecheck vert
+(couvre Home/Squad — prop optionnelle, aucune régression) ; lint 68 warnings (baseline
+inchangée, 0 nouveau) ; vitest `palmares + notifications + stores + components/charts` →
+27 fichiers / 203 tests verts (nouveau `OutcomeSequenceTape.test.tsx` : 6 tests).
+
+**Prochaine étape** : Lot C (toggle « jamais affrontés »).
+
 ## [2026-07-17] Relations UX — Lot A : tri des colonnes du tableau (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété.

@@ -47,7 +47,17 @@ function toTapePoints(rivalry: RelationRivalry, locale: 'fr' | 'en'): OutcomePoi
   })
 }
 
-function RivalryCard({ rivalry, t, locale }: { rivalry: RelationRivalry; t: MomentsText; locale: 'fr' | 'en' }) {
+function RivalryCard({
+  rivalry,
+  t,
+  locale,
+  onMatchClick,
+}: {
+  rivalry: RelationRivalry
+  t: MomentsText
+  locale: 'fr' | 'en'
+  onMatchClick?: (matchId: string) => void
+}) {
   const tapeLabels: OutcomeSequenceLabels = {
     win: t.outcomeWin,
     loss: t.outcomeLoss,
@@ -74,7 +84,7 @@ function RivalryCard({ rivalry, t, locale }: { rivalry: RelationRivalry; t: Mome
         <p className="shrink-0 text-xs text-muted-foreground">{t.enemyMatches(String(rivalry.enemy_matches))}</p>
       </div>
 
-      <OutcomeSequenceTape matches={tapePoints} labels={tapeLabels} height={64} />
+      <OutcomeSequenceTape matches={tapePoints} labels={tapeLabels} height={64} onMatchClick={onMatchClick} />
 
       {/* compact : taux de victoire récent vs global */}
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
@@ -102,7 +112,15 @@ function RivalryCard({ rivalry, t, locale }: { rivalry: RelationRivalry; t: Mome
   )
 }
 
-export function RelationsRivalryCards({ rivalries, t }: { rivalries: RelationRivalry[]; t: MomentsText }) {
+export function RelationsRivalryCards({
+  rivalries,
+  t,
+  onMatchClick,
+}: {
+  rivalries: RelationRivalry[]
+  t: MomentsText
+  onMatchClick?: (matchId: string) => void
+}) {
   const locale = normalizePalmaresLocale(useAppShellStore((s) => s.locale))
   if (rivalries.length === 0) {
     return <p className="text-sm text-muted-foreground">{t.rivalriesEmpty}</p>
@@ -110,7 +128,7 @@ export function RelationsRivalryCards({ rivalries, t }: { rivalries: RelationRiv
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {rivalries.map((r) => (
-        <RivalryCard key={r.xuid} rivalry={r} t={t} locale={locale} />
+        <RivalryCard key={r.xuid} rivalry={r} t={t} locale={locale} onMatchClick={onMatchClick} />
       ))}
     </div>
   )
