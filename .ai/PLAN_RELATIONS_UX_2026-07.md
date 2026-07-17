@@ -371,35 +371,65 @@ quand une sync ramène un nouveau duel contre un des top rivaux.
   (`/players/{slug}/matches/{match_id}`). `Source` : `post_sync`.
   Params : `gamertag`, `outcome` (win|loss|other), `kills`, `deaths`, `match_id`.
 
-- [ ] E1. `notifications/types.go` : + `CategoryRivalEncounter Category = "rival_encounter"`.
+- [x] E1. `notifications/types.go` : + `CategoryRivalEncounter Category = "rival_encounter"`.
       Synchroniser les 2 dépendants documentés dans l'en-tête du fichier :
       `migration/steps_player_notifications.go` (seed préférence, activée par défaut)
       et le front (E5). Étendre le test du seed.
-- [ ] E2. Détection : méthode de service dédiée (ex.
-      `RelationsService.DetectRivalEncounters(ctx, since time.Time) ([]RivalEncounter, error)`)
+      FAIT : `CategoryRivalEncounter` + ajout à `AllCategories()`. DÉCOUVERTE
+      (vérifiée sur pièces) : il n'existe PAS de seed explicite par catégorie —
+      `steps_player_notifications.go` est un stub doc, et une catégorie sans ligne
+      de préférence est ACTIVE par défaut (`isCategoryEnabledOn` : `sql.ErrNoRows →
+      true`). Aucune migration de seed requise. « Test du seed » satisfait par un
+      garde-rail d'énumération : `TestAllCategories_IncludesRivalEncounter`
+      (service_test.go). Front E5 synchronisé (types.ts + ALL_CATEGORIES).
+- [x] E2. Détection : méthode de service dédiée
+      (`RelationsService.DetectRivalEncounters(ctx, since time.Time) ([]RivalEncounter, error)`)
       — orchestration dans `internal/service`, AUCUN SQL nouveau (réutilise
-      `port.RelationsRepository`). Type de retour dans `internal/domain`. Tests service
-      avec mock repo : duel récent → détecté ; duel antérieur au watermark → non ;
-      plafonds `maxPerSync`/`maxAgeDays` respectés.
-- [ ] E3. `post_sync_deltas.go` : + `LastMatchStartTime` dans `PlayerSnapshot`
-      (via une méthode repo légère — si une donnée équivalente existe déjà dans la
-      snapshot, la réutiliser : VÉRIFIER sur pièces d'abord) ; câbler la détection +
-      l'émission dans la closure post-sync, best-effort (`slog.WarnContext` et on
-      continue, jamais d'échec de sync à cause d'une notif). L'accès au service
-      relations depuis le `ServiceRegistry` suit le modèle des autres services du
-      registry (vérifier l'existant `reg.*` avant d'inventer).
-- [ ] E4. Test wire (`post_sync_deltas_test.go` ou fichier sœur) : sync avec nouveau
-      duel rival → 1 notification `rival_encounter` émise avec les bons params ;
-      sync sans nouveau match → 0 émission (et détection non appelée).
-- [ ] E5. Front notifications : `features/notifications/i18n.ts` +
-      `notif.rival_encounter.title` / `.body` FR+EN
-      (FR titre « Rival croisé », corps « Tu as recroisé {gamertag} : {kills} frags /
-      {deaths} morts » ; EN « Rival encountered » / « You crossed paths with {gamertag}
-      again: {kills} frags / {deaths} deaths ») ; `navigation.ts` : vérifier que la
-      TargetRoute match view est déjà gérée (elle l'est pour d'autres catégories —
-      sinon l'ajouter) ; étendre `navigation.test.ts`.
-- [ ] E6. Logging : émissions et skips significatifs en `slog.InfoContext/DebugContext`
+      `port.RelationsRepository`). Type de retour dans `internal/domain`.
+      FAIT : `relations_rival_notif_service.go` — réutilise `selectTopRivals`
+      (top par matchs en ennemi, seuil `momentsRivalMinEnemyMatches`) +
+      `GetRivalTimeline` (limite `momentsTimelineLimit`), EXACTEMENT le chemin des
+      cartes revanche. Garde-fous nommés `rivalNotifMaxPerSync=3` /
+      `rivalNotifMaxAgeDays=7`. `since` zéro → nil sans requête (anti-burst).
+      `domain.RivalEncounter` (type interne, sans tag JSON). Tests
+      `relations_rival_notif_service_test.go` (mock repo réutilisé) : duel récent →
+      détecté ; duel <= watermark → non ; maxAgeDays filtre le backfill ancien ;
+      plafond maxPerSync garde les 3 plus récents ; watermark zéro court-circuite.
+- [x] E3. `post_sync_deltas.go` : + `LastMatchStartTime` dans `PlayerSnapshot` ;
+      câbler la détection + l'émission dans la closure post-sync, best-effort.
+      FAIT : `LastMatchStartTime` ajouté à `PlayerSnapshot` ; requête watermark
+      inline dans `SnapshotPlayerState` (bloc SharedReadDB déjà ouvert — réutilise
+      la connexion partagée, pattern des lectures kd/winrate existantes ;
+      `MAX(StartTimeCanonicalSQL("r"))` sur `match_participants ⨝ match_registry`,
+      fragment timezone canonique, jamais `start_time` brut). Émission dans un
+      fichier sœur `post_sync_rival_encounters.go` : détecteur bare
+      `service.NewRelationsService(NewCareerRepo(pdb2))` (pattern
+      `newCitationsServiceForPDB` du même fichier — pas de filtres/cross-game
+      inutiles), câblé après `EmitPostSyncDeltas`. Watermark : `after <= before` →
+      SKIP. Best-effort strict (WarnContext, jamais bloquant).
+- [x] E4. Test wire : sync avec nouveau duel rival → 1 notification `rival_encounter`
+      émise avec les bons params ; sync sans nouveau match → 0 émission (détection
+      non appelée).
+      FAIT : `post_sync_rival_encounters_test.go` (détecteur factice +
+      `recordingEmitter`) : nouveau duel → 1 notif (params gamertag/outcome/kills/
+      deaths/match_id, severity success sur win, target_route match view, source
+      post_sync) ; duel perdu → severity info ; watermark inchangé → détecteur JAMAIS
+      appelé + 0 émission ; détecteur nil → no-op.
+- [x] E5. Front notifications : `features/notifications/i18n.ts` +
+      `notif.rival_encounter.title` / `.body` FR+EN ; `navigation.ts` TargetRoute
+      match view ; `navigation.test.ts`.
+      FAIT : `types.ts` (union + ALL_CATEGORIES), `i18n.ts` (categoryLabel +
+      categoryDescription + templates title/body FR+EN — libellés actés),
+      `icons.tsx` (`rival_encounter: IconUser`, complétude du `Record`),
+      `navigation.ts` : la match view est déjà gérée par la PRIORITÉ `target_route`
+      (le backend l'envoie toujours) ; ajout d'un fallback défensif sur
+      `params.match_id`. `navigation.test.ts` : 3 tests dédiés + le validateur de
+      routes accepte les routes dynamiques `/matches/$id` (1er segment). Vitest vert.
+- [x] E6. Logging : émissions et skips significatifs en `slog.InfoContext/DebugContext`
       avec clés structurées (`"rival"`, `"match_id"`, `"duels_new"`).
+      FAIT : émission → `InfoContext` (`rival`, `match_id`, `outcome`) ; skip
+      watermark + total détecté → `DebugContext` (`duels_new`) ; erreurs →
+      `WarnContext`. Zéro erreur avalée.
 
 **Gate E** : GATE-GO **avec** `go test -tags=integration -p 1 ./...` (le lot touche
 `internal/migration/`) + GATE-WEB.
