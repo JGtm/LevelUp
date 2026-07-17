@@ -128,6 +128,63 @@ func TestForward_NilSafe(t *testing.T) {
 	d2.Forward(context.Background(), nil) // notif nil
 }
 
+// TestDecodeParams couvre les trois issues de la désérialisation best-effort des
+// params : payload vide → nil (aucun bruit), JSON valide → map, JSON illisible →
+// nil APRÈS un log Debug (embed sans détails, jamais de crash ni de 500).
+func TestDecodeParams(t *testing.T) {
+	ctx := context.Background()
+	if got := decodeParams(ctx, nil); got != nil {
+		t.Errorf("payload nil → nil attendu, obtenu %v", got)
+	}
+	if got := decodeParams(ctx, json.RawMessage(``)); got != nil {
+		t.Errorf("payload vide → nil attendu, obtenu %v", got)
+	}
+	got := decodeParams(ctx, json.RawMessage(`{"metric":"kills","value":100}`))
+	if got == nil || got["metric"] != "kills" {
+		t.Errorf("JSON valide → map décodée attendue, obtenu %v", got)
+	}
+	if got := decodeParams(ctx, json.RawMessage(`{not-json`)); got != nil {
+		t.Errorf("JSON illisible → nil attendu (dégradation propre), obtenu %v", got)
+	}
+}
+
+// TestAppLink couvre la construction du lien app profond : base + route (avec
+// normalisation des slashes), et les deux cas « pas de lien » (base vide, route
+// vide) qui doivent retourner "" pour omettre le champ.
+func TestAppLink(t *testing.T) {
+	withBase := NewDispatcher(Config{AppBaseURL: "https://app.example.com/"})
+	if got := withBase.appLink("/players/JGtm/matches/m1"); got != "https://app.example.com/players/JGtm/matches/m1" {
+		t.Errorf("lien profond attendu normalisé, obtenu %q", got)
+	}
+	if got := withBase.appLink(""); got != "" {
+		t.Errorf("route vide → pas de lien attendu, obtenu %q", got)
+	}
+	noBase := NewDispatcher(Config{})
+	if got := noBase.appLink("/players/JGtm"); got != "" {
+		t.Errorf("base vide → pas de lien attendu, obtenu %q", got)
+	}
+}
+
+// TestDeliver_NotifierError couvre la branche d'échec best-effort de deliver :
+// l'erreur du notifier est loguée + comptée, mais deliver ne panique pas et
+// retourne proprement (appel synchrone direct pour éviter la course goroutine).
+func TestDeliver_NotifierError(t *testing.T) {
+	fake := &fakeNotifier{calls: make(chan ExternalNotification, 1), err: errInjected}
+	d := newDispatcherWith(t, activeSettings(t), fake)
+	d.deliver(context.Background(), validWebhook, ExternalNotification{Category: "milestone_unlocked"})
+	select {
+	case <-fake.calls:
+	default:
+		t.Fatal("le notifier aurait dû être appelé même en erreur")
+	}
+}
+
+var errInjected = errInjectedType{}
+
+type errInjectedType struct{}
+
+func (errInjectedType) Error() string { return "injected notifier error" }
+
 // assertNoCall vérifie qu'aucun relais n'est reçu dans une courte fenêtre.
 func assertNoCall(t *testing.T, fake *fakeNotifier) {
 	t.Helper()

@@ -9,6 +9,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/notifications"
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // fakeRivalDetector : détecteur factice. Capture l'appel (since) et renvoie les
@@ -102,6 +103,59 @@ func TestEmitRivalEncounters_NoNewMatchSkipsDetection(t *testing.T) {
 	}
 	if len(em.emitted) != 0 {
 		t.Errorf("aucun nouveau match → 0 émission attendue, obtenu %d", len(em.emitted))
+	}
+}
+
+// TestEmitRivalEncounters_DetectorErrorIsBestEffort : une erreur de détection ne
+// doit JAMAIS émettre ni faire échouer le flux (best-effort strict). Le détecteur
+// est bien appelé (watermark avancé) mais son erreur est loguée et absorbée.
+func TestEmitRivalEncounters_DetectorErrorIsBestEffort(t *testing.T) {
+	before := &PlayerSnapshot{LastMatchStartTime: time.Date(2026, 7, 17, 10, 0, 0, 0, time.UTC)}
+	after := &PlayerSnapshot{LastMatchStartTime: time.Date(2026, 7, 17, 12, 0, 0, 0, time.UTC)}
+	det := &fakeRivalDetector{err: errInjected}
+	em := &recordingEmitter{}
+
+	emitRivalEncounters(context.Background(), em, det, "slug", before, after)
+
+	if !det.called {
+		t.Fatal("nouveau match présent → le détecteur doit être appelé avant l'erreur")
+	}
+	if len(em.emitted) != 0 {
+		t.Fatalf("erreur de détection best-effort → 0 émission attendue, obtenu %d", len(em.emitted))
+	}
+}
+
+// TestEmitRivalEncounters_EmitErrorIsBestEffort : si l'émetteur échoue sur un duel,
+// la boucle ne panique pas et poursuit (branche `continue`). Ici failOn cible la
+// catégorie rival → les deux émissions échouent, aucune n'est enregistrée, mais le
+// traitement des duels suivants n'est pas interrompu.
+func TestEmitRivalEncounters_EmitErrorIsBestEffort(t *testing.T) {
+	before := &PlayerSnapshot{LastMatchStartTime: time.Date(2026, 7, 17, 10, 0, 0, 0, time.UTC)}
+	after := &PlayerSnapshot{LastMatchStartTime: time.Date(2026, 7, 17, 12, 0, 0, 0, time.UTC)}
+	det := &fakeRivalDetector{
+		encounters: []domain.RivalEncounter{
+			{Gamertag: "A", MatchID: "m1", Outcome: "win"},
+			{Gamertag: "B", MatchID: "m2", Outcome: "loss"},
+		},
+	}
+	em := &recordingEmitter{failOn: notifications.CategoryRivalEncounter}
+
+	emitRivalEncounters(context.Background(), em, det, "slug", before, after)
+
+	if len(em.emitted) != 0 {
+		t.Fatalf("émetteur en échec → 0 notification enregistrée, obtenu %d", len(em.emitted))
+	}
+}
+
+// TestNewRivalDetectorForPDB_NilReturnsNil : une player DB invalide (nil ou sans
+// Player) produit un détecteur nil → l'émission est proprement sautée en amont
+// (jamais de construction de service sur une DB absente).
+func TestNewRivalDetectorForPDB_NilReturnsNil(t *testing.T) {
+	if d := newRivalDetectorForPDB(nil); d != nil {
+		t.Error("pdb nil → détecteur nil attendu")
+	}
+	if d := newRivalDetectorForPDB(&duckdb.PlayerDB{}); d != nil {
+		t.Error("pdb.Player nil → détecteur nil attendu")
 	}
 }
 

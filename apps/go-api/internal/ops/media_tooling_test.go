@@ -1,6 +1,8 @@
 package ops
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -152,6 +154,50 @@ func TestMediaToolingReport_Summary_FFmpegAbsent(t *testing.T) {
 	out := MediaToolingReport{}.Summary()
 	if !strings.Contains(out, "[KO] ffmpeg") || !strings.Contains(out, "[KO] ffprobe") {
 		t.Errorf("Summary sans ffmpeg/ffprobe devrait les marquer [KO], obtenu:\n%s", out)
+	}
+}
+
+// TestMediaToolingReport_Summary_CapabilitiesProbeErr couvre la branche « ffmpeg
+// présent mais interrogation des capacités échouée » : Summary doit afficher
+// « capacités : non vérifiées » et surtout NE PAS rendre les lignes
+// encodeurs/muxers (qui suggéreraient à tort « tout manquant »).
+func TestMediaToolingReport_Summary_CapabilitiesProbeErr(t *testing.T) {
+	r := MediaToolingReport{
+		FFmpegFound: true, FFmpegPath: "/usr/bin/ffmpeg",
+		FFprobeFound: true, FFprobePath: "/usr/bin/ffprobe",
+		CapabilitiesProbeErr: errors.New("exec: -encoders a échoué"),
+	}
+	out := r.Summary()
+	if !strings.Contains(out, "[??] capacités : non vérifiées") {
+		t.Errorf("Summary devrait signaler les capacités non vérifiées, obtenu:\n%s", out)
+	}
+	if strings.Contains(out, "encodeurs requis") || strings.Contains(out, "muxers requis") {
+		t.Errorf("probe en échec → les lignes encodeurs/muxers ne doivent PAS être rendues (faux « manquant »), obtenu:\n%s", out)
+	}
+}
+
+// TestInspectMediaTooling_FFmpegAbsentGracefulDegradation exerce la sonde quand
+// ffmpeg/ffprobe sont absents du PATH (dégradation gracieuse best-effort) : aucun
+// exec n'est tenté, le rapport reflète l'absence sans erreur de sonde ni panic,
+// et rien n'est marqué « manquant » (on ne SAIT pas — CapabilitiesProbed=false).
+func TestInspectMediaTooling_FFmpegAbsentGracefulDegradation(t *testing.T) {
+	// PATH pointant vers un répertoire vide : lookupBinary ne résout rien.
+	t.Setenv("PATH", t.TempDir())
+	r := InspectMediaTooling(context.Background())
+	if r.FFmpegFound || r.FFprobeFound {
+		t.Fatalf("PATH vide → ffmpeg/ffprobe ne doivent pas être résolus, obtenu %+v", r)
+	}
+	if r.CapabilitiesProbed {
+		t.Error("sans ffmpeg, CapabilitiesProbed doit rester false")
+	}
+	if r.CapabilitiesProbeErr != nil {
+		t.Errorf("sans ffmpeg, aucune erreur de sonde attendue (aucun exec tenté), obtenu %v", r.CapabilitiesProbeErr)
+	}
+	if len(r.MissingEncoders) != 0 || len(r.MissingMuxers) != 0 {
+		t.Errorf("sans probe, rien ne doit être marqué manquant: enc=%v mux=%v", r.MissingEncoders, r.MissingMuxers)
+	}
+	if hs := r.ToHealthStatus(); hs.FFmpeg || hs.FFprobe || hs.FFmpegVersion != "" {
+		t.Errorf("la projection /health doit refléter l'absence proprement, obtenu %+v", hs)
 	}
 }
 
