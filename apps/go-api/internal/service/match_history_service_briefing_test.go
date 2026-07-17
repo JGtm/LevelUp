@@ -632,3 +632,62 @@ func TestBuildBriefingScope_PeakRankNilWhenNoTier(t *testing.T) {
 		t.Errorf("PeakRanks want nil (aucun palier), got %+v", s.PeakRanks)
 	}
 }
+
+func TestBuildBriefingScope_MinMaxTriptych(t *testing.T) {
+	// Triptyques FDA & Perf (DP-1/DEC-MINMAX). Dataset hétérogène ; r.KDA posé = net
+	// natif par match (k + a/3 − d) pour que l'agrégat (moyenne des nets) soit encadré
+	// par min/max — sinon l'ordre serait purement cosmétique (cf. Découverte-2 du plan).
+	mk := func(id string, daysAgo, kills, deaths, assists int, perf float64) domain.MatchHistoryRawRow {
+		r := briefingRaw(id, daysAgo, domain.OutcomeWin, kills, deaths, assists, perf, "map1", "Aquarius", "Slayer", "Arène")
+		net := float64(kills) + float64(assists)/3.0 - float64(deaths)
+		r.KDA = &net
+		return r
+	}
+	rows := []domain.MatchHistoryRawRow{
+		mk("a", 2, 8, 6, 6, 40),  // net 4.0
+		mk("b", 1, 16, 4, 3, 90), // net 13.0
+		mk("c", 0, 6, 9, 9, 62),  // net 0.0
+	}
+	s := buildBriefingScope(rows)
+	// FDA : min = plus bas net (0.0) ; max (peak) = plus haut net (13.0).
+	if s.MinKDA == nil || *s.MinKDA != 0.0 {
+		t.Errorf("MinKDA want 0.0 (min r.KDA), got %v", s.MinKDA)
+	}
+	if s.PeakKDA == nil || *s.PeakKDA != 13.0 {
+		t.Errorf("PeakKDA want 13.0 (max r.KDA), got %v", s.PeakKDA)
+	}
+	// Perf : min 40, max 90, moyenne (40+90+62)/3 = 64.
+	if s.MinPerf == nil || *s.MinPerf != 40 {
+		t.Errorf("MinPerf want 40, got %v", s.MinPerf)
+	}
+	if s.MaxPerf == nil || *s.MaxPerf != 90 {
+		t.Errorf("MaxPerf want 90, got %v", s.MaxPerf)
+	}
+	if s.AvgPerf == nil || math.Abs(*s.AvgPerf-64) > 1e-9 {
+		t.Errorf("AvgPerf want 64, got %v", s.AvgPerf)
+	}
+	// Ordre des triptyques min ≤ moyenne ≤ max. Perf EXACT (moyenne arithmétique) ;
+	// FDA garanti par r.KDA = net natif (la moyenne des nets est encadrée par min/max).
+	if !(*s.MinPerf <= *s.AvgPerf && *s.AvgPerf <= *s.MaxPerf) {
+		t.Errorf("ordre triptyque Perf min ≤ moy ≤ max violé : %v / %v / %v", *s.MinPerf, *s.AvgPerf, *s.MaxPerf)
+	}
+	if !(*s.MinKDA <= s.KDA && s.KDA <= *s.PeakKDA) {
+		t.Errorf("ordre triptyque FDA min ≤ kda ≤ peak violé : %v / %v / %v", *s.MinKDA, s.KDA, *s.PeakKDA)
+	}
+}
+
+func TestBuildBriefingScope_MinMaxNilWhenAbsent(t *testing.T) {
+	// Aucun r.KDA ni PerformanceScore (rows nues) → bornes min/max ET moyenne perf nil
+	// (le front n'affiche alors que la moyenne FDA agrégée, sans « — » parasite).
+	rows := []domain.MatchHistoryRawRow{
+		{MatchID: "a", Outcome: domain.OutcomeWin, Kills: 10, Deaths: 5, Assists: 2},
+		{MatchID: "b", Outcome: domain.OutcomeLoss, Kills: 5, Deaths: 10, Assists: 1},
+	}
+	s := buildBriefingScope(rows)
+	if s.MinKDA != nil || s.PeakKDA != nil {
+		t.Errorf("MinKDA/PeakKDA want nil (aucun r.KDA), got %v / %v", s.MinKDA, s.PeakKDA)
+	}
+	if s.MinPerf != nil || s.MaxPerf != nil || s.AvgPerf != nil {
+		t.Errorf("MinPerf/MaxPerf/AvgPerf want nil (aucun score), got %v / %v / %v", s.MinPerf, s.MaxPerf, s.AvgPerf)
+	}
+}

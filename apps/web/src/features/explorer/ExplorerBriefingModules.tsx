@@ -3,13 +3,14 @@
  *
  * Rendus sous le socle quand l'échantillon est suffisant :
  *   - Dimensions (par carte / mode / playlist) : top/flop avec note (palier 1..5).
- *   - 4e colonne scindée : « Par contexte » (solo/escouade) empilé sur le Classement
- *     par chaîne (RankedBlock, DEC-LAYOUT V4) ; gaté capability 'ranked'.
+ *   - « Par contexte » (solo/escouade) ET Classement par chaîne (RankedBlock, gaté
+ *     capability 'ranked') : blocs SIBLINGS de la grille « Par… » (DP-3 — plus de 4e
+ *     colonne empilée ; chacun est une cellule de la grille adaptative).
  *   - Moments forts (dominance) : bande nue.
  *
- * La Meilleure série reste une tuile du socle (ExplorerBriefingTiles). Chaque module
- * s'omet proprement si son bloc backend est nil (dégradation par omission, jamais de
- * placeholder vide ni de NaN). Tokens sémantiques uniquement.
+ * Les Séries marquantes restent une tuile du socle (ExplorerBriefingTiles). Chaque
+ * module s'omet proprement si son bloc backend est nil (dégradation par omission,
+ * jamais de placeholder vide ni de NaN). Tokens sémantiques uniquement.
  */
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useCapability } from '@/lib/capabilities/capabilities'
@@ -92,31 +93,27 @@ export function ExplorerBriefingModules({
   const contextSplit = briefing.context_split ?? null
   const ranked = briefing.ranked ?? null
   const showRanked = hasRanked && ranked != null && (ranked.kinds?.length ?? 0) > 0
-  // 4e cellule de la rangée « Par… » : empile « Par contexte » (si présent) + le
-  // Classement par chaîne (si ranked + capability). Rendue dès qu'un des deux existe.
-  const showSplitColumn = contextSplit != null || showRanked
+  // « Par contexte » et le Classement par chaîne sont des blocs SIBLINGS de la grille
+  // « Par… » (DP-3 : plus de 4e colonne empilée) — cette garde n'indique que leur
+  // présence, pour décider du rendu (et de l'early-return) de la grille.
+  const hasContextOrRanked = contextSplit != null || showRanked
   // Moments forts : carte omise si aucune catégorie non nulle (item 13).
   const dominance = briefing.dominance ?? null
   const showDominance = dominance != null && DOMINANCE_ITEMS.some((it) => (dominance[it.field] ?? 0) > 0)
-  if (dimensions.length === 0 && !showSplitColumn && !showDominance) return null
+  if (dimensions.length === 0 && !hasContextOrRanked && !showDominance) return null
 
   return (
     <div className="space-y-2 pt-1">
-      {/* Rangée « Par… » adaptative (DEC-GRID : auto-fit/minmax → jamais de trou en
-          fin de rangée) : cartes de dimension + 4e cellule « contexte + Classement ». */}
-      {(dimensions.length > 0 || showSplitColumn) && (
+      {/* Rangée « Par… » adaptative (DEC-GRID : auto-fit/minmax → jamais de trou en fin
+          de rangée) : cartes de dimension + « Par contexte » + Classement, tous SIBLINGS
+          de la MÊME grille (DP-3 — plus d'empilement en 4e colonne). */}
+      {(dimensions.length > 0 || hasContextOrRanked) && (
         <div className="grid grid-cols-1 gap-2 sm:[grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
           {dimensions.map((d) => (
             <DimensionCard key={d.dimension} dim={d} t={t} hideDelta={hideDelta} />
           ))}
-          {showSplitColumn && (
-            <div className="flex flex-col gap-2">
-              {contextSplit != null && <ContextSplitCard split={contextSplit} t={t} />}
-              {showRanked && ranked != null && (
-                <RankedBlock ranked={ranked} t={t} locale={locale} />
-              )}
-            </div>
-          )}
+          {contextSplit != null && <ContextSplitCard split={contextSplit} t={t} />}
+          {showRanked && ranked != null && <RankedBlock ranked={ranked} t={t} locale={locale} />}
         </div>
       )}
       {showDominance && (
@@ -173,8 +170,12 @@ function DimensionRow({
       <span className="min-w-0 flex-1 truncate text-foreground" title={entry.label}>
         {entry.label}
       </span>
-      <span className="shrink-0 tabular-nums text-muted-foreground">
-        {t('explorer.briefing.dim_matches', { n: entry.matches })}
+      {/* DP-10 : nombre seul ; le libellé « X matchs » reste accessible au survol (title). */}
+      <span
+        className="shrink-0 tabular-nums text-muted-foreground"
+        title={t('explorer.briefing.dim_matches', { n: entry.matches })}
+      >
+        {entry.matches}
       </span>
       <span className="w-10 shrink-0 text-right tabular-nums font-semibold" style={{ color: winRateColor(wr) }}>
         {formatPercentInt(wr)}
@@ -213,6 +214,7 @@ function DimensionRow({
 function ContextSplitCard({ split, t }: { split: ExplorerBriefingContextSplit; t: T }) {
   return (
     <BriefingSectionCard
+      className="h-full"
       title={
         <span className="inline-flex items-center gap-1.5">
           {t('explorer.briefing.context_split_title')}
@@ -242,8 +244,12 @@ function ContextSplitRow({
       <span className="min-w-0 flex-1 truncate text-foreground" title={label}>
         {label}
       </span>
-      <span className="shrink-0 tabular-nums text-muted-foreground">
-        {t('explorer.briefing.dim_matches', { n: group.matches })}
+      {/* DP-10 : nombre seul ; le libellé « X matchs » reste accessible au survol (title). */}
+      <span
+        className="shrink-0 tabular-nums text-muted-foreground"
+        title={t('explorer.briefing.dim_matches', { n: group.matches })}
+      >
+        {group.matches}
       </span>
       <span
         className="w-10 shrink-0 text-right tabular-nums font-semibold"

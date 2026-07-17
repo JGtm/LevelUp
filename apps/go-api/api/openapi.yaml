@@ -5045,6 +5045,15 @@ components:
           matches:
               format: int64
               type: integer
+          max_perf:
+              format: double
+              type: number
+          min_kda:
+              format: double
+              type: number
+          min_perf:
+              format: double
+              type: number
           peak_kda:
               format: double
               type: number

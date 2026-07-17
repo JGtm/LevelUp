@@ -4,7 +4,8 @@
  * Extraite du Strip (DEC-1, V3 compaction) pour être partagée avec les tuiles
  * Classement/Séries (ExplorerBriefingTiles) sans cycle d'import. Chrome = KpiCard
  * + barre d'accent optionnelle ; label COURT (uppercase) + icône (i) optionnelle
- * (tooltip de légende, V3 amendement) + valeur (bold, tabular) + sous-texte
+ * (tooltip de légende, V3 amendement) + valeur (bold, tabular, CENTRÉE — DP-8,
+ * cohérent avec les triptyques FDA/Perf et le ruban OutcomeBar) + sous-texte
  * optionnel. Tokens sémantiques uniquement.
  */
 import type { ReactNode } from 'react'
@@ -29,7 +30,7 @@ export function BriefingTile({ label, value, info, sub, accent }: TileProps) {
           <p className="text-3xs uppercase tracking-wide text-muted-foreground">{label}</p>
           {info}
         </div>
-        <div className="mt-0.5 text-xl font-bold tabular-nums leading-tight text-foreground">
+        <div className="mt-0.5 text-center text-xl font-bold tabular-nums leading-tight text-foreground">
           {value}
         </div>
         {sub && <div className="mt-0.5 text-2xs text-muted-foreground">{sub}</div>}

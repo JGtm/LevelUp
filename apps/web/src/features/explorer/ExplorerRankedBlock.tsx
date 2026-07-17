@@ -1,9 +1,10 @@
 /**
- * ExplorerRankedBlock — bloc « Classement » du briefing (4e colonne, DEC-LAYOUT).
+ * ExplorerRankedBlock — bloc « Classement » du briefing (DP-3 : cellule SIBLING de la
+ * grille « Par… », plus empilé en 4e colonne).
  *
- * Rendu comme BriefingSectionCard, empilé sous « Par contexte » dans la rangée
- * « Par… » (ExplorerBriefingModules). UNE ligne PAR CHAÎNE `(rating_type,
- * playlist_group)` de `ranked.kinds` (jamais de flèche inter-chaînes, DEC-1) :
+ * Rendu comme BriefingSectionCard (cellule de la grille adaptative « Par… », aux côtés
+ * des dimensions et de « Par contexte » — ExplorerBriefingModules). UNE ligne PAR CHAÎNE
+ * `(rating_type, playlist_group)` de `ranked.kinds` (jamais de flèche inter-chaînes, DEC-1) :
  * « {TYPE}{ · label de chaîne si le type a ≥ 2 chaînes} · {progression début → fin}
  * · {±x pt/match coloré} ». Le label de chaîne est résolu par `lusrChainLabel`
  * (career). Les helpers de progression/placement (D-C/D-D) vivent ici (déplacés de
@@ -91,6 +92,7 @@ export function RankedBlock({
   for (const k of kinds) countByType.set(k.kind, (countByType.get(k.kind) ?? 0) + 1)
   return (
     <BriefingSectionCard
+      className="h-full"
       title={
         <span className="inline-flex items-center gap-1.5">
           {t('explorer.briefing.ranked_title')}

@@ -3972,6 +3972,12 @@ export interface components {
             /** Format: int64 */
             matches: number;
             /** Format: double */
+            max_perf?: number;
+            /** Format: double */
+            min_kda?: number;
+            /** Format: double */
+            min_perf?: number;
+            /** Format: double */
             peak_kda?: number;
             peak_ranks?: components["schemas"]["ExplorerBriefingPeakRank"][] | null;
             /** Format: double */
