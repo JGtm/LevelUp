@@ -188,13 +188,13 @@ en = "Analyze"
 fr = "Réinitialiser"
 en = "Reset"
 
-[palmares.relations.filters.include_friends]
-fr = "Inclure les amis"
-en = "Include friends"
+[palmares.relations.filters.include_never_faced]
+fr = "Inclure les jamais affrontés"
+en = "Include never-faced players"
 
-[palmares.relations.filters.friends_included]
-fr = "Amis inclus"
-en = "Friends included"
+[palmares.relations.filters.never_faced_included]
+fr = "Jamais affrontés inclus"
+en = "Never-faced included"
 
 [palmares.relations.table.previous]
 fr = "Précédent"

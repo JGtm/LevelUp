@@ -170,20 +170,28 @@ mini-frise `OutcomeSparkline` du hero bête noire reste décorative `aria-hidden
 Le toggle actuel dit « amis » mais masque en réalité les relations jamais affrontées
 (`enemy_matches === 0`). Décisions : renommer selon la sémantique réelle, défaut = masqué.
 
-- [ ] C1. `relationsPrefsStore.ts` : renommer `includeFriends` → `includeNeverFaced`,
+- [x] C1. `relationsPrefsStore.ts` : renommer `includeFriends` → `includeNeverFaced`,
       défaut `false`. Bump `version: 2` + `migrate` v1→v2 : réinitialiser la valeur à
       `false` (changement de sémantique assumé, une seule fois), conserver `filter` et
       `heatmapMode`. Commenter la raison + date dans le migrate.
-- [ ] C2. `PalmaresRelationsPage.tsx` : renommer les usages (setter, filtre
+      FAIT : migrate extrait en fonction pure exportée `migrateRelationsPrefs`
+      (testable) ; supprime l'ancienne clé `includeFriends`, cumule v0→v1 (daypart→hour).
+- [x] C2. `PalmaresRelationsPage.tsx` : renommer les usages (setter, filtre
       `visibleRows`). La logique ne change pas : OFF → masquer `enemy_matches === 0`.
-- [ ] C3. i18n `palmares.toml` : remplacer les clés du toggle par la nouvelle sémantique.
+      FAIT (+ commentaires/docstring d'en-tête mis à jour).
+- [x] C3. i18n `palmares.toml` : remplacer les clés du toggle par la nouvelle sémantique.
       Libellés actés — état ON : FR « Jamais affrontés inclus » / EN « Never-faced
       included » ; état OFF : FR « Inclure les jamais affrontés » / EN « Include
       never-faced players ». Supprimer les anciennes clés (0 code mort). Regen manifest.
-- [ ] C4. Mettre à jour les tests existants qui référencent l'ancien libellé/état par
+      FAIT : clés `include_never_faced` / `never_faced_included` ; adaptateur `i18n.ts`
+      (`includeNeverFaced`/`neverFacedIncluded`) ; `generated/palmares.ts` régénéré.
+- [x] C4. Mettre à jour les tests existants qui référencent l'ancien libellé/état par
       défaut (`PalmaresRelationsPage.test.tsx` et tout test du store).
-- [ ] C5. Ajouter un test du migrate v1→v2 (persisted v1 avec `includeFriends: true` →
+      FAIT : `afterEach` reset → `includeNeverFaced: false` ; nouveau test de page
+      (défaut masqué + bascule du libellé). Aucun test ne référençait l'ancien libellé.
+- [x] C5. Ajouter un test du migrate v1→v2 (persisted v1 avec `includeFriends: true` →
       state v2 `includeNeverFaced: false`, `filter`/`heatmapMode` préservés).
+      FAIT : `relationsPrefsStore.test.ts` (v1→v2, v0→v2 cumulé, state vide).
 
 **Gate C** : GATE-WEB + GATE-I18N.
 

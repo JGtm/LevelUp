@@ -60,8 +60,8 @@ export interface PalmaresText {
       viewSquad: string
       analyser: string
       reset: string
-      includeFriends: string
-      friendsIncluded: string
+      includeNeverFaced: string
+      neverFacedIncluded: string
     }
     table: {
       player: string
@@ -249,8 +249,8 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         viewSquad: t(loc, 'palmares.relations.filters.view_squad'),
         analyser: t(loc, 'palmares.relations.filters.analyser'),
         reset: t(loc, 'palmares.relations.filters.reset'),
-        includeFriends: t(loc, 'palmares.relations.filters.include_friends'),
-        friendsIncluded: t(loc, 'palmares.relations.filters.friends_included'),
+        includeNeverFaced: t(loc, 'palmares.relations.filters.include_never_faced'),
+        neverFacedIncluded: t(loc, 'palmares.relations.filters.never_faced_included'),
       },
       table: {
         player: t(loc, 'palmares.relations.table.player'),

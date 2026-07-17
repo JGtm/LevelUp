@@ -1,3 +1,28 @@
+## [2026-07-17] Relations UX — Lot C : toggle « jamais affrontés » (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Décision technique principale** : le toggle « amis » masquait en réalité les relations
+jamais affrontées (`enemy_matches === 0`). Renommé `includeFriends` → `includeNeverFaced`
+(store + page + i18n), défaut passé de INCLUS à MASQUÉ (`false`). Store `version: 2` avec
+migration exportée pure `migrateRelationsPrefs` (v1→v2 : réinitialisation unique à false,
+suppression de l'ancienne clé, `filter`/`heatmapMode` préservés ; cumule v0→v1
+daypart→hour). Libellés i18n actés : OFF « Inclure les jamais affrontés » / « Include
+never-faced players » ; ON « Jamais affrontés inclus » / « Never-faced included ».
+Anciennes clés supprimées (0 code mort), manifest régénéré.
+
+**Résultat observé** : aucune relation du mock n'a `enemy_matches === 0` → le nouveau
+défaut masqué ne change pas les assertions de table existantes. Migration testée pure ;
+nouveau test de page (défaut masqué + bascule du libellé + `aria-pressed`).
+
+**Gate C (GATE-WEB + GATE-I18N)** : `node build_i18n_manifests.mjs` (diff propre :
+2 clés remplacées) ; typecheck vert ; lint 68 warnings (baseline, 0 nouveau) ; vitest
+`palmares + notifications + stores + components/charts` → 28 fichiers / 207 tests verts
+(nouveaux : `relationsPrefsStore.test.ts` 3 tests + 1 test de page toggle).
+
+**Prochaine étape** : lots A/B/C livrés. Reste du chantier (F, D, E, G) exécuté par
+d'autres agents ; H déjà livré.
+
 ## [2026-07-17] Relations UX — Lot B : duels cliquables vers la match view (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété.
