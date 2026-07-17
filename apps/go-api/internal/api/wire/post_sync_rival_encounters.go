@@ -15,6 +15,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/notifications"
+	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/service"
 )
@@ -23,6 +24,13 @@ import (
 // domain.RelationDuelEntry.Outcome). Sévérité SeveritySuccess sur ce cas, sinon
 // SeverityInfo. Source côté service : duelLabelWin (relations_moments_service.go).
 const rivalEncounterWinOutcome = "win"
+
+// rivalNotifLog route les logs de l'émission « rival croisé » vers
+// logs/notifications.log (tag explicite : le package wire n'a pas de module par
+// défaut → general.log). Co-localise ce flux best-effort avec le dispatcher
+// externe (internal/notifications/external) et le client webhook (internal/notify)
+// pour diagnostiquer d'un seul fichier « pourquoi ma notif rival n'est pas partie ».
+var rivalNotifLog = slog.With("module", logging.ModuleNotif)
 
 // rivalEncounterDetector : sous-ensemble de *service.RelationsService consommé
 // par l'émission post-sync. Interface locale pour rendre emitRivalEncounters
@@ -59,13 +67,13 @@ func emitRivalEncounters(
 		return
 	}
 	if !after.LastMatchStartTime.After(before.LastMatchStartTime) {
-		slog.DebugContext(ctx, "post_sync: rival encounters skippés (aucun nouveau match)", "slug", slug)
+		rivalNotifLog.DebugContext(ctx, "post_sync: rival encounters skippés (aucun nouveau match)", "slug", slug)
 		return
 	}
 
 	encounters, err := detector.DetectRivalEncounters(ctx, before.LastMatchStartTime)
 	if err != nil {
-		slog.WarnContext(ctx, "post_sync: détection rival croisé", "slug", slug, "err", err)
+		rivalNotifLog.WarnContext(ctx, "post_sync: détection rival croisé", "slug", slug, "err", err)
 		return
 	}
 
@@ -90,12 +98,12 @@ func emitRivalEncounters(
 			Source:      postSyncSource,
 		})
 		if emitErr != nil {
-			slog.WarnContext(ctx, "post_sync: rival_encounter emit",
+			rivalNotifLog.WarnContext(ctx, "post_sync: rival_encounter emit",
 				"slug", slug, "rival", e.Gamertag, "match_id", e.MatchID, "err", emitErr)
 			continue
 		}
-		slog.InfoContext(ctx, "post_sync: rival_encounter émis",
+		rivalNotifLog.InfoContext(ctx, "post_sync: rival_encounter émis",
 			"slug", slug, "rival", e.Gamertag, "match_id", e.MatchID, "outcome", e.Outcome)
 	}
-	slog.DebugContext(ctx, "post_sync: rival encounters détectés", "slug", slug, "duels_new", len(encounters))
+	rivalNotifLog.DebugContext(ctx, "post_sync: rival encounters détectés", "slug", slug, "duels_new", len(encounters))
 }
