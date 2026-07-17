@@ -1,3 +1,44 @@
+## [2026-07-17] H5 — classement des frags hors-arsenal au donut « Frags par type d'arme »
+
+**Statut** : Complété.
+
+**Contexte** : les 26 `weapon_id` H5 hors-arsenal (inventaire
+`.ai/V7/H5_WEAPON_LONGTAIL_UNMAPPED.md`) restaient non mappés → exclus du donut « Frags
+par type d'arme » (couverture registre H5 ~40/66). Décisions produit ACTÉES : les afficher
+dans le donut via des rôles dédiés ; « Spartan » (3168248199, ~8.8k) IRRÉDUCTIBLE = sa
+propre catégorie « Non attribué » (stock_id natif disjoint des compteurs mêlée/assassinat,
+le ventiler serait un double-comptage) ; les 7 UGC sans libellé → bucket unique « Autres ».
+
+**Décision technique** :
+- Registre (`weapon_registry.go`) : +20 entrées `weapons` (9 véhicules, 8 tourelles,
+  1 environnement, 1 non-attribué, 1 autres) + 26 `weapon_ids` stock_id (les 7 UGC →
+  un SEUL `weapon_key` `h5_other_ugc`) + 5 familles neutres. Rôles dédiés
+  `vehicle`/`turret`/`environmental`/`unattributed`/`other` (role = string libre).
+  Cardinalités : weapons 64→84, familles 46→51, weapon_ids 76→102 (stock_id 40→66),
+  H5 35→55. Couverture registre H5 → 100 % (66/66 hors sentinelles). faction vide pour
+  ces buckets (non pertinente) → enum test relâché sur `faction <> ''`.
+- Correctness coach (`weaponRoleInsight.ts`) : constante exportée
+  `NON_COMBAT_WEAPON_ROLES` (5 rôles) filtrée AVANT tout calcul (total, `over_reliance`,
+  `blind_spot_power`). Sans ça « Spartan » gonflait le dénominateur → faux
+  `blind_spot_power` / fausse sur-dépendance. La même constante sert au donut pour la
+  couleur neutre (source unique, ≤ 2 copies).
+- Donut (`SynthesisRoleKillsDonut.tsx`) : `tokenForRole` → rôles non-combat = token
+  sémantique EXISTANT `divergent-neutral` (aucune palette hex nouvelle) ; rôle inconnu →
+  même fallback neutre + `formatMessage` dégrade en clé (rendu jamais cassé). i18n :
+  5 clés `role_*` FR+EN dans `synthesis.toml` (manifest régénéré, +5 clés generated).
+- Service Go inchangé : `buildKillsByRole` groupe par `weapons.role` (JOIN) → les
+  nouveaux rôles remontent automatiquement une fois seedés. Aucune allowlist de rôles.
+
+**Anti-double-comptage** : les 26 IDs viennent de `v_weapon_kills` (IDs réels), disjoints
+des sentinels mêlée(1)/grenade(0) de `match_participants` — jamais mappés vers ces
+sentinels. Le donut synthesis n'active pas `IncludeGrenadeMelee`. Aucun double-comptage.
+
+**Résultats / gates (cette session, tous verts)** : Go `build`/`vet`/`test ./...` exit 0 ;
+`go test -tags=integration -p 1 ./internal/games/... ./internal/platform/duckdb/...`
+exit 0 (registre + coverage + résolution 26 IDs) ; web `typecheck` OK, `lint` 0 erreur
+(68 warnings baseline hors périmètre), `vitest src/features/synthesis` verts (weaponRole
+exclusion + donut rendu/fallback). Manifest i18n régénéré (parité FR/EN).
+
 ## [2026-07-17] Lot G Relations UX — CSR de la bête noire (dégradation gracieuse)
 
 **Statut** : Complété.

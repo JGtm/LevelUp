@@ -270,6 +270,28 @@ en = "Melee"
 fr = "Grenade"
 en = "Grenade"
 
+# Rôles hors-arsenal H5 (frags non-combat, 2026-07-17) — véhicules, tourelles,
+# environnement, bucket d'attribution « Spartan » (non attribué), UGC (autres).
+[synthesis.charts.role_vehicle]
+fr = "Véhicule"
+en = "Vehicle"
+
+[synthesis.charts.role_turret]
+fr = "Tourelle"
+en = "Turret"
+
+[synthesis.charts.role_environmental]
+fr = "Environnement"
+en = "Environmental"
+
+[synthesis.charts.role_unattributed]
+fr = "Non attribué"
+en = "Unattributed"
+
+[synthesis.charts.role_other]
+fr = "Autres"
+en = "Other"
+
 [synthesis.coach.label]
 fr = "Coach"
 en = "Coach"
