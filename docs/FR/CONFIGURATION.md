@@ -247,6 +247,7 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 |----------|-------------|
 | `LEVELUP_DISCORD_WEBHOOK_URL` | Webhook Discord (prioritaire sur `DISCORD_WEBHOOK_URL` et sur `app_settings.json:discord_webhook_url`). |
 | `DISCORD_WEBHOOK_URL` | Webhook Discord (nom legacy, toujours lu). |
+| `LEVELUP_PUBLIC_BASE_URL` | URL publique de base de l'app (optionnelle). Si définie, le relais coach Discord ajoute un lien « Ouvrir dans LevelUp » aux embeds. Vide → pas de lien. |
 | `STEAM_API_KEY` | Clé Steam Web API (présence Steam). |
 | `RESTIC_REPOSITORY` / `RESTIC_PASSWORD` / `RESTIC_PASSWORD_FILE` | Cible/credentials des backups Restic. |
 | `LEVELUP_BACKUP_DIR` | Répertoire de backup local. |
@@ -290,7 +291,8 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 | `spnkr_refresh_backfill_lusr` | bool | `true` | Backfill du rating LUSR. |
 | `lang` | string | `"fr"` | Langue de l'UI (`fr`, `en`). |
 | `discord_lang` | string | `"fr"` | Langue des notifications Discord. |
-| `discord_notifications_enabled` | bool | `false` | Active les notifications de sync Discord. |
+| `discord_notifications_enabled` | bool | `false` | Active les notifications de sync Discord (interrupteur maître de tout le canal Discord). |
+| `discord_notify_coach` | bool | `false` | Relaie les proposals coach les plus fortes (signaux de progression) vers le webhook Discord. **OFF par défaut — opt-in** : requiert `discord_notifications_enabled` + un webhook. Émettre vers un service externe est une décision vie privée volontaire, jamais activée par défaut. Catégories relayées = catégories coach uniquement. |
 | `discord_notify_new_media` | bool | `true` | Notifie sur nouveau média. |
 | `discord_notify_disk` | bool | `true` | Alertes disque (warn > 80 % utilisés ou < 2 Go libres, critical > 90 % ou < 500 Mo) sur le volume data, envoyées au changement de statut + rappel quotidien + rétablissement. |
 | `discord_webhook_url` | string | `""` | URL webhook Discord (les vars d'env priment). |

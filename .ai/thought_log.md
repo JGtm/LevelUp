@@ -1,3 +1,64 @@
+## [2026-07-17] coach/prestige V3 — notifications push externes : canal Discord webhook pour proposals coach (opt-in, OFF par défaut) (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Décision superviseur (actée, non rouverte)** : canal = webhook Discord (URL configurable),
+OFF par défaut, opt-in produit VOLONTAIRE (émission vers service externe = décision vie privée),
+PAS un kill-switch au sens CLAUDE.md n°11 — documenté comme tel en commentaire.
+
+**Découverte majeure (vérif sur pièces)** : le monde Discord n'est PAS mort/Python. Le package Go
+`internal/notify/` est l'intégration Discord VIVANTE et complète : `NotifyConfig` chargée depuis
+`app_settings.json` (gate `discord_notifications_enabled` + `discord_webhook_url` + toggles
+`discord_notify_{sync,backfill,friends,new_version,reauth,disk}`), `SendWebhook` avec sanitation du
+secret (URL du webhook = token d'écriture, expurgée de tout log via `sanitizeSendError`), types
+`Embed`, i18n inline `T()` FR/EN, couleurs, pattern failsafe (recover, zéro erreur propagée). Les
+clés `discord_*` existaient déjà dans `app_settings.json`. → CLAUDE.md n°6/14 imposent de RÉUTILISER,
+pas de dupliquer un 2e client HTTP + embeds dans un package parallèle (ce qu'une lecture littérale du
+backlog aurait produit).
+
+**Distinction clé** : `progression/coach_advisor` génère des `Proposal` PERSISTÉS (différés jusqu'à
+accept/dismiss) — PAS des notifications. C'est `progression/coach` qui ÉMET des notifications in-app
+(via `notifications.Emitter`) mappées sur 14 catégories (`coach/emitter.go` :
+`AlertType.NotificationCategory`). Les « proposals coach à relayer » = ces 14 catégories coach.
+
+**Architecture livrée (ports & adapters)** :
+- Port dans `internal/notifications/` (stdlib-only) : interface `ExternalForwarder` (`Forward(ctx, *Notification)`,
+  best-effort strict, jamais bloquant/paniquant) + Option `WithExternalForwarder`. Appelée dans
+  `Service.insertAndSweep` APRÈS insertion in-app réussie → capte TOUTE émission coach quel que soit
+  le caller (hook unique). Respecte naturellement les préférences par catégorie (Emit droppe avant
+  insertion si la pref in-app est OFF → jamais relayé).
+- Adapter `internal/notifications/external/` : `Dispatcher` (impl du port) filtre par catégorie forwardée
+  + relit `notify.LoadNotifyConfig` à CHAQUE Forward (réactif aux PATCH /settings), puis relaie en async
+  (`context.WithoutCancel` + goroutine + recover) ; compteurs expvar `notifications_external_coach_{sent,failed}`.
+  Interface `ExternalNotifier` + `DiscordWebhookNotifier` (timeout 5 s, délègue à `notify.SendWebhookCtx`
+  + `notify.BuildCoachEmbed` — zéro duplication du transport/embed). `DefaultForwardedCategories()` =
+  14 catégories coach, avec GARDE-RAIL `categories_guardrail_test.go` (miroir de `coach.AllAlertTypes()`
+  → `NotificationCategory()` ; échoue si divergence).
+- Réutilisation `notify` : ajout champ `NotifyCoach` (load `discord_notify_coach`, défaut **false** vs
+  `true` des autres toggles — opt-in strict), `SendWebhookCtx(ctx,...)` (ctx-aware ; `SendWebhook`
+  délègue désormais), `BuildCoachEmbed` + libellés catégorie FR/EN (`coach.go`). Embed TECHNIQUE sobre
+  (catégorie humanisée, joueur, params triés, lien app optionnel) car les libellés utilisateur
+  title_key/body_key sont front-only.
+- Câblage : `notifServiceFor` (registry) construit le Dispatcher par joueur (identité `pdb.Gamertag/XUID/TitleSlug`,
+  `AppBaseURL`=`LEVELUP_PUBLIC_BASE_URL`) ; `external.LogBootState` = 1 ligne INFO au boot (`main.go`).
+
+**Config exacte** : env `LEVELUP_DISCORD_WEBHOOK_URL` (réutilisé) + `LEVELUP_PUBLIC_BASE_URL` (nouveau,
+optionnel, lien embed). `app_settings.json` : `discord_notifications_enabled` (master, false) +
+`discord_notify_coach` (nouveau, **false**) + `discord_webhook_url`. Relais actif ssi master ON + coach ON
++ webhook présent ; sinon retour silencieux (zéro log de bruit).
+
+**Résultats** : `go build ./...`, `go vet ./...`, `go test ./...` = 0 FAIL. Tests ajoutés : embed coach
+(FR/EN, fallback catégorie inconnue, params triés/plafonnés, lien optionnel), notifier httptest (payload
+correct, timeout 5 s respecté, URL vide/500 → erreur sans panic), dispatcher (catégorie forwardée vs non,
+flag OFF, webhook absent, nil-safe, async via canal), garde-rail catégories, boot (état actif/inactif, 1 ligne).
+Docs bilingues (`docs/CONFIGURATION.md` + FR) mises à jour.
+
+**Conclusion / prochaine étape** : livré actif (opt-in). Enrichissements futurs notés hors périmètre :
+overlay Discord par titre (`LoadNotifyConfigForTitle`) pour le relais coach ; liste de catégories
+forwardées surchargeable via settings (aujourd'hui défaut coach en dur + override programmatique `Config.Forwarded`).
+
+---
+
 ## [2026-07-17] coach/prestige V3 — analyseur de tuning de `synthesis_grammar.toml` (recommandations, validation manuelle) (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété.

@@ -16,6 +16,7 @@
   "lang": "fr",
   "discord_lang": "fr",
   "discord_notifications_enabled": false,
+  "discord_notify_coach": false,
   "discord_notify_new_media": true,
   "tailscale_enabled": false,
   "user_timezone": "Europe/Paris",
