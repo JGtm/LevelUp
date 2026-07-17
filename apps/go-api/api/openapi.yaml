@@ -7034,28 +7034,6 @@ components:
           - verification_url
           - expires_in
       type: object
-    BattlePassResponse:
-      additionalProperties: false
-      properties:
-          available:
-              type: boolean
-          error_hint:
-              type: string
-          from_cache:
-              type: boolean
-          progress:
-              format: int64
-              type: integer
-          rank:
-              format: int64
-              type: integer
-          reward_track:
-              type: string
-          snapshot_at:
-              type: string
-      required:
-          - available
-      type: object
     MediaAssociateResponse:
       additionalProperties: false
       properties:

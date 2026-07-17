@@ -3193,6 +3193,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/_diag/prestige/telemetry/{player_slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Diag agrégation télémétrie Prestige par origine du défi
+         * @description ADR 0020 (coach→pont Prestige). Agrège la table append-only
+         *     prestige_telemetry d'un joueur par origine du défi (coach / user /
+         *     pilot_mode / unknown) : compteurs created/rejected/completed/expired/
+         *     abandoned + taux d'acceptation et de complétion. Permet de mesurer si
+         *     les défis proposés par le coach sont acceptés/complétés davantage que
+         *     ceux d'autres origines. Les défis créés avant le plumbing (source NULL)
+         *     sont agrégés sous "unknown". Les taux valent -1 quand non calculables
+         *     (dénominateur nul).
+         */
+        get: operations["getDiagPrestigeTelemetry"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/_admin/progression/backfill/{player_slug}": {
         parameters: {
             query?: never;
@@ -4793,6 +4820,31 @@ export interface components {
             /** Format: int64 */
             streak_count: number;
         };
+        PrestigeTelemetryDiag: {
+            by_source: components["schemas"]["PrestigeTelemetrySourceStats"][] | null;
+            player_slug: string;
+            /** Format: int64 */
+            total_events: number;
+        };
+        PrestigeTelemetrySourceStats: {
+            /** Format: double */
+            abandon_rate: number;
+            /** Format: int64 */
+            abandoned: number;
+            /** Format: double */
+            acceptance_rate: number;
+            /** Format: int64 */
+            completed: number;
+            /** Format: double */
+            completion_rate: number;
+            /** Format: int64 */
+            created: number;
+            /** Format: int64 */
+            expired: number;
+            /** Format: int64 */
+            rejected: number;
+            source: string;
+        };
         AssetMeta: {
             id: string;
             image_url: string;
@@ -4816,17 +4868,6 @@ export interface components {
             expires_in: number;
             user_code: string;
             verification_url: string;
-        };
-        BattlePassResponse: {
-            available: boolean;
-            error_hint?: string;
-            from_cache?: boolean;
-            /** Format: int64 */
-            progress?: number;
-            /** Format: int64 */
-            rank?: number;
-            reward_track?: string;
-            snapshot_at?: string;
         };
         MediaAssociateResponse: {
             file_path: string;
@@ -13281,6 +13322,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProgressionDiag"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getDiagPrestigeTelemetry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Agrégats télémétrie Prestige par origine */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrestigeTelemetryDiag"];
                 };
             };
             404: components["responses"]["NotFound"];
