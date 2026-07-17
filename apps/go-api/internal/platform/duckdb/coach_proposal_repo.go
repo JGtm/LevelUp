@@ -24,13 +24,13 @@ const (
 
 // CoachProposalRepo persiste les proposals du coach_advisor (stats.duckdb).
 type CoachProposalRepo struct {
-	db *DB
+	db PlayerReadHandle
 }
 
 // NewCoachProposalRepo construit le repo. db doit pointer sur la stats.duckdb
 // du joueur courant.
 func NewCoachProposalRepo(db *DB) *CoachProposalRepo {
-	return &CoachProposalRepo{db: db}
+	return &CoachProposalRepo{db: NewPlayerReadHandle(db)}
 }
 
 // Compile-time assertion.
@@ -49,7 +49,7 @@ func (r *CoachProposalRepo) Create(ctx context.Context, p coach_advisor.Proposal
 		createdAt = time.Now().UTC()
 	}
 
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO coach_proposal (
 			id, user_id, title_slug, kind,
 			template_id, challenges_spec_json, suggested_tier,
@@ -190,7 +190,7 @@ func (r *CoachProposalRepo) MarkObsoleted(ctx context.Context, id string, now ti
 func (r *CoachProposalRepo) updateStatus(ctx context.Context, id, op, query string, args ...any) error {
 	ctx, cancel := context.WithTimeout(ctx, coachProposalWriteTimeout)
 	defer cancel()
-	if _, err := r.db.Exec(ctx, query, args...); err != nil {
+	if _, err := r.db.ExecRecovered(ctx, query, args...); err != nil {
 		return fmt.Errorf("CoachProposalRepo.%s: %w", op, err)
 	}
 	return nil

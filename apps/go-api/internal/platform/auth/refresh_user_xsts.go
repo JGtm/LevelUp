@@ -44,6 +44,11 @@ func RefreshUserXSTS(ctx context.Context, store *MultiUserTokenStore, xuid strin
 		return "", fmt.Errorf("refresh_user_xsts: aucun access_token obtenu (cache vide ou expiré)")
 	}
 
+	// Provenance connue (AU4/F12) → préfixe RpsTicket déterministe pour l'échange XBL
+	// user-token en aval (withTokenClientFamily lu par requestUserToken). Vide = repli
+	// sur le retry d=→t= (migration douce).
+	ctx = withTokenClientFamily(ctx, tokens.TokenClientFamily)
+
 	// Étape 2 : acquérir un nouveau XSTS RTA.
 	xstsResult, err := AcquireXSTSForRTA(ctx, accessToken)
 	if err != nil {
@@ -85,12 +90,17 @@ func RefreshUserXSTS(ctx context.Context, store *MultiUserTokenStore, xuid strin
 // rotation reste alors écrite en mémoire (tokens) pour un Upsert ultérieur.
 func refreshAccessTokenForUser(ctx context.Context, store *MultiUserTokenStore, tokens *UserTokens) string {
 	if tokens.OAuthRefreshToken != "" {
-		token, rotatedRT, err := ExchangeRefreshTokenWithRotation(ctx, tokens.OAuthRefreshToken)
+		token, rotatedRT, family, err := ExchangeRefreshTokenWithRotation(ctx, tokens.OAuthRefreshToken)
 		if err != nil {
 			slog.WarnContext(ctx, "refresh_user_xsts: refresh OAuth erreur",
 				"xuid", tokens.XUID, "err", err)
 		}
 		if token != "" {
+			// Provenance apprise (AU4/F12) : le client qui a répondu fixe le préfixe
+			// RpsTicket du prochain échange XBL. Persisté par le Upsert du caller.
+			if family != "" {
+				tokens.TokenClientFamily = family
+			}
 			// RT à usage unique : écrire la rotation dans tokens AVANT le Upsert
 			// du caller, sinon le prochain refresh relit un RT révoqué.
 			if rotatedRT != "" && rotatedRT != tokens.OAuthRefreshToken {

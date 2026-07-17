@@ -20,6 +20,10 @@ export interface DeltaCardProps {
   warningText?: string
 }
 
+// formatDelta est VOLONTAIREMENT distinct de `formatSignedFixed` (@/lib/formatters,
+// F3) : précision DYNAMIQUE selon la magnitude (3 déc. si |x|<1, sinon 1), parse
+// aussi les strings, ne pose pas de sentinel ±0 et retourne un objet couleur.
+// Sémantique différente → non centralisé (revue 2026-07-17).
 function formatDelta(delta: number | string | null | undefined, lowerIsBetter: boolean): {
   text: string
   color: string | undefined

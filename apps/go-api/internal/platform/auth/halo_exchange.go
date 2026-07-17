@@ -149,22 +149,50 @@ func ExchangeXSTSForHaloTokensWithDescriptor(ctx context.Context, xstsToken stri
 // Étapes de la chaîne d'échange
 // =============================================================================
 
+// tokenClientFamilyCtxKey porte la provenance du token (AU4/F12) le long de la
+// chaîne d'échange, SANS changer les signatures publiques (même patron que
+// WithHaloAuth). Le caller qui connaît la famille (refresh) la pose ; le chokepoint
+// XBL user-token la lit pour choisir le préfixe RpsTicket déterministe.
+type tokenClientFamilyCtxKey struct{}
+
+// withTokenClientFamily attache la famille de client OAuth (TokenFamilyAzure /
+// TokenFamilyXboxNative) au contexte. Une famille vide laisse le ctx inchangé.
+func withTokenClientFamily(ctx context.Context, family string) context.Context {
+	if family == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, tokenClientFamilyCtxKey{}, family)
+}
+
+// tokenClientFamilyFromCtx lit la famille de client posée par withTokenClientFamily
+// ("" = provenance inconnue).
+func tokenClientFamilyFromCtx(ctx context.Context) string {
+	f, _ := ctx.Value(tokenClientFamilyCtxKey{}).(string)
+	return f
+}
+
 // requestUserToken obtient un User Token XBL depuis un access_token Microsoft.
 //
 // Le préfixe RpsTicket dépend du CLIENT OAuth qui a émis l'access_token — "d="
 // pour l'app Azure (MSAL, SSO web, refresh v2), "t=" pour le client Xbox natif
-// (SISU, refresh MSA) — PAS de son format : les deux familles émettent des
-// compact tickets "EwA…" indistinguables (une heuristique par format a cassé le
-// refresh du pool le 2026-07-15). Ce chokepoint recevant les deux familles sans
-// connaître leur provenance, on tente "d=" puis on retente UNE fois en "t="
-// sur 401. Coût borné : un aller-retour de plus pour la famille MSA, qui
-// s'inverse au retrait de MSAL si besoin.
+// (SISU, refresh MSA) — PAS de son format : les deux familles émettent des compact
+// tickets "EwA…" indistinguables (une heuristique par format a cassé le refresh du
+// pool le 2026-07-15). Quand la PROVENANCE est connue (AU4/F12 : posée en ctx par le
+// refresh via TokenClientFamily), on utilise directement le bon préfixe. Sinon on
+// tente "d=" d'abord (ordre historique). Le retry sur l'AUTRE préfixe reste un FILET
+// (401) — désormais logué WarnContext pour rendre visible un 401 qui n'est PAS un
+// simple mauvais préfixe (token révoqué, etc.), là où l'ancien Debug le masquait.
 func requestUserToken(ctx context.Context, client *http.Client, accessToken string) (string, error) {
-	token, err := requestUserTokenPrefixed(ctx, client, accessToken, "d=")
+	primary, fallback := "d=", "t="
+	if tokenClientFamilyFromCtx(ctx) == TokenFamilyXboxNative {
+		primary, fallback = "t=", "d="
+	}
+	token, err := requestUserTokenPrefixed(ctx, client, accessToken, primary)
 	var herr *xblHTTPError
 	if err != nil && errors.As(err, &herr) && herr.Status == http.StatusUnauthorized {
-		slog.DebugContext(ctx, "halo_exchange: RpsTicket d= refusé (401) — retry t= (client Xbox natif)")
-		return requestUserTokenPrefixed(ctx, client, accessToken, "t=")
+		slog.WarnContext(ctx, "halo_exchange: RpsTicket refusé (401) — retry sur l'autre préfixe (filet provenance)",
+			"primary", primary, "fallback", fallback, "family", tokenClientFamilyFromCtx(ctx))
+		return requestUserTokenPrefixed(ctx, client, accessToken, fallback)
 	}
 	return token, err
 }

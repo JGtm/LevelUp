@@ -1,9 +1,33 @@
 package analysis
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
+
+// TestCampaignExclusionSingleQuotingPath (F6, revue 2026-07-17) : garde-rail
+// anti-re-triplication. Le quoting SQL des GUID (idiome ReplaceAll("'","”")) ne
+// doit apparaître QU'UNE fois dans campaign_exclusion.go — dans quotedIDList, seul
+// point de quoting. Les 3 fonctions d'exclusion passent par quotedIDList /
+// sqlExcludeByMatchIDSubquery ; ré-inliner la boucle casse ce test.
+func TestCampaignExclusionSingleQuotingPath(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller a échoué")
+	}
+	src := filepath.Join(filepath.Dir(thisFile), "campaign_exclusion.go")
+	data, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("lecture %s: %v", src, err)
+	}
+	if n := strings.Count(string(data), `ReplaceAll(id, "'", "''")`); n != 1 {
+		t.Errorf("quoting SQL des GUID attendu 1× (dans quotedIDList), trouvé %d× — "+
+			"ne pas ré-inliner la boucle de quoting (F6)", n)
+	}
+}
 
 // TestSQLExcludeCampaignVariants : la clause littérale n'est émise QUE pour les
 // titres ayant des game_variant Campagne (Halo 5), avec le bon alias, les 2 GUID

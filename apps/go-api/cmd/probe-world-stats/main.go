@@ -86,7 +86,7 @@ func main() {
 	// persistance de l'état tourné.
 	var accessToken string
 	if bearer.OAuthRefreshToken != "" {
-		at, rotatedRT, rerr := auth.ExchangeRefreshTokenWithRotation(ctx, bearer.OAuthRefreshToken)
+		at, rotatedRT, _, rerr := auth.ExchangeRefreshTokenWithRotation(ctx, bearer.OAuthRefreshToken)
 		if rerr != nil {
 			fatal("refresh RT brut (%s) : %v", *tokenXUID, rerr)
 		}

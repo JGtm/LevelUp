@@ -35,8 +35,9 @@ import type {
 } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
+import { formatSignedFixed } from '@/lib/formatters'
 import { BriefingSectionCard } from './BriefingSectionCard'
-import { formatSignedFixed, formatSignedPoints, signOf } from './ExplorerBriefing.logic'
+import { deltaToken, formatSignedPoints, signOf } from './ExplorerBriefing.logic'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
 // TMV : résout un libellé du manifest match_view (réutilisé pour les libellés
@@ -55,11 +56,6 @@ const PERF_TIER_KEY: Record<number, ExplorerManifestKey> = {
   3: 'explorer.filters.perf_tier_correct',
   4: 'explorer.filters.perf_tier_faible',
   5: 'explorer.filters.perf_tier_mauvais',
-}
-
-function deltaToken(v: number | null | undefined): SemanticToken {
-  const s = signOf(v)
-  return s > 0 ? 'outcome-win' : s < 0 ? 'outcome-loss' : 'outcome-draw'
 }
 
 // Catégories de moments forts : chaque compteur de ExplorerBriefingDominance,

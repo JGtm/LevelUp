@@ -20,6 +20,7 @@ import { apiErrorMessage } from '@/lib/api/client'
 import type { MediaMatchCandidate } from '@/lib/api/types'
 import { useFieldMappings, useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { resolveTeamNameFromID } from '@/lib/halo/teamNames'
+import { outcomeCodeToValue } from '@/lib/outcome'
 import { tokenCssVar } from '@/lib/accessibility'
 import { OUTCOME_LABELS_FALLBACK_FR } from './fallback.i18n'
 import { getMediaModalsText, type MatchPickerText } from './i18n-modals'
@@ -59,22 +60,8 @@ function formatDelta(deltaSeconds: number | null | undefined, mp: MatchPickerTex
   return mp.deltaMinFormat(m)
 }
 
-// outcomeKeyOf mappe le code outcome Halo (2 win, 3 loss, 1 tie, 4 dnf)
-// vers la clé canonique correspondante côté outcomes.toml.
-function outcomeKeyOf(outcome: number | null | undefined): string | null {
-  switch (outcome) {
-    case 2:
-      return 'win'
-    case 3:
-      return 'loss'
-    case 1:
-      return 'tie'
-    case 4:
-      return 'dnf'
-    default:
-      return null
-  }
-}
+// Mapping code outcome → clé outcomes.toml : centralisé dans `@/lib/outcome`
+// (`outcomeCodeToValue`, défaut null).
 
 const outcomeClassByCode: Record<number, string> = {
   2: 'bg-success/15 text-success border-success/40',
@@ -187,7 +174,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
       return { text: '—', cls: 'bg-muted text-muted-foreground border-border' }
     }
     const cls = outcomeClassByCode[outcome]
-    const key = outcomeKeyOf(outcome)
+    const key = outcomeCodeToValue(outcome)
     const text =
       (key && fieldMappings?.outcomes?.[key]?.label) ?? OUTCOME_LABELS_FALLBACK_FR[outcome] ?? '—'
     return { text, cls }

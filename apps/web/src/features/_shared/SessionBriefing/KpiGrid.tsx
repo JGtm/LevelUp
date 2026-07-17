@@ -37,7 +37,7 @@ import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { accuracyScale, assistsScale, kdScale, lifespanScale } from '@/lib/accessibility/scales'
 import { CombatYieldDisplay } from '@/components/ui/combat-yield-display'
 import { combatYieldToken } from '@/lib/formatters/combatYield'
-import { formatDurationMShort } from '@/lib/formatters'
+import { formatDurationMShort, formatSignedFixed } from '@/lib/formatters'
 import { KpiCard } from '@/components/cards/KpiCard'
 import { useProvidesDamageTaken } from '@/lib/damage/effectiveHp'
 
@@ -124,12 +124,7 @@ function KpiCell({ label, value, sub, inlineSub, trend = 'none', valueColorToken
  *  Préfixe explicite (+/−/±) pour que le signe soit lisible sans dépendre
  *  uniquement de la couleur. */
 function formatRankDeltaValue(delta: RankDelta): string {
-  const isCsr = delta.kind === 'csr'
-  const v = delta.value
-  if (v === 0) return isCsr ? '±0' : '±0.00'
-  const abs = Math.abs(v)
-  const formatted = isCsr ? String(Math.round(abs)) : abs.toFixed(2)
-  return v > 0 ? `+${formatted}` : `−${formatted}`
+  return formatSignedFixed(delta.value, delta.kind === 'csr' ? 0 : 2)
 }
 
 /** Token couleur absolue selon le signe du delta : pos/neg/neutral. */

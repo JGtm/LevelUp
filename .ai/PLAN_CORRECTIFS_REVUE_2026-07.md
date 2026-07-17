@@ -317,41 +317,181 @@ mutations.ts, client.ts) = 0 issue ; thought_log ; commit.
 
 ## LOT F — Duplications, dette, robustesse
 
-- [ ] F1 (R2) — helper unique outcome int→valeur (`apps/web/src/lib/`), contrat
-      ADR 0006, défaut EXPLICITE documenté ; migrer les 4 copies
-      (ExplorerBriefing.logic, session-detail/_shared, TimeseriesPage.summary,
-      SquadSynergiesPage) ; garde-rail grep interdisant les mappings locaux.
-- [ ] F2 (R1) — helper « plus longue série » dans `internal/analysis/` ;
-      migrer les 4 copies Go (briefing_streaks, highlights_tiles, synthesis,
-      detectTilt) ; garde-rail.
-- [ ] F3 (R4) — `formatSignedFixed` dans `lib/formatters/` ; migrer les 3
-      copies strictes ; glyphe unique '−' (U+2212) ; garde-rail (3e copie).
-- [ ] F4 (R5) — une seule fonction coalesce dans `internal/service` ; migrer.
-- [ ] F5 (R7) — `deltaToken` exporté depuis `ExplorerBriefing.logic.ts`,
-      2 copies supprimées.
-- [ ] F6 (R8) `internal/analysis/campaign_exclusion.go` — `quotedIDList` +
-      builder commun aux deux fonctions SQL.
-- [ ] F7 (R6) — seeder synthétique : partager les listes de colonnes avec
-      `persist` (constantes exportées ou helpers d'insert réutilisés) + test
-      qui CASSE si les colonnes du seeder divergent de persist (protège la
-      recette ADR 0026).
-- [ ] F8 (ME3) `internal/platform/duckdb/media_repo_registry.go:205` —
-      remplacer le mini-framework à closures par un helper direct appelé 3
-      fois (bulk resolve conservé).
-- [ ] F9 (CV5) `internal/api/wire/post_sync_deltas.go:280` — variadique →
-      paramètre struct obligatoire (mise à jour mécanique des ~25 call-sites
-      de test).
-- [ ] F10 (LB2, décision D1) — `runOnceForTitle` retourne error ; RunOnce
-      agrège et passe l'erreur réelle à `ReportCronRun` ; appliquer aux 5
-      crons concernés ; tests cronstatus (échec partiel → failure visible).
-- [ ] F11 (LB3) — graine de découverte de saison = dernière saison persistée
-      dans les snapshots, constante `csrseason13-2` en simple fallback. Test.
-- [ ] F12 (AU4) — provenance du token (famille de client) persistée dans
-      `UserTokens` à l'acquisition ; préfixe RpsTicket déterministe ; retry
-      conservé en filet AVEC log WARN. Test.
-- [ ] F13 (E5 profond, décision D6) — handle de lecture player-DB n'exposant
-      que les variantes `*Recovered` (fermeture par construction des 3 classes
-      de trous du garde-rail grep). Migrer les lecteurs player-DB vers ce type.
+- [x] F1 (R2) — helper unique `apps/web/src/lib/outcome.ts` : `outcomeCodeToValue`
+      (défaut EXPLICITE `null` — le plus sûr, ne jamais fabriquer un outcome : un
+      compteur d'issues type SessionOutcomeDonut `if(!key)continue` doit pouvoir
+      exclure l'inconnu ; 'tie'/'dnf' fausseraient ses stats) + `outcomeCodeToTapeValue`
+      (défaut de FRISE 'dnf', bucket neutre non-null exigé par OutcomeSequenceTape ;
+      inatteignable sur données réelles 1..4). RE-VÉRIFIÉ sur pièces : **5 copies**
+      (pas 4) — la revue n'avait pas listé `MediaMatchPicker.tsx outcomeKeyOf`
+      (défaut null), découverte par le sweep, migrée (même classe de duplication).
+      Migrations : ExplorerBriefing.logic.ts (`outcomeCodeToValue` défaut 'tie' →
+      supprimé, ExplorerBriefingStrip consomme `outcomeCodeToTapeValue`) ;
+      session-detail/_shared.ts `outcomeIntToKey` (défaut null → SessionNetScoreArea
+      + SessionOutcomeDonut consomment `outcomeCodeToValue`, null PRÉSERVÉ) ;
+      TimeseriesPage.summary.tsx + SquadSynergiesPage.tsx `outcomeNumToValue`
+      (défaut 'dnf' → `outcomeCodeToTapeValue`) ; MediaMatchPicker.tsx `outcomeKeyOf`
+      (défaut null → `outcomeCodeToValue`). IMPACT DÉFAUT UNIFIÉ : les 3 sites frise
+      passent à 'dnf' pour l'inconnu (2/3 l'étaient déjà ; ExplorerBriefing 'tie'→'dnf',
+      inatteignable) ; les 2 sites null (session, media) inchangés. Garde-rail
+      `lib/outcome.guard.test.ts` (scan src, interdit `case N`/`=== N` → outcome
+      littéral hors outcome.ts ; ne matche PAS le littéral objet 'draw'
+      d'outcome-color.ts/OUTCOME_INT_KEY). Tests `lib/outcome.test.ts` (contrat +
+      défauts). vitest F1 : 15 fichiers / 72 tests verts.
+- [x] F2 (R1) — `analysis.LongestRun[T](items, pred) (length, start int)`
+      (`internal/analysis/longest_run.go`) : générique, retourne la longueur ET
+      l'index de départ (detectTilt en a besoin pour découper tiltRows/outsideRows) ;
+      égalité → première série (start MAJ sur amélioration stricte). 4 copies
+      migrées : briefing_streaks.go `longestOutcomeRun` (supprimé, closure `runOf`) ;
+      highlights_tiles.go `sliceBestWinStreakCanonical` (longueur indépendante du
+      sens de parcours → reversal supprimé) ; synthesis_service_canonical.go
+      streak interwoven `winStreak/maxStreak` retiré du switch → `LongestRun` après
+      la boucle de comptage ; patterns/behavioral.go `detectTilt` (import analysis
+      ajouté, patterns→analysis sans cycle). Garde-rail
+      `archlint/no_local_longest_run_test.go` (idiome `++` + `if x > y {`).
+      ALLOWLIST datée : `max_killing_spree.go` = accumulateur À TROIS ÉTATS
+      (kill+1 / death=reset / autre=IGNORÉ), non réductible à LongestRun binaire —
+      5e match du sweep, laissé volontairement. Test `longest_run_test.go` (7 cas).
+      gofmt/build/vet OK ; go test analysis+patterns+service+archlint VERT.
+- [x] F3 (R4) — `formatSignedFixed(value, decimals, fallback='')` ajouté à
+      `lib/formatters/number.ts` (glyphe négatif '−' U+2212, zéro → ±0/±0.00,
+      fallback '' si absent) + export barrel. 3 copies migrées : rating.ts
+      `formatRankDelta` (délègue ; glyphe négatif passe de '-' ASCII → '−' U+2212) ;
+      KpiGrid.tsx `formatRankDeltaValue` (délègue ; utilisait déjà '−') ;
+      ExplorerBriefing.logic.ts `formatSignedFixed` (supprimé → Modules/Strip
+      importent `@/lib/formatters`). Tests glyphe MAJ : formatters.test.ts +
+      SessionFdaBars.test.tsx ('-12'→'−12', '-2.50'→'−2.50', '-0.50'→'−0.50').
+      delta-card.tsx `formatDelta` : NON migré (sémantique DIFFÉRENTE — précision
+      dynamique selon magnitude 3/1 déc., parse strings, pas de sentinel ±0,
+      retourne objet couleur) — statué et documenté (commentaire + plan).
+      Garde-rail `lib/formatters/signed-format.guard.test.ts` (sentinel '±0'/'±0.00'
+      littéral OU template `±${…toFixed}` hors number.ts ; formatSignedPoints
+      '±0 pts' et delta-card NON matchés). vitest F3 : 8 fichiers / 83 verts.
+- [x] F4 (R5) — helper unique `service.coalesceStr` (variadique, premier non-nil/
+      non-vide, "" sinon = variante « exigeant non-vide », la plus sûre). `coalesce`
+      (enrich.go, 2-args) SUPPRIMÉ : résultats IDENTIQUES à coalesceStr sur toutes
+      les entrées (b non-nil vide → "" dans les deux cas). Callers migrés : enrich.go
+      (×2, dont `coalesce(x, nil)` → `coalesceStr(x)`), filters.go (×4). Test
+      match_history_extra_test.go migré. `sync.coalesceStrPtr` (retourne *string,
+      contrat distinct) LAISSÉ + documenté (commentaire). Garde-rail
+      `archlint/no_local_str_coalesce_test.go` (signature `func <n>(a,b *string) string`
+      dans service/, ne matche ni le variadique ni coalesceStrPtr). DÉCOUVERTE
+      consignée : `sync.resolvedRegistryName` a la même signature mais finalité
+      distincte (trim + égalité asset_id) et vit dans sync → hors périmètre F4.
+      gofmt/build/vet OK ; go test service+archlint VERT.
+- [x] F5 (R7) — `deltaToken(v)` exporté depuis `ExplorerBriefing.logic.ts`
+      (import type `SemanticToken`). 2 copies identiques supprimées
+      (ExplorerBriefingModules.tsx : garde `signOf` utilisé l.192 ;
+      ExplorerBriefingStrip.tsx : `signOf` devenu inutile → retiré de l'import).
+      Garde-rail `explorer/deltaToken.guard.test.ts` (définition helper
+      `function deltaToken(` / arrow `const deltaToken = (`). FAUX POSITIF évité :
+      `MatchStatCards.tsx` a une VARIABLE locale homonyme
+      `const deltaToken = skillDeltaScale(...)` (sémantique distincte, échelle de
+      skill) — regex resserrée pour ne matcher que les définitions de helper.
+      vitest explorer : 18 fichiers / 86 verts.
+- [x] F6 (R8) `internal/analysis/campaign_exclusion.go` — `quotedIDList(ids)`
+      (unique point de quoting SQL des GUID) + `sqlExcludeByMatchIDSubquery`
+      (forme sous-requête PARTAGÉE par SQLExcludeCampaignByMatchID title-aware et
+      SQLExcludeAllCampaignByMatchID title-agnostic). Triplication interne éliminée
+      (quoting ×3 → 1 ; sous-requête ×2 → 1). SQLExcludeCampaignVariants passe aussi
+      par quotedIDList. Comportement préservé (6 tests existants verts). Garde-rail
+      SCOPÉ `TestCampaignExclusionSingleQuotingPath` (idiome quoting = 1× dans le
+      fichier). NB : garde global impossible — l'idiome `ReplaceAll("'","''")` existe
+      LÉGITIMEMENT dans ops/{restore,snapshot_export}.go (quoting de chemins,
+      finalité distincte) → guard scopé au fichier. gofmt/vet/test VERT.
+- [x] F7 (R6) — `internal/persist/demo_seed_columns.go` exporte les listes de
+      colonnes des 4 tables critiques (`MatchRegistryColumns` 37,
+      `MatchParticipantsColumns` 41, `MatchSkillRankColumns` 10, `MatchCSRColumns`
+      10). ADR 0030 RESPECTÉ : le batch/INSERT persist n'est PAS modifié (zéro risque
+      runtime) — l'honnêteté des constantes est verrouillée par un test d'AUTO-PARITÉ
+      `persist/demo_seed_columns_test.go` (parse les INSERT persist, exige constante ==
+      INSERT). Test de parité seeder `ops/seed_demo_column_parity_test.go` : compare
+      les colonnes du seeder aux constantes persist, allowlists DOCUMENTÉES des
+      divergences intentionnelles (seederExtras : written_at/start_time ancrés +
+      libellés _fr ; persistOnly : version_id, MMR/expected, timestamps par défaut).
+      Une colonne AJOUTÉE par la recette ADR 0026 côté persist et absente du seeder
+      (hors allowlist) CASSE le test. DÉCOUVERTE : `match_skill_rank` a DEUX persisters
+      (persistSkillRank CSR 10 cols ; lusr_append_only +expected_win_prob/start_time) —
+      la constante reflète le chemin CSR primaire (documenté). Build + les 2 tests VERTS.
+- [x] F8 (ME3) `internal/platform/duckdb/media_repo_registry.go` — mini-framework
+      à closures SUPPRIMÉ (type `mediaNameFallbackSlot` + slice-of-slots +
+      `mediaNameFallbackSlots`/`collectMediaFallbackIDs`/`resolveMediaFallbackNames`/
+      `applyMediaFallbackNames`, ~90 L). Remplacé par un helper direct
+      `applyMediaNameFallback(ctx, meta, langs, rows, assetType, idOf, missing, setName)`
+      appelé 3× (map / mode / playlist). Bulk resolve `ResolveAssetNamesBulk` CONSERVÉ ;
+      fast-path liste vide CONSERVÉ (par type : aucun appel metadata si rien à résoudre).
+      Comportement préservé : 4 tests intégration `TestMediaH5Fallback_*` VERTS
+      (labels résolus, filter options, filtre mode, no-regression noms présents).
+      gofmt/build/vet OK.
+- [x] F9 (CV5) `internal/api/wire/post_sync_deltas.go` — `opts ...PostSyncDeltaOptions`
+      → `opts PostSyncDeltaOptions` (obligatoire). Corps simplifié (`var o; if len(opts)>0`
+      → `o := opts`). Docstring MAJ (l'ancien variadique masquait toute 2e option).
+      Call-sites : prod (BuildPostSyncDeltaHook, déjà 1 struct) inchangé ; 25 call-sites
+      test — 23 `, nil)` → `, nil, PostSyncDeltaOptions{})` (bulk vérifié : 23
+      occurrences toutes EmitPostSyncDeltas), 2 (skillTierEmits l.246/323) passaient
+      déjà `opts` → valides. gofmt/build/vet OK ; go test wire VERT.
+- [x] F10 (LB2, décision D1) — pattern « erreur agrégée réelle → ReportCronRun »
+      appliqué aux 5 crons (fin du `ReportCronRun(..., nil, ...)` inconditionnel) :
+      • **world_leaderboard** : `runOnceForTitle` retourne error (échec DUR =
+      persistance snapshot ; skips nominaux saison/frais/scrape-vide → nil) ; RunOnce
+      agrège `errors.Join` par titre. • **catalog_refresh** / **asset_name_sweep** :
+      `runOnceForTitle` retourne l'erreur de `c.run` ; RunOnce agrège. • **spartan** :
+      `runOnceForTitle` retourne l'erreur LoadPlayers + échec PARTIEL non-lock
+      (`nonLockFailed`) avec cause échantillon ; les échecs par LOCK (transitoires,
+      dev) restent best-effort EXCLUS. • **data_health** : `ProbeErrors > 0` (sondes
+      en échec) → erreur via défer ; les WARNINGS data-health restent des RÉSULTATS.
+      Sémantique D1 respectée. Test `TestCatalogRefreshCron_PartialFailure_ReportedToCronStatus`
+      (helper `cronRecord`) : échec partiel → LastError avec cause + ConsecutiveFailures
+      1→2, succès → reset 0. gofmt/build/vet OK ; go test scheduler VERT.
+- [x] F11 (LB3) — graine de découverte de saison = dernière saison PERSISTÉE.
+      `duckdb.WorldCSRLatestSeason(ctx, db)` : DISTINCT season_id de
+      `world_csr_leaderboard_snapshots`, max via `worldSeasonRank` (rang NUMÉRIQUE, pas
+      MAX(season_id) lexicographique — csrseason6-1 ne bat pas 13-2). Scraper : champ
+      `seedSeason` (défaut = const `seedSeasonID` conservée + commentée FALLBACK) +
+      `SetSeedSeason`, `FetchCatalog` utilise `s.seedSeason`. Port
+      `LeaderboardScraperPort` + `SetSeedSeason` ; cron `applyDiscoverySeed` (lit la
+      dernière saison, l'injecte AVANT toute requête catalogue ; DB vide/erreur →
+      repli silencieux sur la constante). stubScraper mis à jour. Tests : seed =
+      csrseason13-2 malgré csrseason6-1 présent (piège lexical) ; DB vide → aucune
+      injection (fallback). gofmt/build/vet OK ; halo + scheduler cron VERTS.
+- [x] F12 (AU4) — `UserTokens.TokenClientFamily` (const `TokenFamilyAzure`/
+      `TokenFamilyXboxNative`), APPRISE au refresh : `ExchangeRefreshTokenWithRotation`
+      retourne désormais la famille du client qui a répondu (azure si l'app Azure a
+      rafraîchi, xbox_native si le fallback MSA natif a réussi) — self-healing, y
+      compris pour les entrées existantes (1er refresh la pose). `refreshAccessTokenForUser`
+      la persiste sur tokens ; `RefreshUserXSTS` l'injecte en ctx via
+      `withTokenClientFamily`. `requestUserToken` (halo_exchange.go) lit la ctx : préfixe
+      RpsTicket DÉTERMINISTE quand connu (xbox_native→"t=" d'abord, azure→"d="), sinon
+      ordre historique d=. Retry d=/t= CONSERVÉ en filet, désormais `slog.WarnContext`
+      quand il se déclenche (visibilité des 401 non liés au préfixe). Migration douce :
+      famille vide → comportement actuel. Provenance threadée SANS changer les
+      signatures publiques (ctx, patron WithHaloAuth). Ripple mécanique : 4 callers
+      prod + 8 test de la nouvelle signature (`_` où non pertinent). Tests : familles
+      apprises azure/xbox_native (oauth_refresh_internal_test) ; préfixe déterministe
+      t=/d= sans retry (halo_exchange_test). PÉRIMÈTRE : famille posée sur le chemin
+      RefreshUserXSTS ; le pool refresher (refresh_loop) et probe DISCARDENT la famille
+      (hors périmètre, migration douce sûre) — consigné Découvertes. gofmt/build/vet/test VERT.
+- [x] F13 (E5 profond, décision D6) — `duckdb.PlayerReadHandle` (nouveau
+      `player_read_handle.go`) : type n'exposant QUE `QueryRecovered` /
+      `QueryRowRecovered` / `ExecRecovered` / `UpsertNoConflict` (toutes
+      recovery-safe : Reopen+retry sur invalidation ART/B-swap). FERMETURE PAR LE
+      TYPE de la classe de trous « champ nu `db *DB` » invisible au garde-rail grep :
+      un repo détenant un PlayerReadHandle ne PEUT PLUS appeler Query/QueryRow/Exec
+      plats (erreur de compilation). PÉRIMÈTRE ATTEINT = **TOUS** les repos player-DB
+      de platform/duckdb (grep exhaustif des constructions `pdb.Player`) : coach_proposal,
+      streaks, record_history, milestones_earned, **campaign** (one-liner manqué au 1er
+      grep, retrouvé via les call-sites pdb.Player), prestige/prestige_player (5 structs :
+      Challenge/Arc/MomentCard/Telemetry/BaselineState) = **10 structs**. TROUS RÉELS
+      fermés : 6 `.db.Exec(` plats convertis en `ExecRecovered` (coach_proposal ×2,
+      record_history, streaks, campaign ×5→wait) — précisément coach_proposal 2,
+      record_history 1, streaks 1, campaign 5 = 9 écritures plates player-DB que le grep
+      ne voyait pas, désormais recovery-safe. Constructeurs inchangés (prennent *DB, wrap
+      `NewPlayerReadHandle`) → zéro impact caller. Garde-rail grep CONSERVÉ + note datée
+      2026-07-17 (fermeture par construction). HORS PÉRIMÈTRE (shared/metadata, D6) :
+      milestones_catalog (pdb.Metadata), catalog_repo (catalogMetaDB),
+      prestige_metadata (metadataDB), prestige_social/squad (sharedSocialDB),
+      shared_reader_legacy (shared), cachedDB.db (interne). Build + go test duckdb +
+      prestige VERTS (compile = preuve de fermeture).
 
 **Gate F** : go test paquets touchés + intégration filtrée ancrée (persist/
 seeder) ; vitest lib/features migrées ; lint ; thought_log ; commit.
@@ -399,6 +539,13 @@ seeder) ; vitest lib/features migrées ; lint ; thought_log ; commit.
   la fenêtre de revue (déjà présents en 24fc02f2f), NON flaggés par la revue
   adversariale, hors périmètre E1 (qui ne visait que le trigger des tooltips).
   Non traités. À solder si un chantier i18n match-view est décidé.
+- [LOT F / F12] La provenance de token (`TokenClientFamily`) est apprise et posée sur
+  le chemin `RefreshUserXSTS` (RTA). Le POOL refresher (`refresh_loop.go:156`) et
+  `cmd/probe-world-stats` DISCARDENT la famille retournée par
+  `ExchangeRefreshTokenWithRotation` (`_`). Conséquence : un user rafraîchi UNIQUEMENT
+  par le pool (jamais par la voie RTA) garde `TokenClientFamily` vide → retry d=→t=
+  (migration douce, sûre). Étendre le pool refresher (mapper vers UserTokens du store)
+  généraliserait le self-healing — hors périmètre F12, non traité.
 - [LOT D / D3] `data_health_runs` croît aussi sans rétention (1 ligne par audit
   data-health), mais basse fréquence et son lecteur (`LatestDataHealthJSON`) ne lit que
   la dernière ligne. Le plan D3 liste explicitement 3 tables (detection_events,

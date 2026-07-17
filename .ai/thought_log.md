@@ -1,3 +1,32 @@
+## [2026-07-17] LOT F — correctifs revue : duplications, dette, robustesse (F1-F13, branche fix/revue-2026-07-correctifs)
+
+**Statut** : Complété (worktree `LevelUp-wt-revue-correctifs`, enchaîné sur lot A `b497befc1` / B `033ba5f4c` / C `018c82ea1` / D `55216fda6` / E `4e6eea0f0` ; NON mergé — merge + push superviseur, push main = deploy prod). Dernier lot d'implémentation du plan.
+
+**Périmètre** : les 13 items F1-F13 du plan. RE-VÉRIFIÉ sur pièces chaque copie (le code a bougé depuis la revue). Chaque centralisation F1-F6 pose son garde-rail (règle n°6). Aucun fix hors périmètre (découvertes consignées).
+
+**Décisions techniques principales** :
+- F1 (R2) — `lib/outcome.ts` : `outcomeCodeToValue` (défaut `null`, le plus sûr : ne jamais fabriquer un outcome ; un compteur type SessionOutcomeDonut `if(!key)continue` doit exclure l'inconnu) + `outcomeCodeToTapeValue` (défaut de frise 'dnf', non-null exigé par OutcomeSequenceTape). **5 copies** migrées (pas 4 : `MediaMatchPicker.outcomeKeyOf` non listée par la revue, trouvée au sweep). Garde-rail `outcome.guard.test.ts` (interdit `case N`/`=== N` → outcome hors outcome.ts ; ne matche pas le littéral objet 'draw' d'outcome-color.ts).
+- F2 (R1) — `analysis.LongestRun[T](items, pred) (length, start)` : générique, retourne aussi l'index de départ (detectTilt). 4 copies migrées. ALLOWLIST datée `max_killing_spree.go` (accumulateur À TROIS ÉTATS, non réductible). Garde-rail `archlint/no_local_longest_run_test.go`.
+- F3 (R4) — `formatSignedFixed` dans `lib/formatters/number.ts`, glyphe négatif unifié '−' (U+2212). 3 copies migrées (rating/KpiGrid passent de '-' ASCII → U+2212). delta-card `formatDelta` NON migré (précision dynamique, distinct — statué). Garde-rail `signed-format.guard.test.ts`.
+- F4 (R5) — helper unique `service.coalesceStr` (variadique, exige non-vide) ; `coalesce` supprimé (résultats identiques). `sync.coalesceStrPtr` laissé (retourne *string). Garde-rail archlint scopé à service/.
+- F5 (R7) — `deltaToken` exporté d'ExplorerBriefing.logic ; 2 copies supprimées. Garde-rail (regex resserrée pour ne pas matcher la variable homonyme de MatchStatCards).
+- F6 (R8) — `campaign_exclusion.go` : `quotedIDList` + `sqlExcludeByMatchIDSubquery` (triplication interne éliminée). Garde-rail scopé au fichier (idiome quoting présent partout légitimement dans ops/).
+- F7 (R6) — ADR 0030 RESPECTÉ (persist untouched runtime) : `persist.demo_seed_columns.go` exporte les colonnes des 4 tables ; auto-parité (constante == INSERT persist) + parité seeder (allowlists documentées) → une colonne ADR 0026 ajoutée côté persist casse le test.
+- F8 (ME3) — mini-framework à closures (~90 L) remplacé par `applyMediaNameFallback` direct ×3 (accessor struct pour respecter la limite d'arguments) ; bulk resolve + fast-path conservés ; 4 tests intégration H5 verts.
+- F9 (CV5) — `opts ...PostSyncDeltaOptions` → paramètre obligatoire ; 23 call-sites test mis à jour.
+- F10 (LB2, D1) — les 5 crons rapportent l'erreur AGRÉGÉE réelle à ReportCronRun (fin du `nil` inconditionnel). Sémantique par cron : world_leaderboard=persist ; catalog/asset_name_sweep=`c.run` err ; spartan=LoadPlayers + échecs non-lock (les locks transitoires EXCLUS) ; data_health=`ProbeErrors>0`. Test cronstatus (échec partiel → visible, consecutive_failures 1→2, succès→reset).
+- F11 (LB3) — `duckdb.WorldCSRLatestSeason` (rang numérique `worldSeasonRank`, jamais MAX lexicographique) ; graine de découverte du scraper = dernière saison persistée, const `csrseason13-2` fallback conservée. Threadée via `SetSeedSeason` (port + concret + stub). Tests : csrseason13-2 malgré csrseason6-1 présent ; DB vide → fallback.
+- F12 (AU4) — `UserTokens.TokenClientFamily` APPRISE au refresh (`ExchangeRefreshTokenWithRotation` retourne la famille du client qui a répondu) → préfixe RpsTicket déterministe via ctx (`withTokenClientFamily`, patron WithHaloAuth, zéro signature publique changée) ; retry d=/t= conservé en filet AVEC `slog.WarnContext`. Migration douce (famille vide → comportement actuel).
+- F13 (E5 profond, D6) — `duckdb.PlayerReadHandle` (n'expose que `*Recovered` + `UpsertNoConflict`) : ferme PAR LE TYPE la classe de trous « champ nu `db *DB` » invisible au grep. **10 structs** player-DB migrées (coach_proposal, streaks, record_history, milestones_earned, **campaign** — one-liner manqué au 1er grep, retrouvé via les call-sites pdb.Player —, prestige_player ×5). 9 écritures plates player-DB converties en ExecRecovered. Garde-rail grep conservé + note datée. shared/metadata NON touchés.
+
+**Résultats observés (Gate F, tous verts)** : gofmt+vet OK ; `go test ./...` (suite unitaire complète) VERT ; `go test -tags=integration -p 1 ./internal/persist/... ./internal/ops/...` VERT ; `golangci-lint --new-from-merge-base=main` = **0 issue** (3 corrigées en cours : goconst listes de colonnes → nolint justifié ; gocyclo ExchangeRefreshTokenWithRotation → extraction `tryMSANativeFallback` ; argument-limit applyMediaNameFallback → accessor struct) ; `make check-types` OK ; `make test-web` complet = 267 fichiers, 2277 passés / 14 skippés, 0 échec.
+
+**Découvertes consignées (non traitées, section Découvertes du plan)** : F12 — le pool refresher (`refresh_loop.go`) et probe DISCARDENT la famille apprise (self-healing limité au chemin RTA ; migration douce sûre). Autres classifications documentées dans les statuts d'items (F2 max_killing_spree, F4 resolvedRegistryName, F7 double persister match_skill_rank).
+
+**Conclusion / prochaine étape** : LOT F soldé (F1-F13 `[x]`). Reste au superviseur : clôture chantier (Z1-Z5) — suite intégration complète `go test -tags=integration -p 1 ./...` + `check_test_baseline.sh` + delivery-checklist — puis merge main (prévenir AVANT push = deploy prod) + revue visuelle.
+
+---
+
 ## [2026-07-17] LOT E — correctifs revue : UX web (E1-E2, branche fix/revue-2026-07-correctifs)
 
 **Statut** : Complété (worktree `LevelUp-wt-revue-correctifs`, enchaîné sur lot A `b497befc1` / lot B `033ba5f4c` / lot C `018c82ea1` / lot D `55216fda6` ; NON mergé — merge + push superviseur, push main = deploy prod).

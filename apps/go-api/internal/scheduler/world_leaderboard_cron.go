@@ -24,6 +24,8 @@ package scheduler
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -51,6 +53,9 @@ type LeaderboardScraperPort interface {
 	// FetchSeasons découvre la liste des saisons CSR (nom d'Operation EN + FR) du menu
 	// déroulant de la page — source autoritative pour season_catalog (C2).
 	FetchSeasons(ctx context.Context, refPlaylistID string) ([]domain.WorldSeasonRef, error)
+	// SetSeedSeason injecte la graine de découverte (F11/LB3) : le cron y pose la
+	// dernière saison persistée pour ne pas dépendre d'une graine constante figée.
+	SetSeedSeason(seasonID string)
 }
 
 // WorldStatsEnricherPort agrège les stats des joueurs d'une saison (Phase C).
@@ -180,12 +185,12 @@ func (c *WorldLeaderboardCron) RunOnce(ctx context.Context) {
 	if c == nil || c.provider == nil || c.scraper == nil {
 		return
 	}
-	// Statut unifie des crons (A6/DC-5) : liveness du cycle — les erreurs par
-	// playlist restent best-effort internes (loguees).
+	// Statut des crons (A6/DC-5, décision D1) : le cycle rapporte l'erreur AGRÉGÉE
+	// réelle par titre — un cycle partiellement échoué = échec avec cause. Les
+	// dégradations nominales (saison indécouvrable, snapshot frais, playlist tronquée)
+	// restent des skips best-effort internes (nil), pas des échecs de cron.
 	start := time.Now()
-	defer func() {
-		observability.ReportCronRun("world_leaderboard", start, nil, time.Since(start).Milliseconds())
-	}()
+	var errs []error
 	reg := c.registry
 	if reg == nil {
 		reg = titlePkg.DefaultRegistry()
@@ -201,22 +206,33 @@ func (c *WorldLeaderboardCron) RunOnce(ctx context.Context) {
 				"module", logging.ModuleLeaderboard, "titleSlug", desc.Slug)
 			continue
 		}
-		c.runOnceForTitle(ctx, desc.Slug)
+		if err := c.runOnceForTitle(ctx, desc.Slug); err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", desc.Slug, err))
+		}
 	}
+	observability.ReportCronRun("world_leaderboard", start, errors.Join(errs...), time.Since(start).Milliseconds())
 }
 
 // runOnceForTitle exécute le cycle scrape+persist+enrich pour UN titre déclarant
-// CapWorldLeaderboard. Best-effort : une erreur ici n'interrompt pas l'itération
-// sur les autres titres (déjà isolée par les early-return de chaque étape).
-func (c *WorldLeaderboardCron) runOnceForTitle(ctx context.Context, titleSlug string) {
+// CapWorldLeaderboard. Retourne l'erreur RÉELLE du cycle (décision D1) : nil pour
+// les skips nominaux (playlists absentes, saison indécouvrable, snapshot frais,
+// scrape vide — dégradations attendues/auto-résolutives déjà loguées WARN/INFO), la
+// cause pour un échec DUR (persistance du snapshot). L'enrichissement Phase C reste
+// best-effort interne (n'échoue pas le cycle : le classement est déjà persisté). Une
+// erreur ici n'interrompt pas l'itération sur les autres titres (agrégée par RunOnce).
+func (c *WorldLeaderboardCron) runOnceForTitle(ctx context.Context, titleSlug string) error {
 	start := time.Now()
 
 	static := c.playlists()
 	if len(static) == 0 {
 		slog.WarnContext(ctx, "world_leaderboard_cron: aucune playlist classée active — cycle ignoré",
 			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug)
-		return
+		return nil
 	}
+
+	// Graine de découverte = dernière saison persistée (F11/LB3), avant toute requête
+	// catalogue (FetchActivePlaylists/FetchActiveSeason passent par la page-graine).
+	c.applyDiscoverySeed(ctx, titleSlug)
 	// Découvrir les playlists classées ACTIVES sur la page Waypoint (7 réelles) au lieu
 	// de se limiter à la liste statique (historiquement 4) — sinon seules les playlists
 	// scrapées ont des snapshots, donc la page classement n'en affiche qu'une poignée.
@@ -231,14 +247,14 @@ func (c *WorldLeaderboardCron) runOnceForTitle(ctx context.Context, titleSlug st
 	//    discoverActiveSeason).
 	season, ok := c.discoverActiveSeason(ctx, titleSlug, static, playlists)
 	if !ok {
-		return // dégradation (WARN + compteur expvar) déjà loguée dans discoverActiveSeason
+		return nil // dégradation (WARN + compteur expvar) déjà loguée dans discoverActiveSeason
 	}
 
 	// 2. Garde-fou fraîcheur (lecture RO, sans lease writer).
 	if c.snapshotIsFresh(ctx, season) {
 		slog.InfoContext(ctx, "world_leaderboard_cron: snapshot récent présent — cycle ignoré",
 			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "season", season, "freshness", c.freshness)
-		return
+		return nil
 	}
 
 	// 3. Scraper toutes les playlists HORS lease writer (réseau lent).
@@ -246,7 +262,7 @@ func (c *WorldLeaderboardCron) runOnceForTitle(ctx context.Context, titleSlug st
 	if len(entries) == 0 {
 		slog.WarnContext(ctx, "world_leaderboard_cron: aucune entrée scrapée — rien à persister",
 			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "season", season)
-		return
+		return nil
 	}
 
 	// Découvrir les saisons (nom d'Operation + FR) HORS lease writer — best-effort,
@@ -258,7 +274,7 @@ func (c *WorldLeaderboardCron) runOnceForTitle(ctx context.Context, titleSlug st
 	if err != nil {
 		slog.ErrorContext(ctx, "world_leaderboard_cron: persistance échouée",
 			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "season", season, "err", err)
-		return
+		return fmt.Errorf("persist snapshot: %w", err)
 	}
 
 	slog.InfoContext(ctx, "world_leaderboard_cron: cycle terminé",
@@ -270,6 +286,34 @@ func (c *WorldLeaderboardCron) runOnceForTitle(ctx context.Context, titleSlug st
 	// saison active et les persister. Best-effort, après le snapshot CSR — un échec
 	// ici ne compromet pas le classement déjà persisté.
 	c.enrich(ctx, season)
+	return nil
+}
+
+// applyDiscoverySeed remplace la graine de découverte du scraper par la DERNIÈRE
+// saison réellement persistée dans les snapshots (F11/LB3) — garantie de rendre la
+// page Waypoint. Repli silencieux sur la graine constante par défaut du scraper si
+// aucun snapshot (DB vide au premier boot) ou lecture impossible : la graine figée
+// n'est plus l'unique point de découverte, donc elle ne peut plus geler le classement.
+func (c *WorldLeaderboardCron) applyDiscoverySeed(ctx context.Context, titleSlug string) {
+	db, release, err := c.provider.Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "world_leaderboard_cron: lecture graine saison impossible — graine par défaut conservée",
+			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "err", err)
+		return
+	}
+	defer release()
+	season, ok, err := duckdb.WorldCSRLatestSeason(ctx, db)
+	if err != nil {
+		slog.WarnContext(ctx, "world_leaderboard_cron: requête graine saison échouée — graine par défaut conservée",
+			"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "err", err)
+		return
+	}
+	if !ok {
+		return // DB vide (premier boot) → le scraper garde sa graine constante (fallback).
+	}
+	c.scraper.SetSeedSeason(season)
+	slog.DebugContext(ctx, "world_leaderboard_cron: graine de découverte = dernière saison persistée",
+		"module", logging.ModuleLeaderboard, "titleSlug", titleSlug, "season", season)
 }
 
 // discoverActivePlaylists découvre les playlists classées ACTIVES exposées par le menu

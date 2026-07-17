@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/platform/halo"
 )
@@ -48,6 +49,12 @@ type stubScraper struct {
 	seasons      []domain.WorldSeasonRef
 	seasonsErr   error
 	seasonsCalls int
+	// seedSeason : dernière graine injectée par le cron (F11). "" = jamais appelée.
+	seedSeason string
+}
+
+func (s *stubScraper) SetSeedSeason(seasonID string) {
+	s.seedSeason = seasonID
 }
 
 func (s *stubScraper) FetchActiveSeason(_ context.Context, refPlaylistID string) (string, error) {
@@ -186,6 +193,48 @@ func TestWorldLeaderboardCron_PersistsSeasonCatalog(t *testing.T) {
 	}
 	if nameFR != "Ombres" {
 		t.Errorf("name_fr csrseason12-1 = %q, want \"Ombres\"", nameFR)
+	}
+}
+
+// TestWorldLeaderboardCron_SeedFromLatestPersistedSeason (F11/LB3) : la graine de
+// découverte injectée au scraper est la DERNIÈRE saison persistée (rang NUMÉRIQUE max),
+// pas la constante figée. Les snapshots pré-existants incluent csrseason6-1 (lexicalement
+// > 13-2) pour piéger un MAX(season_id) naïf : la graine correcte reste csrseason13-2.
+func TestWorldLeaderboardCron_SeedFromLatestPersistedSeason(t *testing.T) {
+	provider, db := newSharedProviderForTest(t)
+	ctx := context.Background()
+	if _, err := duckdb.InsertWorldCSRSnapshot(ctx, db, "halo_infinite", []domain.LeaderboardEntry{
+		{Season: "csrseason6-1", Playlist: "pl-a", Rank: 1, Gamertag: "Old", CSRValue: 1400, FetchedAt: time.Now().UTC()},
+		{Season: "csrseason13-2", Playlist: "pl-a", Rank: 1, Gamertag: "New", CSRValue: 1500, FetchedAt: time.Now().UTC()},
+	}); err != nil {
+		t.Fatalf("seed snapshots: %v", err)
+	}
+
+	scraper := &stubScraper{
+		season:  "csrseason13-2",
+		entries: []domain.LeaderboardEntry{{Rank: 1, Gamertag: "Alpha", XUID: "2535000000000001", CSRValue: 1500}},
+	}
+	c := newTestCron(provider, scraper)
+	c.RunOnce(ctx)
+
+	if scraper.seedSeason != "csrseason13-2" {
+		t.Errorf("graine injectée = %q, want csrseason13-2 (dernière saison persistée, rang max)", scraper.seedSeason)
+	}
+}
+
+// TestWorldLeaderboardCron_SeedFallbackOnEmptyDB (F11/LB3) : sans aucun snapshot, le
+// cron n'injecte PAS de graine — le scraper conserve sa constante par défaut (fallback).
+func TestWorldLeaderboardCron_SeedFallbackOnEmptyDB(t *testing.T) {
+	provider, _ := newSharedProviderForTest(t)
+	scraper := &stubScraper{
+		season:  "csrseason13-2",
+		entries: []domain.LeaderboardEntry{{Rank: 1, Gamertag: "Alpha", XUID: "2535000000000001", CSRValue: 1500}},
+	}
+	c := newTestCron(provider, scraper)
+	c.RunOnce(context.Background())
+
+	if scraper.seedSeason != "" {
+		t.Errorf("graine injectée = %q sur DB vide, want \"\" (fallback constante scraper)", scraper.seedSeason)
 	}
 }
 

@@ -201,7 +201,7 @@ func filterByExplorerMapNames(rows []domain.MatchHistoryRawRow, maps []string) [
 	set := stringSliceToSet(maps)
 	out := rows[:0:0]
 	for _, r := range rows {
-		if _, ok := set[coalesce(r.MapNameFR, r.MapName)]; ok {
+		if _, ok := set[coalesceStr(r.MapNameFR, r.MapName)]; ok {
 			out = append(out, r)
 		}
 	}
@@ -217,7 +217,7 @@ func filterByExplorerModeNames(rows []domain.MatchHistoryRawRow, modes []string)
 	set := stringSliceToSet(modes)
 	out := rows[:0:0]
 	for _, r := range rows {
-		label := analysis.NormalizeModeLabel(coalesce(r.PairNameFR, r.PairName))
+		label := analysis.NormalizeModeLabel(coalesceStr(r.PairNameFR, r.PairName))
 		if _, ok := set[label]; ok {
 			out = append(out, r)
 		}
@@ -309,10 +309,10 @@ func computeExplorerAvailableOptions(rows []domain.MatchHistoryRawRow) (expTypes
 		if pl := derefStr(r.PlaylistName); pl != "" {
 			plSet[pl] = struct{}{}
 		}
-		if m := coalesce(r.MapNameFR, r.MapName); m != "" {
+		if m := coalesceStr(r.MapNameFR, r.MapName); m != "" {
 			mapSet[m] = struct{}{}
 		}
-		if mo := analysis.NormalizeModeLabel(coalesce(r.PairNameFR, r.PairName)); mo != "" {
+		if mo := analysis.NormalizeModeLabel(coalesceStr(r.PairNameFR, r.PairName)); mo != "" {
 			modeSet[mo] = struct{}{}
 		}
 	}

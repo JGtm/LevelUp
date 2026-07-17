@@ -56,12 +56,15 @@ func TestExchangeRefreshToken_SecretAccepted(t *testing.T) {
 		_, _ = w.Write([]byte(`{"access_token":"at-1","refresh_token":"rt-2","expires_in":3600}`))
 	}, "custom-app-id", "s3cret")
 
-	at, rt, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-1")
+	at, rt, family, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-1")
 	if err != nil {
 		t.Fatalf("err inattendue : %v", err)
 	}
 	if at != "at-1" || rt != "rt-2" {
 		t.Errorf("tokens : obtenu (%q, %q), attendu (at-1, rt-2)", at, rt)
+	}
+	if family != TokenFamilyAzure {
+		t.Errorf("provenance (F12) : obtenu %q, attendu %q (app Azure)", family, TokenFamilyAzure)
 	}
 	if calls != 1 {
 		t.Errorf("appels endpoint : attendu 1, obtenu %d", calls)
@@ -82,7 +85,7 @@ func TestExchangeRefreshToken_RetryPublicOnAADSTS90023(t *testing.T) {
 		_, _ = w.Write([]byte(`{"access_token":"at-pub","refresh_token":"rt-pub","expires_in":3600}`))
 	}, "custom-app-id", "s3cret")
 
-	at, rt, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-1")
+	at, rt, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-1")
 	if err != nil {
 		t.Fatalf("err inattendue : %v", err)
 	}
@@ -106,7 +109,7 @@ func TestExchangeRefreshToken_RetryPublicThenRevoked(t *testing.T) {
 		_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"AADSTS70000: token expired"}`))
 	}, "custom-app-id", "s3cret")
 
-	_, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-dead")
+	_, _, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-dead")
 	if err == nil {
 		t.Fatalf("erreur attendue")
 	}
@@ -132,7 +135,7 @@ func TestExchangeRefreshToken_NoSecretNoRetry(t *testing.T) {
 		_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"dead"}`))
 	}, "custom-app-id", "")
 
-	_, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-1")
+	_, _, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-1")
 	if err == nil {
 		t.Fatalf("erreur attendue")
 	}
@@ -152,7 +155,7 @@ func TestExchangeRefreshToken_CanonicalClientSendsSecret(t *testing.T) {
 		_, _ = w.Write([]byte(`{"access_token":"at","expires_in":3600}`))
 	}, "", "s3cret") // LEVELUP_OAUTH_CLIENT_ID vide → LevelUpClientID (e1cb35ab)
 
-	if _, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-1"); err != nil {
+	if _, _, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-1"); err != nil {
 		t.Fatalf("err inattendue : %v", err)
 	}
 }
@@ -182,12 +185,15 @@ func TestExchangeRefreshToken_FallbackMSAOnInvalidGrant(t *testing.T) {
 		_, _ = w.Write([]byte(`{"access_token":"at-msa","refresh_token":"rt-msa-2","expires_in":86400}`))
 	})
 
-	at, rt, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-msa-1")
+	at, rt, family, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-msa-1")
 	if err != nil {
 		t.Fatalf("err inattendue : %v", err)
 	}
 	if at != "at-msa" || rt != "rt-msa-2" {
 		t.Errorf("tokens : obtenu (%q, %q), attendu (at-msa, rt-msa-2)", at, rt)
+	}
+	if family != TokenFamilyXboxNative {
+		t.Errorf("provenance (F12) : obtenu %q, attendu %q (MSA natif/Xbox)", family, TokenFamilyXboxNative)
 	}
 	if msaCalls != 1 {
 		t.Errorf("appels endpoint MSA : attendu 1, obtenu %d", msaCalls)
@@ -203,7 +209,7 @@ func TestExchangeRefreshToken_FallbackMSAAlsoDead(t *testing.T) {
 	}, "custom-app-id", "")
 	// Le stub MSA par défaut de withMockTokenEndpoint répond déjà invalid_grant.
 
-	_, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-dead")
+	_, _, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-dead")
 	if err == nil {
 		t.Fatalf("erreur attendue")
 	}
@@ -232,7 +238,7 @@ func TestExchangeRefreshToken_NoFallbackOnConfigError(t *testing.T) {
 		_, _ = w.Write([]byte(`{"access_token":"at-msa"}`))
 	})
 
-	_, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-1")
+	_, _, _, err := ExchangeRefreshTokenWithRotation(context.Background(), "rt-1")
 	if err == nil {
 		t.Fatalf("erreur attendue")
 	}
