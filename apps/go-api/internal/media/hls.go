@@ -46,13 +46,18 @@ const defaultSegmentDuration = 4
 const aacRenditionBitrate = "192k"
 
 // amixLimiterCeiling est le plafond linéaire (0..1) appliqué par alimiter à la
-// SORTIE de chaque amix. amix somme les entrées SANS les diviser (normalize=0,
-// choisi pour ne pas affaiblir le volume) : la somme jeu+voix peut dépasser le
-// plein-échelle et écrêter. Le limiteur borne les crêtes juste sous 1.0.
+// SORTIE de chaque amix (rendition servie). amix somme les entrées SANS les diviser
+// (normalize=0, choisi pour ne pas affaiblir le volume) : la somme jeu+voix peut
+// dépasser le plein-échelle et écrêter. Le limiteur borne les crêtes juste sous 1.0.
 // level=false → limiteur de crête pur, sans re-normalisation auto qui annulerait
-// le normalize=0. NE concerne PAS les amix d'ANALYSE (hls_audio_analyze.go) : la
-// corrélation d'enveloppe doit mesurer le signal brut.
+// le normalize=0.
 const amixLimiterCeiling = "0.98"
+
+// codecTypeAudio est la valeur de CodecType (ffprobe) d'une piste audio.
+const codecTypeAudio = "audio"
+
+// audioRenditionGameSlug est le slug de la rendition « jeu » dans le master HLS.
+const audioRenditionGameSlug = "game"
 
 // AVStreamDetail décrit une piste (vidéo ou audio) retournée par ffprobe,
 // enrichie des tags utiles au nommage des pistes audio dans le master.
@@ -492,16 +497,16 @@ func BuildHLS(ctx context.Context, srcPath, outDir string, opts HLSOptions) (HLS
 	// oui, `full` la lira directement (pas d'amix doublé = écho) et on classe quelle
 	// composante est le jeu. Décision IO (décode l'audio) faite ici pour garder planHLS pur.
 	var layout audioLayout
-	if n := countAudioStreams(streams); n >= 2 {
-		l, corr, derr := analyzeAudioLayout(ctx, srcPath, n)
+	if audioStreams := audioStreamsOnly(streams); len(audioStreams) >= 2 {
+		l, r2, derr := analyzeAudioLayout(ctx, srcPath, audioStreams)
 		if derr != nil {
 			slog.WarnContext(ctx, "BuildHLS: analyse pistes audio échouée, mapping par défaut",
 				"src", srcPath, "err", derr)
 		} else {
 			layout = l
 			slog.InfoContext(ctx, "BuildHLS: analyse pistes audio",
-				"src", srcPath, "audio_count", n, "track0_full_mix", l.Track0FullMix,
-				"game_component", l.GameComponent, "envelope_corr", corr)
+				"src", srcPath, "audio_count", len(audioStreams), "track0_full_mix", l.Track0FullMix,
+				"game_component", l.GameComponent, "fullmix_r2", r2)
 		}
 	}
 	plan, err := planHLS(streams, layout)
