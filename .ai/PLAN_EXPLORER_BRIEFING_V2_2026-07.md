@@ -389,239 +389,413 @@ reconstituer paliers début/fin ni split solo/escouade depuis les lignes visible
 
 ### Phase 0 — Cadrage & branche (rapide)
 
-- [ ] Créer `feat/explorer-briefing-v2` depuis `main` à jour (`git fetch` ; vérifier
-      `git log --oneline -1 origin/main`).
-- [ ] Relire §2 (constat) sur pièces : rouvrir chaque fichier:ligne cité et confirmer qu'il n'a
-      pas bougé depuis le 2026-07-16 (le code a pu être modifié).
-- [ ] Confirmer l'état des décisions AWAIT-USER restantes (D-B, D-C) : noter au journal la
-      valeur retenue (confirmée ou défaut). D-A et D-D sont tranchées (2026-07-16).
+- [x] Créer `feat/explorer-briefing-v2` depuis `main` à jour (`git fetch` ; vérifier
+      `git log --oneline -1 origin/main`). — Branche déjà créée (item git fait par le
+      superviseur) ; `git branch --show-current` = `feat/explorer-briefing-v2` ; worktree propre.
+- [x] Relire §2 (constat) sur pièces : rouvrir chaque fichier:ligne cité et confirmer qu'il n'a
+      pas bougé depuis le 2026-07-16 (le code a pu être modifié). — Re-vérifié 2026-07-16.
+      Fichiers frontend EXACTS (formatPeriod `:41-55` sans année ; dim_playlist `:899-901`
+      « Par playlist » ; ranked_title `:911-913` « Pronostic »/« Prognosis » ; ranked_delta
+      `:915-917` ; ranked_expected* `:919-929` ; vs_baseline `:865-867` ; logic.ts
+      `formatSignedFixed:17` / `formatSignedPoints:29` ; DimensionRow `:94-130` ; RankedCard
+      `:159-204`). Backend : `ExplorerBriefingRanked` désormais à `:121-133` (le plan citait
+      `:120-133` — décalage d'1 ligne, champs `RatingKind`/`DeltaSum`/`ExpectedWinRate`
+      inchangés ; voir §6 Découverte-1). Les commits « sweep recovery player-DB » de la branche
+      de base (021f24a7b, af6ccdd6f, 8750dfcc8) N'ONT touché AUCUN fichier explorer/briefing
+      (service briefing + domain datent du Lot D 01f71104b, kpi_stats du chantier H5) → aucun
+      impact sur l'explorer, confirmé.
+- [x] Confirmer l'état des décisions AWAIT-USER restantes (D-B, D-C) : noter au journal la
+      valeur retenue (confirmée ou défaut). D-A et D-D sont tranchées (2026-07-16). —
+      **D-B = défaut 10** (≥ 10 matchs par sous-groupe, aligné `MinDimensionGroupMatches`).
+      **D-C = défaut** (une ligne par type préfixée : « CSR · Bronze I → Platine VI · −1.4
+      pt/match » ; point décimal accepté ; titre de section « Classement »). Décisions
+      transmises par le superviseur au lancement du chantier ; s'appliquent par défaut.
 
 Gate Phase 0 : `git branch --show-current` = `feat/explorer-briefing-v2` ; constat re-vérifié ;
-décisions notées.
+décisions notées. — PASSÉ (2026-07-16).
 
 ### Phase 1 — Terminologie, renommage & année (rapide, frontend-only) — items 2, 3, 5
 
-- [ ] **1a (item 2).** `explorer.toml` `explorer.briefing.dim_playlist` → FR « Par sélection »
-      (EN inchangé « By playlist »). Régénérer les manifests.
-- [ ] **1b (item 3, D-A tranché).** `explorer.toml` : `explorer.briefing.ranked_title` → FR
+- [x] **1a (item 2).** `explorer.toml` `explorer.briefing.dim_playlist` → FR « Par sélection »
+      (EN inchangé « By playlist »). Régénérer les manifests. — FAIT ; `explorer.ts` régénéré
+      (diff = seule valeur FR changée).
+- [x] **1b (item 3, D-A tranché).** `explorer.toml` : `explorer.briefing.ranked_title` → FR
       « Classement » / EN « Ranking ». PAS de clé tooltip. La suppression du bloc « attendu vs
       réel » (rendu + clés `ranked_expected*` + champs DTO) se fait en Phase 4 — le composant
       les consomme encore, les clés restent jusque-là pour ne pas casser le typecheck ;
-      `ranked_delta` idem (Phase 4).
-- [ ] **1c (item 5).** Ajouter `formatDateRange(start, end, locale, fallback?)` dans
+      `ranked_delta` idem (Phase 4). — FAIT ; seul le libellé de titre changé, clés
+      `ranked_expected*`/`ranked_delta` laissées intactes pour la Phase 4.
+- [x] **1c (item 5).** Ajouter `formatDateRange(start, end, locale, fallback?)` dans
       `lib/formatters/date.ts` (mettre à jour l'en-tête de doc du fichier), basé sur
       `Intl.DateTimeFormat.prototype.formatRange` avec `{ day:'numeric', month:'short',
       year:'numeric' }` — factorisation année/mois native (« 3 – 12 mars 2025 » ;
       « 3 mars 2024 – 12 janv. 2025 » si années différentes ; date simple si end absent ou
       égal à start). Test unitaire du helper. Puis `ExplorerBriefingStrip.tsx` `formatPeriod`
-      (`:41-55`) : remplacer le `Intl.DateTimeFormat` local par ce helper.
-- [ ] **1d.** Garde-rail terminologie : ajouter/étendre un test (ou grep de clôture) vérifiant
+      (`:41-55`) : remplacer le `Intl.DateTimeFormat` local par ce helper. — FAIT : helper
+      ajouté + ré-exporté depuis `formatters/index.ts` ; en-tête de doc du fichier mise à
+      jour ; 4 tests dans `formatters.test.ts` (même mois factorisé, années différentes, date
+      simple, fallback) ; `formatPeriod` délègue désormais à `formatDateRange`.
+- [x] **1d.** Garde-rail terminologie : ajouter/étendre un test (ou grep de clôture) vérifiant
       l'absence des littéraux « Par playlist » et « Pronostic »/« Prognosis » dans le manifest et
-      les composants briefing.
+      les composants briefing. — FAIT : nouveau test node
+      `features/explorer/explorerBriefingTerminology.guard.test.ts` (scanne `explorer.toml` +
+      composants `*briefing*`, hors fichiers de test).
 
 Gate Phase 1 : `node apps/web/scripts/build_i18n_manifests.mjs` sans diff inattendu ;
 `make check-types` = 0 ; `make test-web` (dangerouslyDisableSandbox) vert ;
 `cd apps/web && npm run lint` = 0 ; grep de clôture : 0 occurrence « Par playlist » /
 « Pronostic » / « Prognosis » sous `apps/web/src/features/explorer` et dans `explorer.toml`.
+— PASSÉ (2026-07-16) : manifests régénérés (seul `explorer.ts` modifié, 2 valeurs) ;
+`make check-types` = 0 ; `make test-web` = 256 fichiers / 2172 passés / 14 skipped / 0 fail ;
+`npm run lint` = 0 erreur (68 warnings baseline pré-existants, aucun sur les fichiers touchés) ;
+greps de clôture = 0 occurrence (hors le garde-rail lui-même).
 
 ### Phase 2 — Delta « vs habituel » dégénéré (moyen, frontend + service) — item 1
 
-- [ ] **2a.** Dériver `isFullHistoryScope = scope.matches != null && baseline?.matches ===
-      scope.matches` dans `ExplorerBriefingStrip.tsx` (le composant a `scope` et `baseline`).
-- [ ] **2b.** Socle : quand `isFullHistoryScope`, ne rendre AUCUN fragment « vs habituel »
+- [x] **2a.** Dériver `isFullHistoryScope = scope.matches != null && baseline?.matches ===
+      scope.matches` dans `ExplorerBriefingStrip.tsx` (le composant a `scope` et `baseline`). —
+      FAIT : helper PUR `isFullHistoryScope(scopeMatches, baselineMatches)` extrait dans
+      `ExplorerBriefing.logic.ts` (testable isolé) ; le Strip dérive `fullHistory` une fois et
+      le réutilise pour le socle ET le passe aux modules.
+- [x] **2b.** Socle : quand `isFullHistoryScope`, ne rendre AUCUN fragment « vs habituel »
       (Bilan `:124-135`, FDA `:152-163`, Perf `:174-185`) — retirer la valeur, la flèche et le
-      «  vs habituel  ». Sinon, comportement V1 inchangé.
-- [ ] **2c.** Dimensions : passer `isFullHistoryScope` (ou l'info baseline) à
+      «  vs habituel  ». Sinon, comportement V1 inchangé. — FAIT : les 3 fragments socle gatés
+      `… && !fullHistory` (Bilan) / `… && !fullHistory ?` (FDA) / `… && !fullHistory && …`
+      (Perf). Le socle (Matchs/WR/FDA/Perf + V-D-N) reste rendu.
+- [x] **2c.** Dimensions : passer `isFullHistoryScope` (ou l'info baseline) à
       `ExplorerBriefingModules` → `DimensionRow` (`:94-130`). Quand vrai, masquer la colonne
-      delta (flèche + `formatSignedPoints`) — garder libellé / n matchs / WR / note.
-- [ ] **2d.** Vérifier que `formatSignedPoints`/`formatSignedFixed` restent inchangés (le « ±0 »
+      delta (flèche + `formatSignedPoints`) — garder libellé / n matchs / WR / note. — FAIT :
+      prop `hideDelta` threadée `ExplorerBriefingModules` → `DimensionCard` → `DimensionRow` ;
+      la colonne delta est rendue sous `{!hideDelta && (…)}`, le reste (label / n matchs / WR /
+      note) inchangé.
+- [x] **2d.** Vérifier que `formatSignedPoints`/`formatSignedFixed` restent inchangés (le « ±0 »
       reste correct pour le cas rare d'un delta réellement nul SOUS filtre actif — on ne masque
       QUE le cas plein-historique, pas tout zéro). Ajouter un test de rendu / logique couvrant
-      les deux états (plein historique → pas de delta ; filtré → delta présent).
-- [ ] **2e (P-8, service).** `buildBriefingDimensions`/`buildDimension`
+      les deux états (plein historique → pas de delta ; filtré → delta présent). — FAIT :
+      `formatSignedPoints`/`formatSignedFixed` NON modifiés (masquage porté par le flag, pas par
+      la valeur). Tests : `ExplorerBriefing.logic.test.ts` (nouveau describe `isFullHistoryScope`,
+      4 cas) + `ExplorerBriefingStrip.test.tsx` (nouveau, 2 états : filtré → `+30 pts`/`+20 pts`/
+      `vs_baseline` présents ; plein historique → absents, socle + dimensions conservés — deltas
+      posés NON NULS pour prouver que le masquage dépend du flag).
+- [x] **2e (P-8, service).** `buildBriefingDimensions`/`buildDimension`
       (`match_history_service_briefing.go:211-278`) : quand `len(scope) == len(all)` (plein
       historique), re-trier les groupes qualifiés par `Session.WinRate` décroissant (tie-break
       libellé) avant `selectTopFlop` ; sous filtre, comportement V1 inchangé. Ne PAS toucher
       `breakdown.CompareByKey`. Test service des deux états (plein historique → ordre par
-      taux de victoire ; filtré → ordre par delta).
+      taux de victoire ; filtré → ordre par delta). — FAIT : booléen nommé `fullHistory :=
+      len(scope) == len(all)` calculé dans `buildBriefingDimensions`, passé en param à
+      `buildDimension` ; re-tri `sort.SliceStable` par `Session.WinRate` desc + tie-break
+      `Label` AVANT `selectTopFlop`, uniquement si `fullHistory`. `breakdown.CompareByKey`
+      inchangé. Tests : `TestBuildDimension_FullHistorySortsByWinRate` (MapIDs a1<m1<z1 en ordre
+      INVERSE du WR → prouve le re-tri) + `TestBuildDimension_FilteredSortsByDelta` (scope⊊all,
+      WR-desc ≠ delta-desc → ordre par delta conservé).
 
 Gate Phase 2 : `make check-types` = 0 ; `make test-web` vert (nouveau test des deux états) ;
 `npm run lint` = 0 ; `cd apps/go-api && go test ./...` = 0 (test 2e inclus) ;
-`make go-api-lint` = 0.
+`make go-api-lint` = 0. — PASSÉ (2026-07-16, depuis la racine du worktree) : `make check-types`
+= 0 ; `make test-web` = 257 fichiers / 2178 passés / 14 skipped / 0 échec (dont
+`ExplorerBriefingStrip.test.tsx` neuf) ; `npm run lint` = 0 erreur (68 warnings baseline
+pré-existants, 0 sur les fichiers touchés) ; `go test ./...` = exit 0, 111 packages ok, 0 FAIL
+(tests 2e inclus) ; `make go-api-lint` = exit 0 (+ `go vet ./internal/service/...` = 0).
 
 ### Phase 3 — Unification de mise en forme des cartes-sections (moyen, frontend-only) — item 7
 
-- [ ] **3a.** Créer `BriefingSectionCard` (dans `features/explorer/`) : carte `rounded-lg border
-      border-border bg-card` + en-tête bordurée `flex-none border-b border-border px-3 py-2
-      text-sm font-medium` (miroir de `ChartCard` `:125-131`), avec slot titre (acceptant un
-      `ReactNode` pour un `InfoTooltip` — cf. `ChartCardProps.title`) et slot contenu. Tokens
-      sémantiques uniquement (aucune couleur hex/Tailwind couleur — skill `color-tokens`).
-- [ ] **3b.** Migrer `DimensionCard` (`:76-92`) et `RankedCard` (`:159-204`) vers
-      `BriefingSectionCard` (remplacer les titres `text-3xs uppercase …` par l'en-tête
-      bordurée). Le slot titre accepte un `ReactNode` (InfoTooltip possible plus tard), mais
-      aucun tooltip n'est posé dans ce chantier (D-A).
-- [ ] **3c.** Vérifier visuellement la cohérence avec « Tendance » (même graisse/bordure de
-      titre). Ne PAS toucher les micro-tuiles socle (P-6).
-- [ ] **3d.** Garde-rail anti-divergence (CLAUDE.md §6 « ≤ 2 copies ») : le pattern d'en-tête
-      bordurée existe désormais en 2 endroits canoniques (`ChartCard` + `BriefingSectionCard`) ;
-      documenter en commentaire que toute 3ᵉ carte-section du briefing DOIT passer par
-      `BriefingSectionCard` (les cartes des Phases 4, 5 et 5b s'y conforment).
+- [x] **3a.** Créé `BriefingSectionCard` dans `apps/web/src/features/explorer/BriefingSectionCard.tsx` :
+      carte `rounded-lg border border-border bg-card` + en-tête bordurée `flex-none border-b
+      border-border px-3 py-2 text-sm font-medium` (byte-identique à `ChartCard:128`), slot
+      titre `ReactNode` (compatible InfoTooltip futur) + slot contenu (`p-3`, comme le corps
+      `ChartCard`). Tokens sémantiques uniquement (aucun hex/Tailwind couleur).
+- [x] **3b.** Migré `DimensionCard` et `RankedCard` (`ExplorerBriefingModules.tsx`, lignes
+      re-vérifiées après Phase 2) vers `BriefingSectionCard` : titres de carte `text-3xs
+      uppercase …` supprimés (déplacés dans l'en-tête bordurée). Import `KpiCard` retiré (plus
+      aucun usage — 0 code mort). AUCUN tooltip posé (D-A). Sous-labels internes du corps
+      `RankedCard` (`ranked_delta`/`ranked_expected_vs_actual`) laissés en l'état — ils relèvent
+      de la refonte du corps en Phase 4 (D-A), hors périmètre Phase 3.
+- [x] **3c.** Cohérence avec « Tendance » vérifiée par lecture : l'en-tête de `BriefingSectionCard`
+      réutilise la className EXACTE de l'en-tête `ChartCard` (`flex-none border-b border-border
+      px-3 py-2 text-sm font-medium`) que rend `TrendCard` via `TimeseriesLineChart`. Même
+      graisse (`font-medium`), même bordure. Micro-tuiles socle NON touchées (P-6). Alignement
+      pixel confirmé en revue visuelle Phase 6.
+- [x] **3d.** Garde-rail anti-divergence documenté en tête de `BriefingSectionCard.tsx` (bloc
+      « GARDE-RAIL ANTI-DIVERGENCE », CLAUDE.md §6) : le pattern d'en-tête bordurée existe en 2
+      endroits canoniques (`ChartCard` + `BriefingSectionCard`) ; toute 3ᵉ carte-section du
+      briefing (Phases 4/5/5b) DOIT passer par `BriefingSectionCard`, jamais ré-inliner un
+      `text-3xs uppercase …` ni recopier l'en-tête à la main.
 
-Gate Phase 3 : `make check-types` = 0 ; `make test-web` vert ; `npm run lint` = 0 ; revue
-visuelle (Phase 6) confirmera l'alignement.
+Gate Phase 3 : `make check-types` = 0 (CLOS) ; `make test-web` vert 257 fichiers / 2178 passés /
+14 skipped / 0 échec (CLOS) ; `npm run lint` = 0 erreur (68 warnings baseline, 0 sur fichiers
+touchés) (CLOS) ; revue visuelle (Phase 6) confirmera l'alignement.
 
 ### Phase 4 — Classement en grades PAR TYPE (lourd, backend + frontend) — item 4
 
-- [ ] **4a (domain + analysis).** `explorer_briefing.go` : nouveau type
-      `ExplorerBriefingRankedKind` (`Kind string`, `Matches int`, `TierStartLabel *string`,
-      `TierEndLabel *string`, `TierStartIsPlacement bool`, `TierEndPlacementRemaining *int`,
-      `DeltaPerMatch *float64` — tags JSON `omitempty`, commentaires d'unité) ; champ
-      `Kinds []ExplorerBriefingRankedKind` sur `ExplorerBriefingRanked` (`:120-133`).
-      `analysis/kpi_stats.go` : exposer les buckets par type via champ additif
-      `KPIStats.RankDeltas []RankDelta` (ordre déterministe ; le `RankDelta` majoritaire
-      reste, consommateurs existants intacts) + test analysis. RETRAIT (D-A) des champs
-      `ExpectedWinRate`, `ActualWinRate`, `MatchesWithPrediction` du DTO. Sort de
-      `DeltaSum`/`RatingKind` : item 4g.
-- [ ] **4b (service).** `buildBriefingRanked` (`match_history_service_briefing.go:367-398`) :
-      pour chaque entrée de `KPIStats.RankDeltas` retenue (type majoritaire toujours ; autres
-      types si `Count >= minRankedKindMatches`, constante nommée §3 P-3), scanner les rows du
-      scope triées par `StartTime`, restreintes à `SkillRatingType` == type (confronter la
-      casse aux constantes `canonical.RatingType*` sur pièces), pour extraire le premier et le
-      dernier `SkillTierLabel` non nil → `TierStartLabel`/`TierEndLabel` + flags placement D-D
-      (via `PlacementDone/PlacementTotal` de la row concernée) ; `DeltaPerMatch = Value /
-      Count` si `Count > 0`. Journaliser en `slog.DebugContext` si un palier attendu est
-      absent (dégradation best-effort documentée, jamais d'erreur avalée — CLAUDE.md §3).
-      Ne PAS recalculer μ→grade. RETRAIT (D-A) du calcul attendu/réel : boucle
-      `SkillExpectedWinProb` + appel `analysis.ExpectedVsActual` supprimés ; le module est
-      émis ssi au moins une entrée de type existe (sinon nil). Si `analysis.ExpectedVsActual`
-      n'a plus de consommateur : le supprimer avec ses tests (« 0 code mort ») ; même
-      vérification (grep) pour `MatchHistoryRawRow.SkillExpectedWinProb` et sa lecture repo Q5
-      (`match_history_repo.go:222-226`) — purger si plus aucun lecteur, sinon les laisser.
-- [ ] **4c (tests service).** `match_history_service_briefing_test.go` : scope mono-type (une
-      entrée) ; scope MIXTE CSR+LUSR (deux entrées, paliers jamais mélangés entre types) ; type
-      secondaire sous le seuil (omis) ; aucun palier (labels nil, moyenne présente) ; début en
-      placement (`TierStartIsPlacement`) ; fin en placement (`TierEndPlacementRemaining`) ;
-      cas `rd == nil` (module nil — plus d'émission via prédictions seules) ; MAJ/suppression
-      des assertions existantes sur `DeltaSum` (`:150-162`) et sur attendu/réel selon 4g et
-      D-A. Dataset hétérogène réaliste (mémoire
-      `feedback_integration_tests_realistic_datasets`).
-- [ ] **4d (OpenAPI).** `make generate-types` → `apps/web/src/lib/api/generated.ts` régénéré ;
-      vérifier le test de drift OpenAPI (`internal/api/openapi_schema_drift_test.go`) vert.
-- [ ] **4e (frontend).** `RankedCard` : remplacer le rendu `formatSignedFixed(ranked.delta_sum,
-      0)` (`:178`) par une ligne PAR entrée de `kinds`, selon D-C : « {KIND} · {progression} ·
-      {moyenne} » — progression « `tier_start_label` → `tier_end_label` » (égaux → palier
-      seul ; absents → segment omis ; placement → clés i18n D-D) ; moyenne
-      « `formatSignedFixed(delta_per_match, 1)` pt/match » (si présente). Libellé de section
-      D-C (défaut « Classement »). Nouvelles clés i18n `explorer.briefing.ranked_progress_*` /
-      `ranked_per_match` / `placement*` (FR/EN).
-- [ ] **4f (frontend).** Retirer tout affichage résiduel du nombre cumulé brut ET tout le bloc
-      « attendu vs réel » (D-A) : rendu `expected_win_rate`/`actual_win_rate`/
-      `matches_with_prediction` supprimé de `RankedCard` (`:182-199`), clés i18n
-      `ranked_expected` / `ranked_actual` / `ranked_expected_vs_actual` supprimées du manifest
-      (+ régénération).
-- [ ] **4g (nettoyage).** Retirer `DeltaSum` ET `RatingKind` du DTO et de leurs lecteurs si
-      plus aucun consommateur (défaut, « 0 code mort » — remplacés par `Kinds`) OU documenter
-      par commentaire pourquoi ils restent. Mettre à jour les tests.
+- [x] **4a (domain + analysis).** FAIT. `explorer_briefing.go` : type
+      `ExplorerBriefingRankedKind` ajouté (Kind/Matches/TierStartLabel/TierEndLabel/
+      TierStartIsPlacement/TierEndPlacementRemaining/DeltaPerMatch, JSON `omitempty` +
+      commentaires d'unité) ; `ExplorerBriefingRanked` réduit à `Kinds []…` (RatingKind/DeltaSum/
+      ExpectedWinRate/ActualWinRate/MatchesWithPrediction TOUS retirés — 4a+4g fusionnés,
+      état final = `Kinds` seul). `domain.KPIStats.RankDeltas []RankDelta` additif
+      (`squad_v2.go`), peuplé dans `analysis/kpi_stats.go` (ordre déterministe : Count desc,
+      tie-break CSR ; majoritaire en tête = cohérent avec `RankDelta` singulier conservé).
+      Tests analysis : `TestComputeKPIStats_RankDeltas_SplitByTypeDeterministic` +
+      `_NilWhenNoRatedMatches`.
+- [x] **4b (service).** FAIT. `buildBriefingRanked` réécrit + extrait dans nouveau fichier
+      `match_history_service_briefing_ranked.go` (fichier principal repassait à 600 L > 500 —
+      CLAUDE.md §5 ; extraction plutôt qu'accroître la dette). Émet une entrée par bucket de
+      `KPIStats.RankDeltas` (majoritaire toujours ; secondaire si `Count >= minRankedKindMatches`
+      = 10, constante nommée). Scan des rows de CE type triées `StartTime` ; casse confrontée
+      sur pièces : raw rows « CSR »/« LUSR » (maj) vs `canonical.RatingType` « csr »/« lusr »
+      (min) → `strings.EqualFold`. Premier/dernier `SkillTierLabel` non nil → labels ; flags
+      placement D-D via `PlacementDone/PlacementTotal` (remaining = Total−Done, clampé ≥ 0).
+      `DeltaPerMatch = Value/Count`. `slog.DebugContext` si aucun palier. Calcul attendu/réel
+      supprimé. `analysis.ExpectedVsActual` : plus aucun consommateur → `expected_win.go` +
+      `expected_win_test.go` SUPPRIMÉS. `MatchHistoryRawRow.SkillExpectedWinProb` + lecture repo
+      Q5 : CONSERVÉS (lecteurs restants = session_page_service, match_history_service_enrich —
+      grep sur pièces), notés ici.
+- [x] **4c (tests service).** FAIT. Nouveaux tests : `_RankedMonoTypeProgression` (+ gating
+      rankedCapable) ; `_RankedMixedTypesNeverMerged` (CSR+LUSR, paliers jamais croisés) ;
+      `_RankedSecondaryTypeBelowThresholdOmitted` ; `_RankedNoTierLabels` (labels nil, moyenne
+      présente) ; `_RankedStartInPlacement` ; `_RankedEndInPlacement` ;
+      `_RankedNilWhenNoRankDeltas`. Anciens tests DeltaSum/ExpectedWinRate/predictions-only
+      supprimés. Helper `briefingRankedRaw`. Tous les call-sites `buildExplorerBriefing`
+      threadés `context.Background()`.
+- [x] **4d (OpenAPI).** FAIT. `openapi.yaml` (manuel) : `ExplorerBriefingRanked` remplacé +
+      `ExplorerBriefingRankedKind` ajouté (YAML émis exact via `OPENAPI_EMIT_*`). `make
+      generate-types` régénéré ; `types.ts` : export `ExplorerBriefingRankedKind` ajouté ;
+      `TestOpenAPISchemaDrift` vert (0 MISSING).
+- [x] **4e (frontend).** FAIT. `RankedCard` réécrit : `<ul>` d'une ligne `RankedKindRow` par
+      entrée de `kinds` — « {KIND maj} · {progression} · {moyenne} ». `rankedProgression`
+      compose « début → fin » (égaux → palier seul ; absents → segment omis ; placement → clés
+      i18n `placement`/`placement_remaining`, jamais parser le FR). Moyenne via
+      `ranked_per_match` (`formatSignedFixed(delta_per_match, 1)` + « pt/match »). Titre section
+      = `ranked_title` (« Classement »). Clés i18n neuves FR/EN : `ranked_per_match`,
+      `placement`, `placement_remaining` (ICU plural). Pas de clé `ranked_progress_*` inventée
+      (l'« → » est un littéral language-neutral — 0 clé morte).
+- [x] **4f (frontend).** FAIT. Bloc attendu/réel + cumul brut entièrement retirés de
+      `RankedCard`. Clés `ranked_delta`/`ranked_expected`/`ranked_actual`/
+      `ranked_expected_vs_actual` supprimées de `explorer.toml` + manifests régénérés. Grep de
+      clôture : 0 occurrence dans `features/explorer` ET `explorer.toml`.
+- [x] **4g (nettoyage).** FAIT (fusionné dans 4a). `DeltaSum` ET `RatingKind` retirés du DTO
+      (plus aucun consommateur après bascule front — grep). État final `ExplorerBriefingRanked`
+      = `Kinds` seul. Tests MAJ.
 
-Gate Phase 4 : `cd apps/go-api && go test ./...` = 0 ; `make go-api-lint` = 0 ; `make
-generate-types` sans diff non commité résiduel ; `make check-types` = 0 ; `make test-web` vert ;
-`npm run lint` = 0 ; grep : 0 rendu de `delta_sum` brut, 0 occurrence de `ranked_expected` /
-`expected_win_rate` dans les composants briefing ET dans `explorer.toml`.
+Gate Phase 4 : PASSÉ (2026-07-16, racine du worktree). `go test ./...` = exit 0 (0 FAIL) ;
+`make go-api-lint` (= `go vet ./internal/domain/... ./internal/analysis/...`) = 0 (+ `go vet
+./internal/service/... ./internal/api/...` = 0 ; `golangci-lint --new-from-rev=origin/main`
+service/analysis/domain = 0 issues) ; `make generate-types` idempotent (re-run → 0 diff
+résiduel) ; `make check-types` = 0 ; `make test-web` = 257 fichiers / 2178 passés / 14 skipped /
+0 échec ; `npm run lint` = 0 erreur (68 warnings baseline, 0 sur fichiers touchés) ; greps :
+0 `delta_sum`/`ranked_expected`/`expected_win_rate` dans `features/explorer` + `explorer.toml`.
 
 ### Phase 5 — Carte contexte solo/escouade conditionnelle (lourd, backend + frontend) — item 6
 
-- [ ] **5a (domain).** Nouveau type `ExplorerBriefingContextSplit` (solo & escouade : `Matches`,
-      `WinRate`, optionnellement `KDA`/`AvgPerf` par symétrie avec le socle) + champ
-      `ContextSplit *ExplorerBriefingContextSplit` dans `ExplorerBriefing` (JSON `omitempty`,
-      commentaire « nil si non pertinent »).
-- [ ] **5b (service).** `buildBriefingContextSplit(scope []MatchHistoryRawRow)` : partition sur
-      `IsWithFriends`, agréger via l'`aggregateRawStats` existant. Émettre nil si l'un des deux
-      sous-groupes < seuil D-B, ou si l'un est vide (scope déjà mono-contexte). Constante nommée
-      `minContextSplitMatches` (valeur D-B, pas de magic number — CLAUDE.md §Magic number).
-      Câbler dans `buildExplorerBriefing` (`:62-75`) après les autres modules, sous garde
-      `!LowSample`.
-- [ ] **5c (tests service).** Cas pertinent (les deux ≥ seuil → bloc présent) ; cas mono-contexte
-      (un sous-groupe vide → nil) ; cas sous le seuil (→ nil) ; cas low_sample (→ nil car modules
-      omis).
-- [ ] **5d (OpenAPI).** `make generate-types` → regénérer + drift test vert.
-- [ ] **5e (frontend).** Nouvelle carte via `BriefingSectionCard` (Phase 3), rendue seulement si
-      `briefing.context_split != null`, dans `ExplorerBriefingModules`. Libellés « Solo » /
-      « Escouade » réutilisant les clés existantes (`explorer.filters.context_solo/squad` ou
-      `explorer.matches.squad_solo/squad_party`) ; nouveau titre de section i18n
-      `explorer.briefing.context_split_title` (FR/EN). WR coloré via `winRateColor` (tokens).
-- [ ] **5f (tests frontend).** Rendu présent/absent selon la présence du bloc.
+- [x] **5a (domain).** FAIT. `explorer_briefing.go` : type `ExplorerBriefingContextSplit`
+      (`Solo`/`Squad` de type `ExplorerBriefingContextGroup`) + `ExplorerBriefingContextGroup`
+      (`Matches`/`WinRate`/`KDA`/`AvgPerf` — symétrique du socle `ExplorerBriefingScope`,
+      unités ADR 0006 annotées) ; champ `ContextSplit *ExplorerBriefingContextSplit` ajouté à
+      `ExplorerBriefing` (`json:"context_split,omitempty"`, commentaire « nil si non pertinent »).
+- [x] **5b (service).** FAIT. `buildBriefingContextSplit(scope)` + `briefingContextGroup(rows)`
+      extraits dans NOUVEAU fichier `match_history_service_briefing_context.go` (le fichier
+      principal était à 481 L — extraction plutôt qu'accroître vers le seuil 500, CLAUDE.md §5).
+      Partition sur `IsWithFriends`, agrégation via `aggregateRawStats` existant. Constante nommée
+      `minContextSplitMatches = 10` (D-B, pas de magic number). Nil si l'un des deux sous-groupes
+      `< minContextSplitMatches` (couvre aussi le scope mono-contexte : sous-groupe vide < seuil).
+      Câblé dans `buildExplorerBriefing` après le module ranked, sous garde `!LowSample` (retour
+      anticipé si LowSample) ; P-7 respecté : AUCUN gate capability.
+- [x] **5c (tests service).** FAIT. Nouveau `match_history_service_briefing_context_test.go` :
+      `_RelevantBothAboveThreshold` (les deux = 10 → bloc présent, WinRate solo 1.0 / squad 0.0,
+      KDA ≈ 5.667, AvgPerf non nil) ; `_MonoContextNil` (tout solo → nil) ; `_BelowThresholdNil`
+      (9 escouade < seuil → nil) ; `_ContextSplitOmittedWhenLowSample` (via `buildExplorerBriefing`,
+      8 rows mixtes → LowSample true + ContextSplit nil). Helper `briefingCtxRaw` (IsWithFriends).
+- [x] **5d (OpenAPI).** FAIT. `openapi.yaml` : `ExplorerBriefingContextSplit` +
+      `ExplorerBriefingContextGroup` ajoutés (YAML émis exact via `OPENAPI_EMIT_OUT`), champ
+      `context_split` ($ref) ajouté à `ExplorerBriefing`. `make generate-types` régénéré (15 L) ;
+      `types.ts` : exports `ExplorerBriefingContextSplit`/`…ContextGroup` ajoutés ;
+      `TestOpenAPISchemaDrift` vert (0 MISSING ; ExplorerBriefing réconcilié, plus divergent).
+- [x] **5e (frontend).** FAIT. `ContextSplitCard`/`ContextSplitRow` ajoutés à
+      `ExplorerBriefingModules`, rendus ssi `briefing.context_split != null` (early-return du
+      module étendu). Libellés réutilisant `explorer.filters.context_solo`/`context_squad`
+      (FR Solo/Escouade, EN Solo/Squad) ; nouveau titre `explorer.briefing.context_split_title`
+      (FR « Solo vs Escouade » / EN « Solo vs Squad »), manifests régénérés (1 clé). Rendu par
+      ligne : libellé · n matchs · WR (coloré `winRateColor`, tokens) · KDA. Aucun hex/Tailwind
+      couleur ; aucun gate capability (P-7).
+- [x] **5f (tests frontend).** FAIT. Nouveau describe dans `ExplorerBriefingStrip.test.tsx` :
+      carte rendue quand `context_split` présent (titre + libellés solo/escouade) ; omise quand
+      absent.
 
-Gate Phase 5 : `cd apps/go-api && go test ./...` = 0 ; `make go-api-lint` = 0 ; `make
-generate-types` propre ; `make check-types` = 0 ; `make test-web` vert ; `npm run lint` = 0.
+Gate Phase 5 : PASSÉ (2026-07-16, racine du worktree). `go test ./...` = exit 0 (0 FAIL) ;
+`make go-api-lint` = 0 (+ `go vet ./internal/service/... ./internal/api/...` = 0 ;
+`golangci-lint --new-from-rev=origin/main` service/domain = 0 issues) ; `make generate-types`
+idempotent (re-run → diff stable 15 L, 0 résiduel) ; `make check-types` = 0 ; `make test-web`
+= 257 fichiers / 2180 passés / 14 skipped / 0 échec (dont les 2 tests contexte neufs) ;
+`npm run lint` = 0 erreur (68 warnings baseline pré-existants, 0 sur les fichiers touchés).
 
 ### Phase 5b — Cartes « Séries » et « Moments forts » (moyen, backend + frontend) — items 8, 9
 
-- [ ] **5b-a (domain).** `ExplorerBriefingStreaks` (`BestWinStreak int`, `WorstLossStreak int`)
-      et `ExplorerBriefingDominance` (compteurs `Dominations`, `Humiliations`, `Remontadas`,
-      `Debandades`, `ContreRemontadas` int) ; champs `Streaks *…` / `Dominance *…` dans
-      `ExplorerBriefing` (JSON `omitempty`, commentaire « nil si non pertinent »).
-- [ ] **5b-b (service).** `buildBriefingStreaks(scope)` et `buildBriefingDominance(scope)`
-      selon P-9 ; câblage dans `buildExplorerBriefing` sous garde `!LowSample`. Tests : série
-      en tête et en queue de scope ; scope 100 % victoires (pire série absente) ; rows non
-      datées écartées ; dominance tous-zéro → nil ; dataset hétérogène réaliste (mémoire
-      `feedback_integration_tests_realistic_datasets`).
-- [ ] **5b-c (OpenAPI).** `make generate-types` régénéré + drift test vert.
-- [ ] **5b-d (frontend).** Deux cartes via `BriefingSectionCard` dans
-      `ExplorerBriefingModules`, rendues ssi leur bloc est présent. « Séries » : « Meilleure
-      série : 7 V · Pire série : 4 D » (segments à zéro omis ; clés i18n FR/EN neuves,
-      réutiliser `explorer.briefing.series_win/loss` si adaptées). « Moments forts » :
-      compteurs par catégorie, zéros omis, libellés dominance existants si trouvés (P-9),
-      couleurs via tokens sémantiques uniquement. Tests de rendu présent/absent.
+- [x] **5b-a (domain).** FAIT. `explorer_briefing.go` : `ExplorerBriefingStreaks`
+      (`BestWinStreak`/`WorstLossStreak int`, `json:",omitempty"` → segment à zéro omis) +
+      `ExplorerBriefingDominance` (`Dominations`/`Humiliations`/`Remontadas`/`Debandades`/
+      `ContreRemontadas int`, `omitempty`) ; champs `Streaks *ExplorerBriefingStreaks` /
+      `Dominance *ExplorerBriefingDominance` ajoutés à `ExplorerBriefing` (`omitempty`,
+      commentaire « nil si non pertinent »).
+- [x] **5b-b (service).** FAIT. `buildBriefingStreaks` + `longestOutcomeRun` +
+      `buildBriefingDominance` extraits dans NOUVEAU fichier
+      `match_history_service_briefing_streaks.go` (le fichier principal était à 486 L —
+      extraction plutôt qu'accroître vers 500, CLAUDE.md §5, cohérent avec _ranked/_context).
+      Séries : rows non datées écartées, tri `StartTime` asc, série rompue par TOUT autre
+      outcome (P-9), nil si aucune row datée. Dominance : `switch` sur les constantes nommées
+      `analysis.DominanceFlag*` (pas de magic number), nil si tous compteurs à zéro. Câblé dans
+      `buildExplorerBriefing` après le module contexte, sous garde `!LowSample` (retour anticipé
+      LowSample). Tests (`match_history_service_briefing_streaks_test.go`) : `_HeadStreak`,
+      `_TailStreak`, `_AllWinsNoLossStreak`, `_BrokenByAnyOutcome`, `_UndatedRowsDiscarded`,
+      `_NilWhenNoDatedRows`, `_Counts`, `_NilWhenAllZero`, `_StreaksAndDominanceHeterogeneous`
+      (dataset réaliste via `buildExplorerBriefing`), `_StreaksOmittedWhenLowSample`.
+      RÉUTILISATION : pas de helper pur streaks existant réutilisable (les 3 usages
+      `detectTilt`/`sliceBestWinStreakCanonical`/`currentStreak` sont couplés à leurs types)
+      → logique locale (cf. Découverte-2).
+- [x] **5b-c (OpenAPI).** FAIT. `openapi.yaml` : `ExplorerBriefingStreaks` +
+      `ExplorerBriefingDominance` ajoutés (YAML émis exact via `OPENAPI_EMIT_OUT`), champs
+      `streaks`/`dominance` ($ref) ajoutés à `ExplorerBriefing` (réconcilié — plus divergent).
+      `make generate-types` régénéré + idempotent (hash stable) ; `types.ts` : re-exports
+      `ExplorerBriefingStreaks`/`…Dominance` ajoutés ; `TestOpenAPISchemaDrift` vert (0 MISSING).
+- [x] **5b-d (frontend).** FAIT. `StreaksCard` + `DominanceCard` ajoutés à
+      `ExplorerBriefingModules`, rendus ssi leur bloc a du contenu (`showStreaks` = au moins un
+      segment > 0 ; `showDominance` = au moins une catégorie > 0 — items 12/13 « carte omise si
+      rien à afficher »). « Séries » : lignes « Meilleure série » / « Pire série » avec valeur
+      `{n} V` / `{n} D` (segments à zéro omis), tokens `outcome-win`/`outcome-loss`. « Moments
+      forts » : une pastille par catégorie non nulle, libellés RÉUTILISÉS de
+      `narrative.dominance.*` (manifest match_view) + tokens `narrative-*` (mapping
+      `DOMINANCE_ITEMS` calqué sur `ExplorerMatchesTable` — cf. Découverte-3), compteur `×N`
+      language-neutral. Clés i18n neuves FR/EN : `streaks_title`, `streak_best`, `streak_worst`,
+      `streak_wins` (`{n} V`/`{n} W`), `streak_losses` (`{n} D`/`{n} L`), `highlights_title` ;
+      manifests régénérés. Tokens sémantiques uniquement (aucun hex/Tailwind couleur). Tests
+      (`ExplorerBriefingStrip.test.tsx`) : séries présentes (2 segments), segment zéro omis,
+      carte omise si 2 zéros ; dominance présente (compteurs `×3`/`×1`), carte omise si absente.
 
-Gate Phase 5b : mêmes gates que Phase 5 (`go test ./...` = 0 ; `make go-api-lint` = 0 ;
-`make generate-types` propre ; `make check-types` = 0 ; `make test-web` vert ;
-`npm run lint` = 0).
+Gate Phase 5b : PASSÉ (2026-07-16, racine du worktree). `go test ./...` = exit 0 (0 FAIL) ;
+`make go-api-lint` = 0 (+ `go vet ./internal/service/... ./internal/api/...` = 0 ;
+`golangci-lint --new-from-rev=origin/main` service/domain = 0 issues) ; `make generate-types`
+idempotent (md5 stable) ; `make check-types` = 0 ; `make test-web` = 257 fichiers / 2185 passés /
+14 skipped / 0 échec (dont les 5 tests séries/dominance neufs) ; `npm run lint` = 0 erreur
+(68 warnings baseline pré-existants, 0 sur les fichiers touchés).
 
 ### Phase 6 — Vérification navigateur & clôture
 
-- [ ] **6a.** Dev local (`make dev`, port `:8000`) ; ouvrir l'Explorer mode Matchs d'un joueur
-      réel classé (LUSR/CSR).
-- [ ] **6b.** État PLEIN HISTORIQUE (aucun filtre) : vérifier item 1 (aucun delta « vs habituel »
-      nulle part, aucune « = ±0 pts », entrées des dimensions ordonnées par taux de victoire —
-      P-8), item 2 (« Par sélection »), item 3 (carte « Classement », plus aucun « Pronostic »
-      ni bloc attendu/réel), item 4 (une ligne par type CSR/LUSR, paliers + pt/match, pas de
-      « −1380 », placement rendu selon D-D), item 5 (année), item 7 (en-têtes unifiés),
-      items 8/9 (cartes « Séries » et « Moments forts » présentes et cohérentes avec le
-      tableau — recompter une série sur la frise pour vérifier).
-      Vérifier aussi l'équilibre visuel des tuiles socle privées de leur sub (FDA/Perf) — si
-      choquant, consigner en Découvertes (pas de fix hors périmètre). Capturer.
-- [ ] **6c.** État FILTRÉ (narrowing, ex. une carte / un mode) : les deltas « vs habituel »
-      RÉAPPARAISSENT et sont sensés ; la carte solo/escouade apparaît/disparaît selon la
-      pertinence (item 6). Capturer.
-- [ ] **6d.** Vérifier la dégradation : titre H5 (`ranked` absent → module rétrospectif omis, pas
-      de crash), scope mono-contexte (carte solo/escouade omise), scope sans palier (progression
-      omise), scope mono-type de rating (une seule ligne classement), scope sans aucun
-      DominanceFlag (carte « Moments forts » omise). Spot-check locale EN
-      (clés i18n neuves en EN ; paliers FR = limitation actée §2 compléments, ne pas la
-      « corriger » ici). Consigner captures + verdicts au journal du plan.
-- [ ] **6e (changelog / What's new v7.0).** Mettre à jour `docs/CHANGELOG.md` ET
-      `docs/FR/CHANGELOG.md` (parité EN/FR dans le même commit — politique docs CLAUDE.md
-      §15) : dans l'entrée `[Unreleased]` (consolidée v7.0, rendue par la page Changelog
-      in-app = « What's new »), section « Added (React / TypeScript) », un bullet
-      « Explorer — briefing V2 » couvrant : classement par type CSR/LUSR en paliers +
-      pt/match, cartes « Séries » et « Moments forts », carte solo/escouade conditionnelle,
-      deltas « vs habituel » masqués en plein historique, en-têtes de cartes unifiés, dates
-      avec année, « Par sélection ». Mentionner le retrait du bloc attendu/réel (bullet
-      « Removed » ou dans l'entrée). Ajouter un bullet « Added (Go API) » si le DTO briefing
-      enrichi le justifie. Respecter le format Keep a Changelog (la page in-app le parse).
-- [ ] **6f.** `delivery-checklist` complet ; entrée thought_log finale ; point d'étape
-      utilisateur (revue visuelle de validation = merci de confirmer avant tout merge).
+- [x] **6a.** FAIT (2026-07-16). Serveur buildé depuis le worktree (`cmd/server`, CGO) et lancé
+      détaché avec WorkingDirectory = dépôt principal (données réelles) ; `:8000` healthz 200.
+      Vite lancé depuis le worktree (5173/5174 occupés → **:5175**). Session admin JGtm réutilisée
+      via cookie signé injecté (header CDP `extraHttpHeaders`, secret .env.local) — pas de re-login,
+      pas de modif fichier. Explorer mode Matchs de JGtm ouvert sur **halo_infinite** (LUSR).
+- [x] **6b.** FAIT — captures `02-hinfinite-fullhistory.png` (halo_infinite) + `01-explorer-initial.png`
+      (halo_5). État PLEIN HISTORIQUE, halo_infinite JGtm (1015 matchs) :
+      **item 1** — AUCUN delta « vs habituel » (socle Matchs/WR/FDA/Perf ni lignes de dimension),
+      aucune « ±0 pts » ; dimensions ordonnées par taux de victoire décroissant (Par carte
+      81/70/67/27/25/10 %, Par mode 54/53/50/47/47/46 %) — P-8 confirmé ✓.
+      **item 2** — « Par sélection » (Partie rapide 981 matchs) ✓.
+      **item 3** — carte « Classement » (plus aucun « Pronostic » ni bloc attendu/réel) ✓.
+      **item 4** — une ligne « LUSR · Or II → Or VI · −1.4 pt/match » (paliers connus + pt/match,
+      aucun cumul brut ; Or II ≠ placement → D-D ok ; mono-type = 1 seule ligne) ✓.
+      **item 5** — « 22 nov. 2021 – 16 juil. 2026 » (année) ✓.
+      **item 7** — en-têtes de cartes unifiés (Par carte/mode/sélection, Tendance, Classement,
+      Solo vs Escouade, Séries, Moments forts) ✓.
+      **item 8** — Séries « 11 V / 10 D » ; la frise montre un run rouge « x10 » corroborant la
+      pire série ✓.
+      **item 9** — Moments forts DOMINATION ×68 / HUMILIATION ×70 / REMONTADA ×4 / DÉBANDADE ×12,
+      contre-remontada (=0) omise ✓.
+      Équilibre socle sans sub (FDA/Perf) : valeurs top-alignées, tuiles de même hauteur — non
+      choquant (pas de Découverte). Console navigateur : 0 erreur/warning.
+- [x] **6c.** FAIT — capture `03-hinfinite-filtered-solo.png`. Filtre contexte Solo (491 matchs) :
+      les deltas « vs habituel » RÉAPPARAISSENT (socle WR « −1 pts », FDA « +0.94 », Perf « ±0 » ;
+      dimensions ▲/▼ « +8/+7/+6/−4/−5 pts ») ; « ±0 pts » présent sous filtre = comportement voulu
+      (seul le plein historique masque, P-1/2d) ; dimensions triées par delta (WR non monotone
+      58/56/64 % → tri delta, P-8 sous filtre inchangé) ; carte « Solo vs Escouade » DISPARAÎT
+      (scope mono-contexte) ; Classement recalculé « LUSR · Or II → Or VI · −2.6 pt/match » ;
+      Séries/Moments forts recalculés sur le scope filtré. Console : 0 erreur.
+- [x] **6d.** FAIT — verdicts de dégradation :
+      **titre H5** (halo_5, capture `01`) → carte « Classement » OMISE (JGtm H5 non ranked-capable
+      sur ce scope), pas de crash, 0 erreur console ✓.
+      **scope mono-contexte** (filtre Solo, 6c) → carte Solo/Escouade omise ✓.
+      **scope mono-type de rating** (JGtm n'a que du LUSR) → une seule ligne Classement ✓.
+      **scope sans palier** (progression omise) → `[~]` non reproductible en navigateur avec les
+      données réelles (JGtm porte toujours un palier) — couvert par le test unitaire Phase 4c
+      `_RankedNoTierLabels` (labels nil → moyenne seule).
+      **scope sans aucun DominanceFlag** (carte Moments forts omise) → `[~]` idem non reproductible
+      (les scopes réels ont toujours des flags) — couvert par le test `_NilWhenAllZero` ; l'omission
+      par catégorie à zéro est visuellement confirmée (contre-remontada absente en 6b/6c).
+      **Spot-check locale EN** (PATCH /settings lang=en, capture `04-en-locale-briefing.png`) :
+      clés neuves en EN — « Ranking », « LUSR · Or II → Or VI · −2.6 pt/match » (« pt/match »
+      traduit), « Streaks / Best streak 9 W / Worst streak 10 L », « Highlights »,
+      dominance « DOMINATION/HUMILIATION/COMEBACK/COLLAPSE », « vs usual », « By map/mode/playlist »,
+      date « Nov 22, 2021 – Jul 16, 2026 » (année). Item 2 : EN reste « By playlist » (seul le FR
+      passe à « Par sélection ») — conforme. Paliers « Or II → Or VI » + modes/playlists FR restent
+      en dur = limitation actée §2 (labels stockés FR en base). Console EN : 0 erreur.
+      Session JGtm restaurée (halo_5, locale fr) en fin de vérif.
+- [x] **6e (changelog / What's new v7.0).** FAIT. `docs/CHANGELOG.md` ET `docs/FR/CHANGELOG.md`,
+      entrée `[Unreleased]` (v7.0) : bullet « Explorer — briefing V2 » dans « Added (React /
+      TypeScript) » (classement par type CSR/LUSR en paliers + pt/match, cartes Séries/Moments
+      forts, carte solo/escouade conditionnelle, deltas masqués en plein historique, en-têtes
+      unifiés, dates avec année, « Par sélection », retrait du bloc attendu/réel mentionné en fin
+      de bullet) + bullet « Explorer briefing DTO » dans « Added (Go API) » (ranked par type,
+      `KPIStats.RankDeltas`, context split, streaks, dominance, retrait `expected_win_prob`).
+      Parité EN/FR dans les 2 fichiers (hook docs-fr-sync). Format Keep a Changelog respecté.
+- [x] **6f.** FAIT. `delivery-checklist` déroulé. Entrée thought_log finale ajoutée. Point d'étape
+      utilisateur ci-dessous (revue visuelle de validation demandée avant tout merge).
 
-Gate Phase 6 : tous les critères §1 vérifiés en navigateur ; captures au journal ; changelog
-EN+FR mis à jour (critère §1.14) ; gates §1.8 tous verts une dernière fois en une passe.
+Gate Phase 6 : PASSÉ (2026-07-16). Tous les critères §1 (1-14) vérifiés en navigateur (captures
+`01`..`04` dans le dossier temp de session) ; console 0 erreur sur les 4 états (H5, plein
+historique, filtré, EN) ; changelog EN+FR mis à jour (critère §1.14). Gates §1.8 tous verts en
+une passe finale : `go test ./...` = exit 0 (0 FAIL) ; `go vet` domain/analysis/service/api = 0 ;
+`make go-api-lint` = 0 ; `golangci-lint --new-from-rev=origin/main` (domain/analysis/service/api)
+= 0 issues ; `make generate-types` idempotent (0 diff `generated.ts`) ; `make check-types` = 0
+(cache `.tmp` purgé) ; `make test-web` = 257 fichiers / 2185 passés / 14 skipped / 0 échec ;
+`npm run lint` = 0 erreur (68 warnings baseline pré-existants, 0 sur les fichiers du chantier).
+NON committé (le superviseur commite ; merge `main` = deploy prod → après revue visuelle user).
+
+**Statut final des critères §1 (vérifiés Phase 6, 2026-07-16)** — tous `[x]` sauf mention :
+1. Deltas masqués en plein historique / réapparaissent sous filtre `[x]` (6b + 6c).
+2. « Par sélection » FR, aucune « Par playlist » résiduelle (EN reste « By playlist ») `[x]` (6b/6d).
+3. Carte « Classement », plus aucun « Pronostic » ni bloc attendu/réel `[x]` (6b).
+4. Classement par type, paliers connus + pt/match, aucun cumul brut, placement D-D `[x]` (6b, LUSR).
+5. Période avec année via `formatDateRange` `[x]` (6b « 22 nov. 2021 – 16 juil. 2026 »).
+6. Carte solo/escouade conditionnelle (présente 6b, omise en mono-contexte 6c) `[x]`.
+7. En-têtes de cartes-sections unifiés `[x]` (6b visuel).
+8. Gates verts `[x]` (§1.8, passe finale Phase 6f).
+9. Vérif navigateur des 2 états + captures `[x]` (6b/6c, captures `01`..`04`).
+10. Dimensions triées par taux de victoire en plein historique, par delta sous filtre `[x]` (6b/6c, P-8).
+11. `expected_win_prob` purgé (DTO + service + i18n) `[x]` (Phase 4 ; confirmé UI 6b : aucun bloc).
+12. Carte « Séries » (meilleure/pire série sur tout le scope, segment nul omis) `[x]` (6b 11 V/10 D).
+13. Carte « Moments forts » (compteurs dominance, catégories nulles omises) `[x]` (6b/6c).
+14. Changelog `[Unreleased]` à jour EN+FR `[x]` (6e).
+   Sous-cas de dégradation « scope sans palier » (item 4) et « scope tous-zéro dominance » (item 13)
+   non reproductibles en navigateur avec les données réelles → `[~]` couverts par tests unitaires
+   (`_RankedNoTierLabels`, `_NilWhenAllZero`) ; l'omission par catégorie/segment nul est confirmée
+   visuellement (contre-remontada absente ; aucun « Pire série : 0 »).
 
 ---
 
 ## 6. Découvertes (à remplir en exécution — ne pas traiter hors périmètre)
 
-- (aucune découverte d'exécution pour l'instant)
+- Découverte-1 (Phase 0, 2026-07-16, sans impact) : `type ExplorerBriefingRanked struct` est à
+  `explorer_briefing.go:121` (le §2 citait `:120-133`) — décalage d'1 ligne, champs identiques
+  (`RatingKind`/`DeltaSum`/`ExpectedWinRate`/`ActualWinRate`/`MatchesWithPrediction`). Aucune
+  action : à traiter en Phase 4 sur pièces. Les commits « sweep recovery player-DB » de la base
+  n'ont touché aucun fichier explorer/briefing (vérifié `git log -- <fichier>`).
 - Arbitrage Révision 3 (2026-07-16) : « Séries » et « Moments forts » VALIDÉES → intégrées au
   périmètre (items 8/9, Phase 5b, P-9). « Records du scope » ÉCARTÉ (pas le bon endroit).
+- Découverte-2 (Phase 5b, 2026-07-16, hors périmètre — NE PAS traiter) : le motif « plus longue
+  série consécutive » (boucle max-run) existe en 3 endroits aux types/besoins distincts :
+  `analysis/patterns/behavioral.go` `detectTilt` (renvoie run+start, couplé au tilt),
+  `analysis/home_canonical_highlights_tiles.go` `sliceBestWinStreakCanonical` (canonical rows →
+  HighlightSlide), et désormais `service/…_briefing_streaks.go` `longestOutcomeRun`
+  (`MatchHistoryRawRow`). Aucun n'est un helper pur réutilisable en l'état (P-9 : « réutiliser
+  si existe » → rien de réutilisable). Une centralisation `analysis.LongestRun`/`LongestOutcomeRun`
+  + migration des 2 autres copies (CLAUDE.md §6, garde-rail) serait un refactor à part — noté ici,
+  non traité (règle 7 : zéro fix hors périmètre).
+- Découverte-3 (Phase 5b, 2026-07-16, hors périmètre) : le mapping DominanceFlag → clé i18n
+  `narrative.dominance.*` + token `narrative-*` existe désormais en 2 endroits
+  (`ExplorerMatchesTable` `DOMINANCE_LABEL_KEYS`/`DOMINANCE_COLOR_TOKENS` et
+  `ExplorerBriefingModules` `DOMINANCE_ITEMS`). 2 copies = dans la limite CLAUDE.md §6 ; une 3ᵉ
+  surface devra centraliser (helper partagé `features/explorer/dominance.ts` + garde-rail) ET
+  migrer les deux copies dans le même commit (anti-pattern « factorisation abandonnée »).
 - CHANTIER SÉPARÉ (validé dans son principe par l'utilisateur, à planifier À PART — ne pas
   traiter ici) : « lisibilité des extrêmes » du tableau des matchs de l'Explorer, en deux lots.
   **Lot 1 — tri par en-têtes de colonnes** (premier pas recommandé, discuté 2026-07-16) : le

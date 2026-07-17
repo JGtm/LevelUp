@@ -5003,11 +5003,15 @@ components:
       properties:
           baseline:
               $ref: '#/components/schemas/ExplorerBriefingBaseline'
+          context_split:
+              $ref: '#/components/schemas/ExplorerBriefingContextSplit'
           dimensions:
               items:
                   $ref: '#/components/schemas/ExplorerBriefingDimension'
               nullable: true
               type: array
+          dominance:
+              $ref: '#/components/schemas/ExplorerBriefingDominance'
           low_sample:
               type: boolean
           outcome_sequence:
@@ -5025,6 +5029,8 @@ components:
               $ref: '#/components/schemas/ExplorerBriefingRanked'
           scope:
               $ref: '#/components/schemas/ExplorerBriefingScope'
+          streaks:
+              $ref: '#/components/schemas/ExplorerBriefingStreaks'
           trend:
               $ref: '#/components/schemas/ExplorerBriefingTrend'
       type: object
@@ -5154,25 +5160,97 @@ components:
     ExplorerBriefingRanked:
       additionalProperties: false
       properties:
-          actual_win_rate:
+          kinds:
+              items:
+                  $ref: '#/components/schemas/ExplorerBriefingRankedKind'
+              nullable: true
+              type: array
+      required:
+          - kinds
+      type: object
+    ExplorerBriefingRankedKind:
+      additionalProperties: false
+      properties:
+          delta_per_match:
               format: double
               type: number
-          delta_sum:
-              format: double
-              type: number
-          expected_win_rate:
-              format: double
-              type: number
-          matches_with_prediction:
+          kind:
+              type: string
+          matches:
               format: int64
               type: integer
-          rating_kind:
+          tier_end_label:
+              type: string
+          tier_end_placement_remaining:
+              format: int64
+              type: integer
+          tier_start_is_placement:
+              type: boolean
+          tier_start_label:
               type: string
       required:
-          - rating_kind
-          - delta_sum
-          - actual_win_rate
-          - matches_with_prediction
+          - kind
+          - matches
+      type: object
+    ExplorerBriefingContextSplit:
+      additionalProperties: false
+      properties:
+          solo:
+              $ref: '#/components/schemas/ExplorerBriefingContextGroup'
+          squad:
+              $ref: '#/components/schemas/ExplorerBriefingContextGroup'
+      required:
+          - solo
+          - squad
+      type: object
+    ExplorerBriefingContextGroup:
+      additionalProperties: false
+      properties:
+          avg_perf:
+              format: double
+              type: number
+          kda:
+              format: double
+              type: number
+          matches:
+              format: int64
+              type: integer
+          win_rate:
+              format: double
+              type: number
+      required:
+          - matches
+          - win_rate
+          - kda
+      type: object
+    ExplorerBriefingStreaks:
+      additionalProperties: false
+      properties:
+          best_win_streak:
+              format: int64
+              type: integer
+          worst_loss_streak:
+              format: int64
+              type: integer
+      type: object
+    ExplorerBriefingDominance:
+      additionalProperties: false
+      properties:
+          contre_remontadas:
+              format: int64
+              type: integer
+          debandades:
+              format: int64
+              type: integer
+          dominations:
+              format: int64
+              type: integer
+          humiliations:
+              format: int64
+              type: integer
+          remontadas:
+              format: int64
+              type: integer
       type: object
     ExplorerBriefingTrend:
       additionalProperties: false

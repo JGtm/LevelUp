@@ -40,9 +40,20 @@ type ExplorerBriefing struct {
 	Dimensions []ExplorerBriefingDimension `json:"dimensions,omitempty"`
 	// Trend : tendance temporelle bucketée. Nil si seuils non atteints.
 	Trend *ExplorerBriefingTrend `json:"trend,omitempty"`
-	// Ranked : module classé (delta rating cumulé + attendu vs réel). Nil si le
-	// titre n'expose pas la capability ranked ou si aucun match rangé dans le scope.
+	// Ranked : module « Classement » (progression de paliers PAR TYPE de rating).
+	// Nil si le titre n'expose pas la capability ranked ou si aucun match rangé
+	// dans le scope.
 	Ranked *ExplorerBriefingRanked `json:"ranked,omitempty"`
+	// ContextSplit : comparaison solo vs escouade du scope. Nil si non pertinent
+	// (un sous-groupe sous le seuil, ou scope déjà réduit à un seul contexte).
+	ContextSplit *ExplorerBriefingContextSplit `json:"context_split,omitempty"`
+	// Streaks : séries extrêmes du scope (meilleure série de victoires / pire série
+	// de défaites), calculées sur TOUT le scope filtré (P-9). Nil si non pertinent
+	// (low sample, ou aucune row datée). Un segment à zéro est omis côté front.
+	Streaks *ExplorerBriefingStreaks `json:"streaks,omitempty"`
+	// Dominance : compteurs de moments forts (DominanceFlag 1..5) du scope. Nil si
+	// non pertinent (low sample, ou tous les compteurs à zéro).
+	Dominance *ExplorerBriefingDominance `json:"dominance,omitempty"`
 }
 
 // ExplorerBriefingScope porte les agrégats socle du sous-ensemble filtré,
@@ -117,17 +128,88 @@ type ExplorerBriefingTrendPoint struct {
 	AvgPerf     *float64  `json:"avg_perf,omitempty"`
 }
 
-// ExplorerBriefingRanked est le module classé (delta rating + attendu vs réel).
+// ExplorerBriefingRanked est le module « Classement » : progression de paliers
+// PAR TYPE de rating (CSR, LUSR) sur le scope. Une entrée par type suffisamment
+// représenté (P-3) — jamais de paliers de deux systèmes mélangés sur une même
+// ligne. Le bloc « attendu vs réel » (expected_win_prob) a été retiré (décision
+// produit 2026-07-16 : donnée jugée non fiable).
 type ExplorerBriefingRanked struct {
-	// RatingKind : "csr" | "lusr" (type majoritaire du scope).
-	RatingKind string `json:"rating_kind"`
-	// DeltaSum : somme signée des deltas de rating du scope.
-	DeltaSum float64 `json:"delta_sum"`
-	// ExpectedWinRate : moyenne des expected_win_prob disponibles (ratio 0..1).
-	// Nil si aucun match du scope ne porte de prédiction.
-	ExpectedWinRate *float64 `json:"expected_win_rate,omitempty"`
-	// ActualWinRate : taux de victoire réel du scope (ratio 0..1).
-	ActualWinRate float64 `json:"actual_win_rate"`
-	// MatchesWithPrediction : nombre de matchs du scope portant un expected_win_prob.
-	MatchesWithPrediction int `json:"matches_with_prediction"`
+	// Kinds : une entrée par type de rating retenu. Ordre déterministe (type
+	// majoritaire du scope d'abord). Toujours au moins une entrée quand le bloc
+	// est émis (sinon Ranked est nil).
+	Kinds []ExplorerBriefingRankedKind `json:"kinds"`
+}
+
+// ExplorerBriefingRankedKind est la progression du scope pour UN type de rating.
+type ExplorerBriefingRankedKind struct {
+	// Kind : "csr" | "lusr" — la métrique connue du joueur (affichée telle quelle).
+	Kind string `json:"kind"`
+	// Matches : nombre de matchs du scope portant ce type de rating.
+	Matches int `json:"matches"`
+	// TierStartLabel : palier du premier match chronologique portant un palier
+	// (label FR déjà résolu en base, ex. « Bronze I »). Nil si non résolvable ou
+	// si le début est en placement (voir TierStartIsPlacement).
+	TierStartLabel *string `json:"tier_start_label,omitempty"`
+	// TierEndLabel : palier du dernier match chronologique portant un palier.
+	// Nil si non résolvable ou si la fin est en placement (voir
+	// TierEndPlacementRemaining).
+	TierEndLabel *string `json:"tier_end_label,omitempty"`
+	// TierStartIsPlacement : vrai si le premier match du scope est en phase de
+	// placement (rendu « Placement » sans compteur côté front — D-D).
+	TierStartIsPlacement bool `json:"tier_start_is_placement,omitempty"`
+	// TierEndPlacementRemaining : nombre de matchs de placement restants si le
+	// dernier match du scope est encore en placement (rendu « Placement (N
+	// restants) » côté front — D-D). Nil hors placement en fin de scope.
+	TierEndPlacementRemaining *int `json:"tier_end_placement_remaining,omitempty"`
+	// DeltaPerMatch : moyenne signée du delta de rating par match (Value/Count du
+	// bucket). Nil si aucun match compté. Unité = points de rating natifs du type.
+	DeltaPerMatch *float64 `json:"delta_per_match,omitempty"`
+}
+
+// ExplorerBriefingContextSplit compare les performances du scope selon le
+// contexte social (solo vs escouade, signal IsWithFriends). Émis UNIQUEMENT
+// quand les deux sous-groupes atteignent minContextSplitMatches (scope
+// réellement multi-contexte ET fiabilité minimale) ; nil sinon (dégradation par
+// omission). Sans capability rang requise (IsWithFriends dispo tous titres).
+type ExplorerBriefingContextSplit struct {
+	// Solo : agrégats des matchs joués en solo (IsWithFriends = false).
+	Solo ExplorerBriefingContextGroup `json:"solo"`
+	// Squad : agrégats des matchs joués en escouade (IsWithFriends = true).
+	Squad ExplorerBriefingContextGroup `json:"squad"`
+}
+
+// ExplorerBriefingContextGroup porte les agrégats socle d'un contexte social
+// (solo ou escouade). Symétrique du socle (ExplorerBriefingScope). Unités
+// ADR 0006 : WinRate en ratio 0..1, KDA = net agrégat ((frags + assists/3) −
+// morts)/matchs, AvgPerf en 0..100.
+type ExplorerBriefingContextGroup struct {
+	Matches int     `json:"matches"`
+	WinRate float64 `json:"win_rate"` // ratio 0..1
+	KDA     float64 `json:"kda"`      // KDA agrégat ADR 0006
+	// AvgPerf : perf moyenne 0..100. Nil si aucun match du groupe n'a de score.
+	AvgPerf *float64 `json:"avg_perf,omitempty"`
+}
+
+// ExplorerBriefingStreaks porte les séries extrêmes du scope, calculées sur TOUT
+// le scope filtré (jamais depuis la frise cappée) après tri chronologique. Une
+// série est rompue par TOUT autre outcome (P-9). Émis hors low_sample ; nil si
+// aucune row datée. Un segment à zéro (aucune victoire / aucune défaite) reste à
+// 0 (omitempty) et le front l'omet.
+type ExplorerBriefingStreaks struct {
+	// BestWinStreak : plus longue série de victoires consécutives. 0 si aucune.
+	BestWinStreak int `json:"best_win_streak,omitempty"`
+	// WorstLossStreak : plus longue série de défaites consécutives. 0 si aucune.
+	WorstLossStreak int `json:"worst_loss_streak,omitempty"`
+}
+
+// ExplorerBriefingDominance compte les moments forts (DominanceFlag 1..5,
+// cf. analysis.DominanceFlag*) du scope. Émis hors low_sample ; nil si tous les
+// compteurs sont à zéro (dégradation par omission). Les catégories à zéro sont
+// omises côté front (les libellés réutilisent narrative.dominance.*).
+type ExplorerBriefingDominance struct {
+	Dominations      int `json:"dominations,omitempty"`
+	Humiliations     int `json:"humiliations,omitempty"`
+	Remontadas       int `json:"remontadas,omitempty"`
+	Debandades       int `json:"debandades,omitempty"`
+	ContreRemontadas int `json:"contre_remontadas,omitempty"`
 }
