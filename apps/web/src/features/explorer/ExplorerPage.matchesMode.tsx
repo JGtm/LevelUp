@@ -388,14 +388,23 @@ function ExplorerMatchesResultsBlock({
               onChange={(e) => onSortKeyChange(e.target.value)}
               className="rounded border border-input bg-background px-2 py-1 text-xs text-foreground"
             >
+              {/* Deux directions par clé serveur pour rester synchronisé avec les
+                  en-têtes de colonnes cliquables (toggle asc/desc). Les 5 clés
+                  triables par en-tête ont leur paire desc/asc ; `outcome` reste
+                  desc seul (non triable par en-tête — cf. explorerMatchesSort). */}
               <option value="start_time:desc">{t('explorer.sort.start_time_desc')}</option>
               <option value="start_time:asc">{t('explorer.sort.start_time_asc')}</option>
               <option value="performance_score_relative:desc">{t('explorer.sort.perf_desc')}</option>
               <option value="performance_score_relative:asc">{t('explorer.sort.perf_asc')}</option>
               <option value="kda:desc">{t('explorer.sort.kda_desc')}</option>
+              <option value="kda:asc">{t('explorer.sort.kda_asc')}</option>
               <option value="kills:desc">{t('explorer.sort.kills_desc')}</option>
+              <option value="kills:asc">{t('explorer.sort.kills_asc')}</option>
               {hasTeamMmr && (
-                <option value="delta_mmr:desc">{t('explorer.sort.delta_mmr_desc')}</option>
+                <>
+                  <option value="delta_mmr:desc">{t('explorer.sort.delta_mmr_desc')}</option>
+                  <option value="delta_mmr:asc">{t('explorer.sort.delta_mmr_asc')}</option>
+                </>
               )}
               <option value="outcome:desc">{t('explorer.sort.outcome')}</option>
             </select>
@@ -413,12 +422,16 @@ function ExplorerMatchesResultsBlock({
         </div>
       </div>
 
-      {/* Tableau résultats — composant repris depuis Squad */}
+      {/* Tableau résultats — composant repris depuis Squad. sortKey/onSortKeyChange
+          rendent les en-têtes triables (mêmes clés serveur que le <select> ci-dessus,
+          source de vérité UNIQUE ; tri SERVEUR via TanStack manualSorting). */}
       <ExplorerMatchesTable
         rows={normalizeExplorerTableRows(matchesQuery.data.table.items)}
         playerSlug={playerSlug}
         contextDescriptor={matchesContextDescriptor}
         filterSpecOverride={matchesFilterSpec}
+        sortKey={sortKey}
+        onSortKeyChange={onSortKeyChange}
       />
     </div>
   )

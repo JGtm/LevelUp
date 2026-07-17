@@ -5,8 +5,8 @@
  * SANS expander (retiré — redondant avec la pagination, cf. retour user).
  * Mode legacy (defaultPageSize undefined) : PAGE_SIZE=20 par page.
  */
-import { describe, expect, it } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, screen, within } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import type { ExplorerMatchRow } from '@/lib/api/types'
@@ -105,5 +105,76 @@ describe('ExplorerMatchesTable — pagination (defaultPageSize)', () => {
     expect(screen.getByTestId('explorer-matches-table')).toBeInTheDocument()
     expect(screen.queryByText('Δ rang')).not.toBeInTheDocument()
     expect(screen.queryByText('Δ rank')).not.toBeInTheDocument()
+  })
+})
+
+describe('ExplorerMatchesTable — tri par en-têtes de colonnes (mode Matchs)', () => {
+  it('sans sortKey/onSortKeyChange → en-têtes statiques (aucun bouton de tri)', () => {
+    renderWithProviders(<ExplorerMatchesTable rows={makeRows(2)} playerSlug="me" />)
+    const dateHeader = screen.getByRole('columnheader', { name: 'Date' })
+    expect(within(dateHeader).queryByRole('button')).not.toBeInTheDocument()
+    expect(dateHeader).not.toHaveAttribute('aria-sort')
+  })
+
+  it('avec sortKey → colonne active porte aria-sort + indicateur ▼, colonne sans clé serveur reste statique', () => {
+    renderWithProviders(
+      <ExplorerMatchesTable
+        rows={makeRows(3)}
+        playerSlug="me"
+        sortKey="start_time:desc"
+        onSortKeyChange={vi.fn()}
+      />,
+    )
+    // Colonne active (Date) : th aria-sort descending + bouton avec ▼.
+    const sortBtn = screen.getByRole('button', { name: 'Trier par Date' })
+    const dateHeader = sortBtn.closest('th')
+    expect(dateHeader).toHaveAttribute('aria-sort', 'descending')
+    expect(within(sortBtn).getByText('▼')).toBeInTheDocument()
+    // Colonne « Résultat » : clé `outcome` non honorée par le backend → non triable.
+    const outcomeHeader = screen.getByRole('columnheader', { name: 'Résultat' })
+    expect(within(outcomeHeader).queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('clic sur la colonne active bascule la direction (desc → asc)', () => {
+    const onSortKeyChange = vi.fn()
+    renderWithProviders(
+      <ExplorerMatchesTable
+        rows={makeRows(3)}
+        playerSlug="me"
+        sortKey="start_time:desc"
+        onSortKeyChange={onSortKeyChange}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Trier par Date' }))
+    expect(onSortKeyChange).toHaveBeenCalledWith('start_time:asc')
+  })
+
+  it('clic sur une nouvelle colonne applique la direction descendante par défaut', () => {
+    const onSortKeyChange = vi.fn()
+    renderWithProviders(
+      <ExplorerMatchesTable
+        rows={makeRows(3)}
+        playerSlug="me"
+        sortKey="start_time:desc"
+        onSortKeyChange={onSortKeyChange}
+      />,
+    )
+    // Colonne Frags (col_kills FR = "F") → nouvelle colonne = desc au 1er clic.
+    fireEvent.click(screen.getByRole('button', { name: 'Trier par F' }))
+    expect(onSortKeyChange).toHaveBeenCalledWith('kills:desc')
+  })
+
+  it('sortKey ascendant → aria-sort ascending + indicateur ▲ sur la colonne active', () => {
+    renderWithProviders(
+      <ExplorerMatchesTable
+        rows={makeRows(3)}
+        playerSlug="me"
+        sortKey="kda:asc"
+        onSortKeyChange={vi.fn()}
+      />,
+    )
+    const sortBtn = screen.getByRole('button', { name: 'Trier par FDA' })
+    expect(sortBtn.closest('th')).toHaveAttribute('aria-sort', 'ascending')
+    expect(within(sortBtn).getByText('▲')).toBeInTheDocument()
   })
 })

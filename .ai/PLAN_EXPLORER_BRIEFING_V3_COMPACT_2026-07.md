@@ -853,11 +853,13 @@ fichiers explorer touchés, `git status` de `components/ui/info-tooltip.tsx` = V
 
 ### Phase 6 — Vérification navigateur & clôture
 
-- [ ] **6a.** Lancer l'environnement : serveur go-api (`:8000` healthz 200 ; CGO, données
+- [!] **6a.** Lancer l'environnement : serveur go-api (`:8000` healthz 200 ; CGO, données
       réelles du dépôt principal) + vite. Réutiliser la session admin réelle (cf. protocole
       Phase 6a du plan V2 : cookie signé injecté via CDP `extraHttpHeaders`, sans re-login ni
       modif fichier). Ouvrir l'Explorer mode Matchs d'un profil réel sur halo_infinite (LUSR).
-- [ ] **6b (plein historique, FR).** Capturer. Vérifier : critère §1.1 **hauteur du bandeau
+      → NON TRAITÉ [!] : vérification navigateur reprise par l'utilisateur (revue visuelle
+      avant merge) — décision utilisateur 2026-07-17.
+- [!] **6b (plein historique, FR).** Capturer. Vérifier : critère §1.1 **hauteur du bandeau
       ~300-330 px** (`getBoundingClientRect`) ; frise absente (§1.2) ; tuile Classement (§1.3) ;
       tuile Séries (§1.4) ; sparkline dans la tuile Taux de victoire (§1.5) ; carte « Par
       contexte » en 4e cellule (§1.6) ; bande Moments forts nue (§1.7) ; socle 4-6 tuiles
@@ -865,18 +867,24 @@ fichiers explorer touchés, `git status` de `components/ui/info-tooltip.tsx` = V
       (ex. FDA), une carte « Par… » et la bande → panneau lisible, texte FR sans anglicismes,
       fermeture au blur/clic extérieur (capturer un tooltip ouvert) ; **FDA coloré** (§1.15)
       dans les lignes « Par contexte ». Console 0 erreur.
-- [ ] **6c (scope filtré, FR).** Appliquer un filtre narrowing (ex. contexte Solo). Vérifier :
+      → NON TRAITÉ [!] : vérification navigateur reprise par l'utilisateur (revue visuelle
+      avant merge) — décision utilisateur 2026-07-17.
+- [!] **6c (scope filtré, FR).** Appliquer un filtre narrowing (ex. contexte Solo). Vérifier :
       deltas « vs habituel » réapparaissent (comportement V2 préservé) ; carte « Par contexte »
       disparaît si scope mono-contexte ; tuiles Classement/Séries recalculées ; bande recalculée.
       Console 0 erreur.
-- [ ] **6d (dégradations + EN).** Titre H5 (profil non ranked-capable) → tuile Classement OMISE
+      → NON TRAITÉ [!] : vérification navigateur reprise par l'utilisateur (revue visuelle
+      avant merge) — décision utilisateur 2026-07-17.
+- [!] **6d (dégradations + EN).** Titre H5 (profil non ranked-capable) → tuile Classement OMISE
       (et son tooltip avec), pas de crash. low_sample (scope réduit sous le seuil) → socle 4
       tuiles + mention, aucun module/bande/sparkline. Spot-check locale EN (PATCH settings
       lang=en) : « Ranking », « since {tier} », « Streaks » valeur « {n} W / {n} L »,
       « Highlights », « By context », dates avec année, ET un tooltip ouvert en EN (contenu
       `tip_*` anglais, pas la clé brute). Console 0 erreur. Restaurer la session
       (halo_infinite, fr) en fin.
-- [ ] **6e (changelog).** `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md`, entrée `[Unreleased]`
+      → NON TRAITÉ [!] : vérification navigateur reprise par l'utilisateur (revue visuelle
+      avant merge) — décision utilisateur 2026-07-17.
+- [x] **6e (changelog).** `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md`, entrée `[Unreleased]`
       (v7.0) : ajouter un bullet « Explorer — briefing V3 » dans « Added (React / TypeScript) »
       (bandeau compacté : Classement & Séries en tuiles du socle, tendance en micro-sparkline,
       Solo/Escouade fusionné dans la grille « Par contexte », Moments forts en bande, frise
@@ -884,11 +892,21 @@ fichiers explorer touchés, `git status` de `components/ui/info-tooltip.tsx` = V
       coloré partout) ; compléter le bullet Go de « Added (Go API) » avec le retrait de
       `outcome_sequence`/`ExplorerBriefingOutcome`. Parité EN/FR dans le même commit (hook
       docs-fr-sync). Format Keep a Changelog respecté.
-- [ ] **6f (clôture).** Dérouler `delivery-checklist`. Entrée `.ai/thought_log.md` finale
+      → FAIT (2026-07-17) : bullet React « Explorer — briefing V3 (compaction) » ajouté dans
+      « Added (React / TypeScript) » (EN `docs/CHANGELOG.md:18`) et « Ajouté (React /
+      TypeScript) » (FR `docs/FR/CHANGELOG.md:18`) ; bullet Go « Explorer briefing DTO »
+      complété du retrait `outcome_sequence`/`ExplorerBriefingOutcome` (EN + FR). Parité EN/FR
+      stricte (formulation calquée sur les bullets existants).
+- [x] **6f (clôture).** Dérouler `delivery-checklist`. Entrée `.ai/thought_log.md` finale
       (date, titre, statut, décision technique principale = SPARK-1/compaction, résultats
       observés = hauteur mesurée + gates, prochaine étape = revue visuelle utilisateur avant
       merge). Point d'étape utilisateur. NON committé sans autorisation (merge `main` = deploy
       prod auto → après revue visuelle).
+      → FAIT [x] partiel documenté (2026-07-17) : `delivery-checklist` déroulée ; passe de
+      gates rejouée en fin de mission (voir §5 gate Phase 6 / thought_log) ; entrée
+      `.ai/thought_log.md` unique posée. Réserve : la partie « hauteur mesurée en navigateur »
+      relève de 6b (reprise utilisateur, [!]) — la clôture technique (gates verts + docs +
+      journal) est faite ; NON committé (autorisation utilisateur requise, merge = deploy).
 
 Gate Phase 6 : tous les critères §1 (1-15) vérifiés en navigateur (captures au journal, dont
 un tooltip ouvert FR et un EN) ; console 0 erreur sur les 4 états ; changelog EN+FR à jour ;

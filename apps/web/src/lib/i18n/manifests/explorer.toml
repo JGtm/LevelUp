@@ -292,13 +292,25 @@ en = "Perf (worst)"
 fr = "FDA (meilleur)"
 en = "KDA (best)"
 
+[explorer.sort.kda_asc]
+fr = "FDA (moins bon)"
+en = "KDA (worst)"
+
 [explorer.sort.kills_desc]
 fr = "Frags (plus)"
 en = "Kills (most)"
 
+[explorer.sort.kills_asc]
+fr = "Frags (moins)"
+en = "Kills (fewest)"
+
 [explorer.sort.delta_mmr_desc]
 fr = "Delta MMR (plus haut)"
 en = "MMR delta (highest)"
+
+[explorer.sort.delta_mmr_asc]
+fr = "Delta MMR (plus bas)"
+en = "MMR delta (lowest)"
 
 [explorer.sort.outcome]
 fr = "Résultat"
@@ -383,6 +395,10 @@ en = "ΔMMR"
 [explorer.matches.col_open]
 fr = "Ouvrir"
 en = "Open"
+
+[explorer.matches.sort_by]
+fr = "Trier par {col}"
+en = "Sort by {col}"
 
 [explorer.matches.col_kills]
 fr = "F"
