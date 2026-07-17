@@ -74,3 +74,68 @@ describe('OutcomeSequenceTape — non-régression sans prop', () => {
     expect(props.onChartReady).toBeTypeOf('function')
   })
 })
+
+// GAP #1 (glue non testée) : la résolution du match cliqué dans handleClick — le
+// chemin nominal convertFromPixel→matchIndexAtX ET le chemin dégradé (dataIndex)
+// quand la conversion pixel est indisponible ou lève. Un bug dans le fallback
+// (mauvais dataIndex, mauvais matchId, ou absence de garde Number.isFinite)
+// partirait en prod sans être attrapé — matchIndexAtX seul ne le couvre pas.
+describe('OutcomeSequenceTape — handleClick (résolution du match)', () => {
+  // runs déduits : win×2 [m1,m2], loss×1 [m3].
+  const clickMatches = [pt('m1'), pt('m2'), pt('m3', 'loss')]
+
+  function setup() {
+    captured.length = 0
+    const onMatchClick = vi.fn()
+    render(<OutcomeSequenceTape matches={clickMatches} labels={labels} onMatchClick={onMatchClick} />)
+    const props = captured[captured.length - 1]
+    const click = (props.onEvents as { click: (p: unknown) => void }).click
+    const onChartReady = props.onChartReady as (chart: unknown) => void
+    return { onMatchClick, click, onChartReady }
+  }
+
+  it('résout via convertFromPixel→matchIndexAtX (chemin nominal)', async () => {
+    const { onMatchClick, click, onChartReady } = setup()
+    await screen.findByTestId('tape-stub')
+    // Chart dont convertFromPixel renvoie X=1.9 → index global 1 → m2.
+    onChartReady({ convertFromPixel: () => [1.9, 0] })
+    click({ dataIndex: 0, event: { offsetX: 50, offsetY: 10 } })
+    expect(onMatchClick).toHaveBeenCalledExactlyOnceWith('m2')
+  })
+
+  it('retombe sur runs[dataIndex].matches[0] quand convertFromPixel lève', async () => {
+    const { onMatchClick, click, onChartReady } = setup()
+    await screen.findByTestId('tape-stub')
+    onChartReady({
+      convertFromPixel: () => {
+        throw new Error('boom')
+      },
+    })
+    // dataIndex 1 = run loss → premier match m3 (chemin dégradé).
+    click({ dataIndex: 1, event: { offsetX: 5, offsetY: 5 } })
+    expect(onMatchClick).toHaveBeenCalledExactlyOnceWith('m3')
+  })
+
+  it('retombe sur dataIndex quand convertFromPixel renvoie une valeur non finie', async () => {
+    const { onMatchClick, click, onChartReady } = setup()
+    await screen.findByTestId('tape-stub')
+    onChartReady({ convertFromPixel: () => [Number.NaN, 0] })
+    click({ dataIndex: 0, event: { offsetX: 5, offsetY: 5 } })
+    expect(onMatchClick).toHaveBeenCalledExactlyOnceWith('m1')
+  })
+
+  it('utilise le fallback dataIndex sans chart prêt (offset absent)', async () => {
+    const { onMatchClick, click } = setup()
+    await screen.findByTestId('tape-stub')
+    // onChartReady jamais appelé (chartRef null) + pas d'event → fallback pur.
+    click({ dataIndex: 1 })
+    expect(onMatchClick).toHaveBeenCalledExactlyOnceWith('m3')
+  })
+
+  it("n'émet rien quand ni la conversion ni le dataIndex ne résolvent", async () => {
+    const { onMatchClick, click } = setup()
+    await screen.findByTestId('tape-stub')
+    click({}) // pas de dataIndex, pas d'event
+    expect(onMatchClick).not.toHaveBeenCalled()
+  })
+})
