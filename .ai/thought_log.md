@@ -41,12 +41,20 @@ la "strength" du coach_proposal, table distincte du player DB). Noté dans le co
 migré les 2 littéraux "coach" de coach_advisor/service_generate.go vers `ChallengeSourceCoach`
 (évite la 3e copie). Pas de garde-rail grep (le mot "coach" est trop courant).
 
-**Découvertes (NON traitées — hors périmètre)** :
-- Les callers `service_pilot_pool.go` (mode pilote) et `service_arcs_squads.go` (objectifs de
-  preset arc) ainsi que le handler HTTP `CreateChallenge` ne renseignent PAS `Source` → leurs
-  défis sont agrégés sous "unknown". Seul le coach renseigne "coach". L'endpoint répond donc
-  aujourd'hui à "coach vs reste (unknown)" (objectif primaire ADR 0020). Renseigner
-  "pilot_mode"/"user" à ces 3 origines = lot suivant (non demandé ici).
+**Suite 2026-07-17 (commit 2, découverte n°1 reclassée in-scope par le superviseur)** : les 3
+origines renseignent désormais `Source` (objectif ADR 0020 = coach vs user vs pilot_mode, pas
+coach vs unknown) :
+- `service_pilot_pool.go` (attribution mode pilote) → `ChallengeSourcePilotMode`.
+- `service_arcs_squads.go` (objectifs d'un preset arc adopté) → `ChallengeSourceUser` : l'adoption
+  vient du joueur ; le coach a sa propre voie (coach_advisor). Documenté en commentaire.
+- Handler HTTP `CreateChallenge` → défaut `ChallengeSourceUser` ; une origine explicite du body
+  (`source`) est honorée si `IsValidChallengeSource` (user/pilot_mode/coach), sinon retombe sur
+  "user" (garde-fou anti-valeur arbitraire dans la télémétrie). Champ `source` ajouté à
+  `createChallengeBody` (optionnel). `unknown` ne subsiste donc plus que pour l'historique
+  pré-migration. Tests : preset objectives=user, pilot daily/weekly=pilot_mode, handler
+  défaut=user + valide honorée + inconnue→user.
+
+**Découvertes restantes (NON traitées — hors périmètre)** :
 - `openapi.yaml` mis à jour (path + schémas PrestigeTelemetryDiag/SourceStats, auto-dérivés via
   le drift-detector) MAIS `generated.ts` frontend NON régénéré : endpoint backend-only sans
   consommateur front, et `generate-types` régénérerait tout le fichier (risque d'aspirer les 26

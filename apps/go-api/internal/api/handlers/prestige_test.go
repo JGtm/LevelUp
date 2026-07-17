@@ -605,6 +605,37 @@ func TestPrestigeHandler_CreateChallenge_Success(t *testing.T) {
 	if mock.lastCreate.WindowType != prestige.WindowSession {
 		t.Errorf("window_type not parsed: %q", mock.lastCreate.WindowType)
 	}
+	// Aucune "source" dans le body → défaut "user" (création manuelle, ADR 0020).
+	if mock.lastCreate.Source != prestige.ChallengeSourceUser {
+		t.Errorf("source default: got %q want %q", mock.lastCreate.Source, prestige.ChallengeSourceUser)
+	}
+}
+
+// TestPrestigeHandler_CreateChallenge_Source : une origine valide fournie est
+// honorée ; une valeur inconnue retombe sur "user" (ADR 0020).
+func TestPrestigeHandler_CreateChallenge_Source(t *testing.T) {
+	base := `{"user_id":"u1","title_slug":"halo_infinite","metric":"FieldKDA","target":1.5,"window_type":"session","cadence":"weekly","eval_type":"threshold","mode":"libre"`
+	cases := []struct {
+		name, source, want string
+	}{
+		{"valide_pilot", `,"source":"pilot_mode"}`, prestige.ChallengeSourcePilotMode},
+		{"inconnue_fallback_user", `,"source":"hacker"}`, prestige.ChallengeSourceUser},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &mockPrestigeService{createResp: prestige.Challenge{ID: "ch_1"}}
+			router := newRouter(mock)
+			req := httptest.NewRequest(http.MethodPost, "/prestige/challenges", bytes.NewBufferString(base+tc.source))
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			if w.Code != http.StatusCreated {
+				t.Fatalf("expected 201, got %d (body=%s)", w.Code, w.Body.String())
+			}
+			if mock.lastCreate.Source != tc.want {
+				t.Errorf("source: got %q want %q", mock.lastCreate.Source, tc.want)
+			}
+		})
+	}
 }
 
 func TestPrestigeHandler_CreateChallenge_TooEasy(t *testing.T) {

@@ -12,19 +12,21 @@ import (
 
 // fakeChallengeRepo permet de simuler les counts sans DB.
 type fakeChallengeRepo struct {
-	activeByCadence map[Cadence]int
-	activeTotal     int
-	createdSince    int
-	createCalled    bool
-	createCount     int
-	listResult      []Challenge // renvoyé tel quel par List (pour tests cooldown)
-	detachedArc     string      // dernier arcID passé à DetachFromArc
-	deletedArc      string      // dernier arcID passé à DeleteByArc
+	activeByCadence   map[Cadence]int
+	activeTotal       int
+	createdSince      int
+	createCalled      bool
+	createCount       int
+	createdChallenges []Challenge // capture des défis persistés (assertions Source, etc.)
+	listResult        []Challenge // renvoyé tel quel par List (pour tests cooldown)
+	detachedArc       string      // dernier arcID passé à DetachFromArc
+	deletedArc        string      // dernier arcID passé à DeleteByArc
 }
 
-func (r *fakeChallengeRepo) Create(_ context.Context, _ Challenge) error {
+func (r *fakeChallengeRepo) Create(_ context.Context, c Challenge) error {
 	r.createCalled = true
 	r.createCount++
+	r.createdChallenges = append(r.createdChallenges, c)
 	return nil
 }
 func (r *fakeChallengeRepo) Get(_ context.Context, _ string) (Challenge, error) {

@@ -352,9 +352,10 @@ func (s *service) CreateChallenge(ctx context.Context, req CreateChallengeReques
 		CreatedAt:       now,
 		CommittedAt:     &now,
 		IsPrivate:       req.IsPrivate,
-		// Origine tracée telle quelle (ADR 0020) : vide => agrégé "unknown" par
-		// l'endpoint diag. Pas de normalisation ici (les callers qui ne
-		// renseignent pas Source restent "unknown" — cf. thought_log 2026-07-17).
+		// Origine tracée telle quelle (ADR 0020). Les 3 voies de création la
+		// renseignent (user via handler HTTP, pilot_mode via pilot_pool, coach via
+		// coach_advisor) ; une valeur vide résiduelle (caller legacy) => agrégée
+		// "unknown" par l'endpoint diag. Pas de normalisation ici.
 		Source: req.Source,
 	}
 

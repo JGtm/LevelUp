@@ -112,6 +112,8 @@ func (s *service) attributeFromCatalog(ctx context.Context, userID, titleSlug st
 		EvalType:    t.EvalType,
 		Mode:        ModePilote,
 		Label:       t.LabelFR,
+		// Défi auto-attribué par le mode pilote → origine pilot_mode (calage coach, ADR 0020).
+		Source: ChallengeSourcePilotMode,
 	})
 }
 
