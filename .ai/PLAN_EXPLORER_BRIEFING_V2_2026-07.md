@@ -829,6 +829,22 @@ NON committé (le superviseur commite ; merge `main` = deploy prod → après re
     soit le front envoie `outcome_code`, soit le back ajoute `case "outcome"` /
     l'entrée `outcome` à `availableSortFields` — au choix, à instruire à part. Toute extension
     de la whitelist de tri côté Go (autres colonnes triables) reste également du backlog.
+  - **MISE À JOUR 2026-07-17 (bis) — Lot 1 RE-LIVRÉ en tri CLIENT sur TOUTES les colonnes**
+    (demande utilisateur, branche `feat/explorer-briefing-compact`, frontend-only, 0 Go). Le
+    tri SERVEUR ci-dessus était un mauvais choix : la requête charge déjà TOUTES les lignes du
+    scope (`page_size: 10000`) et le tableau pagine côté client → toute la donnée est dans le
+    navigateur. Bascule vers TanStack `getSortedRowModel` (retrait de `manualSorting`) : le
+    tableau possède son propre `SortingState` (défaut date desc = ordre backend), en-têtes
+    triables sur les 20 colonnes de données via prop `sortable` (opt-in mode Matchs ; tables
+    allié/ennemi + vue session restent statiques, zéro régression). Chaque colonne trie sur sa
+    valeur SOUS-JACENTE : numériques (basic + `sortUndefined:'last'`, accessors coalescant
+    `null→undefined`), date (timestamp), texte (localeCompare numérique), dérivées sur champ
+    brut (`outcome_code`, `dominance_flag`, ordinal de palier dérivé pour « Rang », alpha pour
+    « Note »). **Le `<select>` « Trier par » est SUPPRIMÉ** (+ clés i18n `explorer.sort.*`,
+    `sort_field`/`sort_dir` de la requête, `sortKey` du scope/URL, `explorerMatchesSort.ts`
+    serveur → remplacé par `explorerMatchesClientSort.ts`). **Le bug backend « outcome »
+    ci-dessus devient SANS OBJET côté UI** : le tri « Résultat » est désormais CLIENT sur
+    `outcome_code` (correct) ; le backlog Go « case outcome » n'est plus requis pour l'Explorer.
 
 Consigner ici toute anomalie/dette repérée hors des 7 items (ex. socle à aligner, incohérence
 baseline, palier `SkillTierLabel` manquant sur des matchs attendus). Ne pas la corriger dans ce

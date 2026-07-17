@@ -1,3 +1,47 @@
+## [2026-07-17] Explorer tableau — tri client toutes colonnes (remplace tri serveur bfc689cdc) (branche feat/explorer-briefing-compact)
+
+**Statut** : Complété (revue visuelle utilisateur en attente avant merge ; NON committé — merge
+main = deploy prod auto). Frontend-only, aucun changement Go (git status vérifié : 0 fichier `.go`).
+
+**Décision technique principale** : bascule tri SERVEUR → CLIENT parce que la donnée est ENTIÈREMENT
+chargée. `ExplorerPage` requête déjà `page_size: 10000` (cap = les plus récents) et le tableau
+pagine côté client (`getPaginationRowModel`) → tout est dans le navigateur. Le tri serveur
+(`manualSorting`, commit `bfc689cdc`) limitait à 5 colonnes et gardait un `<select>` « Trier par »
+redondant. Nouveau modèle : TanStack `getSortedRowModel`, le tableau possède son `SortingState`
+interne (défaut `start_time` desc = ordre backend), en-têtes triables sur les 20 colonnes de
+données via prop opt-in `sortable` (seul le mode Matchs l'active).
+
+**Tri par valeur sous-jacente (jamais le libellé formaté)** :
+- Numériques (frags/morts/assists/FDA/perf/ΔPerf/durée/MMR/ΔMMR) : `accessorFn` coalescant
+  `null→undefined` + `basic` + `sortUndefined:'last'` (nuls toujours en bas, les 2 sens — vérifié
+  sur le source TanStack 8.21 `getSortedRowModel` : le placement undefined est retourné AVANT
+  l'inversion `desc`). Date = timestamp parsé. Texte (carte/mode/sélection/note) = `localeCompare`
+  numérique. Booléen (contexte Solo/Escouade) = basic. Dérivées sur champ BRUT : `outcome_code`
+  (pas le libellé traduit), `dominance_flag` (0/absent en bas). Score = `alphanumeric` (naturel).
+- **Colonne « Rang »** : ÉCART constaté — `ExplorerMatchRow` n'a AUCUN entier de palier (seulement
+  le libellé baké + placement). J'ai ajouté `skillTierSortValue()` dans `lib/skillTiers.ts` :
+  ordinal `palierMajeur×10000 + sousPalier` (romain/arabe) → tri Bronze<…<Onyx<Champion, placement/
+  inconnu → undefined (bas). Sinon un tri alpha du libellé serait faux (Bronze, Diamant, Onyx, Or…).
+- En-têtes : `<button>` focusable clavier, `aria-sort` sur chaque `th` triable, indicateur ▲/▼ sur
+  la colonne active, tokens neutres. Nouveau libellé aria « Trier par {col} » (libellé long).
+
+**Suppressions (0 code mort)** : `<select>` « Trier par », clés i18n `explorer.sort.*` (toml régénéré),
+`sort_field`/`sort_dir` de la requête principale, `sortKey` du scope (interface/URL/zod/`DEFAULT_SORT_KEY`),
+`sortField`/`sortDir` de `queryKeys.explorer` (seul appelant `queries.ts`), fichier serveur
+`explorerMatchesSort.ts` + son test → remplacés par `explorerMatchesClientSort.ts` (helpers purs
+testés). Tables allié/ennemi (mode Joueur) + vue session non touchées (pas de `sortable`) → statiques
+comme avant. Le tri est désormais éphémère (état interne du tableau, non persisté URL).
+
+**Résultats gates (une passe finale)** : `build_i18n_manifests.mjs` OK (explorer 221 clés) ;
+`make check-types` exit 0 ; `make test-web` exit 0 (262 fichiers, 2286 passés, 14 skippés =
+baseline hors périmètre) ; `npm run lint` exit 0 (0 erreur, 68 warnings baseline). Aucun `.go` touché.
+
+**Prochaine étape** : revue visuelle utilisateur du tableau Explorer (clics d'en-têtes, ordre, nuls
+en bas) puis merge `feat/explorer-briefing-compact` (deploy prod auto — autorisation requise). Le
+bug backend « outcome » du plan V2 §6 est désormais SANS OBJET côté UI (tri client sur `outcome_code`).
+
+---
+
 ## [2026-07-17] Explorer briefing V3 — clôture + tri par en-têtes de colonnes (Lot 1) (branche feat/explorer-briefing-compact)
 
 **Statut** : Complété (revue visuelle utilisateur en attente avant merge). NON committé (merge

@@ -27,7 +27,6 @@ import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated
 import { useAppShellStore } from '@/stores/appShellStore'
 import { usePageScope } from '@/lib/page-scope/usePageScope'
 import {
-  DEFAULT_SORT_KEY,
   EXPLORER_URL_KEYS,
   decodeExplorerScope,
   encodeExplorerScope,
@@ -99,9 +98,7 @@ export function ExplorerPage() {
     perfTiers,
     skillTiers,
     outcomeFilter,
-    sortKey,
   } = scope
-  const [sortField, sortDir] = sortKey.split(':') as [string, string]
 
   // saisonOpen reste local : pur état d'ouverture de dropdown (pas du scope).
   const [saisonOpen, setSaisonOpen] = useState(false)
@@ -213,8 +210,9 @@ export function ExplorerPage() {
       skill_tiers: skillTiers.size > 0 ? [...skillTiers] : undefined,
       ranked_context: rankedContext || undefined,
       outcome_filter: outcomeFilter.size > 0 ? [...outcomeFilter].map(Number) : undefined,
-      sort_field: sortField,
-      sort_dir: sortDir,
+      // Tri désormais CLIENT (en-têtes du tableau) : on n'envoie plus sort_field/
+      // sort_dir → le backend renvoie son ordre par défaut (les 10000 plus récents),
+      // exactement le cap voulu. Cf. thought_log 2026-07-17.
       match_start_date: startDate || null,
       match_end_date: endDate || null,
       experience_types: expTypes.size > 0 ? [...expTypes] : undefined,
@@ -320,8 +318,7 @@ export function ExplorerPage() {
     modeNames.size > 0 ||
     perfTiers.size > 0 ||
     skillTiers.size > 0 ||
-    outcomeFilter.size > 0 ||
-    sortKey !== DEFAULT_SORT_KEY
+    outcomeFilter.size > 0
 
   return (
     <div className="flex flex-col">
@@ -406,8 +403,6 @@ export function ExplorerPage() {
             onToggleOutcome={(v) => toggleScopeSet('outcomeFilter', v)}
             onTogglePerfTier={(v) => toggleScopeSet('perfTiers', v)}
             onToggleSkillTier={(v) => toggleScopeSet('skillTiers', v)}
-            sortKey={sortKey}
-            onSortKeyChange={(v) => setScope({ sortKey: v })}
             hasActiveFilter={hasActiveFilter}
             onResetFilters={resetFilters}
             matchesQuery={matchesQuery}

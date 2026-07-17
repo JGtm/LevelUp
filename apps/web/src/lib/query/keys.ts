@@ -59,8 +59,6 @@ export const queryKeys = {
     skillTiers: string[] = [],
     rankedContext = '',
     outcomeFilter: number[] = [],
-    sortField = '',
-    sortDir = '',
     matchFiltersKey = '',
   ) =>
     [
@@ -69,7 +67,6 @@ export const queryKeys = {
       [...skillTiers].sort().join(','),
       rankedContext,
       [...outcomeFilter].sort().join(','),
-      sortField, sortDir,
       matchFiltersKey,
     ] as const,
   explorerPlayer: (playerSlug: string, targetGamertag: string, targetXuid: string, page: number) =>

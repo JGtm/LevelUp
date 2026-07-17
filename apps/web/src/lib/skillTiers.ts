@@ -184,3 +184,58 @@ export function localizeTierLabel(
   const localized = locale === 'en' ? pair.en : pair.fr
   return m ? `${localized} ${m[2]}` : localized
 }
+
+// ── Valeur numérique de tri d'un palier (colonne « Rang » de l'Explorer) ──────
+//
+// ExplorerMatchRow ne porte AUCUN champ numérique de rang (seulement le libellé
+// baké skill_tier_label + placement_done/total). Pour trier la colonne « Rang »
+// sur une valeur cohérente (Bronze < … < Onyx < Champion) plutôt que par ordre
+// alphabétique du libellé (Bronze, Diamant, Onyx, Or…, faux), on dérive un
+// ordinal du libellé : ordre du palier majeur × 10000 + sous-palier.
+
+// Nom de palier (FR ou EN, toute casse) → index majeur (Bronze=0 … Onyx=5,
+// Champion=6). Dérivé de LUSR_TIER_GRID (ordre canonique) + Champion (apex H5).
+const TIER_ORDINAL_BY_KEY: Record<string, number> = (() => {
+  const out: Record<string, number> = {}
+  LUSR_TIER_GRID.tiers.forEach((t, i) => {
+    out[t.fr.toLowerCase()] = i
+    out[t.en.toLowerCase()] = i
+  })
+  out['champion'] = LUSR_TIER_GRID.tiers.length
+  return out
+})()
+
+const ROMAN_DIGIT_VALUES: Record<string, number> = { i: 1, v: 5, x: 10 }
+
+/** Convertit un chiffre romain (I–VI usuels des sous-paliers) en entier. */
+function romanToInt(roman: string): number {
+  const s = roman.toLowerCase()
+  let total = 0
+  for (let i = 0; i < s.length; i++) {
+    const cur = ROMAN_DIGIT_VALUES[s[i]] ?? 0
+    const next = ROMAN_DIGIT_VALUES[s[i + 1]] ?? 0
+    total += cur < next ? -cur : cur
+  }
+  return total
+}
+
+/**
+ * Valeur numérique de tri d'un palier à partir de son libellé baké (« Or IV »,
+ * « Diamond 3 », « Onyx 1500 », « Onyx »). Combine l'ordinal du palier majeur et
+ * le sous-palier (romain ou arabe) pour un tri croissant cohérent. Renvoie
+ * `undefined` pour une entrée non reconnue (sentinelle « Placement », vide, null)
+ * → à ranger en bas via `sortUndefined: 'last'`. Le facteur 10000 laisse la place
+ * aux valeurs CSR brutes d'Onyx (ex. « Onyx 1500 ») sans chevaucher le palier
+ * supérieur.
+ */
+export function skillTierSortValue(label: string | null | undefined): number | undefined {
+  if (label == null) return undefined
+  const trimmed = label.trim()
+  if (trimmed === '') return undefined
+  const m = trimmed.match(/^(.+?)\s+([IVX]+|\d+)$/)
+  const namePart = (m ? m[1] : trimmed).trim().toLowerCase()
+  const tierIdx = TIER_ORDINAL_BY_KEY[namePart]
+  if (tierIdx === undefined) return undefined // « Placement », brut, inconnu → bas
+  const sub = m ? (/^\d+$/.test(m[2]) ? Number(m[2]) : romanToInt(m[2])) : 0
+  return tierIdx * 10000 + sub
+}

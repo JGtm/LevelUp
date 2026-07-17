@@ -26,13 +26,14 @@ import {
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
+  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
 
 import type { ExplorerMatchRow } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { localizeTierLabel } from '@/lib/skillTiers'
+import { localizeTierLabel, skillTierSortValue } from '@/lib/skillTiers'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { mmrDeltaScale, kdaDivergentScale } from '@/lib/accessibility/scales'
 import { getOutcomeColor, outcomeKey } from '@/lib/outcome-color'
@@ -46,11 +47,11 @@ import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 import {
-  EXPLORER_SORT_LABEL_KEYS,
-  isSortableColumn,
-  sortKeyToSorting,
-  sortingToSortKey,
-} from './explorerMatchesSort'
+  NUMERIC_SORT,
+  SORT_ARIA_LABEL_KEYS,
+  dateTimeSortingFn,
+  localeTextSortingFn,
+} from './explorerMatchesClientSort'
 
 const PAGE_SIZE = 20
 const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
@@ -105,15 +106,17 @@ interface Props {
    *  Explorer (qui ne passe pas cette prop). Défaut : aucune. */
   extraColumns?: ColumnDef<ExplorerMatchRow>[]
   extraColumnsAfterId?: string
-  /** Etat de tri serveur `"{champ}:{dir}"` (scope Explorer, ex. `start_time:desc`).
-   *  Fourni AVEC onSortKeyChange → les en-tetes des colonnes a cle de tri serveur
-   *  (cf. explorerMatchesSort) deviennent cliquables : TanStack tourne en
-   *  `manualSorting` (le tri est SERVEUR), clic = toggle asc/desc, indicateur
-   *  ▲/▼ + aria-sort sur la colonne active, en synchro avec le <select> « Trier
-   *  par ». Absent (mode Joueur ally/enemy, vue session) → en-tetes statiques,
+  /** Active le tri CLIENT par clic sur les en-tetes, sur TOUTES les colonnes
+   *  (getSortedRowModel TanStack). Le tableau possede son propre etat de tri
+   *  (defaut : date descendante, comme l'ordre backend). Chaque colonne trie sur
+   *  sa valeur SOUS-JACENTE (numerique / timestamp / alpha / champ brut), jamais
+   *  le libelle formate. Reserve au mode Matchs (toutes les lignes du scope sont
+   *  chargees d'un coup, cap 10000). Cas extreme : si un scope depasse 10000
+   *  matchs, seules les 10000 plus recentes sont chargees donc triees (le compteur
+   *  affiche le vrai total) — aucune regression vs l'existant, non corrige.
+   *  Absent/false (mode Joueur ally/ennemi, vue session) → en-tetes statiques,
    *  aucun tri (comportement inchange). */
-  sortKey?: string
-  onSortKeyChange?: (v: string) => void
+  sortable?: boolean
 }
 
 /** Classe des cellules d'en-tete (partagee entre en-tetes statiques et triables). */
@@ -204,7 +207,7 @@ function truncateName(s: string | null | undefined): string {
   return s.slice(0, NAME_TRUNCATE_MAX - 1) + '...'
 }
 
-export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, filterSpecOverride, alwaysShowPagination, defaultPageSize, columnVisibility, extraColumns, extraColumnsAfterId, sortKey, onSortKeyChange }: Props) {
+export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, filterSpecOverride, alwaysShowPagination, defaultPageSize, columnVisibility, extraColumns, extraColumnsAfterId, sortable }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, locale, values)
@@ -277,6 +280,8 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       {
         accessorKey: 'start_time',
         header: t('explorer.matches.col_date'),
+        // Tri chronologique sur le timestamp brut (pas le libelle formate).
+        sortingFn: dateTimeSortingFn,
         cell: (ctx) => (
           <span className="text-muted-foreground">
             {formatDate(ctx.getValue<string>(), intlLocale, HISTORY_DATE_OPTS)}
@@ -286,11 +291,16 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       {
         accessorKey: 'map_ui',
         header: t('explorer.filters.map'),
+        // Colonnes texte : tri alpha locale-aware, ascendant au 1er clic.
+        sortingFn: localeTextSortingFn,
+        sortDescFirst: false,
         cell: (ctx) => labelOfMap(ctx.getValue<string>()),
       },
       {
         accessorKey: 'playlist_label',
         header: t('explorer.filters.playlist'),
+        sortingFn: localeTextSortingFn,
+        sortDescFirst: false,
         cell: (ctx) => {
           const full = labelOfPlaylist(ctx.getValue<string | null | undefined>())
           return (
@@ -303,6 +313,8 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       {
         accessorKey: 'mode_ui',
         header: t('explorer.filters.mode'),
+        sortingFn: localeTextSortingFn,
+        sortDescFirst: false,
         cell: (ctx) => {
           const full = ctx.getValue<string | null | undefined>() ?? '-'
           return (
@@ -315,6 +327,8 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       {
         accessorKey: 'is_with_friends',
         header: t('explorer.matches.col_squad'),
+        // Contexte Solo/Escouade : tri booleen naturel (Solo puis Escouade en asc).
+        sortingFn: 'basic',
         // Pastille reprise du style match-card.tsx (tuiles match home).
         // Les couleurs hex sont autorisées (color-allow) car identifiants UX
         // génériques de catégorie, pas de palette accessibility.
@@ -354,6 +368,8 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       {
         accessorKey: 'outcome_code',
         header: t('explorer.matches.col_outcome'),
+        // Tri sur le code brut (2=V, 3=D, 1=N, 4=DNF), jamais le libelle traduit.
+        sortingFn: 'basic',
         cell: (ctx) => {
           const o = ctx.getValue<number>()
           const key = outcomeKey(o)
@@ -365,8 +381,12 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         },
       },
       {
-        accessorKey: 'dominance_flag',
+        // Tri sur le flag brut (0..5). Les matchs sans badge (0 ou absent) sont
+        // coalesces en `undefined` → toujours ranges en bas (sortUndefined:'last').
+        accessorFn: (r) => r.dominance_flag || undefined,
+        id: 'dominance_flag',
         header: t('explorer.matches.col_dominance'),
+        ...NUMERIC_SORT,
         cell: (ctx) => {
           const flag = ctx.getValue<number | null | undefined>() ?? 0
           const labelKey = DOMINANCE_LABEL_KEYS[flag]
@@ -388,12 +408,14 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         },
       },
       {
-        accessorKey: 'kills',
+        accessorFn: (r) => r.kills ?? undefined,
+        id: 'kills',
         header: () => (
           <span title={t('explorer.matches.col_kills_long')}>
             {t('explorer.matches.col_kills')}
           </span>
         ),
+        ...NUMERIC_SORT,
         cell: (ctx) => (
           <span className="font-mono tabular-nums">
             {ctx.getValue<number | null | undefined>() ?? '-'}
@@ -401,12 +423,14 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         ),
       },
       {
-        accessorKey: 'deaths',
+        accessorFn: (r) => r.deaths ?? undefined,
+        id: 'deaths',
         header: () => (
           <span title={t('explorer.matches.col_deaths_long')}>
             {t('explorer.matches.col_deaths')}
           </span>
         ),
+        ...NUMERIC_SORT,
         cell: (ctx) => (
           <span className="font-mono tabular-nums">
             {ctx.getValue<number | null | undefined>() ?? '-'}
@@ -414,12 +438,14 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         ),
       },
       {
-        accessorKey: 'assists',
+        accessorFn: (r) => r.assists ?? undefined,
+        id: 'assists',
         header: () => (
           <span title={t('explorer.matches.col_assists_long')}>
             {t('explorer.matches.col_assists')}
           </span>
         ),
+        ...NUMERIC_SORT,
         cell: (ctx) => (
           <span className="font-mono tabular-nums">
             {ctx.getValue<number | null | undefined>() ?? '-'}
@@ -427,13 +453,15 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         ),
       },
       {
-        accessorKey: 'kda',
+        accessorFn: (r) => r.kda ?? undefined,
+        id: 'kda',
         // KDA net signé (peut être négatif) pour les deux titres → tooltip formule.
         header: () => (
           <span title={t('explorer.matches.col_kda_tooltip')}>
             {t('explorer.matches.col_kda')}
           </span>
         ),
+        ...NUMERIC_SORT,
         cell: (ctx) => {
           const v = ctx.getValue<number | null | undefined>()
           if (v == null) return '-'
@@ -452,6 +480,9 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       {
         accessorKey: 'score_label',
         header: t('explorer.matches.col_score'),
+        // Score « 50-30 » : tri alphanumerique naturel (compare 50 vs 100 en
+        // nombres) sur la valeur brute — gere aussi les scores mono-valeur.
+        sortingFn: 'alphanumeric',
         cell: (ctx) => (
           <span className="text-muted-foreground font-mono">
             {ctx.getValue<string | undefined>() || '-'}
@@ -459,8 +490,10 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         ),
       },
       {
-        accessorKey: 'duration_seconds',
+        accessorFn: (r) => r.duration_seconds ?? undefined,
+        id: 'duration_seconds',
         header: t('explorer.matches.col_duration'),
+        ...NUMERIC_SORT,
         cell: (ctx) => (
           <span className="text-muted-foreground font-mono tabular-nums">
             {formatDurationMMSS(ctx.getValue<number | null | undefined>() ?? undefined)}
@@ -468,8 +501,10 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         ),
       },
       {
-        accessorKey: 'perf_score',
+        accessorFn: (r) => r.perf_score ?? undefined,
+        id: 'perf_score',
         header: t('explorer.matches.col_perf'),
+        ...NUMERIC_SORT,
         cell: (ctx) => {
           const r = ctx.row.original
           if (r.perf_score == null || !r.perf_tier) return '-'
@@ -484,8 +519,10 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         },
       },
       {
-        accessorKey: 'delta_perf',
+        accessorFn: (r) => r.delta_perf ?? undefined,
+        id: 'delta_perf',
         header: t('explorer.matches.col_delta_perf'),
+        ...NUMERIC_SORT,
         cell: (ctx) => {
           const v = ctx.getValue<number | null | undefined>()
           if (v == null) return '-'
@@ -504,8 +541,14 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         },
       },
       {
-        accessorKey: 'rating_type',
+        // Famille de note (« CSR » / « LUSR ») : tri alpha sur la valeur brute,
+        // nuls (PvE/Custom) coalesces en undefined → en bas.
+        accessorFn: (r) => r.rating_type ?? undefined,
+        id: 'rating_type',
         header: t('explorer.matches.col_rating'),
+        sortingFn: localeTextSortingFn,
+        sortUndefined: 'last',
+        sortDescFirst: false,
         cell: (ctx) => {
           // Normalisé : la famille LUSR (dont la row d'audit 'LUSR_V2') s'affiche
           // 'LUSR' — la v2 est transparente pour l'utilisateur (cf. displayRatingLabel).
@@ -514,14 +557,20 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         },
       },
       {
-        accessorKey: 'skill_tier_label',
+        // Rang : aucun entier de palier dans ExplorerMatchRow → on trie sur un
+        // ordinal derive du libelle (Bronze < … < Onyx < Champion), pas l'alpha.
+        // Placement en cours / palier inconnu → undefined → en bas. La cellule lit
+        // row.original (l'accessor renvoie un nombre, plus le libelle).
+        accessorFn: (r) => skillTierSortValue(r.skill_tier_label),
+        id: 'skill_tier_label',
         header: t('explorer.matches.col_rank'),
+        ...NUMERIC_SORT,
         cell: (ctx) => {
           const r = ctx.row.original
           if (r.placement_done != null && r.placement_total != null) {
             return <span className="font-mono">{r.placement_done}/{r.placement_total}</span>
           }
-          return localizeTierLabel(ctx.getValue<string | null | undefined>(), locale) ?? '-'
+          return localizeTierLabel(r.skill_tier_label, locale) ?? '-'
         },
       },
       // Colonnes MMR (équipe / adverse / Δ) : incluses uniquement si le titre
@@ -529,8 +578,10 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       ...(providesTeamMmr
         ? [
             {
-              accessorKey: 'team_mmr',
+              accessorFn: (r) => r.team_mmr ?? undefined,
+              id: 'team_mmr',
               header: () => renderTwoLineHeader(t('explorer.matches.col_team_mmr')),
+              ...NUMERIC_SORT,
               cell: (ctx) => (
                 <span className="text-muted-foreground font-mono tabular-nums">
                   {fmtMmr(ctx.getValue<number | null | undefined>())}
@@ -538,8 +589,10 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
               ),
             } as ColumnDef<ExplorerMatchRow>,
             {
-              accessorKey: 'enemy_mmr',
+              accessorFn: (r) => r.enemy_mmr ?? undefined,
+              id: 'enemy_mmr',
               header: () => renderTwoLineHeader(t('explorer.matches.col_enemy_mmr')),
+              ...NUMERIC_SORT,
               cell: (ctx) => (
                 <span className="text-muted-foreground font-mono tabular-nums">
                   {fmtMmr(ctx.getValue<number | null | undefined>())}
@@ -547,8 +600,10 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
               ),
             } as ColumnDef<ExplorerMatchRow>,
             {
-              accessorKey: 'delta_mmr',
+              accessorFn: (r) => r.delta_mmr ?? undefined,
+              id: 'delta_mmr',
               header: t('explorer.matches.col_delta_mmr'),
+              ...NUMERIC_SORT,
               cell: (ctx) => fmtDeltaMMR(ctx.getValue<number | null | undefined>()),
             } as ColumnDef<ExplorerMatchRow>,
           ]
@@ -558,16 +613,15 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
     [intlLocale, mapAssets, playlistAssets, locale, goToMatch, providesTeamMmr],
   )
 
-  // Tri SERVEUR piloté par le parent (scope Explorer) : actif uniquement si le
-  // couple sortKey/onSortKeyChange est fourni (mode Matchs). Les autres
-  // consommateurs (mode Joueur, vue session) n'en passent pas → en-têtes statiques.
-  const sortingEnabled = sortKey !== undefined && onSortKeyChange !== undefined
-  const sorting = useMemo<SortingState>(() => sortKeyToSorting(sortKey), [sortKey])
+  // Tri CLIENT possédé par le tableau (mode Matchs). Défaut : date descendante —
+  // reproduit l'ordre backend (les 10000 plus récents) au 1er rendu.
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'start_time', desc: true }])
 
   // Insère les colonnes injectées par le consommateur après `extraColumnsAfterId`
-  // (ou en fin), puis marque `enableSorting` sur les seules colonnes à clé de tri
-  // serveur (les autres restent non triables). L'Explorer mode Joueur ne passe
-  // rien → colonnes non triables, `columns` équivalent à `baseColumns`.
+  // (ou en fin), puis active le tri sur TOUTES les colonnes de données quand
+  // `sortable` (mode Matchs) ; la colonne d'ouverture reste non triable. Les
+  // autres consommateurs (mode Joueur ally/ennemi, vue session) ne passent pas
+  // `sortable` → colonnes non triables, en-têtes statiques (comportement inchangé).
   const columns = useMemo<ColumnDef<ExplorerMatchRow>[]>(() => {
     const merged = (() => {
       if (!extraColumns?.length) return baseColumns
@@ -579,9 +633,9 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
     })()
     return merged.map((c) => ({
       ...c,
-      enableSorting: sortingEnabled && isSortableColumn(columnIdOf(c)),
+      enableSorting: sortable === true && columnIdOf(c) !== 'open',
     }))
-  }, [baseColumns, extraColumns, extraColumnsAfterId, sortingEnabled])
+  }, [baseColumns, extraColumns, extraColumnsAfterId, sortable])
 
   // Pagination simple : taille de page fixe (defaultPageSize en mode Joueur,
   // sinon PAGE_SIZE=20). La navigation par page suffit pour parcourir tous les
@@ -598,21 +652,17 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
     // de onColumnVisibilityChange. Défaut {} = toutes visibles.
     state: { pagination, columnVisibility: columnVisibility ?? {}, sorting },
     onPaginationChange: setPagination,
-    // Tri SERVEUR : `manualSorting` (aucun getSortedRowModel) → TanStack ne trie
-    // JAMAIS les lignes localement (la réponse est cappée à 10000 lignes, un tri
-    // client serait silencieusement faux). L'état `sorting` est dérivé du scope ;
-    // onSortingChange re-projette vers `sortKey` et laisse le parent refetch.
-    manualSorting: true,
-    enableSorting: sortingEnabled,
+    // Tri CLIENT : toutes les lignes du scope sont chargées (cap 10000) et
+    // paginées côté client, donc getSortedRowModel trie localement TOUTES les
+    // colonnes — instantané. Défaut numérique/date = descendant au 1er clic
+    // (colonnes texte : sortDescFirst:false). enableSortingRemoval:false garde un
+    // tri toujours actif. Le tri n'est effectif que si des colonnes sont triables
+    // (sortable=true) ; sinon getSortedRowModel est un no-op (ordre backend intact).
+    onSortingChange: setSorting,
     enableSortingRemoval: false,
     sortDescFirst: true,
-    onSortingChange: (updater) => {
-      if (!onSortKeyChange) return
-      const next = typeof updater === 'function' ? updater(sorting) : updater
-      const key = sortingToSortKey(next)
-      if (key) onSortKeyChange(key)
-    },
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   })
 
@@ -665,8 +715,8 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                   const content = h.isPlaceholder
                     ? null
                     : flexRender(h.column.columnDef.header, h.getContext())
-                  // Colonne non triable (mode Joueur, colonne sans clé serveur) :
-                  // en-tête statique, rendu inchangé.
+                  // Colonne non triable (tableau sans `sortable`, ou colonne
+                  // d'ouverture) : en-tête statique, rendu inchangé.
                   if (!h.column.getCanSort()) {
                     return (
                       <th key={h.id} className={HEADER_TH_CLASS}>
@@ -677,7 +727,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                   const sortDir = h.column.getIsSorted() // false | 'asc' | 'desc'
                   const ariaSort =
                     sortDir === 'asc' ? 'ascending' : sortDir === 'desc' ? 'descending' : 'none'
-                  const labelKey = EXPLORER_SORT_LABEL_KEYS[h.column.id]
+                  const labelKey = SORT_ARIA_LABEL_KEYS[h.column.id]
                   return (
                     <th key={h.id} className={HEADER_TH_CLASS} aria-sort={ariaSort}>
                       <button

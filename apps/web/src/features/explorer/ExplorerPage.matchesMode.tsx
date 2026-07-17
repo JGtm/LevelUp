@@ -5,7 +5,6 @@
  * Contenu : barre de filtres + tableau résultats + tri/export.
  * Tous les états (filtres, sort, dates) sont contrôlés par le parent.
  */
-import { useEffect } from 'react'
 import { Spinner } from '@/components/ui/spinner'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
@@ -85,9 +84,7 @@ export interface ExplorerMatchesModeProps {
   onTogglePerfTier: (v: string) => void
   onToggleSkillTier: (v: string) => void
 
-  // Sort / reset
-  sortKey: string
-  onSortKeyChange: (v: string) => void
+  // Reset
   hasActiveFilter: boolean
   onResetFilters: () => void
 
@@ -111,8 +108,6 @@ export function ExplorerMatchesMode(props: ExplorerMatchesModeProps) {
       <ExplorerMatchesResultsBlock
         playerSlug={props.playerSlug}
         t={props.t}
-        sortKey={props.sortKey}
-        onSortKeyChange={props.onSortKeyChange}
         matchesQuery={props.matchesQuery}
         matchesContextDescriptor={props.matchesContextDescriptor}
         matchesFilterSpec={props.matchesFilterSpec}
@@ -307,8 +302,6 @@ function ExplorerFiltersBar({
 interface ResultsBlockProps {
   playerSlug: string
   t: (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
-  sortKey: string
-  onSortKeyChange: (v: string) => void
   matchesQuery: ExplorerMatchesModeProps['matchesQuery']
   matchesContextDescriptor: ContextDescriptor | undefined
   matchesFilterSpec?: MatchFilterSpec
@@ -317,23 +310,10 @@ interface ResultsBlockProps {
 function ExplorerMatchesResultsBlock({
   playerSlug,
   t,
-  sortKey,
-  onSortKeyChange,
   matchesQuery,
   matchesContextDescriptor,
   matchesFilterSpec,
 }: ResultsBlockProps) {
-  // Le tri ΔMMR n'a de sens que si le titre fournit un MMR équipe (colonnes MMR
-  // affichées). Pour un titre sans MMR (Halo 5 → useCapability('team_mmr')===false),
-  // on retire l'option de tri et on retombe sur le tri par défaut si la valeur
-  // courante pointait sur une colonne désormais invisible (no-op trompeur).
-  const hasTeamMmr = useCapability('team_mmr')
-  useEffect(() => {
-    if (!hasTeamMmr && sortKey.startsWith('delta_mmr')) {
-      onSortKeyChange('start_time:desc')
-    }
-  }, [hasTeamMmr, sortKey, onSortKeyChange])
-
   if (matchesQuery.isLoading) {
     return (
       <div className="flex justify-center py-16">
@@ -368,70 +348,38 @@ function ExplorerMatchesResultsBlock({
   }
   return (
     <div className="space-y-2">
-      {/* Bandeau de briefing (mode Matchs) — au-dessus du compteur/tri/export */}
+      {/* Bandeau de briefing (mode Matchs) — au-dessus du compteur/export */}
       <ExplorerBriefingStrip briefing={matchesQuery.data.briefing} t={t} />
 
-      {/* Barre résultats + tri + export */}
+      {/* Barre résultats : compteur + export. Le tri est désormais porté par les
+          en-têtes de colonnes du tableau (tri CLIENT), plus de <select>. */}
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
           {t('explorer.matches.count_label', {
             n: matchesQuery.data.summary?.total_matches ?? 0,
           })}
         </p>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-1.5">
-            <label className="text-xs text-muted-foreground whitespace-nowrap">
-              {t('explorer.sort.label')} :
-            </label>
-            <select
-              value={sortKey}
-              onChange={(e) => onSortKeyChange(e.target.value)}
-              className="rounded border border-input bg-background px-2 py-1 text-xs text-foreground"
-            >
-              {/* Deux directions par clé serveur pour rester synchronisé avec les
-                  en-têtes de colonnes cliquables (toggle asc/desc). Les 5 clés
-                  triables par en-tête ont leur paire desc/asc ; `outcome` reste
-                  desc seul (non triable par en-tête — cf. explorerMatchesSort). */}
-              <option value="start_time:desc">{t('explorer.sort.start_time_desc')}</option>
-              <option value="start_time:asc">{t('explorer.sort.start_time_asc')}</option>
-              <option value="performance_score_relative:desc">{t('explorer.sort.perf_desc')}</option>
-              <option value="performance_score_relative:asc">{t('explorer.sort.perf_asc')}</option>
-              <option value="kda:desc">{t('explorer.sort.kda_desc')}</option>
-              <option value="kda:asc">{t('explorer.sort.kda_asc')}</option>
-              <option value="kills:desc">{t('explorer.sort.kills_desc')}</option>
-              <option value="kills:asc">{t('explorer.sort.kills_asc')}</option>
-              {hasTeamMmr && (
-                <>
-                  <option value="delta_mmr:desc">{t('explorer.sort.delta_mmr_desc')}</option>
-                  <option value="delta_mmr:asc">{t('explorer.sort.delta_mmr_asc')}</option>
-                </>
-              )}
-              <option value="outcome:desc">{t('explorer.sort.outcome')}</option>
-            </select>
-          </div>
-          {matchesQuery.data.export_hint?.token && (
-            <a
-              href={`${import.meta.env.VITE_API_BASE_URL ?? '/api/v1'}/players/${playerSlug}/pages/match-history/export?token=${encodeURIComponent(matchesQuery.data.export_hint.token)}`}
-              download
-              title={t('explorer.matches.export_csv')}
-              className="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-            >
-              {t('explorer.matches.export_csv')}
-            </a>
-          )}
-        </div>
+        {matchesQuery.data.export_hint?.token && (
+          <a
+            href={`${import.meta.env.VITE_API_BASE_URL ?? '/api/v1'}/players/${playerSlug}/pages/match-history/export?token=${encodeURIComponent(matchesQuery.data.export_hint.token)}`}
+            download
+            title={t('explorer.matches.export_csv')}
+            className="inline-flex h-8 shrink-0 items-center rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+          >
+            {t('explorer.matches.export_csv')}
+          </a>
+        )}
       </div>
 
-      {/* Tableau résultats — composant repris depuis Squad. sortKey/onSortKeyChange
-          rendent les en-têtes triables (mêmes clés serveur que le <select> ci-dessus,
-          source de vérité UNIQUE ; tri SERVEUR via TanStack manualSorting). */}
+      {/* Tableau résultats — composant repris depuis Squad. `sortable` active le
+          tri CLIENT par clic sur les en-têtes, sur toutes les colonnes (toutes les
+          lignes du scope sont chargées ; cf. ExplorerMatchesTable). */}
       <ExplorerMatchesTable
         rows={normalizeExplorerTableRows(matchesQuery.data.table.items)}
         playerSlug={playerSlug}
         contextDescriptor={matchesContextDescriptor}
         filterSpecOverride={matchesFilterSpec}
-        sortKey={sortKey}
-        onSortKeyChange={onSortKeyChange}
+        sortable
       />
     </div>
   )

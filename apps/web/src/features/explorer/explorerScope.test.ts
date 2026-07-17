@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
 import {
-  DEFAULT_SORT_KEY,
   decodeExplorerScope,
   encodeExplorerScope,
   explorerScopeToFilterSpec,
@@ -21,7 +20,6 @@ const fullScope: ExplorerScope = {
   perfTiers: new Set(['4', '5']),
   skillTiers: new Set(['Onyx']),
   outcomeFilter: new Set(['2', '3']),
-  sortKey: 'kda:desc',
 }
 
 describe('encode/decode round-trip', () => {
@@ -43,7 +41,6 @@ describe('encode/decode round-trip', () => {
       perfTiers: new Set(),
       skillTiers: new Set(),
       outcomeFilter: new Set(),
-      sortKey: DEFAULT_SORT_KEY,
     })
   })
 })
@@ -53,11 +50,6 @@ describe('encodeExplorerScope', () => {
     const encoded = encodeExplorerScope(decodeExplorerScope({}))
     // Toutes les clés doivent être undefined → JSON.stringify les retire.
     expect(JSON.stringify(encoded)).toBe('{}')
-  })
-
-  it('omet le tri par défaut mais conserve un tri custom', () => {
-    expect(encodeExplorerScope({ ...fullScope, sortKey: DEFAULT_SORT_KEY }).sort).toBeUndefined()
-    expect(encodeExplorerScope({ ...fullScope, sortKey: 'kills:desc' }).sort).toBe('kills:desc')
   })
 
   it('sérialise les Sets en csv', () => {
@@ -131,7 +123,6 @@ describe('explorerSearchSchema (validateSearch)', () => {
       mode: 'matches',
       pl: 'Ranked Arena',
       start: '2026-04-01',
-      sort: 'kda:desc',
     })
     expect(parsed.pl).toBe('Ranked Arena')
     expect(parsed.mode).toBe('matches')

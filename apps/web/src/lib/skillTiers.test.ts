@@ -11,6 +11,7 @@ import {
   subTierPosition,
   localizeTierName,
   localizeTierLabel,
+  skillTierSortValue,
 } from './skillTiers'
 
 describe('grilles de paliers', () => {
@@ -136,5 +137,42 @@ describe('localizeTierLabel', () => {
     expect(localizeTierLabel(null, 'en')).toBeNull()
     expect(localizeTierLabel(undefined, 'fr')).toBeUndefined()
     expect(localizeTierLabel('', 'en')).toBe('')
+  })
+})
+
+describe('skillTierSortValue (tri colonne Rang)', () => {
+  it('ordonne les paliers majeurs (Bronze < Or < Onyx < Champion)', () => {
+    const bronze = skillTierSortValue('Bronze')!
+    const or = skillTierSortValue('Or')!
+    const onyx = skillTierSortValue('Onyx')!
+    const champion = skillTierSortValue('Champion')!
+    expect(bronze).toBeLessThan(or)
+    expect(or).toBeLessThan(onyx)
+    expect(onyx).toBeLessThan(champion)
+  })
+
+  it('départage les sous-paliers (romain et arabe) au sein d’un palier', () => {
+    // Romain (LUSR) : Diamant III < Diamant VI.
+    expect(skillTierSortValue('Diamant III')!).toBeLessThan(skillTierSortValue('Diamant VI')!)
+    // Arabe (CSR/H5) : Gold 3 < Gold 6.
+    expect(skillTierSortValue('Gold 3')!).toBeLessThan(skillTierSortValue('Gold 6')!)
+    // FR et EN du même palier tombent au même endroit.
+    expect(skillTierSortValue('Or IV')).toBe(skillTierSortValue('Gold IV'))
+  })
+
+  it('un sous-palier élevé ne dépasse jamais le palier supérieur', () => {
+    // Diamant VI reste sous Onyx (facteur 10000 par palier majeur).
+    expect(skillTierSortValue('Diamant VI')!).toBeLessThan(skillTierSortValue('Onyx')!)
+    // Onyx avec valeur CSR brute reste au-dessus d’Onyx nu, sous Champion.
+    expect(skillTierSortValue('Onyx 1500')!).toBeGreaterThan(skillTierSortValue('Onyx')!)
+    expect(skillTierSortValue('Onyx 1500')!).toBeLessThan(skillTierSortValue('Champion')!)
+  })
+
+  it('entrée non reconnue (Placement, brut, null, vide) → undefined (rangé en bas)', () => {
+    expect(skillTierSortValue('Placement')).toBeUndefined()
+    expect(skillTierSortValue('Placement (2 restants)')).toBeUndefined()
+    expect(skillTierSortValue(null)).toBeUndefined()
+    expect(skillTierSortValue(undefined)).toBeUndefined()
+    expect(skillTierSortValue('')).toBeUndefined()
   })
 })

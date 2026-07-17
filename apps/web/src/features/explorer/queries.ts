@@ -21,8 +21,6 @@ export function useExplorerMatches(
   const skillTiers = request.skill_tiers ?? []
   const rankedContext = request.ranked_context ?? ''
   const outcomeFilter = request.outcome_filter ?? []
-  const sortField = request.sort_field ?? ''
-  const sortDir = request.sort_dir ?? ''
   const matchFiltersKey = [
     request.match_start_date ?? '',
     request.match_end_date ?? '',
@@ -35,7 +33,7 @@ export function useExplorerMatches(
     [...(request.match_ids ?? [])].sort().join(','),
   ].join('|')
   return useQuery({
-    queryKey: queryKeys.explorer(playerSlug, filterHash, perfTiers, skillTiers, rankedContext, outcomeFilter, sortField, sortDir, matchFiltersKey),
+    queryKey: queryKeys.explorer(playerSlug, filterHash, perfTiers, skillTiers, rankedContext, outcomeFilter, matchFiltersKey),
     queryFn: () =>
       api.post<ExplorerMatchesQueryResponse>(
         `/players/${playerSlug}/pages/explorer/matches-query`,
