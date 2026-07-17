@@ -1,3 +1,41 @@
+## [2026-07-17] Relations UX — Lot G statué [!] + CLÔTURE du chantier (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété (chantier clos ; G conditionnel non exécuté).
+
+**Décision technique principale (lot G — gate G0)** : le gate d'entrée mesure la part des
+rivaux (`enemy_matches >= 8`, def Q28 : `opp_team_id <> my_team_id`, bots exclus) ayant au
+moins une ligne CSR exploitable via `match_csrs_latest` (vue append-only shared, règle ART
+n°2). CLI `duckdb` absent de l'environnement → mesure via sonde Go jetable sur une COPIE
+read-only de `shared_matches_v2.duckdb` (scratchpad), puis sonde + copie supprimées.
+
+**Mesure observée (G0)** : **0 % de couverture**. Par joueur : Chocoboflor 0/2, JGtm 0/7,
+Madina97294 0/17, XxDaemonGamerxX 0/0. Union distincte des rivaux : **0/22**. Sanity :
+`match_csrs_latest` = 64 lignes / 37 xuids distincts (essentiellement les 3 joueurs syncés,
+8 lignes CSR chacun) — le shared ne capture le CSR que sur un sous-ensemble étroit de
+matchs classés, jamais le CSR des adversaires long-tail. 0 % << seuil 30 % → **G statué
+`[!]` et arrêté** (issue conditionnelle prévue par le plan, PAS un échec). G1–G3 non
+exécutés (aucune valeur produit : la carte serait vide pour 100 % des bêtes noires).
+
+**Bilan du chantier Relations UX** :
+- A (tri tableau), B (duels cliquables), C (toggle « jamais affrontés »), F (dé-redondance
+  noyau dur + pont Escouade), D (volet « Quoi de neuf ») : livrés par le train antérieur
+  (91649c01d, f18aafddd, e9d5f8417, 6e5601669, e493118cc).
+- H (chip Multi-jeux) : déjà livré v7 → régularisé `[~]` (commit ff94bb85b).
+- E (notification « rival croisé » post-sync) : livré `[x]` (commit 9f1d7c5e4). Watermark
+  idempotent, aucun SQL nouveau, garde-fous nommés, best-effort strict.
+- G : `[!]` — 0 % de couverture CSR des rivaux, gate G0 non franchi.
+
+**Gates de clôture (cette session, arbre clos)** : `go test ./...` = 0 ; `go vet ./...` = 0 ;
+`go test -tags=integration -p 1 ./...` = 0 (112 ok) ; web typecheck (purge tsBuildInfo) OK ;
+lint 0 erreur ; `npx vitest run` COMPLET = 2253 passed / 14 skipped.
+
+**Restes / prochaine étape** : branche `chore/backlog-train-2026-07` NON poussée (décision
+utilisateur) — CI de branche + revue visuelle + merge = superviseur/utilisateur (push main
+= deploy prod auto). Archivage du fichier plan vers `.ai/V7/` = superviseur (ne pas déplacer).
+Découverte hors périmètre consignée dans le plan (seed notifications par défaut-actif).
+
+---
+
 ## [2026-07-17] Relations UX — Lot E : notification « rival croisé » post-sync (full-stack) (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété.
