@@ -94,10 +94,12 @@ describe('ExplorerBriefingStrip — carte « Par contexte » (DP-4)', () => {
     expect(text).toContain('explorer.briefing.context_split_title')
     expect(text).toContain('explorer.filters.context_solo')
     expect(text).toContain('explorer.filters.context_squad')
-    // Carte contexte = 4e cellule de la MÊME grille que les dimensions (DEC-3).
-    const grid = container.querySelector('[class*="xl:grid-cols-4"]')
-    expect(grid?.textContent).toContain('explorer.briefing.context_split_title')
-    expect(grid?.textContent).toContain('explorer.briefing.dim_map')
+    // La carte « Par contexte » vit dans la 4e cellule de la grille « Par… » (2e
+    // grille à colonnes adaptatives auto-fit/minmax), aux côtés des dimensions.
+    const grids = container.querySelectorAll('[class*="grid-template-columns"]')
+    const modulesGrid = grids[grids.length - 1]
+    expect(modulesGrid?.textContent).toContain('explorer.briefing.context_split_title')
+    expect(modulesGrid?.textContent).toContain('explorer.briefing.dim_map')
   })
 
   it('omet la carte quand context_split est absent', () => {
@@ -141,41 +143,56 @@ const rankedSingle = {
     { kind: 'CSR', matches: 20, tier_start_label: 'Or III', tier_end_label: 'Platine I', delta_per_match: -1.4 },
   ],
 }
-// rankedMulti : deux types (CSR majoritaire + LUSR secondaire → 2e ligne compacte).
-const rankedMulti = {
+// rankedLusrMulti : DEUX chaînes du MÊME type LUSR (playlist_group distincts) →
+// deux lignes AVEC label de chaîne (lusrChainLabel), jamais de flèche inter-chaînes.
+const rankedLusrMulti = {
   kinds: [
-    { kind: 'CSR', matches: 20, tier_start_label: 'Or III', tier_end_label: 'Platine I', delta_per_match: -1.4 },
-    { kind: 'LUSR', matches: 10, tier_start_label: 'Or I', tier_end_label: 'Or IV', delta_per_match: 0.8 },
+    { kind: 'LUSR', playlist_group: 'arena_slayer', matches: 15, tier_start_label: 'Or I', tier_end_label: 'Or IV', delta_per_match: 0.5 },
+    { kind: 'LUSR', playlist_group: 'btb', matches: 10, tier_start_label: 'Argent II', tier_end_label: 'Or I', delta_per_match: 0.3 },
   ],
 }
 
-describe('ExplorerBriefingStrip — tuile « Classement » (DP-2)', () => {
+describe('ExplorerBriefingStrip — Classement (RankedBlock, DEC-LAYOUT/DEC-RANK-FE)', () => {
+  beforeEach(() => {
+    // État fail-open : capability 'ranked' active → RankedBlock rendu.
+    useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', availableTitles: [] })
+  })
   afterEach(() => {
-    // Restaure l'état fail-open (capability 'ranked' active par défaut).
     useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', availableTitles: [] })
   })
 
-  it('rend la tuile (palier de fin + type + depuis + pt/match) quand ranked + capability', () => {
+  it('rend le bloc Classement (progression début → fin + pt/match) quand ranked + capability', () => {
     const briefing = { ...makeBriefing(120, 120), ranked: rankedSingle }
     const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
     const text = container.textContent ?? ''
     expect(text).toContain('explorer.briefing.ranked_title')
-    expect(text).toContain('Platine I') // palier de FIN (valeur de la tuile)
-    expect(text).toContain('CSR') // type majoritaire
-    expect(text).toContain('explorer.briefing.ranked_since')
+    expect(text).toContain('CSR')
+    expect(text).toContain('Or III → Platine I') // progression début → fin (une chaîne)
     expect(text).toContain('explorer.briefing.ranked_per_match')
   })
 
-  it('affiche une 2e ligne de sous-texte pour un second type (multi-type)', () => {
-    const briefing = { ...makeBriefing(120, 120), ranked: rankedMulti }
+  it('rend une ligne PAR CHAÎNE (LUSR multi) avec label de chaîne, jamais de flèche inter-chaînes', () => {
+    const briefing = { ...makeBriefing(120, 120), ranked: rankedLusrMulti }
     const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
     const text = container.textContent ?? ''
-    expect(text).toContain('CSR')
-    expect(text).toContain('LUSR')
-    expect(text).toContain('Or I → Or IV') // progression compacte du 2e type
+    expect(text).toContain('Or I → Or IV') // chaîne arena_slayer
+    expect(text).toContain('Argent II → Or I') // chaîne btb
+    expect(text).toContain('Grande Équipe') // label de chaîne btb (≥ 2 chaînes du type)
+    expect(text).not.toContain('Or IV → Argent II') // jamais de flèche inter-chaînes
   })
 
-  it('omet la tuile quand la capability « ranked » est absente du titre', () => {
+  it('rend le Classement dans la grille « Par… » (4e colonne), PAS dans le socle', () => {
+    const briefing = { ...makeBriefing(120, 120), ranked: rankedSingle }
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    // 2 grilles à colonnes adaptatives : [0] = socle des tuiles, [1] = « Par… ».
+    const grids = container.querySelectorAll('[class*="grid-template-columns"]')
+    expect(grids[0]?.textContent).not.toContain('explorer.briefing.ranked_title')
+    const modulesGrid = grids[grids.length - 1]
+    expect(modulesGrid?.textContent).toContain('explorer.briefing.ranked_title')
+    expect(modulesGrid?.textContent).toContain('explorer.briefing.dim_map')
+  })
+
+  it('omet le bloc Classement quand la capability « ranked » est absente du titre', () => {
     useAppShellStore.setState({
       currentTitleSlug: 'partial',
       availableTitles: [
@@ -184,8 +201,7 @@ describe('ExplorerBriefingStrip — tuile « Classement » (DP-2)', () => {
     })
     const briefing = { ...makeBriefing(120, 120), ranked: rankedSingle }
     const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
-    const text = container.textContent ?? ''
-    expect(text).not.toContain('explorer.briefing.ranked_title')
+    expect(container.textContent ?? '').not.toContain('explorer.briefing.ranked_title')
   })
 })
 
@@ -248,9 +264,10 @@ describe('ExplorerBriefingStrip — tooltips de légende (i) (DP-9)', () => {
     const { getAllByRole } = renderWithProviders(
       <ExplorerBriefingStrip briefing={makeFullBriefing()} t={t} />,
     )
-    // Taux de victoire, FDA, Perf, Classement, Séries (5) + 3 dimensions + « Par
-    // contexte » (4) + bande Moments forts (1) = 10. La tuile Matchs n'a PAS de (i).
-    expect(getAllByRole('button', { name: TIP_ARIA })).toHaveLength(10)
+    // Socle (i) : Taux de victoire, FDA, Perf, Durée totale, Pic FDA + Meilleure
+    // série (6). Modules : 3 dimensions + « Par contexte » + Classement (RankedBlock)
+    // + bande Moments forts (6). Total = 12. La tuile Matchs n'a PAS de (i).
+    expect(getAllByRole('button', { name: TIP_ARIA })).toHaveLength(12)
   })
 
   it('pose MOINS d’icônes quand des blocs sont omis (ni classement/séries/contexte/bande)', () => {
@@ -258,8 +275,9 @@ describe('ExplorerBriefingStrip — tooltips de légende (i) (DP-9)', () => {
     const { getAllByRole } = renderWithProviders(
       <ExplorerBriefingStrip briefing={makeBriefing(120, 120)} t={t} />,
     )
-    // Taux de victoire + FDA + Perf (3 tuiles) + 1 carte dimension = 4.
-    expect(getAllByRole('button', { name: TIP_ARIA })).toHaveLength(4)
+    // Taux de victoire + FDA + Perf + Durée totale + Pic FDA (5 tuiles) + 1 carte
+    // dimension = 6 (aucune conditionnelle : ni série, ni pic rang, ni classement).
+    expect(getAllByRole('button', { name: TIP_ARIA })).toHaveLength(6)
   })
 
   it('ouvre le contenu du tooltip de la carte dimension au clic (tip_dimensions)', () => {
@@ -270,5 +288,117 @@ describe('ExplorerBriefingStrip — tooltips de légende (i) (DP-9)', () => {
     const dimTitle = getByText('explorer.briefing.dim_map')
     fireEvent.click(within(dimTitle).getByRole('button', { name: TIP_ARIA }))
     expect(screen.getByRole('tooltip').textContent).toContain('explorer.briefing.tip_dimensions')
+  })
+})
+
+// makeBriefing enrichi de pics/durée pour exercer le socle refondu V4.
+function withScope(over: Partial<NonNullable<ExplorerBriefing['scope']>>): ExplorerBriefing {
+  const b = makeBriefing(120, 120)
+  return { ...b, scope: { ...b.scope!, ...over } }
+}
+
+describe('ExplorerBriefingStrip — socle refondu V4 (DEC-TILES)', () => {
+  it('rend le Taux de victoire hero : valeur neutre + ruban OutcomeBar + V-D-N (sans sparkline)', () => {
+    const { container } = renderWithProviders(
+      <ExplorerBriefingStrip briefing={makeBriefing(30, 120)} t={t} />,
+    )
+    const text = container.textContent ?? ''
+    expect(text).toContain('60%') // valeur WR neutre (formatPercentInt(0.6))
+    // Ruban OutcomeBar présent (barre h-1.5) + victoires (18) / défaites (10) flanquant.
+    expect(container.querySelector('[class*="h-1.5"]')).not.toBeNull()
+    expect(text).toContain('18')
+    expect(text).toContain('10')
+  })
+
+  it('colore la valeur de la tuile Perf (getPerfColor → CSS var)', () => {
+    const { container } = renderWithProviders(
+      <ExplorerBriefingStrip briefing={makeBriefing(120, 120)} t={t} />,
+    )
+    const perfSpan = Array.from(container.querySelectorAll('span')).find(
+      (s) => s.textContent === '65',
+    )
+    expect(perfSpan).toBeDefined()
+    expect(perfSpan?.getAttribute('style') ?? '').toContain('var(--')
+  })
+
+  it('rend Durée totale (« h min ») et Pic FDA hors low_sample', () => {
+    const briefing = withScope({ total_duration_seconds: 152400, peak_kda: 4.2 })
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('explorer.briefing.duration_total_label')
+    expect(text).toContain('42 h 20') // formatDurationHM(152400)
+    expect(text).toContain('explorer.briefing.peak_fda_label')
+    expect(text).toContain('4.20') // peak_kda.toFixed(2)
+  })
+
+  it('omet Durée totale et Pic FDA en low_sample', () => {
+    const briefing = {
+      ...withScope({ total_duration_seconds: 152400, peak_kda: 4.2 }),
+      low_sample: true,
+    }
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const text = container.textContent ?? ''
+    expect(text).not.toContain('explorer.briefing.duration_total_label')
+    expect(text).not.toContain('explorer.briefing.peak_fda_label')
+  })
+})
+
+describe('ExplorerBriefingStrip — Pic rang (DEC-PEAKRANK)', () => {
+  it('affiche une ligne (1er système) quand un seul palier', () => {
+    const briefing = withScope({ peak_ranks: [{ rating_type: 'lusr', tier_label: 'Diamant IV' }] })
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('explorer.briefing.peak_rank_label')
+    expect(text).toContain('Diamant IV')
+    expect(text).toContain('lusr')
+  })
+
+  it('affiche 2 lignes (LUSR + CSR) quand deux systèmes', () => {
+    const briefing = withScope({
+      peak_ranks: [
+        { rating_type: 'lusr', tier_label: 'Diamant IV' },
+        { rating_type: 'csr', tier_label: 'Onyx' },
+      ],
+    })
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('Diamant IV')
+    expect(text).toContain('Onyx')
+    expect(text).toContain('csr')
+  })
+
+  it('omet la tuile Pic rang quand peak_ranks est vide', () => {
+    const { container } = renderWithProviders(
+      <ExplorerBriefingStrip briefing={makeBriefing(120, 120)} t={t} />,
+    )
+    expect(container.textContent ?? '').not.toContain('explorer.briefing.peak_rank_label')
+  })
+})
+
+describe('ExplorerBriefingStrip — cascade des conditionnelles (DEC-TILES, cap 8)', () => {
+  it('rend AU PLUS 2 conditionnelles par priorité (Meilleure série > Pic rang > Pic MMR)', () => {
+    const briefing = {
+      ...withScope({
+        peak_ranks: [{ rating_type: 'lusr', tier_label: 'Diamant IV' }],
+        peak_team_mmr: 1523,
+      }),
+      streaks: { best_win_streak: 7, worst_loss_streak: 4 },
+    }
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('explorer.briefing.streaks_title') // priorité 1
+    expect(text).toContain('explorer.briefing.peak_rank_label') // priorité 2
+    expect(text).not.toContain('explorer.briefing.peak_mmr_label') // priorité 3 OMISE (cap 2)
+  })
+
+  it('rend Pic MMR quand seules 2 conditionnelles sont présentes', () => {
+    const briefing = {
+      ...withScope({ peak_team_mmr: 1523 }),
+      streaks: { best_win_streak: 7, worst_loss_streak: 4 },
+    }
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('explorer.briefing.streaks_title')
+    expect(text).toContain('explorer.briefing.peak_mmr_label')
   })
 })

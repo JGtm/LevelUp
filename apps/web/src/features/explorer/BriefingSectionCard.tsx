@@ -9,8 +9,8 @@
  * PÉRIMÈTRE (V3, compaction du bandeau) : seules les cartes de la rangée « Par… »
  * passent par ce wrapper — les dimensions (carte/mode/sélection) et la carte
  * « Par contexte ». Les autres blocs ont quitté le format carte : Classement et
- * Séries sont des tuiles du socle (ExplorerBriefingTiles), la Tendance une
- * micro-sparkline (Strip), les Moments forts une bande nue (DominanceBand).
+ * Séries sont des tuiles du socle (ExplorerBriefingTiles), les Moments forts une
+ * bande nue (DominanceBand).
  *
  * GARDE-RAIL ANTI-DIVERGENCE (CLAUDE.md §6 « ≤ 2 copies d'un même pattern ») :
  * l'en-tête bordurée existe en 2 endroits canoniques — `ChartCard` (charts ECharts)

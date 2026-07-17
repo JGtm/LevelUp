@@ -16,6 +16,7 @@ import {
   formatDurationMMSS,
   formatDurationHMS,
   formatDurationMShort,
+  formatDurationHM,
   displayRatingLabel,
   formatRankDelta,
   formatOffensiveConversion,
@@ -187,6 +188,23 @@ describe('formatDurationMShort', () => {
     expect(formatDurationMShort(0)).toBe('-')
     expect(formatDurationMShort(-5)).toBe('-')
     expect(formatDurationMShort(NaN)).toBe('-')
+  })
+})
+
+describe('formatDurationHM', () => {
+  it('format « h min » pour des totaux longs', () => {
+    expect(formatDurationHM(2530)).toBe('42 min') // < 1 h → minutes seules
+    expect(formatDurationHM(152400)).toBe('42 h 20') // heures + minutes zero-paddées
+    expect(formatDurationHM(3600)).toBe('1 h 00')
+    expect(formatDurationHM(59)).toBe('0 min') // < 1 min mais > 0 → 0 min
+  })
+
+  it('fallback « — » sur invalide', () => {
+    expect(formatDurationHM(undefined)).toBe('—')
+    expect(formatDurationHM(null)).toBe('—')
+    expect(formatDurationHM(0)).toBe('—')
+    expect(formatDurationHM(-5)).toBe('—')
+    expect(formatDurationHM(NaN)).toBe('—')
   })
 })
 

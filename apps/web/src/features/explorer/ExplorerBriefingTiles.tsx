@@ -1,114 +1,33 @@
 /**
- * ExplorerBriefingTiles — tuiles KPI « Classement » et « Séries » du socle.
+ * ExplorerBriefingTiles — tuiles KPI composées du socle du briefing Explorer.
  *
- * V3 (compaction) : anciennes cartes pleine largeur RankedCard/StreaksCard
- * converties en tuiles compactes du socle (DP-2, DP-3), réutilisant BriefingTile.
- * `rankedProgression` (composition « début → fin », D-C/D-D) déplacé ici depuis
- * ExplorerBriefingModules. Tokens sémantiques uniquement (aucune couleur hex).
+ * Tuiles réutilisant BriefingTile : Taux de victoire (hero — OutcomeBar + V-D-N +
+ * tooltip des 4 issues, DEC-TILES), Durée totale (DEC-DURATION), Pic FDA / Pic rang /
+ * Pic MMR (DEC-PEAK) et Meilleure série (bicolore). Le Classement a quitté le socle
+ * pour la 4e colonne (ExplorerRankedBlock, V4 Phase 4). Tokens sémantiques uniquement
+ * (aucune couleur hex) ; les valeurs de sentiment sont colorées via les helpers
+ * d'accessibilité.
  */
-import type { ReactNode } from 'react'
-
 import { InfoTooltip } from '@/components/ui/info-tooltip'
-import { tokenCssVar } from '@/lib/accessibility'
+import { OutcomeBar } from '@/components/ui/outcome-bar'
+import { Tooltip } from '@/components/ui/tooltip'
+import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { kdaNetColor } from '@/lib/colors/outcomePalette'
+import { formatDurationHM, formatPercentInt } from '@/lib/formatters'
+import { useOutcomeLabel } from '@/lib/i18n/fieldMappings'
 import type {
-  ExplorerBriefingRanked,
-  ExplorerBriefingRankedKind,
+  ExplorerBriefingBaseline,
+  ExplorerBriefingPeakRank,
+  ExplorerBriefingScope,
   ExplorerBriefingStreaks,
 } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { BriefingTile } from './BriefingTile'
-import { deltaToken, formatSignedFixed } from './ExplorerBriefing.logic'
+import { deltaToken, formatSignedPoints } from './ExplorerBriefing.logic'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
 
-// rankedProgression compose « palier début → palier fin » (D-C), en résolvant les
-// paliers de placement via clés i18n (D-D : jamais parser le libellé FR). Null si
-// aucun palier n'est résolvable (segment omis). Paliers égaux → palier seul.
-// Local (non exporté) : consommé uniquement par la 2e ligne du sous-texte
-// (`react-refresh/only-export-components` — le fichier n'exporte que des composants).
-function rankedProgression(k: ExplorerBriefingRankedKind, t: T): string | null {
-  const start = k.tier_start_is_placement
-    ? t('explorer.briefing.placement')
-    : (k.tier_start_label ?? null)
-  const end =
-    k.tier_end_placement_remaining != null
-      ? t('explorer.briefing.placement_remaining', { n: k.tier_end_placement_remaining })
-      : (k.tier_end_label ?? null)
-  if (start == null && end == null) return null
-  if (start != null && end != null) return start === end ? start : `${start} → ${end}`
-  return start ?? end
-}
-
-/** Libellé « {±x} pt/match » du type, ou null si aucun delta par match. */
-function perMatchLabel(k: ExplorerBriefingRankedKind, t: T): string | null {
-  return k.delta_per_match != null
-    ? t('explorer.briefing.ranked_per_match', { delta: formatSignedFixed(k.delta_per_match, 1) })
-    : null
-}
-
-/** Valeur de la tuile = palier de FIN du type (placement restant / label / pt/match / —). */
-function rankedValue(k: ExplorerBriefingRankedKind, t: T): ReactNode {
-  if (k.tier_end_placement_remaining != null)
-    return t('explorer.briefing.placement_remaining', { n: k.tier_end_placement_remaining })
-  if (k.tier_end_label != null) return k.tier_end_label
-  return perMatchLabel(k, t) ?? '—'
-}
-
-/** « depuis {palier de début} » du type MAJORITAIRE, ou null si début non résolvable. */
-function sinceLabel(k: ExplorerBriefingRankedKind, t: T): string | null {
-  const start = k.tier_start_is_placement
-    ? t('explorer.briefing.placement')
-    : (k.tier_start_label ?? null)
-  return start != null ? t('explorer.briefing.ranked_since', { tier: start }) : null
-}
-
-// Ligne de sous-texte d'un type : « TYPE · {middle} · {±x} pt/match » (segments
-// non résolvables omis). Le pt/match est coloré via le token de delta canonique.
-function rankedSubLine(k: ExplorerBriefingRankedKind, middle: string | null, t: T): ReactNode {
-  const pm = perMatchLabel(k, t)
-  return (
-    <>
-      <span className="font-semibold uppercase text-foreground">{k.kind}</span>
-      {middle != null && <> · {middle}</>}
-      {pm != null && (
-        <>
-          {' · '}
-          <span className="tabular-nums" style={{ color: tokenCssVar(deltaToken(k.delta_per_match)) }}>
-            {pm}
-          </span>
-        </>
-      )}
-    </>
-  )
-}
-
-// Tuile Classement (DP-2) : valeur = palier de fin du type MAJORITAIRE (kinds[0],
-// déjà ordonné Count desc). Sous-texte : ligne 1 du type majoritaire (« depuis
-// {début} »), ligne 2 (si un 2e type) en progression compacte. JAMAIS croiser les
-// paliers de deux types. Gate useCapability('ranked') assuré par l'appelant (Strip).
-export function RankedTile({ ranked, t }: { ranked: ExplorerBriefingRanked; t: T }) {
-  const kinds = ranked.kinds ?? []
-  if (kinds.length === 0) return null
-  const primary = kinds[0]
-  const secondary = kinds[1]
-  return (
-    <BriefingTile
-      label={t('explorer.briefing.ranked_title')}
-      info={<InfoTooltip content={t('explorer.briefing.tip_ranked')} iconClass="w-3.5 h-3.5" />}
-      value={rankedValue(primary, t)}
-      sub={
-        <>
-          <div className="truncate">{rankedSubLine(primary, sinceLabel(primary, t), t)}</div>
-          {secondary != null && (
-            <div className="truncate">{rankedSubLine(secondary, rankedProgression(secondary, t), t)}</div>
-          )}
-        </>
-      }
-    />
-  )
-}
-
-// Tuile Séries (DP-3) : valeur bicolore « {best} V / {worst} D » (tokens
+// Tuile Meilleure série (DP-3) : valeur bicolore « {best} V / {worst} D » (tokens
 // outcome-win/outcome-loss). Segment à zéro omis ; la tuile elle-même est omise
 // par l'appelant (Strip) quand les deux segments sont à zéro.
 export function StreaksTile({ streaks, t }: { streaks: ExplorerBriefingStreaks; t: T }) {
@@ -133,6 +52,167 @@ export function StreaksTile({ streaks, t }: { streaks: ExplorerBriefingStreaks; 
           )}
         </span>
       }
+    />
+  )
+}
+
+// ─── Tuile Taux de victoire (hero) — DEC-TILES ────────────────────────────────
+// Contenu repris de HomeHeroKPIGrid : valeur NEUTRE (le sentiment est porté par
+// l'accent 3px, bande neutre 0.45-0.55), ruban OutcomeBar flanqué des victoires
+// (gauche) et défaites (droite), détail des 4 issues au survol du ruban. Sous-texte :
+// delta « vs habituel » (masqué en plein historique). Remplace la sparkline (DEC-SPARK).
+export function WinRateTile({
+  scope,
+  baseline,
+  fullHistory,
+  t,
+}: {
+  scope: ExplorerBriefingScope
+  baseline: ExplorerBriefingBaseline | null | undefined
+  fullHistory: boolean
+  t: T
+}) {
+  const wr = scope.win_rate ?? null
+  const { wins, losses, ties: draws, dnf: dnfs } = scope
+  // Libellés canoniques des issues (field-mappings) — détail affiché au survol.
+  const winLabel = useOutcomeLabel('win')
+  const drawLabel = useOutcomeLabel('tie')
+  const dnfLabel = useOutcomeLabel('dnf')
+  const lossLabel = useOutcomeLabel('loss')
+  const accent: SemanticToken =
+    wr != null && wr > 0.55
+      ? 'outcome-win'
+      : wr != null && wr < 0.45
+        ? 'outcome-loss'
+        : 'outcome-draw'
+  const outcomeRows: { token: SemanticToken; label: string; value: number }[] = [
+    { token: 'outcome-win', label: winLabel, value: wins },
+    { token: 'outcome-draw', label: drawLabel, value: draws },
+    { token: 'outcome-dnf', label: dnfLabel, value: dnfs },
+    { token: 'outcome-loss', label: lossLabel, value: losses },
+  ]
+  const outcomeTooltip = (
+    <div className="space-y-1 text-left">
+      {outcomeRows
+        .filter((o) => o.value > 0)
+        .map((o) => (
+          <div key={o.label} className="flex items-center gap-2">
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: tokenCssVar(o.token) }}
+            />
+            <span className="flex-1 whitespace-nowrap">{o.label}</span>
+            <span className="font-semibold tabular-nums">{o.value}</span>
+          </div>
+        ))}
+    </div>
+  )
+  return (
+    <BriefingTile
+      label={t('explorer.briefing.win_rate_label')}
+      info={<InfoTooltip content={t('explorer.briefing.tip_win_rate')} iconClass="w-3.5 h-3.5" />}
+      accent={accent}
+      value={
+        <div>
+          <span>{formatPercentInt(wr)}</span>
+          <div className="mt-1 flex items-center gap-2">
+            <span
+              className="shrink-0 text-xs font-semibold tabular-nums"
+              style={{ color: tokenCssVar('outcome-win') }}
+            >
+              {wins}
+            </span>
+            <Tooltip className="min-w-0 flex-1" content={outcomeTooltip}>
+              <OutcomeBar wins={wins} draws={draws} losses={losses} dnfs={dnfs} />
+            </Tooltip>
+            <span
+              className="shrink-0 text-xs font-semibold tabular-nums"
+              style={{ color: tokenCssVar('outcome-loss') }}
+            >
+              {losses}
+            </span>
+          </div>
+        </div>
+      }
+      sub={
+        baseline && !fullHistory ? (
+          <>
+            <span
+              className="font-semibold"
+              style={{ color: tokenCssVar(deltaToken(baseline.delta_win_rate)) }}
+            >
+              {formatSignedPoints(baseline.delta_win_rate)}
+            </span>{' '}
+            {t('explorer.briefing.vs_baseline')}
+          </>
+        ) : undefined
+      }
+    />
+  )
+}
+
+// ─── Tuile Durée totale — DEC-DURATION ────────────────────────────────────────
+// Somme serveur des durées du scope, format « h min » (jamais MM:SS). Descriptive.
+export function DurationTile({ seconds, t }: { seconds: number | null | undefined; t: T }) {
+  return (
+    <BriefingTile
+      label={t('explorer.briefing.duration_total_label')}
+      info={<InfoTooltip content={t('explorer.briefing.tip_duration')} iconClass="w-3.5 h-3.5" />}
+      value={formatDurationHM(seconds)}
+    />
+  )
+}
+
+// ─── Tuile Pic FDA — DEC-PEAK ─────────────────────────────────────────────────
+// Meilleur FDA d'un seul match du scope, coloré comme la tuile FDA (kdaNetColor).
+export function PeakKdaTile({ value, t }: { value: number | null | undefined; t: T }) {
+  return (
+    <BriefingTile
+      label={t('explorer.briefing.peak_fda_label')}
+      info={<InfoTooltip content={t('explorer.briefing.tip_peak_fda')} iconClass="w-3.5 h-3.5" />}
+      value={
+        value != null ? <span style={{ color: kdaNetColor(value) }}>{value.toFixed(2)}</span> : '—'
+      }
+    />
+  )
+}
+
+// ─── Tuile Pic rang — DEC-PEAKRANK ────────────────────────────────────────────
+// Meilleur palier ATTEINT par système de rating sur le scope (jusqu'à 2 lignes
+// LUSR/CSR). Valeur = 1er système « {TYPE} {palier} », sous-ligne = 2e système.
+// Type de rating en capitales (classe uppercase, comme le Classement).
+export function PeakRankTile({ ranks, t }: { ranks: ExplorerBriefingPeakRank[]; t: T }) {
+  if (ranks.length === 0) return null
+  const [first, second] = ranks
+  return (
+    <BriefingTile
+      label={t('explorer.briefing.peak_rank_label')}
+      info={<InfoTooltip content={t('explorer.briefing.tip_peak_rank')} iconClass="w-3.5 h-3.5" />}
+      value={
+        <span className="text-sm">
+          <span className="uppercase text-muted-foreground">{first.rating_type}</span>{' '}
+          {first.tier_label}
+        </span>
+      }
+      sub={
+        second != null ? (
+          <span>
+            <span className="uppercase">{second.rating_type}</span> {second.tier_label}
+          </span>
+        ) : undefined
+      }
+    />
+  )
+}
+
+// ─── Tuile Pic MMR — DEC-PEAKRANK (priorité la plus basse) ─────────────────────
+// Meilleur team_mmr du scope, valeur brute arrondie (non colorée, masquage MMR).
+export function PeakMmrTile({ value, t }: { value: number; t: T }) {
+  return (
+    <BriefingTile
+      label={t('explorer.briefing.peak_mmr_label')}
+      info={<InfoTooltip content={t('explorer.briefing.tip_peak_mmr')} iconClass="w-3.5 h-3.5" />}
+      value={String(Math.round(value))}
     />
   )
 }

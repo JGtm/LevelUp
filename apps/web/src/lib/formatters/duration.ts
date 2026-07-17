@@ -81,3 +81,27 @@ export function formatDurationMShort(seconds?: number | null, fallback = '-'): s
   const s = Math.floor(seconds % 60)
   return `${m}m${s.toString().padStart(2, '0')}s`
 }
+
+/**
+ * Format durée « h min » pour des TOTAUX de temps de jeu (durée cumulée d'un
+ * scope de matchs, ex. tuile « Durée totale » du briefing Explorer). Distinct de
+ * formatDurationMMSS (MM:SS d'UN match) et de formatDurationHMS : ici on exprime
+ * des heures et des minutes lisibles, jamais de secondes. Unités « h »/« min »
+ * universelles (identiques FR/EN). Fallback « — » (tuiles de briefing).
+ *
+ * @example
+ *   formatDurationHM(2530)    // "42 min"  (< 1 h)
+ *   formatDurationHM(152400)  // "42 h 20" (heures + minutes zero-paddées)
+ *   formatDurationHM(3600)    // "1 h 00"
+ *   formatDurationHM(0)       // "—"
+ */
+export function formatDurationHM(seconds?: number | null, fallback = '—'): string {
+  if (seconds == null || seconds <= 0 || !Number.isFinite(seconds)) {
+    return fallback
+  }
+  const totalMin = Math.floor(seconds / 60)
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  if (h === 0) return `${m} min`
+  return `${h} h ${m.toString().padStart(2, '0')}`
+}
