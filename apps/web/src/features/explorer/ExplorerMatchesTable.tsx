@@ -54,7 +54,7 @@ import {
 } from './explorerMatchesClientSort'
 import {
   columnHighlightStyle,
-  computeColumnExtremes,
+  computeColumnDeciles,
   explorerHlExtract,
   isExplorerHighlightKey,
 } from './ExplorerMatchesTable.highlight'
@@ -125,9 +125,34 @@ interface Props {
   sortable?: boolean
 }
 
-/** Classe des cellules d'en-tete (partagee entre en-tetes statiques et triables). */
+/** Classe des cellules d'en-tete (partagee entre en-tetes statiques et triables).
+ *  SANS `text-align` : l'alignement est appliqué PAR COLONNE via `alignClass`
+ *  (numériques à droite, texte à gauche — DEC-ALIGN). */
 const HEADER_TH_CLASS =
-  'px-2 py-1 text-left whitespace-nowrap text-3xs font-medium text-muted-foreground border-r border-border last:border-r-0'
+  'px-2 py-1 whitespace-nowrap text-3xs font-medium text-muted-foreground border-r border-border last:border-r-0'
+
+/** Colonnes NUMÉRIQUES (par id TanStack) alignées à DROITE (en-tête ET cellules).
+ *  Les autres colonnes (texte : date, carte, playlist, mode, contexte, résultat,
+ *  dominance, rang, note) restent à gauche. Jamais centré (DEC-ALIGN). */
+const RIGHT_ALIGNED_COLUMNS = new Set<string>([
+  'kills',
+  'deaths',
+  'assists',
+  'kda',
+  'score_label',
+  'duration_seconds',
+  'perf_score',
+  'delta_perf',
+  'team_mmr',
+  'enemy_mmr',
+  'delta_mmr',
+])
+
+/** Classe d'alignement horizontal d'une colonne selon son id (droite si
+ *  numérique, gauche sinon). */
+function alignClass(colId: string): string {
+  return RIGHT_ALIGNED_COLUMNS.has(colId) ? 'text-right' : 'text-left'
+}
 
 /** Indicateur de tri de la colonne active : ▲ ascendant / ▼ descendant. Rien sur
  *  les colonnes inactives (l'affordance clic vient du <button> + hover). Tokens
@@ -237,9 +262,10 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const filterContext = useSoloFilterStore((s) => s.filterContext)
   const allMatchIds = useMemo(() => rows.map((r) => r.match_id), [rows])
-  // Extrêmes MVP/LVP par colonne, calculés sur TOUT le scope chargé (`rows`, pas
-  // la page visible) → indépendants du tri et de la pagination (DEC-MVP). Mémoïsés.
-  const highlightExtremes = useMemo(() => computeColumnExtremes(rows), [rows])
+  // Seuils de décile (p10/p90) MVP/LVP par colonne, calculés sur TOUT le scope
+  // chargé (`rows`, pas la page visible) → indépendants du tri et de la
+  // pagination (DEC-DECILE). Mémoïsés.
+  const highlightDeciles = useMemo(() => computeColumnDeciles(rows), [rows])
   // useCallback obligatoire : goToMatch est référencé dans le cell renderer du
   // useMemo `columns` ci-dessous. Sans ça, le closure figé au 1er render garde
   // les `allMatchIds` initiaux (pré-filtre) → nav contextuelle hors scope.
@@ -724,11 +750,14 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                   const content = h.isPlaceholder
                     ? null
                     : flexRender(h.column.columnDef.header, h.getContext())
+                  // Alignement par colonne (DEC-ALIGN) : numériques à droite,
+                  // texte à gauche.
+                  const alignRight = RIGHT_ALIGNED_COLUMNS.has(h.column.id)
                   // Colonne non triable (tableau sans `sortable`, ou colonne
-                  // d'ouverture) : en-tête statique, rendu inchangé.
+                  // d'ouverture) : en-tête statique.
                   if (!h.column.getCanSort()) {
                     return (
-                      <th key={h.id} className={HEADER_TH_CLASS}>
+                      <th key={h.id} className={`${HEADER_TH_CLASS} ${alignClass(h.column.id)}`}>
                         {content}
                       </th>
                     )
@@ -738,13 +767,18 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                     sortDir === 'asc' ? 'ascending' : sortDir === 'desc' ? 'descending' : 'none'
                   const labelKey = SORT_ARIA_LABEL_KEYS[h.column.id]
                   return (
-                    <th key={h.id} className={HEADER_TH_CLASS} aria-sort={ariaSort}>
+                    <th key={h.id} className={`${HEADER_TH_CLASS} ${alignClass(h.column.id)}`} aria-sort={ariaSort}>
                       <button
                         type="button"
                         onClick={h.column.getToggleSortingHandler()}
                         aria-label={labelKey ? t('explorer.matches.sort_by', { col: t(labelKey) }) : undefined}
                         className={
-                          'group inline-flex items-center gap-1 whitespace-nowrap transition-colors hover:text-foreground' +
+                          // Colonne numérique : bouton pleine largeur poussant
+                          // libellé + flèche de tri à DROITE ; texte : à gauche.
+                          (alignRight
+                            ? 'group flex w-full items-center justify-end gap-1'
+                            : 'group inline-flex items-center gap-1') +
+                          ' whitespace-nowrap transition-colors hover:text-foreground' +
                           (sortDir ? ' text-foreground' : '')
                         }
                       >
@@ -761,17 +795,18 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
             {table.getRowModel().rows.map((row) => (
               <tr key={row.id} className="transition-colors hover:bg-primary/10">
                 {row.getVisibleCells().map((cell) => {
-                  // MVP/LVP : meilleur/pire par colonne clé surlignés sur tout le
-                  // scope (style best/worst IMPORTÉ de MatchScoreboard.logic via
-                  // le sibling highlight). Colonnes non clés / neutres → {} (no-op).
+                  // MVP/LVP : bande de décile (top 10 % / pire 10 %) par colonne
+                  // clé surlignée sur tout le scope (style best/worst IMPORTÉ de
+                  // MatchScoreboard.logic via le sibling highlight, teinte douce).
+                  // Colonnes non clés / hors bande / neutres → {} (no-op).
                   const colId = cell.column.id
                   const hlStyle = isExplorerHighlightKey(colId)
-                    ? columnHighlightStyle(colId, explorerHlExtract[colId](row.original), highlightExtremes)
+                    ? columnHighlightStyle(colId, explorerHlExtract[colId](row.original), highlightDeciles)
                     : undefined
                   return (
                     <td
                       key={cell.id}
-                      className="px-2 py-1 whitespace-nowrap border-r border-border last:border-r-0"
+                      className={`px-2 py-1 whitespace-nowrap border-r border-border last:border-r-0 ${alignClass(colId)}`}
                       style={hlStyle}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
