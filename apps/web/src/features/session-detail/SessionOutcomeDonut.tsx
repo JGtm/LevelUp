@@ -14,7 +14,8 @@ import type { SemanticToken } from '@/lib/accessibility'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
-import { outcomeIntToKey, useSessionT } from './_shared'
+import { outcomeCodeToValue } from '@/lib/outcome'
+import { useSessionT } from './_shared'
 
 const OUTCOME_TOKEN: Record<string, SemanticToken> = {
   win: 'outcome-win',
@@ -41,7 +42,7 @@ export function SessionOutcomeDonut({ title, matches, height = 260, compact }: P
     const counts: Record<string, number> = { win: 0, loss: 0, tie: 0, dnf: 0 }
     let total = 0
     for (const m of matches) {
-      const key = outcomeIntToKey(m.outcome ?? null)
+      const key = outcomeCodeToValue(m.outcome)
       if (!key) continue
       counts[key] += 1
       total += 1

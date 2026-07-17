@@ -19,12 +19,12 @@ import (
 
 // StreaksRepo persiste les streaks d'un joueur dans sa stats.duckdb.
 type StreaksRepo struct {
-	db *DB
+	db PlayerReadHandle
 }
 
 // NewStreaksRepo construit le repo.
 func NewStreaksRepo(db *DB) *StreaksRepo {
-	return &StreaksRepo{db: db}
+	return &StreaksRepo{db: NewPlayerReadHandle(db)}
 }
 
 // Compile-time assertion.
@@ -74,7 +74,7 @@ func (r *StreaksRepo) Upsert(ctx context.Context, s streaks.Streak) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO streak_history (
 			id, user_id, title_slug, type, started_at,
 			current_length, best_length, last_increment_at, threshold,

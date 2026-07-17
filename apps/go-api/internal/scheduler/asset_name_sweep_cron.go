@@ -2,6 +2,8 @@ package scheduler
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -131,12 +133,11 @@ func (c *AssetNameSweepCron) RunOnce(ctx context.Context) {
 	if c == nil || c.run == nil {
 		return
 	}
-	// Statut unifie des crons (A6/DC-5) : liveness du cycle — les erreurs par
-	// titre restent best-effort internes (loguees).
+	// Statut des crons (A6/DC-5, décision D1) : le cycle rapporte l'erreur AGRÉGÉE
+	// réelle par titre — un cycle partiellement échoué = échec avec cause. Les titres
+	// sans catalog adapter sont des skips nominaux (pas des échecs).
 	start := time.Now()
-	defer func() {
-		observability.ReportCronRun("asset_name_sweep", start, nil, time.Since(start).Milliseconds())
-	}()
+	var errs []error
 	reg := c.registry
 	if reg == nil {
 		reg = titlePkg.DefaultRegistry()
@@ -154,8 +155,11 @@ func (c *AssetNameSweepCron) RunOnce(ctx context.Context) {
 				"titleSlug", desc.Slug)
 			continue
 		}
-		c.runOnceForTitle(ctx, desc.Slug)
+		if err := c.runOnceForTitle(ctx, desc.Slug); err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", desc.Slug, err))
+		}
 	}
+	observability.ReportCronRun("asset_name_sweep", start, errors.Join(errs...), time.Since(start).Milliseconds())
 }
 
 // titleHasCatalogAdapter applique le gate : test RÉEL de présence d'un catalog
@@ -169,18 +173,20 @@ func (c *AssetNameSweepCron) titleHasCatalogAdapter(desc *titlePkg.TitleDescript
 }
 
 // runOnceForTitle exécute le balayage de noms pour UN titre dont l'adapter est
-// résolvable. Best-effort : une erreur n'interrompt pas l'itération sur les autres.
-func (c *AssetNameSweepCron) runOnceForTitle(ctx context.Context, titleSlug string) {
+// résolvable. Retourne l'erreur réelle du balayage (décision D1) ; une erreur
+// n'interrompt pas l'itération sur les autres titres (agrégée par RunOnce).
+func (c *AssetNameSweepCron) runOnceForTitle(ctx context.Context, titleSlug string) error {
 	start := time.Now()
 	res, err := c.run(ctx, titleSlug)
 	if err != nil {
 		c.log.WarnContext(ctx, "asset_name_sweep_cron: balayage échoué (best-effort)",
 			"titleSlug", titleSlug, "err", err, "duration", time.Since(start))
-		return
+		return err
 	}
 	if res.Requested > 0 {
 		c.log.InfoContext(ctx, "asset_name_sweep_cron: balayage terminé", "titleSlug", titleSlug,
 			"requested", res.Requested, "resolved", res.Resolved, "skipped", res.Skipped,
 			"capped", res.Capped, "errors", res.Errors, "duration", time.Since(start))
 	}
+	return nil
 }

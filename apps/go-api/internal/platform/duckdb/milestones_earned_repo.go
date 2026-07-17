@@ -17,12 +17,12 @@ import (
 
 // MilestoneEarnedRepo persiste les milestones débloqués (stats.duckdb par joueur).
 type MilestoneEarnedRepo struct {
-	db *DB
+	db PlayerReadHandle
 }
 
 // NewMilestoneEarnedRepo construit le repo.
 func NewMilestoneEarnedRepo(db *DB) *MilestoneEarnedRepo {
-	return &MilestoneEarnedRepo{db: db}
+	return &MilestoneEarnedRepo{db: NewPlayerReadHandle(db)}
 }
 
 // Compile-time assertion.

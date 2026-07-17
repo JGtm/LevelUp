@@ -29,7 +29,8 @@ import { resolveToken } from '@/lib/accessibility'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
-import { outcomeIntToKey, sessionMatchAxisLabel, useSessionT } from './_shared'
+import { outcomeCodeToValue } from '@/lib/outcome'
+import { sessionMatchAxisLabel, useSessionT } from './_shared'
 
 type OutcomeKey = 'win' | 'loss' | 'tie' | 'dnf'
 
@@ -164,7 +165,7 @@ export function SessionNetScoreArea({ title, matches, height = 280, yDomain }: P
     const datapoints = sorted.map((m, i) => {
       // Garde-fou : un kills/deaths manquant ne doit pas propager un NaN dans le cumul.
       running += (m.kills ?? 0) - (m.deaths ?? 0)
-      const outcomeKey = outcomeIntToKey(m.outcome ?? null)
+      const outcomeKey = outcomeCodeToValue(m.outcome)
       return {
         label: sessionMatchAxisLabel(i, m.map_name, m.pair_name),
         cumulative: running,

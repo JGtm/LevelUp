@@ -19,11 +19,11 @@ import (
 // ─────────── ChallengeRepo ───────────
 
 // PrestigeChallengeRepo implémente prestige.ChallengeRepo.
-type PrestigeChallengeRepo struct{ db *duckdb.DB }
+type PrestigeChallengeRepo struct{ db duckdb.PlayerReadHandle }
 
 // NewPrestigeChallengeRepo construit le repo.
 func NewPrestigeChallengeRepo(db *duckdb.DB) *PrestigeChallengeRepo {
-	return &PrestigeChallengeRepo{db: db}
+	return &PrestigeChallengeRepo{db: duckdb.NewPlayerReadHandle(db)}
 }
 
 // Compile-time assertion.
@@ -196,9 +196,11 @@ func (r *PrestigeChallengeRepo) DeleteByArc(ctx context.Context, arcID string) e
 // ─────────── ArcRepo ───────────
 
 // PrestigeArcRepo implémente prestige.ArcRepo.
-type PrestigeArcRepo struct{ db *duckdb.DB }
+type PrestigeArcRepo struct{ db duckdb.PlayerReadHandle }
 
-func NewPrestigeArcRepo(db *duckdb.DB) *PrestigeArcRepo { return &PrestigeArcRepo{db: db} }
+func NewPrestigeArcRepo(db *duckdb.DB) *PrestigeArcRepo {
+	return &PrestigeArcRepo{db: duckdb.NewPlayerReadHandle(db)}
+}
 
 var (
 	_ prestige.ArcRepo       = (*PrestigeArcRepo)(nil)
@@ -350,10 +352,10 @@ func (r *PrestigeArcRepo) Delete(ctx context.Context, id string) error {
 // ─────────── MomentCardRepo ───────────
 
 // PrestigeMomentCardRepo implémente prestige.MomentCardRepo.
-type PrestigeMomentCardRepo struct{ db *duckdb.DB }
+type PrestigeMomentCardRepo struct{ db duckdb.PlayerReadHandle }
 
 func NewPrestigeMomentCardRepo(db *duckdb.DB) *PrestigeMomentCardRepo {
-	return &PrestigeMomentCardRepo{db: db}
+	return &PrestigeMomentCardRepo{db: duckdb.NewPlayerReadHandle(db)}
 }
 
 var _ prestige.MomentCardRepo = (*PrestigeMomentCardRepo)(nil)
@@ -414,10 +416,10 @@ func (r *PrestigeMomentCardRepo) ListRecent(ctx context.Context, userID, titleSl
 // ─────────── TelemetryRepo ───────────
 
 // PrestigeTelemetryRepo implémente prestige.TelemetryRepo.
-type PrestigeTelemetryRepo struct{ db *duckdb.DB }
+type PrestigeTelemetryRepo struct{ db duckdb.PlayerReadHandle }
 
 func NewPrestigeTelemetryRepo(db *duckdb.DB) *PrestigeTelemetryRepo {
-	return &PrestigeTelemetryRepo{db: db}
+	return &PrestigeTelemetryRepo{db: duckdb.NewPlayerReadHandle(db)}
 }
 
 var _ prestige.TelemetryRepo = (*PrestigeTelemetryRepo)(nil)
@@ -442,10 +444,10 @@ func (r *PrestigeTelemetryRepo) Emit(ctx context.Context, ev prestige.PrestigeTe
 // ─────────── BaselineStateRepo ───────────
 
 // PrestigeBaselineStateRepo implémente prestige.BaselineStateRepo.
-type PrestigeBaselineStateRepo struct{ db *duckdb.DB }
+type PrestigeBaselineStateRepo struct{ db duckdb.PlayerReadHandle }
 
 func NewPrestigeBaselineStateRepo(db *duckdb.DB) *PrestigeBaselineStateRepo {
-	return &PrestigeBaselineStateRepo{db: db}
+	return &PrestigeBaselineStateRepo{db: duckdb.NewPlayerReadHandle(db)}
 }
 
 var _ prestige.BaselineStateRepo = (*PrestigeBaselineStateRepo)(nil)

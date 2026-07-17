@@ -122,8 +122,8 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 	if modeUI == nil {
 		modeUI = analysis.ResolveModeUI(r.GameVariantName, r.GameVariantNameFR)
 	}
-	mapU := coalesce(r.MapNameFR, r.MapName)
-	playlist := fmts.playlistLabelFor(coalesce(r.PlaylistName, nil))
+	mapU := coalesceStr(r.MapNameFR, r.MapName)
+	playlist := fmts.playlistLabelFor(coalesceStr(r.PlaylistName))
 
 	var startTime time.Time
 	if r.StartTime != nil {
@@ -327,16 +327,6 @@ func buildPeriodLabel(f domain.FilterContextInput) *string {
 	}
 	lbl := strings.Join(parts, " → ")
 	return &lbl
-}
-
-func coalesce(a, b *string) string {
-	if a != nil && *a != "" {
-		return *a
-	}
-	if b != nil {
-		return *b
-	}
-	return ""
 }
 
 func ptrStr(s string) *string {

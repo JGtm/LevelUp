@@ -20,12 +20,14 @@
 //   - Couvre les FORMES EXPLICITES `X.Player.Query(` / `X.Player.QueryRow(` et
 //     `X.ReadDB().Query(` / `X.ReadDB().QueryRow(` — le vecteur de régression DOMINANT
 //     (la grande majorité des repos accèdent au handle ainsi).
-//   - NE couvre PAS les repos qui stockent le handle player dans un champ NU
-//     `db *DB` puis lisent via `r.db.Query(...)` (ex. prestige/prestige_player_repo.go,
-//     streaks_repo.go, record_history_repo.go) : `r.db.` n'expose pas le type du
-//     handle au grep. Ces lectures sont DÉJÀ converties en `*Recovered` par les lots
-//     A/B/C ; les détecter statiquement demanderait une analyse de flux de types —
-//     sur-ingénierie explicitement écartée pour ce garde-rail (consigne Lot D).
+//   - Le champ NU `db *DB` (repos qui lisent via `r.db.Query(...)`, invisible au grep)
+//     est désormais fermé PAR CONSTRUCTION (F13 / décision D6, 2026-07-17) : les repos
+//     player-DB de cette couche stockent un `PlayerReadHandle` (player_read_handle.go)
+//     qui n'expose QUE les variantes recovery-safe. Une lecture/écriture plate sur ces
+//     repos ne compile plus — la garantie passe du grep au TYPE. Migrés :
+//     coach_proposal_repo, streaks_repo, record_history_repo, milestones_earned_repo,
+//     campaign_repo, prestige/prestige_player_repo (5 structs). Ce garde-rail grep reste
+//     en filet pour les FORMES EXPLICITES (`pdb.Player.Query(` / `pdb.ReadDB().Query(`).
 //   - Scope = arbre `internal/platform/duckdb/` RÉCURSIF (root + halo5/ + prestige/ +
 //     sharedprovider/). Les lectures player-DB HORS de cette couche (ex. les snapshots
 //     post-sync `internal/api/wire/post_sync_*.go`, converties dans le MÊME lot D) ne

@@ -55,17 +55,9 @@ export function matchOutcomeTone(outcome: number | null): {
   return { className: 'font-medium', style: { color: tokenCssVar(token) } }
 }
 
-/**
- * Mapping outcome int → clé canonique pour les wrappers ECharts (OutcomeSequenceTape).
- * win=2, tie=1, loss=3, dnf=4 (cf. ADR 0006).
- */
-export function outcomeIntToKey(outcome: number | null): 'win' | 'loss' | 'tie' | 'dnf' | null {
-  if (outcome === 2) return 'win'
-  if (outcome === 3) return 'loss'
-  if (outcome === 1) return 'tie'
-  if (outcome === 4) return 'dnf'
-  return null
-}
+// Mapping outcome int → clé canonique : centralisé dans `@/lib/outcome`
+// (`outcomeCodeToValue`, défaut null). Consommé directement par
+// SessionNetScoreArea / SessionOutcomeDonut.
 
 /** Tronque un nom (carte/mode) pour une étiquette d'axe compacte. */
 function truncateAxisName(s: string, max = 10): string {

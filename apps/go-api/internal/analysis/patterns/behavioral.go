@@ -3,6 +3,7 @@ package patterns
 import (
 	"fmt"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 )
 
@@ -34,23 +35,11 @@ func analyzeBehavior(rows []MatchRow, cfg PatternConfig) []BehavioralPattern {
 
 // detectTilt détecte une suite de défaites avec chute de KDA.
 func detectTilt(rows []MatchRow, cfg PatternConfig) (BehavioralPattern, bool) {
-	bestRun, bestStart := 0, 0
-	cur := 0
-	curStart := 0
-	for i, r := range rows {
-		if r.Outcome == domain.OutcomeLoss {
-			if cur == 0 {
-				curStart = i
-			}
-			cur++
-			if cur > bestRun {
-				bestRun = cur
-				bestStart = curStart
-			}
-		} else {
-			cur = 0
-		}
-	}
+	// Plus longue série de défaites consécutives + son index de départ (le start
+	// est nécessaire pour découper tiltRows / outsideRows).
+	bestRun, bestStart := analysis.LongestRun(rows, func(r MatchRow) bool {
+		return r.Outcome == domain.OutcomeLoss
+	})
 	if bestRun < cfg.TiltLossRun {
 		return BehavioralPattern{}, false
 	}
