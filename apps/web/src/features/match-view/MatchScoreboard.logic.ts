@@ -50,14 +50,17 @@ export function cellState(value: number | null, ex: Extremes, inverted: boolean)
  * la border MVP/LVP sur la cellule gamertag (même rôle visuel : meilleur
  * lobby / pire lobby — voir thought_log 2026-05-07).
  *
- * Background tinté à 28% via `color-mix(in oklab, ...)` pour rester lisible
- * avec le texte pleine couleur du même token. Pas de hex hardcodé.
+ * Background tinté via `color-mix(in oklab, ...)` pour rester lisible avec le
+ * texte pleine couleur du même token. `intensityPct` (défaut 28) pilote la
+ * densité de la teinte : les callers scoreboard/leaderboard gardent 28 %,
+ * l'Explorer passe une valeur plus douce pour ses bandes de décile
+ * (ExplorerMatchesTable.highlight, DECILE_TINT_PCT). Pas de hex hardcodé.
  */
-export function cellStyle(state: CellState): React.CSSProperties {
+export function cellStyle(state: CellState, intensityPct: number = 28): React.CSSProperties {
   if (state === 'neutral') return {}
   const tokenVar = state === 'best' ? 'var(--ac-outcome-win)' : 'var(--ac-outcome-loss)'
   return {
-    backgroundColor: `color-mix(in oklab, ${tokenVar} 28%, transparent)`,
+    backgroundColor: `color-mix(in oklab, ${tokenVar} ${intensityPct}%, transparent)`,
     color: tokenVar,
     fontWeight: state === 'best' ? 600 : 500,
   }

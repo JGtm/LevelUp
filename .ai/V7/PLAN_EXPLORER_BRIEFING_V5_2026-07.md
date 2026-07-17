@@ -650,57 +650,111 @@ absent de `ExplorerPage.matchesMode.tsx` ; CSV APRÈS `<ExplorerMatchesTable>`.
 INCHANGÉE ; le warning `react-refresh` sur `normalizeExplorerTableRows` pré-existe en HEAD) ;
 `build_i18n_manifests.mjs` aucune clé neuve ; greps de clôture tous verts.
 
-### Phase 4 — Frontend : tableau (moyen) — DP-4 / DP-5 / DEC-DECILE / DEC-ALIGN
+### Phase 4 — Frontend : tableau (moyen) — DP-4 / DP-5 / DEC-DECILE / DEC-ALIGN  ✅ CLOSE (2026-07-17, bloc B)
 
-- [ ] **4a (décile — helper).** `ExplorerMatchesTable.highlight.ts` (DEC-DECILE) : remplacer
+- [x] **4a (décile — helper).** `ExplorerMatchesTable.highlight.ts` (DEC-DECILE) : remplacer
       `computeColumnExtremes` → `computeColumnDeciles(rows)` (p10/p90 nearest-rank,
       `MIN_DECILE_SAMPLE`=10) ; ajouter `decileCellState(value, d, inverted)` (bande ;
       `p10===p90` → neutre) ; `columnHighlightStyle` compose `cellStyle(decileCellState(…),
       DECILE_TINT_PCT)`. Ne PLUS importer `cellState` ; GARDER l'import `cellStyle`. Type
-      `Deciles` local.
-- [ ] **4b (teinte douce — `cellStyle`).** `MatchScoreboard.logic.ts:56-64` : ajouter
+      `Deciles` local. → **FAIT** : `computeColumnDeciles` (tri asc + `percentileNearestRank`
+      = `ceil(p/100·N)` borné, `< MIN_DECILE_SAMPLE`=10 → `{null,null}`), `decileCellState`
+      (bande ≥p90/≤p10, inversé Morts symétrique, `p10===p90`/null → neutre),
+      `columnHighlightStyle` = `cellStyle(decileCellState(…), DECILE_TINT_PCT=16)`. Import ⇒
+      `{ cellStyle, type CellState }` (plus `cellState`/`Extremes`). Consts `MIN_DECILE_SAMPLE`
+      et `DECILE_TINT_PCT` exportés + commentés. `EXPLORER_INVERTED`/`ownTeamScore`/
+      `explorerHlExtract`/`isExplorerHighlightKey` INCHANGÉS. Fichier 149 L (≤ 500).
+- [x] **4b (teinte douce — `cellStyle`).** `MatchScoreboard.logic.ts:56-64` : ajouter
       `intensityPct: number = 28` à `cellStyle` (défaut = inchangé) ; utiliser `${intensityPct}
       %` dans le `color-mix`. `MatchScoreboard.test.ts` reste vert (défaut). L'Explorer passe
-      `DECILE_TINT_PCT`≈16. (Alternative 28 % sans toucher au partagé → consigner §6 si
-      retenue.)
-- [ ] **4c (décile — câblage).** `ExplorerMatchesTable.tsx` : `highlightExtremes` →
+      `DECILE_TINT_PCT`≈16. → **FAIT** : `cellStyle(state, intensityPct = 28)` ; `color-mix(in
+      oklab, ${tokenVar} ${intensityPct}%, transparent)` ; commentaire MAJ (source unique,
+      Explorer plus doux). Les 3 autres callers (`LeaderboardBlock.highlight:91`,
+      `MatchScoreboard.tsx:504`) passent 1 arg → 28 % inchangé. Paramétrage retenu (pas
+      l'alternative 28 % — honore « teinte douce » explicite tout en gardant la source unique).
+- [x] **4c (décile — câblage).** `ExplorerMatchesTable.tsx` : `highlightExtremes` →
       `highlightDeciles = useMemo(() => computeColumnDeciles(rows), [rows])` (`:242`) ;
-      application `:767-775` avec `highlightDeciles`. Imports (`:55-60`) mis à jour.
-- [ ] **4d (alignement par colonne).** DEC-ALIGN : retirer `text-left` de `HEADER_TH_CLASS`
+      application `:767-775` avec `highlightDeciles`. Imports (`:55-60`) mis à jour. → **FAIT** :
+      import `computeColumnExtremes`→`computeColumnDeciles` ; `highlightDeciles` (commentaire
+      DEC-DECILE) ; `columnHighlightStyle(colId, explorerHlExtract[colId](row.original),
+      highlightDeciles)` ; commentaire du `<td>` reformulé (bande de décile, teinte douce).
+- [x] **4d (alignement par colonne).** DEC-ALIGN : retirer `text-left` de `HEADER_TH_CLASS`
       (`:129-130`) ; définir `RIGHT_ALIGNED_COLUMNS` (ids numériques RE-VÉRIFIÉS) +
       `alignClass(colId)` ; appliquer sur `<th>` statique (`:731`) + triable (`:741`,
       `justify-end` sur le bouton) et `<td>` (`:772-774`). Colonnes texte à gauche. Jamais
-      centré.
-- [ ] **4e (tests).** `ExplorerMatchesTable.highlight.test.ts` : réécrire pour les déciles —
+      centré. → **FAIT** : `text-left` retiré du socle `HEADER_TH_CLASS` ; `RIGHT_ALIGNED_COLUMNS`
+      = 11 ids (kills, deaths, assists, kda, score_label, duration_seconds, perf_score,
+      delta_perf, team_mmr, enemy_mmr, delta_mmr — RE-VÉRIFIÉS sur pièces) + `alignClass`.
+      Appliqué sur `<th>` statique + triable (`${HEADER_TH_CLASS} ${alignClass(id)}`) ; bouton
+      triable numérique = `flex w-full justify-end` (libellé + flèche poussés à droite), texte =
+      `inline-flex` (inchangé) ; `<td>` = `… ${alignClass(colId)}`. Jamais `text-center`.
+- [x] **4e (tests).** `ExplorerMatchesTable.highlight.test.ts` : réécrire pour les déciles —
       top 10 % surligné best, pire 10 % worst (dataset ≥ 10 valeurs hétérogènes) ; `deaths`
       inversé ; `< MIN_DECILE_SAMPLE` → aucun highlight ; `p10===p90` neutre ; nulls neutres.
       `ExplorerMatchesTable.test.tsx` : surlignage indépendant du tri ; en-têtes/cellules
       numériques `text-right`, texte `text-left`. `MatchScoreboard.test.ts` (param `cellStyle`
-      défaulté) vert. Aucun test skippé.
+      défaulté) vert. Aucun test skippé. → **FAIT** : highlight.test réécrit (10 tests : bande
+      best/worst + teinte 16 %, deaths inversé, garde `<10`, `p10===p90`, null, perf sans tier
+      exclue ; `decileCellState` direct ; `ownTeamScore`). table.test : bloc MVP/LVP réécrit en
+      déciles (10 lignes 100..10 → décile haut 600 / bas 500 / milieu neutre ; quasi-uniforme
+      neutre ; petit scope <10 = aucun highlight ; indépendant du tri) + bloc alignement
+      (en-têtes Score/Perf `text-right`, Carte/Date `text-left` — libellés visibles non abrégés,
+      « Frags » étant dans le `title` ; cellules Frags `text-right`, Carte `text-left`).
+      `MatchScoreboard.test.ts` inchangé + vert (ne teste pas `cellStyle`).
 
 Gate Phase 4 : `make check-types` = 0 ; `make test-web` vert ; `npm run lint` = 0 erreur ;
 greps : 0 littéral `color-mix(in oklab` NOUVEAU sous `features/explorer` (teinte importée) ;
 `cellStyle` importé par le sibling highlight ; `cellState` NON importé par le sibling ;
 `computeColumnDeciles` remplace `computeColumnExtremes` ; `text-left` absent de
 `HEADER_TH_CLASS`.
+→ **PASSÉ (2026-07-17)** : `npm run typecheck` (`.tmp` purgé) EXIT=0 ; `npm run test:run`
+(hors sandbox) = **264 fichiers, 2328 passed, 14 skipped** (+6 nets vs bloc A ; AUCUN skip
+ajouté) ; `npm run lint` = **0 erreur / 68 warnings** (baseline INCHANGÉE ; le warning
+`useReactTable` `:683` pré-existe) ; greps de clôture TOUS verts (color-mix highlight=0 ;
+`cellStyle` importé ; `cellState` fonction non importée — seule occurrence = mention prose en
+commentaire ; `computeColumnDeciles` présent, `computeColumnExtremes` résiduel=0 ; `text-left`
+absent du const `HEADER_TH_CLASS`). AUCUN fichier `.go` touché → gate Go inchangé depuis bloc A.
 
-### Phase 5 — Clôture (rapide) — changelog + delivery-checklist
+### Phase 5 — Clôture (rapide) — changelog + delivery-checklist  ✅ CLOSE (2026-07-17, bloc B)
 
-- [ ] **5a (changelog).** `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md`, entrée `[Unreleased]`
+- [x] **5a (changelog).** `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md`, entrée `[Unreleased]`
       v7.0 : bullet React « Explorer — briefing V5 » (triptyques FDA/Perf min·moy·max, cascade
       3 conditionnelles, Classement en rangée, MVP/LVP par décile, alignement colonnes
       numériques, accents généralisés, valeurs centrées, compteur/CSV, « Séries marquantes ») +
       bullet Go (`min_kda`/`min_perf`/`max_perf` sur `ExplorerBriefingScope`). Parité EN/FR
-      même commit.
-- [ ] **5b (clôture).** Dérouler `delivery-checklist`. Passe finale des gates §1.11 verte en
+      même commit. → **FAIT** : bullet React « Explorer — briefing V5 » ajouté sous
+      `### Added (React / TypeScript)` (après le bullet V4), parité `### Ajouté (React /
+      TypeScript)` FR ; NOUVEAU bullet Go « Min/Max scope aggregates (V5) » sous
+      `### Added (Go API)` (après le bullet V4), parité `### Ajouté (API Go)` FR (décrit
+      `min_kda`/`min_perf`/`max_perf` + `minScopeFloat`/`maxScopeFloat`, zéro SQL). Grep :
+      2 occurrences V5 (react+go) dans chaque fichier. Interprétation « compléter le bullet Go »
+      = bullet V5 dédié (convention 1 bullet/version, Découverte pré-notée) — consigné §6.
+- [x] **5b (clôture).** Dérouler `delivery-checklist`. Passe finale des gates §1.11 verte en
       une fois. Entrée `.ai/thought_log.md` finale. Point d'étape utilisateur. NON committer la
       livraison finale sans autorisation (merge `main` = deploy prod auto → après revue
-      visuelle utilisateur).
+      visuelle utilisateur). → **FAIT** : `delivery-checklist` déroulé (§0 complétude : tous
+      items Phase 4-5 traités, zéro report, zéro TODO, PeakKdaTile débranché+purgé en bloc A ;
+      §2 front : typecheck `.tmp` purgé vert / lint 0 err / vitest vert, aucun `any` ; §5 archi :
+      highlight.ts 146 L, MatchScoreboard.logic.ts 113 L ≤ 500, god-file table.tsx 854 L =
+      exception documentée Découverte-13 ; §6 : 0 hex/classe Tailwind couleur — teinte via
+      `cellStyle` importé, aucune string i18n neuve ; §7 : entrée thought_log finale écrite).
+      Entrée `.ai/thought_log.md` finale ajoutée (statut Complété). NON committé (attente
+      superviseur + revue visuelle). CI de branche : à vérifier par le superviseur au commit
+      (bloc B non poussé).
 
 Gate Phase 5 : `cd apps/go-api && go test ./...` = 0 ; `make go-api-lint` = 0 ; `make
 generate-types` idempotent ; `make check-types` = 0 ; `make test-web` vert ; `npm run lint`
 = 0 erreur ; greps de clôture (PeakKdaTile, peak_fda_label, slice(0,2), computeColumnExtremes,
 text-left dans HEADER_TH_CLASS = 0) ; changelog EN + FR à jour ; chaque item statué.
+→ **PASSÉ (2026-07-17)** : gates FRONT sur le code final — `npm run typecheck` (`.tmp` purgé)
+EXIT=0 ; `npm run test:run` (hors sandbox) = 264 fichiers / **2328 passed / 14 skipped** ;
+`npm run lint` = 0 erreur / 68 warnings (baseline). Go / `generate-types` : `[~]` INCHANGÉS —
+AUCUN `.go` ni `openapi.yaml` touché en bloc B (git status = 0 `.go`) → gate Go = bloc A
+(`go test ./...` EXIT 0, 111 ok ; `generate-types` idempotent). Greps de clôture TOUS verts
+(PeakKdaTile/peak_fda_label/slice(0,2)/computeColumnExtremes explorer=0 ; `text-left` absent du
+const `HEADER_TH_CLASS`). Changelog EN + FR à jour (2 bullets V5 chacun). Chaque item statué.
+Phase 5 traite les changelogs (docs) après le VERT front de la Phase 4 → aucun code TS retouché
+en Phase 5 (markdown uniquement).
 
 ---
 
@@ -759,6 +813,20 @@ text-left dans HEADER_TH_CLASS = 0) ; changelog EN + FR à jour ; chaque item st
   un `BriefingSectionCard` via `RankedBlock`). DP-3 le confirme (grid sibling). Fichier NON
   édité en Phase 3 (aucun changement de code requis) ; commentaire corrigé opportunément si le
   fichier est touché, sinon laissé (dette doc V4 pré-existante, hors périmètre strict).
+
+- **Découverte-13 (Phase 4) — croissance du god-file `ExplorerMatchesTable.tsx`.** L'alignement
+  par colonne (DEC-ALIGN : `RIGHT_ALIGNED_COLUMNS` 11 ids + `alignClass` + application th/td/
+  bouton) porte le fichier de 819 → **854 L** (+35). Reste dans l'exception documentée (V4
+  Découverte-18 : god-file préexistant, split = chantier séparé HORS périmètre, baseline lint
+  gelée) et conforme à §4 (« ce plan ne l'aggrave pas significativement »). Le +35 est la
+  feature DP-5 elle-même (Set explicite d'ids numériques + doc), pas de la dette gratuite. NON
+  splitté ici (report VALIDE : chantier séparé). `highlight.ts` (146 L) et `MatchScoreboard.
+  logic.ts` (113 L) restent ≤ 500.
+- **Découverte-14 (Phase 5) — « compléter le bullet Go » = bullet V5 dédié.** Le bullet Go V4
+  (`ExplorerBriefingScope` + `total_duration_seconds`/`peak_kda`/…) décrit l'état V4. Plutôt que
+  de le ré-étiqueter, un NOUVEAU bullet « Min/Max scope aggregates (V5) » a été ajouté à sa suite
+  (convention établie : 1 bullet par version, cf. V2/V4). Même information, parité EN/FR, sans
+  mélanger V4 et V5 sous une étiquette unique. Zéro clé i18n, zéro OpenAPI touché en Phase 5.
 
 Consigner ici tout décalage fichier:ligne vs §2, tout lecteur i18n inattendu, toute dette
 repérée hors périmètre. Ne pas corriger dans ce chantier (hors items scopés).

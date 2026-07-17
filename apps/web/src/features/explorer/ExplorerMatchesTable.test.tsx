@@ -202,40 +202,67 @@ describe('ExplorerMatchesTable — tri CLIENT par en-têtes (mode Matchs)', () =
   })
 })
 
-describe('ExplorerMatchesTable — surlignage MVP/LVP (DEC-MVP)', () => {
+describe('ExplorerMatchesTable — surlignage MVP/LVP par décile (DEC-DECILE)', () => {
   // NB : on assert `td.style.fontWeight` (600 best / 500 worst / '' neutre) plutôt
   // que backgroundColor : le CSSOM jsdom peut ignorer les valeurs `color-mix(...)`.
   // La teinte/couleur du token est vérifiée dans ExplorerMatchesTable.highlight.test.ts.
-  it('surligne le meilleur (600) et le pire (500) des Frags sur tout le scope', () => {
-    const rows = [
-      makeRow(1, { map_ui: 'Alpha', kills: 33 }),
-      makeRow(2, { map_ui: 'Bravo', kills: 17 }),
-      makeRow(3, { map_ui: 'Charlie', kills: 25 }),
-    ]
-    renderWithProviders(<ExplorerMatchesTable rows={rows} playerSlug="me" sortable />)
-    expect((screen.getByText('33').closest('td') as HTMLElement).style.fontWeight).toBe('600')
-    expect((screen.getByText('17').closest('td') as HTMLElement).style.fontWeight).toBe('500')
-    // Valeur intermédiaire → neutre.
-    expect((screen.getByText('25').closest('td') as HTMLElement).style.fontWeight).toBe('')
+  // ≥ MIN_DECILE_SAMPLE (10) lignes pour que les déciles p10/p90 s'appliquent.
+
+  // Frags = 100, 90, … 10 → p10=10, p90=90 : décile HAUT best, décile BAS worst.
+  const decileKillsRows = () =>
+    [100, 90, 80, 70, 60, 50, 40, 30, 20, 10].map((k, i) => makeRow(i + 1, { map_ui: `M${i}`, kills: k }))
+
+  it('surligne le décile HAUT (600) et le décile BAS (500) des Frags sur tout le scope', () => {
+    renderWithProviders(<ExplorerMatchesTable rows={decileKillsRows()} playerSlug="me" sortable />)
+    expect((screen.getByText('100').closest('td') as HTMLElement).style.fontWeight).toBe('600')
+    expect((screen.getByText('10').closest('td') as HTMLElement).style.fontWeight).toBe('500')
+    // Milieu de distribution → neutre.
+    expect((screen.getByText('50').closest('td') as HTMLElement).style.fontWeight).toBe('')
   })
 
-  it('colonne uniforme (Morts toutes égales) → aucune cellule surlignée', () => {
-    const rows = [makeRow(1, { deaths: 5 }), makeRow(2, { deaths: 5 })]
+  it('colonne quasi-uniforme (Morts toutes égales, p10 === p90) → aucune cellule surlignée', () => {
+    const rows = Array.from({ length: 10 }, (_, i) => makeRow(i + 1, { map_ui: `M${i}`, deaths: 5 }))
     renderWithProviders(<ExplorerMatchesTable rows={rows} playerSlug="me" />)
     for (const cell of screen.getAllByText('5')) {
       expect((cell.closest('td') as HTMLElement).style.fontWeight).toBe('')
     }
   })
 
-  it('surlignage indépendant du tri : le max des Frags reste surligné après tri', () => {
+  it('petit scope (< 10 matchs) → aucune cellule surlignée (décile non calculable)', () => {
     const rows = [
       makeRow(1, { map_ui: 'Alpha', kills: 33 }),
       makeRow(2, { map_ui: 'Bravo', kills: 17 }),
       makeRow(3, { map_ui: 'Charlie', kills: 25 }),
     ]
-    renderWithProviders(<ExplorerMatchesTable rows={rows} playerSlug="me" sortable />)
+    renderWithProviders(<ExplorerMatchesTable rows={rows} playerSlug="me" />)
+    expect((screen.getByText('33').closest('td') as HTMLElement).style.fontWeight).toBe('')
+    expect((screen.getByText('17').closest('td') as HTMLElement).style.fontWeight).toBe('')
+  })
+
+  it('surlignage indépendant du tri : le décile HAUT des Frags reste surligné après tri', () => {
+    renderWithProviders(<ExplorerMatchesTable rows={decileKillsRows()} playerSlug="me" sortable />)
     fireEvent.click(screen.getByRole('button', { name: 'Trier par Frags' }))
-    expect((screen.getByText('33').closest('td') as HTMLElement).style.fontWeight).toBe('600')
-    expect((screen.getByText('17').closest('td') as HTMLElement).style.fontWeight).toBe('500')
+    expect((screen.getByText('100').closest('td') as HTMLElement).style.fontWeight).toBe('600')
+    expect((screen.getByText('10').closest('td') as HTMLElement).style.fontWeight).toBe('500')
+  })
+})
+
+describe('ExplorerMatchesTable — alignement par colonne (DEC-ALIGN)', () => {
+  it('en-têtes : numériques à droite, texte à gauche (jamais centré)', () => {
+    renderWithProviders(<ExplorerMatchesTable rows={makeRows(2)} playerSlug="me" />)
+    // Numériques (Score, Perf) → th text-right (libellés d'en-tête non abrégés).
+    expect(screen.getByText('Score').closest('th')).toHaveClass('text-right')
+    expect(screen.getByText('Perf').closest('th')).toHaveClass('text-right')
+    // Texte (Carte, Date) → th text-left.
+    expect(screen.getByText('Carte').closest('th')).toHaveClass('text-left')
+    expect(screen.getByText('Date').closest('th')).toHaveClass('text-left')
+  })
+
+  it('cellules : numériques à droite, texte à gauche', () => {
+    renderWithProviders(
+      <ExplorerMatchesTable rows={[makeRow(1, { kills: 7, map_ui: 'Zulu' })]} playerSlug="me" />,
+    )
+    expect(screen.getByText('7').closest('td')).toHaveClass('text-right') // Frags (numérique)
+    expect(screen.getByText('Zulu').closest('td')).toHaveClass('text-left') // Carte (texte)
   })
 })

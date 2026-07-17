@@ -1,3 +1,59 @@
+## [2026-07-17] Explorer briefing V5 — bloc B (Phases 4-5) — CLÔTURE (branche feat/explorer-briefing-compact)
+
+**Statut** : Complété (Phases 4 et 5 CLOSES ; le chantier V5 est intégralement exécuté côté
+agent). NON committé (superviseur committe le bloc + clôture git ; merge main = deploy prod auto
+→ après revue visuelle utilisateur). Plan : `.ai/V7/PLAN_EXPLORER_BRIEFING_V5_2026-07.md`
+(Phases 4-5 cochées + gates VERT + Découverte-13). Bloc A (Phases 0-3) déjà committé (4015d6650).
+
+**Décisions techniques principales** :
+- Phase 4 (DP-4/DP-5, tableau) : surlignage MVP/LVP passé d'un extrême unique à une BANDE DE
+  DÉCILE. `ExplorerMatchesTable.highlight.ts` : `computeColumnExtremes`→`computeColumnDeciles`
+  (tri asc + `percentileNearestRank` = ceil(p/100·N) borné ; `MIN_DECILE_SAMPLE`=10 → {null,null}
+  sinon) ; nouvelle `decileCellState` (≥p90 best / ≤p10 worst, inversé Morts symétrique,
+  p10===p90/null → neutre) ; `columnHighlightStyle` = `cellStyle(decileCellState(…),
+  DECILE_TINT_PCT=16)`. Import réduit à `{ cellStyle, type CellState }` (plus `cellState`/
+  `Extremes`). Teinte douce = paramétrage de `cellStyle(state, intensityPct=28)` dans
+  `MatchScoreboard.logic.ts` (SOURCE UNIQUE du color-mix préservée ; 3 autres callers passent 1
+  arg → 28 % inchangé ; alternative « 28 % sans toucher au partagé » écartée). Alignement par
+  colonne (DEC-ALIGN) : `text-left` retiré du socle `HEADER_TH_CLASS` ; `RIGHT_ALIGNED_COLUMNS`
+  = 11 ids numériques + `alignClass` ; appliqué th statique/triable (bouton numérique
+  `flex w-full justify-end`) + td ; texte à gauche, jamais centré.
+- Phase 4 tests : highlight.test réécrit en déciles (10 tests : bande best/worst + teinte 16 %,
+  deaths inversé, garde <10, p10===p90, null, perf sans tier exclue, `decileCellState` direct,
+  `ownTeamScore`) ; table.test bloc MVP/LVP réécrit (≥10 lignes, décile haut 600/bas 500/milieu
+  neutre, quasi-uniforme neutre, petit scope <10 = 0 highlight, indépendant du tri) + bloc
+  alignement (en-têtes Score/Perf text-right, Carte/Date text-left ; « Frags » abrégé « F » avec
+  libellé complet en `title` → assertions sur libellés visibles ; cellules Frags text-right,
+  Carte text-left). `MatchScoreboard.test.ts` inchangé + vert (ne teste pas `cellStyle`).
+- Phase 5 (clôture) : changelogs EN+FR — bullet React « Explorer — briefing V5 » (triptyques
+  FDA/Perf, cascade 3 conditionnelles/Pic MMR revisible, Classement en rangée, MVP/LVP par
+  décile, colonnes numériques à droite, accents généralisés, valeurs centrées, compteur retiré
+  + CSV en bas, « Séries marquantes ») + NOUVEAU bullet Go « agrégats Min/Max du scope (V5) »
+  (`min_kda`/`min_perf`/`max_perf` via `minScopeFloat`/`maxScopeFloat`, zéro SQL). Parité EN/FR
+  même diff (interprétation « compléter le bullet Go » = ajout d'un bullet V5 dédié, convention
+  1 bullet/version respectée).
+
+**Gates (bloc B, exécutés ce jour)** : `npm run typecheck` (`.tmp` purgé) = EXIT 0 ;
+`npm run test:run` (hors sandbox) = **264 fichiers, 2328 passed, 14 skipped** (+6 nets vs bloc A ;
+AUCUN skip ajouté) ; `npm run lint` = **0 erreur / 68 warnings** (baseline INCHANGÉE) ; greps de
+clôture TOUS verts (color-mix highlight=0 ; `cellStyle` importé, `cellState` fonction non
+importée ; `computeColumnDeciles` présent, `computeColumnExtremes` explorer=0 ;
+`RIGHT_ALIGNED_COLUMNS` présent ; `text-left` absent du const `HEADER_TH_CLASS` ;
+PeakKdaTile/peak_fda_label/slice(0,2)=0 ; changelog V5 EN+FR react+go). AUCUN fichier `.go`
+touché (git status = 0 `.go`) → gate Go inchangé depuis bloc A (`go test ./...` EXIT 0, 111 ok).
+
+**Résultats observés** : worktree = 8 modifiés (plan V5, highlight.ts + .test.ts, table.tsx +
+.test.tsx, MatchScoreboard.logic.ts, CHANGELOG EN+FR). RIEN committé. highlight.ts 146 L,
+MatchScoreboard.logic.ts 113 L (≤ 500). ExplorerMatchesTable.tsx 854 L (god-file préexistant
+819→854, +35 L pour l'alignement — dans l'exception documentée V4 Découverte-18, split hors
+périmètre ; Découverte-13).
+
+**Conclusion / prochaine étape** : chantier V5 intégralement exécuté côté agent, vert de bout en
+bout. Superviseur : commit du bloc B + clôture git. Reste la REVUE VISUELLE utilisateur (Explorer
+mode Matchs, dev local :8000) des 5 points « À vérifier visuellement » du plan (triptyques,
+cascade/Pic MMR, Classement en rangée, décile + alignement, terminologie EN/FR) PUIS décision de
+merge main (= deploy prod auto).
+
 ## [2026-07-17] Explorer briefing V5 — bloc A (Phases 1-3) (branche feat/explorer-briefing-compact)
 
 **Statut** : En cours (Phases 0-3 CLOSES ; reste bloc B = Phases 4-5). NON committé (superviseur
