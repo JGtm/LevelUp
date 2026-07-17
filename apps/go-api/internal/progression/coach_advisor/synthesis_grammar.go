@@ -80,6 +80,28 @@ func (g SynthesisGrammar) Metrics() []string {
 	return out
 }
 
+// WindowSpecs retourne les fenêtres autorisées pour une métrique sous la forme
+// "window_type:window_value" (ou "session" pour une fenêtre sans valeur), telle
+// qu'écrite dans synthesis_grammar.toml. Accesseur d'introspection externe :
+// permet à l'analyseur de tuning (cmd/prestige-tuning-analyze) de relier une
+// recommandation aux entrées réelles de la grammaire sans re-parser le TOML.
+// Retourne nil si la métrique est absente de la grammaire.
+func (g SynthesisGrammar) WindowSpecs(metric string) []string {
+	allowed, ok := g.rules[metric]
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(allowed))
+	for _, a := range allowed {
+		if a.WindowValue == "" {
+			out = append(out, a.WindowType)
+			continue
+		}
+		out = append(out, a.WindowType+":"+a.WindowValue)
+	}
+	return out
+}
+
 // ─── Loader TOML ───
 
 // synthesisGrammarTOML est la projection brute du fichier.
