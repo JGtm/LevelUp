@@ -1,3 +1,32 @@
+## [2026-07-17] Inventaire complet des weapon_id H5 hors-arsenal (classification produit)
+
+**Statut** : Complété.
+
+**Contexte** : besoin de la liste EXHAUSTIVE de tous les `weapon_id` H5 vus dans les frags
+mais non mappes a un role dans le registre (vehicules, tourelles, buckets d'attribution,
+UGC) pour une future classification produit. Tache LECTURE SEULE sur les donnees.
+
+**Decision technique** : CLI `duckdb` absent, pas de MCP duckdb (seul Notion) → copie des
+DB H5 (`shared_matches_v2.duckdb` + `metadata.duckdb`) vers le scratchpad, interrogees
+read-only par un programme Go jetable (driver duckdb-go v2), supprime apres coup. Requete
+`SELECT effective_weapon_id, COUNT(*) FROM v_weapon_kills WHERE effective_weapon_id NOT IN (0,1,2)`
++ JOIN `weapon_labels` + `weapon_ids` (title_slug='halo_5').
+
+**Resultats** : 66 ids distincts / 268 327 frags. Couverts (registre code, 40 stock_ids) =
+251 678 (93,8 %). NON couverts = **26 ids / 16 649 frags (6,2 %)** : 9 vehicules (3 965),
+8 tourelles (922), 2 buckets d'attribution (Spartan 8 812 + Environmental Explosives 589),
+7 UGC/inconnus sans label (2 361). Le bucket « Spartan » (8 812 frags, ~53 % du non-couvert)
+est ambigu (melee/splatter/assassinat non attribues). Inventaire coherent a 100 % avec le
+commentaire de tracabilite de `weaponRegistryH5Stock`. Nota : les 5 long-tail seedes au
+commit 9e0a8217d (grenades/Golf/Ball) sont mappes cote CODE mais pas encore dans la copie
+metadata (35 ids seedes) — comptes couverts, ils attendent un reseed au boot.
+
+**Conclusion** : livrable `.ai/V7/H5_WEAPON_LONGTAIL_UNMAPPED.md` (tableau + totaux + notes).
+Prochaine etape (cote utilisateur) : decider d'une categorie produit vehicule/tourelle/
+attribution/UGC. Aucun code applicatif touche.
+
+---
+
 ## [2026-07-17] Audit + renforcement couverture de tests du train backlog 2026-07 (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété.
