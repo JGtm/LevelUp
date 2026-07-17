@@ -211,3 +211,17 @@ type RelationsMomentsResponse struct {
 	Rivalries    []RelationRivalry        `json:"rivalries"`
 	TopRelations int                      `json:"top_relations"` // N relations dans le heatmap
 }
+
+// RivalEncounter : un nouveau duel (match en ennemi) détecté en post-sync contre
+// un top rival du joueur (lot relations-E). Sert la notification « rival croisé ».
+// Aucun JSON tag : type interne (jamais exposé par un endpoint) consommé par la
+// closure post-sync qui l'émet en notification.
+type RivalEncounter struct {
+	XUID          string
+	Gamertag      string
+	MatchID       string
+	StartedAt     time.Time
+	Outcome       string // "win" | "loss" | "other" (canonical duel, cf. RelationDuelEntry.Outcome)
+	KillsOnRival  int
+	DeathsByRival int
+}

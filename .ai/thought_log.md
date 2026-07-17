@@ -1,3 +1,54 @@
+## [2026-07-17] Relations UX — Lot E : notification « rival croisé » post-sync (full-stack) (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Décision technique principale** : émettre une notification in-app quand une sync
+ramène un nouveau duel (match en ennemi) contre un des top rivaux. Détection par
+WATERMARK (`PlayerSnapshot.LastMatchStartTime`), pas par re-scan : `after <= before`
+(aucun nouveau match) → détection SKIPPÉE (coût nul sur les syncs à vide, majoritaires).
+Le watermark rend l'émission idempotente (re-sync des mêmes matchs ne ré-émet pas). AUCUN
+SQL nouveau : `DetectRivalEncounters` réutilise le chemin exact des cartes revanche
+(`selectTopRivals` + `GetRivalTimeline`, seuils/limites existants). Garde-fous nommés :
+`rivalNotifMaxPerSync=3` (anti-spam post-absence, garde les plus récents) /
+`rivalNotifMaxAgeDays=7` (pas de notif pour un duel ancien — cas backfill/import).
+Catégorie `rival_encounter` ; severity success si duel gagné, info sinon ; TargetRoute =
+match view du duel ; Source `post_sync`. Best-effort STRICT : jamais bloquant pour la sync.
+
+**Résultats observés (par item)** :
+- E1 : `CategoryRivalEncounter` + `AllCategories()`. DÉCOUVERTE : pas de seed explicite
+  par catégorie (`steps_player_notifications.go` = stub doc) ; une catégorie sans ligne
+  de préférence est ACTIVE par défaut (`isCategoryEnabledOn` : ErrNoRows → true). Aucune
+  migration requise. Garde-rail d'énumération `TestAllCategories_IncludesRivalEncounter`.
+- E2 : `relations_rival_notif_service.go` + `domain.RivalEncounter`. 5 tests (mock repo
+  réutilisé) : duel récent détecté, <= watermark ignoré, maxAgeDays filtre le backfill,
+  plafond maxPerSync = 3 plus récents, watermark zéro court-circuite (repo non interrogé).
+- E3 : `LastMatchStartTime` dans `PlayerSnapshot` ; requête watermark inline dans le bloc
+  SharedReadDB de `SnapshotPlayerState` (réutilise la connexion partagée déjà ouverte,
+  `MAX(StartTimeCanonicalSQL("r"))` sur match_participants ⨝ match_registry — timezone
+  canonique, jamais start_time brut). Émission dans `post_sync_rival_encounters.go`
+  (interface locale `rivalEncounterDetector` pour la testabilité, détecteur bare via
+  `NewRelationsService(NewCareerRepo(pdb2))` — pattern `newCitationsServiceForPDB`),
+  câblée après `EmitPostSyncDeltas`.
+- E4 : `post_sync_rival_encounters_test.go` (détecteur factice + recordingEmitter) : duel
+  → 1 notif (params + severity + target_route + source) ; perdu → info ; watermark
+  inchangé → détecteur jamais appelé + 0 émission ; nil → no-op.
+- E5 : front `types.ts` (union + ALL_CATEGORIES), `i18n.ts` (label + description +
+  templates FR+EN, libellés actés), `icons.tsx` (IconUser, complétude du Record),
+  `navigation.ts` (match view déjà servie par priorité target_route + fallback défensif
+  match_id) ; `navigation.test.ts` (3 tests + validateur accepte /matches/$id).
+- E6 : logging InfoContext (rival/match_id/outcome) + DebugContext (duels_new, skip) +
+  WarnContext (erreurs). Zéro erreur avalée.
+
+**Gates** : GATE-GO — `go test ./...` exit 0 ; `go vet ./...` exit 0 ; intégration
+`go test -tags=integration -p 1 ./...` exit 0 (112 packages ok, 0 FAIL). GATE-WEB —
+typecheck (purge tsBuildInfo) OK ; lint 0 erreur (68 warnings baseline, hors fichiers E) ;
+vitest `src/features/palmares src/features/notifications src/stores` = 115 passed.
+
+**Conclusion / prochaine étape** : lot E livré et vert. Enchaîner sur le gate d'entrée G0
+(mesure couverture CSR des rivaux) puis la clôture du chantier.
+
+---
+
 ## [2026-07-17] Relations UX — Lot H : régularisation du suivi (chip Multi-jeux) (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété (régularisation documentaire — aucun code écrit).

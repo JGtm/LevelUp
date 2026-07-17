@@ -137,6 +137,11 @@ func BuildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 				Now:              time.Now().UTC(),
 			})
 
+			// Lot relations-E : notification « rival croisé » — nouveau duel contre
+			// un top rival ramené par cette sync. Best-effort (détection interne
+			// non bloquante) ; skippée sans nouveau match (watermark).
+			emitRivalEncounters(ctx, emitter, newRivalDetectorForPDB(pdb2), slug, before, after)
+
 			// Couche progression V2 (Ascension) — pipeline streaks/records/
 			// milestones/coach + coach_advisor (Phase 8 ADR 0020). Non
 			// bloquant : toute erreur reste en slog.Warn.
