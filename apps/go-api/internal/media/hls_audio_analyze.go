@@ -1,22 +1,24 @@
 package media
 
-// hls_audio_analyze.go — détection du rôle des pistes audio source à l'ingestion.
+// hls_audio_analyze.go — détection du rôle des pistes audio source à l'ingestion (IO).
 //
-// Problème : certaines captures (OBS « capture de sortie » en piste 1) exportent
-// une piste 0 qui est DÉJÀ le mix complet (jeu + micro + voix), suivie des pistes
-// composantes (jeu, micro, Discord…). Le mapping HLS historique traite la piste 0
-// comme « le jeu » puis synthétise `full = amix(toutes les pistes)` → il ré-ajoute
-// le mix complet par-dessus lui-même = doublage audible (écho). Cf. fix audio HLS
-// Firefox juin 2026.
+// Problème : certaines captures (OBS « capture de sortie ») exportent une piste 0 qui
+// est DÉJÀ le mix complet (jeu + micro + voix), suivie des pistes composantes (jeu,
+// micro, Discord…). Le mapping HLS historique traite la piste 0 comme « le jeu » puis
+// synthétise `full = amix(toutes les pistes)` → il ré-ajoute le mix complet par-dessus
+// lui-même = doublage audible (écho). Cf. fix audio HLS Firefox juin 2026.
 //
-// On détecte ce cas en comparant l'ENVELOPPE de loudness (RMS par trame ~100 ms) de
-// la piste 0 à celle de `amix(pistes 1..N)` : si elles sont fortement corrélées, la
-// piste 0 est le mix complet → `full` doit la lire directement (pas d'amix doublé).
-// L'enveloppe est robuste au déphasage / dérive d'horloge (≠ corrélation au lag 0).
+// Détection : on décode l'enveloppe de loudness (RMS par trame ~100 ms) de la piste 0
+// et de CHAQUE composante, puis (audio_fullmix_fit.go, pur) on ajuste la puissance de
+// la piste 0 comme une combinaison à gains ≥ 0 des puissances des composantes. Une
+// bonne qualité d'ajustement (R²) AVEC couverture de chaque composante active ⇒ piste 0
+// = mix complet → `full` la lit directement (pas d'amix doublé). Cette régression en
+// domaine puissance est robuste aux gains de mix OBS ≠ 1:1 et à la voix, là où une
+// simple corrélation d'enveloppe dB échouait dès qu'il y avait de la voix significative.
 //
 // L'audio est extrait en PCM brut mono 8 kHz sur stdout (déterministe, pas de
 // dépendance au format de log ffmpeg ni de chemin échappé dans le filtergraph) ;
-// l'enveloppe RMS par trame et la corrélation sont calculées en Go (pures, testées).
+// enveloppe RMS et régression sont calculées en Go (pures, testées).
 
 import (
 	"bytes"
@@ -29,11 +31,12 @@ import (
 	"strings"
 )
 
-// fullMixEnvelopeCorrThreshold : au-dessus, la piste 0 est considérée comme le mix
-// complet des autres. Calibré sur 6 clips OBS réels (sessions solo, piste 1 = capture
-// de sortie) : corrélation d'enveloppe piste0 vs amix(reste) mesurée 0,847 → 0,995.
-// Un layout sans mix complet (piste 0 = composante disjointe, ex. jeu seul + voix
-// seule) tombe bien en dessous → mapping historique conservé.
+// fullMixEnvelopeCorrThreshold : seuil de corrélation d'enveloppe game vs voices pour
+// juger deux renditions HLS REDONDANTES (même son) au collapse en place
+// (hls_audio_collapse.go) — clips legacy sans voix isolée, dont les renditions portent
+// toutes le même mix. Au-dessus = redondant (collapse), en dessous = distinct (toggle
+// conservé). La détection full-mix à l'ingestion utilise désormais la régression
+// puissance (audio_fullmix_fit.go, robuste à la voix), pas cette corrélation.
 const fullMixEnvelopeCorrThreshold = 0.80
 
 // rmsFloorDB plancher des trames silencieuses (RMS nul) pour garder une enveloppe
@@ -184,52 +187,132 @@ func buildEnvelopeArgs(src, filterComplex, mapSpec string) []string {
 		fmt.Sprintf("%d", envSampleRate), "-f", "f32le", "-")
 }
 
-// restMixFilter retourne le couple (filterComplex, mapSpec) extrayant le mix des
-// pistes audio 1..nAudio-1. Une seule piste restante → map direct ; sinon amix.
-func restMixFilter(nAudio int) (string, string) {
-	if nAudio-1 == 1 {
-		return "", "0:a:1"
+// decodeAudioEnvelopes décode l'enveloppe RMS (dB) de la piste 0 et de chaque
+// composante 1..nAudio-1 (map direct par piste). IO ffmpeg. Hypothèse : nAudio ≥ 2.
+func decodeAudioEnvelopes(ctx context.Context, src string, nAudio int) ([]float64, [][]float64, error) {
+	env0, err := audioEnvelope(ctx, src, "", "0:a:0")
+	if err != nil {
+		return nil, nil, err
 	}
-	var b strings.Builder
+	comps := make([][]float64, 0, nAudio-1)
 	for i := 1; i < nAudio; i++ {
-		fmt.Fprintf(&b, "[0:a:%d]", i)
+		env, err := audioEnvelope(ctx, src, "", fmt.Sprintf("0:a:%d", i))
+		if err != nil {
+			return nil, nil, err
+		}
+		comps = append(comps, env)
 	}
-	fmt.Fprintf(&b, "amix=inputs=%d:normalize=0[mix]", nAudio-1)
-	return b.String(), "[mix]"
+	return env0, comps, nil
 }
 
 // analyzeAudioLayout déduit le rôle des pistes audio source (IO ffmpeg) :
-//  1. la piste 0 est-elle le mix complet des pistes 1..N (corrélation d'enveloppe
-//     ≥ seuil, gardée contre les signaux stationnaires) ;
-//  2. si oui, QUELLE composante est le jeu (classement acoustique, pas l'ordre).
+//  1. la piste 0 est-elle le mix complet des composantes (régression puissance :
+//     R² ≥ seuil, garde de stationnarité + couverture ; cf. decideFullMix) ;
+//  2. si oui, QUELLE composante est le jeu (titre de piste, sinon acoustique).
 //
-// Retourne aussi la corrélation mix mesurée (log). Hypothèse : nAudio ≥ 2.
-func analyzeAudioLayout(ctx context.Context, src string, nAudio int) (audioLayout, float64, error) {
+// audioStreams = pistes AUDIO source en ordre (audioStreams[i] = 0:a:i). Retourne aussi
+// le R² de l'ajustement (log). Hypothèse : len(audioStreams) ≥ 2.
+func analyzeAudioLayout(ctx context.Context, src string, audioStreams []AVStreamDetail) (audioLayout, float64, error) {
 	var layout audioLayout
+	nAudio := len(audioStreams)
 	if nAudio < 2 {
 		return layout, 0, nil
 	}
-	env0, err := audioEnvelope(ctx, src, "", "0:a:0")
+	env0, comps, err := decodeAudioEnvelopes(ctx, src, nAudio)
 	if err != nil {
 		return layout, 0, err
 	}
-	fc, mapSpec := restMixFilter(nAudio)
-	envRest, err := audioEnvelope(ctx, src, fc, mapSpec)
-	if err != nil {
-		return layout, 0, err
-	}
-	corr := pearson(env0, envRest)
-	// Enveloppe trop stationnaire (ton pur, signal constant) → corrélation non
-	// fiable → on ne classe pas en mix complet (repli mapping historique).
-	if stdDev(env0) < minEnvelopeStdDevDB || stdDev(envRest) < minEnvelopeStdDevDB {
-		return layout, corr, nil
-	}
-	if corr < fullMixEnvelopeCorrThreshold {
-		return layout, corr, nil
+	dec := decideFullMix(env0, comps)
+	if !dec.IsFullMix {
+		return layout, dec.R2, nil
 	}
 	layout.Track0FullMix = true
-	layout.GameComponent = classifyGameComponent(ctx, src, nAudio)
-	return layout, corr, nil
+	layout.GameComponent = gameComponentIndex(ctx, src, audioStreams)
+	return layout, dec.R2, nil
+}
+
+// gameComponentIndex choisit l'index audio (0:a:N, N ≥ 1) de la composante « jeu » d'un
+// layout full-mix : le TITRE de piste (métadonnée OBS « game »/« jeu ») fait foi quand
+// il désigne une composante ; sinon repli sur classifyGameComponent (continuité
+// acoustique / taux de silence). Le titre est autoritaire là où le taux de silence se
+// trompe (voix Discord plus continue que le jeu ; piste muette de silence nul). IO
+// (le repli décode l'audio).
+func gameComponentIndex(ctx context.Context, src string, audioStreams []AVStreamDetail) int {
+	for i := 1; i < len(audioStreams); i++ {
+		if titleIsGame(audioStreams[i].Title) {
+			return i
+		}
+	}
+	return classifyGameComponent(ctx, src, len(audioStreams))
+}
+
+// titleIsGame indique si un titre de piste OBS désigne la composante jeu.
+func titleIsGame(title string) bool {
+	switch strings.ToLower(strings.TrimSpace(title)) {
+	case audioRenditionGameSlug, "jeu":
+		return true
+	}
+	return false
+}
+
+// audioStreamsOnly filtre les pistes audio d'une liste de streams, en préservant
+// l'ordre (résultat[i] = 0:a:i).
+func audioStreamsOnly(streams []AVStreamDetail) []AVStreamDetail {
+	out := make([]AVStreamDetail, 0, len(streams))
+	for _, s := range streams {
+		if s.CodecType == codecTypeAudio {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// AudioLayoutReport résume l'analyse de layout d'un fichier source (diag / --analyze).
+// Gains/Shares/Active/SilenceRatios sont indexés par composante (0:a:1 .. 0:a:N-1).
+type AudioLayoutReport struct {
+	AudioTracks   int
+	Track0FullMix bool
+	GameComponent int // index audio 0:a:N de la composante jeu (si full-mix)
+	R2            float64
+	Env0StdDB     float64
+	Gains         []float64
+	Shares        []float64
+	PowerCorr     []float64
+	P90           []float64
+	Active        []bool
+	SilenceRatios []float64
+}
+
+// AnalyzeAudioLayoutReport sonde un fichier source et retourne l'analyse complète du
+// layout audio (décision full-mix + métriques) sans rien écrire. Outil de diagnostic
+// durable (cf. cmd/migrate-hls-audio --analyze). IO ffmpeg + ffprobe.
+func AnalyzeAudioLayoutReport(ctx context.Context, src string) (AudioLayoutReport, error) {
+	streams, err := ProbeStreamsDetailed(ctx, src)
+	if err != nil {
+		return AudioLayoutReport{}, err
+	}
+	audioStreams := audioStreamsOnly(streams)
+	n := len(audioStreams)
+	rep := AudioLayoutReport{AudioTracks: n}
+	if n < 2 {
+		return rep, nil
+	}
+	env0, comps, err := decodeAudioEnvelopes(ctx, src, n)
+	if err != nil {
+		return rep, err
+	}
+	dec := decideFullMix(env0, comps)
+	rep.Track0FullMix, rep.R2, rep.Env0StdDB = dec.IsFullMix, dec.R2, dec.Env0StdDB
+	rep.Gains, rep.Shares, rep.Active = dec.Gains, dec.Shares, dec.Active
+	rep.PowerCorr, rep.P90 = dec.PowerCorr, dec.P90
+	rep.SilenceRatios = make([]float64, len(comps))
+	for i, c := range comps {
+		rep.SilenceRatios[i] = silenceRatio(c)
+	}
+	if dec.IsFullMix {
+		rep.GameComponent = gameComponentIndex(ctx, src, audioStreams)
+	}
+	return rep, nil
 }
 
 // silenceRatio retourne la fraction de trames dont le RMS est plus de silenceDropDB
