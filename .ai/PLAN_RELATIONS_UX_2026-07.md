@@ -203,28 +203,44 @@ Voir les joueurs croisés sur plusieurs jeux. Le backend sert déjà l'informati
 `CrossGameMinMatchesTogether = 3`, best-effort — si l'enrichissement cross-titre échoue,
 le badge est simplement absent). Aucun changement Go.
 
-- [ ] H1. Étendre l'union `RelationFilter` avec `'cross'` dans `relationsFilter.ts` ET
+- [~] H1. Étendre l'union `RelationFilter` avec `'cross'` dans `relationsFilter.ts` ET
       dans son miroir `relationsPrefsStore.ts` (les deux unions doivent rester
       identiques — commentaire de miroir déjà en place). Pas de migration du store :
       valeur additive, les états persistés existants restent valides.
-- [ ] H2. Prédicat `isCrossGame(r)` : au moins un badge dont `label_key` est le littéral
+      LIVRÉ par le train corrections v7 (avant ce chantier). Vérifié sur pièces :
+      union `'cross'` présente dans `relationsFilter.ts:14` ET `relationsPrefsStore.ts:16`
+      (commentaire de miroir en place).
+- [~] H2. Prédicat `isCrossGame(r)` : au moins un badge dont `label_key` est le littéral
       cross-jeu. Le littéral `"narrative.encounter.cross_game"` doit exister en UNE
       constante exportée côté front (vérifier si `RelationBadges.tsx` ou un module badges
       le porte déjà ; sinon la définir dans `relationsFilter.ts` et l'importer partout —
       règle des ≤ 2 copies).
-- [ ] H3. Chip « Multi-jeux » ajouté au segmented control (`FILTER_CHIPS` +
+      LIVRÉ v7. Vérifié : `CROSS_GAME_BADGE_KEY = 'narrative.encounter.cross_game'`
+      constante exportée (`relationsFilter.ts:24`) + `isCrossGame` (`relationsFilter.ts:31`).
+- [~] H3. Chip « Multi-jeux » ajouté au segmented control (`FILTER_CHIPS` +
       `SegmentedFilter`), clés i18n FR « Multi-jeux » / EN « Multi-game » dans
       `palmares.toml` (section chips) + regen manifest.
-- [ ] H4. Affichage conditionnel : le chip n'est RENDU que si au moins une relation
+      LIVRÉ v7. Vérifié : `[palmares.relations.chip.cross]` FR « Multi-jeux » /
+      EN « Multi-game » (`palmares.toml:137-139`) ; chip ajouté à `SegmentedFilter`
+      (`PalmaresRelationsPage.tsx:435`).
+- [~] H4. Affichage conditionnel : le chip n'est RENDU que si au moins une relation
       porte le badge (pas de segment mort pour les profils mono-titre). Garde-fou : si
       le filtre persisté vaut `'cross'` alors que le chip est masqué (données devenues
       vides), traiter comme `'all'` sans écrire dans le store.
-- [ ] H5. Le chip compose normalement avec le toggle « jamais affrontés » (même
+      LIVRÉ v7. Vérifié : `showCross = hasCrossGameRelations(relations)`
+      (`PalmaresRelationsPage.tsx:513`) ; garde-fou `effectiveFilter` neutralise un
+      `'cross'` persisté sans écrire le store (`PalmaresRelationsPage.tsx:516`).
+- [~] H5. Le chip compose normalement avec le toggle « jamais affrontés » (même
       pipeline `visibleRows`) — aucun cas spécial.
-- [ ] H6. Tests vitest : (a) `filterRelations('cross')` ne garde que les relations au
+      LIVRÉ v7. Vérifié : `visibleRows` chaîne `effectiveFilter` puis
+      `includeNeverFaced` sans cas spécial (`PalmaresRelationsPage.tsx:520-523`).
+- [~] H6. Tests vitest : (a) `filterRelations('cross')` ne garde que les relations au
       badge cross-jeu ; (b) chip absent quand aucune relation multi-jeux ; (c) chip
       présent + clic → tableau réduit aux bonnes lignes ; (d) filtre persisté `'cross'`
       sans donnée → rendu identique à « tous ».
+      LIVRÉ v7. Vérifié : `relationsFilter.test.ts:41-60` (a/b) +
+      `PalmaresRelationsPage.test.tsx:91-158` (c chip présent+filtre ; d chip masqué +
+      filtre `'cross'` persisté neutralisé).
 
 **Gate H** : GATE-WEB + GATE-I18N.
 

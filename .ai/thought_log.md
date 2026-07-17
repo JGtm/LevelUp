@@ -1,3 +1,32 @@
+## [2026-07-17] Relations UX — Lot H : régularisation du suivi (chip Multi-jeux) (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété (régularisation documentaire — aucun code écrit).
+
+**Décision technique principale** : le lot H (chip « Multi-jeux » dans le segmented
+control) était déjà LIVRÉ dans le code par le train corrections v7 antérieur, mais ses
+cases H1–H6 étaient restées `[ ]` dans le plan. Vérification sur pièces avant de statuer
+`[~]` (couvert ailleurs), conformément au contrat plan-execution.
+
+**Résultats observés (vérification sur pièces)** :
+- H1 : union `RelationFilter` += `'cross'` dans `relationsFilter.ts:14` ET son miroir
+  `relationsPrefsStore.ts:16` (commentaire de miroir en place).
+- H2 : `CROSS_GAME_BADGE_KEY = 'narrative.encounter.cross_game'` constante exportée
+  (`relationsFilter.ts:24`) + prédicat `isCrossGame` (règle ≤ 2 copies respectée).
+- H3 : i18n `[palmares.relations.chip.cross]` FR « Multi-jeux » / EN « Multi-game »
+  (`palmares.toml:137-139`) ; chip ajouté au `SegmentedFilter`.
+- H4 : `showCross = hasCrossGameRelations(relations)` (rendu conditionnel) + garde-fou
+  `effectiveFilter` neutralisant un `'cross'` persisté sans écrire le store
+  (`PalmaresRelationsPage.tsx:513,516`).
+- H5 : `visibleRows` chaîne `effectiveFilter` puis `includeNeverFaced` — aucun cas
+  spécial (`PalmaresRelationsPage.tsx:520-523`).
+- H6 : tests `relationsFilter.test.ts:41-60` + `PalmaresRelationsPage.test.tsx:91-158`
+  (chip présent/masqué, filtre `'cross'` persisté neutralisé).
+
+**Conclusion / prochaine étape** : H statué `[~]` (livré par train corrections v7 avant
+ce chantier). Enchaîner sur le lot E (notification « rival croisé » post-sync).
+
+---
+
 ## [2026-07-17] Relations UX — Lot D : volet « Quoi de neuf » (full-stack) (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété.
