@@ -9,27 +9,24 @@
  * Compact by design : hauteur ~100px, pas de card/border autour.
  * Aucune couleur hex directe : tout passe par outcomeColor() → resolveToken().
  */
-import { Suspense, lazy, useMemo } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import { Suspense, lazy, useCallback, useMemo, useRef } from 'react'
+import type { EChartsCoreOption, EChartsType } from 'echarts/core'
 
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 
 import { CHART_BG, escapeHtml, getEChartsThemeColors, getTooltipBase, outcomeColor } from './_utils'
+import { type OutcomePoint, type Run, matchIndexAtX, startOf, toRuns } from './outcomeSequence'
+
+// Ré-export des types du modèle pur : les 5 consommateurs importent toujours
+// `OutcomeValue`/`OutcomePoint` depuis ce module (frontière stable). La logique
+// pure (`matchIndexAtX`) vit dans `outcomeSequence.ts` — importée directement là
+// par les tests, jamais ré-exportée ici (react-refresh : pas d'export de valeur
+// non-composant depuis un fichier de composant).
+export type { OutcomeValue, OutcomePoint, Run } from './outcomeSequence'
 
 const ReactECharts = lazy(() =>
   import('echarts-for-react').then((m) => ({ default: m.default ?? m })),
 )
-
-export type OutcomeValue = 'win' | 'loss' | 'tie' | 'dnf'
-
-export interface OutcomePoint {
-  outcome: OutcomeValue
-  matchId: string
-  map?: string
-  mode?: string
-  /** Libellé pré-formaté pour le tooltip (ex. « 12 mars · Slayer · Aquarius — 14/9 »). */
-  label?: string
-}
 
 export interface OutcomeSequenceLabels {
   win: string
@@ -38,37 +35,17 @@ export interface OutcomeSequenceLabels {
   dnf: string
 }
 
-interface Run {
-  outcome: OutcomeValue
-  count: number
-  matches: OutcomePoint[]
-}
-
-function toRuns(arr: OutcomePoint[]): Run[] {
-  const runs: Run[] = []
-  for (const m of arr) {
-    const last = runs[runs.length - 1]
-    if (last && last.outcome === m.outcome) {
-      last.count += 1
-      last.matches.push(m)
-    } else {
-      runs.push({ outcome: m.outcome, count: 1, matches: [m] })
-    }
-  }
-  return runs
-}
-
-function startOf(runs: Run[], i: number): number {
-  let p = 0
-  for (let k = 0; k < i; k++) p += runs[k].count
-  return p
-}
-
 export interface OutcomeSequenceTapeProps {
   matches: OutcomePoint[]
   labels: OutcomeSequenceLabels
   loading?: boolean
   height?: number
+  /**
+   * onMatchClick — si fourni, chaque match de la bande devient cliquable (curseur
+   * `pointer`) et un clic remonte le `matchId` résolu. SANS cette prop, le rendu
+   * et le comportement sont STRICTEMENT identiques (5 autres consommateurs).
+   */
+  onMatchClick?: (matchId: string) => void
 }
 
 export function OutcomeSequenceTape({
@@ -76,10 +53,46 @@ export function OutcomeSequenceTape({
   labels,
   loading = false,
   height = 100,
+  onMatchClick,
 }: OutcomeSequenceTapeProps) {
   const runs = useMemo(() => toRuns(matches), [matches])
   const xMax = runs.reduce((s, r) => s + r.count, 0)
   const themeVersion = useThemeVersion()
+  const interactive = !!onMatchClick
+  const chartRef = useRef<EChartsType | null>(null)
+
+  // handleClick — résout le match via convertFromPixel (offset pixel → valeur X)
+  // puis matchIndexAtX. Cas dégradé (conversion indisponible/échouée) : premier
+  // match du run cliqué (params.dataIndex).
+  const handleClick = useCallback(
+    (params: unknown) => {
+      if (!onMatchClick) return
+      const p = params as {
+        dataIndex?: number
+        event?: { offsetX?: number; offsetY?: number }
+      }
+      let picked: OutcomePoint | null = null
+      const chart = chartRef.current
+      const offsetX = p.event?.offsetX
+      const offsetY = p.event?.offsetY
+      if (chart && offsetX != null && offsetY != null) {
+        try {
+          const converted = chart.convertFromPixel({ xAxisIndex: 0 }, [offsetX, offsetY])
+          const xValue = Array.isArray(converted) ? converted[0] : converted
+          if (typeof xValue === 'number' && Number.isFinite(xValue)) {
+            picked = matchIndexAtX(runs, xValue)
+          }
+        } catch {
+          picked = null
+        }
+      }
+      if (!picked && typeof p.dataIndex === 'number') {
+        picked = runs[p.dataIndex]?.matches[0] ?? null
+      }
+      if (picked) onMatchClick(picked.matchId)
+    },
+    [onMatchClick, runs],
+  )
 
 
   const option = useMemo((): EChartsCoreOption => {
@@ -140,13 +153,16 @@ export function OutcomeSequenceTape({
             ]
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const children: any[] = [
-              {
-                type: 'rect',
-                shape: { x: x0, y: yStripTop, width: w, height: STRIP_H, r: rectR },
-                style: { fill: stroke },
-              },
-            ]
+            const rect: any = {
+              type: 'rect',
+              shape: { x: x0, y: yStripTop, width: w, height: STRIP_H, r: rectR },
+              style: { fill: stroke },
+            }
+            // Curseur cliquable uniquement en mode interactif (B3) : sans
+            // `onMatchClick`, la propriété reste absente → rendu inchangé.
+            if (interactive) rect.cursor = 'pointer'
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const children: any[] = [rect]
 
             if (r.count >= 2 && x1 - x0 >= 8) {
               const yLine = isTop
@@ -197,9 +213,23 @@ export function OutcomeSequenceTape({
         },
       ],
     }
-  }, [runs, xMax, labels, themeVersion])
+  }, [runs, xMax, labels, themeVersion, interactive])
 
   if (loading || xMax === 0) return null
+
+  // Sans `onMatchClick`, aucun `onEvents`/`onChartReady` n'est passé : les 5 autres
+  // consommateurs conservent un comportement strictement identique (B1).
+  const interactiveProps = interactive
+    ? {
+        onEvents: { click: handleClick },
+        // Param `unknown` (assignable par contravariance au type attendu par
+        // echarts-for-react) puis cast : les deux paquets echarts exposent deux
+        // déclarations nominales distinctes d'`EChartsType`.
+        onChartReady: (chart: unknown) => {
+          chartRef.current = chart as EChartsType
+        },
+      }
+    : {}
 
   return (
     <Suspense fallback={null}>
@@ -209,6 +239,7 @@ export function OutcomeSequenceTape({
         notMerge
         lazyUpdate
         theme={undefined}
+        {...interactiveProps}
       />
     </Suspense>
   )
