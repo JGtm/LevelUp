@@ -266,56 +266,6 @@ en = "Diamond"
 fr = "Onyx"
 en = "Onyx"
 
-# ─── Tri ──────────────────────────────────────────────────────────────────────
-
-[explorer.sort.label]
-fr = "Trier par"
-en = "Sort by"
-
-[explorer.sort.start_time_desc]
-fr = "Date (récent)"
-en = "Date (recent)"
-
-[explorer.sort.start_time_asc]
-fr = "Date (ancien)"
-en = "Date (oldest)"
-
-[explorer.sort.perf_desc]
-fr = "Perf (meilleure)"
-en = "Perf (best)"
-
-[explorer.sort.perf_asc]
-fr = "Perf (moins bonne)"
-en = "Perf (worst)"
-
-[explorer.sort.kda_desc]
-fr = "FDA (meilleur)"
-en = "KDA (best)"
-
-[explorer.sort.kda_asc]
-fr = "FDA (moins bon)"
-en = "KDA (worst)"
-
-[explorer.sort.kills_desc]
-fr = "Frags (plus)"
-en = "Kills (most)"
-
-[explorer.sort.kills_asc]
-fr = "Frags (moins)"
-en = "Kills (fewest)"
-
-[explorer.sort.delta_mmr_desc]
-fr = "Delta MMR (plus haut)"
-en = "MMR delta (highest)"
-
-[explorer.sort.delta_mmr_asc]
-fr = "Delta MMR (plus bas)"
-en = "MMR delta (lowest)"
-
-[explorer.sort.outcome]
-fr = "Résultat"
-en = "Outcome"
-
 # ─── Colonne tier ─────────────────────────────────────────────────────────────
 
 [explorer.matches.col_tier]

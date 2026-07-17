@@ -11,7 +11,10 @@
  * Param URL ↔ champ applicatif :
  *   start → startDate · end → endDate · scope → squadScope · mid → matchIDSearch
  *   exp → expTypes · pl → playlists · maps → mapNames · modes → modeNames
- *   perf → perfTiers · skill → skillTiers · outcome → outcomeFilter · sort → sortKey
+ *   perf → perfTiers · skill → skillTiers · outcome → outcomeFilter
+ *
+ * Le tri du tableau (mode Matchs) est CLIENT et éphémère (état interne du tableau,
+ * non persisté dans l'URL) — cf. thought_log 2026-07-17.
  *
  * Cf. plan nav-context-unification (Phase 1) et `@/lib/page-scope`.
  */
@@ -21,9 +24,6 @@ import { csvToSet, setToCsv } from '@/lib/page-scope/serialize'
 import type { MatchFilterOutcome, MatchFilterSpec } from '@/lib/match-nav/navContext'
 
 export type SquadScope = '' | 'solo' | 'squad'
-
-/** Tri par défaut — omis de l'URL quand actif (URL propre). */
-export const DEFAULT_SORT_KEY = 'start_time:desc'
 
 /** État riche consommé par ExplorerPage. */
 export interface ExplorerScope {
@@ -38,7 +38,6 @@ export interface ExplorerScope {
   perfTiers: Set<string>
   skillTiers: Set<string>
   outcomeFilter: Set<string>
-  sortKey: string
 }
 
 /** Forme plate sérialisée en query params (toutes les clés optionnelles). */
@@ -54,7 +53,6 @@ export interface EncodedExplorerScope {
   perf?: string
   skill?: string
   outcome?: string
-  sort?: string
 }
 
 /** Clés de scope dans l'URL (détection cold-start + reset). */
@@ -70,7 +68,6 @@ export const EXPLORER_URL_KEYS: readonly (keyof EncodedExplorerScope)[] = [
   'perf',
   'skill',
   'outcome',
-  'sort',
 ]
 
 /** App → URL. Toutes les clés présentes ; `undefined` pour les valeurs vides
@@ -88,7 +85,6 @@ export function encodeExplorerScope(s: ExplorerScope): EncodedExplorerScope {
     perf: setToCsv(s.perfTiers),
     skill: setToCsv(s.skillTiers),
     outcome: setToCsv(s.outcomeFilter),
-    sort: s.sortKey && s.sortKey !== DEFAULT_SORT_KEY ? s.sortKey : undefined,
   }
 }
 
@@ -107,7 +103,6 @@ export function decodeExplorerScope(raw: Partial<EncodedExplorerScope>): Explore
     perfTiers: csvToSet(raw.perf),
     skillTiers: csvToSet(raw.skill),
     outcomeFilter: csvToSet(raw.outcome),
-    sortKey: raw.sort || DEFAULT_SORT_KEY,
   }
 }
 
@@ -134,7 +129,6 @@ export const explorerSearchSchema = z.object({
   perf: z.string().optional(),
   skill: z.string().optional(),
   outcome: z.string().optional(),
-  sort: z.string().optional(),
 })
 
 /** Code outcome (DuckDB) → label canonique MatchFilterSpec. */
