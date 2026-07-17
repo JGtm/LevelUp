@@ -15,6 +15,7 @@
 package service
 
 import (
+	"context"
 	"sort"
 	"time"
 
@@ -35,6 +36,11 @@ const (
 	// MinDimensionGroupMatches est le seuil sous lequel un groupe (carte/mode/
 	// playlist) n'a pas de note et n'apparaît pas en top/flop.
 	MinDimensionGroupMatches = 10
+	// minRankedKindMatches est le seuil de signifiance d'un type de rating
+	// SECONDAIRE dans le module « Classement » (P-3, aligné MinDimensionGroupMatches) :
+	// un type non majoritaire n'a sa propre ligne que s'il atteint ce seuil. Le
+	// type majoritaire est toujours émis (pas de régression vs V1).
+	minRankedKindMatches = 10
 	// minTrendMatches / minTrendSpanDays : activation du module tendance (DEC-4) —
 	// assez de matchs ET d'étalement temporel pour une courbe lisible.
 	minTrendMatches  = 20
@@ -53,6 +59,7 @@ const (
 //
 // Retourne nil si le scope est vide. LowSample (scope < seuil) → socle seul.
 func (s *MatchHistoryService) buildExplorerBriefing(
+	ctx context.Context,
 	filtered, allRaw []domain.MatchHistoryRawRow,
 	scopedKPIs *domain.KPIStats,
 ) *domain.ExplorerBriefing {
@@ -70,8 +77,14 @@ func (s *MatchHistoryService) buildExplorerBriefing(
 	b.Dimensions = buildBriefingDimensions(filtered, allRaw)
 	b.Trend = buildBriefingTrend(filtered, b.PeriodStart, b.PeriodEnd)
 	if s.rankedCapable {
-		b.Ranked = buildBriefingRanked(filtered, scopedKPIs)
+		b.Ranked = buildBriefingRanked(ctx, filtered, scopedKPIs)
 	}
+	// Split solo/escouade : aucun gate capability (P-7), omission si non pertinent.
+	b.ContextSplit = buildBriefingContextSplit(filtered)
+	// Séries + moments forts : calculés sur TOUT le scope filtré (P-9), omission
+	// si non pertinent (aucune row datée / tous les compteurs à zéro).
+	b.Streaks = buildBriefingStreaks(filtered)
+	b.Dominance = buildBriefingDominance(filtered)
 	return b
 }
 
@@ -214,14 +227,19 @@ func buildBriefingDimensions(scope, all []domain.MatchHistoryRawRow) []domain.Ex
 	}
 	scopeRows := rawRowsToBreakdownRows(scope)
 	allRows := rawRowsToBreakdownRows(all)
+	// Plein historique = scope égal à l'historique complet (un filtre ne peut que
+	// rétrécir → cardinalités égales ⟺ ensembles identiques). Les deltas vs baseline
+	// sont alors tous nuls et le tri de CompareByKey dégénère : la sélection top/flop
+	// bascule sur le taux de victoire (P-8, cf. buildDimension).
+	fullHistory := len(scope) == len(all)
 	out := make([]domain.ExplorerBriefingDimension, 0, 3)
-	if d := buildDimension("map", mapKeyed(breakdown.ByMap(scopeRows)), mapKeyed(breakdown.ByMap(allRows))); d != nil {
+	if d := buildDimension("map", mapKeyed(breakdown.ByMap(scopeRows)), mapKeyed(breakdown.ByMap(allRows)), fullHistory); d != nil {
 		out = append(out, *d)
 	}
-	if d := buildDimension("mode", modeKeyed(breakdown.ByMode(scopeRows)), modeKeyed(breakdown.ByMode(allRows))); d != nil {
+	if d := buildDimension("mode", modeKeyed(breakdown.ByMode(scopeRows)), modeKeyed(breakdown.ByMode(allRows)), fullHistory); d != nil {
 		out = append(out, *d)
 	}
-	if d := buildDimension("playlist", playlistKeyed(breakdown.ByPlaylist(scopeRows)), playlistKeyed(breakdown.ByPlaylist(allRows))); d != nil {
+	if d := buildDimension("playlist", playlistKeyed(breakdown.ByPlaylist(scopeRows)), playlistKeyed(breakdown.ByPlaylist(allRows)), fullHistory); d != nil {
 		out = append(out, *d)
 	}
 	if len(out) == 0 {
@@ -233,7 +251,7 @@ func buildBriefingDimensions(scope, all []domain.MatchHistoryRawRow) []domain.Ex
 // buildDimension construit une dimension à partir de ses agrégats scope / historique
 // génériques par clé. Retourne nil si la dimension n'est pas libre (< 2 valeurs
 // distinctes) ou si aucune entrée qualifiée.
-func buildDimension(dim string, sessionKA, histKA []breakdown.KeyedAggregate) *domain.ExplorerBriefingDimension {
+func buildDimension(dim string, sessionKA, histKA []breakdown.KeyedAggregate, fullHistory bool) *domain.ExplorerBriefingDimension {
 	distinct := 0
 	for _, a := range sessionKA {
 		if a.Played > 0 {
@@ -253,6 +271,18 @@ func buildDimension(dim string, sessionKA, histKA []breakdown.KeyedAggregate) *d
 		if d.Session.Played >= MinDimensionGroupMatches {
 			qualified = append(qualified, d)
 		}
+	}
+	// En plein historique, tous les WinRateDelta valent 0 (scope == historique) et
+	// CompareByKey retombe sur un tri par clé (GUID de map → pseudo-aléatoire). On
+	// re-trie par taux de victoire du groupe décroissant (tie-break libellé) pour
+	// une sélection top/flop signifiante (P-8). Sous filtre : tri V1 (delta) conservé.
+	if fullHistory {
+		sort.SliceStable(qualified, func(i, j int) bool {
+			if qualified[i].Session.WinRate != qualified[j].Session.WinRate {
+				return qualified[i].Session.WinRate > qualified[j].Session.WinRate
+			}
+			return qualified[i].Label < qualified[j].Label
+		})
 	}
 	qualified = selectTopFlop(qualified, dimensionTopFlopCount)
 	entries := make([]domain.ExplorerBriefingDimensionEntry, 0, len(qualified))
@@ -356,46 +386,6 @@ type trendRow struct {
 }
 
 func (t trendRow) GetStartTime() time.Time { return t.start }
-
-// buildBriefingRanked émet le module « Pronostic » (skill LevelUp) sur les matchs
-// du scope portant une prédiction pré-match (SkillExpectedWinProb, LUSR v2) :
-// attendu (moyenne des probas) vs réel (winrate de ces matchs). La ligne Δ rating
-// cumulé n'est jointe QUE si le RankDelta canonique est disponible (per-match CSR
-// delta ; absent dans les player DBs actuelles, cf. journal). L'appelant a déjà
-// gaté sur rankedCapable (capability match.skill.snapshot, exclut H5). Retourne
-// nil si aucune prédiction ET aucun delta rating (rien à afficher).
-func buildBriefingRanked(scope []domain.MatchHistoryRawRow, scopedKPIs *domain.KPIStats) *domain.ExplorerBriefingRanked {
-	var probs []float64
-	var wins, total int
-	for _, r := range scope {
-		if r.SkillExpectedWinProb == nil {
-			continue
-		}
-		total++
-		if r.Outcome == domain.OutcomeWin {
-			wins++
-		}
-		probs = append(probs, *r.SkillExpectedWinProb)
-	}
-	var rd *domain.RankDelta
-	if scopedKPIs != nil {
-		rd = scopedKPIs.RankDelta
-	}
-	if total == 0 && rd == nil {
-		return nil
-	}
-	expected, actual := analysis.ExpectedVsActual(probs, wins, total)
-	out := &domain.ExplorerBriefingRanked{
-		ExpectedWinRate:       expected,
-		ActualWinRate:         actual,
-		MatchesWithPrediction: total,
-	}
-	if rd != nil {
-		out.RatingKind = rd.Kind
-		out.DeltaSum = rd.Value
-	}
-	return out
-}
 
 // ─── conversion raw row → breakdown.Row (libellés FR) ────────────────────────
 

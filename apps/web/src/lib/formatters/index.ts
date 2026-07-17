@@ -10,7 +10,7 @@
  */
 
 export { formatPercent, formatPercentValue, formatPercentInt } from './percent'
-export { formatDate, formatDateShort, formatDateTime, type Locale } from './date'
+export { formatDate, formatDateRange, formatDateShort, formatDateTime, type Locale } from './date'
 export { formatNumber, formatNumberFixed, formatRatio, formatKDA } from './number'
 export { formatDurationMMSS, formatDurationHMS, formatDurationMinSec, formatDurationMShort } from './duration'
 export { displayRatingLabel, formatRankDelta } from './rating'

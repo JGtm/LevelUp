@@ -542,6 +542,364 @@ branche entre les lots B et C (`06dc3b48a`, `36f3cde6c`) — à démêler avant 
 
 ---
 
+## [2026-07-16] Explorer briefing V2 — Phase 6 (vérification navigateur + changelog + clôture)
+
+**Statut** : Complété (Phase 6 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items 6a-6f ;
+tous les critères §1 (1-14) vérifiés). Worktree isolé `feat/explorer-briefing-v2`. NON committé
+(le superviseur commite ; 2 changelogs + le plan restent en modif locale).
+
+**Décision technique principale (setup de vérif)** : le worktree n'a pas les DBs. Serveur buildé
+depuis le worktree (`cmd/server`, CGO) vers un binaire temp hors des 2 arbres git, lancé détaché
+avec WorkingDirectory = dépôt principal (`.env.local`, `db_profiles.json`, `data/` réels). Vite
+lancé depuis le worktree — 5173/5174 occupés → **:5175**, hors allowlist CORS par défaut. Deux
+frottements résolus proprement, sans modif de fichier versionné : (1) auth — réutilisation d'une
+session admin JGtm existante (`data/sessions/`) via cookie signé forgé (HMAC-SHA256 du session_id
+avec `LEVELUP_SESSION_SECRET` de `.env.local`) injecté par header CDP `extraHttpHeaders` (le cookie
+`levelup_session` est HttpOnly → JS impossible) ; (2) CSRF/CORS — le PATCH `setTitleSync` et le
+PATCH `/settings` sont mutateurs et rejetés sur :5175 → serveur relancé avec
+`LEVELUP_CORS_ORIGINS` incluant :5175 (var d'env au lancement, `.env.local` ne la définit pas).
+
+**Résultats observés** (captures `01`..`04` dans le dossier temp de session) :
+- **Plein historique** (halo_infinite JGtm, 1015 matchs) : aucun delta « vs habituel » (socle +
+  dimensions) ; dimensions triées par taux de victoire (P-8) ; « Par sélection » ; carte
+  « Classement · LUSR · Or II → Or VI · −1.4 pt/match » (aucun cumul brut, aucun bloc attendu/réel) ;
+  dates avec année ; en-têtes unifiés ; Séries 11 V/10 D (frise corrobore le run « x10 ») ;
+  Moments forts DOMINATION ×68/HUMILIATION ×70/REMONTADA ×4/DÉBANDADE ×12 (contre-remontada omise) ;
+  Solo vs Escouade présent.
+- **Filtré Solo** (491 matchs) : deltas « vs habituel » réapparaissent (socle + dimensions,
+  ▲/▼) ; « ±0 pts » présent sous filtre = voulu ; tri par delta ; carte Solo/Escouade omise
+  (mono-contexte) ; Classement/Séries/Moments forts recalculés.
+- **Dégradations** : titre H5 → carte Classement omise, pas de crash ; mono-type LUSR → 1 ligne ;
+  « scope sans palier » et « tous-zéro dominance » couverts par tests unitaires (non reproductibles
+  sur données réelles). **Locale EN** : clés neuves rendues (Ranking, Streaks/Best streak/Worst
+  streak, Highlights, pt/match, vs usual, COMEBACK/COLLAPSE) ; « By playlist » en EN (seul le FR
+  passe à « Par sélection ») ; paliers/modes FR en dur = limitation actée §2.
+- **Console navigateur** : 0 erreur/warning sur les 4 états.
+- **Changelog** : `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md`, `[Unreleased]` v7.0, bullets
+  « Explorer — briefing V2 » (React/TS) + « Explorer briefing DTO » (Go API), parité EN/FR.
+
+**Gates §1.8 (passe finale, racine worktree)** : `go test ./...` = exit 0 (0 FAIL) ; `go vet`
+domain/analysis/service/api = 0 ; `make go-api-lint` = 0 ; `golangci-lint --new-from-rev=origin/main`
+(mêmes packages) = 0 issues ; `make generate-types` idempotent (0 diff `generated.ts`) ;
+`make check-types` = 0 (cache `.tmp` purgé) ; `make test-web` = 257 fichiers / 2185 passés /
+14 skipped / 0 échec ; `npm run lint` = 0 erreur (68 warnings baseline, 0 sur le chantier).
+
+**Nettoyage** : session JGtm restaurée (halo_5, locale fr) ; serveur (:8000) et vite (:5175) que
+j'ai lancés arrêtés ; l'autre instance vite préexistante (:5173) laissée intacte.
+
+**Conclusion / prochaine étape** : Phase 6 close → chantier Explorer briefing V2 COMPLET (phases
+0-5b commitées, Phase 6 non committée). Reste au superviseur : commit des 2 changelogs + plan
+mis à jour, puis **revue visuelle utilisateur** avant tout merge (merge `main` = deploy prod auto).
+
+---
+
+## [2026-07-16] Explorer briefing V2 — Phase 5b (cartes « Séries » et « Moments forts », items 8/9)
+
+**Statut** : Complété (Phase 5b du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items
+5b-a → 5b-d). Worktree isolé `feat/explorer-briefing-v2`. NON committé (le superviseur commite).
+
+**Décision technique principale** : deux modules additifs calculés côté BACKEND sur TOUT le
+scope filtré (jamais depuis la frise `outcome_sequence` cappée à 60 — P-9) : séries (meilleure
+série de victoires / pire série de défaites) et moments forts (compteurs `DominanceFlag` 1..5).
+Domain : `ExplorerBriefingStreaks` + `ExplorerBriefingDominance` (int `omitempty`), champs
+`Streaks`/`Dominance` sur `ExplorerBriefing`. Service : `buildBriefingStreaks`/`longestOutcomeRun`
+/`buildBriefingDominance` extraits dans un nouveau fichier `_briefing_streaks.go` (le fichier
+principal était à 486 L — extraction pour rester < 500, CLAUDE.md §5, cohérent avec _ranked/
+_context) ; câblés sous garde `!LowSample`. Règles P-9 respectées : rows non datées écartées, tri
+`StartTime`, série rompue par TOUT autre outcome (pas seulement défaite), nil si aucune row
+datée ; dominance nil si tous compteurs à zéro. Constantes nommées `analysis.DominanceFlag*`
+(pas de magic number).
+
+**Réutilisation d'existant (go-features)** :
+- Séries : AUCUN helper pur réutilisable — les 3 usages du motif max-run (`detectTilt`,
+  `sliceBestWinStreakCanonical`, `currentStreak`) sont couplés à leurs types/besoins. Logique
+  locale (Découverte-2 : centralisation possible mais hors périmètre, règle 7).
+- Libellés dominance : RÉUTILISÉS tels quels — `narrative.dominance.*` (manifest match_view)
+  + tokens `narrative-dominant/humiliation/remontada/debacle/contre-remontada`, déjà employés
+  par `ExplorerMatchesTable`. Mapping `DOMINANCE_ITEMS` (2ᵉ copie, dans la limite CLAUDE.md §6 ;
+  Découverte-3). ZÉRO clé i18n dominance créée.
+- Clés i18n neuves (FR/EN) : `streaks_title`, `streak_best`, `streak_worst`, `streak_wins`
+  (`{n} V`/`{n} W`, aligné `record_vdn`), `streak_losses`, `highlights_title`.
+
+**Résultats observés** : `StreaksCard` (lignes Meilleure/Pire série, segment zéro omis) et
+`DominanceCard` (pastilles colorées par token, catégorie zéro omise) rendues ssi contenu non
+vide (items 12/13). OpenAPI : 2 schémas ajoutés, `ExplorerBriefing` réconcilié (plus divergent),
+`generate-types` idempotent (md5 stable), drift 0 MISSING.
+
+**Gates** (racine du worktree) : `go test ./...` = exit 0 (0 FAIL) ; `make go-api-lint` = 0
+(+ `go vet` service/api = 0 ; golangci-lint `--new-from-rev=origin/main` service/domain = 0) ;
+`make check-types` = 0 ; `make test-web` = 257 fichiers / 2185 passés / 14 skipped / 0 échec ;
+`npm run lint` = 0 erreur (68 warnings baseline, 0 sur les fichiers touchés).
+
+**Conclusion / prochaine étape** : Phase 5b close. Reste Phase 6 (vérification navigateur
+`:8000` items 1-9, changelog EN+FR « What's new » v7.0, delivery-checklist, revue visuelle
+utilisateur avant tout merge). Commit laissé au superviseur.
+
+---
+
+## [2026-07-16] Explorer briefing V2 — Phase 5 (carte contexte solo/escouade, item 6)
+
+**Statut** : Complété (Phase 5 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items
+5a-5f). Worktree isolé `feat/explorer-briefing-v2`. NON committé (le superviseur commite).
+
+**Décision technique principale** : nouveau module « Solo vs Escouade » calculé côté BACKEND
+sur les raw rows du scope (le briefing agrège sur TOUT le scope filtré, pas sur la page de
+table paginée → le front ne peut pas reconstituer les deux sous-groupes depuis les lignes
+visibles — P-5). Partition sur `IsWithFriends`, agrégation via l'`aggregateRawStats` existant.
+Émis UNIQUEMENT si les deux sous-groupes atteignent `minContextSplitMatches = 10` (D-B, défaut
+retenu) ; ce seul test couvre aussi le scope mono-contexte (un sous-groupe vide est < seuil).
+P-7 : AUCUN gate capability (IsWithFriends dispo tous titres) — dégradation par omission.
+
+**Symétrie socle** : `ExplorerBriefingContextGroup` porte `Matches`/`WinRate`/`KDA`/`AvgPerf`
+comme `ExplorerBriefingScope` (unités ADR 0006 : WinRate ratio 0..1, KDA net agrégat, AvgPerf
+0..100). Le front rend par ligne : libellé · n matchs · WR (coloré `winRateColor`, tokens) · KDA.
+
+**Modularité (CLAUDE.md §5)** : le fichier service principal était à 481 L après l'extraction
+Phase 4 ; le module contexte est allé dans NOUVEAU `match_history_service_briefing_context.go`
+(56 L) plutôt que de pousser le principal vers 500 (le câblage = 1 ligne dans
+`buildExplorerBriefing`, sous le retour anticipé `!LowSample`).
+
+**i18n** : libellés « Solo »/« Escouade » RÉUTILISÉS depuis `explorer.filters.context_solo`/
+`context_squad` (déjà FR/EN, règle « vérifier l'existant ») ; seule clé neuve =
+`explorer.briefing.context_split_title` (FR « Solo vs Escouade » / EN « Solo vs Squad »).
+
+**OpenAPI** : `ExplorerBriefingContextSplit` + `ExplorerBriefingContextGroup` émis exact via
+`OPENAPI_EMIT_OUT` (préfixe filtré) puis appendus ; champ `context_split` ($ref) ajouté à
+`ExplorerBriefing`. `generate-types` régénéré (+15 L generated.ts), `types.ts` : 2 exports
+ajoutés. `TestOpenAPISchemaDrift` : 0 MISSING, `ExplorerBriefing` réconcilié (plus divergent).
+
+**Résultats observés** :
+- `explorer_briefing.go` : `ExplorerBriefingContextSplit`/`…ContextGroup` + champ `ContextSplit`.
+- Service : `buildBriefingContextSplit`/`briefingContextGroup` (fichier dédié) ; câblage.
+- 4 tests service neufs (pertinent, mono-contexte, sous seuil, low_sample) + helper `briefingCtxRaw`.
+- Front : `ContextSplitCard`/`ContextSplitRow` dans `ExplorerBriefingModules` (early-return
+  étendu) ; 2 tests de rendu présent/absent dans `ExplorerBriefingStrip.test.tsx`.
+
+**Gates** (racine worktree) : `go test ./...` = exit 0 (0 FAIL) ; `make go-api-lint` = 0
+(+ vet service/api = 0 ; golangci-lint --new-from-rev service/domain = 0 issues) ;
+`make generate-types` idempotent (re-run diff stable 15 L) ; `make check-types` = 0 ;
+`make test-web` = 257 fichiers / 2180 passés / 14 skipped / 0 échec ; `npm run lint` = 0 erreur
+(68 warnings baseline).
+
+**Découvertes** : aucune hors périmètre. Constat §2 re-vérifié sur pièces avant édition (Phase 4
+avait bougé domain/service/composants comme annoncé — cibles conformes).
+
+**Conclusion / prochaine étape** : Phase 5 close, tout vert. Reste Phases 5b (Séries/Moments
+forts, items 8/9) et 6 (vérif navigateur + changelog). NON committé — attente superviseur.
+
+---
+
+## [2026-07-16] Explorer briefing V2 — Phase 4 (classement en grades PAR TYPE, item 4)
+
+**Statut** : Complété (Phase 4 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items
+4a-4g). Worktree isolé `feat/explorer-briefing-v2`. NON committé (le superviseur commite).
+
+**Décision technique principale** : le module ex-« Pronostic »/« attendu vs réel » devient la
+carte « Classement » qui n'affiche QUE la progression de paliers PAR TYPE de rating (CSR/LUSR
+séparés, jamais fusionnés — P-3). Source = buckets par `RatingType` DÉJÀ accumulés dans
+`analysis.ComputeKPIStats`, exposés via champ additif `domain.KPIStats.RankDeltas []RankDelta`
+(ordre déterministe : Count desc, tie-break CSR ; le `RankDelta` majoritaire singulier reste,
+consommateurs intacts). Le service scanne les rows du scope restreintes au type pour extraire
+premier/dernier `SkillTierLabel` (déjà résolu FR en base) + flags placement.
+
+**Pièges tranchés sur pièces** :
+- CASSE : raw rows portent `SkillRatingType` « CSR »/« LUSR » (majuscule) ; `RankDelta.Kind`
+  et `canonical.RatingType` valent « csr »/« lusr » (minuscule) → filtrage par
+  `strings.EqualFold`, jamais `==`.
+- D-D placement BILINGUE : backend émet `TierStartIsPlacement bool` +
+  `TierEndPlacementRemaining *int` (dérivés de `PlacementDone/PlacementTotal`, remaining =
+  Total−Done clampé ≥ 0) ; le front rend des clés i18n `placement`/`placement_remaining`
+  (ICU plural), JAMAIS de parsing du libellé FR.
+- Début en placement → « Placement » sans compteur ; fin en placement → « Placement (N
+  restants) » avec compteur (D-D tranché).
+
+**Sort des symboles (0 code mort — CLAUDE.md §7)** :
+- `ExpectedWinRate`/`ActualWinRate`/`MatchesWithPrediction`/`DeltaSum`/`RatingKind` : TOUS
+  retirés du DTO `ExplorerBriefingRanked` (état final = `Kinds []ExplorerBriefingRankedKind`
+  seul). 4a et 4g fusionnés.
+- `analysis.ExpectedVsActual` : plus AUCUN consommateur après retrait (grep) →
+  `expected_win.go` + `expected_win_test.go` SUPPRIMÉS.
+- `MatchHistoryRawRow.SkillExpectedWinProb` + lecture repo Q5 (`match_history_repo.go`) :
+  CONSERVÉS — lecteurs restants confirmés sur pièces (`session_page_service.go:478`,
+  `match_history_service_enrich.go:185`, `stats_canonical.go:164`).
+
+**Modularité** : la réécriture faisait repasser `match_history_service_briefing.go` à 600 L
+(> seuil 500 CLAUDE.md §5). Plutôt qu'accroître la dette, extraction du module classé dans
+NOUVEAU `match_history_service_briefing_ranked.go` (138 L) ; fichier principal ramené à 480 L.
+
+**Résultats observés** :
+- `explorer_briefing.go` : `ExplorerBriefingRankedKind` + `ExplorerBriefingRanked.Kinds`.
+- `squad_v2.go` : `KPIStats.RankDeltas` ; `kpi_stats.go` : peuplement ordonné + 2 tests.
+- Service : `buildBriefingRanked`/`buildRankedKind`/helpers dans le fichier extrait ;
+  `buildExplorerBriefing` threade `ctx` (caller `match_history_service.go` passe `ctx`).
+- 7 tests service ranked neufs (mono-type, mixte non fusionné, secondaire sous seuil, sans
+  palier, début/fin placement, RankDeltas vide → nil).
+- OpenAPI : `openapi.yaml` MAJ (bloc `ExplorerBriefingRanked` remplacé + `…RankedKind` ajouté,
+  YAML émis exact) ; `generate-types` régénéré ; `types.ts` export ajouté ; drift test vert.
+- Front : `RankedCard` réécrit (une ligne `RankedKindRow` par `kind`) ; i18n `ranked_per_match`/
+  `placement`/`placement_remaining` FR+EN ; clés `ranked_delta`/`ranked_expected*` supprimées.
+
+**Gates** (racine worktree) : `go test ./...` = 0 ; `go vet` domain/analysis/service/api = 0 ;
+`golangci-lint --new-from-rev=origin/main` (service/analysis/domain) = 0 issues ;
+`make generate-types` idempotent ; `make check-types` = 0 ; `make test-web` = 257 fichiers /
+2178 passés / 14 skipped / 0 échec ; `npm run lint` = 0 erreur (68 warnings baseline) ; greps
+de clôture = 0 (delta_sum/ranked_expected/expected_win_rate dans features/explorer + toml).
+
+**Conclusion / prochaine étape** : Phase 4 close, tout vert. Reprendre à la Phase 5 (carte
+contexte solo/escouade, item 6). NON committé — attente superviseur.
+
+---
+
+## [2026-07-16] Explorer briefing V2 — Phase 3 (unification des cartes-sections, item 7)
+
+**Statut** : Complété (Phase 3 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items
+3a-3d). Worktree isolé `feat/explorer-briefing-v2`. NON committé (le superviseur commite).
+
+**Décision technique principale** : introduire un wrapper partagé `BriefingSectionCard`
+(`features/explorer/BriefingSectionCard.tsx`) dont l'en-tête réutilise la className
+BYTE-IDENTIQUE de l'en-tête `ChartCard` (`flex-none border-b border-border px-3 py-2 text-sm
+font-medium`) — la référence esthétique étant le module « Tendance » (rendu via `ChartCard`).
+Corps en `p-3` (miroir du corps `ChartCard`). Slot titre `ReactNode` (compatible InfoTooltip
+futur, aucun tooltip posé — D-A). Les deux cartes-sections existantes (`DimensionCard`,
+`RankedCard`) migrent de `KpiCard` + titre `text-3xs uppercase …` vers ce wrapper : le titre
+de carte devient l'en-tête bordurée. L'import `KpiCard` du fichier est retiré (plus aucun
+usage → 0 code mort).
+
+**Périmètre tenu (anti-débordement)** : seuls les CHROMES de carte et les TITRES de carte
+sont migrés. Les sous-labels internes du corps `RankedCard` (`ranked_delta`,
+`ranked_expected_vs_actual`, bloc attendu/réel) sont laissés intacts — leur refonte relève de
+la Phase 4 (D-A : suppression du bloc attendu/réel + classement par type). Micro-tuiles socle
+(KpiCard) NON touchées (P-6). Garde-rail anti-divergence (CLAUDE.md §6 « ≤ 2 copies »)
+documenté en tête de `BriefingSectionCard.tsx` : l'en-tête bordurée du briefing existe en 2
+endroits canoniques (`ChartCard` + `BriefingSectionCard`) ; toute 3ᵉ carte-section (Phases
+4/5/5b) DOIT passer par le wrapper.
+
+**Résultats observés** :
+- NOUVEAU `features/explorer/BriefingSectionCard.tsx` (wrapper + JSDoc garde-rail).
+- `ExplorerBriefingModules.tsx` : import `KpiCard` → `BriefingSectionCard` ; `DimensionCard`
+  et `RankedCard` migrés (titres `text-3xs uppercase` retirés, corps préservés).
+- Tests `ExplorerBriefingStrip.test.tsx` inchangés (assertions sur le texte, pas la structure
+  de carte) → toujours verts.
+
+**Gates** (depuis la racine du worktree) : `make check-types` = 0 ; `make test-web` = 257
+fichiers / 2178 passés / 14 skipped / 0 échec ; `npm run lint` = 0 erreur (68 warnings
+baseline, 0 sur `BriefingSectionCard.tsx` / `ExplorerBriefingModules.tsx`).
+
+**Conclusion / prochaine étape** : Phase 3 CLÔTURÉE, tout vert. Aucune Découverte hors
+périmètre. Le wrapper est prêt à être réutilisé par les cartes des Phases 4 (classement par
+type), 5 (solo/escouade) et 5b (séries, moments forts). NON committé — remise au superviseur.
+
+---
+
+## [2026-07-16] Explorer briefing V2 — Phase 2 (delta « vs habituel » dégénéré, item 1)
+
+**Statut** : Complété (Phase 2 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`, items
+2a-2e). Worktree isolé `feat/explorer-briefing-v2`. NON committé (le superviseur commite).
+
+**Décision technique principale** : le « ±0 pts » systématique en plein historique est
+mathématiquement justifié (scope == baseline ⟹ deltas nuls), pas un bug → on MASQUE le
+fragment plutôt que de changer le formatage. Frontend : helper PUR
+`isFullHistoryScope(scopeMatches, baselineMatches)` extrait dans `ExplorerBriefing.logic.ts`
+(mirroir exact de P-1 : `scopeMatches != null && baselineMatches === scopeMatches` ; faux
+sans baseline). Le Strip dérive `fullHistory` une fois, gate les 3 fragments socle
+(Bilan/FDA/Perf) sur `!fullHistory`, et passe `hideDelta=fullHistory` aux modules. Prop
+`hideDelta` threadée `ExplorerBriefingModules` → `DimensionCard` → `DimensionRow` ; colonne
+delta rendue sous `{!hideDelta && …}`. `formatSignedPoints`/`formatSignedFixed` NON touchés
+(le masquage dépend du flag, pas de la valeur — un delta réellement nul SOUS filtre reste
+affiché « ±0 »).
+
+Backend (P-8, service SEUL) : le tri de `breakdown.CompareByKey` dégénère en tri par clé
+(GUID de map, pseudo-aléatoire) quand tous les deltas valent 0. Booléen nommé
+`fullHistory := len(scope) == len(all)` dans `buildBriefingDimensions`, passé en param à
+`buildDimension` ; re-tri `sort.SliceStable` par `Session.WinRate` desc + tie-break `Label`
+AVANT `selectTopFlop`, uniquement en plein historique. `breakdown.CompareByKey` (analysis
+partagé) inchangé. Sous filtre : tri par delta V1 strictement conservé.
+
+**Résultats observés** :
+- Frontend : `ExplorerBriefingStrip.tsx` (import + `fullHistory` + 3 gates socle + prop
+  passée), `ExplorerBriefingModules.tsx` (`hideDelta` threadé sur 2 niveaux, colonne delta
+  conditionnelle), `ExplorerBriefing.logic.ts` (+ `isFullHistoryScope`). Tests :
+  `ExplorerBriefing.logic.test.ts` (+ describe 4 cas), `ExplorerBriefingStrip.test.tsx`
+  (NOUVEAU, 2 états ; deltas posés NON NULS en plein historique pour prouver le masquage par
+  flag).
+- Backend : `match_history_service_briefing.go` (`buildBriefingDimensions`/`buildDimension`
+  + re-tri), `match_history_service_briefing_test.go` (+ `TestBuildDimension_FullHistory
+  SortsByWinRate` MapIDs a1<m1<z1 ordre inverse du WR ; + `TestBuildDimension_FilteredSorts
+  ByDelta` scope⊊all, WR-desc ≠ delta-desc).
+
+**Piège rencontré (corrigé)** : premières exécutions de `make check-types`/`make test-web`
+lancées depuis la racine du dépôt PRINCIPAL (`…/LevelUp-go-migration`) au lieu du worktree
+(`…/.claude/worktrees/explorer-briefing-v2`) → testaient le code NON modifié (255 fichiers,
+tests neufs absents/introuvables). Tous les gates re-exécutés depuis la racine du worktree.
+Leçon : toujours ancrer les commandes au worktree pour un chantier en worktree isolé.
+
+**Gates** (depuis la racine du worktree) : `make check-types` = 0 ; `make test-web` = 257
+fichiers / 2178 passés / 14 skipped / 0 échec ; `npm run lint` = 0 erreur (68 warnings
+baseline, 0 sur fichiers touchés) ; `go test ./...` = exit 0, 111 packages ok, 0 FAIL ;
+`make go-api-lint` = exit 0 (+ `go vet ./internal/service/...` = 0).
+
+**Conclusion / prochaine étape** : Phase 2 CLÔTURÉE, tout vert. Aucune Découverte hors
+périmètre. Prochaine phase = Phase 3 (unification de mise en forme des cartes-sections,
+wrapper `BriefingSectionCard`, item 7). NON committé — remise au superviseur.
+
+---
+
+## [2026-07-16] Explorer briefing V2 — Phases 0 + 1 (branche feat/explorer-briefing-v2)
+
+**Statut** : Complété (Phases 0 et 1 du plan `.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md`).
+Worktree isolé `feat/explorer-briefing-v2`. Périmètre limité aux Phases 0-1 ; NON committé
+(le superviseur commite).
+
+**Phase 0 (constat re-vérifié sur pièces)** : tous les fichier:ligne frontend du §2 EXACTS
+(formatPeriod ExplorerBriefingStrip `:41-55` sans année ; explorer.toml dim_playlist
+`:899-901` « Par playlist », ranked_title `:911-913` « Pronostic »/« Prognosis » ;
+logic.ts `formatSignedFixed:17`/`formatSignedPoints:29` ; ExplorerBriefingModules
+DimensionRow `:94-130`, RankedCard `:159-204`). Seule divergence : `ExplorerBriefingRanked`
+struct à `explorer_briefing.go:121` (§2 citait `:120`, décalage d'1 ligne, champs
+identiques — consigné §6 Découverte-1). **Vérification clé** : les commits « sweep recovery
+player-DB » de la base (021f24a7b, af6ccdd6f, 8750dfcc8) N'ONT touché AUCUN fichier
+explorer/briefing (service briefing + domain = Lot D 01f71104b ; kpi_stats = chantier H5) →
+aucun impact sur l'explorer, CONFIRMÉ. Décisions AWAIT-USER : **D-B = défaut 10**,
+**D-C = défaut** (« CSR · Bronze I → Platine VI · −1.4 pt/match », titre « Classement ») —
+s'appliquent par défaut (transmis par le superviseur).
+
+**Phase 1 (terminologie, renommage, année — frontend-only)** :
+- 1a : `dim_playlist` FR « Par playlist » → « Par sélection » (EN « By playlist » inchangé).
+- 1b : `ranked_title` FR « Pronostic »/EN « Prognosis » → « Classement »/« Ranking ». Pas de
+  tooltip. Clés `ranked_expected*`/`ranked_delta` laissées pour la Phase 4 (typecheck).
+- 1c : nouveau helper canonique `formatDateRange(start, end, locale, fallback?)` dans
+  `lib/formatters/date.ts` (`Intl.DateTimeFormat.prototype.formatRange`, opts
+  jour/mois-court/année) — factorise mois/année sur un intervalle (« 3–12 mars 2025 »), date
+  simple si end absent/égal/invalide, fallback « — » si start invalide. Ré-exporté depuis
+  `formatters/index.ts` ; en-tête de doc mise à jour ; 4 tests dans `formatters.test.ts`.
+  `ExplorerBriefingStrip.formatPeriod` délègue au helper (retrait de l'Intl local sans année).
+- 1d : garde-rail `features/explorer/explorerBriefingTerminology.guard.test.ts` (test node,
+  scanne `explorer.toml` + composants `*briefing*`, hors tests) interdisant « Par playlist » /
+  « Pronostic » / « Prognosis ».
+
+**Décision d'exécution consignée** : `formatDateRange` accepte une locale BCP-47 (comme
+`formatDate`) ; `formatPeriod` continue de mapper 'fr'/'en' → 'fr-FR'/'en-US'. Point décimal
+FR/EN natif de `formatRange` accepté (native = source, cohérent avec les autres helpers).
+
+**Gates (tous verts, worktree, 2026-07-16)** : `build_i18n_manifests.mjs` OK (seul
+`explorer.ts` régénéré, 2 valeurs, 0 clé touchée) ; `make check-types` = 0 ; `make test-web`
+= 256 fichiers / 2172 passés / 14 skipped / 0 fail (tests 1c + 1d inclus) ; `npm run lint` =
+0 erreur (68 warnings baseline pré-existants, aucun sur les fichiers touchés) ; greps de
+clôture = 0 occurrence des littéraux retirés (hors le garde-rail).
+
+**Fichiers modifiés** : `apps/web/src/lib/i18n/manifests/explorer.toml`,
+`apps/web/src/lib/i18n/generated/explorer.ts` (régénéré),
+`apps/web/src/lib/formatters/date.ts`, `apps/web/src/lib/formatters/index.ts`,
+`apps/web/src/lib/formatters/formatters.test.ts`,
+`apps/web/src/features/explorer/ExplorerBriefingStrip.tsx`,
+`apps/web/src/features/explorer/explorerBriefingTerminology.guard.test.ts` (nouveau),
+`.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md` (cases Phases 0-1 statuées + §6 Découverte-1).
+
+**Prochaine étape** : Phase 2 (delta « vs habituel » dégénéré en plein historique, front +
+service, item 1). Aucun fix hors périmètre effectué. Commit laissé au superviseur.
+
+---
+
 ## [2026-07-16] Révision du PLAN_DIAG_APPARENCE_ADMIN — intégration des retours « Rapports page Admin »
 
 **Statut** : Complété (docs-only, aucune ligne de code). Demande utilisateur : lire la

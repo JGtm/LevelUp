@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest'
 
 import {
   formatDate,
+  formatDateRange,
   formatDateShort,
   formatDateTime,
   formatNumber,
@@ -43,6 +44,39 @@ describe('formatDate', () => {
 
   it('respecte un fallback custom', () => {
     expect(formatDate(null, 'fr-FR', undefined, 'N/A')).toBe('N/A')
+  })
+})
+
+describe('formatDateRange', () => {
+  it('factorise mois/année quand la période est dans le même mois (année incluse)', () => {
+    const r = formatDateRange('2025-03-03', '2025-03-12', 'fr-FR')
+    expect(r).toMatch(/mars/i)
+    expect(r).toMatch(/2025/)
+    expect(r).toMatch(/3/)
+    expect(r).toMatch(/12/)
+    // Année factorisée : une seule occurrence de "2025".
+    expect(r.match(/2025/g)?.length).toBe(1)
+  })
+
+  it('affiche les deux années quand elles diffèrent', () => {
+    const r = formatDateRange('2024-03-03', '2025-01-12', 'fr-FR')
+    expect(r).toMatch(/2024/)
+    expect(r).toMatch(/2025/)
+  })
+
+  it('date simple si end absent, égal à start, ou invalide', () => {
+    const single = formatDateRange('2025-03-03', null, 'fr-FR')
+    expect(single).toMatch(/mars/i)
+    expect(single).toMatch(/2025/)
+    expect(formatDateRange('2025-03-03', '2025-03-03', 'fr-FR')).toBe(single)
+    expect(formatDateRange('2025-03-03', 'not-a-date', 'fr-FR')).toBe(single)
+  })
+
+  it('renvoie le fallback sur start invalide', () => {
+    expect(formatDateRange(null, '2025-03-12', 'fr-FR')).toBe('—')
+    expect(formatDateRange('', null, 'fr-FR')).toBe('—')
+    expect(formatDateRange('not-a-date', null, 'fr-FR')).toBe('—')
+    expect(formatDateRange(null, null, 'fr-FR', 'N/A')).toBe('N/A')
   })
 })
 
