@@ -1,3 +1,23 @@
+## [2026-07-17] CLÔTURE chantier correctifs revue — Z1-Z4 (branche fix/revue-2026-07-correctifs)
+
+**Statut** : Complété (agent de clôture, worktree `LevelUp-wt-revue-correctifs`). Les 6 lots d'implémentation A→F sont committés (`b497befc1`→`4083ccadc`) ; ce commit solde la clôture (Z1-Z4). Z5 (merge main + push = deploy prod) = **en attente superviseur**, NON exécuté ici.
+
+**Périmètre** : valider le chantier ENTIER (27 items A1→F13 + Z) et le déclarer livrable. Bilan : 27 items d'implémentation statués (`[x]`, C2 `[~]`) + gates de clôture Z1-Z4 verts.
+
+**Décision technique principale** : Z1 (suite intégration complète `go test -tags=integration -count=1 -timeout=300s -p 1 ./...`) exécutée en 7 PAQUETS ANCRÉS couvrant tout `./...` sans trou (contrainte timeout 10 min/commande + règle « un seul go à la fois » anti-corruption cache Windows). Découpage : `./cmd/...` | internal core (analysis..domain) | `./internal/games/...` | internal mid (legacymatch..prestige) | `./internal/platform/...` | internal heavy (progression..worldenrich, dont sync) | `./contracttest ./pkg ./scripts ./tests`. Les 37 sous-répertoires `internal/` couverts (11+1+14+1+10). Vérification de couverture : union des 7 patterns == `./...` par construction.
+
+**Résultats observés (gates de clôture, tous verts)** :
+- **Z1** : les 7 groupes EXIT=0, **zéro `--- FAIL:`**, **zéro paquet FAIL**. 242 exécutions de paquets (go list base = 241 ; +1 paquet test-only compilé seulement sous `-tags=integration`).
+- **Z2** : `check_test_baseline.sh tests` EXIT=0 — **baseline 8828 tests tous présents** (courant 10074), **0 manquant**. Env : CGO_ENABLED=1 (géré par le script, gcc msys64) + LEVELUP_DEMO_MODE/MULTI_TITLE_API_ENABLED/PRESTIGE_ENABLED=true.
+- **Z3** : `make check-types` (tsc -b, cache `.tsbuildinfo` purgé avant → pas de faux-vert incrémental) EXIT=0 ; `make test-web` (vitest run, hors sandbox) EXIT=0 — **267 fichiers, 2277 passés / 14 skippés, 0 échec**.
+- **Z4** : `go vet ./...` = 0 ; `golangci-lint --new-from-merge-base=main` = **0 issue** (warning nolint gosec/plr0913 = résidus PRÉEXISTANTS hors diff chantier, vérifié) ; aucun `fmt.Println`/`log.Printf`/`TODO`/`FIXME`/emoji introduit ; `filepath.Join`+"data" = 1 commentaire (A13) + 1 fixture temp de test (D2), aucun bypass PathResolver prod ; `routeTree.gen.ts` non édité ; diffstat 136 fichiers / +5479 −747 (vs 465eae847, inclut le commit doc du plan).
+
+**Découvertes consignées (nouvelles à la clôture, section Découvertes du plan)** : (1) 6 fichiers Go touchés DÉJÀ > 500 L avant le chantier (dette gelée) ont grossi sans franchir le seuil neuf (funlen/gocyclo lint vert) ; (2) warning golangci-lint sur des `//nolint:gosec`/`//nolint:plr0913` PRÉEXISTANTS (hors diff). Les 6 découvertes des lots A-F/C/D restent consignées.
+
+**Conclusion / prochaine étape** : chantier correctifs revue LIVRABLE — **verdict GO livraison**. Reste au superviseur : Z5 = merge dans main + prévenir l'utilisateur AVANT push (push main = deploy prod auto) + revue visuelle utilisateur au merge. Vérification CI de branche = responsabilité post-push (branche non poussée par design).
+
+---
+
 ## [2026-07-17] LOT F — correctifs revue : duplications, dette, robustesse (F1-F13, branche fix/revue-2026-07-correctifs)
 
 **Statut** : Complété (worktree `LevelUp-wt-revue-correctifs`, enchaîné sur lot A `b497befc1` / B `033ba5f4c` / C `018c82ea1` / D `55216fda6` / E `4e6eea0f0` ; NON mergé — merge + push superviseur, push main = deploy prod). Dernier lot d'implémentation du plan.

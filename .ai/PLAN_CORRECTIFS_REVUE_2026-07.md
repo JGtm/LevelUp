@@ -498,14 +498,37 @@ seeder) ; vitest lib/features migrées ; lint ; thought_log ; commit.
 
 ## Clôture chantier
 
-- [ ] Z1 — suite complète : `go test -tags=integration -p 1 ./...` (apps/go-api).
-- [ ] Z2 — `scripts/check_test_baseline.sh tests` (baseline intacte).
-- [ ] Z3 — `make check-types` + `make test-web` complets.
-- [ ] Z4 — skill `delivery-checklist` ; statuer TOUS les items du plan ;
-      section Découvertes soldée (traitée ou consignée) ; entrée thought_log de
-      clôture.
-- [ ] Z5 — superviseur : merge dans main + prévenir l'utilisateur AVANT push
-      (push main = deploy prod) ; revue visuelle utilisateur au merge.
+- [x] Z1 — suite complète : `go test -tags=integration -count=1 -timeout=300s
+      -p 1 ./...` (apps/go-api). Exécutée en 7 paquets ANCRÉS couvrant TOUT
+      `./...` sans trou (découpage : `./cmd/...` | internal core
+      analysis..domain | `./internal/games/...` | internal mid
+      legacymatch..prestige | `./internal/platform/...` | internal heavy
+      progression..worldenrich dont sync | `./contracttest ./pkg ./scripts
+      ./tests`). Les 37 sous-répertoires `internal/` couverts (11+1+14+1+10).
+      Résultat : les 7 EXIT=0, **zéro `--- FAIL:`**, **zéro paquet FAIL** ;
+      242 exécutions de paquets (base go list = 241, +1 paquet test-only
+      compilé seulement sous `-tags=integration`). Un seul `go` à la fois
+      (anti-corruption cache Windows).
+- [x] Z2 — `scripts/check_test_baseline.sh tests` (env CGO_ENABLED=1 géré par le
+      script + LEVELUP_DEMO_MODE/MULTI_TITLE_API_ENABLED/PRESTIGE_ENABLED=true).
+      EXIT=0 : **baseline 8828 tests tous présents** dans le run courant
+      (courant 10074), **0 manquant**. « Tous les tests baseline présents ».
+- [x] Z3 — `make check-types` (tsc -b, cache `.tsbuildinfo` purgé avant → pas de
+      faux-vert incrémental) EXIT=0 ; `make test-web` (vitest run, hors sandbox)
+      EXIT=0 : **267 fichiers passés, 2277 passés / 14 skippés, 0 échec**.
+- [x] Z4 — delivery-checklist déroulée point par point (verdicts dans le commit
+      de clôture / rapport) : `go vet ./...` = 0 ; `golangci-lint
+      --new-from-merge-base=main` = **0 issue** (warning nolint gosec/plr0913 =
+      résidus PRÉEXISTANTS, hors diff chantier — vérifié) ; aucun
+      `fmt.Println`/`log.Printf`/`TODO`/`FIXME`/emoji introduit ; `filepath.Join`
+      + "data" = 1 commentaire (A13) + 1 fixture temp de test (D2), aucun bypass
+      PathResolver en prod ; `routeTree.gen.ts` non édité. TOUS les items du plan
+      A1→F13 statués (`[x]`, C2 `[~]`) ; Découvertes consignées. Entrée
+      thought_log de clôture ajoutée.
+- [~] Z5 — **NON exécuté (décision superviseur/utilisateur)** : merge dans main +
+      push = deploy prod auto → prévenir l'utilisateur AVANT. Statut : **en
+      attente superviseur**. Ne PAS merger, ne PAS pousser depuis l'agent de
+      clôture. Revue visuelle utilisateur au merge.
 
 ## Protocole de reprise de session
 
@@ -551,3 +574,17 @@ seeder) ; vitest lib/features migrées ; lint ; thought_log ; commit.
   la dernière ligne. Le plan D3 liste explicitement 3 tables (detection_events,
   detection_status_events, cron_runs) — `data_health_runs` NON incluse, non traitée.
   À ajouter à `monitoringRetentionSpecs` si un chantier rétention l'exige.
+- [CLÔTURE / Z4] 6 fichiers Go touchés par le chantier étaient DÉJÀ > 500 L avant
+  (dette gelée baseline) et ont légèrement grossi du fait des fixes/refactors, sans
+  qu'AUCUN ne franchisse le seuil neuf : engagement_player_service.go 572→599,
+  world_leaderboard_cron.go 519→563, sync/schema.go 505→548, engagement_score_repo.go
+  547→558, career_live_service.go 526→540, multi_user_token_store.go 537→553. Le ratchet
+  RÉELLEMENT appliqué (golangci-lint funlen/gocyclo au niveau fonction) reste VERT (0 new
+  issue) ; le seuil fichier 500 L est une directive CLAUDE.md non lint-gatée ici. Non
+  traité (hors périmètre revue). À solder par extraction si un chantier « god-files » est
+  décidé.
+- [CLÔTURE / Z4] Warning golangci-lint « unknown linters in //nolint directives:
+  gosec, plr0913 » — directives `//nolint:gosec`/`//nolint:plr0913` PRÉEXISTANTES
+  (résidu d'un gosec retiré de la config ; `plr0913` = code pylint erroné). Vérifié
+  ABSENTES du diff chantier (`git diff 465eae847..HEAD` = 0 ajout). N'échoue pas le lint
+  (EXIT=0, 0 issue). À nettoyer si un chantier « purge nolint morts » est décidé.
