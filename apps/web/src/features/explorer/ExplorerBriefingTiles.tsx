@@ -2,17 +2,18 @@
  * ExplorerBriefingTiles — tuiles KPI composées du socle du briefing Explorer.
  *
  * Tuiles réutilisant BriefingTile : Taux de victoire (hero — OutcomeBar + V-D-N +
- * tooltip des 4 issues, DEC-TILES), Durée totale (DEC-DURATION), Pic FDA / Pic rang /
- * Pic MMR (DEC-PEAK) et Meilleure série (bicolore). Le Classement a quitté le socle
- * pour la 4e colonne (ExplorerRankedBlock, V4 Phase 4). Tokens sémantiques uniquement
- * (aucune couleur hex) ; les valeurs de sentiment sont colorées via les helpers
- * d'accessibilité.
+ * tooltip des 4 issues, DEC-TILES), Durée totale (DEC-DURATION), Pic rang / Pic MMR
+ * (DEC-PEAK) et Séries marquantes (bicolore). Expose aussi MinMaxTriptych (DP-1) :
+ * l'affichage « min · moyenne · max » des tuiles FDA & Perf (rendues inline dans le
+ * Strip). Le Pic FDA autonome a été fusionné dans le triptyque FDA (max = peak_kda).
+ * Le Classement a quitté le socle pour la rangée « Par… » (ExplorerRankedBlock).
+ * Chaque tuile porte un accent (DP-6 ; neutre = outcome-draw). Tokens sémantiques
+ * uniquement (aucune couleur hex) ; les sentiments colorés via les helpers d'accès.
  */
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
-import { kdaNetColor } from '@/lib/colors/outcomePalette'
 import { formatDurationHM, formatPercentInt } from '@/lib/formatters'
 import { useOutcomeLabel } from '@/lib/i18n/fieldMappings'
 import type {
@@ -27,15 +28,49 @@ import { deltaToken, formatSignedPoints } from './ExplorerBriefing.logic'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
 
-// Tuile Meilleure série (DP-3) : valeur bicolore « {best} V / {worst} D » (tokens
+// MinMaxTriptych (DP-1/DEC-TRIPTYCH) : affichage compact « min · moyenne · max ». La
+// moyenne au centre en grand (hérite text-xl du conteneur BriefingTile), colorée via
+// midColor ; les bornes min/max petites et discrètes (muted, poids normal). Chaque
+// borne nulle est OMISE (pas de « — » parasite) ; moyenne nulle → « — ». Deux
+// consommateurs (tuiles FDA & Perf du Strip) → un seul composant (CLAUDE.md §6).
+export function MinMaxTriptych({
+  min,
+  mid,
+  max,
+  midColor,
+  format,
+}: {
+  min: number | null | undefined
+  mid: number | null | undefined
+  max: number | null | undefined
+  midColor?: string
+  format: (v: number) => string
+}) {
+  return (
+    <span className="inline-flex items-baseline justify-center gap-1.5">
+      {min != null && (
+        <span className="text-2xs font-normal tabular-nums text-muted-foreground">{format(min)}</span>
+      )}
+      <span style={midColor != null ? { color: midColor } : undefined}>
+        {mid != null ? format(mid) : '—'}
+      </span>
+      {max != null && (
+        <span className="text-2xs font-normal tabular-nums text-muted-foreground">{format(max)}</span>
+      )}
+    </span>
+  )
+}
+
+// Tuile Séries marquantes (DP-9) : valeur bicolore « {best} V / {worst} D » (tokens
 // outcome-win/outcome-loss). Segment à zéro omis ; la tuile elle-même est omise
-// par l'appelant (Strip) quand les deux segments sont à zéro.
+// par l'appelant (Strip) quand les deux segments sont à zéro. Accent neutre (DP-6).
 export function StreaksTile({ streaks, t }: { streaks: ExplorerBriefingStreaks; t: T }) {
   const best = streaks.best_win_streak ?? 0
   const worst = streaks.worst_loss_streak ?? 0
   return (
     <BriefingTile
       label={t('explorer.briefing.streaks_title')}
+      accent="outcome-draw"
       info={<InfoTooltip content={t('explorer.briefing.tip_streaks')} iconClass="w-3.5 h-3.5" />}
       value={
         <span className="inline-flex items-baseline gap-1">
@@ -152,27 +187,15 @@ export function WinRateTile({
 }
 
 // ─── Tuile Durée totale — DEC-DURATION ────────────────────────────────────────
-// Somme serveur des durées du scope, format « h min » (jamais MM:SS). Descriptive.
+// Somme serveur des durées du scope, format « h min » (jamais MM:SS). Descriptive,
+// accent neutre (DP-6).
 export function DurationTile({ seconds, t }: { seconds: number | null | undefined; t: T }) {
   return (
     <BriefingTile
       label={t('explorer.briefing.duration_total_label')}
+      accent="outcome-draw"
       info={<InfoTooltip content={t('explorer.briefing.tip_duration')} iconClass="w-3.5 h-3.5" />}
       value={formatDurationHM(seconds)}
-    />
-  )
-}
-
-// ─── Tuile Pic FDA — DEC-PEAK ─────────────────────────────────────────────────
-// Meilleur FDA d'un seul match du scope, coloré comme la tuile FDA (kdaNetColor).
-export function PeakKdaTile({ value, t }: { value: number | null | undefined; t: T }) {
-  return (
-    <BriefingTile
-      label={t('explorer.briefing.peak_fda_label')}
-      info={<InfoTooltip content={t('explorer.briefing.tip_peak_fda')} iconClass="w-3.5 h-3.5" />}
-      value={
-        value != null ? <span style={{ color: kdaNetColor(value) }}>{value.toFixed(2)}</span> : '—'
-      }
     />
   )
 }
@@ -187,6 +210,7 @@ export function PeakRankTile({ ranks, t }: { ranks: ExplorerBriefingPeakRank[]; 
   return (
     <BriefingTile
       label={t('explorer.briefing.peak_rank_label')}
+      accent="outcome-draw"
       info={<InfoTooltip content={t('explorer.briefing.tip_peak_rank')} iconClass="w-3.5 h-3.5" />}
       value={
         <span className="text-sm">
@@ -211,6 +235,7 @@ export function PeakMmrTile({ value, t }: { value: number; t: T }) {
   return (
     <BriefingTile
       label={t('explorer.briefing.peak_mmr_label')}
+      accent="outcome-draw"
       info={<InfoTooltip content={t('explorer.briefing.tip_peak_mmr')} iconClass="w-3.5 h-3.5" />}
       value={String(Math.round(value))}
     />

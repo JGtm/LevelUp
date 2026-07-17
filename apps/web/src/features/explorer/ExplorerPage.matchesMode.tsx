@@ -307,7 +307,9 @@ interface ResultsBlockProps {
   matchesFilterSpec?: MatchFilterSpec
 }
 
-function ExplorerMatchesResultsBlock({
+// Exporté pour tester la mise en page DP-7 (compteur « N matchs trouvés » retiré du
+// haut, export CSV déplacé SOUS le tableau) sans monter toute la barre de filtres.
+export function ExplorerMatchesResultsBlock({
   playerSlug,
   t,
   matchesQuery,
@@ -348,28 +350,10 @@ function ExplorerMatchesResultsBlock({
   }
   return (
     <div className="space-y-2">
-      {/* Bandeau de briefing (mode Matchs) — au-dessus du compteur/export */}
+      {/* Bandeau de briefing (mode Matchs) — au-dessus du tableau. Le compteur redondant
+          « N matchs trouvés » a été retiré (DP-7) : la tuile Matchs du briefing le porte ;
+          le pied de pagination du tableau conserve son propre compteur. */}
       <ExplorerBriefingStrip briefing={matchesQuery.data.briefing} t={t} />
-
-      {/* Barre résultats : compteur + export. Le tri est désormais porté par les
-          en-têtes de colonnes du tableau (tri CLIENT), plus de <select>. */}
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          {t('explorer.matches.count_label', {
-            n: matchesQuery.data.summary?.total_matches ?? 0,
-          })}
-        </p>
-        {matchesQuery.data.export_hint?.token && (
-          <a
-            href={`${import.meta.env.VITE_API_BASE_URL ?? '/api/v1'}/players/${playerSlug}/pages/match-history/export?token=${encodeURIComponent(matchesQuery.data.export_hint.token)}`}
-            download
-            title={t('explorer.matches.export_csv')}
-            className="inline-flex h-8 shrink-0 items-center rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-          >
-            {t('explorer.matches.export_csv')}
-          </a>
-        )}
-      </div>
 
       {/* Tableau résultats — composant repris depuis Squad. `sortable` active le
           tri CLIENT par clic sur les en-têtes, sur toutes les colonnes (toutes les
@@ -381,6 +365,20 @@ function ExplorerMatchesResultsBlock({
         filterSpecOverride={matchesFilterSpec}
         sortable
       />
+
+      {/* Export CSV SOUS le tableau (DP-7), aligné à droite. */}
+      {matchesQuery.data.export_hint?.token && (
+        <div className="flex justify-end">
+          <a
+            href={`${import.meta.env.VITE_API_BASE_URL ?? '/api/v1'}/players/${playerSlug}/pages/match-history/export?token=${encodeURIComponent(matchesQuery.data.export_hint.token)}`}
+            download
+            title={t('explorer.matches.export_csv')}
+            className="inline-flex h-8 shrink-0 items-center rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+          >
+            {t('explorer.matches.export_csv')}
+          </a>
+        </div>
+      )}
     </div>
   )
 }

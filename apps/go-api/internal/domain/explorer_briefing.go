@@ -63,13 +63,23 @@ type ExplorerBriefingScope struct {
 	DNF     int     `json:"dnf"`
 	WinRate float64 `json:"win_rate"`
 	KDA     float64 `json:"kda"`
-	// AvgPerf : perf moyenne 0..100. Nil si aucun match du scope n'a de score.
+	// MinKDA : FDA (KDA natif par match) le plus BAS du scope — borne basse du
+	// triptyque FDA (min · moyenne=KDA · max=PeakKDA, DP-1). Nil si aucun match du
+	// scope ne porte de KDA.
+	MinKDA *float64 `json:"min_kda,omitempty"`
+	// AvgPerf : perf moyenne 0..100 — centre du triptyque Perf (MinPerf · AvgPerf ·
+	// MaxPerf, DP-1). Nil si aucun match du scope n'a de score.
 	AvgPerf *float64 `json:"avg_perf,omitempty"`
+	// MinPerf / MaxPerf : perf la plus BASSE / HAUTE d'un match du scope — bornes du
+	// triptyque Perf (DP-1). Nil si aucun match du scope n'a de score.
+	MinPerf *float64 `json:"min_perf,omitempty"`
+	MaxPerf *float64 `json:"max_perf,omitempty"`
 	// TotalDurationSeconds : somme des durées (r.duration_seconds) des matchs du
 	// scope. Nil si aucune durée disponible. Formaté « h min » côté front.
 	TotalDurationSeconds *int `json:"total_duration_seconds,omitempty"`
-	// PeakKDA : meilleur KDA (valeur API native par match) d'un seul match du scope.
-	// Toujours tenté ; nil si aucun match du scope ne porte de KDA.
+	// PeakKDA : meilleur KDA (valeur API native par match) d'un seul match du scope
+	// = borne HAUTE du triptyque FDA (DP-1). Toujours tenté ; nil si aucun match du
+	// scope ne porte de KDA.
 	PeakKDA *float64 `json:"peak_kda,omitempty"`
 	// PeakTeamMMR : meilleur team_mmr d'un match du scope. Nil si aucun team_mmr
 	// (métrique brute, soumise au masquage MMR côté front).

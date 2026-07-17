@@ -86,19 +86,22 @@ const contextSplit: ExplorerBriefingContextSplit = {
   squad: { matches: 15, win_rate: 0.4, kda: 1.1 },
 }
 
-describe('ExplorerBriefingStrip — carte « Par contexte » (DP-4)', () => {
-  it('rend la carte dans la grille « Par… », aux côtés des dimensions', () => {
+describe('ExplorerBriefingStrip — carte « Par contexte » (DP-3)', () => {
+  it('rend la carte comme cellule SIBLING de la grille « Par… », aux côtés des dimensions', () => {
     const briefing = { ...makeBriefing(120, 120), context_split: contextSplit }
     const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
     const text = container.textContent ?? ''
     expect(text).toContain('explorer.briefing.context_split_title')
     expect(text).toContain('explorer.filters.context_solo')
     expect(text).toContain('explorer.filters.context_squad')
-    // La carte « Par contexte » vit dans la 4e cellule de la grille « Par… » (2e
-    // grille à colonnes adaptatives auto-fit/minmax), aux côtés des dimensions.
+    // DP-3 : « Par contexte » est un ENFANT DIRECT de la grille « Par… » (sibling des
+    // dimensions), plus empilé dans une sous-colonne flex.
     const grids = container.querySelectorAll('[class*="grid-template-columns"]')
     const modulesGrid = grids[grids.length - 1]
-    expect(modulesGrid?.textContent).toContain('explorer.briefing.context_split_title')
+    const ctxCell = Array.from(modulesGrid?.children ?? []).find((c) =>
+      c.textContent?.includes('explorer.briefing.context_split_title'),
+    )
+    expect(ctxCell).toBeDefined()
     expect(modulesGrid?.textContent).toContain('explorer.briefing.dim_map')
   })
 
@@ -108,6 +111,22 @@ describe('ExplorerBriefingStrip — carte « Par contexte » (DP-4)', () => {
     )
     const text = container.textContent ?? ''
     expect(text).not.toContain('explorer.briefing.context_split_title')
+  })
+})
+
+describe('ExplorerBriefingStrip — compteurs de dimension (DP-10)', () => {
+  it('affiche le compteur en nombre seul ; « X matchs » reste en title (aria)', () => {
+    const { container } = renderWithProviders(
+      <ExplorerBriefingStrip briefing={makeBriefing(120, 120)} t={t} />,
+    )
+    // DimensionRow (MapA, 12 matchs) : le span compteur affiche « 12 » ; le libellé
+    // dim_matches (« X matchs ») est porté par l'attribut title (survol/aria), pas rendu
+    // en texte visible.
+    const counter = Array.from(container.querySelectorAll('span')).find(
+      (s) => s.getAttribute('title') === 'explorer.briefing.dim_matches',
+    )
+    expect(counter).toBeDefined()
+    expect(counter?.textContent).toBe('12')
   })
 })
 
@@ -181,15 +200,33 @@ describe('ExplorerBriefingStrip — Classement (RankedBlock, DEC-LAYOUT/DEC-RANK
     expect(text).not.toContain('Or IV → Argent II') // jamais de flèche inter-chaînes
   })
 
-  it('rend le Classement dans la grille « Par… » (4e colonne), PAS dans le socle', () => {
+  it('rend le Classement comme cellule SIBLING de la grille « Par… », PAS dans le socle', () => {
     const briefing = { ...makeBriefing(120, 120), ranked: rankedSingle }
     const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
     // 2 grilles à colonnes adaptatives : [0] = socle des tuiles, [1] = « Par… ».
     const grids = container.querySelectorAll('[class*="grid-template-columns"]')
     expect(grids[0]?.textContent).not.toContain('explorer.briefing.ranked_title')
     const modulesGrid = grids[grids.length - 1]
-    expect(modulesGrid?.textContent).toContain('explorer.briefing.ranked_title')
+    // DP-3 : le Classement est un ENFANT DIRECT de la grille (sibling des dimensions).
+    const rankedCell = Array.from(modulesGrid?.children ?? []).find((c) =>
+      c.textContent?.includes('explorer.briefing.ranked_title'),
+    )
+    expect(rankedCell).toBeDefined()
     expect(modulesGrid?.textContent).toContain('explorer.briefing.dim_map')
+  })
+
+  it('rend « Par contexte » ET Classement comme cellules SÉPARÉES (siblings, plus empilées, DP-3)', () => {
+    const briefing = { ...makeBriefing(120, 120), context_split: contextSplit, ranked: rankedSingle }
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const grids = container.querySelectorAll('[class*="grid-template-columns"]')
+    const modulesGrid = grids[grids.length - 1]
+    const cells = Array.from(modulesGrid?.children ?? [])
+    const ctxCell = cells.find((c) => c.textContent?.includes('explorer.briefing.context_split_title'))
+    const rankedCell = cells.find((c) => c.textContent?.includes('explorer.briefing.ranked_title'))
+    expect(ctxCell).toBeDefined()
+    expect(rankedCell).toBeDefined()
+    // Cellules DISTINCTES (siblings) : plus d'empilement dans un wrapper flex-col (V4).
+    expect(ctxCell).not.toBe(rankedCell)
   })
 
   it('omet le bloc Classement quand la capability « ranked » est absente du titre', () => {
@@ -237,7 +274,8 @@ describe('ExplorerBriefingStrip — bande « Moments forts » (DP-5)', () => {
 const TIP_ARIA = /Plus d'informations|More information/i
 
 // Briefing COMPLET : 3 dimensions + contexte + classement + séries + moments forts,
-// pour exercer les 10 tooltips (5 tuiles hors Matchs + 4 cartes « Par… » + 1 bande).
+// pour exercer les 11 tooltips (4 tuiles hors Matchs + Séries marquantes + 4 cartes
+// « Par… » + 1 bande ; le Pic FDA autonome a été retiré en V5, DP-1).
 function makeFullBriefing(): ExplorerBriefing {
   return {
     ...makeBriefing(120, 120),
@@ -260,14 +298,15 @@ describe('ExplorerBriefingStrip — tooltips de légende (i) (DP-9)', () => {
     useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', availableTitles: [] })
   })
 
-  it('pose une icône (i) sur 5 tuiles (hors Matchs) + 4 cartes « Par… » + la bande', () => {
+  it('pose une icône (i) sur 4 tuiles (hors Matchs) + Séries marquantes + 4 cartes « Par… » + la bande', () => {
     const { getAllByRole } = renderWithProviders(
       <ExplorerBriefingStrip briefing={makeFullBriefing()} t={t} />,
     )
-    // Socle (i) : Taux de victoire, FDA, Perf, Durée totale, Pic FDA + Meilleure
-    // série (6). Modules : 3 dimensions + « Par contexte » + Classement (RankedBlock)
-    // + bande Moments forts (6). Total = 12. La tuile Matchs n'a PAS de (i).
-    expect(getAllByRole('button', { name: TIP_ARIA })).toHaveLength(12)
+    // Socle (i) : Taux de victoire, FDA, Perf, Durée totale (4) + Séries marquantes
+    // (1 ; makeFullBriefing n'a ni Pic rang ni Pic MMR). Modules : 3 dimensions +
+    // « Par contexte » + Classement (RankedBlock) + bande Moments forts (6). Total =
+    // 11 (le Pic FDA autonome a été retiré, DP-1). La tuile Matchs n'a PAS de (i).
+    expect(getAllByRole('button', { name: TIP_ARIA })).toHaveLength(11)
   })
 
   it('pose MOINS d’icônes quand des blocs sont omis (ni classement/séries/contexte/bande)', () => {
@@ -275,9 +314,9 @@ describe('ExplorerBriefingStrip — tooltips de légende (i) (DP-9)', () => {
     const { getAllByRole } = renderWithProviders(
       <ExplorerBriefingStrip briefing={makeBriefing(120, 120)} t={t} />,
     )
-    // Taux de victoire + FDA + Perf + Durée totale + Pic FDA (5 tuiles) + 1 carte
-    // dimension = 6 (aucune conditionnelle : ni série, ni pic rang, ni classement).
-    expect(getAllByRole('button', { name: TIP_ARIA })).toHaveLength(6)
+    // Taux de victoire + FDA + Perf + Durée totale (4 tuiles) + 1 carte dimension = 5
+    // (aucune conditionnelle : ni série, ni pic rang, ni classement ; plus de Pic FDA).
+    expect(getAllByRole('button', { name: TIP_ARIA })).toHaveLength(5)
   })
 
   it('ouvre le contenu du tooltip de la carte dimension au clic (tip_dimensions)', () => {
@@ -310,28 +349,33 @@ describe('ExplorerBriefingStrip — socle refondu V4 (DEC-TILES)', () => {
     expect(text).toContain('10')
   })
 
-  it('colore la valeur de la tuile Perf (getPerfColor → CSS var)', () => {
+  it('colore la valeur (moyenne) de la tuile Perf (getPerfColor → CSS var)', () => {
     const { container } = renderWithProviders(
       <ExplorerBriefingStrip briefing={makeBriefing(120, 120)} t={t} />,
     )
+    // La moyenne (mid) du triptyque Perf porte le style couleur ; le span RACINE du
+    // triptyque a le même textContent quand min/max sont absents → cibler celui qui
+    // porte un style inline couleur.
     const perfSpan = Array.from(container.querySelectorAll('span')).find(
-      (s) => s.textContent === '65',
+      (s) => s.textContent === '65' && (s.getAttribute('style') ?? '').includes('color'),
     )
     expect(perfSpan).toBeDefined()
     expect(perfSpan?.getAttribute('style') ?? '').toContain('var(--')
   })
 
-  it('rend Durée totale (« h min ») et Pic FDA hors low_sample', () => {
+  it('rend Durée totale (« h min ») hors low_sample ; Pic FDA fusionné (plus de tuile autonome)', () => {
     const briefing = withScope({ total_duration_seconds: 152400, peak_kda: 4.2 })
     const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
     const text = container.textContent ?? ''
     expect(text).toContain('explorer.briefing.duration_total_label')
     expect(text).toContain('42 h 20') // formatDurationHM(152400)
-    expect(text).toContain('explorer.briefing.peak_fda_label')
-    expect(text).toContain('4.20') // peak_kda.toFixed(2)
+    // Tuile Pic FDA autonome supprimée (DP-1) ; peak_kda réutilisé comme MAX du
+    // triptyque FDA.
+    expect(text).not.toContain('explorer.briefing.peak_fda_label')
+    expect(text).toContain('4.20') // peak_kda.toFixed(2) = borne haute du triptyque FDA
   })
 
-  it('omet Durée totale et Pic FDA en low_sample', () => {
+  it('omet Durée totale en low_sample (jamais de tuile Pic FDA)', () => {
     const briefing = {
       ...withScope({ total_duration_seconds: 152400, peak_kda: 4.2 }),
       low_sample: true,
@@ -375,8 +419,8 @@ describe('ExplorerBriefingStrip — Pic rang (DEC-PEAKRANK)', () => {
   })
 })
 
-describe('ExplorerBriefingStrip — cascade des conditionnelles (DEC-TILES, cap 8)', () => {
-  it('rend AU PLUS 2 conditionnelles par priorité (Meilleure série > Pic rang > Pic MMR)', () => {
+describe('ExplorerBriefingStrip — cascade des conditionnelles (DP-2, cap 8)', () => {
+  it('rend les 3 conditionnelles quand présentes (Séries marquantes + Pic rang + Pic MMR)', () => {
     const briefing = {
       ...withScope({
         peak_ranks: [{ rating_type: 'lusr', tier_label: 'Diamant IV' }],
@@ -388,7 +432,21 @@ describe('ExplorerBriefingStrip — cascade des conditionnelles (DEC-TILES, cap 
     const text = container.textContent ?? ''
     expect(text).toContain('explorer.briefing.streaks_title') // priorité 1
     expect(text).toContain('explorer.briefing.peak_rank_label') // priorité 2
-    expect(text).not.toContain('explorer.briefing.peak_mmr_label') // priorité 3 OMISE (cap 2)
+    expect(text).toContain('explorer.briefing.peak_mmr_label') // priorité 3 — visible (DP-2)
+  })
+
+  it('plafonne le socle à 8 tuiles (5 base + 3 conditionnelles), sans trou', () => {
+    const briefing = {
+      ...withScope({
+        peak_ranks: [{ rating_type: 'lusr', tier_label: 'Diamant IV' }],
+        peak_team_mmr: 1523,
+      }),
+      streaks: { best_win_streak: 7, worst_loss_streak: 4 },
+    }
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    // Socle = 1re grille adaptative ; 5 tuiles de base + 3 conditionnelles = 8 cellules.
+    const grids = container.querySelectorAll('[class*="grid-template-columns"]')
+    expect(grids[0]?.children.length).toBe(8)
   })
 
   it('rend Pic MMR quand seules 2 conditionnelles sont présentes', () => {
@@ -400,5 +458,72 @@ describe('ExplorerBriefingStrip — cascade des conditionnelles (DEC-TILES, cap 
     const text = container.textContent ?? ''
     expect(text).toContain('explorer.briefing.streaks_title')
     expect(text).toContain('explorer.briefing.peak_mmr_label')
+  })
+})
+
+describe('ExplorerBriefingStrip — triptyques, accents & centrage (V5 : DP-1/DP-6/DP-8)', () => {
+  it('FDA : rend min · moyenne (colorée) · max ; Pic FDA autonome absente', () => {
+    const briefing = withScope({ kda: 1.5, min_kda: 0.4, peak_kda: 4.2 })
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('0.40') // min
+    expect(text).toContain('1.50') // moyenne (mid)
+    expect(text).toContain('4.20') // max = peak_kda
+    expect(text).not.toContain('explorer.briefing.peak_fda_label')
+    // La moyenne (mid) est colorée (style inline) ; les bornes restent muted.
+    const midSpan = Array.from(container.querySelectorAll('span')).find((s) => s.textContent === '1.50')
+    expect(midSpan?.getAttribute('style') ?? '').toContain('color')
+  })
+
+  it('Perf : rend min · moyenne (colorée) · max', () => {
+    const briefing = withScope({ avg_perf: 65, min_perf: 40, max_perf: 90 })
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const text = container.textContent ?? ''
+    expect(text).toContain('40') // min
+    expect(text).toContain('65') // moyenne
+    expect(text).toContain('90') // max
+    const midSpan = Array.from(container.querySelectorAll('span')).find((s) => s.textContent === '65')
+    expect(midSpan?.getAttribute('style') ?? '').toContain('var(--')
+  })
+
+  it('omet les bornes nulles : moyenne seule, sans « — » parasite', () => {
+    // makeBriefing de base : ni min/max FDA ni min/max Perf → seules les moyennes.
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={makeBriefing(120, 120)} t={t} />)
+    expect((container.textContent ?? '')).toContain('1.50') // moyenne FDA seule
+    // Les triptyques (span inline-flex justify-center) ne rendent aucun tiret « — »
+    // tant que la moyenne existe.
+    const triptychs = container.querySelectorAll('span.inline-flex.items-baseline.justify-center')
+    expect(triptychs.length).toBe(2) // FDA + Perf
+    for (const tr of Array.from(triptychs)) {
+      expect(tr.textContent).not.toContain('—')
+    }
+  })
+
+  it('pose un accent (barre 3px) sur les 8 tuiles du socle (DP-6)', () => {
+    const briefing = {
+      ...withScope({
+        peak_ranks: [{ rating_type: 'lusr', tier_label: 'Diamant IV' }],
+        peak_team_mmr: 1523,
+      }),
+      streaks: { best_win_streak: 7, worst_loss_streak: 4 },
+    }
+    const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
+    const grids = container.querySelectorAll('[class*="grid-template-columns"]')
+    const socle = grids[0]
+    const accentBars = Array.from(socle?.querySelectorAll('div') ?? []).filter((d) =>
+      d.className.includes('h-[3px]'),
+    )
+    expect(accentBars.length).toBe(8)
+  })
+
+  it('centre la valeur de première ligne des tuiles (text-center, DP-8)', () => {
+    const { container } = renderWithProviders(
+      <ExplorerBriefingStrip briefing={makeBriefing(120, 120)} t={t} />,
+    )
+    const centered = Array.from(container.querySelectorAll('div')).filter(
+      (d) => d.className.includes('text-center') && d.className.includes('text-xl'),
+    )
+    // 5 tuiles de base (Matchs/WR/FDA/Perf/Durée), chacune avec sa div valeur centrée.
+    expect(centered.length).toBe(5)
   })
 })

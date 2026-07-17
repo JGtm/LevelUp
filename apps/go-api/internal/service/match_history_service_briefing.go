@@ -96,7 +96,8 @@ func scopePeriod(rows []domain.MatchHistoryRawRow) (start, end *time.Time) {
 
 // buildBriefingScope agrège le socle du sous-ensemble filtré (raw rows) — même
 // source que le tableau, pour un compteur/bilan/indicateurs cohérents. Porte aussi
-// les agrégats socle V4 : durée totale + pics (FDA, MMR d'équipe, rang par système).
+// les agrégats socle V4/V5 : durée totale + pics (FDA, MMR d'équipe, rang par
+// système) + bornes min/max des triptyques FDA & Perf (DP-1/DEC-MINMAX).
 func buildBriefingScope(scope []domain.MatchHistoryRawRow) *domain.ExplorerBriefingScope {
 	if len(scope) == 0 {
 		return nil
@@ -110,7 +111,10 @@ func buildBriefingScope(scope []domain.MatchHistoryRawRow) *domain.ExplorerBrief
 		DNF:                  a.dnf,
 		WinRate:              analysis.WinRate(a.wins, a.matches),
 		KDA:                  a.kda,
+		MinKDA:               minScopeFloat(scope, func(r *domain.MatchHistoryRawRow) *float64 { return r.KDA }),
 		AvgPerf:              a.perf,
+		MinPerf:              minScopeFloat(scope, func(r *domain.MatchHistoryRawRow) *float64 { return r.PerformanceScore }),
+		MaxPerf:              maxScopeFloat(scope, func(r *domain.MatchHistoryRawRow) *float64 { return r.PerformanceScore }),
 		TotalDurationSeconds: sumScopeDurations(scope),
 		PeakKDA:              maxScopeFloat(scope, func(r *domain.MatchHistoryRawRow) *float64 { return r.KDA }),
 		PeakTeamMMR:          maxScopeFloat(scope, func(r *domain.MatchHistoryRawRow) *float64 { return r.TeamMMR }),
@@ -136,7 +140,8 @@ func sumScopeDurations(scope []domain.MatchHistoryRawRow) *int {
 }
 
 // maxScopeFloat retourne le maximum d'un champ *float64 sur le scope (nil si le champ
-// est absent partout). Sert au Pic FDA (KDA natif par match) et au Pic MMR (DEC-PEAK).
+// est absent partout). Sert au Pic FDA (KDA natif par match), au Pic MMR (DEC-PEAK) et
+// à la borne HAUTE du triptyque Perf (MaxPerf, DP-1/DEC-MINMAX).
 func maxScopeFloat(scope []domain.MatchHistoryRawRow, get func(*domain.MatchHistoryRawRow) *float64) *float64 {
 	var best *float64
 	for i := range scope {
@@ -145,6 +150,24 @@ func maxScopeFloat(scope []domain.MatchHistoryRawRow, get func(*domain.MatchHist
 			continue
 		}
 		if best == nil || *v > *best {
+			b := *v
+			best = &b
+		}
+	}
+	return best
+}
+
+// minScopeFloat retourne le minimum d'un champ *float64 sur le scope (nil si le champ
+// est absent partout). Symétrique de maxScopeFloat ; sert aux bornes BASSES des
+// triptyques FDA & Perf (MinKDA / MinPerf, DP-1/DEC-MINMAX).
+func minScopeFloat(scope []domain.MatchHistoryRawRow, get func(*domain.MatchHistoryRawRow) *float64) *float64 {
+	var best *float64
+	for i := range scope {
+		v := get(&scope[i])
+		if v == nil {
+			continue
+		}
+		if best == nil || *v < *best {
 			b := *v
 			best = &b
 		}

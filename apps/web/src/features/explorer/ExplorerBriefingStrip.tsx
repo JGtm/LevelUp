@@ -1,13 +1,13 @@
 /**
  * ExplorerBriefingStrip — bandeau de briefing au-dessus du tableau (mode Matchs).
  *
- * Lecture compacte du RÉSULTAT DE RECHERCHE : rangée socle de 4 à 8 tuiles KPI
- * (Matchs, Taux de victoire avec ruban V-D-N + tooltip, FDA, Perf. moyenne colorée,
- * Durée totale, Pic FDA — puis en cascade par priorité, au plus 2 : Meilleure série,
- * Pic rang, Pic MMR) avec deltas vs baseline personnelle. Les modules « Par… »
- * (dimensions, « Par contexte » + Classement par chaîne) sont rendus par
- * ExplorerBriefingModules sous le socle. En low_sample : seules Matchs / Taux de
- * victoire / FDA / Perf.
+ * Lecture compacte du RÉSULTAT DE RECHERCHE : rangée socle de 4 à 8 tuiles KPI —
+ * base (5) : Matchs, Taux de victoire (ruban V-D-N + tooltip), FDA et Perf en
+ * triptyques « min · moyenne · max » (DP-1), Durée totale ; puis en cascade par
+ * priorité, les 3 tiennent (DP-2) : Séries marquantes, Pic rang, Pic MMR — avec
+ * deltas vs baseline personnelle. Les modules « Par… » (dimensions, « Par contexte »,
+ * Classement par chaîne) sont rendus par ExplorerBriefingModules sous le socle. En
+ * low_sample : seules Matchs / Taux de victoire / FDA / Perf.
  *
  * Dégradation : briefing absent → rien ; low_sample → socle réduit + mention
  * échantillon faible, aucun module. Aucune couleur hex : tokens sémantiques.
@@ -16,6 +16,7 @@ import type { ReactNode } from 'react'
 
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
+import { perfScale } from '@/lib/accessibility/scales'
 import { kdaNetColor } from '@/lib/colors/outcomePalette'
 import { getPerfColor } from '@/lib/perf-color'
 import { formatDateRange } from '@/lib/formatters'
@@ -27,7 +28,7 @@ import { deltaToken, formatSignedFixed, isFullHistoryScope } from './ExplorerBri
 import { ExplorerBriefingModules } from './ExplorerBriefingModules'
 import {
   DurationTile,
-  PeakKdaTile,
+  MinMaxTriptych,
   PeakMmrTile,
   PeakRankTile,
   StreaksTile,
@@ -77,9 +78,10 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
   const peakRanks = scope?.peak_ranks ?? []
   const peakMmr = scope?.peak_team_mmr ?? null
 
-  // Cascade des tuiles conditionnelles (DEC-TILES) : collectées par PRIORITÉ
-  // décroissante (Meilleure série > Pic rang > Pic MMR), au plus 2 rendues → socle
-  // plafonné à 8 (6 base hors low_sample + 2). Omises entièrement en low_sample.
+  // Cascade des tuiles conditionnelles (DP-2) : collectées par PRIORITÉ décroissante
+  // (Séries marquantes > Pic rang > Pic MMR) et TOUTES rendues si présentes → socle
+  // plafonné à 8 (5 base hors low_sample + 3 ; le retrait du Pic FDA libère le slot,
+  // Pic MMR redevient visible). Omises entièrement en low_sample.
   const conditionalTiles: ReactNode[] = []
   if (scope && !lowSample) {
     if (showStreaks && streaks != null) {
@@ -92,7 +94,6 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
       conditionalTiles.push(<PeakMmrTile key="peak-mmr" value={peakMmr} t={t} />)
     }
   }
-  const cappedConditionals = conditionalTiles.slice(0, 2)
 
   return (
     <div className="space-y-2">
@@ -108,15 +109,19 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
         {/* Taux de victoire (hero : ruban V-D-N + tooltip des 4 issues, DEC-TILES) */}
         {scope && <WinRateTile scope={scope} baseline={baseline} fullHistory={fullHistory} t={t} />}
 
-        {/* FDA agrégat + delta */}
+        {/* FDA en triptyque min · moyenne · max (DP-1) + delta */}
         {scope && (
           <BriefingTile
             label={t('explorer.briefing.fda_label')}
             info={<InfoTooltip content={t('explorer.briefing.tip_fda')} iconClass="w-3.5 h-3.5" />}
             value={
-              <span style={kda != null ? { color: kdaNetColor(kda) } : undefined}>
-                {kda != null ? kda.toFixed(2) : '—'}
-              </span>
+              <MinMaxTriptych
+                min={scope.min_kda}
+                mid={kda}
+                max={scope.peak_kda}
+                midColor={kda != null ? kdaNetColor(kda) : undefined}
+                format={(v) => v.toFixed(2)}
+              />
             }
             sub={
               baseline && !fullHistory ? (
@@ -135,17 +140,20 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
           />
         )}
 
-        {/* Perf. moyenne colorée (DEC-PERF) + delta */}
+        {/* Perf en triptyque min · moyenne · max (DP-1) — moyenne colorée + accent perf (DP-6) + delta */}
         {scope && (
           <BriefingTile
             label={t('explorer.briefing.perf_label')}
             info={<InfoTooltip content={t('explorer.briefing.tip_perf')} iconClass="w-3.5 h-3.5" />}
+            accent={perf != null ? perfScale(perf) : 'outcome-draw'}
             value={
-              perf != null ? (
-                <span style={{ color: getPerfColor(perf) }}>{perf.toFixed(0)}</span>
-              ) : (
-                '—'
-              )
+              <MinMaxTriptych
+                min={scope.min_perf}
+                mid={perf}
+                max={scope.max_perf}
+                midColor={perf != null ? getPerfColor(perf) : undefined}
+                format={(v) => v.toFixed(0)}
+              />
             }
             sub={
               baseline && !fullHistory && baseline.delta_perf != null ? (
@@ -163,12 +171,11 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
           />
         )}
 
-        {/* Durée totale + Pic FDA : tuiles de base hors low_sample */}
+        {/* Durée totale : tuile de base hors low_sample (Pic FDA fusionné dans le triptyque FDA) */}
         {scope && !lowSample && <DurationTile seconds={scope.total_duration_seconds} t={t} />}
-        {scope && !lowSample && <PeakKdaTile value={scope.peak_kda} t={t} />}
 
-        {/* Conditionnelles en cascade (Meilleure série > Pic rang > Pic MMR, au plus 2) */}
-        {cappedConditionals}
+        {/* Conditionnelles en cascade (Séries marquantes > Pic rang > Pic MMR ; les 3 tiennent) */}
+        {conditionalTiles}
       </div>
 
       {/* Échantillon faible : socle seul + mention ; sinon modules conditionnels. */}

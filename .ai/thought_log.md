@@ -1,3 +1,59 @@
+## [2026-07-17] Explorer briefing V5 — bloc A (Phases 1-3) (branche feat/explorer-briefing-compact)
+
+**Statut** : En cours (Phases 0-3 CLOSES ; reste bloc B = Phases 4-5). NON committé (superviseur
+committe en fin de bloc ; merge main = deploy prod auto → après revue visuelle utilisateur).
+Plan : `.ai/V7/PLAN_EXPLORER_BRIEFING_V5_2026-07.md` (Phases 0-3 cochées + gates VERT + Découvertes
+8-12).
+
+**Décisions techniques principales** :
+- Phase 0 : branche `feat/explorer-briefing-compact` confirmée ; §2.1-2.4 re-vérifiés sur pièces
+  (offsets mineurs → Découverte-8 ; tests Modules dans le Strip → Découverte-9 ; tests V4 à
+  réécrire → Découverte-10 ; `go-api-lint`=go vet ciblé → Découverte-11). DEC-NEUTRAL=`outcome-draw`
+  retenu ; params décile (bloc B) confirmés.
+- Phase 1 (DP-1/DEC-MINMAX, backend, ZÉRO SQL) : `ExplorerBriefingScope` gagne `MinKDA/MinPerf/
+  MaxPerf *float64 omitempty` ; helper `minScopeFloat` (miroir strict de `maxScopeFloat`, `<`) ;
+  câblé dans `buildBriefingScope` sur `r.KDA`/`r.PerformanceScore` DÉJÀ scannés. Tests service :
+  triptyque hétérogène (r.KDA = net natif → ordre min≤moy≤max garanti par la moyenne encadrée) +
+  cas nil. OpenAPI : émission Huma byte-exact via `OPENAPI_EMIT_DIVERGENT_OUT`+`PREFIX` (les 3 champs
+  `format: double, type: number`, SANS nullable comme `avg_perf`), collée dans openapi.yaml ;
+  `make generate-types` → generated.ts (aliasé par `types.ts:824`) ; `TestOpenAPISchemaDrift`
+  MISSING=0 et `ExplorerBriefingScope` HORS divergents.
+- Phase 2 (socle, DP-1/2/6/8/9) : `MinMaxTriptych` exporté (moy au centre héritant `text-xl`, colorée
+  via `midColor` ; min/max `text-2xs muted`, bornes nulles omises) câblé FDA (min_kda/kda/peak_kda +
+  `kdaNetColor`) et Perf (min_perf/avg_perf/max_perf + `getPerfColor`). `PeakKdaTile` supprimé
+  (composant + rendu + import + `kdaNetColor` orphelin) ; clés `peak_fda_label`/`tip_peak_fda`
+  purgées. Cascade : `slice(0,2)` retiré → 3 conditionnelles tiennent (Pic MMR revisible, cap 8).
+  Accents généralisés : Perf=`perfScale(avg_perf)`, Durée/Séries/Pic rang/Pic MMR=`outcome-draw`.
+  `BriefingTile` valeur `text-center` (WR : ruban flex intact, aucun ajustement local). i18n
+  `streaks_title`=« Séries marquantes »/« Notable streaks » ; `tip_fda`/`tip_perf` décrivent le
+  triptyque (FR+EN).
+- Phase 3 (modules & page, DP-3/10/7) : Modules — wrapper `flex flex-col gap-2` supprimé ;
+  `ContextSplitCard` + `RankedBlock` deviennent enfants DIRECTS de la grille « Par… » (siblings,
+  `h-full` ajouté) ; `showSplitColumn`→`hasContextOrRanked` ; `minmax(240px,1fr)` inchangé.
+  `DimensionRow`/`ContextSplitRow` : nombre seul + `title=dim_matches` (DP-10). Page — `<p>`
+  compteur + barre `justify-between` supprimés ; export CSV déplacé SOUS le tableau (`flex
+  justify-end`) ; `count_label` conservée (pagination). `ExplorerMatchesResultsBlock` exporté
+  (seam de test) ; test DP-7 avec table RÉELLE items vides (pas de mock global qui casserait le
+  smoke — 1er essai avec mock a cassé « Aucun match trouvé », corrigé).
+
+**Gates (bloc A, exécutés ce jour)** : `cd apps/go-api && go test ./...` (CGO, SÉQUENTIEL) =
+**EXIT 0, 111 ok / 0 fail** ; `make go-api-lint` (go vet) = 0 ; `make generate-types` idempotent
+(openapi.yaml +9 / generated.ts +6, stables) ; `TestOpenAPISchemaDrift` PASS (MISSING=0, Scope non
+divergent) ; `make check-types` (`.tmp` purgé) = 0 ; `npm run test:run` (hors sandbox) = **264
+fichiers, 2322 passed, 14 skipped** (baseline ; AUCUN skip ajouté) ; `npm run lint` = **0 erreur**
+(68 warnings baseline INCHANGÉE) ; greps de clôture verts (0 `PeakKdaTile`/`peak_fda` hors tests ;
+`MinMaxTriptych` présent ; `RankedBlock` enfant direct de la grille ; `count_label` absent du haut).
+
+**Résultats observés** : worktree = 15 modifiés (openapi.yaml + 3 Go, 8 web features/tests,
+generated.ts + i18n generated/manifest) + 1 neuf untracked (plan V5). RIEN committé. Aucun fichier
+temporaire résiduel (émission OpenAPI nettoyée).
+
+**Conclusion / prochaine étape** : bloc A livré et vert de bout en bout ; superviseur committe.
+Reste **bloc B = Phases 4-5** : tableau — surlignage MVP/LVP par DÉCILE (`computeColumnDeciles`
+p10/p90, `MIN_DECILE_SAMPLE`=10, `decileCellState`) + teinte douce (`cellStyle` paramétré
+`intensityPct` défaulté 28, Explorer `DECILE_TINT_PCT`≈16) + alignement par colonne (numériques à
+droite, `HEADER_TH_CLASS` sans `text-left`) ; puis changelog EN+FR + delivery-checklist.
+
 ## [2026-07-17] Explorer briefing V4 — bloc FINITIONS + DETTES + CLÔTURE (Phases 5-8) (branche feat/explorer-briefing-compact)
 
 **Statut** : Complété (bloc FINITIONS Phases 5-8 CLOSES ; le chantier V4 est intégralement
