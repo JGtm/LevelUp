@@ -2,8 +2,8 @@
 //
 // Le bandeau est une lecture compacte du RÉSULTAT DE RECHERCHE (sous-ensemble
 // filtré) : KPIs agrégés, comparaison à la baseline personnelle (historique
-// complet du titre), frise des résultats, et modules conditionnels (notes par
-// dimension, tendance, classé) qui s'activent selon les filtres, les
+// complet du titre) et modules conditionnels (notes par dimension, tendance,
+// classé) qui s'activent selon les filtres, les
 // capabilities du titre et la taille d'échantillon. Ce N'EST PAS une page
 // Synthèse (cf. PLAN_EXPLORER_BRIEFING_CARDS_2026-07.md).
 //
@@ -24,14 +24,11 @@ type ExplorerBriefing struct {
 	// cohérents avec « N matchs trouvés » et avec les modules baseline/dimensions.
 	Scope *ExplorerBriefingScope `json:"scope,omitempty"`
 	// LowSample : vrai quand le sous-ensemble est sous MinBriefingModulesMatches.
-	// Dans ce cas seuls KPIs + frise + période sont émis (les autres blocs nil).
+	// Dans ce cas seuls KPIs + période sont émis (les autres blocs nil).
 	LowSample bool `json:"low_sample,omitempty"`
 	// PeriodStart/PeriodEnd : bornes temporelles (min/max start_time) du scope.
 	PeriodStart *time.Time `json:"period_start,omitempty"`
 	PeriodEnd   *time.Time `json:"period_end,omitempty"`
-	// OutcomeSequence : frise des derniers résultats du scope (cap
-	// MaxOutcomeSequencePoints), ordre chronologique ascendant.
-	OutcomeSequence []ExplorerBriefingOutcome `json:"outcome_sequence,omitempty"`
 	// Baseline : comparaison à l'historique complet (post-exclusions). Nil si
 	// low sample.
 	Baseline *ExplorerBriefingBaseline `json:"baseline,omitempty"`
@@ -70,14 +67,6 @@ type ExplorerBriefingScope struct {
 	KDA     float64 `json:"kda"`
 	// AvgPerf : perf moyenne 0..100. Nil si aucun match du scope n'a de score.
 	AvgPerf *float64 `json:"avg_perf,omitempty"`
-}
-
-// ExplorerBriefingOutcome est un point de la frise des résultats.
-type ExplorerBriefingOutcome struct {
-	MatchID string `json:"match_id"`
-	// OutcomeCode : 1=Égalité, 2=Victoire, 3=Défaite, 4=Abandon (convention produit).
-	OutcomeCode int       `json:"outcome_code"`
-	StartTime   time.Time `json:"start_time"`
 }
 
 // ExplorerBriefingBaseline compare le scope à la baseline personnelle

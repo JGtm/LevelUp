@@ -5014,11 +5014,6 @@ components:
               $ref: '#/components/schemas/ExplorerBriefingDominance'
           low_sample:
               type: boolean
-          outcome_sequence:
-              items:
-                  $ref: '#/components/schemas/ExplorerBriefingOutcome'
-              nullable: true
-              type: array
           period_end:
               format: date-time
               type: string
@@ -5140,22 +5135,6 @@ components:
           - matches
           - win_rate
           - delta_win_rate
-      type: object
-    ExplorerBriefingOutcome:
-      additionalProperties: false
-      properties:
-          match_id:
-              type: string
-          outcome_code:
-              format: int64
-              type: integer
-          start_time:
-              format: date-time
-              type: string
-      required:
-          - match_id
-          - outcome_code
-          - start_time
       type: object
     ExplorerBriefingRanked:
       additionalProperties: false

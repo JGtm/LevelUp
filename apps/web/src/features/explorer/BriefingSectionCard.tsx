@@ -25,8 +25,9 @@ import type { ReactNode } from 'react'
 interface BriefingSectionCardProps {
   /**
    * Titre de section, déjà i18n-résolu en amont. Accepte un `ReactNode` pour
-   * pouvoir injecter un `InfoTooltip` à côté du libellé (cf. `ChartCardProps.title`) ;
-   * aucun tooltip n'est posé dans ce chantier (D-A).
+   * pouvoir injecter un `InfoTooltip` à côté du libellé (cf. `ChartCardProps.title`) —
+   * les cartes « Par… » (dimensions, « Par contexte ») y accolent un tooltip de
+   * légende (V3, amendement tooltips).
    */
   title: ReactNode
   /** Classes sur la carte racine (ex. `h-full` pour remplir une cellule de grille). */

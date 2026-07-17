@@ -718,26 +718,47 @@ corrigée en Découverte-9. Aucun contournement de gate.
 
 ### Phase 5 — Purge backend de `outcome_sequence` (moyen, backend + regen) — DP-1 (back)
 
-- [ ] **5a (domain).** `internal/domain/explorer_briefing.go` : supprimer le champ
+- [x] **5a (domain).** `internal/domain/explorer_briefing.go` : supprimer le champ
       `OutcomeSequence` (`:34`, + ses 2 lignes de commentaire `:32-33`) et la struct
       `ExplorerBriefingOutcome` (`:75-81`).
-- [ ] **5b (service).** `match_history_service_briefing.go` : supprimer la const
+      → FAIT : champ + struct supprimés. Deux mentions résiduelles de la « frise » dans les
+      commentaires du même fichier corrigées dans le même geste (complétion de purge, anti-pattern
+      « doc inversée ») : package doc (« frise des résultats, » retiré) et commentaire `LowSample`
+      (« KPIs + frise + période » → « KPIs + période »). `import "time"` conservé (PeriodStart,
+      TrendPoint l'utilisent encore).
+- [x] **5b (service).** `match_history_service_briefing.go` : supprimer la const
       `maxOutcomeSequencePoints` (`:49`), la ligne `b.OutcomeSequence = buildOutcomeSequence(...)`
       (`:71`), la fonction `buildOutcomeSequence` (`:110-133`). Corriger le commentaire
       `match_history_service_briefing_streaks.go:5` qui référence la frise/const disparue
       (reformuler sans mentionner `maxOutcomeSequencePoints`). Vérifier qu'aucun autre fichier Go
       ne référence `maxOutcomeSequencePoints`/`buildOutcomeSequence`/`OutcomeSequence` (grep).
-- [ ] **5c (tests service).** `match_history_service_briefing_test.go` : retirer le contrôle
+      → FAIT : const + appel + fonction supprimés ; `import "sort"` conservé (encore utilisé
+      `:280` dans `buildBriefingRanked`). Fichier streaks : DEUX mentions « frise » corrigées
+      (`:5` la const/frise disparue ET `:20` « non ordonnables, comme la frise » → « non
+      ordonnables »). Grep go-api : 0 `buildOutcomeSequence`/`maxOutcomeSequencePoints`/champ
+      `OutcomeSequence` (l'unique résidu `OutcomeSequenceTape` en `home.go:274` = le composant
+      frontend PRÉSERVÉ, substring homonyme, hors périmètre — Découverte-10).
+- [x] **5c (tests service).** `match_history_service_briefing_test.go` : retirer le contrôle
       `len(b.OutcomeSequence)` (`:61-62`) et supprimer
       `TestBuildExplorerBriefing_OutcomeSequenceCappedAndSorted` (`:531-544`). Vérifier qu'aucun
       autre test ne lit `OutcomeSequence`.
-- [ ] **5d (OpenAPI + regen).** `api/openapi.yaml` : supprimer la propriété `outcome_sequence`
+      → FAIT : contrôle retiré du test LowSample, test dédié supprimé. Grep : 0 lecteur
+      `OutcomeSequence` restant dans les tests Go.
+- [x] **5d (OpenAPI + regen).** `api/openapi.yaml` : supprimer la propriété `outcome_sequence`
       de `ExplorerBriefing` (`:5017-5021`) et le schéma `ExplorerBriefingOutcome` (`:5144-5159`).
       Régénérer via le mécanisme d'émission si nécessaire
       (`OPENAPI_EMIT_OUT=… go test ./internal/api/ -run TestOpenAPISchemaDrift`) pour rester
       byte-exact avec Huma, puis `make generate-types`. `types.ts`/`generated.ts` :
       `ExplorerBriefingOutcome` et le champ `outcome_sequence` disparaissent (régénérés, ne PAS
       éditer à la main).
+      → FAIT : propriété + schéma retirés du yaml manuel (purge = aucune émission requise, on
+      retire ; `OPENAPI_EMIT_OUT` ne sert qu'à AJOUTER des schémas manquants). `make generate-types`
+      lancé → `generated.ts` : 8 lignes supprimées, 0 résidu. `types.ts` est HAND-MAINTAINED
+      (re-exports, pas régénéré par `make generate-types`, contrairement au libellé du §2) : la
+      ligne 828 `export type ExplorerBriefingOutcome = components['schemas']['ExplorerBriefingOutcome']`
+      serait devenue un type cassé après regen → retirée à la main (orpheline depuis Phase 4,
+      0 consommateur vérifié). Drift test : 0 MISSING, `ExplorerBriefing`/`ExplorerBriefingOutcome`
+      absents de DIVERGENT et de EXTRA (OpenAPI byte-aligné).
 
 Gate Phase 5 : `cd apps/go-api && go test ./...` = 0 (dont `TestOpenAPISchemaDrift` = 0 MISSING/
 DIVERGENT sur `ExplorerBriefing`) ; `make go-api-lint` = 0 ; `make generate-types` idempotent
@@ -745,19 +766,39 @@ DIVERGENT sur `ExplorerBriefing`) ; `make go-api-lint` = 0 ; `make generate-type
 greps de clôture : 0 `outcome_sequence`/`OutcomeSequence`/`ExplorerBriefingOutcome`/
 `buildOutcomeSequence`/`maxOutcomeSequencePoints` sous `apps/go-api` (hors historique) ET
 0 `outcome_sequence`/`ExplorerBriefingOutcome` sous `apps/web/src` (hors `.ai`/docs).
+→ **GATE PASSÉ (2026-07-17), avec réserve documentée sur la formulation du grep (Découverte-10)** :
+`go test ./...` GOTEST_EXIT=0 (tous packages `ok`, 0 FAIL/panic, DuckDB CGO inclus) ;
+`TestOpenAPISchemaDrift` EXIT=0 (MISSING=0 ; DIVERGENT=27/EXTRA=41 = baseline pré-existante,
+AUCUN `ExplorerBriefing*` dedans) ; `make go-api-lint` EXIT=0 ; `make generate-types` idempotent
+(2e run = même diff de 8 suppressions, 0 diff supplémentaire) ; `make check-types` EXIT=0 ;
+`make test-web` = 261 fichiers / 2263 tests OK, 14 skipped (baseline), EXIT=0 ; `npm run lint`
+EXIT=0, 0 erreur, 68 warnings (baseline gelée) ; greps de clôture : 0 symbole RÉEL de la frise
+(champ/fonction/const/type/schéma). RÉSERVE : le grep brut renvoie des résidus HORS PÉRIMÈTRE —
+`OutcomeSequenceTape` (composant frontend préservé, cité dans un commentaire `home.go:274`) et
+2 clés i18n homonymes d'autres features (`timeseries.summary.outcome_sequence`,
+`squad.v2.section_outcome_sequence`) — non liés à la frise Explorer. Détail : Découverte-10.
 
 ### Phase 5b — Tooltips de légende (moyen, frontend-only) — DP-9, DP-11, DEC-7 (amendement 2026-07-17)
 
 > Placée APRÈS les phases de structure : les tooltips se posent sur le bandeau FINAL (tuiles,
 > cartes « Par… », bande), pas sur des composants qui vont encore bouger.
 
-- [ ] **5b-a (i18n).** Ajouter à `explorer.toml` les 8 clés `tip_*` (liste fermée §2), FR + EN,
+- [x] **5b-a (i18n).** Ajouter à `explorer.toml` les 8 clés `tip_*` (liste fermée §2), FR + EN,
       à partir des textes par défaut DEC-7 (FR sans anglicismes ; EN en parité ; tooltip FDA
       grand public, sans formule ADR brute). AVANT de finaliser `tip_highlights` : re-vérifier
       sur pièces la sémantique exacte des 5 catégories (`analysis.DominanceFlag*` +
       libellés/docs `narrative.dominance.*` du manifest match_view) — ajuster la formulation si
       elle contredit la définition réelle, consigner au journal. Régénérer les manifests.
-- [ ] **5b-b (tuiles socle).** Ajouter la prop optionnelle `info?: ReactNode` à `BriefingTile`
+      → FAIT : 8 clés `tip_*` ajoutées (FR+EN) à la fin de la section briefing. Sémantique des 5
+      catégories VÉRIFIÉE sur pièces (`analysis/comeback.go:178-191`, `ComputeDominanceFlag`) :
+      domination = victoire large avance ; humiliation = défaite large retard ; remontada =
+      victoire après avoir été mené ; débandade (`DominanceFlagDebacle`) = défaite après avoir
+      mené ; contre-remontada = mené-devant-puis-devant-puis-regagné. Les textes DEC-7 sont
+      EXACTS ; seul `tip_highlights` affiné pour la contre-remontada (« remontée adverse stoppée
+      APRÈS AVOIR MENÉ », précision fidèle au flag qui exige `hadPlayerLeadBeforeEnd`). Anglicisme
+      « scope » remplacé par « les matchs affichés » (rule 1). FDA=FR / KDA=EN (parité vérifiée
+      via `fda_label`). Manifests régénérés : diff `generated/explorer.ts` = +8 clés `tip_*`.
+- [x] **5b-b (tuiles socle).** Ajouter la prop optionnelle `info?: ReactNode` à `BriefingTile`
       (rangée label : `inline-flex items-center gap-1`, l'icône ne casse pas l'uppercase du
       label — le panneau du tooltip force déjà `normal-case`). Passer un
       `<InfoTooltip content={t('explorer.briefing.tip_…')} iconClass="w-3.5 h-3.5" />` sur :
@@ -765,24 +806,50 @@ greps de clôture : 0 `outcome_sequence`/`OutcomeSequence`/`ExplorerBriefingOutc
       Classement (`tip_ranked`) et Séries (`tip_streaks`) dans `ExplorerBriefingTiles.tsx`.
       PAS de tooltip sur la tuile Matchs (liste fermée DP-9). Labels de tuiles INCHANGÉS
       (DP-11 : courts).
-- [ ] **5b-c (cartes « Par… »).** Dans `ExplorerBriefingModules.tsx`, injecter l'`InfoTooltip`
+      → FAIT : `BriefingTile` porte `info?: ReactNode` rendu dans une rangée `flex items-center
+      gap-1` À CÔTÉ du `<p>` uppercase (l'uppercase reste sur le `<p>`, l'icône hors). Strip :
+      `info` sur Taux de victoire/FDA/Perf. Tiles : `info` sur Ranked/Streaks. Tuile Matchs sans
+      `info`. Labels inchangés (DP-11).
+- [x] **5b-c (cartes « Par… »).** Dans `ExplorerBriefingModules.tsx`, injecter l'`InfoTooltip`
       dans le slot `title` de `BriefingSectionCard` (DEC-7) : `tip_dimensions` sur les 3 cartes
       dimensions (via `DimensionCard`), `tip_context` sur la carte « Par contexte ».
-- [ ] **5b-d (bande).** Accoler un `<InfoTooltip content={t('explorer.briefing.tip_highlights')}
+      → FAIT : `DimensionCard` et `ContextSplitCard` passent `title={<span className="inline-flex
+      items-center gap-1.5">{libellé}<InfoTooltip .../></span>}` (`tip_dimensions` / `tip_context`).
+      Commentaire garde-rail `BriefingSectionCard.tsx:26-30` corrigé (« aucun tooltip posé » →
+      « les cartes Par… y accolent un tooltip de légende (V3) » — anti « doc inversée »).
+- [x] **5b-d (bande).** Accoler un `<InfoTooltip content={t('explorer.briefing.tip_highlights')}
       iconClass="w-3.5 h-3.5" />` au libellé muted `highlights_title` de la bande Moments forts.
-- [ ] **5b-e (tests).** Étendre `ExplorerBriefingStrip.test.tsx` : (1) présence des boutons (i)
+      → FAIT : `InfoTooltip` (tip_highlights) rendu juste après le `<span>` libellé dans la bande
+      `flex flex-wrap items-center gap-1.5` (icône accolée au libellé, avant les pastilles).
+- [x] **5b-e (tests).** Étendre `ExplorerBriefingStrip.test.tsx` : (1) présence des boutons (i)
       — compter les `getAllByRole('button', { name: /more_info|complément/i })` selon la valeur
       réelle de `common.tooltip.more_info_aria` (la vérifier sur pièces) : attendu = 5 tuiles +
       4 cartes + 1 bande sur un briefing complet, et MOINS quand des blocs sont omis (ex. pas de
       `ranked` → pas de tooltip Classement) ; (2) un test d'interaction : clic sur l'icône de la
       carte dimension → le contenu `explorer.briefing.tip_dimensions` apparaît (le stub `t`
       renvoie la clé). Aucun test skippé.
+      → FAIT : `common.tooltip.more_info_aria` vérifié sur pièces = FR « Plus d'informations » /
+      EN « More information » → sélecteur `TIP_ARIA = /Plus d'informations|More information/i`
+      (la formulation `/more_info|complément/i` du plan était une supposition — corrigée). 3 tests
+      ajoutés : (a) briefing COMPLET (3 dims + contexte + ranked + streaks + dominance) → 10
+      boutons (i) ; (b) briefing de base (aucun bloc conditionnel) → 4 boutons (blocs omis =
+      tooltips en moins) ; (c) interaction : `fireEvent.click` sur le (i) de la carte « Par carte »
+      (`within(getByText('dim_map')).getByRole('button')`) → `getByRole('tooltip')` contient
+      `explorer.briefing.tip_dimensions`. `beforeEach` fixe l'état fail-open (ranked actif). Aucun
+      test skippé.
 
 Gate Phase 5b : `node …/build_i18n_manifests.mjs` (diff = 8 clés `tip_*`) ; `make check-types`
 = 0 ; `make test-web` vert (tests 5b-e inclus) ; `npm run lint` = 0 erreur ; grep de clôture :
 les 8 clés `tip_*` présentes dans `explorer.toml` (FR ET EN — parité garantie par le typage du
 manifest) ; `InfoTooltip` importé depuis `@/components/ui/info-tooltip` (aucune primitive
 tooltip nouvelle créée) ; 0 modification de `components/ui/info-tooltip.tsx`.
+→ **GATE PASSÉ (2026-07-17)** : regen i18n EXIT=0 (diff `generated/explorer.ts` = +8 clés
+`tip_*`, aucune autre) ; `make check-types` EXIT=0 ; `make test-web` = 261 fichiers / 2266 tests
+OK (+3 vs Phase 5 = les 3 tests 5b-e), 14 skipped (baseline), EXIT=0 ; ciblé
+`ExplorerBriefingStrip.test.tsx` = 15/15 OK ; `npm run lint` EXIT=0, 0 erreur, 68 warnings
+(baseline gelée, aucune nouvelle) ; greps clôture : 8 sections `[explorer.briefing.tip_*]` (16
+lignes fr/en = parité), `InfoTooltip` importé de `@/components/ui/info-tooltip` dans les 3
+fichiers explorer touchés, `git status` de `components/ui/info-tooltip.tsx` = VIDE (0 modif).
 
 ### Phase 6 — Vérification navigateur & clôture
 
@@ -901,6 +968,22 @@ passe finale des gates §1.11 verts en une fois (`go test ./...`, `make go-api-l
   `features/explorer` = 0 `OutcomeSequenceTape`. Le plan a sous-compté les consommateurs ; aucun
   code à corriger, aucune régression. La formulation « unique consommateur » du plan doit être
   amendée si le plan est réutilisé.
+
+- **Découverte-10 (Phase 5, 2026-07-17) — le grep de clôture de la Phase 5 est formulé trop
+  largement (miroir de Découverte-9).** Le Gate Phase 5 exige « 0 `outcome_sequence`/
+  `OutcomeSequence`/… sous `apps/go-api` ET 0 `outcome_sequence`/`ExplorerBriefingOutcome` sous
+  `apps/web/src` ». Le grep brut renvoie 3 résidus qui ne sont PAS la frise Explorer :
+  (a) `apps/go-api/internal/domain/home.go:274` — commentaire citant `OutcomeSequenceTape`, le
+  composant frontend PRÉSERVÉ (DP-1) ; `OutcomeSequenceTape` contient la substring
+  `OutcomeSequence`, mais ce n'est ni le champ ni le type de la frise Explorer ; (b)
+  `apps/web/src/.../TimeseriesPage.summary.tsx` + manifest/generated `timeseries.summary.outcome_sequence`
+  et (c) `squad.v2.section_outcome_sequence` — deux clés i18n HOMONYMES d'autres features
+  (graphe Timeseries, section Squad V2), sans lien avec la frise Explorer. Les symboles RÉELS de
+  la frise (`ExplorerBriefingOutcome`, `buildOutcomeSequence`, `maxOutcomeSequencePoints`, champ
+  `OutcomeSequence`, propriété OpenAPI/`generated.ts` `outcome_sequence` du briefing) sont à 0.
+  Aucun code à corriger. Correction du §2 concernant `types.ts` : il est HAND-MAINTAINED (re-export
+  `components['schemas'][...]`), donc NON régénéré par `make generate-types` (qui ne touche que
+  `generated.ts`) — la ligne 828 a dû être retirée à la main (orpheline, 0 consommateur).
 
 Consigner ici tout décalage fichier:ligne vs §2, tout lecteur i18n inattendu, toute dette
 repérée hors des blocs Variante B. Ne pas corriger dans ce chantier.

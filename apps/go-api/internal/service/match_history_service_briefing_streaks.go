@@ -1,8 +1,7 @@
 // Package service — match_history_service_briefing_streaks.go : modules « Séries »
 // et « Moments forts » du bandeau de briefing de l'Explorer (items 8/9, P-9).
 //
-// Les séries se calculent côté backend sur TOUT le scope filtré (jamais depuis la
-// frise outcome_sequence, cappée à maxOutcomeSequencePoints) : le front ne voit
+// Les séries se calculent côté backend sur TOUT le scope filtré : le front ne voit
 // que la page paginée du tableau et ne peut pas reconstituer la plus longue série.
 // Extrait du fichier principal du briefing pour rester sous le seuil de 500 lignes
 // (CLAUDE.md §5), à l'image des modules ranked / context.
@@ -17,7 +16,7 @@ import (
 
 // buildBriefingStreaks calcule la meilleure série de victoires et la pire série
 // de défaites du scope (P-9). Tri chronologique par StartTime ; les rows sans
-// date sont écartées (non ordonnables, comme la frise). Une série est rompue par
+// date sont écartées (non ordonnables). Une série est rompue par
 // TOUT autre outcome. Retourne nil si aucune row datée ; un segment à zéro reste
 // à 0 (omitempty) et le front l'omet.
 func buildBriefingStreaks(scope []domain.MatchHistoryRawRow) *domain.ExplorerBriefingStreaks {

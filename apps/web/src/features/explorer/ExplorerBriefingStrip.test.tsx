@@ -6,7 +6,8 @@
  * Le stub i18n renvoie la clé ; les deltas sont posés NON NULS même en plein
  * historique pour prouver que le masquage dépend du flag, pas de la valeur.
  */
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { fireEvent, screen, within } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -213,5 +214,61 @@ describe('ExplorerBriefingStrip — bande « Moments forts » (DP-5)', () => {
     )
     const text = container.textContent ?? ''
     expect(text).not.toContain('explorer.briefing.highlights_title')
+  })
+})
+
+// aria-label réel de l'icône (i) (common.tooltip.more_info_aria) — FR|EN.
+const TIP_ARIA = /Plus d'informations|More information/i
+
+// Briefing COMPLET : 3 dimensions + contexte + classement + séries + moments forts,
+// pour exercer les 10 tooltips (5 tuiles hors Matchs + 4 cartes « Par… » + 1 bande).
+function makeFullBriefing(): ExplorerBriefing {
+  return {
+    ...makeBriefing(120, 120),
+    dimensions: [
+      { dimension: 'map', entries: [{ label: 'MapA', matches: 12, win_rate: 0.7, delta_win_rate: 0.2 }] },
+      { dimension: 'mode', entries: [{ label: 'Slayer', matches: 20, win_rate: 0.55, delta_win_rate: 0.05 }] },
+      { dimension: 'playlist', entries: [{ label: 'Arène', matches: 30, win_rate: 0.5, delta_win_rate: 0 }] },
+    ],
+    context_split: contextSplit,
+    ranked: rankedSingle,
+    streaks: { best_win_streak: 7, worst_loss_streak: 4 },
+    dominance: { dominations: 3, remontadas: 1 },
+  }
+}
+
+describe('ExplorerBriefingStrip — tooltips de légende (i) (DP-9)', () => {
+  beforeEach(() => {
+    // État fail-open : capability 'ranked' active (aucun titre restreint) → tuile
+    // Classement rendue avec son tooltip.
+    useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', availableTitles: [] })
+  })
+
+  it('pose une icône (i) sur 5 tuiles (hors Matchs) + 4 cartes « Par… » + la bande', () => {
+    const { getAllByRole } = renderWithProviders(
+      <ExplorerBriefingStrip briefing={makeFullBriefing()} t={t} />,
+    )
+    // Taux de victoire, FDA, Perf, Classement, Séries (5) + 3 dimensions + « Par
+    // contexte » (4) + bande Moments forts (1) = 10. La tuile Matchs n'a PAS de (i).
+    expect(getAllByRole('button', { name: TIP_ARIA })).toHaveLength(10)
+  })
+
+  it('pose MOINS d’icônes quand des blocs sont omis (ni classement/séries/contexte/bande)', () => {
+    // makeBriefing de base : scope + baseline + 1 dimension, aucun bloc conditionnel.
+    const { getAllByRole } = renderWithProviders(
+      <ExplorerBriefingStrip briefing={makeBriefing(120, 120)} t={t} />,
+    )
+    // Taux de victoire + FDA + Perf (3 tuiles) + 1 carte dimension = 4.
+    expect(getAllByRole('button', { name: TIP_ARIA })).toHaveLength(4)
+  })
+
+  it('ouvre le contenu du tooltip de la carte dimension au clic (tip_dimensions)', () => {
+    const { getByText } = renderWithProviders(
+      <ExplorerBriefingStrip briefing={makeBriefing(120, 120)} t={t} />,
+    )
+    // En-tête « Par carte » : le libellé et l'icône (i) partagent le même span.
+    const dimTitle = getByText('explorer.briefing.dim_map')
+    fireEvent.click(within(dimTitle).getByRole('button', { name: TIP_ARIA }))
+    expect(screen.getByRole('tooltip').textContent).toContain('explorer.briefing.tip_dimensions')
   })
 })
