@@ -25,6 +25,11 @@ import { join, resolve } from 'node:path'
 // Noms de tiers FR distinctifs (differents de l'EN) comme litteral chaine.
 const FR_TIER_LITERAL = /['"](Argent|Platine|Diamant)['"]/
 
+// Sequence distinctive du mapping des sous-paliers en chiffres romains
+// (['', 'I', 'II', 'III', 'IV', 'V', 'VI']). Source unique : lib/skillTiers.ts
+// (subTierRoman). Interdit toute re-declaration locale sous src/features/**.
+const SUBTIER_ROMAN_LITERAL = /['"]II['"]\s*,\s*['"]III['"]\s*,\s*['"]IV['"]/
+
 function walk(dir: string): string[] {
   const out: string[] = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -50,6 +55,16 @@ describe('garde-rail mapping tiers CSR/LUSR (source unique lib/skillTiers.ts)', 
     expect(
       offenders,
       `Noms de tiers FR a localiser via localizeTierName/localizeTierLabel (lib/skillTiers.ts) : ${offenders.join(', ')}`,
+    ).toEqual([])
+  })
+
+  it('aucun mapping romain de sous-palier re-declare sous src/features/** (utiliser subTierRoman)', () => {
+    const offenders = files
+      .filter((f) => SUBTIER_ROMAN_LITERAL.test(readFileSync(f, 'utf8')))
+      .map((f) => f.replace(featuresRoot, 'src/features'))
+    expect(
+      offenders,
+      `Mapping romain des sous-paliers a centraliser via subTierRoman (lib/skillTiers.ts) : ${offenders.join(', ')}`,
     ).toEqual([])
   })
 })

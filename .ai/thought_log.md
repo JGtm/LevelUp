@@ -8030,3 +8030,46 @@ applicatif, aucun bug trouvé. Commits `058ba9486`, `d49a1734f`.
 push main = deploy prod). Restes portés au backlog (redondance backup, activation GHCR VPS,
 BOLA objet routes {id}, densification CSR, frags hors-arsenal H5, dettes mineures dont les
 swallowed-errors préexistants relevés hors périmètre).
+
+---
+
+## [2026-07-17] Train backlog 2026-07 — resorption dettes techniques (logging avale / doc inversee / schema OpenAPI orphelin / SUBTIER_ROMAN) — Complete
+
+**Statut** : Complete. Branche `chore/backlog-train-2026-07`.
+
+**Decision technique principale** : quatre dettes traitees avec discernement (un `return 0`/
+`return ""` de defaut legitime n'est PAS une erreur avalee ; seul un `err` reellement ignore
+est logge, au bon niveau).
+
+- **D1 erreurs avalees** (log AVANT degradation, logique metier inchangee) :
+  `coach_advisor/service_generate.go` — `resolveSingleSignal` (variante sync muette) aligne
+  sur la variante async (catalog list -> Warn ; no-synth -> Debug ; synth weak/notsynth ->
+  Debug sinon Warn ; upsert -> Warn) ; `acceptArc` `json.Unmarshal(ReasonParams)` `_ =` ->
+  WarnContext. `prestige/service.go` `computeCurrentValue` : `RecentMatches` err reellement
+  ignore -> WarnContext (best-effort conserve, return 0). `prestige/service_pilot_pool.go`
+  `squadFocusAxis` : split `err != nil` (WarnContext) vs `len(axes)==0` (defaut legitime,
+  muet) ; `SquadProfile == nil` reste un defaut documente muet. Handlers :
+  `prestige_squads.go ListMySquads` (annuaire + SquadUsualContexts best-effort -> Debug),
+  `home.go resolveLocaleFromHeader` (fallback locale -> Debug, ctx ajoute au helper),
+  `health.go handleHealth` (3 enrichissements `x, _ :=` -> Debug ; sonde frequente).
+- **D2 doc inversee** `notifications/types.go` : l'en-tete evoquait un « seed des preferences »
+  par migration qui n'existe plus. Comportement reel : categorie sans ligne = ACTIVE par
+  defaut (`isCategoryEnabledOn` : `sql.ErrNoRows -> true`). Corrige l'en-tete + 2 mentions
+  residuelles (ObjectiveAssigned, AllCategories).
+- **D3 schema OpenAPI orphelin** : `BattlePassResponse` (openapi.yaml) jamais `$ref`e (route
+  battlepass supprimee par ce train) — supprime le bloc. Le type Go `domain.BattlePassResponse`
+  reste vivant (service/provider/cache). Regen `generated.ts` (schema disparu, 0 consommateur
+  web). Drift-test inchange (pivot = BootstrapResponse ; les « extra » ne sont que loggues).
+- **D4 SUBTIER_ROMAN (jugement)** : le litteral `['','I'..'VI']` etait duplique 3x (Explorer,
+  Career ET `notifications/format.ts`) — 3e copie => franchit le seuil regle n6. Centralise
+  `subTierRoman()` dans `lib/skillTiers.ts` (foyer des tiers) + garde-rail grep
+  (`skillTiers.guard.test.ts`, sequence `'II','III','IV'`). 3 consommateurs migres, 0 code mort.
+
+**Resultats observes** :
+- Go : `build`/`vet` OK (hors `cmd/ztmp_*` scratch pre-existants absents de git) ;
+  `go test` OK sur coach_advisor/prestige/handlers/notifications ; `internal/api` +
+  `contracttest` (CGO) OK.
+- Web : `generate-types` OK, `typecheck` OK, `lint` 0 erreur (68 warnings baseline hors
+  perimetre), `vitest` 141 passed sur les scopes touches (dont le nouveau garde-rail).
+
+**Conclusion / prochaine etape** : dettes D1-D4 livrees. Push/merge = decision utilisateur.

@@ -8,7 +8,7 @@
  * (demande user). Liste simple, sans sous-blocs bordés.
  */
 import { useAppShellStore } from '@/stores/appShellStore'
-import { localizeTierName } from '@/lib/skillTiers'
+import { localizeTierName, subTierRoman } from '@/lib/skillTiers'
 import { unrankedBadgeURL } from '@/lib/staticAssets'
 import type { CareerPlaylistCSR } from '@/lib/api/types'
 
@@ -20,14 +20,10 @@ interface ExplorerTargetSeasonCSRProps {
   emptyMessage: string
 }
 
-// Sous-paliers en chiffres romains (I..VI), comme partout ailleurs (cf. Go
-// rankSubRoman / skillTierLabel). Index 0 = pas de sous-palier.
-const SUBTIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'] as const
-
 /**
  * tierLabel formate "Tier Sub" (ex: "Onyx", "Diamant III") ou "—" si non classé.
- * Le NOM du tier est localisé via `localizeTierName` (source unique des libellés de
- * rang, cf. skillTiers.ts) — pas de mapping FR local dupliqué.
+ * Le NOM du tier est localisé via `localizeTierName` et le sous-palier romain via
+ * `subTierRoman` (source unique, cf. skillTiers.ts) — pas de mapping local dupliqué.
  */
 function tierLabel(tier: string, subTier: number, locale: 'fr' | 'en'): string {
   const raw = tier.trim()
@@ -35,7 +31,7 @@ function tierLabel(tier: string, subTier: number, locale: 'fr' | 'en'): string {
   const name = localizeTierName(raw, locale)
   // sub_tier est 1-based (1..6) ; 0 = pas de sous-tier (Onyx, ou non classé).
   if (raw.toLowerCase() === 'onyx') return name
-  return subTier >= 1 && subTier <= 6 ? `${name} ${SUBTIER_ROMAN[subTier]}` : name
+  return subTier >= 1 && subTier <= 6 ? `${name} ${subTierRoman(subTier)}` : name
 }
 
 export function ExplorerTargetSeasonCSR({ csrs, title, emptyMessage }: ExplorerTargetSeasonCSRProps) {
