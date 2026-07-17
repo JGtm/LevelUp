@@ -246,6 +246,9 @@ func (s *service) AdoptPresetArc(ctx context.Context, userID, titleSlug, presetI
 			EvalType:    tmpl.EvalType,
 			Mode:        ModeLibre,
 			Label:       tmpl.LabelFR,
+			// Adoption d'un preset arc = action initiée par le joueur → origine user
+			// (le coach a sa propre voie via coach_advisor). Calage coach, ADR 0020.
+			Source: ChallengeSourceUser,
 		}); err != nil {
 			slog.WarnContext(ctx, "prestige: preset step skipped",
 				"template_id", tmpl.ID, "preset_id", presetID, "err", err)

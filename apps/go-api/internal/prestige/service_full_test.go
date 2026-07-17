@@ -308,6 +308,13 @@ func TestService_EnablePilotMode_CreatesDailyAndWeekly(t *testing.T) {
 	if out.WeeklyForced == nil {
 		t.Error("expected weekly forced attributed")
 	}
+	// Origine : défis auto-attribués par le mode pilote → source "pilot_mode" (ADR 0020).
+	if out.Daily != nil && out.Daily.Source != ChallengeSourcePilotMode {
+		t.Errorf("daily source=%q want %q", out.Daily.Source, ChallengeSourcePilotMode)
+	}
+	if out.WeeklyForced != nil && out.WeeklyForced.Source != ChallengeSourcePilotMode {
+		t.Errorf("weekly forced source=%q want %q", out.WeeklyForced.Source, ChallengeSourcePilotMode)
+	}
 }
 
 func TestService_EnablePilotMode_RequiredFields(t *testing.T) {

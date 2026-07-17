@@ -45,6 +45,18 @@ const (
 	ChallengeSourceUnknown   = "unknown"
 )
 
+// IsValidChallengeSource indique si s est une origine de défi reconnue
+// (hors "unknown", qui est un bucket d'agrégation, jamais une valeur écrite).
+// Sert à valider une origine fournie par un client HTTP avant de la persister.
+func IsValidChallengeSource(s string) bool {
+	switch s {
+	case ChallengeSourceUser, ChallengeSourcePilotMode, ChallengeSourceCoach:
+		return true
+	default:
+		return false
+	}
+}
+
 // Types d'événements de télémétrie (champ event_type de prestige_telemetry).
 const (
 	TelemetryCreated          = "created"

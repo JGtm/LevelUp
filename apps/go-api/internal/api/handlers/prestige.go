@@ -151,6 +151,9 @@ type createChallengeBody struct {
 	IsPrivate       bool    `json:"is_private,omitempty"`
 	TargetPerMember float64 `json:"target_per_member,omitempty"`
 	Position        int     `json:"position,omitempty"`
+	// Source : origine du défi (ADR 0020). Optionnel — défaut "user" (création
+	// manuelle). Une valeur non reconnue est ignorée (retombe sur "user").
+	Source string `json:"source,omitempty"`
 }
 
 type updateChallengeBody struct {
@@ -233,6 +236,12 @@ func (h *PrestigeHandler) CreateChallenge(ctx context.Context, in *rawBodyInput)
 		IsPrivate:       body.IsPrivate,
 		TargetPerMember: body.TargetPerMember,
 		Position:        body.Position,
+		// Création HTTP = manuelle par défaut. Une origine explicite valide
+		// (ex. front pilote) reste prioritaire ; toute valeur inconnue -> "user".
+		Source: prestige.ChallengeSourceUser,
+	}
+	if prestige.IsValidChallengeSource(body.Source) {
+		req.Source = body.Source
 	}
 	c, err := h.svc.CreateChallenge(ctx, req)
 	if err != nil {
