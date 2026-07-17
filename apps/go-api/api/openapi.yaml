@@ -3461,6 +3461,8 @@ components:
           match_count:
               format: int64
               type: integer
+          media_tooling:
+              $ref: '#/components/schemas/MediaToolingStatus'
           player_count:
               format: int64
               type: integer
@@ -3472,6 +3474,20 @@ components:
           - status
           - match_count
           - player_count
+          - media_tooling
+      type: object
+    MediaToolingStatus:
+      additionalProperties: false
+      properties:
+          ffmpeg:
+              type: boolean
+          ffmpeg_version:
+              type: string
+          ffprobe:
+              type: boolean
+      required:
+          - ffmpeg
+          - ffprobe
       type: object
     # --- Common ---
     PlayerSummary:

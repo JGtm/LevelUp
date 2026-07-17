@@ -23,6 +23,8 @@ import (
 	"log/slog"
 	"os/exec"
 	"strings"
+
+	"levelup/go-api/internal/domain"
 )
 
 // requiredEncoders liste les encodeurs ffmpeg dont dépend LevelUp :
@@ -127,6 +129,18 @@ func LogMediaToolingStatus(ctx context.Context) {
 		slog.WarnContext(ctx, "media tooling: muxer ffmpeg requis manquant",
 			"component", name, "impact", mediaComponentImpact[name],
 			"hint", "installer un build ffmpeg incluant le muxer "+name)
+	}
+}
+
+// ToHealthStatus projette le rapport sur le DTO exposé par GET /health. On ne
+// retient que la présence des binaires et la version ffmpeg (preuve positive) ;
+// le détail des encodeurs/muxers manquants reste réservé à la CLI check-env et
+// aux WARN du boot (Summary / LogMediaToolingStatus), /health restant concis.
+func (r MediaToolingReport) ToHealthStatus() domain.MediaToolingStatus {
+	return domain.MediaToolingStatus{
+		FFmpeg:        r.FFmpegFound,
+		FFprobe:       r.FFprobeFound,
+		FFmpegVersion: r.FFmpegVersion,
 	}
 }
 
