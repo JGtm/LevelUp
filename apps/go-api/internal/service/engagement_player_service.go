@@ -54,6 +54,23 @@ type PlayerEngagementService struct {
 	// comme supported/validated. degraded → score servi AVEC calibration=provisional ;
 	// not_exposed → GetMatchEngagement retourne ErrCapabilityNotSupported (503 propre).
 	engagementCap games.CapabilityStatus
+
+	// expectedMemo cache coef lobby + bins par mode_category le temps de vie du
+	// service (E1 revue 2026-07). coef+bins ne dependent que de (xuid,
+	// mode_category), et xuid est fige sur le service : dans GetTimeseries
+	// (jusqu'a engagementWorkCap matchs) mode_category ne prend que 2 valeurs
+	// (PvP_ranked / PvP_unranked) → au plus 4 lectures DB au lieu de ~3 par match
+	// (~600 pour 200 matchs). Non concurrent : le service est cree par requete
+	// (registry_pages.Engagement) et computeSummariesChronoAsc itere en sequentiel.
+	expectedMemo map[string]expectedInputsEntry
+}
+
+// expectedInputsEntry memoize le resultat de loadExpectedInputs pour une
+// mode_category (coef lobby global + flag de disponibilite + bins de reponse).
+type expectedInputsEntry struct {
+	coefLobby float64
+	hasGlobal bool
+	bins      *domain.EngagementResponseBins
 }
 
 // NewPlayerEngagementService cree un service per-player.
@@ -401,6 +418,12 @@ func (s *PlayerEngagementService) loadExpectedInputs(
 	ctx context.Context,
 	modeCategory string,
 ) (coefLobby float64, hasGlobal bool, bins *domain.EngagementResponseBins) {
+	// E1 : memoisation par mode_category. Lecture sur map nil = zero-value + ok
+	// false (sur — pas de panic). Correct pour tout xuid fige : coef+bins ne
+	// changent pas sous le service.
+	if e, ok := s.expectedMemo[modeCategory]; ok {
+		return e.coefLobby, e.hasGlobal, e.bins
+	}
 	coefLobby = 1.0
 	if coef, err := s.repo.LoadEngagementCoefficient(ctx, s.xuid, modeCategory); err == nil && coef != nil {
 		coefLobby = coef.CoefLobbyShare
@@ -409,6 +432,10 @@ func (s *PlayerEngagementService) loadExpectedInputs(
 	if b, err := s.repo.LoadResponseBins(ctx, s.xuid, modeCategory); err == nil {
 		bins = b
 	}
+	if s.expectedMemo == nil {
+		s.expectedMemo = make(map[string]expectedInputsEntry, 2)
+	}
+	s.expectedMemo[modeCategory] = expectedInputsEntry{coefLobby: coefLobby, hasGlobal: hasGlobal, bins: bins}
 	return coefLobby, hasGlobal, bins
 }
 
