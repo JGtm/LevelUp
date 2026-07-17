@@ -38,15 +38,15 @@ func (r *PrestigeChallengeRepo) Create(ctx context.Context, c prestige.Challenge
 			metric, target, target_per_member, window_type, window_value,
 			cadence, eval_type, mode, tier, data_tier, label, status,
 			created_at, committed_at, completed_at, expired_at, abandoned_at,
-			last_palier_recompute_at, is_private
-		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+			last_palier_recompute_at, is_private, source
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 	`,
 		c.ID, c.UserID, c.TitleSlug, duckdb.NullableStr(c.ArcID), c.Position, duckdb.NullableStr(c.TemplateID),
 		c.Metric, c.Target, c.TargetPerMember, string(c.WindowType), c.WindowValue,
 		string(c.Cadence), string(c.EvalType), string(c.Mode), string(c.Tier), string(c.DataTier),
 		c.Label, string(c.Status),
 		c.CreatedAt, c.CommittedAt, c.CompletedAt, c.ExpiredAt, c.AbandonedAt,
-		c.LastPalierRecomputeAt, c.IsPrivate,
+		c.LastPalierRecomputeAt, c.IsPrivate, duckdb.NullableStr(c.Source),
 	)
 	if err != nil {
 		return fmt.Errorf("ChallengeRepo.Create: %w", err)
@@ -428,13 +428,14 @@ func (r *PrestigeTelemetryRepo) Emit(ctx context.Context, ev prestige.PrestigeTe
 	_, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO prestige_telemetry (
 			id, user_id, challenge_id, event_type, palier, stretch_ratio,
-			baseline_value, mode, cadence, eval_type, time_since_create_seconds, created_at
-		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+			baseline_value, mode, cadence, eval_type, time_since_create_seconds, source, created_at
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
 	`,
 		ev.ID, ev.UserID, duckdb.NullableStr(ev.ChallengeID), ev.EventType,
 		duckdb.NullableStr(string(ev.Palier)), ev.StretchRatio, ev.BaselineValue,
 		duckdb.NullableStr(string(ev.Mode)), duckdb.NullableStr(string(ev.Cadence)),
-		duckdb.NullableStr(string(ev.EvalType)), ev.TimeSinceCreateSeconds, ev.CreatedAt,
+		duckdb.NullableStr(string(ev.EvalType)), ev.TimeSinceCreateSeconds,
+		duckdb.NullableStr(ev.Source), ev.CreatedAt,
 	)
 	return err
 }

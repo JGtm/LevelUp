@@ -1,3 +1,66 @@
+## [2026-07-17] coach/prestige V2.1 — plumbing `source` vers prestige_telemetry + endpoint diag d'agrégation (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Constat 2026-06-09 re-vérifié sur pièces** : exact. `CreateChallengeRequest.Source` existait
+(ADR 0020, valeurs "user"/"pilot_mode"/"coach") mais n'était PAS propagé — ni persisté sur
+`challenge`, ni recopié dans `prestige_telemetry`. La table `prestige_telemetry` (stats.duckdb,
+par joueur) était écrite (EmitCreated/EmitTransition/EmitRejected/EmitPalierRecomputed) mais
+JAMAIS lue (aucun consommateur). Commentaires inversés dans `types.go` + `telemetry.go` référençant
+`scripts/analyze_prestige_tuning.py` — script jamais écrit (le `.py` présent au repo est un stub
+antérieur non branché). Colonne `source` absente des DEUX tables.
+
+**Décision superviseur actée** : consommateur = endpoint diag `GET /_diag/prestige/telemetry/{player_slug}`
+(agrégation), PAS de CLI. Colonne + consommateur dans le MÊME chantier.
+
+**Schéma / migration livrés** : nouveau step title-owned player `prestige_add_source_columns_v1`
+(steps_player_prestige_source.go), placé dans canonicalOrder APRÈS create_prestige_player_schema :
+`ALTER TABLE challenge ADD COLUMN IF NOT EXISTS source VARCHAR` + idem `prestige_telemetry`.
+Anti-ART : les deux colonnes sont NON indexées ; `challenge.source` est figée à l'INSERT (jamais
+mutée, comme title_slug) ; `prestige_telemetry` est append-only INSERT-only (un événement = une
+ligne distincte, pas de vue `_latest` requise). Aucune surface d'index sur colonne mutée créée.
+
+**Chemin de propagation** (created ET transitions) : `req.Source` → `Challenge.Source` (persistée
+dans `challenge.source`, lue par scanChallenge/challengeSelectColumns) → recopiée par les 4 Emit*
+(created/rejected/transition/palier_recomputed) dans `prestige_telemetry.source`. Choix le PLUS
+simple qui marche : persister sur le challenge. Les transitions (evaluate/abandon) chargent déjà
+la `Challenge` complète depuis la DB → `c.Source` les suit gratuitement, sans re-lecture de la
+ligne created ni nouvelle méthode repo. Aucune normalisation à la création : `Source` recopié tel
+quel (vide → agrégé "unknown" par l'endpoint).
+
+**Agrégats servis par l'endpoint** (par origine, `COALESCE(NULLIF(source,''),'unknown')`) :
+compteurs created / rejected (`rejected:*`) / completed / expired / abandoned + total ; taux
+d'acceptation (created/(created+rejected)), de complétion (completed/created), d'abandon
+(abandoned/created). Sentinel -1 quand dénominateur nul. Distribution de "strength des proposals" :
+OMISE — la donnée n'est PAS dans `prestige_telemetry` (qui porte stretch_ratio/baseline/palier, pas
+la "strength" du coach_proposal, table distincte du player DB). Noté dans le code.
+
+**Backfill** : aucun. Lignes historiques → source NULL → bucket "unknown". Pas de backfill inventé.
+
+**Constantes centralisées** : `ChallengeSource{User,PilotMode,Coach,Unknown}` (constants.go) ;
+migré les 2 littéraux "coach" de coach_advisor/service_generate.go vers `ChallengeSourceCoach`
+(évite la 3e copie). Pas de garde-rail grep (le mot "coach" est trop courant).
+
+**Découvertes (NON traitées — hors périmètre)** :
+- Les callers `service_pilot_pool.go` (mode pilote) et `service_arcs_squads.go` (objectifs de
+  preset arc) ainsi que le handler HTTP `CreateChallenge` ne renseignent PAS `Source` → leurs
+  défis sont agrégés sous "unknown". Seul le coach renseigne "coach". L'endpoint répond donc
+  aujourd'hui à "coach vs reste (unknown)" (objectif primaire ADR 0020). Renseigner
+  "pilot_mode"/"user" à ces 3 origines = lot suivant (non demandé ici).
+- `openapi.yaml` mis à jour (path + schémas PrestigeTelemetryDiag/SourceStats, auto-dérivés via
+  le drift-detector) MAIS `generated.ts` frontend NON régénéré : endpoint backend-only sans
+  consommateur front, et `generate-types` régénérerait tout le fichier (risque d'aspirer les 26
+  DIVERGENT préexistants dans le diff). Laissé au lot front si un jour consommé.
+
+**Gates** : `go build ./...` OK ; `go vet ./...` OK ; `go test ./...` OK ; `go test -tags=integration
+-p 1` OK sur duckdb/prestige/migration (migration colonnes, source roundtrip, agrégation). Drift
+OpenAPI = 0 missing.
+
+**Prochaine étape** : si le coach tuning veut le split fin, renseigner Source aux 3 origines
+ci-dessus. Sinon, exploiter l'endpoint pour comparer complétion coach vs unknown.
+
+---
+
 ## [2026-07-17] Sécurité/AutZ — Prestige : réconciliation acteur user_id ↔ session (BOLA résiduel) (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété.

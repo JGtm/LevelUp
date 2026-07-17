@@ -33,6 +33,18 @@ const (
 	SourceMedal     = "medal"
 )
 
+// Origines d'un défi (champ `source` de challenge / prestige_telemetry — ADR 0020).
+// Renseignées par CreateChallengeRequest.Source et propagées à la télémétrie pour
+// mesurer l'efficacité du coach proactif (taux d'acceptation/complétion par origine).
+// ChallengeSourceUnknown n'est jamais écrit : c'est le bucket d'agrégation des lignes
+// historiques (source NULL, créées avant le plumbing) côté endpoint diag.
+const (
+	ChallengeSourceUser      = "user"
+	ChallengeSourcePilotMode = "pilot_mode"
+	ChallengeSourceCoach     = "coach"
+	ChallengeSourceUnknown   = "unknown"
+)
+
 // Types d'événements de télémétrie (champ event_type de prestige_telemetry).
 const (
 	TelemetryCreated          = "created"

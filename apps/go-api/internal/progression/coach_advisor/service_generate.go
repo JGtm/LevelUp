@@ -413,7 +413,7 @@ func (s *service) acceptArc(ctx context.Context, prop Proposal) (AcceptResult, e
 		TitleSlug:   prop.TitleSlug,
 		Title:       titleFR,
 		Description: descFR,
-		Source:      "coach",
+		Source:      prestige.ChallengeSourceCoach,
 	})
 	if err != nil {
 		return AcceptResult{}, fmt.Errorf("coach_advisor.acceptArc: prestige.CreateArc: %w", err)
@@ -463,7 +463,7 @@ func (s *service) challengeRequestFromTemplate(userID, titleSlug string, tmpl pr
 		Mode:        prestige.ModePilote,
 		Label:       tmpl.LabelFR,
 		Position:    position,
-		Source:      "coach",
+		Source:      prestige.ChallengeSourceCoach,
 	}
 }
 

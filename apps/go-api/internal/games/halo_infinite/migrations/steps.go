@@ -1382,6 +1382,8 @@ func Steps() []migration.Migration {
 	steps = append(steps, appendOnlyMiscSteps()...)
 	// RACINE player (god-file base + prestige/campaign/progression + drop_notifications) → b25.
 	steps = append(steps, playerBaseSteps()...)
+	// Consommateur player : challenge.source + prestige_telemetry.source (calage coach, ADR 0020).
+	steps = append(steps, playerPrestigeSourceSteps()...)
 	// RACINE metadata (asset_translations + fix_super_fiesta) — dernier root → b26.
 	steps = append(steps, metadataRootSteps()...)
 	// God-file shared (34 steps, RACINE shared_matches_v2 : match_registry/participants/…) → b23.

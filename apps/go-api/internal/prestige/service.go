@@ -352,6 +352,10 @@ func (s *service) CreateChallenge(ctx context.Context, req CreateChallengeReques
 		CreatedAt:       now,
 		CommittedAt:     &now,
 		IsPrivate:       req.IsPrivate,
+		// Origine tracée telle quelle (ADR 0020) : vide => agrégé "unknown" par
+		// l'endpoint diag. Pas de normalisation ici (les callers qui ne
+		// renseignent pas Source restent "unknown" — cf. thought_log 2026-07-17).
+		Source: req.Source,
 	}
 
 	// En cas de rejet "too_easy", on retourne une erreur sans persister.

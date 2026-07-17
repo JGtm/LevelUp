@@ -24,7 +24,7 @@ const challengeSelectColumns = `
 	       cadence, eval_type, mode, COALESCE(tier, ''), data_tier,
 	       COALESCE(label, ''), status,
 	       created_at, committed_at, completed_at, expired_at, abandoned_at,
-	       last_palier_recompute_at, is_private
+	       last_palier_recompute_at, is_private, COALESCE(source, '')
 	FROM challenge`
 
 // scanChallenge lit une ligne de la table challenge.
@@ -41,7 +41,7 @@ func scanChallenge(row duckdb.RowScanner) (prestige.Challenge, error) {
 		&cadence, &evalType, &mode, &tier, &dataTier,
 		&c.Label, &status,
 		&c.CreatedAt, &c.CommittedAt, &c.CompletedAt, &c.ExpiredAt, &c.AbandonedAt,
-		&c.LastPalierRecomputeAt, &c.IsPrivate,
+		&c.LastPalierRecomputeAt, &c.IsPrivate, &c.Source,
 	)
 	if err != nil {
 		return prestige.Challenge{}, err
