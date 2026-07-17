@@ -214,24 +214,65 @@ sync 104.6s, persist 16.6s) ; `go test ./internal/platform/duckdb/...` ok
 
 ## LOT D — Efficacité (VPS 2 vCPU / 2 Go)
 
-- [ ] D1 (E1) `internal/service/engagement_player_service.go` — mémoïser
-      coef+bins par `mode_category` en début de GetTimeseries (≤4 requêtes) ;
-      cacher le check d'existence de table dans le repo (une fois par
-      ouverture). Test : compteur de requêtes sur 200 matchs → ≤4.
-- [ ] D2 (E3) `internal/api/wire/registry_monitoring_freshness.go` — une
-      requête groupée par titre (`WHERE mp.xuid IN (...) GROUP BY mp.xuid`) sur
-      le shared reader ; ne plus résoudre les player-DBs (et ne JAMAIS créer de
-      DB pour les profils auth_only). Test.
-- [ ] D3 (E4) `internal/migration/monitoring_schema.go` + store — rétention
-      CapAndSweep (pattern notifications, caps constantes nommées) sur
-      `detection_events`, `detection_status_events`, `cron_runs`. Test.
-- [ ] D4 (E2) `apps/web/src/features/explorer/ExplorerPage.tsx` —
-      `include_briefing: mode === 'matches'` (+ query non lancée quand
-      inutilisée) ; debounce 250 ms de l'input match-ID (pattern
-      GamertagSearchInput). Tests vitest.
+- [x] D1 (E1) `internal/service/engagement_player_service.go` — memo par
+      `mode_category` (champ `expectedMemo` + type `expectedInputsEntry`, lazy
+      dans `loadExpectedInputs`). Correct par construction : coef+bins ne
+      dépendent que de (xuid, mode_category), xuid figé sur le service (créé par
+      requête) → cache stable, pas de reset explicite en début de GetTimeseries
+      requis (mesurable ≤4 atteint identiquement). REPO
+      (`engagement_response_bins_repo.go`) : `responseBinsTableExists` mémoise
+      son scan information_schema (champ `responseBinsExists *bool` sur
+      `EngagementScoreRepo`, extraction `queryResponseBinsTableExists`) → 1 scan
+      par handle au lieu d'1 par appel. Décision A4/C : check CONSERVÉ (les DBs
+      pas encore bootées peuvent ne pas avoir la table) mais mémoïsé — la
+      « simplification » = per-call → per-handle. Test
+      `TestGetTimeseries_MemoizesCoefAndBinsPerMode` (200 matchs, 2 modes) :
+      **coefCalls=2, binsCalls=2 (=4 total)** vs ~600 avant. VERT.
+- [x] D2 (E3) `internal/api/wire/registry_monitoring_freshness.go` — `lastMatchAt`
+      (par joueur, résolution player-DB jetée + MAX+JOIN par joueur, CRÉAIT les
+      DBs auth_only) SUPPRIMÉ → `lastMatchByXUID(ctx, titleSlug, xuids)` : UNE
+      requête groupée `WHERE mp.xuid IN (...) GROUP BY mp.xuid` (timezone
+      canonique `analysis.SQLStartTimeCanonical`) sur le shared lu via
+      `duckdb.OpenReadForQuery(SharedDBPath)` (B-swap-safe, jamais OpenReadOnly
+      forcé). AUCUNE player-DB résolue → aucune DB créée pour les auth_only (ils
+      sont juste absents du résultat). `resolveMonitoringDBs` conservé (autre
+      caller : ConvergenceBacklog). Test
+      `TestLastMatchByXUID_GroupedNoPlayerDBCreation` : grouping+MAX corrects,
+      xuid auth_only absent, **répertoire players NON créé**. VERT.
+- [x] D3 (E4) `internal/ops/monitoring_retention.go` (nouveau) + wiring flush —
+      `SweepRetention` (CapAndSweep façon notifications) sur `detection_events`
+      (cap 20 000), `detection_status_events` (cap 10 000), `cron_runs` (cap
+      50 000) — constantes nommées, justifiées (croissance/scan vue `_latest` <
+      qq ms VPS). DELETE PURGE mono-writer (lease `KindMonitoring`, même writer
+      que le flush ; COUNT sans lease, DELETE sous lease seulement si > cap) qui
+      PROTÈGE le dernier événement par partition (MAX(id) par fingerprint /
+      cron_name) → vues `_latest` intactes. Sweep piggyback sur
+      `RunDetectionFlushLoop` (tick + shutdown), pas de cron dédié. ART : tables
+      HORS `tablesProtegees` ; base globale isolée mono-writer PK BIGINT → DELETE
+      sûr. Garde-rail `monitoring_store_guard_test.go` MIS À JOUR : writer
+      (`monitoring_store.go`) reste zéro UPDATE/DELETE ; retention
+      (`monitoring_retention.go`) = zéro UPDATE, DELETE sanctionné (daté D3).
+      Test `TestMonitoringStore_SweepRetention_BoundsAndPreservesLatest` :
+      bornes respectées + `detection_status_latest`/`cron_runs_latest` corrects
+      après purge + idempotence. VERT.
+- [x] D4 (E2) `apps/web/src/features/explorer/ExplorerPage.tsx` —
+      `include_briefing: mode === 'matches'` + query gatée `enabled: mode ===
+      'matches'` (4e arg de `useExplorerMatches`, non consommée en mode Joueur) ;
+      input match-ID débouncé 250 ms (`MATCH_ID_DEBOUNCE_MS`) via hook partagé
+      `useDebounced` extrait dans `apps/web/src/lib/hooks/useDebounced.ts`
+      (migration de la copie feedback-drawer, pas de ré-implémentation — règle
+      n°6). Tests `ExplorerPage.efficiency.test.tsx` : mode Joueur → query
+      désactivée + include_briefing=false ; frappe rapide → seule 'abc' atteint
+      la query après 250 ms (1 POST/rafale). 103 tests web VERTS.
 
-**Gate D** : go test service/wire/migration ; vitest explorer ; thought_log ;
-commit.
+**Gate D** : PASSÉ 2026-07-17. gofmt clean (fichiers touchés) ; `go vet`
+service/ops/wire/duckdb OK ; `go test ./internal/service/... ./internal/ops/...
+./internal/platform/duckdb/...` = ok (service 11.2s, ops 17.8s, duckdb 33.5s) ;
+`go test ./internal/api/wire/...` = ok (0.8s) ; `go build ./...` OK ; schéma
+monitoring NON touché → migration integration N/A ; `golangci-lint
+--new-from-merge-base=main` = **0 issues** (goconst corrigé :
+`freshnessLastMatchReadErr`) ; `make check-types` OK ; vitest explorer +
+feedback-drawer = 103/103.
 
 ## LOT E — UX web restants
 
@@ -318,3 +359,14 @@ seeder) ; vitest lib/features migrées ; lint ; thought_log ; commit.
 - [LOT A] `internal/platform/duckdb/fanout_repo.go:98` : `slog.Warn(...)` sans variante
   `*Context` (viole la convention slog structuré-avec-ctx). Préexistant, hors périmètre
   A6 (qui ne portait que la conversion recovery Exec→ExecRecovered). Non traité.
+- [LOT D / D1] `LoadPlayerHistory` est appelé PAR MATCH dans le compute timeseries
+  (`loadHistorySafeByMode`, avec `ExcludeMatchID` variable) → N requêtes retournant
+  jusqu'à 200 lignes chacune. E1 ne visait QUE coef+bins (fonction de (xuid,
+  mode_category)) ; l'historique dépend de l'exclusion du match courant, sa mémoïsation
+  changerait la sémantique (percentile baseline). Hors périmètre D1 — non traité. Piste
+  si besoin : charger l'historique complet par mode une fois et exclure en mémoire.
+- [LOT D / D3] `data_health_runs` croît aussi sans rétention (1 ligne par audit
+  data-health), mais basse fréquence et son lecteur (`LatestDataHealthJSON`) ne lit que
+  la dernière ligne. Le plan D3 liste explicitement 3 tables (detection_events,
+  detection_status_events, cron_runs) — `data_health_runs` NON incluse, non traitée.
+  À ajouter à `monitoringRetentionSpecs` si un chantier rétention l'exige.
