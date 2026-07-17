@@ -124,6 +124,44 @@ func CollapseRedundantHLSAudio(ctx context.Context, hlsDir string, dryRun bool) 
 	return res, writeMasterAtomic(masterPath, newMaster)
 }
 
+// ForceCollapseHLSAudioTree réécrit le master d'UN arbre HLS multipiste pour n'exposer
+// que la rendition `game` (copie propre = piste 0), SANS le critère de corrélation de
+// CollapseRedundantHLSAudio. Destiné aux clips legacy dont la redondance est STRUCTURELLE
+// (game = piste 0 = mix complet AVEC voix, voices = amix redondant) mais dont la
+// corrélation d'enveloppe tombe sous le seuil à cause de la voix, ET dont les sources
+// sont supprimées (ni re-transcodage ni collapse auto possibles). N'exige pas ffmpeg
+// (pas de mesure d'enveloppe). dryRun=true rapporte sans écrire. Réutilise la mécanique
+// de CollapseRedundantHLSAudio (collapseMasterToSingleAudio + writeMasterAtomic).
+func ForceCollapseHLSAudioTree(hlsDir string, dryRun bool) (CollapseResult, error) {
+	res := CollapseResult{Dir: hlsDir}
+	masterPath := filepath.Join(hlsDir, "master.m3u8")
+	raw, err := os.ReadFile(masterPath)
+	if err != nil {
+		return res, fmt.Errorf("lecture master: %w", err)
+	}
+	master := string(raw)
+	hasGame := false
+	for _, r := range parseMasterAudioRenditions(master) {
+		if r.Slug == audioRenditionGameSlug {
+			hasGame = true
+		}
+	}
+	if !hasGame {
+		res.Skipped = "pas de rendition game à conserver"
+		return res, nil
+	}
+	newMaster, changed := collapseMasterToSingleAudio(master, audioRenditionGameSlug)
+	if !changed {
+		res.Skipped = "déjà mono-audio (game seul)"
+		return res, nil
+	}
+	res.Collapsed = true
+	if dryRun {
+		return res, nil
+	}
+	return res, writeMasterAtomic(masterPath, newMaster)
+}
+
 // writeMasterAtomic écrit le master via un fichier temporaire + rename (évite un
 // master tronqué si l'écriture est interrompue).
 func writeMasterAtomic(masterPath, content string) error {

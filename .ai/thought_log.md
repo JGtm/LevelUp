@@ -1,3 +1,45 @@
+## [2026-07-17] Détection full-mix audio robuste à la voix + outils --analyze/--collapse-dir (branche fix/media-fullmix-detection)
+
+**Statut** : Complété (code, worktree `media-fullmix-detection`, NON commité — livraison = revue superviseur).
+
+**Problème** : `analyzeAudioLayout` décidait « piste 0 = mix complet de sortie OBS » par corrélation
+de Pearson des enveloppes dB (piste 0 vs amix des composantes), seuil 0,80. Échoue dès qu'il y a de
+la voix : les gains du mix OBS ≠ 1:1 de l'amix et la voix fait diverger les enveloppes dB. Mesuré
+0,519 (2026-07-03) et 0,767 (2026-07-07) → sous seuil → repli mapping historique → renditions
+game/voices redondantes → toggles Jeu/Voix inaudibles.
+
+**Décision technique** : régression en domaine PUISSANCE (nouveau `audio_fullmix_fit.go`, pur).
+Les sources (jeu/micro/Discord) étant décorrélées, la puissance par trame est additive :
+`P0[t] ≈ Σ gᵢ·Pᵢ[t]`, gains gᵢ ≥ 0 LIBRES ajustés par NNLS (Lawson-Hanson sur équations normales).
+Décision = R² (variance expliquée) ≥ 0,80 + garde de stationnarité (env0 stddev dB) + COUVERTURE
+anti-faux-positif-disjoint à DEUX régimes : (a) si la 2ᵉ part de puissance ≥ 0,05 → vrai mix de ≥2
+sources → accepté (une piste auxiliaire non routée dans le mix, ex. micro brut décorrélé, n'invalide
+rien) ; (b) sinon piste 0 ≈ mono-source → chaque composante ACTIVE doit corréler (puissance ≥ 0,30)
+à la piste 0, sinon = source active absente = disjoint → rejet. Composante muette (p90 < −70 dB, cas
+solo) n'impose rien. Composante jeu par TITRE de piste OBS (`gameComponentIndex`, préféré au
+`classifyGameComponent` silence-ratio laissé INTACT mais qui se trompait sur voix-continue/piste-muette).
+
+**Résultats observés** (`--analyze` sur vrais clips, lecture seule) : 07-03 full-mix=true R²=0,946
+jeu=0:a:1 ; 07-07 true R²=0,927 jeu=0:a:1 ; 07-16 (sans voix, non-régression) true R²=0,972
+jeu=0:a:1. Seuils calibrés sur ces mesures (justifiés en commentaire). `restMixFilter` (amix
+d'analyse) supprimé avec ses tests. CLI `cmd/migrate-hls-audio` : `--analyze <fichier>` (diag
+durable) et `--collapse-dir <arbre>` (collapse FORCÉ sans corrélation, `ForceCollapseHLSAudioTree`,
+pour clips juin redondants aux sources supprimées) — dry-run respecté.
+
+**Fichiers** : `apps/go-api/internal/media/audio_fullmix_fit.go` (+ `_test.go`) neufs ;
+`hls_audio_analyze.go`, `hls_audio_collapse.go`, `hls.go`, `cmd/migrate-hls-audio/main.go` modifiés ;
+tests `hls_audio_analyze_test.go`/`hls_audio_collapse_test.go`/`hls_test.go` ajustés.
+
+**Gates** (tous verts) : `go vet ./...` propre ; `go test ./internal/media/...` (ffmpeg + vrais
+clips réellement exécutés) ok 5,2 s ; `golangci-lint --new-from-merge-base=main` 0 issue ;
+validation empirique `--analyze` sur les 3 clips OK.
+
+**Prochaine étape** : revue + commit par le superviseur. Reste à faire côté superviseur : lancer
+`--collapse-dir` sur les 2 vrais arbres HLS de juin (chemins connus de l'utilisateur) ; re-ingestion
+éventuelle des clips juillet pour bénéficier de la nouvelle détection au transcodage.
+
+---
+
 ## [2026-07-17] Format des `<input type="date">` — binding `<html lang>` sur la locale app (branche fix/date-input-locale-format)
 
 **Statut** : Complété (code, branche `fix/date-input-locale-format`, NON mergé — revue + commit superviseur).

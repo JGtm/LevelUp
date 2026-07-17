@@ -102,16 +102,6 @@ func TestSilenceRatio(t *testing.T) {
 	}
 }
 
-func TestRestMixFilter(t *testing.T) {
-	if fc, m := restMixFilter(2); fc != "" || m != "0:a:1" {
-		t.Errorf(`restMixFilter(2) = (%q,%q), want ("", "0:a:1")`, fc, m)
-	}
-	fc, m := restMixFilter(4)
-	if fc != "[0:a:1][0:a:2][0:a:3]amix=inputs=3:normalize=0[mix]" || m != "[mix]" {
-		t.Errorf("restMixFilter(4) = (%q,%q)", fc, m)
-	}
-}
-
 func TestBuildEnvelopeArgs(t *testing.T) {
 	// La borne mémoire `-t 600` doit précéder `-i` (option d'ENTRÉE → arrête le
 	// décodage), et le map direct ne pas injecter de -filter_complex.
@@ -133,6 +123,16 @@ func TestBuildEnvelopeArgs(t *testing.T) {
 	if a := buildEnvelopeArgs("clip.mkv", "[0:a:1][0:a:2]amix=inputs=2:normalize=0[mix]", "[mix]"); indexOf(a, "-filter_complex") == -1 {
 		t.Errorf("filterComplex fourni mais -filter_complex absent: %v", a)
 	}
+}
+
+// audioStreamsNoTitle produit n pistes audio sans titre (repli classifieur pour la
+// composante jeu dans les tests synthétiques, dont les MKV n'ont pas de titre « game »).
+func audioStreamsNoTitle(n int) []AVStreamDetail {
+	s := make([]AVStreamDetail, n)
+	for i := range s {
+		s[i] = AVStreamDetail{CodecType: "audio", CodecName: "opus"}
+	}
+	return s
 }
 
 // indexOf retourne l'index de la première occurrence de s dans args, ou -1.
@@ -270,7 +270,7 @@ func TestAnalyzeAudioLayout_Integration(t *testing.T) {
 		"[0:a]asplit=2[t1a][t1b];[1:a]asplit=2[t2a][t2b];"+
 			"[t1a][t2a]amix=inputs=2:normalize=0[mix]",
 		[]string{"[mix]", "[t1b]", "[t2b]"})
-	layout, corr, err := analyzeAudioLayout(context.Background(), mix, 3)
+	layout, corr, err := analyzeAudioLayout(context.Background(), mix, audioStreamsNoTitle(3))
 	if err != nil {
 		t.Fatalf("analyzeAudioLayout (positif): %v", err)
 	}
@@ -283,7 +283,7 @@ func TestAnalyzeAudioLayout_Integration(t *testing.T) {
 	indep := generateAudioMKV(t, dir, "indep.mkv",
 		"[0:a]anull[a0];[1:a]anull[a1];[2:a]anull[a2]",
 		[]string{"[a0]", "[a1]", "[a2]"})
-	layout, corr, err = analyzeAudioLayout(context.Background(), indep, 3)
+	layout, corr, err = analyzeAudioLayout(context.Background(), indep, audioStreamsNoTitle(3))
 	if err != nil {
 		t.Fatalf("analyzeAudioLayout (négatif): %v", err)
 	}
@@ -303,7 +303,7 @@ func TestAnalyzeAudioLayout_GameClassifiedNotByOrder(t *testing.T) {
 	// corrélée au mix → classé `game` MALGRÉ sa position (2). Prouve que le split
 	// est acoustique, pas positionnel.
 	src := generateGameVoiceMKV(t, dir)
-	layout, _, err := analyzeAudioLayout(context.Background(), src, 3)
+	layout, _, err := analyzeAudioLayout(context.Background(), src, audioStreamsNoTitle(3))
 	if err != nil {
 		t.Fatalf("analyzeAudioLayout: %v", err)
 	}
