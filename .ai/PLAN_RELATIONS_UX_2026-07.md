@@ -97,7 +97,7 @@ commit + entrée thought_log. Ne pas commencer le lot suivant avant.
 Le tableau (`RelationsTable.tsx`) n'a ni `getSortedRowModel` ni accesseurs : ordre serveur
 figé (matchs communs DESC). Objectif : en-têtes cliquables, tri client.
 
-- [ ] A1. Ajouter un `accessorFn` à chaque colonne triable + `getSortedRowModel()` :
+- [x] A1. Ajouter un `accessorFn` à chaque colonne triable + `getSortedRowModel()` :
       - `player` → `gamertag` (alpha, insensible à la casse)
       - `encounters` → `total_matches`
       - `wr_ally` → `teammate_win_rate` ; `wr_enemy` → `enemy_win_rate`
@@ -105,17 +105,27 @@ figé (matchs communs DESC). Objectif : en-têtes cliquables, tri client.
       - `ratio` → `duel_ratio`
       - `last_seen` → timestamp epoch de `last_seen_at`
       - `link` (catégorie) → NON triable (`enableSorting: false`)
-- [ ] A2. Valeurs nulles toujours en fin de liste quel que soit le sens : accessor
+      FAIT : accessorFn + `sortDescFirst: true` sur les colonnes numériques/date
+      (1er clic = décroissant, attendu par A5a) ; `player` alpha asc-first.
+- [x] A2. Valeurs nulles toujours en fin de liste quel que soit le sens : accessor
       retourne `undefined` pour null/NaN + `sortUndefined: 'last'` sur ces colonnes.
-- [ ] A3. En-têtes : bouton cliquable (cycle asc→desc→none), indicateur de sens en
+      FAIT via helpers `numOrUndef` / `lastSeenEpoch`.
+- [x] A3. En-têtes : bouton cliquable (cycle asc→desc→none), indicateur de sens en
       caractère texte (pas d'icône emoji), `aria-sort` sur le `<th>` actif. Pas d'état
       de tri initial (ordre serveur conservé tant qu'on ne clique pas).
-- [ ] A4. Vérifier que le changement de tri réinitialise la pagination page 1
+      FAIT : helper `SortLabel` (bouton + indicateur `↑`/`↓`) ; pour « Ratio » le
+      Tooltip enveloppe le bouton (`div > button` valide). `aria-sort` sur le `<th>`.
+- [x] A4. Vérifier que le changement de tri réinitialise la pagination page 1
       (comportement TanStack `autoResetPageIndex` par défaut — tester, ne pas supposer).
-- [ ] A5. Tests vitest (nouveau `RelationsTable.test.tsx` ou extension du test page) :
+      VÉRIFIÉ : `autoResetPageIndex` ne réinitialise PAS de façon fiable (ni sync ni
+      async) dans notre harnais → reset explicite piloté via état contrôlé
+      (`onSortingChange` remet `pageIndex: 0`). Test dédié (30 lignes, page 2 → tri →
+      page 1). Découverte consignée en bas de plan.
+- [x] A5. Tests vitest (nouveau `RelationsTable.test.tsx`) :
       (a) clic sur « Ratio » → ordre décroissant attendu sur un jeu de 4 lignes dont une
       à ratio null (null en dernier) ; (b) second clic → ordre inversé, null toujours
-      en dernier ; (c) `aria-sort` présent.
+      en dernier ; (c) `aria-sort` présent. FAIT (+ tri alpha casse-insensible + « Lien »
+      non triable).
 
 **Gate A** : GATE-WEB.
 
@@ -364,7 +374,12 @@ Sinon statuer `[!]` avec la mesure observée — ce n'est pas un échec du plan.
 
 (Consigner ici tout bug/dette rencontré hors périmètre, avec fichier:ligne — ne pas traiter.)
 
-- _(vide)_
+- Lot A / A4 — `autoResetPageIndex` (défaut TanStack Table v8) NE réinitialise PAS
+  la pagination en page 1 au changement de tri dans notre harnais vitest+jsdom (test
+  échoue même avec attente async `findByText`). Contournement adopté (dans le
+  périmètre A4, comportement voulu) : état tri+pagination contrôlé,
+  `onSortingChange` remet `pageIndex: 0`. `RelationsTable.tsx`. Pas d'action
+  supplémentaire requise.
 
 ## Protocole de reprise de session
 

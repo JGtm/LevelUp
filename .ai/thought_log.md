@@ -1,3 +1,31 @@
+## [2026-07-17] Relations UX — Lot A : tri des colonnes du tableau (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Contexte** : exécution du plan `.ai/PLAN_RELATIONS_UX_2026-07.md`, lots A/B/C sur la
+branche `chore/backlog-train-2026-07` (prescription plan `feat/relations-ux-2026-07`
+supersédée par décision utilisateur 2026-07-17). Lot H (chip Multi-jeux) déjà livré.
+
+**Décision technique principale** : `RelationsTable.tsx` — colonnes triables via
+`accessorFn` + `getSortedRowModel()`. Colonnes numériques/date en `sortDescFirst: true`
+(1er clic = décroissant), `player` alpha insensible à la casse (asc-first). Nuls relégués
+en fin de liste dans les deux sens (`sortUndefined: 'last'` + helpers `numOrUndef` /
+`lastSeenEpoch`). En-têtes triables via helper `SortLabel` (bouton + indicateur texte
+`↑`/`↓`) ; pour « Ratio » le Tooltip (rend un `<div>`) enveloppe le bouton pour rester du
+HTML valide (`div > button`). `aria-sort` posé sur le `<th>` actif. `link` non triable.
+
+**Résultat observé le plus notable** : `autoResetPageIndex` (défaut TanStack v8) NE
+réinitialise PAS la pagination en page 1 au tri dans le harnais vitest+jsdom (échec même
+en attente async). Contournement dans le périmètre A4 : état tri+pagination contrôlé,
+`onSortingChange` remet `pageIndex: 0`. Consigné en « Découvertes » du plan.
+
+**Gate A (GATE-WEB)** : typecheck vert ; lint 0 erreur (68 warnings baseline, dont le
+warning `useReactTable` inhérent, pré-existant) ; `vitest run src/features/palmares
+src/features/notifications src/stores` → 10 fichiers / 97 tests verts (nouveau
+`RelationsTable.test.tsx` : 6 tests).
+
+**Prochaine étape** : Lot B (duels cliquables vers la match view).
+
 ## [2026-07-17] Restes audit post-deploy 2026-07-16 — media tooling /health + Cache-Control immutable Vite (branche chore/backlog-train-2026-07)
 
 **Statut** : sous-points 2 et 3 Complétés ; sous-point 1 (restic) EN ATTENTE d'arbitrage utilisateur (prémisse invalidée).
