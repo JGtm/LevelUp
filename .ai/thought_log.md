@@ -1,3 +1,69 @@
+## [2026-07-17] Restes audit post-deploy 2026-07-16 — media tooling /health + Cache-Control immutable Vite (branche chore/backlog-train-2026-07)
+
+**Statut** : sous-points 2 et 3 Complétés ; sous-point 1 (restic) EN ATTENTE d'arbitrage utilisateur (prémisse invalidée).
+
+**Contexte** : item backlog [prod/VPS], 3 sous-points, un commit chacun. Inspection VPS en
+lecture seule uniquement (`ssh lvelup`).
+
+**Sous-point 1 — Backup restic : PRÉMISSE INVALIDÉE, non livré (needs input)** :
+Le constat du backlog (« restic absent de l'hôte → le scheduler backup interne se désactive »)
+est factuellement faux. Vérif sur pièces (lecture seule) :
+- restic EST présent sur l'hôte (`/usr/bin/restic`) et un backup restic **niveau hôte via
+  systemd** (`scripts/restic-backup.sh` + `scripts/systemd/levelup-restic-backup.{service,timer}`,
+  installé 2026-06-19) tourne quotidiennement : timer `enabled`+`active`, 9 snapshots, dernier
+  succès 2026-07-16 04:00 UTC (781 MiB → 46 MiB stockés), repo CHIFFRÉ `/opt/levelup/restic-repo`
+  (+ `.restic-password` root 600), couvre `data/titles`+`data/auth`+config, arrêt bref du
+  conteneur pour cohérence DuckDB.
+- Le vrai constat : restic manque DANS le conteneur (`docker exec ... which restic` → absent),
+  or le scheduler Go in-app (`pkg/duckdbbackup`, `backup_enabled: true`, interval 12h dans
+  app_settings.json prod) tourne DANS le conteneur → WARN au boot
+  « backup: binaire restic introuvable dans le PATH — scheduler désactivé ».
+- Contrat exact du scheduler Go découvert : `config.BackupConfig` (Enabled/Interval/Keep* depuis
+  app_settings.json ; BackupDir=env `LEVELUP_BACKUP_DIR` défaut `/app/data/backups` ;
+  ResticRepo=env `RESTIC_REPOSITORY`). `toPkgConfig` force `--insecure-no-password` (repo NON
+  chiffré) et ne câble AUCUN mot de passe. Il EXPORTe les DuckDB (DuckDB EXPORT, sans stopper le
+  conteneur) → staging → `restic backup` du staging ; rétention `forget --keep-daily/weekly/monthly`.
+- Conclusion : activer/préparer le scheduler in-app créerait un **2e backup restic redondant, NON
+  chiffré, sur le même disque, des mêmes DuckDB** que le backup systemd hôte déjà opérationnel et
+  chiffré. Contredit CLAUDE.md (≤2 copies, pas de doublon, cohérence) et régresse vs l'existant.
+  Per plan-execution (signaler une découverte qui invalide une hypothèse du plan) : je NE construis
+  PAS ce doublon sur une prémisse fausse. Édit Dockerfile (ajout restic à l'image) préparé puis
+  reverté. Décision attendue : (a) garder le backup systemd hôte comme canonique et laisser le
+  scheduler in-app OFF (silencier le WARN — nécessite un changement de code ou app_settings prod),
+  ou (b) migrer vers le scheduler in-app et retirer le systemd (régression chiffrement/même disque).
+  Recommandation : (a).
+
+**Sous-point 2 — Media tooling exposé dans /health (Complété, commit dédié)** :
+Vérif : `ops.InspectMediaTooling`/`LogMediaToolingStatus` existants (boot, `cmd/server/main.go`),
+handler `/health` Huma (`internal/api/handlers/health.go`, Body `domain.HealthResponse`). Prod en
+`LEVELUP_LOG_LEVEL=warn` masque la ligne INFO du boot. Ajout : `domain.MediaToolingStatus`
+{ffmpeg, ffprobe, ffmpeg_version} + champ `HealthResponse.MediaTooling` ; projection
+`MediaToolingReport.ToHealthStatus()` (concise, sans le détail encodeurs/muxers réservé à
+check-env) ; sonde UNE fois au boot dans `buildAPIV1Deps` (borné 3 execs/5s) puis figée via
+`HealthHandler.WithMediaTooling` — /health ne réexécute jamais ffmpeg par requête ; aucune nouvelle
+ligne WARN. Tests handler (media_tooling présent, y compris par défaut) + ops (ToHealthStatus).
+
+**Sous-point 3 — Cache-Control immutable sur les assets Vite hashés (Complété, commit dédié)** :
+Vérif : `mountSPA` (`internal/api/server_apiv1.go`) sert le dist via `http.FileServer` (pose
+Last-Modified ; le stdlib ne pose PAS d'ETag). Vite config = défauts (base `/`, assets sous
+`/assets/<nom>-<hash>.<ext>`, hash 8 chars base64url). Ajout : `serveStaticFile` pose
+`Cache-Control: public, max-age=31536000, immutable` UNIQUEMENT si `isViteHashedAsset(path)`
+(regex `^/assets/.+-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$`) ; index.html, `/`, favicon et tout fichier
+non hashé restent revalidables (jamais immutable). Header posé avant `ServeHTTP` → survit au 200
+comme au 304. Tests : prédicat (table), asset hashé → immutable + Last-Modified, non-hashé (`/`,
+favicon) → pas immutable, 304 (If-Modified-Since) → immutable conservé.
+
+**Gates** : `go build ./...` exit 0, `go vet ./...` clean, `go test ./...` (packages touchés :
+handlers/ops/domain/api verts). `bash -n` non applicable (aucun script shell créé au final —
+sous-point 1 non livré).
+
+**Découvertes hors périmètre (non traitées)** : (1) le scheduler Go in-app `pkg/duckdbbackup` est
+entièrement câblé et testé mais restera inerte tant que la redondance avec le backup systemd hôte
+n'est pas tranchée ; le WARN au boot prod persiste (bruit). (2) `toPkgConfig` ignore
+`ResticPassword`/`ResticPwdFile` de la config — activer un repo chiffré côté in-app exigerait de les
+câbler. (3) le constat backlog « restic absent de l'hôte » devrait être corrigé (restic présent +
+backup systemd actif).
+
 ## [2026-07-17] Release — pre-build image en CI (GHCR) + pull au deploy avec fallback build local (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété.
