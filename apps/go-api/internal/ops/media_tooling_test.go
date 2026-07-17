@@ -154,3 +154,24 @@ func TestMediaToolingReport_Summary_FFmpegAbsent(t *testing.T) {
 		t.Errorf("Summary sans ffmpeg/ffprobe devrait les marquer [KO], obtenu:\n%s", out)
 	}
 }
+
+func TestMediaToolingReport_ToHealthStatus(t *testing.T) {
+	r := MediaToolingReport{
+		FFmpegFound: true, FFmpegVersion: "ffmpeg version 5.1.6",
+		FFprobeFound: true,
+		// Le détail encodeurs/muxers n'est PAS projeté dans /health.
+		MissingEncoders: []string{"libx264"},
+	}
+	got := r.ToHealthStatus()
+	if !got.FFmpeg || !got.FFprobe {
+		t.Errorf("attendu ffmpeg/ffprobe=true, obtenu %+v", got)
+	}
+	if got.FFmpegVersion != "ffmpeg version 5.1.6" {
+		t.Errorf("version ffmpeg non propagée: %q", got.FFmpegVersion)
+	}
+
+	absent := MediaToolingReport{}.ToHealthStatus()
+	if absent.FFmpeg || absent.FFprobe || absent.FFmpegVersion != "" {
+		t.Errorf("rapport vide devrait projeter des faux/vide, obtenu %+v", absent)
+	}
+}

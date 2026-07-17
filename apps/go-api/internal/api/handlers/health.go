@@ -28,9 +28,10 @@ import (
 
 // HealthHandler gère GET /health.
 type HealthHandler struct {
-	repo       port.BootstrapRepository
-	appVersion string
-	startedAt  time.Time
+	repo         port.BootstrapRepository
+	appVersion   string
+	startedAt    time.Time
+	mediaTooling domain.MediaToolingStatus
 }
 
 // NewHealthHandler crée un HealthHandler.
@@ -41,6 +42,15 @@ func NewHealthHandler(repo port.BootstrapRepository) *HealthHandler {
 // NewHealthHandlerWithVersion crée un HealthHandler avec la version de l'application.
 func NewHealthHandlerWithVersion(repo port.BootstrapRepository, version string) *HealthHandler {
 	return &HealthHandler{repo: repo, appVersion: version, startedAt: time.Now()}
+}
+
+// WithMediaTooling injecte l'état de l'outillage média sondé une fois au boot.
+// Fluent : renvoie h pour chaîner avec les constructeurs. Absence d'appel =
+// MediaToolingStatus zéro-valeur (ffmpeg/ffprobe=false) — jamais de nouveau
+// WARN, l'info reste une simple projection dans /health.
+func (h *HealthHandler) WithMediaTooling(status domain.MediaToolingStatus) *HealthHandler {
+	h.mediaTooling = status
+	return h
 }
 
 // Mount enregistre les 3 routes RACINE via Huma sur le routeur chi `r`
@@ -89,14 +99,15 @@ func (h *HealthHandler) handleHealth(ctx context.Context, _ *struct{}) (*healthO
 	lastSync, _ := h.repo.GetLastSyncAt(ctx)
 
 	return &healthOutput{Body: domain.HealthResponse{
-		Status:      "ok",
-		MatchCount:  count,
-		DBVersion:   dbVersion,
-		AppVersion:  h.appVersion,
-		PlayerCount: playerCount,
-		LastSyncAt:  lastSync,
-		Uptime:      time.Since(h.startedAt).Round(time.Second).String(),
-		GoVersion:   runtime.Version(),
+		Status:       "ok",
+		MatchCount:   count,
+		DBVersion:    dbVersion,
+		AppVersion:   h.appVersion,
+		PlayerCount:  playerCount,
+		LastSyncAt:   lastSync,
+		Uptime:       time.Since(h.startedAt).Round(time.Second).String(),
+		GoVersion:    runtime.Version(),
+		MediaTooling: h.mediaTooling,
 	}}, nil
 }
 

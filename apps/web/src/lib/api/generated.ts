@@ -3314,10 +3314,16 @@ export interface components {
             last_sync_at?: string;
             /** Format: int64 */
             match_count: number;
+            media_tooling: components["schemas"]["MediaToolingStatus"];
             /** Format: int64 */
             player_count: number;
             status: string;
             uptime?: string;
+        };
+        MediaToolingStatus: {
+            ffmpeg: boolean;
+            ffmpeg_version?: string;
+            ffprobe: boolean;
         };
         PlayerSummary: {
             gamertag: string;
