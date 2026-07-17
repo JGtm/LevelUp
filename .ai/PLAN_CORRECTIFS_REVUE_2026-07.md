@@ -276,16 +276,44 @@ feedback-drawer = 103/103.
 
 ## LOT E — UX web restants
 
-- [ ] E1 (W2) `apps/web/src/features/match-view/MatchTugOfWarChart.tsx` —
-      rétablir les tooltips item des séries kills/vagues (DEC-2 : « gamertag —
-      mm:ss ») tout en conservant le comportement axis voulu par le passage à
-      `'axis'` (formatter axis n'affichant que les bins, tooltips item
-      par-série effectifs). Test avec mock echarts-for-react.
-- [ ] E2 (W5) `apps/web/src/features/notifications/NotificationsBell.tsx` —
-      flush des ids en attente sur `visibilitychange`/`pagehide` avec envoi
-      `keepalive` (D5). Test.
+- [x] E1 (W2) `apps/web/src/features/match-view/MatchTugOfWarChart.tsx` —
+      tooltips item des séries kill-feed/vagues rétablis. FORME CHOISIE : trigger
+      GLOBAL `'item'` (option 1 du plan), résumé de bin servi par le tooltip item
+      des DEUX barres (`buildBarSeries` reçoit `binTooltips` via options-object,
+      `tooltip: { formatter: binTooltipFormatter(binTooltips) }`). Justif : ECharts
+      n'a PAS de `trigger` par-série (vérifié : `series.tooltip` ne porte que
+      `formatter`/`position`, jamais `trigger`) — l'option 2 (« garder 'axis' et
+      re-router ») ne peut PAS produire de vrai tip per-item (axis agrège toute la
+      colonne, deux grilles → conflit), donc option 1 est la seule forme correcte
+      ET la plus simple ; elle préserve LES DEUX comportements (résumé de bin =
+      contenu delta/X-Y/cumuls intact, tips per-kill/vague effectifs) et retrouve
+      la structure connue-bonne d'avant la régression (24fc02f2f était déjà en
+      'item' + formatters par-série). Retrait des `trigger:'item'` par-série morts
+      (scatter + vagues) + de l'`axisPointer` shadow (affordance axis inutile en
+      item). Test `MatchTugOfWarChart.test.tsx` (mock echarts-for-react capturant
+      l'option, aucun canvas jsdom) : trigger global == 'item' ; formatter barre →
+      résumé de bin (Écart +3 « Mon équipe ») ; formatter scatter → tip per-kill
+      (« gamertag — 0:01 ») ; formatter vague → « ×3 » ; garde-rail : scatter/vague
+      sans `tooltip.trigger`. 4/4 vert.
+- [x] E2 (W5) `apps/web/src/features/notifications/NotificationsBell.tsx` —
+      filet `visibilitychange` (hidden) + `pagehide` flushant `pendingReadRef` via
+      keepalive (D5). Client NON dupliqué : option `keepalive` ajoutée à
+      `request()` + méthode `api.postKeepalive` (mêmes URL/headers/credentials/
+      erreurs que `post`) ; helper `markNotificationsReadKeepalive` dans
+      `mutations.ts`. Chemin nominal open→false INCHANGÉ. Anti double-envoi :
+      `flushedReadRef` — le flush vide `pendingReadRef` AVANT l'envoi et marque les
+      ids flushés ; l'accumulation (dropdown ouvert, onglet re-visible sans
+      fermeture) les ignore ; le nominal ne touche PAS `flushedReadRef` (un
+      rollback d'erreur doit pouvoir re-tenter, dropdown fermé = accumulation
+      stoppée). Tests `NotificationsBell.test.tsx` : visibilitychange hidden
+      (dropdown ouvert) → 1 markRead [101,102] ; re-hidden → pas de re-flush
+      (toujours 1) ; pagehide → 1 markRead [303]. 7/7 vert (5 existants + 2).
 
-**Gate E** : `make check-types` + vitest ciblé ; thought_log ; commit.
+**Gate E** : PASSÉ 2026-07-17. `make check-types` (tsc -b) OK ; vitest ciblé
+(match-view + notifications) = 11/11 ; `make test-web` complet = 263 fichiers,
+2272 passés / 14 skippés, 0 échec ; `npx eslint` sur les 6 fichiers touchés
+(MatchTugOfWarChart .tsx + .test.tsx, NotificationsBell .tsx + .test.tsx,
+mutations.ts, client.ts) = 0 issue ; thought_log ; commit.
 
 ## LOT F — Duplications, dette, robustesse
 
@@ -365,6 +393,12 @@ seeder) ; vitest lib/features migrées ; lint ; thought_log ; commit.
   mode_category)) ; l'historique dépend de l'exclusion du match courant, sa mémoïsation
   changerait la sémantique (percentile baseline). Hors périmètre D1 — non traité. Piste
   si besoin : charger l'historique complet par mode une fois et exclure en mémoire.
+- [LOT E / E1] `MatchTugOfWarChart.tsx` porte des libellés FR EN DUR
+  PRÉEXISTANTS (« Lane alliée », « Lane ennemie », « Mes kills », « Kills
+  ennemis », « Vague <side> ×N », « kill(s) ») non passés par i18n — antérieurs à
+  la fenêtre de revue (déjà présents en 24fc02f2f), NON flaggés par la revue
+  adversariale, hors périmètre E1 (qui ne visait que le trigger des tooltips).
+  Non traités. À solder si un chantier i18n match-view est décidé.
 - [LOT D / D3] `data_health_runs` croît aussi sans rétention (1 ligne par audit
   data-health), mais basse fréquence et son lecteur (`LatestDataHealthJSON`) ne lit que
   la dernière ligne. Le plan D3 liste explicitement 3 tables (detection_events,

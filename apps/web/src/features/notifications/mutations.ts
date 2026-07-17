@@ -38,6 +38,23 @@ export function useMarkRead({ playerSlug }: MutationCtx) {
   })
 }
 
+/**
+ * Flush « keepalive » des ids lus, best-effort au unload (`visibilitychange`
+ * hidden / `pagehide`) — filet du chemin nominal open→false qui, monté, ne se
+ * déclenche pas sur F5 / fermeture d'onglet (W5). Réutilise le client keepalive
+ * (`api.postKeepalive`), pas de patch de cache optimiste : la page part ou
+ * reviendra via refetch. `void` + `.catch` : perte tolérée si le navigateur
+ * coupe la requête au unload (aucun log utile — le contexte disparaît).
+ */
+export function markNotificationsReadKeepalive(playerSlug: string, ids: number[]): void {
+  if (ids.length === 0) return
+  void api
+    .postKeepalive<MarkResult>(`/players/${playerSlug}/notifications/mark-read`, { ids })
+    .catch(() => {
+      /* best-effort : requête coupée au unload → sera re-marquée au prochain cycle */
+    })
+}
+
 export function useMarkUnread({ playerSlug }: MutationCtx) {
   const qc = useQueryClient()
   return useMutation<void, Error, number, CacheSnapshot>({
