@@ -283,13 +283,15 @@ func TestBuildCompareEntry_AvgLifeSeconds(t *testing.T) {
 }
 
 // TestBuildSessionParticipationProfile_ObjectiveAndScore couvre les axes Objective
-// (somme PSA) et Score (résiduel PersonalScore) du profil de participation : avant,
-// Objective restait à 0 et Score à 0 (MedalExploitScore nil).
+// (somme PSA) et Score (score personnel par minute jouée) du profil de participation.
+// Objective reste piloté par le PSA ; Score = ΣPS / (Σtime_played/60), désormais
+// indépendant du PSA (avant : résiduel medals/streaks ≈ 0, axe mort).
 func TestBuildSessionParticipationProfile_ObjectiveAndScore(t *testing.T) {
 	dd, dt := 3000.0, 2000.0
 	ps := 2000
+	tp := 600 // 10 min → PS/min = 2000 / 10 = 200
 	rows := []legacymatch.StatsMatchRow{
-		{MatchID: "m1", Kills: 10, Assists: 4, Deaths: 5, PersonalScore: &ps, DamageDealt: &dd, DamageTaken: &dt},
+		{MatchID: "m1", Kills: 10, Assists: 4, Deaths: 5, PersonalScore: &ps, TimePlayedSeconds: &tp, DamageDealt: &dd, DamageTaken: &dt},
 	}
 	axisVal := func(axes []domain.SessionParticipationAxis, name string) float64 {
 		for _, a := range axes {
@@ -299,18 +301,38 @@ func TestBuildSessionParticipationProfile_ObjectiveAndScore(t *testing.T) {
 		}
 		return -1
 	}
-	// Sans scores PSA → Objective à 0 (dégradation gracieuse).
+	// Sans scores PSA → Objective à 0 (dégradation gracieuse) ; Score reste calculé.
 	without := buildSessionParticipationProfile(rows, nil, 225)
 	if v := axisVal(without, "objective"); v != 0 {
 		t.Fatalf("Objective sans PSA: want 0, got %v", v)
 	}
-	// Avec PSA → Objective > 0 et Score (résiduel 2000−1000−200−500 = 300) > 0.
+	// Score = 200/min normalisé (195×1.25=243.75) → ~82/100, vivant et > 0.
+	if v := axisVal(without, "score"); v <= 0 {
+		t.Fatalf("Score PS/min: want > 0, got %v", v)
+	}
+	// Avec PSA → Objective > 0 ; Score inchangé (ne dépend plus du PSA/résiduel).
 	with := buildSessionParticipationProfile(rows, map[string]int{"m1": 500}, 225)
 	if v := axisVal(with, "objective"); v <= 0 {
 		t.Fatalf("Objective avec PSA: want > 0, got %v", v)
 	}
-	if v := axisVal(with, "score"); v <= 0 {
-		t.Fatalf("Score résiduel: want > 0, got %v", v)
+	if got, exp := axisVal(with, "score"), axisVal(without, "score"); got != exp {
+		t.Fatalf("Score ne doit pas dépendre du PSA: with=%v without=%v", got, exp)
+	}
+}
+
+// TestBuildSessionParticipationProfile_ScoreZeroWithoutTime : sans time_played
+// renseigné, l'axe Score (PS/min) dégrade proprement à 0 plutôt que de diviser
+// par zéro.
+func TestBuildSessionParticipationProfile_ScoreZeroWithoutTime(t *testing.T) {
+	ps := 2000
+	rows := []legacymatch.StatsMatchRow{
+		{MatchID: "m1", Kills: 10, Assists: 4, Deaths: 5, PersonalScore: &ps},
+	}
+	profile := buildSessionParticipationProfile(rows, nil, 225)
+	for _, a := range profile {
+		if a.Name == "score" && a.Value != 0 {
+			t.Fatalf("Score sans time_played: want 0, got %v", a.Value)
+		}
 	}
 }
 

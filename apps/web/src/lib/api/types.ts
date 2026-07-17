@@ -1620,6 +1620,10 @@ export interface MatchScoreboardRow {
   xuid: string
   gamertag: string
   team_side: string | null
+  /** Libellé d'équipe localisé fourni par le backend (Halo 5 : « Rouge »/« Red »
+   *  depuis team_colors). Absent/vide pour les titres sans référentiel d'équipes
+   *  (Halo Infinite) → le front retombe sur resolveTeamName (Eagle/Cobra). */
+  team_name?: string | null
   is_me: boolean
   /** True si participant détecté comme bot (xuid au format "bid(N.0)"). */
   is_bot?: boolean

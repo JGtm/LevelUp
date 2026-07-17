@@ -73,7 +73,8 @@ func (r *SquadRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]do
 
 	// PMT-5 : win title-aware (fallback "p.outcome = 2" byte-identique Halo).
 	winExpr := outcomeSQLEq(ctx, "p.outcome", canonical.OutcomeWin, "p.outcome = 2")
-	rows, err := db.QueryContext(ctx, fmt.Sprintf(Q33SynthesisHeatmap, winExpr), xuid)
+	heatmapQ := resolveCampaignExclusion(fmt.Sprintf(Q33SynthesisHeatmap, winExpr), r.pdb.TitleSlug, "r")
+	rows, err := db.QueryContext(ctx, heatmapQ, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("LoadSynthesisHeatmap: %w", err)
 	}
@@ -115,7 +116,8 @@ func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]le
 	}
 	defer release()
 
-	rows, err := db.QueryContext(ctx, Q33bSynthesisSharedQuery, xuid)
+	synthQ := resolveCampaignExclusion(Q33bSynthesisSharedQuery, r.pdb.TitleSlug, "r")
+	rows, err := db.QueryContext(ctx, synthQ, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("LoadSynthesisMatches: %w", err)
 	}

@@ -12,6 +12,7 @@ import { useCallback, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
+import { heatmapRampTokens } from '@/components/charts/heatmapColors'
 import { CHART_BG, escapeHtml, getEChartsThemeColors } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 
@@ -109,9 +110,10 @@ function buildOption(
           top: 'center',
           itemWidth: 12,
           itemHeight: 140,
-          // Rampe NEUTRE de fréquence (mono-teinte) : ce heatmap mesure
-          // l'intensité de rencontre, pas une perf → pas de rouge « mauvais ».
-          inRange: { color: [resolveToken('heatmap-freq-low'), resolveToken('heatmap-freq-high')] },
+          // Rampe NEUTRE de fréquence (mono-teinte, luminance monotone, CVD-safe) :
+          // ce heatmap mesure l'intensité de rencontre, pas une perf → pas de
+          // rouge « mauvais ». Rampe centralisée (cf. components/charts/heatmapColors).
+          inRange: { color: heatmapRampTokens('frequency').map(resolveToken) },
           formatter: (val: number) => `${Math.round(val)}`,
           text: [legendLabel, ''],
           textStyle: { color: tc.axisLabel, fontSize: 10 },

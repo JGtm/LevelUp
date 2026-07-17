@@ -289,6 +289,26 @@ export interface CreateArcBody {
 // ──────────────────────── API client ────────────────────────
 
 /**
+ * Préfixe player-scoped de TOUTES les routes Prestige/Ascension/Escouade.
+ *
+ * Le module Prestige est monté côté serveur SOUS /players/{player_slug}
+ * (server_apiv1.go — groupe gardé par ownershipMW, ADR 0029). L'acteur de la
+ * requête (created_by / requested_by / user_id) sert de {player_slug} : le
+ * segment de path sert TOUJOURS à ownershipMW ; les handlers qui ont besoin de
+ * l'acteur pour leur logique métier le relisent depuis le body/la query. Les
+ * routes unitaires par id (get/update/abandon/suggest-next d'un défi ou arc) ne
+ * lisent pas d'acteur du tout — le slug ne sert qu'à ownershipMW ; le caller
+ * fournit alors le slug du joueur courant. Un appel top-level (sans ce préfixe)
+ * tombe en 404 (cause du bug « Enregistrer cette compo » côté squad, et du 404
+ * silencieux des écritures/lectures unitaires défis/arcs/templates).
+ *
+ * Chokepoint unique — ne JAMAIS inliner `/players/${...}` pour une route
+ * prestige (garde-rail : prestige.paths.test.ts, qui exige que chaque fonction
+ * exportée produise un chemin /players/…, jamais un chemin nu top-level).
+ */
+const scopedToPlayer = (actorSlug: string) => `/players/${encodeURIComponent(actorSlug)}`
+
+/**
  * Section api.prestige — toutes les requêtes vers les endpoints Prestige.
  *
  * Si le backend retourne 404 (PRESTIGE_ENABLED désactivé), les fonctions
@@ -296,50 +316,54 @@ export interface CreateArcBody {
  * "feature désactivée".
  */
 export const prestigeApi = {
-  // Défis
+  // Défis. Le body (createChallenge) porte user_id ; les routes unitaires par id
+  // reçoivent le slug de l'acteur (joueur courant) pour ownershipMW.
   createChallenge: (body: CreateChallengeBody) =>
-    api.post<Challenge>('/challenges', body),
+    api.post<Challenge>(`${scopedToPlayer(body.user_id)}/prestige/challenges`, body),
 
-  getChallenge: (id: string) => api.get<Challenge>(`/challenges/${id}`),
+  getChallenge: (id: string, actorSlug: string) =>
+    api.get<Challenge>(`${scopedToPlayer(actorSlug)}/prestige/challenges/${id}`),
 
   listActiveChallenges: (userId: string, titleSlug: string) =>
     api.get<{ challenges: Challenge[]; count: number }>(
-      `/players/${encodeURIComponent(userId)}/challenges?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`,
+      `${scopedToPlayer(userId)}/prestige/challenges?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`,
     ),
 
-  updateChallenge: (id: string, body: UpdateChallengeBody) =>
-    api.patch<Challenge>(`/challenges/${id}`, body),
+  updateChallenge: (id: string, body: UpdateChallengeBody, actorSlug: string) =>
+    api.patch<Challenge>(`${scopedToPlayer(actorSlug)}/prestige/challenges/${id}`, body),
 
-  abandonChallenge: (id: string) => api.delete<void>(`/challenges/${id}`),
+  abandonChallenge: (id: string, actorSlug: string) =>
+    api.delete<void>(`${scopedToPlayer(actorSlug)}/prestige/challenges/${id}`),
 
-  suggestNext: (id: string) =>
-    api.post<{ suggestions: Template[] }>(`/challenges/${id}/suggest-next`),
+  suggestNext: (id: string, actorSlug: string) =>
+    api.post<{ suggestions: Template[] }>(`${scopedToPlayer(actorSlug)}/prestige/challenges/${id}/suggest-next`),
 
-  // Arcs
-  createArc: (body: CreateArcBody) => api.post<Arc>('/arcs', body),
+  // Arcs. Le body (createArc) porte user_id ; getArc reçoit le slug de l'acteur.
+  createArc: (body: CreateArcBody) => api.post<Arc>(`${scopedToPlayer(body.user_id)}/arcs`, body),
 
   listArcs: (userId: string, titleSlug: string) =>
     api.get<{ arcs: Arc[]; count: number }>(
-      `/players/${encodeURIComponent(userId)}/arcs?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`,
+      `${scopedToPlayer(userId)}/arcs?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`,
     ),
 
-  getArc: (id: string) => api.get<Arc>(`/arcs/${id}`),
+  getArc: (id: string, actorSlug: string) =>
+    api.get<Arc>(`${scopedToPlayer(actorSlug)}/arcs/${id}`),
 
   /** Supprime un arc. cascade=true supprime aussi les objectifs (abandon, ou
    *  hard delete si l'arc a < 1h) ; cascade=false les détache (gardés, libres). */
   deleteArc: (id: string, userId: string, cascade: boolean) =>
     api.delete<void>(
-      `/arcs/${id}?user_id=${encodeURIComponent(userId)}&objectives=${cascade ? 'delete' : 'detach'}`,
+      `${scopedToPlayer(userId)}/arcs/${id}?user_id=${encodeURIComponent(userId)}&objectives=${cascade ? 'delete' : 'detach'}`,
     ),
 
   // Presets d'arc (catalogue + adoption)
   listArcPresets: (userId: string, titleSlug: string) =>
     api.get<{ presets: PresetArc[]; count: number }>(
-      `/arcs/presets?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`,
+      `${scopedToPlayer(userId)}/arcs/presets?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`,
     ),
 
   adoptArcPreset: (presetId: string, userId: string, titleSlug: string) =>
-    api.post<Arc>(`/arcs/presets/${encodeURIComponent(presetId)}/adopt`, {
+    api.post<Arc>(`${scopedToPlayer(userId)}/arcs/presets/${encodeURIComponent(presetId)}/adopt`, {
       user_id: userId,
       title_slug: titleSlug,
     }),
@@ -349,13 +373,13 @@ export const prestigeApi = {
     const qs = titleSlug
       ? `?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}`
       : `?user_id=${encodeURIComponent(userId)}`
-    return api.get<UserPrestige>(`/players/${encodeURIComponent(userId)}/prestige/me${qs}`)
+    return api.get<UserPrestige>(`${scopedToPlayer(userId)}/prestige/me${qs}`)
   },
 
   // Templates
   suggestTemplates: (userId: string, titleSlug: string, count = 3) =>
     api.get<{ templates: Template[] }>(
-      `/templates/suggest?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}&count=${count}`,
+      `${scopedToPlayer(userId)}/templates/suggest?user_id=${encodeURIComponent(userId)}&title_slug=${encodeURIComponent(titleSlug)}&count=${count}`,
     ),
 
   // Squad
@@ -371,62 +395,62 @@ export const prestigeApi = {
       target_per_member?: number
       created_by: string
     },
-  ) => api.post<SquadChallenge>(`/squads/${squadId}/challenges`, body),
+  ) => api.post<SquadChallenge>(`${scopedToPlayer(body.created_by)}/squads/${squadId}/challenges`, body),
 
-  listSquadChallenges: (squadId: string) =>
+  listSquadChallenges: (squadId: string, requestedBy: string) =>
     api.get<{ squad_challenges: SquadChallenge[]; count: number }>(
-      `/squads/${squadId}/challenges`,
+      `${scopedToPlayer(requestedBy)}/squads/${squadId}/challenges`,
     ),
 
   joinSquadChallenge: (id: string, body: { user_id: string; chosen_tier?: Tier; is_private?: boolean }) =>
-    api.post<void>(`/squad-challenges/${id}/join`, body),
+    api.post<void>(`${scopedToPlayer(body.user_id)}/squad-challenges/${id}/join`, body),
 
   // Squad roster (CRUD) — clé xuid, cf. backend Phase C.
   createSquad: (body: { name: string; created_by: string; members?: SquadMemberInput[] }) =>
-    api.post<Squad>(`/squads`, body),
+    api.post<Squad>(`${scopedToPlayer(body.created_by)}/squads`, body),
 
   listMySquads: (userId: string) =>
     api.get<{ squads: SquadWithMembers[]; count: number }>(
-      `/squads?user_id=${encodeURIComponent(userId)}`,
+      `${scopedToPlayer(userId)}/squads?user_id=${encodeURIComponent(userId)}`,
     ),
 
   addSquadMember: (
     squadId: string,
     body: { xuid: string; gamertag?: string; requested_by: string },
-  ) => api.post<void>(`/squads/${encodeURIComponent(squadId)}/members`, body),
+  ) => api.post<void>(`${scopedToPlayer(body.requested_by)}/squads/${encodeURIComponent(squadId)}/members`, body),
 
   removeSquadMember: (squadId: string, xuid: string, requestedBy: string) =>
     api.delete<void>(
-      `/squads/${encodeURIComponent(squadId)}/members/${encodeURIComponent(xuid)}?requested_by=${encodeURIComponent(requestedBy)}`,
+      `${scopedToPlayer(requestedBy)}/squads/${encodeURIComponent(squadId)}/members/${encodeURIComponent(xuid)}?requested_by=${encodeURIComponent(requestedBy)}`,
     ),
 
   // Renommer une escouade (membre-user requis côté backend).
   renameSquad: (squadId: string, body: { name: string; requested_by: string }) =>
-    api.patch<void>(`/squads/${encodeURIComponent(squadId)}`, body),
+    api.patch<void>(`${scopedToPlayer(body.requested_by)}/squads/${encodeURIComponent(squadId)}`, body),
 
   // Supprimer une escouade (retrait append-only de tous les membres).
   deleteSquad: (squadId: string, requestedBy: string) =>
     api.delete<void>(
-      `/squads/${encodeURIComponent(squadId)}?requested_by=${encodeURIComponent(requestedBy)}`,
+      `${scopedToPlayer(requestedBy)}/squads/${encodeURIComponent(squadId)}?requested_by=${encodeURIComponent(requestedBy)}`,
     ),
 
   // Évaluation de progression d'un défi d'escouade (recalcule + persiste).
   evaluateSquadChallenge: (id: string, requestedBy: string) =>
     api.post<{ progress: SquadParticipantProgress[] }>(
-      `/squad-challenges/${encodeURIComponent(id)}/evaluate`,
+      `${scopedToPlayer(requestedBy)}/squad-challenges/${encodeURIComponent(id)}/evaluate`,
       { requested_by: requestedBy },
     ),
 
   // Pool de défis suggérés pour l'escouade (biaisé coach). À consommer pour créer.
   refreshSquadPool: (squadId: string, body: { title_slug: string; requested_by: string }) =>
     api.post<{ pool: Template[]; count: number }>(
-      `/squads/${encodeURIComponent(squadId)}/challenges/pool/refresh`,
+      `${scopedToPlayer(body.requested_by)}/squads/${encodeURIComponent(squadId)}/challenges/pool/refresh`,
       body,
     ),
 
   // Orientation coach de l'escouade : axe focal (le plus faible) à renforcer.
   squadOrientation: (squadId: string, requestedBy: string) =>
     api.get<{ axis: string }>(
-      `/squads/${encodeURIComponent(squadId)}/orientation?requested_by=${encodeURIComponent(requestedBy)}`,
+      `${scopedToPlayer(requestedBy)}/squads/${encodeURIComponent(squadId)}/orientation?requested_by=${encodeURIComponent(requestedBy)}`,
     ),
 }

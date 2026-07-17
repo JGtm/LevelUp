@@ -592,7 +592,7 @@ func TestPrestigeHandler_CreateChallenge_Success(t *testing.T) {
 	router := newRouter(mock)
 
 	body := `{"user_id":"u1","title_slug":"halo_infinite","metric":"FieldKDA","target":1.5,"window_type":"session","cadence":"weekly","eval_type":"threshold","mode":"libre"}`
-	req := httptest.NewRequest(http.MethodPost, "/challenges", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/prestige/challenges", bytes.NewBufferString(body))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -615,7 +615,7 @@ func TestPrestigeHandler_CreateChallenge_TooEasy(t *testing.T) {
 	router := newRouter(mock)
 
 	body := `{"user_id":"u1","title_slug":"halo_infinite","metric":"FieldKDA","target":0.5,"window_type":"session","cadence":"weekly","eval_type":"threshold","mode":"libre"}`
-	req := httptest.NewRequest(http.MethodPost, "/challenges", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/prestige/challenges", bytes.NewBufferString(body))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -626,7 +626,7 @@ func TestPrestigeHandler_CreateChallenge_TooEasy(t *testing.T) {
 
 func TestPrestigeHandler_CreateChallenge_BadJSON(t *testing.T) {
 	router := newRouter(&mockPrestigeService{})
-	req := httptest.NewRequest(http.MethodPost, "/challenges", bytes.NewBufferString(`{not json`))
+	req := httptest.NewRequest(http.MethodPost, "/prestige/challenges", bytes.NewBufferString(`{not json`))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -722,7 +722,7 @@ func TestPrestigeHandler_GetChallenge_NotFound(t *testing.T) {
 	mock := &mockPrestigeService{getErr: prestige.ErrChallengeNotFound}
 	router := newRouter(mock)
 
-	req := httptest.NewRequest(http.MethodGet, "/challenges/missing_id", nil)
+	req := httptest.NewRequest(http.MethodGet, "/prestige/challenges/missing_id", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -742,7 +742,7 @@ func TestPrestigeHandler_GetChallenge_OK(t *testing.T) {
 	}
 	router := newRouter(mock)
 
-	req := httptest.NewRequest(http.MethodGet, "/challenges/ch_1", nil)
+	req := httptest.NewRequest(http.MethodGet, "/prestige/challenges/ch_1", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -772,7 +772,7 @@ func TestPrestigeHandler_ListActiveChallenges(t *testing.T) {
 	}
 	router := newRouter(mock)
 
-	req := httptest.NewRequest(http.MethodGet, "/challenges?user_id=u1&title_slug=halo_infinite", nil)
+	req := httptest.NewRequest(http.MethodGet, "/prestige/challenges?user_id=u1&title_slug=halo_infinite", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -793,7 +793,7 @@ func TestPrestigeHandler_ListActiveChallenges(t *testing.T) {
 
 func TestPrestigeHandler_ListActiveChallenges_MissingParams(t *testing.T) {
 	router := newRouter(&mockPrestigeService{})
-	req := httptest.NewRequest(http.MethodGet, "/challenges", nil)
+	req := httptest.NewRequest(http.MethodGet, "/prestige/challenges", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
@@ -806,7 +806,7 @@ func TestPrestigeHandler_UpdateChallenge_NotEditable(t *testing.T) {
 	router := newRouter(mock)
 
 	body := `{"target":1.7}`
-	req := httptest.NewRequest(http.MethodPatch, "/challenges/ch_1", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPatch, "/prestige/challenges/ch_1", bytes.NewBufferString(body))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -823,7 +823,7 @@ func TestPrestigeHandler_UpdateChallenge_OK(t *testing.T) {
 	router := newRouter(mock)
 
 	body := `{"target":1.7}`
-	req := httptest.NewRequest(http.MethodPatch, "/challenges/ch_1", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPatch, "/prestige/challenges/ch_1", bytes.NewBufferString(body))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -842,7 +842,7 @@ func TestPrestigeHandler_AbandonChallenge_AlreadyTerminal(t *testing.T) {
 	mock := &mockPrestigeService{abandonErr: prestige.ErrAlreadyTerminal}
 	router := newRouter(mock)
 
-	req := httptest.NewRequest(http.MethodDelete, "/challenges/ch_1", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/prestige/challenges/ch_1", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -855,7 +855,7 @@ func TestPrestigeHandler_AbandonChallenge_OK(t *testing.T) {
 	mock := &mockPrestigeService{}
 	router := newRouter(mock)
 
-	req := httptest.NewRequest(http.MethodDelete, "/challenges/ch_1", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/prestige/challenges/ch_1", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -875,7 +875,7 @@ func TestPrestigeHandler_SuggestNext(t *testing.T) {
 	}
 	router := newRouter(mock)
 
-	req := httptest.NewRequest(http.MethodPost, "/challenges/ch_1/suggest-next", nil)
+	req := httptest.NewRequest(http.MethodPost, "/prestige/challenges/ch_1/suggest-next", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -941,7 +941,7 @@ func TestPrestigeHandler_CreateChallenge_DBLocked_Returns503(t *testing.T) {
 	router := newRouter(mock)
 
 	body := `{"user_id":"u1","title_slug":"halo_infinite","metric":"FieldKDA","target":1.5,"window_type":"session","cadence":"weekly","eval_type":"threshold","mode":"libre"}`
-	req := httptest.NewRequest(http.MethodPost, "/challenges", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/prestige/challenges", bytes.NewBufferString(body))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -965,7 +965,7 @@ func TestPrestigeHandler_UpdateChallenge_DBLocked_Returns503(t *testing.T) {
 	router := newRouter(mock)
 
 	body := `{"target":2.0}`
-	req := httptest.NewRequest(http.MethodPatch, "/challenges/ch_42", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPatch, "/prestige/challenges/ch_42", bytes.NewBufferString(body))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -981,7 +981,7 @@ func TestPrestigeHandler_AbandonChallenge_DBLocked_Returns503(t *testing.T) {
 	mock := &mockPrestigeService{abandonErr: dbLockedErr()}
 	router := newRouter(mock)
 
-	req := httptest.NewRequest(http.MethodDelete, "/challenges/ch_42", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/prestige/challenges/ch_42", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -997,7 +997,7 @@ func TestPrestigeHandler_NotFoundErrorsNotMistakenForDBLocked(t *testing.T) {
 	mock := &mockPrestigeService{getErr: prestige.ErrChallengeNotFound}
 	router := newRouter(mock)
 
-	req := httptest.NewRequest(http.MethodGet, "/challenges/ch_missing", nil)
+	req := httptest.NewRequest(http.MethodGet, "/prestige/challenges/ch_missing", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

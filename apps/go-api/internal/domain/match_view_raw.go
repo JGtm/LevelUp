@@ -264,6 +264,10 @@ type EncounterStatsRaw struct {
 	LossesVsEnemy  int
 	KillsDealt     int
 	DeathsSuffered int
+	// FirstSeen : start_time UTC du match commun le plus ANCIEN. Zéro time
+	// quand l'historique est vide ou sans start_time. Alimente les badges de
+	// relation temporels (recrue / ancien) réutilisés depuis le hub Relations.
+	FirstSeen time.Time
 	// LastSeenAt : start_time UTC du match commun le plus récent. Zéro time
 	// quand l'historique est vide ou que match_registry n'a pas de start_time
 	// pour les matchs concernés.

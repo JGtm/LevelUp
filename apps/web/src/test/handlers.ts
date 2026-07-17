@@ -357,9 +357,6 @@ export const handlers = [
   http.get(p(`/players/${SLUG}/battlepass`), () =>
     HttpResponse.json({ available: false, rank: null, reward_track: null, progress: null, error_hint: null }),
   ),
-  http.get(p(`/players/${SLUG}/challenges`), () =>
-    HttpResponse.json({ available: false, total: null, completed: null, xp_available: null, next_expiry: null, items: [], error_hint: null }),
-  ),
   http.get(p(`/players/${SLUG}/pages/palmares/season-pass`), () => HttpResponse.json(seasonPassFixture)),
 
   // Leaderboard
@@ -523,19 +520,6 @@ export const handlers = [
       outcomes: {},
     })
   }),
-
-  // Challenges (HomeChallengesList)
-  http.get(p('/challenges'), () =>
-    HttpResponse.json({
-      available: false,
-      total: null,
-      completed: null,
-      xp_available: null,
-      next_expiry: null,
-      items: [],
-      error_hint: null,
-    }),
-  ),
 
   // Filters resolve (NavL2 / FilterOmnibar / SessionNavBar via useFiltersResolve)
   http.post(p(`/players/${SLUG}/filters/resolve`), () =>

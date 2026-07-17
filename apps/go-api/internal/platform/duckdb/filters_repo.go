@@ -147,7 +147,8 @@ func (r *FiltersRepo) GetMatchCount(ctx context.Context) (int, error) {
 	defer release()
 
 	var count int
-	err = db.QueryRowContext(ctx, Q1MatchCount).Scan(&count)
+	q := resolveCampaignExclusion(Q1MatchCount, r.pdb.TitleSlug, "mr")
+	err = db.QueryRowContext(ctx, q).Scan(&count)
 	return count, err
 }
 
@@ -163,7 +164,8 @@ func (r *FiltersRepo) GetPlayerMatchCount(ctx context.Context) (int, error) {
 	defer release()
 
 	var count int
-	q := `SELECT COUNT(*) FROM match_participants WHERE xuid = ?`
+	q := `SELECT COUNT(*) FROM match_participants WHERE xuid = ?` +
+		excludeCampaignByMatchID(r.pdb.TitleSlug, "match_id")
 	err = db.QueryRowContext(ctx, q, r.pdb.XUID).Scan(&count)
 	return count, err
 }
@@ -477,7 +479,7 @@ func (r *FiltersRepo) GetAvailablePlaylists(ctx context.Context) ([]domain.Label
 	    COALESCE(r.playlist_name, '')                     AS value
 	FROM match_registry r
 	JOIN match_participants p ON r.match_id = p.match_id
-	WHERE p.xuid = ?
+	WHERE p.xuid = ?` + excludeCampaignClause(r.pdb.TitleSlug, "r") + `
 	  AND r.playlist_name IS NOT NULL
 	  AND r.playlist_name != ''
 	ORDER BY label ASC`
@@ -516,7 +518,7 @@ func (r *FiltersRepo) GetAvailableMaps(ctx context.Context) ([]domain.LabelValue
 	    COALESCE(r.map_name, '')                AS value
 	FROM match_registry r
 	JOIN match_participants p ON r.match_id = p.match_id
-	WHERE p.xuid = ?
+	WHERE p.xuid = ?` + excludeCampaignClause(r.pdb.TitleSlug, "r") + `
 	  AND r.map_name IS NOT NULL
 	ORDER BY label ASC`
 

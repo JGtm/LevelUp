@@ -815,6 +815,64 @@ func TestCareerService_GetTopEncounters_AppliesNarrativeBadges(t *testing.T) {
 	}
 }
 
+// TestCareerService_GetTopEncounters_AppliesRelationSolidBadges : parité avec le hub
+// Communauté > Relations après unification (helper partagé relations.ComputeBadges) —
+// la page Carrière attribue désormais les badges « solid » (ici duo_gagnant), plus
+// seulement les 4 badges narratifs historiques.
+func TestCareerService_GetTopEncounters_AppliesRelationSolidBadges(t *testing.T) {
+	repo := &mockCareerRepo{
+		topEncountersRows: []domain.MatchEncounterRow{
+			{XUID: "x_duo", Gamertag: "Duo", CountTogether: 12},
+		},
+		topEncountersStats: []domain.EncounterStatsRaw{
+			{XUID: "x_duo", AllyCount: 12, WinsAsAlly: 8, LossesAsAlly: 4}, // WR allié 0.667 >= 0.60 sur 12 matchs
+		},
+	}
+	resp, err := NewCareerService(repo).GetTopEncounters(context.Background())
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if len(resp.Items) != 1 {
+		t.Fatalf("Items = %d, want 1", len(resp.Items))
+	}
+	found := false
+	for _, b := range resp.Items[0].Badges {
+		if b.Kind == "duo_gagnant" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("duo_gagnant attendu (parité hub Relations), got %+v", resp.Items[0].Badges)
+	}
+}
+
+// TestCareerService_GetTopEncounters_FirstSeenPowersRecrue : first_seen_at (ajouté à
+// Q26CareerTopEncountersTpl) alimente le badge temporel recrue (relation récente
+// < 30 j ET >= 4 matchs).
+func TestCareerService_GetTopEncounters_FirstSeenPowersRecrue(t *testing.T) {
+	repo := &mockCareerRepo{
+		topEncountersRows: []domain.MatchEncounterRow{
+			{XUID: "x_new", Gamertag: "Rookie", CountTogether: 5},
+		},
+		topEncountersStats: []domain.EncounterStatsRaw{
+			{XUID: "x_new", AllyCount: 5, FirstSeen: time.Now().AddDate(0, 0, -10)}, // il y a 10 j (< 30)
+		},
+	}
+	resp, err := NewCareerService(repo).GetTopEncounters(context.Background())
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	found := false
+	for _, b := range resp.Items[0].Badges {
+		if b.Kind == "recrue" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("recrue attendu (first_seen il y a 10 j, 5 matchs), got %+v", resp.Items[0].Badges)
+	}
+}
+
 func TestCareerService_GetTopEncounters_RepoError(t *testing.T) {
 	repo := &mockCareerRepo{topEncountersErr: errors.New("query timeout")}
 	svc := NewCareerService(repo)

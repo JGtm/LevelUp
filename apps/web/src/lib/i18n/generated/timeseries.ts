@@ -2,14 +2,6 @@
 // Source : apps/web/src/lib/i18n/manifests/timeseries.toml
 
 export const timeseriesManifest = {
-  "timeseries.combat.dr_reference": { fr: "p80 DR", en: "p80 DR" },
-  "timeseries.combat.dr_series": { fr: "Défensif (DR)", en: "Defensive (DR)" },
-  "timeseries.combat.empty_description": { fr: "Les métriques offensive_conversion et defensive_resistance n'ont pas encore été calculées. Lance un backfill pour les générer.", en: "offensive_conversion and defensive_resistance metrics have not been computed yet. Run a backfill to generate them." },
-  "timeseries.combat.empty_title": { fr: "Données combat indisponibles", en: "Combat data unavailable" },
-  "timeseries.combat.loading": { fr: "Chargement…", en: "Loading…" },
-  "timeseries.combat.oc_reference": { fr: "p80 OC", en: "p80 OC" },
-  "timeseries.combat.oc_series": { fr: "Offensif (OC)", en: "Offensive (OC)" },
-  "timeseries.combat.yield_title": { fr: "Rendement combat par match", en: "Combat yield per match" },
   "timeseries.cumul.kd_axis_y": { fr: "K/D", en: "K/D" },
   "timeseries.cumul.kd_reference": { fr: "K/D = 1", en: "K/D = 1" },
   "timeseries.cumul.kd_series_label": { fr: "K/D cumulé", en: "Cumulative K/D" },

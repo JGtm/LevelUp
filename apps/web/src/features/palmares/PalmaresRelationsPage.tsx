@@ -28,7 +28,7 @@ import { RelationBadges } from './RelationBadges'
 import { RelationSplitBar } from './RelationSplitBar'
 import { RelationsMomentsSection } from './RelationsMomentsSection'
 import { RelationsTable } from './RelationsTable'
-import { coreRelations, filterRelations, type RelationFilter } from './relationsFilter'
+import { coreRelations, filterRelations, hasCrossGameRelations, type RelationFilter } from './relationsFilter'
 
 type RelationsText = PalmaresText['relations']
 
@@ -398,15 +398,19 @@ function CoreSummaryCard({
   )
 }
 
-/** SegmentedFilter — segmented control (charte) : une piste, segment actif plein. */
+/** SegmentedFilter — segmented control (charte) : une piste, segment actif plein.
+ * Le chip « Multi-jeux » (cross) n'est rendu que si `showCross` (au moins une
+ * relation croisée sur un autre titre) — pas de segment mort en mono-titre. */
 function SegmentedFilter({
   active,
   onChange,
   labels,
+  showCross,
 }: {
   active: RelationFilter
   onChange: (f: RelationFilter) => void
   labels: RelationsText['chips']
+  showCross: boolean
 }) {
   const text: Record<RelationFilter, string> = {
     all: labels.all,
@@ -414,13 +418,15 @@ function SegmentedFilter({
     allies: labels.allies,
     rivals: labels.rivals,
     recent: labels.recent,
+    cross: labels.cross,
   }
+  const chips: RelationFilter[] = showCross ? [...FILTER_CHIPS, 'cross'] : FILTER_CHIPS
   return (
     <div
       className="inline-flex flex-wrap rounded-lg border border-border bg-card p-0.5"
       data-testid="palmares-relations-chips"
     >
-      {FILTER_CHIPS.map((chip) => {
+      {chips.map((chip) => {
         const isActive = chip === active
         return (
           <button
@@ -551,13 +557,21 @@ export function PalmaresRelationsPage() {
     })
   }
 
+  // Relations déjà servies par le backend — tout le filtrage ci-dessous est client.
+  const relations = useMemo(() => data?.relations ?? [], [data])
+  // Chip « Multi-jeux » : rendu seulement si au moins une relation cross-jeu.
+  const showCross = useMemo(() => hasCrossGameRelations(relations), [relations])
+  // Garde-fou : un filtre persisté 'cross' sans donnée cross-jeu retombe sur 'all'
+  // sans réécrire le store (la préférence reste, réactivée si la donnée revient).
+  const effectiveFilter: RelationFilter = filter === 'cross' && !showCross ? 'all' : filter
+
   // Filtre segment (client) + toggle « amis » : sans les amis, on masque les
   // relations purement coéquipières (jamais affrontées).
   const visibleRows = useMemo(() => {
-    const base = data ? filterRelations(data.relations ?? [], filter) : []
+    const base = filterRelations(relations, effectiveFilter)
     return includeFriends ? base : base.filter((r) => r.enemy_matches > 0)
-  }, [data, filter, includeFriends])
-  const coreRows = useMemo(() => (data ? coreRelations(data.relations ?? []) : []), [data])
+  }, [relations, effectiveFilter, includeFriends])
+  const coreRows = useMemo(() => coreRelations(relations), [relations])
 
   let body: ReactNode
   if (isLoading) {
@@ -583,8 +597,9 @@ export function PalmaresRelationsPage() {
         data={data}
         rel={rel}
         locale={locale}
-        filter={filter}
+        filter={effectiveFilter}
         setFilter={setFilter}
+        showCross={showCross}
         includeFriends={includeFriends}
         setIncludeFriends={setIncludeFriends}
         visibleRows={visibleRows}
@@ -611,6 +626,7 @@ function RelationsContent({
   locale,
   filter,
   setFilter,
+  showCross,
   includeFriends,
   setIncludeFriends,
   visibleRows,
@@ -625,6 +641,7 @@ function RelationsContent({
   locale: PalmaresLocale
   filter: RelationFilter
   setFilter: (f: RelationFilter) => void
+  showCross: boolean
   includeFriends: boolean
   setIncludeFriends: (v: boolean) => void
   visibleRows: RelationInsight[]
@@ -692,7 +709,7 @@ function RelationsContent({
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <SegmentedFilter active={filter} onChange={setFilter} labels={rel.chips} />
+        <SegmentedFilter active={filter} onChange={setFilter} labels={rel.chips} showCross={showCross} />
         <button
           type="button"
           aria-pressed={includeFriends}

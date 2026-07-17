@@ -15,13 +15,23 @@ import (
 	"levelup/go-api/internal/port"
 )
 
+// ScorePerMinuteP80 est la frontière élite (80e percentile) du score personnel
+// par minute jouée, repère de normalisation de l'axe Score du radar. Mesuré sur
+// shared_matches_v2 Halo Infinite (26 258 performances joueur×match,
+// time_played > 30 s) : P80 ≈ 195/min (p50≈121, p90≈240, p95≈284). Comme les
+// axes ratio (Survie, Impact), l'axe est normalisé par un seuil CONSTANT (pas
+// n-échelonné) : un joueur au P80 marque 80/100, +25 % au-dessus plafonne à 100.
+// Const Infinite-calibrée (comme DefensiveResistanceP80) ; le threading
+// title-aware serait une passe dédiée (cf. Impact via games.OffensiveConversionP80).
+const ScorePerMinuteP80 = 195.0
+
 func synergyRadarThresholds(nShared int, ocP80 float64) narrative.ParticipationThresholds {
 	n := float64(nShared)
 	return narrative.ParticipationThresholds{
 		Combat:    25.0 * n,                               // (kills+HS/2+PK/2)×(1+acc×0.4), ~25/match pour un excellent joueur
 		Survival:  analysis.DefensiveResistanceP80 * 1.25, // ~1.99 ; étire le haut au-dessus du P80
 		Support:   300.0 * n,                              // assists × 50, ~6 assists/match
-		Score:     350.0 * n,                              // résiduel medals/streaks, ~350/match
+		Score:     ScorePerMinuteP80 * 1.25,               // score personnel/min, seuil constant (repère P80 ≈ 195/min)
 		Objective: 350.0 * n,                              // PSA objectif, ~350/match
 		Impact:    ocP80 * 1.25,                           // P80 title-aware (0.90 Infinite / 1.264 h5)
 	}
@@ -48,9 +58,22 @@ func SynergyDefensiveResistance(totalDamageTkn float64, totalDeaths int, effecti
 	return totalDamageTkn / (effectiveHpToKill * float64(totalDeaths))
 }
 
+// SynergyScorePerMinute calcule le score personnel par minute jouée agrégé :
+// ΣPersonalScore / (Σtime_played / 60). C'est un débit (métrique intensive,
+// comme la résistance/le rendement) : différenciant entre joueurs et vivant sur
+// Halo Infinite (contrairement à l'ancien résiduel medals/streaks ≈ 0). Retourne
+// 0 si aucun temps joué n'est renseigné. Partagé par le radar escouade et le
+// radar session-compare (règle ≤2 copies : une seule définition).
+func SynergyScorePerMinute(totalPersonalScore, totalTimePlayedSeconds float64) float64 {
+	if totalTimePlayedSeconds <= 0 {
+		return 0
+	}
+	return totalPersonalScore / (totalTimePlayedSeconds / 60.0)
+}
+
 // synergyMainFallbackAxes calcule combat et support depuis SquadMatchRow
-// (fallback quand squadLoader est absent). Impact et Survival restent à 0
-// car damage_dealt/damage_taken ne sont pas dans SquadMatchRow.
+// (fallback quand squadLoader est absent). Impact, Survival et Score restent à 0
+// car damage_dealt/damage_taken et personal_score ne sont pas dans SquadMatchRow.
 func synergyMainFallbackAxes(
 	allSquadRows []domain.SquadMatchRow,
 	sharedMatches map[string]struct{},
@@ -82,7 +105,7 @@ func synergyMainFallbackAxes(
 //   - Combat  : (kills + HS/2 + PK/2) × (1 + accuracy × 0.4), somme sur les matchs
 //   - Survival : résistance défensive agrégée ΣDT / (225 × ΣD)
 //   - Support  : assists × 50, somme sur les matchs
-//   - Score    : résiduel PS après kills×100 + assists×50 + objectif (medals/streaks)
+//   - Score    : score personnel par minute jouée ΣPS / (Σtime_played / 60)
 //   - Objective: PSA catégorie "objective" via LoadObjectiveScores
 //   - Impact   : rendement offensif agrégé 225×(ΣK+ΣA/3)/ΣDD
 func (s *TeammatesService) loadSynergyMateAxes(
@@ -102,7 +125,7 @@ func (s *TeammatesService) loadSynergyMateAxes(
 	}
 
 	var totalKills, totalAssists, totalDeaths int
-	var totalDamageDlt, totalDamageTkn, totalPS float64
+	var totalDamageDlt, totalDamageTkn, totalPS, totalTimeSec float64
 	for _, r := range rows {
 		if _, ok := sharedMatches[r.Summary.MatchID]; !ok {
 			continue
@@ -127,6 +150,7 @@ func (s *TeammatesService) loadSynergyMateAxes(
 		totalDamageDlt += float64(intPtrOrZero(r.Self.DamageDealt))
 		totalDamageTkn += float64(intPtrOrZero(r.Self.DamageTaken))
 		totalPS += float64(ps)
+		totalTimeSec += float64(intPtrOrZero(r.Self.TimePlayed))
 	}
 
 	hp := games.EffectiveHpToKill(s.titleSlug)
@@ -134,20 +158,17 @@ func (s *TeammatesService) loadSynergyMateAxes(
 	raw[narrative.AxisSurvival] = SynergyDefensiveResistance(totalDamageTkn, totalDeaths, hp)
 
 	// Objective via PSA — dégradation silencieuse si absent.
-	var objTotal float64
 	if objScores, err := s.squadLoader.LoadObjectiveScores(ctx, s.titleSlug, gt, sharedMatchIDs); err == nil {
+		var objTotal float64
 		for _, v := range objScores {
 			objTotal += float64(v)
 		}
 		raw[narrative.AxisObjective] = objTotal
 	}
 
-	// Score : résiduel après kills×100 + assists×50 + objectif (= medals/streaks).
-	residual := totalPS - float64(totalKills)*100.0 - float64(totalAssists)*50.0 - objTotal
-	if residual < 0 {
-		residual = 0
-	}
-	raw[narrative.AxisScore] = residual
+	// Score : score personnel par minute jouée (vivant et différenciant, vs
+	// l'ancien résiduel medals/streaks ≈ 0 mesuré sur Halo Infinite).
+	raw[narrative.AxisScore] = SynergyScorePerMinute(totalPS, totalTimeSec)
 	return raw
 }
 

@@ -175,6 +175,7 @@ func main() {
 		seedMaps(db, key)
 		seedWeapons(db, key, fr.Weapons)
 		seedCSRDesignations(db, key)
+		seedTeamColors(db, key)
 		seedCommendations(db, key, fr.Commendations)
 		seedPlaylists(db, key)
 
@@ -518,6 +519,94 @@ func seedCSRDesignations(db *sql.DB, key string) {
 		}
 	}
 	fmt.Printf("csr-designations: %d tiers seedés (sur %d désignations)\n", n, len(desigs))
+}
+
+// apiTeamColor — élément de l'API Metadata officielle /team-colors. `id` = le TeamId
+// porté par chaque équipe des résultats Stats API Halo 5 (H5Team.Id → match_participants.team_id).
+// `name` (+ `description`) sont localisés via Accept-Language ; `color` est un hex
+// "#RRGGBB" ; `iconUrl` est nullable. On persiste name/color/icône (la description
+// n'est pas consommée par la Match View). NB : l'API sérialise `id` en STRING (ex.
+// "0","1"), comme tous les autres id de cette API (medals/weapons/csr/commendations) →
+// typé string et converti en int au persist (team_id INTEGER) ; un id non numérique est
+// ignoré (dégradation gracieuse → l'exposition retombe sur le libellé d'équipe existant).
+type apiTeamColor struct {
+	Name    string `json:"name"`
+	Color   string `json:"color"`
+	IconURL string `json:"iconUrl"`
+	ID      string `json:"id"`
+}
+
+// fetchTeamColorsFR refetch /team-colors en fr-FR (l'API HONORE Accept-Language, cf.
+// fetchMetaLang) et indexe le nom FR par TeamId. Best-effort : échec/parse KO → map
+// vide (le seed retombe alors sur le nom EN).
+func fetchTeamColorsFR(key string) map[string]string {
+	out := map[string]string{}
+	body, err := fetchMetaLang(key, "team-colors", langFR)
+	if err != nil {
+		fmt.Printf("team-colors[fr-FR]: SKIP (%v)\n", err)
+		return out
+	}
+	var colors []apiTeamColor
+	if err := json.Unmarshal(body, &colors); err != nil {
+		fmt.Printf("team-colors[fr-FR]: parse %v\n", err)
+		return out
+	}
+	for _, c := range colors {
+		if n := strings.TrimSpace(c.Name); n != "" {
+			out[c.ID] = n
+		}
+	}
+	return out
+}
+
+// seedTeamColors peuple team_colors depuis l'API Metadata officielle (/team-colors) :
+// TeamId → couleur (#RRGGBB) + nom localisé EN/FR + icône. Source des libellés d'équipe
+// « Rouge/Bleu » de la Match View H5 (jointure read-time sur team_id). Best-effort.
+func seedTeamColors(db *sql.DB, key string) {
+	body, err := fetchMeta(key, "team-colors")
+	if err != nil {
+		fmt.Printf("team-colors: SKIP (%v)\n", err)
+		return
+	}
+	var colors []apiTeamColor
+	if err := json.Unmarshal(body, &colors); err != nil {
+		fmt.Printf("team-colors: parse %v\n", err)
+		return
+	}
+	n := persistTeamColors(db, colors, fetchTeamColorsFR(key))
+	fmt.Printf("team-colors: %d seedées (sur %d)\n", n, len(colors))
+}
+
+// persistTeamColors écrit les team_colors en INSERT OR REPLACE (idempotent). frByID
+// porte les noms FR localisés par l'API (Accept-Language), indexés par l'id string de
+// l'API ; fallback sur le nom EN (jamais name_fr vide). L'id string est converti en int
+// pour team_id (INTEGER) ; un id non numérique est ignoré (best-effort par entrée).
+// Retourne le nombre de lignes écrites.
+func persistTeamColors(db *sql.DB, colors []apiTeamColor, frByID map[string]string) int {
+	n := 0
+	for _, c := range colors {
+		// id officiel = entier sérialisé en string (spec API /team-colors) → team_id INTEGER.
+		teamID, perr := strconv.Atoi(strings.TrimSpace(c.ID))
+		if perr != nil {
+			fmt.Printf("team-colors: id non numérique %q: %v\n", c.ID, perr)
+			continue
+		}
+		nameEN := strings.TrimSpace(c.Name)
+		// Pas d'override TOML pour les couleurs d'équipe (contrairement aux
+		// armes/médailles) → sélection directe : nom FR de l'API sinon EN.
+		nameFR := strings.TrimSpace(frByID[c.ID])
+		if nameFR == "" {
+			nameFR = nameEN
+		}
+		if _, err := db.Exec(`INSERT OR REPLACE INTO team_colors
+			(team_id, name_en, name_fr, color, icon_url) VALUES (?,?,?,?,?)`,
+			teamID, nameEN, nameFR, strings.TrimSpace(c.Color), strings.TrimSpace(c.IconURL)); err != nil {
+			fmt.Printf("team-colors: insert %d: %v\n", teamID, err)
+			continue
+		}
+		n++
+	}
+	return n
 }
 
 // apiCommendation — élément de l'API Metadata officielle /commendations. `id` (UUID)

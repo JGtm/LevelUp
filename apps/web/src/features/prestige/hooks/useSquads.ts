@@ -24,13 +24,14 @@ export function useMySquads(userId: string) {
   })
 }
 
-/** Défis d'une escouade. */
-export function useSquadChallenges(squadId: string) {
+/** Défis d'une escouade. `requestedBy` (player_slug) sert de scope player-scoped
+ *  de la route (montée sous /players/{player_slug} côté serveur). */
+export function useSquadChallenges(squadId: string, requestedBy: string) {
   return useQuery({
     queryKey: queryKeys.squad.challenges(squadId),
-    queryFn: () => prestigeApi.listSquadChallenges(squadId),
+    queryFn: () => prestigeApi.listSquadChallenges(squadId, requestedBy),
     retry: false,
-    enabled: !!squadId,
+    enabled: !!squadId && !!requestedBy,
   })
 }
 

@@ -29,6 +29,7 @@ import (
 	"database/sql"
 
 	halo5 "levelup/go-api/internal/games/halo_5"
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 )
 
@@ -49,6 +50,8 @@ func metadataStepNames() []string {
 		"h5_weapon_labels_add_icon",
 		"h5_add_commendation_definitions",
 		"h5_commendation_definitions_add_tier_targets",
+		"h5_add_weapon_registry",
+		"h5_add_team_colors",
 	}
 }
 
@@ -258,6 +261,40 @@ func MetadataSteps() []migration.Migration {
 			ApplySchema: func(db *sql.DB) error {
 				return migration.ExecScript(db, `
 					ALTER TABLE commendation_definitions ADD COLUMN IF NOT EXISTS tier_targets VARCHAR;
+				`)
+			},
+		},
+		// Registre d'armes CANONIQUE (weapons/weapon_ids/weapon_families). CONTRAIRE-
+		// MENT aux référentiels title-specific ci-dessus (career_ranks, playlists,
+		// weapon_labels… isolés car les données HINF sont FAUSSES pour H5), le registre
+		// est CROSS-TITRE par conception : PK (title_slug, weapon_key), lectures
+		// title-scopées (resolveWeaponMeta filtre wi.title_slug). Son seed inclut déjà
+		// les 30 armes Halo 5 + leurs stock_ids (weaponRegistryH5Stock). Sans lui, la
+		// metadata H5 n'a pas de rôles → resolveWeaponMeta retombe sur weapon_labels
+		// seul → kills_by_role vide → donut « Frags par type d'arme » masqué sur H5.
+		// On réutilise l'apply idempotent partagé (INSERT OR IGNORE) plutôt que de
+		// dupliquer le seed (source unique : halo_infinite/migrations, cross-titre).
+		{
+			Name:        "h5_add_weapon_registry",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Halo 5 — registre d'armes canonique (weapons/weapon_ids/weapon_families, référentiel CROSS-TITRE seedé pour tous les titres). Débloque les rôles de combat H5 (donut « Frags par type d'arme ») via resolveWeaponMeta.",
+			ApplySchema: func(db *sql.DB) error {
+				return halomigrations.ApplyWeaponRegistry(db)
+			},
+		},
+		{
+			Name:        "h5_add_team_colors",
+			TargetDB:    migration.TargetMetadata,
+			Description: "Halo 5 — team_colors (TeamId → couleur #RRGGBB + nom localisé EN/FR + icône ; API Metadata officielle /team-colors, vide → fetcher h5-metadata-fetch). Alimente les libellés d'équipe « Rouge/Bleu » de la Match View H5 (fallback sur l'existant si vide).",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS team_colors (
+						team_id  INTEGER PRIMARY KEY,
+						name_en  VARCHAR NOT NULL DEFAULT '',
+						name_fr  VARCHAR NOT NULL DEFAULT '',
+						color    VARCHAR,
+						icon_url VARCHAR
+					);
 				`)
 			},
 		},

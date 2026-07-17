@@ -74,8 +74,9 @@ func avgMMR(matches []legacymatch.StatsMatchRow) (*float64, *float64) {
 // optionnel : nil → axe Objective à 0 (dégradation gracieuse). Formules alignées
 // sur le radar escouade (teammates_squad_charts_synergy.go) :
 //   - Objective : somme des scores PSA "objective" du joueur sur la session.
-//   - Score     : résiduel PersonalScore après kills×100 + assists×50 + objectif
-//     (= medals/streaks). Avant : MedalExploitScore (toujours nil) → axe à 0.
+//   - Score     : score personnel par minute jouée ΣPS / (Σtime_played / 60),
+//     normalisé par un seuil constant (teammates.ScorePerMinuteP80). Vivant et
+//     différenciant, vs l'ancien résiduel medals/streaks ≈ 0 (axe mort).
 func buildSessionParticipationProfile(
 	matches []legacymatch.StatsMatchRow,
 	objScores map[string]int,
@@ -87,7 +88,7 @@ func buildSessionParticipationProfile(
 	}
 	rawByAxis := map[narrative.ParticipationAxis]float64{}
 	var totalKills, totalAssists, totalDeaths int
-	var totalDD, totalDT, totalPS, objTotal float64
+	var totalDD, totalDT, totalPS, objTotal, totalTimeSec float64
 	for _, m := range matches {
 		hs := 0
 		if m.HeadshotKills != nil {
@@ -115,6 +116,9 @@ func buildSessionParticipationProfile(
 		if m.PersonalScore != nil {
 			totalPS += float64(*m.PersonalScore)
 		}
+		if m.TimePlayedSeconds != nil {
+			totalTimeSec += float64(*m.TimePlayedSeconds)
+		}
 		if objScores != nil {
 			objTotal += float64(objScores[m.MatchID])
 		}
@@ -122,17 +126,13 @@ func buildSessionParticipationProfile(
 	rawByAxis[narrative.AxisImpact] = teammates.SynergyOffensiveConversion(totalKills, totalAssists, totalDD, effectiveHpToKill)
 	rawByAxis[narrative.AxisSurvival] = teammates.SynergyDefensiveResistance(totalDT, totalDeaths, effectiveHpToKill)
 	rawByAxis[narrative.AxisObjective] = objTotal
-	// Score = résiduel PS après kills×100 + assists×50 + objectif (medals/streaks).
-	residual := totalPS - float64(totalKills)*100.0 - float64(totalAssists)*50.0 - objTotal
-	if residual < 0 {
-		residual = 0
-	}
-	rawByAxis[narrative.AxisScore] = residual
+	// Score = score personnel par minute jouée (métrique intensive, seuil constant).
+	rawByAxis[narrative.AxisScore] = teammates.SynergyScorePerMinute(totalPS, totalTimeSec)
 	thresholds := narrative.ParticipationThresholds{
 		Combat:    25.0 * float64(n),
 		Survival:  analysis.DefensiveResistanceP80 * 1.25,
 		Support:   300.0 * float64(n),
-		Score:     350.0 * float64(n),
+		Score:     teammates.ScorePerMinuteP80 * 1.25,
 		Objective: 350.0 * float64(n),
 		// Impact (rendement OC) : P80 const Infinite — radar session-compare gardé
 		// sur la const (threading title-aware = passe dédiée, cf. PLAN_DAMAGE_MODEL §0).

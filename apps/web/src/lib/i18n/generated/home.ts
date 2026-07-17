@@ -68,7 +68,7 @@ export const homeManifest = {
   "home.kpi.favorite_playlist": { fr: "Sélect. favorite", en: "Favorite playlist" },
   "home.kpi.favorite_weapon": { fr: "Arme favorite", en: "Fav. weapon" },
   "home.kpi.kda_label": { fr: "KDA", en: "KDA" },
-  "home.kpi.kills_word": { fr: "kills", en: "kills" },
+  "home.kpi.kills_word": { fr: "frags", en: "kills" },
   "home.kpi.matches_label": { fr: "Matchs", en: "Matches" },
   "home.kpi.matches_word": { fr: "matchs", en: "matches" },
   "home.kpi.off_def": { fr: "Rendement / Résist.", en: "Off. / Def." },
