@@ -55,7 +55,15 @@ func ResolveMSAccessTokenStoreFirst(
 
 	// --- Source 1 : store canonique ---
 	if store != nil && xuid != "" {
-		if user, err := store.Load(xuid); err == nil && user != nil {
+		user, err := store.Load(xuid)
+		if err != nil {
+			// AU3 (revue 2026-07) : ne plus AVALER l'échec de lecture du store. Sans ce
+			// log, une bascule legacy causée par un store illisible/corrompu était
+			// invisible → la télémétrie legacy_source_used (gate D2) devenait trompeuse
+			// (une adoption legacy attribuée à une "vraie" absence de token store).
+			slog.ErrorContext(ctx, "auth: échec lecture store canonique — bascule legacy (télémétrie legacy_source_used potentiellement trompeuse)",
+				"xuid", xuid, "err", err)
+		} else if user != nil {
 			if at := r.attempt(ctx, user.MSALCacheJSON, user.OAuthRefreshToken, store); at != "" {
 				return at, nil
 			}

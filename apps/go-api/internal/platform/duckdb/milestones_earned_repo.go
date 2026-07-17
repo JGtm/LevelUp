@@ -65,18 +65,27 @@ func (r *MilestoneEarnedRepo) Append(ctx context.Context, e milestones.Earned) e
 	if earnedAt.IsZero() {
 		earnedAt = time.Now().UTC()
 	}
+	// E5 (revue 2026-07) : QueryRow/Exec PLATS sur le handle player pdb.Player (champ
+	// nu r.db) → invisibles au garde-rail grep mais atteignables par la race « database
+	// is closed » d'un Reopen concurrent. Routés vers les variantes *Recovered.
 	var exists bool
-	if err := r.db.QueryRow(ctx, `
+	rows, err := r.db.QueryRowRecovered(ctx, `
 		SELECT EXISTS(
 			SELECT 1 FROM milestone_earned
 			WHERE user_id = ? AND title_slug = ? AND milestone_id = ?
-		)`, e.UserID, e.TitleSlug, e.MilestoneID).Scan(&exists); err != nil {
+		)`, e.UserID, e.TitleSlug, e.MilestoneID)
+	if err != nil {
 		return fmt.Errorf("MilestoneEarnedRepo.Append exists: %w", err)
 	}
+	if err := rows.Scan(&exists); err != nil {
+		_ = rows.Close()
+		return fmt.Errorf("MilestoneEarnedRepo.Append exists scan: %w", err)
+	}
+	_ = rows.Close()
 	if exists {
 		return nil
 	}
-	if _, err := r.db.Exec(ctx, `
+	if _, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO milestone_earned (user_id, title_slug, milestone_id, earned_at)
 		VALUES (?, ?, ?, ?)
 	`, e.UserID, e.TitleSlug, e.MilestoneID, earnedAt); err != nil {

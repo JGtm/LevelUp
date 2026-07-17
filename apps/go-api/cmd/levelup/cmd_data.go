@@ -230,7 +230,7 @@ func runSeedDemo(cfg *config.AppConfig, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("✅ Fixture démo SYNTHÉTIQUE générée dans %s\n", res.OutDir)
+		fmt.Printf("Fixture démo SYNTHÉTIQUE générée dans %s\n", res.OutDir)
 		fmt.Printf("   %d matchs, %d sessions, %d joueurs (déterministe, ancre %s)\n",
 			res.Matches, res.Sessions, res.Players, ops.SyntheticAnchor().Format("2006-01-02"))
 		fmt.Printf("   Durée: %s\n", res.Duration.Round(time.Millisecond))

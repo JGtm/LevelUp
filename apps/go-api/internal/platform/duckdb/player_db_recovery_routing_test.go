@@ -4,10 +4,11 @@
 // **Contexte.** `pdb.Player` est l'UNIQUE handle RW du `stats.duckdb` joueur (renvoyé
 // aussi par `pdb.ReadDB()`), partagé par tous les repos player. Un writer concurrent
 // qui déclenche `db.Reopen()` (invalidation ART / B-swap → `old.Close()` transitoire)
-// fait voir « sql: database is closed » à une lecture EN VOL sur les méthodes PLATES
-// `Query`/`QueryRow`. Les lots A/B/C ont routé toutes ces lectures vers les variantes
-// `*Recovered` (`QueryRecovered` / `QueryRowRecovered`) qui font Reopen + retry une
-// fois. Ce test empêche la régression : il échoue si une lecture PLATE réapparaît sur
+// fait voir « sql: database is closed » à un accès EN VOL sur les méthodes PLATES
+// `Query`/`QueryRow`/`Exec`. Les lots A/B/C ont routé les lectures vers les variantes
+// `*Recovered` (`QueryRecovered` / `QueryRowRecovered`) ; l'extension E5 (revue 2026-07)
+// y ajoute les écritures (`ExecRecovered`). Toutes font Reopen + retry une fois. Ce test
+// empêche la régression : il échoue si un accès PLAT (lecture OU écriture) réapparaît sur
 // un handle player-DB accédé sous forme EXPLICITE.
 //
 // **Sans build tag `integration`** (comme shared_reader_routing_test.go / le trio
@@ -39,14 +40,15 @@ import (
 	"testing"
 )
 
-// rePlainPlayerHandleReads : lectures PLATES sur un handle player-DB accédé
-// explicitement. Les deux motifs sont ceux du plan (Lot D). Les variantes
-// `*Recovered` NE matchent PAS : après `Query`/`QueryRow` vient `Recovered` (pas `(`),
-// donc `(Query|QueryRow)\(` échoue sur `QueryRecovered(` / `QueryRowRecovered(`.
-// De même `QueryContext(` (SharedReader) et `QueryRowContext(` ne matchent pas.
+// rePlainPlayerHandleReads : accès PLATS (lectures Query/QueryRow ET écritures Exec)
+// sur un handle player-DB accédé explicitement. Motifs du plan (Lot D + extension E5
+// aux écritures : revue 2026-07). Les variantes `*Recovered` NE matchent PAS : après
+// `Query`/`QueryRow`/`Exec` vient `Recovered` (pas `(`), donc `(Query|QueryRow|Exec)\(`
+// échoue sur `QueryRecovered(` / `QueryRowRecovered(` / `ExecRecovered(`. De même
+// `QueryContext(` / `QueryRowContext(` / `ExecContext(` (SharedReader) ne matchent pas.
 var rePlainPlayerHandleReads = []*regexp.Regexp{
-	regexp.MustCompile(`\.Player\.(Query|QueryRow)\(`),
-	regexp.MustCompile(`\.ReadDB\(\)\.(Query|QueryRow)\(`),
+	regexp.MustCompile(`\.Player\.(Query|QueryRow|Exec)\(`),
+	regexp.MustCompile(`\.ReadDB\(\)\.(Query|QueryRow|Exec)\(`),
 }
 
 // plainPlayerReadAllowEntry : exception DATÉE et justifiée. Une lecture plate est
@@ -115,6 +117,7 @@ func TestNoPlainPlayerHandleReads(t *testing.T) {
 	t.Errorf("\nFix : router vers la variante *Recovered (Reopen+retry) —")
 	t.Errorf("  .Query(ctx, ...)            -> .QueryRecovered(ctx, ...)")
 	t.Errorf("  .QueryRow(ctx, ...).Scan()  -> rows, err := .QueryRowRecovered(ctx, ...) ; defer rows.Close() ; rows.Scan(...)")
+	t.Errorf("  .Exec(ctx, ...)             -> .ExecRecovered(ctx, ...)")
 	t.Errorf("Cf. .ai/PLAN_PLAYER_DB_RECOVERY_SWEEP_2026-07.md (forme de référence : prestige/prestige_player_repo.go).")
 	t.Errorf("Si l'accès est HORS périmètre (table sync_meta / metadata / shared / shared_social — DC-3), " +
 		"ajouter une entrée DATÉE à plainPlayerReadAllowlist avec justification.")
@@ -150,6 +153,15 @@ func TestPlainPlayerReadPatternSanity(t *testing.T) {
 			t.Errorf("devrait matcher (lecture PLATE) : %q", s)
 		}
 	}
+	shouldMatchExec := []string{
+		"_, err := r.pdb.Player.Exec(ctx, q, args...)",
+		"if _, err := pdb.ReadDB().Exec(ctx, q); err != nil {",
+	}
+	for _, s := range shouldMatchExec {
+		if !recoveryLineHasPlainRead(s) {
+			t.Errorf("devrait matcher (écriture PLATE Exec, extension E5) : %q", s)
+		}
+	}
 	shouldNotMatch := []string{
 		"rows, err := r.pdb.Player.QueryRecovered(ctx, q)",
 		"rows, err := pdb.Player.QueryRowRecovered(ctx, q)",
@@ -159,6 +171,8 @@ func TestPlainPlayerReadPatternSanity(t *testing.T) {
 		"sharedDB.QueryRowContext(ctx, q).Scan(&v)",
 		"db, release, err := r.pdb.SharedReadDB().Get(ctx)",
 		"_, err := r.pdb.Player.ExecRecovered(ctx, q)",
+		"_, err := r.pdb.ReadDB().ExecRecovered(ctx, q)",
+		"_, err := r.pdb.Player.ExecContext(ctx, q)",
 	}
 	for _, s := range shouldNotMatch {
 		if recoveryLineHasPlainRead(s) {

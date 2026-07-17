@@ -199,7 +199,9 @@ func (r *EngagementScoreRepo) SaveEngagementScore(
 		}
 	}
 
-	if _, err := r.pdb.Player.Exec(ctx, q, args...); err != nil {
+	// E5 (revue 2026-07) : ExecRecovered (Reopen+retry) — écriture player-DB tolérant
+	// un Reopen concurrent (« database is closed »), comme les lectures du sweep.
+	if _, err := r.pdb.Player.ExecRecovered(ctx, q, args...); err != nil {
 		return fmt.Errorf("EngagementScoreRepo.SaveEngagementScore: %w", err)
 	}
 	return nil

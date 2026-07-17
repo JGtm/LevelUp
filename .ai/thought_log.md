@@ -1,3 +1,39 @@
+## [2026-07-17] LOT A — correctifs revue (A1-A13, branche fix/revue-2026-07-correctifs)
+
+**Statut** : Complété (worktree `LevelUp-wt-revue-correctifs`, un commit ; NON mergé — merge + push superviseur).
+
+**Périmètre** : les 13 items du LOT A du plan `.ai/PLAN_CORRECTIFS_REVUE_2026-07.md` (correctness
+rapides Go + web). Décisions D1-D7 appliquées sans ré-arbitrage.
+
+**Décisions techniques principales** :
+- A1 (season pass pollution) : ÉTAPE 1 vérifiée sur pièces — BP/défis sont ownership-scoped (URL
+  `players/xuid(<HaloXUID>)/…`, persist sous sink.xuid=pdb.XUID, 403 upstream si porteur≠sujet). Fix =
+  `forcePageIdentityXUID` comme les 3 autres sites (aligne sujet-URL et xuid-persist → jamais de
+  données de Y sous X ; viewer≠sujet → 403 → cache du sujet). A2 = ratchet AST qui rend l'oubli
+  impossible (allowlist datée Compare/Explorer = xuid explicite).
+- A4 (squash M3/M4) : bridge générique `Migration.EnsureAdditive` rejoué sur le chemin DM-5 AVANT de
+  marquer la baseline satisfaite. Ensure étendu (render challenge_snapshots + engagement_response_bins
+  via const partagée, source unique → golden invariant préservé).
+- A6 : conversions recovery + extension du ratchet `.Exec(` (les 4 `.Player.Exec(` non-test convertis ;
+  0 restant). A8 : persist immédiat du RT roté (store passé à refreshAccessTokenForUser). A9 : store.Load
+  err logué (plus d'avalement, D2 non faussable).
+- A5 : vue partitionnée `world_csr_leaderboard_latest` (fix 1-playlist). A7 : escapeLikeLiteral + ESCAPE.
+  A10 : early-return sur prompt null. A11 : 4 clés i18n FR+EN (libellés FR préservés). A13 : PathResolver
+  + slog + suppression code mort (champ Bins, param ref).
+
+**Résultats observés (gates, tous verts)** : gofmt propre ; `go vet` sur les 11 paquets touchés = 0 ;
+`go test` ciblés wire/auth/duckdb OK ; intégration `-p 1` migration+halo_infinite/migrations (DM-5 heal +
+golden) et sync (A5) OK ; `golangci-lint --new-from-merge-base=main` = 0 issue ; `tsc -b` propre ;
+vitest auth (9) + admin/monitoring (2) + home (existants) verts.
+
+**Découvertes consignées (non traitées)** : emojis CLI préexistants dans cmd_data.go (hors ligne 233) ;
+`fanout_repo.go:98` slog.Warn sans ctx — cf. section Découvertes du plan.
+
+**Conclusion / prochaine étape** : LOT A soldé, tous items `[x]`. Prochain = LOT B (identité en
+profondeur) OU merge intermédiaire par le superviseur (push main = deploy prod → prévenir).
+
+---
+
 ## [2026-07-17] Format des `<input type="date">` — binding `<html lang>` sur la locale app (branche fix/date-input-locale-format)
 
 **Statut** : Complété (code, branche `fix/date-input-locale-format`, NON mergé — revue + commit superviseur).

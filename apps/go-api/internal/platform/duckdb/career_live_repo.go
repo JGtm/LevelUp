@@ -210,7 +210,9 @@ INSERT INTO career_progression (
     banner_image_url, emblem_image_url, backdrop_image_url, recorded_at
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-	if _, err := r.pdb.Player.Exec(ctx, insertSQL,
+	// E5 (revue 2026-07) : ExecRecovered (Reopen+retry) — écriture player-DB tolérant
+	// un Reopen concurrent (« database is closed »), comme les lectures du sweep.
+	if _, err := r.pdb.Player.ExecRecovered(ctx, insertSQL,
 		xuid, data.Rank, data.RankName, data.RankTier,
 		data.CurrentXP, data.XPForNextRank, data.XPTotal,
 		data.IsMaxRank, data.AdornmentPath, data.SpartanID,
