@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -163,7 +164,11 @@ func (h *PrestigeHandler) ListMySquads(ctx context.Context, in *listMySquadsInpu
 	titleSlug := in.TitleSlug
 	// Annuaire (best-effort) pour combler les gamertags absents des snapshots
 	// membres (legacy/pré-colonne) — app-players uniquement, via lookup canonique.
-	_, _, gamertagByXUID, _ := h.playerDirectory(ctx)
+	_, _, gamertagByXUID, dirErr := h.playerDirectory(ctx)
+	if dirErr != nil {
+		slog.DebugContext(ctx, "prestige: squad list gamertag backfill skipped (annuaire indisponible)",
+			"err", dirErr, "user_id", in.UserID)
+	}
 	out := make([]squadWithMembers, 0, len(squads))
 	for _, sq := range squads {
 		members, mErr := h.svc.ListSquadMembers(ctx, sq.ID)
@@ -189,6 +194,9 @@ func (h *PrestigeHandler) ListMySquads(ctx context.Context, in *listMySquadsInpu
 		if pls, mds, uErr := h.svc.SquadUsualContexts(ctx, roster, titleSlug); uErr == nil {
 			entry.UsualPlaylists = pls
 			entry.UsualModes = mds
+		} else {
+			slog.DebugContext(ctx, "prestige: squad usual contexts unavailable (indice omis)",
+				"err", uErr, "squad_id", sq.ID)
 		}
 		out = append(out, entry)
 	}

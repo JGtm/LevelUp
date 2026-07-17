@@ -217,7 +217,12 @@ func (s *service) squadFocusAxis(ctx context.Context, members []SquadMember, tit
 		return ""
 	}
 	axes, err := s.deps.SquadProfile.SquadAxes(ctx, rosterXUIDs(members), titleSlug)
-	if err != nil || len(axes) == 0 {
+	if err != nil {
+		slog.WarnContext(ctx, "prestige: squad focus axis unavailable (squad axes failed), pool non biaisé",
+			"err", err, "title_slug", titleSlug)
+		return ""
+	}
+	if len(axes) == 0 {
 		return ""
 	}
 	return SquadFocusAxis(AggregateSquadAxes(axes))

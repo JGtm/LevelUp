@@ -14,6 +14,7 @@ package handlers
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"runtime"
 	"time"
@@ -94,9 +95,21 @@ func (h *HealthHandler) handleHealth(ctx context.Context, _ *struct{}) (*healthO
 			"Impossible de lire shared_matches_v2: "+err.Error())
 	}
 
-	dbVersion, _ := h.repo.GetDBVersion(ctx)
-	playerCount, _ := h.repo.GetPlayerCount(ctx)
-	lastSync, _ := h.repo.GetLastSyncAt(ctx)
+	// Enrichissements best-effort : leur échec ne dégrade pas le 200 (la santé
+	// DB est déjà attestée par GetMatchCount ci-dessus), mais on trace au lieu
+	// d'avaler l'erreur (Debug : /health est sondé fréquemment).
+	dbVersion, err := h.repo.GetDBVersion(ctx)
+	if err != nil {
+		slog.DebugContext(ctx, "health: db version enrichment unavailable", "err", err)
+	}
+	playerCount, err := h.repo.GetPlayerCount(ctx)
+	if err != nil {
+		slog.DebugContext(ctx, "health: player count enrichment unavailable", "err", err)
+	}
+	lastSync, err := h.repo.GetLastSyncAt(ctx)
+	if err != nil {
+		slog.DebugContext(ctx, "health: last sync enrichment unavailable", "err", err)
+	}
 
 	return &healthOutput{Body: domain.HealthResponse{
 		Status:       "ok",
