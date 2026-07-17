@@ -3959,7 +3959,6 @@ export interface components {
             ranked?: components["schemas"]["ExplorerBriefingRanked"];
             scope?: components["schemas"]["ExplorerBriefingScope"];
             streaks?: components["schemas"]["ExplorerBriefingStreaks"];
-            trend?: components["schemas"]["ExplorerBriefingTrend"];
         };
         ExplorerBriefingScope: {
             /** Format: double */
@@ -3972,12 +3971,23 @@ export interface components {
             losses: number;
             /** Format: int64 */
             matches: number;
+            /** Format: double */
+            peak_kda?: number;
+            peak_ranks?: components["schemas"]["ExplorerBriefingPeakRank"][] | null;
+            /** Format: double */
+            peak_team_mmr?: number;
             /** Format: int64 */
             ties: number;
+            /** Format: int64 */
+            total_duration_seconds?: number;
             /** Format: double */
             win_rate: number;
             /** Format: int64 */
             wins: number;
+        };
+        ExplorerBriefingPeakRank: {
+            rating_type: string;
+            tier_label: string;
         };
         ExplorerBriefingBaseline: {
             /** Format: double */
@@ -4021,6 +4031,7 @@ export interface components {
             kind: string;
             /** Format: int64 */
             matches: number;
+            playlist_group?: string;
             tier_end_label?: string;
             /** Format: int64 */
             tier_end_placement_remaining?: number;
@@ -4058,20 +4069,6 @@ export interface components {
             humiliations?: number;
             /** Format: int64 */
             remontadas?: number;
-        };
-        ExplorerBriefingTrend: {
-            granularity: string;
-            points: components["schemas"]["ExplorerBriefingTrendPoint"][] | null;
-        };
-        ExplorerBriefingTrendPoint: {
-            /** Format: double */
-            avg_perf?: number;
-            /** Format: date-time */
-            bucket_start: string;
-            /** Format: int64 */
-            matches: number;
-            /** Format: double */
-            win_rate: number;
         };
         ExplorerPlayerQueryRequest: {
             target_gamertag: string;

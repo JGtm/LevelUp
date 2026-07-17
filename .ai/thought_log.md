@@ -1,3 +1,46 @@
+## [2026-07-17] Explorer briefing V4 — bloc backend (Phases 1-2) (branche feat/explorer-briefing-compact)
+
+**Statut** : En cours (chantier V4 ; bloc BACKEND terminé, bloc FRONTEND Phases 3-4 restant).
+NON committé (le superviseur committe en fin de bloc ; merge main = deploy prod auto). Plan :
+`.ai/V7/PLAN_EXPLORER_BRIEFING_V4_2026-07.md` (Phases 0-2 cochées + notes de gate + Découvertes 9-11).
+
+**Décision technique principale** : le module « Classement » du briefing est recalculé PAR CHAÎNE
+de playlist `(rating_type, playlist_group)` — une ligne par chaîne, jamais de flèche inter-chaînes
+(DEC-1). Nouvel algo pur `internal/analysis/rank_progression.go`
+(`ComputeRankProgressionByChain`) : pt/match = **variation nette** `(rating_value fin − début)/nb
+notés` PAR CHAÎNE (DEC-RANK-BE, défaut ferme co-signé avec la progression de paliers), PAS une somme
+de deltas. CSR = chaîne unique « ranked » (P-3 auto). Colonnes `playlist_group`/`rating_value`/
+`rating_delta`/`sub_tier` exposées en LECTURE depuis `match_skill_rank_latest` (déjà présentes), +
+`duration_seconds` depuis `v_match_full` — aucune écriture, aucune migration → `-tags=integration`
+non requis (justifié §4). Purges (0 code mort) : DTO `trend` complet (sparkline morte), `KPIStats.
+RankDeltas` (consommateur unique = ex-module ranked ; RankDelta singulier conservé pour Squad), const
+`minTrendMatches`/`minTrendSpanDays`, const `minRankedKindMatches` (seuil de type secondaire caduc en
+per-chaîne — Découverte-11). Nouveaux agrégats socle sur `ExplorerBriefingScope` :
+`TotalDurationSeconds`, `PeakKDA`, `PeakTeamMMR`, `PeakRanks []{RatingType,TierLabel}` (Pic rang =
+argmax par système via `analysis.CSRTierOrdinal` réutilisé, ordre LUSR puis CSR).
+
+**Découverte-9 (couplage inter-phase levé)** : purger le DTO `trend` (Phase 2) casse `make
+check-types` (gate Phase 2) car `ExplorerBriefingStrip.tsx` lit encore `briefing.trend`, alors que le
+plan défère ce retrait à la Phase 3b. Résolu par la purge frontend MINIMALE strictement forcée :
+`types.ts` −2 exports Trend ; Strip.tsx −import Sparkline / −`trendValues` / −bloc `chart`. Aucun
+autre travail frontend (refonte tuiles/OutcomeBar/Perf/RankedBlock = bloc frontend). Sans ce
+micro-retrait le bloc backend n'était pas committable (build cassé). Grep final : 0 consommateur
+`briefing.trend`.
+
+**Résultats gates (Phases 1 ET 2, exécutés ce jour, séquentiels — cache Windows)** :
+`CGO_ENABLED=1 go test ./...` = exit 0, **111 packages ok, 0 FAIL** (2 passes) ; `go vet
+domain+analysis` = 0 ; `generate-types` STRICTEMENT idempotent (md5 identique) ; `TestOpenAPISchema
+Drift` = PASS, **0 MISSING**, **0 ExplorerBriefing* divergent** (Scope/RankedKind/PeakRank alignés
+via émission Huma byte-exact ; KPIStats divergence pré-existante RÉSORBÉE par la purge ; 26 divergents
+= baseline intact) ; `check-types` (tsc, `.tmp` purgé) = 0 ; greps de clôture : 0 `RankDeltas`, 0
+`buildBriefingTrend`/`ExplorerBriefingTrend`/`trendRow` sous `apps/go-api`.
+
+**Prochaine étape** : bloc FRONTEND Phases 3-4 (refonte socle tuiles — hero WR OutcomeBar + Perf
+colorée + Durée totale + Pic FDA/rang/MMR avec cascade ≤ 8 + « Meilleure série » ; RankedBlock par
+chaîne en 4ᵉ colonne via `lusrChainLabel`), puis Phases 5-8 (tooltips portal, MVP/LVP, padding,
+dettes). Édition utilisateur `explorer.toml`/`generated/explorer.ts` (tip_dimensions) LAISSÉE INTACTE
+dans le worktree (intégrée au commit Phase 7).
+
 ## [2026-07-17] Explorer tableau — tri client toutes colonnes (remplace tri serveur bfc689cdc) (branche feat/explorer-briefing-compact)
 
 **Statut** : Complété (revue visuelle utilisateur en attente avant merge ; NON committé — merge

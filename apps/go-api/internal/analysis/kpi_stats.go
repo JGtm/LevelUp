@@ -8,7 +8,6 @@ package analysis
 
 import (
 	"math"
-	"sort"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
@@ -192,28 +191,6 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow, effectiveHpToKill float64)
 			Kind:  string(bestKind),
 			Value: best.sum,
 			Count: best.count,
-		}
-		// Exposer TOUS les buckets par type (CSR/LUSR séparés) dans un ordre
-		// déterministe : Count décroissant, tie-break CSR d'abord. Le majoritaire
-		// ressort donc en tête, cohérent avec RankDelta. Consommé par le module
-		// « Classement » du briefing Explorer (une ligne par type).
-		kinds := make([]canonical.RatingType, 0, len(rankBuckets))
-		for kind := range rankBuckets {
-			kinds = append(kinds, kind)
-		}
-		sort.Slice(kinds, func(i, j int) bool {
-			bi, bj := rankBuckets[kinds[i]], rankBuckets[kinds[j]]
-			if bi.count != bj.count {
-				return bi.count > bj.count
-			}
-			return kinds[i] == canonical.RatingTypeCSR
-		})
-		stats.RankDeltas = make([]domain.RankDelta, 0, len(kinds))
-		for _, kind := range kinds {
-			b := rankBuckets[kind]
-			stats.RankDeltas = append(stats.RankDeltas, domain.RankDelta{
-				Kind: string(kind), Value: b.sum, Count: b.count,
-			})
 		}
 	}
 	return stats

@@ -78,8 +78,7 @@ func TestBuildExplorerBriefing_ContextSplitOmittedWhenLowSample(t *testing.T) {
 	for i := 0; i < 8; i++ {
 		filtered = append(filtered, briefingCtxRaw("m"+string(rune('a'+i)), i, domain.OutcomeWin, i%2 == 0))
 	}
-	kpis := &domain.KPIStats{}
-	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), filtered, filtered, kpis)
+	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), filtered, filtered)
 	if b == nil {
 		t.Fatal("briefing nil")
 	}

@@ -2,12 +2,12 @@
 //
 // Le bandeau est une lecture compacte du RÉSULTAT DE RECHERCHE (sous-ensemble
 // filtré) : KPIs agrégés, comparaison à la baseline personnelle (historique
-// complet du titre) et modules conditionnels (notes par dimension, tendance,
-// classé) qui s'activent selon les filtres, les
-// capabilities du titre et la taille d'échantillon. Ce N'EST PAS une page
-// Synthèse (cf. PLAN_EXPLORER_BRIEFING_CARDS_2026-07.md).
+// complet du titre) et modules conditionnels (notes par dimension, classé) qui
+// s'activent selon les filtres, les capabilities du titre et la taille
+// d'échantillon. Ce N'EST PAS une page Synthèse (cf.
+// PLAN_EXPLORER_BRIEFING_CARDS_2026-07.md).
 //
-// Tous les blocs (hors socle KPIs/frise/période) sont optionnels : un bloc nil
+// Tous les blocs (hors socle KPIs/période) sont optionnels : un bloc nil
 // = module non émis (dégradation par omission, jamais de N/A affiché). Les
 // unités suivent ADR 0006 : WinRate en ratio 0..1 (le front formate en %).
 package domain
@@ -35,9 +35,7 @@ type ExplorerBriefing struct {
 	// Dimensions : notes par dimension libre (carte/mode/playlist). Vide/nil si
 	// low sample ou aucune dimension libre.
 	Dimensions []ExplorerBriefingDimension `json:"dimensions,omitempty"`
-	// Trend : tendance temporelle bucketée. Nil si seuils non atteints.
-	Trend *ExplorerBriefingTrend `json:"trend,omitempty"`
-	// Ranked : module « Classement » (progression de paliers PAR TYPE de rating).
+	// Ranked : module « Classement » (progression de paliers PAR CHAÎNE de playlist).
 	// Nil si le titre n'expose pas la capability ranked ou si aucun match rangé
 	// dans le scope.
 	Ranked *ExplorerBriefingRanked `json:"ranked,omitempty"`
@@ -67,6 +65,28 @@ type ExplorerBriefingScope struct {
 	KDA     float64 `json:"kda"`
 	// AvgPerf : perf moyenne 0..100. Nil si aucun match du scope n'a de score.
 	AvgPerf *float64 `json:"avg_perf,omitempty"`
+	// TotalDurationSeconds : somme des durées (r.duration_seconds) des matchs du
+	// scope. Nil si aucune durée disponible. Formaté « h min » côté front.
+	TotalDurationSeconds *int `json:"total_duration_seconds,omitempty"`
+	// PeakKDA : meilleur KDA (valeur API native par match) d'un seul match du scope.
+	// Toujours tenté ; nil si aucun match du scope ne porte de KDA.
+	PeakKDA *float64 `json:"peak_kda,omitempty"`
+	// PeakTeamMMR : meilleur team_mmr d'un match du scope. Nil si aucun team_mmr
+	// (métrique brute, soumise au masquage MMR côté front).
+	PeakTeamMMR *float64 `json:"peak_team_mmr,omitempty"`
+	// PeakRanks : meilleur palier ATTEINT par système de rating sur le scope (0, 1 ou
+	// 2 entrées ; ordre déterministe LUSR puis CSR). Ce n'est PAS le palier final : le
+	// pic peut dépasser le palier d'arrivée du module Classement. Nil si aucun palier.
+	PeakRanks []ExplorerBriefingPeakRank `json:"peak_ranks,omitempty"`
+}
+
+// ExplorerBriefingPeakRank porte le meilleur palier atteint pour UN système de
+// rating sur le scope (Pic rang). RatingType = "csr" | "lusr" ; TierLabel = label FR
+// résolu (ex. « Diamant IV ») de la row au palier maximal, sélectionnée par
+// (analysis.CSRTierOrdinal(tier EN), sub_tier).
+type ExplorerBriefingPeakRank struct {
+	RatingType string `json:"rating_type"`
+	TierLabel  string `json:"tier_label"`
 }
 
 // ExplorerBriefingBaseline compare le scope à la baseline personnelle
@@ -102,38 +122,30 @@ type ExplorerBriefingDimensionEntry struct {
 	NoteTier *int `json:"note_tier,omitempty"`
 }
 
-// ExplorerBriefingTrend porte la série temporelle bucketée du scope.
-type ExplorerBriefingTrend struct {
-	// Granularity : "1d" | "1w" | "1m" (largeur de bucket résolue serveur).
-	Granularity string                       `json:"granularity"`
-	Points      []ExplorerBriefingTrendPoint `json:"points"`
-}
-
-// ExplorerBriefingTrendPoint est un bucket de la tendance.
-type ExplorerBriefingTrendPoint struct {
-	BucketStart time.Time `json:"bucket_start"`
-	Matches     int       `json:"matches"`
-	WinRate     float64   `json:"win_rate"` // ratio 0..1
-	AvgPerf     *float64  `json:"avg_perf,omitempty"`
-}
-
-// ExplorerBriefingRanked est le module « Classement » : progression de paliers
-// PAR TYPE de rating (CSR, LUSR) sur le scope. Une entrée par type suffisamment
-// représenté (P-3) — jamais de paliers de deux systèmes mélangés sur une même
-// ligne. Le bloc « attendu vs réel » (expected_win_prob) a été retiré (décision
-// produit 2026-07-16 : donnée jugée non fiable).
+// ExplorerBriefingRanked est le module « Classement » : progression de paliers PAR
+// CHAÎNE de playlist (rating_type, playlist_group) sur le scope. Une entrée par
+// chaîne — paliers début/fin ET pt/match viennent des MÊMES matchs de la MÊME chaîne,
+// jamais de flèche inter-chaînes (DEC-RANK-BE). CSR = chaîne unique « ranked » (P-3
+// préservé) ; LUSR se scinde en ses chaînes. Le bloc « attendu vs réel »
+// (expected_win_prob) a été retiré (décision produit 2026-07-16 : donnée non fiable).
 type ExplorerBriefingRanked struct {
-	// Kinds : une entrée par type de rating retenu. Ordre déterministe (type
-	// majoritaire du scope d'abord). Toujours au moins une entrée quand le bloc
-	// est émis (sinon Ranked est nil).
+	// Kinds : une entrée par CHAÎNE (rating_type, playlist_group). Ordre déterministe
+	// (type majoritaire du scope d'abord, puis chaînes du type par nb de matchs). Au
+	// moins une entrée quand le bloc est émis (sinon Ranked est nil).
 	Kinds []ExplorerBriefingRankedKind `json:"kinds"`
 }
 
-// ExplorerBriefingRankedKind est la progression du scope pour UN type de rating.
+// ExplorerBriefingRankedKind est la progression du scope pour UNE chaîne
+// (rating_type, playlist_group).
 type ExplorerBriefingRankedKind struct {
 	// Kind : "csr" | "lusr" — la métrique connue du joueur (affichée telle quelle).
 	Kind string `json:"kind"`
-	// Matches : nombre de matchs du scope portant ce type de rating.
+	// PlaylistGroup : groupe de playlist de la chaîne ("ranked" pour CSR — chaîne
+	// unique ; une des 4 chaînes LUSR sinon : arena_slayer/arena_objectif/btb/chaos).
+	// Une entrée = UNE chaîne (kind, playlist_group). "" si la source ne renseigne pas
+	// de groupe. Le front n'affiche le libellé de chaîne que si le type a ≥ 2 chaînes.
+	PlaylistGroup string `json:"playlist_group,omitempty"`
+	// Matches : nombre de matchs du scope portant cette chaîne.
 	Matches int `json:"matches"`
 	// TierStartLabel : palier du premier match chronologique portant un palier
 	// (label FR déjà résolu en base, ex. « Bronze I »). Nil si non résolvable ou
@@ -150,8 +162,10 @@ type ExplorerBriefingRankedKind struct {
 	// dernier match du scope est encore en placement (rendu « Placement (N
 	// restants) » côté front — D-D). Nil hors placement en fin de scope.
 	TierEndPlacementRemaining *int `json:"tier_end_placement_remaining,omitempty"`
-	// DeltaPerMatch : moyenne signée du delta de rating par match (Value/Count du
-	// bucket). Nil si aucun match compté. Unité = points de rating natifs du type.
+	// DeltaPerMatch : variation nette du rating de la chaîne ramenée au match
+	// (rating_value du dernier − du premier match noté, / nb de matchs notés). Garantie
+	// co-signée avec la progression de paliers (paliers monotones dans le rating). Nil
+	// si aucun match noté. Unité = points de rating natifs du type (points CSR / mu LUSR).
 	DeltaPerMatch *float64 `json:"delta_per_match,omitempty"`
 }
 

@@ -25,7 +25,7 @@ func NewMatchHistoryRepo(pdb *PlayerDB) *MatchHistoryRepo {
 // split+merge cross-DB. La query historique unique
 // (shared.v_match_full ⨝ shared.match_participants ⨝ player_match_enrichment
 // ⨝ match_skill_rank) est découpée en 3 round-trips :
-//  1. SharedReader.Get : v_match_full ⨝ match_participants → 25 cols + team_id
+//  1. SharedReader.Get : v_match_full ⨝ match_participants → 31 cols (dont team_id/scores + durée)
 //  2. pdb.Player : player_match_enrichment WHERE match_id IN (...)
 //  3. pdb.Player : match_skill_rank WHERE match_id IN (...)
 //  4. Merge Go : assemble MatchHistoryRawRow + calcule my/enemy_team_score.
@@ -132,6 +132,7 @@ func (r *MatchHistoryRepo) loadSharedHistory(ctx context.Context) ([]domain.Matc
 			&team1,
 			&m.GameVariantID,
 			&m.GameVariantName,
+			&m.DurationSeconds,
 		); err != nil {
 			return nil, nil, nil, fmt.Errorf("scan: %w", err)
 		}
@@ -191,17 +192,21 @@ func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []do
 	defer dbRows.Close()
 
 	type skill struct {
-		tier      *string
-		tierFR    *string
-		rating    *string
-		tierLabel *string
-		winProb   *float64
+		tier          *string
+		tierFR        *string
+		rating        *string
+		tierLabel     *string
+		winProb       *float64
+		playlistGroup *string
+		ratingValue   *float64
+		ratingDelta   *float64
+		subTier       *int
 	}
 	ranks := make(map[string]skill, len(matchIDs))
 	for dbRows.Next() {
 		var mid string
 		var s skill
-		if err := dbRows.Scan(&mid, &s.tier, &s.tierFR, &s.rating, &s.tierLabel, &s.winProb); err != nil {
+		if err := dbRows.Scan(&mid, &s.tier, &s.tierFR, &s.rating, &s.tierLabel, &s.winProb, &s.playlistGroup, &s.ratingValue, &s.ratingDelta, &s.subTier); err != nil {
 			return fmt.Errorf("skill_rank scan: %w", err)
 		}
 		// Q5 lit désormais match_skill_rank_latest : 1 ligne/match (priorité
@@ -224,6 +229,10 @@ func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []do
 		rows[i].SkillRatingType = s.rating
 		rows[i].SkillTierLabel = s.tierLabel
 		rows[i].SkillExpectedWinProb = s.winProb
+		rows[i].PlaylistGroup = s.playlistGroup
+		rows[i].RatingValue = s.ratingValue
+		rows[i].RatingDelta = s.ratingDelta
+		rows[i].SubTier = s.subTier
 	}
 	return nil
 }

@@ -5026,8 +5026,6 @@ components:
               $ref: '#/components/schemas/ExplorerBriefingScope'
           streaks:
               $ref: '#/components/schemas/ExplorerBriefingStreaks'
-          trend:
-              $ref: '#/components/schemas/ExplorerBriefingTrend'
       type: object
     ExplorerBriefingScope:
       additionalProperties: false
@@ -5047,7 +5045,21 @@ components:
           matches:
               format: int64
               type: integer
+          peak_kda:
+              format: double
+              type: number
+          peak_ranks:
+              items:
+                  $ref: '#/components/schemas/ExplorerBriefingPeakRank'
+              nullable: true
+              type: array
+          peak_team_mmr:
+              format: double
+              type: number
           ties:
+              format: int64
+              type: integer
+          total_duration_seconds:
               format: int64
               type: integer
           win_rate:
@@ -5064,6 +5076,17 @@ components:
           - dnf
           - win_rate
           - kda
+      type: object
+    ExplorerBriefingPeakRank:
+      additionalProperties: false
+      properties:
+          rating_type:
+              type: string
+          tier_label:
+              type: string
+      required:
+          - rating_type
+          - tier_label
       type: object
     ExplorerBriefingBaseline:
       additionalProperties: false
@@ -5158,6 +5181,8 @@ components:
           matches:
               format: int64
               type: integer
+          playlist_group:
+              type: string
           tier_end_label:
               type: string
           tier_end_placement_remaining:
@@ -5230,40 +5255,6 @@ components:
           remontadas:
               format: int64
               type: integer
-      type: object
-    ExplorerBriefingTrend:
-      additionalProperties: false
-      properties:
-          granularity:
-              type: string
-          points:
-              items:
-                  $ref: '#/components/schemas/ExplorerBriefingTrendPoint'
-              nullable: true
-              type: array
-      required:
-          - granularity
-          - points
-      type: object
-    ExplorerBriefingTrendPoint:
-      additionalProperties: false
-      properties:
-          avg_perf:
-              format: double
-              type: number
-          bucket_start:
-              format: date-time
-              type: string
-          matches:
-              format: int64
-              type: integer
-          win_rate:
-              format: double
-              type: number
-      required:
-          - bucket_start
-          - matches
-          - win_rate
       type: object
     ExplorerPlayerQueryRequest:
       type: object

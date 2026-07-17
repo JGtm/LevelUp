@@ -230,52 +230,6 @@ func TestComputeKPIStats_RankDelta_TieBrokenByCSR(t *testing.T) {
 	}
 }
 
-// TestComputeKPIStats_RankDeltas_SplitByTypeDeterministic : scope mixte CSR+LUSR
-// -> RankDeltas expose les DEUX buckets, majoritaire (CSR ici, 3 matchs) d'abord,
-// sans jamais fusionner les valeurs. RankDelta reste le majoritaire.
-func TestComputeKPIStats_RankDeltas_SplitByTypeDeterministic(t *testing.T) {
-	t.Parallel()
-	rows := []canonical.PlayerMatchRow{
-		mkRowWithSkill(canonical.RatingTypeCSR, float64PtrKPI(10.0)),
-		mkRowWithSkill(canonical.RatingTypeLUSR, float64PtrKPI(0.02)),
-		mkRowWithSkill(canonical.RatingTypeCSR, float64PtrKPI(-4.0)),
-		mkRowWithSkill(canonical.RatingTypeLUSR, float64PtrKPI(0.01)),
-		mkRowWithSkill(canonical.RatingTypeCSR, float64PtrKPI(6.0)),
-	}
-	got := ComputeKPIStats(rows, 225)
-	if len(got.RankDeltas) != 2 {
-		t.Fatalf("RankDeltas: want 2 buckets (csr+lusr), got %+v", got.RankDeltas)
-	}
-	// Majoritaire d'abord : CSR (3 matchs) puis LUSR (2 matchs).
-	if got.RankDeltas[0].Kind != "csr" || got.RankDeltas[0].Count != 3 {
-		t.Errorf("RankDeltas[0]: want csr count=3, got %+v", got.RankDeltas[0])
-	}
-	if math.Abs(got.RankDeltas[0].Value-12.0) > 1e-9 {
-		t.Errorf("csr value: want 12 (10-4+6), got %v", got.RankDeltas[0].Value)
-	}
-	if got.RankDeltas[1].Kind != "lusr" || got.RankDeltas[1].Count != 2 {
-		t.Errorf("RankDeltas[1]: want lusr count=2, got %+v", got.RankDeltas[1])
-	}
-	if math.Abs(got.RankDeltas[1].Value-0.03) > 1e-9 {
-		t.Errorf("lusr value: want 0.03 (0.02+0.01), got %v", got.RankDeltas[1].Value)
-	}
-	// RankDelta (singulier) inchangé = majoritaire CSR.
-	if got.RankDelta == nil || got.RankDelta.Kind != "csr" || got.RankDelta.Count != 3 {
-		t.Errorf("RankDelta (majoritaire) inchangé: want csr count=3, got %+v", got.RankDelta)
-	}
-}
-
-// TestComputeKPIStats_RankDeltas_NilWhenNoRatedMatches : aucun snapshot ->
-// RankDeltas vide (comme RankDelta nil).
-func TestComputeKPIStats_RankDeltas_NilWhenNoRatedMatches(t *testing.T) {
-	t.Parallel()
-	rows := []canonical.PlayerMatchRow{mkRowWithSkill("", nil)}
-	got := ComputeKPIStats(rows, 225)
-	if len(got.RankDeltas) != 0 {
-		t.Errorf("RankDeltas: want empty, got %+v", got.RankDeltas)
-	}
-}
-
 func TestComputeKPIStats_ZeroPlaySecondsNoPanicOnPerMin(t *testing.T) {
 	t.Parallel()
 	// Tous les TimePlayed = 0 -> *PerMinute restent 0 (pas de division par zero).

@@ -10,7 +10,6 @@
  * Dégradation : briefing absent → rien ; low_sample → socle + mention
  * échantillon faible, aucun module. Aucune couleur hex : tokens sémantiques.
  */
-import { Sparkline } from '@/components/charts/Sparkline'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { tokenCssVar } from '@/lib/accessibility'
@@ -70,9 +69,6 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
   const streaks = briefing.streaks ?? null
   const showStreaks =
     streaks != null && ((streaks.best_win_streak ?? 0) > 0 || (streaks.worst_loss_streak ?? 0) > 0)
-  // Tendance : micro-sparkline nue du taux de victoire par bucket dans la tuile
-  // Taux de victoire (DP-6). Omise si le DTO trend est absent.
-  const trendValues = (briefing.trend?.points ?? []).map((p) => Math.round(p.win_rate * 100))
 
   return (
     <div className="space-y-2">
@@ -85,7 +81,7 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
           accent="outcome-draw"
         />
 
-        {/* Taux de victoire + micro-sparkline de tendance + V-D-N + delta */}
+        {/* Taux de victoire + V-D-N + delta (sparkline retirée — DEC-SPARK V4) */}
         {scope && (
           <BriefingTile
             label={t('explorer.briefing.win_rate_label')}
@@ -94,17 +90,6 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
               <span style={wr != null ? { color: winRateColor(wr) } : undefined}>
                 {formatPercentInt(wr)}
               </span>
-            }
-            chart={
-              briefing.trend != null ? (
-                <Sparkline
-                  values={trendValues}
-                  token="outcome-win"
-                  width={120}
-                  height={28}
-                  ariaLabel={t('explorer.briefing.win_rate_label')}
-                />
-              ) : undefined
             }
             sub={
               <>

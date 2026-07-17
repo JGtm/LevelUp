@@ -44,12 +44,27 @@ type MatchHistoryRawRow struct {
 	PersonalScore      *int
 	AverageLifeSeconds *float64
 	TimePlayedSeconds  *int
+	DurationSeconds    *int // r.duration_seconds (v_match_full) — nil si absent ; socle « Durée totale » (DEC-DURATION)
 	IsExcluded         bool
 	PerformanceScore   *float64
 	SkillTier          *string // e.g. "Diamond" (EN, clé de filtre)
 	SkillTierFR        *string // e.g. "Diamant" (affichage FR)
 	SkillRatingType    *string // "LUSR" | "CSR"
 	SkillTierLabel     *string // e.g. "Diamant IV" (label formaté DB)
+	// PlaylistGroup / RatingValue / RatingDelta : colonnes match_skill_rank_latest
+	// exposées pour le module « Classement » du briefing, segmenté PAR CHAÎNE
+	// (rating_type, playlist_group) — DEC-RANK-BE. PlaylistGroup = "ranked" pour CSR
+	// (chaîne unique, csr_writes.go), une des 4 chaînes LUSR (arena_slayer/
+	// arena_objectif/btb/chaos) sinon. RatingValue = points CSR / mu LUSR ;
+	// RatingDelta = variation per-match (déjà per-chaîne au sync, skill_v2_canonical.go).
+	// Tous nil hors match rangé.
+	PlaylistGroup *string
+	RatingValue   *float64
+	RatingDelta   *float64
+	// SubTier : sous-palier 1..6 (nil pour Onyx / non rangé), depuis
+	// match_skill_rank_latest.sub_tier. Sert au « Pic rang » du socle : classement des
+	// paliers par (analysis.CSRTierOrdinal(tier EN), sub_tier) — DEC-PEAK.
+	SubTier *int
 	// SkillExpectedWinProb : proba de victoire pré-match ∈ [0,1] (LUSR v2), lue
 	// depuis match_skill_rank.expected_win_prob. Nil si pré-v2 / non disponible.
 	SkillExpectedWinProb *float64

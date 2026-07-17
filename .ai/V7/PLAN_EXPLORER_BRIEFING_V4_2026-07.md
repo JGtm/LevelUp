@@ -557,9 +557,10 @@ l'exécuter — mais aucune écriture n'est planifiée.
 
 ### Phase 0 — Cadrage, commit du move & re-vérification (rapide)
 
-- [ ] Confirmer `git branch --show-current` = `feat/explorer-briefing-compact`. Worktree :
-      ne toucher que ce qui est autorisé ci-dessous.
-- [ ] **Committer le déplacement des plans** vers `.ai/V7/` : `git add .ai/PLAN_EXPLORER_
+- [x] Confirmer `git branch --show-current` = `feat/explorer-briefing-compact`. Worktree :
+      ne toucher que ce qui est autorisé ci-dessous. FAIT : branche OK ; `git status` =
+      seuls `explorer.toml` + `generated/explorer.ts` modifiés (édition utilisateur intacte).
+- [x] **Committer le déplacement des plans** vers `.ai/V7/` : `git add .ai/PLAN_EXPLORER_
       BRIEFING_V2_2026-07.md .ai/PLAN_EXPLORER_BRIEFING_V3_COMPACT_2026-07.md .ai/V7/
       PLAN_EXPLORER_BRIEFING_V2_2026-07.md .ai/V7/PLAN_EXPLORER_BRIEFING_V3_COMPACT_2026-07.md`
       (le `git mv` équivalent : suppression + ajout) + le présent plan V4, avec message
@@ -567,14 +568,20 @@ l'exécuter — mais aucune écriture n'est planifiée.
       **Ne PAS committer** l'édition `explorer.toml`/`generated/explorer.ts` (édition
       utilisateur en cours) : la LAISSER dans le worktree (elle sera intégrée au commit de la
       phase reformulation). Vérifier `git status` après : seuls `explorer.toml` +
-      `generated/explorer.ts` restent modifiés.
-- [ ] Re-vérifier §2 sur pièces (rouvrir chaque fichier:ligne cité) ; consigner tout décalage
-      en §6.
-- [ ] Confirmer les points à trancher : DEC-PEAKRANK (Pic MMR conditionnel — défaut appliqué
+      `generated/explorer.ts` restent modifiés. FAIT PAR LE SUPERVISEUR : commit
+      `52cf17a4c` (`git log --oneline -1` le confirme) ; worktree vérifié = seuls les 2
+      fichiers i18n modifiés.
+- [x] Re-vérifier §2 sur pièces (rouvrir chaque fichier:ligne cité) ; consigner tout décalage
+      en §6. FAIT : tous les ancrages §2.2/2.3 concordent (DTO explorer_briefing.go,
+      service ranked + briefing, kpi_stats, raw row match_history.go, Q5 shared/skill,
+      repo scan/merge, SkillSnapshot, CSRTierOrdinal:181, RankDeltas 1 seul consommateur
+      prod). 2 décalages mineurs consignés → Découvertes-9 et 10.
+- [x] Confirmer les points à trancher : DEC-PEAKRANK (Pic MMR conditionnel — défaut appliqué
       si l'utilisateur ne s'est pas prononcé) ; DEC-RANK-BE note pt/match (défaut FERME =
       variation nette `(rating_value_fin − rating_value_début)/count`, co-signée avec la
       progression — cf. corps DEC-RANK-BE ; `Σ(rating_delta)/count` = alternative écartée).
-      Consigner au journal.
+      Consigner au journal. FAIT : les deux défauts sont CONFIRMÉS par la mission superviseur
+      (points tranchés co-signés) et appliqués tels quels. Journal mis à jour.
 
 Gate Phase 0 : branche correcte ; commit du move fait (`git log --oneline -1` = le commit) ;
 worktree ne contient plus que l'édition `tip_dimensions` ; constat re-vérifié. Pas de gate de
@@ -582,12 +589,12 @@ build (aucun code applicatif modifié).
 
 ### Phase 1 — Backend : Classement par chaîne (lourd) — DEC-1 / DEC-RANK-BE
 
-- [ ] **1a (raw row + repo).** Ajouter `PlaylistGroup *string`, `RatingValue *float64`,
+- [x] **1a (raw row + repo).** Ajouter `PlaylistGroup *string`, `RatingValue *float64`,
       `RatingDelta *float64` à `MatchHistoryRawRow` (`domain/match_history.go`). Étendre
       `Q5PlayerSkillRankHistoryTpl` (`queries_career.go:99-108`) : SELECT `playlist_group,
       rating_value, rating_delta` (+ colonnes existantes). Étendre le struct `skill` + le
       `Scan` + l'assignation de `mergeHistorySkillRanks` (`match_history_repo.go:193-227`).
-- [ ] **1b (analysis pur).** Créer `internal/analysis/rank_progression.go` :
+- [x] **1b (analysis pur).** Créer `internal/analysis/rank_progression.go` :
       `RankChainSample` (dont `RatingValue *float64` + `RatingDelta *float64`),
       `RankChainProgression`, `ComputeRankProgressionByChain(samples)` (groupement par
       `(RatingType, PlaylistGroup)` ; tri chronologique ; premier/dernier palier + flags
@@ -596,29 +603,29 @@ build (aucun code applicatif modifié).
       de ce match ou 0 ; ordre déterministe type-majoritaire puis chaîne par count). Déplacer/
       rendre pures les helpers `firstTieredRow`/`lastTieredRow`/`isPlacementRow`/
       `applyTierStart`/`applyTierEnd` depuis le service. Fichier ≤ 500 L, fonctions ≤ 80 L.
-- [ ] **1c (tests analysis).** `rank_progression_test.go` : mono-chaîne (progression + pt/match
+- [x] **1c (tests analysis).** `rank_progression_test.go` : mono-chaîne (progression + pt/match
       cohérent) ; multi-chaînes LUSR (une entrée par chaîne, jamais croisées) ; CSR chaîne
       unique « ranked » (une entrée) ; début en placement / fin en placement ; chaîne sans
       palier (progression omise, pt/match présent) ; ordre déterministe. Aucun test skippé.
-- [ ] **1d (DTO).** `ExplorerBriefingRankedKind` (`explorer_briefing.go`) : ajouter
+- [x] **1d (DTO).** `ExplorerBriefingRankedKind` (`explorer_briefing.go`) : ajouter
       `PlaylistGroup string json:"playlist_group,omitempty"` + commentaire (une entrée = une
       chaîne `(type, playlist_group)`).
-- [ ] **1e (service).** Réécrire `buildBriefingRanked` (`match_history_service_briefing_
+- [x] **1e (service).** Réécrire `buildBriefingRanked` (`match_history_service_briefing_
       ranked.go`) : adapter `filtered` → `[]RankChainSample`, appeler l'algo, mapper →
       `[]ExplorerBriefingRankedKind` (+`PlaylistGroup`). Retirer la dépendance à
       `scopedKPIs.RankDeltas` ; ajuster la signature (`buildExplorerBriefing` `:76-78` en
       conséquence). `slog.DebugContext` si une chaîne n'a aucun palier. Gate `rankedCapable`
       conservé.
-- [ ] **1f (purge `RankDeltas`).** RE-VÉRIFIER le grep `RankDeltas` (0 consommateur hors
+- [x] **1f (purge `RankDeltas`).** RE-VÉRIFIER le grep `RankDeltas` (0 consommateur hors
       briefing/tests). Supprimer : bloc `kpi_stats.go:196-217`, champ `KPIStats.RankDeltas`
       (`squad_v2.go:146`), tests `kpi_stats_test.go` `_RankDeltas_*`. Conserver `RankDelta`
       singulier. (Si un lecteur inattendu → ne pas purger, consigner §6.)
-- [ ] **1g (tests service).** Mettre à jour `match_history_service_briefing_ranked_test.go` /
+- [x] **1g (tests service).** Mettre à jour `match_history_service_briefing_ranked_test.go` /
       `..._test.go` : entrées `RankDeltas` remplacées par des raw rows portant `PlaylistGroup`,
       `RatingValue` (+ `RatingDelta`, `SkillTierLabel`, `SkillRatingType`, `StartTime`) ;
       asserts multi-chaînes (LUSR 2 chaînes → 2 entrées ; CSR → 1) ; pt/match par chaîne
       co-signé avec la progression. Aucun test skippé.
-- [ ] **1h (OpenAPI + regen).** `api/openapi.yaml` : `ExplorerBriefingRankedKind` +
+- [x] **1h (OpenAPI + regen).** `api/openapi.yaml` : `ExplorerBriefingRankedKind` +
       `playlist_group`. `make generate-types` ; `types.ts`/`generated.ts` régénérés ;
       `TestOpenAPISchemaDrift` vert.
 
@@ -627,23 +634,38 @@ Gate Phase 1 : `cd apps/go-api && go test ./...` = 0 (SÉQUENTIEL ; tests 1c/1g 
 `TestOpenAPISchemaDrift` = 0 MISSING/DIVERGENT sur `ExplorerBriefingRanked*` ;
 `make check-types` = 0 ; grep de clôture : 0 `RankDeltas` sous `apps/go-api` (hors historique).
 
+> **GATE PHASE 1 — VERT (exécuté le 2026-07-17).** `CGO_ENABLED=1 go test ./...` = exit 0
+> (111 packages ok, 0 FAIL). `go vet ./internal/domain/... ./internal/analysis/...` = exit 0.
+> `npm run generate-types` idempotent (diff = 1 ligne `playlist_group?: string;`, stable au
+> 2e run). `TestOpenAPISchemaDrift` = PASS, 0 MISSING ; `ExplorerBriefingRankedKind` +
+> `KPIStats` ABSENTS de la liste des 26 divergents (baseline pré-existant, hors périmètre) —
+> mes éditions les ont alignés (KPIStats était divergent avant la purge, désormais aligné).
+> `npm run typecheck` (check-types, cache `.tmp` purgé) = 0 erreur. Grep `RankDeltas` sous
+> `apps/go-api` = 0. Réalisé : 1a raw row (+3 champs) + Q5 skill (+3 col) + scan/merge ;
+> 1b `analysis/rank_progression.go` (algo pur variation nette par chaîne, DEC-RANK-BE) ;
+> 1c 10 tests algo pur ; 1d DTO `+PlaylistGroup` ; 1e service réécrit (samples → algo,
+> signature `buildExplorerBriefing` sans `scopedKPIs`, caller MAJ) ; 1f purge `RankDeltas`
+> (kpi_stats bloc + import `sort` + champ squad_v2 + 2 tests) + retrait const
+> `minRankedKindMatches` (Découverte-11) ; 1g tests service réécrits per-chaîne (+ fix 3
+> call-sites context/streaks) ; 1h openapi + regen. AUCUN commit (superviseur en fin de bloc).
+
 ### Phase 2 — Backend : purge trend + agrégats socle (moyen) — DEC-SPARK / DEC-DURATION / DEC-PEAK
 
-- [ ] **2a (purge trend — domain).** Supprimer `ExplorerBriefingTrend`,
+- [x] **2a (purge trend — domain).** Supprimer `ExplorerBriefingTrend`,
       `ExplorerBriefingTrendPoint`, le champ `Trend` (`explorer_briefing.go:39,105-118`).
       Corriger les commentaires de package/`LowSample` mentionnant la tendance.
-- [ ] **2b (purge trend — service).** Supprimer `buildBriefingTrend`
+- [x] **2b (purge trend — service).** Supprimer `buildBriefingTrend`
       (`match_history_service_briefing.go:294-351`), l'appel (`:75`), les consts
       `minTrendMatches`/`minTrendSpanDays` (`:46-47`), les imports devenus morts (`temporal`
       si plus utilisé — VÉRIFIER). Supprimer/adapter les tests trend. Grep : 0
       `buildBriefingTrend`/`ExplorerBriefingTrend` restant.
-- [ ] **2c (colonnes raw row — repo).** (i) **Durée** : ajouter `r.duration_seconds` à
+- [x] **2c (colonnes raw row — repo).** (i) **Durée** : ajouter `r.duration_seconds` à
       `Q5SharedHistory` (`queries_career.go:61-96`, dispo sur `v_match_full`) + `DurationSeconds
       *int` à `MatchHistoryRawRow` + scan (requête shared) ; MAJ commentaire « 25 colonnes ».
       (ii) **Sous-palier (pour Pic rang)** : ajouter `sub_tier` à `Q5PlayerSkillRankHistoryTpl`
       (additif, à côté des colonnes Phase 1) + `SubTier *int` à `MatchHistoryRawRow` + scan/
       assignation (`mergeHistorySkillRanks`).
-- [ ] **2d (agrégats socle — DTO + service).** `ExplorerBriefingScope` : +`TotalDurationSeconds
+- [x] **2d (agrégats socle — DTO + service).** `ExplorerBriefingScope` : +`TotalDurationSeconds
       *int`, `PeakKDA *float64`, `PeakTeamMMR *float64`, `PeakRanks []ExplorerBriefingPeakRank`
       (type neuf `{ RatingType string; TierLabel string }`), tous `omitempty`.
       `buildBriefingScope` (`match_history_service_briefing.go:107-124` + `aggregateRawStats`) :
@@ -652,7 +674,7 @@ Gate Phase 1 : `cd apps/go-api && go test ./...` = 0 (SÉQUENTIEL ; tests 1c/1g 
       `SkillTierLabel` gagnant (0/1/2 entrées, ordre déterministe LUSR puis CSR). Tests service :
       durée totale, pic FDA, pic MMR, **Pic rang** (LUSR seul ; LUSR+CSR = 2 entrées ; nil si
       aucun palier).
-- [ ] **2e (OpenAPI + regen).** `api/openapi.yaml` : retirer `ExplorerBriefingTrend`/
+- [x] **2e (OpenAPI + regen).** `api/openapi.yaml` : retirer `ExplorerBriefingTrend`/
       `...TrendPoint`/`trend` ; ajouter `total_duration_seconds`/`peak_kda`/`peak_team_mmr`/
       `peak_ranks` (+ schéma `ExplorerBriefingPeakRank`) à `ExplorerBriefingScope`. `make
       generate-types` ; `TestOpenAPISchemaDrift` vert ; `types.ts`/`generated.ts` régénérés.
@@ -660,6 +682,25 @@ Gate Phase 1 : `cd apps/go-api && go test ./...` = 0 (SÉQUENTIEL ; tests 1c/1g 
 Gate Phase 2 : `cd apps/go-api && go test ./...` = 0 (SÉQUENTIEL) ; `make go-api-lint` = 0 ;
 `make generate-types` idempotent ; `TestOpenAPISchemaDrift` vert ; `make check-types` = 0 ;
 greps : 0 `Trend`/`buildBriefingTrend` (frise trend) sous `apps/go-api` ; champs Scope présents.
+
+> **GATE PHASE 2 — VERT (exécuté le 2026-07-17).** `CGO_ENABLED=1 go test ./...` = exit 0
+> (111 packages ok, 0 FAIL). `go vet ./internal/domain/... ./internal/analysis/...` = exit 0.
+> `npm run generate-types` STRICTEMENT idempotent (md5 identique après re-run). `TestOpenAPI
+> SchemaDrift` = PASS, **0 MISSING** ; émission divergents filtrée = **0 ExplorerBriefing***
+> (Scope aligné via émission Huma byte-exact ; `ExplorerBriefingPeakRank` ajouté ; ExplorerBriefing
+> aligné par retrait du ref `trend` ; 26 divergents = baseline pré-existant intact). `npm run
+> typecheck` (check-types, `.tmp` purgé) = 0 erreur. Greps : 0 `buildBriefingTrend`/`Explorer
+> BriefingTrend`/`minTrend*`/`trendRow` sous `apps/go-api`. Réalisé : 2a purge trend domain
+> (champ + 2 types + docs « frise/tendance ») ; 2b purge trend service (fonction + trendRow +
+> consts + import `temporal` + tests trend) ; 2c raw row +`DurationSeconds`/`SubTier`, Q5 shared
+> +`duration_seconds` (comment 25→31), Q5 skill +`sub_tier`, scan/merge ; 2d Scope
+> +`TotalDurationSeconds`/`PeakKDA`/`PeakTeamMMR`/`PeakRanks` + type `ExplorerBriefingPeakRank`,
+> helpers `sumScopeDurations`/`maxScopeFloat`/`scopePeakRanks` (réutilise `analysis.CSRTierOrdinal`),
+> 5 tests ; 2e openapi (retrait Trend + Scope Huma-exact + PeakRank) + regen. **Couplage
+> Découverte-9 résolu** : purge frontend minimale (types.ts −2 exports Trend ; Strip.tsx −import
+> Sparkline/−trendValues/−bloc chart) — 0 consommateur `briefing.trend` restant. AUCUN commit
+> (superviseur en fin de bloc). Reste au bloc frontend (Phases 3-4) : tuiles socle, OutcomeBar,
+> Perf couleur, Pic FDA/rang/MMR + cascade, RankedBlock 4ᵉ colonne, export type PeakRank.
 
 ### Phase 3 — Frontend : refonte du socle des tuiles (moyen) — DEC-TILES / DEC-PERF / DEC-9 / DEC-SPARK
 
@@ -857,6 +898,39 @@ generate-types` idempotent ; `make check-types` = 0 ; `make test-web` vert ; `np
   (+ `sub_tier` exposé sur la raw row en Phase 2) — pas de nouvelle table de paliers, pas de
   comparaison inter-système (max PAR `rating_type`). `SkillTier` (nom EN) est déjà sur la raw row ;
   `sub_tier` est dans `match_skill_rank_latest` (§2.3).
+
+- **Découverte-9 (Phase 0, exécution) — couplage inter-phase Phase 2 ↔ Phase 3 sur `trend`
+  et `make check-types`.** Le front `ExplorerBriefingStrip.tsx` LIT ENCORE `briefing.trend`
+  (`:75` `trendValues`, `:99-101` bloc `Sparkline`). Purger le champ `trend` du DTO backend
+  (Phase 2a/2e) régénère `generated.ts` sans `ExplorerBriefing.trend` → `briefing.trend`
+  devient une erreur TS2339 → **`make check-types` (gate de Phase 2) échoue** tant que le read
+  frontend n'est pas retiré (que le plan défère à Phase 3b). Résolution retenue en exécution :
+  Phase 2 réalise le sous-ensemble MINIMAL et mécanique de 3b strictement forcé par la purge —
+  retrait de `trendValues` (`:75`), du bloc `chart`/`Sparkline` (`:98-108`), de l'import
+  `Sparkline` (`:13`) devenu mort, et des exports `ExplorerBriefingTrend`/`...TrendPoint` de
+  `types.ts` (`:828-829`). AUCUN autre travail frontend (refonte tuiles, OutcomeBar, Perf
+  couleur, nouvelles tuiles) n'est fait ici — il reste au bloc frontend Phases 3-4. Sans ce
+  micro-retrait, le bloc backend n'est pas committable (build cassé).
+- **Découverte-10 (Phase 0, exécution) — commentaire « 25 colonnes » déjà périmé.** Le
+  commentaire de `Q5SharedHistory` (`queries_career.go:54-55`) et celui de `LoadAll`
+  (`match_history_repo.go:28`) annoncent « 25 colonnes » mais le SELECT en compte réellement
+  **30** (état pré-chantier). En ajoutant `duration_seconds` (Phase 2c) le compte passe à 31 :
+  les deux commentaires seront corrigés au bon nombre dans la Phase 2 (pas un fix hors
+  périmètre — c'est le commentaire de la requête modifiée).
+
+- **Découverte-11 (Phase 1, exécution) — seuil `minRankedKindMatches` (type secondaire)
+  retiré.** V3 n'émettait un type de rating SECONDAIRE que s'il atteignait 10 matchs
+  (`minRankedKindMatches`, briefing.go). Le critère §1.1.1 (« une ligne par chaîne, jamais
+  de flèche inter-chaînes ») et l'algo pur `ComputeRankProgressionByChain` (retourne UNE
+  entrée par chaîne) rendent ce seuil de TYPE caduc : la segmentation est désormais par
+  chaîne, toutes émises. Le const `minRankedKindMatches` (unique consommateur =
+  l'ex-`buildBriefingRanked`) est donc supprimé (0 code mort, CLAUDE.md §7). Conséquence :
+  une petite chaîne (ex. 3 matchs LUSR btb) apparaît désormais aux côtés de CSR — c'est le
+  comportement voulu par DEC-1. Le test V3 `_RankedSecondaryTypeBelowThresholdOmitted` est
+  remplacé par `_RankedSmallSecondaryChainStillEmitted`. NB : si la revue visuelle
+  utilisateur juge les micro-chaînes bruyantes, un plancher par chaîne pourra être ajouté
+  (décision produit, hors périmètre de ce chantier — noté pour l'étape « À vérifier
+  visuellement » item 1).
 
 Consigner ici tout décalage fichier:ligne vs §2, tout lecteur i18n inattendu, toute dette
 repérée hors périmètre. Ne pas corriger dans ce chantier (hors Phase 8 scopée).
