@@ -51,8 +51,9 @@ ORDER BY start_time DESC`
 
 // Q5SharedHistory : (ADR 0016) — partie shared du split LoadAll
 // (match_history_repo). Cross-DB JOIN Q5MatchHistory découpé : la partie
-// shared retourne 25 colonnes (match metadata + participant stats + team_id
-// pour le calcul my/enemy_team_score côté Go).
+// shared retourne 31 colonnes (match metadata + participant stats + team_id
+// pour le calcul my/enemy_team_score côté Go + duration_seconds pour le socle
+// « Durée totale » du briefing).
 //
 // Tables référencées au niveau root (pas de préfixe `shared.`) — la conn
 // SharedReader cible directement le catalogue de shared_matches_v2.duckdb.
@@ -89,13 +90,17 @@ SELECT
     r.team_0_score,
     r.team_1_score,
     r.game_variant_id,
-    r.game_variant_name
+    r.game_variant_name,
+    r.duration_seconds
 FROM v_match_full r
 JOIN match_participants p ON r.match_id = p.match_id
 WHERE p.xuid = ?
 ORDER BY start_time DESC`
 
 // Q5PlayerSkillRankHistoryTpl : étape 2b — match_skill_rank pour les match_ids.
+// playlist_group / rating_value / rating_delta alimentent le module « Classement »
+// segmenté PAR CHAÎNE (rating_type, playlist_group) — DEC-RANK-BE. Colonnes déjà
+// présentes dans match_skill_rank_latest (cf. playerMatchesSkillRankTpl).
 const Q5PlayerSkillRankHistoryTpl = `
 SELECT
     match_id,
@@ -103,7 +108,11 @@ SELECT
     NULLIF(TRIM(COALESCE(tier_fr, '')), '')          AS skill_tier_fr,
     NULLIF(TRIM(COALESCE(rating_type, '')), '')      AS skill_rating_type,
     NULLIF(TRIM(COALESCE(tier_label, '')), '')       AS skill_tier_label,
-    expected_win_prob
+    expected_win_prob,
+    NULLIF(TRIM(COALESCE(playlist_group, '')), '')   AS playlist_group,
+    rating_value,
+    rating_delta,
+    sub_tier
 FROM match_skill_rank_latest
 WHERE match_id IN (%s)`
 

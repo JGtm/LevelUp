@@ -8,20 +8,22 @@
 // (MapNameFR / PairNameFR / PlaylistName coalescé) — les canonical rows chargées
 // par LoadPlayerMatches ne sont PAS enrichies FR, les utiliser afficherait des
 // libellés anglais sous locale FR. Les raw rows « full history » sont en outre
-// déjà post-exclusions manuelles (= baseline DEC-3). Le module classé réutilise
-// le RankDelta canonique (delta CSR) + les probabilités pré-match des raw rows.
+// déjà post-exclusions manuelles (= baseline DEC-3). Le module « Classement »
+// segmente les raw rows PAR CHAÎNE (rating_type, playlist_group) et délègue le calcul
+// à analysis.ComputeRankProgressionByChain (DEC-RANK-BE).
 //
-// Contrat produit : PLAN_EXPLORER_BRIEFING_CARDS_2026-07.md (DEC-1..8).
+// Contrat produit : PLAN_EXPLORER_BRIEFING_CARDS_2026-07.md (DEC-1..8) +
+// PLAN_EXPLORER_BRIEFING_V4_2026-07.md (Classement par chaîne).
 package service
 
 import (
 	"context"
 	"sort"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/breakdown"
-	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -29,22 +31,13 @@ import (
 // Seuils nommés du briefing (DEC-4 : pas de magic numbers).
 const (
 	// MinBriefingModulesMatches est le seuil sous lequel le briefing ne sert que
-	// le socle (KPIs + frise + période) avec LowSample=true ; baseline / dimensions
-	// / tendance / classé sont omis. Aligné sur analysis.MinMatchesForRelative
-	// (activation du score relatif).
+	// le socle (KPIs + période) avec LowSample=true ; baseline / dimensions /
+	// classé sont omis. Aligné sur analysis.MinMatchesForRelative (activation du
+	// score relatif).
 	MinBriefingModulesMatches = analysis.MinMatchesForRelative
 	// MinDimensionGroupMatches est le seuil sous lequel un groupe (carte/mode/
 	// playlist) n'a pas de note et n'apparaît pas en top/flop.
 	MinDimensionGroupMatches = 10
-	// minRankedKindMatches est le seuil de signifiance d'un type de rating
-	// SECONDAIRE dans le module « Classement » (P-3, aligné MinDimensionGroupMatches) :
-	// un type non majoritaire n'a sa propre ligne que s'il atteint ce seuil. Le
-	// type majoritaire est toujours émis (pas de régression vs V1).
-	minRankedKindMatches = 10
-	// minTrendMatches / minTrendSpanDays : activation du module tendance (DEC-4) —
-	// assez de matchs ET d'étalement temporel pour une courbe lisible.
-	minTrendMatches  = 20
-	minTrendSpanDays = 14
 	// dimensionTopFlopCount : nombre d'entrées top ET flop par dimension (DEC-8).
 	dimensionTopFlopCount = 3
 )
@@ -53,13 +46,11 @@ const (
 //
 //   - filtered : sous-ensemble filtré (scope) en raw rows (libellés FR + start_time).
 //   - allRaw   : historique complet post-exclusions (baseline DEC-3) en raw rows.
-//   - scopedKPIs : KPIs canoniques du scope (socle + source du RankDelta classé).
 //
 // Retourne nil si le scope est vide. LowSample (scope < seuil) → socle seul.
 func (s *MatchHistoryService) buildExplorerBriefing(
 	ctx context.Context,
 	filtered, allRaw []domain.MatchHistoryRawRow,
-	scopedKPIs *domain.KPIStats,
 ) *domain.ExplorerBriefing {
 	if len(filtered) == 0 {
 		return nil
@@ -72,9 +63,8 @@ func (s *MatchHistoryService) buildExplorerBriefing(
 	}
 	b.Baseline = buildBriefingBaseline(filtered, allRaw)
 	b.Dimensions = buildBriefingDimensions(filtered, allRaw)
-	b.Trend = buildBriefingTrend(filtered, b.PeriodStart, b.PeriodEnd)
 	if s.rankedCapable {
-		b.Ranked = buildBriefingRanked(ctx, filtered, scopedKPIs)
+		b.Ranked = buildBriefingRanked(ctx, filtered)
 	}
 	// Split solo/escouade : aucun gate capability (P-7), omission si non pertinent.
 	b.ContextSplit = buildBriefingContextSplit(filtered)
@@ -105,22 +95,101 @@ func scopePeriod(rows []domain.MatchHistoryRawRow) (start, end *time.Time) {
 }
 
 // buildBriefingScope agrège le socle du sous-ensemble filtré (raw rows) — même
-// source que le tableau, pour un compteur/bilan/indicateurs cohérents.
+// source que le tableau, pour un compteur/bilan/indicateurs cohérents. Porte aussi
+// les agrégats socle V4 : durée totale + pics (FDA, MMR d'équipe, rang par système).
 func buildBriefingScope(scope []domain.MatchHistoryRawRow) *domain.ExplorerBriefingScope {
 	if len(scope) == 0 {
 		return nil
 	}
 	a := aggregateRawStats(scope)
 	return &domain.ExplorerBriefingScope{
-		Matches: a.matches,
-		Wins:    a.wins,
-		Losses:  a.losses,
-		Ties:    a.ties,
-		DNF:     a.dnf,
-		WinRate: analysis.WinRate(a.wins, a.matches),
-		KDA:     a.kda,
-		AvgPerf: a.perf,
+		Matches:              a.matches,
+		Wins:                 a.wins,
+		Losses:               a.losses,
+		Ties:                 a.ties,
+		DNF:                  a.dnf,
+		WinRate:              analysis.WinRate(a.wins, a.matches),
+		KDA:                  a.kda,
+		AvgPerf:              a.perf,
+		TotalDurationSeconds: sumScopeDurations(scope),
+		PeakKDA:              maxScopeFloat(scope, func(r *domain.MatchHistoryRawRow) *float64 { return r.KDA }),
+		PeakTeamMMR:          maxScopeFloat(scope, func(r *domain.MatchHistoryRawRow) *float64 { return r.TeamMMR }),
+		PeakRanks:            scopePeakRanks(scope),
 	}
+}
+
+// sumScopeDurations somme les durées (r.DurationSeconds) des matchs du scope. nil si
+// aucune durée disponible (le socle « Durée totale » est alors omis côté front).
+func sumScopeDurations(scope []domain.MatchHistoryRawRow) *int {
+	var total int
+	var found bool
+	for i := range scope {
+		if scope[i].DurationSeconds != nil {
+			total += *scope[i].DurationSeconds
+			found = true
+		}
+	}
+	if !found {
+		return nil
+	}
+	return &total
+}
+
+// maxScopeFloat retourne le maximum d'un champ *float64 sur le scope (nil si le champ
+// est absent partout). Sert au Pic FDA (KDA natif par match) et au Pic MMR (DEC-PEAK).
+func maxScopeFloat(scope []domain.MatchHistoryRawRow, get func(*domain.MatchHistoryRawRow) *float64) *float64 {
+	var best *float64
+	for i := range scope {
+		v := get(&scope[i])
+		if v == nil {
+			continue
+		}
+		if best == nil || *v > *best {
+			b := *v
+			best = &b
+		}
+	}
+	return best
+}
+
+// scopePeakRanks retourne le meilleur palier ATTEINT par système de rating sur le
+// scope (Pic rang). Pour chaque rating_type présent, argmax des rows notées par
+// (analysis.CSRTierOrdinal(SkillTier EN), SubTier) ; TierLabel = SkillTierLabel de la
+// row gagnante. Ordre déterministe LUSR puis CSR. 0/1/2 entrées (DEC-PEAK/DEC-PEAKRANK).
+func scopePeakRanks(scope []domain.MatchHistoryRawRow) []domain.ExplorerBriefingPeakRank {
+	type peak struct {
+		ordinal, sub int
+		label        string
+	}
+	best := map[string]peak{}
+	for i := range scope {
+		r := &scope[i]
+		if r.SkillRatingType == nil || r.SkillTier == nil || r.SkillTierLabel == nil {
+			continue
+		}
+		ord := analysis.CSRTierOrdinal(*r.SkillTier)
+		if ord == 0 {
+			continue // palier EN inconnu → non classable
+		}
+		sub := 0
+		if r.SubTier != nil {
+			sub = *r.SubTier
+		}
+		kind := strings.ToLower(strings.TrimSpace(*r.SkillRatingType))
+		if cur, ok := best[kind]; !ok || ord > cur.ordinal || (ord == cur.ordinal && sub > cur.sub) {
+			best[kind] = peak{ordinal: ord, sub: sub, label: *r.SkillTierLabel}
+		}
+	}
+	if len(best) == 0 {
+		return nil
+	}
+	out := make([]domain.ExplorerBriefingPeakRank, 0, len(best))
+	for _, kind := range []string{string(canonical.RatingTypeLUSR), string(canonical.RatingTypeCSR)} {
+		if p, ok := best[kind]; ok {
+			out = append(out, domain.ExplorerBriefingPeakRank{RatingType: kind, TierLabel: p.label})
+		}
+	}
+	return out
 }
 
 // buildBriefingBaseline compare le scope à l'historique complet (post-exclusions).
@@ -290,74 +359,6 @@ func selectTopFlop[T any](items []T, k int) []T {
 	out = append(out, items[len(items)-k:]...)
 	return out
 }
-
-// buildBriefingTrend bucketise le scope si les seuils DEC-4 sont atteints (assez
-// de matchs ET d'étalement temporel). Granularité résolue via temporal.ResolveAdaptive
-// à partir de l'étendue. Aucun lissage serveur (série brute par bucket).
-func buildBriefingTrend(scope []domain.MatchHistoryRawRow, start, end *time.Time) *domain.ExplorerBriefingTrend {
-	if len(scope) < minTrendMatches || start == nil || end == nil {
-		return nil
-	}
-	if end.Sub(*start) < time.Duration(minTrendSpanDays)*24*time.Hour {
-		return nil
-	}
-	spanDays := int(end.Sub(*start).Hours() / 24)
-	var period temporal.Period
-	switch {
-	case spanDays <= 31:
-		period = temporal.Period1M // → 1d
-	case spanDays <= 366:
-		period = temporal.Period1Y // → 1w
-	default:
-		period = temporal.PeriodAll // → 1m
-	}
-	gran := temporal.ResolveAdaptive(period)
-	rows := make([]trendRow, 0, len(scope))
-	for _, r := range scope {
-		if r.StartTime == nil {
-			continue
-		}
-		rows = append(rows, trendRow{start: *r.StartTime, outcome: r.Outcome, perf: r.PerformanceScore})
-	}
-	buckets := temporal.BucketByGranularity(rows, gran, period)
-	points := make([]domain.ExplorerBriefingTrendPoint, 0, len(buckets))
-	for _, bk := range buckets {
-		var wins, perfN int
-		var perfSum float64
-		for _, it := range bk.Items {
-			if it.outcome == domain.OutcomeWin {
-				wins++
-			}
-			if it.perf != nil {
-				perfSum += *it.perf
-				perfN++
-			}
-		}
-		pt := domain.ExplorerBriefingTrendPoint{
-			BucketStart: bk.Start,
-			Matches:     len(bk.Items),
-			WinRate:     analysis.WinRate(wins, len(bk.Items)),
-		}
-		if perfN > 0 {
-			avg := perfSum / float64(perfN)
-			pt.AvgPerf = &avg
-		}
-		points = append(points, pt)
-	}
-	if len(points) == 0 {
-		return nil
-	}
-	return &domain.ExplorerBriefingTrend{Granularity: string(gran), Points: points}
-}
-
-// trendRow adapte une raw row au contrat temporal.HasStartTime pour le bucketing.
-type trendRow struct {
-	start   time.Time
-	outcome int
-	perf    *float64
-}
-
-func (t trendRow) GetStartTime() time.Time { return t.start }
 
 // ─── conversion raw row → breakdown.Row (libellés FR) ────────────────────────
 

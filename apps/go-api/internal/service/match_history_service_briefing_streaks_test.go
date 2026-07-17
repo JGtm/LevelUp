@@ -220,8 +220,7 @@ func TestBuildExplorerBriefing_StreaksAndDominanceHeterogeneous(t *testing.T) {
 	undated.StartTime = nil
 	filtered = append(filtered, undated)
 
-	kpis := &domain.KPIStats{MatchesCount: len(filtered)}
-	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), filtered, filtered, kpis)
+	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), filtered, filtered)
 	if b == nil {
 		t.Fatal("briefing nil")
 	}
@@ -256,8 +255,7 @@ func TestBuildExplorerBriefing_StreaksOmittedWhenLowSample(t *testing.T) {
 		r.DominanceFlag = analysis.DominanceFlagDomination
 		filtered = append(filtered, r)
 	}
-	kpis := &domain.KPIStats{MatchesCount: 8}
-	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), filtered, filtered, kpis)
+	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), filtered, filtered)
 	if b == nil {
 		t.Fatal("briefing nil")
 	}

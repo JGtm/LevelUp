@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"math"
 	"testing"
 	"time"
 
@@ -45,8 +46,7 @@ func TestBuildExplorerBriefing_LowSample(t *testing.T) {
 	for i := 0; i < 8; i++ {
 		filtered = append(filtered, briefingRaw("m"+string(rune('a'+i)), i, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène classée"))
 	}
-	kpis := &domain.KPIStats{MatchesCount: 8}
-	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered, kpis)
+	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered)
 	if b == nil {
 		t.Fatal("briefing nil")
 	}
@@ -61,13 +61,13 @@ func TestBuildExplorerBriefing_LowSample(t *testing.T) {
 	if b.PeriodStart == nil || b.PeriodEnd == nil {
 		t.Error("period should be set")
 	}
-	if b.Baseline != nil || b.Dimensions != nil || b.Trend != nil || b.Ranked != nil {
+	if b.Baseline != nil || b.Dimensions != nil || b.Ranked != nil {
 		t.Error("low sample: modules must be nil")
 	}
 }
 
 func TestBuildExplorerBriefing_EmptyScope(t *testing.T) {
-	if got := svcWithRanked(false).buildExplorerBriefing(context.Background(), nil, nil, nil); got != nil {
+	if got := svcWithRanked(false).buildExplorerBriefing(context.Background(), nil, nil); got != nil {
 		t.Errorf("empty scope -> nil briefing, got %+v", got)
 	}
 }
@@ -82,8 +82,7 @@ func TestBuildExplorerBriefing_SingleValueDimensionNotEmitted(t *testing.T) {
 		}
 		filtered = append(filtered, briefingRaw("m"+string(rune('a'+i)), i, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", mode, "Arène"))
 	}
-	kpis := &domain.KPIStats{MatchesCount: 24}
-	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), filtered, filtered, kpis)
+	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), filtered, filtered)
 	if b == nil {
 		t.Fatal("nil briefing")
 	}
@@ -113,8 +112,7 @@ func TestBuildExplorerBriefing_SubThresholdGroupExcluded(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		filtered = append(filtered, briefingRaw("b"+string(rune('a'+i)), 20+i, domain.OutcomeLoss, 5, 10, 1, 40, "map2", "Bazaar", "Slayer", "Arène"))
 	}
-	kpis := &domain.KPIStats{MatchesCount: 17}
-	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), filtered, filtered, kpis)
+	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), filtered, filtered)
 	var mapDim *domain.ExplorerBriefingDimension
 	for i := range b.Dimensions {
 		if b.Dimensions[i].Dimension == "map" {
@@ -134,53 +132,69 @@ func TestBuildExplorerBriefing_SubThresholdGroupExcluded(t *testing.T) {
 	}
 }
 
-// briefingRankedRaw : raw row rangée d'un type donné, palier / placement optionnels.
-// daysAgo pilote la chronologie (plus grand = plus ancien).
-func briefingRankedRaw(id string, daysAgo, outcome int, ratingType string, tierLabel *string, placementDone, placementTotal *int) domain.MatchHistoryRawRow {
-	r := briefingRaw(id, daysAgo, outcome, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène classée")
-	rt := ratingType
+// rankedRawOpts paramètre une raw row rangée pour les tests du module « Classement »
+// (struct pour rester ≤ 5 params — CLAUDE.md §5). group renseigne PlaylistGroup.
+type rankedRawOpts struct {
+	id             string
+	daysAgo        int
+	ratingType     string
+	group          string
+	tierLabel      *string
+	ratingValue    *float64
+	placementDone  *int
+	placementTotal *int
+}
+
+// briefingRankedRaw construit une raw row rangée (type + chaîne + palier/rating
+// optionnels). L'outcome est fixe (Win) — non pertinent au module Classement.
+func briefingRankedRaw(o rankedRawOpts) domain.MatchHistoryRawRow {
+	r := briefingRaw(o.id, o.daysAgo, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène classée")
+	rt := o.ratingType
 	r.SkillRatingType = &rt
-	r.SkillTierLabel = tierLabel
-	r.PlacementDone = placementDone
-	r.PlacementTotal = placementTotal
+	if o.group != "" {
+		g := o.group
+		r.PlaylistGroup = &g
+	}
+	r.SkillTierLabel = o.tierLabel
+	r.RatingValue = o.ratingValue
+	r.PlacementDone = o.placementDone
+	r.PlacementTotal = o.placementTotal
 	return r
 }
 
-func TestBuildExplorerBriefing_RankedMonoTypeProgression(t *testing.T) {
+func TestBuildExplorerBriefing_RankedMonoChainProgression(t *testing.T) {
 	bronze, platine := "Bronze I", "Platine VI"
-	// 15 matchs CSR ; palier de départ (le plus ancien, daysAgo=14) et d'arrivée
-	// (le plus récent, daysAgo=0) posés, les autres sans palier.
+	// 15 matchs CSR chaîne unique "ranked". Palier de départ (plus ancien, daysAgo=14,
+	// rating 100) et d'arrivée (plus récent, daysAgo=0, rating 220) posés ; net +120.
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 15; i++ {
 		var label *string
+		rv := float64Ptr(150)
 		switch i {
 		case 14:
-			label = &bronze // plus ancien
+			label, rv = &bronze, float64Ptr(100) // plus ancien
 		case 0:
-			label = &platine // plus récent
+			label, rv = &platine, float64Ptr(220) // plus récent
 		}
-		filtered = append(filtered, briefingRankedRaw("m"+string(rune('a'+i)), i, domain.OutcomeWin, "CSR", label, nil, nil))
+		filtered = append(filtered, briefingRankedRaw(rankedRawOpts{
+			id: "m" + string(rune('a'+i)), daysAgo: i, ratingType: "CSR",
+			group: "ranked", tierLabel: label, ratingValue: rv,
+		}))
 	}
-	kpis := &domain.KPIStats{
-		MatchesCount: 15,
-		RankDelta:    &domain.RankDelta{Kind: "csr", Value: 120, Count: 15},
-		RankDeltas:   []domain.RankDelta{{Kind: "csr", Value: 120, Count: 15}},
-	}
-
 	// rankedCapable=false -> Ranked nil.
-	if b := svcWithRanked(false).buildExplorerBriefing(context.Background(), filtered, filtered, kpis); b.Ranked != nil {
+	if b := svcWithRanked(false).buildExplorerBriefing(context.Background(), filtered, filtered); b.Ranked != nil {
 		t.Error("rankedCapable=false must yield Ranked nil")
 	}
-	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered, kpis)
+	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered)
 	if b.Ranked == nil || len(b.Ranked.Kinds) != 1 {
-		t.Fatalf("want exactly 1 CSR kind, got %+v", b.Ranked)
+		t.Fatalf("want exactly 1 CSR chain, got %+v", b.Ranked)
 	}
 	k := b.Ranked.Kinds[0]
-	if k.Kind != "csr" || k.Matches != 15 {
-		t.Errorf("kind=%q matches=%d, want csr / 15", k.Kind, k.Matches)
+	if k.Kind != "csr" || k.PlaylistGroup != "ranked" || k.Matches != 15 {
+		t.Errorf("chain identity: want csr/ranked/15, got %q/%q/%d", k.Kind, k.PlaylistGroup, k.Matches)
 	}
-	if k.DeltaPerMatch == nil || *k.DeltaPerMatch != 8.0 {
-		t.Errorf("DeltaPerMatch want 8.0 (120/15), got %v", k.DeltaPerMatch)
+	if k.DeltaPerMatch == nil || math.Abs(*k.DeltaPerMatch-8.0) > 1e-9 {
+		t.Errorf("DeltaPerMatch want 8.0 (net +120 / 15), got %v", k.DeltaPerMatch)
 	}
 	if k.TierStartLabel == nil || *k.TierStartLabel != "Bronze I" {
 		t.Errorf("TierStartLabel want Bronze I, got %v", k.TierStartLabel)
@@ -193,87 +207,129 @@ func TestBuildExplorerBriefing_RankedMonoTypeProgression(t *testing.T) {
 	}
 }
 
-func TestBuildExplorerBriefing_RankedMixedTypesNeverMerged(t *testing.T) {
+func TestBuildExplorerBriefing_RankedMultiChainNeverCrossed(t *testing.T) {
 	csrLo, csrHi := "Or I", "Or III"
-	lusrLo, lusrHi := "Argent II", "Argent V"
+	arLo, arHi := "Argent II", "Argent V"
+	btbHi, btbLo := "Or III", "Or I"
 	var filtered []domain.MatchHistoryRawRow
-	// 13 CSR (majoritaire) : daysAgo 100..112, plus ancien = i=12, plus récent = i=0.
+	// 13 CSR chaîne "ranked" (type majoritaire) : plus ancien i=12, plus récent i=0.
 	for i := 0; i < 13; i++ {
 		var label *string
+		rv := float64Ptr(230)
 		switch i {
 		case 12:
-			label = &csrLo
+			label, rv = &csrLo, float64Ptr(200)
 		case 0:
-			label = &csrHi
+			label, rv = &csrHi, float64Ptr(260)
 		}
-		filtered = append(filtered, briefingRankedRaw("c"+string(rune('a'+i)), 100+i, domain.OutcomeWin, "CSR", label, nil, nil))
+		filtered = append(filtered, briefingRankedRaw(rankedRawOpts{
+			id: "c" + string(rune('a'+i)), daysAgo: 100 + i, ratingType: "CSR",
+			group: "ranked", tierLabel: label, ratingValue: rv,
+		}))
 	}
-	// 11 LUSR : daysAgo 200..210, plus ancien = i=10, plus récent = i=0.
-	for i := 0; i < 11; i++ {
+	// 6 LUSR chaîne "arena_slayer" : rating monte (Argent II -> Argent V).
+	for i := 0; i < 6; i++ {
 		var label *string
+		rv := float64Ptr(15)
 		switch i {
-		case 10:
-			label = &lusrLo
+		case 5:
+			label, rv = &arLo, float64Ptr(10)
 		case 0:
-			label = &lusrHi
+			label, rv = &arHi, float64Ptr(20)
 		}
-		filtered = append(filtered, briefingRankedRaw("l"+string(rune('a'+i)), 200+i, domain.OutcomeLoss, "LUSR", label, nil, nil))
+		filtered = append(filtered, briefingRankedRaw(rankedRawOpts{
+			id: "a" + string(rune('a'+i)), daysAgo: 200 + i, ratingType: "LUSR",
+			group: "arena_slayer", tierLabel: label, ratingValue: rv,
+		}))
 	}
-	kpis := &domain.KPIStats{
-		MatchesCount: 24,
-		RankDelta:    &domain.RankDelta{Kind: "csr", Value: 26, Count: 13},
-		RankDeltas:   []domain.RankDelta{{Kind: "csr", Value: 26, Count: 13}, {Kind: "lusr", Value: 0.5, Count: 11}},
+	// 5 LUSR chaîne "btb" : rating baisse (Or III -> Or I).
+	for i := 0; i < 5; i++ {
+		var label *string
+		rv := float64Ptr(42)
+		switch i {
+		case 4:
+			label, rv = &btbHi, float64Ptr(50)
+		case 0:
+			label, rv = &btbLo, float64Ptr(35)
+		}
+		filtered = append(filtered, briefingRankedRaw(rankedRawOpts{
+			id: "b" + string(rune('a'+i)), daysAgo: 300 + i, ratingType: "LUSR",
+			group: "btb", tierLabel: label, ratingValue: rv,
+		}))
 	}
-	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered, kpis)
-	if b.Ranked == nil || len(b.Ranked.Kinds) != 2 {
-		t.Fatalf("want 2 kinds (csr majoritaire d'abord + lusr), got %+v", b.Ranked)
+	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered)
+	// CSR majoritaire (13) d'abord, puis chaînes LUSR par nb de matchs desc :
+	// arena_slayer (6) avant btb (5). Total 3 entrées (1 CSR + 2 LUSR).
+	if b.Ranked == nil || len(b.Ranked.Kinds) != 3 {
+		t.Fatalf("want 3 chains (csr/ranked + lusr/arena_slayer + lusr/btb), got %+v", b.Ranked)
 	}
-	csr := b.Ranked.Kinds[0]
-	if csr.Kind != "csr" || csr.TierStartLabel == nil || *csr.TierStartLabel != "Or I" || csr.TierEndLabel == nil || *csr.TierEndLabel != "Or III" {
-		t.Errorf("CSR kind: paliers CSR uniquement attendus, got %+v", csr)
+	csr, arena, btb := b.Ranked.Kinds[0], b.Ranked.Kinds[1], b.Ranked.Kinds[2]
+	if csr.Kind != "csr" || csr.PlaylistGroup != "ranked" || csr.TierStartLabel == nil || *csr.TierStartLabel != "Or I" || csr.TierEndLabel == nil || *csr.TierEndLabel != "Or III" {
+		t.Errorf("CSR chain: paliers CSR uniquement (Or I -> Or III), got %+v", csr)
 	}
-	lusr := b.Ranked.Kinds[1]
-	if lusr.Kind != "lusr" || lusr.TierStartLabel == nil || *lusr.TierStartLabel != "Argent II" || lusr.TierEndLabel == nil || *lusr.TierEndLabel != "Argent V" {
-		t.Errorf("LUSR kind: paliers LUSR uniquement attendus (jamais mélangés), got %+v", lusr)
+	if arena.Kind != "lusr" || arena.PlaylistGroup != "arena_slayer" || arena.TierStartLabel == nil || *arena.TierStartLabel != "Argent II" || arena.TierEndLabel == nil || *arena.TierEndLabel != "Argent V" {
+		t.Errorf("arena_slayer chain: Argent II -> Argent V, jamais mélangé, got %+v", arena)
+	}
+	if btb.Kind != "lusr" || btb.PlaylistGroup != "btb" || btb.TierStartLabel == nil || *btb.TierStartLabel != "Or III" || btb.TierEndLabel == nil || *btb.TierEndLabel != "Or I" {
+		t.Errorf("btb chain: Or III -> Or I, jamais mélangé, got %+v", btb)
+	}
+	// Co-signage pt/match ↔ progression : arena monte (>0), btb baisse (<0).
+	if arena.DeltaPerMatch == nil || *arena.DeltaPerMatch <= 0 {
+		t.Errorf("arena_slayer DeltaPerMatch want > 0 (rating monte), got %v", arena.DeltaPerMatch)
+	}
+	if btb.DeltaPerMatch == nil || *btb.DeltaPerMatch >= 0 {
+		t.Errorf("btb DeltaPerMatch want < 0 (rating baisse), got %v", btb.DeltaPerMatch)
 	}
 }
 
-func TestBuildExplorerBriefing_RankedSecondaryTypeBelowThresholdOmitted(t *testing.T) {
+func TestBuildExplorerBriefing_RankedSmallSecondaryChainStillEmitted(t *testing.T) {
+	// V4 : PLUS de seuil de type secondaire (DEC-1 « une ligne par chaîne »). Une
+	// petite chaîne LUSR (3 matchs) coexiste avec la chaîne CSR — les deux émises.
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 15; i++ {
-		filtered = append(filtered, briefingRankedRaw("c"+string(rune('a'+i)), i, domain.OutcomeWin, "CSR", nil, nil, nil))
+		filtered = append(filtered, briefingRankedRaw(rankedRawOpts{
+			id: "c" + string(rune('a'+i)), daysAgo: i, ratingType: "CSR",
+			group: "ranked", ratingValue: float64Ptr(float64(100 + i)),
+		}))
 	}
-	for i := 0; i < 5; i++ { // LUSR sous minRankedKindMatches (10)
-		filtered = append(filtered, briefingRankedRaw("l"+string(rune('a'+i)), 50+i, domain.OutcomeLoss, "LUSR", nil, nil, nil))
+	for i := 0; i < 3; i++ { // petite chaîne LUSR btb
+		filtered = append(filtered, briefingRankedRaw(rankedRawOpts{
+			id: "l" + string(rune('a'+i)), daysAgo: 50 + i, ratingType: "LUSR",
+			group: "btb", ratingValue: float64Ptr(float64(1 + i)),
+		}))
 	}
-	kpis := &domain.KPIStats{
-		MatchesCount: 20,
-		RankDelta:    &domain.RankDelta{Kind: "csr", Value: 30, Count: 15},
-		RankDeltas:   []domain.RankDelta{{Kind: "csr", Value: 30, Count: 15}, {Kind: "lusr", Value: 0.1, Count: 5}},
+	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered)
+	if b.Ranked == nil || len(b.Ranked.Kinds) != 2 {
+		t.Fatalf("want 2 chains (csr/ranked + lusr/btb, aucune omise), got %+v", b.Ranked)
 	}
-	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered, kpis)
-	if b.Ranked == nil || len(b.Ranked.Kinds) != 1 || b.Ranked.Kinds[0].Kind != "csr" {
-		t.Fatalf("LUSR (5 < 10) must be omitted, only CSR kept, got %+v", b.Ranked)
+	if b.Ranked.Kinds[0].Kind != "csr" || b.Ranked.Kinds[1].Kind != "lusr" {
+		t.Errorf("ordre : csr majoritaire d'abord, got %+v", b.Ranked.Kinds)
 	}
 }
 
 func TestBuildExplorerBriefing_RankedNoTierLabels(t *testing.T) {
+	// Aucun palier mais rating_value présents : progression omise, pt/match calculé.
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 15; i++ {
-		filtered = append(filtered, briefingRankedRaw("m"+string(rune('a'+i)), i, domain.OutcomeWin, "CSR", nil, nil, nil))
+		rv := float64Ptr(120)
+		switch i {
+		case 14:
+			rv = float64Ptr(100)
+		case 0:
+			rv = float64Ptr(145)
+		}
+		filtered = append(filtered, briefingRankedRaw(rankedRawOpts{
+			id: "m" + string(rune('a'+i)), daysAgo: i, ratingType: "CSR",
+			group: "ranked", ratingValue: rv,
+		}))
 	}
-	kpis := &domain.KPIStats{
-		MatchesCount: 15,
-		RankDelta:    &domain.RankDelta{Kind: "csr", Value: 45, Count: 15},
-		RankDeltas:   []domain.RankDelta{{Kind: "csr", Value: 45, Count: 15}},
-	}
-	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered, kpis)
+	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered)
 	if b.Ranked == nil || len(b.Ranked.Kinds) != 1 {
-		t.Fatalf("want 1 kind, got %+v", b.Ranked)
+		t.Fatalf("want 1 chain, got %+v", b.Ranked)
 	}
 	k := b.Ranked.Kinds[0]
-	if k.DeltaPerMatch == nil || *k.DeltaPerMatch != 3.0 {
-		t.Errorf("DeltaPerMatch want 3.0, got %v", k.DeltaPerMatch)
+	if k.DeltaPerMatch == nil || math.Abs(*k.DeltaPerMatch-3.0) > 1e-9 {
+		t.Errorf("DeltaPerMatch want 3.0 (net +45 / 15), got %v", k.DeltaPerMatch)
 	}
 	if k.TierStartLabel != nil || k.TierEndLabel != nil || k.TierStartIsPlacement || k.TierEndPlacementRemaining != nil {
 		t.Errorf("no tier / no placement expected, got %+v", k)
@@ -285,23 +341,18 @@ func TestBuildExplorerBriefing_RankedStartInPlacement(t *testing.T) {
 	done, total := 3, 10
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 15; i++ {
-		var label *string
-		var pd, pt *int
+		o := rankedRawOpts{id: "m" + string(rune('a'+i)), daysAgo: i, ratingType: "CSR", group: "ranked", ratingValue: float64Ptr(float64(140 + i))}
 		switch i {
 		case 14: // plus ancien : en placement
 			pl := "Placement (7 restants)"
-			label, pd, pt = &pl, &done, &total
+			o.tierLabel, o.placementDone, o.placementTotal, o.ratingValue = &pl, &done, &total, nil
 		case 0: // plus récent : palier résolu
-			label = &platine
+			o.tierLabel = &platine
+			o.ratingValue = float64Ptr(180)
 		}
-		filtered = append(filtered, briefingRankedRaw("m"+string(rune('a'+i)), i, domain.OutcomeWin, "CSR", label, pd, pt))
+		filtered = append(filtered, briefingRankedRaw(o))
 	}
-	kpis := &domain.KPIStats{
-		MatchesCount: 15,
-		RankDelta:    &domain.RankDelta{Kind: "csr", Value: 60, Count: 15},
-		RankDeltas:   []domain.RankDelta{{Kind: "csr", Value: 60, Count: 15}},
-	}
-	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered, kpis)
+	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered)
 	k := b.Ranked.Kinds[0]
 	if !k.TierStartIsPlacement {
 		t.Error("TierStartIsPlacement want true (début en placement)")
@@ -319,23 +370,17 @@ func TestBuildExplorerBriefing_RankedEndInPlacement(t *testing.T) {
 	done, total := 4, 10 // 6 restants
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 15; i++ {
-		var label *string
-		var pd, pt *int
+		o := rankedRawOpts{id: "m" + string(rune('a'+i)), daysAgo: i, ratingType: "CSR", group: "ranked", ratingValue: float64Ptr(float64(40 + i))}
 		switch i {
 		case 14: // plus ancien : palier résolu
-			label = &bronze
+			o.tierLabel = &bronze
 		case 0: // plus récent : encore en placement
 			pl := "Placement (6 restants)"
-			label, pd, pt = &pl, &done, &total
+			o.tierLabel, o.placementDone, o.placementTotal, o.ratingValue = &pl, &done, &total, nil
 		}
-		filtered = append(filtered, briefingRankedRaw("m"+string(rune('a'+i)), i, domain.OutcomeWin, "CSR", label, pd, pt))
+		filtered = append(filtered, briefingRankedRaw(o))
 	}
-	kpis := &domain.KPIStats{
-		MatchesCount: 15,
-		RankDelta:    &domain.RankDelta{Kind: "csr", Value: 60, Count: 15},
-		RankDeltas:   []domain.RankDelta{{Kind: "csr", Value: 60, Count: 15}},
-	}
-	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered, kpis)
+	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered)
 	k := b.Ranked.Kinds[0]
 	if k.TierStartLabel == nil || *k.TierStartLabel != "Bronze II" {
 		t.Errorf("TierStartLabel want Bronze II, got %v", k.TierStartLabel)
@@ -348,44 +393,15 @@ func TestBuildExplorerBriefing_RankedEndInPlacement(t *testing.T) {
 	}
 }
 
-func TestBuildExplorerBriefing_RankedNilWhenNoRankDeltas(t *testing.T) {
-	// Aucun bucket de rating (RankDeltas vide) → module nil, même avec des rows.
+func TestBuildExplorerBriefing_RankedNilWhenNoRatedRows(t *testing.T) {
+	// Aucune row rangée (pas de SkillRatingType) → aucun sample → module nil.
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 15; i++ {
 		filtered = append(filtered, briefingRaw("m"+string(rune('a'+i)), i, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène"))
 	}
-	kpis := &domain.KPIStats{MatchesCount: 15} // ni RankDelta ni RankDeltas
-	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered, kpis)
+	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered)
 	if b.Ranked != nil {
-		t.Errorf("Ranked must be nil without any rank delta bucket, got %+v", b.Ranked)
-	}
-}
-
-func TestBuildExplorerBriefing_TrendGating(t *testing.T) {
-	kpis := &domain.KPIStats{MatchesCount: 25}
-	// 25 matchs sur 2 jours seulement -> span < 14j -> Trend nil.
-	var narrow []domain.MatchHistoryRawRow
-	for i := 0; i < 25; i++ {
-		narrow = append(narrow, briefingRaw("n"+string(rune('a'+i)), i%2, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène"))
-	}
-	if b := svcWithRanked(false).buildExplorerBriefing(context.Background(), narrow, narrow, kpis); b.Trend != nil {
-		t.Error("span < 14 days -> Trend nil")
-	}
-	// 25 matchs étalés sur 40 jours -> Trend présent.
-	var wide []domain.MatchHistoryRawRow
-	for i := 0; i < 25; i++ {
-		out := domain.OutcomeWin
-		if i%3 == 0 {
-			out = domain.OutcomeLoss
-		}
-		wide = append(wide, briefingRaw("w"+string(rune('a'+i)), i*40/25, out, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène"))
-	}
-	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), wide, wide, kpis)
-	if b.Trend == nil {
-		t.Fatal("span >= 14 days & >= 20 matchs -> Trend present")
-	}
-	if len(b.Trend.Points) == 0 {
-		t.Error("trend should have points")
+		t.Errorf("Ranked must be nil without any rated row, got %+v", b.Ranked)
 	}
 }
 
@@ -409,8 +425,7 @@ func TestBuildExplorerBriefing_BaselineDeltasSigned(t *testing.T) {
 		}
 		all = append(all, briefingRaw("h"+string(rune(i)), 100+i, out, 10, 10, 0, 50, "map1", "Aquarius", "Slayer", "Arène"))
 	}
-	kpis := &domain.KPIStats{MatchesCount: 15}
-	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), scope, all, kpis)
+	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), scope, all)
 	if b.Baseline == nil {
 		t.Fatal("baseline nil")
 	}
@@ -467,8 +482,7 @@ func TestBuildDimension_FullHistorySortsByWinRate(t *testing.T) {
 	add("a1", "Bravo", 3, 7)   // WR 0.3
 	add("m1", "Charlie", 6, 4) // WR 0.6
 
-	kpis := &domain.KPIStats{MatchesCount: len(scope)}
-	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), scope, scope, kpis)
+	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), scope, scope)
 	entries := mapDimEntries(t, b)
 	want := []string{"Alpha", "Charlie", "Bravo"}
 	if len(entries) != len(want) {
@@ -511,8 +525,7 @@ func TestBuildDimension_FilteredSortsByDelta(t *testing.T) {
 	addHistOnly("ma", "MapA", 0, 40) // A hist total : 5W / 50 = .1
 	addHistOnly("mb", "MapB", 32, 8) // B hist total : 40W / 50 = .8
 
-	kpis := &domain.KPIStats{MatchesCount: len(scope)}
-	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), scope, all, kpis)
+	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), scope, all)
 	entries := mapDimEntries(t, b)
 	want := []string{"MapA", "MapB"}
 	if len(entries) != len(want) {
@@ -522,5 +535,100 @@ func TestBuildDimension_FilteredSortsByDelta(t *testing.T) {
 		if entries[i].Label != w {
 			t.Errorf("entry[%d].Label = %q, want %q (tri par delta sous filtre)", i, entries[i].Label, w)
 		}
+	}
+}
+
+// peakRankRaw : raw row portant les champs du « Pic rang » (type + palier EN +
+// sous-palier + label FR).
+func peakRankRaw(id string, daysAgo int, ratingType, tierEN string, subTier int, tierLabel string) domain.MatchHistoryRawRow {
+	r := briefingRaw(id, daysAgo, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène")
+	r.SkillRatingType = strPtr(ratingType)
+	r.SkillTier = strPtr(tierEN)
+	r.SubTier = intPtr(subTier)
+	r.SkillTierLabel = strPtr(tierLabel)
+	return r
+}
+
+func TestBuildBriefingScope_DurationAndPeaks(t *testing.T) {
+	mk := func(id string, daysAgo int, dur *int, kda, mmr *float64) domain.MatchHistoryRawRow {
+		r := briefingRaw(id, daysAgo, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène")
+		r.DurationSeconds, r.KDA, r.TeamMMR = dur, kda, mmr
+		return r
+	}
+	rows := []domain.MatchHistoryRawRow{
+		mk("a", 2, intPtr(600), float64Ptr(1.5), float64Ptr(1400)),
+		mk("b", 1, intPtr(900), float64Ptr(3.0), float64Ptr(1600)),
+		mk("c", 0, nil, float64Ptr(2.0), nil), // durée + mmr absents sur ce match
+	}
+	s := buildBriefingScope(rows)
+	if s.TotalDurationSeconds == nil || *s.TotalDurationSeconds != 1500 {
+		t.Errorf("TotalDurationSeconds want 1500 (600+900), got %v", s.TotalDurationSeconds)
+	}
+	if s.PeakKDA == nil || *s.PeakKDA != 3.0 {
+		t.Errorf("PeakKDA want 3.0 (max), got %v", s.PeakKDA)
+	}
+	if s.PeakTeamMMR == nil || *s.PeakTeamMMR != 1600 {
+		t.Errorf("PeakTeamMMR want 1600 (max), got %v", s.PeakTeamMMR)
+	}
+}
+
+func TestBuildBriefingScope_DurationAndMMRNilWhenAbsent(t *testing.T) {
+	// briefingRaw ne pose ni durée ni team_mmr → agrégats nil (omission par le front).
+	rows := []domain.MatchHistoryRawRow{
+		briefingRaw("a", 1, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène"),
+		briefingRaw("b", 0, domain.OutcomeLoss, 5, 10, 1, 40, "map1", "Aquarius", "Slayer", "Arène"),
+	}
+	s := buildBriefingScope(rows)
+	if s.TotalDurationSeconds != nil {
+		t.Errorf("TotalDurationSeconds want nil (aucune durée), got %v", s.TotalDurationSeconds)
+	}
+	if s.PeakTeamMMR != nil {
+		t.Errorf("PeakTeamMMR want nil (aucun team_mmr), got %v", s.PeakTeamMMR)
+	}
+}
+
+func TestBuildBriefingScope_PeakRankLUSROnly(t *testing.T) {
+	// Diamond (ordinal 5) > Gold (3) ; parmi Diamond, sous-palier 4 > 1 → « Diamant IV ».
+	rows := []domain.MatchHistoryRawRow{
+		peakRankRaw("a", 3, "LUSR", "Gold", 2, "Or II"),
+		peakRankRaw("b", 2, "LUSR", "Diamond", 4, "Diamant IV"),
+		peakRankRaw("c", 1, "LUSR", "Diamond", 1, "Diamant I"),
+	}
+	s := buildBriefingScope(rows)
+	if len(s.PeakRanks) != 1 {
+		t.Fatalf("want 1 peak rank (LUSR seul), got %+v", s.PeakRanks)
+	}
+	if s.PeakRanks[0].RatingType != "lusr" || s.PeakRanks[0].TierLabel != "Diamant IV" {
+		t.Errorf("want lusr / Diamant IV (palier max atteint), got %+v", s.PeakRanks[0])
+	}
+}
+
+func TestBuildBriefingScope_PeakRankBothSystems(t *testing.T) {
+	rows := []domain.MatchHistoryRawRow{
+		peakRankRaw("c1", 4, "CSR", "Onyx", 0, "Onyx"), // pic CSR
+		peakRankRaw("c2", 3, "CSR", "Platinum", 3, "Platine III"),
+		peakRankRaw("l1", 2, "LUSR", "Gold", 5, "Or V"), // pic LUSR
+		peakRankRaw("l2", 1, "LUSR", "Silver", 2, "Argent II"),
+	}
+	s := buildBriefingScope(rows)
+	if len(s.PeakRanks) != 2 {
+		t.Fatalf("want 2 peak ranks (lusr + csr), got %+v", s.PeakRanks)
+	}
+	// Ordre déterministe : LUSR puis CSR.
+	if s.PeakRanks[0].RatingType != "lusr" || s.PeakRanks[0].TierLabel != "Or V" {
+		t.Errorf("PeakRanks[0] want lusr / Or V, got %+v", s.PeakRanks[0])
+	}
+	if s.PeakRanks[1].RatingType != "csr" || s.PeakRanks[1].TierLabel != "Onyx" {
+		t.Errorf("PeakRanks[1] want csr / Onyx, got %+v", s.PeakRanks[1])
+	}
+}
+
+func TestBuildBriefingScope_PeakRankNilWhenNoTier(t *testing.T) {
+	rows := []domain.MatchHistoryRawRow{
+		briefingRaw("a", 0, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène"),
+	}
+	s := buildBriefingScope(rows)
+	if s.PeakRanks != nil {
+		t.Errorf("PeakRanks want nil (aucun palier), got %+v", s.PeakRanks)
 	}
 }
