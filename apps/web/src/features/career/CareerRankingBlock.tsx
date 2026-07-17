@@ -7,9 +7,6 @@
  */
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-
-const SUB_TIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']
-const toRoman = (n: number): string => SUB_TIER_ROMAN[n] ?? String(n)
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { MetricWithTrend, type Trend } from '@/components/ui/metric-trend'
@@ -17,7 +14,7 @@ import type { CareerLusrSection, CareerCSRRank } from '@/lib/api/types'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { careerManifest } from '@/lib/i18n/generated/career'
 import { staticAssetURL } from '@/lib/staticAssets'
-import { localizeTierName, localizeTierLabel } from '@/lib/skillTiers'
+import { localizeTierName, localizeTierLabel, subTierRoman } from '@/lib/skillTiers'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useCareerCSRs } from './queries'
@@ -44,7 +41,7 @@ function csrTierLabel(
   // rank.tier est le palier canonique EN ("Gold"/"Platinum") — localisé à
   // l'affichage (sinon « Gold IV » restait en anglais sous UI FR).
   const name = localizeTierName(rank.tier, locale)
-  return rank.sub_tier > 0 ? `${name} ${toRoman(rank.sub_tier)}` : name
+  return rank.sub_tier > 0 ? `${name} ${subTierRoman(rank.sub_tier)}` : name
 }
 
 function formatCSRValue(rank: CareerCSRRank): string {

@@ -19,6 +19,23 @@ export const SKILL_TIER_VALUES = [
 
 export type SkillTierValue = typeof SKILL_TIER_VALUES[number]
 
+// ── Sous-paliers en chiffres romains (source unique) ──────────────────────────
+// Index 1→I … 6→VI (index 0 = pas de sous-palier). Aligné sur le Go
+// rankSubRoman / FormatTierSubLabel. Garde-rail skillTiers.guard.test.ts :
+// interdit toute re-déclaration du littéral sous src/features/**.
+const SUB_TIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'] as const
+
+/**
+ * Convertit un numéro de sous-palier (1..6) en chiffre romain pour composer un
+ * libellé « Nom + sous-palier » côté web (colonnes CSR Career/Explorer,
+ * notifications de palier). 1-indexé ; toute valeur hors 1..6 est rendue en
+ * décimal (String(n)). Le cadrage (n>0, borne haute, Onyx sans sous-palier)
+ * reste à la charge du consommateur.
+ */
+export function subTierRoman(n: number): string {
+  return SUB_TIER_ROMAN[n] ?? String(n)
+}
+
 // ── Grilles de paliers de skill (LUSR / CSR) pour les bandes de classement ──
 // Ce fichier est whitelisté dans lint-no-hardcoded-fields : les noms de tier
 // sont des identifiants de rang Halo Infinite, pas des libellés génériques.
