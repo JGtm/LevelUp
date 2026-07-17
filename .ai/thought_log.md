@@ -1,3 +1,31 @@
+## [2026-07-17] Landing train — 4 merges dans main LOCAL (origin/main, sweep, media-hardening, explorer-briefing)
+
+**Statut** : Complété (main local ahead 21, NON poussé — push = deploy prod, décision utilisateur).
+
+**Décision technique** : atterrissage séquentiel dans main local, gates rejoués sur CHAQUE état
+mergé (pas seulement sur les branches) : `077c054d4` merge origin/main (conflit thought_log résolu
+par union ; build Go CGO + generated.ts régénéré identique + tsc verts) ; `cc95e27d3` merge
+fix/player-db-recovery-sweep (1 commit docs restant, le code était déjà dans main via d5720e96b) ;
+`541c8c06a` merge fix/media-pipeline-hardening (PR #64, CI verte — 1 conflit CLI backfill-media-hls
+résolu par union des flags --delete-source/--retry-failed ; sémantique combinée keep-source ×
+verrou CAS vérifiée sur pièces dans RunHLSTranscode/processHLSCandidate/launchHLSTranscoding ;
+tests ops/service/media/handlers/config + intégration -p 1 + vitest média/settings 163/163 verts) ;
+`34ce09f81` merge feat/explorer-briefing-v2 (2 conflits docs : thought_log union, plan Explorer =
+version branche [état final statué] ; build + tests Go analysis/service/domain/api + generated.ts
+régénéré identique + tsc + vitest explorer/formatters 138/138 verts).
+
+**Résultats observés** : zéro conflit de code hors CLI (les features media se composent :
+rétention décide SI on supprime, les gardes PR #64 protègent QUAND on supprime). Les rattrapages
+CI de la PR #64 (purge baseline challenges héritée de 1c0117707, spec E2E carrière tier localisé)
+arrivent dans main avec ce train → la CI main redeviendra verte au push.
+
+**Prochaine étape** : push main (deploy prod : toggle keep-source + sweep + durcissements média +
+briefing Explorer V2) — la PR #64 se fermera automatiquement en « merged ». Branches fusionnées
+supprimables : fix/player-db-recovery-sweep, fix/media-pipeline-hardening, feat/explorer-briefing-v2,
+feat/media-keep-source-toggle.
+
+---
+
 ## [2026-07-17] Rétention source après transcodage HLS paramétrable (media_delete_source_after_transcode)
 
 **Statut** : Complété (code, branche `feat/media-keep-source-toggle`, NON mergé — revue superviseur
