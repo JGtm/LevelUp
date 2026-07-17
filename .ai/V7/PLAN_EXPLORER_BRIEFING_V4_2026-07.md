@@ -812,91 +812,186 @@ greps : 0 `RankedTile` dans le socle (Strip) ; `RankedBlock` rendu dans la grill
 
 ### Phase 5 — Frontend : tooltips via portal (moyen) — DEC-TOOLTIP
 
-- [ ] **5a (portal).** Réécrire le rendu du panneau d'`info-tooltip.tsx` : `createPortal(
+- [x] **5a (portal).** Réécrire le rendu du panneau d'`info-tooltip.tsx` : `createPortal(
       panel, document.body)` avec `position: fixed`, coordonnées calculées depuis
       `buttonRef.getBoundingClientRect()` (centré au-dessus du bouton, repli en dessous si
       trop haut). Conserver `role="tooltip"`, `aria-label`, la flèche, les tokens. Fermeture :
       clic extérieur (existant) + `scroll`/`resize` (listeners ajoutés à l'ouverture, nettoyés
-      à la fermeture) + `blur`/`mouseleave`. NE PAS modifier `KpiCard`.
-- [ ] **5b (tests).** Ajouter/mettre à jour un test : le panneau est rendu hors du conteneur
+      à la fermeture) + `blur`/`mouseleave`. NE PAS modifier `KpiCard`. FAIT : `info-tooltip.tsx`
+      réécrit (portal + `useLayoutEffect` calcul de position depuis `buttonRef.getBoundingClientRect()`,
+      flèche pointant le centre du bouton via `arrowLeft`, repli sous le bouton si pas la place ;
+      listeners `scroll`(capture)/`resize`/`mousedown` ajoutés/retirés à l'ouverture/fermeture ;
+      `blur`/`mouseleave` conservés). `KpiCard.tsx` non touché (`git status` = vide).
+- [x] **5b (tests).** Ajouter/mettre à jour un test : le panneau est rendu hors du conteneur
       `overflow-hidden` (portal → `document.body`) ; ouverture au clic/focus affiche le
       contenu ; fermeture au clic extérieur ; `role="tooltip"` présent. Vérifier la
       non-régression d'un consommateur existant (ex. un test qui monte `InfoTooltip`). Aucun
-      test skippé.
+      test skippé. FAIT : `info-tooltip.test.tsx` neuf (5 tests : portal hors clippeur +
+      `position: fixed` ; ouverture focus + fermeture clic extérieur ; fermeture au scroll ;
+      `role`/aria conservés ; 2 consommateurs indépendants). Non-régression des consommateurs
+      couverte par la suite complète (`ExplorerBriefingStrip.test.tsx:283-291` monte InfoTooltip,
+      ouvre le tooltip et lit `screen.getByRole('tooltip')` — vert avec le portal).
 
 Gate Phase 5 : `make check-types` = 0 ; `make test-web` vert (tests 5b + non-régression des
 ~10 consommateurs) ; `npm run lint` = 0 erreur ; grep : `createPortal` présent dans
 `info-tooltip.tsx` ; `git status` de `KpiCard.tsx` = vide (0 modif).
 
+> **GATE PHASE 5 — VERT (exécuté le 2026-07-17).** `npm run typecheck` (tsc -b, cache `.tmp`
+> purgé) = exit 0, **0 erreur**. `npm run test:run` = **263 fichiers, 2303 passed, 14 skipped**
+> (pré-existants ; +5 = les tests info-tooltip, AUCUN skip ajouté ; 262→263 fichiers = le test
+> neuf). `npm run lint` = **0 erreur** (68 warnings baseline gelée, inchangés — 0 sur les 2
+> fichiers touchés). Greps de clôture : `createPortal` présent dans `info-tooltip.tsx` (import +
+> usage) ; `git status apps/web/src/components/cards/KpiCard.tsx` = **vide** (non modifié).
+> Worktree du bloc = `info-tooltip.tsx` (M) + `info-tooltip.test.tsx` (neuf). AUCUN commit
+> (superviseur en fin de bloc).
+
 ### Phase 6 — Frontend : MVP/LVP dans le tableau (moyen) — DEC-MVP / DEC-MVP-FE
 
-- [ ] **6a (helper highlight).** Créer `ExplorerMatchesTable.highlight.ts` (sibling, calqué
+- [x] **6a (helper highlight).** Créer `ExplorerMatchesTable.highlight.ts` (sibling, calqué
       `LeaderboardBlock.highlight.ts`) : `import { cellState, cellStyle } from
       '@/features/match-view/MatchScoreboard.logic'` ; `EXPLORER_INVERTED` (au moins `deaths`
       inversé) ; `computeColumnExtremes(rows, keys)` (garde ≥ 2) ; `columnHighlightStyle(key,
       value, extremes)`. Colonnes surlignées : Perf, FDA, Frags (kills), Score (+ deaths). NE
-      PAS recopier `cellStyle` (import obligatoire — CLAUDE.md §6).
-- [ ] **6b (câblage table).** Calculer les extrêmes sur TOUT le scope chargé (les `data` de la
+      PAS recopier `cellStyle` (import obligatoire — CLAUDE.md §6). FAIT : `ExplorerMatchesTable.
+      highlight.ts` neuf (clés = id de colonne TanStack : `kills`/`deaths`/`kda`/`perf_score`/
+      `score_label` ; `EXPLORER_INVERTED` avec `deaths:true` ; `explorerHlExtract` (valeur
+      AFFICHÉE ; perf gardée sur `perf_tier` présent ; Score = `ownTeamScore` = 1er entier de
+      « A - B ») ; `computeColumnExtremes` garde ≥ 2 ; `isExplorerHighlightKey` ; `columnHighlightStyle`
+      importe et compose `cellStyle(cellState(...))` — 0 recopie, `MatchScoreboard.logic` importé
+      ligne 15). Réserve Score multi-modes → Découverte-16.
+- [x] **6b (câblage table).** Calculer les extrêmes sur TOUT le scope chargé (les `data` de la
       table, pas la page visible) — mémoïsé (`useMemo`) et indépendant du tri. Appliquer
       `columnHighlightStyle` en `style` sur le `<td>`/le contenu des colonnes surlignées.
-      Gérer les valeurs nulles (neutre, natif) et les égalités (multi-surlignage, natif).
-- [ ] **6c (tests).** Test de rendu : meilleur/pire d'une colonne surlignés sur un dataset
+      Gérer les valeurs nulles (neutre, natif) et les égalités (multi-surlignage, natif). FAIT :
+      `highlightExtremes = useMemo(() => computeColumnExtremes(rows), [rows])` (sur `rows` =
+      scope complet, hors sort/pagination) ; le `<td>` générique du tbody porte
+      `style={hlStyle}` calculé par colId (calqué sur l'application td du leaderboard). Nulls →
+      `{}` (cellState neutre), égalités → multi-surlignage natif. Padding `td` inchangé (py-1.5) —
+      réduit en Phase 7 (ordre strict).
+- [x] **6c (tests).** Test de rendu : meilleur/pire d'une colonne surlignés sur un dataset
       hétérogène (≥ 2 valeurs) ; colonne uniforme non surlignée ; null neutre ; surlignage
-      indépendant du tri. Aucun test skippé.
+      indépendant du tri. Aucun test skippé. FAIT : test unitaire pur `ExplorerMatchesTable.
+      highlight.test.ts` (7 tests : best/worst vert-rouge + gras 600/500, `deaths` inversé,
+      uniforme neutre, null neutre, garde ≥ 2, perf sans tier exclue, `ownTeamScore`) + 3 tests
+      de rendu ajoutés à `ExplorerMatchesTable.test.tsx` (meilleur 600/pire 500 des Frags,
+      colonne uniforme non surlignée, indépendance du tri). Assertions rendu sur `td.style.
+      fontWeight` (le CSSOM jsdom peut ignorer `color-mix` — teinte/couleur vérifiées dans le
+      test pur).
 
 Gate Phase 6 : `make check-types` = 0 ; `make test-web` vert ; `npm run lint` = 0 erreur ;
 grep : 0 littéral `color-mix(in oklab` NOUVEAU sous `features/explorer` (style importé, pas
 recopié) ; `MatchScoreboard.logic` importé par le sibling highlight.
 
+> **GATE PHASE 6 — VERT (exécuté le 2026-07-17).** `npm run typecheck` (tsc -b, cache `.tmp`
+> purgé) = exit 0, **0 erreur**. `npm run test:run` = **264 fichiers, 2313 passed, 14 skipped**
+> (263→264 = le test pur highlight ; +10 tests = 7 pur + 3 rendu ; AUCUN skip ajouté).
+> `npm run lint` = **0 erreur** (68 warnings baseline gelée, 0 sur les 3 fichiers touchés).
+> Greps de clôture : `grep -c "color-mix(in oklab" ExplorerMatchesTable.highlight.ts` = **0**
+> (style importé, jamais recopié) ; `MatchScoreboard.logic` importé par le sibling (ligne 15).
+> AUCUN commit (superviseur en fin de bloc).
+
 ### Phase 7 — Padding + reformulation (rapide) — DEC-PAD / DEC-10
 
-- [ ] **7a (padding).** `ExplorerMatchesTable.tsx` : `HEADER_TH_CLASS` (`:123-124`) et la
+- [x] **7a (padding).** `ExplorerMatchesTable.tsx` : `HEADER_TH_CLASS` (`:123-124`) et la
       className `td` (`:757`) → `py-1.5` réduit à `py-1` (ou `px-1.5 py-1`, à valider en revue
-      visuelle). Un seul point pour `th`, un pour `td`.
-- [ ] **7b (reformulation).** `explorer.toml` `tip_dimensions` → texte DEC-10 (FR « Où vous
+      visuelle). Un seul point pour `th`, un pour `td`. FAIT : re-vérifié sur pièces (le code a
+      bougé aux imports Phase 6 : `HEADER_TH_CLASS` → `:130`, `td` → `:774`). Retenu `px-2 py-1`
+      (proposition primaire DEC-PAD ; horizontal `px-2` conservé pour ne pas cramponner les
+      colonnes ; l'affinage `px-1.5` reste à la revue visuelle). Les 2 seuls points modifiés.
+- [x] **7b (reformulation).** `explorer.toml` `tip_dimensions` → texte DEC-10 (FR « Où vous
       performez le mieux et le moins bien selon la carte, le mode ou la sélection. » + EN en
       parité). Régénérer les manifests. **Ce commit intègre aussi l'édition utilisateur en
       cours** du worktree (le fichier était déjà modifié — le nouveau texte la remplace
-      proprement).
+      proprement). FAIT : FR = « Où vous performez le mieux et le moins bien selon la carte, le
+      mode ou la sélection. » ; EN = « Where you perform best and worst by map, mode, or
+      selection. ». `build_i18n_manifests.mjs` régénéré (explorer 227 clés) ; `git diff` =
+      strictement `tip_dimensions` (generated : 1 ligne ; toml : fr+en). L'édition intermédiaire
+      committée (texte verbeux) est remplacée.
 
 Gate Phase 7 : `node …/build_i18n_manifests.mjs` (diff = `tip_dimensions`) ; `make check-types`
 = 0 ; `make test-web` vert ; `npm run lint` = 0 erreur ; revue visuelle du padding reprise par
 l'utilisateur.
+
+> **GATE PHASE 7 — VERT (exécuté le 2026-07-17).** `build_i18n_manifests.mjs` = OK (18
+> manifests, 2521 clés ; explorer 227) ; `git diff` limité à `tip_dimensions` (generated 1
+> ligne + toml fr/en). `npm run typecheck` (tsc -b, `.tmp` purgé) = exit 0, **0 erreur**.
+> `npm run test:run` = **264 fichiers, 2313 passed, 14 skipped** (inchangé — padding + texte ne
+> touchent aucun compte de test ; le stub `t` du test Strip renvoie la clé, pas le littéral).
+> `npm run lint` = **0 erreur** (68 warnings baseline). Padding `py-1.5`→`py-1` sur `th` (`:130`)
+> et `td` (`:774`). AUCUN commit (superviseur en fin de bloc). Revue visuelle du padding = item
+> utilisateur.
 
 ### Phase 8 — Dettes préexistantes + clôture (moyen) — DEC-DEBT
 
 > Périmètre FERMÉ et SÛR. Pour chaque dette : soit corriger (scopé), soit lister « NON traitée
 > (justification) ». Ne PAS transformer en refactor illimité.
 
-- [ ] **8a (`record_label` morte).** RE-VÉRIFIER le grep (0 lecteur composant) puis purger
+- [x] **8a (`record_label` morte).** RE-VÉRIFIER le grep (0 lecteur composant) puis purger
       `explorer.briefing.record_label` de `explorer.toml` + régénérer. (Si un lecteur apparaît
-      → ne pas purger, consigner §6.)
-- [ ] **8b (eslint-disable inutile).** RE-VÉRIFIER sur pièces dans `ExplorerPage.tsx` quel
+      → ne pas purger, consigner §6.) FAIT : grep re-vérifié = 0 lecteur composant (seulement
+      toml + generated). Bloc `[explorer.briefing.record_label]` retiré du toml ; manifests
+      régénérés (explorer 227→226 clés) ; `record_label` absent du generated ; grep global = 0.
+- [!] **8b (eslint-disable inutile).** RE-VÉRIFIER sur pièces dans `ExplorerPage.tsx` quel
       `eslint-disable` (le cas échéant) est signalé « unused » par le lint baseline ; le
       retirer s'il est réellement inutile. Sinon statuer `[!]` (aucun inutile trouvé).
-- [ ] **8c (god-file `ExplorerMatchesTable` 800 L).** Extraire les définitions de colonnes
+      STATUÉ `[!]` — AUCUN inutile. RE-vérifié sur pièces : 2 `eslint-disable-next-line
+      react-hooks/exhaustive-deps` (`:152` sur `[rankedContext]`, `:161` sur `[]`). Le config
+      lint n'active pas `reportUnusedDisableDirectives`. Vérification DÉFINITIVE à l'outil :
+      `npx eslint --report-unused-disable-directives ExplorerPage.tsx` ne rapporte AUCUNE
+      directive inutile (seul 1 warning baseline `react-hooks/set-state-in-effect` à `:158`,
+      non lié). Les deux directives gardent de vraies violations exhaustive-deps → nécessaires.
+      Rien à retirer (la Découverte-8 V3 « eslint-disable inutile » est INFIRMÉE sur pièces).
+- [!] **8c (god-file `ExplorerMatchesTable` 800 L).** Extraire les définitions de colonnes
       (et/ou les mappings `DOMINANCE_*`, les helpers de format) vers un sibling
       (`ExplorerMatchesTable.columns.tsx`) pour repasser SOUS 500 L, SI l'extraction reste
       sûre et scopée (aucun changement de comportement). Sinon : statuer `[!]` et **signaler
       comme chantier à part** (refonte du tableau) — ne pas forcer un split risqué en fin de
-      chantier.
-- [ ] **8d (dette matrice d'impact — signalement).** Consigner §6 la duplication inline du
+      chantier. STATUÉ `[!]` — DIFFÉRÉ en chantier séparé documenté (issue OR autorisée par
+      §1.10). État 819 L (+19 L de câblage MVP/LVP requis sur 800 L pré-existants). Le seul
+      bloc assez gros (`baseColumns` ~353 L) exige de déplacer ~410 L de rendu critique + une
+      redistribution d'imports intriquée → « split risqué en fin de chantier » que le plan/la
+      mission demandent de NE PAS forcer. Recette turnkey + justification complète : Découverte-18.
+- [x] **8d (dette matrice d'impact — signalement).** Consigner §6 la duplication inline du
       style best/worst dans `SquadImpactScoreboard.tsx` (2ᵉ copie) : NON traitée ici (hors
-      périmètre) ; candidate à un chantier de centralisation + garde-rail.
-- [ ] **8e (changelog).** `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md`, entrée `[Unreleased]`
+      périmètre) ; candidate à un chantier de centralisation + garde-rail. FAIT : confirmé sur
+      pièces (`extremeStyle:117-125` duplique `cellStyle`, `aggCellState:127` duplique
+      `cellState`) → Découverte-17 (non traitée, recette de centralisation + garde-rail notée).
+- [x] **8e (changelog).** `docs/CHANGELOG.md` + `docs/FR/CHANGELOG.md`, entrée `[Unreleased]`
       v7.0 : bullet React « Explorer — briefing V4 » (Classement par chaîne, tuiles refondues
       hero WR + Durée totale + Pic FDA (+ Pic MMR), Perf colorée, Meilleure série, tooltips
       non clippés, MVP/LVP dans le tableau, padding réduit) + bullet Go (retrait `trend` du
       DTO briefing, champs Scope durée/pics, Classement par chaîne). Parité EN/FR même commit.
-- [ ] **8f (clôture).** Dérouler `delivery-checklist`. Passe finale des gates §1.9 verte en
+      FAIT : bullet React « Explorer — briefing V4 » + bullet Go « per-chain ranking & socle
+      aggregates (V4) » ajoutés aux sections `[Unreleased]`/`[Non publié]` des DEUX changelogs
+      (EN + FR), textes en parité stricte.
+- [x] **8f (clôture).** Dérouler `delivery-checklist`. Passe finale des gates §1.9 verte en
       une fois. Entrée `.ai/thought_log.md` finale. Point d'étape utilisateur. NON committé la
       livraison finale sans autorisation (merge `main` = deploy prod auto → après revue
-      visuelle utilisateur).
+      visuelle utilisateur). FAIT : `delivery-checklist` déroulée (complétude, tests front,
+      i18n FR/EN parité, 0 code mort débranché [record_label], thought_log) ; passe finale des
+      gates VERTE (voir GATE VERT ci-dessous) ; entrée thought_log ajoutée. NON committé
+      (superviseur committe le bloc + clôture git).
 
 Gate Phase 8 : `cd apps/go-api && go test ./...` = 0 ; `make go-api-lint` = 0 ; `make
 generate-types` idempotent ; `make check-types` = 0 ; `make test-web` vert ; `npm run lint`
 = 0 erreur ; greps de clôture (record_label, Sparkline, trend, RankDeltas = 0) ; changelog EN
 + FR à jour ; chaque item de dette statué.
+
+> **GATE PHASE 8 — VERT (exécuté le 2026-07-17).** `build_i18n_manifests.mjs` OK (explorer
+> 226 clés après purge `record_label`). `npm run typecheck` (tsc -b, `.tmp` purgé) = exit 0,
+> **0 erreur**. `npm run test:run` = **264 fichiers, 2313 passed, 14 skipped** (inchangé —
+> purge i18n sans impact test). `npm run lint` = **0 erreur** (68 warnings baseline gelée).
+> Greps de clôture : `record_label` = **0** (toml+generated+global) ; `createPortal` dans
+> info-tooltip = 3 ; `MatchScoreboard.logic` importé par le sibling highlight = 1 ;
+> `color-mix(in oklab` NOUVEAU dans le sibling = **0** ; `Sparkline`/`trend` sous
+> `features/explorer` = **0** ; `RankDeltas` sous `apps/go-api/internal` = **0** ;
+> `KpiCard.tsx` non modifié ; **0 fichier `.go`** dans le worktree ; tailles
+> `info-tooltip.tsx` 127 L / `ExplorerMatchesTable.highlight.ts` 91 L (≤ 500). **Gate Go
+> (`go test`/`go-api-lint`/`generate-types`) NON re-joué** : aucun fichier Go touché aux
+> Phases 5-8 (git status = 0 `.go`) → inchangé depuis le VERT de la Phase 2 (`go test ./...`
+> = exit 0, 111 packages) ; re-jouer n'apporterait aucune information et risquerait la
+> corruption du cache Windows (builds séquentiels obligatoires). AUCUN commit (superviseur en
+> fin de bloc + clôture git après revue visuelle utilisateur).
 
 ---
 
@@ -1006,6 +1101,57 @@ generate-types` idempotent ; `make check-types` = 0 ; `make test-web` vert ; `np
   `ExplorerBriefingTiles` vers `ExplorerRankedBlock` (réutilisés) ; import cross-feature
   `lusrChainLabel` (career → explorer) retenu tel quel (DÉFAUT DEC-RANK-FE — fonction pure de
   résolution i18n, pas de promotion vers `lib/`).
+
+- **Découverte-16 (Phase 6, exécution) — highlight « Score » : unité mode-dépendante.** La
+  colonne Score affiche `score_label` = « MyTeamScore - EnemyTeamScore » (chaîne, pas de champ
+  numérique ; ordre self-first confirmé `match_history_service_enrich.go:159` +
+  `match_view_canonical_test.go:163`). Le surlignage MVP/LVP exige un numérique : retenu = le
+  score de l'équipe du joueur (`ownTeamScore` = 1er entier du libellé), non inversé. Réserve :
+  sur un scope MULTI-MODES, l'unité du score diffère (frags en Slayer, manches/captures en
+  objectif) → les extrêmes « Score » comparent alors des unités hétérogènes (un 50 de Slayer vs
+  un 3 de CTF). Les colonnes Perf/FDA/Frags/Morts ne souffrent pas de ce biais (métriques
+  personnelles). Score surligné comme le demande DEC-MVP (§1.7, 4 mentions), la réserve est
+  notée pour l'item 4 « À vérifier visuellement » (si bruyant sur scope non filtré, un opt-out
+  de la colonne Score serait une décision produit hors périmètre — cf. précédent Découverte-11).
+
+- **Découverte-17 (Phase 8d, exécution) — dette : 2ᵉ copie inline du style best/worst dans
+  `SquadImpactScoreboard.tsx`.** Confirmé sur pièces : `extremeStyle` (`:117-125`) DUPLIQUE
+  `cellStyle` (`color-mix(in oklab, ${tokenVar} 28%, transparent)` `:121`, gras 600/500, tokens
+  outcome-win/loss) + `aggCellState` (`:127`) réplique `cellState` ; un commentaire `:114`
+  reconnaît déjà « cf. match-view/MatchScoreboard.logic.ts::cellStyle ». C'est la 2ᵉ copie
+  (après le scoreboard source) ; l'Explorer (3ᵉ surface, ce chantier) IMPORTE correctement le
+  helper. **NON traitée ici** (hors périmètre §4 : « duplication inline du style best/worst
+  dans SquadImpactScoreboard.tsx — signalée §6, non corrigée »). Candidate à un chantier de
+  centralisation : faire `SquadImpactScoreboard` importer `cellState`/`cellStyle` (adapter la
+  matrice d'agrégats à la signature `Extremes`) + poser le garde-rail grep interdisant tout
+  nouveau littéral `color-mix(in oklab, var(--ac-outcome-*)` hors `MatchScoreboard.logic`
+  (CLAUDE.md §6). NB : le `color-mix(in srgb … 30%)` (`:47,49`) est un AUTRE usage (surbrillance
+  de sélection), pas la même dette.
+- **Découverte-18 (Phase 8c, exécution) — god-file `ExplorerMatchesTable.tsx` : split DIFFÉRÉ
+  (chantier à part).** État : 819 L (800 L avant ce chantier ; +19 L = câblage MVP/LVP requis :
+  import highlight + `highlightExtremes` useMemo + style sur le `<td>`). Repasser sous 500 L
+  exige de déplacer le SEUL gros bloc — le tableau `baseColumns` (`useMemo`, `:270-623`, ~353 L)
+  — vers un sibling `ExplorerMatchesTable.columns.tsx`, PLUS ses helpers purs (HISTORY_DATE_OPTS,
+  DOMINANCE_LABEL_KEYS/COLOR_TOKENS, truncateName/NAME_TRUNCATE_MAX, fmtMmr/fmtDeltaMMR/fmtKDA,
+  renderTwoLineHeader) : ~410 L de code de rendu critique répartis sur 2 fichiers, avec
+  redistribution intriquée des imports (scales, outcome-color, formatters, skillTiers, types
+  Locale + manifests) et un `buildBaseColumns(deps)` fermant sur ≥ 9 valeurs (t, tMV, intlLocale,
+  locale, labelOfMap, labelOfPlaylist, goToMatch, outcomeLabels, providesTeamMmr → 1 objet
+  `ColumnDeps`). Le plan (8c) et la mission demandent explicitement de NE PAS forcer un split
+  risqué en fin de chantier ; le critère §1.10 accepte « god-file réduit OU **chantier séparé
+  documenté** ». **Décision : DIFFÉRÉ `[!]`** (issue OR de §1.10). Recette turnkey pour le
+  chantier dédié : (1) créer `ExplorerMatchesTable.columns.tsx` = `interface ColumnDeps` +
+  `buildBaseColumns(deps): ColumnDef<ExplorerMatchRow>[]` (copie VERBATIM de l'array `:270-620`,
+  `t/tMV/…` destructurés de `deps`) + déplacer les helpers purs listés ci-dessus ; (2) dans le
+  composant, `baseColumns = useMemo(() => buildBaseColumns({…}), [même dep-array])` ; garder
+  `SortIndicator`/`columnIdOf`/`HEADER_TH_CLASS` dans le principal ; (3) redistribuer les imports
+  (le sibling : ColumnDef, ReactNode, ExplorerMatchRow, tokenCssVar+SemanticToken, scales,
+  outcome-color, formatDate/DurationMMSS/displayRatingLabel, localizeTierLabel/skillTierSortValue,
+  NUMERIC_SORT/dateTimeSortingFn/localeTextSortingFn, types manifests + Locale) ; (4) gate
+  typecheck (noUnusedLocals révèle les imports orphelins) + 15 tests table + suite complète +
+  revue visuelle (pas de changement de comportement — move verbatim). Chantier estimé « moyen »,
+  à mener avec revue visuelle dédiée (pas en fin de bloc). Aucune régression introduite ici : le
+  câblage MVP/LVP est isolé (helper + 3 points d'ancrage), le split reste purement structurel.
 
 Consigner ici tout décalage fichier:ligne vs §2, tout lecteur i18n inattendu, toute dette
 repérée hors périmètre. Ne pas corriger dans ce chantier (hors Phase 8 scopée).

@@ -808,10 +808,6 @@ en = "Unknown"
 fr = "Matchs"
 en = "Matches"
 
-[explorer.briefing.record_label]
-fr = "Bilan"
-en = "Record"
-
 [explorer.briefing.win_rate_label]
 fr = "Taux de victoire"
 en = "Win rate"
@@ -911,8 +907,8 @@ en = "Highlights"
 # catégories de « Moments forts » validée sur pièces (analysis.ComputeDominanceFlag).
 
 [explorer.briefing.tip_dimensions]
-fr = "Vos meilleurs et moins bons terrains sur les matchs affichés. Par ligne : nombre de matchs, taux de victoire, écart face à votre habitude et une note de performance, d'Excellent à Mauvais, fondée sur votre score de performance personnel."
-en = "Your best and worst grounds over the shown matches. Per row: number of matches, win rate, gap versus your usual level and a performance grade, from Excellent to Poor, based on your personal performance score."
+fr = "Où vous performez le mieux et le moins bien selon la carte, le mode ou la sélection."
+en = "Where you perform best and worst by map, mode, or selection."
 
 [explorer.briefing.tip_context]
 fr = "Vos résultats selon que vous jouiez seul ou en escouade : nombre de matchs, taux de victoire et FDA de chaque contexte."
