@@ -63,7 +63,7 @@ func TestDetectRivalEncounters_DuelBeforeWatermarkIgnored(t *testing.T) {
 		timelineByXUID: map[string][]domain.RelationDuelRawRow{
 			// Uniquement des duels AU watermark ou avant → aucun « nouveau ».
 			"rival-1": {
-				duelAt("m-a", watermark, 1, 5, 5),                  // == watermark (non strict) → ignoré
+				duelAt("m-a", watermark, 1, 5, 5),                   // == watermark (non strict) → ignoré
 				duelAt("m-b", watermark.Add(-3*time.Hour), 2, 2, 8), // avant → ignoré
 			},
 		},

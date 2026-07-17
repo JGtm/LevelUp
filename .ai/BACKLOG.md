@@ -10,74 +10,87 @@
 
 ---
 
-### [prod/VPS] Constats audit post-deploy 2026-07-16 — restes à traiter
+### [prod/backup] Trancher la redondance backup : systemd hôte (canonique) vs scheduler in-app
 
-> Noté le 2026-07-16 (post-deploy c3f2aa6fb, audit ssh). **Soldés les 16-17/07** : clé
-> `LEVELUP_HALOAPI_KEY` transférée en prod + `team_colors` H5 seedé 8/8 (fenêtre d'arrêt
-> 7,1 s) ; fichier nginx mort `levelup.bak-*` retiré de sites-enabled ; **vhost nginx
-> réaligné sur cible unique** (doublon X-Frame-Options DENY/SAMEORIGIN éradiqué, purge
-> reliquats Streamlit, timeouts/body scopés sur /api/, template = miroir exact, copie
-> sites-available resynchronisée — merge ops/nginx-vhost-realign).
+> Noté le 2026-07-17 (train backlog, audit VPS lecture seule). Le constat antérieur
+> (« restic absent de l'hôte ») était FAUX : un backup restic niveau hôte via systemd
+> tourne quotidiennement depuis 2026-06-19 et il est SAIN (repo chiffré
+> `/opt/levelup/restic-repo`, 9 snapshots, couvre `data/titles` + `data/auth` + config,
+> arrêt bref du conteneur pour cohérence DuckDB). Le WARN au boot vient du scheduler Go
+> in-app qui cherche restic DANS le conteneur (absent) — et ce scheduler serait de toute
+> façon redondant, non chiffré (`--insecure-no-password` forcé par `toPkgConfig`) et sur
+> le même disque.
 
-1. **AUCUNE sauvegarde automatique en prod** : `restic` absent de l'hôte → le scheduler backup se désactive au boot (WARN). Décider et installer une stratégie (restic + dépôt distant + secrets) — priorité haute pour un service avec données joueurs.
-2. **Observabilité media tooling** : la prod loggue en `LEVELUP_LOG_LEVEL=warn` → la ligne INFO « ffmpeg disponibles » du boot est invisible (seuls les problèmes sortiraient en WARN — contrat d'alerte rempli, positif silencieux). Si preuve positive voulue au boot prod : exposer dans /health ou ligne WARN-neutre. Confort, pas un bug. Vérifié : ffmpeg Debian 5.1.9 a tous les encodeurs/muxers requis (`check-env` tout [OK]).
-3. **Cache-Control des assets hashés Vite** : le Go ne pose qu'ETag/Last-Modified (pas de `Cache-Control: immutable` sur `/assets/*-<hash>.*`) — amélioration différée, à faire côté Go (pas en surcouche nginx).
-
-**Effort** : 1 = chantier dédié (secrets/politique) ; 2 = cosmétique ; 3 = rapide.
-
----
-
-### [dette/web] squad/v2 largement mort (post-HistoryTable) — inventaire knip à purger
-
-> Noté le 2026-07-16 (train corrections v7, salve 4). `HistoryTable` v2 et `TimeseriesCombatYield` ont été supprimés ; knip signale le reste de `squad/v2` comme inutilisé : exports de `types.ts` (`AssetReference`, `SquadHeader`, `SquadPageV2Response`…), `SquadCombatProfileRow.tsx`, `squad/v2/queries.ts`. Vérifier les consommateurs réels puis purger (règle 0 code mort — git garde l'historique). **Effort** : rapide.
+**À faire** : (a) recommandé — acter le backup systemd hôte comme canonique et éteindre
+le WARN in-app (`backup_enabled: false` dans `app_settings.json` prod, une ligne) ;
+(b) alternative — migrer vers le scheduler in-app (exige de câbler
+`ResticPassword`/`ResticPwdFile` ignorés aujourd'hui, régression chiffrement sinon).
+**Étape future** : réplication off-site du dépôt restic (identifiants cloud/SFTP requis —
+aucun disponible aujourd'hui). Runbook backup à écrire au moment de l'activation off-site.
+**Effort** : (a) = 1 ligne de config prod ; off-site = chantier dédié (secrets).
 
 ---
 
-### [dette/api] `GET /players/{slug}/battlepass` (Home) — consommateur à vérifier, supprimer si mort
+### [infra/release] Activer le pull GHCR côté VPS (post-train 2026-07-17)
 
-> Noté le 2026-07-16 (train corrections v7, salve 4). La home lit ses défis via `/pages/palmares/season-pass` ; `/battlepass` semble sans consommateur web direct. Vérifier (web + CLI + tests métier) puis supprimer si mort — même traitement que l'ex-route `/challenges` Home (supprimée salve 4 après preuve de mort). **Effort** : rapide.
-
----
-
-### [data/h5] Registre d'armes H5 — long-tail de 31 weapon_ids sans rôle
-
-> Noté le 2026-07-16 (fix donut « Frags par type d'arme » H5). Le registre couvre 35/66 `weapon_id` réels de `v_weapon_kills` (233 274 frags répartis sur 8 rôles) ; ~31 IDs restants (variantes/UGC) restent sans rôle — dégradation gracieuse, absents du donut. Étendre `weaponRegistryH5Stock` si l'exhaustivité est voulue. Chantier data (mapping manuel). **Effort** : moyen.
+> Le pipeline est livré (build image en CI, push GHCR sur main, `deploy.sh` pull avec
+> fallback build local — kill-switch daté, retrait cible 2026-Q4). Sans action, le
+> fallback build local continue de fonctionner. Pour passer au flux nominal : une action
+> unique sur le VPS — `docker login ghcr.io` avec un PAT `read:packages`, OU rendre le
+> package `levelup` public. Détail : `docs/RUNBOOK_GO_LIVE.md`. **Effort** : 5 min.
 
 ---
 
-### [ux/relations] PLAN_RELATIONS_UX_2026-07 — lots restants non exécutés
+### [sécurité/autZ] Routes prestige par `{id}` : BOLA niveau objet (résiduel, distinct du BOLA acteur)
 
-> Noté le 2026-07-16. Seul le lot H (chip « Multi-jeux ») a été livré (train corrections v7). Le reste du plan — renommage du toggle `includeFriends`, refonte des CoreCards, tri du tableau, etc. — est en attente : voir [.ai/PLAN_RELATIONS_UX_2026-07.md](.ai/PLAN_RELATIONS_UX_2026-07.md).
-
----
-
-### [i18n] Tiers de rangs — duplication du mapping FR + cache des défis mono-langue
-
-> Noté le 2026-07-16 (lot i18n du train corrections v7). Deux suites : (1) le mapping des noms de tiers existe en 3 endroits (grille `lib/skillTiers.ts`, `CSR_TIER_FR` d'`ExplorerTargetSeasonCSR`, helper `localizeTierLabel` dérivé) → centraliser en source unique + garde-rail (règle ≤2 copies, la 3e impose le helper) ; (2) les titres de défis mis en cache par le fetch background sont bakés à la langue du fetch (FR) — seul le chemin live est locale-aware ; invalider ou re-résoudre à la bascule de langue. **Effort** : rapide à moyen.
-
----
-
-### [infra/release] Build de l'image en CI → pull registry (au lieu de `docker build` sur le VPS)
-
-> Noté le 2026-07-16 (audit release, reco P3). Aujourd'hui l'image est reconstruite sur le VPS à chaque deploy : un `apt-get` cassé ne se découvre qu'en prod, pendant le déploiement. Pré-builder en CI (GHCR) attrape l'échec avant et accélère le deploy. Déjà esquissé dans `RUNBOOK_GO_LIVE.md` (§ évolutions). **Effort** : moyen (workflow + deploy.sh).
+> Noté le 2026-07-17 (livraison de la garde acteur généralisée, commit `b8e97cb43`).
+> Le BOLA ACTEUR est clos : les 14 routes non-squad réconcilient `user_id`/`created_by`/
+> `requested_by` avec la session (`authorizeActor`, 403 `player_forbidden`, garde-rail AST
+> structurel). Résiduel découvert : les routes unitaires par `{id}` sans champ acteur
+> (`GetChallenge`, `UpdateChallenge`, `AbandonChallenge`, `SuggestNext`, `GetArc`,
+> `ListSquadChallenges`) ne vérifient pas que l'OBJET ciblé appartient au `{player_slug}`
+> du chemin. Blast radius limité (instance invités-only + lockdown), même famille de fix :
+> vérifier l'appartenance de l'objet au joueur du chemin. Tests 403/404 par endpoint.
+> **Effort** : moyen.
 
 ---
 
-### [sécurité/autZ] Routes prestige : réconciliation acteur user_id ↔ chemin (BOLA résiduel) — à corriger avant exposition élargie
+### [data/h5] Frags hors-arsenal H5 : bucket « Spartan », véhicules, tourelles, UGC (~16,6 k frags)
 
-> Noté le 2026-06-10 (revue `feat/coach-v3-squad`). **MàJ 2026-07-16 (train corrections v7)** : l'état décrit initialement est périmé — les routes prestige sont aujourd'hui montées **SOUS** `/players/{player_slug}` (ownershipMW, ADR 0029) et tout le client passe par le chokepoint `scopedToPlayer` (challenges déplacées sous `/prestige/challenges*`, garde-rail anti-collision `route_collision_test.go`). Le fix squad-only `ActorGuard` est livré.
+> Noté le 2026-07-17 (solde du long-tail `v_weapon_kills`). Les 5 vraies armes tenues du
+> long-tail (3 grenades + 2 mêlée, ~18,4 k frags) sont mappées. Reste hors donut par
+> CONCEPTION (leur donner un rôle d'arme fausserait « Frags par type d'arme » et l'insight
+> `blind_spot_power`) : véhicules (Ghost, Warthog, Banshee…), tourelles, bucket
+> d'attribution générique « Spartan » (~8,8 k frags, nature ambiguë) et 7 IDs UGC sans
+> libellé (~2,3 k pour le plus gros). Les capter exigerait un rôle `vehicle`/`turret`
+> dédié → décision produit avant tout code. **Effort** : décision + petit (mapping).
 
-**Problème (résiduel)** : les handlers non-squad lisent l'acteur depuis le **body/query** (`user_id`, `created_by`) sans le réconcilier avec le `{player_slug}` du chemin. `ownershipMW` vérifie le segment d'URL, pas le payload : un utilisateur authentifié A peut passer la garde avec SON slug dans le chemin et cibler B via `user_id` dans le body (BOLA horizontal). Blast radius limité (instance invités-only + lockdown) mais incohérent avec le reste.
+---
 
-**Note harness** : en mode démo le bundle prestige ne se monte pas (pas de DuckDB) → le test anti-collision générique ne couvre pas prestige-vs-autres ; la paire home+prestige est couverte par un test ciblé.
+### [data/csr] Densifier le CSR des adversaires (prérequis au lot G Relations)
 
-**Déjà fait (squad-only, cette branche)** : helper `squadActorGuard` (`server.go`) + `PrestigeHandler.WithActorGuard` → 403 `player_forbidden` si l'acteur n'est pas un profil possédé par la session (réutilise `authz.Enforced`/`CurrentUser`/`CanAccessPlayer`, multi-profil famille). Transparent demo/auth-off. Tests httptest 403 sur les 6 routes squad.
+> Noté le 2026-07-17 (gate G0 du chantier Relations UX : 0 % des rivaux
+> `enemy_matches >= 8` ont une ligne CSR exploitable dans `match_csrs_latest` — le lot G
+> « contexte CSR bête noire » a été statué `[!]` sur mesure). Cause : `UpsertSharedCSRs`
+> ne persiste pas le CSR des adversaires non syncés. Si le contexte CSR des rivaux est
+> voulu un jour : densifier d'abord la donnée (écriture append-only, règles ART), puis
+> rouvrir le lot G (spec dans `.ai/V7/PLAN_RELATIONS_UX_2026-07.md`). **Effort** : moyen.
 
-**À faire (reste)** : étendre la même garde aux endpoints prestige pré-existants — soit (a) per-handler sur `user_id` (`CreateArc`, `ListActiveChallenges`, `GetMyPrestige`, `SuggestTemplates`, `DeleteArc`, `pilot-mode`, …), soit (b) un middleware sur le sous-groupe. Audit complet des handlers lisant `user_id`/`created_by`/`requested_by` requis. Tests 403 par endpoint.
+---
 
-**Note design** : « dériver de la session » = en pratique « vérifier que le slug client ∈ profils possédés (`CanAccessPlayer`) » pour gérer le multi-profil famille, pas un slug unique figé.
+### [dette/mineure] Reliquats relevés par le train 2026-07-17 (à grouper dans un prochain lot d'entretien)
 
-**Effort** : moyen (audit + N handlers + tests ; touche des features livrées → PR dédiée).
+- En-tête de `apps/go-api/internal/notifications/types.go` : mentionne encore un « seed
+  par catégorie » des préférences qui n'existe plus (une catégorie sans ligne est active
+  par défaut via `isCategoryEnabledOn`) — doc inversée à corriger.
+- `openapi.yaml` : schéma nommé `BattlePassResponse` orphelin (jamais `$ref`é) — purger ou
+  justifier.
+- `SUBTIER_ROMAN` dupliqué en 2 exemplaires (`ExplorerTargetSeasonCSR.tsx`,
+  `CareerRankingBlock.tsx`) — dans la limite des ≤ 2 copies, à centraliser si une 3e
+  apparaît.
+- CLI `duckdb` absent de l'environnement de dev Windows — les exemples ad hoc de
+  CLAUDE.md le supposent présent (contournement utilisé : sonde Go jetable).
+- `release.yml` (tags `v*`) ne pousse pas l'image Docker sur GHCR (seulement les binaires).
 
 ---
 
@@ -145,56 +158,10 @@
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.
 
-Ce backlog liste les extensions volontairement reportées **après** la livraison V2 du pont coach → Prestige. Chaque entrée doit faire l'objet d'une décision produit séparée avant ouverture d'une nouvelle branche.
-
-### [coach/prestige] V2.1 — Plumbing `Source` → `prestige_telemetry.source` — ⏸️ PARKÉ
-
-> ⏸️ **Parké (2026-06-09)** : **but final = tuner le coach** (mesurer si les défis proposés par le coach sont acceptés/complétés davantage que ceux créés par le joueur, et réinjecter dans `synthesis_grammar.toml`). Mais **personne n'a aujourd'hui de question de tuning concrète** → écrire la télémétrie serait « écrire pour personne ». À ne ressortir **que** quand un besoin analytics réel émerge (définir d'abord la question, puis le consommateur, puis le plumbing). Vérifié : champ `Source` existe dans `CreateChallengeRequest` mais n'est pas propagé à la table, et `prestige_telemetry` n'est lue nulle part.
-
-**Idée** : ajouter une colonne `source` dans la table `prestige_telemetry` et propager `CreateChallengeRequest.Source` jusqu'à `EmitCreated` (puis aux EmitTransition pour suivre le devenir des challenges coach).
-
-**Bloqueur actuel** : la table `prestige_telemetry` est écrite mais jamais lue. Aucun script, aucun handler, aucun dashboard ne l'interroge. Le commentaire dans `types.go` mentionnant `analyze_prestige_tuning.py` réfère à un script qui n'existe pas — c'était une intention V1, jamais matérialisée.
-
-**Pré-requis avant d'implémenter** :
-- Construire d'abord un consommateur : soit un endpoint `GET /diag/prestige/telemetry` qui agrège (taux acceptance par source, complétion par source), soit un analyseur CLI Go (`cmd/prestige_tuning_analyze`) lisant directement la DB.
-- **PAS DE PYTHON** : analyseur en Go ou DuckDB CLI direct (`duckdb stats.duckdb -c 'SELECT ...'`).
-- Définir les métriques cibles : ratio accept/reject par source, taux completion coach vs user vs pilot_mode, distribution de strength des proposals acceptées.
-
-**Sans consommateur** : ajouter la colonne maintenant = écriture pour personne, dette de schéma qui grossit. Reporter jusqu'à ce qu'un besoin analytics concret émerge.
-
-**Effort estimé** : rapide (ALTER TABLE + 2 lignes Go) — mais l'analyseur côté consommation est moyen (1 commit endpoint diag ou CLI).
-
----
-
-### [coach/prestige] V3 — Apprentissage automatique de `synthesis_grammar.toml` — ⏸️ PARKÉ
-
-> ⏸️ **Parké (2026-06-09)** : downstream direct de la télémétrie ci-dessus (lit `prestige_telemetry`). Bloqué tant que V2.1 est parké. À reprendre seulement après qu'un consommateur de télémétrie existe et qu'un besoin de tuning concret est posé.
-
-**Idée** : analyser `prestige_telemetry` pour ajuster la grammaire de synthèse. Si les templates synthétisés sur metric=X ont taux de complétion < 30 % sur 50 acceptations, retirer X de la grammaire ou réduire ses windows autorisés.
-
-**Pré-requis** :
-- Job analytics qui lit `prestige_telemetry` + `coach_proposal`.
-- Mécanisme de PR automatique sur `synthesis_grammar.toml` (ou ajustement runtime via override en DB metadata).
-- Validation manuelle obligatoire avant application.
-
-**Effort estimé** : lourd. Demande infra analytics.
-
----
-
-### [coach/prestige] V3 — Notifications push externes — ⏸️ GARDÉ DE CÔTÉ
-
-> ⏸️ **Gardé de côté (2026-06-09)** : conservé tel quel. Vérifié : notifications coach **in-app uniquement** aujourd'hui (`player_notifications`). Pas de plan dédié pour l'instant (bloqué sur décision produit + infra push mobile inexistante).
-
-**Idée** : émission externe (push mobile, email, Discord) des proposals coach les plus fortes. Aujourd'hui les notifications restent in-app (`player_notifications` UI uniquement).
-
-**Pré-requis** :
-- Décision produit (sécurité / vie privée).
-- Infra push mobile (non disponible aujourd'hui).
-- Préférences fines par catégorie de notif.
-
-**Effort estimé** : lourd.
-
----
+> **MàJ 2026-07-17** : les 3 extensions autrefois parkées sont LIVRÉES (train backlog) —
+> V2.1 télémétrie `source` + endpoint diag, analyseur de tuning de la grammaire
+> (recommandations, validation manuelle), et canal externe Discord webhook (opt-in, OFF
+> par défaut). Voir « Récemment complété ».
 
 **Ordre de priorisation suggéré (coach/prestige V3)** — voir [.ai/PLAN_COACH_V3_GENERATION.md](.ai/PLAN_COACH_V3_GENERATION.md) :
 
@@ -202,7 +169,10 @@ Ce backlog liste les extensions volontairement reportées **après** la livraiso
 2. Phase B — Coach tone (mutualisable i18n avec Phase A)
 3. Phase C — Squad coach (la plus lourde : coach + coach_advisor + prestige + front squad)
 4. Cross-titre arcs backend ([.ai/PLAN_CROSS_TITLE_ARCS_BACKEND.md](.ai/PLAN_CROSS_TITLE_ARCS_BACKEND.md)) — à anticiper avec l'arrivée du 2e titre
-5. Parkés : V2.1 télémétrie + auto-grammar (besoin analytics à définir d'abord)
+5. Enrichissements possibles post-train : funnel `coach_proposal.status` dans l'analyseur
+   de tuning (taux d'acceptation amont), overlay Discord par titre
+   (`LoadNotifyConfigForTitle`), exposition de la liste des catégories forwardées via
+   settings.
 
 ---
 
@@ -210,6 +180,14 @@ Ce backlog liste les extensions volontairement reportées **après** la livraiso
 
 | Date | Item |
 |------|------|
+| 2026-07-17 | **[train backlog] Purges code mort** — `squad/v2` purgé (knip croisé grep, 4 types vivants conservés) ; route `GET /players/{slug}/battlepass` supprimée après preuve de mort (service `GetBattlePass` conservé, consommé par season-pass). Commits `42b317cd8`, `c9bfa0e7d`. |
+| 2026-07-17 | **[train backlog] Registre armes H5** — long-tail `v_weapon_kills` : 5 armes tenues mappées (3 grenades + golf club + oddball, ~18,4 k frags) ; véhicules/tourelles/UGC documentés hors-arsenal (item résiduel ouvert). Commit `9e0a8217d`. |
+| 2026-07-17 | **[train backlog] i18n tiers + cache défis** — mapping tiers CSR centralisé dans `lib/skillTiers.ts` (+ garde-rail grep) ; défis locale-aware via locale dans les query keys `home`/`seasonPass`. Commits `45200bc4c`, `7fc82f575`. |
+| 2026-07-17 | **[train backlog] Release CI** — image pré-buildée en CI (GHCR, build-only sur PR, push sur main), `deploy.sh` pull avec fallback build local (kill-switch daté 2026-Q4), `docs/RUNBOOK_GO_LIVE.md` créé. Commit `7bb6a4257`. |
+| 2026-07-17 | **[train backlog] Prod** — `/health` expose `media_tooling` (sonde ffmpeg au boot, figée) ; `Cache-Control: public, max-age=31536000, immutable` sur les assets Vite hashés (côté Go). Commits `731c3934f`, `5f486b0b1`. |
+| 2026-07-17 | **[chantier Relations UX] Plan 2026-07 CLOS** — lots A (tri colonnes), B (duels cliquables → match view via `matchIndexAtX`), C (toggle « jamais affrontés », défaut masqué, migrate store v2), F (CoreCards supprimées + lien Escouade), D (volet « Quoi de neuf » : `is_revived` SQL+DTO+strip front), E (notification `rival_encounter` post-sync par watermark, garde-fous 3/sync et 7 j), H régularisé `[~]`, G `[!]` (0 % couverture CSR rivaux). Plan archivé : `.ai/V7/PLAN_RELATIONS_UX_2026-07.md`. Commits `91649c01d`→`e38592ca9`. |
+| 2026-07-17 | **[sécurité] BOLA acteur prestige clos** — 14 routes non-squad réconcilient l'acteur body/query avec la session (`authorizeActor`, 403 `player_forbidden`), garde-rail AST structurel anti-régression, tests 403+verts par endpoint. Commit `b8e97cb43`. Résiduel objet-level → item backlog. |
+| 2026-07-17 | **[coach/prestige] V2.1 + V3 livrés** — colonne `source` (challenge + prestige_telemetry, migration `prestige_add_source_columns_v1`), source renseignée aux 4 origines (coach/user/pilot_mode/preset), endpoint diag `GET /_diag/prestige/telemetry/{slug}` ; analyseur `cmd/prestige-tuning-analyze` (recommandations grammaire, seuils 30 %/50, validation manuelle) ; canal Discord webhook pour notifications coach (opt-in `discord_notify_coach`, OFF par défaut, best-effort). Commits `709bac9ad`, `7fa643699`, `02797d4cb`, `2f30e180d`. |
 | 2026-06 | **[POST-V7] Go-live / cutover Python → Go** — la branche Go est devenue `main` (code applicatif Python `src/` retiré). Cutover terminé ; reste 2 micro-tâches optionnelles (doc async, tuning janitor) listées en backlog actif. |
 | 2026-06 | **[V8/Compare] CSR + CSR ATH (re-implémentation)** — cron CSR mondial autonome (`internal/scheduler/world_leaderboard_cron.go`, snapshots append-only), champs `HighestCSR*` restaurés dans `domain/compare.go` + `compare_service.go::applyCSRSummary`, exposés au front (`highest_csr`/`csr_alltime`). Commits `1693e6e1`, `aeaaffcd` (Phase 2 livrée). |
 | 2026-06 | **[auth/unification] Consolidation ADR 0023 — read-path + watcher daemon → MultiUserTokenStore** — phases 3a/3b/3c livrées (`ab0ebefa`, `9eb9b738`, `5c7d87a8`) : tous les chemins lisent le multi-user store en priorité (fallback legacy), tracker auto-découvert au boot, migration boot-time `MigrateLegacyTokens`. Couvre les items backlog « PR 2.5b watcher migration », « read-path switch » et « auth/cleanup migration ». PRs A–D du lockdown auth livrées (`2e2357db`, `00cb920c`, `58bf9ec7`, `d9fcb178`). |
