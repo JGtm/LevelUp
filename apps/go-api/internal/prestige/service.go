@@ -598,6 +598,8 @@ func (s *service) computeCurrentValue(ctx context.Context, c Challenge, now time
 		ctx, c.UserID, c.TitleSlug, c.Metric, s.deps.Tuning.Baseline.WindowMatches,
 	)
 	if err != nil {
+		slog.WarnContext(ctx, "prestige: current value unavailable, defaulting to 0",
+			"err", err, "challenge_id", c.ID, "metric", c.Metric)
 		return 0
 	}
 	samples := make([]MatchSample, len(matches))

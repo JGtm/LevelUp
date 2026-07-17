@@ -81,7 +81,7 @@ type homePageOutput struct {
 //
 // Le header permet au frontend de basculer la locale en runtime sans dépendre
 // d'un re-bootstrap après modification de app_settings.json.
-func (h *HomeHandler) resolveLocaleFromHeader(localeHeader string) string {
+func (h *HomeHandler) resolveLocaleFromHeader(ctx context.Context, localeHeader string) string {
 	if v := strings.ToLower(strings.TrimSpace(localeHeader)); v != "" {
 		if strings.HasPrefix(v, "en") {
 			return "en"
@@ -94,7 +94,11 @@ func (h *HomeHandler) resolveLocaleFromHeader(localeHeader string) string {
 		return "fr"
 	}
 	settings, err := h.settingsStore.Load()
-	if err != nil || settings == nil {
+	if err != nil {
+		slog.DebugContext(ctx, "home: locale settings load failed, fallback fr", "err", err)
+		return "fr"
+	}
+	if settings == nil {
 		return "fr"
 	}
 	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(settings.Lang)), "en") {
@@ -112,7 +116,7 @@ func (h *HomeHandler) handleGetHomePage(ctx context.Context, in *homePageInput) 
 		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", "joueur introuvable")
 	}
 
-	page, err := svc.GetHomePage(sctx, gamertag, h.resolveLocaleFromHeader(in.Locale))
+	page, err := svc.GetHomePage(sctx, gamertag, h.resolveLocaleFromHeader(ctx, in.Locale))
 	if err != nil {
 		slog.ErrorContext(sctx, "home: GetHomePage error", "err", err, "gamertag", gamertag)
 		// Phase 5 ART : distinguer FATAL DB (recovery en cours, retry possible)

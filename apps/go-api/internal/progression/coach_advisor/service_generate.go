@@ -291,6 +291,8 @@ func (s *service) resolveSingleSignal(in GenerateInput, sig Signal) (templateCho
 	ctx := context.Background()
 	catalog, err := s.deps.Templates.ListByTitle(ctx, in.TitleSlug)
 	if err != nil {
+		slog.WarnContext(ctx, "coach_advisor: arc step catalog list failed",
+			"err", err, "signal_kind", sig.Kind, "metric", sig.Metric)
 		return templateChoice{}, false
 	}
 	scores := MatchTemplateToSignal(sig, catalog, s.deps.MatcherWeights)
@@ -299,13 +301,24 @@ func (s *service) resolveSingleSignal(in GenerateInput, sig Signal) (templateCho
 		return templateChoice{signal: sig, template: filtered[0].Template, origin: OriginCatalog}, true
 	}
 	if s.deps.Synthesizer == nil {
+		slog.DebugContext(ctx, "coach_advisor: arc step signal unresolved (no catalog match, no synthesizer)",
+			"signal_kind", sig.Kind, "metric", sig.Metric)
 		return templateChoice{}, false
 	}
 	tmpl, err := s.deps.Synthesizer.Synthesize(sig, in.TitleSlug, in.Now)
 	if err != nil {
+		if errors.Is(err, ErrSignalTooWeak) || errors.Is(err, ErrMetricNotSynthesizable) {
+			slog.DebugContext(ctx, "coach_advisor: arc step signal skipped",
+				"signal_kind", sig.Kind, "metric", sig.Metric, "err", err)
+		} else {
+			slog.WarnContext(ctx, "coach_advisor: arc step synthesis failed",
+				"err", err, "signal_kind", sig.Kind, "metric", sig.Metric)
+		}
 		return templateChoice{}, false
 	}
 	if err := s.deps.Templates.UpsertOne(ctx, tmpl); err != nil {
+		slog.WarnContext(ctx, "coach_advisor: arc step upsert synthesized template failed",
+			"err", err, "template_id", tmpl.ID)
 		return templateChoice{}, false
 	}
 	return templateChoice{signal: sig, template: tmpl, origin: OriginSynthesized}, true
@@ -404,7 +417,10 @@ func (s *service) acceptArc(ctx context.Context, prop Proposal) (AcceptResult, e
 
 	// Reconstruire les titres/descriptions depuis ReasonParams
 	var params map[string]any
-	_ = json.Unmarshal([]byte(prop.ReasonParams), &params)
+	if err := json.Unmarshal([]byte(prop.ReasonParams), &params); err != nil {
+		slog.WarnContext(ctx, "coach_advisor: acceptArc reason params decode failed (titre/desc dégradés)",
+			"err", err, "proposal_id", prop.ID)
+	}
 	titleFR := stringFromMap(params, "title_fr")
 	descFR := stringFromMap(params, "description_fr")
 
