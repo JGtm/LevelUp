@@ -68,68 +68,57 @@ lint (`--new-from-merge-base=main`).
 
 ## LOT A — Correctness rapides (Go + web)
 
-- [ ] A1 (ID1) `internal/api/wire/registry_auth.go:105` — corriger le SUJET du
-      season pass (décision D7). ÉTAPE 1 : vérifier sur pièces la sémantique
-      upstream de GetChallenges/GetBattlePass (les endpoints Waypoint BP/défis
-      sont-ils ownership-scoped — fetchables uniquement pour le porteur du
-      token ? indice existant : pattern « fetch live 403 → cache 24 h »).
-      ÉTAPE 2 : si ownership-scoped (probable) → quand porteur des tokens ≠
-      joueur de la page : PAS de fetch live ni de persist, servir les
-      snapshots persistés du joueur de la page (chemin fallback existant) ;
-      quand porteur = joueur de la page : comportement actuel inchangé. Si NON
-      ownership-scoped → `forcePageIdentityXUID` comme ligne 53. Dans TOUS les
-      cas : plus jamais d'écriture des données de Y dans la DB de X. Tests :
-      les deux cas viewer=sujet / viewer≠sujet (étendre
-      `registry_auth_enrich_test.go` + test du chemin service).
-- [ ] A2 (ID4) — garde-rail ratchet : nouveau test dans `internal/api/wire/`
-      qui recense les constructeurs de contexte appelant `enrichWithHaloTokens`
-      et ÉCHOUE si l'un d'eux n'applique pas `forcePageIdentityXUID` (allowlist
-      d'exemptions datées, modèle `no_slug_comparison_test.go`).
-- [ ] A3 (W1) `apps/web/src/features/auth/XboxLoginPage.tsx:70` — `fetchQuery`
-      avec `staleTime: 0` (lecture réseau garantie post-login). Vérifier que le
-      store bootstrap consommé par la garde onboarding est bien resynchronisé
-      par cette lecture. Test vitest : cache anonyme préchargé → onAuthorized →
-      redirection dashboard, pas onboarding.
-- [ ] A4 (M3) `internal/migration/registry.go:225-230` — le chemin DM-5
-      (`recordSupersededBaseline`) exécute AUSSI l'ensure additif idempotent :
-      `ensureBaselinePlayerV1AdditiveColumns` ÉTENDU aux colonnes render de
-      `challenge_snapshots` (title/description/image_url/display_path) + au
-      `CREATE TABLE IF NOT EXISTS engagement_response_bins`. Test : fixture DB
-      « sentinelle présente, colonne expected_win_prob absente » → boot →
-      colonne présente, persist LUSR OK.
-- [ ] A5 (LB1) `internal/sync/engine_postsync_csr.go:36-40` — remplacer le
-      `MAX(fetched_at)` global par la sélection partitionnée par playlist
-      (réutiliser `world_csr_leaderboard_latest`/`_by_batch` ou MAX par
-      playlist_id). Test : 2 playlists à fetched_at distincts → les 2
-      retournées.
-- [ ] A6 (E5) — conversions recovery restantes :
-      `milestones_earned_repo.go:69` → `QueryRowRecovered` ;
-      `career_progression_partial.go:86`, `career_live_repo.go:213`,
-      `engagement_score_repo.go:202`, `fanout_repo.go:93` → `ExecRecovered`.
-      Étendre `player_db_recovery_routing_test.go` au motif `.Exec(`.
-- [ ] A7 (ME1) `cmd/cleanup_media_index/main.go:126` — LIKE avec `ESCAPE '\'`
-      + échappement de `_`/`%` dans le motif (helper testé unitairement,
-      aligné sur la sémantique HasPrefix de l'indexeur).
-- [ ] A8 (AU1) `internal/platform/auth/refresh_user_xsts.go` — persister le RT
-      rotaté IMMÉDIATEMENT après le refresh OAuth (avant XSTS), calqué sur
-      `persistRotatedRT` (`access_token_store_first.go:106-108`). Test : échec
-      XSTS transitoire → store contient le RT rotaté.
-- [ ] A9 (AU3) `internal/platform/auth/access_token_store_first.go:58` —
-      logger l'erreur de `store.Load` (`slog.ErrorContext(ctx, ..., "err", err)`)
-      avant la bascule legacy ; l'échec store ne doit plus être invisible dans
-      la télémétrie.
-- [ ] A10 (W4) `apps/web/src/features/admin/monitoring/DetectionsPanel.tsx:49`
-      — `window.prompt` retourne null (Annuler) → early-return, AUCUNE
-      mutation. Test vitest.
-- [ ] A11 (W3) `apps/web/src/features/home/HomeRecentPlaylistsCard.tsx:127,159-163`
-      — « Non classé » / « En placement (x/y) » / « Rang » via i18n.ts (parité
-      FR/EN par `Record<Locale, T>`).
-- [ ] A12 (CV4) — `cmd/levelup/cmd_data.go:233` : retirer l'emoji ;
-      `internal/notify/discord.go` : commentaire d'exemption daté (D2).
-- [ ] A13 (CV1) `cmd/engagement-calibrate/main.go` — chemins via
-      `PathResolver.PlayersRootDir`/`PlayerDBPath` ; `log.Printf`/`log.Fatalf` →
-      slog ; supprimer le champ `Bins` mort et le paramètre `ref` ignoré
-      d'`autoVerdict` (corriger la godoc).
+- [x] A1 (ID1) `internal/api/wire/registry_auth.go:105` — corriger le SUJET du
+      season pass (décision D7). ÉTAPE 1 (vérifiée sur pièces) : GetBattlePass/
+      GetChallenges construisent l'URL `players/xuid(<HaloXUID>)/{rewardtracks,decks}`
+      (provider.go:270,308,382,427) et persistent sous `sink.xuid` = pdb.XUID → endpoints
+      OWNERSHIP-SCOPED (pattern « fetch live 403 → cache 24 h », mémoire
+      reference_bp_challenges_staleness_auth403). ÉTAPE 2 : `forcePageIdentityXUID`
+      appliqué comme ligne 53 → sujet=page ; porteur≠page → 403 upstream → fallback cache
+      DB du sujet (aucune écriture croisée). Docstrings mises à jour. Tests ajoutés
+      (`registry_auth_enrich_test.go` : viewer≠sujet / viewer=sujet). `go test ./internal/api/wire/...` ok.
+- [x] A2 (ID4) — ratchet `registry_auth_page_identity_ratchet_test.go` (AST) : recense
+      les FuncDecl du package wire appelant `enrichWithHaloTokens`, échoue si l'un n'applique
+      pas `forcePageIdentityXUID` dans la même fonction ; allowlist datée (Compare,
+      ExplorerCtxWithAuth = xuid explicite) + garde anti-exemption-périmée. Vert.
+- [x] A3 (W1) `XboxLoginPage.tsx:70` — `fetchQuery({staleTime:0})` (défaut global 5 min
+      vérifié queryClient.ts:22). La lecture repeuple `queryKeys.bootstrap` que `__root`
+      observe → `hydrateFromBootstrap` resync l'appShellStore. Test vitest (cache anonyme
+      préchargé, client staleTime 5 min → dashboard, pas onboarding). 9/9 vert.
+- [x] A4 (M3) — nouveau champ `Migration.EnsureAdditive` appelé par le chemin DM-5
+      (`recordSupersededBaseline`, avant l'INSERT). `ensureBaselinePlayerV1AdditiveColumns`
+      étendu (colonnes render challenge_snapshots + `engagement_response_bins` via const
+      partagée `ddlEngagementResponseBins`, sortie de applyBaselinePlayerV1Tables → source
+      unique). Golden invariant intact. Test heal DM-5 (sentinelle présente, additifs
+      absents → boot → présents, INSERT expected_win_prob OK). Intégration verte.
+- [x] A5 (LB1) `engine_postsync_csr.go` — lecture de la vue partitionnée
+      `world_csr_leaderboard_latest` (par titre/saison/playlist) au lieu du MAX(fetched_at)
+      global. Test intégration (2 playlists à fetched_at distincts → les 2). Vert.
+- [x] A6 (E5) — milestones_earned_repo.go Append : QueryRow→QueryRowRecovered +
+      Exec→ExecRecovered (handle nu même méthode) ; 4 `.Player.Exec(`
+      (career_progression_partial, career_live_repo, engagement_score_repo, fanout_repo)
+      → ExecRecovered. Ratchet `player_db_recovery_routing_test.go` étendu au motif
+      `.Exec(` (sanity + doc). 0 plat restant (non-test). Package duckdb vert.
+- [x] A7 (ME1) `cmd/cleanup_media_index/main.go` — `escapeLikeLiteral` (\, _, %) +
+      `LIKE ... ESCAPE '\'`. Test unitaire (échappement) + test DuckDB (préfixe littéral
+      "Halo_5_Guardians-" ne matche plus "HaloX5YGuardians-"). Vert.
+- [x] A8 (AU1) `refresh_user_xsts.go` — `refreshAccessTokenForUser` reçoit le store et
+      persiste le RT roté IMMÉDIATEMENT (persistRotatedRT) après le refresh OAuth, avant
+      XSTS. Test : refresh mocké rote le RT, XSTS échoue → store contient le RT roté. Vert.
+- [x] A9 (AU3) `access_token_store_first.go:58` — `store.Load` err logué
+      (slog.ErrorContext) avant la bascule legacy. Test : xuid unsafe → Load err → log
+      ERROR présent. Vert.
+- [x] A10 (W4) `DetectionsPanel.tsx:49` — `window.prompt`→null ⇒ early-return, aucune
+      mutation. Tests vitest (Annuler → pas de PATCH ; validation → PATCH). Vert.
+- [x] A11 (W3) `HomeRecentPlaylistsCard.tsx` — 4 clés i18n
+      (`common.home.rank_unrated`/`rank_placement`/`rank_placement_progress`/`rank_label`)
+      FR+EN dans common.toml (regénéré). Libellés FR préservés → tests home existants
+      passent. tsc + vitest home verts.
+- [x] A12 (CV4) — `cmd_data.go:233` emoji retiré ; `discord.go` commentaire d'exemption
+      daté D2 (emojis = contenu du payload Discord). vet levelup+notify ok.
+- [x] A13 (CV1) `cmd/engagement-calibrate/main.go` — glob via
+      `PathResolver.PlayersRootDir` ; `log`→`slog` (5 sites) ; champ `Bins` mort supprimé ;
+      param `ref` d'`autoVerdict` retiré + godoc corrigée. Build cgo ok.
 
 **Gate A** : go test ciblés (wire, migration, sync, platform/auth,
 platform/duckdb, cmd) ; `make check-types` ; vitest ciblé (auth, admin, home) ;
@@ -269,4 +258,11 @@ seeder) ; vitest lib/features migrées ; lint ; thought_log ; commit.
 
 ## Découvertes (hors périmètre — consigner ici, NE PAS traiter)
 
-(vide)
+- [LOT A] `cmd/levelup/cmd_data.go` porte des emojis PRÉEXISTANTS en sortie CLI
+  (lignes 52, 95, 137, 185, 190, 293, 298, 305, 311, 351 — `✅`/`⚠️`). La revue n'a
+  flaggé que la ligne 233 (seule AJOUTÉE dans la fenêtre) ; A12 l'a retirée. Les autres
+  sont de la dette gelée (baseline) hors périmètre A12 — non traités. À solder si un
+  chantier « purge emojis CLI » est décidé.
+- [LOT A] `internal/platform/duckdb/fanout_repo.go:98` : `slog.Warn(...)` sans variante
+  `*Context` (viole la convention slog structuré-avec-ctx). Préexistant, hors périmètre
+  A6 (qui ne portait que la conversion recovery Exec→ExecRecovered). Non traité.

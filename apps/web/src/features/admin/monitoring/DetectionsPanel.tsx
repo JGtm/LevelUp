@@ -46,7 +46,12 @@ export function DetectionsPanel() {
   )
 
   function act(fingerprint: string, status: DetectionStatus) {
-    const note = window.prompt(tA('admin.detections.note_prompt')) ?? undefined
+    // W4 (revue 2026-07) : Annuler le prompt (retour null) DOIT tout annuler — aucune
+    // mutation. L'ancien `?? undefined` transformait null en undefined puis mutait quand
+    // même (changement de statut non voulu). Chaîne vide (OK sans texte) reste une
+    // validation → note absente mais mutation effectuée.
+    const note = window.prompt(tA('admin.detections.note_prompt'))
+    if (note === null) return
     setStatus.mutate({ fingerprint, status, note: note || undefined })
   }
 

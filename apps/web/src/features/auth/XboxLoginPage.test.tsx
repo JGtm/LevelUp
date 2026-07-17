@@ -5,18 +5,25 @@
  * Couvre aussi le toggle "Connexion admin (mot de passe)".
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { screen, waitFor, fireEvent } from '@testing-library/react'
+import { screen, waitFor, fireEvent, render } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { renderWithProviders } from '@/test/render-utils'
 import { server } from '@/test/setup'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { queryKeys } from '@/lib/query/keys'
+import type { BootstrapResponse } from '@/lib/api/types'
 import { XboxLoginPage } from './XboxLoginPage'
+
+// Spy navigate STABLE (vi.hoisted → référençable dans la factory vi.mock) pour
+// asserter la destination post-login (A3).
+const { mockNavigate } = vi.hoisted(() => ({ mockNavigate: vi.fn() }))
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
   return {
     ...actual,
-    useNavigate: () => vi.fn(),
+    useNavigate: () => mockNavigate,
   }
 })
 
@@ -27,7 +34,9 @@ describe('XboxLoginPage', () => {
       currentUsername: null,
       firstLaunch: false,
       isBootstrapped: true,
+      oauthCodeFlowEnabled: false, // device-code panel (XboxFlowPanel) → onAuthorized testable
     })
+    mockNavigate.mockClear()
   }
 
   beforeEach(resetStores)
@@ -146,5 +155,51 @@ describe('XboxLoginPage', () => {
       // De retour : le user_code est de nouveau visible.
       expect(screen.getByText(/ABCD-1234/i)).toBeInTheDocument()
     })
+  })
+
+  // A3 (revue 2026-07) — après un device-flow abouti, un joueur DÉJÀ établi doit
+  // atterrir sur le DASHBOARD, jamais sur l'onboarding, même si le cache bootstrap
+  // ANONYME (préchargé avant le login) est encore frais. fetchQuery({staleTime:0})
+  // force la lecture réseau autoritative. Sans staleTime:0, fetchQuery renverrait le
+  // bootstrap anonyme caché (défaut global 5 min) → onboarding forcé (régression).
+  it('post-login: joueur établi → dashboard malgré un cache bootstrap anonyme frais', async () => {
+    // Device-flow abouti immédiatement (status authorized).
+    server.use(
+      http.get('/api/v1/auth/device-flow/:attemptId', () =>
+        HttpResponse.json({
+          attempt_id: 'attempt-1',
+          status: 'authorized',
+          gamertag: 'TestPlayer',
+          xuid: '0000000000000001',
+          error: null,
+        }),
+      ),
+    )
+
+    // Client avec le staleTime de PROD (5 min) — le client de test par défaut a
+    // staleTime 0 et ne reproduirait pas le bug.
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0, staleTime: 5 * 60 * 1000 } },
+    })
+    // Cache bootstrap ANONYME préchargé (avant le login), frais (<5 min) : setup non
+    // 'ready' + aucun current_player → isEstablishedPlayer=false → onboarding SI servi.
+    qc.setQueryData(queryKeys.bootstrap, {
+      setup_required: false,
+      setup_state: 'auth_only',
+      current_player: null,
+      auth_mode: 'xbox',
+    } as unknown as BootstrapResponse)
+
+    render(
+      <QueryClientProvider client={qc}>
+        <XboxLoginPage />
+      </QueryClientProvider>,
+    )
+
+    // Le /bootstrap réseau (fixture MSW) renvoie un joueur établi → destination '/'.
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: '/' })
+    })
+    expect(mockNavigate).not.toHaveBeenCalledWith({ to: '/onboarding/openspartan' })
   })
 })

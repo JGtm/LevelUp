@@ -146,3 +146,51 @@ func TestForcePageIdentityXUID_OwnPage_Unchanged(t *testing.T) {
 		t.Errorf("page du propriétaire : xuid attendu %q, got %q", xuid, x)
 	}
 }
+
+// A1 (revue 2026-07) — SeasonPassCtxWithAuth doit forcer l'identité de PAGE avant tout
+// fetch BP/défis. Ces endpoints economy (players/xuid(<sujet>)/decks|rewardtracks) sont
+// OWNERSHIP-SCOPED : le SUJET vient de ctxkeys.HaloXUID et les snapshots sont persistés
+// sous le xuid de la PAGE (sink). Sans forçage, un compte connecté A consultant la page
+// de B fetchait les défis de A puis les persistait sous B (pollution, 4e occurrence du
+// bug PR #63). Ces tests verrouillent la composition enrich+force de SeasonPassCtxWithAuth.
+
+// Compte connecté A consultant la page du joueur B : le sujet du fetch BP/défis doit
+// être B (page), jamais A — sinon les données de A polluent la DB de B.
+func TestSeasonPassEnrich_ThirdPartyViewer_SubjectIsPage(t *testing.T) {
+	const connectedXUID = "xuid-compte-A-sp"
+	const pageXUID = "xuid-joueur-B-sp"
+	reg := &ServiceRegistry{}
+	pdb := &duckdb.PlayerDB{XUID: pageXUID}
+	// Session du compte connecté A (tokens frais + xuid A), comme après login SISO.
+	ctx := ctxkeys.WithHaloAuth(context.Background(),
+		&domain.HaloTokens{SpartanToken: "session-A", SpartanExpiresAt: time.Now().Add(time.Hour)},
+		connectedXUID)
+
+	// Composition IDENTIQUE à SeasonPassCtxWithAuth (registry_auth.go).
+	enriched := forcePageIdentityXUID(reg.enrichWithHaloTokens(ctx, pdb), pdb.XUID)
+
+	if x := ctxkeys.HaloXUID(enriched); x != pageXUID {
+		t.Errorf("sujet BP/défis attendu = page %q, got %q (fuite compte connecté → pollution DB de B)", pageXUID, x)
+	}
+	// Le token de session A reste porté : fetch xuid(B) avec token A → 403 ownership →
+	// fallback cache DB de B (jamais de persist des défis de A sous B).
+	if toks := ctxkeys.HaloTokens(enriched); toks == nil || toks.SpartanToken != "session-A" {
+		t.Errorf("tokens de session préservés attendus, got %v", toks)
+	}
+}
+
+// Propriétaire consultant SA propre page : sujet inchangé → fetch/persist BP/défis sous
+// son propre xuid (comportement nominal préservé).
+func TestSeasonPassEnrich_OwnPage_SubjectUnchanged(t *testing.T) {
+	const xuid = "xuid-proprietaire-sp"
+	halo.InvalidateCachedPlayerTokens(xuid)
+	reg := &ServiceRegistry{}
+	pdb := &duckdb.PlayerDB{XUID: xuid}
+	ctx := ctxkeys.WithHaloAuth(context.Background(),
+		&domain.HaloTokens{SpartanToken: "session-own-sp", SpartanExpiresAt: time.Now().Add(time.Hour)}, xuid)
+
+	enriched := forcePageIdentityXUID(reg.enrichWithHaloTokens(ctx, pdb), pdb.XUID)
+	if x := ctxkeys.HaloXUID(enriched); x != xuid {
+		t.Errorf("page du propriétaire : sujet BP/défis attendu %q, got %q", xuid, x)
+	}
+}

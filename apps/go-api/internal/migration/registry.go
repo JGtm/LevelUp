@@ -42,6 +42,17 @@ type Migration struct {
 	// une DB VIERGE (sentinelle absente), le DDL est appliqué normalement. La liste
 	// (steps squashés, ordonnés) sert aussi de trace d'audit du périmètre du squash.
 	SupersededByAll []string
+
+	// EnsureAdditive — heal ADDITIF idempotent d'une baseline squashée, rejoué sur le
+	// chemin DM-5 (recordSupersededBaseline) AVANT de marquer la baseline satisfaite.
+	// Motif (M3/M4) : une DB porteuse de la sentinelle peut néanmoins MANQUER des
+	// colonnes/tables additives qu'un step historique a ajoutées APRÈS que la
+	// sentinelle eut été appliquée sur CETTE DB (skew temporel : sentinelle posée
+	// avant que le step additif n'existe). Sans ce rejeu, aucun step restant ne
+	// répare le trou → persist LUSR / challenges cassé durablement. La fonction DOIT
+	// être 100% idempotente (AddColumnIfMissing / CREATE IF NOT EXISTS) : elle tourne
+	// aussi dans ApplySchema sur DB vierge (no-op). nil = pas de heal (défaut).
+	EnsureAdditive func(db *sql.DB) error
 }
 
 // registry est le registre ordonné (ordre d'insertion = ordre d'exécution).
@@ -270,6 +281,15 @@ func supersededBaselineSatisfied(applied map[string]migrationState, m Migration)
 func recordSupersededBaseline(ctx context.Context, db *sql.DB, slug string, m Migration) error {
 	slog.InfoContext(ctx, "migration: baseline squashée réputée satisfaite (DM-5, DDL non rejoué)",
 		"name", m.Name, "title", slug, "sentinel", m.SupersededByAll[len(m.SupersededByAll)-1])
+	// Heal additif idempotent AVANT l'enregistrement (M3/M4) : referme les colonnes /
+	// tables additives absentes d'une DB au schéma partiel (skew temporel de la
+	// sentinelle). On l'exécute avant l'INSERT pour NE PAS marquer une baseline
+	// satisfaite si le heal échoue (un boot suivant retentera).
+	if m.EnsureAdditive != nil {
+		if err := m.EnsureAdditive(db); err != nil {
+			return fmt.Errorf("migration %s ensure additive (superseded baseline): %w", m.Name, err)
+		}
+	}
 	_, err := db.ExecContext(ctx,
 		`INSERT INTO schema_migrations (title_slug, name, description, applied_at, schema_done, backfill_done)
 		 VALUES (?, ?, ?, ?, TRUE, TRUE)`,
