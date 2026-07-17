@@ -4,7 +4,6 @@ import {
   formatSignedPoints,
   isFullHistoryScope,
   signOf,
-  outcomeCodeToValue,
 } from './ExplorerBriefing.logic'
 
 describe('formatSignedFixed', () => {
@@ -50,14 +49,5 @@ describe('signOf', () => {
     expect(signOf(-2)).toBe(-1)
     expect(signOf(0)).toBe(0)
     expect(signOf(null)).toBe(0)
-  })
-})
-
-describe('outcomeCodeToValue', () => {
-  it('mappe les codes backend', () => {
-    expect(outcomeCodeToValue(1)).toBe('tie')
-    expect(outcomeCodeToValue(2)).toBe('win')
-    expect(outcomeCodeToValue(3)).toBe('loss')
-    expect(outcomeCodeToValue(4)).toBe('dnf')
   })
 })

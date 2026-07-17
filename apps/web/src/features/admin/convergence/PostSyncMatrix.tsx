@@ -8,7 +8,7 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { SchedulerPlayerOutcome } from '@/lib/api/types'
 import type { AdminManifestKey } from '@/lib/i18n/generated/admin'
-import { Sparkline } from '../sync/Sparkline'
+import { Sparkline } from '@/components/charts/Sparkline'
 import { useAdminT } from '../useAdminText'
 
 interface PostSyncColumn {

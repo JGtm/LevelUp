@@ -1,42 +1,38 @@
 /**
  * ExplorerBriefingStrip — bandeau de briefing au-dessus du tableau (mode Matchs).
  *
- * Lecture compacte du RÉSULTAT DE RECHERCHE : rangée socle de 4 KPI (Matchs,
- * Bilan, FDA agrégat, Perf. moyenne) avec deltas vs baseline personnelle, puis
- * frise des résultats. Les modules conditionnels (dimensions, tendance, classé)
- * sont rendus par ExplorerBriefingModules (Lot C) sous le socle.
+ * Lecture compacte du RÉSULTAT DE RECHERCHE : rangée socle de 4 à 6 tuiles KPI
+ * (Matchs, Taux de victoire + micro-sparkline de tendance, FDA agrégat, Perf.
+ * moyenne, et — conditionnelles — Classement et Séries) avec deltas vs baseline
+ * personnelle. Les modules « Par… » + Moments forts sont rendus par
+ * ExplorerBriefingModules sous le socle.
  *
  * Dégradation : briefing absent → rien ; low_sample → socle + mention
  * échantillon faible, aucun module. Aucune couleur hex : tokens sémantiques.
  */
-import { KpiCard } from '@/components/cards/KpiCard'
-import { OutcomeSequenceTape, type OutcomePoint } from '@/components/charts/OutcomeSequenceTape'
-import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { Sparkline } from '@/components/charts/Sparkline'
+import { useCapability } from '@/lib/capabilities/capabilities'
+import { tokenCssVar } from '@/lib/accessibility'
 import { kdaNetColor, winRateColor } from '@/lib/colors/outcomePalette'
 import { formatDateRange, formatPercentInt } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { ExplorerBriefing } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
+import { BriefingTile } from './BriefingTile'
 import {
+  deltaToken,
   formatSignedFixed,
   formatSignedPoints,
   isFullHistoryScope,
-  outcomeCodeToValue,
-  signOf,
 } from './ExplorerBriefing.logic'
 import { ExplorerBriefingModules } from './ExplorerBriefingModules'
+import { RankedTile, StreaksTile } from './ExplorerBriefingTiles'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
 
 interface Props {
   briefing: ExplorerBriefing | null | undefined
   t: T
-}
-
-/** Token de couleur d'un delta signé (positif = gagnant, négatif = perdant, nul = neutre). */
-function deltaToken(v: number | null | undefined): SemanticToken {
-  const s = signOf(v)
-  return s > 0 ? 'outcome-win' : s < 0 ? 'outcome-loss' : 'outcome-draw'
 }
 
 function formatPeriod(
@@ -50,40 +46,16 @@ function formatPeriod(
   return formatDateRange(start, end, locale === 'en' ? 'en-US' : 'fr-FR')
 }
 
-interface TileProps {
-  label: string
-  value: React.ReactNode
-  sub?: React.ReactNode
-  accent?: SemanticToken
-}
-
-function BriefingTile({ label, value, sub, accent }: TileProps) {
-  return (
-    <KpiCard accent={accent} className="h-full">
-      <div className="px-3 py-2">
-        <p className="text-3xs uppercase tracking-wide text-muted-foreground">{label}</p>
-        <div className="mt-0.5 text-xl font-bold tabular-nums leading-tight text-foreground">
-          {value}
-        </div>
-        {sub && <div className="mt-0.5 text-2xs text-muted-foreground">{sub}</div>}
-      </div>
-    </KpiCard>
-  )
-}
-
 export function ExplorerBriefingStrip({ briefing, t }: Props) {
   const locale = useAppShellStore((s) => s.locale)
+  // Capability 'ranked' lue AVANT tout early-return (règle des hooks React).
+  const hasRanked = useCapability('ranked')
   if (!briefing) return null
 
   const scope = briefing.scope
   const baseline = briefing.baseline
   const period = formatPeriod(briefing.period_start, briefing.period_end, locale)
-  const matchesCount = scope?.matches ?? briefing.outcome_sequence?.length ?? 0
-
-  const tapePoints: OutcomePoint[] = (briefing.outcome_sequence ?? []).map((o) => ({
-    outcome: outcomeCodeToValue(o.outcome_code),
-    matchId: o.match_id,
-  }))
+  const matchesCount = scope?.matches ?? 0
 
   const wr = scope?.win_rate ?? null
   const kda = scope?.kda ?? null
@@ -93,10 +65,17 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
   // construction : on masque le fragment (valeur + flèche + libellé) sur le socle
   // ET les lignes de dimension (P-1). Sous filtre, comportement V1 inchangé.
   const fullHistory = isFullHistoryScope(scope?.matches, baseline?.matches)
+  // Séries : tuile omise si les deux segments sont à zéro (DP-3).
+  const streaks = briefing.streaks ?? null
+  const showStreaks =
+    streaks != null && ((streaks.best_win_streak ?? 0) > 0 || (streaks.worst_loss_streak ?? 0) > 0)
+  // Tendance : micro-sparkline nue du taux de victoire par bucket dans la tuile
+  // Taux de victoire (DP-6). Omise si le DTO trend est absent.
+  const trendValues = (briefing.trend?.points ?? []).map((p) => Math.round(p.win_rate * 100))
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid gap-2 grid-cols-2 sm:[grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
         {/* Matchs + période */}
         <BriefingTile
           label={t('explorer.briefing.matches_label')}
@@ -105,7 +84,7 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
           accent="outcome-draw"
         />
 
-        {/* Bilan : taux de victoire + V-D-N + delta */}
+        {/* Taux de victoire + micro-sparkline de tendance + V-D-N + delta */}
         {scope && (
           <BriefingTile
             label={t('explorer.briefing.win_rate_label')}
@@ -113,6 +92,17 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
               <span style={wr != null ? { color: winRateColor(wr) } : undefined}>
                 {formatPercentInt(wr)}
               </span>
+            }
+            chart={
+              briefing.trend != null ? (
+                <Sparkline
+                  values={trendValues}
+                  token="outcome-win"
+                  width={120}
+                  height={28}
+                  ariaLabel={t('explorer.briefing.win_rate_label')}
+                />
+              ) : undefined
             }
             sub={
               <>
@@ -185,21 +175,13 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
             }
           />
         )}
-      </div>
 
-      {/* Frise des résultats */}
-      {tapePoints.length > 0 && (
-        <OutcomeSequenceTape
-          matches={tapePoints}
-          height={64}
-          labels={{
-            win: t('explorer.briefing.series_win'),
-            loss: t('explorer.briefing.series_loss'),
-            tie: t('explorer.briefing.series_tie'),
-            dnf: t('explorer.briefing.series_dnf'),
-          }}
-        />
-      )}
+        {/* Classement (tuile) — gaté capability 'ranked' + DTO présent (DP-2) */}
+        {hasRanked && briefing.ranked != null && <RankedTile ranked={briefing.ranked} t={t} />}
+
+        {/* Séries (tuile) — omise si les deux segments à zéro (DP-3) */}
+        {showStreaks && streaks != null && <StreaksTile streaks={streaks} t={t} />}
+      </div>
 
       {/* Échantillon faible : socle seul + mention ; sinon modules conditionnels. */}
       {briefing.low_sample ? (

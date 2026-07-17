@@ -870,22 +870,6 @@ en = "vs usual"
 fr = "Échantillon faible ({n} matchs)"
 en = "Small sample ({n} matches)"
 
-[explorer.briefing.series_win]
-fr = "Victoire"
-en = "Win"
-
-[explorer.briefing.series_loss]
-fr = "Défaite"
-en = "Loss"
-
-[explorer.briefing.series_tie]
-fr = "Égalité"
-en = "Tie"
-
-[explorer.briefing.series_dnf]
-fr = "Abandon"
-en = "DNF"
-
 # ─── Bandeau briefing : modules conditionnels (Lot C) ──────────────────────────
 
 [explorer.briefing.dim_map]
@@ -904,10 +888,6 @@ en = "By playlist"
 fr = "{n, plural, one {# match} other {# matchs}}"
 en = "{n, plural, one {# match} other {# matches}}"
 
-[explorer.briefing.trend_title]
-fr = "Tendance"
-en = "Trend"
-
 [explorer.briefing.ranked_title]
 fr = "Classement"
 en = "Ranking"
@@ -924,25 +904,22 @@ en = "Placement"
 fr = "Placement ({n, plural, one {# match restant} other {# matchs restants}})"
 en = "Placement ({n, plural, one {# match left} other {# matches left}})"
 
-[explorer.briefing.context_split_title]
-fr = "Solo vs Escouade"
-en = "Solo vs Squad"
+# Sous-texte de la tuile Classement (V3) : palier de départ du scope.
+[explorer.briefing.ranked_since]
+fr = "depuis {tier}"
+en = "since {tier}"
 
-# ─── Bandeau briefing : cartes « Séries » et « Moments forts » (Phase 5b) ───────
+[explorer.briefing.context_split_title]
+fr = "Par contexte"
+en = "By context"
+
+# ─── Bandeau briefing : tuile « Séries » (socle) et bande « Moments forts » (V3) ─
 
 [explorer.briefing.streaks_title]
 fr = "Séries"
 en = "Streaks"
 
-[explorer.briefing.streak_best]
-fr = "Meilleure série"
-en = "Best streak"
-
-[explorer.briefing.streak_worst]
-fr = "Pire série"
-en = "Worst streak"
-
-# Abréviations V/D alignées sur record_vdn (« {w} V · {l} D »).
+# Abréviations V/D alignées sur record_vdn (« {w} V · {l} D »), valeur de la tuile Séries.
 [explorer.briefing.streak_wins]
 fr = "{n} V"
 en = "{n} W"

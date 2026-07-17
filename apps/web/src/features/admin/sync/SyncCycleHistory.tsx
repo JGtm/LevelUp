@@ -7,7 +7,7 @@ import { tokenCssVar, type SemanticToken } from '@/lib/accessibility/semantic-to
 import type { SchedulerCycleRecord } from '@/lib/api/types'
 import { adminAbsoluteTime, adminRelativeTime, formatDurationMs, type AdminLocale } from '../format'
 import { useAdminT, useAdminLocale, type TAdmin } from '../useAdminText'
-import { Sparkline } from './Sparkline'
+import { Sparkline } from '@/components/charts/Sparkline'
 
 export function SyncCycleHistory({ history }: { history: SchedulerCycleRecord[] }) {
   const tA = useAdminT()
