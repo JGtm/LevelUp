@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -1245,6 +1246,34 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	}
 }
 
+// immutableAssetCacheControl : politique de cache des assets Vite au nom hashé.
+// max-age 1 an + immutable — sûr car le hash de contenu change à chaque build,
+// donc l'URL elle-même est un cache-buster (le navigateur ne revalide jamais).
+const immutableAssetCacheControl = "public, max-age=31536000, immutable"
+
+// viteHashedAssetPattern reconnaît les fichiers émis par Vite avec un hash de
+// contenu : `/assets/<nom>-<hash>.<ext>`. Le hash par défaut de Vite fait 8
+// caractères base64url ([A-Za-z0-9_-]) ; on exige >= 8 pour ne PAS confondre un
+// simple nom à tirets (`/assets/mon-fichier.css`) avec un asset hashé. index.html
+// et tout fichier non hashé (racine, /favicon.ico…) ne matchent pas → jamais
+// marqués immutable (ils DOIVENT rester revalidables pour livrer un nouveau build).
+var viteHashedAssetPattern = regexp.MustCompile(`^/assets/.+-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$`)
+
+// isViteHashedAsset indique si le chemin URL cible un asset Vite au nom hashé.
+func isViteHashedAsset(urlPath string) bool {
+	return viteHashedAssetPattern.MatchString(urlPath)
+}
+
+// serveStaticFile délègue au FileServer (qui pose ETag/Last-Modified/Content-Type)
+// après avoir ajouté Cache-Control: immutable UNIQUEMENT pour les assets hashés.
+// Le header est posé AVANT ServeHTTP : il survit aussi bien au 200 qu'au 304.
+func serveStaticFile(w http.ResponseWriter, req *http.Request, fileServer http.Handler) {
+	if isViteHashedAsset(req.URL.Path) {
+		w.Header().Set("Cache-Control", immutableAssetCacheControl)
+	}
+	fileServer.ServeHTTP(w, req)
+}
+
 // mountSPA sert le build Vite (LEVELUP_WEB_DIST) en catch-all /* : un fichier du
 // dist servi tel quel, sinon index.html (route client-side React) avec injection
 // Open Graph. Inactif si WebDistDir vide ou index.html absent. Extrait de NewRouter (K2a).
@@ -1255,7 +1284,7 @@ func mountSPA(r chi.Router, serverCtx context.Context, cfg *config.AppConfig, re
 			fileServer := http.FileServer(http.Dir(dist))
 			r.Get("/*", func(w http.ResponseWriter, req *http.Request) {
 				if fi, err := os.Stat(filepath.Join(dist, filepath.Clean(req.URL.Path))); err == nil && !fi.IsDir() {
-					fileServer.ServeHTTP(w, req)
+					serveStaticFile(w, req, fileServer)
 					return
 				}
 				reg.ServeIndexWithOG(w, req, indexPath)
