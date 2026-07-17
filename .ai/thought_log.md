@@ -7818,3 +7818,46 @@ Sanity node : chaîne body EXACTE matchée (« Or I ») ; « Ordre I », « Scor
 **Conclusion / prochaine étape** : les 3 causes CI de la PR #64 (goconst,
 baseline, E2E carrière round 2) sont traitées dans le working tree ;
 commits/push/re-CI côté superviseur.
+
+## [2026-07-17] Revue de code adversariale — fenêtre 10 jours (24fc02f2f..HEAD)
+
+**Statut** : Complété (revue seule, AUCUN fix appliqué, working tree propre hors
+ce journal + rapport).
+
+**Décision technique principale** : revue multi-agents en 2 phases sur les
+897 fichiers (+87k/−47k) des trains 07-07 → 07-17 : 9 chercheurs par angle
+(scan ligne-à-ligne Go/web, comportements supprimés, contrats inter-fichiers,
+réutilisation, simplification, efficacité, altitude, conventions CLAUDE.md) →
+45 candidats → 9 vérificateurs adversariaux (réfutation uniquement sur preuve
+constructible, PLAUSIBLE par défaut).
+
+**Résultats observés** : 31 confirmés/plausibles, 8 réfutés sur preuve. Top 10
+rapporté (détail complet : `.ai/REVUE_CODE_2026-07-17.md`) — les 3 clusters
+majeurs : (1) identité page/compte inachevée — SeasonPassCtxWithAuth sans
+forcePageIdentityXUID persiste le BP du compte connecté dans la player-DB du
+joueur de la page (4e occurrence du bug PR #63, 2 constructeurs forcés sur 5,
+zéro garde-rail) + budget API débité sur le mauvais bucket ; (2) squash
+migrations M3-M5 — l'hypothèse « sentinelle ⇒ prédécesseurs appliqués » est
+fausse (DB mi-bloc restaurée = OpenPlayerDB mort définitif ; fenêtre 05-24→05-28
+= persist LUSR cassé ; faille structurelle pour tout step chrono-postérieur à la
+sentinelle) ; (3) login web — fetchQuery sert le bootstrap anonyme caché 5 min →
+joueur établi coincé sur l'onboarding (régression du fix e4f3da775). Également :
+augment CSR limité à 1 playlist sur 7 (MAX(fetched_at) global vs estampillage
+par playlist), trous réels du sweep recovery (milestones_earned_repo.go:69 plat
++ 4 .Player.Exec), DELETE LIKE non échappé (cleanup_media_index), rotation RT
+non persistée avant XSTS (latent, à corriger avant câblage OnAuthExpired), N+1
+~400 requêtes sur la courbe d'engagement. Réfutations utiles : query keys sans
+titre (queryClient.clear() global au switch), MSAL-cache-only (bannière OK),
+response_bins « jamais déployée » (fenêtre 07-12 prouvée par reflog). Zones
+propres : anti-ART, _latest, timezone, KDA, slug==, tokens couleur, conversions
+sweep conformes.
+
+**Conclusion / prochaine étape** : les findings lourds vivent dans du code DÉJÀ
+déployé — rien de bloquant pour le push du train local en attente. Décision
+utilisateur 2026-07-17 : périmètre COMPLET (aucune exclusion ; « différer » =
+séquencement uniquement) + doctrine D7 tokens-vs-sujet (emprunt de token du
+pool = design ; invariants : sujet issu de la page, jamais de persist sous un
+xuid tiers, budget débité au porteur du token). Plan écrit :
+`.ai/PLAN_CORRECTIFS_REVUE_2026-07.md` (lots A-F + clôture Z, décisions D1-D7
+tranchées). Exécution : branche `fix/revue-2026-07-correctifs`, worktree dédié,
+agents Opus séquentiels pilotés par le superviseur.
