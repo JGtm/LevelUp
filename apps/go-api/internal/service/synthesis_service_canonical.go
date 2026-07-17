@@ -176,7 +176,6 @@ func computeSynthesisBestRefs(rows []canonical.PlayerMatchRow, provideSpree bool
 // canonical au lieu de SynthesisMatchRow.{Kills,Deaths,Outcome,KDA}.
 func buildSynthesisOverviewCanonical(rows []canonical.PlayerMatchRow, soloKPIs domain.SynthesisKPIs, provideSpree bool) domain.SynthesisOverview {
 	var totalKills, totalDeaths, totalAssists, totalWins, totalLosses, totalTies, totalDNF int
-	var winStreak, maxStreak int
 
 	for _, r := range rows {
 		k := 0
@@ -195,21 +194,20 @@ func buildSynthesisOverviewCanonical(rows []canonical.PlayerMatchRow, soloKPIs d
 		switch r.Self.Outcome {
 		case canonical.OutcomeWin:
 			totalWins++
-			winStreak++
-			if winStreak > maxStreak {
-				maxStreak = winStreak
-			}
 		case canonical.OutcomeLoss:
 			totalLosses++
-			winStreak = 0
 		case canonical.OutcomeTie:
 			totalTies++
-			winStreak = 0
 		default:
 			totalDNF++
-			winStreak = 0
 		}
 	}
+
+	// Plus longue série de victoires consécutives via le helper canonique
+	// (rompue par tout non-win : loss / tie / dnf).
+	maxStreak, _ := analysis.LongestRun(rows, func(r canonical.PlayerMatchRow) bool {
+		return r.Self.Outcome == canonical.OutcomeWin
+	})
 
 	n := len(rows)
 	ov := domain.SynthesisOverview{

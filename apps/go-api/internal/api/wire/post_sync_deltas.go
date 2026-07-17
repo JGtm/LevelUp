@@ -261,8 +261,10 @@ func loadRecentSkillTierNotifs(ctx context.Context, pdb *duckdb.PlayerDB) []noti
 // de KPIs surveillés, pas un défaut de conception.
 //
 // PostSyncDeltaOptions porte les entrées optionnelles de l'émission delta —
-// le contexte de dédup skill_tier (B10/DP4). Variadic pour éviter la refonte
-// des nombreux call-sites de test ; la prod passe les notifs skill_tier récentes.
+// le contexte de dédup skill_tier (B10/DP4). Paramètre OBLIGATOIRE (F9, revue
+// 2026-07-17) : passer `PostSyncDeltaOptions{}` quand rien à contextualiser ; la
+// prod passe les notifs skill_tier récentes. L'ancien variadique masquait
+// silencieusement toute 2e option (seul opts[0] était lu).
 type PostSyncDeltaOptions struct {
 	// RecentSkillTiers : notifs skill_tier récentes (< 24 h utile) pour la dédup.
 	RecentSkillTiers []notifications.Notification
@@ -277,15 +279,12 @@ func EmitPostSyncDeltas(
 	slug string,
 	before, after *PlayerSnapshot,
 	pdb *duckdb.PlayerDB,
-	opts ...PostSyncDeltaOptions,
+	opts PostSyncDeltaOptions,
 ) {
 	if emitter == nil || before == nil || after == nil {
 		return
 	}
-	var o PostSyncDeltaOptions
-	if len(opts) > 0 {
-		o = opts[0]
-	}
+	o := opts
 	if o.Now.IsZero() {
 		o.Now = time.Now().UTC()
 	}

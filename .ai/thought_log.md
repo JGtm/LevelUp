@@ -40,6 +40,168 @@ validation empirique `--analyze` sur les 3 clips OK.
 
 ---
 
+## [2026-07-17] CLÔTURE chantier correctifs revue — Z1-Z4 (branche fix/revue-2026-07-correctifs)
+
+**Statut** : Complété (agent de clôture, worktree `LevelUp-wt-revue-correctifs`). Les 6 lots d'implémentation A→F sont committés (`b497befc1`→`4083ccadc`) ; ce commit solde la clôture (Z1-Z4). Z5 (merge main + push = deploy prod) = **en attente superviseur**, NON exécuté ici.
+
+**Périmètre** : valider le chantier ENTIER (27 items A1→F13 + Z) et le déclarer livrable. Bilan : 27 items d'implémentation statués (`[x]`, C2 `[~]`) + gates de clôture Z1-Z4 verts.
+
+**Décision technique principale** : Z1 (suite intégration complète `go test -tags=integration -count=1 -timeout=300s -p 1 ./...`) exécutée en 7 PAQUETS ANCRÉS couvrant tout `./...` sans trou (contrainte timeout 10 min/commande + règle « un seul go à la fois » anti-corruption cache Windows). Découpage : `./cmd/...` | internal core (analysis..domain) | `./internal/games/...` | internal mid (legacymatch..prestige) | `./internal/platform/...` | internal heavy (progression..worldenrich, dont sync) | `./contracttest ./pkg ./scripts ./tests`. Les 37 sous-répertoires `internal/` couverts (11+1+14+1+10). Vérification de couverture : union des 7 patterns == `./...` par construction.
+
+**Résultats observés (gates de clôture, tous verts)** :
+- **Z1** : les 7 groupes EXIT=0, **zéro `--- FAIL:`**, **zéro paquet FAIL**. 242 exécutions de paquets (go list base = 241 ; +1 paquet test-only compilé seulement sous `-tags=integration`).
+- **Z2** : `check_test_baseline.sh tests` EXIT=0 — **baseline 8828 tests tous présents** (courant 10074), **0 manquant**. Env : CGO_ENABLED=1 (géré par le script, gcc msys64) + LEVELUP_DEMO_MODE/MULTI_TITLE_API_ENABLED/PRESTIGE_ENABLED=true.
+- **Z3** : `make check-types` (tsc -b, cache `.tsbuildinfo` purgé avant → pas de faux-vert incrémental) EXIT=0 ; `make test-web` (vitest run, hors sandbox) EXIT=0 — **267 fichiers, 2277 passés / 14 skippés, 0 échec**.
+- **Z4** : `go vet ./...` = 0 ; `golangci-lint --new-from-merge-base=main` = **0 issue** (warning nolint gosec/plr0913 = résidus PRÉEXISTANTS hors diff chantier, vérifié) ; aucun `fmt.Println`/`log.Printf`/`TODO`/`FIXME`/emoji introduit ; `filepath.Join`+"data" = 1 commentaire (A13) + 1 fixture temp de test (D2), aucun bypass PathResolver prod ; `routeTree.gen.ts` non édité ; diffstat 136 fichiers / +5479 −747 (vs 465eae847, inclut le commit doc du plan).
+
+**Découvertes consignées (nouvelles à la clôture, section Découvertes du plan)** : (1) 6 fichiers Go touchés DÉJÀ > 500 L avant le chantier (dette gelée) ont grossi sans franchir le seuil neuf (funlen/gocyclo lint vert) ; (2) warning golangci-lint sur des `//nolint:gosec`/`//nolint:plr0913` PRÉEXISTANTS (hors diff). Les 6 découvertes des lots A-F/C/D restent consignées.
+
+**Conclusion / prochaine étape** : chantier correctifs revue LIVRABLE — **verdict GO livraison**. Reste au superviseur : Z5 = merge dans main + prévenir l'utilisateur AVANT push (push main = deploy prod auto) + revue visuelle utilisateur au merge. Vérification CI de branche = responsabilité post-push (branche non poussée par design).
+
+---
+
+## [2026-07-17] LOT F — correctifs revue : duplications, dette, robustesse (F1-F13, branche fix/revue-2026-07-correctifs)
+
+**Statut** : Complété (worktree `LevelUp-wt-revue-correctifs`, enchaîné sur lot A `b497befc1` / B `033ba5f4c` / C `018c82ea1` / D `55216fda6` / E `4e6eea0f0` ; NON mergé — merge + push superviseur, push main = deploy prod). Dernier lot d'implémentation du plan.
+
+**Périmètre** : les 13 items F1-F13 du plan. RE-VÉRIFIÉ sur pièces chaque copie (le code a bougé depuis la revue). Chaque centralisation F1-F6 pose son garde-rail (règle n°6). Aucun fix hors périmètre (découvertes consignées).
+
+**Décisions techniques principales** :
+- F1 (R2) — `lib/outcome.ts` : `outcomeCodeToValue` (défaut `null`, le plus sûr : ne jamais fabriquer un outcome ; un compteur type SessionOutcomeDonut `if(!key)continue` doit exclure l'inconnu) + `outcomeCodeToTapeValue` (défaut de frise 'dnf', non-null exigé par OutcomeSequenceTape). **5 copies** migrées (pas 4 : `MediaMatchPicker.outcomeKeyOf` non listée par la revue, trouvée au sweep). Garde-rail `outcome.guard.test.ts` (interdit `case N`/`=== N` → outcome hors outcome.ts ; ne matche pas le littéral objet 'draw' d'outcome-color.ts).
+- F2 (R1) — `analysis.LongestRun[T](items, pred) (length, start)` : générique, retourne aussi l'index de départ (detectTilt). 4 copies migrées. ALLOWLIST datée `max_killing_spree.go` (accumulateur À TROIS ÉTATS, non réductible). Garde-rail `archlint/no_local_longest_run_test.go`.
+- F3 (R4) — `formatSignedFixed` dans `lib/formatters/number.ts`, glyphe négatif unifié '−' (U+2212). 3 copies migrées (rating/KpiGrid passent de '-' ASCII → U+2212). delta-card `formatDelta` NON migré (précision dynamique, distinct — statué). Garde-rail `signed-format.guard.test.ts`.
+- F4 (R5) — helper unique `service.coalesceStr` (variadique, exige non-vide) ; `coalesce` supprimé (résultats identiques). `sync.coalesceStrPtr` laissé (retourne *string). Garde-rail archlint scopé à service/.
+- F5 (R7) — `deltaToken` exporté d'ExplorerBriefing.logic ; 2 copies supprimées. Garde-rail (regex resserrée pour ne pas matcher la variable homonyme de MatchStatCards).
+- F6 (R8) — `campaign_exclusion.go` : `quotedIDList` + `sqlExcludeByMatchIDSubquery` (triplication interne éliminée). Garde-rail scopé au fichier (idiome quoting présent partout légitimement dans ops/).
+- F7 (R6) — ADR 0030 RESPECTÉ (persist untouched runtime) : `persist.demo_seed_columns.go` exporte les colonnes des 4 tables ; auto-parité (constante == INSERT persist) + parité seeder (allowlists documentées) → une colonne ADR 0026 ajoutée côté persist casse le test.
+- F8 (ME3) — mini-framework à closures (~90 L) remplacé par `applyMediaNameFallback` direct ×3 (accessor struct pour respecter la limite d'arguments) ; bulk resolve + fast-path conservés ; 4 tests intégration H5 verts.
+- F9 (CV5) — `opts ...PostSyncDeltaOptions` → paramètre obligatoire ; 23 call-sites test mis à jour.
+- F10 (LB2, D1) — les 5 crons rapportent l'erreur AGRÉGÉE réelle à ReportCronRun (fin du `nil` inconditionnel). Sémantique par cron : world_leaderboard=persist ; catalog/asset_name_sweep=`c.run` err ; spartan=LoadPlayers + échecs non-lock (les locks transitoires EXCLUS) ; data_health=`ProbeErrors>0`. Test cronstatus (échec partiel → visible, consecutive_failures 1→2, succès→reset).
+- F11 (LB3) — `duckdb.WorldCSRLatestSeason` (rang numérique `worldSeasonRank`, jamais MAX lexicographique) ; graine de découverte du scraper = dernière saison persistée, const `csrseason13-2` fallback conservée. Threadée via `SetSeedSeason` (port + concret + stub). Tests : csrseason13-2 malgré csrseason6-1 présent ; DB vide → fallback.
+- F12 (AU4) — `UserTokens.TokenClientFamily` APPRISE au refresh (`ExchangeRefreshTokenWithRotation` retourne la famille du client qui a répondu) → préfixe RpsTicket déterministe via ctx (`withTokenClientFamily`, patron WithHaloAuth, zéro signature publique changée) ; retry d=/t= conservé en filet AVEC `slog.WarnContext`. Migration douce (famille vide → comportement actuel).
+- F13 (E5 profond, D6) — `duckdb.PlayerReadHandle` (n'expose que `*Recovered` + `UpsertNoConflict`) : ferme PAR LE TYPE la classe de trous « champ nu `db *DB` » invisible au grep. **10 structs** player-DB migrées (coach_proposal, streaks, record_history, milestones_earned, **campaign** — one-liner manqué au 1er grep, retrouvé via les call-sites pdb.Player —, prestige_player ×5). 9 écritures plates player-DB converties en ExecRecovered. Garde-rail grep conservé + note datée. shared/metadata NON touchés.
+
+**Résultats observés (Gate F, tous verts)** : gofmt+vet OK ; `go test ./...` (suite unitaire complète) VERT ; `go test -tags=integration -p 1 ./internal/persist/... ./internal/ops/...` VERT ; `golangci-lint --new-from-merge-base=main` = **0 issue** (3 corrigées en cours : goconst listes de colonnes → nolint justifié ; gocyclo ExchangeRefreshTokenWithRotation → extraction `tryMSANativeFallback` ; argument-limit applyMediaNameFallback → accessor struct) ; `make check-types` OK ; `make test-web` complet = 267 fichiers, 2277 passés / 14 skippés, 0 échec.
+
+**Découvertes consignées (non traitées, section Découvertes du plan)** : F12 — le pool refresher (`refresh_loop.go`) et probe DISCARDENT la famille apprise (self-healing limité au chemin RTA ; migration douce sûre). Autres classifications documentées dans les statuts d'items (F2 max_killing_spree, F4 resolvedRegistryName, F7 double persister match_skill_rank).
+
+**Conclusion / prochaine étape** : LOT F soldé (F1-F13 `[x]`). Reste au superviseur : clôture chantier (Z1-Z5) — suite intégration complète `go test -tags=integration -p 1 ./...` + `check_test_baseline.sh` + delivery-checklist — puis merge main (prévenir AVANT push = deploy prod) + revue visuelle.
+
+---
+
+## [2026-07-17] LOT E — correctifs revue : UX web (E1-E2, branche fix/revue-2026-07-correctifs)
+
+**Statut** : Complété (worktree `LevelUp-wt-revue-correctifs`, enchaîné sur lot A `b497befc1` / lot B `033ba5f4c` / lot C `018c82ea1` / lot D `55216fda6` ; NON mergé — merge + push superviseur, push main = deploy prod).
+
+**Périmètre** : les 2 items du LOT E du plan `.ai/PLAN_CORRECTIFS_REVUE_2026-07.md` (W2 tooltips carte Dominance ; W5 flush notifications au unload). Vérifié sur pièces (config actuelle HEAD + ancienne `24fc02f2f`) avant de coder. Aucun fix hors périmètre.
+
+**Décisions techniques principales** :
+- E1 (W2, `MatchTugOfWarChart.tsx`) : la régression venait du passage du tooltip GLOBAL à `trigger:'axis'` en gardant des `series.tooltip {trigger:'item'}` — or ECharts N'A PAS de `trigger` par-série (`series.tooltip` ne porte que `formatter`/`position`), donc ces tips per-kill/vague étaient morts. FORME CHOISIE = option 1 du plan : repasser le trigger GLOBAL à `'item'` et servir le résumé de bin (delta signé, X/Y kills, cumuls) via le tooltip item des DEUX barres. Justif du rejet de l'option 2 (« garder axis + re-router le formatter ») : en axis le tooltip agrège TOUTE la colonne (et il y a 2 grilles) → impossible de servir un vrai tip d'un point kill précis ; option 1 est donc la seule forme correcte ET la plus simple, et retrouve la structure connue-bonne d'avant régression (24fc02f2f était déjà en 'item' + formatters par-série). `buildBarSeries` refactoré en options-object (respect ≤5 params) recevant `binTooltips` ; retrait des `trigger:'item'` morts (scatter + vagues) et de l'`axisPointer` shadow (affordance axis inutile en item). Le CONTENU du résumé de bin (nouveau momentum) est préservé, seul le « survol n'importe où dans la colonne » (propre à axis) ne l'est pas — non requis (DEC-5 : bin delta=0 = pas de barre = rien à résumer).
+- E2 (W5, `NotificationsBell.tsx`) : filet `visibilitychange` (state hidden) + `pagehide` flushant `pendingReadRef` via keepalive (décision D5). Client NON dupliqué : option `keepalive` ajoutée à `request()` de `lib/api/client.ts` + méthode `api.postKeepalive` (mêmes URL/headers titre-locale/credentials/mapping d'erreurs que `post`) ; helper `markNotificationsReadKeepalive(playerSlug, ids)` dans `mutations.ts` (void + .catch best-effort commenté — perte tolérée au unload, aucun log utile). Chemin nominal open→false INCHANGÉ (reste le path principal). Anti double-envoi : `flushedReadRef` — le flush keepalive vide `pendingReadRef` AVANT l'envoi et marque les ids « flushés » ; l'accumulation (dropdown ouvert, onglet re-visible sans fermeture → le keepalive ne patche pas le cache donc `unread` les contient encore) les IGNORE. Le chemin nominal ne touche PAS `flushedReadRef` (un rollback d'erreur doit pouvoir re-tenter ; dropdown fermé = accumulation stoppée, pas de risque de boucle).
+
+**Résultats observés (gates, tous verts)** : `make check-types` (tsc -b) OK ; vitest ciblé match-view + notifications = 11/11 ; `make test-web` complet = 263 fichiers, 2272 passés / 14 skippés, 0 échec ; `npx eslint` sur les 6 fichiers touchés = 0 issue. Tests ajoutés — E1 `MatchTugOfWarChart.test.tsx` (mock echarts-for-react capturant l'option, aucun canvas jsdom) : trigger global=='item' ; formatter barre → résumé de bin (Écart +3 « Mon équipe ») ; formatter scatter → tip per-kill (« gamertag — 0:01 ») ; formatter vague → « ×3 » ; garde-rail scatter/vague sans `tooltip.trigger`. E2 `NotificationsBell.test.tsx` +2 : visibilitychange hidden (dropdown ouvert) → 1 markRead [101,102] + re-hidden → pas de re-flush (dédup) ; pagehide → 1 markRead [303].
+
+**Découvertes consignées (non traitées, section Découvertes du plan)** : libellés FR en dur PRÉEXISTANTS dans `MatchTugOfWarChart.tsx` (« Lane alliée », « Mes kills », « Vague <side> ×N », « kill(s) ») — antérieurs à la fenêtre de revue, non flaggés, hors périmètre E1.
+
+**Conclusion / prochaine étape** : LOT E soldé (E1/E2 `[x]`). Reste au superviseur : LOT F du plan puis clôture (Z1-Z5) + merge main (prévenir AVANT push = deploy prod) + revue visuelle.
+
+---
+
+## [2026-07-17] LOT D — correctifs revue : efficacité VPS (D1-D4, branche fix/revue-2026-07-correctifs)
+
+**Statut** : Complété (worktree `LevelUp-wt-revue-correctifs`, enchaîné sur les commits lot A `b497befc1` / lot B `033ba5f4c` / lot C `018c82ea1` ; NON mergé — merge + push superviseur, push main = deploy prod).
+
+**Périmètre** : les 4 items du LOT D du plan `.ai/PLAN_CORRECTIFS_REVUE_2026-07.md` (findings efficacité VPS 2 vCPU / 2 Go — E1/E3/E4/E2). Aucun nouvel arbitrage : périmètre strict, découvertes consignées non traitées.
+
+**Décisions techniques principales** :
+- D1 (E1, N+1 courbe engagement) : mémoïsation coef+bins par `mode_category` sur le service (`PlayerEngagementService.expectedMemo map[string]expectedInputsEntry`, remplie lazy dans `loadExpectedInputs`). Choix : cache lazy sur la struct (pas un reset explicite en début de GetTimeseries comme le libellé du plan) car coef+bins ne dépendent que de (xuid, mode_category) et xuid est FIGÉ sur le service (créé par requête via `registry_pages.Engagement`) → cache toujours correct, GetMatchEngagement en bénéficie aussi. Mesurable ≤4 atteint identiquement. REPO : `EngagementScoreRepo.responseBinsTableExists` mémoïse son scan `information_schema` (champ `responseBinsExists *bool`, extraction `queryResponseBinsTableExists`). Le check est CONSERVÉ (une DB pas encore bootée peut ne pas avoir la table — A4/C garantit la table au boot mais pas tout chemin d'ouverture RO) ; la « simplification d'autant » du plan = passage per-call → per-handle.
+- D2 (E3, panneau fraîcheur) : `lastMatchAt` (par joueur : résolution player-DB jetée + MAX+JOIN par joueur, qui CRÉAIT même la DB des profils auth_only) SUPPRIMÉ → `lastMatchByXUID` : UNE requête groupée `WHERE mp.xuid IN (...) GROUP BY mp.xuid` (timezone canonique `analysis.SQLStartTimeCanonical`) sur le shared lu via `duckdb.OpenReadForQuery(SharedDBPath)` (règle repo « DB potentiellement tenue RW → OpenReadForQuery », B-swap-safe). Ne résout AUCUNE player-DB → zéro création pour les auth_only (juste absents du résultat). `resolveMonitoringDBs` conservé (autre caller ConvergenceBacklog). goconst corrigé (`freshnessLastMatchReadErr`).
+- D3 (E4, rétention monitoring) : nouveau `internal/ops/monitoring_retention.go` — `SweepRetention` CapAndSweep façon notifications. Caps NOMMÉS + justifiés : `detection_events` 20 000 (bursty, agrégat scanné à chaque badge), `detection_status_events` 10 000 (cycle de vie basse fréquence), `cron_runs` 50 000 (croissance la plus régulière). DELETE PURGE mono-writer (COUNT sans lease ; DELETE sous lease `KindMonitoring` — même writer que le flush — seulement si > cap) qui PROTÈGE le dernier événement par partition (`MAX(id)` par fingerprint / cron_name en plus des N récents) → vues `_latest` intactes. Sweep piggyback sur `RunDetectionFlushLoop` (tick + shutdown), pas de cron dédié. ART : tables HORS `tablesProtegees` ; base globale ISOLÉE mono-writer PK BIGINT → DELETE sûr (à la différence de match_skill_rank sur shared B-swap). Garde-rail `monitoring_store_guard_test.go` RÉÉCRIT : `monitoring_store.go` reste zéro UPDATE/DELETE (writer pur) ; `monitoring_retention.go` = zéro UPDATE, DELETE sanctionné (exception datée D3).
+- D4 (E2, Explorer) : `include_briefing: mode === 'matches'` + query gatée `enabled: mode === 'matches'` (4e arg `useExplorerMatches`, résultat non consommé en mode Joueur) ; input match-ID débouncé 250 ms (`MATCH_ID_DEBOUNCE_MS`) via hook partagé `useDebounced` EXTRAIT dans `apps/web/src/lib/hooks/useDebounced.ts` (migration de la copie locale feedback-drawer/queries.ts — règle n°6 : pas de 3e copie, pas de ré-implémentation). L'URL/scope reste mis à jour à chaque frappe (input contrôlé) ; seul le déclenchement réseau est retardé.
+
+**Résultats observés (gates, tous verts)** : gofmt clean (fichiers touchés) ; `go vet` service/ops/wire/duckdb OK ; `go test ./internal/service/... ./internal/ops/... ./internal/platform/duckdb/...` = ok (service 11.2s, ops 17.8s, duckdb 33.5s) ; `go test ./internal/api/wire/...` = ok (0.8s) ; `go build ./...` OK ; schéma monitoring NON touché → migration integration N/A ; `golangci-lint --new-from-merge-base=main` = **0 issues** ; `make check-types` OK ; vitest explorer + feedback-drawer = **103/103**. Tests ajoutés — D1 `TestGetTimeseries_MemoizesCoefAndBinsPerMode` (200 matchs, 2 modes → coefCalls=2 / binsCalls=2 = 4 vs ~600) ; D2 `TestLastMatchByXUID_GroupedNoPlayerDBCreation` (grouping+MAX corrects, auth_only absent, répertoire players NON créé) ; D3 `TestMonitoringStore_SweepRetention_BoundsAndPreservesLatest` (bornes + `_latest` status/cron corrects post-purge + idempotence) + garde-rail réécrit ; D4 `ExplorerPage.efficiency.test.tsx` (mode Joueur → query off + briefing off ; frappe rapide → seule 'abc' atteint la query après 250 ms).
+
+**Découvertes consignées (non traitées, section Découvertes du plan)** : (1) `LoadPlayerHistory` reste appelé par match (exclusion du match courant variable) — hors E1 (qui vise coef+bins) ; (2) `data_health_runs` croît aussi sans rétention mais basse fréquence, hors D3 (plan liste 3 tables).
+
+**Conclusion / prochaine étape** : LOT D soldé (D1-D4 `[x]`). Reste au superviseur : LOTS E/F du plan, puis clôture (Z1-Z5) + merge main (prévenir AVANT push = deploy prod) + revue visuelle.
+
+---
+
+## [2026-07-17] LOT C — correctifs revue : filets squash migrations (C1-C4, branche fix/revue-2026-07-correctifs)
+
+**Statut** : Complété (worktree `LevelUp-wt-revue-correctifs`, enchaîné sur les commits lot A `b497befc1` / lot B `033ba5f4c` ; NON mergé — merge + push superviseur).
+
+**Périmètre** : les 4 items du LOT C du plan `.ai/PLAN_CORRECTIFS_REVUE_2026-07.md` (findings M2/M3 : DB player restaurée d'un backup pré-squash irréparable — bind de `player_csr_snapshots_latest` échoue sur l'ancien schéma → `OpenPlayerDB` mort définitif). Décision D3 appliquée sans ré-arbitrage : réparation par INTROSPECTION du schéma (jamais de sentinelle), auto-guérison au boot, idempotente, pas de cmd manuel.
+
+**Décisions techniques principales** :
+- C1 : la conversion append-only de `player_csr_snapshots` (squashée avec `player_append_only_csr_snapshots_v1`, code d'origine `37264462f`) est réintroduite comme RÉPARATION DE BOOT `migration.EnsurePlayerCSRSnapshotsAppendOnly` — pas un step de registre. Détection = introspection des colonnes (marqueur `id` absent = ancien schéma) ; conversion via le helper unique ADR 0026 `applyAppendOnlyRebuild` (CTAS transactionnel + garde anti-perte rebuilt==before + recoverOrphan + idempotence) — PAS le code inline historique, qui était non-transactionnel (le helper est strictement plus sûr, à résultat identique). ViewSQL vide : la vue reste possédée par playerSchemaSQL (source unique, pas de 2e définition).
+- EMPLACEMENT C1 (justifié) : en TÊTE de `sync.EnsurePlayerSchema`, AVANT `playerSchemaSQL` — c'est LE point que tout chemin d'ouverture player traverse (`OpenPlayerDB` : provider, sync, H5 livesync, tests) et le seul qui garantisse l'exécution AVANT la création de l'index `idx_pcs_lookup(...written_at)` et de la vue `player_csr_snapshots_latest` (les 2 instructions qui échouent au bind sur l'ancien schéma). La couche migration seule (RunForDB, boot 3b) ne suffit pas : elle ne tourne pas sur tous les chemins d'ouverture et le step squashé ne se rejoue plus.
+- C4 : filet `recoverPlayerSchemaBoot` dans `sync/schema.go` — un échec de DDL/bind au boot player n'est plus un échec permanent silencieux : `slog.ErrorContext` (vue + cause brute), rejeu de la réparation C1, retry du script UNE fois, sinon erreur EXPLICITE « intervention requise ». Jamais de panic, jamais d'avalement. Chemin nominal non impacté (C1 proactif a déjà converti).
+- C3 : fixtures PROGRAMMATIQUES (aucun binaire committé), DDL historique EXACT tiré de `git show 37264462f^` : (a) ancien `player_csr_snapshots` PK(playlist_id,season_id) sans id/written_at ; (b) sentinelle DM-5 sans `expected_win_prob` ; (c) sans colonnes render `challenge_snapshots` ; (d) sans `engagement_response_bins`. Les fixtures (b)-(d) matérialisent le skew M4 en rebasculant le ledger (baseline retirée, sentinelle insérée) puis en droppant l'additif — les DROP COLUMN DuckDB exigent de retirer d'abord vue/_index_ dépendants (piège documenté dans le test).
+- C2 : statué `[~]` — couvert par l'ensure additif A4 (`EnsureAdditive` sur le chemin DM-5), PREUVE apportée par le subtest (c) : boot sur fixture mi-bloc → INSERT challenges avec les 4 colonnes render OK.
+
+**Résultats observés (gates, tous verts)** : les 4 fixtures convergent (boot complet : RunForDB(player) + OpenPlayerDB OK, vue `_latest` liée et requêtable, INSERT persist LUSR avec expected_win_prob OK, INSERT challenges avec colonnes render OK) ET sont idempotentes (2e boot sans échec, counts stables, pas d'orphelin `__appendonly`) — 4/4 PASS. Tests unitaires C1 : sanity « la vue NE binde PAS sur l'ancien schéma » puis binde après réparation, zéro perte 3/3, idempotence re-run, no-op sur DB vierge. Test C4 : vue squattée par une table → erreur explicite (pas de panic/avalement). Gates : gofmt clean ; `go vet` migration+sync OK ; `go test -tags=integration -p 1 ./internal/migration/... ./internal/games/halo_infinite/migrations/... ./internal/sync/... ./internal/persist/...` = tout ok ; `go test ./internal/platform/duckdb/...` ok ; `golangci-lint --new-from-merge-base=main` = 0 issues.
+
+**Découvertes consignées (non traitées)** : aucune nouvelle.
+
+**Conclusion / prochaine étape** : LOT C soldé (C1 `[x]`, C2 `[~]`→A4+preuve, C3 `[x]`, C4 `[x]`). Prochain = LOT D (efficacité VPS) OU merge intermédiaire superviseur (push main = deploy prod → prévenir).
+
+---
+
+## [2026-07-17] LOT B — correctifs revue : identité en profondeur (B1-B2, branche fix/revue-2026-07-correctifs)
+
+**Statut** : Complété (worktree `LevelUp-wt-revue-correctifs`, enchaîné sur le commit lot A `b497befc1` ; NON mergé — merge + push superviseur).
+
+**Périmètre** : les 2 items du LOT B du plan `.ai/PLAN_CORRECTIFS_REVUE_2026-07.md`. Décisions D4/D7 appliquées sans ré-arbitrage (l'emprunt de token du pool reste un design assumé — B1 corrige le COMPTAGE, pas l'emprunt ; la sémantique ownership de `HaloXUID` est intacte).
+
+**Décisions techniques principales** :
+- B1 (ID3, budget API sur le mauvais bucket) : nouvelle clé de contexte `tokensOwnerXUID` (ctxkeys). Choix architectural = la poser dans `WithHaloAuth` (SEUL point d'écriture de `haloTokensKey` → invariant « tout ctx portant des tokens a un porteur associé ») ; `WithHaloXUID`/`forcePageIdentityXUID` ne la touchent PAS → forcer le SUJET vers la page ne dévie plus le débit. Le factory `CareerFetcherFactoryFromTokens` clé le limiteur sur `ratebudget.ForXUID(TokensOwnerXUID(ctx))` au lieu de `HaloXUID(ctx)`. **Découverte importante en traçant sur pièces** : pour le chemin Home, le factory tourne dans le refresh BACKGROUND (le chemin synchrone ne fait aucun HTTP) — sans carry-forward du porteur réel dans `kickoffBackgroundRefresh`, le bug survivait. Corrigé : capture de `TokensOwnerXUID(ctx)` AVANT détachement + `WithTokensOwnerXUID(bgCtx, owner)`. Chemins vérifiés : pool sync (`pool.go` clé déjà sur `src.XUID`), watcher (`WithHaloAuth(ctx, tokens, r.xuid)`) — corrects, inchangés.
+- B2 (ID4 profond, sujet ambiant) : `GetSpartanIdentity(ctx)` (lisait `ctxkeys.HaloXUID`) SUPPRIMÉ ; sujet = paramètre explicite `GetSpartanIdentityFor(ctx, xuid)`. Les 2 lecteurs PROD connaissaient déjà leur sujet : `home_service` a `s.xuid` (= pdb.XUID, posé par WithMatchesCache dans les 3 constructions), le cron a `p.XUID`. Vérifié sur pièces que `HaloXUID` forcé == pdb.XUID == s.xuid dans les 3 chemins (HomeCtxWithAuth, SeasonPassCtxWithAuth, og_inject via HomeCtx) → migration behaviorally identique. `HaloXUID` GARDE son rôle ownership (`subjectIsOwner`, garde persist tiers) — non touché ; `forcePageIdentityXUID` + ratchet A2 conservés.
+
+**Résultats observés (gates, tous verts)** : gofmt propre (13 fichiers) ; `go test ./internal/service/... ./internal/scheduler/... ./internal/api/wire/... ./internal/ctxkeys/...` OK ; `go build ./...` OK (aucun caller orphelin du `GetSpartanIdentity` supprimé) ; intégration N/A (aucun chemin persist/sync touché) ; `golangci-lint --new-from-merge-base=main` = **0 issues**. Tests ajoutés : `TestCareerFetcherFactory_BudgetKeyedOnTokensOwner` + 2 (service), invariants `tokensOwnerXUID` (ctxkeys, dont `TestForcePageSubject_PreservesTokensOwner`), assertion sujet=p.XUID (cron). Ratchet A2 `TestEnrichCallersForcePageIdentity` VERT (non-régression).
+
+**Découvertes consignées (non traitées)** : aucune nouvelle (les 2 du LOT A restent en section Découvertes du plan).
+
+**Conclusion / prochaine étape** : LOT B soldé, B1/B2 `[x]`. Prochain = LOT C (filets squash M2, le morceau lourd) OU merge intermédiaire superviseur (push main = deploy prod → prévenir).
+
+---
+
+## [2026-07-17] LOT A — correctifs revue (A1-A13, branche fix/revue-2026-07-correctifs)
+
+**Statut** : Complété (worktree `LevelUp-wt-revue-correctifs`, un commit ; NON mergé — merge + push superviseur).
+
+**Périmètre** : les 13 items du LOT A du plan `.ai/PLAN_CORRECTIFS_REVUE_2026-07.md` (correctness
+rapides Go + web). Décisions D1-D7 appliquées sans ré-arbitrage.
+
+**Décisions techniques principales** :
+- A1 (season pass pollution) : ÉTAPE 1 vérifiée sur pièces — BP/défis sont ownership-scoped (URL
+  `players/xuid(<HaloXUID>)/…`, persist sous sink.xuid=pdb.XUID, 403 upstream si porteur≠sujet). Fix =
+  `forcePageIdentityXUID` comme les 3 autres sites (aligne sujet-URL et xuid-persist → jamais de
+  données de Y sous X ; viewer≠sujet → 403 → cache du sujet). A2 = ratchet AST qui rend l'oubli
+  impossible (allowlist datée Compare/Explorer = xuid explicite).
+- A4 (squash M3/M4) : bridge générique `Migration.EnsureAdditive` rejoué sur le chemin DM-5 AVANT de
+  marquer la baseline satisfaite. Ensure étendu (render challenge_snapshots + engagement_response_bins
+  via const partagée, source unique → golden invariant préservé).
+- A6 : conversions recovery + extension du ratchet `.Exec(` (les 4 `.Player.Exec(` non-test convertis ;
+  0 restant). A8 : persist immédiat du RT roté (store passé à refreshAccessTokenForUser). A9 : store.Load
+  err logué (plus d'avalement, D2 non faussable).
+- A5 : vue partitionnée `world_csr_leaderboard_latest` (fix 1-playlist). A7 : escapeLikeLiteral + ESCAPE.
+  A10 : early-return sur prompt null. A11 : 4 clés i18n FR+EN (libellés FR préservés). A13 : PathResolver
+  + slog + suppression code mort (champ Bins, param ref).
+
+**Résultats observés (gates, tous verts)** : gofmt propre ; `go vet` sur les 11 paquets touchés = 0 ;
+`go test` ciblés wire/auth/duckdb OK ; intégration `-p 1` migration+halo_infinite/migrations (DM-5 heal +
+golden) et sync (A5) OK ; `golangci-lint --new-from-merge-base=main` = 0 issue ; `tsc -b` propre ;
+vitest auth (9) + admin/monitoring (2) + home (existants) verts.
+
+**Découvertes consignées (non traitées)** : emojis CLI préexistants dans cmd_data.go (hors ligne 233) ;
+`fanout_repo.go:98` slog.Warn sans ctx — cf. section Découvertes du plan.
+
+**Conclusion / prochaine étape** : LOT A soldé, tous items `[x]`. Prochain = LOT B (identité en
+profondeur) OU merge intermédiaire par le superviseur (push main = deploy prod → prévenir).
+
+---
+
 ## [2026-07-17] Format des `<input type="date">` — binding `<html lang>` sur la locale app (branche fix/date-input-locale-format)
 
 **Statut** : Complété (code, branche `fix/date-input-locale-format`, NON mergé — revue + commit superviseur).
@@ -7860,3 +8022,46 @@ Sanity node : chaîne body EXACTE matchée (« Or I ») ; « Ordre I », « Scor
 **Conclusion / prochaine étape** : les 3 causes CI de la PR #64 (goconst,
 baseline, E2E carrière round 2) sont traitées dans le working tree ;
 commits/push/re-CI côté superviseur.
+
+## [2026-07-17] Revue de code adversariale — fenêtre 10 jours (24fc02f2f..HEAD)
+
+**Statut** : Complété (revue seule, AUCUN fix appliqué, working tree propre hors
+ce journal + rapport).
+
+**Décision technique principale** : revue multi-agents en 2 phases sur les
+897 fichiers (+87k/−47k) des trains 07-07 → 07-17 : 9 chercheurs par angle
+(scan ligne-à-ligne Go/web, comportements supprimés, contrats inter-fichiers,
+réutilisation, simplification, efficacité, altitude, conventions CLAUDE.md) →
+45 candidats → 9 vérificateurs adversariaux (réfutation uniquement sur preuve
+constructible, PLAUSIBLE par défaut).
+
+**Résultats observés** : 31 confirmés/plausibles, 8 réfutés sur preuve. Top 10
+rapporté (détail complet : `.ai/REVUE_CODE_2026-07-17.md`) — les 3 clusters
+majeurs : (1) identité page/compte inachevée — SeasonPassCtxWithAuth sans
+forcePageIdentityXUID persiste le BP du compte connecté dans la player-DB du
+joueur de la page (4e occurrence du bug PR #63, 2 constructeurs forcés sur 5,
+zéro garde-rail) + budget API débité sur le mauvais bucket ; (2) squash
+migrations M3-M5 — l'hypothèse « sentinelle ⇒ prédécesseurs appliqués » est
+fausse (DB mi-bloc restaurée = OpenPlayerDB mort définitif ; fenêtre 05-24→05-28
+= persist LUSR cassé ; faille structurelle pour tout step chrono-postérieur à la
+sentinelle) ; (3) login web — fetchQuery sert le bootstrap anonyme caché 5 min →
+joueur établi coincé sur l'onboarding (régression du fix e4f3da775). Également :
+augment CSR limité à 1 playlist sur 7 (MAX(fetched_at) global vs estampillage
+par playlist), trous réels du sweep recovery (milestones_earned_repo.go:69 plat
++ 4 .Player.Exec), DELETE LIKE non échappé (cleanup_media_index), rotation RT
+non persistée avant XSTS (latent, à corriger avant câblage OnAuthExpired), N+1
+~400 requêtes sur la courbe d'engagement. Réfutations utiles : query keys sans
+titre (queryClient.clear() global au switch), MSAL-cache-only (bannière OK),
+response_bins « jamais déployée » (fenêtre 07-12 prouvée par reflog). Zones
+propres : anti-ART, _latest, timezone, KDA, slug==, tokens couleur, conversions
+sweep conformes.
+
+**Conclusion / prochaine étape** : les findings lourds vivent dans du code DÉJÀ
+déployé — rien de bloquant pour le push du train local en attente. Décision
+utilisateur 2026-07-17 : périmètre COMPLET (aucune exclusion ; « différer » =
+séquencement uniquement) + doctrine D7 tokens-vs-sujet (emprunt de token du
+pool = design ; invariants : sujet issu de la page, jamais de persist sous un
+xuid tiers, budget débité au porteur du token). Plan écrit :
+`.ai/PLAN_CORRECTIFS_REVUE_2026-07.md` (lots A-F + clôture Z, décisions D1-D7
+tranchées). Exécution : branche `fix/revue-2026-07-correctifs`, worktree dédié,
+agents Opus séquentiels pilotés par le superviseur.

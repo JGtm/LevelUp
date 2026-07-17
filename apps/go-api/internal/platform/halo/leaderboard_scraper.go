@@ -50,17 +50,31 @@ const (
 
 // LeaderboardScraper récupère le classement CSR mondial depuis Halo Waypoint.
 type LeaderboardScraper struct {
-	client  *http.Client
-	host    string        // overridable pour les tests
-	perPage time.Duration // délai poli entre deux pages
+	client     *http.Client
+	host       string        // overridable pour les tests
+	perPage    time.Duration // délai poli entre deux pages
+	seedSeason string        // graine de découverte (défaut seedSeasonID ; MAJ via SetSeedSeason)
 }
 
-// NewLeaderboardScraper crée un scraper avec un délai poli entre pages.
+// NewLeaderboardScraper crée un scraper avec un délai poli entre pages. La graine de
+// découverte est initialisée à la constante seedSeasonID (fallback) ; le cron la
+// remplace par la dernière saison persistée via SetSeedSeason (F11).
 func NewLeaderboardScraper(politeDelay time.Duration) *LeaderboardScraper {
 	return &LeaderboardScraper{
-		client:  &http.Client{Timeout: 20 * time.Second},
-		host:    waypointLeaderboardHost,
-		perPage: politeDelay,
+		client:     &http.Client{Timeout: 20 * time.Second},
+		host:       waypointLeaderboardHost,
+		perPage:    politeDelay,
+		seedSeason: seedSeasonID,
+	}
+}
+
+// SetSeedSeason remplace la graine de découverte (URL de la page-catalogue). Le cron
+// y injecte la dernière saison RÉELLEMENT persistée (garantie de rendre la page),
+// avec repli sur la constante par défaut si aucun snapshot (F11/LB3). Une graine
+// vide est ignorée (garde la valeur courante).
+func (s *LeaderboardScraper) SetSeedSeason(seasonID string) {
+	if seasonID != "" {
+		s.seedSeason = seasonID
 	}
 }
 
@@ -156,13 +170,15 @@ type WaypointRef struct {
 	Translations map[string]string
 }
 
-// seedSeasonID est la saison « graine » utilisée pour bootstrapper la requête de
-// découverte du catalogue (FetchCatalog/FetchActiveSeason). Sa seule fonction est
-// de construire une URL leaderboard qui rend la page : la valeur retournée est
-// TOUJOURS seasons[0] (la saison active du jour), qui se corrige d'elle-même même
-// si cette graine est périmée. Les saisons passées restent accessibles
-// indéfiniment sur Halo Waypoint (cf. fixture : csrseason3-1 → 13-2 toutes
-// sélectionnables), donc l'URL graine ne 404 jamais une fois la saison créée.
+// seedSeasonID est la graine de découverte par DÉFAUT (fallback F11/LB3), utilisée
+// tant que le cron n'a pas injecté de dernière saison persistée (DB vide au tout
+// premier boot). Sa seule fonction est de construire une URL leaderboard qui rend la
+// page : la valeur retournée est TOUJOURS seasons[0] (la saison active du jour), qui
+// se corrige d'elle-même même si cette graine est périmée. Les saisons passées
+// restent accessibles indéfiniment sur Halo Waypoint (cf. fixture : csrseason3-1 →
+// 13-2 toutes sélectionnables). En régime établi, le cron remplace cette constante
+// par la dernière saison réellement capturée (SetSeedSeason), garantie de rendre la
+// page — la graine figée ne peut donc plus geler la découverte.
 const seedSeasonID = "csrseason13-2"
 
 // FetchActiveSeason découvre la saison CSR active en lisant le menu déroulant de
@@ -195,7 +211,7 @@ func (s *LeaderboardScraper) FetchCatalog(
 	if strings.TrimSpace(refPlaylistID) == "" {
 		return nil, nil, fmt.Errorf("FetchCatalog: refPlaylistID requis")
 	}
-	body, err := s.fetchPageBytes(ctx, seedSeasonID, refPlaylistID, 1)
+	body, err := s.fetchPageBytes(ctx, s.seedSeason, refPlaylistID, 1)
 	if err != nil {
 		return nil, nil, fmt.Errorf("FetchCatalog: %w", err)
 	}

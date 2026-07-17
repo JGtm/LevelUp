@@ -346,6 +346,29 @@ func worldSeasonRank(id string) int {
 	return mj*100 + mn
 }
 
+// WorldCSRLatestSeason retourne la saison persistée la PLUS RÉCENTE (rang NUMÉRIQUE
+// max via worldSeasonRank — jamais un MAX(season_id) lexicographique qui classerait
+// csrseason6-1 après csrseason13-2), toutes playlists confondues, depuis la table
+// append-only world_csr_leaderboard_snapshots (toute saison jamais capturée est une
+// graine valide, indépendante de la dédup de la vue _latest). (season, true, nil) si
+// au moins un snapshot existe ; ("", false, nil) sinon. Sert de GRAINE de découverte
+// au cron (F11/LB3) : une saison réellement capturée rend forcément la page Waypoint,
+// là où une graine constante figée peut se périmer.
+func WorldCSRLatestSeason(ctx context.Context, db *sql.DB) (string, bool, error) {
+	seasons, err := scanIDColumn(ctx, db,
+		`SELECT DISTINCT season_id FROM world_csr_leaderboard_snapshots WHERE season_id <> ''`)
+	if err != nil {
+		return "", false, fmt.Errorf("WorldCSRLatestSeason: %w", err)
+	}
+	best, bestRank := "", -1
+	for _, s := range seasons {
+		if r := worldSeasonRank(s); r > bestRank {
+			best, bestRank = s, r
+		}
+	}
+	return best, best != "", nil
+}
+
 // fallbackSeasonLabel dérive "Saison N" / "Season N" du season_id quand season_catalog
 // ne connaît pas la saison (pas encore scrapée). Format inconnu → id brut.
 func fallbackSeasonLabel(locale, id string) string {

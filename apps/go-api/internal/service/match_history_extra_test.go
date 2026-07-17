@@ -87,24 +87,24 @@ func TestBuildPeriodLabel_StartOnly(t *testing.T) {
 	}
 }
 
-// ---------- coalesce ----------
+// ---------- coalesceStr (helper unique de coalescence *string, F4) ----------
 
 func TestCoalesce_FirstNonEmpty(t *testing.T) {
 	a := "hello"
-	if got := coalesce(&a, nil); got != "hello" {
+	if got := coalesceStr(&a, nil); got != "hello" {
 		t.Errorf("got %s", got)
 	}
 }
 
 func TestCoalesce_FallbackB(t *testing.T) {
 	b := "world"
-	if got := coalesce(nil, &b); got != "world" {
+	if got := coalesceStr(nil, &b); got != "world" {
 		t.Errorf("got %s", got)
 	}
 }
 
 func TestCoalesce_BothNil(t *testing.T) {
-	if got := coalesce(nil, nil); got != "" {
+	if got := coalesceStr(nil, nil); got != "" {
 		t.Errorf("got %s", got)
 	}
 }

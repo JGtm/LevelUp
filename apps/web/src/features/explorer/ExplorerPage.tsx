@@ -18,6 +18,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, useSearch } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
+import { useDebounced } from '@/lib/hooks/useDebounced'
 import { useExplorerMatches, useExplorerPlayer } from './queries'
 import { DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
 import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
@@ -41,6 +42,10 @@ import { ExplorerPlayerMode } from './ExplorerPage.playerMode'
 import { buildExplorerFilterOptions } from './ExplorerPage.filterOptions'
 
 type SearchMode = 'matches' | 'player'
+
+/** Debounce de l'input match-ID avant de piloter la query (E2 revue 2026-07) :
+ * 1 POST après la rafale de frappe, pas un recompute serveur par caractère. */
+const MATCH_ID_DEBOUNCE_MS = 250
 
 /** Clés à valeur Set<string> du scope — typage du toggle. */
 type ExplorerSetKey =
@@ -202,13 +207,19 @@ export function ExplorerPage() {
   // Hash constant : le scope global n'influence plus la query. Les variations
   // locales (perfTiers/skillTiers/dates/etc.) sont déjà dans la queryKey.
   const filterContextHash = 'explorer-local'
+  // E2 : l'input match-ID est débouncé avant d'entrer dans la query (1 POST après
+  // la rafale, pas un par caractère). L'URL/scope, lui, reste mis à jour à chaque
+  // frappe (input contrôlé) — seul le déclenchement réseau est retardé.
+  const debouncedMatchIDSearch = useDebounced(matchIDSearch, MATCH_ID_DEBOUNCE_MS)
   const matchesQuery = useExplorerMatches(
     playerSlug,
     {
       filters: explorerFilterContext,
       pagination: { page: 1, page_size: 10000 },
       include_export_hint: true,
-      include_briefing: true,
+      // E2 : le briefing serveur n'est calculé qu'en mode Matchs (seul mode qui le
+      // consomme). En mode Joueur la query est de toute façon désactivée ci-dessous.
+      include_briefing: mode === 'matches',
       perf_tiers: perfTiers.size > 0 ? [...perfTiers].map(Number) : undefined,
       skill_tiers: skillTiers.size > 0 ? [...skillTiers] : undefined,
       ranked_context: rankedContext || undefined,
@@ -222,9 +233,12 @@ export function ExplorerPage() {
       map_names: mapNames.size > 0 ? [...mapNames] : undefined,
       mode_names: modeNames.size > 0 ? [...modeNames] : undefined,
       squad_scope: squadScope || undefined,
-      match_id_search: matchIDSearch || undefined,
+      match_id_search: debouncedMatchIDSearch || undefined,
     },
     filterContextHash,
+    // E2 : la query n'est lancée qu'en mode Matchs — en mode Joueur son résultat
+    // (summary/briefing) n'est pas consommé, donc aucun recompute serveur inutile.
+    mode === 'matches',
   )
 
   const playerQuery = useExplorerPlayer(playerSlug, {

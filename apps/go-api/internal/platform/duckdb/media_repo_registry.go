@@ -184,12 +184,40 @@ func (r *MediaRepo) resolveMediaRegistryNameFallbacks(ctx context.Context, rows 
 	if r.pdb.Metadata == nil || len(rows) == 0 {
 		return
 	}
-	slots := mediaNameFallbackSlots()
-	if collectMediaFallbackIDs(slots, rows) == 0 {
-		return // noms déjà présents (Infinite) → aucune requête metadata.
-	}
-	r.resolveMediaFallbackNames(ctx, slots)
-	applyMediaFallbackNames(slots, rows)
+	meta := NewMetadataRepoFromDB(r.pdb.Metadata)
+	langs := PreferredLangsForLocale("fr")
+
+	// map : nom FR ← asset_translations type "map" par map_id.
+	r.applyMediaNameFallback(ctx, meta, langs, rows, assetTypeMap, mediaNameAccessor{
+		idOf:    func(i *mediaMatchRegistryInfo) string { return i.MapID },
+		missing: func(i *mediaMatchRegistryInfo) bool { return i.MapName == "" && i.MapNameFR == "" },
+		setName: func(i *mediaMatchRegistryInfo, n string) { i.MapNameFR = n },
+	})
+
+	// mode : ModeNameFallback ← type "game_variant" par game_variant_id, pour les
+	// titres SANS pair (Halo 5). Champ DISTINCT de PairName* (cf. mediaMatchRegistryInfo).
+	r.applyMediaNameFallback(ctx, meta, langs, rows, assetTypeGameVariant, mediaNameAccessor{
+		idOf: func(i *mediaMatchRegistryInfo) string { return i.GameVariantID },
+		missing: func(i *mediaMatchRegistryInfo) bool {
+			return i.PairName == "" && i.PairNameFR == "" && i.ModeNameFallback == ""
+		},
+		setName: func(i *mediaMatchRegistryInfo, n string) { i.ModeNameFallback = n },
+	})
+
+	// playlist : nom FR ← type "playlist" par playlist_id.
+	r.applyMediaNameFallback(ctx, meta, langs, rows, assetTypePlaylist, mediaNameAccessor{
+		idOf:    func(i *mediaMatchRegistryInfo) string { return i.PlaylistID },
+		missing: func(i *mediaMatchRegistryInfo) bool { return i.PlaylistName == "" && i.PlaylistNameFR == "" },
+		setName: func(i *mediaMatchRegistryInfo, n string) { i.PlaylistNameFR = n },
+	})
+}
+
+// mediaNameAccessor décrit l'accès aux champs d'UN type d'asset pour le fallback de
+// nom : quel ID sert de clé, le nom est-il manquant, où écrire le nom résolu.
+type mediaNameAccessor struct {
+	idOf    func(*mediaMatchRegistryInfo) string
+	missing func(*mediaMatchRegistryInfo) bool
+	setName func(*mediaMatchRegistryInfo, string)
 }
 
 // assetTypeGameVariant / assetTypePlaylist / assetTypeMap : types d'asset de la
@@ -200,86 +228,45 @@ const (
 	assetTypePlaylist    = "playlist"
 )
 
-// mediaNameFallbackSlot décrit la résolution de fallback d'UN type d'asset :
-// quel ID sert de clé, le nom est-il manquant, où écrire le nom résolu.
-type mediaNameFallbackSlot struct {
-	assetType string
-	id        func(*mediaMatchRegistryInfo) string
-	missing   func(*mediaMatchRegistryInfo) bool
-	set       func(*mediaMatchRegistryInfo, string)
-	ids       []string
-	names     map[string]string
-}
-
-func mediaNameFallbackSlots() []mediaNameFallbackSlot {
-	return []mediaNameFallbackSlot{
-		{assetType: assetTypeMap,
-			id:      func(i *mediaMatchRegistryInfo) string { return i.MapID },
-			missing: func(i *mediaMatchRegistryInfo) bool { return i.MapName == "" && i.MapNameFR == "" },
-			set:     func(i *mediaMatchRegistryInfo, n string) { i.MapNameFR = n }},
-		{assetType: assetTypeGameVariant,
-			id: func(i *mediaMatchRegistryInfo) string { return i.GameVariantID },
-			missing: func(i *mediaMatchRegistryInfo) bool {
-				return i.PairName == "" && i.PairNameFR == "" && i.ModeNameFallback == ""
-			},
-			set: func(i *mediaMatchRegistryInfo, n string) { i.ModeNameFallback = n }},
-		{assetType: assetTypePlaylist,
-			id:      func(i *mediaMatchRegistryInfo) string { return i.PlaylistID },
-			missing: func(i *mediaMatchRegistryInfo) bool { return i.PlaylistName == "" && i.PlaylistNameFR == "" },
-			set:     func(i *mediaMatchRegistryInfo, n string) { i.PlaylistNameFR = n }},
-	}
-}
-
-// collectMediaFallbackIDs remplit slots[].ids avec les IDs des rows au nom
-// manquant. Retourne le total collecté (0 = rien à résoudre).
-func collectMediaFallbackIDs(slots []mediaNameFallbackSlot, rows map[string]mediaMatchRegistryInfo) int {
-	total := 0
-	for s := range slots {
-		for _, info := range rows {
-			if id := slots[s].id(&info); id != "" && slots[s].missing(&info) {
-				slots[s].ids = append(slots[s].ids, id)
+// applyMediaNameFallback résout UN type d'asset pour les rows au nom manquant puis
+// y écrit les libellés résolus. Appelé 3× (map / mode / playlist). Fast-path : si
+// aucune row n'a de nom manquant pour ce type → return sans appel metadata (Infinite :
+// colonnes remplies). Bulk-résolution via ResolveAssetNamesBulk (cascade
+// fr-FR→fr→en-US→en). Best-effort : une erreur metadata laisse les rows inchangées.
+func (r *MediaRepo) applyMediaNameFallback(
+	ctx context.Context,
+	meta *MetadataRepo,
+	langs []string,
+	rows map[string]mediaMatchRegistryInfo,
+	assetType string,
+	acc mediaNameAccessor,
+) {
+	var ids []string
+	seen := make(map[string]struct{})
+	for _, info := range rows {
+		if id := acc.idOf(&info); id != "" && acc.missing(&info) {
+			if _, ok := seen[id]; !ok {
+				seen[id] = struct{}{}
+				ids = append(ids, id)
 			}
 		}
-		total += len(slots[s].ids)
 	}
-	return total
-}
-
-// resolveMediaFallbackNames résout chaque slot via ResolveAssetNamesBulk
-// (cascade fr-FR→fr→en-US→en). Best-effort par slot.
-func (r *MediaRepo) resolveMediaFallbackNames(ctx context.Context, slots []mediaNameFallbackSlot) {
-	meta := NewMetadataRepoFromDB(r.pdb.Metadata)
-	langs := PreferredLangsForLocale("fr")
-	for s := range slots {
-		if len(slots[s].ids) == 0 {
+	if len(ids) == 0 {
+		return
+	}
+	names, err := meta.ResolveAssetNamesBulk(ctx, assetType, ids, langs)
+	if err != nil {
+		slog.WarnContext(ctx, "media: fallback asset_translations échoué",
+			"asset_type", assetType, "err", err)
+		return
+	}
+	for key, info := range rows {
+		if !acc.missing(&info) {
 			continue
 		}
-		names, err := meta.ResolveAssetNamesBulk(ctx, slots[s].assetType, slots[s].ids, langs)
-		if err != nil {
-			slog.WarnContext(ctx, "media: fallback asset_translations échoué",
-				"asset_type", slots[s].assetType, "err", err)
-			continue
-		}
-		slots[s].names = names
-	}
-}
-
-// applyMediaFallbackNames écrit les noms résolus dans les rows (slots remplis
-// par resolveMediaFallbackNames).
-func applyMediaFallbackNames(slots []mediaNameFallbackSlot, rows map[string]mediaMatchRegistryInfo) {
-	for id, info := range rows {
-		changed := false
-		for s := range slots {
-			if !slots[s].missing(&info) {
-				continue
-			}
-			if n := strings.TrimSpace(slots[s].names[slots[s].id(&info)]); n != "" {
-				slots[s].set(&info, n)
-				changed = true
-			}
-		}
-		if changed {
-			rows[id] = info
+		if n := strings.TrimSpace(names[acc.idOf(&info)]); n != "" {
+			acc.setName(&info, n)
+			rows[key] = info
 		}
 	}
 }

@@ -138,9 +138,10 @@ func TestServeIndexWithOG_NonPlayerRouteNoDB(t *testing.T) {
 //
 // serveIndexWithOG passe par HomeCtx (variante NON authentifiée) : le contexte
 // crawler ne porte aucun xuid. ogMetaFromHome doit forcer le xuid du joueur de la
-// PAGE avant GetHomePage, sinon la résolution d'identité Spartan
-// (GetSpartanIdentity, scopée sur ctxkeys.HaloXUID) cible "" (identité vide).
-// Même invariant que HomeCtxWithAuth (forcePageIdentityXUID).
+// PAGE avant GetHomePage pour aligner le garde-fou d'ownership (subjectIsOwner) sur
+// ce joueur ; le sujet d'identité lui-même est désormais passé explicitement par
+// HomeService (GetSpartanIdentityFor, finding ID4). Même invariant que
+// HomeCtxWithAuth (forcePageIdentityXUID).
 
 // ctxCapturingHomeService enregistre le xuid porté par le contexte reçu par
 // GetHomePage, pour vérifier l'identité posée dessus.

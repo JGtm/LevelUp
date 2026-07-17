@@ -10,14 +10,15 @@ import (
 type contextKey string
 
 const (
-	titleSlugKey      contextKey = "title_slug"
-	haloTokensKey     contextKey = "halo_tokens"
-	haloXUIDKey       contextKey = "halo_xuid"
-	viewerGamertagKey contextKey = "viewer_gamertag"
-	requestIDKey      contextKey = "request_id"
-	eventIDKey        contextKey = "event_id"
-	localeKey         contextKey = "locale"
-	dbWriterLabelKey  contextKey = "db_writer_label"
+	titleSlugKey       contextKey = "title_slug"
+	haloTokensKey      contextKey = "halo_tokens"
+	haloXUIDKey        contextKey = "halo_xuid"
+	tokensOwnerXUIDKey contextKey = "tokens_owner_xuid"
+	viewerGamertagKey  contextKey = "viewer_gamertag"
+	requestIDKey       contextKey = "request_id"
+	eventIDKey         contextKey = "event_id"
+	localeKey          contextKey = "locale"
+	dbWriterLabelKey   contextKey = "db_writer_label"
 )
 
 // WithLocale place la locale UI ("fr"/"en") dans le contexte. Utilisée par les
@@ -60,18 +61,45 @@ func TitleSlugIfSet(ctx context.Context) (string, bool) {
 	return "", false
 }
 
-// WithHaloAuth place les tokens Halo et le XUID du joueur connecté dans le contexte.
+// WithHaloAuth place les tokens Halo et le XUID de leur PORTEUR dans le contexte.
+//
+// Le `xuid` passé est le PORTEUR RÉEL des tokens (compte connecté / joueur pour
+// lequel ils ont été mintés). Il sert à deux titres, posés ici de façon atomique :
+//
+//   - haloXUIDKey : SUJET par défaut des lectures xuid-filtrées (identité Spartan,
+//     etc.). Ce sujet peut être ré-écrit ensuite par WithHaloXUID (forçage page)
+//     SANS toucher au porteur — voir tokensOwnerXUIDKey.
+//   - tokensOwnerXUIDKey : PORTEUR des tokens, source d'attribution du budget API
+//     (ratebudget.ForXUID). Immuable après pose : un forçage de sujet (page ≠
+//     compte) ne doit pas dévier le débit vers le mauvais bucket (finding ID3,
+//     revue 2026-07 : le quota se débite au porteur réel, pas au xuid de page).
+//
+// WithHaloAuth est le SEUL point de pose des tokens (haloTokensKey n'est écrit
+// que par cette fonction) : poser le porteur ici garantit qu'aucun contexte
+// portant des tokens n'existe sans porteur associé.
 func WithHaloAuth(ctx context.Context, tokens *domain.HaloTokens, xuid string) context.Context {
 	ctx = context.WithValue(ctx, haloTokensKey, tokens)
+	ctx = context.WithValue(ctx, haloXUIDKey, xuid)
+	return context.WithValue(ctx, tokensOwnerXUIDKey, xuid)
+}
+
+// WithHaloXUID place uniquement le SUJET (XUID) dans le contexte (sans toucher aux
+// tokens NI au porteur tokensOwnerXUID). Utilisé pour les requêtes non-authentifiées
+// (démo) où aucune session ne porte de tokens mais où les lectures xuid-filtrées
+// (identité Spartan) doivent cibler le joueur de la page, ET pour le forçage
+// d'identité de page (forcePageIdentityXUID) qui aligne le SUJET sur la page sans
+// jamais réattribuer le budget API du porteur (finding ID3).
+func WithHaloXUID(ctx context.Context, xuid string) context.Context {
 	return context.WithValue(ctx, haloXUIDKey, xuid)
 }
 
-// WithHaloXUID place uniquement le XUID dans le contexte (sans toucher aux
-// tokens). Utilisé pour les requêtes non-authentifiées (démo) où aucune session
-// ne porte de tokens mais où les lectures xuid-filtrées (identité Spartan) doivent
-// cibler le joueur de la page.
-func WithHaloXUID(ctx context.Context, xuid string) context.Context {
-	return context.WithValue(ctx, haloXUIDKey, xuid)
+// WithTokensOwnerXUID place le PORTEUR des tokens sans toucher au sujet (haloXUIDKey).
+// Nécessaire quand le porteur doit être préservé indépendamment du sujet posé par
+// WithHaloAuth — cas du refresh background carrière, détaché du contexte requête :
+// il ré-injecte les mêmes tokens (donc le même porteur) mais cible le sujet de la
+// page. Sans cette correction, l'attribution du budget dévierait vers le sujet.
+func WithTokensOwnerXUID(ctx context.Context, xuid string) context.Context {
+	return context.WithValue(ctx, tokensOwnerXUIDKey, xuid)
 }
 
 // HaloTokens extrait les tokens Halo depuis le contexte. Retourne nil si absent.
@@ -80,9 +108,18 @@ func HaloTokens(ctx context.Context) *domain.HaloTokens {
 	return v
 }
 
-// HaloXUID extrait le XUID depuis le contexte. Retourne "" si absent.
+// HaloXUID extrait le SUJET (XUID) depuis le contexte. Retourne "" si absent.
 func HaloXUID(ctx context.Context) string {
 	v, _ := ctx.Value(haloXUIDKey).(string)
+	return v
+}
+
+// TokensOwnerXUID extrait le XUID du PORTEUR des tokens (attribution du budget API).
+// Retourne "" si absent (contexte sans tokens, ou porteur inconnu). Distinct de
+// HaloXUID : le sujet d'une requête peut être le joueur de la PAGE tandis que les
+// tokens appartiennent au compte connecté.
+func TokensOwnerXUID(ctx context.Context) string {
+	v, _ := ctx.Value(tokensOwnerXUIDKey).(string)
 	return v
 }
 

@@ -3,7 +3,7 @@
  * (fermeture du dropdown → mark-read des non-lues affichées).
  */
 import type { ComponentPropsWithoutRef } from 'react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 
@@ -64,9 +64,17 @@ function mockApi(opts: {
   )
 }
 
+function setVisibility(state: DocumentVisibilityState) {
+  Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state })
+}
+
 describe('NotificationsBell', () => {
   beforeEach(() => {
     useAppShellStore.setState({ locale: 'fr' })
+  })
+
+  afterEach(() => {
+    setVisibility('visible')
   })
 
   it('affiche badge_count (DP6), pas le compteur complet', async () => {
@@ -148,5 +156,66 @@ describe('NotificationsBell', () => {
       expect(screen.queryByRole('menu')).toBeNull()
     })
     expect(markedRead.length).toBe(0)
+  })
+
+  it('W5 : visibilitychange hidden (dropdown ouvert) → flush keepalive des ids', async () => {
+    const markedRead: number[][] = []
+    mockApi({
+      count: 2,
+      badgeCount: 2,
+      items: [notif(101), notif(102)],
+      onMarkRead: (ids) => markedRead.push(ids),
+    })
+    renderWithProviders(<NotificationsBell playerSlug={SLUG} />)
+
+    const button = await screen.findByRole('button')
+    fireEvent.click(button)
+    await waitFor(() => {
+      expect(screen.getByRole('menu')).toBeInTheDocument()
+    })
+    await waitFor(() => {
+      expect(screen.getAllByRole('menuitem').length).toBeGreaterThanOrEqual(2)
+    })
+
+    // L'onglet passe en arrière-plan SANS fermer le dropdown (F5/switch d'onglet).
+    setVisibility('hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+
+    await waitFor(() => {
+      expect(markedRead.length).toBe(1)
+    })
+    expect([...markedRead[0]].sort((a, b) => a - b)).toEqual([101, 102])
+
+    // Retour au premier plan puis nouvel arrière-plan → PAS de re-flush des mêmes
+    // ids (dédup : ref vidé + ids marqués flushés).
+    setVisibility('visible')
+    document.dispatchEvent(new Event('visibilitychange'))
+    setVisibility('hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+    await new Promise((r) => setTimeout(r, 20))
+    expect(markedRead.length).toBe(1)
+  })
+
+  it('W5 : pagehide (dropdown ouvert) → flush keepalive des ids', async () => {
+    const markedRead: number[][] = []
+    mockApi({
+      count: 1,
+      badgeCount: 1,
+      items: [notif(303)],
+      onMarkRead: (ids) => markedRead.push(ids),
+    })
+    renderWithProviders(<NotificationsBell playerSlug={SLUG} />)
+
+    const button = await screen.findByRole('button')
+    fireEvent.click(button)
+    await waitFor(() => {
+      expect(screen.getAllByRole('menuitem').length).toBeGreaterThanOrEqual(1)
+    })
+
+    window.dispatchEvent(new Event('pagehide'))
+    await waitFor(() => {
+      expect(markedRead.length).toBe(1)
+    })
+    expect(markedRead[0]).toEqual([303])
   })
 })

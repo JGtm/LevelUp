@@ -6,8 +6,11 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/observability"
@@ -173,5 +176,32 @@ func TestResolveMSAccessTokenStoreFirst_ProviderNil(t *testing.T) {
 	_, err := ResolveMSAccessTokenStoreFirst(context.Background(), nil, nil, "111", "Alice", LegacyAuthInputs{})
 	if err == nil {
 		t.Error("err = nil, want provider nil")
+	}
+}
+
+// TestResolveMSAccessTokenStoreFirst_StoreLoadError_Logged — AU3 (revue 2026-07) :
+// un échec de lecture du store canonique ne doit plus être AVALÉ. Sans ce log, une
+// bascule legacy déclenchée par un store illisible/corrompu était invisible → la
+// télémétrie legacy_source_used (gate D2) devenait trompeuse.
+func TestResolveMSAccessTokenStoreFirst_StoreLoadError_Logged(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	defer slog.SetDefault(prev)
+
+	store := NewMultiUserTokenStore(tempTokenDir(t))
+	prov := &fakeProvider{}
+
+	// xuid unsafe → store.Load renvoie une erreur ("xuid invalide"). Aucune source
+	// legacy → retour ("", nil) (skip légitime), mais l'échec store DOIT être logué.
+	if _, err := ResolveMSAccessTokenStoreFirst(context.Background(), prov, store, "../escape", "Alice", LegacyAuthInputs{}); err != nil {
+		t.Fatalf("attendu skip (\"\", nil), got err=%v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "échec lecture store canonique") {
+		t.Errorf("attendu un log ERROR sur l'échec store.Load (AU3), got:\n%s", out)
+	}
+	if !strings.Contains(out, "\"level\":\"ERROR\"") {
+		t.Errorf("le log de l'échec store doit être de niveau ERROR (AU3), got:\n%s", out)
 	}
 }

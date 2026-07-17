@@ -17,13 +17,9 @@ import { formatDateRange, formatPercentInt } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 import type { ExplorerBriefing } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
-import {
-  formatSignedFixed,
-  formatSignedPoints,
-  isFullHistoryScope,
-  outcomeCodeToValue,
-  signOf,
-} from './ExplorerBriefing.logic'
+import { formatSignedFixed } from '@/lib/formatters'
+import { outcomeCodeToTapeValue } from '@/lib/outcome'
+import { deltaToken, formatSignedPoints, isFullHistoryScope } from './ExplorerBriefing.logic'
 import { ExplorerBriefingModules } from './ExplorerBriefingModules'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
@@ -31,12 +27,6 @@ type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
 interface Props {
   briefing: ExplorerBriefing | null | undefined
   t: T
-}
-
-/** Token de couleur d'un delta signé (positif = gagnant, négatif = perdant, nul = neutre). */
-function deltaToken(v: number | null | undefined): SemanticToken {
-  const s = signOf(v)
-  return s > 0 ? 'outcome-win' : s < 0 ? 'outcome-loss' : 'outcome-draw'
 }
 
 function formatPeriod(
@@ -81,7 +71,7 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
   const matchesCount = scope?.matches ?? briefing.outcome_sequence?.length ?? 0
 
   const tapePoints: OutcomePoint[] = (briefing.outcome_sequence ?? []).map((o) => ({
-    outcome: outcomeCodeToValue(o.outcome_code),
+    outcome: outcomeCodeToTapeValue(o.outcome_code),
     matchId: o.match_id,
   }))
 

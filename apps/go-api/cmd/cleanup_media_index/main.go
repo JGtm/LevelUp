@@ -120,11 +120,16 @@ func purgeForeignMedia(path, slug string, dryRun bool) {
 
 	// Prédicat : basename(file_path) commence par un préfixe étranger (insensible à
 	// la casse). file_name porte déjà le basename.
+	//
+	// ME1 (revue 2026-07) : le préfixe est ÉCHAPPÉ (escapeLikeLiteral) + `ESCAPE '\'`.
+	// Sans quoi les métacaractères LIKE `_`/`%` d'un préfixe (ex. "Halo_5_Guardians-")
+	// matchaient n'importe quel caractère → prédicat PLUS LARGE que le HasPrefix STRICT
+	// de l'indexeur → purge de likes/associations non revendiqués et non reconstructibles.
 	var conds []string
 	var args []any
 	for _, p := range prefixes {
-		conds = append(conds, "lower(file_name) LIKE lower(?) || '%'")
-		args = append(args, p)
+		conds = append(conds, `lower(file_name) LIKE lower(?) || '%' ESCAPE '\'`)
+		args = append(args, escapeLikeLiteral(p))
 	}
 	where := strings.Join(conds, " OR ")
 
@@ -173,6 +178,19 @@ func purgeForeignMedia(path, slug string, dryRun bool) {
 	}
 	fmt.Printf("Purge OK : %d media_files étrangers supprimés (+%d assoc, +%d likes) + CHECKPOINT.\n",
 		nFiles, nAssoc, nLikes)
+}
+
+// escapeLikeLiteral échappe les métacaractères LIKE (`\`, `_`, `%`) d'un littéral
+// destiné à servir de PRÉFIXE dans un motif `lower(?) || '%' ESCAPE '\'`. Aligne la
+// sémantique du prédicat sur le HasPrefix STRICT de l'indexeur : sans échappement, un
+// préfixe comme "Halo_5_Guardians-" verrait ses `_` matcher n'importe quel caractère.
+// Ordre impératif : backslash EN PREMIER (sinon les `\` introduits par `_`/`%` seraient
+// re-échappés). Le `%` de queue du motif (wildcard « commence par ») reste hors littéral.
+func escapeLikeLiteral(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `_`, `\_`)
+	s = strings.ReplaceAll(s, `%`, `\%`)
+	return s
 }
 
 func fatalf(format string, args ...any) {
