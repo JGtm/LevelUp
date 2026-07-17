@@ -1,3 +1,38 @@
+## [2026-07-17] Explorer briefing V4 — bloc frontend structure (Phases 3-4) (branche feat/explorer-briefing-compact)
+
+**Statut** : En cours (bloc FRONTEND STRUCTURE Phases 3-4 COMPLÉTÉ ; restent finitions Phases
+5-8). NON committé (superviseur en fin de bloc ; merge main = deploy prod auto). Plan :
+`.ai/V7/PLAN_EXPLORER_BRIEFING_V4_2026-07.md` (Phases 3-4 cochées + blocs GATE + Découvertes 12-15).
+
+**Décisions techniques principales** :
+- Socle de tuiles refondu (DEC-TILES) : `WinRateTile` hero (OutcomeBar + V-D-N flanquant +
+  tooltip des 4 issues via `useOutcomeLabel` — 0 clé i18n neuve, Découverte-14 ; valeur NEUTRE,
+  sentiment porté par l'accent 3px), Perf colorée `getPerfColor`, `DurationTile` (`formatDurationHM`
+  « h min », neuf), `PeakKdaTile`/`PeakRankTile`/`PeakMmrTile` (lisent `scope.peak_*`). Règle de
+  CASCADE : conditionnelles collectées par priorité (Meilleure série > Pic rang > Pic MMR),
+  `slice(0,2)` → socle ≤ 8, omises en low_sample. Slot `chart` retiré de `BriefingTile` (sparkline
+  morte). `record_vdn` purgée (orphelinée par le hero, Découverte-13).
+- Classement en 4e colonne (DEC-LAYOUT/DEC-RANK-FE) : nouveau `ExplorerRankedBlock.tsx`
+  (`BriefingSectionCard`, une ligne PAR CHAÎNE de `ranked.kinds`, label via `lusrChainLabel` si un
+  type a ≥ 2 chaînes, jamais de flèche inter-chaînes). Rendu empilé sous `ContextSplitCard` dans
+  la 4e cellule de la grille « Par… » (auto-fit/minmax(240px), sans trou), gaté
+  `useCapability('ranked')` MIGRÉ du Strip vers Modules. `RankedTile` (socle) supprimé + helpers
+  ranked morts (`rankedValue`/`sinceLabel`/`rankedSubLine`). `ranked_since` purgée (Découverte-15).
+  `peak_fda_label` EN = « Peak KDA » pour cohérence (Découverte-12). `ExplorerBriefingPeakRank`
+  exporté dans `types.ts`.
+
+**Gates (Phases 3 ET 4, exécutés ce jour)** : `npm run typecheck` (`.tmp` purgé) = exit 0, 0
+erreur ; `npx vitest run` (hors sandbox) = **262 fichiers, 2298 passed, 14 skipped** (aucun skip
+ajouté) ; `npm run lint` = **0 erreur** (68 warnings baseline gelée, 0 sur les fichiers touchés) ;
+`build_i18n_manifests` OK (explorer 227 clés) ; greps de clôture verts (0 `Sparkline`/`trend`/
+`chart=`/`RankedTile` ; `getPerfColor`/`OutcomeBar`/`lusrChainLabel` importés). AUCUN fichier Go
+touché. Édition utilisateur `tip_dimensions` préservée intacte dans le worktree.
+
+**Prochaine étape** : bloc FINITIONS (Phases 5-8) — tooltips via portal (DEC-TOOLTIP, Phase 5),
+MVP/LVP dans le tableau (DEC-MVP, Phase 6), padding réduit + reformulation `tip_dimensions`
+(DEC-PAD/DEC-10, Phase 7 : intègre l'édition utilisateur en cours), dettes + changelog + clôture
+(Phase 8).
+
 ## [2026-07-17] Explorer briefing V4 — bloc backend (Phases 1-2) (branche feat/explorer-briefing-compact)
 
 **Statut** : En cours (chantier V4 ; bloc BACKEND terminé, bloc FRONTEND Phases 3-4 restant).

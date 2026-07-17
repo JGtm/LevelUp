@@ -704,19 +704,19 @@ greps : 0 `Trend`/`buildBriefingTrend` (frise trend) sous `apps/go-api` ; champs
 
 ### Phase 3 — Frontend : refonte du socle des tuiles (moyen) — DEC-TILES / DEC-PERF / DEC-9 / DEC-SPARK
 
-- [ ] **3a (i18n).** Ajouter/modifier dans `explorer.toml` : `duration_total_label`,
+- [x] **3a (i18n).** Ajouter/modifier dans `explorer.toml` : `duration_total_label`,
       `tip_duration`, `peak_fda_label`, `tip_peak_fda`, `peak_mmr_label`, `tip_peak_mmr` (si
       tuile retenue) ; renommer `streaks_title` (DEC-9) ; réviser `tip_win_rate` (retirer la
       mention sparkline, décrire le ruban V-D-N). FR + EN. Régénérer les manifests.
-- [ ] **3b (tuile WR hero).** Refondre la tuile Taux de victoire du Strip : composer
+- [x] **3b (tuile WR hero).** Refondre la tuile Taux de victoire du Strip : composer
       `OutcomeBar` (`@/components/ui/outcome-bar`, alimenté par `scope.wins/losses/ties/dnf`)
       + V-D-N flanquant (tokens `outcome-win`/`outcome-loss`) + tooltip des 4 issues (calqué
       `HomeHeroKPIGrid:107-119`) ; conserver le delta « vs habituel » (masqué en plein
       historique). RETIRER la sparkline (`:98-108`), l'import `Sparkline` (`:13`),
       `trendValues` (`:75`), la lecture `briefing.trend`.
-- [ ] **3c (Perf colorée).** Colorer la valeur de la tuile Perf : `style={{ color:
+- [x] **3c (Perf colorée).** Colorer la valeur de la tuile Perf : `style={{ color:
       getPerfColor(perf) }}` (import `@/lib/perf-color`). Ne pas envelopper dans `tokenCssVar`.
-- [ ] **3d (Durée totale + Pic FDA + Pic rang + Pic MMR + cascade).** Tuiles de base : Durée
+- [x] **3d (Durée totale + Pic FDA + Pic rang + Pic MMR + cascade).** Tuiles de base : Durée
       totale (formateur « h min », DEC-DURATION) + Pic FDA (`scope.peak_kda`, coloré
       `kdaNetColor`). Conditionnelles rendues par PRIORITÉ (**cascade** DEC-TILES, cap à 8, au
       plus 2 des 3) : (1) Meilleure série, (2) **Pic rang** (tuile lisant `scope.peak_ranks` :
@@ -724,14 +724,14 @@ greps : 0 `Trend`/`buildBriefingTrend` (frise trend) sous `apps/go-api` ; champs
       vide), (3) Pic MMR (`scope.peak_team_mmr != null`). Implémenter la règle de cascade
       (collecter les conditionnelles PRÉSENTES dans l'ordre de priorité, en prendre AU PLUS 2).
       Chaque tuile avec son `InfoTooltip`. Labels COURTS.
-- [ ] **3e (Meilleure série).** Le renommage est porté par `streaks_title` (3a) ; vérifier
+- [x] **3e (Meilleure série).** Le renommage est porté par `streaks_title` (3a) ; vérifier
       que `StreaksTile` lit toujours cette clé (aucune autre modif).
-- [ ] **3f (BriefingTile).** Si le slot `chart?` n'a plus AUCUN consommateur après 3b, le
+- [x] **3f (BriefingTile).** Si le slot `chart?` n'a plus AUCUN consommateur après 3b, le
       retirer de `BriefingTile` (0 code mort).
-- [ ] **3g (grille socle).** Vérifier/ajuster la grille socle (DEC-GRID : `auto-fit`/`minmax`
+- [x] **3g (grille socle).** Vérifier/ajuster la grille socle (DEC-GRID : `auto-fit`/`minmax`
       déjà en place étire les tuiles ; ajuster le `minmax` si 7-8 tuiles créent un trou —
       revue visuelle). Documenter le choix.
-- [ ] **3h (tests).** Mettre à jour `ExplorerBriefingStrip.test.tsx` : WR (OutcomeBar + V-D-N,
+- [x] **3h (tests).** Mettre à jour `ExplorerBriefingStrip.test.tsx` : WR (OutcomeBar + V-D-N,
       plus de sparkline) ; Perf colorée ; Durée/Pic FDA présentes ; **Pic rang** (1 ligne LUSR ;
       2 lignes LUSR+CSR ; omise si vide) ; **règle de cascade** (3 conditionnelles présentes →
       au plus 2 rendues, ordre Meilleure série > Pic rang > Pic MMR, jamais > 8 tuiles) ;
@@ -741,33 +741,74 @@ Gate Phase 3 : `node …/build_i18n_manifests.mjs` (diff = clés attendues) ; `m
 = 0 ; `make test-web` vert ; `cd apps/web && npm run lint` = 0 erreur ; greps : 0 `Sparkline`
 et 0 `trend` sous `features/explorer` ; `getPerfColor` importé dans le Strip.
 
+> **GATE PHASE 3 — VERT (exécuté le 2026-07-17).** `npm run typecheck` (tsc -b, cache `.tmp`
+> purgé) = exit 0, **0 erreur**. `npx vitest run` = **262 fichiers, 2297 passed, 14 skipped**
+> (skips pré-existants, AUCUN ajouté). `npm run lint` = **0 erreur** (68 warnings = baseline
+> gelée, hors périmètre ; lint ciblé sur les 8 fichiers touchés = exit 0, 0 warning).
+> `build_i18n_manifests.mjs` OK (explorer 228 clés). Greps de clôture : 0 composant
+> `Sparkline`, 0 champ `trend`, 0 `chart=`, `getPerfColor` importé dans le Strip. Réalisé :
+> 3a i18n (8 clés neuves : `duration_total_label`/`peak_fda_label`/`peak_rank_label`/
+> `peak_mmr_label` + 4 tips ; `streaks_title` → « Meilleure série »/« Best streak » ;
+> `tip_win_rate` révisé — « mini-courbe » retirée, ruban V-D-N décrit) + `formatDurationHM`
+> (`lib/formatters/duration.ts`, format « h min ») + test unitaire ; 3b `WinRateTile` hero
+> extraite (OutcomeBar + V-D-N flanquant + tooltip des 4 issues via `useOutcomeLabel` —
+> Découverte-14 ; valeur NEUTRE + accent sentiment 0.45-0.55) → `record_vdn` orphelinée PURGÉE
+> (Découverte-13) ; 3c Perf colorée `getPerfColor` ; 3d `DurationTile`/`PeakKdaTile`/
+> `PeakRankTile`/`PeakMmrTile` + règle de cascade (collecte par priorité série > pic rang >
+> pic MMR, `slice(0,2)`, cap 8, omise en low_sample) ; 3e renommage vérifié (StreaksTile lit
+> `streaks_title`) ; 3f slot `chart` retiré de `BriefingTile` (0 consommateur) ; 3g grille socle
+> déjà `auto-fit`/`minmax(150px,1fr)` — inchangée (absorbe 4-8 tuiles sans trou) ; 3h tests
+> Strip (WR hero, Perf couleur, Durée/Pic FDA, Pic rang 1-2 lignes/omise, cascade cap 2 ;
+> comptes tooltips 10→12 et 4→6). `ExplorerBriefingPeakRank` exporté dans `types.ts`. AUCUN
+> commit (superviseur en fin de bloc). RankedTile ENCORE dans le socle (transitoire) — déplacé
+> en 4e colonne à la Phase 4.
+
 ### Phase 4 — Frontend : Classement en 4ᵉ colonne + grille « Par… » (moyen) — DEC-LAYOUT / DEC-RANK-FE / DEC-GRID
 
-- [ ] **4a (bloc Classement).** Créer un `RankedBlock` (dans `ExplorerBriefingModules.tsx` ou
+- [x] **4a (bloc Classement).** Créer un `RankedBlock` (dans `ExplorerBriefingModules.tsx` ou
       un sibling) = `BriefingSectionCard` (titre `ranked_title` + `InfoTooltip` `tip_ranked`)
       rendant un `<ul>` d'une ligne par entrée de `ranked.kinds` : « {kind maj}{ · label
       chaîne si le type a ≥ 2 chaînes} · {progression début → fin} · {±x pt/match coloré
       `deltaToken`} ». Label de chaîne via `lusrChainLabel(k.playlist_group, locale)`.
       Réutiliser `rankedProgression`/placement (déplacés depuis `ExplorerBriefingTiles`).
-- [ ] **4b (4ᵉ colonne scindée).** Dans la grille « Par… », rendre une 4ᵉ cellule =
+- [x] **4b (4ᵉ colonne scindée).** Dans la grille « Par… », rendre une 4ᵉ cellule =
       `flex flex-col gap-2` empilant `ContextSplitCard` (si présent) + `RankedBlock` (si
       `useCapability('ranked')` + `briefing.ranked`). Migrer le hook `useCapability('ranked')`
       du Strip vers Modules. Retirer `RankedTile` du Strip (`:184`) et de
       `ExplorerBriefingTiles` (supprimer `RankedTile` + helpers devenus morts ; conserver
       `StreaksTile`).
-- [ ] **4c (grille pleine largeur).** Ajuster la grille « Par… » (DEC-GRID) pour absorber la
+- [x] **4c (grille pleine largeur).** Ajuster la grille « Par… » (DEC-GRID) pour absorber la
       variabilité (0-3 dimensions + colonne « contexte+Classement ») sans trou en fin de
       rangée : `auto-fit`/`minmax` recommandé (cellules qui s'étirent). Documenter le choix ;
       harmoniser les hauteurs (`h-full`/`items-start` selon rendu).
-- [ ] **4d (i18n).** Aucune clé neuve attendue (labels de chaîne = `career.lusr.chain.*`
+- [x] **4d (i18n).** Aucune clé neuve attendue (labels de chaîne = `career.lusr.chain.*`
       réutilisés). Si `RankedTile` supprimée orpheline une clé, la purger.
-- [ ] **4e (tests).** Mettre à jour les tests : Classement absent du socle ; présent dans la
+- [x] **4e (tests).** Mettre à jour les tests : Classement absent du socle ; présent dans la
       4ᵉ colonne quand `ranked` + capability ; une ligne par chaîne (LUSR multi = plusieurs
       lignes ; CSR = 1) ; capability off → bloc absent. Aucun test skippé.
 
 Gate Phase 4 : `make check-types` = 0 ; `make test-web` vert ; `npm run lint` = 0 erreur ;
 greps : 0 `RankedTile` dans le socle (Strip) ; `RankedBlock` rendu dans la grille « Par… » ;
 `lusrChainLabel` importé.
+
+> **GATE PHASE 4 — VERT (exécuté le 2026-07-17).** `npm run typecheck` (`.tmp` purgé) = exit 0,
+> **0 erreur**. `npx vitest run` = **262 fichiers, 2298 passed, 14 skipped** (pré-existants).
+> `npm run lint` = **0 erreur** (68 warnings baseline ; lint ciblé sur les 5 fichiers touchés =
+> exit 0). `build_i18n_manifests.mjs` OK (explorer 227 clés). Greps de clôture : **0 `RankedTile`**
+> (composant supprimé partout), `RankedBlock` rendu par `ExplorerBriefingModules` (4e cellule),
+> `lusrChainLabel` importé dans `ExplorerRankedBlock`, `useCapability` migré Strip → Modules
+> (0 dans le Strip). Réalisé : 4a `ExplorerRankedBlock.tsx` (sibling neuf — `RankedBlock` +
+> `RankedChainRow`, une ligne PAR CHAÎNE « {TYPE}{ · label chaîne si type ≥ 2 chaînes} ·
+> {début → fin} · {±pt/match coloré} », label via `lusrChainLabel` ; helpers `rankedProgression`/
+> `perMatchLabel` DÉPLACÉS depuis `ExplorerBriefingTiles`) ; 4b 4e cellule `flex flex-col`
+> empilant `ContextSplitCard` + `RankedBlock` (gaté `useCapability('ranked')` migré + DTO
+> présent), `RankedTile` retiré du Strip ET de `ExplorerBriefingTiles` (+ helpers ranked morts
+> supprimés : `rankedValue`/`sinceLabel`/`rankedSubLine`) ; 4c grille « Par… » →
+> `auto-fit`/`minmax(240px,1fr)` (absorbe 0-3 dimensions + colonne scindée sans trou),
+> `ContextSplitCard` perd `h-full` (le grid stretch étire la cellule) ; 4d `ranked_since`
+> orphelinée PURGÉE (Découverte-15) ; 4e tests réécrits (RankedBlock une ligne/chaîne, LUSR
+> multi 2 lignes + label « Grande Équipe », Classement en 4e colonne pas dans le socle,
+> capability off → absent ; DP-4 sélecteur grille MAJ). AUCUN commit (superviseur en fin de bloc).
 
 ### Phase 5 — Frontend : tooltips via portal (moyen) — DEC-TOOLTIP
 
@@ -931,6 +972,40 @@ generate-types` idempotent ; `make check-types` = 0 ; `make test-web` vert ; `np
   utilisateur juge les micro-chaînes bruyantes, un plancher par chaîne pourra être ajouté
   (décision produit, hors périmètre de ce chantier — noté pour l'étape « À vérifier
   visuellement » item 1).
+
+- **Découverte-12 (Phase 3, exécution) — `peak_fda_label` EN = « Peak KDA » (pas « Peak FDA »
+  du plan).** DEC-i18n proposait EN « Peak FDA », mais tout le projet rend l'indicateur en
+  « KDA » côté EN (`fda_label` EN = « KDA », `tip_fda` EN parle de « KDA »). Pour la cohérence
+  EN (éviter un « FDA » anglais orphelin), le label EN retenu est « Peak KDA » (FR « Pic FDA »
+  inchangé). Micro-décision tranchée par la convention repo (plan-execution §3, communication).
+- **Découverte-13 (Phase 3, exécution) — `record_vdn` orphelinée puis purgée.** La refonte de la
+  tuile Taux de victoire au format hero (DEC-TILES) remplace le sous-texte textuel
+  « {w} V · {l} D · {t} N » par le ruban `OutcomeBar` flanqué des victoires/défaites + le tooltip
+  des 4 issues au survol (V/N/abandons/D). `record_vdn` perd alors son UNIQUE consommateur
+  (Strip) → clé morte. Purgée en Phase 3 (DEC-i18n : « toute clé orphelinée par une phase est
+  purgée DANS cette phase »), grep global confirmé (0 lecteur composant). Commentaires afférents
+  mis à jour (`streak_wins`, en-tête de section). NB : `record_label` (déjà morte avant ce
+  chantier) reste réservée à la Phase 8 (hors périmètre du bloc frontend structure).
+- **Découverte-14 (Phase 3, exécution) — tooltip des 4 issues via `useOutcomeLabel` (0 clé
+  neuve).** DEC-TILES exige le tooltip des 4 issues mais DEC-i18n ne liste aucune clé pour les
+  libellés d'issue. Choix : réutiliser le hook canonique `useOutcomeLabel('win'/'tie'/'dnf'/
+  'loss')` (`lib/i18n/fieldMappings`, backend-driven multi-titre) plutôt que d'ajouter 4 clés
+  dans `explorer.toml` — ce qui aurait créé une 3e copie du mapping outcome (outcomes.toml +
+  `home/kpi.i18n` existent déjà, anti CLAUDE.md §6). En test (field-mappings non mocké),
+  `useOutcomeLabel` retombe sur la clé sans casse (fetch échoue proprement, `retry:false`) ; le
+  tooltip n'étant rendu qu'au survol, les libellés ne sont pas asserted (structure testée : ruban
+  + comptes V/D).
+- **Découverte-15 (Phase 4, exécution) — `ranked_since` orphelinée puis purgée.** Le `RankedBlock`
+  rend une ligne par chaîne au format progression « {TYPE} · {début → fin} · {±pt/match} », qui
+  remplace le format tuile V3 (« valeur = palier de fin ; sous-texte = depuis {début} »). Le helper
+  `sinceLabel` (qui lisait `ranked_since` = « depuis {tier} ») est supprimé avec `RankedTile` →
+  `ranked_since` n'a plus AUCUN consommateur (grep confirmé). Purgée en Phase 4d, conformément à
+  l'instruction 4d (« Si RankedTile supprimée orpheline une clé, la purger »). Les autres clés
+  ranked (`ranked_title`, `tip_ranked`, `ranked_per_match`, `placement`, `placement_remaining`)
+  restent vivantes (consommées par `RankedBlock`). `rankedProgression`/`perMatchLabel` déplacés de
+  `ExplorerBriefingTiles` vers `ExplorerRankedBlock` (réutilisés) ; import cross-feature
+  `lusrChainLabel` (career → explorer) retenu tel quel (DÉFAUT DEC-RANK-FE — fonction pure de
+  résolution i18n, pas de promotion vers `lib/`).
 
 Consigner ici tout décalage fichier:ligne vs §2, tout lecteur i18n inattendu, toute dette
 repérée hors périmètre. Ne pas corriger dans ce chantier (hors Phase 8 scopée).

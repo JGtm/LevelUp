@@ -812,10 +812,6 @@ en = "Matches"
 fr = "Bilan"
 en = "Record"
 
-[explorer.briefing.record_vdn]
-fr = "{w} V · {l} D · {t} N"
-en = "{w} W · {l} L · {t} T"
-
 [explorer.briefing.win_rate_label]
 fr = "Taux de victoire"
 en = "Win rate"
@@ -827,6 +823,22 @@ en = "KDA"
 [explorer.briefing.perf_label]
 fr = "Perf. moyenne"
 en = "Avg. performance"
+
+[explorer.briefing.duration_total_label]
+fr = "Durée totale"
+en = "Total time"
+
+[explorer.briefing.peak_fda_label]
+fr = "Pic FDA"
+en = "Peak KDA"
+
+[explorer.briefing.peak_rank_label]
+fr = "Pic rang"
+en = "Peak rank"
+
+[explorer.briefing.peak_mmr_label]
+fr = "Pic MMR"
+en = "Peak MMR"
 
 [explorer.briefing.vs_baseline]
 fr = "vs habituel"
@@ -870,22 +882,17 @@ en = "Placement"
 fr = "Placement ({n, plural, one {# match restant} other {# matchs restants}})"
 en = "Placement ({n, plural, one {# match left} other {# matches left}})"
 
-# Sous-texte de la tuile Classement (V3) : palier de départ du scope.
-[explorer.briefing.ranked_since]
-fr = "depuis {tier}"
-en = "since {tier}"
-
 [explorer.briefing.context_split_title]
 fr = "Par contexte"
 en = "By context"
 
-# ─── Bandeau briefing : tuile « Séries » (socle) et bande « Moments forts » (V3) ─
+# ─── Bandeau briefing : tuile « Meilleure série » (socle) et bande « Moments forts » ─
 
 [explorer.briefing.streaks_title]
-fr = "Séries"
-en = "Streaks"
+fr = "Meilleure série"
+en = "Best streak"
 
-# Abréviations V/D alignées sur record_vdn (« {w} V · {l} D »), valeur de la tuile Séries.
+# Abréviations V/D (« {n} V » / « {n} D ») de la valeur de la tuile Meilleure série.
 [explorer.briefing.streak_wins]
 fr = "{n} V"
 en = "{n} W"
@@ -904,16 +911,16 @@ en = "Highlights"
 # catégories de « Moments forts » validée sur pièces (analysis.ComputeDominanceFlag).
 
 [explorer.briefing.tip_dimensions]
-fr = "Vos meilleurs et moins bons terrains sur les matchs affichés. Par ligne : nombre de matchs, taux de victoire, écart face à votre habitude (masqué quand tout l'historique est affiché) et une note de performance, d'Excellent à Mauvais, fondée sur votre score de performance personnel."
-en = "Your best and worst grounds over the shown matches. Per row: number of matches, win rate, gap versus your usual level (hidden when the full history is shown) and a performance grade, from Excellent to Poor, based on your personal performance score."
+fr = "Vos meilleurs et moins bons terrains sur les matchs affichés. Par ligne : nombre de matchs, taux de victoire, écart face à votre habitude et une note de performance, d'Excellent à Mauvais, fondée sur votre score de performance personnel."
+en = "Your best and worst grounds over the shown matches. Per row: number of matches, win rate, gap versus your usual level and a performance grade, from Excellent to Poor, based on your personal performance score."
 
 [explorer.briefing.tip_context]
 fr = "Vos résultats selon que vous jouiez seul ou en escouade : nombre de matchs, taux de victoire et FDA de chaque contexte."
 en = "Your results depending on whether you played solo or in a squad: number of matches, win rate and KDA for each context."
 
 [explorer.briefing.tip_win_rate]
-fr = "Part de matchs gagnés sur les matchs affichés. Dessous : victoires, défaites, nuls — et la mini-courbe montre l'évolution du taux de victoire sur la période."
-en = "Share of matches won over the shown matches. Below: wins, losses, draws — and the mini curve shows how the win rate evolved over the period."
+fr = "Part de matchs gagnés sur les matchs affichés. Le ruban sous la valeur répartit victoires, nuls, abandons et défaites ; survolez-le pour le détail chiffré."
+en = "Share of matches won over the shown matches. The ribbon below the value splits wins, draws, DNFs and losses; hover it for the detailed counts."
 
 [explorer.briefing.tip_fda]
 fr = "Frags, Décès, Assistances : un indicateur d'impact par match qui valorise les frags et les assistances et pénalise les décès — ce n'est pas une simple division des frags par les décès."
@@ -922,6 +929,22 @@ en = "Kills, Deaths, Assists: a per-match impact indicator that rewards kills an
 [explorer.briefing.tip_perf]
 fr = "Score de performance de 0 à 100, calculé par rapport à votre propre historique : 50 correspond à votre niveau habituel."
 en = "Performance score from 0 to 100, computed against your own history: 50 is your usual level."
+
+[explorer.briefing.tip_duration]
+fr = "Temps de jeu total cumulé sur les matchs affichés."
+en = "Total play time across the shown matches."
+
+[explorer.briefing.tip_peak_fda]
+fr = "Votre meilleur FDA sur un seul match parmi les matchs affichés."
+en = "Your best KDA in a single match among the shown matches."
+
+[explorer.briefing.tip_peak_rank]
+fr = "Le meilleur palier de classement atteint sur les matchs affichés — pas votre palier final."
+en = "The highest ranking tier reached over the shown matches — not your final tier."
+
+[explorer.briefing.tip_peak_mmr]
+fr = "Le meilleur niveau de compétence estimé (MMR) atteint sur les matchs affichés."
+en = "The highest estimated skill level (MMR) reached over the shown matches."
 
 [explorer.briefing.tip_ranked]
 fr = "Votre palier de classement à la fin des matchs affichés, le palier de départ, et la moyenne de points de classement gagnés ou perdus par match."

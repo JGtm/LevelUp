@@ -3,14 +3,16 @@
  *
  * Rendus sous le socle quand l'échantillon est suffisant :
  *   - Dimensions (par carte / mode / playlist) : top/flop avec note (palier 1..5).
- *   - Contexte solo/escouade + Moments forts (dominance).
+ *   - 4e colonne scindée : « Par contexte » (solo/escouade) empilé sur le Classement
+ *     par chaîne (RankedBlock, DEC-LAYOUT V4) ; gaté capability 'ranked'.
+ *   - Moments forts (dominance) : bande nue.
  *
- * Tendance, Classement et Séries ne sont plus des cartes ici : ils vivent dans le
- * socle (sparkline + tuiles, V3 compaction — cf. Strip + ExplorerBriefingTiles).
- * Chaque module s'omet proprement si son bloc backend est nil (dégradation par
- * omission, jamais de placeholder vide ni de NaN). Tokens sémantiques uniquement.
+ * La Meilleure série reste une tuile du socle (ExplorerBriefingTiles). Chaque module
+ * s'omet proprement si son bloc backend est nil (dégradation par omission, jamais de
+ * placeholder vide ni de NaN). Tokens sémantiques uniquement.
  */
 import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { useCapability } from '@/lib/capabilities/capabilities'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { kdaNetColor, winRateColor } from '@/lib/colors/outcomePalette'
 import { formatPercentInt } from '@/lib/formatters'
@@ -28,6 +30,7 @@ import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 import { BriefingSectionCard } from './BriefingSectionCard'
 import { deltaToken, formatSignedPoints, signOf } from './ExplorerBriefing.logic'
+import { RankedBlock } from './ExplorerRankedBlock'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
 // TMV : résout un libellé du manifest match_view (réutilisé pour les libellés
@@ -81,24 +84,39 @@ export function ExplorerBriefingModules({
   hideDelta: boolean
 }) {
   const locale = useAppShellStore((s) => s.locale)
+  // Capability 'ranked' migrée du Strip (V4 Phase 4) : le Classement vit désormais
+  // dans la 4e colonne de la rangée « Par… », plus dans le socle.
+  const hasRanked = useCapability('ranked')
   const tMV: TMV = (key) => formatMessage(matchViewManifest, key, locale)
   const dimensions = briefing.dimensions ?? []
   const contextSplit = briefing.context_split ?? null
+  const ranked = briefing.ranked ?? null
+  const showRanked = hasRanked && ranked != null && (ranked.kinds?.length ?? 0) > 0
+  // 4e cellule de la rangée « Par… » : empile « Par contexte » (si présent) + le
+  // Classement par chaîne (si ranked + capability). Rendue dès qu'un des deux existe.
+  const showSplitColumn = contextSplit != null || showRanked
   // Moments forts : carte omise si aucune catégorie non nulle (item 13).
   const dominance = briefing.dominance ?? null
   const showDominance = dominance != null && DOMINANCE_ITEMS.some((it) => (dominance[it.field] ?? 0) > 0)
-  if (dimensions.length === 0 && contextSplit == null && !showDominance) return null
+  if (dimensions.length === 0 && !showSplitColumn && !showDominance) return null
 
   return (
     <div className="space-y-2 pt-1">
-      {/* Rangée « Par… » : cartes de dimension + carte « Par contexte » (4e cellule)
-          dans une seule grille responsive (DEC-3 : 1 → 2 → 4 colonnes). */}
-      {(dimensions.length > 0 || contextSplit != null) && (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Rangée « Par… » adaptative (DEC-GRID : auto-fit/minmax → jamais de trou en
+          fin de rangée) : cartes de dimension + 4e cellule « contexte + Classement ». */}
+      {(dimensions.length > 0 || showSplitColumn) && (
+        <div className="grid grid-cols-1 gap-2 sm:[grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
           {dimensions.map((d) => (
             <DimensionCard key={d.dimension} dim={d} t={t} hideDelta={hideDelta} />
           ))}
-          {contextSplit != null && <ContextSplitCard split={contextSplit} t={t} />}
+          {showSplitColumn && (
+            <div className="flex flex-col gap-2">
+              {contextSplit != null && <ContextSplitCard split={contextSplit} t={t} />}
+              {showRanked && ranked != null && (
+                <RankedBlock ranked={ranked} t={t} locale={locale} />
+              )}
+            </div>
+          )}
         </div>
       )}
       {showDominance && (
@@ -195,7 +213,6 @@ function DimensionRow({
 function ContextSplitCard({ split, t }: { split: ExplorerBriefingContextSplit; t: T }) {
   return (
     <BriefingSectionCard
-      className="h-full"
       title={
         <span className="inline-flex items-center gap-1.5">
           {t('explorer.briefing.context_split_title')}

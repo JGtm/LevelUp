@@ -822,6 +822,7 @@ export type ExplorerMatchesQueryResponse = components['schemas']['ExplorerMatche
 // ─── Bandeau de briefing (mode Matchs) — alias des schémas auto-dérivés ────────
 export type ExplorerBriefing = components['schemas']['ExplorerBriefing']
 export type ExplorerBriefingScope = components['schemas']['ExplorerBriefingScope']
+export type ExplorerBriefingPeakRank = components['schemas']['ExplorerBriefingPeakRank']
 export type ExplorerBriefingBaseline = components['schemas']['ExplorerBriefingBaseline']
 export type ExplorerBriefingDimension = components['schemas']['ExplorerBriefingDimension']
 export type ExplorerBriefingDimensionEntry = components['schemas']['ExplorerBriefingDimensionEntry']
