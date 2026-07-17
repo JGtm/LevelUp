@@ -7292,6 +7292,25 @@ Balayage `apps/web/e2e/` : aucune autre attente sur les libellés de tiers EN
 - Exécution Playwright réelle non faite en local (exige make dev + données démo,
   skipIfNoDemoData) — la CI PR est le gate d'exécution.
 
+**Round 2 (E1bis) — verdict E2E + correctif** : la regex round 1 a RE-échoué en
+CI. Contenu réel du body fourni par le superviseur : « Arène classéeOr I ·
+1 420 » — le tier EST affiché, mais le textContent concatène les éléments
+adjacents SANS espace (« classéeOr ») ; entre « e » et « O », deux caractères de
+mot, il n'y a pas de word boundary → le `\b` de TÊTE ne matche jamais. (Autres
+occurrences concaténées du body : « arenaOr 2 », « CSROr 2 » — variantes arabes,
+non requises : une seule occurrence doit matcher.) Correctif : ancre de tête
+retirée, ancre de queue conservée → `/(Gold|Or)\s+(I|II|III|IV|V|VI)\b/`. Les
+faux positifs restent écartés : sensibilité à la casse (« décor », « or », même
+« DÉCOR » non matchés) + espace exigé APRÈS « Or »/« Gold » suivi d'un romain
+(« Ordre I », « Score IV » non matchés). Raisonnement documenté dans le
+commentaire du test (remplace la justification du \b de tête). LEÇON : ne jamais
+ancrer une word boundary de TÊTE dans un matcher toContainText sur body — la
+concaténation textContent aux jointures d'éléments la rend non fiable ; ancrer
+sur la structure INTERNE du motif (casse + séparateurs internes + \b de queue).
+Sanity node : chaîne body EXACTE matchée (« Or I ») ; « Ordre I », « Score IV »,
+« décor I » + 5 pièges rejetés. `npx playwright test --list` re-exécuté exit 0
+(107 tests / 27 fichiers).
+
 **Conclusion / prochaine étape** : les 3 causes CI de la PR #64 (goconst,
-baseline, E2E carrière) sont traitées dans le working tree ; commits/push/re-CI
-côté superviseur.
+baseline, E2E carrière round 2) sont traitées dans le working tree ;
+commits/push/re-CI côté superviseur.
