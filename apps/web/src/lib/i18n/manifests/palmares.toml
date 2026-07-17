@@ -348,6 +348,28 @@ en = "No relation in this filter"
 fr = "Essaie un autre filtre pour voir d'autres joueurs récurrents."
 en = "Try another filter to see other recurring players."
 
+# ─── Relations - Volet « Quoi de neuf » ─────────────────────────────────────
+
+[palmares.relations.whats_new.section_title]
+fr = "Quoi de neuf"
+en = "What's new"
+
+[palmares.relations.whats_new.new_faces]
+fr = "Nouvelles têtes"
+en = "New faces"
+
+[palmares.relations.whats_new.new_faces_tooltip]
+fr = "Joueurs croisés pour la première fois dans les 30 derniers jours."
+en = "Players first encountered within the last 30 days."
+
+[palmares.relations.whats_new.reunions]
+fr = "Retrouvailles"
+en = "Reunions"
+
+[palmares.relations.whats_new.reunions_tooltip]
+fr = "Joueurs recroisés récemment après au moins 90 jours sans rencontre."
+en = "Players re-encountered recently after at least 90 days apart."
+
 # ─── Relations - Moments & Rivalités (Phase 3a) ────────────────────────────
 
 [palmares.relations.moments.section_title]

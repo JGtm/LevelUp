@@ -1,3 +1,38 @@
+## [2026-07-17] Relations UX — Lot D : volet « Quoi de neuf » (full-stack) (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Décision technique principale** : donner une raison de revenir via deux groupes —
+« Nouvelles têtes » (first_seen ≤ 30 j, décidé CÔTÉ CLIENT depuis first_seen_at, pas de
+SQL) et « Retrouvailles » (is_revived). Retrouvailles = au moins 1 rencontre dans la
+fenêtre récente (30 j) ET dernière rencontre antérieure à la fenêtre ≥ 90 j. Deux
+agrégats SQL nouveaux sur `Q28RelationsTpl` + `Q28RelationsScopedTpl` :
+`COUNT(DISTINCT e.match_id) FILTER (WHERE e.start_time >= ?)` (encounters_30d) et
+`MAX(e.start_time) FILTER (WHERE e.start_time < ?)` (prev_seen_before_window). `e.start_time`
+EST déjà le fragment timezone canonique (alias CTE encounters) — jamais `start_time` brut.
+Cutoff (`now − RevivedWindowDays`) passé en paramètre lié (pattern `periodSince`) sans
+changer la signature `GetRelations` : accounting des placeholders ajusté dans
+`buildRelationsQuery` (2 cutoff insérés entre encounters et kv_stats, non scopé 7→9,
+scopé idem + 2). Décision finale `IsRevived` = fonction PURE dans `analysis/relations`
+(constantes nommées, `now` injectable), mappée dans `buildRelationInsight` via le `now`
+déjà présent — source unique serveur comme `is_core`. Front : `whatsNew.ts` pur
+(sélection/tri/plafond 5 + overflow) + `RelationsWhatsNewStrip` rendu conditionnel entre
+hero et chips, gamertags → Explorer, tooltips 30 j/90 j (tokens sémantiques only).
+
+**Résultat observé** : DTO `RelationInsight` += `is_revived` (openapi + generated.ts).
+Repo test integration (Revy now−200 j/now−5 j → encounters_30d=1, prev_seen≈now−200 j ;
+Reg now−10 j/now−20 j → encounters_30d=2, prev_seen=nil) vert sur les DEUX templates.
+
+**Gate D (GATE-GO + GATE-WEB + GATE-I18N + GATE-TYPES)** : `go vet ./...` 0 ;
+`go test ./...` exit 0 (111 paquets ok, aucun FAIL) ; repo test
+`go test -tags=integration` vert ; `generate-types` (is_revived) ; manifest régénéré
+(5 clés whats_new) ; typecheck vert ; lint 0 erreur / 68 warnings (baseline, 0 nouveau) ;
+vitest `palmares + notifications + stores` → 13 fichiers / 112 tests verts (nouveaux :
+`whatsNew.test.ts`, `RelationsWhatsNewStrip.test.tsx`).
+
+**Prochaine étape** : lots F+D livrés sur ce train. Lot E (notification rival post-sync)
+exécuté par un autre agent ; lot G conditionnel.
+
 ## [2026-07-17] Relations UX — Lot F : dé-redondance noyau dur + pont Escouade (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété.

@@ -124,20 +124,24 @@ LIMIT 10`
 // fallback "e.my_outcome = 2/3" byte-identique Halo). PAS de clause d'exclusion
 // friends ni de LIMIT (le hub Relations affiche tout le monde).
 //
-// Placeholders ? (ordre, tous = xuid du joueur courant) :
+// Placeholders ? (ordre) — tous = xuid du joueur courant SAUF ?3/?4 = cutoff
+// fenêtre récente (time.Time, RevivedWindowDays) :
 //
 //	?1 my_history.WHERE xuid = ?
 //	?2 encounters JOIN p.xuid <> ?
-//	?3 kv_stats CASE killer_xuid = ? → victim
-//	?4 kv_stats CASE killer_xuid = ? → kills_by_me
-//	?5 kv_stats CASE victim_xuid = ? → kills_by_them
-//	?6 kv_stats WHERE killer_xuid = ?
-//	?7 kv_stats WHERE OR victim_xuid = ?
+//	?3 encounter_stats FILTER encounters_30d (start_time >= cutoff)
+//	?4 encounter_stats FILTER prev_seen_before_window (start_time < cutoff)
+//	?5 kv_stats CASE killer_xuid = ? → victim
+//	?6 kv_stats CASE killer_xuid = ? → kills_by_me
+//	?7 kv_stats CASE victim_xuid = ? → kills_by_them
+//	?8 kv_stats WHERE killer_xuid = ?
+//	?9 kv_stats WHERE OR victim_xuid = ?
 //
-// Colonnes SELECT (15, scannées dans cet ordre) : xuid, gamertag,
+// Colonnes SELECT (17, scannées dans cet ordre) : xuid, gamertag,
 // count_together, ally_count, enemy_count, wins_as_ally, losses_as_ally,
 // wins_vs_enemy, losses_vs_enemy, kills_dealt, deaths_suffered, avg_kda_with,
-// avg_kda_against, first_seen_at, last_seen_at.
+// avg_kda_against, first_seen_at, last_seen_at, encounters_30d,
+// prev_seen_before_window.
 var Q28RelationsTpl = `
 WITH my_history AS (
     SELECT match_id, team_id, outcome
@@ -173,7 +177,12 @@ encounter_stats AS (
         AVG(CASE WHEN e.opp_team_id  = e.my_team_id THEN e.opp_kda END) AS avg_kda_with,
         AVG(CASE WHEN e.opp_team_id <> e.my_team_id THEN e.opp_kda END) AS avg_kda_against,
         MIN(e.start_time) AS first_seen_at,
-        MAX(e.start_time) AS last_seen_at
+        MAX(e.start_time) AS last_seen_at,
+        -- Volet « Quoi de neuf » : rencontres dans la fenêtre récente (>= cutoff)
+        -- et dernière rencontre ANTÉRIEURE à la fenêtre (< cutoff). e.start_time
+        -- est déjà le fragment timezone canonique (jamais start_time brut).
+        COUNT(DISTINCT e.match_id) FILTER (WHERE e.start_time >= ?) AS encounters_30d,
+        MAX(e.start_time) FILTER (WHERE e.start_time < ?)           AS prev_seen_before_window
     FROM encounters e
     GROUP BY e.xuid
     HAVING COUNT(DISTINCT e.match_id) >= 2
@@ -208,7 +217,9 @@ SELECT
     es.avg_kda_with,
     es.avg_kda_against,
     es.first_seen_at,
-    es.last_seen_at
+    es.last_seen_at,
+    es.encounters_30d,
+    es.prev_seen_before_window
 FROM encounter_stats es
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = es.xuid
 LEFT JOIN kv_stats kv ON kv.xuid = es.xuid
@@ -233,6 +244,8 @@ ORDER BY es.count_together DESC, es.xuid ASC`
 //	?1 my_history.WHERE xuid = ?
 //	?…  scope IN (my_history)  — N placeholders du set
 //	?  encounters JOIN p.xuid <> ?
+//	?  encounter_stats FILTER encounters_30d (start_time >= cutoff)
+//	?  encounter_stats FILTER prev_seen_before_window (start_time < cutoff)
 //	?  kv_stats CASE killer_xuid = ? → victim
 //	?  kv_stats CASE killer_xuid = ? → kills_by_me
 //	?  kv_stats CASE victim_xuid = ? → kills_by_them
@@ -276,7 +289,11 @@ encounter_stats AS (
         AVG(CASE WHEN e.opp_team_id  = e.my_team_id THEN e.opp_kda END) AS avg_kda_with,
         AVG(CASE WHEN e.opp_team_id <> e.my_team_id THEN e.opp_kda END) AS avg_kda_against,
         MIN(e.start_time) AS first_seen_at,
-        MAX(e.start_time) AS last_seen_at
+        MAX(e.start_time) AS last_seen_at,
+        -- Volet « Quoi de neuf » (cf. Q28RelationsTpl) : e.start_time est déjà le
+        -- fragment timezone canonique (jamais start_time brut).
+        COUNT(DISTINCT e.match_id) FILTER (WHERE e.start_time >= ?) AS encounters_30d,
+        MAX(e.start_time) FILTER (WHERE e.start_time < ?)           AS prev_seen_before_window
     FROM encounters e
     GROUP BY e.xuid
     HAVING COUNT(DISTINCT e.match_id) >= 2
@@ -311,7 +328,9 @@ SELECT
     es.avg_kda_with,
     es.avg_kda_against,
     es.first_seen_at,
-    es.last_seen_at
+    es.last_seen_at,
+    es.encounters_30d,
+    es.prev_seen_before_window
 FROM encounter_stats es
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = es.xuid
 LEFT JOIN kv_stats kv ON kv.xuid = es.xuid
