@@ -1081,6 +1081,8 @@ export type SeasonPassPageResponse = components['schemas']['SeasonPassPageRespon
 export type RelationBadge = components['schemas']['RelationBadge']
 export type RelationInsight = components['schemas']['RelationInsight']
 export type RelationRef = components['schemas']['RelationRef']
+// RelationCSR : snapshot CSR courant de la bête noire (lot relations-G, best-effort).
+export type RelationCSR = components['schemas']['RelationCSR']
 export type RelationsOverview = components['schemas']['RelationsOverview']
 export type RelationsPageResponse = components['schemas']['RelationsPageResponse']
 

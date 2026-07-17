@@ -38,6 +38,7 @@ export interface PalmaresText {
       streakLosses: (count: string) => string
       duels: (count: string) => string
       recentDuels: string
+      currentRank: string
     }
     chips: {
       all: string
@@ -231,6 +232,7 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         duels: (count: string) =>
           formatMessage(palmaresManifest, 'palmares.relations.hero.duels', loc, { count }),
         recentDuels: t(loc, 'palmares.relations.hero.recent_duels'),
+        currentRank: t(loc, 'palmares.relations.hero.current_rank'),
       },
       chips: {
         all: t(loc, 'palmares.relations.chip.all'),

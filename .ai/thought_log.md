@@ -1,3 +1,50 @@
+## [2026-07-17] Lot G Relations UX — CSR de la bête noire (dégradation gracieuse)
+
+**Statut** : Complété.
+
+**Contexte** : lot G du plan `.ai/V7/PLAN_RELATIONS_UX_2026-07.md` (archivé, A–F/H livrés).
+Décision produit 2026-07-17 : construire G MALGRÉ une couverture CSR nulle sur la base de
+dev (100 % social). La feature s'auto-adapte à la population (joueur compétitif → CSR
+affiché ; social → rien) ; coût d'avoir tort = nul grâce à la dégradation gracieuse. La
+porte d'entrée « ≥ 30 % couverture » (G0) est ABANDONNÉE comme critère (elle mesurait la
+base de dev, pas la valeur cible) → requalifiée `[~]`.
+
+**Décision technique** :
+- Backend : `domain.RelationCSR{Tier, SubTier, RatingValue}` (pointeurs) + champ optionnel
+  `RelationRef.CSR` peuplé uniquement pour `top_nemesis`. `GetLatestCSR(xuid)` sur
+  `CareerRepo` (Q31) lit le snapshot le PLUS RÉCENT de `match_csrs_latest` (vue `_latest`,
+  règle ART n°2) joint à `match_registry`, ORDER BY fragment timezone canonique
+  (`StartTimeCanonicalSQL`) DESC LIMIT 1 ; best-effort strict → (nil,nil) si xuid vide /
+  table absente / aucune ligne / palier « Placement ». Enrichissement service
+  `appendNemesisCSR` (modèle `appendCoreEngagement`) : recompose `SelectTopNemesis` pour
+  le XUID (dropé par `topRefToRef`), WarnContext + réponse sans CSR si erreur — jamais
+  d'échec de /relations. `openapi.yaml` aligné byte-à-byte sur l'auto-dérivation Huma
+  (`RelationCSR` nommé + `RelationRef.csr` $ref) → schema-drift test vert.
+- Front : chip « Rang actuel » sur `HeroRelationCard` (nemesis), rendu ssi
+  `top_nemesis.csr` présent (pas de « N/A »). Libellé via `composeTierLabel` (Onyx →
+  « Onyx 1523 »). Couleur : `NarrativeBadge` + token EXISTANT
+  `narrative-encounter-tough-enemy`.
+
+**Découvertes (documentées au plan)** :
+- Le « fait établi » de la mission (utilitaires de COULEUR de tier) est inexact : aucun
+  mapping tier→token n'existe ; doctrine repo « pas de couleur par rang »
+  (`skillTierBands.ts`). Choix : token existant unique (pas de palette par rang inventée).
+- `composeTierLabel` (localizeTierName + subTierRoman + garde Onyx) existait en 2 copies
+  inline → 3e copie déclenche la règle ≤ 2 : centralisé dans `skillTiers.ts`, 2 copies
+  migrées (sortie identique), garde-rail ajouté. Migration in-scope (causée par G).
+
+**Résultats / gates (cette session, tous verts)** : Go `build`/`vet`/`test ./...` exit 0 ;
+`go test -tags=integration -p 1 ./internal/platform/duckdb/...` exit 0 ; schema-drift test
+vert ; `make generate-types` (RelationCSR/RelationRef, +8 L generated.ts) ; web
+`typecheck` OK, `lint` 0 erreur (68 warnings baseline hors périmètre),
+`vitest` palmares + skillTiers(+guard) + explorer + career = 165 tests verts.
+
+**Conclusion** : lot G livré `[x]` en dégradation gracieuse ; plan clôturé (A–H + G).
+Prochaine étape (produit, hors code) : si G doit être visible en dev, densifier la capture
+CSR des adversaires côté sync (`UpsertSharedCSRs`) — dette DONNÉE, pas code.
+
+---
+
 ## [2026-07-17] Inventaire complet des weapon_id H5 hors-arsenal (classification produit)
 
 **Statut** : Complété.

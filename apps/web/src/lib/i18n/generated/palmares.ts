@@ -45,6 +45,7 @@ export const palmaresManifest = {
   "palmares.relations.filters.view_squad": { fr: "Escouade", en: "Squad" },
   "palmares.relations.hero.core_title": { fr: "Noyau dur", en: "Inner circle" },
   "palmares.relations.hero.core_unit": { fr: "joueurs", en: "players" },
+  "palmares.relations.hero.current_rank": { fr: "Rang actuel", en: "Current rank" },
   "palmares.relations.hero.duels": { fr: "{count} duels", en: "{count} duels" },
   "palmares.relations.hero.matches_played": { fr: "{count} matchs", en: "{count} matches" },
   "palmares.relations.hero.recent_duels": { fr: "Derniers duels", en: "Recent duels" },

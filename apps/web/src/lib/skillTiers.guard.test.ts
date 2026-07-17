@@ -67,4 +67,21 @@ describe('garde-rail mapping tiers CSR/LUSR (source unique lib/skillTiers.ts)', 
       `Mapping romain des sous-paliers a centraliser via subTierRoman (lib/skillTiers.ts) : ${offenders.join(', ')}`,
     ).toEqual([])
   })
+
+  // Regle <= 2 copies : la composition « nom localise + sous-palier romain » d'un
+  // libelle de tier (localizeTierName + subTierRoman dans le meme fichier) a une
+  // SOURCE UNIQUE : `composeTierLabel` (lib/skillTiers.ts). Un fichier de features/
+  // qui appelle les DEUX atomes = 3e copie du compose -> a migrer sur composeTierLabel.
+  it('aucune composition inline « localizeTierName + subTierRoman » sous src/features/** (utiliser composeTierLabel)', () => {
+    const offenders = files
+      .filter((f) => {
+        const src = readFileSync(f, 'utf8')
+        return src.includes('localizeTierName(') && src.includes('subTierRoman(')
+      })
+      .map((f) => f.replace(featuresRoot, 'src/features'))
+    expect(
+      offenders,
+      `Composition de libelle de tier a centraliser via composeTierLabel (lib/skillTiers.ts) : ${offenders.join(', ')}`,
+    ).toEqual([])
+  })
 })

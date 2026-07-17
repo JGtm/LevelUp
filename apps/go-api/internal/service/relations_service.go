@@ -83,11 +83,38 @@ func (s *RelationsService) GetRelationsPage(ctx context.Context, input domain.Fi
 
 	overview := buildOverview(stats)
 	s.appendCoreEngagement(ctx, &overview, stats, scope)
+	s.appendNemesisCSR(ctx, &overview, stats)
 
 	return domain.RelationsPageResponse{
 		Overview:  overview,
 		Relations: insights,
 	}, nil
+}
+
+// appendNemesisCSR enrichit l'aperçu avec le CSR courant de la bête noire (top
+// nemesis), lu best-effort depuis match_csrs_latest via le repo. ADDITIF /
+// best-effort strict (lot relations-G) : le CSR n'existe que pour le classé — pour
+// une bête noire social/non collectée, le repo renvoie nil et rien n'est affiché
+// (dégradation gracieuse). Toute erreur de lecture est loggée et avalée : un échec
+// de cet enrichissement ne doit JAMAIS faire échouer /relations.
+func (s *RelationsService) appendNemesisCSR(
+	ctx context.Context, overview *domain.RelationsOverview, stats []relations.RelationStats,
+) {
+	if overview.TopNemesis == nil {
+		return
+	}
+	// SelectTopNemesis est pur/déterministe : la bête noire est la même que dans
+	// buildOverview (le XUID, dropé par topRefToRef, est requis pour la lecture CSR).
+	nemesis := relations.SelectTopNemesis(stats)
+	if nemesis == nil || nemesis.XUID == "" {
+		return
+	}
+	csr, err := s.repo.GetLatestCSR(ctx, nemesis.XUID)
+	if err != nil {
+		slog.WarnContext(ctx, "RelationsService: enrich nemesis CSR failed", "err", err)
+		return
+	}
+	overview.TopNemesis.CSR = csr
 }
 
 // appendCoreEngagement enrichit l'aperçu avec le WR perso de référence (lift de

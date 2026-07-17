@@ -179,6 +179,14 @@ type RelationsRepository interface {
 	// Pour la sparkline « Derniers matchs ensemble » de la carte binôme. xuid vide
 	// ⇒ nil. scope : même contrat que GetRelations.
 	GetRelationRecentForm(ctx context.Context, xuid string, scope []string, limit int) ([]string, error)
+
+	// GetLatestCSR : snapshot CSR le PLUS RÉCENT (par start_time canonique du match)
+	// du joueur `xuid`, lu depuis la vue append-only match_csrs_latest (règle ART
+	// n°2) jointe à match_registry pour la chronologie. Sert le contexte CSR de la
+	// bête noire (lot relations-G). Best-effort strict : retourne (nil, nil) — jamais
+	// d'erreur — si aucune ligne CSR (relation non classée), CSR non significatif
+	// (tier ET rating absents), ou table/colonne absente. xuid vide ⇒ (nil, nil).
+	GetLatestCSR(ctx context.Context, xuid string) (*domain.RelationCSR, error)
 }
 
 // FriendMatchExtras : enrichissement per-friend pour le panneau d'expander

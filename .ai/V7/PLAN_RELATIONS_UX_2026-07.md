@@ -434,34 +434,55 @@ quand une sync ramène un nouveau duel contre un des top rivaux.
 **Gate E** : GATE-GO **avec** `go test -tags=integration -p 1 ./...` (le lot touche
 `internal/migration/`) + GATE-WEB.
 
-## Lot G (CONDITIONNEL) — Contexte CSR sur la bête noire (optionnel, moyen)
+## Lot G (LIVRÉ) — Contexte CSR sur la bête noire (dégradation gracieuse)
 
-À n'exécuter QUE si les lots A–F sont clos et si la vérification de couverture passe.
-Sinon statuer `[!]` avec la mesure observée — ce n'est pas un échec du plan.
+DÉCISION PRODUIT (2026-07-17) : lot G construit MALGRÉ une couverture nulle sur la base
+de dev. La feature s'auto-adapte à la population (un joueur compétitif verra le CSR de sa
+bête noire, un joueur social ne verra rien) — coût d'avoir tort = nul grâce à la
+dégradation gracieuse. La porte d'entrée « ≥ 30 % de couverture » (G0) est ABANDONNÉE
+comme critère : elle mesurait la base de dev, pas la valeur cible.
 
-- [!] G0. Vérification de couverture (gate d'entrée) : mesure faite le 2026-07-17 sur
-      une COPIE read-only du shared (`shared_matches_v2.duckdb` copiée en scratchpad,
-      sonde Go jetable — le CLI `duckdb` n'est pas installé dans cet environnement).
-      Rivaux = opponents avec `enemy_matches >= 8` (`opp_team_id <> my_team_id`, bots
-      `bid(%` exclus — définition Q28), CSR exploitable lue via `match_csrs_latest`
-      (vue append-only, règle ART n°2), exploitable = `rating_value IS NOT NULL OR
-      (tier IS NOT NULL AND tier <> 'Placement')`.
-      MESURE OBSERVÉE : **0 %** de couverture.
-        - Par joueur : Chocoboflor 0/2, JGtm 0/7, Madina97294 0/17, XxDaemonGamerxX 0/0.
-        - UNION distincte des rivaux : **0/22 (0,0 %)**.
-        - Sanity : `match_csrs_latest` = 64 lignes / 37 xuids distincts / 37 exploitables,
-          mais ce sont essentiellement les 3 joueurs syncés (8 lignes CSR chacun) +
-          quelques autres ; AUCUN des 22 rivaux à `enemy_matches >= 8` n'y figure. Le
-          shared ne capture le CSR que sur un sous-ensemble étroit de matchs classés,
-          pas le CSR des adversaires long-tail.
-      0 % << 30 % → lot G statué `[!]` et ARRÊTÉ ici. Ce n'est PAS un échec du plan
-      (issue conditionnelle prévue). Sonde supprimée (non committée, modèle M0d).
-- [!] G1. NON EXÉCUTÉ — gate G0 non franchi (0 % de couverture CSR des rivaux). Aucune
-      valeur produit à exposer : la carte serait vide pour 100 % des bêtes noires.
-- [!] G2. NON EXÉCUTÉ — idem G0/G1.
-- [!] G3. NON EXÉCUTÉ — idem G0/G1.
+- [~] G0. Gate de couverture ABANDONNÉ comme critère (décision produit 2026-07-17,
+      dégradation gracieuse). Mesure historique (sonde Go jetable, 2026-07-17) : 0 % de
+      couverture CSR des rivaux sur la base de dev (union 0/22) — reflète que la base est
+      100 % social, PAS la valeur de la feature pour un joueur compétitif. Le CSR n'existe
+      que pour le classé ; le pipeline ne dense pas encore le CSR des adversaires long-tail
+      (dette DONNÉE consignée en Découvertes, pas un bloqueur de G). La feature est livrée
+      best-effort : nil → rien affiché.
+- [x] G1. Backend — CSR courant de la bête noire exposé, best-effort. DTO :
+      `domain.RelationCSR{Tier, SubTier, RatingValue}` (pointeurs, nil = absent) + champ
+      optionnel `RelationRef.CSR *RelationCSR json:"csr,omitempty"` (peuplé UNIQUEMENT
+      pour `top_nemesis`). Repo : `port.RelationsRepository.GetLatestCSR(ctx, xuid)` +
+      impl `CareerRepo.GetLatestCSR` (`relations_csr_repo.go`, Q31) — lit le snapshot le
+      PLUS RÉCENT depuis `match_csrs_latest` (vue `_latest`, règle ART n°2) jointe à
+      `match_registry`, ORDER BY fragment timezone canonique DESC LIMIT 1 ; best-effort
+      strict (nil,nil si xuid vide / table absente / aucune ligne / palier absent ou
+      « Placement »). Service : `appendNemesisCSR` (modèle `appendCoreEngagement`) après
+      `buildOverview` — recompose `SelectTopNemesis` pour récupérer le XUID (dropé par
+      `topRefToRef`), lit le CSR, WarnContext + réponse SANS CSR si erreur (jamais
+      d'échec de /relations). `openapi.yaml` (schéma `RelationCSR` + `RelationRef.csr`,
+      forme byte-identique à l'auto-dérivation Huma → schema-drift test vert) +
+      `make generate-types`.
+- [x] G2. Front — chip « Rang actuel » sur la carte hero bête noire
+      (`HeroRelationCard`, `PalmaresRelationsPage.tsx`), rendu UNIQUEMENT si
+      `top_nemesis.csr` présent (dégradation silencieuse, pas de « N/A »). Libellé composé
+      via l'utilitaire CSR existant `composeTierLabel` (centralisé dans `skillTiers.ts`
+      — voir note ≤ 2 copies) ; Onyx suffixé de la valeur CSR (« Onyx 1523 »). Couleur :
+      badge `NarrativeBadge` solid avec le token sémantique EXISTANT
+      `narrative-encounter-tough-enemy` (aucun nouveau token — doctrine « pas de couleur
+      par rang » respectée ; voir Découvertes). i18n `palmares.relations.hero.current_rank`
+      FR « Rang actuel » / EN « Current rank » + manifest régénéré.
+- [x] G3. Tests. Go service (`relations_service_test.go`) : bête noire AVEC ligne CSR →
+      `top_nemesis.csr` peuplé (+ lu par le XUID de la bête noire, allié jamais enrichi) ;
+      SANS → nil ; lecture CSR en échec → overview renvoyé sans CSR, pas d'erreur propagée ;
+      aucune bête noire → GetLatestCSR jamais appelé. Go repo intégration
+      (`relations_csr_repo_test.go`, build integration) : snapshot le plus récent
+      l'emporte (Onyx > Diamant ancien), social → nil, placement → nil, xuid vide → nil.
+      Web (`PalmaresRelationsPage.test.tsx`) : carte AVEC csr → « Rang actuel » + « Onyx
+      1523 » + badge rendu ; SANS csr → aucun chip. Unité `composeTierLabel`
+      (`skillTiers.test.ts`) + garde-rail compose (`skillTiers.guard.test.ts`).
 
-**Gate G** : GATE-GO + GATE-WEB + GATE-TYPES.
+**Gate G** : GATE-GO + GATE-WEB + GATE-TYPES — tous verts (2026-07-17, cette session).
 
 ---
 
@@ -499,8 +520,28 @@ Sinon statuer `[!]` avec la mesure observée — ce n'est pas un échec du plan.
 - Lot G / G0 — Couverture CSR des adversaires quasi nulle dans le shared : `match_csrs`
   ne contient que 64 lignes (37 xuids, surtout les joueurs syncés). Le pipeline ne
   capture pas systématiquement le CSR des adversaires long-tail → la feature « contexte
-  CSR bête noire » (lot G) est inexploitable en l'état. Dette DONNÉE (pas code) : si le
-  produit veut G un jour, il faut d'abord densifier `UpsertSharedCSRs` côté sync. Non traité.
+  CSR bête noire » (lot G) est le plus souvent vide sur la base de dev. Dette DONNÉE (pas
+  code) : pour densifier, il faut étendre `UpsertSharedCSRs` côté sync (capturer le CSR de
+  TOUS les participants classés, pas d'un sous-ensemble). Non traité — la feature dégrade
+  gracieusement en attendant.
+- Lot G / G2 — Le « fait établi » de la mission (« utilitaires de couleur de tier »
+  existants côté web) est INEXACT : vérifié sur pièces, il n'existe AUCUN mapping
+  tier-CSR → token couleur. Le repo a même une doctrine explicite « Pas de couleur par
+  rang (zéro token de plus) » (`lib/accessibility/skillTierBands.ts`), et les seuls tokens
+  de tier (`perf-tier-1..5`) sont des quintiles de PERFORMANCE (qualité de match),
+  sémantiquement distincts d'un rang de skill. Décision (documentée) : ne PAS introduire
+  de palette par rang (respect doctrine + `color-tokens` + « n'en crée pas de nouveaux »).
+  Le chip « Rang actuel » utilise un token EXISTANT unique (`narrative-encounter-tough-enemy`,
+  déjà dans le vocabulaire adversaire du hub) — « couleur » présente, mais non variable par
+  tier. Si le produit veut une couleur par tier un jour : ajouter un set `csr-tier-*` dans
+  `semantic-tokens.ts` (les 2 palettes) — hors périmètre ici.
+- Lot G / G2 — Le pattern « composeTierLabel » (localizeTierName + subTierRoman avec garde
+  Onyx) existait en 2 copies inline (`ExplorerTargetSeasonCSR.tierLabel`,
+  `CareerRankingBlock.csrTierLabel`). La 3e (carte bête noire) a déclenché la règle ≤ 2 :
+  centralisé en `skillTiers.composeTierLabel`, les 2 copies migrées (sortie identique),
+  garde-rail ajouté (`skillTiers.guard.test.ts` : interdit la co-occurrence inline des
+  deux atomes sous `features/`). Migration IN-scope (causée par l'ajout G, pas un fix
+  opportuniste).
 
 ## Protocole de reprise de session
 
@@ -512,10 +553,11 @@ Sinon statuer `[!]` avec la mesure observée — ce n'est pas un échec du plan.
 
 ## Clôture du chantier
 
-- [x] Tous les lots statués (A, B, C, H, F, D, E obligatoires ; G statué `[!]` — gate G0
-      non franchi, 0 % de couverture CSR des rivaux). A/B/C/F/D livrés par le train
-      antérieur (commits 91649c01d…e493118cc) ; H régularisé `[~]` (ff94bb85b) ; E livré
-      `[x]` (9f1d7c5e4) ; G `[!]`.
+- [x] Tous les lots statués (A, B, C, H, F, D, E obligatoires ; G LIVRÉ `[x]` en
+      dégradation gracieuse — décision produit 2026-07-17, G0 requalifié `[~]` critère
+      abandonné). A/B/C/F/D livrés par le train antérieur (commits 91649c01d…e493118cc) ;
+      H régularisé `[~]` (ff94bb85b) ; E livré `[x]` (9f1d7c5e4) ; G livré `[x]`
+      (train backlog 2026-07, cette session).
 - [x] Gate global final LOCAL vert (exécuté cette session sur l'arbre clôturé) :
         - Go : `go test ./...` exit 0 ; `go vet ./...` exit 0 ; intégration
           `go test -tags=integration -p 1 ./...` exit 0 (112 packages ok, 0 FAIL —
