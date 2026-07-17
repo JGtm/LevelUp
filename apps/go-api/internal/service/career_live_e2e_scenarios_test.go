@@ -31,7 +31,7 @@ func e2eDBLast() *duckdb.CareerRankRow {
 	}
 }
 
-// runE2E : helper qui prépare service+mock, lance GetSpartanIdentity puis
+// runE2E : helper qui prépare service+mock, lance GetSpartanIdentityFor puis
 // laisse 50ms au background goroutine pour finir avant inspection des inserts.
 func runE2E(t *testing.T, fetcher *mockCareerFetcher, dbLast *duckdb.CareerRankRow) *mockCareerLiveRepo {
 	t.Helper()
@@ -47,7 +47,7 @@ func runE2E(t *testing.T, fetcher *mockCareerFetcher, dbLast *duckdb.CareerRankR
 	svc := NewCareerLiveService(repo, builder, factory, cache)
 	ctx := ctxWithTokens(t, true)
 
-	_, _ = svc.GetSpartanIdentity(ctx)
+	_, _ = svc.GetSpartanIdentityFor(ctx, ctxTokensXUID)
 	// Le background refresh est détaché : on attend qu'il finisse.
 	deadline := time.Now().Add(500 * time.Millisecond)
 	for time.Now().Before(deadline) {
@@ -283,7 +283,7 @@ func TestE2E_HomeAlwaysShowsKnownBanner(t *testing.T) {
 			}
 			svc := NewCareerLiveService(repo, builder, factory, cache)
 
-			identity, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
+			identity, err := svc.GetSpartanIdentityFor(ctxWithTokens(t, true), ctxTokensXUID)
 			if err != nil {
 				t.Fatalf("err: %v", err)
 			}
@@ -309,9 +309,9 @@ func TestE2E_NoAuth_StatusOnlyInsertOptional(t *testing.T) {
 	factory := func(_ context.Context) CareerFetcher { return nil }
 	svc := NewCareerLiveService(repo, builder, factory, cache)
 	// Pas de tokens dans le ctx
-	ctx := ctxkeys.WithHaloAuth(context.Background(), nil, "1234567890123456")
+	ctx := ctxkeys.WithHaloAuth(context.Background(), nil, ctxTokensXUID)
 
-	identity, err := svc.GetSpartanIdentity(ctx)
+	identity, err := svc.GetSpartanIdentityFor(ctx, ctxTokensXUID)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
