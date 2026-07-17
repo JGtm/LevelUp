@@ -7840,3 +7840,30 @@ DM-5 + invariant + order audit + M5c verts. Baseline CI : 3 tests obsolètes ret
 
 **Conclusion / prochaine étape** : M3-M5 complétés, TOUT VERT. M6 (merge sur main =
 deploy prod auto) laissé au train de merge superviseur — NE PAS merger.
+
+---
+
+## [2026-07-17] Train backlog 2026-07 — clôture superviseur — Complété
+
+**Statut** : Complété. Branche `chore/backlog-train-2026-07` (non poussée — merge = décision utilisateur, push main = deploy prod).
+
+**Décision technique principale** : exécution des 8 items actifs du backlog + 3 extensions
+coach/prestige par agents Opus pilotés séquentiellement (1 branche, N commits), décisions
+utilisateur actées en amont : restic = préparation seule (invalidée en cours de route par
+l'audit VPS : backup systemd hôte déjà actif et sain — item requalifié en décision de
+redondance), notifications externes = Discord webhook OFF par défaut, consommateur
+télémétrie = endpoint diag.
+
+**Résultats observés** : 20 commits. Purges (squad/v2, route battlepass), registre H5
+(+5 armes, ~18,4 k frags réintégrés au donut), i18n tiers centralisé + défis
+locale-aware, CI GHCR + deploy pull avec fallback daté, /health media_tooling +
+Cache-Control immutable, chantier Relations UX CLOS (A/B/C/F/D/E livrés, H [~], G [!]
+0 % couverture CSR), BOLA acteur clos sur 14 routes + garde-rail AST, télémétrie
+prestige source + endpoint diag + analyseur tuning grammaire + canal Discord coach
+opt-in. Backlog nettoyé (6 nouveaux items issus des découvertes), plan Relations archivé
+vers `.ai/V7/`.
+
+**Conclusion / prochaine étape** : gates globaux finaux (Go + web) au moment de cette
+entrée — voir commit de finalisation. Restes portés au backlog : décision redondance
+backup, activation pull GHCR côté VPS (5 min), BOLA objet routes {id}, densification CSR
+adversaires, frags hors-arsenal H5.
