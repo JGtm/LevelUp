@@ -55,15 +55,48 @@ aucun disponible aujourd'hui). Runbook backup à écrire au moment de l'activati
 
 ---
 
-### [data/h5] Frags hors-arsenal H5 : bucket « Spartan », véhicules, tourelles, UGC (~16,6 k frags)
+### [data/h5] Phase 2 — exploiter `kill_kind` (découper le bucket « Spartan ») + backfill historique
 
-> Noté le 2026-07-17 (solde du long-tail `v_weapon_kills`). Les 5 vraies armes tenues du
-> long-tail (3 grenades + 2 mêlée, ~18,4 k frags) sont mappées. Reste hors donut par
-> CONCEPTION (leur donner un rôle d'arme fausserait « Frags par type d'arme » et l'insight
-> `blind_spot_power`) : véhicules (Ghost, Warthog, Banshee…), tourelles, bucket
-> d'attribution générique « Spartan » (~8,8 k frags, nature ambiguë) et 7 IDs UGC sans
-> libellé (~2,3 k pour le plus gros). Les capter exigerait un rôle `vehicle`/`turret`
-> dédié → décision produit avant tout code. **Effort** : décision + petit (mapping).
+> Noté le 2026-07-17. La classification hors-arsenal est LIVRÉE (commit `16d2a09eb` :
+> véhicule/tourelle/environnement/non-attribué/autres au donut, exclus de l'insight coach).
+> La CAPTURE de la mécanique de kill est LIVRÉE (commit `c13e7f6bc` : colonne `kill_kind`
+> sur `weapon_kills`, câblée à l'ingestion H5 going-forward). **Reste la phase 2**, décidée
+> avec l'utilisateur (« capture seule, backfill plus tard ») :
+>
+> 1. **Backfill historique** : re-fetch `GetMatchEvents` par match (~2 700 matchs Arena) pour
+>    remplir `kill_kind` sur l'existant — étendre le CLI `cmd/h5-events-backfill` /
+>    `livesync.RunEventsBackfill` (piggyback possible sur la passe `weapon_accuracy`). INSERT
+>    en nouvelle génération, ré-insérer TOUS les kills du couple `(match, xuid)` (sinon la
+>    génération MAX est incomplète). ART-safe (INSERT-only).
+> 2. **Exploitation donut** : découper le bucket non-attribué « Spartan » (weapon_id
+>    3168248199) par `kill_kind`, au niveau vue/service, en sous-tranches — **TAXONOMIE
+>    ACTÉE (correction utilisateur 2026-07-17)** :
+>    - **Capacités Spartan** ← `shoulderbash` (Charge Spartan) + `groundpound` (Frappe au sol).
+>      NB : « Spartan Abilities » = « Capacités Spartan » en FR — CONFIRMER le terme exact sur
+>      la localisation officielle du jeu / API metadata (`www.haloapi.com`, clé `LEVELUP_HALOAPI_KEY`).
+>    - **Corps à corps** ← `melee` (beatdown).
+>    - **Non attribué** ← `kind=weapon` sans arme résolue (inclut assassinats/splatters — la
+>      mécanique par-kill n'a PAS de flag assassinat ; l'agrégat natif `assassination_kills`
+>      reste la source autoritaire, non rattachable au kill Spartan précis).
+>    Pièges : NE PAS fusionner avec le sentinel mêlée natif (weapon_id=1, population disjointe →
+>    double-comptage) ; le total du donut reste inchangé (on re-partitionne, on n'ajoute pas).
+>    Ces sous-tranches restent NON-COMBAT → exclues de `weaponRoleInsight`.
+> **Effort** : backfill = moyen (CLI + passe de fond ~2 700 appels) ; exploitation = petit-moyen.
+> Découverte data : « Spartan » se concentre dans les modes mêlée (Castle Wars CTF 31,9/match =
+> 12,5 %, Action Sack, Grifball) vs ~3 % en Slayer/Arena — cohérent avec des capacités Spartan.
+
+---
+
+### [bug/h5] Fuite d'affichage : 287 matchs de campagne visibles malgré le filtre read-side
+
+> Noté le 2026-07-17. Vérifié en base : **287 matchs de campagne** (265 Campaign + 22 Campaign
+> Score Attack, 9,5 % du corpus H5) sont présents dans `match_registry` et censés être MASQUÉS
+> à la lecture via `analysis.campaignExcludedVariantIDs` (clause `game_variant_id NOT IN (...)`).
+> L'utilisateur en voit pourtant dans l'UI → **un chemin de lecture n'applique pas la clause**.
+> Auditer les lecteurs H5 (services/repos) et poser le filtre là où il manque (ou un garde-rail
+> centralisé). Les données ne sont PAS à purger (règle ART — collecte historique, Warzone/Campaign
+> exclus à la collecte depuis mais l'historique demeure). **Effort** : petit-moyen (audit + fix).
+> Reporté à la demande de l'utilisateur (« pas maintenant », 2026-07-17).
 
 ---
 
@@ -185,6 +218,7 @@ Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Syn
 
 | Date | Item |
 |------|------|
+| 2026-07-17 | **[data/h5] Classification hors-arsenal + capture mécanique de kill** — 26 IDs classés (véhicule/tourelle/environnement/non-attribué/autres) au donut, exclus de l'insight coach (`16d2a09eb`) ; colonne `kill_kind` persistée à l'ingestion H5 pour cesser de jeter la mécanique (`c13e7f6bc`). Phase 2 (backfill + découpage « Capacités Spartan »/Corps-à-corps/Non-attribué) → backlog actif. Investigations : « Spartan » = bucket d'attribution sans arme (API officielle `weapon_type=Unknown`), concentré dans les modes mêlée. |
 | 2026-07-17 | **[ux/relations] Lot G LIVRÉ** (revirement produit) — CSR/tier de la bête noire affiché en dégradation gracieuse (rien si absent). Justification d'abandon initiale corrigée : la donnée EST collectée (`ExtractAllSharedCSRRows` → `match_csrs_latest`) ; couverture nulle en dev car base sociale (1,8 % classé), non représentative des joueurs compétitifs cibles. Backend best-effort + chip front conditionnel + tests. Commit `8570af76a`. |
 | 2026-07-17 | **[vérif finale + dettes] passe QA post-train** — audit logging (5 flux best-effort re-routés hors `general.log` vers modules dédiés + erreur avalée `decodeParams` comblée, `e6671ff89`) ; renforcement tests (branches best-effort/gardes nil, `058ba9486`/`d49a1734f`) ; dettes réglées : erreurs avalées coach/prestige/handlers, doc inversée `notifications/types.go`, schéma OpenAPI orphelin `BattlePassResponse` retiré, `SUBTIER_ROMAN` centralisé + garde-rail (3e copie trouvée → seuil franchi). Commits `d48da5912`/`556991069`/`6bb186e9b`/`3c975bde3`. Gates Go unit+intégration `-p 1` (114 ok/0 FAIL) + web (2258 tests) verts. |
 | 2026-07-17 | **[data/h5] Inventaire complet des frags hors-arsenal** — `.ai/V7/H5_WEAPON_LONGTAIL_UNMAPPED.md` : 26 IDs non couverts (16 649 frags = 6,2 %), dont bucket « Spartan » 8 812 frags. Base pour une classification produit (catégories véhicule/tourelle/corps-à-corps/environnement à trancher). Commit `fbbfd809a`. |
