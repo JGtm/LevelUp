@@ -825,7 +825,6 @@ export type ExplorerBriefingScope = components['schemas']['ExplorerBriefingScope
 export type ExplorerBriefingBaseline = components['schemas']['ExplorerBriefingBaseline']
 export type ExplorerBriefingDimension = components['schemas']['ExplorerBriefingDimension']
 export type ExplorerBriefingDimensionEntry = components['schemas']['ExplorerBriefingDimensionEntry']
-export type ExplorerBriefingOutcome = components['schemas']['ExplorerBriefingOutcome']
 export type ExplorerBriefingTrend = components['schemas']['ExplorerBriefingTrend']
 export type ExplorerBriefingTrendPoint = components['schemas']['ExplorerBriefingTrendPoint']
 export type ExplorerBriefingRanked = components['schemas']['ExplorerBriefingRanked']

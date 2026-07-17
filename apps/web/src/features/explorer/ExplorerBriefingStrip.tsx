@@ -11,6 +11,7 @@
  * échantillon faible, aucun module. Aucune couleur hex : tokens sémantiques.
  */
 import { Sparkline } from '@/components/charts/Sparkline'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { tokenCssVar } from '@/lib/accessibility'
 import { kdaNetColor, winRateColor } from '@/lib/colors/outcomePalette'
@@ -88,6 +89,7 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
         {scope && (
           <BriefingTile
             label={t('explorer.briefing.win_rate_label')}
+            info={<InfoTooltip content={t('explorer.briefing.tip_win_rate')} iconClass="w-3.5 h-3.5" />}
             value={
               <span style={wr != null ? { color: winRateColor(wr) } : undefined}>
                 {formatPercentInt(wr)}
@@ -133,6 +135,7 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
         {scope && (
           <BriefingTile
             label={t('explorer.briefing.fda_label')}
+            info={<InfoTooltip content={t('explorer.briefing.tip_fda')} iconClass="w-3.5 h-3.5" />}
             value={
               <span style={kda != null ? { color: kdaNetColor(kda) } : undefined}>
                 {kda != null ? kda.toFixed(2) : '—'}
@@ -159,6 +162,7 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
         {scope && (
           <BriefingTile
             label={t('explorer.briefing.perf_label')}
+            info={<InfoTooltip content={t('explorer.briefing.tip_perf')} iconClass="w-3.5 h-3.5" />}
             value={perf != null ? perf.toFixed(0) : '—'}
             sub={
               baseline && !fullHistory && baseline.delta_perf != null ? (

@@ -10,6 +10,7 @@
  * Chaque module s'omet proprement si son bloc backend est nil (dégradation par
  * omission, jamais de placeholder vide ni de NaN). Tokens sémantiques uniquement.
  */
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { kdaNetColor, winRateColor } from '@/lib/colors/outcomePalette'
 import { formatPercentInt } from '@/lib/formatters'
@@ -120,7 +121,15 @@ function DimensionCard({
 }) {
   const titleKey = DIM_TITLE_KEY[dim.dimension]
   return (
-    <BriefingSectionCard className="h-full" title={titleKey ? t(titleKey) : dim.dimension}>
+    <BriefingSectionCard
+      className="h-full"
+      title={
+        <span className="inline-flex items-center gap-1.5">
+          {titleKey ? t(titleKey) : dim.dimension}
+          <InfoTooltip content={t('explorer.briefing.tip_dimensions')} iconClass="w-3.5 h-3.5" />
+        </span>
+      }
+    >
       <ul className="space-y-1">
         {(dim.entries ?? []).map((e) => (
           <DimensionRow key={e.label} entry={e} t={t} hideDelta={hideDelta} />
@@ -185,7 +194,15 @@ function DimensionRow({
 
 function ContextSplitCard({ split, t }: { split: ExplorerBriefingContextSplit; t: T }) {
   return (
-    <BriefingSectionCard className="h-full" title={t('explorer.briefing.context_split_title')}>
+    <BriefingSectionCard
+      className="h-full"
+      title={
+        <span className="inline-flex items-center gap-1.5">
+          {t('explorer.briefing.context_split_title')}
+          <InfoTooltip content={t('explorer.briefing.tip_context')} iconClass="w-3.5 h-3.5" />
+        </span>
+      }
+    >
       <ul className="space-y-1">
         <ContextSplitRow label={t('explorer.filters.context_solo')} group={split.solo} t={t} />
         <ContextSplitRow label={t('explorer.filters.context_squad')} group={split.squad} t={t} />
@@ -245,6 +262,7 @@ function DominanceBand({
       <span className="text-2xs uppercase tracking-wide text-muted-foreground">
         {t('explorer.briefing.highlights_title')}
       </span>
+      <InfoTooltip content={t('explorer.briefing.tip_highlights')} iconClass="w-3.5 h-3.5" />
       {DOMINANCE_ITEMS.map((it) => {
         const count = dominance[it.field] ?? 0
         if (count <= 0) return null

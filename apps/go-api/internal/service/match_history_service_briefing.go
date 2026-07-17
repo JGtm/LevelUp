@@ -45,8 +45,6 @@ const (
 	// assez de matchs ET d'étalement temporel pour une courbe lisible.
 	minTrendMatches  = 20
 	minTrendSpanDays = 14
-	// maxOutcomeSequencePoints borne la frise des résultats aux N derniers matchs.
-	maxOutcomeSequencePoints = 60
 	// dimensionTopFlopCount : nombre d'entrées top ET flop par dimension (DEC-8).
 	dimensionTopFlopCount = 3
 )
@@ -68,7 +66,6 @@ func (s *MatchHistoryService) buildExplorerBriefing(
 	}
 	b := &domain.ExplorerBriefing{Scope: buildBriefingScope(filtered)}
 	b.PeriodStart, b.PeriodEnd = scopePeriod(filtered)
-	b.OutcomeSequence = buildOutcomeSequence(filtered)
 	b.LowSample = len(filtered) < MinBriefingModulesMatches
 	if b.LowSample {
 		return b
@@ -105,31 +102,6 @@ func scopePeriod(rows []domain.MatchHistoryRawRow) (start, end *time.Time) {
 		}
 	}
 	return start, end
-}
-
-// buildOutcomeSequence construit la frise des résultats : N derniers matchs du
-// scope (cap maxOutcomeSequencePoints), tri chronologique ascendant. Les rows
-// sans start_time sont écartées (non ordonnables).
-func buildOutcomeSequence(rows []domain.MatchHistoryRawRow) []domain.ExplorerBriefingOutcome {
-	seq := make([]domain.ExplorerBriefingOutcome, 0, len(rows))
-	for _, r := range rows {
-		if r.StartTime == nil {
-			continue
-		}
-		seq = append(seq, domain.ExplorerBriefingOutcome{
-			MatchID:     r.MatchID,
-			OutcomeCode: r.Outcome,
-			StartTime:   *r.StartTime,
-		})
-	}
-	sort.SliceStable(seq, func(i, j int) bool { return seq[i].StartTime.Before(seq[j].StartTime) })
-	if len(seq) > maxOutcomeSequencePoints {
-		seq = seq[len(seq)-maxOutcomeSequencePoints:]
-	}
-	if len(seq) == 0 {
-		return nil
-	}
-	return seq
 }
 
 // buildBriefingScope agrège le socle du sous-ensemble filtré (raw rows) — même

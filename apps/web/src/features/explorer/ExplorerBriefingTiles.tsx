@@ -8,6 +8,7 @@
  */
 import type { ReactNode } from 'react'
 
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
 import type {
   ExplorerBriefingRanked,
@@ -93,6 +94,7 @@ export function RankedTile({ ranked, t }: { ranked: ExplorerBriefingRanked; t: T
   return (
     <BriefingTile
       label={t('explorer.briefing.ranked_title')}
+      info={<InfoTooltip content={t('explorer.briefing.tip_ranked')} iconClass="w-3.5 h-3.5" />}
       value={rankedValue(primary, t)}
       sub={
         <>
@@ -115,6 +117,7 @@ export function StreaksTile({ streaks, t }: { streaks: ExplorerBriefingStreaks; 
   return (
     <BriefingTile
       label={t('explorer.briefing.streaks_title')}
+      info={<InfoTooltip content={t('explorer.briefing.tip_streaks')} iconClass="w-3.5 h-3.5" />}
       value={
         <span className="inline-flex items-baseline gap-1">
           {best > 0 && (

@@ -1,3 +1,48 @@
+## [2026-07-17] Explorer briefing V3 compact — Phases 5 + 5b (purge backend + tooltips) (branche feat/explorer-briefing-compact)
+
+**Statut** : En cours (chantier V3 — Phases 0-5 + 5b livrées ; reste Phase 6 = vérif navigateur
++ changelog). NON committé (superviseur commit ; merge main = deploy prod auto). Plan :
+`.ai/PLAN_EXPLORER_BRIEFING_V3_COMPACT_2026-07.md`.
+
+**Décision technique principale** :
+- **Phase 5 (purge backend `outcome_sequence`, DP-1 back)** : champ `OutcomeSequence` + struct
+  `ExplorerBriefingOutcome` retirés du domain ; const `maxOutcomeSequencePoints` + fonction
+  `buildOutcomeSequence` + son appel retirés du service ; test dédié + contrôle `len` retirés ;
+  propriété + schéma retirés de `api/openapi.yaml` (MANUEL) ; `make generate-types` →
+  `generated.ts` (-8 lignes) ; `types.ts` (HAND-MAINTAINED, NON régénéré — correction §2) :
+  re-export ligne 828 retiré à la main (orphelin depuis Phase 4). Commentaires « frise » résiduels
+  corrigés (domain + streaks, anti « doc inversée »). Émission OpenAPI (`OPENAPI_EMIT_OUT`) NON
+  requise : c'est une SUPPRESSION (le mécanisme n'AJOUTE que des schémas manquants) ; drift test =
+  0 MISSING, `ExplorerBriefing*` absent de DIVERGENT/EXTRA (byte-aligné).
+- **Phase 5b (tooltips de légende, DP-9/DEC-7)** : réutilisation PURE de `InfoTooltip`
+  (`components/ui/info-tooltip.tsx`, 0 modif) — prop `info?: ReactNode` ajoutée à `BriefingTile`
+  (rangée label, hors uppercase) ; 8 clés `tip_*` FR+EN ajoutées à `explorer.toml`. Icône (i) sur :
+  5 tuiles (Taux de victoire, FDA, Perf, Classement, Séries — PAS Matchs), 3 cartes dimensions +
+  « Par contexte » (slot `title` de `BriefingSectionCard`), bande Moments forts. Sémantique des 5
+  catégories de dominance VÉRIFIÉE sur pièces (`analysis/comeback.go:178-191`) avant de figer
+  `tip_highlights` (textes DEC-7 exacts ; « scope » → « matchs affichés » pour l'anglicisme).
+
+**Résultats gates** :
+- Phase 5 : `cd apps/go-api && CGO_ENABLED=1 go test ./...` EXIT=0 (tous packages `ok`, 0 FAIL/panic,
+  DuckDB CGO inclus) ; `TestOpenAPISchemaDrift` EXIT=0 (MISSING=0) ; `make go-api-lint` EXIT=0 ;
+  `make generate-types` idempotent (2e run = même diff, 0 supplémentaire) ; `make check-types`
+  EXIT=0 ; `make test-web` = 261 fichiers / 2263 OK, 14 skipped, EXIT=0 ; `npm run lint` EXIT=0,
+  68 warnings baseline.
+- Phase 5b : `make check-types` EXIT=0 ; `make test-web` = 261 fichiers / 2266 OK (+3 tests 5b-e),
+  14 skipped, EXIT=0 ; ciblé strip test = 15/15 ; `npm run lint` EXIT=0, 68 warnings ; regen i18n
+  = +8 clés `tip_*` ; greps : 8 sections tip_ (FR+EN), `InfoTooltip` du chemin canonique, 0 modif
+  de `info-tooltip.tsx`.
+
+**Découverte-10 (§6 du plan)** : le grep de clôture Phase 5 est formulé trop largement (miroir
+D-9). Résidus HORS périmètre : `OutcomeSequenceTape` (composant préservé DP-1, cité `home.go:274`)
++ 2 clés i18n homonymes d'autres features (`timeseries.summary.outcome_sequence`,
+`squad.v2.section_outcome_sequence`). Les symboles RÉELS de la frise Explorer = 0. Aucun gate
+contourné.
+
+**Prochaine étape** : Phase 6 (vérif navigateur chrome-devtools sur profils réels : hauteur
+~300-330 px, 4 états, tooltips FR+EN ouverts, FDA coloré ; changelog EN+FR ; `delivery-checklist`).
+Worktree propre côté build ; NON committé.
+
 ## [2026-07-17] Explorer briefing V3 compact — Phases 0-4 (frontend) (branche feat/explorer-briefing-compact)
 
 **Statut** : En cours (chantier V3 — Phases 0-4/6 livrées ; restent Phase 5 backend + 5b tooltips

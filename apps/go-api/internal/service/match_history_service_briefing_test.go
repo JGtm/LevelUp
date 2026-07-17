@@ -58,9 +58,6 @@ func TestBuildExplorerBriefing_LowSample(t *testing.T) {
 	} else if b.Scope.Matches != 8 {
 		t.Errorf("scope matches = %d, want 8 (raw filtered count)", b.Scope.Matches)
 	}
-	if len(b.OutcomeSequence) != 8 {
-		t.Errorf("outcome sequence len = %d, want 8", len(b.OutcomeSequence))
-	}
 	if b.PeriodStart == nil || b.PeriodEnd == nil {
 		t.Error("period should be set")
 	}
@@ -524,24 +521,6 @@ func TestBuildDimension_FilteredSortsByDelta(t *testing.T) {
 	for i, w := range want {
 		if entries[i].Label != w {
 			t.Errorf("entry[%d].Label = %q, want %q (tri par delta sous filtre)", i, entries[i].Label, w)
-		}
-	}
-}
-
-func TestBuildExplorerBriefing_OutcomeSequenceCappedAndSorted(t *testing.T) {
-	var filtered []domain.MatchHistoryRawRow
-	// 80 matchs, daysAgo décroissant pour brouiller l'ordre d'insertion.
-	for i := 0; i < 80; i++ {
-		filtered = append(filtered, briefingRaw("m"+string(rune(i)), 80-i, domain.OutcomeWin, 10, 5, 2, 60, "map1", "Aquarius", "Slayer", "Arène"))
-	}
-	kpis := &domain.KPIStats{MatchesCount: 80}
-	b := svcWithRanked(false).buildExplorerBriefing(context.Background(), filtered, filtered, kpis)
-	if len(b.OutcomeSequence) != maxOutcomeSequencePoints {
-		t.Errorf("outcome sequence len = %d, want %d", len(b.OutcomeSequence), maxOutcomeSequencePoints)
-	}
-	for i := 1; i < len(b.OutcomeSequence); i++ {
-		if b.OutcomeSequence[i].StartTime.Before(b.OutcomeSequence[i-1].StartTime) {
-			t.Fatal("outcome sequence must be chronologically ascending")
 		}
 	}
 }

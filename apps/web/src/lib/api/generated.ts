@@ -3952,7 +3952,6 @@ export interface components {
             dimensions?: components["schemas"]["ExplorerBriefingDimension"][] | null;
             dominance?: components["schemas"]["ExplorerBriefingDominance"];
             low_sample?: boolean;
-            outcome_sequence?: components["schemas"]["ExplorerBriefingOutcome"][] | null;
             /** Format: date-time */
             period_end?: string;
             /** Format: date-time */
@@ -4012,13 +4011,6 @@ export interface components {
             note_tier?: number;
             /** Format: double */
             win_rate: number;
-        };
-        ExplorerBriefingOutcome: {
-            match_id: string;
-            /** Format: int64 */
-            outcome_code: number;
-            /** Format: date-time */
-            start_time: string;
         };
         ExplorerBriefingRanked: {
             kinds: components["schemas"]["ExplorerBriefingRankedKind"][] | null;
