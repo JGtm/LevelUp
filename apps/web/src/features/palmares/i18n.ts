@@ -97,10 +97,6 @@ export interface PalmaresText {
       deathsSuffered: (count: string) => string
     }
     core: {
-      sectionTitle: string
-      sectionDescription: string
-      empty: string
-      together: (count: string) => string
       withThem: string
       liftPoints: string
       liftTooltip: string
@@ -108,6 +104,7 @@ export interface PalmaresText {
       recentForm: string
       showOthers: (count: string) => string
       collapse: string
+      viewSquad: string
     }
     filterEmptyTitle: string
     filterEmptyDescription: string
@@ -294,11 +291,6 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
           formatMessage(palmaresManifest, 'palmares.relations.tooltip.deaths_suffered', loc, { count }),
       },
       core: {
-        sectionTitle: t(loc, 'palmares.relations.core.section_title'),
-        sectionDescription: t(loc, 'palmares.relations.core.section_description'),
-        empty: t(loc, 'palmares.relations.core.empty'),
-        together: (count: string) =>
-          formatMessage(palmaresManifest, 'palmares.relations.core.together', loc, { count }),
         withThem: t(loc, 'palmares.relations.core.with_them'),
         liftPoints: t(loc, 'palmares.relations.core.lift_points'),
         liftTooltip: t(loc, 'palmares.relations.core.lift_tooltip'),
@@ -308,6 +300,7 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         showOthers: (count: string) =>
           formatMessage(palmaresManifest, 'palmares.relations.core.show_others', loc, { count }),
         collapse: t(loc, 'palmares.relations.core.collapse'),
+        viewSquad: t(loc, 'palmares.relations.core.view_squad'),
       },
       filterEmptyTitle: t(loc, 'palmares.relations.filter_empty_title'),
       filterEmptyDescription: t(loc, 'palmares.relations.filter_empty_description'),

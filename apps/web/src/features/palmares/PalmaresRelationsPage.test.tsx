@@ -178,6 +178,31 @@ describe('PalmaresRelationsPage', () => {
     ).toHaveAttribute('aria-pressed', 'true')
   })
 
+  it('ne rend plus la section « Noyau dur » détaillée (dé-redondance lot F)', async () => {
+    renderWithProviders(<PalmaresRelationsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('palmares-relations-overview')).toBeInTheDocument()
+    })
+
+    // La section détaillée du noyau dur a été supprimée : sa description dédiée
+    // et son gabarit « N matchs ensemble » ne doivent plus apparaître.
+    expect(
+      screen.queryByText('Les joueurs que tu retrouves le plus souvent, parfois avec toi, parfois en face.'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/matchs ensemble$/)).not.toBeInTheDocument()
+  })
+
+  it('expose le pont « Voir l\'escouade » dans la carte Noyau dur', async () => {
+    renderWithProviders(<PalmaresRelationsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('palmares-relations-overview')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('button', { name: "Voir l'escouade" })).toBeInTheDocument()
+  })
+
   it('rend la barre de segmentation serveur (Vue + Analyser)', async () => {
     renderWithProviders(<PalmaresRelationsPage />)
 
