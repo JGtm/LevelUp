@@ -126,19 +126,36 @@ lint new-from-merge-base ; entrée thought_log ; commit `fix(revue): lot A ...`.
 
 ## LOT B — Identité en profondeur
 
-- [ ] B1 (ID3) `internal/service/career_live_fetcher.go:158` — le limiteur de
-      budget est clé sur le XUID DU PORTEUR DES TOKENS (compte connecté), pas
-      sur le xuid de page : introduire la clé de contexte « tokensOwnerXUID »
-      posée là où les tokens sont posés, et `WithLimiter(ratebudget.ForXUID(owner))`.
-      Test : page X consultée par session Y → bucket Y débité.
-- [ ] B2 (ID4 profond) — le sujet devient un paramètre explicite :
-      `career_live_service.go:167-168` ne lit plus le sujet ambiant ; les
-      lecteurs passent par `GetSpartanIdentityFor(ctx, xuid)` (ou équivalent).
-      Périmètre : call-sites de `GetSpartanIdentity` uniquement. Le ratchet A2
-      reste en place comme non-régression.
+- [x] B1 (ID3) `internal/service/career_live_fetcher.go` — clé de contexte
+      `tokensOwnerXUID` (ctxkeys). POSE : `WithHaloAuth` la pose = xuid (SEUL point
+      d'écriture des tokens → tout ctx portant des tokens a un porteur) ; `WithHaloXUID`
+      (forcePageIdentityXUID) NE la touche PAS → sujet forcé sur la page, porteur
+      préservé. CORRECTION bg : `kickoffBackgroundRefresh` re-injecte le porteur réel
+      capturé du ctx requête (le factory tourne dans le bg pour le chemin home — sans
+      cette carry-forward le bug persistait). Le factory clé le limiteur sur
+      `ratebudget.ForXUID(TokensOwnerXUID(ctx))` (au lieu de `HaloXUID`). Vérifié sur
+      pièces : Home forcé (session Y, page X → tokensOwnerXUID=Y préservé après forçage) ;
+      pool sync (`pool.go` clé déjà sur `src.XUID` = porteur, inchangé) ; watcher
+      (`WithHaloAuth(ctx, tokens, r.xuid)` = porteur). Test : `TestCareerFetcherFactory_
+      BudgetKeyedOnTokensOwner` (page X + porteur Y → CurrentRPS(Y)=rps, CurrentRPS(X)=0),
+      + `TestForcePageSubject_PreservesTokensOwner` (ctxkeys, invariant central). Gate B vert.
+- [x] B2 (ID4 profond) — `GetSpartanIdentity(ctx)` SUPPRIMÉ (lisait le sujet ambiant
+      `ctxkeys.HaloXUID`) ; le sujet est désormais un PARAMÈTRE explicite via
+      `GetSpartanIdentityFor(ctx, xuid)`. Call-sites migrés (Grep exhaustif) :
+      PROD (2) — `home_service.go` (`s.xuid` = pdb.XUID, vérifié : WithMatchesCache pose
+      pdb.XUID dans les 3 constructions HomeService ; HaloXUID forcé = pdb.XUID dans les
+      3 chemins → identique) ; `spartan_customization_cron.go` (`p.XUID`, interface
+      `SpartanIdentityFetcher` mise à jour) ; TESTS (14) — career_live_service_test.go
+      (10), career_live_e2e_scenarios_test.go (3), spartan_customization_cron_test.go
+      (mock + assertion p.XUID). `ctxkeys.HaloXUID` conserve sa sémantique ownership
+      (`subjectIsOwner`, garde persist tiers) — non touché. Ratchet A2
+      (`TestEnrichCallersForcePageIdentity`) reste VERT (non-régression). `forcePageIdentityXUID`
+      conservé (sujet BP/défis + ownership). Docs mises à jour (main.go, og_inject.go/_test.go).
 
-**Gate B** : go test service + wire ; intégration filtrée ancrée si persist
-touché ; thought_log ; commit.
+**Gate B** : gofmt + go vet OK ; `go test ./internal/service/... ./internal/scheduler/...
+./internal/api/wire/... ./internal/ctxkeys/...` VERT ; `go build ./...` VERT (aucun caller
+orphelin) ; intégration N/A (aucun chemin persist/sync touché) ; golangci-lint
+`--new-from-merge-base=main` = **0 issues** ; thought_log ; commit.
 
 ## LOT C — Filets squash M2 (le morceau lourd)
 

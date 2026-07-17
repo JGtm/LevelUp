@@ -1,3 +1,21 @@
+## [2026-07-17] LOT B — correctifs revue : identité en profondeur (B1-B2, branche fix/revue-2026-07-correctifs)
+
+**Statut** : Complété (worktree `LevelUp-wt-revue-correctifs`, enchaîné sur le commit lot A `b497befc1` ; NON mergé — merge + push superviseur).
+
+**Périmètre** : les 2 items du LOT B du plan `.ai/PLAN_CORRECTIFS_REVUE_2026-07.md`. Décisions D4/D7 appliquées sans ré-arbitrage (l'emprunt de token du pool reste un design assumé — B1 corrige le COMPTAGE, pas l'emprunt ; la sémantique ownership de `HaloXUID` est intacte).
+
+**Décisions techniques principales** :
+- B1 (ID3, budget API sur le mauvais bucket) : nouvelle clé de contexte `tokensOwnerXUID` (ctxkeys). Choix architectural = la poser dans `WithHaloAuth` (SEUL point d'écriture de `haloTokensKey` → invariant « tout ctx portant des tokens a un porteur associé ») ; `WithHaloXUID`/`forcePageIdentityXUID` ne la touchent PAS → forcer le SUJET vers la page ne dévie plus le débit. Le factory `CareerFetcherFactoryFromTokens` clé le limiteur sur `ratebudget.ForXUID(TokensOwnerXUID(ctx))` au lieu de `HaloXUID(ctx)`. **Découverte importante en traçant sur pièces** : pour le chemin Home, le factory tourne dans le refresh BACKGROUND (le chemin synchrone ne fait aucun HTTP) — sans carry-forward du porteur réel dans `kickoffBackgroundRefresh`, le bug survivait. Corrigé : capture de `TokensOwnerXUID(ctx)` AVANT détachement + `WithTokensOwnerXUID(bgCtx, owner)`. Chemins vérifiés : pool sync (`pool.go` clé déjà sur `src.XUID`), watcher (`WithHaloAuth(ctx, tokens, r.xuid)`) — corrects, inchangés.
+- B2 (ID4 profond, sujet ambiant) : `GetSpartanIdentity(ctx)` (lisait `ctxkeys.HaloXUID`) SUPPRIMÉ ; sujet = paramètre explicite `GetSpartanIdentityFor(ctx, xuid)`. Les 2 lecteurs PROD connaissaient déjà leur sujet : `home_service` a `s.xuid` (= pdb.XUID, posé par WithMatchesCache dans les 3 constructions), le cron a `p.XUID`. Vérifié sur pièces que `HaloXUID` forcé == pdb.XUID == s.xuid dans les 3 chemins (HomeCtxWithAuth, SeasonPassCtxWithAuth, og_inject via HomeCtx) → migration behaviorally identique. `HaloXUID` GARDE son rôle ownership (`subjectIsOwner`, garde persist tiers) — non touché ; `forcePageIdentityXUID` + ratchet A2 conservés.
+
+**Résultats observés (gates, tous verts)** : gofmt propre (13 fichiers) ; `go test ./internal/service/... ./internal/scheduler/... ./internal/api/wire/... ./internal/ctxkeys/...` OK ; `go build ./...` OK (aucun caller orphelin du `GetSpartanIdentity` supprimé) ; intégration N/A (aucun chemin persist/sync touché) ; `golangci-lint --new-from-merge-base=main` = **0 issues**. Tests ajoutés : `TestCareerFetcherFactory_BudgetKeyedOnTokensOwner` + 2 (service), invariants `tokensOwnerXUID` (ctxkeys, dont `TestForcePageSubject_PreservesTokensOwner`), assertion sujet=p.XUID (cron). Ratchet A2 `TestEnrichCallersForcePageIdentity` VERT (non-régression).
+
+**Découvertes consignées (non traitées)** : aucune nouvelle (les 2 du LOT A restent en section Découvertes du plan).
+
+**Conclusion / prochaine étape** : LOT B soldé, B1/B2 `[x]`. Prochain = LOT C (filets squash M2, le morceau lourd) OU merge intermédiaire superviseur (push main = deploy prod → prévenir).
+
+---
+
 ## [2026-07-17] LOT A — correctifs revue (A1-A13, branche fix/revue-2026-07-correctifs)
 
 **Statut** : Complété (worktree `LevelUp-wt-revue-correctifs`, un commit ; NON mergé — merge + push superviseur).

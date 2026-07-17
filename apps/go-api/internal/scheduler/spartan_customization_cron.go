@@ -17,8 +17,8 @@
 //     le refresher recoit un ctx DEJA muni des tokens du joueur et ne fait QUE
 //     l'appel metier specifique au titre.
 //   - Le WIRING CONCRET des refreshers se fait dans cmd/server/main.go :
-//   - halo_infinite -> CareerLiveService.GetSpartanIdentity (chemin live
-//     unifie, MEME path que la visite home → kickoffBackgroundRefresh →
+//   - halo_infinite -> CareerLiveService.GetSpartanIdentityFor(p.XUID) (chemin
+//     live unifie, MEME path que la visite home → kickoffBackgroundRefresh →
 //     persistPartial field-aware) ;
 //   - halo_5         -> livesync.PersistAppearance (fetch /h5/profiles/{gt}/
 //     {appearance,spartan,emblem} + persist service_tag/banner/emblem).
@@ -45,7 +45,10 @@ import (
 
 // SpartanIdentityFetcher abstrait CareerLiveService pour le mocking.
 type SpartanIdentityFetcher interface {
-	GetSpartanIdentity(ctx context.Context) (*domain.HomeSpartanIdentityRow, error)
+	// GetSpartanIdentityFor résout l'identité du SUJET passé explicitement (finding
+	// ID4) : le cron fournit le xuid du joueur rafraîchi (p.XUID), jamais une valeur
+	// ambiante du contexte.
+	GetSpartanIdentityFor(ctx context.Context, xuid string) (*domain.HomeSpartanIdentityRow, error)
 }
 
 // CareerLiveServiceProvider retourne un fetcher per-player.
@@ -81,8 +84,8 @@ const DefaultSpartanCustomizationInterval = 8 * time.Hour
 // DefaultSpartanCustomizationInterval est utilise.
 //
 // titleSlug + svcProvider câblent le refresher du titre HISTORIQUE (Halo Infinite
-// par defaut) : la closure appelle svcProvider(ctx, slug).GetSpartanIdentity. Les
-// AUTRES titres (Halo 5+) s'enregistrent ensuite via WithRefresher (cf. main.go).
+// par defaut) : la closure appelle svcProvider(ctx, slug).GetSpartanIdentityFor(p.XUID).
+// Les AUTRES titres (Halo 5+) s'enregistrent ensuite via WithRefresher (cf. main.go).
 // svcProvider nil ⇒ aucun refresher HINF (le cron reste sain, simplement no-op pour
 // ce titre tant qu'aucun refresher n'est enregistre).
 func NewSpartanCustomizationCron(
@@ -113,16 +116,17 @@ func NewSpartanCustomizationCron(
 
 // careerIdentityRefresher adapte un CareerLiveServiceProvider (chemin live unifie
 // Halo Infinite) en CustomizationRefresher : resout le fetcher per-player puis
-// appelle GetSpartanIdentity (→ kickoffBackgroundRefresh → persistPartial). Le ctx
-// porte deja l'auth du joueur (pose par refreshOne). Comportement HINF identique
-// a l'historique.
+// appelle GetSpartanIdentityFor avec le SUJET EXPLICITE p.XUID (finding ID4)
+// (→ kickoffBackgroundRefresh → persistPartial). Le ctx porte deja l'auth du joueur
+// (WithHaloAuth(ctx, lease.Tokens, p.XUID) dans refreshOne), donc porteur == sujet.
+// Comportement HINF identique a l'historique.
 func careerIdentityRefresher(svcProvider CareerLiveServiceProvider) CustomizationRefresher {
 	return func(ctx context.Context, p domain.PlayerSummary) error {
 		svc, err := svcProvider(ctx, p.PlayerSlug)
 		if err != nil {
 			return err
 		}
-		_, err = svc.GetSpartanIdentity(ctx)
+		_, err = svc.GetSpartanIdentityFor(ctx, p.XUID)
 		return err
 	}
 }

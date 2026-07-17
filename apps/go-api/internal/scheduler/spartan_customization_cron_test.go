@@ -19,13 +19,16 @@ import (
 	"levelup/go-api/internal/scheduler"
 )
 
-// mockSpartanFetcher compte les invocations + retourne un identity bidon.
+// mockSpartanFetcher compte les invocations, mémorise le dernier xuid SUJET reçu
+// (finding ID4 : le sujet est passé explicitement) + retourne un identity bidon.
 type mockSpartanFetcher struct {
-	calls atomic.Int32
+	calls    atomic.Int32
+	lastXUID atomic.Value // string ; refreshOne appelle le refresher séquentiellement
 }
 
-func (m *mockSpartanFetcher) GetSpartanIdentity(_ context.Context) (*domain.HomeSpartanIdentityRow, error) {
+func (m *mockSpartanFetcher) GetSpartanIdentityFor(_ context.Context, xuid string) (*domain.HomeSpartanIdentityRow, error) {
 	m.calls.Add(1)
+	m.lastXUID.Store(xuid)
 	return &domain.HomeSpartanIdentityRow{}, nil
 }
 
@@ -132,6 +135,10 @@ func TestSpartanCron_RunOnce_WithPlayerInPool(t *testing.T) {
 
 	if fetcher.calls.Load() != 1 {
 		t.Errorf("fetcher.calls: got %d, want 1", fetcher.calls.Load())
+	}
+	// Finding ID4 : le SUJET est passé explicitement (p.XUID), pas lu du ctx ambiant.
+	if got, _ := fetcher.lastXUID.Load().(string); got != "1234567890123456" {
+		t.Errorf("sujet passé au fetcher: got %q, want 1234567890123456 (p.XUID explicite)", got)
 	}
 }
 
