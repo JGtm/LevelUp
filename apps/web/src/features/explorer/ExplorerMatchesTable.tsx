@@ -22,6 +22,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
   type ColumnDef,
+  type SortingState,
   flexRender,
   getCoreRowModel,
   getPaginationRowModel,
@@ -44,6 +45,12 @@ import { useProvidesTeamMmr } from '@/lib/damage/effectiveHp'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
+import {
+  EXPLORER_SORT_LABEL_KEYS,
+  isSortableColumn,
+  sortKeyToSorting,
+  sortingToSortKey,
+} from './explorerMatchesSort'
 
 const PAGE_SIZE = 20
 const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
@@ -98,6 +105,36 @@ interface Props {
    *  Explorer (qui ne passe pas cette prop). Défaut : aucune. */
   extraColumns?: ColumnDef<ExplorerMatchRow>[]
   extraColumnsAfterId?: string
+  /** Etat de tri serveur `"{champ}:{dir}"` (scope Explorer, ex. `start_time:desc`).
+   *  Fourni AVEC onSortKeyChange → les en-tetes des colonnes a cle de tri serveur
+   *  (cf. explorerMatchesSort) deviennent cliquables : TanStack tourne en
+   *  `manualSorting` (le tri est SERVEUR), clic = toggle asc/desc, indicateur
+   *  ▲/▼ + aria-sort sur la colonne active, en synchro avec le <select> « Trier
+   *  par ». Absent (mode Joueur ally/enemy, vue session) → en-tetes statiques,
+   *  aucun tri (comportement inchange). */
+  sortKey?: string
+  onSortKeyChange?: (v: string) => void
+}
+
+/** Classe des cellules d'en-tete (partagee entre en-tetes statiques et triables). */
+const HEADER_TH_CLASS =
+  'px-2 py-1.5 text-left whitespace-nowrap text-3xs font-medium text-muted-foreground border-r border-border last:border-r-0'
+
+/** Indicateur de tri de la colonne active : ▲ ascendant / ▼ descendant. Rien sur
+ *  les colonnes inactives (l'affordance clic vient du <button> + hover). Tokens
+ *  semantiques uniquement, aucune couleur. */
+function SortIndicator({ dir }: { dir: false | 'asc' | 'desc' }) {
+  if (!dir) return null
+  return (
+    <span aria-hidden="true" className="text-2xs leading-none">
+      {dir === 'asc' ? '▲' : '▼'}
+    </span>
+  )
+}
+
+/** id d'une colonne TanStack (accessorKey ou id explicite type 'open'). */
+function columnIdOf(c: ColumnDef<ExplorerMatchRow>): string | undefined {
+  return (c as { id?: string }).id ?? (c as { accessorKey?: string }).accessorKey
 }
 
 function fmtMmr(v: number | null | undefined): string {
@@ -167,7 +204,7 @@ function truncateName(s: string | null | undefined): string {
   return s.slice(0, NAME_TRUNCATE_MAX - 1) + '...'
 }
 
-export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, filterSpecOverride, alwaysShowPagination, defaultPageSize, columnVisibility, extraColumns, extraColumnsAfterId }: Props) {
+export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, filterSpecOverride, alwaysShowPagination, defaultPageSize, columnVisibility, extraColumns, extraColumnsAfterId, sortKey, onSortKeyChange }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, locale, values)
@@ -521,18 +558,30 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
     [intlLocale, mapAssets, playlistAssets, locale, goToMatch, providesTeamMmr],
   )
 
+  // Tri SERVEUR piloté par le parent (scope Explorer) : actif uniquement si le
+  // couple sortKey/onSortKeyChange est fourni (mode Matchs). Les autres
+  // consommateurs (mode Joueur, vue session) n'en passent pas → en-têtes statiques.
+  const sortingEnabled = sortKey !== undefined && onSortKeyChange !== undefined
+  const sorting = useMemo<SortingState>(() => sortKeyToSorting(sortKey), [sortKey])
+
   // Insère les colonnes injectées par le consommateur après `extraColumnsAfterId`
-  // (ou en fin). L'Explorer ne passe rien → `columns === baseColumns`.
+  // (ou en fin), puis marque `enableSorting` sur les seules colonnes à clé de tri
+  // serveur (les autres restent non triables). L'Explorer mode Joueur ne passe
+  // rien → colonnes non triables, `columns` équivalent à `baseColumns`.
   const columns = useMemo<ColumnDef<ExplorerMatchRow>[]>(() => {
-    if (!extraColumns?.length) return baseColumns
-    const colId = (c: ColumnDef<ExplorerMatchRow>) =>
-      (c as { id?: string }).id ?? (c as { accessorKey?: string }).accessorKey
-    const idx = extraColumnsAfterId
-      ? baseColumns.findIndex((c) => colId(c) === extraColumnsAfterId)
-      : -1
-    if (idx === -1) return [...baseColumns, ...extraColumns]
-    return [...baseColumns.slice(0, idx + 1), ...extraColumns, ...baseColumns.slice(idx + 1)]
-  }, [baseColumns, extraColumns, extraColumnsAfterId])
+    const merged = (() => {
+      if (!extraColumns?.length) return baseColumns
+      const idx = extraColumnsAfterId
+        ? baseColumns.findIndex((c) => columnIdOf(c) === extraColumnsAfterId)
+        : -1
+      if (idx === -1) return [...baseColumns, ...extraColumns]
+      return [...baseColumns.slice(0, idx + 1), ...extraColumns, ...baseColumns.slice(idx + 1)]
+    })()
+    return merged.map((c) => ({
+      ...c,
+      enableSorting: sortingEnabled && isSortableColumn(columnIdOf(c)),
+    }))
+  }, [baseColumns, extraColumns, extraColumnsAfterId, sortingEnabled])
 
   // Pagination simple : taille de page fixe (defaultPageSize en mode Joueur,
   // sinon PAGE_SIZE=20). La navigation par page suffit pour parcourir tous les
@@ -547,8 +596,22 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
     columns,
     // columnVisibility piloté par le parent (prop) : pas de toggle interne donc pas
     // de onColumnVisibilityChange. Défaut {} = toutes visibles.
-    state: { pagination, columnVisibility: columnVisibility ?? {} },
+    state: { pagination, columnVisibility: columnVisibility ?? {}, sorting },
     onPaginationChange: setPagination,
+    // Tri SERVEUR : `manualSorting` (aucun getSortedRowModel) → TanStack ne trie
+    // JAMAIS les lignes localement (la réponse est cappée à 10000 lignes, un tri
+    // client serait silencieusement faux). L'état `sorting` est dérivé du scope ;
+    // onSortingChange re-projette vers `sortKey` et laisse le parent refetch.
+    manualSorting: true,
+    enableSorting: sortingEnabled,
+    enableSortingRemoval: false,
+    sortDescFirst: true,
+    onSortingChange: (updater) => {
+      if (!onSortKeyChange) return
+      const next = typeof updater === 'function' ? updater(sorting) : updater
+      const key = sortingToSortKey(next)
+      if (key) onSortKeyChange(key)
+    },
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
   })
@@ -598,14 +661,40 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
             )}
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
-                {hg.headers.map((h) => (
-                  <th
-                    key={h.id}
-                    className="px-2 py-1.5 text-left whitespace-nowrap text-3xs font-medium text-muted-foreground border-r border-border last:border-r-0"
-                  >
-                    {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
-                  </th>
-                ))}
+                {hg.headers.map((h) => {
+                  const content = h.isPlaceholder
+                    ? null
+                    : flexRender(h.column.columnDef.header, h.getContext())
+                  // Colonne non triable (mode Joueur, colonne sans clé serveur) :
+                  // en-tête statique, rendu inchangé.
+                  if (!h.column.getCanSort()) {
+                    return (
+                      <th key={h.id} className={HEADER_TH_CLASS}>
+                        {content}
+                      </th>
+                    )
+                  }
+                  const sortDir = h.column.getIsSorted() // false | 'asc' | 'desc'
+                  const ariaSort =
+                    sortDir === 'asc' ? 'ascending' : sortDir === 'desc' ? 'descending' : 'none'
+                  const labelKey = EXPLORER_SORT_LABEL_KEYS[h.column.id]
+                  return (
+                    <th key={h.id} className={HEADER_TH_CLASS} aria-sort={ariaSort}>
+                      <button
+                        type="button"
+                        onClick={h.column.getToggleSortingHandler()}
+                        aria-label={labelKey ? t('explorer.matches.sort_by', { col: t(labelKey) }) : undefined}
+                        className={
+                          'group inline-flex items-center gap-1 whitespace-nowrap transition-colors hover:text-foreground' +
+                          (sortDir ? ' text-foreground' : '')
+                        }
+                      >
+                        {content}
+                        <SortIndicator dir={sortDir} />
+                      </button>
+                    </th>
+                  )
+                })}
               </tr>
             ))}
           </thead>

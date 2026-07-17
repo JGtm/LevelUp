@@ -1,3 +1,58 @@
+## [2026-07-17] Explorer briefing V3 — clôture + tri par en-têtes de colonnes (Lot 1) (branche feat/explorer-briefing-compact)
+
+**Statut** : Complété (revue visuelle utilisateur en attente avant merge). NON committé (merge
+main = deploy prod auto → autorisation utilisateur requise). Plans :
+`.ai/PLAN_EXPLORER_BRIEFING_V3_COMPACT_2026-07.md` (Phase 6 close) +
+`.ai/PLAN_EXPLORER_BRIEFING_V2_2026-07.md` §6 (Lot 1 annoté).
+
+Mission superviseur en 3 volets, une seule passe de gates finale.
+
+**Volet A — clôture V3 (docs + statuts)** :
+- Changelog `[Unreleased]` v7.0 : bullet React « Explorer — briefing V3 (compaction) » ajouté
+  (EN `docs/CHANGELOG.md` + FR `docs/FR/CHANGELOG.md`, parité stricte) ; bullet Go « Explorer
+  briefing DTO » complété du retrait `outcome_sequence`/`ExplorerBriefingOutcome`.
+- Plan V3 Phase 6 : 6a-6d → `[!]` (vérification navigateur reprise par l'utilisateur, décision
+  2026-07-17) ; 6e → `[x]` (changelog) ; 6f → `[x]` partiel documenté (delivery-checklist +
+  gates rejoués + thought_log ; hauteur navigateur relève de 6b/utilisateur). Aucune case vide.
+
+**Volet B — tri par en-têtes de colonnes (Lot 1, frontend-only, 0 Go)** :
+- **Décision périmètre** : rendues cliquables les 5 colonnes dont la clé de tri serveur est
+  RÉELLEMENT honorée par `service.compareMatchHistoryRows` (`start_time`,
+  `performance_score_relative` [col `perf_score`], `kda`, `kills`, `delta_mmr`). Colonne
+  « Résultat » EXCLUE : le select envoie `outcome` mais le backend ne connaît que `outcome_code`
+  → le tri retombe silencieusement sur `start_time` (bug backend préexistant — consigné plan V2
+  §6, correctif = backlog, NON traité règle 7).
+- **Tri SERVEUR** : TanStack en `manualSorting` (aucun `getSortedRowModel`) — jamais de tri
+  client (réponse cappée à 10000 lignes, un tri client serait faux). Source de vérité UNIQUE =
+  `sortKey` du scope, partagé avec le `<select>` « Trier par » (resté en place). Clic = toggle
+  asc/desc (`sortDescFirst`+`enableSortingRemoval:false`), `aria-sort` sur le `th`, bouton
+  focusable, indicateur ▲/▼ + `aria-label` « Trier par {col} ». Options `asc` (kda/kills/
+  delta_mmr) ajoutées au select pour rester synchronisé avec le toggle des en-têtes.
+- Logique pure extraite/testée : `features/explorer/explorerMatchesSort.ts` (mapping colonne→clé
+  serveur + `sortKeyToSorting`/`sortingToSortKey`) + `.test.ts` (9 tests). Table opt-in via props
+  `sortKey?`/`onSortKeyChange?` → aucun impact sur les autres consommateurs (mode Joueur, vue
+  session) qui ne les passent pas.
+
+**Résultats gates (une passe, 2026-07-17)** :
+- `node build_i18n_manifests.mjs` : EXIT=0 (idempotent ; +4 clés `explorer.sort.kda_asc`/
+  `kills_asc`/`delta_mmr_asc` + `explorer.matches.sort_by`, explorer 233 clés).
+- `make check-types` : EXIT=0.
+- `make test-web` : EXIT=0 — 262 fichiers (+1) / 2280 tests OK (+14), 14 skipped (baseline).
+  Ciblé tri : 19/19 OK.
+- `cd apps/web && npm run lint` : EXIT=0 — 0 erreur, 68 warnings (baseline gelée, 0 nouveau ;
+  `explorerMatchesSort.ts` 0 warning ; les 2 warnings sur les fichiers touchés sont pré-existants
+  — `react-hooks/incompatible-library` sur `useReactTable`, `react-refresh/only-export-components`
+  sur `normalizeExplorerTableRows`).
+- Go : `git status` = AUCUN fichier Go modifié → `go test ./...` NON rejoué (gates Go déjà verts
+  en 2d13bf290 ; conforme à la directive).
+
+**Prochaine étape** : revue visuelle utilisateur (bandeau V3 compacté 4 états + en-têtes de tri :
+toggle, indicateur, aria-sort, synchro select) puis merge `main` (deploy prod auto). Backlog noté :
+correctif tri « Résultat » (`outcome` vs `outcome_code`) + extension whitelist tri Go + Lot 2
+surlignage MVP/LVP.
+
+---
+
 ## [2026-07-17] Explorer briefing V3 compact — Phases 5 + 5b (purge backend + tooltips) (branche feat/explorer-briefing-compact)
 
 **Statut** : En cours (chantier V3 — Phases 0-5 + 5b livrées ; reste Phase 6 = vérif navigateur

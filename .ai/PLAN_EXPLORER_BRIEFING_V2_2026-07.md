@@ -810,6 +810,25 @@ NON committé (le superviseur commite ; merge `main` = deploy prod → après re
   (+ colonne), surlignés par le front quand la row est visible. Décisions à instruire :
   colonnes, égalités, rendu (tokens), interaction avec le tri, raccourci « aller au meilleur
   match ».
+  - **MISE À JOUR 2026-07-17 — Lot 1 LIVRÉ** (branche `feat/explorer-briefing-compact`,
+    frontend-only, aucun changement Go). En-têtes de colonnes cliquables sur les 5 colonnes
+    dont la clé de tri serveur est réellement honorée par `service.compareMatchHistoryRows`
+    (`start_time`, `performance_score_relative`, `kda`, `kills`, `delta_mmr`) : TanStack en
+    `manualSorting` (tri SERVEUR, jamais client — page cappée à 10000 lignes), clic = toggle
+    asc/desc, `aria-sort` + indicateur ▲/▼, source de vérité UNIQUE = le même `sortKey` que
+    le `<select>` (qui reste en place, avec ses options `asc` ajoutées pour rester
+    synchronisé). Logique pure extraite/testée : `features/explorer/explorerMatchesSort.ts`
+    (+ `.test.ts`). **Lot 2 (surlignage MVP/LVP) : toujours EN ATTENTE** (backend requis,
+    non traité).
+  - **DÉCOUVERTE 2026-07-17 (bug backend préexistant, hors périmètre — NON traité)** : le
+    `<select>` « Trier par » expose une option « Résultat » de valeur `outcome:desc`, mais
+    `service.compareMatchHistoryRows` ne connaît que le champ `outcome_code` — `outcome` tombe
+    donc sur le `default` (tri par `start_time`). Le tri « Résultat » ne trie PAS par résultat
+    (bug antérieur à ce lot). Pour cette raison, la colonne « Résultat » est **exclue** des
+    en-têtes triables (on ne crée pas une affordance trompeuse). **Correctif = backlog** :
+    soit le front envoie `outcome_code`, soit le back ajoute `case "outcome"` /
+    l'entrée `outcome` à `availableSortFields` — au choix, à instruire à part. Toute extension
+    de la whitelist de tri côté Go (autres colonnes triables) reste également du backlog.
 
 Consigner ici toute anomalie/dette repérée hors des 7 items (ex. socle à aligner, incohérence
 baseline, palier `SkillTierLabel` manquant sur des matchs attendus). Ne pas la corriger dans ce
