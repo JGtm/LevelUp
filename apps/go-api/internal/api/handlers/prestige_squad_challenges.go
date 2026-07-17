@@ -41,6 +41,9 @@ func (h *PrestigeHandler) CreateSquadChallenge(ctx context.Context, in *squadIDB
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
 	body.SquadID = in.SquadID
+	if err := h.authorizeActor(ctx, body.CreatedBy); err != nil {
+		return nil, err
+	}
 	sc, err := h.svc.CreateSquadChallenge(ctx, prestige.CreateSquadChallengeRequest{
 		SquadID:         body.SquadID,
 		TemplateID:      body.TemplateID,
@@ -84,6 +87,9 @@ func (h *PrestigeHandler) JoinSquadChallenge(ctx context.Context, in *idBodyInpu
 	var body joinSquadChallengeBody
 	if err := json.Unmarshal(in.RawBody, &body); err != nil {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
+	}
+	if err := h.authorizeActor(ctx, body.UserID); err != nil {
+		return nil, err
 	}
 	if err := h.svc.JoinSquadChallenge(ctx, in.ID, body.UserID, prestige.Tier(body.ChosenTier), body.IsPrivate); err != nil {
 		return nil, h.serviceError(ctx, err)

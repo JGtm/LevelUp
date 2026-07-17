@@ -35,6 +35,9 @@ func (h *PrestigeHandler) CreateArc(ctx context.Context, in *rawBodyInput) (*arc
 	if err := json.Unmarshal(in.RawBody, &body); err != nil {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
+	if err := h.authorizeActor(ctx, body.UserID); err != nil {
+		return nil, err
+	}
 	a, err := h.svc.CreateArc(ctx, prestige.CreateArcRequest{
 		UserID:      body.UserID,
 		TitleSlug:   body.TitleSlug,
@@ -81,6 +84,9 @@ func (h *PrestigeHandler) DeleteArc(ctx context.Context, in *deleteArcInput) (*n
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_input",
 			"objectives doit valoir 'delete' ou 'detach'")
 	}
+	if err := h.authorizeActor(ctx, in.UserID); err != nil {
+		return nil, err
+	}
 	opts := prestige.DeleteArcOptions{CascadeObjectives: in.Objectives == "delete"}
 	if err := h.svc.DeleteArc(ctx, in.UserID, in.ID, opts); err != nil {
 		return nil, h.serviceError(ctx, err)
@@ -98,6 +104,9 @@ func (h *PrestigeHandler) ListArcs(ctx context.Context, in *listArcsInput) (*map
 	if in.UserID == "" || in.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 	}
+	if err := h.authorizeActor(ctx, in.UserID); err != nil {
+		return nil, err
+	}
 	arcs, err := h.svc.ListArcs(ctx, in.UserID, in.TitleSlug)
 	if err != nil {
 		return nil, h.serviceError(ctx, err)
@@ -109,6 +118,9 @@ func (h *PrestigeHandler) ListArcs(ctx context.Context, in *listArcsInput) (*map
 func (h *PrestigeHandler) ListArcPresets(ctx context.Context, in *listArcsInput) (*mapOutput, error) {
 	if in.UserID == "" || in.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+	}
+	if err := h.authorizeActor(ctx, in.UserID); err != nil {
+		return nil, err
 	}
 	presets, err := h.svc.ListArcPresets(ctx, in.UserID, in.TitleSlug)
 	if err != nil {
@@ -133,6 +145,9 @@ func (h *PrestigeHandler) AdoptPresetArc(ctx context.Context, in *idBodyInput) (
 	}
 	if body.UserID == "" || body.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+	}
+	if err := h.authorizeActor(ctx, body.UserID); err != nil {
+		return nil, err
 	}
 	arc, err := h.svc.AdoptPresetArc(ctx, body.UserID, body.TitleSlug, in.ID)
 	if err != nil {
