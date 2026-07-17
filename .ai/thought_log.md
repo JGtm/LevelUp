@@ -1,3 +1,51 @@
+## [2026-07-17] Explorer briefing V3 compact — Phases 0-4 (frontend) (branche feat/explorer-briefing-compact)
+
+**Statut** : En cours (chantier V3 — Phases 0-4/6 livrées ; restent Phase 5 backend + 5b tooltips
++ 6 vérif navigateur). NON committé (superviseur commit). Plan :
+`.ai/PLAN_EXPLORER_BRIEFING_V3_COMPACT_2026-07.md`.
+
+**Objectif** : compacter le bandeau de briefing Explorer (Variante B) — 5 cartes pleine largeur
+quasi vides → tuiles du socle + micro-sparkline + grille « Par… » 4 cellules + bande nue, frise
+retirée. Cible hauteur ~300-330 px (mesure navigateur = Phase 6, non faite ici).
+
+**Décisions techniques principales retenues (fermes)** :
+- **SPARK-1 (promotion)** : `Sparkline`/`sparklineGeometry`(+test) déplacés
+  `features/admin/sync/` → `components/charts/` (git mv), 2 imports admin recâblés, README
+  charts complété (« Primitives SVG pures non-ECharts »). Réutilisée dans la tuile Taux de
+  victoire (`width=120 height=28 token=outcome-win`) au lieu d'une 3e sparkline manuelle.
+- **deltaToken centralisé** (Découverte-6) : la tuile Classement en faisait le 3e usage →
+  CLAUDE.md §6 impose centraliser + garde-rail. Helper déplacé dans `ExplorerBriefing.logic.ts`
+  (import type-only `SemanticToken`, reste pur), importé par Strip/Modules/Tiles (0 copie inline),
+  + garde-rail `explorerDeltaToken.guard.test.ts`.
+- **Nouveaux fichiers** : `BriefingTile.tsx` (extraction + slot `chart?`), `ExplorerBriefingTiles.tsx`
+  (`RankedTile`/`StreaksTile`, `rankedProgression` local). Classement = palier de fin du type
+  majoritaire + « depuis {début} » + pt/match (multi-type = 2 lignes, paliers jamais croisés) ;
+  Séries = valeur bicolore « {best} V / {worst} D ». Contexte → 4e carte grille « Par contexte »
+  (i18n renommé), Moments forts → bande nue `DominanceBand`, frise + `outcome_sequence` (lecture
+  front) + `outcomeCodeToValue` + clés i18n `series_*`/`trend_title`/`streak_best`/`streak_worst`
+  purgés. FDA coloré partout (`kdaNetColor`, DP-10) — 2 surfaces FDA du bandeau, toutes colorées.
+
+**Résultats gates (rejoués à chaque phase ; état final Phase 4)** : `make check-types` EXIT=0 ;
+`make test-web` (sandbox off) = 261 fichiers / 2263 tests OK, 14 skipped (baseline pré-existante,
+0 skip introduit), EXIT=0 ; `npm run lint` EXIT=0, 0 erreur, **68 warnings = baseline gelée
+respectée** (un +1 `react-refresh` introduit puis corrigé en rendant `rankedProgression` local) ;
+regen i18n idempotente ; greps de clôture verts. AUCUNE commande `go` (frontend only).
+
+**Découvertes consignées (§6 du plan)** : D-5 chemin réel `PostSyncMatrix` (admin/convergence, pas
+admin/sync) ; D-6 centralisation deltaToken ; D-7 ariaLabel sparkline = `win_rate_label`
+(trend_title purgé) ; D-8 `Unused eslint-disable` pré-existant `ExplorerPage.tsx:159` (hors
+périmètre) ; **D-9 gate « grep global OutcomeSequenceTape » du plan FACTUELLEMENT INEXACT** —
+c'est un chart partagé app-wide (HomePage/TimeseriesPage/SquadSynergiesPage/showcase, pré-existants
+hors périmètre) ; l'exigence substantielle (frise absente du briefing Explorer = 0 dans
+`features/explorer`, composant préservé, RelationsRivalryCards intact) EST satisfaite. Aucun gate
+contourné.
+
+**Prochaine étape** : Phase 5 (purge backend `outcome_sequence` : domain + service + OpenAPI +
+`make generate-types` + drift test — Go), puis 5b (tooltips `InfoTooltip`), puis 6 (vérif
+navigateur + changelog). Worktree propre côté build ; NON committé (merge main = deploy prod).
+
+---
+
 ## [2026-07-17] Format des `<input type="date">` — binding `<html lang>` sur la locale app (branche fix/date-input-locale-format)
 
 **Statut** : Complété (code, branche `fix/date-input-locale-format`, NON mergé — revue + commit superviseur).

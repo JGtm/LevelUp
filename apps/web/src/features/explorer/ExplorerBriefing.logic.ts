@@ -2,10 +2,10 @@
  * ExplorerBriefing.logic — helpers purs du bandeau de briefing (mode Matchs).
  *
  * Aucune dépendance React/DOM : logique testable en isolation (formatage des
- * deltas signés, KDA agrégat, mapping de la frise). Les composants du bandeau
- * consomment ces helpers.
+ * deltas signés, tokens de couleur). Les composants du bandeau consomment ces
+ * helpers.
  */
-import type { OutcomeValue } from '@/components/charts/OutcomeSequenceTape'
+import type { SemanticToken } from '@/lib/accessibility'
 
 /**
  * Formate un delta signé numérique avec préfixe explicite (+/−/±) et N décimales.
@@ -52,16 +52,13 @@ export function signOf(v: number | null | undefined): -1 | 0 | 1 {
   return v > 0 ? 1 : -1
 }
 
-/** Mappe le code outcome backend (1=égalité,2=victoire,3=défaite,4=abandon) vers OutcomeValue. */
-export function outcomeCodeToValue(code: number): OutcomeValue {
-  switch (code) {
-    case 2:
-      return 'win'
-    case 3:
-      return 'loss'
-    case 4:
-      return 'dnf'
-    default:
-      return 'tie' // 1 = égalité
-  }
+/**
+ * Token de couleur d'un delta signé (positif = gagnant, négatif = perdant, nul =
+ * neutre). Helper CANONIQUE : centralisé ici (CLAUDE.md §6, 3e usage avec la tuile
+ * Classement V3) — ne JAMAIS ré-inliner ce ternaire dans un composant du briefing
+ * (garde-rail `explorerDeltaToken.guard.test.ts`).
+ */
+export function deltaToken(v: number | null | undefined): SemanticToken {
+  const s = signOf(v)
+  return s > 0 ? 'outcome-win' : s < 0 ? 'outcome-loss' : 'outcome-draw'
 }

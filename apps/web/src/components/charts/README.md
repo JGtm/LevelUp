@@ -114,6 +114,20 @@ Custom ECharts series rendering an RLE band of recent match outcomes with I-beam
 />
 ```
 
+## Primitives SVG pures (non-ECharts)
+
+Not every chart in this folder is an ECharts wrapper. `Sparkline` is a **pure inline-SVG micro-trend** (flat hard-edge) — no axes, no tooltip, no lazy-loaded ECharts instance. It renders a single `<polyline>` plus a dot on the current value, colored by a semantic token. It is intentionally lightweight so it can be embedded per-cell (admin sync matrices) or inside a compact KPI tile (Explorer briefing) without the cost of a chart instance.
+
+```tsx
+import { Sparkline } from '@/components/charts/Sparkline'
+
+<Sparkline values={[12, 9, 14, 8, 11]} token="outcome-win" width={120} height={28} ariaLabel="…" />
+```
+
+Props : `values: number[]`, `token?: SemanticToken` (default `info`), `width?` (default 96), `height?` (default 24), `ariaLabel?`. Returns `null` for an empty series.
+
+Geometry lives in `sparklineGeometry.ts` (`sparklinePoints` / `lastPoint`) — pure functions, no DOM, unit-tested in `sparklineGeometry.test.ts` (no canvas mock required). Consumers : `features/admin/convergence/PostSyncMatrix`, `features/admin/sync/SyncCycleHistory`, `features/explorer` briefing tile (win-rate trend). **Not** to be confused with `OutcomeSparkline` in `features/palmares/PalmaresRelationsPage` (a categorical W/L outcome band, a different pattern).
+
 ## Color tokens
 
 Wrappers consume `SemanticToken` strings (resolved at runtime via `tokenCssVar` / `resolveToken`). Common tokens :
