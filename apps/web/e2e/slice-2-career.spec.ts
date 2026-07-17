@@ -54,9 +54,13 @@ test.describe('Slice 2 — Page Carrière (DEMO_MODE)', () => {
 
     // Le tier Gold du demo-player doit apparaître quelque part dans la page,
     // LOCALISÉ à l'affichage (localizeTierName) : « Or IV » sous UI FR (défaut),
-    // « Gold IV » sous UI EN. Regex ancrée tier + sous-palier romain — « Or » nu
-    // matcherait « Ordre », « Score »…
-    await expect(page.locator('body')).toContainText(/\b(Gold|Or)\s+(I|II|III|IV|V|VI)\b/)
+    // « Gold IV » sous UI EN. Pas d'ancre de tête (\b) : le textContent du body
+    // concatène les éléments adjacents SANS espace (« Arène classéeOr I ») — entre
+    // deux caractères de mot, pas de word boundary possible. Les faux positifs
+    // restent écartés sans elle : regex sensible à la casse (« décor », « or »
+    // minuscules non matchés) et espace exigé APRÈS « Or »/« Gold » suivi d'un
+    // sous-palier romain (« Ordre I », « Score IV » non matchés).
+    await expect(page.locator('body')).toContainText(/(Gold|Or)\s+(I|II|III|IV|V|VI)\b/)
   })
 
   test("la page ne contient pas d'erreur fatale", async ({ page }) => {

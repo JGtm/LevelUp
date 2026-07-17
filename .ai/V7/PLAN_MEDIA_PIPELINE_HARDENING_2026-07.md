@@ -312,18 +312,28 @@ Lot correctif dicté par le superviseur (cause racine : 642ef31f8, cf.
 Découvertes). Pas de commit.
 
 - [x] E1. `apps/web/e2e/slice-2-career.spec.ts` : l'attente
-      `toContainText('Gold')` devient
-      `toContainText(/\b(Gold|Or)\s+(I|II|III|IV|V|VI)\b/)` — couvre le libellé
-      localisé FR/EN sans faux positif (« Or » nu matcherait « Ordre »…), ancrée
-      sur le format RÉEL du DOM vérifié sur pièces : `csrTierLabel`
-      (CareerRankingBlock.tsx) compose `localizeTierName(tier, locale)` + espace
-      + sous-palier ROMAIN (SUB_TIER_ROMAN I..VI) → « Or IV » (FR) / « Gold IV »
-      (EN). Style du fichier conservé (locator body + toContainText, pas de
-      sélecteur nouveau). Les 2 commentaires (en-tête + test) actualisés « tier
-      localisé FR/EN ». Regex sanity-testée (5 positifs matchés, 6 pièges
-      rejetés : Ordre, Orange III, Or/Gold nus…). Balayage du reste de
-      `apps/web/e2e/` : AUCUNE autre attente sur
+      `toContainText('Gold')` devient (après round 2, cf. E1bis)
+      `toContainText(/(Gold|Or)\s+(I|II|III|IV|V|VI)\b/)` — couvre le libellé
+      localisé FR/EN, ancré sur le format RÉEL du DOM vérifié sur pièces :
+      `csrTierLabel` (CareerRankingBlock.tsx) compose
+      `localizeTierName(tier, locale)` + espace + sous-palier ROMAIN
+      (SUB_TIER_ROMAN I..VI) → « Or IV » (FR) / « Gold IV » (EN). Style du
+      fichier conservé (locator body + toContainText, pas de sélecteur nouveau).
+      Les 2 commentaires (en-tête + test) actualisés « tier localisé FR/EN ».
+      Balayage du reste de `apps/web/e2e/` : AUCUNE autre attente sur
       Gold/Platinum/Diamond/Onyx/Bronze/Silver/Unranked — occurrence unique.
+- [x] E1bis (round 2). Le premier correctif `/\b(Gold|Or)\s+…\b/` a RE-échoué en
+      CI : le textContent du body concatène les éléments adjacents SANS espace —
+      contenu réel « Arène classéeOr I · 1 420 » — et entre « e » et « O » (deux
+      caractères de mot) il n'y a PAS de word boundary → le `\b` de TÊTE ne
+      matche jamais. Fix : ancre de tête retirée, ancre de queue conservée. Les
+      faux positifs restent écartés sans elle : regex sensible à la casse
+      (« décor », « or » minuscules non matchés) + espace exigé APRÈS
+      « Or »/« Gold » suivi d'un romain (« Ordre I », « Score IV » non matchés).
+      Raisonnement documenté dans le commentaire du test. Sanity node : la
+      chaîne EXACTE du body « Arène classéeOr I · 1 420 » matche (« Or I ») ;
+      « Ordre I », « Score IV », « décor I » + 5 autres pièges rejetés.
+      `npx playwright test --list` re-exécuté : exit 0 (107 tests / 27 fichiers).
 - [x] E2. Gates locaux (apps/web, worktree) : `npm run typecheck` exit 0 ;
       `npm run lint` exit 0 (68 warnings baseline, 0 erreur). CONSTAT : ni tsc
       (`include: src`) ni eslint (e2e/ ignoré par pattern) ne couvrent le
