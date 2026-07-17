@@ -13,12 +13,15 @@ import { RouterProvider } from '@tanstack/react-router'
 import { router } from '@/app/router'
 import { queryClient } from '@/app/queryClient'
 import { ThemeProvider } from './theme-provider'
+import { DocumentLangProvider } from './document-lang-provider'
 
 export function AppProviders() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <RouterProvider router={router} />
+        <DocumentLangProvider>
+          <RouterProvider router={router} />
+        </DocumentLangProvider>
       </ThemeProvider>
       {/* Devtools React Query — dev uniquement (tree-shaké en prod via DEV),
           OFF par défaut, activable à la demande via VITE_SHOW_QUERY_DEVTOOLS=true */}
