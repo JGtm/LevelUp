@@ -373,6 +373,9 @@ func (h *PrestigeHandler) EnablePilotMode(ctx context.Context, in *rawBodyInput)
 	if body.UserID == "" || body.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 	}
+	if err := h.authorizeActor(ctx, body.UserID); err != nil {
+		return nil, err
+	}
 	out, err := h.svc.EnablePilotMode(ctx, body.UserID, body.TitleSlug)
 	if err != nil {
 		return nil, h.serviceError(ctx, err)
@@ -391,6 +394,9 @@ func (h *PrestigeHandler) DisablePilotMode(ctx context.Context, in *rawBodyInput
 	}
 	if body.UserID == "" || body.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+	}
+	if err := h.authorizeActor(ctx, body.UserID); err != nil {
+		return nil, err
 	}
 	if err := h.svc.DisablePilotMode(ctx, body.UserID, body.TitleSlug); err != nil {
 		return nil, h.serviceError(ctx, err)
@@ -420,6 +426,9 @@ func (h *PrestigeHandler) RefreshSquadPool(ctx context.Context, in *squadIDBodyI
 	}
 	if body.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_title_slug", "title_slug requis")
+	}
+	if err := h.authorizeActor(ctx, body.RequestedBy); err != nil {
+		return nil, err
 	}
 	pool, err := h.svc.RefreshSquadPool(ctx, in.SquadID, body.TitleSlug, body.RequestedBy)
 	if err != nil {

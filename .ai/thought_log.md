@@ -1,3 +1,69 @@
+## [2026-07-17] Sécurité/AutZ — Prestige : réconciliation acteur user_id ↔ session (BOLA résiduel) (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Problème** : les routes prestige montées sous `/players/{player_slug}` (ownershipMW, ADR 0029)
+gardent le SEGMENT d'URL, pas le PAYLOAD. Le fix squad-only était livré (helper `authorizeActor`
++ `WithActorGuard` sur 8 routes squad top-level), mais les handlers prestige non-squad relisaient
+l'acteur (`user_id`/`created_by`/`requested_by`) depuis body/query sans le réconcilier : un
+utilisateur A passait la garde avec SON slug dans le chemin et ciblait B via le body → BOLA
+horizontal (blast radius limité : instance invités-only + lockdown, mais incohérent).
+
+**Audit sur pièces (grep + lecture des 4 fichiers handlers)** — 14 handlers lisaient un acteur
+SANS garde ; 8 l'avaient déjà :
+
+| Handler | Champ acteur | Route (sous /players/{slug}) | Avant |
+|---|---|---|---|
+| CreateChallenge | body.user_id | POST /prestige/challenges | GAP → gardé |
+| ListActiveChallenges | query user_id | GET /prestige/challenges | GAP → gardé |
+| GetMyPrestige | query user_id | GET /prestige/me | GAP → gardé |
+| SuggestTemplates | query user_id | GET /templates/suggest | GAP → gardé |
+| CreateArc | body.user_id | POST /arcs | GAP → gardé |
+| DeleteArc | query user_id | DELETE /arcs/{id} | GAP → gardé |
+| ListArcs | query user_id | GET /arcs | GAP → gardé |
+| ListArcPresets | query user_id | GET /arcs/presets | GAP → gardé |
+| AdoptPresetArc | body.user_id | POST /arcs/presets/{id}/adopt | GAP → gardé |
+| CreateSquadChallenge | body.created_by | POST /squads/{squad_id}/challenges | GAP → gardé |
+| JoinSquadChallenge | body.user_id | POST /squad-challenges/{id}/join | GAP → gardé |
+| EnablePilotMode | body.user_id | POST /pilot-mode/enable | GAP → gardé |
+| DisablePilotMode | body.user_id | POST /pilot-mode/disable | GAP → gardé |
+| RefreshSquadPool | body.requested_by | POST /squads/{squad_id}/challenges/pool/refresh | GAP → gardé |
+| CreateSquad, ListMySquads, AddSquadMember, RemoveSquadMember, RenameSquad, DeleteSquad, EvaluateSquadChallenge, SquadOrientation | created_by/requested_by/user_id | routes squad top-level | déjà gardés (livré) |
+
+Routes unitaires par `{id}` (GetChallenge/UpdateChallenge/AbandonChallenge/SuggestNext/GetArc/
+ListSquadChallenges) ne lisent pas d'acteur → hors périmètre (ownershipMW couvre le slug).
+
+**Décision technique principale — choix (a) garde per-handler, PAS (b) middleware** : le champ
+acteur varie (user_id/created_by/requested_by), sa position varie (body RawBody vs query), et le
+body est consommé par Huma. Un middleware sur le sous-groupe devrait bufferiser/restaurer le body
+et mapper chaque route → usine à gaz fragile. On réutilise le helper `authorizeActor` DÉJÀ centralisé
+(3 lignes `if err := h.authorizeActor(ctx, X); err != nil { return nil, err }` = appel du helper, pas
+duplication de logique). La couverture STRUCTURELLE des futurs handlers est assurée par un garde-rail
+AST (`prestige_actor_guard_test.go::TestPrestigeHandler_ActorGuard_StructuralCoverage`) : toute méthode
+de `*PrestigeHandler` qui lit `body/in.{UserID,CreatedBy,RequestedBy}` DOIT appeler `h.authorizeActor`,
+sinon FAIL — impossible de réintroduire le BOLA par construction. Sémantique inchangée : acteur ∈
+profils possédés (`CanAccessPlayer`, multi-profil famille), 403 `player_forbidden`, transparent en
+demo/auth-off (garde nil ou `!authz.Enforced`).
+
+**Tests ajoutés** (`prestige_actor_guard_test.go`) : (1) table 403 sur les 14 endpoints nouvellement
+gardés (acteur « bob » refusé, garde autorisant « alice ») ; (2) table verte sur les 14 (acteur
+« alice » légitime → 200/201/204 attendus par route) ; (3) garde-rail AST structurel. Vérifié anti
+no-op : retrait temporaire d'une garde → le test structurel FAIL (message ciblé), puis restauré.
+
+**Gates observés** (apps/go-api) : `go build ./...` = OK ; `go vet ./...` = OK ; `go test ./...` = 0
+FAIL (0 panic). Pas de migration/table touchée → tag integration non requis.
+
+**Découvertes hors périmètre (notées, NON traitées)** : les routes unitaires par `{id}`
+(GetChallenge, GetArc, UpdateChallenge, AbandonChallenge, ListSquadChallenges) ne vérifient PAS que
+l'objet ciblé appartient bien au `{player_slug}` du chemin — un propriétaire de slug-A pourrait lire/
+muter un challenge/arc {id} d'un autre joueur via son propre slug dans le chemin (BOLA au niveau OBJET,
+distinct du BOLA au niveau ACTEUR traité ici). Hors périmètre du backlog (« handlers lisant l'acteur
+depuis body/query »). À évaluer séparément (réconciliation objet↔slug côté service/repo).
+
+**Prochaine étape** : branche NON poussée (décision utilisateur ; push main = deploy prod auto).
+
+---
+
 ## [2026-07-17] Relations UX — Lot G statué [!] + CLÔTURE du chantier (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété (chantier clos ; G conditionnel non exécuté).
