@@ -106,6 +106,27 @@ go run ./cmd/levelup gate-check [--gamertag X] [--json]
 go run ./cmd/levelup compare-db --go-db PATH --python-db PATH [--json]
 ```
 
+### Prestige — coach grammar tuning analyzer
+
+Read-only analyzer (never opens DBs RW). Produces **recommendations** to adjust the
+coach synthesis grammar (`config/coach_advisor/synthesis_grammar.toml`) from Prestige
+telemetry (completion rate per grammar metric). Application stays **manual**: a human
+reads the report and edits the TOML — no auto-PR, no runtime override.
+
+```bash
+# All players of a title (default halo_infinite), text report:
+go run ./cmd/prestige-tuning-analyze
+# Single player, JSON output:
+go run ./cmd/prestige-tuning-analyze --player JGtm --format json
+# Custom thresholds (rule: completion < min-completion over >= min-sample accepted coach challenges):
+go run ./cmd/prestige-tuning-analyze --min-completion 0.30 --min-sample 50 --source coach
+# flags: --format text|json  --player SLUG|GAMERTAG  --title SLUG
+#        --min-completion 0..1  --min-sample N  --source coach|user|pilot_mode  --grammar PATH
+```
+
+Below `--min-sample`: "insufficient data" (no recommendation on noise). A telemetry
+metric absent from the grammar is flagged as an orphan (naming drift / legacy challenge).
+
 ### Maintenance (server stopped for ART/alias rebuilds)
 
 ```bash

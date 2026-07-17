@@ -106,6 +106,29 @@ go run ./cmd/levelup gate-check [--gamertag X] [--json]
 go run ./cmd/levelup compare-db --go-db PATH --python-db PATH [--json]
 ```
 
+### Prestige — analyseur de tuning de la grammaire coach
+
+Analyseur en LECTURE SEULE (jamais d'ouverture RW). Produit des **recommandations**
+d'ajustement de la grammaire de synthèse du coach
+(`config/coach_advisor/synthesis_grammar.toml`) à partir de la télémétrie Prestige
+(taux de complétion par métrique de grammaire). L'application reste **manuelle** : un
+humain lit le rapport et édite le TOML — aucune PR automatique, aucun override runtime.
+
+```bash
+# Tous les joueurs d'un titre (défaut halo_infinite), rapport texte :
+go run ./cmd/prestige-tuning-analyze
+# Un seul joueur, sortie JSON :
+go run ./cmd/prestige-tuning-analyze --player JGtm --format json
+# Seuils personnalisés (règle : complétion < min-completion sur >= min-sample défis coach acceptés) :
+go run ./cmd/prestige-tuning-analyze --min-completion 0.30 --min-sample 50 --source coach
+# flags : --format text|json  --player SLUG|GAMERTAG  --title SLUG
+#         --min-completion 0..1  --min-sample N  --source coach|user|pilot_mode  --grammar PATH
+```
+
+Sous `--min-sample` : « données insuffisantes » (aucune reco sur du bruit). Une métrique
+de télémétrie absente de la grammaire est signalée comme orpheline (dérive de nommage /
+défi legacy).
+
 ### Maintenance (serveur arrêté pour les rebuilds ART/alias)
 
 ```bash

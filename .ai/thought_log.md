@@ -1,3 +1,72 @@
+## [2026-07-17] coach/prestige V3 — analyseur de tuning de `synthesis_grammar.toml` (recommandations, validation manuelle) (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Cadrage superviseur (acté)** : livrable = ANALYSEUR produisant des RECOMMANDATIONS
+d'ajustement de la grammaire de synthèse coach ; application MANUELLE (humain édite le TOML).
+AUCUN mécanisme de PR auto, AUCUN override runtime. CLI Go en LECTURE SEULE.
+
+**Vérifs sur pièces (schéma réel des données)** :
+- `prestige_telemetry` (stats.duckdb, append-only) porte l'événement mais PAS la métrique/fenêtre :
+  colonnes id/user_id/challenge_id/event_type/palier/stretch_ratio/baseline_value/mode/cadence/
+  eval_type/time_since_create_seconds/source/created_at. La métrique + fenêtre vivent sur `challenge`
+  (metric, window_type, window_value). → l'attribution métrique passe par la jointure
+  `prestige_telemetry.challenge_id = challenge.id`.
+- Défi auto-rejeté (`RejectTooEasy`) : `prestige/service.go` retourne SANS persister le challenge →
+  les événements `rejected:*` n'ont PAS de ligne `challenge`. Conséquence de conception : l'acceptance
+  PAR MÉTRIQUE n'est pas calculable via la jointure ; elle est fournie AU NIVEAU SOURCE par une 2e
+  requête sans jointure (created/rejected par source). La complétion (created+completed, tous deux
+  persistés) est, elle, pleinement attribuable à la métrique — c'est la base de la règle du backlog.
+- `coach_proposal` (source_metric, strength, status pending/accepted/dismissed) = stade PROPOSITION en
+  amont du challenge. NON utilisée : la règle de référence porte sur les défis coach ACCEPTÉS + complétion
+  = `prestige_telemetry.source='coach'`. Funnel proposition→acceptation noté comme enrichissement futur.
+
+**Architecture retenue** :
+- Package pur `internal/analysis/prestigetuning/` : `types.go` (Thresholds/Report/MetricRecommendation…),
+  `grammar.go` (GrammarView découplée du TOML, testable sans FS), `analyze.go` (`Analyze(...)` PUR :
+  agrégation par métrique, seuils, génération des recommandations), `merge.go` (agrégation multi-joueurs
+  pure), `collect.go` (lecture SQL SEULE : jointure + acceptance, tolérante aux DBs legacy), `render.go`
+  (texte FR + JSON).
+- CLI fine `cmd/prestige-tuning-analyze/` : flags (`--format text|json`, `--player`, `--title`,
+  `--min-completion` déf. 0.30, `--min-sample` déf. 50, `--source` déf. coach, `--grammar`), config.Load →
+  LoadPlayers(title) → `PathResolver.PlayerDBPath` → `duckdb.OpenReadForQuery` (JAMAIS RW) → collecte
+  best-effort par joueur (log slog + skip si DB absente/verrouillée) → merge → Analyze → render. Zéro
+  logique métier dans le main.
+- Grammaire : RÉUTILISE `coach_advisor.LoadSynthesisGrammar` (pas de 2e parseur TOML) + nouvel accesseur
+  exporté `SynthesisGrammar.WindowSpecs(metric)` (introspection des fenêtres pour relier chaque reco aux
+  entrées réelles du TOML).
+
+**Règle d'analyse** : par métrique de grammaire, source=coach, si complétion (completed/created) <
+`--min-completion` sur >= `--min-sample` défis acceptés (created) → recommandation « retirer la métrique
+ou réduire ses fenêtres » avec pointage des fenêtres les plus faibles. Sous l'échantillon → « données
+insuffisantes » (jamais de reco sur du bruit). Métrique télémétrie absente de la grammaire → signalée
+ORPHELINE (non actionnable sur le TOML, révèle une dérive de nommage). Métrique de grammaire sans
+télémétrie → listée en données insuffisantes.
+
+**Robustesse legacy (découverte à l'exécution réelle)** : les player DBs locales n'ont pas encore la
+colonne `prestige_telemetry.source` (migration `prestige_add_source_columns_v1` non appliquée — serveur
+non démarré ; source fraîchement livrée). Collecte durcie via `probeTelemetry` (information_schema) :
+table absente → résultat vide sans erreur ; colonne `source` absente → événements agrégés sous
+"unknown" (le joueur n'est PAS perdu) au lieu d'un binder error qui skippait toute la DB.
+
+**Exécution réelle (données locales, lecture seule)** : `go run ./cmd/prestige-tuning-analyze` scanne
+4 player DBs (JGtm, Chocoboflor, Madina97294, XxDaemonGamerxX), 0 événement jointé, 0 acceptation →
+rapport « données insuffisantes » propre pour les 13 métriques de grammaire, « aucun ajustement
+recommandé » en synthèse. Aucun plantage. `--format json` produit un JSON valide (roundtrip testé).
+Comportement conforme au cadrage (télémétrie coach non encore produite localement).
+
+**Tests** : unités pures (nominal→reco, échantillon insuffisant, healthy, orpheline, métrique de
+grammaire sans donnée, filtre source, seuils custom) + merge + grammar view + intégration DuckDB
+`:memory:` (jointure + rejet non persisté exclus, colonne source absente→unknown, table absente→vide,
+bout-en-bout collecte→analyse). `go build ./...`, `go vet`, `go test ./internal/analysis/prestigetuning/`
+verts. gofmt clean.
+
+**Conclusion / prochaine étape** : l'analyseur est prêt ; il livrera des recommandations dès que la
+télémétrie coach s'accumulera (>= 50 défis coach acceptés par métrique). Enrichissement futur possible :
+croiser `coach_proposal.status` (funnel proposition→acceptation) pour un taux d'acceptation coach amont.
+
+---
+
 ## [2026-07-17] coach/prestige V2.1 — plumbing `source` vers prestige_telemetry + endpoint diag d'agrégation (branche chore/backlog-train-2026-07)
 
 **Statut** : Complété.
