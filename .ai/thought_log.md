@@ -7971,3 +7971,33 @@ vers `.ai/V7/`.
 entrée — voir commit de finalisation. Restes portés au backlog : décision redondance
 backup, activation pull GHCR côté VPS (5 min), BOLA objet routes {id}, densification CSR
 adversaires, frags hors-arsenal H5.
+
+---
+
+## [2026-07-17] Train backlog 2026-07 — passe de vérification finale (logging + tests + gates) — Complété
+
+**Statut** : Complété. Branche `chore/backlog-train-2026-07` (26 commits, non poussée).
+
+**Décision technique principale** : passe QA indépendante post-livraison sur les 11 items,
+sans faire confiance aux rapports des sous-agents. (1) Audit logging : le routing
+multi-module (`observability/logging`) envoyait 5 flux best-effort du train vers
+`general.log` faute de mapping de package — re-routés vers leurs modules dédiés
+(`external`/`notify` → `notifications` dans `packageToModuleMap` + test de routing ;
+rival post-sync → tag `module=notifications` ; analyseur tuning → `prestige` ;
+media_tooling → `media`) et 1 erreur avalée comblée (`decodeParams`). Commit `e6671ff89`.
+(2) Audit couverture : trous critiques comblés sur les branches best-effort et gardes nil
+(`IsValidChallengeSource`, media tooling absent, err détecteur rival, decodeParams/appLink,
+diag table absente, glue `handleClick` web) — 7 fichiers de test, +323 L, 0 code
+applicatif, aucun bug trouvé. Commits `058ba9486`, `d49a1734f`.
+
+**Résultats observés (gates finaux sur l'état post-audit)** :
+- Go : `build` OK, `vet` OK, `go test ./...` 0 FAIL.
+- Go intégration : `go test -tags=integration -p 1 -timeout 900s ./...` → GOTEST_EXIT=0,
+  114 paquets ok, 0 FAIL (exécution autoritative, code de sortie de go test capturé hors pipe).
+- Web : typecheck OK, lint 0 erreur (68 warnings baseline), vitest 2258 passed / 14 skipped / 0 fail.
+- gofmt clean, arbre propre.
+
+**Conclusion / prochaine étape** : train prêt au merge (revue + push = décision utilisateur,
+push main = deploy prod). Restes portés au backlog (redondance backup, activation GHCR VPS,
+BOLA objet routes {id}, densification CSR, frags hors-arsenal H5, dettes mineures dont les
+swallowed-errors préexistants relevés hors périmètre).
