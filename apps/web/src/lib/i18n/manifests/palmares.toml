@@ -112,6 +112,11 @@ en = "{count} duels"
 fr = "Derniers duels"
 en = "Recent duels"
 
+# Rang CSR courant de la bête noire (lot relations-G, best-effort classé)
+[palmares.relations.hero.current_rank]
+fr = "Rang actuel"
+en = "Current rank"
+
 # ─── Relations - Chips de filtre ──────────────────────────────────────────
 
 [palmares.relations.chip.all]

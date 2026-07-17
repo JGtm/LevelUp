@@ -8,7 +8,7 @@
  * (demande user). Liste simple, sans sous-blocs bordés.
  */
 import { useAppShellStore } from '@/stores/appShellStore'
-import { localizeTierName, subTierRoman } from '@/lib/skillTiers'
+import { composeTierLabel } from '@/lib/skillTiers'
 import { unrankedBadgeURL } from '@/lib/staticAssets'
 import type { CareerPlaylistCSR } from '@/lib/api/types'
 
@@ -22,16 +22,13 @@ interface ExplorerTargetSeasonCSRProps {
 
 /**
  * tierLabel formate "Tier Sub" (ex: "Onyx", "Diamant III") ou "—" si non classé.
- * Le NOM du tier est localisé via `localizeTierName` et le sous-palier romain via
- * `subTierRoman` (source unique, cf. skillTiers.ts) — pas de mapping local dupliqué.
+ * Compose via `composeTierLabel` (source unique, cf. skillTiers.ts) — pas de mapping
+ * local dupliqué ; ici on n'ajoute que le cas non classé (tier vide → "—").
  */
 function tierLabel(tier: string, subTier: number, locale: 'fr' | 'en'): string {
   const raw = tier.trim()
   if (raw === '') return '—'
-  const name = localizeTierName(raw, locale)
-  // sub_tier est 1-based (1..6) ; 0 = pas de sous-tier (Onyx, ou non classé).
-  if (raw.toLowerCase() === 'onyx') return name
-  return subTier >= 1 && subTier <= 6 ? `${name} ${subTierRoman(subTier)}` : name
+  return composeTierLabel(raw, subTier, locale)
 }
 
 export function ExplorerTargetSeasonCSR({ csrs, title, emptyMessage }: ExplorerTargetSeasonCSRProps) {

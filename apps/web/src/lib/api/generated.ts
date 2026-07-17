@@ -7465,6 +7465,13 @@ export interface components {
             label_key: string;
             style: string;
         };
+        RelationCSR: {
+            /** Format: double */
+            rating_value: number | null;
+            /** Format: int64 */
+            sub_tier: number | null;
+            tier: string | null;
+        };
         RelationInsight: {
             /** Format: double */
             avg_kda_against: number | null;
@@ -7500,6 +7507,7 @@ export interface components {
             xuid: string;
         };
         RelationRef: {
+            csr?: components["schemas"]["RelationCSR"];
             gamertag: string;
             /** Format: int64 */
             matches: number;

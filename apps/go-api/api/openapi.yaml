@@ -13363,6 +13363,25 @@ components:
           - color_token
           - style
       type: object
+    RelationCSR:
+      additionalProperties: false
+      properties:
+          rating_value:
+              format: double
+              nullable: true
+              type: number
+          sub_tier:
+              format: int64
+              nullable: true
+              type: integer
+          tier:
+              nullable: true
+              type: string
+      required:
+          - tier
+          - sub_tier
+          - rating_value
+      type: object
     RelationInsight:
       additionalProperties: false
       properties:
@@ -13453,6 +13472,8 @@ components:
     RelationRef:
       additionalProperties: false
       properties:
+          csr:
+              $ref: '#/components/schemas/RelationCSR'
           gamertag:
               type: string
           matches:

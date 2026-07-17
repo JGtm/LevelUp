@@ -201,3 +201,19 @@ export function localizeTierLabel(
   const localized = locale === 'en' ? pair.en : pair.fr
   return m ? `${localized} ${m[2]}` : localized
 }
+
+/**
+ * composeTierLabel — libellé « Nom + sous-palier » d'un palier de skill CLASSÉ
+ * (ex. « Diamant III », « Onyx »), à partir d'un tier canonique EN + un numéro de
+ * sous-palier. Nom localisé via `localizeTierName`, sous-palier romain via
+ * `subTierRoman` ; Onyx (palier ouvert) et tout sous-palier hors 1..6 → nom seul.
+ *
+ * SOURCE UNIQUE du pattern « compose tier » (CLAUDE.md n°6, règle ≤ 2 copies —
+ * garde-rail skillTiers.guard.test.ts). Ne gère PAS les états non classés
+ * (placement, tier vide) : c'est à l'appelant de les traiter en amont.
+ */
+export function composeTierLabel(tier: string, subTier: number, locale: 'fr' | 'en'): string {
+  const name = localizeTierName(tier, locale)
+  if (tier.trim().toLowerCase() === 'onyx') return name
+  return subTier >= 1 && subTier <= 6 ? `${name} ${subTierRoman(subTier)}` : name
+}

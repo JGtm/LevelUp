@@ -76,11 +76,29 @@ type RelationInsight struct {
 	Badges    []RelationBadge `json:"badges"`
 }
 
+// RelationCSR : snapshot CSR courant (le plus récent) d'une relation classée, lu
+// best-effort depuis la vue append-only match_csrs_latest (règle ART n°2). Sert le
+// contexte CSR de la bête noire (lot relations-G). Tous les champs sont optionnels :
+// nil = donnée absente. Un *RelationCSR nil (au niveau RelationRef) signifie qu'AUCUNE
+// ligne CSR n'existe pour ce joueur (relation social, ou classé non collecté) → rien
+// n'est affiché côté front (dégradation gracieuse, pas de « N/A »).
+type RelationCSR struct {
+	Tier        *string  `json:"tier"`         // nom de palier EN canonique ("Onyx", "Diamond"…), nil si absent
+	SubTier     *int     `json:"sub_tier"`     // sous-palier 1..6 (0/nil pour Onyx, palier ouvert)
+	RatingValue *float64 `json:"rating_value"` // CSR numérique (utile pour Onyx), nil si absent
+}
+
 // RelationRef : référence légère vers une relation (KPI hero binôme/bête noire).
 type RelationRef struct {
 	Gamertag string   `json:"gamertag"`
 	WinRate  *float64 `json:"win_rate"`
 	Matches  int      `json:"matches"`
+
+	// CSR : snapshot CSR courant de la bête noire (lot relations-G, best-effort).
+	// Peuplé UNIQUEMENT pour top_nemesis quand une ligne CSR existe dans
+	// match_csrs_latest ; nil sinon (top_ally, ou nemesis social/non classé) —
+	// dégradation gracieuse, rien à afficher.
+	CSR *RelationCSR `json:"csr,omitempty"`
 }
 
 // RelationsOverview : KPI agrégés du hub Relations.

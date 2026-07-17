@@ -229,6 +229,72 @@ describe('PalmaresRelationsPage', () => {
     expect(screen.getAllByText('NemesisBravo').length).toBeGreaterThan(0)
   })
 
+  it('affiche le rang CSR courant de la bête noire quand le champ csr est présent (lot G)', async () => {
+    // Bête noire classée : top_nemesis.csr fourni → chip « Rang actuel : Onyx 1523 ».
+    server.use(
+      http.post('/api/v1/players/:playerSlug/pages/palmares/relations', () =>
+        HttpResponse.json({
+          overview: {
+            distinct_players: 1,
+            allies_count: 0,
+            rivals_count: 1,
+            core_count: 0,
+            top_ally: null,
+            top_nemesis: {
+              gamertag: 'RankedFoe',
+              win_rate: 0.2,
+              matches: 12,
+              csr: { tier: 'Onyx', sub_tier: 0, rating_value: 1523 },
+            },
+          },
+          relations: [
+            {
+              xuid: '1',
+              gamertag: 'RankedFoe',
+              total_matches: 12,
+              teammate_matches: 0,
+              teammate_wins: 0,
+              teammate_win_rate: null,
+              enemy_matches: 12,
+              enemy_wins: 3,
+              enemy_win_rate: 0.25,
+              avg_kda_with: null,
+              avg_kda_against: 1,
+              kills_dealt: 4,
+              deaths_suffered: 20,
+              duel_ratio: 0.2,
+              first_seen_at: '2026-01-01T00:00:00Z',
+              last_seen_at: '2026-06-01T00:00:00Z',
+              category: 'enemy',
+              badges: [],
+            },
+          ],
+        }),
+      ),
+    )
+
+    renderWithProviders(<PalmaresRelationsPage />)
+
+    const rank = await screen.findByTestId('nemesis-current-rank')
+    expect(rank).toHaveTextContent('Rang actuel')
+    // Onyx (palier ouvert) → suffixe de la valeur CSR.
+    expect(rank).toHaveTextContent('Onyx 1523')
+    // Le libellé du rang est rendu dans un badge coloré (token sémantique).
+    expect(rank.querySelector('[data-testid="narrative-badge"]')).not.toBeNull()
+  })
+
+  it('ne rend aucun rang CSR quand la bête noire n\'a pas de champ csr (dégradation gracieuse)', async () => {
+    // Mock par défaut : NemesisBravo n'a pas de csr → aucun chip « Rang actuel ».
+    renderWithProviders(<PalmaresRelationsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('palmares-relations-overview')).toBeInTheDocument()
+    })
+    expect(screen.getByText('Bête noire')).toBeInTheDocument()
+    expect(screen.queryByTestId('nemesis-current-rank')).not.toBeInTheDocument()
+    expect(screen.queryByText('Rang actuel')).not.toBeInTheDocument()
+  })
+
   it('envoie un FilterContextInput segmenté (vue Escouade) après « Analyser »', async () => {
     const bodies: Array<Record<string, unknown>> = []
     server.use(

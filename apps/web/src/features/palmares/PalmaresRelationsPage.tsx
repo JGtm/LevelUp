@@ -15,10 +15,12 @@ import { KpiCard } from '@/components/cards/KpiCard'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocalFilterBar } from '@/features/_shared/useLocalFilterBar'
-import { tokenCssVar } from '@/lib/accessibility'
+import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
+import { tokenCssVar, tokenVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
+import { composeTierLabel } from '@/lib/skillTiers'
 import { formatPercent } from '@/lib/formatters'
-import type { FilterContextInput, RelationDuelEntry, RelationInsight } from '@/lib/api/types'
+import type { FilterContextInput, RelationCSR, RelationDuelEntry, RelationInsight } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useRelationsPrefsStore } from '@/stores/relationsPrefsStore'
 
@@ -124,6 +126,22 @@ function streakChip(streak: number | undefined, labels: RelationsText): ReactNod
 }
 
 /**
+ * nemesisRankLabel — libellé du rang CSR courant de la bête noire (lot relations-G).
+ * Compose « Nom + sous-palier » via composeTierLabel (source unique) ; pour Onyx
+ * (palier ouvert), suffixe la valeur CSR si disponible (« Onyx 1523 »). Renvoie null
+ * si le palier est absent → rien n'est affiché (dégradation gracieuse, pas de « N/A »).
+ */
+function nemesisRankLabel(csr: RelationCSR, locale: 'fr' | 'en'): string | null {
+  const tier = csr.tier?.trim()
+  if (!tier) return null
+  const base = composeTierLabel(tier, csr.sub_tier ?? 0, locale)
+  if (tier.toLowerCase() === 'onyx' && csr.rating_value != null && Number.isFinite(csr.rating_value)) {
+    return `${base} ${Math.round(csr.rating_value)}`
+  }
+  return base
+}
+
+/**
  * HeroRelationCard — carte hero : binôme (mode ally) ou bête noire (mode enemy).
  * Grammaire commune avec la carte Noyau dur : uplabel → gamertag (identité, en
  * tête) → ligne métrique (% de victoires + qualificatif + chip) → [barre
@@ -145,6 +163,7 @@ function HeroRelationCard({
   playerWinRate,
   recentForm,
   streak,
+  csr,
 }: {
   emptyLabel: string
   accent: Parameters<typeof KpiCard>[0]['accent']
@@ -157,6 +176,7 @@ function HeroRelationCard({
   playerWinRate?: number | null
   recentForm?: string[] | null
   streak?: number
+  csr?: RelationCSR | null
 }) {
   if (!relation) {
     return (
@@ -175,6 +195,9 @@ function HeroRelationCard({
     isAlly && wr != null && playerWinRate != null && Number.isFinite(playerWinRate) ? wr - playerWinRate : null
   const allyForm = (recentForm ?? []).filter((o): o is string => typeof o === 'string')
   const duelOutcomes = (duels ?? []).slice(-25).map((d) => d.outcome)
+  // Contexte CSR de la bête noire (lot relations-G, best-effort). null pour le
+  // binôme ou une bête noire sans ligne CSR → rien n'est rendu (dégradation).
+  const rankLabel = !isAlly && csr ? nemesisRankLabel(csr, locale) : null
 
   return (
     <KpiCard accent={accent} accentSide="left" className="flex flex-1 flex-col">
@@ -198,6 +221,23 @@ function HeroRelationCard({
           <span className="text-xs text-muted-foreground">{winQual}</span>
           {isAlly ? <LiftChip lift={lift} labels={labels} /> : streakChip(streak, labels)}
         </div>
+
+        {/* bête noire : rang CSR courant (lot relations-G, best-effort classé).
+            Rendu uniquement si un snapshot CSR existe — sinon rien (dégradation). */}
+        {rankLabel && (
+          <div
+            className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1"
+            data-testid="nemesis-current-rank"
+          >
+            <span className="text-xs text-muted-foreground">{labels.hero.currentRank}</span>
+            <NarrativeBadge
+              label={rankLabel}
+              colorVar={tokenVar('narrative-encounter-tough-enemy')}
+              solid
+              size="sm"
+            />
+          </div>
+        )}
 
         {/* bête noire : barre Frags / morts conservée */}
         {!isAlly && (
@@ -645,6 +685,7 @@ function RelationsContent({
             onPlayerClick={onPlayerClick}
             duels={nemesisDuels}
             streak={nemesisRivalry?.current_streak}
+            csr={ov.top_nemesis?.csr}
           />
         </div>
         <div className="flex flex-col gap-2">

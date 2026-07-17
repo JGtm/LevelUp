@@ -14,7 +14,7 @@ import type { CareerLusrSection, CareerCSRRank } from '@/lib/api/types'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { careerManifest } from '@/lib/i18n/generated/career'
 import { staticAssetURL } from '@/lib/staticAssets'
-import { localizeTierName, localizeTierLabel, subTierRoman } from '@/lib/skillTiers'
+import { composeTierLabel, localizeTierLabel } from '@/lib/skillTiers'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { useCareerCSRs } from './queries'
@@ -38,10 +38,9 @@ function csrTierLabel(
     const completed = Math.min(total - 1, Math.max(0, total - rank.measurement_matches_remaining))
     return completed === 0 ? unrankedLabel : `${placementLabel} (${completed}/${total})`
   }
-  // rank.tier est le palier canonique EN ("Gold"/"Platinum") — localisé à
-  // l'affichage (sinon « Gold IV » restait en anglais sous UI FR).
-  const name = localizeTierName(rank.tier, locale)
-  return rank.sub_tier > 0 ? `${name} ${subTierRoman(rank.sub_tier)}` : name
+  // rank.tier est le palier canonique EN ("Gold"/"Platinum") — composé + localisé à
+  // l'affichage via la source unique (sinon « Gold IV » restait en anglais sous UI FR).
+  return composeTierLabel(rank.tier, rank.sub_tier, locale)
 }
 
 function formatCSRValue(rank: CareerCSRRank): string {
