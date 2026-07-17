@@ -159,23 +159,58 @@ orphelin) ; intégration N/A (aucun chemin persist/sync touché) ; golangci-lint
 
 ## LOT C — Filets squash M2 (le morceau lourd)
 
-- [ ] C1 — réparation par introspection (D3) : au boot player-DB, détecter
-      l'ancien schéma `player_csr_snapshots` (colonnes `id`/`written_at`
-      absentes) → rejouer la conversion append-only (code de `37264462f`,
-      réintroduit comme repair conditionnel idempotent hors-sentinelle).
-- [ ] C2 — colonnes render `challenge_snapshots` : couvert par l'ensure étendu
-      de A4 → statuer `[~]` avec vérification sur fixture mi-bloc.
-- [ ] C3 — fixtures DBs états intermédiaires : pré-2026-05-24 (ancien
-      player_csr_snapshots), fenêtre 05-24→05-28 (sentinelle sans
-      expected_win_prob), pré-06-22 (sans render), pré-07-11 (sans
-      response_bins). Test de convergence : boot → `OpenPlayerDB` OK, vue
-      `player_csr_snapshots_latest` liée, persist LUSR et challenges OK.
-- [ ] C4 — `sync/schema.go` : un échec de bind de vue au boot ne doit plus
-      produire un échec permanent silencieux : log ERROR + déclenchement de la
-      réparation C1 (pas de panic, pas d'avalement).
+- [x] C1 — réparation par introspection (D3) :
+      `migration.EnsurePlayerCSRSnapshotsAppendOnly` (nouveau, dans
+      `steps_player_append_only_csr_snapshots.go` — fichier tombstone du squash,
+      réhabilité) : détection par INTROSPECTION des colonnes (marqueur `id`
+      absent = ancien schéma), conversion via le helper ADR 0026
+      `applyAppendOnlyRebuild` (CTAS transactionnel + garde anti-perte
+      rebuilt==before + recoverOrphan + idempotence). ViewSQL vide À DESSEIN :
+      la vue reste possédée par playerSchemaSQL (source unique). EMPLACEMENT :
+      câblé en TÊTE de `sync.EnsurePlayerSchema` (AVANT playerSchemaSQL) —
+      choisi car c'est LE point que TOUT chemin d'ouverture player traverse
+      (OpenPlayerDB : provider, sync, H5 livesync) et le seul qui garantisse
+      l'exécution AVANT la création de l'index/vue qui bindent sur
+      written_at/id ; la couche migration seule (RunForDB boot 3b) ne convient
+      pas : elle ne tourne pas sur tous les chemins d'ouverture et son step
+      squashé ne se rejoue plus. Tests
+      `TestPlayerCSRSnapshotsAppendOnly_LegacySwap` (sanity : la vue NE binde
+      PAS avant, binde après ; zéro perte 3/3 ; idempotence re-run ; pas
+      d'orphelin) + `_FreshDBNoop`. Verts.
+- [~] C2 — colonnes render `challenge_snapshots` : couvert par l'ensure étendu
+      de A4 (`ensureBaselinePlayerV1AdditiveColumns`, chemin DM-5
+      `recordSupersededBaseline` via `Migration.EnsureAdditive` — commit
+      b497befc1). VÉRIFIÉ sur fixture mi-bloc : subtest C3
+      `c_without_challenge_render_columns` (sentinelle présente, 4 colonnes
+      render droppées → boot → INSERT challenges avec title/description/
+      image_url/display_path OK, 2e boot idempotent). Vert.
+- [x] C3 — fixtures états intermédiaires PROGRAMMATIQUES
+      (`internal/sync/squash_convergence_test.go`, DDL historique exact tiré de
+      `git show 37264462f^`) : (a) pré-05-24 ancien player_csr_snapshots
+      PK(playlist_id,season_id) sans id/written_at ; (b) sentinelle DM-5 sans
+      expected_win_prob ; (c) sans colonnes render ; (d) sans
+      engagement_response_bins. Convergence par fixture : RunForDB(player) +
+      OpenPlayerDB OK, `player_csr_snapshots_latest` liée et requêtable,
+      INSERT persist LUSR (liste de colonnes du lusr_append_only_persister,
+      expected_win_prob incluse) OK, INSERT challenges (liste de colonnes de
+      persist_sink_challenges, render incluses) OK. IDEMPOTENCE : 2e boot sans
+      échec, count player_csr_snapshots stable, pas de table orpheline
+      `__appendonly`. 4/4 subtests verts (a 0.66s, b 0.80s, c 0.78s, d 0.77s).
+- [x] C4 — `sync/schema.go` : `recoverPlayerSchemaBoot` — un échec de DDL/bind
+      au boot player log `slog.ErrorContext` (vue + cause brute), déclenche la
+      réparation C1, rejoue le script une fois ; si l'échec persiste → erreur
+      EXPLICITE « intervention requise » (jamais de panic, jamais d'avalement).
+      Test `TestEnsurePlayerSchema_C4_UnrepairableBindReturnsExplicitError`
+      (nom de vue squatté par une table → erreur explicite). Vert.
 
 **Gate C** : `go test -tags=integration -p 1 ./internal/migration/... ./internal/persist/...`
 (filtre ancré) + tests fixtures ; thought_log ; commit.
+GATE C PASSÉ 2026-07-17 : gofmt clean + `go vet` migration/sync OK ;
+`go test -tags=integration -p 1 ./internal/migration/...
+./internal/games/halo_infinite/migrations/... ./internal/sync/...
+./internal/persist/...` = TOUT ok (migration 2.8s, halo migrations 26.2s,
+sync 104.6s, persist 16.6s) ; `go test ./internal/platform/duckdb/...` ok
+(31.3s) ; `golangci-lint --new-from-merge-base=main` = 0 issues.
 
 ## LOT D — Efficacité (VPS 2 vCPU / 2 Go)
 
