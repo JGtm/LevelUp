@@ -439,20 +439,27 @@ quand une sync ramène un nouveau duel contre un des top rivaux.
 À n'exécuter QUE si les lots A–F sont clos et si la vérification de couverture passe.
 Sinon statuer `[!]` avec la mesure observée — ce n'est pas un échec du plan.
 
-- [ ] G0. Vérification de couverture (gate d'entrée) : sur la copie locale des données
-      (`duckdb` CLI, lecture seule), mesurer la part des rivaux (enemy_matches >= 8)
-      ayant au moins une ligne CSR exploitable dans le shared (vues `_latest`
-      UNIQUEMENT — règle ART n° 2). Si < 30 % des rivaux couverts → statuer `[!]`
-      et s'arrêter là.
-- [ ] G1. Si couvert : exposer sur l'overview le CSR courant du top nemesis (meilleur
-      snapshot le plus récent, vue `_latest`, best-effort nil si absent) — champ
-      optionnel DTO + openapi + generate-types.
-- [ ] G2. Carte hero bête noire : afficher le tier (libellé + couleur via les utilitaires
-      CSR existants du front — chercher l'existant avant d'implémenter, skill
-      `go-features` côté Go, grep `csr`/`tier` côté web). Rien affiché si absent
-      (dégradation silencieuse, pas de « N/A »).
-- [ ] G3. Tests : service (rival sans CSR → nil, avec CSR → valeur) + front (carte sans
-      CSR inchangée).
+- [!] G0. Vérification de couverture (gate d'entrée) : mesure faite le 2026-07-17 sur
+      une COPIE read-only du shared (`shared_matches_v2.duckdb` copiée en scratchpad,
+      sonde Go jetable — le CLI `duckdb` n'est pas installé dans cet environnement).
+      Rivaux = opponents avec `enemy_matches >= 8` (`opp_team_id <> my_team_id`, bots
+      `bid(%` exclus — définition Q28), CSR exploitable lue via `match_csrs_latest`
+      (vue append-only, règle ART n°2), exploitable = `rating_value IS NOT NULL OR
+      (tier IS NOT NULL AND tier <> 'Placement')`.
+      MESURE OBSERVÉE : **0 %** de couverture.
+        - Par joueur : Chocoboflor 0/2, JGtm 0/7, Madina97294 0/17, XxDaemonGamerxX 0/0.
+        - UNION distincte des rivaux : **0/22 (0,0 %)**.
+        - Sanity : `match_csrs_latest` = 64 lignes / 37 xuids distincts / 37 exploitables,
+          mais ce sont essentiellement les 3 joueurs syncés (8 lignes CSR chacun) +
+          quelques autres ; AUCUN des 22 rivaux à `enemy_matches >= 8` n'y figure. Le
+          shared ne capture le CSR que sur un sous-ensemble étroit de matchs classés,
+          pas le CSR des adversaires long-tail.
+      0 % << 30 % → lot G statué `[!]` et ARRÊTÉ ici. Ce n'est PAS un échec du plan
+      (issue conditionnelle prévue). Sonde supprimée (non committée, modèle M0d).
+- [!] G1. NON EXÉCUTÉ — gate G0 non franchi (0 % de couverture CSR des rivaux). Aucune
+      valeur produit à exposer : la carte serait vide pour 100 % des bêtes noires.
+- [!] G2. NON EXÉCUTÉ — idem G0/G1.
+- [!] G3. NON EXÉCUTÉ — idem G0/G1.
 
 **Gate G** : GATE-GO + GATE-WEB + GATE-TYPES.
 
@@ -478,6 +485,22 @@ Sinon statuer `[!]` avec la mesure observée — ce n'est pas un échec du plan.
   périmètre A4, comportement voulu) : état tri+pagination contrôlé,
   `onSortingChange` remet `pageIndex: 0`. `RelationsTable.tsx`. Pas d'action
   supplémentaire requise.
+- Lot E / E1 — Le seed « par catégorie » des préférences de notification annoncé par
+  l'en-tête de `notifications/types.go` n'existe PLUS : `steps_player_notifications.go`
+  est un stub doc, et une catégorie sans ligne dans `notification_preferences_latest`
+  est ACTIVE par défaut (`isCategoryEnabledOn` : `sql.ErrNoRows → true`,
+  `platform/duckdb/notifications_repo.go`). Aucun code touché — l'en-tête de types.go
+  reste légèrement trompeur (mentionne « seed des préférences »). Hors périmètre :
+  à corriger si un lot notifications repasse dessus. Non traité.
+- Lot G / G0 — Le CLI `duckdb` n'est pas installé dans cet environnement (ni PATH ni
+  emplacement connu). Mesure faite via sonde Go jetable (driver `duckdb-go/v2`) sur une
+  copie read-only. Impact : les gates de type « mesure DuckDB ad hoc » du CLAUDE.md
+  supposent `duckdb` disponible — le noter pour les prochains gates de mesure. Non traité.
+- Lot G / G0 — Couverture CSR des adversaires quasi nulle dans le shared : `match_csrs`
+  ne contient que 64 lignes (37 xuids, surtout les joueurs syncés). Le pipeline ne
+  capture pas systématiquement le CSR des adversaires long-tail → la feature « contexte
+  CSR bête noire » (lot G) est inexploitable en l'état. Dette DONNÉE (pas code) : si le
+  produit veut G un jour, il faut d'abord densifier `UpsertSharedCSRs` côté sync. Non traité.
 
 ## Protocole de reprise de session
 
@@ -489,11 +512,20 @@ Sinon statuer `[!]` avec la mesure observée — ce n'est pas un échec du plan.
 
 ## Clôture du chantier
 
-- [ ] Tous les lots statués (A, B, C, H, F, D, E obligatoires ; G statué même si `[!]`).
-- [ ] Gate global final : suites complètes Go (`go test ./...` + `go vet`) et web
-      (typecheck avec purge cache + lint + vitest run complet), CI de branche verte
-      (`gh run list --branch feat/relations-ux-2026-07`) — un gate local ne couvre pas
-      les jobs CI (baseline Go Linux + build Vite).
-- [ ] Entrée thought_log de clôture (bilan, décisions, restes éventuels).
-- [ ] Revue visuelle = l'utilisateur au merge (ne pas merger soi-même : prévenir —
-      push `main` = déploiement prod automatique).
+- [x] Tous les lots statués (A, B, C, H, F, D, E obligatoires ; G statué `[!]` — gate G0
+      non franchi, 0 % de couverture CSR des rivaux). A/B/C/F/D livrés par le train
+      antérieur (commits 91649c01d…e493118cc) ; H régularisé `[~]` (ff94bb85b) ; E livré
+      `[x]` (9f1d7c5e4) ; G `[!]`.
+- [x] Gate global final LOCAL vert (exécuté cette session sur l'arbre clôturé) :
+        - Go : `go test ./...` exit 0 ; `go vet ./...` exit 0 ; intégration
+          `go test -tags=integration -p 1 ./...` exit 0 (112 packages ok, 0 FAIL —
+          run du lot E sur cet arbre exact, aucun code modifié depuis).
+        - Web : purge `node_modules/.tmp` + `npm run typecheck` OK ; `npm run lint`
+          0 erreur (68 warnings baseline, hors fichiers du chantier) ; `npx vitest run`
+          COMPLET = 260 fichiers, **2253 passed / 14 skipped**.
+- [!] CI de branche verte (`gh run list`) : branche `chore/backlog-train-2026-07` NON
+      POUSSÉE par décision utilisateur — CI vérifiée au push par le superviseur (baseline
+      Go Linux + build Vite). Gate local couvert ci-dessus.
+- [x] Entrée thought_log de clôture (bilan, décisions, restes) — ajoutée le 2026-07-17.
+- [!] Revue visuelle utilisateur au merge : à faire par l'utilisateur au merge (ne pas
+      merger soi-même — push `main` = déploiement prod auto). Non exécutable par l'agent.
