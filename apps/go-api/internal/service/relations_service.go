@@ -216,6 +216,7 @@ func buildRelationInsight(r domain.RelationRawRow, st relations.RelationStats, n
 		LastSeenAt:      formatRFC3339(r.LastSeen),
 		Category:        relations.Categorize(st),
 		IsCore:          relations.IsCore(st),
+		IsRevived:       relations.IsRevived(r.Encounters30d, r.PrevSeenBeforeWindow, now),
 		Badges:          projectBadges(relations.ComputeBadges(st, now)),
 	}
 	return insight

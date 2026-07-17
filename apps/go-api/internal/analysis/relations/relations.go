@@ -69,6 +69,33 @@ const (
 	TopNemesisMinEnemyMatches = 8
 )
 
+// Fenêtres du volet « Quoi de neuf » (lot F relations-D). Constantes nommées —
+// la source SQL (fenêtre 30 j de encounters_30d / prev_seen_before_window) et la
+// décision Go (IsRevived) partagent ces seuils.
+const (
+	// NewFaceWindowDays : une « nouvelle tête » a first_seen dans cette fenêtre
+	// (décidé côté client à partir de first_seen_at — pas de SQL).
+	NewFaceWindowDays = 30
+	// RevivedWindowDays : fenêtre « récente » d'une retrouvaille — au moins une
+	// rencontre dans les N derniers jours (borne SQL de encounters_30d).
+	RevivedWindowDays = 30
+	// RevivedMinGapDays : écart minimal (en jours) entre now et la dernière
+	// rencontre ANTÉRIEURE à la fenêtre récente pour qualifier une retrouvaille.
+	RevivedMinGapDays = 90
+)
+
+// IsRevived : « retrouvailles » — au moins une rencontre dans la fenêtre récente
+// (encounters30d >= 1) ET la dernière rencontre AVANT cette fenêtre remonte à au
+// moins RevivedMinGapDays jours. prevSeen nil (jamais vu avant la fenêtre) → non
+// ravivé : c'est une relation continue ou une nouvelle tête, pas un retour.
+func IsRevived(encounters30d int, prevSeen *time.Time, now time.Time) bool {
+	if encounters30d < 1 || prevSeen == nil {
+		return false
+	}
+	gap := now.Sub(*prevSeen)
+	return gap >= time.Duration(RevivedMinGapDays)*24*time.Hour
+}
+
 // daysPerMonth approxime un mois pour le badge de_longue_date (sans calendrier
 // exact : 6 mois ≈ 182 jours).
 const monthsToDaysApprox = 30.4375

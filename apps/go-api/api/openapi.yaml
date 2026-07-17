@@ -13344,6 +13344,8 @@ components:
               type: string
           is_core:
               type: boolean
+          is_revived:
+              type: boolean
           kills_dealt:
               format: int64
               type: integer
@@ -13384,6 +13386,7 @@ components:
           - last_seen_at
           - category
           - is_core
+          - is_revived
           - badges
       type: object
     RelationRef:

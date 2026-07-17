@@ -28,6 +28,7 @@ import { RelationBadges } from './RelationBadges'
 import { RelationSplitBar } from './RelationSplitBar'
 import { RelationsMomentsSection } from './RelationsMomentsSection'
 import { RelationsTable } from './RelationsTable'
+import { RelationsWhatsNewStrip } from './RelationsWhatsNewStrip'
 import { coreRelations, filterRelations, hasCrossGameRelations, type RelationFilter } from './relationsFilter'
 
 type RelationsText = PalmaresText['relations']
@@ -660,6 +661,8 @@ function RelationsContent({
           />
         </div>
       </div>
+
+      <RelationsWhatsNewStrip relations={relations} labels={rel} onPlayerClick={onPlayerClick} />
 
       <div className="flex flex-wrap items-center gap-3">
         <SegmentedFilter active={filter} onChange={setFilter} labels={rel.chips} showCross={showCross} />

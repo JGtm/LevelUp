@@ -7444,6 +7444,7 @@ export interface components {
             first_seen_at: string | null;
             gamertag: string;
             is_core: boolean;
+            is_revived: boolean;
             /** Format: int64 */
             kills_dealt: number;
             last_seen_at: string | null;

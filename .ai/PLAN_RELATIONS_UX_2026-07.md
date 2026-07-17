@@ -272,25 +272,44 @@ entre les cartes hero et les chips de filtre, UNIQUEMENT si non vide.
   rencontre AVANT cette fenêtre remonte à ≥ 90 jours (`RevivedWindowDays = 30`,
   `RevivedMinGapDays = 90`). Nécessite 2 agrégats SQL nouveaux.
 
-- [ ] D1. SQL — étendre `Q28RelationsTpl` ET `Q28RelationsScopedTpl`
+- [x] D1. SQL — étendre `Q28RelationsTpl` ET `Q28RelationsScopedTpl`
       (`queries_career_encounters.go`) avec 2 colonnes :
       `encounters_30d` = COUNT(*) FILTER (rencontres ≥ now − 30 j) et
       `prev_seen_before_window` = MAX(ts) FILTER (rencontres < now − 30 j).
       OBLIGATOIRE : réutiliser le fragment timezone canonique déjà employé dans ces
       templates (`COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC')`) — jamais
       `start_time` brut. Étendre `scanRelationRow` + `domain.RelationRawRow`.
-- [ ] D2. `analysis/relations` : constantes + fonction pure
+      FAIT : `COUNT(DISTINCT e.match_id) FILTER (WHERE e.start_time >= ?)` +
+      `MAX(e.start_time) FILTER (WHERE e.start_time < ?)` sur les 2 templates —
+      `e.start_time` EST déjà le fragment canonique (alias de la CTE encounters,
+      jamais `start_time` brut). Cutoff = `time.Now().UTC() − RevivedWindowDays`
+      passé en paramètre lié (même pattern que `periodSince`), sans changer la
+      signature `GetRelations` (accounting placeholders ajusté dans
+      `buildRelationsQuery` : +2 cutoff après encounters, avant kv_stats).
+      `domain.RelationRawRow` += `Encounters30d` + `PrevSeenBeforeWindow *time.Time` ;
+      `scanRelationRow` scanne 17 colonnes.
+- [x] D2. `analysis/relations` : constantes + fonction pure
       `IsRevived(encounters30d int, prevSeen *time.Time, now time.Time) bool`.
       Tests unitaires purs (cas : jamais vu avant, gap 89 j, gap 90 j, 0 rencontre
       récente, prevSeen nil).
-- [ ] D3. Service : mapper vers le DTO — `RelationInsight` += `is_revived bool`
+      FAIT : constantes `NewFaceWindowDays`/`RevivedWindowDays`/`RevivedMinGapDays` ;
+      `IsRevived` pur ; `revived_test.go` (6 cas dont gap 89/90 j, prevSeen nil,
+      0 rencontre récente, relation continue).
+- [x] D3. Service : mapper vers le DTO — `RelationInsight` += `is_revived bool`
       (source unique côté serveur, même modèle que `is_core`). `openapi.yaml` mis à
       jour (schéma RelationInsight) + GATE-TYPES.
-- [ ] D4. Repo test (`relations_repo_test.go`, DuckDB en mémoire) : fixture avec une
+      FAIT : `IsRevived bool json:"is_revived"` ; mappé dans `buildRelationInsight`
+      via `now` déjà injecté ; openapi (propriété + required) + `generate-types`
+      (generated.ts += `is_revived: boolean`).
+- [x] D4. Repo test (`relations_repo_test.go`, DuckDB en mémoire) : fixture avec une
       relation « ravivée » (rencontres à now−200 j et now−5 j) et une non ravivée
       (rencontres régulières) → colonnes SQL correctes sur les DEUX templates
       (scopé et non scopé).
-- [ ] D5. Front — composant `RelationsWhatsNewStrip` (nouveau fichier dans
+      FAIT : `relations_repo_whatsnew_test.go` (build integration) — Revy
+      (now−200 j/now−5 j → encounters_30d=1, prev_seen≈now−200 j) et Reg
+      (now−10 j/now−20 j → encounters_30d=2, prev_seen=nil) vérifiés sur scope nil ET
+      scope explicite. Vert (`go test -tags=integration`).
+- [x] D5. Front — composant `RelationsWhatsNewStrip` (nouveau fichier dans
       `features/palmares/`) : deux groupes rendus seulement si non vides,
       « Nouvelles têtes (30 j) » (client : `first_seen_at` ≤ 30 j) et
       « Retrouvailles » (`is_revived`), max 5 gamertags par groupe (+ compteur « +N »),
@@ -300,8 +319,16 @@ entre les cartes hero et les chips de filtre, UNIQUEMENT si non vide.
       expliquant les fenêtres 30 j / 90 j) ; EN « What's new » / « New faces » /
       « Reunions ». La logique de sélection (fenêtres, tri, plafond 5) dans un
       `whatsNew.ts` pur à côté de `relationsFilter.ts`, testé en vitest.
-- [ ] D6. Tests front : strip absent quand aucune donnée ne matche ; présent avec les
+      FAIT : `whatsNew.ts` pur (`computeWhatsNew`/`isNewFace`/`isReunion`/`hasWhatsNew`,
+      plafond 5 + overflow, tri récent→ancien, `now` injectable) ;
+      `RelationsWhatsNewStrip.tsx` rendu conditionnel entre hero et chips, gamertags
+      → `goToExplorer` (prop `onPlayerClick`), tooltips via `Tooltip` (tokens only) ;
+      i18n `whats_new.*` + adaptateur + manifest.
+- [x] D6. Tests front : strip absent quand aucune donnée ne matche ; présent avec les
       bons gamertags sinon ; `whatsNew.ts` testé unitairement (bornes de fenêtre).
+      FAIT : `whatsNew.test.ts` (bornes fenêtre, tri, plafond/overflow, hasWhatsNew) +
+      `RelationsWhatsNewStrip.test.tsx` (absent sans donnée ; présent avec bons
+      gamertags + clic → onPlayerClick).
 
 **Gate D** : GATE-GO + GATE-WEB + GATE-I18N + GATE-TYPES.
 

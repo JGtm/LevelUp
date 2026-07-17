@@ -108,6 +108,13 @@ export interface PalmaresText {
     }
     filterEmptyTitle: string
     filterEmptyDescription: string
+    whatsNew: {
+      sectionTitle: string
+      newFaces: string
+      newFacesTooltip: string
+      reunions: string
+      reunionsTooltip: string
+    }
     moments: {
       sectionTitle: string
       toggleShow: string
@@ -304,6 +311,13 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
       },
       filterEmptyTitle: t(loc, 'palmares.relations.filter_empty_title'),
       filterEmptyDescription: t(loc, 'palmares.relations.filter_empty_description'),
+      whatsNew: {
+        sectionTitle: t(loc, 'palmares.relations.whats_new.section_title'),
+        newFaces: t(loc, 'palmares.relations.whats_new.new_faces'),
+        newFacesTooltip: t(loc, 'palmares.relations.whats_new.new_faces_tooltip'),
+        reunions: t(loc, 'palmares.relations.whats_new.reunions'),
+        reunionsTooltip: t(loc, 'palmares.relations.whats_new.reunions_tooltip'),
+      },
       moments: {
         sectionTitle: t(loc, 'palmares.relations.moments.section_title'),
         toggleShow: t(loc, 'palmares.relations.moments.toggle_show'),
