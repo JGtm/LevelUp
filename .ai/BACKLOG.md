@@ -67,30 +67,35 @@ aucun disponible aujourd'hui). Runbook backup à écrire au moment de l'activati
 
 ---
 
-### [data/csr] Densifier le CSR des adversaires (prérequis au lot G Relations)
+### [data/csr] Densité du CSR des adversaires — ce qui rend le lot G visible (surtout hors dev)
 
-> Noté le 2026-07-17 (gate G0 du chantier Relations UX : 0 % des rivaux
-> `enemy_matches >= 8` ont une ligne CSR exploitable dans `match_csrs_latest` — le lot G
-> « contexte CSR bête noire » a été statué `[!]` sur mesure). Cause : `UpsertSharedCSRs`
-> ne persiste pas le CSR des adversaires non syncés. Si le contexte CSR des rivaux est
-> voulu un jour : densifier d'abord la donnée (écriture append-only, règles ART), puis
-> rouvrir le lot G (spec dans `.ai/V7/PLAN_RELATIONS_UX_2026-07.md`). **Effort** : moyen.
+> Corrigé le 2026-07-17 (investigation code + mesure sur données réelles). **La justification
+> initiale d'abandon du lot G était FAUSSE** : le pipeline collecte ET persiste DÉJÀ le CSR de
+> TOUS les participants des matchs CLASSÉS (`ExtractAllSharedCSRRows` → `shared.match_csrs`,
+> lecture via `match_csrs_latest`). Le lot G est désormais LIVRÉ en dégradation gracieuse
+> (commit `8570af76a`). Ce qui limite sa visibilité n'est pas un défaut de collecte mais :
+> (1) **structurel** — le CSR n'existe qu'en classé, or une bête noire (adversaire affronté
+> 8+ fois) est presque toujours un adversaire SOCIAL (matchmaking classé = adversaires
+> différents à chaque fois) ; (2) **densité** — la base de dev est à 1,8 % de classé
+> (34/1841 matchs), d'où 0 rival couvert aujourd'hui. Le point (2) se corrige naturellement
+> à la sync chez un joueur compétitif ; l'outil de rattrapage historique existe déjà
+> (`--shared-csr`, `BackfillSharedCSRsFromAPI`). **Aucune action requise** : la carte
+> s'affichera d'elle-même chez les joueurs à forte proportion de classé. À rouvrir seulement
+> si on veut densifier proactivement (backfill massif) — non prioritaire. Mesure détaillée :
+> `.ai/V7/` (thought_log 2026-07-17).
 
 ---
 
 ### [dette/mineure] Reliquats relevés par le train 2026-07-17 (à grouper dans un prochain lot d'entretien)
 
-- En-tête de `apps/go-api/internal/notifications/types.go` : mentionne encore un « seed
-  par catégorie » des préférences qui n'existe plus (une catégorie sans ligne est active
-  par défaut via `isCategoryEnabledOn`) — doc inversée à corriger.
-- `openapi.yaml` : schéma nommé `BattlePassResponse` orphelin (jamais `$ref`é) — purger ou
-  justifier.
-- `SUBTIER_ROMAN` dupliqué en 2 exemplaires (`ExplorerTargetSeasonCSR.tsx`,
-  `CareerRankingBlock.tsx`) — dans la limite des ≤ 2 copies, à centraliser si une 3e
-  apparaît.
 - CLI `duckdb` absent de l'environnement de dev Windows — les exemples ad hoc de
-  CLAUDE.md le supposent présent (contournement utilisé : sonde Go jetable).
-- `release.yml` (tags `v*`) ne pousse pas l'image Docker sur GHCR (seulement les binaires).
+  CLAUDE.md le supposent présent (contournement utilisé : sonde Go jetable read-only sur copie).
+- `release.yml` (tags `v*`) ne pousse pas l'image Docker sur GHCR (seulement les binaires) —
+  évolution possible (pas une dette bloquante).
+
+> Les autres reliquats du train (doc inversée `notifications/types.go`, schéma OpenAPI
+> orphelin `BattlePassResponse`, duplication `SUBTIER_ROMAN`) ont été RÉGLÉS le 2026-07-17
+> (commits `d48da5912`, `556991069`, `6bb186e9b`, `3c975bde3`) — cf. « Récemment complété ».
 
 ---
 
@@ -180,6 +185,9 @@ Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Syn
 
 | Date | Item |
 |------|------|
+| 2026-07-17 | **[ux/relations] Lot G LIVRÉ** (revirement produit) — CSR/tier de la bête noire affiché en dégradation gracieuse (rien si absent). Justification d'abandon initiale corrigée : la donnée EST collectée (`ExtractAllSharedCSRRows` → `match_csrs_latest`) ; couverture nulle en dev car base sociale (1,8 % classé), non représentative des joueurs compétitifs cibles. Backend best-effort + chip front conditionnel + tests. Commit `8570af76a`. |
+| 2026-07-17 | **[vérif finale + dettes] passe QA post-train** — audit logging (5 flux best-effort re-routés hors `general.log` vers modules dédiés + erreur avalée `decodeParams` comblée, `e6671ff89`) ; renforcement tests (branches best-effort/gardes nil, `058ba9486`/`d49a1734f`) ; dettes réglées : erreurs avalées coach/prestige/handlers, doc inversée `notifications/types.go`, schéma OpenAPI orphelin `BattlePassResponse` retiré, `SUBTIER_ROMAN` centralisé + garde-rail (3e copie trouvée → seuil franchi). Commits `d48da5912`/`556991069`/`6bb186e9b`/`3c975bde3`. Gates Go unit+intégration `-p 1` (114 ok/0 FAIL) + web (2258 tests) verts. |
+| 2026-07-17 | **[data/h5] Inventaire complet des frags hors-arsenal** — `.ai/V7/H5_WEAPON_LONGTAIL_UNMAPPED.md` : 26 IDs non couverts (16 649 frags = 6,2 %), dont bucket « Spartan » 8 812 frags. Base pour une classification produit (catégories véhicule/tourelle/corps-à-corps/environnement à trancher). Commit `fbbfd809a`. |
 | 2026-07-17 | **[train backlog] Purges code mort** — `squad/v2` purgé (knip croisé grep, 4 types vivants conservés) ; route `GET /players/{slug}/battlepass` supprimée après preuve de mort (service `GetBattlePass` conservé, consommé par season-pass). Commits `42b317cd8`, `c9bfa0e7d`. |
 | 2026-07-17 | **[train backlog] Registre armes H5** — long-tail `v_weapon_kills` : 5 armes tenues mappées (3 grenades + golf club + oddball, ~18,4 k frags) ; véhicules/tourelles/UGC documentés hors-arsenal (item résiduel ouvert). Commit `9e0a8217d`. |
 | 2026-07-17 | **[train backlog] i18n tiers + cache défis** — mapping tiers CSR centralisé dans `lib/skillTiers.ts` (+ garde-rail grep) ; défis locale-aware via locale dans les query keys `home`/`seasonPass`. Commits `45200bc4c`, `7fc82f575`. |
