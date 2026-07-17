@@ -664,3 +664,55 @@ func TestSharedPersister_EventsLoaded_DerivedFromHighlightEvents(t *testing.T) {
 		t.Error("events_loaded doit rester FALSE sans highlight_events")
 	}
 }
+
+// ─── Test : weapon_kills.kill_kind — capture + vue + non-regression NULL ────────
+//
+// Couvre 3 exigences de la capture kill_kind (Halo 5, Phase 1) :
+//   - migration : la colonne kill_kind existe ET remonte via la vue v_weapon_kills
+//     (piege DuckDB `SELECT * EXCLUDE(rk)` : la vue est recreee par la migration) ;
+//   - persist round-trip : un WeaponKillInsert.KillKind non vide est relu via la vue ;
+//   - non-regression : un weapon_kill SANS kill_kind (chemin Infinite/film) => NULL.
+func TestSharedPersister_WeaponKillKind_RoundTripAndNull(t *testing.T) {
+	db := openSharedTestDB(t)
+	p := NewSharedPersister(db)
+
+	u64Ptr := func(v uint64) *uint64 { return &v }
+	builder := NewBatchBuilder("halo_5", "Alice", "1111", "test")
+	builder.SetMatch(&domain.MatchRegistryRow{
+		MatchID:      "m_kk_001",
+		StartTime:    time.Now().UTC(),
+		ModeCategory: "PVP",
+		FirstSyncBy:  "Alice",
+	})
+	builder.AddWeaponKills([]WeaponKillInsert{
+		// H5 : mecanique capturee.
+		{MatchID: "m_kk_001", XUID: "1111", TimeMS: 5000, WeaponID: u64Ptr(111),
+			Confidence: "native", AttributionPath: "h5_native", KillKind: "melee"},
+		// Infinite/film : aucune mecanique → doit rester NULL en base.
+		{MatchID: "m_kk_001", XUID: "1111", TimeMS: 6000, WeaponID: u64Ptr(222),
+			Confidence: "high", AttributionPath: "primary"},
+	})
+	if err := p.Persist(context.Background(), builder.Build()); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+
+	// Lecture via la VUE (prouve que la migration a recree v_weapon_kills en exposant
+	// kill_kind — sans recreation, `SELECT *` figerait l'ancien jeu de colonnes).
+	readKind := func(timeMS int) sql.NullString {
+		var kk sql.NullString
+		if err := db.QueryRow(
+			`SELECT kill_kind FROM v_weapon_kills WHERE match_id = ? AND time_ms = ?`,
+			"m_kk_001", timeMS,
+		).Scan(&kk); err != nil {
+			t.Fatalf("read kill_kind via vue (time_ms=%d): %v", timeMS, err)
+		}
+		return kk
+	}
+
+	if kk := readKind(5000); !kk.Valid || kk.String != "melee" {
+		t.Errorf("kill_kind capture: got valid=%v %q, attendu \"melee\"", kk.Valid, kk.String)
+	}
+	if kk := readKind(6000); kk.Valid {
+		t.Errorf("kill_kind Infinite: attendu NULL, got %q", kk.String)
+	}
+}

@@ -1,3 +1,53 @@
+## [2026-07-17] H5 — persiste la mécanique de kill (kill_kind) au lieu de la jeter (capture, Phase 1)
+
+**Statut** : Complété.
+
+**Contexte** : le code H5 dérivait déjà la mécanique du kill
+(`internal/games/halo_5/events.go::h5KillKind` → `canonical.KillKind` :
+`weapon`/`melee`/`groundpound`/`shoulderbash`, posée sur `ev.Kind`) puis la JETAIT à
+l'ingestion (`ingest/kills.go::MapKillEvents` ne recopiait pas `ev.Kind`). On cessait donc
+de perdre une donnée déjà calculée.
+
+**Décision de PHASAGE (choix utilisateur)** : « capture d'abord, backfill/exploitation
+plus tard ». Cette session livre UNIQUEMENT la capture going-forward. HORS PÉRIMÈTRE
+assumé, planifié en **Phase 2** : (a) le BACKFILL de l'historique (aucun re-fetch
+d'events ici) ; (b) l'EXPLOITATION — découpage du bucket « Spartan »/non-attribué du donut
+« Frags par type d'arme » (cf. entrée précédente ce jour) ; (c) toute clé i18n. La colonne
+est une capture consciente, pas une « colonne pour personne ».
+
+**Décision technique** :
+- Migration `shared_h5_weapon_kill_kind_v1` (fichier
+  `internal/migration/steps_shared_h5_weapon_kill_kind.go`, TargetShared, placée après
+  `shared_append_only_weapon_kills_v1` dans `canonicalOrder`) :
+  `addColumnIfMissing(weapon_kills, kill_kind, VARCHAR)` + `CREATE OR REPLACE VIEW
+  v_weapon_kills` (définition IDENTIQUE à l'append-only générationnel). PIÈGE traité :
+  la vue fait `SELECT * EXCLUDE (rk)` et DuckDB FIGE ses colonnes à la création → sans
+  recréation, `kill_kind` n'apparaîtrait pas via `*`. Idempotent, ALTER ADD COLUMN seul
+  (aucune PK, aucun UPDATE — invariants append-only ADR 0026 respectés). Nom de fichier
+  `steps_shared_h5_*` choisi pour que l'ordre init (alphabétique) place le step entre
+  `append_only_weapon_kills` (a) et `rebuild_match_participants` (r) → `TestSortByCanonicalIsNoOp` reste vert.
+- Représentation string : `canonical.KillKind` EST déjà un `type KillKind string`
+  (valeurs stables) → cast direct `string(ev.Kind)`, aucune table de conversion ad hoc.
+- Persist : `WeaponKillInsert.KillKind string` (vide → NULL via nouveau helper
+  `nullableStr`) ; `persistWeaponKills` ajoute `kill_kind` à la liste de colonnes
+  explicite de l'INSERT. Chemin Infinite/film (`sync/writes.go::InsertWeaponKills`) :
+  liste de colonnes explicite → laisse `kill_kind` NULL, aucune casse (Infinite n'a pas
+  cette mécanique). Builder/batch = pass-through, aucune modif.
+- Ingestion : `MapKillEvents` recopie `ev.Kind` (déjà calculé) dans
+  `WeaponKillInsert.KillKind`. La row `weapon_kills` n'existe que si `ev.Weapon != nil`
+  (forme weapon-keyée inchangée — non touchée, périmètre capture).
+
+**Résultats / gates (tous verts)** : gofmt clean ; `go build`/`go vet`/`go test ./...`
+exit 0 ; `go test -tags=integration -p 1 ./internal/games/... ./internal/platform/duckdb/...
+./internal/persist/... ./internal/migration/...` exit 0 ; garde-rails anti-ART
+(`internal/sync` no_art + append-only) verts. Tests ajoutés : ingestion
+(`TestMapKillEvents_KillKindCaptured` : 4 mécaniques → strings attendues +
+`_NoKindLeavesEmpty`), persist round-trip via la vue + non-régression NULL Infinite
+(`TestSharedPersister_WeaponKillKind_RoundTripAndNull`).
+
+**Prochaine étape (Phase 2)** : backfill historique de `kill_kind` (re-parse events H5)
+puis brancher le découpage du bucket non-attribué du donut sur `weapon_kills.kill_kind`.
+
 ## [2026-07-17] H5 — classement des frags hors-arsenal au donut « Frags par type d'arme »
 
 **Statut** : Complété.
