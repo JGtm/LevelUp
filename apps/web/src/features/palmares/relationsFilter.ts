@@ -69,6 +69,38 @@ export function coreRelations(relations: RelationInsight[]): RelationInsight[] {
 }
 
 /**
+ * RelativeLabels — sous-ensemble des libellés de temps relatif (structurellement
+ * compatible avec PalmaresText['relations']['relative']). Défini localement pour
+ * garder ce module pur (pas de dépendance i18n).
+ */
+export interface RelativeLabels {
+  today: string
+  yesterday: string
+  daysAgo: (count: number) => string
+  weeksAgo: (count: number) => string
+  monthsAgo: (count: number) => string
+  yearsAgo: (count: number) => string
+}
+
+/**
+ * formatLastSeen — « dernière rencontre » en temps relatif localisé. Source unique
+ * partagée par le tableau et les cartes hero (règle ≤ 2 copies). Renvoie null si la
+ * date est absente/illisible (l'appelant choisit son fallback : « — » ou rien).
+ */
+export function formatLastSeen(iso: string | null | undefined, rel: RelativeLabels): string | null {
+  if (!iso) return null
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return null
+  const days = Math.round((Date.now() - date.getTime()) / 86_400_000)
+  if (days <= 0) return rel.today
+  if (days === 1) return rel.yesterday
+  if (days < 7) return rel.daysAgo(days)
+  if (days < 30) return rel.weeksAgo(Math.round(days / 7))
+  if (days < 365) return rel.monthsAgo(Math.round(days / 30))
+  return rel.yearsAgo(Math.round(days / 365))
+}
+
+/**
  * hasCrossGameRelations — au moins une relation croisée sur un autre titre.
  * Pilote l'affichage conditionnel du chip « Multi-jeux » : pas de segment mort
  * pour les profils mono-titre.

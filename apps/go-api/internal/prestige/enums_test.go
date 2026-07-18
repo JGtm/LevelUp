@@ -215,3 +215,23 @@ func TestPalierColor(t *testing.T) {
 		t.Errorf("PalierColor(invalid) = %q, want empty", got)
 	}
 }
+
+// TestIsValidChallengeSource verrouille le contrat de validation d'origine avant
+// persistance (handler CreateChallenge) : seules "user"/"pilot_mode"/"coach" sont
+// acceptées ; "unknown" (bucket d'agrégation, jamais écrit), la chaîne vide et
+// toute valeur inconnue sont rejetées → repli "user" côté handler. Un bug qui
+// ajouterait "unknown" au switch corromprait la ventilation historique du diag.
+func TestIsValidChallengeSource(t *testing.T) {
+	valid := []string{ChallengeSourceUser, ChallengeSourcePilotMode, ChallengeSourceCoach}
+	for _, s := range valid {
+		if !IsValidChallengeSource(s) {
+			t.Errorf("IsValidChallengeSource(%q) = false, want true", s)
+		}
+	}
+	invalid := []string{ChallengeSourceUnknown, "", "USER", "coach ", "admin", "match"}
+	for _, s := range invalid {
+		if IsValidChallengeSource(s) {
+			t.Errorf("IsValidChallengeSource(%q) = true, want false", s)
+		}
+	}
+}

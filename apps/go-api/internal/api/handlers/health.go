@@ -14,6 +14,7 @@ package handlers
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"runtime"
 	"time"
@@ -28,9 +29,10 @@ import (
 
 // HealthHandler gère GET /health.
 type HealthHandler struct {
-	repo       port.BootstrapRepository
-	appVersion string
-	startedAt  time.Time
+	repo         port.BootstrapRepository
+	appVersion   string
+	startedAt    time.Time
+	mediaTooling domain.MediaToolingStatus
 }
 
 // NewHealthHandler crée un HealthHandler.
@@ -41,6 +43,15 @@ func NewHealthHandler(repo port.BootstrapRepository) *HealthHandler {
 // NewHealthHandlerWithVersion crée un HealthHandler avec la version de l'application.
 func NewHealthHandlerWithVersion(repo port.BootstrapRepository, version string) *HealthHandler {
 	return &HealthHandler{repo: repo, appVersion: version, startedAt: time.Now()}
+}
+
+// WithMediaTooling injecte l'état de l'outillage média sondé une fois au boot.
+// Fluent : renvoie h pour chaîner avec les constructeurs. Absence d'appel =
+// MediaToolingStatus zéro-valeur (ffmpeg/ffprobe=false) — jamais de nouveau
+// WARN, l'info reste une simple projection dans /health.
+func (h *HealthHandler) WithMediaTooling(status domain.MediaToolingStatus) *HealthHandler {
+	h.mediaTooling = status
+	return h
 }
 
 // Mount enregistre les 3 routes RACINE via Huma sur le routeur chi `r`
@@ -84,19 +95,32 @@ func (h *HealthHandler) handleHealth(ctx context.Context, _ *struct{}) (*healthO
 			"Impossible de lire shared_matches_v2: "+err.Error())
 	}
 
-	dbVersion, _ := h.repo.GetDBVersion(ctx)
-	playerCount, _ := h.repo.GetPlayerCount(ctx)
-	lastSync, _ := h.repo.GetLastSyncAt(ctx)
+	// Enrichissements best-effort : leur échec ne dégrade pas le 200 (la santé
+	// DB est déjà attestée par GetMatchCount ci-dessus), mais on trace au lieu
+	// d'avaler l'erreur (Debug : /health est sondé fréquemment).
+	dbVersion, err := h.repo.GetDBVersion(ctx)
+	if err != nil {
+		slog.DebugContext(ctx, "health: db version enrichment unavailable", "err", err)
+	}
+	playerCount, err := h.repo.GetPlayerCount(ctx)
+	if err != nil {
+		slog.DebugContext(ctx, "health: player count enrichment unavailable", "err", err)
+	}
+	lastSync, err := h.repo.GetLastSyncAt(ctx)
+	if err != nil {
+		slog.DebugContext(ctx, "health: last sync enrichment unavailable", "err", err)
+	}
 
 	return &healthOutput{Body: domain.HealthResponse{
-		Status:      "ok",
-		MatchCount:  count,
-		DBVersion:   dbVersion,
-		AppVersion:  h.appVersion,
-		PlayerCount: playerCount,
-		LastSyncAt:  lastSync,
-		Uptime:      time.Since(h.startedAt).Round(time.Second).String(),
-		GoVersion:   runtime.Version(),
+		Status:       "ok",
+		MatchCount:   count,
+		DBVersion:    dbVersion,
+		AppVersion:   h.appVersion,
+		PlayerCount:  playerCount,
+		LastSyncAt:   lastSync,
+		Uptime:       time.Since(h.startedAt).Round(time.Second).String(),
+		GoVersion:    runtime.Version(),
+		MediaTooling: h.mediaTooling,
 	}}, nil
 }
 

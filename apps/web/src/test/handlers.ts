@@ -354,9 +354,6 @@ export const handlers = [
 
   // Home
   http.get(p(`/players/${SLUG}/pages/home`), () => HttpResponse.json(homeFixture)),
-  http.get(p(`/players/${SLUG}/battlepass`), () =>
-    HttpResponse.json({ available: false, rank: null, reward_track: null, progress: null, error_hint: null }),
-  ),
   http.get(p(`/players/${SLUG}/pages/palmares/season-pass`), () => HttpResponse.json(seasonPassFixture)),
 
   // Leaderboard

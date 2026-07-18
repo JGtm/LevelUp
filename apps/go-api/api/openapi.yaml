@@ -1177,24 +1177,6 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /players/{player_slug}/battlepass:
-    get:
-      tags: [home]
-      operationId: getBattlePass
-      summary: Battle Pass courant
-      parameters:
-        - $ref: "#/components/parameters/PlayerSlug"
-      responses:
-        "200":
-          description: "Battle Pass (auth_required si non connecté)"
-          content:
-            application/json:
-              schema:
-                type: object
-                description: "TODO Sprint 32 : schéma BattlePassResponse complet"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
   # -------------------------------------------------------------------------
   # Sessions (Sprint 9) — ajoutées au contrat sprint 29
   # Go-only : FastAPI expose /pages/timeseries (POST) qui couvre session-compare.
@@ -3208,6 +3190,31 @@ paths:
                 $ref: "#/components/schemas/ProgressionDiag"
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /_diag/prestige/telemetry/{player_slug}:
+    get:
+      tags: [diagnostics]
+      operationId: getDiagPrestigeTelemetry
+      summary: "Diag agrégation télémétrie Prestige par origine du défi"
+      description: |
+        ADR 0020 (coach→pont Prestige). Agrège la table append-only
+        prestige_telemetry d'un joueur par origine du défi (coach / user /
+        pilot_mode / unknown) : compteurs created/rejected/completed/expired/
+        abandoned + taux d'acceptation et de complétion. Permet de mesurer si
+        les défis proposés par le coach sont acceptés/complétés davantage que
+        ceux d'autres origines. Les défis créés avant le plumbing (source NULL)
+        sont agrégés sous "unknown". Les taux valent -1 quand non calculables
+        (dénominateur nul).
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: "Agrégats télémétrie Prestige par origine"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrestigeTelemetryDiag"
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /_admin/progression/backfill/{player_slug}:
     post:
       tags: [diagnostics]
@@ -3479,6 +3486,8 @@ components:
           match_count:
               format: int64
               type: integer
+          media_tooling:
+              $ref: '#/components/schemas/MediaToolingStatus'
           player_count:
               format: int64
               type: integer
@@ -3490,6 +3499,20 @@ components:
           - status
           - match_count
           - player_count
+          - media_tooling
+      type: object
+    MediaToolingStatus:
+      additionalProperties: false
+      properties:
+          ffmpeg:
+              type: boolean
+          ffmpeg_version:
+              type: string
+          ffprobe:
+              type: boolean
+      required:
+          - ffmpeg
+          - ffprobe
       type: object
     # --- Common ---
     PlayerSummary:
@@ -6952,6 +6975,64 @@ components:
           - milestone_earned_count
           - milestone_catalog_count
       type: object
+    PrestigeTelemetryDiag:
+      additionalProperties: false
+      properties:
+          by_source:
+              items:
+                  $ref: '#/components/schemas/PrestigeTelemetrySourceStats'
+              nullable: true
+              type: array
+          player_slug:
+              type: string
+          total_events:
+              format: int64
+              type: integer
+      required:
+          - player_slug
+          - total_events
+          - by_source
+      type: object
+    PrestigeTelemetrySourceStats:
+      additionalProperties: false
+      properties:
+          abandon_rate:
+              format: double
+              type: number
+          abandoned:
+              format: int64
+              type: integer
+          acceptance_rate:
+              format: double
+              type: number
+          completed:
+              format: int64
+              type: integer
+          completion_rate:
+              format: double
+              type: number
+          created:
+              format: int64
+              type: integer
+          expired:
+              format: int64
+              type: integer
+          rejected:
+              format: int64
+              type: integer
+          source:
+              type: string
+      required:
+          - source
+          - created
+          - rejected
+          - completed
+          - expired
+          - abandoned
+          - acceptance_rate
+          - completion_rate
+          - abandon_rate
+      type: object
     # =========================================================================
     # SCHÉMAS AUTO-DÉRIVÉS (générés 2026-06-18 depuis les structs Go via le
     # drift-detector — internal/api/openapi_schema_drift_test.go, mode -emit).
@@ -7012,28 +7093,6 @@ components:
           - user_code
           - verification_url
           - expires_in
-      type: object
-    BattlePassResponse:
-      additionalProperties: false
-      properties:
-          available:
-              type: boolean
-          error_hint:
-              type: string
-          from_cache:
-              type: boolean
-          progress:
-              format: int64
-              type: integer
-          rank:
-              format: int64
-              type: integer
-          reward_track:
-              type: string
-          snapshot_at:
-              type: string
-      required:
-          - available
       type: object
     MediaAssociateResponse:
       additionalProperties: false
@@ -13364,6 +13423,25 @@ components:
           - color_token
           - style
       type: object
+    RelationCSR:
+      additionalProperties: false
+      properties:
+          rating_value:
+              format: double
+              nullable: true
+              type: number
+          sub_tier:
+              format: int64
+              nullable: true
+              type: integer
+          tier:
+              nullable: true
+              type: string
+      required:
+          - tier
+          - sub_tier
+          - rating_value
+      type: object
     RelationInsight:
       additionalProperties: false
       properties:
@@ -13451,6 +13529,8 @@ components:
     RelationRef:
       additionalProperties: false
       properties:
+          csr:
+              $ref: '#/components/schemas/RelationCSR'
           gamertag:
               type: string
           matches:
@@ -13498,6 +13578,11 @@ components:
               type: array
           top_nemesis:
               $ref: '#/components/schemas/RelationRef'
+          top_nemesis_recent_form:
+              items:
+                  type: string
+              nullable: true
+              type: array
       required:
           - distinct_players
           - allies_count
@@ -13508,6 +13593,7 @@ components:
           - player_win_rate
           - core_recent_form
           - top_ally_recent_form
+          - top_nemesis_recent_form
       type: object
     RelationsPageResponse:
       additionalProperties: false

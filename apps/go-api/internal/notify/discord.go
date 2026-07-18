@@ -88,6 +88,14 @@ type NotifyConfig struct {
 	// seuils ops A5.3 — lot ops 2026-07-13, suite incident disque-plein VPS).
 	// Défaut : true.
 	NotifyDisk bool
+	// NotifyCoach active le relais externe des notifications coach (proposals les
+	// plus fortes) vers le webhook. Défaut : FALSE — contrairement aux autres
+	// toggles (défaut true une fois discord_notifications_enabled actif), le relais
+	// coach est un opt-in produit VOLONTAIRE : émettre les signaux de progression
+	// vers un service externe est une décision vie privée de l'utilisateur, jamais
+	// activée par défaut (cf. internal/notifications/external). Ce n'est PAS un
+	// kill-switch au sens de CLAUDE.md n°11 (feature livrée OFF « pour plus tard »).
+	NotifyCoach bool
 	// SettingsPath est le chemin vers app_settings.json pour l'anti-spam de version.
 	SettingsPath string
 	// Labels fournit les libellés title-aware des embeds (PMT-11). nil → libellés
@@ -167,6 +175,9 @@ func notifyConfigFromMap(settingsPath string, s map[string]any) NotifyConfig {
 	cfg.NotifyVersion = boolValDefault(s, "discord_notify_new_version", true)
 	cfg.NotifyReauth = boolValDefault(s, "discord_notify_reauth", true)
 	cfg.NotifyDisk = boolValDefault(s, "discord_notify_disk", true)
+	// Opt-in strict : défaut false (cf. NotifyCoach). Le relais coach reste inactif
+	// tant que l'utilisateur ne l'active pas explicitement, même Discord globalement ON.
+	cfg.NotifyCoach = boolValDefault(s, "discord_notify_coach", false)
 	return cfg
 }
 
@@ -213,7 +224,18 @@ func sanitizeSendError(err error) string {
 // SendWebhook envoie un payload JSON au webhook Discord.
 // Retourne true si Discord répond 200 ou 204.
 func SendWebhook(webhookURL string, payload WebhookPayload) bool {
-	ctx := context.Background()
+	return SendWebhookCtx(context.Background(), webhookURL, payload)
+}
+
+// SendWebhookCtx envoie un payload JSON au webhook Discord en respectant le
+// deadline / l'annulation de ctx. Permet à un appelant d'imposer un timeout court
+// (ex. relais coach externe : 5 s) sans dupliquer le client HTTP. Retourne true
+// si Discord répond 200 ou 204. Failsafe : jamais de panic, secret du webhook
+// expurgé de tout log (sanitizeSendError).
+func SendWebhookCtx(ctx context.Context, webhookURL string, payload WebhookPayload) bool {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if webhookURL == "" {
 		return false
 	}
@@ -312,6 +334,13 @@ var discordStrings = map[string]map[string]string{
 		"en": "Data volume is back under alert thresholds: **{free}** free of {total} ({used_pct}% used).",
 	},
 
+	// Relais coach externe (opt-in) — embed technique sobre.
+	"discord_coach_title":    {"fr": "🎯  LevelUp — Signal coach", "en": "🎯  LevelUp — Coach signal"},
+	"discord_coach_player":   {"fr": "Joueur", "en": "Player"},
+	"discord_coach_category": {"fr": "Catégorie", "en": "Category"},
+	"discord_coach_details":  {"fr": "Détails", "en": "Details"},
+	"discord_coach_link":     {"fr": "Ouvrir dans LevelUp", "en": "Open in LevelUp"},
+
 	"discord_reauth_title": {"fr": "🔑  Reconnexion Xbox requise", "en": "🔑  Xbox reconnection required"},
 	"discord_reauth_desc": {
 		"fr": "Le jeton de **{gamertag}** a expiré — la synchronisation est en pause. Reconnecte ton compte Xbox dans LevelUp.",
@@ -406,7 +435,7 @@ func boolVal(m map[string]any, key string) bool {
 	return ok && b
 }
 
-func boolValDefault(m map[string]any, key string, def bool) bool { //nolint:unparam // def=true actuellement, conserver pour flexibilité
+func boolValDefault(m map[string]any, key string, def bool) bool {
 	v, ok := m[key]
 	if !ok {
 		return def

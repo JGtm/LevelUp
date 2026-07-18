@@ -23,6 +23,8 @@ import (
 	"log/slog"
 	"os/exec"
 	"strings"
+
+	"levelup/go-api/internal/domain"
 )
 
 // requiredEncoders liste les encodeurs ffmpeg dont dépend LevelUp :
@@ -102,31 +104,46 @@ func InspectMediaTooling(ctx context.Context) MediaToolingReport {
 // par composant (encodeur/muxer) requis manquant. Le serveur démarre quoi qu'il
 // arrive — cette fonction ne renvoie rien et ne panique jamais.
 func LogMediaToolingStatus(ctx context.Context) {
+	// Tag explicite → logs/media.log : le package ops est hétérogène (snapshot,
+	// général) et n'a pas de module par défaut ; cette sonde appartient au flux média.
+	log := slog.With("module", logModuleMedia)
 	r := InspectMediaTooling(ctx)
 	if r.FFmpegFound && r.FFprobeFound {
-		slog.InfoContext(ctx, "media tooling: ffmpeg/ffprobe disponibles",
+		log.InfoContext(ctx, "media tooling: ffmpeg/ffprobe disponibles",
 			"ffmpeg_version", r.FFmpegVersion,
 			"ffmpeg_path", r.FFmpegPath,
 			"ffprobe_path", r.FFprobePath)
 	} else {
-		slog.WarnContext(ctx, "media tooling: ffmpeg/ffprobe absent du PATH — miniatures, transcodage HLS et remux live indisponibles ; installer ffmpeg",
+		log.WarnContext(ctx, "media tooling: ffmpeg/ffprobe absent du PATH — miniatures, transcodage HLS et remux live indisponibles ; installer ffmpeg",
 			"ffmpeg_found", r.FFmpegFound,
 			"ffprobe_found", r.FFprobeFound)
 	}
 	if r.CapabilitiesProbeErr != nil {
-		slog.WarnContext(ctx, "media tooling: interrogation des capacités ffmpeg échouée — encoders/muxers non vérifiés",
+		log.WarnContext(ctx, "media tooling: interrogation des capacités ffmpeg échouée — encoders/muxers non vérifiés",
 			"err", r.CapabilitiesProbeErr)
 		return
 	}
 	for _, name := range r.MissingEncoders {
-		slog.WarnContext(ctx, "media tooling: encodeur ffmpeg requis manquant",
+		log.WarnContext(ctx, "media tooling: encodeur ffmpeg requis manquant",
 			"component", name, "impact", mediaComponentImpact[name],
 			"hint", "installer un build ffmpeg incluant l'encodeur "+name)
 	}
 	for _, name := range r.MissingMuxers {
-		slog.WarnContext(ctx, "media tooling: muxer ffmpeg requis manquant",
+		log.WarnContext(ctx, "media tooling: muxer ffmpeg requis manquant",
 			"component", name, "impact", mediaComponentImpact[name],
 			"hint", "installer un build ffmpeg incluant le muxer "+name)
+	}
+}
+
+// ToHealthStatus projette le rapport sur le DTO exposé par GET /health. On ne
+// retient que la présence des binaires et la version ffmpeg (preuve positive) ;
+// le détail des encodeurs/muxers manquants reste réservé à la CLI check-env et
+// aux WARN du boot (Summary / LogMediaToolingStatus), /health restant concis.
+func (r MediaToolingReport) ToHealthStatus() domain.MediaToolingStatus {
+	return domain.MediaToolingStatus{
+		FFmpeg:        r.FFmpegFound,
+		FFprobe:       r.FFprobeFound,
+		FFmpegVersion: r.FFmpegVersion,
 	}
 }
 

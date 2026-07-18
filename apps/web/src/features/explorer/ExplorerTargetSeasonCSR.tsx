@@ -8,7 +8,7 @@
  * (demande user). Liste simple, sans sous-blocs bordés.
  */
 import { useAppShellStore } from '@/stores/appShellStore'
-import { CSR_TIER_GRID } from '@/lib/skillTiers'
+import { composeTierLabel } from '@/lib/skillTiers'
 import { unrankedBadgeURL } from '@/lib/staticAssets'
 import type { CareerPlaylistCSR } from '@/lib/api/types'
 
@@ -20,24 +20,15 @@ interface ExplorerTargetSeasonCSRProps {
   emptyMessage: string
 }
 
-// Traduction EN→FR des noms de tier CSR (Bronze/Silver/Gold/Platinum/Diamond/Onyx),
-// dérivée de la grille canonique CSR_TIER_GRID (source unique des libellés de rang).
-const CSR_TIER_FR: Record<string, string> = Object.fromEntries(
-  CSR_TIER_GRID.tiers.map((t) => [t.en.toLowerCase(), t.fr]),
-)
-
-// Sous-paliers en chiffres romains (I..VI), comme partout ailleurs (cf. Go
-// rankSubRoman / skillTierLabel). Index 0 = pas de sous-palier.
-const SUBTIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'] as const
-
-/** tierLabel formate "Tier Sub" (ex: "Onyx", "Diamant III") ou "—" si non classé. */
-function tierLabel(tier: string, subTier: number, locale: string): string {
+/**
+ * tierLabel formate "Tier Sub" (ex: "Onyx", "Diamant III") ou "—" si non classé.
+ * Compose via `composeTierLabel` (source unique, cf. skillTiers.ts) — pas de mapping
+ * local dupliqué ; ici on n'ajoute que le cas non classé (tier vide → "—").
+ */
+function tierLabel(tier: string, subTier: number, locale: 'fr' | 'en'): string {
   const raw = tier.trim()
   if (raw === '') return '—'
-  const name = locale === 'en' ? raw : CSR_TIER_FR[raw.toLowerCase()] ?? raw
-  // sub_tier est 1-based (1..6) ; 0 = pas de sous-tier (Onyx, ou non classé).
-  if (raw.toLowerCase() === 'onyx') return name
-  return subTier >= 1 && subTier <= 6 ? `${name} ${SUBTIER_ROMAN[subTier]}` : name
+  return composeTierLabel(raw, subTier, locale)
 }
 
 export function ExplorerTargetSeasonCSR({ csrs, title, emptyMessage }: ExplorerTargetSeasonCSRProps) {

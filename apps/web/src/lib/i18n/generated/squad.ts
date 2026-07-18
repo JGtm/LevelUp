@@ -20,7 +20,6 @@ export const squadManifest = {
   "narrative.role.last_group_kill": { fr: "Dernier kill du squad", en: "Last squad kill" },
   "narrative.role.silent_hero": { fr: "Héros silencieux", en: "Silent hero" },
   "narrative.role.top_killer": { fr: "Top killer", en: "Top killer" },
-  "squad.combat_profile.title": { fr: "Profil de combat", en: "Combat profile" },
   "squad.contrib.accuracy_title": { fr: "Précision par match", en: "Accuracy per match" },
   "squad.contrib.assists_title": { fr: "Assistances par match", en: "Assists per match" },
   "squad.contrib.avg_life_title": { fr: "Vie moyenne par match", en: "Average lifespan per match" },

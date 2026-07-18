@@ -8,10 +8,14 @@ import type {
   SeasonPassPageResponse,
 } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 export function useSeasonPassPage(playerSlug: string) {
+  // Locale dans la clé : libellés du pass bakés serveur selon X-LevelUp-Locale
+  // au fetch → refetch à la bascule de langue (cf. queryKeys.seasonPass).
+  const locale = useAppShellStore((s) => s.locale)
   return useQuery<SeasonPassPageResponse>({
-    queryKey: queryKeys.seasonPass(playerSlug),
+    queryKey: queryKeys.seasonPass(playerSlug, locale),
     queryFn: () =>
       api.get<SeasonPassPageResponse>(`/players/${playerSlug}/pages/palmares/season-pass`),
     enabled: !!playerSlug,

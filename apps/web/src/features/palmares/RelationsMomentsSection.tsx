@@ -6,6 +6,8 @@
  * croises » avec toggle tranche horaire / jour de semaine (#8). Frises + WR
  * glissant via wrappers existants. Strings via palmares.toml (FR/EN).
  */
+import { useNavigate } from '@tanstack/react-router'
+
 import { Spinner } from '@/components/ui/spinner'
 import type { FilterContextInput } from '@/lib/api/types'
 import { useRelationsPrefsStore } from '@/stores/relationsPrefsStore'
@@ -30,6 +32,15 @@ export function RelationsMomentsSection({ playerSlug, filterContext, filterHash,
   const { data, isLoading, isError } = useRelationsMoments(playerSlug, filterContext, filterHash, true)
   const mode = useRelationsPrefsStore((s) => s.heatmapMode)
   const setMode = useRelationsPrefsStore((s) => s.setHeatmapMode)
+  const navigate = useNavigate()
+
+  // Clic sur un duel de la frise revanche → match view (playerSlug déjà en props).
+  const onMatchClick = (matchId: string) => {
+    void navigate({
+      to: '/players/$playerSlug/matches/$matchId',
+      params: { playerSlug, matchId },
+    })
+  }
 
   // Mapping vers la cellule générique (bucket) selon le mode du toggle.
   // Mode jour : le back-end renvoie day_of_week avec 0=dimanche … 6=samedi. On
@@ -96,7 +107,7 @@ export function RelationsMomentsSection({ playerSlug, filterContext, filterHash,
       {!isLoading && data && (
         <section className="flex flex-col gap-3">
           <h2 className="text-base font-semibold text-foreground">{text.rivalriesTitle}</h2>
-          <RelationsRivalryCards rivalries={data.rivalries ?? []} t={text} />
+          <RelationsRivalryCards rivalries={data.rivalries ?? []} t={text} onMatchClick={onMatchClick} />
         </section>
       )}
     </>

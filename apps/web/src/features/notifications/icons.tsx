@@ -47,6 +47,7 @@ const ICONS: Record<NotificationCategory, React.ComponentType<{ className?: stri
   comeback_welcome: IconSparkles,
   trend_consolidate: IconTarget, // axe à consolider — neutre (pas IconTrending montant)
   title_ready: IconSparkles, // MT-19 / axe E — titre prêt (célébration, comme app_release)
+  rival_encounter: IconUser, // relations-E — rival croisé (un joueur recroisé en duel)
 }
 
 function svg(props: { className?: string; children: React.ReactNode }) {

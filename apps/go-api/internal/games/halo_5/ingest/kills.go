@@ -52,6 +52,10 @@ func MapKillEvents(
 					WeaponID:        &w,
 					Confidence:      "native",
 					AttributionPath: "h5_native",
+					// Mecanique du kill deja derivee en amont (h5KillKind). canonical.KillKind
+					// EST une string stable (weapon/melee/groundpound/shoulderbash) → cast
+					// direct ; vide (Kind absent) => NULL en base via nullableStr cote persist.
+					KillKind: string(ev.Kind),
 				})
 			}
 		}

@@ -56,6 +56,24 @@ func TestClassifyWeaponCoverage(t *testing.T) {
 		t.Errorf("id inconnu ne devrait être nulle part")
 	}
 
+	// Hors-arsenal H5 classé (2026-07-17) : un UGC sans libellé weapon_labels est
+	// désormais RÉSOLU PAR LE REGISTRE (bucket h5_other_ugc) → il compte comme
+	// couvert. C'est le mécanisme qui porte la couverture registre H5 à ~100 %
+	// (66/66 stock_ids hors sentinelles). inLabel reste false (aucune ligne label).
+	ugcH5 := int64(2457457776) // UGC H5, mappé à h5_other_ugc, absent de weapon_labels
+	spartanH5 := int64(3168248199)
+	inRegH5, inLabelH5 := map[int64]bool{}, map[int64]bool{}
+	classifyWeaponCoverage(ctx, db, "halo_5", []int64{ugcH5, spartanH5}, inRegH5, inLabelH5)
+	if !inRegH5[ugcH5] {
+		t.Errorf("UGC H5 %d devrait être résolu par le registre (h5_other_ugc)", ugcH5)
+	}
+	if inLabelH5[ugcH5] {
+		t.Errorf("UGC H5 %d ne devrait avoir aucun weapon_labels", ugcH5)
+	}
+	if !inRegH5[spartanH5] {
+		t.Errorf("Spartan H5 %d devrait être résolu par le registre (h5_unattributed)", spartanH5)
+	}
+
 	// Fallback : registre absent → labels seuls.
 	if _, err := db.ExecContext(ctx, "DROP TABLE weapon_ids"); err != nil {
 		t.Fatalf("drop: %v", err)

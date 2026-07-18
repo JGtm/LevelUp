@@ -280,3 +280,14 @@ func (r *ServiceRegistry) ProgressionDiagProvider(ctx context.Context, slug stri
 	}
 	return duckdb.NewProgressionDiagRepo(pdb), nil
 }
+
+// PrestigeTelemetryDiagProvider implémente handlers.PrestigeTelemetryDiagFactory :
+// résout slug → agrégateur de la télémétrie Prestige par origine du défi. Utilisé
+// par l'endpoint /_diag/prestige/telemetry/{slug} (calage coach, ADR 0020).
+func (r *ServiceRegistry) PrestigeTelemetryDiagProvider(ctx context.Context, slug string) (handlers.PrestigeTelemetryDiagProvider, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	return duckdb.NewPrestigeTelemetryDiagRepo(pdb), nil
+}

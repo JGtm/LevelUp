@@ -81,6 +81,7 @@ func TestPrestigeChallengeRepo_CreateGet_Roundtrip(t *testing.T) {
 		Status:      prestige.StatusActive,
 		CreatedAt:   now,
 		CommittedAt: &committed,
+		Source:      prestige.ChallengeSourceCoach,
 	}
 	if err := repo.Create(ctx, c); err != nil {
 		t.Fatalf("Create: %v", err)
@@ -91,6 +92,9 @@ func TestPrestigeChallengeRepo_CreateGet_Roundtrip(t *testing.T) {
 	}
 	if got.ID != c.ID || got.Target != c.Target || got.Tier != c.Tier {
 		t.Errorf("roundtrip mismatch: got %+v want %+v", got, c)
+	}
+	if got.Source != prestige.ChallengeSourceCoach {
+		t.Errorf("source roundtrip: got %q want %q", got.Source, prestige.ChallengeSourceCoach)
 	}
 }
 

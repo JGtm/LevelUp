@@ -69,7 +69,6 @@ const ALLOWLIST = new Set<string>([
   'DismissResponse',            // features/coach/types.ts
   'NotificationsListResponse',  // features/notifications/queries.ts — alias NotificationListResult
   'ImportStartResponse',        // features/onboarding/queries.ts — OpenSpartan import
-  'SquadPageV2Response',        // features/squad/v2/types.ts — page squad V2
   'FieldMappingsResponse',      // lib/i18n/fieldMappings.ts — mappings TOML backend-driven
 ])
 

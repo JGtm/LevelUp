@@ -119,6 +119,12 @@ func TestService_AdoptPresetArc_OK(t *testing.T) {
 	if chRepo.createCount != 2 {
 		t.Errorf("expected 2 objectives created, got %d", chRepo.createCount)
 	}
+	// Origine : l'adoption d'un preset arc vient du joueur → source "user" (ADR 0020).
+	for _, c := range chRepo.createdChallenges {
+		if c.Source != ChallengeSourceUser {
+			t.Errorf("preset objective %s: source=%q want %q", c.ID, c.Source, ChallengeSourceUser)
+		}
+	}
 }
 
 func TestService_AdoptPresetArc_WrongTitle(t *testing.T) {

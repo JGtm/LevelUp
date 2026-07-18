@@ -53,12 +53,15 @@ func (r *CareerRepo) GetRelationsHeatmap(ctx context.Context, scope []string, to
 // buildHeatmapQuery assemble Q29 + args selon le scope.
 func (r *CareerRepo) buildHeatmapQuery(scope []string, topN int) (string, []any) {
 	x := r.pdb.XUID
+	// Masquage Campagne (Halo 5) : my_history sans registre → by-match-id, résolu
+	// AVANT Sprintf (sans placeholder). No-op Infinite. Item backlog H1.
+	tpl := resolveCampaignExclusionByMatchID(Q29RelationsHeatmapTpl, r.pdb.TitleSlug, "match_id")
 	if len(scope) == 0 { // scope == nil ici (le cas vide est court-circuité en amont)
-		sqlText := fmt.Sprintf(Q29RelationsHeatmapTpl, "")
+		sqlText := fmt.Sprintf(tpl, "")
 		return sqlText, []any{x, x, topN}
 	}
 	inClause := " AND match_id IN (" + Placeholders(len(scope)) + ")"
-	sqlText := fmt.Sprintf(Q29RelationsHeatmapTpl, inClause)
+	sqlText := fmt.Sprintf(tpl, inClause)
 	args := make([]any, 0, 3+len(scope))
 	args = append(args, x)                    // my_history.xuid
 	args = append(args, ToAnySlice(scope)...) // my_history scope IN
@@ -117,15 +120,18 @@ func (r *CareerRepo) GetRivalTimeline(ctx context.Context, rivalXUID string, sco
 // buildRivalTimelineQuery assemble Q30 + args selon le scope.
 func (r *CareerRepo) buildRivalTimelineQuery(rivalXUID string, scope []string, winExpr, lossExpr string, limit int) (string, []any) {
 	me := r.pdb.XUID
+	// Masquage Campagne (Halo 5) : recent joint match_registry aliasé "r" → forme
+	// alias, résolue AVANT Sprintf (sans placeholder). No-op Infinite. Item backlog H1.
+	tpl := resolveCampaignExclusion(Q30RivalTimelineTpl, r.pdb.TitleSlug, "r")
 	if len(scope) == 0 { // scope == nil ici
-		sqlText := fmt.Sprintf(Q30RivalTimelineTpl, "", winExpr, lossExpr, "")
+		sqlText := fmt.Sprintf(tpl, "", winExpr, lossExpr, "")
 		// duel CTE : me(kills), me(deaths), (me,rival), (rival,me) ; recent : me, rival ; LIMIT.
 		args := []any{me, me, me, rivalXUID, rivalXUID, me, me, rivalXUID, limit}
 		return sqlText, args
 	}
 	kvIn := " AND kv.match_id IN (" + Placeholders(len(scope)) + ")"
 	rIn := " AND r.match_id IN (" + Placeholders(len(scope)) + ")"
-	sqlText := fmt.Sprintf(Q30RivalTimelineTpl, kvIn, winExpr, lossExpr, rIn)
+	sqlText := fmt.Sprintf(tpl, kvIn, winExpr, lossExpr, rIn)
 
 	args := make([]any, 0, 9+2*len(scope))
 	args = append(args, me, me, me, rivalXUID, rivalXUID, me) // duel CTE 6 xuid

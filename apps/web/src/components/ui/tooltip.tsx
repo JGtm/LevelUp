@@ -6,6 +6,8 @@ interface TooltipProps {
   children: ReactNode
   /** Classes additionnelles sur le wrapper (ex. `w-full` pour s'étirer dans un flex-col). */
   className?: string
+  /** Élargit le panneau (`max-w-sm` au lieu de `max-w-56`) pour un contenu riche (légende). */
+  wide?: boolean
 }
 
 /**
@@ -15,7 +17,7 @@ interface TooltipProps {
  * échapper aux parents `overflow:hidden` (ex. cellules de tableau scrollables).
  * Position calculée au montage du tooltip via `getBoundingClientRect`.
  */
-export function Tooltip({ content, children, className }: TooltipProps) {
+export function Tooltip({ content, children, className, wide }: TooltipProps) {
   const [open, setOpen] = useState(false)
   const anchorRef = useRef<HTMLDivElement | null>(null)
   const tooltipRef = useRef<HTMLDivElement | null>(null)
@@ -29,7 +31,10 @@ export function Tooltip({ content, children, className }: TooltipProps) {
     const margin = 8
     let left = a.left + a.width / 2 - t.width / 2
     left = Math.max(margin, Math.min(left, window.innerWidth - t.width - margin))
-    const top = a.top - t.height - 8
+    // Au-dessus de l'ancre par défaut ; bascule EN DESSOUS si ça déborde le haut de
+    // la viewport (contenu haut — ex. légende de badges — près du haut de page).
+    let top = a.top - t.height - margin
+    if (top < margin) top = a.bottom + margin
     setPos({ top, left })
   }, [open, content])
 
@@ -54,7 +59,7 @@ export function Tooltip({ content, children, className }: TooltipProps) {
               left: pos?.left ?? -9999,
               visibility: pos ? 'visible' : 'hidden',
             }}
-            className="z-[9999] w-max max-w-56 whitespace-normal break-words rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground shadow-lg pointer-events-none"
+            className={`z-[9999] w-max ${wide ? 'max-w-sm' : 'max-w-56'} whitespace-normal break-words rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground shadow-lg pointer-events-none`}
           >
             {content}
           </div>,

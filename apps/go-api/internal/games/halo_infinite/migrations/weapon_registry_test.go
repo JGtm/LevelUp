@@ -1,9 +1,11 @@
 //go:build cgo
 
 // weapon_registry_test.go — applique le seed du registre d'armes sur DuckDB
-// :memory: et verrouille : cardinalités (59 armes / 42 familles / 36 ids),
+// :memory: et verrouille : cardinalités (84 armes / 51 familles / 102 ids),
 // intégrité référentielle (family_key ∈ weapon_families, weapon_ids → weapons),
-// enums class/faction, idempotence (double apply), et quelques résolutions.
+// enums class/faction, idempotence (double apply), et quelques résolutions
+// (dont le long-tail H5 : grenades/mêlée + hors-arsenal non-combat mappés depuis
+// v_weapon_kills).
 
 package migrations
 
@@ -42,23 +44,23 @@ func queryCount(t *testing.T, db *sql.DB, query string, args ...any) int {
 
 func TestWeaponRegistry_SeedCardinalities(t *testing.T) {
 	db := openWeaponRegistryDB(t)
-	if got := queryCount(t, db, "SELECT count(*) FROM weapons"); got != 59 {
-		t.Errorf("weapons = %d, want 59", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapons"); got != 84 {
+		t.Errorf("weapons = %d, want 84", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapon_families"); got != 43 {
-		t.Errorf("weapon_families = %d, want 43", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapon_families"); got != 51 {
+		t.Errorf("weapon_families = %d, want 51", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids"); got != 71 {
-		t.Errorf("weapon_ids = %d, want 71 (36 filmshell + 35 stock_id)", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids"); got != 102 {
+		t.Errorf("weapon_ids = %d, want 102 (36 filmshell + 66 stock_id)", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids WHERE id_kind='stock_id'"); got != 35 {
-		t.Errorf("weapon_ids stock_id = %d, want 35", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapon_ids WHERE id_kind='stock_id'"); got != 66 {
+		t.Errorf("weapon_ids stock_id = %d, want 66", got)
 	}
 	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_infinite'"); got != 29 {
 		t.Errorf("weapons HINF = %d, want 29", got)
 	}
-	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_5'"); got != 30 {
-		t.Errorf("weapons H5 = %d, want 30", got)
+	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE title_slug='halo_5'"); got != 55 {
+		t.Errorf("weapons H5 = %d, want 55", got)
 	}
 }
 
@@ -80,20 +82,129 @@ func TestWeaponRegistry_ReferentialIntegrity(t *testing.T) {
 
 func TestWeaponRegistry_Enums(t *testing.T) {
 	db := openWeaponRegistryDB(t)
+	// Les buckets hors-arsenal non-combat (véhicule/tourelle/environnement/…) n'ont
+	// pas de faction pertinente → faction vide tolérée. Toute faction NON vide doit
+	// rester dans l'enum (garde-fou anti-typo pour les vraies armes).
 	if got := queryCount(t, db, `SELECT count(*) FROM weapons
-		WHERE faction NOT IN ('human','covenant','forerunner','banished')`); got != 0 {
+		WHERE faction <> '' AND faction NOT IN ('human','covenant','forerunner','banished')`); got != 0 {
 		t.Errorf("%d armes ont une faction hors enum", got)
 	}
 	if got := queryCount(t, db, `SELECT count(*) FROM weapons
-		WHERE class NOT IN ('sidearm','shoulder','heavy','melee','grenade')`); got != 0 {
+		WHERE class NOT IN ('sidearm','shoulder','heavy','melee','grenade',
+			'vehicle','turret','environmental','unattributed','other')`); got != 0 {
 		t.Errorf("%d armes ont une class hors enum", got)
 	}
+	// Rôles : 9 rôles de combat + 5 rôles non-combat (donut hors-arsenal H5).
 	if got := queryCount(t, db, `SELECT count(*) FROM weapons
-		WHERE role NOT IN ('automatic','precision','sniper','shotgun','sidearm','power','special','melee','grenade')`); got != 0 {
+		WHERE role NOT IN ('automatic','precision','sniper','shotgun','sidearm','power','special','melee','grenade',
+			'vehicle','turret','environmental','unattributed','other')`); got != 0 {
 		t.Errorf("%d armes ont un role hors enum", got)
 	}
 	if got := queryCount(t, db, "SELECT count(*) FROM weapons WHERE role IS NULL OR role = ''"); got != 0 {
 		t.Errorf("%d armes sans role", got)
+	}
+}
+
+// TestWeaponRegistry_H5LongTailResolution — fige la couverture du long-tail H5
+// (audit v_weapon_kills 2026-07-17) : chaque stock_id nouvellement mappé résout
+// vers le rôle de combat attendu (grenade / melee). Sans ce gate, une régression
+// du registre re-ouvrirait le trou du donut « Frags par type d'arme » H5.
+func TestWeaponRegistry_H5LongTailResolution(t *testing.T) {
+	db := openWeaponRegistryDB(t)
+	cases := map[string]string{ // stock_id -> rôle attendu
+		"4106030681": "grenade", // FRAG GRENADE
+		"2460880172": "grenade", // PLASMA GRENADE
+		"3190813201": "grenade", // SPLINTER GRENADE
+		"409331533":  "melee",   // Golf Club
+		"393532233":  "melee",   // Oddball
+	}
+	for id, want := range cases {
+		var role string
+		if err := db.QueryRow(`
+			SELECT COALESCE(w.role, '')
+			FROM weapon_ids wi
+			JOIN weapons w ON w.title_slug = wi.title_slug AND w.weapon_key = wi.weapon_key
+			WHERE wi.title_slug = 'halo_5' AND wi.id_kind = 'stock_id' AND wi.id_value = ?`, id,
+		).Scan(&role); err != nil {
+			t.Fatalf("résolution stock_id %s: %v", id, err)
+		}
+		if role != want {
+			t.Errorf("stock_id %s → rôle %q, want %q", id, role, want)
+		}
+	}
+	// Aucun stock_id H5 dupliqué (un id = un weapon_key unique).
+	if got := queryCount(t, db, `
+		SELECT count(*) FROM (
+			SELECT id_value FROM weapon_ids
+			WHERE title_slug = 'halo_5' AND id_kind = 'stock_id'
+			GROUP BY id_value HAVING count(*) > 1
+		)`); got != 0 {
+		t.Errorf("%d stock_id H5 dupliqués", got)
+	}
+}
+
+// TestWeaponRegistry_H5NonCombatResolution — fige le classement des 26 stock_ids
+// hors-arsenal (décision produit 2026-07-17) : chaque id résout vers son rôle
+// non-combat dédié, et les 7 UGC sans libellé convergent tous vers l'unique
+// bucket h5_other_ugc. Sans ce gate, une régression re-sortirait « Spartan »
+// (~8.8k frags) du bon rôle et fausserait le donut / l'insight coach.
+func TestWeaponRegistry_H5NonCombatResolution(t *testing.T) {
+	db := openWeaponRegistryDB(t)
+	cases := map[string]string{ // stock_id -> rôle attendu
+		"3010146366": "vehicle",       // Ghost
+		"1063919886": "vehicle",       // Mongoose
+		"4028516791": "vehicle",       // Warthog
+		"419783896":  "vehicle",       // Banshee
+		"3227919741": "vehicle",       // Mantis
+		"1730553442": "vehicle",       // Scorpion
+		"1206711506": "vehicle",       // Wraith
+		"3207900961": "vehicle",       // Wasp
+		"3394982816": "vehicle",       // Phaeton
+		"2988661926": "turret",        // Chaingun Turret
+		"1749823285": "turret",        // Splinter Turret
+		"2907783784": "turret",        // Rocket Pod Turret
+		"4233134183": "turret",        // Gauss Turret
+		"698769165":  "turret",        // Shade Plasma Turret
+		"244872079":  "turret",        // Scorpion Anti-Infantry Turret
+		"2023669721": "turret",        // Plasma Turret
+		"1351500565": "turret",        // Hunter Arm Turret
+		"47178948":   "environmental", // Environmental Explosives
+		"3168248199": "unattributed",  // Spartan (irréductible)
+		"2457457776": "other",         // UGC
+		"390856427":  "other",         // UGC
+		"3541732101": "other",         // UGC
+		"642449794":  "other",         // UGC
+		"2497647768": "other",         // UGC
+		"2631958027": "other",         // UGC
+		"2957796559": "other",         // UGC
+	}
+	for id, want := range cases {
+		var role, key string
+		if err := db.QueryRow(`
+			SELECT COALESCE(w.role, ''), w.weapon_key
+			FROM weapon_ids wi
+			JOIN weapons w ON w.title_slug = wi.title_slug AND w.weapon_key = wi.weapon_key
+			WHERE wi.title_slug = 'halo_5' AND wi.id_kind = 'stock_id' AND wi.id_value = ?`, id,
+		).Scan(&role, &key); err != nil {
+			t.Fatalf("résolution stock_id %s: %v", id, err)
+		}
+		if role != want {
+			t.Errorf("stock_id %s → rôle %q, want %q (key %q)", id, role, want, key)
+		}
+	}
+	// Les 7 UGC convergent tous vers l'unique weapon_key h5_other_ugc.
+	if got := queryCount(t, db, `SELECT count(*) FROM weapon_ids
+		WHERE title_slug='halo_5' AND id_kind='stock_id' AND weapon_key='h5_other_ugc'`); got != 7 {
+		t.Errorf("h5_other_ugc mappe %d stock_ids, want 7", got)
+	}
+	// Aucun stock_id H5 dupliqué (invariant global maintenu après ajout).
+	if got := queryCount(t, db, `
+		SELECT count(*) FROM (
+			SELECT id_value FROM weapon_ids
+			WHERE title_slug = 'halo_5' AND id_kind = 'stock_id'
+			GROUP BY id_value HAVING count(*) > 1
+		)`); got != 0 {
+		t.Errorf("%d stock_id H5 dupliqués", got)
 	}
 }
 

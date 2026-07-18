@@ -19,6 +19,23 @@ export const SKILL_TIER_VALUES = [
 
 export type SkillTierValue = typeof SKILL_TIER_VALUES[number]
 
+// ── Sous-paliers en chiffres romains (source unique) ──────────────────────────
+// Index 1→I … 6→VI (index 0 = pas de sous-palier). Aligné sur le Go
+// rankSubRoman / FormatTierSubLabel. Garde-rail skillTiers.guard.test.ts :
+// interdit toute re-déclaration du littéral sous src/features/**.
+const SUB_TIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'] as const
+
+/**
+ * Convertit un numéro de sous-palier (1..6) en chiffre romain pour composer un
+ * libellé « Nom + sous-palier » côté web (colonnes CSR Career/Explorer,
+ * notifications de palier). 1-indexé ; toute valeur hors 1..6 est rendue en
+ * décimal (String(n)). Le cadrage (n>0, borne haute, Onyx sans sous-palier)
+ * reste à la charge du consommateur.
+ */
+export function subTierRoman(n: number): string {
+  return SUB_TIER_ROMAN[n] ?? String(n)
+}
+
 // ── Grilles de paliers de skill (LUSR / CSR) pour les bandes de classement ──
 // Ce fichier est whitelisté dans lint-no-hardcoded-fields : les noms de tier
 // sont des identifiants de rang Halo Infinite, pas des libellés génériques.
@@ -238,4 +255,20 @@ export function skillTierSortValue(label: string | null | undefined): number | u
   if (tierIdx === undefined) return undefined // « Placement », brut, inconnu → bas
   const sub = m ? (/^\d+$/.test(m[2]) ? Number(m[2]) : romanToInt(m[2])) : 0
   return tierIdx * 10000 + sub
+}
+
+/**
+ * composeTierLabel — libellé « Nom + sous-palier » d'un palier de skill CLASSÉ
+ * (ex. « Diamant III », « Onyx »), à partir d'un tier canonique EN + un numéro de
+ * sous-palier. Nom localisé via `localizeTierName`, sous-palier romain via
+ * `subTierRoman` ; Onyx (palier ouvert) et tout sous-palier hors 1..6 → nom seul.
+ *
+ * SOURCE UNIQUE du pattern « compose tier » (CLAUDE.md n°6, règle ≤ 2 copies —
+ * garde-rail skillTiers.guard.test.ts). Ne gère PAS les états non classés
+ * (placement, tier vide) : c'est à l'appelant de les traiter en amont.
+ */
+export function composeTierLabel(tier: string, subTier: number, locale: 'fr' | 'en'): string {
+  const name = localizeTierName(tier, locale)
+  if (tier.trim().toLowerCase() === 'onyx') return name
+  return subTier >= 1 && subTier <= 6 ? `${name} ${subTierRoman(subTier)}` : name
 }

@@ -46,7 +46,7 @@ func newHomeRouter(factory handlers.HomeAuthFactory, settingsStore *settings_pla
 	r := chi.NewRouter()
 	h := handlers.NewHomeHandler(factory, settingsStore)
 	r.Route("/players/{player_slug}", func(r chi.Router) {
-		h.Mount(r) // 3 routes migrées Huma (pages/home ETag, battlepass, challenges)
+		h.Mount(r) // 1 route migrée Huma (pages/home ETag)
 	})
 	return r
 }
@@ -133,21 +133,6 @@ func TestHomeHandler_GetHomePage_DBClosed_Returns503(t *testing.T) {
 				t.Error("Retry-After header absent (attendu pour 503 recovery)")
 			}
 		})
-	}
-}
-
-func TestHomeHandler_GetBattlePass_OK(t *testing.T) {
-	mock := &mockHomeService{battlePass: domain.BattlePassResponse{}}
-	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
-		return mock, ctx, testXUID, "gt", nil
-	}
-	r := newHomeRouter(factory, nil)
-	req := httptest.NewRequest(http.MethodGet, "/players/test-player/battlepass", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d", w.Code)
 	}
 }
 

@@ -9,11 +9,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"sync"
 	"time"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/notifications"
+	"levelup/go-api/internal/notifications/external"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -33,7 +35,7 @@ func (r *ServiceRegistry) Notifications(ctx context.Context, slug string) (*noti
 	if err != nil {
 		return nil, err
 	}
-	return notifServiceFor(pdb), nil
+	return notifServiceFor(pdb, r.cfg.AppSettingsPath), nil
 }
 
 // NotificationsEmitter retourne l'interface Emitter (sous-ensemble de Service)
@@ -54,7 +56,7 @@ func (r *ServiceRegistry) NotificationsEmitter(ctx context.Context, slug string)
 // leased-writer-enforcement). Si shared_social n'est pas disponible (boot
 // initial), l'acquireur retourne ErrSharedSocialUnavailable que le service
 // remonte tel quel — comportement préexistant.
-func notifServiceFor(pdb *duckdb.PlayerDB) *notifications.Service {
+func notifServiceFor(pdb *duckdb.PlayerDB, appSettingsPath string) *notifications.Service {
 	if v, ok := notifServicesByXUID.Load(pdb.XUID); ok {
 		return v.(*notifications.Service)
 	}
@@ -62,7 +64,19 @@ func notifServiceFor(pdb *duckdb.PlayerDB) *notifications.Service {
 	acquirer := func() (*dblease.LeasedWriter, error) {
 		return pdb.AcquireSharedSocialWriterTimeout(dblease.SharedLeaseTimeout)
 	}
-	svc := notifications.NewService(repo, notifications.WithWriterAcquirer(acquirer))
+	// Relais externe opt-in (Discord webhook) : gating + async gérés par le
+	// Dispatcher, config relue à chaud depuis appSettingsPath (réactif aux PATCH
+	// /settings). OFF par défaut — voir internal/notifications/external.
+	forwarder := external.NewDispatcher(external.Config{
+		AppSettingsPath: appSettingsPath,
+		Player:          pdb.Gamertag,
+		XUID:            pdb.XUID,
+		TitleSlug:       pdb.TitleSlug,
+		AppBaseURL:      os.Getenv("LEVELUP_PUBLIC_BASE_URL"),
+	})
+	svc := notifications.NewService(repo,
+		notifications.WithWriterAcquirer(acquirer),
+		notifications.WithExternalForwarder(forwarder))
 	// LoadOrStore évite la race : si un autre goroutine a inséré
 	// entre Load et Store, on retourne celle-là.
 	if existing, loaded := notifServicesByXUID.LoadOrStore(pdb.XUID, svc); loaded {

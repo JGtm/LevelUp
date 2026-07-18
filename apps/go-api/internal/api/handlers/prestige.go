@@ -11,8 +11,12 @@
 // le client DOIT le fournir (côté web : chokepoint scopedToPlayer de
 // apps/web/src/lib/prestige.ts, figé par prestige.paths.test.ts). Les handlers qui
 // ont besoin de l'acteur pour leur logique métier le relisent depuis le body/la
-// query (user_id / created_by / requested_by) ; les routes unitaires par {id} ne
-// lisent pas d'acteur — le slug ne sert alors qu'à ownershipMW.
+// query (user_id / created_by / requested_by) et le RÉCONCILIENT avec la session
+// via authorizeActor (l'acteur doit être un profil possédé — CanAccessPlayer,
+// multi-profil famille), sinon 403 player_forbidden : ownershipMW garde le segment
+// d'URL, pas le payload, donc un acteur body pointant un tiers serait un BOLA
+// horizontal sans cette garde (garde-rail AST : prestige_actor_guard_test.go).
+// Les routes unitaires par {id} ne lisent pas d'acteur — le slug ne sert alors qu'à ownershipMW.
 //
 // Couvre les endpoints REST (chemins relatifs, tous sous /players/{player_slug}) :
 //
@@ -57,7 +61,7 @@ type PrestigeHandler struct {
 type AppPlayersFunc func(ctx context.Context) ([]domain.PlayerSummary, error)
 
 // ActorGuard valide que l'appelant (session dans ctx) a le droit d'agir au nom
-// de `actorSlug` (created_by/requested_by/user_id des routes squad top-level).
+// de `actorSlug` (tout created_by/requested_by/user_id lu depuis body ou query).
 // Renvoie false → 403. Réutilise les primitives d'ownership (ADR 0029) ; câblé
 // par le routeur. Nil = non câblé (tests / enforcement off) → passant.
 type ActorGuard func(ctx context.Context, actorSlug string) bool
@@ -67,8 +71,10 @@ func NewPrestigeHandler(svc prestige.Service, appPlayers AppPlayersFunc) *Presti
 	return &PrestigeHandler{svc: svc, appPlayers: appPlayers}
 }
 
-// WithActorGuard injecte la garde d'autorisation acteur des routes squad
-// (ADR 0029 étendu aux routes top-level /squads, hors groupe /players/{slug}).
+// WithActorGuard injecte la garde d'autorisation acteur, appliquée par
+// authorizeActor sur TOUTE route lisant un acteur depuis le body/la query
+// (ADR 0029 étendu : réconciliation user_id/created_by/requested_by ↔ session,
+// clôt le BOLA horizontal résiduel des routes prestige non-squad).
 func (h *PrestigeHandler) WithActorGuard(g ActorGuard) *PrestigeHandler {
 	h.actorGuard = g
 	return h
@@ -145,6 +151,9 @@ type createChallengeBody struct {
 	IsPrivate       bool    `json:"is_private,omitempty"`
 	TargetPerMember float64 `json:"target_per_member,omitempty"`
 	Position        int     `json:"position,omitempty"`
+	// Source : origine du défi (ADR 0020). Optionnel — défaut "user" (création
+	// manuelle). Une valeur non reconnue est ignorée (retombe sur "user").
+	Source string `json:"source,omitempty"`
 }
 
 type updateChallengeBody struct {
@@ -157,11 +166,6 @@ type updateChallengeBody struct {
 // idInput : un seul path param {id} (challenges, arcs, squad-challenges).
 type idInput struct {
 	ID string `path:"id"`
-}
-
-// squadIDInput : un seul path param {squad_id}.
-type squadIDInput struct {
-	SquadID string `path:"squad_id"`
 }
 
 // noContentOutput : réponse 204 sans corps.
@@ -208,6 +212,9 @@ func (h *PrestigeHandler) CreateChallenge(ctx context.Context, in *rawBodyInput)
 	if err := json.Unmarshal(in.RawBody, &body); err != nil {
 		return nil, humacore.NewError(http.StatusBadRequest, "invalid_body", err.Error())
 	}
+	if err := h.authorizeActor(ctx, body.UserID); err != nil {
+		return nil, err
+	}
 	req := prestige.CreateChallengeRequest{
 		UserID:          body.UserID,
 		TitleSlug:       body.TitleSlug,
@@ -224,6 +231,12 @@ func (h *PrestigeHandler) CreateChallenge(ctx context.Context, in *rawBodyInput)
 		IsPrivate:       body.IsPrivate,
 		TargetPerMember: body.TargetPerMember,
 		Position:        body.Position,
+		// Création HTTP = manuelle par défaut. Une origine explicite valide
+		// (ex. front pilote) reste prioritaire ; toute valeur inconnue -> "user".
+		Source: prestige.ChallengeSourceUser,
+	}
+	if prestige.IsValidChallengeSource(body.Source) {
+		req.Source = body.Source
 	}
 	c, err := h.svc.CreateChallenge(ctx, req)
 	if err != nil {
@@ -255,6 +268,9 @@ type listActiveChallengesInput struct {
 func (h *PrestigeHandler) ListActiveChallenges(ctx context.Context, in *listActiveChallengesInput) (*mapOutput, error) {
 	if in.UserID == "" || in.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+	}
+	if err := h.authorizeActor(ctx, in.UserID); err != nil {
+		return nil, err
 	}
 	list, err := h.svc.ListActiveChallenges(ctx, in.UserID, in.TitleSlug)
 	if err != nil {
@@ -328,6 +344,9 @@ func (h *PrestigeHandler) GetMyPrestige(ctx context.Context, in *getMyPrestigeIn
 	if in.UserID == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_user_id", "user_id requis")
 	}
+	if err := h.authorizeActor(ctx, in.UserID); err != nil {
+		return nil, err
+	}
 	up, err := h.svc.GetUserPrestige(ctx, in.UserID, in.TitleSlug)
 	if err != nil {
 		return nil, h.serviceError(ctx, err)
@@ -346,6 +365,9 @@ type suggestTemplatesInput struct {
 func (h *PrestigeHandler) SuggestTemplates(ctx context.Context, in *suggestTemplatesInput) (*mapOutput, error) {
 	if in.UserID == "" || in.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+	}
+	if err := h.authorizeActor(ctx, in.UserID); err != nil {
+		return nil, err
 	}
 	count := 3
 	if in.Count != "" {

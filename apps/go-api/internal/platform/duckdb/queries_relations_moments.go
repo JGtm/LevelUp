@@ -32,7 +32,7 @@ const Q29RelationsHeatmapTpl = `
 WITH my_history AS (
     SELECT match_id, team_id
     FROM match_participants
-    WHERE xuid = ?%s
+    WHERE xuid = ?%s` + campaignExclusionToken + `
 ),
 encounters AS (
     SELECT
@@ -119,7 +119,7 @@ recent AS (
     JOIN match_participants p1 ON r.match_id = p1.match_id AND p1.xuid = ?
     JOIN match_participants p2 ON r.match_id = p2.match_id AND p2.xuid = ?
     LEFT JOIN duel d ON d.match_id = r.match_id
-    WHERE p1.team_id <> p2.team_id%s
+    WHERE p1.team_id <> p2.team_id%s` + campaignExclusionToken + `
     ORDER BY start_time DESC, match_id DESC
     LIMIT ?
 )

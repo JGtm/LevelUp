@@ -24,7 +24,7 @@ FROM match_participants p1
 JOIN match_participants p2
     ON p1.match_id = p2.match_id AND p2.xuid != p1.xuid
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p2.xuid
-WHERE p1.xuid = ?
+WHERE p1.xuid = ?` + campaignExclusionToken + `
 GROUP BY p2.xuid, vg.gamertag
 HAVING COUNT(*) >= 2
 ORDER BY match_count DESC
@@ -356,6 +356,7 @@ SELECT
 FROM match_registry r
 JOIN match_participants p1 ON r.match_id = p1.match_id AND p1.xuid = ?
 JOIN match_participants p2 ON r.match_id = p2.match_id AND p2.xuid = ?
+WHERE TRUE` + campaignExclusionToken + `
 ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC`
 
 // Q19cTargetRecentMatches : les `limit` derniers matchs PvP (firefight exclu)

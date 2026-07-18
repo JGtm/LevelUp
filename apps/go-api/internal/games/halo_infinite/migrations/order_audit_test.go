@@ -177,6 +177,23 @@ func TestTitleStepsRunEndToEnd_Player(t *testing.T) {
 	if nCamp != 1 {
 		t.Errorf("challenge.campaign_id absente — ordre prestige→campaign cassé")
 	}
+	// prestige_add_source_columns_v1 : source sur challenge ET prestige_telemetry
+	// (calage coach, ADR 0020). Ordre load-bearing : APRÈS create_prestige_player_schema.
+	for _, tc := range []struct{ table, col string }{
+		{"challenge", "source"},
+		{"prestige_telemetry", "source"},
+	} {
+		var n int
+		if err := db.QueryRow(
+			"SELECT COUNT(*) FROM information_schema.columns WHERE table_name = ? AND column_name = ?",
+			tc.table, tc.col,
+		).Scan(&n); err != nil {
+			t.Fatalf("query %s.%s: %v", tc.table, tc.col, err)
+		}
+		if n != 1 {
+			t.Errorf("%s.%s absente — prestige_add_source_columns_v1 non appliqué", tc.table, tc.col)
+		}
+	}
 	for _, col := range []string{"performance_chain", "psa_checked_at"} {
 		var n int
 		if err := db.QueryRow(

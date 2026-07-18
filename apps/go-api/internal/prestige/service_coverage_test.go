@@ -559,7 +559,7 @@ func TestService_GetSquadChallenge_NotFound(t *testing.T) {
 
 func TestService_ListSquadChallenges_RequiresSquad(t *testing.T) {
 	svc, _, _, _, _, _ := buildCoverageService()
-	_, err := svc.ListSquadChallenges(context.Background(), "")
+	_, err := svc.ListSquadChallenges(context.Background(), "", "alice")
 	if !errors.Is(err, ErrInvalidInput) {
 		t.Errorf("expected ErrInvalidInput, got %v", err)
 	}
@@ -567,13 +567,30 @@ func TestService_ListSquadChallenges_RequiresSquad(t *testing.T) {
 
 func TestService_ListSquadChallenges_OK(t *testing.T) {
 	svc, _, _, scRepo, _, _ := buildCoverageService()
+	svc.deps.Squads.(*fakeSquadRepo).members = []SquadMember{{Xuid: "x1", UserID: "alice"}}
 	scRepo.listBySquad = []SquadChallenge{{ID: "sc1"}, {ID: "sc2"}}
-	out, err := svc.ListSquadChallenges(context.Background(), "sq1")
+	out, err := svc.ListSquadChallenges(context.Background(), "sq1", "alice")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(out) != 2 {
 		t.Errorf("expected 2, got %d", len(out))
+	}
+}
+
+// TestService_ListSquadChallenges_RejectsNonMember : garde d'appartenance
+// objet-level (BOLA). « outsider » possède son propre slug (ownershipMW le
+// laisserait passer) mais n'est PAS membre-user de sq1 → aucun défi renvoyé.
+func TestService_ListSquadChallenges_RejectsNonMember(t *testing.T) {
+	svc, _, _, scRepo, _, _ := buildCoverageService()
+	svc.deps.Squads.(*fakeSquadRepo).members = []SquadMember{{Xuid: "x1", UserID: "alice"}}
+	scRepo.listBySquad = []SquadChallenge{{ID: "sc1"}}
+	out, err := svc.ListSquadChallenges(context.Background(), "sq1", "outsider")
+	if !errors.Is(err, ErrInvalidInput) {
+		t.Errorf("non-membre doit être rejeté (BOLA objet-level), got %v", err)
+	}
+	if out != nil {
+		t.Errorf("aucune donnée ne doit fuir vers un non-membre, got %+v", out)
 	}
 }
 

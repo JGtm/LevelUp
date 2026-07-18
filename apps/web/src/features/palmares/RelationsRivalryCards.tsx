@@ -13,6 +13,7 @@
 import { useMemo } from 'react'
 import { winRateColor } from '@/lib/colors/outcomePalette'
 
+import { KpiCard } from '@/components/cards/KpiCard'
 import {
   OutcomeSequenceTape,
   type OutcomePoint,
@@ -47,7 +48,17 @@ function toTapePoints(rivalry: RelationRivalry, locale: 'fr' | 'en'): OutcomePoi
   })
 }
 
-function RivalryCard({ rivalry, t, locale }: { rivalry: RelationRivalry; t: MomentsText; locale: 'fr' | 'en' }) {
+function RivalryCard({
+  rivalry,
+  t,
+  locale,
+  onMatchClick,
+}: {
+  rivalry: RelationRivalry
+  t: MomentsText
+  locale: 'fr' | 'en'
+  onMatchClick?: (matchId: string) => void
+}) {
   const tapeLabels: OutcomeSequenceLabels = {
     win: t.outcomeWin,
     loss: t.outcomeLoss,
@@ -68,41 +79,52 @@ function RivalryCard({ rivalry, t, locale }: { rivalry: RelationRivalry; t: Mome
   }, [rivalry])
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg bg-card p-4">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="truncate text-sm font-semibold text-foreground">{rivalry.gamertag}</p>
-        <p className="shrink-0 text-xs text-muted-foreground">{t.enemyMatches(String(rivalry.enemy_matches))}</p>
-      </div>
-
-      <OutcomeSequenceTape matches={tapePoints} labels={tapeLabels} height={64} />
-
-      {/* compact : taux de victoire récent vs global */}
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
-        <span>
-          <span className="text-muted-foreground">{t.recentShort} </span>
-          <span className="font-mono font-bold" style={{ color: winRateColor(rivalry.recent_win_rate) }}>
-            {formatPercent(rivalry.recent_win_rate, 0)}
-          </span>
-        </span>
-        <span>
-          <span className="text-muted-foreground">{t.globalShort} </span>
-          <span className="font-mono font-bold" style={{ color: winRateColor(rivalry.global_win_rate) }}>
-            {formatPercent(rivalry.global_win_rate, 0)}
-          </span>
-        </span>
-      </div>
-
-      {cumulativePoints.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <p className="text-xs text-muted-foreground">{t.cumulativeFragTitle}</p>
-          <CumulativeFragGapChart points={cumulativePoints} height={120} />
+    <KpiCard accent="outcome-loss" accentSide="top" className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col gap-2 p-4">
+        {/* identité du rival (en blanc) + volume de duels */}
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="truncate text-sm font-semibold text-foreground">{rivalry.gamertag}</p>
+          <p className="shrink-0 text-xs text-muted-foreground">{t.enemyMatches(String(rivalry.enemy_matches))}</p>
         </div>
-      )}
-    </div>
+
+        <OutcomeSequenceTape matches={tapePoints} labels={tapeLabels} height={64} onMatchClick={onMatchClick} />
+
+        {/* compact : taux de victoire récent vs global */}
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
+          <span>
+            <span className="text-muted-foreground">{t.recentShort} </span>
+            <span className="font-mono font-bold" style={{ color: winRateColor(rivalry.recent_win_rate) }}>
+              {formatPercent(rivalry.recent_win_rate, 0)}
+            </span>
+          </span>
+          <span>
+            <span className="text-muted-foreground">{t.globalShort} </span>
+            <span className="font-mono font-bold" style={{ color: winRateColor(rivalry.global_win_rate) }}>
+              {formatPercent(rivalry.global_win_rate, 0)}
+            </span>
+          </span>
+        </div>
+
+        {cumulativePoints.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <p className="text-xs text-muted-foreground">{t.cumulativeFragTitle}</p>
+            <CumulativeFragGapChart points={cumulativePoints} height={120} />
+          </div>
+        )}
+      </div>
+    </KpiCard>
   )
 }
 
-export function RelationsRivalryCards({ rivalries, t }: { rivalries: RelationRivalry[]; t: MomentsText }) {
+export function RelationsRivalryCards({
+  rivalries,
+  t,
+  onMatchClick,
+}: {
+  rivalries: RelationRivalry[]
+  t: MomentsText
+  onMatchClick?: (matchId: string) => void
+}) {
   const locale = normalizePalmaresLocale(useAppShellStore((s) => s.locale))
   if (rivalries.length === 0) {
     return <p className="text-sm text-muted-foreground">{t.rivalriesEmpty}</p>
@@ -110,7 +132,7 @@ export function RelationsRivalryCards({ rivalries, t }: { rivalries: RelationRiv
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {rivalries.map((r) => (
-        <RivalryCard key={r.xuid} rivalry={r} t={t} locale={locale} />
+        <RivalryCard key={r.xuid} rivalry={r} t={t} locale={locale} onMatchClick={onMatchClick} />
       ))}
     </div>
   )

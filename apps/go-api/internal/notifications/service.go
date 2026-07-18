@@ -35,6 +35,7 @@ type Service struct {
 	repo          Repository
 	idgen         *IDGenerator
 	acquireWriter func() (*dblease.LeasedWriter, error) // optionnel, cf. WithWriterAcquirer
+	forwarder     ExternalForwarder                     // optionnel, cf. WithExternalForwarder
 }
 
 // Option configure un Service à la construction.
@@ -55,6 +56,15 @@ type Option func(*Service)
 //     propage ErrDBLocked au caller (handler HTTP mappe en 503).
 func WithWriterAcquirer(f func() (*dblease.LeasedWriter, error)) Option {
 	return func(s *Service) { s.acquireWriter = f }
+}
+
+// WithExternalForwarder configure un relais externe (opt-in) appelé best-effort
+// après CHAQUE insertion in-app réussie. Le forwarder décide lui-même s'il relaie
+// (catégorie forwardée + activation) et gère son asynchronisme/timeout : l'appel
+// depuis insertAndSweep est non bloquant et ne remonte jamais d'erreur. nil (non
+// fourni) = aucun relais externe (comportement historique).
+func WithExternalForwarder(f ExternalForwarder) Option {
+	return func(s *Service) { s.forwarder = f }
 }
 
 // NewService crée un Service à partir d'un Repository et d'options optionnelles.
@@ -189,6 +199,11 @@ func (s *Service) insertAndSweep(ctx context.Context, n *Notification) error {
 	// les notifs post-sync (match_synced, sync_error) cross-module via event_id.
 	slog.InfoContext(ctx, "notifications: émise",
 		"category", n.Category, "title_key", n.TitleKey, "severity", n.Severity)
+	// Relais externe opt-in (Discord webhook) : best-effort strict, non bloquant,
+	// filtrage + async gérés par le forwarder. Aucun effet sur le flux d'émission.
+	if s.forwarder != nil {
+		s.forwarder.Forward(ctx, n)
+	}
 	// Cap rétention best-effort : erreur loguée par le repo, jamais propagée.
 	_ = s.repo.CapAndSweep(ctx, DefaultRetentionCap)
 	// Expiry douce (DP8) : les info non lues > staleInfoMaxAge passent lues.

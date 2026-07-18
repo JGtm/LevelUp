@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/handlers"
+	"levelup/go-api/internal/domain"
 )
 
 // mockBootstrapRepo implémente port.BootstrapRepository pour les tests.
@@ -45,7 +46,8 @@ func TestHealthHandler_OK(t *testing.T) {
 		playerCount: 3,
 		lastSync:    &now,
 	}
-	h := handlers.NewHealthHandlerWithVersion(repo, "1.0.0-test")
+	h := handlers.NewHealthHandlerWithVersion(repo, "1.0.0-test").
+		WithMediaTooling(domain.MediaToolingStatus{FFmpeg: true, FFprobe: true, FFmpegVersion: "ffmpeg version 5.1.6"})
 	r := chi.NewRouter()
 	h.Mount(r)
 
@@ -69,6 +71,43 @@ func TestHealthHandler_OK(t *testing.T) {
 	}
 	if resp["app_version"] != "1.0.0-test" {
 		t.Errorf("expected app_version=1.0.0-test, got %v", resp["app_version"])
+	}
+	// Preuve positive de l'outillage média exposée dans /health.
+	mt, ok := resp["media_tooling"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("champ media_tooling manquant ou mauvais type: %v", resp["media_tooling"])
+	}
+	if mt["ffmpeg"] != true {
+		t.Errorf("attendu media_tooling.ffmpeg=true, obtenu %v", mt["ffmpeg"])
+	}
+	if mt["ffprobe"] != true {
+		t.Errorf("attendu media_tooling.ffprobe=true, obtenu %v", mt["ffprobe"])
+	}
+	if mt["ffmpeg_version"] != "ffmpeg version 5.1.6" {
+		t.Errorf("attendu media_tooling.ffmpeg_version renseigné, obtenu %v", mt["ffmpeg_version"])
+	}
+}
+
+func TestHealthHandler_MediaTooling_DefaultsFalse(t *testing.T) {
+	// Sans WithMediaTooling, le champ est présent avec ffmpeg/ffprobe=false
+	// (zéro-valeur) — jamais absent, pour rester une sonde fiable.
+	repo := &mockBootstrapRepo{matchCount: 1, dbVersion: "v1"}
+	h := handlers.NewHealthHandler(repo)
+	r := chi.NewRouter()
+	h.Mount(r)
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	var resp map[string]interface{}
+	_ = json.Unmarshal(w.Body.Bytes(), &resp)
+	mt, ok := resp["media_tooling"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("champ media_tooling doit toujours être présent, obtenu %v", resp["media_tooling"])
+	}
+	if mt["ffmpeg"] != false || mt["ffprobe"] != false {
+		t.Errorf("défaut attendu ffmpeg=false ffprobe=false, obtenu %v", mt)
 	}
 }
 

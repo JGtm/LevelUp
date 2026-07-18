@@ -78,6 +78,10 @@ type WeaponKillInsert struct {
 	SwapDetected    bool    `json:"swap_detected"`
 	DelayedDamage   bool    `json:"delayed_damage"`
 	PlayerIndex     *int    `json:"player_index,omitempty"`
+	// KillKind : mecanique du kill (Halo 5 natif : weapon/melee/groundpound/
+	// shoulderbash). Vide => NULL en base (Infinite ne porte pas cette mecanique).
+	// Capture Phase 1 ; exploitation (donut) + backfill = Phase 2.
+	KillKind string `json:"kill_kind,omitempty"`
 }
 
 // WeaponAccuracyInsert — row pour shared.weapon_accuracy : agrégat par

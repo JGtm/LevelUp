@@ -68,11 +68,29 @@ type RelationInsight struct {
 	Badges   []RelationBadge `json:"badges"`
 }
 
+// RelationCSR : snapshot CSR courant (le plus récent) d'une relation classée, lu
+// best-effort depuis la vue append-only match_csrs_latest (règle ART n°2). Sert le
+// contexte CSR de la bête noire (lot relations-G). Tous les champs sont optionnels :
+// nil = donnée absente. Un *RelationCSR nil (au niveau RelationRef) signifie qu'AUCUNE
+// ligne CSR n'existe pour ce joueur (relation social, ou classé non collecté) → rien
+// n'est affiché côté front (dégradation gracieuse, pas de « N/A »).
+type RelationCSR struct {
+	Tier        *string  `json:"tier"`         // nom de palier EN canonique ("Onyx", "Diamond"…), nil si absent
+	SubTier     *int     `json:"sub_tier"`     // sous-palier 1..6 (0/nil pour Onyx, palier ouvert)
+	RatingValue *float64 `json:"rating_value"` // CSR numérique (utile pour Onyx), nil si absent
+}
+
 // RelationRef : référence légère vers une relation (KPI hero binôme/bête noire).
 type RelationRef struct {
 	Gamertag string   `json:"gamertag"`
 	WinRate  *float64 `json:"win_rate"`
 	Matches  int      `json:"matches"`
+
+	// CSR : snapshot CSR courant de la bête noire (lot relations-G, best-effort).
+	// Peuplé UNIQUEMENT pour top_nemesis quand une ligne CSR existe dans
+	// match_csrs_latest ; nil sinon (top_ally, ou nemesis social/non classé) —
+	// dégradation gracieuse, rien à afficher.
+	CSR *RelationCSR `json:"csr,omitempty"`
 }
 
 // RelationsOverview : KPI agrégés du hub Relations.
@@ -100,6 +118,12 @@ type RelationsOverview struct {
 	// alimente la sparkline de la carte binôme. Vide si pas de binôme / pas de
 	// donnée. Enrichissement additif (best-effort).
 	TopAllyRecentForm []string `json:"top_ally_recent_form"`
+
+	// TopNemesisRecentForm : miroir ennemi de TopAllyRecentForm — issues des N
+	// derniers matchs joués CONTRE la bête noire (top_nemesis, équipe adverse),
+	// ancien→récent. Alimente la sparkline « Derniers matchs » de la carte bête
+	// noire. Vide si pas de bête noire / pas de donnée. Additif (best-effort).
+	TopNemesisRecentForm []string `json:"top_nemesis_recent_form"`
 }
 
 // CoreEngagement : agrégats joueur-centriques de la carte résumé du noyau dur,
@@ -202,4 +226,18 @@ type RelationsMomentsResponse struct {
 	HeatmapDow   []RelationHeatmapDowCell `json:"heatmap_dow"` // même top-N, agrégé par jour de semaine
 	Rivalries    []RelationRivalry        `json:"rivalries"`
 	TopRelations int                      `json:"top_relations"` // N relations dans le heatmap
+}
+
+// RivalEncounter : un nouveau duel (match en ennemi) détecté en post-sync contre
+// un top rival du joueur (lot relations-E). Sert la notification « rival croisé ».
+// Aucun JSON tag : type interne (jamais exposé par un endpoint) consommé par la
+// closure post-sync qui l'émet en notification.
+type RivalEncounter struct {
+	XUID          string
+	Gamertag      string
+	MatchID       string
+	StartedAt     time.Time
+	Outcome       string // "win" | "loss" | "other" (canonical duel, cf. RelationDuelEntry.Outcome)
+	KillsOnRival  int
+	DeathsByRival int
 }
