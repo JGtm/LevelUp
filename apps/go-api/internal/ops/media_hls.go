@@ -15,18 +15,49 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	mediapkg "levelup/go-api/internal/media"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 )
 
-// Valeurs de media_files.transcode_status. NULL = média servi en direct (non
-// transcodé). Colonne dédiée — distincte de `status` ('active', rail home).
+// Valeurs de media_files.transcode_status. NULL = statut inconnu / hérité (ligne
+// jamais évaluée par le pipeline). Colonne dédiée — distincte de `status`
+// ('active', rail home).
 const (
 	TranscodeProcessing = "processing"
 	TranscodeReady      = "ready"
 	TranscodeFailed     = "failed"
+	// TranscodeDirect : média web-natif mono-piste servi en direct (aucun HLS
+	// requis). Persisté pour que le balayage EnsurePendingHLS n'ait plus jamais à
+	// re-prober ces lignes — sans persistance, chaque balayage post-sync relançait
+	// un ffprobe sur toutes les vidéos non candidates, indéfiniment.
+	TranscodeDirect = "direct"
 )
+
+// transcodeStaleAfter borne la durée au-delà de laquelle une ligne restée
+// 'processing' est considérée comme un orphelin de crash (worker tué avant
+// finalize/fail) et redevient éligible au transcodage. En deçà, un 'processing'
+// frais est un transcodage RÉELLEMENT en cours qu'il ne faut pas relancer en
+// parallèle (deux ffmpeg écrivant les mêmes segments dans le même outDir →
+// arbre HLS incohérent validé, puis source supprimé = perte définitive). 2 h
+// couvrent très largement le pire transcodage. Source UNIQUE du seuil, partagée
+// entre la sélection du balayage et le verrou MarkTranscodeProcessing.
+const transcodeStaleAfter = 2 * time.Hour
+
+// transcodeNotFreshProcessingSQL : prédicat « pas de transcodage déjà en cours »
+// — vrai si la ligne n'est PAS 'processing' frais. Fragment UNIQUE partagé entre
+// la sélection du balayage (selectPendingHLSCandidates) et le compare-and-set de
+// MarkTranscodeProcessing : toute divergence entre les deux rouvrirait la course
+// upload-vs-sweep. Le placeholder `?` attend le seuil de péremption
+// (now UTC - transcodeStaleAfter). COALESCE neutralise la logique tri-valuée SQL
+// sur transcode_status NULL ; transcode_started_at NULL sur un 'processing' =
+// orphelin legacy (ligne d'avant l'horodatage) → éligible.
+const transcodeNotFreshProcessingSQL = `(
+	COALESCE(transcode_status, '') <> 'processing'
+	OR transcode_started_at IS NULL
+	OR transcode_started_at <= ?
+)`
 
 // logModuleMedia route les logs de transcoding vers logs/media.log. Sans cet
 // attribut, le package ops tomberait dans logs/general.log (détection par PC).
@@ -57,6 +88,14 @@ func DetectHLSNeeded(ctx context.Context, srcAbs string) (bool, error) {
 // master.m3u8 (format MediaPathStore : {gamertag}/hls/{stem}/master.m3u8).
 // Pure : aucune IO. En mode legacy (capturesBase vide), hlsRel retombe sur le
 // chemin absolu du master.
+//
+// Limite connue (collision de stem) : le dossier de sortie ne dépend que du stem
+// (nom sans extension). Deux sources au même stem dans un même dossier joueur
+// (clip.mkv et clip.mp4) résolvent vers le MÊME hls/{stem} — la seconde
+// transcodée écrase l'arbre de la première. Pas de correctif structurel ici :
+// désambiguïser le nom (inclure l'extension) casserait les arbres HLS déjà
+// produits et référencés en DB. En pratique une capture porte une extension
+// stable ; la collision suppose deux conteneurs jumeaux, cas non observé.
 func HLSPathsFor(capturesDir, capturesBase, gamertag, sourceAbs string) (outDir, hlsRel string) {
 	stem := strings.TrimSuffix(filepath.Base(sourceAbs), filepath.Ext(sourceAbs))
 	outDir = filepath.Join(capturesDir, "hls", stem)
@@ -85,17 +124,66 @@ func withSharedSocialDB(ctx context.Context, dbPath string, fn func(*sql.DB) err
 	return fn(db)
 }
 
+// checkpointBestEffort force un CHECKPOINT pour durcir le WAL après une écriture
+// media_files (ADR 0021/0022 — sans CHECKPOINT le WAL peut être perdu au crash).
+// Best-effort : un échec est loggé en WARN (règle CLAUDE.md #10, jamais d'erreur
+// avalée) mais NON bloquant — l'UPDATE porteur est déjà commité.
+func checkpointBestEffort(ctx context.Context, db *sql.DB, where string) {
+	if _, err := db.ExecContext(ctx, "CHECKPOINT"); err != nil {
+		slog.With("module", logModuleMedia).WarnContext(ctx, where+": CHECKPOINT échoué (WAL non durci)", "err", err)
+	}
+}
+
 // MarkTranscodeStatus positionne transcode_status pour le média identifié par
-// son file_path. CHECKPOINT best-effort pour durcir le WAL (ADR 0021).
+// son file_path (transitions 'direct'/'failed' ; le passage à 'processing' passe
+// par MarkTranscodeProcessing, qui horodate). CHECKPOINT best-effort (ADR 0021).
 func MarkTranscodeStatus(ctx context.Context, dbPath, fileRel, status string) error {
 	return withSharedSocialDB(ctx, dbPath, func(db *sql.DB) error {
 		if _, err := db.ExecContext(ctx,
 			`UPDATE media_files SET transcode_status = ? WHERE file_path = ?`, status, fileRel); err != nil {
 			return fmt.Errorf("MarkTranscodeStatus: %w", err)
 		}
-		_, _ = db.ExecContext(ctx, "CHECKPOINT")
+		checkpointBestEffort(ctx, db, "MarkTranscodeStatus")
 		return nil
 	})
+}
+
+// MarkTranscodeProcessing tente d'ACQUÉRIR le verrou de transcodage du média :
+// passage à 'processing' + horodatage (transcode_started_at, UTC), en
+// compare-and-set — l'UPDATE ne s'applique QUE si la ligne n'est pas déjà
+// 'processing' frais (même prédicat que la sélection du balayage). Appelé AVANT
+// RunHLSTranscode par les DEUX chemins (worker upload ET balayage).
+//
+// Pourquoi conditionnel : le balayage sélectionne ses candidats UNE fois puis
+// transcode séquentiellement pendant de longues minutes ; un upload qui marque
+// 'processing' et lance son worker entre la sélection et le tour du candidat
+// serait écrasé par un UPDATE inconditionnel → deux ffmpeg en parallèle sur le
+// même outDir. acquired=false = un autre worker transcode déjà (ou la ligne a
+// disparu) → l'appelant SAUTE le transcodage sans erreur.
+//
+// L'horodatage sert la récupération d'orphelins de crash : un 'processing'
+// périmé (cf. transcodeStaleAfter) redevient acquérable. CHECKPOINT best-effort
+// pour durcir le WAL (le timestamp doit survivre à un crash, sinon la
+// récupération d'orphelin ne se déclenche jamais).
+func MarkTranscodeProcessing(ctx context.Context, dbPath, fileRel string) (acquired bool, err error) {
+	err = withSharedSocialDB(ctx, dbPath, func(db *sql.DB) error {
+		now := time.Now().UTC()
+		res, execErr := db.ExecContext(ctx,
+			`UPDATE media_files SET transcode_status = ?, transcode_started_at = ?
+			 WHERE file_path = ? AND `+transcodeNotFreshProcessingSQL,
+			TranscodeProcessing, now, fileRel, now.Add(-transcodeStaleAfter))
+		if execErr != nil {
+			return fmt.Errorf("MarkTranscodeProcessing: %w", execErr)
+		}
+		n, raErr := res.RowsAffected()
+		if raErr != nil {
+			return fmt.Errorf("MarkTranscodeProcessing: RowsAffected: %w", raErr)
+		}
+		acquired = n > 0
+		checkpointBestEffort(ctx, db, "MarkTranscodeProcessing")
+		return nil
+	})
+	return acquired, err
 }
 
 // finalizeMediaHLS bascule le média vers sa version HLS : file_path et hls_path
@@ -109,7 +197,7 @@ func finalizeMediaHLS(ctx context.Context, dbPath, fileRel, hlsRel string) error
 		`, hlsRel, hlsRel, TranscodeReady, fileRel); err != nil {
 			return fmt.Errorf("finalizeMediaHLS: %w", err)
 		}
-		_, _ = db.ExecContext(ctx, "CHECKPOINT")
+		checkpointBestEffort(ctx, db, "finalizeMediaHLS")
 		return nil
 	})
 }
@@ -137,10 +225,11 @@ func RunHLSTranscode(ctx context.Context, p HLSTranscodeParams) error {
 
 	// Garde anti-perte de données : BuildHLS ne fait que stat les fichiers
 	// produits ; on prouve ici que le master est réellement démultiplexable
-	// (ffprobe) AVANT de supprimer le source. Sinon un manifest produit mais
-	// cassé (init/segments manquants, segment tronqué) deviendrait illisible et
-	// irrécupérable (source détruit, plus de fallback remux, plus de miniature).
-	if err := mediapkg.VerifyHLSPlayable(ctx, res.MasterPath); err != nil {
+	// (ffprobe) ET qu'il déclare toutes les renditions audio attendues AVANT de
+	// supprimer le source. Sinon un manifest produit mais cassé (init/segments
+	// manquants, rendition perdue) deviendrait illisible et irrécupérable (source
+	// détruit, plus de fallback remux, plus de miniature).
+	if err := mediapkg.VerifyHLSPlayable(ctx, res.MasterPath, res.AudioTracks); err != nil {
 		log.ErrorContext(ctx, "RunHLSTranscode: HLS produit illisible (ffprobe) — source conservé, remux legacy",
 			"source", p.SourceAbs, "master", res.MasterPath, "err", err)
 		if markErr := MarkTranscodeStatus(ctx, p.DBPath, p.FileRel, TranscodeFailed); markErr != nil {

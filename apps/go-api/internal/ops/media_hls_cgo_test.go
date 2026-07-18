@@ -246,3 +246,88 @@ func genMonoMP4(t *testing.T, dir, name string) string {
 	}
 	return dst
 }
+
+// TestMarkTranscodeProcessing_CompareAndSet : le verrou de transcodage est un
+// compare-and-set. 1re acquisition sur une ligne non-'processing' → acquired=true
+// + status/horodatage posés ; 2e acquisition immédiate ('processing' FRAIS, un
+// autre worker transcode) → acquired=false et la ligne est INCHANGÉE ; après
+// vieillissement artificiel du timestamp au-delà de transcodeStaleAfter (orphelin
+// de crash simulé) → ré-acquisition acquired=true. Déterministe (pas de ffmpeg).
+// Chaque accès direct ferme sa connexion avant l'appel suivant (un seul handle
+// RW DuckDB par fichier).
+func TestMarkTranscodeProcessing_CompareAndSet(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "shared_social.duckdb")
+	setupMediaDB(t, ctx, dbPath, "clip.mkv", "", "") // status vide au départ
+
+	// 1re acquisition : ligne pas 'processing' → verrou acquis, status + horodatage posés.
+	acquired, err := MarkTranscodeProcessing(ctx, dbPath, "clip.mkv")
+	if err != nil {
+		t.Fatalf("MarkTranscodeProcessing (1re): %v", err)
+	}
+	if !acquired {
+		t.Fatal("1re acquisition: acquired = false, want true")
+	}
+	status, startedAt := readTranscodeState(t, ctx, dbPath, "clip.mkv")
+	if status != TranscodeProcessing {
+		t.Errorf("transcode_status = %q, want processing", status)
+	}
+	if !startedAt.Valid {
+		t.Fatal("transcode_started_at doit être horodaté après acquisition")
+	}
+	firstStamp := startedAt.Time
+
+	// 2e acquisition immédiate : 'processing' frais → refusée, ligne inchangée.
+	acquired, err = MarkTranscodeProcessing(ctx, dbPath, "clip.mkv")
+	if err != nil {
+		t.Fatalf("MarkTranscodeProcessing (2e): %v", err)
+	}
+	if acquired {
+		t.Fatal("2e acquisition sur 'processing' frais: acquired = true, want false (worker déjà en cours)")
+	}
+	if _, after := readTranscodeState(t, ctx, dbPath, "clip.mkv"); !after.Time.Equal(firstStamp) {
+		t.Errorf("transcode_started_at modifié par une acquisition refusée: %v -> %v", firstStamp, after.Time)
+	}
+
+	// Vieillissement artificiel au-delà de transcodeStaleAfter (orphelin de crash).
+	func() {
+		db, err := sql.Open("duckdb", dbPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer db.Close() //nolint:errcheck
+		if _, err := db.ExecContext(ctx,
+			`UPDATE media_files SET transcode_started_at = now() - INTERVAL 3 HOUR WHERE file_path='clip.mkv'`); err != nil {
+			t.Fatalf("vieillissement artificiel: %v", err)
+		}
+	}()
+
+	// Ré-acquisition sur 'processing' périmé → verrou repris (récupération d'orphelin).
+	acquired, err = MarkTranscodeProcessing(ctx, dbPath, "clip.mkv")
+	if err != nil {
+		t.Fatalf("MarkTranscodeProcessing (3e): %v", err)
+	}
+	if !acquired {
+		t.Fatal("ré-acquisition sur 'processing' périmé: acquired = false, want true")
+	}
+}
+
+// readTranscodeState lit (transcode_status, transcode_started_at) de la ligne
+// media_files identifiée par file_path, en fermant sa connexion (handle RW unique).
+func readTranscodeState(t *testing.T, ctx context.Context, dbPath, fileRel string) (string, sql.NullTime) {
+	t.Helper()
+	db, err := sql.Open("duckdb", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close() //nolint:errcheck
+	var status string
+	var startedAt sql.NullTime
+	if err := db.QueryRowContext(ctx,
+		`SELECT transcode_status, transcode_started_at FROM media_files WHERE file_path = ?`, fileRel).
+		Scan(&status, &startedAt); err != nil {
+		t.Fatal(err)
+	}
+	return status, startedAt
+}

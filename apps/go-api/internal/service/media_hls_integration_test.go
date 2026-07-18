@@ -64,7 +64,7 @@ func runHLSTranscodeFixture(t *testing.T, thumbnailValue string) (mkv, dbPath, c
 		}
 		defer db.Close()
 		if _, err := db.ExecContext(ctx,
-			`CREATE TABLE media_files (id INTEGER, file_path VARCHAR, hls_path VARCHAR, transcode_status VARCHAR, kind VARCHAR, thumbnail_path VARCHAR)`); err != nil {
+			`CREATE TABLE media_files (id INTEGER, file_path VARCHAR, hls_path VARCHAR, transcode_status VARCHAR, kind VARCHAR, thumbnail_path VARCHAR, transcode_started_at TIMESTAMPTZ)`); err != nil {
 			t.Fatal(err)
 		}
 		var thumb interface{} // nil → SQL NULL (cas sans miniature)
@@ -72,7 +72,7 @@ func runHLSTranscodeFixture(t *testing.T, thumbnailValue string) (mkv, dbPath, c
 			thumb = thumbnailValue
 		}
 		if _, err := db.ExecContext(ctx,
-			`INSERT INTO media_files VALUES (1, 'GT/multi.mkv', NULL, NULL, 'video', ?)`, thumb); err != nil {
+			`INSERT INTO media_files VALUES (1, 'GT/multi.mkv', NULL, NULL, 'video', ?, NULL)`, thumb); err != nil {
 			t.Fatal(err)
 		}
 	}()
