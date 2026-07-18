@@ -123,6 +123,13 @@ interface Props {
    *  Absent/false (mode Joueur ally/ennemi, vue session) → en-tetes statiques,
    *  aucun tri (comportement inchange). */
   sortable?: boolean
+  /** Contenu injecté à GAUCHE du pied de tableau, à la place du compteur
+   *  « N matchs trouvés » (fallback). Quand fourni : le pied devient visible même
+   *  sans pagination (permet à l'Explorer d'y ancrer le bouton Export CSV, visible
+   *  aussi pour les scopes ≤ PAGE_SIZE). Les autres consommateurs (mode Joueur
+   *  ally/ennemi, vue session) ne le passent pas → compteur conservé, pied visible
+   *  ssi pagination (rendu inchangé). */
+  footerLeadingSlot?: ReactNode
 }
 
 /** Classe des cellules d'en-tete (partagee entre en-tetes statiques et triables).
@@ -238,7 +245,7 @@ function truncateName(s: string | null | undefined): string {
   return s.slice(0, NAME_TRUNCATE_MAX - 1) + '...'
 }
 
-export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, filterSpecOverride, alwaysShowPagination, defaultPageSize, columnVisibility, extraColumns, extraColumnsAfterId, sortable }: Props) {
+export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, filterSpecOverride, alwaysShowPagination, defaultPageSize, columnVisibility, extraColumns, extraColumnsAfterId, sortable, footerLeadingSlot }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, locale, values)
@@ -819,33 +826,40 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         </table>
       </div>
 
-      {showPagination && (
+      {/* Pied de tableau. GAUCHE : `footerLeadingSlot` injecté par le consommateur
+          (Explorer → bouton Export CSV) ou, à défaut, le compteur « N matchs trouvés ».
+          DROITE : contrôles de pagination, uniquement si pagination requise. Le pied
+          s'affiche dès qu'il y a de la pagination OU un slot à rendre (le CSV reste
+          donc visible même sans pagination, scopes ≤ PAGE_SIZE). */}
+      {(showPagination || footerLeadingSlot != null) && (
         <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-          <span>{t('explorer.matches.count_label', { n: rows.length })}</span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="rounded border border-input px-2 py-1 hover:bg-muted disabled:opacity-50"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              {t('explorer.player.prev_page')}
-            </button>
-            <span>
-              {t('explorer.player.page_info', {
-                page: pageIndex + 1,
-                total: Math.max(pageCount, 1),
-              })}
-            </span>
-            <button
-              type="button"
-              className="rounded border border-input px-2 py-1 hover:bg-muted disabled:opacity-50"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              {t('explorer.player.next_page')}
-            </button>
-          </div>
+          {footerLeadingSlot ?? <span>{t('explorer.matches.count_label', { n: rows.length })}</span>}
+          {showPagination && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="rounded border border-input px-2 py-1 hover:bg-muted disabled:opacity-50"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+              >
+                {t('explorer.player.prev_page')}
+              </button>
+              <span>
+                {t('explorer.player.page_info', {
+                  page: pageIndex + 1,
+                  total: Math.max(pageCount, 1),
+                })}
+              </span>
+              <button
+                type="button"
+                className="rounded border border-input px-2 py-1 hover:bg-muted disabled:opacity-50"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+              >
+                {t('explorer.player.next_page')}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

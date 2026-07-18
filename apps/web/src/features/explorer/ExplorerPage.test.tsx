@@ -69,7 +69,26 @@ function fakeMatchesQuery(): {
   return {
     data: {
       briefing: null,
-      table: { items: [] },
+      table: {
+        // Une ligne réelle : sinon le tableau court-circuite sur son empty-state
+        // (aucun pied rendu) et le slot CSV ne pourrait pas s'afficher.
+        items: [
+          {
+            match_id: 'm1',
+            start_time: '2026-05-26T12:00:00Z',
+            map_ui: 'Alpha',
+            mode_ui: 'Slayer',
+            playlist_label: 'Quick Play',
+            outcome_code: 2,
+            score_label: '50-30',
+            is_with_friends: false,
+            kills: 10,
+            deaths: 5,
+            assists: 3,
+            kda: 2.1,
+          },
+        ],
+      },
       export_hint: { token: 'tok-123' },
     } as unknown as ExplorerMatchesQueryResponse,
     isLoading: false,
@@ -78,8 +97,8 @@ function fakeMatchesQuery(): {
   }
 }
 
-describe('ExplorerMatchesResultsBlock — compteur/CSV (DP-7)', () => {
-  it('retire le compteur « N matchs trouvés » du haut et rend l’export CSV SOUS le tableau', () => {
+describe('ExplorerMatchesResultsBlock — compteur retiré / CSV dans le pied du tableau', () => {
+  it('retire le compteur « N matchs trouvés » et ancre l’export CSV à gauche du pied du tableau', () => {
     const { container } = renderWithProviders(
       <ExplorerMatchesResultsBlock
         playerSlug="test-player"
@@ -88,16 +107,15 @@ describe('ExplorerMatchesResultsBlock — compteur/CSV (DP-7)', () => {
         matchesContextDescriptor={undefined}
       />,
     )
-    // Le bloc résultats (stub `t` → renvoie la clé) ne rend PLUS le compteur redondant
-    // du haut : la clé count_label est absente (le pied de pagination du VRAI tableau
-    // utilise son propre `t` interne et rend du français, jamais la clé brute).
+    // Le compteur redondant n'est plus rendu : ni la clé stub `count_label` (bloc
+    // résultats), ni le libellé FR « … trouvé(s) » du `t` interne du tableau — le pied
+    // porte le bouton CSV à sa place.
     expect(container.textContent ?? '').not.toContain('explorer.matches.count_label')
-    // L'export CSV est rendu SOUS le tableau : son conteneur (flex justify-end) est le
-    // DERNIER enfant du bloc résultats (le Bandeau rend null ici → tableau puis CSV).
+    expect(container.textContent ?? '').not.toContain('trouvé')
+    // L'export CSV (stub `t` → clé brute) est présent ET ancré DANS le pied du tableau
+    // (composant `data-testid="explorer-matches-table"`), non plus dans un bloc séparé.
     const csv = screen.getByText('explorer.matches.export_csv')
-    const root = container.querySelector('.space-y-2')
-    expect(root?.lastElementChild?.contains(csv)).toBe(true)
-    // Deux cellules distinctes (tableau + CSV) → le CSV vient bien APRÈS le tableau.
-    expect(root?.firstElementChild).not.toBe(root?.lastElementChild)
+    const tableRoot = screen.getByTestId('explorer-matches-table')
+    expect(tableRoot.contains(csv)).toBe(true)
   })
 })
