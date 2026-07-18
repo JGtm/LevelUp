@@ -4,7 +4,7 @@ var Q26CareerTopEncountersTpl = `
 WITH my_history AS (
     SELECT match_id, team_id, outcome
     FROM match_participants
-    WHERE xuid = ?
+    WHERE xuid = ?` + campaignExclusionToken + `
 ),
 encounters AS (
     SELECT
@@ -146,7 +146,7 @@ var Q28RelationsTpl = `
 WITH my_history AS (
     SELECT match_id, team_id, outcome
     FROM match_participants
-    WHERE xuid = ?
+    WHERE xuid = ?` + campaignExclusionToken + `
 ),
 encounters AS (
     SELECT
@@ -258,7 +258,7 @@ var Q28RelationsScopedTpl = `
 WITH my_history AS (
     SELECT match_id, team_id, outcome
     FROM match_participants
-    WHERE xuid = ?%s
+    WHERE xuid = ?%s` + campaignExclusionToken + `
 ),
 encounters AS (
     SELECT
@@ -364,7 +364,7 @@ WITH my_matches AS (
            ` + StartTimeCanonicalSQL("r") + ` AS start_time
     FROM match_participants mp
     LEFT JOIN match_registry r ON r.match_id = mp.match_id
-    WHERE mp.xuid = ?%s
+    WHERE mp.xuid = ?%s` + campaignExclusionToken + `
 ),
 with_core AS (
     SELECT DISTINCT h.match_id, h.outcome AS outcome, h.start_time

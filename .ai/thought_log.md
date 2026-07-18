@@ -8672,3 +8672,54 @@ Non listé dans le résiduel backlog → noté, à trancher séparément.
 
 **Conclusion / prochaine étape** : commit 1 prêt (attente validation user). Ensuite commit 2 :
 fuite d'affichage campagne H5.
+
+**AMENDÉ (post-gate)** : commit 1 (3164bad6a → **f98a19efa**) amendé — mes commentaires
+mentionnaient le littéral `shared_social`, ce qui cassait `TestNoUnauthorizedSharedSocialMention`
+(garde-rail repo-wide **vivant dans le package duckdb** mais scannant toute la racine). Mon gate
+de commit 1 (scopé `./internal/prestige ./internal/api/...`) l'a manqué. LEÇON : un garde-rail
+peut vivre dans un package sans rapport avec les fichiers qu'il contraint — avant commit, lancer
+`make go-api-test` OU le package du garde-rail, pas seulement les packages touchés. Reformulé
+« shared_social » → « DB sociale partagée » dans 3 commentaires.
+
+---
+
+## [2026-07-18] Fuite d'affichage campagne H5 — balayage complet + garde-rail structurel — Complété (commit 2/2)
+
+**Statut** : Complété (item backlog `[bug/h5]` 287 matchs campagne). Branche
+`fix/backlog-bola-et-campagne`. Approche décidée (validée user 2026-07-18) : filtre à la source
+centralisé + garde-rail, PAS de purge BDD (règle ART).
+
+**Cause racine** : le mécanisme centralisé existait déjà (`analysis.campaignExcludedVariantIDs`
++ fragments `SQLExclude*` / token) mais n'était pas appliqué sur `Q5SharedHistory` (LISTE
+historique + compteur total, le lecteur qui affiche LITTÉRALEMENT les matchs) ni `Q4/Q4MV`
+(cascade filtres). Le garde-rail existant était une **whitelist statique** de constantes → angle
+mort : aucun lecteur oublié n'était détecté.
+
+**Décision technique** :
+- Fix à la source (token + résolution au call site) : Q5SharedHistory, Q4SharedMatchesForFilters,
+  Q4MVSharedMatchesForFilters (alias mv_player_matches car colonnes non aliasées), + relations/career
+  hub (Q26/Q28/Q28Scoped/QRelationsCoreForm).
+- **Garde-rail STRUCTUREL** (scan AST, remplace l'angle mort de la whitelist) : toute constante
+  `Q…` lisant `match_participants`/`mv_player_matches` avec `xuid = ?` DOIT porter le token, sauf
+  allowlist justifiée. **Il a immédiatement révélé 15 lecteurs de plus** → fuite systémique, pas
+  seulement la liste.
+- **Balayage complet** (décision user « corriger tout maintenant ») : 10 fixes supplémentaires —
+  Q10 (rencontres carrière), Q19 (matchs communs), Q23/Q23b (encounters détail-match, agrègent
+  l'historique), Q29Heatmap/Q30Rival (moments Relations), Q29TopTeammates/Q30SquadShared/Q31/Q42
+  (Escouade). Nouveau résolveur `resolveCampaignExclusionByMatchID` (forme sous-requête by-match-id,
+  ZÉRO placeholder → sûr à injecter AVANT `fmt.Sprintf` dans les templates multi-CTE, ne décale
+  aucun args positionnel — clé de la non-régression sur les requêtes relations/squad complexes).
+- **Exempts (allowlist justifiée)** : mono-match Q17/Q17b/Q26 ; filtrés au call site Q25Template
+  (excludeCampaignClause dans /*EXTRA_WHERE*/) et QRelationsPlayerWinRate ; sur-lecture inoffensive
+  Q25MatchParticipants (joint en Go au set Q23 déjà propre) ; **code mort Q30SquadMatches** (aucun
+  call site actif — remplacé par le split Q30SquadMatchesSharedQuery ; découverte notée, suppression
+  hors périmètre).
+
+**Résultats observés** : `go build ./...` + `go vet` exit 0 ; suite `duckdb` complète (cgo, tests
+DB réelle relations/squad/career) verte, 0 échec ; garde-rail structurel + whitelist verts ;
+comportemental `TestCampaignExclusion_FiltersCampaignMatch` (tag integration) vert, étendu au
+résolveur by-match-id ; `make go-api-test` (domain/analysis/timeline/contracttest) vert.
+
+**Conclusion / prochaine étape** : commit 2 prêt. Reste (hors périmètre, noté) : supprimer le code
+mort `Q30SquadMatches`. Le garde-rail structurel empêche désormais tout nouveau lecteur per-player
+de fuiter la campagne silencieusement.

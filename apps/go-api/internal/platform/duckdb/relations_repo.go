@@ -69,9 +69,13 @@ func (r *CareerRepo) GetRelations(ctx context.Context, scope []string) ([]domain
 // Retourne ("", nil) si le scope est non-nil et vide (aucun match en périmètre).
 func (r *CareerRepo) buildRelationsQuery(scope []string, winExpr, lossExpr string, cutoff time.Time) (string, []any) {
 	x := r.pdb.XUID
+	// Masquage Campagne (Halo 5) : my_history ne joint pas match_registry → forme
+	// sous-requête by-match-id (sans placeholder, résolue AVANT Sprintf, ne décale
+	// donc aucun args positionnel). No-op Infinite. Item backlog H1.
 	if scope == nil {
 		// Phase 1 : aucun filtre. 9 placeholders : xuid + 2 cutoff (fenêtre récente).
-		sqlText := fmt.Sprintf(Q28RelationsTpl, winExpr, lossExpr, winExpr, lossExpr)
+		tpl := resolveCampaignExclusionByMatchID(Q28RelationsTpl, r.pdb.TitleSlug, "match_id")
+		sqlText := fmt.Sprintf(tpl, winExpr, lossExpr, winExpr, lossExpr)
 		return sqlText, []any{x, x, cutoff, cutoff, x, x, x, x, x}
 	}
 	if len(scope) == 0 {
@@ -80,7 +84,8 @@ func (r *CareerRepo) buildRelationsQuery(scope []string, winExpr, lossExpr strin
 	// Scope non-vide : deux clauses IN (my_history + kv_stats).
 	inClause := " AND match_id IN (" + Placeholders(len(scope)) + ")"
 	kvInClause := " AND kv.match_id IN (" + Placeholders(len(scope)) + ")"
-	sqlText := fmt.Sprintf(Q28RelationsScopedTpl,
+	tpl := resolveCampaignExclusionByMatchID(Q28RelationsScopedTpl, r.pdb.TitleSlug, "match_id")
+	sqlText := fmt.Sprintf(tpl,
 		inClause, winExpr, lossExpr, winExpr, lossExpr, kvInClause)
 
 	args := make([]any, 0, 9+2*len(scope))

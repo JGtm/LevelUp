@@ -94,7 +94,10 @@ func (r *MatchViewRepo) GetMatchEncounters(ctx context.Context, matchID, myXUID 
 	}
 	defer release()
 
-	rows, err := sharedDB.QueryContext(ctx, Q23MatchEncounters,
+	// Masquage Campagne (Halo 5) : count_together agrège l'historique du joueur
+	// (me.xuid) → forme by-match-id sur me.match_id. No-op Infinite. Item backlog H1.
+	q := resolveCampaignExclusionByMatchID(Q23MatchEncounters, r.pdb.TitleSlug, "me.match_id")
+	rows, err := sharedDB.QueryContext(ctx, q,
 		matchID, myXUID, // this_match WHERE
 		matchID, myXUID, // my_team WHERE
 		myXUID, // me.xuid = ?
@@ -138,7 +141,10 @@ func (r *MatchViewRepo) GetMatchEncounterStats(ctx context.Context, matchID, myX
 	// Halo). Ordre des %s du template : win, loss, win, loss.
 	winExpr := outcomeSQLEq(ctx, "eh.me_outcome", canonical.OutcomeWin, "eh.me_outcome = 2")
 	lossExpr := outcomeSQLEq(ctx, "eh.me_outcome", canonical.OutcomeLoss, "eh.me_outcome = 3")
-	encounterStatsSQL := fmt.Sprintf(Q23bMatchEncounterStats, winExpr, lossExpr, winExpr, lossExpr)
+	// Masquage Campagne (Halo 5) : my_history agrège tout l'historique du joueur
+	// → forme by-match-id (résolue AVANT Sprintf, sans placeholder). No-op Infinite.
+	tpl := resolveCampaignExclusionByMatchID(Q23bMatchEncounterStats, r.pdb.TitleSlug, "match_id")
+	encounterStatsSQL := fmt.Sprintf(tpl, winExpr, lossExpr, winExpr, lossExpr)
 	rows, err := sharedDB.QueryContext(ctx, encounterStatsSQL,
 		matchID, myXUID, // this_match
 		matchID, myXUID, // my_team

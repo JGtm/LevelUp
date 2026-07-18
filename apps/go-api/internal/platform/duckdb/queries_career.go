@@ -27,11 +27,14 @@ SELECT
     r.playlist_name                                    AS playlist_name_en
 FROM v_match_full r
 JOIN match_participants p ON r.match_id = p.match_id
-WHERE p.xuid = ?
+WHERE p.xuid = ?` + campaignExclusionToken + `
 ORDER BY start_time DESC`
 
 // Q4MVSharedMatchesForFilters : variante du split avec mv_player_matches.
 // Paramètre : ? = xuid.
+//
+// Le token campagne est résolu avec l'alias "mv_player_matches" (la vue expose
+// game_variant_id sans alias de table dans le FROM) — cf. LoadMatchesForFilters.
 var Q4MVSharedMatchesForFilters = `
 SELECT
     match_id,
@@ -46,7 +49,7 @@ SELECT
     COALESCE(is_ranked, FALSE)                     AS is_ranked,
     playlist_name                                  AS playlist_name_en
 FROM mv_player_matches
-WHERE xuid = ?
+WHERE xuid = ?` + campaignExclusionToken + `
 ORDER BY start_time DESC`
 
 // Q5SharedHistory : (ADR 0016) — partie shared du split LoadAll
@@ -92,7 +95,7 @@ SELECT
     r.game_variant_name
 FROM v_match_full r
 JOIN match_participants p ON r.match_id = p.match_id
-WHERE p.xuid = ?
+WHERE p.xuid = ?` + campaignExclusionToken + `
 ORDER BY start_time DESC`
 
 // Q5PlayerSkillRankHistoryTpl : étape 2b — match_skill_rank pour les match_ids.
