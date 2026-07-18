@@ -362,6 +362,26 @@ func (s *service) JoinSquadChallenge(ctx context.Context, challengeID, userID st
 		return fmt.Errorf("%w: chosen_tier invalide", ErrInvalidInput)
 	}
 
+	// Garde d'appartenance objet-level (BOLA) : on ne rejoint QUE le défi d'une
+	// escouade dont userID est membre-user. Les défis d'escouade vivent dans une DB
+	// partagée (non isolés par player DB) → sans cette garde, un utilisateur
+	// (actor-gardé sur son propre user_id via le handler) pourrait rejoindre le défi
+	// de N'IMPORTE quelle escouade via un challenge_id arbitraire. Même contrôle que
+	// les mutations squad (assertMemberUser).
+	sc, err := s.deps.SquadChallenges.Get(ctx, challengeID)
+	if err != nil {
+		// Sans le squad_id du défi, la vérification d'appartenance est impossible.
+		// On LOGGE la cause (règle 10 : jamais d'erreur avalée) puis on refuse —
+		// challenge_id inexistant OU lecture KO. Le module `prestige` est auto-détecté
+		// (logs/prestige.log).
+		slog.WarnContext(ctx, "prestige: squad challenge lookup failed on join",
+			"err", err, "squad_challenge_id", challengeID, "user_id", userID)
+		return fmt.Errorf("%w: défi d'escouade introuvable", ErrInvalidInput)
+	}
+	if err := s.assertMemberUser(ctx, sc.SquadID, userID); err != nil {
+		return err
+	}
+
 	now := s.deps.Now()
 	p := SquadChallengeParticipant{
 		SquadChallengeID: challengeID,

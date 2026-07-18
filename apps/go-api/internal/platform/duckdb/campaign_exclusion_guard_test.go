@@ -76,7 +76,6 @@ func TestCampaignExclusionStructuralCoverage(t *testing.T) {
 		"Q17PlayerMatchStats": "requête MONO-MATCH (WHERE match_id = ? AND xuid = ?) : aucune agrégation d'historique → la Campagne ne peut pas polluer un affichage de liste.",
 		"Q17bIsParticipant":   "check de participation à UN match (EXISTS WHERE match_id = ? AND xuid = ?) — pas de listing ni d'agrégat.",
 		"Q26MatchExpectedStats": "requête MONO-MATCH (WHERE match_id = ? AND xuid = ?) — pas d'agrégation d'historique.",
-		"Q30SquadMatches": "CODE MORT : aucun call site actif (seule réf = un commentaire) ; le chemin vivant est le split Q30SquadMatchesSharedQuery (filtré). À supprimer hors périmètre de ce fix.",
 	}
 	isPerPlayerMatchReader := func(text string) bool {
 		hasSource := strings.Contains(text, "match_participants") || strings.Contains(text, "mv_player_matches")

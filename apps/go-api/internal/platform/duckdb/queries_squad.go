@@ -52,57 +52,8 @@ GROUP BY p2.xuid, vg.gamertag
 ORDER BY games_together DESC
 LIMIT 50`
 
-// Q30 : Squad — matchs communs entre le joueur et un coéquipier spécifique.
-// Paramètres : ?1 = xuid coéquipier (p2), ?2 = xuid joueur principal (p1).
-var Q30SquadMatches = `
-SELECT
-    p1.match_id,
-    ` + StartTimeCanonicalSQL("r") + ` AS start_time,
-    COALESCE(r.map_name, '')                                     AS map_name,
-    COALESCE(r.map_name_fr, r.map_name, '')                      AS map_ui,
-    COALESCE(r.pair_name, '')                                    AS pair_name,
-    COALESCE(r.playlist_name_fr, r.playlist_name, '')            AS playlist_name,
-    COALESCE(r.is_firefight, FALSE)                              AS is_firefight,
-    COALESCE(r.is_ranked, FALSE)                                 AS is_ranked,
-    COALESCE(p1.outcome, 0)                                      AS outcome,
-    COALESCE(p1.kills, 0)                                        AS kills,
-    COALESCE(p1.deaths, 0)                                       AS deaths,
-    COALESCE(p1.assists, 0)                                      AS assists,
-    p1.kda,
-    p1.accuracy,
-    COALESCE(p1.time_played_seconds, 0)                          AS time_played_seconds,
-    COALESCE(r.duration_seconds, 0)                              AS duration_seconds,
-    COALESCE(p1.team_mmr, 0.0)                                   AS team_mmr,
-    pme.session_id,
-    pme.session_label,
-    pme.performance_score,
-    COALESCE(pme.is_with_friends, FALSE)                         AS is_with_friends,
-    COALESCE(p1.headshot_kills, 0)                               AS headshot_kills,
-    -- perfect_kills n'est pas une colonne de shared.match_participants ;
-    -- on l'agrège depuis shared.medals_earned. Le set « frag parfait » est résolu
-    -- au runtime via le token /*__PERFECT_KILL_IN__*/ (perfectKillMedalInClause ;
-    -- HINF = {1512363953}), même source unique que Q12MatchScoreboard.
-    COALESCE((
-        SELECT SUM(me.count)
-        FROM shared.medals_earned me
-        WHERE me.match_id = p1.match_id
-          AND me.xuid = p1.xuid
-          AND /*__PERFECT_KILL_IN__*/
-    ), 0)::INTEGER                                              AS perfect_kills,
-    p1.enemy_mmr,
-    CASE WHEN p1.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
-    CASE WHEN p1.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score,
-    COALESCE(r.map_id, '')                                               AS map_id,
-    COALESCE(r.playlist_id, '')                                          AS playlist_id
-FROM shared.match_participants p1
-JOIN shared.v_match_full r ON r.match_id = p1.match_id
-JOIN shared.match_participants p2
-    ON p2.match_id = p1.match_id
-    AND p2.team_id  = p1.team_id
-    AND p2.xuid     = ?
-LEFT JOIN player_match_enrichment_latest pme ON pme.match_id = p1.match_id
-WHERE p1.xuid = ?
-ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC`
+// (Q30SquadMatches supprimée le 2026-07-18 — code mort : aucun call site actif,
+//  le chemin vivant est le split Q30SquadMatchesSharedQuery ci-dessous.)
 
 // Q30SquadMatchesSharedQuery : (ADR 0016) — partie shared du split
 // LoadSquadMatches. Toutes les tables au niveau root (catalogue

@@ -8723,3 +8723,32 @@ résolveur by-match-id ; `make go-api-test` (domain/analysis/timeline/contractte
 **Conclusion / prochaine étape** : commit 2 prêt. Reste (hors périmètre, noté) : supprimer le code
 mort `Q30SquadMatches`. Le garde-rail structurel empêche désormais tout nouveau lecteur per-player
 de fuiter la campagne silencieusement.
+
+---
+
+## [2026-07-18] Traitement des 2 découvertes hors-périmètre (JoinSquadChallenge BOLA + Q30 code mort) — Complété
+
+**Statut** : Complété (à la demande user, dans la même session ; branche
+`fix/backlog-bola-et-campagne`). Les 2 découvertes notées aux commits 1/2 sont traitées.
+
+**1. `JoinSquadChallenge` — garde d'appartenance objet-level (BOLA-write)** : `POST
+/squad-challenges/{id}/join` ajoutait le participant SANS vérifier que l'utilisateur est
+membre-user de l'escouade du défi (l'actor guard du handler ne couvre que l'acteur, pas
+l'objet). Un utilisateur pouvait rejoindre le défi de n'importe quelle escouade via un
+challenge_id arbitraire. Fix (`internal/prestige/service_arcs_squads.go`) : `Get(challengeID)`
+→ `assertMemberUser(sc.SquadID, userID)` avant `AddParticipant` — même garde que
+`ListSquadChallenges` et les mutations squad. Test `TestService_JoinSquadChallenge_RejectsNonMember`
++ mise à jour du test existant (setup défi + membres). Signature inchangée (garde interne au
+service) → aucun impact lazy/handler/mock.
+
+**2. `Q30SquadMatches` — suppression du code mort** : var supprimée (aucun call site actif — le
+chemin vivant est le split `Q30SquadMatchesSharedQuery`, filtré) ; réf commentaire mise à jour
+(`internal/service/teammates/...`) ; entrée d'allowlist retirée du garde-rail campagne (règle 7 :
+0 code mort).
+
+**Résultats observés** : `go build ./...` exit 0 ; `go vet` OK ; prestige + duckdb + api +
+service/teammates verts ; garde-rail campagne (structural + whitelist) vert sans l'allowlist
+Q30. 
+
+**Conclusion** : les 2 items « hors périmètre » sont soldés. Reste au superviseur : relecture +
+décision de push (déploiement).
