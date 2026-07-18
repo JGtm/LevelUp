@@ -302,6 +302,37 @@ func persistWeaponKills(ctx context.Context, tx *sql.Tx, rows []WeaponKillInsert
 	return nil
 }
 
+// PersistWeaponKillsNewGeneration insère `rows` (tous les weapon_kills re-dérivés d'un
+// match) en UNE nouvelle génération, INSERT-only, dans une transaction dédiée. Réutilise
+// persistWeaponKills (allocation nextval('weapon_kills_generation_seq') + INSERT porteur
+// de kill_kind) : la vue v_weapon_kills ne lit que la génération MAX par (match_id, xuid),
+// donc cette nouvelle génération SUPERSÈDE l'ancienne SANS aucun DELETE/UPDATE — ART-safe
+// (ADR 0026/0030).
+//
+// CONTRAT ANTI-PERTE (critique) : le caller DOIT fournir TOUS les kills du (ou des)
+// couple(s) (match_id, xuid) concerné(s), jamais un sous-ensemble. Une génération
+// incomplète supplanterait l'ancienne complète dans la vue = perte de kills. Utilisé par
+// le backfill kill_kind de l'historique H5 (re-dérive weapon_kills complet d'un match).
+// `db` doit tenir le write-lease exclusif (serveur arrêté ou dblease). rows vide => no-op
+// (aucune génération allouée).
+func PersistWeaponKillsNewGeneration(ctx context.Context, db txBeginner, rows []WeaponKillInsert) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("persist: weapon_kills new gen: BeginTx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }() // no-op si Commit réussit
+	if err := persistWeaponKills(ctx, tx, rows); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("persist: weapon_kills new gen: commit: %w", err)
+	}
+	return nil
+}
+
 func persistWeaponAccuracy(ctx context.Context, tx *sql.Tx, rows []WeaponAccuracyInsert) error {
 	if len(rows) == 0 {
 		return nil
