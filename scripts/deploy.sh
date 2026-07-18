@@ -65,53 +65,9 @@ echo "[deploy] Stubs demo OK"
 echo "[deploy] docker compose down..."
 docker compose down --remove-orphans || true
 
-# 2c. Démarrer les services. Chemin nominal : PULL de l'image pré-buildée en CI
-# (GHCR, job build-image de deploy.yml) ; l'image est identique pour prod et démo
-# (même Dockerfile, aucun build-arg divergent) → on la tague sous les deux noms
-# compose par défaut puis `up --no-build`. Un apt-get / npm ci / go build cassé est
-# alors attrapé en CI AVANT ce point (au lieu d'échouer ici, en pleine prod).
-#
-# FALLBACK build local = KILL-SWITCH TRANSITOIRE (bascule par défaut 2026-07-17).
-#   Raison d'être : au premier déploiement de ce mécanisme, le VPS n'a pas encore
-#   de login GHCR → `docker pull` d'un package privé échoue ; le build local prend
-#   le relais et la prod reste servie. Idem si GHCR/réseau indisponible.
-#   Retrait cible : 2026-Q4 (après activation du login GHCR côté VPS —
-#   docs/RUNBOOK_GO_LIVE.md § "Activation GHCR pull").
-#   Critère mesurable de retrait : sur ≥ 4 déploiements consécutifs, la ligne
-#   "[deploy] Pull GHCR échoué" n'apparaît PLUS dans les logs de deploy
-#   (grep sur data/logs/healthcheck_deploy.log + sortie CI) → le pull est fiable,
-#   le fallback devient du code mort et se supprime (avec ce bloc de commentaire).
-_project="$(basename "$DEPLOY_DIR")"   # nom de projet compose (→ images "<projet>-<service>")
-_image_pulled=false
-if [[ -n "${LEVELUP_IMAGE:-}" ]]; then
-    echo "[deploy] Image CI demandée : ${LEVELUP_IMAGE} — tentative docker pull..."
-    if docker pull "${LEVELUP_IMAGE}"; then
-        # Tague l'image GHCR sous les noms compose par défaut (prod + démo) : les
-        # commandes `docker compose` ultérieures (dont le job deploy-demo) la
-        # retrouvent sans rebuild.
-        docker tag "${LEVELUP_IMAGE}" "${_project}-levelup:latest"
-        docker tag "${LEVELUP_IMAGE}" "${_project}-levelup-demo:latest"
-        _image_pulled=true
-        echo "[deploy] Pull GHCR OK — démarrage sans build local"
-    else
-        echo "[deploy] Pull GHCR échoué (login absent / réseau / image privée) — fallback build local"
-    fi
-else
-    echo "[deploy] LEVELUP_IMAGE absent — build local (comportement historique / fallback)"
-fi
-
-if [[ "${_image_pulled}" == true ]]; then
-    # Belt-and-suspenders : si `up --no-build` échoue malgré le tag (nom d'image
-    # imprévu), on retombe sur le build local plutôt que de laisser la prod down.
-    echo "[deploy] docker compose up --no-build (image GHCR)..."
-    if ! docker compose up -d --no-build; then
-        echo "[deploy] WARN up --no-build a échoué — fallback build local"
-        docker compose up -d --build
-    fi
-else
-    echo "[deploy] docker compose up --build (build local)..."
-    docker compose up -d --build
-fi
+# 2c. Rebuilder et redémarrer les services (Dockerfile = build Vite + Go CGo/DuckDB)
+echo "[deploy] docker compose up --build..."
+docker compose up -d --build
 
 # 3. Nettoyer les images orphelines
 echo "[deploy] Nettoyage des images obsolètes..."
