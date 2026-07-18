@@ -99,25 +99,6 @@ aucun disponible aujourd'hui). Runbook backup à écrire au moment de l'activati
 
 ---
 
-### [data/csr] Densité du CSR des adversaires — ce qui rend le lot G visible (surtout hors dev)
-
-> Corrigé le 2026-07-17 (investigation code + mesure sur données réelles). **La justification
-> initiale d'abandon du lot G était FAUSSE** : le pipeline collecte ET persiste DÉJÀ le CSR de
-> TOUS les participants des matchs CLASSÉS (`ExtractAllSharedCSRRows` → `shared.match_csrs`,
-> lecture via `match_csrs_latest`). Le lot G est désormais LIVRÉ en dégradation gracieuse
-> (commit `8570af76a`). Ce qui limite sa visibilité n'est pas un défaut de collecte mais :
-> (1) **structurel** — le CSR n'existe qu'en classé, or une bête noire (adversaire affronté
-> 8+ fois) est presque toujours un adversaire SOCIAL (matchmaking classé = adversaires
-> différents à chaque fois) ; (2) **densité** — la base de dev est à 1,8 % de classé
-> (34/1841 matchs), d'où 0 rival couvert aujourd'hui. Le point (2) se corrige naturellement
-> à la sync chez un joueur compétitif ; l'outil de rattrapage historique existe déjà
-> (`--shared-csr`, `BackfillSharedCSRsFromAPI`). **Aucune action requise** : la carte
-> s'affichera d'elle-même chez les joueurs à forte proportion de classé. À rouvrir seulement
-> si on veut densifier proactivement (backfill massif) — non prioritaire. Mesure détaillée :
-> `.ai/V7/` (thought_log 2026-07-17).
-
----
-
 ### [dette/mineure] Reliquats relevés par le train 2026-07-17 (à grouper dans un prochain lot d'entretien)
 
 - CLI `duckdb` absent de l'environnement de dev Windows — les exemples ad hoc de
