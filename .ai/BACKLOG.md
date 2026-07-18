@@ -10,24 +10,21 @@
 
 ---
 
-### [prod/backup] Trancher la redondance backup : systemd hôte (canonique) vs scheduler in-app
+### [prod/backup] Retirer le scheduler backup in-app (redondant avec le backup systemd hôte)
 
-> Noté le 2026-07-17 (train backlog, audit VPS lecture seule). Le constat antérieur
-> (« restic absent de l'hôte ») était FAUX : un backup restic niveau hôte via systemd
-> tourne quotidiennement depuis 2026-06-19 et il est SAIN (repo chiffré
-> `/opt/levelup/restic-repo`, 9 snapshots, couvre `data/titles` + `data/auth` + config,
-> arrêt bref du conteneur pour cohérence DuckDB). Le WARN au boot vient du scheduler Go
-> in-app qui cherche restic DANS le conteneur (absent) — et ce scheduler serait de toute
-> façon redondant, non chiffré (`--insecure-no-password` forcé par `toPkgConfig`) et sur
-> le même disque.
+> Noté le 2026-07-17, DÉCISION 2026-07-18. Le backup restic **canonique** tourne au niveau
+> **hôte VPS** (timer systemd, quotidien depuis 2026-06-19, repo CHIFFRÉ `/opt/levelup/restic-repo`,
+> couvre `data/titles` + `data/auth` + config). Le scheduler backup **in-app** (Go) est
+> **redondant et inférieur** : il ferait un 2ᵉ backup des mêmes données, **non chiffré**
+> (`--insecure-no-password` forcé par `toPkgConfig`), **sur le même disque** (inutile si le
+> disque lâche) ; il cherche restic dans le conteneur (absent) et loggue un WARN au boot.
 
-**À faire** : (a) recommandé — acter le backup systemd hôte comme canonique et éteindre
-le WARN in-app (`backup_enabled: false` dans `app_settings.json` prod, une ligne) ;
-(b) alternative — migrer vers le scheduler in-app (exige de câbler
-`ResticPassword`/`ResticPwdFile` ignorés aujourd'hui, régression chiffrement sinon).
-**Étape future** : réplication off-site du dépôt restic (identifiants cloud/SFTP requis —
-aucun disponible aujourd'hui). Runbook backup à écrire au moment de l'activation off-site.
-**Effort** : (a) = 1 ligne de config prod ; off-site = chantier dédié (secrets).
+**DÉCISION (user 2026-07-18)** : **retirer le code du scheduler backup in-app** (le backup
+hôte reste la source unique). La suppression éteint le WARN **par construction** (0 code mort —
+règle 7). Périmètre : débrancher/supprimer `internal/ops/backup_service.go` + `pkg/duckdbbackup`
+et le câblage au boot + le flag `backup_enabled` + les tests associés (vérifier les callers avant).
+**Étape future distincte** : réplication off-site du dépôt restic hôte (identifiants cloud/SFTP
+requis — aucun aujourd'hui). **Effort** : petit-moyen (suppression + tests).
 
 ---
 
@@ -96,19 +93,6 @@ aucun disponible aujourd'hui). Runbook backup à écrire au moment de l'activati
 > (fragment SQL partagé ou vue de base excluant la campagne, par lequel tous les lecteurs H5
 > passent), **PAS** de suppression en BDD (non destructif, donnée coûteuse à re-fetch, garde
 > l'optionalité PvE). Exécution : quand on y revient (pas dans le train en cours).
-
----
-
-### [dette/mineure] Reliquats relevés par le train 2026-07-17 (à grouper dans un prochain lot d'entretien)
-
-- CLI `duckdb` absent de l'environnement de dev Windows — les exemples ad hoc de
-  CLAUDE.md le supposent présent (contournement utilisé : sonde Go jetable read-only sur copie).
-- `release.yml` (tags `v*`) ne pousse pas l'image Docker sur GHCR (seulement les binaires) —
-  évolution possible (pas une dette bloquante).
-
-> Les autres reliquats du train (doc inversée `notifications/types.go`, schéma OpenAPI
-> orphelin `BattlePassResponse`, duplication `SUBTIER_ROMAN`) ont été RÉGLÉS le 2026-07-17
-> (commits `d48da5912`, `556991069`, `6bb186e9b`, `3c975bde3`) — cf. « Récemment complété ».
 
 ---
 
@@ -181,21 +165,15 @@ Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Syn
 > (recommandations, validation manuelle), et canal externe Discord webhook (opt-in, OFF
 > par défaut). Voir « Récemment complété ».
 
-**Ordre de priorisation suggéré (coach/prestige V3)** — voir [.ai/PLAN_COACH_V3_GENERATION.md](.ai/PLAN_COACH_V3_GENERATION.md) :
+**Chantiers suivis dans des plans dédiés** (retirés du backlog actif — les plans font foi) :
+- **Coach V3 génération** — 3 phases (squad coach / négatif soft / ton), validées le 2026-07-18 :
+  [.ai/V7/PLAN_COACH_V3_GENERATION.md](.ai/V7/PLAN_COACH_V3_GENERATION.md).
+- **Arcs multi-titres** — indépendance stricte par titre, Option A (retrait `arc_titles`)
+  confirmée le 2026-07-18 : [.ai/PLAN_CROSS_TITLE_ARCS_2026-07.md](.ai/PLAN_CROSS_TITLE_ARCS_2026-07.md).
 
-1. Phase A — Coach négatif soft (backend testable vite ; front gaté sur mini-spec UX)
-2. Phase B — Coach tone (mutualisable i18n avec Phase A)
-3. Phase C — Squad coach (la plus lourde : coach + coach_advisor + prestige + front squad)
-4. **Arcs multi-titres — INDÉPENDANCE STRICTE par jeu** (décision user 2026-07-18) : chaque titre
-   a ses propres arcs/valeurs, AUCUN objectif partagé ni agrégation cross-titre. Plan actif :
-   [.ai/PLAN_CROSS_TITLE_ARCS_2026-07.md](.ai/PLAN_CROSS_TITLE_ARCS_2026-07.md) — **inverse** la
-   brique `arc_titles` many-to-many livrée le 2026-06-18 (recommande son retrait). Coach V3 :
-   les 3 phases (C squad / A négatif soft / B ton) sont **validées** (user 2026-07-18) — voir
-   [.ai/V7/PLAN_COACH_V3_GENERATION.md](.ai/V7/PLAN_COACH_V3_GENERATION.md), à ouvrir phase par phase.
-5. Enrichissements possibles post-train : funnel `coach_proposal.status` dans l'analyseur
-   de tuning (taux d'acceptation amont), overlay Discord par titre
-   (`LoadNotifyConfigForTitle`), exposition de la liste des catégories forwardées via
-   settings.
+Enrichissements possibles (non planifiés) : funnel `coach_proposal.status` dans l'analyseur de
+tuning, overlay Discord par titre (`LoadNotifyConfigForTitle`), exposition des catégories
+forwardées via settings.
 
 ---
 
