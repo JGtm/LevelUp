@@ -13,6 +13,7 @@
  * jamais de placeholder vide ni de NaN). Tokens sémantiques uniquement.
  */
 import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { Tooltip } from '@/components/ui/tooltip'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import { kdaNetColor, winRateColor } from '@/lib/colors/outcomePalette'
@@ -167,9 +168,12 @@ function DimensionRow({
   const dw = entry.delta_win_rate
   return (
     <li className="flex items-center gap-2 text-xs">
-      <span className="min-w-0 flex-1 truncate text-foreground" title={entry.label}>
-        {entry.label}
-      </span>
+      {/* Label tronqué : Tooltip stylé (portal, hover immédiat) sur le label complet.
+          Le wrapper porte min-w-0 flex-1 (place flex) ; le span interne garde truncate
+          w-full pour l'ellipsis. */}
+      <Tooltip content={entry.label} className="min-w-0 flex-1">
+        <span className="w-full truncate text-foreground">{entry.label}</span>
+      </Tooltip>
       {/* DP-10 : nombre seul ; le libellé « X matchs » reste accessible au survol (title). */}
       <span
         className="shrink-0 tabular-nums text-muted-foreground"
@@ -241,9 +245,12 @@ function ContextSplitRow({
 }) {
   return (
     <li className="flex items-center gap-2 text-xs">
-      <span className="min-w-0 flex-1 truncate text-foreground" title={label}>
-        {label}
-      </span>
+      {/* Label tronqué : Tooltip stylé (portal, hover immédiat) sur le label complet.
+          Le wrapper porte min-w-0 flex-1 (place flex) ; le span interne garde truncate
+          w-full pour l'ellipsis. */}
+      <Tooltip content={label} className="min-w-0 flex-1">
+        <span className="w-full truncate text-foreground">{label}</span>
+      </Tooltip>
       {/* DP-10 : nombre seul ; le libellé « X matchs » reste accessible au survol (title). */}
       <span
         className="shrink-0 tabular-nums text-muted-foreground"

@@ -33,6 +33,12 @@ export interface SaisonPillProps {
   /** Optionnel : remettre la période à zéro (vide setPeriod). Utilisé par le
    *  bouton "Toutes saisons" en haut du popover. */
   onClear?: () => void
+  /** Taille de police du trigger. `true` (DÉFAUT) = text-xs compact + font-medium,
+   *  comportement historique PRÉSERVÉ pour FilterOmnibar / SynthesisPage / SquadLayout /
+   *  useLocalFilterBar (barres de pills denses). `false` = text-sm poids normal, pour
+   *  s'aligner sur les autres filtres de l'Explorer (inputs date/ID, select) en text-sm.
+   *  Miroir du pattern `dense` de MultiSelectFilter. */
+  dense?: boolean
 }
 
 export function SaisonPill({
@@ -44,6 +50,7 @@ export function SaisonPill({
   seasonCounts,
   onSelectSeason,
   onClear,
+  dense = true,
 }: SaisonPillProps) {
   const ref = useDismissable(open, onClose)
   const locale = useAppShellStore((s) => s.locale)
@@ -82,7 +89,7 @@ export function SaisonPill({
         aria-haspopup="dialog"
         aria-expanded={open}
         className={[
-          'flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
+          `flex items-center gap-1.5 rounded-md border px-2.5 py-1 ${dense ? 'text-xs font-medium' : 'text-sm'} transition-colors`,
           activeSeason
             ? 'border-primary bg-primary/10 text-primary hover:bg-primary/20'
             : 'border-input bg-background text-muted-foreground hover:bg-muted hover:text-foreground',

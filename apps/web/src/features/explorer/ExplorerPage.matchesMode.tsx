@@ -202,6 +202,8 @@ function ExplorerFiltersBar({
               activeSeason={activeSeason}
               onSelectSeason={onSelectSeason}
               onClear={onClearPeriod}
+              // Aligne la police sur les autres filtres de la barre Explorer (text-sm).
+              dense={false}
             />
           )}
           <input
