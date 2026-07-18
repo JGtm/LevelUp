@@ -8607,3 +8607,20 @@ Sanity node : chaîne body EXACTE matchée (« Or I ») ; « Ordre I », « Scor
 **Conclusion / prochaine étape** : les 3 causes CI de la PR #64 (goconst,
 baseline, E2E carrière round 2) sont traitées dans le working tree ;
 commits/push/re-CI côté superviseur.
+
+---
+
+## [2026-07-18] Retrait du pipeline GHCR (décision user) — Complété
+
+**Statut** : Complété. Le pipeline « build image en CI + push GHCR + pull au deploy »
+(livré 2026-07-17, commit 7bb6a4257) est RETIRÉ sur décision utilisateur (pas d'intérêt
+perçu vs le build local). Retour au comportement d'origine : le VPS reconstruit l'image
+au deploy (`docker compose up --build`).
+
+**Décision technique** : `deploy.yml` et `deploy.sh` restaurés à leur version pré-GHCR
+(7bb6a4257^, aucun commit ultérieur ne les avait touchés) ; `docs/RUNBOOK_GO_LIVE.md`
+(créé par le commit GHCR, GHCR-spécifique) supprimé ; item backlog `[infra/release]`
+retiré. Aucune ref `ghcr`/`LEVELUP_IMAGE`/`build-image` restante ; `bash -n deploy.sh` OK.
+
+**Conclusion** : deploy = build local sur push main (comme avant le train). Aucune action
+VPS requise.
