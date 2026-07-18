@@ -13424,8 +13424,6 @@ components:
               type: string
           is_core:
               type: boolean
-          is_revived:
-              type: boolean
           kills_dealt:
               format: int64
               type: integer
@@ -13466,7 +13464,6 @@ components:
           - last_seen_at
           - category
           - is_core
-          - is_revived
           - badges
       type: object
     RelationRef:
@@ -13521,6 +13518,11 @@ components:
               type: array
           top_nemesis:
               $ref: '#/components/schemas/RelationRef'
+          top_nemesis_recent_form:
+              items:
+                  type: string
+              nullable: true
+              type: array
       required:
           - distinct_players
           - allies_count
@@ -13531,6 +13533,7 @@ components:
           - player_win_rate
           - core_recent_form
           - top_ally_recent_form
+          - top_nemesis_recent_form
       type: object
     RelationsPageResponse:
       additionalProperties: false

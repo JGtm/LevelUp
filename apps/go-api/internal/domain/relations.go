@@ -25,13 +25,6 @@ type RelationRawRow struct {
 	AvgKDAAgainst  *float64 // KDA moyen sur les matchs en ennemi (nil si aucun)
 	FirstSeen      time.Time
 	LastSeen       time.Time
-
-	// Encounters30d : nombre de matchs communs dans la fenêtre récente
-	// (RevivedWindowDays). PrevSeenBeforeWindow : dernière rencontre ANTÉRIEURE à
-	// cette fenêtre (nil si aucune). Alimentent le volet « Quoi de neuf »
-	// (retrouvailles) — décision finale dans analysis/relations.IsRevived.
-	Encounters30d        int
-	PrevSeenBeforeWindow *time.Time
 }
 
 // RelationBadge : badge résolu pour une relation. Style "tinted" (badges
@@ -70,10 +63,9 @@ type RelationInsight struct {
 	FirstSeenAt *string `json:"first_seen_at"`
 	LastSeenAt  *string `json:"last_seen_at"`
 
-	Category  string          `json:"category"`   // "ally" | "enemy" | "mixed"
-	IsCore    bool            `json:"is_core"`    // noyau dur (source unique : analysis/relations.IsCore)
-	IsRevived bool            `json:"is_revived"` // retrouvailles (source unique : analysis/relations.IsRevived)
-	Badges    []RelationBadge `json:"badges"`
+	Category string          `json:"category"` // "ally" | "enemy" | "mixed"
+	IsCore   bool            `json:"is_core"`  // noyau dur (source unique : analysis/relations.IsCore)
+	Badges   []RelationBadge `json:"badges"`
 }
 
 // RelationCSR : snapshot CSR courant (le plus récent) d'une relation classée, lu
@@ -126,6 +118,12 @@ type RelationsOverview struct {
 	// alimente la sparkline de la carte binôme. Vide si pas de binôme / pas de
 	// donnée. Enrichissement additif (best-effort).
 	TopAllyRecentForm []string `json:"top_ally_recent_form"`
+
+	// TopNemesisRecentForm : miroir ennemi de TopAllyRecentForm — issues des N
+	// derniers matchs joués CONTRE la bête noire (top_nemesis, équipe adverse),
+	// ancien→récent. Alimente la sparkline « Derniers matchs » de la carte bête
+	// noire. Vide si pas de bête noire / pas de donnée. Additif (best-effort).
+	TopNemesisRecentForm []string `json:"top_nemesis_recent_form"`
 }
 
 // CoreEngagement : agrégats joueur-centriques de la carte résumé du noyau dur,

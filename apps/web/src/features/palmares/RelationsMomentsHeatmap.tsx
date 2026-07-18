@@ -34,7 +34,13 @@ interface Props {
   height?: number
 }
 
-function buildOption(
+// Cap d'affichage : au plus MAX_HEATMAP_ROWS relations (les plus actives) sur
+// l'axe Y — au-delà, la heatmap devient illisible (choix produit 2026-07-18).
+const MAX_HEATMAP_ROWS = 12
+
+// Exporté pour tester le cap sans monter le React tree (garde-rail des 12 lignes).
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildOption(
   cells: HeatmapBucketCell[],
   bucketLabels: string[],
   legendLabel: string,
@@ -42,19 +48,26 @@ function buildOption(
 ): EChartsCoreOption {
   const tc = getEChartsThemeColors()
 
-  // Ordre Y : relations triées par total décroissant (les plus actives en haut).
+  // Ordre Y : relations triées par total décroissant (les plus actives en haut),
+  // tronquées aux MAX_HEATMAP_ROWS premières.
   const totals = new Map<string, number>()
   for (const c of cells) {
     totals.set(c.xuid, (totals.get(c.xuid) ?? 0) + c.count)
   }
-  const rowOrder = [...totals.entries()].sort((a, b) => b[1] - a[1]).map(([xuid]) => xuid)
+  const rowOrder = [...totals.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, MAX_HEATMAP_ROWS)
+    .map(([xuid]) => xuid)
+  const rowSet = new Set(rowOrder)
   const xuidToGamertag = new Map(cells.map((c) => [c.xuid, c.gamertag]))
   const rowLabels = rowOrder.map((x) => xuidToGamertag.get(x) ?? '')
   const rowIndex = new Map(rowOrder.map((x, i) => [x, i]))
 
+  // lookup + max sur les seules lignes retenues (l'échelle de couleur suit l'affiché).
   const lookup = new Map<string, number>()
   let maxCount = 0
   for (const c of cells) {
+    if (!rowSet.has(c.xuid)) continue
     lookup.set(`${c.xuid}-${c.bucket}`, c.count)
     if (c.count > maxCount) maxCount = c.count
   }
