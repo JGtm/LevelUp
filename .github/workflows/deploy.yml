@@ -10,7 +10,7 @@ jobs:
     name: Pré-validation deploy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v6.0.3
 
       - name: Validation workflows GitHub Actions (actionlint)
         # actionlint : binaire Go natif, validation sémantique GitHub Actions
