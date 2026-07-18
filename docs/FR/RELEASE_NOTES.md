@@ -141,6 +141,8 @@ Refonte majeure. LevelUp quitte Streamlit pour une app **React 19 + Go API** ave
 - **Export CSV** — exportez le tableau de matchs filtré en un clic
 - **Filtres en cascade** — cinq dimensions de filtre dont les options disponibles s'ajustent au fur et à mesure que vous affinez les autres
 - **Matchs par saison** — barres de matchs par saison avec un badge de rang CSR
+- **Briefing de recherche** — un récapitulatif compact au-dessus des résultats : matchs, taux de victoire, FDA et performance (affichés en plus bas · moyen · plus haut), temps total et pics ; répartitions par carte / mode / sélection / contexte ; progression de classement par sélection ; meilleures séries et moments forts — chaque bloc avec un tooltip de légende
+- **Tableau triable & mise en valeur des extrêmes** — cliquez sur l'en-tête d'une colonne numérique pour trier l'ensemble des résultats ; les 10 % meilleures et pires valeurs de chaque colonne clé sont surlignées pour repérer d'un coup d'œil vos meilleurs et pires matchs
 
 **Classé (CSR)**
 - **CSR par match & par playlist** — CSR capturé pour chaque match classé et pour chaque playlist classée active

@@ -141,6 +141,8 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **CSV export** — export the filtered match table in one click
 - **Cascade-aware filters** — five filter dimensions whose available options update as you narrow the others down
 - **Matches by season** — per-season match bars with a CSR rank badge
+- **Search briefing** — a compact recap sits above the results: matches, win rate, FDA and performance (shown as lowest · average · highest), total time and peak stats; per-map / mode / selection / context breakdowns; ranking progression per playlist; best streaks and standout moments — each block with a legend tooltip
+- **Sortable table & extremes highlighting** — click any numeric column header to sort the whole result set; the top and bottom 10% of each key column are highlighted so your best and worst matches stand out at a glance
 
 **Ranked (CSR)**
 - **Per-match & per-playlist CSR** — CSR captured for every ranked match and for each active ranked playlist
