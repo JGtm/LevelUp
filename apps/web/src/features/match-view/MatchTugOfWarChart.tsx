@@ -114,7 +114,7 @@ function resolveXuidMeta(scoreboard: MatchScoreboardRow[] | null | undefined, me
   return meta
 }
 
-/** Tooltip par tranche (axis) : delta signé, X/Y kills, cumuls (remplace DEC-3). */
+/** Résumé de tranche (delta signé, X/Y kills, cumuls) — servi par le tooltip item des barres (remplace DEC-3). */
 function buildBinTooltips(momentum: MomentumBin[], categories: string[], t: MatchViewText): string[] {
   return momentum.map((b, i) => {
     const leader = b.delta > 0 ? t.combatTeamLabel : b.delta < 0 ? t.combatEnemyLabel : null
@@ -131,7 +131,11 @@ function buildBinTooltips(momentum: MomentumBin[], categories: string[], t: Matc
   })
 }
 
-/** Formatter du tooltip axis : ancre sur la barre (dataIndex = catégorie). */
+/**
+ * Formatter item des barres : rend le résumé de la tranche survolée. En trigger
+ * global `'item'` le formatter reçoit un seul param (la barre) ; on garde le
+ * fallback tableau par robustesse. `dataIndex` = index de la tranche.
+ */
 function binTooltipFormatter(binTooltips: string[]) {
   return (params: unknown): string => {
     const arr = Array.isArray(params) ? params : [params]
@@ -180,25 +184,35 @@ function buildWaveSeries(waves: TeamWave[], opts: WaveSeriesOpts): Record<string
     legendHoverLink: false,
     xAxisIndex: axisIndex,
     yAxisIndex: axisIndex,
-    tooltip: { trigger: 'item', formatter: (p: { data?: { _tip?: string } }) => p.data?._tip ?? '' },
+    // Trigger global 'item' : le formatter par-série est honoré (ECharts n'a pas
+    // de `trigger` par-série — ne pas le remettre, cf. W2/MatchTugOfWarChart).
+    tooltip: { formatter: (p: { data?: { _tip?: string } }) => p.data?._tip ?? '' },
     z: 5,
   }))
 }
 
+interface BarSeriesOpts {
+  momentum: MomentumBin[]
+  colorTeam: string
+  colorEnemy: string
+  t: MatchViewText
+  tc: EChartsThemeColors
+  /** Résumés de tranche indexés par bin (tooltip item des barres). */
+  binTooltips: string[]
+}
+
 /** Deux séries bar signées (B1) : positifs team-ally, négatifs team-enemy, opacité DEC-4. */
-function buildBarSeries(
-  momentum: MomentumBin[],
-  colorTeam: string,
-  colorEnemy: string,
-  t: MatchViewText,
-  tc: EChartsThemeColors,
-): Record<string, unknown>[] {
+function buildBarSeries(opts: BarSeriesOpts): Record<string, unknown>[] {
+  const { momentum, colorTeam, colorEnemy, t, tc, binTooltips } = opts
   const datum = (b: MomentumBin, color: string) => ({
     value: b.delta,
     itemStyle: { color: hexToRgba(color, b.trend === 'up' ? OP_STRONG : OP_WEAK) },
   })
   const allyData = momentum.map((b) => (b.delta > 0 ? datum(b, colorTeam) : { value: 0 }))
   const enemyData = momentum.map((b) => (b.delta < 0 ? datum(b, colorEnemy) : { value: 0 }))
+  // Résumé de tranche servi par le tooltip item de CHAQUE barre : une seule des
+  // deux est non nulle par tranche → la barre affichée est toujours survolable.
+  const binTip = { formatter: binTooltipFormatter(binTooltips) }
   const base = { type: 'bar', stack: 'momentum', barCategoryGap: BAR_GAP, xAxisIndex: 0, yAxisIndex: 0 } as const
   return [
     {
@@ -206,6 +220,7 @@ function buildBarSeries(
       name: t.combatTeamLabel,
       data: allyData,
       itemStyle: { color: colorTeam, opacity: OP_STRONG },
+      tooltip: binTip,
       markLine: {
         silent: true,
         symbol: ['none', 'none'],
@@ -214,7 +229,7 @@ function buildBarSeries(
         label: { show: false },
       },
     },
-    { ...base, name: t.combatEnemyLabel, data: enemyData, itemStyle: { color: colorEnemy, opacity: OP_STRONG } },
+    { ...base, name: t.combatEnemyLabel, data: enemyData, itemStyle: { color: colorEnemy, opacity: OP_STRONG }, tooltip: binTip },
   ]
 }
 
@@ -242,7 +257,7 @@ function buildKillFeedSeries(input: KillFeedInput): Record<string, unknown>[] {
   const scatter = (kk: MomentumKill[], y: number, axisIndex: 0 | 1, name: string, color: string) => ({
     type: 'scatter', name, data: kk.map((k) => ({ value: [k.binIdx - 0.5 + k.fracInBin, y], _tip: tip(k) })),
     symbol: 'circle', symbolSize: 7, itemStyle: { color, opacity: 0.7 }, legendHoverLink: false,
-    xAxisIndex: axisIndex, yAxisIndex: axisIndex, tooltip: { trigger: 'item', formatter: scatterFmt }, z: 3,
+    xAxisIndex: axisIndex, yAxisIndex: axisIndex, tooltip: { formatter: scatterFmt }, z: 3,
   })
   return [
     lane(colorTeam, allyLaneY, 0, 'Lane alliée'),
@@ -308,7 +323,12 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, t }: Prop
           { left: 14, right: 14, top: 8, height: '68%', containLabel: false },
           { left: 14, right: 14, top: '78%', height: '10%', containLabel: false },
         ],
-        tooltip: { ...getTooltipBase(tc), trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: binTooltipFormatter(binTooltips) },
+        // Trigger 'item' (et non 'axis') : ECharts n'honore PAS un `trigger`
+        // par-série, donc les tips per-kill / per-vague ne vivent qu'en trigger
+        // global 'item'. Le résumé de tranche est servi par le tooltip item des
+        // barres (buildBarSeries). Le passage à 'axis' (HEAD) avait tué les tips
+        // item des séries kill-feed/vagues (W2, revue 2026-07-17).
+        tooltip: { ...getTooltipBase(tc), trigger: 'item' },
         legend: { ...getLegendBase(tc), bottom: 4, data: [t.combatTeamLabel, t.combatEnemyLabel] },
         xAxis: buildXAxes(categories, tc, bins.length),
         yAxis: [
@@ -316,7 +336,7 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, t }: Prop
           { gridIndex: 1, type: 'value', min: -2, max: 2, show: false, splitLine: { show: false } },
         ],
         series: [
-          ...buildBarSeries(momentum, colorTeam, colorEnemy, t, tc),
+          ...buildBarSeries({ momentum, colorTeam, colorEnemy, t, tc, binTooltips }),
           ...buildKillFeedSeries({ bins, allyKills, enemyKills, colorTeam, colorEnemy, xuidMeta, t, allyLaneY }),
         ],
       }

@@ -25,7 +25,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -35,6 +35,7 @@ import (
 	duckdb "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/analysis/temporal"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 )
 
@@ -49,13 +50,14 @@ func main() {
 
 	target, err := analyzeTitle(ctx, *repoRoot, *title)
 	if err != nil {
-		log.Fatalf("analyse %s: %v", *title, err)
+		slog.ErrorContext(ctx, "engagement-calibrate: analyse du titre échouée", "title", *title, "err", err)
+		os.Exit(1)
 	}
 	var ref titleAnalysis
 	if *title != refSlug {
 		ref, err = analyzeTitle(ctx, *repoRoot, refSlug)
 		if err != nil {
-			log.Printf("avertissement: reference %s indisponible: %v", refSlug, err)
+			slog.WarnContext(ctx, "engagement-calibrate: référence indisponible", "ref", refSlug, "err", err)
 		}
 	}
 
@@ -67,7 +69,8 @@ func main() {
 		outPath = filepath.Join(*repoRoot, ".ai", fmt.Sprintf("ENGAGEMENT_CALIBRATION_%s_%s.md", strings.ToUpper(*title), date))
 	}
 	if err := os.WriteFile(outPath, []byte(report), 0o644); err != nil {
-		log.Fatalf("ecriture rapport %s: %v", outPath, err)
+		slog.ErrorContext(ctx, "engagement-calibrate: écriture du rapport échouée", "path", outPath, "err", err)
+		os.Exit(1)
 	}
 	fmt.Printf("Rapport ecrit: %s\n", outPath)
 	fmt.Print(summaryLine(*title, target))
@@ -79,7 +82,6 @@ type modeAnalysis struct {
 	NSamples     int
 	NRejected    int
 	CoefOverall  float64 // mediane globale pace_joueur/pace_lobby
-	Bins         []temporal.RatioSample
 	BinResult    *temporal.ResponseBinsResult
 	CoefOK       bool
 	IntensityP50 float64
@@ -98,7 +100,10 @@ type titleAnalysis struct {
 func analyzeTitle(ctx context.Context, repoRoot, slug string) (titleAnalysis, error) {
 	ta := titleAnalysis{Slug: slug, Weights: games.EngagementWeightsFor(slug), ByMode: map[string]*modeAnalysis{}}
 
-	glob := filepath.Join(repoRoot, "data", "titles", slug, "players", "*", "stats.duckdb")
+	// CV1 (revue 2026-07) : chemins via PathResolver (jamais de filepath.Join("data",…)
+	// à la main). PlayersRootDir(slug) = data/titles/<slug>/players ; glob par joueur.
+	resolver := title.NewPathResolver(repoRoot)
+	glob := filepath.Join(resolver.PlayersRootDir(slug), "*", "stats.duckdb")
 	dbs, err := filepath.Glob(glob)
 	if err != nil {
 		return ta, fmt.Errorf("glob %s: %w", glob, err)
@@ -111,7 +116,8 @@ func analyzeTitle(ctx context.Context, repoRoot, slug string) (titleAnalysis, er
 	for _, dbPath := range dbs {
 		samples, perr := loadSamplesFromPlayerDB(ctx, dbPath)
 		if perr != nil {
-			log.Printf("  skip %s: %v", filepath.Base(filepath.Dir(dbPath)), perr)
+			slog.WarnContext(ctx, "engagement-calibrate: player DB ignorée",
+				"player", filepath.Base(filepath.Dir(dbPath)), "err", perr)
 			continue
 		}
 		ta.NPlayers++
@@ -121,7 +127,7 @@ func analyzeTitle(ctx context.Context, repoRoot, slug string) (titleAnalysis, er
 	}
 
 	for mode, samples := range byMode {
-		ta.ByMode[mode] = summarizeMode(mode, samples)
+		ta.ByMode[mode] = summarizeMode(ctx, mode, samples)
 	}
 	return ta, nil
 }
@@ -162,7 +168,7 @@ func loadSamplesFromPlayerDB(ctx context.Context, dbPath string) (map[string][]t
 }
 
 // summarizeMode calcule la distribution d'un mode via la logique de serving.
-func summarizeMode(mode string, samples []temporal.RatioSample) *modeAnalysis {
+func summarizeMode(ctx context.Context, mode string, samples []temporal.RatioSample) *modeAnalysis {
 	ma := &modeAnalysis{Mode: mode, NSamples: len(samples)}
 
 	if coef, err := temporal.ComputeEngagementCoefficient(samples); err == nil {
@@ -173,7 +179,7 @@ func summarizeMode(mode string, samples []temporal.RatioSample) *modeAnalysis {
 	if bins, err := temporal.ComputeEngagementResponseBins(samples); err == nil {
 		ma.BinResult = bins
 	} else if !errors.Is(err, temporal.ErrInsufficientBinHistory) {
-		log.Printf("  bins %s: %v", mode, err)
+		slog.WarnContext(ctx, "engagement-calibrate: calcul des bins échoué", "mode", mode, "err", err)
 	}
 
 	// Mediane d'intensite (pace_lobby) informative.
@@ -223,7 +229,7 @@ func renderReport(slug string, ta titleAnalysis, refSlug string, ref titleAnalys
 		ta.Weights.Objective, ta.Weights.Assist, ta.Weights.Death, ta.Weights.Default)
 
 	fmt.Fprintf(&b, "## Verdict automatique (indicatif — non liant)\n\n")
-	b.WriteString(autoVerdict(ta, ref))
+	b.WriteString(autoVerdict(ta))
 	return b.String()
 }
 
@@ -258,9 +264,12 @@ func writeTitleTable(b *strings.Builder, ta titleAnalysis) {
 	}
 }
 
-// autoVerdict emet un jugement indicatif : suffisance des donnees + comparaison
-// grossiere de dispersion vs reference.
-func autoVerdict(ta, ref titleAnalysis) string {
+// autoVerdict emet un jugement indicatif sur la SUFFISANCE des donnees du titre
+// (au moins un mode a un coef global exploitable au-dessus du seuil). N'effectue
+// AUCUNE comparaison a la reference : le candidat de calibration est toujours les
+// poids Infinite (le score etant un percentile intra-personnel), l'arbitrage final
+// reste humain (gate E6).
+func autoVerdict(ta titleAnalysis) string {
 	var b strings.Builder
 	enough := false
 	for _, ma := range ta.ByMode {
@@ -274,7 +283,6 @@ func autoVerdict(ta, ref titleAnalysis) string {
 	fmt.Fprintf(&b, "- Donnees suffisantes : au moins un mode a un coef global exploitable.\n")
 	fmt.Fprintf(&b, "- Candidat = poids de reference Infinite (le score etant percentile intra-personnel).\n")
 	fmt.Fprintf(&b, "- A valider au gate humain (E6) : les scores H5 ont-ils du sens sur des matchs intenses vs calmes ?\n")
-	_ = ref
 	return b.String()
 }
 

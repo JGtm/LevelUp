@@ -128,10 +128,17 @@ func (s *HealthScheduler) RunOnce(ctx context.Context) *DataHealthCheckResult {
 func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	start := time.Now()
 	res := &DataHealthCheckResult{}
-	// Statut unifié des crons (A6/DC-5) : liveness du cycle d'audit (les warnings
-	// data-health sont un RÉSULTAT, pas un échec du cron).
+	// Statut des crons (A6/DC-5, décision D1) : les WARNINGS data-health (UUIDs bruts,
+	// bits menteurs, banner garbage) sont un RÉSULTAT, PAS un échec du cron. En
+	// revanche des SONDES en échec (ProbeErrors > 0 : le cycle n'a pas pu tout mesurer)
+	// = échec avec cause → rapporté à ReportCronRun. Défer sur `res` (renseigné par
+	// auditTitle) pour couvrir les retours anticipés.
 	defer func() {
-		observability.ReportCronRun("data_health", start, nil, time.Since(start).Milliseconds())
+		var cronErr error
+		if res.ProbeErrors > 0 {
+			cronErr = fmt.Errorf("%d sonde(s) data-health en échec", res.ProbeErrors)
+		}
+		observability.ReportCronRun("data_health", start, cronErr, time.Since(start).Milliseconds())
 	}()
 
 	// Chemins via PathResolver (jamais de filepath.Join("data","titles",...) en

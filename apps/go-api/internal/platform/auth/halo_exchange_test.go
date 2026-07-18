@@ -181,6 +181,50 @@ func TestRequestUserToken_RetryTPrefixOn401(t *testing.T) {
 	}
 }
 
+// TestRequestUserToken_DeterministicPrefixFromProvenance (AU4/F12) : quand la
+// provenance est connue en ctx, le préfixe RpsTicket est déterministe — xbox_native
+// tente "t=" EN PREMIER (aucun aller-retour d= gaspillé), azure tente "d=". Le retry
+// reste un filet (testé par _RetryTPrefixOn401 en provenance inconnue).
+func TestRequestUserToken_DeterministicPrefixFromProvenance(t *testing.T) {
+	newServer := func(prefixes *[]string) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			props, _ := body["Properties"].(map[string]any)
+			ticket, _ := props["RpsTicket"].(string)
+			*prefixes = append(*prefixes, ticket[:2])
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]string{"Token": "user_tok"})
+		}))
+	}
+
+	t.Run("xbox_native -> t= d'abord (sans retry)", func(t *testing.T) {
+		var prefixes []string
+		srv := newServer(&prefixes)
+		defer srv.Close()
+		ctx := withTokenClientFamily(context.Background(), TokenFamilyXboxNative)
+		if _, err := requestUserToken(ctx, mockClient(srv.URL), "EwAmsa"); err != nil {
+			t.Fatal(err)
+		}
+		if len(prefixes) != 1 || prefixes[0] != "t=" {
+			t.Errorf("préfixes = %v, want [t=] (déterministe, aucun d= gaspillé)", prefixes)
+		}
+	})
+
+	t.Run("azure -> d= d'abord", func(t *testing.T) {
+		var prefixes []string
+		srv := newServer(&prefixes)
+		defer srv.Close()
+		ctx := withTokenClientFamily(context.Background(), TokenFamilyAzure)
+		if _, err := requestUserToken(ctx, mockClient(srv.URL), "eyJhbGc"); err != nil {
+			t.Fatal(err)
+		}
+		if len(prefixes) != 1 || prefixes[0] != "d=" {
+			t.Errorf("préfixes = %v, want [d=] (déterministe)", prefixes)
+		}
+	})
+}
+
 // TestRequestUserToken_NoRetryOnOtherError : un 429/5xx ne déclenche PAS le
 // retry de famille (seul un 401 signale un mauvais préfixe).
 func TestRequestUserToken_NoRetryOnOtherError(t *testing.T) {

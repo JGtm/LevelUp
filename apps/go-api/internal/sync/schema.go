@@ -9,6 +9,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -334,8 +335,50 @@ CREATE TABLE IF NOT EXISTS killer_victim_pairs (
 
 // EnsurePlayerSchema crée les tables player si elles n'existent pas.
 // Idempotent — peut être appelé à chaque ouverture de connexion.
+//
+// C1 (revue 2026-07-17, findings M2/M3) — RÉPARATION PROACTIVE de player_csr_snapshots
+// AVANT playerSchemaSQL : une player DB legacy (backup pré-2026-05-24) porte l'ANCIEN schéma
+// PK(playlist_id, season_id) SANS colonnes id/written_at. playerSchemaSQL crée ensuite l'index
+// idx_pcs_lookup(... written_at) puis la vue player_csr_snapshots_latest (QUALIFY ... written_at,
+// id) : sur l'ancien schéma leur BIND échoue → OpenPlayerDB mort définitivement (aucun step de
+// migration restant ne répare, la conversion ayant été squashée). La réparation par
+// introspection des colonnes (jamais de sentinelle ; conversion CTAS transactionnelle
+// idempotente, ADR 0026) DOIT donc précéder la création de la vue. No-op sur DB vierge ou déjà
+// convertie.
 func EnsurePlayerSchema(ctx context.Context, db *sql.DB) error {
-	return execScript(ctx, db, playerSchemaSQL)
+	if err := migration.EnsurePlayerCSRSnapshotsAppendOnly(db); err != nil {
+		return fmt.Errorf("EnsurePlayerSchema: réparation append-only player_csr_snapshots: %w", err)
+	}
+	if err := execScript(ctx, db, playerSchemaSQL); err != nil {
+		return recoverPlayerSchemaBoot(ctx, db, err)
+	}
+	return nil
+}
+
+// recoverPlayerSchemaBoot — filet convergent (C4, revue 2026-07-17, findings M2/M3) sur un échec
+// de DDL/bind au boot player. Un tel échec ne doit JAMAIS rester un échec permanent SILENCIEUX
+// (avant ce filet, l'erreur remontait telle quelle et re-cassait à chaque boot sans piste). On :
+//  1. journalise la cause EXACTE (slog.ErrorContext : vue ciblée + erreur brute) ;
+//  2. rejoue la réparation append-only idempotente (referme un schéma player_csr_snapshots legacy
+//     résiduel qui aurait échappé au passage proactif) ;
+//  3. rejoue le script UNE fois.
+//
+// Si l'échec PERSISTE après réparation → erreur EXPLICITE exploitable (intervention requise),
+// jamais avalée. Jamais de panic. Sur le chemin nominal (C1 proactif a déjà converti), ce filet
+// n'est pas atteint ; il couvre les échecs de bind RÉSIDUELS/imprévus (défense en profondeur,
+// doctrine convergent sync D3).
+func recoverPlayerSchemaBoot(ctx context.Context, db *sql.DB, cause error) error {
+	slog.ErrorContext(ctx,
+		"EnsurePlayerSchema: DDL/bind player échoué au boot — réparation append-only puis retry",
+		"err", cause, "target", "player", "view", "player_csr_snapshots_latest")
+	if err := migration.EnsurePlayerCSRSnapshotsAppendOnly(db); err != nil {
+		return fmt.Errorf("EnsurePlayerSchema: DDL échoué (%v) ET réparation player_csr_snapshots échouée: %w", cause, err)
+	}
+	if err := execScript(ctx, db, playerSchemaSQL); err != nil {
+		return fmt.Errorf("EnsurePlayerSchema: DDL player échoué au boot même après réparation append-only (schéma irréparable, intervention requise): %w", err)
+	}
+	slog.InfoContext(ctx, "EnsurePlayerSchema: schéma player rétabli après réparation append-only", "target", "player")
+	return nil
 }
 
 // EnsureSharedSchema crée les tables shared + les vues SQL (v_gamertag_lookup,

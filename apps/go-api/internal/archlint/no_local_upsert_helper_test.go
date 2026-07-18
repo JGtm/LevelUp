@@ -29,10 +29,13 @@ import (
 // triplet de paramètres) ne matchent pas et restent hors périmètre.
 var genericUpsertSigRE = regexp.MustCompile(`existsQuery\s+string,\s+existsArgs\s+\[\]any`)
 
-// upsertHelperAllowed : seule la source canonique (duckdb/db.go) porte la signature du
-// helper générique. Plus aucune exception depuis K1j (copie service supprimée).
+// upsertHelperAllowed : la source canonique (duckdb/db.go) porte la signature du
+// helper générique. player_read_handle.go (F13, 2026-07-17) est une DÉLÉGATION pure
+// vers *DB.UpsertNoConflict (aucune logique d'upsert recopiée : forward 1 ligne, comme
+// *DB.UpsertNoConflict délègue à UpsertRowNoConflict) — exemption datée, pas une copie.
 var upsertHelperAllowed = map[string]bool{
-	"internal/platform/duckdb/db.go": true,
+	"internal/platform/duckdb/db.go":                 true,
+	"internal/platform/duckdb/player_read_handle.go": true,
 }
 
 func TestNoLocalGenericUpsertHelper(t *testing.T) {

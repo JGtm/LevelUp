@@ -5,11 +5,8 @@
  * Contenu : outcome sequence + KDA trend + KDA density + avg life + assists +
  * top weapons + KDA trend value + perf session/week/month + map win-rate/perf.
  */
-import {
-  OutcomeSequenceTape,
-  type OutcomePoint,
-  type OutcomeValue,
-} from '@/components/charts/OutcomeSequenceTape'
+import { OutcomeSequenceTape, type OutcomePoint } from '@/components/charts/OutcomeSequenceTape'
+import { outcomeCodeToTapeValue } from '@/lib/outcome'
 import { TimeseriesKdaTrend } from './TimeseriesKdaTrend'
 import { TimeseriesKdaDensity } from './TimeseriesKdaDensity'
 import { TimeseriesTopWeapons } from './TimeseriesTopWeapons'
@@ -26,13 +23,6 @@ import { useCapability } from '@/lib/capabilities/capabilities'
 import type { FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import type { TimeseriesPageResponse } from '@/lib/api/types'
 import type { TimeseriesManifestKey } from '@/lib/i18n/generated/timeseries'
-
-function outcomeNumToValue(n: number | null): OutcomeValue {
-  if (n === 2) return 'win'
-  if (n === 3) return 'loss'
-  if (n === 1) return 'tie'
-  return 'dnf'
-}
 
 export interface OutcomeLabels {
   win: string
@@ -83,7 +73,7 @@ export function TimeseriesSummaryTab({
         {(data.match_rows ?? []).length > 0 ? (
           <OutcomeSequenceTape
             matches={(data.match_rows ?? []).map<OutcomePoint>((r) => ({
-              outcome: outcomeNumToValue(r.outcome),
+              outcome: outcomeCodeToTapeValue(r.outcome),
               matchId: r.match_id,
               mode: r.playlist_name || undefined,
             }))}

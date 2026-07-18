@@ -17,8 +17,8 @@
 //     le refresher recoit un ctx DEJA muni des tokens du joueur et ne fait QUE
 //     l'appel metier specifique au titre.
 //   - Le WIRING CONCRET des refreshers se fait dans cmd/server/main.go :
-//   - halo_infinite -> CareerLiveService.GetSpartanIdentity (chemin live
-//     unifie, MEME path que la visite home → kickoffBackgroundRefresh →
+//   - halo_infinite -> CareerLiveService.GetSpartanIdentityFor(p.XUID) (chemin
+//     live unifie, MEME path que la visite home → kickoffBackgroundRefresh →
 //     persistPartial field-aware) ;
 //   - halo_5         -> livesync.PersistAppearance (fetch /h5/profiles/{gt}/
 //     {appearance,spartan,emblem} + persist service_tag/banner/emblem).
@@ -31,6 +31,8 @@ package scheduler
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -45,7 +47,10 @@ import (
 
 // SpartanIdentityFetcher abstrait CareerLiveService pour le mocking.
 type SpartanIdentityFetcher interface {
-	GetSpartanIdentity(ctx context.Context) (*domain.HomeSpartanIdentityRow, error)
+	// GetSpartanIdentityFor résout l'identité du SUJET passé explicitement (finding
+	// ID4) : le cron fournit le xuid du joueur rafraîchi (p.XUID), jamais une valeur
+	// ambiante du contexte.
+	GetSpartanIdentityFor(ctx context.Context, xuid string) (*domain.HomeSpartanIdentityRow, error)
 }
 
 // CareerLiveServiceProvider retourne un fetcher per-player.
@@ -81,8 +86,8 @@ const DefaultSpartanCustomizationInterval = 8 * time.Hour
 // DefaultSpartanCustomizationInterval est utilise.
 //
 // titleSlug + svcProvider câblent le refresher du titre HISTORIQUE (Halo Infinite
-// par defaut) : la closure appelle svcProvider(ctx, slug).GetSpartanIdentity. Les
-// AUTRES titres (Halo 5+) s'enregistrent ensuite via WithRefresher (cf. main.go).
+// par defaut) : la closure appelle svcProvider(ctx, slug).GetSpartanIdentityFor(p.XUID).
+// Les AUTRES titres (Halo 5+) s'enregistrent ensuite via WithRefresher (cf. main.go).
 // svcProvider nil ⇒ aucun refresher HINF (le cron reste sain, simplement no-op pour
 // ce titre tant qu'aucun refresher n'est enregistre).
 func NewSpartanCustomizationCron(
@@ -113,16 +118,17 @@ func NewSpartanCustomizationCron(
 
 // careerIdentityRefresher adapte un CareerLiveServiceProvider (chemin live unifie
 // Halo Infinite) en CustomizationRefresher : resout le fetcher per-player puis
-// appelle GetSpartanIdentity (→ kickoffBackgroundRefresh → persistPartial). Le ctx
-// porte deja l'auth du joueur (pose par refreshOne). Comportement HINF identique
-// a l'historique.
+// appelle GetSpartanIdentityFor avec le SUJET EXPLICITE p.XUID (finding ID4)
+// (→ kickoffBackgroundRefresh → persistPartial). Le ctx porte deja l'auth du joueur
+// (WithHaloAuth(ctx, lease.Tokens, p.XUID) dans refreshOne), donc porteur == sujet.
+// Comportement HINF identique a l'historique.
 func careerIdentityRefresher(svcProvider CareerLiveServiceProvider) CustomizationRefresher {
 	return func(ctx context.Context, p domain.PlayerSummary) error {
 		svc, err := svcProvider(ctx, p.PlayerSlug)
 		if err != nil {
 			return err
 		}
-		_, err = svc.GetSpartanIdentity(ctx)
+		_, err = svc.GetSpartanIdentityFor(ctx, p.XUID)
 		return err
 	}
 }
@@ -185,11 +191,10 @@ func (c *SpartanCustomizationCron) RunOnce(ctx context.Context) {
 	if c == nil || c.cfg == nil || len(c.refreshers) == 0 {
 		return
 	}
-	// Statut unifie des crons (A6/DC-5) : liveness du cycle.
+	// Statut des crons (A6/DC-5, décision D1) : le cycle rapporte l'erreur AGRÉGÉE
+	// réelle par titre — un cycle partiellement échoué = échec avec cause.
 	start := time.Now()
-	defer func() {
-		observability.ReportCronRun("spartan_customization", start, nil, time.Since(start).Milliseconds())
-	}()
+	var errs []error
 	reg := c.registry
 	if reg == nil {
 		reg = titlePkg.DefaultRegistry()
@@ -202,20 +207,23 @@ func (c *SpartanCustomizationCron) RunOnce(ctx context.Context) {
 		if desc == nil {
 			continue
 		}
-		c.runOnceForTitle(ctx, desc.Slug)
+		if err := c.runOnceForTitle(ctx, desc.Slug); err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", desc.Slug, err))
+		}
 	}
+	observability.ReportCronRun("spartan_customization", start, errors.Join(errs...), time.Since(start).Milliseconds())
 }
 
 // runOnceForTitle execute un cycle pour tous les joueurs configures d'UN titre.
 // Skip propre (slog Debug) si aucun refresher n'est enregistre pour ce titre —
 // degradation gracieuse, jamais une erreur (le scheduler ne connait pas les
 // titres concrets : un titre actif sans source de customisation est legitime).
-func (c *SpartanCustomizationCron) runOnceForTitle(ctx context.Context, titleSlug string) {
+func (c *SpartanCustomizationCron) runOnceForTitle(ctx context.Context, titleSlug string) error {
 	refresher, ok := c.refreshers[titleSlug]
 	if !ok {
 		slog.DebugContext(ctx, "spartan_cron: titre sans refresher de customisation — skip",
 			"titleSlug", titleSlug)
-		return
+		return nil
 	}
 
 	start := time.Now()
@@ -223,7 +231,7 @@ func (c *SpartanCustomizationCron) runOnceForTitle(ctx context.Context, titleSlu
 	if err != nil {
 		slog.ErrorContext(ctx, "spartan_cron: load players failed",
 			"titleSlug", titleSlug, "err", err)
-		return
+		return fmt.Errorf("load players: %w", err)
 	}
 	// Filtre CANONIQUE des chemins de refresh (domain.SyncablePlayers) : exclut les
 	// titres en pause ET les profils AuthOnly. Un profil AuthOnly n'existe que pour
@@ -238,8 +246,9 @@ func (c *SpartanCustomizationCron) runOnceForTitle(ctx context.Context, titleSlu
 			"titleSlug", titleSlug, "skipped_profiles", skippedProfiles)
 	}
 
-	var succeeded, skipped, failed int
+	var succeeded, skipped, failed, nonLockFailed int
 	var lockedDBs []string
+	var firstNonLockErr error
 	for _, p := range players {
 		outcome, rerr := c.refreshOne(ctx, p, refresher)
 		switch outcome {
@@ -249,8 +258,16 @@ func (c *SpartanCustomizationCron) runOnceForTitle(ctx context.Context, titleSlu
 			skipped++
 		case refreshFailed:
 			failed++
+			// Un lock concurrent (2e writer air/CLI) est une contention TRANSITOIRE de
+			// poste de dev, auto-résolutive — best-effort interne (WARN + expvar plus
+			// bas), PAS un échec du cron. Toute AUTRE cause est un échec réel (D1).
 			if duckdb.IsFileLockError(rerr) {
 				lockedDBs = append(lockedDBs, p.Gamertag)
+			} else {
+				nonLockFailed++
+				if firstNonLockErr == nil {
+					firstNonLockErr = rerr
+				}
 			}
 		}
 	}
@@ -276,6 +293,16 @@ func (c *SpartanCustomizationCron) runOnceForTitle(ctx context.Context, titleSlu
 		"titleSlug", titleSlug, "players", len(players),
 		"ok", succeeded, "skipped", skipped, "failed", failed, "locked", len(lockedDBs),
 		"duration", time.Since(start))
+
+	// Échec partiel = échec avec cause (D1). Les échecs par lock (transitoires) sont
+	// EXCLUS : seuls les échecs non-lock remontent au statut du cron.
+	if nonLockFailed > 0 {
+		if firstNonLockErr != nil {
+			return fmt.Errorf("%d/%d joueurs en échec de refresh (ex: %w)", nonLockFailed, len(players), firstNonLockErr)
+		}
+		return fmt.Errorf("%d/%d joueurs en échec de refresh", nonLockFailed, len(players))
+	}
+	return nil
 }
 
 type refreshOutcome int

@@ -1210,8 +1210,8 @@ func main() {
 	// PLAN_V2 Phase 8 (2026-05-26) : SpartanCustomizationCron tourne toutes
 	// les 8h (DefaultSpartanCustomizationInterval) pour rafraîchir la
 	// customisation Spartan de TOUS les joueurs configurés, indépendamment
-	// de l'usage UI. Réutilise CareerLiveService.GetSpartanIdentity (même
-	// path que la visite home) → kickoffBackgroundRefresh → persistPartial
+	// de l'usage UI. Réutilise CareerLiveService.GetSpartanIdentityFor(p.XUID)
+	// (même path que la visite home) → kickoffBackgroundRefresh → persistPartial
 	// field-aware. Garantit qu'un joueur qui n'ouvre jamais l'app a quand
 	// même sa customisation populée en DB.
 	if autoSyncPool != nil && reg != nil {

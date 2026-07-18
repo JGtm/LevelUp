@@ -77,10 +77,24 @@ func (r *ServiceRegistry) RunDetectionFlushLoop(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			r.flushDetections(context.Background())
+			r.sweepMonitoringRetention(context.Background())
 			return
 		case <-t.C:
 			r.flushDetections(ctx)
+			r.sweepMonitoringRetention(ctx)
 		}
+	}
+}
+
+// sweepMonitoringRetention borne la croissance des tables monitoring append-only
+// (rétention CapAndSweep, E4). Piggyback sur la boucle de flush (pas un cron
+// dédié). Best-effort : l'erreur agrégée est loguée, jamais propagée.
+func (r *ServiceRegistry) sweepMonitoringRetention(ctx context.Context) {
+	if r.monitoringStore == nil {
+		return
+	}
+	if err := r.monitoringStore.SweepRetention(ctx); err != nil {
+		monitoringLog.WarnContext(ctx, "admin_monitoring: rétention monitoring échouée (best-effort)", "err", err)
 	}
 }
 

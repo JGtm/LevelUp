@@ -65,11 +65,17 @@ export function XboxLoginPage() {
                   // synchronisées) va direct au dashboard ; seul un vrai nouveau
                   // joueur voit la page d'onboarding OpenSpartan. fetchQuery
                   // repeuple aussi le cache lu par __root (pas de double fetch).
+                  //
+                  // staleTime:0 IMPÉRATIF : sans lui, fetchQuery hérite du défaut
+                  // global (5 min, queryClient.ts) et RENVOIE le bootstrap ANONYME
+                  // mis en cache avant le login (pré-device-flow) → un joueur établi
+                  // reste coincé sur l'onboarding. On force une lecture réseau.
                   let boot: BootstrapResponse | null = null
                   try {
                     boot = await queryClient.fetchQuery({
                       queryKey: queryKeys.bootstrap,
                       queryFn: () => api.get<BootstrapResponse>('/bootstrap'),
+                      staleTime: 0,
                     })
                   } catch {
                     // Bootstrap injoignable : ne pas bloquer le login abouti —

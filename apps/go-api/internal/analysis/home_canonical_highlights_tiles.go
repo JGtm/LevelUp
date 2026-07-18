@@ -147,17 +147,10 @@ func sliceBestWinStreakCanonical(window []canonical.PlayerMatchRow) *domain.High
 	if len(window) == 0 {
 		return nil
 	}
-	best, cur := 0, 0
-	for i := len(window) - 1; i >= 0; i-- {
-		if window[i].Self.Outcome == canonical.OutcomeWin {
-			cur++
-			if cur > best {
-				best = cur
-			}
-		} else {
-			cur = 0
-		}
-	}
+	// La longueur de la plus longue série est indépendante du sens de parcours.
+	best, _ := LongestRun(window, func(r canonical.PlayerMatchRow) bool {
+		return r.Self.Outcome == canonical.OutcomeWin
+	})
 	if best == 0 {
 		return nil
 	}

@@ -7,27 +7,10 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import {
-  formatPercent,
-  matchOutcomeTone,
-  outcomeIntToKey,
-  parseDelta,
-} from './_shared'
+import { formatPercent, matchOutcomeTone, parseDelta } from './_shared'
 
-describe('outcomeIntToKey', () => {
-  it('mappe les codes canoniques outcome (ADR 0006)', () => {
-    expect(outcomeIntToKey(2)).toBe('win')
-    expect(outcomeIntToKey(3)).toBe('loss')
-    expect(outcomeIntToKey(1)).toBe('tie')
-    expect(outcomeIntToKey(4)).toBe('dnf')
-  })
-
-  it('retourne null pour valeurs hors enum ou nulles', () => {
-    expect(outcomeIntToKey(null)).toBeNull()
-    expect(outcomeIntToKey(0)).toBeNull()
-    expect(outcomeIntToKey(99)).toBeNull()
-  })
-})
+// Le mapping outcome int → clé ('win'/'loss'/'tie'/'dnf', défaut null) a migré
+// vers `@/lib/outcome` (`outcomeCodeToValue`) — testé dans `lib/outcome.test.ts`.
 
 describe('parseDelta', () => {
   it('parse une string numérique signée', () => {

@@ -11,6 +11,7 @@ import {
   formatDateTime,
   formatNumber,
   formatNumberFixed,
+  formatSignedFixed,
   formatRatio,
   formatKDA,
   formatDurationMMSS,
@@ -280,16 +281,36 @@ describe('effectiveDmgPerFrag', () => {
   })
 })
 
+describe('formatSignedFixed', () => {
+  it('préfixe + / − (U+2212) / ± selon le signe', () => {
+    expect(formatSignedFixed(0.3, 2)).toBe('+0.30')
+    expect(formatSignedFixed(-1.5, 2)).toBe('−1.50')
+    expect(formatSignedFixed(0, 2)).toBe('±0.00')
+    expect(formatSignedFixed(45, 0)).toBe('+45')
+    expect(formatSignedFixed(-12, 0)).toBe('−12')
+    expect(formatSignedFixed(0, 0)).toBe('±0')
+  })
+  it('glyphe négatif = U+2212 (jamais le tiret ASCII)', () => {
+    expect(formatSignedFixed(-1.5, 2)).not.toContain('-')
+  })
+  it('fallback vide sur null/undefined/non fini', () => {
+    expect(formatSignedFixed(null, 2)).toBe('')
+    expect(formatSignedFixed(undefined, 0)).toBe('')
+    expect(formatSignedFixed(Infinity, 2)).toBe('')
+    expect(formatSignedFixed(NaN, 2, 'N/A')).toBe('N/A')
+  })
+})
+
 describe('formatRankDelta', () => {
   it('CSR : entier signé, ±0 sur zéro', () => {
     expect(formatRankDelta(45, 'CSR')).toBe('+45')
-    expect(formatRankDelta(-12, 'csr')).toBe('-12')
+    expect(formatRankDelta(-12, 'csr')).toBe('−12')
     expect(formatRankDelta(0, 'CSR')).toBe('±0')
   })
 
   it('LUSR : 2 décimales signées, ±0.00 sur zéro (jamais -0)', () => {
     expect(formatRankDelta(1.234, 'LUSR')).toBe('+1.23')
-    expect(formatRankDelta(-2.5, 'LUSR')).toBe('-2.50')
+    expect(formatRankDelta(-2.5, 'LUSR')).toBe('−2.50')
     expect(formatRankDelta(0, 'LUSR')).toBe('±0.00')
   })
 

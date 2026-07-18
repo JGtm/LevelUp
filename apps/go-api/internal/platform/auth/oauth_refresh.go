@@ -56,7 +56,7 @@ type oauthTokenResponse struct {
 // dans la réponse mais n'est PAS propagé par cette fonction — utiliser
 // ExchangeRefreshTokenWithRotation si on veut le récupérer pour le persister.
 func ExchangeRefreshToken(ctx context.Context, refreshToken string) (string, error) {
-	accessToken, _, err := ExchangeRefreshTokenWithRotation(ctx, refreshToken)
+	accessToken, _, _, err := ExchangeRefreshTokenWithRotation(ctx, refreshToken)
 	return accessToken, err
 }
 
@@ -66,13 +66,18 @@ func ExchangeRefreshToken(ctx context.Context, refreshToken string) (string, err
 // part (sync_meta.oauth_refresh_token typiquement) sinon le prochain appel
 // échouera avec un token révoqué.
 //
-// Retourne ("", "", nil) si refreshToken est vide.
-// Retourne ("", "", err) si l'appel HTTP ou Microsoft retourne une erreur.
-// Retourne (accessToken, "", nil) si Microsoft ne renvoie pas de rotation
+// Retourne aussi `clientFamily` (AU4/F12) : la famille de client OAuth qui a
+// RÉELLEMENT répondu — TokenFamilyAzure si l'app Azure a rafraîchi, TokenFamilyXboxNative
+// si le fallback MSA natif (client Xbox/SISU) a réussi, "" si aucun (échec). Le caller
+// la persiste sur UserTokens pour un préfixe RpsTicket déterministe au prochain échange.
+//
+// Retourne ("", "", "", nil) si refreshToken est vide.
+// Retourne ("", "", "", err) si l'appel HTTP ou Microsoft retourne une erreur.
+// Retourne (accessToken, "", family, nil) si Microsoft ne renvoie pas de rotation
 // (rare — supporté par tolérance, mais l'appel suivant utilisera l'ancien RT).
-func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) (accessToken, rotatedRefreshToken string, err error) {
+func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) (accessToken, rotatedRefreshToken, clientFamily string, err error) {
 	if refreshToken == "" {
-		return "", "", nil
+		return "", "", "", nil
 	}
 
 	// Sprint B1 commit 18 : event_id pour tracer l'échange OAuth v2 refresh
@@ -121,6 +126,9 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 			accessToken, rotatedRefreshToken, err = postTokenExchange(ctx, clientID, refreshToken, "")
 		}
 	}
+	if err == nil && accessToken != "" {
+		clientFamily = TokenFamilyAzure // l'app Azure a rafraîchi (AU4/F12) → préfixe "d=".
+	}
 
 	// Fallback MSA natif (flow SISU) : un RT émis par le client Xbox natif
 	// (device-flow SISU, scope MBI_SSL) est inconnu de l'app Azure — le endpoint
@@ -130,19 +138,31 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 	// échoue aussi, on propage l'erreur Azure INITIALE (classification intacte
 	// pour le pool/resolver) et on logge l'échec MSA avant dégradation.
 	if err != nil {
-		var oerr *OAuthExchangeError
-		if errors.As(err, &oerr) && oerr.Class() == AuthErrorRevoked {
-			oauthRefreshRetryMSATotal.Add(1)
-			slog.InfoContext(ctx, "oauth_refresh: invalid_grant côté Azure — retry refresh MSA natif (client Xbox/SISU)")
-			at, rt, msaErr := postMSATokenExchange(ctx, refreshToken)
-			if msaErr == nil && at != "" {
-				accessToken, rotatedRefreshToken, err = at, rt, nil
-			} else {
-				slog.DebugContext(ctx, "oauth_refresh: retry MSA natif échoué", "err", msaErr)
-			}
+		if at, rt, fam, ferr := tryMSANativeFallback(ctx, refreshToken, err); ferr == nil {
+			accessToken, rotatedRefreshToken, clientFamily, err = at, rt, fam, nil
 		}
 	}
-	return accessToken, rotatedRefreshToken, err
+	return accessToken, rotatedRefreshToken, clientFamily, err
+}
+
+// tryMSANativeFallback retente un refresh sur login.live.com (client Xbox natif/SISU)
+// quand Azure a refusé le RT en invalid_grant (« RT étranger » AADSTS70000). Retourne
+// (accessToken, rotatedRT, TokenFamilyXboxNative, nil) si le fallback réussit ; sinon
+// ("", "", "", azureErr) — l'erreur Azure INITIALE est propagée (classification revoked
+// intacte pour le pool/resolver). Extrait d'ExchangeRefreshTokenWithRotation (gocyclo).
+func tryMSANativeFallback(ctx context.Context, refreshToken string, azureErr error) (string, string, string, error) {
+	var oerr *OAuthExchangeError
+	if !errors.As(azureErr, &oerr) || oerr.Class() != AuthErrorRevoked {
+		return "", "", "", azureErr
+	}
+	oauthRefreshRetryMSATotal.Add(1)
+	slog.InfoContext(ctx, "oauth_refresh: invalid_grant côté Azure — retry refresh MSA natif (client Xbox/SISU)")
+	at, rt, msaErr := postMSATokenExchange(ctx, refreshToken)
+	if msaErr == nil && at != "" {
+		return at, rt, TokenFamilyXboxNative, nil
+	}
+	slog.DebugContext(ctx, "oauth_refresh: retry MSA natif échoué", "err", msaErr)
+	return "", "", "", azureErr
 }
 
 // postTokenExchange exécute un POST /oauth2/v2.0/token (endpoint Azure v2) et

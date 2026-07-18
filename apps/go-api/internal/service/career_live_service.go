@@ -141,7 +141,13 @@ func NewCareerLiveService(
 	}
 }
 
-// GetSpartanIdentity retourne le bloc Spartan ID complet pour la home.
+// GetSpartanIdentityFor retourne le bloc Spartan ID complet pour le xuid SUJET
+// passé EXPLICITEMENT — jamais lu du contexte ambiant (finding ID4, revue 2026-07 :
+// le sujet d'identité est un paramètre, pas une valeur ambiante ; le forçage
+// point-par-point de ctxkeys.HaloXUID avait récidivé 4 fois). Les appelants — home
+// (pdb.XUID de la page), cron customization (xuid du joueur rafraîchi), Explorer
+// (xuid cible) — fournissent le sujet ; ctxkeys.HaloXUID reste réservé à l'ownership
+// (subjectIsOwner ci-dessous), sans jouer le rôle de sujet.
 //
 // **Contrat UI-first** : si la player DB porte une row historique avec une
 // bannière (ou emblem/backdrop/spartan_id), on la retourne TOUJOURS. La
@@ -164,20 +170,11 @@ func NewCareerLiveService(
 //     spartan_id) absent du résultat live est patché depuis la row étape 1.
 //     C'est ce qui transforme « le live a rendu null cette fois » en
 //     « on continue de servir la dernière valeur connue ».
-func (s *CareerLiveService) GetSpartanIdentity(ctx context.Context) (*domain.HomeSpartanIdentityRow, error) {
-	return s.GetSpartanIdentityFor(ctx, ctxkeys.HaloXUID(ctx))
-}
-
-// GetSpartanIdentityFor retourne l'identité Spartan pour un xuid arbitraire,
-// pas nécessairement celui du user connecté. Utilisé par l'Explorer pour
-// afficher l'identité du joueur cible recherché.
 //
 // Garde-fou critique : la persistance dans `career_progression` (déclenchée
 // par kickoffBackgroundRefresh) n'est activée QUE si le xuid passé est égal
-// au xuid du user connecté. Sinon on évite de polluer la player DB du user
-// avec les rangs/customisations d'un joueur tiers.
-//
-// Le reste du flow (cache + merge + DB fallback + overlay) reste identique.
+// au xuid du user connecté (subjectIsOwner). Sinon on évite de polluer la player
+// DB du user avec les rangs/customisations d'un joueur tiers (cas Explorer).
 func (s *CareerLiveService) GetSpartanIdentityFor(ctx context.Context, xuid string) (*domain.HomeSpartanIdentityRow, error) {
 	// includePeaks : les skill peaks sont lus sur la player DB du propriétaire
 	// de la page. Ils ne sont valides que si le sujet de l'identité EST ce
@@ -341,7 +338,12 @@ func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string, allo
 			"xuid", xuid,
 			"cache_miss_progress", cachedProgress == nil,
 			"cache_miss_custom", cachedCustom == nil)
-		s.kickoffBackgroundRefresh(xuid, tokens, slug)
+		// Porteur réel des tokens (finding ID3) : capturé AVANT le détachement du
+		// contexte requête pour que le refresh background impute le budget API au
+		// compte connecté, pas au sujet de la page. Peut différer de `xuid` quand la
+		// page consultée n'est pas celle du porteur (admin/membre de groupe).
+		ownerXUID := ctxkeys.TokensOwnerXUID(ctx)
+		s.kickoffBackgroundRefresh(xuid, ownerXUID, tokens, slug)
 	}
 
 	return merged, nil
@@ -361,6 +363,11 @@ func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string, allo
 // les tokens peuvent expirer pendant ce refresh ; un 401/403 est traité
 // comme un fail silencieux par le HaloAPIClient (renvoie nil, nil).
 //
+// `ownerXUID` (porteur réel des tokens, capturé depuis le ctx requête AVANT le
+// détachement) est ré-injecté dans le bgCtx pour que le budget API de ce refresh
+// s'impute au compte connecté, même quand `xuid` (le sujet) est une autre page
+// (finding ID3). Vide → on garde le sujet comme porteur (dégradation best-effort).
+//
 // `slug` (title slug capturé depuis le ctx de la requête AVANT le détachement)
 // est RE-PROPAGÉ dans le bgCtx détaché : sans ça, ctxkeys.TitleSlug(bgCtx)
 // retomberait sur "halo_infinite" par défaut et le fetch live careerranks
@@ -369,7 +376,7 @@ func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string, allo
 // kickoff pour les titres sans careerranks, mais propager le slug rend le
 // chemin background correct par construction (defense en profondeur + futurs
 // titres qui exposeraient careerranks sur un host distinct via le resolver).
-func (s *CareerLiveService) kickoffBackgroundRefresh(xuid string, tokens *domain.HaloTokens, slug string) {
+func (s *CareerLiveService) kickoffBackgroundRefresh(xuid, ownerXUID string, tokens *domain.HaloTokens, slug string) {
 	if tokens == nil || tokens.SpartanToken == "" {
 		return
 	}
@@ -393,6 +400,13 @@ func (s *CareerLiveService) kickoffBackgroundRefresh(xuid string, tokens *domain
 		bgCtx, cancel := context.WithTimeout(context.Background(), careerLiveBgTimeout)
 		defer cancel()
 		bgCtx = ctxkeys.WithHaloAuth(bgCtx, tokens, xuid)
+		// WithHaloAuth pose tokensOwnerXUID = xuid (le sujet). Le corriger vers le
+		// PORTEUR réel (finding ID3) : le refresh dépense le quota du compte
+		// connecté, à imputer à son bucket ratebudget, pas à celui de la page.
+		// ownerXUID vide (porteur inconnu) → on garde le sujet (dégradation).
+		if ownerXUID != "" {
+			bgCtx = ctxkeys.WithTokensOwnerXUID(bgCtx, ownerXUID)
+		}
 		if slug != "" {
 			bgCtx = ctxkeys.WithTitleSlug(bgCtx, slug)
 		}

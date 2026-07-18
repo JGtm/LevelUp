@@ -17,10 +17,10 @@ import (
 // Toutes les méthodes acceptent un context et utilisent timeout court.
 
 // CampaignRepo implémente l'accès stats.duckdb pour les campagnes d'amélioration.
-type CampaignRepo struct{ db *DB }
+type CampaignRepo struct{ db PlayerReadHandle }
 
 // NewCampaignRepo construit le repo depuis une connexion Player.
-func NewCampaignRepo(db *DB) *CampaignRepo { return &CampaignRepo{db: db} }
+func NewCampaignRepo(db *DB) *CampaignRepo { return &CampaignRepo{db: NewPlayerReadHandle(db)} }
 
 const campaignSelectColumns = `
 	SELECT
@@ -35,7 +35,7 @@ const campaignSelectColumns = `
 func (r *CampaignRepo) Insert(ctx context.Context, c campaign.ImprovementCampaign) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		INSERT INTO improvement_campaign (
 			id, user_id, title_slug, axis, axis_kind, started_at,
 			status, playlist_group, snapshot_value, snapshot_sample,
@@ -87,7 +87,7 @@ func (r *CampaignRepo) GetActive(ctx context.Context, userID, titleSlug string) 
 func (r *CampaignRepo) UpdateStatus(ctx context.Context, id string, status campaign.CampaignStatus, endedAt *time.Time) error {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		UPDATE improvement_campaign
 		SET status = ?, ended_at = ?
 		WHERE id = ?
@@ -99,7 +99,7 @@ func (r *CampaignRepo) UpdateStatus(ctx context.Context, id string, status campa
 func (r *CampaignRepo) UpdateEvaluation(ctx context.Context, id string, eval campaign.Evaluation) error {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	_, err := r.db.Exec(ctx, `
+	_, err := r.db.ExecRecovered(ctx, `
 		UPDATE improvement_campaign
 		SET current_value_raw = ?, current_value_lowess = ?,
 		    matches_since_start = ?, last_evaluated_at = ?,
@@ -144,10 +144,10 @@ func (r *CampaignRepo) LinkChallenge(ctx context.Context, challengeID, campaignI
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	if campaignID == "" {
-		_, err := r.db.Exec(ctx, `UPDATE challenge SET campaign_id = NULL WHERE id = ?`, challengeID)
+		_, err := r.db.ExecRecovered(ctx, `UPDATE challenge SET campaign_id = NULL WHERE id = ?`, challengeID)
 		return err
 	}
-	_, err := r.db.Exec(ctx, `UPDATE challenge SET campaign_id = ? WHERE id = ?`, campaignID, challengeID)
+	_, err := r.db.ExecRecovered(ctx, `UPDATE challenge SET campaign_id = ? WHERE id = ?`, campaignID, challengeID)
 	return err
 }
 
