@@ -309,8 +309,8 @@ interface ResultsBlockProps {
   matchesFilterSpec?: MatchFilterSpec
 }
 
-// Exporté pour tester la mise en page DP-7 (compteur « N matchs trouvés » retiré du
-// haut, export CSV déplacé SOUS le tableau) sans monter toute la barre de filtres.
+// Exporté pour tester la mise en page (compteur « N matchs trouvés » retiré, export CSV
+// ancré à GAUCHE du pied du tableau) sans monter toute la barre de filtres.
 export function ExplorerMatchesResultsBlock({
   playerSlug,
   t,
@@ -353,34 +353,36 @@ export function ExplorerMatchesResultsBlock({
   return (
     <div className="space-y-2">
       {/* Bandeau de briefing (mode Matchs) — au-dessus du tableau. Le compteur redondant
-          « N matchs trouvés » a été retiré (DP-7) : la tuile Matchs du briefing le porte ;
-          le pied de pagination du tableau conserve son propre compteur. */}
+          « N matchs trouvés » a été retiré : la tuile Matchs du briefing le porte, et le
+          pied du tableau accueille désormais le bouton Export CSV à sa place. */}
       <ExplorerBriefingStrip briefing={matchesQuery.data.briefing} t={t} />
 
       {/* Tableau résultats — composant repris depuis Squad. `sortable` active le
           tri CLIENT par clic sur les en-têtes, sur toutes les colonnes (toutes les
-          lignes du scope sont chargées ; cf. ExplorerMatchesTable). */}
+          lignes du scope sont chargées ; cf. ExplorerMatchesTable). L'export CSV est
+          ancré à GAUCHE du pied du tableau via `footerLeadingSlot` (à la place du
+          compteur, redondant avec la tuile Matchs du briefing) ; il reste visible même
+          sans pagination. Sans token d'export → slot `undefined` → le pied retombe sur
+          son compteur (cas rare). */}
       <ExplorerMatchesTable
         rows={normalizeExplorerTableRows(matchesQuery.data.table.items)}
         playerSlug={playerSlug}
         contextDescriptor={matchesContextDescriptor}
         filterSpecOverride={matchesFilterSpec}
         sortable
+        footerLeadingSlot={
+          matchesQuery.data.export_hint?.token ? (
+            <a
+              href={`${import.meta.env.VITE_API_BASE_URL ?? '/api/v1'}/players/${playerSlug}/pages/match-history/export?token=${encodeURIComponent(matchesQuery.data.export_hint.token)}`}
+              download
+              title={t('explorer.matches.export_csv')}
+              className="inline-flex h-8 shrink-0 items-center rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              {t('explorer.matches.export_csv')}
+            </a>
+          ) : undefined
+        }
       />
-
-      {/* Export CSV SOUS le tableau (DP-7), aligné à droite. */}
-      {matchesQuery.data.export_hint?.token && (
-        <div className="flex justify-end">
-          <a
-            href={`${import.meta.env.VITE_API_BASE_URL ?? '/api/v1'}/players/${playerSlug}/pages/match-history/export?token=${encodeURIComponent(matchesQuery.data.export_hint.token)}`}
-            download
-            title={t('explorer.matches.export_csv')}
-            className="inline-flex h-8 shrink-0 items-center rounded-md border border-input bg-background px-3 text-xs font-medium text-foreground hover:bg-muted transition-colors"
-          >
-            {t('explorer.matches.export_csv')}
-          </a>
-        </div>
-      )}
     </div>
   )
 }

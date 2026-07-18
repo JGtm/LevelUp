@@ -45,6 +45,11 @@ const DIM_TITLE_KEY: Record<string, ExplorerManifestKey> = {
   playlist: 'explorer.briefing.dim_playlist',
 }
 
+// Ordre d'affichage des dimensions : carte, puis sélection (playlist), puis mode
+// (demande utilisateur — « Par sélection » en 2e position). Toute dimension hors
+// de cette table passe en fin.
+const DIM_DISPLAY_ORDER: Record<string, number> = { map: 0, playlist: 1, mode: 2 }
+
 const PERF_TIER_KEY: Record<number, ExplorerManifestKey> = {
   1: 'explorer.filters.perf_tier_excellent',
   2: 'explorer.filters.perf_tier_bon',
@@ -90,7 +95,9 @@ export function ExplorerBriefingModules({
   // dans la 4e colonne de la rangée « Par… », plus dans le socle.
   const hasRanked = useCapability('ranked')
   const tMV: TMV = (key) => formatMessage(matchViewManifest, key, locale)
-  const dimensions = briefing.dimensions ?? []
+  const dimensions = [...(briefing.dimensions ?? [])].sort(
+    (a, b) => (DIM_DISPLAY_ORDER[a.dimension] ?? 99) - (DIM_DISPLAY_ORDER[b.dimension] ?? 99),
+  )
   const contextSplit = briefing.context_split ?? null
   const ranked = briefing.ranked ?? null
   const showRanked = hasRanked && ranked != null && (ranked.kinds?.length ?? 0) > 0
