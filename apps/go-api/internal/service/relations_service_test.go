@@ -29,6 +29,10 @@ type mockRelationsRepo struct {
 	topAllyForm    []string
 	gotTopAllyXUID string
 
+	// Carte bête noire : forme récente CONTRE le top-nemesis.
+	topNemesisForm    []string
+	gotTopNemesisXUID string
+
 	// Contexte CSR de la bête noire (lot relations-G).
 	csrByXUID   map[string]*domain.RelationCSR
 	csrErr      error
@@ -62,6 +66,11 @@ func (m *mockRelationsRepo) GetCoreEngagement(_ context.Context, coreXUIDs []str
 func (m *mockRelationsRepo) GetRelationRecentForm(_ context.Context, xuid string, _ []string, _ int) ([]string, error) {
 	m.gotTopAllyXUID = xuid
 	return m.topAllyForm, nil
+}
+
+func (m *mockRelationsRepo) GetRelationEnemyRecentForm(_ context.Context, xuid string, _ []string, _ int) ([]string, error) {
+	m.gotTopNemesisXUID = xuid
+	return m.topNemesisForm, nil
 }
 
 func (m *mockRelationsRepo) GetLatestCSR(_ context.Context, xuid string) (*domain.RelationCSR, error) {
@@ -202,6 +211,37 @@ func TestGetRelationsPage_Enriched(t *testing.T) {
 	// first_seen_at / last_seen_at present
 	if byGT["Ally"].FirstSeenAt == nil || byGT["Ally"].LastSeenAt == nil {
 		t.Fatal("Ally timestamps must be set")
+	}
+}
+
+// top_ally_recent_form / top_nemesis_recent_form : chaque frise « Derniers matchs »
+// est lue pour le BON joueur (binôme via GetRelationRecentForm = à ses côtés ; bête
+// noire via GetRelationEnemyRecentForm = face à lui) et posée sur l'overview.
+func TestGetRelationsPage_RecentForms(t *testing.T) {
+	now := time.Date(2026, 6, 26, 0, 0, 0, 0, time.UTC)
+	repo := &mockRelationsRepo{
+		rows:           nemesisRows(now),
+		topAllyForm:    []string{"win", "loss", "win"},
+		topNemesisForm: []string{"loss", "loss", "win"},
+	}
+	svc := NewRelationsService(repo).withNow(func() time.Time { return now })
+	page, err := svc.GetRelationsPage(context.Background(), domain.FilterContextInput{})
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	// Binôme : forme lue pour x1 (Ally) → top_ally_recent_form.
+	if repo.gotTopAllyXUID != "x1" {
+		t.Fatalf("top-ally form lu pour %q want x1", repo.gotTopAllyXUID)
+	}
+	if got := page.Overview.TopAllyRecentForm; len(got) != 3 || got[0] != "win" {
+		t.Fatalf("top_ally_recent_form=%v want [win loss win]", got)
+	}
+	// Bête noire : forme lue pour x2 (Nemesis) via le miroir ennemi → top_nemesis_recent_form.
+	if repo.gotTopNemesisXUID != "x2" {
+		t.Fatalf("top-nemesis form lu pour %q want x2", repo.gotTopNemesisXUID)
+	}
+	if got := page.Overview.TopNemesisRecentForm; len(got) != 3 || got[0] != "loss" {
+		t.Fatalf("top_nemesis_recent_form=%v want [loss loss win]", got)
 	}
 }
 

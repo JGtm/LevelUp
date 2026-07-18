@@ -1,3 +1,167 @@
+## [2026-07-18] Relations (Communauté) — refonte cartes hero : donut WR + repère moy. perso, accent haut + titres dans le bloc, noms en blanc
+
+**Statut** : Complété (CODE + TESTS + gates locaux). Branche `feat/relations-cards-redesign`.
+Revue visuelle utilisateur à faire au merge (donut SVG + layout). PAS committé (attente
+autorisation utilisateur).
+
+**Contexte** : revue UX de la page `/players/$playerSlug/community/relations` avec l'utilisateur
+(6 demandes). Décisions produit tranchées via questions ciblées : donut « repère sur l'anneau »,
+toggle relibellé « coéquipiers » (état-dépendant Inclure/Inclus), sparkline noyau = « Derniers
+matchs » tout court.
+
+**Décision technique** :
+- **Donut WR** (nouveau `RelationWinRateDonut.tsx`, SVG pur — pas d'ECharts) : anneau
+  victoires/défaites (tokens outcome-win/loss) + **repère radial** de la moyenne perso historique
+  (currentColor=foreground) posé sur l'anneau (arc dépasse le repère = sur-perf, s'arrête avant =
+  sous-perf — lisible dans les 2 sens). Centre = % + delta signé « ±N pts » (tooltip lift). Légende
+  à DROITE (victoires / défaites / moy. perso). Remplace l'ancien gros % + `LiftChip` (supprimé) sur
+  les 3 cartes hero (binôme/bête noire/noyau). Responsive via viewBox, couleurs via tokens/currentColor.
+- **Cartes hero** : `accentSide="top"` (était `left`) ; titre de bloc DANS le bloc (style
+  `text-xs font-semibold uppercase tracking-label text-muted-foreground`, cohérent StatCard) ; l'ancien
+  `<h3>` externe est retiré. Même traitement appliqué aux cartes « Rivaux » (KpiCard accent-top
+  outcome-loss). Noms de joueurs passés en BLANC (`text-info` → `text-foreground`) partout : cartes
+  hero, mini-classement noyau, tableau, cartes rivaux (déjà foreground).
+- **Noyau dur** : mini-classement des fidèles rendu en `<table>` sans en-têtes (colonnes alignées
+  rang/nom/matchs/WR). Sparkline + barre composite (RelationSplitBar `w-16` → `flex-1`) en pleine
+  largeur du bloc. Question utilisateur « Derniers matchs ensemble » = frise des N derniers matchs
+  joués à côté d'AU MOINS UN membre du noyau (pas tous à la fois) → relibellé « Derniers matchs ».
+- **Heatmap « Rythme des rencontres »** : cap `MAX_HEATMAP_ROWS = 12` (tri par total, échelle de
+  couleur recalculée sur les seules lignes retenues).
+- **Suppressions** : bouton « Voir l'escouade » (pont noyau→escouade) + volet « Quoi de neuf »
+  (`RelationsWhatsNewStrip.tsx` + `whatsNew.ts` + tests) supprimés (0 code mort). Clés i18n retirées
+  (`core.view_squad`, `core.lift_points`, section `whats_new.*`) ; toggle relibellé
+  (`Inclure les coéquipiers` / `Coéquipiers inclus` — EN `Include/Teammates included`) ; ajout section
+  i18n `donut.*` (Victoires/Défaites/Moy. perso/pts). Manifest régénéré.
+
+**Round 2 (retours utilisateur sur capture)** :
+- Donut : % central passé en BLANC (le delta « ±N pts » reste coloré) ; piste NON REMPLIE
+  (`currentColor` opacité 0.15) + arc TOUJOURS vert (outcome-win) au lieu de coloré par
+  winRateColor — corrige le donut « tout rouge » quand WR < 50 % (l'arc rouge + base rouge se
+  cumulaient). Signal qualité porté par le repère + le delta, pas par la couleur d'arc.
+- Caption « Taux de victoires … » déplacée à DROITE (dans la colonne légende du donut, prop
+  `caption`) au lieu d'au-dessus à gauche.
+- Carte Noyau dur : compteur « N joueurs » déplacé SOUS le titre, dans la même police que les
+  gamertags des autres cartes (`text-2xl font-semibold text-foreground`) → 3 cartes alignées.
+- Barre composite bête noire : légende EN DESSOUS (« 34 frags » vert à gauche, « 78 morts »
+  rouge à droite) au lieu d'inline ; `RelationSplitBar` refondu (props `leftLabel`/`rightLabel`,
+  i18n `table.frags_unit`/`deaths_unit`).
+
+**Découverte TRAITÉE (retrait backend whats-new)** : sur demande utilisateur, éradication complète
+du reliquat « Quoi de neuf » côté Go (0 dead-code) : colonnes SQL `encounters_30d` /
+`prev_seen_before_window` retirées des 2 templates `Q28Relations*Tpl` (SELECT 17→15 colonnes,
+placeholders réajustés — cutoff supprimé de `buildRelationsQuery`) ; champs `RelationRawRow.
+{Encounters30d,PrevSeenBeforeWindow}` + `RelationInsight.IsRevived` supprimés ; constantes
+`NewFace/Revived*Days` + `IsRevived` supprimées d'`analysis/relations` ; mapping service retiré ;
+openapi `is_revived` (propriété + required) retiré + `make generate-types` ; tests
+`revived_test.go` + `relations_repo_whatsnew_test.go` supprimés. `first_seen_at` CONSERVÉ (champ
+général de première rencontre, pas spécifique whats-new).
+
+**Round 3 (enrichissement + uniformisation cartes, retours capture)** :
+- Noyau dur : « N vus cette semaine » déplacé à DROITE de la ligne d'effectif (flex justify-between).
+- Tableau : ⓘ (`InfoTooltip`) dans l'en-tête « Joueur » expliquant les pastilles/badges de relation
+  (i18n `table.badges_info`).
+- Cartes binôme/bête noire UNIFORMISÉES (décisions utilisateur) : structure symétrique
+  donut → chips (bête noire) → SIGNATURE encadrée → barre composite → sparkline « Derniers matchs »
+  → footer (volume + « vu il y a X »). Signature = ton FDA (`avg_kda_with` « FDA à tes côtés »
+  binôme / `avg_kda_against` « FDA face à lui » bête noire, colorée `kdaNetColor`), sortie du footer
+  et mise en valeur à la même position. Barre composite ajoutée au binôme (`team-ally`/`team-enemy`,
+  « alliés / adversaires » = teammate_matches / enemy_matches) en miroir de frags/morts de la bête
+  noire. Sparkline unifiée « Derniers matchs » sur les 2 (bête noire : issues des affrontements).
+  `duel_ratio` retiré des cartes (redondant avec la barre) ; « duels » → « affrontements »
+  (i18n `hero.duels`) ; `hero.recent_duels` supprimé (0 dead-code).
+- Centralisation `formatLastSeen` dans `relationsFilter.ts` (règle ≤ 2 copies) : `RelationsTable`
+  migré (suppression de son `formatRelative` local), réutilisé par le footer des cartes.
+
+**Round 4 (retours capture : heatmap, wording, sparkline bête noire)** :
+- Heatmap « Rythme des rencontres » : le cap à 12 était DÉJÀ correct (rowOrder sliced 12 →
+  12 lignes Y). Doute utilisateur (build local périmé probable) → garde-rail ajouté :
+  `buildOption` exporté + `RelationsMomentsHeatmap.test.ts` (20 relations → 12 lignes, top par
+  total ; < 12 → pas de lignes vides).
+- Wording : signature binôme « FDA à tes côtés » → « FDA à ses côtés » (i18n `table.kda_together`,
+  EN « KDA at their side »).
+- **Sparkline bête noire fiabilisée (full-stack)** : la sparkline « Derniers matchs » de la bête
+  noire dépendait des duels ASYNC de l'endpoint Moments (souvent vide / nemesis pas dans les top
+  rivalries) alors que le binôme lit `top_ally_recent_form` (overview, fiable). Ajout du miroir
+  ennemi `top_nemesis_recent_form` : nouveau template SQL `QRelationsEnemyFormTpl` (jointure
+  `c.team_id <> h.team_id`, placeholders identiques au Core) ; `queryCoreRecentForm` factorisé en
+  `queryRecentForm(baseTpl, …)` ; repo `GetRelationEnemyRecentForm` + port ; service calcule la
+  forme via `SelectTopNemesis` → `overview.TopNemesisRecentForm` ; domain + openapi + generate-types.
+  Front : la carte bête noire lit `recentForm={ov.top_nemesis_recent_form}` (prop `duels` +
+  `RelationDuelEntry` retirés) → sparkline fiable et symétrique du binôme (Moments ne sert plus que
+  la série en cours + section Rivaux). Tests : service `TestGetRelationsPage_RecentForms` (ally→x1
+  via RecentForm, nemesis→x2 via EnemyRecentForm) + intégration DuckDB
+  `TestCareerRepo_GetRelationEnemyRecentForm` (xuidFoe adverse m3/m4 → ["loss","loss"], allié → vide).
+
+**Round 5 (retours capture : heatmap 8, sparkline absente, % coupé, tooltip absent)** :
+- CAUSE RACINE heatmap « 8 joueurs » = plafond BACKEND `momentsHeatmapTopN = 8`
+  (`relations_moments_service.go`) — le cap front (12) ne peut que tronquer, pas ajouter des
+  lignes que le back n'envoie pas. Relevé à **12** (aligné sur MAX_HEATMAP_ROWS). Test
+  `relations_moments_service_test.go` référence la constante → reste vert.
+- Noyau dur : le « % » du mini-tableau passait à la ligne → `whitespace-nowrap` sur la cellule WR.
+- ⓘ badges : `InfoTooltip` (positionnement absolu) était CLIPPÉ par l'`overflow-x-auto` du tableau
+  → remplacé par le composant `Tooltip` (portal `document.body` + `position:fixed`, échappe au
+  clipping, déjà utilisé pour l'en-tête « Ratio »). Le tooltip d'explication s'affiche désormais.
+- DIAGNOSTIC transverse : l'utilisateur ne voyait PAS les changements BACKEND des rounds
+  précédents (sparkline bête noire round 4, heatmap 8→12 ce round) car son serveur Go (air) ne
+  rebuild visiblement pas — le front (vite HMR) reflète bien les changements front. À signaler :
+  **redémarrer le serveur Go** est nécessaire pour la sparkline bête noire ET la heatmap 12.
+
+**Round 6 (aide ⓘ : légende détaillée par badge)** : l'aide ⓘ ne montrait qu'une phrase générique.
+Remplacée par une VRAIE légende — `RelationBadgeLegend.tsx` : une ligne par type de pastille
+(NarrativeBadge solid réel, même couleur que le tableau) + sa signification/seuil. Libellés résolus
+via le manifest squad `narrative.encounter.*` (source unique) ; 10 descriptions + le libellé statique
+cross-jeu ajoutés dans `palmares.toml` (`badge_legend.*`, seuils alignés analysis/relations +
+analysis/narrative). Le composant `Tooltip` gagne `wide` (max-w-sm) + bascule EN DESSOUS de l'ancre
+si le panneau déborde le haut de la viewport (légende haute). `table.badges_info` raccourci en intro.
+
+**Résultats observés** : WEB — `tsc -b` exit 0 ; `eslint src/features/palmares` + `tooltip.tsx`
+0 erreur (2 warnings baseline) ; vitest `src/features/palmares` 30 passed (dont `RelationWinRateDonut`
++ `RelationsMomentsHeatmap` cap). GO — `go test ./...` 113 packages ok, 0 FAIL ; service Moments
+(topN=12) ok ; intégration DuckDB relations (`-run Relation`/`EnemyRecentForm`) ok ; `internal/api`
+contract + schema-drift ok (DTO ↔ openapi en phase).
+
+**RAPPEL BLOQUANT** : la heatmap 12 (momentsHeatmapTopN) ET la sparkline bête noire
+(top_nemesis_recent_form) sont des changements BACKEND — invisibles tant que le serveur Go n'est pas
+redémarré (le front vite HMR reflète bien les changements front). À dire à l'utilisateur.
+
+**Round 7 (sémantique FDA, ⓘ match view, delta rouge)** :
+- CORRECTION SÉMANTIQUE : `avg_kda_with`/`avg_kda_against` = `AVG(e.opp_kda)` = le FDA de L'AUTRE
+  joueur (Nilton), PAS celui de JGtm (l'utilisateur pensait voir SON FDA face à sa bête noire). D'où
+  le 10.62 « surprenant » = Nilton domine (cohérent avec une bête noire). Signatures relibellées :
+  `table.kda_together` « FDA à ses côtés » → « Son FDA avec toi » ; `hero.kda_against` « FDA face à
+  lui » → « Son FDA contre toi » (+ commentaires toml corrigés, ils disaient « ton KDA » à tort).
+- ⓘ légende ajoutée à l'en-tête « Joueur » du tableau match view (`MatchEncountersTable`) : réutilise
+  `RelationBadgeLegend` (import cross-feature, pattern courant du repo) rendu filtrable via `only` —
+  sous-ensemble `MATCH_BADGE_KINDS` = ally_plus/tough_enemy/coriace/ordinal (seuls badges produits par
+  le backend match-view ; les badges « solid » Relations n'y apparaissent pas). Intro FR/EN inline.
+- Delta rouge quand moyenne perso > taux : DÉJÀ le cas (`deltaPts < 0 → outcome-loss`). Aucun code
+  changé — visible après reload. Autres usages badges : Explorer (tooltips par badge déjà présents).
+
+**Résultats round 7** : `tsc -b` 0 ; eslint palmares + match-view 0 erreur (3 warnings baseline) ;
+vitest `src/features/palmares` + `src/features/match-view` = 150 passed (17 fichiers).
+
+**Round 8 (couleur signature inversée, arc déficit donut, badges match view)** :
+- Signature bête noire : couleur INVERSÉE. « Son FDA contre toi » élevé = l'adversaire domine =
+  NÉGATIF pour le joueur → rouge. `kdaNetColor(isAlly ? sigValue : -sigValue)` (binôme inchangé :
+  FDA élevé de l'allié = positif = vert).
+- Donut : arc « déficit » rouge qui COMBLE le vide entre le taux et le repère moyenne perso QUAND on
+  est en dessous (path SVG `A`, `outcome-loss`). Au-dessus, l'arc vert dépasse déjà le repère → rien à
+  combler. Résout le « delta juste vide » signalé. Tests donut : arc présent en dessous / absent
+  au-dessus (32 passed).
+- Badges match view (point 2) : AUCUN changement nécessaire — vérifié sur pièces que le backend est
+  DÉJÀ câblé pour TOUS les badges : `Q23bMatchEncounterStats` charge `first_seen_at` + stats riches,
+  `convertEncounters` appelle `relations.ComputeBadges` (mêmes 4 + 5 solid que Relations, via
+  `encounter_badges.go`). Seul cross-jeu est exclu par design (dépendance cross-titre non câblée). Si
+  moins de badges visibles : soit les joueurs du match ne remplissent pas les seuils des badges solid,
+  soit backend Go périmé (à redémarrer). À expliquer à l'utilisateur.
+
+**Résultats round 8** : `tsc -b` 0 ; eslint palmares 0 erreur (2 warnings baseline) ; vitest
+`src/features/palmares` 32 passed (dont 2 nouveaux tests arc déficit).
+
+**Conclusion / prochaine étape** : attendre autorisation commit + revue visuelle utilisateur
+(donut, alignement mini-tableau, pleine largeur, légende barre composite). Backend whats-new
+orphelin : RÉSOLU (retiré).
+
 ## [2026-07-18] H5 — `assassination` comme 5e valeur canonique de `kill_kind` + mode `--force` du backfill
 
 **Statut** : Complété (CODE + TESTS ; le RUN live du backfill FORCE reste une étape opératoire séparée — non exécuté).

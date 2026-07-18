@@ -148,6 +148,17 @@ func (s *RelationsService) appendCoreEngagement(
 			overview.TopAllyRecentForm = form
 		}
 	}
+
+	// Miroir ennemi : forme récente CONTRE la bête noire (top_nemesis) pour la
+	// sparkline « Derniers matchs » de sa carte — best-effort, symétrique du binôme.
+	if nem := relations.SelectTopNemesis(stats); nem != nil {
+		form, formErr := s.repo.GetRelationEnemyRecentForm(ctx, nem.XUID, scope, coreRecentFormLimit)
+		if formErr != nil {
+			slog.WarnContext(ctx, "RelationsService: enrich top-nemesis form failed", "err", formErr)
+		} else {
+			overview.TopNemesisRecentForm = form
+		}
+	}
 }
 
 // resolveScope retourne le sous-ensemble de match_id correspondant à `input` :
@@ -243,7 +254,6 @@ func buildRelationInsight(r domain.RelationRawRow, st relations.RelationStats, n
 		LastSeenAt:      formatRFC3339(r.LastSeen),
 		Category:        relations.Categorize(st),
 		IsCore:          relations.IsCore(st),
-		IsRevived:       relations.IsRevived(r.Encounters30d, r.PrevSeenBeforeWindow, now),
 		Badges:          projectBadges(relations.ComputeBadges(st, now)),
 	}
 	return insight

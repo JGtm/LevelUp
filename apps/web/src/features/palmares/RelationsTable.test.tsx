@@ -29,7 +29,6 @@ function mk(partial: Partial<RelationInsight> & { gamertag: string }): RelationI
     last_seen_at: '2026-06-01T00:00:00Z',
     category: 'mixed',
     is_core: false,
-    is_revived: false,
     badges: [],
     ...partial,
   }
