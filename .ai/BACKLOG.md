@@ -96,7 +96,10 @@ aucun disponible aujourd'hui). Runbook backup à écrire au moment de l'activati
 > Auditer les lecteurs H5 (services/repos) et poser le filtre là où il manque (ou un garde-rail
 > centralisé). Les données ne sont PAS à purger (règle ART — collecte historique, Warzone/Campaign
 > exclus à la collecte depuis mais l'historique demeure). **Effort** : petit-moyen (audit + fix).
-> Reporté à la demande de l'utilisateur (« pas maintenant », 2026-07-17).
+> **Approche DÉCIDÉE (2026-07-18, validée user)** : filtre à la source centralisé + garde-rail
+> (fragment SQL partagé ou vue de base excluant la campagne, par lequel tous les lecteurs H5
+> passent), **PAS** de suppression en BDD (non destructif, donnée coûteuse à re-fetch, garde
+> l'optionalité PvE). Exécution : quand on y revient (pas dans le train en cours).
 
 ---
 
@@ -206,7 +209,12 @@ Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Syn
 1. Phase A — Coach négatif soft (backend testable vite ; front gaté sur mini-spec UX)
 2. Phase B — Coach tone (mutualisable i18n avec Phase A)
 3. Phase C — Squad coach (la plus lourde : coach + coach_advisor + prestige + front squad)
-4. Cross-titre arcs backend ([.ai/PLAN_CROSS_TITLE_ARCS_BACKEND.md](.ai/PLAN_CROSS_TITLE_ARCS_BACKEND.md)) — à anticiper avec l'arrivée du 2e titre
+4. **Arcs multi-titres — INDÉPENDANCE STRICTE par jeu** (décision user 2026-07-18) : chaque titre
+   a ses propres arcs/valeurs, AUCUN objectif partagé ni agrégation cross-titre. Plan actif :
+   [.ai/PLAN_CROSS_TITLE_ARCS_2026-07.md](.ai/PLAN_CROSS_TITLE_ARCS_2026-07.md) — **inverse** la
+   brique `arc_titles` many-to-many livrée le 2026-06-18 (recommande son retrait). Coach V3 :
+   les 3 phases (C squad / A négatif soft / B ton) sont **validées** (user 2026-07-18) — voir
+   [.ai/V7/PLAN_COACH_V3_GENERATION.md](.ai/V7/PLAN_COACH_V3_GENERATION.md), à ouvrir phase par phase.
 5. Enrichissements possibles post-train : funnel `coach_proposal.status` dans l'analyseur
    de tuning (taux d'acceptation amont), overlay Discord par titre
    (`LoadNotifyConfigForTitle`), exposition de la liste des catégories forwardées via
