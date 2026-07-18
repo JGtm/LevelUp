@@ -28,6 +28,15 @@ type mockRelationsRepo struct {
 	// Carte binôme : forme récente du top-allié.
 	topAllyForm    []string
 	gotTopAllyXUID string
+
+	// Carte bête noire : forme récente CONTRE le top-nemesis.
+	topNemesisForm    []string
+	gotTopNemesisXUID string
+
+	// Contexte CSR de la bête noire (lot relations-G).
+	csrByXUID   map[string]*domain.RelationCSR
+	csrErr      error
+	gotCSRXUIDs []string
 }
 
 func (m *mockRelationsRepo) GetRelations(_ context.Context, scope []string) ([]domain.RelationRawRow, error) {
@@ -57,6 +66,22 @@ func (m *mockRelationsRepo) GetCoreEngagement(_ context.Context, coreXUIDs []str
 func (m *mockRelationsRepo) GetRelationRecentForm(_ context.Context, xuid string, _ []string, _ int) ([]string, error) {
 	m.gotTopAllyXUID = xuid
 	return m.topAllyForm, nil
+}
+
+func (m *mockRelationsRepo) GetRelationEnemyRecentForm(_ context.Context, xuid string, _ []string, _ int) ([]string, error) {
+	m.gotTopNemesisXUID = xuid
+	return m.topNemesisForm, nil
+}
+
+func (m *mockRelationsRepo) GetLatestCSR(_ context.Context, xuid string) (*domain.RelationCSR, error) {
+	m.gotCSRXUIDs = append(m.gotCSRXUIDs, xuid)
+	if m.csrErr != nil {
+		return nil, m.csrErr
+	}
+	if m.csrByXUID == nil {
+		return nil, nil
+	}
+	return m.csrByXUID[xuid], nil
 }
 
 // mockFiltersService renvoie un scope fixe et capture l'input reçu.
@@ -186,6 +211,164 @@ func TestGetRelationsPage_Enriched(t *testing.T) {
 	// first_seen_at / last_seen_at present
 	if byGT["Ally"].FirstSeenAt == nil || byGT["Ally"].LastSeenAt == nil {
 		t.Fatal("Ally timestamps must be set")
+	}
+}
+
+// top_ally_recent_form / top_nemesis_recent_form : chaque frise « Derniers matchs »
+// est lue pour le BON joueur (binôme via GetRelationRecentForm = à ses côtés ; bête
+// noire via GetRelationEnemyRecentForm = face à lui) et posée sur l'overview.
+func TestGetRelationsPage_RecentForms(t *testing.T) {
+	now := time.Date(2026, 6, 26, 0, 0, 0, 0, time.UTC)
+	repo := &mockRelationsRepo{
+		rows:           nemesisRows(now),
+		topAllyForm:    []string{"win", "loss", "win"},
+		topNemesisForm: []string{"loss", "loss", "win"},
+	}
+	svc := NewRelationsService(repo).withNow(func() time.Time { return now })
+	page, err := svc.GetRelationsPage(context.Background(), domain.FilterContextInput{})
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	// Binôme : forme lue pour x1 (Ally) → top_ally_recent_form.
+	if repo.gotTopAllyXUID != "x1" {
+		t.Fatalf("top-ally form lu pour %q want x1", repo.gotTopAllyXUID)
+	}
+	if got := page.Overview.TopAllyRecentForm; len(got) != 3 || got[0] != "win" {
+		t.Fatalf("top_ally_recent_form=%v want [win loss win]", got)
+	}
+	// Bête noire : forme lue pour x2 (Nemesis) via le miroir ennemi → top_nemesis_recent_form.
+	if repo.gotTopNemesisXUID != "x2" {
+		t.Fatalf("top-nemesis form lu pour %q want x2", repo.gotTopNemesisXUID)
+	}
+	if got := page.Overview.TopNemesisRecentForm; len(got) != 3 || got[0] != "loss" {
+		t.Fatalf("top_nemesis_recent_form=%v want [loss loss win]", got)
+	}
+}
+
+// ─── Lot relations-G : contexte CSR de la bête noire (best-effort) ──────────
+
+// nemesisRows : un allié (x1) + une bête noire nette (x2, enemy WR 3/12) — la
+// bête noire retenue par SelectTopNemesis.
+func nemesisRows(now time.Time) []domain.RelationRawRow {
+	old := now.AddDate(0, -8, 0)
+	return []domain.RelationRawRow{
+		{
+			XUID: "x1", Gamertag: "Ally", TotalMatches: 15,
+			TeammateCount: 15, TeammateWins: 11, TeammateLosses: 4,
+			KillsDealt: 10, DeathsSuffered: 5, FirstSeen: old, LastSeen: now,
+		},
+		{
+			XUID: "x2", Gamertag: "Nemesis", TotalMatches: 12,
+			EnemyCount: 12, EnemyWins: 3, EnemyLosses: 9,
+			KillsDealt: 4, DeathsSuffered: 20, FirstSeen: old, LastSeen: now,
+		},
+	}
+}
+
+func strptr(s string) *string   { return &s }
+func intptr(n int) *int         { return &n }
+func f64ptr(f float64) *float64 { return &f }
+
+// Bête noire AVEC ligne CSR dans match_csrs_latest → CSR peuplé sur top_nemesis
+// (et lu par le xuid de la bête noire), top_ally NON enrichi.
+func TestGetRelationsPage_NemesisCSR_Populated(t *testing.T) {
+	now := time.Date(2026, 6, 26, 0, 0, 0, 0, time.UTC)
+	want := &domain.RelationCSR{Tier: strptr("Onyx"), SubTier: intptr(0), RatingValue: f64ptr(1523)}
+	repo := &mockRelationsRepo{
+		rows:      nemesisRows(now),
+		csrByXUID: map[string]*domain.RelationCSR{"x2": want},
+	}
+	svc := NewRelationsService(repo).withNow(func() time.Time { return now })
+
+	page, err := svc.GetRelationsPage(context.Background(), domain.FilterContextInput{})
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if page.Overview.TopNemesis == nil || page.Overview.TopNemesis.Gamertag != "Nemesis" {
+		t.Fatalf("top nemesis=%v want Nemesis", page.Overview.TopNemesis)
+	}
+	csr := page.Overview.TopNemesis.CSR
+	if csr == nil || csr.Tier == nil || *csr.Tier != "Onyx" {
+		t.Fatalf("nemesis CSR=%+v want tier Onyx", csr)
+	}
+	if csr.RatingValue == nil || *csr.RatingValue != 1523 {
+		t.Fatalf("nemesis CSR rating=%v want 1523", csr.RatingValue)
+	}
+	// Lu par le XUID de la bête noire (x2), pas de l'allié.
+	if len(repo.gotCSRXUIDs) != 1 || repo.gotCSRXUIDs[0] != "x2" {
+		t.Fatalf("GetLatestCSR called with %v want [x2]", repo.gotCSRXUIDs)
+	}
+	// L'allié n'est jamais enrichi (CSR réservé à la bête noire).
+	if page.Overview.TopAlly == nil || page.Overview.TopAlly.CSR != nil {
+		t.Fatalf("top ally CSR=%v want nil", page.Overview.TopAlly)
+	}
+}
+
+// Bête noire SANS ligne CSR (relation social / non collectée) → CSR nil :
+// dégradation gracieuse, rien à afficher, aucune erreur.
+func TestGetRelationsPage_NemesisCSR_Absent(t *testing.T) {
+	now := time.Date(2026, 6, 26, 0, 0, 0, 0, time.UTC)
+	repo := &mockRelationsRepo{
+		rows:      nemesisRows(now),
+		csrByXUID: map[string]*domain.RelationCSR{}, // aucune entrée pour x2
+	}
+	svc := NewRelationsService(repo).withNow(func() time.Time { return now })
+
+	page, err := svc.GetRelationsPage(context.Background(), domain.FilterContextInput{})
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if page.Overview.TopNemesis == nil {
+		t.Fatal("top nemesis must be set")
+	}
+	if page.Overview.TopNemesis.CSR != nil {
+		t.Fatalf("nemesis CSR=%v want nil (graceful degradation)", page.Overview.TopNemesis.CSR)
+	}
+}
+
+// Lecture CSR en échec → l'aperçu est renvoyé SANS CSR, l'erreur n'est PAS propagée
+// (best-effort strict : un échec de l'enrichissement ne casse jamais /relations).
+func TestGetRelationsPage_NemesisCSR_BestEffortOnError(t *testing.T) {
+	now := time.Date(2026, 6, 26, 0, 0, 0, 0, time.UTC)
+	repo := &mockRelationsRepo{
+		rows:   nemesisRows(now),
+		csrErr: errors.New("csr read boom"),
+	}
+	svc := NewRelationsService(repo).withNow(func() time.Time { return now })
+
+	page, err := svc.GetRelationsPage(context.Background(), domain.FilterContextInput{})
+	if err != nil {
+		t.Fatalf("CSR read error must NOT propagate, got: %v", err)
+	}
+	if page.Overview.TopNemesis == nil || page.Overview.TopNemesis.CSR != nil {
+		t.Fatalf("nemesis CSR=%v want nil on read error", page.Overview.TopNemesis)
+	}
+}
+
+// Aucune bête noire (que des alliés) → GetLatestCSR n'est jamais appelé.
+func TestGetRelationsPage_NemesisCSR_NoNemesis_NoLookup(t *testing.T) {
+	now := time.Date(2026, 6, 26, 0, 0, 0, 0, time.UTC)
+	old := now.AddDate(0, -8, 0)
+	repo := &mockRelationsRepo{
+		rows: []domain.RelationRawRow{
+			{
+				XUID: "x1", Gamertag: "Ally", TotalMatches: 15,
+				TeammateCount: 15, TeammateWins: 11, TeammateLosses: 4,
+				KillsDealt: 10, DeathsSuffered: 5, FirstSeen: old, LastSeen: now,
+			},
+		},
+	}
+	svc := NewRelationsService(repo).withNow(func() time.Time { return now })
+
+	page, err := svc.GetRelationsPage(context.Background(), domain.FilterContextInput{})
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if page.Overview.TopNemesis != nil {
+		t.Fatalf("top nemesis=%v want nil", page.Overview.TopNemesis)
+	}
+	if len(repo.gotCSRXUIDs) != 0 {
+		t.Fatalf("GetLatestCSR called %v want no call", repo.gotCSRXUIDs)
 	}
 }
 

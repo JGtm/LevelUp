@@ -172,6 +172,7 @@ const FR: NotificationsText = {
     comeback_welcome: 'Bienvenue de retour',
     trend_consolidate: 'Axe à consolider',
     title_ready: 'Titre prêt',
+    rival_encounter: 'Rival croisé',
   },
   categoryDescription: {
     app_release: 'Une nouvelle version de LevelUp est disponible.',
@@ -202,6 +203,7 @@ const FR: NotificationsText = {
     comeback_welcome: 'Tu reviens après une pause — bienvenue !',
     trend_consolidate: 'Une composante de ta performance fléchit sur la durée — une occasion de la renforcer.',
     title_ready: 'Un titre fraîchement activé a terminé sa première synchronisation.',
+    rival_encounter: 'Une sync a ramené un nouveau duel contre un de tes principaux rivaux.',
   },
 
   // metricLabel : mapping des clés métriques (envoyées par le backend dans
@@ -286,6 +288,8 @@ const FR: NotificationsText = {
     'notif.comeback_welcome.body': 'Tu as repris après {days_away} jours d\'absence — ton bouclier de série est prêt.',
     'notif.title_ready.title': '{title_name} est prêt',
     'notif.title_ready.body': 'Tes données {title_name} sont synchronisées — explore tes stats.',
+    'notif.rival_encounter.title': 'Rival croisé',
+    'notif.rival_encounter.body': 'Tu as recroisé {gamertag} : {kills} frags / {deaths} morts.',
   },
 
   relJustNow: 'à l’instant',
@@ -377,6 +381,7 @@ const EN: NotificationsText = {
     comeback_welcome: 'Welcome back',
     trend_consolidate: 'Focus to consolidate',
     title_ready: 'Title ready',
+    rival_encounter: 'Rival encountered',
   },
   categoryDescription: {
     app_release: 'A new LevelUp version is available.',
@@ -407,6 +412,7 @@ const EN: NotificationsText = {
     comeback_welcome: 'You are back after a pause — welcome!',
     trend_consolidate: 'One of your performance areas has been trending down over time — a chance to shore it up.',
     title_ready: 'A newly activated title finished its first sync.',
+    rival_encounter: 'A sync brought a new duel against one of your top rivals.',
   },
 
   metricLabel: {
@@ -486,6 +492,8 @@ const EN: NotificationsText = {
     'notif.comeback_welcome.body': 'You returned after {days_away} days away — your streak shield is ready.',
     'notif.title_ready.title': '{title_name} is ready',
     'notif.title_ready.body': 'Your {title_name} data is synced — explore your stats.',
+    'notif.rival_encounter.title': 'Rival encountered',
+    'notif.rival_encounter.body': 'You crossed paths with {gamertag} again: {kills} frags / {deaths} deaths.',
   },
 
   relJustNow: 'just now',

@@ -83,7 +83,11 @@ func (r *MatchHistoryRepo) loadSharedHistory(ctx context.Context) ([]domain.Matc
 	}
 	defer release()
 
-	rows, err := db.QueryContext(ctx, Q5SharedHistory, r.pdb.XUID)
+	// Masquage READ-SIDE des matchs Campagne (Halo 5) : v_match_full est aliasé "r".
+	// No-op pour Infinite (aucun mode masqué). Sans ceci, la LISTE de l'historique
+	// et le compteur total remonteraient les ~287 matchs Campagne (item backlog H1).
+	q := resolveCampaignExclusion(Q5SharedHistory, r.pdb.TitleSlug, "r")
+	rows, err := db.QueryContext(ctx, q, r.pdb.XUID)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("shared query: %w", err)
 	}

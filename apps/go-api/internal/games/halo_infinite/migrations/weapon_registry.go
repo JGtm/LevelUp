@@ -174,6 +174,7 @@ var weaponRegistryFamilies = []weaponFamilyRow{
 	{"frag_grenade", "Frag Grenade", "Grenade à fragmentation"},
 	{"plasma_grenade", "Plasma Grenade", "Grenade à plasma"},
 	{"dynamo_grenade", "Dynamo Grenade", "Grenade Dynamo"},
+	{"splinter_grenade", "Splinter Grenade", "Grenade Splinter"},
 	{"grenade_launcher", "Grenade Launcher", "Lance-grenades"},
 	{"railgun", "Railgun", "Railgun"},
 	{"saw", "SAW", "SAW"},
@@ -189,10 +190,23 @@ var weaponRegistryFamilies = []weaponFamilyRow{
 	{"incineration_cannon", "Incineration Cannon", "Canon incendiaire"},
 	{"suppressor", "Suppressor", "Éradicateur"},
 	{"scattershot", "Scattershot", "Répercuteur"},
+	// Long-tail H5 (frags v_weapon_kills réels) : armes de mêlée d'objectif / REQ.
+	{"golf_club", "Golf Club", "Club de golf"},
+	{"oddball", "Oddball", "Oddball"},
+	// Hors-arsenal H5 (frags non-combat classés 2026-07-17) : familles neutres par
+	// catégorie (véhicule/tourelle/environnement/non-attribué/autres). Réceptacle
+	// pour le donut « Frags par type d'arme » ; exclues de l'insight coach côté web.
+	{"vehicle", "Vehicle", "Véhicule"},
+	{"turret", "Turret", "Tourelle"},
+	{"environmental", "Environmental", "Environnement"},
+	{"unattributed", "Unattributed", "Non attribué"},
+	{"other", "Other", "Autres"},
 }
 
-// weaponRegistryWeapons — 59 armes (29 Infinite §6.1 + 30 Halo 5 §6.2), vérifiées
-// halopedia.org + wiki.halo.fr. faction = ORIGINE de conception (pas le porteur).
+// weaponRegistryWeapons — 84 entrées : 29 Infinite (§6.1) + 55 Halo 5 (§6.2 :
+// 35 arsenal + 5 long-tail grenades/mêlée + 20 hors-arsenal non-combat classés
+// 2026-07-17), vérifiées halopedia.org + wiki.halo.fr. faction = ORIGINE de
+// conception (pas le porteur ; vide pour les buckets non-combat).
 var weaponRegistryWeapons = []weaponRow{
 	// Colonnes : key, title, name, name_fr, class, role, family, faction, damage, manufacturer.
 	// ── Halo Infinite (§6.1) ──
@@ -256,6 +270,42 @@ var weaponRegistryWeapons = []weaponRow{
 	{"h5_sentinel_beam", titleH5, "Sentinel Beam", "Laser de Sentinelle", "heavy", "special", "sentinel_beam", "forerunner", "particle_beam", "Ferrarius Assembler Vats"},
 	{"h5_suppressor", titleH5, "Suppressor (Z-130)", "Éradicateur", "shoulder", "automatic", "suppressor", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
 	{"h5_scattershot", titleH5, "Scattershot (Z-180)", "Répercuteur", "shoulder", "shotgun", "scattershot", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
+	// ── Halo 5 long-tail (frags v_weapon_kills réels, mappage 2026-07-17) ──
+	// Grenades : rôle `grenade` (parité HINF), class `grenade`. NON double-comptées
+	// avec les sentinels match_participants (grenade_kills) car le donut synthesis
+	// n'active PAS IncludeGrenadeMelee (buildKillsByRole ignore IsGrenadeMelee).
+	{"h5_frag_grenade", titleH5, "Frag Grenade", "Grenade à fragmentation", "grenade", "grenade", "frag_grenade", "human", "explosive", "Misriah Armory"},
+	{"h5_plasma_grenade", titleH5, "Plasma Grenade", "Grenade à plasma", "grenade", "grenade", "plasma_grenade", "covenant", "plasma", ""},
+	{"h5_splinter_grenade", titleH5, "Splinter Grenade", "Grenade Splinter", "grenade", "grenade", "splinter_grenade", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
+	// Mêlée d'objectif / REQ : rôle `melee`, class `melee`.
+	{"h5_golf_club", titleH5, "Golf Club", "Club de golf", "melee", "melee", "golf_club", "human", "kinetic", ""},
+	{"h5_oddball", titleH5, "Oddball", "Oddball", "melee", "melee", "oddball", "human", "kinetic", ""},
+	// ── Halo 5 hors-arsenal (frags NON-COMBAT, décision produit 2026-07-17) ──
+	// Rôles dédiés `vehicle`/`turret`/`environmental`/`unattributed`/`other` : ils
+	// alimentent le donut « Frags par type d'arme » (JOIN weapons.role) mais sont
+	// EXCLUS de l'insight coach (NON_COMBAT_WEAPON_ROLES, web) — sinon « Spartan »
+	// (~8.8k) fausserait blind_spot_power. faction/damage vides (non pertinents pour
+	// un bucket non-combat). class == role. name = proper noun / libellé neutre.
+	{"h5_vehicle_ghost", titleH5, "Ghost", "Ghost", "vehicle", "vehicle", "vehicle", "", "", ""},
+	{"h5_vehicle_mongoose", titleH5, "Mongoose", "Mongoose", "vehicle", "vehicle", "vehicle", "", "", ""},
+	{"h5_vehicle_warthog", titleH5, "Warthog", "Warthog", "vehicle", "vehicle", "vehicle", "", "", ""},
+	{"h5_vehicle_banshee", titleH5, "Banshee", "Banshee", "vehicle", "vehicle", "vehicle", "", "", ""},
+	{"h5_vehicle_mantis", titleH5, "Mantis", "Mantis", "vehicle", "vehicle", "vehicle", "", "", ""},
+	{"h5_vehicle_scorpion", titleH5, "Scorpion", "Scorpion", "vehicle", "vehicle", "vehicle", "", "", ""},
+	{"h5_vehicle_wraith", titleH5, "Wraith", "Wraith", "vehicle", "vehicle", "vehicle", "", "", ""},
+	{"h5_vehicle_wasp", titleH5, "Wasp", "Wasp", "vehicle", "vehicle", "vehicle", "", "", ""},
+	{"h5_vehicle_phaeton", titleH5, "Phaeton", "Phaeton", "vehicle", "vehicle", "vehicle", "", "", ""},
+	{"h5_turret_chaingun", titleH5, "Chaingun Turret", "Tourelle mitrailleuse", "turret", "turret", "turret", "", "", ""},
+	{"h5_turret_splinter", titleH5, "Splinter Turret", "Tourelle Splinter", "turret", "turret", "turret", "", "", ""},
+	{"h5_turret_rocket_pod", titleH5, "Rocket Pod Turret", "Tourelle lance-roquettes", "turret", "turret", "turret", "", "", ""},
+	{"h5_turret_gauss", titleH5, "Gauss Turret", "Tourelle Gauss", "turret", "turret", "turret", "", "", ""},
+	{"h5_turret_shade_plasma", titleH5, "Shade Plasma Turret", "Tourelle plasma Shade", "turret", "turret", "turret", "", "", ""},
+	{"h5_turret_scorpion_ai", titleH5, "Scorpion Anti-Infantry Turret", "Tourelle anti-infanterie Scorpion", "turret", "turret", "turret", "", "", ""},
+	{"h5_turret_plasma", titleH5, "Plasma Turret", "Tourelle à plasma", "turret", "turret", "turret", "", "", ""},
+	{"h5_turret_hunter_arm", titleH5, "Hunter Arm Turret", "Tourelle bras de Hunter", "turret", "turret", "turret", "", "", ""},
+	{"h5_environmental", titleH5, "Environmental Explosives", "Explosifs d'environnement", "environmental", "environmental", "environmental", "", "", ""},
+	{"h5_unattributed", titleH5, "Unattributed", "Non attribué", "unattributed", "unattributed", "unattributed", "", "", ""},
+	{"h5_other_ugc", titleH5, "Other", "Autres", "other", "other", "other", "", "", ""},
 }
 
 // weaponRegistryInfiniteFilmshell — ids filmshell Infinite (source weapon_labels.go,
@@ -339,4 +389,53 @@ var weaponRegistryH5Stock = []weaponNumericID{
 	{"h5_sentinel_beam", 3143603656},
 	{"h5_suppressor", 2681172411},
 	{"h5_scattershot", 3808094875},
+	// ── Long-tail v_weapon_kills (audit 2026-07-17, stock_ids réels) ──
+	// Grenades (armes tenues, rôle `grenade`) — gros volume du long-tail.
+	{"h5_frag_grenade", 4106030681},     // "FRAG GRENADE"    (~10.5k frags)
+	{"h5_plasma_grenade", 2460880172},   // "PLASMA GRENADE"  (~5.3k frags)
+	{"h5_splinter_grenade", 3190813201}, // "SPLINTER GRENADE" (~2.1k frags)
+	// Mêlée d'objectif / REQ (armes tenues, rôle `melee`).
+	{"h5_golf_club", 409331533}, // "Golf Club" (~0.36k frags)
+	{"h5_oddball", 393532233},   // "Ball" = Oddball (~0.18k frags)
+	//
+	// ── Hors-arsenal classé (décision produit 2026-07-17) ──
+	// Les 26 stock_ids suivants sont des frags NON-COMBAT. Ils ONT désormais un rôle
+	// dédié pour apparaître dans le donut « Frags par type d'arme », MAIS ces rôles
+	// (vehicle/turret/environmental/unattributed/other) sont exclus de l'insight
+	// coach côté web (NON_COMBAT_WEAPON_ROLES). Ne PAS les mapper vers les sentinels
+	// mêlée/grenade (disjoints) — sinon double-comptage.
+	// Véhicules → h5_vehicle_* (role `vehicle`) :
+	{"h5_vehicle_ghost", 3010146366},    // "Ghost"    (~1.2k)
+	{"h5_vehicle_mongoose", 1063919886}, // "Mongoose" (~0.9k)
+	{"h5_vehicle_warthog", 4028516791},  // "Warthog"  (~0.8k)
+	{"h5_vehicle_banshee", 419783896},   // "Banshee"  (~0.4k)
+	{"h5_vehicle_mantis", 3227919741},   // "Mantis"   (~0.25k)
+	{"h5_vehicle_scorpion", 1730553442}, // "Scorpion" (~0.24k)
+	{"h5_vehicle_wraith", 1206711506},   // "Wraith"   (~0.1k)
+	{"h5_vehicle_wasp", 3207900961},     // "Wasp"     (~0.1k)
+	{"h5_vehicle_phaeton", 3394982816},  // "Phaeton"  (~5)
+	// Tourelles → h5_turret_* (role `turret`) :
+	{"h5_turret_chaingun", 2988661926},    // "Chaingun Turret"    (~0.36k)
+	{"h5_turret_splinter", 1749823285},    // "Splinter Turret"    (~0.24k)
+	{"h5_turret_rocket_pod", 2907783784},  // "Rocket Pod Turret"  (~0.2k)
+	{"h5_turret_gauss", 4233134183},       // "Gauss Turret"       (~68)
+	{"h5_turret_shade_plasma", 698769165}, // "Shade Plasma Turret" (~25)
+	{"h5_turret_scorpion_ai", 244872079},  // "Scorpion Anti-Infantry Turret" (~8)
+	{"h5_turret_plasma", 2023669721},      // "Plasma Turret"      (~7)
+	{"h5_turret_hunter_arm", 1351500565},  // "Hunter Arm Turret"  (~6)
+	// Environnement → h5_environmental (role `environmental`) :
+	{"h5_environmental", 47178948}, // "Environmental Explosives" (~0.6k, hasard de map)
+	// Bucket d'attribution → h5_unattributed (role `unattributed`). IRRÉDUCTIBLE :
+	// stock_id natif réel, disjoint des compteurs mêlée/assassinat (le ventiler =
+	// double-comptage, investigation 2026-07-17).
+	{"h5_unattributed", 3168248199}, // "Spartan" (~8.8k)
+	// UGC / inconnus (absents de weapon_labels) → un SEUL bucket h5_other_ugc
+	// (role `other`). Plusieurs weapon_ids → un weapon_key (autorisé).
+	{"h5_other_ugc", 2457457776}, // (~2.3k)
+	{"h5_other_ugc", 390856427},  // (~11)
+	{"h5_other_ugc", 3541732101}, // (~6)
+	{"h5_other_ugc", 642449794},  // (~4)
+	{"h5_other_ugc", 2497647768}, // (~4)
+	{"h5_other_ugc", 2631958027}, // (~2)
+	{"h5_other_ugc", 2957796559}, // (~2)
 }

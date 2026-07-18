@@ -752,23 +752,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/players/{player_slug}/battlepass": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Battle Pass courant */
-        get: operations["getBattlePass"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/players/{player_slug}/pages/sessions": {
         parameters: {
             query?: never;
@@ -3210,6 +3193,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/_diag/prestige/telemetry/{player_slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Diag agrégation télémétrie Prestige par origine du défi
+         * @description ADR 0020 (coach→pont Prestige). Agrège la table append-only
+         *     prestige_telemetry d'un joueur par origine du défi (coach / user /
+         *     pilot_mode / unknown) : compteurs created/rejected/completed/expired/
+         *     abandoned + taux d'acceptation et de complétion. Permet de mesurer si
+         *     les défis proposés par le coach sont acceptés/complétés davantage que
+         *     ceux d'autres origines. Les défis créés avant le plumbing (source NULL)
+         *     sont agrégés sous "unknown". Les taux valent -1 quand non calculables
+         *     (dénominateur nul).
+         */
+        get: operations["getDiagPrestigeTelemetry"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/_admin/progression/backfill/{player_slug}": {
         parameters: {
             query?: never;
@@ -3331,10 +3341,16 @@ export interface components {
             last_sync_at?: string;
             /** Format: int64 */
             match_count: number;
+            media_tooling: components["schemas"]["MediaToolingStatus"];
             /** Format: int64 */
             player_count: number;
             status: string;
             uptime?: string;
+        };
+        MediaToolingStatus: {
+            ffmpeg: boolean;
+            ffmpeg_version?: string;
+            ffprobe: boolean;
         };
         PlayerSummary: {
             gamertag: string;
@@ -4840,6 +4856,31 @@ export interface components {
             /** Format: int64 */
             streak_count: number;
         };
+        PrestigeTelemetryDiag: {
+            by_source: components["schemas"]["PrestigeTelemetrySourceStats"][] | null;
+            player_slug: string;
+            /** Format: int64 */
+            total_events: number;
+        };
+        PrestigeTelemetrySourceStats: {
+            /** Format: double */
+            abandon_rate: number;
+            /** Format: int64 */
+            abandoned: number;
+            /** Format: double */
+            acceptance_rate: number;
+            /** Format: int64 */
+            completed: number;
+            /** Format: double */
+            completion_rate: number;
+            /** Format: int64 */
+            created: number;
+            /** Format: int64 */
+            expired: number;
+            /** Format: int64 */
+            rejected: number;
+            source: string;
+        };
         AssetMeta: {
             id: string;
             image_url: string;
@@ -4863,17 +4904,6 @@ export interface components {
             expires_in: number;
             user_code: string;
             verification_url: string;
-        };
-        BattlePassResponse: {
-            available: boolean;
-            error_hint?: string;
-            from_cache?: boolean;
-            /** Format: int64 */
-            progress?: number;
-            /** Format: int64 */
-            rank?: number;
-            reward_track?: string;
-            snapshot_at?: string;
         };
         MediaAssociateResponse: {
             file_path: string;
@@ -7471,6 +7501,13 @@ export interface components {
             label_key: string;
             style: string;
         };
+        RelationCSR: {
+            /** Format: double */
+            rating_value: number | null;
+            /** Format: int64 */
+            sub_tier: number | null;
+            tier: string | null;
+        };
         RelationInsight: {
             /** Format: double */
             avg_kda_against: number | null;
@@ -7505,6 +7542,7 @@ export interface components {
             xuid: string;
         };
         RelationRef: {
+            csr?: components["schemas"]["RelationCSR"];
             gamertag: string;
             /** Format: int64 */
             matches: number;
@@ -7526,6 +7564,7 @@ export interface components {
             top_ally: components["schemas"]["RelationRef"];
             top_ally_recent_form: string[] | null;
             top_nemesis: components["schemas"]["RelationRef"];
+            top_nemesis_recent_form: string[] | null;
         };
         RelationsPageResponse: {
             overview: components["schemas"]["RelationsOverview"];
@@ -9971,30 +10010,6 @@ export interface operations {
             };
             404: components["responses"]["NotFound"];
             500: components["responses"]["InternalError"];
-        };
-    };
-    getBattlePass: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
-                player_slug: components["parameters"]["PlayerSlug"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Battle Pass (auth_required si non connecté) */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": Record<string, never>;
-                };
-            };
-            404: components["responses"]["NotFound"];
         };
     };
     getSessions: {
@@ -13351,6 +13366,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProgressionDiag"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getDiagPrestigeTelemetry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Agrégats télémétrie Prestige par origine */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrestigeTelemetryDiag"];
                 };
             };
             404: components["responses"]["NotFound"];

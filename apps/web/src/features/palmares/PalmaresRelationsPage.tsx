@@ -4,21 +4,23 @@
  * Consomme l'endpoint backend réel POST /pages/palmares/relations (forme
  * {overview, relations[]}). Barre de segmentation serveur (useLocalFilterBar :
  * expérience / saison / période / playlist / mode / vue solo-escouade), hero
- * enrichi (binôme / bête noire / noyau dur), segmented control + toggle « amis »,
- * tableau paginé (langage MatchEncountersTable) et section « Noyau dur » détaillée.
+ * enrichi (binôme / bête noire / noyau dur), segmented control + toggle « jamais affrontés »,
+ * tableau paginé (langage MatchEncountersTable) et section Moments & Rivalités.
  */
 import { useMemo, useState, type ReactNode } from 'react'
-import { winRateColor, ratioColor, kdaNetColor } from '@/lib/colors/outcomePalette'
+import { winRateColor, kdaNetColor } from '@/lib/colors/outcomePalette'
 import { useNavigate, useParams } from '@tanstack/react-router'
 
 import { KpiCard } from '@/components/cards/KpiCard'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocalFilterBar } from '@/features/_shared/useLocalFilterBar'
-import { tokenCssVar } from '@/lib/accessibility'
+import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
+import { tokenCssVar, tokenVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
+import { composeTierLabel } from '@/lib/skillTiers'
 import { formatPercent } from '@/lib/formatters'
-import type { FilterContextInput, RelationDuelEntry, RelationInsight } from '@/lib/api/types'
+import type { FilterContextInput, RelationCSR, RelationInsight } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useRelationsPrefsStore } from '@/stores/relationsPrefsStore'
 
@@ -28,7 +30,14 @@ import { RelationBadges } from './RelationBadges'
 import { RelationSplitBar } from './RelationSplitBar'
 import { RelationsMomentsSection } from './RelationsMomentsSection'
 import { RelationsTable } from './RelationsTable'
-import { coreRelations, filterRelations, hasCrossGameRelations, type RelationFilter } from './relationsFilter'
+import { RelationWinRateDonut } from './RelationWinRateDonut'
+import {
+  coreRelations,
+  filterRelations,
+  formatLastSeen,
+  hasCrossGameRelations,
+  type RelationFilter,
+} from './relationsFilter'
 
 type RelationsText = PalmaresText['relations']
 
@@ -57,13 +66,14 @@ function duelOutcomeToken(outcome: string): SemanticToken {
 // OutcomeSparkline — frise W/L/neutre partagée par les 3 cartes (binôme, bête
 // noire, noyau). La hauteur encode l'issue (victoire haute, défaite basse), la
 // couleur via token. Décorative (aria-hidden) ; ancien→récent (gauche→droite).
+// Les barres s'étirent (`flex-1`) pour occuper toute la largeur du bloc.
 function OutcomeSparkline({ outcomes }: { outcomes: string[] }) {
   return (
-    <div className="flex h-5 items-end gap-0.5" aria-hidden="true">
+    <div className="flex h-5 w-full items-end gap-0.5" aria-hidden="true">
       {outcomes.map((o, i) => (
         <span
           key={`${i}-${o}`}
-          className="w-1.5 rounded-sm"
+          className="min-w-[2px] flex-1 rounded-sm"
           style={{
             height: o === 'win' ? '100%' : o === 'loss' ? '45%' : '70%',
             backgroundColor: tokenCssVar(duelOutcomeToken(o)),
@@ -71,22 +81,6 @@ function OutcomeSparkline({ outcomes }: { outcomes: string[] }) {
         />
       ))}
     </div>
-  )
-}
-
-// LiftChip — pastille « +N pts vs moy. perso. historique » (vert si positif, rouge
-// sinon). lift = fraction signée (0..1) ; masquée si < 0,5 pt. Partagée binôme/noyau.
-function LiftChip({ lift, labels }: { lift: number | null; labels: RelationsText }) {
-  if (lift == null || !Number.isFinite(lift) || Math.abs(lift) < 0.005) return null
-  return (
-    <span
-      className="font-mono text-xs font-bold"
-      style={{ color: lift >= 0 ? tokenCssVar('outcome-win') : tokenCssVar('outcome-loss') }}
-      title={labels.core.liftTooltip}
-    >
-      {lift >= 0 ? '+' : '−'}
-      {Math.round(Math.abs(lift) * 100)} {labels.core.liftPoints}
-    </span>
   )
 }
 
@@ -123,16 +117,46 @@ function streakChip(streak: number | undefined, labels: RelationsText): ReactNod
 }
 
 /**
+ * nemesisRankLabel — libellé du rang CSR courant de la bête noire (lot relations-G).
+ * Compose « Nom + sous-palier » via composeTierLabel (source unique) ; pour Onyx
+ * (palier ouvert), suffixe la valeur CSR si disponible (« Onyx 1523 »). Renvoie null
+ * si le palier est absent → rien n'est affiché (dégradation gracieuse, pas de « N/A »).
+ */
+function nemesisRankLabel(csr: RelationCSR, locale: 'fr' | 'en'): string | null {
+  const tier = csr.tier?.trim()
+  if (!tier) return null
+  const base = composeTierLabel(tier, csr.sub_tier ?? 0, locale)
+  if (tier.toLowerCase() === 'onyx' && csr.rating_value != null && Number.isFinite(csr.rating_value)) {
+    return `${base} ${Math.round(csr.rating_value)}`
+  }
+  return base
+}
+
+// donutLabels — projette les libellés i18n vers le contrat du donut (partagé par
+// les 3 cartes hero).
+function donutLabels(labels: RelationsText) {
+  return {
+    wins: labels.donut.wins,
+    losses: labels.donut.losses,
+    personalAvg: labels.donut.personalAvg,
+    pointsUnit: labels.donut.pointsUnit,
+    liftTooltip: labels.core.liftTooltip,
+  }
+}
+
+/**
  * HeroRelationCard — carte hero : binôme (mode ally) ou bête noire (mode enemy).
- * Grammaire commune avec la carte Noyau dur : uplabel → gamertag (identité, en
- * tête) → ligne métrique (% de victoires + qualificatif + chip) → [barre
- * frags/morts pour l'ennemi] → sparkline labellée → footer détail (1 ligne).
- *  - ally : chip = lift (réutilise playerWinRate) ; sparkline « Derniers matchs
- *    ensemble » (recentForm = top_ally_recent_form) ; footer FDA à tes côtés.
- *  - enemy : chip = série en cours ; barre Frags/morts ; sparkline « Derniers
- *    duels » (issues des duels) ; footer ratio.
+ * Grammaire commune avec la carte Noyau dur : accent EN HAUT → titre de bloc
+ * (dans le bloc) → gamertag (identité, en blanc) → donut de taux de victoire avec
+ * repère de la moyenne perso → [chips série/rang, barre frags/morts pour
+ * l'ennemi] → sparkline labellée → footer détail (1 ligne).
+ *  - ally : donut = WR ensemble vs moy. perso ; sparkline « Derniers matchs »
+ *    (recentForm = top_ally_recent_form) ; footer FDA à tes côtés.
+ *  - enemy : donut = WR face à lui vs moy. perso ; chip série + rang CSR ; barre
+ *    Frags/morts ; sparkline « Derniers duels » ; footer ratio.
  */
 function HeroRelationCard({
+  title,
   emptyLabel,
   accent,
   relation,
@@ -140,11 +164,12 @@ function HeroRelationCard({
   labels,
   locale,
   onPlayerClick,
-  duels,
   playerWinRate,
   recentForm,
   streak,
+  csr,
 }: {
+  title: string
   emptyLabel: string
   accent: Parameters<typeof KpiCard>[0]['accent']
   relation: RelationInsight | null
@@ -152,15 +177,16 @@ function HeroRelationCard({
   labels: RelationsText
   locale: 'fr' | 'en'
   onPlayerClick: (gamertag: string) => void
-  duels?: RelationDuelEntry[]
   playerWinRate?: number | null
   recentForm?: string[] | null
   streak?: number
+  csr?: RelationCSR | null
 }) {
   if (!relation) {
     return (
-      <KpiCard accent={accent} accentSide="left" className="flex flex-1 flex-col">
+      <KpiCard accent={accent} accentSide="top" className="flex flex-1 flex-col">
         <div className="flex flex-1 flex-col p-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-label text-muted-foreground">{title}</p>
           <p className="text-sm text-muted-foreground">{emptyLabel}</p>
         </div>
       </KpiCard>
@@ -169,19 +195,33 @@ function HeroRelationCard({
   const isAlly = mode === 'ally'
   const wr = isAlly ? relation.teammate_win_rate : relation.enemy_win_rate
   const winQual = isAlly ? labels.hero.winQualAlly : labels.hero.winQualEnemy
-  // ally : lift vs moyenne perso historique ; enemy : chip série en cours.
-  const lift =
-    isAlly && wr != null && playerWinRate != null && Number.isFinite(playerWinRate) ? wr - playerWinRate : null
-  const allyForm = (recentForm ?? []).filter((o): o is string => typeof o === 'string')
-  const duelOutcomes = (duels ?? []).slice(-25).map((d) => d.outcome)
+  // Contexte CSR de la bête noire (lot relations-G, best-effort). null pour le
+  // binôme ou une bête noire sans ligne CSR → rien n'est rendu (dégradation).
+  const rankLabel = !isAlly && csr ? nemesisRankLabel(csr, locale) : null
+  // Série en cours (bête noire uniquement).
+  const streakNode = isAlly ? null : streakChip(streak, labels)
+
+  // Cartes symétriques : signature FDA (à ses côtés / face à lui), barre composite
+  // (alliés-adversaires / frags-morts), sparkline « Derniers matchs » (recentForm =
+  // forme récente À CÔTÉS pour le binôme, CONTRE pour la bête noire — même source
+  // fiable via l'overview), footer volume + dernière rencontre.
+  const sigValue = isAlly ? relation.avg_kda_with : relation.avg_kda_against
+  const sigLabel = isAlly ? labels.table.kdaTogether : labels.hero.kdaAgainst
+  const sparkOutcomes = (recentForm ?? []).filter((o): o is string => typeof o === 'string')
+  const volume = isAlly
+    ? labels.hero.matchesPlayed(relation.teammate_matches.toLocaleString(locale))
+    : labels.hero.duels(relation.enemy_matches.toLocaleString(locale))
+  const lastSeen = formatLastSeen(relation.last_seen_at, labels.relative)
 
   return (
-    <KpiCard accent={accent} accentSide="left" className="flex flex-1 flex-col">
+    <KpiCard accent={accent} accentSide="top" className="flex flex-1 flex-col">
       <div className="flex flex-1 flex-col p-4">
+        {/* titre de bloc (dans le bloc) + identité en blanc */}
+        <p className="mb-2 text-xs font-semibold uppercase tracking-label text-muted-foreground">{title}</p>
         <span className="whitespace-nowrap">
           <button
             type="button"
-            className="text-left text-2xl font-semibold text-info hover:underline"
+            className="text-left text-2xl font-semibold text-foreground hover:underline"
             onClick={() => onPlayerClick(relation.gamertag)}
           >
             {relation.gamertag}
@@ -189,65 +229,78 @@ function HeroRelationCard({
           <RelationBadges badges={relation.badges} locale={locale} />
         </span>
 
-        {/* ligne métrique : % de victoires + qualificatif + chip */}
-        <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className="font-mono text-xl font-bold" style={{ color: winRateColor(wr) }}>
-            {formatPercent(wr, 0)}
-          </span>
-          <span className="text-xs text-muted-foreground">{winQual}</span>
-          {isAlly ? <LiftChip lift={lift} labels={labels} /> : streakChip(streak, labels)}
+        {/* donut de taux de victoire + repère moyenne perso (caption à droite) */}
+        <div className="mt-3">
+          <RelationWinRateDonut
+            winRate={wr}
+            personalAvg={playerWinRate}
+            labels={donutLabels(labels)}
+            caption={winQual}
+          />
         </div>
 
-        {/* bête noire : barre Frags / morts conservée */}
-        {!isAlly && (
-          <div className="mt-3">
+        {/* bête noire : rang CSR courant (best-effort classé) + série en cours */}
+        {rankLabel && (
+          <div
+            className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1"
+            data-testid="nemesis-current-rank"
+          >
+            <span className="text-xs text-muted-foreground">{labels.hero.currentRank}</span>
+            <NarrativeBadge
+              label={rankLabel}
+              colorVar={tokenVar('narrative-encounter-tough-enemy')}
+              solid
+              size="sm"
+            />
+          </div>
+        )}
+        {streakNode && <div className="mt-2">{streakNode}</div>}
+
+        {/* SIGNATURE (mise en valeur, même position) : le FDA de CE JOUEUR avec toi
+            (binôme) ou contre toi (bête noire). Couleur INVERSÉE pour la bête noire :
+            un FDA élevé de l'adversaire est NÉGATIF pour toi (il domine) → rouge. */}
+        {sigValue != null && Number.isFinite(sigValue) && (
+          <div className="mt-3 flex items-baseline gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
+            <span className="font-mono text-2xl font-bold" style={{ color: kdaNetColor(isAlly ? sigValue : -sigValue) }}>
+              {formatRatio(sigValue)}
+            </span>
+            <span className="text-xs text-muted-foreground">{sigLabel}</span>
+          </div>
+        )}
+
+        {/* barre composite pleine largeur (légende en dessous) : alliés/adversaires
+            (binôme) ou frags/morts (bête noire) */}
+        <div className="mt-3">
+          {isAlly ? (
             <RelationSplitBar
-              label={labels.table.fragsDeaths}
+              leftValue={relation.teammate_matches}
+              rightValue={relation.enemy_matches}
+              leftToken="team-ally"
+              rightToken="team-enemy"
+              leftLabel={labels.table.alliesUnit}
+              rightLabel={labels.table.adversariesUnit}
+              locale={locale}
+            />
+          ) : (
+            <RelationSplitBar
               leftValue={relation.kills_dealt}
               rightValue={relation.deaths_suffered}
               leftToken="outcome-win"
               rightToken="outcome-loss"
+              leftLabel={labels.table.fragsUnit}
+              rightLabel={labels.table.deathsUnit}
               locale={locale}
             />
-          </div>
-        )}
-
-        {/* sparkline : matchs ensemble (binôme) ou duels (bête noire) */}
-        {isAlly ? (
-          <SparklineSection label={labels.core.recentForm} outcomes={allyForm} />
-        ) : (
-          <SparklineSection label={labels.hero.recentDuels} outcomes={duelOutcomes} />
-        )}
-
-        {/* footer détail : FDA (binôme) ou ratio (bête noire) + volume */}
-        <p className="mt-3 text-xs text-muted-foreground">
-          {isAlly ? (
-            <>
-              {relation.avg_kda_with != null && Number.isFinite(relation.avg_kda_with) && (
-                <>
-                  <span className="font-mono font-bold" style={{ color: kdaNetColor(relation.avg_kda_with) }}>
-                    {formatRatio(relation.avg_kda_with)}
-                  </span>{' '}
-                  {labels.table.kdaTogether}
-                  {' · '}
-                </>
-              )}
-              {labels.hero.matchesPlayed(relation.teammate_matches.toLocaleString(locale))}
-            </>
-          ) : (
-            <>
-              {relation.duel_ratio != null && Number.isFinite(relation.duel_ratio) && (
-                <>
-                  <span className="font-mono font-bold" style={{ color: ratioColor(relation.duel_ratio) }}>
-                    {formatRatio(relation.duel_ratio)}
-                  </span>{' '}
-                  {labels.table.ratio}
-                  {' · '}
-                </>
-              )}
-              {labels.hero.duels(relation.enemy_matches.toLocaleString(locale))}
-            </>
           )}
+        </div>
+
+        {/* sparkline unifiée « Derniers matchs » (pleine largeur) */}
+        <SparklineSection label={labels.core.recentForm} outcomes={sparkOutcomes} />
+
+        {/* footer : volume + dernière rencontre */}
+        <p className="mt-3 text-xs text-muted-foreground">
+          {volume}
+          {lastSeen && <> · {lastSeen}</>}
         </p>
       </div>
     </KpiCard>
@@ -272,15 +325,17 @@ function countSeenThisWeek(rows: RelationInsight[]): number {
 }
 
 /**
- * CoreSummaryCard — résumé narratif du noyau dur. Condense en une carte :
- *  - WR moyen ensemble + lift vs ta moyenne perso historique (#1, si player_win_rate fourni)
+ * CoreSummaryCard — résumé narratif du noyau dur. Accent EN HAUT + titre de bloc
+ * (dans le bloc). Condense en une carte :
+ *  - donut du WR moyen ensemble + repère de la moyenne perso historique (#1)
  *  - vus cette semaine (#3, si > 0)
- *  - sparkline des derniers matchs joués à tes côtés avec un fidèle (#8, si recentForm fourni)
- *  - mini-classement dépliable des fidèles par WR (#7)
- * lift et recentForm viennent de l'overview backend (optionnels) : rendus seulement
- * quand la donnée est présente, sinon la carte reste complète sans trou.
+ *  - sparkline « Derniers matchs » joués à côté d'un fidèle (#8, si recentForm fourni)
+ *  - mini-tableau (sans en-têtes) des fidèles classés par WR, dépliable (#7)
+ * recentForm vient de l'overview backend (optionnel) : rendu seulement quand la
+ * donnée est présente, sinon la carte reste complète sans trou.
  */
 function CoreSummaryCard({
+  title,
   unit,
   coreRows,
   labels,
@@ -289,6 +344,7 @@ function CoreSummaryCard({
   playerWinRate,
   recentForm,
 }: {
+  title: string
   unit: string
   coreRows: RelationInsight[]
   labels: RelationsText
@@ -303,9 +359,6 @@ function CoreSummaryCard({
     .map((r) => r.teammate_win_rate)
     .filter((v): v is number => v != null && Number.isFinite(v))
   const avgWr = wrs.length > 0 ? wrs.reduce((a, b) => a + b, 0) / wrs.length : null
-  // Lift : WR ensemble − WR perso HISTORIQUE (tout-temps). En points (0..100).
-  const lift =
-    avgWr != null && playerWinRate != null && Number.isFinite(playerWinRate) ? avgWr - playerWinRate : null
   // Vus cette semaine : fidèles avec un last_seen_at de moins de 7 jours.
   const seenThisWeek = countSeenThisWeek(coreRows)
   // Classement des fidèles par WR ensemble (desc), nuls relégués, tiebreak volume.
@@ -324,63 +377,67 @@ function CoreSummaryCard({
   const form = (recentForm ?? []).filter((o): o is string => typeof o === 'string')
 
   return (
-    <KpiCard accent="info" accentSide="left" className="flex flex-1 flex-col">
+    <KpiCard accent="info" accentSide="top" className="flex flex-1 flex-col">
       <div className="flex flex-1 flex-col p-4">
-        {/* WR moyen ensemble + lift vs ta moyenne (#1) */}
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          {avgWr != null ? (
-            <>
-              <span className="font-mono text-3xl font-bold" style={{ color: winRateColor(avgWr) }}>
-                {formatPercent(avgWr, 0)}
-              </span>
-              <span className="text-xs text-muted-foreground">{labels.core.withThem}</span>
-            </>
-          ) : (
-            <span className="text-2xl font-semibold text-foreground">
-              {count.toLocaleString(locale)} <span className="text-base font-normal text-muted-foreground">{unit}</span>
-            </span>
-          )}
-          <LiftChip lift={lift} labels={labels} />
-        </div>
-
-        {/* vus cette semaine (#3) — affiché seulement s'il y en a */}
-        {seenThisWeek > 0 && (
-          <p className="mt-2 text-xs">
-            <span className="font-semibold" style={{ color: tokenCssVar('outcome-win') }}>
+        {/* titre de bloc (dans le bloc) + effectif à gauche (même police que les
+            noms de joueurs des autres cartes) et « vus cette semaine » à droite. */}
+        <p className="mb-2 text-xs font-semibold uppercase tracking-label text-muted-foreground">{title}</p>
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-2xl font-semibold text-foreground">
+            {count.toLocaleString(locale)} {unit}
+          </span>
+          {seenThisWeek > 0 && (
+            <span className="shrink-0 text-xs font-semibold" style={{ color: tokenCssVar('outcome-win') }}>
               {labels.core.seenThisWeek(seenThisWeek.toLocaleString(locale))}
             </span>
-          </p>
-        )}
+          )}
+        </div>
 
-        {/* sparkline des derniers matchs joués à tes côtés avec un fidèle (#8, backend) */}
+        {/* donut du WR moyen ensemble + repère moyenne perso (caption à droite) (#1) */}
+        <div className="mt-3">
+          <RelationWinRateDonut
+            winRate={avgWr}
+            personalAvg={playerWinRate}
+            labels={donutLabels(labels)}
+            caption={labels.core.withThem}
+          />
+        </div>
+
+        {/* sparkline des derniers matchs joués à côté d'un fidèle (#8, backend) */}
         <SparklineSection label={labels.core.recentForm} outcomes={form} />
 
-        {/* mini-classement dépliable des fidèles (#7) */}
+        {/* mini-tableau (sans en-têtes) des fidèles classés par WR (#7) */}
         {ranked.length > 0 && (
           <div className="mt-3 border-t border-border pt-3">
-            <ul className="flex flex-col gap-1.5">
-              {visibleRanked.map((r, i) => (
-                <li key={r.xuid} className="flex items-baseline justify-between gap-2 text-sm">
-                  <button
-                    type="button"
-                    className="flex min-w-0 items-baseline text-left font-semibold text-info hover:underline"
-                    onClick={() => onPlayerClick(r.gamertag)}
-                  >
-                    <span className="mr-1.5 shrink-0 text-xs text-muted-foreground">{i + 1}</span>
-                    <span className="truncate">{r.gamertag}</span>
-                  </button>
-                  {r.teammate_win_rate != null && Number.isFinite(r.teammate_win_rate) && (
-                    <span className="shrink-0 font-mono text-xs text-muted-foreground">
+            <table className="w-full border-collapse text-sm">
+              <tbody>
+                {visibleRanked.map((r, i) => (
+                  <tr key={r.xuid} className="align-baseline">
+                    <td className="py-0.5 pr-2 text-right font-mono text-xs text-muted-foreground tabular-nums">
+                      {i + 1}
+                    </td>
+                    <td className="w-full py-0.5">
+                      <button
+                        type="button"
+                        className="block max-w-full truncate text-left font-semibold text-foreground hover:underline"
+                        onClick={() => onPlayerClick(r.gamertag)}
+                      >
+                        {r.gamertag}
+                      </button>
+                    </td>
+                    <td className="whitespace-nowrap py-0.5 pl-2 text-right font-mono text-xs text-muted-foreground tabular-nums">
                       {labels.hero.matchesPlayed(r.total_matches.toLocaleString(locale))}
-                      {' · '}
-                      <span className="font-bold" style={{ color: winRateColor(r.teammate_win_rate) }}>
-                        {formatPercent(r.teammate_win_rate, 0)}
-                      </span>
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
+                    </td>
+                    <td
+                      className="whitespace-nowrap py-0.5 pl-2 text-right font-mono text-xs font-bold tabular-nums"
+                      style={{ color: winRateColor(r.teammate_win_rate) }}
+                    >
+                      {formatPercent(r.teammate_win_rate, 0)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
             {hiddenCount > 0 && (
               <button
                 type="button"
@@ -446,72 +503,6 @@ function SegmentedFilter({
   )
 }
 
-/** CoreCards — section détaillée du noyau dur (mini-cards gris foncé). */
-function CoreCards({
-  rows,
-  labels,
-  locale,
-  onPlayerClick,
-}: {
-  rows: RelationInsight[]
-  labels: RelationsText
-  locale: 'fr' | 'en'
-  onPlayerClick: (gamertag: string) => void
-}) {
-  if (rows.length === 0) {
-    return <p className="text-sm text-muted-foreground">{labels.core.empty}</p>
-  }
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {rows.map((r) => (
-        <div key={r.xuid} className="rounded-lg bg-card p-4">
-          <span className="whitespace-nowrap">
-            <button
-              type="button"
-              className="truncate text-sm font-semibold text-info hover:underline"
-              onClick={() => onPlayerClick(r.gamertag)}
-            >
-              {r.gamertag}
-            </button>
-            <RelationBadges badges={r.badges} locale={locale} />
-          </span>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {labels.core.together(r.total_matches.toLocaleString(locale))}
-          </p>
-          <div className="mt-2 flex flex-col gap-1.5">
-            <RelationSplitBar
-              label={labels.table.encounters}
-              leftValue={r.teammate_matches}
-              rightValue={r.enemy_matches}
-              leftToken="team-ally"
-              rightToken="team-enemy"
-              locale={locale}
-            />
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs">
-              {r.teammate_win_rate != null && Number.isFinite(r.teammate_win_rate) && (
-                <span>
-                  <span className="font-bold" style={{ color: winRateColor(r.teammate_win_rate) }}>
-                    {formatPercent(r.teammate_win_rate, 0)}
-                  </span>{' '}
-                  <span className="text-muted-foreground">{labels.table.winRateAlly}</span>
-                </span>
-              )}
-              {r.avg_kda_with != null && Number.isFinite(r.avg_kda_with) && (
-                <span>
-                  <span className="font-bold" style={{ color: kdaNetColor(r.avg_kda_with) }}>
-                    {formatRatio(r.avg_kda_with)}
-                  </span>{' '}
-                  <span className="text-muted-foreground">{labels.table.kdaTogether}</span>
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 export function PalmaresRelationsPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const locale = normalizePalmaresLocale(useAppShellStore((state) => state.locale))
@@ -520,8 +511,8 @@ export function PalmaresRelationsPage() {
   const navigate = useNavigate()
   const filter = useRelationsPrefsStore((s) => s.filter)
   const setFilter = useRelationsPrefsStore((s) => s.setFilter)
-  const includeFriends = useRelationsPrefsStore((s) => s.includeFriends)
-  const setIncludeFriends = useRelationsPrefsStore((s) => s.setIncludeFriends)
+  const includeNeverFaced = useRelationsPrefsStore((s) => s.includeNeverFaced)
+  const setIncludeNeverFaced = useRelationsPrefsStore((s) => s.setIncludeNeverFaced)
 
   const { committedFilterContext, committedHash, bar } = useLocalFilterBar({
     playerSlug,
@@ -565,12 +556,12 @@ export function PalmaresRelationsPage() {
   // sans réécrire le store (la préférence reste, réactivée si la donnée revient).
   const effectiveFilter: RelationFilter = filter === 'cross' && !showCross ? 'all' : filter
 
-  // Filtre segment (client) + toggle « amis » : sans les amis, on masque les
-  // relations purement coéquipières (jamais affrontées).
+  // Filtre segment (client) + toggle « jamais affrontés » : OFF (défaut), on masque
+  // les relations purement coéquipières (jamais affrontées, enemy_matches === 0).
   const visibleRows = useMemo(() => {
     const base = filterRelations(relations, effectiveFilter)
-    return includeFriends ? base : base.filter((r) => r.enemy_matches > 0)
-  }, [relations, effectiveFilter, includeFriends])
+    return includeNeverFaced ? base : base.filter((r) => r.enemy_matches > 0)
+  }, [relations, effectiveFilter, includeNeverFaced])
   const coreRows = useMemo(() => coreRelations(relations), [relations])
 
   let body: ReactNode
@@ -600,8 +591,8 @@ export function PalmaresRelationsPage() {
         filter={effectiveFilter}
         setFilter={setFilter}
         showCross={showCross}
-        includeFriends={includeFriends}
-        setIncludeFriends={setIncludeFriends}
+        includeNeverFaced={includeNeverFaced}
+        setIncludeNeverFaced={setIncludeNeverFaced}
         visibleRows={visibleRows}
         coreRows={coreRows}
         onPlayerClick={goToExplorer}
@@ -627,8 +618,8 @@ function RelationsContent({
   filter,
   setFilter,
   showCross,
-  includeFriends,
-  setIncludeFriends,
+  includeNeverFaced,
+  setIncludeNeverFaced,
   visibleRows,
   coreRows,
   onPlayerClick,
@@ -642,8 +633,8 @@ function RelationsContent({
   filter: RelationFilter
   setFilter: (f: RelationFilter) => void
   showCross: boolean
-  includeFriends: boolean
-  setIncludeFriends: (v: boolean) => void
+  includeNeverFaced: boolean
+  setIncludeNeverFaced: (v: boolean) => void
   visibleRows: RelationInsight[]
   coreRows: RelationInsight[]
   onPlayerClick: (gamertag: string) => void
@@ -655,72 +646,69 @@ function RelationsContent({
   const relations = data.relations ?? []
   const allyRelation = findRelation(relations, ov.top_ally?.gamertag)
   const nemesisRelation = findRelation(relations, ov.top_nemesis?.gamertag)
-  // Frise du hero « Bête noire » : réutilise la donnée Moments (même queryKey →
-  // dédupliquée par TanStack Query, pas d'appel réseau supplémentaire).
+  // Série en cours de la bête noire : réutilise la donnée Moments (même queryKey →
+  // dédupliquée par TanStack Query, pas d'appel réseau supplémentaire). La sparkline
+  // « Derniers matchs » vient désormais de l'overview (top_nemesis_recent_form),
+  // fiable et symétrique du binôme — plus de dépendance aux duels asynchrones.
   const { data: momentsData } = useRelationsMoments(playerSlug, filterContext, filterHash, true)
   const nemesisRivalry = useMemo(() => {
     if (!momentsData || !nemesisRelation) return undefined
     return (momentsData.rivalries ?? []).find((r) => r.xuid === nemesisRelation.xuid)
   }, [momentsData, nemesisRelation])
-  const nemesisDuels = nemesisRivalry?.duels ?? undefined
   return (
     <>
       <div className="grid gap-4 lg:grid-cols-3" data-testid="palmares-relations-overview">
-        <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-foreground">{rel.hero.topAllyTitle}</h3>
-          <HeroRelationCard
-            emptyLabel={rel.hero.topAllyEmpty}
-            accent="outcome-win"
-            relation={allyRelation}
-            mode="ally"
-            labels={rel}
-            locale={locale}
-            onPlayerClick={onPlayerClick}
-            playerWinRate={ov.player_win_rate}
-            recentForm={ov.top_ally_recent_form}
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-foreground">{rel.hero.topNemesisTitle}</h3>
-          <HeroRelationCard
-            emptyLabel={rel.hero.topNemesisEmpty}
-            accent="outcome-loss"
-            relation={nemesisRelation}
-            mode="enemy"
-            labels={rel}
-            locale={locale}
-            onPlayerClick={onPlayerClick}
-            duels={nemesisDuels}
-            streak={nemesisRivalry?.current_streak}
-          />
-        </div>
-        <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-foreground">{rel.hero.coreTitle}</h3>
-          <CoreSummaryCard
-            unit={rel.hero.coreUnit}
-            coreRows={coreRows}
-            labels={rel}
-            locale={locale}
-            onPlayerClick={onPlayerClick}
-            playerWinRate={ov.player_win_rate}
-            recentForm={ov.core_recent_form}
-          />
-        </div>
+        <HeroRelationCard
+          title={rel.hero.topAllyTitle}
+          emptyLabel={rel.hero.topAllyEmpty}
+          accent="outcome-win"
+          relation={allyRelation}
+          mode="ally"
+          labels={rel}
+          locale={locale}
+          onPlayerClick={onPlayerClick}
+          playerWinRate={ov.player_win_rate}
+          recentForm={ov.top_ally_recent_form}
+        />
+        <HeroRelationCard
+          title={rel.hero.topNemesisTitle}
+          emptyLabel={rel.hero.topNemesisEmpty}
+          accent="outcome-loss"
+          relation={nemesisRelation}
+          mode="enemy"
+          labels={rel}
+          locale={locale}
+          onPlayerClick={onPlayerClick}
+          playerWinRate={ov.player_win_rate}
+          recentForm={ov.top_nemesis_recent_form}
+          streak={nemesisRivalry?.current_streak}
+          csr={ov.top_nemesis?.csr}
+        />
+        <CoreSummaryCard
+          title={rel.hero.coreTitle}
+          unit={rel.hero.coreUnit}
+          coreRows={coreRows}
+          labels={rel}
+          locale={locale}
+          onPlayerClick={onPlayerClick}
+          playerWinRate={ov.player_win_rate}
+          recentForm={ov.core_recent_form}
+        />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <SegmentedFilter active={filter} onChange={setFilter} labels={rel.chips} showCross={showCross} />
         <button
           type="button"
-          aria-pressed={includeFriends}
-          onClick={() => setIncludeFriends(!includeFriends)}
+          aria-pressed={includeNeverFaced}
+          onClick={() => setIncludeNeverFaced(!includeNeverFaced)}
           className={`rounded-lg border px-3 py-1 text-sm font-medium transition-colors ${
-            includeFriends
+            includeNeverFaced
               ? 'border-info text-foreground'
               : 'border-border text-muted-foreground hover:text-foreground'
           }`}
         >
-          {includeFriends ? rel.filters.friendsIncluded : rel.filters.includeFriends}
+          {includeNeverFaced ? rel.filters.neverFacedIncluded : rel.filters.includeNeverFaced}
         </button>
       </div>
 
@@ -731,14 +719,6 @@ function RelationsContent({
         onPlayerClick={onPlayerClick}
         emptyMessage={rel.filterEmptyDescription}
       />
-
-      <section className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">{rel.core.sectionTitle}</h2>
-          <p className="text-sm text-muted-foreground">{rel.core.sectionDescription}</p>
-        </div>
-        <CoreCards rows={coreRows} labels={rel} locale={locale} onPlayerClick={onPlayerClick} />
-      </section>
 
       <RelationsMomentsSection
         playerSlug={playerSlug}

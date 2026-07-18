@@ -21,8 +21,27 @@ const MIN_KILLS = 50
 const POWER_BLIND_THRESHOLD = 0.03
 const OVER_RELIANCE_THRESHOLD = 0.7
 
-export function weaponRoleInsight(roles: SynthesisRoleKillEntry[] | undefined): RoleInsight {
-  if (!roles || roles.length === 0) return null
+/**
+ * Rôles NON-COMBAT (frags hors-arsenal H5 : véhicules, tourelles, environnement,
+ * bucket d'attribution « Spartan », UGC). Ils apparaissent dans le donut « Frags
+ * par type d'arme » mais DOIVENT être exclus de tout calcul coach : sans ça, le
+ * bucket « Spartan » (~8.8k frags) gonfle le dénominateur (fausse
+ * `blind_spot_power`) ou devient une fausse `over_reliance`. Source unique,
+ * réutilisée par le donut pour la couleur neutre (SynthesisRoleKillsDonut).
+ */
+export const NON_COMBAT_WEAPON_ROLES: ReadonlySet<string> = new Set([
+  'vehicle',
+  'turret',
+  'environmental',
+  'unattributed',
+  'other',
+])
+
+export function weaponRoleInsight(allRoles: SynthesisRoleKillEntry[] | undefined): RoleInsight {
+  if (!allRoles || allRoles.length === 0) return null
+  // Ne raisonner QUE sur les rôles de combat (arsenal réel).
+  const roles = allRoles.filter((r) => !NON_COMBAT_WEAPON_ROLES.has(r.role))
+  if (roles.length === 0) return null
   const total = roles.reduce((s, r) => s + r.kills, 0)
   if (total < MIN_KILLS) return null
 

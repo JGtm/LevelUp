@@ -84,6 +84,20 @@ func TestCampaignExclusion_FiltersCampaignMatch(t *testing.T) {
 	if want := []string{"arena1"}; !equalStrings(got, want) {
 		t.Errorf("sous-requête title-agnostic : attendu %v, obtenu %v", want, got)
 	}
+
+	// Forme TOKEN → SOUS-REQUÊTE (resolveCampaignExclusionByMatchID) : chemin des
+	// CTE my_history / lecteurs squad qui portent le token SANS alias registre dans
+	// sa portée (Q10/Q23b/Q26/Q28/Q29 relations & squad). Résolu AVANT fmt.Sprintf.
+	tokSub := `SELECT mp.match_id FROM match_participants mp WHERE mp.xuid = ?` +
+		campaignExclusionToken + ` ORDER BY mp.match_id`
+	got = queryMatchIDs(t, db, resolveCampaignExclusionByMatchID(tokSub, "halo_5", "mp.match_id"), xuid)
+	if want := []string{"arena1"}; !equalStrings(got, want) {
+		t.Errorf("token→sous-requête halo_5 : attendu %v (Campagne exclue), obtenu %v", want, got)
+	}
+	got = queryMatchIDs(t, db, resolveCampaignExclusionByMatchID(tokSub, "halo_infinite", "mp.match_id"), xuid)
+	if want := []string{"arena1", "camp1"}; !equalStrings(got, want) {
+		t.Errorf("token→sous-requête halo_infinite : attendu %v (no-op), obtenu %v", want, got)
+	}
 }
 
 func queryMatchIDs(t *testing.T, db *sql.DB, query, xuid string) []string {

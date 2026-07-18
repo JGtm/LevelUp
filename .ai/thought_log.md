@@ -785,6 +785,1319 @@ handlers/...` OK ; service+scheduler OK ; `go test -tags=integration ./internal/
 **Prochaine étape** : revue superviseur + commit (worktree laissé sale, aucun commit/push par l'agent).
 
 ---
+## [2026-07-18] Relations (Communauté) — refonte cartes hero : donut WR + repère moy. perso, accent haut + titres dans le bloc, noms en blanc
+
+**Statut** : Complété (CODE + TESTS + gates locaux). Branche `feat/relations-cards-redesign`.
+Revue visuelle utilisateur à faire au merge (donut SVG + layout). PAS committé (attente
+autorisation utilisateur).
+
+**Contexte** : revue UX de la page `/players/$playerSlug/community/relations` avec l'utilisateur
+(6 demandes). Décisions produit tranchées via questions ciblées : donut « repère sur l'anneau »,
+toggle relibellé « coéquipiers » (état-dépendant Inclure/Inclus), sparkline noyau = « Derniers
+matchs » tout court.
+
+**Décision technique** :
+- **Donut WR** (nouveau `RelationWinRateDonut.tsx`, SVG pur — pas d'ECharts) : anneau
+  victoires/défaites (tokens outcome-win/loss) + **repère radial** de la moyenne perso historique
+  (currentColor=foreground) posé sur l'anneau (arc dépasse le repère = sur-perf, s'arrête avant =
+  sous-perf — lisible dans les 2 sens). Centre = % + delta signé « ±N pts » (tooltip lift). Légende
+  à DROITE (victoires / défaites / moy. perso). Remplace l'ancien gros % + `LiftChip` (supprimé) sur
+  les 3 cartes hero (binôme/bête noire/noyau). Responsive via viewBox, couleurs via tokens/currentColor.
+- **Cartes hero** : `accentSide="top"` (était `left`) ; titre de bloc DANS le bloc (style
+  `text-xs font-semibold uppercase tracking-label text-muted-foreground`, cohérent StatCard) ; l'ancien
+  `<h3>` externe est retiré. Même traitement appliqué aux cartes « Rivaux » (KpiCard accent-top
+  outcome-loss). Noms de joueurs passés en BLANC (`text-info` → `text-foreground`) partout : cartes
+  hero, mini-classement noyau, tableau, cartes rivaux (déjà foreground).
+- **Noyau dur** : mini-classement des fidèles rendu en `<table>` sans en-têtes (colonnes alignées
+  rang/nom/matchs/WR). Sparkline + barre composite (RelationSplitBar `w-16` → `flex-1`) en pleine
+  largeur du bloc. Question utilisateur « Derniers matchs ensemble » = frise des N derniers matchs
+  joués à côté d'AU MOINS UN membre du noyau (pas tous à la fois) → relibellé « Derniers matchs ».
+- **Heatmap « Rythme des rencontres »** : cap `MAX_HEATMAP_ROWS = 12` (tri par total, échelle de
+  couleur recalculée sur les seules lignes retenues).
+- **Suppressions** : bouton « Voir l'escouade » (pont noyau→escouade) + volet « Quoi de neuf »
+  (`RelationsWhatsNewStrip.tsx` + `whatsNew.ts` + tests) supprimés (0 code mort). Clés i18n retirées
+  (`core.view_squad`, `core.lift_points`, section `whats_new.*`) ; toggle relibellé
+  (`Inclure les coéquipiers` / `Coéquipiers inclus` — EN `Include/Teammates included`) ; ajout section
+  i18n `donut.*` (Victoires/Défaites/Moy. perso/pts). Manifest régénéré.
+
+**Round 2 (retours utilisateur sur capture)** :
+- Donut : % central passé en BLANC (le delta « ±N pts » reste coloré) ; piste NON REMPLIE
+  (`currentColor` opacité 0.15) + arc TOUJOURS vert (outcome-win) au lieu de coloré par
+  winRateColor — corrige le donut « tout rouge » quand WR < 50 % (l'arc rouge + base rouge se
+  cumulaient). Signal qualité porté par le repère + le delta, pas par la couleur d'arc.
+- Caption « Taux de victoires … » déplacée à DROITE (dans la colonne légende du donut, prop
+  `caption`) au lieu d'au-dessus à gauche.
+- Carte Noyau dur : compteur « N joueurs » déplacé SOUS le titre, dans la même police que les
+  gamertags des autres cartes (`text-2xl font-semibold text-foreground`) → 3 cartes alignées.
+- Barre composite bête noire : légende EN DESSOUS (« 34 frags » vert à gauche, « 78 morts »
+  rouge à droite) au lieu d'inline ; `RelationSplitBar` refondu (props `leftLabel`/`rightLabel`,
+  i18n `table.frags_unit`/`deaths_unit`).
+
+**Découverte TRAITÉE (retrait backend whats-new)** : sur demande utilisateur, éradication complète
+du reliquat « Quoi de neuf » côté Go (0 dead-code) : colonnes SQL `encounters_30d` /
+`prev_seen_before_window` retirées des 2 templates `Q28Relations*Tpl` (SELECT 17→15 colonnes,
+placeholders réajustés — cutoff supprimé de `buildRelationsQuery`) ; champs `RelationRawRow.
+{Encounters30d,PrevSeenBeforeWindow}` + `RelationInsight.IsRevived` supprimés ; constantes
+`NewFace/Revived*Days` + `IsRevived` supprimées d'`analysis/relations` ; mapping service retiré ;
+openapi `is_revived` (propriété + required) retiré + `make generate-types` ; tests
+`revived_test.go` + `relations_repo_whatsnew_test.go` supprimés. `first_seen_at` CONSERVÉ (champ
+général de première rencontre, pas spécifique whats-new).
+
+**Round 3 (enrichissement + uniformisation cartes, retours capture)** :
+- Noyau dur : « N vus cette semaine » déplacé à DROITE de la ligne d'effectif (flex justify-between).
+- Tableau : ⓘ (`InfoTooltip`) dans l'en-tête « Joueur » expliquant les pastilles/badges de relation
+  (i18n `table.badges_info`).
+- Cartes binôme/bête noire UNIFORMISÉES (décisions utilisateur) : structure symétrique
+  donut → chips (bête noire) → SIGNATURE encadrée → barre composite → sparkline « Derniers matchs »
+  → footer (volume + « vu il y a X »). Signature = ton FDA (`avg_kda_with` « FDA à tes côtés »
+  binôme / `avg_kda_against` « FDA face à lui » bête noire, colorée `kdaNetColor`), sortie du footer
+  et mise en valeur à la même position. Barre composite ajoutée au binôme (`team-ally`/`team-enemy`,
+  « alliés / adversaires » = teammate_matches / enemy_matches) en miroir de frags/morts de la bête
+  noire. Sparkline unifiée « Derniers matchs » sur les 2 (bête noire : issues des affrontements).
+  `duel_ratio` retiré des cartes (redondant avec la barre) ; « duels » → « affrontements »
+  (i18n `hero.duels`) ; `hero.recent_duels` supprimé (0 dead-code).
+- Centralisation `formatLastSeen` dans `relationsFilter.ts` (règle ≤ 2 copies) : `RelationsTable`
+  migré (suppression de son `formatRelative` local), réutilisé par le footer des cartes.
+
+**Round 4 (retours capture : heatmap, wording, sparkline bête noire)** :
+- Heatmap « Rythme des rencontres » : le cap à 12 était DÉJÀ correct (rowOrder sliced 12 →
+  12 lignes Y). Doute utilisateur (build local périmé probable) → garde-rail ajouté :
+  `buildOption` exporté + `RelationsMomentsHeatmap.test.ts` (20 relations → 12 lignes, top par
+  total ; < 12 → pas de lignes vides).
+- Wording : signature binôme « FDA à tes côtés » → « FDA à ses côtés » (i18n `table.kda_together`,
+  EN « KDA at their side »).
+- **Sparkline bête noire fiabilisée (full-stack)** : la sparkline « Derniers matchs » de la bête
+  noire dépendait des duels ASYNC de l'endpoint Moments (souvent vide / nemesis pas dans les top
+  rivalries) alors que le binôme lit `top_ally_recent_form` (overview, fiable). Ajout du miroir
+  ennemi `top_nemesis_recent_form` : nouveau template SQL `QRelationsEnemyFormTpl` (jointure
+  `c.team_id <> h.team_id`, placeholders identiques au Core) ; `queryCoreRecentForm` factorisé en
+  `queryRecentForm(baseTpl, …)` ; repo `GetRelationEnemyRecentForm` + port ; service calcule la
+  forme via `SelectTopNemesis` → `overview.TopNemesisRecentForm` ; domain + openapi + generate-types.
+  Front : la carte bête noire lit `recentForm={ov.top_nemesis_recent_form}` (prop `duels` +
+  `RelationDuelEntry` retirés) → sparkline fiable et symétrique du binôme (Moments ne sert plus que
+  la série en cours + section Rivaux). Tests : service `TestGetRelationsPage_RecentForms` (ally→x1
+  via RecentForm, nemesis→x2 via EnemyRecentForm) + intégration DuckDB
+  `TestCareerRepo_GetRelationEnemyRecentForm` (xuidFoe adverse m3/m4 → ["loss","loss"], allié → vide).
+
+**Round 5 (retours capture : heatmap 8, sparkline absente, % coupé, tooltip absent)** :
+- CAUSE RACINE heatmap « 8 joueurs » = plafond BACKEND `momentsHeatmapTopN = 8`
+  (`relations_moments_service.go`) — le cap front (12) ne peut que tronquer, pas ajouter des
+  lignes que le back n'envoie pas. Relevé à **12** (aligné sur MAX_HEATMAP_ROWS). Test
+  `relations_moments_service_test.go` référence la constante → reste vert.
+- Noyau dur : le « % » du mini-tableau passait à la ligne → `whitespace-nowrap` sur la cellule WR.
+- ⓘ badges : `InfoTooltip` (positionnement absolu) était CLIPPÉ par l'`overflow-x-auto` du tableau
+  → remplacé par le composant `Tooltip` (portal `document.body` + `position:fixed`, échappe au
+  clipping, déjà utilisé pour l'en-tête « Ratio »). Le tooltip d'explication s'affiche désormais.
+- DIAGNOSTIC transverse : l'utilisateur ne voyait PAS les changements BACKEND des rounds
+  précédents (sparkline bête noire round 4, heatmap 8→12 ce round) car son serveur Go (air) ne
+  rebuild visiblement pas — le front (vite HMR) reflète bien les changements front. À signaler :
+  **redémarrer le serveur Go** est nécessaire pour la sparkline bête noire ET la heatmap 12.
+
+**Round 6 (aide ⓘ : légende détaillée par badge)** : l'aide ⓘ ne montrait qu'une phrase générique.
+Remplacée par une VRAIE légende — `RelationBadgeLegend.tsx` : une ligne par type de pastille
+(NarrativeBadge solid réel, même couleur que le tableau) + sa signification/seuil. Libellés résolus
+via le manifest squad `narrative.encounter.*` (source unique) ; 10 descriptions + le libellé statique
+cross-jeu ajoutés dans `palmares.toml` (`badge_legend.*`, seuils alignés analysis/relations +
+analysis/narrative). Le composant `Tooltip` gagne `wide` (max-w-sm) + bascule EN DESSOUS de l'ancre
+si le panneau déborde le haut de la viewport (légende haute). `table.badges_info` raccourci en intro.
+
+**Résultats observés** : WEB — `tsc -b` exit 0 ; `eslint src/features/palmares` + `tooltip.tsx`
+0 erreur (2 warnings baseline) ; vitest `src/features/palmares` 30 passed (dont `RelationWinRateDonut`
++ `RelationsMomentsHeatmap` cap). GO — `go test ./...` 113 packages ok, 0 FAIL ; service Moments
+(topN=12) ok ; intégration DuckDB relations (`-run Relation`/`EnemyRecentForm`) ok ; `internal/api`
+contract + schema-drift ok (DTO ↔ openapi en phase).
+
+**RAPPEL BLOQUANT** : la heatmap 12 (momentsHeatmapTopN) ET la sparkline bête noire
+(top_nemesis_recent_form) sont des changements BACKEND — invisibles tant que le serveur Go n'est pas
+redémarré (le front vite HMR reflète bien les changements front). À dire à l'utilisateur.
+
+**Round 7 (sémantique FDA, ⓘ match view, delta rouge)** :
+- CORRECTION SÉMANTIQUE : `avg_kda_with`/`avg_kda_against` = `AVG(e.opp_kda)` = le FDA de L'AUTRE
+  joueur (Nilton), PAS celui de JGtm (l'utilisateur pensait voir SON FDA face à sa bête noire). D'où
+  le 10.62 « surprenant » = Nilton domine (cohérent avec une bête noire). Signatures relibellées :
+  `table.kda_together` « FDA à ses côtés » → « Son FDA avec toi » ; `hero.kda_against` « FDA face à
+  lui » → « Son FDA contre toi » (+ commentaires toml corrigés, ils disaient « ton KDA » à tort).
+- ⓘ légende ajoutée à l'en-tête « Joueur » du tableau match view (`MatchEncountersTable`) : réutilise
+  `RelationBadgeLegend` (import cross-feature, pattern courant du repo) rendu filtrable via `only` —
+  sous-ensemble `MATCH_BADGE_KINDS` = ally_plus/tough_enemy/coriace/ordinal (seuls badges produits par
+  le backend match-view ; les badges « solid » Relations n'y apparaissent pas). Intro FR/EN inline.
+- Delta rouge quand moyenne perso > taux : DÉJÀ le cas (`deltaPts < 0 → outcome-loss`). Aucun code
+  changé — visible après reload. Autres usages badges : Explorer (tooltips par badge déjà présents).
+
+**Résultats round 7** : `tsc -b` 0 ; eslint palmares + match-view 0 erreur (3 warnings baseline) ;
+vitest `src/features/palmares` + `src/features/match-view` = 150 passed (17 fichiers).
+
+**Round 8 (couleur signature inversée, arc déficit donut, badges match view)** :
+- Signature bête noire : couleur INVERSÉE. « Son FDA contre toi » élevé = l'adversaire domine =
+  NÉGATIF pour le joueur → rouge. `kdaNetColor(isAlly ? sigValue : -sigValue)` (binôme inchangé :
+  FDA élevé de l'allié = positif = vert).
+- Donut : arc « déficit » rouge qui COMBLE le vide entre le taux et le repère moyenne perso QUAND on
+  est en dessous (path SVG `A`, `outcome-loss`). Au-dessus, l'arc vert dépasse déjà le repère → rien à
+  combler. Résout le « delta juste vide » signalé. Tests donut : arc présent en dessous / absent
+  au-dessus (32 passed).
+- Badges match view (point 2) : AUCUN changement nécessaire — vérifié sur pièces que le backend est
+  DÉJÀ câblé pour TOUS les badges : `Q23bMatchEncounterStats` charge `first_seen_at` + stats riches,
+  `convertEncounters` appelle `relations.ComputeBadges` (mêmes 4 + 5 solid que Relations, via
+  `encounter_badges.go`). Seul cross-jeu est exclu par design (dépendance cross-titre non câblée). Si
+  moins de badges visibles : soit les joueurs du match ne remplissent pas les seuils des badges solid,
+  soit backend Go périmé (à redémarrer). À expliquer à l'utilisateur.
+
+**Résultats round 8** : `tsc -b` 0 ; eslint palmares 0 erreur (2 warnings baseline) ; vitest
+`src/features/palmares` 32 passed (dont 2 nouveaux tests arc déficit).
+
+**Conclusion / prochaine étape** : attendre autorisation commit + revue visuelle utilisateur
+(donut, alignement mini-tableau, pleine largeur, légende barre composite). Backend whats-new
+orphelin : RÉSOLU (retiré).
+
+## [2026-07-18] H5 — `assassination` comme 5e valeur canonique de `kill_kind` + mode `--force` du backfill
+
+**Statut** : Complété (CODE + TESTS ; le RUN live du backfill FORCE reste une étape opératoire séparée — non exécuté).
+
+**Contexte** : la capture `kill_kind` (4 valeurs weapon/melee/groundpound/shoulderbash) est
+livrée. L'API events H5 expose aussi `IsAssassination` par kill (payload brut confirmé) qu'on
+ne parsait PAS → les assassinats tombaient en `kill_kind=weapon`. On ajoute la 5e valeur et un
+mode `--force` du backfill pour reprendre les ~20 matchs déjà backfillés en 4 valeurs.
+
+**Décision technique** :
+- **DTO** (`internal/games/halo_5/events_dto.go`) : nouveau champ `IsAssassination bool`
+  (`json:"IsAssassination"`) sur `h5GameEvent` (section Death).
+- **Canonique** (`internal/games/canonical/events.go`) : `KillKindAssassination = "assassination"` ;
+  `IsKnownKillKind` (case) et `AllKillKinds()` passent à **5**. Concept cross-titre légitime
+  (Infinite a aussi des assassinats) — documenté sur le type.
+- **Dérivation** (`internal/games/halo_5/events.go::h5KillKind`) : `IsAssassination` en
+  **priorité HAUTE** (assassination > melee > groundpound > shoulderbash > weapon). L'assassinat
+  est aussi tagué `IsMelee` par l'API (déclenché depuis un corps-à-corps) → il DOIT primer.
+- **Backfill `--force`** : `RunKillKindBackfill(..., force bool, ...)` +
+  `matchesForKillKind(..., force)` (ex-`matchesMissingKillKind`). force=false → matchs
+  `kill_kind IS NULL` (idempotent, inchangé). force=true → TOUS les matchs H5 avec des
+  weapon_kills (filtre `kill_kind IS NULL` levé), hors Campagne → re-dérive aussi les matchs
+  déjà backfillés pour capter la nouvelle valeur. Reste INSERT-only nouvelle génération
+  (ART-safe ADR 0026, anti-perte : ré-insertion de TOUS les kills du couple). Non idempotent
+  par construction en mode force (à lancer une fois, serveur arrêté).
+- **CLI** (`cmd/h5-kill-kind-backfill/main.go`) : force exposé via 3e arg `force`/`1`/`true`
+  ou env `LEVELUP_KK_FORCE=1`.
+
+**Tests figés** : canonical `TestKillKind_KnownAndAll` (4→5 + assertion `assassination` connue,
+`headshot` toujours PAS une KillKind) ; halo_5 `TestH5KillKind_AssassinationPriority` (table de
+priorité, assassination bat melee) ; ingest `TestMapKillEvents_KillKindCaptured` (5e cas
+assassination recopié dans `WeaponKillInsert`) ; livesync sélection force=true capte `mDone`
+déjà backfillé (non-force le saute) + run force re-dérive m1 & mDone en nouvelle génération
+(table physique 15, vue 5).
+
+**Commande RUN FORCE (à lancer par l'opérateur, serveur H5 ARRÊTÉ)** :
+`LEVELUP_REPO_ROOT=<repo> LEVELUP_KK_FORCE=1 go run ./apps/go-api/cmd/h5-kill-kind-backfill JGtm`
+(ou 3e arg `force` : `go run ./cmd/h5-kill-kind-backfill JGtm 0 force`). Prérequis : serveur
+arrêté (single-writer RW), RT sain pour l'auth (défaut JGtm / `LEVELUP_H5_AUTH_AS`).
+
+**HORS PÉRIMÈTRE (confirmé non fait)** : pas de `DeathDisposition` (suicide/trahison déjà
+couverts par Personal Score Awards), pas de VictimStockId/agents/attachments, pas de changement
+du donut (exploitation = Phase 2 séparée), aucun run live exécuté.
+
+**Gates** : `go build ./...`, `go vet`, `go test ./internal/games/... ./cmd/...` verts ;
+integration `go test -tags=integration -p 1 ./internal/games/... ./internal/platform/duckdb/...
+./internal/persist/...` vert ; gofmt clean.
+
+---
+
+## [2026-07-18] H5 — backfill kill_kind sur l'historique (Phase 2a : re-dérive weapon_kills en nouvelle génération, ART-safe)
+
+**Statut** : Complété (CODE + TESTS ; le RUN live reste une étape opératoire séparée — non exécuté).
+
+**Contexte** : la capture `kill_kind` (Phase 1, commit `c13e7f6bc`) a ajouté la colonne
+mais elle est NULL sur tout l'historique (matchs collectés avant la capture). Phase 2a =
+REMPLIR `kill_kind` sur ces matchs. L'utilisateur a autorisé le backfill ; le découpage du
+donut (« exploitation », Phase 2b) reste hors périmètre.
+
+**Décision technique** :
+- Wrapper persist exporté `persist.PersistWeaponKillsNewGeneration(ctx, db, rows)`
+  (`internal/persist/shared_persister.go`) : ouvre une TX et RÉUTILISE le privé
+  `persistWeaponKills` (allocation `nextval('weapon_kills_generation_seq')` + INSERT
+  porteur de `kill_kind`). INSERT-only, zéro DELETE/UPDATE → ART-safe (ADR 0026/0030).
+- Passe dédiée `livesync.RunKillKindBackfill` + `matchesMissingKillKind`
+  (`internal/games/halo_5/livesync/kill_kind_backfill.go`), calquée sur `RunEventsBackfill`
+  (re-fetch `/events` PAR MATCH, serveur arrêté, best-effort reprenable). Pour chaque
+  match candidat : re-fetch → `ingest.MapKillEvents` (TOUS les kills du match, tous xuids,
+  avec `kill_kind`) → `PersistWeaponKillsNewGeneration` (nouvelle génération complète).
+- CLI `cmd/h5-kill-kind-backfill/main.go` (calqué sur `h5-events-backfill` : token emprunté
+  `LEVELUP_H5_AUTH_AS`, `provisionH5Shared` applique la migration kill_kind AVANT le RW,
+  ouverture RW single-writer).
+
+**PIÈGE APPEND-ONLY (central)** : `v_weapon_kills` ne garde que la génération MAX par
+`(match_id, xuid)`. Ré-insérer un SOUS-ENSEMBLE des kills d'un couple créerait une
+génération incomplète qui SUPPLANTERAIT l'ancienne complète = perte de kills. Anti-perte :
+`MapKillEvents` rend TOUS les kills du match → chaque couple est ré-inséré COMPLET.
+Ordre des générations garanti en prod : la séquence `weapon_kills_generation_seq` a déjà
+dépassé toute génération historique (chaque collecte fait `nextval`), donc `nextval` >
+gen ancienne → la supersede est correcte (les tests seedent l'ancienne gen via `nextval`
+pour reproduire cet ordre).
+
+**Sélection** : matchs dont la génération courante (`v_weapon_kills`) porte `kill_kind
+IS NULL`, hors Campagne via l'exclusion read-side canonique
+(`analysis.SQLExcludeCampaignVariants`, par `game_variant_id` — `match_registry` n'a pas de
+`game_mode`). Idempotent : `h5KillKind` renvoie toujours une valeur non vide (défaut
+`weapon`) → après backfill la génération courante porte `kill_kind` NOT NULL, le match sort
+de la sélection (2e passe = skip). Warzone : aucun discriminant de schéma (non masqué côté
+lecture) ; un match Warzone résiduel re-dérivé reste INSERT-only ART-safe.
+
+**Tests** : `livesync/kill_kind_backfill_test.go` (sélection + exclusion Campagne ;
+re-dérive nouvelle génération complète 2 couples ; invariant append-only : ancienne gen
+intacte en table physique, vue = nouvelle gen complète avec `kill_kind` ; idempotence 2e
+passe) ; `persist/shared_persister_test.go::TestPersistWeaponKillsNewGeneration_SupersedesWithKillKind`
+(round-trip via schéma réel + vue). Garde-rails anti-ART (`sync/no_art_patterns_test.go`,
+`games/halo_infinite/migrations/shared_weapon_kills_appendonly_test.go`) verts → l'ajout
+ne déclenche aucun pattern à risque.
+
+**Volume estimé (shared H5 local, lecture seule)** : ~2691 matchs candidats hors Campagne,
+~23 262 couples `(match,xuid)`, ~267 939 kills à ré-insérer (~268 327 wk physiques totaux ;
+3032 matchs registry). Ordre de grandeur : un run long, à faire serveur arrêté.
+
+**RUN live (opérateur, NON exécuté ici)** : serveur arrêté + token sain, depuis
+`apps/go-api/` : `LEVELUP_REPO_ROOT=<repo> [LEVELUP_H5_AUTH_AS=JGtm] go run ./cmd/h5-kill-kind-backfill [Gamertag-auth] [maxMatches]`
+(conseillé : tester d'abord avec `maxMatches=5`). Reprenable (relancer reprend les matchs
+encore en `kill_kind` NULL).
+
+**Prochaine étape** : Phase 2b (exploitation — découpage du bucket « Spartan » du donut),
+chantier distinct. Aucun changement donut ici.
+
+## [2026-07-17] H5 — persiste la mécanique de kill (kill_kind) au lieu de la jeter (capture, Phase 1)
+
+**Statut** : Complété.
+
+**Contexte** : le code H5 dérivait déjà la mécanique du kill
+(`internal/games/halo_5/events.go::h5KillKind` → `canonical.KillKind` :
+`weapon`/`melee`/`groundpound`/`shoulderbash`, posée sur `ev.Kind`) puis la JETAIT à
+l'ingestion (`ingest/kills.go::MapKillEvents` ne recopiait pas `ev.Kind`). On cessait donc
+de perdre une donnée déjà calculée.
+
+**Décision de PHASAGE (choix utilisateur)** : « capture d'abord, backfill/exploitation
+plus tard ». Cette session livre UNIQUEMENT la capture going-forward. HORS PÉRIMÈTRE
+assumé, planifié en **Phase 2** : (a) le BACKFILL de l'historique (aucun re-fetch
+d'events ici) ; (b) l'EXPLOITATION — découpage du bucket « Spartan »/non-attribué du donut
+« Frags par type d'arme » (cf. entrée précédente ce jour) ; (c) toute clé i18n. La colonne
+est une capture consciente, pas une « colonne pour personne ».
+
+**Décision technique** :
+- Migration `shared_h5_weapon_kill_kind_v1` (fichier
+  `internal/migration/steps_shared_h5_weapon_kill_kind.go`, TargetShared, placée après
+  `shared_append_only_weapon_kills_v1` dans `canonicalOrder`) :
+  `addColumnIfMissing(weapon_kills, kill_kind, VARCHAR)` + `CREATE OR REPLACE VIEW
+  v_weapon_kills` (définition IDENTIQUE à l'append-only générationnel). PIÈGE traité :
+  la vue fait `SELECT * EXCLUDE (rk)` et DuckDB FIGE ses colonnes à la création → sans
+  recréation, `kill_kind` n'apparaîtrait pas via `*`. Idempotent, ALTER ADD COLUMN seul
+  (aucune PK, aucun UPDATE — invariants append-only ADR 0026 respectés). Nom de fichier
+  `steps_shared_h5_*` choisi pour que l'ordre init (alphabétique) place le step entre
+  `append_only_weapon_kills` (a) et `rebuild_match_participants` (r) → `TestSortByCanonicalIsNoOp` reste vert.
+- Représentation string : `canonical.KillKind` EST déjà un `type KillKind string`
+  (valeurs stables) → cast direct `string(ev.Kind)`, aucune table de conversion ad hoc.
+- Persist : `WeaponKillInsert.KillKind string` (vide → NULL via nouveau helper
+  `nullableStr`) ; `persistWeaponKills` ajoute `kill_kind` à la liste de colonnes
+  explicite de l'INSERT. Chemin Infinite/film (`sync/writes.go::InsertWeaponKills`) :
+  liste de colonnes explicite → laisse `kill_kind` NULL, aucune casse (Infinite n'a pas
+  cette mécanique). Builder/batch = pass-through, aucune modif.
+- Ingestion : `MapKillEvents` recopie `ev.Kind` (déjà calculé) dans
+  `WeaponKillInsert.KillKind`. La row `weapon_kills` n'existe que si `ev.Weapon != nil`
+  (forme weapon-keyée inchangée — non touchée, périmètre capture).
+
+**Résultats / gates (tous verts)** : gofmt clean ; `go build`/`go vet`/`go test ./...`
+exit 0 ; `go test -tags=integration -p 1 ./internal/games/... ./internal/platform/duckdb/...
+./internal/persist/... ./internal/migration/...` exit 0 ; garde-rails anti-ART
+(`internal/sync` no_art + append-only) verts. Tests ajoutés : ingestion
+(`TestMapKillEvents_KillKindCaptured` : 4 mécaniques → strings attendues +
+`_NoKindLeavesEmpty`), persist round-trip via la vue + non-régression NULL Infinite
+(`TestSharedPersister_WeaponKillKind_RoundTripAndNull`).
+
+**Prochaine étape (Phase 2)** : backfill historique de `kill_kind` (re-parse events H5)
+puis brancher le découpage du bucket non-attribué du donut sur `weapon_kills.kill_kind`.
+
+## [2026-07-17] H5 — classement des frags hors-arsenal au donut « Frags par type d'arme »
+
+**Statut** : Complété.
+
+**Contexte** : les 26 `weapon_id` H5 hors-arsenal (inventaire
+`.ai/V7/H5_WEAPON_LONGTAIL_UNMAPPED.md`) restaient non mappés → exclus du donut « Frags
+par type d'arme » (couverture registre H5 ~40/66). Décisions produit ACTÉES : les afficher
+dans le donut via des rôles dédiés ; « Spartan » (3168248199, ~8.8k) IRRÉDUCTIBLE = sa
+propre catégorie « Non attribué » (stock_id natif disjoint des compteurs mêlée/assassinat,
+le ventiler serait un double-comptage) ; les 7 UGC sans libellé → bucket unique « Autres ».
+
+**Décision technique** :
+- Registre (`weapon_registry.go`) : +20 entrées `weapons` (9 véhicules, 8 tourelles,
+  1 environnement, 1 non-attribué, 1 autres) + 26 `weapon_ids` stock_id (les 7 UGC →
+  un SEUL `weapon_key` `h5_other_ugc`) + 5 familles neutres. Rôles dédiés
+  `vehicle`/`turret`/`environmental`/`unattributed`/`other` (role = string libre).
+  Cardinalités : weapons 64→84, familles 46→51, weapon_ids 76→102 (stock_id 40→66),
+  H5 35→55. Couverture registre H5 → 100 % (66/66 hors sentinelles). faction vide pour
+  ces buckets (non pertinente) → enum test relâché sur `faction <> ''`.
+- Correctness coach (`weaponRoleInsight.ts`) : constante exportée
+  `NON_COMBAT_WEAPON_ROLES` (5 rôles) filtrée AVANT tout calcul (total, `over_reliance`,
+  `blind_spot_power`). Sans ça « Spartan » gonflait le dénominateur → faux
+  `blind_spot_power` / fausse sur-dépendance. La même constante sert au donut pour la
+  couleur neutre (source unique, ≤ 2 copies).
+- Donut (`SynthesisRoleKillsDonut.tsx`) : `tokenForRole` → rôles non-combat = token
+  sémantique EXISTANT `divergent-neutral` (aucune palette hex nouvelle) ; rôle inconnu →
+  même fallback neutre + `formatMessage` dégrade en clé (rendu jamais cassé). i18n :
+  5 clés `role_*` FR+EN dans `synthesis.toml` (manifest régénéré, +5 clés generated).
+- Service Go inchangé : `buildKillsByRole` groupe par `weapons.role` (JOIN) → les
+  nouveaux rôles remontent automatiquement une fois seedés. Aucune allowlist de rôles.
+
+**Anti-double-comptage** : les 26 IDs viennent de `v_weapon_kills` (IDs réels), disjoints
+des sentinels mêlée(1)/grenade(0) de `match_participants` — jamais mappés vers ces
+sentinels. Le donut synthesis n'active pas `IncludeGrenadeMelee`. Aucun double-comptage.
+
+**Résultats / gates (cette session, tous verts)** : Go `build`/`vet`/`test ./...` exit 0 ;
+`go test -tags=integration -p 1 ./internal/games/... ./internal/platform/duckdb/...`
+exit 0 (registre + coverage + résolution 26 IDs) ; web `typecheck` OK, `lint` 0 erreur
+(68 warnings baseline hors périmètre), `vitest src/features/synthesis` verts (weaponRole
+exclusion + donut rendu/fallback). Manifest i18n régénéré (parité FR/EN).
+
+## [2026-07-17] Lot G Relations UX — CSR de la bête noire (dégradation gracieuse)
+
+**Statut** : Complété.
+
+**Contexte** : lot G du plan `.ai/V7/PLAN_RELATIONS_UX_2026-07.md` (archivé, A–F/H livrés).
+Décision produit 2026-07-17 : construire G MALGRÉ une couverture CSR nulle sur la base de
+dev (100 % social). La feature s'auto-adapte à la population (joueur compétitif → CSR
+affiché ; social → rien) ; coût d'avoir tort = nul grâce à la dégradation gracieuse. La
+porte d'entrée « ≥ 30 % couverture » (G0) est ABANDONNÉE comme critère (elle mesurait la
+base de dev, pas la valeur cible) → requalifiée `[~]`.
+
+**Décision technique** :
+- Backend : `domain.RelationCSR{Tier, SubTier, RatingValue}` (pointeurs) + champ optionnel
+  `RelationRef.CSR` peuplé uniquement pour `top_nemesis`. `GetLatestCSR(xuid)` sur
+  `CareerRepo` (Q31) lit le snapshot le PLUS RÉCENT de `match_csrs_latest` (vue `_latest`,
+  règle ART n°2) joint à `match_registry`, ORDER BY fragment timezone canonique
+  (`StartTimeCanonicalSQL`) DESC LIMIT 1 ; best-effort strict → (nil,nil) si xuid vide /
+  table absente / aucune ligne / palier « Placement ». Enrichissement service
+  `appendNemesisCSR` (modèle `appendCoreEngagement`) : recompose `SelectTopNemesis` pour
+  le XUID (dropé par `topRefToRef`), WarnContext + réponse sans CSR si erreur — jamais
+  d'échec de /relations. `openapi.yaml` aligné byte-à-byte sur l'auto-dérivation Huma
+  (`RelationCSR` nommé + `RelationRef.csr` $ref) → schema-drift test vert.
+- Front : chip « Rang actuel » sur `HeroRelationCard` (nemesis), rendu ssi
+  `top_nemesis.csr` présent (pas de « N/A »). Libellé via `composeTierLabel` (Onyx →
+  « Onyx 1523 »). Couleur : `NarrativeBadge` + token EXISTANT
+  `narrative-encounter-tough-enemy`.
+
+**Découvertes (documentées au plan)** :
+- Le « fait établi » de la mission (utilitaires de COULEUR de tier) est inexact : aucun
+  mapping tier→token n'existe ; doctrine repo « pas de couleur par rang »
+  (`skillTierBands.ts`). Choix : token existant unique (pas de palette par rang inventée).
+- `composeTierLabel` (localizeTierName + subTierRoman + garde Onyx) existait en 2 copies
+  inline → 3e copie déclenche la règle ≤ 2 : centralisé dans `skillTiers.ts`, 2 copies
+  migrées (sortie identique), garde-rail ajouté. Migration in-scope (causée par G).
+
+**Résultats / gates (cette session, tous verts)** : Go `build`/`vet`/`test ./...` exit 0 ;
+`go test -tags=integration -p 1 ./internal/platform/duckdb/...` exit 0 ; schema-drift test
+vert ; `make generate-types` (RelationCSR/RelationRef, +8 L generated.ts) ; web
+`typecheck` OK, `lint` 0 erreur (68 warnings baseline hors périmètre),
+`vitest` palmares + skillTiers(+guard) + explorer + career = 165 tests verts.
+
+**Conclusion** : lot G livré `[x]` en dégradation gracieuse ; plan clôturé (A–H + G).
+Prochaine étape (produit, hors code) : si G doit être visible en dev, densifier la capture
+CSR des adversaires côté sync (`UpsertSharedCSRs`) — dette DONNÉE, pas code.
+
+---
+
+## [2026-07-17] Inventaire complet des weapon_id H5 hors-arsenal (classification produit)
+
+**Statut** : Complété.
+
+**Contexte** : besoin de la liste EXHAUSTIVE de tous les `weapon_id` H5 vus dans les frags
+mais non mappes a un role dans le registre (vehicules, tourelles, buckets d'attribution,
+UGC) pour une future classification produit. Tache LECTURE SEULE sur les donnees.
+
+**Decision technique** : CLI `duckdb` absent, pas de MCP duckdb (seul Notion) → copie des
+DB H5 (`shared_matches_v2.duckdb` + `metadata.duckdb`) vers le scratchpad, interrogees
+read-only par un programme Go jetable (driver duckdb-go v2), supprime apres coup. Requete
+`SELECT effective_weapon_id, COUNT(*) FROM v_weapon_kills WHERE effective_weapon_id NOT IN (0,1,2)`
++ JOIN `weapon_labels` + `weapon_ids` (title_slug='halo_5').
+
+**Resultats** : 66 ids distincts / 268 327 frags. Couverts (registre code, 40 stock_ids) =
+251 678 (93,8 %). NON couverts = **26 ids / 16 649 frags (6,2 %)** : 9 vehicules (3 965),
+8 tourelles (922), 2 buckets d'attribution (Spartan 8 812 + Environmental Explosives 589),
+7 UGC/inconnus sans label (2 361). Le bucket « Spartan » (8 812 frags, ~53 % du non-couvert)
+est ambigu (melee/splatter/assassinat non attribues). Inventaire coherent a 100 % avec le
+commentaire de tracabilite de `weaponRegistryH5Stock`. Nota : les 5 long-tail seedes au
+commit 9e0a8217d (grenades/Golf/Ball) sont mappes cote CODE mais pas encore dans la copie
+metadata (35 ids seedes) — comptes couverts, ils attendent un reseed au boot.
+
+**Conclusion** : livrable `.ai/V7/H5_WEAPON_LONGTAIL_UNMAPPED.md` (tableau + totaux + notes).
+Prochaine etape (cote utilisateur) : decider d'une categorie produit vehicule/tourelle/
+attribution/UGC. Aucun code applicatif touche.
+
+---
+
+## [2026-07-17] Audit + renforcement couverture de tests du train backlog 2026-07 (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Contexte** : passe de vérification INDÉPENDANTE de la couverture de tests du code neuf/modifié
+du train (23 commits). Mesure par fonction (`go tool cover -func`) sur les packages neufs + audit
+web (sous-agent, vitest v8 coverage), pour combler les trous CRITIQUES réels (branches best-effort,
+cas limites) sans gonfler la métrique. Aucun code applicatif touché — tests uniquement.
+
+**Mesures avant (packages neufs)** : prestigetuning 89.4%, relations 97.0%, notifications/external
+78.6%, notify 75.0%, prestige 83.9%, api/handlers 66.9%, ops 45.1%, halo_5/migrations 93.3%,
+platform/duckdb 20.5% (largement I/O CGO). Constat : la LOGIQUE PURE du train était déjà bien
+couverte par les sous-agents ; les trous restants étaient des BRANCHES DE DÉGRADATION best-effort
+et des gardes nil, non exercées.
+
+**Trous réels comblés (7 fichiers de test, +323 L, 0 code applicatif)** :
+- `internal/prestige/enums_test.go` — `IsValidChallengeSource` (aucun test direct) : garde-rail
+  « user/pilot_mode/coach valides ; unknown/vide/casse/garbage rejetés » (invariant « unknown jamais écrit »).
+- `internal/ops/media_tooling_test.go` — branche `Summary` « capacités non vérifiées » (ProbeErr,
+  non couverte) + `InspectMediaTooling` ffmpeg ABSENT (PATH vide → dégradation gracieuse, 0 exec, 0 panic).
+- `internal/api/wire/post_sync_rival_encounters_test.go` — best-effort : erreur détecteur absorbée,
+  erreur d'émission `continue`, `newRivalDetectorForPDB(nil/pdb sans Player)` → nil (était 0%).
+- `internal/notifications/external/dispatcher_test.go` — `decodeParams` (nil/vide/JSON valide/illisible),
+  `appLink` (construction + normalisation slashes + cas « pas de lien »), branche erreur `deliver`
+  (appel synchrone direct pour éviter la course goroutine). Couverture external 78.6% → 96.4%.
+- `internal/notify/coach_test.go` — `coachCategoryLabel` (lang vide/non gérée → repli FR ; catégorie
+  vide → "-"), `CategoryOrRaw`, `coachColor` (branche "error" non couverte).
+- `internal/platform/duckdb/prestige_telemetry_diag_repo_test.go` (integration) — best-effort table
+  absente (legacy pré-migration → diag vide, pas de 500) + garde nil PlayerDB.
+- `apps/web/.../OutcomeSequenceTape.test.tsx` — GAP #1 (glue `handleClick` non testée) : chemin nominal
+  convertFromPixel→matchIndexAtX + fallback dataIndex (conversion qui lève / NaN / sans chart / aucune résolution).
+
+**Déjà suffisant (preuves, non gonflé)** : `relations.IsRevived` (revived_test.go), fallback télémétrie
+`unknown` (diag integration test), pattern immutable assets (spa_static_cache_test.go : hashé/index.html/304),
+weaponRegistry H5 (module Go avec tests dédiés — PAS un module web malgré le libellé `feat(web)`),
+skillTiers + query keys locale (garde-rails web verts). Web : 218 tests scope touché, 0 échec.
+GAP web #2 (payload prefs corrompu) / #3 (tri reunions) laissés : quasi-doublons d'un helper déjà
+validé, risque admis faible — pas de test cosmétique (CLAUDE.md).
+
+**Bugs réels découverts** : aucun. Toutes les assertions matchent le comportement réel du code.
+
+**Gates** : `go build ./...` OK, `go vet ./...` OK, `go test ./...` PASS (exit 0),
+`go test -tags=integration ./internal/platform/duckdb/ -run PrestigeTelemetryDiagRepo` PASS ;
+web `tsc -b` OK, `vitest run` scope touché 218/218 + OutcomeSequenceTape 11/11.
+
+**Conclusion** : logique du train couverte ; les branches de dégradation best-effort et gardes nil
+qui restaient muettes sont désormais verrouillées. Prochaine étape : none (train prêt côté tests).
+
+---
+
+## [2026-07-17] Audit + correction couverture de logging du train backlog 2026-07 (routing best-effort) (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Contexte** : audit exhaustif des fichiers Go non-test modifiés/ajoutés par le train
+(`git diff main..HEAD`) sous l'angle CLAUDE.md n°3 (logger AVANT toute dégradation best-effort) +
+routing multi-module (`internal/observability/logging/module.go` : package → `logs/{module}.log`).
+
+**Constat vérifié** : 5 flux best-effort du train tombaient en `general.log` faute de mapping,
+alors qu'ils sont métier-identifiables et devraient être diagnosticables dans un fichier dédié :
+`internal/notifications/external` (dispatcher Discord coach), `internal/notify` (client webhook),
+`internal/api/wire` (émission rival post-sync), `cmd/prestige-tuning-analyze` (CLI analyseur),
+`internal/ops/media_tooling.go` (sonde ffmpeg au boot).
+
+**Décision de routing (2 leviers, choisis au cas par cas)** :
+- `external` + `notify` → ajoutés à `packageToModuleMap` (`ModuleNotif`) : packages entiers
+  sémantiquement notifications. Test ajouté dans `module_routing_test.go` (verrou anti-régression).
+- `wire` (flux rival) → tag EXPLICITE `slog.With("module", logging.ModuleNotif)` (var `rivalNotifLog`) :
+  seul le flux d'émission rival est redirigé, le reste du post-sync reste en general.log (le package
+  wire est hétérogène). Co-localise « pourquoi ma notif rival n'est pas partie » avec le dispatcher.
+- CLI prestige-tuning → tag explicite `ModulePrestige` (var `tuningLog`), pattern identique à la CLI
+  `snapshot-world-leaderboard` → `ModuleLeaderboard`. Skips de collecte (DB absente/verrouillée/agrégation)
+  visibles dans `logs/prestige.log`.
+- `media_tooling.go` → tag explicite `logModuleMedia` dans `LogMediaToolingStatus` (package ops
+  hétérogène : snapshot/general). Boot ffmpeg dans `logs/media.log`.
+
+**Trou de log comblé (code neuf du train)** : `dispatcher.go` (fichier AJOUTÉ) `decodeParams`
+avalait `json.Unmarshal` en silence → ajout d'un `slog.DebugContext` avant dégradation (params
+notification illisibles → embed sans détails). Signature passée à `(ctx, raw)`.
+
+**Sécurité vérifiée** : aucun secret loggué. Le client `notify.SendWebhookCtx` expurge déjà l'URL
+du webhook (token d'écriture dans le path) via `sanitizeSendError` sur *url.Error ; le dispatcher ne
+loggue jamais le webhook (LogBootState loggue seulement `actif` bool + nb catégories).
+
+**Contrat best-effort chantier E (vérifié conforme, aucune correction)** :
+`post_sync_rival_encounters.go` + `relations_rival_notif_service.go` : une notif rival qui échoue
+est loguée (WarnContext) et n'interrompt JAMAIS la sync (return sans propagation) ; skip watermark
+tracé en Debug, émissions en Info. `notifications/service.go` (package notifications, déjà routé)
+conforme.
+
+**Découvertes HORS PÉRIMÈTRE (notées, non traitées — règle « zéro fix opportuniste »)** : swallows
+PRÉEXISTANTS (git antérieur au train, hunks du train sur d'autres lignes) dans des fichiers
+tangentiellement modifiés : `coach_advisor/service_generate.go` (resolveSingleSignal L293-309 —
+incohérent avec la variante async qui logge ; acceptArc L407 json.Unmarshal `_ =`), `prestige/service.go`
+(computeCurrentValue L600 `return 0`), `service_pilot_pool.go` (squadFocusAxis L219), `prestige_squads.go`
+(L166/L189 annuaire best-effort), `home.go` (L96 locale fallback), `health.go` (L97-99 enrichissement
+`/health` `_ :=`). À traiter dans un lot dédié si souhaité.
+
+**Gates** : `go build ./...` OK, `go vet ./...` OK, `go test ./...` exit 0 (0 FAIL), test routing
+(`TestMapPackageToModule` external+notify) PASS.
+
+**Conclusion** : 6 fichiers corrigés (module.go + test, dispatcher.go, post_sync_rival_encounters.go,
+media_tooling.go, cmd/prestige-tuning-analyze/main.go). Zéro changement de logique métier.
+
+## [2026-07-17] coach/prestige V3 — notifications push externes : canal Discord webhook pour proposals coach (opt-in, OFF par défaut) (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Décision superviseur (actée, non rouverte)** : canal = webhook Discord (URL configurable),
+OFF par défaut, opt-in produit VOLONTAIRE (émission vers service externe = décision vie privée),
+PAS un kill-switch au sens CLAUDE.md n°11 — documenté comme tel en commentaire.
+
+**Découverte majeure (vérif sur pièces)** : le monde Discord n'est PAS mort/Python. Le package Go
+`internal/notify/` est l'intégration Discord VIVANTE et complète : `NotifyConfig` chargée depuis
+`app_settings.json` (gate `discord_notifications_enabled` + `discord_webhook_url` + toggles
+`discord_notify_{sync,backfill,friends,new_version,reauth,disk}`), `SendWebhook` avec sanitation du
+secret (URL du webhook = token d'écriture, expurgée de tout log via `sanitizeSendError`), types
+`Embed`, i18n inline `T()` FR/EN, couleurs, pattern failsafe (recover, zéro erreur propagée). Les
+clés `discord_*` existaient déjà dans `app_settings.json`. → CLAUDE.md n°6/14 imposent de RÉUTILISER,
+pas de dupliquer un 2e client HTTP + embeds dans un package parallèle (ce qu'une lecture littérale du
+backlog aurait produit).
+
+**Distinction clé** : `progression/coach_advisor` génère des `Proposal` PERSISTÉS (différés jusqu'à
+accept/dismiss) — PAS des notifications. C'est `progression/coach` qui ÉMET des notifications in-app
+(via `notifications.Emitter`) mappées sur 14 catégories (`coach/emitter.go` :
+`AlertType.NotificationCategory`). Les « proposals coach à relayer » = ces 14 catégories coach.
+
+**Architecture livrée (ports & adapters)** :
+- Port dans `internal/notifications/` (stdlib-only) : interface `ExternalForwarder` (`Forward(ctx, *Notification)`,
+  best-effort strict, jamais bloquant/paniquant) + Option `WithExternalForwarder`. Appelée dans
+  `Service.insertAndSweep` APRÈS insertion in-app réussie → capte TOUTE émission coach quel que soit
+  le caller (hook unique). Respecte naturellement les préférences par catégorie (Emit droppe avant
+  insertion si la pref in-app est OFF → jamais relayé).
+- Adapter `internal/notifications/external/` : `Dispatcher` (impl du port) filtre par catégorie forwardée
+  + relit `notify.LoadNotifyConfig` à CHAQUE Forward (réactif aux PATCH /settings), puis relaie en async
+  (`context.WithoutCancel` + goroutine + recover) ; compteurs expvar `notifications_external_coach_{sent,failed}`.
+  Interface `ExternalNotifier` + `DiscordWebhookNotifier` (timeout 5 s, délègue à `notify.SendWebhookCtx`
+  + `notify.BuildCoachEmbed` — zéro duplication du transport/embed). `DefaultForwardedCategories()` =
+  14 catégories coach, avec GARDE-RAIL `categories_guardrail_test.go` (miroir de `coach.AllAlertTypes()`
+  → `NotificationCategory()` ; échoue si divergence).
+- Réutilisation `notify` : ajout champ `NotifyCoach` (load `discord_notify_coach`, défaut **false** vs
+  `true` des autres toggles — opt-in strict), `SendWebhookCtx(ctx,...)` (ctx-aware ; `SendWebhook`
+  délègue désormais), `BuildCoachEmbed` + libellés catégorie FR/EN (`coach.go`). Embed TECHNIQUE sobre
+  (catégorie humanisée, joueur, params triés, lien app optionnel) car les libellés utilisateur
+  title_key/body_key sont front-only.
+- Câblage : `notifServiceFor` (registry) construit le Dispatcher par joueur (identité `pdb.Gamertag/XUID/TitleSlug`,
+  `AppBaseURL`=`LEVELUP_PUBLIC_BASE_URL`) ; `external.LogBootState` = 1 ligne INFO au boot (`main.go`).
+
+**Config exacte** : env `LEVELUP_DISCORD_WEBHOOK_URL` (réutilisé) + `LEVELUP_PUBLIC_BASE_URL` (nouveau,
+optionnel, lien embed). `app_settings.json` : `discord_notifications_enabled` (master, false) +
+`discord_notify_coach` (nouveau, **false**) + `discord_webhook_url`. Relais actif ssi master ON + coach ON
++ webhook présent ; sinon retour silencieux (zéro log de bruit).
+
+**Résultats** : `go build ./...`, `go vet ./...`, `go test ./...` = 0 FAIL. Tests ajoutés : embed coach
+(FR/EN, fallback catégorie inconnue, params triés/plafonnés, lien optionnel), notifier httptest (payload
+correct, timeout 5 s respecté, URL vide/500 → erreur sans panic), dispatcher (catégorie forwardée vs non,
+flag OFF, webhook absent, nil-safe, async via canal), garde-rail catégories, boot (état actif/inactif, 1 ligne).
+Docs bilingues (`docs/CONFIGURATION.md` + FR) mises à jour.
+
+**Conclusion / prochaine étape** : livré actif (opt-in). Enrichissements futurs notés hors périmètre :
+overlay Discord par titre (`LoadNotifyConfigForTitle`) pour le relais coach ; liste de catégories
+forwardées surchargeable via settings (aujourd'hui défaut coach en dur + override programmatique `Config.Forwarded`).
+
+---
+
+## [2026-07-17] coach/prestige V3 — analyseur de tuning de `synthesis_grammar.toml` (recommandations, validation manuelle) (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Cadrage superviseur (acté)** : livrable = ANALYSEUR produisant des RECOMMANDATIONS
+d'ajustement de la grammaire de synthèse coach ; application MANUELLE (humain édite le TOML).
+AUCUN mécanisme de PR auto, AUCUN override runtime. CLI Go en LECTURE SEULE.
+
+**Vérifs sur pièces (schéma réel des données)** :
+- `prestige_telemetry` (stats.duckdb, append-only) porte l'événement mais PAS la métrique/fenêtre :
+  colonnes id/user_id/challenge_id/event_type/palier/stretch_ratio/baseline_value/mode/cadence/
+  eval_type/time_since_create_seconds/source/created_at. La métrique + fenêtre vivent sur `challenge`
+  (metric, window_type, window_value). → l'attribution métrique passe par la jointure
+  `prestige_telemetry.challenge_id = challenge.id`.
+- Défi auto-rejeté (`RejectTooEasy`) : `prestige/service.go` retourne SANS persister le challenge →
+  les événements `rejected:*` n'ont PAS de ligne `challenge`. Conséquence de conception : l'acceptance
+  PAR MÉTRIQUE n'est pas calculable via la jointure ; elle est fournie AU NIVEAU SOURCE par une 2e
+  requête sans jointure (created/rejected par source). La complétion (created+completed, tous deux
+  persistés) est, elle, pleinement attribuable à la métrique — c'est la base de la règle du backlog.
+- `coach_proposal` (source_metric, strength, status pending/accepted/dismissed) = stade PROPOSITION en
+  amont du challenge. NON utilisée : la règle de référence porte sur les défis coach ACCEPTÉS + complétion
+  = `prestige_telemetry.source='coach'`. Funnel proposition→acceptation noté comme enrichissement futur.
+
+**Architecture retenue** :
+- Package pur `internal/analysis/prestigetuning/` : `types.go` (Thresholds/Report/MetricRecommendation…),
+  `grammar.go` (GrammarView découplée du TOML, testable sans FS), `analyze.go` (`Analyze(...)` PUR :
+  agrégation par métrique, seuils, génération des recommandations), `merge.go` (agrégation multi-joueurs
+  pure), `collect.go` (lecture SQL SEULE : jointure + acceptance, tolérante aux DBs legacy), `render.go`
+  (texte FR + JSON).
+- CLI fine `cmd/prestige-tuning-analyze/` : flags (`--format text|json`, `--player`, `--title`,
+  `--min-completion` déf. 0.30, `--min-sample` déf. 50, `--source` déf. coach, `--grammar`), config.Load →
+  LoadPlayers(title) → `PathResolver.PlayerDBPath` → `duckdb.OpenReadForQuery` (JAMAIS RW) → collecte
+  best-effort par joueur (log slog + skip si DB absente/verrouillée) → merge → Analyze → render. Zéro
+  logique métier dans le main.
+- Grammaire : RÉUTILISE `coach_advisor.LoadSynthesisGrammar` (pas de 2e parseur TOML) + nouvel accesseur
+  exporté `SynthesisGrammar.WindowSpecs(metric)` (introspection des fenêtres pour relier chaque reco aux
+  entrées réelles du TOML).
+
+**Règle d'analyse** : par métrique de grammaire, source=coach, si complétion (completed/created) <
+`--min-completion` sur >= `--min-sample` défis acceptés (created) → recommandation « retirer la métrique
+ou réduire ses fenêtres » avec pointage des fenêtres les plus faibles. Sous l'échantillon → « données
+insuffisantes » (jamais de reco sur du bruit). Métrique télémétrie absente de la grammaire → signalée
+ORPHELINE (non actionnable sur le TOML, révèle une dérive de nommage). Métrique de grammaire sans
+télémétrie → listée en données insuffisantes.
+
+**Robustesse legacy (découverte à l'exécution réelle)** : les player DBs locales n'ont pas encore la
+colonne `prestige_telemetry.source` (migration `prestige_add_source_columns_v1` non appliquée — serveur
+non démarré ; source fraîchement livrée). Collecte durcie via `probeTelemetry` (information_schema) :
+table absente → résultat vide sans erreur ; colonne `source` absente → événements agrégés sous
+"unknown" (le joueur n'est PAS perdu) au lieu d'un binder error qui skippait toute la DB.
+
+**Exécution réelle (données locales, lecture seule)** : `go run ./cmd/prestige-tuning-analyze` scanne
+4 player DBs (JGtm, Chocoboflor, Madina97294, XxDaemonGamerxX), 0 événement jointé, 0 acceptation →
+rapport « données insuffisantes » propre pour les 13 métriques de grammaire, « aucun ajustement
+recommandé » en synthèse. Aucun plantage. `--format json` produit un JSON valide (roundtrip testé).
+Comportement conforme au cadrage (télémétrie coach non encore produite localement).
+
+**Tests** : unités pures (nominal→reco, échantillon insuffisant, healthy, orpheline, métrique de
+grammaire sans donnée, filtre source, seuils custom) + merge + grammar view + intégration DuckDB
+`:memory:` (jointure + rejet non persisté exclus, colonne source absente→unknown, table absente→vide,
+bout-en-bout collecte→analyse). `go build ./...`, `go vet`, `go test ./internal/analysis/prestigetuning/`
+verts. gofmt clean.
+
+**Conclusion / prochaine étape** : l'analyseur est prêt ; il livrera des recommandations dès que la
+télémétrie coach s'accumulera (>= 50 défis coach acceptés par métrique). Enrichissement futur possible :
+croiser `coach_proposal.status` (funnel proposition→acceptation) pour un taux d'acceptation coach amont.
+
+---
+
+## [2026-07-17] coach/prestige V2.1 — plumbing `source` vers prestige_telemetry + endpoint diag d'agrégation (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Constat 2026-06-09 re-vérifié sur pièces** : exact. `CreateChallengeRequest.Source` existait
+(ADR 0020, valeurs "user"/"pilot_mode"/"coach") mais n'était PAS propagé — ni persisté sur
+`challenge`, ni recopié dans `prestige_telemetry`. La table `prestige_telemetry` (stats.duckdb,
+par joueur) était écrite (EmitCreated/EmitTransition/EmitRejected/EmitPalierRecomputed) mais
+JAMAIS lue (aucun consommateur). Commentaires inversés dans `types.go` + `telemetry.go` référençant
+`scripts/analyze_prestige_tuning.py` — script jamais écrit (le `.py` présent au repo est un stub
+antérieur non branché). Colonne `source` absente des DEUX tables.
+
+**Décision superviseur actée** : consommateur = endpoint diag `GET /_diag/prestige/telemetry/{player_slug}`
+(agrégation), PAS de CLI. Colonne + consommateur dans le MÊME chantier.
+
+**Schéma / migration livrés** : nouveau step title-owned player `prestige_add_source_columns_v1`
+(steps_player_prestige_source.go), placé dans canonicalOrder APRÈS create_prestige_player_schema :
+`ALTER TABLE challenge ADD COLUMN IF NOT EXISTS source VARCHAR` + idem `prestige_telemetry`.
+Anti-ART : les deux colonnes sont NON indexées ; `challenge.source` est figée à l'INSERT (jamais
+mutée, comme title_slug) ; `prestige_telemetry` est append-only INSERT-only (un événement = une
+ligne distincte, pas de vue `_latest` requise). Aucune surface d'index sur colonne mutée créée.
+
+**Chemin de propagation** (created ET transitions) : `req.Source` → `Challenge.Source` (persistée
+dans `challenge.source`, lue par scanChallenge/challengeSelectColumns) → recopiée par les 4 Emit*
+(created/rejected/transition/palier_recomputed) dans `prestige_telemetry.source`. Choix le PLUS
+simple qui marche : persister sur le challenge. Les transitions (evaluate/abandon) chargent déjà
+la `Challenge` complète depuis la DB → `c.Source` les suit gratuitement, sans re-lecture de la
+ligne created ni nouvelle méthode repo. Aucune normalisation à la création : `Source` recopié tel
+quel (vide → agrégé "unknown" par l'endpoint).
+
+**Agrégats servis par l'endpoint** (par origine, `COALESCE(NULLIF(source,''),'unknown')`) :
+compteurs created / rejected (`rejected:*`) / completed / expired / abandoned + total ; taux
+d'acceptation (created/(created+rejected)), de complétion (completed/created), d'abandon
+(abandoned/created). Sentinel -1 quand dénominateur nul. Distribution de "strength des proposals" :
+OMISE — la donnée n'est PAS dans `prestige_telemetry` (qui porte stretch_ratio/baseline/palier, pas
+la "strength" du coach_proposal, table distincte du player DB). Noté dans le code.
+
+**Backfill** : aucun. Lignes historiques → source NULL → bucket "unknown". Pas de backfill inventé.
+
+**Constantes centralisées** : `ChallengeSource{User,PilotMode,Coach,Unknown}` (constants.go) ;
+migré les 2 littéraux "coach" de coach_advisor/service_generate.go vers `ChallengeSourceCoach`
+(évite la 3e copie). Pas de garde-rail grep (le mot "coach" est trop courant).
+
+**Suite 2026-07-17 (commit 2, découverte n°1 reclassée in-scope par le superviseur)** : les 3
+origines renseignent désormais `Source` (objectif ADR 0020 = coach vs user vs pilot_mode, pas
+coach vs unknown) :
+- `service_pilot_pool.go` (attribution mode pilote) → `ChallengeSourcePilotMode`.
+- `service_arcs_squads.go` (objectifs d'un preset arc adopté) → `ChallengeSourceUser` : l'adoption
+  vient du joueur ; le coach a sa propre voie (coach_advisor). Documenté en commentaire.
+- Handler HTTP `CreateChallenge` → défaut `ChallengeSourceUser` ; une origine explicite du body
+  (`source`) est honorée si `IsValidChallengeSource` (user/pilot_mode/coach), sinon retombe sur
+  "user" (garde-fou anti-valeur arbitraire dans la télémétrie). Champ `source` ajouté à
+  `createChallengeBody` (optionnel). `unknown` ne subsiste donc plus que pour l'historique
+  pré-migration. Tests : preset objectives=user, pilot daily/weekly=pilot_mode, handler
+  défaut=user + valide honorée + inconnue→user.
+
+**Découvertes restantes (NON traitées — hors périmètre)** :
+- `openapi.yaml` mis à jour (path + schémas PrestigeTelemetryDiag/SourceStats, auto-dérivés via
+  le drift-detector) MAIS `generated.ts` frontend NON régénéré : endpoint backend-only sans
+  consommateur front, et `generate-types` régénérerait tout le fichier (risque d'aspirer les 26
+  DIVERGENT préexistants dans le diff). Laissé au lot front si un jour consommé.
+
+**Gates** : `go build ./...` OK ; `go vet ./...` OK ; `go test ./...` OK ; `go test -tags=integration
+-p 1` OK sur duckdb/prestige/migration (migration colonnes, source roundtrip, agrégation). Drift
+OpenAPI = 0 missing.
+
+**Prochaine étape** : si le coach tuning veut le split fin, renseigner Source aux 3 origines
+ci-dessus. Sinon, exploiter l'endpoint pour comparer complétion coach vs unknown.
+
+---
+
+## [2026-07-17] Sécurité/AutZ — Prestige : réconciliation acteur user_id ↔ session (BOLA résiduel) (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Problème** : les routes prestige montées sous `/players/{player_slug}` (ownershipMW, ADR 0029)
+gardent le SEGMENT d'URL, pas le PAYLOAD. Le fix squad-only était livré (helper `authorizeActor`
++ `WithActorGuard` sur 8 routes squad top-level), mais les handlers prestige non-squad relisaient
+l'acteur (`user_id`/`created_by`/`requested_by`) depuis body/query sans le réconcilier : un
+utilisateur A passait la garde avec SON slug dans le chemin et ciblait B via le body → BOLA
+horizontal (blast radius limité : instance invités-only + lockdown, mais incohérent).
+
+**Audit sur pièces (grep + lecture des 4 fichiers handlers)** — 14 handlers lisaient un acteur
+SANS garde ; 8 l'avaient déjà :
+
+| Handler | Champ acteur | Route (sous /players/{slug}) | Avant |
+|---|---|---|---|
+| CreateChallenge | body.user_id | POST /prestige/challenges | GAP → gardé |
+| ListActiveChallenges | query user_id | GET /prestige/challenges | GAP → gardé |
+| GetMyPrestige | query user_id | GET /prestige/me | GAP → gardé |
+| SuggestTemplates | query user_id | GET /templates/suggest | GAP → gardé |
+| CreateArc | body.user_id | POST /arcs | GAP → gardé |
+| DeleteArc | query user_id | DELETE /arcs/{id} | GAP → gardé |
+| ListArcs | query user_id | GET /arcs | GAP → gardé |
+| ListArcPresets | query user_id | GET /arcs/presets | GAP → gardé |
+| AdoptPresetArc | body.user_id | POST /arcs/presets/{id}/adopt | GAP → gardé |
+| CreateSquadChallenge | body.created_by | POST /squads/{squad_id}/challenges | GAP → gardé |
+| JoinSquadChallenge | body.user_id | POST /squad-challenges/{id}/join | GAP → gardé |
+| EnablePilotMode | body.user_id | POST /pilot-mode/enable | GAP → gardé |
+| DisablePilotMode | body.user_id | POST /pilot-mode/disable | GAP → gardé |
+| RefreshSquadPool | body.requested_by | POST /squads/{squad_id}/challenges/pool/refresh | GAP → gardé |
+| CreateSquad, ListMySquads, AddSquadMember, RemoveSquadMember, RenameSquad, DeleteSquad, EvaluateSquadChallenge, SquadOrientation | created_by/requested_by/user_id | routes squad top-level | déjà gardés (livré) |
+
+Routes unitaires par `{id}` (GetChallenge/UpdateChallenge/AbandonChallenge/SuggestNext/GetArc/
+ListSquadChallenges) ne lisent pas d'acteur → hors périmètre (ownershipMW couvre le slug).
+
+**Décision technique principale — choix (a) garde per-handler, PAS (b) middleware** : le champ
+acteur varie (user_id/created_by/requested_by), sa position varie (body RawBody vs query), et le
+body est consommé par Huma. Un middleware sur le sous-groupe devrait bufferiser/restaurer le body
+et mapper chaque route → usine à gaz fragile. On réutilise le helper `authorizeActor` DÉJÀ centralisé
+(3 lignes `if err := h.authorizeActor(ctx, X); err != nil { return nil, err }` = appel du helper, pas
+duplication de logique). La couverture STRUCTURELLE des futurs handlers est assurée par un garde-rail
+AST (`prestige_actor_guard_test.go::TestPrestigeHandler_ActorGuard_StructuralCoverage`) : toute méthode
+de `*PrestigeHandler` qui lit `body/in.{UserID,CreatedBy,RequestedBy}` DOIT appeler `h.authorizeActor`,
+sinon FAIL — impossible de réintroduire le BOLA par construction. Sémantique inchangée : acteur ∈
+profils possédés (`CanAccessPlayer`, multi-profil famille), 403 `player_forbidden`, transparent en
+demo/auth-off (garde nil ou `!authz.Enforced`).
+
+**Tests ajoutés** (`prestige_actor_guard_test.go`) : (1) table 403 sur les 14 endpoints nouvellement
+gardés (acteur « bob » refusé, garde autorisant « alice ») ; (2) table verte sur les 14 (acteur
+« alice » légitime → 200/201/204 attendus par route) ; (3) garde-rail AST structurel. Vérifié anti
+no-op : retrait temporaire d'une garde → le test structurel FAIL (message ciblé), puis restauré.
+
+**Gates observés** (apps/go-api) : `go build ./...` = OK ; `go vet ./...` = OK ; `go test ./...` = 0
+FAIL (0 panic). Pas de migration/table touchée → tag integration non requis.
+
+**Découvertes hors périmètre (notées, NON traitées)** : les routes unitaires par `{id}`
+(GetChallenge, GetArc, UpdateChallenge, AbandonChallenge, ListSquadChallenges) ne vérifient PAS que
+l'objet ciblé appartient bien au `{player_slug}` du chemin — un propriétaire de slug-A pourrait lire/
+muter un challenge/arc {id} d'un autre joueur via son propre slug dans le chemin (BOLA au niveau OBJET,
+distinct du BOLA au niveau ACTEUR traité ici). Hors périmètre du backlog (« handlers lisant l'acteur
+depuis body/query »). À évaluer séparément (réconciliation objet↔slug côté service/repo).
+
+**Prochaine étape** : branche NON poussée (décision utilisateur ; push main = deploy prod auto).
+
+---
+
+## [2026-07-17] Relations UX — Lot G statué [!] + CLÔTURE du chantier (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété (chantier clos ; G conditionnel non exécuté).
+
+**Décision technique principale (lot G — gate G0)** : le gate d'entrée mesure la part des
+rivaux (`enemy_matches >= 8`, def Q28 : `opp_team_id <> my_team_id`, bots exclus) ayant au
+moins une ligne CSR exploitable via `match_csrs_latest` (vue append-only shared, règle ART
+n°2). CLI `duckdb` absent de l'environnement → mesure via sonde Go jetable sur une COPIE
+read-only de `shared_matches_v2.duckdb` (scratchpad), puis sonde + copie supprimées.
+
+**Mesure observée (G0)** : **0 % de couverture**. Par joueur : Chocoboflor 0/2, JGtm 0/7,
+Madina97294 0/17, XxDaemonGamerxX 0/0. Union distincte des rivaux : **0/22**. Sanity :
+`match_csrs_latest` = 64 lignes / 37 xuids distincts (essentiellement les 3 joueurs syncés,
+8 lignes CSR chacun) — le shared ne capture le CSR que sur un sous-ensemble étroit de
+matchs classés, jamais le CSR des adversaires long-tail. 0 % << seuil 30 % → **G statué
+`[!]` et arrêté** (issue conditionnelle prévue par le plan, PAS un échec). G1–G3 non
+exécutés (aucune valeur produit : la carte serait vide pour 100 % des bêtes noires).
+
+**Bilan du chantier Relations UX** :
+- A (tri tableau), B (duels cliquables), C (toggle « jamais affrontés »), F (dé-redondance
+  noyau dur + pont Escouade), D (volet « Quoi de neuf ») : livrés par le train antérieur
+  (91649c01d, f18aafddd, e9d5f8417, 6e5601669, e493118cc).
+- H (chip Multi-jeux) : déjà livré v7 → régularisé `[~]` (commit ff94bb85b).
+- E (notification « rival croisé » post-sync) : livré `[x]` (commit 9f1d7c5e4). Watermark
+  idempotent, aucun SQL nouveau, garde-fous nommés, best-effort strict.
+- G : `[!]` — 0 % de couverture CSR des rivaux, gate G0 non franchi.
+
+**Gates de clôture (cette session, arbre clos)** : `go test ./...` = 0 ; `go vet ./...` = 0 ;
+`go test -tags=integration -p 1 ./...` = 0 (112 ok) ; web typecheck (purge tsBuildInfo) OK ;
+lint 0 erreur ; `npx vitest run` COMPLET = 2253 passed / 14 skipped.
+
+**Restes / prochaine étape** : branche `chore/backlog-train-2026-07` NON poussée (décision
+utilisateur) — CI de branche + revue visuelle + merge = superviseur/utilisateur (push main
+= deploy prod auto). Archivage du fichier plan vers `.ai/V7/` = superviseur (ne pas déplacer).
+Découverte hors périmètre consignée dans le plan (seed notifications par défaut-actif).
+
+---
+
+## [2026-07-17] Relations UX — Lot E : notification « rival croisé » post-sync (full-stack) (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Décision technique principale** : émettre une notification in-app quand une sync
+ramène un nouveau duel (match en ennemi) contre un des top rivaux. Détection par
+WATERMARK (`PlayerSnapshot.LastMatchStartTime`), pas par re-scan : `after <= before`
+(aucun nouveau match) → détection SKIPPÉE (coût nul sur les syncs à vide, majoritaires).
+Le watermark rend l'émission idempotente (re-sync des mêmes matchs ne ré-émet pas). AUCUN
+SQL nouveau : `DetectRivalEncounters` réutilise le chemin exact des cartes revanche
+(`selectTopRivals` + `GetRivalTimeline`, seuils/limites existants). Garde-fous nommés :
+`rivalNotifMaxPerSync=3` (anti-spam post-absence, garde les plus récents) /
+`rivalNotifMaxAgeDays=7` (pas de notif pour un duel ancien — cas backfill/import).
+Catégorie `rival_encounter` ; severity success si duel gagné, info sinon ; TargetRoute =
+match view du duel ; Source `post_sync`. Best-effort STRICT : jamais bloquant pour la sync.
+
+**Résultats observés (par item)** :
+- E1 : `CategoryRivalEncounter` + `AllCategories()`. DÉCOUVERTE : pas de seed explicite
+  par catégorie (`steps_player_notifications.go` = stub doc) ; une catégorie sans ligne
+  de préférence est ACTIVE par défaut (`isCategoryEnabledOn` : ErrNoRows → true). Aucune
+  migration requise. Garde-rail d'énumération `TestAllCategories_IncludesRivalEncounter`.
+- E2 : `relations_rival_notif_service.go` + `domain.RivalEncounter`. 5 tests (mock repo
+  réutilisé) : duel récent détecté, <= watermark ignoré, maxAgeDays filtre le backfill,
+  plafond maxPerSync = 3 plus récents, watermark zéro court-circuite (repo non interrogé).
+- E3 : `LastMatchStartTime` dans `PlayerSnapshot` ; requête watermark inline dans le bloc
+  SharedReadDB de `SnapshotPlayerState` (réutilise la connexion partagée déjà ouverte,
+  `MAX(StartTimeCanonicalSQL("r"))` sur match_participants ⨝ match_registry — timezone
+  canonique, jamais start_time brut). Émission dans `post_sync_rival_encounters.go`
+  (interface locale `rivalEncounterDetector` pour la testabilité, détecteur bare via
+  `NewRelationsService(NewCareerRepo(pdb2))` — pattern `newCitationsServiceForPDB`),
+  câblée après `EmitPostSyncDeltas`.
+- E4 : `post_sync_rival_encounters_test.go` (détecteur factice + recordingEmitter) : duel
+  → 1 notif (params + severity + target_route + source) ; perdu → info ; watermark
+  inchangé → détecteur jamais appelé + 0 émission ; nil → no-op.
+- E5 : front `types.ts` (union + ALL_CATEGORIES), `i18n.ts` (label + description +
+  templates FR+EN, libellés actés), `icons.tsx` (IconUser, complétude du Record),
+  `navigation.ts` (match view déjà servie par priorité target_route + fallback défensif
+  match_id) ; `navigation.test.ts` (3 tests + validateur accepte /matches/$id).
+- E6 : logging InfoContext (rival/match_id/outcome) + DebugContext (duels_new, skip) +
+  WarnContext (erreurs). Zéro erreur avalée.
+
+**Gates** : GATE-GO — `go test ./...` exit 0 ; `go vet ./...` exit 0 ; intégration
+`go test -tags=integration -p 1 ./...` exit 0 (112 packages ok, 0 FAIL). GATE-WEB —
+typecheck (purge tsBuildInfo) OK ; lint 0 erreur (68 warnings baseline, hors fichiers E) ;
+vitest `src/features/palmares src/features/notifications src/stores` = 115 passed.
+
+**Conclusion / prochaine étape** : lot E livré et vert. Enchaîner sur le gate d'entrée G0
+(mesure couverture CSR des rivaux) puis la clôture du chantier.
+
+---
+
+## [2026-07-17] Relations UX — Lot H : régularisation du suivi (chip Multi-jeux) (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété (régularisation documentaire — aucun code écrit).
+
+**Décision technique principale** : le lot H (chip « Multi-jeux » dans le segmented
+control) était déjà LIVRÉ dans le code par le train corrections v7 antérieur, mais ses
+cases H1–H6 étaient restées `[ ]` dans le plan. Vérification sur pièces avant de statuer
+`[~]` (couvert ailleurs), conformément au contrat plan-execution.
+
+**Résultats observés (vérification sur pièces)** :
+- H1 : union `RelationFilter` += `'cross'` dans `relationsFilter.ts:14` ET son miroir
+  `relationsPrefsStore.ts:16` (commentaire de miroir en place).
+- H2 : `CROSS_GAME_BADGE_KEY = 'narrative.encounter.cross_game'` constante exportée
+  (`relationsFilter.ts:24`) + prédicat `isCrossGame` (règle ≤ 2 copies respectée).
+- H3 : i18n `[palmares.relations.chip.cross]` FR « Multi-jeux » / EN « Multi-game »
+  (`palmares.toml:137-139`) ; chip ajouté au `SegmentedFilter`.
+- H4 : `showCross = hasCrossGameRelations(relations)` (rendu conditionnel) + garde-fou
+  `effectiveFilter` neutralisant un `'cross'` persisté sans écrire le store
+  (`PalmaresRelationsPage.tsx:513,516`).
+- H5 : `visibleRows` chaîne `effectiveFilter` puis `includeNeverFaced` — aucun cas
+  spécial (`PalmaresRelationsPage.tsx:520-523`).
+- H6 : tests `relationsFilter.test.ts:41-60` + `PalmaresRelationsPage.test.tsx:91-158`
+  (chip présent/masqué, filtre `'cross'` persisté neutralisé).
+
+**Conclusion / prochaine étape** : H statué `[~]` (livré par train corrections v7 avant
+ce chantier). Enchaîner sur le lot E (notification « rival croisé » post-sync).
+
+---
+
+## [2026-07-17] Relations UX — Lot D : volet « Quoi de neuf » (full-stack) (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Décision technique principale** : donner une raison de revenir via deux groupes —
+« Nouvelles têtes » (first_seen ≤ 30 j, décidé CÔTÉ CLIENT depuis first_seen_at, pas de
+SQL) et « Retrouvailles » (is_revived). Retrouvailles = au moins 1 rencontre dans la
+fenêtre récente (30 j) ET dernière rencontre antérieure à la fenêtre ≥ 90 j. Deux
+agrégats SQL nouveaux sur `Q28RelationsTpl` + `Q28RelationsScopedTpl` :
+`COUNT(DISTINCT e.match_id) FILTER (WHERE e.start_time >= ?)` (encounters_30d) et
+`MAX(e.start_time) FILTER (WHERE e.start_time < ?)` (prev_seen_before_window). `e.start_time`
+EST déjà le fragment timezone canonique (alias CTE encounters) — jamais `start_time` brut.
+Cutoff (`now − RevivedWindowDays`) passé en paramètre lié (pattern `periodSince`) sans
+changer la signature `GetRelations` : accounting des placeholders ajusté dans
+`buildRelationsQuery` (2 cutoff insérés entre encounters et kv_stats, non scopé 7→9,
+scopé idem + 2). Décision finale `IsRevived` = fonction PURE dans `analysis/relations`
+(constantes nommées, `now` injectable), mappée dans `buildRelationInsight` via le `now`
+déjà présent — source unique serveur comme `is_core`. Front : `whatsNew.ts` pur
+(sélection/tri/plafond 5 + overflow) + `RelationsWhatsNewStrip` rendu conditionnel entre
+hero et chips, gamertags → Explorer, tooltips 30 j/90 j (tokens sémantiques only).
+
+**Résultat observé** : DTO `RelationInsight` += `is_revived` (openapi + generated.ts).
+Repo test integration (Revy now−200 j/now−5 j → encounters_30d=1, prev_seen≈now−200 j ;
+Reg now−10 j/now−20 j → encounters_30d=2, prev_seen=nil) vert sur les DEUX templates.
+
+**Gate D (GATE-GO + GATE-WEB + GATE-I18N + GATE-TYPES)** : `go vet ./...` 0 ;
+`go test ./...` exit 0 (111 paquets ok, aucun FAIL) ; repo test
+`go test -tags=integration` vert ; `generate-types` (is_revived) ; manifest régénéré
+(5 clés whats_new) ; typecheck vert ; lint 0 erreur / 68 warnings (baseline, 0 nouveau) ;
+vitest `palmares + notifications + stores` → 13 fichiers / 112 tests verts (nouveaux :
+`whatsNew.test.ts`, `RelationsWhatsNewStrip.test.tsx`).
+
+**Prochaine étape** : lots F+D livrés sur ce train. Lot E (notification rival post-sync)
+exécuté par un autre agent ; lot G conditionnel.
+
+## [2026-07-17] Relations UX — Lot F : dé-redondance noyau dur + pont Escouade (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Décision technique principale** : le noyau dur apparaissait 3 fois (carte hero résumé,
+chip « noyau » du tableau, section détaillée `CoreCards` en bas). Section détaillée
+supprimée (composant + rendu + bloc titre/description). Les 4 clés i18n devenues
+orphelines (`core.section_title`, `core.section_description`, `core.empty`,
+`core.together`) supprimées après grep de non-usage ; les clés `core.*` partagées avec la
+carte résumé conservées. Pont vers Escouade acté : lien discret « Voir l'escouade » /
+« View squad » en pied de la carte résumé noyau (nouvelle clé `core.view_squad`), route
+`/players/$playerSlug/squad` via `goToSquad` threadé (`onViewSquad`) selon le même pattern
+que `goToExplorer`. F exécuté AVANT D (note d'ordre du plan) pour stabiliser la structure
+de page avant le volet « Quoi de neuf ».
+
+**Résultat observé** : `CoreSummaryCard` prend `onViewSquad` (obligatoire) ; couleurs par
+tokens sémantiques uniquement. Grep `CoreCards` sur `apps/` = 0. 2 tests de page ajoutés
+(section détaillée absente + pont Escouade présent).
+
+**Gate F (GATE-WEB + GATE-I18N + grep CoreCards=0)** : manifest régénéré (diff propre :
+4 clés retirées, `view_squad` ajoutée) ; typecheck vert ; lint 0 erreur / 68 warnings
+(baseline, 0 nouveau en zone F) ; vitest `palmares + notifications + stores` → 11 fichiers
+/ 103 tests verts ; grep `CoreCards` = 0.
+
+**Prochaine étape** : lot D (volet « Quoi de neuf », full-stack).
+
+## [2026-07-17] Relations UX — Lot C : toggle « jamais affrontés » (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Décision technique principale** : le toggle « amis » masquait en réalité les relations
+jamais affrontées (`enemy_matches === 0`). Renommé `includeFriends` → `includeNeverFaced`
+(store + page + i18n), défaut passé de INCLUS à MASQUÉ (`false`). Store `version: 2` avec
+migration exportée pure `migrateRelationsPrefs` (v1→v2 : réinitialisation unique à false,
+suppression de l'ancienne clé, `filter`/`heatmapMode` préservés ; cumule v0→v1
+daypart→hour). Libellés i18n actés : OFF « Inclure les jamais affrontés » / « Include
+never-faced players » ; ON « Jamais affrontés inclus » / « Never-faced included ».
+Anciennes clés supprimées (0 code mort), manifest régénéré.
+
+**Résultat observé** : aucune relation du mock n'a `enemy_matches === 0` → le nouveau
+défaut masqué ne change pas les assertions de table existantes. Migration testée pure ;
+nouveau test de page (défaut masqué + bascule du libellé + `aria-pressed`).
+
+**Gate C (GATE-WEB + GATE-I18N)** : `node build_i18n_manifests.mjs` (diff propre :
+2 clés remplacées) ; typecheck vert ; lint 68 warnings (baseline, 0 nouveau) ; vitest
+`palmares + notifications + stores + components/charts` → 28 fichiers / 207 tests verts
+(nouveaux : `relationsPrefsStore.test.ts` 3 tests + 1 test de page toggle).
+
+**Prochaine étape** : lots A/B/C livrés. Reste du chantier (F, D, E, G) exécuté par
+d'autres agents ; H déjà livré.
+
+## [2026-07-17] Relations UX — Lot B : duels cliquables vers la match view (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Décision technique principale** : `OutcomeSequenceTape` reçoit une prop optionnelle
+`onMatchClick`. Le câblage ECharts (`onEvents.click` + `onChartReady` pour capter
+l'instance + `convertFromPixel` offset→valeur X) n'est ajouté QUE si la prop est fournie
+→ les 5 autres consommateurs (Home, session-detail, lab, timeseries, squad) sont
+strictement inchangés. Le curseur `pointer` sur les rects du renderItem n'est posé qu'en
+mode interactif. Résolution du match via helper pur `matchIndexAtX(runs, xValue)` (index
+global borné, cas dégradé = 1er match du run via `params.dataIndex`).
+
+**Point de propreté notable** : exporter une VALEUR (`matchIndexAtX`) depuis un fichier de
+composant déclenche `react-refresh/only-export-components`. Extraction du modèle pur
+(types + `toRuns`/`startOf`/`matchIndexAtX`) dans un nouveau module `outcomeSequence.ts` ;
+le tape ré-exporte uniquement les TYPES (frontière stable pour les consommateurs). Conflit
+de types `EChartsType` entre echarts/core et le paquet embarqué par echarts-for-react
+(propriété privée `_ssr`) contourné en typant le param `onChartReady` en `unknown` (cast).
+
+**Gate B (GATE-WEB + typecheck des 2 consommateurs non modifiés)** : typecheck vert
+(couvre Home/Squad — prop optionnelle, aucune régression) ; lint 68 warnings (baseline
+inchangée, 0 nouveau) ; vitest `palmares + notifications + stores + components/charts` →
+27 fichiers / 203 tests verts (nouveau `OutcomeSequenceTape.test.tsx` : 6 tests).
+
+**Prochaine étape** : Lot C (toggle « jamais affrontés »).
+
+## [2026-07-17] Relations UX — Lot A : tri des colonnes du tableau (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Contexte** : exécution du plan `.ai/PLAN_RELATIONS_UX_2026-07.md`, lots A/B/C sur la
+branche `chore/backlog-train-2026-07` (prescription plan `feat/relations-ux-2026-07`
+supersédée par décision utilisateur 2026-07-17). Lot H (chip Multi-jeux) déjà livré.
+
+**Décision technique principale** : `RelationsTable.tsx` — colonnes triables via
+`accessorFn` + `getSortedRowModel()`. Colonnes numériques/date en `sortDescFirst: true`
+(1er clic = décroissant), `player` alpha insensible à la casse (asc-first). Nuls relégués
+en fin de liste dans les deux sens (`sortUndefined: 'last'` + helpers `numOrUndef` /
+`lastSeenEpoch`). En-têtes triables via helper `SortLabel` (bouton + indicateur texte
+`↑`/`↓`) ; pour « Ratio » le Tooltip (rend un `<div>`) enveloppe le bouton pour rester du
+HTML valide (`div > button`). `aria-sort` posé sur le `<th>` actif. `link` non triable.
+
+**Résultat observé le plus notable** : `autoResetPageIndex` (défaut TanStack v8) NE
+réinitialise PAS la pagination en page 1 au tri dans le harnais vitest+jsdom (échec même
+en attente async). Contournement dans le périmètre A4 : état tri+pagination contrôlé,
+`onSortingChange` remet `pageIndex: 0`. Consigné en « Découvertes » du plan.
+
+**Gate A (GATE-WEB)** : typecheck vert ; lint 0 erreur (68 warnings baseline, dont le
+warning `useReactTable` inhérent, pré-existant) ; `vitest run src/features/palmares
+src/features/notifications src/stores` → 10 fichiers / 97 tests verts (nouveau
+`RelationsTable.test.tsx` : 6 tests).
+
+**Prochaine étape** : Lot B (duels cliquables vers la match view).
+
+## [2026-07-17] Restes audit post-deploy 2026-07-16 — media tooling /health + Cache-Control immutable Vite (branche chore/backlog-train-2026-07)
+
+**Statut** : sous-points 2 et 3 Complétés ; sous-point 1 (restic) EN ATTENTE d'arbitrage utilisateur (prémisse invalidée).
+
+**Contexte** : item backlog [prod/VPS], 3 sous-points, un commit chacun. Inspection VPS en
+lecture seule uniquement (`ssh lvelup`).
+
+**Sous-point 1 — Backup restic : PRÉMISSE INVALIDÉE, non livré (needs input)** :
+Le constat du backlog (« restic absent de l'hôte → le scheduler backup interne se désactive »)
+est factuellement faux. Vérif sur pièces (lecture seule) :
+- restic EST présent sur l'hôte (`/usr/bin/restic`) et un backup restic **niveau hôte via
+  systemd** (`scripts/restic-backup.sh` + `scripts/systemd/levelup-restic-backup.{service,timer}`,
+  installé 2026-06-19) tourne quotidiennement : timer `enabled`+`active`, 9 snapshots, dernier
+  succès 2026-07-16 04:00 UTC (781 MiB → 46 MiB stockés), repo CHIFFRÉ `/opt/levelup/restic-repo`
+  (+ `.restic-password` root 600), couvre `data/titles`+`data/auth`+config, arrêt bref du
+  conteneur pour cohérence DuckDB.
+- Le vrai constat : restic manque DANS le conteneur (`docker exec ... which restic` → absent),
+  or le scheduler Go in-app (`pkg/duckdbbackup`, `backup_enabled: true`, interval 12h dans
+  app_settings.json prod) tourne DANS le conteneur → WARN au boot
+  « backup: binaire restic introuvable dans le PATH — scheduler désactivé ».
+- Contrat exact du scheduler Go découvert : `config.BackupConfig` (Enabled/Interval/Keep* depuis
+  app_settings.json ; BackupDir=env `LEVELUP_BACKUP_DIR` défaut `/app/data/backups` ;
+  ResticRepo=env `RESTIC_REPOSITORY`). `toPkgConfig` force `--insecure-no-password` (repo NON
+  chiffré) et ne câble AUCUN mot de passe. Il EXPORTe les DuckDB (DuckDB EXPORT, sans stopper le
+  conteneur) → staging → `restic backup` du staging ; rétention `forget --keep-daily/weekly/monthly`.
+- Conclusion : activer/préparer le scheduler in-app créerait un **2e backup restic redondant, NON
+  chiffré, sur le même disque, des mêmes DuckDB** que le backup systemd hôte déjà opérationnel et
+  chiffré. Contredit CLAUDE.md (≤2 copies, pas de doublon, cohérence) et régresse vs l'existant.
+  Per plan-execution (signaler une découverte qui invalide une hypothèse du plan) : je NE construis
+  PAS ce doublon sur une prémisse fausse. Édit Dockerfile (ajout restic à l'image) préparé puis
+  reverté. Décision attendue : (a) garder le backup systemd hôte comme canonique et laisser le
+  scheduler in-app OFF (silencier le WARN — nécessite un changement de code ou app_settings prod),
+  ou (b) migrer vers le scheduler in-app et retirer le systemd (régression chiffrement/même disque).
+  Recommandation : (a).
+
+**Sous-point 2 — Media tooling exposé dans /health (Complété, commit dédié)** :
+Vérif : `ops.InspectMediaTooling`/`LogMediaToolingStatus` existants (boot, `cmd/server/main.go`),
+handler `/health` Huma (`internal/api/handlers/health.go`, Body `domain.HealthResponse`). Prod en
+`LEVELUP_LOG_LEVEL=warn` masque la ligne INFO du boot. Ajout : `domain.MediaToolingStatus`
+{ffmpeg, ffprobe, ffmpeg_version} + champ `HealthResponse.MediaTooling` ; projection
+`MediaToolingReport.ToHealthStatus()` (concise, sans le détail encodeurs/muxers réservé à
+check-env) ; sonde UNE fois au boot dans `buildAPIV1Deps` (borné 3 execs/5s) puis figée via
+`HealthHandler.WithMediaTooling` — /health ne réexécute jamais ffmpeg par requête ; aucune nouvelle
+ligne WARN. Tests handler (media_tooling présent, y compris par défaut) + ops (ToHealthStatus).
+
+**Sous-point 3 — Cache-Control immutable sur les assets Vite hashés (Complété, commit dédié)** :
+Vérif : `mountSPA` (`internal/api/server_apiv1.go`) sert le dist via `http.FileServer` (pose
+Last-Modified ; le stdlib ne pose PAS d'ETag). Vite config = défauts (base `/`, assets sous
+`/assets/<nom>-<hash>.<ext>`, hash 8 chars base64url). Ajout : `serveStaticFile` pose
+`Cache-Control: public, max-age=31536000, immutable` UNIQUEMENT si `isViteHashedAsset(path)`
+(regex `^/assets/.+-[A-Za-z0-9_-]{8,}\.[A-Za-z0-9]+$`) ; index.html, `/`, favicon et tout fichier
+non hashé restent revalidables (jamais immutable). Header posé avant `ServeHTTP` → survit au 200
+comme au 304. Tests : prédicat (table), asset hashé → immutable + Last-Modified, non-hashé (`/`,
+favicon) → pas immutable, 304 (If-Modified-Since) → immutable conservé.
+
+**Gates** : `go build ./...` exit 0, `go vet ./...` clean, `go test ./...` (packages touchés :
+handlers/ops/domain/api verts). `bash -n` non applicable (aucun script shell créé au final —
+sous-point 1 non livré).
+
+**Découvertes hors périmètre (non traitées)** : (1) le scheduler Go in-app `pkg/duckdbbackup` est
+entièrement câblé et testé mais restera inerte tant que la redondance avec le backup systemd hôte
+n'est pas tranchée ; le WARN au boot prod persiste (bruit). (2) `toPkgConfig` ignore
+`ResticPassword`/`ResticPwdFile` de la config — activer un repo chiffré côté in-app exigerait de les
+câbler. (3) le constat backlog « restic absent de l'hôte » devrait être corrigé (restic présent +
+backup systemd actif).
+
+## [2026-07-17] Release — pre-build image en CI (GHCR) + pull au deploy avec fallback build local (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Contexte** : item backlog [infra/release] (audit release 2026-07-16, reco P3). Aujourd'hui
+`deploy.sh` fait `docker compose up -d --build` SUR le VPS a chaque deploy — un apt-get/npm/go
+casse ne se decouvre qu'en pleine prod. Objectif : builder l'image en CI (GHCR), le VPS `pull`.
+
+**Cartographie (verif sur pieces)** : remote `JGtm/LevelUp` -> image `ghcr.io/jgtm/levelup`
+(lowercase). `deploy.yml` = pre-check -> deploy (SSH `deploy.sh`) -> deploy-demo. Runbook cible
+`docs/RUNBOOK_GO_LIVE.md` absent (l'esquisse vivait dans `.ai/V7/RUNBOOK_GO_LIVE.md` § amelioration
+recommandee). Inspection VPS (lecture seule, ssh lvelup) : docker 29.4, compose v5.1.2, AUCUN login
+GHCR (`~/.docker/config.json` vide cote deploy), conteneurs sur images `levelup-levelup` /
+`levelup-levelup-demo` (= `basename(/opt/levelup)-{service}`).
+
+**Decision technique** :
+- `deploy.yml` : trigger `pull_request` ajoute + job `build-image` (docker/build-push-action@v6,
+  cache `type=gha`). Sur PR -> build SEUL (attrape l'echec tot, pas de push). Sur push main ->
+  build + push GHCR (metadata-action tags `latest`+`sha`, `packages: write` via GITHUB_TOKEN).
+  `deploy` gagne `needs:[pre-check,build-image]` + `if: push main`, transmet
+  `LEVELUP_IMAGE=ghcr.io/jgtm/levelup@<digest>` (immuable) a `deploy.sh` via `envs`.
+- `deploy.sh` : si `LEVELUP_IMAGE` -> `docker pull` puis tag sous les 2 noms compose par defaut
+  (prod+demo, image identique) + `up --no-build` ; sinon / si pull echoue -> FALLBACK
+  `up --build` (kill-switch date : bascule 2026-07-17, retrait cible 2026-Q4, critere = plus de
+  ligne "Pull GHCR echoue" sur >=4 deploys). Belt-and-suspenders : `up --no-build` qui echoue
+  retombe aussi sur `up --build` (jamais prod down).
+- `docs/RUNBOOK_GO_LIVE.md` cree (EN-only) : flux avant/apres + 2 options d'activation VPS
+  (A: `docker login ghcr.io` PAT read:packages ; B: package public) — NON executees.
+
+**Surete au merge (sans action VPS)** : au 1er merge, l'ancien `deploy.sh` (deja en cours
+d'execution, FD ouvert avant son propre `git reset --hard`) ignore `LEVELUP_IMAGE` et build en
+local. Aux merges suivants, le nouveau `deploy.sh` tente le pull -> pas de login VPS -> fallback
+build local. Dans tous les cas la prod reste servie. Le push GHCR (CI) ne depend d'aucune action
+VPS (GITHUB_TOKEN auto).
+
+**Resultats** : `bash -n scripts/deploy.sh` OK ; actionlint 1.7.12 sur TOUS les workflows = exit 0
+(deploy/release/ci + autres). Zero modif VPS (inspection lecture seule uniquement).
+
+**Decouvertes hors perimetre (non traitees)** : (1) `release.yml` (tags v*) builde les binaires Go
+mais PAS d'image Docker — pourrait aussi pousser l'image sur tag ; hors perimetre. (2) demo et prod
+buildent aujourd'hui 2 images identiques (meme Dockerfile, aucun build-arg divergent) — le pull GHCR
+les unifie deja de fait ; le `build: .` du service demo pourrait etre remplace par un
+`image:`/`extends` mais hors perimetre.
+
+**Prochaine etape (utilisateur)** : activer le pull cote VPS (Option A ou B du runbook) pour passer
+du fallback build local au pull GHCR nominal.
+
+## [2026-07-17] Lot i18n tiers de rangs — centralisation mapping + defis locale-aware (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété (deux sous-taches).
+
+**Contexte** : item backlog [i18n] — deux sous-taches independantes, un commit chacune.
+
+**Sous-tache 1 — Centralisation mapping des noms de tiers CSR (Completee)** :
+Verification sur pieces : la source unique existait deja (`lib/skillTiers.ts` :
+`LUSR_TIER_GRID`/`CSR_TIER_GRID` + `localizeTierName`/`localizeTierLabel` via
+`TIER_NAME_BY_KEY`). La 3e « copie » citee (`localizeTierLabel`) y etait DEJA centralisee ;
+`CareerRankingBlock` consommait deja ces helpers. Il restait UNE seule duplication reelle :
+`CSR_TIER_FR` (+ `tierLabel` local) dans `features/explorer/ExplorerTargetSeasonCSR.tsx`,
+qui re-derivait le mapping FR depuis `CSR_TIER_GRID`. Migre vers `localizeTierName` (import
+skillTiers), `CSR_TIER_FR` supprime (0 code mort). Garde-rail pose :
+`lib/skillTiers.guard.test.ts` interdit tout litteral de nom de tier FR distinctif
+(« Argent »/« Platine »/« Diamant ») sous `src/features/**` — la couche i18n legitime
+(`lib/i18n/manifests|generated`) vit sous `lib/`, hors scan.
+Gates : typecheck OK ; lint 0 erreur (68 warnings baseline, fichiers non touches) ;
+vitest skillTiers + guard + explorer = 95 tests OK.
+Decouverte hors perimetre (non traitee) : `SUBTIER_ROMAN` (romain I..VI) est duplique entre
+`ExplorerTargetSeasonCSR.tsx` et `features/career/CareerRankingBlock.tsx` (`SUB_TIER_ROMAN`) —
+c'est le mapping des SOUS-paliers, pas des noms de tiers ; hors perimetre de cet item.
+
+**Sous-tache 2 — Cache des defis locale-aware a la bascule de langue (Completee)** :
+Diagnostic (sous-agent + verif sur pieces) : la locale voyage par header HTTP
+`X-LevelUp-Locale` (`_currentLocale` module-level, `lib/api/client.ts`), le backend baque
+les libelles localises (titres de defis, map/mode, nom du pass) DANS le payload a l'instant
+du fetch. Les query keys `home` et `seasonPass` n'incluaient PAS la locale -> a la bascule de
+langue, le cache restait baken dans l'ancienne langue. Le « fetch background » du constat =
+`prefetchHome` (prefetch speculatif au survol, `lib/query/prefetch.ts`) + loader de route
+(`routes/.../home.tsx`) + poll `refetchInterval` (`home/queries.ts`), tous ecrivant sous la
+cle `home` (qui porte les defis de `HomeChallengesList`). Le seul filet existant etait le
+`invalidateQueries()` global de la mutation settings (`settings/queries.ts`) — fragile car
+`setLocale` du store ne l'appelle pas, et le prefetch rechauffe la cle locale-agnostique.
+Correction (option a, alignee sur `sessionDetail`/`teammates`/`releaseNotes`/`field-mappings`
+qui portent deja la locale) : locale ajoutee en dernier segment de `queryKeys.home` et
+`queryKeys.seasonPass` -> invalidation NATURELLE a la bascule (la cle change, TanStack refetch
+avec le nouveau header). 6 appelants migres : `home/queries.ts` (useHomePage +
+useSeasonPassPreview), `prefetch.ts`, `routes/.../home.tsx`, `match-history/queries.ts`
+(invalidation favori), `palmares/queries.ts` (useSeasonPassPage). Test ajoute
+`lib/query/keys.locale.test.ts` (FR!=EN -> cles distinctes, locale identique -> cle stable).
+Limitation connue (acceptee) : l'invalidation du toggle favori (`match-history`) ne cible que
+la locale courante ; l'autre locale (si en cache) refetch a son staleTime 5min ou au switch —
+severite negligeable (le payload favori vit dans la reponse home). `invalidateQueries()` global
+de settings devient redondant pour ces payloads mais reste inoffensif (garde pour les autres
+queries locale-dependantes sans locale dans la cle). Gates : typecheck OK ; lint 0 erreur ;
+vitest lib/query + home + palmares + match-history = 62 tests OK (garde-rail keys inclus).
+
+## [2026-07-17] Extension registre H5 au long-tail v_weapon_kills (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Contexte** : item backlog [data/h5] — le registre `weaponRegistryH5Stock`
+(halo_infinite/migrations/weapon_registry.go, référentiel CROSS-TITRE) couvrait 35/66
+`effective_weapon_id` réels de `v_weapon_kills` H5 (233 274 frags / 8 rôles) ; 31 ids
+restants (35 053 frags) sans rôle → exclus du donut « Frags par type d'arme ».
+
+**Découverte clé (contre-hypothèse)** : le backlog supposait des variantes REQ héritant du
+rôle de l'arme de base. En réalité l'audit (copie shared_matches_v2.duckdb + weapon_labels
+du metadata-prebuilt.zip, requêtés hors process car serveur :8000 tenait les DB en RW) montre
+que le long-tail N'EST PAS de l'arsenal : grenades (17 865 frags), véhicules + tourelles
+(~16 k), buckets d'attribution générique (« Spartan » 8.8k, « Environmental Explosives »),
+et 7 ids UGC sans libellé.
+
+**Décision de mapping** : mappé vers rôles EXISTANTS les seules vraies armes tenues —
+3 grenades → `grenade` (parité HINF ; PAS de double comptage car le donut synthesis n'active
+pas IncludeGrenadeMelee, buildKillsByRole ignore IsGrenadeMelee), Golf Club + Oddball →
+`melee`. +5 armes H5 (30→35), +3 familles (splinter_grenade, golf_club, oddball), +5 stock_ids
+(35→40). Véhicules/tourelles/attributions/UGC laissés NON MAPPÉS et documentés en commentaire :
+leur affecter un rôle d'arme fausserait le donut et l'insight coach `blind_spot_power` ; créer
+un rôle `vehicle`/`turret` est hors ratchet enum. Trou résiduel = kills hors arsenal, par
+conception (dégradation gracieuse).
+
+**Gates** : go build ./... = 0 ; go test migrations halo_infinite/halo_5 + weaponregistry +
+service + domain = OK ; gofmt/vet propres. Test de couverture ajouté
+(TestWeaponRegistry_H5LongTailResolution : 5 stock_ids → rôle attendu + no-dup) ; cardinalités
+figées mises à jour (2 tests). Web (consommateur) : typecheck OK, lint 0 erreur, vitest
+synthesis 22 OK — manifest role_grenade/role_melee déjà présents, aucune modif web requise.
+
+**Note scope** : le commit porte le préfixe `feat(web)` demandé par le train de backlog, mais
+le changement est 100% Go (le registre vit côté Go, le web consomme kills_by_role agrégé).
+
+**Conclusion / prochaine étape** : item soldé. Reste hors périmètre (noté, non traité) : le
+gros bucket « Spartan » (~8.8k frags, nature ambiguë) et l'id UGC 2457457776 (~2.3k) — un
+rôle `vehicle`/`turret` dédié serait la seule voie pour capter véhicules/tourelles, à arbitrer
+produit si jamais souhaité.
+
+## [2026-07-17] Purge dette : squad/v2 mort + route battlepass sans consommateur (branche chore/backlog-train-2026-07)
+
+**Statut** : Complété.
+
+**Contexte** : deux items de backlog indépendants, un commit par item, après retrait de
+HistoryTable v2 / TimeseriesCombatYield.
+
+**Item 1 — purge squad/v2 (commit 42b317cd8)**. Le module n'était PAS entièrement mort :
+grep + knip croisés ont isolé les vivants (SquadEngagementView consommé par
+features/engagement ; types SquadHeader→lib/api/types.ts, KPIStats→SquadLayout,
+SquadScoreCard/PlayerScoreCard→SessionBriefing). Piège knip : il signalait SquadHeader
+comme inutilisé alors qu'un `import('...')` dynamique dans lib/api/types.ts le consomme
+réellement (knip ne suit pas cette forme) → décision : vérifier chaque export au grep, pas
+au knip seul. Supprimés (aucun consommateur prod) : queries.ts (+ test, hook useSquadV2),
+composants SquadCombatProfileRow / WeaponsTable / MedalsGallery / FloatingLegend (+ tests),
+et les exports orphelins de types.ts (SquadPageV2Response, SquadCharts, SquadTables,
+ImpactRoles*, AssetReference, CapabilityGap, Outcome, SquadPeriod, Weapons/Medals*).
+Effets de bord traités : query key squadV2 (keys.ts), entrée d'allowlist
+SquadPageV2Response (guard test à self-check décroissant), clé i18n orpheline
+squad.combat_profile.title (squad.toml + regen squad.ts). Gates verts : typecheck, lint
+(0 err), vitest 243.
+
+**Item 2 — route battlepass (commit c9bfa0e7d)**. Preuve de mort : aucun hook web
+n'appelle GET /players/{slug}/battlepass (la Home lit via /pages/palmares/season-pass) ;
+le seul appel à svc.GetBattlePass vient de season_pass_service (fallback live + peuplement
+track definitions), donc la MÉTHODE service est vivante, seule la surface HTTP est morte.
+Modèle calqué sur le retrait /challenges (1c0117707). Retirés : home.go (route, handler,
+DTO homeBattlePassOutput, input homePlayerInput seul appelant, import domain), openapi path
+getBattlePass, tests dédiés, et artefacts web morts (query key battlepass, mock MSW,
+re-shim BattlePassResponse) + regen generated.ts. Conservés : port/provider/domain
+GetBattlePass, home_service_battlepass, season_pass_service, live_refresh, route assets
+/assets/battlepass/*, schéma openapi nommé BattlePassResponse (documente le type domaine).
+Gates verts : go build/vet/test ./... ; web typecheck ; vitest.
+
+**Découverte hors périmètre (notée, non traitée)** : le schéma openapi nommé
+`BattlePassResponse` (openapi.yaml ~6956) est orphelin de longue date — jamais `$ref`é
+(la route battlepass utilisait un schéma inline). Conservé volontairement car il documente
+le type domaine vivant `domain.BattlePassResponse` ; à arbitrer séparément si on veut
+purger le contrat. knip signale par ailleurs une large dette d'exports inutilisés hors
+squad/v2 (accessibility, match-view, prestige, ...) — hors périmètre.
+
+**Conclusion / prochaine étape** : deux items soldés, branche non poussée (le superviseur
+gère BACKLOG.md et le push).
 
 ## [2026-07-16] Réalignement vhost nginx prod ↔ template sur cible unique (branche ops/nginx-vhost-realign)
 
@@ -8220,6 +9533,103 @@ deploy prod auto) laissé au train de merge superviseur — NE PAS merger.
 
 ---
 
+## [2026-07-17] Train backlog 2026-07 — clôture superviseur — Complété
+
+**Statut** : Complété. Branche `chore/backlog-train-2026-07` (non poussée — merge = décision utilisateur, push main = deploy prod).
+
+**Décision technique principale** : exécution des 8 items actifs du backlog + 3 extensions
+coach/prestige par agents Opus pilotés séquentiellement (1 branche, N commits), décisions
+utilisateur actées en amont : restic = préparation seule (invalidée en cours de route par
+l'audit VPS : backup systemd hôte déjà actif et sain — item requalifié en décision de
+redondance), notifications externes = Discord webhook OFF par défaut, consommateur
+télémétrie = endpoint diag.
+
+**Résultats observés** : 20 commits. Purges (squad/v2, route battlepass), registre H5
+(+5 armes, ~18,4 k frags réintégrés au donut), i18n tiers centralisé + défis
+locale-aware, CI GHCR + deploy pull avec fallback daté, /health media_tooling +
+Cache-Control immutable, chantier Relations UX CLOS (A/B/C/F/D/E livrés, H [~], G [!]
+0 % couverture CSR), BOLA acteur clos sur 14 routes + garde-rail AST, télémétrie
+prestige source + endpoint diag + analyseur tuning grammaire + canal Discord coach
+opt-in. Backlog nettoyé (6 nouveaux items issus des découvertes), plan Relations archivé
+vers `.ai/V7/`.
+
+**Conclusion / prochaine étape** : gates globaux finaux (Go + web) au moment de cette
+entrée — voir commit de finalisation. Restes portés au backlog : décision redondance
+backup, activation pull GHCR côté VPS (5 min), BOLA objet routes {id}, densification CSR
+adversaires, frags hors-arsenal H5.
+
+---
+
+## [2026-07-17] Train backlog 2026-07 — passe de vérification finale (logging + tests + gates) — Complété
+
+**Statut** : Complété. Branche `chore/backlog-train-2026-07` (26 commits, non poussée).
+
+**Décision technique principale** : passe QA indépendante post-livraison sur les 11 items,
+sans faire confiance aux rapports des sous-agents. (1) Audit logging : le routing
+multi-module (`observability/logging`) envoyait 5 flux best-effort du train vers
+`general.log` faute de mapping de package — re-routés vers leurs modules dédiés
+(`external`/`notify` → `notifications` dans `packageToModuleMap` + test de routing ;
+rival post-sync → tag `module=notifications` ; analyseur tuning → `prestige` ;
+media_tooling → `media`) et 1 erreur avalée comblée (`decodeParams`). Commit `e6671ff89`.
+(2) Audit couverture : trous critiques comblés sur les branches best-effort et gardes nil
+(`IsValidChallengeSource`, media tooling absent, err détecteur rival, decodeParams/appLink,
+diag table absente, glue `handleClick` web) — 7 fichiers de test, +323 L, 0 code
+applicatif, aucun bug trouvé. Commits `058ba9486`, `d49a1734f`.
+
+**Résultats observés (gates finaux sur l'état post-audit)** :
+- Go : `build` OK, `vet` OK, `go test ./...` 0 FAIL.
+- Go intégration : `go test -tags=integration -p 1 -timeout 900s ./...` → GOTEST_EXIT=0,
+  114 paquets ok, 0 FAIL (exécution autoritative, code de sortie de go test capturé hors pipe).
+- Web : typecheck OK, lint 0 erreur (68 warnings baseline), vitest 2258 passed / 14 skipped / 0 fail.
+- gofmt clean, arbre propre.
+
+**Conclusion / prochaine étape** : train prêt au merge (revue + push = décision utilisateur,
+push main = deploy prod). Restes portés au backlog (redondance backup, activation GHCR VPS,
+BOLA objet routes {id}, densification CSR, frags hors-arsenal H5, dettes mineures dont les
+swallowed-errors préexistants relevés hors périmètre).
+
+---
+
+## [2026-07-17] Train backlog 2026-07 — resorption dettes techniques (logging avale / doc inversee / schema OpenAPI orphelin / SUBTIER_ROMAN) — Complete
+
+**Statut** : Complete. Branche `chore/backlog-train-2026-07`.
+
+**Decision technique principale** : quatre dettes traitees avec discernement (un `return 0`/
+`return ""` de defaut legitime n'est PAS une erreur avalee ; seul un `err` reellement ignore
+est logge, au bon niveau).
+
+- **D1 erreurs avalees** (log AVANT degradation, logique metier inchangee) :
+  `coach_advisor/service_generate.go` — `resolveSingleSignal` (variante sync muette) aligne
+  sur la variante async (catalog list -> Warn ; no-synth -> Debug ; synth weak/notsynth ->
+  Debug sinon Warn ; upsert -> Warn) ; `acceptArc` `json.Unmarshal(ReasonParams)` `_ =` ->
+  WarnContext. `prestige/service.go` `computeCurrentValue` : `RecentMatches` err reellement
+  ignore -> WarnContext (best-effort conserve, return 0). `prestige/service_pilot_pool.go`
+  `squadFocusAxis` : split `err != nil` (WarnContext) vs `len(axes)==0` (defaut legitime,
+  muet) ; `SquadProfile == nil` reste un defaut documente muet. Handlers :
+  `prestige_squads.go ListMySquads` (annuaire + SquadUsualContexts best-effort -> Debug),
+  `home.go resolveLocaleFromHeader` (fallback locale -> Debug, ctx ajoute au helper),
+  `health.go handleHealth` (3 enrichissements `x, _ :=` -> Debug ; sonde frequente).
+- **D2 doc inversee** `notifications/types.go` : l'en-tete evoquait un « seed des preferences »
+  par migration qui n'existe plus. Comportement reel : categorie sans ligne = ACTIVE par
+  defaut (`isCategoryEnabledOn` : `sql.ErrNoRows -> true`). Corrige l'en-tete + 2 mentions
+  residuelles (ObjectiveAssigned, AllCategories).
+- **D3 schema OpenAPI orphelin** : `BattlePassResponse` (openapi.yaml) jamais `$ref`e (route
+  battlepass supprimee par ce train) — supprime le bloc. Le type Go `domain.BattlePassResponse`
+  reste vivant (service/provider/cache). Regen `generated.ts` (schema disparu, 0 consommateur
+  web). Drift-test inchange (pivot = BootstrapResponse ; les « extra » ne sont que loggues).
+- **D4 SUBTIER_ROMAN (jugement)** : le litteral `['','I'..'VI']` etait duplique 3x (Explorer,
+  Career ET `notifications/format.ts`) — 3e copie => franchit le seuil regle n6. Centralise
+  `subTierRoman()` dans `lib/skillTiers.ts` (foyer des tiers) + garde-rail grep
+  (`skillTiers.guard.test.ts`, sequence `'II','III','IV'`). 3 consommateurs migres, 0 code mort.
+
+**Resultats observes** :
+- Go : `build`/`vet` OK (hors `cmd/ztmp_*` scratch pre-existants absents de git) ;
+  `go test` OK sur coach_advisor/prestige/handlers/notifications ; `internal/api` +
+  `contracttest` (CGO) OK.
+- Web : `generate-types` OK, `typecheck` OK, `lint` 0 erreur (68 warnings baseline hors
+  perimetre), `vitest` 141 passed sur les scopes touches (dont le nouveau garde-rail).
+
+**Conclusion / prochaine etape** : dettes D1-D4 livrees. Push/merge = decision utilisateur.
 ## [2026-07-17] LOT A — Durcissement pipeline média : concurrence transcodage + décisions persistées
 
 **Statut** : Complété (LOT A du PLAN_MEDIA_PIPELINE_HARDENING_2026-07 ; branche
@@ -8549,3 +9959,147 @@ xuid tiers, budget débité au porteur du token). Plan écrit :
 `.ai/PLAN_CORRECTIFS_REVUE_2026-07.md` (lots A-F + clôture Z, décisions D1-D7
 tranchées). Exécution : branche `fix/revue-2026-07-correctifs`, worktree dédié,
 agents Opus séquentiels pilotés par le superviseur.
+---
+
+## [2026-07-18] Retrait du pipeline GHCR (décision user) — Complété
+
+**Statut** : Complété. Le pipeline « build image en CI + push GHCR + pull au deploy »
+(livré 2026-07-17, commit 7bb6a4257) est RETIRÉ sur décision utilisateur (pas d'intérêt
+perçu vs le build local). Retour au comportement d'origine : le VPS reconstruit l'image
+au deploy (`docker compose up --build`).
+
+**Décision technique** : `deploy.yml` et `deploy.sh` restaurés à leur version pré-GHCR
+(7bb6a4257^, aucun commit ultérieur ne les avait touchés) ; `docs/RUNBOOK_GO_LIVE.md`
+(créé par le commit GHCR, GHCR-spécifique) supprimé ; item backlog `[infra/release]`
+retiré. Aucune ref `ghcr`/`LEVELUP_IMAGE`/`build-image` restante ; `bash -n deploy.sh` OK.
+
+**Conclusion** : deploy = build local sur push main (comme avant le train). Aucune action
+VPS requise.
+
+---
+
+## [2026-07-18] BOLA prestige objet-level clos + réparation résolution player_slug — Complété (commit 1/2)
+
+**Statut** : Complété (item backlog `[sécurité/autZ]` Routes prestige par `{id}`). Branche
+`fix/backlog-bola-et-campagne` (2 items du backlog, 2 commits). Pas encore commité (attente
+validation user).
+
+**Découverte majeure (invalide l'hypothèse du backlog)** : `wire.WithPlayerSlug` n'était
+JAMAIS appelé → l'extractFn par défaut du `LazyPrestigeService` (`PlayerSlugFromContext`)
+retournait toujours `""`. Conséquence : toutes les routes prestige qui résolvent via le
+CONTEXTE (pas via un body/query acteur) échouaient en `ErrPlayerNotResolved` → 500 : les 5
+routes `{id}` pures (`GetChallenge`, `UpdateChallenge`, `AbandonChallenge`, `SuggestNext`,
+`GetArc`) ET `ListMySquads` dès qu'une escouade existe (via `ListSquadMembers`). Le « BOLA
+résiduel » du backlog était donc surtout des routes cassées. Le fix répare ET sécurise.
+
+**Décision technique** :
+- **Middleware `prestigePlayerSlugCtx`** (`internal/api/prestige_player_slug_mw.go`, monté
+  sur le groupe prestige dans server_apiv1.go) : stampe le `{player_slug}` du chemin (déjà
+  réconcilié avec la session par ownershipMW) dans le contexte via `wire.WithPlayerSlug`.
+  Le LazyPrestigeService ancre alors le player DB sur le slug DU CHEMIN. Effet double :
+  (1) répare la résolution des routes ci-dessus ; (2) clôt le BOLA objet-level pour les
+  objets ISOLÉS par player DB — défis et arcs perso vivent dans `stats.duckdb` du joueur du
+  chemin, donc un `{id}` appartenant à un autre joueur n'y est pas → 404 (isolation par
+  construction, non contournable).
+- **`ListSquadChallenges` — garde d'appartenance** : les défis d'escouade vivent dans
+  `shared_social.duckdb` (partagé tous joueurs), NON isolés par player DB → l'isolation
+  ci-dessus ne les couvre pas. Ajout de `requestedBy` (slug du chemin) à la signature
+  service + `assertMemberUser` (même contrôle que toutes les mutations squad), threadé via
+  handler (nouvel input lisant `path:"player_slug"` parent) → lazy (`resolveByUserID`) →
+  service. Un non-membre reçoit `ErrInvalidInput` (400), aucun défi ne fuite. `squadIDInput`
+  devenu mort supprimé (règle 7).
+
+**Résultats observés** : `go build ./...` (cgo) exit 0 ; `go vet` exit 0 ;
+`go test ./internal/prestige ./internal/api ./internal/api/handlers ./internal/api/wire`
+verts. Nouveaux tests exécutés et PASS : `TestService_ListSquadChallenges_RejectsNonMember`,
+`TestPrestigeHandler_ListSquadChallenges_{ThreadsPathSlugAsRequester,NonMemberRejected}`,
+`TestPrestigePlayerSlugCtx_StampsPathSlug` (garde-rail anti-régression du câblage).
+golangci-lint absent en local (hook skip, CI s'en charge).
+
+**Découverte (hors périmètre, NON traitée — règle 7)** : `JoinSquadChallenge` (POST
+`/squad-challenges/{id}/join`) laisse rejoindre un défi d'escouade par `{id}` sans vérifier
+l'appartenance à l'escouade du défi (l'actor guard couvre seulement l'acteur, pas l'objet).
+Non listé dans le résiduel backlog → noté, à trancher séparément.
+
+**Conclusion / prochaine étape** : commit 1 prêt (attente validation user). Ensuite commit 2 :
+fuite d'affichage campagne H5.
+
+**AMENDÉ (post-gate)** : commit 1 (3164bad6a → **f98a19efa**) amendé — mes commentaires
+mentionnaient le littéral `shared_social`, ce qui cassait `TestNoUnauthorizedSharedSocialMention`
+(garde-rail repo-wide **vivant dans le package duckdb** mais scannant toute la racine). Mon gate
+de commit 1 (scopé `./internal/prestige ./internal/api/...`) l'a manqué. LEÇON : un garde-rail
+peut vivre dans un package sans rapport avec les fichiers qu'il contraint — avant commit, lancer
+`make go-api-test` OU le package du garde-rail, pas seulement les packages touchés. Reformulé
+« shared_social » → « DB sociale partagée » dans 3 commentaires.
+
+---
+
+## [2026-07-18] Fuite d'affichage campagne H5 — balayage complet + garde-rail structurel — Complété (commit 2/2)
+
+**Statut** : Complété (item backlog `[bug/h5]` 287 matchs campagne). Branche
+`fix/backlog-bola-et-campagne`. Approche décidée (validée user 2026-07-18) : filtre à la source
+centralisé + garde-rail, PAS de purge BDD (règle ART).
+
+**Cause racine** : le mécanisme centralisé existait déjà (`analysis.campaignExcludedVariantIDs`
++ fragments `SQLExclude*` / token) mais n'était pas appliqué sur `Q5SharedHistory` (LISTE
+historique + compteur total, le lecteur qui affiche LITTÉRALEMENT les matchs) ni `Q4/Q4MV`
+(cascade filtres). Le garde-rail existant était une **whitelist statique** de constantes → angle
+mort : aucun lecteur oublié n'était détecté.
+
+**Décision technique** :
+- Fix à la source (token + résolution au call site) : Q5SharedHistory, Q4SharedMatchesForFilters,
+  Q4MVSharedMatchesForFilters (alias mv_player_matches car colonnes non aliasées), + relations/career
+  hub (Q26/Q28/Q28Scoped/QRelationsCoreForm).
+- **Garde-rail STRUCTUREL** (scan AST, remplace l'angle mort de la whitelist) : toute constante
+  `Q…` lisant `match_participants`/`mv_player_matches` avec `xuid = ?` DOIT porter le token, sauf
+  allowlist justifiée. **Il a immédiatement révélé 15 lecteurs de plus** → fuite systémique, pas
+  seulement la liste.
+- **Balayage complet** (décision user « corriger tout maintenant ») : 10 fixes supplémentaires —
+  Q10 (rencontres carrière), Q19 (matchs communs), Q23/Q23b (encounters détail-match, agrègent
+  l'historique), Q29Heatmap/Q30Rival (moments Relations), Q29TopTeammates/Q30SquadShared/Q31/Q42
+  (Escouade). Nouveau résolveur `resolveCampaignExclusionByMatchID` (forme sous-requête by-match-id,
+  ZÉRO placeholder → sûr à injecter AVANT `fmt.Sprintf` dans les templates multi-CTE, ne décale
+  aucun args positionnel — clé de la non-régression sur les requêtes relations/squad complexes).
+- **Exempts (allowlist justifiée)** : mono-match Q17/Q17b/Q26 ; filtrés au call site Q25Template
+  (excludeCampaignClause dans /*EXTRA_WHERE*/) et QRelationsPlayerWinRate ; sur-lecture inoffensive
+  Q25MatchParticipants (joint en Go au set Q23 déjà propre) ; **code mort Q30SquadMatches** (aucun
+  call site actif — remplacé par le split Q30SquadMatchesSharedQuery ; découverte notée, suppression
+  hors périmètre).
+
+**Résultats observés** : `go build ./...` + `go vet` exit 0 ; suite `duckdb` complète (cgo, tests
+DB réelle relations/squad/career) verte, 0 échec ; garde-rail structurel + whitelist verts ;
+comportemental `TestCampaignExclusion_FiltersCampaignMatch` (tag integration) vert, étendu au
+résolveur by-match-id ; `make go-api-test` (domain/analysis/timeline/contracttest) vert.
+
+**Conclusion / prochaine étape** : commit 2 prêt. Reste (hors périmètre, noté) : supprimer le code
+mort `Q30SquadMatches`. Le garde-rail structurel empêche désormais tout nouveau lecteur per-player
+de fuiter la campagne silencieusement.
+
+---
+
+## [2026-07-18] Traitement des 2 découvertes hors-périmètre (JoinSquadChallenge BOLA + Q30 code mort) — Complété
+
+**Statut** : Complété (à la demande user, dans la même session ; branche
+`fix/backlog-bola-et-campagne`). Les 2 découvertes notées aux commits 1/2 sont traitées.
+
+**1. `JoinSquadChallenge` — garde d'appartenance objet-level (BOLA-write)** : `POST
+/squad-challenges/{id}/join` ajoutait le participant SANS vérifier que l'utilisateur est
+membre-user de l'escouade du défi (l'actor guard du handler ne couvre que l'acteur, pas
+l'objet). Un utilisateur pouvait rejoindre le défi de n'importe quelle escouade via un
+challenge_id arbitraire. Fix (`internal/prestige/service_arcs_squads.go`) : `Get(challengeID)`
+→ `assertMemberUser(sc.SquadID, userID)` avant `AddParticipant` — même garde que
+`ListSquadChallenges` et les mutations squad. Test `TestService_JoinSquadChallenge_RejectsNonMember`
++ mise à jour du test existant (setup défi + membres). Signature inchangée (garde interne au
+service) → aucun impact lazy/handler/mock.
+
+**2. `Q30SquadMatches` — suppression du code mort** : var supprimée (aucun call site actif — le
+chemin vivant est le split `Q30SquadMatchesSharedQuery`, filtré) ; réf commentaire mise à jour
+(`internal/service/teammates/...`) ; entrée d'allowlist retirée du garde-rail campagne (règle 7 :
+0 code mort).
+
+**Résultats observés** : `go build ./...` exit 0 ; `go vet` OK ; prestige + duckdb + api +
+service/teammates verts ; garde-rail campagne (structural + whitelist) vert sans l'allowlist
+Q30. 
+
+**Conclusion** : les 2 items « hors périmètre » sont soldés. Reste au superviseur : relecture +
+décision de push (déploiement).

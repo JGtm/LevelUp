@@ -52,6 +52,49 @@ func TestMapKillEvents_PairsAndWeapons(t *testing.T) {
 	}
 }
 
+// killKind construit un event kill avec arme ET mecanique (Kind) posee.
+func killKind(killerGT, victimGT, weaponID string, timeMs int, kind canonical.KillKind) canonical.MatchEvent {
+	ev := kill(killerGT, victimGT, weaponID, timeMs)
+	ev.Kind = kind
+	return ev
+}
+
+// La mecanique de kill (canonical.KillKind, deja derivee par h5KillKind) doit etre
+// recopiee dans WeaponKillInsert.KillKind (capture Phase 1 — on cesse de la jeter).
+func TestMapKillEvents_KillKindCaptured(t *testing.T) {
+	events := []canonical.MatchEvent{
+		killKind("A", "B", "111", 1000, canonical.KillKindWeapon),
+		killKind("A", "B", "222", 2000, canonical.KillKindMelee),
+		killKind("A", "B", "333", 3000, canonical.KillKindGroundPound),
+		killKind("A", "B", "444", 4000, canonical.KillKindShoulderBash),
+		killKind("A", "B", "555", 5000, canonical.KillKindAssassination),
+	}
+	_, weapons := MapKillEvents("m", events, fakeResolver(map[string]string{"A": "xA", "B": "xB"}))
+
+	want := []string{"weapon", "melee", "groundpound", "shoulderbash", "assassination"}
+	if len(weapons) != len(want) {
+		t.Fatalf("weapon_kills: %d, attendu %d — %+v", len(weapons), len(want), weapons)
+	}
+	for i, w := range want {
+		if weapons[i].KillKind != w {
+			t.Errorf("kill %d: KillKind=%q, attendu %q", i, weapons[i].KillKind, w)
+		}
+	}
+}
+
+// Un kill event SANS mecanique (Kind vide, ex. chemin non-h5) laisse KillKind vide
+// → le persist le mappera sur NULL (non-regression Infinite).
+func TestMapKillEvents_NoKindLeavesEmpty(t *testing.T) {
+	events := []canonical.MatchEvent{kill("A", "B", "111", 1000)} // Kind non pose
+	_, weapons := MapKillEvents("m", events, fakeResolver(map[string]string{"A": "xA", "B": "xB"}))
+	if len(weapons) != 1 {
+		t.Fatalf("weapon_kills: %d, attendu 1", len(weapons))
+	}
+	if weapons[0].KillKind != "" {
+		t.Errorf("KillKind attendu vide (=> NULL en base), got %q", weapons[0].KillKind)
+	}
+}
+
 func TestMapKillEvents_NonNumericWeaponSkipped(t *testing.T) {
 	events := []canonical.MatchEvent{kill("A", "B", "not-num", 1000)}
 	pairs, weapons := MapKillEvents("m", events, fakeResolver(map[string]string{"A": "xA", "B": "xB"}))

@@ -13,10 +13,10 @@ import { formatMessage } from '@/lib/i18n/format'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
-import { weaponRoleInsight } from './weaponRoleInsight'
+import { NON_COMBAT_WEAPON_ROLES, weaponRoleInsight } from './weaponRoleInsight'
 
-// Tokens DISTINCTS color-blind friendly par rôle (mapping stable → couleurs
-// constantes d'un rendu à l'autre).
+// Tokens DISTINCTS color-blind friendly par rôle de COMBAT (mapping stable →
+// couleurs constantes d'un rendu à l'autre).
 const ROLE_TOKENS: Record<string, SemanticToken> = {
   power: 'chart-series-1',
   precision: 'chart-series-2',
@@ -29,6 +29,17 @@ const ROLE_TOKENS: Record<string, SemanticToken> = {
   grenade: 'chart-series-8',
 }
 
+// Frags hors-arsenal (véhicule/tourelle/environnement/non-attribué/autres) : une
+// SEULE teinte neutre (token catégoriel existant) qui les groupe visuellement comme
+// « non-combat ». Les libellés déportés du donut les distinguent malgré la couleur
+// partagée. Rôle inconnu du front → même fallback neutre (rendu jamais cassé).
+const NON_COMBAT_TOKEN: SemanticToken = 'divergent-neutral'
+
+function tokenForRole(role: string): SemanticToken {
+  if (NON_COMBAT_WEAPON_ROLES.has(role)) return NON_COMBAT_TOKEN
+  return ROLE_TOKENS[role] ?? NON_COMBAT_TOKEN
+}
+
 type ManifestKey = keyof typeof synthesisManifest
 
 export function SynthesisRoleKillsDonut({ roles }: { roles?: SynthesisRoleKillEntry[] }) {
@@ -36,13 +47,13 @@ export function SynthesisRoleKillsDonut({ roles }: { roles?: SynthesisRoleKillEn
   const locale = intlLocale(appLocale)
   const title = formatMessage(synthesisManifest, 'synthesis.charts.role_kills_title', appLocale)
 
-  // role_<key> existe dans le manifest pour les 9 rôles canoniques ; cast sûr
-  // (formatMessage dégrade en affichant la clé si jamais absente).
+  // role_<key> existe dans le manifest pour les 9 rôles de combat + 5 rôles
+  // hors-arsenal ; cast sûr (formatMessage dégrade en affichant la clé si absente).
   const slices: DonutSlice[] = (roles ?? [])
     .map((r) => ({
       label: formatMessage(synthesisManifest, `synthesis.charts.role_${r.role}` as ManifestKey, appLocale),
       count: r.kills,
-      token: (ROLE_TOKENS[r.role] ?? 'chart-series-8') as SemanticToken,
+      token: tokenForRole(r.role),
     }))
     .filter((s) => s.count > 0)
 

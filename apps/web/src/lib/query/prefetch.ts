@@ -27,7 +27,11 @@ export function useNavPrefetch(playerSlug: string) {
   const prefetchHome = useCallback(() => {
     if (!playerSlug) return
     void queryClient.prefetchQuery({
-      queryKey: queryKeys.home(playerSlug, useAppShellStore.getState().currentTitleSlug),
+      queryKey: queryKeys.home(
+        playerSlug,
+        useAppShellStore.getState().currentTitleSlug,
+        useAppShellStore.getState().locale,
+      ),
       queryFn: () => api.get<HomePageResponse>(`/players/${playerSlug}/pages/home`),
       staleTime: PREFETCH_STALE_MS,
     })

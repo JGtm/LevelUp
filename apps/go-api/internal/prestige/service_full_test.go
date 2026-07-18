@@ -276,13 +276,45 @@ func TestService_CreateSquadChallenge_CollectiveRequiresTargetPerMember(t *testi
 }
 
 func TestService_JoinSquadChallenge(t *testing.T) {
-	svc, _, _, scRepo, _, _ := buildFullService()
+	svc, _, _, scRepo, sqRepo, _ := buildFullService()
+	scRepo.getResp = SquadChallenge{ID: "sc1", SquadID: "sq1"}
+	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: "x2", UserID: "u2"}}
 	err := svc.JoinSquadChallenge(context.Background(), "sc1", "u2", TierHeroic, false)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	if len(scRepo.addedParticipants) != 1 {
 		t.Errorf("expected 1 participant, got %d", len(scRepo.addedParticipants))
+	}
+}
+
+// TestService_JoinSquadChallenge_RejectsNonMember : garde d'appartenance
+// objet-level (BOLA). Un utilisateur qui n'est PAS membre-user de l'escouade du
+// défi ne peut pas le rejoindre, même avec un challenge_id valide (l'actor guard
+// du handler ne couvre que l'acteur, pas l'objet).
+func TestService_JoinSquadChallenge_RejectsNonMember(t *testing.T) {
+	svc, _, _, scRepo, sqRepo, _ := buildFullService()
+	scRepo.getResp = SquadChallenge{ID: "sc1", SquadID: "sq1"}
+	sqRepo.members = []SquadMember{{SquadID: "sq1", Xuid: "x1", UserID: "alice"}}
+	if err := svc.JoinSquadChallenge(context.Background(), "sc1", "outsider", TierHeroic, false); !errors.Is(err, ErrInvalidInput) {
+		t.Errorf("non-membre doit être rejeté (BOLA objet-level), got %v", err)
+	}
+	if len(scRepo.addedParticipants) != 0 {
+		t.Errorf("aucun participant ne doit être ajouté pour un non-membre, got %d", len(scRepo.addedParticipants))
+	}
+}
+
+// TestService_JoinSquadChallenge_LookupError_NotSwallowed : si la lecture du défi
+// échoue, l'erreur n'est PAS avalée en faux succès (règle 10) — aucun participant
+// ajouté, une erreur remonte (et la cause est loggée côté service).
+func TestService_JoinSquadChallenge_LookupError_NotSwallowed(t *testing.T) {
+	svc, _, _, scRepo, _, _ := buildFullService()
+	scRepo.getErr = errors.New("db boom")
+	if err := svc.JoinSquadChallenge(context.Background(), "sc1", "u2", TierHeroic, false); err == nil {
+		t.Error("lecture KO doit remonter une erreur (pas de faux succès)")
+	}
+	if len(scRepo.addedParticipants) != 0 {
+		t.Errorf("aucun participant si le défi est illisible, got %d", len(scRepo.addedParticipants))
 	}
 }
 
@@ -307,6 +339,13 @@ func TestService_EnablePilotMode_CreatesDailyAndWeekly(t *testing.T) {
 	}
 	if out.WeeklyForced == nil {
 		t.Error("expected weekly forced attributed")
+	}
+	// Origine : défis auto-attribués par le mode pilote → source "pilot_mode" (ADR 0020).
+	if out.Daily != nil && out.Daily.Source != ChallengeSourcePilotMode {
+		t.Errorf("daily source=%q want %q", out.Daily.Source, ChallengeSourcePilotMode)
+	}
+	if out.WeeklyForced != nil && out.WeeklyForced.Source != ChallengeSourcePilotMode {
+		t.Errorf("weekly forced source=%q want %q", out.WeeklyForced.Source, ChallengeSourcePilotMode)
 	}
 }
 

@@ -48,6 +48,7 @@ import (
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/games/halo_infinite/skillchain"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/notifications/external"
 	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
@@ -1307,6 +1308,10 @@ func main() {
 	// app_release : émission asynchrone d'une notification in-app par joueur si la
 	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot.
 	go wire.EmitAppReleaseForAllPlayers(context.Background(), cfg, reg, cfg.AppVersion)
+
+	// Relais coach externe (Discord webhook, opt-in) : une ligne d'état au boot,
+	// comme les autres sous-systèmes. OFF par défaut (cf. internal/notifications/external).
+	external.LogBootState(context.Background(), cfg.AppSettingsPath)
 
 	srv := &http.Server{
 		Addr:         cfg.ServerAddr(),

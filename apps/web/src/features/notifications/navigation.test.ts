@@ -69,7 +69,12 @@ function targetRouteIsValid(to: string): boolean {
   const slash = rest.indexOf('/')
   if (slash < 0) return true // /players/{slug} sans sous-chemin
   const subPath = rest.slice(slash)
-  return (VALID_PLAYER_SUBPATHS as readonly string[]).includes(subPath)
+  if ((VALID_PLAYER_SUBPATHS as readonly string[]).includes(subPath)) return true
+  // Routes dynamiques (ex: /matches/$matchId pour rival_encounter) : le sous-chemin
+  // porte un id → valider sur le 1er segment. Les routes fantômes B1 (/defis, /sync)
+  // n'ont pas leur 1er segment dans la whitelist, la protection tient.
+  const firstSeg = '/' + subPath.split('/')[1]
+  return (VALID_PLAYER_SUBPATHS as readonly string[]).includes(firstSeg)
 }
 
 function makeNotif(category: NotificationCategory): Notification {
@@ -128,6 +133,31 @@ describe('navigation.ts - regression B1 routes notifications', () => {
     expect(target).not.toBeNull()
     expect(target!.to).toBe('/settings')
     expect(target!.search).toMatchObject({ jobId: 'job-1' })
+  })
+
+  it('rival_encounter cible la match view via le target_route backend', () => {
+    // Cas nominal : le backend renvoie déjà /players/{slug}/matches/{match_id}.
+    const notif = makeNotif('rival_encounter')
+    notif.target_route = `/players/${PLAYER_SLUG}/matches/m-42`
+    const target = resolveTarget(notif, PLAYER_SLUG)
+    expect(target).not.toBeNull()
+    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/matches/m-42`)
+  })
+
+  it('rival_encounter fallback sur match_id des params si target_route absent', () => {
+    const notif = makeNotif('rival_encounter')
+    notif.target_route = undefined
+    notif.params = { match_id: 'm-99' }
+    const target = resolveTarget(notif, PLAYER_SLUG)
+    expect(target).not.toBeNull()
+    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/matches/m-99`)
+  })
+
+  it('rival_encounter sans match_id ni target_route → aucune route', () => {
+    const notif = makeNotif('rival_encounter')
+    notif.target_route = undefined
+    notif.params = {}
+    expect(resolveTarget(notif, PLAYER_SLUG)).toBeNull()
   })
 
   it('target_route backend prend le pas sur le fallback', () => {

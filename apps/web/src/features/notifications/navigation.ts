@@ -83,6 +83,13 @@ export function resolveTarget(notif: Notification, playerSlug: string): NotifTar
       // MT-19 / axe E : accueil du titre — l'écran « première synchro » y bascule
       // sur le dashboard désormais peuplé. (Le backend renvoie déjà ce target_route.)
       return { to: `/players/${playerSlug}/home` }
+    case 'rival_encounter':
+      // Relations-E : la match view du duel. Le backend renvoie déjà ce
+      // target_route (priorité ci-dessus) ; ce fallback couvre le cas où il
+      // serait absent, à partir du match_id des params.
+      return notif.params?.match_id
+        ? { to: `/players/${playerSlug}/matches/${String(notif.params.match_id)}` }
+        : null
     default:
       return null
   }

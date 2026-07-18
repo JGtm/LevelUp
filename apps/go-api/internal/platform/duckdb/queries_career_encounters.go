@@ -4,7 +4,7 @@ var Q26CareerTopEncountersTpl = `
 WITH my_history AS (
     SELECT match_id, team_id, outcome
     FROM match_participants
-    WHERE xuid = ?
+    WHERE xuid = ?` + campaignExclusionToken + `
 ),
 encounters AS (
     SELECT
@@ -124,7 +124,7 @@ LIMIT 10`
 // fallback "e.my_outcome = 2/3" byte-identique Halo). PAS de clause d'exclusion
 // friends ni de LIMIT (le hub Relations affiche tout le monde).
 //
-// Placeholders ? (ordre, tous = xuid du joueur courant) :
+// Placeholders ? (ordre) — tous = xuid du joueur courant :
 //
 //	?1 my_history.WHERE xuid = ?
 //	?2 encounters JOIN p.xuid <> ?
@@ -142,7 +142,7 @@ var Q28RelationsTpl = `
 WITH my_history AS (
     SELECT match_id, team_id, outcome
     FROM match_participants
-    WHERE xuid = ?
+    WHERE xuid = ?` + campaignExclusionToken + `
 ),
 encounters AS (
     SELECT
@@ -245,7 +245,7 @@ var Q28RelationsScopedTpl = `
 WITH my_history AS (
     SELECT match_id, team_id, outcome
     FROM match_participants
-    WHERE xuid = ?%s
+    WHERE xuid = ?%s` + campaignExclusionToken + `
 ),
 encounters AS (
     SELECT
@@ -345,7 +345,7 @@ WITH my_matches AS (
            ` + StartTimeCanonicalSQL("r") + ` AS start_time
     FROM match_participants mp
     LEFT JOIN match_registry r ON r.match_id = mp.match_id
-    WHERE mp.xuid = ?%s
+    WHERE mp.xuid = ?%s` + campaignExclusionToken + `
 ),
 with_core AS (
     SELECT DISTINCT h.match_id, h.outcome AS outcome, h.start_time
@@ -358,6 +358,37 @@ with_core AS (
 )
 SELECT CASE WHEN %s THEN 'win' WHEN %s THEN 'loss' ELSE 'other' END AS outcome_label
 FROM with_core
+ORDER BY start_time DESC NULLS LAST
+LIMIT ?`
+
+// QRelationsEnemyFormTpl : issues des derniers matchs du joueur joués CONTRE
+// `xuid` (équipe ADVERSE), ordonnées récent→ancien (le repo inverse en
+// ancien→récent pour la frise). DISTINCT par match. Miroir exact de
+// QRelationsCoreFormTpl avec la jointure d'équipe OPPOSÉE (c.team_id <> h.team_id)
+// — alimente la sparkline « Derniers matchs » de la carte bête noire (symétrique
+// du binôme). Title-aware via outcomeSQLEq.
+//
+// Format string et placeholders IDENTIQUES à QRelationsCoreFormTpl (le repo lie
+// les args de la même façon) — seule la condition d'équipe diffère.
+var QRelationsEnemyFormTpl = `
+WITH my_matches AS (
+    SELECT mp.match_id, mp.team_id, mp.outcome AS outcome,
+           ` + StartTimeCanonicalSQL("r") + ` AS start_time
+    FROM match_participants mp
+    LEFT JOIN match_registry r ON r.match_id = mp.match_id
+    WHERE mp.xuid = ?%s` + campaignExclusionToken + `
+),
+vs_enemy AS (
+    SELECT DISTINCT h.match_id, h.outcome AS outcome, h.start_time
+    FROM my_matches h
+    JOIN match_participants c
+        ON c.match_id = h.match_id
+       AND c.team_id <> h.team_id
+       AND c.xuid <> ?
+       AND c.xuid IN (%s)
+)
+SELECT CASE WHEN %s THEN 'win' WHEN %s THEN 'loss' ELSE 'other' END AS outcome_label
+FROM vs_enemy
 ORDER BY start_time DESC NULLS LAST
 LIMIT ?`
 

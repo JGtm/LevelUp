@@ -246,6 +246,9 @@ func (s *service) AdoptPresetArc(ctx context.Context, userID, titleSlug, presetI
 			EvalType:    tmpl.EvalType,
 			Mode:        ModeLibre,
 			Label:       tmpl.LabelFR,
+			// Adoption d'un preset arc = action initiée par le joueur → origine user
+			// (le coach a sa propre voie via coach_advisor). Calage coach, ADR 0020.
+			Source: ChallengeSourceUser,
 		}); err != nil {
 			slog.WarnContext(ctx, "prestige: preset step skipped",
 				"template_id", tmpl.ID, "preset_id", presetID, "err", err)
@@ -359,6 +362,26 @@ func (s *service) JoinSquadChallenge(ctx context.Context, challengeID, userID st
 		return fmt.Errorf("%w: chosen_tier invalide", ErrInvalidInput)
 	}
 
+	// Garde d'appartenance objet-level (BOLA) : on ne rejoint QUE le défi d'une
+	// escouade dont userID est membre-user. Les défis d'escouade vivent dans une DB
+	// partagée (non isolés par player DB) → sans cette garde, un utilisateur
+	// (actor-gardé sur son propre user_id via le handler) pourrait rejoindre le défi
+	// de N'IMPORTE quelle escouade via un challenge_id arbitraire. Même contrôle que
+	// les mutations squad (assertMemberUser).
+	sc, err := s.deps.SquadChallenges.Get(ctx, challengeID)
+	if err != nil {
+		// Sans le squad_id du défi, la vérification d'appartenance est impossible.
+		// On LOGGE la cause (règle 10 : jamais d'erreur avalée) puis on refuse —
+		// challenge_id inexistant OU lecture KO. Le module `prestige` est auto-détecté
+		// (logs/prestige.log).
+		slog.WarnContext(ctx, "prestige: squad challenge lookup failed on join",
+			"err", err, "squad_challenge_id", challengeID, "user_id", userID)
+		return fmt.Errorf("%w: défi d'escouade introuvable", ErrInvalidInput)
+	}
+	if err := s.assertMemberUser(ctx, sc.SquadID, userID); err != nil {
+		return err
+	}
+
 	now := s.deps.Now()
 	p := SquadChallengeParticipant{
 		SquadChallengeID: challengeID,
@@ -385,10 +408,21 @@ func (s *service) GetSquadChallenge(ctx context.Context, id string) (SquadChalle
 	return sc, nil
 }
 
-// ListSquadChallenges retourne tous les défis d'une escouade.
-func (s *service) ListSquadChallenges(ctx context.Context, squadID string) ([]SquadChallenge, error) {
+// ListSquadChallenges retourne tous les défis d'une escouade. requestedBy
+// (player_slug) doit être membre-user de l'escouade.
+//
+// Garde d'appartenance objet-level (BOLA) : contrairement aux défis/arcs perso
+// (isolés par player DB), les défis d'escouade vivent dans une DB sociale
+// partagée (tous joueurs). Sans cette garde, un utilisateur possédant son propre
+// slug (ownershipMW OK) pourrait lister les défis de N'IMPORTE quelle escouade
+// via un squad_id arbitraire. Même contrôle que les mutations squad
+// (assertMemberUser), appliqué en lecture.
+func (s *service) ListSquadChallenges(ctx context.Context, squadID, requestedBy string) ([]SquadChallenge, error) {
 	if squadID == "" {
 		return nil, fmt.Errorf("%w: squad_id requis", ErrInvalidInput)
+	}
+	if err := s.assertMemberUser(ctx, squadID, requestedBy); err != nil {
+		return nil, err
 	}
 	return s.deps.SquadChallenges.ListBySquad(ctx, squadID)
 }

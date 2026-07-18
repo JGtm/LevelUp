@@ -8,6 +8,7 @@
  * (certains templates contiennent "match(s)" littéralement, suffisant pour l'instant).
  */
 import type { Notification } from './types'
+import { subTierRoman } from '@/lib/skillTiers'
 import { getNotificationsText, type NotificationsLocale } from './i18n'
 
 export function resolveTitle(
@@ -39,11 +40,11 @@ function resolveTemplate(
   return interpolate(template, enrichParams(params, locale))
 }
 
-const ROMAN_NOTIF = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']
-
+// subTierToRoman garde le contrat « unknown → '' si non-numérique ou ≤0 », puis
+// délègue la conversion romaine à la source unique (lib/skillTiers.subTierRoman).
 function subTierToRoman(v: unknown): string {
   if (typeof v !== 'number' || v <= 0) return ''
-  return ROMAN_NOTIF[v] ?? String(v)
+  return subTierRoman(v)
 }
 
 // enrichParams ajoute les paramètres dérivés (ex: metric_label depuis metric_key)

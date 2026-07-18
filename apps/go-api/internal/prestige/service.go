@@ -66,7 +66,12 @@ type Service interface {
 	CreateSquadChallenge(ctx context.Context, req CreateSquadChallengeRequest) (SquadChallenge, error)
 	JoinSquadChallenge(ctx context.Context, challengeID, userID string, chosenTier Tier, isPrivate bool) error
 	GetSquadChallenge(ctx context.Context, id string) (SquadChallenge, error)
-	ListSquadChallenges(ctx context.Context, squadID string) ([]SquadChallenge, error)
+	// ListSquadChallenges liste les défis d'une escouade. requestedBy (player_slug
+	// de l'acteur) DOIT être membre-user de l'escouade : les défis d'escouade
+	// vivent dans une DB sociale partagée (tous joueurs), non isolés par player DB,
+	// donc cette garde d'appartenance ferme le BOLA objet-level (un squad_id
+	// arbitraire ne doit pas être lisible par un non-membre).
+	ListSquadChallenges(ctx context.Context, squadID, requestedBy string) ([]SquadChallenge, error)
 	RefreshSquadPool(ctx context.Context, squadID, titleSlug, requestedBy string) ([]Template, error)
 
 	// Escouade — roster (entité Squad / SquadMember, clé xuid). requestedBy =
@@ -352,6 +357,11 @@ func (s *service) CreateChallenge(ctx context.Context, req CreateChallengeReques
 		CreatedAt:       now,
 		CommittedAt:     &now,
 		IsPrivate:       req.IsPrivate,
+		// Origine tracée telle quelle (ADR 0020). Les 3 voies de création la
+		// renseignent (user via handler HTTP, pilot_mode via pilot_pool, coach via
+		// coach_advisor) ; une valeur vide résiduelle (caller legacy) => agrégée
+		// "unknown" par l'endpoint diag. Pas de normalisation ici.
+		Source: req.Source,
 	}
 
 	// En cas de rejet "too_easy", on retourne une erreur sans persister.
@@ -593,6 +603,8 @@ func (s *service) computeCurrentValue(ctx context.Context, c Challenge, now time
 		ctx, c.UserID, c.TitleSlug, c.Metric, s.deps.Tuning.Baseline.WindowMatches,
 	)
 	if err != nil {
+		slog.WarnContext(ctx, "prestige: current value unavailable, defaulting to 0",
+			"err", err, "challenge_id", c.ID, "metric", c.Metric)
 		return 0
 	}
 	samples := make([]MatchSample, len(matches))

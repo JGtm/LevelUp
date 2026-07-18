@@ -403,12 +403,12 @@ func (l *LazyPrestigeService) GetSquadChallenge(ctx context.Context, id string) 
 	return svc.GetSquadChallenge(ctx, id)
 }
 
-func (l *LazyPrestigeService) ListSquadChallenges(ctx context.Context, squadID string) ([]prestige.SquadChallenge, error) {
-	svc, err := l.resolve(ctx)
+func (l *LazyPrestigeService) ListSquadChallenges(ctx context.Context, squadID, requestedBy string) ([]prestige.SquadChallenge, error) {
+	svc, err := l.resolveByUserID(ctx, requestedBy)
 	if err != nil {
 		return nil, err
 	}
-	return svc.ListSquadChallenges(ctx, squadID)
+	return svc.ListSquadChallenges(ctx, squadID, requestedBy)
 }
 
 func (l *LazyPrestigeService) RefreshSquadPool(ctx context.Context, squadID, titleSlug, requestedBy string) ([]prestige.Template, error) {

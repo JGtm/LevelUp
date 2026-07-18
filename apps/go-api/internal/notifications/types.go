@@ -7,9 +7,10 @@ import (
 )
 
 // Category identifie le type d'événement à l'origine de la notification.
-// Doit rester en sync avec :
-//   - migration steps_player_notifications.go (seed des préférences)
-//   - frontend features/notifications/i18n.ts (clés notif.<category>.title)
+// Ajouter une catégorie ne requiert AUCUN seed de préférences : une catégorie
+// sans ligne dans notification_preferences est ACTIVE par défaut (repo
+// isCategoryEnabledOn : ErrNoRows → true). Seul reste à synchroniser le
+// frontend features/notifications/i18n.ts (clés notif.<category>.title).
 type Category string
 
 const (
@@ -18,8 +19,8 @@ const (
 	CategoryMediaAdded  Category = "media_added"
 	CategoryMediaLiked  Category = "media_liked"
 	// CategoryObjectiveAssigned : conservée pour rétro-compat des notifs déjà en DB
-	// + seed des préférences — n'est PLUS émise depuis 2026-07 (DP2 : doublon exact
-	// de objective_completed, les deux étaient branchés sur PersonalAwardCount).
+	// — n'est PLUS émise depuis 2026-07 (DP2 : doublon exact de objective_completed,
+	// les deux étaient branchés sur PersonalAwardCount).
 	// Modèle : CategorySeasonPassLevel.
 	CategoryObjectiveAssigned  Category = "objective_assigned"
 	CategoryObjectiveCompleted Category = "objective_completed"
@@ -69,9 +70,14 @@ const (
 	// titre par défaut (away-case : l'utilisateur a été invité à retourner sur Halo
 	// Infinite le temps du backfill). title-agnostic : le titre voyage en Params.
 	CategoryTitleReady Category = "title_ready"
+	// 2026-07-17 : lot relations-E — « rival croisé ». Émise en post-sync quand une
+	// sync ramène un nouveau duel (match en ennemi) contre un des top rivaux du
+	// joueur. Détection par watermark (PlayerSnapshot.LastMatchStartTime) : idempotente
+	// et sans coût sur les syncs à vide. Best-effort — jamais bloquant pour la sync.
+	CategoryRivalEncounter Category = "rival_encounter"
 )
 
-// AllCategories retourne toutes les catégories MVP (utile pour les tests et le seed).
+// AllCategories retourne toutes les catégories MVP (utilisée par les tests).
 func AllCategories() []Category {
 	return []Category{
 		CategoryAppRelease, CategoryMatchSynced, CategoryMediaAdded,
@@ -96,6 +102,8 @@ func AllCategories() []Category {
 		CategoryCombatPattern,
 		// MT-19 / axe E.
 		CategoryTitleReady,
+		// Relations-E : rival croisé post-sync.
+		CategoryRivalEncounter,
 	}
 }
 

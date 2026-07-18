@@ -36,7 +36,10 @@ func (r *CareerRepo) GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []
 	// Halo). Ordre des %s du template : win, loss, win, loss, puis excludeClause.
 	winExpr := outcomeSQLEq(ctx, "e.my_outcome", canonical.OutcomeWin, "e.my_outcome = 2")
 	lossExpr := outcomeSQLEq(ctx, "e.my_outcome", canonical.OutcomeLoss, "e.my_outcome = 3")
-	sqlText := fmt.Sprintf(Q26CareerTopEncountersTpl, winExpr, lossExpr, winExpr, lossExpr, excludeClause)
+	// Masquage Campagne (Halo 5) : my_history ne joint pas match_registry → forme
+	// sous-requête by-match-id (sans placeholder, résolue AVANT Sprintf). No-op Infinite.
+	tpl := resolveCampaignExclusionByMatchID(Q26CareerTopEncountersTpl, r.pdb.TitleSlug, "match_id")
+	sqlText := fmt.Sprintf(tpl, winExpr, lossExpr, winExpr, lossExpr, excludeClause)
 
 	// migré vers SharedReader. La query est shared-only
 	// (match_participants, match_registry, killer_victim_pairs, v_gamertag_lookup)
@@ -187,7 +190,10 @@ func (r *CareerRepo) GetEncounters(ctx context.Context) ([]domain.EncounterRawRo
 	}
 	defer release()
 
-	rows, err := db.QueryContext(ctx, Q10Encounters, r.pdb.XUID)
+	// Masquage Campagne (Halo 5) : Q10 ne joint pas match_registry → forme
+	// sous-requête by-match-id (p1.match_id). No-op Infinite. Item backlog H1.
+	q := resolveCampaignExclusionByMatchID(Q10Encounters, r.pdb.TitleSlug, "p1.match_id")
+	rows, err := db.QueryContext(ctx, q, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("CareerRepo.GetEncounters: %w", err)
 	}

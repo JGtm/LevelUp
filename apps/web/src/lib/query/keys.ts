@@ -90,11 +90,19 @@ export const queryKeys = {
   // spécifique au titre (Spartan ID, playlists récentes, rangs). Sans lui, un
   // switch de titre servait les données périmées du titre précédent (la clé ne
   // changeant pas, TanStack Query réutilisait le cache pendant le staleTime).
-  home: (playerSlug: string, titleSlug: string) => ['home', playerSlug, titleSlug] as const,
-  battlepass: (playerSlug: string) => ['home', playerSlug, 'battlepass'] as const,
+  // La LOCALE fait aussi partie de la clé : le backend baque les libellés
+  // localisés (titres de défis, noms de map/mode) dans le payload selon le header
+  // X-LevelUp-Locale à l'instant du fetch. Sans la locale dans la clé, un switch
+  // de langue laissait le cache (y compris le fetch background prefetch/poll)
+  // baké dans l'ancienne langue — invalidation naturelle à la bascule.
+  home: (playerSlug: string, titleSlug: string, locale: string) =>
+    ['home', playerSlug, titleSlug, locale] as const,
 
   // Palmares
-  seasonPass: (playerSlug: string) => ['palmares', playerSlug, 'season-pass'] as const,
+  // Locale dans la clé : mêmes libellés backend-bakés (nom du pass, titres de
+  // défis de saison) selon X-LevelUp-Locale — cf. commentaire `home` ci-dessus.
+  seasonPass: (playerSlug: string, locale: string) =>
+    ['palmares', playerSlug, 'season-pass', locale] as const,
   palmaresRelations: (playerSlug: string) => ['palmares', playerSlug, 'relations'] as const,
 
   // Escouade / Teammates (Slice 6)
@@ -102,8 +110,6 @@ export const queryKeys = {
     ['teammates', playerSlug, filterHash, [...selectedGts].sort().join(','), [...sessionLabels].sort().join(','), locale] as const,
   /** Préfixe broad — invalide toutes les queries teammates (ex. après ajout d'ami). */
   teammatesAll: ['teammates'] as const,
-  squadV2: (playerSlug: string, teammates: string[], period: string, experienceTypes: string[], playlists: string[], maps: string[] = [], modes: string[] = []) =>
-    ['squad-v2', playerSlug, [...teammates].sort().join(','), period, [...experienceTypes].sort().join(','), [...playlists].sort().join(','), [...maps].sort().join(','), [...modes].sort().join(',')] as const,
 
   // Synthèse (Slice 7 — Sprint 55 D8 : scopeHash = period + filtres)
   synthesis: (playerSlug: string, scopeHash: string) =>

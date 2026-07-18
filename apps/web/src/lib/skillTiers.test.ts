@@ -12,6 +12,7 @@ import {
   localizeTierName,
   localizeTierLabel,
   skillTierSortValue,
+  composeTierLabel,
 } from './skillTiers'
 
 describe('grilles de paliers', () => {
@@ -174,5 +175,21 @@ describe('skillTierSortValue (tri colonne Rang)', () => {
     expect(skillTierSortValue(null)).toBeUndefined()
     expect(skillTierSortValue(undefined)).toBeUndefined()
     expect(skillTierSortValue('')).toBeUndefined()
+  })
+})
+
+describe('composeTierLabel', () => {
+  it('nom localisé + sous-palier romain (Diamant III / Gold IV)', () => {
+    expect(composeTierLabel('Diamond', 3, 'fr')).toBe('Diamant III')
+    expect(composeTierLabel('Gold', 4, 'en')).toBe('Gold IV')
+    expect(composeTierLabel('Platinum', 1, 'fr')).toBe('Platine I')
+  })
+  it('Onyx (palier ouvert) → nom seul, quel que soit le sous-palier', () => {
+    expect(composeTierLabel('Onyx', 0, 'fr')).toBe('Onyx')
+    expect(composeTierLabel('Onyx', 3, 'en')).toBe('Onyx')
+  })
+  it('sous-palier hors 1..6 (0 ou >6) → nom seul', () => {
+    expect(composeTierLabel('Diamond', 0, 'fr')).toBe('Diamant')
+    expect(composeTierLabel('Gold', 7, 'en')).toBe('Gold')
   })
 })

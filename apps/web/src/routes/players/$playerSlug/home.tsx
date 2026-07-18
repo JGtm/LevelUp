@@ -16,7 +16,11 @@ import { HomePage } from '@/features/home/HomePage'
 export const Route = createFileRoute('/players/$playerSlug/home')({
   loader: ({ params, context }) => {
     void context.queryClient.prefetchQuery({
-      queryKey: queryKeys.home(params.playerSlug, useAppShellStore.getState().currentTitleSlug),
+      queryKey: queryKeys.home(
+        params.playerSlug,
+        useAppShellStore.getState().currentTitleSlug,
+        useAppShellStore.getState().locale,
+      ),
       queryFn: () =>
         api.get<HomePageResponse>(`/players/${params.playerSlug}/pages/home`),
     })

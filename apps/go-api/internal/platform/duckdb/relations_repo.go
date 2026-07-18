@@ -62,9 +62,13 @@ func (r *CareerRepo) GetRelations(ctx context.Context, scope []string) ([]domain
 // Retourne ("", nil) si le scope est non-nil et vide (aucun match en périmètre).
 func (r *CareerRepo) buildRelationsQuery(scope []string, winExpr, lossExpr string) (string, []any) {
 	x := r.pdb.XUID
+	// Masquage Campagne (Halo 5) : my_history ne joint pas match_registry → forme
+	// sous-requête by-match-id (sans placeholder, résolue AVANT Sprintf, ne décale
+	// donc aucun args positionnel). No-op Infinite. Item backlog H1.
 	if scope == nil {
-		// Phase 1 : aucun filtre. 7 placeholders xuid.
-		sqlText := fmt.Sprintf(Q28RelationsTpl, winExpr, lossExpr, winExpr, lossExpr)
+		// Phase 1 : aucun filtre. 7 placeholders xuid (2 my_history/encounters + 5 kv_stats).
+		tpl := resolveCampaignExclusionByMatchID(Q28RelationsTpl, r.pdb.TitleSlug, "match_id")
+		sqlText := fmt.Sprintf(tpl, winExpr, lossExpr, winExpr, lossExpr)
 		return sqlText, []any{x, x, x, x, x, x, x}
 	}
 	if len(scope) == 0 {
@@ -73,14 +77,16 @@ func (r *CareerRepo) buildRelationsQuery(scope []string, winExpr, lossExpr strin
 	// Scope non-vide : deux clauses IN (my_history + kv_stats).
 	inClause := " AND match_id IN (" + Placeholders(len(scope)) + ")"
 	kvInClause := " AND kv.match_id IN (" + Placeholders(len(scope)) + ")"
-	sqlText := fmt.Sprintf(Q28RelationsScopedTpl,
+	tpl := resolveCampaignExclusionByMatchID(Q28RelationsScopedTpl, r.pdb.TitleSlug, "match_id")
+	sqlText := fmt.Sprintf(tpl,
 		inClause, winExpr, lossExpr, winExpr, lossExpr, kvInClause)
 
 	args := make([]any, 0, 7+2*len(scope))
 	args = append(args, x)                    // my_history.xuid
 	args = append(args, ToAnySlice(scope)...) // my_history scope IN
-	// encounters p.xuid<> (1) + kv_stats : 3 CASE + 2 WHERE (5) = 6 xuid.
-	args = append(args, x, x, x, x, x, x)
+	args = append(args, x)                    // encounters p.xuid<>
+	// kv_stats : 3 CASE + 2 WHERE (5) xuid.
+	args = append(args, x, x, x, x, x)
 	args = append(args, ToAnySlice(scope)...) // kv_stats scope IN
 	return sqlText, args
 }

@@ -29,7 +29,7 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 
 	// 1. Match IDs uniques + outcome du main player. On trie ensuite par
 	//    start_time ASC pour que la colonne #1 du scoreboard corresponde au
-	//    match le plus ancien (Q30SquadMatches retourne DESC, et allSquadRows
+	//    match le plus ancien (Q30SquadMatchesSharedQuery retourne DESC, et allSquadRows
 	//    concatène plusieurs teammates donc l'ordre d'arrivée n'est pas
 	//    globalement chronologique).
 	mainOutcomeByMatch := make(map[string]int)

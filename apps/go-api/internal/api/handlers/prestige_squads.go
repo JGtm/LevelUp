@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -163,7 +164,11 @@ func (h *PrestigeHandler) ListMySquads(ctx context.Context, in *listMySquadsInpu
 	titleSlug := in.TitleSlug
 	// Annuaire (best-effort) pour combler les gamertags absents des snapshots
 	// membres (legacy/pré-colonne) — app-players uniquement, via lookup canonique.
-	_, _, gamertagByXUID, _ := h.playerDirectory(ctx)
+	_, _, gamertagByXUID, dirErr := h.playerDirectory(ctx)
+	if dirErr != nil {
+		slog.DebugContext(ctx, "prestige: squad list gamertag backfill skipped (annuaire indisponible)",
+			"err", dirErr, "user_id", in.UserID)
+	}
 	out := make([]squadWithMembers, 0, len(squads))
 	for _, sq := range squads {
 		members, mErr := h.svc.ListSquadMembers(ctx, sq.ID)
@@ -189,6 +194,9 @@ func (h *PrestigeHandler) ListMySquads(ctx context.Context, in *listMySquadsInpu
 		if pls, mds, uErr := h.svc.SquadUsualContexts(ctx, roster, titleSlug); uErr == nil {
 			entry.UsualPlaylists = pls
 			entry.UsualModes = mds
+		} else {
+			slog.DebugContext(ctx, "prestige: squad usual contexts unavailable (indice omis)",
+				"err", uErr, "squad_id", sq.ID)
 		}
 		out = append(out, entry)
 	}
@@ -373,6 +381,9 @@ func (h *PrestigeHandler) EnablePilotMode(ctx context.Context, in *rawBodyInput)
 	if body.UserID == "" || body.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 	}
+	if err := h.authorizeActor(ctx, body.UserID); err != nil {
+		return nil, err
+	}
 	out, err := h.svc.EnablePilotMode(ctx, body.UserID, body.TitleSlug)
 	if err != nil {
 		return nil, h.serviceError(ctx, err)
@@ -391,6 +402,9 @@ func (h *PrestigeHandler) DisablePilotMode(ctx context.Context, in *rawBodyInput
 	}
 	if body.UserID == "" || body.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+	}
+	if err := h.authorizeActor(ctx, body.UserID); err != nil {
+		return nil, err
 	}
 	if err := h.svc.DisablePilotMode(ctx, body.UserID, body.TitleSlug); err != nil {
 		return nil, h.serviceError(ctx, err)
@@ -420,6 +434,9 @@ func (h *PrestigeHandler) RefreshSquadPool(ctx context.Context, in *squadIDBodyI
 	}
 	if body.TitleSlug == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_title_slug", "title_slug requis")
+	}
+	if err := h.authorizeActor(ctx, body.RequestedBy); err != nil {
+		return nil, err
 	}
 	pool, err := h.svc.RefreshSquadPool(ctx, in.SquadID, body.TitleSlug, body.RequestedBy)
 	if err != nil {

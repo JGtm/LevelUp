@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
@@ -46,6 +47,12 @@ type PlayerSnapshot struct {
 	Winrate        float64 // 0..1 — fraction de matchs gagnés (outcome=2)
 	BestKDA        float64 // record matériel (kills+assists)/max(deaths,1) sur 1 match
 	BestKDAMatchID string  // match associé au record
+
+	// LastMatchStartTime : start canonique (UTC) du match le plus récent du joueur
+	// dans le shared. Watermark de la détection « rival croisé » (lot relations-E) :
+	// after > before ⇒ nouveau match ⇒ détection ; sinon SKIP (coût nul sur les
+	// syncs à vide). Zéro si aucun match (aucune détection possible).
+	LastMatchStartTime time.Time
 }
 
 // SnapshotPlayerState lit l'état courant nécessaire à la détection delta.
@@ -257,6 +264,22 @@ func SnapshotPlayerState(
 			}
 			if matchID.Valid {
 				s.BestKDAMatchID = matchID.String
+			}
+
+			// LastMatchStartTime : watermark de la détection « rival croisé »
+			// (lot relations-E). Fragment timezone canonique partagé (règle
+			// CLAUDE.md n°8) via StartTimeCanonicalSQL — jamais start_time brut.
+			var lastStart sql.NullTime
+			err = sharedDB.QueryRowContext(ctx, `
+				SELECT MAX(`+duckdb.StartTimeCanonicalSQL("r")+`)
+				FROM match_participants p
+				JOIN match_registry r ON r.match_id = p.match_id
+				WHERE p.xuid = ?`, pdb.XUID).Scan(&lastStart)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				slog.DebugContext(ctx, "snapshot: last_match_start", "err", err)
+			}
+			if lastStart.Valid {
+				s.LastMatchStartTime = lastStart.Time.UTC()
 			}
 			release()
 		}

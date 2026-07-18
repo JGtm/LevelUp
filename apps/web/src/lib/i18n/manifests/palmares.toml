@@ -85,15 +85,15 @@ en = "players"
 fr = "{count} matchs"
 en = "{count} matches"
 
-# Qualificatifs de taux de victoire (carte binôme / bête noire) — explicitent
-# que le % est un taux de victoire.
+# Légende de contexte du donut de taux de victoire (carte binôme / bête noire) —
+# explicite ce que représente le % du donut central.
 [palmares.relations.hero.win_qual_ally]
-fr = "de victoires ensemble"
-en = "wins together"
+fr = "Taux de victoires ensemble"
+en = "Win rate together"
 
 [palmares.relations.hero.win_qual_enemy]
-fr = "de victoires face à lui"
-en = "wins vs them"
+fr = "Taux de victoires face à lui"
+en = "Win rate against them"
 
 # Série en cours (chip de la carte bête noire) — « de suite » (pas « d'affilée »).
 [palmares.relations.hero.streak_wins]
@@ -104,13 +104,21 @@ en = "{count} wins in a row"
 fr = "{count} défaites de suite"
 en = "{count} losses in a row"
 
+# Volume d'affrontements (carte bête noire) — matchs joués en adversaire.
 [palmares.relations.hero.duels]
-fr = "{count} duels"
-en = "{count} duels"
+fr = "{count} affrontements"
+en = "{count} clashes"
 
-[palmares.relations.hero.recent_duels]
-fr = "Derniers duels"
-en = "Recent duels"
+# Rang CSR courant de la bête noire (lot relations-G, best-effort classé)
+[palmares.relations.hero.current_rank]
+fr = "Rang actuel"
+en = "Current rank"
+
+# Signature de la bête noire : le FDA moyen de CE JOUEUR quand il est ton
+# adversaire (sa domination) — pas le tien. Symétrique du binôme.
+[palmares.relations.hero.kda_against]
+fr = "Son FDA contre toi"
+en = "Their KDA against you"
 
 # ─── Relations - Chips de filtre ──────────────────────────────────────────
 
@@ -188,13 +196,15 @@ en = "Analyze"
 fr = "Réinitialiser"
 en = "Reset"
 
-[palmares.relations.filters.include_friends]
-fr = "Inclure les amis"
-en = "Include friends"
+# Toggle des relations purement coéquipières (enemy_matches === 0 : jamais
+# rencontrées en adversaire). Libellé selon l'état : action (OFF) / état (ON).
+[palmares.relations.filters.include_never_faced]
+fr = "Inclure les coéquipiers"
+en = "Include teammates"
 
-[palmares.relations.filters.friends_included]
-fr = "Amis inclus"
-en = "Friends included"
+[palmares.relations.filters.never_faced_included]
+fr = "Coéquipiers inclus"
+en = "Teammates included"
 
 [palmares.relations.table.previous]
 fr = "Précédent"
@@ -209,6 +219,58 @@ en = "Next"
 [palmares.relations.table.player]
 fr = "Joueur"
 en = "Player"
+
+# Intro de l'aide (i) de l'en-tête Joueur, au-dessus de la légende détaillée.
+[palmares.relations.table.badges_info]
+fr = "Ce que signifie chaque pastille :"
+en = "What each pill means:"
+
+# ─── Relations - Légende détaillée des badges (aide ⓘ du tableau) ───────────
+# Une description par type de pastille (le libellé vient du manifest squad
+# narrative.encounter.*). Seuils alignés sur analysis/relations + analysis/narrative.
+[palmares.relations.badge_legend.ally_plus]
+fr = "Coéquipier fiable : au moins 65 % de victoires ensemble."
+en = "Reliable teammate: at least 65% wins together."
+
+[palmares.relations.badge_legend.duo_gagnant]
+fr = "Binôme performant : ≥ 60 % de victoires sur ≥ 10 matchs ensemble."
+en = "Strong duo: ≥ 60% wins over ≥ 10 matches together."
+
+[palmares.relations.badge_legend.tough_enemy]
+fr = "Il te tue bien plus qu'il ne tombe (plus de 2 morts pour 1 frag)."
+en = "Kills you far more than you kill them (over 2 deaths per frag)."
+
+[palmares.relations.badge_legend.coriace]
+fr = "Adversaire que tu bats rarement : ≤ 35 % de victoires face à lui."
+en = "Opponent you rarely beat: ≤ 35% wins against them."
+
+[palmares.relations.badge_legend.proie_favorite]
+fr = "Tu domines les duels : ratio de frags ≥ 1,5 contre lui."
+en = "You dominate the duels: frag ratio ≥ 1.5 against them."
+
+[palmares.relations.badge_legend.cameleon]
+fr = "Autant coéquipier qu'adversaire au fil des matchs."
+en = "As often a teammate as an opponent over time."
+
+[palmares.relations.badge_legend.de_longue_date]
+fr = "Relation ancienne (≥ 6 mois) ou très fréquente (≥ 80 matchs)."
+en = "Long-standing (≥ 6 months) or very frequent (≥ 80 matches)."
+
+[palmares.relations.badge_legend.recrue]
+fr = "Croisé récemment (≤ 30 jours) mais déjà plusieurs matchs."
+en = "Met recently (≤ 30 days) but already several matches."
+
+[palmares.relations.badge_legend.ordinal]
+fr = "Nombre total de matchs joués avec ou contre lui."
+en = "Total number of matches played with or against them."
+
+[palmares.relations.badge_legend.cross_game]
+fr = "Aussi croisé sur un autre jeu (Halo 5, etc.)."
+en = "Also crossed paths on another game (Halo 5, etc.)."
+
+[palmares.relations.badge_legend.cross_game_name]
+fr = "Multi-jeux"
+en = "Multi-game"
 
 [palmares.relations.table.link]
 fr = "Lien"
@@ -230,13 +292,34 @@ en = "Win rate as enemy"
 fr = "Frags / Morts"
 en = "Frags / Deaths"
 
+# Unités courtes pour la légende sous les barres composites des cartes hero.
+[palmares.relations.table.frags_unit]
+fr = "frags"
+en = "frags"
+
+[palmares.relations.table.deaths_unit]
+fr = "morts"
+en = "deaths"
+
+# Légende de la barre composite du binôme : matchs joués en équipe (gauche) vs
+# matchs joués contre lui (droite).
+[palmares.relations.table.allies_unit]
+fr = "en équipe"
+en = "as a team"
+
+[palmares.relations.table.adversaries_unit]
+fr = "affrontements"
+en = "clashes"
+
 [palmares.relations.table.ratio]
 fr = "Ratio"
 en = "Ratio"
 
+# Signature du binôme : le FDA moyen de CE JOUEUR quand il est ton coéquipier
+# (sa perf à tes côtés) — pas le tien.
 [palmares.relations.table.kda_together]
-fr = "FDA à tes côtés"
-en = "KDA at your side"
+fr = "Son FDA avec toi"
+en = "Their KDA with you"
 
 [palmares.relations.table.last_seen]
 fr = "Vu"
@@ -304,45 +387,23 @@ en = "{count} frags dealt"
 fr = "{count} morts subies"
 en = "{count} deaths suffered"
 
-# ─── Relations - Section noyau dur ─────────────────────────────────────────
-
-[palmares.relations.core.section_title]
-fr = "Noyau dur"
-en = "Inner circle"
-
-[palmares.relations.core.section_description]
-fr = "Les joueurs que tu retrouves le plus souvent, parfois avec toi, parfois en face."
-en = "The players you keep running into, sometimes with you, sometimes against you."
-
-[palmares.relations.core.empty]
-fr = "Aucun joueur ne remplit encore les critères du noyau dur."
-en = "No player meets the inner-circle criteria yet."
-
-[palmares.relations.core.together]
-fr = "{count} matchs ensemble"
-en = "{count} matches together"
-
 # ─── Relations - Carte résumé noyau dur (KPI) ──────────────────────────────
 
 [palmares.relations.core.with_them]
-fr = "de victoires avec eux"
-en = "wins with them"
-
-[palmares.relations.core.lift_points]
-fr = "pts vs moy. perso. historique"
-en = "pts vs hist. avg"
+fr = "Taux de victoires avec le noyau"
+en = "Win rate with the inner circle"
 
 [palmares.relations.core.lift_tooltip]
-fr = "Écart entre ton taux de victoire avec le noyau dur et ta moyenne personnelle."
-en = "Gap between your win rate with the inner circle and your personal average."
+fr = "Écart entre ce taux de victoire et ta moyenne personnelle historique."
+en = "Gap between this win rate and your historical personal average."
 
 [palmares.relations.core.seen_this_week]
 fr = "{count} vus cette semaine"
 en = "{count} seen this week"
 
 [palmares.relations.core.recent_form]
-fr = "Derniers matchs ensemble"
-en = "Recent matches together"
+fr = "Derniers matchs"
+en = "Recent matches"
 
 [palmares.relations.core.show_others]
 fr = "voir les {count} autres"
@@ -351,6 +412,25 @@ en = "show {count} more"
 [palmares.relations.core.collapse]
 fr = "réduire"
 en = "collapse"
+
+# ─── Relations - Donut de taux de victoire (hero cards) ────────────────────
+# Légende à droite du donut : victoires / défaites de la relation + repère de la
+# moyenne perso historique. Delta signé au centre (unité « pts »).
+[palmares.relations.donut.wins]
+fr = "Victoires"
+en = "Wins"
+
+[palmares.relations.donut.losses]
+fr = "Défaites"
+en = "Losses"
+
+[palmares.relations.donut.personal_avg]
+fr = "Moy. perso"
+en = "Pers. avg"
+
+[palmares.relations.donut.points_unit]
+fr = "pts"
+en = "pts"
 
 # ─── Relations - Filtre vide (chip sans résultat) ──────────────────────────
 

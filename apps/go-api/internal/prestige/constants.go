@@ -33,6 +33,30 @@ const (
 	SourceMedal     = "medal"
 )
 
+// Origines d'un défi (champ `source` de challenge / prestige_telemetry — ADR 0020).
+// Renseignées par CreateChallengeRequest.Source et propagées à la télémétrie pour
+// mesurer l'efficacité du coach proactif (taux d'acceptation/complétion par origine).
+// ChallengeSourceUnknown n'est jamais écrit : c'est le bucket d'agrégation des lignes
+// historiques (source NULL, créées avant le plumbing) côté endpoint diag.
+const (
+	ChallengeSourceUser      = "user"
+	ChallengeSourcePilotMode = "pilot_mode"
+	ChallengeSourceCoach     = "coach"
+	ChallengeSourceUnknown   = "unknown"
+)
+
+// IsValidChallengeSource indique si s est une origine de défi reconnue
+// (hors "unknown", qui est un bucket d'agrégation, jamais une valeur écrite).
+// Sert à valider une origine fournie par un client HTTP avant de la persister.
+func IsValidChallengeSource(s string) bool {
+	switch s {
+	case ChallengeSourceUser, ChallengeSourcePilotMode, ChallengeSourceCoach:
+		return true
+	default:
+		return false
+	}
+}
+
 // Types d'événements de télémétrie (champ event_type de prestige_telemetry).
 const (
 	TelemetryCreated          = "created"

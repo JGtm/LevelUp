@@ -94,6 +94,24 @@ func TestTelemetryEmitter_EmitPalierRecomputed(t *testing.T) {
 	}
 }
 
+// TestTelemetryEmitter_PropagatesSource : Challenge.Source est recopié sur les
+// événements created ET transition (plumbing ADR 0020).
+func TestTelemetryEmitter_PropagatesSource(t *testing.T) {
+	repo := &fakeTelemetryRepo{}
+	em := NewTelemetryEmitter(repo, nil)
+	c := Challenge{ID: "ch_src", UserID: "u1", Tier: TierHeroic, Source: ChallengeSourceCoach}
+
+	em.EmitCreated(context.Background(), c, 1.4, 1.1)
+	if ev := repo.last(); ev.Source != ChallengeSourceCoach {
+		t.Errorf("created source: got %q want %q", ev.Source, ChallengeSourceCoach)
+	}
+
+	em.EmitTransition(context.Background(), c, TelemetryCompleted)
+	if ev := repo.last(); ev.Source != ChallengeSourceCoach {
+		t.Errorf("transition source: got %q want %q", ev.Source, ChallengeSourceCoach)
+	}
+}
+
 func TestTelemetryEmitter_NilRepoSafe(t *testing.T) {
 	em := NewTelemetryEmitter(nil, nil)
 	defer func() {

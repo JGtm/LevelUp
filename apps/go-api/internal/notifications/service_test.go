@@ -590,3 +590,17 @@ func TestEmitCoalesced_SyncError_NoActor_CategoryOnly(t *testing.T) {
 		t.Errorf("dernier message attendu 'boom 3', got %q", msg)
 	}
 }
+
+// TestAllCategories_IncludesRivalEncounter garde-rail lot relations-E : la
+// catégorie rival_encounter est énumérée dans AllCategories (couverture du seed /
+// des réglages). Une catégorie non seedée est ACTIVE par défaut côté repo
+// (isCategoryEnabledOn : ErrNoRows → true), donc aucune migration de seed n'est
+// requise — ce test verrouille seulement l'énumération.
+func TestAllCategories_IncludesRivalEncounter(t *testing.T) {
+	for _, c := range AllCategories() {
+		if c == CategoryRivalEncounter {
+			return
+		}
+	}
+	t.Fatalf("CategoryRivalEncounter absente de AllCategories()")
+}
