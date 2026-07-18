@@ -1,7 +1,9 @@
 # Plan — Arcs multi-titres : indépendance stricte par jeu (2026-07)
 
 > **Créé le** : 2026-07-18
-> **Statut** : Proposé — à valider (une décision produit ouverte, cf. §2).
+> **Statut** : Approuvé — **Option A (retrait `arc_titles`) confirmée par l'utilisateur le
+> 2026-07-18**. Exécution = branche dédiée `feat/arcs-per-title-strict` (hors train en cours),
+> à ouvrir à l'anticipation du 2e titre. Aucune décision ouverte restante.
 > **Priorité** : 🟡 à anticiper avec l'arrivée du 2e titre (pas de titre en pipeline aujourd'hui).
 > **Origine** : décision produit utilisateur (2026-07-18) sur le backlog `[coach/prestige] V3 — Cross-titre arcs`.
 > **Supersède partiellement** : `.ai/V7/PLAN_CROSS_TITLE_ARCS_BACKEND.md` (livré 2026-06-18) — voir §2.
@@ -42,9 +44,10 @@ titre séparément**, chacun accumulant ses propres arcs et ses propres valeurs 
   Aujourd'hui c'est **inerte** (exactement 1 ligne/arc = le titre primaire), mais la **capacité**
   multi-titres est là et contredit la décision §0.
 
-## 2. Décision à confirmer : retirer vs geler la sur-structure `arc_titles`
+## 2. Décision TRANCHÉE : retirer la sur-structure `arc_titles` (Option A, confirmée 2026-07-18)
 
-Deux options. **Recommandation : Option A (retrait).**
+**Option A (retrait) RETENUE** par l'utilisateur le 2026-07-18. L'Option B (gel) ci-dessous est
+conservée pour trace du raisonnement mais n'est PAS suivie.
 
 **Option A — Retirer la sur-structure (recommandé).**
 Migration `DROP TABLE arc_titles` + suppression de `ArcTitlesRepo` et du seam `creditTitlesFor`
@@ -69,8 +72,8 @@ et figer `creditTitlesFor` au titre primaire.
 
 ## 3. Phases (backend uniquement — aucune UX cross-titre)
 
-### Phase 0 — Décision (bloquante)
-Confirmer Option A (retrait) ou B (gel). Le reste du plan suppose **A**.
+### Phase 0 — Décision (FAITE)
+Option A (retrait) confirmée user 2026-07-18. Le reste du plan exécute **A**.
 
 ### Phase 1 — Retrait de la capacité multi-titres d'arc (si Option A)
 1. Migration additive de **suppression** : `DROP TABLE IF EXISTS arc_titles` (nouveau step
