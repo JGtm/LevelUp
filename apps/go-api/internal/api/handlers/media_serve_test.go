@@ -241,3 +241,69 @@ func TestServeMediaFile_FallbackDataMediaOnInvalidBase(t *testing.T) {
 		t.Errorf("body = %q, want WEBPDATA", w.Body.String())
 	}
 }
+
+// TestServeMediaFile_RemuxIncompatibleCodec : un .mkv à vidéo H.264 (conteneur
+// exigeant un remux, mais codec hors av1/vp8/vp9) doit répondre 415 grâce au
+// pré-flight, AU LIEU du 200 corps vide de l'ancien flux. Skipped si ffmpeg absent.
+func TestServeMediaFile_RemuxIncompatibleCodec(t *testing.T) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		t.Skip("ffmpeg absent du PATH — test remux ignoré")
+	}
+	if _, err := exec.LookPath("ffprobe"); err != nil {
+		t.Skip("ffprobe absent du PATH — test remux ignoré")
+	}
+	capturesBase := t.TempDir()
+	playerDir := filepath.Join(capturesBase, "JGtm")
+	if err := os.MkdirAll(playerDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mkvPath := filepath.Join(playerDir, "clip.mkv")
+	args := []string{
+		"-y", "-hide_banner", "-loglevel", "error",
+		"-f", "lavfi", "-i", "testsrc=size=320x240:rate=10:duration=1",
+		"-f", "lavfi", "-i", "sine=frequency=440:duration=1",
+		"-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", mkvPath,
+	}
+	if out, err := exec.Command("ffmpeg", args...).CombinedOutput(); err != nil {
+		t.Skipf("encodage MKV H.264 indisponible: %v\n%s", err, out)
+	}
+	store := writeSettingsJSON(t, capturesBase)
+	r := newServeMediaRouter(t, store)
+
+	req := httptest.NewRequest(http.MethodGet, "/players/JGtm/media/files/JGtm/clip.mkv", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("status = %d, want 415 (codec incompatible WebM)", w.Code)
+	}
+	if w.Header().Get("Content-Type") == "video/webm" {
+		t.Errorf("Content-Type video/webm écrit malgré le rejet 415")
+	}
+}
+
+// TestServeMediaFile_RemuxProbeFailure : un .mkv illisible par ffprobe (octets
+// non-média) doit répondre 502 (pré-flight échoué), pas un 200 corps vide.
+func TestServeMediaFile_RemuxProbeFailure(t *testing.T) {
+	if _, err := exec.LookPath("ffprobe"); err != nil {
+		t.Skip("ffprobe absent du PATH — test remux ignoré")
+	}
+	capturesBase := t.TempDir()
+	playerDir := filepath.Join(capturesBase, "JGtm")
+	if err := os.MkdirAll(playerDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(playerDir, "clip.mkv"), []byte("not a real matroska file"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	store := writeSettingsJSON(t, capturesBase)
+	r := newServeMediaRouter(t, store)
+
+	req := httptest.NewRequest(http.MethodGet, "/players/JGtm/media/files/JGtm/clip.mkv", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadGateway {
+		t.Fatalf("status = %d, want 502 (pré-flight ffprobe échoué)", w.Code)
+	}
+}

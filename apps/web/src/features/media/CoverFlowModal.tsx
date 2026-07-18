@@ -112,8 +112,12 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
   const [audioTracks, setAudioTracks] = useState<{ id: number; name: string }[]>([])
   const [activeAudio, setActiveAudio] = useState(-1)
   // Deux interrupteurs indépendants Jeu/Voix (les deux ON par défaut). N'ont de
-  // sens que sur le layout multipiste game/voices/full ; ClipPlayer est monté
-  // par clip (key=file_path) donc l'état se réinitialise à chaque clip.
+  // sens que sur le layout multipiste game/voices/full. ATTENTION : la key est
+  // portée par la div de SLOT (côté parent), pas par ClipPlayer — l'instance
+  // PERSISTE donc tant que le clip reste dans la fenêtre de proximité (±2), et
+  // l'état des interrupteurs NE se réinitialise PAS à la navigation de voisinage.
+  // Il est réappliqué au recentrage par l'effet ci-dessous (dep isCenter) et le
+  // parent respecte le mute "deux OFF" via le marqueur data-audio-off.
   const [gameOn, setGameOn] = useState(true)
   const [voiceOn, setVoiceOn] = useState(true)
 
@@ -157,7 +161,14 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
       return
     }
 
-    const hls = new Hls({ enableWorker: true })
+    // autoStartLoad:false → loadSource charge le manifest (ce qui peuple le
+    // sélecteur de pistes via AUDIO_TRACKS_UPDATED, y compris pour les voisins)
+    // mais NE télécharge AUCUN segment tant que startLoad() n'est pas appelé.
+    // Le chargement des segments est réservé au clip centré (effet dédié
+    // ci-dessous) : sinon les jusqu'à 5 slots HLS rendus (±2) préchargeraient
+    // ~30 s de segments en parallèle (l'attribut preload du <video> est sans
+    // effet en MSE).
+    const hls = new Hls({ enableWorker: true, autoStartLoad: false })
     hlsRef.current = hls
     hls.loadSource(filePath)
     hls.attachMedia(video)
@@ -185,6 +196,18 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
     }
   }, [filePath, isHls])
 
+  // Chargement des segments réservé au clip centré : startLoad() au centrage,
+  // stopLoad() au décentrage. Les instances hls.js sont créées autoStartLoad:false
+  // (cf. effet d'attache, déclaré AVANT celui-ci → hlsRef.current est déjà posé
+  // quand cet effet s'exécute au montage). Sans ce pilotage, tous les slots HLS
+  // rendus (±2) chargeraient leurs segments en parallèle.
+  useEffect(() => {
+    const hls = hlsRef.current
+    if (!hls) return
+    if (isCenter) hls.startLoad()
+    else hls.stopLoad()
+  }, [isHls, isCenter])
+
   function selectAudioTrack(id: number) {
     if (hlsRef.current) {
       hlsRef.current.audioTrack = id
@@ -203,18 +226,23 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
   const isToggleLayout =
     bySlug.game !== undefined && bySlug.voices !== undefined && bySlug.full !== undefined
 
-  // Applique l'état des deux interrupteurs à la rendition jouée. Combinaisons :
-  // both→full, jeu seul→game, voix seule→voices, aucun→vidéo muette. Le parent
-  // ne touche `.muted` que sur changement de clip centré (effet currentItem) ;
-  // comme ClipPlayer remonte par clip, pas de conflit avec le mute "deux OFF".
+  // Applique l'état des deux interrupteurs à la rendition jouée, et le RÉAPPLIQUE
+  // au recentrage (dep isCenter) car l'instance persiste dans la fenêtre ±2.
+  // Combinaisons : both→full, jeu seul→game, voix seule→voices, aucun→muet.
+  // Le marqueur data-audio-off signale au parent (effet currentItem) de NE PAS
+  // démuter ce clip : les effets du parent s'exécutent APRÈS ceux de l'enfant
+  // dans un même commit, donc réappliquer `.muted` ici ne suffirait pas (le
+  // parent le démuterait derrière) — c'est au parent de s'abstenir.
   useEffect(() => {
     if (!isToggleLayout) return
     const video = videoElRef.current
     if (!video) return
     if (!gameOn && !voiceOn) {
       video.muted = true
+      video.dataset.audioOff = '1'
       return
     }
+    delete video.dataset.audioOff
     video.muted = false
     const slug = gameOn && voiceOn ? 'full' : gameOn ? 'game' : 'voices'
     const idx = bySlug[slug]
@@ -222,7 +250,7 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
       hlsRef.current.audioTrack = idx
       setActiveAudio(idx)
     }
-  }, [isToggleLayout, gameOn, voiceOn, bySlug])
+  }, [isToggleLayout, gameOn, voiceOn, bySlug, isCenter])
 
   if (error) {
     return (
@@ -461,7 +489,12 @@ export function CoverFlowModal({
   useEffect(() => {
     videoRefs.current.forEach((vid, path) => {
       if (path === currentItem?.file_path) {
-        vid.muted = false
+        // Ne PAS démuter un clip dont les deux interrupteurs Jeu/Voix sont OFF :
+        // ClipPlayer pose data-audio-off="1" dans ce cas (l'état persiste car
+        // l'instance survit à la navigation de voisinage). Cet effet parent
+        // s'exécute APRÈS l'effet enfant du même commit — sans ce garde il
+        // rétablirait le son alors que l'UI affiche Jeu OFF / Voix OFF.
+        if (vid.dataset.audioOff !== '1') vid.muted = false
         if (vid.paused) {
           const p = vid.play()
           if (p && typeof p.catch === 'function') p.catch(() => undefined)

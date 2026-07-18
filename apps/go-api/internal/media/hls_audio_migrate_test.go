@@ -79,8 +79,8 @@ func TestMigrateHLSAudioToAAC_Integration(t *testing.T) {
 	if segs, _ := filepath.Glob(filepath.Join(outDir, "seg_game_*.m4s")); len(segs) == 0 {
 		t.Error("aucun segment game après migration")
 	}
-	// L'arbre migré reste démultiplexable (master + sous-playlists + segments).
-	if err := VerifyHLSPlayable(context.Background(), filepath.Join(outDir, "master.m3u8")); err != nil {
+	// L'arbre migré reste démultiplexable et garde ses 2 renditions (game + full).
+	if err := VerifyHLSPlayable(context.Background(), filepath.Join(outDir, "master.m3u8"), 2); err != nil {
 		t.Errorf("VerifyHLSPlayable après migration = %v, want nil", err)
 	}
 
@@ -126,7 +126,7 @@ func generateMixedCodecHLS(t *testing.T, dir string) string {
 		t.Fatalf("mkdir outDir: %v", err)
 	}
 	outSlash := filepath.ToSlash(outDir)
-	cmd := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+	cmd := exec.Command("ffmpeg", ffmpegQuietArgs("-y",
 		"-i", src,
 		"-filter_complex", "[0:a:0][0:a:1]amix=inputs=2:normalize=0:duration=longest[full]",
 		"-map", "0:v:0", "-map", "0:a:0", "-map", "[full]",
@@ -138,7 +138,7 @@ func generateMixedCodecHLS(t *testing.T, dir string) string {
 		"-hls_fmp4_init_filename", "init_%v.mp4",
 		"-hls_segment_filename", outSlash+"/seg_%v_%03d.m4s",
 		outSlash+"/stream_%v.m3u8",
-	)
+	)...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("génération HLS mixte: %v\n%s", err, out)
 	}

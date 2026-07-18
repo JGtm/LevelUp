@@ -8321,3 +8321,289 @@ est logge, au bon niveau).
   perimetre), `vitest` 141 passed sur les scopes touches (dont le nouveau garde-rail).
 
 **Conclusion / prochaine etape** : dettes D1-D4 livrees. Push/merge = decision utilisateur.
+## [2026-07-17] LOT A — Durcissement pipeline média : concurrence transcodage + décisions persistées
+
+**Statut** : Complété (LOT A du PLAN_MEDIA_PIPELINE_HARDENING_2026-07 ; branche
+fix/media-pipeline-hardening, worktree dédié). Pas de commit (superviseur).
+
+**Décision technique principale** : rendre le transcodage HLS idempotent en persistant
+la décision par média dans `media_files.transcode_status` (+ nouvel horodatage
+`transcode_started_at`), au lieu de re-prober/re-transcoder à chaque sync.
+- Nouveau statut `TranscodeDirect = "direct"` : marqué quand `DetectHLSNeeded`=false
+  (upload ET sweep) → exclu des balayages suivants (fin des ffprobe infinies).
+- `MarkTranscodeProcessing` (status='processing' + horodatage UTC) posé AVANT
+  `RunHLSTranscode` par les DEUX chemins (upload worker + sweep, qui ne marquait rien) :
+  verrou d'idempotence contre le double-ffmpeg upload-vs-sweep sur le même outDir.
+  [Revue superviseur 2026-07-17] durci en COMPARE-AND-SET : UPDATE conditionnel
+  (ne s'applique que si la ligne n'est pas déjà 'processing' frais — même prédicat
+  que la sélection, fragment SQL partagé `transcodeNotFreshProcessingSQL` dans
+  media_hls.go), retour `(acquired, err)` via RowsAffected ; les deux callers
+  sautent le transcodage (log Info « déjà en cours ») sur acquired=false. Ferme le
+  TOCTOU sélection-de-sweep→marquage : le sweep sélectionne UNE fois puis transcode
+  pendant de longues minutes ; un upload marquant entre-temps était écrasé par
+  l'ancien UPDATE inconditionnel. `transcodeStaleAfter` déplacée dans media_hls.go
+  (source unique, zéro copie du littéral 2 h).
+- Sélection sweep durcie : exclut direct/failed/processing FRAIS ; un 'processing'
+  périmé (`transcode_started_at` > `transcodeStaleAfter` = 2 h) ou sans horodatage
+  (orphelin legacy/crash) redevient éligible ; NULL reste éligible (historique).
+  Seuil de péremption comparé Go-side (`time.Now().UTC().Add(-transcodeStaleAfter)`),
+  COALESCE pour neutraliser la logique tri-valuée SQL ; prédicat 'processing' =
+  fragment partagé avec le CAS.
+- Convention commentaires (revue superviseur) : AUCUN numéro de trouvaille d'audit
+  dans le code/les tests (descriptions concrètes) — les numéros ne survivent pas au
+  contexte de l'audit ; ils ne restent que dans le plan qui les définit.
+- 'failed' : plus de retry auto ; réarmement opérateur via `ops.ResetFailedTranscodes`
+  (failed → NULL, scope --slug) branché sur `backfill-media-hls --retry-failed`.
+- Schéma : `transcode_started_at TIMESTAMPTZ` ajoutée à la boucle ALTER idempotente de
+  `ensureMediaTables` (media_store.go), même pattern que `hls_path`/`transcode_status`.
+- CHECKPOINT avalés (2×) → helper `checkpointBestEffort` (WARN slog module "media",
+  jamais d'erreur avalée) ; littéral CHECKPOINT centralisé (pas de 3e copie).
+
+**Résultats observés** : Gate A vert, code de sortie 0 vérifié pour les 3 commandes —
+REJOUÉ intégralement après les corrections de revue (CAS + commentaires).
+- `go vet ./...` = exit 0.
+- `go test ./internal/ops/... ./internal/service/... ./internal/media/...` = exit 0.
+- `go test -tags=integration -p 1 ./internal/ops/...` = exit 0, 0 ligne `^--- FAIL:`.
+- ffmpeg/ffprobe présents → tests HLS gated RÉELLEMENT exécutés (0 skip) :
+  TestEnsurePendingHLS_DirectMarkingPersists, TestEnsurePendingHLS_TranscodesScannedVideo
+  (assertion transcode_started_at non-NULL), TestUploadHLSTranscoding_* verts.
+- TestMarkTranscodeProcessing_CompareAndSet vert : 1re acquisition true (status +
+  horodatage), 2e refusée sur 'processing' frais (ligne inchangée, timestamp intact),
+  ré-acquisition true après vieillissement artificiel > 2 h (orphelin simulé).
+- Garde-rails anti-ART (internal/sync) re-vérifiés verts : `media_files` hors
+  tablesProtegees/criticalMatchTables, UPDATE mono-ligne paramétrés → aucun motif
+  déclenché, allowlist inchangée.
+
+**Conclusion / prochaine étape** : LOT A soldé, cases A1-A6 cochées. LOTS B (lightbox web)
+et C (durcissements ffmpeg/serving) restent à faire. Pas de merge (revue utilisateur).
+
+## [2026-07-17] LOT B — Durcissement pipeline média : lecteur lightbox (désync toggles + préchargement)
+
+**Statut** : Complété (LOT B du PLAN_MEDIA_PIPELINE_HARDENING_2026-07 ; branche
+fix/media-pipeline-hardening, worktree dédié). Pas de commit (superviseur).
+Fichiers touchés : `apps/web/src/features/media/CoverFlowModal.tsx` (code + 3
+commentaires), `CoverFlowModal.hls.test.tsx` (mock étendu + 2 describes).
+
+**Décision technique principale** : corriger deux défauts du carrousel coverflow, dont
+la cause commune est que l'instance `ClipPlayer` PERSISTE tant que le clip reste dans la
+fenêtre de proximité ±2 (la key est portée par la div de slot du parent, PAS par
+ClipPlayer) — le commentaire « ClipPlayer remonte par clip donc l'état se réinitialise »
+était faux (doc inversée, corrigé aux 2 sites).
+
+- B1 (désync toggles/mute) : les deux interrupteurs Jeu/Voix persistent (décision produit
+  tranchée : pas de reset ON/ON) et doivent être réappliqués fidèlement au recentrage.
+  Piège d'ordre des effets React : l'effet PARENT `[currentItem]` (qui force
+  `vid.muted=false` sur le clip recentré) s'exécute APRÈS l'effet enfant du même commit —
+  réappliquer `.muted` côté enfant seul ne suffit pas, le parent le démuterait derrière.
+  MÉCANISME RETENU : marqueur DOM `video.dataset.audioOff='1'` posé par l'effet enfant
+  quand les deux toggles sont OFF (retiré via `delete` sinon) ; le parent ne démute QUE
+  si `vid.dataset.audioOff !== '1'`. L'enfant ÉCRIT le marqueur pendant son effet (avant
+  le parent), le parent le LIT et s'abstient → le mute survit au recentrage. `isCenter`
+  ajouté aux deps de l'effet enfant pour la réapplication au centrage. Zéro état global,
+  zéro nouvelle prop (dataset local au node video, déjà accessible via la Map de refs).
+- B2 (préchargement voisins) : l'effet d'attache hls.js instanciait `new Hls` pour TOUS
+  les slots HLS rendus (±2), chaque instance préchargeant ~30 s de segments (jusqu'à 5
+  flux + 5 workers en parallèle sur le VPS). Instances désormais créées avec
+  `autoStartLoad: false` ; nouvel effet dédié `[isHls, isCenter]` appelle
+  `startLoad()` au centrage et `stopLoad()` au décentrage. `loadSource()` INCHANGÉ dans
+  l'effet d'attache : il charge le manifest (peuple encore AUDIO_TRACKS_UPDATED → le
+  sélecteur des voisins), seuls les segments sont gatés. Effet start/stop déclaré APRÈS
+  l'effet d'attache → `hlsRef.current` déjà posé au montage. Repli natif Safari + priorité
+  hls.js sur le quirk Chrome canPlayType « maybe » intacts.
+- B3 (tests) : mock hls.js étendu (`startLoad`/`stopLoad` = vi.fn + interface). (a)
+  scénario both-OFF → navigation A→B→A (flèches, fake timers pour ANIM_MS) → assertion
+  vidéo TOUJOURS muette + `dataset.audioOff='1'` + toggles aria-pressed=false. (b)
+  startLoad pour le clip centré seulement (instances[0]=A) + stopLoad du voisin
+  (instances[1]=B) au montage, puis inversion après navigation. (c) les 4 combos toggles
+  existants restent verts.
+
+**Résultats observés** : Gate B vert, codes de sortie vérifiés (worktree apps/web).
+- purge `node_modules/.tmp` : fait.
+- `npm run typecheck` (tsc -b) = exit 0.
+- `npm run lint` = exit 0 : 68 warnings baseline pré-existants, 0 erreur ; les 4 warnings
+  restants sur CoverFlowModal.tsx (set-state-in-effect sur pendingPageAdvance ; 2 deps
+  `navigate` manquantes sur les effets keydown/autoChain) sont antérieurs et intentionnels,
+  mes effets (start/stop HLS `[isHls, isCenter]`, effet toggles `+isCenter`, parent
+  `[currentItem]`) n'en ajoutent aucun.
+- `npm run test` (vitest, hors sandbox) = exit 0 : 257 fichiers, 2239 passed, 14 skipped
+  (skips pré-existants, aucun introduit), 0 failed. Ciblé média : 36/36 verts.
+- Aucune string UI ajoutée (le marqueur data-audio-off n'est pas un label) ; aucune
+  couleur hex/classe Tailwind couleur introduite.
+
+**Conclusion / prochaine étape** : LOT B soldé, cases B1-B3 cochées. Reste LOT C
+(durcissements ffmpeg/serving : mono-piste AAC, tag hvc1, alimiter, borne audioEnvelope,
+pre-flight remux WebM, VerifyHLSPlayable pistes). Pas de merge (revue visuelle utilisateur).
+Aucune découverte hors périmètre lors du LOT B.
+
+## [2026-07-17] LOT C — Durcissement pipeline média : ffmpeg / serving (mono-piste AAC, hvc1, alimiter, borne RAM, pré-flight remux, garde suppression)
+
+**Statut** : Complété (LOT C du PLAN_MEDIA_PIPELINE_HARDENING_2026-07 ; branche
+fix/media-pipeline-hardening, worktree dédié). Pas de commit (superviseur). Fichiers :
+`internal/media/hls.go`, `hls_audio_analyze.go`, `remux.go`,
+`internal/api/handlers/media_serve.go`, `internal/ops/media_hls.go` + tests
+(hls_test.go, hls_audio_analyze_test.go, remux_test.go, hls_audio_migrate_test.go,
+hls_audio_collapse_test.go, media_serve_test.go).
+
+**Décisions techniques principales** :
+- C1 (mono-piste inaudible Safari) : `singleAudioRendition` bascule de `planAudio` à
+  `aacUniformAction` (copy si déjà AAC, sinon réencode AAC). `planAudio` SUPPRIMÉ (plus
+  aucun caller, 0 code mort). Commentaires réécrits état présent. Nuance vérifiée sur
+  pièces : `TestPlanHLS_SingleAudioTrackLegacy` utilisait du Vorbis (réencodé dans les
+  DEUX régimes), pas la copy Opus supposée par le plan → resté vert sans modification.
+- C2 (Safari refuse hev1) : champ `VideoSrcCodec` propagé dans `hlsPlan` (renseigné pour
+  TOUTE vidéo, plus seulement au réencode) ; `-tag:v hvc1` en copy HEVC dans
+  `buildHLSArgs` ; helper `isHEVCCodec`. Test args : hevc/h265 copy → tag ; h264 copy →
+  absent ; réencode → absent.
+- C3 (doc cible) : en-tête hls.go acte Chrome/Firefox/Edge via hls.js ; Safari/iOS natif
+  best-effort (pas de sélecteur, HEVC selon matériel, Opus-in-fMP4 non lu). Phrase « Opus
+  copié tel quel » devenue fausse après C1 → corrigée.
+- C4 (écrêtage amix) : constante `amixLimiterCeiling = "0.98"` +
+  `alimiter=limit=0.98:level=false` ajouté DANS `amixFilter` → couvre exactement les amix
+  de SORTIE (componentRenditions voices-amixé + full ; fullMixRenditions voices-amixé).
+  `level=false` = limiteur de crête pur (pas de re-normalisation qui annulerait
+  normalize=0). L'amix d'ANALYSE (`restMixFilter`) N'est PAS touché (corrélation
+  d'enveloppe sur signal brut). Chaîne validée sur ffmpeg 8.0.1 réel avant édition.
+- C5 (RAM VPS 2 Go) : constante `envMaxAnalysisSeconds = 600` + option `-t` en ENTRÉE
+  (avant `-i` → arrête le décodage) dans un helper extrait `buildEnvelopeArgs` (testable).
+  S'applique aussi au collapse (renditionEnvelope → audioEnvelope), sans cas particulier.
+- C6 (200 corps vide) : remux scindé — `PlanRemuxWebM` (probe + validation codecs + map
+  audio, erreurs sentinelles `ErrRemuxProbeFailed`/`ErrRemuxIncompatibleCodec`) puis
+  `StreamRemuxWebMPlan` (ne re-probe PAS). `StreamRemuxAsWebM` SUPPRIMÉ. Handler
+  `serveRemuxedWebM` : pré-flight AVANT tout header → 415 (codec incompatible) / 502
+  (probe échoué). Statut 502 (et non 500) justifié : handler = passerelle devant le
+  sous-processus ffprobe/ffmpeg ; probe sans résultat = défaillance de dépendance,
+  distinguée d'un bug handler dans les alertes.
+- C7 (garde suppression source) : `VerifyHLSPlayable(ctx, master, expectedAudioTracks)` —
+  check vidéo ffprobe + comptage renditions par PARSE DU MASTER
+  (`parseMasterAudioRenditions`), PAS par ffprobe show_streams. Preuve empirique
+  (ffmpeg 8.0.1) : arbre sain → master déclare 3 EXT-X-MEDIA et ffprobe énumère 3 ; arbre
+  amputé (sous-playlists/segments retirés) → ffprobe énumère 0 flux, exit 0 (PAS une
+  erreur). L'énumération ffprobe reflète l'OUVRABLE (version/démuxeur-dépendant), pas le
+  DÉCLARÉ ; le master m3u8 est la source de vérité déterministe. Caller `RunHLSTranscode`
+  passe `res.AudioTracks`.
+- C8 [~] : collision de stem (clip.mkv + clip.mp4 → même hls/{stem}, 2e écrase 1re)
+  documentée en commentaire de `HLSPathsFor`. Pas de correctif structurel (renommer
+  casserait arbres/DB existants).
+
+**Résultats observés** : Gate C vert, code de sortie 0 vérifié pour les 4 commandes,
+0 ligne `^--- FAIL:`.
+- `go vet ./...` = exit 0.
+- `go test ./internal/media/... ./internal/api/handlers/... ./internal/ops/...
+  ./internal/service/...` = exit 0.
+- `go test -tags=integration -p 1 ./internal/ops/...` = exit 0 (58 s).
+- `go test ./...` complet = exit 0.
+- ffmpeg/ffprobe 8.0.1 dans le PATH → tests media/handlers gated RÉELLEMENT exécutés
+  (vérifié en -v, aucun SKIP) : BuildHLS_Integration, VerifyHLSPlayable_Integration
+  (log empirique renditions déclarées=3/énumérées=3), AnalyzeAudioLayout, Migrate,
+  Collapse, RemuxWebM_AV1Opus, PlanRemuxWebM_*, et les 3 ServeMediaFile_Remux
+  (WebM 200, incompatible 415, probe 502).
+- Zéro garde-rail affaibli ; aucun fix opportuniste hors périmètre.
+
+**Bilan chantier (lots A+B+C)** : les 11 trouvailles de l'audit pipeline média sont
+traitées (code ou justification écrite : C8 en [~]). Backend Go (A+C) et front web (B)
+gated verts, `go test ./...` complet vert. Aucun merge (push main = deploy prod) : réservé
+au superviseur — relecture diff inter-lots + commits/PR à faire. Aucune découverte hors
+périmètre sur les 3 lots.
+
+**Conclusion / prochaine étape** : chantier soldé côté code, cases C1-C8 statuées
+([x] sauf C8 [~]). Reste au superviseur : relecture diff complet, commits par lot,
+PR sans merge (revue visuelle utilisateur).
+
+## [2026-07-17] LOT D — Correctifs CI de branche PR #64 (goconst + baseline + gate lint)
+
+**Statut** : Complété (lot correctif dicté par le superviseur, PLAN_MEDIA_PIPELINE
+_HARDENING_2026-07 ; branche fix/media-pipeline-hardening, worktree). Pas de commit.
+CI rouge sur 2 causes nôtres + 1 héritée ; E2E Playwright slice-2-career = hors
+périmètre (géré superviseur).
+
+**Décisions techniques principales** :
+- D1 (goconst, ratchet --new-from-merge-base) : ma `buildEnvelopeArgs` (Lot C, C5)
+  ajoutait une occurrence de `-hide_banner` au-dessus du seuil goconst
+  (min-occurrences 4). Leçon de config : l'exclusion goconst des `_test.go` ne
+  filtre que le REPORTING, pas le COMPTAGE — après centralisation des seuls sites
+  prod, goconst re-flaggait le helper lui-même (« 6 occurrences », les littéraux
+  test comptaient encore). Forme retenue : `ffmpegQuietArgs(extra ...string)
+  []string` dans un nouveau fichier court `internal/media/ffmpeg_args.go` (hls.go
+  en dépassement gelé ; une var slice serait mutable par aliasing — le helper
+  retourne un slice frais). Migré : 4 sites prod (buildHLSArgs, buildEnvelopeArgs,
+  reencodeRenditionToAAC, StreamRemuxWebMPlan) + 7 sites test (même package). Les
+  probes ffprobe (`-v error`) = motif distinct, non touchés. Pas de garde-rail
+  grep : goconst est le garde-rail. Résultat : 1 occurrence du littéral (helper).
+- D2 (Go Baseline) : `.ai/baselines/tests_pre_migration.jsonl` purgé de 47 lignes
+  (62 425 → 62 378) par match exact `"Test":"NAME"` : (a) nos 3 renommages Lot C
+  TestStreamRemuxAsWebM_* (remplacés par PlanRemuxWebM_*/StreamRemuxWebMPlan ; RIEN
+  ajouté — la baseline est un plancher) ; (b) casse HÉRITÉE de main (1c0117707
+  « collision route challenges » : tests supprimés sans purge baseline) :
+  TestHomeHandler_GetChallenges_{OK,PlayerNotFound}, sous-tests FlagOff
+  {challenges,leaderboard} (URLs mortes — le smoke actuel teste
+  /prestige/challenges, /arcs, /prestige/me : vérifié sur pièces),
+  TestSmoke_Prestige_FlagOn_RoutesRegistered. Rattrapage conventionnel du repo
+  (précédents « fix(baseline): retire... ») — consigné aussi en Découvertes du plan.
+- D3 (gate lint local, manquait à nos gates) : `golangci-lint run --timeout 5m
+  --new-from-merge-base=origin/main` (v2.12.2 locale).
+
+**Résultats observés** :
+- Lint : exit 1 avant D1 (goconst sur ffmpeg_args.go) → exit 0 « 0 issues » après
+  migration des sites test. Warning nolint_filter (gosec/plr0913) préexistant.
+- gofmt propre, `go vet ./internal/media/` exit 0.
+- Baseline : rejeu de `scripts/check_test_baseline.sh tests` comme la CI
+  (CGO_ENABLED=1, LEVELUP_DEMO_MODE=true, MULTI_TITLE_API_ENABLED=true,
+  PRESTIGE_ENABLED=true ; gcc msys64 géré par le script ; suite complète
+  `-tags=integration -p 1 -json ./...`, ~13 min, attendue en foreground) —
+  VERDICT : exit 0 ; baseline 8 828 tests, courant 10 002 tests ; « Tous les
+  tests baseline présents dans le run courant » (0 manquant). La purge des 8
+  tests est exhaustive.
+
+**Conclusion / prochaine étape** : correctifs CI livrés dans le working tree ;
+commits/push/re-CI côté superviseur.
+
+## [2026-07-17] LOT E — Correctif E2E carrière : tier localisé FR/EN (casse i18n héritée de main)
+
+**Statut** : Complété (lot correctif dicté par le superviseur, PLAN_MEDIA_PIPELINE
+_HARDENING_2026-07 ; branche fix/media-pipeline-hardening, worktree). Pas de commit.
+Fichier : `apps/web/e2e/slice-2-career.spec.ts` (1 attente + 2 commentaires).
+
+**Décision technique principale** : cause racine identifiée par le superviseur —
+le commit main 642ef31f8 (« i18n EN : tiers CSR/LUSR localisés à l'affichage »,
+localizeTierName) fait qu'en UI FR (défaut) la page Carrière affiche « Or IV » là
+où le spec attendait la substring EN `'Gold'`. Casse INVISIBLE sur main : les E2E
+Playwright ne tournent qu'en contexte PR, jamais sur push main. Fix : attente
+remplacée par la regex `/\b(Gold|Or)\s+(I|II|III|IV|V|VI)\b/` — vérifié sur pièces
+que le DOM réel est bien « tier + espace + sous-palier ROMAIN » (`csrTierLabel` de
+CareerRankingBlock.tsx : `localizeTierName(tier, locale)` + `toRoman(sub_tier)`,
+SUB_TIER_ROMAN I..VI). Ancrage nécessaire : « Or » nu matcherait « Ordre »,
+« Orange III » est rejeté par le \b. Style du fichier conservé (body +
+toContainText). Regex sanity-testée en node (5 positifs, 6 pièges rejetés).
+Balayage `apps/web/e2e/` : aucune autre attente sur les libellés de tiers EN
+(Gold/Platinum/Diamond/Onyx/Bronze/Silver/Unranked) — occurrence unique.
+
+**Résultats observés** :
+- `npm run typecheck` exit 0 ; `npm run lint` exit 0 (68 warnings baseline, 0
+  erreur). CONSTAT : ces deux gates ne couvrent PAS e2e/ (tsc include: src ;
+  eslint ignore e2e/ par pattern) → gate équivalent : `npx playwright test
+  --list` exit 0 (107 tests / 27 fichiers transpilés-listés).
+- Exécution Playwright réelle non faite en local (exige make dev + données démo,
+  skipIfNoDemoData) — la CI PR est le gate d'exécution.
+
+**Round 2 (E1bis) — verdict E2E + correctif** : la regex round 1 a RE-échoué en
+CI. Contenu réel du body fourni par le superviseur : « Arène classéeOr I ·
+1 420 » — le tier EST affiché, mais le textContent concatène les éléments
+adjacents SANS espace (« classéeOr ») ; entre « e » et « O », deux caractères de
+mot, il n'y a pas de word boundary → le `\b` de TÊTE ne matche jamais. (Autres
+occurrences concaténées du body : « arenaOr 2 », « CSROr 2 » — variantes arabes,
+non requises : une seule occurrence doit matcher.) Correctif : ancre de tête
+retirée, ancre de queue conservée → `/(Gold|Or)\s+(I|II|III|IV|V|VI)\b/`. Les
+faux positifs restent écartés : sensibilité à la casse (« décor », « or », même
+« DÉCOR » non matchés) + espace exigé APRÈS « Or »/« Gold » suivi d'un romain
+(« Ordre I », « Score IV » non matchés). Raisonnement documenté dans le
+commentaire du test (remplace la justification du \b de tête). LEÇON : ne jamais
+ancrer une word boundary de TÊTE dans un matcher toContainText sur body — la
+concaténation textContent aux jointures d'éléments la rend non fiable ; ancrer
+sur la structure INTERNE du motif (casse + séparateurs internes + \b de queue).
+Sanity node : chaîne body EXACTE matchée (« Or I ») ; « Ordre I », « Score IV »,
+« décor I » + 5 pièges rejetés. `npx playwright test --list` re-exécuté exit 0
+(107 tests / 27 fichiers).
+
+**Conclusion / prochaine étape** : les 3 causes CI de la PR #64 (goconst,
+baseline, E2E carrière round 2) sont traitées dans le working tree ;
+commits/push/re-CI côté superviseur.
