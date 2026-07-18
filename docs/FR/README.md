@@ -1,6 +1,6 @@
 # LevelUp - Dashboard Halo Infinite
 
-> **Analysez vos stats Halo Infinite match par match, suivez votre progression dans le temps, et comparez vos performances avec votre escouade.**
+> **Analysez vos stats de Halo 5: Guardians et de Halo Infinite match par match, suivez votre progression dans le temps, et comparez vos performances avec votre escouade.**
 
 [![Version](https://img.shields.io/badge/Version-7.0.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v7.0.0)
 [![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8.svg)](https://go.dev/)

@@ -17,31 +17,19 @@
 import { cellStyle, type CellState } from '@/features/match-view/MatchScoreboard.logic'
 import type { ExplorerMatchRow } from '@/lib/api/types'
 
-export type ExplorerHighlightKey = 'kills' | 'deaths' | 'kda' | 'perf_score' | 'score_label'
+export type ExplorerHighlightKey = 'kills' | 'deaths' | 'kda' | 'perf_score' | 'team_mmr'
 
 /**
  * Direction par colonne : `true` = la PLUS PETITE valeur est la meilleure
- * (Morts) ; `false` = la plus grande (Frags, FDA, Perf, Score).
+ * (Morts) ; `false` = la plus grande (Frags, FDA, Perf, MMR d'équipe — plus haut
+ * = meilleur).
  */
 export const EXPLORER_INVERTED: Record<ExplorerHighlightKey, boolean> = {
   kills: false,
   deaths: true,
   kda: false,
   perf_score: false,
-  score_label: false,
-}
-
-/**
- * Score de l'équipe du joueur = 1er entier du libellé « A - B » (A = self, cf.
- * match_history_service_enrich.go: `"%d - %d"` MyTeamScore/EnemyTeamScore). null
- * si aucun chiffre (« - » = pas de score). NB : l'unité est mode-dépendante
- * (frags en Slayer, manches en objectif) — sur un scope multi-modes le highlight
- * Score compare des unités hétérogènes (réserve consignée Découverte-16).
- */
-export function ownTeamScore(label: string | null | undefined): number | null {
-  if (!label) return null
-  const m = label.match(/\d+/)
-  return m ? Number(m[0]) : null
+  team_mmr: false,
 }
 
 /** Extracteurs = valeur AFFICHÉE dans la colonne. */
@@ -52,7 +40,9 @@ export const explorerHlExtract: Record<ExplorerHighlightKey, (r: ExplorerMatchRo
   // La cellule Perf n'affiche une valeur que si perf_score ET perf_tier sont
   // présents (sinon « - ») → aligner l'extracteur pour ne pas surligner un « - ».
   perf_score: (r) => (r.perf_score != null && r.perf_tier != null ? r.perf_score : null),
-  score_label: (r) => ownTeamScore(r.score_label),
+  // MMR d'équipe : valeur brute (la cellule affiche fmtMmr, formateur monotone →
+  // bande de décile inchangée, Découverte-2). Non inversé (plus haut = meilleur).
+  team_mmr: (r) => r.team_mmr ?? null,
 }
 
 const HL_KEYS = Object.keys(explorerHlExtract) as ExplorerHighlightKey[]

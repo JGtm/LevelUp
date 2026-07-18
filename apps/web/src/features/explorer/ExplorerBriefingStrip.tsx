@@ -37,6 +37,15 @@ import {
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
 
+// Largeurs socle (DP-4/DEC-WIDTHS) : chaque tuile est un flex-item. SOCLE_TILE réplique
+// l'ancien minmax(150px,1fr) (largeur cible 150px, grandit pour remplir la ligne ; min-w-0
+// évite l'overflow des tabular-nums). « Séries marquantes » ~+10 % (WIDE), « Pic MMR »
+// ~−10 % (NARROW) ; flex-wrap + grow absorbent l'absence des conditionnelles sans trou.
+// Valeurs basis/grow ajustables en revue visuelle (comme MIN_DECILE_SAMPLE).
+const SOCLE_TILE = 'grow basis-[150px] min-w-0'
+const SOCLE_TILE_WIDE = 'grow-[1.15] basis-[168px] min-w-0'
+const SOCLE_TILE_NARROW = 'grow-[0.9] basis-[136px] min-w-0'
+
 interface Props {
   briefing: ExplorerBriefing | null | undefined
   t: T
@@ -85,94 +94,120 @@ export function ExplorerBriefingStrip({ briefing, t }: Props) {
   const conditionalTiles: ReactNode[] = []
   if (scope && !lowSample) {
     if (showStreaks && streaks != null) {
-      conditionalTiles.push(<StreaksTile key="streaks" streaks={streaks} t={t} />)
+      conditionalTiles.push(
+        <div key="streaks" className={SOCLE_TILE_WIDE}>
+          <StreaksTile streaks={streaks} t={t} />
+        </div>,
+      )
     }
     if (peakRanks.length > 0) {
-      conditionalTiles.push(<PeakRankTile key="peak-rank" ranks={peakRanks} t={t} />)
+      conditionalTiles.push(
+        <div key="peak-rank" className={SOCLE_TILE}>
+          <PeakRankTile ranks={peakRanks} t={t} />
+        </div>,
+      )
     }
     if (peakMmr != null) {
-      conditionalTiles.push(<PeakMmrTile key="peak-mmr" value={peakMmr} t={t} />)
+      conditionalTiles.push(
+        <div key="peak-mmr" className={SOCLE_TILE_NARROW}>
+          <PeakMmrTile value={peakMmr} t={t} />
+        </div>,
+      )
     }
   }
 
   return (
     <div className="space-y-2">
-      <div className="grid gap-2 grid-cols-2 sm:[grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
+      <div className="flex flex-wrap gap-2">
         {/* Matchs + période */}
-        <BriefingTile
-          label={t('explorer.briefing.matches_label')}
-          value={String(matchesCount)}
-          sub={period}
-          accent="outcome-draw"
-        />
+        <div className={SOCLE_TILE}>
+          <BriefingTile
+            label={t('explorer.briefing.matches_label')}
+            value={String(matchesCount)}
+            sub={period}
+            accent="outcome-draw"
+          />
+        </div>
 
         {/* Taux de victoire (hero : ruban V-D-N + tooltip des 4 issues, DEC-TILES) */}
-        {scope && <WinRateTile scope={scope} baseline={baseline} fullHistory={fullHistory} t={t} />}
+        {scope && (
+          <div className={SOCLE_TILE}>
+            <WinRateTile scope={scope} baseline={baseline} fullHistory={fullHistory} t={t} />
+          </div>
+        )}
 
         {/* FDA en triptyque min · moyenne · max (DP-1) + delta */}
         {scope && (
-          <BriefingTile
-            label={t('explorer.briefing.fda_label')}
-            info={<InfoTooltip content={t('explorer.briefing.tip_fda')} iconClass="w-3.5 h-3.5" />}
-            value={
-              <MinMaxTriptych
-                min={scope.min_kda}
-                mid={kda}
-                max={scope.peak_kda}
-                midColor={kda != null ? kdaNetColor(kda) : undefined}
-                format={(v) => v.toFixed(2)}
-              />
-            }
-            sub={
-              baseline && !fullHistory ? (
-                <>
-                  <span
-                    className="font-semibold"
-                    style={{ color: tokenCssVar(deltaToken(baseline.delta_kda)) }}
-                  >
-                    {formatSignedFixed(baseline.delta_kda, 2)}
-                  </span>{' '}
-                  {vs}
-                </>
-              ) : undefined
-            }
-            accent={deltaToken(kda)}
-          />
+          <div className={SOCLE_TILE}>
+            <BriefingTile
+              label={t('explorer.briefing.fda_label')}
+              info={<InfoTooltip content={t('explorer.briefing.tip_fda')} iconClass="w-3.5 h-3.5" />}
+              value={
+                <MinMaxTriptych
+                  min={scope.min_kda}
+                  mid={kda}
+                  max={scope.peak_kda}
+                  midColor={kda != null ? kdaNetColor(kda) : undefined}
+                  format={(v) => v.toFixed(2)}
+                />
+              }
+              sub={
+                baseline && !fullHistory ? (
+                  <>
+                    <span
+                      className="font-semibold"
+                      style={{ color: tokenCssVar(deltaToken(baseline.delta_kda)) }}
+                    >
+                      {formatSignedFixed(baseline.delta_kda, 2)}
+                    </span>{' '}
+                    {vs}
+                  </>
+                ) : undefined
+              }
+              accent={deltaToken(kda)}
+            />
+          </div>
         )}
 
         {/* Perf en triptyque min · moyenne · max (DP-1) — moyenne colorée + accent perf (DP-6) + delta */}
         {scope && (
-          <BriefingTile
-            label={t('explorer.briefing.perf_label')}
-            info={<InfoTooltip content={t('explorer.briefing.tip_perf')} iconClass="w-3.5 h-3.5" />}
-            accent={perf != null ? perfScale(perf) : 'outcome-draw'}
-            value={
-              <MinMaxTriptych
-                min={scope.min_perf}
-                mid={perf}
-                max={scope.max_perf}
-                midColor={perf != null ? getPerfColor(perf) : undefined}
-                format={(v) => v.toFixed(0)}
-              />
-            }
-            sub={
-              baseline && !fullHistory && baseline.delta_perf != null ? (
-                <>
-                  <span
-                    className="font-semibold"
-                    style={{ color: tokenCssVar(deltaToken(baseline.delta_perf)) }}
-                  >
-                    {formatSignedFixed(baseline.delta_perf, 0)}
-                  </span>{' '}
-                  {vs}
-                </>
-              ) : undefined
-            }
-          />
+          <div className={SOCLE_TILE}>
+            <BriefingTile
+              label={t('explorer.briefing.perf_label')}
+              info={<InfoTooltip content={t('explorer.briefing.tip_perf')} iconClass="w-3.5 h-3.5" />}
+              accent={perf != null ? perfScale(perf) : 'outcome-draw'}
+              value={
+                <MinMaxTriptych
+                  min={scope.min_perf}
+                  mid={perf}
+                  max={scope.max_perf}
+                  midColor={perf != null ? getPerfColor(perf) : undefined}
+                  format={(v) => v.toFixed(0)}
+                />
+              }
+              sub={
+                baseline && !fullHistory && baseline.delta_perf != null ? (
+                  <>
+                    <span
+                      className="font-semibold"
+                      style={{ color: tokenCssVar(deltaToken(baseline.delta_perf)) }}
+                    >
+                      {formatSignedFixed(baseline.delta_perf, 0)}
+                    </span>{' '}
+                    {vs}
+                  </>
+                ) : undefined
+              }
+            />
+          </div>
         )}
 
         {/* Durée totale : tuile de base hors low_sample (Pic FDA fusionné dans le triptyque FDA) */}
-        {scope && !lowSample && <DurationTile seconds={scope.total_duration_seconds} t={t} />}
+        {scope && !lowSample && (
+          <div className={SOCLE_TILE}>
+            <DurationTile seconds={scope.total_duration_seconds} t={t} />
+          </div>
+        )}
 
         {/* Conditionnelles en cascade (Séries marquantes > Pic rang > Pic MMR ; les 3 tiennent) */}
         {conditionalTiles}

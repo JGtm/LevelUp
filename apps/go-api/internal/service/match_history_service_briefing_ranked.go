@@ -15,6 +15,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"sort"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
@@ -33,9 +34,10 @@ func buildBriefingRanked(ctx context.Context, scope []domain.MatchHistoryRawRow)
 	if len(progs) == 0 {
 		return nil
 	}
-	kinds := make([]domain.ExplorerBriefingRankedKind, 0, len(progs))
-	for i := range progs {
-		p := &progs[i]
+	qualified := rankChainsByRelevance(progs)
+	kinds := make([]domain.ExplorerBriefingRankedKind, 0, len(qualified))
+	for i := range qualified {
+		p := &qualified[i]
 		if p.TierStartLabel == nil && !p.TierStartIsPlacement && p.TierEndLabel == nil && p.TierEndPlacementRemaining == nil {
 			// Chaîne sans aucun palier : progression omise (dégradation best-effort
 			// documentée, jamais d'erreur avalée — CLAUDE.md §3).
@@ -54,6 +56,60 @@ func buildBriefingRanked(ctx context.Context, scope []domain.MatchHistoryRawRow)
 		})
 	}
 	return &domain.ExplorerBriefingRanked{Kinds: kinds}
+}
+
+// rankChainsByRelevance applique la politique de pertinence du module Classement
+// (DP-5/DEC-RANK, miroir de buildDimension) sur les progressions déjà ordonnées de
+// façon canonique par analysis.ComputeRankProgressionByChain :
+//   - ne garder que les chaînes assez jouées (Matches >= MinRankedChainMatches) ;
+//   - fallback : si aucune n'atteint le seuil mais qu'au moins une progression
+//     existe, conserver la chaîne principale (première en ordre canonique = plus
+//     grande chaîne du type majoritaire) pour ne jamais tout masquer ;
+//   - plafond : au plus RankedChainMaxCount chaînes, les plus jouées, restituées
+//     dans l'ordre canonique d'entrée.
+//
+// progs est supposé non vide (garanti par l'appelant : len(progs) == 0 → nil avant).
+func rankChainsByRelevance(progs []analysis.RankChainProgression) []analysis.RankChainProgression {
+	qualified := make([]analysis.RankChainProgression, 0, len(progs))
+	for i := range progs {
+		if progs[i].Matches >= MinRankedChainMatches {
+			qualified = append(qualified, progs[i])
+		}
+	}
+	if len(qualified) == 0 {
+		qualified = progs[:1]
+	}
+	if len(qualified) > RankedChainMaxCount {
+		qualified = selectTopByMatches(qualified, RankedChainMaxCount)
+	}
+	return qualified
+}
+
+// selectTopByMatches retourne les k chaînes aux Matches les plus élevés, RESTITUÉES
+// dans l'ordre canonique d'entrée (déterministe — « ordre d'affichage conservé »).
+// Sélection stable : Matches décroissant, tie-break index canonique croissant (la
+// chaîne la plus « principale » d'abord). len <= k → retour tel quel. Variante
+// « top N » de selectTopFlop (sans flop), propre au module Classement (DEC-RANK).
+func selectTopByMatches(progs []analysis.RankChainProgression, k int) []analysis.RankChainProgression {
+	if len(progs) <= k {
+		return progs
+	}
+	idx := make([]int, len(progs))
+	for i := range idx {
+		idx[i] = i
+	}
+	sort.SliceStable(idx, func(a, b int) bool { return progs[idx[a]].Matches > progs[idx[b]].Matches })
+	keep := make(map[int]bool, k)
+	for _, i := range idx[:k] {
+		keep[i] = true
+	}
+	out := make([]analysis.RankChainProgression, 0, k)
+	for i := range progs {
+		if keep[i] {
+			out = append(out, progs[i])
+		}
+	}
+	return out
 }
 
 // rankChainSamples projette les raw rows rangées et datées du scope en samples pour
