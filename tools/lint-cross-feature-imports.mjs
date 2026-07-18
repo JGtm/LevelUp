@@ -149,6 +149,33 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // analogue à home=>prestige / explorer=>home.
   'home=>spartan-customizer',
   'explorer=>spartan-customizer',
+  // UnifiedCitationsPage fusionne citations + commendations (concepts jumeaux,
+  // FR=Citations) ; HomeCitationsNearCompletion embarque le widget "proche de la
+  // complétion" des deux — dépendances durables (analogue à career=>citations).
+  'citations=>commendations',
+  'home=>citations',
+  'home=>commendations',
+  // Les helpers de surlignage de tableaux (ExplorerMatchesTable.highlight /
+  // LeaderboardBlock.highlight) réutilisent la logique highlight de match-view —
+  // pattern partagé durable (analogue à career=>match-view).
+  'explorer=>match-view',
+  'leaderboard=>match-view',
+  // ExplorerRankedBlock réutilise lusrChainLabel (libellé de chaîne LUSR) du
+  // contexte rating Carrière — durable, analogue à timeseries=>career.
+  'explorer=>career',
+  // SessionMatchesTable réutilise ExplorerMatchesTable pour l'historique de session
+  // — durable, strictement analogue à career=>explorer.
+  'session-detail=>explorer',
+  // MatchEncountersTable réutilise RelationBadgeLegend (légende des badges de
+  // relation) de palmarès — dépendance durable.
+  'match-view=>palmares',
+  // Auth est cross-cutting : OnboardingOpenSpartanPage et SettingsPage embarquent
+  // des cartes auth (login OpenSpartan, SetPasswordCard) — analogue à admin=>auth.
+  'onboarding=>auth',
+  'settings=>auth',
+  // useSquadPresets lit useMyGroups (queries de la feature groups) pour proposer
+  // les presets d'escouade — dépendance durable.
+  'squad=>groups',
 ])
 
 // Fichiers shell autorisés à importer @/features/ (orchestration globale).
