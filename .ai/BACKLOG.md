@@ -55,35 +55,31 @@ aucun disponible aujourd'hui). Runbook backup à écrire au moment de l'activati
 
 ---
 
-### [data/h5] Phase 2 — exploiter `kill_kind` (découper le bucket « Spartan ») + backfill historique
+### [data/h5] Phase 2 — exploiter `kill_kind` dans le donut (découper le bucket « Spartan »)
 
-> Noté le 2026-07-17. La classification hors-arsenal est LIVRÉE (commit `16d2a09eb` :
-> véhicule/tourelle/environnement/non-attribué/autres au donut, exclus de l'insight coach).
-> La CAPTURE de la mécanique de kill est LIVRÉE (commit `c13e7f6bc` : colonne `kill_kind`
-> sur `weapon_kills`, câblée à l'ingestion H5 going-forward). **Reste la phase 2**, décidée
-> avec l'utilisateur (« capture seule, backfill plus tard ») :
+> MàJ 2026-07-18. Livré à ce jour : classification hors-arsenal (`16d2a09eb`), capture
+> `kill_kind` going-forward (`c13e7f6bc`), **assassinat = 5ᵉ valeur canonique** (`e818496d3`),
+> et **BACKFILL HISTORIQUE COMPLET EXÉCUTÉ** (2026-07-18 : 2 691 matchs Arena, 267 939 kills
+> re-dérivés, 0 erreur ; CLI `cmd/h5-kill-kind-backfill` avec mode `--force`). Distribution
+> réelle du bucket Spartan mesurée : **56 % Capacités Spartan** (shoulderbash 38 % + groundpound
+> 17 %), **15 % assassinats**, **29 % non-résolu** (`kind=weapon`), 1 % mêlée.
 >
-> 1. **Backfill historique** : re-fetch `GetMatchEvents` par match (~2 700 matchs Arena) pour
->    remplir `kill_kind` sur l'existant — étendre le CLI `cmd/h5-events-backfill` /
->    `livesync.RunEventsBackfill` (piggyback possible sur la passe `weapon_accuracy`). INSERT
->    en nouvelle génération, ré-insérer TOUS les kills du couple `(match, xuid)` (sinon la
->    génération MAX est incomplète). ART-safe (INSERT-only).
-> 2. **Exploitation donut** : découper le bucket non-attribué « Spartan » (weapon_id
->    3168248199) par `kill_kind`, au niveau vue/service, en sous-tranches — **TAXONOMIE
->    ACTÉE (correction utilisateur 2026-07-17)** :
+> **RESTE UNIQUEMENT l'exploitation donut** (reportée par l'utilisateur à un autre chantier —
+> noté dans son Notion) : découper le bucket « Spartan » (weapon_id 3168248199) par `kill_kind`
+> au niveau vue/service, en sous-tranches — **TAXONOMIE ACTÉE** :
 >    - **Capacités Spartan** ← `shoulderbash` (Charge Spartan) + `groundpound` (Frappe au sol).
->      NB : « Spartan Abilities » = « Capacités Spartan » en FR — CONFIRMER le terme exact sur
->      la localisation officielle du jeu / API metadata (`www.haloapi.com`, clé `LEVELUP_HALOAPI_KEY`).
+>      Terme FR « Capacités Spartan » VALIDÉ user (à re-confirmer sur la loc officielle du jeu au moment des libellés).
+>    - **Assassinat** ← `assassination` (désormais capté).
 >    - **Corps à corps** ← `melee` (beatdown).
->    - **Non attribué** ← `kind=weapon` sans arme résolue (inclut assassinats/splatters — la
->      mécanique par-kill n'a PAS de flag assassinat ; l'agrégat natif `assassination_kills`
->      reste la source autoritaire, non rattachable au kill Spartan précis).
+>    - **Non attribué** ← `kind=weapon` sans arme résolue (arme non identifiée par l'API).
 >    Pièges : NE PAS fusionner avec le sentinel mêlée natif (weapon_id=1, population disjointe →
->    double-comptage) ; le total du donut reste inchangé (on re-partitionne, on n'ajoute pas).
->    Ces sous-tranches restent NON-COMBAT → exclues de `weaponRoleInsight`.
-> **Effort** : backfill = moyen (CLI + passe de fond ~2 700 appels) ; exploitation = petit-moyen.
-> Découverte data : « Spartan » se concentre dans les modes mêlée (Castle Wars CTF 31,9/match =
-> 12,5 %, Action Sack, Grifball) vs ~3 % en Slayer/Arena — cohérent avec des capacités Spartan.
+>    double-comptage) ; total du donut inchangé (on re-partitionne, on n'ajoute pas) ; ces
+>    sous-tranches restent NON-COMBAT → exclues de `weaponRoleInsight`.
+> **Effort** : exploitation = petit-moyen (vue/service + i18n + tests). La donnée est prête.
+> Note : suicide/trahison NON captés en `kill_kind` (déjà couverts par les Personal Score Awards
+> `TotalSuicides`/`TotalBetrayals` — pas de doublon) ; splatter = déjà en rôle « véhicule ».
+> Champs API events encore non captés (décision user « rien » 2026-07-18, re-capturables si besoin) :
+> `VictimStockId`, `TimeWeaponActiveAsPrimary`, `Killer/VictimAgent` (discriminant IA/Warzone), attachments.
 
 ---
 
