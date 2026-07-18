@@ -28,16 +28,6 @@ requis — aucun aujourd'hui). **Effort** : petit-moyen (suppression + tests).
 
 ---
 
-### [infra/release] Activer le pull GHCR côté VPS (post-train 2026-07-17)
-
-> Le pipeline est livré (build image en CI, push GHCR sur main, `deploy.sh` pull avec
-> fallback build local — kill-switch daté, retrait cible 2026-Q4). Sans action, le
-> fallback build local continue de fonctionner. Pour passer au flux nominal : une action
-> unique sur le VPS — `docker login ghcr.io` avec un PAT `read:packages`, OU rendre le
-> package `levelup` public. Détail : `docs/RUNBOOK_GO_LIVE.md`. **Effort** : 5 min.
-
----
-
 ### [sécurité/autZ] Routes prestige par `{id}` : BOLA niveau objet (résiduel, distinct du BOLA acteur)
 
 > Noté le 2026-07-17 (livraison de la garde acteur généralisée, commit `b8e97cb43`).
@@ -167,7 +157,7 @@ Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Syn
 
 **Chantiers suivis dans des plans dédiés** (retirés du backlog actif — les plans font foi) :
 - **Coach V3 génération** — 3 phases (squad coach / négatif soft / ton), validées le 2026-07-18 :
-  [.ai/V7/PLAN_COACH_V3_GENERATION.md](.ai/V7/PLAN_COACH_V3_GENERATION.md).
+  [.ai/PLAN_COACH_V3_GENERATION.md](.ai/PLAN_COACH_V3_GENERATION.md).
 - **Arcs multi-titres** — indépendance stricte par titre, Option A (retrait `arc_titles`)
   confirmée le 2026-07-18 : [.ai/PLAN_CROSS_TITLE_ARCS_2026-07.md](.ai/PLAN_CROSS_TITLE_ARCS_2026-07.md).
 
@@ -188,7 +178,7 @@ forwardées via settings.
 | 2026-07-17 | **[train backlog] Purges code mort** — `squad/v2` purgé (knip croisé grep, 4 types vivants conservés) ; route `GET /players/{slug}/battlepass` supprimée après preuve de mort (service `GetBattlePass` conservé, consommé par season-pass). Commits `42b317cd8`, `c9bfa0e7d`. |
 | 2026-07-17 | **[train backlog] Registre armes H5** — long-tail `v_weapon_kills` : 5 armes tenues mappées (3 grenades + golf club + oddball, ~18,4 k frags) ; véhicules/tourelles/UGC documentés hors-arsenal (item résiduel ouvert). Commit `9e0a8217d`. |
 | 2026-07-17 | **[train backlog] i18n tiers + cache défis** — mapping tiers CSR centralisé dans `lib/skillTiers.ts` (+ garde-rail grep) ; défis locale-aware via locale dans les query keys `home`/`seasonPass`. Commits `45200bc4c`, `7fc82f575`. |
-| 2026-07-17 | **[train backlog] Release CI** — image pré-buildée en CI (GHCR, build-only sur PR, push sur main), `deploy.sh` pull avec fallback build local (kill-switch daté 2026-Q4), `docs/RUNBOOK_GO_LIVE.md` créé. Commit `7bb6a4257`. |
+| 2026-07-17 | **[train backlog] Release CI (GHCR)** — livré (`7bb6a4257`) puis **RETIRÉ le 2026-07-18** sur décision user (pas d'intérêt) : retour au build local sur le VPS (comportement d'origine). |
 | 2026-07-17 | **[train backlog] Prod** — `/health` expose `media_tooling` (sonde ffmpeg au boot, figée) ; `Cache-Control: public, max-age=31536000, immutable` sur les assets Vite hashés (côté Go). Commits `731c3934f`, `5f486b0b1`. |
 | 2026-07-17 | **[chantier Relations UX] Plan 2026-07 CLOS** — lots A (tri colonnes), B (duels cliquables → match view via `matchIndexAtX`), C (toggle « jamais affrontés », défaut masqué, migrate store v2), F (CoreCards supprimées + lien Escouade), D (volet « Quoi de neuf » : `is_revived` SQL+DTO+strip front), E (notification `rival_encounter` post-sync par watermark, garde-fous 3/sync et 7 j), H régularisé `[~]`, G `[!]` (0 % couverture CSR rivaux). Plan archivé : `.ai/V7/PLAN_RELATIONS_UX_2026-07.md`. Commits `91649c01d`→`e38592ca9`. |
 | 2026-07-17 | **[sécurité] BOLA acteur prestige clos** — 14 routes non-squad réconcilient l'acteur body/query avec la session (`authorizeActor`, 403 `player_forbidden`), garde-rail AST structurel anti-régression, tests 403+verts par endpoint. Commit `b8e97cb43`. Résiduel objet-level → item backlog. |
