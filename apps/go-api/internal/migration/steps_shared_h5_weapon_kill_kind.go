@@ -31,7 +31,7 @@ func init() {
 	Register(Migration{
 		Name:        "shared_h5_weapon_kill_kind_v1",
 		TargetDB:    TargetShared,
-		Description: "weapon_kills.kill_kind (mecanique de kill Halo 5 : weapon/melee/groundpound/shoulderbash) + recreation v_weapon_kills — capture Phase 1 (backfill + exploitation donut = Phase 2)",
+		Description: "weapon_kills.kill_kind (mecanique de kill Halo 5 : weapon/melee/groundpound/shoulderbash/assassination) + recreation v_weapon_kills — capture Phase 1 (backfill + exploitation donut = Phase 2)",
 		ApplySchema: applyWeaponKillKind,
 	})
 }

@@ -125,10 +125,14 @@ func h5Assistants(list []h5EventPlayer) []canonical.PlayerIdentity {
 	return out
 }
 
-// h5KillKind dérive la mécanique du kill des drapeaux Halo 5 (priorité : melee >
-// groundpound > shoulderbash > weapon). Le headshot est porté séparément (Headshot).
+// h5KillKind dérive la mécanique du kill des drapeaux Halo 5 (priorité : assassination >
+// melee > groundpound > shoulderbash > weapon). L'assassinat prime car il est aussi
+// tagué IsMelee côté API (déclenché depuis un corps-à-corps) mais reste sa propre
+// catégorie. Le headshot est porté séparément (Headshot).
 func h5KillKind(e *h5GameEvent) canonical.KillKind {
 	switch {
+	case e.IsAssassination:
+		return canonical.KillKindAssassination
 	case e.IsMelee:
 		return canonical.KillKindMelee
 	case e.IsGroundPound:

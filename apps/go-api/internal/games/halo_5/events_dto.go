@@ -34,6 +34,7 @@ type h5GameEvent struct {
 	IsMelee             bool             `json:"IsMelee"`
 	IsGroundPound       bool             `json:"IsGroundPound"`
 	IsShoulderBash      bool             `json:"IsShoulderBash"`
+	IsAssassination     bool             `json:"IsAssassination"`
 	IsWeapon            bool             `json:"IsWeapon"`
 	Killer              *h5EventPlayer   `json:"Killer"`
 	Victim              *h5EventPlayer   `json:"Victim"`

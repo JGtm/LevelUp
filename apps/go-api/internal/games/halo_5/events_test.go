@@ -93,6 +93,28 @@ func TestMapH5Events_MeleeAndIdentities(t *testing.T) {
 	}
 }
 
+func TestH5KillKind_AssassinationPriority(t *testing.T) {
+	cases := []struct {
+		name string
+		ev   h5GameEvent
+		want canonical.KillKind
+	}{
+		// L'assassinat est aussi tagué IsMelee par l'API → il DOIT primer.
+		{"assassination bat melee", h5GameEvent{IsAssassination: true, IsMelee: true}, canonical.KillKindAssassination},
+		{"assassination seul", h5GameEvent{IsAssassination: true}, canonical.KillKindAssassination},
+		{"melee sans assassinat", h5GameEvent{IsMelee: true}, canonical.KillKindMelee},
+		{"groundpound", h5GameEvent{IsGroundPound: true}, canonical.KillKindGroundPound},
+		{"shoulderbash", h5GameEvent{IsShoulderBash: true}, canonical.KillKindShoulderBash},
+		{"weapon par défaut", h5GameEvent{IsWeapon: true}, canonical.KillKindWeapon},
+	}
+	for _, c := range cases {
+		ev := c.ev
+		if got := h5KillKind(&ev); got != c.want {
+			t.Errorf("%s: h5KillKind = %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
 func TestMapH5Events_MedalImpulseRound(t *testing.T) {
 	evs := mapH5Events(parseFixture(t), canonical.MatchEventOptions{})
 	byType := map[canonical.MatchEventType]*canonical.MatchEvent{}

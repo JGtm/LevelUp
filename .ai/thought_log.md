@@ -1,3 +1,53 @@
+## [2026-07-18] H5 — `assassination` comme 5e valeur canonique de `kill_kind` + mode `--force` du backfill
+
+**Statut** : Complété (CODE + TESTS ; le RUN live du backfill FORCE reste une étape opératoire séparée — non exécuté).
+
+**Contexte** : la capture `kill_kind` (4 valeurs weapon/melee/groundpound/shoulderbash) est
+livrée. L'API events H5 expose aussi `IsAssassination` par kill (payload brut confirmé) qu'on
+ne parsait PAS → les assassinats tombaient en `kill_kind=weapon`. On ajoute la 5e valeur et un
+mode `--force` du backfill pour reprendre les ~20 matchs déjà backfillés en 4 valeurs.
+
+**Décision technique** :
+- **DTO** (`internal/games/halo_5/events_dto.go`) : nouveau champ `IsAssassination bool`
+  (`json:"IsAssassination"`) sur `h5GameEvent` (section Death).
+- **Canonique** (`internal/games/canonical/events.go`) : `KillKindAssassination = "assassination"` ;
+  `IsKnownKillKind` (case) et `AllKillKinds()` passent à **5**. Concept cross-titre légitime
+  (Infinite a aussi des assassinats) — documenté sur le type.
+- **Dérivation** (`internal/games/halo_5/events.go::h5KillKind`) : `IsAssassination` en
+  **priorité HAUTE** (assassination > melee > groundpound > shoulderbash > weapon). L'assassinat
+  est aussi tagué `IsMelee` par l'API (déclenché depuis un corps-à-corps) → il DOIT primer.
+- **Backfill `--force`** : `RunKillKindBackfill(..., force bool, ...)` +
+  `matchesForKillKind(..., force)` (ex-`matchesMissingKillKind`). force=false → matchs
+  `kill_kind IS NULL` (idempotent, inchangé). force=true → TOUS les matchs H5 avec des
+  weapon_kills (filtre `kill_kind IS NULL` levé), hors Campagne → re-dérive aussi les matchs
+  déjà backfillés pour capter la nouvelle valeur. Reste INSERT-only nouvelle génération
+  (ART-safe ADR 0026, anti-perte : ré-insertion de TOUS les kills du couple). Non idempotent
+  par construction en mode force (à lancer une fois, serveur arrêté).
+- **CLI** (`cmd/h5-kill-kind-backfill/main.go`) : force exposé via 3e arg `force`/`1`/`true`
+  ou env `LEVELUP_KK_FORCE=1`.
+
+**Tests figés** : canonical `TestKillKind_KnownAndAll` (4→5 + assertion `assassination` connue,
+`headshot` toujours PAS une KillKind) ; halo_5 `TestH5KillKind_AssassinationPriority` (table de
+priorité, assassination bat melee) ; ingest `TestMapKillEvents_KillKindCaptured` (5e cas
+assassination recopié dans `WeaponKillInsert`) ; livesync sélection force=true capte `mDone`
+déjà backfillé (non-force le saute) + run force re-dérive m1 & mDone en nouvelle génération
+(table physique 15, vue 5).
+
+**Commande RUN FORCE (à lancer par l'opérateur, serveur H5 ARRÊTÉ)** :
+`LEVELUP_REPO_ROOT=<repo> LEVELUP_KK_FORCE=1 go run ./apps/go-api/cmd/h5-kill-kind-backfill JGtm`
+(ou 3e arg `force` : `go run ./cmd/h5-kill-kind-backfill JGtm 0 force`). Prérequis : serveur
+arrêté (single-writer RW), RT sain pour l'auth (défaut JGtm / `LEVELUP_H5_AUTH_AS`).
+
+**HORS PÉRIMÈTRE (confirmé non fait)** : pas de `DeathDisposition` (suicide/trahison déjà
+couverts par Personal Score Awards), pas de VictimStockId/agents/attachments, pas de changement
+du donut (exploitation = Phase 2 séparée), aucun run live exécuté.
+
+**Gates** : `go build ./...`, `go vet`, `go test ./internal/games/... ./cmd/...` verts ;
+integration `go test -tags=integration -p 1 ./internal/games/... ./internal/platform/duckdb/...
+./internal/persist/...` vert ; gofmt clean.
+
+---
+
 ## [2026-07-18] H5 — backfill kill_kind sur l'historique (Phase 2a : re-dérive weapon_kills en nouvelle génération, ART-safe)
 
 **Statut** : Complété (CODE + TESTS ; le RUN live reste une étape opératoire séparée — non exécuté).

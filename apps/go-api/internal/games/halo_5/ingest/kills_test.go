@@ -67,10 +67,11 @@ func TestMapKillEvents_KillKindCaptured(t *testing.T) {
 		killKind("A", "B", "222", 2000, canonical.KillKindMelee),
 		killKind("A", "B", "333", 3000, canonical.KillKindGroundPound),
 		killKind("A", "B", "444", 4000, canonical.KillKindShoulderBash),
+		killKind("A", "B", "555", 5000, canonical.KillKindAssassination),
 	}
 	_, weapons := MapKillEvents("m", events, fakeResolver(map[string]string{"A": "xA", "B": "xB"}))
 
-	want := []string{"weapon", "melee", "groundpound", "shoulderbash"}
+	want := []string{"weapon", "melee", "groundpound", "shoulderbash", "assassination"}
 	if len(weapons) != len(want) {
 		t.Fatalf("weapon_kills: %d, attendu %d — %+v", len(weapons), len(want), weapons)
 	}

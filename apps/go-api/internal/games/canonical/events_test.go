@@ -19,13 +19,17 @@ func TestMatchEventType_KnownAndAll(t *testing.T) {
 
 func TestKillKind_KnownAndAll(t *testing.T) {
 	all := AllKillKinds()
-	if len(all) != 4 {
-		t.Fatalf("AllKillKinds() = %d, want 4", len(all))
+	if len(all) != 5 {
+		t.Fatalf("AllKillKinds() = %d, want 5", len(all))
 	}
 	for _, k := range all {
 		if !IsKnownKillKind(k) {
 			t.Errorf("kind %q devrait être connu", k)
 		}
+	}
+	// assassination est bien une mécanique canonique (5e valeur, cross-titre).
+	if !IsKnownKillKind(KillKindAssassination) {
+		t.Error("assassination doit être une KillKind connue")
 	}
 	// headshot N'EST PAS une mécanique (c'est un modificateur orthogonal MatchEvent.Headshot).
 	if IsKnownKillKind("headshot") {

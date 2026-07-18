@@ -63,19 +63,23 @@ func AllMatchEventTypes() []MatchEventType {
 
 // KillKind précise la MÉCANIQUE d'un kill (orthogonale au modificateur Headshot :
 // un headshot est un kill d'arme ET un headshot ⇒ Kind=weapon + Headshot=true).
+// Assassination est une mécanique cross-titre (Halo 5 `IsAssassination` par kill ;
+// Infinite expose aussi les assassinats) prioritaire sur weapon/melee (un assassinat
+// est déclenché depuis un corps-à-corps mais reste sa propre catégorie).
 type KillKind string
 
 const (
-	KillKindWeapon       KillKind = "weapon"
-	KillKindMelee        KillKind = "melee"
-	KillKindGroundPound  KillKind = "groundpound"
-	KillKindShoulderBash KillKind = "shoulderbash"
+	KillKindWeapon        KillKind = "weapon"
+	KillKindMelee         KillKind = "melee"
+	KillKindGroundPound   KillKind = "groundpound"
+	KillKindShoulderBash  KillKind = "shoulderbash"
+	KillKindAssassination KillKind = "assassination"
 )
 
 // IsKnownKillKind indique si k est une mécanique de kill reconnue.
 func IsKnownKillKind(k KillKind) bool {
 	switch k {
-	case KillKindWeapon, KillKindMelee, KillKindGroundPound, KillKindShoulderBash:
+	case KillKindWeapon, KillKindMelee, KillKindGroundPound, KillKindShoulderBash, KillKindAssassination:
 		return true
 	}
 	return false
@@ -83,7 +87,7 @@ func IsKnownKillKind(k KillKind) bool {
 
 // AllKillKinds retourne toutes les mécaniques de kill canoniques.
 func AllKillKinds() []KillKind {
-	return []KillKind{KillKindWeapon, KillKindMelee, KillKindGroundPound, KillKindShoulderBash}
+	return []KillKind{KillKindWeapon, KillKindMelee, KillKindGroundPound, KillKindShoulderBash, KillKindAssassination}
 }
 
 // Vec3 est une position dans le monde du match (unités monde du moteur, sans

@@ -117,7 +117,7 @@ func TestMatchesMissingKillKind_SelectionAndCampaignExclusion(t *testing.T) {
 	kkSeedKill(t, db, "mDone", "x1", 1000, 100, g, "weapon") // déjà backfillé → exclu
 	kkSeedKill(t, db, "mCampaign", "x1", 1000, 100, g, nil)  // Campagne → exclu par variant
 
-	ids, err := matchesMissingKillKind(ctx, db, halo5.TitleSlug, 0)
+	ids, err := matchesForKillKind(ctx, db, halo5.TitleSlug, 0, false)
 	if err != nil {
 		t.Fatalf("select: %v", err)
 	}
@@ -126,6 +126,19 @@ func TestMatchesMissingKillKind_SelectionAndCampaignExclusion(t *testing.T) {
 	}
 	if ids[0] != "mNull2" || ids[1] != "mNull1" { // récents d'abord
 		t.Errorf("ordre=%v, attendu [mNull2 mNull1]", ids)
+	}
+
+	// force=true : le filtre kill_kind NULL est levé → mDone (déjà backfillé) est capté ;
+	// mCampaign reste exclu (game_variant_id Campagne). 3 matchs arena, récents d'abord.
+	idsForce, err := matchesForKillKind(ctx, db, halo5.TitleSlug, 0, true)
+	if err != nil {
+		t.Fatalf("select force: %v", err)
+	}
+	if len(idsForce) != 3 {
+		t.Fatalf("force ids=%v, attendu 3 (mDone inclus, mCampaign exclu)", idsForce)
+	}
+	if idsForce[0] != "mDone" || idsForce[1] != "mNull2" || idsForce[2] != "mNull1" {
+		t.Errorf("force ordre=%v, attendu [mDone mNull2 mNull1]", idsForce)
 	}
 }
 
@@ -172,7 +185,7 @@ func TestRunKillKindBackfill_ReDeriveNewGenerationComplete(t *testing.T) {
 		}, nil
 	}
 
-	stats, err := RunKillKindBackfill(ctx, db, fetch, halo5.TitleSlug, 0, nil)
+	stats, err := RunKillKindBackfill(ctx, db, fetch, halo5.TitleSlug, 0, false, nil)
 	if err != nil {
 		t.Fatalf("run: %v", err)
 	}
@@ -209,7 +222,7 @@ func TestRunKillKindBackfill_ReDeriveNewGenerationComplete(t *testing.T) {
 	}
 
 	// Idempotence : 2e passe → m1 sort de la sélection (kill_kind NOT NULL), rien réécrit.
-	stats2, err := RunKillKindBackfill(ctx, db, fetch, halo5.TitleSlug, 0, nil)
+	stats2, err := RunKillKindBackfill(ctx, db, fetch, halo5.TitleSlug, 0, false, nil)
 	if err != nil {
 		t.Fatalf("run2: %v", err)
 	}
@@ -218,5 +231,41 @@ func TestRunKillKindBackfill_ReDeriveNewGenerationComplete(t *testing.T) {
 	}
 	if n := kkCount(t, db, `SELECT COUNT(*) FROM weapon_kills WHERE match_id='m1'`); n != 10 {
 		t.Errorf("weapon_kills physique m1 après 2e passe = %d, attendu 10 (inchangé)", n)
+	}
+
+	// force=true : m1 ET mDone sont re-sélectionnés MALGRÉ kill_kind NOT NULL → nouvelle
+	// génération. Prouve que force lève le filtre kill_kind NULL et re-dérive un match déjà
+	// backfillé. Le fetch force couvre les deux matchs (mDone n'est plus exclu).
+	fetchForce := func(_ context.Context, matchID string) ([]canonical.MatchEvent, error) {
+		switch matchID {
+		case "m1":
+			return []canonical.MatchEvent{
+				killEvent("JGtm", "Foe", 1000, "100", canonical.KillKindWeapon),
+				killEvent("JGtm", "Foe", 2000, "100", canonical.KillKindMelee),
+				killEvent("JGtm", "Foe", 3000, "200", canonical.KillKindWeapon),
+				killEvent("Friend", "Foe", 1500, "300", canonical.KillKindWeapon),
+				killEvent("Friend", "Foe", 2500, "300", canonical.KillKindShoulderBash),
+			}, nil
+		case "mDone":
+			return []canonical.MatchEvent{
+				killEvent("JGtm", "Foe", 1000, "100", canonical.KillKindAssassination),
+			}, nil
+		}
+		t.Fatalf("fetch force inattendu pour %q", matchID)
+		return nil, nil
+	}
+	statsForce, err := RunKillKindBackfill(ctx, db, fetchForce, halo5.TitleSlug, 0, true, nil)
+	if err != nil {
+		t.Fatalf("run force: %v", err)
+	}
+	if statsForce.Matches != 2 || statsForce.Updated != 2 {
+		t.Fatalf("force stats=%+v, attendu Matches=2 Updated=2 (m1 + mDone re-dérivés)", statsForce)
+	}
+	// m1 : 3 générations physiques (gOld 5 + backfill 5 + force 5 = 15) ; la vue reste à 5.
+	if n := kkCount(t, db, `SELECT COUNT(*) FROM weapon_kills WHERE match_id='m1'`); n != 15 {
+		t.Errorf("weapon_kills physique m1 après force = %d, attendu 15 (append pur)", n)
+	}
+	if n := kkCount(t, db, `SELECT COUNT(*) FROM v_weapon_kills WHERE match_id='m1'`); n != 5 {
+		t.Errorf("v_weapon_kills m1 après force = %d, attendu 5 (dernière génération complète)", n)
 	}
 }
