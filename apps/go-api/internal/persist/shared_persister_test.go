@@ -716,3 +716,63 @@ func TestSharedPersister_WeaponKillKind_RoundTripAndNull(t *testing.T) {
 		t.Errorf("kill_kind Infinite: attendu NULL, got %q", kk.String)
 	}
 }
+
+// TestPersistWeaponKillsNewGeneration_SupersedesWithKillKind — chemin du backfill kill_kind :
+// PersistWeaponKillsNewGeneration ré-insère TOUS les kills d'un couple en NOUVELLE
+// génération (INSERT-only). Prouve : ancienne génération intacte en table physique, la vue
+// v_weapon_kills renvoie la nouvelle génération COMPLÈTE avec kill_kind, aucune perte.
+func TestPersistWeaponKillsNewGeneration_SupersedesWithKillKind(t *testing.T) {
+	db := openSharedTestDB(t)
+	ctx := context.Background()
+	u64Ptr := func(v uint64) *uint64 { return &v }
+
+	// Génération legacy (kill_kind NULL) : 2 kills pour (mX, xA) via le persister normal.
+	p := NewSharedPersister(db)
+	b := NewBatchBuilder("halo_5", "Alice", "xA", "test")
+	b.SetMatch(&domain.MatchRegistryRow{MatchID: "mX", StartTime: time.Now().UTC(), ModeCategory: "PVP", FirstSyncBy: "Alice"})
+	b.AddWeaponKills([]WeaponKillInsert{
+		{MatchID: "mX", XUID: "xA", TimeMS: 1000, WeaponID: u64Ptr(100), Confidence: "native", AttributionPath: "h5_native"},
+		{MatchID: "mX", XUID: "xA", TimeMS: 2000, WeaponID: u64Ptr(100), Confidence: "native", AttributionPath: "h5_native"},
+	})
+	if err := p.Persist(ctx, b.Build()); err != nil {
+		t.Fatalf("seed persist: %v", err)
+	}
+
+	// Backfill : ré-insertion COMPLÈTE du couple (3 kills désormais avec kill_kind) en
+	// nouvelle génération (nextval strictement > gen legacy).
+	if err := PersistWeaponKillsNewGeneration(ctx, db, []WeaponKillInsert{
+		{MatchID: "mX", XUID: "xA", TimeMS: 1000, WeaponID: u64Ptr(100), Confidence: "native", AttributionPath: "h5_native", KillKind: "weapon"},
+		{MatchID: "mX", XUID: "xA", TimeMS: 2000, WeaponID: u64Ptr(100), Confidence: "native", AttributionPath: "h5_native", KillKind: "melee"},
+		{MatchID: "mX", XUID: "xA", TimeMS: 3000, WeaponID: u64Ptr(200), Confidence: "native", AttributionPath: "h5_native", KillKind: "weapon"},
+	}); err != nil {
+		t.Fatalf("PersistWeaponKillsNewGeneration: %v", err)
+	}
+
+	// Table physique : append pur → 2 (legacy) + 3 (backfill) = 5, rien supprimé.
+	var phys int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM weapon_kills WHERE match_id='mX'`).Scan(&phys); err != nil {
+		t.Fatalf("count physique: %v", err)
+	}
+	if phys != 5 {
+		t.Errorf("weapon_kills physique = %d, attendu 5 (2 legacy intacts + 3 backfill)", phys)
+	}
+	// Vue : uniquement la nouvelle génération (3 kills), tous avec kill_kind.
+	var viewRows, kkNull int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM v_weapon_kills WHERE match_id='mX'`).Scan(&viewRows); err != nil {
+		t.Fatalf("count vue: %v", err)
+	}
+	if viewRows != 3 {
+		t.Errorf("v_weapon_kills = %d, attendu 3 (nouvelle génération supersède)", viewRows)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM v_weapon_kills WHERE match_id='mX' AND kill_kind IS NULL`).Scan(&kkNull); err != nil {
+		t.Fatalf("count kill_kind NULL: %v", err)
+	}
+	if kkNull != 0 {
+		t.Errorf("v_weapon_kills kill_kind NULL = %d, attendu 0 (génération legacy supersédée)", kkNull)
+	}
+
+	// Empty rows = no-op (aucune génération allouée, aucune erreur).
+	if err := PersistWeaponKillsNewGeneration(ctx, db, nil); err != nil {
+		t.Fatalf("PersistWeaponKillsNewGeneration(nil): %v", err)
+	}
+}

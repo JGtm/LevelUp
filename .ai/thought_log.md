@@ -1,3 +1,63 @@
+## [2026-07-18] H5 — backfill kill_kind sur l'historique (Phase 2a : re-dérive weapon_kills en nouvelle génération, ART-safe)
+
+**Statut** : Complété (CODE + TESTS ; le RUN live reste une étape opératoire séparée — non exécuté).
+
+**Contexte** : la capture `kill_kind` (Phase 1, commit `c13e7f6bc`) a ajouté la colonne
+mais elle est NULL sur tout l'historique (matchs collectés avant la capture). Phase 2a =
+REMPLIR `kill_kind` sur ces matchs. L'utilisateur a autorisé le backfill ; le découpage du
+donut (« exploitation », Phase 2b) reste hors périmètre.
+
+**Décision technique** :
+- Wrapper persist exporté `persist.PersistWeaponKillsNewGeneration(ctx, db, rows)`
+  (`internal/persist/shared_persister.go`) : ouvre une TX et RÉUTILISE le privé
+  `persistWeaponKills` (allocation `nextval('weapon_kills_generation_seq')` + INSERT
+  porteur de `kill_kind`). INSERT-only, zéro DELETE/UPDATE → ART-safe (ADR 0026/0030).
+- Passe dédiée `livesync.RunKillKindBackfill` + `matchesMissingKillKind`
+  (`internal/games/halo_5/livesync/kill_kind_backfill.go`), calquée sur `RunEventsBackfill`
+  (re-fetch `/events` PAR MATCH, serveur arrêté, best-effort reprenable). Pour chaque
+  match candidat : re-fetch → `ingest.MapKillEvents` (TOUS les kills du match, tous xuids,
+  avec `kill_kind`) → `PersistWeaponKillsNewGeneration` (nouvelle génération complète).
+- CLI `cmd/h5-kill-kind-backfill/main.go` (calqué sur `h5-events-backfill` : token emprunté
+  `LEVELUP_H5_AUTH_AS`, `provisionH5Shared` applique la migration kill_kind AVANT le RW,
+  ouverture RW single-writer).
+
+**PIÈGE APPEND-ONLY (central)** : `v_weapon_kills` ne garde que la génération MAX par
+`(match_id, xuid)`. Ré-insérer un SOUS-ENSEMBLE des kills d'un couple créerait une
+génération incomplète qui SUPPLANTERAIT l'ancienne complète = perte de kills. Anti-perte :
+`MapKillEvents` rend TOUS les kills du match → chaque couple est ré-inséré COMPLET.
+Ordre des générations garanti en prod : la séquence `weapon_kills_generation_seq` a déjà
+dépassé toute génération historique (chaque collecte fait `nextval`), donc `nextval` >
+gen ancienne → la supersede est correcte (les tests seedent l'ancienne gen via `nextval`
+pour reproduire cet ordre).
+
+**Sélection** : matchs dont la génération courante (`v_weapon_kills`) porte `kill_kind
+IS NULL`, hors Campagne via l'exclusion read-side canonique
+(`analysis.SQLExcludeCampaignVariants`, par `game_variant_id` — `match_registry` n'a pas de
+`game_mode`). Idempotent : `h5KillKind` renvoie toujours une valeur non vide (défaut
+`weapon`) → après backfill la génération courante porte `kill_kind` NOT NULL, le match sort
+de la sélection (2e passe = skip). Warzone : aucun discriminant de schéma (non masqué côté
+lecture) ; un match Warzone résiduel re-dérivé reste INSERT-only ART-safe.
+
+**Tests** : `livesync/kill_kind_backfill_test.go` (sélection + exclusion Campagne ;
+re-dérive nouvelle génération complète 2 couples ; invariant append-only : ancienne gen
+intacte en table physique, vue = nouvelle gen complète avec `kill_kind` ; idempotence 2e
+passe) ; `persist/shared_persister_test.go::TestPersistWeaponKillsNewGeneration_SupersedesWithKillKind`
+(round-trip via schéma réel + vue). Garde-rails anti-ART (`sync/no_art_patterns_test.go`,
+`games/halo_infinite/migrations/shared_weapon_kills_appendonly_test.go`) verts → l'ajout
+ne déclenche aucun pattern à risque.
+
+**Volume estimé (shared H5 local, lecture seule)** : ~2691 matchs candidats hors Campagne,
+~23 262 couples `(match,xuid)`, ~267 939 kills à ré-insérer (~268 327 wk physiques totaux ;
+3032 matchs registry). Ordre de grandeur : un run long, à faire serveur arrêté.
+
+**RUN live (opérateur, NON exécuté ici)** : serveur arrêté + token sain, depuis
+`apps/go-api/` : `LEVELUP_REPO_ROOT=<repo> [LEVELUP_H5_AUTH_AS=JGtm] go run ./cmd/h5-kill-kind-backfill [Gamertag-auth] [maxMatches]`
+(conseillé : tester d'abord avec `maxMatches=5`). Reprenable (relancer reprend les matchs
+encore en `kill_kind` NULL).
+
+**Prochaine étape** : Phase 2b (exploitation — découpage du bucket « Spartan » du donut),
+chantier distinct. Aucun changement donut ici.
+
 ## [2026-07-17] H5 — persiste la mécanique de kill (kill_kind) au lieu de la jeter (capture, Phase 1)
 
 **Statut** : Complété.
