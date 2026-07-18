@@ -344,6 +344,62 @@ func TestGetSettings_MediaDeleteSource_Resolved(t *testing.T) {
 	}
 }
 
+// getSettingsWebhookPresent monte un handler GET /settings avec un app_settings.json
+// contenant (ou non) discord_webhook_url, exécute GET /settings et retourne le flag
+// discord_webhook_url_present résolu. storeURL vide ⇒ champ absent du store.
+func getSettingsWebhookPresent(t *testing.T, storeURL string) bool {
+	t.Helper()
+	dir := t.TempDir()
+	cfg := &config.AppConfig{DemoMode: false, RepoRoot: dir}
+	settingsPath := filepath.Join(dir, "app_settings.json")
+	body := `{"discord_notifications_enabled": true}`
+	if storeURL != "" {
+		body = `{"discord_notifications_enabled": true, "discord_webhook_url": "` + storeURL + `"}`
+	}
+	if err := os.WriteFile(settingsPath, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	settingsStore := settings_platform.NewStore(settingsPath)
+	jobStore := jobs.NewStore(filepath.Join(dir, "jobs.json"))
+	h := handlers.NewSettingsHandlerWithIndexer(cfg, settingsStore, jobStore, &mockMediaIndexer{})
+	r := chi.NewRouter()
+	h.Mount(r)
+
+	req := httptest.NewRequest(http.MethodGet, "/settings", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /settings: attendu 200, obtenu %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.SettingsResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("décodage réponse: %v", err)
+	}
+	return resp.DiscordWebhookURLPresent
+}
+
+// TestGetSettings_DiscordWebhookPresent_FromEnv vérifie que le flag exposé reflète la
+// réalité runtime : le webhook fourni UNIQUEMENT par l'env (DISCORD_WEBHOOK_URL) rend
+// discord_webhook_url_present=true, même si app_settings.json ne le contient pas — sinon
+// l'UI affiche « aucun webhook configuré » à tort alors que les notifs partent.
+func TestGetSettings_DiscordWebhookPresent_FromEnv(t *testing.T) {
+	const hook = "https://discord.com/api/webhooks/1/abc"
+
+	t.Setenv("LEVELUP_DISCORD_WEBHOOK_URL", "")
+	t.Setenv("DISCORD_WEBHOOK_URL", "")
+	if got := getSettingsWebhookPresent(t, ""); got {
+		t.Error("ni env ni store : want present=false, got true")
+	}
+	if got := getSettingsWebhookPresent(t, hook); !got {
+		t.Error("store seul : want present=true, got false")
+	}
+
+	t.Setenv("DISCORD_WEBHOOK_URL", hook)
+	if got := getSettingsWebhookPresent(t, ""); !got {
+		t.Error("env DISCORD_WEBHOOK_URL seul : want present=true, got false (bug faux avertissement)")
+	}
+}
+
 // containsCI est un contains insensible à la casse (simple).
 func containsCI(s, sub string) bool {
 	if len(sub) == 0 {

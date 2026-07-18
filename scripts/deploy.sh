@@ -65,6 +65,19 @@ echo "[deploy] Stubs demo OK"
 echo "[deploy] docker compose down..."
 docker compose down --remove-orphans || true
 
+# 2b-bis. Version de l'app pour les notifications "nouvelle version" (in-app app_release
+# + Discord). Le serveur ne notifie que si cfg.AppVersion est un vrai semver (≠ "dev") ;
+# on lui passe le dernier tag atteignable via l'env LEVELUP_APP_VERSION (interpolé par
+# docker-compose). L'anti-spam (major/minor, last_notified_version) est géré côté Go :
+# entre deux tags, la même valeur => aucune re-notification. Fallback "dev" (dépôt sans
+# tag) => notifications gardées OFF, comportement inchangé.
+# --match 'v*.*.*' : ne retenir QUE les tags de release semver (release.yml se
+# déclenche sur ce motif) et ignorer les tags de travail (ex. "Shared-social-fixed").
+git fetch --tags --quiet origin 2>/dev/null || true
+LEVELUP_APP_VERSION="$(git describe --tags --abbrev=0 --match 'v*.*.*' 2>/dev/null || echo dev)"
+export LEVELUP_APP_VERSION
+echo "[deploy] LEVELUP_APP_VERSION=$LEVELUP_APP_VERSION"
+
 # 2c. Rebuilder et redémarrer les services (Dockerfile = build Vite + Go CGo/DuckDB)
 echo "[deploy] docker compose up --build..."
 docker compose up -d --build

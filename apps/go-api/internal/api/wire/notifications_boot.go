@@ -2,7 +2,9 @@
 //
 // Au boot du serveur, on compare cfg.AppVersion avec sync_meta.last_seen_app_version
 // pour chaque joueur connu et émet une notification app_release sur changement.
-// La clé sync_meta est mise à jour seulement si l'émission réussit.
+// La clé sync_meta est mise à jour seulement si l'émission réussit. Le même changement
+// de version déclenche aussi, une seule fois, la notification Discord « nouvelle
+// version » (webhook unique, auto-gardée : cf. NotifyNewVersion).
 package wire
 
 import (
@@ -12,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/notifications"
+	"levelup/go-api/internal/notify"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -33,6 +36,15 @@ func EmitAppReleaseForAllPlayers(
 		// Pas de notification en mode dev (évite le spam au reload).
 		return
 	}
+
+	// Notif Discord « nouvelle version » — UNE seule fois par boot (webhook unique,
+	// pas per-player, contrairement à app_release in-app ci-dessous). Entièrement
+	// auto-gardée en interne : toggle discord_notify_new_version, env
+	// LEVELUP_NOTIFY_VERSIONS=1 (posé en prod, absent en dev/demo), présence webhook,
+	// et anti-spam last_notified_version (patch seul / version déjà notifiée). Best-effort
+	// (jamais de panic ni d'erreur remontée), n'entrave pas l'émission in-app qui suit.
+	notify.NotifyNewVersion(notify.LoadNotifyConfig(cfg.AppSettingsPath), currentVersion)
+
 	players, err := cfg.LoadPlayers()
 	if err != nil {
 		slog.WarnContext(ctx, "app_release: load players", "err", err)
