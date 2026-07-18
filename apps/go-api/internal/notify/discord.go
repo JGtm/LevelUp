@@ -312,13 +312,13 @@ var discordStrings = map[string]map[string]string{
 
 	"discord_bf_lusr":            {"fr": "🏅  {count} LUSR calculé(s)", "en": "🏅  {count} LUSR computed"},
 	"discord_bf_medals":          {"fr": "🥇  {count} médaille(s)", "en": "🥇  {count} medal(s)"},
-	"discord_bf_events":          {"fr": "🎬  {count} event(s) highlight", "en": "🎬  {count} highlight event(s)"},
+	"discord_bf_events":          {"fr": "🎬  {count} temps fort(s)", "en": "🎬  {count} highlight event(s)"},
 	"discord_bf_csr":             {"fr": "📈  {count} CSR récupéré(s)", "en": "📈  {count} CSR fetched"},
 	"discord_bf_sessions":        {"fr": "📅  {count} session(s) recalculée(s)", "en": "📅  {count} session(s) updated"},
 	"discord_bf_citations":       {"fr": "💬  {count} citation(s)", "en": "💬  {count} citation(s)"},
-	"discord_bf_kvp":             {"fr": "⚔️  {count} paire(s) killer-victim", "en": "⚔️  {count} killer-victim pair(s)"},
-	"discord_bf_personal_scores": {"fr": "🎯  {count} personal score(s)", "en": "🎯  {count} personal score(s)"},
-	"discord_bf_perf_scores":     {"fr": "⚡  {count} perf score(s)", "en": "⚡  {count} perf score(s)"},
+	"discord_bf_kvp":             {"fr": "⚔️  {count} paire(s) tueur-victime", "en": "⚔️  {count} killer-victim pair(s)"},
+	"discord_bf_personal_scores": {"fr": "🎯  {count} score(s) perso", "en": "🎯  {count} personal score(s)"},
+	"discord_bf_perf_scores":     {"fr": "⚡  {count} score(s) de perf", "en": "⚡  {count} perf score(s)"},
 	"discord_bf_aliases":         {"fr": "👤  {count} alias(es)", "en": "👤  {count} alias(es)"},
 	"discord_bf_pve":             {"fr": "🤖  {count} stat(s) PvE", "en": "🤖  {count} PvE stat(s)"},
 

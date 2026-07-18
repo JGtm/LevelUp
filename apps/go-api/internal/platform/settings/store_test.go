@@ -211,6 +211,11 @@ func TestToResponse_HidesWebhookURL(t *testing.T) {
 }
 
 func TestToResponse_EmptyWebhookURL(t *testing.T) {
+	// La présence résout désormais env > store : neutraliser l'env pour tester le cas
+	// « ni env ni store » de façon déterministe (sinon un DISCORD_WEBHOOK_URL présent
+	// dans l'environnement du runner ferait basculer le flag).
+	t.Setenv("LEVELUP_DISCORD_WEBHOOK_URL", "")
+	t.Setenv("DISCORD_WEBHOOK_URL", "")
 	cfg := settings.Defaults()
 	cfg.DiscordWebhookURL = ""
 	resp := settings.ToResponse(cfg)

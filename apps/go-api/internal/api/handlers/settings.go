@@ -176,6 +176,8 @@ func (h *SettingsHandler) settingsResponse(cfg *settings_platform.AppSettings) *
 		cfg.MediaDeleteSourceAfterTranscode,
 		h.cfg.IsProduction(),
 	)
+	// Présence webhook Discord : résolue dans settings_platform.ToResponse (env > store,
+	// source unique alignée sur l'envoi réel). Ne pas la ré-évaluer ici.
 	return resp
 }
 

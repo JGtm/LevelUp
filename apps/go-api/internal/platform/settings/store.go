@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 )
 
@@ -425,12 +426,17 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		// Placeholder : nil (*bool auto) → false ici ; le handler GET /settings écrase
 		// ce champ par la valeur RÉSOLUE (config.ResolveMediaDeleteSource). Le *bool
 		// brut du store n'est JAMAIS exposé tel quel dans la réponse (cf. handleGetSettings).
-		MediaDeleteSourceAfterTranscode:     cfg.MediaDeleteSourceAfterTranscode != nil && *cfg.MediaDeleteSourceAfterTranscode,
-		MediaToleranceMinutes:               cfg.MediaBufferMinutes,
-		MediaWatcherEnabled:                 cfg.MediaWatcherEnabled,
-		MediaWatcherDebounceSeconds:         cfg.MediaWatcherDebounceSeconds,
-		DiscordNotificationsEnabled:         cfg.DiscordNotificationsEnabled,
-		DiscordWebhookURLPresent:            cfg.DiscordWebhookURL != "",
+		MediaDeleteSourceAfterTranscode: cfg.MediaDeleteSourceAfterTranscode != nil && *cfg.MediaDeleteSourceAfterTranscode,
+		MediaToleranceMinutes:           cfg.MediaBufferMinutes,
+		MediaWatcherEnabled:             cfg.MediaWatcherEnabled,
+		MediaWatcherDebounceSeconds:     cfg.MediaWatcherDebounceSeconds,
+		DiscordNotificationsEnabled:     cfg.DiscordNotificationsEnabled,
+		// Source UNIQUE de la présence webhook : reflète la réalité de l'envoi, qui
+		// résout env > store (config.DiscordWebhookURLFromEnv puis discord_webhook_url,
+		// cf. notify.notifyConfigFromMap). Un webhook fourni par la seule variable
+		// d'env (LEVELUP_DISCORD_WEBHOOK_URL / DISCORD_WEBHOOK_URL) est donc « présent »
+		// et l'UI n'affiche plus « aucun webhook » à tort. Ne PAS ré-évaluer ailleurs.
+		DiscordWebhookURLPresent:            cfg.DiscordWebhookURL != "" || config.DiscordWebhookURLFromEnv() != "",
 		DiscordNotifySync:                   cfg.DiscordNotifySync,
 		DiscordNotifyBackfill:               cfg.DiscordNotifyBackfill,
 		DiscordNotifyNewVersion:             cfg.DiscordNotifyNewVersion,

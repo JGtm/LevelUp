@@ -1,3 +1,58 @@
+## [2026-07-19] Notifs — i18n FR notifs/Discord, toggle version, fix « solide » présence webhook (branche fix/notif-i18n-fr-webhook-present)
+
+**Statut** : Complété. NON committé (superviseur committe ; push main = deploy prod → après revue utilisateur).
+Déclencheur : retours utilisateur sur la page de réglages notifications (anglais résiduel, sens des toggles,
+faux avertissement webhook).
+
+**Décisions techniques principales** :
+- BUG WEBHOOK (le vrai correctif fonctionnel) : le flag `discord_webhook_url_present` exposé par
+  `GET /settings` ne voyait que le champ store `app_settings.json::discord_webhook_url`, alors que
+  l'ENVOI réel résout env > store (`config.DiscordWebhookURLFromEnv` puis le champ, cf.
+  `notify.notifyConfigFromMap`). Un webhook fourni par la seule env `DISCORD_WEBHOOK_URL` (cas
+  utilisateur) → notifs qui partent MAIS UI « aucun webhook configuré ». Fix rendu « solide » = SOURCE
+  UNIQUE : `settings.ToResponse` calcule désormais `cfg.DiscordWebhookURL != "" ||
+  config.DiscordWebhookURLFromEnv() != ""` (import config ajouté, cycle vérifié absent via
+  `go list -deps`). Le patch temporaire posé dans le handler `settingsResponse` a été RETIRÉ (pas de
+  2e copie de la logique). Test `TestToResponse_EmptyWebhookURL` rendu déterministe (t.Setenv vide) +
+  nouveau `TestGetSettings_DiscordWebhookPresent_FromEnv` (env seule → présent).
+- i18n FR notifs (`features/notifications/i18n.ts`, bloc FR seul, clés + EN inchangés → parité typée
+  préservée) : battle pass → « pass saisonnier » ; commendation → « citation », masterisé → « maîtrisé »
+  (décision projet FR=Citations) ; milestone → « jalon » ; tier → « palier » (sub-tier → sous-palier) ;
+  lifetime → « cumul de carrière » ; rating → « score » ; « dernière sync » → « dernière synchronisation ».
+- μ TrueSkill retiré du template `lusr_tier_approach.body` (FR+EN) : n'exposait `{current_mu}`/
+  `{next_tier_mu}` bruts (cf. règle « afficher la métrique connue du user, pas le μ »).
+- Toggle « Notifier les nouvelles versions » AJOUTÉ à la carte Discord (`discord_notify_new_version`
+  existait déjà côté API/store mais n'était pas exposé). NB produit : l'envoi Discord version reste
+  gaté par l'env `LEVELUP_NOTIFY_VERSIONS=1` + la commande `levelup notify-version` au déploiement.
+- Reformulation label ami : « Notifier pour les amis (ajout + sessions reclassées) » → « Notifier les
+  ajouts d'amis et le reclassement des parties en escouade ».
+- i18n FR payload Discord backend (`internal/notify/discord.go`) : « personal/perf score » → « score
+  perso / score de perf », « killer-victim » → « tueur-victime », « event highlight » → « temps fort ».
+  « Sync delta/complète » et « Backfill » conservés (abréviations acceptées).
+- NOTIF RELEASE DISCORD — câblage manquant (découvert en creusant « vérifier le runbook ») :
+  `NotifyNewVersion` n'était atteignable QUE par la sous-commande CLI `notify-version`, jamais appelée
+  au déploiement (`deploy.yml` → `deploy.sh` fait `docker compose up --build`, sans elle). Branché au
+  BOOT dans `wire.EmitAppReleaseForAllPlayers` (même détection de changement de version que l'in-app
+  app_release, après la garde anti-dev, UNE fois — webhook unique) ; `NotifyNewVersion` reste
+  auto-gardé (toggle + `LEVELUP_NOTIFY_VERSIONS=1` + webhook + anti-spam last_notified_version). Import
+  wire→notify sans cycle (`go list -deps`).
+- CAUSE RACINE PLUS PROFONDE : en prod `cfg.AppVersion` = "dev" → la garde anti-dev bloquait AUSSI
+  l'in-app app_release existante. `LEVELUP_APP_VERSION` n'était jamais fourni au conteneur (`build: .`
+  sans arg, absent de `.env.local.example` ; `release.yml`/tag ne fait que builder des artefacts, ne
+  déploie pas la prod). Fix pipeline : `docker-compose.yml` ajoute `LEVELUP_APP_VERSION=${LEVELUP_APP_VERSION:-dev}`
+  au service `levelup` ; `scripts/deploy.sh` exporte `git describe --tags --abbrev=0 --match 'v*.*.*'`
+  (dernier tag release, ignore les tags de travail ; fallback "dev" = comportement inchangé). Politique
+  retenue : notifier sur bump de tag semver (pas par commit/SHA — casserait l'anti-spam major/minor).
+  1er déploiement avec vraie version : init silencieux (last=="") → pas de rafale rétroactive.
+  ⚠️ TOUCHE LE PIPELINE DE DÉPLOIEMENT PROD (deploy.sh + compose) — à valider par l'utilisateur au merge.
+
+**Résultats observés** : `go build ./...` OK, `go vet` OK, tests notify+settings+handlers verts (dont
+nouveau test webhook) ; `tsc -b` (cache purgé) OK, eslint 0 erreur, vitest notifs+settings 82/82.
+Diff ne touche pas persist/sync/migration → pas de `-tags=integration`.
+
+**Prochaine étape** : revue utilisateur des libellés (choix milestone→Jalon / tier→Palier /
+commendation→citation validés en amont) ; commit + merge par le superviseur (deploy prod).
+
 ## [2026-07-18] Explorer briefing V6 — décile team_mmr, triptyques contrastés, tooltips factuels, largeurs socle, Classement pertinent — CLÔTURE (branche feat/explorer-briefing-compact)
 
 **Statut** : Complété (Phases 0-4 CLOSES, toutes cases statuées). NON committé (superviseur committe

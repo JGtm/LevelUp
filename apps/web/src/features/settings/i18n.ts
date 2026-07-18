@@ -67,6 +67,7 @@ export interface SettingsText {
   discordEnabled: string
   discordNotifySync: string
   discordNotifyBackfill: string
+  discordNotifyNewVersion: string
   discordNotifyFriends: string
   discordNoWebhook: string
 
@@ -330,7 +331,8 @@ const FR_TEXT: SettingsText = {
   discordEnabled: 'Activer les notifications',
   discordNotifySync: 'Notifier à la synchronisation',
   discordNotifyBackfill: 'Notifier au backfill',
-  discordNotifyFriends: 'Notifier pour les amis (ajout + sessions reclassées)',
+  discordNotifyNewVersion: 'Notifier les nouvelles versions',
+  discordNotifyFriends: 'Notifier les ajouts d\'amis et le reclassement des parties en escouade',
   discordNoWebhook:
     "Les notifications Discord sont activées mais aucun webhook URL n'est configuré.",
 
@@ -618,7 +620,8 @@ const EN_TEXT: SettingsText = {
   discordEnabled: 'Enable notifications',
   discordNotifySync: 'Notify on sync',
   discordNotifyBackfill: 'Notify on backfill',
-  discordNotifyFriends: 'Notify on friend events (add + reclassified sessions)',
+  discordNotifyNewVersion: 'Notify on new version',
+  discordNotifyFriends: 'Notify on friend adds and squad re-classification of shared matches',
   discordNoWebhook:
     'Discord notifications are enabled but no webhook URL is configured.',
 

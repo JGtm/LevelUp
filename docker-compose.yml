@@ -18,6 +18,11 @@ services:
       - LEVELUP_LOGS_DIR=/app/data/logs
       # Opt-in : notif Discord lors d'un nouveau déploiement (vX.Y). Absent sur demo/local.
       - LEVELUP_NOTIFY_VERSIONS=1
+      # Version de l'app pour les notifications "nouvelle version" (in-app app_release +
+      # Discord). Interpolée depuis le shell de `docker compose up` : scripts/deploy.sh
+      # exporte le dernier tag semver atteignable. Défaut "dev" (build local/demo, aucun
+      # tag) => notifications de version gardées OFF (cf. wire.EmitAppReleaseForAllPlayers).
+      - LEVELUP_APP_VERSION=${LEVELUP_APP_VERSION:-dev}
     # Secrets et tokens API (sync Halo, Discord, Tailscale)
     # Créer .env.local depuis .env.local.example avant le premier `docker compose up`.
     # Si absent, le dashboard fonctionne en lecture seule (pas de sync API).
