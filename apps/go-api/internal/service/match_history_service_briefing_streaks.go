@@ -32,27 +32,18 @@ func buildBriefingStreaks(scope []domain.MatchHistoryRawRow) *domain.ExplorerBri
 	sort.SliceStable(dated, func(i, j int) bool {
 		return dated[i].StartTime.Before(*dated[j].StartTime)
 	})
+	// Plus longue série d'outcome consécutif via le helper canonique (P-9,
+	// rompue par TOUT autre outcome). L'index de départ n'est pas utilisé ici.
+	runOf := func(want int) int {
+		n, _ := analysis.LongestRun(dated, func(r domain.MatchHistoryRawRow) bool {
+			return r.Outcome == want
+		})
+		return n
+	}
 	return &domain.ExplorerBriefingStreaks{
-		BestWinStreak:   longestOutcomeRun(dated, domain.OutcomeWin),
-		WorstLossStreak: longestOutcomeRun(dated, domain.OutcomeLoss),
+		BestWinStreak:   runOf(domain.OutcomeWin),
+		WorstLossStreak: runOf(domain.OutcomeLoss),
 	}
-}
-
-// longestOutcomeRun retourne la plus longue série de rows consécutives (dans
-// l'ordre fourni) dont l'outcome vaut want. Rompue par TOUT autre outcome (P-9).
-func longestOutcomeRun(rows []domain.MatchHistoryRawRow, want int) int {
-	best, cur := 0, 0
-	for _, r := range rows {
-		if r.Outcome == want {
-			cur++
-			if cur > best {
-				best = cur
-			}
-		} else {
-			cur = 0
-		}
-	}
-	return best
 }
 
 // buildBriefingDominance compte les DominanceFlag 1..5 du scope (P-9). Retourne

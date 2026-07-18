@@ -70,6 +70,54 @@ func TestSetDefaultYes(t *testing.T) {
 	}
 }
 
+func TestForceCollapseHLSAudioTree(t *testing.T) {
+	master := strings.Join([]string{
+		"#EXTM3U",
+		`#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aud",NAME="game",DEFAULT=NO,URI="stream_game.m3u8"`,
+		`#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aud",NAME="voices",DEFAULT=NO,URI="stream_voices.m3u8"`,
+		`#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aud",NAME="full",DEFAULT=YES,URI="stream_full.m3u8"`,
+		`#EXT-X-STREAM-INF:BANDWIDTH=211200,AUDIO="aud"`,
+		"stream_0.m3u8",
+	}, "\n")
+
+	// Dry-run : rapporte le collapse sans écrire (master intact).
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "master.m3u8"), []byte(master), 0o644); err != nil {
+		t.Fatalf("écriture master: %v", err)
+	}
+	res, err := ForceCollapseHLSAudioTree(dir, true)
+	if err != nil || !res.Collapsed {
+		t.Fatalf("dry-run : res=%+v err=%v, want Collapsed", res, err)
+	}
+	if n := strings.Count(readFile(t, filepath.Join(dir, "master.m3u8")), "TYPE=AUDIO"); n != 3 {
+		t.Errorf("dry-run a modifié le master : %d TYPE=AUDIO, want 3", n)
+	}
+
+	// Écriture réelle : ne reste que la rendition game (DEFAULT=YES), SANS corrélation.
+	res, err = ForceCollapseHLSAudioTree(dir, false)
+	if err != nil || !res.Collapsed {
+		t.Fatalf("collapse forcé : res=%+v err=%v, want Collapsed", res, err)
+	}
+	got := readFile(t, filepath.Join(dir, "master.m3u8"))
+	if n := strings.Count(got, "TYPE=AUDIO"); n != 1 {
+		t.Errorf("après collapse forcé : %d TYPE=AUDIO, want 1\n%s", n, got)
+	}
+	if !strings.Contains(got, `NAME="game",DEFAULT=YES`) {
+		t.Errorf("game/DEFAULT=YES manquant\n%s", got)
+	}
+
+	// Sans rendition game : skip motivé, pas d'erreur.
+	dir2 := t.TempDir()
+	noGame := strings.ReplaceAll(master, "game", "a0") // slug dérivé de l'URI stream_<slug>.m3u8
+	if err := os.WriteFile(filepath.Join(dir2, "master.m3u8"), []byte(noGame), 0o644); err != nil {
+		t.Fatalf("écriture master: %v", err)
+	}
+	res, err = ForceCollapseHLSAudioTree(dir2, false)
+	if err != nil || res.Collapsed || res.Skipped == "" {
+		t.Errorf("sans game : res=%+v err=%v, want skip motivé", res, err)
+	}
+}
+
 // --- Intégration (nécessite ffmpeg + ffprobe) ---
 
 func TestCollapseRedundantHLSAudio_Integration(t *testing.T) {

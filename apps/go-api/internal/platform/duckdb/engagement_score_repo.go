@@ -33,6 +33,15 @@ import (
 // EngagementScoreRepo implemente port.EngagementScoreRepository.
 type EngagementScoreRepo struct {
 	pdb *PlayerDB
+
+	// responseBinsExists memoize le check d'existence de engagement_response_bins
+	// (scan information_schema) le temps de vie du repo (cree par requete via
+	// NewEngagementScoreRepo). Sans cache, LoadResponseBins scannait
+	// information_schema A CHAQUE appel → ~1 scan par match dans GetTimeseries
+	// (E1 revue 2026-07). Le schema d'une DB deja ouverte ne change pas sous ce
+	// handle (mono-writer + ensure additif au boot, lot A4/C) : un cache par
+	// handle est sur. Non concurrent : repo utilise en sequentiel par le service.
+	responseBinsExists *bool
 }
 
 // NewEngagementScoreRepo cree un repo lie a un PlayerDB.
@@ -199,7 +208,9 @@ func (r *EngagementScoreRepo) SaveEngagementScore(
 		}
 	}
 
-	if _, err := r.pdb.Player.Exec(ctx, q, args...); err != nil {
+	// E5 (revue 2026-07) : ExecRecovered (Reopen+retry) — écriture player-DB tolérant
+	// un Reopen concurrent (« database is closed »), comme les lectures du sweep.
+	if _, err := r.pdb.Player.ExecRecovered(ctx, q, args...); err != nil {
 		return fmt.Errorf("EngagementScoreRepo.SaveEngagementScore: %w", err)
 	}
 	return nil

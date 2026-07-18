@@ -18,9 +18,9 @@
  * `GET /api/v1/feedback/search-issues?q=...` qui proxy l'appel via un PAT
  * readonly stocké côté Go API.
  */
-import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query/keys'
+import { useDebounced } from '@/lib/hooks/useDebounced'
 import { buildSearchIssuesUrl } from './buildIssueUrl'
 import { log } from './_logger'
 
@@ -90,13 +90,4 @@ async function fetchSimilarIssues(title: string): Promise<SimilarIssueRef[]> {
     title: it.title,
     url: it.html_url,
   }))
-}
-
-function useDebounced<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value)
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delay)
-    return () => clearTimeout(id)
-  }, [value, delay])
-  return debounced
 }

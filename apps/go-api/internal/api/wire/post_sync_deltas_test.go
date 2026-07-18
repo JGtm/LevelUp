@@ -82,11 +82,11 @@ func TestThresholdCrossed_LevelAccuracy(t *testing.T) {
 func TestEmitPostSyncDeltas_NilGuards(t *testing.T) {
 	em := &recordingEmitter{}
 	// nil emitter
-	EmitPostSyncDeltas(context.Background(), nil, "p1", &PlayerSnapshot{}, &PlayerSnapshot{}, nil)
+	EmitPostSyncDeltas(context.Background(), nil, "p1", &PlayerSnapshot{}, &PlayerSnapshot{}, nil, PostSyncDeltaOptions{})
 	// nil before
-	EmitPostSyncDeltas(context.Background(), em, "p1", nil, &PlayerSnapshot{}, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", nil, &PlayerSnapshot{}, nil, PostSyncDeltaOptions{})
 	// nil after
-	EmitPostSyncDeltas(context.Background(), em, "p1", &PlayerSnapshot{}, nil, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", &PlayerSnapshot{}, nil, nil, PostSyncDeltaOptions{})
 	if len(em.emitted) != 0 {
 		t.Errorf("expected no emits with nil args, got %d", len(em.emitted))
 	}
@@ -101,7 +101,7 @@ func TestEmitPostSyncDeltas_NoChange_NoEmit(t *testing.T) {
 		KDRatio:            1.20,
 		Winrate:            0.55,
 	}
-	EmitPostSyncDeltas(context.Background(), em, "p1", snap, snap, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", snap, snap, nil, PostSyncDeltaOptions{})
 	if len(em.emitted) != 0 {
 		t.Errorf("expected 0 emits when snapshots equal, got %d", len(em.emitted))
 	}
@@ -111,7 +111,7 @@ func TestEmitPostSyncDeltas_CareerRank(t *testing.T) {
 	em := &recordingEmitter{}
 	before := &PlayerSnapshot{CurrentRank: 5, CurrentRankName: "Hero"}
 	after := &PlayerSnapshot{CurrentRank: 6, CurrentRankName: "Onyx"}
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	if !hasCategory(em.emitted, notifications.CategoryCareerRank) {
 		t.Error("expected career_rank emit when rank up")
 	}
@@ -125,7 +125,7 @@ func TestEmitPostSyncDeltas_ObjectiveCompleted_AggregatedDelta(t *testing.T) {
 	em := &recordingEmitter{}
 	before := &PlayerSnapshot{PersonalAwardCount: 10}
 	after := &PlayerSnapshot{PersonalAwardCount: 13}
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	// B1/DP2 : SEUL objective_completed est émis ; objective_assigned supprimé.
 	if !hasCategory(em.emitted, notifications.CategoryObjectiveCompleted) {
 		t.Error("expected objective_completed")
@@ -155,7 +155,7 @@ func TestPostSyncNeverEmitsObjectiveAssigned(t *testing.T) {
 		SkillTierByPlaylist: map[string]string{"ranked-arena": "csr|Onyx|0"},
 		KDRatio:             1.2, Winrate: 0.6,
 	}
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	if hasCategory(em.emitted, notifications.CategoryObjectiveAssigned) {
 		t.Error("garde-rail B3 : objective_assigned ré-émise (DP2 violé)")
 	}
@@ -165,7 +165,7 @@ func TestEmitPostSyncDeltas_ChallengeCompleted_AndAdded(t *testing.T) {
 	em := &recordingEmitter{}
 	before := &PlayerSnapshot{ChallengeCompletedCount: 1, ChallengePathsCount: 5}
 	after := &PlayerSnapshot{ChallengeCompletedCount: 4, ChallengePathsCount: 7}
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	if !hasCategory(em.emitted, notifications.CategoryChallengeCompleted) {
 		t.Error("expected challenge_completed (now wired on ChallengeCompletedCount)")
 	}
@@ -180,7 +180,7 @@ func TestEmitPostSyncDeltas_CitationsCountAloneDoesNotEmitChallenge(t *testing.T
 	em := &recordingEmitter{}
 	before := &PlayerSnapshot{CitationsCount: 1}
 	after := &PlayerSnapshot{CitationsCount: 8}
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	if hasCategory(em.emitted, notifications.CategoryChallengeCompleted) {
 		t.Error("CitationsCount diff must no longer emit challenge_completed")
 	}
@@ -192,7 +192,7 @@ func TestEmitPostSyncDeltas_CitationTierAndMastery(t *testing.T) {
 	em := &recordingEmitter{}
 	before := &PlayerSnapshot{CitationTotalEarnedTiers: 10, CitationMasteryCount: 2}
 	after := &PlayerSnapshot{CitationTotalEarnedTiers: 13, CitationMasteryCount: 4}
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	if !hasCategory(em.emitted, notifications.CategoryCitationTier) {
 		t.Error("expected citation_tier")
 	}
@@ -206,7 +206,7 @@ func TestEmitPostSyncDeltas_BattlepassCompleted(t *testing.T) {
 	em := &recordingEmitter{}
 	before := &PlayerSnapshot{BattlepassCompletedTracks: 1}
 	after := &PlayerSnapshot{BattlepassCompletedTracks: 2}
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	if !hasCategory(em.emitted, notifications.CategoryBattlepassCompleted) {
 		t.Error("expected battlepass_completed")
 	}
@@ -229,7 +229,7 @@ func TestEmitPostSyncDeltas_SkillTier(t *testing.T) {
 			"social-slayer":  "lusr|Onyx Pro|0", // nouveau → emit
 		},
 	}
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	count := countCategory(em.emitted, notifications.CategorySkillTier)
 	if count != 2 {
 		t.Errorf("expected 2 skill_tier emits (1 promoted + 1 new playlist), got %d", count)
@@ -369,7 +369,7 @@ func TestEmitPostSyncDeltas_ThresholdCrossed_KDRatio(t *testing.T) {
 	em := &recordingEmitter{}
 	before := &PlayerSnapshot{KDRatio: 0.99, Winrate: 0.40}
 	after := &PlayerSnapshot{KDRatio: 1.04, Winrate: 0.43}
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	if !hasCategory(em.emitted, notifications.CategoryThresholdCrossed) {
 		t.Error("expected threshold_crossed (KD up)")
 	}
@@ -384,7 +384,7 @@ func TestEmitPostSyncDeltas_ThresholdCrossed_NoEmitOnDescent(t *testing.T) {
 	em := &recordingEmitter{}
 	before := &PlayerSnapshot{KDRatio: 1.10, Winrate: 0.55}
 	after := &PlayerSnapshot{KDRatio: 0.99, Winrate: 0.49}
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	if hasCategory(em.emitted, notifications.CategoryThresholdCrossed) {
 		t.Error("threshold_crossed should NOT emit on descent")
 	}
@@ -395,7 +395,7 @@ func TestEmitPostSyncDeltas_PersonalRecord_SkippedWithoutPDB(t *testing.T) {
 	before := &PlayerSnapshot{BestKDA: 2.0}
 	after := &PlayerSnapshot{BestKDA: 4.5, BestKDAMatchID: "abc"}
 	// pdb nil → personal_record skip
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	if hasCategory(em.emitted, notifications.CategoryPersonalRecord) {
 		t.Error("personal_record should be skipped when pdb=nil")
 	}
@@ -508,7 +508,7 @@ func TestEmitPostSyncDeltas_AllTargetRoutesValid(t *testing.T) {
 		Winrate:                   0.60,                                            // → threshold_crossed (winrate)
 		BestKDA:                   5.5,                                             // → personal_record (best_kda)
 	}
-	EmitPostSyncDeltas(context.Background(), em, "test-player", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "test-player", before, after, nil, PostSyncDeltaOptions{})
 
 	if len(em.emitted) == 0 {
 		t.Fatalf("expected at least one emit for the wide delta")
@@ -528,7 +528,7 @@ func TestEmitPostSyncDeltas_NoFantomRoutes(t *testing.T) {
 	em := &recordingEmitter{}
 	before := &PlayerSnapshot{CitationsCount: 0, ChallengePathsCount: 0}
 	after := &PlayerSnapshot{CitationsCount: 5, ChallengePathsCount: 4}
-	EmitPostSyncDeltas(context.Background(), em, "test-player", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "test-player", before, after, nil, PostSyncDeltaOptions{})
 
 	fantomRoutes := []string{
 		"/players/test-player/defis",
@@ -560,7 +560,7 @@ func TestEmitPostSyncDeltas_ColdStart_SuppressesAll(t *testing.T) {
 		SkillTierByPlaylist:       map[string]string{"ranked-arena": "csr|Onyx|0"},
 		KDRatio:                   1.5,
 	}
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	if len(em.emitted) != 0 {
 		t.Errorf("cold-start doit supprimer toutes les émissions, got %d", len(em.emitted))
 	}
@@ -571,7 +571,7 @@ func TestEmitPostSyncDeltas_ImplausibleDelta_Suppressed(t *testing.T) {
 	em := &recordingEmitter{}
 	before := &PlayerSnapshot{PersonalAwardCount: 5, ChallengePathsCount: 3}
 	after := &PlayerSnapshot{PersonalAwardCount: 30, ChallengePathsCount: 5} // PSA +25 (>20), paths +2
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	if hasCategory(em.emitted, notifications.CategoryObjectiveCompleted) {
 		t.Error("delta PSA=25 (>cap) doit être supprimé")
 	}
@@ -585,7 +585,7 @@ func TestEmitPostSyncDeltas_PlausibleDelta_Emitted(t *testing.T) {
 	em := &recordingEmitter{}
 	before := &PlayerSnapshot{PersonalAwardCount: 10}
 	after := &PlayerSnapshot{PersonalAwardCount: 15}
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	if !hasCategory(em.emitted, notifications.CategoryObjectiveCompleted) {
 		t.Error("delta PSA=5 (<cap) doit être émis")
 	}
@@ -597,7 +597,7 @@ func TestEmitPostSyncDeltas_CareerRank_PreviousZero_Suppressed(t *testing.T) {
 	// PersonalAwardCount non nul → snapshot non froid, on isole la garde career_rank.
 	before := &PlayerSnapshot{CurrentRank: 0, PersonalAwardCount: 5}
 	after := &PlayerSnapshot{CurrentRank: 5, PersonalAwardCount: 5, CurrentRankName: "Onyx"}
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	if hasCategory(em.emitted, notifications.CategoryCareerRank) {
 		t.Error("career_rank previous=0 doit être supprimé")
 	}
@@ -608,7 +608,7 @@ func TestEmitPostSyncDeltas_CareerRank_RealRankUp_Emitted(t *testing.T) {
 	em := &recordingEmitter{}
 	before := &PlayerSnapshot{CurrentRank: 190}
 	after := &PlayerSnapshot{CurrentRank: 192, CurrentRankName: "Onyx"}
-	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil, PostSyncDeltaOptions{})
 	if !hasCategory(em.emitted, notifications.CategoryCareerRank) {
 		t.Error("career_rank 190→192 doit être émis")
 	}
@@ -622,7 +622,7 @@ func TestEmitPostSyncDeltas_BothCold_NoEmitNoWarn(t *testing.T) {
 	defer slog.SetDefault(prev)
 
 	em := &recordingEmitter{}
-	EmitPostSyncDeltas(context.Background(), em, "p1", &PlayerSnapshot{}, &PlayerSnapshot{}, nil)
+	EmitPostSyncDeltas(context.Background(), em, "p1", &PlayerSnapshot{}, &PlayerSnapshot{}, nil, PostSyncDeltaOptions{})
 	if len(em.emitted) != 0 {
 		t.Errorf("before+after froids → 0 émission, got %d", len(em.emitted))
 	}

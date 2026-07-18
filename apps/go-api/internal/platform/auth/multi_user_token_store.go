@@ -45,6 +45,13 @@ type UserTokens struct {
 	OAuthExpiresAt    time.Time `json:"oauth_expires_at,omitempty"`
 	OAuthRefreshToken string    `json:"oauth_refresh_token,omitempty"`
 	MSALCacheJSON     string    `json:"msal_cache_json,omitempty"`
+	// TokenClientFamily : famille du CLIENT OAuth qui a émis le token (provenance,
+	// AU4/F12). Détermine le préfixe RpsTicket de l'échange XBL user-token
+	// (TokenFamilyAzure → "d=", TokenFamilyXboxNative → "t="). Apprise et posée à
+	// l'acquisition/refresh (ExchangeRefreshTokenWithRotation sait quel client a
+	// répondu). Vide = provenance inconnue (entrées antérieures à F12) → l'échange
+	// retombe sur le retry aveugle d=→t= (migration douce).
+	TokenClientFamily string    `json:"token_client_family,omitempty"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
 
@@ -64,6 +71,15 @@ type UserTokens struct {
 	LastAuthError      string    `json:"last_auth_error,omitempty"`
 	LastAuthErrorAt    time.Time `json:"last_auth_error_at,omitempty"`
 }
+
+// Familles de client OAuth (provenance du token, AU4/F12). Déterminent le préfixe
+// RpsTicket de l'échange XBL user-token.
+const (
+	// TokenFamilyAzure : app Azure (MSAL, SSO web, refresh v2) → RpsTicket "d=".
+	TokenFamilyAzure = "azure"
+	// TokenFamilyXboxNative : client Xbox natif (SISU device-flow, refresh MSA) → "t=".
+	TokenFamilyXboxNative = "xbox_native"
+)
 
 // IsXSTSValid retourne true si le XSTS est encore valide (avec marge).
 func (u *UserTokens) IsXSTSValid(margin time.Duration) bool {

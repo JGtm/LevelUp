@@ -106,12 +106,18 @@ async function request<T>(
   options?: {
     body?: unknown
     headers?: Record<string, string>
+    /**
+     * `keepalive` fetch : la requête survit à la fermeture / au rechargement de
+     * l'onglet (flush best-effort au unload). Voir `api.postKeepalive`.
+     */
+    keepalive?: boolean
   },
 ): Promise<T> {
   const url = `${BASE_URL}${path}`
   const response = await fetch(url, {
     method,
     credentials: 'include', // cookies httpOnly (session)
+    keepalive: options?.keepalive,
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -156,6 +162,15 @@ export const api = {
 
   post: <T>(path: string, body?: unknown, headers?: Record<string, string>) =>
     request<T>('POST', path, { body, headers }),
+
+  /**
+   * POST « keepalive » : la requête survit à la fermeture / au rechargement de
+   * l'onglet (fetch `keepalive`). MÊME client que `post` (URL, headers titre /
+   * locale, credentials, mapping d'erreurs) — aucune duplication. Usage : flush
+   * best-effort déclenché sur `visibilitychange`/`pagehide` (ADR/plan E, W5).
+   */
+  postKeepalive: <T>(path: string, body?: unknown, headers?: Record<string, string>) =>
+    request<T>('POST', path, { body, headers, keepalive: true }),
 
   patch: <T>(path: string, body?: unknown, headers?: Record<string, string>) =>
     request<T>('PATCH', path, { body, headers }),

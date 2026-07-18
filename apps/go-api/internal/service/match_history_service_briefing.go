@@ -443,7 +443,10 @@ func rawOutcomeToCanonical(code int) canonical.Outcome {
 	return ""
 }
 
-// coalesceStr retourne le premier pointeur non nil / non vide, "" sinon.
+// coalesceStr retourne le premier pointeur non nil / non vide, "" sinon. Unique
+// helper de coalescence *string→string du package service (l'ancien `coalesce`
+// 2-args a été fusionné ici — résultats identiques ; F4, revue 2026-07-17).
+// Garde-rail : internal/archlint/no_local_str_coalesce_test.go.
 func coalesceStr(ptrs ...*string) string {
 	for _, p := range ptrs {
 		if p != nil && *p != "" {

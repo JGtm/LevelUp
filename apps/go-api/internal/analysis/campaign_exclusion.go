@@ -68,7 +68,19 @@ func CampaignExcludedVariantIDs(titleSlug string) []string {
 // sont doublées par prudence (défense en profondeur) bien que les GUID n'en
 // contiennent pas.
 func SQLExcludeCampaignVariants(titleSlug, alias string) string {
-	ids := campaignExcludedVariantIDs[titleSlug]
+	list := quotedIDList(campaignExcludedVariantIDs[titleSlug])
+	if list == "" {
+		return ""
+	}
+	return fmt.Sprintf(" AND COALESCE(%s.game_variant_id, '') NOT IN (%s)", alias, list)
+}
+
+// quotedIDList quote chaque id en littéral SQL (quotes internes doublées — défense
+// en profondeur, les GUID n'en contiennent pas) et les joint par ','. Retourne ""
+// si la liste est vide. UNIQUE point de quoting du fichier : les ids proviennent
+// EXCLUSIVEMENT de constantes compile-time (campaignExcludedVariantIDs) → aucune
+// surface d'injection.
+func quotedIDList(ids []string) string {
 	if len(ids) == 0 {
 		return ""
 	}
@@ -76,8 +88,21 @@ func SQLExcludeCampaignVariants(titleSlug, alias string) string {
 	for i, id := range ids {
 		quoted[i] = "'" + strings.ReplaceAll(id, "'", "''") + "'"
 	}
-	return fmt.Sprintf(" AND COALESCE(%s.game_variant_id, '') NOT IN (%s)",
-		alias, strings.Join(quoted, ","))
+	return strings.Join(quoted, ",")
+}
+
+// sqlExcludeByMatchIDSubquery construit la clause SOUS-REQUÊTE d'exclusion par
+// match_id pour un jeu de game_variant Campagne, ou "" si ids est vide. Forme
+// PARTAGÉE par SQLExcludeCampaignByMatchID (title-aware) et
+// SQLExcludeAllCampaignByMatchID (title-agnostic) — même SQL à la source des ids près.
+func sqlExcludeByMatchIDSubquery(matchIDCol string, ids []string) string {
+	list := quotedIDList(ids)
+	if list == "" {
+		return ""
+	}
+	return fmt.Sprintf(
+		" AND %s NOT IN (SELECT match_id FROM match_registry WHERE COALESCE(game_variant_id, '') IN (%s))",
+		matchIDCol, list)
 }
 
 // SQLExcludeCampaignByMatchID retourne un fragment SQL prêt à concaténer dans un
@@ -94,17 +119,7 @@ func SQLExcludeCampaignVariants(titleSlug, alias string) string {
 // Mêmes garanties que SQLExcludeCampaignVariants : GUID littéraux (source unique,
 // aucun placeholder / arg), title-agnostic (no-op Infinite).
 func SQLExcludeCampaignByMatchID(titleSlug, matchIDCol string) string {
-	ids := campaignExcludedVariantIDs[titleSlug]
-	if len(ids) == 0 {
-		return ""
-	}
-	quoted := make([]string, len(ids))
-	for i, id := range ids {
-		quoted[i] = "'" + strings.ReplaceAll(id, "'", "''") + "'"
-	}
-	return fmt.Sprintf(
-		" AND %s NOT IN (SELECT match_id FROM match_registry WHERE COALESCE(game_variant_id, '') IN (%s))",
-		matchIDCol, strings.Join(quoted, ","))
+	return sqlExcludeByMatchIDSubquery(matchIDCol, campaignExcludedVariantIDs[titleSlug])
 }
 
 // allCampaignVariantIDs : union des game_variant Campagne de TOUS les titres.
@@ -127,17 +142,7 @@ func allCampaignVariantIDs() []string {
 // qui n'en contient aucun (ex. Infinite). NE PAS l'utiliser quand le titre est
 // disponible : préférer la forme title-aware (SQLExcludeCampaignByMatchID).
 func SQLExcludeAllCampaignByMatchID(matchIDCol string) string {
-	ids := allCampaignVariantIDs()
-	if len(ids) == 0 {
-		return ""
-	}
-	quoted := make([]string, len(ids))
-	for i, id := range ids {
-		quoted[i] = "'" + strings.ReplaceAll(id, "'", "''") + "'"
-	}
-	return fmt.Sprintf(
-		" AND %s NOT IN (SELECT match_id FROM match_registry WHERE COALESCE(game_variant_id, '') IN (%s))",
-		matchIDCol, strings.Join(quoted, ","))
+	return sqlExcludeByMatchIDSubquery(matchIDCol, allCampaignVariantIDs())
 }
 
 // CampaignExclusionToken est le marqueur inséré dans les requêtes SQL (constantes

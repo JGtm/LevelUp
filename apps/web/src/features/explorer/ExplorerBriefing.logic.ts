@@ -7,17 +7,8 @@
  */
 import type { SemanticToken } from '@/lib/accessibility'
 
-/**
- * Formate un delta signé numérique avec préfixe explicite (+/−/±) et N décimales.
- * ±0 quand nul (le signe ne doit pas dépendre uniquement de la couleur).
- */
-export function formatSignedFixed(v: number | null | undefined, decimals: number): string {
-  if (v == null || !Number.isFinite(v)) return ''
-  const rounded = Number(v.toFixed(decimals))
-  if (rounded === 0) return `±${(0).toFixed(decimals)}`
-  const abs = Math.abs(rounded).toFixed(decimals)
-  return rounded > 0 ? `+${abs}` : `−${abs}`
-}
+// formatSignedFixed (delta signé à N décimales, glyphe '−' U+2212) est centralisé
+// dans `@/lib/formatters` — importé directement par les modules du briefing.
 
 /**
  * Formate un delta de TAUX (ratio 0..1) en points de pourcentage signés

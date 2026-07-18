@@ -11,7 +11,7 @@
 
 export { formatPercent, formatPercentValue, formatPercentInt } from './percent'
 export { formatDate, formatDateRange, formatDateShort, formatDateTime, type Locale } from './date'
-export { formatNumber, formatNumberFixed, formatRatio, formatKDA } from './number'
+export { formatNumber, formatNumberFixed, formatSignedFixed, formatRatio, formatKDA } from './number'
 export {
   formatDurationMMSS,
   formatDurationHMS,

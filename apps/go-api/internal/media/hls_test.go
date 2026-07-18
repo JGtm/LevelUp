@@ -242,11 +242,6 @@ func TestAmixFilter_LimiterOnOutputRenditions(t *testing.T) {
 	if !strings.Contains(out, "alimiter=limit=0.98:level=false") {
 		t.Errorf("amixFilter (sortie) sans limiteur: %q", out)
 	}
-	// L'amix d'ANALYSE (hls_audio_analyze.go) reste brut : la corrélation
-	// d'enveloppe doit mesurer le signal cru, pas limité.
-	if fc, _ := restMixFilter(3); strings.Contains(fc, "alimiter") {
-		t.Errorf("restMixFilter (analyse) ne doit PAS porter de limiteur: %q", fc)
-	}
 }
 
 func TestPlanHLS_Errors(t *testing.T) {

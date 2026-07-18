@@ -1563,6 +1563,22 @@ en = "Recent playlists"
 fr = "Sans classement"
 en = "Unranked"
 
+[common.home.rank_unrated]
+fr = "Non classé"
+en = "Unranked"
+
+[common.home.rank_placement]
+fr = "En placement"
+en = "In placement"
+
+[common.home.rank_placement_progress]
+fr = "En placement ({completed}/{total})"
+en = "In placement ({completed}/{total})"
+
+[common.home.rank_label]
+fr = "Rang"
+en = "Rank"
+
 [common.home.no_recent_playlist]
 fr = "Aucune sélection récente disponible."
 en = "No recent playlist available."

@@ -13,11 +13,12 @@
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
 import { lusrChainLabel } from '@/features/career/lusr-chains'
+import { formatSignedFixed } from '@/lib/formatters'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import type { ExplorerBriefingRanked, ExplorerBriefingRankedKind } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { BriefingSectionCard } from './BriefingSectionCard'
-import { deltaToken, formatSignedFixed } from './ExplorerBriefing.logic'
+import { deltaToken } from './ExplorerBriefing.logic'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
 

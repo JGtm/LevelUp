@@ -1,22 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import {
-  formatSignedFixed,
-  formatSignedPoints,
-  isFullHistoryScope,
-  signOf,
-} from './ExplorerBriefing.logic'
+import { formatSignedPoints, isFullHistoryScope, signOf } from './ExplorerBriefing.logic'
 
-describe('formatSignedFixed', () => {
-  it('préfixe + / − / ±', () => {
-    expect(formatSignedFixed(0.3, 2)).toBe('+0.30')
-    expect(formatSignedFixed(-1.5, 2)).toBe('−1.50')
-    expect(formatSignedFixed(0, 2)).toBe('±0.00')
-  })
-  it('vide si absent', () => {
-    expect(formatSignedFixed(null, 2)).toBe('')
-    expect(formatSignedFixed(undefined, 0)).toBe('')
-  })
-})
+// formatSignedFixed a migré vers `@/lib/formatters` (number.ts) — testé dans
+// `lib/formatters/formatters.test.ts`.
 
 describe('formatSignedPoints', () => {
   it('convertit un ratio en points de pourcentage signés', () => {

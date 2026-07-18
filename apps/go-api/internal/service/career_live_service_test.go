@@ -162,7 +162,7 @@ func (m *mockIdentityBuilder) BuildSpartanIdentityFromCareerRow(_ context.Contex
 // tiers (cas Explorer cible), includePeaks doit être false — sinon on
 // afficherait les peaks du mauvais joueur et on paierait 2 scans inutiles.
 func TestCareerLive_IncludePeaks_OnlyForOwner(t *testing.T) {
-	const ownerXUID = "1234567890123456" // == ctxWithTokens xuid
+	const ownerXUID = ctxTokensXUID // == ctxWithTokens xuid
 	const otherXUID = "9999999999999999"
 
 	newWithRow := func() (*CareerLiveService, *mockIdentityBuilder) {
@@ -194,13 +194,17 @@ func TestCareerLive_IncludePeaks_OnlyForOwner(t *testing.T) {
 
 // --- helpers ---
 
+// ctxTokensXUID est le xuid porté par ctxWithTokens : c'est le SUJET explicite à
+// passer à GetSpartanIdentityFor (finding ID4 — plus de sujet ambiant).
+const ctxTokensXUID = "1234567890123456"
+
 func ctxWithTokens(t *testing.T, hasTokens bool) context.Context {
 	t.Helper()
 	ctx := context.Background()
 	if hasTokens {
-		ctx = ctxkeys.WithHaloAuth(ctx, &domain.HaloTokens{SpartanToken: "spartan-token-xxx"}, "1234567890123456")
+		ctx = ctxkeys.WithHaloAuth(ctx, &domain.HaloTokens{SpartanToken: "spartan-token-xxx"}, ctxTokensXUID)
 	} else {
-		ctx = ctxkeys.WithHaloAuth(ctx, nil, "1234567890123456")
+		ctx = ctxkeys.WithHaloAuth(ctx, nil, ctxTokensXUID)
 	}
 	return ctx
 }
@@ -400,9 +404,9 @@ func TestCareerLive_GetIdentity_SwRBehavior(t *testing.T) {
 		cache := NewCareerLiveCache(CareerLiveCacheConfig{})
 		svc := NewCareerLiveService(repo, builder, factory, cache)
 
-		got, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
+		got, err := svc.GetSpartanIdentityFor(ctxWithTokens(t, true), ctxTokensXUID)
 		if err != nil {
-			t.Fatalf("GetSpartanIdentity: %v", err)
+			t.Fatalf("GetSpartanIdentityFor: %v", err)
 		}
 		if got == nil || got.RankNumber != 30 {
 			t.Errorf("cache miss attendu DB rank=30, obtenu %+v", got)
@@ -420,9 +424,9 @@ func TestCareerLive_GetIdentity_SwRBehavior(t *testing.T) {
 		cache.PutCustomization("1234567890123456", &syncpkg.SpartanCustomizationData{SpartanID: "SR-LIVE"})
 		svc := NewCareerLiveService(repo, builder, factory, cache)
 
-		got, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
+		got, err := svc.GetSpartanIdentityFor(ctxWithTokens(t, true), ctxTokensXUID)
 		if err != nil {
-			t.Fatalf("GetSpartanIdentity: %v", err)
+			t.Fatalf("GetSpartanIdentityFor: %v", err)
 		}
 		if got == nil || got.RankNumber != 99 || got.SpartanID == nil || *got.SpartanID != "SR-LIVE" {
 			t.Errorf("cache hit attendu rank=99 spartan=SR-LIVE, obtenu %+v", got)
@@ -435,9 +439,9 @@ func TestCareerLive_GetIdentity_SwRBehavior(t *testing.T) {
 		builder := &mockIdentityBuilder{}
 		svc := newService(t, fetcher, repo, builder)
 
-		got, err := svc.GetSpartanIdentity(ctxWithTokens(t, false))
+		got, err := svc.GetSpartanIdentityFor(ctxWithTokens(t, false), ctxTokensXUID)
 		if err != nil {
-			t.Fatalf("GetSpartanIdentity: %v", err)
+			t.Fatalf("GetSpartanIdentityFor: %v", err)
 		}
 		if got == nil || got.RankNumber != 30 {
 			t.Errorf("no-tokens attendu DB rank=30, obtenu %+v", got)
@@ -454,9 +458,9 @@ func TestCareerLive_GetIdentity_SwRBehavior(t *testing.T) {
 		builder := &mockIdentityBuilder{}
 		svc := newService(t, fetcher, repo, builder)
 
-		got, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
+		got, err := svc.GetSpartanIdentityFor(ctxWithTokens(t, true), ctxTokensXUID)
 		if err != nil {
-			t.Fatalf("GetSpartanIdentity: %v", err)
+			t.Fatalf("GetSpartanIdentityFor: %v", err)
 		}
 		if got != nil {
 			t.Errorf("attendu nil (joueur jamais sync'd), obtenu %+v", got)
@@ -498,9 +502,9 @@ func TestCareerLive_NoTokens_NoFetcherCall(t *testing.T) {
 	svc := newService(t, fetcher, repo, builder)
 
 	// hasTokens=false : ctxkeys.HaloTokens(ctx) retournera nil
-	got, err := svc.GetSpartanIdentity(ctxWithTokens(t, false))
+	got, err := svc.GetSpartanIdentityFor(ctxWithTokens(t, false), ctxTokensXUID)
 	if err != nil {
-		t.Fatalf("GetSpartanIdentity: %v", err)
+		t.Fatalf("GetSpartanIdentityFor: %v", err)
 	}
 	if got == nil {
 		t.Fatal("identity attendue non-nil (fallback DB)")
@@ -525,9 +529,9 @@ func TestCareerLive_NoXUID_TriggersFallbackPath(t *testing.T) {
 	svc := newService(t, fetcher, repo, builder)
 
 	// Contexte sans xuid : pas de fetcher invoqué, fallback DB direct.
-	got, err := svc.GetSpartanIdentity(context.Background())
+	got, err := svc.GetSpartanIdentityFor(context.Background(), "")
 	if err != nil {
-		t.Fatalf("GetSpartanIdentity sans xuid: %v", err)
+		t.Fatalf("GetSpartanIdentityFor sans xuid: %v", err)
 	}
 	if got != nil {
 		t.Errorf("identity attendue nil sans xuid + DB vide, obtenu %+v", got)
@@ -656,11 +660,11 @@ func TestCareerLive_SlowFetcher_DoesNotBlockHome(t *testing.T) {
 	svc := NewCareerLiveService(repo, builder, factory, cache)
 
 	start := time.Now()
-	got, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
+	got, err := svc.GetSpartanIdentityFor(ctxWithTokens(t, true), ctxTokensXUID)
 	elapsed := time.Since(start)
 
 	if err != nil {
-		t.Fatalf("GetSpartanIdentity: %v", err)
+		t.Fatalf("GetSpartanIdentityFor: %v", err)
 	}
 	if got == nil {
 		t.Fatal("identity attendue non-nil (fallback DB)")
@@ -672,7 +676,7 @@ func TestCareerLive_SlowFetcher_DoesNotBlockHome(t *testing.T) {
 	// est lent. 500 ms est large pour absorber l'overhead test + le spawn de
 	// la goroutine background.
 	if elapsed > 500*time.Millisecond {
-		t.Errorf("GetSpartanIdentity prit %v, attendu < 500ms (SwR ne doit pas bloquer sur live)", elapsed)
+		t.Errorf("GetSpartanIdentityFor prit %v, attendu < 500ms (SwR ne doit pas bloquer sur live)", elapsed)
 	}
 }
 
@@ -840,9 +844,9 @@ func TestCareerLive_GetIdentity_LiveBannerNil_DBHasOne(t *testing.T) {
 	builder := &realBuilderForOverlay{} // un builder qui copie tous les champs
 	svc := newService(t, fetcher, repo, builder)
 
-	got, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
+	got, err := svc.GetSpartanIdentityFor(ctxWithTokens(t, true), ctxTokensXUID)
 	if err != nil {
-		t.Fatalf("GetSpartanIdentity: %v", err)
+		t.Fatalf("GetSpartanIdentityFor: %v", err)
 	}
 	if got == nil {
 		t.Fatal("identity attendue non-nil")
@@ -900,9 +904,9 @@ func TestCareerLive_NilAPIResponse_NotCached(t *testing.T) {
 	svc := NewCareerLiveService(repo, builder, factory, cache)
 
 	// Premier appel : cache miss → DB servie + background refresh déclenché.
-	got, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
+	got, err := svc.GetSpartanIdentityFor(ctxWithTokens(t, true), ctxTokensXUID)
 	if err != nil {
-		t.Fatalf("GetSpartanIdentity: %v", err)
+		t.Fatalf("GetSpartanIdentityFor: %v", err)
 	}
 	if got == nil || got.RankNumber != 50 {
 		t.Errorf("attendu DB rank=50, obtenu %+v", got)
@@ -925,9 +929,9 @@ func TestCareerLive_NilAPIResponse_NotCached(t *testing.T) {
 	// Deuxième appel : doit rester cache miss → background refresh se redéclenche.
 	// On vérifie indirectement en vérifiant que le rank DB est toujours servi
 	// (et pas un rank=0 issu d'un merge avec nil caché).
-	got2, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
+	got2, err := svc.GetSpartanIdentityFor(ctxWithTokens(t, true), ctxTokensXUID)
 	if err != nil {
-		t.Fatalf("GetSpartanIdentity 2e appel: %v", err)
+		t.Fatalf("GetSpartanIdentityFor 2e appel: %v", err)
 	}
 	if got2 == nil || got2.RankNumber != 50 {
 		t.Errorf("2e appel : attendu DB rank=50, obtenu %+v", got2)

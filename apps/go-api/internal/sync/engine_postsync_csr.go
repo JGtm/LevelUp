@@ -33,11 +33,15 @@ func (e *SyncEngine) activeRankedPlaylists(ctx context.Context) []rankedplaylist
 		return fallback
 	}
 	defer release()
+	// LB1 (revue 2026-07) : partition PAR playlist, pas MAX(fetched_at) GLOBAL. Le
+	// scraper estampille fetched_at PAR playlist (chacune scrapée à un instant distinct
+	// du batch) ; un MAX global ne matchait que la DERNIÈRE playlist scrapée → 1 seule
+	// des ~7 actives retournée, fallback jamais déclenché. On lit la vue
+	// world_csr_leaderboard_latest (source unique du « dernier par (titre, saison,
+	// playlist) ») → toutes les playlists actives, chacune à son propre dernier fetch.
 	rows, err := db.QueryContext(ctx, `
-		SELECT DISTINCT playlist_id FROM world_csr_leaderboard_snapshots
-		WHERE title_slug = ? AND playlist_id <> '' AND fetched_at = (
-			SELECT MAX(fetched_at) FROM world_csr_leaderboard_snapshots WHERE title_slug = ?
-		)`, e.titleSlug, e.titleSlug)
+		SELECT DISTINCT playlist_id FROM world_csr_leaderboard_latest
+		WHERE title_slug = ? AND playlist_id <> ''`, e.titleSlug)
 	if err != nil {
 		slog.DebugContext(ctx, "activeRankedPlaylists: requête échouée — fallback statique", "err", err)
 		return fallback

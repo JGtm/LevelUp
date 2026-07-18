@@ -50,13 +50,13 @@ describe('buildSessionFdaBarsOption', () => {
 describe('formatRankDelta / rankDeltaToken', () => {
   it('CSR = entier signé', () => {
     expect(formatRankDelta(45, 'csr')).toBe('+45')
-    expect(formatRankDelta(-12, 'csr')).toBe('-12')
+    expect(formatRankDelta(-12, 'csr')).toBe('−12')
     expect(formatRankDelta(0, 'csr')).toBe('±0')
   })
 
-  it('LUSR = 2 décimales signées', () => {
+  it('LUSR = 2 décimales signées (glyphe − U+2212)', () => {
     expect(formatRankDelta(1.234, 'lusr')).toBe('+1.23')
-    expect(formatRankDelta(-0.5, 'lusr')).toBe('-0.50')
+    expect(formatRankDelta(-0.5, 'lusr')).toBe('−0.50')
   })
 
   it('token de couleur par signe', () => {

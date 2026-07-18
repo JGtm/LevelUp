@@ -108,7 +108,19 @@ func (r *EngagementScoreRepo) SaveResponseBins(
 }
 
 // responseBinsTableExists verifie l'existence de engagement_response_bins.
+// Le resultat est memoise le temps de vie du repo (E1) : le scan
+// information_schema ne tourne qu'une fois par handle, pas une fois par appel.
 func (r *EngagementScoreRepo) responseBinsTableExists(ctx context.Context) bool {
+	if r.responseBinsExists != nil {
+		return *r.responseBinsExists
+	}
+	exists := r.queryResponseBinsTableExists(ctx)
+	r.responseBinsExists = &exists
+	return exists
+}
+
+// queryResponseBinsTableExists scanne information_schema (sans cache).
+func (r *EngagementScoreRepo) queryResponseBinsTableExists(ctx context.Context) bool {
 	if r.pdb == nil || r.pdb.ReadDB() == nil {
 		return false
 	}
