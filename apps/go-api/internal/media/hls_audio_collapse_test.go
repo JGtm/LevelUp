@@ -100,7 +100,8 @@ func TestCollapseRedundantHLSAudio_Integration(t *testing.T) {
 	if !strings.Contains(master, `NAME="game"`) || !strings.Contains(master, "DEFAULT=YES") {
 		t.Errorf("game/DEFAULT=YES manquant après collapse\n%s", master)
 	}
-	if err := VerifyHLSPlayable(context.Background(), filepath.Join(redundant, "master.m3u8")); err != nil {
+	// Après collapse, le master n'expose plus qu'une rendition (game).
+	if err := VerifyHLSPlayable(context.Background(), filepath.Join(redundant, "master.m3u8"), 1); err != nil {
 		t.Errorf("VerifyHLSPlayable après collapse = %v, want nil", err)
 	}
 
@@ -120,8 +121,8 @@ func TestCollapseRedundantHLSAudio_Integration(t *testing.T) {
 func twinTrackMKV(t *testing.T, dir, name string, identical bool) string {
 	t.Helper()
 	out := filepath.Join(dir, name)
-	args := []string{"-hide_banner", "-loglevel", "error", "-y",
-		"-f", "lavfi", "-i", "aevalsrc=" + amExpr("440", "0.7") + ":d=3:s=8000"}
+	args := ffmpegQuietArgs("-y",
+		"-f", "lavfi", "-i", "aevalsrc="+amExpr("440", "0.7")+":d=3:s=8000")
 	if identical {
 		args = append(args, "-f", "lavfi", "-i", "testsrc=size=320x240:rate=15:duration=3",
 			"-map", "1:v", "-map", "0:a", "-map", "0:a")

@@ -75,8 +75,9 @@ func TestPlanHLS_TwoTracksGameVoicesFull(t *testing.T) {
 	if g.Display != "game" || v.Display != "voices" || f.Display != "full" {
 		t.Errorf("Display = [%q,%q,%q], want [game,voices,full]", g.Display, v.Display, f.Display)
 	}
-	// 2 pistes → seul full passe par amix (voices est un map direct).
-	wantFC := "[0:a:0][0:a:1]amix=inputs=2:normalize=0:duration=longest[full]"
+	// 2 pistes → seul full passe par amix (voices est un map direct). L'amix de
+	// SORTIE est suivi d'alimiter (anti-écrêtage de la somme jeu+voix).
+	wantFC := "[0:a:0][0:a:1]amix=inputs=2:normalize=0:duration=longest,alimiter=limit=0.98:level=false[full]"
 	if plan.FilterComplex != wantFC {
 		t.Errorf("FilterComplex =\n  %q\nwant\n  %q", plan.FilterComplex, wantFC)
 	}
@@ -101,8 +102,8 @@ func TestPlanHLS_ThreeTracksVoicesAmix(t *testing.T) {
 	if v.MapSpec != "[voices]" || v.Action != actionReencode {
 		t.Errorf("voices = (%q,%v), want ([voices], reencode)", v.MapSpec, v.Action)
 	}
-	wantFC := "[0:a:1][0:a:2]amix=inputs=2:normalize=0:duration=longest[voices];" +
-		"[0:a:0][0:a:1][0:a:2]amix=inputs=3:normalize=0:duration=longest[full]"
+	wantFC := "[0:a:1][0:a:2]amix=inputs=2:normalize=0:duration=longest,alimiter=limit=0.98:level=false[voices];" +
+		"[0:a:0][0:a:1][0:a:2]amix=inputs=3:normalize=0:duration=longest,alimiter=limit=0.98:level=false[full]"
 	if plan.FilterComplex != wantFC {
 		t.Errorf("FilterComplex =\n  %q\nwant\n  %q", plan.FilterComplex, wantFC)
 	}
@@ -198,6 +199,53 @@ func TestRenditionSlugs(t *testing.T) {
 	got := renditionSlugs([]audioRendition{{Slug: "game"}, {Slug: "voices"}, {Slug: "full"}})
 	if len(got) != 3 || got[0] != "game" || got[1] != "voices" || got[2] != "full" {
 		t.Errorf("renditionSlugs = %v, want [game voices full]", got)
+	}
+}
+
+// argsContainPair retourne true si args contient a immédiatement suivi de b.
+func argsContainPair(args []string, a, b string) bool {
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == a && args[i+1] == b {
+			return true
+		}
+	}
+	return false
+}
+
+func TestBuildHLSArgs_HEVCTag(t *testing.T) {
+	// Vidéo HEVC copiée → -tag:v hvc1 (Safari refuse le hev1 par défaut). H.264
+	// copié ou HEVC réencodé (sortie h264) → pas de tag.
+	base := []audioRendition{{Slug: "a0", MapSpec: "0:a:0", Action: actionCopy, Default: true}}
+	cases := []struct {
+		name    string
+		plan    hlsPlan
+		wantTag bool
+	}{
+		{"hevc copié", hlsPlan{VideoAction: actionCopy, VideoSrcCodec: "hevc", Audios: base}, true},
+		{"h265 (alias) copié", hlsPlan{VideoAction: actionCopy, VideoSrcCodec: "h265", Audios: base}, true},
+		{"h264 copié", hlsPlan{VideoAction: actionCopy, VideoSrcCodec: "h264", Audios: base}, false},
+		{"hevc réencodé", hlsPlan{VideoAction: actionReencode, VideoCodec: "h264", VideoSrcCodec: "hevc", Audios: base}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			args := buildHLSArgs(tc.plan, "src.mkv", "out", 4)
+			if got := argsContainPair(args, "-tag:v", "hvc1"); got != tc.wantTag {
+				t.Errorf("tag hvc1 présent = %v, want %v\nargs=%v", got, tc.wantTag, args)
+			}
+		})
+	}
+}
+
+func TestAmixFilter_LimiterOnOutputRenditions(t *testing.T) {
+	// Un amix de SORTIE (rendition servie) porte le limiteur anti-écrêtage.
+	out := amixFilter([]int{0, 1}, "full")
+	if !strings.Contains(out, "alimiter=limit=0.98:level=false") {
+		t.Errorf("amixFilter (sortie) sans limiteur: %q", out)
+	}
+	// L'amix d'ANALYSE (hls_audio_analyze.go) reste brut : la corrélation
+	// d'enveloppe doit mesurer le signal cru, pas limité.
+	if fc, _ := restMixFilter(3); strings.Contains(fc, "alimiter") {
+		t.Errorf("restMixFilter (analyse) ne doit PAS porter de limiteur: %q", fc)
 	}
 }
 
@@ -392,9 +440,11 @@ func TestBuildHLS_Integration(t *testing.T) {
 	assertSegmentCodec(t, filepath.Join(outDir, "init_0.mp4"), "video", "h264")
 }
 
-// TestVerifyHLSPlayable_Integration valide la garde anti-perte de données :
-// un arbre HLS réel est démultiplexable (nil), un master absent ou un arbre
-// amputé de ses segments/sous-playlists est rejeté (erreur). Gate sur ffmpeg.
+// TestVerifyHLSPlayable_Integration valide la garde anti-perte de données : un
+// arbre HLS réel avec le bon nombre de renditions est accepté (nil) ; un compte
+// de renditions inattendu, un master absent ou un arbre amputé sont rejetés.
+// Documente aussi EMPIRIQUEMENT comment ffprobe expose les renditions d'un master
+// (justifie le comptage par parse du master plutôt que par ffprobe). Gate ffmpeg.
 func TestVerifyHLSPlayable_Integration(t *testing.T) {
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
 		t.Skip("ffmpeg absent du PATH — test VerifyHLSPlayable ignoré")
@@ -410,27 +460,48 @@ func TestVerifyHLSPlayable_Integration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildHLS: %v", err)
 	}
+	if res.AudioTracks != 3 {
+		t.Fatalf("pré-condition: AudioTracks = %d, want 3", res.AudioTracks)
+	}
 
-	// Arbre HLS réel et complet → démultiplexable.
-	if err := VerifyHLSPlayable(context.Background(), res.MasterPath); err != nil {
-		t.Errorf("VerifyHLSPlayable(arbre valide) = %v, want nil", err)
+	// Preuve empirique : le master DÉCLARE 3 EXT-X-MEDIA ; ce que ffprobe ÉNUMÈRE
+	// peut différer (dépend de la version/du démuxeur). On loggue les deux.
+	raw, _ := os.ReadFile(res.MasterPath)
+	declared := strings.Count(string(raw), "TYPE=AUDIO")
+	probed := 0
+	if streams, perr := ProbeStreamsDetailed(context.Background(), res.MasterPath); perr == nil {
+		for _, s := range streams {
+			if s.CodecType == "audio" {
+				probed++
+			}
+		}
+	}
+	t.Logf("renditions master: déclarées(EXT-X-MEDIA)=%d, énumérées(ffprobe show_streams)=%d", declared, probed)
+
+	// Arbre complet + compte attendu → démultiplexable.
+	if err := VerifyHLSPlayable(context.Background(), res.MasterPath, 3); err != nil {
+		t.Errorf("VerifyHLSPlayable(arbre valide, 3) = %v, want nil", err)
+	}
+
+	// Compte attendu ERRONÉ → rejet (une rendition manquerait avant suppression source).
+	if err := VerifyHLSPlayable(context.Background(), res.MasterPath, 2); err == nil {
+		t.Error("VerifyHLSPlayable(arbre valide, attendu 2): erreur attendue (3 renditions)")
 	}
 
 	// Master inexistant → erreur (ffprobe échoue à ouvrir).
-	if err := VerifyHLSPlayable(context.Background(), filepath.Join(dir, "absent.m3u8")); err == nil {
+	if err := VerifyHLSPlayable(context.Background(), filepath.Join(dir, "absent.m3u8"), 3); err == nil {
 		t.Error("VerifyHLSPlayable(master absent): erreur attendue")
 	}
 
-	// Master présent mais segments + sous-playlists supprimés → le master
-	// référence des fichiers absents → illisible. C'est le cas que la garde doit
-	// attraper AVANT la suppression du source (faux-succès BuildHLS).
+	// Master présent mais segments + sous-playlists supprimés → ffprobe ne remonte
+	// aucun flux (donc pas de vidéo) → rejet AVANT la suppression du source.
 	entries, _ := os.ReadDir(outDir)
 	for _, e := range entries {
 		if e.Name() != "master.m3u8" {
 			_ = os.Remove(filepath.Join(outDir, e.Name()))
 		}
 	}
-	if err := VerifyHLSPlayable(context.Background(), res.MasterPath); err == nil {
+	if err := VerifyHLSPlayable(context.Background(), res.MasterPath, 3); err == nil {
 		t.Error("VerifyHLSPlayable(arbre amputé): erreur attendue")
 	}
 }
@@ -439,14 +510,14 @@ func TestVerifyHLSPlayable_Integration(t *testing.T) {
 func generateTestMKV(t *testing.T, dir string) string {
 	t.Helper()
 	src := filepath.Join(dir, "source.mkv")
-	cmd := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+	cmd := exec.Command("ffmpeg", ffmpegQuietArgs("-y",
 		"-f", "lavfi", "-i", "testsrc=size=320x240:rate=15:duration=2",
 		"-f", "lavfi", "-i", "sine=frequency=440:duration=2",
 		"-f", "lavfi", "-i", "sine=frequency=880:duration=2",
 		"-map", "0:v", "-map", "1:a", "-map", "2:a",
 		"-c:v", "libx264", "-preset", "ultrafast", "-c:a", "libopus",
 		"-metadata:s:a:0", "title=Game", "-metadata:s:a:1", "title=Mic",
-		src)
+		src)...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("génération MKV test: %v\n%s", err, out)
 	}

@@ -3,6 +3,7 @@ package media
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,14 +27,14 @@ func requireFFmpeg(t *testing.T) {
 // synthétiques (testsrc + sine) — léger et déterministe.
 func generateMKVAV1Opus(t *testing.T, path string, durationSec int) {
 	t.Helper()
-	args := []string{
-		"-y", "-hide_banner", "-loglevel", "error",
-		"-f", "lavfi", "-i", "testsrc=size=320x240:rate=10:duration=" + itoa(durationSec),
-		"-f", "lavfi", "-i", "sine=frequency=440:duration=" + itoa(durationSec),
+	args := ffmpegQuietArgs(
+		"-y",
+		"-f", "lavfi", "-i", "testsrc=size=320x240:rate=10:duration="+itoa(durationSec),
+		"-f", "lavfi", "-i", "sine=frequency=440:duration="+itoa(durationSec),
 		"-c:v", "libaom-av1", "-cpu-used", "8", "-b:v", "100k",
 		"-c:a", "libopus", "-b:a", "32k",
 		path,
-	}
+	)
 	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "ffmpeg", args...)
@@ -65,17 +66,21 @@ func looksLikeEBML(buf []byte) bool {
 	return len(buf) >= 4 && buf[0] == 0x1A && buf[1] == 0x45 && buf[2] == 0xDF && buf[3] == 0xA3
 }
 
-func TestStreamRemuxAsWebM_AV1Opus(t *testing.T) {
+func TestRemuxWebM_AV1Opus(t *testing.T) {
 	requireFFmpeg(t)
 	dir := t.TempDir()
 	src := filepath.Join(dir, "in.mkv")
 	generateMKVAV1Opus(t, src, 1)
 
-	var out bytes.Buffer
 	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
-	if err := StreamRemuxAsWebM(ctx, src, &out); err != nil {
-		t.Fatalf("StreamRemuxAsWebM: %v", err)
+	plan, err := PlanRemuxWebM(ctx, src)
+	if err != nil {
+		t.Fatalf("PlanRemuxWebM: %v", err)
+	}
+	var out bytes.Buffer
+	if err := StreamRemuxWebMPlan(ctx, src, plan, &out); err != nil {
+		t.Fatalf("StreamRemuxWebMPlan: %v", err)
 	}
 
 	if out.Len() == 0 {
@@ -86,38 +91,35 @@ func TestStreamRemuxAsWebM_AV1Opus(t *testing.T) {
 	}
 }
 
-func TestStreamRemuxAsWebM_IncompatibleVideoCodec(t *testing.T) {
+func TestPlanRemuxWebM_IncompatibleVideoCodec(t *testing.T) {
 	requireFFmpeg(t)
 	dir := t.TempDir()
 	src := filepath.Join(dir, "in.mp4")
 
-	// Encode un H.264 — incompatible WebM, le remux doit échouer proprement.
-	args := []string{
-		"-y", "-hide_banner", "-loglevel", "error",
+	// Encode un H.264 — incompatible WebM : le pré-flight doit le rejeter AVANT
+	// tout octet, avec l'erreur typée qui pilote le 415 côté handler.
+	args := ffmpegQuietArgs(
+		"-y",
 		"-f", "lavfi", "-i", "testsrc=size=320x240:rate=10:duration=1",
 		"-c:v", "libx264", "-preset", "ultrafast", src,
-	}
+	)
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	if out, err := exec.CommandContext(ctx, "ffmpeg", args...).CombinedOutput(); err != nil {
 		t.Skipf("encodage H.264 indisponible: %v\n%s", err, out)
 	}
 
-	var out bytes.Buffer
-	err := StreamRemuxAsWebM(ctx, src, &out)
-	if err == nil {
-		t.Fatal("expected error for H.264 source (non WebM-compatible)")
+	if _, err := PlanRemuxWebM(ctx, src); !errors.Is(err, ErrRemuxIncompatibleCodec) {
+		t.Fatalf("PlanRemuxWebM(H.264) err = %v, want ErrRemuxIncompatibleCodec", err)
 	}
 }
 
-func TestStreamRemuxAsWebM_FileMissing(t *testing.T) {
+func TestPlanRemuxWebM_FileMissing(t *testing.T) {
 	requireFFmpeg(t)
-	var out bytes.Buffer
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
-	err := StreamRemuxAsWebM(ctx, filepath.Join(t.TempDir(), "nope.mkv"), &out)
-	if err == nil {
-		t.Fatal("expected error for missing input file")
+	if _, err := PlanRemuxWebM(ctx, filepath.Join(t.TempDir(), "nope.mkv")); !errors.Is(err, ErrRemuxProbeFailed) {
+		t.Fatalf("PlanRemuxWebM(missing) err = %v, want ErrRemuxProbeFailed", err)
 	}
 }
 
