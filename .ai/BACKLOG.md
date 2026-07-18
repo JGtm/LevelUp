@@ -42,34 +42,6 @@ requis — aucun aujourd'hui). **Effort** : petit-moyen (suppression + tests).
 
 ---
 
-### [data/h5] Phase 2 — exploiter `kill_kind` dans le donut (découper le bucket « Spartan »)
-
-> MàJ 2026-07-18. Livré à ce jour : classification hors-arsenal (`16d2a09eb`), capture
-> `kill_kind` going-forward (`c13e7f6bc`), **assassinat = 5ᵉ valeur canonique** (`e818496d3`),
-> et **BACKFILL HISTORIQUE COMPLET EXÉCUTÉ** (2026-07-18 : 2 691 matchs Arena, 267 939 kills
-> re-dérivés, 0 erreur ; CLI `cmd/h5-kill-kind-backfill` avec mode `--force`). Distribution
-> réelle du bucket Spartan mesurée : **56 % Capacités Spartan** (shoulderbash 38 % + groundpound
-> 17 %), **15 % assassinats**, **29 % non-résolu** (`kind=weapon`), 1 % mêlée.
->
-> **RESTE UNIQUEMENT l'exploitation donut** (reportée par l'utilisateur à un autre chantier —
-> noté dans son Notion) : découper le bucket « Spartan » (weapon_id 3168248199) par `kill_kind`
-> au niveau vue/service, en sous-tranches — **TAXONOMIE ACTÉE** :
->    - **Capacités Spartan** ← `shoulderbash` (Charge Spartan) + `groundpound` (Frappe au sol).
->      Terme FR « Capacités Spartan » VALIDÉ user (à re-confirmer sur la loc officielle du jeu au moment des libellés).
->    - **Assassinat** ← `assassination` (désormais capté).
->    - **Corps à corps** ← `melee` (beatdown).
->    - **Non attribué** ← `kind=weapon` sans arme résolue (arme non identifiée par l'API).
->    Pièges : NE PAS fusionner avec le sentinel mêlée natif (weapon_id=1, population disjointe →
->    double-comptage) ; total du donut inchangé (on re-partitionne, on n'ajoute pas) ; ces
->    sous-tranches restent NON-COMBAT → exclues de `weaponRoleInsight`.
-> **Effort** : exploitation = petit-moyen (vue/service + i18n + tests). La donnée est prête.
-> Note : suicide/trahison NON captés en `kill_kind` (déjà couverts par les Personal Score Awards
-> `TotalSuicides`/`TotalBetrayals` — pas de doublon) ; splatter = déjà en rôle « véhicule ».
-> Champs API events encore non captés (décision user « rien » 2026-07-18, re-capturables si besoin) :
-> `VictimStockId`, `TimeWeaponActiveAsPrimary`, `Killer/VictimAgent` (discriminant IA/Warzone), attachments.
-
----
-
 ### [bug/h5] Fuite d'affichage : 287 matchs de campagne visibles malgré le filtre read-side
 
 > Noté le 2026-07-17. Vérifié en base : **287 matchs de campagne** (265 Campaign + 22 Campaign
