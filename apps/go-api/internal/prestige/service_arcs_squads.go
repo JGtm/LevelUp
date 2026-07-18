@@ -388,10 +388,21 @@ func (s *service) GetSquadChallenge(ctx context.Context, id string) (SquadChalle
 	return sc, nil
 }
 
-// ListSquadChallenges retourne tous les défis d'une escouade.
-func (s *service) ListSquadChallenges(ctx context.Context, squadID string) ([]SquadChallenge, error) {
+// ListSquadChallenges retourne tous les défis d'une escouade. requestedBy
+// (player_slug) doit être membre-user de l'escouade.
+//
+// Garde d'appartenance objet-level (BOLA) : contrairement aux défis/arcs perso
+// (isolés par player DB), les défis d'escouade vivent dans une DB sociale
+// partagée (tous joueurs). Sans cette garde, un utilisateur possédant son propre
+// slug (ownershipMW OK) pourrait lister les défis de N'IMPORTE quelle escouade
+// via un squad_id arbitraire. Même contrôle que les mutations squad
+// (assertMemberUser), appliqué en lecture.
+func (s *service) ListSquadChallenges(ctx context.Context, squadID, requestedBy string) ([]SquadChallenge, error) {
 	if squadID == "" {
 		return nil, fmt.Errorf("%w: squad_id requis", ErrInvalidInput)
+	}
+	if err := s.assertMemberUser(ctx, squadID, requestedBy); err != nil {
+		return nil, err
 	}
 	return s.deps.SquadChallenges.ListBySquad(ctx, squadID)
 }

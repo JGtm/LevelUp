@@ -69,7 +69,7 @@ func (m *mockService) JoinSquadChallenge(ctx context.Context, _, _ string, _ Tie
 func (m *mockService) GetSquadChallenge(ctx context.Context, _ string) (SquadChallenge, error) {
 	return SquadChallenge{}, nil
 }
-func (m *mockService) ListSquadChallenges(ctx context.Context, _ string) ([]SquadChallenge, error) {
+func (m *mockService) ListSquadChallenges(ctx context.Context, _, _ string) ([]SquadChallenge, error) {
 	return nil, nil
 }
 func (m *mockService) RefreshSquadPool(ctx context.Context, _, _, _ string) ([]Template, error) {

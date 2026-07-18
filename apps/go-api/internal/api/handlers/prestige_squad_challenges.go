@@ -61,12 +61,23 @@ func (h *PrestigeHandler) CreateSquadChallenge(ctx context.Context, in *squadIDB
 	return &squadChallengeCreatedOutput{Status: http.StatusCreated, Body: sc}, nil
 }
 
-// ListSquadChallenges gère GET /squads/{squad_id}/challenges.
-func (h *PrestigeHandler) ListSquadChallenges(ctx context.Context, in *squadIDInput) (*mapOutput, error) {
+// listSquadChallengesInput : path {squad_id} + le {player_slug} parent (l'acteur
+// courant, déjà réconcilié avec la session par ownershipMW). player_slug sert de
+// requestedBy pour la garde d'appartenance objet-level (les défis d'escouade sont
+// en DB partagée, non isolés par player DB — cf. service.ListSquadChallenges).
+type listSquadChallengesInput struct {
+	SquadID    string `path:"squad_id"`
+	PlayerSlug string `path:"player_slug"`
+}
+
+// ListSquadChallenges gère GET /squads/{squad_id}/challenges. La garde
+// d'appartenance (requestedBy = player_slug du chemin, doit être membre-user)
+// vit dans le service — un non-membre reçoit une erreur (BOLA objet-level clos).
+func (h *PrestigeHandler) ListSquadChallenges(ctx context.Context, in *listSquadChallengesInput) (*mapOutput, error) {
 	if in.SquadID == "" {
 		return nil, humacore.NewError(http.StatusBadRequest, "missing_squad_id", "squad_id requis")
 	}
-	list, err := h.svc.ListSquadChallenges(ctx, in.SquadID)
+	list, err := h.svc.ListSquadChallenges(ctx, in.SquadID, in.PlayerSlug)
 	if err != nil {
 		return nil, h.serviceError(ctx, err)
 	}
