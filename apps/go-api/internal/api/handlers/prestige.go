@@ -168,11 +168,6 @@ type idInput struct {
 	ID string `path:"id"`
 }
 
-// squadIDInput : un seul path param {squad_id}.
-type squadIDInput struct {
-	SquadID string `path:"squad_id"`
-}
-
 // noContentOutput : réponse 204 sans corps.
 type noContentOutput struct {
 	Status int

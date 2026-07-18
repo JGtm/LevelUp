@@ -66,7 +66,12 @@ type Service interface {
 	CreateSquadChallenge(ctx context.Context, req CreateSquadChallengeRequest) (SquadChallenge, error)
 	JoinSquadChallenge(ctx context.Context, challengeID, userID string, chosenTier Tier, isPrivate bool) error
 	GetSquadChallenge(ctx context.Context, id string) (SquadChallenge, error)
-	ListSquadChallenges(ctx context.Context, squadID string) ([]SquadChallenge, error)
+	// ListSquadChallenges liste les défis d'une escouade. requestedBy (player_slug
+	// de l'acteur) DOIT être membre-user de l'escouade : les défis d'escouade
+	// vivent dans une DB sociale partagée (tous joueurs), non isolés par player DB,
+	// donc cette garde d'appartenance ferme le BOLA objet-level (un squad_id
+	// arbitraire ne doit pas être lisible par un non-membre).
+	ListSquadChallenges(ctx context.Context, squadID, requestedBy string) ([]SquadChallenge, error)
 	RefreshSquadPool(ctx context.Context, squadID, titleSlug, requestedBy string) ([]Template, error)
 
 	// Escouade — roster (entité Squad / SquadMember, clé xuid). requestedBy =

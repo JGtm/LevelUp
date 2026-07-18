@@ -63,6 +63,11 @@ type mockPrestigeService struct {
 	lastEvalSquadReqBy string
 	orientationResp    string
 
+	listSquadChallResp      []prestige.SquadChallenge
+	listSquadChallErr       error
+	lastListSquadChallID    string
+	lastListSquadChallReqBy string
+
 	lastRenameSquadID    string
 	lastRenameSquadName  string
 	lastRenameSquadReqBy string
@@ -147,8 +152,10 @@ func (m *mockPrestigeService) JoinSquadChallenge(ctx context.Context, _, _ strin
 func (m *mockPrestigeService) GetSquadChallenge(ctx context.Context, _ string) (prestige.SquadChallenge, error) {
 	return prestige.SquadChallenge{}, nil
 }
-func (m *mockPrestigeService) ListSquadChallenges(ctx context.Context, _ string) ([]prestige.SquadChallenge, error) {
-	return nil, nil
+func (m *mockPrestigeService) ListSquadChallenges(ctx context.Context, squadID, requestedBy string) ([]prestige.SquadChallenge, error) {
+	m.lastListSquadChallID = squadID
+	m.lastListSquadChallReqBy = requestedBy
+	return m.listSquadChallResp, m.listSquadChallErr
 }
 func (m *mockPrestigeService) RefreshSquadPool(ctx context.Context, _, _, _ string) ([]prestige.Template, error) {
 	return nil, nil
@@ -466,6 +473,57 @@ func newRouterGuarded(svc prestige.Service, guard ActorGuard) *chi.Mux {
 	r := chi.NewRouter()
 	h.Mount(r)
 	return r
+}
+
+// newRouterAtPlayer monte le handler sous le préfixe player-scoped réel
+// /players/{player_slug} (comme en prod). Nécessaire pour les routes qui lisent
+// le path param PARENT {player_slug} (garde d'appartenance objet-level) : Huma
+// ne le peuple que si le mount parent le déclare (cf. TestHumaNestedSubrouterProbe).
+func newRouterAtPlayer(svc prestige.Service) *chi.Mux {
+	h := NewPrestigeHandler(svc, testAppPlayers)
+	r := chi.NewRouter()
+	r.Route("/players/{player_slug}", func(r chi.Router) {
+		h.Mount(r)
+	})
+	return r
+}
+
+// TestPrestigeHandler_ListSquadChallenges_ThreadsPathSlugAsRequester : le
+// {player_slug} du chemin est transmis au service comme requestedBy — c'est lui
+// qui alimente la garde d'appartenance (assertMemberUser) côté service.
+func TestPrestigeHandler_ListSquadChallenges_ThreadsPathSlugAsRequester(t *testing.T) {
+	mock := &mockPrestigeService{listSquadChallResp: []prestige.SquadChallenge{{ID: "sc1", SquadID: "sq1"}}}
+	r := newRouterAtPlayer(mock)
+	req := httptest.NewRequest(http.MethodGet, "/players/alice/squads/sq1/challenges", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d, want 200; body=%s", w.Code, w.Body.String())
+	}
+	if mock.lastListSquadChallID != "sq1" || mock.lastListSquadChallReqBy != "alice" {
+		t.Errorf("slug du chemin non transmis comme requester: id=%q by=%q",
+			mock.lastListSquadChallID, mock.lastListSquadChallReqBy)
+	}
+}
+
+// TestPrestigeHandler_ListSquadChallenges_NonMemberRejected : quand le service
+// refuse l'appartenance (ErrInvalidInput « not a member »), le handler mappe en
+// 400 sans exposer de défis — le BOLA objet-level est clos côté service, le
+// handler ne fait que propager. requestedBy = slug du chemin (« bob »).
+func TestPrestigeHandler_ListSquadChallenges_NonMemberRejected(t *testing.T) {
+	mock := &mockPrestigeService{
+		listSquadChallErr: fmt.Errorf("%w: not a member of squad", prestige.ErrInvalidInput),
+	}
+	r := newRouterAtPlayer(mock)
+	req := httptest.NewRequest(http.MethodGet, "/players/bob/squads/sq1/challenges", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d, want 400 (non-membre rejeté); body=%s", w.Code, w.Body.String())
+	}
+	if mock.lastListSquadChallReqBy != "bob" {
+		t.Errorf("requester=%q, want bob (slug du chemin)", mock.lastListSquadChallReqBy)
+	}
 }
 
 // TestPrestigeHandler_SquadActorGuard_DeniesForeignActor : un appelant ne peut

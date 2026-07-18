@@ -8624,3 +8624,51 @@ retiré. Aucune ref `ghcr`/`LEVELUP_IMAGE`/`build-image` restante ; `bash -n dep
 
 **Conclusion** : deploy = build local sur push main (comme avant le train). Aucune action
 VPS requise.
+
+---
+
+## [2026-07-18] BOLA prestige objet-level clos + réparation résolution player_slug — Complété (commit 1/2)
+
+**Statut** : Complété (item backlog `[sécurité/autZ]` Routes prestige par `{id}`). Branche
+`fix/backlog-bola-et-campagne` (2 items du backlog, 2 commits). Pas encore commité (attente
+validation user).
+
+**Découverte majeure (invalide l'hypothèse du backlog)** : `wire.WithPlayerSlug` n'était
+JAMAIS appelé → l'extractFn par défaut du `LazyPrestigeService` (`PlayerSlugFromContext`)
+retournait toujours `""`. Conséquence : toutes les routes prestige qui résolvent via le
+CONTEXTE (pas via un body/query acteur) échouaient en `ErrPlayerNotResolved` → 500 : les 5
+routes `{id}` pures (`GetChallenge`, `UpdateChallenge`, `AbandonChallenge`, `SuggestNext`,
+`GetArc`) ET `ListMySquads` dès qu'une escouade existe (via `ListSquadMembers`). Le « BOLA
+résiduel » du backlog était donc surtout des routes cassées. Le fix répare ET sécurise.
+
+**Décision technique** :
+- **Middleware `prestigePlayerSlugCtx`** (`internal/api/prestige_player_slug_mw.go`, monté
+  sur le groupe prestige dans server_apiv1.go) : stampe le `{player_slug}` du chemin (déjà
+  réconcilié avec la session par ownershipMW) dans le contexte via `wire.WithPlayerSlug`.
+  Le LazyPrestigeService ancre alors le player DB sur le slug DU CHEMIN. Effet double :
+  (1) répare la résolution des routes ci-dessus ; (2) clôt le BOLA objet-level pour les
+  objets ISOLÉS par player DB — défis et arcs perso vivent dans `stats.duckdb` du joueur du
+  chemin, donc un `{id}` appartenant à un autre joueur n'y est pas → 404 (isolation par
+  construction, non contournable).
+- **`ListSquadChallenges` — garde d'appartenance** : les défis d'escouade vivent dans
+  `shared_social.duckdb` (partagé tous joueurs), NON isolés par player DB → l'isolation
+  ci-dessus ne les couvre pas. Ajout de `requestedBy` (slug du chemin) à la signature
+  service + `assertMemberUser` (même contrôle que toutes les mutations squad), threadé via
+  handler (nouvel input lisant `path:"player_slug"` parent) → lazy (`resolveByUserID`) →
+  service. Un non-membre reçoit `ErrInvalidInput` (400), aucun défi ne fuite. `squadIDInput`
+  devenu mort supprimé (règle 7).
+
+**Résultats observés** : `go build ./...` (cgo) exit 0 ; `go vet` exit 0 ;
+`go test ./internal/prestige ./internal/api ./internal/api/handlers ./internal/api/wire`
+verts. Nouveaux tests exécutés et PASS : `TestService_ListSquadChallenges_RejectsNonMember`,
+`TestPrestigeHandler_ListSquadChallenges_{ThreadsPathSlugAsRequester,NonMemberRejected}`,
+`TestPrestigePlayerSlugCtx_StampsPathSlug` (garde-rail anti-régression du câblage).
+golangci-lint absent en local (hook skip, CI s'en charge).
+
+**Découverte (hors périmètre, NON traitée — règle 7)** : `JoinSquadChallenge` (POST
+`/squad-challenges/{id}/join`) laisse rejoindre un défi d'escouade par `{id}` sans vérifier
+l'appartenance à l'escouade du défi (l'actor guard couvre seulement l'acteur, pas l'objet).
+Non listé dans le résiduel backlog → noté, à trancher séparément.
+
+**Conclusion / prochaine étape** : commit 1 prêt (attente validation user). Ensuite commit 2 :
+fuite d'affichage campagne H5.

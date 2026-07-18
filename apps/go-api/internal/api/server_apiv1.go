@@ -830,7 +830,16 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 			// Migré vers Huma (Phase 3b) : tout passe par ph.Mount. Les 2 routes
 			// squad de main (PATCH/DELETE /squads/{squad_id} = Rename/Delete) sont
 			// portées dans ph.Mount côté handlers (prestige.go) → 26 + 2 = 28.
-			ph.Mount(r)
+			//
+			// Câblage du player_slug du chemin dans le contexte de résolution
+			// Prestige (prestigePlayerSlugCtx) : répare les routes {id} et clôt le
+			// BOLA objet-level par isolation player DB. Rationale : voir le doc du
+			// middleware (prestige_player_slug_mw.go). Les défis d'escouade
+			// (shared_social) sont gardés à part par assertMemberUser.
+			r.Group(func(r chi.Router) {
+				r.Use(prestigePlayerSlugCtx)
+				ph.Mount(r)
+			})
 			slog.Info("prestige_routes_mounted", "endpoints_count", 28)
 		}
 

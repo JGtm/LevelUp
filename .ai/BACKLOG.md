@@ -28,20 +28,6 @@ requis — aucun aujourd'hui). **Effort** : petit-moyen (suppression + tests).
 
 ---
 
-### [sécurité/autZ] Routes prestige par `{id}` : BOLA niveau objet (résiduel, distinct du BOLA acteur)
-
-> Noté le 2026-07-17 (livraison de la garde acteur généralisée, commit `b8e97cb43`).
-> Le BOLA ACTEUR est clos : les 14 routes non-squad réconcilient `user_id`/`created_by`/
-> `requested_by` avec la session (`authorizeActor`, 403 `player_forbidden`, garde-rail AST
-> structurel). Résiduel découvert : les routes unitaires par `{id}` sans champ acteur
-> (`GetChallenge`, `UpdateChallenge`, `AbandonChallenge`, `SuggestNext`, `GetArc`,
-> `ListSquadChallenges`) ne vérifient pas que l'OBJET ciblé appartient au `{player_slug}`
-> du chemin. Blast radius limité (instance invités-only + lockdown), même famille de fix :
-> vérifier l'appartenance de l'objet au joueur du chemin. Tests 403/404 par endpoint.
-> **Effort** : moyen.
-
----
-
 ### [bug/h5] Fuite d'affichage : 287 matchs de campagne visibles malgré le filtre read-side
 
 > Noté le 2026-07-17. Vérifié en base : **287 matchs de campagne** (265 Campaign + 22 Campaign
@@ -143,6 +129,7 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-07-18 | **[sécurité/autZ] BOLA prestige objet-level clos** — découverte : `WithPlayerSlug` jamais câblé → les routes `{id}` pures (`GetChallenge`/`Update`/`Abandon`/`SuggestNext`/`GetArc`) + `ListMySquads`-avec-escouades échouaient en `ErrPlayerNotResolved`. Fix : middleware `prestigePlayerSlugCtx` stampe le slug du chemin (ownership-gardé) dans le contexte → répare la résolution ET clôt le BOLA par isolation player DB (défis/arcs perso en `stats.duckdb` du joueur du chemin → `{id}` étranger = 404). Défis d'escouade (shared_social, non isolés) : garde `assertMemberUser` ajoutée à `ListSquadChallenges` (`requestedBy` = slug du chemin). Tests service+handler+middleware. Découverte hors périmètre notée : `JoinSquadChallenge` sans check d'appartenance objet. |
 | 2026-07-17 | **[data/h5] Classification hors-arsenal + capture mécanique de kill** — 26 IDs classés (véhicule/tourelle/environnement/non-attribué/autres) au donut, exclus de l'insight coach (`16d2a09eb`) ; colonne `kill_kind` persistée à l'ingestion H5 pour cesser de jeter la mécanique (`c13e7f6bc`). Phase 2 (backfill + découpage « Capacités Spartan »/Corps-à-corps/Non-attribué) → backlog actif. Investigations : « Spartan » = bucket d'attribution sans arme (API officielle `weapon_type=Unknown`), concentré dans les modes mêlée. |
 | 2026-07-17 | **[ux/relations] Lot G LIVRÉ** (revirement produit) — CSR/tier de la bête noire affiché en dégradation gracieuse (rien si absent). Justification d'abandon initiale corrigée : la donnée EST collectée (`ExtractAllSharedCSRRows` → `match_csrs_latest`) ; couverture nulle en dev car base sociale (1,8 % classé), non représentative des joueurs compétitifs cibles. Backend best-effort + chip front conditionnel + tests. Commit `8570af76a`. |
 | 2026-07-17 | **[vérif finale + dettes] passe QA post-train** — audit logging (5 flux best-effort re-routés hors `general.log` vers modules dédiés + erreur avalée `decodeParams` comblée, `e6671ff89`) ; renforcement tests (branches best-effort/gardes nil, `058ba9486`/`d49a1734f`) ; dettes réglées : erreurs avalées coach/prestige/handlers, doc inversée `notifications/types.go`, schéma OpenAPI orphelin `BattlePassResponse` retiré, `SUBTIER_ROMAN` centralisé + garde-rail (3e copie trouvée → seuil franchi). Commits `d48da5912`/`556991069`/`6bb186e9b`/`3c975bde3`. Gates Go unit+intégration `-p 1` (114 ok/0 FAIL) + web (2258 tests) verts. |
