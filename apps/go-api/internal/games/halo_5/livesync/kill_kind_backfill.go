@@ -15,9 +15,11 @@ package livesync
 // ART-safe (ADR 0026). Un couple présent dans l'ancienne génération mais absent du
 // re-fetch garde sa génération (clés indépendantes dans la vue) — aucune perte.
 //
-// Idempotence : h5KillKind renvoie TOUJOURS une valeur non vide (défaut weapon) → après
-// backfill, la génération courante porte kill_kind NOT NULL et le match sort de la
-// sélection (matchesMissingKillKind). Une 2e passe le saute.
+// Idempotence (mode non-force) : h5KillKind renvoie TOUJOURS une valeur non vide (défaut
+// weapon) → après backfill, la génération courante porte kill_kind NOT NULL et le match sort
+// de la sélection (matchesForKillKind, force=false). Une 2e passe le saute. Le mode force
+// (matchesForKillKind, force=true) ignore ce filtre et re-dérive TOUS les matchs — non
+// idempotent par construction (à lancer une fois pour capter une nouvelle valeur kill_kind).
 
 import (
 	"context"
@@ -40,14 +42,23 @@ type KillKindBackfillStats struct {
 	KillRows int // weapon_kills ré-insérés
 }
 
-// RunKillKindBackfill re-dérive weapon_kills (avec kill_kind) pour les matchs H5 dont la
-// génération courante porte kill_kind NULL (collectés avant la capture), et les ré-insère
-// en NOUVELLE GÉNÉRATION. shared : RW single-writer (serveur arrêté). fetch injecté
-// (prod = halo5.FetchCanonicalEvents sur une CaptureSource). titleSlug pilote l'exclusion
-// Campagne (read-side canonique). maxMatches<=0 = tous. Best-effort par match : un fetch
-// ou une écriture KO saute le match (compté), sans interrompre la passe — relancer reprend
-// les matchs encore en kill_kind NULL.
-func RunKillKindBackfill(ctx context.Context, shared *sql.DB, fetch FetchEventsFunc, titleSlug string, maxMatches int, logger *slog.Logger) (KillKindBackfillStats, error) {
+// RunKillKindBackfill re-dérive weapon_kills (avec kill_kind) pour les matchs H5 et les
+// ré-insère en NOUVELLE GÉNÉRATION. shared : RW single-writer (serveur arrêté). fetch
+// injecté (prod = halo5.FetchCanonicalEvents sur une CaptureSource). titleSlug pilote
+// l'exclusion Campagne (read-side canonique). maxMatches<=0 = tous.
+//
+// force=false : seulement les matchs dont la génération courante porte kill_kind NULL
+// (collectés avant la capture). force=true : TOUS les matchs H5 (hors Campagne) ayant des
+// weapon_kills, y compris ceux déjà backfillés — nécessaire pour re-dériver une génération
+// enrichie d'une NOUVELLE valeur (ex. assassination) que l'ancienne passe ne connaissait
+// pas. Reste INSERT-only nouvelle génération (ART-safe, anti-perte : ré-insertion de TOUS
+// les kills du couple).
+//
+// Best-effort par match : un fetch ou une écriture KO saute le match (compté), sans
+// interrompre la passe. En mode non-force, relancer reprend les matchs encore en kill_kind
+// NULL (idempotent). En mode force, chaque passe ré-insère une génération (non idempotent
+// par construction : à lancer une fois, serveur arrêté).
+func RunKillKindBackfill(ctx context.Context, shared *sql.DB, fetch FetchEventsFunc, titleSlug string, maxMatches int, force bool, logger *slog.Logger) (KillKindBackfillStats, error) {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -55,7 +66,7 @@ func RunKillKindBackfill(ctx context.Context, shared *sql.DB, fetch FetchEventsF
 	if err != nil {
 		return KillKindBackfillStats{}, fmt.Errorf("backfill kill_kind: résolveur xuid: %w", err)
 	}
-	ids, err := matchesMissingKillKind(ctx, shared, titleSlug, maxMatches)
+	ids, err := matchesForKillKind(ctx, shared, titleSlug, maxMatches, force)
 	if err != nil {
 		return KillKindBackfillStats{}, fmt.Errorf("backfill kill_kind: énumération: %w", err)
 	}
@@ -95,18 +106,24 @@ func RunKillKindBackfill(ctx context.Context, shared *sql.DB, fetch FetchEventsF
 	return stats, nil
 }
 
-// matchesMissingKillKind : match_ids H5 dont la génération COURANTE de weapon_kills porte
-// au moins une ligne kill_kind NULL (collectés avant la capture kill_kind). Récents
-// d'abord. La lecture passe par v_weapon_kills (génération MAX) → après backfill la
-// nouvelle génération porte kill_kind et le match sort de la sélection (idempotent).
-// Exclut la Campagne via l'exclusion read-side canonique (analysis, par game_variant_id :
-// match_registry n'a PAS de game_mode — seul le game_variant_id discrimine, cf.
-// analysis/campaign_exclusion.go). Warzone n'a aucun discriminant de schéma (non masqué
-// nulle part côté lecture) ; un éventuel match Warzone résiduel re-dérivé reste INSERT-only
-// ART-safe. maxMatches<=0 = tous.
-func matchesMissingKillKind(ctx context.Context, shared *sql.DB, titleSlug string, maxMatches int) ([]string, error) {
+// matchesForKillKind : match_ids H5 candidats au backfill kill_kind, récents d'abord. La
+// lecture passe par v_weapon_kills (génération MAX). Exclut la Campagne via l'exclusion
+// read-side canonique (analysis, par game_variant_id : match_registry n'a PAS de game_mode
+// — seul le game_variant_id discrimine, cf. analysis/campaign_exclusion.go). Warzone n'a
+// aucun discriminant de schéma (non masqué nulle part côté lecture) ; un éventuel match
+// Warzone résiduel re-dérivé reste INSERT-only ART-safe. maxMatches<=0 = tous.
+//
+// force=false : matchs dont la génération courante porte au moins une ligne kill_kind NULL
+// (collectés avant la capture) → après backfill le match sort de la sélection (idempotent).
+// force=true : TOUS les matchs ayant des weapon_kills (le filtre kill_kind NULL est levé)
+// → re-dérive aussi les matchs déjà backfillés pour capter une nouvelle valeur.
+func matchesForKillKind(ctx context.Context, shared *sql.DB, titleSlug string, maxMatches int, force bool) ([]string, error) {
+	killKindFilter := " AND w.kill_kind IS NULL"
+	if force {
+		killKindFilter = "" // force : tous les matchs avec des kills, déjà backfillés inclus
+	}
 	q := `SELECT r.match_id FROM match_registry r
-	      WHERE EXISTS (SELECT 1 FROM v_weapon_kills w WHERE w.match_id = r.match_id AND w.kill_kind IS NULL)` +
+	      WHERE EXISTS (SELECT 1 FROM v_weapon_kills w WHERE w.match_id = r.match_id` + killKindFilter + `)` +
 		analysis.SQLExcludeCampaignVariants(titleSlug, "r") +
 		` ORDER BY COALESCE(r.start_time_utc, r.start_time) DESC`
 	if maxMatches > 0 {

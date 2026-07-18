@@ -9,8 +9,12 @@
 // single-writer (serveur arrêté). Idempotent : h5KillKind renvoie toujours une valeur non
 // vide → après backfill le match sort de la sélection (2e passe = skip).
 //
-//	Usage : LEVELUP_REPO_ROOT=<repo principal> [LEVELUP_H5_AUTH_AS=<sain>] \
-//	        go run ./cmd/h5-kill-kind-backfill [Gamertag-auth] [maxMatches]
+//	Usage : LEVELUP_REPO_ROOT=<repo principal> [LEVELUP_H5_AUTH_AS=<sain>] [LEVELUP_KK_FORCE=1] \
+//	        go run ./cmd/h5-kill-kind-backfill [Gamertag-auth] [maxMatches] [force]
+//
+// force (3e arg "force"/"1"/"true" ou LEVELUP_KK_FORCE=1) : re-dérive TOUS les matchs (déjà
+// backfillés inclus) — requis pour capter une NOUVELLE valeur kill_kind (ex. assassination)
+// sur les matchs déjà passés en 4 valeurs. Sans force : seulement les kill_kind NULL.
 package main
 
 import (
@@ -47,6 +51,18 @@ func main() {
 		if n, err := strconv.Atoi(os.Args[2]); err == nil {
 			maxMatches = n
 		}
+	}
+	// force : re-dérive TOUS les matchs (déjà backfillés inclus) pour capter une nouvelle
+	// valeur kill_kind (ex. assassination). 3e arg "force"/"1"/"true" ou LEVELUP_KK_FORCE=1.
+	force := false
+	if len(os.Args) > 3 {
+		switch os.Args[3] {
+		case "force", "1", "true":
+			force = true
+		}
+	}
+	if v := os.Getenv("LEVELUP_KK_FORCE"); v == "1" || v == "true" {
+		force = true
 	}
 
 	ctx := context.Background()
@@ -87,8 +103,8 @@ func main() {
 	fetch := func(ctx context.Context, matchID string) ([]canonical.MatchEvent, error) {
 		return halo5.FetchCanonicalEvents(ctx, src, matchID)
 	}
-	fmt.Printf("kill-kind-backfill h5 (auth_as=%s, max=%d) : démarrage\n", authGT, maxMatches)
-	stats, err := livesync.RunKillKindBackfill(ctx, shared, fetch, halo5.TitleSlug, maxMatches, nil)
+	fmt.Printf("kill-kind-backfill h5 (auth_as=%s, max=%d, force=%v) : démarrage\n", authGT, maxMatches, force)
+	stats, err := livesync.RunKillKindBackfill(ctx, shared, fetch, halo5.TitleSlug, maxMatches, force, nil)
 	if err != nil {
 		fatal("RunKillKindBackfill: %v", err)
 	}
