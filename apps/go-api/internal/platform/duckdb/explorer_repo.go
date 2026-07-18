@@ -38,7 +38,9 @@ func (r *ExplorerRepo) GetCommonMatches(ctx context.Context, xuid1, xuid2 string
 		return nil, fmt.Errorf("ExplorerRepo.GetCommonMatches: shared reader: %w", err)
 	}
 	defer release()
-	rows, err := sharedDB.QueryContext(ctx, Q19CommonMatches, xuid1, xuid2)
+	// Masquage Campagne (Halo 5) : match_registry aliasé "r" dans Q19. No-op Infinite.
+	q := resolveCampaignExclusion(Q19CommonMatches, r.pdb.TitleSlug, "r")
+	rows, err := sharedDB.QueryContext(ctx, q, xuid1, xuid2)
 	if err != nil {
 		return nil, fmt.Errorf("ExplorerRepo.GetCommonMatches: query: %w", err)
 	}

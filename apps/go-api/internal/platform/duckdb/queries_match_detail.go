@@ -58,7 +58,7 @@ SELECT
     COUNT(DISTINCT hist.match_id) AS count_together,
     (tm.team_id = (SELECT team_id FROM my_team)) AS is_ally
 FROM this_match tm
-LEFT JOIN match_participants me ON me.xuid = ?
+LEFT JOIN match_participants me ON me.xuid = ?` + campaignExclusionToken + `
 LEFT JOIN match_participants hist
     ON hist.match_id = me.match_id AND hist.xuid = tm.xuid
 GROUP BY tm.xuid, tm.gamertag, tm.is_bot, tm.team_id
@@ -100,7 +100,7 @@ my_team AS (
 my_history AS (
     SELECT match_id, team_id, outcome
     FROM match_participants
-    WHERE xuid = ?
+    WHERE xuid = ?` + campaignExclusionToken + `
 ),
 encounter_history AS (
     SELECT

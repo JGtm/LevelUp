@@ -90,7 +90,10 @@ func (r *SquadRepo) loadMapStatsSquadShared(ctx context.Context, mainXUID string
 	}
 	defer release()
 
-	q := fmt.Sprintf(Q42MapStatsForSquadSharedTpl, Placeholders(len(squadXUIDs)), len(uniqueXUIDs(squadXUIDs)))
+	// Masquage Campagne (Halo 5) : registre aliasé "r", résolu AVANT Sprintf
+	// (sans placeholder). No-op Infinite. Item backlog H1.
+	tpl := resolveCampaignExclusion(Q42MapStatsForSquadSharedTpl, pdbTitleSlug(r.pdb), "r")
+	q := fmt.Sprintf(tpl, Placeholders(len(squadXUIDs)), len(uniqueXUIDs(squadXUIDs)))
 	args := make([]any, 0, len(squadXUIDs)+1)
 	for _, x := range squadXUIDs {
 		args = append(args, x)

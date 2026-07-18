@@ -36,12 +36,16 @@ func (r *FiltersRepo) LoadMatchesForFilters(ctx context.Context) ([]domain.Filte
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
+	// Masquage READ-SIDE des matchs Campagne (Halo 5) sur le chargement cascade
+	// (options de filtres, comptes, scope sessions). No-op Infinite. L'alias de
+	// résolution diffère selon la source : "r" pour v_match_full, le nom de la vue
+	// pour mv_player_matches (colonnes non aliasées). Item backlog H1.
 	hasMV := r.hasMVPlayerMatches(ctx)
 	var sharedQuery string
 	if hasMV {
-		sharedQuery = Q4MVSharedMatchesForFilters
+		sharedQuery = resolveCampaignExclusion(Q4MVSharedMatchesForFilters, r.pdb.TitleSlug, "mv_player_matches")
 	} else {
-		sharedQuery = Q4SharedMatchesForFilters
+		sharedQuery = resolveCampaignExclusion(Q4SharedMatchesForFilters, r.pdb.TitleSlug, "r")
 	}
 
 	results, err := r.loadSharedFilterRows(ctx, sharedQuery)

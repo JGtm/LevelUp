@@ -28,22 +28,6 @@ requis — aucun aujourd'hui). **Effort** : petit-moyen (suppression + tests).
 
 ---
 
-### [bug/h5] Fuite d'affichage : 287 matchs de campagne visibles malgré le filtre read-side
-
-> Noté le 2026-07-17. Vérifié en base : **287 matchs de campagne** (265 Campaign + 22 Campaign
-> Score Attack, 9,5 % du corpus H5) sont présents dans `match_registry` et censés être MASQUÉS
-> à la lecture via `analysis.campaignExcludedVariantIDs` (clause `game_variant_id NOT IN (...)`).
-> L'utilisateur en voit pourtant dans l'UI → **un chemin de lecture n'applique pas la clause**.
-> Auditer les lecteurs H5 (services/repos) et poser le filtre là où il manque (ou un garde-rail
-> centralisé). Les données ne sont PAS à purger (règle ART — collecte historique, Warzone/Campaign
-> exclus à la collecte depuis mais l'historique demeure). **Effort** : petit-moyen (audit + fix).
-> **Approche DÉCIDÉE (2026-07-18, validée user)** : filtre à la source centralisé + garde-rail
-> (fragment SQL partagé ou vue de base excluant la campagne, par lequel tous les lecteurs H5
-> passent), **PAS** de suppression en BDD (non destructif, donnée coûteuse à re-fetch, garde
-> l'optionalité PvE). Exécution : quand on y revient (pas dans le train en cours).
-
----
-
 ### [POST-V7] Housekeeping post-cutover (optionnel, non bloquant)
 
 > Le cutover Go (la branche Go est devenue `main`) est **terminé** — cf. archive « Récemment complété ».
@@ -129,6 +113,7 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-07-18 | **[bug/h5] Fuite d'affichage campagne (287 matchs) — balayage complet** — cause : le mécanisme centralisé d'exclusion (`analysis.campaignExcludedVariantIDs` + fragments) n'était pas appliqué sur `Q5SharedHistory` (LISTE historique + compteur) ni `Q4/Q4MV` (filtres). Fix appliqué à **la source** : liste/filtres + relations/career hub (Q26/Q28/Q28Scoped/QRelationsCoreForm). Un **garde-rail structurel** (scan AST de tous les lecteurs `match_participants`/`mv_player_matches` + `xuid=?`) a révélé la fuite systémique → balayage complet des lecteurs restants (Q10 rencontres, Q19 communs, Q23/Q23b détail-match, Q29Heatmap/Q30Rival moments, Q29TopTeammates/Q30SquadShared/Q31/Q42 escouade). Exempts justifiés (allowlist) : mono-match (Q17/Q17b/Q26), filtré au call site (Q25Template, QRelationsPlayerWinRate), sur-lecture inoffensive (Q25MatchParticipants), code mort (Q30SquadMatches). Nouveau résolveur `resolveCampaignExclusionByMatchID` (sous-requête sans placeholder, sûr avant Sprintf). Tests : structural coverage + comportemental (alias/by-match-id/token). PAS de purge BDD (règle ART). Découverte notée : `Q30SquadMatches` code mort à supprimer. |
 | 2026-07-18 | **[sécurité/autZ] BOLA prestige objet-level clos** — découverte : `WithPlayerSlug` jamais câblé → les routes `{id}` pures (`GetChallenge`/`Update`/`Abandon`/`SuggestNext`/`GetArc`) + `ListMySquads`-avec-escouades échouaient en `ErrPlayerNotResolved`. Fix : middleware `prestigePlayerSlugCtx` stampe le slug du chemin (ownership-gardé) dans le contexte → répare la résolution ET clôt le BOLA par isolation player DB (défis/arcs perso en `stats.duckdb` du joueur du chemin → `{id}` étranger = 404). Défis d'escouade (shared_social, non isolés) : garde `assertMemberUser` ajoutée à `ListSquadChallenges` (`requestedBy` = slug du chemin). Tests service+handler+middleware. Découverte hors périmètre notée : `JoinSquadChallenge` sans check d'appartenance objet. |
 | 2026-07-17 | **[data/h5] Classification hors-arsenal + capture mécanique de kill** — 26 IDs classés (véhicule/tourelle/environnement/non-attribué/autres) au donut, exclus de l'insight coach (`16d2a09eb`) ; colonne `kill_kind` persistée à l'ingestion H5 pour cesser de jeter la mécanique (`c13e7f6bc`). Phase 2 (backfill + découpage « Capacités Spartan »/Corps-à-corps/Non-attribué) → backlog actif. Investigations : « Spartan » = bucket d'attribution sans arme (API officielle `weapon_type=Unknown`), concentré dans les modes mêlée. |
 | 2026-07-17 | **[ux/relations] Lot G LIVRÉ** (revirement produit) — CSR/tier de la bête noire affiché en dégradation gracieuse (rien si absent). Justification d'abandon initiale corrigée : la donnée EST collectée (`ExtractAllSharedCSRRows` → `match_csrs_latest`) ; couverture nulle en dev car base sociale (1,8 % classé), non représentative des joueurs compétitifs cibles. Backend best-effort + chip front conditionnel + tests. Commit `8570af76a`. |

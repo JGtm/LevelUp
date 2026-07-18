@@ -17,7 +17,11 @@
 //     concaténable quand le caller compose déjà la requête (ex. player_matches_repo).
 package duckdb
 
-import "levelup/go-api/internal/analysis"
+import (
+	"strings"
+
+	"levelup/go-api/internal/analysis"
+)
 
 // campaignExclusionToken : marqueur inséré dans les constantes SQL, résolu par
 // resolveCampaignExclusion. Alias de analysis.CampaignExclusionToken.
@@ -29,6 +33,17 @@ const campaignExclusionToken = analysis.CampaignExclusionToken
 // alias de match_registry / v_match_full / mv_player_matches dans la requête.
 func resolveCampaignExclusion(query, titleSlug, alias string) string {
 	return analysis.SQLResolveCampaignExclusion(query, titleSlug, alias)
+}
+
+// resolveCampaignExclusionByMatchID remplace le token campagne par la clause
+// SOUS-REQUÊTE (` AND <matchIDCol> NOT IN (SELECT match_id FROM match_registry
+// WHERE game_variant_id IN (...))`), pour les requêtes qui filtrent les matchs du
+// joueur SANS alias registre dans la portée du token (CTE my_history/my_matches
+// sur match_participants seul). Ne pose AUCUN placeholder (GUID inlinés) → sûr à
+// injecter dans un template AVANT fmt.Sprintf (le fragment ne contient pas de %).
+// No-op pour Infinite (token retiré sans clause).
+func resolveCampaignExclusionByMatchID(query, titleSlug, matchIDCol string) string {
+	return strings.Replace(query, campaignExclusionToken, excludeCampaignByMatchID(titleSlug, matchIDCol), 1)
 }
 
 // excludeCampaignClause retourne la clause littérale ` AND COALESCE(<alias>.

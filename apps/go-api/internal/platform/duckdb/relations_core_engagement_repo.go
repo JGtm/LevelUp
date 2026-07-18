@@ -94,7 +94,10 @@ func (r *CareerRepo) queryCoreRecentForm(ctx context.Context, coreXUIDs, scope [
 	args = append(args, r.pdb.XUID)               // with_core : c.xuid <> ?
 	args = append(args, ToAnySlice(coreXUIDs)...) // with_core : c.xuid IN (…)
 	args = append(args, limit)
-	sqlText := fmt.Sprintf(QRelationsCoreFormTpl, scopeIn, Placeholders(len(coreXUIDs)), winExpr, lossExpr)
+	// Masquage Campagne (Halo 5) : my_matches est filtré via la forme sous-requête
+	// by-match-id (sans placeholder, résolue AVANT Sprintf). No-op Infinite.
+	tpl := resolveCampaignExclusionByMatchID(QRelationsCoreFormTpl, r.pdb.TitleSlug, "mp.match_id")
+	sqlText := fmt.Sprintf(tpl, scopeIn, Placeholders(len(coreXUIDs)), winExpr, lossExpr)
 
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {

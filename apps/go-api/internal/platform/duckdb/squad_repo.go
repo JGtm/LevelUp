@@ -52,7 +52,11 @@ func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain
 	// PMT-5 : win/win_rate title-aware (fallback "p1.outcome = 2" byte-identique Halo).
 	// Ordre des %s du template : win (wins_together), win (win_rate), puis IN-list.
 	winExpr := outcomeSQLEq(ctx, "p1.outcome", canonical.OutcomeWin, "p1.outcome = 2")
-	query := fmt.Sprintf(Q29TopTeammatesSharedTpl, winExpr, winExpr, Placeholders(len(matchIDs)))
+	// Masquage Campagne (Halo 5) : le set match_id « avec amis » peut contenir des
+	// matchs Campagne coop → by-match-id (p1.match_id), résolu AVANT Sprintf. No-op
+	// Infinite. Item backlog H1.
+	tpl := resolveCampaignExclusionByMatchID(Q29TopTeammatesSharedTpl, pdbTitleSlug(r.pdb), "p1.match_id")
+	query := fmt.Sprintf(tpl, winExpr, winExpr, Placeholders(len(matchIDs)))
 	args := make([]any, 0, 2+len(matchIDs))
 	args = append(args, xuid)
 	args = append(args, ToAnySlice(matchIDs)...)
@@ -257,6 +261,9 @@ func (r *SquadRepo) loadSquadMatchesShared(ctx context.Context, playerXUID, team
 
 	// Set perfect-kill résolu pour le titre du joueur (HINF byte-identique).
 	q := resolvePerfectKillClause(Q30SquadMatchesSharedQuery, "me.medal_name_id", pdbTitleSlug(r.pdb))
+	// Masquage Campagne (Halo 5) : liste des matchs communs escouade, registre
+	// aliasé "r" (v_match_full). No-op Infinite. Item backlog H1.
+	q = resolveCampaignExclusion(q, pdbTitleSlug(r.pdb), "r")
 	rows, err := db.QueryContext(ctx, q, teammateXUID, playerXUID)
 	if err != nil {
 		return nil, fmt.Errorf("shared query: %w", err)
@@ -318,7 +325,10 @@ func (r *SquadRepo) LoadTeammateMatches(ctx context.Context, playerXUID, teammat
 	}
 	defer release()
 
-	rows, err := db.QueryContext(ctx, Q31TeammateMatches, playerXUID, teammateXUID)
+	// Masquage Campagne (Halo 5) : liste des matchs d'un coéquipier, registre
+	// aliasé "r" (v_match_full). No-op Infinite. Item backlog H1.
+	q := resolveCampaignExclusion(Q31TeammateMatches, pdbTitleSlug(r.pdb), "r")
+	rows, err := db.QueryContext(ctx, q, playerXUID, teammateXUID)
 	if err != nil {
 		return nil, fmt.Errorf("LoadTeammateMatches: %w", err)
 	}

@@ -46,7 +46,7 @@ JOIN match_participants p2
     AND p2.xuid    != ?
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p2.xuid
 WHERE p1.match_id IN (%s)
-  AND p1.xuid = ?
+  AND p1.xuid = ?` + campaignExclusionToken + `
   AND p2.xuid NOT LIKE 'bid(%%'
 GROUP BY p2.xuid, vg.gamertag
 ORDER BY games_together DESC
@@ -176,7 +176,7 @@ JOIN match_participants p2
     ON p2.match_id = p1.match_id
     AND p2.team_id  = p1.team_id
     AND p2.xuid     = ?
-WHERE p1.xuid = ?
+WHERE p1.xuid = ?` + campaignExclusionToken + `
 ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC`
 
 // Q31 : Squad — stats d'un coéquipier sur les matchs communs.
@@ -207,7 +207,7 @@ JOIN match_participants p_main
     ON p_main.match_id = p.match_id
     AND p_main.team_id  = p.team_id
     AND p_main.xuid     = ?
-WHERE p.xuid = ?
+WHERE p.xuid = ?` + campaignExclusionToken + `
 ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC`
 
 // Q32SquadImpactEventsTemplate : template SQL pour charger les events d'impact escouade.
@@ -343,7 +343,7 @@ SELECT
 FROM match_participants mp
 JOIN match_registry r       ON r.match_id = mp.match_id
 JOIN squad_matches sm       ON sm.match_id = mp.match_id
-WHERE mp.xuid = ?
+WHERE mp.xuid = ?` + campaignExclusionToken + `
   AND COALESCE(r.map_id, '') <> ''`
 
 // Q42MapStatsForSquadTemplate (legacy non-shared) RETIRÉ (PMT-5 / dead-code) :
