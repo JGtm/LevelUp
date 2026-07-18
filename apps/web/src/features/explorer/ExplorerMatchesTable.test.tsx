@@ -245,6 +245,23 @@ describe('ExplorerMatchesTable — surlignage MVP/LVP par décile (DEC-DECILE)',
     expect((screen.getByText('100').closest('td') as HTMLElement).style.fontWeight).toBe('600')
     expect((screen.getByText('10').closest('td') as HTMLElement).style.fontWeight).toBe('500')
   })
+
+  it('surligne le décile MMR équipe (non inversé) ; la colonne Score n’est plus surlignée (DP-1 V6)', () => {
+    // team_mmr = 100..900, 950 → p10=100, p90=900 ; non inversé (haut = meilleur).
+    // Valeurs < 1000 → fmtMmr sans séparateur de milliers (getByText fiable).
+    const rows = [950, 900, 800, 700, 600, 500, 400, 300, 200, 100].map((m, i) =>
+      makeRow(i + 1, { map_ui: `M${i}`, team_mmr: m }),
+    )
+    renderWithProviders(<ExplorerMatchesTable rows={rows} playerSlug="me" sortable />)
+    // MMR équipe : 950 (≥ p90) best (600), 100 (≤ p10) worst (500), 500 neutre.
+    expect((screen.getByText('950').closest('td') as HTMLElement).style.fontWeight).toBe('600')
+    expect((screen.getByText('100').closest('td') as HTMLElement).style.fontWeight).toBe('500')
+    expect((screen.getByText('500').closest('td') as HTMLElement).style.fontWeight).toBe('')
+    // Score (score_label « 50-30 ») retiré du set décile V6 → jamais surligné.
+    for (const cell of screen.getAllByText('50-30')) {
+      expect((cell.closest('td') as HTMLElement).style.fontWeight).toBe('')
+    }
+  })
 })
 
 describe('ExplorerMatchesTable — alignement par colonne (DEC-ALIGN)', () => {

@@ -212,12 +212,16 @@ func TestBuildExplorerBriefing_RankedMultiChainNeverCrossed(t *testing.T) {
 	arLo, arHi := "Argent II", "Argent V"
 	btbHi, btbLo := "Or III", "Or I"
 	var filtered []domain.MatchHistoryRawRow
-	// 13 CSR chaîne "ranked" (type majoritaire) : plus ancien i=12, plus récent i=0.
-	for i := 0; i < 13; i++ {
+	// Isolation des paliers par chaîne (« never crossed ») avec toutes les chaînes
+	// AU-DESSUS du seuil de pertinence DP-5 (>= MinRankedChainMatches = 10) : CSR 25
+	// (type majoritaire), arena_slayer 12, btb 10 → LUSR total 22 < 25, ordre
+	// csr -> arena -> btb, plafond 3 non mordant.
+	// 25 CSR chaîne "ranked" : plus ancien i=24, plus récent i=0.
+	for i := 0; i < 25; i++ {
 		var label *string
 		rv := float64Ptr(230)
 		switch i {
-		case 12:
+		case 24:
 			label, rv = &csrLo, float64Ptr(200)
 		case 0:
 			label, rv = &csrHi, float64Ptr(260)
@@ -227,12 +231,12 @@ func TestBuildExplorerBriefing_RankedMultiChainNeverCrossed(t *testing.T) {
 			group: "ranked", tierLabel: label, ratingValue: rv,
 		}))
 	}
-	// 6 LUSR chaîne "arena_slayer" : rating monte (Argent II -> Argent V).
-	for i := 0; i < 6; i++ {
+	// 12 LUSR chaîne "arena_slayer" : rating monte (Argent II -> Argent V).
+	for i := 0; i < 12; i++ {
 		var label *string
 		rv := float64Ptr(15)
 		switch i {
-		case 5:
+		case 11:
 			label, rv = &arLo, float64Ptr(10)
 		case 0:
 			label, rv = &arHi, float64Ptr(20)
@@ -242,12 +246,12 @@ func TestBuildExplorerBriefing_RankedMultiChainNeverCrossed(t *testing.T) {
 			group: "arena_slayer", tierLabel: label, ratingValue: rv,
 		}))
 	}
-	// 5 LUSR chaîne "btb" : rating baisse (Or III -> Or I).
-	for i := 0; i < 5; i++ {
+	// 10 LUSR chaîne "btb" : rating baisse (Or III -> Or I).
+	for i := 0; i < 10; i++ {
 		var label *string
 		rv := float64Ptr(42)
 		switch i {
-		case 4:
+		case 9:
 			label, rv = &btbHi, float64Ptr(50)
 		case 0:
 			label, rv = &btbLo, float64Ptr(35)
@@ -258,8 +262,9 @@ func TestBuildExplorerBriefing_RankedMultiChainNeverCrossed(t *testing.T) {
 		}))
 	}
 	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered)
-	// CSR majoritaire (13) d'abord, puis chaînes LUSR par nb de matchs desc :
-	// arena_slayer (6) avant btb (5). Total 3 entrées (1 CSR + 2 LUSR).
+	// CSR majoritaire (25) d'abord, puis chaînes LUSR par nb de matchs desc :
+	// arena_slayer (12) avant btb (10). Total 3 entrées (1 CSR + 2 LUSR), toutes >=
+	// seuil → aucune omise, plafond 3 non atteint.
 	if b.Ranked == nil || len(b.Ranked.Kinds) != 3 {
 		t.Fatalf("want 3 chains (csr/ranked + lusr/arena_slayer + lusr/btb), got %+v", b.Ranked)
 	}
@@ -282,9 +287,11 @@ func TestBuildExplorerBriefing_RankedMultiChainNeverCrossed(t *testing.T) {
 	}
 }
 
-func TestBuildExplorerBriefing_RankedSmallSecondaryChainStillEmitted(t *testing.T) {
-	// V4 : PLUS de seuil de type secondaire (DEC-1 « une ligne par chaîne »). Une
-	// petite chaîne LUSR (3 matchs) coexiste avec la chaîne CSR — les deux émises.
+func TestBuildExplorerBriefing_RankedSmallSecondaryChainOmitted(t *testing.T) {
+	// DP-5 : seuil de pertinence par chaîne (MinRankedChainMatches = 10). Une petite
+	// chaîne LUSR (3 matchs < seuil) coexiste avec la chaîne CSR qualifiée (15) — la
+	// petite est OMISE, seule la CSR reste (le fallback ne se déclenche pas puisqu'au
+	// moins une chaîne qualifie).
 	var filtered []domain.MatchHistoryRawRow
 	for i := 0; i < 15; i++ {
 		filtered = append(filtered, briefingRankedRaw(rankedRawOpts{
@@ -292,18 +299,101 @@ func TestBuildExplorerBriefing_RankedSmallSecondaryChainStillEmitted(t *testing.
 			group: "ranked", ratingValue: float64Ptr(float64(100 + i)),
 		}))
 	}
-	for i := 0; i < 3; i++ { // petite chaîne LUSR btb
+	for i := 0; i < 3; i++ { // petite chaîne LUSR btb (< seuil → omise)
 		filtered = append(filtered, briefingRankedRaw(rankedRawOpts{
 			id: "l" + string(rune('a'+i)), daysAgo: 50 + i, ratingType: "LUSR",
 			group: "btb", ratingValue: float64Ptr(float64(1 + i)),
 		}))
 	}
 	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered)
-	if b.Ranked == nil || len(b.Ranked.Kinds) != 2 {
-		t.Fatalf("want 2 chains (csr/ranked + lusr/btb, aucune omise), got %+v", b.Ranked)
+	if b.Ranked == nil || len(b.Ranked.Kinds) != 1 {
+		t.Fatalf("want 1 chain (csr/ranked ; lusr/btb 3 < seuil omise), got %+v", b.Ranked)
 	}
-	if b.Ranked.Kinds[0].Kind != "csr" || b.Ranked.Kinds[1].Kind != "lusr" {
-		t.Errorf("ordre : csr majoritaire d'abord, got %+v", b.Ranked.Kinds)
+	if b.Ranked.Kinds[0].Kind != "csr" || b.Ranked.Kinds[0].PlaylistGroup != "ranked" {
+		t.Errorf("chaîne retenue : csr/ranked, got %+v", b.Ranked.Kinds)
+	}
+}
+
+func TestBuildExplorerBriefing_RankedFallbackKeepsPrincipalChain(t *testing.T) {
+	// DP-5 fallback : AUCUNE chaîne n'atteint le seuil (CSR 8, LUSR btb 5, tous < 10)
+	// mais au moins une progression existe → la chaîne principale (type majoritaire =
+	// CSR, 8 > 5, première en ordre canonique) est conservée pour ne jamais tout
+	// masquer. Une seule entrée. (13 matchs au total → pas low_sample.)
+	bronze, argent := "Bronze I", "Argent III"
+	var filtered []domain.MatchHistoryRawRow
+	for i := 0; i < 8; i++ { // CSR "ranked" : 8 matchs < seuil (majoritaire)
+		var label *string
+		switch i {
+		case 7:
+			label = &bronze
+		case 0:
+			label = &argent
+		}
+		filtered = append(filtered, briefingRankedRaw(rankedRawOpts{
+			id: "c" + string(rune('a'+i)), daysAgo: i, ratingType: "CSR",
+			group: "ranked", tierLabel: label, ratingValue: float64Ptr(float64(100 + i)),
+		}))
+	}
+	for i := 0; i < 5; i++ { // LUSR "btb" : 5 matchs < seuil (minoritaire)
+		filtered = append(filtered, briefingRankedRaw(rankedRawOpts{
+			id: "l" + string(rune('a'+i)), daysAgo: 50 + i, ratingType: "LUSR",
+			group: "btb", ratingValue: float64Ptr(float64(1 + i)),
+		}))
+	}
+	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered)
+	if b.Ranked == nil || len(b.Ranked.Kinds) != 1 {
+		t.Fatalf("fallback : want exactly 1 principal chain, got %+v", b.Ranked)
+	}
+	k := b.Ranked.Kinds[0]
+	if k.Kind != "csr" || k.PlaylistGroup != "ranked" {
+		t.Errorf("fallback : chaîne principale = type majoritaire csr/ranked, got %q/%q", k.Kind, k.PlaylistGroup)
+	}
+	if k.Matches != 8 {
+		t.Errorf("fallback : Matches want 8, got %d", k.Matches)
+	}
+}
+
+func TestBuildExplorerBriefing_RankedCapsToMostPlayed(t *testing.T) {
+	// DP-5 plafond : 4 chaînes qualifiées (toutes >= seuil) au-delà de
+	// RankedChainMaxCount = 3 → seules les 3 LES PLUS JOUÉES sont émises, restituées
+	// dans l'ordre canonique. CSR 40 (majoritaire) + arena_slayer 15 + arena_objectif
+	// 12 + btb 10 (LUSR total 37 < 40). Top 3 par matchs : csr, arena_slayer,
+	// arena_objectif ; btb (10, la moins jouée) écartée. Ordre : csr -> arena_slayer
+	// -> arena_objectif.
+	add := func(prefix, ratingType, group string, n, dayBase int) []domain.MatchHistoryRawRow {
+		rows := make([]domain.MatchHistoryRawRow, 0, n)
+		for i := 0; i < n; i++ {
+			rows = append(rows, briefingRankedRaw(rankedRawOpts{
+				id: prefix + string(rune('a'+i)), daysAgo: dayBase + i, ratingType: ratingType,
+				group: group, ratingValue: float64Ptr(float64(100 + i)),
+			}))
+		}
+		return rows
+	}
+	var filtered []domain.MatchHistoryRawRow
+	filtered = append(filtered, add("c", "CSR", "ranked", 40, 0)...)
+	filtered = append(filtered, add("a", "LUSR", "arena_slayer", 15, 100)...)
+	filtered = append(filtered, add("o", "LUSR", "arena_objectif", 12, 200)...)
+	filtered = append(filtered, add("b", "LUSR", "btb", 10, 300)...)
+	b := svcWithRanked(true).buildExplorerBriefing(context.Background(), filtered, filtered)
+	if b.Ranked == nil || len(b.Ranked.Kinds) != 3 {
+		t.Fatalf("plafond : want 3 chains (top N par matchs), got %+v", b.Ranked)
+	}
+	got := []string{
+		b.Ranked.Kinds[0].Kind + "/" + b.Ranked.Kinds[0].PlaylistGroup,
+		b.Ranked.Kinds[1].Kind + "/" + b.Ranked.Kinds[1].PlaylistGroup,
+		b.Ranked.Kinds[2].Kind + "/" + b.Ranked.Kinds[2].PlaylistGroup,
+	}
+	want := []string{"csr/ranked", "lusr/arena_slayer", "lusr/arena_objectif"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("ordre canonique plafonné[%d] = %q, want %q (full: %+v)", i, got[i], want[i], got)
+		}
+	}
+	for _, k := range b.Ranked.Kinds { // btb (la moins jouée) écartée
+		if k.PlaylistGroup == "btb" {
+			t.Errorf("btb (10 matchs) doit être écartée par le plafond, got %+v", b.Ranked.Kinds)
+		}
 	}
 }
 

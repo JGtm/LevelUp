@@ -1,3 +1,58 @@
+## [2026-07-18] Explorer briefing V6 — décile team_mmr, triptyques contrastés, tooltips factuels, largeurs socle, Classement pertinent — CLÔTURE (branche feat/explorer-briefing-compact)
+
+**Statut** : Complété (Phases 0-4 CLOSES, toutes cases statuées). NON committé (superviseur committe
++ clôture git ; merge main = deploy prod auto → APRÈS revue visuelle utilisateur). Plan :
+`.ai/V7/PLAN_EXPLORER_BRIEFING_V6_2026-07.md` (Découvertes 8-9 consignées). V6 s'empile sur V5 déjà
+livré sur cette branche (4015d6650, a0a335a01).
+
+**Décisions techniques principales** :
+- DP-5 (backend, Classement pertinent) : filtrage de pertinence AJOUTÉ dans le SERVICE
+  (`buildBriefingRanked`), l'algo pur `analysis.ComputeRankProgressionByChain` reste INCHANGÉ
+  (diff=0). Constantes `MinRankedChainMatches = MinDimensionGroupMatches` (=10, par référence, pas
+  de littéral dupliqué) + `RankedChainMaxCount = 3`. Logique extraite dans `rankChainsByRelevance`
+  (SRP) : seuil (Matches≥10) → fallback (aucune qualifiée + ≥1 prog → `progs[:1]` = chaîne
+  principale/type majoritaire) → plafond `selectTopByMatches` (top N par Matches, tri d'INDICES
+  stable, tie-break index canonique, restitution en ordre canonique). Miroir de `buildDimension`.
+  2 tests réécrits (`RankedMultiChainNeverCrossed` 25/12/10 ; `…SmallSecondaryChainStillEmitted`
+  → `…Omitted`, btb 3<seuil) + 2 nouveaux (`…RankedFallbackKeepsPrincipalChain`,
+  `…RankedCapsToMostPlayed`) ; tests placement inchangés (15 matchs ≥ seuil, Découverte-8). DTO
+  inchangé (émet moins d'entrées) → pas de generate-types ; agrégation mémoire → pas de
+  -tags=integration.
+- DP-1 (highlight décile) : `ExplorerMatchesTable.highlight.ts` — `score_label` RETIRÉ du set,
+  `team_mmr` AJOUTÉ (`EXPLORER_INVERTED.team_mmr=false`, extracteur brut). `ownTeamScore` supprimé
+  (code mort, grep=0). Aucune modif de `ExplorerMatchesTable.tsx` (`<td>` gaté par
+  `isExplorerHighlightKey`). Colonne Score toujours affichée (seul son surlignage part).
+- DP-2 (triptyque) : `MinMaxTriptych` bornes min/max `text-2xs text-muted-foreground` →
+  `text-xs text-foreground` (contraste plein theme-aware, jamais `#fff`) ; moyenne (span central)
+  inchangée.
+- DP-4 (largeurs socle) : `ExplorerBriefingStrip` socle `grid auto-fit` → `flex flex-wrap gap-2` ;
+  wrappers locaux `SOCLE_TILE` (basis-150), `SOCLE_TILE_WIDE` (Séries marquantes, basis-168/
+  grow-1.15, ~+10 %), `SOCLE_TILE_NARROW` (Pic MMR, basis-136/grow-0.9, ~−10 %). Zéro modif de
+  composant partagé (KpiCard concatène `className` sans twMerge → Découverte-5). flex-wrap+grow
+  gèrent l'absence des conditionnelles sans trou (revue visuelle utilisateur).
+- DP-3 (tooltips) : 11 clés `explorer.briefing.tip_*` (explorer.toml) réécrites FR+EN en registre
+  FACTUEL/impersonnel (0 « vous/votre/vos », 0 « survolez » ; triptyque « plus bas · moyen · plus
+  haut »). Manifests régénérés (diff = 11 clés sur generated/explorer.ts, 0 clé neuve).
+
+**Gates (passe finale, 2026-07-18, séquentiels)** : `go test ./...` = EXIT 0 (0 FAIL, service
+12.7s) ; `make go-api-lint` + `go vet ./...` = EXIT 0 ; golangci-lint = 0 issue sur les 3 fichiers
+briefing ; `make check-types` (.tmp purgé) = EXIT 0 ; `npx vitest run` (hors sandbox) = 264
+fichiers, 2329 passed, 14 skipped (préexistants, AUCUN skip ajouté) ; `npm run lint` = 0 erreur /
+68 warnings (baseline gelée inchangée, 0 sur les 6 fichiers touchés). Greps clôture VERTS : 0
+`score_label`/`ownTeamScore` ; `team_mmr` présent ; bornes triptyque `text-foreground`/`text-xs` ;
+socle `flex flex-wrap` (0 `auto-fit`) ; 0 vouvoiement dans tip_* (TOML+generated+tests) ;
+`MinRankedChainMatches`/`RankedChainMaxCount`/`selectTopByMatches` présents ; `rank_progression.go`
+diff=0 ; 0 hex/couleur Tailwind neuve. Fichiers Go ≤ 500 L (ranked 138, briefing 490) ; fonctions
+≤ 80 L ; 0 fmt.Println.
+
+**Résultats observés / conclusion** : chantier V6 intégralement exécuté côté agent (5 DP livrées,
+Phases 0-4 closes, changelogs EN+FR à parité). Reste au superviseur : commit + clôture git (merge
+main = deploy prod auto → APRÈS la revue visuelle utilisateur des 5 points « À vérifier
+visuellement » du plan : décile MMR/Score, triptyques lisibles, tooltips factuels, largeurs
+Séries/Pic MMR, Classement pertinent + états H5/low_sample/EN). Aucun déploiement dans ce chantier.
+
+---
+
 ## [2026-07-17] Explorer briefing V5 — bloc B (Phases 4-5) — CLÔTURE (branche feat/explorer-briefing-compact)
 
 **Statut** : Complété (Phases 4 et 5 CLOSES ; le chantier V5 est intégralement exécuté côté

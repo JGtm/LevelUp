@@ -9,7 +9,7 @@
  *  - garde `< MIN_DECILE_SAMPLE` valeurs → aucun surlignage ;
  *  - colonne quasi-uniforme (`p10 === p90`) → neutre ; valeur nulle → neutre ;
  *  - perf sans tier non comptée dans les déciles ;
- *  - `decileCellState` (bande) et `ownTeamScore` (1er entier du libellé « A - B »).
+ *  - `decileCellState` (bande) ; `team_mmr` non inversé (haut = meilleur).
  */
 import { describe, it, expect } from 'vitest'
 
@@ -21,7 +21,6 @@ import {
   columnHighlightStyle,
   computeColumnDeciles,
   decileCellState,
-  ownTeamScore,
 } from './ExplorerMatchesTable.highlight'
 
 function row(over: Partial<ExplorerMatchRow>): ExplorerMatchRow {
@@ -99,6 +98,18 @@ describe('ExplorerMatchesTable.highlight — déciles & styles', () => {
     // 9999 ignorée → p90 = 90 (et non 9999).
     expect(d.perf_score).toEqual({ p10: 10, p90: 90 })
   })
+
+  it('team_mmr : non inversé (haut = meilleur), décile HAUT = best, décile BAS = worst', () => {
+    expect(EXPLORER_INVERTED.team_mmr).toBe(false)
+    const rows = [1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900].map((team_mmr) =>
+      row({ team_mmr }),
+    )
+    const d = computeColumnDeciles(rows)
+    expect(d.team_mmr).toEqual({ p10: 1000, p90: 1800 })
+    expect(columnHighlightStyle('team_mmr', 1900, d).backgroundColor).toContain('--ac-outcome-win')
+    expect(columnHighlightStyle('team_mmr', 1000, d).backgroundColor).toContain('--ac-outcome-loss')
+    expect(columnHighlightStyle('team_mmr', 1400, d)).toEqual({})
+  })
 })
 
 describe('decileCellState — bande de décile', () => {
@@ -122,16 +133,5 @@ describe('decileCellState — bande de décile', () => {
     expect(decileCellState(5, { p10: null, p90: null }, false)).toBe('neutral')
     expect(decileCellState(5, { p10: 7, p90: 7 }, false)).toBe('neutral')
     expect(decileCellState(null, d, false)).toBe('neutral')
-  })
-})
-
-describe('ownTeamScore', () => {
-  it('extrait le 1er entier du libellé « A - B »', () => {
-    expect(ownTeamScore('50 - 42')).toBe(50)
-    expect(ownTeamScore('50-30')).toBe(50)
-    expect(ownTeamScore('0 - 5')).toBe(0)
-    expect(ownTeamScore('-')).toBeNull()
-    expect(ownTeamScore('')).toBeNull()
-    expect(ownTeamScore(null)).toBeNull()
   })
 })

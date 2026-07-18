@@ -30,7 +30,8 @@ type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
 
 // MinMaxTriptych (DP-1/DEC-TRIPTYCH) : affichage compact « min · moyenne · max ». La
 // moyenne au centre en grand (hérite text-xl du conteneur BriefingTile), colorée via
-// midColor ; les bornes min/max petites et discrètes (muted, poids normal). Chaque
+// midColor ; les bornes min/max lisibles (contraste plein via text-foreground, poids
+// normal, text-xs) — hiérarchie : moyenne colorée dominante >> extrêmes neutres. Chaque
 // borne nulle est OMISE (pas de « — » parasite) ; moyenne nulle → « — ». Deux
 // consommateurs (tuiles FDA & Perf du Strip) → un seul composant (CLAUDE.md §6).
 export function MinMaxTriptych({
@@ -49,13 +50,13 @@ export function MinMaxTriptych({
   return (
     <span className="inline-flex items-baseline justify-center gap-1.5">
       {min != null && (
-        <span className="text-2xs font-normal tabular-nums text-muted-foreground">{format(min)}</span>
+        <span className="text-xs font-normal tabular-nums text-foreground">{format(min)}</span>
       )}
       <span style={midColor != null ? { color: midColor } : undefined}>
         {mid != null ? format(mid) : '—'}
       </span>
       {max != null && (
-        <span className="text-2xs font-normal tabular-nums text-muted-foreground">{format(max)}</span>
+        <span className="text-xs font-normal tabular-nums text-foreground">{format(max)}</span>
       )}
     </span>
   )

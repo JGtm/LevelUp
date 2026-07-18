@@ -40,6 +40,14 @@ const (
 	MinDimensionGroupMatches = 10
 	// dimensionTopFlopCount : nombre d'entrées top ET flop par dimension (DEC-8).
 	dimensionTopFlopCount = 3
+	// MinRankedChainMatches est le seuil de pertinence d'une chaîne de Classement
+	// (rating_type, playlist_group), aligné sur le pattern dimensions
+	// (MinDimensionGroupMatches) pour éviter un littéral 10 dupliqué (CLAUDE.md §6).
+	// Découpler en littéral nommé distinct si la revue veut un seuil ranked propre.
+	MinRankedChainMatches = MinDimensionGroupMatches
+	// RankedChainMaxCount est le nombre max de chaînes de Classement affichées
+	// (parité dimensionTopFlopCount) ; ajustable en revue visuelle.
+	RankedChainMaxCount = 3
 )
 
 // buildExplorerBriefing assemble le bandeau de briefing du scope filtré.

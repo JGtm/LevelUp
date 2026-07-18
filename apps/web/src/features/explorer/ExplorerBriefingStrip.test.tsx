@@ -203,9 +203,10 @@ describe('ExplorerBriefingStrip — Classement (RankedBlock, DEC-LAYOUT/DEC-RANK
   it('rend le Classement comme cellule SIBLING de la grille « Par… », PAS dans le socle', () => {
     const briefing = { ...makeBriefing(120, 120), ranked: rankedSingle }
     const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
-    // 2 grilles à colonnes adaptatives : [0] = socle des tuiles, [1] = « Par… ».
+    // Socle = flex-wrap (V6/DP-4) ; « Par… » = grille adaptative (grid-template-columns).
+    const socle = container.querySelector('[class*="flex-wrap"]')
+    expect(socle?.textContent).not.toContain('explorer.briefing.ranked_title')
     const grids = container.querySelectorAll('[class*="grid-template-columns"]')
-    expect(grids[0]?.textContent).not.toContain('explorer.briefing.ranked_title')
     const modulesGrid = grids[grids.length - 1]
     // DP-3 : le Classement est un ENFANT DIRECT de la grille (sibling des dimensions).
     const rankedCell = Array.from(modulesGrid?.children ?? []).find((c) =>
@@ -444,9 +445,9 @@ describe('ExplorerBriefingStrip — cascade des conditionnelles (DP-2, cap 8)', 
       streaks: { best_win_streak: 7, worst_loss_streak: 4 },
     }
     const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
-    // Socle = 1re grille adaptative ; 5 tuiles de base + 3 conditionnelles = 8 cellules.
-    const grids = container.querySelectorAll('[class*="grid-template-columns"]')
-    expect(grids[0]?.children.length).toBe(8)
+    // Socle = flex-wrap (V6/DP-4) ; 5 tuiles de base + 3 conditionnelles = 8 flex-items.
+    const socle = container.querySelector('[class*="flex-wrap"]')
+    expect(socle?.children.length).toBe(8)
   })
 
   it('rend Pic MMR quand seules 2 conditionnelles sont présentes', () => {
@@ -462,7 +463,7 @@ describe('ExplorerBriefingStrip — cascade des conditionnelles (DP-2, cap 8)', 
 })
 
 describe('ExplorerBriefingStrip — triptyques, accents & centrage (V5 : DP-1/DP-6/DP-8)', () => {
-  it('FDA : rend min · moyenne (colorée) · max ; Pic FDA autonome absente', () => {
+  it('FDA : rend min · moyenne (colorée) · max ; bornes lisibles (DP-2) ; Pic FDA absente', () => {
     const briefing = withScope({ kda: 1.5, min_kda: 0.4, peak_kda: 4.2 })
     const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
     const text = container.textContent ?? ''
@@ -470,9 +471,16 @@ describe('ExplorerBriefingStrip — triptyques, accents & centrage (V5 : DP-1/DP
     expect(text).toContain('1.50') // moyenne (mid)
     expect(text).toContain('4.20') // max = peak_kda
     expect(text).not.toContain('explorer.briefing.peak_fda_label')
-    // La moyenne (mid) est colorée (style inline) ; les bornes restent muted.
+    // La moyenne (mid) est colorée (style inline).
     const midSpan = Array.from(container.querySelectorAll('span')).find((s) => s.textContent === '1.50')
     expect(midSpan?.getAttribute('style') ?? '').toContain('color')
+    // DP-2 (V6) : les bornes min/max sont lisibles — text-foreground + text-xs, plus muted/2xs.
+    const minSpan = Array.from(container.querySelectorAll('span')).find((s) => s.textContent === '0.40')
+    const maxSpan = Array.from(container.querySelectorAll('span')).find((s) => s.textContent === '4.20')
+    expect(minSpan?.className).toContain('text-foreground')
+    expect(minSpan?.className).toContain('text-xs')
+    expect(minSpan?.className).not.toContain('text-muted-foreground')
+    expect(maxSpan?.className).toContain('text-foreground')
   })
 
   it('Perf : rend min · moyenne (colorée) · max', () => {
@@ -508,8 +516,7 @@ describe('ExplorerBriefingStrip — triptyques, accents & centrage (V5 : DP-1/DP
       streaks: { best_win_streak: 7, worst_loss_streak: 4 },
     }
     const { container } = renderWithProviders(<ExplorerBriefingStrip briefing={briefing} t={t} />)
-    const grids = container.querySelectorAll('[class*="grid-template-columns"]')
-    const socle = grids[0]
+    const socle = container.querySelector('[class*="flex-wrap"]')
     const accentBars = Array.from(socle?.querySelectorAll('div') ?? []).filter((d) =>
       d.className.includes('h-[3px]'),
     )
