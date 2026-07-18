@@ -176,9 +176,14 @@ type RelationsRepository interface {
 
 	// GetRelationRecentForm : issues ("win"|"loss"|"other") des `limit` derniers
 	// matchs joués À CÔTÉS du joueur `xuid` (même équipe), ordonnées ancien→récent.
-	// Pour la sparkline « Derniers matchs ensemble » de la carte binôme. xuid vide
-	// ⇒ nil. scope : même contrat que GetRelations.
+	// Pour la sparkline « Derniers matchs » de la carte binôme. xuid vide ⇒ nil.
+	// scope : même contrat que GetRelations.
 	GetRelationRecentForm(ctx context.Context, xuid string, scope []string, limit int) ([]string, error)
+
+	// GetRelationEnemyRecentForm : miroir ennemi de GetRelationRecentForm — issues
+	// des `limit` derniers matchs joués CONTRE `xuid` (équipe adverse), ancien→récent.
+	// Pour la sparkline « Derniers matchs » de la carte bête noire. xuid vide ⇒ nil.
+	GetRelationEnemyRecentForm(ctx context.Context, xuid string, scope []string, limit int) ([]string, error)
 
 	// GetLatestCSR : snapshot CSR le PLUS RÉCENT (par start_time canonique du match)
 	// du joueur `xuid`, lu depuis la vue append-only match_csrs_latest (règle ART

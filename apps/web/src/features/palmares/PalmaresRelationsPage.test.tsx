@@ -160,7 +160,7 @@ describe('PalmaresRelationsPage', () => {
     expect(screen.getAllByText('SoloOnly').length).toBeGreaterThan(0)
   })
 
-  it('toggle « jamais affrontés » : défaut masqué + bascule du libellé', async () => {
+  it('toggle « coéquipiers » : défaut masqué + bascule du libellé', async () => {
     renderWithProviders(<PalmaresRelationsPage />)
 
     await waitFor(() => {
@@ -168,13 +168,13 @@ describe('PalmaresRelationsPage', () => {
     })
 
     // Défaut = masqué : le bouton propose de LES INCLURE.
-    const toggle = screen.getByRole('button', { name: 'Inclure les jamais affrontés' })
+    const toggle = screen.getByRole('button', { name: 'Inclure les coéquipiers' })
     expect(toggle).toHaveAttribute('aria-pressed', 'false')
 
     // Bascule → libellé « inclus » + aria-pressed true.
     fireEvent.click(toggle)
     expect(
-      screen.getByRole('button', { name: 'Jamais affrontés inclus' }),
+      screen.getByRole('button', { name: 'Coéquipiers inclus' }),
     ).toHaveAttribute('aria-pressed', 'true')
   })
 
@@ -191,16 +191,6 @@ describe('PalmaresRelationsPage', () => {
       screen.queryByText('Les joueurs que tu retrouves le plus souvent, parfois avec toi, parfois en face.'),
     ).not.toBeInTheDocument()
     expect(screen.queryByText(/matchs ensemble$/)).not.toBeInTheDocument()
-  })
-
-  it('expose le pont « Voir l\'escouade » dans la carte Noyau dur', async () => {
-    renderWithProviders(<PalmaresRelationsPage />)
-
-    await waitFor(() => {
-      expect(screen.getByTestId('palmares-relations-overview')).toBeInTheDocument()
-    })
-
-    expect(screen.getByRole('button', { name: "Voir l'escouade" })).toBeInTheDocument()
   })
 
   it('rend la barre de segmentation serveur (Vue + Analyser)', async () => {

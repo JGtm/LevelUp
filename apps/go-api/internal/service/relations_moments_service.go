@@ -16,8 +16,9 @@ import (
 // Plafonds de lisibilité (réserve produit : ne pas surcharger). Constantes
 // nommées (pas de magic number).
 const (
-	// momentsHeatmapTopN : nombre de relations dans le heatmap agrégé.
-	momentsHeatmapTopN = 8
+	// momentsHeatmapTopN : nombre de relations dans le heatmap agrégé (aligné sur
+	// le cap d'affichage front MAX_HEATMAP_ROWS = 12, RelationsMomentsHeatmap).
+	momentsHeatmapTopN = 12
 	// momentsMaxRivalries : nombre de cartes revanche (bête noire + autres).
 	momentsMaxRivalries = 3
 	// momentsRivalMinEnemyMatches : seuil minimal de matchs en ennemi pour une

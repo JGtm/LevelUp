@@ -462,6 +462,38 @@ func TestCareerRepo_GetRelationRecentForm(t *testing.T) {
 	}
 }
 
+// GetRelationEnemyRecentForm : miroir ennemi — forme récente jouée CONTRE un
+// adversaire (bête noire). xuidFoe adverse sur m3,m4 (my outcome LOSS), ordonné
+// ancien→récent → ["loss","loss"] ; l'allié (jamais adverse) → vide ; xuid vide → nil.
+func TestCareerRepo_GetRelationEnemyRecentForm(t *testing.T) {
+	db := openMemDB(t)
+	seedRelations(t, db)
+	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidMe", Gamertag: "MePlayer"}
+	repo := NewCareerRepo(pdb)
+	ctx := context.Background()
+
+	form, err := repo.GetRelationEnemyRecentForm(ctx, "xuidFoe", nil, 25)
+	if err != nil {
+		t.Fatalf("GetRelationEnemyRecentForm: %v", err)
+	}
+	if len(form) != 2 || form[0] != "loss" || form[1] != "loss" {
+		t.Fatalf("enemy form=%v want [loss loss]", form)
+	}
+
+	ally, err := repo.GetRelationEnemyRecentForm(ctx, "xuidAlly", nil, 25)
+	if err != nil {
+		t.Fatalf("GetRelationEnemyRecentForm ally: %v", err)
+	}
+	if len(ally) != 0 {
+		t.Fatalf("ally enemy form=%v want empty (jamais adverse)", ally)
+	}
+
+	empty, err := repo.GetRelationEnemyRecentForm(ctx, "", nil, 25)
+	if err != nil || empty != nil {
+		t.Fatalf("empty xuid: form=%v err=%v want nil/nil", empty, err)
+	}
+}
+
 // RelationRowFixture : agrégats clés pour assertions concises.
 type RelationRowFixture struct {
 	total, teammate, enemy, teammateWins, enemyWins, kills, deaths int

@@ -124,24 +124,20 @@ LIMIT 10`
 // fallback "e.my_outcome = 2/3" byte-identique Halo). PAS de clause d'exclusion
 // friends ni de LIMIT (le hub Relations affiche tout le monde).
 //
-// Placeholders ? (ordre) — tous = xuid du joueur courant SAUF ?3/?4 = cutoff
-// fenêtre récente (time.Time, RevivedWindowDays) :
+// Placeholders ? (ordre) — tous = xuid du joueur courant :
 //
 //	?1 my_history.WHERE xuid = ?
 //	?2 encounters JOIN p.xuid <> ?
-//	?3 encounter_stats FILTER encounters_30d (start_time >= cutoff)
-//	?4 encounter_stats FILTER prev_seen_before_window (start_time < cutoff)
-//	?5 kv_stats CASE killer_xuid = ? → victim
-//	?6 kv_stats CASE killer_xuid = ? → kills_by_me
-//	?7 kv_stats CASE victim_xuid = ? → kills_by_them
-//	?8 kv_stats WHERE killer_xuid = ?
-//	?9 kv_stats WHERE OR victim_xuid = ?
+//	?3 kv_stats CASE killer_xuid = ? → victim
+//	?4 kv_stats CASE killer_xuid = ? → kills_by_me
+//	?5 kv_stats CASE victim_xuid = ? → kills_by_them
+//	?6 kv_stats WHERE killer_xuid = ?
+//	?7 kv_stats WHERE OR victim_xuid = ?
 //
-// Colonnes SELECT (17, scannées dans cet ordre) : xuid, gamertag,
+// Colonnes SELECT (15, scannées dans cet ordre) : xuid, gamertag,
 // count_together, ally_count, enemy_count, wins_as_ally, losses_as_ally,
 // wins_vs_enemy, losses_vs_enemy, kills_dealt, deaths_suffered, avg_kda_with,
-// avg_kda_against, first_seen_at, last_seen_at, encounters_30d,
-// prev_seen_before_window.
+// avg_kda_against, first_seen_at, last_seen_at.
 var Q28RelationsTpl = `
 WITH my_history AS (
     SELECT match_id, team_id, outcome
@@ -177,12 +173,7 @@ encounter_stats AS (
         AVG(CASE WHEN e.opp_team_id  = e.my_team_id THEN e.opp_kda END) AS avg_kda_with,
         AVG(CASE WHEN e.opp_team_id <> e.my_team_id THEN e.opp_kda END) AS avg_kda_against,
         MIN(e.start_time) AS first_seen_at,
-        MAX(e.start_time) AS last_seen_at,
-        -- Volet « Quoi de neuf » : rencontres dans la fenêtre récente (>= cutoff)
-        -- et dernière rencontre ANTÉRIEURE à la fenêtre (< cutoff). e.start_time
-        -- est déjà le fragment timezone canonique (jamais start_time brut).
-        COUNT(DISTINCT e.match_id) FILTER (WHERE e.start_time >= ?) AS encounters_30d,
-        MAX(e.start_time) FILTER (WHERE e.start_time < ?)           AS prev_seen_before_window
+        MAX(e.start_time) AS last_seen_at
     FROM encounters e
     GROUP BY e.xuid
     HAVING COUNT(DISTINCT e.match_id) >= 2
@@ -217,9 +208,7 @@ SELECT
     es.avg_kda_with,
     es.avg_kda_against,
     es.first_seen_at,
-    es.last_seen_at,
-    es.encounters_30d,
-    es.prev_seen_before_window
+    es.last_seen_at
 FROM encounter_stats es
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = es.xuid
 LEFT JOIN kv_stats kv ON kv.xuid = es.xuid
@@ -244,8 +233,6 @@ ORDER BY es.count_together DESC, es.xuid ASC`
 //	?1 my_history.WHERE xuid = ?
 //	?…  scope IN (my_history)  — N placeholders du set
 //	?  encounters JOIN p.xuid <> ?
-//	?  encounter_stats FILTER encounters_30d (start_time >= cutoff)
-//	?  encounter_stats FILTER prev_seen_before_window (start_time < cutoff)
 //	?  kv_stats CASE killer_xuid = ? → victim
 //	?  kv_stats CASE killer_xuid = ? → kills_by_me
 //	?  kv_stats CASE victim_xuid = ? → kills_by_them
@@ -289,11 +276,7 @@ encounter_stats AS (
         AVG(CASE WHEN e.opp_team_id  = e.my_team_id THEN e.opp_kda END) AS avg_kda_with,
         AVG(CASE WHEN e.opp_team_id <> e.my_team_id THEN e.opp_kda END) AS avg_kda_against,
         MIN(e.start_time) AS first_seen_at,
-        MAX(e.start_time) AS last_seen_at,
-        -- Volet « Quoi de neuf » (cf. Q28RelationsTpl) : e.start_time est déjà le
-        -- fragment timezone canonique (jamais start_time brut).
-        COUNT(DISTINCT e.match_id) FILTER (WHERE e.start_time >= ?) AS encounters_30d,
-        MAX(e.start_time) FILTER (WHERE e.start_time < ?)           AS prev_seen_before_window
+        MAX(e.start_time) AS last_seen_at
     FROM encounters e
     GROUP BY e.xuid
     HAVING COUNT(DISTINCT e.match_id) >= 2
@@ -328,9 +311,7 @@ SELECT
     es.avg_kda_with,
     es.avg_kda_against,
     es.first_seen_at,
-    es.last_seen_at,
-    es.encounters_30d,
-    es.prev_seen_before_window
+    es.last_seen_at
 FROM encounter_stats es
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = es.xuid
 LEFT JOIN kv_stats kv ON kv.xuid = es.xuid
@@ -377,6 +358,37 @@ with_core AS (
 )
 SELECT CASE WHEN %s THEN 'win' WHEN %s THEN 'loss' ELSE 'other' END AS outcome_label
 FROM with_core
+ORDER BY start_time DESC NULLS LAST
+LIMIT ?`
+
+// QRelationsEnemyFormTpl : issues des derniers matchs du joueur joués CONTRE
+// `xuid` (équipe ADVERSE), ordonnées récent→ancien (le repo inverse en
+// ancien→récent pour la frise). DISTINCT par match. Miroir exact de
+// QRelationsCoreFormTpl avec la jointure d'équipe OPPOSÉE (c.team_id <> h.team_id)
+// — alimente la sparkline « Derniers matchs » de la carte bête noire (symétrique
+// du binôme). Title-aware via outcomeSQLEq.
+//
+// Format string et placeholders IDENTIQUES à QRelationsCoreFormTpl (le repo lie
+// les args de la même façon) — seule la condition d'équipe diffère.
+var QRelationsEnemyFormTpl = `
+WITH my_matches AS (
+    SELECT mp.match_id, mp.team_id, mp.outcome AS outcome,
+           ` + StartTimeCanonicalSQL("r") + ` AS start_time
+    FROM match_participants mp
+    LEFT JOIN match_registry r ON r.match_id = mp.match_id
+    WHERE mp.xuid = ?%s` + campaignExclusionToken + `
+),
+vs_enemy AS (
+    SELECT DISTINCT h.match_id, h.outcome AS outcome, h.start_time
+    FROM my_matches h
+    JOIN match_participants c
+        ON c.match_id = h.match_id
+       AND c.team_id <> h.team_id
+       AND c.xuid <> ?
+       AND c.xuid IN (%s)
+)
+SELECT CASE WHEN %s THEN 'win' WHEN %s THEN 'loss' ELSE 'other' END AS outcome_label
+FROM vs_enemy
 ORDER BY start_time DESC NULLS LAST
 LIMIT ?`
 
