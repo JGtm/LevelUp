@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -155,14 +156,34 @@ func setMediaContentType(w http.ResponseWriter, ext string) {
 	}
 }
 
-// serveRemuxedWebM streame le fichier source remuxé en WebM via ffmpeg.
-// Le Range request n'est pas supporté (le seek vidéo sera limité aux clips
-// web-natifs). En cas d'échec ffmpeg, on log mais on ne peut plus changer le
-// status code si des bytes ont déjà été envoyés au client.
+// serveRemuxedWebM streame le fichier source remuxé en WebM via ffmpeg. Le
+// pré-flight (probe + validation codecs) est fait AVANT tout header : un source
+// aux codecs incompatibles WebM répond 415, un probe cassé répond 502 — plus de
+// « 200 corps vide » quand l'échec est connu d'avance. Une fois le flux démarré
+// (headers 200 envoyés), un échec ffmpeg ne peut plus qu'être loggé.
+//
+// 502 (et non 500) pour l'échec de probe : le handler agit en passerelle devant
+// le sous-processus ffprobe/ffmpeg (dépendance de transcodage) ; un probe qui
+// ne rend aucun résultat exploitable est une défaillance de cette dépendance, à
+// distinguer d'un bug de handler (500) dans les logs/alertes. Le Range request
+// n'est pas supporté (seek limité aux clips web-natifs).
 func serveRemuxedWebM(w http.ResponseWriter, r *http.Request, absPath string) {
+	plan, err := mediapkg.PlanRemuxWebM(r.Context(), absPath)
+	if err != nil {
+		if errors.Is(err, mediapkg.ErrRemuxIncompatibleCodec) {
+			slog.ErrorContext(r.Context(), "media remux: codecs incompatibles WebM",
+				"path", absPath, "err", err)
+			httpError(r.Context(), w, "unsupported media codec", http.StatusUnsupportedMediaType)
+			return
+		}
+		slog.ErrorContext(r.Context(), "media remux: pré-flight ffprobe échoué",
+			"path", absPath, "err", err)
+		httpError(r.Context(), w, "remux preflight failed", http.StatusBadGateway)
+		return
+	}
 	w.Header().Set("Content-Type", "video/webm")
-	if err := mediapkg.StreamRemuxAsWebM(r.Context(), absPath, w); err != nil {
-		slog.ErrorContext(r.Context(), "media remux failed",
+	if err := mediapkg.StreamRemuxWebMPlan(r.Context(), absPath, plan, w); err != nil {
+		slog.ErrorContext(r.Context(), "media remux: échec en cours de flux (status déjà envoyé)",
 			"path", absPath, "err", err)
 	}
 }

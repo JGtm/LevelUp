@@ -7,7 +7,7 @@
  * Couverture :
  * 1. La page /players/demo-player/career se charge sans erreur
  * 2. L'API retourne un rang valide (HTTP 200)
- * 3. Le rang du joueur est affiché dans la page (Gold)
+ * 3. Le rang du joueur est affiché dans la page (tier localisé FR/EN : « Or IV »/« Gold IV »)
  * 4. Pas d'erreur fatale React dans la console
  */
 import { test, expect } from '@playwright/test'
@@ -52,8 +52,15 @@ test.describe('Slice 2 — Page Carrière (DEMO_MODE)', () => {
     await page.goto('/players/demo-player/career')
     await page.waitForLoadState('networkidle')
 
-    // Le tier Gold doit apparaître quelque part dans la page
-    await expect(page.locator('body')).toContainText('Gold')
+    // Le tier Gold du demo-player doit apparaître quelque part dans la page,
+    // LOCALISÉ à l'affichage (localizeTierName) : « Or IV » sous UI FR (défaut),
+    // « Gold IV » sous UI EN. Pas d'ancre de tête (\b) : le textContent du body
+    // concatène les éléments adjacents SANS espace (« Arène classéeOr I ») — entre
+    // deux caractères de mot, pas de word boundary possible. Les faux positifs
+    // restent écartés sans elle : regex sensible à la casse (« décor », « or »
+    // minuscules non matchés) et espace exigé APRÈS « Or »/« Gold » suivi d'un
+    // sous-palier romain (« Ordre I », « Score IV » non matchés).
+    await expect(page.locator('body')).toContainText(/(Gold|Or)\s+(I|II|III|IV|V|VI)\b/)
   })
 
   test("la page ne contient pas d'erreur fatale", async ({ page }) => {
