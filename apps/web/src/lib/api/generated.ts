@@ -7492,7 +7492,6 @@ export interface components {
             first_seen_at: string | null;
             gamertag: string;
             is_core: boolean;
-            is_revived: boolean;
             /** Format: int64 */
             kills_dealt: number;
             last_seen_at: string | null;
@@ -7529,6 +7528,7 @@ export interface components {
             top_ally: components["schemas"]["RelationRef"];
             top_ally_recent_form: string[] | null;
             top_nemesis: components["schemas"]["RelationRef"];
+            top_nemesis_recent_form: string[] | null;
         };
         RelationsPageResponse: {
             overview: components["schemas"]["RelationsOverview"];

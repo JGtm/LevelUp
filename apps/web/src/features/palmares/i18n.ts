@@ -37,8 +37,8 @@ export interface PalmaresText {
       streakWins: (count: string) => string
       streakLosses: (count: string) => string
       duels: (count: string) => string
-      recentDuels: string
       currentRank: string
+      kdaAgainst: string
     }
     chips: {
       all: string
@@ -66,11 +66,16 @@ export interface PalmaresText {
     }
     table: {
       player: string
+      badgesInfo: string
       link: string
       encounters: string
       winRateAlly: string
       winRateEnemy: string
       fragsDeaths: string
+      fragsUnit: string
+      deathsUnit: string
+      alliesUnit: string
+      adversariesUnit: string
       ratio: string
       kdaTogether: string
       lastSeen: string
@@ -99,23 +104,20 @@ export interface PalmaresText {
     }
     core: {
       withThem: string
-      liftPoints: string
       liftTooltip: string
       seenThisWeek: (count: string) => string
       recentForm: string
       showOthers: (count: string) => string
       collapse: string
-      viewSquad: string
+    }
+    donut: {
+      wins: string
+      losses: string
+      personalAvg: string
+      pointsUnit: string
     }
     filterEmptyTitle: string
     filterEmptyDescription: string
-    whatsNew: {
-      sectionTitle: string
-      newFaces: string
-      newFacesTooltip: string
-      reunions: string
-      reunionsTooltip: string
-    }
     moments: {
       sectionTitle: string
       toggleShow: string
@@ -231,8 +233,8 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
           formatMessage(palmaresManifest, 'palmares.relations.hero.streak_losses', loc, { count }),
         duels: (count: string) =>
           formatMessage(palmaresManifest, 'palmares.relations.hero.duels', loc, { count }),
-        recentDuels: t(loc, 'palmares.relations.hero.recent_duels'),
         currentRank: t(loc, 'palmares.relations.hero.current_rank'),
+        kdaAgainst: t(loc, 'palmares.relations.hero.kda_against'),
       },
       chips: {
         all: t(loc, 'palmares.relations.chip.all'),
@@ -260,11 +262,16 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
       },
       table: {
         player: t(loc, 'palmares.relations.table.player'),
+        badgesInfo: t(loc, 'palmares.relations.table.badges_info'),
         link: t(loc, 'palmares.relations.table.link'),
         encounters: t(loc, 'palmares.relations.table.encounters'),
         winRateAlly: t(loc, 'palmares.relations.table.win_rate_ally'),
         winRateEnemy: t(loc, 'palmares.relations.table.win_rate_enemy'),
         fragsDeaths: t(loc, 'palmares.relations.table.frags_deaths'),
+        fragsUnit: t(loc, 'palmares.relations.table.frags_unit'),
+        deathsUnit: t(loc, 'palmares.relations.table.deaths_unit'),
+        alliesUnit: t(loc, 'palmares.relations.table.allies_unit'),
+        adversariesUnit: t(loc, 'palmares.relations.table.adversaries_unit'),
         ratio: t(loc, 'palmares.relations.table.ratio'),
         kdaTogether: t(loc, 'palmares.relations.table.kda_together'),
         lastSeen: t(loc, 'palmares.relations.table.last_seen'),
@@ -301,7 +308,6 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
       },
       core: {
         withThem: t(loc, 'palmares.relations.core.with_them'),
-        liftPoints: t(loc, 'palmares.relations.core.lift_points'),
         liftTooltip: t(loc, 'palmares.relations.core.lift_tooltip'),
         seenThisWeek: (count: string) =>
           formatMessage(palmaresManifest, 'palmares.relations.core.seen_this_week', loc, { count }),
@@ -309,17 +315,15 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
         showOthers: (count: string) =>
           formatMessage(palmaresManifest, 'palmares.relations.core.show_others', loc, { count }),
         collapse: t(loc, 'palmares.relations.core.collapse'),
-        viewSquad: t(loc, 'palmares.relations.core.view_squad'),
+      },
+      donut: {
+        wins: t(loc, 'palmares.relations.donut.wins'),
+        losses: t(loc, 'palmares.relations.donut.losses'),
+        personalAvg: t(loc, 'palmares.relations.donut.personal_avg'),
+        pointsUnit: t(loc, 'palmares.relations.donut.points_unit'),
       },
       filterEmptyTitle: t(loc, 'palmares.relations.filter_empty_title'),
       filterEmptyDescription: t(loc, 'palmares.relations.filter_empty_description'),
-      whatsNew: {
-        sectionTitle: t(loc, 'palmares.relations.whats_new.section_title'),
-        newFaces: t(loc, 'palmares.relations.whats_new.new_faces'),
-        newFacesTooltip: t(loc, 'palmares.relations.whats_new.new_faces_tooltip'),
-        reunions: t(loc, 'palmares.relations.whats_new.reunions'),
-        reunionsTooltip: t(loc, 'palmares.relations.whats_new.reunions_tooltip'),
-      },
       moments: {
         sectionTitle: t(loc, 'palmares.relations.moments.section_title'),
         toggleShow: t(loc, 'palmares.relations.moments.toggle_show'),

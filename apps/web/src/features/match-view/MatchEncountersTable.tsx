@@ -32,6 +32,7 @@ import {
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { Tooltip } from '@/components/ui/tooltip'
+import { RelationBadgeLegend } from '@/features/palmares/RelationBadgeLegend'
 import { formatMessage } from '@/lib/i18n/format'
 import { squadManifest, type SquadManifestKey } from '@/lib/i18n/generated/squad'
 import { tokenVar } from '@/lib/accessibility'
@@ -79,6 +80,11 @@ const ENCOUNTER_BADGE_TOOLTIPS: Record<string, { fr: string; en: string }> = {
     en: 'Total cross encounters (ally + enemy)',
   },
 }
+
+// Badges produits par le backend match-view (narrative.ComputeEncounterBadges) —
+// sous-ensemble de la légende partagée (pas les badges « solid » de la page
+// Relations, absents ici). Filtre l'aide ⓘ de l'en-tête « Joueur ».
+const MATCH_BADGE_KINDS = ['ally_plus', 'tough_enemy', 'coriace', 'ordinal']
 
 /**
  * Rendu d'une liste de badges narratifs (ally_plus / tough_enemy / ordinal).
@@ -186,6 +192,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
             title: 'Encounter history (match players)',
             empty: 'No prior encounters with these players.',
             player: 'Player',
+            badgesInfo: 'What each pill means:',
             role: 'Role',
             roleAlly: 'ally',
             roleEnemy: 'enemy',
@@ -201,6 +208,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
             title: 'Historique des rencontres',
             empty: 'Aucune rencontre antérieure avec ces joueurs.',
             player: 'Joueur',
+            badgesInfo: 'Ce que signifie chaque pastille :',
             role: 'Rôle',
             roleAlly: 'allié',
             roleEnemy: 'ennemi',
@@ -232,7 +240,20 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
     () => [
       {
         id: 'player',
-        header: labels.player,
+        header: () => (
+          <span className="inline-flex items-center gap-1">
+            {labels.player}
+            {/* Aide ⓘ : légende partagée des pastilles (sous-ensemble match-view). */}
+            <Tooltip content={<RelationBadgeLegend intro={labels.badgesInfo} only={MATCH_BADGE_KINDS} />} wide>
+              <span
+                className="inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-input text-3xs font-bold normal-case leading-none text-muted-foreground"
+                aria-label={labels.badgesInfo}
+              >
+                i
+              </span>
+            </Tooltip>
+          </span>
+        ),
         cell: (ctx) => {
           const r = ctx.row.original
           // Pas de lien Explorer pour les bots (xuid 'bid(...)' sans historique cross-match).

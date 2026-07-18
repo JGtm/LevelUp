@@ -24,7 +24,9 @@ import { formatPercent } from '@/lib/formatters'
 import { ratioColor } from '@/lib/colors/outcomePalette'
 import type { RelationInsight } from '@/lib/api/types'
 
+import { RelationBadgeLegend } from './RelationBadgeLegend'
 import { RelationBadges } from './RelationBadges'
+import { formatLastSeen } from './relationsFilter'
 import type { PalmaresText } from './i18n'
 
 type RelationsLabels = PalmaresText['relations']
@@ -130,19 +132,6 @@ function SplitBar({
   )
 }
 
-function formatRelative(iso: string | null, rel: RelationsLabels['relative']): string {
-  if (!iso) return '—'
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return '—'
-  const days = Math.round((Date.now() - date.getTime()) / 86_400_000)
-  if (days <= 0) return rel.today
-  if (days === 1) return rel.yesterday
-  if (days < 7) return rel.daysAgo(days)
-  if (days < 30) return rel.weeksAgo(Math.round(days / 7))
-  if (days < 365) return rel.monthsAgo(Math.round(days / 30))
-  return rel.yearsAgo(Math.round(days / 365))
-}
-
 function categoryLabel(category: RelationInsight['category'], labels: RelationsLabels): string {
   if (category === 'ally') return labels.category.ally
   if (category === 'enemy') return labels.category.enemy
@@ -159,14 +148,28 @@ function buildColumns(
       id: 'player',
       // Tri alpha insensible à la casse (asc→desc→none).
       accessorFn: (r) => r.gamertag.toLowerCase(),
-      header: (ctx) => <SortLabel column={ctx.column}>{labels.table.player}</SortLabel>,
+      header: (ctx) => (
+        <span className="inline-flex items-center gap-1">
+          <SortLabel column={ctx.column}>{labels.table.player}</SortLabel>
+          {/* Tooltip portal (échappe à l'overflow-x du tableau) + légende détaillée
+              par pastille (wide + bascule sous l'ancre si ça déborde le haut). */}
+          <Tooltip content={<RelationBadgeLegend intro={labels.table.badgesInfo} />} wide>
+            <span
+              className="inline-flex h-3.5 w-3.5 cursor-help items-center justify-center rounded-full border border-input text-3xs font-bold normal-case leading-none text-muted-foreground"
+              aria-label={labels.table.badgesInfo}
+            >
+              i
+            </span>
+          </Tooltip>
+        </span>
+      ),
       cell: (ctx) => {
         const r = ctx.row.original
         return (
           <span className="whitespace-nowrap">
             <button
               type="button"
-              className="font-semibold text-info hover:underline"
+              className="font-semibold text-foreground hover:underline"
               onClick={() => onPlayerClick(r.gamertag)}
             >
               {r.gamertag}
@@ -289,7 +292,7 @@ function buildColumns(
       header: (ctx) => <SortLabel column={ctx.column}>{labels.table.lastSeen}</SortLabel>,
       cell: (ctx) => (
         <span className="text-[0.85em] text-muted-foreground">
-          {formatRelative(ctx.row.original.last_seen_at, labels.relative)}
+          {formatLastSeen(ctx.row.original.last_seen_at, labels.relative) ?? '—'}
         </span>
       ),
     },

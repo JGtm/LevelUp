@@ -7,9 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
-	"levelup/go-api/internal/analysis/relations"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -31,12 +29,7 @@ func (r *CareerRepo) GetRelations(ctx context.Context, scope []string) ([]domain
 	winExpr := outcomeSQLEq(ctx, "e.my_outcome", canonical.OutcomeWin, "e.my_outcome = 2")
 	lossExpr := outcomeSQLEq(ctx, "e.my_outcome", canonical.OutcomeLoss, "e.my_outcome = 3")
 
-	// Cutoff de la fenêtre récente « Quoi de neuf » (encounters_30d /
-	// prev_seen_before_window). Comparé au fragment timezone canonique e.start_time
-	// (même pattern que periodSince : bornage temporel par paramètre lié time.Time).
-	cutoff := time.Now().UTC().AddDate(0, 0, -relations.RevivedWindowDays)
-
-	sqlText, args := r.buildRelationsQuery(scope, winExpr, lossExpr, cutoff)
+	sqlText, args := r.buildRelationsQuery(scope, winExpr, lossExpr)
 	if sqlText == "" {
 		// scope non-nil et vide : aucun match → aucune relation.
 		return []domain.RelationRawRow{}, nil
@@ -67,16 +60,16 @@ func (r *CareerRepo) GetRelations(ctx context.Context, scope []string) ([]domain
 
 // buildRelationsQuery assemble le SQL + les args positionnels selon le scope.
 // Retourne ("", nil) si le scope est non-nil et vide (aucun match en périmètre).
-func (r *CareerRepo) buildRelationsQuery(scope []string, winExpr, lossExpr string, cutoff time.Time) (string, []any) {
+func (r *CareerRepo) buildRelationsQuery(scope []string, winExpr, lossExpr string) (string, []any) {
 	x := r.pdb.XUID
 	// Masquage Campagne (Halo 5) : my_history ne joint pas match_registry → forme
 	// sous-requête by-match-id (sans placeholder, résolue AVANT Sprintf, ne décale
 	// donc aucun args positionnel). No-op Infinite. Item backlog H1.
 	if scope == nil {
-		// Phase 1 : aucun filtre. 9 placeholders : xuid + 2 cutoff (fenêtre récente).
+		// Phase 1 : aucun filtre. 7 placeholders xuid (2 my_history/encounters + 5 kv_stats).
 		tpl := resolveCampaignExclusionByMatchID(Q28RelationsTpl, r.pdb.TitleSlug, "match_id")
 		sqlText := fmt.Sprintf(tpl, winExpr, lossExpr, winExpr, lossExpr)
-		return sqlText, []any{x, x, cutoff, cutoff, x, x, x, x, x}
+		return sqlText, []any{x, x, x, x, x, x, x}
 	}
 	if len(scope) == 0 {
 		return "", nil
@@ -88,11 +81,10 @@ func (r *CareerRepo) buildRelationsQuery(scope []string, winExpr, lossExpr strin
 	sqlText := fmt.Sprintf(tpl,
 		inClause, winExpr, lossExpr, winExpr, lossExpr, kvInClause)
 
-	args := make([]any, 0, 9+2*len(scope))
+	args := make([]any, 0, 7+2*len(scope))
 	args = append(args, x)                    // my_history.xuid
 	args = append(args, ToAnySlice(scope)...) // my_history scope IN
 	args = append(args, x)                    // encounters p.xuid<>
-	args = append(args, cutoff, cutoff)       // encounter_stats FILTER (encounters_30d + prev_seen)
 	// kv_stats : 3 CASE + 2 WHERE (5) xuid.
 	args = append(args, x, x, x, x, x)
 	args = append(args, ToAnySlice(scope)...) // kv_stats scope IN
@@ -105,7 +97,6 @@ func scanRelationRow(rows *sql.Rows) (domain.RelationRawRow, error) {
 		row                       domain.RelationRawRow
 		avgKDAWith, avgKDAAgainst sql.NullFloat64
 		firstSeen, lastSeen       sql.NullTime
-		prevSeen                  sql.NullTime
 	)
 	if err := rows.Scan(
 		&row.XUID, &row.Gamertag, &row.TotalMatches,
@@ -115,7 +106,6 @@ func scanRelationRow(rows *sql.Rows) (domain.RelationRawRow, error) {
 		&row.KillsDealt, &row.DeathsSuffered,
 		&avgKDAWith, &avgKDAAgainst,
 		&firstSeen, &lastSeen,
-		&row.Encounters30d, &prevSeen,
 	); err != nil {
 		return domain.RelationRawRow{}, fmt.Errorf("CareerRepo.GetRelations scan: %w", err)
 	}
@@ -132,10 +122,6 @@ func scanRelationRow(rows *sql.Rows) (domain.RelationRawRow, error) {
 	}
 	if lastSeen.Valid {
 		row.LastSeen = lastSeen.Time
-	}
-	if prevSeen.Valid {
-		t := prevSeen.Time
-		row.PrevSeenBeforeWindow = &t
 	}
 	return row, nil
 }
