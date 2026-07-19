@@ -233,15 +233,29 @@ partagés). Revue visuelle match Infinite + H5 RESTE À FAIRE (gate humain). Auc
 
 ### P4 — Rollout Timeseries
 
-- [ ] P4.1 `timeseries_service.go` (`:216-234`) : passer `ResolveRoles=true` ; ajouter class ; construire
-      `FragDistribution` (kill-type via `buildTimeseriesKillTypes` `timeseries_service_tabs.go:248-269` + gun via registre).
-- [ ] P4.2 Remplacer les DEUX variantes kill-type (`TimeseriesKillTypesDonut` H5 `summary.tsx:140` + `KillTypesDonutCard`
-      Infinite `progression.tsx:147`) par `<FragSunburst>` sur l'onglet **Résumé** (D7).
-- [ ] P4.3 Recolorer « Outils de destruction » (`TimeseriesTopWeapons`) par classe (enrichir `TimeseriesWeaponKill`
-      de `class`) — même onglet Résumé, sous/à côté du sunburst.
-- [ ] P4.4 Supprimer le montage kill-type de l'onglet Progression (code mort si plus utilisé).
+- [x] P4.1 `timeseries_service.go` : filtres weapon_kills passés à `ResolveRoles=true` (résout Role+Class en
+      une passe, `rows` hoistées `weaponRows`) ; nouvelle méthode `buildTimeseriesFragDistribution(ctx, weaponRows, kt)`
+      qui RÉUTILISE `buildFragDistribution` (0 duplication) — `counts` = `FragKillTypeCounts` rempli depuis
+      `resp.KillTypes` (`buildTimeseriesKillTypes`), gun classes = `weaponRows`, `hasMechanics = titleHasNativeKillMechanics`
+      (capability, jamais slug==). slog Debug (compteurs) + Warn sur sur-comptage (jamais avalé). Champ
+      `FragDistribution` ajouté à `TimeseriesPageResponse` : Go domain + `openapi.yaml` + `make generate-types`
+      (généré, pas d'interface hand-written — `TimeseriesPageResponse` est un alias `components['schemas'][...]`).
+- [x] P4.2 `TimeseriesKillTypesDonut` (Résumé) ET le montage `KillTypesDonutCard` (Progression) remplacés par un
+      UNIQUE `<FragSunburst distribution={data.frag_distribution} />` sur l'onglet **Résumé** (D7). Title-agnostic
+      (FragSunburst rend null si total 0 ; Infinite sans spartan, H5 avec — décidé backend par capability).
+- [x] P4.3 « Outils de destruction » (`TimeseriesTopWeapons`) recoloré PAR CLASSE : `class` ajouté à
+      `TimeseriesWeaponKill` (Go+openapi+généré), peuplé dans `buildTopWeapons` (passe registre P4.1) ; barres colorées
+      per-datum via `fragClassColor(w.class)` (remplace le token unique `chart-series-1`). Chart CONSERVÉ sur Résumé.
+- [x] P4.4 `TimeseriesKillTypesDonut.tsx` SUPPRIMÉ (0 réf après P4.2, pas de test dédié) ; montage kill-type retiré de
+      Progression (var `hasKillMechanics` + import `KillTypesDonutCard` retirés). Partagés `KillTypesDonutCard`/
+      `KillTypesDonut` NON supprimés : `KillTypesDonut` reste utilisé par Explorer (`ExplorerTargetSampleStats`) ;
+      `KillTypesDonutCard` devient orphelin (Timeseries était son dernier consommateur) mais laissé en place (§6 D-P4-1,
+      retrait = P7). `data.detailed_stats` n'est plus consommé côté Timeseries (backend inchangé, §6 D-P4-2).
 
-**Gate P4** : `make check-types && make test-web` ; revue visuelle Timeseries (onglet Résumé, Infinite + H5).
+**Gate P4** : `go test ./internal/service/... ./internal/domain/...` PASS (service 10.1s + domain OK) ; gofmt Go clean ;
+`make generate-types` PASS ; `make check-types` PASS (tsc exit 0) ; `make test-web` **277 fichiers, 2390 PASS / 14 skipped**
+(counts inchangés vs P3 : `TimeseriesKillTypesDonut` supprimé sans test dédié, `FragSunburst`/`FragWeaponBreakdown`/recolor
+couverts par les tests P1). Revue visuelle Timeseries (onglet Résumé, Infinite + H5) RESTE À FAIRE (gate humain). Aucun commit.
 
 ### P5 — Rollout Sessions (LE PLUS LOURD — nouveau chemin de données)
 
@@ -361,6 +375,15 @@ partagés). Revue visuelle match Infinite + H5 RESTE À FAIRE (gate humain). Auc
   Le breakdown par arme est donc VIDE sur H5 live (ChartCard placeholder). Cohérent avec la dégradation gracieuse ;
   à valider à la revue visuelle H5. `weaponUnknownPrefix` (i18n match-view) reste déclaré mais SANS consommateur —
   dette PRÉ-EXISTANTE (déjà orpheline avant P3), laissée en place (hors périmètre P3).
+- **D-P4-1 (`KillTypesDonutCard` orphelin après P4.4)** : le retrait du montage kill-type de l'onglet Progression
+  fait de Timeseries le DERNIER consommateur de `KillTypesDonutCard` (grep : plus aucune réf hors sa propre def après
+  P4.4). Le fichier est LAISSÉ en place (consigne P4.4 : ne pas casser les partagés). `KillTypesDonut` (donut SVG
+  interne) reste bien utilisé par Explorer (`ExplorerTargetSampleStats`). Retrait éventuel de `KillTypesDonutCard` =
+  P7 (nettoyage code mort), hors périmètre P4.
+- **D-P4-2 (`TimeseriesPageResponse.DetailedStats` sans consommateur front)** : le donut Progression était le seul
+  lecteur front de `data.detailed_stats` (via `KillTypesDonutCard`). Après P4.4, le champ backend `DetailedStats`
+  (encore peuplé dans `GetPage`, `timeseries_service.go`) n'a plus de consommateur côté Timeseries. Laissé en place
+  (retrait DTO + arrêt du peuplement = P7, hors périmètre P4 ; risque nul, champ `omitempty`). À trancher au P7.
 - **D-P2-3 (doublons de cartes après P2.1/P2.2) — RÉSOLU (fusion tranchée avec l'utilisateur, 2026-07-19)** : les
   titres i18n de `SynthesisKillTypesDonut` (« Répartition des frags ») et `SynthesisWeaponKillsChart` (« Frags par
   arme ») étaient IDENTIQUES au sunburst/breakdown → doublons. Décision actée : LE sunburst unifié remplace LES DEUX

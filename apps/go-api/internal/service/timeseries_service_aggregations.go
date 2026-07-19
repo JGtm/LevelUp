@@ -307,6 +307,7 @@ func buildTopWeapons(rows []port.WeaponKillRow, topN int) []domain.TimeseriesWea
 	}
 	type agg struct {
 		label string
+		class string
 		kills int
 	}
 	byID := make(map[int64]*agg, len(rows))
@@ -316,11 +317,16 @@ func buildTopWeapons(rows []port.WeaponKillRow, topN int) []domain.TimeseriesWea
 		}
 		a, ok := byID[r.WeaponID]
 		if !ok {
-			a = &agg{label: r.Label}
+			a = &agg{label: r.Label, class: r.Class}
 			byID[r.WeaponID] = a
 		}
 		if a.label == "" && r.Label != "" {
 			a.label = r.Label
+		}
+		// Class porté depuis le registre (ResolveRoles) pour recolorer le bar chart
+		// par classe (cohérence sunburst v2). Une arme = une classe → 1re valeur non vide.
+		if a.class == "" && r.Class != "" {
+			a.class = r.Class
 		}
 		a.kills += r.Kills
 	}
@@ -330,6 +336,7 @@ func buildTopWeapons(rows []port.WeaponKillRow, topN int) []domain.TimeseriesWea
 			WeaponID: id,
 			Label:    a.label,
 			Kills:    a.kills,
+			Class:    a.class,
 		})
 	}
 	sort.SliceStable(out, func(i, j int) bool {

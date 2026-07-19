@@ -8813,6 +8813,7 @@ export interface components {
             detailed_stats?: components["schemas"]["SynthesisDetailedStats"];
             distributions_tab: components["schemas"]["TimeseriesDistributionsTab"];
             first_events?: components["schemas"]["FirstEventDistribution"];
+            frag_distribution?: components["schemas"]["FragDistribution"];
             intensity_rows?: components["schemas"]["IntensityMatchRow"][] | null;
             intensity_tab: components["schemas"]["TimeseriesIntensityTab"];
             map_breakdown: components["schemas"]["MapBreakdownRow"][] | null;
@@ -8845,6 +8846,7 @@ export interface components {
             kpi_cards: components["schemas"]["TimeseriesKpiCard"][] | null;
         };
         TimeseriesWeaponKill: {
+            class?: string;
             /** Format: int64 */
             kills: number;
             label: string;

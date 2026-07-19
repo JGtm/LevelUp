@@ -16705,6 +16705,8 @@ components:
               $ref: '#/components/schemas/TimeseriesDistributionsTab'
           first_events:
               $ref: '#/components/schemas/FirstEventDistribution'
+          frag_distribution:
+              $ref: '#/components/schemas/FragDistribution'
           intensity_rows:
               items:
                   $ref: '#/components/schemas/IntensityMatchRow'
@@ -16799,6 +16801,8 @@ components:
     TimeseriesWeaponKill:
       additionalProperties: false
       properties:
+          class:
+              type: string
           kills:
               format: int64
               type: integer

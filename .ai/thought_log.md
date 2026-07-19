@@ -1,3 +1,43 @@
+## [2026-07-19] Frag Distribution v2 — P4 rollout Timeseries
+
+**Statut** : Complété (P4.1→P4.4 tous `[x]`). NON committé (le superviseur gère git après revue). Gate P4 vert.
+Contrat `plan-execution`, périmètre strict P4.1→P4.4 du `.ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md`. `.ai/BACKLOG.md` INTACT.
+
+**Décision technique principale** : réutilisation stricte de `buildFragDistribution` (aucune duplication, règle
+≤2 copies) via une nouvelle méthode `TimeseriesService.buildTimeseriesFragDistribution(ctx, weaponRows, kt)`. Les
+filtres weapon_kills de Timeseries passent de `IncludeGrenadeMelee:false` à `ResolveRoles:true` (résout Role+Class en
+UNE passe, `rows` hoistées en `weaponRows` pour double usage top-weapons + sunburst). `counts` (`FragKillTypeCounts`)
+est rempli depuis `resp.KillTypes` (déjà agrégé par `buildTimeseriesKillTypes`), gun classes depuis `weaponRows`,
+`hasMechanics = titleHasNativeKillMechanics(slug)` (capability, jamais slug==). slog Debug (compteurs) + Warn sur
+sur-comptage Σclasses>total (jamais avalé). Champ `FragDistribution` + `Class` sur `TimeseriesWeaponKill` ajoutés au
+domain Go + `openapi.yaml` + `make generate-types` — types GÉNÉRÉS (alias `components['schemas']`, pas d'interface
+hand-written à maintenir, contrairement à la leçon D-P2-1/Synthesis).
+
+**Front (D7 : tout sur Résumé)** : `TimeseriesKillTypesDonut` (Résumé, H5) ET le montage `KillTypesDonutCard`
+(Progression, Infinite) remplacés par un UNIQUE `<FragSunburst distribution={data.frag_distribution} />` sur Résumé,
+title-agnostic (null si total 0). « Outils de destruction » (`TimeseriesTopWeapons`) recoloré per-datum via
+`fragClassColor(w.class)` (remplace le token unique `chart-series-1`), CONSERVÉ sur Résumé. `TimeseriesKillTypesDonut.tsx`
+supprimé (0 réf, pas de test). Montage kill-type retiré de Progression (import + var `hasKillMechanics` nettoyés).
+
+**Découvertes (§6, non traitées — P7)** : D-P4-1 `KillTypesDonutCard` devient orphelin (Timeseries était son dernier
+consommateur) mais LAISSÉ en place (consigne : ne pas casser les partagés ; `KillTypesDonut` interne reste utilisé par
+Explorer). D-P4-2 `TimeseriesPageResponse.DetailedStats` n'a plus de consommateur front (backend inchangé, `omitempty`).
+
+**Résultats de test** : `go test ./internal/service/... ./internal/domain/...` PASS (service 10.1s + domain OK).
+gofmt Go clean. `make generate-types` PASS. `make check-types` PASS (tsc exit 0). `make test-web` = **277 fichiers,
+2390 PASS / 14 skipped** (counts inchangés vs P3). 0 échec.
+
+**Fichiers** : modifiés `go-api/internal/domain/timeseries.go` (champs `FragDistribution` + `Class`),
+`go-api/internal/service/timeseries_service.go` (filtres ResolveRoles + hoist rows + wiring + méthode helper),
+`go-api/internal/service/timeseries_service_aggregations.go` (`buildTopWeapons` porte `Class`),
+`go-api/api/openapi.yaml` (+ `generated.ts` régénéré), `web/.../TimeseriesPage.summary.tsx` (FragSunburst),
+`web/.../TimeseriesPage.progression.tsx` (retrait montage kill-type), `web/.../TimeseriesTopWeapons.tsx` (recolor
+par classe) ; supprimé `web/.../TimeseriesKillTypesDonut.tsx`. Prochaine étape : P5 (rollout Sessions) + revue visuelle.
+
+**Conclusion** : P4 close, gate vert. Revue visuelle Timeseries (Résumé, Infinite + H5) reste (gate humain).
+
+---
+
 ## [2026-07-19] Frag Distribution v2 — P2 rollout Synthesis (surface de référence)
 
 **Statut** : Complété (P2.1/P2.2/P2.4 `[x]`, P2.3 `[!]` justifié). NON committé (le superviseur gère git après
