@@ -389,6 +389,11 @@ function TeamScoreboard({
       hlDef('accuracy'),
       hlDef('melee_kills'),
       hlDef('power_weapon_kills'),
+      // Mécaniques natives H5 : auto-masquées hors H5 (presentKeys retire les
+      // colonnes dont aucune ligne du lobby ne porte de valeur → null Infinite).
+      hlDef('assassination_kills'),
+      hlDef('ground_pound_kills'),
+      hlDef('shoulder_bash_kills'),
       hlDef('damage_dealt'),
       hlDef('damage_taken'),
       hlDef('avg_life_seconds'),

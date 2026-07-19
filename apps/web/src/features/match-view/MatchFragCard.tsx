@@ -1,13 +1,17 @@
 /**
- * MatchFragCard — carte « Répartition des frags » v2 du viewer sur la Match view :
- * compose le sunburst hiérarchique classe→rôle (FragSunburst) et, en dessous, le
- * breakdown par arme recoloré par classe (FragWeaponBreakdown). Remplace les deux
- * anciens graphes de frags du viewer (MatchWeaponPieChart « Frags par arme » +
- * MatchKillTypesDonut « Frags par technique ») — cf. .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P3.3.
+ * MatchFragCard — « Répartition des frags » v2 du viewer sur la Match view : émet
+ * DEUX cartes CÔTE À CÔTE (Fragment → cellules de la grille parente) — le sunburst
+ * hiérarchique classe→rôle (FragSunburst) et le breakdown par arme recoloré par
+ * classe (FragWeaponBreakdown). Remplace les deux anciens graphes de frags du viewer
+ * (MatchWeaponPieChart « Frags par arme » + MatchKillTypesDonut « Frags par
+ * technique ») — cf. .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P3.3.
+ *
+ * Chaque enfant est une ChartCard autonome (bordure/titre) → placé directement comme
+ * cellule de la grille du parent (pas d'empilement vertical interne).
  *
  * Non gaté : Infinite = classes sans Spartan ; Halo 5 = avec (la capability décide
  * côté backend via native_kill_mechanics). Rend null si aucune donnée (sunburst null
- * ET aucune arme) — le viewer sans frags n'affiche pas de carte vide.
+ * ET aucune arme) — le viewer sans frags n'affiche aucune carte.
  */
 import { FragSunburst } from '@/components/charts/FragSunburst'
 import { FragWeaponBreakdown } from '@/components/charts/FragWeaponBreakdown'
@@ -31,9 +35,9 @@ export function MatchFragCard({ distribution, weapons }: Props) {
   if (!hasSunburst && breakdown.length === 0) return null
 
   return (
-    <div className="flex flex-col gap-3">
+    <>
       <FragSunburst distribution={distribution} />
       <FragWeaponBreakdown weapons={breakdown} />
-    </div>
+    </>
   )
 }

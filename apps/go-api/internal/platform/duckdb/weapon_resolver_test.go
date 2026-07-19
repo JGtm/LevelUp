@@ -59,6 +59,31 @@ func TestResolveWeaponMeta_ParityAndDims(t *testing.T) {
 	}
 }
 
+// TestResolveWeaponMeta_RegistryFRFallbackH5 fige la politique « labels d'abord,
+// registre en dernier repli FR » (décision user 2026-07-19) :
+//
+//	(a) parité Infinite : BR75, dont le weapon_labels porte déjà un name_fr, résout
+//	    le MÊME nom qu'avant (« BR75 ») — le registre n'intervient jamais ;
+//	(b) repli H5 : une arme absente de weapon_labels (h5_light_rifle) récupère le
+//	    nom FR du registre (w.name_fr = « Fusil léger ») au lieu de rester vide.
+func TestResolveWeaponMeta_RegistryFRFallbackH5(t *testing.T) {
+	meta := resolverTestMeta(t, true)
+	ctx := context.Background()
+
+	// (a) Parité Infinite : BR75 (name_fr de label présent) → byte-inchangé.
+	brID := int64(0x2b1824d542c9679f)
+	if br := resolveWeaponMeta(ctx, meta, "halo_infinite", []int64{brID})[brID]; br.label != "BR75" {
+		t.Errorf("BR75 label = %q, want \"BR75\" (parité, registre non consulté)", br.label)
+	}
+
+	// (b) Repli H5 : h5_light_rifle (id 2511447508) n'a PAS de ligne weapon_labels
+	// → wl.name_fr/wl.name_en NULL → COALESCE tombe sur w.name_fr du registre.
+	const lightRifleID = int64(2511447508)
+	if lr := resolveWeaponMeta(ctx, meta, "halo_5", []int64{lightRifleID})[lightRifleID]; lr.label != "Fusil léger" {
+		t.Errorf("h5 light rifle label = %q, want \"Fusil léger\" (repli registre FR)", lr.label)
+	}
+}
+
 func TestResolveWeaponMeta_FallbackWhenNoRegistry(t *testing.T) {
 	meta := resolverTestMeta(t, false) // registre absent
 	brID := int64(0x2b1824d542c9679f)

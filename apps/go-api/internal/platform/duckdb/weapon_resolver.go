@@ -5,12 +5,16 @@
 // la metadata du titre courant), il renvoie le NOM d'affichage + les dimensions
 // canoniques du registre (weapon_key / role / family / faction).
 //
-// POLITIQUE DE NOM = PARITÉ PURE (décision user 2026-06-23 : « genre BR75 ») : le
-// nom (label / name_en) vient EXCLUSIVEMENT de weapon_labels (name_fr > name_en,
-// exactement comme avant) ; le registre n'apporte QUE les dimensions (weapon_key /
-// role / family / faction) et n'influence JAMAIS le nom affiché. Donc zéro
-// changement de nom, et aucune arme nouvelle ne « surgit ». label = "" si l'id est
-// inconnu de weapon_labels (le caller filtre / fallback comme avant).
+// POLITIQUE DE NOM = LABELS D'ABORD, REGISTRE EN DERNIER REPLI FR (décision user
+// 2026-07-19, amende la parité pure du 2026-06-23) : le label d'affichage vient
+// TOUJOURS de weapon_labels en priorité (name_fr > name_en) ; le registre (w.name_fr
+// > w.name) n'intervient qu'en DERNIER recours, quand weapon_labels ne porte AUCUN
+// nom. Ordre : wl.name_fr > wl.name_en > w.name_fr > w.name. Sur Halo Infinite, dont
+// les weapon_labels ont déjà un name_fr, le label gagne toujours → résolution Infinite
+// byte-INCHANGÉE (parité préservée). Le repli registre ne comble QUE le trou H5
+// (labels EN-only majuscules : « FRAG GRENADE » → « Grenade à fragmentation »,
+// « lightrifle » → « Fusil léger »). label = "" seulement si l'id est absent de
+// weapon_labels ET du registre.
 //
 // Robustesse : si le registre (weapons/weapon_ids) est absent (vieux schéma,
 // metadata de test non migrée), on retombe sur une résolution weapon_labels seule
@@ -57,10 +61,11 @@ func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponID
 		parts[i] = "('" + strconv.FormatUint(uint64(id), 10) + "')" //nolint:gosec
 	}
 	// titleSlug = identifiant de titre interne (jamais user input) → littéral sûr.
-	// label/name_en = weapon_labels SEUL (parité pure) ; le registre (w) ne donne
-	// QUE les dimensions. label "" → id inconnu de weapon_labels (caller décide).
+	// label = labels d'abord, registre FR en DERNIER repli (wl.name_fr > wl.name_en >
+	// w.name_fr > w.name) ; name_en reste weapon_labels seul (URL image). label "" → id
+	// inconnu des DEUX sources (caller décide).
 	query := "SELECT ids.v," +
-		" COALESCE(wl.name_fr, wl.name_en, '') AS label," +
+		" COALESCE(NULLIF(wl.name_fr,''), NULLIF(wl.name_en,''), NULLIF(w.name_fr,''), NULLIF(w.name,''), '') AS label," +
 		" COALESCE(wl.name_en, '') AS name_en," +
 		" COALESCE(w.weapon_key, '') AS weapon_key," +
 		" COALESCE(w.role, '') AS role," +

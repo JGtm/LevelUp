@@ -211,11 +211,11 @@ fr = "Assassinat"
 en = "Assassination"
 
 [synthesis.charts.kill_type_ground_pound]
-fr = "Frappe au sol"
+fr = "Coup au sol"
 en = "Ground Pound"
 
 [synthesis.charts.kill_type_shoulder_bash]
-fr = "Charge d'épaule"
+fr = "Charge spartane"
 en = "Shoulder Bash"
 
 [synthesis.spartan.section_title]
