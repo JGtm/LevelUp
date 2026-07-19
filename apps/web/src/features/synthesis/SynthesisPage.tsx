@@ -727,6 +727,9 @@ export function SynthesisPage() {
         </div>
       </div>
 
+      {/* Contenu : padding horizontal standard de l'app (px-6, cf. autres pages
+          stats). La barre de filtres sticky garde son px-6 propre au-dessus. */}
+      <div className="flex flex-col gap-6 px-6">
       {/* Bloc 1 — Vue d'ensemble D4 (inclut profil de combat inline) */}
       {data.overview && (
         <SynthesisOverviewSection
@@ -794,6 +797,7 @@ export function SynthesisPage() {
           </div>
         )}
       </section>
+      </div>
     </div>
   )
 }

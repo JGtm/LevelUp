@@ -58,7 +58,9 @@ export function buildSquadIntensityHeatmapOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 16, bottom: 60, left: 8, right: 60, containLabel: true },
+    // Pas de barre de légende (visualMap masquée) → right minimal, la heatmap
+    // occupe toute la largeur.
+    grid: { top: 16, bottom: 60, left: 8, right: 12, containLabel: true },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'item',
@@ -84,6 +86,9 @@ export function buildSquadIntensityHeatmapOption(
     },
     visualMap: {
       type: 'continuous',
+      // Barre de légende masquée (Escouade + Timeseries) : le mapping couleur des
+      // cellules reste actif, l'échelle 0-100% est donnée par le tooltip.
+      show: false,
       min: 0,
       max: 1,
       calculable: false,

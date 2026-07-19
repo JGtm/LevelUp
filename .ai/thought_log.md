@@ -1,3 +1,31 @@
+## [2026-07-19] Correctifs d'affichage UI (branche fix/ui-display-tweaks)
+
+**Statut** : Complété. Committé + mergé main local (superviseur ; push main = deploy prod → non poussé,
+attente revue visuelle utilisateur). Déclencheur : 3 retours utilisateur sur l'affichage.
+
+**Décisions techniques principales** :
+- Heatmap « Intensité » (`squadIntensityHeatmapChart.ts`, builder partagé Escouade + Timeseries) :
+  barre de légende gradient (visualMap continu) masquée via `visualMap.show: false` — masquage
+  systématique sur les DEUX pages (demande initiale Timeseries seule, étendue par l'utilisateur à
+  Escouade). Pas d'option de config (évite la config morte) ; le mapping couleur des cellules reste
+  actif, l'échelle 0-100% est donnée par le tooltip. Gouttière `grid.right` réduite 60→12 (plus de
+  légende à loger → heatmap pleine largeur).
+- Page Synthèse (`SynthesisPage.tsx`) : le contenu partait bord-à-bord (seule la barre de filtres
+  sticky avait `px-6`). Sections enveloppées dans un `div.flex.flex-col.gap-6.px-6` → padding
+  horizontal standard de l'app (aligné sur TimeseriesPage `p-6`). Barre sticky garde son px-6 propre.
+- Compteur points G en layout `sidebar` (`AchievementsCareerSection.tsx`, monté par
+  CareerProgressionTab) : « earned / total G » se coupait en 4 lignes dans la colonne étroite.
+  Span passé `whitespace-nowrap` + `tabular-nums`, ligne d'en-tête en `flex-wrap` → compteur sur une
+  ligne, les sélecteurs passent à la ligne si besoin.
+
+**Résultats observés** : `make check-types` vert (cache purgé implicite via tsc -b OK), vitest
+squadIntensity/seriesAdapters/AchievementsCareerSection/SynthesisPage verts (32+23 passés), eslint
+propre sur les 4 fichiers. Aucune nouvelle couleur/hex ni string i18n → règles couleurs/i18n NA.
+
+**Prochaine étape** : revue visuelle utilisateur, puis push (deploy prod) sur son feu vert.
+
+---
+
 ## [2026-07-19] Notifs — i18n FR notifs/Discord, toggle version, fix « solide » présence webhook (branche fix/notif-i18n-fr-webhook-present)
 
 **Statut** : Complété. NON committé (superviseur committe ; push main = deploy prod → après revue utilisateur).
