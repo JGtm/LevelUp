@@ -5,16 +5,19 @@
 // la metadata du titre courant), il renvoie le NOM d'affichage + les dimensions
 // canoniques du registre (weapon_key / role / family / faction).
 //
-// POLITIQUE DE NOM = LABELS D'ABORD, REGISTRE EN DERNIER REPLI FR (décision user
-// 2026-07-19, amende la parité pure du 2026-06-23) : le label d'affichage vient
-// TOUJOURS de weapon_labels en priorité (name_fr > name_en) ; le registre (w.name_fr
-// > w.name) n'intervient qu'en DERNIER recours, quand weapon_labels ne porte AUCUN
-// nom. Ordre : wl.name_fr > wl.name_en > w.name_fr > w.name. Sur Halo Infinite, dont
-// les weapon_labels ont déjà un name_fr, le label gagne toujours → résolution Infinite
-// byte-INCHANGÉE (parité préservée). Le repli registre ne comble QUE le trou H5
-// (labels EN-only majuscules : « FRAG GRENADE » → « Grenade à fragmentation »,
-// « lightrifle » → « Fusil léger »). label = "" seulement si l'id est absent de
-// weapon_labels ET du registre.
+// POLITIQUE DE NOM = FR D'ABORD (label PUIS registre), EN EN DERNIER REPLI (décision
+// user 2026-07-19, amende l'ordre « labels d'abord » du même jour qui laissait un
+// name_en non vide court-circuiter le registre FR) : le nom FR prime TOUJOURS, qu'il
+// vienne de weapon_labels (wl.name_fr) ou du registre (w.name_fr) ; le label EN
+// (wl.name_en) puis le nom registre brut (w.name) ne servent qu'en dernier repli.
+// Ordre : wl.name_fr > w.name_fr > wl.name_en > w.name. Sur Halo Infinite, dont les
+// weapon_labels ont TOUJOURS un name_fr, wl.name_fr gagne en 1re position → résolution
+// Infinite byte-INCHANGÉE (parité préservée). Sur H5, où weapon_labels ne porte qu'un
+// name_en majuscule NON VIDE (« FRAG GRENADE », « lightrifle ») sans name_fr, l'ANCIEN
+// ordre (wl.name_en avant w.name_fr) s'arrêtait sur l'EN et n'atteignait jamais le
+// registre FR ; en plaçant le registre FR AVANT le label EN, w.name_fr comble le trou
+// (« Grenade à fragmentation », « Fusil léger »). label = "" seulement si l'id est
+// absent de weapon_labels ET du registre.
 //
 // Robustesse : si le registre (weapons/weapon_ids) est absent (vieux schéma,
 // metadata de test non migrée), on retombe sur une résolution weapon_labels seule
@@ -61,11 +64,11 @@ func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponID
 		parts[i] = "('" + strconv.FormatUint(uint64(id), 10) + "')" //nolint:gosec
 	}
 	// titleSlug = identifiant de titre interne (jamais user input) → littéral sûr.
-	// label = labels d'abord, registre FR en DERNIER repli (wl.name_fr > wl.name_en >
-	// w.name_fr > w.name) ; name_en reste weapon_labels seul (URL image). label "" → id
-	// inconnu des DEUX sources (caller décide).
+	// label = FR d'abord (label puis registre), EN en dernier repli (wl.name_fr >
+	// w.name_fr > wl.name_en > w.name) ; name_en reste weapon_labels seul (URL image).
+	// label "" → id inconnu des DEUX sources (caller décide).
 	query := "SELECT ids.v," +
-		" COALESCE(NULLIF(wl.name_fr,''), NULLIF(wl.name_en,''), NULLIF(w.name_fr,''), NULLIF(w.name,''), '') AS label," +
+		" COALESCE(NULLIF(wl.name_fr,''), NULLIF(w.name_fr,''), NULLIF(wl.name_en,''), NULLIF(w.name,''), '') AS label," +
 		" COALESCE(wl.name_en, '') AS name_en," +
 		" COALESCE(w.weapon_key, '') AS weapon_key," +
 		" COALESCE(w.role, '') AS role," +

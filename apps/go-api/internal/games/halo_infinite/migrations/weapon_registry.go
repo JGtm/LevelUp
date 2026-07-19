@@ -22,6 +22,8 @@ package migrations
 
 import (
 	"database/sql"
+	"fmt"
+	"log/slog"
 	"strconv"
 
 	"levelup/go-api/internal/migration"
@@ -31,6 +33,56 @@ import (
 // Idempotent (CREATE IF NOT EXISTS + INSERT OR IGNORE).
 func ApplyWeaponRegistry(db *sql.DB) error {
 	return applyWeaponRegistry(db)
+}
+
+// ReconcileWeaponRegistry ré-applique le seed du registre d'armes canonique
+// (weapon_families/weapons/weapon_ids) de façon idempotente à CHAQUE boot, sur la
+// metadata.duckdb du titre `titleSlug`. Cross-titre par conception (le seed contient
+// les lignes de tous les titres, chaque metadata en reçoit une copie complète ;
+// resolveWeaponMeta filtre ensuite par wi.title_slug).
+//
+// Motif : le runner de migrations saute tout step déjà « done » (registry.go). Les
+// lignes ajoutées au seed APRÈS la 1re application de add_weapon_registry (buckets
+// non-combat H5 : h5_unattributed « Spartan » 3168248199, h5_frag_grenade,
+// véhicules/tourelles…) ne sont donc JAMAIS insérées sur une DB prod déjà migrée →
+// resolveWeaponMeta ne matche pas → class/role vides → filtre non-combat inerte + nom
+// FR frag grenade manquant. Rejouer le seed à chaque boot referme ce trou et
+// auto-guérit tout ajout futur (aucun nouveau step à versionner).
+//
+// Sûreté : le seed est INSERT OR IGNORE + CREATE TABLE IF NOT EXISTS (référentiel
+// STATIQUE, PK simple, zéro writer concurrent, hors périmètre du bug ART #23046 —
+// décision 2026-06-23). Le rejouer n'insère QUE les lignes manquantes : aucune
+// écriture destructive, aucun UPDATE. Retourne le nombre de lignes nouvellement
+// insérées (delta pré/post seed) pour la télémétrie de boot.
+func ReconcileWeaponRegistry(db *sql.DB, titleSlug string) (int, error) {
+	if db == nil {
+		return 0, nil
+	}
+	before := countWeaponRegistryRows(db) // tolérant : 0 si tables absentes (DB vierge)
+	if err := applyWeaponRegistry(db); err != nil {
+		return 0, fmt.Errorf("reconcile weapon_registry: %w", err)
+	}
+	reconciled := countWeaponRegistryRows(db) - before
+	if reconciled < 0 {
+		reconciled = 0
+	}
+	slog.InfoContext(migration.BootCtx(), "weapon_registry reconciled",
+		"title", titleSlug, "rows_inserted", reconciled)
+	return reconciled, nil
+}
+
+// countWeaponRegistryRows somme les lignes des 3 tables du registre. Tolérant : une
+// table absente (DB vierge, pré-seed) compte pour 0 — le delta post-seed reste exact
+// (full seed sur DB vierge, 0 sur DB déjà complète, N sur DB partielle prod).
+func countWeaponRegistryRows(db *sql.DB) int {
+	total := 0
+	for _, tbl := range []string{"weapon_families", "weapons", "weapon_ids"} {
+		var n int
+		if err := db.QueryRowContext(migration.BootCtx(), "SELECT COUNT(*) FROM "+tbl).Scan(&n); err == nil {
+			total += n
+		}
+	}
+	return total
 }
 
 type weaponFamilyRow struct{ key, en, fr string }
