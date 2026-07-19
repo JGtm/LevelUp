@@ -1367,8 +1367,6 @@ export interface SynthesisPageResponse {
   detailed_stats?: SynthesisDetailedStats
   // Top frags par arme (label résolu, weapon ID non-résolu exclus)
   top_weapon_kills?: SynthesisWeaponKillEntry[]
-  // Frags par rôle de combat (registre d'armes) — title-agnostic
-  kills_by_role?: SynthesisRoleKillEntry[]
   // Répartition hiérarchique des frags v2 (sunburst classe→rôle) — title-agnostic.
   frag_distribution?: FragDistribution
 
@@ -1383,11 +1381,6 @@ export type SynthesisWeaponKillEntry = components['schemas']['SynthesisWeaponKil
 
 // Précision par arme — accuracy en unité 0..1 (le composant multiplie par 100).
 export type SynthesisWeaponAccuracyEntry = components['schemas']['SynthesisWeaponAccuracyEntry']
-
-// Frags par rôle de combat (registre d'armes). Shimé sur le contrat OpenAPI
-// (le schéma SynthesisRoleKillEntry y est désormais présent). role ∈
-// automatic|precision|sniper|shotgun|sidearm|power|special|melee|grenade.
-export type SynthesisRoleKillEntry = components['schemas']['SynthesisRoleKillEntry']
 
 // Répartition hiérarchique des frags v2 (sunburst classe→rôle) — title-agnostic,
 // partagé par Synthesis/Match view/Timeseries/Sessions. Cf. domain/frag_distribution.go.

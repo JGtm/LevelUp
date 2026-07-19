@@ -1,3 +1,65 @@
+## [2026-07-19] Frag Distribution v2 — P7 nettoyage, garde-fous, livraison (phase finale)
+
+**Statut** : Complété (P7.1→P7.6 statués). NON committé (le superviseur gère git après revue). Gate P7 (suite
+COMPLÈTE) vert. Contrat `plan-execution`, périmètre strict P7.1→P7.6 + Découvertes reportées à P7. `.ai/BACKLOG.md`
+INTACT.
+
+**P7.1 — retrait code mort** :
+- a) **`KillsByRole` DTO éradiqué** (préféré au `[!]` « conservé ») : `weaponRoleInsight` migré pour dériver les kills
+  par rôle depuis `frag_distribution` (rôles des GUN CLASSES shoulder/sidearm/heavy, fusion trans-classes + une gun
+  class feuille contribue au rôle portant son nom = byte-équiv `kills_by_role`). Cœur de logique EXACTEMENT préservé
+  (extrait `insightFromRoles` : NON_COMBAT_WEAPON_ROLES, MIN_KILLS=50, power<3%, top>70%, priorité blind_spot).
+  Supprimés : Go `SynthesisPageV2Response.KillsByRole` + type `SynthesisRoleKillEntry` + `buildKillsByRole` +
+  `synthesis_role_kills_test.go` ; `openapi.yaml` (champ + schéma) ; `generated.ts`/`types.ts` (regénéré + alias
+  hand-written) ; front `SynthesisFragCard`/`SynthesisPage` (prop `killsByRole` retirée). Commentaires stale mis à
+  jour (halo_5 metadata + weapon_registry HINF : référence donut→FragDistribution).
+- b) **D-P4-1** `KillTypesDonutCard.tsx` orphelin (0 réf, pas de test) SUPPRIMÉ. `KillTypesDonut` (SVG interne) CONSERVÉ
+  (Explorer `ExplorerTargetSampleStats` + Match `MatchFragCard`).
+- c) **D-P4-2** `TimeseriesPageResponse.DetailedStats` sans consommateur (grep back+front) RETIRÉ : Go domain + arrêt
+  du peuplement (`ds` inline supprimé, `provideSpree` encore utilisé ailleurs) + `openapi.yaml` + `generated.ts`.
+- d) **Note P6** : 5 tests builder co-localisés `service/synthesis_frag_distribution_test.go` → `fragdist/fragdist_test.go`
+  (package `fragdist`, `fragdist.Build`→`Build`) ; ancien fichier supprimé. `fragdist` n'est plus « [no test files] ».
+
+**P7.2 — garde-fous** (règle ≤2 copies → helper + garde-rail grep) :
+- Anti-collision existant `fragClass.guard.test.ts` VÉRIFIÉ vert.
+- (i) NOUVEAU `fragClass.colorSource.guard.test.ts` : échoue si l'un des 6 hex de combat des classes de frags
+  apparaît en littéral sous `features/**`/`components/**` (mapping direct classe→couleur hors `fragClassColor`).
+- (ii) NOUVEAU `frag_distribution_log_guard_test.go` : échoue si les marqueurs du log FragDistribution
+  (`frag distribution built`/`over-count`) réapparaissent hors le helper partagé `logFragDistribution`
+  (synthesis_service_builders.go) — verrouille D-P5-2.
+
+**P7.3** : `internal/sync/no_art_patterns_test.go` INCHANGÉ (git clean) et vert dans la suite (chantier = lectures/
+agrégations, aucune écriture per-match introduite).
+
+**P7.4** : couche persist NON touchée (lectures/agrégations only ; edits migrations = commentaires seuls) → tests
+`-tags=integration` `[~]` (non requis) ; MAIS suite Go COMPLÈTE lancée (gate ci-dessous).
+
+**Résultats observés (Gate P7 — suite COMPLÈTE, séquentiel)** :
+- `cd apps/go-api && go test ./...` **PASS** (tous packages `ok`, 0 FAIL, exit 0 ; `internal/service` + `fragdist` +
+  `sync` verts) ;
+- `make generate-types` PASS (SynthesisRoleKillEntry + kills_by_role + detailed_stats Timeseries disparus de generated.ts) ;
+- `make check-types` PASS (tsc exit 0) ;
+- `make test-web` **278 fichiers, 2398 PASS / 14 skipped** (+1 fichier = colorSource guard ; +tests weaponRoleInsight
+  réécrits en insightFromRoles/rolesFromDistribution/weaponRoleInsight) ;
+- `go vet ./...` exit 0 ; `golangci-lint` sur packages touchés = **baseline-neutre** (1 gofmt introduit sur
+  `synthesis.go` — CORRIGÉ ; reste = dette pré-existante gelée, non aggravée).
+
+**P7.5 note** : `.ai/project_map.md` NON modifié — doc explicitement GELÉE (« HISTORIQUE — NE FAIT PLUS FOI », 0 réf
+frags) ; le code + ce journal + les ADRs font foi. La carto ne mérite pas de MAJ.
+
+**P7.6 — delivery-checklist** : verdict **GO (local)**. Code mort retiré avec tests/imports/types/openapi/i18n ;
+garde-rails livrés dans le même diff ; 0 fmt.Println ; couleurs via `fragClassColor` (guard) ; thought_log présent.
+CI de branche = N/A (livraison NON committée/poussée, le superviseur pousse après revue).
+
+**Découvertes** : aucune nouvelle hors périmètre. Reste ouvert : **P2.3 `[!]`** (probe H5 exacte `IsMelee` vs
+`TotalAssassinations` — AVANT prod, D-P2-2) ; revues visuelles par surface (gates humains) ; **D-P3-2** breakdown par
+arme vide sur H5 live canonique (dégradation gracieuse à valider). `weaponUnknownPrefix` (i18n match-view) reste dette
+pré-existante hors périmètre.
+
+**Conclusion / prochaine étape** : Frag Distribution v2 SOLDÉ côté code (P0→P7 tous `[x]`/`[~]`/`[!]` statués).
+RESTE (hors code) : revues visuelles des 5 surfaces + Explorer iso ; probe pré-prod P2.3 ; puis merge/push par le
+superviseur (push `main` = deploy prod auto).
+
 ## [2026-07-19] Frag Distribution v2 — P6 rollout Escouade (barres empilées par classe)
 
 **Statut** : Complété (P6.1→P6.3 tous `[x]`). NON committé (le superviseur gère git après revue). Gate P6 vert.

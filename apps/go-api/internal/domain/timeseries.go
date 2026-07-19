@@ -300,11 +300,6 @@ type TimeseriesPageResponse struct {
 	// (mode solo : pas de squad verdict). Calcule sur les memes match_ids que
 	// les autres onglets (apres filtres). Nil si aucun match.
 	BriefingKPIs *KPIStats `json:"briefing_kpis,omitempty"`
-	// DetailedStats : agregats par type de frag (melee/arme lourde/grenade) sur
-	// le meme set filtre que les autres onglets. Alimente le donut « Repartition
-	// des frags » de l'onglet Progression. Reutilise le type de Synthesis. Nil si
-	// aucun match dans le scope.
-	DetailedStats *SynthesisDetailedStats `json:"detailed_stats,omitempty"`
 	// FragDistribution : répartition hiérarchique classe→rôle (sunburst v2) sur le
 	// scope filtré. Réutilise le builder partagé buildFragDistribution (classes API
 	// melee/grenade/spartan + total, classes gun depuis le registre). Nil si aucun

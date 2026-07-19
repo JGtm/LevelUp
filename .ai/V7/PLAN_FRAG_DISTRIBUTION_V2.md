@@ -313,16 +313,30 @@ visuelle Escouade (1 à 4 joueurs, Infinite + H5) RESTE À FAIRE (gate humain). 
 
 ### P7 — Nettoyage, garde-fous, livraison
 
-- [ ] P7.1 Retirer `KillsByRole` du DTO + `SynthesisRoleKillsDonut` + `weaponRoleInsight` si absorbés (0 code mort,
-      supprimer tests+imports).
-- [ ] P7.2 Garde-fou (règle ≤2 copies) : test grep interdisant tout mapping direct classe→token hors
-      `fragClassColor` ; test anti-collision de token maintenu.
-- [ ] P7.3 `internal/sync/no_art_patterns_test.go` inchangé (aucune écriture per-match introduite) — vérifier.
-- [ ] P7.4 Tests intégration (`go test -tags=integration ./...`, `-p 1`, filtre ancré) si toute couche persist touchée — sinon `[~]`.
-- [ ] P7.5 `.ai/thought_log.md` : entrée par phase (obligatoire). `.ai/project_map.md` MAJ si structure.
-- [ ] P7.6 Skill `delivery-checklist` avant « livré ».
+- [x] P7.1 Code mort retiré (0 zombie) : (a) **`KillsByRole` DTO éradiqué** (préféré au maintien) — `weaponRoleInsight`
+      migré pour dériver les rôles des GUN CLASSES de `frag_distribution` (logique EXACTEMENT préservée via
+      `insightFromRoles` : NON_COMBAT_WEAPON_ROLES + MIN_KILLS + power<3% + top>70%) ; supprimés `SynthesisRoleKillEntry`
+      + `buildKillsByRole` + `synthesis_role_kills_test.go` + champ openapi/types/generated + prop front `killsByRole`.
+      `SynthesisRoleKillsDonut`/`SynthesisKillTypesDonut` déjà supprimés en P2 (pas de reliquat). (b) **D-P4-1**
+      `KillTypesDonutCard.tsx` orphelin SUPPRIMÉ (`KillTypesDonut` SVG conservé — Explorer+Match). (c) **D-P4-2**
+      `TimeseriesPageResponse.DetailedStats` (0 consommateur back+front) RETIRÉ (domain + peuplement + openapi + generated).
+      (d) **Note P6** 5 tests builder co-localisés dans `fragdist/fragdist_test.go` (package `fragdist`).
+- [x] P7.2 Garde-fous ajoutés : (i) `fragClass.colorSource.guard.test.ts` (grep — aucun hex de classe de frags en dur
+      sous features/components, source unique `fragClassColor`) ; (ii) `frag_distribution_log_guard_test.go` (grep — log
+      FragDistribution centralisé dans `logFragDistribution`, marqueurs interdits ailleurs, D-P5-2). Anti-collision
+      `fragClass.guard.test.ts` maintenu et vert.
+- [x] P7.3 `internal/sync/no_art_patterns_test.go` INCHANGÉ (git clean) et vert dans la suite — aucune écriture per-match.
+- [~] P7.4 Couche persist NON touchée (lectures/agrégations only ; edits migrations = commentaires seuls) → intégration
+      NON requise. Couvert par la suite Go COMPLÈTE (`go test ./...`) verte + `no_art_patterns` inchangé (P7.3).
+- [x] P7.5 `.ai/thought_log.md` : entrée P7 ajoutée. `.ai/project_map.md` NON modifié — doc explicitement GELÉE
+      (« HISTORIQUE — NE FAIT PLUS FOI », 0 réf frags) : le code + thought_log + ADRs font foi (carto ne le mérite pas).
+- [x] P7.6 Skill `delivery-checklist` invoqué → verdict **GO (local)** consigné (thought_log). CI branche N/A (non poussé).
 
-**Gate P7** : suite complète `cd apps/go-api && go test ./...` + `make check-types && make test-web` + revue visuelle des 5 surfaces + Explorer iso.
+**Gate P7** (suite COMPLÈTE, séquentiel, exécuté 2026-07-19) : `cd apps/go-api && go test ./...` **PASS** (tous packages
+`ok`, 0 FAIL, exit 0) ; `make generate-types` PASS ; `make check-types` PASS (tsc exit 0) ; `make test-web` **278 fichiers,
+2398 PASS / 14 skipped** ; `go vet ./...` exit 0 ; `golangci-lint` packages touchés **baseline-neutre** (1 gofmt introduit
+sur synthesis.go → CORRIGÉ). RESTE (gates humains, hors code) : revue visuelle des 5 surfaces + Explorer iso ; probe
+pré-prod P2.3 (`[!]`, D-P2-2). Aucun commit.
 
 ---
 
