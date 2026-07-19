@@ -10,6 +10,26 @@
 
 ---
 
+### [archi/match-view] Retirer le fallback LIVE (appel API à l'ouverture de page) du Match view
+
+> Noté le 2026-07-19 (décision user). Le Match view a un fallback qui, quand un match n'est PAS
+> en base (`GetMatchMeta` / `match_registry` miss), va chercher la partie **EN DIRECT depuis l'API** :
+> `tryCanonicalMatchView` (`internal/service/match_view_service.go:307,314`) → `DataAdapter.LoadMatchDetail`.
+> Pour H5 (`internal/games/halo_5/adapter_data_loaders.go:204`), ça fait **2 appels API live**
+> (`GetPlayerMatches` historique + `GetMatchCarnage`). Déclenché seulement pour un match **non encore
+> synchronisé** (Infinite et H5 persistés passent par la DB → jamais concernés). Design existant
+> (ADR 0029 + tests `TestAdapter_LoadMatchDetail_Live` / `…CarnageHTTPErrorDegrades`).
+
+**DÉCISION (user 2026-07-19)** : **à SUPPRIMER**. Un appel API live à l'ouverture d'une page match
+n'est pas voulu (latence, dépendance token, échec réseau à l'affichage). Le remplacer par une
+dégradation propre (« match pas encore synchronisé » / 404) plutôt qu'un fetch live. Périmètre :
+`tryCanonicalMatchView` + câblage `DataAdapter`/`viewerGamertag`, le loader `LoadMatchDetail` H5 s'il ne
+sert plus qu'à ça, les tests associés — **vérifier ADR 0029 et les callers avant** (ce chemin a été
+ajouté pour les titres GAMERTAG-keyés). Effet de bord frags : sur ce chemin le breakdown par arme
+retombait en « Non attribué » (ex-D-P3-2) → disparaît avec le fallback. **Effort** : moyen.
+
+---
+
 ### [prod/backup] Retirer le scheduler backup in-app (redondant avec le backup systemd hôte)
 
 > Noté le 2026-07-17, DÉCISION 2026-07-18. Le backup restic **canonique** tourne au niveau
