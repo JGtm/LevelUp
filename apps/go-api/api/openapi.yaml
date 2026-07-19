@@ -16200,10 +16200,14 @@ components:
     SynthesisWeaponKillEntry:
       additionalProperties: false
       properties:
+          class:
+              type: string
           kills:
               format: int64
               type: integer
           label:
+              type: string
+          role:
               type: string
       required:
           - label

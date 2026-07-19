@@ -1383,6 +1383,12 @@ export type SynthesisWeaponAccuracyEntry = components['schemas']['SynthesisWeapo
 // automatic|precision|sniper|shotgun|sidearm|power|special|melee|grenade.
 export type SynthesisRoleKillEntry = components['schemas']['SynthesisRoleKillEntry']
 
+// Répartition hiérarchique des frags v2 (sunburst classe→rôle) — title-agnostic,
+// partagé par Synthesis/Match view/Timeseries/Sessions. Cf. domain/frag_distribution.go.
+export type FragDistribution = components['schemas']['FragDistribution']
+export type FragClassEntry = components['schemas']['FragClassEntry']
+export type FragRoleEntry = components['schemas']['FragRoleEntry']
+
 // Sprint 55 D9 — Scope
 export type SynthesisScope = components['schemas']['SynthesisScope']
 

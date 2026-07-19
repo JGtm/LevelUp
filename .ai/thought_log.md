@@ -1,3 +1,57 @@
+## [2026-07-19] Frag Distribution v2 — P1 composant sunburst + couleurs accessibles (front)
+
+**Statut** : Complété (P1 uniquement). NON committé (le superviseur gère git après revue). Gate P1 vert.
+Contrat `plan-execution`. Périmètre strict P1.1→P1.7 du `.ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md`. Composant NON
+monté sur page (c'est P2).
+
+**Décision technique principale** : SOURCE UNIQUE couleur classe `scales/fragClass.ts` — `fragClassScale`
+(`makeCategoricalScale`) mappe 6 classes combat sur `chart-series-1..6` + `unattributed`→`divergent-neutral`
+(hachuré), 7 tokens DISTINCTS (collision mêlée=grenade=`chart-series-8` de l'ancien donut éradiquée). Rôles =
+teintes de luminosité (`fragRoleColor`/`shiftLightness`). Composants partagés `components/charts/FragSunburst.tsx`
+(ECharts sunburst 2 anneaux, résidu decal, centre=total, tooltip %total/%classe/badge autorité, null si total 0)
+et `FragWeaponBreakdown.tsx` (barres recolorées per-datum par `fragClassColor(class)`). i18n : manifest PARTAGÉ
+NOUVEAU `frags.toml` (`fragsManifest`, 26 clés) réutilisable par les 4 surfaces.
+
+**CVD (P1.3)** : validé avec le validateur dataviz `validate_palette.js` (all-pairs, Okabe-Ito) → **worst deutan
+ΔE 11.0 PASS** (cible outil 8), normal-vision 15.6 PASS. Cible plan ≥12 = plafond structurel des 6 tokens Okabe
+fixes (la dépasser casse le normal-vision floor) → retenu 11.0 + encodage secondaire (label+position+hachure),
+consigné §6 D-P1-1/D-P1-2. Palette DÉFAUT `chart-series-1..5` = rampe indigo (ΔE 5.4, FAIL catégoriel) : dette
+PRÉ-EXISTANTE de `palettes/default.ts` partagée par tous les charts multi-séries, hors périmètre P1. Garde-fou
+in-repo `fragClass.guard.test.ts` (anti-collision + min all-pairs ΔE ≥ 8, math Machado 2009 self-contained).
+
+**Go (P1.5)** : `SynthesisWeaponKillEntry` enrichi de `class`/`role` (json omitempty), peuplé dans
+`buildTopWeaponKills` (rows déjà `ResolveRoles=true`) ; `openapi.yaml` + `make generate-types` (class?/role? dans
+`generated.ts`). Drift test ne gate que sur MISSING → struct/openapi tenus cohérents.
+
+**Résultats de test** : `go test ./internal/service/... ./internal/domain/...` = PASS (service 8.1s). `make
+generate-types` OK. `make check-types` PASS (tsc clean). `make test-web` = **278 fichiers, 2392 tests PASS / 14
+skipped**. 12 nouveaux tests front verts. gofmt clean sur les 2 fichiers Go.
+
+**Fichiers** : nouveaux `web/src/lib/accessibility/scales/fragClass.ts` + `fragClass.guard.test.ts`,
+`web/src/lib/i18n/manifests/frags.toml` (+ `generated/frags.ts` généré), `web/src/components/charts/FragSunburst.tsx`
+(+`.test.tsx`), `FragWeaponBreakdown.tsx` (+`.test.tsx`) ; modifiés `scales/index.ts`, `lib/api/types.ts`,
+`domain/synthesis.go`, `service/synthesis_service_builders.go`, `api/openapi.yaml`, `generated.ts` (généré).
+
+**Prochaine étape** : P2 (rollout Synthesis : monter `<FragSunburst>`+`<FragWeaponBreakdown>`, adapter
+`weaponRoleInsight`, probe H5 gate G2.3). Aucune action différée dans P1.
+
+**ADDENDUM [2026-07-19] — révision P1 couleurs, OPTION A (accessibilité garantie)** : le mapping initial
+`chart-series-1..6` était résolu via la palette ACTIVE ; sous la palette DÉFAUT (`palettes/default.ts`),
+`chart-series-1..5` = rampe indigo (ΔE ~5.4, SOUS le plancher CVD) → 5 classes de frags se ressemblaient (le
+garde-fou testait Okabe-Ito, pas le défaut réellement servi). User a tranché **option A** : donner aux classes de
+frags leur PROPRE jeu de hex FIXES CVD-safe, HORS palette active — précédent `rarity.ts`. NOUVEAU module
+`web/src/lib/accessibility/scales/fragClassColors.ts` : 6 hex Okabe-Ito fixes (shoulder #0072B2 / sidearm #E69F00 /
+heavy #56B4E9 / melee #D55E00 / grenade #009E73 / spartan_ability #F0E442) + neutre #888888 (`unattributed`,
+hachuré) ; commentaire d'exception « identité catégorielle fixe CVD-safe, hors palette active ». `fragClass.ts` :
+`fragClassColor` sert ces hex fixes (plus de `resolveToken`/palette ; fonctionne aussi en SSR) ; `fragRoleColor`
+inchangé (teintes via `shiftLightness`). `fragClassScale`/`fragClassColorToken` (palette-dépendants) SUPPRIMÉS
+(0 code mort). Garde-fou `fragClass.guard.test.ts` réécrit : anti-collision hex + pin des 6 hex Okabe +
+palette-indépendance (hex littéral, jamais token résolu) + min all-pairs ΔE ≥ 8. **CVD INCONDITIONNEL**
+(`validate_palette.js` répliqué) : normal 15.58, protan 11.38, deutan **10.98** (worst melee/grenade) — tous PASS
+(cible 8). Hex UNIQUEMENT dans `fragClassColors.ts` (grep : zéro hex frag dans features/components). D-P1-1/D-P1-2
+marqués RÉSOLUS (§6). Gates : `make check-types` PASS (tsc clean) ; `make test-web` **278 fichiers, 2393 tests PASS
+/ 14 skipped**. NON committé.
+
 ## [2026-07-19] Frag Distribution v2 — P0 fondation Go (branche feat/frag-distribution-v2)
 
 **Statut** : Complété (P0 uniquement). NON committé (le superviseur gère git après revue). Gate P0 vert.

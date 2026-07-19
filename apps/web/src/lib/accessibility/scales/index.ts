@@ -15,3 +15,12 @@ export {
   outcomeScale,
   narrativeScale,
 } from './instances'
+export {
+  FRAG_CLASS_ORDER,
+  FRAG_CLASS_UNATTRIBUTED,
+  fragClassColor,
+  fragRoleColor,
+  shiftLightness,
+} from './fragClass'
+export type { FragClassKey } from './fragClass'
+export { FRAG_CLASS_HEX, FRAG_CLASS_NEUTRAL_HEX, fragClassFixedHex } from './fragClassColors'

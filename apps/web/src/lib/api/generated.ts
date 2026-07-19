@@ -8624,9 +8624,11 @@ export interface components {
             shots_landed: number;
         };
         SynthesisWeaponKillEntry: {
+            class?: string;
             /** Format: int64 */
             kills: number;
             label: string;
+            role?: string;
         };
         TableStatus: {
             exists: boolean;
