@@ -1595,6 +1595,16 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 		metaDB.Close()
 		return fmt.Errorf("metadata seed reconcile: %w", err)
 	}
+	// Réconciliation idempotente du registre d'armes canonique (weapons/weapon_ids/
+	// weapon_families) : le runner saute add_weapon_registry une fois « done », donc les
+	// lignes ajoutées au seed après coup (buckets non-combat, frag grenade…) n'atteignent
+	// jamais une DB déjà migrée. Rejeu INSERT OR IGNORE à chaque boot → auto-guérison
+	// (cf. ReconcileWeaponRegistry). Couvre le titre par défaut ; les titres additionnels
+	// sont couverts dans provisionAdditionalTitle.
+	if _, err := halomigrations.ReconcileWeaponRegistry(metaDB.SQLDb(), migration.DefaultSlug); err != nil {
+		metaDB.Close()
+		return fmt.Errorf("metadata weapon registry reconcile: %w", err)
+	}
 	metaDB.Close()
 
 	// 2. shared_matches_v2.duckdb
@@ -1687,6 +1697,16 @@ func provisionAdditionalTitle(pr *title.PathResolver, td *title.TitleDescriptor)
 		if err := migration.RunForTitleDB(db.SQLDb(), slug, t.kind); err != nil {
 			db.Close()
 			return fmt.Errorf("migrate %s (%s): %w", t.kind, t.path, err)
+		}
+		// Auto-guérison du registre d'armes (cross-titre) sur la metadata du titre
+		// additionnel : le seed add_weapon_registry étant sauté une fois « done », les
+		// lignes ajoutées après coup (buckets non-combat H5…) manqueraient sans ce rejeu
+		// idempotent (INSERT OR IGNORE). Comparaison de TargetDB, pas de slug.
+		if t.kind == migration.TargetMetadata {
+			if _, err := halomigrations.ReconcileWeaponRegistry(db.SQLDb(), slug); err != nil {
+				db.Close()
+				return fmt.Errorf("reconcile weapon registry %s (%s): %w", slug, t.path, err)
+			}
 		}
 		db.Close()
 	}
