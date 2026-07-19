@@ -308,7 +308,15 @@ func (s *SynthesisService) loadTopWeaponKills(
 	}
 	rows := s.loadWeaponKillRows(ctx, filteredCanon)
 	hasMechanics := titleHasNativeKillMechanics(s.titleSlug)
-	fd := buildFragDistribution(rows, detailedStats, totalKills, hasMechanics)
+	counts := domain.FragKillTypeCounts{
+		Melee:         detailedStats.TotalMeleeKills,
+		Grenade:       detailedStats.TotalGrenadeKills,
+		Assassination: detailedStats.TotalAssassinations,
+		GroundPound:   detailedStats.TotalGroundPoundKills,
+		ShoulderBash:  detailedStats.TotalShoulderBashKills,
+		Total:         totalKills,
+	}
+	fd := buildFragDistribution(rows, counts, hasMechanics)
 	s.logFragDistribution(ctx, fd)
 	return buildTopWeaponKills(rows, synthesisWeaponChartTopN), buildKillsByRole(rows), &fd
 }

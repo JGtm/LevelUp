@@ -4265,6 +4265,7 @@ export interface components {
             personal_result: components["schemas"]["MatchPersonalResult"];
         };
         MatchWeaponKill: {
+            class?: string;
             /** Format: int64 */
             kill_count: number;
             /** Format: int64 */
@@ -4280,6 +4281,7 @@ export interface components {
         };
         MatchCombatTab: {
             cadence?: components["schemas"]["ChartSeriesChartPointStacked"];
+            frag_distribution?: components["schemas"]["FragDistribution"];
             highlight_events: components["schemas"]["MatchHighlightEvent"][] | null;
             impact_badges: components["schemas"]["MatchImpactBadge"][] | null;
             impact_roles?: components["schemas"]["MatchViewImpactRole"][] | null;

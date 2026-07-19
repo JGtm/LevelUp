@@ -39,6 +39,21 @@ const (
 	FragRoleShoulderBash  = "shoulder_bash" // Capacité spartane niv.2
 )
 
+// FragKillTypeCounts porte les compteurs de kill-type NATIFS (API canonique) qui
+// alimentent le niveau 1 de la FragDistribution : Mêlée, Grenade et — sous capability
+// native_kill_mechanics — Capacités spartanes (ground pound + shoulder bash), plus le
+// total. Struct NEUTRE (aucune dépendance à un DTO de page) pour que buildFragDistribution
+// serve toutes les surfaces : Synthesis (agrégat SynthesisDetailedStats), Match view
+// (ligne scoreboard native du viewer), etc. — sans dupliquer la logique (règle ≤2 copies).
+type FragKillTypeCounts struct {
+	Melee         int // total_melee_kills
+	Grenade       int // total_grenade_kills
+	Assassination int // total_assassinations (Mêlée niv.2, H5)
+	GroundPound   int // total_ground_pound_kills (Capacité spartane, H5)
+	ShoulderBash  int // total_shoulder_bash_kills (Capacité spartane, H5)
+	Total         int // total_kills (base du résidu unattributed)
+}
+
 // FragDistribution est la répartition hiérarchique des frags d'un scope (joueur,
 // match, session…). Classes ordonnées de façon déterministe ; Σ Kills == TotalKills.
 type FragDistribution struct {

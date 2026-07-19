@@ -78,19 +78,12 @@ export interface MatchViewText {
   radarTooltipScore: string
   radarTooltipObjective: string
   radarTooltipGlossaryLink: string
-  // Charts armes
-  chartWeaponPieTitle: string
-  labelPowerWeapon: string
-  labelMelee: string
-  labelOtherKills: string
+  // Labels de mécaniques natives Halo 5 — colonnes du scoreboard (MatchScoreboard).
   labelGrenade: string
-  // Donut « répartition des frags » (kill types, dont mécaniques natives Halo 5).
-  chartKillTypesTitle: string
   labelAssassination: string
   labelGroundPound: string
   labelShoulderBash: string
   weaponUnknownPrefix: string
-  weaponOtherGroup: string
   // Section médias (dans onglet Résumé)
   sectionMedia: string
   mediaNoCaptures: string
@@ -277,17 +270,11 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     radarTooltipScore: 'Score résiduel après frags (×100) et assists (×50) : médailles et séries.',
     radarTooltipObjective: "Points d'objectif (PersonalScoreAwards).",
     radarTooltipGlossaryLink: '→ Glossaire',
-    chartWeaponPieTitle: 'Frags par arme',
-    labelPowerWeapon: 'Armes lourdes',
-    labelMelee: 'Mêlée',
-    labelOtherKills: 'Autres',
     labelGrenade: 'Grenade',
-    chartKillTypesTitle: 'Frags par technique',
     labelAssassination: 'Assassinat',
     labelGroundPound: 'Coup au sol',
     labelShoulderBash: 'Charge spartane',
     weaponUnknownPrefix: 'Arme inconnue',
-    weaponOtherGroup: 'Autres armes',
     sectionMedia: 'Médias',
     mediaNoCaptures: 'Aucune capture',
     mediaNoCapturesDesc: 'Les screenshots et clips associés à ce match apparaîtront ici.',
@@ -464,17 +451,11 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     radarTooltipScore: 'Residual score after kills (×100) and assists (×50): medals and streaks.',
     radarTooltipObjective: 'Objective points (PersonalScoreAwards).',
     radarTooltipGlossaryLink: '→ Glossary',
-    chartWeaponPieTitle: 'Frags by weapon',
-    labelPowerWeapon: 'Power weapons',
-    labelMelee: 'Melee',
-    labelOtherKills: 'Other',
     labelGrenade: 'Grenade',
-    chartKillTypesTitle: 'Frags by technique',
     labelAssassination: 'Assassination',
     labelGroundPound: 'Ground Pound',
     labelShoulderBash: 'Shoulder Bash',
     weaponUnknownPrefix: 'Unknown weapon',
-    weaponOtherGroup: 'Other weapons',
     sectionMedia: 'Media',
     mediaNoCaptures: 'No captures',
     mediaNoCapturesDesc: 'Screenshots and clips associated with this match will appear here.',

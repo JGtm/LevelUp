@@ -17,10 +17,16 @@ import (
 type weaponMetaEntry struct {
 	label  string
 	nameEN string
+	// class / role : dimensions du registre (axe manipulation + fonction de combat),
+	// résolues dans la même passe que le label (resolveWeaponMeta les porte déjà).
+	// Vides si l'arme est absente du registre. Alimentent la FragDistribution par-match.
+	class string
+	role  string
 }
 
-// lookupWeaponMeta résout label (FR>EN) + name_en depuis weapon_labels.
-// name_en est nécessaire pour construire l'URL image via AssetURLAdapter.WeaponImageURL.
+// lookupWeaponMeta résout label (FR>EN) + name_en + class/role depuis le registre.
+// name_en est nécessaire pour construire l'URL image via AssetURLAdapter.WeaponImageURL ;
+// class/role alimentent la FragDistribution par-match (sunburst v2).
 func (r *MatchViewRepo) lookupWeaponMeta(ctx context.Context, weaponIDs []int64) map[int64]weaponMetaEntry {
 	result := map[int64]weaponMetaEntry{}
 	if len(weaponIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
@@ -30,7 +36,7 @@ func (r *MatchViewRepo) lookupWeaponMeta(ctx context.Context, weaponIDs []int64)
 	// nom). On ne garde que les ids résolus (label non vide), comme l'ancien lookup.
 	for id, m := range resolveWeaponMeta(ctx, r.pdb.Metadata, r.pdb.TitleSlug, weaponIDs) {
 		if m.label != "" {
-			result[id] = weaponMetaEntry{label: m.label, nameEN: m.nameEN}
+			result[id] = weaponMetaEntry{label: m.label, nameEN: m.nameEN, class: m.class, role: m.role}
 		}
 	}
 	return result
@@ -163,6 +169,8 @@ func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID str
 		if m, ok := weapMeta[results[i].WeaponID]; ok {
 			results[i].WeaponLabel = m.label
 			results[i].NameEN = m.nameEN
+			results[i].Class = m.class
+			results[i].Role = m.role
 			continue
 		}
 		// Fallback : weapon_id en string pour les variantes absentes de

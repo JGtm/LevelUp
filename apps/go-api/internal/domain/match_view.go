@@ -213,6 +213,10 @@ type MatchWeaponKill struct {
 	WeaponID    int64  `json:"weapon_id"`
 	WeaponLabel string `json:"weapon_label"`
 	KillCount   int    `json:"kill_count"`
+	// Class : axe manipulation de l'arme (shoulder/sidearm/heavy/…), résolu via le
+	// registre (BulkWeaponKillRaw). Vide si l'arme est absente du registre. Recolore
+	// le breakdown par arme par classe (FragWeaponBreakdown, sunburst v2).
+	Class string `json:"class,omitempty"`
 }
 
 // MatchHighlightEvent : événement filmé horodaté.
@@ -312,6 +316,13 @@ type MatchCombatTab struct {
 	// Format ChartPointStacked → wrapper `<BarStacked>` côté front.
 	// Nil si events absents.
 	Cadence *ChartSeries[ChartPointStacked] `json:"cadence,omitempty"`
+
+	// FragDistribution : répartition hiérarchique des frags v2 (sunburst classe→rôle)
+	// du VIEWER (is_me) pour ce match. Classes gun = bulk weapon kills du viewer
+	// (registre) ; melee/grenade/spartan + total = compteurs natifs de sa ligne
+	// scoreboard. Nil si le viewer n'a aucun kill (le front rend null). Cf.
+	// .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P3.
+	FragDistribution *FragDistribution `json:"frag_distribution,omitempty"`
 }
 
 // ---------------------------------------------------------------------------

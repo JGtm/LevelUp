@@ -14,6 +14,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/port"
 )
 
 // ---------------------------------------------------------------------------
@@ -39,6 +40,7 @@ func buildCombatTabFull(
 			WeaponID:    w.WeaponID,
 			WeaponLabel: w.WeaponLabel,
 			KillCount:   w.Kills,
+			Class:       w.Class,
 		})
 	}
 
@@ -341,6 +343,56 @@ func synthesizeEventRawFromKVPairs(kvPairs []domain.KVPairRaw, matchID string) [
 		})
 	}
 	return out
+}
+
+// findViewerScoreboardRow retourne la ligne du viewer (is_me) du scoreboard, ou nil.
+func findViewerScoreboardRow(rows []domain.MatchScoreboardRow) *domain.MatchScoreboardRow {
+	for i := range rows {
+		if rows[i].IsMe {
+			return &rows[i]
+		}
+	}
+	return nil
+}
+
+// buildViewerFragDistribution assemble la FragDistribution v2 du viewer (is_me) pour
+// un match : classes gun depuis SES bulk weapon kills (registre, class/role résolus),
+// melee/grenade/spartan + total depuis les compteurs natifs de SA ligne scoreboard.
+// hasMechanics gate les Capacités spartanes + le niveau 2 de Mêlée (capability).
+//
+// RÉUTILISE le builder pur buildFragDistribution (P0) — aucune logique dupliquée
+// (règle ≤2 copies). nil si le viewer est absent ou n'a aucun kill (le front rend null).
+func buildViewerFragDistribution(
+	me *domain.MatchScoreboardRow,
+	bulkWeapons []domain.BulkWeaponKillRaw,
+	hasMechanics bool,
+) *domain.FragDistribution {
+	if me == nil {
+		return nil
+	}
+	total := derefInt(me.Kills)
+	if total <= 0 {
+		return nil
+	}
+	rows := make([]port.WeaponKillRow, 0, len(bulkWeapons))
+	for _, w := range bulkWeapons {
+		if w.XUID != me.XUID {
+			continue
+		}
+		rows = append(rows, port.WeaponKillRow{
+			Label: w.WeaponLabel, Kills: w.Kills, Class: w.Class, Role: w.Role,
+		})
+	}
+	counts := domain.FragKillTypeCounts{
+		Melee:         derefInt(me.MeleeKills),
+		Grenade:       derefInt(me.GrenadeKills),
+		Assassination: derefInt(me.AssassinationKills),
+		GroundPound:   derefInt(me.GroundPoundKills),
+		ShoulderBash:  derefInt(me.ShoulderBashKills),
+		Total:         total,
+	}
+	fd := buildFragDistribution(rows, counts, hasMechanics)
+	return &fd
 }
 
 // mergeEventRawByTime fusionne deux listes d'EventRaw et les trie par TimeMS
