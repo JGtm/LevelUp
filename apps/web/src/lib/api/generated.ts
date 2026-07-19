@@ -3594,6 +3594,23 @@ export interface components {
             /** Format: int64 */
             total_matches_before_filters: number;
         };
+        FragDistribution: {
+            classes: components["schemas"]["FragClassEntry"][] | null;
+            /** Format: int64 */
+            total_kills: number;
+        };
+        FragClassEntry: {
+            authoritative: boolean;
+            class: string;
+            /** Format: int64 */
+            kills: number;
+            roles?: components["schemas"]["FragRoleEntry"][] | null;
+        };
+        FragRoleEntry: {
+            /** Format: int64 */
+            kills: number;
+            role: string;
+        };
         FilterContextResolved: {
             available_options: components["schemas"]["AvailableFilterOptions"];
             counts: components["schemas"]["FilterCounts"];
@@ -8570,6 +8587,7 @@ export interface components {
             combat_profile?: components["schemas"]["CombatProfileBlock"];
             comparison_metrics: components["schemas"]["ComparisonMetricItem"][] | null;
             detailed_stats: components["schemas"]["SynthesisDetailedStats"];
+            frag_distribution?: components["schemas"]["FragDistribution"];
             heatmap_data: components["schemas"]["TemporalHeatmapCell"][] | null;
             highlights_preview: components["schemas"]["SynthesisHighlightsPreview"];
             overview: components["schemas"]["SynthesisOverview"];

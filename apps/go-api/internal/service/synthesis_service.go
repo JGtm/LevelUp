@@ -33,6 +33,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
@@ -192,8 +193,9 @@ func (s *SynthesisService) GetSynthesisPage(
 	// P9 : fun stats depuis personal_score_awards (requete separee, erreur non fatale)
 	s.applyFunStatsToDetailedStats(ctx, &detailedStats, filteredCanon)
 
-	// Frags par arme + par rôle (registre) : best-effort, ignoré si repo absent.
-	topWeaponKills, killsByRole := s.loadTopWeaponKills(ctx, filteredCanon)
+	// Frags par arme + par rôle (registre) + répartition hiérarchique classe→rôle
+	// (sunburst v2) : best-effort, ignoré si repo absent.
+	topWeaponKills, killsByRole, fragDistribution := s.loadTopWeaponKills(ctx, filteredCanon, detailedStats, overview.TotalKills)
 
 	// Précision par arme (Halo 5 natif) : best-effort, nil si repo absent ou
 	// titre sans table weapon_accuracy (Infinite) → champ omis.
@@ -231,6 +233,7 @@ func (s *SynthesisService) GetSynthesisPage(
 		DetailedStats:     detailedStats,
 		TopWeaponKills:    topWeaponKills,
 		KillsByRole:       killsByRole,
+		FragDistribution:  fragDistribution,
 		WeaponAccuracy:    weaponAccuracy,
 		CombatProfile:     combatProfile,
 	}, nil
@@ -287,15 +290,36 @@ func (s *SynthesisService) applyFunStatsToDetailedStats(
 	detailedStats.TotalHijacks = funStats.TotalHijacks
 }
 
-// loadTopWeaponKills agrège, sur le scope filtré, les frags par arme (top 20) ET
-// par rôle de combat (registre d'armes). Une seule requête (ResolveRoles=true
-// renseigne row.Role). Best-effort : (nil, nil) si repo absent ou capability
-// manquante.
+// loadTopWeaponKills agrège, sur le scope filtré, les frags par arme (top 20), par
+// rôle de combat (registre d'armes) ET la répartition hiérarchique classe→rôle
+// (sunburst v2). Une seule requête (ResolveRoles=true renseigne row.Role + row.Class).
+// Best-effort : la FragDistribution est construite même si le repo d'armes est absent
+// ou en erreur (les classes API melee/grenade/spartan + total restent servies ; les
+// frags d'arme non résolus retombent dans « Non attribué »). nil partout si le scope
+// est vide (total 0 → le front rend null).
 func (s *SynthesisService) loadTopWeaponKills(
+	ctx context.Context,
+	filteredCanon []canonical.PlayerMatchRow,
+	detailedStats domain.SynthesisDetailedStats,
+	totalKills int,
+) ([]domain.SynthesisWeaponKillEntry, []domain.SynthesisRoleKillEntry, *domain.FragDistribution) {
+	if len(filteredCanon) == 0 || totalKills <= 0 {
+		return nil, nil, nil
+	}
+	rows := s.loadWeaponKillRows(ctx, filteredCanon)
+	hasMechanics := titleHasNativeKillMechanics(s.titleSlug)
+	fd := buildFragDistribution(rows, detailedStats, totalKills, hasMechanics)
+	s.logFragDistribution(ctx, fd)
+	return buildTopWeaponKills(rows, synthesisWeaponChartTopN), buildKillsByRole(rows), &fd
+}
+
+// loadWeaponKillRows charge les rows agrégées d'armes (ResolveRoles=true → Role+Class).
+// Best-effort : nil si repo absent, gamertag vide, ou erreur (loggée, jamais avalée).
+func (s *SynthesisService) loadWeaponKillRows(
 	ctx context.Context, filteredCanon []canonical.PlayerMatchRow,
-) ([]domain.SynthesisWeaponKillEntry, []domain.SynthesisRoleKillEntry) {
-	if s.weaponKillsRepo == nil || s.gamertag == "" || len(filteredCanon) == 0 {
-		return nil, nil
+) []port.WeaponKillRow {
+	if s.weaponKillsRepo == nil || s.gamertag == "" {
+		return nil
 	}
 	matchIDs := make([]string, 0, len(filteredCanon))
 	for _, r := range filteredCanon {
@@ -316,9 +340,40 @@ func (s *SynthesisService) loadTopWeaponKills(
 				"title", s.titleSlug, "gamertag", s.gamertag,
 				"match_count", len(matchIDs), "err", err)
 		}
-		return nil, nil
+		return nil
 	}
-	return buildTopWeaponKills(rows, synthesisWeaponChartTopN), buildKillsByRole(rows)
+	return rows
+}
+
+// logFragDistribution émet les compteurs d'agrégation (P0.10) et SIGNALE (Warn, jamais
+// avalé) un sur-comptage (Σ classes attribuées > total) : anomalie de données qui rend
+// le résidu « Non attribué » impossible à calculer (l'invariant a n'est alors pas tenu).
+func (s *SynthesisService) logFragDistribution(ctx context.Context, fd domain.FragDistribution) {
+	sumClasses, sumRoles, unattributed := 0, 0, 0
+	for _, c := range fd.Classes {
+		sumClasses += c.Kills
+		sumRoles += len(c.Roles)
+		if c.Class == domain.FragClassUnattributed {
+			unattributed = c.Kills
+		}
+	}
+	slog.DebugContext(ctx, "synthesis: frag distribution built",
+		"title", s.titleSlug, "gamertag", s.gamertag,
+		"total_kills", fd.TotalKills, "class_count", len(fd.Classes),
+		"role_count", sumRoles, "unattributed", unattributed)
+	if sumClasses > fd.TotalKills {
+		slog.WarnContext(ctx, "synthesis: frag distribution over-count (résidu négatif clampé)",
+			"title", s.titleSlug, "gamertag", s.gamertag,
+			"sum_classes", sumClasses, "total_kills", fd.TotalKills)
+	}
+}
+
+// titleHasNativeKillMechanics indique si le titre fournit NATIVEMENT le détail des
+// kills par mécanique (assassinats + compétences spartiate). Capability-gated (jamais
+// de comparaison de slug — ratchet no_slug_comparison_test.go). Titre inconnu → false.
+func titleHasNativeKillMechanics(slug string) bool {
+	d := titlePkg.DefaultRegistry().Get(slug)
+	return d != nil && d.HasCapability(titlePkg.CapNativeKillMechanics)
 }
 
 // loadWeaponAccuracy agrège, sur le scope filtré, la précision par arme (top N

@@ -330,8 +330,8 @@ func appendXUIDFilter(sb *strings.Builder, args *[]any, alias string, f port.Wea
 	*args = append(*args, f.Gamertag)
 }
 
-// attachWeaponMeta renseigne Label (toujours, parité weapon_labels) + Role (si
-// withRoles) via le resolver unifié resolveWeaponMeta — PASSAGE PRINCIPAL P4 :
+// attachWeaponMeta renseigne Label (toujours, parité weapon_labels) + Role & Class
+// (si withRoles) via le resolver unifié resolveWeaponMeta — PASSAGE PRINCIPAL P4 :
 // une seule requête metadata (registre + weapon_labels) remplace l'ancien duo
 // attachWeaponLabels + attachWeaponRoles. Best-effort : meta absent → no-op.
 // Sentinels grenade/melee (0/1) : Label vient de weapon_labels ("Grenade"/"Mêlée"),
@@ -353,8 +353,16 @@ func (r *WeaponKillsRepo) attachWeaponMeta(ctx context.Context, slug string, row
 		if m.label != "" {
 			rows[i].Label = m.label
 		}
-		if withRoles && m.role != "" {
-			rows[i].Role = m.role
+		if withRoles {
+			// Role ET Class dans la même passe (resolveWeaponMeta les peuple
+			// ensemble). Sentinels grenade/melee (0/1) : absents du registre → ""
+			// (l'agrégation par classe s'appuie sur les totaux API pour ces buckets).
+			if m.role != "" {
+				rows[i].Role = m.role
+			}
+			if m.class != "" {
+				rows[i].Class = m.class
+			}
 		}
 	}
 }

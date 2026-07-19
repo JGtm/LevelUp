@@ -33,10 +33,11 @@ type WeaponKillFilters struct {
 	// from weapon_kills (armes principales).
 	IncludeGrenadeMelee bool
 
-	// ResolveRoles : si true, le repo renseigne WeaponKillRow.Role via le registre
-	// d'armes (passage par weapons/weapon_ids dans metadata). Best-effort (Role
-	// reste vide si le registre est absent). Off par defaut → zero cout pour les
-	// consommateurs qui n'en ont pas besoin (timeseries top weapons, squad).
+	// ResolveRoles : si true, le repo renseigne WeaponKillRow.Role ET
+	// WeaponKillRow.Class via le registre d'armes (passage par weapons/weapon_ids
+	// dans metadata, une SEULE passe). Best-effort (Role/Class restent vides si le
+	// registre est absent). Off par defaut → zero cout pour les consommateurs qui
+	// n'en ont pas besoin (timeseries top weapons, squad).
 	ResolveRoles bool
 }
 
@@ -82,6 +83,11 @@ type WeaponKillRow struct {
 	// sidearm/power/special/melee/grenade), resolu via le registre d'armes
 	// (weaponregistry) quand WeaponKillFilters.ResolveRoles=true. Vide sinon.
 	Role string `json:"role,omitempty"`
+	// Class : axe manipulation de l'arme (shoulder/sidearm/heavy/melee/grenade +
+	// buckets non-combat H5 vehicle/turret/…), resolu dans la MÊME passe que Role
+	// quand ResolveRoles=true (COALESCE(w.class) du registre). Vide sinon. Sert
+	// l'agregation par CLASSE (buildFragDistribution, sunburst v2).
+	Class string `json:"class,omitempty"`
 	// IsGrenadeMelee : true si la valeur vient d'highlight_events (grenade ou
 	// melee), false si elle vient de weapon_kills (arme primaire).
 	IsGrenadeMelee bool `json:"is_grenade_melee,omitempty"`
