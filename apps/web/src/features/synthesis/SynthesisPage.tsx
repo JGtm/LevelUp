@@ -13,11 +13,9 @@ import { useFiltersPreview } from '@/features/filters/queries'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { ProportionalBar } from '@/components/ui/proportional-bar'
-import { SynthesisKillTypesDonut } from './SynthesisKillTypesDonut'
 import { useCapability } from '@/lib/capabilities/capabilities'
-import { SynthesisWeaponKillsChart } from './SynthesisWeaponKillsChart'
 import { SynthesisWeaponAccuracyChart } from './SynthesisWeaponAccuracyChart'
-import { SynthesisRoleKillsDonut } from './SynthesisRoleKillsDonut'
+import { SynthesisFragCard } from './SynthesisFragCard'
 import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
 import { SynthesisHeatmapChart } from './SynthesisHeatmapChart'
@@ -37,6 +35,7 @@ import type {
   CascadeInput,
   CombatProfileBlock,
   FilterContextInput,
+  FragDistribution,
   PeriodInput,
   SynthesisDetailedStats,
   SynthesisOverview,
@@ -156,11 +155,12 @@ interface SynthesisOverviewSectionProps {
   detailedStats?: SynthesisDetailedStats
   topWeaponKills?: SynthesisWeaponKillEntry[]
   killsByRole?: SynthesisRoleKillEntry[]
+  fragDistribution?: FragDistribution | null
   weaponAccuracy?: SynthesisWeaponAccuracyEntry[]
   combatProfile?: CombatProfileBlock | null
   playerSlug: string
 }
-function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, killsByRole, weaponAccuracy, combatProfile, playerSlug }: SynthesisOverviewSectionProps) {
+function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, killsByRole, fragDistribution, weaponAccuracy, combatProfile, playerSlug }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
@@ -298,19 +298,22 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
           <div className="space-y-5">
 
             <div>
-              {/* Donut + 3 cartes côte à côte */}
+              {/* Carte frags v2 + 3 cartes côte à côte */}
               <div className="flex gap-4 items-stretch">
 
-                <div className="flex-1 min-w-0">
-                  <SynthesisKillTypesDonut stats={detailedStats} totalKills={overview.total_kills} />
-                </div>
-                {/* « Frags par type d'arme » (rôle de combat, registre) — placé à
-                    DROITE de « Répartition des frags » (B2a). Colonne montée
-                    seulement s'il y a des rôles : dans une rangée flex, un wrapper
-                    flex-1 vide claimerait de l'espace (colonne fantôme). */}
-                {killsByRole && killsByRole.length > 0 && (
+                {/* Carte frags v2 UNIQUE : sunburst hiérarchique « Répartition des frags »
+                    (classe→rôle) + breakdown par arme recoloré par classe + insight coach.
+                    Remplace les DEUX anciens donuts (kill-type + rôle) et l'ancien bar chart
+                    par-arme (fusion actée). Montée seulement si le backend fournit la
+                    distribution : sinon un wrapper flex-1 vide claimerait de l'espace
+                    (colonne fantôme). */}
+                {fragDistribution && (
                   <div className="flex-1 min-w-0">
-                    <SynthesisRoleKillsDonut roles={killsByRole} />
+                    <SynthesisFragCard
+                      distribution={fragDistribution}
+                      killsByRole={killsByRole}
+                      weapons={topWeaponKills}
+                    />
                   </div>
                 )}
                 <div className="flex flex-col gap-3 w-[22rem] shrink-0">
@@ -372,7 +375,8 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                 </div>
               </div>
 
-              {/* Tir / Dégâts / Fun à gauche, Frags par arme à droite */}
+              {/* Tir / Dégâts / Fun à gauche, précision par arme (H5) à droite. Le
+                  détail par-arme des frags vit désormais sous le sunburst (SynthesisFragCard). */}
               <div className="flex gap-4 mt-4 items-stretch">
                 <div className="flex flex-col justify-between gap-4 w-[21rem] shrink-0">
                   {(overview.longest_win_streak ?? 0) > 1 && (
@@ -441,12 +445,6 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                   )}
                 </div>
 
-                {/* Toujours monté (même sans données) : le composant rend un placeholder
-                    conformant via ChartCard plutôt que d'afficher RIEN — l'user doit
-                    pouvoir voir ce qui manque. */}
-                <div className="flex-1 min-w-0 flex flex-col">
-                  <SynthesisWeaponKillsChart weapons={topWeaponKills ?? []} fillHeight />
-                </div>
                 {/* Précision par arme (Halo 5 natif) — masqué pour les titres sans
                     la capability weapon_accuracy (Infinite). */}
                 {hasWeaponAccuracy && (
@@ -737,6 +735,7 @@ export function SynthesisPage() {
           detailedStats={data.detailed_stats}
           topWeaponKills={data.top_weapon_kills}
           killsByRole={data.kills_by_role}
+          fragDistribution={data.frag_distribution}
           weaponAccuracy={data.weapon_accuracy}
           combatProfile={data.combat_profile}
           playerSlug={playerSlug}

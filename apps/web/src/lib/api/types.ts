@@ -1366,6 +1366,9 @@ export interface SynthesisPageResponse {
   top_weapon_kills?: SynthesisWeaponKillEntry[]
   // Frags par rôle de combat (registre d'armes) — title-agnostic
   kills_by_role?: SynthesisRoleKillEntry[]
+  // Répartition hiérarchique des frags v2 (sunburst classe→rôle) — title-agnostic.
+  frag_distribution?: FragDistribution
+
   // Précision par arme (Halo 5 natif) — toutes les armes tirées, accuracy 0..1.
   // Omis pour les titres qui ne peuplent pas weapon_accuracy (Infinite).
   weapon_accuracy?: SynthesisWeaponAccuracyEntry[]

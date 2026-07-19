@@ -1,3 +1,54 @@
+## [2026-07-19] Frag Distribution v2 — P2 rollout Synthesis (surface de référence)
+
+**Statut** : Complété (P2.1/P2.2/P2.4 `[x]`, P2.3 `[!]` justifié). NON committé (le superviseur gère git après
+revue). Gate P2 vert (check-types + test-web). Contrat `plan-execution`, périmètre strict P2.1→P2.4 du
+`.ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md`. Aucun Go touché (front + types.ts uniquement). `.ai/BACKLOG.md` INTACT.
+
+**Décision technique principale** : nouvelle carte de composition feature `SynthesisFragCard.tsx` (sunburst partagé
+`FragSunburst` + insight coach + breakdown `FragWeaponBreakdown`), montée à la place de `SynthesisRoleKillsDonut`
+(supprimé avec son test — 0 réf restante). L'insight coach est PRÉSERVÉ tel quel : il lit toujours `kills_by_role`
+(rôles registre) via `weaponRoleInsight` (conservé), blind_spot_power / over_reliance inchangés. `KillsByRole` DTO
+conservé (retrait P7). Champ `frag_distribution?` ajouté à l'interface hand-written `SynthesisPageResponse`
+(types.ts) — absent après P0 (cf. §6 D-P2-1), requis pour `data.frag_distribution`.
+
+**P2.3 (probe H5 / formule direct_melee)** : `probe-h5` (CLI testée) EXÉCUTABLE ici — auth store OK, 343 sert le live
+H5 (HTTP 200). MAIS c'est une sonde d'availability d'endpoints, PAS un compteur de Death `IsMelee`. Évidence AGRÉGÉE
+récoltée (service record JGtm arena : `TotalMeleeKills`=2 ≥ `TotalAssassinations`=1 ; H5 = melee compteur-parapluie,
+assass/ground_pound/shoulder_bash en sous-compteurs) → cohérente avec `assassination ⊆ melee`. Formule conservative
+`direct_melee = melee − assassination` (clampée) CONSERVÉE. Vérif numérique EXACTE (parse `StatsMatchDetails` Death
+events `IsMelee`) = extension probe-h5 → hors P2 + risque sonde throwaway → différée avant prod (§6 D-P2-2). D'où `[!]`.
+
+**Découverte signalée (§6 D-P2-3)** : les titres i18n de `SynthesisKillTypesDonut` (« Répartition des frags ») et
+`SynthesisWeaponKillsChart` (« Frags par arme ») sont IDENTIQUES à `FragSunburst`/`FragWeaponBreakdown`. Les items
+P2.1/P2.2 (littéraux) ne nomment PAS leur retrait (ni P7.1), donc NON traités (règle 7) → la page affiche pour
+l'instant des DOUBLONS de cartes. Le §0 (« fusionner les deux donuts ») implique leur retrait mais aucun item ne
+l'écrit — à trancher avec l'utilisateur au gate visuel.
+
+**Résultats de test** : `make check-types` PASS (tsc clean). `make test-web` = **277 fichiers, 2390 PASS / 14
+skipped** (delta vs P1 = suppression de `SynthesisRoleKillsDonut.test.tsx`). 0 échec.
+
+**Fichiers** : nouveau `web/src/features/synthesis/SynthesisFragCard.tsx` ; modifiés `SynthesisPage.tsx` (import +
+prop `fragDistribution` + montage), `lib/api/types.ts` (champ `frag_distribution?`), `weaponRoleInsight.ts` (doc) ;
+supprimés `SynthesisRoleKillsDonut.tsx` + `.test.tsx`. Plan P2.1-P2.4 statués + §6 D-P2-1/2/3.
+
+**Conclusion / prochaine étape** : P2 code clos, gate vert. RESTE : revue visuelle Synthesis (Infinite + H5) par
+l'utilisateur, et DÉCISION sur les doublons de cartes (D-P2-3). Puis P3 (rollout Match view). Commit délégué au
+superviseur.
+
+**ADDENDUM [2026-07-19] — D-P2-3 RÉSOLU (fusion complète P2.1/P2.2)** : décision coordinateur/utilisateur = LE
+sunburst unifié remplace LES DEUX anciens donuts de frags, et le breakdown par classe remplace l'ancien par-arme.
+Retirés de `SynthesisPage.tsx` (imports + montages) : `SynthesisKillTypesDonut` (donut kill-type « Répartition des
+frags », subsumé par le sunburst) et `SynthesisWeaponKillsChart` (« Frags par arme », remplacé par
+`FragWeaponBreakdown` déjà dans `SynthesisFragCard`). Fichiers `SynthesisKillTypesDonut.tsx` + `SynthesisWeaponKillsChart.tsx`
+SUPPRIMÉS (grep préalable : 0 réf hors commentaires ; aucun test dédié). Partagés `KillTypesDonutCard`/`KillTypesDonut`
+CONSERVÉS (vérifiés : consommés par Timeseries/Match/Explorer). Commentaires stale nettoyés (`SynthesisPage.test.tsx`,
+`FragWeaponBreakdown.tsx`). Section frags de Synthesis = `SynthesisFragCard` UNIQUEMENT. Note de fusion générale
+ajoutée en tête de la section Phases du plan (vaut P3-P6). Re-gate séquentiel : `make check-types` PASS ; `make
+test-web` **277 fichiers, 2390 PASS / 14 skipped** (counts inchangés — composants retirés sans test dédié). Aucun
+commit ; `.ai/BACKLOG.md` intact.
+
+---
+
 ## [2026-07-19] Frag Distribution v2 — P1 composant sunburst + couleurs accessibles (front)
 
 **Statut** : Complété (P1 uniquement). NON committé (le superviseur gère git après revue). Gate P1 vert.

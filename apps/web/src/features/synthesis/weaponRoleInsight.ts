@@ -26,8 +26,8 @@ const OVER_RELIANCE_THRESHOLD = 0.7
  * bucket d'attribution « Spartan », UGC). Ils apparaissent dans le donut « Frags
  * par type d'arme » mais DOIVENT être exclus de tout calcul coach : sans ça, le
  * bucket « Spartan » (~8.8k frags) gonfle le dénominateur (fausse
- * `blind_spot_power`) ou devient une fausse `over_reliance`. Source unique,
- * réutilisée par le donut pour la couleur neutre (SynthesisRoleKillsDonut).
+ * `blind_spot_power`) ou devient une fausse `over_reliance`. Source unique de
+ * l'insight coach, consommée par la carte frags v2 (SynthesisFragCard).
  */
 export const NON_COMBAT_WEAPON_ROLES: ReadonlySet<string> = new Set([
   'vehicle',
