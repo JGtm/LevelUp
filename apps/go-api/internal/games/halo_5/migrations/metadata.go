@@ -271,7 +271,8 @@ func MetadataSteps() []migration.Migration {
 		// title-scopées (resolveWeaponMeta filtre wi.title_slug). Son seed inclut déjà
 		// les 35 armes Halo 5 + leurs stock_ids (weaponRegistryH5Stock). Sans lui, la
 		// metadata H5 n'a pas de rôles → resolveWeaponMeta retombe sur weapon_labels
-		// seul → kills_by_role vide → donut « Frags par type d'arme » masqué sur H5.
+		// seul → aucun rôle/classe d'arme dans la FragDistribution (sunburst réduit aux
+		// classes API + résidu, breakdown par arme non recoloré) sur H5.
 		// On réutilise l'apply idempotent partagé (INSERT OR IGNORE) plutôt que de
 		// dupliquer le seed (source unique : halo_infinite/migrations, cross-titre).
 		{

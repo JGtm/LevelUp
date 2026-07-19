@@ -236,34 +236,6 @@ func buildTopWeaponKills(rows []port.WeaponKillRow, n int) []domain.SynthesisWea
 	return out
 }
 
-// buildKillsByRole agrège les frags par rôle de combat (row.Role renseigné par le
-// registre quand ResolveRoles=true). Les rows sans rôle (arme non mappée au
-// registre) sont ignorées — title-agnostic, dégradation propre. Trié par kills desc
-// (tie-break alpha pour un ordre stable). nil si aucun rôle résolu (→ champ omis).
-func buildKillsByRole(rows []port.WeaponKillRow) []domain.SynthesisRoleKillEntry {
-	byRole := make(map[string]int, 9)
-	for _, r := range rows {
-		if r.Role == "" || r.IsGrenadeMelee {
-			continue
-		}
-		byRole[r.Role] += r.Kills
-	}
-	if len(byRole) == 0 {
-		return nil
-	}
-	out := make([]domain.SynthesisRoleKillEntry, 0, len(byRole))
-	for role, kills := range byRole {
-		out = append(out, domain.SynthesisRoleKillEntry{Role: role, Kills: kills})
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Kills != out[j].Kills {
-			return out[i].Kills > out[j].Kills
-		}
-		return out[i].Role < out[j].Role
-	})
-	return out
-}
-
 // buildWeaponAccuracy construit le classement précision par arme : armes
 // effectivement tirées (Label résolu ET ShotsFired > 0 — AUCUN seuil de volume,
 // conformément à la demande utilisateur). Accuracy = landed / fired en unité

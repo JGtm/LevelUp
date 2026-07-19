@@ -196,7 +196,7 @@ func (s *SynthesisService) GetSynthesisPage(
 
 	// Frags par arme + par rôle (registre) + répartition hiérarchique classe→rôle
 	// (sunburst v2) : best-effort, ignoré si repo absent.
-	topWeaponKills, killsByRole, fragDistribution := s.loadTopWeaponKills(ctx, filteredCanon, detailedStats, overview.TotalKills)
+	topWeaponKills, fragDistribution := s.loadTopWeaponKills(ctx, filteredCanon, detailedStats, overview.TotalKills)
 
 	// Précision par arme (Halo 5 natif) : best-effort, nil si repo absent ou
 	// titre sans table weapon_accuracy (Infinite) → champ omis.
@@ -233,7 +233,6 @@ func (s *SynthesisService) GetSynthesisPage(
 		Breakdowns:        breakdowns,
 		DetailedStats:     detailedStats,
 		TopWeaponKills:    topWeaponKills,
-		KillsByRole:       killsByRole,
 		FragDistribution:  fragDistribution,
 		WeaponAccuracy:    weaponAccuracy,
 		CombatProfile:     combatProfile,
@@ -291,21 +290,21 @@ func (s *SynthesisService) applyFunStatsToDetailedStats(
 	detailedStats.TotalHijacks = funStats.TotalHijacks
 }
 
-// loadTopWeaponKills agrège, sur le scope filtré, les frags par arme (top 20), par
-// rôle de combat (registre d'armes) ET la répartition hiérarchique classe→rôle
-// (sunburst v2). Une seule requête (ResolveRoles=true renseigne row.Role + row.Class).
-// Best-effort : la FragDistribution est construite même si le repo d'armes est absent
-// ou en erreur (les classes API melee/grenade/spartan + total restent servies ; les
-// frags d'arme non résolus retombent dans « Non attribué »). nil partout si le scope
-// est vide (total 0 → le front rend null).
+// loadTopWeaponKills agrège, sur le scope filtré, les frags par arme (top 20) ET la
+// répartition hiérarchique classe→rôle (sunburst v2). Une seule requête
+// (ResolveRoles=true renseigne row.Role + row.Class). Best-effort : la FragDistribution
+// est construite même si le repo d'armes est absent ou en erreur (les classes API
+// melee/grenade/spartan + total restent servies ; les frags d'arme non résolus
+// retombent dans « Non attribué »). nil partout si le scope est vide (total 0 → le
+// front rend null).
 func (s *SynthesisService) loadTopWeaponKills(
 	ctx context.Context,
 	filteredCanon []canonical.PlayerMatchRow,
 	detailedStats domain.SynthesisDetailedStats,
 	totalKills int,
-) ([]domain.SynthesisWeaponKillEntry, []domain.SynthesisRoleKillEntry, *domain.FragDistribution) {
+) ([]domain.SynthesisWeaponKillEntry, *domain.FragDistribution) {
 	if len(filteredCanon) == 0 || totalKills <= 0 {
-		return nil, nil, nil
+		return nil, nil
 	}
 	rows := s.loadWeaponKillRows(ctx, filteredCanon)
 	hasMechanics := titleHasNativeKillMechanics(s.titleSlug)
@@ -319,7 +318,7 @@ func (s *SynthesisService) loadTopWeaponKills(
 	}
 	fd := fragdist.Build(rows, counts, hasMechanics)
 	logFragDistribution(ctx, "synthesis", s.titleSlug, s.gamertag, fd)
-	return buildTopWeaponKills(rows, synthesisWeaponChartTopN), buildKillsByRole(rows), &fd
+	return buildTopWeaponKills(rows, synthesisWeaponChartTopN), &fd
 }
 
 // loadWeaponKillRows charge les rows agrégées d'armes (ResolveRoles=true → Role+Class).

@@ -40,7 +40,6 @@ import type {
   SynthesisDetailedStats,
   SynthesisOverview,
   SynthesisQueryRequest,
-  SynthesisRoleKillEntry,
   SynthesisWeaponKillEntry,
   SynthesisWeaponAccuracyEntry,
 } from '@/lib/api/types'
@@ -154,13 +153,12 @@ interface SynthesisOverviewSectionProps {
   overview: SynthesisOverview
   detailedStats?: SynthesisDetailedStats
   topWeaponKills?: SynthesisWeaponKillEntry[]
-  killsByRole?: SynthesisRoleKillEntry[]
   fragDistribution?: FragDistribution | null
   weaponAccuracy?: SynthesisWeaponAccuracyEntry[]
   combatProfile?: CombatProfileBlock | null
   playerSlug: string
 }
-function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, killsByRole, fragDistribution, weaponAccuracy, combatProfile, playerSlug }: SynthesisOverviewSectionProps) {
+function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fragDistribution, weaponAccuracy, combatProfile, playerSlug }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
@@ -311,7 +309,6 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, kil
                   <div className="flex-1 min-w-0">
                     <SynthesisFragCard
                       distribution={fragDistribution}
-                      killsByRole={killsByRole}
                       weapons={topWeaponKills}
                     />
                   </div>
@@ -734,7 +731,6 @@ export function SynthesisPage() {
           overview={data.overview}
           detailedStats={data.detailed_stats}
           topWeaponKills={data.top_weapon_kills}
-          killsByRole={data.kills_by_role}
           fragDistribution={data.frag_distribution}
           weaponAccuracy={data.weapon_accuracy}
           combatProfile={data.combat_profile}

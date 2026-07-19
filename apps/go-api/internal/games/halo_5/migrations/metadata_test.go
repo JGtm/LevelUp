@@ -101,8 +101,9 @@ func TestHalo5Metadata_IsolatedFromInfinite(t *testing.T) {
 // TestHalo5Metadata_WeaponRegistrySeeded : le set metadata h5 crée le registre
 // d'armes CROSS-TITRE (weapons/weapon_ids/weapon_families) et le seede avec les
 // armes Halo 5 + leurs stock_ids et RÔLES. Sans lui, resolveWeaponMeta retombe
-// sur weapon_labels seul (aucun rôle) → kills_by_role vide → donut « Frags par
-// type d'arme » masqué sur H5 (bug B2b). Le registre est cross-titre par
+// sur weapon_labels seul (aucun rôle) → aucune classe/rôle d'arme dans la
+// FragDistribution (sunburst réduit aux classes API + résidu) sur H5 (bug B2b).
+// Le registre est cross-titre par
 // conception (PK title_slug+weapon_key, lectures title-scopées) : la présence de
 // lignes halo_infinite dans la même table n'est PAS une pollution (≠ des
 // référentiels title-specific isolés type career_ranks/playlists).

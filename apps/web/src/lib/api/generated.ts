@@ -8599,7 +8599,6 @@ export interface components {
             solo_kpis: components["schemas"]["SynthesisKPIs"];
             squad_kpis: components["schemas"]["SynthesisKPIs"];
             top_weapon_kills?: components["schemas"]["SynthesisWeaponKillEntry"][] | null;
-            kills_by_role?: components["schemas"]["SynthesisRoleKillEntry"][] | null;
             weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
             top_weeks: components["schemas"]["TopWeekEntry"][] | null;
         };
@@ -8612,11 +8611,6 @@ export interface components {
             /** Format: int64 */
             match_count: number;
             period: string;
-        };
-        SynthesisRoleKillEntry: {
-            /** Format: int64 */
-            kills: number;
-            role: string;
         };
         SynthesisWeaponAccuracyEntry: {
             /** Format: double */
@@ -8815,7 +8809,6 @@ export interface components {
         TimeseriesPageResponse: {
             briefing_kpis?: components["schemas"]["KPIStats"];
             cumul_tab: components["schemas"]["TimeseriesCumulTab"];
-            detailed_stats?: components["schemas"]["SynthesisDetailedStats"];
             distributions_tab: components["schemas"]["TimeseriesDistributionsTab"];
             first_events?: components["schemas"]["FirstEventDistribution"];
             frag_distribution?: components["schemas"]["FragDistribution"];

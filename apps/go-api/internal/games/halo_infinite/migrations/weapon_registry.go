@@ -272,8 +272,9 @@ var weaponRegistryWeapons = []weaponRow{
 	{"h5_scattershot", titleH5, "Scattershot (Z-180)", "Répercuteur", "shoulder", "shotgun", "scattershot", "forerunner", "hardlight", "Ferrarius Assembler Vats"},
 	// ── Halo 5 long-tail (frags v_weapon_kills réels, mappage 2026-07-17) ──
 	// Grenades : rôle `grenade` (parité HINF), class `grenade`. NON double-comptées
-	// avec les sentinels match_participants (grenade_kills) car le donut synthesis
-	// n'active PAS IncludeGrenadeMelee (buildKillsByRole ignore IsGrenadeMelee).
+	// avec les sentinels match_participants (grenade_kills) car l'agrégation des
+	// classes gun de la FragDistribution ignore IsGrenadeMelee (fragdist.Build) — les
+	// grenades sont servies par le compteur API, jamais par le registre.
 	{"h5_frag_grenade", titleH5, "Frag Grenade", "Grenade à fragmentation", "grenade", "grenade", "frag_grenade", "human", "explosive", "Misriah Armory"},
 	{"h5_plasma_grenade", titleH5, "Plasma Grenade", "Grenade à plasma", "grenade", "grenade", "plasma_grenade", "covenant", "plasma", ""},
 	{"h5_splinter_grenade", titleH5, "Splinter Grenade", "Grenade Splinter", "grenade", "grenade", "splinter_grenade", "forerunner", "hardlight", "Ferrarius Assembler Vats"},

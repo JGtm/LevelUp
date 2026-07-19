@@ -130,12 +130,6 @@ type SynthesisPageV2Response struct {
 	// Bloc frags par arme (top 20, label résolu, weapon ID non-résolu exclus)
 	TopWeaponKills []SynthesisWeaponKillEntry `json:"top_weapon_kills,omitempty"`
 
-	// Bloc frags par RÔLE de combat (registre d'armes : automatic/precision/
-	// sniper/shotgun/sidearm/power/special/melee). Title-agnostic. Omis si le
-	// registre n'a rien résolu (titre sans registre, ou aucune arme mappée).
-	// NB : conservé le temps de la bascule front vers FragDistribution (retrait P7).
-	KillsByRole []SynthesisRoleKillEntry `json:"kills_by_role,omitempty"`
-
 	// Bloc répartition hiérarchique des frags (sunburst v2, classe→rôle). Title-
 	// agnostic, réconcilié (Σ classes == total). nil si scope vide (total 0). Voir
 	// FragDistribution (frag_distribution.go) + PLAN_FRAG_DISTRIBUTION_V2.md §2.
@@ -161,13 +155,6 @@ type SynthesisWeaponKillEntry struct {
 	Kills int    `json:"kills"`
 	Class string `json:"class,omitempty"`
 	Role  string `json:"role,omitempty"`
-}
-
-// SynthesisRoleKillEntry agrège les frags par rôle de combat d'arme (clé canonique
-// du registre ; le libellé FR/EN est résolu côté front). Trié par kills desc.
-type SynthesisRoleKillEntry struct {
-	Role  string `json:"role"`
-	Kills int    `json:"kills"`
 }
 
 // SynthesisWeaponAccuracyEntry est une ligne du classement précision par arme.
