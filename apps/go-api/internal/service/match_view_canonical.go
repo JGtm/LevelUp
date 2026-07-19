@@ -190,6 +190,9 @@ func (s *MatchViewService) buildMatchViewFromCanonical(ctx context.Context, deta
 	fragDistribution := buildViewerFragDistribution(
 		findViewerScoreboardRow(teamTab.Scoreboard), nil, titleHasNativeKillMechanics(s.titleSlug),
 	)
+	if fragDistribution != nil {
+		logFragDistribution(ctx, "match view", s.titleSlug, ctxkeys.ViewerGamertag(ctx), *fragDistribution)
+	}
 	return domain.MatchViewResponse{
 		Header:         s.buildCanonicalHeader(detail, self),
 		Rank:           buildCanonicalRank(detail.Skill),

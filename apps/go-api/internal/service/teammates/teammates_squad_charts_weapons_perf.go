@@ -163,6 +163,11 @@ func (s *TeammatesService) buildSquadWeaponKills(
 	hasMechanics := titleHasNativeKillMechanics(s.titleSlug)
 	mechByGT := s.loadSquadMechanicsByGT(ctx, sharedMatches, xuids, gtByXUID, hasMechanics)
 	fragClasses := squadFragClassesByPlayer(rows, playersOrdered, xuidByPlayer, perf, mechByGT, hasMechanics)
+	// Traçabilité de l'agrégation frags par joueur (parité logFragDistribution du package
+	// service, inaccessible ici — teammates ne peut pas importer son parent). Message local
+	// distinct des marqueurs du helper (garde-rail TestFragDistributionLoggingCentralized).
+	slog.DebugContext(ctx, "teammates_frag_distribution_built",
+		"title", s.titleSlug, "players_with_classes", len(fragClasses), "has_mechanics", hasMechanics)
 	return weaponKills, fragClasses
 }
 

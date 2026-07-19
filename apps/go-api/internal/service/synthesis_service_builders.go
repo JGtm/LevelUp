@@ -18,9 +18,12 @@ import (
 // logFragDistribution émet les compteurs d'agrégation d'une FragDistribution (Debug)
 // et SIGNALE (Warn, jamais avalé) un sur-comptage (Σ classes attribuées > total) :
 // anomalie de données qui rend le résidu « Non attribué » impossible à calculer
-// (l'invariant a n'est alors pas tenu). Helper PARTAGÉ par toutes les surfaces qui
-// construisent une FragDistribution (Synthesis, Timeseries, Sessions) — règle ≤2 copies.
-// `surface` préfixe les messages ("synthesis"/"timeseries"/"session page").
+// (l'invariant a n'est alors pas tenu). Helper PARTAGÉ par toutes les surfaces du
+// package service qui construisent une FragDistribution (Synthesis, Timeseries,
+// Sessions, Match view) — règle ≤2 copies. `surface` préfixe les messages
+// ("synthesis"/"timeseries"/"session page"/"match view"). La page Escouade (package
+// service/teammates, qui ne peut pas importer son parent service) émet son propre log
+// structuré local ("teammates_frag_distribution_built") — cf. squadFragClassesByPlayer.
 func logFragDistribution(ctx context.Context, surface, title, player string, fd domain.FragDistribution) {
 	sumClasses, sumRoles, unattributed := 0, 0, 0
 	for _, c := range fd.Classes {
