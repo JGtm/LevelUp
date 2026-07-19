@@ -168,15 +168,40 @@ all-pairs deutan 11.0 PASS (report ci-dessus). Composant NON monté sur page (c'
 
 ### P2 — Rollout Synthesis (surface de référence)
 
-- [ ] P2.1 Remplacer `SynthesisRoleKillsDonut` (« Frags par type d'arme ») par `<FragSunburst>` dans
-      `SynthesisPage.tsx` (`:313,736`). Adapter l'insight coach `weaponRoleInsight.ts` (garder blind_spot/over_reliance).
-- [ ] P2.2 Brancher `FragWeaponBreakdown` (breakdown par arme recoloré par classe) sous le sunburst.
-- [ ] P2.3 **Gate G2.3 — probe H5 (CLI TESTÉE, pas de sonde throwaway)** : via `probe-h5`, mesurer par joueur
-      `Σ assassinats` vs count des Death `IsMelee` → trancher `assassination ⊆ melee` (formule `direct_melee`).
-      Ajuster `buildFragDistribution` si disjoint. Consigner le verdict dans thought_log + §2.
-- [ ] P2.4 Explorer INCHANGÉ : vérifier que `ExplorerTargetSampleStats`/`KillTypesDonut` restent byte-équivalents.
+> **Note de fusion (vaut pour P3-P6)** : le sunburst v2 unifié REMPLACE **tous** les anciens graphes de frags que
+> chaque surface montait (donut kill-type + donut rôle), et `FragWeaponBreakdown` remplace l'ancien graphe par-arme.
+> Donc chaque surface RETIRE les anciennes cartes que le sunburst/breakdown subsument — **pas seulement celle
+> nommée dans l'item**. Corollaire du §0 (« fusionner les deux donuts ») acté avec l'utilisateur.
 
-**Gate P2** : gates P0+P1 verts ; revue visuelle Synthesis (Infinite + H5) ; probe consignée.
+- [x] P2.1 Les DEUX anciens donuts de frags remplacés par le sunburst unifié `<FragSunburst>` (alimenté par
+      `data.frag_distribution`), dans la nouvelle carte de composition `SynthesisFragCard.tsx` (feature) : sunburst +
+      insight coach PRÉSERVÉ (lit `kills_by_role` via `weaponRoleInsight`, blind_spot/over_reliance inchangés).
+      SUPPRIMÉS (0 réf restante hors commentaires, grep vert) : `SynthesisRoleKillsDonut.tsx` (+ son test) ET
+      `SynthesisKillTypesDonut.tsx` (donut kill-type « Répartition des frags », subsumé par le sunburst — pas de test
+      dédié). Partagés `KillTypesDonutCard`/`KillTypesDonut` CONSERVÉS (utilisés par Timeseries/Match/Explorer).
+      `weaponRoleInsight.ts` conservé (consommé par `SynthesisFragCard`). Champ `frag_distribution?` ajouté à
+      l'interface hand-written `SynthesisPageResponse` (types.ts) — absent après P0 (cf. §6 D-P2-1). `KillsByRole` DTO
+      CONSERVÉ (retrait P7).
+- [x] P2.2 `FragWeaponBreakdown` monté SOUS le sunburst (dans `SynthesisFragCard`), alimenté par `data.top_weapon_kills`
+      (enrichi class/role en P1) — barres recolorées par classe. L'ancien bar chart par-arme `SynthesisWeaponKillsChart`
+      (« Frags par arme », subsumé) SUPPRIMÉ (0 réf restante hors commentaires, pas de test dédié). La section frags de
+      Synthesis = `SynthesisFragCard` UNIQUEMENT.
+- [!] P2.3 **Gate G2.3** : `probe-h5` TENTÉE et EXÉCUTABLE (auth store OK, live H5 servi — HTTP 200). MAIS c'est une
+      sonde d'AVAILABILITY d'endpoints, PAS un compteur de Death `IsMelee` ; l'instrumenter pour ce ratio = sonde
+      throwaway (INTERDITE) + hors P2. Évidence AGRÉGÉE obtenue (service record arena JGtm : `TotalMeleeKills`=2 ≥
+      `TotalAssassinations`=1 ; le modèle H5 place `TotalMeleeKills` en compteur-parapluie, assassinat/ground_pound/
+      shoulder_bash en sous-compteurs) → COHÉRENTE avec `assassination ⊆ melee`. Formule conservative
+      (`direct_melee = melee − assassination`, clampée) CONSERVÉE. Vérif numérique EXACTE (parse `StatsMatchDetails`
+      Death events `IsMelee`) reste à faire avant prod → §6 D-P2-2.
+- [x] P2.4 Explorer INCHANGÉ : `git diff` ne touche AUCUN fichier Explorer ni `KillTypesDonut.tsx` (composant SVG
+      partagé) ni `ExplorerTargetSampleStats` — byte-équivalents. Seul `types.ts` change (champ optionnel additif, 0
+      impact comportemental Explorer).
+
+**Gate P2** : gates P0+P1 verts ; `make check-types` PASS ; `make test-web` **277 fichiers, 2390 PASS / 14 skipped**
+(re-gate après retrait des doublons ; counts inchangés — `SynthesisKillTypesDonut`/`SynthesisWeaponKillsChart`
+n'avaient pas de test dédié ; le −1 fichier vs P1 = `SynthesisRoleKillsDonut.test.tsx`). D-P2-3 RÉSOLU (fusion :
+section frags = `SynthesisFragCard` seule). Revue visuelle Synthesis (Infinite + H5) RESTE À FAIRE (gate humain).
+Probe consignée (D-P2-2). Aucun commit.
 
 ### P3 — Rollout Match view
 
@@ -296,3 +321,23 @@ all-pairs deutan 11.0 PASS (report ci-dessus). Composant NON monté sur page (c'
   normal 15.58) PASSE le validateur (cible 8) de façon INCONDITIONNELLE (plus de dépendance palette). Cible plan ≥12
   = plafond structurel des 6 teintes Okabe (la dépasser exigerait de dropper Vert/Vermillion → casse le floor
   normal-vision). Décision retenue : 10.98 + encodage secondaire (label + position d'anneau + hachure du résidu).
+- **D-P2-1 (interface front `SynthesisPageResponse` non mise à jour en P0)** : P0.8 a ajouté `frag_distribution` au
+  schéma OpenAPI et au type GÉNÉRÉ (`SynthesisPageV2Response` dans `generated.ts`), mais l'interface HAND-WRITTEN
+  `SynthesisPageResponse` (types.ts:1347) — celle réellement consommée par `queries.ts`/`SynthesisPage` — ne portait
+  PAS le champ. Ajout du champ optionnel `frag_distribution?: FragDistribution` en P2 (nécessaire pour
+  `data.frag_distribution`). Micro-fix in-scope (câblage requis par P2.1). À noter : les surfaces P3-P6 consommant
+  leurs propres DTOs hand-written devront faire de même.
+- **D-P2-2 (formule `direct_melee` — vérif exacte différée)** : `probe-h5` est exécutable ici (auth OK, 343 sert le
+  live H5), mais ne compte pas les Death `IsMelee`. Preuve agrégée (service record JGtm arena : melee=2 ≥ assass=1 ;
+  H5 = melee compteur-parapluie) → cohérente avec `assassination ⊆ melee`, formule conservative conservée. La vérif
+  NUMÉRIQUE exacte (fetch `StatsMatchDetails` d'un match, count des Death events `IsMelee` vs `TotalAssassinations`
+  par joueur) exigerait d'ÉTENDRE probe-h5 (parse Death events) = HORS P2 + risque sonde throwaway. À traiter AVANT
+  prod (P7 ou lot dédié H5). Aucune action de code P2.
+- **D-P2-3 (doublons de cartes après P2.1/P2.2) — RÉSOLU (fusion tranchée avec l'utilisateur, 2026-07-19)** : les
+  titres i18n de `SynthesisKillTypesDonut` (« Répartition des frags ») et `SynthesisWeaponKillsChart` (« Frags par
+  arme ») étaient IDENTIQUES au sunburst/breakdown → doublons. Décision actée : LE sunburst unifié remplace LES DEUX
+  anciens donuts, et `FragWeaponBreakdown` remplace l'ancien par-arme. `SynthesisKillTypesDonut.tsx` et
+  `SynthesisWeaponKillsChart.tsx` SUPPRIMÉS (0 réf restante hors commentaires). Partagés `KillTypesDonutCard`/
+  `KillTypesDonut` conservés (Timeseries/Match/Explorer). La section frags de Synthesis = `SynthesisFragCard` seule.
+  Note de fusion générale ajoutée en tête de la section Phases (vaut pour P3-P6 : chaque surface retire les anciennes
+  cartes subsumées, pas seulement celle nommée).

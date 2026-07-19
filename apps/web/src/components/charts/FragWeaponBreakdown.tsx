@@ -106,7 +106,7 @@ export function FragWeaponBreakdown({ weapons, title, height, fillHeight }: Frag
     [appLocale],
   )
 
-  // Série VIDE quand aucune arme → ChartCard rend son placeholder (cf. SynthesisWeaponKillsChart).
+  // Série VIDE quand aucune arme → ChartCard rend son placeholder (pattern ChartCard standard).
   const series: ChartSeries<SynthesisWeaponKillEntry>[] = list.length > 0 ? [{ key: 'frag-weapons', datapoints: list }] : []
   const cardTitle = title ?? formatMessage(fragsManifest, 'frags.charts.weapon_breakdown_title', appLocale)
   const emptyMessage = formatMessage(fragsManifest, 'frags.empty.no_data', appLocale)

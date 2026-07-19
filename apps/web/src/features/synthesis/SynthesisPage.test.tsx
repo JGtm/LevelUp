@@ -53,7 +53,7 @@ describe('SynthesisPage', () => {
   // déjà cassés sur origin/feat/synthesis-kpi-grid avant le merge (pas une
   // régression du merge). À refondre dans un PR dédié pour cibler la nouvelle
   // UI (sectionnage par chart : SynthesisHeatmapChart, SynthesisTopWeeksChart,
-  // SynthesisOutcomesByGroupChart, SynthesisBipolaireChart, SynthesisKillTypesDonut).
+  // SynthesisOutcomesByGroupChart, SynthesisBipolaireChart, SynthesisFragCard).
   it.skip('affiche les selecteurs de période', async () => {
     renderWithProviders(<SynthesisPage />)
     await waitFor(() => {
