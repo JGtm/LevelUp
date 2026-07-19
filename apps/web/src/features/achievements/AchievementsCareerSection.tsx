@@ -100,8 +100,8 @@ export function AchievementsCareerSection({ playerSlug, layout = 'carousel', fil
             {summary.unlocked_count}/{summary.total_count} · {summary.completion_pct.toFixed(0)} %
           </span>
         </div>
-        <div className="flex items-center justify-between px-3 pb-1 pt-1">
-          <span className="text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 pb-1 pt-1">
+          <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
             {summary.earned_gamerscore} / {summary.total_gamerscore} G
           </span>
           <div className="flex items-center gap-1.5">
