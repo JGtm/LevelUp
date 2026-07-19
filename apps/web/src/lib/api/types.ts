@@ -1265,6 +1265,9 @@ export interface TeammatesPageResponse {
   synergy_radar?: SquadSynergyRadarSeries[]
   intensity_profile?: SquadIntensityProfile
   performance_series?: Record<string, SquadPerformanceSeriesPoint[]>
+  /** Répartition des frags PAR CLASSE (D8) par gamertag — barres empilées du
+   *  sous-chart « Répartition des frags » de teammates.16. */
+  frag_classes?: Record<string, FragClassEntry[]>
   weapon_kills?: SquadWeaponKills
   native_kill_mechanics?: SquadKillMechanics
   first_events?: SquadFirstEvents

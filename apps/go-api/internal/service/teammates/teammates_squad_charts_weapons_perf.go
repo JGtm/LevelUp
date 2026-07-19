@@ -13,6 +13,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/fragdist"
 )
 
 func (s *TeammatesService) buildSquadWeaponKills(
@@ -20,13 +21,14 @@ func (s *TeammatesService) buildSquadWeaponKills(
 	allSquadRows []domain.SquadMatchRow,
 	mainGamertag, mainXUID string,
 	teammates []domain.TeammateRow,
-) *domain.SquadWeaponKills {
+	perf map[string][]domain.SquadPerformanceSeriesPoint,
+) (*domain.SquadWeaponKills, map[string][]domain.FragClassEntry) {
 	if s.squadLoader == nil || len(allSquadRows) == 0 || len(teammates) == 0 {
 		slog.DebugContext(ctx, "teammates_weapon_kills_skipped",
 			"squad_loader_nil", s.squadLoader == nil,
 			"squad_rows", len(allSquadRows),
 			"teammates", len(teammates))
-		return nil
+		return nil, nil
 	}
 
 	// 1. Union des matchs — chaque match unique présent dans allSquadRows
@@ -40,7 +42,7 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		sharedMatches = append(sharedMatches, mid)
 	}
 	if len(sharedMatches) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	// 2. xuid map (main + teammates avec xuid résolu).
@@ -58,7 +60,7 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		playersOrdered = append(playersOrdered, tm.Gamertag)
 	}
 	if len(playersOrdered) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	xuids := make([]string, 0, len(playersOrdered))
@@ -66,24 +68,27 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		xuids = append(xuids, xuidByPlayer[p])
 	}
 
-	// 3. 1 seul appel pour tous les xuids.
+	// 3. 1 seul appel pour tous les xuids. ResolveRoles=true peuple Class/Role sur
+	// chaque row (registre) — requis pour la ventilation PAR CLASSE (D8) ; sans effet
+	// sur les barres par-arme (elles indexent weapon_id/label).
 	rows, err := s.squadLoader.LoadWeaponKills(ctx, s.titleSlug, port.WeaponKillFilters{
 		MatchIDs:            sharedMatches,
 		XUIDs:               xuids,
 		IncludeGrenadeMelee: true,
+		ResolveRoles:        true,
 	})
 	if err != nil {
 		slog.WarnContext(ctx, "teammates_weapon_kills_load_failed",
 			"err", err,
 			"matches", len(sharedMatches),
 			"xuids", len(xuids))
-		return nil
+		return nil, nil
 	}
 	if len(rows) == 0 {
 		slog.DebugContext(ctx, "teammates_weapon_kills_empty_rows",
 			"matches", len(sharedMatches),
 			"xuids", len(xuids))
-		return nil
+		return nil, nil
 	}
 
 	// 4. Réindexation xuid → gamertag pour l'agrégation.
@@ -124,7 +129,7 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		}
 	}
 	if len(bars) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	// 6. Tri ASC par TotalSquad (peu utilisées en haut), tie-break par label.
@@ -145,10 +150,69 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		return out[i].Label < out[j].Label
 	})
 
-	return &domain.SquadWeaponKills{
+	weaponKills := &domain.SquadWeaponKills{
 		Players: playersOrdered,
 		Bars:    out,
 	}
+	// 7. Ventilation PAR CLASSE par gamertag (D8) — réutilise les rows déjà chargées.
+	fragClasses := squadFragClassesByPlayer(rows, playersOrdered, xuidByPlayer, perf)
+	return weaponKills, fragClasses
+}
+
+// aggregateFragCounts agrège, sur la série de performance d'un joueur (matchs
+// partagés), les compteurs kill-type canoniques nécessaires au niveau 1 de la
+// FragDistribution : Mêlée, Grenade et le total. Les mécaniques natives spartanes
+// ne sont PAS ventilées par joueur ici (cf. §6 D-P6-2 → hasMechanics=false).
+func aggregateFragCounts(pts []domain.SquadPerformanceSeriesPoint) domain.FragKillTypeCounts {
+	var c domain.FragKillTypeCounts
+	for _, p := range pts {
+		c.Total += p.Kills
+		if p.MeleeKills != nil {
+			c.Melee += *p.MeleeKills
+		}
+		if p.GrenadeKills != nil {
+			c.Grenade += *p.GrenadeKills
+		}
+	}
+	return c
+}
+
+// squadFragClassesByPlayer construit, par gamertag, la répartition des frags au
+// NIVEAU CLASSE (D8 : barres empilées par classe) sur les matchs partagés. RÉUTILISE
+// le builder partagé fragdist.Build (zéro duplication) : gun classes = weapon kills
+// par joueur (rows déjà chargées, class résolue) ; melee/grenade/total = agrégat
+// kill-type de la série de performance du joueur. hasMechanics=false — pas de classe
+// spartan_ability ici (§6 D-P6-2). nil si aucune classe produite.
+func squadFragClassesByPlayer(
+	rows []port.WeaponKillRow,
+	playersOrdered []string,
+	xuidByPlayer map[string]string,
+	perf map[string][]domain.SquadPerformanceSeriesPoint,
+) map[string][]domain.FragClassEntry {
+	if len(rows) == 0 || len(playersOrdered) == 0 {
+		return nil
+	}
+	gtByXUID := make(map[string]string, len(xuidByPlayer))
+	for gt, x := range xuidByPlayer {
+		gtByXUID[x] = gt
+	}
+	rowsByGT := make(map[string][]port.WeaponKillRow, len(playersOrdered))
+	for _, r := range rows {
+		if gt := gtByXUID[r.XUID]; gt != "" {
+			rowsByGT[gt] = append(rowsByGT[gt], r)
+		}
+	}
+	out := make(map[string][]domain.FragClassEntry, len(playersOrdered))
+	for _, gt := range playersOrdered {
+		fd := fragdist.Build(rowsByGT[gt], aggregateFragCounts(perf[gt]), false)
+		if len(fd.Classes) > 0 {
+			out[gt] = fd.Classes
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // buildSquadKillMechanics agrège les mécaniques de kill NATIVES Halo 5 par joueur

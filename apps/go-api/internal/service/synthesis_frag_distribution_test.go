@@ -5,6 +5,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/fragdist"
 )
 
 // findFragClass renvoie l'entrée de classe (et sa présence) dans une distribution.
@@ -68,7 +69,7 @@ func TestBuildFragDistribution_InfiniteCapOff(t *testing.T) {
 		// mécaniques natives absentes (Infinite)
 	}
 	// gun=30, melee=6, grenade=4 → attribué=40 ; total=50 → unattributed=10.
-	fd := buildFragDistribution(heterogeneousInfiniteRows(), counts, false)
+	fd := fragdist.Build(heterogeneousInfiniteRows(), counts, false)
 	assertFragInvariants(t, fd)
 
 	if _, ok := findFragClass(fd, domain.FragClassSpartanAbility); ok {
@@ -115,7 +116,7 @@ func TestBuildFragDistribution_H5CapOn(t *testing.T) {
 		Total:         45,
 	}
 	// gun=21, melee=10, grenade=5, spartan=5 → attribué=41 ; total=45 → unattributed=4.
-	fd := buildFragDistribution(rows, counts, true)
+	fd := fragdist.Build(rows, counts, true)
 	assertFragInvariants(t, fd)
 
 	spartan, ok := findFragClass(fd, domain.FragClassSpartanAbility)
@@ -152,7 +153,7 @@ func TestBuildFragDistribution_CanonicalOrder(t *testing.T) {
 		GroundPound: 5,
 		Total:       40,
 	}
-	fd := buildFragDistribution(rows, counts, true) // 15 gun +5+5+5 spartan =30 ; total 40 → unattr 10
+	fd := fragdist.Build(rows, counts, true) // 15 gun +5+5+5 spartan =30 ; total 40 → unattr 10
 	assertFragInvariants(t, fd)
 	want := []string{
 		domain.FragClassShoulder, domain.FragClassSidearm, domain.FragClassHeavy,
@@ -177,7 +178,7 @@ func TestBuildFragDistribution_AssassinationClamp(t *testing.T) {
 		Assassination: 5, // > melee → clamp à 3, direct_melee = 0
 		Total:         3,
 	}
-	fd := buildFragDistribution(nil, counts, true)
+	fd := fragdist.Build(nil, counts, true)
 	assertFragInvariants(t, fd)
 	melee, ok := findFragClass(fd, domain.FragClassMelee)
 	if !ok || len(melee.Roles) != 1 || melee.Roles[0].Role != domain.FragRoleAssassination || melee.Roles[0].Kills != 3 {
@@ -189,7 +190,7 @@ func TestBuildFragDistribution_AssassinationClamp(t *testing.T) {
 // l'attribution égale le total.
 func TestBuildFragDistribution_NoResidualWhenExact(t *testing.T) {
 	rows := []port.WeaponKillRow{{WeaponID: 40, Kills: 10, Class: "shoulder", Role: "automatic"}}
-	fd := buildFragDistribution(rows, domain.FragKillTypeCounts{Total: 10}, false)
+	fd := fragdist.Build(rows, domain.FragKillTypeCounts{Total: 10}, false)
 	assertFragInvariants(t, fd)
 	if _, ok := findFragClass(fd, domain.FragClassUnattributed); ok {
 		t.Error("attribution exacte : aucune classe unattributed attendue")

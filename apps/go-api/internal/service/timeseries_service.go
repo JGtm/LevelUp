@@ -37,6 +37,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/fragdist"
 )
 
 // Cles metriques canoniques utilisees dans MetricXKey/MetricYKey + KpiCards.
@@ -291,7 +292,7 @@ func (s *TimeseriesService) buildTimeseriesFragDistribution(
 		ShoulderBash:  kt.ShoulderBashKills,
 		Total:         kt.TotalKills,
 	}
-	fd := buildFragDistribution(weaponRows, counts, titleHasNativeKillMechanics(s.titleSlug))
+	fd := fragdist.Build(weaponRows, counts, titleHasNativeKillMechanics(s.titleSlug))
 	logFragDistribution(ctx, "timeseries", s.titleSlug, s.gamertag, fd)
 	return &fd
 }

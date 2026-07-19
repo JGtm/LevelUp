@@ -8690,6 +8690,9 @@ export interface components {
         TeammatesPageResponse: {
             composition_sessions?: components["schemas"]["SessionLabelEntry"][] | null;
             first_events?: components["schemas"]["SquadFirstEvents"];
+            frag_classes?: {
+                [key: string]: components["schemas"]["FragClassEntry"][] | null;
+            };
             /** Format: int64 */
             friends_count: number;
             header?: components["schemas"]["SquadHeader"];

@@ -444,6 +444,12 @@ type TeammatesPageResponse struct {
 	// matchs partagés). Map gamertag → série triée par MatchOrder ASC. Nil
 	// si aucun match commun.
 	PerformanceSeries map[string][]SquadPerformanceSeriesPoint `json:"performance_series,omitempty"`
+	// FragClasses alimente le sous-chart « Répartition des frags » de teammates.16
+	// (barres empilées PAR CLASSE, D8). Map gamertag → classes niveau 1 (agrégat sur
+	// les matchs partagés du scope, réutilise fragdist.Build). Sans mécaniques natives
+	// par-joueur ici → pas de classe spartan_ability (hasMechanics=false, cf. §6
+	// D-P6-2). Nil si aucune donnée d'arme.
+	FragClasses map[string][]FragClassEntry `json:"frag_classes,omitempty"`
 	// WeaponKills alimente teammates.09 (kills par arme, comparatif multi-joueurs).
 	// Nil si aucune donnée weapon_kills disponible (capability absente ou shared
 	// match_ids vides).

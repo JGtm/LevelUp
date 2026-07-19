@@ -1,3 +1,44 @@
+## [2026-07-19] Frag Distribution v2 — P6 rollout Escouade (barres empilées par classe)
+
+**Statut** : Complété (P6.1→P6.3 tous `[x]`). NON committé (le superviseur gère git après revue). Gate P6 vert.
+Contrat `plan-execution`, périmètre strict P6.1→P6.3 du `.ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md`. `.ai/BACKLOG.md` INTACT.
+
+**Décision technique principale (2 corrections sur pièces)** :
+1. **Cible service** (§6 D-P6-3) : le brief/plan pointait `squad_service_v2.go` (package `service`). Or le sous-chart
+   « Répartition des frags » de l'Escouade consomme `frag_classes`/`performance_series` de `TeammatesPageResponse`,
+   servi par `POST /pages/teammates` → `TeammatesService.GetPage` (`SquadPageV2Response` n'est PAS consommé par ce
+   chart — front fetch `/pages/teammates`). Câblage fait dans `TeammatesService` (précédent D-P5-1, le code fait foi).
+2. **Extraction du builder** (§6 D-P6-1) : `buildFragDistribution` était UNEXPORTED dans package `internal/service`,
+   inatteignable depuis `internal/service/teammates` (le parent importe l'enfant → cycle interdit dans l'autre sens).
+   Pour RÉUTILISER sans dupliquer : builder + helpers extraits dans un package LEAF `internal/service/fragdist`
+   (exporté `Build`). 5 appelants du package service (Synthesis/Match/Session/Timeseries + le test) migrés vers
+   `fragdist.Build` (mécanique, gate service vert).
+
+**Implémentation** : `buildSquadWeaponKills` (teammates) étendu — `ResolveRoles:true` (peuple `class`) + retourne aussi
+`map[gamertag][]FragClassEntry` via `squadFragClassesByPlayer` (réutilise les rows déjà chargées, 0 round-trip DB, pas
+de 3e copie du boilerplate matchs/xuid — CLAUDE.md règle 6). counts melee/grenade/total par joueur = `aggregateFragCounts`
+sur `PerformanceSeries[gt]` (canonique). `hasMechanics=false` → pas de classe spartan par-joueur ici (§6 D-P6-2 ;
+mécaniques natives restent servies par le chart dédié `SquadKillMechanicsChart`). Champ `frag_classes` (map
+gamertag→`[]FragClassEntry`, niveau 1 seul, D8) sur `TeammatesPageResponse` : Go domain + `openapi.yaml` +
+`make generate-types` (généré) + interface hand-written `types.ts` (D-P2-1). Front : `squadFragBreakdownChart.ts`
+généralisé de 4 segments FIGÉS à N classes DYNAMIQUES (union présente, ordre `FRAG_CLASS_ORDER`), input
+`Record<string, FragClassEntry[]>`, couleurs `fragClassColor` per-datum, labels via manifeste PARTAGÉ `frags`
+(`frags.class.*`) injectés par `SquadPerformanceCharts` ; forme GARDÉE (horizontales empilées, `inverse`,
+`stack:'frags'`, `barMaxWidth:18`, tooltip Total). 4 labels figés de `squad/i18n.ts` supprimés (type+FR+EN). Test
+front réécrit pour la taxonomie par classe (6 tests).
+
+**Résultats observés (gate P6)** : `go test ./internal/service/... ./internal/domain/...` PASS (service 8.0s +
+teammates 0.44s + domain cached ; `fragdist` [no test files]) ; gofmt Go touchés clean ; `make generate-types` PASS
+(`frag_classes` dans generated.ts) ; `make check-types` PASS (tsc exit 0) ; `make test-web` **277 fichiers, 2390 PASS /
+14 skipped** (counts inchangés vs P5).
+
+**Découvertes §6** : D-P6-1 (extraction leaf fragdist), D-P6-2 (spartan non ventilé par-joueur → hasMechanics=false),
+D-P6-3 (cible = TeammatesService), D-P6-4 (counts depuis PerformanceSeries). Aucune traitée hors périmètre.
+
+**Conclusion / prochaine étape** : P6 soldé. RESTE : revue visuelle Escouade (1→4 joueurs, Infinite + H5) — gate humain.
+Prochaine phase = P7 (nettoyage `KillsByRole`/orphelins, garde-fous grep couleur, tests intégration, delivery-checklist).
+Note P7 : co-localiser les tests du builder dans package `fragdist` (aujourd'hui restés en package service).
+
 ## [2026-07-19] Frag Distribution v2 — P5 rollout Sessions (nouveau chemin de données)
 
 **Statut** : Complété (P5.1→P5.3 tous `[x]`). NON committé (le superviseur gère git après revue). Gate P5 vert.

@@ -197,10 +197,6 @@ export interface SquadText {
     rankTitle: string
     mmrLabel: string
     fragBreakdownTitle: string
-    meleeLabel: string
-    powerWeaponLabel: string
-    grenadeLabel: string
-    otherLabel: string
   }
   weaponKills: {
     title: string
@@ -470,10 +466,6 @@ const FR_TEXT: SquadText = {
     rankTitle: 'Rang & MMR équipe',
     mmrLabel: 'MMR équipe',
     fragBreakdownTitle: 'Répartition des frags',
-    meleeLabel: 'Mêlée',
-    powerWeaponLabel: 'Arme lourde',
-    grenadeLabel: 'Grenade',
-    otherLabel: 'Autres',
   },
   weaponKills: {
     title: 'Frags par arme',
@@ -743,10 +735,6 @@ const EN_TEXT: SquadText = {
     rankTitle: 'Rank & Team MMR',
     mmrLabel: 'Team MMR',
     fragBreakdownTitle: 'Kill type distribution',
-    meleeLabel: 'Melee',
-    powerWeaponLabel: 'Power weapon',
-    grenadeLabel: 'Grenade',
-    otherLabel: 'Other',
   },
   weaponKills: {
     title: 'Weapon kills',

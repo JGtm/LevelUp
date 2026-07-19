@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/fragdist"
 )
 
 // attachSessionFragDistribution renseigne FragDistribution + TopWeaponKills sur
@@ -82,7 +83,7 @@ func (s *SessionPageService) sessionFragDistribution(
 		Total:         totalKills,
 	}
 	rows := s.loadSessionWeaponKillRows(ctx, matchIDs)
-	fd := buildFragDistribution(rows, counts, titleHasNativeKillMechanics(s.titleSlug))
+	fd := fragdist.Build(rows, counts, titleHasNativeKillMechanics(s.titleSlug))
 	logFragDistribution(ctx, "session page", s.titleSlug, s.gamertag, fd)
 	return &fd, buildTopWeaponKills(rows, synthesisWeaponChartTopN)
 }
