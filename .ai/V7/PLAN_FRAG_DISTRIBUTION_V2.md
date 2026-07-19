@@ -80,8 +80,12 @@ type FragRoleEntry struct {
 - Classes **`shoulder` / `sidearm` / `heavy`** + tous les rôles d'arme : **registre**, via `WeaponKillRow`
   (agrégation `v_weapon_kills`, exclut `IsGrenadeMelee` comme aujourd'hui pour role) → `Authoritative=false`.
 - **`unattributed`** = `TotalKills − Σ(classes ci-dessus)`, ajouté seulement si `> 0`.
-- **Mêlée niveau 2** (H5) : `assassination = total_assassinations` ; `direct_melee = melee_class_total − assassination`
-  (formule à CONFIRMER par probe, cf. P2 gate G2.3).
+- **Mêlée niveau 2** (H5) : `assassination = total_assassinations` ; `direct_melee = total_melee_kills`. Les deux
+  compteurs API sont **DISJOINTS** (probe empirique tranchée 2026-07-19 : `melee_kills` n'inclut PAS les assassinats).
+  Total de la classe Mêlée = `melee + assass` (SANS soustraction ni clamp) ⇒ `Σ rôles == total classe` (invariant b).
+  Preuve : match `3066a511-ebd0-428f-9555-50422caebaba`/xuid `2535421586125737` → melee=6, assass=4, per-kill 6+4 ;
+  match `9bb09267…` melee=2 < assass=4 (impossible sous inclusion) ; 1212/1213 couples disjoints. (Ancienne formule
+  `direct = melee − assassination` supposait à tort l'inclusion — corrigée.)
 
 ---
 
@@ -186,13 +190,16 @@ all-pairs deutan 11.0 PASS (report ci-dessus). Composant NON monté sur page (c'
       (enrichi class/role en P1) — barres recolorées par classe. L'ancien bar chart par-arme `SynthesisWeaponKillsChart`
       (« Frags par arme », subsumé) SUPPRIMÉ (0 réf restante hors commentaires, pas de test dédié). La section frags de
       Synthesis = `SynthesisFragCard` UNIQUEMENT.
-- [!] P2.3 **Gate G2.3** : `probe-h5` TENTÉE et EXÉCUTABLE (auth store OK, live H5 servi — HTTP 200). MAIS c'est une
-      sonde d'AVAILABILITY d'endpoints, PAS un compteur de Death `IsMelee` ; l'instrumenter pour ce ratio = sonde
-      throwaway (INTERDITE) + hors P2. Évidence AGRÉGÉE obtenue (service record arena JGtm : `TotalMeleeKills`=2 ≥
-      `TotalAssassinations`=1 ; le modèle H5 place `TotalMeleeKills` en compteur-parapluie, assassinat/ground_pound/
-      shoulder_bash en sous-compteurs) → COHÉRENTE avec `assassination ⊆ melee`. Formule conservative
-      (`direct_melee = melee − assassination`, clampée) CONSERVÉE. Vérif numérique EXACTE (parse `StatsMatchDetails`
-      Death events `IsMelee`) reste à faire avant prod → §6 D-P2-2.
+- [x] P2.3 **Gate G2.3 — TRANCHÉ : compteurs DISJOINTS** (probe empirique 2026-07-19, verdict opposé à l'hypothèse
+      initiale d'inclusion). `melee_kills` et `assassination_kills` sont des compteurs API SÉPARÉS : `melee_kills`
+      n'inclut PAS les assassinats. Preuve per-kill : match `3066a511-ebd0-428f-9555-50422caebaba`/xuid
+      `2535421586125737` → melee_kills=6, assassination_kills=4, décompte per-kill = 6 mêlées + 4 assassinats
+      (aucun chevauchement) ; contre-preuve d'inclusion : match `9bb09267…` a melee_kills=2 < assassination_kills=4
+      (impossible si assass ⊆ melee) ; 1212/1213 couples disjoints sur l'échantillon. **Correctif appliqué**
+      (`fragdist.go`) : total classe Mêlée = `melee + assass` ; `assassination = counts.Assassination`,
+      `direct_melee = counts.Melee` SANS soustraction ni clamp ; `Σ rôles == total classe`. Conséquence : les
+      assassinats — auparavant perdus (non comptés dans aucune classe → gonflaient « Non attribué ») — sont désormais
+      attribués → « Non attribué » DIMINUE (correct). D-P2-2 CLOS.
 - [x] P2.4 Explorer INCHANGÉ : `git diff` ne touche AUCUN fichier Explorer ni `KillTypesDonut.tsx` (composant SVG
       partagé) ni `ExplorerTargetSampleStats` — byte-équivalents. Seul `types.ts` change (champ optionnel additif, 0
       impact comportemental Explorer).
@@ -455,14 +462,15 @@ pré-prod P2.3 (`[!]`, D-P2-2). Aucun commit.
   (Synthesis/Match/Session/Timeseries + `synthesis_frag_distribution_test.go`) migrés vers `fragdist.Build` (mécanique,
   gate service vert). Les tests du builder RESTENT en package service (ils exercent `fragdist.Build` ; `fragdist` sans
   test dédié) — co-localisation possible en P7, hors périmètre P6.
-- **D-P6-2 (mécaniques spartanes non ventilées par joueur → hasMechanics=false)** : `frag_classes` est construit avec
-  `hasMechanics=false`. Les compteurs assassination/ground_pound/shoulder_bash existent par-xuid via
-  `LoadKillMechanics` (`buildSquadKillMechanics`, chart dédié `native_kill_mechanics`), mais NE sont PAS dans l'agrégat
-  kill-type par-joueur utilisé ici (`PerformanceSeries` ne porte que melee/grenade/kills). Conséquence : PAS de classe
-  `spartan_ability` dans les barres Escouade (H5). Conforme à la consigne P6.1 (« si non dispo par-joueur → false »).
-  Les frags spartanes retombent dans « Non attribué » (résidu = total − Σ classes attribuées). Le chart dédié
-  `SquadKillMechanicsChart` (H5) continue de montrer ces mécaniques. À valider à la revue visuelle H5 ; brancher les
-  mécaniques dans `frag_classes` = amélioration future (hors P6, nécessiterait de joindre `LoadKillMechanics`).
+- **D-P6-2 (mécaniques spartanes par joueur dans l'Escouade) — RÉSOLU (2026-07-19)** : `frag_classes` est désormais
+  construit avec `hasMechanics = titleHasNativeKillMechanics(slug)` (capability `native_kill_mechanics`, jamais slug==).
+  Les compteurs assassination/ground_pound/shoulder_bash sont chargés par gamertag via `loadSquadMechanicsByGT`
+  (`LoadKillMechanics`, mêmes matchs/xuids que `buildSquadWeaponKills`) puis fusionnés dans les `FragKillTypeCounts`
+  de chaque joueur avant `fragdist.Build`. Conséquence H5 : classe « Capacités spartanes » (ground_pound + shoulder_bash)
+  + split Mêlée (Assassinat / Corps-à-corps direct) par joueur, comme les autres surfaces ; les frags spartanes ne
+  retombent plus dans « Non attribué ». Infinite (cap off) : `mechByGT` nil, `hasMechanics=false` → INCHANGÉ. Le chart
+  Escouade (`squadFragBreakdownChart`, niveau classe dynamique) rend `spartan_ability` sans modif de forme. Le chart
+  dédié `SquadKillMechanicsChart` reste inchangé. Reste : revue visuelle H5.
 - **D-P6-3 (cible service = TeammatesService, pas squad_service_v2) — cadrage corrigé sur pièces** : le plan/brief
   pointait `squad_service_v2.go` (`loadWeapons`, package service). VÉRIFICATION SUR PIÈCES : le sous-chart
   « Répartition des frags » de l'Escouade consomme `frag_classes`/`performance_series` de `TeammatesPageResponse`,

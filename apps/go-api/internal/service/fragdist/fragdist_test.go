@@ -112,9 +112,10 @@ func TestBuild_H5CapOn(t *testing.T) {
 		Grenade:       5,
 		GroundPound:   3,
 		ShoulderBash:  2,
-		Total:         45,
+		Total:         50,
 	}
-	// gun=21, melee=10, grenade=5, spartan=5 → attribué=41 ; total=45 → unattributed=4.
+	// gun=21, melee=melee+assass=14, grenade=5, spartan=5 → attribué=45 ; total=50 →
+	// unattributed=5. (assassinat ⊄ mêlée : compteurs API disjoints, cf. meleeRoles.)
 	fd := Build(rows, counts, true)
 	assertFragInvariants(t, fd)
 
@@ -132,11 +133,16 @@ func TestBuild_H5CapOn(t *testing.T) {
 		t.Fatalf("melee = %+v, want 2 rôles (assassination+direct_melee)", melee)
 	}
 	// Ordre sémantique fixe (déterministe) : Assassinat puis Corps-à-corps direct.
+	// direct_melee = melee (10) SANS soustraction ; assassination = assass (4) ;
+	// total classe = 14 (disjoints).
 	if melee.Roles[0].Role != domain.FragRoleAssassination || melee.Roles[0].Kills != 4 {
 		t.Errorf("melee.Roles[0] = %+v, want assassination(4) en tête", melee.Roles[0])
 	}
-	if melee.Roles[1].Role != domain.FragRoleDirectMelee || melee.Roles[1].Kills != 6 {
-		t.Errorf("melee.Roles[1] = %+v, want direct_melee(6)", melee.Roles[1])
+	if melee.Roles[1].Role != domain.FragRoleDirectMelee || melee.Roles[1].Kills != 10 {
+		t.Errorf("melee.Roles[1] = %+v, want direct_melee(10)", melee.Roles[1])
+	}
+	if melee.Kills != 14 {
+		t.Errorf("melee.Kills = %d, want 14 (melee 10 + assass 4, disjoints)", melee.Kills)
 	}
 }
 
@@ -169,19 +175,27 @@ func TestBuild_CanonicalOrder(t *testing.T) {
 	}
 }
 
-// TestBuild_AssassinationClamp : assassination > melee (incohérence de données) est
-// clampé pour préserver l'invariant (b) et un résidu >= 0.
-func TestBuild_AssassinationClamp(t *testing.T) {
+// TestBuild_AssassinationGreaterThanMelee : assassinat > mêlée est un cas VALIDE (les
+// deux compteurs API sont DISJOINTS — cf. match 9bb09267… melee=2 < assass=4). Plus de
+// clamp : la classe Mêlée = melee + assass, les deux rôles coexistent sans soustraction.
+// C'est le cas qui « cassait » sous l'ancienne hypothèse d'inclusion.
+func TestBuild_AssassinationGreaterThanMelee(t *testing.T) {
 	counts := domain.FragKillTypeCounts{
-		Melee:         3,
-		Assassination: 5, // > melee → clamp à 3, direct_melee = 0
-		Total:         3,
+		Melee:         2,
+		Assassination: 4, // > melee : disjoint, aucun clamp
+		Total:         6, // melee 2 + assass 4 (les assassinats SONT des kills du total)
 	}
 	fd := Build(nil, counts, true)
 	assertFragInvariants(t, fd)
 	melee, ok := findFragClass(fd, domain.FragClassMelee)
-	if !ok || len(melee.Roles) != 1 || melee.Roles[0].Role != domain.FragRoleAssassination || melee.Roles[0].Kills != 3 {
-		t.Errorf("melee = %+v, want unique rôle assassination(3) après clamp", melee)
+	if !ok || melee.Kills != 6 || len(melee.Roles) != 2 {
+		t.Fatalf("melee = %+v, want kills=6 avec 2 rôles (assassination+direct_melee)", melee)
+	}
+	if melee.Roles[0].Role != domain.FragRoleAssassination || melee.Roles[0].Kills != 4 {
+		t.Errorf("melee.Roles[0] = %+v, want assassination(4)", melee.Roles[0])
+	}
+	if melee.Roles[1].Role != domain.FragRoleDirectMelee || melee.Roles[1].Kills != 2 {
+		t.Errorf("melee.Roles[1] = %+v, want direct_melee(2)", melee.Roles[1])
 	}
 }
 

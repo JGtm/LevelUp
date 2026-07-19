@@ -1,3 +1,43 @@
+## [2026-07-19] Frag Distribution v2 — correctif Mêlée DISJOINTE + Escouade mécaniques par joueur
+
+**Statut** : Complété. NON committé (le superviseur gère git). Branche `feat/frag-distribution-v2`. `.ai/BACKLOG.md`
+INTACT. 3 tâches ciblées post-P7, hors périmètre des phases initiales.
+
+**Décision technique (probe empirique tranchée)** : sur H5, `melee_kills` et `assassination_kills` sont des compteurs
+API **DISJOINTS** — `melee_kills` n'inclut PAS les assassinats (contrairement à l'hypothèse d'inclusion du code P0→P7).
+Preuve : match `3066a511-ebd0-428f-9555-50422caebaba`/xuid `2535421586125737` → melee=6, assass=4, per-kill 6+4 (0
+chevauchement) ; contre-preuve d'inclusion : match `9bb09267…` melee=2 < assass=4 (impossible si assass ⊆ melee) ;
+1212/1213 couples disjoints.
+
+**T1 — formule Mêlée (builder PARTAGÉ `fragdist.go`, corrige TOUTES les surfaces)** : total classe Mêlée =
+`counts.Melee + counts.Assassination` (émise si > 0). `meleeRoles(melee, assass, hasMechanics)` : `Assassinat = assass`,
+`Corps-à-corps direct = melee`, SANS soustraction ni clamp → `Σ rôles == total classe` (invariant b). Sur Infinite
+(Assassination=0, cap off) : total = Melee, Mêlée feuille → INCHANGÉ. Commentaire « FORMULE PROVISOIRE / G2.3 » remplacé
+par le verdict disjoint + match exemple. Effet global : les assassinats, auparavant perdus (gonflaient « Non attribué »),
+sont désormais attribués → « Non attribué » DIMINUE. Tests adaptés : `TestBuild_H5CapOn` (melee 10 + assass 4 = 14,
+direct_melee=10) ; `TestBuild_AssassinationClamp` → `TestBuild_AssassinationGreaterThanMelee` (assass>melee VALIDE, cas
+qui cassait sous inclusion).
+
+**T2 — D-P6-2 Escouade (sur base corrigée)** : `frag_classes` par joueur passe `hasMechanics=titleHasNativeKillMechanics(slug)`
+(capability, jamais slug==). Nouveau helper `loadSquadMechanicsByGT` (`LoadKillMechanics`, mêmes matchs/xuids que
+`buildSquadWeaponKills`) → assassination/ground_pound/shoulder_bash par gamertag, fusionnés dans les `FragKillTypeCounts`
+avant `fragdist.Build`. Résultat H5 : classe « Capacités spartanes » + split Mêlée par joueur ; Infinite inchangé.
+`squadFragClassesByPlayer` : +2 params (`mechByGT`, `hasMechanics`). Helper `titleHasNativeKillMechanics` en package
+teammates (2e copie, sous plafond ≤2). Test front `squadFragBreakdownChart.test.ts` : cas `spartan_ability` ajouté.
+
+**T3 — i18n** : `node scripts/build_i18n_manifests.mjs` régénéré (`generated/frags.ts`) pour coller à l'édition user du
+`.toml` (`frags.role.power` → « Arme Puissante »). `.toml` NON modifié. Seul `frags.ts` change.
+
+**Gates (séquentiels, verts)** : `go test ./internal/service/... ./internal/domain/...` PASS (service 9.8s + teammates
+0.28s + fragdist + domain) ; gofmt touchés clean ; `make check-types` PASS (tsc exit 0) ; `make test-web` **278 fichiers,
+2399 PASS / 14 skipped** (+1 vs P7 = nouveau test spartan Escouade). Pas de DTO changé → `make generate-types` non requis
+(generated.ts inchangé). Aucun commit.
+
+**Reste (gates humains)** : revue visuelle Escouade H5 (classe Capacités spartanes + split Mêlée) + surfaces où « Non
+attribué » diminue (Synthesis/Match/Timeseries/Sessions). Plan §2 + §6 (P2.3 → `[x]` DISJOINT ; D-P6-2 → RÉSOLU) MAJ.
+
+---
+
 ## [2026-07-19] Frag Distribution v2 — P7 nettoyage, garde-fous, livraison (phase finale)
 
 **Statut** : Complété (P7.1→P7.6 statués). NON committé (le superviseur gère git après revue). Gate P7 (suite

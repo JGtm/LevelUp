@@ -10,6 +10,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
@@ -155,14 +156,67 @@ func (s *TeammatesService) buildSquadWeaponKills(
 		Bars:    out,
 	}
 	// 7. Ventilation PAR CLASSE par gamertag (D8) — réutilise les rows déjà chargées.
-	fragClasses := squadFragClassesByPlayer(rows, playersOrdered, xuidByPlayer, perf)
+	// hasMechanics capability-gated (native_kill_mechanics, jamais slug==) : sur H5 on
+	// charge les mécaniques natives par joueur (assassinats + capacités spartanes) pour
+	// alimenter le split Mêlée et la classe « Capacités spartanes » (D-P6-2 résolu). Sur
+	// Infinite (cap off) : mechByGT nil → comportement inchangé.
+	hasMechanics := titleHasNativeKillMechanics(s.titleSlug)
+	mechByGT := s.loadSquadMechanicsByGT(ctx, sharedMatches, xuids, gtByXUID, hasMechanics)
+	fragClasses := squadFragClassesByPlayer(rows, playersOrdered, xuidByPlayer, perf, mechByGT, hasMechanics)
 	return weaponKills, fragClasses
 }
 
+// titleHasNativeKillMechanics indique si le titre fournit NATIVEMENT le détail des kills
+// par mécanique (assassinats + capacités spartanes). Capability-gated (jamais slug== —
+// ratchet no_slug_comparison_test.go) ; titre inconnu → false. Mirror package-local du
+// gate homonyme de package service (2 copies, sous le plafond CLAUDE.md ≤2).
+func titleHasNativeKillMechanics(slug string) bool {
+	d := titlePkg.DefaultRegistry().Get(slug)
+	return d != nil && d.HasCapability(titlePkg.CapNativeKillMechanics)
+}
+
+// loadSquadMechanicsByGT charge les mécaniques natives H5 (assassinats + capacités
+// spartanes) agrégées PAR GAMERTAG sur les matchs partagés, pour alimenter la
+// FragDistribution par joueur (split Mêlée + classe « Capacités spartanes »). Réutilise
+// les mêmes match IDs / xuids que buildSquadWeaponKills. nil (best-effort, jamais fatal)
+// si le titre n'a pas la capability, si pas de loader, ou si aucune donnée.
+func (s *TeammatesService) loadSquadMechanicsByGT(
+	ctx context.Context,
+	sharedMatches, xuids []string,
+	gtByXUID map[string]string,
+	hasMechanics bool,
+) map[string]port.KillMechanicsRow {
+	if !hasMechanics || s.squadLoader == nil {
+		return nil
+	}
+	rows, err := s.squadLoader.LoadKillMechanics(ctx, s.titleSlug, port.WeaponKillFilters{
+		MatchIDs: sharedMatches,
+		XUIDs:    xuids,
+	})
+	if err != nil {
+		slog.DebugContext(ctx, "teammates_frag_mechanics_skipped", "err", err)
+		return nil
+	}
+	out := make(map[string]port.KillMechanicsRow, len(rows))
+	for _, r := range rows {
+		gt, ok := gtByXUID[r.XUID]
+		if !ok {
+			continue
+		}
+		m := out[gt]
+		m.Assassinations += r.Assassinations
+		m.GroundPound += r.GroundPound
+		m.ShoulderBash += r.ShoulderBash
+		out[gt] = m
+	}
+	return out
+}
+
 // aggregateFragCounts agrège, sur la série de performance d'un joueur (matchs
-// partagés), les compteurs kill-type canoniques nécessaires au niveau 1 de la
-// FragDistribution : Mêlée, Grenade et le total. Les mécaniques natives spartanes
-// ne sont PAS ventilées par joueur ici (cf. §6 D-P6-2 → hasMechanics=false).
+// partagés), les compteurs kill-type canoniques portés par PerformanceSeries : Mêlée,
+// Grenade et le total. Les mécaniques natives H5 (assassinats + capacités spartanes) ne
+// vivent PAS sur PerformanceSeries : elles sont jointes séparément par gamertag
+// (loadSquadMechanicsByGT) puis fusionnées dans squadFragClassesByPlayer (D-P6-2 résolu).
 func aggregateFragCounts(pts []domain.SquadPerformanceSeriesPoint) domain.FragKillTypeCounts {
 	var c domain.FragKillTypeCounts
 	for _, p := range pts {
@@ -181,13 +235,16 @@ func aggregateFragCounts(pts []domain.SquadPerformanceSeriesPoint) domain.FragKi
 // NIVEAU CLASSE (D8 : barres empilées par classe) sur les matchs partagés. RÉUTILISE
 // le builder partagé fragdist.Build (zéro duplication) : gun classes = weapon kills
 // par joueur (rows déjà chargées, class résolue) ; melee/grenade/total = agrégat
-// kill-type de la série de performance du joueur. hasMechanics=false — pas de classe
-// spartan_ability ici (§6 D-P6-2). nil si aucune classe produite.
+// kill-type de la série de performance du joueur ; assassinats + capacités spartanes =
+// mechByGT (mécaniques natives H5 par gamertag). hasMechanics (capability) gate la classe
+// spartan_ability et le split Mêlée (D-P6-2 résolu). nil si aucune classe produite.
 func squadFragClassesByPlayer(
 	rows []port.WeaponKillRow,
 	playersOrdered []string,
 	xuidByPlayer map[string]string,
 	perf map[string][]domain.SquadPerformanceSeriesPoint,
+	mechByGT map[string]port.KillMechanicsRow,
+	hasMechanics bool,
 ) map[string][]domain.FragClassEntry {
 	if len(rows) == 0 || len(playersOrdered) == 0 {
 		return nil
@@ -204,7 +261,13 @@ func squadFragClassesByPlayer(
 	}
 	out := make(map[string][]domain.FragClassEntry, len(playersOrdered))
 	for _, gt := range playersOrdered {
-		fd := fragdist.Build(rowsByGT[gt], aggregateFragCounts(perf[gt]), false)
+		counts := aggregateFragCounts(perf[gt])
+		if m, ok := mechByGT[gt]; ok {
+			counts.Assassination = m.Assassinations
+			counts.GroundPound = m.GroundPound
+			counts.ShoulderBash = m.ShoulderBash
+		}
+		fd := fragdist.Build(rowsByGT[gt], counts, hasMechanics)
 		if len(fd.Classes) > 0 {
 			out[gt] = fd.Classes
 		}

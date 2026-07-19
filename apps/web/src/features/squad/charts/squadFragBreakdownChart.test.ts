@@ -52,6 +52,27 @@ describe('buildFragBreakdownOption (par classe)', () => {
     expect(series[4].data).toEqual([10, 0]) // unattributed
   })
 
+  it('classe H5 « Capacités spartanes » ventilée par joueur (D-P6-2)', () => {
+    // Backend H5 (hasMechanics=true) produit désormais la classe spartan_ability +
+    // le split Mêlée par joueur ; le chart, dynamique, la rend dans l'ordre canonique
+    // (juste avant unattributed).
+    const rows = {
+      Me: [cls('melee', 5), cls('spartan_ability', 4), cls('unattributed', 2)],
+      F1: [cls('shoulder', 3)],
+    }
+    const opt = buildFragBreakdownOption(rows, { playerOrder: ORDER, classLabel })
+    const series = opt.series as Serie[]
+    expect(series.map((s) => s.name)).toEqual([
+      'L:shoulder',
+      'L:melee',
+      'L:spartan_ability',
+      'L:unattributed',
+    ])
+    const spartan = series.find((s) => s.name === 'L:spartan_ability')!
+    expect(spartan.data).toEqual([4, 0])
+    expect(spartan.itemStyle.color).toBe(fragClassColor('spartan_ability'))
+  })
+
   it('couleurs PAR CLASSE via fragClassColor (hex fixes CVD-safe)', () => {
     const rows = { Me: [cls('shoulder', 3), cls('grenade', 2)] }
     const opt = buildFragBreakdownOption(rows, { playerOrder: ['Me'], classLabel })
