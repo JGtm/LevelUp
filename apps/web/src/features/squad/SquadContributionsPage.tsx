@@ -159,6 +159,7 @@ export function SquadContributionsPage() {
         <SquadPerformanceCharts
           emptyMessage={t.empty.noBlockData}
           rowsByPlayer={performanceSeries ?? {}}
+          fragClassesByPlayer={pageData?.frag_classes ?? {}}
           playerOrder={[mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p])}
           colorByPlayer={playerColors}
           labels={t.performanceCharts}

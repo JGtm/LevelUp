@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/fragdist"
 )
 
 // ---------------------------------------------------------------------------
@@ -391,7 +392,7 @@ func buildViewerFragDistribution(
 		ShoulderBash:  derefInt(me.ShoulderBashKills),
 		Total:         total,
 	}
-	fd := buildFragDistribution(rows, counts, hasMechanics)
+	fd := fragdist.Build(rows, counts, hasMechanics)
 	return &fd
 }
 

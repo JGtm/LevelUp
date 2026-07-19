@@ -37,6 +37,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/fragdist"
 )
 
 // SynthesisService orchestre les donnÃ©es de la page SynthÃ¨se.
@@ -316,7 +317,7 @@ func (s *SynthesisService) loadTopWeaponKills(
 		ShoulderBash:  detailedStats.TotalShoulderBashKills,
 		Total:         totalKills,
 	}
-	fd := buildFragDistribution(rows, counts, hasMechanics)
+	fd := fragdist.Build(rows, counts, hasMechanics)
 	logFragDistribution(ctx, "synthesis", s.titleSlug, s.gamertag, fd)
 	return buildTopWeaponKills(rows, synthesisWeaponChartTopN), buildKillsByRole(rows), &fd
 }

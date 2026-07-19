@@ -214,6 +214,7 @@ func (s *TeammatesService) GetPage(
 	var intensityProfile *domain.SquadIntensityProfile
 	var performanceSeries map[string][]domain.SquadPerformanceSeriesPoint
 	var weaponKills *domain.SquadWeaponKills
+	var fragClasses map[string][]domain.FragClassEntry
 	var nativeKillMechanics *domain.SquadKillMechanics
 	var firstEvents *domain.SquadFirstEvents
 	var medalDigest []domain.MedalDigestEntry
@@ -247,7 +248,7 @@ func (s *TeammatesService) GetPage(
 		synergyRadar = s.buildSquadSynergyRadar(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
 		intensityProfile = s.buildSquadIntensityProfile(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, "all")
 		performanceSeries = s.buildSquadPerformanceSeries(ctx, allSquadRows, s.gamertag, playerXUID, req.SelectedGamertags, teammates)
-		weaponKills = s.buildSquadWeaponKills(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
+		weaponKills, fragClasses = s.buildSquadWeaponKills(ctx, allSquadRows, s.gamertag, playerXUID, teammates, performanceSeries)
 		nativeKillMechanics = s.buildSquadKillMechanics(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		firstEvents = s.buildSquadFirstEvents(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		medalDigest = s.buildMedalDigest(ctx, allSquadRows, s.gamertag, playerXUID, teammates, req.Locale)
@@ -302,6 +303,7 @@ func (s *TeammatesService) GetPage(
 		SynergyRadar:        synergyRadar,
 		IntensityProfile:    intensityProfile,
 		PerformanceSeries:   performanceSeries,
+		FragClasses:         fragClasses,
 		WeaponKills:         weaponKills,
 		NativeKillMechanics: nativeKillMechanics,
 		FirstEvents:         firstEvents,

@@ -16356,6 +16356,13 @@ components:
               nullable: true
           first_events:
               $ref: '#/components/schemas/SquadFirstEvents'
+          frag_classes:
+              additionalProperties:
+                  items:
+                      $ref: '#/components/schemas/FragClassEntry'
+                  type: array
+                  nullable: true
+              type: object
           friends_count:
               format: int64
               type: integer

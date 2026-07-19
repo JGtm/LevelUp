@@ -23,7 +23,10 @@ import { useCallback, useMemo } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 import { useProvidesMaxKillingSpree } from '@/lib/damage/effectiveHp'
-import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
+import type { FragClassEntry, SquadPerformanceSeriesPoint } from '@/lib/api/types'
+import { formatMessage } from '@/lib/i18n/format'
+import { fragsManifest } from '@/lib/i18n/generated/frags'
+import { useAppShellStore } from '@/stores/appShellStore'
 import {
   buildHsPerfectOption,
   buildKillsDeathsButterflyOption,
@@ -49,15 +52,13 @@ interface I18nLabels {
   rankTitle: string
   mmrLabel: string
   fragBreakdownTitle: string
-  meleeLabel: string
-  powerWeaponLabel: string
-  grenadeLabel: string
-  otherLabel: string
 }
 
 interface SquadPerformanceChartsProps {
   emptyMessage?: string
   rowsByPlayer: Record<string, SquadPerformanceSeriesPoint[]>
+  /** Répartition des frags PAR CLASSE (D8) par gamertag (agrégat serveur). */
+  fragClassesByPlayer: Record<string, FragClassEntry[]>
   /** Ordre stable des joueurs (main d'abord, puis coéquipiers). */
   playerOrder: string[]
   /** gamertag → couleur hex. */
@@ -71,11 +72,13 @@ const PAIR_LAYOUT_THRESHOLD = 14
 
 export function SquadPerformanceCharts({
   rowsByPlayer,
+  fragClassesByPlayer,
   playerOrder,
   colorByPlayer,
   labels,
   emptyMessage,
 }: SquadPerformanceChartsProps) {
+  const appLocale = useAppShellStore((s) => s.locale)
   const isMobile = useMediaQuery('(max-width: 768px)')
   // Title-agnostic : la série « Folie meurtrière max » n'est masquée que pour un
   // titre sans events horodatés (provides_max_killing_spree=false). Pour Halo 5
@@ -179,16 +182,11 @@ export function SquadPerformanceCharts({
 
   const buildFragBreakdown = useCallback(
     () =>
-      buildFragBreakdownOption(rowsByPlayer, {
+      buildFragBreakdownOption(fragClassesByPlayer, {
         playerOrder,
-        labels: {
-          melee: labels.meleeLabel,
-          powerWeapon: labels.powerWeaponLabel,
-          grenade: labels.grenadeLabel,
-          other: labels.otherLabel,
-        },
+        classLabel: (c: string) => formatMessage(fragsManifest, `frags.class.${c}` as never, appLocale),
       }),
-    [rowsByPlayer, playerOrder, labels.meleeLabel, labels.powerWeaponLabel, labels.grenadeLabel, labels.otherLabel],
+    [fragClassesByPlayer, playerOrder, appLocale],
   )
 
   const buildKda = useCallback(

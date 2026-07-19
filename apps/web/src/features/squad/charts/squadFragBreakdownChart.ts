@@ -1,15 +1,17 @@
 /**
  * squadFragBreakdownChart — « Répartition des frags » par joueur (barres empilées).
  *
- * Pendant escouade du donut « Répartition des frags » de Synthesis : 1 barre
- * horizontale par joueur, segments = type de frag (mêlée / arme lourde / grenade
- * / autres), longueur = total des frags. Garde la sémantique part-d'un-tout du
- * donut tout en alignant les joueurs pour comparer d'un coup d'œil.
+ * Pendant escouade du sunburst « Répartition des frags » v2 (D8) : 1 barre
+ * horizontale par joueur, segments = CLASSE d'arme (Épaule / Poing / Lourde /
+ * Mêlée / Grenade / Capacités spartanes / Non attribué), longueur = total des
+ * frags. Garde la sémantique part-d'un-tout tout en alignant les joueurs pour
+ * comparer d'un coup d'œil.
  *
- * Agrège les points per-match de `SquadPerformanceSeriesPoint` par joueur ;
- * `other = max(0, Σkills − (Σmêlée + Σlourde + Σgrenade))` (même règle que le
- * donut). Couleurs PAR TYPE via tokens sémantiques chart-series 1/6/7/8 — mêmes
- * que le donut → cohérence inter-pages. Aucun hex en dur.
+ * Consomme `frag_classes` (map gamertag → FragClassEntry[], agrégat serveur par
+ * classe via fragdist.Build). N classes DYNAMIQUES (union des classes présentes,
+ * ordre canonique FRAG_CLASS_ORDER). Couleurs = `fragClassColor(class)` (hex fixes
+ * CVD-safe, mêmes que le sunburst → cohérence inter-pages). Labels de classe via le
+ * manifeste i18n `frags` (injecté par `classLabel`). Aucun hex en dur.
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import {
@@ -20,56 +22,39 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
-import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
-import { resolveToken } from '@/lib/accessibility'
-import type { SemanticToken } from '@/lib/accessibility'
-
-export interface FragBreakdownLabels {
-  melee: string
-  powerWeapon: string
-  grenade: string
-  other: string
-}
+import type { FragClassEntry } from '@/lib/api/types'
+import { FRAG_CLASS_ORDER, fragClassColor } from '@/lib/accessibility/scales'
 
 export interface FragBreakdownOpts {
   /** Ordre stable des joueurs (main d'abord). Sinon ordre alphabétique. */
   playerOrder?: string[]
-  labels: FragBreakdownLabels
+  /** Libellé localisé d'une classe (manifeste `frags`). */
+  classLabel: (className: string) => string
 }
 
-type SegmentKey = 'melee' | 'powerWeapon' | 'grenade' | 'other'
-
-/** 4 segments mutuellement exclusifs — tokens DISTINCTS, alignés sur le donut. */
-const SEGMENTS: Array<{ key: SegmentKey; token: SemanticToken }> = [
-  { key: 'melee', token: 'chart-series-1' },
-  { key: 'powerWeapon', token: 'chart-series-6' },
-  { key: 'grenade', token: 'chart-series-7' },
-  { key: 'other', token: 'chart-series-8' },
-]
-
-type Breakdown = Record<SegmentKey, number>
-
-function aggregate(points: SquadPerformanceSeriesPoint[]): Breakdown {
-  let melee = 0
-  let powerWeapon = 0
-  let grenade = 0
-  let kills = 0
-  for (const p of points) {
-    melee += p.melee_kills ?? 0
-    powerWeapon += p.power_weapon_kills ?? 0
-    grenade += p.grenade_kills ?? 0
-    kills += p.kills
-  }
-  return { melee, powerWeapon, grenade, other: Math.max(0, kills - (melee + powerWeapon + grenade)) }
-}
-
-function orderedPlayers(rows: Record<string, SquadPerformanceSeriesPoint[]>, playerOrder?: string[]): string[] {
+function orderedPlayers(rows: Record<string, FragClassEntry[]>, playerOrder?: string[]): string[] {
   if (playerOrder && playerOrder.length > 0) return playerOrder.filter((p) => rows[p] !== undefined)
   return Object.keys(rows).sort()
 }
 
+/** Classes présentes chez au moins un joueur, dans l'ordre canonique FRAG_CLASS_ORDER. */
+function presentClasses(byPlayer: Map<string, Map<string, number>>): string[] {
+  const present = new Set<string>()
+  for (const kills of byPlayer.values()) {
+    for (const [cls, v] of kills) if (v > 0) present.add(cls)
+  }
+  return FRAG_CLASS_ORDER.filter((c) => present.has(c))
+}
+
+/** Map class → kills pour un joueur (agrégat serveur déjà au niveau classe). */
+function killsByClass(entries: FragClassEntry[]): Map<string, number> {
+  const m = new Map<string, number>()
+  for (const e of entries) m.set(e.class, (m.get(e.class) ?? 0) + e.kills)
+  return m
+}
+
 export function buildFragBreakdownOption(
-  rows: Record<string, SquadPerformanceSeriesPoint[]>,
+  rows: Record<string, FragClassEntry[]>,
   opts: FragBreakdownOpts,
 ): EChartsCoreOption {
   const tc = getEChartsThemeColors()
@@ -77,23 +62,19 @@ export function buildFragBreakdownOption(
   const players = orderedPlayers(rows, opts.playerOrder)
   if (players.length === 0) return { backgroundColor: CHART_BG }
 
-  const byPlayer = new Map<string, Breakdown>()
-  for (const player of players) byPlayer.set(player, aggregate(rows[player] ?? []))
+  const byPlayer = new Map<string, Map<string, number>>()
+  for (const player of players) byPlayer.set(player, killsByClass(rows[player] ?? []))
 
-  const labelOf: Record<SegmentKey, string> = {
-    melee: opts.labels.melee,
-    powerWeapon: opts.labels.powerWeapon,
-    grenade: opts.labels.grenade,
-    other: opts.labels.other,
-  }
+  const classes = presentClasses(byPlayer)
+  if (classes.length === 0) return { backgroundColor: CHART_BG }
 
-  const series = SEGMENTS.map(({ key, token }) => ({
-    name: labelOf[key],
+  const series = classes.map((cls) => ({
+    name: opts.classLabel(cls),
     type: 'bar' as const,
     stack: 'frags',
     barMaxWidth: 18,
-    itemStyle: { color: resolveToken(token) },
-    data: players.map((p) => byPlayer.get(p)?.[key] ?? 0),
+    itemStyle: { color: fragClassColor(cls) },
+    data: players.map((p) => byPlayer.get(p)?.get(cls) ?? 0),
   }))
 
   return {
@@ -120,7 +101,7 @@ export function buildFragBreakdownOption(
         return `${escapeHtml(arr[0].name ?? '')}<br/>${lines.join('<br/>')}<br/>Total : <b>${total}</b>`
       },
     },
-    legend: { ...getLegendBase(tc), data: SEGMENTS.map((s) => labelOf[s.key]) },
+    legend: { ...getLegendBase(tc), data: classes.map((cls) => opts.classLabel(cls)) },
     xAxis: { ...axis, type: 'value', minInterval: 1 },
     yAxis: {
       ...axis,

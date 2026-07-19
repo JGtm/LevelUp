@@ -288,14 +288,28 @@ P4 : `SessionFragCard` couvert par les tests P1 des composants partagés, pas de
 
 ### P6 — Rollout Escouade (barres empilées par classe)
 
-- [ ] P6.1 Backend : `kills_by_class` PAR gamertag sur `SquadPerformanceSeriesPoint` (`generated.ts:8167-8214`),
-      via le `loadWeapons` squad (`squad_service_v2.go:272-304`, `IncludeGrenadeMelee:true`) + `class`.
-- [ ] P6.2 Généraliser `squadFragBreakdownChart.ts` : de 4 segments figés (`SegmentKey` `:40-48`) à **N classes
-      dynamiques** ; labels de classe (i18n P1.6) ; couleurs `fragClassColor` (remplace tokens kill-type `:43-48`).
-      GARDER la forme (barres horizontales, 4 joueurs, `inverse` main-en-haut, `stack:'frags'`, `barMaxWidth:18`).
-- [ ] P6.3 Wiring i18n squad (`squad/i18n.ts:473-476`) : labels classe.
+- [x] P6.1 Backend : ventilation PAR CLASSE par gamertag exposée en `frag_classes` (map gamertag→`[]FragClassEntry`,
+      niveau 1 seulement, D8) sur **`TeammatesPageResponse`** (PAS `SquadPerformanceSeriesPoint` ni `squad_service_v2`
+      — §6 D-P6-3 : le chart Escouade est servi par `TeammatesService`/`/pages/teammates`, code fait foi). RÉUTILISE
+      `fragdist.Build` par joueur (0 duplication) : gun classes = weapon kills par joueur (`buildSquadWeaponKills` +
+      `ResolveRoles:true` pour peupler `class`) ; counts melee/grenade/total = agrégat de `PerformanceSeries` du joueur
+      (`aggregateFragCounts`) ; `hasMechanics=false` (§6 D-P6-2). Champ : Go domain (`teammates.go`) + `openapi.yaml` +
+      `make generate-types` + interface hand-written `TeammatesPageResponse` (`types.ts`, D-P2-1). **Builder extrait**
+      package leaf `internal/service/fragdist` (§6 D-P6-1) — 5 appelants service + test migrés vers `fragdist.Build`.
+- [x] P6.2 `squadFragBreakdownChart.ts` généralisé : de 4 segments FIGÉS à **N classes DYNAMIQUES** (union présente,
+      ordre canonique `FRAG_CLASS_ORDER`). Input = `Record<string, FragClassEntry[]>` (`frag_classes`). Couleurs
+      `fragClassColor(class)` (per-datum), labels via `classLabel` (manifeste `frags`). Forme GARDÉE : barres
+      horizontales empilées, `inverse` main-en-haut, `stack:'frags'`, `barMaxWidth:18`, tooltip Total. `aggregate()`
+      remplacé par `killsByClass`/`presentClasses`. Test adapté à la taxonomie par classe (6 tests, verts).
+- [x] P6.3 i18n : les 4 labels FR/EN figés de `squad/i18n.ts` (meleeLabel/powerWeaponLabel/grenadeLabel/otherLabel)
+      SUPPRIMÉS (type + FR + EN) ; labels de classe résolus dans `SquadPerformanceCharts` via le manifeste PARTAGÉ
+      `frags` (`frags.class.*`) — même source que le sunburst. `fragBreakdownTitle` (titre de carte) CONSERVÉ.
 
-**Gate P6** : `make check-types && make test-web` ; revue visuelle Escouade (1 à 4 joueurs).
+**Gate P6** : `go test ./internal/service/... ./internal/domain/...` PASS (service 8.0s + teammates 0.44s + domain cached ;
+`fragdist` [no test files] — builder couvert par les tests P0 restés en package service) ; gofmt Go touchés clean ;
+`make generate-types` PASS (`frag_classes` dans generated.ts) ; `make check-types` PASS (tsc exit 0) ; `make test-web`
+**277 fichiers, 2390 PASS / 14 skipped** (counts inchangés vs P5 : test frag breakdown réécrit 6→6 tests). Revue
+visuelle Escouade (1 à 4 joueurs, Infinite + H5) RESTE À FAIRE (gate humain). Aucun commit.
 
 ### P7 — Nettoyage, garde-fous, livraison
 
@@ -419,6 +433,35 @@ P4 : `SessionFragCard` couvert par les tests P1 des composants partagés, pas de
   (sunburst + breakdown par arme) comme la carte de référence, `TopWeaponKills` a été ajouté à `SessionCompareEntry`
   en plus de `FragDistribution` (P5.1 ne nommait que `frag_distribution`). Coût nul : les mêmes `WeaponKillRow`
   chargées pour les gun classes alimentent `buildTopWeaponKills`. Conforme à P5.2 (« + top weapons si dispo »).
+- **D-P6-1 (builder inaccessible depuis package teammates → extraction leaf) — TRAITÉ (in-scope P6.1)** : le chart
+  Escouade est servi par `TeammatesService` (package `internal/service/teammates`), or `buildFragDistribution` était
+  UNEXPORTED dans le package PARENT `internal/service` (qui importe teammates → l'inverse serait un cycle). Impossible
+  de « réutiliser » sans dupliquer OU extraire. Décision : builder + helpers déplacés dans un package LEAF
+  `internal/service/fragdist` (exporté `Build`), importable par service ET teammates. 5 appelants du package service
+  (Synthesis/Match/Session/Timeseries + `synthesis_frag_distribution_test.go`) migrés vers `fragdist.Build` (mécanique,
+  gate service vert). Les tests du builder RESTENT en package service (ils exercent `fragdist.Build` ; `fragdist` sans
+  test dédié) — co-localisation possible en P7, hors périmètre P6.
+- **D-P6-2 (mécaniques spartanes non ventilées par joueur → hasMechanics=false)** : `frag_classes` est construit avec
+  `hasMechanics=false`. Les compteurs assassination/ground_pound/shoulder_bash existent par-xuid via
+  `LoadKillMechanics` (`buildSquadKillMechanics`, chart dédié `native_kill_mechanics`), mais NE sont PAS dans l'agrégat
+  kill-type par-joueur utilisé ici (`PerformanceSeries` ne porte que melee/grenade/kills). Conséquence : PAS de classe
+  `spartan_ability` dans les barres Escouade (H5). Conforme à la consigne P6.1 (« si non dispo par-joueur → false »).
+  Les frags spartanes retombent dans « Non attribué » (résidu = total − Σ classes attribuées). Le chart dédié
+  `SquadKillMechanicsChart` (H5) continue de montrer ces mécaniques. À valider à la revue visuelle H5 ; brancher les
+  mécaniques dans `frag_classes` = amélioration future (hors P6, nécessiterait de joindre `LoadKillMechanics`).
+- **D-P6-3 (cible service = TeammatesService, pas squad_service_v2) — cadrage corrigé sur pièces** : le plan/brief
+  pointait `squad_service_v2.go` (`loadWeapons`, package service). VÉRIFICATION SUR PIÈCES : le sous-chart
+  « Répartition des frags » de l'Escouade consomme `frag_classes`/`performance_series` de `TeammatesPageResponse`,
+  servi par `POST /pages/teammates` → `TeammatesService.GetPage`. `SquadPageV2Response` (squad_service_v2) N'EST PAS
+  consommé par ce chart (le frontend fetch `/pages/teammates`, cf. `squad/queries.ts`). Câblage fait dans
+  `TeammatesService` (précédent D-P5-1 : le code fait foi). Le champ `frag_classes` est donc porté par
+  `TeammatesPageResponse`, pas `SquadPageV2Response`. `squad_service_v2` inchangé (migration front non effectuée).
+- **D-P6-4 (comptage counts par joueur depuis PerformanceSeries)** : `counts.Total/Melee/Grenade` par gamertag sont
+  agrégés depuis `PerformanceSeries[gt]` (Σ `kills`/`melee_kills`/`grenade_kills`, valeurs canoniques API). Un joueur
+  présent dans `playersOrdered` mais absent de `PerformanceSeries` (aucun match commun servi) → counts nuls → si des
+  rows d'arme existent quand même, invariant (a) `Σ==total` peut ne pas tenir localement (Total=0). Cas dégénéré non
+  observé en pratique (weapon kills ⇒ kills>0). `fragdist.Build` clampe le résidu ≥ 0 (invariant c préservé). Aucune
+  action P6.
 - **D-P2-3 (doublons de cartes après P2.1/P2.2) — RÉSOLU (fusion tranchée avec l'utilisateur, 2026-07-19)** : les
   titres i18n de `SynthesisKillTypesDonut` (« Répartition des frags ») et `SynthesisWeaponKillsChart` (« Frags par
   arme ») étaient IDENTIQUES au sunburst/breakdown → doublons. Décision actée : LE sunburst unifié remplace LES DEUX
