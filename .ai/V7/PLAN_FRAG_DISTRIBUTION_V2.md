@@ -128,27 +128,43 @@ make generate-types   # openapi.yaml -> generated.ts (le front voit FragDistribu
 
 ### P1 — Composant sunburst + couleurs accessibles (front, partagé)
 
-- [ ] P1.1 Échelle couleur classe : helper `fragClassColor(class)` (lib/accessibility ou util chart) via
-      `makeCategoricalScale` sur palette **Okabe-Ito** ; ordre FIXE par classe, **1 token/classe, zéro collision**
-      (corrige le doublon mêlée=grenade=`chart-series-8` de `SynthesisRoleKillsDonut.tsx:28-29`). Non attribué =
-      neutre hachuré. **Aucun hex dans features/components** (règle color-tokens).
-- [ ] P1.2 Rôles = teintes de luminosité de la couleur de classe (double encodage : couleur + label + position).
-- [ ] P1.3 **Validation CVD par script** (dataviz `validate_palette.js` + palette okabe-ito) sur light ET dark ;
-      cible CVD ≥ 12 ; consigner le rapport dans le commit.
-- [ ] P1.4 `FragSunburst.tsx` (NOUVEAU) : ECharts `sunburst`, consomme `FragDistribution`. Anneau interne=classe,
-      externe=rôle, Non attribué hachuré, centre=total (ou segment survolé), tooltip = valeur + % du total + % de
-      la classe parente + badge autorité (exact/estimé). Rendu `null` si total 0.
-- [ ] P1.5 `FragWeaponBreakdown.tsx` (NOUVEAU ou généralisation de `SynthesisWeaponKillsChart.tsx`) : barres par
-      arme, **couleur = `fragClassColor(class)`**. Nécessite `class` sur l'entrée arme → enrichir
-      `SynthesisWeaponKillEntry` (`domain/synthesis.go:149-152`) de `class`/`role` (même passe `resolveWeaponMeta`).
-- [ ] P1.6 i18n FR+EN partagé : labels de classe (`class_shoulder`=Épaule/Shoulder, `_sidearm`=Poing, `_heavy`=
-      Lourde, `_melee`=Mêlée, `_grenade`=Grenade, `_spartan_ability`=Capacités spartanes, `_unattributed`=Non
-      attribué) + rôles neufs (`assassination`=Assassinat, `direct_melee`=Corps-à-corps direct, `ground_pound`=
-      Frappe au sol, `shoulder_bash`=Charge d'épaule). Emplacement partagé (réutilisé par 4 surfaces).
-- [ ] P1.7 Tests front : typecheck ; rendu composant (mocker `echarts-for-react`, cf. reference echarts+jsdom) ;
-      test garde-fou anti-collision (aucune classe → même token qu'une autre).
+- [x] P1.1 Échelle couleur classe : `apps/web/src/lib/accessibility/scales/fragClass.ts` (SOURCE UNIQUE) +
+      `fragClassColors.ts` (NOUVEAU — hex fixes). Ordre FIXE `FRAG_CLASS_ORDER` ; `fragClassColor(class)` sert des
+      **hex fixes CVD-safe INDÉPENDANTS de la palette active** (option A, tranchée user 2026-07-19) : shoulder
+      #0072B2 / sidearm #E69F00 / heavy #56B4E9 / melee #D55E00 / grenade #009E73 / spartan_ability #F0E442 (teintes
+      Okabe-Ito), `unattributed` = neutre #888888 rendu HACHURÉ côté sunburst. **Motif** : sous la palette DÉFAUT,
+      `chart-series-1..5` sont une rampe indigo (ΔE ~5.4, SOUS le plancher CVD) → 5 classes indistinguables ; sortir
+      de la palette active (précédent `rarity.ts`) garantit la distinction quelle que soit la palette. **7 hex
+      distincts** (collision mêlée=grenade éradiquée). `fragClassScale`/`fragClassColorToken` (palette-dépendants)
+      SUPPRIMÉS (0 code mort). Exporté via `scales/index.ts`. Hex UNIQUEMENT dans `fragClassColors.ts` (exception
+      documentée), zéro hex dans features/components. VÉRIFIÉ : check-types + guard test verts.
+- [x] P1.2 Rôles = teintes de luminosité (`fragRoleColor(class, index, count)` via `shiftLightness`, spread 0.32,
+      1er clair→dernier foncé). Double encodage couleur + label + position (anneau/segment).
+- [x] P1.3 **Validation CVD par le validateur dataviz `validate_palette.js`** (all-pairs, sur les 6 hex FIXES) :
+      **INCONDITIONNELLE** (hex hors palette active) — normal-vision 15.58 PASS ; protan 11.38 PASS ; deutan **10.98**
+      (worst, melee/grenade) PASS (cible validateur 8). Cible plan ≥12 non atteinte (max structurel des 6 teintes Okabe ;
+      voir §6 D-P1-1) — couvert par l'encodage secondaire (label+position+hachure). Report consigné (thought_log).
+      Garde-fou in-repo : `fragClass.guard.test.ts` (anti-collision hex + pin des 6 hex Okabe + palette-indépendance +
+      min all-pairs ΔE ≥ 8, math Machado 2009). RÉSOUT l'exposition à la rampe indigo de `palettes/default.ts`.
+- [x] P1.4 `apps/web/src/components/charts/FragSunburst.tsx` (NOUVEAU) : ECharts `sunburst` 2 anneaux, consomme le
+      type généré `FragDistribution`. Anneau interne=classe, externe=rôle, `unattributed` hachuré (decal), centre=total
+      (graphic centré), tooltip = valeur + % du total + % de la classe parente (niv.2) + badge autorité (exact/estimé),
+      `sort:undefined` (ordre canonique conservé). Rend `null` si total 0. Builder pur `buildFragSunburstOption` exporté.
+- [x] P1.5 `apps/web/src/components/charts/FragWeaponBreakdown.tsx` (NOUVEAU) : barres horizontales par arme,
+      **couleur = `fragClassColor(w.class)`** (per-datum), classe dans le tooltip. Go : `SynthesisWeaponKillEntry`
+      (`domain/synthesis.go`) enrichi de `class`/`role` (json omitempty) ; peuplé dans `buildTopWeaponKills`
+      (rows déjà `ResolveRoles=true`) ; schéma `openapi.yaml` + `make generate-types` (class?/role? dans generated.ts).
+- [x] P1.6 i18n FR+EN **manifest PARTAGÉ NOUVEAU** `apps/web/src/lib/i18n/manifests/frags.toml` (→ `fragsManifest`,
+      26 clés) : classes (`frags.class.*` Épaule/Poing/Lourde/Mêlée/Grenade/Capacités spartanes/Non attribué) + rôles
+      registre (`frags.role.precision..special`) + rôles neufs (`assassination`/`direct_melee`/`ground_pound`/
+      `shoulder_bash`) + titres cartes + badge autorité + fragments tooltip. Réutilisable par les 4 surfaces.
+- [x] P1.7 Tests front (`FragSunburst.test.tsx`, `FragWeaponBreakdown.test.tsx`, `fragClass.guard.test.ts`, 12 tests) :
+      builders purs (hiérarchie, résidu hachuré, null si total 0, recolor par classe) ; rendu composant (mock
+      `echarts-for-react`) ; **anti-collision** (7 tokens distincts) + pin du mapping validé CVD + CVD ≥ 8.
 
-**Gate P1** : `make check-types && make test-web` (vitest hors sandbox, `dangerouslyDisableSandbox`) + rapport validateur couleur joint.
+**Gate P1** : `go test ./internal/service/... ./internal/domain/...` PASS ; `make generate-types` PASS ;
+`make check-types` PASS ; `make test-web` **278 fichiers, 2392 tests PASS / 14 skipped** ; validateur couleur
+all-pairs deutan 11.0 PASS (report ci-dessus). Composant NON monté sur page (c'est P2). Aucun commit.
 
 ### P2 — Rollout Synthesis (surface de référence)
 
@@ -269,3 +285,14 @@ make generate-types   # openapi.yaml -> generated.ts (le front voit FragDistribu
 - **D-P0-3 (over-count possible)** : si `Σ classes attribuées > total` (anomalie de données), le résidu serait
   négatif → non ajouté (clamp, invariant c préservé) mais l'invariant (a) `Σ==total` n'est alors PAS tenu.
   `logFragDistribution` émet un `WARN` dédié. À surveiller en prod ; aucune action P0.
+- **D-P1-1 (palette DÉFAUT non catégorielle sur 6 séries) — RÉSOLU (révision option A, 2026-07-19)** : le problème
+  était que `fragClassColor` sourçait `chart-series-1..6` via la palette ACTIVE ; sous la palette **DÉFAUT**,
+  `chart-series-1..5` sont une RAMPE indigo (all-pairs ΔE 5.4 — FAIL catégoriel), donc 5 classes de frags se
+  ressemblaient. **Correctif** : les classes de frags ont désormais leur PROPRE jeu de **hex fixes Okabe-Ito
+  INDÉPENDANT de la palette active** (`fragClassColors.ts`, précédent `rarity.ts`) → l'exposition à la rampe indigo
+  du défaut DISPARAÎT pour ce chart, quelle que soit la palette. La rampe indigo de `palettes/default.ts` reste une
+  propriété du défaut partagée par les autres charts (HORS périmètre), mais ne touche plus les frags.
+- **D-P1-2 (cible CVD 12 vs 11.0) — RÉSOLU** : sur les 6 hex FIXES, worst all-pairs deutan **10.98** (protan 11.38,
+  normal 15.58) PASSE le validateur (cible 8) de façon INCONDITIONNELLE (plus de dépendance palette). Cible plan ≥12
+  = plafond structurel des 6 teintes Okabe (la dépasser exigerait de dropper Vert/Vermillion → casse le floor
+  normal-vision). Décision retenue : 10.98 + encodage secondaire (label + position d'anneau + hachure du résidu).

@@ -151,10 +151,16 @@ type SynthesisPageV2Response struct {
 	CombatProfile *CombatProfileBlock `json:"combat_profile,omitempty"`
 }
 
-// SynthesisWeaponKillEntry est une ligne du classement frags par arme.
+// SynthesisWeaponKillEntry est une ligne du classement frags par arme. Class/Role
+// (clés canoniques du registre, cf. frag_distribution.go) permettent au breakdown
+// par arme du front de recolorer chaque barre par la couleur de sa CLASSE
+// (fragClassColor) — cohérence visuelle avec le sunburst. Vides si le registre n'a
+// pas résolu l'arme (dégradation propre ; omis du JSON).
 type SynthesisWeaponKillEntry struct {
 	Label string `json:"label"`
 	Kills int    `json:"kills"`
+	Class string `json:"class,omitempty"`
+	Role  string `json:"role,omitempty"`
 }
 
 // SynthesisRoleKillEntry agrège les frags par rôle de combat d'arme (clé canonique

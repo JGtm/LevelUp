@@ -1,0 +1,114 @@
+# Manifest i18n PARTAGÉ « Répartition des frags » v2 (sunburst classe→rôle +
+# breakdown par arme). Réutilisé par 4 surfaces : Synthesis, Match view,
+# Timeseries, Sessions. Cf. .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P1.6.
+# Chaque clé DOIT porter fr ET en (contrôlé par build_i18n_manifests.mjs).
+
+# ── Titres de cartes ──────────────────────────────────────────────────────────
+[frags.charts.sunburst_title]
+fr = "Répartition des frags"
+en = "Frag distribution"
+
+[frags.charts.weapon_breakdown_title]
+fr = "Frags par arme"
+en = "Kills by weapon"
+
+[frags.charts.center_total_label]
+fr = "Frags"
+en = "Kills"
+
+[frags.empty.no_data]
+fr = "Aucun frag sur ce périmètre"
+en = "No kills in this scope"
+
+# ── Badge d'autorité de la donnée ─────────────────────────────────────────────
+[frags.authority.exact]
+fr = "exact"
+en = "exact"
+
+[frags.authority.estimated]
+fr = "estimé"
+en = "estimated"
+
+# ── Fragments de tooltip (pourcentages) ───────────────────────────────────────
+[frags.tooltip.share_total]
+fr = "{pct} % du total"
+en = "{pct}% of total"
+
+[frags.tooltip.share_class]
+fr = "{pct} % de {className}"
+en = "{pct}% of {className}"
+
+# ── Classes (niveau 1 du sunburst — axe manipulation) ─────────────────────────
+[frags.class.shoulder]
+fr = "Épaule"
+en = "Shoulder"
+
+[frags.class.sidearm]
+fr = "Poing"
+en = "Sidearm"
+
+[frags.class.heavy]
+fr = "Lourde"
+en = "Heavy"
+
+[frags.class.melee]
+fr = "Mêlée"
+en = "Melee"
+
+[frags.class.grenade]
+fr = "Grenade"
+en = "Grenade"
+
+[frags.class.spartan_ability]
+fr = "Capacités spartanes"
+en = "Spartan abilities"
+
+[frags.class.unattributed]
+fr = "Non attribué"
+en = "Unattributed"
+
+# ── Rôles (niveau 2) — armes (registre) ───────────────────────────────────────
+[frags.role.precision]
+fr = "Précision"
+en = "Precision"
+
+[frags.role.automatic]
+fr = "Automatique"
+en = "Automatic"
+
+[frags.role.sniper]
+fr = "Sniper"
+en = "Sniper"
+
+[frags.role.shotgun]
+fr = "Fusil à pompe"
+en = "Shotgun"
+
+[frags.role.sidearm]
+fr = "Arme de poing"
+en = "Sidearm"
+
+[frags.role.power]
+fr = "Arme lourde"
+en = "Power weapon"
+
+[frags.role.special]
+fr = "Spéciale"
+en = "Special"
+
+# ── Rôles (niveau 2) — mécaniques natives (API, H5 cap-gated) ─────────────────
+[frags.role.assassination]
+fr = "Assassinat"
+en = "Assassination"
+
+[frags.role.direct_melee]
+fr = "Corps-à-corps direct"
+en = "Direct melee"
+
+[frags.role.ground_pound]
+fr = "Frappe au sol"
+en = "Ground pound"
+
+[frags.role.shoulder_bash]
+fr = "Charge d'épaule"
+en = "Shoulder bash"

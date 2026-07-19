@@ -202,7 +202,9 @@ func buildTopWeaponKills(rows []port.WeaponKillRow, n int) []domain.SynthesisWea
 	}
 	out := make([]domain.SynthesisWeaponKillEntry, len(resolved))
 	for i, r := range resolved {
-		out[i] = domain.SynthesisWeaponKillEntry{Label: r.Label, Kills: r.Kills}
+		// Class/Role portés depuis le registre (résolus dans la même passe
+		// ResolveRoles) pour recolorer le breakdown par arme par classe (P1.5).
+		out[i] = domain.SynthesisWeaponKillEntry{Label: r.Label, Kills: r.Kills, Class: r.Class, Role: r.Role}
 	}
 	return out
 }
