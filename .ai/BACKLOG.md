@@ -62,6 +62,15 @@ requis — aucun aujourd'hui). **Effort** : petit-moyen (suppression + tests).
 
 **Point de vigilance** : Tauri implique mécaniquement une fine couche Rust côté shell. Ce point est acceptable uniquement comme détail d'enveloppe technique. Toute dérive vers des commandes Rust métier, un stockage canonique côté Tauri ou une divergence desktop-only dans les flux React/FastAPI doit être refusée.
 
+**Activités supplémentaires à prévoir si/quand Tauri est réactivé** (notées le 2026-07-19, non planifiées) :
+1. **Distribution de release** : pipeline de build/signature des installateurs desktop (au moins Windows ; macOS/Linux à trancher), versionnage aligné avec les releases web/API, publication des artefacts sur **GitHub Releases** du repo (pas d'hébergement/download depuis le site LevelUp — juste un lien vers la release GitHub la plus récente si besoin d'un CTA produit).
+2. **SISU/SSO Xbox — améliorer le flux desktop** : il existe bien deux mécaniques d'auth Xbox distinctes.
+   - **Flux web actuel (en place aujourd'hui)** : OAuth « live » classique (`login.live.com/oauth20_desktop.srf` pour un client public/native, ou device-code flow pour du headless/CLI) → user token → XSTS.
+   - **Flux SISU natif** : POST vers `sisu.xboxlive.com/authorize` (AccessToken + AppId + DeviceToken + SessionId) — utilisé par les apps Xbox/mobiles natives, potentiellement plus rapide/fluide (moins d'allers-retours navigateur), mais suppose un contexte natif (device token, app registrée côté Xbox) plus contraignant à mettre en place que l'OAuth desktop classique.
+   - Point technique à noter : **WAM (Web Account Manager)**, le broker d'auth Windows utilisé par MSAL pour du SSO silencieux avec le compte Windows courant, n'est **pas disponible pour Xbox** — donc pas de raccourci via WAM, il faudra creuser SISU directement ou rester sur l'OAuth desktop existant amélioré (moins d'allers-retours navigateur, SSO local dans la coque Tauri).
+   - À trancher au moment venu : est-ce que le gain (fluidité) justifie l'effort d'implémentation SISU vs. optimiser l'OAuth desktop actuel dans la coque Tauri.
+3. **Stockage local — migration vers AppData** : tout ce qui est aujourd'hui stocké sur disque à côté de l'app (DuckDB `data/titles/`, `data/auth/`, `data/global/`, `data/sessions/`, config `db_profiles.json`/`app_settings.json`/`.env.local`) ne peut pas rester dans le bundle applicatif Tauri — l'app doit pouvoir être mise à jour/réinstallée sans perdre ces données. Il faut cadrer un chemin utilisateur type `%APPDATA%/LevelUp/` (Windows) et équivalents autres OS, cohérent avec `PathResolver`, sans hardcoder de chemin machine. **À ce moment-là : faire un audit exhaustif de tout ce qui est écrit sur disque** (pas seulement `data/` — logs, caches, fichiers temporaires, médias indexés, tout chemin actuellement dérivé de `REPO_ROOT`) pour ne rien oublier dans la bascule vers AppData.
+
 ---
 
 ### Kills environnementaux — catégorie dédiée (v8++)
