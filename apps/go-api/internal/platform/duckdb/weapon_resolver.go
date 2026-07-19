@@ -29,8 +29,11 @@ type weaponResolved struct {
 	nameEN    string // pour l'URL image (AssetURLAdapter)
 	weaponKey string // clé canonique du registre ("hinf_br75") ; "" si inconnu
 	role      string // dimension registre (automatic/precision/…) ; "" si inconnu
-	family    string // dimension registre (battle_rifle/…) ; "" si inconnu
-	faction   string // dimension registre (human/covenant/…) ; "" si inconnu
+	class     string // dimension registre — axe manipulation (shoulder/sidearm/heavy/
+	// melee/grenade/…) ; "" si inconnu. Peuplé dans la MÊME passe que role
+	// (jointure weapons w déjà présente) → +1 colonne, 0 round-trip DB.
+	family  string // dimension registre (battle_rifle/…) ; "" si inconnu
+	faction string // dimension registre (human/covenant/…) ; "" si inconnu
 }
 
 // resolveWeaponMeta résout un lot de weapon_id (titre courant). Map vide si meta
@@ -60,6 +63,7 @@ func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponID
 		" COALESCE(wl.name_en, '') AS name_en," +
 		" COALESCE(w.weapon_key, '') AS weapon_key," +
 		" COALESCE(w.role, '') AS role," +
+		" COALESCE(w.class, '') AS class," +
 		" COALESCE(w.family_key, '') AS family," +
 		" COALESCE(w.faction, '') AS faction" +
 		" FROM (VALUES " + strings.Join(parts, ", ") + ") AS ids(v)" +
@@ -73,8 +77,8 @@ func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponID
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var idStr, label, nameEN, weaponKey, role, family, faction string
-		if err := rows.Scan(&idStr, &label, &nameEN, &weaponKey, &role, &family, &faction); err != nil {
+		var idStr, label, nameEN, weaponKey, role, class, family, faction string
+		if err := rows.Scan(&idStr, &label, &nameEN, &weaponKey, &role, &class, &family, &faction); err != nil {
 			continue
 		}
 		u, perr := strconv.ParseUint(idStr, 10, 64)
@@ -83,7 +87,7 @@ func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponID
 		}
 		out[int64(u)] = weaponResolved{
 			label: label, nameEN: nameEN, weaponKey: weaponKey,
-			role: role, family: family, faction: faction,
+			role: role, class: class, family: family, faction: faction,
 		}
 	}
 	return out

@@ -1,3 +1,37 @@
+## [2026-07-19] Frag Distribution v2 — P0 fondation Go (branche feat/frag-distribution-v2)
+
+**Statut** : Complété (P0 uniquement). NON committé (le superviseur gère git après revue). Gate P0 vert.
+Contrat `plan-execution`. Périmètre strict P0.1→P0.10 du `.ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md`.
+
+**Décision technique principale** : nouveau DTO domaine `FragDistribution` (classe→rôle, réconcilié
+`Σ classes == total`) + builder PUR `buildFragDistribution` dans le service. Provenance anti-double-source :
+classes gun `shoulder/sidearm/heavy` + rôles d'arme depuis le registre (`WeaponKillRow.Class`, ajouté via la
+MÊME passe `resolveWeaponMeta` que `role` → 0 round-trip DB) = estimé ; classes `melee/grenade/spartan_ability`
++ total depuis les stats canoniques API = autoritatif ; `unattributed = total − Σ` (résidu, ajouté si > 0).
+`hasMechanics` résolu par capability `CapNativeKillMechanics` via `HasCapability` (helper
+`titleHasNativeKillMechanics`, pattern leaderboard — JAMAIS `slug ==`). Mêlée niv.2 (H5 only) =
+`assassination` + `direct_melee (= melee − assassination, PROVISOIRE, à confirmer probe G2.3/P2)`. Ordre des
+classes déterministe (`canonicalFragClassOrder`). Sur-comptage signalé par WARN (jamais avalé). `KillsByRole`
+conservé (retrait planifié P7).
+
+**Écart au plan** (§6 Découverte D-P0-1) : signature `buildFragDistribution` étendue de `+ totalKills int`
+(la signature littérale du plan omettait le total, absent de `SynthesisDetailedStats` ; §2 l'exige). Câblé
+depuis `overview.TotalKills`. Deux autres découvertes consignées (§6 D-P0-2 buckets non-combat H5 → Non
+attribué ; D-P0-3 over-count).
+
+**Résultats de test** : Gate P0 étape 1 — `go test ./internal/service/... ./internal/platform/duckdb/...
+./internal/domain/...` = 9 packages `ok` (service 8.5s, duckdb 31.7s, domain + sous-packages). 5 nouveaux tests
+`TestBuildFragDistribution_*` verts (invariants a/b/c, dataset hétérogène Infinite cap-off + H5 cap-on, ordre
+canonique, clamp assassination, résidu exact). Étape 2 — `make generate-types` OK, `FragDistribution`/
+`FragClassEntry`/`FragRoleEntry`/`frag_distribution` présents dans `generated.ts`.
+
+**Fichiers** : modifiés `weapon_resolver.go`, `port/weapon_kills.go`, `weapon_kills_repo.go`,
+`synthesis_service_builders.go`, `synthesis_service.go`, `domain/synthesis.go`, `api/openapi.yaml`,
+`web/.../generated.ts` (généré) ; nouveaux `domain/frag_distribution.go`, `synthesis_frag_distribution_test.go`.
+
+**Prochaine étape** : P1 — composant sunburst front + échelle couleur classe CVD-safe (Okabe-Ito) + i18n
+partagé FR/EN + tests front. NON entamé (hors périmètre P0).
+
 ## [2026-07-19] Correctifs d'affichage UI (branche fix/ui-display-tweaks)
 
 **Statut** : Complété. Committé + mergé main local (superviseur ; push main = deploy prod → non poussé,

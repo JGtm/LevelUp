@@ -133,7 +133,13 @@ type SynthesisPageV2Response struct {
 	// Bloc frags par RÔLE de combat (registre d'armes : automatic/precision/
 	// sniper/shotgun/sidearm/power/special/melee). Title-agnostic. Omis si le
 	// registre n'a rien résolu (titre sans registre, ou aucune arme mappée).
+	// NB : conservé le temps de la bascule front vers FragDistribution (retrait P7).
 	KillsByRole []SynthesisRoleKillEntry `json:"kills_by_role,omitempty"`
+
+	// Bloc répartition hiérarchique des frags (sunburst v2, classe→rôle). Title-
+	// agnostic, réconcilié (Σ classes == total). nil si scope vide (total 0). Voir
+	// FragDistribution (frag_distribution.go) + PLAN_FRAG_DISTRIBUTION_V2.md §2.
+	FragDistribution *FragDistribution `json:"frag_distribution,omitempty"`
 
 	// Bloc précision par arme (toutes les armes tirées, pourcentage = tirs au but
 	// / tirs tirés). Alimenté par la table weapon_accuracy (Halo 5 natif). Omis
