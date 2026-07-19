@@ -331,16 +331,22 @@ export function MatchViewPage() {
                 t={t}
               />
             </div>
+            {/* Répartition des frags v2 : sunburst (classe→rôle) | breakdown par arme
+                | médailles — 3 cellules CÔTE À CÔTE. MatchFragCard émet ses 2 cartes
+                (Fragment) directement comme cellules de cette grille. Non gaté :
+                Infinite = classes sans Spartan ; Halo 5 = avec (capability
+                native_kill_mechanics côté backend). Remplace les 2 anciens graphes. */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {/* Répartition des frags v2 (sunburst classe→rôle + breakdown par arme).
-                  Non gaté : Infinite = classes sans Spartan ; Halo 5 = avec (capability
-                  native_kill_mechanics côté backend). Remplace les 2 anciens graphes. */}
               <MatchFragCard distribution={combat_tab.frag_distribution} weapons={weaponKills} />
               <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
-              {/* Halo 5 : commendations NATIVES (citations_tab.native_commendations)
-                  affichées À LA PLACE des citations dérivées d'Infinite
-                  (summary_tab.citations vide pour h5). Un seul bloc « commendations »
-                  par titre. */}
+            </div>
+            {/* Rangée suivante : Citations À GAUCHE du bloc Média (plus pleine largeur).
+                Halo 5 : commendations NATIVES (citations_tab.native_commendations)
+                affichées À LA PLACE des citations dérivées d'Infinite (summary_tab.
+                citations vide pour h5). Un seul bloc « commendations » par titre.
+                Média gaté sur `media` : masque l'en-tête + le bloc entier pour un
+                titre sans captures/clips. */}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {(citations_tab?.native_commendations?.length ?? 0) > 0 ? (
                 <MatchNativeCommendationsSection
                   commendations={citations_tab.native_commendations ?? []}
@@ -349,22 +355,20 @@ export function MatchViewPage() {
               ) : (
                 <MatchCitationsSection citations={summary_tab.citations ?? []} t={t} />
               )}
-            </div>
-            {/* Section Médias gatée sur `media` : masque l'en-tête + le bloc entier
-                (pas seulement le contenu) pour un titre sans captures/clips. */}
-            <FeatureGate capability="media">
-              <div className="rounded-lg border border-border bg-card">
-                <div className="border-b border-border px-3 py-2 text-sm font-medium">{t.sectionMedia}</div>
-                <div className="p-3">
-                  <MatchMediaTab
-                    items={media_tab.media_items ?? []}
-                    playerSlug={playerSlug}
-                    matchId={matchId}
-                    locale={locale === 'en' ? 'en' : 'fr'}
-                  />
+              <FeatureGate capability="media">
+                <div className="rounded-lg border border-border bg-card">
+                  <div className="border-b border-border px-3 py-2 text-sm font-medium">{t.sectionMedia}</div>
+                  <div className="p-3">
+                    <MatchMediaTab
+                      items={media_tab.media_items ?? []}
+                      playerSlug={playerSlug}
+                      matchId={matchId}
+                      locale={locale === 'en' ? 'en' : 'fr'}
+                    />
+                  </div>
                 </div>
-              </div>
-            </FeatureGate>
+              </FeatureGate>
+            </div>
           </div>
         ) : (
           <>

@@ -126,9 +126,16 @@ type ScoreboardRaw struct {
 	GrenadeKills     *int
 	MeleeKills       *int
 	PowerWeaponKills *int
-	PerfectKills     int
-	TopWeaponID      *int64
-	TopWeaponLabel   string
+	// Mécaniques de kill NATIVES Halo 5 (assassinats + compétences spartiate :
+	// ground pound, shoulder bash). Colonnes match_participants (Q12) — nil hors h5
+	// (Infinite ne les fournit pas). Alimentent la FragDistribution v2 du viewer
+	// (classe Capacités spartanes + rôle Assassinat) et les colonnes scoreboard.
+	AssassinationKills *int
+	GroundPoundKills   *int
+	ShoulderBashKills  *int
+	PerfectKills       int
+	TopWeaponID        *int64
+	TopWeaponLabel     string
 	// Expected stats depuis match_participants (API) + calcul à la volée (service).
 	// AssistsExpected peuplé par le service layer (assists_model_coefs), pas par l'API.
 	KillsExpected   *float64

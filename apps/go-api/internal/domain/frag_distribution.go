@@ -28,7 +28,33 @@ const (
 	FragClassGrenade        = "grenade"         // Grenade (total API)
 	FragClassSpartanAbility = "spartan_ability" // Capacités spartanes (H5, cap-gated)
 	FragClassUnattributed   = "unattributed"    // Non attribué (résidu calculé)
+	// Buckets NON-COMBAT (pas d'arme réelle) — présents seulement sur H5 (registre).
+	FragClassVehicle       = "vehicle"       // Véhicule
+	FragClassTurret        = "turret"        // Tourelle
+	FragClassEnvironmental = "environmental" // Environnement
+	FragClassOther         = "other"         // Autre
 )
+
+// nonCombatFragClasses regroupe les classes d'arme qui ne correspondent PAS à une
+// arme réelle (buckets H5 véhicule/tourelle/environnement/autre + résidu « Spartan »
+// non attribué). Elles sont exclues du breakdown par-ARME (le sunburst les absorbe
+// dans « Non attribué »). Miroir Go canonique de NON_COMBAT_WEAPON_ROLES
+// (apps/web/src/features/synthesis/weaponRoleInsight.ts) — source unique côté Go,
+// gardée par frag_distribution_test.go (TestIsNonCombatFragClass).
+var nonCombatFragClasses = map[string]bool{
+	FragClassUnattributed:  true,
+	FragClassVehicle:       true,
+	FragClassTurret:        true,
+	FragClassEnvironmental: true,
+	FragClassOther:         true,
+}
+
+// IsNonCombatFragClass indique si une classe d'arme est un bucket non-combat
+// (véhicule/tourelle/environnement/non attribué/autre), à exclure d'un breakdown
+// par-arme réservé aux armes réelles.
+func IsNonCombatFragClass(class string) bool {
+	return nonCombatFragClasses[class]
+}
 
 // Clés de rôle canoniques du niveau 2 propres aux classes API (les rôles d'arme
 // registre — precision/automatic/sniper/… — restent portés par le registre).

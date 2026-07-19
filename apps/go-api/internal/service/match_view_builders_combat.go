@@ -37,6 +37,12 @@ func buildCombatTabFull(
 		if w.XUID != myXUID {
 			continue
 		}
+		// Breakdown par-ARME = armes réelles seulement : on écarte les buckets
+		// non-combat H5 (véhicule/tourelle/environnement/non attribué/autre). Ces
+		// kills restent comptés dans les classes du sunburst (« Non attribué »).
+		if domain.IsNonCombatFragClass(w.Class) {
+			continue
+		}
 		wkList = append(wkList, domain.MatchWeaponKill{
 			WeaponID:    w.WeaponID,
 			WeaponLabel: w.WeaponLabel,

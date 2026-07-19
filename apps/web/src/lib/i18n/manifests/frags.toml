@@ -40,11 +40,11 @@ en = "{pct}% of {className}"
 
 # ── Classes (niveau 1 du sunburst — axe manipulation) ─────────────────────────
 [frags.class.shoulder]
-fr = "Épaule"
+fr = "Arme d'épaule"
 en = "Shoulder"
 
 [frags.class.sidearm]
-fr = "Poing"
+fr = "Arme de poing"
 en = "Sidearm"
 
 [frags.class.heavy]
@@ -106,9 +106,9 @@ fr = "Corps-à-corps direct"
 en = "Direct melee"
 
 [frags.role.ground_pound]
-fr = "Frappe au sol"
+fr = "Coup au sol"
 en = "Ground pound"
 
 [frags.role.shoulder_bash]
-fr = "Charge d'épaule"
+fr = "Charge spartane"
 en = "Shoulder bash"

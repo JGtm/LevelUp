@@ -99,12 +99,57 @@ func TestBuildViewerFragDistribution_H5CapOn(t *testing.T) {
 	if got["spartan_ability"] != 2 {
 		t.Errorf("spartan_ability = %d, want 2", got["spartan_ability"])
 	}
-	// Vérifie le niveau 2 de Mêlée (2 rôles).
+	// Vérifie le niveau 2 de Mêlée (2 rôles dont l'Assassinat, gated par la mécanique
+	// native H5) et la présence de la classe Capacités spartanes → dépend des compteurs
+	// gp/sb/assass portés par la ligne scoreboard (FIX D : chargés depuis Q12).
+	var meleeRoles []domain.FragRoleEntry
+	hasSpartan := false
 	for _, c := range fd.Classes {
-		if c.Class == domain.FragClassMelee {
-			if len(c.Roles) != 2 {
-				t.Errorf("melee.Roles = %+v, want 2 rôles (assassination+direct_melee)", c.Roles)
+		switch c.Class {
+		case domain.FragClassMelee:
+			meleeRoles = c.Roles
+		case domain.FragClassSpartanAbility:
+			hasSpartan = true
+		}
+	}
+	if !hasSpartan {
+		t.Error("classe Capacités spartanes absente (attendue quand gp/sb portés par le scoreboard)")
+	}
+	if len(meleeRoles) != 2 {
+		t.Fatalf("melee.Roles = %+v, want 2 rôles (assassination+direct_melee)", meleeRoles)
+	}
+	foundAssassination := false
+	for _, r := range meleeRoles {
+		if r.Role == domain.FragRoleAssassination {
+			foundAssassination = true
+			if r.Kills != 2 {
+				t.Errorf("rôle Assassinat kills = %d, want 2", r.Kills)
 			}
 		}
+	}
+	if !foundAssassination {
+		t.Errorf("rôle Assassinat absent de melee.Roles = %+v", meleeRoles)
+	}
+}
+
+// TestBuildCombatTabFull_ExcludesNonCombatFromWeaponBreakdown : le breakdown par-ARME
+// (combat_tab.weapon_kills) ne contient QUE des armes réelles — les buckets non-combat
+// H5 (véhicule/tourelle/environnement/non attribué) sont écartés (FIX 2). Ces kills
+// restent comptés dans les classes du sunburst.
+func TestBuildCombatTabFull_ExcludesNonCombatFromWeaponBreakdown(t *testing.T) {
+	const myXUID = "me"
+	bulk := []domain.BulkWeaponKillRaw{
+		{XUID: "me", WeaponID: 1, WeaponLabel: "BR75", Kills: 5, Class: "shoulder"},
+		{XUID: "me", WeaponID: 2, WeaponLabel: "Spartan", Kills: 9, Class: "unattributed"},
+		{XUID: "me", WeaponID: 3, WeaponLabel: "Warthog", Kills: 2, Class: "vehicle"},
+		{XUID: "me", WeaponID: 4, WeaponLabel: "Turret", Kills: 1, Class: "turret"},
+		{XUID: "other", WeaponID: 1, WeaponLabel: "BR75", Kills: 99, Class: "shoulder"}, // pas is_me
+	}
+	tab := buildCombatTabFull("m1", bulk, nil, nil, nil, nil, myXUID, 60000)
+	if len(tab.WeaponKills) != 1 {
+		t.Fatalf("WeaponKills = %d, want 1 (armes réelles seulement) : %+v", len(tab.WeaponKills), tab.WeaponKills)
+	}
+	if tab.WeaponKills[0].WeaponLabel != "BR75" || tab.WeaponKills[0].Class != "shoulder" {
+		t.Errorf("WeaponKills[0] = %+v, want BR75/shoulder", tab.WeaponKills[0])
 	}
 }
