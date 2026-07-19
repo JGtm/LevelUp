@@ -259,20 +259,24 @@ var gunFragClasses = map[string]bool{
 //
 // Provenance (anti-double-source, §2) : classes gun shoulder/sidearm/heavy + rôles
 // d'arme = registre (rows, Authoritative=false) ; classes melee/grenade/
-// spartan_ability + total = stats API canoniques (Authoritative=true) ; unattributed
-// = totalKills − Σ classes (résidu, ajouté si > 0). hasMechanics gate spartan_ability
-// et le niveau 2 de Mêlée (invariant d — cap off ⇒ pas de spartan + Mêlée feuille).
+// spartan_ability + total = compteurs kill-type API canoniques (counts,
+// Authoritative=true) ; unattributed = counts.Total − Σ classes (résidu, ajouté si
+// > 0). hasMechanics gate spartan_ability et le niveau 2 de Mêlée (invariant d — cap
+// off ⇒ pas de spartan + Mêlée feuille).
+//
+// counts est un struct NEUTRE (domain.FragKillTypeCounts) : le builder est ainsi
+// partagé tel quel par Synthesis (agrégat SynthesisDetailedStats) ET Match view
+// (ligne scoreboard native du viewer) — jamais dupliqué (règle ≤2 copies).
 func buildFragDistribution(
 	rows []port.WeaponKillRow,
-	stats domain.SynthesisDetailedStats,
-	totalKills int,
+	counts domain.FragKillTypeCounts,
 	hasMechanics bool,
 ) domain.FragDistribution {
 	byClass := make(map[string]domain.FragClassEntry, len(canonicalFragClassOrder))
 	for _, e := range buildGunFragClasses(rows) {
 		byClass[e.Class] = e
 	}
-	for _, e := range buildAPIFragClasses(stats, hasMechanics) {
+	for _, e := range buildAPIFragClasses(counts, hasMechanics) {
 		byClass[e.Class] = e
 	}
 	// Non attribué = résidu calculé (invariant a : Σ classes == total ; invariant c :
@@ -282,7 +286,7 @@ func buildFragDistribution(
 	for _, e := range byClass {
 		sum += e.Kills
 	}
-	if unattr := totalKills - sum; unattr > 0 {
+	if unattr := counts.Total - sum; unattr > 0 {
 		byClass[domain.FragClassUnattributed] = domain.FragClassEntry{
 			Class: domain.FragClassUnattributed, Kills: unattr, Authoritative: false,
 		}
@@ -293,7 +297,7 @@ func buildFragDistribution(
 			classes = append(classes, e)
 		}
 	}
-	return domain.FragDistribution{TotalKills: totalKills, Classes: classes}
+	return domain.FragDistribution{TotalKills: counts.Total, Classes: classes}
 }
 
 // buildGunFragClasses agrège les classes gun (shoulder/sidearm/heavy) + leurs rôles
@@ -353,26 +357,27 @@ func rolesFromMap(byRole map[string]int, class string) []domain.FragRoleEntry {
 	return roles
 }
 
-// buildAPIFragClasses construit les classes servies par les totaux API canoniques
-// (Authoritative=true) : Mêlée, Grenade, et — si hasMechanics — Capacités spartanes.
-func buildAPIFragClasses(stats domain.SynthesisDetailedStats, hasMechanics bool) []domain.FragClassEntry {
+// buildAPIFragClasses construit les classes servies par les compteurs kill-type API
+// canoniques (Authoritative=true) : Mêlée, Grenade, et — si hasMechanics — Capacités
+// spartanes.
+func buildAPIFragClasses(counts domain.FragKillTypeCounts, hasMechanics bool) []domain.FragClassEntry {
 	out := make([]domain.FragClassEntry, 0, 3)
-	if mk := stats.TotalMeleeKills; mk > 0 {
+	if mk := counts.Melee; mk > 0 {
 		out = append(out, domain.FragClassEntry{
 			Class: domain.FragClassMelee, Kills: mk, Authoritative: true,
-			Roles: meleeRoles(mk, stats.TotalAssassinations, hasMechanics),
+			Roles: meleeRoles(mk, counts.Assassination, hasMechanics),
 		})
 	}
-	if gk := stats.TotalGrenadeKills; gk > 0 {
+	if gk := counts.Grenade; gk > 0 {
 		out = append(out, domain.FragClassEntry{
 			Class: domain.FragClassGrenade, Kills: gk, Authoritative: true,
 		})
 	}
 	if hasMechanics {
-		if sk := stats.TotalGroundPoundKills + stats.TotalShoulderBashKills; sk > 0 {
+		if sk := counts.GroundPound + counts.ShoulderBash; sk > 0 {
 			out = append(out, domain.FragClassEntry{
 				Class: domain.FragClassSpartanAbility, Kills: sk, Authoritative: true,
-				Roles: spartanRoles(stats.TotalGroundPoundKills, stats.TotalShoulderBashKills),
+				Roles: spartanRoles(counts.GroundPound, counts.ShoulderBash),
 			})
 		}
 	}

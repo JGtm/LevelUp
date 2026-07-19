@@ -10325,3 +10325,41 @@ Q30.
 
 **Conclusion** : les 2 items « hors périmètre » sont soldés. Reste au superviseur : relecture +
 décision de push (déploiement).
+
+---
+
+## [2026-07-19] Frag distribution v2 — P3 rollout Match view
+
+**Statut** : Complété (branche `feat/frag-distribution-v2`, tip P0-P2 `590f1d5e9`). Contrat
+`plan-execution`. Périmètre P3.1→P3.4 uniquement ; découvertes hors périmètre consignées §6.
+
+**Décision technique principale — généralisation du builder (D-P3-1)** : `buildFragDistribution`
+(P0) était couplé au DTO Synthesis (`stats domain.SynthesisDetailedStats + totalKills int`). Le
+Match view n'a pas ce type (compteurs natifs sur `MatchScoreboardRow`). Plutôt que dupliquer la
+logique (règle ≤2 copies), l'entrée kill-type a été généralisée en un struct NEUTRE
+`domain.FragKillTypeCounts{Melee,Grenade,Assassination,GroundPound,ShoulderBash,Total}` →
+`buildFragDistribution(rows, counts, hasMechanics)`. Appelant Synthesis (`loadTopWeaponKills`),
+`buildAPIFragClasses` et 5 tests adaptés. Le Match view construit ses `counts` depuis la ligne
+scoreboard is_me via `buildViewerFragDistribution` (nouveau helper `match_view_builders_combat.go`),
+qui RÉUTILISE le builder pur.
+
+**Câblage 2 voies** : `frag_distribution` posé sur `MatchCombatTab` (Go + openapi.yaml + generated.ts
++ interface hand-written types.ts, leçon D-P2-1). Voie repo `buildMatchViewFromData` (Infinite) :
+gun classes pleines depuis `d.bulkWeapons`. Voie canonique `buildMatchViewFromCanonical` (H5 live) :
+`rows=nil` → gun retombe en « Non attribué » (D-P3-2, dégradation D3/D-P0-2). `class`/`role` plombés
+dans `BulkWeaponKillRaw` + `class` sur `MatchWeaponKill` (recolore le breakdown).
+
+**Front** : `MatchFragCard` (composition sunburst + breakdown, calque `SynthesisFragCard`) remplace
+`MatchWeaponPieChart` + `MatchKillTypesDonut`. Les 2 fichiers + `killTypeFallback` + i18n orphelins
+(chartWeaponPieTitle/chartKillTypesTitle/labelPowerWeapon/labelMelee/labelOtherKills/weaponOtherGroup)
+SUPPRIMÉS ; labelGrenade/Assassination/GroundPound/ShoulderBash CONSERVÉS (MatchScoreboard). Partagés
+`KillTypesDonut`/`KillTypesDonutCard` NON touchés.
+
+**Résultats observés (gate P3)** : `go test ./internal/service/... ./internal/domain/...` PASS
+(service 10.7s, domain OK ; `go build ./internal/platform/duckdb/` OK) ; `make generate-types` PASS ;
+`make check-types` PASS (tsc exit 0) ; `make test-web` **277 fichiers, 2390 PASS / 14 skipped**
+(counts inchangés vs P2 : composants supprimés sans test dédié, MatchFragCard couvert par les tests
+P1 des composants partagés). Aucun commit.
+
+**Conclusion / prochaine étape** : P3 clos (cases cochées, §6 D-P3-1/D-P3-2). Reste revue visuelle
+match Infinite + H5 (gate humain) puis P4 (Timeseries). Superviseur : relecture + décision de commit.

@@ -17,7 +17,7 @@ function buildTooltip(name: string, description?: string | null): string {
 
 // Mimétique de ChartCard (apps/web/src/components/charts/ChartCard.tsx) :
 // même bordure / padding / titre avec border-b — pour s'aligner visuellement
-// avec MatchWeaponPieChart sur la même rangée.
+// avec les cartes de la même rangée (dont MatchFragCard).
 function PaneCard({
   title,
   children,

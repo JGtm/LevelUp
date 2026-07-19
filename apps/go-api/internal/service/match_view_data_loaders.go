@@ -398,6 +398,12 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// Halo 5 persisté : libellés d'équipe « Rouge/Bleu » depuis team_colors (no-op HINF
 	// et si le référentiel est vide → le front garde son libellé existant).
 	s.applyTeamNames(ctx, team.Scoreboard)
+	// FragDistribution v2 du viewer (sunburst classe→rôle) : construite après le
+	// scoreboard (compteurs natifs melee/grenade/spartan de la ligne is_me) + les bulk
+	// weapon kills du viewer (classes gun). hasMechanics via capability (jamais slug==).
+	combat.FragDistribution = buildViewerFragDistribution(
+		findViewerScoreboardRow(team.Scoreboard), d.bulkWeapons, titleHasNativeKillMechanics(s.titleSlug),
+	)
 	mediaTab := buildMediaTab(d.media)
 
 	// MV4.B' : radar 6 axes calculé depuis le scoreboard (kills/HS/PK/assists/

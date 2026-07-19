@@ -157,6 +157,12 @@ type BulkWeaponKillRaw struct {
 	Kills       int
 	WeaponLabel string
 	NameEN      string // nom EN officiel → lookup WeaponImageURL dans l'adapter
+	// Class / Role : dimensions du registre d'armes (axe manipulation + fonction de
+	// combat), résolues dans la même passe que le label (resolveWeaponMeta). Vides si
+	// l'arme est absente du registre. Alimentent la FragDistribution par-match (sunburst
+	// v2) : Class recolore le breakdown par arme, la ventilation gun → classe/rôle.
+	Class string
+	Role  string
 }
 
 // MatchEnrichmentRaw : données brutes de Q18.

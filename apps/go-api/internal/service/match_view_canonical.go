@@ -184,11 +184,17 @@ func (s *MatchViewService) buildMatchViewFromCanonical(ctx context.Context, deta
 	citationsTab, citationsUnavailable := buildCanonicalCitationsTab(comms)
 	teamTab := buildCanonicalTeamTab(detail, self)
 	s.applyTeamNames(ctx, teamTab.Scoreboard) // Halo 5 : « Rouge/Bleu » si team_colors seedé
+	// FragDistribution v2 du viewer : compteurs natifs (melee/grenade/spartan) de la
+	// ligne is_me. La voie live ne charge pas de bulk weapon kills (pas de substrat
+	// DuckDB) → la ventilation gun retombe dans « Non attribué » (résidu, D3/D-P0-2).
+	fragDistribution := buildViewerFragDistribution(
+		findViewerScoreboardRow(teamTab.Scoreboard), nil, titleHasNativeKillMechanics(s.titleSlug),
+	)
 	return domain.MatchViewResponse{
 		Header:         s.buildCanonicalHeader(detail, self),
 		Rank:           buildCanonicalRank(detail.Skill),
 		SummaryTab:     buildCanonicalSummaryTab(self),
-		CombatTab:      domain.MatchCombatTab{},
+		CombatTab:      domain.MatchCombatTab{FragDistribution: fragDistribution},
 		TeamTab:        teamTab,
 		MediaTab:       domain.MatchMediaTab{MediaItems: []domain.MatchAssociatedMedia{}},
 		CitationsTab:   citationsTab,

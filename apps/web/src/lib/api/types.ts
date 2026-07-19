@@ -1545,6 +1545,8 @@ export interface MatchWeaponKill {
   weapon_label: string
   effective_weapon_id: number | null
   kill_count: number
+  /** Axe manipulation de l'arme (registre) — recolore le breakdown par classe (sunburst v2). */
+  class?: string
 }
 
 export type PlayerWeaponKillRow = components['schemas']['PlayerWeaponKillRow']
@@ -1599,6 +1601,11 @@ export interface MatchCombatTab {
   impact_roles?: MatchViewImpactRole[]
   /** Phase 1 MV2 : cadence intra-match (ChartSeries<ChartPointStacked>). */
   cadence?: MatchViewCadence | null
+  /**
+   * Répartition hiérarchique des frags v2 (sunburst classe→rôle) du viewer pour ce
+   * match. Nil si le viewer n'a aucun kill (le front rend null). Cf. P3.
+   */
+  frag_distribution?: FragDistribution
 }
 
 /** MV2 : rôle narratif attribué (1 entrée par joueur × rôle). */

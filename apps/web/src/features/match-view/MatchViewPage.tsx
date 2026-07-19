@@ -18,8 +18,7 @@ import { MatchScoreboard } from './MatchScoreboard'
 import { MatchEncountersTable } from './MatchEncountersTable'
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
-import { MatchWeaponPieChart } from './MatchWeaponCharts'
-import { MatchKillTypesDonut } from './MatchKillTypesDonut'
+import { MatchFragCard } from './MatchFragCard'
 import { MatchMediaTab } from './MatchMediaTab'
 import {
   MatchMedalsSection,
@@ -27,8 +26,8 @@ import {
   MatchNativeCommendationsSection,
 } from './MatchSummaryMedalsAndCitations'
 import { buildMatchHeadingStr } from './format'
-import { MATCH_VIEW_TEXT, type MatchViewText } from './i18n'
-import type { MatchWeaponKill, MatchScoreboardRow, MatchViewRadarSeries } from '@/lib/api/types'
+import { MATCH_VIEW_TEXT } from './i18n'
+import type { MatchViewRadarSeries } from '@/lib/api/types'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { PageUnavailable } from '@/components/ui/page-unavailable'
 import { apiErrorCode } from '@/lib/api/client'
@@ -91,21 +90,6 @@ function translatePartialReason(code: string, locale: string): string {
     default:
       return code
   }
-}
-
-function killTypeFallback(me: MatchScoreboardRow | undefined, t: MatchViewText): MatchWeaponKill[] {
-  const total = me?.kills ?? 0
-  if (!total) return []
-  const headshots = me?.headshot_kills ?? 0
-  const power = me?.power_weapon_kills ?? 0
-  const melee = me?.melee_kills ?? 0
-  const other = Math.max(0, total - headshots - power - melee)
-  return [
-    { weapon_id: 1001, weapon_label: t.labelHeadshots, effective_weapon_id: null, kill_count: headshots },
-    { weapon_id: 1002, weapon_label: t.labelPowerWeapon, effective_weapon_id: null, kill_count: power },
-    { weapon_id: 1003, weapon_label: t.labelMelee, effective_weapon_id: null, kill_count: melee },
-    { weapon_id: 1004, weapon_label: t.labelOtherKills, effective_weapon_id: null, kill_count: other },
-  ].filter((w) => w.kill_count > 0)
 }
 
 type TabId = 'summary' | 'details'
@@ -233,8 +217,6 @@ export function MatchViewPage() {
 
   const meRow = scoreboard.find((r) => r.is_me)
   const meXUID = meRow?.xuid ?? null
-  const weaponData: MatchWeaponKill[] =
-    weaponKills.length > 0 ? weaponKills : killTypeFallback(meRow, t)
   // `radar` est typé `unknown[]` dans le contrat (le générateur OpenAPI a perdu
   // le type d'élément du slice Go `[]MatchViewRadarSeries`). On rétablit le type
   // réel renvoyé par l'API au point de consommation, sans changer la donnée.
@@ -350,10 +332,10 @@ export function MatchViewPage() {
               />
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <MatchWeaponPieChart weaponKills={weaponData} t={t} />
-              {/* Halo 5 : donut « Frags par technique » du viewer (mécaniques natives
-                  incl. assassinats + compétences spartiate). Null hors h5 (capability). */}
-              <MatchKillTypesDonut me={meRow} t={t} />
+              {/* Répartition des frags v2 (sunburst classe→rôle + breakdown par arme).
+                  Non gaté : Infinite = classes sans Spartan ; Halo 5 = avec (capability
+                  native_kill_mechanics côté backend). Remplace les 2 anciens graphes. */}
+              <MatchFragCard distribution={combat_tab.frag_distribution} weapons={weaponKills} />
               <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
               {/* Halo 5 : commendations NATIVES (citations_tab.native_commendations)
                   affichées À LA PLACE des citations dérivées d'Infinite

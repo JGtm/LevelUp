@@ -205,16 +205,31 @@ Probe consignée (D-P2-2). Aucun commit.
 
 ### P3 — Rollout Match view
 
-- [ ] P3.1 Plomber `class` dans le repo SÉPARÉ `MatchViewRepo.GetMatchBulkWeaponKills`
-      (`internal/service/match_view_repo_weapons.go:107,161-166`) — `BulkWeaponKillRaw` expose déjà label ; ajouter
-      class/role (son `resolveWeaponMeta` renvoie déjà role → étendre à class).
-- [ ] P3.2 Construire `FragDistribution` par-match (viewer) : gun classes = bulk weapon kills ; melee/grenade/
-      spartan = `MatchScoreboardRow` (`types.ts:1621-1677`, colonnes natives déjà présentes).
-- [ ] P3.3 Remplacer `MatchWeaponPieChart` (`MatchViewPage.tsx:353`) ET `MatchKillTypesDonut` (`:356`, H5-only) par
-      `<FragSunburst> + <FragWeaponBreakdown>`.
-- [ ] P3.4 Supprimer le code mort : `MatchWeaponPieChart`, `MatchKillTypesDonut` + leurs i18n si plus référencés (règle 0 code mort).
+- [x] P3.1 `class`/`role` plombés dans `BulkWeaponKillRaw` (`domain/match_view_raw.go`) + `weaponMetaEntry`
+      (class/role) + `GetMatchBulkWeaponKills` (`platform/duckdb/match_view_repo_weapons.go`) : `lookupWeaponMeta`
+      porte désormais class/role (résolus par `resolveWeaponMeta`, déjà class+role — P0.1) et les pose sur chaque row.
+- [x] P3.2 `buildViewerFragDistribution` (`service/match_view_builders_combat.go`) RÉUTILISE `buildFragDistribution`
+      (P0). Signature du builder GÉNÉRALISÉE : `stats domain.SynthesisDetailedStats + totalKills int` →
+      `counts domain.FragKillTypeCounts{Melee,Grenade,Assassination,GroundPound,ShoulderBash,Total}` (struct neutre,
+      §6 D-P3-1) ; appelant Synthesis + 5 tests adaptés (0 duplication, règle ≤2 copies). gun classes = bulk weapon
+      kills du viewer ; melee/grenade/spartan + total = ligne scoreboard native `MatchScoreboardRow` (is_me).
+      hasMechanics = `titleHasNativeKillMechanics` (capability). Champ `frag_distribution` sur `MatchCombatTab` :
+      Go domain + `openapi.yaml` + `generated.ts` + **interface hand-written `MatchCombatTab` types.ts** (D-P2-1) ;
+      câblé sur les DEUX voies (repo `buildMatchViewFromData` + canonique live `buildMatchViewFromCanonical`).
+      `class` ajouté à `MatchWeaponKill` (Go+openapi+types.ts) pour recolorer le breakdown.
+- [x] P3.3 `MatchWeaponPieChart` ET `MatchKillTypesDonut` remplacés par `MatchFragCard` (composition sunburst +
+      breakdown, calque `SynthesisFragCard`) dans `MatchViewPage.tsx`. Non gaté (Infinite classes sans Spartan ;
+      H5 avec). `killTypeFallback` + `weaponData` + imports orphelins retirés. Cas vide géré (rend null).
+- [x] P3.4 `MatchWeaponCharts.tsx` (seul export `MatchWeaponPieChart`) + `MatchKillTypesDonut.tsx` SUPPRIMÉS (0 réf,
+      pas de test dédié). i18n orphelins retirés (`chartWeaponPieTitle`/`chartKillTypesTitle`/`labelPowerWeapon`/
+      `labelMelee`/`labelOtherKills`/`weaponOtherGroup`) ; CONSERVÉS `labelGrenade`/`labelAssassination`/
+      `labelGroundPound`/`labelShoulderBash` (encore utilisés par `MatchScoreboard.tsx`) + `weaponUnknownPrefix`
+      (dette pré-existante hors périmètre, §6 D-P3-2). Partagés `KillTypesDonut`/`KillTypesDonutCard` NON touchés.
 
-**Gate P3** : `make check-types && make test-web` ; revue visuelle match Infinite + H5.
+**Gate P3** : `go test ./internal/service/... ./internal/domain/...` PASS (service 10.7s + domain OK ; duckdb build OK) ;
+`make generate-types` PASS ; `make check-types` PASS (tsc exit 0) ; `make test-web` **277 fichiers, 2390 PASS / 14 skipped**
+(counts inchangés vs P2 : composants supprimés sans test dédié, MatchFragCard couvert par les tests P1 des composants
+partagés). Revue visuelle match Infinite + H5 RESTE À FAIRE (gate humain). Aucun commit.
 
 ### P4 — Rollout Timeseries
 
@@ -333,6 +348,19 @@ Probe consignée (D-P2-2). Aucun commit.
   NUMÉRIQUE exacte (fetch `StatsMatchDetails` d'un match, count des Death events `IsMelee` vs `TotalAssassinations`
   par joueur) exigerait d'ÉTENDRE probe-h5 (parse Death events) = HORS P2 + risque sonde throwaway. À traiter AVANT
   prod (P7 ou lot dédié H5). Aucune action de code P2.
+- **D-P3-1 (signature `buildFragDistribution` généralisée) — TRAITÉ (in-scope P3.2)** : la signature P0
+  (`rows, stats domain.SynthesisDetailedStats, totalKills int, hasMechanics bool`) couplait le builder au DTO Synthesis.
+  Le Match view n'a pas de `SynthesisDetailedStats` (ses compteurs natifs vivent sur `MatchScoreboardRow`). Conformément
+  à la NOTE P3.2, l'entrée kill-type a été généralisée en `domain.FragKillTypeCounts{Melee,Grenade,Assassination,
+  GroundPound,ShoulderBash,Total}` (struct neutre) → `buildFragDistribution(rows, counts, hasMechanics)`. Appelant
+  Synthesis (`loadTopWeaponKills`) + `buildAPIFragClasses` + 5 tests adaptés. ZÉRO duplication de logique.
+- **D-P3-2 (voie canonique H5 = pas de bulk weapon kills)** : `buildMatchViewFromCanonical` (H5 live-only) ne charge
+  AUCUN bulk weapon kill (pas de substrat DuckDB). Sa FragDistribution du viewer est donc construite avec `rows=nil` :
+  melee/grenade/spartan + total servis par la ligne scoreboard native, la ventilation gun retombant intégralement dans
+  « Non attribué » (résidu, conforme D3 + D-P0-2). Sur la voie repo (Infinite persisté) les classes gun sont pleines.
+  Le breakdown par arme est donc VIDE sur H5 live (ChartCard placeholder). Cohérent avec la dégradation gracieuse ;
+  à valider à la revue visuelle H5. `weaponUnknownPrefix` (i18n match-view) reste déclaré mais SANS consommateur —
+  dette PRÉ-EXISTANTE (déjà orpheline avant P3), laissée en place (hors périmètre P3).
 - **D-P2-3 (doublons de cartes après P2.1/P2.2) — RÉSOLU (fusion tranchée avec l'utilisateur, 2026-07-19)** : les
   titres i18n de `SynthesisKillTypesDonut` (« Répartition des frags ») et `SynthesisWeaponKillsChart` (« Frags par
   arme ») étaient IDENTIQUES au sunburst/breakdown → doublons. Décision actée : LE sunburst unifié remplace LES DEUX

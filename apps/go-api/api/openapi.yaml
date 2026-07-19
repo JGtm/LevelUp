@@ -5670,6 +5670,8 @@ components:
     MatchWeaponKill:
       additionalProperties: false
       properties:
+          class:
+              type: string
           kill_count:
               format: int64
               type: integer
@@ -5703,6 +5705,8 @@ components:
       properties:
           cadence:
               $ref: '#/components/schemas/ChartSeriesChartPointStacked'
+          frag_distribution:
+              $ref: '#/components/schemas/FragDistribution'
           highlight_events:
               items:
                   $ref: '#/components/schemas/MatchHighlightEvent'
