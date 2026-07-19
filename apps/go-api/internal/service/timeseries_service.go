@@ -211,27 +211,35 @@ func (s *TimeseriesService) GetPage(
 		KillTypes:        buildTimeseriesKillTypes(matches),
 	}
 
-	// Top weapons (chart .04) : degradation gracieuse si weaponKillsRepo nil
-	// ou si le titre ne supporte pas la capability.
+	// Top weapons (chart .04) + répartition hiérarchique des frags (sunburst v2) :
+	// UNE seule charge weapon_kills (ResolveRoles=true → Role ET Class en une passe).
+	// Degradation gracieuse si weaponKillsRepo nil : la FragDistribution reste servie
+	// par les classes API (melee/grenade/spartan + total), les frags d'arme non résolus
+	// retombant dans « Non attribué » (résidu).
+	var weaponRows []port.WeaponKillRow
 	if s.weaponKillsRepo != nil && len(matches) > 0 && s.gamertag != "" {
 		matchIDs := make([]string, 0, len(matches))
 		for _, m := range matches {
 			matchIDs = append(matchIDs, m.MatchID)
 		}
 		filters := port.WeaponKillFilters{
-			MatchIDs:            matchIDs,
-			Gamertag:            s.gamertag,
-			IncludeGrenadeMelee: false,
+			MatchIDs:     matchIDs,
+			Gamertag:     s.gamertag,
+			ResolveRoles: true,
 		}
 		if err := filters.Validate(); err == nil {
 			rows, err := s.weaponKillsRepo.LoadWeaponKillsAggregated(ctx, s.titleSlug, filters)
 			if err != nil {
 				slog.WarnContext(ctx, "timeseries: top weapons load failed", "err", err)
 			} else {
+				weaponRows = rows
 				resp.TopWeapons = buildTopWeapons(rows, 10)
 			}
 		}
 	}
+	// FragDistribution (sunburst v2) : RÉUTILISE buildFragDistribution (partagé
+	// Synthesis/Match view — aucune duplication). Construite même sans weaponRows.
+	resp.FragDistribution = s.buildTimeseriesFragDistribution(ctx, weaponRows, resp.KillTypes)
 
 	// First events distribution (chart .11) + Intensity heatmap : RÉUTILISE les events
 	// déjà chargés (highlightEvents). Correction chronologie T0 ici (ramène les TimeMS
@@ -259,4 +267,44 @@ func (s *TimeseriesService) GetPage(
 	}
 
 	return resp, nil
+}
+
+// buildTimeseriesFragDistribution assemble la répartition hiérarchique classe→rôle
+// (sunburst v2) du scope filtré. RÉUTILISE le builder partagé buildFragDistribution
+// (aucune duplication — règle ≤2 copies) : classes API melee/grenade/spartan + total
+// depuis les compteurs kill-type agrégés (kt, via buildTimeseriesKillTypes) ; classes
+// gun shoulder/sidearm/heavy + rôles depuis le registre (weaponRows). Nil si aucun
+// frag. hasMechanics capability-gated (titleHasNativeKillMechanics, jamais slug==).
+func (s *TimeseriesService) buildTimeseriesFragDistribution(
+	ctx context.Context,
+	weaponRows []port.WeaponKillRow,
+	kt *domain.TimeseriesKillTypes,
+) *domain.FragDistribution {
+	if kt == nil || kt.TotalKills <= 0 {
+		return nil
+	}
+	counts := domain.FragKillTypeCounts{
+		Melee:         kt.MeleeKills,
+		Grenade:       kt.GrenadeKills,
+		Assassination: kt.Assassinations,
+		GroundPound:   kt.GroundPoundKills,
+		ShoulderBash:  kt.ShoulderBashKills,
+		Total:         kt.TotalKills,
+	}
+	fd := buildFragDistribution(weaponRows, counts, titleHasNativeKillMechanics(s.titleSlug))
+	// Compteurs + signalement d'un sur-comptage (Σ classes > total) : anomalie de
+	// données qui rend le résidu « Non attribué » impossible à calculer — jamais avalée.
+	sumClasses := 0
+	for _, c := range fd.Classes {
+		sumClasses += c.Kills
+	}
+	slog.DebugContext(ctx, "timeseries: frag distribution built",
+		"title", s.titleSlug, "player", s.gamertag,
+		"total_kills", fd.TotalKills, "class_count", len(fd.Classes))
+	if sumClasses > fd.TotalKills {
+		slog.WarnContext(ctx, "timeseries: frag distribution over-count (résidu négatif clampé)",
+			"title", s.titleSlug, "player", s.gamertag,
+			"sum_classes", sumClasses, "total_kills", fd.TotalKills)
+	}
+	return &fd
 }

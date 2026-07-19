@@ -50,6 +50,9 @@ type TimeseriesWeaponKill struct {
 	WeaponID int64  `json:"weapon_id"`
 	Label    string `json:"label"`
 	Kills    int    `json:"kills"`
+	// Class : axe manipulation de l'arme (registre, résolu par ResolveRoles) —
+	// recolore chaque barre par classe (cohérence sunburst v2). Vide si non résolu.
+	Class string `json:"class,omitempty"`
 }
 
 // TimeseriesKillTypes agrège la « répartition des frags » par TYPE sur le scope
@@ -302,4 +305,9 @@ type TimeseriesPageResponse struct {
 	// des frags » de l'onglet Progression. Reutilise le type de Synthesis. Nil si
 	// aucun match dans le scope.
 	DetailedStats *SynthesisDetailedStats `json:"detailed_stats,omitempty"`
+	// FragDistribution : répartition hiérarchique classe→rôle (sunburst v2) sur le
+	// scope filtré. Réutilise le builder partagé buildFragDistribution (classes API
+	// melee/grenade/spartan + total, classes gun depuis le registre). Nil si aucun
+	// frag. Title-agnostic (spartan_ability capability-gated native_kill_mechanics).
+	FragDistribution *FragDistribution `json:"frag_distribution,omitempty"`
 }

@@ -13,7 +13,7 @@ import {
   getEChartsThemeColors,
   getTooltipBase,
 } from '@/components/charts/_utils'
-import { resolveToken } from '@/lib/accessibility'
+import { fragClassColor } from '@/lib/accessibility/scales'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { TimeseriesWeaponKill } from '@/lib/api/types'
 import { ChartFromOption } from './ChartFromOption'
@@ -42,13 +42,17 @@ export function TimeseriesTopWeapons({
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (weapons.length === 0) return null
     const tc = getEChartsThemeColors()
-    const accent = resolveToken('chart-series-1')
 
     // ECharts catégoriel ASC affiche du bas vers le haut → on inverse pour avoir
-    // le top arme en haut.
+    // le top arme en haut. Chaque barre est recolorée par la CLASSE de l'arme
+    // (fragClassColor) pour la cohérence visuelle avec le sunburst v2 ; les armes
+    // sans classe résolue retombent sur la teinte neutre.
     const reversed = [...weapons].reverse()
     const categories = reversed.map((w) => w.label || labels.fallbackLabel(w.weapon_id))
-    const values = reversed.map((w) => w.kills)
+    const values = reversed.map((w) => ({
+      value: w.kills,
+      itemStyle: { color: fragClassColor(w.class) },
+    }))
 
     return {
       backgroundColor: CHART_BG,
@@ -73,7 +77,6 @@ export function TimeseriesTopWeapons({
           name: labels.seriesName,
           type: 'bar',
           data: values,
-          itemStyle: { color: accent, opacity: 0.85 },
           label: {
             show: true,
             position: 'right',

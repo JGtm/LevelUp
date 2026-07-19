@@ -10,7 +10,7 @@ import { outcomeCodeToTapeValue } from '@/lib/outcome'
 import { TimeseriesKdaTrend } from './TimeseriesKdaTrend'
 import { TimeseriesKdaDensity } from './TimeseriesKdaDensity'
 import { TimeseriesTopWeapons } from './TimeseriesTopWeapons'
-import { TimeseriesKillTypesDonut } from './TimeseriesKillTypesDonut'
+import { FragSunburst } from '@/components/charts/FragSunburst'
 import {
   TimeseriesAssistsTrend,
   TimeseriesAvgLifeTrend,
@@ -135,11 +135,13 @@ export function TimeseriesSummaryTab({
         />
       </div>
 
-      {/* Halo 5 : « répartition des frags » du viewer sur la période (mécaniques
-          natives incl. assassinats + compétences spartiate). Null hors h5. */}
-      <TimeseriesKillTypesDonut killTypes={data.kill_types} t={t} />
+      {/* Répartition des frags v2 — sunburst hiérarchique classe→rôle (title-agnostic :
+          Infinite sans capacités spartanes, Halo 5 avec). Remplace l'ancien donut
+          kill-type (Résumé) ET le donut de l'onglet Progression (D7 : tout sur Résumé).
+          Rend null si aucun frag. */}
+      <FragSunburst distribution={data.frag_distribution} />
 
-      {/* Outils de destruction (gauche) | FDA (droite) */}
+      {/* Outils de destruction (gauche, recoloré par classe) | FDA (droite) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <TimeseriesTopWeapons
           title={t('timeseries.summary.top_weapons_title')}
