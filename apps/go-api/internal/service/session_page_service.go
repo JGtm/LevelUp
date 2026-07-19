@@ -29,6 +29,10 @@ type SessionPageService struct {
 	playerMatchesRepo port.PlayerMatchesRepository
 	titleSlug         string
 	gamertag          string
+	// weaponKillsRepo (P5) : loader weapon_kills agrégé pour la répartition des frags
+	// (sunburst v2) de la session. Optionnel — nil → FragDistribution best-effort
+	// (classes API servies, ventilation gun retombant dans « Non attribué »).
+	weaponKillsRepo port.WeaponKillsRepository
 	// csrThreshold (optionnel) : résolveur season_id → seuil placement CSR (5 ou 10).
 	// Sans lui, applyMatchPlacements retombe sur le défaut (5). Cf. match_history_placement.go.
 	csrThreshold CSRThresholdResolver
@@ -51,6 +55,13 @@ func (s *SessionPageService) WithPlayerMatchesRepo(repo port.PlayerMatchesReposi
 // match-history). Permet à la colonne "Rang" d'afficher "X/Y" en phase de placement.
 func (s *SessionPageService) WithCSRThresholds(resolver CSRThresholdResolver) *SessionPageService {
 	s.csrThreshold = resolver
+	return s
+}
+
+// WithWeaponKillsRepo injecte le loader weapon_kills (P5) alimentant la répartition
+// hiérarchique des frags (sunburst v2) par session. Optionnel.
+func (s *SessionPageService) WithWeaponKillsRepo(repo port.WeaponKillsRepository) *SessionPageService {
+	s.weaponKillsRepo = repo
 	return s
 }
 
@@ -150,6 +161,10 @@ func (s *SessionPageService) GetPage(
 		NextSessionLabel:     nextLabel,
 	}
 
+	// Répartition des frags (sunburst v2) de la session courante — nouveau chemin de
+	// données P5 (weapon_kills + compteurs kill-type canoniques du scope session).
+	s.attachSessionFragDistribution(ctx, resp.CurrentSession, canonicalRows, matchIDsFromStatsRows(currentMatches))
+
 	if compareEnabled {
 		// Matchs de la session comparée : depuis le vivier élargi, pour qu'une session
 		// hors du filtre resserré ait bien ses matchs (sinon filterBySession sur le
@@ -159,6 +174,7 @@ func (s *SessionPageService) GetPage(
 		if resp.CompareSession != nil {
 			resp.CompareMetrics = buildCompareMetrics(currentMatches, compareMatches)
 			resp.CompareMatches = buildSessionDetailRows(compareMatches, resp.CompareSession.DominantCategory, req.Locale)
+			s.attachSessionFragDistribution(ctx, resp.CompareSession, canonicalRows, matchIDsFromStatsRows(compareMatches))
 		} else {
 			resp.CompareEnabled = false
 			slog.WarnContext(ctx, "session page: compare session missing after filtering",

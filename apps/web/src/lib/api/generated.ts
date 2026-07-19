@@ -7733,6 +7733,7 @@ export interface components {
             dmg_per_kill?: number;
             dominant_category: string | null;
             end_time: string | null;
+            frag_distribution?: components["schemas"]["FragDistribution"];
             /** Format: double */
             kda: number | null;
             /** Format: double */
@@ -7759,6 +7760,7 @@ export interface components {
             total_headshot_kills?: number;
             /** Format: int64 */
             total_matches: number;
+            top_weapon_kills?: components["schemas"]["SynthesisWeaponKillEntry"][] | null;
             /** Format: int64 */
             total_perfect_kills?: number;
             /** Format: double */

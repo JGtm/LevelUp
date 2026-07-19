@@ -70,6 +70,14 @@ type SessionCompareEntry struct {
 	// Meilleur et pire match par performance score computé.
 	BestMatch  *SessionDetailMatchRow `json:"best_match,omitempty"`
 	WorstMatch *SessionDetailMatchRow `json:"worst_match,omitempty"`
+	// FragDistribution : répartition hiérarchique classe→rôle des frags de la session
+	// (sunburst v2, P5). Nil si aucun frag / weapon_kills indisponible. Classes gun
+	// (registre) + classes API melee/grenade/spartan (compteurs canoniques du scope
+	// session) via le builder partagé buildFragDistribution.
+	FragDistribution *FragDistribution `json:"frag_distribution,omitempty"`
+	// TopWeaponKills : frags par arme (top N) de la session, enrichis class/role — pour
+	// le breakdown recoloré par classe accolé au sunburst. Nil/vide si indisponible.
+	TopWeaponKills []SynthesisWeaponKillEntry `json:"top_weapon_kills,omitempty"`
 }
 
 // SessionCompareMetricRow est une ligne de comparaison métrique A vs B.

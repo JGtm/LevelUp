@@ -34,6 +34,7 @@ import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { SessionDamageComposite } from './SessionDamageComposite'
 import { SessionOcdrBars } from './SessionOcdrBars'
+import { SessionFragCard } from './SessionFragCard'
 
 interface Props {
   entry: SessionCompareEntry | null
@@ -139,6 +140,10 @@ export function SessionChartStack({
     />
   )
   const damage = <SessionDamageComposite title={t('session.detail.chart_damage_title')} matches={matches} />
+  // Répartition des frags v2 (sunburst classe→rôle + breakdown par arme) — alimentée
+  // par l'agrégat de session (P5). Rend null si aucune donnée. Titre i18n FR+EN via le
+  // manifeste partagé `frags` (défaut FragSunburst/FragWeaponBreakdown).
+  const frags = <SessionFragCard entry={entry} />
 
   if (dense) {
     return (
@@ -157,6 +162,7 @@ export function SessionChartStack({
         {perf}
         {engagement}
         {damage}
+        {frags}
       </>
     )
   }
@@ -191,6 +197,7 @@ export function SessionChartStack({
       {perf}
       {engagement}
       {damage}
+      {frags}
     </>
   )
 }

@@ -238,7 +238,8 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 		return nil, err
 	}
 	svc := service.NewSessionPageService(duckdb.NewStatsRepo(pdb)).
-		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag)
+		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
+		WithWeaponKillsRepo(duckdb.NewWeaponKillsRepo(pdb))
 	if pdb.Metadata != nil {
 		// Placement X/Y dans la colonne Rang : résolveur season_id → seuil CSR (5/10),
 		// même source que l'Explorer/match-history. Fallback 5 si absent.

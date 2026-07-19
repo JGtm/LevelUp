@@ -14016,6 +14016,8 @@ components:
           end_time:
               type: string
               nullable: true
+          frag_distribution:
+              $ref: '#/components/schemas/FragDistribution'
           kda:
               format: double
               type: number
@@ -14070,6 +14072,11 @@ components:
           total_matches:
               format: int64
               type: integer
+          top_weapon_kills:
+              items:
+                  $ref: '#/components/schemas/SynthesisWeaponKillEntry'
+              type: array
+              nullable: true
           total_perfect_kills:
               format: int64
               type: integer

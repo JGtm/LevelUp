@@ -1,3 +1,47 @@
+## [2026-07-19] Frag Distribution v2 — P5 rollout Sessions (nouveau chemin de données)
+
+**Statut** : Complété (P5.1→P5.3 tous `[x]`). NON committé (le superviseur gère git après revue). Gate P5 vert.
+Contrat `plan-execution`, périmètre strict P5.1→P5.3 du `.ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md`. `.ai/BACKLOG.md` INTACT.
+
+**Décision technique principale** : l'endpoint `POST /pages/sessions/detail` est servi par `SessionPageService.GetPage`
+(`session_page_service.go`), PAS `sessions_service.go` (qui sert la LISTE) — cible P5.1 corrigée sur pièces (§6 D-P5-1).
+Nouveau chemin de données SANS dupliquer le builder : `session_page_frag_distribution.go` (NOUVEAU) filtre les rows
+canoniques (déjà chargées dans `GetPage`) par les match IDs de la session, calcule les compteurs kill-type API via
+`buildSynthesisDetailedStatsFromCanonical` (même agrégation que Synthesis) + le total, charge les `WeaponKillRow`
+(gun classes/rôles + top armes) via `LoadWeaponKillsAggregated(MatchIDs, Gamertag, ResolveRoles:true)`, puis RÉUTILISE
+`buildFragDistribution` (0 duplication). `hasMechanics = titleHasNativeKillMechanics(slug)` (capability, jamais slug==).
+Attaché à la session courante ET à la comparée. Repo câblé `WithWeaponKillsRepo(NewWeaponKillsRepo(pdb))`
+(`registry_pages.go`, parité Timeseries). Champs `FragDistribution` + `TopWeaponKills` (§6 D-P5-3, binôme complet)
+ajoutés à `SessionCompareEntry` : Go domain + `openapi.yaml` + `make generate-types`. `SessionCompareEntry` (types.ts)
+= `components['schemas'][...] & {...}` → 0 édition hand-written (les champs arrivent via le schéma généré, contraste
+D-P2-1/Synthesis).
+
+**Centralisation log (§6 D-P5-2)** : P5 = 3e copie du pattern de log FragDistribution → extrait en helper PARTAGÉ
+`logFragDistribution(ctx, surface, title, player, fd)` (`synthesis_service_builders.go`, règle CLAUDE.md ≤2 copies) ;
+Synthesis (méthode) + Timeseries (inline) migrés vers lui. Aucun test n'assertait ces logs. Garde-fou grep laissé à P7.2.
+
+**Front** : `SessionFragCard.tsx` (NOUVEAU, calque `SynthesisFragCard`/`MatchFragCard` : `<FragSunburst>` +
+`<FragWeaponBreakdown>`, rend null si pas de données) alimentée par `entry.frag_distribution` + `entry.top_weapon_kills`.
+Insérée JUSTE APRÈS `SessionDamageComposite` (`{damage}`) aux DEUX branches de `SessionChartStack.tsx` (dense + défaut).
+Query key inchangée. Titre i18n FR+EN via le manifeste PARTAGÉ `frags` (défauts des composants).
+
+**Résultats de test** : `go test ./internal/service/... ./internal/domain/...` PASS (service 10.4s + domain cached).
+gofmt Go clean. `make generate-types` PASS (generated.ts +2 lignes). `make check-types` PASS (tsc exit 0).
+`make test-web` = **277 fichiers, 2390 PASS / 14 skipped** (counts inchangés vs P4). 0 échec.
+
+**Fichiers** : NOUVEAUX `go-api/internal/service/session_page_frag_distribution.go`,
+`web/src/features/session-detail/SessionFragCard.tsx`. Modifiés `go-api/internal/domain/session_compare.go`
+(+2 champs), `go-api/internal/service/session_page_service.go` (field + `WithWeaponKillsRepo` + 2 attaches),
+`go-api/internal/service/synthesis_service_builders.go` (helper partagé `logFragDistribution`),
+`go-api/internal/service/synthesis_service.go` + `timeseries_service.go` (migration vers le helper),
+`go-api/internal/api/wire/registry_pages.go` (câblage repo), `go-api/api/openapi.yaml` (+ `generated.ts` régénéré),
+`web/src/features/session-detail/SessionChartStack.tsx` (import + montage aux 2 branches).
+
+**Conclusion** : P5 close, gate vert. Reste revue visuelle Sessions (drawer compact + pleine page, Infinite + H5,
+gate humain) puis P6 (Escouade).
+
+---
+
 ## [2026-07-19] Frag Distribution v2 — P4 rollout Timeseries
 
 **Statut** : Complété (P4.1→P4.4 tous `[x]`). NON committé (le superviseur gère git après revue). Gate P4 vert.
