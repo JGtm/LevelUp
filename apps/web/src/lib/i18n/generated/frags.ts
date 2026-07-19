@@ -19,7 +19,7 @@ export const fragsManifest = {
   "frags.role.automatic": { fr: "Automatique", en: "Automatic" },
   "frags.role.direct_melee": { fr: "Corps-à-corps direct", en: "Direct melee" },
   "frags.role.ground_pound": { fr: "Frappe au sol", en: "Ground pound" },
-  "frags.role.power": { fr: "Puissance", en: "Power weapon" },
+  "frags.role.power": { fr: "Arme Puissante", en: "Power weapon" },
   "frags.role.precision": { fr: "Précision", en: "Precision" },
   "frags.role.shotgun": { fr: "Fusil à pompe", en: "Shotgun" },
   "frags.role.shoulder_bash": { fr: "Charge d'épaule", en: "Shoulder bash" },

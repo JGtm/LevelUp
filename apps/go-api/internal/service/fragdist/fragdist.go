@@ -143,10 +143,14 @@ func rolesFromMap(byRole map[string]int, class string) []domain.FragRoleEntry {
 // spartanes.
 func buildAPIFragClasses(counts domain.FragKillTypeCounts, hasMechanics bool) []domain.FragClassEntry {
 	out := make([]domain.FragClassEntry, 0, 3)
-	if mk := counts.Melee; mk > 0 {
+	// Total de la classe Mêlée = mêlées directes + assassinats. Sur H5 l'API expose
+	// deux compteurs DISJOINTS (melee_kills n'inclut PAS les assassinats) : on additionne
+	// donc pour obtenir le total de la classe. Sur Infinite, Assassination=0 → total =
+	// Melee (inchangé). Cf. verdict empirique dans meleeRoles ci-dessous.
+	if meleeTotal := counts.Melee + counts.Assassination; meleeTotal > 0 {
 		out = append(out, domain.FragClassEntry{
-			Class: domain.FragClassMelee, Kills: mk, Authoritative: true,
-			Roles: meleeRoles(mk, counts.Assassination, hasMechanics),
+			Class: domain.FragClassMelee, Kills: meleeTotal, Authoritative: true,
+			Roles: meleeRoles(counts.Melee, counts.Assassination, hasMechanics),
 		})
 	}
 	if gk := counts.Grenade; gk > 0 {
@@ -166,31 +170,26 @@ func buildAPIFragClasses(counts domain.FragKillTypeCounts, hasMechanics bool) []
 }
 
 // meleeRoles construit le niveau 2 de la classe Mêlée. FEUILLE sur Infinite (pas de
-// mécanique native → invariant d). Sur H5 (hasMechanics) : Assassinat (total API) +
-// Corps-à-corps direct.
+// mécanique native → invariant d). Sur H5 (hasMechanics) : Assassinat = melee_kills API
+// (compteur total_assassinations) ; Corps-à-corps direct = melee_kills (compteur
+// total_melee_kills), SANS soustraction ni clamp.
 //
-// FORMULE PROVISOIRE : direct_melee = melee_total − assassination suppose
-// assassination ⊆ melee. À CONFIRMER par la probe H5 (gate G2.3, phase P2) — si les
-// deux compteurs sont disjoints, corriger ici. Cf. PLAN_FRAG_DISTRIBUTION_V2 §2.
-// Clamp assassination ≤ melee pour garantir l'invariant (b) et un résidu ≥ 0.
-func meleeRoles(meleeKills, assassinations int, hasMechanics bool) []domain.FragRoleEntry {
+// VERDICT (probe empirique, 2026-07-19) : assassinat ⊄ mêlée — les deux compteurs API
+// sont DISJOINTS (melee_kills n'inclut PAS les assassinats). Preuve : match
+// 3066a511-ebd0-428f-9555-50422caebaba / xuid 2535421586125737 → melee_kills=6,
+// assassination_kills=4, per-kill 6 mêlées + 4 assassinats ; et match 9bb09267… a
+// melee_kills=2 < assassination_kills=4 (impossible sous inclusion). 1212/1213 couples
+// disjoints. Donc Σ rôles = melee + assass = total de la classe (invariant b tenu).
+func meleeRoles(melee, assassinations int, hasMechanics bool) []domain.FragRoleEntry {
 	if !hasMechanics {
 		return nil
 	}
-	assass := assassinations
-	if assass > meleeKills {
-		assass = meleeKills
-	}
-	if assass < 0 {
-		assass = 0
-	}
-	direct := meleeKills - assass
 	roles := make([]domain.FragRoleEntry, 0, 2)
-	if assass > 0 {
-		roles = append(roles, domain.FragRoleEntry{Role: domain.FragRoleAssassination, Kills: assass})
+	if assassinations > 0 {
+		roles = append(roles, domain.FragRoleEntry{Role: domain.FragRoleAssassination, Kills: assassinations})
 	}
-	if direct > 0 {
-		roles = append(roles, domain.FragRoleEntry{Role: domain.FragRoleDirectMelee, Kills: direct})
+	if melee > 0 {
+		roles = append(roles, domain.FragRoleEntry{Role: domain.FragRoleDirectMelee, Kills: melee})
 	}
 	return roles
 }

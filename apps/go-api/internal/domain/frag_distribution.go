@@ -34,7 +34,7 @@ const (
 // registre — precision/automatic/sniper/… — restent portés par le registre).
 const (
 	FragRoleAssassination = "assassination" // Mêlée niv.2 (H5)
-	FragRoleDirectMelee   = "direct_melee"  // Mêlée niv.2 (H5) — formule provisoire (G2.3)
+	FragRoleDirectMelee   = "direct_melee"  // Mêlée niv.2 (H5) = total_melee_kills (disjoint des assassinats)
 	FragRoleGroundPound   = "ground_pound"  // Capacité spartane niv.2
 	FragRoleShoulderBash  = "shoulder_bash" // Capacité spartane niv.2
 )

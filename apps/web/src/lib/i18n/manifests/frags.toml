@@ -89,7 +89,7 @@ fr = "Arme de poing"
 en = "Sidearm"
 
 [frags.role.power]
-fr = "Puissance"
+fr = "Arme Puissante"
 en = "Power weapon"
 
 [frags.role.special]
