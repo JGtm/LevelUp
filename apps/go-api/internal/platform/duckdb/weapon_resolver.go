@@ -19,6 +19,7 @@ package duckdb
 
 import (
 	"context"
+	"log/slog"
 	"strconv"
 	"strings"
 )
@@ -72,7 +73,13 @@ func resolveWeaponMeta(ctx context.Context, meta *DB, titleSlug string, weaponID
 		" LEFT JOIN weapons w ON w.title_slug = wi.title_slug AND w.weapon_key = wi.weapon_key"
 	rows, err := meta.Query(ctx, query)
 	if err != nil {
-		// Registre absent (schéma non migré) → fallback weapon_labels seul (parité).
+		// weaponRegistryAvailable a confirmé la présence des tables du registre : une
+		// erreur ici n'est donc PAS un simple « schéma non migré » mais une anomalie de
+		// requête (SQL invalide, colonne renommée, conn timeout) — à SIGNALER avant la
+		// dégradation best-effort (parité loaders Synthesis/Session), pas à avaler. Le
+		// fallback weapon_labels seul (parité nom) reste servi pour ne pas casser l'UI.
+		slog.WarnContext(ctx, "weapon resolver: unified registry query failed, falling back to labels-only",
+			"title", titleSlug, "weapon_ids", len(unique), "err", err)
 		return resolveWeaponLabelsOnly(ctx, meta, unique)
 	}
 	defer rows.Close()

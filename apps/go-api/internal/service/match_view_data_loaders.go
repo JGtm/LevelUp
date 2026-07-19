@@ -404,6 +404,9 @@ func (s *MatchViewService) buildMatchViewFromData(
 	combat.FragDistribution = buildViewerFragDistribution(
 		findViewerScoreboardRow(team.Scoreboard), d.bulkWeapons, titleHasNativeKillMechanics(s.titleSlug),
 	)
+	if combat.FragDistribution != nil {
+		logFragDistribution(ctx, "match view", s.titleSlug, s.xuid, *combat.FragDistribution)
+	}
 	mediaTab := buildMediaTab(d.media)
 
 	// MV4.B' : radar 6 axes calculé depuis le scoreboard (kills/HS/PK/assists/
