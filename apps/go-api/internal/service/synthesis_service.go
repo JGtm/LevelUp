@@ -317,7 +317,7 @@ func (s *SynthesisService) loadTopWeaponKills(
 		Total:         totalKills,
 	}
 	fd := buildFragDistribution(rows, counts, hasMechanics)
-	s.logFragDistribution(ctx, fd)
+	logFragDistribution(ctx, "synthesis", s.titleSlug, s.gamertag, fd)
 	return buildTopWeaponKills(rows, synthesisWeaponChartTopN), buildKillsByRole(rows), &fd
 }
 
@@ -351,29 +351,6 @@ func (s *SynthesisService) loadWeaponKillRows(
 		return nil
 	}
 	return rows
-}
-
-// logFragDistribution émet les compteurs d'agrégation (P0.10) et SIGNALE (Warn, jamais
-// avalé) un sur-comptage (Σ classes attribuées > total) : anomalie de données qui rend
-// le résidu « Non attribué » impossible à calculer (l'invariant a n'est alors pas tenu).
-func (s *SynthesisService) logFragDistribution(ctx context.Context, fd domain.FragDistribution) {
-	sumClasses, sumRoles, unattributed := 0, 0, 0
-	for _, c := range fd.Classes {
-		sumClasses += c.Kills
-		sumRoles += len(c.Roles)
-		if c.Class == domain.FragClassUnattributed {
-			unattributed = c.Kills
-		}
-	}
-	slog.DebugContext(ctx, "synthesis: frag distribution built",
-		"title", s.titleSlug, "gamertag", s.gamertag,
-		"total_kills", fd.TotalKills, "class_count", len(fd.Classes),
-		"role_count", sumRoles, "unattributed", unattributed)
-	if sumClasses > fd.TotalKills {
-		slog.WarnContext(ctx, "synthesis: frag distribution over-count (résidu négatif clampé)",
-			"title", s.titleSlug, "gamertag", s.gamertag,
-			"sum_classes", sumClasses, "total_kills", fd.TotalKills)
-	}
 }
 
 // titleHasNativeKillMechanics indique si le titre fournit NATIVEMENT le détail des

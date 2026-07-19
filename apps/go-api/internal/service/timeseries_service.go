@@ -292,19 +292,6 @@ func (s *TimeseriesService) buildTimeseriesFragDistribution(
 		Total:         kt.TotalKills,
 	}
 	fd := buildFragDistribution(weaponRows, counts, titleHasNativeKillMechanics(s.titleSlug))
-	// Compteurs + signalement d'un sur-comptage (Σ classes > total) : anomalie de
-	// données qui rend le résidu « Non attribué » impossible à calculer — jamais avalée.
-	sumClasses := 0
-	for _, c := range fd.Classes {
-		sumClasses += c.Kills
-	}
-	slog.DebugContext(ctx, "timeseries: frag distribution built",
-		"title", s.titleSlug, "player", s.gamertag,
-		"total_kills", fd.TotalKills, "class_count", len(fd.Classes))
-	if sumClasses > fd.TotalKills {
-		slog.WarnContext(ctx, "timeseries: frag distribution over-count (résidu négatif clampé)",
-			"title", s.titleSlug, "player", s.gamertag,
-			"sum_classes", sumClasses, "total_kills", fd.TotalKills)
-	}
+	logFragDistribution(ctx, "timeseries", s.titleSlug, s.gamertag, fd)
 	return &fd
 }

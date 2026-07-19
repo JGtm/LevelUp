@@ -5,6 +5,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"sort"
 	"strings"
 
@@ -13,6 +14,32 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 )
+
+// logFragDistribution émet les compteurs d'agrégation d'une FragDistribution (Debug)
+// et SIGNALE (Warn, jamais avalé) un sur-comptage (Σ classes attribuées > total) :
+// anomalie de données qui rend le résidu « Non attribué » impossible à calculer
+// (l'invariant a n'est alors pas tenu). Helper PARTAGÉ par toutes les surfaces qui
+// construisent une FragDistribution (Synthesis, Timeseries, Sessions) — règle ≤2 copies.
+// `surface` préfixe les messages ("synthesis"/"timeseries"/"session page").
+func logFragDistribution(ctx context.Context, surface, title, player string, fd domain.FragDistribution) {
+	sumClasses, sumRoles, unattributed := 0, 0, 0
+	for _, c := range fd.Classes {
+		sumClasses += c.Kills
+		sumRoles += len(c.Roles)
+		if c.Class == domain.FragClassUnattributed {
+			unattributed = c.Kills
+		}
+	}
+	slog.DebugContext(ctx, surface+": frag distribution built",
+		"title", title, "player", player,
+		"total_kills", fd.TotalKills, "class_count", len(fd.Classes),
+		"role_count", sumRoles, "unattributed", unattributed)
+	if sumClasses > fd.TotalKills {
+		slog.WarnContext(ctx, surface+": frag distribution over-count (résidu négatif clampé)",
+			"title", title, "player", player,
+			"sum_classes", sumClasses, "total_kills", fd.TotalKills)
+	}
+}
 
 func buildHighlightsPreviewCanonical(rows []canonical.PlayerMatchRow) domain.SynthesisHighlightsPreview {
 	if len(rows) == 0 {

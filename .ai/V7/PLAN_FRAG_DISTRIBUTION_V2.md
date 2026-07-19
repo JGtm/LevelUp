@@ -259,15 +259,32 @@ couverts par les tests P1). Revue visuelle Timeseries (onglet Résumé, Infinite
 
 ### P5 — Rollout Sessions (LE PLUS LOURD — nouveau chemin de données)
 
-- [ ] P5.1 L'endpoint `sessions/detail` (`internal/service/sessions_service.go:27`) **ne charge AUCUNE donnée
-      d'arme ni total kill-type** aujourd'hui. Ajouter : agrégation `WeaponKillRow` (gun classes) + totaux
-      kill-type (melee/grenade/spartan) sur le scope de la session → nouveau champ `FragDistribution` sur
-      `SessionCompareEntry`/`SessionPageResponse` (`generated.ts:7695`).
-- [ ] P5.2 Front : nouvelle carte `<FragSunburst> (+ breakdown)` insérée **après** `SessionDamageComposite`
-      (dernier de la pile, `SessionChartStack.tsx:159` branche dense ET `:193` branche défaut — insérer aux DEUX).
-- [ ] P5.3 Query key inchangée (même endpoint) ; i18n titre de carte.
+- [x] P5.1 L'endpoint `sessions/detail` est servi par `SessionPageService.GetPage` (`session_page_service.go`,
+      PAS `sessions_service.go` qui sert la LISTE — cf. §6 D-P5-1). Nouveau chemin de données câblé sans dupliquer
+      le builder : `session_page_frag_distribution.go` (NOUVEAU) agrège, sur les match IDs de la session
+      sélectionnée, (a) les compteurs kill-type API (melee/grenade/assassination/ground_pound/shoulder_bash + total)
+      depuis les rows canoniques (déjà chargées dans `GetPage`, filtrées par ID) via
+      `buildSynthesisDetailedStatsFromCanonical` ; (b) les classes/rôles d'arme + top armes via
+      `LoadWeaponKillsAggregated(MatchIDs, Gamertag, ResolveRoles:true)`. Puis RÉUTILISE `buildFragDistribution`
+      (0 duplication). `hasMechanics = titleHasNativeKillMechanics(slug)` (capability, jamais slug==). Champs
+      `FragDistribution` + `TopWeaponKills` ajoutés à `SessionCompareEntry` : Go domain + `openapi.yaml` +
+      `make generate-types`. **Interface hand-written** : `SessionCompareEntry` (types.ts:1849) EST
+      `components['schemas']['SessionCompareEntry'] & {...}` → les 2 champs arrivent AUTOMATIQUEMENT via le schéma
+      généré (contraste avec D-P2-1 où `SynthesisPageResponse` était 100 % hand-written) — 0 édition types.ts.
+      Repo câblé `WithWeaponKillsRepo` (`registry_pages.go`). Attaché à la session courante ET à la session comparée.
+- [x] P5.2 Front : `SessionFragCard.tsx` (NOUVEAU, calque `SynthesisFragCard`/`MatchFragCard` : `<FragSunburst>` +
+      `<FragWeaponBreakdown>`, rend null si pas de données) alimentée par `entry.frag_distribution` +
+      `entry.top_weapon_kills`. Insérée **JUSTE APRÈS** `SessionDamageComposite` (`damage`) aux DEUX branches de
+      `SessionChartStack.tsx` : branche dense (après `{damage}`) ET branche défaut (après `{damage}`).
+- [x] P5.3 Query key inchangée (même endpoint `/pages/sessions/detail`, `queries.ts` non touché). Titre de carte
+      i18n FR+EN via le manifeste PARTAGÉ `frags` (`frags.charts.sunburst_title` / `weapon_breakdown_title`, défauts
+      de `FragSunburst`/`FragWeaponBreakdown`) — comme la carte de référence Synthesis (pas de clé `session.toml` ajoutée).
 
-**Gate P5** : gate go (service+duckdb) + `make check-types && make test-web` ; revue visuelle Sessions (les 2 branches : drawer compact + pleine page).
+**Gate P5** : `go test ./internal/service/... ./internal/domain/...` PASS (service 10.4s, domain cached) ; gofmt Go
+touchés clean ; `make generate-types` PASS (generated.ts +2 lignes = les 2 champs SessionCompareEntry) ;
+`make check-types` PASS (tsc exit 0) ; `make test-web` **277 fichiers, 2390 PASS / 14 skipped** (counts inchangés vs
+P4 : `SessionFragCard` couvert par les tests P1 des composants partagés, pas de test dédié). Revue visuelle Sessions
+(les 2 branches : drawer compact + pleine page, Infinite + H5) RESTE À FAIRE (gate humain). Aucun commit.
 
 ### P6 — Rollout Escouade (barres empilées par classe)
 
@@ -384,6 +401,24 @@ couverts par les tests P1). Revue visuelle Timeseries (onglet Résumé, Infinite
   lecteur front de `data.detailed_stats` (via `KillTypesDonutCard`). Après P4.4, le champ backend `DetailedStats`
   (encore peuplé dans `GetPage`, `timeseries_service.go`) n'a plus de consommateur côté Timeseries. Laissé en place
   (retrait DTO + arrêt du peuplement = P7, hors périmètre P4 ; risque nul, champ `omitempty`). À trancher au P7.
+- **D-P5-1 (endpoint sessions/detail = SessionPageService, pas sessions_service.go)** : le plan pointait
+  `sessions_service.go:27` (`SessionsService.GetSessions`) comme cible P5.1. VÉRIFICATION SUR PIÈCES : ce service sert
+  la LISTE des sessions (calcul de découpage) ; l'endpoint `POST /pages/sessions/detail` (le DÉTAIL, avec les charts)
+  est servi par `SessionPageService.GetPage` (`session_page_service.go`) qui construit `SessionCompareEntry`. C'est là
+  qu'a été câblé le chemin de données (canonicalRows déjà chargées + repo weapon_kills injecté). Micro-correction de
+  cible tranchée par le code (le code fait foi).
+- **D-P5-2 (centralisation `logFragDistribution` — 3e copie)** : P5 introduisait une 3e copie du pattern de log
+  d'agrégation FragDistribution (Debug compteurs + Warn sur-comptage) après Synthesis (`synthesis_service.go`, méthode)
+  et Timeseries (`timeseries_service.go`, inline). CLAUDE.md règle 6 (≤2 copies → centraliser à la 3e) → extrait en
+  helper PARTAGÉ `logFragDistribution(ctx, surface, title, player, fd)` (`synthesis_service_builders.go`) ; les 2
+  copies existantes migrées vers lui (Synthesis : clé log `gamertag`→`player` uniformisée ; Timeseries : suppression
+  du calcul `sumClasses` inline). Aucun test n'assertait ces logs (grep vert) → migration sans risque, gate service
+  vert. **Garde-fou grep** (interdiction du littéral) NON ajouté ici → laissé à P7.2 (étape garde-fous du plan), pour
+  ne pas sur-étendre P5.
+- **D-P5-3 (top_weapon_kills ajouté à l'entry session, in-scope P5.2)** : pour rendre le binôme complet
+  (sunburst + breakdown par arme) comme la carte de référence, `TopWeaponKills` a été ajouté à `SessionCompareEntry`
+  en plus de `FragDistribution` (P5.1 ne nommait que `frag_distribution`). Coût nul : les mêmes `WeaponKillRow`
+  chargées pour les gun classes alimentent `buildTopWeaponKills`. Conforme à P5.2 (« + top weapons si dispo »).
 - **D-P2-3 (doublons de cartes après P2.1/P2.2) — RÉSOLU (fusion tranchée avec l'utilisateur, 2026-07-19)** : les
   titres i18n de `SynthesisKillTypesDonut` (« Répartition des frags ») et `SynthesisWeaponKillsChart` (« Frags par
   arme ») étaient IDENTIQUES au sunburst/breakdown → doublons. Décision actée : LE sunburst unifié remplace LES DEUX
