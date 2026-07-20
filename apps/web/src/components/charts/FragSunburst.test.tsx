@@ -1,67 +1,92 @@
 /**
- * FragSunburst.test.tsx (P1.7) — rendu du composant (echarts-for-react mocké :
- * jsdom n'a pas de canvas, cf. convention repo) + contrat du builder pur
- * (hiérarchie classe→rôle, résidu hachuré, null si total 0).
+ * FragSunburst.test.tsx — rendu SVG (arcs classe + rôle, lignes de rappel des rôles,
+ * légende des classes) + contrat du builder pur `buildSunburstModel` (hiérarchie
+ * classe→rôle, feuilles sans ligne de rappel, ordre conservé). Pas de mock ECharts :
+ * le composant est du SVG inline, testable directement en jsdom.
  */
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
-import { FragSunburst, buildFragSunburstOption, type FragSunburstLabels } from './FragSunburst'
+import {
+  FragSunburst,
+  buildSunburstModel,
+  type FragSunburstColors,
+  type FragSunburstLabels,
+} from './FragSunburst'
 import type { FragDistribution } from '@/lib/api/types'
 
-vi.mock('echarts-for-react', () => ({
-  default: () => <div data-testid="echarts-mock" />,
-}))
+const COLORS: FragSunburstColors = {
+  classColor: (c) => `col:${c}`,
+  roleColor: (c, i) => `role:${c}:${i}`,
+  leafColor: (c) => `leaf:${c}`,
+}
 
 const LABELS: FragSunburstLabels = {
   classLabel: (c) => `class:${c}`,
   roleLabel: (r) => `role:${r}`,
-  centerLabel: 'Frags',
-  authorityExact: 'exact',
-  authorityEstimated: 'estimé',
   formatValue: (n) => String(n),
-  shareTotal: (pct) => `${pct}% total`,
-  shareClass: (pct, cn) => `${pct}% ${cn}`,
+  formatShare: (n) => `${n}%`,
 }
 
 const DIST: FragDistribution = {
   total_kills: 18,
   classes: [
-    { class: 'shoulder', kills: 10, authoritative: false, roles: [
-      { role: 'precision', kills: 6 },
-      { role: 'automatic', kills: 4 },
-    ] },
+    {
+      class: 'shoulder',
+      kills: 10,
+      authoritative: false,
+      roles: [
+        { role: 'precision', kills: 6 },
+        { role: 'automatic', kills: 4 },
+      ],
+    },
     { class: 'melee', kills: 5, authoritative: true },
     { class: 'unattributed', kills: 3, authoritative: false },
   ],
 }
 
-describe('buildFragSunburstOption (builder pur)', () => {
-  it('produit un sunburst 2 niveaux, ordre conservé, résidu hachuré', () => {
-    const opt = buildFragSunburstOption(DIST.classes ?? [], DIST.total_kills, LABELS) as {
-      series: { type: string; data: Array<{ name: string; value: number; children?: unknown[]; itemStyle: Record<string, unknown> }> }[]
+describe('buildSunburstModel (builder pur)', () => {
+  it('produit arcs classe + rôle + feuille, lignes de rappel des rôles, légende des classes', () => {
+    const model = buildSunburstModel(DIST.classes ?? [], DIST.total_kills, COLORS, LABELS)
+
+    // Arcs : 3 classes (anneau interne) + 2 rôles (shoulder) + 2 feuilles (melee, unattributed).
+    expect(model.arcs.filter((a) => a.kind === 'class')).toHaveLength(3)
+    expect(model.arcs.filter((a) => a.kind === 'role')).toHaveLength(2)
+    expect(model.arcs.filter((a) => a.kind === 'leaf')).toHaveLength(2)
+
+    // Lignes de rappel : uniquement pour les rôles (2), jamais pour les feuilles.
+    expect(model.callouts).toHaveLength(2)
+    expect(model.callouts.map((c) => c.label).sort()).toEqual(['role:automatic', 'role:precision'])
+    // Réparties gauche/droite : une ancre de chaque type existe potentiellement ;
+    // chaque callout a un point (polyline) et un texte valeur.
+    for (const co of model.callouts) {
+      expect(co.points.split(' ')).toHaveLength(4) // point → coude → genou → bord
+      expect(co.valueLabel).toContain('%')
     }
-    const s = opt.series[0]
-    expect(s.type).toBe('sunburst')
-    expect(s.data).toHaveLength(3)
-    // Classe avec rôles → children niveau 2.
-    expect(s.data[0].children).toHaveLength(2)
-    // Classe feuille (melee sans rôles) → pas de children.
-    expect(s.data[1].children).toBeUndefined()
-    // Non attribué → décal (hachure).
-    expect(s.data[2].itemStyle.decal).toBeDefined()
+
+    // Légende : 1 entrée par classe, ordre conservé, couleur de classe (pas de rôle).
+    expect(model.legend.map((l) => l.classKey)).toEqual(['shoulder', 'melee', 'unattributed'])
+    expect(model.legend[0].color).toBe('col:shoulder')
   })
 
-  it('total 0 → aucune série (rien à tracer)', () => {
-    const opt = buildFragSunburstOption([], 0, LABELS) as { series?: unknown[] }
-    expect(opt.series).toBeUndefined()
+  it('total 0 → modèle vide (rien à tracer)', () => {
+    const model = buildSunburstModel([], 0, COLORS, LABELS)
+    expect(model.arcs).toHaveLength(0)
+    expect(model.callouts).toHaveLength(0)
+    expect(model.legend).toHaveLength(0)
   })
 })
 
-describe('FragSunburst (composant)', () => {
-  it('total > 0 → monte le chart (titre + canvas mocké)', async () => {
+describe('FragSunburst (composant SVG)', () => {
+  it('total > 0 → rend le SVG, les lignes de rappel des rôles et la légende', () => {
     render(<FragSunburst distribution={DIST} />)
-    expect(await screen.findByTestId('echarts-mock')).toBeInTheDocument()
+    expect(screen.getByTestId('frag-sunburst')).toBeInTheDocument()
+    // 2 lignes de rappel (precision + automatic), aucune pour les feuilles.
+    expect(screen.getAllByTestId('frag-callout')).toHaveLength(2)
+    // Légende des classes présente.
+    expect(screen.getByTestId('frag-legend')).toBeInTheDocument()
+    // Centre = total.
+    expect(screen.getByText('18')).toBeInTheDocument()
   })
 
   it('total 0 → rend null (aucune carte)', () => {

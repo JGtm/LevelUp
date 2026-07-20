@@ -492,3 +492,35 @@ pré-prod P2.3 (`[!]`, D-P2-2). Aucun commit.
   `KillTypesDonut` conservés (Timeseries/Match/Explorer). La section frags de Synthesis = `SynthesisFragCard` seule.
   Note de fusion générale ajoutée en tête de la section Phases (vaut pour P3-P6 : chaque surface retire les anciennes
   cartes subsumées, pas seulement celle nommée).
+
+---
+
+## 7. Révision de FORME (2026-07-20) — sunburst SVG désencombré + gamme Antagonistes + layout auto-fit
+
+> Post-P7. Maquette validée avec l'utilisateur (`frags-forme.html`, fonction `buildSun`, Option A). Ces décisions
+> AMENDENT D1 (forme) et D10 (couleurs) ci-dessus. Le code fait foi.
+
+- **F1 — rendu SVG (remplace l'ECharts sunburst)** : `FragSunburst.tsx` réimplémenté en **SVG inline** (testable jsdom
+  sans mock echarts). 2 anneaux (classe R44→R76, rôle R76→R104). **Rôles = lignes de rappel** réparties gauche/droite
+  (point sur l'arc externe → coude → genou → texte au bord ; triées par Y, espacées CY±96 ; texte = nom + « valeur · % »).
+  **Classes = légende** sous le SVG (AUCUN texte sur les arcs de classe). Classes FEUILLES (poing/grenade/résidu) : anneau
+  externe = teinte éclaircie (`fragLeafColor`), pas de ligne de rappel, seulement légende. Centre = total. Survol arc =
+  tooltip (classe · rôle + valeur + %) + estompage des autres classes. Builder PUR `buildSunburstModel` (colors+labels
+  injectés). API inchangée (rend null si total 0). L'ancien `buildFragSunburstOption` (ECharts) retiré.
+- **F2 — couleurs = gamme « Antagonistes » réactive-palette (remplace le fixe Okabe de P1.1/D10)** : `fragClassColors.ts`
+  (hex Okabe FIXES) SUPPRIMÉ. `fragClass.ts` : `FRAG_CLASS_TOKENS` mappe chaque classe sur un TOKEN sémantique de la gamme
+  Antagonistes (= `MatchAntagonistChart`), résolu via `resolveToken` : shoulder→`perf-tier-2` · sidearm→`chart-series-6` ·
+  heavy→`narrative-humiliation` · melee→`chart-series-8` · grenade→`chart-series-7` · spartan_ability→`compare-a` ·
+  unattributed→`divergent-neutral`. Rôles = teintes éclaircies (`fragRoleColor`/`shiftLightness`). `TimeseriesTopWeapons`
+  +`useColorPaletteVersion`. **CVD** : palette défaut ΔE normal 12.5 / protan 8.9 / deutan 4.9 — sous le plancher 8 de
+  l'ancien Okabe ⇒ robustesse daltonisme portée par l'encodage secondaire (labels + lignes de rappel + légende + position
+  d'anneau), pas la seule teinte (le double encodage P1.2 devient le porteur principal). Choix acté user.
+- **F3 — layout Match view auto-fit** : `MatchViewPage.tsx` rangée frags → `grid-cols-[repeat(auto-fit,minmax(280px,1fr))]`
+  (plus de breakpoint fixe) : sunburst | breakdown | médailles se réagencent selon la largeur. Citations/Média inchangés.
+- **F4 — garde-fous** : `fragClass.guard.test.ts` (anti-collision TOKENS + validité + pin mapping + distinction ΔE normal
+  ≥ 8) ; `fragClass.colorSource.guard.test.ts` (source unique : pas d'import du mapping brut ni de mapping local
+  classe→couleur sous features/components — scan hex-par-valeur abandonné, collisions amber/indigo légitimes) ;
+  `FragSunburst.test.tsx` réécrit SVG.
+
+**Gate F** : `make check-types` PASS ; `make test-web` **278 fichiers, 2399 PASS / 14 skipped**. Aucun Go touché. Aucun
+commit. Reste (humain) : revue visuelle des 5 surfaces (lignes de rappel, tooltip/estompage, auto-fit, teintes light/dark).

@@ -1,195 +1,400 @@
 /**
- * FragSunburst — carte hiérarchique « Répartition des frags » v2 (ECharts sunburst
- * 2 anneaux). Anneau INTERNE = classe (axe manipulation : Épaule/Poing/Lourde/
+ * FragSunburst — carte hiérarchique « Répartition des frags » v2, rendue en SVG
+ * (2 anneaux). Anneau INTERNE = classe (axe manipulation : Épaule/Poing/Lourde/
  * Mêlée/Grenade/Capacités spartanes), anneau EXTERNE = rôle (fonction de combat).
- * « Non attribué » = résidu hachuré. Centre = total. Composant PARTAGÉ (Synthesis/
- * Match view/Timeseries/Sessions) — cf. .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P1.4.
  *
- * Couleurs : 1 token/classe via fragClassColor (source unique, CVD-safe Okabe-Ito) ;
- * rôles = teintes de luminosité de la classe (fragRoleColor). Double encodage
- * couleur + label + position. Rend null si total 0 (aucune donnée à montrer).
+ * Forme validée (maquette Option A) : sunburst DÉSENCOMBRÉ —
+ *   - les RÔLES (niveau 2) sont étiquetés par des LIGNES DE RAPPEL réparties
+ *     gauche/droite (point sur l'arc externe → coude → genou → texte au bord),
+ *     triées par Y et espacées verticalement ; texte = nom du rôle + « valeur · % » ;
+ *   - les CLASSES sont listées en LÉGENDE sous le SVG (pastille + nom + valeur) —
+ *     AUCUN texte sur les arcs de classe ;
+ *   - les classes FEUILLES (poing/grenade/résidu) : pas de libellé externe, teinte
+ *     éclaircie de la classe sur l'anneau externe, présentes seulement en légende ;
+ *   - centre = total ; survol d'un arc = tooltip (classe · rôle + valeur + %) +
+ *     estompage des autres classes.
  *
- * Provenance/autorité : chaque classe porte `authoritative` (exact = totaux API ;
- * estimé = registre) → badge dans le tooltip.
+ * Couleurs : gamme « Antagonistes » réactive à la palette (fragClassColor via token) ;
+ * rôles = teintes éclaircies (fragRoleColor). Double encodage couleur + label +
+ * position. Composant PARTAGÉ (Synthesis/Match view/Timeseries/Sessions) — cf.
+ * .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P1.4. Rend null si total 0.
  */
-import { useCallback } from 'react'
-import type { EChartsCoreOption } from 'echarts/core'
+import { useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react'
 
-import { fragClassColor, fragRoleColor, FRAG_CLASS_UNATTRIBUTED } from '@/lib/accessibility/scales'
+import { fragClassColor, fragRoleColor, fragLeafColor } from '@/lib/accessibility/scales'
+import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import type { FragDistribution, FragClassEntry } from '@/lib/api/types'
+import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { formatMessage } from '@/lib/i18n/format'
 import { fragsManifest } from '@/lib/i18n/generated/frags'
 import { intlLocale } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { ChartCard, type ChartSeries } from './ChartCard'
-import { CHART_BG, escapeHtml, getEChartsThemeColors } from './_utils'
+// ── Géométrie du sunburst (reprise fidèle de la maquette validée) ────────────────
+const W = 440
+const H = 300
+const CX = 220
+const CY = 142
+const R0 = 44 // rayon interne de l'anneau CLASSE
+const R1 = 76 // frontière classe / rôle
+const R2 = 104 // rayon externe de l'anneau RÔLE
+const CALLOUT_Y_TOP = CY - 96
+const CALLOUT_Y_BOT = CY + 96
+const KNEE_DX = 58
+const DIM_OPACITY = 0.22
 
-/** Libellés/formatters injectés (builder pur, testable sans i18n). */
+function polar(r: number, angleDeg: number): [number, number] {
+  const t = ((angleDeg - 90) * Math.PI) / 180
+  return [CX + r * Math.cos(t), CY + r * Math.sin(t)]
+}
+
+/** Chemin SVG d'un arc annulaire entre deux rayons et deux angles (degrés). */
+function arcPath(rin: number, rout: number, a0: number, a1: number): string {
+  const large = a1 - a0 > 180 ? 1 : 0
+  const [x0, y0] = polar(rout, a0)
+  const [x1, y1] = polar(rout, a1)
+  const [x2, y2] = polar(rin, a1)
+  const [x3, y3] = polar(rin, a0)
+  return `M${x0} ${y0} A${rout} ${rout} 0 ${large} 1 ${x1} ${y1} L${x2} ${y2} A${rin} ${rin} 0 ${large} 0 ${x3} ${y3} Z`
+}
+
+// ── Modèle de rendu (builder PUR, injecté colors + labels → testable sans DOM) ────
+
+export interface FragSunburstColors {
+  classColor: (className: string) => string
+  roleColor: (className: string, index: number, count: number) => string
+  leafColor: (className: string) => string
+}
+
 export interface FragSunburstLabels {
   classLabel: (className: string) => string
   roleLabel: (role: string) => string
-  centerLabel: string
-  authorityExact: string
-  authorityEstimated: string
   formatValue: (n: number) => string
-  shareTotal: (pct: string) => string
-  shareClass: (pct: string, className: string) => string
+  formatShare: (n: number) => string
 }
 
-interface SunburstNode {
-  name: string
+export interface SunArc {
+  key: string
+  d: string
+  fill: string
+  classKey: string
+  kind: 'class' | 'role' | 'leaf'
+  tipColor: string
+  tipTitle: string
+  tipSub: string
+}
+
+export interface SunCallout {
+  key: string
+  points: string
+  color: string
+  label: string
+  valueLabel: string
+  tx: number
+  ly: number
+  anchor: 'start' | 'end'
+}
+
+export interface SunLegendRow {
+  classKey: string
+  color: string
+  label: string
+  valueLabel: string
+}
+
+export interface SunModel {
+  arcs: SunArc[]
+  callouts: SunCallout[]
+  legend: SunLegendRow[]
+}
+
+interface RoleArcSeed {
+  label: string
   value: number
-  itemStyle: Record<string, unknown>
-  children?: SunburstNode[]
-  authoritative: boolean
-  className: string
-  classKills: number
+  color: string
+  mid: number
+  classKey: string
 }
 
-const UNATTRIBUTED_DECAL = {
-  color: 'rgba(0,0,0,0.38)',
-  dashArrayX: [1, 0] as [number, number],
-  dashArrayY: [4, 3] as [number, number],
-  rotation: -Math.PI / 4,
+function clamp(v: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, v))
 }
 
-function buildClassNode(entry: FragClassEntry, labels: FragSunburstLabels): SunburstNode {
-  const isUnattributed = entry.class === FRAG_CLASS_UNATTRIBUTED
-  const itemStyle: Record<string, unknown> = { color: fragClassColor(entry.class) }
-  if (isUnattributed) itemStyle.decal = UNATTRIBUTED_DECAL
-  const roles = entry.roles ?? []
-  const children =
-    roles.length > 0
-      ? roles.map((r, i) => ({
-          name: labels.roleLabel(r.role),
-          value: r.kills,
-          itemStyle: { color: fragRoleColor(entry.class, i, roles.length) },
-          authoritative: entry.authoritative,
-          className: labels.classLabel(entry.class),
-          classKills: entry.kills,
-        }))
-      : undefined
-  return {
-    name: labels.classLabel(entry.class),
-    value: entry.kills,
-    itemStyle,
-    children,
-    authoritative: entry.authoritative,
-    className: labels.classLabel(entry.class),
-    classKills: entry.kills,
-  }
-}
-
-function tooltipFormatter(labels: FragSunburstLabels, total: number) {
-  return (p: { name?: string; value?: number; data?: Partial<SunburstNode>; treePathInfo?: unknown[] }) => {
-    const value = typeof p.value === 'number' ? p.value : 0
-    const data = p.data ?? {}
-    const depth = Array.isArray(p.treePathInfo) ? p.treePathInfo.length - 1 : 1
-    const badge = data.authoritative ? labels.authorityExact : labels.authorityEstimated
-    const pctTotal = total > 0 ? ((value / total) * 100).toFixed(1) : '0'
-    const lines = [`<b>${escapeHtml(p.name ?? '')}</b> — ${labels.formatValue(value)}`]
-    lines.push(labels.shareTotal(pctTotal))
-    // Niveau 2 (rôle) : ajouter la part de la classe parente.
-    if (depth >= 2 && data.classKills && data.classKills > 0) {
-      const pctClass = ((value / data.classKills) * 100).toFixed(1)
-      lines.push(labels.shareClass(pctClass, escapeHtml(data.className ?? '')))
-    }
-    lines.push(`<span style="opacity:0.7">(${escapeHtml(badge)})</span>`)
-    return lines.join('<br/>')
-  }
-}
-
-/** Builder PUR — exporté pour tester l'option ECharts sans monter le React tree. */
-// eslint-disable-next-line react-refresh/only-export-components
-export function buildFragSunburstOption(
+/** Construit les arcs (classe + rôle/feuille) et collecte les rôles à étiqueter. */
+function buildArcs(
   classes: FragClassEntry[],
   total: number,
+  colors: FragSunburstColors,
   labels: FragSunburstLabels,
-): EChartsCoreOption {
-  if (total <= 0 || classes.length === 0) return { backgroundColor: CHART_BG }
-  const tc = getEChartsThemeColors()
-  const data = classes.map((c) => buildClassNode(c, labels))
+): { arcs: SunArc[]; roleSeeds: RoleArcSeed[] } {
+  const arcs: SunArc[] = []
+  const roleSeeds: RoleArcSeed[] = []
+  let cur = 0
+  for (const c of classes) {
+    const span = (c.kills / total) * 360
+    const a0 = cur
+    const a1 = cur + span
+    cur = a1
+    const classColor = colors.classColor(c.class)
+    const share = `${labels.formatValue(c.kills)} · ${labels.formatShare(c.kills)}`
+    arcs.push({
+      key: `c-${c.class}`,
+      d: arcPath(R0, R1, a0, a1),
+      fill: classColor,
+      classKey: c.class,
+      kind: 'class',
+      tipColor: classColor,
+      tipTitle: labels.classLabel(c.class),
+      tipSub: share,
+    })
+    const roles = c.roles ?? []
+    if (roles.length > 0) {
+      let rc = a0
+      roles.forEach((r, i) => {
+        const rs = (r.kills / total) * 360
+        const ra0 = rc
+        const ra1 = rc + rs
+        rc = ra1
+        const col = colors.roleColor(c.class, i, roles.length)
+        arcs.push({
+          key: `r-${c.class}-${r.role}`,
+          d: arcPath(R1, R2, ra0, ra1),
+          fill: col,
+          classKey: c.class,
+          kind: 'role',
+          tipColor: col,
+          tipTitle: `${labels.classLabel(c.class)} · ${labels.roleLabel(r.role)}`,
+          tipSub: `${labels.formatValue(r.kills)} · ${labels.formatShare(r.kills)}`,
+        })
+        roleSeeds.push({ label: labels.roleLabel(r.role), value: r.kills, color: col, mid: (ra0 + ra1) / 2, classKey: c.class })
+      })
+    } else {
+      arcs.push({
+        key: `l-${c.class}`,
+        d: arcPath(R1, R2, a0, a1),
+        fill: colors.leafColor(c.class),
+        classKey: c.class,
+        kind: 'leaf',
+        tipColor: classColor,
+        tipTitle: labels.classLabel(c.class),
+        tipSub: share,
+      })
+    }
+  }
+  return { arcs, roleSeeds }
+}
+
+/** Étale les rôles d'un côté (gauche/droite) en lignes de rappel espacées en Y. */
+function buildCalloutsForSide(seeds: RoleArcSeed[], right: boolean, labels: FragSunburstLabels): SunCallout[] {
+  const points = seeds
+    .map((s) => {
+      const [ex, ey] = polar(R2, s.mid)
+      const [elbowX, elbowY] = polar(R2 + 8, s.mid)
+      return { ...s, ex, ey, elbowX, elbowY }
+    })
+    .sort((a, b) => a.ey - b.ey)
+  const tx = right ? W - 6 : 6
+  const knee = right ? tx - KNEE_DX : tx + KNEE_DX
+  const anchor: 'start' | 'end' = right ? 'end' : 'start'
+  return points.map((p, k) => {
+    const ly =
+      points.length === 1
+        ? clamp(p.ey, CALLOUT_Y_TOP, CALLOUT_Y_BOT)
+        : CALLOUT_Y_TOP + (k * (CALLOUT_Y_BOT - CALLOUT_Y_TOP)) / (points.length - 1)
+    const endX = right ? tx - 2 : tx + 2
+    return {
+      key: `${p.classKey}-${p.label}`,
+      points: `${p.ex},${p.ey} ${p.elbowX},${p.elbowY} ${knee},${ly} ${endX},${ly}`,
+      color: p.color,
+      label: p.label,
+      valueLabel: `${labels.formatValue(p.value)} · ${labels.formatShare(p.value)}`,
+      tx,
+      ly,
+      anchor,
+    }
+  })
+}
+
+/**
+ * Builder PUR du modèle de rendu SVG — exporté pour tester la géométrie sans DOM.
+ * `total` doit être > 0 (le composant garde ce cas en amont).
+ */
+export function buildSunburstModel(
+  classes: FragClassEntry[],
+  total: number,
+  colors: FragSunburstColors,
+  labels: FragSunburstLabels,
+): SunModel {
+  if (total <= 0 || classes.length === 0) return { arcs: [], callouts: [], legend: [] }
+  const { arcs, roleSeeds } = buildArcs(classes, total, colors, labels)
+  const rightSeeds = roleSeeds.filter((s) => Math.sin(((s.mid - 90) * Math.PI) / 180) >= 0)
+  const leftSeeds = roleSeeds.filter((s) => Math.sin(((s.mid - 90) * Math.PI) / 180) < 0)
+  const callouts = [
+    ...buildCalloutsForSide(rightSeeds, true, labels),
+    ...buildCalloutsForSide(leftSeeds, false, labels),
+  ]
+  const legend: SunLegendRow[] = classes.map((c) => ({
+    classKey: c.class,
+    color: colors.classColor(c.class),
+    label: labels.classLabel(c.class),
+    valueLabel: labels.formatValue(c.kills),
+  }))
+  return { arcs, callouts, legend }
+}
+
+// ── Câblage React (i18n + couleurs réactives à la palette) ───────────────────────
+
+/** Formatters i18n hors part (formatShare dépend du total → composé côté composant). */
+type FragSunburstBaseLabels = Omit<FragSunburstLabels, 'formatShare'>
+
+function useSunburstLabels(): FragSunburstBaseLabels {
+  const appLocale = useAppShellStore((s) => s.locale)
+  const numLoc = intlLocale(appLocale)
   return {
-    backgroundColor: CHART_BG,
-    graphic: {
-      type: 'group',
-      left: 'center',
-      top: 'center',
-      children: [
-        { type: 'text', top: -12, style: { text: labels.formatValue(total), fontSize: 22, fontWeight: 'bold', fill: tc.text, textAlign: 'center' } },
-        { type: 'text', top: 14, style: { text: labels.centerLabel, fontSize: 11, fill: tc.axisLabel, textAlign: 'center' } },
-      ],
-    },
-    tooltip: {
-      backgroundColor: tc.tooltipBg,
-      borderColor: tc.tooltipBorder,
-      textStyle: { color: tc.text, fontSize: 11 },
-      extraCssText: 'border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.4)',
-      trigger: 'item',
-      formatter: tooltipFormatter(labels, total) as unknown as string,
-    },
-    series: [
-      {
-        type: 'sunburst',
-        radius: ['24%', '92%'],
-        data,
-        sort: undefined, // conserver l'ordre canonique fourni (jamais par valeur)
-        emphasis: { focus: 'ancestor' },
-        label: { color: tc.text, fontSize: 10, minAngle: 8 },
-        itemStyle: { borderColor: CHART_BG, borderWidth: 2 },
-        levels: [
-          {},
-          { r0: '24%', r: '58%', label: { rotate: 'tangential' } },
-          { r0: '58%', r: '92%', label: { rotate: 'tangential' } },
-        ],
-      },
-    ],
+    classLabel: (c: string) => formatMessage(fragsManifest, `frags.class.${c}` as never, appLocale),
+    roleLabel: (r: string) => formatMessage(fragsManifest, `frags.role.${r}` as never, appLocale),
+    formatValue: (n: number) => n.toLocaleString(numLoc),
   }
 }
 
-function useSunburstLabels(): FragSunburstLabels {
-  const appLocale = useAppShellStore((s) => s.locale)
-  const numLoc = intlLocale(appLocale)
-  const classLabel = (c: string) => formatMessage(fragsManifest, `frags.class.${c}` as never, appLocale)
-  const roleLabel = (r: string) => formatMessage(fragsManifest, `frags.role.${r}` as never, appLocale)
-  return {
-    classLabel,
-    roleLabel,
-    centerLabel: formatMessage(fragsManifest, 'frags.charts.center_total_label', appLocale),
-    authorityExact: formatMessage(fragsManifest, 'frags.authority.exact', appLocale),
-    authorityEstimated: formatMessage(fragsManifest, 'frags.authority.estimated', appLocale),
-    formatValue: (n: number) => n.toLocaleString(numLoc),
-    shareTotal: (pct: string) => formatMessage(fragsManifest, 'frags.tooltip.share_total', appLocale, { pct }),
-    shareClass: (pct: string, className: string) =>
-      formatMessage(fragsManifest, 'frags.tooltip.share_class', appLocale, { pct, className }),
-  }
+const SUNBURST_COLORS: FragSunburstColors = {
+  classColor: fragClassColor,
+  roleColor: fragRoleColor,
+  leafColor: fragLeafColor,
+}
+
+interface TipState {
+  x: number
+  y: number
+  color: string
+  title: string
+  sub: string
 }
 
 export interface FragSunburstProps {
   distribution?: FragDistribution | null
   title?: string
-  height?: number
 }
 
-export function FragSunburst({ distribution, title, height }: FragSunburstProps) {
+export function FragSunburst({ distribution, title }: FragSunburstProps) {
   const appLocale = useAppShellStore((s) => s.locale)
-  const labels = useSunburstLabels()
+  const paletteVersion = useColorPaletteVersion()
+  const numLoc = intlLocale(appLocale)
+  const labelsBase = useSunburstLabels()
   const total = distribution?.total_kills ?? 0
   const classes = distribution?.classes ?? []
+  const [hovered, setHovered] = useState<string | null>(null)
+  const [tip, setTip] = useState<TipState | null>(null)
 
-  const buildOption = useCallback(
-    (series: ChartSeries<FragClassEntry>[]) => buildFragSunburstOption(series[0]?.datapoints ?? [], total, labels),
-    // labels dépend de appLocale ; on l'inclut plutôt que l'objet (référence neuve à chaque rendu)
+  // Part = valeur / total, formatée en pourcentage localisé.
+  const labels: FragSunburstLabels = useMemo(
+    () => ({
+      ...labelsBase,
+      formatShare: (n: number) =>
+        `${(total > 0 ? (n / total) * 100 : 0).toLocaleString(numLoc, { maximumFractionDigits: 1 })} %`,
+    }),
+    // labelsBase dérive de appLocale ; on l'exclut (référence neuve à chaque rendu).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [total, appLocale],
+    [total, appLocale, numLoc],
   )
 
-  // Rend null si total 0 (rien à montrer) — contrat P1.4.
+  const model = useMemo(
+    () => buildSunburstModel(classes, total, SUNBURST_COLORS, labels),
+    // couleurs réactives à la palette : paletteVersion force le recalcul.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [classes, total, appLocale, paletteVersion],
+  )
+
   if (total <= 0 || classes.length === 0) return null
 
+  const tc = getEChartsThemeColors()
   const cardTitle = title ?? formatMessage(fragsManifest, 'frags.charts.sunburst_title', appLocale)
-  const series: ChartSeries<FragClassEntry>[] = [{ key: 'frag-classes', datapoints: classes }]
+  const centerLabel = formatMessage(fragsManifest, 'frags.charts.center_total_label', appLocale)
 
-  return <ChartCard title={cardTitle} series={series} buildOption={buildOption} height={height ?? 320} />
+  const showTip = (e: ReactMouseEvent, arc: SunArc) => {
+    setHovered(arc.classKey)
+    setTip({ x: e.clientX, y: e.clientY, color: arc.tipColor, title: arc.tipTitle, sub: arc.tipSub })
+  }
+  const clearTip = () => {
+    setHovered(null)
+    setTip(null)
+  }
+  const arcOpacity = (classKey: string) => (hovered && classKey !== hovered ? DIM_OPACITY : 1)
+
+  return (
+    <div className="relative rounded-lg border border-border bg-card" data-testid="frag-sunburst">
+      <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">{cardTitle}</div>
+      <div className="p-3">
+        <div className="relative flex items-center justify-center">
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            role="img"
+            aria-label={cardTitle}
+            className="h-auto w-full"
+            style={{ overflow: 'visible' }}
+          >
+            {model.arcs.map((a) => (
+              <path
+                key={a.key}
+                d={a.d}
+                fill={a.fill}
+                style={{ stroke: 'var(--card)', strokeWidth: 2, opacity: arcOpacity(a.classKey), transition: 'opacity .12s', cursor: 'pointer' }}
+                onMouseEnter={(e) => showTip(e, a)}
+                onMouseMove={(e) => setTip((t) => (t ? { ...t, x: e.clientX, y: e.clientY } : t))}
+                onMouseLeave={clearTip}
+              >
+                <title>{`${a.tipTitle} — ${a.tipSub}`}</title>
+              </path>
+            ))}
+            {model.callouts.map((co) => (
+              <g key={co.key} data-testid="frag-callout">
+                <polyline points={co.points} fill="none" stroke={co.color} strokeWidth={1} opacity={0.6} />
+                <text x={co.tx} y={co.ly - 2} textAnchor={co.anchor} fill={tc.text} style={{ fontSize: 10, opacity: 0.9 }}>
+                  {co.label}
+                </text>
+                <text x={co.tx} y={co.ly + 10} textAnchor={co.anchor} fill={co.color} style={{ fontSize: 10, fontWeight: 600 }}>
+                  {co.valueLabel}
+                </text>
+              </g>
+            ))}
+          </svg>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{centerLabel}</span>
+            <span className="text-2xl font-bold leading-none">{total.toLocaleString(numLoc)}</span>
+          </div>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1" data-testid="frag-legend">
+          {model.legend.map((row) => (
+            <span
+              key={row.classKey}
+              className="inline-flex cursor-default items-center gap-1.5 rounded px-1 py-0.5 text-xs"
+              style={{ opacity: hovered && row.classKey !== hovered ? DIM_OPACITY : 1 }}
+              onMouseEnter={() => setHovered(row.classKey)}
+              onMouseLeave={() => setHovered(null)}
+            >
+              <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: row.color }} />
+              {row.label}
+              <span className="text-muted-foreground">{row.valueLabel}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+      {tip && (
+        <div
+          className="pointer-events-none fixed z-50 max-w-[240px] rounded-md border border-border bg-card px-2.5 py-1.5 text-xs shadow-lg"
+          style={{
+            left: typeof window !== 'undefined' && tip.x + 260 > window.innerWidth ? tip.x - 254 : tip.x + 14,
+            top: tip.y + 14,
+          }}
+          role="tooltip"
+        >
+          <div className="mb-0.5 flex items-center gap-1.5 font-medium">
+            <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: tip.color }} />
+            {tip.title}
+          </div>
+          <div className="text-muted-foreground">{tip.sub}</div>
+        </div>
+      )}
+    </div>
+  )
 }
