@@ -1,27 +1,27 @@
 /**
- * Garde-rail fragClass (P1.3 + P1.7 du PLAN_FRAG_DISTRIBUTION_V2).
+ * Garde-rail fragClass (P1.3/P1.7 du PLAN_FRAG_DISTRIBUTION_V2, révisé « gamme
+ * Antagonistes »).
  *
- * 1. Anti-collision : chaque classe du sunburst a un hex DISTINCT (corrige le
- *    doublon mêlée=grenade de l'ancien donut). Une régression ici re-fusionnerait
- *    deux classes en une couleur.
- * 2. Indépendance de la palette active : les couleurs de frags viennent d'un jeu
- *    de hex FIXES (fragClassColors.ts, teintes Okabe-Ito), PAS de la palette active
- *    — sous la palette DÉFAUT, chart-series-1..5 sont une rampe indigo (ΔE ~5.4,
- *    SOUS le plancher CVD). fragClassColor renvoie donc un hex littéral, jamais un
- *    token résolu au runtime : la distinction est garantie quelle que soit la palette.
- * 3. CVD : les 6 classes de combat restent séparées sous simulation protanope/
- *    deutéranope. Cible : min all-pairs ΔE (OKLab ×100) >= 8 (cible du validateur
- *    dataviz ; cible plan >=12 non atteignable sans casser le floor normal-vision —
- *    plafond structurel des 6 teintes Okabe). Mesuré : 11.0 (deutan), 15.6 (normal).
+ * L'ancienne approche « hex Okabe FIXES » est REMPLACÉE par un mapping classe →
+ * TOKEN de la gamme « Antagonistes » (réactive à la palette, comme
+ * MatchAntagonistChart). Le garde-rail vérifie donc désormais :
  *
- * Math CVD = OKLab + transforme Machado-Oliveira-Fernandes (2009) severité 1.0,
- * portée du validateur dataviz (scripts/validate_palette.js) — self-contained.
+ * 1. Anti-collision : chaque classe a un TOKEN DISTINCT (aucune classe n'en partage
+ *    un) — corrige le doublon mêlée=grenade de l'ancien donut.
+ * 2. Tokens valides : chaque token existe dans le contrat sémantique (ALL_TOKENS).
+ * 3. Pin du mapping validé (la gamme Antagonistes actée avec l'utilisateur).
+ * 4. Distinction : résolus sur la palette DÉFAUT, les 6 classes de combat donnent 6
+ *    hex DISTINCTS et une distance perceptuelle normale-vision suffisante (min
+ *    all-pairs ΔE OKLab ×100 ≥ 8 ; mesuré 12.5). La robustesse daltonisme est
+ *    portée par l'ENCODAGE SECONDAIRE (labels + lignes de rappel + légende +
+ *    position d'anneau), jamais par la seule teinte — cf. double encodage P1.2.
  */
 import { describe, it, expect } from 'vitest'
-import { fragClassColor, FRAG_CLASS_ORDER } from './fragClass'
-import { FRAG_CLASS_HEX, FRAG_CLASS_NEUTRAL_HEX } from './fragClassColors'
+import { FRAG_CLASS_ORDER, FRAG_CLASS_TOKENS, fragClassToken } from './fragClass'
+import { ALL_TOKENS } from '../semantic-tokens'
+import { defaultPalette } from '../palettes/default'
 
-// ── conversions couleur (extrait du validateur dataviz) ─────────────────────────
+// ── ΔE normal-vision (OKLab, extrait du validateur dataviz) ─────────────────────
 const s2lin = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
 function lin(hex: string): [number, number, number] {
   const h = hex.replace(/^#/, '')
@@ -37,80 +37,53 @@ function oklab([r, g, b]: [number, number, number]): [number, number, number] {
     0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
   ]
 }
-const MACHADO: Record<string, number[][]> = {
-  protan: [
-    [0.152286, 1.052583, -0.204868],
-    [0.114503, 0.786281, 0.099216],
-    [-0.003882, -0.048116, 1.051998],
-  ],
-  deutan: [
-    [0.367322, 0.860646, -0.227968],
-    [0.280085, 0.672501, 0.047413],
-    [-0.01182, 0.04294, 0.968881],
-  ],
-}
-function simulate(hex: string, kind: string): [number, number, number] {
-  const [r, g, b] = lin(hex)
-  const M = MACHADO[kind]
-  const clamp = (c: number) => Math.max(0, Math.min(1, c))
-  return [
-    clamp(M[0][0] * r + M[0][1] * g + M[0][2] * b),
-    clamp(M[1][0] * r + M[1][1] * g + M[1][2] * b),
-    clamp(M[2][0] * r + M[2][1] * g + M[2][2] * b),
-  ]
-}
-function deltaE(h1: string, h2: string, kind?: string): number {
-  const a = oklab(kind ? simulate(h1, kind) : lin(h1))
-  const b = oklab(kind ? simulate(h2, kind) : lin(h2))
+function deltaE(h1: string, h2: string): number {
+  const a = oklab(lin(h1))
+  const b = oklab(lin(h2))
   return 100 * Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
 }
 
-const HEX_LITERAL = /^#[0-9a-f]{6}$/i
-
-describe('fragClass — garde-rail couleur des classes de frags', () => {
-  it('mappe chaque classe sur un hex DISTINCT (anti-collision)', () => {
-    const hexes = FRAG_CLASS_ORDER.map((c) => fragClassColor(c))
-    expect(new Set(hexes.map((h) => h.toLowerCase())).size).toBe(FRAG_CLASS_ORDER.length)
+describe('fragClass — garde-rail gamme Antagonistes (tokens)', () => {
+  it('mappe chaque classe sur un TOKEN distinct (anti-collision)', () => {
+    const tokens = FRAG_CLASS_ORDER.map((c) => FRAG_CLASS_TOKENS[c])
+    expect(new Set(tokens).size).toBe(FRAG_CLASS_ORDER.length)
   })
 
-  it('pin le jeu de hex FIXES validé CVD (Okabe-Ito, indépendant de la palette)', () => {
-    expect(FRAG_CLASS_HEX).toEqual({
-      shoulder: '#0072B2',
-      sidearm: '#E69F00',
-      heavy: '#56B4E9',
-      melee: '#D55E00',
-      grenade: '#009E73',
-      spartan_ability: '#F0E442',
-      unattributed: '#888888',
+  it('chaque token est un SemanticToken valide du contrat', () => {
+    for (const c of FRAG_CLASS_ORDER) {
+      expect(ALL_TOKENS).toContain(FRAG_CLASS_TOKENS[c])
+    }
+  })
+
+  it('pin le mapping validé (gamme Antagonistes)', () => {
+    expect(FRAG_CLASS_TOKENS).toEqual({
+      shoulder: 'perf-tier-2',
+      sidearm: 'chart-series-6',
+      heavy: 'narrative-humiliation',
+      melee: 'chart-series-8',
+      grenade: 'chart-series-7',
+      spartan_ability: 'compare-a',
+      unattributed: 'divergent-neutral',
     })
   })
 
-  it('la distinction NE dépend PAS de la palette active : hex littéral, jamais un token résolu', () => {
-    // fragClassColor renvoie un hex direct (pas de resolveToken/CSS var) → même
-    // valeur quelle que soit la palette appliquée au DOM (défaut/Okabe-Ito/…).
-    for (const c of FRAG_CLASS_ORDER) {
-      expect(fragClassColor(c)).toMatch(HEX_LITERAL)
-      expect(fragClassColor(c)).toBe(FRAG_CLASS_HEX[c])
-    }
+  it('clé inconnue → token neutre (jamais une couleur de combat empruntée)', () => {
+    expect(fragClassToken('inexistant')).toBe('divergent-neutral')
+    expect(fragClassToken(null)).toBe('divergent-neutral')
   })
 
-  it('clé inconnue → neutre (pas de couleur de combat empruntée)', () => {
-    expect(fragClassColor('inexistant')).toBe(FRAG_CLASS_NEUTRAL_HEX)
-    expect(fragClassColor(null)).toBe(FRAG_CLASS_NEUTRAL_HEX)
-  })
-
-  it('6 classes combat CVD-safe : min all-pairs ΔE >= 8 (protan+deutan)', () => {
+  it('6 classes de combat : hex DISTINCTS + distinction normale-vision (ΔE ≥ 8) sur la palette défaut', () => {
     const combat = FRAG_CLASS_ORDER.filter((c) => c !== 'unattributed')
-    const hexes = combat.map((c) => fragClassColor(c))
+    const hexes = combat.map((c) => defaultPalette[FRAG_CLASS_TOKENS[c]])
+    // Hex distincts (pas deux classes sur la même teinte de palette).
+    expect(new Set(hexes.map((h) => h.toLowerCase())).size).toBe(combat.length)
+    // Distance perceptuelle normale-vision.
     let worst = Infinity
     for (let i = 0; i < hexes.length; i++) {
       for (let j = i + 1; j < hexes.length; j++) {
-        for (const kind of ['protan', 'deutan']) {
-          worst = Math.min(worst, deltaE(hexes[i], hexes[j], kind))
-        }
+        worst = Math.min(worst, deltaE(hexes[i], hexes[j]))
       }
     }
-    // Mesure de référence : 11.0 (deutan). Seuil 8 = cible du validateur dataviz.
     expect(worst).toBeGreaterThanOrEqual(8)
   })
 })

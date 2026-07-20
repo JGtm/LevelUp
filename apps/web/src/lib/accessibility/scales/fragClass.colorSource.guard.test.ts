@@ -1,28 +1,28 @@
 /// <reference types="node" />
 // @vitest-environment node
 /**
- * Garde-rail (CLAUDE.md n6, règle « <= 2 copies » -> helper + garde-rail ; P7.2 du
- * PLAN_FRAG_DISTRIBUTION_V2) : la couleur d'une CLASSE de frags a une SOURCE UNIQUE —
- * fragClassColor() (fragClass.ts), qui sert les hex fixes Okabe-Ito de
- * fragClassColors.ts. Aucun composant/feature ne doit mapper une classe vers une
- * couleur EN DUR (hex littéral) : ce serait un second point de vérité qui re-diverge
- * (ex. la collision mêlée=grenade de l'ancien donut) et court-circuite la garantie
- * CVD (indépendance de la palette active).
+ * Garde-rail (CLAUDE.md n6, règle « ≤ 2 copies » → helper + garde-rail ; P7.2 du
+ * PLAN_FRAG_DISTRIBUTION_V2, révisé « gamme Antagonistes ») : la couleur d'une CLASSE
+ * de frags a une SOURCE UNIQUE — les helpers fragClassColor / fragRoleColor /
+ * fragLeafColor (fragClass.ts), qui résolvent le mapping classe→token de la gamme
+ * Antagonistes (FRAG_CLASS_TOKENS) via la palette active.
  *
- * Ce test échoue si l'un des 6 hex de combat des classes de frags apparaît en
- * LITTÉRAL sous src/features/** ou src/components/** — la consommation doit passer
- * par fragClassColor(class) / fragRoleColor(class, i, n). Les hex vivent UNIQUEMENT
- * dans lib/accessibility/scales/fragClassColors.ts (exception documentée), hors de la
- * portée scannée ici. Le neutre #888888 (résidu) n'est pas forbidé : c'est un gris
- * générique partagé, jamais une couleur de classe empruntable.
+ * Aucun composant/feature ne doit :
+ *   (a) importer/référencer le MAPPING brut `FRAG_CLASS_TOKENS` / `fragClassToken`
+ *       (ce serait un second point de vérité classe→couleur qui re-diverge — ex. la
+ *       collision mêlée=grenade de l'ancien donut — et court-circuite la palette) ;
+ *   (b) recopier en dur les tokens Antagonistes de frags dans un mapping local sur
+ *       les clés de classe (shoulder/sidearm/heavy/melee/grenade/spartan_ability).
+ *
+ * Le mapping vit UNIQUEMENT dans lib/accessibility/scales/fragClass.ts (hors portée
+ * scannée ici). Ce test remplace l'ancien scan « hex Okabe FIXES » (les hex de classe
+ * n'existent plus : la couleur vient de la palette, plus jamais d'un littéral).
  */
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
-// Les 6 hex FIXES des classes de COMBAT (fragClassColors.ts, teintes Okabe-Ito). Un
-// littéral de l'un d'eux dans un chart/feature = mapping direct classe→couleur interdit.
-const FRAG_CLASS_COMBAT_HEX = /#(?:0072B2|E69F00|56B4E9|D55E00|009E73|F0E442)/i
+const CLASS_KEYS = ['shoulder', 'sidearm', 'heavy', 'melee', 'grenade', 'spartan_ability']
 
 function walk(dir: string): string[] {
   const out: string[] = []
@@ -38,21 +38,25 @@ function walk(dir: string): string[] {
   return out
 }
 
-describe('garde-rail couleur des classes de frags (fragClassColor source unique)', () => {
-  it('aucun hex de classe de frags en dur sous features/** ou components/**', () => {
+describe('garde-rail couleur des classes de frags (source unique fragClassColor)', () => {
+  it('aucun mapping classe→couleur en dur sous features/** ou components/**', () => {
     const srcRoot = resolve(process.cwd(), 'src')
     const roots = [join(srcRoot, 'features'), join(srcRoot, 'components')]
     const offenders: string[] = []
     for (const root of roots) {
       for (const file of walk(root)) {
-        if (FRAG_CLASS_COMBAT_HEX.test(readFileSync(file, 'utf8'))) {
-          offenders.push(file.replace(srcRoot, 'src'))
-        }
+        const txt = readFileSync(file, 'utf8')
+        // (a) import/référence du mapping brut → doit passer par fragClassColor & co.
+        const usesRawMap = /FRAG_CLASS_TOKENS|fragClassToken/.test(txt)
+        // (b) littéral objet mappant ≥2 clés de classe vers une valeur (couleur/token) locale.
+        const classKeyLiterals = CLASS_KEYS.filter((k) => new RegExp(`['"\`]?${k}['"\`]?\\s*:`).test(txt))
+        const reimplementedMap = classKeyLiterals.length >= 2
+        if (usesRawMap || reimplementedMap) offenders.push(file.replace(srcRoot, 'src'))
       }
     }
     expect(
       offenders,
-      `Couleur de classe de frags à router via fragClassColor(class) (lib/accessibility/scales/fragClass) : ${offenders.join(', ')}`,
+      `Couleur de classe de frags à router via fragClassColor/fragRoleColor/fragLeafColor (lib/accessibility/scales/fragClass) : ${offenders.join(', ')}`,
     ).toEqual([])
   })
 })

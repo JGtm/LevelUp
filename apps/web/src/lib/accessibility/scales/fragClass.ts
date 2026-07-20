@@ -4,22 +4,24 @@
  * (Synthesis, Match view, Timeseries, Sessions, Escouade) — cf.
  * .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P1.
  *
- * Couleurs INDÉPENDANTES DE LA PALETTE ACTIVE : les classes de frags ont leur PROPRE
- * jeu de hex fixes CVD-safe (fragClassColors.ts, teintes Okabe-Ito), sur le modèle
- * de l'exception des couleurs de rareté. Motif : sous la palette DÉFAUT, les tokens
- * chart-series-1..5 forment une rampe indigo (all-pairs ΔE ~5.4, SOUS le plancher
- * CVD) → 5 classes indistinguables. Sortir de la palette active garantit la
- * distinction quelle que soit la palette (all-pairs ΔE 11.0 en deutan, > cible 8 du
- * validateur ; normal-vision 15.6). « Non attribué » = neutre rendu HACHURÉ côté chart.
+ * GAMME « ANTAGONISTES » (réactive à la palette) : chaque classe est mappée sur un
+ * TOKEN sémantique de la gamme Antagonistes (la même que MatchAntagonistChart :
+ * teintes choisies pour une distance perceptuelle maximale sur la roue des hues).
+ * La couleur est RÉSOLUE au runtime via resolveToken → elle suit la palette active
+ * (défaut/Okabe-Ito/Cividis…) exactement comme les autres charts. Ceci REMPLACE
+ * l'ancien jeu de hex Okabe FIXES (fragClassColors.ts, supprimé) : plus aucun hex de
+ * classe en dur — la source de vérité est le mapping classe→token ci-dessous.
  *
  * Double encodage (P1.2) : la couleur ne porte JAMAIS seule l'information — les
- * charts consommateurs ajoutent label + position (anneau/segment). Les rôles
- * (niveau 2) reçoivent des TEINTES de luminosité de la couleur de leur classe
- * (fragRoleColor) : même hue, luminosité ordonnée + label + position.
+ * charts consommateurs ajoutent label + position (anneau/segment, ligne de rappel,
+ * légende). Les rôles (niveau 2) reçoivent des TEINTES ÉCLAIRCIES de la couleur de
+ * leur classe (fragRoleColor) : même hue, luminosité ordonnée + label + position.
  *
- * Garde-rail anti-collision et anti-recopie : fragClass.guard.test.ts.
+ * Garde-rail anti-collision et source unique : fragClass.guard.test.ts +
+ * fragClass.colorSource.guard.test.ts.
  */
-import { fragClassFixedHex } from './fragClassColors'
+import { resolveToken } from '../resolveToken'
+import type { SemanticToken } from '../semantic-tokens'
 
 /**
  * Ordre canonique FIXE des classes (miroir de canonicalFragClassOrder côté Go,
@@ -38,23 +40,55 @@ export const FRAG_CLASS_ORDER = [
 
 export type FragClassKey = (typeof FRAG_CLASS_ORDER)[number]
 
-/** Classe résidu (rendue hachurée par les charts, jamais une couleur pleine). */
+/** Classe résidu (teinte neutre de la gamme, jamais une couleur de combat). */
 export const FRAG_CLASS_UNATTRIBUTED: FragClassKey = 'unattributed'
 
 /**
- * Couleur hex FIXE de la classe (hors palette active). Client ET SSR (aucun accès
- * DOM). Les hex vivent uniquement dans fragClassColors.ts (précédent rarity.ts).
+ * Mapping classe → TOKEN de la gamme « Antagonistes » (réactif à la palette).
+ * 1 token DISTINCT par classe (anti-collision) — même famille de teintes que
+ * MatchAntagonistChart. Le résidu prend un neutre divergent.
+ *
+ * Rappel des teintes sous la palette DÉFAUT (pour lecture) : shoulder=cyan,
+ * sidearm=émeraude, heavy=violet, melee=rose, grenade=ambre, spartan=indigo.
+ */
+export const FRAG_CLASS_TOKENS: Record<FragClassKey, SemanticToken> = {
+  shoulder: 'perf-tier-2', // cyan
+  sidearm: 'chart-series-6', // émeraude
+  heavy: 'narrative-humiliation', // violet
+  melee: 'chart-series-8', // rose
+  grenade: 'chart-series-7', // ambre
+  spartan_ability: 'compare-a', // indigo
+  unattributed: 'divergent-neutral', // neutre (résidu)
+}
+
+/** Neutre de repli pour une clé inconnue du front (jamais une couleur de combat). */
+const FRAG_CLASS_NEUTRAL_TOKEN: SemanticToken = 'divergent-neutral'
+
+/** Token de la gamme Antagonistes pour une classe (fallback neutre si inconnue). */
+export function fragClassToken(className: string | null | undefined): SemanticToken {
+  if (className != null && className in FRAG_CLASS_TOKENS) {
+    return FRAG_CLASS_TOKENS[className as FragClassKey]
+  }
+  return FRAG_CLASS_NEUTRAL_TOKEN
+}
+
+/**
+ * Couleur hex RÉSOLUE de la classe dans la palette active (via resolveToken —
+ * contexte non-CSS : ECharts canvas et SVG inline, comme MatchAntagonistChart).
+ * Réactive au changement de palette au prochain rebuild (useColorPaletteVersion).
  */
 export function fragClassColor(className: string | null | undefined): string {
-  return fragClassFixedHex(className)
+  return resolveToken(fragClassToken(className))
 }
 
 // ── Teintes de rôle (P1.2) ──────────────────────────────────────────────────────
 
 const HEX_RE = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i
 
-/** Amplitude max de variation de luminosité entre le rôle le plus clair et le plus foncé. */
-const ROLE_LIGHTNESS_SPREAD = 0.32
+/** Éclaircissement du 1er rôle (teinte de base déjà un cran plus claire que la classe). */
+const ROLE_LIGHTNESS_BASE = 0.22
+/** Incrément d'éclaircissement par rôle suivant. */
+const ROLE_LIGHTNESS_STEP = 0.2
 
 function parseHex(hex: string): [number, number, number] | null {
   const m = HEX_RE.exec(hex.trim())
@@ -73,27 +107,34 @@ function toHex(rgb: [number, number, number]): string {
 
 /**
  * Mélange un hex vers blanc (t>0) ou noir (t<0) de |t| dans [0,1] — variation de
- * luminosité STRUCTURELLE (comme hexToRgba pour l'alpha) : le hue reste celui de
- * la classe, seule la clarté change. Renvoie l'entrée telle quelle si non parsable.
+ * luminosité STRUCTURELLE : le hue reste celui de la classe, seule la clarté change.
+ * Renvoie l'entrée telle quelle si non parsable (ex. chaîne vide en SSR).
  */
 export function shiftLightness(hex: string, t: number): string {
   const rgb = parseHex(hex)
   if (!rgb) return hex
   const target = t >= 0 ? 255 : 0
-  const amt = Math.abs(t)
+  const amt = Math.min(1, Math.abs(t))
   return toHex(rgb.map((c) => c + (target - c) * amt) as [number, number, number])
 }
 
 /**
- * Couleur hex d'un rôle (niveau 2) : teinte de luminosité de la couleur de sa
- * classe, ordonnée par `index` sur `count` rôles (premier = plus clair, dernier =
- * plus foncé). Un rôle unique (count<=1) garde la couleur de classe. Double
- * encodage : la position + le label du rôle désambiguïsent au-delà de la teinte.
+ * Couleur hex d'un rôle (niveau 2) : teinte ÉCLAIRCIE de la couleur de sa classe,
+ * de plus en plus claire selon `index` (premier = le plus proche de la classe,
+ * dernier = le plus clair). Double encodage : la position (anneau externe) + le
+ * label du rôle (ligne de rappel) désambiguïsent au-delà de la teinte.
  */
 export function fragRoleColor(className: string | null | undefined, index: number, count: number): string {
   const base = fragClassColor(className)
-  if (count <= 1 || index < 0) return base
-  // frac ∈ [-0.5, 0.5] centré → t ∈ [-spread/2, +spread/2].
-  const frac = index / (count - 1) - 0.5
-  return shiftLightness(base, -frac * ROLE_LIGHTNESS_SPREAD)
+  if (index < 0) return base
+  const t = count <= 1 ? ROLE_LIGHTNESS_BASE : ROLE_LIGHTNESS_BASE + index * ROLE_LIGHTNESS_STEP
+  return shiftLightness(base, t)
+}
+
+/**
+ * Teinte de l'anneau externe d'une classe FEUILLE (poing/grenade/résidu, sans rôle) :
+ * léger éclaircissement de la couleur de classe (pas de libellé, seulement la légende).
+ */
+export function fragLeafColor(className: string | null | undefined): string {
+  return shiftLightness(fragClassColor(className), 0.12)
 }

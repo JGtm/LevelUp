@@ -1,3 +1,48 @@
+## [2026-07-20] Frag Distribution v2 — forme validée : sunburst SVG désencombré (lignes de rappel) + gamme Antagonistes réactive-palette + layout Match auto-fit
+
+**Statut** : Complété. NON committé (le superviseur gère git). Branche `feat/frag-distribution-v2`. `.ai/BACKLOG.md`
+INTACT. Refonte de la FORME du sunburst (post-P7), sur maquette validée `frags-forme.html` (fonction `buildSun`, Option A).
+
+**Décision 1 — rendu SVG désencombré (remplace l'ECharts sunburst)** : `FragSunburst.tsx` réimplémenté en **SVG inline**
+(plus d'ECharts pour ce chart → testable en jsdom sans mock). 2 anneaux (classe interne R44→R76, rôle externe R76→R104),
+géométrie reprise fidèlement de la maquette (`polar`/`arcPath`, viewBox 440×300, centre 220,142). Les **RÔLES (niveau 2)**
+sortent par des **lignes de rappel** réparties gauche/droite (point sur l'arc externe → coude R+8 → genou → texte au bord ;
+triées par Y, espacées entre CY±96 ; texte = nom + « valeur · % »). Les **CLASSES** sont en **légende** sous le SVG (pastille
++ nom + valeur) — AUCUN texte sur les arcs de classe. Classes FEUILLES (poing/grenade/résidu) : anneau externe = teinte
+éclaircie (`fragLeafColor`), pas de ligne de rappel, seulement légende. Centre = total. Survol arc = tooltip (classe · rôle
++ valeur + %) + estompage des autres classes (opacité 0.22) ; hover légende dim aussi. Builder PUR `buildSunburstModel`
+(colors + labels injectés → testable sans DOM) exporté. API inchangée (prend `FragDistribution`, rend null si total 0).
+
+**Décision 2 — couleurs = gamme « Antagonistes » réactive à la palette (remplace le fixe Okabe)** : `fragClassColors.ts`
+(hex Okabe FIXES) **SUPPRIMÉ**. `fragClass.ts` mappe chaque classe sur un **TOKEN sémantique** de la gamme Antagonistes
+(la même que `MatchAntagonistChart`), résolu au runtime via `resolveToken` (réactif à la palette, comme les autres charts) :
+shoulder→`perf-tier-2` (cyan) · sidearm→`chart-series-6` (émeraude) · heavy→`narrative-humiliation` (violet) ·
+melee→`chart-series-8` (rose) · grenade→`chart-series-7` (ambre) · spartan_ability→`compare-a` (indigo) ·
+unattributed→`divergent-neutral` (neutre). Rôles = teintes ÉCLAIRCIES du token de classe (`fragRoleColor` via
+`shiftLightness`). Consommé aussi par FragWeaponBreakdown / squad / Timeseries (déjà via `fragClassColor`). `TimeseriesTopWeapons`
+: ajout `useColorPaletteVersion` aux deps (le chart devient palette-dépendant). **CVD** : sur la palette défaut, ΔE normal
+12.5 / protan 8.9 / **deutan 4.9** (SOUS le plancher 8 de l'ancien Okabe) → la robustesse daltonisme est portée par
+l'**encodage secondaire** (labels + lignes de rappel + légende + position d'anneau), jamais la seule teinte. Choix acté user.
+
+**Décision 3 — layout Match view en blocs auto-fit** : `MatchViewPage.tsx` — la rangée frags passe de
+`sm:grid-cols-2 lg:grid-cols-3` (breakpoints fixes) à `grid-cols-[repeat(auto-fit,minmax(280px,1fr))]` → sunburst | breakdown
+| médailles se réagencent sans breakpoint (côte-à-côte quand large, empilés sinon). MatchFragCard émet toujours ses 2 cartes
+séparées (Fragment). Citations/Média inchangés.
+
+**Garde-fous MAJ** : `fragClass.guard.test.ts` réécrit — anti-collision TOKENS (7 distincts) + tokens valides (ALL_TOKENS) +
+pin du mapping Antagonistes + distinction (6 hex combat distincts + ΔE normal ≥ 8 sur palette défaut). `fragClass.colorSource.guard.test.ts`
+réécrit — source unique : features/components n'importent pas le mapping brut (`FRAG_CLASS_TOKENS`/`fragClassToken`) ni ne
+recopient un mapping classe→couleur local (scan hex-par-valeur abandonné : les hex résolus amber/indigo collisionnent avec des
+usages légitimes existants). `FragSunburst.test.tsx` réécrit pour le SVG (arcs classe+rôle+feuille, 2 lignes de rappel, légende).
+
+**Gates (séquentiels, verts)** : `make check-types` PASS (tsc -b exit 0) ; `make test-web` **278 fichiers, 2399 PASS / 14
+skipped** (counts inchangés : tests frags remplacés à effectif constant). Aucun Go touché → pas de go test/generate-types. Aucun commit.
+
+**Reste (gates humains)** : revue visuelle des surfaces (Synthesis/Match/Timeseries/Sessions) — lignes de rappel lisibles,
+tooltip/estompage, réagencement auto-fit Match, cohérence des teintes Antagonistes light/dark.
+
+---
+
 ## [2026-07-19] Frag Distribution v2 — correctif Mêlée DISJOINTE + Escouade mécaniques par joueur
 
 **Statut** : Complété. NON committé (le superviseur gère git). Branche `feat/frag-distribution-v2`. `.ai/BACKLOG.md`

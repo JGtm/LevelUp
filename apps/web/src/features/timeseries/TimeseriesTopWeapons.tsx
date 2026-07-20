@@ -14,6 +14,7 @@ import {
   getTooltipBase,
 } from '@/components/charts/_utils'
 import { fragClassColor } from '@/lib/accessibility/scales'
+import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 import type { TimeseriesWeaponKill } from '@/lib/api/types'
 import { ChartFromOption } from './ChartFromOption'
@@ -37,7 +38,9 @@ export function TimeseriesTopWeapons({
   labels,
 }: TimeseriesTopWeaponsProps) {
   const themeVersion = useThemeVersion()
-
+  // fragClassColor résout des tokens de palette (gamme Antagonistes) → recalc au
+  // changement de palette, pas seulement de thème.
+  const paletteVersion = useColorPaletteVersion()
 
   const option = useMemo<EChartsCoreOption | null>(() => {
     if (weapons.length === 0) return null
@@ -89,7 +92,7 @@ export function TimeseriesTopWeapons({
       ],
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [weapons, labels, themeVersion])
+  }, [weapons, labels, themeVersion, paletteVersion])
 
   return (
     <ChartFromOption title={title} option={option} height={height} emptyMessage={emptyMessage} />

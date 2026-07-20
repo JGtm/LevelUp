@@ -18,9 +18,11 @@ export {
 export {
   FRAG_CLASS_ORDER,
   FRAG_CLASS_UNATTRIBUTED,
+  FRAG_CLASS_TOKENS,
+  fragClassToken,
   fragClassColor,
   fragRoleColor,
+  fragLeafColor,
   shiftLightness,
 } from './fragClass'
 export type { FragClassKey } from './fragClass'
-export { FRAG_CLASS_HEX, FRAG_CLASS_NEUTRAL_HEX, fragClassFixedHex } from './fragClassColors'

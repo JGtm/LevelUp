@@ -331,12 +331,13 @@ export function MatchViewPage() {
                 t={t}
               />
             </div>
-            {/* Répartition des frags v2 : sunburst (classe→rôle) | breakdown par arme
-                | médailles — 3 cellules CÔTE À CÔTE. MatchFragCard émet ses 2 cartes
-                (Fragment) directement comme cellules de cette grille. Non gaté :
-                Infinite = classes sans Spartan ; Halo 5 = avec (capability
-                native_kill_mechanics côté backend). Remplace les 2 anciens graphes. */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Répartition des frags v2 : sunburst (classe→rôle) + breakdown par arme
+                = DEUX BLOCS SÉPARÉS, avec les médailles, dans une grille AUTO-FIT
+                (minmax 280px → côte-à-côte quand large, empilés sinon, sans breakpoint
+                fixe). MatchFragCard émet ses 2 cartes (Fragment) directement comme
+                cellules. Non gaté : Infinite = classes sans Spartan ; Halo 5 = avec
+                (capability native_kill_mechanics côté backend). */}
+            <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
               <MatchFragCard distribution={combat_tab.frag_distribution} weapons={weaponKills} />
               <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
             </div>
