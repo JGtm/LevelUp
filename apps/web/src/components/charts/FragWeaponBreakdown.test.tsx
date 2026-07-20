@@ -46,6 +46,26 @@ describe('buildFragWeaponBreakdownOption', () => {
     const opt = buildFragWeaponBreakdownOption([], LABELS) as { series?: unknown[] }
     expect(opt.series).toBeUndefined()
   })
+
+  it('survol lié : hoveredClass estompe les armes des AUTRES classes, garde la classe survolée', () => {
+    const opt = buildFragWeaponBreakdownOption(WEAPONS, LABELS, 'shoulder') as {
+      series: { data: Array<{ classKey?: string; itemStyle: { opacity: number } }> }[]
+    }
+    const data = opt.series[0].data
+    const br = data.find((d) => d.classKey === 'shoulder')!
+    const sword = data.find((d) => d.classKey === 'melee')!
+    const unknown = data.find((d) => d.classKey === undefined)!
+    expect(br.itemStyle.opacity).toBe(1) // classe survolée → pleine opacité
+    expect(sword.itemStyle.opacity).toBeCloseTo(0.28) // autre classe → estompée
+    expect(unknown.itemStyle.opacity).toBeCloseTo(0.28) // arme sans classe → estompée
+  })
+
+  it('sans hoveredClass : aucune arme estompée (autonome)', () => {
+    const opt = buildFragWeaponBreakdownOption(WEAPONS, LABELS) as {
+      series: { data: Array<{ itemStyle: { opacity: number } }> }[]
+    }
+    for (const d of opt.series[0].data) expect(d.itemStyle.opacity).toBe(1)
+  })
 })
 
 describe('FragWeaponBreakdown (composant)', () => {

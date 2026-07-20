@@ -57,12 +57,22 @@ describe('buildSunburstModel (builder pur)', () => {
     // Lignes de rappel : uniquement pour les rôles (2), jamais pour les feuilles.
     expect(model.callouts).toHaveLength(2)
     expect(model.callouts.map((c) => c.label).sort()).toEqual(['role:automatic', 'role:precision'])
-    // Réparties gauche/droite : une ancre de chaque type existe potentiellement ;
-    // chaque callout a un point (polyline) et un texte valeur.
+    // Chaque callout a une polyline (point → coude → genou → bord) et un texte valeur.
     for (const co of model.callouts) {
       expect(co.points.split(' ')).toHaveLength(4) // point → coude → genou → bord
       expect(co.valueLabel).toContain('%')
     }
+
+    // FIX 1 — répartition gauche/droite (reprise de buildSun) : precision (haut-gauche,
+    // mid < 90°) ancré 'start' au bord GAUCHE (x proche de 0) ; automatic (droite,
+    // mid ≥ 90°) ancré 'end' au bord DROIT (x proche du viewBox). Les DEUX ancres présentes.
+    const anchors = model.callouts.map((c) => c.anchor)
+    expect(anchors).toContain('start')
+    expect(anchors).toContain('end')
+    const left = model.callouts.find((c) => c.anchor === 'start')!
+    const right = model.callouts.find((c) => c.anchor === 'end')!
+    expect(left.tx).toBeLessThan(20) // plaqué à gauche (x ≈ 6)
+    expect(right.tx).toBeGreaterThan(420) // plaqué à droite (x ≈ W-6, viewBox 440)
 
     // Légende : 1 entrée par classe, ordre conservé, couleur de classe (pas de rôle).
     expect(model.legend.map((l) => l.classKey)).toEqual(['shoulder', 'melee', 'unattributed'])
