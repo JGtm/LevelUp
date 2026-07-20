@@ -9,10 +9,17 @@
  * Chaque enfant est une ChartCard autonome (bordure/titre) → placé directement comme
  * cellule de la grille du parent (pas d'empilement vertical interne).
  *
+ * Survol LIÉ : un état `hoveredClass` PARTAGÉ est remonté ici. Survoler une classe/rôle
+ * du sunburst estompe les armes des autres classes dans le breakdown, et réciproquement
+ * survoler une barre estompe les autres classes du sunburst. Les deux composants restent
+ * autonomes (le lien passe par les callbacks optionnels — cf. Synthesis/Sessions non liés).
+ *
  * Non gaté : Infinite = classes sans Spartan ; Halo 5 = avec (la capability décide
  * côté backend via native_kill_mechanics). Rend null si aucune donnée (sunburst null
  * ET aucune arme) — le viewer sans frags n'affiche aucune carte.
  */
+import { useState } from 'react'
+
 import { FragSunburst } from '@/components/charts/FragSunburst'
 import { FragWeaponBreakdown } from '@/components/charts/FragWeaponBreakdown'
 import type { FragDistribution, MatchWeaponKill, SynthesisWeaponKillEntry } from '@/lib/api/types'
@@ -31,13 +38,24 @@ export function MatchFragCard({ distribution, weapons }: Props) {
     class: w.class,
   }))
 
+  // Survol partagé entre les deux cartes (sunburst ↔ breakdown).
+  const [hoveredClass, setHoveredClass] = useState<string | null>(null)
+
   const hasSunburst = (distribution?.total_kills ?? 0) > 0
   if (!hasSunburst && breakdown.length === 0) return null
 
   return (
     <>
-      <FragSunburst distribution={distribution} />
-      <FragWeaponBreakdown weapons={breakdown} />
+      <FragSunburst
+        distribution={distribution}
+        externalHoveredClass={hoveredClass}
+        onClassHover={setHoveredClass}
+      />
+      <FragWeaponBreakdown
+        weapons={breakdown}
+        hoveredClass={hoveredClass}
+        onClassHover={setHoveredClass}
+      />
     </>
   )
 }

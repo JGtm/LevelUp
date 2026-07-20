@@ -28,18 +28,30 @@ export interface FragWeaponLabels {
   killsSuffix: string
 }
 
-/** Builder PUR — exporté pour tester l'option ECharts sans monter le React tree. */
+/** Opacité des armes hors classe survolée (survol lié sunburst ↔ breakdown). */
+const DIM_OPACITY = 0.28
+
+/**
+ * Builder PUR — exporté pour tester l'option ECharts sans monter le React tree.
+ * `hoveredClass` (survol lié) : quand renseignée, les armes des AUTRES classes
+ * sont estompées ; les armes de la classe survolée restent en pleine opacité.
+ */
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildFragWeaponBreakdownOption(
   weapons: SynthesisWeaponKillEntry[],
   labels: FragWeaponLabels,
+  hoveredClass?: string | null,
 ): EChartsCoreOption {
   if (weapons.length === 0) return { backgroundColor: CHART_BG }
   const tc = getEChartsThemeColors()
   // Barres triées kills desc → afficher la plus grande en HAUT (yAxis inverse via reverse()).
   const ordered = [...weapons].reverse()
+  const dimOpacity = (cls?: string) => (hoveredClass && cls !== hoveredClass ? DIM_OPACITY : 1)
   return {
     backgroundColor: CHART_BG,
+    // Survol lié : l'option est reconstruite à chaque changement de `hoveredClass` ;
+    // animation coupée pour un estompage instantané (pas de re-croissance des barres).
+    animation: false,
     grid: { top: 8, bottom: 8, left: 8, right: 80, containLabel: true },
     tooltip: {
       backgroundColor: tc.tooltipBg,
@@ -67,7 +79,9 @@ export function buildFragWeaponBreakdownOption(
         data: ordered.map((w) => ({
           value: w.kills,
           className: w.class ? labels.classLabel(w.class) : undefined,
-          itemStyle: { color: fragClassColor(w.class), borderRadius: [0, 3, 3, 0] },
+          // classKey brut (clé de classe) porté pour le survol lié → remontée au parent.
+          classKey: w.class,
+          itemStyle: { color: fragClassColor(w.class), borderRadius: [0, 3, 3, 0], opacity: dimOpacity(w.class) },
         })),
         label: {
           show: true,
@@ -86,9 +100,17 @@ export interface FragWeaponBreakdownProps {
   title?: string
   height?: number
   fillHeight?: boolean
+  /**
+   * Survol LIÉ (optionnel) : classe survolée pilotée par un composant frère
+   * (ex. `FragSunburst` via `MatchFragCard`) → estompe les armes des autres classes.
+   * Non fournie → le composant reste autonome (aucun estompage).
+   */
+  hoveredClass?: string | null
+  /** Remonté au parent au survol d'une barre (classe de l'arme, ou null en sortie). */
+  onClassHover?: (classKey: string | null) => void
 }
 
-export function FragWeaponBreakdown({ weapons, title, height, fillHeight }: FragWeaponBreakdownProps) {
+export function FragWeaponBreakdown({ weapons, title, height, fillHeight, hoveredClass = null, onClassHover }: FragWeaponBreakdownProps) {
   const appLocale = useAppShellStore((s) => s.locale)
   const numLoc = intlLocale(appLocale)
   const list = weapons ?? []
@@ -100,11 +122,19 @@ export function FragWeaponBreakdown({ weapons, title, height, fillHeight }: Frag
   }
 
   const buildOption = useCallback(
-    (s: ChartSeries<SynthesisWeaponKillEntry>[]) => buildFragWeaponBreakdownOption(s[0]?.datapoints ?? [], labels),
-    // labels dérive de appLocale ; on l'inclut plutôt que l'objet (référence neuve à chaque rendu)
+    (s: ChartSeries<SynthesisWeaponKillEntry>[]) => buildFragWeaponBreakdownOption(s[0]?.datapoints ?? [], labels, hoveredClass),
+    // labels dérive de appLocale ; hoveredClass force le rebuild de l'estompage lié.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [appLocale],
+    [appLocale, hoveredClass],
   )
+
+  // Survol d'une barre → remonte la classe de l'arme au parent (réciproque du sunburst).
+  const onEvents = onClassHover
+    ? {
+        mouseover: (p: unknown) => onClassHover((p as { data?: { classKey?: string } }).data?.classKey ?? null),
+        mouseout: () => onClassHover(null),
+      }
+    : undefined
 
   // Série VIDE quand aucune arme → ChartCard rend son placeholder (pattern ChartCard standard).
   const series: ChartSeries<SynthesisWeaponKillEntry>[] = list.length > 0 ? [{ key: 'frag-weapons', datapoints: list }] : []
@@ -120,6 +150,7 @@ export function FragWeaponBreakdown({ weapons, title, height, fillHeight }: Frag
       height={computedHeight}
       emptyMessage={emptyMessage}
       className={fillHeight ? 'flex-1' : ''}
+      onEvents={onEvents}
     />
   )
 }

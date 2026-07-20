@@ -274,9 +274,18 @@ interface TipState {
 export interface FragSunburstProps {
   distribution?: FragDistribution | null
   title?: string
+  /**
+   * Survol LIÉ (optionnel) : classe survolée pilotée par un composant frère
+   * (ex. `FragWeaponBreakdown` via `MatchFragCard`). Quand renseignée, les autres
+   * classes du sunburst sont estompées même si le survol vient de l'extérieur.
+   * Non fournie → le composant reste autonome (son propre survol interne pilote).
+   */
+  externalHoveredClass?: string | null
+  /** Remonté au parent au survol d'un arc/légende (classe parente ou null en sortie). */
+  onClassHover?: (classKey: string | null) => void
 }
 
-export function FragSunburst({ distribution, title }: FragSunburstProps) {
+export function FragSunburst({ distribution, title, externalHoveredClass = null, onClassHover }: FragSunburstProps) {
   const appLocale = useAppShellStore((s) => s.locale)
   const paletteVersion = useColorPaletteVersion()
   const numLoc = intlLocale(appLocale)
@@ -311,15 +320,19 @@ export function FragSunburst({ distribution, title }: FragSunburstProps) {
   const cardTitle = title ?? formatMessage(fragsManifest, 'frags.charts.sunburst_title', appLocale)
   const centerLabel = formatMessage(fragsManifest, 'frags.charts.center_total_label', appLocale)
 
+  // Classe active = survol interne (arc/légende) OU survol externe (composant frère lié).
+  const activeClass = hovered ?? externalHoveredClass
   const showTip = (e: ReactMouseEvent, arc: SunArc) => {
     setHovered(arc.classKey)
+    onClassHover?.(arc.classKey)
     setTip({ x: e.clientX, y: e.clientY, color: arc.tipColor, title: arc.tipTitle, sub: arc.tipSub })
   }
   const clearTip = () => {
     setHovered(null)
+    onClassHover?.(null)
     setTip(null)
   }
-  const arcOpacity = (classKey: string) => (hovered && classKey !== hovered ? DIM_OPACITY : 1)
+  const arcOpacity = (classKey: string) => (activeClass && classKey !== activeClass ? DIM_OPACITY : 1)
 
   return (
     <div className="relative rounded-lg border border-border bg-card" data-testid="frag-sunburst">
@@ -368,9 +381,15 @@ export function FragSunburst({ distribution, title }: FragSunburstProps) {
             <span
               key={row.classKey}
               className="inline-flex cursor-default items-center gap-1.5 rounded px-1 py-0.5 text-xs"
-              style={{ opacity: hovered && row.classKey !== hovered ? DIM_OPACITY : 1 }}
-              onMouseEnter={() => setHovered(row.classKey)}
-              onMouseLeave={() => setHovered(null)}
+              style={{ opacity: activeClass && row.classKey !== activeClass ? DIM_OPACITY : 1 }}
+              onMouseEnter={() => {
+                setHovered(row.classKey)
+                onClassHover?.(row.classKey)
+              }}
+              onMouseLeave={() => {
+                setHovered(null)
+                onClassHover?.(null)
+              }}
             >
               <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: row.color }} />
               {row.label}
