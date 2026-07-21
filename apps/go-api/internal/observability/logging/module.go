@@ -40,6 +40,7 @@ const (
 	ModuleService   = "service"   // couche service (FriendsOrchestrator, etc.)
 	ModuleDuckDB    = "duckdb"    // primitives DuckDB (OpenReadOnly, dblease)
 	ModuleAuth      = "auth"      // tokens MSAL, refresh, XSTS
+	ModuleSession   = "session"   // sessions web (platform/session : store fichier JSON, torn-read, expiry)
 	ModuleAssets    = "assets"    // resolver assets + cache disque
 	ModulePrestige  = "prestige"  // challenges + squad prestige
 	ModuleMedia     = "media"     // indexation médias + galerie
@@ -133,6 +134,7 @@ var packageToModuleMap = map[string]string{
 	"service":        ModuleService,
 	"auth":           ModuleAuth,
 	"msalauth":       ModuleAuth,
+	"session":        ModuleSession, // internal/platform/session → logs/session.log
 	"assets":         ModuleAssets,
 	"prestige":       ModulePrestige,
 	"campaign":       ModulePrestige,

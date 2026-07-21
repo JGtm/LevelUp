@@ -16,6 +16,7 @@ func TestMapPackageToModule(t *testing.T) {
 		"duckdb":         ModuleDuckDB,
 		"sharedprovider": ModuleProvider,
 		"persist":        ModulePersist,
+		"session":        ModuleSession, // platform/session → logs/session.log (diag torn-read login loop)
 	}
 	for pkg, want := range cases {
 		full := "levelup/go-api/internal/" + pkg + ".SomeFunc"
