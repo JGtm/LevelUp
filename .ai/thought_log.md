@@ -1,3 +1,35 @@
+## [2026-07-21] Fix boucle /login — Étape 2 frontend : garde anti-éjection sur bootstrap anonyme transitoire (branche fix/session-login-loop)
+
+**Statut** : Complété (Étape 2/2 → plan terminé). NON committé côté superviseur pour push (push main = deploy prod).
+Déclencheur : couche 2 du même plan — même si un `/bootstrap` anonyme transitoire survient, le front ne doit pas
+éjecter un utilisateur déjà authentifié.
+
+**Décision technique principale** : dans `routes/__root.tsx` (effet `[data]`), avant `hydrateFromBootstrap`,
+capture `wasAuthenticated = useAppShellStore.getState().currentUsername`. Si `!data.current_username &&
+wasAuthenticated` (rétrogradation suspecte via refetch focus) → `return` early : ni hydrate, ni
+`navigate('/login')` + `log.warn('bootstrap:anon_downgrade', ...)`. Tous les vecteurs de redirection
+(`__root`, `resolveIndexRedirect`/index.tsx, players/$playerSlug) lisent le STORE → préserver le store les
+neutralise tous d'un coup.
+
+**Écart aux 2 options du plan (justifié)** : le plan proposait « hydrater puis restaurer currentUsername ». J'ai
+préféré **skip hydrate entièrement** sur downgrade suspect, car en mode xbox un bootstrap anonyme renvoie AUSSI
+`available_players: []` / `current_player: null` / `is_admin: false` — ne restaurer que currentUsername
+laisserait un état mi-anonyme incohérent (shell sans joueurs). Le skip préserve l'état authentifié complet. La
+vraie déconnexion recharge la page (store vidé → wasAuthenticated null → chemin autoritaire → /login OK).
+
+**In-scope hors items plan** : `RootLayout` exporté (testabilité) ; `vite.config.ts` +
+`routeFileIgnorePattern: '\\.test\\.tsx?$'` pour exclure les tests colocalisés du codegen de routes TanStack
+(sinon warning « does not export a Route » à chaque dev/build).
+
+**Résultats observés** : `__root.test.tsx` (mocks useQuery/router/AppShell) 2/2 vert — (1) authentifié + refetch
+anonyme → navigate jamais appelé, currentUsername préservé ; (2) montage frais + anonyme → navigate /login.
+Gate : `check-types` vert ; `make test-web` suite complète vert (276 fichiers, 2382 tests, 14 skipped, 0 échec).
+
+**Conclusion / prochaine étape** : plan complet (2/2). Vérification manuelle end-to-end (onglet arrière-plan >5min
++ refocus) + non-régression logout à faire avec l'utilisateur avant PR. Push sur main = deploy prod → PR
+recommandée, prévenir avant merge. Découverte laissée : câbler un listener `levelup:auth-required` (client.ts:148,
+code mort) pour la vraie expiration en cours de session (lot séparé) ; + flake réseau `internal/sync` (lot séparé).
+
 ## [2026-07-21] Fix boucle /login — Étape 1 backend : persistance atomique des sessions (branche fix/session-login-loop)
 
 **Statut** : Complété (Étape 1/2). NON committé encore côté superviseur pour push (push main = deploy prod).
