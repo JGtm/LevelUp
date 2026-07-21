@@ -24,6 +24,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/scheduler"
 	sync_pkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/skill"
 )
 
 // monitoringLog : logger taggé module=monitoring (fichier logs/monitoring.log).
@@ -66,6 +67,7 @@ func (r *ServiceRegistry) MonitoringOverview(ctx context.Context, titleSlug stri
 		Snapshot:          monitoringSnapshotSummary(titleSlug),
 		OpenDetections:    observability.LoadCounter("monitoring_detections_open"),
 		FreshnessCritical: observability.LoadCounter("monitoring_freshness_critical"),
+		LUSRInteriorGaps:  skill.LUSRInteriorGapsGaugeValue(),
 		HTTP: domain.MonitoringHTTPSummary{
 			Status2xx: observability.LoadCounterT(titleSlug, "http_status_2xx_total"),
 			Status3xx: observability.LoadCounterT(titleSlug, "http_status_3xx_total"),

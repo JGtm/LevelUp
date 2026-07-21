@@ -1579,6 +1579,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/monitoring/lusr-gaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard monitoring — trous d'intérieur LUSR (matchs éligibles sans note, sous le watermark) + santé du garde-fou, par titre (auth admin requis) */
+        get: operations["getAdminMonitoringLusrGaps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/monitoring/lusr-gaps/{player}/recompute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Action admin — replay LUSR chronologique complet d'un joueur (comble les trous d'intérieur) (auth admin requis) */
+        post: operations["postAdminMonitoringLusrGapsRecompute"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/monitoring/jobs": {
         parameters: {
             query?: never;
@@ -5273,6 +5307,8 @@ export interface components {
             open_detections: number;
             /** Format: int64 */
             freshness_critical: number;
+            /** Format: int64 */
+            lusr_interior_gaps: number;
             http: components["schemas"]["MonitoringHTTPSummary"];
             title_slug: string;
             tokens?: components["schemas"]["MonitoringTokensSummary"];
@@ -11194,6 +11230,62 @@ export interface operations {
         responses: {
             /** @description Couverture de résolution d'arme par titre */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getAdminMonitoringLusrGaps: {
+        parameters: {
+            query?: {
+                title?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rapport trous LUSR par joueur + agrégats + garde-fou */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postAdminMonitoringLusrGapsRecompute: {
+        parameters: {
+            query?: {
+                title?: string;
+            };
+            header?: never;
+            path: {
+                player: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Replay effectué (nombre de lignes LUSR réécrites) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Replay échoué */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Moteur de replay non câblé */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
