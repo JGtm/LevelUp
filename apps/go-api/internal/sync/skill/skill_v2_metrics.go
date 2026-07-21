@@ -44,7 +44,23 @@ var (
 	// Doit rester 0 ; >0 = anomalie data (avant le fix 2026-06-07 ce cas avançait
 	// le watermark en SILENCE → gap permanent invisible).
 	canonicalOwnerMissing = expvar.NewInt("levelup.lusr_v2.canonical_owner_missing_total")
+	// interiorGapsGauge : nb de trous d'INTÉRIEUR LUSR au DERNIER scan (ScanLUSRGaps,
+	// cron data_health), tous joueurs/groupes/titres confondus. Gauge (Set, pas Add) :
+	// reflète l'état COURANT, pas un cumul. >0 = des notes LUSR manquent définitivement
+	// SOUS le watermark → replay requis (RecomputeLUSRCanonical). Publié via /debug/vars.
+	interiorGapsGauge = expvar.NewInt("levelup.lusr_v2.interior_gaps")
 )
+
+// SetLUSRInteriorGapsGauge publie le total de trous d'intérieur du dernier scan.
+func SetLUSRInteriorGapsGauge(total int) { interiorGapsGauge.Set(int64(total)) }
+
+// Accesseurs de lecture pour le monitoring admin (endpoint /admin/monitoring/
+// lusr-gaps) : ces compteurs LUSR v2 n'étaient jusqu'ici lisibles que via
+// /debug/vars. Les ré-exposer permet au DTO garde-fou de les afficher sans parser
+// l'expvar HTTP.
+func LUSRInteriorGapsGaugeValue() int64           { return interiorGapsGauge.Value() }
+func LUSRCanonicalWriteHeldWatermarkValue() int64 { return canonicalWriteHeldWatermark.Value() }
+func LUSRCanonicalOwnerMissingValue() int64       { return canonicalOwnerMissing.Value() }
 
 // SentinelReport est le résultat d'un scan dual-row.
 type SentinelReport struct {

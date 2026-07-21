@@ -179,3 +179,65 @@ export function useMonitoringCrons() {
     retry: false,
   })
 }
+
+// ── Trous LUSR (garde-fou notes LUSR) ────────────────────────────────────────
+// Types hand-typed (les réponses admin n'ont pas de schéma OpenAPI ; contrat côté
+// Go = domain.AdminLUSRGaps). start_time en RFC3339, match_id/xuid en string.
+
+/** Un match éligible sans note LUSR (trou d'intérieur). */
+export interface AdminLusrGapItem {
+  match_id: string
+  group: string
+  playlist: string
+  start_time: string
+}
+
+/** État LUSR d'un joueur suivi. */
+export interface AdminLusrGapPlayer {
+  player_slug: string
+  gamertag: string
+  xuid: string
+  eligible: number
+  rated: number
+  interior_gaps: number
+  pending_recent: number
+  top_gaps: AdminLusrGapItem[]
+  check_error?: string
+}
+
+/** Santé du garde-fou (compteurs LUSR v2 ré-exposés + horodatage). */
+export interface AdminLusrGuardrailHealth {
+  interior_gaps_gauge: number
+  held_watermark: number
+  owner_missing: number
+  last_audit_at?: string
+}
+
+/** Rapport trous LUSR d'un titre (agrégats + par joueur + garde-fou). */
+export interface AdminLusrGaps {
+  title_slug: string
+  generated_at: string
+  eligible_total: number
+  rated_total: number
+  interior_gaps_total: number
+  pending_recent_total: number
+  coverage_percent: number
+  players: AdminLusrGapPlayer[]
+  guardrail: AdminLusrGuardrailHealth
+}
+
+/**
+ * Trous d'intérieur LUSR pour un titre. Le slug est passé en query (?title=) —
+ * autoritaire, indépendant du titre courant. Diagnostic (scan par joueur côté
+ * Go) : pas de polling, cache tranquille comme la couverture d'arme.
+ */
+export function useLusrGaps(titleSlug: string) {
+  return useQuery({
+    queryKey: queryKeys.adminLusrGaps(titleSlug),
+    queryFn: () =>
+      api.get<AdminLusrGaps>(`/admin/monitoring/lusr-gaps?title=${encodeURIComponent(titleSlug)}`),
+    enabled: !!titleSlug,
+    staleTime: 60_000,
+    retry: false,
+  })
+}

@@ -1,3 +1,96 @@
+## [2026-07-21] Revue + réécriture v2 du plan D7 « titre (et langue) dans l'URL »
+
+**Statut** : Complété (plan seulement — aucune ligne de code). `.ai/PLAN_TITLE_SLUG_URL_2026-07.md`
+réécrit en v2 après revue sur pièces (grille `plan-review`) ; amendements validés par l'utilisateur.
+
+**Trous corrigés vs v1** :
+1. **beforeLoad ≠ bootstrap** : le bootstrap est composant-level (`__root.tsx:34-49`, useQuery) — un
+   `beforeLoad` enfant lit un store NON hydraté (un bookmark H5 legacy aurait redirigé vers le défaut).
+   → D-8 : tout mécanisme = résolveur pur + `<Navigate>` déclaratif gaté `isBootstrapped` (pattern
+   maison `resolveIndexRedirect`).
+2. **Bénéfice non câblé** : « titre connu synchrone au fresh-load » était relégué en optimisation
+   optionnelle → D-9 : parse du segment AVANT la première requête + header `X-LevelUp-Title` envoyé
+   TOUJOURS, pour TOUS les titres (demande explicite user : title-agnostic, zéro cas spécial
+   halo_infinite). Vérifié compatible backend sans changement Go (`title.go:55-61` accepte tout slug
+   du registre).
+3. **« tsc énumère l'exhaustif » surestimé** : surfaces string échappant au typecheck recensées
+   (`ShellNavItem.to: string`, `buildPlayerDestination`, `isCommunityPath`, `pageTitle`,
+   `usePageScope`, specs e2e) — preuve : mismatch `profile/citations` vivant depuis des mois.
+   → garde-rail grep ratchet (critère de succès dédié) + typage de `ShellNavItem.to`.
+4. **E2E non optionnels** : les 10 specs Playwright assertent des URLs `/players/…` qui casseront
+   → migration + spec `legacy-redirect` obligatoires (Phase 6).
+
+**Décisions nouvelles** : D-10 module unique `lib/title-routing/` (parse/gate/redirect purs +
+`applyActiveTitle` effectful) + garde-rail ; D-11 TDD ciblé (tests du module et matrice de
+redirection AVANT implémentation ; le mécanique reste sous tsc) ; D-4 amendé : langue INTÉGRÉE
+structurellement (`/{-$lang}/t/{slug}/…`, param optionnel vérifié supporté par router-core 1.170.16,
+repli tranché = `$lang` obligatoire) — évite un 2e déplacement de ~50 routes + une 2e génération
+d'URLs legacy ; D-12 locale par segment à périmètre minimal (un seul caller `setLocale`) ; chemin
+d'erreur de bascule redéfini (pas de rollback store-only → navigate retour segment, anti-boucle) +
+course back/forward couverte.
+
+**Prochaine étape** : exécution sur `feat/title-slug-in-url` (après livraison de la branche frags),
+sous contrat `plan-execution`, Phase 0.
+
+## [2026-07-21] Garde-fou « trous d'intérieur » LUSR + exposition monitoring (Lots 1→6)
+
+**Statut** : Complété (backend + web), gates verts. NON committé (attente autorisation user, CLAUDE.md n°16).
+Branche `feat/frag-distribution-v2` (⚠ le chantier LUSR est empilé sur la branche frags — à séparer au
+découpage commits si souhaité). Plan : `.ai/PLAN_LUSR_INTERIOR_GAPS_GUARDRAIL.md` (chaque lot statué).
+
+**Problème** : le LUSR v2 est une note μ incrémentale à état par `(xuid, playlist_group)`, gardée par un
+watermark chronologique. Un match arrivé HORS-ORDRE passe sous le watermark sans être scoré → `skippedAlready`
+permanent = **trou d'intérieur** (note définitivement absente). Non-déterministe, par-environnement (mesuré :
+JGtm 10 trous prod / 1 local, ensembles disjoints ; `ac313879` le cas type). Doctrine préservée : « plutôt un
+trou qu'une note fausse » — le garde-fou rend les trous VISIBLES + RÉPARABLES, sans changer la règle.
+
+**Décisions techniques** :
+- **Source unique d'éligibilité** (anti-dérive CLAUDE.md n°6) : `classifyLUSREligibility` extrait de
+  `processOneShadowMatch` (rosters/équilibre/outcome), appelé APRÈS le watermark (pas de query rosters sur
+  l'historique déjà vu). Signature `(ctx, sharedDB, m) lusrEligibility` ; la chaîne (`GetLUSRChainForTitle`) et
+  le filtre SQL (`loadShadowMatches`) restent les 2 autres maillons mono-source. Garde-rail grep
+  `lusr_eligibility_guardrail_test.go` (allowlist v1 loader + shadow loader).
+- **Détecteur** `ScanLUSRGaps` read-only : réutilise `loadShadowMatches` + le prédicat, croise
+  `match_skill_rank_latest` (vue _latest, ART n°2) + watermark `player_skill_state_v2_latest`. Trou d'intérieur =
+  éligible + non noté + `!start_time.After(last_match_at)` (== sémantique `skippedAlready` du scoreur ; le plan
+  disait `<`, retenu `<=` car le match-frontière est de toute façon noté donc exclu par le set rated). Sans
+  watermark → pending, pas trou.
+- **Métriques/cron** : jauge `levelup.lusr_v2.interior_gaps` + accesseurs ré-exposés ; accroche
+  `HealthScheduler` (scan par joueur via `xuid.txt`, timeout 60s/joueur). Trous HORS `WarningsTotal` (signal
+  distinct).
+- **Remédiation** : `POST /admin/monitoring/lusr-gaps/{player}/recompute` → `RecomputeLUSRCanonical` in-server
+  (leases player+shared, B-swap via `SharedProvider`). **Auto-heal borné OFF par défaut** (kill-switch
+  `LEVELUP_LUSR_AUTOHEAL_ENABLED`, 1 joueur/cycle, seuil 3, commentaire daté n°11) — **activation = décision
+  user après observation** (démarré alerte seule, conforme au plan).
+- **Expo web** : panneau `LusrGapsSection` dans `/admin/data` (barre couverture rated/pending/interior via
+  tokens sémantiques, stats, ligne garde-fou, joueurs impactés + bouton « Recalculer ») ; badge d'onglet via
+  `lusr_interior_gaps` ajouté à `AdminMonitoringOverview` ; i18n FR+EN `admin.lusr.*`. Réconciliation
+  documentée avec l'invariant `checkSkillRankMissing` (signal grossier superset vs panneau précis + réparable).
+
+**Gates** : `go build ./...`, `go vet`, `go-api-test` (dont `TestContractOpenAPIYAMLValid`), tests
+`skill`/`scheduler`/`wire`/`handlers`/`domain` + `internal/sync` complet verts ; `check-types`, eslint 0 + 0 hex,
+suite vitest (2422, dont garde-rail `response-types.guard` — `LusrRecomputeResult` renommé pour éviter le suffixe
+`Response`). Intégration `-tags=integration -p 1 ./internal/sync/... ./internal/persist/...` VERT (anti-ART OK).
+
+**Vérification finale (2026-07-21, demande user « tout complet + logging + tests »)** :
+- **Bug prod évité (vérifié sûr)** : `GetLUSRChainForTitle` panique si le classifier n'est pas câblé
+  (contrat fail-loud). Mon accroche cron Lot 3 l'appelle → risque de panic au boot si le scheduler
+  (démarré `main.go:998`) devançait le câblage. VÉRIFIÉ : `runMigrations` (câble le classifier,
+  `main.go:1579`) est appelé `main.go:404`, AVANT le scheduler, + `ValidateLUSRChainClassifierWired`
+  gate le démarrage → pas de race prod. Le panic reste un artefact test (package sans boot serveur) →
+  classifier câblé dans le harnais e2e.
+- **Logging durci** (CLAUDE.md n°3, routage `logs/`) : wire → `monitoringLog` (monitoring.log) pour
+  l'échec de scan par joueur + synthèse Debug ; scheduler → `slog` (scheduler.log auto par package)
+  pour l'échec d'ouverture player DB (plus de `continue` muet).
+- **Tests ajoutés** (9 Go + 2 web) : garde-rail éligibilité ; détecteur (hétérogène + no-watermark) ;
+  jauge/accesseurs métriques ; auto-heal décision (matrice flag/seuil/hook) ; **e2e scheduler** avec
+  VRAIES migrations (trou détecté + auto-heal fire ON / OFF défaut) ; 2 cas badge trous LUSR.
+- **Taille fichiers** : refactor → `lusr_eligibility.go` (74) + `data_health_lusr.go` (141) ;
+  `skill_v2_shadow.go` 781 (< 792 origine), `data_health_check.go` 385. Tous ≤ 500, fonctions ≤ 80.
+
+**Découverte notée** : le chantier LUSR est empilé sur la branche frags (`feat/frag-distribution-v2`).
+**Prochaine étape** : découpage commits + autorisation user avant tout commit/merge (push main = deploy prod).
+
 ## [2026-07-19] Notifs — i18n FR notifs/Discord, toggle version, fix « solide » présence webhook (branche fix/notif-i18n-fr-webhook-present)
 
 **Statut** : Complété. NON committé (superviseur committe ; push main = deploy prod → après revue utilisateur).

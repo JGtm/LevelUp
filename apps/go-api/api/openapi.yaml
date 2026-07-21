@@ -1984,6 +1984,38 @@ paths:
       responses:
         "200": { description: "Couverture de résolution d'arme par titre" }
 
+  /admin/monitoring/lusr-gaps:
+    get:
+      tags: [admin]
+      operationId: getAdminMonitoringLusrGaps
+      summary: "Dashboard monitoring — trous d'intérieur LUSR (matchs éligibles sans note, sous le watermark) + santé du garde-fou, par titre (auth admin requis)"
+      parameters:
+        - name: title
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200": { description: "Rapport trous LUSR par joueur + agrégats + garde-fou" }
+
+  /admin/monitoring/lusr-gaps/{player}/recompute:
+    post:
+      tags: [admin]
+      operationId: postAdminMonitoringLusrGapsRecompute
+      summary: "Action admin — replay LUSR chronologique complet d'un joueur (comble les trous d'intérieur) (auth admin requis)"
+      parameters:
+        - name: player
+          in: path
+          required: true
+          schema: { type: string }
+        - name: title
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200": { description: "Replay effectué (nombre de lignes LUSR réécrites)" }
+        "500": { description: "Replay échoué" }
+        "503": { description: "Moteur de replay non câblé" }
+
   /admin/monitoring/jobs:
     get:
       tags: [admin]
@@ -8029,6 +8061,9 @@ components:
           freshness_critical:
               format: int64
               type: integer
+          lusr_interior_gaps:
+              format: int64
+              type: integer
           http:
               $ref: '#/components/schemas/MonitoringHTTPSummary'
           title_slug:
@@ -8047,6 +8082,7 @@ components:
           - snapshot
           - open_detections
           - freshness_critical
+          - lusr_interior_gaps
           - http
       type: object
     MonitoringHTTPSummary:
