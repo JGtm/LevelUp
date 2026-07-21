@@ -7,6 +7,7 @@ package middleware
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -56,7 +57,9 @@ func WithSession(store *session.Store, policy SecureCookiePolicy) func(http.Hand
 			// glissant) ou devenue significative. Une session anonyme vierge n'est
 			// jamais écrite → plus de spam dans data/sessions/.
 			if loaded || sess.IsMeaningful() {
-				_ = store.Touch(sess)
+				if err := store.Touch(sess); err != nil {
+					slog.ErrorContext(r.Context(), "session touch failed", "err", err)
+				}
 			}
 		})
 	}

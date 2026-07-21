@@ -1,3 +1,35 @@
+## [2026-07-21] Fix boucle /login — Étape 1 backend : persistance atomique des sessions (branche fix/session-login-loop)
+
+**Statut** : Complété (Étape 1/2). NON committé encore côté superviseur pour push (push main = deploy prod).
+Déclencheur : utilisateur renvoyé « sans cesse » vers /login malgré session valide ; retirer /login de l'URL
+(reload plein) reconnecte -> session backend vivante mais éjectée à tort. Plan
+`.ai/PLAN_FIX_SESSION_LOGIN_LOOP_2026-07.md`.
+
+**Décision technique principale** : cause racine couche 1 = « torn read » sur le fichier de session.
+`session.Store.Save` faisait `os.WriteFile` (truncate+write non atomique, aucun verrou). Sous la rafale
+`refetchOnWindowFocus`, `/bootstrap` faisait un `Load` d'un fichier tronqué -> `nil` -> session anonyme
+transitoire -> le front éjectait vers /login. Fix : `Save` écrit dans un `.tmp` du même répertoire puis
+`os.Rename` (atomic-replace cross-plateforme) -> `Load` voit toujours un fichier complet.
+
+**Écart au plan (justifié, signalé)** : le rename atomique SEUL ne suffit pas intra-process sous **Windows**
+(dev local) — `os.Rename` échoue et `os.ReadFile` prend une *sharing violation* si un handle concurrent tient
+le fichier (test rouge : 109 Load nil / 177 Save err). J'ai donc mis un **`sync.RWMutex`** sur le `Store`
+(`Save`=Lock, `Load`=RLock) au lieu du simple `sync.Mutex` optionnel prévu par le plan. Le RWMutex sérialise
+lecture/écriture intra-process (les deux OS) ; le rename atomique reste la protection cross-process (doublon
+`air`). `Delete` laissé sans verrou (appelé sous RLock par Load sur expiry -> éviter le deadlock).
+Aussi : `PurgeExpired` nettoie les `.tmp` orphelins (guard 1h) ; middleware log l'échec `Touch`
+(`slog.ErrorContext`, anti swallowed-error).
+
+**Résultats observés** : nouveau `store_concurrent_test.go` (4 writers + 4 readers ~200 ms) ROUGE avec rename
+seul, VERT avec le RWMutex (`-race -count=3`). Gate : session+middleware verts, build+vet verts, `go test ./...`
+vert SAUF un flake réseau `internal/sync` (GET réel halowaypoint -> deadline) qui passe en isolation — noté en
+Découvertes, non traité.
+
+**Conclusion / prochaine étape** : Étape 2 frontend — garde anti-éjection dans `__root.tsx` (ne pas
+hydrater/rediriger sur un downgrade anonyme suspect alors que le store porte un user authentifié) + tests
+vitest. NB : le fichier plan vivait sur la branche feat/frag-distribution-v2 (committé, absent de main) ; je
+l'ai rapatrié via `git checkout feat -- <plan>` sur la branche fix pour le versionner avec le correctif.
+
 ## [2026-07-19] Notifs — i18n FR notifs/Discord, toggle version, fix « solide » présence webhook (branche fix/notif-i18n-fr-webhook-present)
 
 **Statut** : Complété. NON committé (superviseur committe ; push main = deploy prod → après revue utilisateur).
