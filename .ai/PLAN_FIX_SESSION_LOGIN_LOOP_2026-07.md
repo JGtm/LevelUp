@@ -98,30 +98,38 @@ session/middleware — cf. Découvertes.
 ### Étape 2 — Frontend : ne pas éjecter un utilisateur authentifié sur un anonyme transitoire
 
 Fichier : `apps/web/src/routes/__root.tsx` (effet L55-84)
-- [ ] Avant `hydrateFromBootstrap(data)`, capturer `wasAuthenticated =
+- [x] Avant `hydrateFromBootstrap(data)`, capture `wasAuthenticated =
   useAppShellStore.getState().currentUsername`.
-- [ ] Si `!data.current_username && wasAuthenticated` (rétrogradation suspecte via refetch) :
-  **ne pas** `navigate('/login')` **et** **ne pas** rabattre `currentUsername` à `null` (préserver la
-  dernière valeur connue) ; logguer un warning via le logger client (`components/shell/_logger` ou
-  équivalent). La redirection `/login` ne s'exécute que sur un anonyme **autoritaire**
-  (`!wasAuthenticated` : chargement frais, reload post-logout).
-- [ ] Implémentation : soit gate autour du bloc redirection + restauration `currentUsername`
-  après hydrate, soit variante d'hydrate qui ne rétrograde pas `currentUsername`. Comme
+- [x] Si `!data.current_username && wasAuthenticated` (rétrogradation suspecte via refetch) :
+  `return` **avant** hydrate ET redirection + `log.warn('bootstrap:anon_downgrade', ...)`
+  (`@/components/shell/_logger`). La redirection `/login` ne s'exécute que sur un anonyme
+  **autoritaire** (`!wasAuthenticated` : chargement frais, reload post-logout).
+- [x] **Variante choisie (écart aux 2 options du plan, justifié)** : `return` early = **ne pas
+  hydrater du tout** sur downgrade suspect, plutôt que « hydrater puis restaurer `currentUsername` ».
+  Raison : en mode xbox un bootstrap anonyme renvoie AUSSI `available_players: []`, `current_player:
+  null`, `is_admin: false` — hydrater en ne préservant QUE `currentUsername` laisserait un état
+  mi-anonyme incohérent (shell sans joueurs). Le skip préserve l'état authentifié **complet**. Comme
   `index.tsx`/`resolveIndexRedirect` et `players/$playerSlug.tsx` lisent le **store**, préserver le
   store corrige **tous** les vecteurs d'un coup.
-- [ ] Conserver `refetchOnWindowFocus: true` (la bannière reauth se rafraîchit toujours ; les autres
-  champs continuent d'être hydratés).
+- [x] `refetchOnWindowFocus: true` conservé (inchangé). Un refetch AUTHENTIFIÉ (cas nominal) hydrate
+  toujours normalement, bannière reauth incluse ; seul le downgrade **anonyme** est ignoré.
+- [x] (hors items plan, in-scope) `RootLayout` exporté pour testabilité ;
+  `vite.config.ts` : `routeFileIgnorePattern: '\\.test\\.tsx?$'` pour exclure les tests colocalisés
+  du codegen de routes (sinon warning « does not export a Route »).
 
-Tests : `apps/web/src/routes/__root.test.tsx` (ou colocalisé)
-- [ ] store authentifié + `/bootstrap` refetch anonyme => **aucun** `navigate('/login')`, `currentUsername`
-  préservé.
-- [ ] montage frais (store vide) + bootstrap anonyme => redirige vers `/login` (chemin logout intact).
+Tests : `apps/web/src/routes/__root.test.tsx`
+- [x] store authentifié (`currentUsername='alice'`) + `/bootstrap` refetch anonyme => `navigateMock`
+  **jamais** appelé, `currentUsername` reste `'alice'`.
+- [x] montage frais (store vide) + bootstrap anonyme => `navigate({ to: '/login' })` appelé,
+  `currentUsername` null (chemin logout intact).
 
 **Gate étape 2 :**
 ```
 make check-types
 make test-web        # vitest hors sandbox : dangerouslyDisableSandbox=true
 ```
+Résultat (2026-07-21) : `check-types` (tsc -b) **vert** ; `__root.test.tsx` 2/2 **vert** ;
+`make test-web` (suite complète) **vert** : 276 fichiers, 2382 tests, 14 skipped, 0 échec.
 
 ## Vérification end-to-end
 
