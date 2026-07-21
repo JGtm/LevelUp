@@ -12,6 +12,12 @@ en = "Frag distribution"
 fr = "Frags par arme"
 en = "Kills by weapon"
 
+# Titre du bloc « Détails des frags » — UNIQUEMENT le Match view (armes + mêlée/grenade/
+# capacités). Les autres surfaces gardent weapon_breakdown_title (« Frags par arme »).
+[frags.charts.detail_title]
+fr = "Détails des frags"
+en = "Frag details"
+
 [frags.charts.center_total_label]
 fr = "Frags"
 en = "Kills"

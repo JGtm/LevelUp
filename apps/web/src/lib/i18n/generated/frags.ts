@@ -5,6 +5,7 @@ export const fragsManifest = {
   "frags.authority.estimated": { fr: "estimé", en: "estimated" },
   "frags.authority.exact": { fr: "exact", en: "exact" },
   "frags.charts.center_total_label": { fr: "Frags", en: "Kills" },
+  "frags.charts.detail_title": { fr: "Détails des frags", en: "Frag details" },
   "frags.charts.sunburst_title": { fr: "Répartition des frags", en: "Frag distribution" },
   "frags.charts.weapon_breakdown_title": { fr: "Frags par arme", en: "Kills by weapon" },
   "frags.class.grenade": { fr: "Grenade", en: "Grenade" },

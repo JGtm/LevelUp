@@ -10,6 +10,92 @@
 
 ---
 
+### [archi/data] Unifier la SOURCE des noms d'armes (lieu unique de traduction, keyé par weapon_key)
+
+> Noté le 2026-07-21 (décision user : « à maintenir c'est impossible, une vraie galère »). Constat
+> vérifié dans le code : **3 sources de noms d'arme se marchent dessus**, et le nommage est keyé par
+> le **nom EN brut** (fragile).
+>
+> - **Nom affiché = table `weapon_labels`** (name_en + name_fr), peuplée DIFFÉREMMENT selon le titre :
+>   - Infinite → **seed Go statique écrit à la main** : `applyWeaponLabels`
+>     (`internal/games/halo_infinite/migrations/weapon_labels.go`, ~42 armes EN+FR en dur).
+>   - H5 → **API Metadata officielle + overrides TOML** : `cmd/h5-metadata-fetch` (seedWeapons) →
+>     name_fr = `config/titles/halo_5/mappings/asset_labels_fr.toml` [weapons] sinon EN. Lancé à la main.
+> - **Registre `weapons`** (`weapon_registry.go`, `applyWeaponRegistry`, cross-titre) : son VRAI job =
+>   **dimensions** (class/role/family/faction) du graphe frags. Il porte AUSSI un `name_fr` de secours
+>   **approximatif/inventé** (« Grenade Splinter », « Fusil de sniper covenant », mapping `Spartan →
+>   Non attribué »). Le resolver `resolveWeaponMeta` fait `label FR > registre FR > label EN > registre name`.
+
+**Symptôme** : sur H5, `weapon_labels.name_fr` n'a jamais été rempli en FR (le fetch ne demandait pas la
+localisation FR à l'API, ET les overrides TOML ne matchent que par nom EN EXACT — or l'API renvoie des noms
+« moches » : `FRAG GRENADE` majuscule, `LightRifle` en un mot — qui ne matchent pas les clés `Frag Grenade`,
+`Light Rifle`). → le resolver retombe sur le `name_fr` POURRI du registre. C'est la source du « spartan » et
+des noms anglais du Match view.
+
+**DÉCISION (user 2026-07-21)** : garder classes/rôles du registre, mais **UNIFIER la source des noms** :
+1. **Un seul fichier de traduction par titre**, versionné, **keyé par `weapon_key`** (id canonique stable),
+   PAS par le nom EN brut. Migrer le seed Go Infinite ET le `asset_labels_fr.toml` [weapons] H5 vers ce
+   format commun.
+2. Résolution du nom **via `weapon_key`** (`weapon_id → weapon_ids → weapon_key → {en, fr}`) → toutes les
+   variantes brutes d'une même arme retombent sur UNE traduction (tue le mismatch `FRAG GRENADE` vs `Frag Grenade`).
+3. Le `weapons.name_fr` du registre **ne sert plus jamais de nom affiché** (retirer ce repli du resolver, ou
+   vider la colonne) — zéro trad inventée qui fuit. Le registre reste la source class/role.
+
+**Near-term (one-shot, séparé)** : réappliquer les trads CONFIRMÉES de `asset_labels_fr.toml` [weapons] à la
+metadata H5 par match insensible casse/espaces (corrige `FRAG GRENADE`/`LightRifle`/`PLASMA GRENADE`), rien
+d'inventé, le reste garde l'EN. Ajouter au fichier confirmé les officielles manquantes (ex. Wraith = Apparition)
+uniquement après validation. **Bloqueur API** : l'endpoint officiel a migré (`www.haloapi.com` → `s3publicapis.
+azure-api.net`, backend `linearmeta.svc.halowaypoint.com`) et exige désormais une auth Spartan, pas juste la
+clé d'abonnement → re-fetch H5 KO tant que l'auth n'est pas recâblée (le fix code `fetchWeaponsFR` est prêt mais
+non vérifiable). **Effort** : moyen (refactor résolution nom) + petit (one-shot data).
+
+---
+
+### [feat/frags] Sunburst : donner un niveau 2 à la classe « Grenade » (par TYPE de grenade)
+
+> Noté le 2026-07-21 (user). La classe **Grenade du sunburst est une FEUILLE** : `buildAPIFragClasses`
+> (`internal/service/fragdist/fragdist.go:156-160`) pose `Kills = counts.Grenade` (total API autoritatif)
+> **sans `Roles`** → pas de niveau 2. Contraste : Mêlée a un niveau 2 (Assassinat/direct), les classes gun
+> sont ventilées par rôle. Résultat : sous « Grenade », pas de sous-arc par type — le seul libellé de niveau 2
+> disponible est le nom de classe lui-même (« grenade »).
+
+**Souhait (user)** : niveau 2 = **TYPE de grenade** (frag / plasma / dynamo / splinter). Les données existent
+dans les rows registre (`class=grenade` : Infinite `Frag/Plasma/Dynamo Grenade` ; H5 `h5_frag/plasma/splinter_
+grenade`) mais sont **actuellement exclues** — grenade ∉ `gunFragClasses` (`fragdist.go:31`), donc sautée dans
+`buildGunFragClasses` (`:94`).
+
+**Piste** : même patron que Mêlée — garder le total API `counts.Grenade` comme kills de la classe, poser un
+niveau 2 depuis les rows grenade du registre, avec un résidu « autre grenade » si Σ types < total API (invariant :
+Σ niveau 2 == kills classe). Ajouter les libellés i18n manquants (`frags.role` n'a pas de type de grenade
+aujourd'hui — cf. `apps/web/src/lib/i18n/manifests/frags.toml`). Lié à la branche `feat/frag-distribution-v2`.
+**Effort** : petit-moyen.
+
+---
+
+### [data/frags] H5 : Σ des classes du sunburst > total (double-comptage mêlée/assassinat)
+
+> Noté le 2026-07-21 (revue visuelle Match view). Sur un match H5, les parts du sunburst somment à
+> PLUS que le total affiché au centre (capture : 3+3+4+1+1+15 = 27 pour un total de 23, soit 117 %).
+> Cause : `buildViewerFragDistribution` (`internal/service/match_view_builders_combat.go`) additionne
+> les classes GUN (bulk weapon kills, `rows`) ET les compteurs NATIFS du scoreboard (counts.Melee /
+> Assassination / GroundPound / ShoulderBash). Or sur H5 un kill de mêlée/assassinat est attribué à
+> l'ARME TENUE dans les weapon kills (→ compté dans une classe gun) ET recompté dans le compteur natif
+> → double-comptage. `fragdist.Build` ne filtre des `rows` que `IsGrenadeMelee` : si les lignes H5
+> mêlée/assassinat ne portent pas ce flag (classe = arme tenue), elles fuient dans les classes gun.
+
+**Symptôme masqué côté affichage (2026-07-21)** : `FragSunburst` borne désormais les angles par
+`max(total, Σ classes)` → l'anneau remplit 360° sans déborder/se chevaucher (sinon les derniers arcs
+recouvraient les premiers → étiquettes de rôles au même angle, « même source »). Mais la DONNÉE reste
+fausse : le centre dit 23, les parts somment 27.
+
+**Fix data à faire** : garantir `Σ classes == total` dans `buildViewerFragDistribution` / `fragdist.Build`.
+Piste : marquer `IsGrenadeMelee` (ou exclure par `kill_kind ∈ {melee, assassination, grenade,
+ground_pound, shoulder_bash}`) les lignes bulk weapon H5 correspondantes → elles ne comptent QUE via
+les compteurs natifs. Vérifier sur un match H5 réel (bulk weapons + counts de la ligne is_me).
+**Effort** : moyen (backend + test invariant Σ=total sur dataset H5). Lié : branche `feat/frag-distribution-v2`.
+
+---
+
 ### [archi/match-view] Retirer le fallback LIVE (appel API à l'ouverture de page) du Match view
 
 > Noté le 2026-07-19 (décision user). Le Match view a un fallback qui, quand un match n'est PAS

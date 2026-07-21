@@ -184,8 +184,20 @@ function buildArcs(
   return { arcs, roleSeeds }
 }
 
-/** Étale les rôles d'un côté (gauche/droite) en lignes de rappel espacées en Y. */
-function buildCalloutsForSide(seeds: RoleArcSeed[], right: boolean, labels: FragSunburstLabels): SunCallout[] {
+/**
+ * Étale les rôles (niveau 2) d'un côté en lignes de rappel — UNE étiquette par rôle.
+ * L'étiquette est placée AU PLUS PRÈS de la hauteur de SON arc (`ey`), poussée vers le bas
+ * seulement pour éviter le chevauchement avec la précédente (points triés par ey croissant).
+ * Le côté gauche/droite est décidé en amont par la position HORIZONTALE de l'arc (cf.
+ * buildSunburstModel) → traits courts, aucune traversée du donut. La répartition uniforme
+ * de la maquette étalait les étiquettes sur toute la hauteur et éloignait le label de son arc
+ * quand les rôles se regroupaient d'un côté (classe dominante).
+ */
+function buildCalloutsForSide(
+  seeds: RoleArcSeed[],
+  right: boolean,
+  labels: FragSunburstLabels,
+): SunCallout[] {
   const points = seeds
     .map((s) => {
       const [ex, ey] = polar(R2, s.mid)
@@ -196,11 +208,13 @@ function buildCalloutsForSide(seeds: RoleArcSeed[], right: boolean, labels: Frag
   const tx = right ? W - 6 : 6
   const knee = right ? tx - KNEE_DX : tx + KNEE_DX
   const anchor: 'start' | 'end' = right ? 'end' : 'start'
-  return points.map((p, k) => {
-    const ly =
-      points.length === 1
-        ? clamp(p.ey, CALLOUT_Y_TOP, CALLOUT_Y_BOT)
-        : CALLOUT_Y_TOP + (k * (CALLOUT_Y_BOT - CALLOUT_Y_TOP)) / (points.length - 1)
+  const MIN_GAP = 16
+  let prevLy = -Infinity
+  return points.map((p) => {
+    let ly = clamp(p.ey, CALLOUT_Y_TOP, CALLOUT_Y_BOT)
+    if (ly < prevLy + MIN_GAP) ly = prevLy + MIN_GAP
+    ly = clamp(ly, CALLOUT_Y_TOP, CALLOUT_Y_BOT)
+    prevLy = ly
     const endX = right ? tx - 2 : tx + 2
     return {
       key: `${p.classKey}-${p.label}`,
@@ -227,9 +241,12 @@ export function buildSunburstModel(
 ): SunModel {
   if (total <= 0 || classes.length === 0) return { arcs: [], callouts: [], legend: [] }
   const { arcs, roleSeeds } = buildArcs(classes, total, colors, labels)
-  // Côté = position HORIZONTALE (X = cos) du point de l'arc externe vs centre :
-  // moitié droite du cercle → label à droite, moitié gauche → à gauche. Utiliser
-  // sin (composante Y) répartirait par haut/bas et ferait traverser les lignes.
+  // Côté = position HORIZONTALE (cos) de l'arc : chaque étiquette va du côté où son arc EST
+  // réellement (droite si x >= centre, gauche sinon) → le trait ne traverse JAMAIS le donut.
+  // La maquette décidait par la composante Y (sin, haut/bas) ; ça marche quand les rôles
+  // sont répartis en haut ET en bas, mais dès qu'une classe DOMINE (ex. arme de poing 65 %),
+  // tous les rôles étiquetés se retrouvent dans la moitié haute → tous à gauche → traits qui
+  // traversent (bug observé). cos règle ça quelle que soit la répartition.
   const isRight = (mid: number): boolean => Math.cos(((mid - 90) * Math.PI) / 180) >= 0
   const rightSeeds = roleSeeds.filter((s) => isRight(s.mid))
   const leftSeeds = roleSeeds.filter((s) => !isRight(s.mid))
@@ -287,15 +304,41 @@ export interface FragSunburstProps {
   externalHoveredClass?: string | null
   /** Remonté au parent au survol d'un arc/légende (classe parente ou null en sortie). */
   onClassHover?: (classKey: string | null) => void
+  /** Classe(s) utilitaire(s) fusionnée(s) sur la carte racine (ex. `lg:col-span-2`). */
+  className?: string
+  /** Masque le libellé « Frags » au centre (opt-in Match view) → compteur seul, centré dans l'anneau. */
+  hideCenterLabel?: boolean
+  /** Largeur max (px) du SVG, centré (opt-in Match view) — borne la hauteur `h-auto`. */
+  maxWidthPx?: number
+  /** Position de la légende des classes : 'bottom' (défaut, sous l'anneau) ou 'left' (opt-in
+   *  Match view : colonne verticale le long de la bordure gauche, à côté de l'anneau). */
+  legendSide?: 'bottom' | 'left'
 }
 
-export function FragSunburst({ distribution, title, externalHoveredClass = null, onClassHover }: FragSunburstProps) {
+export function FragSunburst({
+  distribution,
+  title,
+  externalHoveredClass = null,
+  onClassHover,
+  className = '',
+  hideCenterLabel = false,
+  maxWidthPx,
+  legendSide = 'bottom',
+}: FragSunburstProps) {
   const appLocale = useAppShellStore((s) => s.locale)
   const paletteVersion = useColorPaletteVersion()
   const numLoc = intlLocale(appLocale)
   const labelsBase = useSunburstLabels()
   const total = distribution?.total_kills ?? 0
   const classes = distribution?.classes ?? []
+  // Dénominateur des ANGLES d'arc ET du ratio %. En données SAINES, Σ classes == total
+  // (unattributed = résidu) → arcTotal == total → rendu INCHANGÉ. Si une anomalie backend
+  // fait Σ classes > total (double-comptage : sur H5 un kill mêlée/assassinat est attribué à
+  // l'arme tenue dans les weapon kills ET recompté dans le compteur natif), on borne par Σ :
+  // les arcs remplissent EXACTEMENT 360° sans déborder ni se chevaucher — sinon les derniers
+  // arcs recouvrent les premiers et deux rôles se retrouvent au même angle (étiquettes qui
+  // semblent partir de la même source). Le centre garde le vrai total (me.Kills).
+  const arcTotal = Math.max(total, classes.reduce((s, c) => s + c.kills, 0)) || 1
   const [hovered, setHovered] = useState<string | null>(null)
   const [tip, setTip] = useState<TipState | null>(null)
 
@@ -304,18 +347,18 @@ export function FragSunburst({ distribution, title, externalHoveredClass = null,
     () => ({
       ...labelsBase,
       formatShare: (n: number) =>
-        `${(total > 0 ? (n / total) * 100 : 0).toLocaleString(numLoc, { maximumFractionDigits: 1 })} %`,
+        `${((n / arcTotal) * 100).toLocaleString(numLoc, { maximumFractionDigits: 1 })} %`,
     }),
     // labelsBase dérive de appLocale ; on l'exclut (référence neuve à chaque rendu).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [total, appLocale, numLoc],
+    [arcTotal, appLocale, numLoc],
   )
 
   const model = useMemo(
-    () => buildSunburstModel(classes, total, SUNBURST_COLORS, labels),
+    () => buildSunburstModel(classes, arcTotal, SUNBURST_COLORS, labels),
     // couleurs réactives à la palette : paletteVersion force le recalcul.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [classes, total, appLocale, paletteVersion],
+    [classes, arcTotal, appLocale, paletteVersion],
   )
 
   if (total <= 0 || classes.length === 0) return null
@@ -338,17 +381,48 @@ export function FragSunburst({ distribution, title, externalHoveredClass = null,
   }
   const arcOpacity = (classKey: string) => (activeClass && classKey !== activeClass ? DIM_OPACITY : 1)
 
+  // Légende des classes (pastille + nom + valeur). Position pilotée par legendSide : 'bottom'
+  // = ligne sous l'anneau (défaut, autres surfaces) ; 'left' = colonne verticale le long de la
+  // bordure gauche, à côté de l'anneau (opt-in Match view).
+  const legendBlock = (
+    <div
+      className={legendSide === 'left' ? 'flex shrink-0 flex-col gap-1' : 'mt-2 flex flex-wrap gap-x-3 gap-y-1'}
+      data-testid="frag-legend"
+    >
+      {model.legend.map((row) => (
+        <span
+          key={row.classKey}
+          className="inline-flex cursor-default items-center gap-1.5 rounded px-1 py-0.5 text-xs"
+          style={{ opacity: activeClass && row.classKey !== activeClass ? DIM_OPACITY : 1 }}
+          onMouseEnter={() => {
+            setHovered(row.classKey)
+            onClassHover?.(row.classKey)
+          }}
+          onMouseLeave={() => {
+            setHovered(null)
+            onClassHover?.(null)
+          }}
+        >
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: row.color }} />
+          {row.label}
+          <span className="text-muted-foreground">{row.valueLabel}</span>
+        </span>
+      ))}
+    </div>
+  )
+
   return (
-    <div className="relative rounded-lg border border-border bg-card" data-testid="frag-sunburst">
+    <div className={`relative rounded-lg border border-border bg-card ${className}`} data-testid="frag-sunburst">
       <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">{cardTitle}</div>
-      <div className="p-3">
-        <div className="relative flex items-center justify-center">
+      <div className={legendSide === 'left' ? 'flex items-center gap-3 p-3' : 'p-3'}>
+        {legendSide === 'left' && legendBlock}
+        <div className={`relative flex items-center justify-center ${legendSide === 'left' ? 'min-w-0 flex-1' : ''}`}>
           <svg
             viewBox={`0 0 ${W} ${H}`}
             role="img"
             aria-label={cardTitle}
-            className="h-auto w-full"
-            style={{ overflow: 'visible' }}
+            className={`h-auto w-full ${maxWidthPx ? 'mx-auto block' : ''}`}
+            style={maxWidthPx ? { overflow: 'visible', maxWidth: maxWidthPx } : { overflow: 'visible' }}
           >
             {model.arcs.map((a) => (
               <path
@@ -374,33 +448,27 @@ export function FragSunburst({ distribution, title, externalHoveredClass = null,
                 </text>
               </g>
             ))}
+            {hideCenterLabel && (
+              <text
+                x={CX}
+                y={CY}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill={tc.text}
+                style={{ fontSize: 26, fontWeight: 700 }}
+              >
+                {total.toLocaleString(numLoc)}
+              </text>
+            )}
           </svg>
-          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{centerLabel}</span>
-            <span className="text-2xl font-bold leading-none">{total.toLocaleString(numLoc)}</span>
-          </div>
+          {!hideCenterLabel && (
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{centerLabel}</span>
+              <span className="text-2xl font-bold leading-none">{total.toLocaleString(numLoc)}</span>
+            </div>
+          )}
         </div>
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1" data-testid="frag-legend">
-          {model.legend.map((row) => (
-            <span
-              key={row.classKey}
-              className="inline-flex cursor-default items-center gap-1.5 rounded px-1 py-0.5 text-xs"
-              style={{ opacity: activeClass && row.classKey !== activeClass ? DIM_OPACITY : 1 }}
-              onMouseEnter={() => {
-                setHovered(row.classKey)
-                onClassHover?.(row.classKey)
-              }}
-              onMouseLeave={() => {
-                setHovered(null)
-                onClassHover?.(null)
-              }}
-            >
-              <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: row.color }} />
-              {row.label}
-              <span className="text-muted-foreground">{row.valueLabel}</span>
-            </span>
-          ))}
-        </div>
+        {legendSide === 'bottom' && legendBlock}
       </div>
       {tip && (
         <div

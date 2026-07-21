@@ -68,36 +68,33 @@ describe('buildSunburstModel (builder pur)', () => {
     expect(model.legend[0].color).toBe('col:shoulder')
   })
 
-  it('côté du callout = position X (cos) de l\'arc, pas Y (sin) — pas de ligne qui traverse', () => {
-    // Deux classes mono-rôle occupant chacune une moitié du cercle : le rôle « right »
-    // est centré à mid=90° (3 h, edgeX au MAX, moitié DROITE) ; le rôle « left » à
-    // mid=270° (9 h, edgeX au MIN, moitié GAUCHE). Le vrai critère est HORIZONTAL (X).
-    const SIDE_DIST: FragDistribution = {
+  it('côté du callout = position HORIZONTALE (cos) de l\'arc — le trait ne traverse jamais le donut', () => {
+    // 4 rôles en quadrants (repère polaire interne : q1 45° HAUT-DROITE, q2 135° BAS-DROITE,
+    // q3 225° BAS-GAUCHE, q4 315° HAUT-GAUCHE). Côté = cos(mid-90) = signe de X : moitié
+    // DROITE (x >= centre) → étiquette à droite ; moitié GAUCHE → à gauche. POINT CLÉ : q1 et
+    // q4 sont tous deux en HAUT mais partent de côtés OPPOSÉS → prouve le split horizontal
+    // (X), pas vertical (Y) ; c'est ce que sin ratait quand tous les rôles étaient en haut.
+    const Q_DIST: FragDistribution = {
       total_kills: 20,
       classes: [
-        { class: 'shoulder', kills: 10, authoritative: false, roles: [{ role: 'right', kills: 10 }] },
-        { class: 'power', kills: 10, authoritative: false, roles: [{ role: 'left', kills: 10 }] },
+        { class: 'shoulder', kills: 5, authoritative: false, roles: [{ role: 'q1', kills: 5 }] },
+        { class: 'sidearm', kills: 5, authoritative: false, roles: [{ role: 'q2', kills: 5 }] },
+        { class: 'heavy', kills: 5, authoritative: false, roles: [{ role: 'q3', kills: 5 }] },
+        { class: 'melee', kills: 5, authoritative: false, roles: [{ role: 'q4', kills: 5 }] },
       ],
     }
-    const model = buildSunburstModel(SIDE_DIST.classes ?? [], SIDE_DIST.total_kills, COLORS, LABELS)
-    expect(model.callouts).toHaveLength(2)
+    const model = buildSunburstModel(Q_DIST.classes ?? [], Q_DIST.total_kills, COLORS, LABELS)
+    expect(model.callouts).toHaveLength(4)
+    const byLabel = (l: string) => model.callouts.find((c) => c.label === l)!
 
-    const CX = 220 // centre du sunburst (cf. constante interne du composant)
-    // edgeX = X du point de l'arc externe = 1er point de la polyline « ex,ey … ».
-    const edgeX = (co: (typeof model.callouts)[number]) => Number(co.points.split(' ')[0].split(',')[0])
-
-    const rightCo = model.callouts.find((c) => c.label === 'role:right')!
-    const leftCo = model.callouts.find((c) => c.label === 'role:left')!
-
-    // Rôle sur la moitié DROITE (edgeX > CX) → ancre 'end', texte plaqué à droite (x élevé).
-    expect(edgeX(rightCo)).toBeGreaterThan(CX)
-    expect(rightCo.anchor).toBe('end')
-    expect(rightCo.tx).toBeGreaterThan(420) // x ≈ W-6 (viewBox 440)
-
-    // Rôle sur la moitié GAUCHE (edgeX < CX) → ancre 'start', texte plaqué à gauche (x bas).
-    expect(edgeX(leftCo)).toBeLessThan(CX)
-    expect(leftCo.anchor).toBe('start')
-    expect(leftCo.tx).toBeLessThan(20) // x ≈ 6
+    // Moitié DROITE (q1 haut-droite, q2 bas-droite) → DROITE (ancre 'end', texte à droite).
+    expect(byLabel('role:q1').anchor).toBe('end')
+    expect(byLabel('role:q2').anchor).toBe('end')
+    expect(byLabel('role:q1').tx).toBeGreaterThan(420)
+    // Moitié GAUCHE (q3 bas-gauche, q4 haut-gauche) → GAUCHE (ancre 'start', texte à gauche).
+    expect(byLabel('role:q3').anchor).toBe('start')
+    expect(byLabel('role:q4').anchor).toBe('start')
+    expect(byLabel('role:q4').tx).toBeLessThan(20)
   })
 
   it('total 0 → modèle vide (rien à tracer)', () => {

@@ -1,3 +1,35 @@
+## [2026-07-21] Frag Distribution v2 — refonte layout Match view (VALIDÉE user) + fix lignes de rappel (cos) + garde anti-débordement d'anneau
+
+**Statut** : Complété, VALIDÉ user sur Match view. Branche `feat/frag-distribution-v2`. Commit autorisé par l'user.
+
+**Layout Match view** (`MatchViewPage.tsx` + `MatchFragCard.tsx`) : la rangée frags passe sur SA PROPRE rangée en
+grille 3 colonnes — sunburst `col-span-2` (2/3), breakdown `col-span-1` (1/3). Les médailles descendent à la rangée
+suivante, à gauche des Citations (3 colonnes : Médailles | Citations | Média). Le breakdook devient « **Détails des
+frags** » = armes (per-arme) + détail mêlée (Assassinat/Corps-à-corps) + grenade + capacités, tiré de
+`frag_distribution` (sans double-comptage : la mêlée ne vient jamais de la liste per-arme). Titre scopé via clé i18n
+`frags.charts.detail_title` (nouvelle) ; `weapon_breakdown_title` (« Frags par arme ») rétabli pour les autres surfaces.
+
+**Sunburst — retouches SCOPÉES Match view** via props opt-in (défaut = comportement partagé inchangé) : `hideCenterLabel`
+(compteur seul, rendu en `<text>` SVG au centre exact de l'anneau `CX,CY` → plus de décalage), `maxWidthPx=480` (borne la
+hauteur `h-auto` → l'anneau ne gonfle plus avec la colonne 2/3, ~+10 %), `legendSide='left'` (légende en colonne le long de
+la bordure gauche), `className` (col-span). `FragWeaponBreakdown` : props `className` + `heightScale`.
+
+**Sunburst — fix lignes de rappel, GLOBAL (toutes surfaces)** : le côté gauche/droite d'une étiquette de rôle était calculé
+sur la composante Y (`sin`, repris de la maquette). Quand une classe DOMINE (ex. arme de poing 65 %), tous les rôles étiquetés
+sont dans la moitié haute → tous à gauche → les traits des arcs de droite TRAVERSENT l'anneau. Corrigé en `cos` (position
+HORIZONTALE : chaque étiquette du côté où son arc est → jamais de traversée) + placement vertical AU PLUS PRÈS de l'arc
+(anti-chevauchement MIN_GAP). Test réécrit (`FragSunburst.test.tsx`) : q1 haut-droite / q4 haut-gauche partent de côtés opposés.
+
+**Sunburst — garde anti-débordement** : `arcTotal = max(total, Σ classes)` pour les angles ET le ratio %. Découverte : sur H5
+la distribution du viewer a **Σ classes > total** (capture : parts = 27, total = 23, soit 117 %) car un kill mêlée/assassinat
+est attribué à l'arme tenue dans les weapon kills ET recompté dans le compteur natif → double-comptage. Sans garde, les arcs
+dépassaient 360° et se chevauchaient (rôles au même angle → « même source »). Le vrai fix data (Σ=total dans
+`buildViewerFragDistribution`/`fragdist.Build`) est **noté au BACKLOG** (`[data/frags] H5`) — nécessite un vrai match H5 pour cibler.
+
+**Gates (verts)** : `npm run typecheck` (tsc -b exit 0, cache purgé) ; `vitest` frags 15/15 ; `eslint` 0 erreur (1 warning
+react-refresh pré-existant). **BACKLOG** : 3 entrées ajoutées ce chantier ([archi/data] source noms d'armes, [feat/frags]
+niveau 2 grenade, [data/frags] double-comptage H5). Prochaine étape : porter la vue frags sur Synthesis.
+
 ## [2026-07-20] Frag Distribution v2 — forme validée : sunburst SVG désencombré (lignes de rappel) + gamme Antagonistes réactive-palette + layout Match auto-fit
 
 **Statut** : Complété. NON committé (le superviseur gère git). Branche `feat/frag-distribution-v2`. `.ai/BACKLOG.md`
