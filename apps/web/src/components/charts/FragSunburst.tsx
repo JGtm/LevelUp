@@ -227,8 +227,12 @@ export function buildSunburstModel(
 ): SunModel {
   if (total <= 0 || classes.length === 0) return { arcs: [], callouts: [], legend: [] }
   const { arcs, roleSeeds } = buildArcs(classes, total, colors, labels)
-  const rightSeeds = roleSeeds.filter((s) => Math.sin(((s.mid - 90) * Math.PI) / 180) >= 0)
-  const leftSeeds = roleSeeds.filter((s) => Math.sin(((s.mid - 90) * Math.PI) / 180) < 0)
+  // Côté = position HORIZONTALE (X = cos) du point de l'arc externe vs centre :
+  // moitié droite du cercle → label à droite, moitié gauche → à gauche. Utiliser
+  // sin (composante Y) répartirait par haut/bas et ferait traverser les lignes.
+  const isRight = (mid: number): boolean => Math.cos(((mid - 90) * Math.PI) / 180) >= 0
+  const rightSeeds = roleSeeds.filter((s) => isRight(s.mid))
+  const leftSeeds = roleSeeds.filter((s) => !isRight(s.mid))
   const callouts = [
     ...buildCalloutsForSide(rightSeeds, true, labels),
     ...buildCalloutsForSide(leftSeeds, false, labels),
