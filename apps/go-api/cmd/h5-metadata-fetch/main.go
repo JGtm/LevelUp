@@ -460,6 +460,34 @@ type apiWeapon struct {
 	ID                string `json:"id"`
 }
 
+// fetchWeaponsFR refetch /weapons en fr-FR (l'API Metadata HONORE Accept-Language, cf.
+// fetchMetaLang) et indexe le nom FR par id d'arme. Best-effort : endpoint FR en échec
+// ou parse KO -> map vide ; chooseFR retombera alors sur l'override TOML puis l'EN.
+func fetchWeaponsFR(key string) map[string]string {
+	out := map[string]string{}
+	body, err := fetchMetaLang(key, "weapons", langFR)
+	if err != nil {
+		fmt.Printf("weapons[fr-FR]: SKIP (%v)\n", err)
+		return out
+	}
+	var weapons []apiWeapon
+	if err := json.Unmarshal(body, &weapons); err != nil {
+		fmt.Printf("weapons[fr-FR]: parse %v\n", err)
+		return out
+	}
+	for _, w := range weapons {
+		if name := strings.TrimSpace(w.Name); name != "" && w.ID != "" {
+			out[w.ID] = name
+		}
+	}
+	return out
+}
+
+// seedWeapons peuple weapon_labels (id -> nom EN/FR, icône, type) depuis l'API
+// Metadata officielle. name_fr : la localisation FR vient de l'API elle-même (pass
+// fr-FR via fetchWeaponsFR), les overrides TOML restant prioritaires (cf. chooseFR) ;
+// EN en dernier repli (jamais name_fr vide). Sans ce pass FR, les armes sans override
+// TOML restaient en anglais (« lightrifle », « FRAG GRENADE ») côté match view.
 func seedWeapons(db *sql.DB, key string, fr map[string]string) {
 	body, err := fetchMeta(key, "weapons")
 	if err != nil {
@@ -471,23 +499,29 @@ func seedWeapons(db *sql.DB, key string, fr map[string]string) {
 		fmt.Printf("weapons: parse %v\n", err)
 		return
 	}
-	n := 0
+	// Pass FR : noms localisés par l'API (Accept-Language: fr-FR), indexés par id.
+	frByID := fetchWeaponsFR(key)
+	n, localized := 0, 0
 	for _, w := range weapons {
 		// id officiel = numérique (tient dans weapon_labels.weapon_id UBIGINT).
 		id, perr := strconv.ParseInt(w.ID, 10, 64)
 		if perr != nil {
 			continue
 		}
+		nameFR := chooseFR(fr, w.Name, frByID[w.ID])
 		_, err := db.Exec(`INSERT OR REPLACE INTO weapon_labels
 			(weapon_id, name_en, name_fr, icon_url, weapon_type) VALUES (?,?,?,?,?)`,
-			id, w.Name, frOr(fr, w.Name), w.LargeIconImageURL, w.Type)
+			id, w.Name, nameFR, w.LargeIconImageURL, w.Type)
 		if err != nil {
 			fmt.Printf("weapons: insert %s: %v\n", w.ID, err)
 			continue
 		}
 		n++
+		if nameFR != w.Name {
+			localized++
+		}
 	}
-	fmt.Printf("weapons: %d seedées (sur %d)\n", n, len(weapons))
+	fmt.Printf("weapons: %d seedées (sur %d, %d localisées FR)\n", n, len(weapons), localized)
 }
 
 func seedCSRDesignations(db *sql.DB, key string) {
