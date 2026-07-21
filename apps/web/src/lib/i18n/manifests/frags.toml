@@ -108,7 +108,7 @@ fr = "Assassinat"
 en = "Assassination"
 
 [frags.role.direct_melee]
-fr = "Corps-à-corps direct"
+fr = "Corps-à-corps"
 en = "Direct melee"
 
 [frags.role.ground_pound]
