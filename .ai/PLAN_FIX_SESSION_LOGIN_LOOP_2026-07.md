@@ -159,9 +159,28 @@ Résultat (2026-07-21) : `check-types` (tsc -b) **vert** ; `__root.test.tsx` 2/2
 - `apps/web/src/lib/api/client.ts:148` dispatch `levelup:auth-required` mais **aucun listener**
   n'existe (code mort / câblage incomplet). Serait le **bon** canal pour une vraie expiration en cours
   de session (401 sur appel API réel), complémentaire du fix. À câbler dans un lot séparé.
-- **Flake `internal/sync`** : un test tente un `GET` réseau réel vers halostats.svc.halowaypoint.com
-  (retries -> `context deadline exceeded` en ~100 ms) et échoue sous la charge parallèle de
-  `go test ./...` ; passe en isolation. Test réseau-dépendant à isolder/mocker (lot séparé). NON traité.
+- **Flake `internal/sync`** : ~~un test tente un `GET` réseau réel...~~ **RÉSOLU (lot complémentaire, cf.
+  ci-dessous)**. Coupable : `TestHaloClient_GetMatchHistory_ParamsValides` (+ `TestPooledHaloClientGetMatchHistory`)
+  faisaient de vrais appels réseau. Rendus hermétiques (contexte déjà annulé → échec HTTP instantané,
+  `duration_ms=0`, zéro I/O réseau). Skip `-short` obsolète retiré. `time` import retiré.
+
+## Lot complémentaire (demande utilisateur) — couverture logging + dette préexistante
+
+Au-delà du plan initial, sur demande : couverture de logging dans le dossier `logs/` dédié + fix des
+échecs/dettes préexistants. Réalisé et testé (2026-07-21) :
+
+- **`session.Store` — logs des erreurs avalées** (module auto-détecté = `session` → `logs/session.log`) :
+  - `Load(ctx, id)` (signature enrichie du ctx) : trace un WARN sur read IO / JSON corrompu (le retour
+    `nil` silencieux était le point aveugle du bug) ; un fichier ABSENT reste silencieux (cas nominal).
+  - `NewStore` : log ERROR si `MkdirAll` échoue (sessions non persistables → login cassé).
+  - `PurgeExpired` : log ERROR si `ReadDir` échoue (fuite disque sinon).
+- **Handlers auth — 3 `Save` avalés (`_ =`) corrigés** (`auth.go`, `auth_xbox_oauth.go` ×2) : log
+  `slog.ErrorContext` (anti-pattern #10 « swallowed error »).
+- **Tests** : `TestStore_Load_CorruptFile_LogsWarnAndReturnsNil` (nil + WARN sur corruption),
+  `TestStore_Load_NotFound_NoLog` (absent = silencieux). Middleware `loadOrCreate` passe `r.Context()`.
+- **Dette flake** : 2 tests `internal/sync` rendus hermétiques (cf. ci-dessus).
+- Gates : `go test ./...` **vert** (flake éliminé) ; `go vet` défaut + `-tags=integration` **verts** ;
+  `-race` session/middleware **vert**.
 
 ## Branche & livraison
 

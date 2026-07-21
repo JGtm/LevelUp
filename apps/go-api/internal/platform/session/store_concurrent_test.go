@@ -2,6 +2,7 @@
 package session_test
 
 import (
+	"context"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
@@ -52,7 +53,7 @@ func TestStore_ConcurrentLoadDuringSave(t *testing.T) {
 					return
 				default:
 				}
-				cur := store.Load(id)
+				cur := store.Load(context.Background(), id)
 				if cur == nil {
 					continue // l'ancienne impl pouvait déjà renvoyer nil ici
 				}
@@ -75,7 +76,7 @@ func TestStore_ConcurrentLoadDuringSave(t *testing.T) {
 					return
 				default:
 				}
-				got := store.Load(id)
+				got := store.Load(context.Background(), id)
 				if got == nil {
 					loadNil.Add(1)
 					continue

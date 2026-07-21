@@ -13,11 +13,14 @@
 package session
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -68,8 +71,10 @@ type Store struct {
 // NewStore crée un Store. Le répertoire sera créé s'il n'existe pas.
 func NewStore(dir string, ttl time.Duration, secret string) *Store {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
-		// Non fatal — les writes échoueront proprement.
-		_ = err
+		// Non fatal — les writes échoueront proprement — mais on trace : sans
+		// répertoire, toute session devient non persistable (login cassé). Pas de
+		// ctx au montage ; module auto-détecté = "session" → logs/session.log.
+		slog.Error("session: création du répertoire de sessions échouée", "dir", dir, "err", err)
 	}
 	return &Store{
 		dir:    dir,
@@ -92,17 +97,26 @@ func (s *Store) New() *domain.SessionData {
 	}
 }
 
-// Load charge une session depuis le fichier JSON. Retourne nil si absente ou expirée.
-func (s *Store) Load(sessionID string) *domain.SessionData {
+// Load charge une session depuis le fichier JSON. Retourne nil si absente,
+// illisible ou expirée. Le ctx sert au traçage corrélé (event_id → logs/session.log) :
+// un retour nil ANORMAL (IO/JSON, par opposition à un fichier simplement absent) est
+// logué — c'était le point aveugle de la boucle /login (nil silencieux → session
+// anonyme transitoire → éjection). Un fichier absent reste silencieux (cas nominal :
+// session neuve ou expirée-supprimée).
+func (s *Store) Load(ctx context.Context, sessionID string) *domain.SessionData {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	path := s.path(sessionID)
 	data, err := os.ReadFile(path)
 	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			slog.WarnContext(ctx, "session: lecture du fichier de session échouée", "err", err)
+		}
 		return nil
 	}
 	var sess domain.SessionData
 	if err := json.Unmarshal(data, &sess); err != nil {
+		slog.WarnContext(ctx, "session: fichier de session illisible (JSON corrompu ?)", "err", err, "bytes", len(data))
 		return nil
 	}
 	if s.isExpired(&sess) {
@@ -169,6 +183,10 @@ func (s *Store) Delete(sessionID string) error {
 func (s *Store) PurgeExpired() int {
 	entries, err := os.ReadDir(s.dir)
 	if err != nil {
+		// Répertoire illisible : le purge ne peut pas tourner (sessions expirées
+		// non nettoyées → fuite disque). Pas de ctx (appelé depuis un ticker) ;
+		// module auto = "session" → logs/session.log.
+		slog.Error("session: PurgeExpired — lecture du répertoire échouée", "dir", s.dir, "err", err)
 		return 0
 	}
 	removed := 0

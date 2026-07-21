@@ -1,3 +1,32 @@
+## [2026-07-21] Fix boucle /login — Lot complémentaire : couverture logging session + fix flake réseau internal/sync (branche fix/session-login-loop)
+
+**Statut** : Complété. NON committé côté superviseur pour push. Déclencheur : demande utilisateur (vérif finale +
+couverture logging dans le dossier logs/ dédié + fix dettes/échecs préexistants).
+
+**Décisions techniques** :
+- LOGGING (dossier logs/ routé par module, auto-détection package → fichier). Le `session.Store` n'avait AUCUN
+  log : `Load` renvoyait nil en silence (le point aveugle exact de la boucle /login). Ajout :
+  `Load(ctx, id)` (signature enrichie du ctx pour corrélation event_id → logs/session.log) trace un WARN sur
+  read IO / JSON corrompu ; fichier ABSENT = silencieux (cas nominal, sinon spam par requête anonyme).
+  `NewStore` log ERROR sur MkdirAll échoué ; `PurgeExpired` log ERROR sur ReadDir échoué. Non-ctx pour ces 2
+  (pas de ctx au montage/ticker) — module auto = session quand même.
+- SWALLOWED ERRORS (anti-pattern #10) : 3 `_ = h.sessionStore.Save(sess)` dans les handlers auth
+  (auth.go, auth_xbox_oauth.go ×2) → `slog.ErrorContext`.
+- FLAKE PRÉEXISTANT internal/sync (identifié via `go test -v` : `TestHaloClient_GetMatchHistory_ParamsValides`
+  faisait un vrai GET halostats.svc.halowaypoint.com avec deadline 100ms → flaky sous charge parallèle de
+  `go test ./...`). Fix : contexte DÉJÀ ANNULÉ (pattern déjà présent : TestPooledHaloClientGetCareerRank_PinnedToken)
+  → validation locale passe, HTTP échoue instantanément (duration_ms=0, zéro I/O réseau). Idem
+  TestPooledHaloClientGetMatchHistory (+ retrait du skip `-short` obsolète et de l'import `time`).
+
+**Résultats observés** : nouveaux tests session (corrupt→nil+WARN ; absent→silencieux) verts `-race`.
+Les 2 tests sync hermétisés : 0.03s / 0.00s (avant : réseau réel + backoff). `go test ./...` VERT (flake
+éliminé), `go vet` défaut + `-tags=integration` verts, handlers verts. Signature `Load(ctx,...)` propagée :
+seul caller prod = middleware (r.Context()) ; tests (store_test, store_concurrent, auth_xbox_oauth_test) mis à jour.
+
+**Conclusion / prochaine étape** : couverture logging + flake traités. Reste (inchangé) : vérif manuelle e2e
+navigateur + non-régression logout avec l'utilisateur, puis PR (push main = deploy prod). Découverte encore
+ouverte : listener `levelup:auth-required` (client.ts:148) pour vraie expiration en session (lot séparé).
+
 ## [2026-07-21] Fix boucle /login — Étape 2 frontend : garde anti-éjection sur bootstrap anonyme transitoire (branche fix/session-login-loop)
 
 **Statut** : Complété (Étape 2/2 → plan terminé). NON committé côté superviseur pour push (push main = deploy prod).
