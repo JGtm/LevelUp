@@ -247,7 +247,12 @@ func (h *AuthHandler) handleGetDeviceFlowStatus(ctx context.Context, in *deviceF
 					"attempt_id", in.AttemptID, "err", err)
 			}
 		}
-		_ = h.sessionStore.Save(sess)
+		if err := h.sessionStore.Save(sess); err != nil {
+			// Échec de persistance après login réussi : la session en cours reste
+			// valide, mais la prochaine requête repartira sans l'identité liée.
+			slog.ErrorContext(ctx, "auth: persistance session post-login échouée",
+				"attempt_id", in.AttemptID, "err", err)
+		}
 	}
 
 	return &deviceFlowStatusOutput{Body: deviceFlowStatusResponse(snapshot)}, nil

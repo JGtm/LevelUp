@@ -89,7 +89,7 @@ func loadOrCreate(r *http.Request, store *session.Store) (*domain.SessionData, b
 	c, err := r.Cookie(session.CookieName)
 	if err == nil && c.Value != "" {
 		if sessionID := store.UnsignCookie(c.Value); sessionID != "" {
-			if sess := store.Load(sessionID); sess != nil {
+			if sess := store.Load(r.Context(), sessionID); sess != nil {
 				return sess, true
 			}
 		}
