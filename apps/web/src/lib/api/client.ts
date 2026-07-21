@@ -59,7 +59,9 @@ export const API_BASE_URL = BASE_URL
 /**
  * Sprint 44 : titre courant pour les requêtes API.
  * Mis à jour par le store appShell lors du bootstrap et des switchs de titre.
- * Si "halo_infinite" (défaut), le header n'est pas envoyé (rétrocompatibilité).
+ * Affirmé sur CHAQUE requête via X-LevelUp-Title, y compris le défaut halo_infinite :
+ * sans header, le backend retombe sur la session serveur (partagée entre onglets), ce
+ * qui faisait fuiter les données d'un titre périmé en session vers le titre affiché.
  */
 let _currentTitleSlug = 'halo_infinite'
 
@@ -78,7 +80,11 @@ export function getApiTitleSlug(): string {
 }
 
 function getTitleHeader(): Record<string, string> {
-  if (_currentTitleSlug && _currentTitleSlug !== 'halo_infinite') {
+  // Toujours affirmer le titre courant : sans header, le backend retombe sur la
+  // session serveur (partagée entre onglets) → une session périmée sur un autre
+  // titre fait fuiter ses données sur le titre affiché. Cf. resolveTitleSlug
+  // (header > session > défaut).
+  if (_currentTitleSlug) {
     return { 'X-LevelUp-Title': _currentTitleSlug }
   }
   return {}
