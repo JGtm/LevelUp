@@ -180,4 +180,20 @@ prochaine (ne PAS élargir le patch maintenant, juste consigner) :
   plan vivait uniquement sur `feat/frag-distribution-v2` → rapatrié via
   `git checkout <frag> -- <plan>` (path-scoped, sans le code frags).
 - `[x]` Entrée `.ai/thought_log.md` [2026-07-21].
-- `[!]` Commit — EN ATTENTE de l'accord utilisateur (CLAUDE.md : demander avant commit).
+- `[x]` Commit initial `71b7c97b3` (front + test + plan + log) posé après accord — non poussé.
+
+## Addendum observabilité + couverture (2026-07-21, hors périmètre initial « header seul »)
+
+Demandé par l'utilisateur après le core. Le fix front n'a pas de surface de log ; la `SlogLogger`
+trace déjà `title_slug` par requête (logs/http.log). Trou comblé côté backend :
+
+- `[x]` **Logging** — `resolveTitleSlug` avalait silencieusement un header `X-LevelUp-Title`
+  non-vide pointant un titre INCONNU (anti-pattern #10). Ajout `slog.WarnContext` nommant le titre
+  demandé ([title.go:62-70](apps/go-api/internal/api/middleware/title.go#L62-L70)) — rare par
+  construction, rend une confusion de titre visible dans logs/.
+- `[x]` **Tests** (3, via `InjectSession`) — WARN sur header inconnu ; **header bat une session
+  divergente** (invariant anti-fuite backend, jusque-là non testé) ; session fait autorité sans
+  header ([title_test.go](apps/go-api/internal/api/middleware/title_test.go)).
+- `[x]` Gates : `gofmt`/`go vet` clean, `go test ./internal/api/...` vert (middleware 8/8), front
+  vert. golangci-lint absent du PATH (gate local `make go-api-lint` = `go vet`).
+- `[!]` 2e commit (title.go + title_test.go) — EN ATTENTE de l'accord utilisateur.

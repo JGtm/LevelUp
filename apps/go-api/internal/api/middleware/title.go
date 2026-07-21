@@ -8,6 +8,7 @@
 package middleware
 
 import (
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -58,6 +59,14 @@ func resolveTitleSlug(r *http.Request, registry *titlePkg.Registry) string {
 		if registry.Exists(h) {
 			return h
 		}
+		// Header présent mais titre INCONNU du registre : cas anormal (client obsolète,
+		// titre retiré/mal orthographié). On ne fuit PAS silencieusement vers un autre
+		// titre — on trace AVANT de retomber sur session/défaut, pour rendre la mauvaise
+		// résolution visible dans logs/ (anti-fuite : diagnostiquer une confusion de
+		// titre plutôt que l'avaler — CLAUDE.md anti-pattern #10). Rare par construction
+		// (le front n'émet que des slugs connus), donc pas de bruit en régime normal.
+		slog.WarnContext(r.Context(), "title: header X-LevelUp-Title inconnu, ignoré (fallback session/défaut)",
+			"requested_title", h)
 	}
 
 	// 2. Session courante (via GetSession qui utilise la bonne context key)

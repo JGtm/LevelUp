@@ -10191,7 +10191,20 @@ titre non régressé). Note process : le plan vivait uniquement sur `feat/frag-d
 (commit 3f4ed36d3) ; brancher depuis `main` (conforme au plan) l'a retiré du working tree →
 rapatrié via `git checkout <frag> -- <plan>` (path-scoped, sans embarquer le code frags).
 
-**Conclusion / prochaine étape** : correctif + tests automatisés livrés et verts. Reste (1) la
-vérification e2e visuelle par l'utilisateur (multi-onglets H5/Infinite, switch simple, reprise
-F5, header réseau sur chaque `/api/v1/…` — MCP browser indisponible in-session) et (2)
-l'accord de commit (aucun commit effectué). `delivery-checklist` avant « livré ».
+**Conclusion / prochaine étape** : correctif + tests automatisés livrés et verts. Commit initial
+`71b7c97b3` (front + test + plan + log) posé après accord utilisateur — NON poussé (pas de deploy
+prod). Reste la vérification e2e visuelle par l'utilisateur (multi-onglets H5/Infinite, switch
+simple, reprise F5, header réseau sur chaque `/api/v1/…` — MCP browser indisponible in-session).
+
+**Addendum observabilité + couverture (2026-07-21, même tâche)** — demandé par l'utilisateur
+(« bonne couverture de logging dans le dossier logs dédié + tests »). Le fix front n'a pas de
+surface de log ; la `SlogLogger` trace déjà `title_slug` à chaque requête (logs/http.log). Le vrai
+trou d'observabilité : `resolveTitleSlug` (middleware TitleExtractor) avalait SILENCIEUSEMENT un
+header `X-LevelUp-Title` non-vide pointant un titre INCONNU (anti-pattern #10). Ajout d'un
+`slog.WarnContext` (rare par construction — le front n'émet que des slugs connus — nommant le titre
+demandé) → une confusion de titre devient visible dans logs/. Couverture backend renforcée (3
+tests middleware via `InjectSession`) : WARN sur header inconnu ; **header bat une session
+divergente** (l'invariant backend qui rend le fix front efficace, jusque-là NON testé) ; session
+fait autorité sans header. Gates : `gofmt` + `go vet` clean, `go test ./internal/api/...` vert
+(middleware 8/8), front vert. golangci-lint absent du PATH (le gate local `make go-api-lint` se
+réduit à `go vet`). Reste l'accord pour un 2e commit (title.go + title_test.go).
