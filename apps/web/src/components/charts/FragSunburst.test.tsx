@@ -63,20 +63,41 @@ describe('buildSunburstModel (builder pur)', () => {
       expect(co.valueLabel).toContain('%')
     }
 
-    // FIX 1 — répartition gauche/droite (reprise de buildSun) : precision (haut-gauche,
-    // mid < 90°) ancré 'start' au bord GAUCHE (x proche de 0) ; automatic (droite,
-    // mid ≥ 90°) ancré 'end' au bord DROIT (x proche du viewBox). Les DEUX ancres présentes.
-    const anchors = model.callouts.map((c) => c.anchor)
-    expect(anchors).toContain('start')
-    expect(anchors).toContain('end')
-    const left = model.callouts.find((c) => c.anchor === 'start')!
-    const right = model.callouts.find((c) => c.anchor === 'end')!
-    expect(left.tx).toBeLessThan(20) // plaqué à gauche (x ≈ 6)
-    expect(right.tx).toBeGreaterThan(420) // plaqué à droite (x ≈ W-6, viewBox 440)
-
     // Légende : 1 entrée par classe, ordre conservé, couleur de classe (pas de rôle).
     expect(model.legend.map((l) => l.classKey)).toEqual(['shoulder', 'melee', 'unattributed'])
     expect(model.legend[0].color).toBe('col:shoulder')
+  })
+
+  it('côté du callout = position X (cos) de l\'arc, pas Y (sin) — pas de ligne qui traverse', () => {
+    // Deux classes mono-rôle occupant chacune une moitié du cercle : le rôle « right »
+    // est centré à mid=90° (3 h, edgeX au MAX, moitié DROITE) ; le rôle « left » à
+    // mid=270° (9 h, edgeX au MIN, moitié GAUCHE). Le vrai critère est HORIZONTAL (X).
+    const SIDE_DIST: FragDistribution = {
+      total_kills: 20,
+      classes: [
+        { class: 'shoulder', kills: 10, authoritative: false, roles: [{ role: 'right', kills: 10 }] },
+        { class: 'power', kills: 10, authoritative: false, roles: [{ role: 'left', kills: 10 }] },
+      ],
+    }
+    const model = buildSunburstModel(SIDE_DIST.classes ?? [], SIDE_DIST.total_kills, COLORS, LABELS)
+    expect(model.callouts).toHaveLength(2)
+
+    const CX = 220 // centre du sunburst (cf. constante interne du composant)
+    // edgeX = X du point de l'arc externe = 1er point de la polyline « ex,ey … ».
+    const edgeX = (co: (typeof model.callouts)[number]) => Number(co.points.split(' ')[0].split(',')[0])
+
+    const rightCo = model.callouts.find((c) => c.label === 'role:right')!
+    const leftCo = model.callouts.find((c) => c.label === 'role:left')!
+
+    // Rôle sur la moitié DROITE (edgeX > CX) → ancre 'end', texte plaqué à droite (x élevé).
+    expect(edgeX(rightCo)).toBeGreaterThan(CX)
+    expect(rightCo.anchor).toBe('end')
+    expect(rightCo.tx).toBeGreaterThan(420) // x ≈ W-6 (viewBox 440)
+
+    // Rôle sur la moitié GAUCHE (edgeX < CX) → ancre 'start', texte plaqué à gauche (x bas).
+    expect(edgeX(leftCo)).toBeLessThan(CX)
+    expect(leftCo.anchor).toBe('start')
+    expect(leftCo.tx).toBeLessThan(20) // x ≈ 6
   })
 
   it('total 0 → modèle vide (rien à tracer)', () => {
