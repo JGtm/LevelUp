@@ -331,23 +331,23 @@ export function MatchViewPage() {
                 t={t}
               />
             </div>
-            {/* Répartition des frags v2 : sunburst (classe→rôle) + breakdown par arme
-                = DEUX BLOCS SÉPARÉS, avec les médailles, dans une grille AUTO-FIT
-                (minmax 280px → côte-à-côte quand large, empilés sinon, sans breakpoint
-                fixe). MatchFragCard émet ses 2 cartes (Fragment) directement comme
-                cellules. Non gaté : Infinite = classes sans Spartan ; Halo 5 = avec
-                (capability native_kill_mechanics côté backend). */}
-            <div className="grid gap-4 grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
+            {/* Répartition des frags v2 sur SA PROPRE rangée : sunburst (classe→rôle,
+                2/3 de largeur) + breakdown par arme (1/3). MatchFragCard émet ses 2
+                cartes (Fragment) comme cellules d'une grille 3 colonnes — sunburst
+                `lg:col-span-2`, breakdown `lg:col-span-1` (col-span portés par
+                MatchFragCard). Non gaté : Infinite = classes sans Spartan ; Halo 5 =
+                avec (capability native_kill_mechanics côté backend). */}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               <MatchFragCard distribution={combat_tab.frag_distribution} weapons={weaponKills} />
-              <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
             </div>
-            {/* Rangée suivante : Citations À GAUCHE du bloc Média (plus pleine largeur).
-                Halo 5 : commendations NATIVES (citations_tab.native_commendations)
-                affichées À LA PLACE des citations dérivées d'Infinite (summary_tab.
-                citations vide pour h5). Un seul bloc « commendations » par titre.
-                Média gaté sur `media` : masque l'en-tête + le bloc entier pour un
+            {/* Rangée suivante (3 colonnes) : Médailles À GAUCHE des Citations, puis le
+                bloc Média. Halo 5 : commendations NATIVES (citations_tab.native_
+                commendations) affichées À LA PLACE des citations dérivées d'Infinite
+                (summary_tab.citations vide pour h5). Un seul bloc « commendations » par
+                titre. Média gaté sur `media` : masque l'en-tête + le bloc entier pour un
                 titre sans captures/clips. */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
               {(citations_tab?.native_commendations?.length ?? 0) > 0 ? (
                 <MatchNativeCommendationsSection
                   commendations={citations_tab.native_commendations ?? []}

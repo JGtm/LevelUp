@@ -99,7 +99,11 @@ export interface FragWeaponBreakdownProps {
   weapons?: SynthesisWeaponKillEntry[]
   title?: string
   height?: number
+  /** Multiplicateur de hauteur (défaut 1) — ex. 1.1 pour +10 % côté match view. */
+  heightScale?: number
   fillHeight?: boolean
+  /** Classe(s) utilitaire(s) fusionnée(s) sur la ChartCard (ex. `lg:col-span-1`). */
+  className?: string
   /**
    * Survol LIÉ (optionnel) : classe survolée pilotée par un composant frère
    * (ex. `FragSunburst` via `MatchFragCard`) → estompe les armes des autres classes.
@@ -110,7 +114,7 @@ export interface FragWeaponBreakdownProps {
   onClassHover?: (classKey: string | null) => void
 }
 
-export function FragWeaponBreakdown({ weapons, title, height, fillHeight, hoveredClass = null, onClassHover }: FragWeaponBreakdownProps) {
+export function FragWeaponBreakdown({ weapons, title, height, heightScale = 1, fillHeight, className = '', hoveredClass = null, onClassHover }: FragWeaponBreakdownProps) {
   const appLocale = useAppShellStore((s) => s.locale)
   const numLoc = intlLocale(appLocale)
   const list = weapons ?? []
@@ -140,7 +144,7 @@ export function FragWeaponBreakdown({ weapons, title, height, fillHeight, hovere
   const series: ChartSeries<SynthesisWeaponKillEntry>[] = list.length > 0 ? [{ key: 'frag-weapons', datapoints: list }] : []
   const cardTitle = title ?? formatMessage(fragsManifest, 'frags.charts.weapon_breakdown_title', appLocale)
   const emptyMessage = formatMessage(fragsManifest, 'frags.empty.no_data', appLocale)
-  const computedHeight = height ?? Math.max(180, list.length * 28 + 16)
+  const computedHeight = Math.round((height ?? Math.max(180, list.length * 28 + 16)) * heightScale)
 
   return (
     <ChartCard
@@ -149,7 +153,7 @@ export function FragWeaponBreakdown({ weapons, title, height, fillHeight, hovere
       buildOption={buildOption}
       height={computedHeight}
       emptyMessage={emptyMessage}
-      className={fillHeight ? 'flex-1' : ''}
+      className={[fillHeight ? 'flex-1' : '', className].filter(Boolean).join(' ')}
       onEvents={onEvents}
     />
   )
