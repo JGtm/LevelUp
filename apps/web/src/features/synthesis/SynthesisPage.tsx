@@ -14,8 +14,10 @@ import { EmptyStateCard } from '@/components/ui/empty-state'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { ProportionalBar } from '@/components/ui/proportional-bar'
 import { useCapability } from '@/lib/capabilities/capabilities'
+import { FragSunburst } from '@/components/charts/FragSunburst'
+import { FragWeaponBreakdown } from '@/components/charts/FragWeaponBreakdown'
 import { SynthesisWeaponAccuracyChart } from './SynthesisWeaponAccuracyChart'
-import { SynthesisFragCard } from './SynthesisFragCard'
+import { useSynthesisFragCharts } from './useSynthesisFragCharts'
 import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
 import { SynthesisHeatmapChart } from './SynthesisHeatmapChart'
@@ -195,6 +197,10 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
   // le graphe est masqué pour les titres qui ne fournissent pas la donnée (Infinite).
   const hasWeaponAccuracy = useCapability('weapon_accuracy')
 
+  // Graphes frags : état survol LIÉ + « Détails des frags » + coach, remontés ici car le
+  // sunburst (rangée 1) et le breakdown (rangée 2) sont sur DEUX rangées distinctes.
+  const frags = useSynthesisFragCharts(fragDistribution, topWeaponKills)
+
   return (
     <section className="space-y-3">
       <header><h3 className="text-base font-semibold text-foreground">{t('synthesis.section.overview')}</h3></header>
@@ -297,20 +303,28 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
 
             <div>
               {/* Carte frags v2 + 3 cartes côte à côte */}
+              {/* Rangée 1 : « Répartition des frags » (sunburst LARGE) + colonne KPI Taux de
+                  victoire / FDA / Incidents. Survol LIÉ au breakdown de la rangée 2 (état `frags`). */}
               <div className="flex gap-4 items-stretch">
-
-                {/* Carte frags v2 UNIQUE : sunburst hiérarchique « Répartition des frags »
-                    (classe→rôle) + breakdown par arme recoloré par classe + insight coach.
-                    Remplace les DEUX anciens donuts (kill-type + rôle) et l'ancien bar chart
-                    par-arme (fusion actée). Montée seulement si le backend fournit la
-                    distribution : sinon un wrapper flex-1 vide claimerait de l'espace
-                    (colonne fantôme). */}
                 {fragDistribution && (
-                  <div className="flex-1 min-w-0">
-                    <SynthesisFragCard
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <FragSunburst
                       distribution={fragDistribution}
-                      weapons={topWeaponKills}
+                      maxWidthPx={520}
+                      hideCenterLabel
+                      legendSide="left"
+                      externalHoveredClass={frags.hovered}
+                      onClassHover={frags.setHovered}
                     />
+                    {frags.insightText && (
+                      <p className="w-full text-xs leading-snug text-muted-foreground">
+                        <span className="font-semibold text-foreground">
+                          {t('synthesis.coach.label')}
+                          {' : '}
+                        </span>
+                        {frags.insightText}
+                      </p>
+                    )}
                   </div>
                 )}
                 <div className="flex flex-col gap-3 w-[22rem] shrink-0">
@@ -372,8 +386,8 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                 </div>
               </div>
 
-              {/* Tir / Dégâts / Fun à gauche, précision par arme (H5) à droite. Le
-                  détail par-arme des frags vit désormais sous le sunburst (SynthesisFragCard). */}
+              {/* Rangée 2 : colonne KPI Tir / Dégâts + « Détails des frags » (breakdown, survol
+                  lié au sunburst de la rangée 1) + « Précision par arme » (H5, gaté weapon_accuracy). */}
               <div className="flex gap-4 mt-4 items-stretch">
                 <div className="flex flex-col justify-between gap-4 w-[21rem] shrink-0">
                   {(overview.longest_win_streak ?? 0) > 1 && (
@@ -441,14 +455,29 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, fra
                     </div>
                   )}
                 </div>
-
-                {/* Précision par arme (Halo 5 natif) — masqué pour les titres sans
-                    la capability weapon_accuracy (Infinite). */}
-                {hasWeaponAccuracy && (
-                  <div className="flex-1 min-w-0 flex flex-col">
-                    <SynthesisWeaponAccuracyChart weapons={weaponAccuracy ?? []} fillHeight />
+                {fragDistribution && (
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <FragWeaponBreakdown
+                      weapons={frags.breakdown}
+                      title={frags.detailTitle}
+                      hoveredClass={frags.hovered}
+                      onClassHover={frags.setHovered}
+                      fillHeight
+                    />
                   </div>
                 )}
+                {hasWeaponAccuracy && (
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <SynthesisWeaponAccuracyChart
+                      weapons={weaponAccuracy ?? []}
+                      weaponKills={topWeaponKills}
+                      hoveredClass={frags.hovered}
+                      onClassHover={frags.setHovered}
+                      fillHeight
+                    />
+                  </div>
+                )}
+
               </div>
 
             </div>

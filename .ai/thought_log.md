@@ -1,3 +1,26 @@
+## [2026-07-21] Frag Distribution v2 — Synthesis : disposition 2 rangées + « Détails des frags » + Précision par arme câblée (couleurs/tooltip/survol)
+
+**Statut** : Complété, VALIDÉ user (itérations taille/dispo). Branche `feat/frag-distribution-v2`. Commit autorisé.
+
+**Disposition Synthesis (2 rangées)** : Rangée 1 = sunburst « Répartition des frags » (LARGE, compteur seul centré,
+légende à gauche) + colonne KPI Taux de victoire/FDA/Incidents. Rangée 2 = colonne KPI Tir/Dégâts + « Détails des
+frags » (breakdown armes + mêlée/grenade/capacités) + « Précision par arme » (H5, gaté). Le survol LIÉ traverse les
+2 rangées → état remonté dans un hook `useSynthesisFragCharts` (breakdown + coach + hovered ; 2e/dernière copie du
+builder détail vs MatchFragCard). `SynthesisFragCard` SUPPRIMÉ (remplacé par le hook + rendu inline dans
+SynthesisOverviewSection). Itérations : 3-colonnes trop petit (rejeté) → disposition d'origine (sunburst large).
+
+**Précision par arme recoloré/câblé** : `SynthesisWeaponAccuracyChart` réécrit pour matcher « Détails des frags » —
+barres par CLASSE (`fragClassColor` token, plus de couleur unique `chart-series-1`), tooltip `trigger:'item'` même
+format (arme + valeur + tirs + classe), estompage `hoveredClass` + `onEvents` (survol lié sunburst ↔ breakdown ↔
+précision). Classe via mapping `label → class` depuis `top_weapon_kills` (l'entrée API `SynthesisWeaponAccuracyEntry`
+ne porte pas la classe) → arme tirée sans kill = neutre. BACKLOG `[data/frags]` (basse priorité, décision user).
+
+**Libellé** : « Corps-à-corps direct » → « Corps-à-corps » (`frags.role.direct_melee` FR).
+
+**Gates (verts)** : `npm run typecheck` ✓ ; vitest FragSunburst/FragWeaponBreakdown/SynthesisPage ✓ (13 pass, 14 skip) ;
+eslint 0 erreur ; 0 hex (couleurs via token). MIN_GAP des callouts 16→26 (fix « chiffres qui se chevauchent », global).
+Match view VALIDÉ + commité (d944d895a) au tour précédent.
+
 ## [2026-07-21] Frag Distribution v2 — refonte layout Match view (VALIDÉE user) + fix lignes de rappel (cos) + garde anti-débordement d'anneau
 
 **Statut** : Complété, VALIDÉ user sur Match view. Branche `feat/frag-distribution-v2`. Commit autorisé par l'user.

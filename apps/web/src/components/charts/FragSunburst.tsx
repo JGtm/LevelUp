@@ -208,7 +208,10 @@ function buildCalloutsForSide(
   const tx = right ? W - 6 : 6
   const knee = right ? tx - KNEE_DX : tx + KNEE_DX
   const anchor: 'start' | 'end' = right ? 'end' : 'start'
-  const MIN_GAP = 16
+  // Écart vertical mini entre deux étiquettes = hauteur d'une étiquette à DEUX lignes (nom
+  // au-dessus + « valeur · % » en dessous, ~22 px). En dessous, les CHIFFRES d'une étiquette
+  // chevauchent le nom de la suivante (illisible quand beaucoup de rôles, ex. Synthesis).
+  const MIN_GAP = 26
   let prevLy = -Infinity
   return points.map((p) => {
     let ly = clamp(p.ey, CALLOUT_Y_TOP, CALLOUT_Y_BOT)

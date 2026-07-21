@@ -18,7 +18,7 @@ export const fragsManifest = {
   "frags.empty.no_data": { fr: "Aucun frag sur ce périmètre", en: "No kills in this scope" },
   "frags.role.assassination": { fr: "Assassinat", en: "Assassination" },
   "frags.role.automatic": { fr: "Automatique", en: "Automatic" },
-  "frags.role.direct_melee": { fr: "Corps-à-corps direct", en: "Direct melee" },
+  "frags.role.direct_melee": { fr: "Corps-à-corps", en: "Direct melee" },
   "frags.role.ground_pound": { fr: "Coup au sol", en: "Ground pound" },
   "frags.role.power": { fr: "Arme Puissante", en: "Power weapon" },
   "frags.role.precision": { fr: "Précision", en: "Precision" },
