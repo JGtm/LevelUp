@@ -4,6 +4,10 @@ package analysis
 
 import "testing"
 
+// modePtr : helper local (package analysis interne) — strPtr n'est défini que dans
+// le package externe analysis_test, non visible ici.
+func modePtr(s string) *string { return &s }
+
 func TestNormalizeModeLabel(t *testing.T) {
 	cases := []struct {
 		name string
@@ -51,6 +55,87 @@ func TestNormalizeModeLabel(t *testing.T) {
 			got := NormalizeModeLabel(tc.raw)
 			if got != tc.want {
 				t.Errorf("NormalizeModeLabel(%q) = %q ; want %q", tc.raw, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestResolveModeUIWithVariant couvre la convention pair-sinon-variant : pair
+// prioritaire (FR sinon EN), fallback game_variant (FR sinon EN) pour les titres
+// sans pair_name (Halo 5), normalisation appliquée, nil si aucune source.
+func TestResolveModeUIWithVariant(t *testing.T) {
+	cases := []struct {
+		name                                             string
+		pairName, pairNameFR, variantName, variantNameFR *string
+		want                                             *string // nil => attendu nil
+	}{
+		{
+			name:        "pair FR prime sur tout",
+			pairName:    modePtr("Arena:Slayer"),
+			pairNameFR:  modePtr("Assassin"),
+			variantName: modePtr("CTF"), variantNameFR: modePtr("Capture du drapeau"),
+			want: modePtr("Assassin"),
+		},
+		{
+			name:     "pair EN si pas de FR",
+			pairName: modePtr("Arena:Slayer"),
+			want:     modePtr("Slayer"),
+		},
+		{
+			name:       "pair EN si FR vide (fallback intra-pair)",
+			pairName:   modePtr("BTB:CTF"),
+			pairNameFR: modePtr(""),
+			want:       modePtr("CTF"),
+		},
+		{
+			name:          "fallback variant FR quand pair absent",
+			variantName:   modePtr("CTF"),
+			variantNameFR: modePtr("Capture du drapeau"),
+			want:          modePtr("Capture du drapeau"),
+		},
+		{
+			name:        "fallback variant EN quand pair et variant FR absents",
+			variantName: modePtr("Team Slayer"),
+			want:        modePtr("Team Slayer"),
+		},
+		{
+			name: "tout nil => nil",
+			want: nil,
+		},
+		{
+			name:     "tout vide => nil",
+			pairName: modePtr(""), pairNameFR: modePtr(""),
+			variantName: modePtr(""), variantNameFR: modePtr(""),
+			want: nil,
+		},
+		{
+			name:        "pair présent + variant présent => pair gagne",
+			pairName:    modePtr("Oddball"),
+			variantName: modePtr("Slayer"),
+			want:        modePtr("Oddball"),
+		},
+		{
+			name:     "normalisation appliquée sur le pair (map + préfixe)",
+			pairName: modePtr("Arena:CTF on Aquarius"),
+			want:     modePtr("CTF"),
+		},
+		{
+			name:        "normalisation appliquée sur le variant (map + préfixe)",
+			variantName: modePtr("Tactical:Slayer on Recharge"),
+			want:        modePtr("Slayer"),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ResolveModeUIWithVariant(tc.pairName, tc.pairNameFR, tc.variantName, tc.variantNameFR)
+			switch {
+			case tc.want == nil && got != nil:
+				t.Errorf("ResolveModeUIWithVariant = %q ; want nil", *got)
+			case tc.want != nil && got == nil:
+				t.Errorf("ResolveModeUIWithVariant = nil ; want %q", *tc.want)
+			case tc.want != nil && got != nil && *got != *tc.want:
+				t.Errorf("ResolveModeUIWithVariant = %q ; want %q", *got, *tc.want)
 			}
 		})
 	}

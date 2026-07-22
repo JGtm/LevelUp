@@ -732,15 +732,67 @@ func TestFilterRowsByCascade_ModeENFallback(t *testing.T) {
 
 func TestFilterRowsByCascade_NilModeExcluded(t *testing.T) {
 	t.Parallel()
-	// Une row sans PairMode est exclue quand un filtre modes est actif.
+	// Une row sans PairMode NI game_variant est exclue quand un filtre modes est actif.
 	rows := []canonical.PlayerMatchRow{
 		rowWithMode("m1", "Slayer", "Slayer"),
-		row("m2", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), canonical.OutcomeWin), // PairMode nil
+		row("m2", time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC), canonical.OutcomeWin), // PairMode + GameVariant nil
 	}
 
 	got := filterRowsByCascade(rows, nil, nil, nil, []string{"Slayer"})
 	if len(got) != 1 || got[0].Summary.MatchID != "m1" {
-		t.Errorf("want only m1 (m2 has nil PairMode), got %v", matchIDs(got))
+		t.Errorf("want only m1 (m2 has nil PairMode/GameVariant), got %v", matchIDs(got))
+	}
+}
+
+// rowWithGameVariant construit une row SANS PairMode dont Summary.GameVariant
+// porte les labels EN/FR — modèle Halo 5 (pas de pair, mode dérivé du game_variant).
+func rowWithGameVariant(matchID, variantEN, variantFR string) canonical.PlayerMatchRow {
+	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	r := row(matchID, t0, canonical.OutcomeWin)
+	r.Summary.GameVariant = &canonical.AssetReference{
+		Kind:         "game_variant",
+		ID:           "gv-" + matchID,
+		DefaultLabel: variantEN,
+		Labels:       map[string]string{"en": variantEN, "fr": variantFR},
+	}
+	return r
+}
+
+// TestFilterRowsByCascade_ModeGameVariantFallback : titre sans pair (Halo 5) — le
+// filtre modes matche sur le game_variant NORMALISÉ, parité avec le chokepoint
+// filters_service.modeUI (Value d'option = NormalizeModeLabel(game_variant_fr)).
+func TestFilterRowsByCascade_ModeGameVariantFallback(t *testing.T) {
+	t.Parallel()
+	// Variant FR porteur d'un préfixe technique → normalisé en "Assassin".
+	rows := []canonical.PlayerMatchRow{
+		rowWithGameVariant("m1", "HaloMultiplayer:Slayer", "HaloMultiplayer:Assassin"),
+		rowWithGameVariant("m2", "HaloMultiplayer:CTF", "HaloMultiplayer:Capture du drapeau"),
+	}
+
+	got := filterRowsByCascade(rows, nil, nil, nil, []string{"Assassin"})
+	if len(got) != 1 || got[0].Summary.MatchID != "m1" {
+		t.Errorf("want only m1 (game_variant → Assassin), got %v", matchIDs(got))
+	}
+}
+
+// TestFilterRowsByCascade_ModePairPrimesOverGameVariant : PairMode présent prime
+// sur game_variant (iso-comportement Infinite : le variant n'est jamais consulté).
+func TestFilterRowsByCascade_ModePairPrimesOverGameVariant(t *testing.T) {
+	t.Parallel()
+	r := rowWithMode("m1", "Slayer", "Slayer")
+	r.Summary.GameVariant = &canonical.AssetReference{
+		Kind:         "game_variant",
+		ID:           "gv-m1",
+		DefaultLabel: "Assassin",
+		Labels:       map[string]string{"en": "Assassin", "fr": "Assassin"},
+	}
+	rows := []canonical.PlayerMatchRow{r}
+
+	if got := filterRowsByCascade(rows, nil, nil, nil, []string{"Slayer"}); len(got) != 1 {
+		t.Errorf("pair 'Slayer' doit matcher, got %v", matchIDs(got))
+	}
+	if got := filterRowsByCascade(rows, nil, nil, nil, []string{"Assassin"}); len(got) != 0 {
+		t.Errorf("game_variant ignoré quand pair présent, got %v", matchIDs(got))
 	}
 }
 

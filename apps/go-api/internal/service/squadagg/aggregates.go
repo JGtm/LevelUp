@@ -323,11 +323,24 @@ func canonicalRowExperienceLabel(r canonical.PlayerMatchRow) string {
 	return ExpTypePVPUnranked
 }
 
+// modeLabelForFilter : PairMode prioritaire ; sinon game_variant normalisé —
+// aligné sur la convention centralisée analysis.ResolveModeUIWithVariant (les
+// types canonical n'exposent pas de *string, d'où ce miroir local minimal).
+// Couvre les titres sans pair (Halo 5, PairMode nil) dont le mode vient du
+// game_variant, tout en restant iso-comportement pour les rows avec pair.
+func modeLabelForFilter(r canonical.PlayerMatchRow) string {
+	if lbl := assetLabelForFilter(r.Summary.PairMode); lbl != "" {
+		return lbl
+	}
+	return analysis.NormalizeModeLabel(assetLabelForFilter(r.Summary.GameVariant))
+}
+
 // FilterRowsByCascade filtre une slice de PlayerMatchRow selon les critères
 // experience_types, playlists, maps et modes. Slices vides = pas de filtre sur ce critère.
 //
-// Modes : comparaison sur PairMode (pair_name_fr COALESCE pair_name) — même source
-// que filtersResolve. Fallback sur DefaultLabel (EN) si Labels["fr"] absent.
+// Modes : PairMode prioritaire (pair_name_fr COALESCE pair_name), sinon game_variant
+// normalisé pour les titres sans pair (Halo 5) — via modeLabelForFilter, même
+// convention que filtersResolve. Fallback sur DefaultLabel (EN) si Labels["fr"] absent.
 func FilterRowsByCascade(rows []canonical.PlayerMatchRow, expTypes, playlists, maps, modes []string) []canonical.PlayerMatchRow {
 	expSet := make(map[string]struct{}, len(expTypes))
 	for _, e := range expTypes {
@@ -363,7 +376,7 @@ func FilterRowsByCascade(rows []canonical.PlayerMatchRow, expTypes, playlists, m
 			}
 		}
 		if len(modeSet) > 0 {
-			if _, ok := modeSet[assetLabelForFilter(r.Summary.PairMode)]; !ok {
+			if _, ok := modeSet[modeLabelForFilter(r)]; !ok {
 				continue
 			}
 		}
