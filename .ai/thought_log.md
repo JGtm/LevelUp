@@ -1,3 +1,67 @@
+## [2026-07-22] Revue complète branche `feat/monitoring-lusr-fixes` + correctifs des 5 findings majeurs
+
+**Statut** : Complété (code + tests). Gates : `check-types` vert, `test-web` complet vert (2389),
+session `-race -count=2` vert, suites Go ciblées vertes ; suite Go complète + intégration anti-ART
+rejouées avant commit. NON committé (attente autorisation user, CLAUDE.md n°16).
+
+**Revue** (8 angles de recherche + vérification contradictoire par candidat, 27 candidats → 8
+confirmés / 2 réfutés) sur les 14 commits de la branche. Confirmés majeurs corrigés dans la foulée
+(implémentation pilotée en 3 agents Opus parallèles, fichiers disjoints) :
+1. **`PurgeExpired` supprimait une session vivante** (store.go) : pas de verrou + `os.Remove` sur
+   toute erreur de lecture (sharing violation Windows d'un Save concurrent = déconnexion permanente).
+   Fix : Lock exclusif PAR FICHIER (`purgeSessionFileLocked`), jamais de suppression sur erreur de
+   lecture (WARN + skip), JSON corrompu supprimé seulement si vieux (`corruptSessionTTL` 1h). Test
+   Windows déterministe (sharing violation réelle via `syscall.CreateFile`) + test concurrent -race.
+2. **Garde anti-éjection = shell mort sur vraie expiration** (`__root.tsx`) : `levelup:auth-required`
+   (dispatché sur 401 `auth_required` hors /bootstrap) n'avait AUCUN listener. Fix : listener au
+   RootLayout → si on se croyait authentifié, `window.location.assign('/')` (bootstrap frais fait
+   autorité) ; anti-rafale par ref ; no-op si store déjà anonyme (anti-boucle /login).
+3. **Fuite inverse pré-bootstrap** (`client.ts`) : `_currentTitleSlug` valait `'halo_infinite'` au
+   boot et le header était toujours affirmé → une requête title-scoped pré-hydratation
+   (`useFiltersResolve`, gated URL et non bootstrap — hypothèse du plan header réfutée sur pièces)
+   servait de l'Infinite à une session halo_5. Fix : `null` au boot (aucun header → session
+   autoritaire), slug affirmé dès l'hydratation. `getApiTitleSlug()` coalesce vers le défaut
+   (contrat share-link inchangé).
+4. **Jauge trous LUSR sous-comptée sur scan partiel** (scheduler) : joueur DB-locked sauté en Debug
+   sans compteur, jauge republiée quand même → badge éteint à tort. Fix : `LUSRPlayersUnmeasured`
+   (WARN par joueur non mesuré, ReadDir KO compris), `publishLUSRGaugeIfComplete` ne republie que si
+   scan COMPLET (« unmeasured ≠ sain »), cycle loggé WARN sinon.
+5. **Badge périmé 24h après « Recalculer »** (wire) : la jauge n'était écrite que par le cron. Fix :
+   scan avant/après replay + `AddLUSRInteriorGapsGauge(delta)` clampé ≥0 (course avec le Set du cron
+   documentée bénigne) ; best-effort — un scan raté n'ajuste pas la jauge et ne fait pas échouer le
+   replay.
+
+**Réfutés à la revue (au crédit de la conception)** : interruption d'un auto-heal mi-replay = bénigne
+(reset watermark = sentinelle INSERT append-only, reprise propre) ; « divergence détecteur v2 /
+écrivain v1 » inexistante (flag global forcé `LUSR_V2` au boot, prédicat partagé).
+
+**Dette consignée, NON traitée (hors périmètre)** : ~13 copies du pattern atomic-write sans
+`WriteFileAtomic` partagé (celle de session omet `tmp.Sync()`) ; résolution joueur divergente entre
+endpoints admin (`resolvePlayerRef` EqualFold vs `RunPlayerConvergence` sensible casse, ≥4 copies →
+helper + garde-rail à faire) ; `Touch`→`Save` par requête sans throttle (mutex global) ; N+1 rosters
+dans `ScanLUSRGaps` + rescan séquentiel par GET admin ; helpers dupliqués (`loadGroupWatermarks` vs
+`SkillV2Repo.LoadAllStates`, `readXUIDFromDir` vs `config.readXUIDFile`, `LusrCoverageBar` vs
+`CoverageBar`) ; anglicisme « Replay » dans 3 strings FR admin ; opt-out `LEVELUP_LUSR_CANONICAL=LUSR`
+encore vivant alors que la doctrine dit « v1 mort ».
+
+**CI de branche (delivery-checklist §0)** : le HEAD mergé `e76f48bb7` était ROUGE sur 3 jobs. Causés
+par la branche et corrigés ici : (a) gofmt `internal/domain/admin_lusr_gaps.go` (lint ratchet) ;
+(b) `TestOpenAPISchemaDrift_AggregatesAndReports` — les 5 schémas de réponse Huma LUSR
+(`AdminLUSRGaps`, `AdminLUSRRecomputeResponse`, `LUSRGapItem`, `LUSRGapPlayer`,
+`LUSRGuardrailHealth`) manquaient dans `openapi.yaml` (les 2 paths y étaient, pas les composants) →
+ajoutés via la recette du test (`OPENAPI_EMIT_OUT`), `generate-types` rejoué (generated.ts +53,
+additif), drift + contracttest verts. HÉRITÉ de main (rouge aussi sur main, PAS corrigé ici — garde-
+rail, décision user requise) : job « Go Baseline Tests » — 3 tests de la baseline pré-migration
+supprimés volontairement par `c9bfa0e7d` (« supprime la route battlepass sans consommateur ») :
+`TestHomeHandler_GetBattlePass_OK/_PlayerNotFound`, `TestRestMixFilter` → la remédiation est de les
+retirer de `.ai/baselines/tests_pre_migration.jsonl` avec justification datée dans le commit.
+
+**Note** : les 3 plans `PLAN_*` déplacés `.ai/` → `.ai/V7/` par l'utilisateur pendant la session
+(contenus identiques vérifiés) ; addenda revue ajoutés dans les copies V7.
+
+**Prochaine étape** : commit sur `feat/monitoring-lusr-fixes` après accord user ; gate visuel e2e
+(multi-onglets titre + repro login-loop) toujours à la main de l'utilisateur.
+
 ## [2026-07-21] Revue + réécriture v2 du plan D7 « titre (et langue) dans l'URL »
 
 **Statut** : Complété (plan seulement — aucune ligne de code). `.ai/PLAN_TITLE_SLUG_URL_2026-07.md`

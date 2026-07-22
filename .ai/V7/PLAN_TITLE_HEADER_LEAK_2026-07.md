@@ -139,3 +139,78 @@ prochaine (ne PAS élargir le patch maintenant, juste consigner) :
 - Entrée `.ai/thought_log.md` obligatoire avant commit.
 - Skill `delivery-checklist` avant « c'est livré ». `make check-types` + `make test-web` +
   `go test ./internal/api/...` verts.
+
+## Statut d'exécution (2026-07-21, branche `fix/title-header-leak` depuis `main`)
+
+**Core**
+- `[x]` `getTitleHeader` affirme le header pour TOUS les titres
+  ([client.ts:82-90](apps/web/src/lib/api/client.ts#L82-L90)) — `if (_currentTitleSlug)`.
+- `[x]` Commentaire `_currentTitleSlug` réécrit (raison anti-fuite, plus « rétrocompat »)
+  ([client.ts:59-66](apps/web/src/lib/api/client.ts#L59-L66)).
+- `[x]` Commentaire `switchTitle` reformulé
+  ([appShellStore.ts:171-180](apps/web/src/stores/appShellStore.ts#L171-L180)). Les DEUX
+  sous-commentaires du bloc (étape 1 ET étape 2) affirmaient « pour le défaut pas de
+  header » → tous deux corrigés (doc==code, anti-pattern #9). Le POST `/session/context`
+  reste requis pour la persistance/reprise (bootstrap lit la session).
+
+**Tests**
+- `[x]` `apps/web/src/lib/api/client.test.ts` — 2 tests (défaut `halo_infinite` porte le
+  header = cœur non-régression ; `halo_5` inchangé). Vert (spy `globalThis.fetch`,
+  `mockRestore` rend la main à MSW).
+- `[x]` `make check-types` (tsc `-b`) vert.
+- `[x]` `make test-web` : 276 fichiers / **2382 passed** / 14 skipped (+2 = nouveaux tests).
+- `[x]` `cd apps/go-api && go test ./internal/api/...` vert (middleware titre non régressé).
+
+**Vérification end-to-end (checks #1-4)**
+- `[!]` **Gate visuel utilisateur — non exécuté in-session.** Le MCP `browser` n'est pas
+  connecté dans cette session (SDK headless) ; WebFetch ne peut ni s'authentifier ni
+  inspecter les headers XHR runtime. Le repro multi-onglets (#1) exige de plus
+  l'environnement deux-titres réel + des yeux humains. Étapes détaillées § « Vérification
+  end-to-end » ci-dessus. Le mécanisme est prouvé par voie automatisée (test unitaire =
+  header affirmé sur la requête sortante pour les 2 titres ; test backend existant = header
+  `halo_infinite` explicite honoré). À valider par l'utilisateur.
+
+**Secondaire (durcissement structurel)**
+- `[~]` Hors périmètre — NON traité, conforme au plan (renvoyé au chantier « slug dans
+  l'URL »). Query keys par-joueur sans `titleSlug`, `setCurrentTitle`, bandeau Spartan
+  `useCapabilityStrict` : consignés, intacts.
+
+**Livraison**
+- `[x]` Branche `fix/title-header-leak` créée depuis `main` (arbre propre au départ). Le
+  plan vivait uniquement sur `feat/frag-distribution-v2` → rapatrié via
+  `git checkout <frag> -- <plan>` (path-scoped, sans le code frags).
+- `[x]` Entrée `.ai/thought_log.md` [2026-07-21].
+- `[x]` Commit initial `71b7c97b3` (front + test + plan + log) posé après accord — non poussé.
+
+## Addendum observabilité + couverture (2026-07-21, hors périmètre initial « header seul »)
+
+Demandé par l'utilisateur après le core. Le fix front n'a pas de surface de log ; la `SlogLogger`
+trace déjà `title_slug` par requête (logs/http.log). Trou comblé côté backend :
+
+- `[x]` **Logging** — `resolveTitleSlug` avalait silencieusement un header `X-LevelUp-Title`
+  non-vide pointant un titre INCONNU (anti-pattern #10). Ajout `slog.WarnContext` nommant le titre
+  demandé ([title.go:62-70](apps/go-api/internal/api/middleware/title.go#L62-L70)) — rare par
+  construction, rend une confusion de titre visible dans logs/.
+- `[x]` **Tests** (3, via `InjectSession`) — WARN sur header inconnu ; **header bat une session
+  divergente** (invariant anti-fuite backend, jusque-là non testé) ; session fait autorité sans
+  header ([title_test.go](apps/go-api/internal/api/middleware/title_test.go)).
+- `[x]` Gates : `gofmt`/`go vet` clean, `go test ./internal/api/...` vert (middleware 8/8), front
+  vert. golangci-lint absent du PATH (gate local `make go-api-lint` = `go vet`).
+- `[!]` 2e commit (title.go + title_test.go) — EN ATTENTE de l'accord utilisateur.
+  → RÉSOLU : commité `002260798`, mergé via `ee53afd11` (branche `feat/monitoring-lusr-fixes`).
+
+## Addendum revue 2026-07-22 (post-merge)
+
+La revue complète de la branche a réfuté sur pièces l'hypothèse « aucune requête par-joueur ne part
+avant le bootstrap » (§ Pourquoi toujours envoyer le header est sûr) : `useFiltersResolve` est
+`enabled: !!playerSlug` avec un slug venant de l'URL, donc part AVANT l'hydratation. Le module
+valant `'halo_infinite'` au boot, le header affirmait le défaut sur une session `halo_5` (header >
+session côté backend) = fuite INVERSE, cachée sous une clé sans titre.
+
+- `[x]` Correctif 2026-07-22 : `_currentTitleSlug: string | null = null` au boot — aucun header
+  avant hydratation (la session serveur reste autoritaire, comportement sûr du boot) ; slug affirmé
+  sur chaque requête dès `hydrateFromBootstrap`/`switchTitle` (le cœur anti-fuite H5→Infinite est
+  préservé). `setApiTitleSlug` accepte `null` (reset tests) ; `getApiTitleSlug()` coalesce vers le
+  défaut (contrat share-link inchangé). Test « aucun header avant hydratation » ajouté
+  (`client.test.ts`). Le durcissement structurel (titleSlug dans les query keys) reste renvoyé au
+  chantier « slug dans l'URL », inchangé.
