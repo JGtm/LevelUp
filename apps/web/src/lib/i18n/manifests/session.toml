@@ -90,7 +90,7 @@ fr = "Comparaison côte à côte"
 en = "Side-by-side comparison"
 
 [session.detail.compare_tooltip_desc]
-fr = "Affiche une deuxième session à droite — mêmes graphes, même tableaux — pour comparer vos performances pour une session similaire sans changer de page."
+fr = "Affiche une deuxième session à droite — mêmes graphes, même tableaux, pour comparer vos performances sur une session similaire sans changer de page."
 en = "Shows a second session on the right — same charts, same tables — to compare your performance from a similar session without switching pages."
 
 [session.detail.compare_tooltip_suggested]
