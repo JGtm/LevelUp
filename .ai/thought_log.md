@@ -1,3 +1,39 @@
+## [2026-07-22] Frag Distribution v2 — Sessions : carte frags finalisée (sunburst + 2e graphe côte à côte) + swap précision/détails + fix grenades à 0 %
+
+**Statut** : Complété, VALIDÉ user sur la page Sessions. Branche `feat/frag-distribution-v2`. Commit autorisé.
+
+**Carte Sessions (`SessionFragCard`)** : même rendu final que Match view — sunburst « Répartition des frags » (compteur
+seul centré, légende à gauche) + 2e graphe CÔTE À CÔTE (sunburst 2/3 | 2e 1/3). Responsive : EMPILÉ (2e sous le sunburst,
+légende repassée en bas) quand la colonne est étroite (`stacked = dense || compact`, drawer de comparaison ouvert).
+
+**Swap précision ↔ détails (exception Sessions, décision user)** : si le titre fournit la précision par arme (H5, table
+`weapon_accuracy` peuplée) → 2e graphe = « Précision par arme » (réutilise `SynthesisWeaponAccuracyChart`) ; sinon
+(Infinite) → « Détails des frags ». Data-driven (`entry.weapon_accuracy.length > 0`), aucun `slug ==`.
+
+**Backend — weapon_accuracy par session** : champ `WeaponAccuracy` (omitempty → absent Infinite) sur
+`SessionCompareEntry` ; `SessionPageService.WithWeaponAccuracyRepo` (miroir weaponKills) câblé DI dans
+`registry_pages.go` ; `loadSessionWeaponAccuracy` best-effort (capability absente = Debug, erreur = Warn, jamais avalée)
+→ `buildWeaponAccuracy` (builder PARTAGÉ Synthesis, pas de dup). openapi + types régénérés. 3 tests Go.
+
+**Helper partagé « Détails des frags »** : `buildFragDetailBreakdown` (components/charts/fragDetailBreakdown.ts) = source
+unique (armes gun `GUN_CLASSES` + détail mêlée/grenade/capacités, sans double-comptage). Migrés dessus : `MatchFragCard`,
+`useSynthesisFragCharts`, `weaponRoleInsight` (3e copie → règle ≤2). Garde-rail `fragDetailBreakdown.guard.test.ts`
+(interdit `['shoulder','sidearm','heavy']` réinliné hors du helper).
+
+**Fix grenades à 0 % (Sessions + Synthesis)** : « Précision par arme » montrait les grenades LANCÉES (plasma/splinter) à
+0 % — la table `weapon_accuracy` compte les tirs, une grenade n'a pas de « tir au but » — alors qu'absentes du sunburst
+(0 kill). Corrigé dans le builder PARTAGÉ : `WeaponAccuracyRow.Class` résolue au repo (`resolveWeaponMeta`) +
+`weaponClassHasAccuracy` exclut grenade/mêlée/capacités/non-attribué/buckets non-combat (garde armes à tir + classe non
+résolue = bénéfice du doute). Test `TestBuildWeaponAccuracy_ExcludesNonAccuracyClasses`.
+
+**Archi** : précision réutilisée via import cross-feature `session-detail=>synthesis` déclaré
+(`tools/lint-cross-feature-imports.mjs`, analogue à `=>explorer`) — pas de duplication du composant.
+
+**Gates (verts)** : Go gofmt/vet/`go test ./internal/service/... ./internal/port/...` ✓ ; front typecheck (purgé) /
+eslint 0 err / vitest 2407 pass 14 skip / cross-feature 0 violation ✓.
+
+**Prochaine étape** : push branche `feat/frag-distribution-v2` (non poussée/mergée — attend revue visuelle globale v2).
+
 ## [2026-07-21] Frag Distribution v2 — Synthesis : disposition 2 rangées + « Détails des frags » + Précision par arme câblée (couleurs/tooltip/survol)
 
 **Statut** : Complété, VALIDÉ user (itérations taille/dispo). Branche `feat/frag-distribution-v2`. Commit autorisé.

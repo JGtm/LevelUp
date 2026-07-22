@@ -140,10 +140,11 @@ export function SessionChartStack({
     />
   )
   const damage = <SessionDamageComposite title={t('session.detail.chart_damage_title')} matches={matches} />
-  // Répartition des frags v2 (sunburst classe→rôle + breakdown par arme) — alimentée
-  // par l'agrégat de session (P5). Rend null si aucune donnée. Titre i18n FR+EN via le
-  // manifeste partagé `frags` (défaut FragSunburst/FragWeaponBreakdown).
-  const frags = <SessionFragCard entry={entry} />
+  // Répartition des frags v2 (sunburst classe→rôle + « Détails des frags ») — alimentée par
+  // l'agrégat de session (P5). Rend null si aucune donnée. Rendu Match view (compteur seul,
+  // légende gauche, survol lié) ; EMPILÉ quand la colonne est étroite (`dense` drawer OU
+  // `compact` = colonne principale rétrécie par le drawer de comparaison).
+  const frags = <SessionFragCard entry={entry} stacked={dense || compact} />
 
   if (dense) {
     return (

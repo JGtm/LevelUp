@@ -7761,6 +7761,7 @@ export interface components {
             /** Format: int64 */
             total_matches: number;
             top_weapon_kills?: components["schemas"]["SynthesisWeaponKillEntry"][] | null;
+            weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
             /** Format: int64 */
             total_perfect_kills?: number;
             /** Format: double */

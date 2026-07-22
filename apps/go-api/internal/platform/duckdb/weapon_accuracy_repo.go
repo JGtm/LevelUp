@@ -160,9 +160,10 @@ GROUP BY wa.xuid, wa.weapon_id`)
 	return sb.String(), args
 }
 
-// attachWeaponLabels renseigne le Label EN/FR par weapon_id via resolveWeaponMeta
-// (registre + weapon_labels). Best-effort : meta absent → no-op (Label vide, le
-// service filtre). Pas de Role ici (le graphe précision n'en a pas besoin).
+// attachWeaponLabels renseigne le Label EN/FR ET la Class (registre) par weapon_id via
+// resolveWeaponMeta (registre + weapon_labels). Best-effort : meta absent → no-op (Label/
+// Class vides, le service filtre). La Class sert à écarter du graphe précision les classes
+// sans précision pertinente (grenade/mêlée/capacités). Pas de Role (le graphe n'en a pas besoin).
 func (r *WeaponAccuracyRepo) attachWeaponLabels(ctx context.Context, slug string, rows []port.WeaponAccuracyRow) {
 	if r.pdb == nil || r.pdb.Metadata == nil || len(rows) == 0 {
 		return
@@ -173,8 +174,13 @@ func (r *WeaponAccuracyRepo) attachWeaponLabels(ctx context.Context, slug string
 	}
 	meta := resolveWeaponMeta(ctx, r.pdb.Metadata, slug, ids)
 	for i := range rows {
-		if m, ok := meta[rows[i].WeaponID]; ok && m.label != "" {
+		m, ok := meta[rows[i].WeaponID]
+		if !ok {
+			continue
+		}
+		if m.label != "" {
 			rows[i].Label = m.label
 		}
+		rows[i].Class = m.class
 	}
 }

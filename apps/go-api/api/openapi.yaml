@@ -14077,6 +14077,11 @@ components:
                   $ref: '#/components/schemas/SynthesisWeaponKillEntry'
               type: array
               nullable: true
+          weapon_accuracy:
+              items:
+                  $ref: '#/components/schemas/SynthesisWeaponAccuracyEntry'
+              type: array
+              nullable: true
           total_perfect_kills:
               format: int64
               type: integer

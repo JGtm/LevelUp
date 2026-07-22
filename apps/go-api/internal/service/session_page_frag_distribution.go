@@ -39,6 +39,11 @@ func (s *SessionPageService) attachSessionFragDistribution(
 	fd, top := s.sessionFragDistribution(ctx, canonRows, matchIDs)
 	entry.FragDistribution = fd
 	entry.TopWeaponKills = top
+	// Précision par arme (Halo 5 natif) : MÊME builder partagé que Synthesis
+	// (buildWeaponAccuracy → nil si aucune arme valide → champ omis). Découplé du
+	// gate frags (une session peut avoir des tirs mesurés) ; best-effort (repo nil /
+	// capability absente sur Infinite → nil → le front retombe sur « Détails des frags »).
+	entry.WeaponAccuracy = buildWeaponAccuracy(s.loadSessionWeaponAccuracy(ctx, matchIDs), synthesisWeaponChartTopN)
 }
 
 // sessionFragDistribution construit la FragDistribution + le top armes de la session
@@ -106,6 +111,33 @@ func (s *SessionPageService) loadSessionWeaponKillRows(
 				"title", s.titleSlug, "gamertag", s.gamertag)
 		} else {
 			slog.WarnContext(ctx, "session page: weapon kills query failed (best-effort, fallback nil)",
+				"title", s.titleSlug, "gamertag", s.gamertag,
+				"match_count", len(matchIDs), "err", err)
+		}
+		return nil
+	}
+	return rows
+}
+
+// loadSessionWeaponAccuracy charge la précision agrégée par arme de la session
+// (MIROIR de loadSessionWeaponKillRows). Best-effort : nil si repo absent /
+// gamertag vide / scope vide, ou erreur (loggée, jamais avalée — capability absente
+// = Debug, titre sans table weapon_accuracy comme Infinite ; anomalie SQL/conn = Warn,
+// parité loadWeaponAccuracy Synthesis).
+func (s *SessionPageService) loadSessionWeaponAccuracy(
+	ctx context.Context, matchIDs []string,
+) []port.WeaponAccuracyRow {
+	if s.weaponAccuracyRepo == nil || s.gamertag == "" || len(matchIDs) == 0 {
+		return nil
+	}
+	filters := port.WeaponAccuracyFilters{MatchIDs: matchIDs, Gamertag: s.gamertag}
+	rows, err := s.weaponAccuracyRepo.LoadWeaponAccuracyAggregated(ctx, s.titleSlug, filters)
+	if err != nil {
+		if errors.Is(err, games.ErrCapabilityNotSupported) {
+			slog.DebugContext(ctx, "session page: weapon accuracy capability absente",
+				"title", s.titleSlug, "gamertag", s.gamertag)
+		} else {
+			slog.WarnContext(ctx, "session page: weapon accuracy query failed (best-effort, fallback nil)",
 				"title", s.titleSlug, "gamertag", s.gamertag,
 				"match_count", len(matchIDs), "err", err)
 		}
