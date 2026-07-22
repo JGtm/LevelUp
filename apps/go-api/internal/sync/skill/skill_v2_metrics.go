@@ -44,7 +44,42 @@ var (
 	// Doit rester 0 ; >0 = anomalie data (avant le fix 2026-06-07 ce cas avançait
 	// le watermark en SILENCE → gap permanent invisible).
 	canonicalOwnerMissing = expvar.NewInt("levelup.lusr_v2.canonical_owner_missing_total")
+	// interiorGapsGauge : nb de trous d'INTÉRIEUR LUSR COURANTS, tous joueurs/groupes/
+	// titres confondus. Gauge (état courant, pas un cumul). >0 = des notes LUSR manquent
+	// définitivement SOUS le watermark → replay requis (RecomputeLUSRCanonical). Deux
+	// écrivains :
+	//   - Set par le cron data_health, SEULEMENT sur un scan COMPLET (aucun joueur non
+	//     mesuré) ; un scan partiel gèle la jauge (cf. data_health_check.runCycle) ;
+	//   - Add (delta) après un replay manuel réussi (RecomputeLUSRGapsForPlayer, wire),
+	//     pour éteindre le badge /admin/data sans attendre le prochain cron 24h.
+	// Publié via /debug/vars.
+	interiorGapsGauge = expvar.NewInt("levelup.lusr_v2.interior_gaps")
 )
+
+// SetLUSRInteriorGapsGauge publie le total de trous d'intérieur du dernier scan.
+func SetLUSRInteriorGapsGauge(total int) { interiorGapsGauge.Set(int64(total)) }
+
+// AddLUSRInteriorGapsGauge ajuste la jauge d'un delta, clampée à ≥ 0. Chemin de
+// réparation manuelle (RecomputeLUSRGapsForPlayer) : après un replay réussi on
+// retranche les trous comblés (delta < 0) sans attendre le prochain cron 24h.
+// Get+clamp+Set (et non expvar.Int.Add atomique) car le clamp à 0 exige de LIRE la
+// valeur avant d'écrire. La course bénigne avec le Set du cron (scan complet) est
+// acceptée : le prochain scan complet réécrit de toute façon la valeur exacte.
+func AddLUSRInteriorGapsGauge(delta int) {
+	next := interiorGapsGauge.Value() + int64(delta)
+	if next < 0 {
+		next = 0
+	}
+	interiorGapsGauge.Set(next)
+}
+
+// Accesseurs de lecture pour le monitoring admin (endpoint /admin/monitoring/
+// lusr-gaps) : ces compteurs LUSR v2 n'étaient jusqu'ici lisibles que via
+// /debug/vars. Les ré-exposer permet au DTO garde-fou de les afficher sans parser
+// l'expvar HTTP.
+func LUSRInteriorGapsGaugeValue() int64           { return interiorGapsGauge.Value() }
+func LUSRCanonicalWriteHeldWatermarkValue() int64 { return canonicalWriteHeldWatermark.Value() }
+func LUSRCanonicalOwnerMissingValue() int64       { return canonicalOwnerMissing.Value() }
 
 // SentinelReport est le résultat d'un scan dual-row.
 type SentinelReport struct {

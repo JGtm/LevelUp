@@ -8,6 +8,7 @@ import { useAdminT } from '../useAdminText'
 import { AdminDataQualityPage } from '../data-quality/AdminDataQualityPage'
 import { AdminConvergencePage } from '../convergence/AdminConvergencePage'
 import { InvariantsSection } from '../sections/InvariantsSection'
+import { LusrGapsSection } from '../sections/LusrGapsSection'
 
 export function AdminDataPage() {
   const tA = useAdminT()
@@ -32,6 +33,13 @@ export function AdminDataPage() {
           {tA('admin.data.section_invariants')}
         </h2>
         <InvariantsSection />
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="border-b pb-2 text-base font-semibold text-foreground">
+          {tA('admin.data.section_lusr_gaps')}
+        </h2>
+        <LusrGapsSection />
       </section>
     </div>
   )

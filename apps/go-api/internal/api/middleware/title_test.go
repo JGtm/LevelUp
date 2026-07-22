@@ -2,12 +2,16 @@
 package middleware_test
 
 import (
+	"bytes"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 )
 
@@ -127,5 +131,88 @@ func TestTitleExtractor_LocaleFromHeader(t *testing.T) {
 		if captured != c.want {
 			t.Errorf("X-LevelUp-Locale=%q → locale %q, want %q", c.header, captured, c.want)
 		}
+	}
+}
+
+// Header présent mais titre INCONNU : le fallback ne doit pas être silencieux (anti-fuite,
+// CLAUDE.md anti-pattern #10). On capture le logger par défaut et on prouve qu'un WARN
+// nommant le titre demandé est émis — la mauvaise résolution devient visible dans logs/.
+func TestTitleExtractor_UnknownHeader_LogsWarn(t *testing.T) {
+	var buf bytes.Buffer
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn})))
+
+	registry := titlePkg.NewRegistry()
+	mw := middleware.TitleExtractor(registry)
+
+	var captured string
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captured = ctxkeys.TitleSlug(r.Context())
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("X-LevelUp-Title", "nonexistent_game")
+	handler.ServeHTTP(httptest.NewRecorder(), req)
+
+	if captured != titlePkg.DefaultSlug {
+		t.Errorf("titre inconnu doit retomber sur le défaut %q, got %q", titlePkg.DefaultSlug, captured)
+	}
+	logged := buf.String()
+	if !strings.Contains(logged, "level=WARN") || !strings.Contains(logged, "nonexistent_game") {
+		t.Errorf("un WARN nommant le titre demandé était attendu, log=%q", logged)
+	}
+}
+
+// Cœur de l'anti-fuite backend : un header explicite l'emporte sur une session pointant un
+// AUTRE titre. C'est ce qui rend le correctif front (toujours envoyer le header) efficace —
+// même si la session vaut encore halo_5, halo_infinite affirmé par le header gagne, donc
+// aucune donnée H5 ne peut être servie sous la clé Infinite.
+func TestTitleExtractor_HeaderBeatsSession(t *testing.T) {
+	registry := titlePkg.NewRegistry()
+	registry.Register(&titlePkg.TitleDescriptor{
+		Slug: "halo_5", Name: "Halo 5", Status: titlePkg.StatusActive,
+	})
+	mw := middleware.TitleExtractor(registry)
+
+	var captured string
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captured = ctxkeys.TitleSlug(r.Context())
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("X-LevelUp-Title", "halo_infinite")
+	ctx := middleware.InjectSession(req.Context(), &domain.SessionData{CurrentTitleSlug: "halo_5"})
+	handler.ServeHTTP(httptest.NewRecorder(), req.WithContext(ctx))
+
+	if captured != "halo_infinite" {
+		t.Errorf("le header doit primer sur la session, attendu halo_infinite, got %q", captured)
+	}
+}
+
+// Sans header, la session fait autorité (reprise du dernier titre). Prouve que le chemin de
+// résolution par session — le fallback sur lequel reposait la fuite quand le front n'envoyait
+// pas de header pour le titre par défaut — fonctionne correctement.
+func TestTitleExtractor_SessionFallback_NoHeader(t *testing.T) {
+	registry := titlePkg.NewRegistry()
+	registry.Register(&titlePkg.TitleDescriptor{
+		Slug: "halo_5", Name: "Halo 5", Status: titlePkg.StatusActive,
+	})
+	mw := middleware.TitleExtractor(registry)
+
+	var captured string
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captured = ctxkeys.TitleSlug(r.Context())
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	ctx := middleware.InjectSession(req.Context(), &domain.SessionData{CurrentTitleSlug: "halo_5"})
+	handler.ServeHTTP(httptest.NewRecorder(), req.WithContext(ctx))
+
+	if captured != "halo_5" {
+		t.Errorf("sans header, la session doit faire autorité, attendu halo_5, got %q", captured)
 	}
 }

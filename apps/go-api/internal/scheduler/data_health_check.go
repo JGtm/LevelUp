@@ -34,6 +34,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/sync/skill"
 )
 
 // DataHealthCheckResult agrège les compteurs d'un cycle d'audit.
@@ -47,7 +48,23 @@ type DataHealthCheckResult struct {
 	// ProbeErrors (Lot B, audit #10) : nombre de sondes SQL qui ont échoué ce
 	// cycle. > 0 → le cycle n'a pas tout mesuré et NE DOIT PAS passer pour « sain ».
 	ProbeErrors int
-	Duration    time.Duration
+	// LUSRInteriorGaps : total de trous d'INTÉRIEUR LUSR détectés ce cycle (matchs
+	// éligibles, non notés, sous le watermark → notes définitivement absentes). >0 =
+	// replay requis. LUSRPendingRecent : matchs éligibles non notés AU-DESSUS du
+	// watermark (simple attente, pas une anomalie). LUSRPlayersScanned : # de joueurs
+	// effectivement scannés (diagnostic couverture).
+	LUSRInteriorGaps   int
+	LUSRPendingRecent  int
+	LUSRPlayersScanned int
+	// LUSRPlayersUnmeasured : # de joueurs (ou de titres entiers) dont les trous LUSR
+	// n'ont PAS pu être mesurés ce cycle : player DB tenue RW par un sync donc
+	// inouvrable, scan SQL en échec, ou os.ReadDir du répertoire joueurs KO. >0 = scan
+	// LUSR PARTIEL → LUSRInteriorGaps est sous-compté et la jauge expvar NE DOIT PAS
+	// être republiée (sinon le badge /admin/data s'éteindrait à tort — « unmeasured ≠
+	// sain »). Distinct de ProbeErrors : une player DB tenue RW est transitoire/normale,
+	// elle ne fait pas échouer le cron mais gèle la jauge le temps du sync.
+	LUSRPlayersUnmeasured int
+	Duration              time.Duration
 }
 
 // HealthScheduler orchestre l'audit santé DB périodique. N'émet pas de
@@ -58,6 +75,12 @@ type HealthScheduler struct {
 	intervalHours int
 	enabled       bool
 
+	// lusrAutoHeal : hook de remédiation (replay LUSR d'un joueur). nil → auto-heal
+	// indisponible (alerte seule). Câblé par main.go vers
+	// ServiceRegistry.RecomputeLUSRGapsForPlayer. Ne fire QUE si le kill-switch
+	// LEVELUP_LUSR_AUTOHEAL_ENABLED est ON (défaut OFF, cf. isLUSRAutoHealEnabled).
+	lusrAutoHeal func(ctx context.Context, titleSlug, gamertag string) error
+
 	// Dernier audit COMPLET (dashboard monitoring admin). Les cycles avortés
 	// (shared absente/illisible) ne l'écrasent pas : on garde le dernier
 	// signal réel plutôt qu'un faux « tout vert ».
@@ -65,6 +88,9 @@ type HealthScheduler struct {
 	lastResult *DataHealthCheckResult
 	lastRunAt  time.Time
 }
+
+// Le volet « garde-fou trous LUSR » (auto-heal, scan par joueur, kill-switch)
+// vit dans data_health_lusr.go — même package.
 
 // NewDataHealthScheduler crée un scheduler avec les défauts (24h, enabled).
 func NewDataHealthScheduler(repoRoot string) *HealthScheduler {
@@ -151,8 +177,9 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	// pas encore backfillé.
 	pr := titlePkg.NewPathResolver(s.repoRoot)
 	auditedTitles := 0
+	var healCand lusrHealCandidate
 	for _, td := range titlePkg.DefaultRegistry().All() {
-		if s.auditTitle(ctx, pr, td.Slug, res) {
+		if s.auditTitle(ctx, pr, td.Slug, res, &healCand) {
 			auditedTitles++
 		}
 	}
@@ -169,6 +196,15 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	res.WarningsTotal = res.UUIDsRawCount + res.LyingBitsEvents + res.LyingBitsWeaponKills + res.GarbageBannerURLs
 	res.Duration = time.Since(start)
 
+	// Publie la jauge expvar des trous LUSR (dernier scan complet uniquement). Les
+	// trous LUSR ne rentrent PAS dans WarningsTotal (signal distinct : panneau
+	// monitoring + auto-heal), mais sont toujours loggés.
+	publishLUSRGaugeIfComplete(ctx, res)
+
+	// Auto-heal (remédiation bornée) : 1 joueur/cycle max, le plus impacté, seulement
+	// si le kill-switch est ON (défaut OFF → alerte seule).
+	s.maybeAutoHealLUSR(ctx, healCand)
+
 	// Log structuré uniquement — pas d'émission de notif (cf. décision
 	// 2026-05-20 dans le commentaire de tête du package).
 	// orphan_xuids est TOUJOURS loggé (même cycle propre) : c'est le signal
@@ -176,15 +212,21 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	// 2026-05-30). Reste informatif — hors WarningsTotal par décision.
 	// Lot B (audit #10) : un cycle avec des sondes en échec (ProbeErrors > 0) est
 	// loggué en WARN — il n'a pas pu tout mesurer et ne doit pas passer pour « sain ».
+	// Idem si des joueurs LUSR n'ont pas pu être mesurés (scan partiel, jauge gelée) :
+	// « unmeasured ≠ sain ».
 	logHealth := slog.InfoContext
-	if res.ProbeErrors > 0 {
+	if res.ProbeErrors > 0 || res.LUSRPlayersUnmeasured > 0 {
 		logHealth = slog.WarnContext
 	}
-	if res.WarningsTotal == 0 && res.ProbeErrors == 0 {
+	if res.WarningsTotal == 0 && res.ProbeErrors == 0 && res.LUSRPlayersUnmeasured == 0 {
 		slog.InfoContext(ctx, "data_health: cycle terminé",
 			"warnings_total", 0,
 			"probe_errors", 0,
 			"orphan_xuids", res.OrphanXUIDs,
+			"lusr_interior_gaps", res.LUSRInteriorGaps,
+			"lusr_pending_recent", res.LUSRPendingRecent,
+			"lusr_players_scanned", res.LUSRPlayersScanned,
+			"lusr_players_unmeasured", 0,
 			"duration", res.Duration.Round(time.Millisecond),
 		)
 	} else {
@@ -196,6 +238,10 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 			"lying_bits_weapons", res.LyingBitsWeaponKills,
 			"orphan_xuids", res.OrphanXUIDs,
 			"garbage_banner_urls", res.GarbageBannerURLs,
+			"lusr_interior_gaps", res.LUSRInteriorGaps,
+			"lusr_pending_recent", res.LUSRPendingRecent,
+			"lusr_players_scanned", res.LUSRPlayersScanned,
+			"lusr_players_unmeasured", res.LUSRPlayersUnmeasured,
 			"duration", res.Duration.Round(time.Millisecond),
 		)
 	}
@@ -217,7 +263,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 // pas de panic, retourne false) ; les requêtes individuelles ignorent déjà leurs
 // erreurs (table manquante ⇒ compteur reste à 0), donc un schéma partiel ne casse
 // pas le cycle.
-func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResolver, slug string, res *DataHealthCheckResult) bool {
+func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResolver, slug string, res *DataHealthCheckResult, healCand *lusrHealCandidate) bool {
 	sharedPath := pr.SharedDBPath(slug)
 	if _, err := os.Stat(sharedPath); err != nil {
 		slog.DebugContext(ctx, "data_health: shared DB absente — skip titre",
@@ -264,6 +310,10 @@ func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResol
 	// 4. Banner garbage URLs (toutes les player DBs du titre)
 	res.GarbageBannerURLs += s.auditPlayerBanners(ctx, pr, slug, &res.ProbeErrors)
 
+	// 5. Trous d'intérieur LUSR (garde-fou notes LUSR — read-only, best-effort ;
+	// implémentation dans data_health_lusr.go).
+	s.auditTitleLUSRGaps(ctx, pr, slug, db, res, healCand)
+
 	return true
 }
 
@@ -298,6 +348,23 @@ func (s *HealthScheduler) auditPlayerBanners(ctx context.Context, pr *titlePkg.P
 		_ = pdb.Close() //nolint:errcheck // ref-count : best-effort
 	}
 	return total
+}
+
+// publishLUSRGaugeIfComplete republie la jauge expvar des trous d'intérieur —
+// SEULEMENT si le scan LUSR a été COMPLET (aucun joueur non mesuré). Un scan partiel
+// (player DB tenue RW par un sync, ReadDir KO) sous-compte LUSRInteriorGaps :
+// republier écraserait le badge /admin/data avec un total trompeur (voire 0) et
+// l'éteindrait à tort — « unmeasured ≠ sain ». On conserve alors la dernière valeur
+// publiée (dernier scan complet ou heal manuel, cf. skill.AddLUSRInteriorGapsGauge)
+// et on logge le motif.
+func publishLUSRGaugeIfComplete(ctx context.Context, res *DataHealthCheckResult) {
+	if res.LUSRPlayersUnmeasured == 0 {
+		skill.SetLUSRInteriorGapsGauge(res.LUSRInteriorGaps)
+		return
+	}
+	slog.WarnContext(ctx, "data_health: jauge LUSR non mise à jour (scan partiel)",
+		"lusr_players_unmeasured", res.LUSRPlayersUnmeasured,
+		"lusr_interior_gaps_scanned", res.LUSRInteriorGaps)
 }
 
 // scanCount exécute une sonde COUNT(*) data-health. Sur erreur, la LOGGUE (Warn)
