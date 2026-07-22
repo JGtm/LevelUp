@@ -10251,3 +10251,53 @@ Q30.
 
 **Conclusion** : les 2 items « hors périmètre » sont soldés. Reste au superviseur : relecture +
 décision de push (déploiement).
+
+---
+
+## [2026-07-21] Patch fuite directionnelle H5 → Infinite (header titre non affirmé)
+
+**Statut** : Complété côté code + gates automatisés. Reste : gate visuel utilisateur (e2e
+browser) + décision de commit. Contrat `plan-execution` ; plan
+`.ai/PLAN_TITLE_HEADER_LEAK_2026-07.md`. Branche `fix/title-header-leak` (depuis `main`).
+
+**Décision technique principale** : le client API n'envoyait `X-LevelUp-Title` que pour les
+titres non-défaut (`_currentTitleSlug !== 'halo_infinite'`, justifié « rétrocompat »). Sur
+Infinite, les requêtes n'affirmaient donc AUCUN titre → le backend (`resolveTitleSlug`,
+priorité header > session > défaut) retombait sur la session serveur ; une session périmée
+`halo_5` (autre onglet, cookie de session partagé ; refetch focus/interval ; course avec le
+commit `/session/context`) faisait servir du Halo 5 sous les clés Infinite (Spartan ID,
+playlists, rangs…). Asymétrie diagnostique : fuite uniquement H5→Infinite, Infinite étant le
+seul titre sans header. Correctif minimal : `getTitleHeader` affirme le titre pour TOUS les
+titres (`if (_currentTitleSlug)`). Sûr car le registre backend contient `halo_infinite`
+(test middleware existant honore le header explicite) et `/bootstrap` dérive
+`current_title_slug` de la SESSION, pas du header → reprise F5 préservée. Commentaires
+`_currentTitleSlug` + `switchTitle` (étapes 1 ET 2) réécrits (doc==code, anti-pattern #9
+« doc inversée »). Périmètre « header seul » : le durcissement structurel (query keys
+`titleSlug`, `setCurrentTitle`, bandeau Spartan `useCapabilityStrict`) est explicitement
+renvoyé au chantier « slug dans l'URL » — NON touché.
+
+**Résultats observés** : nouveau `apps/web/src/lib/api/client.test.ts` (spy `globalThis.fetch`,
+`mockRestore` → rend la main à MSW) — le défaut `halo_infinite` porte bien le header (cœur
+non-régression) + `halo_5` inchangé, 2/2 verts. `make check-types` vert ; `make test-web`
+276 fichiers / 2382 passed / 14 skipped (+2) ; `go test ./internal/api/...` vert (middleware
+titre non régressé). Note process : le plan vivait uniquement sur `feat/frag-distribution-v2`
+(commit 3f4ed36d3) ; brancher depuis `main` (conforme au plan) l'a retiré du working tree →
+rapatrié via `git checkout <frag> -- <plan>` (path-scoped, sans embarquer le code frags).
+
+**Conclusion / prochaine étape** : correctif + tests automatisés livrés et verts. Commit initial
+`71b7c97b3` (front + test + plan + log) posé après accord utilisateur — NON poussé (pas de deploy
+prod). Reste la vérification e2e visuelle par l'utilisateur (multi-onglets H5/Infinite, switch
+simple, reprise F5, header réseau sur chaque `/api/v1/…` — MCP browser indisponible in-session).
+
+**Addendum observabilité + couverture (2026-07-21, même tâche)** — demandé par l'utilisateur
+(« bonne couverture de logging dans le dossier logs dédié + tests »). Le fix front n'a pas de
+surface de log ; la `SlogLogger` trace déjà `title_slug` à chaque requête (logs/http.log). Le vrai
+trou d'observabilité : `resolveTitleSlug` (middleware TitleExtractor) avalait SILENCIEUSEMENT un
+header `X-LevelUp-Title` non-vide pointant un titre INCONNU (anti-pattern #10). Ajout d'un
+`slog.WarnContext` (rare par construction — le front n'émet que des slugs connus — nommant le titre
+demandé) → une confusion de titre devient visible dans logs/. Couverture backend renforcée (3
+tests middleware via `InjectSession`) : WARN sur header inconnu ; **header bat une session
+divergente** (l'invariant backend qui rend le fix front efficace, jusque-là NON testé) ; session
+fait autorité sans header. Gates : `gofmt` + `go vet` clean, `go test ./internal/api/...` vert
+(middleware 8/8), front vert. golangci-lint absent du PATH (le gate local `make go-api-lint` se
+réduit à `go vet`). Reste l'accord pour un 2e commit (title.go + title_test.go).

@@ -168,16 +168,16 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
 
     set({ isTitleSwitching: true })
     try {
-      // 1. Commit le titre côté serveur. Le backend résout le titre par
-      // priorité header X-LevelUp-Title > session (cf. middleware TitleExtractor).
-      // Pour le titre PAR DÉFAUT (halo_infinite) le front N'ENVOIE PAS de header
-      // (cf. getTitleHeader) → c'est la session qui fait autorité : il FAUT donc
-      // que ce POST soit commité avant de relancer la moindre requête, sinon un
-      // refetch « retour à Infinite » lirait encore l'ancien titre de session.
+      // 1. Commit le titre côté serveur. Depuis le patch anti-fuite, le front
+      // affirme le titre sur CHAQUE requête via X-LevelUp-Title (cf. getTitleHeader),
+      // donc la résolution per-requête (header > session > défaut, cf. middleware
+      // TitleExtractor) ne dépend plus de la session. Ce POST reste requis pour la
+      // PERSISTANCE/REPRISE : /bootstrap dérive current_title_slug de la SESSION (pas
+      // du header), donc un F5 ultérieur ne retrouve le bon titre que s'il est commité.
       await api.post('/session/context', { title_slug: titleSlug })
       // 2. Basculer le client API + le store sur le nouveau titre AVANT tout
-      // refetch : à partir d'ici chaque requête porte le nouveau titre (header
-      // pour un titre non-défaut ; session déjà commitée ci-dessus pour le défaut).
+      // refetch : à partir d'ici chaque requête affirme le nouveau titre via le
+      // header X-LevelUp-Title (pour tous les titres, défaut halo_infinite compris).
       setApiTitleSlug(titleSlug)
       set({ currentTitleSlug: titleSlug })
       // 2bis. Réinitialiser les filtres contextuels (solo/squad). Leur state
