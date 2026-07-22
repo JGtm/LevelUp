@@ -412,11 +412,8 @@ func rawRowsToBreakdownRows(rows []domain.MatchHistoryRawRow) []breakdown.Row {
 		// puis fallback game_variant (titres/matchs sans pair, ex. H5). Sans le
 		// fallback, les matchs dont le mode vient du game_variant sont écartés du
 		// regroupement et la dimension « par mode » peut dégénérer / disparaître.
-		modeUI := analysis.ResolveModeUI(r.PairName, r.PairNameFR)
-		if modeUI == nil {
-			modeUI = analysis.ResolveModeUI(r.GameVariantName, r.GameVariantNameFR)
-		}
-		if modeUI != nil {
+		// Convention centralisée — cf. analysis.ResolveModeUIWithVariant.
+		if modeUI := analysis.ResolveModeUIWithVariant(r.PairName, r.PairNameFR, r.GameVariantName, r.GameVariantNameFR); modeUI != nil {
 			br.ModeName = *modeUI
 		}
 		if r.PlaylistName != nil {

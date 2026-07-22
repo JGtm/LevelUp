@@ -329,12 +329,17 @@ func applyMatchContextFilter(rows []domain.FilterMatchRow, matchContext string) 
 // Helpers d'enrichissement
 // ---------------------------------------------------------------------------
 
+// modeUI dérive le libellé de mode d'un row de filtre. C'est LE chokepoint des
+// filtres : options (buildAvailableOptions) ET filtrage (applyCascadeFilter)
+// passent par cette même fonction → Value d'option == clé de filtrage, garanti.
+// Pair prioritaire, sinon fallback game_variant pour les titres sans pair_name
+// (Halo 5) — via la convention centralisée analysis.ResolveModeUIWithVariant.
 func modeUI(row domain.FilterMatchRow) string {
-	raw := derefStr(row.PairNameFR)
-	if raw == "" {
-		raw = derefStr(row.PairName)
+	if v := analysis.ResolveModeUIWithVariant(row.PairName, row.PairNameFR,
+		row.GameVariantName, row.GameVariantNameFR); v != nil {
+		return *v
 	}
-	return analysis.NormalizeModeLabel(raw)
+	return ""
 }
 
 func mapUI(row domain.FilterMatchRow) string {

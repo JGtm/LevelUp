@@ -348,6 +348,16 @@ func checkLUSRV2Orphan(ctx context.Context, playerDB, _ *sql.DB, _ string) (*Vio
 // 2-équipes, déséquilibres skippés par EP) ; une CROISSANCE du count signale
 // en revanche la classe « désync watermark v2 » (watermark shared avancé sans
 // row player DB, incident 2026-06-03).
+//
+// Partage de responsabilité avec le garde-fou « trous LUSR »
+// (skill.ScanLUSRGaps / GET /admin/monitoring/lusr-gaps) : cet invariant est le
+// signal GROSSIER (superset — inclut CSR + LUSR + tous les skips légitimes non
+// 2-équipes/déséquilibrés, donc bruité par construction). Le panneau LUSR est le
+// signal PRÉCIS : il n'inclut QUE les matchs LUSR-éligibles (prédicat
+// classifyLUSREligibility), sépare le trou d'intérieur PERMANENT (sous watermark,
+// réparable par replay) du récent-en-attente, et porte l'action de remédiation.
+// Pour un diagnostic ou une réparation LUSR, utiliser le panneau ; cet invariant
+// reste le filet large multi-rating. Ne pas dupliquer la logique d'éligibilité ici.
 func checkSkillRankMissing(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (*Violation, error) {
 	rated, err := collectIDs(ctx, playerDB, `SELECT DISTINCT match_id FROM match_skill_rank`)
 	if err != nil {

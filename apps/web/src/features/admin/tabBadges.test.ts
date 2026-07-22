@@ -25,6 +25,7 @@ function baseOverview(): AdminMonitoringOverview {
     } as AdminMonitoringOverview['snapshot'],
     open_detections: 0,
     freshness_critical: 0,
+    lusr_interior_gaps: 0,
     http: { status_2xx: 0, status_3xx: 0, status_4xx: 0, status_5xx: 0 },
   }
 }
@@ -80,6 +81,19 @@ describe('computeTabBadges', () => {
     const o = baseOverview()
     o.invariants.warn_last = 2
     expect(computeTabBadges(o)['/admin/data']).toEqual({ count: 2, token: 'warning' })
+  })
+
+  it('trous LUSR → pastille warning sur /admin/data (cumulés aux warnings)', () => {
+    const o = baseOverview()
+    o.lusr_interior_gaps = 3
+    expect(computeTabBadges(o)['/admin/data']).toEqual({ count: 3, token: 'warning' })
+  })
+
+  it('invariants FAIL masque les trous LUSR (sévérité)', () => {
+    const o = baseOverview()
+    o.invariants.fail_last = 1
+    o.lusr_interior_gaps = 5
+    expect(computeTabBadges(o)['/admin/data']).toEqual({ count: 1, token: 'destructive' })
   })
 
   it('invariants jamais lancés (runs_total=0) → fail_last ignoré', () => {
