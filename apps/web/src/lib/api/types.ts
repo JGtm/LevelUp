@@ -1186,16 +1186,9 @@ export interface SquadWeaponBar {
 export type SquadWeaponKills = components['schemas']['SquadWeaponKills']
 
 /** Une ligne du comparatif « Précision par rôle » (Escouade) : précision + tirs par joueur,
- *  agrégés PAR RÔLE d'arme (precision/automatic/sniper/…). */
-export interface SquadWeaponAccuracyBar {
-  /** Clé de rôle canonique du registre (precision/automatic/sniper/…) ; localisée via frags.role.<role>. */
-  role: string
-  /** gamertag → précision 0..1 du rôle (joueurs sans tir sur le rôle = absent). */
-  accuracy_by_player: Record<string, number>
-  /** gamertag → tirs tirés sur le rôle (contexte tooltip). */
-  shots_fired_by_player: Record<string, number>
-  total_shots_squad: number
-}
+ *  agrégés PAR RÔLE d'arme (precision/automatic/sniper/…). Shim du schéma OpenAPI (contrat
+ *  fidèle : role + accuracy_by_player + shots_fired_by_player + total_shots_squad). */
+export type SquadWeaponAccuracyBar = components['schemas']['SquadWeaponAccuracyBar']
 
 /** Données du comparatif « Précision par rôle » multi-joueurs (barres groupées horizontales).
  *  Précision NATIVE Halo 5 ; absent sur Infinite (capability weapon_accuracy). */
