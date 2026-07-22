@@ -7,6 +7,7 @@
 package handlers_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -198,7 +199,7 @@ func loadSessionFromResponse(t *testing.T, sessStore *session.Store, w *httptest
 			if id == "" {
 				t.Fatalf("cookie session invalide: %s", c.Value)
 			}
-			return sessStore.Load(id)
+			return sessStore.Load(context.Background(), id)
 		}
 	}
 	t.Fatal("aucun cookie de session dans la réponse")

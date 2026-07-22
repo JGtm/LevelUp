@@ -8,7 +8,6 @@ package sync
 import (
 	"context"
 	"testing"
-	"time"
 )
 
 // ── Tests validation GetMatchHistory ─────────────────────────────────────────
@@ -51,15 +50,18 @@ func TestHaloClient_GetMatchHistory_ParamsValides(t *testing.T) {
 	// Tous les paramètres sont valides côté validation locale ; l'appel réseau
 	// qui suit doit échouer mais SURTOUT pas avec un message de validation.
 	//
-	// Note : un contexte avec deadline court évite que le test hang via les
-	// retries internes du client (HTTP timeout 20s × 4 retries + backoff) quand
-	// la machine de test a connectivité internet et joint le vrai endpoint Halo.
+	// Hermétique (aucun appel réseau réel) : un contexte DÉJÀ ANNULÉ laisse passer
+	// la validation locale (params valides) puis fait échouer IMMÉDIATEMENT la
+	// couche HTTP sur ctx annulé. Évite la dépendance internet, la latence des
+	// retries (HTTP timeout × 4 + backoff) et le flake sous charge parallèle qui
+	// faisait échouer le package `internal/sync` en `go test ./...`. Même pattern
+	// que TestPooledHaloClientGetCareerRank_PinnedToken.
 	client := NewHaloAPIClient("spartan-tok", "clearance-tok", 10)
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
 	_, err := client.GetMatchHistory(ctx, "TestPlayer", "matchmaking", 0, 5)
 	if err == nil {
-		t.Fatal("attendu une erreur réseau (deadline ou DNS), got nil")
+		t.Fatal("attendu une erreur réseau (context annulé), got nil")
 	}
 	errStr := err.Error()
 	for _, badMsg := range []string{"gamertag vide", "matchType invalide", "count doit", "start doit"} {

@@ -90,6 +90,98 @@ suite vitest (2422, dont garde-rail `response-types.guard` — `LusrRecomputeRes
 
 **Découverte notée** : le chantier LUSR est empilé sur la branche frags (`feat/frag-distribution-v2`).
 **Prochaine étape** : découpage commits + autorisation user avant tout commit/merge (push main = deploy prod).
+## [2026-07-21] Fix boucle /login — Lot complémentaire : couverture logging session + fix flake réseau internal/sync (branche fix/session-login-loop)
+
+**Statut** : Complété. NON committé côté superviseur pour push. Déclencheur : demande utilisateur (vérif finale +
+couverture logging dans le dossier logs/ dédié + fix dettes/échecs préexistants).
+
+**Décisions techniques** :
+- LOGGING (dossier logs/ routé par module, auto-détection package → fichier). Le `session.Store` n'avait AUCUN
+  log : `Load` renvoyait nil en silence (le point aveugle exact de la boucle /login). Ajout :
+  `Load(ctx, id)` (signature enrichie du ctx pour corrélation event_id → logs/session.log) trace un WARN sur
+  read IO / JSON corrompu ; fichier ABSENT = silencieux (cas nominal, sinon spam par requête anonyme).
+  `NewStore` log ERROR sur MkdirAll échoué ; `PurgeExpired` log ERROR sur ReadDir échoué. Non-ctx pour ces 2
+  (pas de ctx au montage/ticker) — module auto = session quand même.
+- SWALLOWED ERRORS (anti-pattern #10) : 3 `_ = h.sessionStore.Save(sess)` dans les handlers auth
+  (auth.go, auth_xbox_oauth.go ×2) → `slog.ErrorContext`.
+- FLAKE PRÉEXISTANT internal/sync (identifié via `go test -v` : `TestHaloClient_GetMatchHistory_ParamsValides`
+  faisait un vrai GET halostats.svc.halowaypoint.com avec deadline 100ms → flaky sous charge parallèle de
+  `go test ./...`). Fix : contexte DÉJÀ ANNULÉ (pattern déjà présent : TestPooledHaloClientGetCareerRank_PinnedToken)
+  → validation locale passe, HTTP échoue instantanément (duration_ms=0, zéro I/O réseau). Idem
+  TestPooledHaloClientGetMatchHistory (+ retrait du skip `-short` obsolète et de l'import `time`).
+
+**Résultats observés** : nouveaux tests session (corrupt→nil+WARN ; absent→silencieux) verts `-race`.
+Les 2 tests sync hermétisés : 0.03s / 0.00s (avant : réseau réel + backoff). `go test ./...` VERT (flake
+éliminé), `go vet` défaut + `-tags=integration` verts, handlers verts. Signature `Load(ctx,...)` propagée :
+seul caller prod = middleware (r.Context()) ; tests (store_test, store_concurrent, auth_xbox_oauth_test) mis à jour.
+
+**Conclusion / prochaine étape** : couverture logging + flake traités. Reste (inchangé) : vérif manuelle e2e
+navigateur + non-régression logout avec l'utilisateur, puis PR (push main = deploy prod). Découverte encore
+ouverte : listener `levelup:auth-required` (client.ts:148) pour vraie expiration en session (lot séparé).
+
+## [2026-07-21] Fix boucle /login — Étape 2 frontend : garde anti-éjection sur bootstrap anonyme transitoire (branche fix/session-login-loop)
+
+**Statut** : Complété (Étape 2/2 → plan terminé). NON committé côté superviseur pour push (push main = deploy prod).
+Déclencheur : couche 2 du même plan — même si un `/bootstrap` anonyme transitoire survient, le front ne doit pas
+éjecter un utilisateur déjà authentifié.
+
+**Décision technique principale** : dans `routes/__root.tsx` (effet `[data]`), avant `hydrateFromBootstrap`,
+capture `wasAuthenticated = useAppShellStore.getState().currentUsername`. Si `!data.current_username &&
+wasAuthenticated` (rétrogradation suspecte via refetch focus) → `return` early : ni hydrate, ni
+`navigate('/login')` + `log.warn('bootstrap:anon_downgrade', ...)`. Tous les vecteurs de redirection
+(`__root`, `resolveIndexRedirect`/index.tsx, players/$playerSlug) lisent le STORE → préserver le store les
+neutralise tous d'un coup.
+
+**Écart aux 2 options du plan (justifié)** : le plan proposait « hydrater puis restaurer currentUsername ». J'ai
+préféré **skip hydrate entièrement** sur downgrade suspect, car en mode xbox un bootstrap anonyme renvoie AUSSI
+`available_players: []` / `current_player: null` / `is_admin: false` — ne restaurer que currentUsername
+laisserait un état mi-anonyme incohérent (shell sans joueurs). Le skip préserve l'état authentifié complet. La
+vraie déconnexion recharge la page (store vidé → wasAuthenticated null → chemin autoritaire → /login OK).
+
+**In-scope hors items plan** : `RootLayout` exporté (testabilité) ; `vite.config.ts` +
+`routeFileIgnorePattern: '\\.test\\.tsx?$'` pour exclure les tests colocalisés du codegen de routes TanStack
+(sinon warning « does not export a Route » à chaque dev/build).
+
+**Résultats observés** : `__root.test.tsx` (mocks useQuery/router/AppShell) 2/2 vert — (1) authentifié + refetch
+anonyme → navigate jamais appelé, currentUsername préservé ; (2) montage frais + anonyme → navigate /login.
+Gate : `check-types` vert ; `make test-web` suite complète vert (276 fichiers, 2382 tests, 14 skipped, 0 échec).
+
+**Conclusion / prochaine étape** : plan complet (2/2). Vérification manuelle end-to-end (onglet arrière-plan >5min
++ refocus) + non-régression logout à faire avec l'utilisateur avant PR. Push sur main = deploy prod → PR
+recommandée, prévenir avant merge. Découverte laissée : câbler un listener `levelup:auth-required` (client.ts:148,
+code mort) pour la vraie expiration en cours de session (lot séparé) ; + flake réseau `internal/sync` (lot séparé).
+
+## [2026-07-21] Fix boucle /login — Étape 1 backend : persistance atomique des sessions (branche fix/session-login-loop)
+
+**Statut** : Complété (Étape 1/2). NON committé encore côté superviseur pour push (push main = deploy prod).
+Déclencheur : utilisateur renvoyé « sans cesse » vers /login malgré session valide ; retirer /login de l'URL
+(reload plein) reconnecte -> session backend vivante mais éjectée à tort. Plan
+`.ai/PLAN_FIX_SESSION_LOGIN_LOOP_2026-07.md`.
+
+**Décision technique principale** : cause racine couche 1 = « torn read » sur le fichier de session.
+`session.Store.Save` faisait `os.WriteFile` (truncate+write non atomique, aucun verrou). Sous la rafale
+`refetchOnWindowFocus`, `/bootstrap` faisait un `Load` d'un fichier tronqué -> `nil` -> session anonyme
+transitoire -> le front éjectait vers /login. Fix : `Save` écrit dans un `.tmp` du même répertoire puis
+`os.Rename` (atomic-replace cross-plateforme) -> `Load` voit toujours un fichier complet.
+
+**Écart au plan (justifié, signalé)** : le rename atomique SEUL ne suffit pas intra-process sous **Windows**
+(dev local) — `os.Rename` échoue et `os.ReadFile` prend une *sharing violation* si un handle concurrent tient
+le fichier (test rouge : 109 Load nil / 177 Save err). J'ai donc mis un **`sync.RWMutex`** sur le `Store`
+(`Save`=Lock, `Load`=RLock) au lieu du simple `sync.Mutex` optionnel prévu par le plan. Le RWMutex sérialise
+lecture/écriture intra-process (les deux OS) ; le rename atomique reste la protection cross-process (doublon
+`air`). `Delete` laissé sans verrou (appelé sous RLock par Load sur expiry -> éviter le deadlock).
+Aussi : `PurgeExpired` nettoie les `.tmp` orphelins (guard 1h) ; middleware log l'échec `Touch`
+(`slog.ErrorContext`, anti swallowed-error).
+
+**Résultats observés** : nouveau `store_concurrent_test.go` (4 writers + 4 readers ~200 ms) ROUGE avec rename
+seul, VERT avec le RWMutex (`-race -count=3`). Gate : session+middleware verts, build+vet verts, `go test ./...`
+vert SAUF un flake réseau `internal/sync` (GET réel halowaypoint -> deadline) qui passe en isolation — noté en
+Découvertes, non traité.
+
+**Conclusion / prochaine étape** : Étape 2 frontend — garde anti-éjection dans `__root.tsx` (ne pas
+hydrater/rediriger sur un downgrade anonyme suspect alors que le store porte un user authentifié) + tests
+vitest. NB : le fichier plan vivait sur la branche feat/frag-distribution-v2 (committé, absent de main) ; je
+l'ai rapatrié via `git checkout feat -- <plan>` sur la branche fix pour le versionner avec le correctif.
 
 ## [2026-07-19] Notifs — i18n FR notifs/Discord, toggle version, fix « solide » présence webhook (branche fix/notif-i18n-fr-webhook-present)
 
