@@ -178,3 +178,82 @@ func TestStore_PurgeExpired(t *testing.T) {
 		t.Log("PurgeExpired returned 0, session may not have expired yet (timing)")
 	}
 }
+
+// TestStore_PurgeExpired_CorruptFile_FreshKeptOldDeleted : un fichier de session au
+// JSON illisible n'est supprimé que s'il est durablement corrompu (mtime > TTL 1h).
+// Un corrompu FRAIS peut être un write en vol d'un autre process (doublon `air`) →
+// conservé + WARN, pour ne jamais déconnecter une session vivante sur une corruption
+// illusoire.
+func TestStore_PurgeExpired_CorruptFile_FreshKeptOldDeleted(t *testing.T) {
+	sessDir := filepath.Join(t.TempDir(), "sessions")
+	store := session.NewStore(sessDir, time.Hour, "test-secret-32-bytesXXXXXXXXXX")
+
+	// Corrompu FRAIS (mtime = maintenant) → doit être CONSERVÉ.
+	fresh := filepath.Join(sessDir, "fresh-corrupt.json")
+	if err := os.WriteFile(fresh, []byte("{ceci n'est pas du JSON"), 0o600); err != nil {
+		t.Fatalf("write fresh: %v", err)
+	}
+	// Corrompu VIEUX (mtime reculé au-delà du TTL 1h) → doit être SUPPRIMÉ.
+	old := filepath.Join(sessDir, "old-corrupt.json")
+	if err := os.WriteFile(old, []byte("{encore du JSON casse"), 0o600); err != nil {
+		t.Fatalf("write old: %v", err)
+	}
+	past := time.Now().Add(-2 * time.Hour)
+	if err := os.Chtimes(old, past, past); err != nil {
+		t.Fatalf("chtimes old: %v", err)
+	}
+
+	buf := captureWarnLogs(t)
+	if removed := store.PurgeExpired(); removed != 1 {
+		t.Errorf("PurgeExpired = %d, attendu 1 (seul le corrompu vieux)", removed)
+	}
+
+	if _, err := os.Stat(fresh); err != nil {
+		t.Errorf("un fichier corrompu FRAIS ne doit pas être supprimé (write en vol ?): %v", err)
+	}
+	if _, err := os.Stat(old); !os.IsNotExist(err) {
+		t.Errorf("un fichier corrompu VIEUX doit être supprimé, stat err=%v", err)
+	}
+	if !strings.Contains(buf.String(), "PurgeExpired") {
+		t.Errorf("PurgeExpired doit tracer un WARN sur le corrompu conservé, got: %q", buf.String())
+	}
+}
+
+// Le cas « erreur de lecture transitoire (hors fichier absent) ne supprime JAMAIS le
+// fichier » est reproduit de façon DÉTERMINISTE dans store_purge_windows_test.go (via
+// une sharing violation Windows, la course exacte du bug), et exercé sous charge dans
+// TestStore_PurgeExpiredDuringLiveSession (store_concurrent_test.go, -race).
+
+// TestStore_PurgeExpired_ExpiredAndOldTmp : non-régression — une session valide mais
+// expirée est bien purgée, et un .tmp orphelin vieux est bien nettoyé (non compté
+// dans le retour).
+func TestStore_PurgeExpired_ExpiredAndOldTmp(t *testing.T) {
+	sessDir := filepath.Join(t.TempDir(), "sessions")
+	store := session.NewStore(sessDir, time.Millisecond, "test-secret-32-bytesXXXXXXXXXX")
+
+	sess := store.New()
+	if err := store.Save(sess); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	time.Sleep(10 * time.Millisecond) // dépasse le TTL 1ms
+
+	// .tmp orphelin VIEUX (mtime reculé au-delà d'orphanTmpTTL = 1h).
+	orphanTmp := filepath.Join(sessDir, "orphan-123.tmp")
+	if err := os.WriteFile(orphanTmp, []byte("partial"), 0o600); err != nil {
+		t.Fatalf("write tmp: %v", err)
+	}
+	past := time.Now().Add(-2 * time.Hour)
+	if err := os.Chtimes(orphanTmp, past, past); err != nil {
+		t.Fatalf("chtimes tmp: %v", err)
+	}
+
+	if removed := store.PurgeExpired(); removed != 1 {
+		t.Errorf("PurgeExpired = %d, attendu 1 (la session expirée, le .tmp non compté)", removed)
+	}
+	if got := store.Load(context.Background(), sess.SessionID); got != nil {
+		t.Error("la session expirée aurait dû être purgée")
+	}
+	if _, err := os.Stat(orphanTmp); !os.IsNotExist(err) {
+		t.Errorf("le .tmp orphelin vieux aurait dû être nettoyé, stat err=%v", err)
+	}
+}

@@ -47,6 +47,15 @@ const (
 	// orphelin (crash entre write et rename) — un rename normal dure des ms. On
 	// garde une marge large pour ne jamais supprimer un .tmp d'un Save en vol.
 	orphanTmpTTL = time.Hour
+
+	// corruptSessionTTL : un fichier de session .json au JSON illisible n'est purgé
+	// que s'il est plus vieux que ce délai. Sœur d'orphanTmpTTL, même raison : un
+	// fichier corrompu FRAIS peut être un write en vol d'un AUTRE process (doublon
+	// `air` — os.ReadFile peut observer un état transitoire sous Windows), pas une
+	// corruption durable. On le conserve pour ne jamais déconnecter une session
+	// vivante sur une corruption illusoire ; seule une corruption qui persiste
+	// au-delà du délai est réellement supprimée.
+	corruptSessionTTL = time.Hour
 )
 
 // Store gère la persistance des sessions dans des fichiers JSON.
@@ -55,7 +64,10 @@ type Store struct {
 	ttl    time.Duration
 	secret []byte
 	// mu sérialise les accès disque INTRA-process : Save prend le Lock exclusif,
-	// Load prend le RLock partagé. Deux raisons :
+	// Load prend le RLock partagé, et PurgeExpired prend le Lock exclusif PAR FICHIER
+	// (critical section courte : lecture + décision + suppression d'un fichier de
+	// session, cf. purgeSessionFileLocked) afin de ne pas bloquer les requêtes
+	// pendant tout le scan du répertoire. Deux raisons :
 	//  1. Anti torn-read : un Load ne peut pas lire pendant un Save (indispensable
 	//     sous Windows, où os.Rename échoue et os.ReadFile prend une sharing
 	//     violation si un handle concurrent tient le fichier — le rename atomique
@@ -180,6 +192,14 @@ func (s *Store) Delete(sessionID string) error {
 }
 
 // PurgeExpired supprime les sessions expirées. Retourne le nombre supprimé.
+//
+// Tourne au boot puis toutes les 6h (startSessionPurgeLoop). Le scan du répertoire
+// (os.ReadDir) est hors verrou, mais chaque fichier de session .json est traité sous
+// le Lock exclusif s.mu, pris et relâché PAR FICHIER (critical section courte, cf.
+// purgeSessionFileLocked) : sans ce verrou, sous Windows, l'os.ReadFile de la purge
+// concurrent d'un Save pouvait faire échouer le os.Rename du Save (sharing violation)
+// — exactement la course que s.mu ferme (Save=Lock, Load=RLock). Le verrouillage par
+// fichier évite de bloquer les requêtes pendant tout le scan.
 func (s *Store) PurgeExpired() int {
 	entries, err := os.ReadDir(s.dir)
 	if err != nil {
@@ -207,20 +227,70 @@ func (s *Store) PurgeExpired() int {
 		if !strings.HasSuffix(e.Name(), ".json") {
 			continue
 		}
-		path := filepath.Join(s.dir, e.Name())
-		data, err := os.ReadFile(path)
-		if err != nil {
-			_ = os.Remove(path)
-			removed++
-			continue
-		}
-		var sess domain.SessionData
-		if err := json.Unmarshal(data, &sess); err != nil || s.isExpired(&sess) {
-			_ = os.Remove(path)
+		if s.purgeSessionFileLocked(e.Name()) {
 			removed++
 		}
 	}
 	return removed
+}
+
+// purgeSessionFileLocked traite UN fichier de session .json sous le Lock exclusif
+// s.mu (le même que Save/Load), pris et relâché ici pour garder la critical section
+// courte. Retourne true si le fichier a été supprimé. Invariants anti-déconnexion
+// d'une session VIVANTE :
+//   - Erreur de lecture hors ErrNotExist : WARN + skip, JAMAIS de suppression — une
+//     sharing violation transitoire d'un Save concurrent (doublon `air`) ne doit pas
+//     déconnecter en permanence une session potentiellement vivante.
+//   - JSON illisible : suppression UNIQUEMENT si le fichier est durablement corrompu
+//     (mtime plus vieux que corruptSessionTTL) ; un corrompu FRAIS peut être un write
+//     en vol d'un autre process → skip + WARN.
+//   - JSON valide : suppression si et seulement si la session a dépassé son TTL.
+func (s *Store) purgeSessionFileLocked(name string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	path := filepath.Join(s.dir, name)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false // disparu entre le scan et ici (Load sur expiry / Delete) — RAS
+		}
+		slog.Warn("session: PurgeExpired — lecture d'un fichier de session échouée, fichier conservé",
+			"file", name, "err", err)
+		return false
+	}
+	var sess domain.SessionData
+	if err := json.Unmarshal(data, &sess); err != nil {
+		info, ierr := os.Stat(path)
+		if ierr != nil || time.Since(info.ModTime()) <= corruptSessionTTL {
+			slog.Warn("session: PurgeExpired — fichier au JSON illisible mais récent, conservé (write en vol ?)",
+				"file", name, "err", err)
+			return false
+		}
+		slog.Warn("session: PurgeExpired — fichier au JSON durablement corrompu, supprimé",
+			"file", name, "err", err)
+		return s.removeSessionFile(path, name)
+	}
+	if !s.isExpired(&sess) {
+		return false
+	}
+	return s.removeSessionFile(path, name)
+}
+
+// removeSessionFile supprime un fichier de session et retourne true si la
+// suppression a effectivement eu lieu. Un ErrNotExist (déjà supprimé par un autre
+// chemin) n'est pas une erreur mais ne compte pas comme suppression de CE purge ;
+// toute autre erreur est tracée (anti swallowed-error) sans faire échouer la boucle.
+// Appelé sous s.mu.Lock() (via purgeSessionFileLocked).
+func (s *Store) removeSessionFile(path, name string) bool {
+	if err := os.Remove(path); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			slog.Warn("session: PurgeExpired — suppression d'un fichier de session échouée",
+				"file", name, "err", err)
+		}
+		return false
+	}
+	return true
 }
 
 // =============================================================================
