@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"sort"
 	"time"
+
+	"levelup/go-api/internal/analysis"
 )
 
 // Constantes de qualification par match, ALIGNÉES sur le detector milestones
@@ -271,11 +273,10 @@ func loadEarnedByXUID(ctx context.Context, statsDB *sql.DB, titleSlug string) (m
 
 // loadCrossingMatches charge les matchs d'un xuid, triés par start canonique ASC.
 func loadCrossingMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]MilestoneCrossingMatch, error) {
-	// Fragment timezone canonique OBLIGATOIRE (CLAUDE.md n°8) : start_time_utc
-	// (TIMESTAMPTZ UTC garanti) sinon start_time interprété en UTC.
+	// Fragment timezone canonique OBLIGATOIRE (CLAUDE.md n°8) via le helper partagé.
 	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT
-			COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') AS played_at,
+			`+analysis.SQLStartTimeCanonical("mr")+` AS played_at,
 			mp.outcome,
 			COALESCE(mp.kills, 0), COALESCE(mp.headshot_kills, 0), COALESCE(mp.assists, 0),
 			COALESCE(mp.deaths, 0), COALESCE(mp.accuracy, 0),

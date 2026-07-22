@@ -12,11 +12,8 @@
  * client-side — sinon le store déjà hydraté ne relit pas l'URL.
  */
 import type { CascadeInput, FilterContextInput } from '@/lib/api/types'
+import { DEFAULT_TITLE_SLUG } from '@/lib/staticAssets'
 import { DEFAULT_GAP_MINUTES } from '@/stores/filterDefaults'
-
-// Convention partagée avec le client API + createFilterStore : titre par défaut
-// (header X-LevelUp-Title omis pour ce titre).
-const DEFAULT_TITLE_SLUG = 'halo_infinite'
 
 /**
  * Encode l'enveloppe v2 `{ t, c }` en chaîne base64 pour `?f=`. Point unique de
