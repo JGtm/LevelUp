@@ -5295,6 +5295,29 @@ export interface components {
             scanned_bytes: number;
             truncated: boolean;
         };
+        AdminLUSRGaps: {
+            /** Format: double */
+            coverage_percent: number;
+            /** Format: int64 */
+            eligible_total: number;
+            generated_at: string;
+            guardrail: components["schemas"]["LUSRGuardrailHealth"];
+            /** Format: int64 */
+            interior_gaps_total: number;
+            /** Format: int64 */
+            pending_recent_total: number;
+            players: components["schemas"]["LUSRGapPlayer"][] | null;
+            /** Format: int64 */
+            rated_total: number;
+            title_slug: string;
+        };
+        AdminLUSRRecomputeResponse: {
+            gamertag: string;
+            ok: boolean;
+            /** Format: int64 */
+            updated: number;
+            xuid: string;
+        };
         AdminMonitoringOverview: {
             data_health?: components["schemas"]["MonitoringDataHealth"];
             generated_at: string;
@@ -6477,6 +6500,36 @@ export interface components {
             trend: number;
             /** Format: double */
             weight: number;
+        };
+        LUSRGapItem: {
+            group: string;
+            match_id: string;
+            playlist: string;
+            start_time: string;
+        };
+        LUSRGapPlayer: {
+            check_error?: string;
+            /** Format: int64 */
+            eligible: number;
+            gamertag: string;
+            /** Format: int64 */
+            interior_gaps: number;
+            /** Format: int64 */
+            pending_recent: number;
+            player_slug: string;
+            /** Format: int64 */
+            rated: number;
+            top_gaps: components["schemas"]["LUSRGapItem"][] | null;
+            xuid: string;
+        };
+        LUSRGuardrailHealth: {
+            /** Format: int64 */
+            held_watermark: number;
+            /** Format: int64 */
+            interior_gaps_gauge: number;
+            last_audit_at?: string;
+            /** Format: int64 */
+            owner_missing: number;
         };
         LUSRPoint: {
             match_id: string;
