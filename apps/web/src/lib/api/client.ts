@@ -57,16 +57,30 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 export const API_BASE_URL = BASE_URL
 
 /**
- * Sprint 44 : titre courant pour les requêtes API.
- * Mis à jour par le store appShell lors du bootstrap et des switchs de titre.
- * Affirmé sur CHAQUE requête via X-LevelUp-Title, y compris le défaut halo_infinite :
- * sans header, le backend retombe sur la session serveur (partagée entre onglets), ce
- * qui faisait fuiter les données d'un titre périmé en session vers le titre affiché.
+ * Sprint 44 : titre courant pour les requêtes API. Cycle de vie load-bearing
+ * dans les DEUX sens de fuite inter-titres :
+ *  - `null` au boot (AVANT hydratation) : aucun header X-LevelUp-Title → le
+ *    backend résout via la SESSION serveur (resolveTitleSlug : header > session
+ *    > défaut). C'est le comportement sûr au démarrage : une requête
+ *    title-scoped qui part avant le bootstrap (useFiltersResolve est `enabled`
+ *    dès que playerSlug vient de l'URL) ne force PAS halo_infinite et n'écrase
+ *    donc pas une session halo_5 sous une clé de cache sans titre (fuite
+ *    Infinite→session).
+ *  - dès l'hydratation (hydrateFromBootstrap) et à chaque switch (switchTitle),
+ *    un slug non vide est affirmé sur CHAQUE requête, défaut halo_infinite
+ *    compris : sans header, une session périmée sur un autre titre ferait fuiter
+ *    ses données sur le titre affiché (fuite H5→Infinite).
+ * La session est donc l'autorité au boot, le header dès qu'il est connu.
  */
-let _currentTitleSlug = 'halo_infinite'
+let _currentTitleSlug: string | null = null
 
-/** Appelé par le store pour mettre à jour le titre courant. */
-export function setApiTitleSlug(slug: string): void {
+/**
+ * Appelé par le store pour mettre à jour le titre courant. `null` ramène le
+ * client à l'état de boot (session serveur autoritaire) — utilisé pour le reset
+ * des tests ; les appelants applicatifs (hydrateFromBootstrap, switchTitle)
+ * passent toujours un slug non vide.
+ */
+export function setApiTitleSlug(slug: string | null): void {
   _currentTitleSlug = slug
 }
 
@@ -74,15 +88,21 @@ export function setApiTitleSlug(slug: string): void {
  * Titre courant tel que vu par le client API. Exposé pour que les stores de
  * filtres estampillent le titre actif dans le deep-link `?f=` (share-link), afin
  * qu'un filtre ne se réapplique qu'au titre pour lequel il a été généré.
+ * Contrairement au header (null au boot → session autoritaire), l'estampille du
+ * share-link exige un slug concret : on retombe donc sur le défaut applicatif
+ * avant hydratation (comportement inchangé — le module valait déjà halo_infinite
+ * au boot). L'encodage `?f=` ne survient de toute façon qu'après hydratation.
  */
 export function getApiTitleSlug(): string {
-  return _currentTitleSlug
+  return _currentTitleSlug ?? 'halo_infinite'
 }
 
 function getTitleHeader(): Record<string, string> {
-  // Toujours affirmer le titre courant : sans header, le backend retombe sur la
-  // session serveur (partagée entre onglets) → une session périmée sur un autre
-  // titre fait fuiter ses données sur le titre affiché. Cf. resolveTitleSlug
+  // Affirmer le titre dès qu'il est connu (post-hydratation) : sans header, le
+  // backend retombe sur la session serveur (partagée entre onglets) → une session
+  // périmée sur un autre titre fait fuiter ses données sur le titre affiché. Au
+  // boot (_currentTitleSlug === null), on n'envoie AUCUN header : la session reste
+  // autoritaire (comportement sûr avant hydratation). Cf. resolveTitleSlug
   // (header > session > défaut).
   if (_currentTitleSlug) {
     return { 'X-LevelUp-Title': _currentTitleSlug }
