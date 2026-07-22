@@ -239,25 +239,10 @@ func buildTopWeaponKills(rows []port.WeaponKillRow, n int) []domain.SynthesisWea
 	return out
 }
 
-// weaponClassHasAccuracy indique si une classe d'arme a une précision PERTINENTE dans le
-// graphe « Précision par arme ». Faux pour les classes SANS « tir au but » — projectiles
-// (grenade), mêlée, capacités spartanes, résidu non attribué — et les buckets non-combat
-// (véhicule/tourelle/environnement/… via IsNonCombatFragClass). Vrai pour les armes à tir
-// (classes gun) et les classes non résolues ("" — bénéfice du doute : arme hors registre).
-// Sans ce filtre, une grenade lancée (shots_fired > 0, jamais « au but ») apparaît à 0 %
-// dans le graphe alors qu'elle est absente du sunburst (bug observé Sessions/Synthesis).
-func weaponClassHasAccuracy(class string) bool {
-	switch class {
-	case domain.FragClassGrenade, domain.FragClassMelee, domain.FragClassSpartanAbility, domain.FragClassUnattributed:
-		return false
-	}
-	return !domain.IsNonCombatFragClass(class)
-}
-
 // buildWeaponAccuracy construit le classement précision par arme : armes
 // effectivement tirées (Label résolu, ShotsFired > 0, ET classe à précision
-// pertinente via weaponClassHasAccuracy — grenades/mêlée/capacités exclues : pas
-// de « tir au but »). AUCUN seuil de volume (demande utilisateur). Accuracy =
+// pertinente via domain.WeaponClassHasAccuracy — grenades/mêlée/capacités exclues :
+// pas de « tir au but »). AUCUN seuil de volume (demande utilisateur). Accuracy =
 // landed / fired en unité 0..1. Tri par précision décroissante (tie-break Label
 // alpha pour un ordre stable), PUIS cap top N (n = synthesisWeaponChartTopN) —
 // même limitation que « Frags par arme » (buildTopWeaponKills), demande B1. Le cap
@@ -266,7 +251,7 @@ func weaponClassHasAccuracy(class string) bool {
 func buildWeaponAccuracy(rows []port.WeaponAccuracyRow, n int) []domain.SynthesisWeaponAccuracyEntry {
 	out := make([]domain.SynthesisWeaponAccuracyEntry, 0, len(rows))
 	for _, r := range rows {
-		if r.Label == "" || r.ShotsFired <= 0 || !weaponClassHasAccuracy(r.Class) {
+		if r.Label == "" || r.ShotsFired <= 0 || !domain.WeaponClassHasAccuracy(r.Class) {
 			continue
 		}
 		out = append(out, domain.SynthesisWeaponAccuracyEntry{

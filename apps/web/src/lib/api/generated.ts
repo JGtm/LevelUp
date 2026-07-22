@@ -8335,7 +8335,23 @@ export interface components {
             bars: components["schemas"]["SquadKillMechanicBar"][] | null;
             players: string[] | null;
         };
+        SquadWeaponAccuracy: {
+            bars: components["schemas"]["SquadWeaponAccuracyBar"][] | null;
+            players: string[] | null;
+        };
+        SquadWeaponAccuracyBar: {
+            accuracy_by_player: {
+                [key: string]: number;
+            };
+            role: string;
+            shots_fired_by_player: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            total_shots_squad: number;
+        };
         SquadWeaponBar: {
+            class?: string;
             is_grenade_melee?: boolean;
             kills_by_player: {
                 [key: string]: number;
@@ -8714,6 +8730,7 @@ export interface components {
             timeseries?: components["schemas"]["SquadTimeseriesPoint"][] | null;
             /** Format: int64 */
             total_matches: number;
+            weapon_accuracy?: components["schemas"]["SquadWeaponAccuracy"];
             weapon_kills?: components["schemas"]["SquadWeaponKills"];
         };
         TemporalHeatmapCell: {
@@ -8821,6 +8838,7 @@ export interface components {
             solo_session_perf?: components["schemas"]["SoloSessionPerfBlock"];
             summary_tab: components["schemas"]["TimeseriesSummaryTab"];
             top_weapons: components["schemas"]["TimeseriesWeaponKill"][] | null;
+            weapon_accuracy?: components["schemas"]["SynthesisWeaponAccuracyEntry"][] | null;
             kill_types?: components["schemas"]["TimeseriesKillTypes"];
             /** Format: int64 */
             total_matches: number;

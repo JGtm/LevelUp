@@ -56,6 +56,25 @@ func IsNonCombatFragClass(class string) bool {
 	return nonCombatFragClasses[class]
 }
 
+// WeaponClassHasAccuracy indique si une classe d'arme a une précision PERTINENTE dans un
+// graphe « Précision par arme ». Faux pour les classes SANS « tir au but » — projectiles
+// (grenade), mêlée, capacités spartanes, résidu non attribué — et les buckets non-combat
+// (véhicule/tourelle/environnement/… via IsNonCombatFragClass). Vrai pour les armes à tir
+// (classes gun) et les classes non résolues ("" — bénéfice du doute : arme hors registre).
+// Sans ce filtre, une grenade lancée (shots_fired > 0, jamais « au but ») apparaît à 0 %
+// dans le graphe alors qu'elle est absente du sunburst (bug observé Sessions/Synthesis).
+//
+// Exporté et hébergé côté domain (déplacé depuis service) pour être partagé par le package
+// service/teammates, qui ne peut pas importer son parent service. N'utilise que des
+// constantes domain → aucun cycle d'import.
+func WeaponClassHasAccuracy(class string) bool {
+	switch class {
+	case FragClassGrenade, FragClassMelee, FragClassSpartanAbility, FragClassUnattributed:
+		return false
+	}
+	return !IsNonCombatFragClass(class)
+}
+
 // Clés de rôle canoniques du niveau 2 propres aux classes API (les rôles d'arme
 // registre — precision/automatic/sniper/… — restent portés par le registre).
 const (

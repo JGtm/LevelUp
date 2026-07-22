@@ -201,6 +201,14 @@ export interface SquadText {
   weaponKills: {
     title: string
     description: string
+    /** Ligne agrégée des armes gun au-delà du top-N dans « Outils de destruction ». */
+    otherWeapons: string
+  }
+  /** Comparatif « Précision par rôle » multi-joueurs (Halo 5) : barres groupées horizontales (1 barre/joueur/rôle, longueur = précision %). */
+  weaponAccuracy: {
+    title: string
+    /** Libellé « Tirs » (contexte tooltip). */
+    shotsLabel: string
   }
   killMechanics: {
     title: string
@@ -468,8 +476,13 @@ const FR_TEXT: SquadText = {
     fragBreakdownTitle: 'Répartition des frags',
   },
   weaponKills: {
-    title: 'Frags par arme',
+    title: 'Outils de destruction',
     description: 'Frags cumulés par arme sur les matchs partagés. Tri ASC : armes peu utilisées en haut, principales en bas.',
+    otherWeapons: 'Autres armes',
+  },
+  weaponAccuracy: {
+    title: 'Précision par rôle',
+    shotsLabel: 'Tirs',
   },
   killMechanics: {
     title: 'Mécaniques de kill',
@@ -737,8 +750,13 @@ const EN_TEXT: SquadText = {
     fragBreakdownTitle: 'Kill type distribution',
   },
   weaponKills: {
-    title: 'Weapon kills',
+    title: 'Tools of destruction',
     description: 'Cumulative kills per weapon over shared matches. Sorted ASC: rare weapons on top, primaries at the bottom.',
+    otherWeapons: 'Other weapons',
+  },
+  weaponAccuracy: {
+    title: 'Accuracy by role',
+    shotsLabel: 'Shots',
   },
   killMechanics: {
     title: 'Kill mechanics',

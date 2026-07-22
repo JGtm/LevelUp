@@ -60,6 +60,11 @@ type TeammatesService struct {
 	// depuis metadata.medal_definitions. Si nil, le digest est retourné sans
 	// labels (medal_id et count seulement).
 	medalDefs port.MedalDefinitionsRepository
+	// weaponAccuracyRepo (optionnel) : loader agrégé weapon_accuracy (précision native
+	// par arme). Table SHARED par titre → un repo lié à la player DB du main charge la
+	// précision de tous les xuids de l'escouade en 1 appel (filtre MatchIDs + XUIDs).
+	// Nil ou capability absente (Halo Infinite) → comparaison précision omise (best-effort).
+	weaponAccuracyRepo port.WeaponAccuracyRepository
 }
 
 // NewTeammatesService crÃƒÂ©e un TeammatesService.
@@ -92,6 +97,14 @@ func (s *TeammatesService) WithSquadLoader(loader squadagg.SquadV2Loader) *Teamm
 // est retourné avec medal_id + count uniquement (sans labels ni images).
 func (s *TeammatesService) WithMedalDefs(repo port.MedalDefinitionsRepository) *TeammatesService {
 	s.medalDefs = repo
+	return s
+}
+
+// WithWeaponAccuracyRepo injecte le loader agrégé weapon_accuracy (précision native par
+// arme). Miroir de WithWeaponKillsRepo côté Synthesis/Sessions. Si non câblé (ou capability
+// absente sur le titre), la comparaison « Précision par arme » est omise (best-effort nil).
+func (s *TeammatesService) WithWeaponAccuracyRepo(repo port.WeaponAccuracyRepository) *TeammatesService {
+	s.weaponAccuracyRepo = repo
 	return s
 }
 
@@ -214,6 +227,7 @@ func (s *TeammatesService) GetPage(
 	var intensityProfile *domain.SquadIntensityProfile
 	var performanceSeries map[string][]domain.SquadPerformanceSeriesPoint
 	var weaponKills *domain.SquadWeaponKills
+	var weaponAccuracy *domain.SquadWeaponAccuracy
 	var fragClasses map[string][]domain.FragClassEntry
 	var nativeKillMechanics *domain.SquadKillMechanics
 	var firstEvents *domain.SquadFirstEvents
@@ -249,6 +263,7 @@ func (s *TeammatesService) GetPage(
 		intensityProfile = s.buildSquadIntensityProfile(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, "all")
 		performanceSeries = s.buildSquadPerformanceSeries(ctx, allSquadRows, s.gamertag, playerXUID, req.SelectedGamertags, teammates)
 		weaponKills, fragClasses = s.buildSquadWeaponKills(ctx, allSquadRows, s.gamertag, playerXUID, teammates, performanceSeries)
+		weaponAccuracy = s.buildSquadWeaponAccuracy(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		nativeKillMechanics = s.buildSquadKillMechanics(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		firstEvents = s.buildSquadFirstEvents(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
 		medalDigest = s.buildMedalDigest(ctx, allSquadRows, s.gamertag, playerXUID, teammates, req.Locale)
@@ -305,6 +320,7 @@ func (s *TeammatesService) GetPage(
 		PerformanceSeries:   performanceSeries,
 		FragClasses:         fragClasses,
 		WeaponKills:         weaponKills,
+		WeaponAccuracy:      weaponAccuracy,
 		NativeKillMechanics: nativeKillMechanics,
 		FirstEvents:         firstEvents,
 		Header:              header,
