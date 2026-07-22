@@ -74,7 +74,7 @@ func (r *FiltersRepo) applyAssetNamesFromMetadata(ctx context.Context, rows []do
 	for i := range rows {
 		applyResolvedAssetNamesRow(&rows[i], res)
 	}
-	logResolvedAssetNames(ctx, res)
+	logResolvedAssetNames(ctx, res, len(mapIDs), len(playlistIDs), len(variantIDs))
 }
 
 // resolveAssetNamesBulkBestEffort encapsule ResolveAssetNamesBulk avec log
@@ -177,17 +177,30 @@ func frThenEN(fr, en string) string {
 	return en
 }
 
-// logResolvedAssetNames émet un DebugContext avec les compteurs d'ids résolus par
-// kind (union EN/FR), uniquement pour les kinds effectivement résolus.
-func logResolvedAssetNames(ctx context.Context, res resolvedAssetNames) {
+// logResolvedAssetNames émet les compteurs de résolution par kind (union EN/FR)
+// face aux ids demandés. WarnContext si au moins un kind demandé ne résout RIEN
+// (metadata incomplète → catégorie de filtres vide SANS erreur : cette
+// dégradation best-effort doit laisser une trace, règle logging n°3 — c'est
+// exactement le mode de panne silencieux du bug « filtres H5 vides »).
+// DebugContext sinon (compteurs de suivi).
+func logResolvedAssetNames(ctx context.Context, res resolvedAssetNames, mapReq, plReq, varReq int) {
 	mapN := countResolved(res.mapEN, res.mapFR)
 	plN := countResolved(res.playlistEN, res.playlistFR)
 	varN := countResolved(res.variantEN, res.variantFR)
+	attrs := []any{
+		"maps_resolus", mapN, "maps_demandes", mapReq,
+		"playlists_resolues", plN, "playlists_demandees", plReq,
+		"game_variants_resolus", varN, "game_variants_demandes", varReq,
+	}
+	if (mapReq > 0 && mapN == 0) || (plReq > 0 && plN == 0) || (varReq > 0 && varN == 0) {
+		slog.WarnContext(ctx, "filters: aucun nom résolu pour un kind demandé — "+
+			"asset_translations incomplet, catégorie de filtres potentiellement vide", attrs...)
+		return
+	}
 	if mapN == 0 && plN == 0 && varN == 0 {
 		return
 	}
-	slog.DebugContext(ctx, "filters: noms d'assets résolus depuis metadata",
-		"maps", mapN, "playlists", plN, "game_variants", varN)
+	slog.DebugContext(ctx, "filters: noms d'assets résolus depuis metadata", attrs...)
 }
 
 // countResolved compte les ids distincts présents dans l'un des deux maps.
