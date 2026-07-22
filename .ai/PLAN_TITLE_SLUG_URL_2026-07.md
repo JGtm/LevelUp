@@ -1,6 +1,6 @@
 # PLAN — D7 : titre (et langue) dans l'URL (segments de route)
 
-Statut : PLANIFIE v2 (aucune ligne de code écrite).
+Statut : EN COURS D'EXECUTION (Phase 0 close le 2026-07-22).
 Date : v1 2026-07-13 (architecte Opus) ; **v2 2026-07-21** (revue Fable : 4 trous corrigés,
 langue intégrée structurellement, décisions D-8..D-11 ajoutées — amendements validés par
 l'utilisateur le 2026-07-21).
@@ -312,17 +312,25 @@ dette lint pré-existante (baseline gelée).
 
 ### Phase 0 — Cadrage, baseline, sanity-check `{-$lang}` (rapide)
 
-- [ ] Créer `feat/title-slug-in-url` depuis `main` à jour (`git fetch` + vérifier
-      `git log --oneline -1 origin/main`).
-- [ ] Baselines au journal : (a) `grep -rn "players/\$playerSlug" apps/web/src
-      --include=*.tsx --include=*.ts | wc -l` (attendu ≈ 186 hors routeTree) ; (b)
-      inventaire des strings échappées (grep `"/players/` + liste §2) ; (c) `grep -rn
-      "/players/" apps/web/e2e` (specs à migrer, Phase 6).
-- [ ] **Sanity-check `{-$lang}` file-based** : créer `routes/{-$lang}/t/$titleSlug.tsx`
-      minimal (layout `<Outlet/>`), régénérer `routeTree.gen.ts` (dev ou build), vérifier
-      que tsc accepte `navigate({to: '/t/$titleSlug', params})` SANS lang et AVEC lang. Si
-      cassé → appliquer le repli D-4 (segment `$lang` obligatoire) et le consigner.
-- [ ] Relire les décisions §3 (fermes). Ne rien re-décider.
+- [x] Créer `feat/title-slug-in-url` — DÉVIATION consignée : créée depuis
+      `refactor/ascension-ux-2026-07` (demande utilisateur du 2026-07-22 : cette branche
+      contient l'intégralité d'`origin/main` — vérifié `git log HEAD..origin/main` vide —
+      PLUS les correctifs Ascension non encore mergés ; partir de main re-créerait les
+      mêmes warnings/erreurs déjà réglés).
+- [x] Baselines au journal : (a) 192 occurrences / 70 fichiers hors routeTree (attendu
+      ≈186 — écart +6 dû au chantier Ascension postérieur à la v2 du plan) ; (b) 131
+      strings `/players/` échappées (hors occurrences typées) ; (c) e2e : 26 fichiers
+      contiennent `/players/` (25 specs + `_helpers/demoData.ts`) — `ascension-2tabs.spec.ts`
+      cité §2 a été SUPPRIMÉ entre-temps (mini-lot F6 Ascension).
+- [x] **Sanity-check `{-$lang}` file-based** : SUPPORT OK — route
+      `routes/{-$lang}/t/$titleSlug.tsx` créée, routeTree régénéré (vite build),
+      `tsc -b` = 0 avec Link/navigate SANS lang et AVEC lang. Repli D-4 NON nécessaire.
+      Précision de forme : le `to` typé est `'/{-$lang}/t/$titleSlug'` (segment optionnel
+      DANS le template) ; la forme courte `'/t/$titleSlug'` est REFUSÉE par tsc (vérifié
+      par `@ts-expect-error` consommé). Tous les littéraux `to` des phases 2+ utilisent
+      donc la forme longue ; l'URL RENDUE sans lang reste `/t/…`. Artefacts de sanity
+      supprimés, routeTree restauré (zéro diff de code après Phase 0).
+- [x] Relire les décisions §3 (fermes). Ne rien re-décider. — Fait, rien à re-décider.
 
 Gate Phase 0 : `git branch --show-current` = `feat/title-slug-in-url` ; baselines
 consignées ; verdict `{-$lang}` consigné (support OK ou repli D-4 acté).
@@ -541,5 +549,10 @@ déplacement (Phase 1, TDD). Backend non touché.
 
 ## 10. Journal du plan (rempli à l'exécution)
 
-- (vide — à alimenter à chaque clôture d'étape : date, étape, gate, statut des items,
-  observations navigateur.)
+- **[2026-07-22] Phase 0 CLOSE.** Gate : branche `feat/title-slug-in-url` active (créée
+  depuis `refactor/ascension-ux-2026-07` = origin/main + fixes Ascension, demande
+  utilisateur) ; baselines consignées (192 occ / 70 fichiers typés, 131 strings échappées,
+  26 fichiers e2e) ; verdict `{-$lang}` : SUPPORT OK, repli D-4 non nécessaire. Forme
+  canonique des `to` typés : `'/{-$lang}/t/$titleSlug/…'` (forme courte refusée par tsc).
+  Exécution pilotée : Fable orchestre + vérifie, agents Opus implémentent (phases 1-6).
+  Zéro diff de code à la clôture (artefacts sanity supprimés, routeTree restauré).
