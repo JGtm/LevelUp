@@ -1,3 +1,17 @@
+## [2026-07-22] Frag Distribution v2 — Escouade : finalisation layout (3 graphes → Synergies + dispositions + alignement hauteurs)
+
+**Statut** : Complété, VALIDÉ user. Branche `feat/frag-distribution-v2`. Commit autorisé. Suite du commit `0285a8d72` (items « Reste » traités).
+
+- **3 graphes frags → onglet Synergies** : extraits de Contributions (Répartition sortie du bundle perf `SquadPerformanceCharts`), regroupés dans un composant dédié `SquadFragSection`, placés juste avant « Impact des coéquipiers ».
+- **Disposition** : rangée 1 = Répartition des frags | Précision par rôle (H5 uniquement, sinon Répartition pleine largeur) ; rangée 2 = Outils de destruction seul.
+- **Alignement hauteurs** rangée 1 : `ChartCard fluid` / `SquadWeaponAccuracyBarsChart fillHeight` → stretch grille (align-items:stretch), hauteurs égales sans nombre magique.
+- **« Autres armes »** épinglée tout en bas (hors tri par usage ; `unshift` car pas d'inverse yAxis → index 0 = bas).
+- **Barres « Outils de destruction »** un peu plus épaisses (`barCategoryGap` 35 %→20 %).
+
+**Gates (verts)** : front typecheck (purgé) / eslint 0 err / vitest 2418 / cross-feature 0. Frontend seul (aucun Go touché).
+
+**Reste v2** : page **Explorer** (dernière surface, restée v1) — à traiter.
+
 ## [2026-07-22] Frag Distribution v2 — Timeseries (layout + précision) + Escouade (précision par rôle + Outils de destruction multi-joueur) + rename global « Outils de destruction »
 
 **Statut** : Complété. Timeseries + Escouade précision par rôle VALIDÉS user ; Escouade « Outils de destruction » en revue. Branche `feat/frag-distribution-v2`. Commit autorisé (1 commit combiné — voir note).

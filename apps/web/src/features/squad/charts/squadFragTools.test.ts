@@ -122,9 +122,13 @@ describe('buildSquadFragTools', () => {
     expect(byLabel.has('assassination')).toBe(true)
   })
 
-  it('ordonne ASC par total escouade (comme le chart existant)', () => {
+  it('« Autres armes » épinglée tout en bas (index 0), le reste ASC par total escouade', () => {
     const res = buildSquadFragTools(input(), fragClasses(), opts(3))!
-    const totals = (res.bars ?? []).map((b) => b.total_squad)
-    expect([...totals].sort((a, b) => a - b)).toEqual(totals)
+    const bars = res.bars ?? []
+    // Sans inverse yAxis, la 1re catégorie est rendue EN BAS → l'agrégat y est épinglé.
+    expect(bars[0]?.label).toBe('Autres armes')
+    // Le reste (hors agrégat) reste trié ASC par total escouade (comme le chart existant).
+    const rest = bars.slice(1).map((b) => b.total_squad)
+    expect([...rest].sort((a, b) => a - b)).toEqual(rest)
   })
 })

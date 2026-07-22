@@ -17,12 +17,15 @@ interface SquadWeaponAccuracyBarsChartProps extends SquadWeaponAccuracyBarsOpts 
   title?: string
   emptyMessage?: string
   data: SquadWeaponAccuracy | null | undefined
+  /** Étire la carte pour remplir la cellule grille (aligne la hauteur sur le bloc frère). */
+  fillHeight?: boolean
 }
 
 export function SquadWeaponAccuracyBarsChart({
   data,
   title,
   emptyMessage,
+  fillHeight = false,
   ...opts
 }: SquadWeaponAccuracyBarsChartProps) {
   const series = useMemo<ChartSeries<SquadWeaponAccuracyBar>[]>(() => {
@@ -36,6 +39,6 @@ export function SquadWeaponAccuracyBarsChart({
   const n = data?.bars?.length ?? 0
   const height = Math.max(350, Math.min(800, n * 38))
   return (
-    <ChartCard title={title} series={series} buildOption={buildOption} height={height} emptyMessage={emptyMessage} />
+    <ChartCard title={title} series={series} buildOption={buildOption} height={height} emptyMessage={emptyMessage} fluid={fillHeight} />
   )
 }

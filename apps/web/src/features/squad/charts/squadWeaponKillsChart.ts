@@ -72,7 +72,8 @@ export function buildSquadWeaponKillsOption(
           return v > 0 ? `${v}` : ''
         },
       },
-      barCategoryGap: '35%',
+      // Bandes de catégorie resserrées (35 %→20 %) → barres un peu plus épaisses (demande user).
+      barCategoryGap: '20%',
       barGap: '8%',
     }
   })
