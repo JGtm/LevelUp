@@ -1,3 +1,47 @@
+## [2026-07-22] Lot D « Tendance visuelle (graphes minimaux, DEC-5) » — plan Ascension UX (branche refactor/ascension-ux-2026-07)
+
+**Statut** : Complété (code + tests). Gate Lot D PASSÉ intégralement (sorties vertes).
+Aucun commit/push (à la charge de l'orchestrateur). Revue visuelle = orchestrateur.
+
+**Contexte** : items D1→D3 du `.ai/PLAN_ASCENSION_UX_2026-07.md` sous contrat
+`plan-execution`. Esprit DEC-5 : minimal et motivationnel, pas un dashboard (les pages
+Solo font l'analytique lourde).
+
+**Décisions techniques principales** :
+- **D1 (décision timeseries, confirme AM-8)** : vérifié sur pièces — `timeseries.go` ne
+  sert aucune série skill/LUSR (seul un champ per-match `SkillRatingValue`). Décision :
+  CONSTRUIRE depuis l'existant, réutiliser (règle n°14) la vue append-only
+  `match_skill_rank_latest` (ART n°2, LUSR v2 canonique, même colonne `rating_value` que
+  « pts LUSR ») + `temporal.LowessSmooth` (déjà utilisé par `ComputeMuTrend`/campagne). Le
+  lissé EST directement en points LUSR (échelle 1000-2000+). Surfaces : D2 = champ ajouté
+  à `/profile` (aucune nouvelle clé/hook/fetch, la PerformanceSection consomme déjà cette
+  réponse) ; D3 = nouvel endpoint (counts/jour inexistants nulle part).
+- **D2 (sparkline)** : `PlayerProfile.SkillTrend` (90 j FIXE, `SkillTrendWindowDays`), sert
+  UNIQUEMENT le lissé (`< 3` pts → nil, DEC-6 « jamais de μ brut »). openapi + generate-types
+  (schéma `SkillTrendPoint`, PlayerProfile ré-aligné, drift MISSING=0). Front :
+  `<TimeseriesLineChart>` compact dans PerformanceSection, tokens, aria/i18n, `< 2` pts → rien,
+  mock echarts jsdom.
+- **D3 (calendrier)** : endpoint `GET /activity-calendar?days=90` → `LoadActivityCalendar`
+  (SharedReader + fragment canonique `StartTimeCanonicalSQL` + `campaignExcl`, bucket jour
+  `t.UTC().Format` en Go = motif A6, jours vides omis). Front : `ActivityCalendarChart`
+  (compose `ChartCard` + heatmap semaine×jour, rampe NEUTRE fréquence CVD-safe,
+  `dowLabels`/`calendarChartText` réutilisés, légende sobre), sous `StreakDashboard`. openapi
+  + generate-types (schémas `ActivityCalendar`/`ActivityDay`).
+
+**Résultats observés (gate)** : `go test` profile+handlers ok ; `CGO_ENABLED=1 go test
+./internal/api/` (drift MISSING=0 + contract) ok ; intégration Go SkillTrend/ActivityCalendar
+ok ; gofmt vide, go vet clean ; `make check-types` ok ; `make test-web` 283 fichiers /
+2480 passés / 14 skippés / 0 échec ; ESLint touchés 0 erreur. `make go-api-lint` = vet
+scoped domain/analysis (périmètre du target ; golangci-lint non installé dans l'env) EXIT 0.
+
+**Découverte (consignée au plan, non traitée)** : `make go-api-lint` ne lint QUE
+domain/analysis (scope volontaire du target) — golangci-lint complet non disponible ici.
+
+**Conclusion / prochaine étape** : Lot D clos. Le plan Ascension UX (A→D) est intégralement
+implémenté sur la branche. Orchestrateur : revue visuelle (sparkline ≥ 30 matchs, heatmap
+cohérente séries), puis commit/livraison (delivery-checklist) — push `main` = deploy prod,
+prévenir l'utilisateur.
+
 ## [2026-07-22] Lot C « Historique (actif vs passé) » — plan Ascension UX (branche refactor/ascension-ux-2026-07)
 
 **Statut** : Complété (code + tests). Gate Lot C PASSÉ intégralement (sorties vertes).

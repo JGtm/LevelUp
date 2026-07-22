@@ -68,6 +68,7 @@ export function PlayerProfileV3({ playerSlug, windowDays = 30 }: PlayerProfileV3
         skillRating={profile.skill_rating}
         components={profile.lusr_components}
         muTrend={profile.mu_trend}
+        skillTrend={profile.skill_trend}
       />
     </div>
   )

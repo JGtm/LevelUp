@@ -189,6 +189,9 @@ export const queryKeys = {
     ['progression', playerSlug, 'profile', windowDays] as const,
   progressionPatterns: (playerSlug: string, n = 50) =>
     ['progression', playerSlug, 'patterns', n] as const,
+  // Calendrier d'activité (Réalisations) — jours joués sur la fenêtre (DEC-5/D3).
+  progressionActivity: (playerSlug: string, days = 90) =>
+    ['progression', playerSlug, 'activity', days] as const,
 
   // Coach Advisor proposals (ADR 0020 Phase 10)
   coachProposals: (playerSlug: string, status?: string) =>

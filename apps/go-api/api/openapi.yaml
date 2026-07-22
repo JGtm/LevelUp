@@ -2900,6 +2900,23 @@ paths:
         "200": { description: "PlayerProfile" }
         "404": { description: "Joueur inconnu" }
 
+  # Calendrier d'activité (Ascension / Réalisations) — jours joués sur la fenêtre
+  /players/{player_slug}/activity-calendar:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: days
+        in: query
+        required: false
+        schema: { type: integer, minimum: 7, maximum: 180, default: 90 }
+        description: "Fenêtre d'activité en jours (clampé 7..180)"
+    get:
+      tags: [progression]
+      operationId: getActivityCalendar
+      summary: "Calendrier d'activité : nombre de matchs par jour UTC sur la fenêtre (jours vides omis)"
+      responses:
+        "200": { description: "ActivityCalendar" }
+        "404": { description: "Joueur inconnu" }
+
   # ImprovementCampaign V1 (§4.5) — boucle profil → objectif → suivi
   /players/{player_slug}/campaigns:
     parameters:
@@ -3492,6 +3509,35 @@ components:
           type: string
           nullable: true
 
+    ActivityCalendar:
+      additionalProperties: false
+      properties:
+          days:
+              items:
+                  $ref: '#/components/schemas/ActivityDay'
+              nullable: true
+              type: array
+          since:
+              type: string
+          until:
+              type: string
+      required:
+          - since
+          - until
+          - days
+      type: object
+    ActivityDay:
+      additionalProperties: false
+      properties:
+          count:
+              format: int64
+              type: integer
+          date:
+              type: string
+      required:
+          - date
+          - count
+      type: object
     ApiErrorSchema:
       type: object
       required: [code, message, retryable]
@@ -13008,6 +13054,11 @@ components:
               type: string
           skill_rating:
               $ref: '#/components/schemas/SkillRatingSnapshot'
+          skill_trend:
+              items:
+                  $ref: '#/components/schemas/SkillTrendPoint'
+              nullable: true
+              type: array
           strengths:
               items:
                   $ref: '#/components/schemas/RadarAxisInsight'
@@ -14690,6 +14741,18 @@ components:
           - label
           - mu
           - sigma
+      type: object
+    SkillTrendPoint:
+      additionalProperties: false
+      properties:
+          date:
+              type: string
+          value:
+              format: double
+              type: number
+      required:
+          - date
+          - value
       type: object
     SkillSnapshot:
       additionalProperties: false

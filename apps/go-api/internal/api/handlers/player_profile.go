@@ -32,6 +32,9 @@ import (
 // ProfileWindowDays : fenêtre par défaut pour les agrégats (Section A1/A2/B/C).
 const ProfileWindowDays = 30
 
+// ActivityCalendarWindowDays : fenêtre par défaut du calendrier d'activité (DEC-5/D3).
+const ActivityCalendarWindowDays = 90
+
 // PlayerProfileHandler regroupe le endpoint /profile.
 type PlayerProfileHandler struct {
 	resolve   ProgressionResolver
@@ -60,6 +63,7 @@ func (h *PlayerProfileHandler) WithAwardMapping(set *mappings.AwardMappingSet) *
 func (h *PlayerProfileHandler) Mount(r chi.Router) {
 	api := humacore.NewAPI(r)
 	huma.Get(api, "/profile", h.handleGetProfile)
+	huma.Get(api, "/activity-calendar", h.handleGetActivityCalendar)
 }
 
 // ─── Inputs/Outputs Huma ─────────────────────────────────────────────────────
@@ -74,6 +78,15 @@ type profileInput struct {
 }
 
 type profileOutput struct{ Body *profile.PlayerProfile }
+
+// activityCalendarInput : {player_slug} parent + ?days= (parse tolérant maison,
+// même contrat que window_days : valeur invalide → défaut).
+type activityCalendarInput struct {
+	PlayerSlug string `path:"player_slug"`
+	Days       string `query:"days" doc:"Fenêtre en jours (clampé 7..180, défaut 90)"`
+}
+
+type activityCalendarOutput struct{ Body *profile.ActivityCalendar }
 
 // ─── Endpoints ─────────────────────────────────────────────────────────────
 
@@ -107,6 +120,32 @@ func (h *PlayerProfileHandler) handleGetProfile(ctx context.Context, in *profile
 		return nil, humacore.NewError(http.StatusInternalServerError, "build_profile_error", err.Error())
 	}
 	return &profileOutput{Body: prof}, nil
+}
+
+// handleGetActivityCalendar : GET /activity-calendar → jours joués sur la fenêtre
+// (DEC-5/D3). Query param optionnel `days` (défaut 90, min 7, max 180).
+func (h *PlayerProfileHandler) handleGetActivityCalendar(ctx context.Context, in *activityCalendarInput) (*activityCalendarOutput, error) {
+	pdb, err := h.resolvePlayer(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, err
+	}
+	days := atoi(in.Days)
+	if days <= 0 {
+		days = ActivityCalendarWindowDays
+	}
+	if days < 7 {
+		days = 7
+	}
+	if days > 180 {
+		days = 180
+	}
+	now := time.Now().UTC()
+	cal, err := profile.NewServiceFromPlayerDB(pdb).LoadActivityCalendar(ctx, pdb.XUID, now.AddDate(0, 0, -days), now)
+	if err != nil {
+		slog.WarnContext(ctx, "profile: activity calendar", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "activity_calendar_error", err.Error())
+	}
+	return &activityCalendarOutput{Body: &cal}, nil
 }
 
 // resolvePlayer résout le slug courant ou renvoie une erreur Huma 404
