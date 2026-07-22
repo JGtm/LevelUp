@@ -7,12 +7,12 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
+import { FragSunburst } from './FragSunburst'
 import {
-  FragSunburst,
   buildSunburstModel,
   type FragSunburstColors,
   type FragSunburstLabels,
-} from './FragSunburst'
+} from './fragSunburstModel'
 import type { FragDistribution } from '@/lib/api/types'
 
 const COLORS: FragSunburstColors = {

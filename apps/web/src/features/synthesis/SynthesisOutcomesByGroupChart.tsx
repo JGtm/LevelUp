@@ -115,10 +115,12 @@ export function SynthesisOutcomesByGroupChart({ entries, title, height }: Props)
     ? [{ key: 'outcomes', datapoints: entries.map((e) => ({ name: e.name })) }]
     : []
 
+  // Clé de recalcul stable : on ne rebuild l'option que si le contenu change.
+  const entriesKey = JSON.stringify(entries)
   const buildOption = useCallback(
     () => buildOutcomesOption(entries, { win: winLabel, loss: lossLabel, tie: tieLabel, dnf: dnfLabel }, yAxisLabel),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(entries), winLabel, lossLabel, tieLabel, dnfLabel, yAxisLabel],
+    [entriesKey, winLabel, lossLabel, tieLabel, dnfLabel, yAxisLabel],
   )
 
   return (

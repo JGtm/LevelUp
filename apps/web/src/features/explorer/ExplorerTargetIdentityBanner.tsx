@@ -14,7 +14,8 @@
  * gamertag uniquement + message "Identité Spartan indisponible".
  */
 import { CompositeProgressBar } from '@/components/ui/composite-progress-bar'
-import { HomeSkillPeakCard, resolveSkillPeakState } from '@/features/home/HomeSkillPeakCard'
+import { HomeSkillPeakCard } from '@/features/home/HomeSkillPeakCard'
+import { resolveSkillPeakState } from '@/features/home/skillPeakState'
 import { getSpartanIdentityText } from '@/features/home/spartanIdentity.i18n'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'

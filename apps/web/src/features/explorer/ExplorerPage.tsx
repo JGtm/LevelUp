@@ -160,6 +160,7 @@ export function ExplorerPage() {
   // ─── URL sync mode/target ────────────────────────────────────────────────────
   // Init unique depuis l'URL au mount — légitime pour hydrater l'état initial.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydratation unique de l'état depuis l'URL au montage (init légitime) (2026-07-22)
     if (search.mode) setMode(search.mode)
     if (search.target) setTargetGamertag(search.target)
     if (search.targetXuid) setTargetXuid(search.targetXuid)

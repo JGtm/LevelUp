@@ -11133,3 +11133,162 @@ divergente** (l'invariant backend qui rend le fix front efficace, jusque-là NON
 fait autorité sans header. Gates : `gofmt` + `go vet` clean, `go test ./internal/api/...` vert
 (middleware 8/8), front vert. golangci-lint absent du PATH (le gate local `make go-api-lint` se
 réduit à `go vet`). Reste l'accord pour un 2e commit (title.go + title_test.go).
+
+---
+
+## [2026-07-22] Diagnostic Explorer mode recherche — XP/CSR absents + « Matchs par saison » incomplet
+
+**Statut** : Complété (investigation seule, aucun code modifié — demande explicite de l'utilisateur).
+
+**Méthode** : 2 agents Explore (pipeline LevelUp + repo SpartanRecord voisin) + preuves runtime
+(logs de la session du soir sous apps/go-api/logs — air relancé 20:43 sans REPO_ROOT —, fichiers
+data/auth/watcher_tokens, re-vérification sur pièces des lignes décisives).
+
+**Résultats observés** :
+1. Auth : les fetchs live du player-query Explorer portent les tokens du PROFIL SÉLECTIONNÉ
+   (`enrichWithHaloTokens` → `ResolveFreshPlayerTokens(pdb.XUID)`, registry_auth.go:145-158).
+   Aucun pool sur ce chemin (le pool `internal/platform/auth/pool` ne sert que le sync ;
+   `AnyPlayerTokens` ne sert que les handlers d'assets). RT morts (AADSTS70000 « different
+   client id », classe revoked, app pré-SISU du 15/07) : Madina97294, XxDaemonGamerxX,
+   Chocoboflor → reauth_required=true. Seul JGtm sain ; les 5 comptes auth_only du pool sont
+   sains. Échecs avalés : closures errgroup → nil, réponse 200 avec sections manquantes ;
+   `career_live: progress fetch returned nil (API silent skip)` observé 4 fois le 22/07 pour la
+   cible 2535427927026623, et snapshots api_empty intermittents même pour JGtm (1er hit après
+   inactivité).
+2. Matchs par saison : auth morte → fallback bucketing local shared DB (matchs communs
+   seulement) ; auth OK → live limité aux saisons de `Subqueries.SeasonIds` du service record,
+   groupées par `extractSeasonNumber` (premier entier de la chaîne, fragile) → 5 saisons
+   résolues sur 14 pour Nilton410 (log explorer_season_breakdown ; URLs seasonId= observées :
+   Season3, Season4, Winter-Break-22, Season6, Season6-2, Season7) → somme ~1700 vs ~7000.
+   Aucun cap de pagination (hypothèse écartée). seasons_catalog : fetch live en échec permanent
+   → fallback TOML statique à chaque requête (bruit + axe figé si nouvelle saison).
+3. SpartanRecord : SR par saison via HaloDotAPI (proxy Vercel sr-nextjs, clé API côté serveur —
+   aucune dépendance à des RT persos) sur une liste de saisons HARDCODÉE (AllSeasons, 15
+   entrées), 1 appel agrégé par saison (~19 appels premier affichage), cache Firebase RTDB
+   write-through (revisites instantanées). PAS de graphe XP sur leur page SR : Total XP =
+   scalaire du endpoint career-rank (même economy careerrank1 que nous) ; leur page
+   /career_rank projette xp ≈ (totalScore/matchesPlayed)*2 (approximation). L'endpoint
+   halostats matches/{id}/progression n'est utilisé ni chez eux ni chez nous — seule piste
+   restante pour un vrai XP par match passé, à sonder.
+
+**Conclusion / prochaine étape** : plan de réparation à cadrer (hors périmètre de ce tour) :
+(A) résolveur de token pool-first pour les lectures publiques de tiers, fallback ordonné
+session fraîche → profil sélectionné → pool sain (jamais de re-capture, ADR 0023) ;
+(B) breakdown saisons itérant TOUT le catalogue (modèle SpartanRecord) au lieu de SeasonIds ;
+(C) remplacer la dégradation muette par un signal explicite dans le payload (sections en échec)
++ log ERROR ; (D) re-onboarding SSO des 3 comptes morts (action utilisateur) ; (E) nettoyages :
+échec permanent seasons_catalog live, spam legacy_source_used (ADR 0023 Phase 5 overdue).
+Zéro fix opportuniste appliqué.
+
+**Addendum (même jour, question de suivi)** : la page /matches de SpartanRecord a bien un
+dataset « XP » par match (RecentMatchesChart.tsx:298 → match.player.xp) mais c'est le score
+personnel relabelisé : getter PlayerMatchPlayer.ts:93-102 = scores.personal, avec correction
+BTB floor(score*1.8/10)*10 ; référence du graphe = sr.totalScore. Confirme le constat : aucun
+XP réel par match via API — heuristique score. LevelUp possède déjà personal_score par match
+en base (tout l'historique) → graphe équivalent faisable offline si souhaité.
+
+**Addendum 2 (même jour) — validation empirique XP par match sur nos données** : demande
+utilisateur de vérifier l'hypothèse « XP = score » en base. Méthode : parquets
+career_progression du backup staging (xp_total par snapshot, monotone → compression par
+runs) croisés avec match_participants.personal_score sur une COPIE de shared (fichiers
+vivants verrouillés par le serveur ; outil cmd/diag_q + gcc msys64). Résultat : fenêtres
+mono-match avec gardes 6 min (cache 5 min) → 4/4 paires à ratio EXACTEMENT 2,00, dont une
+défaite → **XP par match = 2 x personal_score, sans modificateur W/L** (era 2026, PvP
+social). SpartanRecord (xp = score brut, BTB x1,8) affiche donc la moitié de l'XP réelle
+actuelle. Pièges relevés : saut artefact +173 230 XP (JGtm, 25/05) car xp_total est dérivé
+du catalogue de rangs (pas un compteur de jeu) ; masse d'XP issue de matchs absents de
+shared (sessions du soir ~10 min — Firefight vraisemblable) alors que pve_match_stats est
+quasi vide (JGtm 2, Madina 4 matchs depuis 2026-02) → découverte hors périmètre consignée,
+non traitée : couverture sync PvE à auditer. Multiplicateurs FF/bots/BTB non calibrés
+(échantillon vide chez nos joueurs).
+
+---
+
+## [2026-07-22] Plans rédigés — réparation Explorer live + XP de carrière estimée
+
+**Statut** : Complété (rédaction seule, aucune exécution — les 2 plans sont PRÊTS).
+
+**Décision technique principale** : deux plans séparés (correctif vs feature,
+indépendants, branches distinctes) :
+- `.ai/PLAN_EXPLORER_LIVE_REPAIR_2026-07.md` (branche fix/explorer-live-pool-seasons) :
+  A0 re-onboarding 3 comptes (action user) ; A1 resolver pool-first LIMITÉ aux lectures
+  publiques de tiers du player-query (ordre session→profil→pool, jamais pour
+  l'ownership-scoped) ; A2 « Matchs par saison » itérant tout le catalogue
+  (matchmade_paths en TOML + union SeasonIds, cache 24 h saisons closes) + fix du
+  lazy-fetch calendrier ; A3 statuts live par section dans le DTO + logs ERROR + badges
+  front (fin de la dégradation muette).
+- `.ai/PLAN_XP_CARRIERE_ESTIMEE_2026-07.md` (branche feat/xp-carriere-estimee) :
+  éras en TOML (×1 avant 2025-11-18, ×2 depuis — Operation: Infinite, « Applied Score
+  multipliers doubled », source officielle halowaypoint fournie par l'utilisateur +
+  patch notes + Halopedia) ; analysis pur EstimateCareerXP + capability
+  analytics.career_xp_estimate (Infinite only) ; graphe Timeseries « XP de carrière
+  (estimée) » ; validation croisée vs deltas xp_total (±5 %) + paires propres (±1 %).
+
+**Résultats observés (investigations d'appui)** :
+- Artefact +173 230 XP du 25/05 ÉLUCIDÉ : l'API a rendu rang 179 → 184 entre les deux
+  snapshots (re-crédit côté 343) ; catalogue career_ranks IDENTIQUE avant/après
+  (272 rangs, total 9 319 351) et aucun commit local les 24-26/05 → xp_total est
+  fidèle à l'API. Décision : aucune adaptation de xp_total ; usage = oracle de
+  validation, jamais série d'affichage long terme sans garde.
+- SpartanRecord : commit « XP is now doubled » du 2026-01-01 (retard sur le 18/11),
+  « account for BTB boost » (×1,8) du 2024-06-15.
+- Matchs invisibles (Firefight non capté par le sync) : quantification et seuil de
+  décision (10 %) placés en B0.3 du plan XP — chantier sync PvE séparé si dépassé.
+
+**Conclusion / prochaine étape** : plans passés à la grille plan-review (structure,
+couches, capabilities, tests, gates exacts, exécutabilité agent). Prochaine étape =
+décision utilisateur de lancer l'exécution (l'un, l'autre, ou les deux).
+
+---
+
+## [2026-07-22] Share-link ?f= a la demande — fin de la pollution d'URL
+
+**Statut** : Complete (implemente par agent Opus pilote, revu sur pieces + gates rejoues).
+
+**Decision technique principale** : le deep-link `?f=` (filterContext encode base64) n'est
+plus ecrit automatiquement a chaque mutation du store solo (`encodeToUrl` via
+`history.replaceState` supprime des 6 mutations de createFilterStore). Remplace par une
+action `buildShareUrl()` (retourne l'URL, ne touche pas l'historique) consommee par un
+nouveau bouton icone « Copier le lien avec les filtres » en fin de FilterOmnibar
+(ShareLinkButton.tsx, masque sur le store escouade non-urlEnabled). Le decodage au
+chargement est conserve (format enveloppe v2 `{t, c}` inchange — liens deja partages
+toujours valides) ; apres hydratation REUSSIE le param est retire de la barre d'adresse
+(one-shot, un `?f=` corrompu est laisse intact). Cause racine du symptome constate :
+l'auto-snap useFollowLatestSession stampait l'URL de la home au chargement, puis le
+routeur (qui ne connait pas `f`) l'effacait a la navigation suivante — presence aleatoire.
+
+**Resultats observes** : plus aucune ecriture d'URL par mutation (test dedie) ; roundtrip
+buildShareUrl -> hydratation vert ; i18n FR/EN via manifests (common.filters.share_copy /
+share_copied). Gates : tsc -b (cache purge) exit 0, eslint exit 0, vitest 284 fichiers /
+2434 tests exit 0.
+
+**Conclusion / prochaine etape** : commit sur fix/share-link-on-demand ; merge main a la
+validation utilisateur.
+
+---
+
+## [2026-07-22] Resorption warnings lint baseline apps/web : 69 -> 7
+
+**Statut** : Complete (implemente par agent Opus pilote, revu sur pieces + gates rejoues).
+
+**Decision technique principale** : traitement par categories, du mecanique au delicat.
+(A) 20 react-refresh/only-export-components : exports non-composants extraits vers 11
+modules dedies (fragSunburstModel, watcherPresence, explorerTableRows, ...) ou export
+inutile retire. (B/D) deps instables/non-simples : expressions hissees en useMemo /
+variables. (C) deps manquantes : ajoutees quand stables ; CoverFlowModal garde son
+`navigate` volontairement non memoise (design documente) -> disables cibles. (E)
+themeVersion (OutcomeSequenceTape) : `void themeVersion` dans le callback pour rendre la
+dep reelle sans perdre la reactivite au theme. (F) 7 refs miroirs mutees pendant le
+render : deplacees en useEffect (lecture asynchrone uniquement -> equivalent). (G) 15
+setState-in-effect : 6 convertis au pattern « valeur precedente » pendant le rendu
+(etat purement derive) ; 9 reactions a des donnees async / couplees a des effets de bord
+(localStorage, polling, reset mutation) conservees avec disable justifie date. Les 7
+restants = react-hooks/incompatible-library (React Compiler vs useReactTable), non
+corrigeables.
+
+**Resultats observes** : eslint 69 -> 7 warnings (exit 0) ; tsc -b (cache purge) exit 0 ;
+vitest 284 fichiers / 2434 tests exit 0. ~13 disables cibles, tous dates et justifies.
+
+**Conclusion / prochaine etape** : commit sur fix/share-link-on-demand (avec le chantier
+share-link) ; les 7 warnings restants sont la nouvelle baseline attendue de
+`npm run lint`.

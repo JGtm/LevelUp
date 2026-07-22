@@ -69,6 +69,7 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
     if (job?.status !== 'succeeded') return
     if (titleIndex < titlesToSync.length - 1) {
       const next = titleIndex + 1
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- chaînage séquentiel déclenché par la réussite async d'un titre (orchestration), pas un dérivé synchrone (2026-07-22)
       setTitleIndex(next)
       setCurrentJobId(null)
       startTitle(next)

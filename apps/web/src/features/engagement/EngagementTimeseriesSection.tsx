@@ -40,7 +40,7 @@ export function EngagementTimeseriesSection(props: EngagementTimeseriesSectionPr
   const query = useEngagementTimeseries(playerSlug, filters, filterHash, limit)
 
   const data = query.data
-  const pointsAPI = data?.points ?? []
+  const pointsAPI = useMemo(() => data?.points ?? [], [data?.points])
 
   const points: EngagementPoint[] = useMemo(() => {
     return pointsAPI.map((m, i) => ({

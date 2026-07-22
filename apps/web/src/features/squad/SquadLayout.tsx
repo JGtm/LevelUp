@@ -205,6 +205,7 @@ export function SquadLayout() {
       globalPicked.length === pickedSquadSessionLabels.length &&
       globalPicked.every((v, i) => v === pickedSquadSessionLabels[i])
     if (same) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resync sur changement async du store de filtres global + écriture localStorage (2026-07-22)
     setPickedSquadSessionLabelsRaw(globalPicked)
     try {
       localStorage.setItem(sessionStorageKey, JSON.stringify(globalPicked))
@@ -320,6 +321,7 @@ export function SquadLayout() {
   useEffect(() => {
     if (deepLinkRef.current) return
     if (settings?.friend_gamertags?.length && selectedGts.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- init de la composition à l'arrivée async des settings (garde deep-link + sélection vide) (2026-07-22)
       setSelectedGts(settings.friend_gamertags.slice(0, MAX_SELECTION))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -409,6 +411,7 @@ export function SquadLayout() {
     const unchanged =
       reconciled.length === pickedSquadSessionLabels.length &&
       reconciled.every((l, i) => l === pickedSquadSessionLabels[i])
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- réconciliation des labels de session sur arrivée async de compositionSessions (2026-07-22)
     if (!unchanged) applySessionLabels(reconciled)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compositionSessions])
@@ -446,6 +449,7 @@ export function SquadLayout() {
     if (action.kind === 'clear') {
       // Composition sans session commune → on vide et on affiche l'état vide
       // (le backend logge déjà composition_resolved avec composition_sessions=0).
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- ré-ancrage composition sur arrivée async de data (dispatch store), pas un dérivé synchrone (2026-07-22)
       applySessionLabels([])
     } else if (action.kind === 'snap') {
       autoSnapToLatestSession({ session_id: action.label, label: action.label }, true)

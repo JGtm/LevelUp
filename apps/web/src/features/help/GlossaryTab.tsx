@@ -15,7 +15,7 @@ import { type GlossaryEntry, type GlossarySection, type HelpText } from './i18n'
 const SECTION_ID_PREFIX = 'glossary-section-'
 const ENTRY_ID_PREFIX = 'glossary-entry-'
 
-export function buildGlossaryEntryAnchor(term: string): string {
+function buildGlossaryEntryAnchor(term: string): string {
   return ENTRY_ID_PREFIX + slugify(term)
 }
 

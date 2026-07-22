@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { buildCompositeProgressEdgeLabels, clampCompositeProgress } from '@/components/ui/composite-progress-bar'
+import { buildCompositeProgressEdgeLabels, clampCompositeProgress } from '@/components/ui/composite-progress-bar-labels'
 import { DataFreshnessIndicator } from '@/components/ui/data-freshness-indicator'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { SeasonPassPageResponse, SeasonPassTrackSummary } from '@/lib/api/types'
@@ -11,7 +11,8 @@ import { formatMessage } from '@/lib/i18n/format'
 import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { BattlePassRewardLightbox, type RewardLightboxData } from '@/features/palmares/BattlePassRewardLightbox'
-import { BattlePassRewardCarousel, buildTierGroups, type RewardCard } from '@/features/palmares/BattlePassRewardCarousel'
+import { BattlePassRewardCarousel } from '@/features/palmares/BattlePassRewardCarousel'
+import { buildTierGroups, type RewardCard } from '@/features/palmares/battlePassTierGroups'
 import { PassContentSummary } from '@/features/palmares/PassContentSummary'
 import { getPalmaresText, normalizePalmaresLocale } from '@/features/palmares/i18n'
 
@@ -33,7 +34,7 @@ export function HomeBattlePassPanel({
 }) {
   const locale = useAppShellStore((state) => state.locale)
   const intlLocale = locale === 'en' ? 'en-GB' : 'fr-FR'
-  const t = (key: HomeManifestKey) => formatMessage(homeManifest, key, locale)
+  const t = useCallback((key: HomeManifestKey) => formatMessage(homeManifest, key, locale), [locale])
   // Labels du contenu de pass (paliers, cR, raretés…) — réutilise l'i18n palmares.
   const passContentLabels = getPalmaresText(normalizePalmaresLocale(locale)).seasonPass.content
   const buildFreshnessLabel = useCallback(

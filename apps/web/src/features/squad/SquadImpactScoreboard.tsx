@@ -153,9 +153,9 @@ export function SquadImpactScoreboard({ matrix }: SquadImpactScoreboardProps) {
 
   // Le contrat OpenAPI expose les tableaux en `T[] | null` (le Go peut renvoyer
   // null). On dérive des vues non-null une fois, réutilisées partout.
-  const matrixPlayers = matrix.players ?? []
-  const matrixMatches = matrix.matches ?? []
-  const matrixBadgeOrd = matrix.badge_ord ?? []
+  const matrixPlayers = useMemo(() => matrix.players ?? [], [matrix.players])
+  const matrixMatches = useMemo(() => matrix.matches ?? [], [matrix.matches])
+  const matrixBadgeOrd = useMemo(() => matrix.badge_ord ?? [], [matrix.badge_ord])
 
   const rows = useMemo(() => buildRows(matrix), [matrix])
   const extremes = useMemo(() => computeExtremes(matrixPlayers), [matrixPlayers])

@@ -24,7 +24,7 @@ import champion from '@/assets/badges/fluent-flat/champion.svg'
 import maillonFaible from '@/assets/badges/fluent-flat/maillon_faible.svg'
 import passagerClandestin from '@/assets/badges/fluent-flat/passager_clandestin.svg'
 
-export const BADGE_SVG: Record<string, string> = {
+const BADGE_SVG: Record<string, string> = {
   first_blood: firstBlood,
   clutch_finisher: clutchFinisher,
   last_casualty: lastCasualty,

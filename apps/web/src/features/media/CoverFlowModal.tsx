@@ -156,7 +156,6 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
         return
       }
       log.warn('hls:unsupported', 'Lecture HLS non supportée par ce navigateur', { filePath })
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- erreur d'init d'un système externe (hls.js indisponible)
       setError('Lecture HLS non supportée par ce navigateur')
       return
     }
@@ -441,6 +440,7 @@ export function CoverFlowModal({
   // page suivante), pas un changement de prop synchrone.
   useEffect(() => {
     if (pendingPageAdvance && items.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resync sur arrivée async d'une nouvelle page (pas un dérivé synchrone), cf. commentaire ci-dessus (2026-07-22)
       setCurrentFilePath(items[0]?.file_path ?? null)
       setPendingPageAdvance(false)
     }
@@ -515,6 +515,7 @@ export function CoverFlowModal({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- navigate volontairement non mémoïsé (cf. l.554) ; closure rafraîchie via committedIdx/items.length (2026-07-22)
   }, [onClose, committedIdx, items.length])
 
   useEffect(() => {
@@ -531,6 +532,7 @@ export function CoverFlowModal({
     return () => {
       if (autoChainTimerRef.current) clearTimeout(autoChainTimerRef.current)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- navigate volontairement non mémoïsé (cf. l.554) ; closure rafraîchie via currentItem (2026-07-22)
   }, [autoChain, currentItem, isCurrentClip, canAdvanceFurther, pendingPageAdvance])
 
   const slots = useMemo(() => {

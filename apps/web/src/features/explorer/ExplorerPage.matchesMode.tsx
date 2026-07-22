@@ -14,27 +14,10 @@ import { ExplorerBriefingStrip } from './ExplorerBriefingStrip'
 import { SaisonPill } from '@/components/shell/FilterOmnibar'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import type { ContextDescriptor, MatchFilterSpec } from '@/lib/match-nav/navContext'
-import type { ExplorerMatchRow, ExplorerMatchesQueryResponse } from '@/lib/api/types'
+import type { ExplorerMatchesQueryResponse } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import type { SeasonEntry } from '@/lib/i18n/fieldMappings'
-
-/**
- * Normalise les lignes du tableau Explorer renvoyées par le contrat
- * (`map_ui` / `mode_ui` / `playlist_label` peuvent être `null` côté Go) vers
- * `ExplorerMatchRow[]` attendu par <ExplorerMatchesTable> (libellés string).
- * Coalesce `null` → '' au moment du passage de prop ; aucun changement de rendu
- * (une cellule null s'affichait déjà vide).
- */
-export function normalizeExplorerTableRows(
-  items: ExplorerMatchesQueryResponse['table']['items'],
-): ExplorerMatchRow[] {
-  return (items ?? []).map((r) => ({
-    ...r,
-    map_ui: r.map_ui ?? '',
-    mode_ui: r.mode_ui ?? '',
-    playlist_label: r.playlist_label ?? '',
-  }))
-}
+import { normalizeExplorerTableRows } from './explorerTableRows'
 
 export interface ExplorerMatchesModeProps {
   playerSlug: string

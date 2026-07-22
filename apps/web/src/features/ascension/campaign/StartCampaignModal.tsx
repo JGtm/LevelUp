@@ -45,6 +45,7 @@ export function StartCampaignModal({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset du formulaire à l'ouverture (transition open), couplé au reset de la mutation start (2026-07-22)
       setPlaylistGroup('all')
       muts.start.reset()
     }

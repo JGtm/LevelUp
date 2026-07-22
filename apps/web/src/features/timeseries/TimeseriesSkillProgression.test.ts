@@ -5,7 +5,7 @@
  * frameToData est testé dans @/lib/charts/skillTierBands.test.ts.)
  */
 import { describe, it, expect } from 'vitest'
-import { buildProgressionSeries } from './TimeseriesSkillProgression'
+import { buildProgressionSeries } from './progressionSeries'
 import type { TimeseriesMatchRow } from '@/lib/api/types'
 
 function makeRow({ index, ...rest }: Partial<TimeseriesMatchRow> & { index: number }): TimeseriesMatchRow {

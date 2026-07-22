@@ -204,10 +204,13 @@ export function SynthesisBipolaireChart({ metrics, fieldLabels, title, children,
     ? [{ key: 'bipolaire', datapoints: metrics }]
     : []
 
+  // Clés de recalcul stables : on ne rebuild l'option que si le contenu change.
+  const metricsKey = JSON.stringify(metrics)
+  const labelsKey = JSON.stringify(resolvedLabels)
   const buildOption = useCallback(
     () => buildBipolaireOption(metrics, resolvedLabels),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(metrics), JSON.stringify(resolvedLabels)],
+    [metricsKey, labelsKey],
   )
 
   return (

@@ -21,11 +21,15 @@ export function useJobToasts(
   labels: JobToastLabels,
 ): void {
   const prevStatusRef = useRef<JobStatus | null>(null)
-  // Ref pour lire les données fraîches sans en faire des dépendances de l'effet.
+  // Refs pour lire les données fraîches sans en faire des dépendances de l'effet.
+  // Affectées dans un effet (pas pendant le rendu) ; lues uniquement par l'effet
+  // principal ci-dessous (déclaré après → valeurs fraîches dans le même commit).
   const jobStatusRef = useRef(jobStatus)
-  jobStatusRef.current = jobStatus
   const labelsRef = useRef(labels)
-  labelsRef.current = labels
+  useEffect(() => {
+    jobStatusRef.current = jobStatus
+    labelsRef.current = labels
+  })
 
   useEffect(() => {
     const status = jobStatusRef.current?.status

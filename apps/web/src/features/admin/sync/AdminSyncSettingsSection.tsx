@@ -8,7 +8,7 @@
  * son propre câblage settings (useSettings/useUpdateSettings) et réutilise tel
  * quel le SyncTab existant.
  */
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
 import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i18n'
@@ -23,10 +23,15 @@ export function AdminSyncSettingsSection() {
   const locale = normalizeSettingsLocale(useAppShellStore((s) => s.locale))
   const t = getSettingsText(locale)
 
+  // Copie éditable des réglages serveur : resync quand la requête livre un nouvel
+  // objet (ajustement pendant le rendu, pattern React « valeur précédente », au
+  // lieu d'un effet). Comportement inchangé : un refetch réaligne l'état local.
   const [local, setLocal] = useState<Partial<SettingsResponse>>({})
-  useEffect(() => {
-    if (settings) setLocal(settings)
-  }, [settings])
+  const [prevSettings, setPrevSettings] = useState(settings)
+  if (settings && settings !== prevSettings) {
+    setPrevSettings(settings)
+    setLocal(settings)
+  }
 
   function handleChange<K extends keyof SettingsResponse>(field: K, value: SettingsResponse[K]) {
     setLocal((prev) => ({ ...prev, [field]: value }))

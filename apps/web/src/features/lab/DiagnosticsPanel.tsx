@@ -10,11 +10,11 @@ import type { LabDiagnosticsResponse } from '@/lib/api/types'
 import type { LabLocale, LabText } from './i18n'
 import {
   FileStatusRow,
-  formatNumber,
   GuardRow,
   MetricCard,
   StatusBadge,
 } from './_labShared'
+import { formatNumber } from './_labFormatters'
 
 interface DiagnosticsPanelProps {
   data: LabDiagnosticsResponse | undefined
