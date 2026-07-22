@@ -112,6 +112,14 @@ export interface FilterStoreState {
    *  one-shot. Cf. appShellStore.hydrateFromBootstrap / switchTitle. */
   reconcileActiveTitle: (activeTitleSlug: string) => void
 
+  /** Construit à la demande le deep-link `?f=` du contexte courant (bouton
+   *  « Copier le lien »). Retourne l'URL courante avec le param `urlParam` posé à
+   *  l'enveloppe v2 `{ t: titre actif, c: filterContext }`, ou `null` si le store
+   *  n'a pas le share-link activé (`urlEnabled=false`, ex. store escouade). Ne
+   *  touche PAS à `window.history` : le share-link n'est plus écrit
+   *  automatiquement, seulement produit sur demande. */
+  buildShareUrl: () => string | null
+
   // --- Auto-snap on new data ---
   setLastKnownLatestSessionId: (id: string | null) => void
   setIsAutoSnappingToLatest: (snapping: boolean) => void
@@ -156,7 +164,10 @@ function computeHash(ctx: FilterContextInput): string {
 interface CreateFilterStoreOptions {
   /** Nom (clé) localStorage. Ex: 'levelup-solo-filter-v1'. */
   name: string
-  /** Si true, encode/décode le contexte dans `?f=…` (share-link). */
+  /** Si true, active le share-link `?f=…` : décodage au chargement (deep-link
+   *  collé dans le navigateur) + génération à la demande via `buildShareUrl`
+   *  (bouton « Copier le lien »). Le param N'est PLUS écrit automatiquement à
+   *  chaque mutation. */
   urlEnabled?: boolean
   /** Paramètre URL pour le share-link. Défaut : 'f'. */
   urlParam?: string
@@ -179,17 +190,15 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
 
   const activeTitle = (): string => getActiveTitleSlug?.() ?? DEFAULT_TITLE_SLUG
 
-  function encodeToUrl(ctx: FilterContextInput): void {
-    if (!urlEnabled || typeof window === 'undefined') return
+  // Retire le param `?f=` de la barre d'adresse après consommation d'un deep-link
+  // (one-shot). L'état est persisté en localStorage : un refresh conserve donc les
+  // filtres même une fois l'URL nettoyée. Ne strip QUE si le param est présent.
+  function stripUrlParam(): void {
+    if (typeof window === 'undefined') return
     try {
-      // Enveloppe v2 : { t: titre actif, c: FilterContextInput }. Estampiller le
-      // titre permet, au fresh-load, de rejeter un deep-link généré pour un AUTRE
-      // titre (cf. decodeFromUrl / reconcileActiveTitle) — les labels de session
-      // sont purement temporels, donc title-agnostic, et fuiteraient sinon.
-      const payload = { t: activeTitle(), c: ctx }
-      const encoded = btoa(encodeURIComponent(JSON.stringify(payload)))
       const url = new URL(window.location.href)
-      url.searchParams.set(urlParam, encoded)
+      if (!url.searchParams.has(urlParam)) return
+      url.searchParams.delete(urlParam)
       window.history.replaceState(null, '', url.toString())
     } catch {
       // Silencieux si l'URL est invalide
@@ -241,7 +250,6 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
             filter_mode: isPeriodSet ? 'period' : 'sessions',
             sessions: isPeriodSet ? DEFAULT_SESSIONS : get().filterContext.sessions,
           }
-          encodeToUrl(next)
           set({
             filterContext: next,
             filterContextHash: computeHash(next),
@@ -257,7 +265,6 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
             filter_mode: isSessionPicked ? 'sessions' : 'period',
             period: isSessionPicked ? DEFAULT_PERIOD : get().filterContext.period,
           }
-          encodeToUrl(next)
           set({
             filterContext: next,
             filterContextHash: computeHash(next),
@@ -267,12 +274,10 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
 
         setCascade: (cascade) => {
           const next = { ...get().filterContext, cascade }
-          encodeToUrl(next)
           set({ filterContext: next, filterContextHash: computeHash(next) })
         },
 
         setFilterContext: (ctx) => {
-          encodeToUrl(ctx)
           set({
             filterContext: ctx,
             filterContextHash: computeHash(ctx),
@@ -286,7 +291,6 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
 
         resetFilters: () => {
           const next = DEFAULT_FILTER_CONTEXT
-          encodeToUrl(next)
           set({
             filterContext: next,
             resolvedContext: null,
@@ -302,10 +306,28 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
           // (une éventuelle mutation utilisateur ultérieure ré-estampille l'URL).
           set({ urlHydratedTitleSlug: null })
           if (urlTitle === activeTitleSlug) return // deep-link valide pour le titre actif → conservé
-          // Deep-link d'un AUTRE titre : reset propre (réécrit aussi l'URL/localStorage
-          // au titre actif via resetFilters → encodeToUrl).
+          // Deep-link d'un AUTRE titre : reset propre (remet le filtre au défaut et
+          // repersiste en localStorage ; l'URL a déjà été nettoyée à l'hydratation).
           log.debug(`reconcile:reset store=${name} urlTitle=${urlTitle} active=${activeTitleSlug}`)
           get().resetFilters()
+        },
+
+        buildShareUrl: () => {
+          if (!urlEnabled || typeof window === 'undefined') return null
+          try {
+            // Enveloppe v2 : { t: titre actif, c: FilterContextInput }. Estampiller
+            // le titre permet, au fresh-load, de rejeter un deep-link généré pour un
+            // AUTRE titre (cf. decodeFromUrl / reconcileActiveTitle) — les labels de
+            // session sont purement temporels, donc title-agnostic, et fuiteraient
+            // sinon. Format inchangé : les liens déjà partagés restent décodables.
+            const payload = { t: activeTitle(), c: get().filterContext }
+            const encoded = btoa(encodeURIComponent(JSON.stringify(payload)))
+            const url = new URL(window.location.href)
+            url.searchParams.set(urlParam, encoded)
+            return url.toString()
+          } catch {
+            return null
+          }
         },
 
         setLastKnownLatestSessionId: (id) => set({ lastKnownLatestSessionId: id }),
@@ -326,7 +348,6 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
             },
             period: DEFAULT_PERIOD,
           }
-          encodeToUrl(next)
           set({
             filterContext: next,
             filterContextHash: computeHash(next),
@@ -435,6 +456,9 @@ export function createFilterStore(options: CreateFilterStoreOptions): FilterStor
             // on mémorise le titre du deep-link, validé plus tard par
             // reconcileActiveTitle (appelé par hydrateFromBootstrap).
             state.urlHydratedTitleSlug = fromUrl.titleSlug
+            // One-shot : URL propre après consommation. On ne strip qu'en cas de
+            // décodage RÉUSSI (un `?f=` corrompu est laissé tel quel).
+            stripUrlParam()
             log.debug(`hydrate:source=url store=${name} urlTitle=${fromUrl.titleSlug}`)
           } else {
             log.debug(`hydrate:source=localStorage store=${name}`)
