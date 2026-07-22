@@ -10108,6 +10108,8 @@ components:
           draws:
               format: int64
               type: integer
+          frag_distribution:
+              $ref: '#/components/schemas/FragDistribution'
           grenade_kills:
               format: int64
               type: integer
@@ -10153,6 +10155,11 @@ components:
           shots_hit:
               format: int64
               type: integer
+          top_weapon_kills:
+              items:
+                  $ref: '#/components/schemas/SynthesisWeaponKillEntry'
+              type: array
+              nullable: true
           top_weapons:
               items:
                   $ref: '#/components/schemas/WeaponHighlight'

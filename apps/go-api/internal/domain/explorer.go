@@ -256,7 +256,19 @@ type ExplorerTargetSampleStats struct {
 
 	// TopWeapons : top armes (par kills) de la cible sur les matchs communs
 	// (shared.v_weapon_kills + labels metadata.weapon_labels). Vide si indispo.
+	// LEGACY : conservé comme repli du front quand FragDistribution est nil.
 	TopWeapons []WeaponHighlight `json:"top_weapons,omitempty"`
+
+	// FragDistribution : « Répartition des frags » v2 (sunburst hiérarchique
+	// classe→rôle) de la cible sur les matchs communs — MÊME builder partagé
+	// (fragdist.Build) que Synthesis/Sessions/Escouade. Native, best-effort : nil si
+	// pas de loader weapon_kills ou aucune arme résolue (le front retombe alors sur le
+	// donut kill-type + top armes legacy). Omis de la réponse si nil.
+	FragDistribution *FragDistribution `json:"frag_distribution,omitempty"`
+	// TopWeaponKills : top armes ENRICHIES (classe/rôle) de la cible sur les matchs
+	// communs — alimente « Outils de destruction » (détail par arme du sunburst v2).
+	// Best-effort, omis si aucune donnée (idem FragDistribution).
+	TopWeaponKills []SynthesisWeaponKillEntry `json:"top_weapon_kills,omitempty"`
 }
 
 // ParticipantStatsAggregate : agrégat brut renvoyé par le repo DuckDB pour le

@@ -85,6 +85,10 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 	})
 	// Fallback live gamertag→xuid (joueur jamais croisé) — nil-safe (no-op en démo).
 	svc = svc.WithLiveGamertagResolver(r.liveGamertagResolver)
+	// « Répartition des frags » v2 (sunburst classe→rôle + « Outils de destruction ») de
+	// l'encart cible : même loader weapon_kills que Synthesis/Sessions (frag v2). Le repo
+	// concret fournit aussi les mécaniques natives H5 (LoadKillMechanicsAggregated).
+	svc = svc.WithWeaponKillsRepo(duckdb.NewWeaponKillsRepo(pdb))
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
 }

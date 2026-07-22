@@ -6120,6 +6120,7 @@ export interface components {
             defensive_resistance?: number;
             /** Format: int64 */
             draws: number;
+            frag_distribution?: components["schemas"]["FragDistribution"];
             /** Format: int64 */
             grenade_kills: number;
             /** Format: int64 */
@@ -6150,6 +6151,7 @@ export interface components {
             shots_fired: number;
             /** Format: int64 */
             shots_hit: number;
+            top_weapon_kills?: components["schemas"]["SynthesisWeaponKillEntry"][] | null;
             top_weapons?: components["schemas"]["WeaponHighlight"][] | null;
             /** Format: int64 */
             total_medals: number;
