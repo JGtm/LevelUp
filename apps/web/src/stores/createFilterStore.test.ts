@@ -135,6 +135,23 @@ describe('createFilterStore', () => {
     })
     expect(window.location.search).toBe(before)
   })
+
+  it('une mutation n’écrit JAMAIS dans l’URL, même pour un store urlEnabled', () => {
+    // Le share-link n'est plus poussé automatiquement (fix pollution ?f=).
+    const useStore = createFilterStore({ name: nextName(), urlEnabled: true, urlParam: 'f' })
+    const before = window.location.search
+    useStore.getState().setSessions({ picked_sessions: ['s1'], gap_minutes: 120 })
+    useStore.getState().setPeriod({ start_date: '2025-01-01', end_date: '2025-01-31' })
+    useStore.getState().setCascade({ experience_types: ['PVE'], playlists: [], modes: [], maps: [] })
+    useStore.getState().resetFilters()
+    expect(window.location.search).toBe(before)
+  })
+
+  it('buildShareUrl retourne null pour un store sans share-link (urlEnabled=false)', () => {
+    const useStore = createFilterStore({ name: nextName(), urlEnabled: false })
+    useStore.getState().setCascade({ experience_types: ['PVE'], playlists: [], modes: [], maps: [] })
+    expect(useStore.getState().buildShareUrl()).toBeNull()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -235,27 +252,56 @@ describe('createFilterStore — garde deep-link ?f= par titre', () => {
     expect(store.getState().filterContext.sessions?.picked_sessions).toEqual(['manuel'])
   })
 
-  it('encodeToUrl estampille le titre actif dans ?f= (enveloppe v2)', () => {
+  it('buildShareUrl estampille le titre actif dans ?f= (enveloppe v2) sans toucher l’URL', () => {
     const store = createFilterStore({
       name: nextName(), urlEnabled: true, urlParam: 'f', getActiveTitleSlug: () => 'halo_5',
     })
     store.getState().setSessions({ picked_sessions: ['s'], gap_minutes: 120 })
-    const f = new URL(window.location.href).searchParams.get('f')!
+    // La mutation ne pousse rien dans l'URL...
+    expect(new URL(window.location.href).searchParams.has('f')).toBe(false)
+    // ...c'est buildShareUrl qui produit le lien à la demande.
+    const shareUrl = store.getState().buildShareUrl()!
+    const f = new URL(shareUrl).searchParams.get('f')!
     const payload = JSON.parse(decodeURIComponent(atob(f)))
     expect(payload.t).toBe('halo_5')
     expect(payload.c.sessions.picked_sessions).toEqual(['s'])
   })
 
-  it('roundtrip encode→decode préserve le contexte ET le titre', () => {
+  it('roundtrip buildShareUrl→decode préserve le contexte ET le titre', () => {
     const store = createFilterStore({
       name: nextName(), urlEnabled: true, urlParam: 'f', getActiveTitleSlug: () => 'halo_5',
     })
     store.getState().setCascade({ experience_types: ['PVE'], playlists: [], modes: [], maps: [] })
-    // Recréer un store sur la MÊME URL simule un fresh-load : decodeFromUrl relit ?f=.
+    // Simuler un partage : coller le lien généré dans le navigateur, puis fresh-load.
+    const shareUrl = store.getState().buildShareUrl()!
+    window.history.replaceState(null, '', shareUrl)
     const store2 = createFilterStore({
       name: nextName(), urlEnabled: true, urlParam: 'f', getActiveTitleSlug: () => 'halo_5',
     })
     expect(store2.getState().filterContext.cascade?.experience_types).toEqual(['PVE'])
     expect(store2.getState().urlHydratedTitleSlug).toBe('halo_5')
+  })
+
+  it('retire le param ?f= de l’URL après une hydratation réussie (one-shot)', () => {
+    setUrl('f', { t: 'halo_5', c: SESSION_CTX })
+    const store = createFilterStore({
+      name: nextName(), urlEnabled: true, urlParam: 'f', getActiveTitleSlug: () => 'halo_5',
+    })
+    // Hydraté depuis l'URL...
+    expect(store.getState().filterContext.sessions?.picked_sessions).toEqual(['03/07/2026 18:32–18:57 (3)'])
+    // ...et l'URL a été nettoyée après consommation.
+    expect(new URL(window.location.href).searchParams.has('f')).toBe(false)
+  })
+
+  it('laisse le param ?f= corrompu dans l’URL et retombe sur localStorage/défaut', () => {
+    // ?f= non décodable (base64 invalide) : on NE strip PAS (décodage échoué).
+    window.history.replaceState(null, '', '/players/p/home?f=@@@invalid@@@')
+    const store = createFilterStore({
+      name: nextName(), urlEnabled: true, urlParam: 'f', getActiveTitleSlug: () => 'halo_5',
+    })
+    expect(store.getState().filterContext).toEqual(DEFAULT_FILTER_CONTEXT)
+    expect(store.getState().urlHydratedTitleSlug).toBeNull()
+    // Param laissé intact (pas de strip sur décodage échoué).
+    expect(new URL(window.location.href).searchParams.has('f')).toBe(true)
   })
 })

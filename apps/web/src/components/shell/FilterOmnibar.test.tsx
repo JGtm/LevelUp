@@ -12,10 +12,11 @@
  *  - Compteur global de matchs depuis resolvedContext.counts
  *  - Escape ferme tous les popovers
  */
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithProviders } from '@/test/render-utils'
 import { useSoloFilterStore as useGlobalFilterStore } from '@/stores/soloFilterStore'
+import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { DEFAULT_GAP_MINUTES } from '@/stores/createFilterStore'
 import type { FilterContextResolved } from '@/lib/api/types'
@@ -247,5 +248,32 @@ describe('FilterOmnibar', () => {
     expect(screen.getByPlaceholderText(/rechercher/i)).toBeInTheDocument()
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByPlaceholderText(/rechercher/i)).not.toBeInTheDocument()
+  })
+
+  // ── Bouton « Copier le lien avec les filtres » (share-link à la demande) ──
+
+  it('bouton « Copier le lien » visible avec un store urlEnabled (solo)', () => {
+    renderWithProviders(<FilterOmnibar />)
+    expect(
+      screen.getByRole('button', { name: /copier le lien avec les filtres/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('bouton « Copier le lien » absent avec un store non-urlEnabled (escouade)', () => {
+    renderWithProviders(<FilterOmnibar filterStore={useSquadFilterStore} />)
+    expect(
+      screen.queryByRole('button', { name: /copier le lien/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('clic sur « Copier le lien » copie l’URL de partage dans le presse-papier', () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    renderWithProviders(<FilterOmnibar />)
+    // L'URL attendue = celle que le store construit à la demande (identique à
+    // l'appel du handler : même filterContext, même window.location).
+    const expected = useGlobalFilterStore.getState().buildShareUrl()
+    fireEvent.click(screen.getByRole('button', { name: /copier le lien avec les filtres/i }))
+    expect(writeText).toHaveBeenCalledWith(expected)
   })
 })

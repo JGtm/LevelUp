@@ -161,6 +161,8 @@ export const commonManifest = {
   "common.filters.session_all": { fr: "Toutes les sessions", en: "All sessions" },
   "common.filters.session_no_match": { fr: "Aucune session ne correspond.", en: "No session matches." },
   "common.filters.session_search_placeholder": { fr: "Rechercher une session…", en: "Search a session…" },
+  "common.filters.share_copied": { fr: "Lien copié", en: "Link copied" },
+  "common.filters.share_copy": { fr: "Copier le lien avec les filtres", en: "Copy link with filters" },
   "common.filters.with_selection_hint": { fr: "avec la sélection actuelle. Cliquez Analyser pour", en: "with the current selection. Click Analyze to" },
   "common.gamertag.frequent_teammates": { fr: "Coéquipiers fréquents", en: "Frequent teammates" },
   "common.gamertag.no_player_found_prefix": { fr: "Aucun joueur trouvé pour \"", en: "No player found for \"" },

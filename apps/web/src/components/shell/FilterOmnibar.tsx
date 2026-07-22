@@ -20,6 +20,7 @@ import type { CascadeInput, FilterContextInput, LabelValue, PeriodInput, Session
 import { FiltresPill } from './_filter_pills/FiltresPill'
 import { PeriodePill } from './_filter_pills/PeriodePill'
 import { SaisonPill } from './_filter_pills/SaisonPill'
+import { ShareLinkButton } from './_filter_pills/ShareLinkButton'
 import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
@@ -95,6 +96,7 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, 
   const resolvedContext = filterStore((s) => s.resolvedContext)
   const setFilterContext = filterStore((s) => s.setFilterContext)
   const resetFilters = filterStore((s) => s.resetFilters)
+  const buildShareUrl = filterStore((s) => s.buildShareUrl)
   const playerSlug = useAppShellStore((s) => s.currentPlayer?.player_slug ?? '')
   const locale = useAppShellStore((s) => s.locale)
   const tCommon = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
@@ -440,6 +442,10 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore, 
           {tCommon('common.filters.reset_label')}
         </button>
       )}
+
+      {/* Copier le lien avec les filtres — à la demande (le share-link n'est plus
+          écrit automatiquement). Masqué si le store n'a pas de share-link (escouade). */}
+      <ShareLinkButton buildShareUrl={buildShareUrl} />
     </div>
   )
 }

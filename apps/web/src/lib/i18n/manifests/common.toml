@@ -931,6 +931,14 @@ en = "View matches"
 fr = "Parcourir les matchs un par un"
 en = "Browse matches one by one"
 
+[common.filters.share_copy]
+fr = "Copier le lien avec les filtres"
+en = "Copy link with filters"
+
+[common.filters.share_copied]
+fr = "Lien copié"
+en = "Link copied"
+
 [common.filters.apply_pending_title]
 fr = "Applique les filtres en attente (cascade et période). Coéquipiers et sessions s'appliquent en direct."
 en = "Apply pending filters (cascade and period). Teammates and sessions apply live."
