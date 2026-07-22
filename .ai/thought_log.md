@@ -1,3 +1,48 @@
+## [2026-07-22] Mini-lot « Finitions Ascension » F1→F8 (branche refactor/ascension-ux-2026-07)
+
+**Statut** : Complété (F1→F8), sous contrat `plan-execution` (ordre strict, vérif sur
+pièces, zéro fix hors périmètre). NON committé (décision utilisateur). Les 8 découvertes
+de la section « Découvertes en cours d'exécution » du plan Ascension sont toutes marquées
+RÉSOLU avec référence.
+
+**Décisions techniques principales** :
+- **F1** (décompte arcs 0/N) : helper pur `computeArcStepCounts` fusionnant actifs
+  (`useChallenges`) + terminaux (`useChallengeHistory`), dédup par id.
+- **F2** (start_time brut détecteur) : `CAST(analysis.SQLStartTimeCanonical("mr") AS DATE)` ;
+  ratchet archlint étendu (`rawCastStartTimeDateRE`, allowlist VIDE, regex précise ne
+  matchant pas la forme COALESCE canonique).
+- **F3** (PILIER multilingue+title-agnostic) : refonte pérenne des leviers — backend ne
+  sert PLUS de phrase. DTO `Lever.label`+`source_pattern` SUPPRIMÉS (code mort inclus le
+  consommateur coach `generator.go`), remplacés par `axis`+`context_key`+`context_label`
+  (résolu title-agnostic). `rewriteMapLeverLabels` → `setMapLeverContextLabels`. Front
+  compose via gabarits i18n FR/EN par axe (`leverPhrase`). Tous les axes couverts.
+- **F4** (index divergent) : const canonique `(user_id, achieved_at DESC)`, dédup alignée,
+  step correctif idempotent `repair_rec_hist_achieved_index_canonical_v1` (+ canonicalOrder),
+  garde-rail positif (toute création de l'index doit être canonique).
+- **F5** (télémétrie pilote) : `DisablePilotMode` émet `TelemetryArchived` (nouvelle const,
+  distincte d'`abandoned`).
+- **F6** : suppression `ascension-2tabs.spec.ts` (helper `skipObsoleteSpec` conservé, 5
+  autres consommateurs) + MAJ README e2e.
+- **F7** (PILIER title-agnostic) : champ DTO `filter_key` (clé de filtrage FR-first STABLE,
+  locale-indépendante) sur les patterns contextuels ; `ResolveMapFilterKeys` (langs fr
+  FIXE) ; front construit le lien sur `filter_key`, `label` = affichage. by_mode :
+  filter_key=key (= modeUI, vérifié).
+- **F8** : `make go-api-lint` reproduit le lint CI (golangci-lint v2.12.2 + ratchet
+  `--new-from-merge-base=origin/main`) quand le binaire est présent, sinon REPLI go vet
+  documenté (commentaire daté + renvoi au job CI qui fait foi). golangci-lint absent de
+  l'env → repli exécuté (propre).
+
+**Résultats de gate** (exécutés par l'orchestrateur) : go test unit (patterns/handlers/
+wire/prestige/migrations/archlint/coach/migration) VERT ; drift openapi MISSING=0 ;
+generate-types + tsc + vitest (285 fichiers, 2492 passés/14 skip/0 échec) VERT ; gofmt -l
+vide ; go vet ./... propre ; ESLint fichiers touchés 0 erreur (warning react-refresh
+supprimé sur helper exporté, motif catalogue). Intégration `-p 1` (migrations/duckdb/
+service/ops) : voir addendum au commit.
+
+**Conclusion / reste orchestrateur** : commit + entrée finale ; réécriture e2e 4 onglets
+= chantier dédié (F6, noté). Découvertes secondaires consignées (start_time bruts hors
+scope F2 dans le fichier détecteur ; Halo 5 by_mode dégénéré, non aggravé par F7).
+
 ## [2026-07-22] CLÔTURE chantier Ascension UX — 4 lots livrés (branche refactor/ascension-ux-2026-07)
 
 **Statut** : Complété. 5 commits sur la branche (`bedf81914` Lot A, `afc606907` Lot B,

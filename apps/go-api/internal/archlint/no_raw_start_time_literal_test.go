@@ -50,6 +50,23 @@ var rawStartTimeRE = regexp.MustCompile(`COALESCE\([a-z_]*\.?start_time_utc,\s*[
 // vraiment brut — cas rare, couvert par la revue. `[^_]` en fin évite start_time_utc.
 var rawOrderByStartTimeRE = regexp.MustCompile(`ORDER BY\s+\w+\.start_time([^_]|$)`)
 
+// rawCastStartTimeDateRE (F2, 2026-07-22) : interdit un bucket jour `CAST(<alias>.
+// start_time AS DATE)` sur le start_time BRUT. Un tel CAST découpe les jours dans
+// le fuseau naïf de la colonne (décalage aux frontières de jour) au lieu du fragment
+// canonique UTC — bug consigné puis corrigé sur loadPlayerStats.accuracy_threshold_days.
+// Le bucket jour doit s'écrire CAST(SQLStartTimeCanonical(alias) AS DATE).
+//
+// Précis : `([a-z]+\.)?start_time AS DATE` exige que `start_time` soit suivi
+// IMMÉDIATEMENT de ` AS DATE`. La forme canonique `CAST(COALESCE(mr.start_time_utc,
+// mr.start_time AT TIME ZONE 'UTC') AS DATE)` n'est PAS matchée (start_time y est
+// suivi de `_utc` ou de ` AT TIME ZONE`). `([a-z]+\.)?` (préfixe alias `word.`, pas
+// d'underscore) évite d'attraper la colonne distincte `real_start_time`. Allowlist VIDE.
+var rawCastStartTimeDateRE = regexp.MustCompile(`CAST\(([a-z]+\.)?start_time AS DATE\)`)
+
+// rawCastStartTimeDateAllowlist : VIDE. Unique site (accuracy_threshold_days) migré
+// vers le fragment canonique le 2026-07-22 (F2). Toute nouvelle occurrence échoue.
+var rawCastStartTimeDateAllowlist = map[string]bool{}
+
 // rawOrderByStartTimeAllowlist : dette PRÉEXISTANTE gelée (règle CLAUDE.md n°5 —
 // baseline), keyée PAR FICHIER (comme H1 ci-dessus : robuste au décalage de
 // lignes). 20 fichiers au 2026-07-07 : outils cmd/ diag/backfill/seed + requêtes
@@ -94,6 +111,7 @@ func TestNoNewRawStartTimeLiteral(t *testing.T) {
 
 	var violations []string
 	var orderByViolations []string
+	var castDateViolations []string
 	for _, sub := range []string{"internal", "cmd"} {
 		root := filepath.Join(goAPIRoot, sub)
 		err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
@@ -120,6 +138,7 @@ func TestNoNewRawStartTimeLiteral(t *testing.T) {
 			// ratchet COALESCE ; le ratchet ORDER BY a son propre allowlist fichier.
 			coalesceExempt := rel == "internal/analysis/sql_fragments.go" || rawStartTimeAllowlist[rel]
 			orderByExempt := rawOrderByStartTimeAllowlist[rel]
+			castDateExempt := rawCastStartTimeDateAllowlist[rel]
 			for i, line := range strings.Split(string(data), "\n") {
 				trimmed := strings.TrimSpace(line)
 				if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "*") {
@@ -130,6 +149,9 @@ func TestNoNewRawStartTimeLiteral(t *testing.T) {
 				}
 				if !orderByExempt && rawOrderByStartTimeRE.MatchString(line) {
 					orderByViolations = append(orderByViolations, rel+":"+strconv.Itoa(i+1)+"  "+trimmed)
+				}
+				if !castDateExempt && rawCastStartTimeDateRE.MatchString(line) {
+					castDateViolations = append(castDateViolations, rel+":"+strconv.Itoa(i+1)+"  "+trimmed)
 				}
 			}
 			return nil
@@ -149,5 +171,11 @@ func TestNoNewRawStartTimeLiteral(t *testing.T) {
 			"CLAUDE.md n°8) — trier via StartTimeCanonicalSQL(alias) (fragment canonique) "+
 			"sinon les imports OpenSpartan NULL/TZ-décalés sortent mal triés de la fenêtre :\n  %s",
 			strings.Join(orderByViolations, "\n  "))
+	}
+	if len(castDateViolations) > 0 {
+		t.Errorf("CAST(start_time AS DATE) sur start_time BRUT interdit (F2, règle CLAUDE.md "+
+			"n°8) — bucketer le jour via CAST(SQLStartTimeCanonical(alias) AS DATE) sinon les "+
+			"jours se décalent aux frontières de fuseau :\n  %s",
+			strings.Join(castDateViolations, "\n  "))
 	}
 }

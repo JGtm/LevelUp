@@ -65,20 +65,23 @@ export function PatternContextGrid({
 }
 
 /**
- * soloLinkForPattern — deep-link Solo filtré pour une carte pattern.
- *  - by_mode : cascade.modes = [clé] (déjà le libellé de mode normalisé, identique
- *    au `modeUI` des options de filtre = NormalizeModeLabel(pair)).
- *  - by_map  : cascade.maps = [label] (nom de carte résolu, jamais le GUID `key` ;
- *    matche le `mapUI` du filtre). Sans label → pas de lien (le GUID ne matcherait
- *    aucune row).
- * Retourne undefined si aucune valeur exploitable (by_squad n'atteint pas la grille).
+ * soloLinkForPattern — deep-link Solo filtré pour une carte pattern (F7).
+ *
+ * Le lien se construit TOUJOURS sur `filter_key` — la clé de filtrage stable
+ * servie par le backend, exactement ce que le pipeline de filtres matche
+ * (indépendante de la locale). by_map : nom FR-first (jamais le GUID `key` ni le
+ * `label` localisé, qui ne matcherait pas en EN) ; by_mode : mode normalisé.
+ * Sans `filter_key` résolu → pas de lien (plutôt qu'un filtre qui ne matche rien).
+ * by_squad n'atteint pas la grille.
  */
 function soloLinkForPattern(p: ContextualPattern, playerSlug: string, titleSlug: string): string | undefined {
+  const key = p.filter_key
+  if (!key) return undefined
   let cascade: Partial<CascadeInput> | null = null
   if (p.type === 'by_mode') {
-    cascade = { modes: [p.key] }
-  } else if (p.type === 'by_map' && p.label) {
-    cascade = { maps: [p.label] }
+    cascade = { modes: [key] }
+  } else if (p.type === 'by_map') {
+    cascade = { maps: [key] }
   }
   if (!cascade) return undefined
   return buildSoloFilterLink({ playerSlug, titleSlug, cascade })

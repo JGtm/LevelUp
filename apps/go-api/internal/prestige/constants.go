@@ -59,12 +59,16 @@ func IsValidChallengeSource(s string) bool {
 
 // Types d'événements de télémétrie (champ event_type de prestige_telemetry).
 const (
-	TelemetryCreated          = "created"
-	TelemetryRejected         = "rejected"
-	TelemetryCommitted        = "committed"
-	TelemetryCompleted        = "completed"
-	TelemetryExpired          = "expired"
-	TelemetryAbandoned        = "abandoned"
+	TelemetryCreated   = "created"
+	TelemetryRejected  = "rejected"
+	TelemetryCommitted = "committed"
+	TelemetryCompleted = "completed"
+	TelemetryExpired   = "expired"
+	TelemetryAbandoned = "abandoned"
+	// TelemetryArchived : retrait SYSTÈME d'un défi (ex. désactivation du mode
+	// pilote) — distinct de `abandoned` (abandon volontaire du joueur) pour
+	// mesurer le churn du mode pilote sans le confondre avec les abandons.
+	TelemetryArchived         = "archived"
 	TelemetryPalierRecomputed = "palier_recomputed"
 )
 

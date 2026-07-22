@@ -104,6 +104,10 @@ func (s *service) DisablePilotMode(ctx context.Context, userID, titleSlug string
 				"err", err, "challenge_id", c.ID)
 			continue
 		}
+		// Trace la transition d'archivage (retrait système, distinct d'un abandon
+		// volontaire) — observabilité du churn pilote (F5), comme AbandonChallenge.
+		c.Status = StatusArchived
+		s.emitter.EmitTransition(ctx, c, TelemetryArchived)
 		archived++
 	}
 	slog.InfoContext(ctx, "prestige: pilot mode disabled",

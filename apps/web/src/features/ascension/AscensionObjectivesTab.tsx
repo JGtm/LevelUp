@@ -15,7 +15,14 @@ import { CreateArcForm } from '@/features/prestige/components/CreateArcForm'
 import { ArcPresetPicker } from '@/features/prestige/components/ArcPresetPicker'
 import { Tooltip } from '@/components/ui/tooltip'
 import { AlertDialog } from '@/components/ui/alert-dialog'
-import { useChallenges, useArcs, useAbandonChallenge, useDeleteArc, usePilotMode } from '@/features/prestige/hooks'
+import {
+  useChallenges,
+  useChallengeHistory,
+  useArcs,
+  useAbandonChallenge,
+  useDeleteArc,
+  usePilotMode,
+} from '@/features/prestige/hooks'
 import { getPrestigeText } from '@/features/prestige/i18n'
 import type { Challenge, Arc } from '@/lib/prestige'
 import { getAscensionText } from './i18n'
@@ -288,28 +295,54 @@ function PilotModeToggle({ locale, active, pending, onToggle }: PilotModeToggleP
 
 // ─── Mes arcs ────────────────────────────────────────────────────────────────
 
+/**
+ * computeArcStepCounts — décompte « complétées / total » des étapes par arc.
+ *
+ * F1 : le décompte DOIT inclure les défis TERMINAUX de l'arc et pas seulement
+ * les actifs — sinon un arc en cours affiche toujours « 0/N » (les défis
+ * `completed` ne sont jamais dans la liste active). `completed` = défis
+ * `status === 'completed'` ; `total` = tous les défis rattachés à l'arc (actifs
+ * + terminaux), dédupliqués par id. Les défis détachés (`arc_id` absent) sont
+ * ignorés.
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- helper pur testé unitairement (motif catalogue)
+export function computeArcStepCounts(
+  challenges: Challenge[],
+): Map<string, { completed: number; total: number }> {
+  const byArc = new Map<string, { completed: number; total: number }>()
+  const seen = new Set<string>()
+  for (const c of challenges) {
+    if (!c.arc_id) continue
+    if (seen.has(c.id)) continue
+    seen.add(c.id)
+    const cur = byArc.get(c.arc_id) ?? { completed: 0, total: 0 }
+    cur.total += 1
+    if (c.status === 'completed') cur.completed += 1
+    byArc.set(c.arc_id, cur)
+  }
+  return byArc
+}
+
 function MyArcsSection({ playerSlug, locale }: PlayerLocaleSectionProps) {
   const t = getAscensionText(locale)
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const { data: arcsData } = useArcs(playerSlug, titleSlug)
   const { data: challengesData } = useChallenges(playerSlug, titleSlug)
+  // Le décompte des étapes complétées vient des défis TERMINAUX de l'arc, qui ne
+  // figurent PAS dans la liste active (F1) — on fusionne les deux sources.
+  const { data: historyData } = useChallengeHistory(playerSlug, titleSlug)
   const deleteArc = useDeleteArc(playerSlug, titleSlug)
   // Onglet Objectifs = actif uniquement (Lot C, C4) : les arcs terminés
   // (completed_at renseigné) migrent vers l'Historique de l'onglet Réalisations.
   const arcs: Arc[] = (arcsData?.arcs ?? []).filter((a) => !a.completed_at)
-  const challenges: Challenge[] = challengesData?.challenges ?? []
   const [showArcForm, setShowArcForm] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
-  const stepsByArc = new Map<string, { completed: number; total: number }>()
-  for (const c of challenges) {
-    if (!c.arc_id) continue
-    const cur = stepsByArc.get(c.arc_id) ?? { completed: 0, total: 0 }
-    cur.total += 1
-    if (c.status === 'completed') cur.completed += 1
-    stepsByArc.set(c.arc_id, cur)
-  }
+  const stepsByArc = computeArcStepCounts([
+    ...(challengesData?.challenges ?? []),
+    ...(historyData?.challenges ?? []),
+  ])
 
   const newArcLabel = t.profileNewArc
   const browseLabel = t.profileBrowsePresets

@@ -412,13 +412,16 @@ func buildPatternAlerts(input GenerateInput) []Alert {
 		out = append(out, Alert{
 			Type:     AlertPatternLever,
 			Severity: notifications.SeverityInfo,
+			// F3 : le levier ne porte plus de phrase — on sert les données
+			// structurées (axe + contexte visé). La phrase est composée à
+			// l'affichage via le gabarit i18n par axe (title-agnostic).
 			Params: map[string]any{
-				"rank":           l.Rank,
-				"axis":           l.Axis,
-				"label":          l.Label,
-				"impact":         l.Impact,
-				"horizon":        l.Horizon,
-				"source_pattern": l.SourcePattern,
+				"rank":          l.Rank,
+				"axis":          l.Axis,
+				"context_key":   l.ContextKey,
+				"context_label": l.ContextLabel,
+				"impact":        l.Impact,
+				"horizon":       l.Horizon,
 			},
 			DedupKey: l.Axis,
 		})

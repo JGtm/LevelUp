@@ -318,10 +318,13 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 		return out, fmt.Errorf("aggregate stats: %w", err)
 	}
 
-	// accuracy_threshold_days : COUNT(DISTINCT DATE(start_time)) where any match >= threshold.
+	// accuracy_threshold_days : COUNT(DISTINCT jour UTC) où au moins 1 match a
+	// accuracy >= seuil. Le bucket jour passe par le fragment timezone canonique
+	// (règle CLAUDE.md n°8) — cohérent avec le backfill A6 (ops.ComputeMilestoneCrossings) ;
+	// un CAST(start_time AS DATE) brut décalerait les jours aux frontières de fuseau.
 	var accuracyDays int64
 	if err := sharedDB.QueryRowContext(ctx, `
-		SELECT COUNT(DISTINCT CAST(mr.start_time AS DATE))
+		SELECT COUNT(DISTINCT CAST(`+analysis.SQLStartTimeCanonical("mr")+` AS DATE))
 		FROM match_participants mp
 		JOIN match_registry mr ON mp.match_id = mr.match_id
 		WHERE mp.xuid = ? AND mp.accuracy >= ?

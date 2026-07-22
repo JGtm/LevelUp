@@ -23,8 +23,9 @@ const (
 
 // mockPatternsRepo implémente port.PatternsRepository sans DB.
 type mockPatternsRepo struct {
-	rows   []patterns.MatchRow
-	labels map[string]string
+	rows       []patterns.MatchRow
+	labels     map[string]string // résolution LOCALISÉE (label d'affichage)
+	filterKeys map[string]string // résolution FR-first (clé de filtrage stable)
 }
 
 func (m *mockPatternsRepo) LoadRows(_ context.Context, _ int) ([]patterns.MatchRow, error) {
@@ -33,6 +34,10 @@ func (m *mockPatternsRepo) LoadRows(_ context.Context, _ int) ([]patterns.MatchR
 
 func (m *mockPatternsRepo) ResolveMapLabels(_ context.Context, _ []string) (map[string]string, error) {
 	return m.labels, nil
+}
+
+func (m *mockPatternsRepo) ResolveMapFilterKeys(_ context.Context, _ []string) (map[string]string, error) {
+	return m.filterKeys, nil
 }
 
 var _ port.PatternsRepository = (*mockPatternsRepo)(nil)
@@ -111,10 +116,11 @@ func TestGetPatterns_ByMapLabelsResolvedOrFallback(t *testing.T) {
 	}
 }
 
-func TestGetPatterns_MapLeverLabelHasNoGUID(t *testing.T) {
+func TestGetPatterns_MapLeverContextLabelResolvedNoGUID(t *testing.T) {
 	// mapUnknownID est la faiblesse (0 % de victoires) -> génère un levier
-	// map_avoidance dont le texte contenait le GUID. Le nom résolu doit le
-	// remplacer dans la phrase (A2).
+	// map_avoidance. F3 : le levier ne porte plus de phrase ; le handler résout
+	// le nom d'asset du contexte visé dans ContextLabel (donnée structurée servie
+	// au front, qui compose la phrase). ContextLabel = nom résolu, jamais le GUID.
 	repo := &mockPatternsRepo{
 		rows:   buildByMapRows(),
 		labels: map[string]string{mapUnknownID: "Behemoth"},
@@ -128,19 +134,65 @@ func TestGetPatterns_MapLeverLabelHasNoGUID(t *testing.T) {
 
 	var found bool
 	for _, lev := range out.Body.Levers {
-		if !strings.HasPrefix(lev.SourcePattern, "by_map:") {
+		if lev.Axis != patterns.AxisMapAvoidance {
 			continue
 		}
 		found = true
-		if strings.Contains(lev.Label, mapUnknownID) {
-			t.Errorf("le texte du levier contient encore le GUID: %q", lev.Label)
+		// Le nom d'asset résolu est servi comme donnée structurée (ContextLabel).
+		if lev.ContextLabel != "Behemoth" {
+			t.Errorf("ContextLabel = %q, want nom résolu « Behemoth »", lev.ContextLabel)
 		}
-		if !strings.Contains(lev.Label, "Behemoth") {
-			t.Errorf("le texte du levier devrait contenir le nom résolu: %q", lev.Label)
+		if strings.Contains(lev.ContextLabel, mapUnknownID) {
+			t.Errorf("ContextLabel ne doit jamais contenir le GUID: %q", lev.ContextLabel)
 		}
 	}
 	if !found {
-		t.Fatal("aucun levier by_map produit (le test ne couvre rien)")
+		t.Fatal("aucun levier map_avoidance produit (le test ne couvre rien)")
+	}
+}
+
+func TestGetPatterns_FilterKeyIsFRFirstRegardlessOfRequestLocale(t *testing.T) {
+	// filter_key (F7) doit être la clé FR-first que matche le pipeline de filtres,
+	// INDÉPENDANTE de la locale de la requête. On simule des résolutions
+	// divergentes : label localisé EN vs filter_key FR-first.
+	repo := &mockPatternsRepo{
+		rows:       buildByMapRows(),
+		labels:     map[string]string{mapKnownID: "Recharge", mapUnknownID: "Streets"}, // localisé (EN demandé)
+		filterKeys: map[string]string{mapKnownID: "Décharge", mapUnknownID: "Rues"},    // FR-first (clé de filtrage)
+	}
+	h := newTestPatternsHandler(repo)
+
+	ctx := ctxkeys.WithLocale(context.Background(), "en")
+	out, err := h.GetPatterns(ctx, &patternsInput{PlayerSlug: "p"})
+	if err != nil {
+		t.Fatalf("GetPatterns: %v", err)
+	}
+
+	var sawMap, sawMode bool
+	for _, p := range out.Body.ContextPatterns {
+		switch p.Type {
+		case patterns.ContextByMap:
+			sawMap = true
+			// Label localisé (EN) mais filter_key FR-first, même en requête EN.
+			if p.FilterKey != "Décharge" && p.FilterKey != "Rues" {
+				t.Errorf("by_map %q: filter_key=%q, attendu FR-first (Décharge/Rues)", p.Key, p.FilterKey)
+			}
+			if p.FilterKey == p.Label {
+				t.Errorf("by_map %q: filter_key ne doit pas être le label localisé (%q)", p.Key, p.Label)
+			}
+		case patterns.ContextByMode:
+			sawMode = true
+			// by_mode : filter_key == key (mode normalisé = modeUI).
+			if p.FilterKey != p.Key {
+				t.Errorf("by_mode: filter_key=%q, attendu == key (%q)", p.FilterKey, p.Key)
+			}
+		}
+	}
+	if !sawMap {
+		t.Fatal("aucun pattern by_map (test ne couvre rien)")
+	}
+	if !sawMode {
+		t.Fatal("aucun pattern by_mode (test ne couvre rien)")
 	}
 }
 

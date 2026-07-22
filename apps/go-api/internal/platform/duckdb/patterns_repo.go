@@ -89,6 +89,20 @@ func (r *PatternsRepo) ResolveMapLabels(ctx context.Context, mapIDs []string) (m
 	return NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(ctx, "map", mapIDs, langs)
 }
 
+// ResolveMapFilterKeys résout les noms de cartes avec une préférence de langue
+// FIXE fr→en (PreferredLangsForLocale("fr")), INDÉPENDANTE de la locale de la
+// requête — la clé de filtrage stable des liens pattern→Solo (F7). Reproduit la
+// convention du pipeline de filtres (mapUI = FR-first) : en FR la résolution
+// localisée et celle-ci coïncident ; en EN elles diffèrent (le lien doit matcher
+// la clé FR, pas le libellé traduit). Best-effort : nil si metadata non attaché.
+func (r *PatternsRepo) ResolveMapFilterKeys(ctx context.Context, mapIDs []string) (map[string]string, error) {
+	if len(mapIDs) == 0 || r.pdb == nil || r.pdb.Metadata == nil {
+		return nil, nil
+	}
+	langs := PreferredLangsForLocale("fr")
+	return NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(ctx, "map", mapIDs, langs)
+}
+
 // patternSharedRow est le résultat intermédiaire de la phase 1.
 type patternSharedRow struct {
 	MatchID       string

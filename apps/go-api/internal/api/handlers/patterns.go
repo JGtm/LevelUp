@@ -138,32 +138,47 @@ func (h *PatternsHandler) enrichContextLabels(ctx context.Context, repo port.Pat
 		slog.WarnContext(ctx, "patterns: résolution des libellés de carte échouée — repli local", "err", err)
 		resolved = nil
 	}
+	// Clés de filtrage stables (FR-first, indépendantes de la locale) pour les
+	// liens pattern→Solo (F7) — la valeur EXACTE que le pipeline de filtres matche.
+	filterKeys, err := repo.ResolveMapFilterKeys(ctx, mapIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "patterns: résolution des clés de filtrage de carte échouée", "err", err)
+		filterKeys = nil
+	}
 	locale := ctxkeys.Locale(ctx)
 	for i := range report.ContextPatterns {
-		if report.ContextPatterns[i].Type == patterns.ContextByMap {
+		switch report.ContextPatterns[i].Type {
+		case patterns.ContextByMap:
 			report.ContextPatterns[i].Label = mapLabelOrFallback(resolved, report.ContextPatterns[i].Key, locale)
+			// FilterKey = nom FR-first résolu ; si non résolu, pas de clé (le front
+			// n'émet alors pas de lien plutôt que de matcher un GUID/label localisé).
+			if fk := strings.TrimSpace(filterKeys[report.ContextPatterns[i].Key]); fk != "" {
+				report.ContextPatterns[i].FilterKey = fk
+			}
+		case patterns.ContextByMode:
+			// La clé de mode est déjà la valeur normalisée (= modeUI du filtre),
+			// FR-first et locale-indépendante → clé de filtrage directe (F7).
+			report.ContextPatterns[i].FilterKey = report.ContextPatterns[i].Key
 		}
 	}
-	rewriteMapLeverLabels(report.Levers, resolved, locale)
+	setMapLeverContextLabels(report.Levers, resolved, locale)
 }
 
-// rewriteMapLeverLabels remplace le GUID de carte présent dans le texte des
-// leviers by_map (« Améliore ton win rate en {GUID} ») par le nom résolu, pour
-// qu'aucun identifiant technique n'apparaisse dans une phrase servie (A2). Le
-// GUID est identifié via SourcePattern (« by_map:{GUID} ») — substitution
-// title-agnostic, aucun identifiant de carte n'est reconstruit à la main.
-func rewriteMapLeverLabels(levers []patterns.Lever, resolved map[string]string, locale string) {
-	const byMapPrefix = string(patterns.ContextByMap) + ":"
+// setMapLeverContextLabels résout le nom d'asset (carte) du contexte visé par un
+// levier map_avoidance et le pose sur ContextLabel — donnée structurée servie au
+// front, qui compose la phrase i18n (F3). Le front n'affiche JAMAIS le
+// ContextKey (GUID) d'un levier by_map : il utilise ContextLabel (title-agnostic,
+// même mécanisme A1 que les patterns). Repli localisé « Carte inconnue » si non
+// résolu — jamais le GUID nu.
+func setMapLeverContextLabels(levers []patterns.Lever, resolved map[string]string, locale string) {
 	for i := range levers {
-		if !strings.HasPrefix(levers[i].SourcePattern, byMapPrefix) {
+		if levers[i].Axis != patterns.AxisMapAvoidance {
 			continue
 		}
-		mapID := strings.TrimPrefix(levers[i].SourcePattern, byMapPrefix)
-		if mapID == "" {
+		if strings.TrimSpace(levers[i].ContextKey) == "" {
 			continue
 		}
-		label := mapLabelOrFallback(resolved, mapID, locale)
-		levers[i].Label = strings.ReplaceAll(levers[i].Label, mapID, label)
+		levers[i].ContextLabel = mapLabelOrFallback(resolved, levers[i].ContextKey, locale)
 	}
 }
 

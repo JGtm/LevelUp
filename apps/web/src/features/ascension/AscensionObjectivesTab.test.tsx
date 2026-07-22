@@ -40,9 +40,16 @@ const pilotEnableMutate = vi.fn()
 const pilotDisableMutate = vi.fn()
 const abandonMutate = vi.fn()
 
+const mockHistory: { current: ChallengeFixture[] } = { current: [] }
+
 vi.mock('@/features/prestige/hooks', () => ({
   useChallenges: () => ({
     data: { challenges: mockChallenges.current },
+    isLoading: false,
+    isError: false,
+  }),
+  useChallengeHistory: () => ({
+    data: { challenges: mockHistory.current },
     isLoading: false,
     isError: false,
   }),
@@ -77,7 +84,39 @@ vi.mock('@/components/ui/tooltip', () => ({
 }))
 
 // Import after mocks
-import { AscensionObjectivesTab } from './AscensionObjectivesTab'
+import { AscensionObjectivesTab, computeArcStepCounts } from './AscensionObjectivesTab'
+import type { Challenge } from '@/lib/prestige'
+
+// Fabrique un défi minimal (seuls arc_id/id/status comptent pour le décompte).
+function ch(id: string, arcId: string | undefined, status: string): Challenge {
+  return { id, arc_id: arcId, status } as unknown as Challenge
+}
+
+describe('computeArcStepCounts — décompte étapes complétées/total par arc (F1)', () => {
+  it('compte les étapes complétées depuis les défis terminaux (actifs + historique)', () => {
+    const counts = computeArcStepCounts([
+      // Actifs (arc a1) : 2 en cours, aucun completed.
+      ch('c1', 'a1', 'active'),
+      ch('c2', 'a1', 'active'),
+      // Terminaux (arc a1) : 1 complété, 1 abandonné.
+      ch('c3', 'a1', 'completed'),
+      ch('c4', 'a1', 'abandoned'),
+    ])
+    expect(counts.get('a1')).toEqual({ completed: 1, total: 4 })
+  })
+
+  it('ignore les défis détachés (arc_id absent)', () => {
+    const counts = computeArcStepCounts([ch('c1', undefined, 'completed'), ch('c2', 'a1', 'completed')])
+    expect(counts.has('__undefined__')).toBe(false)
+    expect(counts.get('a1')).toEqual({ completed: 1, total: 1 })
+  })
+
+  it('dédoublonne un défi présent dans les deux listes (actif + historique)', () => {
+    // Même id dupliqué : ne doit pas gonfler total.
+    const counts = computeArcStepCounts([ch('c1', 'a1', 'completed'), ch('c1', 'a1', 'completed')])
+    expect(counts.get('a1')).toEqual({ completed: 1, total: 1 })
+  })
+})
 
 describe('AscensionObjectivesTab — composition (couche Prestige seule)', () => {
   beforeEach(() => {
@@ -89,6 +128,7 @@ describe('AscensionObjectivesTab — composition (couche Prestige seule)', () =>
     mockShellState.locale = 'fr'
     mockArcs.current = []
     mockChallenges.current = []
+    mockHistory.current = []
     deleteArcMutate.mockClear()
     pilotEnableMutate.mockClear()
     pilotDisableMutate.mockClear()

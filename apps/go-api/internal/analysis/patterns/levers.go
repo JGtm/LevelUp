@@ -54,13 +54,12 @@ func leversFromContext(ctx []ContextualPattern, globalWR float64) []Lever {
 			horizon = 100
 		}
 		out = append(out, Lever{
-			Axis:          axis,
-			Label:         "Améliore ton win rate en " + p.Key,
-			CurrentVal:    p.WinRate,
-			TargetVal:     target,
-			Horizon:       horizon,
-			Impact:        math.Abs(p.Delta),
-			SourcePattern: string(p.Type) + ":" + p.Key,
+			Axis:       axis,
+			ContextKey: p.Key,
+			CurrentVal: p.WinRate,
+			TargetVal:  target,
+			Horizon:    horizon,
+			Impact:     math.Abs(p.Delta),
 		})
 	}
 	return out
@@ -70,11 +69,11 @@ func leversFromContext(ctx []ContextualPattern, globalWR float64) []Lever {
 func contextAxis(ct ContextType) string {
 	switch ct {
 	case ContextByMode:
-		return "mode_selection"
+		return AxisModeSelection
 	case ContextByMap:
-		return "map_avoidance"
+		return AxisMapAvoidance
 	case ContextBySquad:
-		return "squad_play"
+		return AxisSquadPlay
 	default:
 		return string(ct)
 	}
@@ -91,33 +90,27 @@ func leversFromBehavior(beh []BehavioralPattern, rows []MatchRow, _ PatternConfi
 		switch p.Type {
 		case BehaviorTilt:
 			lev = Lever{
-				Axis:          "session_management",
-				Label:         "Gestion des sessions de tilt",
-				CurrentVal:    0,
-				TargetVal:     0,
-				Horizon:       20,
-				Impact:        0.4,
-				SourcePattern: string(p.Type),
+				Axis:       AxisSessionManagement,
+				CurrentVal: 0,
+				TargetVal:  0,
+				Horizon:    20,
+				Impact:     0.4,
 			}
 		case BehaviorSessionFatigue:
 			lev = Lever{
-				Axis:          "session_length",
-				Label:         "Durée des sessions de jeu",
-				CurrentVal:    0,
-				TargetVal:     0,
-				Horizon:       15,
-				Impact:        0.3,
-				SourcePattern: string(p.Type),
+				Axis:       AxisSessionLength,
+				CurrentVal: 0,
+				TargetVal:  0,
+				Horizon:    15,
+				Impact:     0.3,
 			}
 		case BehaviorEngagementDrop:
 			lev = Lever{
-				Axis:          "engagement",
-				Label:         "Maintien de l'engagement",
-				CurrentVal:    0,
-				TargetVal:     0,
-				Horizon:       20,
-				Impact:        0.35,
-				SourcePattern: string(p.Type),
+				Axis:       AxisEngagement,
+				CurrentVal: 0,
+				TargetVal:  0,
+				Horizon:    20,
+				Impact:     0.35,
 			}
 		case BehaviorAccuracyPlateau:
 			accs := collectAccuracies(rows)
@@ -127,23 +120,19 @@ func leversFromBehavior(beh []BehavioralPattern, rows []MatchRow, _ PatternConfi
 				target = current + 0.05
 			}
 			lev = Lever{
-				Axis:          "accuracy",
-				Label:         "Améliore ta précision",
-				CurrentVal:    current,
-				TargetVal:     target,
-				Horizon:       30,
-				Impact:        0.3,
-				SourcePattern: string(p.Type),
+				Axis:       AxisAccuracy,
+				CurrentVal: current,
+				TargetVal:  target,
+				Horizon:    30,
+				Impact:     0.3,
 			}
 		case BehaviorPerfCeiling:
 			lev = Lever{
-				Axis:          "radar_axis",
-				Label:         "Dépasse ton plafond de performance",
-				CurrentVal:    0,
-				TargetVal:     0,
-				Horizon:       40,
-				Impact:        0.25,
-				SourcePattern: string(p.Type),
+				Axis:       AxisRadarAxis,
+				CurrentVal: 0,
+				TargetVal:  0,
+				Horizon:    40,
+				Impact:     0.25,
 			}
 		default:
 			continue

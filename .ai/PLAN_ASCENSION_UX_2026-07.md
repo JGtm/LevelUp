@@ -340,50 +340,63 @@ complété » renvoient vers une page où l'objectif concerné n'est pas visible
 
 ## Découvertes en cours d'exécution (à consigner, ne pas traiter)
 
-- **(A2) Phrases de leviers en dur FR côté Go** : `internal/analysis/patterns/levers.go`
-  code les libellés de leviers en français dur (« Améliore ton win rate en … »,
-  « Gestion des sessions de tilt », « Améliore ta précision », …). A2 a seulement
-  fait disparaître le GUID de la phrase (substitution handler). La phrase elle-même
-  reste non-i18n / non title-agnostic → à router via i18n front + adapter sémantique
-  dans un chantier dédié.
-- **(A6) `accuracy_threshold_days` lit `start_time` brut** :
-  `loadPlayerStats` (`post_sync_progression_queries.go`) fait
-  `CAST(mr.start_time AS DATE)` pour compter les jours réguliers, PAS le fragment
-  timezone canonique (règle CLAUDE.md n°8). Le backfill A6, lui, respecte le
-  fragment. Incohérence pré-existante côté détecteur (léger décalage possible aux
-  frontières de jour). À aligner.
-- **(A5) Index `idx_rec_hist_achieved_desc` divergent** : la création de base
-  (`steps_player_base.go`) le pose sur `(user_id, achieved_at DESC)`, la migration
-  de dédup (`steps_player.go`) le recrée sur `(achieved_at DESC)`. La purge A5
-  restaure la définition de base. Divergence bénigne (index de lecture) mais à
-  homogénéiser.
+- **(A2) Phrases de leviers en dur FR côté Go** — **RÉSOLU 2026-07-22 (F3)** :
+  `internal/analysis/patterns/levers.go` codait les libellés de leviers en français
+  dur. Refonte pérenne : le backend ne sert PLUS de phrase — le champ `label` du DTO
+  `Lever` (et `source_pattern`, devenu code mort) sont supprimés ; le levier porte
+  désormais des données structurées (`axis`, `context_key`, `context_label` résolu
+  title-agnostic pour by_map). Le FRONT compose la phrase via des gabarits i18n FR/EN
+  par axe (`features/ascension/i18n.ts:leverPhrase`, `LeverList.tsx:leverPhrase`).
+  `rewriteMapLeverLabels` (handler) supprimé, remplacé par `setMapLeverContextLabels`
+  (résout ContextLabel via `ResolveMapLabels`, même mécanisme A1). Tests : Go (DTO
+  structuré servi, ContextLabel résolu sans GUID) + vitest (composition FR/EN par
+  axe, GUID jamais rendu). openapi+generated régénérés (drift MISSING=0).
+- **(A6) `accuracy_threshold_days` lit `start_time` brut** — **RÉSOLU 2026-07-22 (F2)** :
+  `loadPlayerStats` (`post_sync_progression_queries.go`) utilise désormais
+  `CAST(analysis.SQLStartTimeCanonical("mr") AS DATE)` (fragment timezone canonique,
+  règle n°8) au lieu du `CAST(mr.start_time AS DATE)` brut — cohérent avec le backfill
+  A6. Ratchet étendu : `TestNoNewRawStartTimeLiteral` (archlint) interdit désormais
+  aussi `CAST(<alias>.start_time AS DATE)` brut (regex `rawCastStartTimeDateRE`,
+  allowlist VIDE — précise, ne matche pas la forme canonique COALESCE). Autres
+  `start_time` bruts du fichier (SELECT PlayedAt, ORDER BY allowlistés) hors périmètre
+  F2 (chargement de matchs, concern distinct) — consignés, non traités.
+- **(A5) Index `idx_rec_hist_achieved_desc` divergent** — **RÉSOLU 2026-07-22 (F4)** :
+  définition canonique unique `(user_id, achieved_at DESC)` centralisée en constante
+  `canonicalRecHistAchievedIndexDDL` (`steps_player.go`) ; la migration de dédup
+  alignée dessus ; nouveau step correctif idempotent
+  `repair_rec_hist_achieved_index_canonical_v1` (DROP + CREATE canonique, garde
+  TableExists) ajouté à `playerSteps()` + `canonicalOrder`. Garde-rail
+  `idx_rec_hist_canonical_test.go` : toute création de cet index DOIT être
+  `(user_id, achieved_at DESC)` (scan sources non-test). Tests migration (intégration :
+  répare un index divergent, idempotent, no-op sans table).
 - **(A5/A6) LUSR/ratings hors périmètre** : les records purgés/backfillés ne
   concernent que PB/jalons ; aucun impact sur LUSR/CSR.
-- **(B1) e2e `ascension-2tabs.spec.ts` obsolète** : la spec Playwright est déjà
-  `skipObsoleteSpec` (marquée obsolète depuis le passage 3 onglets, 2026-06-08) et
-  référence encore le layout 2/3 onglets + le libellé « Profil & objectifs ». Hors
-  gate (Playwright ≠ vitest) et déjà skippée → NON traitée. À réécrire pour les
-  4 onglets dans un chantier e2e dédié.
-- **(B3) télémétrie transition `archived`** : `DisablePilotMode` fait `UpdateStatus`
-  → `archived` sans `EmitTransition` (contrairement à `AbandonChallenge` qui émet
-  `TelemetryAbandoned`). Pas de compteur télémétrie « archived » aujourd'hui ; à
-  ajouter si l'observabilité du churn pilote devient utile.
-- **(A2 rappel, B6) phrases de leviers FR en dur côté Go** : confirmé pendant B6 —
-  `internal/analysis/patterns/levers.go` code « Améliore ton win rate… » en français
-  dur (non i18n, non title-agnostic). Hors périmètre B (déjà consigné en A2).
-- **(C4) Décompte des étapes d'arc faux dans l'onglet Objectifs** : `MyArcsSection`
-  calcule `stepsByArc` depuis `useChallenges` (actifs seuls) → un arc en cours affiche
-  toujours « 0/N » étapes complétées (les défis `completed` de l'arc ne sont pas dans la
-  liste active). Pré-existant, hors périmètre C4 (qui ne traite que le retrait des items
-  passés). Corrigeable en alimentant le décompte depuis `useChallengeHistory` (défis
-  terminaux de l'arc) — à faire dans un lot dédié.
-- **(C5) Lien by_map sensible à la locale** : `cascade.maps` = `p.label` (nom de carte
-  résolu selon la locale UI). Le filtre cascade matche `mapUI = MapNameFR ?? MapName`
-  (FR d'abord, quelle que soit la locale, `filters_service.go:345`). En FR le match est
-  exact ; en EN une carte traduite (ex. Décharge/Recharge) peut ne pas matcher. App
-  FR-primaire → acceptable ; le vrai correctif serait que le backend serve le nom
-  canonique de match (ou que le pattern porte l'id ET le nom FR). À aligner si l'EN
-  devient prioritaire.
+- **(B1) e2e `ascension-2tabs.spec.ts` obsolète** — **RÉSOLU 2026-07-22 (F6)** :
+  fichier SUPPRIMÉ (référençait un layout mort 2/3 onglets). Le helper
+  `skipObsoleteSpec` conservé (5 autres consommateurs). README e2e mis à jour (retrait
+  de la référence). La réécriture e2e 4 onglets reste un CHANTIER DÉDIÉ (non fait ici).
+- **(B3) télémétrie transition `archived`** — **RÉSOLU 2026-07-22 (F5)** :
+  `DisablePilotMode` émet désormais `EmitTransition(ctx, c, TelemetryArchived)` par
+  défi pilote archivé (nouvelle constante `TelemetryArchived = "archived"`, distincte
+  d'`abandoned` — retrait système vs abandon volontaire). Test :
+  `TestService_DisablePilotMode_EmitsArchivedTelemetry` (2 défis → 2 events `archived`).
+- **(A2 rappel, B6) phrases de leviers FR en dur côté Go** — **RÉSOLU 2026-07-22 (F3)**
+  (cf. bullet A2 ci-dessus : refonte structurée backend + gabarits i18n front).
+- **(C4) Décompte des étapes d'arc faux dans l'onglet Objectifs** — **RÉSOLU 2026-07-22 (F1)** :
+  `MyArcsSection` fusionne désormais `useChallenges` (actifs) + `useChallengeHistory`
+  (terminaux) pour le décompte, via le helper pur `computeArcStepCounts` (dédup par id,
+  `completed` = `status === 'completed'`, ignore `arc_id` absent). Test vitest du helper
+  (décompte, dédup, défis détachés).
+- **(C5) Lien by_map sensible à la locale** — **RÉSOLU 2026-07-22 (F7)** : le backend
+  sert désormais sur chaque pattern contextuel un champ `filter_key` = la clé de
+  filtrage STABLE que matche le pipeline (`mapUI = MapNameFR ?? MapName`, FR-first
+  indépendant de la locale). Résolu via `ResolveMapFilterKeys` (nouvelle méthode port,
+  `PreferredLangsForLocale("fr")` FIXE, ≠ `ResolveMapLabels` localisé). by_mode :
+  `filter_key = key` (mode normalisé = modeUI ; confirmé sur pièces = identique pour
+  Infinite ; Halo 5 by_mode dégénéré indépendamment). Front (`PatternContextGrid`)
+  construit le lien sur `filter_key`, `label` reste l'affichage. openapi+generated
+  régénérés (drift 0). Tests : Go (filter_key FR-first en requête EN, by_mode==key) +
+  vitest (lien encode filter_key, pas le label localisé ; sans filter_key → pas de lien).
 - **(C5) Warning jsdom « Not implemented: navigation to another Document »** : apparaît
   au run vitest (liens `<a href>` full-nav). Warning bénin, non bloquant (0 échec) et
   déjà présent ailleurs dans la suite — non traité.
@@ -395,10 +408,30 @@ complété » renvoient vers une page où l'objectif concerné n'est pas visible
   RÉSOLU le 2026-07-22 sur demande utilisateur : +4 colonnes ajoutées au DDL
   `match_registry` de la fixture (`relations_segmentation_integration_test.go`) —
   les 2 tests + le package service intégration repassent verts.
-- **(Clôture) `make go-api-lint` au scope réduit** : le target Makefile ne lint que
-  `internal/domain` + `internal/analysis`, et golangci-lint n'est pas installé dans
-  l'environnement d'exécution — compensé par `go vet ./...` (propre) sur tout le
-  chantier. À signaler si un lint complet est attendu au gate.
+- **(Clôture) `make go-api-lint` au scope réduit** — **RÉSOLU 2026-07-22 (F8)** :
+  investigation CI (`.github/workflows/ci.yml`) : le lint qui FAIT FOI est le job
+  `go-lint` = golangci-lint v2.12.2 sur TOUT `apps/go-api` (config `.golangci.yml`)
+  avec ratchet `--new-from-merge-base=origin/main` (dette baseline ~479 gelée invisible).
+  Le target local ne faisait qu'un `go vet` domain+analysis (miroir du step vet du job
+  `go-test`). Fix : le target reproduit désormais le lint CI (même ratchet) QUAND
+  golangci-lint est installé, sinon REPLI documenté sur `go vet` + message renvoyant au
+  job CI. Commentaire Makefile daté (scope réduit du repli assumé + critère de retrait).
+  golangci-lint NON installé dans cet environnement → repli `go vet` exécuté (propre) ;
+  le lint complet reste vérifié en CI.
+- **(F2) autres `start_time` bruts dans `post_sync_progression_queries.go`** (NOUVELLE,
+  non traitée) : hors du bucket `accuracy_threshold_days` corrigé, le fichier lit encore
+  `mr.start_time` brut dans `loadProgressionSharedMatches` (SELECT PlayedAt + `WHERE
+  start_time >= ?` + `ORDER BY start_time` allowlisté) et `loadComebackContext`. Concern
+  distinct (chargement de matchs → PlayedAt bucketé en Go côté streaks/records), pas le
+  bug jour-frontière de F2. À aligner sur le fragment canonique dans un lot dédié si le
+  décalage TZ des imports OpenSpartan devient sensible sur ce chemin.
+- **(F7) Halo 5 by_mode dégénéré** (NOUVELLE, non traitée) : le pattern engine dérive
+  `Mode = NormalizeModeLabel(pair_name_fr ?? pair_name)` (patterns_repo `loadShared`),
+  SANS repli `game_variant`. Halo 5 n'a pas de `pair_name` → `Mode = ''` pour tous les
+  matchs → grouping by_mode dégénéré (une clé vide). Non aggravé par F7 (filter_key vide
+  → pas de lien plutôt qu'un lien cassé). Le correctif pérenne = faire dériver le Mode du
+  pattern via `ResolveModeUIWithVariant` (pair-puis-variant) — aligne display + filtre
+  pour les deux titres, mais change le grouping/affichage Halo 5 → chantier dédié.
 
 ## Journal d'exécution — Lot A (2026-07-22)
 

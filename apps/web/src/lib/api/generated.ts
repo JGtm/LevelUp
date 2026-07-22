@@ -5837,6 +5837,7 @@ export interface components {
             avg_perf?: number;
             /** Format: double */
             delta: number;
+            filter_key?: string;
             key: string;
             label?: string;
             /** Format: int64 */
@@ -6711,16 +6712,16 @@ export interface components {
         };
         Lever: {
             axis: string;
+            context_key?: string;
+            context_label?: string;
             /** Format: double */
             current_val: number;
             /** Format: int64 */
             horizon: number;
             /** Format: double */
             impact: number;
-            label: string;
             /** Format: int64 */
             rank: number;
-            source_pattern: string;
             /** Format: double */
             target_val: number;
         };
